@@ -323,13 +323,22 @@ connect(int reader)
 static int
 do_init_app(struct sc_profile *profile)
 {
+	struct sc_pkcs15init_initargs args;
 	int	r = 0;
 
 	if (opt_erase)
 		r = profile->ops->erase_card(profile, card);
-	if (r >= 0)
-		r = sc_pkcs15init_add_app(card, profile);
-	return r;
+	if (r < 0)
+		return r;
+
+	memset(&args, 0, sizeof(args));
+	args.so_pin = opt_pins[OPT_PIN2 & 3];
+	if (args.so_pin)
+		args.so_pin_len = strlen(args.so_pin);
+	args.so_puk = opt_pins[OPT_PUK2 & 3];
+	if (args.so_puk)
+		args.so_puk_len = strlen(args.so_puk);
+	return sc_pkcs15init_add_app(card, profile, &args);
 }
 
 /*
