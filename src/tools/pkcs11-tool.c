@@ -59,6 +59,8 @@ const struct option options[] = {
 	{ "keypairgen", 	0, 0, 		'k' },
 	{ "write-object",	1, 0, 		'w' },
 	{ "type", 		1, 0, 		'y' },
+	{ "id", 		1, 0, 		'd' },
+	{ "label", 		1, 0, 		'a' },
 	{ "slot",		1, 0,		OPT_SLOT },
 	{ "slot-label",		1, 0,		OPT_SLOT_LABEL },
 	{ "input-file",		1, 0,		'i' },
@@ -85,7 +87,9 @@ const char *option_help[] = {
 	"Change your (user) PIN",
 	"Key pair generation",
 	"Write an object (key, cert) to the card",
-	"Specify the type of object (cert)",
+	"Specify the type of object (e.g. cert)",
+	"Specify the id of the object",
+	"Specify the label of the object",
 	"Specify number of the slot to use",
 	"Specify label of the slot to use",
 	"Specify the input file",
@@ -107,6 +111,8 @@ static const char *	opt_slot_label = NULL;
 static CK_MECHANISM_TYPE opt_mechanism = NO_MECHANISM;
 static const char *	opt_file_to_write = NULL;
 static const char *	opt_object_type = NULL;
+static int		opt_object_id = -1;
+static char *		opt_object_label = NULL;
 
 static sc_pkcs11_module_t *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -185,7 +191,7 @@ main(int argc, char * const argv[])
 	CK_RV rv;
 
 	while (1) {
-               c = getopt_long(argc, argv, "ILMOhi:klm:o:p:scqty:w:",
+               c = getopt_long(argc, argv, "ILMOa:d:hi:klm:o:p:scqty:w:",
 					options, &long_optind);
 		if (c == -1)
 			break;
@@ -225,6 +231,16 @@ main(int argc, char * const argv[])
 			break;
 		case 'y':
 			opt_object_type = optarg;
+			break;
+		case 'd':
+			opt_object_id = atoi(optarg);
+			if (opt_object_id == 0 && optarg[0] != '0') {
+				printf("id should be an integer, is \"%s\"\n", opt_object_id);
+				print_usage_and_die();
+			}	
+			break;
+		case 'a':
+			opt_object_label = optarg;
 			break;
 		case 'i':
 			opt_input = optarg;
@@ -722,6 +738,8 @@ hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		close(fd);
 }
 
+#define FILL_ATTR(attr, typ, val, len) (attr).type=(typ); (attr).pValue=(val); (attr).ulValueLen=len;
+
 void
 gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
@@ -730,15 +748,15 @@ gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_ULONG modulusBits = 768;
 	CK_BYTE publicExponent[] = { 3 };
 	CK_BBOOL true = TRUE;
-	CK_ATTRIBUTE publicKeyTemplate[] = {
+	CK_ATTRIBUTE publicKeyTemplate[20] = {
 		{CKA_ENCRYPT, &true, sizeof(true)},
 		{CKA_VERIFY, &true, sizeof(true)},
 		{CKA_WRAP, &true, sizeof(true)},
 		{CKA_MODULUS_BITS, &modulusBits, sizeof(modulusBits)},
-		{CKA_PUBLIC_EXPONENT, publicExponent, sizeof
-		(publicExponent)}
+		{CKA_PUBLIC_EXPONENT, publicExponent, sizeof(publicExponent)}
 	};
-	CK_ATTRIBUTE privateKeyTemplate[] = {
+	int n_pubkey_attr = 5;
+	CK_ATTRIBUTE privateKeyTemplate[20] = {
 		{CKA_TOKEN, &true, sizeof(true)},
 		{CKA_PRIVATE, &true, sizeof(true)},
 		{CKA_SENSITIVE, &true, sizeof(true)},
@@ -746,10 +764,27 @@ gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		{CKA_SIGN, &true, sizeof(true)},
 		{CKA_UNWRAP, &true, sizeof(true)}
 	};
+	int n_privkey_attr = 6;
 	CK_RV rv;
 
+	if (opt_object_label != NULL) {
+		FILL_ATTR(publicKeyTemplate[n_pubkey_attr++], CKA_LABEL,
+			opt_object_label, strlen(opt_object_label));
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr++], CKA_LABEL,
+			opt_object_label, strlen(opt_object_label));
+	}
+	if (opt_object_id != -1) {
+		CK_BYTE id = (CK_BYTE) opt_object_id;
+		FILL_ATTR(publicKeyTemplate[n_pubkey_attr++], CKA_ID,
+			&id, sizeof(id));
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr++], CKA_ID,
+			&id, sizeof(id));
+	}
+
 	rv = p11->C_GenerateKeyPair(session, &mechanism,
-		publicKeyTemplate, 5, privateKeyTemplate, 6, &hPublicKey, &hPrivateKey);
+		publicKeyTemplate, n_pubkey_attr,
+		privateKeyTemplate, n_privkey_attr,
+		&hPublicKey, &hPrivateKey);
 	if (rv != CKR_OK)
 		p11_fatal("C_GenerateKeyPair", rv);
 
@@ -758,9 +793,7 @@ gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	show_object(session, hPublicKey);
 }
 
-#define FILL_ATTR(attr, typ, val, len) (attr).type=(typ); (attr).pValue=(val); (attr).ulValueLen=len;
-
-/* Currently only for certificate (-type cert) */
+/* Currently only for certificates (-type cert) */
 void
 write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
@@ -769,7 +802,7 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	int contents_len;
 	FILE *f;
 	CK_OBJECT_HANDLE cert_obj, pubkey_obj, privkey_obj;
-	CK_ATTRIBUTE cert_templ[10], pubkey_templ[10], privkey_templ[10];
+	CK_ATTRIBUTE cert_templ[20], pubkey_templ[20], privkey_templ[20];
 	int n_cert_attr = 0, n_pubkey_attr = 0, n_privkey_attr = 0;
 	CK_RV rv;
 
@@ -790,6 +823,16 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		FILL_ATTR(cert_templ[2], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(cert_templ[3], CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type));
 		n_cert_attr = 4;
+
+		if (opt_object_label != NULL) {
+			FILL_ATTR(cert_templ[n_cert_attr++], CKA_LABEL,
+				opt_object_label, strlen(opt_object_label));
+		}
+		if (opt_object_id != -1) {
+			CK_BYTE id = (CK_BYTE) opt_object_id;
+			FILL_ATTR(cert_templ[n_cert_attr++], CKA_ID,
+				&id, sizeof(id));
+		}
 	}
 	else
 		fatal("Unknown/unsupported object type \"%s\"\n", opt_object_type);
@@ -1029,7 +1072,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 	if ((id = getID(sess, obj, &size)) != NULL && size) {
 		unsigned int	n;
 
-		printf("  ID:         ");
+		printf("  ID:         0x");
 		for (n = 0; n < size; n++)
 			printf("%02x", id[n]);
 		printf("\n");
