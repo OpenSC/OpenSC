@@ -69,9 +69,16 @@ const static struct sc_card_error iso7816_errors[] = {
 	{ 0x6D00, SC_ERROR_INS_NOT_SUPPORTED,	"Instruction code not supported or invalid" },
 	{ 0x6E00, SC_ERROR_CLASS_NOT_SUPPORTED,	"Class not supported" },
 	{ 0x6F00, SC_ERROR_CARD_CMD_FAILED,	"No precise diagnosis" }
+
+	/* Possibly TCOS / Micardo specific errors */
+	{ 0x6600, SC_ERROR_INCORRECT_PARAMETERS, "Error setting the security env"},
+	{ 0x66F0, SC_ERROR_INCORRECT_PARAMETERS, "No space left for padding"},
+	{ 0x69F0, SC_ERROR_NOT_ALLOWED,          "Command not allowed"},
+	{ 0x6A89, SC_ERROR_FILE_ALREADY_EXISTS,  "Files exists"},
+	{ 0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,  "Application exists"},
 };
 
-static int iso7816_check_sw(struct sc_card *card, int sw1, int sw2)
+int iso7816_check_sw(struct sc_card *card, int sw1, int sw2)
 {
 	const int err_count = sizeof(iso7816_errors)/sizeof(iso7816_errors[0]);
 	int i;
@@ -83,6 +90,11 @@ static int iso7816_check_sw(struct sc_card *card, int sw1, int sw2)
 	}
 	if (sw1 == 0x90)
 		return SC_NO_ERROR;
+        if (sw1 == 0x63 && (sw2 & ~0x0f) == 0xc0 ) {
+             error(card->ctx, "Verification failed (remaining tries: %d)\n",
+                   (sw2 & 0x0f));
+             return SC_ERROR_PIN_CODE_INCORRECT;
+        }
 	for (i = 0; i < err_count; i++)
 		if (iso7816_errors[i].SWs == ((sw1 << 8) | sw2)) {
 			error(card->ctx, "%s\n", iso7816_errors[i].errorstr);
