@@ -392,8 +392,6 @@ sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
 	info->authority		= authority;
 	if (path)
 		info->path = *path;
-                
-	info->path = *path;
 
 	return sc_pkcs15emu_add_object(p15card, type, label, info, NULL,
 					obj_flags);
