@@ -1026,6 +1026,7 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 			       	depth, depth, "",
 				left, depth,
 				choice ? ", choice" : "");
+
 	if (left < 2) {
 		while (asn1->name && (asn1->flags & SC_ASN1_OPTIONAL))
 			asn1++;
@@ -1040,9 +1041,17 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 	}
 	if (p[0] == 0 || p[0] == 0xFF)
 		return SC_ERROR_ASN1_END_OF_CONTENTS;
+
 	for (idx = 0; asn1[idx].name != NULL; idx++) {
 		entry = &asn1[idx];
 		r = 0;
+
+		if (ctx->debug >= 3) {
+			sc_debug(ctx, "Looking for '%s', tag 0x%x%s%s\n",
+					entry->name, entry->tag,
+					choice? ", CHOICE" : "",
+					(entry->flags & SC_ASN1_OPTIONAL)? ", OPTIONAL": "");
+		}
 
 		/* Special case CHOICE has no tag */
 		if (entry->type == SC_ASN1_CHOICE) {
@@ -1056,14 +1065,12 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 
 		obj = sc_asn1_skip_tag(ctx, &p, &left, entry->tag, &objlen);
 		if (obj == NULL) {
+			if (ctx->debug >= 3)
+				sc_debug(ctx, "not present\n");
 			if (choice)
 				continue;
-			if (entry->flags & SC_ASN1_OPTIONAL) {
-				if (ctx->debug >= 3)
-					sc_debug(ctx, "optional ASN.1 object '%s' not present\n",
-					      entry->name);
+			if (entry->flags & SC_ASN1_OPTIONAL)
 				continue;
-			}
 			sc_error(ctx, "mandatory ASN.1 object '%s' not found\n", entry->name);
 			if (ctx->debug && left) {
 				u8 line[128], *linep = line;
@@ -1132,6 +1139,31 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 		sc_debug(ctx, "%*.*stype=%d, tag=0x%02x, parm=%p, len=%u\n",
 				depth, depth, "",
 				entry->type, entry->tag, parm, len? *len : 0);
+
+	if (entry->type == SC_ASN1_CHOICE) {
+		const struct sc_asn1_entry *list, *choice = NULL;
+
+		list = (const struct sc_asn1_entry *) parm;
+		while (list->name != NULL) {
+			if (list->flags & SC_ASN1_PRESENT) {
+				if (choice) {
+					sc_error(ctx,
+						"ASN.1 problem: more than "
+						"one CHOICE when encoding %s: "
+						"%s and %s both present\n",
+						entry->name,
+						choice->name,
+						list->name);
+					return SC_ERROR_INVALID_ASN1_OBJECT;
+				}
+				choice = list;
+			}
+			list++;
+		}
+		if (choice == NULL)
+			goto no_object;
+		return asn1_encode_entry(ctx, choice, obj, objlen, depth + 1);
+	}
 
 	assert(entry->type == SC_ASN1_NULL || parm != NULL);
 	switch (entry->type) {
