@@ -87,6 +87,7 @@ const char *option_help[] = {
 	"Debug output -- may be supplied several times",
 	"Disable card caching",
 	"The auth ID of the PIN to use",
+	"Wait for card insertion",
 };
 
 struct sc_context *ctx = NULL;

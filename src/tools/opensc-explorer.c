@@ -54,6 +54,7 @@ const struct option options[] = {
 const char *option_help[] = {
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
+	"Wait for card insertion",
 	"Debug output -- maybe supplied several times",
 };
 

@@ -79,6 +79,7 @@ const char *option_help[] = {
 	"Quiet operation",
 	"Debug output -- may be supplied several times",
 	"Uses password (PIN) <arg>",
+	"Wait for card insertion",
 };
 
 struct sc_context *ctx = NULL;
