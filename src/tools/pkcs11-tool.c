@@ -607,13 +607,17 @@ list_mechs(CK_SLOT_ID slot)
 				printf(", sign");
 			if (info.flags & CKF_VERIFY)
 				printf(", verify");
+			if (info.flags & CKF_WRAP)
+				printf(", wrap");
 			if (info.flags & CKF_UNWRAP)
 				printf(", unwrap");
-			if (info.flags & CKF_UNWRAP)
-				printf(", unwrap");
+			if (info.flags & CKF_ENCRYPT)
+				printf(", encrypt");
+			if (info.flags & CKF_DECRYPT)
+				printf(", decrypt");
 			if (info.flags & CKF_GENERATE_KEY_PAIR)
 				printf(", keypairgen");
-			info.flags &= ~(CKF_DIGEST|CKF_SIGN|CKF_VERIFY|CKF_HW|CKF_UNWRAP|CKF_GENERATE_KEY_PAIR);
+			info.flags &= ~(CKF_DIGEST|CKF_SIGN|CKF_VERIFY|CKF_HW|CKF_UNWRAP|CKF_ENCRYPT|CKF_DECRYPT|CKF_GENERATE_KEY_PAIR);
 			if (info.flags)
 				printf(", other flags=0x%x", (unsigned int) info.flags);
 		}
