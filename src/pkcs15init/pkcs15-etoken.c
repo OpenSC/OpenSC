@@ -190,7 +190,7 @@ etoken_store_pin(struct sc_profile *profile, struct sc_card *card,
 	/* AC conditions */
 	tlv_next(&tlv, 0x86);
 	tlv_add(&tlv, 0x00);		/* use: always */
-	tlv_add(&tlv, puk_id);		/* change: PUK */
+	tlv_add(&tlv, pin_id);		/* change: PIN */
 	tlv_add(&tlv, puk_id);		/* unblock: PUK */
 
 	/* data: PIN */
