@@ -55,7 +55,6 @@ struct _sc_driver_entry {
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
-	{ "emv", (void *) sc_get_emv_driver, NULL },
 	{ "etoken", (void *) sc_get_etoken_driver, NULL },
 	{ "flex", (void *) sc_get_cryptoflex_driver, NULL },
 	{ "cyberflex", (void *) sc_get_cyberflex_driver, NULL },
@@ -72,6 +71,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #ifdef HAVE_OPENSSL
 	{ "oberthur", (void *) sc_get_oberthur_driver, NULL },
 #endif
+	{ "emv", (void *) sc_get_emv_driver, NULL },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default", (void *) sc_get_default_driver, NULL },
