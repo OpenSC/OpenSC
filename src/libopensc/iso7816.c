@@ -735,6 +735,43 @@ static int iso7816_compute_signature(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
+static int
+iso7816_decipher(struct sc_card *card,
+		const u8 * crgram, size_t crgram_len, u8 * out, size_t outlen)
+{
+	int r;
+	struct sc_apdu apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+
+	assert(card != NULL && crgram != NULL && out != NULL);
+	SC_FUNC_CALLED(card->ctx, 2);
+	if (crgram_len > 255)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
+
+	/* INS: 0x2A  PERFORM SECURITY OPERATION
+	 * P1:  0x80  Resp: Plain value
+	 * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80, 0x86);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf); /* FIXME */
+
+	sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
+	memcpy(sbuf + 1, crgram, crgram_len);
+	apdu.data = sbuf;
+	apdu.lc = crgram_len + 1;
+	apdu.datalen = crgram_len + 1;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+
+		memcpy(out, apdu.resp, len);
+		SC_FUNC_RETURN(card->ctx, 2, len);
+	}
+	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+}
+
 static int iso7816_change_reference_data(struct sc_card *card, unsigned int type,
 					 int ref, const u8 *old, size_t oldlen,
 					 const u8 *new, size_t newlen,
@@ -849,6 +886,7 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.set_security_env	= iso7816_set_security_env;
 		iso_ops.restore_security_env	= iso7816_restore_security_env;
 		iso_ops.compute_signature	= iso7816_compute_signature;
+		iso_ops.decipher		= iso7816_decipher;
 		iso_ops.reset_retry_counter     = iso7816_reset_retry_counter;
                 iso_ops.change_reference_data   = iso7816_change_reference_data;
 		iso_ops.check_sw      = iso7816_check_sw;
