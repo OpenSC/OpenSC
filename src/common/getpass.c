@@ -10,7 +10,7 @@ char *getpass(const char *prompt)
 
 	fputs(prompt, stderr);
 	fflush(stderr);
-	for (i = 0; i < sizeof(buf); i++) {
+	for (i = 0; i < sizeof(buf) - 1; i++) {
 		buf[i] = _getch();
 		if (buf[i] == '\r')
                         break;
