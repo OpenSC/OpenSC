@@ -127,7 +127,7 @@ static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen,
 	if (asn1_dirrecord[3].flags & SC_ASN1_PRESENT) {
 		app->ddo = (u8 *) malloc(ddo_len);
 		if (app->ddo == NULL)
-			return 0;
+			return SC_ERROR_OUT_OF_MEMORY;
 		memcpy(app->ddo, ddo, ddo_len);
 		app->ddo_len = ddo_len;
 	} else {
