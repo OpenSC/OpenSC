@@ -297,8 +297,6 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
 		data.flags |= SC_PIN_CMD_NEED_PADDING;
 
-	/* XXX: we assume here that the pin encoding type is the same for
-	 * both pins */
 	switch (pin->type) {
 	case SC_PKCS15_PIN_TYPE_BCD:
 		data.pin1.encoding = SC_PIN_ENCODING_BCD;
