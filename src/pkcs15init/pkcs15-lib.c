@@ -1178,21 +1178,26 @@ do_select_parent(struct sc_profile *pro, struct sc_card *card,
 	if (path.len == 0)
 		sc_format_path("3F00", &path);
 
+	/* Select the parent DF. */
 	*parent = NULL;
-	r = sc_profile_get_file_by_path(pro, &path, parent);
 	card->ctx->log_errors = 0;
-	if (r == 0) {
-		r = sc_select_file(card, &path, NULL);
-	} else {
-		/* Select the parent DF. */
-		r = sc_select_file(card, &path, parent);
-	}
+	r = sc_select_file(card, &path, parent);
 	card->ctx->log_errors = 1;
 	/* If DF doesn't exist, create it (unless it's the MF,
 	 * but then something's badly broken anyway :-) */
 	if (r == SC_ERROR_FILE_NOT_FOUND && path.len != 2) {
-		if (*parent
-		 && !(r = sc_pkcs15init_create_file(pro, card, *parent)))
+		r = sc_profile_get_file_by_path(pro, &path, parent);
+		if (r < 0) {
+			char	buffer[SC_MAX_PATH_SIZE*2+1];
+			size_t	n;
+
+			buffer[0] = '\0';
+			for (n = 0; n < path.len; n++)
+				sprintf(buffer+2*n, "%02x", path.value[n]);
+			p15init_error("profile doesn't define a DF %s");
+			return r;
+		}
+		if (!(r = sc_pkcs15init_create_file(pro, card, *parent)))
 			r = sc_select_file(card, &path, NULL);
 	}
 	return r;
