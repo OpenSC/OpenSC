@@ -33,6 +33,7 @@ extern int	sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *);
 extern int 	sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *);
 extern int 	sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *);
 extern int	sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *);
+extern int	sc_pkcs15emu_esteid_init(sc_pkcs15_card_t *);
 
 static struct {
 	const char *		name;
@@ -42,6 +43,7 @@ static struct {
       { "infocamere",           sc_pkcs15emu_infocamere_init    },
       { "starcert",             sc_pkcs15emu_starcert_init      },
       { "netkey",		sc_pkcs15emu_netkey_init	},
+      { "esteid",		sc_pkcs15emu_esteid_init	},
       { NULL }
 };
 

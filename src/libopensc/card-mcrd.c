@@ -1,6 +1,10 @@
 /*
  * card-mcrd.c: Support for MICARDO cards
  *
+ * Copyright (C) 2004  Martin Paljak <martin@paljak.pri.ee>
+ * Copyright (C) 2004  Priit Randla <priit.randla@eyp.ee>
+ * Copyright (C) 2003  Marie Fischer <marie@vtl.ee>
+ 
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  * Copyright (C) 2002  g10 Code GmbH
  *
@@ -26,12 +30,26 @@
 #include <string.h>
 #include <ctype.h>
 
-static const char *mcrd_atrs[] = {
-        "3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF"
-        ":05:1E:31:80:00:90:00:23",   /* German BMI card */
-        "3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76"
-        ":65:72:20:31:2E:30:43", /* EstEID (Estonian Big Brother card) */
-	NULL
+#include "esteid.h"
+
+#define TYPE_UNKNOWN   0
+#define TYPE_ANY       1
+#define TYPE_ESTEID    2
+
+
+/* this structure should be somewhere else. Copied from other card source. 
+ * I need to make sure a 'variant' of a card to make decisions.
+ */
+struct sc_card_atrs {
+	const char *atr;
+	const int type;
+	const char *name;
+};
+
+static struct sc_card_atrs mcrd_atrs[] = {
+	{"3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", TYPE_ANY, "German BMI"},
+	{"3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43", TYPE_ESTEID, "EstEID"},
+	{NULL, TYPE_UNKNOWN, NULL}
 };
 
 static struct sc_card_operations mcrd_ops;
@@ -85,6 +103,7 @@ struct mcrd_priv_data {
         size_t curpathlen; /* Length of this path or 0 if unknown. */
         int is_ef;      /* True if the path points to an EF. */
         struct df_info_s *df_infos; 
+        sc_security_env_t sec_env;	/* current security environment */
 };
 
 #define DRVDATA(card)        ((struct mcrd_priv_data *) ((card)->drv_data))
@@ -145,30 +164,128 @@ static void clear_special_files (struct df_info_s *dfi)
         }
 }
 
-
-
-static int mcrd_match_card(struct sc_card *card)
+// this function should be somewhere else in opensc code, too
+static int
+sc_card_identify (struct sc_card *card, struct sc_card_atrs *atr_list)
 {
-	int i, match = -1;
-
-	for (i = 0; mcrd_atrs[i] != NULL; i++) {
+	int i;
+	for (i = 0; atr_list[i].atr != NULL; i++)
+	{
 		u8 defatr[SC_MAX_ATR_SIZE];
-		size_t len = sizeof(defatr);
-		const char *atrp = mcrd_atrs[i];
-
-		if (sc_hex_to_bin(atrp, defatr, &len))
+		size_t len = sizeof (defatr);
+		const char *atrp = atr_list[i].atr;
+		if (sc_hex_to_bin (atrp, defatr, &len))
 			continue;
 		if (len != card->atr_len)
 			continue;
-		if (memcmp(card->atr, defatr, len) != 0)
-			continue;
-		match = i;
-		break;
+		if (memcmp (card->atr, defatr, len) == 0)
+		return atr_list[i].type;
 	}
-	if (match == -1)
-		return 0;
+	return 0;
+}
+                                                                          
+/* Some functionality straight from the EstEID manual. 
+ * Official notice: Refer to the Micardo 2.1 Public manual.
+ * Sad side: not available without a NDA.
+ */
 
-	return 1;
+int
+mcrd_delete_ref_to_authkey (struct sc_card *card)
+{
+  struct sc_apdu apdu;
+  int r;
+  u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+  
+  assert (card != NULL);
+  sc_format_apdu (card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xA4);
+
+  sbuf[0] = 0x83;
+  sbuf[1] = 0x00;
+  apdu.data = sbuf;
+  apdu.lc = 2;
+  apdu.datalen = 2;
+  r = sc_transmit_apdu (card, &apdu);
+  SC_TEST_RET (card->ctx, r, "APDU transmit failed");
+  SC_FUNC_RETURN (card->ctx, 2, sc_check_sw (card, apdu.sw1, apdu.sw2));
+}
+
+int
+mcrd_delete_ref_to_signkey (struct sc_card *card)
+{
+  struct sc_apdu apdu;
+  int r;
+  u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+  assert (card != NULL);
+
+  sc_format_apdu (card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB6);
+
+  sbuf[0] = 0x83;
+  sbuf[1] = 0x00;
+  apdu.data = sbuf;
+  apdu.lc = 2;
+  apdu.datalen = 2;
+  r = sc_transmit_apdu (card, &apdu);
+  SC_TEST_RET (card->ctx, r, "APDU transmit failed");
+  SC_FUNC_RETURN (card->ctx, 2, sc_check_sw (card, apdu.sw1, apdu.sw2));
+
+}
+
+int
+mcrd_set_decipher_key_ref (struct sc_card *card, int key_reference)
+{
+  struct sc_apdu apdu;
+  struct sc_path path;
+  int r;
+  u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+  u8 keyref_data[SC_ESTEID_KEYREF_FILE_RECLEN];
+  assert (card != NULL);
+
+  sc_format_apdu (card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB8);   
+	/* track the active keypair  */
+	sc_format_path("0033", &path);
+	r = sc_select_file(card, &path, NULL);
+	SC_TEST_RET(card->ctx, r,
+		    "Can't select keyref info file 0x0033");
+	r = sc_read_record(card, 1, keyref_data,
+			   SC_ESTEID_KEYREF_FILE_RECLEN,
+			   SC_RECORD_BY_REC_NR);
+	SC_TEST_RET(card->ctx, r,
+		    "Can't read keyref info file!");
+
+	sc_debug(card->ctx,
+		 "authkey reference 0x%02x%02x\n", 
+		  keyref_data[9], keyref_data[10]);
+
+	sc_debug(card->ctx,
+		 "signkey reference 0x%02x%02x\n", 
+		  keyref_data[19], keyref_data[20]);		  
+
+
+  sbuf[0] = 0x83;
+  sbuf[1] = 0x03;
+  sbuf[2] = 0x80;
+  switch (key_reference)
+    {
+    case 1:
+      sbuf[3] = keyref_data[9];
+      sbuf[4] = keyref_data[10];
+      break;
+    case 2:
+      sbuf[3] = keyref_data[19];
+      sbuf[4] = keyref_data[20];
+      break;
+    }
+  apdu.data = sbuf;
+  apdu.lc = 5;
+  apdu.datalen = 5;
+  r = sc_transmit_apdu (card, &apdu);
+  SC_TEST_RET (card->ctx, r, "APDU transmit failed");
+  SC_FUNC_RETURN (card->ctx, 2, sc_check_sw (card, apdu.sw1, apdu.sw2));
+}
+
+static int mcrd_match_card(struct sc_card *card)
+{
+	 return sc_card_identify(card, mcrd_atrs) != 0;
 }
 
 static int mcrd_init(struct sc_card *card)
@@ -193,8 +310,8 @@ static int mcrd_init(struct sc_card *card)
 
         priv->curpath[0] = MFID;
         priv->curpathlen = 1;
-        load_special_files (card);
-
+        if (sc_card_identify(card, mcrd_atrs) != TYPE_ESTEID)
+	        load_special_files (card);
 	return 0;
 }
 
@@ -979,7 +1096,7 @@ mcrd_select_file(struct sc_card *card, const struct sc_path *path,
 
 /* Crypto operations */
 
-static int restore_se (struct sc_card *card, int se_num)
+static int mcrd_enable_se (struct sc_card *card, int se_num)
 {
 	struct sc_apdu apdu;
 	int r;
@@ -994,19 +1111,59 @@ static int restore_se (struct sc_card *card, int se_num)
 
 /* It seems that MICARDO does not fully comply with ISO, so I use
    values gathered from peeking actual signing opeations using a
-   different system. */
+   different system. 
+   It has been generalized [?] and modified by information coming from
+   openpgp card implementation, EstEID 'manual' and some other sources. -mp
+   */
 static int mcrd_set_security_env(struct sc_card *card,
                                  const struct sc_security_env *env,
                                  int se_num)
 {
+	struct mcrd_priv_data *priv = DRVDATA(card);
 	struct sc_apdu apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
 	int r, locked = 0;
 
 	assert(card != NULL && env != NULL);
-        if (se_num) 
+	SC_FUNC_CALLED(card->ctx, 2);
+	
+/*      if (se_num) 
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+*/
+	/* special environemnt handling for esteid, stolen from openpgp */
+	if (sc_card_identify(card, mcrd_atrs) == TYPE_ESTEID) {
+		/* some sanity checks */
+		if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
+			if (env->algorithm != SC_ALGORITHM_RSA)
+				return SC_ERROR_INVALID_ARGUMENTS;
+		}
+		if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
+		    || env->key_ref_len != 1)
+			return SC_ERROR_INVALID_ARGUMENTS;
+
+		select_esteid_df(card);	// is it needed?
+		switch (env->operation) {
+		case SC_SEC_OPERATION_DECIPHER:
+			sc_debug(card->ctx,
+				 "Using keyref %d to dechiper\n",
+				 env->key_ref[0]);
+			mcrd_enable_se(card, 6);
+			mcrd_delete_ref_to_authkey(card);
+			mcrd_delete_ref_to_signkey(card);
+			mcrd_set_decipher_key_ref(card, env->key_ref[0]);
+			break;
+		case SC_SEC_OPERATION_SIGN:
+			sc_debug(card->ctx, "Using keyref %d to sign\n",
+				 env->key_ref[0]);
+			mcrd_enable_se(card, 1);
+			break;
+		default:
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
+		priv->sec_env = *env;
+		return 0;
+	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
 	apdu.le = 0;
@@ -1037,8 +1194,8 @@ static int mcrd_set_security_env(struct sc_card *card,
                 if (num != -1) {
                         /* Need to restore the security environmnet. */
                         if (num) {
-                                r = restore_se (card, num);
-                                SC_TEST_RET(card->ctx, r, "restore_se failed");
+                                r = mcrd_enable_se (card, num);
+                                SC_TEST_RET(card->ctx, r, "mcrd_enable_se failed");
                         }
                         p += 2;
                 }
@@ -1080,61 +1237,118 @@ err:
 	return r;
 }
 
+/* heavily modified by -mp */
 static int mcrd_compute_signature(struct sc_card *card,
                                   const u8 * data, size_t datalen,
                                   u8 * out, size_t outlen)
 {
+	struct mcrd_priv_data *priv = DRVDATA(card);
+	sc_security_env_t *env = &priv->sec_env;
 	int r;
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	assert(card != NULL && data != NULL && out != NULL);
+	SC_FUNC_CALLED(card->ctx, 2);
+	if (env->operation != SC_SEC_OPERATION_SIGN)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	if (datalen > 255)
 		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 
-	/* INS: 0x2A  PERFORM SECURITY OPERATION
-	 * P1:  0x9E  Resp: Digital Signature
-	 * P2:  0x9A  Cmd: Input for Digital Signature */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x9E,
-		       0x9A);
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf); /* FIXME */
+	sc_debug(card->ctx,
+		 "Will compute signature for %d (0x%02x) bytes using key %d\n",
+		 datalen, datalen, env->key_ref[0]);
 
-	memcpy(sbuf, data, datalen);
-	apdu.data = sbuf;
+	switch (env->key_ref[0]) {
+	case SC_ESTEID_AUTH:	/* authentication key */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
+			       0x88, 0, 0);
+		break;
+	default:
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
+			       0x2A, 0x9E, 0x9A);
+
+	}
 	apdu.lc = datalen;
+	apdu.data = data;
 	apdu.datalen = datalen;
+	apdu.le = 0x80;
+	apdu.resp = out;
+	apdu.resplen = outlen;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	SC_FUNC_RETURN(card->ctx, 4, apdu.resplen);
+}
+
+/* added by -mp */
+int mcrd_decipher(struct sc_card *card,
+		  const u8 * crgram, size_t crgram_len, u8 * out,
+		  size_t out_len)
+{
+
+	int r;
+	struct sc_apdu apdu;
+	struct mcrd_priv_data *priv = DRVDATA(card);
+	sc_security_env_t *env = &priv->sec_env;
+	u8 *temp;
+
+	sc_debug(card->ctx,
+		 "Will dechiper %d (0x%02x) bytes using key %d\n",
+		 crgram_len, crgram_len, env->key_ref[0]);
+
+	/* saniti check */
+	if (env->operation != SC_SEC_OPERATION_DECIPHER)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (!(temp = (u8 *) malloc(crgram_len + 1)))
+		return SC_ERROR_OUT_OF_MEMORY;
+	temp[0] = '\0';
+	memcpy(temp + 1, crgram, crgram_len);
+	crgram = temp;
+	crgram_len += 1;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80,
+		       0x86);
+
+	apdu.resp = out;
+	apdu.resplen = out_len;
+
+	apdu.data = crgram;
+	apdu.datalen = crgram_len;
+
+	apdu.lc = crgram_len;
 	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
 
-		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, 4, len);
-	}
-        else if (apdu.sw1 == 0x60 && apdu.sw2 == 0x61) {
-                /* This might be a problem with by Cardman driver.
-                   Status codes 60xx should never been seen at this
-                   layer, so I assume 0x6180 here. FIXME! */
-                int len;
-
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
-			       0xC0, 0, 0);
-                apdu.le      = 0x80;
-                apdu.resp    = rbuf;
-                apdu.resplen = 0x80;
-                r = sc_transmit_apdu(card, &apdu);
-                SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-		len = apdu.resplen > outlen ? outlen : apdu.resplen;
-		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, 4, len);
-        }
-
-	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, 4, apdu.resplen);
 }
 
+/* added by -mp */
+int mcrd_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+		 int *tries_left)
+{
+
+  	SC_FUNC_CALLED(card->ctx, 3); 
+	if (sc_card_identify(card, mcrd_atrs) == TYPE_ESTEID)
+		if (data->cmd == SC_PIN_CMD_UNBLOCK) {
+			int r;
+			/* FIXME: the code in iso pin_cmd sets tries_left to -1 at once. 
+			   I guess it is a thing that need implementing. set it to NULL now -mp */
+			r = sc_verify(card, SC_AC_CHV, 0, data->pin1.data,
+				      data->pin1.len, NULL);
+			SC_TEST_RET(card->ctx, r,
+				    "PUK verification failed!");
+		}
+	SC_FUNC_RETURN(card->ctx, 4, iso_ops->pin_cmd(card, data, tries_left));
+}
 
 
 
@@ -1142,17 +1356,19 @@ static int mcrd_compute_signature(struct sc_card *card,
 static struct sc_card_driver * sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
-
+	if (iso_ops == NULL)
+                iso_ops = iso_drv->ops;
+	
 	mcrd_ops = *iso_drv->ops;
 	mcrd_ops.match_card = mcrd_match_card;
 	mcrd_ops.init = mcrd_init;
         mcrd_ops.finish = mcrd_finish;
-	if (iso_ops == NULL)
-                iso_ops = iso_drv->ops;
 	mcrd_ops.select_file = mcrd_select_file;
         mcrd_ops.set_security_env = mcrd_set_security_env;
         mcrd_ops.compute_signature = mcrd_compute_signature;
-
+        mcrd_ops.decipher = mcrd_decipher;
+        mcrd_ops.pin_cmd = mcrd_pin_cmd;
+        
         return &mcrd_drv;
 }
 

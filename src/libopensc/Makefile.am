@@ -30,7 +30,7 @@ libopensc_la_SOURCES = \
 	card-oberthur.c card-oberthur.h \
 	\
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
-	pkcs15-netkey.c
+	pkcs15-netkey.c pkcs15-esteid.c
 libopensc_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
 libopensc_la_LIBADD = @LIBSCCONF@ ../scdl/libscdl.la @LIBDL@ @LIBCRYPTO@ @OPENCT_LIBS@ @LIBPCSC@
 
@@ -39,7 +39,7 @@ include_HEADERS = \
 	cardctl.h asn1.h log.h ui.h \
 	errors.h types.h
 
-noinst_HEADERS = ctbcs.h internal.h
+noinst_HEADERS = ctbcs.h internal.h esteid.h
 
 pkgconfigdir = @libdir@/pkgconfig
 pkgconfig_DATA = libopensc.pc

@@ -28,7 +28,7 @@ OBJECTS			= \
 	card-oberthur.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
-	pkcs15-netkey.obj \
+	pkcs15-netkey.obj pkcs15-esteid.c \
 	\
 	$(TOPDIR)\win32\version.res
 
