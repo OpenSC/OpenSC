@@ -801,8 +801,10 @@ int scldap_search(scldap_context * ctx, const char *entry,
 		ldap_unbind(ld);
 		return -1;
 	}
+#if 0
 	if (pattern)
 		fprintf(stderr, "pattern: %s\n", pattern);
+#endif
 	if (ldap_search(ld, ctx->entry[entrynum].base, ctx->entry[entrynum].scope, pattern, ctx->entry[entrynum].attributes, ctx->entry[entrynum].attrsonly) == -1) {
 		ldap_perror(ld, "ldap_search");
 		if (pattern)
