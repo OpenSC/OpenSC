@@ -29,41 +29,19 @@
 #include <unistd.h>
 #include <assert.h>
 
-struct asn1_algorithm_id {
-	struct sc_object_id id;
-};
-
-static int parse_algorithm_id(struct sc_context *ctx, void *arg, const u8 *obj,
-			      size_t objlen, int depth)
-{
-	struct asn1_algorithm_id *alg_id = (struct asn1_algorithm_id *) arg;
-	struct sc_asn1_entry asn1_alg_id[] = {
-		{ "algorithm",	SC_ASN1_OBJECT, ASN1_OBJECT, 0, &alg_id->id },
-		{ "parameters", SC_ASN1_STRUCT, 0, SC_ASN1_OPTIONAL, NULL },
-		{ NULL }
-	};
-	int r;
-	
-	r = sc_asn1_decode(ctx, asn1_alg_id, obj, objlen, NULL, NULL);
-	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
-	
-	return 0;
-}
-
 static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen, struct sc_pkcs15_cert *cert)
 {
 	int r;
-	struct sc_pkcs15_pubkey_rsa *key = &cert->key;
-	struct asn1_algorithm_id pk_alg, sig_alg;
-	u8 *pk = NULL;
-	size_t pklen = 0;
+	struct sc_pkcs15_pubkey *key = &cert->key;
+	struct sc_algorithm_id pk_alg, sig_alg;
+	sc_pkcs15_der_t pk = { NULL, 0 };
 	struct sc_asn1_entry asn1_version[] = {
 		{ "version",		SC_ASN1_INTEGER,   ASN1_INTEGER, 0, &cert->version },
 		{ NULL }
 	};
 	struct sc_asn1_entry asn1_pkinfo[] = {
-		{ "algorithm",		SC_ASN1_CALLBACK,      ASN1_SEQUENCE | SC_ASN1_CONS, 0, (void *) parse_algorithm_id, &pk_alg },
-		{ "subjectPublicKey",	SC_ASN1_BIT_STRING_NI, ASN1_BIT_STRING, SC_ASN1_ALLOC, &pk, &pklen },
+		{ "algorithm",		SC_ASN1_ALGORITHM_ID,  ASN1_SEQUENCE | SC_ASN1_CONS, 0, &pk_alg },
+		{ "subjectPublicKey",	SC_ASN1_BIT_STRING_NI, ASN1_BIT_STRING, SC_ASN1_ALLOC, &pk.value, &pk.len },
 		{ NULL }
 	};
 	struct sc_asn1_entry asn1_tbscert[] = {
@@ -78,13 +56,14 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	};
 	struct sc_asn1_entry asn1_cert[] = {
 		{ "tbsCertificate",	SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_tbscert },
-		{ "signatureAlgorithm",	SC_ASN1_CALLBACK,  ASN1_SEQUENCE | SC_ASN1_CONS, 0, (void *) parse_algorithm_id, &sig_alg },
+		{ "signatureAlgorithm",	SC_ASN1_ALGORITHM_ID, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &sig_alg },
 		{ "signatureValue",	SC_ASN1_BIT_STRING,ASN1_BIT_STRING, 0, NULL, 0 },
 		{ NULL }
 	};
 	const u8 *obj;
 	size_t objlen;
 	
+	memset(cert, 0, sizeof(*cert));
 	obj = sc_asn1_verify_tag(ctx, buf, buflen, ASN1_SEQUENCE | SC_ASN1_CONS,
 				 &objlen);
 	if (obj == NULL) {
@@ -96,17 +75,18 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
 
 	cert->version++;
-	pklen >>= 3;	/* convert number of bits to bytes */
-	key->data.value = pk;
-	key->data.len = pklen;
-	/* FIXME: ignore the object id for now, and presume it's RSA */
-	r = sc_pkcs15_decode_pubkey_rsa(ctx, key);
-	if (r) {
-		free(key->data.value);
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	}
 
-	return 0;
+	key->algorithm = pk_alg.algorithm;
+	pk.len >>= 3;	/* convert number of bits to bytes */
+	key->data = pk;
+
+	r = sc_pkcs15_decode_pubkey(ctx, key, pk.value, pk.len);
+	if (r < 0)
+		free(pk.value);
+	sc_asn1_clear_algorithm_id(&pk_alg);
+	sc_asn1_clear_algorithm_id(&sig_alg);
+
+	return r;
 }
 
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
@@ -269,8 +249,7 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 {
 	assert(cert != NULL);
 
-	free(cert->key.data.value);
-	free(cert->key.modulus.data);
+	sc_pkcs15_erase_pubkey(&cert->key);
 	free(cert->subject);
 	free(cert->issuer);
 	free(cert->serial);
