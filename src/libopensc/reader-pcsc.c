@@ -357,9 +357,11 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 static int pcsc_finish(void *prv_data)
 {
 	struct pcsc_global_private_data *priv = (struct pcsc_global_private_data *) prv_data;
-	
-	SCardReleaseContext(priv->pcsc_ctx);
-	free(priv);
+
+	if (priv) {
+		SCardReleaseContext(priv->pcsc_ctx);
+		free(priv);
+	}
 	
 	return 0;
 }
