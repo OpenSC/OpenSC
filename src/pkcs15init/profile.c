@@ -186,7 +186,6 @@ typedef struct pin_info pin_info;
 typedef struct file_info file_info;
 typedef struct auth_info auth_info;
 
-static const char *	sc_profile_locate(struct sc_profile *, const char *);
 static int		process_conf(struct sc_profile *, scconf_context *);
 static int		process_block(struct state *, struct block *,
 				const char *, scconf_block *);
@@ -281,13 +280,44 @@ sc_profile_new(void)
 int
 sc_profile_load(struct sc_profile *profile, const char *filename)
 {
+	struct sc_context *ctx = profile->card->ctx;
 	scconf_context	*conf;
-	int		res = 0;
+	const char *profile_dir = NULL;
+	char path[PATH_MAX];
+	int             res = 0, i;
 
-	if (!(filename = sc_profile_locate(profile, filename)))
+	for (i = 0; ctx->conf_blocks[i]; i++) {
+		profile_dir = scconf_get_str(ctx->conf_blocks[i], "profile_dir", NULL);
+		if (profile_dir)
+			break;
+	}
+
+	if (!profile_dir) {
+		sc_error(ctx, "you need to set profile_dir in your config file.");
 		return SC_ERROR_FILE_NOT_FOUND;
-	conf = scconf_new(filename);
+	 }
+
+#ifdef _WIN32
+	snprintf(path, sizeof(path), "%s\\%s.%s",
+		profile_dir, filename, SC_PKCS15_PROFILE_SUFFIX);
+#else /* _WIN32 */
+	snprintf(path, sizeof(path), "%s/%s.%s",
+		profile_dir, filename, SC_PKCS15_PROFILE_SUFFIX);
+#endif /* _WIN32 */
+
+	if (profile->card->ctx->debug >= 2) {
+		sc_debug(profile->card->ctx,
+			"Trying profile file %s", path);
+	}
+
+	conf = scconf_new(path);
 	res = scconf_parse(conf);
+
+	if (res > 0 && profile->card->ctx->debug >= 2) {
+		sc_debug(profile->card->ctx,
+			"profile %s loaded ok", path);
+	}
+
 	if (res < 0)
 		return SC_ERROR_FILE_NOT_FOUND;
 	if (res == 0) {
@@ -384,69 +414,6 @@ sc_profile_free(struct sc_profile *profile)
 		sc_pkcs15_card_free(profile->p15_spec);
 	memset(profile, 0, sizeof(*profile));
 	free(profile);
-}
-
-static const char *
-sc_profile_locate(struct sc_profile *profile, const char *name)
-{
-	struct sc_context *ctx = profile->card->ctx;
-	const char *profile_default = SC_PKCS15_PROFILE_DIRECTORY;
-	char profile_dir[PATH_MAX];
-	static char path[1024];
-	int i;
-
-	/* append ".profile" unless already in the name */
-	if (strstr(name, SC_PKCS15_PROFILE_SUFFIX)) {
-		snprintf(path, sizeof(path), "%s", name);
-	} else {
-		snprintf(path, sizeof(path), "%s.%s", name,
-				SC_PKCS15_PROFILE_SUFFIX);
-	}
-		
-	/* Unchanged name? */
-	if (access(path, R_OK) == 0)
-		return path;
-
-	/* If it's got slashes, don't mess with it any further */
-	if (strchr(path, '/'))
-		return path;
-
-	for (i = 0; ctx->conf_blocks[i]; i++) {
-		profile_default = scconf_get_str(ctx->conf_blocks[i], "profile_dir", NULL);
-		if (profile_default)
-			break;
-		profile_default = SC_PKCS15_PROFILE_DIRECTORY;
-	}
-#ifndef _WIN32
-	strncpy(profile_dir, profile_default, sizeof(profile_dir));
-#else
-	if (!strncmp(profile_default, "%windir%", 8)) {
-		GetWindowsDirectory(profile_dir, sizeof(profile_dir));
-		strncat(profile_dir, profile_default + 8,
-			sizeof(profile_dir) - strlen(profile_dir));
-	}
-	else
-		strncpy(profile_dir, profile_default, sizeof(profile_dir));
-#endif
-
-	/* Try directory */
-	/* append ".profile" unless already in the name */
-	if (strstr(name, SC_PKCS15_PROFILE_SUFFIX)) {
-		snprintf(path, sizeof(path), "%s/%s",
-			profile_dir, name);
-	} else {
-		snprintf(path, sizeof(path), "%s/%s.%s",
-			profile_dir, name,
-			SC_PKCS15_PROFILE_SUFFIX);
-	}
-	if (access(path, R_OK) == 0)
-		return path;
-
-	/* Unchanged name? */
-	if (access(name, R_OK) == 0)
-		return name;
-
-	return NULL;
 }
 
 void

@@ -14,9 +14,6 @@ extern "C" {
 #include <opensc/pkcs15.h>
 #include "keycache.h"
 
-#ifndef SC_PKCS15_PROFILE_DIRECTORY
-#define SC_PKCS15_PROFILE_DIRECTORY	"/usr/share/opensc/profiles"
-#endif
 #ifndef SC_PKCS15_PROFILE_SUFFIX
 #define SC_PKCS15_PROFILE_SUFFIX	"profile"
 #endif

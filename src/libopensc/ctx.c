@@ -28,6 +28,10 @@
 #include <limits.h>
 #include <opensc/scdl.h>
 
+#ifdef _WIN32
+#include <winreg.h>
+#endif
+
 /* Default value for apdu_masquerade option */
 #ifndef _WIN32
 # define DEF_APDU_MASQ		SC_APDU_MASQUERADE_NONE
@@ -554,51 +558,48 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 {
 	int i, r, count = 0;
 	scconf_block **blocks;
-	const char *conf_path = NULL;
+	char *conf_path;
 #ifdef _WIN32
-	char tpath[PATH_MAX];
-	size_t tlen;
+	char temp_path[PATH_MAX];
+	int temp_len;
 	long rc;
 	HKEY hKey;
 #endif
 
+	conf_path = 0;
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
-	rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
-	if (rc == ERROR_SUCCESS) {
-		tlen = sizeof(tlen);
-		rc = RegQueryValueEx(hKey, "ConfigFile", NULL, NULL, (LPBYTE) tpath, (LPDWORD) &tlen);
-		if ((rc == ERROR_SUCCESS) && (tlen < PATH_MAX))
-			conf_path = tpath;
-		RegCloseKey(hKey);
-	}
+        rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC",
+                0, KEY_QUERY_VALUE, &hKey );
+        if( rc == ERROR_SUCCESS ) {
+                temp_len = PATH_MAX;
+                rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL,
+                        (LPBYTE) temp_path, &temp_len);
+                if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
+                        conf_path = temp_path;
+                RegCloseKey( hKey );
+        }
 
-	if (!conf_path) {
-		rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
-		if (rc == ERROR_SUCCESS) {
-			tlen = sizeof(tlen);
-			rc = RegQueryValueEx(hKey, "ConfigFile", NULL, NULL, (LPBYTE) tpath, (LPDWORD) &tlen);
-			if ((rc == ERROR_SUCCESS) && (tlen < PATH_MAX))
-				conf_path = tpath;
-			RegCloseKey(hKey);
-		}
-	}
+        if (! conf_path) {
+                rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC",
+                        0, KEY_QUERY_VALUE, &hKey );
+                if( rc == ERROR_SUCCESS ) {
+                        temp_len = PATH_MAX;
+                        rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL,
+                                (LPBYTE) temp_path, &temp_len);
+                        if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
+                                conf_path = temp_path;
+                        RegCloseKey( hKey );
+                }
+        }
 
-	if (!conf_path) {
-		conf_path = OPENSC_CONF_PATH;
-		if (!strncmp(conf_path, "%windir%", 8)) {
-			GetWindowsDirectory(tpath, sizeof(tpath));
-			strncat(tpath, conf_path + 8, sizeof(tpath) - strlen(tpath));
-			conf_path = tpath;
-		}
-	}
+        if (! conf_path)
+                sc_error(ctx, "process_config_file doesn't find opensc config file. Please set the registry key.");
+
 #else
-	/* XXX: Enhance scconf and opensc internals to suit
-	 * better into site / user configuration model. -aet
-	 */
-	conf_path = getenv("OPENSC_CONF");
-	if (!conf_path)
-		conf_path = OPENSC_CONF_PATH;
+        conf_path = getenv("OPENSC_CONF");
+        if (!conf_path)
+                conf_path = OPENSC_CONF_PATH;
 #endif
 	ctx->conf = scconf_new(conf_path);
 	if (ctx->conf == NULL)
@@ -748,7 +749,7 @@ int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 	char *homedir;
 	const char *cache_dir;
 #ifdef _WIN32
-	char tpath[PATH_MAX];
+	char temp_path[PATH_MAX];
 #endif
 
 #ifndef _WIN32
@@ -760,8 +761,8 @@ int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 	/* If USERPROFILE isn't defined, assume it's a single-user OS
 	 * and put the cache dir in the Windows dir (usually C:\\WINDOWS) */
 	if (homedir == NULL || homedir[0] == '\0') {
-		GetWindowsDirectory(tpath, sizeof(tpath));
-		homedir = tpath;
+		GetWindowsDirectory(temp_path, sizeof(temp_path));
+		homedir = temp_path;
 	}
 #endif
 	if (homedir == NULL)
