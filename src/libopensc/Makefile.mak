@@ -15,8 +15,9 @@ OBJECTS			= sc.obj ctx.obj module.obj asn1.obj log.obj base64.obj \
 			  pkcs15-prkey.obj pkcs15-pubkey.obj pkcs15-sec.obj \
 			  pkcs15-wrap.obj pkcs15-algo.obj \
 			  pkcs15-cache.obj reader-pcsc.obj \
-			  card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
-			  card-etoken.obj card-tcos.obj card-emv.obj card-default.obj 
+                          card-setcos.obj card-miocos.obj card-flex.obj \
+                          card-gpk.obj card-etoken.obj card-tcos.obj \
+                          card-mcrd.obj card-emv.obj card-default.obj
 
 all: install-headers $(TARGET)
 
