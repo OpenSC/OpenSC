@@ -4,9 +4,11 @@
 CardInfo
 	Label		"OpenSC Card (GPK)"
 	Manufacturer	"OpenSC Project"
-	MinPinLength	0
+	MinPinLength	1
 	MaxPinLength	8
-	#PinEncoding
+	PinEncoding	BCD
+	PrKeyAccessFlags RSA 0x1D
+	PrKeyAccessFlags DSA 0x12
 
 	# This is the secure messaging key required for
 	# creating files in the MF
