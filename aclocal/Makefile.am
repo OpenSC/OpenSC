@@ -2,4 +2,4 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-EXTRA_DIST = libtool.m4 acx_pthread.m4
+EXTRA_DIST = acx_pthread.m4
