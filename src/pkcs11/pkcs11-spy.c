@@ -117,9 +117,9 @@ void enter(char *function)
 
 CK_RV retne(CK_RV rv)
 {
-  fprintf(spy_output, "Returned:  %ld %s\n", rv,
-	  lookup_enum ( RV_T, rv ));
-  return rv;
+	fprintf(spy_output, "Returned:  %ld %s\n", rv, lookup_enum ( RV_T, rv ));
+	fflush(spy_output);
+	return rv;
 }
 
 void spy_dump_string_in(char *name, CK_VOID_PTR data, CK_ULONG size)

@@ -41,7 +41,7 @@ static void init_slot_info(CK_SLOT_INFO_PTR pInfo)
 	pInfo->hardwareVersion.major = 0;
 	pInfo->hardwareVersion.minor = 0;
 	pInfo->firmwareVersion.major = 0;
-        pInfo->firmwareVersion.minor = 0;
+	pInfo->firmwareVersion.minor = 0;
 }
 
 CK_RV card_initialize(int reader)
@@ -70,15 +70,15 @@ CK_RV card_initialize(int reader)
 	card->num_slots = 0;
 
 	first_free_slot += card->max_slots;
-        return CKR_OK;
+	return CKR_OK;
 }
 
 CK_RV card_detect(int reader)
 {
 	struct sc_pkcs11_card *card = &card_table[reader];
-        int rc, rv, i, retry = 1;
+	int rc, rv, i, retry = 1;
 
-        rv = CKR_OK;
+	rv = CKR_OK;
 
 	sc_debug(context, "%d: Detecting SmartCard\n", reader);
 	for (i = card->max_slots; i--; ) {
@@ -143,7 +143,7 @@ again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 		sc_debug(context, "%d: Detected framework %d. Creating tokens.\n", reader, i);
 		rv = frameworks[i]->create_tokens(card);
 		if (rv != CKR_OK)
-                        return rv;
+			return rv;
 
 		card->framework = frameworks[i];
 	}
@@ -178,14 +178,14 @@ CK_RV card_detect_all(void)
 CK_RV card_removed(int reader)
 {
 	int i;
-        struct sc_pkcs11_card *card;
+	struct sc_pkcs11_card *card;
 
 	sc_debug(context, "%d: SmartCard removed\n", reader);
 
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++) {
 		if (virtual_slots[i].card &&
 		    virtual_slots[i].card->reader == reader)
-                        slot_token_removed(i);
+				slot_token_removed(i);
 	}
 
 	/* beware - do not clean the entire sc_pkcs11_card struct;
@@ -200,9 +200,9 @@ CK_RV card_removed(int reader)
 
 	if (card->card)
 		sc_disconnect_card(card->card, 0);
-        card->card = NULL;
+	card->card = NULL;
 
-        return CKR_OK;
+	return CKR_OK;
 }
 
 CK_RV slot_initialize(int id, struct sc_pkcs11_slot *slot)
@@ -210,10 +210,10 @@ CK_RV slot_initialize(int id, struct sc_pkcs11_slot *slot)
 	memset(slot, 0, sizeof(*slot));
 	slot->id = id;
 	slot->login_user = -1;
-        init_slot_info(&slot->slot_info);
+	init_slot_info(&slot->slot_info);
 	pool_initialize(&slot->object_pool, POOL_TYPE_OBJECT);
 
-        return CKR_OK;
+	return CKR_OK;
 }
 
 CK_RV slot_allocate(struct sc_pkcs11_slot **slot, struct sc_pkcs11_card *card)
@@ -228,16 +228,14 @@ CK_RV slot_allocate(struct sc_pkcs11_slot **slot, struct sc_pkcs11_card *card)
 	for (i = first; i < last; i++) {
 		if (!virtual_slots[i].card) {
 			sc_debug(context, "Allocated slot %d\n", i);
-
-                        virtual_slots[i].card = card;
-                        virtual_slots[i].events = SC_EVENT_CARD_INSERTED;
+			virtual_slots[i].card = card;
+			virtual_slots[i].events = SC_EVENT_CARD_INSERTED;
 			*slot = &virtual_slots[i];
 			card->num_slots++;
 			return CKR_OK;
 		}
 	}
-        return CKR_FUNCTION_FAILED;
-
+	return CKR_FUNCTION_FAILED;
 }
 
 CK_RV slot_get_slot(int id, struct sc_pkcs11_slot **slot)
@@ -247,9 +245,9 @@ CK_RV slot_get_slot(int id, struct sc_pkcs11_slot **slot)
 
 	if (id < 0 || id >= SC_PKCS11_MAX_VIRTUAL_SLOTS)
 		return CKR_SLOT_ID_INVALID;
-
-        *slot = &virtual_slots[id];
-        return CKR_OK;
+		
+	*slot = &virtual_slots[id];
+	return CKR_OK;
 }
 
 CK_RV slot_get_token(int id, struct sc_pkcs11_slot **slot)
@@ -266,15 +264,14 @@ CK_RV slot_get_token(int id, struct sc_pkcs11_slot **slot)
 		if (rv != CKR_OK)
 			return CKR_TOKEN_NOT_PRESENT;
 	}
-
-        return CKR_OK;
+	return CKR_OK;
 }
 
 CK_RV slot_token_removed(int id)
 {
 	int rv, token_was_present;
-        struct sc_pkcs11_slot *slot;
-        struct sc_pkcs11_object *object;
+	struct sc_pkcs11_slot *slot;
+	struct sc_pkcs11_object *object;
 	CK_SLOT_INFO saved_slot_info;
 	int reader;
 
@@ -284,13 +281,13 @@ CK_RV slot_token_removed(int id)
 
 	token_was_present = (slot->slot_info.flags & CKF_TOKEN_PRESENT);
 
-        /* Terminate active sessions */
-        sc_pkcs11_close_all_sessions(id);
+	/* Terminate active sessions */
+	sc_pkcs11_close_all_sessions(id);
 
 	/* Object pool */
 	while (pool_find_and_delete(&slot->object_pool, 0, (void**) &object) == CKR_OK) {
-                if (object->ops->release)
-			object->ops->release(object);
+		if (object->ops->release)
+   			object->ops->release(object);
 	}
 
 	/* Release framework stuff */
@@ -316,8 +313,7 @@ CK_RV slot_token_removed(int id)
 	if (token_was_present)
 		slot->events = SC_EVENT_CARD_REMOVED;
 
-        return CKR_OK;
-
+	return CKR_OK;
 }
 
 CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask)

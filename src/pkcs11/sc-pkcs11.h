@@ -325,7 +325,7 @@ extern unsigned int first_free_slot;
 extern struct sc_pkcs11_framework_ops framework_pkcs15;
 extern struct sc_pkcs11_framework_ops framework_pkcs15init;
 
-void strcpy_bp(u8 *dst, const char *src, int dstsize);
+void strcpy_bp(u8 *dst, const char *src, size_t dstsize);
 CK_RV sc_to_cryptoki_error(int rc, int reader);
 void sc_pkcs11_print_attrs(const char *file, unsigned int line, const char *function,
 		const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);

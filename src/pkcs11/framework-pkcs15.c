@@ -73,7 +73,7 @@ struct pkcs15_cert_object {
 	struct pkcs15_any_object	base;
 
 	struct sc_pkcs15_cert_info *	cert_info;
-        struct sc_pkcs15_cert *		cert_data;
+	struct sc_pkcs15_cert *		cert_data;
 };
 #define cert_flags		base.base.flags
 #define cert_p15obj		base.p15_object
@@ -110,7 +110,7 @@ struct pkcs15_data_object {
 	struct pkcs15_any_object	base;
 
 	struct sc_pkcs15_data_info *info;
-    struct sc_pkcs15_data *value;
+	struct sc_pkcs15_data *value;
 };
 #define data_flags		base.base.flags
 #define data_p15obj		base.p15_object
@@ -160,7 +160,7 @@ static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
 
 static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 {
-        struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	unsigned int i;
 	int rc;
 
@@ -177,7 +177,7 @@ static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 	unlock_card(fw_data);
 
 	rc = sc_pkcs15_unbind(fw_data->p15_card);
-        return sc_to_cryptoki_error(rc, p11card->reader);
+	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
 static void pkcs15_init_token_info(struct sc_pkcs15_card *card, CK_TOKEN_INFO_PTR pToken)
@@ -259,14 +259,14 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data,
 	struct sc_pkcs15_cert_info *p15_info;
 	struct sc_pkcs15_cert *p15_cert;
 	struct pkcs15_cert_object *object;
-        struct pkcs15_pubkey_object *obj2;
+	struct pkcs15_pubkey_object *obj2;
 	int rv;
 
 	p15_info = (struct sc_pkcs15_cert_info *) cert->data;
 	if ((rv = sc_pkcs15_read_certificate(fw_data->p15_card, p15_info, &p15_cert) < 0))
 		return rv;
 
-        /* Certificate object */
+	/* Certificate object */
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &object,
 					cert, &pkcs15_cert_ops,
 					sizeof(struct pkcs15_cert_object));
@@ -276,7 +276,7 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data,
 	object->cert_info = p15_info;
 	object->cert_data = p15_cert;
 
-        /* Corresponding public key */
+	/* Corresponding public key */
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &obj2,
 					NULL, &pkcs15_pubkey_ops,
 					sizeof(struct pkcs15_pubkey_object));
@@ -314,7 +314,7 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	if ((rv = sc_pkcs15_read_pubkey(fw_data->p15_card, pubkey, &p15_key)) < 0)
 		return rv;
 
-        /* Public key object */
+	/* Public key object */
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &object,
 					pubkey, &pkcs15_pubkey_ops,
 					sizeof(struct pkcs15_pubkey_object));
@@ -380,7 +380,7 @@ pkcs15_create_pkcs11_objects(struct pkcs15_fw_data *fw_data,
 	struct sc_pkcs15_object *p15_object[MAX_OBJECTS];
 	int i, count, rv;
 
-        rv = count = sc_pkcs15_get_objects(fw_data->p15_card, p15_type, p15_object, MAX_OBJECTS);
+	rv = count = sc_pkcs15_get_objects(fw_data->p15_card, p15_type, p15_object, MAX_OBJECTS);
 
 	if (rv >= 0) {
 		sc_debug(context, "Found %d %s%s\n", count,
@@ -582,7 +582,7 @@ static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
 		struct sc_pkcs15_object *auth,
 		struct sc_pkcs11_slot **out)
 {
-        struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct sc_pkcs11_slot *slot;
 	int rv;
 
@@ -606,38 +606,38 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	struct sc_pkcs15_object *auths[MAX_OBJECTS];
 	struct sc_pkcs11_slot *slot;
 	int i, rv, reader = p11card->reader;
-        int auth_count;
+	int auth_count;
 	unsigned int j;
 
-        rv = sc_pkcs15_get_objects(fw_data->p15_card,
+	rv = sc_pkcs15_get_objects(fw_data->p15_card,
 					SC_PKCS15_TYPE_AUTH_PIN,
 					auths,
 					SC_PKCS15_MAX_PINS);
 	if (rv < 0)
-                return sc_to_cryptoki_error(rv, reader);
+		return sc_to_cryptoki_error(rv, reader);
 	sc_debug(context, "Found %d authentication objects\n", rv);
 	auth_count = rv;
 
-        rv = pkcs15_create_pkcs11_objects(fw_data,
+	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_PRKEY_RSA,
 				"private key",
 				__pkcs15_create_prkey_object);
  	if (rv < 0)
-                return sc_to_cryptoki_error(rv, reader);
+ 		return sc_to_cryptoki_error(rv, reader);
 
-        rv = pkcs15_create_pkcs11_objects(fw_data,
+ 	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_PUBKEY_RSA,
 				"public key",
 				__pkcs15_create_pubkey_object);
  	if (rv < 0)
-                return sc_to_cryptoki_error(rv, reader);
+ 		return sc_to_cryptoki_error(rv, reader);
 
 	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_CERT_X509,
 				"certificate",
 				__pkcs15_create_cert_object);
 	if (rv < 0)
-                return sc_to_cryptoki_error(rv, reader);
+		return sc_to_cryptoki_error(rv, reader);
 
 	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_DATA_OBJECT,
@@ -730,7 +730,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 	int rc;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct sc_pkcs15_card *card = fw_data->p15_card;
-        struct sc_pkcs15_object *auth_object;
+	struct sc_pkcs15_object *auth_object;
 	struct sc_pkcs15_pin_info *pin;
 
 	switch (userType) {
@@ -784,7 +784,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 		return sc_to_cryptoki_error(rc, p11card->reader);
 
 	rc = sc_pkcs15_verify_pin(card, pin, pPin, ulPinLen);
-        sc_debug(context, "PIN verification returned %d\n", rc);
+	sc_debug(context, "PIN verification returned %d\n", rc);
 	
 	if (rc >= 0)
 		cache_pin(fw_token, userType, &pin->path, pPin, ulPinLen);
@@ -835,7 +835,7 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 
 	rc = sc_pkcs15_change_pin(fw_data->p15_card, pin, pOldPin, ulOldLen,
 				pNewPin, ulNewLen);
-        sc_debug(context, "PIN verification returned %d\n", rc);
+	sc_debug(context, "PIN change returned %d\n", rc);
 
 	if (rc >= 0)
 		cache_pin(fw_token, CKU_USER, &pin->path, pNewPin, ulNewLen);
@@ -1418,16 +1418,16 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_create_tokens,
 	pkcs15_release_token,
 	pkcs15_login,
-        pkcs15_logout,
+	pkcs15_logout,
 	pkcs15_change_pin,
-        NULL,			/* init_token */
+	NULL,			/* init_token */
 #ifdef USE_PKCS15_INIT
 	pkcs15_init_pin,
-        pkcs15_create_object,
-        pkcs15_gen_keypair,
+	pkcs15_create_object,
+	pkcs15_gen_keypair,
 #else
-        NULL,
-        NULL
+	NULL,
+	NULL
 #endif
 };
 
@@ -1436,18 +1436,18 @@ static CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
                                CK_ATTRIBUTE_PTR attr)
 {
 #ifndef USE_PKCS15_INIT
-       return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_SUPPORTED;
 #else
-       struct sc_profile *profile = NULL;
-       struct sc_pkcs11_card *p11card = session->slot->card;
-       struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
-       struct sc_pkcs15_id id;
-       int rc = 0;
-       CK_RV rv = CKR_OK;
+	struct sc_profile *profile = NULL;
+	struct sc_pkcs11_card *p11card = session->slot->card;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_pkcs15_id id;
+	int rc = 0;
+	CK_RV rv = CKR_OK;
 
-       rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
-       if (rc < 0)
-               return sc_to_cryptoki_error(rc, p11card->reader);
+	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
+	if (rc < 0)
+		return sc_to_cryptoki_error(rc, p11card->reader);
 
 	rc = sc_lock(p11card->card);
 	if (rc < 0) {
@@ -1458,36 +1458,36 @@ static CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
 	/* Add the PINs the user presented so far to the keycache. */
 	add_pins_to_keycache(p11card, session->slot);
 
-       switch(attr->type) {
-       case CKA_LABEL:
-               rc = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object,
-                       P15_ATTR_TYPE_LABEL, attr->pValue, attr->ulValueLen);
-               break;
-       case CKA_ID:
-               if (attr->ulValueLen > SC_PKCS15_MAX_ID_SIZE) {
-                       rc = SC_ERROR_INVALID_ARGUMENTS;
-                       break;
-               }
-               memcpy(id.value, attr->pValue, attr->ulValueLen);
-               id.len = attr->ulValueLen;
-               rc = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object,
-                       P15_ATTR_TYPE_ID, &id, sizeof(id));
-               break;
+	switch(attr->type) {
+	case CKA_LABEL:
+		rc = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object,
+		                                 P15_ATTR_TYPE_LABEL, attr->pValue, attr->ulValueLen);
+		break;
+	case CKA_ID:
+		if (attr->ulValueLen > SC_PKCS15_MAX_ID_SIZE) {
+			rc = SC_ERROR_INVALID_ARGUMENTS;
+			break;
+		}
+		memcpy(id.value, attr->pValue, attr->ulValueLen);
+		id.len = attr->ulValueLen;
+		rc = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object,
+		                                 P15_ATTR_TYPE_ID, &id, sizeof(id));
+		break;
 	case CKA_SUBJECT:
 		rc = SC_SUCCESS;
 		break;
-       default:
-               rv = CKR_ATTRIBUTE_READ_ONLY;
-               goto set_attr_done;
-       }
+	default:
+		rv = CKR_ATTRIBUTE_READ_ONLY;
+		goto set_attr_done;
+	}
 
-       rv = sc_to_cryptoki_error(rc, p11card->reader);
+	rv = sc_to_cryptoki_error(rc, p11card->reader);
 
 set_attr_done:
 	sc_unlock(p11card->card);
-       sc_pkcs15init_unbind(profile);
-
-       return rv;
+	sc_pkcs15init_unbind(profile);
+	
+	return rv;
 #endif
 }
 
@@ -1508,8 +1508,8 @@ static CK_RV pkcs15_cert_set_attribute(struct sc_pkcs11_session *session,
                                void *object,
                                CK_ATTRIBUTE_PTR attr)
 {
-       struct pkcs15_cert_object *cert = (struct pkcs15_cert_object*) object;
-       return pkcs15_set_attrib(session, cert->base.p15_object, attr);
+	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object*) object;
+	return pkcs15_set_attrib(session, cert->base.p15_object, attr);
 }
 
 static CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
@@ -1523,24 +1523,24 @@ static CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_CLASS:
 		check_attribute_buffer(attr, sizeof(CK_OBJECT_CLASS));
 		*(CK_OBJECT_CLASS*)attr->pValue = CKO_CERTIFICATE;
-                break;
+		break;
 	case CKA_TOKEN:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
-                break;
+		break;
 	case CKA_PRIVATE:
 	case CKA_MODIFIABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = FALSE;
-                break;
+		break;
 	case CKA_LABEL:
 		len = strlen(cert->cert_p15obj->label);
 		check_attribute_buffer(attr, len);
-                memcpy(attr->pValue, cert->cert_p15obj->label, len);
-                break;
+		memcpy(attr->pValue, cert->cert_p15obj->label, len);
+		break;
 	case CKA_CERTIFICATE_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_CERTIFICATE_TYPE));
-                *(CK_CERTIFICATE_TYPE*)attr->pValue = CKC_X_509;
+		*(CK_CERTIFICATE_TYPE*)attr->pValue = CKC_X_509;
 		break;
 	case CKA_ID:
 		/* Not sure why CA certs should be reported with an
@@ -1551,12 +1551,12 @@ static CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 		} else {
 			check_attribute_buffer(attr, cert->cert_info->id.len);
 			memcpy(attr->pValue, cert->cert_info->id.value, cert->cert_info->id.len);
-                }
-                break;
+		}
+		break;
 	case CKA_TRUSTED:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = cert->cert_info->authority?TRUE:FALSE;
-                break;
+		*(CK_BBOOL*)attr->pValue = cert->cert_info->authority ? TRUE : FALSE;
+		break;
 	case CKA_VALUE:
 		check_attribute_buffer(attr, cert->cert_data->data_len);
 		memcpy(attr->pValue, cert->cert_data->data, cert->cert_data->data_len);
@@ -1574,10 +1574,10 @@ static CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 				 cert->cert_data->issuer_len,
 				 attr);
 	default:
-                return CKR_ATTRIBUTE_TYPE_INVALID;
+		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
 
-        return CKR_OK;
+	return CKR_OK;
 }
 
 static int
@@ -1615,20 +1615,19 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 			return 1;
 		break;
 	default:
-                return sc_pkcs11_any_cmp_attribute(session, object, attr);
+		return sc_pkcs11_any_cmp_attribute(session, object, attr);
 	}
-
-        return 0;
+	return 0;
 }
 
 struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	pkcs15_cert_release,
-        pkcs15_cert_set_attribute,
+	pkcs15_cert_set_attribute,
 	pkcs15_cert_get_attribute,
 	pkcs15_cert_cmp_attribute,
 	NULL,
 	NULL,
-        NULL
+	NULL
 };
 
 /*
@@ -1643,8 +1642,8 @@ static CK_RV pkcs15_prkey_set_attribute(struct sc_pkcs11_session *session,
                                void *object,
                                CK_ATTRIBUTE_PTR attr)
 {
-       struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) object;
-       return pkcs15_set_attrib(session, prkey->base.p15_object, attr);
+	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) object;
+	return pkcs15_set_attrib(session, prkey->base.p15_object, attr);
 }
 
 static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
@@ -1734,10 +1733,10 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		attr->ulValueLen = 0;
 		return CKR_OK;
 	default:
-                return CKR_ATTRIBUTE_TYPE_INVALID;
+		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
 
-        return CKR_OK;
+	return CKR_OK;
 }
 
 static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
@@ -1798,10 +1797,10 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 		flags = SC_ALGORITHM_RSA_RAW;
 		break;
 	default:
-                return CKR_MECHANISM_INVALID;
+		return CKR_MECHANISM_INVALID;
 	}
 
-        sc_debug(context, "Selected flags %X. Now computing signature for %d bytes. %d bytes reserved.\n", flags, ulDataLen, *pulDataLen);
+	sc_debug(context, "Selected flags %X. Now computing signature for %d bytes. %d bytes reserved.\n", flags, ulDataLen, *pulDataLen);
 	rv = sc_pkcs15_compute_signature(fw_data->p15_card,
 					 prkey->prv_p15obj,
 					 flags,
@@ -1827,14 +1826,14 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 		sc_unlock(ses->slot->card->card);
 	}
 
-        sc_debug(context, "Sign complete. Result %d.\n", rv);
+	sc_debug(context, "Sign complete. Result %d.\n", rv);
 
 	if (rv > 0) {
-                *pulDataLen = rv;
-                return CKR_OK;
+		*pulDataLen = rv;
+		return CKR_OK;
 	}
 
-        return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+	return sc_to_cryptoki_error(rv, ses->slot->card->reader);
 }
 
 static CK_RV
@@ -1941,7 +1940,7 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	sc_pkcs11_any_cmp_attribute,
 	NULL,
 	NULL,
-        pkcs15_prkey_sign,
+	pkcs15_prkey_sign,
 	pkcs15_prkey_unwrap,
 	pkcs15_prkey_decrypt
 };
@@ -1962,8 +1961,8 @@ static CK_RV pkcs15_pubkey_set_attribute(struct sc_pkcs11_session *session,
                                void *object,
                                CK_ATTRIBUTE_PTR attr)
 {
-       struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
-       return pkcs15_set_attrib(session, pubkey->base.p15_object, attr);
+	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
+	return pkcs15_set_attrib(session, pubkey->base.p15_object, attr);
 }
 
 static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
@@ -2059,10 +2058,10 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		}
 		break;
 	default:
-                return CKR_ATTRIBUTE_TYPE_INVALID;
+		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
 
-        return CKR_OK;
+	return CKR_OK;
 }
 
 struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
@@ -2072,7 +2071,7 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	sc_pkcs11_any_cmp_attribute,
 	NULL,
 	NULL,
-        NULL
+	NULL
 };
 
 
@@ -2292,8 +2291,8 @@ get_usage_bit(unsigned int usage, CK_ATTRIBUTE_PTR attr)
 		CK_ATTRIBUTE_TYPE type;
 		unsigned int	flag;
 	} flag_mapping[] = {
-	      	{ CKA_ENCRYPT,		SC_PKCS15_PRKEY_USAGE_ENCRYPT },
-	      	{ CKA_DECRYPT,		SC_PKCS15_PRKEY_USAGE_DECRYPT },
+		{ CKA_ENCRYPT,		SC_PKCS15_PRKEY_USAGE_ENCRYPT },
+		{ CKA_DECRYPT,		SC_PKCS15_PRKEY_USAGE_DECRYPT },
 		{ CKA_SIGN,		SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_NONREPUDIATION },
 		{ CKA_SIGN_RECOVER,	SC_PKCS15_PRKEY_USAGE_SIGNRECOVER },
 		{ CKA_WRAP,		SC_PKCS15_PRKEY_USAGE_WRAP },

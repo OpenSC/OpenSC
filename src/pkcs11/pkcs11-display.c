@@ -70,7 +70,7 @@ void print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_V
 }
 
 #ifdef HAVE_OPENSSL
-void print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+static void print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
   print_generic(f, type, value, size, arg);
   if(size && value) {

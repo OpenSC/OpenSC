@@ -36,7 +36,7 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 
 	if (context != NULL) {
 		sc_error(context, "C_Initialize(): Cryptoki already initialized\n");
-                return CKR_CRYPTOKI_ALREADY_INITIALIZED;
+		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 	rc = sc_establish_context(&context, "opensc-pkcs11");
 	if (rc != 0) {
@@ -63,7 +63,8 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 		context = NULL;
 	}
 
-out:	if (context != NULL)
+out:	
+	if (context != NULL)
 		sc_debug(context, "C_Initialize: result = %d\n", rv);
 	return rv;
 }
@@ -84,7 +85,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 
 	sc_debug(context, "Shutting down Cryptoki\n");
 	for (i=0; i<context->reader_count; i++)
-                card_removed(i);
+		card_removed(i);
 
 	sc_release_context(context);
 	context = NULL;
@@ -92,7 +93,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 out:	/* Release and destroy the mutex */
 	sc_pkcs11_free_lock();
 
-        return rv;
+	return rv;
 }
 
 CK_RV C_GetInfo(CK_INFO_PTR pInfo)
@@ -120,10 +121,10 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 		  "SmartCard PKCS#11 API",
 		  sizeof(pInfo->libraryDescription));
 	pInfo->libraryVersion.major = 0;
-	pInfo->libraryVersion.minor = 8;
+	pInfo->libraryVersion.minor = 9;
 
 out:	sc_pkcs11_unlock();
-        return rv;
+	return rv;
 }	
 
 CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
@@ -140,7 +141,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		    CK_ULONG_PTR   pulCount)      /* receives the number of slots */
 {
 	CK_SLOT_ID found[SC_PKCS11_MAX_VIRTUAL_SLOTS];
-	int      i;
+	int i;
 	CK_ULONG numMatches;
 	sc_pkcs11_slot_t *slot;
 	CK_RV rv;
@@ -168,14 +169,14 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	if (pSlotList == NULL_PTR) {
 		sc_debug(context, "was only a size inquiry (%d)\n", numMatches);
 		*pulCount = numMatches;
-                rv = CKR_OK;
+		rv = CKR_OK;
 		goto out;
 	}
 
 	if (*pulCount < numMatches) {
 		sc_debug(context, "buffer was too small (needed %d)\n", numMatches);
 		*pulCount = numMatches;
-                rv = CKR_BUFFER_TOO_SMALL;
+		rv = CKR_BUFFER_TOO_SMALL;
 		goto out;
 	}
 
@@ -186,14 +187,14 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	sc_debug(context, "returned %d slots\n", numMatches);
 
 out:	sc_pkcs11_unlock();
-        return rv;
+	return rv;
 }
 
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot;
 	sc_timestamp_t now;
-        CK_RV rv;
+	CK_RV rv;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -229,7 +230,7 @@ out:	sc_pkcs11_unlock();
 CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot;
-        CK_RV rv;
+	CK_RV rv;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -255,7 +256,7 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
                          CK_ULONG_PTR pulCount)
 {
 	struct sc_pkcs11_slot *slot;
-        CK_RV rv;
+	CK_RV rv;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -274,7 +275,7 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
 			 CK_MECHANISM_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot;
-        CK_RV rv;
+	CK_RV rv;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -300,7 +301,7 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 	struct sc_pkcs11_pool_item *item;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
-        CK_RV rv;
+	CK_RV rv;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -553,7 +554,7 @@ CK_FUNCTION_LIST pkcs11_function_list = {
 	C_Decrypt,
 	C_DecryptUpdate,
 	C_DecryptFinal,
-        C_DigestInit,
+	C_DigestInit,
 	C_Digest,
 	C_DigestUpdate,
 	C_DigestKey,
@@ -582,6 +583,6 @@ CK_FUNCTION_LIST pkcs11_function_list = {
 	C_SeedRandom,
 	C_GenerateRandom,
 	C_GetFunctionStatus,
-        C_CancelFunction,
+	C_CancelFunction,
 	C_WaitForSlotEvent
 };

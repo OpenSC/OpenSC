@@ -92,10 +92,11 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 		-1
 	};
 	char	object_name[64];
-        int i, j, rv;
+        int     j, rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
 	int	res, res_type;
+	unsigned int i;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -150,7 +151,8 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 			  CK_ATTRIBUTE_PTR  pTemplate,  /* specifies attributes and values */
 			  CK_ULONG          ulCount)    /* attributes in template */
 {
-        int i, rv;
+	int rv;
+	unsigned int i;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
 
@@ -189,7 +191,8 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
         CK_BBOOL is_private = TRUE;
 	CK_ATTRIBUTE private_attribute = { CKA_PRIVATE, &is_private, sizeof(is_private) };
 
-	int j, rv, match, hide_private;
+	int rv, match, hide_private;
+	unsigned int j;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
 	struct sc_pkcs11_find_operation *operation;
@@ -285,7 +288,8 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,          /* the session's han
 		    CK_ULONG             ulMaxObjectCount,  /* max handles to be returned */
 		    CK_ULONG_PTR         pulObjectCount)    /* actual number returned */
 {
-        int rv, to_return;
+	int rv;
+	CK_ULONG to_return;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_find_operation *operation;
 
@@ -302,7 +306,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,          /* the session's han
 	if (rv != CKR_OK)
 		goto out;
 
-	to_return = operation->num_handles - operation->current_handle;
+	to_return = (CK_ULONG)operation->num_handles - operation->current_handle;
 	if (to_return > ulMaxObjectCount)
 		to_return = ulMaxObjectCount;
 
