@@ -125,6 +125,7 @@ extern "C" {
 
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
+#define SC_SEC_OPERATION_AUTHENTICATE	0x0003
 
 /* sc_security_env flags */
 #define SC_SEC_ENV_ALG_REF_PRESENT	0x0001
