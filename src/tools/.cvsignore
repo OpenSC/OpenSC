@@ -23,8 +23,9 @@ Makefile
 Makefile.in
 core
 gmon.out
-cardos-info
 cryptoflex-tool
+cardos-info
+eidenv
 opensc-explorer
 opensc-tool
 pkcs11-tool

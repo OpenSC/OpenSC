@@ -31,5 +31,6 @@ pkcs15_init_LDADD = @GETOPTSRC@ @LIBCRYPTO@ ../pkcs15init/libpkcs15init.la
 cardos_info_SOURCES = cardos-info.c util.c
 cardos_info_LDADD = @GETOPTSRC@
 eidenv_SOURCES = eidenv.c
+eidenv_LDADD = @GETOPTSRC@
 
 noinst_HEADERS = util.h
