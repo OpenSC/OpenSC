@@ -100,7 +100,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	key->data.value = pk;
 	key->data.len = pklen;
 	/* FIXME: ignore the object id for now, and presume it's RSA */
-	r = sc_pkcs15_parse_pubkey_rsa(ctx, key);
+	r = sc_pkcs15_decode_pubkey_rsa(ctx, key);
 	if (r) {
 		free(key->data.value);
 		return SC_ERROR_INVALID_ASN1_OBJECT;
