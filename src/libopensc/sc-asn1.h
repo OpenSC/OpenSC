@@ -22,9 +22,16 @@
 #define _SC_ASN1_H
 
 /* DER tag and length parsing */
+
 const u8 *sc_asn1_find_tag(const u8 * buf, int buflen, int tag, int *taglen);
 const u8 *sc_asn1_verify_tag(const u8 * buf, int buflen, int tag, int *taglen);
 const u8 *sc_asn1_skip_tag(const u8 ** buf, int *buflen, int tag, int *taglen);
+
+/* DER encoding */
+
+/* Argument 'ptr' is set to the location of the next possible ASN.1 object.
+ * If NULL, no action on 'ptr' is performed. */
+int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen, u8 ** ptr);
 
 /* ASN.1 printing functions */
 void sc_asn1_print_tags(const u8 * buf, int buflen);

@@ -72,14 +72,20 @@
 
 #define SC_FILE_MAGIC			0x10203040
 
-#define SC_FILE_TYPE_DF			0x07
+#define SC_FILE_TYPE_DF			0x03
 #define SC_FILE_TYPE_INTERNAL_EF	0x01
 #define SC_FILE_TYPE_WORKING_EF		0x00
+
+#define SC_FILE_EF_TRANSPARENT		0x01
+#define SC_FILE_EF_LINEAR_FIXED		0x02
+#define SC_FILE_EF_LINEAR_FIXED_TLV	0x03
 
 #define SC_MAX_READERS			4
 #define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PIN_SIZE			16
 #define SC_MAX_ATR_SIZE			33
+#define SC_MAX_SEC_ATTR_SIZE		16
+#define SC_MAX_PROP_ATTR_SIZE		16
 
 #define SC_ASN1_MAX_OBJECT_ID_OCTETS  16
 
@@ -101,6 +107,10 @@ struct sc_file {
 
 	int type, shareable, ef_structure;
 	int size, id;
+	u8 sec_attr[SC_MAX_SEC_ATTR_SIZE];
+	int sec_attr_len;
+	u8 prop_attr[SC_MAX_SEC_ATTR_SIZE];
+	int prop_attr_len;
 	unsigned int magic;
 };
 
@@ -173,6 +183,10 @@ int sc_decipher(struct sc_card *card, const u8 * crgram, int crgram_len,
 		u8 * out, int outlen);
 int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 int data_len, u8 * out, int outlen);
+
+/* ISO 7816-9 */
+int sc_create_file(struct sc_card *card, const struct sc_file *file);
+int sc_delete_file(struct sc_card *card, int file_id);
 
 /* Possibly only on Setec cards */
 int sc_list_files(struct sc_card *card, u8 * buf, int buflen);

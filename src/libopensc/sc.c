@@ -50,6 +50,9 @@ static int convert_sw_to_errorcode(u8 * sw)
 		}
 	case 0x6D:
 		return SC_ERROR_NOT_SUPPORTED;
+	case 0x90:
+		if (sw[1] == 0)
+			return 0;
 	}
 	return SC_ERROR_UNKNOWN;
 }
@@ -61,7 +64,7 @@ void sc_hex_dump(const u8 *buf, int count)
 	for (i = 0; i < count; i++) {
 		unsigned char c = buf[i];
 
-		printf("%02X", c);
+		printf("%02X  ", c);
 	}
 	printf("\n");
 	fflush(stdout);
@@ -224,8 +227,8 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	return 0;
 }
 
-static void sc_process_fci(struct sc_file *file,
-			   const u8 *buf, int buflen)
+static void process_fci(struct sc_file *file,
+			const u8 *buf, int buflen)
 {
 	int taglen, len = buflen;
 	const u8 *tag = NULL, *p = buf;
@@ -296,8 +299,21 @@ static void sc_process_fci(struct sc_file *file,
 		if (sc_debug)
 			printf("\tFile name: %s\n", name);
 	}
+	tag = sc_asn1_find_tag(p, len, 0x85, &taglen);
+	if (tag != NULL && taglen && taglen <= SC_MAX_PROP_ATTR_SIZE) {
+		memcpy(file->prop_attr, tag, taglen);
+		file->prop_attr_len = taglen;
+	} else
+		file->prop_attr_len = 0;
+	tag = sc_asn1_find_tag(p, len, 0x86, &taglen);
+	if (tag != NULL && taglen && taglen <= SC_MAX_SEC_ATTR_SIZE) {
+		memcpy(file->sec_attr, tag, taglen);
+		file->sec_attr_len = taglen;
+	} else
+		file->sec_attr_len = 0;
 	file->magic = SC_FILE_MAGIC;
 }
+
 
 int sc_select_file(struct sc_card *card,
 		   struct sc_file *file,
@@ -386,7 +402,7 @@ int sc_select_file(struct sc_card *card,
 		int l1 = apdu.resplen, l2 = apdu.resp[1];
 		int len = l1 > l2 ? l2 : l1;
 
-		sc_process_fci(file, apdu.resp + 2, len);
+		process_fci(file, apdu.resp + 2, len);
 	}
 	return 0;
 }
@@ -714,6 +730,24 @@ int sc_set_security_env(struct sc_card *card,
 	return 0;
 }
 
+int sc_restore_security_env(struct sc_card *card, int num)
+{
+	struct sc_apdu apdu;
+	int r;
+	u8 rbuf[2];
+	
+	assert(card != NULL);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, num);
+	apdu.resp = rbuf;
+	apdu.resplen = 2;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r)
+		return r;
+	if (apdu.resplen != 2)
+		return -1;
+	return convert_sw_to_errorcode(apdu.resp);
+}
+
 int sc_decipher(struct sc_card *card,
 		const u8 * crgram, int crgram_len, u8 * out, int outlen)
 {
@@ -860,6 +894,95 @@ int sc_list_files(struct sc_card *card, u8 *buf, int buflen)
 	apdu.resplen -= 2;
 
 	return apdu.resplen;
+}
+
+static int construct_fci(const struct sc_file *file, u8 *out, int *outlen)
+{
+	u8 *p = out;
+	u8 buf[32];
+	
+	*p++ = 0x6F;
+	p++;
+	
+	buf[0] = (file->size >> 8) & 0xFF;
+	buf[1] = file->size & 0xFF;
+	sc_asn1_put_tag(0x81, buf, 2, p, 16, &p);
+	buf[0] = file->shareable ? 0x40 : 0;
+	buf[0] |= (file->type & 7) << 3;
+	buf[0] |= file->ef_structure & 7;
+	sc_asn1_put_tag(0x82, buf, 1, p, 16, &p);
+	buf[0] = (file->id >> 8) & 0xFF;
+	buf[1] = file->id & 0xFF;
+	sc_asn1_put_tag(0x83, buf, 2, p, 16, &p);
+	/* 0x84 = DF name */
+	if (file->prop_attr_len) {
+		memcpy(buf, file->prop_attr, file->prop_attr_len);
+		sc_asn1_put_tag(0x85, buf, file->prop_attr_len, p, 18, &p);
+	}
+	if (file->sec_attr_len) {
+		memcpy(buf, file->sec_attr, file->sec_attr_len);
+		sc_asn1_put_tag(0x86, buf, file->sec_attr_len, p, 18, &p);
+	}
+	*p++ = 0xDE;
+	*p++ = 0;
+	*outlen = p - out;
+	out[1] = p - out - 2;
+	return 0;
+}
+
+int sc_create_file(struct sc_card *card, const struct sc_file *file)
+{
+	int r, len;
+	u8 sbuf[MAX_BUFFER_SIZE];
+	u8 rbuf[MAX_BUFFER_SIZE];
+	struct sc_apdu apdu;
+
+	len = MAX_BUFFER_SIZE;
+	r = construct_fci(file, sbuf, &len);
+	if (r)
+		return r;
+	
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
+	apdu.lc = len;
+	apdu.datalen = len;
+	apdu.data = sbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.resp = rbuf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	if (r)
+		return r;
+	if (apdu.resplen != 2)
+		return -1;
+	if (apdu.resp[0] == 0x90 && apdu.resp[1] == 0x00)
+		return 0;
+	return convert_sw_to_errorcode(apdu.resp);
+}
+
+int sc_delete_file(struct sc_card *card, int file_id)
+{
+	int r;
+	u8 sbuf[2];
+	u8 rbuf[MAX_BUFFER_SIZE];
+	struct sc_apdu apdu;
+
+	sbuf[0] = (file_id >> 8) & 0xFF;
+	sbuf[1] = file_id & 0xFF;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
+	apdu.lc = 2;
+	apdu.datalen = 2;
+	apdu.data = sbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.resp = rbuf;
+	
+	r = sc_transmit_apdu(card, &apdu);
+	if (r)
+		return r;
+	if (apdu.resplen != 2)
+		return -1;
+	if (apdu.resp[0] == 0x90 && apdu.resp[1] == 0x00)
+		return 0;
+	return convert_sw_to_errorcode(apdu.resp);
 }
 
 int sc_file_valid(const struct sc_file *file)

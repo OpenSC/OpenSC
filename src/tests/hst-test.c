@@ -1,13 +1,14 @@
 
-/* Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi> 
+/* Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  * All rights reserved.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "sc.h"
-#include "sc-pkcs15.h"
+#include <sc.h>
+#include <sc-pkcs15.h>
+#include <sc-asn1.h>
 #include "sc-test.h"
 
 #define DO_PRKEY_ENUM		0
@@ -80,11 +81,23 @@ int enum_dir(struct sc_path path, int depth)
 		printf("type: %-3s ", tmps);
 		if (file.type != 7)
 			printf("ef structure: %d ", file.ef_structure);
-		printf("size: %d\n", file.size);
+		printf("size: %d ", file.size);
 		if (file.type == 0 && 0) {
 			r = sc_read_binary(card, 0, buf, file.size);
 			if (r > 0)
 				sc_hex_dump(buf, r);
+		}
+		if (file.sec_attr_len) {
+			printf("sec: ");
+			/* Octets are as follows:
+			 *   DF: select, lock, delete, create, rehab, inval
+			 *   EF: read, update, write, erase, rehab, inval
+			 * 4 MSB's of the octet mean:			 
+			 *  0 = ALW, 1 = PIN1, 2 = PIN2, 4 = SYS,
+			 * 15 = NEV */
+			sc_hex_dump(file.sec_attr, file.sec_attr_len);
+		} else {
+			printf("\n");
 		}
 	} else {
 		printf("\n");
@@ -109,6 +122,7 @@ int enum_dir(struct sc_path path, int depth)
 	return 0;
 }	
 
+#if 0
 int test()
 {
 	struct sc_path path;
@@ -118,6 +132,67 @@ int test()
 	enum_dir(path, 0);
 	return 1;
 }
+#else
+int test()
+{
+	struct sc_apdu apdu;
+	struct sc_file file;
+	struct sc_path path;
+	
+	u8 sbuf[32], rbuf[MAX_BUFFER_SIZE];
+	int r;
+	
+	sc_lock(card);
+#if 1
+	r = sc_pkcs15_init(card, &p15card);
+	if (r < 0) {
+		fprintf(stderr, "PKCS#15 init failed: %s\n", sc_strerror(r));
+		goto err;
+	}
+	r = sc_pkcs15_enum_pins(p15card);
+	if (r < 0) {
+		fprintf(stderr, "PIN code enum failed: %s\n", sc_strerror(r));
+		goto err;
+	}
+	r = sc_pkcs15_verify_pin(p15card, &p15card->pin_info[0], "\x31\x32\x33\x34", 4);
+	if (r) {
+		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
+		goto err;
+	}
+#endif
+	memcpy(path.value, "\x3f\x00", 2);
+	path.len = 2;
+	sc_debug = 1;
+	r = sc_select_file(card, &file, &path, SC_SELECT_FILE_BY_PATH);
+	if (r) {
+		fprintf(stderr, "sc_select_file failed: %s\n", sc_strerror(r));
+		goto err;
+	}
+	r = sc_delete_file(card, 0x5110);
+	if (r) {
+		fprintf(stderr, "fail: %s\n", sc_strerror(r));
+		goto err;
+	}
+	return 0;
+
+	memset(&file, 0, sizeof(file));
+	file.id = 0x5110;
+	file.sec_attr_len = 6;
+	memcpy(file.sec_attr, "\x00\x00\x00\x00\x00\x00", 6);
+	file.prop_attr_len = 3;
+	memcpy(file.prop_attr, "\x23\x00\x00", 3);
+	file.size = 32;
+	file.type = SC_FILE_TYPE_WORKING_EF;
+	file.ef_structure = SC_FILE_EF_TRANSPARENT;
+
+	sc_debug = 1;
+	r = sc_create_file(card, &file);
+
+err:
+	sc_unlock(card);
+	return r;
+}
+#endif
 
 int main(int argc, char **argv)
 {
@@ -125,7 +200,6 @@ int main(int argc, char **argv)
 	struct sc_security_env senv;
 	FILE *file;
 	struct sc_object_id oid;
-	struct timeval tv1, tv2;
 	int i, c;
 
 	i = sc_test_init(&argc, argv);
@@ -134,6 +208,8 @@ int main(int argc, char **argv)
 
 	if (test())
 		return 1;
+
+	return 0;
 		
 	i = sc_pkcs15_init(card, &p15card);
 	if (i != 0) {

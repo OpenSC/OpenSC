@@ -389,3 +389,25 @@ int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 	
 	return 0;
 }
+
+int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen, u8 **ptr)
+{
+	u8 *p = out;
+
+	if (outlen < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (datalen < 0 || datalen > 127)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	*p++ = tag & 0xFF;	/* FIXME: Support longer tags */
+	outlen--;
+	*p++ = datalen;
+	outlen--;
+	if (outlen < datalen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+		
+	memcpy(p, data, datalen);
+	p += datalen;
+	if (ptr != NULL)
+		*ptr = p;
+	return 0;
+}

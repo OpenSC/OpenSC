@@ -65,6 +65,8 @@ int main(int argc, char *argv[])
 			printf("Frequencies:\n");
 			for (i = 0; i < 39; i++) {
 				printf("%3d: %-5d", i+1, freq[i]);
+				if (((i+1) % 10) == 0)
+					printf("\n");
 			}
 			printf("\n");
 			c = 0;
