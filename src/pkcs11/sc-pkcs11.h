@@ -231,7 +231,7 @@ struct sc_pkcs11_mechanism_type {
 					CK_ULONG_PTR);
 
 	/* mechanism specific data */
-	void *		  mech_data;
+	const void *		  mech_data;
 };
 typedef struct sc_pkcs11_mechanism_type sc_pkcs11_mechanism_type_t;
 

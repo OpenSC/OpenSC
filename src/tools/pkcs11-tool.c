@@ -1015,7 +1015,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		sizeof(verifyData),
 	};
 #ifdef HAVE_OPENSSL
-	EVP_MD         *evp_mds[] = {
+	const EVP_MD         *evp_mds[] = {
 		EVP_sha1(),
 		EVP_sha1(),
 		EVP_sha1(),

@@ -4,6 +4,8 @@
  * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
  */
 
+#include <stdlib.h>
+#include <string.h>
 #include "sc-pkcs11.h"
 
 struct hash_signature_info {

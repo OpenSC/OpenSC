@@ -7,7 +7,7 @@
 
 int main(int argc, char *argv[])
 {
-	int len, r;
+	int len;
 	FILE *inf;
 	u8 buf[8192];
 	u8 outbuf[8192];
@@ -36,6 +36,5 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	fwrite(outbuf, len, 1, stdout);
-
 	return 0;
 }
