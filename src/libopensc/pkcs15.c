@@ -72,7 +72,7 @@ static const struct sc_asn1_entry c_asn1_tokeninfo[] = {
 	{ NULL }
 };
 
-void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t buflen)
+static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t buflen)
 {
 	int i, r;
 	u8 serial[128];
