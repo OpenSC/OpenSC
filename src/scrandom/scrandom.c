@@ -19,6 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifndef _WIN32
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -307,3 +309,29 @@ int scrandom_get_data(unsigned char *buf, unsigned int len)
 	return rv;
 #undef BLOCK_SIZE
 }
+
+#else // #ifndef _WIN32
+
+// Since the above is very *nix specific, we use Window's CryptoAPI
+// random generation instead.
+
+#include "scrandom.h"
+#include "windows.h"
+#include "wincrypt.h"
+
+int scrandom_get_data(unsigned char *buf, unsigned int len)
+{
+	HCRYPTPROV hProv = 0;
+
+	if(!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+    		return GetLastError();
+
+	if(!CryptGenRandom(hProv, len, buf))
+    		return GetLastError();
+
+	CryptReleaseContext(hProv, 0);
+
+	return 0;
+}
+
+#endif // #ifndef _WIN32

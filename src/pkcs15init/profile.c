@@ -41,6 +41,10 @@
 #define DEF_PRKEY_DSA_ACCESS	0x12
 #define DEF_PUBKEY_ACCESS	0x12
 
+#ifdef _WIN32
+#define access(name, R_OK) _access(name, 4)
+#endif
+
 /*
  * Parser state
  */

@@ -24,6 +24,10 @@
 #include <opensc/pkcs15.h>
 #include "util.h"
 
+#ifdef _WIN32
+char *getpass(const char *prompt); /* in src/common/getpass.c */
+#endif
+
 const char *app_name = "pkcs15-tool";
 
 int opt_reader = 0, opt_debug = 0;

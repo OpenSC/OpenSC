@@ -22,7 +22,7 @@
 #include <string.h>
 #include "sc-pkcs11.h"
 #ifdef USE_PKCS15_INIT
-#include "pkcs15-init.h"
+#include "opensc/pkcs15-init.h"
 
 /*
  * Deal with uninitialized cards
