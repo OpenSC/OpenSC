@@ -1380,6 +1380,9 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	if (r >= 0 && res_obj)
 		*res_obj = object;
 
+	if (der_encoded.value)
+		free(der_encoded.value);
+
 	return r;
 }
 

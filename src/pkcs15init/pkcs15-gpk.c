@@ -513,12 +513,17 @@ gpk_generate_key(sc_profile_t *profile, sc_card_t *card,
 #ifndef PK_INIT_IMMEDIATELY
 	r = gpk_pkfile_init_public(profile, card, keyfile, SC_ALGORITHM_RSA,
 			keybits, key_info->usage);
-	if (r < 0)
+	if (r < 0) {
+		sc_file_free(keyfile);
 		return r;
+	}
 
-	if ((r = gpk_pkfile_init_private(card, keyfile, 5 * ((3 + keybits / 16 + 7) & ~7UL))) < 0)
+	if ((r = gpk_pkfile_init_private(card, keyfile, 5 * ((3 + keybits / 16 + 7) & ~7UL))) < 0) {
+		sc_file_free(keyfile);
 		return r;
+	}
 #endif
+	sc_file_free(keyfile);
 
 	memset(&args, 0, sizeof(args));
 	/*args.exponent = 0x10001;*/
