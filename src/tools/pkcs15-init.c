@@ -142,6 +142,7 @@ const struct option	options[] = {
 
 	{ "profile",		required_argument, 0,	'p' },
 	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
+	{ "wait",		no_argument, 0,		'w' },
 	{ "debug",		no_argument, 0,		'd' },
 	{ 0, 0, 0, 0 }
 };
@@ -176,6 +177,7 @@ const char *		option_help[] = {
 
 	"Specify the profile to use",
 	"Read additional command line options from file",
+	"Wait for card insertion",
 	"Enable debugging output",
 };
 
@@ -207,7 +209,7 @@ static char *			action_names[] = {
 static struct sc_context *	ctx = NULL;
 static struct sc_card *		card = NULL;
 static struct sc_pkcs15_card *	p15card = NULL;
-static int			opt_reader = 0,
+static int			opt_reader = -1,
 				opt_debug = 0,
 				opt_quiet = 0,
 				opt_action = 0,
@@ -217,7 +219,8 @@ static int			opt_reader = 0,
 				opt_authority = 0,
 				opt_softkeygen = 0,
 				opt_noprompts = 0,
-				opt_use_defkeys = 0;
+				opt_use_defkeys = 0,
+				opt_wait = 0;
 static char *			opt_profile = "pkcs15";
 static char *			opt_infile = 0;
 static char *			opt_format = 0;
@@ -342,27 +345,9 @@ connect(int reader)
 		ctx->debug = opt_debug;
 		ctx->debug_file = stderr;
 	}
-	if (reader >= ctx->reader_count || reader < 0) {
-		fprintf(stderr,
-			"Illegal reader number. Only %d reader%s configured.\n",
-		       	ctx->reader_count,
-			ctx->reader_count == 1? "" : "s");
-		return 0;
-	}
-	if (sc_detect_card_presence(ctx->reader[reader], 0) != 1) {
-		error("Card not present.\n");
-		return 0;
-	}
-	if (!opt_quiet) {
-		printf("Connecting to card in reader %s...\n",
-		       	ctx->reader[reader]->name);
-	}
 
-	r = sc_connect_card(ctx->reader[reader], 0, &card);
-	if (r) {
-		error("Failed to connect to card: %s\n", sc_strerror(r));
+	if (connect_card(ctx, &card, reader, 0, opt_wait, opt_quiet))
 		return 0;
-	}
 
 	printf("Using card driver: %s\n", card->driver->name);
 	r = sc_lock(card);
