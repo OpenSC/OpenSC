@@ -90,7 +90,7 @@ static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 	return 0;
 }
 
-static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
+static int sc_transceive(struct sc_card *card, struct sc_apdu *apdu)
 {
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -186,10 +186,10 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	SC_TEST_RET(card->ctx, r, "APDU sanity check failed");
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-	r = sc_transceive_t0(card, apdu);
+	r = sc_transceive(card, apdu);
 	if (r != 0) {
 		sc_unlock(card);
-		SC_TEST_RET(card->ctx, r, "transceive_t0() failed");
+		SC_TEST_RET(card->ctx, r, "transceive() failed");
 	}
 	if (card->ctx->debug >= 5) {
 		char buf[2048];
@@ -205,10 +205,10 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	if (apdu->sw1 == 0x6C && apdu->resplen == 0) {
 		apdu->resplen = orig_resplen;
 		apdu->le = apdu->sw2;
-		r = sc_transceive_t0(card, apdu);
+		r = sc_transceive(card, apdu);
 		if (r != 0) {
 			sc_unlock(card);
-			SC_TEST_RET(card->ctx, r, "transceive_t0() failed");
+			SC_TEST_RET(card->ctx, r, "transceive() failed");
 		}
 	}
 	if (apdu->sw1 == 0x61 && apdu->resplen == 0) {
@@ -227,7 +227,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 		rspapdu.le = (size_t) apdu->sw2;
 		rspapdu.resp = rsp;
 		rspapdu.resplen = (size_t) apdu->sw2;
-		r = sc_transceive_t0(card, &rspapdu);
+		r = sc_transceive(card, &rspapdu);
 		if (r != 0) {
 			error(card->ctx, "error while getting response: %s\n",
 			      sc_strerror(r));
