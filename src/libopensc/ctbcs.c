@@ -155,6 +155,7 @@ ctbcs_pin_cmd(struct sc_reader *reader, sc_slot_info_t *slot,
 {
 	struct sc_card dummy_card, *card;
 	struct sc_apdu apdu;
+	struct sc_card_operations ops;
 	int r;
 
 	switch (data->cmd) {
@@ -170,13 +171,17 @@ ctbcs_pin_cmd(struct sc_reader *reader, sc_slot_info_t *slot,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
+	memset(&ops, 0, sizeof(ops));
 	memset(&dummy_card, 0, sizeof(dummy_card));
 	dummy_card.reader = reader;
 	dummy_card.slot = slot;
 	dummy_card.ctx = reader->ctx;
+	dummy_card.mutex = sc_mutex_new();
+	dummy_card.ops   = &ops;
 	card = &dummy_card;
 
 	r = sc_transmit_apdu(card, &apdu);
+	sc_mutex_free(card->mutex);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	
 	/* Check CTBCS status word */
