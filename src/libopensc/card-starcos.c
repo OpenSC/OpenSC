@@ -34,7 +34,7 @@ static struct sc_card_operations starcos_ops;
 static struct sc_card_operations *iso_ops = NULL;
 
 static struct sc_card_driver starcos_drv = {
-	"driver for STARCOS SPK 2.3 cards",
+	"STARCOS SPK 2.3",
 	"starcos",
 	&starcos_ops,
 	NULL, 0

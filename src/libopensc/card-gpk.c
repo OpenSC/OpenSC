@@ -117,7 +117,7 @@ static struct sc_atr_table gpk_atrs[] = {
  */
 static struct sc_card_operations	gpk_ops, *iso_ops;
 static struct sc_card_driver gpk_drv = {
-	"Gemplus GPK driver",
+	"Gemplus GPK",
 	"gpk",
 	&gpk_ops
 };

@@ -39,7 +39,7 @@ static struct sc_atr_table tcos_atrs[] = {
 
 static struct sc_card_operations tcos_ops;
 static struct sc_card_driver tcos_drv = {
-	"TCOS 2.0 cards",
+	"TCOS 2.0",
 	"tcos",
 	&tcos_ops
 };

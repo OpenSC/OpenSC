@@ -174,7 +174,7 @@ struct belpic_priv_data {
 
 static struct sc_card_operations belpic_ops;
 static struct sc_card_driver belpic_drv = {
-	"Belpic smartcards",
+	"Belpic cards",
 	"belpic",
 	&belpic_ops
 };

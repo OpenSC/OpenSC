@@ -50,7 +50,7 @@ static struct sc_atr_table setcos_atrs[] = {
 
 static struct sc_card_operations setcos_ops;
 static struct sc_card_driver setcos_drv = {
-	"Setec smartcards",
+	"Setec cards",
 	"setcos",
 	&setcos_ops
 };

@@ -36,7 +36,7 @@ static struct sc_atr_table miocos_atrs[] = {
 
 static struct sc_card_operations miocos_ops;
 static struct sc_card_driver miocos_drv = {
-	"MioCOS 1.1 cards",
+	"MioCOS 1.1",
 	"miocos",
 	&miocos_ops
 };
