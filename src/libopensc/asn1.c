@@ -137,7 +137,7 @@ size_t _sc_count_bit_string_size(const void * buf, size_t bufsize)
 
 static void sc_asn1_print_octet_string(const u8 * buf, size_t buflen)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < buflen; i++)
 		printf("%02X", buf[i]);
@@ -145,7 +145,7 @@ static void sc_asn1_print_octet_string(const u8 * buf, size_t buflen)
 
 static void sc_asn1_print_utf8string(const u8 * buf, size_t buflen)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < buflen; i++)
 		printf("%c", buf[i]);
@@ -158,7 +158,7 @@ static void sc_asn1_print_integer(const u8 * buf, size_t buflen)
 #else
         __int64 a = 0;
 #endif
-	int i;
+	size_t i;
 
 	if (buflen > sizeof(a)) {
 		printf("too long");
@@ -178,7 +178,8 @@ static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen)
 #else
         __int64 a = 0;
 #endif
-	int i, r;
+	int r;
+	size_t i;
 
 	if (buflen > sizeof(a) + 1) {
 		printf("too long");
@@ -663,30 +664,36 @@ int asn1_write_element(struct sc_context *ctx, unsigned int tag, const u8 * data
 	return 0;
 }
 
-static const struct sc_asn1_entry c_asn1_path[3] = {
+static const struct sc_asn1_entry c_asn1_path[4] = {
 	{ "path",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL },
 	{ "index",  SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
+	{ "length", SC_ASN1_INTEGER, SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL },
 	{ NULL }
 };
 
 static int asn1_decode_path(struct sc_context *ctx, const u8 *in, size_t len,
 			    struct sc_path *path, int depth)
 {
-	int idx, r;
-	struct sc_asn1_entry asn1_path[3];
+	int idx, count, r;
+	struct sc_asn1_entry asn1_path[4];
 	
 	sc_copy_asn1_entry(c_asn1_path, asn1_path);
 	sc_format_asn1_entry(asn1_path + 0, &path->value, &path->len, 0);
 	sc_format_asn1_entry(asn1_path + 1, &idx, NULL, 0);
+	sc_format_asn1_entry(asn1_path + 2, &count, NULL, 0);
 	path->len = SC_MAX_PATH_SIZE;
 	r = asn1_decode(ctx, asn1_path, in, len, NULL, NULL, 0, depth + 1);
 	if (r)
 		return r;
 	path->type = SC_PATH_TYPE_PATH;
-	if (asn1_path[1].flags & SC_ASN1_PRESENT)
+	if ((asn1_path[1].flags & SC_ASN1_PRESENT)
+	 && (asn1_path[2].flags & SC_ASN1_PRESENT)) {
 		path->index = idx;
-	else
+		path->count = count;
+	} else {
 		path->index = 0;
+		path->count = -1;
+	}
 	return 0;
 }
 
@@ -997,7 +1004,7 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 			error(ctx, "mandatory ASN.1 object '%s' not found\n", entry->name);
 			if (ctx->debug && left) {
 				u8 line[128], *linep = line;
-				int i;
+				size_t i;
 
 				line[0] = 0;
 				for (i = 0; i < 10 && i < left; i++) {
