@@ -113,6 +113,7 @@ enum {
 	OPT_PUK2     = 0x10003,
 	OPT_SERIAL   = 0x10004,
 	OPT_NO_SOPIN = 0x10005,
+	OPT_NO_PROMPT= 0x10006,
 };
 
 const struct option	options[] = {
@@ -147,6 +148,7 @@ const struct option	options[] = {
 	{ "soft",		no_argument, 0,		OPT_SOFT_KEYGEN },
 	{ "use-default-transport-keys",
 				no_argument, 0,		'T' },
+	{ "no-prompt",		no_argument, 0,		OPT_NO_PROMPT },
 
 	{ "profile",		required_argument, 0,	'p' },
 	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
@@ -229,7 +231,7 @@ static int			opt_reader = -1,
 				opt_unprotected = 0,
 				opt_authority = 0,
 				opt_softkeygen = 0,
-				opt_noprompts = 0,
+				opt_no_prompt = 0,
 				opt_no_sopin = 0,
 				opt_use_defkeys = 0,
 				opt_split_key = 0,
@@ -388,7 +390,7 @@ do_init_app(struct sc_profile *profile)
 		return r;
 
 	memset(&args, 0, sizeof(args));
-	if (!opt_pins[2] && !opt_noprompts && !opt_no_sopin) {
+	if (!opt_pins[2] && !opt_no_prompt && !opt_no_sopin) {
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_SO_PIN, &info);
 		if (!read_one_pin(profile, "New security officer (SO) PIN",
@@ -396,7 +398,7 @@ do_init_app(struct sc_profile *profile)
 				&opt_pins[2]))
 			goto failed;
 	}
-	if (opt_pins[2] && !opt_pins[3] && !opt_noprompts) {
+	if (opt_pins[2] && !opt_pins[3] && !opt_no_prompt) {
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_SO_PUK, &info);
 		if (!read_one_pin(profile, "Unlock code for new SO PIN",
@@ -916,6 +918,17 @@ use_default_key:
 	}
 
 	printf("Transport key (%s #%d) required.\n", kind, reference);
+	if (opt_no_prompt) {
+		printf("\n"
+		"Refusing to prompt for transport key because --no-prompt\n"
+		"was specified on the command line. Please invoke without\n"
+		"--no-prompt, or specify the --use-default-transport-keys\n"
+		"option to use the default transport keys without being\n"
+		"prompted.\n");
+		fprintf(stderr, "Aborting.\n");
+		exit(1);
+	}
+
 	printf("Please enter key in hexadecimal notation "
 	       "(e.g. 00:11:22:aa:bb:cc)%s.\n\n",
 	       def_key_size? ",\nor press return to accept default" : "");
@@ -1575,6 +1588,9 @@ handle_option(int c)
 		break;
 	case OPT_NO_SOPIN:
 		opt_no_sopin = 1;
+		break;
+	case OPT_NO_PROMPT:
+		opt_no_prompt = 1;
 		break;
 	default:
 		print_usage_and_die();
