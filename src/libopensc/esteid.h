@@ -20,13 +20,14 @@ enum {
 	SC_ESTEID_PD_REMARK3,
 	SC_ESTEID_PD_REMARK4
 };
+
 enum {
 	SC_ESTEID_AUTH = 1,
 	SC_ESTEID_SIGN
 };
 
-/* i love constants  */
-#define SC_ESTEID_KEYREF_FILE_RECLEN 21
+#define SC_ESTEID_KEYREF_FILE_RECLEN	21
 
 int select_esteid_df(sc_card_t * card);
+
 #endif
