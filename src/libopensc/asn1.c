@@ -533,35 +533,44 @@ int sc_asn1_decode_object_id(const u8 * inbuf, size_t inlen,
 	return 0;
 }
 
-int sc_asn1_encode_object_id(const struct sc_object_id *id, u8 **buf,
-			     size_t *buflen)
+int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
+			     const struct sc_object_id *id)
 {
-#if 0
-	u8 buf[128], *p = buf;
-	size_t count = 0
-	int *valuep = id->value, i = 0;
+	u8 temp[SC_MAX_OBJECT_ID_OCTETS*5], *p = temp;
+	size_t count = 0;
+	int *value = id->value, i = 0;
 
-	for (i = 0; *valuep != -1 && i < SC_MAX_OBJECT_ID_OCTETS; i++) {
-		int c = 0;
+	for (i = 0; value[i] > 0 && i < SC_MAX_OBJECT_ID_OCTETS; i++) {
+		unsigned int k, shift;
+
+		k = value[i];
 		switch (i) {
 		case 0:
-			if (*valuep > 2)
+			if (k > 2)
 				return SC_ERROR_INVALID_ARGUMENTS;
-			*p = *valuep * 40;
+			*p = k * 40;
 			break;
 		case 1:
-			if (*valuep > 39)
+			if (k > 39)
 				return SC_ERROR_INVALID_ARGUMENTS;
-			*p++ += *valuep;
+			*p++ += k;
 			break;
 		default:
-			/* FIXME: CODEME */
+			shift = 28;
+			while (shift && (k >> shift) == 0)
+				shift -= 7;
+			while (shift) {
+				*p++ = 0x80 | ((k >> shift) & 0x7f);
+				shift -= 7;
+			}
+			*p++ = k & 0x7F;
+			break;
 		}
 	}
+	*buflen = count = p - temp;
+	*buf = malloc(count);
+	memcpy(*buf, temp, count);
 	return 0;
-#else	
-	return SC_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 int sc_asn1_decode_utf8string(const u8 *inbuf, size_t inlen,
@@ -763,46 +772,6 @@ static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_asn1_p
 	return r;
 }
 
-static const struct sc_asn1_entry c_asn1_alg_id[6] = {
-	{ "algorithm",  SC_ASN1_OBJECT, ASN1_OBJECT, 0, NULL },
-	{ "parameters", SC_ASN1_STRUCT, 0, SC_ASN1_OPTIONAL, NULL },
-	{ NULL }
-};
-
-static int asn1_decode_algorithm_id(struct sc_context *ctx, const u8 *in,
-				    size_t len, struct sc_algorithm_id *id,
-				    int depth)
-{
-	int r;
-	struct sc_asn1_entry asn1_alg_id[3];
-
-	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
-	sc_format_asn1_entry(asn1_alg_id + 0, &id->obj_id, NULL, 0);
-
-	r = asn1_decode(ctx, asn1_alg_id, in, len, NULL, NULL, 0, depth + 1);
-	if (r < 0)
-		return r;
-
-	return 0;
-}
-
-static int asn1_encode_algorithm_id(struct sc_context *ctx,
-				    const struct sc_algorithm_id *id,
-				    u8 **buf, size_t *len, int depth)
-{
-	int r;
-	struct sc_asn1_entry asn1_alg_id[3];
-
-	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
-	sc_format_asn1_entry(asn1_alg_id + 0, (void *) &id->obj_id, NULL, 1);
-
-	r = asn1_encode(ctx, asn1_alg_id, buf, len, depth + 1);
-	if (r < 0)
-		return r;
-
-	return 0;
-}
-
 static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry,
 			     const u8 *obj, size_t objlen, int depth)
 {
@@ -931,7 +900,7 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
 		break;
 	case SC_ASN1_ALGORITHM_ID:
 		if (entry->parm != NULL)
-			r = asn1_decode_algorithm_id(ctx, obj, objlen, (struct sc_algorithm_id *) parm, depth);
+			r = sc_asn1_decode_algorithm_id(ctx, obj, objlen, (struct sc_algorithm_id *) parm, depth);
                 break;
 	case SC_ASN1_CALLBACK:
 		if (entry->parm != NULL)
@@ -972,6 +941,15 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 	for (idx = 0; asn1[idx].name != NULL; idx++) {
 		entry = &asn1[idx];
 		r = 0;
+
+		/* Special case CHOICE has no tag */
+		if (entry->type == SC_ASN1_CHOICE) {
+			r = asn1_decode(ctx,
+				(struct sc_asn1_entry *) entry->parm,
+				p, left, &p, &left, 1, depth + 1);
+			goto decode_ok;
+		}
+
 		obj = sc_asn1_skip_tag(ctx, &p, &left, entry->tag, &objlen);
 		if (obj == NULL) {
 			if (choice)
@@ -997,6 +975,8 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 			SC_FUNC_RETURN(ctx, 3, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
 		}
 		r = asn1_decode_entry(ctx, entry, obj, objlen, depth);
+
+decode_ok:
 		if (r)
 			return r;
 		if (choice)
@@ -1088,12 +1068,10 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 		buflen = *len;
 		memcpy(buf, parm, buflen);
 		break;
-#if 0
 	case SC_ASN1_OBJECT:
 		if (parm != NULL)
-			r = sc_asn1_decode_object_id(obj, objlen, (struct sc_object_id *) parm);
+			r = sc_asn1_encode_object_id(&buf, &buflen, (struct sc_object_id *) parm);
 		break;
-#endif
 	case SC_ASN1_PATH:
 		r = asn1_encode_path(ctx, (const struct sc_path *) parm, &buf, &buflen, depth);
 		break;
@@ -1114,7 +1092,7 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 		r = asn1_encode_p15_object(ctx, (const struct sc_asn1_pkcs15_object *) parm, &buf, &buflen, depth);
 		break;
 	case SC_ASN1_ALGORITHM_ID:
-		r = asn1_encode_algorithm_id(ctx, (const struct sc_algorithm_id *) parm, &buf, &buflen, depth);
+		r = sc_asn1_encode_algorithm_id(ctx, &buf, &buflen, (const struct sc_algorithm_id *) parm, depth);
 		break;
 	case SC_ASN1_CALLBACK:
 		r = callback_func(ctx, entry->arg, &buf, &buflen, depth);
@@ -1175,4 +1153,17 @@ int sc_asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,
 		   u8 **ptr, size_t *size)
 {
 	return asn1_encode(ctx, asn1, ptr, size, 0);
+}
+
+int _sc_asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,                      u8 **ptr, size_t *size, int depth)
+{
+	return asn1_encode(ctx, asn1, ptr, size, depth);
+}
+
+int
+_sc_asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
+		       const u8 *in, size_t len, const u8 **newp, size_t *left,
+		       int choice, int depth)
+{
+	return asn1_decode(ctx, asn1, in, len, newp, left, choice, depth);
 }

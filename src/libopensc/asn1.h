@@ -40,6 +40,15 @@ struct sc_asn1_pkcs15_object {
 	struct sc_asn1_entry *asn1_type_attr;
 };
 
+struct sc_asn1_pkcs15_algorithm_info {
+	int id;
+	struct sc_object_id oid;
+	int (*decode)(struct sc_context *, void **, const u8 *, size_t, int);
+	int (*encode)(struct sc_context *, void *, u8 **, size_t *, int);
+	void (*free)(void *);
+};
+
+
 /* Utility functions */
 void sc_format_asn1_entry(struct sc_asn1_entry *entry, void *parm, void *arg,
 			  int set_present);
@@ -53,6 +62,11 @@ int sc_asn1_decode_choice(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 		   const u8 *in, size_t len, const u8 **newp, size_t *left);
 int sc_asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,
 		   u8 **buf, size_t *bufsize);
+int _sc_asn1_decode(struct sc_context *, struct sc_asn1_entry *,
+		   const u8 *, size_t, const u8 **, size_t *,
+		   int, int);
+int _sc_asn1_encode(struct sc_context *, const struct sc_asn1_entry *,
+		   u8 **, size_t *, int);
 
 const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 			   size_t buflen, unsigned int tag, size_t *taglen);
@@ -81,6 +95,15 @@ int sc_asn1_decode_bit_string_ni(const u8 * inbuf, size_t inlen,
 int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out);
 int sc_asn1_decode_object_id(const u8 * inbuf, size_t inlen,
 			     struct sc_object_id *id);
+
+/* algorithm encoding/decoding */
+int sc_asn1_decode_algorithm_id(struct sc_context *,
+				const u8 *, size_t,
+				struct sc_algorithm_id *, int);
+int sc_asn1_encode_algorithm_id(struct sc_context *,
+				u8 **, size_t *,
+				const struct sc_algorithm_id *, int);
+void sc_asn1_clear_algorithm_id(struct sc_algorithm_id *);
 
 #define SC_ASN1_CLASS_MASK		0x30000000
 #define SC_ASN1_UNI			0x00000000 /* Universal */
