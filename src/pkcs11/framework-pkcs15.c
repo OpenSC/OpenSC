@@ -598,7 +598,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		/* Add all the private keys related to this pin */
 		rv = pkcs15_create_slot(p11card, auths[i], &slot);
 		if (rv != CKR_OK)
-			return rv;
+			return CKR_OK; /* no more slots available for this card */
 		for (j=0; j < fw_data->num_objects; j++) {
 			struct pkcs15_any_object *obj = fw_data->objects[j];
 
@@ -624,7 +624,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 			if (!slot) {
 				rv = pkcs15_create_slot(p11card, NULL, &slot);
 				if (rv != CKR_OK)
-					return rv;
+					return CKR_OK; /* no more slots available for this card */
 			}
 			pkcs15_add_object(slot, obj, NULL);
 		}
