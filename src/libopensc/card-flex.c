@@ -31,6 +31,8 @@
 static struct sc_atr_table flex_atrs[] = {
 	/* Cryptoflex */
 	/* 8k */
+	{ "3B:95:15:40:FF:68:01:02:02:01", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
+	/* 8k */
 	{ "3B:95:15:40:FF:68:01:02:02:04", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
 	/* 8k */
 	{ "3B:85:40:20:68:01:01:05:01", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
