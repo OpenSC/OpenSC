@@ -71,9 +71,13 @@ int etoken_init(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_APDU_EXT;
 
 	/* Set up algorithm info. */
-	flags = SC_ALGORITHM_RSA_HASH_MD5 | SC_ALGORITHM_RSA_HASH_SHA1
+	flags = 0
+#if 0
+		| SC_ALGORITHM_RSA_HASH_MD5
+		| SC_ALGORITHM_RSA_HASH_SHA1
 		| SC_ALGORITHM_RSA_HASH_MD5_SHA1
 		| SC_ALGORITHM_RSA_PAD_PKCS1
+#endif
 #if 1
 		| SC_ALGORITHM_ONBOARD_KEY_GEN
 #endif
@@ -421,6 +425,7 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 	}
 
 	if (file->type_attr_len == 0) {
+		memset(type, 0, sizeof(type));
 		type[0] = 0x00;
 		switch (file->type) {
 		case SC_FILE_TYPE_WORKING_EF:
@@ -442,12 +447,16 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 			case SC_FILE_EF_CYCLIC_TLV:
 				r = SC_ERROR_NOT_SUPPORTED;
 				goto out;
+				/* No idea what this means, but it
+				 * seems to be required for key
+				 * generation. */
+			case SC_FILE_EF_LINEAR_VARIABLE_TLV:
+				type[1] = 0xff;
 			default:
 				type[0] |= file->ef_structure & 7;
 				break;
 			}
 		}
-		type[1] = type[2] = 0x00; /* not used, but required */
 		r = sc_file_set_type_attr(file, type, sizeof(type));
 		if (r)
 			goto out;
@@ -620,6 +629,7 @@ etoken_set_security_env(struct sc_card *card,
 
 /*
  * Compute digital signature
+ * Note we assume that the key algorithm used here is RSA_PURE_SIG
  */
 static int
 etoken_compute_signature(struct sc_card *card,
@@ -634,26 +644,27 @@ etoken_compute_signature(struct sc_card *card,
 	assert(card != NULL && data != NULL && out != NULL);
 	if (datalen > 255)
 		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+	if (outlen < datalen)
+		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_BUFFER_TOO_SMALL);
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
 	 * P2:  0x9A  Cmd: Input for Digital Signature */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x9E, 0x9A);
-	apdu.resp = rbuf;
-	apdu.resplen = 64;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
+	apdu.resp = out;
+	apdu.le = datalen;
+	apdu.resplen = sizeof(rbuf);
 
 	memcpy(sbuf, data, datalen);
-	apdu.data = sbuf;
+	apdu.data = data;
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
 	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
-		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, 4, len);
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		SC_FUNC_RETURN(card->ctx, 4, apdu.resplen);
 	}
 	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
