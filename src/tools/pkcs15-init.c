@@ -613,20 +613,49 @@ do_set_pins(struct sc_profile *pro)
 }
 
 /*
+ * Read one PIN/PUK
+ */
+static int
+read_one_pin(struct pin_info *info, unsigned int n)
+{
+	static char	*names[2] = { "PIN", "PUK" };
+	char		prompt[64], *pass;
+	int		passlen;
+
+	sprintf(prompt, "Please enter %s for %s:", names[n], info->ident);
+
+	while (info->secret[n] == NULL) {
+		pass = getpass(prompt);
+		passlen = strlen(pass);
+		if (passlen < info->pkcs15.min_length) {
+			error("Password too short (%u characters min)",
+					info->pkcs15.min_length);
+			continue;
+		}
+		if (passlen > info->pkcs15.stored_length) {
+			error("Password too long (%u characters max)",
+					info->pkcs15.stored_length);
+			continue;
+		}
+		info->secret[n] = strdup(pass);
+		memset(pass, 0, passlen);
+	}
+	return 0;
+}
+
+/*
  * Get all the PINs and PUKs we need from the user
  */
 static int
 do_read_pins(struct sc_profile *pro)
 {
-	static char	*names[2] = { "PIN", "PUK" };
 	static char	*types[2] = { "CHV1", "CHV2" };
-	int		n;
+	int		n, r;
 
 	for (n = 0; n < 2; n++) {
 		struct pin_info	*info;
 		struct sc_file	*file;
-		char		prompt[64], *pass;
-		int		i, passlen, npins = 2;
+		int		i, npins = 2;
 
 		if (!(info = do_get_pin_by_name(pro, types[n], 0)))
 			continue;
@@ -646,27 +675,8 @@ do_read_pins(struct sc_profile *pro)
 
 		/* Loop over all PINs and PUKs */
 		for (i = 0; i < npins; i++) {
-			/* Already set from the command line? */
-			if (info->secret[i])
-				continue;
-
-			sprintf(prompt, "Please enter %s for %s:",
-					names[i], info->ident);
-
-		again:	pass = getpass(prompt);
-			passlen = strlen(pass);
-			if (passlen < info->pkcs15.min_length) {
-				error("Password too short (%u characters min)",
-						info->pkcs15.min_length);
-				goto again;
-			}
-			if (passlen > info->pkcs15.stored_length) {
-				error("Password too long (%u characters max)",
-						info->pkcs15.stored_length);
-				goto again;
-			}
-			info->secret[i] = strdup(pass);
-			memset(pass, 0, passlen);
+			if ((r = read_one_pin(info, i)) < 0)
+				return r;
 		}
 	}
 	return 0;
@@ -705,8 +715,9 @@ do_verify_pin(struct sc_profile *pro, unsigned int type, unsigned int reference)
 	if (type == SC_AC_CHV)
 		info = do_get_pin_by_reference(pro, reference);
 	if (!info || !(pin = info->secret[0])) {
-		error("Could not find %s (ref=0x%x)", ident, reference);
-		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+		if ((r = read_one_pin(info, 0)) < 0)
+			return r;
+		pin = info->secret[0];
 	}
 
 	return sc_verify(card, SC_AC_CHV, reference,
