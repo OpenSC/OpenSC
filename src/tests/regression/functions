@@ -36,7 +36,9 @@ if [ -z "$__p15init__" ]; then
 		case $1 in
 		-T|--use-default-transport-keys|\
 		--split-key|\
-		--no-prompt)
+		--no-prompt|\
+		--soft|\
+		-d*)
 			p15init="$p15init $1";;
 		--reader)
 			P15_READER=$2
