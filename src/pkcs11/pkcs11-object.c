@@ -725,14 +725,36 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		   CK_BYTE_PTR       pSeed,     /* the seed material */
 		   CK_ULONG          ulSeedLen) /* count of bytes of seed material */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+#ifdef HAVE_OPENSSL
+	struct sc_pkcs11_session *session;
+	int rv;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	return sc_pkcs11_openssl_add_seed_rand(session, pSeed, ulSeedLen);
+#else
+	return CKR_FUNCTION_NOT_SUPPORTED;
+#endif
 }
 
 CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		       CK_BYTE_PTR       RandomData,  /* receives the random data */
 		       CK_ULONG          ulRandomLen) /* number of bytes to be generated */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+#ifdef HAVE_OPENSSL
+	struct sc_pkcs11_session *session;
+	int rv;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	return sc_pkcs11_openssl_add_gen_rand(session, RandomData, ulRandomLen);
+#else
+	return CKR_FUNCTION_NOT_SUPPORTED;
+#endif
 }
 
 CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE hSession) /* the session's handle */

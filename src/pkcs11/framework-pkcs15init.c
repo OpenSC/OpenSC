@@ -156,6 +156,8 @@ pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
 	for (id = 0; slot_get_slot(id, &slot) == CKR_OK; id++) {
 		if (slot->card == p11card)
 			slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
+		if (slot->card->card->caps & SC_CARD_CAP_RNG)
+			slot->token_info.flags |= CKF_RNG;
 	}
 
 	sc_pkcs15init_unbind(profile);

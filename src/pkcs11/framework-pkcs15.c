@@ -255,6 +255,8 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 				| CKF_WRITE_PROTECTED;
 	if (card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD)
 		slot->token_info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+	if (card->card->caps & SC_CARD_CAP_RNG)
+		slot->token_info.flags |= CKF_RNG;
 	slot->fw_data = fw_data = (struct pkcs15_slot_data *) calloc(1, sizeof(*fw_data));
 	fw_data->auth_obj = auth;
 

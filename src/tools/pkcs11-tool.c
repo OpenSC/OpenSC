@@ -111,7 +111,7 @@ struct mech_info {
 
 static void		show_cryptoki_info(void);
 static void		list_slots(void);
-static void		show_slot(CK_SLOT_ID);
+static void		show_token(CK_SLOT_ID);
 static void		list_mechs(CK_SLOT_ID);
 static void		list_objects(CK_SESSION_HANDLE);
 static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
@@ -393,12 +393,13 @@ list_slots(void)
 						info.firmwareVersion.minor);
 			printf("  flags:         %s\n", p11_slot_info_flags(info.flags));
 		}
-		show_slot(p11_slots[n]);
+		if (info.flags & CKF_TOKEN_PRESENT)
+			show_token(p11_slots[n]);
 	}
 }
 
 void
-show_slot(CK_SLOT_ID slot)
+show_token(CK_SLOT_ID slot)
 {
 	CK_TOKEN_INFO	info;
 
@@ -1240,9 +1241,69 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 }
 
 static int
+test_random(CK_SESSION_HANDLE session)
+{
+	CK_BYTE buf1[100], buf2[100];
+	CK_BYTE seed1[100];
+	CK_RV rv;
+	int errors = 0;
+
+	printf("C_SeedRandom() and C_GenerateRandom():\n");
+
+	rv = p11->C_SeedRandom(session, seed1, 10);
+	if (rv == CKR_RANDOM_NO_RNG) {
+		printf("  not implemented\n");
+		return 0;
+	}
+	if (rv == CKR_RANDOM_SEED_NOT_SUPPORTED) {
+		printf("  seeding (C_SeedRandom) not supported\n");
+		return 0;
+	}
+	if (rv != CKR_OK) {
+		printf("  ERR: C_SeedRandom returned %s (0x%0x)\n", CKR2Str(rv), rv);
+		return 1;
+	}
+
+	rv = p11->C_GenerateRandom(session, buf1, 10);
+	if (rv != CKR_OK) {
+		printf("  ERR: C_GenerateRandom returned %s (0x%0x)\n", CKR2Str(rv), rv);
+		return 1;
+	}
+
+	rv = p11->C_GenerateRandom(session, buf1, 100);
+	if (rv != CKR_OK) {
+		printf("  ERR: C_GenerateRandom returned %s (0x%0x)\n", CKR2Str(rv), rv);
+		return 1;
+	}
+
+	rv = p11->C_GenerateRandom(session, buf1, 0);
+	if (rv != CKR_OK) {
+		printf("  ERR: C_GenerateRandom(,,0) returned %s (0x%0x)\n", CKR2Str(rv), rv);
+		return 1;
+	}
+
+	rv = p11->C_GenerateRandom(session, NULL, 100);
+	if (rv != CKR_OK) {
+		printf("  ERR: C_GenerateRandom(,NULL,) returned %s (0x%0x)\n", CKR2Str(rv), rv);
+		return 1;
+	}
+
+	if (memcmp(buf1, buf2, 100) == 0) {
+		printf("  ERR: C_GenerateRandom returned twice the same value!!!\n");
+		errors++;
+	}
+
+	printf("  seems to be OK\n");
+
+	return 0;
+}
+
+static int
 p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
        int errors = 0;
+
+       errors += test_random(session);
 
        errors += test_digest(slot);
 

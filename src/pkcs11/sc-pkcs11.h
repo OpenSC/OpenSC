@@ -357,6 +357,12 @@ CK_RV sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *,
 				CK_MECHANISM_TYPE, CK_MECHANISM_TYPE,
 				sc_pkcs11_mechanism_type_t *);
 
+#ifdef HAVE_OPENSSL
+/* Random generation functions */
+CK_RV sc_pkcs11_openssl_add_seed_rand(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
+CK_RV sc_pkcs11_openssl_add_gen_rand(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
+#endif
+
 /* Load configuration defaults */
 void load_pkcs11_parameters(struct sc_pkcs11_config *, struct sc_context *);
 

@@ -19,7 +19,7 @@ all: install-headers install-headers-dir $(TARGET) $(TARGET2)
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
 $(TARGET): $(OBJECTS)
-	link $(LINKFLAGS) /dll /out:$(TARGET) $(OBJECTS) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib winscard.lib
+	link $(LINKFLAGS) /dll /out:$(TARGET) $(OBJECTS) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\scrandom\scrandom.lib ..\pkcs15init\pkcs15init.lib winscard.lib
 
 $(TARGET2): $(OBJECTS2)
 	lib /nologo /machine:ix86 /out:$(TARGET2) $(OBJECTS2)
