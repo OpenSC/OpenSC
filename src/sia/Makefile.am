@@ -4,9 +4,9 @@ libdir = @libdir@/security
 
 MAINTAINERCLEANFILES = Makefile.in
 
-INCLUDES = -I../scam
+INCLUDES = -I${top_srcdir}/src/scam
 
-LDFLAGS = @LDFLAGS@ @LIBDL@ ../scam/libscam.la
+LDFLAGS = @LDFLAGS@ @LIBDL@ ${top_builddir}/src/scam/libscam.la
 
 SRC = sia_opensc.c sia_support.c sia_support.h
 
