@@ -168,6 +168,19 @@ struct sc_pkcs15_prkey {
 };
 typedef struct sc_pkcs15_prkey sc_pkcs15_prkey_t;
 
+/* Enveloped objects can be used to provide additional
+ * protection to non-native private keys */
+struct sc_pkcs15_enveloped_data {
+	/* recipient info */
+	sc_pkcs15_id_t id;		/* key ID */
+	struct sc_algorithm_id ke_alg;	/* key-encryption algo */
+	u8 *key;			/* encrypted key */
+	size_t key_len;
+	struct sc_algorithm_id ce_alg;	/* content-encryption algo */
+	u8 *content;			/* encrypted content */
+	size_t content_len;
+};
+
 struct sc_pkcs15_cert {
 	int version;
 	u8 *serial;
@@ -342,7 +355,7 @@ void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
 int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *card,
 			  const struct sc_pkcs15_pubkey_info *info,
 			  struct sc_pkcs15_pubkey_rsa **out);
-int sc_pkcs15_parse_pubkey_rsa(struct sc_context *ctx,
+int sc_pkcs15_decode_pubkey_rsa(struct sc_context *ctx,
 	       		   struct sc_pkcs15_pubkey_rsa *pubkey);
 int sc_pkcs15_encode_pubkey_rsa(struct sc_context *,
 			struct sc_pkcs15_pubkey_rsa *, u8 **, size_t *);
@@ -427,6 +440,13 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 				 struct sc_pkcs15_object *obj,
 				 const u8 **buf, size_t *bufsize);
 
+int sc_pkcs15_decode_enveloped_data(struct sc_context *ctx,
+				struct sc_pkcs15_enveloped_data *result,
+				const u8 *buf, size_t buflen);
+int sc_pkcs15_encode_enveloped_data(struct sc_context *ctx,
+				struct sc_pkcs15_enveloped_data *data,
+				u8 **buf, size_t *buflen);
+
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
 			 const struct sc_pkcs15_id *id2);
 void sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
@@ -435,6 +455,21 @@ int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df
                          int file_nr, struct sc_pkcs15_object *obj);
                          
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
+
+/* file content wrapping */
+int sc_pkcs15_wrap_data(struct sc_context *ctx,
+				const char *passphrase,
+				const u8 *in, size_t in_len,
+				u8 **out, size_t *out_len);
+int sc_pkcs15_unwrap_data(struct sc_context *ctx,
+				const char *passphrase,
+				const u8 *in, size_t in_len,
+				u8 **out, size_t *out_len);
+
+/* Generic file i/o */
+int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
+				const struct sc_path *path,
+				u8 **buf, size_t *buflen);
 
 /* Caching functions */
 int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
