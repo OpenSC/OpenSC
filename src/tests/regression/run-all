@@ -4,9 +4,12 @@ mkdir -p out
 
 scripts=""
 options=""
+abort_if_fail=true
 while [ $# -gt 0 ]; do
 	opt=$1; shift
 	case $opt in
+	--continue)
+		abort_if_fail=false;;
 	--reader)
 		options="$options $opt $1"
 		shift;;
@@ -20,11 +23,26 @@ if [ -z "$scripts" ]; then
 fi
 
 for script in $scripts; do
-	echo -n "${script} ..."
+	echo -n "${script}... "
 	if ./$script $options >out/$script 2>&1; then
 		echo "success"
 	else
-		echo "fail"
+		mkdir -p failed
+		failed="failed/$script"
+		rm -rf $failed
+		mv test-data $failed
+		echo "fail (test data moved to $failed)"
+		if $abort_if_fail; then
+			echo Aborting.
+			exit 1
+		fi
+		echo -n "Wiping card... "
+		if ./erase $options >out/erase 2>&1; then
+			echo done
+		else
+			echo failed.
+			exit 1
+		fi
 	fi
 done
 
