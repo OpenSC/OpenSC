@@ -42,6 +42,7 @@ int quiet = 0;
 
 const struct option options[] = {
 	{ "atr",		0, 0,		'a' },
+	{ "name",		0, 0,		'n' },
 	{ "list-readers",	0, 0, 		'l' },
 	{ "list-drivers",	0, 0,		'D' },
 	{ "list-rdrivers",	0, 0,		'R' },
@@ -57,6 +58,7 @@ const struct option options[] = {
 
 const char *option_help[] = {
 	"Prints the ATR bytes of the card",
+	"Identify the card and print its name",
 	"Lists all configured readers",
 	"Lists all installed card drivers",
 	"Lists all installed reader drivers",
@@ -358,6 +360,7 @@ int main(int argc, char * const argv[])
 	int do_list_files = 0;
 	int do_send_apdu = 0;
 	int do_print_atr = 0;
+	int do_print_name = 0;
 	int action_count = 0;
 	const char *opt_driver = NULL;
 		
@@ -393,6 +396,10 @@ int main(int argc, char * const argv[])
 			break;
 		case 'a':
 			do_print_atr = 1;
+			action_count++;
+			break;
+		case 'n':
+			do_print_name = 1;
 			action_count++;
 			break;
 		case 'r':
@@ -452,7 +459,8 @@ int main(int argc, char * const argv[])
 	if (err)
 		goto end;
 
-	printf("Using card driver: %s\n", card->driver->name);
+	if (!quiet)
+		printf("Using card driver: %s\n", card->driver->name);
 	r = sc_lock(card);
 	if (r) {
 		fprintf(stderr, "Unable to lock card: %s\n", sc_strerror(r));
@@ -460,8 +468,15 @@ int main(int argc, char * const argv[])
 		goto end;
 	}
 	if (do_print_atr) {
-		printf("Card ATR:\n");
+		if (!quiet)
+			printf("Card ATR: ");
 		hex_dump_asc(stdout, card->atr, card->atr_len, -1);
+		action_count--;
+	}
+	if (do_print_name) {
+		if (!quiet)
+			printf("Card name: ");
+		printf("%s\n", card->name);
 		action_count--;
 	}
 	if (do_send_apdu) {
