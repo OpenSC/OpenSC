@@ -127,6 +127,7 @@ struct sc_pkcs15init_certargs {
 	const char *		label;
 
 	unsigned long		x509_usage;
+	unsigned char		authority;
 	sc_pkcs15_der_t		der_encoded;
 };
 

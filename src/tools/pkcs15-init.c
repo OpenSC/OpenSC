@@ -90,6 +90,7 @@ enum {
 	OPT_PUBKEY,
 	OPT_EXTRACTABLE,
 	OPT_UNPROTECTED,
+	OPT_AUTHORITY,
 
 	OPT_PIN1 = 0x10000,	/* don't touch these values */
 	OPT_PUK1 = 0x10001,
@@ -117,6 +118,7 @@ const struct option	options[] = {
 	{ "format",		required_argument, 0,	'f' },
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
 	{ "store-certificate",	required_argument, 0,	'X' },
+	{ "authority",		no_argument,	   0,	OPT_AUTHORITY },
 
 	{ "extractable",	no_argument, 0,		OPT_EXTRACTABLE },
 	{ "insecure",		no_argument, 0,		OPT_UNPROTECTED },
@@ -181,7 +183,8 @@ static int			opt_debug = 0,
 				opt_action = 0,
 				opt_erase = 0,
 				opt_extractable = 0,
-				opt_unprotected = 0;
+				opt_unprotected = 0,
+				opt_authority = 0;
 static char *			opt_profile = "pkcs15";
 static char *			opt_infile = 0;
 static char *			opt_format = 0;
@@ -494,6 +497,7 @@ do_store_certificate(struct sc_profile *profile)
 	if (opt_objectid)
 		sc_pkcs15_format_id(opt_objectid, &args.id);
 	args.label = opt_objectlabel;
+	args.authority = opt_authority;
 
 	r = do_read_certificate(opt_infile, opt_format, &cert);
 	if (r >= 0)
@@ -1119,6 +1123,9 @@ handle_option(int c)
 		break;
 	case OPT_EXTRACTABLE:
 		opt_extractable++;
+		break;
+	case OPT_AUTHORITY:
+		opt_authority = 1;
 		break;
 	default:
 		print_usage_and_die();

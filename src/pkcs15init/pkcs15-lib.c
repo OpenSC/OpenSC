@@ -642,6 +642,7 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 
 	cert_info = (struct sc_pkcs15_cert_info *) calloc(1, sizeof(*cert_info));
 	cert_info->id = args->id;
+	cert_info->authority = args->authority;
 
 	object = (struct sc_pkcs15_object *) calloc(1, sizeof(*object));
 	object->type = SC_PKCS15_TYPE_CERT_X509;
