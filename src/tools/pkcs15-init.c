@@ -596,6 +596,7 @@ do_store_pin(struct sc_profile *profile)
 	sc_pkcs15_pin_info_t	info;
 	sc_ui_hints_t		hints;
 	int			r;
+	const char 		*pin_id;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.usage	= SC_UI_USAGE_NEW_PIN;
@@ -606,8 +607,10 @@ do_store_pin(struct sc_profile *profile)
 	hints.p15card	= p15card;
 	hints.info.pin	= &info;
 
-	if (!opt_authid) {
-		error("No auth id specified\n");
+	pin_id = opt_objectid ? opt_objectid : opt_authid;
+
+	if (!pin_id) {
+		error("No pin id specified\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -632,7 +635,7 @@ do_store_pin(struct sc_profile *profile)
 	}
 
 	memset(&args, 0, sizeof(args));
-	sc_pkcs15_format_id(opt_authid, &args.auth_id);
+	sc_pkcs15_format_id(pin_id, &args.auth_id);
 	args.pin = (u8 *) opt_pins[0];
 	args.pin_len = strlen(opt_pins[0]);
 	args.puk = (u8 *) opt_pins[1];

@@ -625,6 +625,8 @@ void print_pin_info(const struct sc_pkcs15_object *obj)
 		"integrity-protected", "confidentiality-protected",
 		"exchangeRefData"
 	};
+	const char *pin_types[] = {"bcd", "ascii-numeric", "UTF-8",
+		"halfnibble bcd", "iso 9664-1"}; 
         const struct sc_pkcs15_pin_info *pin = (const struct sc_pkcs15_pin_info *) obj->data;
 	const int pf_count = sizeof(pin_flags)/sizeof(pin_flags[0]);
 	char path[SC_MAX_PATH_SIZE * 2 + 1];
@@ -639,7 +641,7 @@ void print_pin_info(const struct sc_pkcs15_object *obj)
 	}
 	printf("PIN [%s]\n", obj->label);
 	printf("\tCom. Flags: 0x%X\n", obj->flags);
-	printf("\tAuth ID   : %s\n", sc_pkcs15_print_id(&pin->auth_id));
+	printf("\tID        : %s\n", sc_pkcs15_print_id(&pin->auth_id));
 	printf("\tFlags     : [0x%02X]", pin->flags);
 	for (i = 0; i < pf_count; i++)
 		if (pin->flags & (1 << i)) {
@@ -650,7 +652,7 @@ void print_pin_info(const struct sc_pkcs15_object *obj)
 				pin->min_length, pin->max_length, pin->stored_length);
 	printf("\tPad char  : 0x%02X\n", pin->pad_char);
 	printf("\tReference : %d\n", pin->reference);
-	printf("\tType      : %d\n", pin->type);
+	printf("\tType      : %s\n", pin_types[pin->type]);
 	printf("\tPath      : %s\n", path);
 	if (pin->tries_left >= 0)
 		printf("\tTries left: %d\n", pin->tries_left);
