@@ -90,10 +90,6 @@ int etoken_init(struct sc_card *card)
 
 	card->cla = 0x00;
 
-	/* Tell the upper layers we do our own payload chunking
-	 * in read/update/write_binary */
-	card->caps |= SC_CARD_CAP_APDU_EXT;
-
 	/* Set up algorithm info. */
 	flags = SC_ALGORITHM_NEED_USAGE
 #if 0
@@ -524,44 +520,6 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 out:	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
-static int etoken_update_binary(struct sc_card *card,
-				unsigned int idx, const u8 *buf,
-				size_t count, unsigned long flags)
-{
-	int	n, total = 0;
-
-	do {
-		if ((n = count) > ETOKEN_MAX_PAYLOAD)
-			n = ETOKEN_MAX_PAYLOAD;
-		n = iso_ops->update_binary(card, idx+total, buf+total, n, flags);
-		if (n < 0)
-			break;
-		count -= n;
-		total += n;
-	} while (count);
-	
-	return total? total : n;
-}
-
-static int etoken_read_binary(struct sc_card *card,
-				unsigned int idx, u8 *buf,
-				size_t count, unsigned long flags)
-{
-	int	n, total = 0;
-
-	do {
-		if ((n = count) > ETOKEN_MAX_PAYLOAD)
-			n = ETOKEN_MAX_PAYLOAD;
-		n = iso_ops->read_binary(card, idx+total, buf+total, n, flags);
-		if (n < 0)
-			break;
-		count -= n;
-		total += n;
-	} while (count);
-	
-	return total? total : n;
-}
-
 /*
  * Restore the indicated SE
  */
@@ -832,8 +790,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	etoken_ops.finish = etoken_finish;
 	etoken_ops.select_file = etoken_select_file;
 	etoken_ops.create_file = etoken_create_file;
-	etoken_ops.update_binary = etoken_update_binary;
-	etoken_ops.read_binary = etoken_read_binary;
 	etoken_ops.set_security_env = etoken_set_security_env;
 	etoken_ops.restore_security_env = etoken_restore_security_env;
 	etoken_ops.compute_signature = etoken_compute_signature;
