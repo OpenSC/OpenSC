@@ -89,12 +89,21 @@ sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
 	sc_card_t      *card = p15card->card;
 	sc_context_t   *ctx = p15card->card->ctx;
 	sc_path_t       path;
-	struct sc_file *file;
-	unsigned char   ef_gdo[20];
 	unsigned char   serial[30];
 	int             i, r;
 	sc_serial_number_t serialnr;
 
+	/* check if we have the correct card OS */
+	if (strcmp(card->name, "TCOS"))
+		return SC_ERROR_WRONG_CARD;
+	/* check if we have a df01 DF           */
+	sc_format_path("3F00DF01", &path);
+	r = sc_select_file(card, &path, NULL);
+	if (r < 0) {
+		r = SC_ERROR_WRONG_CARD;
+		goto failed;
+	}
+	/* get the card serial number           */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serialnr);
 	if (r < 0) {
 		sc_debug(ctx, "unable to get ICCSN\n");
