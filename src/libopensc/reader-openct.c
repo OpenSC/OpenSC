@@ -1,0 +1,352 @@
+/*
+ * reader-openct.c: backend for OpenCT
+ *
+ * Copyright (C) 2003  Olaf Kirch <okir@suse.de>
+ */
+
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <syslog.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+#include <openct/openct.h>
+#include <openct/logging.h>
+
+#include "opensc.h"
+#include "internal.h"
+#include "log.h"
+
+/* If you set PREALLOCATE to a non-zero value, this backend
+ * will allocate that many reader slots. This will allow hot-
+ * plugging devices (such as USB tokens) while OpenSC is running.
+ *
+ * To disable this, set PREALLOCATE to 0.
+ *
+ * This will most likely become a config file option soon.
+ */
+#define PREALLOCATE	5
+
+/* function declarations */
+static int openct_reader_init(struct sc_context *ctx, void **priv_data);
+static int openct_add_reader(struct sc_context *ctx, unsigned int num, ct_info_t *info);
+static int openct_reader_finish(struct sc_context *ctx, void *priv_data);
+static int openct_reader_release(struct sc_reader *reader);
+static int openct_reader_detect_card_presence(struct sc_reader *reader,
+			struct sc_slot_info *slot);
+static int openct_reader_connect(struct sc_reader *reader,
+			struct sc_slot_info *slot);
+static int openct_reader_disconnect(struct sc_reader *reader,
+			struct sc_slot_info *slot, int action);
+static int openct_reader_transmit(struct sc_reader *reader,
+			struct sc_slot_info *slot,
+			const u8 *sendbuf, size_t sendsize,
+			u8 *recvbuf, size_t *recvsize, int control);
+static int openct_reader_lock(struct sc_reader *reader,
+			struct sc_slot_info *slot);
+static int openct_reader_unlock(struct sc_reader *reader,
+			struct sc_slot_info *slot);
+
+/* the operations struct, already initialized */
+static struct sc_reader_operations openct_reader_operations = {
+	.init			= openct_reader_init,
+	.finish			= openct_reader_finish,
+	.release		= openct_reader_release,
+	.detect_card_presence	= openct_reader_detect_card_presence,
+	.connect		= openct_reader_connect,
+	.disconnect		= openct_reader_disconnect,
+	.transmit		= openct_reader_transmit,
+	.lock			= openct_reader_lock,
+	.unlock			= openct_reader_unlock,
+};
+
+/* also, the driver struct */
+static struct sc_reader_driver openct_reader_driver = {
+	.name = "OpenCT Reader",
+	.short_name = "openct",
+	.ops = &openct_reader_operations
+};
+
+/* return our structure */
+const struct sc_reader_driver *sc_get_openct_driver() {
+	return &openct_reader_driver;
+};
+
+/* private data structures */
+struct driver_data {
+	ct_handle *	h;
+	unsigned int	num;
+	ct_info_t	info;
+};
+
+struct slot_data {
+	ct_lock_handle	excl_lock;
+	ct_lock_handle	shared_lock;
+};
+
+/*
+ * Initialize readers
+ *
+ * Called during sc_establish_context(), when the driver
+ * is loaded
+ */
+static int
+openct_reader_init(struct sc_context *ctx, void **priv_data)
+{
+	unsigned int	i;
+
+	SC_FUNC_CALLED(ctx, 1);
+	for (i = 0; i < OPENCT_MAX_READERS; i++) {
+		ct_info_t	info;
+
+		if (ct_reader_info(i, &info) >= 0) {
+			openct_add_reader(ctx, i, &info);
+		} else if (i < PREALLOCATE) {
+			openct_add_reader(ctx, i, NULL);
+		}
+	}
+
+	return SC_NO_ERROR;
+}
+
+static int
+openct_add_reader(struct sc_context *ctx, unsigned int num, ct_info_t *info)
+{
+	sc_reader_t	*reader;
+	struct driver_data *data;
+	int		rc, i;
+
+	if (!(reader = calloc(1, sizeof(*reader)))
+	 || !(data = (calloc(1, sizeof(*data))))) {
+		if (reader)
+			free(reader);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
+	if (info) {
+		data->info = *info;
+	} else {
+		strcpy(data->info.ct_name, "OpenCT reader (detached)");
+		data->info.ct_slots = 1;
+	}
+	data->num = num;
+
+	reader->driver = &openct_reader_driver;
+	reader->ops = &openct_reader_operations;
+	reader->drv_data = data;
+	reader->name = strdup(data->info.ct_name);
+	reader->slot_count = data->info.ct_slots;
+
+	if ((rc = _sc_add_reader(ctx, reader)) < 0) { 
+		free(data);
+		free(reader->name);
+		free(reader);
+		return rc;
+	}
+
+	for (i = 0; i < SC_MAX_SLOTS; i++) {
+		reader->slot[i].drv_data = calloc(1, sizeof(struct slot_data));
+		reader->slot[i].id = i;
+	}
+
+	return 0;
+}
+
+/*
+ * Called when the driver is being unloaded.  finish() has to
+ * deallocate the private data and any resources.
+ */
+int
+openct_reader_finish(struct sc_context *ctx, void *priv_data)
+{
+	SC_FUNC_CALLED(ctx, 1);
+	return SC_NO_ERROR;
+}
+
+/*
+ * Called when releasing a reader.  release() has to
+ * deallocate the private data.  Other fields will be
+ * freed by OpenSC.
+ */
+int
+openct_reader_release(struct sc_reader *reader)
+{
+	struct driver_data *data = (struct driver_data *) reader->drv_data;
+
+	SC_FUNC_CALLED(reader->ctx, 1);
+	if (data) {
+		if (data->h)
+			ct_reader_disconnect(data->h);
+		memset(data, 0, sizeof(*data));
+		reader->drv_data = NULL;
+		free(data);
+	}
+	
+	return SC_NO_ERROR;
+}
+
+/*
+ * Check whether a card was added/removed
+ */
+int
+openct_reader_detect_card_presence(struct sc_reader *reader,
+			struct sc_slot_info *slot)
+{
+	struct driver_data *data = (struct driver_data *) reader->drv_data;
+	int rc, status;
+
+	SC_FUNC_CALLED(reader->ctx, 1);
+
+	if (!data->h && !(data->h = ct_reader_connect(data->num)))
+		return SC_ERROR_CARD_NOT_PRESENT;
+
+	if ((rc = ct_card_status(data->h, slot->id, &status)) < 0)
+		return SC_ERROR_TRANSMIT_FAILED;
+
+	if (status & IFD_CARD_PRESENT) {
+		slot->flags = SC_SLOT_CARD_PRESENT;
+		if (status & IFD_CARD_STATUS_CHANGED)
+			slot->flags = SC_SLOT_CARD_PRESENT;
+	}
+	return slot->flags;
+}
+
+#if 0
+int openct_reader_unix_cmd(struct sc_reader *reader, 
+			struct sc_slot_info *slot,
+			u8 cmd) {
+	struct openct_privslot *myprivslot;
+	u8 msg;
+	int rc;
+
+	SC_FUNC_CALLED(reader->ctx, 1);
+	myprivslot = slot->drv_data;
+	
+	rc = write(myprivslot->fd, &cmd, sizeof(cmd));
+	if (rc != sizeof(cmd)) {
+		error(reader->ctx, "openct_reader_unix_cmd write failed\n");
+		return SC_ERROR_READER;
+	}
+
+	rc = read(myprivslot->fd, &msg, sizeof(msg));
+	if (rc != 1 || msg != 0) {
+		error(reader->ctx, "openct_reader_unix_cmd read failed\n");
+		return SC_ERROR_READER;
+	}
+
+	return SC_NO_ERROR;
+}
+#endif
+
+static int
+openct_reader_connect(struct sc_reader *reader,
+			struct sc_slot_info *slot)
+{
+	struct driver_data *data = (struct driver_data *) reader->drv_data;
+	int rc;
+
+	SC_FUNC_CALLED(reader->ctx, 1);
+
+	if (data->h)
+		ct_reader_disconnect(data->h);
+
+	if (!(data->h = ct_reader_connect(data->num))) {
+		error(reader->ctx, "ct_reader_connect socket failed\n");
+		return SC_ERROR_CARD_NOT_PRESENT;
+	}
+
+	rc = ct_card_request(data->h, slot->id, 0, NULL,
+				slot->atr, sizeof(slot->atr));
+	if (rc < 0) {
+		error(reader->ctx,
+				"openct_reader_connect read failed: %s\n",
+				ct_strerror(rc));
+		return SC_ERROR_CARD_NOT_PRESENT;
+	}
+
+	if (rc == 0) {
+		error(reader->ctx, "openct_reader_connect recved no data\n");
+		return SC_ERROR_READER;
+	}
+
+	slot->atr_len = rc;
+	return SC_NO_ERROR;
+}
+
+int
+openct_reader_disconnect(struct sc_reader *reader,
+			struct sc_slot_info *slot, int action)
+{
+	struct driver_data *data = (struct driver_data *) reader->drv_data;
+
+	SC_FUNC_CALLED(reader->ctx, 1);
+	if (data->h)
+		ct_reader_disconnect(data->h);
+	data->h = NULL;
+	return SC_NO_ERROR;
+}
+
+int
+openct_reader_transmit(struct sc_reader *reader,
+		struct sc_slot_info *slot,
+		const u8 *sendbuf, size_t sendsize,
+		u8 *recvbuf, size_t *recvsize, int control)
+{
+	struct driver_data *data = (struct driver_data *) reader->drv_data;
+	int rc;
+
+	SC_FUNC_CALLED(reader->ctx, 1);
+
+	if (data->h == 0)
+		return SC_ERROR_CARD_NOT_PRESENT;
+
+	rc = ct_card_transact(data->h, slot->id,
+			sendbuf, sendsize,
+			recvbuf, *recvsize);
+
+	if (rc < 0) {
+		/* XXX - check error code */
+		return SC_ERROR_READER;
+	}
+
+	*recvsize = rc;
+	return SC_NO_ERROR;
+}
+
+int
+openct_reader_lock(struct sc_reader *reader,
+			struct sc_slot_info *slot)
+{
+	struct driver_data *data = (struct driver_data *) reader->drv_data;
+	struct slot_data *slot_data = (struct slot_data *) slot->drv_data;
+	int rc;
+
+	SC_FUNC_CALLED(reader->ctx, 1);
+	rc = ct_card_lock(data->h, slot->id, IFD_LOCK_EXCLUSIVE, &slot_data->excl_lock);
+
+	if (rc < 0)
+		return SC_ERROR_READER;
+
+	return 0;
+}
+
+int
+openct_reader_unlock(struct sc_reader *reader,
+			struct sc_slot_info *slot)
+{
+	struct driver_data *data = (struct driver_data *) reader->drv_data;
+	struct slot_data *slot_data = (struct slot_data *) slot->drv_data;
+	int rc;
+
+	SC_FUNC_CALLED(reader->ctx, 1);
+	rc = ct_card_unlock(data->h, slot->id, slot_data->excl_lock);
+
+	if (rc < 0)
+		return SC_ERROR_READER;
+
+	return 0;
+}

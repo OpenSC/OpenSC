@@ -16,6 +16,14 @@ PCSC_FLAGS = @CFLAGS_PCSC@
 PCSC_LIB = @LIBPCSC@
 endif
 
+if HAVE_USBTOKEN
+USBTOKEN_SRC = reader-usbtoken.c
+endif
+
+if HAVE_OPENCT
+OPENCT_SRC = reader-openct.c
+endif
+
 INCLUDES = $(PCSC_FLAGS)
 
 bin_SCRIPTS = opensc-config
@@ -28,13 +36,13 @@ libopensc_la_SOURCES	= sc.c ctx.c module.c asn1.c log.c base64.c \
 			  pkcs15-prkey.c pkcs15-pubkey.c pkcs15-sec.c \
 			  pkcs15-wrap.c pkcs15-algo.c \
 			  pkcs15-cache.c $(PCSC_SRC) reader-ctapi.c \
-			  reader-usbtoken.c ctbcs.c \
+			  $(USBTOKEN_SRC) $(OPENCT_SRC) ctbcs.c \
 			  card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 			  card-etoken.c card-tcos.c card-emv.c card-default.c \
 			  card-mcrd.c
 
 libopensc_la_LDFLAGS	= -version-info 0:6:0
-libopensc_la_LIBADD	= @LIBDL@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF)
+libopensc_la_LIBADD	= @LIBDL@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF) -lopenct
 
 include_HEADERS		= opensc.h pkcs15.h emv.h \
 			  errors.h types.h \
