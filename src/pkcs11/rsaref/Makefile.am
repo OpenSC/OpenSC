@@ -2,4 +2,9 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-EXTRA_DIST = pkcs11.h pkcs11f.h pkcs11t.h unix.h win32.h
+includedir= @includedir@/rsaref
+
+include_HEADERS = pkcs11.h pkcs11f.h pkcs11t.h 
+noinst_HEADERS = unix.h win32.h
+
+

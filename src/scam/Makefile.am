@@ -13,10 +13,9 @@ if HAVE_SSL
 SSL_LIB = @LIBCRYPTO@
 endif
 
-LDFLAGS = @LIBOPENSC@ @LIBSCRANDOM@ $(LDAP_LIB) $(SSL_LIB) $(SCIDI_LIB)
-EXTRAINC = $(SCIDI_INC)
+LDFLAGS = @LIBOPENSC@ @LIBSCRANDOM@ $(LDAP_LIB) $(SSL_LIB)
 
-SRC = scam.c scam.h p15_eid.c p15_ldap.c $(SCIDI_SRC)
+SRC = scam.c scam.h p15_eid.c p15_ldap.c
 
 libscam_la_SOURCES = $(SRC)
 libscam_la_LDFLAGS = -module -avoid-version
