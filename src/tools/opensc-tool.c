@@ -1,3 +1,22 @@
+/*
+ * sc-tool.c: Tool for accessing SmartCards with libsc
+ *
+ * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -294,7 +313,7 @@ int enum_dir(struct sc_path path, int depth)
 	if (sc_file_valid(&file)) {
 		if (file.namelen) {
 			printf("[");
-			sc_print_binary(file.name, file.namelen);
+			sc_print_binary(stdout, file.name, file.namelen);
 			printf("] ");
 		}
 		switch (file.type) {
@@ -438,7 +457,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			continue;
+			print_usage_and_die();
 		switch (c) {
 		case 'r':
 			opt_cert = optarg;

@@ -193,7 +193,7 @@ void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin);
 int sc_pkcs15_enum_pins(struct sc_pkcs15_card *card);
 int sc_pkcs15_verify_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_pin_info *pin,
-			 char *pincode, int pinlen);
+			 const u8 *pincode, int pinlen);
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_pin_info *pin,
 			 char *oldpincode,

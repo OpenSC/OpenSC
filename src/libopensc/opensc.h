@@ -23,6 +23,7 @@
 
 #include <pthread.h>
 #include <winscard.h>
+#include <stdio.h>
 
 #define SC_ERROR_MIN				-1000
 #define SC_ERROR_UNKNOWN			-1000
@@ -228,7 +229,7 @@ const char *sc_strerror(int error);
 /* Internal use only */
 int sc_file_valid(const struct sc_file *file);
 void sc_hex_dump(const u8 *buf, int len);
-void sc_print_binary(const u8 *buf, int len);
+void sc_print_binary(FILE *f, const u8 *buf, int len);
 int sc_hex_to_bin(const char *in, u8 *out, int *outlen);
 int _sc_sw_to_errorcode(int sw1, int sw2);
 

@@ -170,7 +170,7 @@ int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
 	memset(sbuf, 0, pinlen);
 	if (r)
 		return r;
-	if (apdu.sw1 == 0x63 && (apdu.sw2 && 0xF0) == 0xC0) {
+	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
 		if (tries_left != NULL)
 			*tries_left = apdu.sw2 & 0x0F;
 		return SC_ERROR_PIN_CODE_INCORRECT;

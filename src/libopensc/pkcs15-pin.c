@@ -111,7 +111,7 @@ void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin)
 	printf("\tFlags     : %d\n", pin->com_attr.flags);
 	printf("\tLength    : %d..%d\n", pin->min_length, pin->stored_length);
 	printf("\tPad char  : ");
-	sc_print_binary(&pin->pad_char, 1);
+	sc_print_binary(stdout, &pin->pad_char, 1);
 	printf("\n");
 	printf("\tPath      : %s\n", path);
 	printf("\tAuth ID   : ");
@@ -165,7 +165,7 @@ int sc_pkcs15_enum_pins(struct sc_pkcs15_card *p15card)
 
 int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_pin_info *pin,
-			 char *pincode, int pinlen)
+			 const u8 *pincode, int pinlen)
 {
 	int r;
 	struct sc_file file;

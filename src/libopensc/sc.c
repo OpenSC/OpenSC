@@ -77,7 +77,7 @@ void sc_hex_dump(const u8 *buf, int count)
 	fflush(stdout);
 }
 
-void sc_print_binary(const u8 *buf, int count)
+void sc_print_binary(FILE *f, const u8 *buf, int count)
 {
 	int i;
 	
@@ -88,9 +88,9 @@ void sc_print_binary(const u8 *buf, int count)
 			format = "\\x%02X";
 		else
 			format = "%c";
-		printf(format, c);
+		fprintf(f, format, c);
 	}
-	fflush(stdout);
+	fflush(f);
 }
 
 int sc_hex_to_bin(const char *in, u8 *out, int *outlen)
@@ -229,7 +229,10 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 	apdu->sw1 = r[dwRecvLength-2];
 	apdu->sw2 = r[dwRecvLength-1];
 	dwRecvLength -= 2;
-	apdu->resplen = dwRecvLength;
+	if (dwRecvLength > apdu->resplen)
+		dwRecvLength = apdu->resplen;
+	else
+		apdu->resplen = dwRecvLength;
 	if (dwRecvLength)
 		memcpy(apdu->resp, r, dwRecvLength);
 
@@ -593,7 +596,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 	}
 	SCardListReaders(ctx->pcsc_ctx, NULL, NULL,
 			 (LPDWORD) & reader_buf_size);
-	if (reader_buf_size == 0) {
+	if (reader_buf_size < 2) {
 		if (sc_debug)
 			fprintf(stderr, "No readers found!\n");
 		free(ctx);
@@ -676,7 +679,7 @@ int sc_connect_card(struct sc_context *ctx,
 
 	assert(card_out != NULL);
 	if (reader >= ctx->reader_count || reader < 0)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		return SC_ERROR_OBJECT_NOT_FOUND;
 	
 	rgReaderStates[0].szReader = ctx->readers[reader];
 	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
