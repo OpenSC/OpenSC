@@ -9,7 +9,7 @@ Netscape:
 	Click: Add
 
 	Module name: descriptive name about module (eg. sc-pkcs11)
-	Module file: absolute path of libsc-pkcs11.so
+	Module file: absolute path of opensc-pkcs11.so
 
 
 Mozilla:
@@ -25,7 +25,7 @@ Mozilla:
 	Click: Load
 
 	Module name: descriptive name about module (eg. sc-pkcs11)
-	Module file: absolute path of libsc-pkcs11.so
+	Module file: absolute path of opensc-pkcs11.so
 
 
 Notes
@@ -35,6 +35,6 @@ Netscape seems to show more information about the security module
 than mozilla. Otherwise all stuff is untested.	
 
 Please note that the library currently writes debug log to
-/tmp/libsc-pkcs11.log.
+/tmp/opensc-pkcs11.log.
 
 
