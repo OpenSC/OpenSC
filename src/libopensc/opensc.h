@@ -791,6 +791,7 @@ extern const char *sc_get_version(void);
 
 extern const struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern const struct sc_reader_driver *sc_get_ctapi_driver(void);
+extern const struct sc_reader_driver *sc_get_usbtoken_driver(void);
 
 extern struct sc_card_driver *sc_get_iso7816_driver(void);
 extern struct sc_card_driver *sc_get_emv_driver(void);

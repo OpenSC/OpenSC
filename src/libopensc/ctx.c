@@ -74,6 +74,7 @@ static const struct _sc_driver_entry internal_reader_drivers[] = {
 #endif
 #ifndef _WIN32
         { "ctapi", (void *) sc_get_ctapi_driver, NULL },
+        { "usbtoken", (void *) sc_get_usbtoken_driver, NULL },
 #endif
 	{ NULL, NULL, NULL }
 };

@@ -4,7 +4,7 @@ includedir = ${prefix}/include/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
-EXTRA_DIST = Makefile.mak opensc-config.in
+EXTRA_DIST = Makefile.mak libopensc.pc.in reader-pcsc.c
 
 if HAVE_SSL
 SSL_LIB = @LIBCRYPTO@
@@ -27,7 +27,8 @@ libopensc_la_SOURCES	= sc.c ctx.c module.c asn1.c log.c base64.c \
 			  pkcs15.c pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \
 			  pkcs15-prkey.c pkcs15-pubkey.c pkcs15-sec.c \
 			  pkcs15-wrap.c pkcs15-algo.c \
-			  pkcs15-cache.c $(PCSC_SRC) reader-ctapi.c ctbcs.c \
+			  pkcs15-cache.c $(PCSC_SRC) reader-ctapi.c \
+			  reader-usbtoken.c ctbcs.c \
 			  card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 			  card-etoken.c card-tcos.c card-emv.c card-default.c \
 			  card-mcrd.c
@@ -39,3 +40,7 @@ include_HEADERS		= opensc.h pkcs15.h emv.h \
 			  errors.h types.h \
 			  cardctl.h asn1.h log.h
 noinst_HEADERS		= ctbcs.h internal.h
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = libopensc.pc
+
