@@ -15,7 +15,7 @@ New in 0.8.1; 2003-09-xx; Olaf Kirch:
   - Renamed debug/error functions to sc_debug/sc_error
   - Don't DER-en/decode the data in a pkcs15 object
   - Portability fixes for the OpenCT reader driver
-* Fixed CRLF parsing for libscconf
+* libscconf: Fixed CRLF parsing for UNIX platforms
 * Added PKCS#11 spy module by Mathias Brossard
 * Other minor bug/build fixes and cleanups
 

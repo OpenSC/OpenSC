@@ -1,9 +1,9 @@
 
 
-OpenSC Release 0.8.0
+OpenSC Release 0.8.1
 ====================
 
-We are pleased to announce the availability of OpenSC 0.8.0.
+We are pleased to announce the availability of OpenSC 0.8.1.
 
 OpenSC provides a set of libraries and utilities to access smart
 cards. Its main focus is on cards that support cryptographic operations,

@@ -54,6 +54,10 @@
 
 #define PATH_MAX _MAX_PATH
 
+#ifndef VERSION
+#define VERSION "0.8.1"
+#endif
+
 /* src/common/getpass.c */
 extern char *getpass(const char *prompt);
 
