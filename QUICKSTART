@@ -87,7 +87,7 @@ GnuPG, the Assuan support is not needed.
 
 PAM support allowes you to use a smart card and the opensc PAM module
 to log into your system. If enabled, the pam module has two flavors:
-it can compare a key on a smart card to a certificate stored localy,
+it can compare a key on a smart card to a certificate stored locally,
 or it can communicate with an LDAP server to check the key and
 certificate stored on a smart card. The former mode requires only
 PAM support, the later is only available, if OpenSC is compiled with
@@ -101,10 +101,10 @@ $ su root
 and install the software as root
 # make install
 
-usualy opensc is fine without any config file, still you can install it:
+usually opensc is fine without any config file, still you can install it:
 
 # cp etc/opensc.conf.example /etc/opensc.conf
-# cp etc/scldap.conf.example /etc/scladp.conf
+# cp etc/scldap.conf.example /etc/scldap.conf
 
 If you have some reason to edit the config file, feel free to do so.
 But most users are fine without.
@@ -164,7 +164,7 @@ Please type again to verify:
 
 This created an empty pkcs15 structure. You can't do much without it.
 Also I entered a pin for the security officer, and an unblocking pin.
-As a general rule, the SO pin is required everytime you change the
+As a general rule, the SO pin is required every time you change the
 card, but only the user pin is required to use it.
 
 $ pkcs15-init --store-pin --auth-id 01 --label "Andreas Jellinghaus"
@@ -208,7 +208,7 @@ Loaded: (pkcs11) pkcs11 engine
 OpenSSL>
 
 It is important to enter the whole long command in one single command
-line. I usualy copy&paste the command, to make sure I don't mistype
+line. I usually copy&paste the command, to make sure I don't mistype
 anything. This command loads the opensc engine, so openssl can delegate
 some work from your computers cpu to the smart card.
 
