@@ -11,9 +11,10 @@ if [ -z "$__p15init__" ]; then
 
 	p15crypt=$p15base/tools/pkcs15-crypt
 	p15tool=$p15base/tools/pkcs15-tool
+	p15init=$p15base/tools/pkcs15-init
 	p15log=$p15temp/test.log
 
-	for bin in $p15tool $p15crypt; do
+	for bin in $p15tool $p15crypt $p15init; do
 		test -x $bin && continue
 		echo "*** Missing binary $bin" >&2
 		exit 1

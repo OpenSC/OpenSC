@@ -1,0 +1,49 @@
+#!/bin/bash
+#
+# This test checks various aspects of RSA signing
+#
+# It will blank the card, create an RSA key and test it
+#
+# Run this from the regression test directory.
+
+. functions
+
+msg <<EOF
+:::
+::: Testing on-card signature facilities
+:::
+::: This test will blank the card, create an RSA key pair on-board
+::: and verify it works.
+:::
+EOF
+
+m=$p15temp/message
+d=$p15temp/digest
+s=$p15temp/signed
+p=$p15temp/public.pem
+
+msg "Initializing card"
+run_check_status $p15init -EC
+
+msg "Generating key pair on-board"
+run_check_status $p15init --insecure -G rsa/1024 --id 45
+
+msg "Extracting public key"
+run_check_status $p15tool --read-public-key 45 > $p
+
+# Set up message file
+echo lalla > $m
+
+msg "Signing and verifying using MD5"
+run_check_status openssl dgst -md5 -binary -out $d < $m
+run_check_status $p15crypt -s --md5 --pkcs1 -i $d -o $s
+run_check_output "Verified OK" \
+	openssl dgst -verify $p -md5 -signature $s < $m
+success
+
+msg "Signing and verifying using SHA1"
+run_check_status openssl dgst -sha1 -binary -out $d < $m
+run_check_status $p15crypt -s --sha-1 --pkcs1 -i $d -o $s
+run_check_output "Verified OK" \
+	openssl dgst -verify $p -sha1 -signature $s < $m
+success
