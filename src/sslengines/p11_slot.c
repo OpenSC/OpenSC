@@ -74,8 +74,8 @@ PKCS11_enumerate_slots(PKCS11_CTX *ctx,
 	PKCS11_CTX_private *priv = PRIVCTX(ctx);
 
 	if (priv->nslots < 0) {
-		CK_ULONG	nslots, n;
 		CK_SLOT_ID	slotid[64];
+		CK_ULONG	nslots = sizeof(slotid), n;
 		PKCS11_SLOT	*slots;
 		int		rv;
 
