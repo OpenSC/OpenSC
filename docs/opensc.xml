@@ -136,6 +136,259 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	</chapter>
 
 	<chapter>
+		<title>Overview</title>
+
+		<para>
+			OpenSC is a large toolkit. The main building
+			block is the opensc library. It has three layers
+			of code, each with several drivers in it.
+			Other libraries are the pkcs11 module,
+			a pam module, two engines for openssl.
+			In addition there are several tools to test and
+			use these tools and libraries.
+		</para>
+
+		<para>
+			Purpose of this chapter is to give an overview
+			of the inner workings of the opensc library,
+			to give a short presentation what the other
+			libraries do, and finaly what the opensc toolchest
+			has to offer. Each tool has it's own man page,
+			each library it's own section in this document.
+		</para>
+
+		<section>
+			<title>Layers in libopensc</title>
+
+			<para>
+				libopensc is the basic library used by
+				everthing else. It offer basic
+				functionality like talking to smart
+				cards, but also advances functions
+				like generating rsa keys on a smart card.
+			</para>
+
+			<para>
+				libopensc has several layers of functionality,
+				each implemented by one or several drivers.
+				The layers are:
+			</para>
+
+			<variablelist>
+
+				<varlistentry>
+				<term>reader</term>
+				<listitem>
+					OpenSC needs some way to talk to
+					smart card readers and cards in
+					the smart card readers. Different
+					software can be used for that purpose,
+					each software has it's own reader
+					module so OpenSC can use that software.
+				</listitem>
+				</varlistentry>
+
+				<varlistentry>
+				<term>card</term>
+				<listitem>
+					In a perfect world all smart cards
+					would implement ISO 7816 standard,
+					and thus accept the same commands
+					and give the same answers. Unfortunatly
+					most cards have their own commands,
+					syntax and responses. The card modules
+					in libopensc implement these different
+					commands.
+				</listitem>
+				</varlistentry>
+
+				<varlistentry>
+				<term>pkcs15init</term>
+				<listitem>
+					Smart cards usualy have a file system.
+					To store or create keys or certiticates
+					on a smart card one needs to format
+					the card, create directories and objects
+					and set permissions in a secure way.
+					Not only are the commands to do this
+					different from card to card, also the
+					security model is often very different.
+					These pkcs15init modules implement
+					these differences.
+				</listitem>
+				</varlistentry>
+
+				<varlistentry>
+				<term>pkcs15 framework</term>
+				<listitem>
+					<para>
+					PKCS#15 is the standard on how to
+					store certificates and keys on a
+					smart card or crypto token. But many
+					vendors have their own proprietory
+					mechanism for storing these
+					informations, for example in different
+					directories. OpenSC implements
+					the PKCS#15 standard, but there is
+					also an emulation module for a
+					slightly incompatible storage mechanism
+					in the works.</para>
+
+					<para>
+					It should be possible to implement a
+					completely differennt framework
+					for compatiblity with a non
+					pkcs#15 way of storing and accessing
+					keys and certificates.</para>
+				</listitem>
+				</varlistentry>
+			</variablelist>
+		</section>
+
+		<section>
+			<title>The reader layer</title>
+
+			<para>
+				PC/SC-Lite is well known as smart card
+				middleware. It interacts with drivers for
+				the smart card readers on the buttom,
+				and with smart card applications on the top.
+				OpenSC can use PC/SC-Lite via the pcsc
+				reader module, but also supports a number
+				of alternatives.
+			</para>
+
+			<para>
+				PC/SC is a standard with interfaces betweens
+				applications, a resource manager and drivers
+				for smart card readers. This standard is
+				very popular on the Windows operating System.
+				The documents are available from the
+				<ulink url="http://www.pcscworkgroup.com/" />.
+			</para>
+
+			<para>
+				PC/SC-Lite is an implementation of the
+				PC/SC standard for linux, Unix, Mac OS X
+				and Windows by David Corcoran
+				<email>corcoran@linuxnet.com</email>. The
+				software is available with full source code and
+				available for free. To download the software,
+				please visit the website of the Movement
+				for the use of smart cards in a linux
+				environment (M.U.S.C.L.E.) at <ulink
+					url="http://www.linuxnet.com/" />.
+			</para>
+
+			<para>
+				To install OpenSC with support for PC/SC-Lite,
+				please install PC/SC-Lite first. Then configure
+				OpenSC to use PC/SC-Lite and specify the
+				location where PC/SC-Lite is installed like
+				this:
+				<screen>
+$ cd opensc-0.8.0
+$ ./configure --with-pcsclite=/path/to/pcsclite
+				</screen>
+			</para>
+
+			<para>
+				OpenCT is a new framework for accessing 
+				smart cards, card readers and card terminals.
+				It was written from scratch, already includes
+				all drivers, and is very lightwight. OpenCT
+				is available for linux, but if you want to
+				use it on other Unix or BSD operating systems,
+				please ask for help on the opensc-devel mailing
+				list.
+			</para>
+
+			<para>
+				OpenCT is open source software. As such
+				it is availble with full source code for
+				free. OpenCT is a software companion
+				to OpenSC and the prefered way of accessing
+				smart cards under linux. OpenCT is available
+				from the OpenSC website <ulink
+					url="http://www.opensc.org/" /> and
+				questions go to the
+				<email>opensc-devel@opensc.org</email> mailing
+				list.
+			</para>
+
+			<para>
+				To compile OpenSC with support for OpenCT,
+				please install OpenCT first. Documentation
+				on OpenCT is part of the source code, and
+				also available online at <ulink
+					url="http://www.opensc.org/files/doc/openct.html" />.
+				Then configure OpenSC to use OpenCT and specify
+				the location where OpenCT is installed like
+				this:
+			</para>
+
+			<para>
+				Usbtoken is a small driver for usb crypto
+				devices only. It does not need any other helper
+				software and is included in OpenSC for
+				convinience. However Usbtoken is deprecated,
+				the new OpenCT software is now the recommended
+				way to access usb crypto tokens. Usbtoken
+				is no longer activly developed, but bugs are
+				still fixed and help is provided on the
+				OpenSC mailing list at
+				<email>opensc-devel@opensc.org</email>.
+			</para>
+
+			<para>
+				If you still want to use OpenSC with Usbtoken,
+				please configure OpenSC like this:
+				<screen>
+$ cd opensc-0.8.0
+$ ./configure --enable-usbtoken
+				</screen>
+			</para>
+
+			<para>
+				Documentation on Usbtoken is in the file
+				<ulink url="usbtoken.html" />.
+			</para>
+
+			<para>
+				CT-API is a standard format for
+				drivers for smart card readers. It was
+				invented in the eighties for DOS applications
+				and is maybe not very fit for todays
+				multiuser multitasking applications.
+				However CT-API is still quite popular,
+				and many smart card readers have drivers
+				in CT-API format even for linux. It is
+				recommended to use these drivers if 
+				the PC/SC-Lite middleware described above.
+			</para>
+
+			<para>
+				But OpenSC can also use CT-API drivers
+				directly. This is meant for debugging mostly
+				and not recommended in a multi user or
+				multi application environment.
+			</para>
+
+			<para>
+				OpenSC includes always support for drivers
+				in CT-API format, you don't need to do
+				anything special for compiling. 
+				See the <filename>opensc.conf</filename>
+				configuration file on how to configure
+				an CT-API driver with OpenSC.
+			</para>
+
+		</section>
+
+
+	</chapter>
+
+	<chapter>
 		<title>Building and Installing libopensc</title>
 
 		<para>

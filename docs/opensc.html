@@ -46,105 +46,117 @@
           <dt>3. 
           <a href="#id2796764">Copyright and License</a></dt>
           <dt>4. 
-          <a href="#id2796789">Building and Installing
-          libopensc</a></dt>
+          <a href="#id2796789">Overview</a></dt>
           <dd>
             <dl>
               <dt>
-                <a href="#id2796806">Windows</a>
+                <a href="#id2796816">Layers in libopensc</a>
               </dt>
               <dt>
-                <a href="#id2796854">Windows with OpenSSL</a>
+                <a href="#id2796933">The reader layer</a>
               </dt>
             </dl>
           </dd>
           <dt>5. 
-          <a href="#id2796932">Status</a></dt>
+          <a href="#id2797116">Building and Installing
+          libopensc</a></dt>
           <dd>
             <dl>
               <dt>
-                <a href="#id2796937">Card Status</a>
+                <a href="#id2797134">Windows</a>
               </dt>
               <dt>
-                <a href="#id2797072">Windows</a>
-              </dt>
-              <dt>
-                <a href="#id2797088">PKCS#11 Module in Netscape and
-                Mozilla</a>
+                <a href="#id2797181">Windows with OpenSSL</a>
               </dt>
             </dl>
           </dd>
           <dt>6. 
-          <a href="#id2797132">Using OpenSC</a></dt>
+          <a href="#id2797257">Status</a></dt>
           <dd>
             <dl>
               <dt>
-                <a href="#id2797139">OpenSC and Netscape</a>
+                <a href="#id2797264">Card Status</a>
               </dt>
               <dt>
-                <a href="#id2797204">OpenSC and Mozilla</a>
+                <a href="#id2797398">Windows</a>
               </dt>
               <dt>
-                <a href="#id2797252">OpenSC and OpenSSL</a>
+                <a href="#id2797414">PKCS#11 Module in Netscape and
+                Mozilla</a>
+              </dt>
+            </dl>
+          </dd>
+          <dt>7. 
+          <a href="#id2797458">Using OpenSC</a></dt>
+          <dd>
+            <dl>
+              <dt>
+                <a href="#id2797465">OpenSC and Netscape</a>
               </dt>
               <dt>
-                <a href="#id2797448">OpenSC and OpenSSH</a>
+                <a href="#id2797531">OpenSC and Mozilla</a>
               </dt>
               <dt>
-                <a href="#id2797558">Pluggable Authentication
+                <a href="#id2797578">OpenSC and OpenSSL</a>
+              </dt>
+              <dt>
+                <a href="#id2797774">OpenSC and OpenSSH</a>
+              </dt>
+              <dt>
+                <a href="#id2797885">Pluggable Authentication
                 Module</a>
               </dt>
               <dd>
                 <dl>
                   <dt>
-                    <a href="#id2797728">eid based
+                    <a href="#id2798055">eid based
                     authentication</a>
                   </dt>
                   <dt>
-                    <a href="#id2797772">ldap based
+                    <a href="#id2798098">ldap based
                     authentication</a>
                   </dt>
                 </dl>
               </dd>
             </dl>
           </dd>
-          <dt>7. 
-          <a href="#id2797942">The OpenSC PKCS11 library</a></dt>
-          <dd>
-            <dl>
-              <dt>
-                <a href="#id2797949">What is PKCS11</a>
-              </dt>
-              <dt>
-                <a href="#id2798015">Virtual slots</a>
-              </dt>
-            </dl>
-          </dd>
           <dt>8. 
-          <a href="#id2798125">What needs to be done</a></dt>
+          <a href="#id2798268">The OpenSC PKCS11 library</a></dt>
           <dd>
             <dl>
               <dt>
-                <a href="#id2798158">Windows</a>
+                <a href="#id2798276">What is PKCS11</a>
+              </dt>
+              <dt>
+                <a href="#id2798341">Virtual slots</a>
               </dt>
             </dl>
           </dd>
           <dt>9. 
-          <a href="#id2798176">Troubleshooting</a></dt>
-          <dt>10. 
-          <a href="#id2798191">Resources</a></dt>
-          <dt>11. 
-          <a href="#id2798224">Signer</a></dt>
+          <a href="#id2798443">What needs to be done</a></dt>
           <dd>
             <dl>
               <dt>
-                <a href="#id2798237">Building and Installing
+                <a href="#id2798476">Windows</a>
+              </dt>
+            </dl>
+          </dd>
+          <dt>10. 
+          <a href="#id2798493">Troubleshooting</a></dt>
+          <dt>11. 
+          <a href="#id2798508">Resources</a></dt>
+          <dt>12. 
+          <a href="#id2798541">Signer</a></dt>
+          <dd>
+            <dl>
+              <dt>
+                <a href="#id2798555">Building and Installing
                 libopensc</a>
               </dt>
             </dl>
           </dd>
-          <dt>12. 
-          <a href="#id2798279">A few hints on docbook
+          <dt>13. 
+          <a href="#id2798597">A few hints on docbook
           documents</a></dt>
         </dl>
       </div>
@@ -311,7 +323,226 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
           <div>
             <div>
               <h2 class="title">
-              <a id="id2796789"></a>Chapter&#160;4.&#160;Building
+              <a id="id2796789">
+              </a>Chapter&#160;4.&#160;Overview</h2>
+            </div>
+          </div>
+          <div></div>
+        </div>
+        <div class="toc">
+          <p>
+            <b>Table of Contents</b>
+          </p>
+          <dl>
+            <dt>
+              <a href="#id2796816">Layers in libopensc</a>
+            </dt>
+            <dt>
+              <a href="#id2796933">The reader layer</a>
+            </dt>
+          </dl>
+        </div>
+        <p>OpenSC is a large toolkit. The main building block is
+        the opensc library. It has three layers of code, each with
+        several drivers in it. Other libraries are the pkcs11
+        module, a pam module, two engines for openssl. In addition
+        there are several tools to test and use these tools and
+        libraries.</p>
+        <p>Purpose of this chapter is to give an overview of the
+        inner workings of the opensc library, to give a short
+        presentation what the other libraries do, and finaly what
+        the opensc toolchest has to offer. Each tool has it's own
+        man page, each library it's own section in this
+        document.</p>
+        <div class="section" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h2 class="title" style="clear: both">
+                <a id="id2796816"></a>Layers in libopensc</h2>
+              </div>
+            </div>
+            <div></div>
+          </div>
+          <p>libopensc is the basic library used by everthing else.
+          It offer basic functionality like talking to smart cards,
+          but also advances functions like generating rsa keys on a
+          smart card.</p>
+          <p>libopensc has several layers of functionality, each
+          implemented by one or several drivers. The layers
+          are:</p>
+          <div class="variablelist">
+            <dl>
+              <dt>
+                <span class="term">reader</span>
+              </dt>
+              <dd>OpenSC needs some way to talk to smart card
+              readers and cards in the smart card readers.
+              Different software can be used for that purpose, each
+              software has it's own reader module so OpenSC can use
+              that software.</dd>
+              <dt>
+                <span class="term">card</span>
+              </dt>
+              <dd>In a perfect world all smart cards would
+              implement ISO 7816 standard, and thus accept the same
+              commands and give the same answers. Unfortunatly most
+              cards have their own commands, syntax and responses.
+              The card modules in libopensc implement these
+              different commands.</dd>
+              <dt>
+                <span class="term">pkcs15init</span>
+              </dt>
+              <dd>Smart cards usualy have a file system. To store
+              or create keys or certiticates on a smart card one
+              needs to format the card, create directories and
+              objects and set permissions in a secure way. Not only
+              are the commands to do this different from card to
+              card, also the security model is often very
+              different. These pkcs15init modules implement these
+              differences.</dd>
+              <dt>
+                <span class="term">pkcs15 framework</span>
+              </dt>
+              <dd>
+                <p>PKCS#15 is the standard on how to store
+                certificates and keys on a smart card or crypto
+                token. But many vendors have their own proprietory
+                mechanism for storing these informations, for
+                example in different directories. OpenSC implements
+                the PKCS#15 standard, but there is also an
+                emulation module for a slightly incompatible
+                storage mechanism in the works.</p>
+                <p>It should be possible to implement a completely
+                differennt framework for compatiblity with a non
+                pkcs#15 way of storing and accessing keys and
+                certificates.</p>
+              </dd>
+            </dl>
+          </div>
+        </div>
+        <div class="section" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h2 class="title" style="clear: both">
+                <a id="id2796933"></a>The reader layer</h2>
+              </div>
+            </div>
+            <div></div>
+          </div>
+          <p>PC/SC-Lite is well known as smart card middleware. It
+          interacts with drivers for the smart card readers on the
+          buttom, and with smart card applications on the top.
+          OpenSC can use PC/SC-Lite via the pcsc reader module, but
+          also supports a number of alternatives.</p>
+          <p>PC/SC is a standard with interfaces betweens
+          applications, a resource manager and drivers for smart
+          card readers. This standard is very popular on the
+          Windows operating System. The documents are available
+          from the 
+          <a href="http://www.pcscworkgroup.com/" target="_top">
+          http://www.pcscworkgroup.com/</a>.</p>
+          <p>PC/SC-Lite is an implementation of the PC/SC standard
+          for linux, Unix, Mac OS X and Windows by David Corcoran 
+          <tt class="email">&lt;
+          <a href="mailto:corcoran@linuxnet.com">
+          corcoran@linuxnet.com</a>&gt;</tt>. The software is
+          available with full source code and available for free.
+          To download the software, please visit the website of the
+          Movement for the use of smart cards in a linux
+          environment (M.U.S.C.L.E.) at 
+          <a href="http://www.linuxnet.com/" target="_top">
+          http://www.linuxnet.com/</a>.</p>
+          <p>To install OpenSC with support for PC/SC-Lite, please
+          install PC/SC-Lite first. Then configure OpenSC to use
+          PC/SC-Lite and specify the location where PC/SC-Lite is
+          installed like this:</p>
+          <table border="0" bgcolor="#E0E0E0">
+            <tr>
+              <td>
+                <pre class="screen">
+$ cd opensc-0.8.0
+$ ./configure --with-pcsclite=/path/to/pcsclite
+</pre>
+              </td>
+            </tr>
+          </table>
+          <p></p>
+          <p>OpenCT is a new framework for accessing smart cards,
+          card readers and card terminals. It was written from
+          scratch, already includes all drivers, and is very
+          lightwight. OpenCT is available for linux, but if you
+          want to use it on other Unix or BSD operating systems,
+          please ask for help on the opensc-devel mailing list.</p>
+          <p>OpenCT is open source software. As such it is availble
+          with full source code for free. OpenCT is a software
+          companion to OpenSC and the prefered way of accessing
+          smart cards under linux. OpenCT is available from the
+          OpenSC website 
+          <a href="http://www.opensc.org/" target="_top">
+          http://www.opensc.org/</a>and questions go to the 
+          <tt class="email">&lt;
+          <a href="mailto:opensc-devel@opensc.org">
+          opensc-devel@opensc.org</a>&gt;</tt>mailing list.</p>
+          <p>To compile OpenSC with support for OpenCT, please
+          install OpenCT first. Documentation on OpenCT is part of
+          the source code, and also available online at 
+          <a href="http://www.opensc.org/files/doc/openct.html"
+          target="_top">
+          http://www.opensc.org/files/doc/openct.html</a>. Then
+          configure OpenSC to use OpenCT and specify the location
+          where OpenCT is installed like this:</p>
+          <p>Usbtoken is a small driver for usb crypto devices
+          only. It does not need any other helper software and is
+          included in OpenSC for convinience. However Usbtoken is
+          deprecated, the new OpenCT software is now the
+          recommended way to access usb crypto tokens. Usbtoken is
+          no longer activly developed, but bugs are still fixed and
+          help is provided on the OpenSC mailing list at 
+          <tt class="email">&lt;
+          <a href="mailto:opensc-devel@opensc.org">
+          opensc-devel@opensc.org</a>&gt;</tt>.</p>
+          <p>If you still want to use OpenSC with Usbtoken, please
+          configure OpenSC like this:</p>
+          <table border="0" bgcolor="#E0E0E0">
+            <tr>
+              <td>
+                <pre class="screen">
+$ cd opensc-0.8.0
+$ ./configure --enable-usbtoken
+</pre>
+              </td>
+            </tr>
+          </table>
+          <p></p>
+          <p>Documentation on Usbtoken is in the file 
+          <a href="usbtoken.html" target="_top">
+          usbtoken.html</a>.</p>
+          <p>CT-API is a standard format for drivers for smart card
+          readers. It was invented in the eighties for DOS
+          applications and is maybe not very fit for todays
+          multiuser multitasking applications. However CT-API is
+          still quite popular, and many smart card readers have
+          drivers in CT-API format even for linux. It is
+          recommended to use these drivers if the PC/SC-Lite
+          middleware described above.</p>
+          <p>But OpenSC can also use CT-API drivers directly. This
+          is meant for debugging mostly and not recommended in a
+          multi user or multi application environment.</p>
+          <p>OpenSC includes always support for drivers in CT-API
+          format, you don't need to do anything special for
+          compiling. See the 
+          <tt class="filename">opensc.conf</tt>configuration file
+          on how to configure an CT-API driver with OpenSC.</p>
+        </div>
+      </div>
+      <div class="chapter" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title">
+              <a id="id2797116"></a>Chapter&#160;5.&#160;Building
               and Installing libopensc</h2>
             </div>
           </div>
@@ -323,10 +554,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
           </p>
           <dl>
             <dt>
-              <a href="#id2796806">Windows</a>
+              <a href="#id2797134">Windows</a>
             </dt>
             <dt>
-              <a href="#id2796854">Windows with OpenSSL</a>
+              <a href="#id2797181">Windows with OpenSSL</a>
             </dt>
           </dl>
         </div>
@@ -340,7 +571,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2796806"></a>Windows</h2>
+                <a id="id2797134"></a>Windows</h2>
               </div>
             </div>
             <div></div>
@@ -369,7 +600,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2796854"></a>Windows with OpenSSL</h2>
+                <a id="id2797181"></a>Windows with OpenSSL</h2>
               </div>
             </div>
             <div></div>
@@ -418,8 +649,8 @@ set path=%path%;....\out32dll
           <div>
             <div>
               <h2 class="title">
-              <a id="id2796932">
-              </a>Chapter&#160;5.&#160;Status</h2>
+              <a id="id2797257">
+              </a>Chapter&#160;6.&#160;Status</h2>
             </div>
           </div>
           <div></div>
@@ -430,13 +661,13 @@ set path=%path%;....\out32dll
           </p>
           <dl>
             <dt>
-              <a href="#id2796937">Card Status</a>
+              <a href="#id2797264">Card Status</a>
             </dt>
             <dt>
-              <a href="#id2797072">Windows</a>
+              <a href="#id2797398">Windows</a>
             </dt>
             <dt>
-              <a href="#id2797088">PKCS#11 Module in Netscape and
+              <a href="#id2797414">PKCS#11 Module in Netscape and
               Mozilla</a>
             </dt>
           </dl>
@@ -446,7 +677,7 @@ set path=%path%;....\out32dll
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2796937"></a>Card Status</h2>
+                <a id="id2797264"></a>Card Status</h2>
               </div>
             </div>
             <div></div>
@@ -514,7 +745,7 @@ set path=%path%;....\out32dll
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2797072"></a>Windows</h2>
+                <a id="id2797398"></a>Windows</h2>
               </div>
             </div>
             <div></div>
@@ -529,7 +760,7 @@ set path=%path%;....\out32dll
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2797088"></a>PKCS#11 Module in Netscape
+                <a id="id2797414"></a>PKCS#11 Module in Netscape
                 and Mozilla</h2>
               </div>
             </div>
@@ -561,7 +792,7 @@ set path=%path%;....\out32dll
           <div>
             <div>
               <h2 class="title">
-              <a id="id2797132"></a>Chapter&#160;6.&#160;Using
+              <a id="id2797458"></a>Chapter&#160;7.&#160;Using
               OpenSC</h2>
             </div>
           </div>
@@ -573,28 +804,28 @@ set path=%path%;....\out32dll
           </p>
           <dl>
             <dt>
-              <a href="#id2797139">OpenSC and Netscape</a>
+              <a href="#id2797465">OpenSC and Netscape</a>
             </dt>
             <dt>
-              <a href="#id2797204">OpenSC and Mozilla</a>
+              <a href="#id2797531">OpenSC and Mozilla</a>
             </dt>
             <dt>
-              <a href="#id2797252">OpenSC and OpenSSL</a>
+              <a href="#id2797578">OpenSC and OpenSSL</a>
             </dt>
             <dt>
-              <a href="#id2797448">OpenSC and OpenSSH</a>
+              <a href="#id2797774">OpenSC and OpenSSH</a>
             </dt>
             <dt>
-              <a href="#id2797558">Pluggable Authentication
+              <a href="#id2797885">Pluggable Authentication
               Module</a>
             </dt>
             <dd>
               <dl>
                 <dt>
-                  <a href="#id2797728">eid based authentication</a>
+                  <a href="#id2798055">eid based authentication</a>
                 </dt>
                 <dt>
-                  <a href="#id2797772">ldap based
+                  <a href="#id2798098">ldap based
                   authentication</a>
                 </dt>
               </dl>
@@ -606,7 +837,7 @@ set path=%path%;....\out32dll
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2797139"></a>OpenSC and Netscape</h2>
+                <a id="id2797465"></a>OpenSC and Netscape</h2>
               </div>
             </div>
             <div></div>
@@ -643,7 +874,7 @@ set path=%path%;....\out32dll
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2797204"></a>OpenSC and Mozilla</h2>
+                <a id="id2797531"></a>OpenSC and Mozilla</h2>
               </div>
             </div>
             <div></div>
@@ -669,7 +900,7 @@ set path=%path%;....\out32dll
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2797252"></a>OpenSC and OpenSSL</h2>
+                <a id="id2797578"></a>OpenSC and OpenSSL</h2>
               </div>
             </div>
             <div></div>
@@ -799,7 +1030,7 @@ OpenSSL&gt;
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2797448"></a>OpenSC and OpenSSH</h2>
+                <a id="id2797774"></a>OpenSC and OpenSSH</h2>
               </div>
             </div>
             <div></div>
@@ -860,7 +1091,7 @@ OpenSSL&gt;
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2797558"></a>Pluggable Authentication
+                <a id="id2797885"></a>Pluggable Authentication
                 Module</h2>
               </div>
             </div>
@@ -933,7 +1164,7 @@ OpenSSL&gt;
               <div>
                 <div>
                   <h3 class="title">
-                  <a id="id2797728"></a>eid based
+                  <a id="id2798055"></a>eid based
                   authentication</h3>
                 </div>
               </div>
@@ -960,7 +1191,7 @@ OpenSSL&gt;
               <div>
                 <div>
                   <h3 class="title">
-                  <a id="id2797772"></a>ldap based
+                  <a id="id2798098"></a>ldap based
                   authentication</h3>
                 </div>
               </div>
@@ -1026,7 +1257,7 @@ OpenSSL&gt;
           <div>
             <div>
               <h2 class="title">
-              <a id="id2797942"></a>Chapter&#160;7.&#160;The OpenSC
+              <a id="id2798268"></a>Chapter&#160;8.&#160;The OpenSC
               PKCS11 library</h2>
             </div>
           </div>
@@ -1038,10 +1269,10 @@ OpenSSL&gt;
           </p>
           <dl>
             <dt>
-              <a href="#id2797949">What is PKCS11</a>
+              <a href="#id2798276">What is PKCS11</a>
             </dt>
             <dt>
-              <a href="#id2798015">Virtual slots</a>
+              <a href="#id2798341">Virtual slots</a>
             </dt>
           </dl>
         </div>
@@ -1050,7 +1281,7 @@ OpenSSL&gt;
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2797949"></a>What is PKCS11</h2>
+                <a id="id2798276"></a>What is PKCS11</h2>
               </div>
             </div>
             <div></div>
@@ -1092,7 +1323,7 @@ OpenSSL&gt;
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2798015"></a>Virtual slots</h2>
+                <a id="id2798341"></a>Virtual slots</h2>
               </div>
             </div>
             <div></div>
@@ -1153,7 +1384,7 @@ OpenSSL&gt;
           <div>
             <div>
               <h2 class="title">
-              <a id="id2798125"></a>Chapter&#160;8.&#160;What needs
+              <a id="id2798443"></a>Chapter&#160;9.&#160;What needs
               to be done</h2>
             </div>
           </div>
@@ -1165,7 +1396,7 @@ OpenSSL&gt;
           </p>
           <dl>
             <dt>
-              <a href="#id2798158">Windows</a>
+              <a href="#id2798476">Windows</a>
             </dt>
           </dl>
         </div>
@@ -1211,7 +1442,7 @@ no PUK?)
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2798158"></a>Windows</h2>
+                <a id="id2798476"></a>Windows</h2>
               </div>
             </div>
             <div></div>
@@ -1227,8 +1458,8 @@ no PUK?)
           <div>
             <div>
               <h2 class="title">
-              <a id="id2798176">
-              </a>Chapter&#160;9.&#160;Troubleshooting</h2>
+              <a id="id2798493">
+              </a>Chapter&#160;10.&#160;Troubleshooting</h2>
             </div>
           </div>
           <div></div>
@@ -1242,8 +1473,8 @@ no PUK?)
           <div>
             <div>
               <h2 class="title">
-              <a id="id2798191">
-              </a>Chapter&#160;10.&#160;Resources</h2>
+              <a id="id2798508">
+              </a>Chapter&#160;11.&#160;Resources</h2>
             </div>
           </div>
           <div></div>
@@ -1260,8 +1491,8 @@ no PUK?)
           <div>
             <div>
               <h2 class="title">
-              <a id="id2798224">
-              </a>Chapter&#160;11.&#160;Signer</h2>
+              <a id="id2798541">
+              </a>Chapter&#160;12.&#160;Signer</h2>
             </div>
           </div>
           <div></div>
@@ -1272,7 +1503,7 @@ no PUK?)
           </p>
           <dl>
             <dt>
-              <a href="#id2798237">Building and Installing
+              <a href="#id2798555">Building and Installing
               libopensc</a>
             </dt>
           </dl>
@@ -1285,7 +1516,7 @@ no PUK?)
             <div>
               <div>
                 <h2 class="title" style="clear: both">
-                <a id="id2798237"></a>Building and Installing
+                <a id="id2798555"></a>Building and Installing
                 libopensc</h2>
               </div>
             </div>
@@ -1309,7 +1540,7 @@ no PUK?)
           <div>
             <div>
               <h2 class="title">
-              <a id="id2798279"></a>Chapter&#160;12.&#160;A few
+              <a id="id2798597"></a>Chapter&#160;13.&#160;A few
               hints on docbook documents</h2>
             </div>
           </div>
