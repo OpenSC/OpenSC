@@ -151,6 +151,14 @@ int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 
 void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin)
 {
+	const char *pin_flags[] = {
+		"case-sensitive", "local", "change-disabled",
+		"unblock-disabled", "initialized", "needs-padding",
+		"unblockingPin", "soPin", "disable_allowed",
+		"integrity-protected", "confidentiality-protected",
+		"exchangeRefData"
+	};
+	const int pf_count = sizeof(pin_flags)/sizeof(pin_flags[0]);
 	char path[SC_MAX_PATH_SIZE * 2 + 1];
 	int i;
 	char *p;
@@ -166,7 +174,12 @@ void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin)
 	printf("\tAuth ID   : ");
 	sc_pkcs15_print_id(&pin->auth_id);
 	printf("\n");
-	printf("\tFlags     : 0x%X\n", pin->flags);
+	printf("\tFlags     : [0x%02X]", pin->flags);
+	for (i = 0; i < pf_count; i++)
+		if (pin->flags & (1 << i)) {
+			printf(", %s", pin_flags[i]);
+		}
+	printf("\n");
 	printf("\tLength    : %d..%d\n", pin->min_length, pin->stored_length);
 	printf("\tPad char  : 0x%02X\n", pin->pad_char);
 	printf("\tReference : %d\n", pin->reference);

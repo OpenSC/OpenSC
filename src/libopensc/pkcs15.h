@@ -189,6 +189,8 @@ struct sc_pkcs15_df {
 	int count, record_length, type;
 };
 
+#define SC_PKCS15_CARD_MAGIC		0x10203040
+
 struct sc_pkcs15_card {
 	struct sc_card *card;
 	char *label;
@@ -212,6 +214,8 @@ struct sc_pkcs15_card {
 	struct sc_pkcs15_df df[SC_PKCS15_DF_TYPE_COUNT];
 
 	int use_cache;
+	
+	unsigned int magic;
 };
 
 #define SC_PKCS15_CARD_FLAG_READONLY		0x01

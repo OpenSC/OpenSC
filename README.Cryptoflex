@@ -1,0 +1,95 @@
+
+OpenSC supports the Cryptoflex cards beginning with version 0.5.0.
+
+Cryptoflex specific features can be tested with cryptoflex-tool.
+Due to the publicly available datasheets, cryptoflex-tool also includes
+a PKCS #15 structure generator. At the moment all the encoded information
+is hardcoded in the source file, but editing the structures should
+be pretty straightforward.
+
+Here are the steps to PKCS #15 structure generation:
+
+WARNING: You should be using a very safe terminal when issuing the
+         following commands.
+
+0.  If you don't have a Cryptoflex 16k, you will have to add the ATR of
+    your card manually to the flex_atrs structure at the top of card-flex.c.
+    The ATR can be found with 'opensc-tool -a' command.
+
+1.  Verify the AAK key and CHV2:
+
+$ opensc-explorer
+OpenSC Explorer version 0.5.0
+Connecting to card in reader Towitoko Chipdrive Micro 0 0...
+Using card driver: Schlumberger Multiflex/Cryptoflex
+OpenSC [3F00]> ver KEY1 01:02:03:04:05:06:07:08		# replace these
+Code correct.
+OpenSC [3F00]> ver CHV2 31:32:33:34:00:00:00:00		# with your own values
+Code correct.
+
+2.  Create the CHV2 file, if not present:
+
+$ cryptoflex-tool -P 2
+Connecting to card in reader Towitoko Chipdrive Micro 0 0...
+Using card driver: Schlumberger Multiflex/Cryptoflex
+Please enter CHV2: 1234
+Please enter PUK for CHV2: 12345678
+
+3.  Create the PKCS #15 structure
+
+$ cryptoflex-tool -C
+Connecting to card in reader Towitoko Chipdrive Micro 0 0...
+Using card driver: Schlumberger Multiflex/Cryptoflex
+Please enter CHV1 (key 1): 1234
+Please enter PUK for CHV1 (key 1): 12345678
+Please enter CHV1 (key 2): 5678
+Please enter PUK for CHV1 (key 2): 12345678
+
+4.  Generate two 1024-bit RSA key pairs with openssl:
+
+$ openssl genrsa -out key1.pem 1024
+Generating RSA private key, 1024 bit long modulus
+...........++++++
+...++++++
+e is 65537 (0x10001)
+$ openssl genrsa -out key2.pem 1024
+Generating RSA private key, 1024 bit long modulus
+.....................++++++
+....++++++
+e is 65537 (0x10001)
+
+5.  Create the files to hold the keys on the card:
+
+$ cryptoflex-tool -a 5015 -c 1
+$ cryptoflex-tool -a 4b02 -c 1
+
+6.  Store the key pairs on the card:
+
+$ cryptoflex-tool -a 5015 -p key1.pem -s -v  # (enter CHV1 for key 1)
+$ cryptoflex-tool -a 4b02 -p key2.pem -s -v  # (enter CHV1 for key 2)
+
+6a. Check if the keys are working:
+
+$ pkcs15-crypt -i <plaintext-file> -o <signed-data> -s --pkcs1
+Connecting to card in reader Towitoko Chipdrive Micro 0 0...
+Trying to find a PKCS#15 compatible card...
+Found OpenSC Test Card!
+Enter PIN [Authentication PIN]: 
+PIN code correct.
+
+7.  Create two certificates with openssl. Name them cert1.crt and cert2.crt.This process is not in the scope
+    of this document.
+
+8.  Store the DER-encoded certificates on the card (this process will be
+    automated in the future):
+
+$ opensc-explorer
+OpenSC Explorer version 0.5.0
+Connecting to card in reader Towitoko Chipdrive Micro 0 0...
+Using card driver: Schlumberger Multiflex/Cryptoflex
+OpenSC [3F00]> cd 5015
+OpenSC [3F00/5015]> create 4301 <size of cert1.crt>
+OpenSC [3F00/5015]> create 4302 <size of cert2.crt>
+OpenSC [3F00/5015]> put 4301 cert1.crt
+OpenSC [3F00/5015]> put 4302 cert2.crt
+
