@@ -56,12 +56,12 @@ static int cflex_update_pin(struct sc_profile *profile, struct sc_card *card,
 	memset(p, 0xFF, 3);
 	p += 3;
 	memset(p, profile->pin_pad_char, 8);
-	strncpy((char *) p, pin, pin_len);
+	strncpy((char *) p, (const char *) pin, pin_len);
 	p += 8;
 	*p++ = pin_tries;
 	*p++ = pin_tries;
 	memset(p, profile->pin_pad_char, 8);
-	strncpy((char *) p, puk, puk_len);
+	strncpy((char *) p, (const char *) puk, puk_len);
 	p += 8;
 	*p++ = puk_tries;
 	*p++ = puk_tries;

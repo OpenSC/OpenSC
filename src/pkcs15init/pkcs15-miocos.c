@@ -82,7 +82,7 @@ miocos_new_pin(struct sc_profile *profile, struct sc_card *card,
 	memcpy(ac_info.key_value, pin, pin_len);
 	if (puk_len > 8)
 		puk_len = 8;
-	strncpy(ac_info.unblock_value, puk, puk_len);
+	strncpy((char *) ac_info.unblock_value, (const char *) puk, puk_len);
 	r = sc_card_ctl(card, SC_CARDCTL_MIOCOS_CREATE_AC, &ac_info);
 	if (r)
 		return r;

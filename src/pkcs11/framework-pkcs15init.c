@@ -143,7 +143,7 @@ pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
 	args.so_pin_len = ulPinLen;
 	args.so_puk = pPin;
 	args.so_puk_len = ulPinLen;
-	args.label = pLabel;
+	args.label = (const char *) pLabel;
 	rc = sc_pkcs15init_add_app(p11card->card, profile, &args);
 	if (rc >= 0)
 		return CKR_OK;
