@@ -6,7 +6,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 EXTRA_DIST = Makefile.mak libopensc.pc.in
 
-INCLUDES = @CPPFLAGS@ @OPENCT_CFLAGS@ @CFLAGS_PCSC@
+INCLUDES = @CPPFLAGS@ @OPENCT_CFLAGS@ @PCSC_CFLAGS@
 LDFLAGS = @LDFLAGS@ @OPENCT_LDFLAGS@
 
 bin_SCRIPTS = opensc-config
@@ -32,7 +32,7 @@ libopensc_la_SOURCES = \
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
 	pkcs15-netkey.c pkcs15-esteid.c
 libopensc_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
-libopensc_la_LIBADD = @LIBSCCONF@ ../scdl/libscdl.la @LIBDL@ @LIBCRYPTO@ @OPENCT_LIBS@ @LIBPCSC@
+libopensc_la_LIBADD = @LIBSCCONF@ ../scdl/libscdl.la @LIBDL@ @LIBCRYPTO@ @OPENCT_LIBS@ @PCSC_LIBS@
 
 include_HEADERS = \
 	opensc.h pkcs15.h emv.h \
