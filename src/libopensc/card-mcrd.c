@@ -264,6 +264,7 @@ static int mcrd_init(sc_card_t *card)
 	card->name = "MICARDO 2.1";
 	card->drv_data = priv;
 	card->cla = 0x00;
+	card->caps |= SC_CARD_CAP_RNG;
 
 	flags = SC_ALGORITHM_RSA_RAW;
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
@@ -275,9 +276,10 @@ static int mcrd_init(sc_card_t *card)
 
 	priv->curpath[0] = MFID;
 	priv->curpathlen = 1;
+	/* The special file loading thing doesn't work for EstEID */
 	if (card->type != SC_CARD_TYPE_MCRD_ESTEID)
 		load_special_files (card);
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int mcrd_finish(sc_card_t *card)
