@@ -38,9 +38,9 @@ static char *	pgp_key_name[3] = {
 				"Authentication key"
 			};
 static char *	pgp_pubkey_path[3] = {
-				"B600",
-				"B800",
-				"A400"
+				"B601",
+				"B801",
+				"A401"
 			};
 
 /*
@@ -88,6 +88,8 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 
 	if (!(p15card->flags & SC_PKCS15_CARD_FLAG_READONLY))
 		obj->flags |= SC_PKCS15_CO_FLAG_MODIFIABLE;
+	if (auth_id)
+		obj->auth_id = *auth_id;
 
 	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_AUTH:
@@ -180,7 +182,8 @@ sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
 		const sc_pkcs15_id_t *id,
 		const char *label, int type,
 		unsigned int modulus_length, int usage,
-		const sc_path_t *path)
+		const sc_path_t *path, int ref,
+		const sc_pkcs15_id_t *auth_id)
 {
 	sc_pkcs15_pubkey_info_t *info;
 
@@ -189,11 +192,12 @@ sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
 	info->modulus_length	= modulus_length;
 	info->usage		= usage;
 	info->access_flags	= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+	info->key_reference	= ref;
 
 	if (path)
 		info->path = *path;
 
-	return sc_pkcs15emu_add_object(p15card, type, label, info, NULL);
+	return sc_pkcs15emu_add_object(p15card, type, label, info, auth_id);
 }
 
 static void
@@ -276,6 +280,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	}
 
 	for (i = 0; i < 3; i++) {
+		sc_path_t	path;
 		sc_pkcs15_id_t	auth_id;
 		int		flags;
 
@@ -287,10 +292,11 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				 SC_PKCS15_PIN_FLAG_SO_PIN;
 		}
 
+		sc_format_path("3F00", &path);
 		auth_id.value[0] = i + 1;
 		auth_id.len = 1;
 		sc_pkcs15emu_add_pin(p15card, &auth_id,
-				pgp_pin_name[i], NULL, i+1,
+				pgp_pin_name[i], &path, i+1,
 				SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
 				0, buffer[1+i], flags, buffer[4+i]);
 	}
@@ -315,7 +321,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				pgp_key_name[i],
 				SC_PKCS15_TYPE_PRKEY_RSA,
 				1024, prkey_usage[i],
-				NULL, 0,
+				NULL, i,
 				&auth_id);
 	}
 
@@ -327,17 +333,19 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 					| SC_PKCS15_PRKEY_USAGE_WRAP,
 					SC_PKCS15_PRKEY_USAGE_VERIFY
 				};
-		sc_pkcs15_id_t	id;
+		sc_pkcs15_id_t	id, auth_id;
 		sc_path_t	path;
 
 		id.value[0] = i + 1;
 		id.len = 1;
+		auth_id.value[0] = 3;
+		auth_id.len = 1;
 		sc_format_path(pgp_pubkey_path[i], &path);
 		sc_pkcs15emu_add_pubkey(p15card, &id,
 				pgp_key_name[i],
 				SC_PKCS15_TYPE_PUBKEY_RSA,
 				1024, pubkey_usage[i],
-				&path);
+				&path, 0, &auth_id);
 	}
 
 	return 0;
