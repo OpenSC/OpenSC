@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="sccardt">
+    <refmeta>
+    	<refentrytitle>sc_card_t</refentrytitle>
+        <manvolnum>3</manvolnum>
+        <refmiscinfo>opensc</refmiscinfo>
+    </refmeta>
+
+    <refnamediv>
+        <refname>sc_card_t</refname>
+        <refpurpose>OpenSC card structure</refpurpose>
+    </refnamediv>
+    
+    <refsect1>
+        <title>Synopsis</title>
+        <para>
+        	<programlisting>
+&includes;
+
+#define SC_MAX_ATR_SIZE			33
+
+typedef struct sc_card {
+	struct sc_context *ctx;
+	struct sc_reader *reader;
+	struct sc_slot_info *slot;
+
+	unsigned char atr[SC_MAX_ATR_SIZE];
+} sc_card_t;
+
+            </programlisting>
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Description</title>
+        <para>
+            This structure describes a smart card object. It contains the following
+        	members:
+            <variablelist>
+
+                <varlistentry>
+                    <term><structfield>ctx</structfield></term>
+                    <listitem><para>The context this card is associated with.</para></listitem>
+                </varlistentry>
+                
+                <varlistentry>
+                    <term><structfield>reader</structfield></term>
+                    <listitem><para>The reader this card is inserted into.</para></listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term><structfield>slot</structfield></term>
+                    <listitem><para>The slot on the reader this card is inserted into.</para></listitem>
+                </varlistentry>
+
+                <varlistentry>
+                    <term><structfield>atr</structfield></term>
+                    <listitem><para>The ATR (Answer To Reset) of the card.</para></listitem>
+                </varlistentry>
+
+            </variablelist>
+        </para>
+    </refsect1>
+
+</refentry>

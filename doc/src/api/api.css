@@ -1,0 +1,44 @@
+body {
+  font-family: Verdana, Arial;
+  font-size: 0.9em;
+}
+
+.title {
+  font-size: 1.5em; 
+  text-align: center;
+}
+
+.toc b {
+  font-size: 1.2em;
+  border-bottom: dashed 1px black;
+}
+
+a {
+  color: blue;
+  text-decoration: none;
+}
+
+a:visited {
+  color: blue;
+  text-decoration: none;
+}
+
+pre.programlisting {
+  font-size: 1.1em;
+  background-color: #EEEEEE ;
+  border: 1px solid #006600 ;
+  padding: 1em;
+}
+
+span.symbol {
+  font-weight: bold;
+}
+
+span.errorname {
+  font-weight: bold;
+}
+
+span.errortext {
+  font-style: italic;
+}
+

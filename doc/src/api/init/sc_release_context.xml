@@ -1,0 +1,37 @@
+<refentry id="screleasecontext">
+	<refmeta>
+		<refentrytitle>sc_release_context</refentrytitle>
+		<manvolnum>3</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>sc_release_context</refname>
+		<refpurpose>Release an OpenSC context</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+		<programlisting>
+&includes;
+
+int sc_release_context(sc_context_t *ctx);
+		</programlisting>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+
+		<para>
+			This function releases OpenSC context <emphasis>ctx</emphasis> previously obtained through a call
+			to <link linkend="scestablishcontext">sc_establish_context()</link>. No further calls to OpenSC
+			using this context are possible after this.
+		</para>
+
+		<para>
+		</para>
+	</refsect1>
+
+</refentry>

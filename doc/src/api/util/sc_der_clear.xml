@@ -1,0 +1,30 @@
+<refentry id="scderclear">
+	<refmeta>
+		<refentrytitle>sc_der_clear</refentrytitle>
+		<manvolnum>3</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>sc_der_clear</refname>
+		<refpurpose>Clear DER structure</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+		<programlisting>
+#include &lt;opensc.h&gt;
+
+void sc_der_clear(sc_pkcs15_der_t *der);
+		</programlisting>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			This function clears the OpenSC DER structure pointed to by <emphasis>der</emphasis>.
+		</para>
+	</refsect1>
+</refentry>

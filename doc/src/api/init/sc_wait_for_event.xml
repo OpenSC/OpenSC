@@ -1,0 +1,36 @@
+<refentry id="scwaitforevent">
+	<refmeta>
+		<refentrytitle>sc_wait_for_event</refentrytitle>
+		<manvolnum>3</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>sc_wait_for_event</refname>
+		<refpurpose>Wait for an event on a smartcard reader</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+		<programlisting>
+&includes;
+
+int sc_wait_for_event(sc_reader_t *readers[], int slot_id[], size_t nslots,
+                      unsigned int event_mask,
+                      int *reader, unsigned int *event, int timeout);
+		</programlisting>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			This function blocks until an event occurs on the reader spec
+		</para>
+
+		<para>
+		</para>
+	</refsect1>
+
+</refentry>

@@ -1,0 +1,34 @@
+<refentry id="scformatasn1entry">
+	<refmeta>
+		<refentrytitle>sc_format_asn1_entry</refentrytitle>
+		<manvolnum>3</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>sc_format_asn1_entry</refname>
+		<refpurpose>Fill in an ASN.1 entry structure</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+		<programlisting>
+#include &lt;opensc.h&gt;
+
+void sc_format_asn1_entry(struct sc_asn1_entry *entry, void *parm, void *arg, int set_present);
+		</programlisting>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			This function stores the <emphasis>parm</emphasis> and <emphasis>arg</emphasis> pointers in the
+			<structname><link linkend="scasn1">struct sc_asn1_entry</link></structname>
+			<emphasis>entry</emphasis>. No checking is done. Since the pointers are copied directly, the
+			storage they point to must not be freed by the calling application until the entry itself is
+			destroyed.
+		</para>
+	</refsect1>
+</refentry>
