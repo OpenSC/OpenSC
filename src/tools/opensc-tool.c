@@ -365,7 +365,7 @@ int main(int argc, char * const argv[])
 	const char *opt_driver = NULL;
 		
 	while (1) {
-		c = getopt_long(argc, argv, "lfr:qds:DRc:aw", options, &long_optind);
+		c = getopt_long(argc, argv, "nlfr:qds:DRc:aw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
