@@ -38,14 +38,25 @@ filesystem {
     DF MF {
 	ACL	= *=AUT1;
 
-	EF pinfile-1 {
-            file-id		= 0000;
-            size		= 23;
-            ACL			= *=NEVER, UPDATE=AUT1;
-    	}
-
 	DF PKCS15-AppDF {
-	    ACL		= *=CHV1, FILES=NONE;
+	    ACL		= DELETE=CHV1, CREATE=NONE, FILES=NONE;
+	    EF sopinfile {
+                 file-id	= 0100;
+                 size		= 23;
+                 ACL		= *=NEVER, UPDATE=AUT1;
+            }
+            # If you add an SO PIN, you can set UPDATE=$SOPIN in the ACL below
+            # so the SO PIN can change the user PIN
+	    EF pinfile-1 {
+                file-id		= 0000;
+                size		= 23;
+                ACL		= *=NEVER, UPDATE=AUT1;
+    	    }
+            EF extkey {
+                 file-id                = 0011;
+                 size                   = 15;
+                 ACL                    = *=NEVER, UPDATE=AUT1;
+            }
 	    DF keydir-1 {
 		ACL		= *=CHV1, FILES=NONE;
 		file-id		= 4B01;
@@ -102,7 +113,7 @@ filesystem {
 
 # Define an SO pin
 # This PIN is not used yet.
-#PIN sopin {
-#    file	= sopinfile;
-#    reference	= 0;
-#}
+PIN so-pin {
+    file	= sopinfile;
+    reference	= 0;
+}

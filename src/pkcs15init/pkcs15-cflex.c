@@ -29,6 +29,7 @@
 #include "pkcs15-init.h"
 #include "profile.h"
 
+#define FLEX_EXTKEY_ATTEMPTS		3
 static const char *TMP_PIN 		= "0000";
 static const char *TMP_PUK 		= "000000";
 
@@ -92,15 +93,6 @@ static int cflex_erase_card(struct sc_profile *profile, struct sc_card *card)
 
 	r=cflex_delete_file(card, profile, df);
 
-	/* If the user pin file isn't in a sub-DF of the pkcs15 DF, delete it */
-	if (sc_profile_get_file(profile, "pinfile-1", &userpinfile) >= 0 &&
-	    userpinfile->path.len <= profile->df_info->file->path.len + 2 &&
-	    memcmp(userpinfile->path.value, profile->df_info->file->path.value,
-	           userpinfile->path.len) != 0) {
-           	r = cflex_delete_file(card, profile, userpinfile);
-		sc_file_free(userpinfile);
-	}
-
         /* Unfrob the SO pin reference, and return */
 out:    sc_profile_forget_secrets(profile, SC_AC_CHV, -1);
         sc_free_apps(card);
@@ -115,12 +107,13 @@ out:    sc_profile_forget_secrets(profile, SC_AC_CHV, -1);
 static int cflex_init_app(struct sc_profile *profile, struct sc_card *card,
 		const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
-     sc_file_t *pinfile, *keyfile, *userpinfile;
+     sc_file_t *pinfile, *keyfile = NULL, *userpinfile;
      struct sc_pkcs15_pin_info sopin, tmpinfo;
      int pin_tries, puk_tries;
+     int block_extkey = 1;
      int r;
      char extkey_contents[15];
-     
+
      if (pin && pin_len) {
 	  
 	  if (sc_profile_get_file(profile, "sopinfile", &pinfile) < 0) {
@@ -141,32 +134,6 @@ static int cflex_init_app(struct sc_profile *profile, struct sc_card *card,
 	  sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
      }
 
-	/* If the user pin file isn't in the pkcs15 DF, create it first.
-	 * This is the case if the "flex-onepin.profile" is used. */
-	if (sc_profile_get_file(profile, "pinfile-1", &userpinfile) >= 0 &&
-	    userpinfile->path.len <= profile->df_info->file->path.len) {
-
-		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
-		pin_tries = tmpinfo.tries_left;
-		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &tmpinfo);
-		puk_tries = tmpinfo.tries_left;
-
-		r = cflex_update_pin(profile, card, userpinfile,
-			(const u8 *) TMP_PIN, strlen(TMP_PIN), pin_tries,
-			(const u8 *) TMP_PUK, strlen(TMP_PUK), puk_tries);
-		if (r != 0) {
-			profile->cbs->error("Couldn't create PIN file\n");
-			return r;
-		}
-
-		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &tmpinfo);
-		tmpinfo.reference = 0x1;
-		memcpy(&tmpinfo.path, &userpinfile->path, sizeof(sc_path_t));
-		sc_profile_set_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
-
-		sc_profile_set_secret(profile, SC_AC_CHV, 1, (const u8 *) TMP_PIN, strlen(TMP_PIN));
-	}
-
      /* Create the application DF */
      if (sc_pkcs15init_create_file(profile, card, profile->df_info->file))
 	  return 1;
@@ -181,13 +148,64 @@ static int cflex_init_app(struct sc_profile *profile, struct sc_card *card,
 	       profile->cbs->error("update_pin failed for SOPIN\n");
 	       return r;
 	  }
+	  block_extkey = 1;
+	}
+
+	/* If the user pin file isn't in a sub-DF of the pkcs15 DF, create
+	 * it now with a temporary PIN/PUK and don't fill in the AODF yet.
+	 * This is the case if the 'onepin' profile is used. */
+	if (sc_profile_get_file(profile, "pinfile-1", &userpinfile) >= 0 &&
+	    userpinfile->path.len == profile->df_info->file->path.len + 2) {
+
+		if (sc_profile_get_file(profile, "extkey", &keyfile) < 0) { 
+			profile->cbs->error("Profile doesn't define \"extkey\"");
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
+		pin_tries = tmpinfo.tries_left;
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &tmpinfo);
+		puk_tries = tmpinfo.tries_left;
+
+		r = cflex_update_pin(profile, card, userpinfile,
+			(const u8 *) TMP_PIN, strlen(TMP_PIN), pin_tries,
+			(const u8 *) TMP_PUK, strlen(TMP_PUK), puk_tries);
+		if (r != 0) {
+			profile->cbs->error("Couldn't create PIN file\n");
+			return r;
+		}
+
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
+		tmpinfo.reference = 0x1;
+		memcpy(&tmpinfo.path, &userpinfile->path, sizeof(sc_path_t));
+		sc_profile_set_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
+
+		sc_profile_set_secret(profile, SC_AC_CHV, 1, (const u8 *) TMP_PIN, strlen(TMP_PIN));
+
+		/* Don't block the AUT1 key yet, (unless there's an SO pin), this is done
+		 * only after 'officially' creating the PIN with sc_pkcs15init_store_pin() */
+		block_extkey = 0;
+	}
+
+	if (keyfile != NULL) {
+	  int keylen = 8;
 	  memset(&extkey_contents, 0, sizeof(extkey_contents));
 	  extkey_contents[0]=0; /* RFU */
 	  extkey_contents[1]=1; /* skip AUT0 */
 	  extkey_contents[2]=8; /* AUT1 length; single DES */
 	  extkey_contents[3]=0; /* single DES */
-	  extkey_contents[12]=1; /* # allowed verification attempts */
-	  extkey_contents[13]=255; /* block key */
+	  /* Fill in the same AUT1 key value as in the one in the MF */
+	  r = sc_profile_get_secret(profile, SC_AC_AUT, 1,
+	  	extkey_contents + 4, &keylen);
+	  if (r < 0) {
+	  	profile->cbs->error("sc_profile_get_secret(AUT1) failed: %d\n", r);
+	  	return r;
+	  }
+	  extkey_contents[12]=FLEX_EXTKEY_ATTEMPTS; /* # allowed verification attempts */
+	  if (block_extkey)
+		  extkey_contents[13]=255; /* block key */
+	  else
+		  extkey_contents[13]=FLEX_EXTKEY_ATTEMPTS; /* remaining attempts */
 	  extkey_contents[14]=0;  /* no more keys */
 	  r=sc_pkcs15init_update_file(profile, card, keyfile, 
 				      extkey_contents, 15);
@@ -251,8 +269,19 @@ cflex_new_pin(struct sc_profile *profile, struct sc_card *card,
 	sprintf(_template, "pinfile-%d", index);
 	/* Profile must define a "pinfile" for each PIN */
 	if (sc_profile_get_file(profile, _template, &pinfile) < 0) {
-		profile->cbs->error("Profile doesn't define \"%s\"", _template);
-		return SC_ERROR_INVALID_ARGUMENTS;
+		sprintf(_template, "pinfile-%d", 1);
+		/* Little hack: the 'so' profile start counting at pinfile-2
+		 * because the SO pin has index 1. But for the 'onepin' profile,
+		 * you may not have an SO pin and so the user pin is pinfile-1 */
+		if (sc_profile_get_file(profile, _template, &pinfile) >= 0 &&
+		    pinfile->path.len == profile->df_info->file->path.len + 2) {
+		    	index = 1; /* OK, it's the 'onepin' profile */
+		}
+		else {
+			sprintf(_template, "pinfile-%d", index);
+			profile->cbs->error("Profile doesn't define \"%s\"", _template);
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
 	}
 	info->path = pinfile->path;
 	if (info->path.len > 2)
@@ -270,6 +299,26 @@ cflex_new_pin(struct sc_profile *profile, struct sc_card *card,
 	r = cflex_update_pin(profile, card, pinfile, pin, pin_len, pin_tries,
 				puk, puk_len, puk_tries);
 	sc_file_free(pinfile);
+
+	/* In case of the 'onepin' profile, we have to block the AUT1 key now */
+	if (index == 1 && pinfile->path.len == profile->df_info->file->path.len + 2) {
+		unsigned char wrong_key[] = {0xBE, 0xBE, 0x0E, 0x0E, 1, 2, 4, 8};
+		int r1, i;
+
+		r1 = sc_select_file(card, &profile->df_info->file->path, NULL);
+		if (r1 < 0) {
+			profile->cbs->error("Couldn't select the pkcs15 DF: %d", r1);
+			return r1;
+		}
+
+		for (i = 0; i < FLEX_EXTKEY_ATTEMPTS; i++)
+			r1 = sc_verify(card, SC_AC_AUT, 1, wrong_key, sizeof(wrong_key), NULL);
+		if (r1 != SC_ERROR_AUTH_METHOD_BLOCKED) {
+			profile->cbs->error("Couldn't lock the AUT1 file in the pkcs15 DF: %d", r1);
+			return r1;
+		}
+	}
+
 	return r;
 }
 
