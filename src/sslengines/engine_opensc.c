@@ -113,7 +113,14 @@ void sc_set_pubkey_data(EVP_PKEY * key_out, sc_pkcs15_pubkey_t * pubkey)
 
 /* private key operations */
 
-int sc_prkey_op_init(const RSA * rsa, struct sc_pkcs15_object **key_obj_out)
+#define SC_USAGE_DECRYPT	SC_PKCS15_PRKEY_USAGE_DECRYPT | \
+				SC_PKCS15_PRKEY_USAGE_UNWRAP
+
+#define SC_USAGE_SIGN 		SC_PKCS15_PRKEY_USAGE_SIGN | \
+				SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
+
+int sc_prkey_op_init(const RSA * rsa, struct sc_pkcs15_object **key_obj_out,
+	unsigned int usage)
 {
 	int r;
 	struct sc_pkcs15_object *key_obj;
@@ -136,7 +143,7 @@ int sc_prkey_op_init(const RSA * rsa, struct sc_pkcs15_object **key_obj_out)
 			goto err;
 		}
 	}
-	r = sc_pkcs15_find_prkey_by_id(p15card, key_id, &key_obj);
+	r = sc_pkcs15_find_prkey_by_id_usage(p15card, key_id, usage, &key_obj);
 	if (r) {
 		fprintf(stderr, "Unable to find private key from SmartCard: %s",
 			sc_strerror(r));
@@ -290,7 +297,7 @@ sc_private_decrypt(int flen, const u_char * from, u_char * to, RSA * rsa,
 
 	if (padding != RSA_PKCS1_PADDING)
 		return -1;
-	r = sc_prkey_op_init(rsa, &key_obj);
+	r = sc_prkey_op_init(rsa, &key_obj, SC_USAGE_DECRYPT);
 	if (r)
 		return -1;
 	r = sc_pkcs15_decipher(p15card, key_obj, 0, from, flen, to, flen);
@@ -314,7 +321,7 @@ sc_sign(int type, const u_char * m, unsigned int m_len,
 
 	if (!quiet)
 		fprintf(stderr, "signing with type %d\n", type);
-	r = sc_prkey_op_init(rsa, &key_obj);
+	r = sc_prkey_op_init(rsa, &key_obj, SC_USAGE_SIGN);
 	if (r)
 		return -1;
 	/* FIXME: length of sigret correct? */
