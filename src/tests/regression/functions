@@ -33,7 +33,7 @@ if [ -z "$__p15init__" ]; then
 		esac
 
 		case $1 in
-		--use-default-transport-keys|\
+		-T|--use-default-transport-keys|\
 		--split-key|\
 		--no-prompt)
 			p15init="$p15init $1";;
@@ -182,6 +182,18 @@ function skip_if_card {
 			exit 0
 		fi
 	done
+}
+
+function skip_unless_card {
+
+	name=`$osctool -q --name`
+	for __pat in "$@"; do
+		if expr "$name" : "${__pat}.*" >/dev/null; then
+			return
+		fi
+	done
+	msg "Detected $name; skipping test"
+	exit 1
 }
 
 ##################################################################
