@@ -24,7 +24,7 @@ OBJECTS			= \
 	\
 	card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
 	card-etoken.obj card-tcos.obj card-emv.obj card-default.obj \
-	card-mcrd.obj card-starcos.obj card-openpgp.obj \
+	card-mcrd.obj card-starcos.obj card-openpgp.obj card-jcop.obj \
 	\
 	pkcs15-openpgp.obj \
 	\
