@@ -3,10 +3,11 @@ dnl Process this file with autoconf to produce a configure script.
 
 # Require autoconf 2.52
 AC_PREREQ(2.52)
-AC_INIT(src/libopensc/sc.c)
+AC_INIT(opensc, 0.8.0-rc2)
+AC_CONFIG_SRCDIR(src/libopensc/sc.c)
 AC_CONFIG_AUX_DIR(tools)
 
-AM_INIT_AUTOMAKE(opensc, 0.8.0-rc2)
+AM_INIT_AUTOMAKE([foreign])
 AM_CONFIG_HEADER(config.h)
 
 AC_CANONICAL_HOST
