@@ -382,7 +382,8 @@ acl_to_ac(struct sc_file *file, unsigned int op, u8 *ac)
 
 	ac[0] = ac[1] = 0;
 
-	acl = sc_file_get_acl_entry(file, op);
+	if ((acl = sc_file_get_acl_entry(file, op)) == NULL)
+		return;
 
 	assert(acl->method != SC_AC_UNKNOWN);
 	switch (acl->method) {
