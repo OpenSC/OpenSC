@@ -27,15 +27,37 @@
 #include <stdio.h>
 #include <unistd.h>
 
+static int pkcs1_strip_padding(u8 *data, size_t len)
+{
+	unsigned int	n = 0;
+
+	if (data[0] != 0x00 && data[1] != 0x02)
+		return SC_ERROR_DECRYPT_FAILED;
+	/* Skip over padding bytes */
+	for (n = 2; n < len && data[n]; n++)
+		;
+	/* Must be at least 8 pad bytes */
+	if (n >= len || n < 10)
+		return SC_ERROR_DECRYPT_FAILED;
+	n++;
+
+	/* Now move decrypted contents to head of buffer */
+	memmove(data, data + n, len - n);
+	return len - n;
+}
+
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *obj,
+		       unsigned long flags,
 		       const u8 * in, size_t inlen, u8 *out, size_t outlen)
 {
 	int r;
+	struct sc_algorithm_info *alg_info;
 	struct sc_security_env senv;
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_path path, file_id;
         const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+	unsigned long pad_flags = 0;
 
 	/* If the key is extractable, the caller should extract the
 	 * key and do the crypto himself */
@@ -53,8 +75,31 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		file_id.len = 2;
 		path.len -= 2;
 	}
+
+	alg_info = _sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
+	if (alg_info == NULL) {
+		error(ctx, "Card does not support RSA with key length %d\n", prkey->modulus_length);
+		return SC_ERROR_NOT_SUPPORTED;
+	}
 	senv.algorithm = SC_ALGORITHM_RSA;
 	senv.algorithm_flags = 0;
+
+	if (flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1))
+			pad_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+		else
+                        senv.algorithm_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+	} else if ((flags & SC_ALGORITHM_RSA_PAD_ANSI) ||
+		   (flags & SC_ALGORITHM_RSA_PAD_ISO9796)) {
+		error(ctx, "Only PKCS #1 padding method supported\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	} else {
+		if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+			error(ctx, "Card requires RSA padding\n");
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+		senv.algorithm_flags |= SC_ALGORITHM_RSA_RAW;
+	}
 
 	senv.file_ref = file_id;
 	senv.operation = SC_SEC_OPERATION_DECIPHER;
@@ -75,6 +120,13 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	SC_TEST_RET(ctx, r, "sc_set_security_env() failed");
 	r = sc_decipher(p15card->card, in, inlen, out, outlen);
 	SC_TEST_RET(ctx, r, "sc_decipher() failed");
+
+	/* Strip any padding */
+	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		r = pkcs1_strip_padding(out, r);
+                SC_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
+	}
+
 	return r;
 }
 

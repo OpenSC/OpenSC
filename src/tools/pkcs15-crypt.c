@@ -371,7 +371,9 @@ int decipher(struct sc_pkcs15_object *obj)
 		r = SC_ERROR_NOT_SUPPORTED;
 #endif
 	} else {
-		r = sc_pkcs15_decipher(p15card, obj, buf, c, out, len);
+		r = sc_pkcs15_decipher(p15card, obj,
+			opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1,
+			buf, c, out, len);
 	}
 
 	if (r < 0) {

@@ -1184,6 +1184,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 	p15card = (struct sc_pkcs15_card*) ses->slot->card->fw_data;
 	prkey = (struct pkcs15_prkey_object *) obj;
 	rv = sc_pkcs15_decipher(p15card, prkey->prkey_object,
+				 SC_ALGORITHM_RSA_PAD_PKCS1,
 				 pData, ulDataLen,
 				 unwrapped_key, sizeof(unwrapped_key));
 	debug(context, "Key unwrap complete. Result %d.\n", rv);

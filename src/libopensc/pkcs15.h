@@ -353,6 +353,7 @@ void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,
+		       unsigned long flags,
 		       const u8 *in, size_t inlen, u8 *out, size_t outlen);
 
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
