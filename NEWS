@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-New in 0.8.1; 2003-09-xx; Olaf Kirch:
+New in 0.8.1; 2003-09-30; Olaf Kirch:
 * Upgrade libopensc versioning, hasn't been
   accidently upgraded since 0.6.0 release
 * MacOS X specific changes:
