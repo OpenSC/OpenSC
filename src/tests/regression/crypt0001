@@ -43,4 +43,4 @@ run_check_output "Verified OK" \
 	openssl dgst -verify $p -sha1 -signature $s < $m
 success
 
-p15_erase
+p15_erase --secret @01=0000
