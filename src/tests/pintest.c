@@ -13,33 +13,41 @@
 
 struct sc_pkcs15_card *p15card;
 
-int enum_pins(void)
+int enum_pins(struct sc_pkcs15_object ***ret)
 {
-	int i, c;
+	struct sc_pkcs15_object **objs;
+	int i, n;
 
-	c = sc_pkcs15_enum_pins(p15card);
-	if (c < 0) {
+	n = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, NULL, 0);
+	if (n < 0) {
 		fprintf(stderr, "Error enumerating PIN codes: %s\n",
-			sc_strerror(c));
+			sc_strerror(n));
 		return 1;
 	}
-	if (c == 0)
+	if (n == 0) {
 		fprintf(stderr, "No PIN codes found!\n");
-	for (i = 0; i < c; i++) {
-		sc_pkcs15_print_pin_info(&p15card->pin_info[i]);
+		return 0;
 	}
-	return 0;
+	objs = (struct sc_pkcs15_object **) calloc(n, sizeof(*objs));
+	sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, n);
+	for (i = 0; i < n; i++) {
+		sc_test_print_object(objs[i]);
+	}
+	*ret = objs;
+	return n;
 }
 
 
-int ask_and_verify_pin(struct sc_pkcs15_pin_info *pin)
+int ask_and_verify_pin(struct sc_pkcs15_object *obj)
 {
+	struct sc_pkcs15_pin_info *pin;
 	int i = 0;
         char prompt[80];
         u8 *pass;
 
+	pin = (struct sc_pkcs15_pin_info *) obj->data;
 	while (1) {
-		sprintf(prompt, "Please enter PIN code [%s]: ", pin->com_attr.label);
+		sprintf(prompt, "Please enter PIN code [%s]: ", obj->label);
                 pass = (u8 *) getpass(prompt);
 
 		if (strlen((char *) pass) == 0) {
@@ -74,7 +82,8 @@ int ask_and_verify_pin(struct sc_pkcs15_pin_info *pin)
 
 int main(int argc, char *argv[])
 {
-	int i, c;
+	struct sc_pkcs15_object	**objs;
+	int	i, count;
 
 	i = sc_test_init(&argc, argv);
 	if (i < 0)
@@ -91,12 +100,12 @@ int main(int argc, char *argv[])
 	printf("found.\n");
 	printf("Enumerating PIN codes...\n");
 	sc_lock(card);
-	i = enum_pins();
+	count = enum_pins(&objs);
 	sc_unlock(card);
-	if (i)
+	if (count < 0)
 		return 1;
-	for (c = 0; c < p15card->pin_count; c++) {
-		ask_and_verify_pin(&p15card->pin_info[c]);
+	for (i = 0; i < count; i++) {
+		ask_and_verify_pin(objs[i]);
 	}
 	sc_test_cleanup();
 	return 0;
