@@ -141,7 +141,7 @@ dnl Automatically update the libtool script if it becomes out-of-date.
 dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h sys/time.h unistd.h syslog.h utmp.h getopt.h ecurity/pam_appl.h security/_pam_macros.h readline/readline.h])
+AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h sys/time.h unistd.h syslog.h utmp.h getopt.h security/pam_appl.h security/_pam_macros.h readline/readline.h])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -931,6 +931,8 @@ AC_SUBST(LIBSCLDAP)
 LIBSCLDAP="\${top_srcdir}/src/scldap/libscldap.la"
 AC_SUBST(LIBSCRANDOM)
 LIBSCRANDOM="\${top_srcdir}/src/scrandom/libscrandom.la"
+
+AM_CONDITIONAL(HAVE_SCIDI, test "foo" = "bar")
 
 scldap_etc_path=`eval echo ${sysconfdir}` ; scldap_etc_path=`eval echo ${scldap_etc_path}`
 AC_DEFINE_UNQUOTED(SCLDAP_ETC_PATH_CUSTOM, "$scldap_etc_path", [etc path for scldap])
