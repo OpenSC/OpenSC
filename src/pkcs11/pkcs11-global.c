@@ -97,8 +97,9 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		    CK_SLOT_ID_PTR pSlotList,     /* receives the array of slot IDs */
 		    CK_ULONG_PTR   pulCount)      /* receives the number of slots */
 {
-	int numMatches, i, flags = 0;
-	struct sc_pkcs11_slot *slot;
+	CK_SLOT_ID found[SC_PKCS11_MAX_VIRTUAL_SLOTS];
+	int numMatches, i;
+	sc_pkcs11_slot_t *slot;
 
 	if (context == NULL_PTR)
 	    return CKR_CRYPTOKI_NOT_INITIALIZED;
@@ -108,13 +109,20 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	for (i=0; i<context->reader_count; i++)
 		card_detect(i);
 
-	if (tokenPresent)
-		flags |= CKF_TOKEN_PRESENT;
-
 	numMatches = 0;
-	for (i=0, slot = virtual_slots; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++, slot++)
-		if (slot->card && (slot->slot_info.flags & flags) == flags)
-			numMatches++;
+	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++) {
+		slot = &virtual_slots[i];
+		if (!slot->card)
+			continue;
+		if (tokenPresent && !(slot->slot_info.flags & CKF_TOKEN_PRESENT))
+			continue;
+
+		/* Hide all empty slots */
+		if (sc_pkcs11_conf.hide_empty_slots && !slot->fw_data)
+			continue;
+
+		found[numMatches++] = i;
+	}
 
 	if (pSlotList == NULL_PTR) {
 		debug(context, "was only a size inquiry (%d)\n", numMatches);
@@ -128,11 +136,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
                 return CKR_BUFFER_TOO_SMALL;
 	}
 
-        numMatches = 0;
-	for (i=0, slot = virtual_slots; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++, slot++)
-		if (slot->card && (slot->slot_info.flags & flags) == flags)
-                        pSlotList[numMatches++] = i;
-
+	memcpy(pSlotList, found, numMatches * sizeof(CK_SLOT_ID));
 	*pulCount = numMatches;
 
 	debug(context, "returned %d slots\n", numMatches);

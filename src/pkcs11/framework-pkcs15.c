@@ -259,8 +259,12 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 	if (auth != NULL) {
 		pin_info = (struct sc_pkcs15_pin_info*) auth->data;
 
-		snprintf(tmp, sizeof(tmp), "%s (%s)",
+		if (auth->label[0]) {
+			snprintf(tmp, sizeof(tmp), "%s (%s)",
 				card->label, auth->label);
+		} else {
+			snprintf(tmp, sizeof(tmp), "%s", card->label);
+		}
 		slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 	} else
 		sprintf(tmp, "public");
@@ -389,11 +393,9 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	}
 
 	/* Create read/write slots */
-	if (!sc_pkcs11_conf.hide_empty_slots) {
-		while (slot_allocate(&slot, p11card) == CKR_OK) {
-			pkcs15_init_token_info(card, &slot->token_info);
-			slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
-		}
+	while (slot_allocate(&slot, p11card) == CKR_OK) {
+		pkcs15_init_token_info(card, &slot->token_info);
+		slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
 	}
 
 	debug(context, "All tokens created\n");
