@@ -3,11 +3,13 @@ NEWS for OpenSC -- History of user visible changes
 New in 0.4.0; 2001-12-xx; Juha Yrjölä:
 * Finished migrating to Autotools
 * Rewritten ASN.1 decoder (should work better on all PKCS #15 cards)
-* Abstracted card handling, so adding support for new (bizarre)
-  cards is a whiz
-* Added colored debug and error output :)
+* Abstracted card handling, so adding support for new cards is a whiz,
+  'opensc-tool -D' will list all installed drivers.
+* Added colored debug and error output ;)
 * Fixed some memory leaks
 * Support for Swedish Posten eID cards
+* Added very preliminary support for EMV compatible cards and Multiflex
+  cards by Schlumberger
 
 New in 0.3.5; 2001-12-15; Juha Yrjölä:
 * Now compiles with C++

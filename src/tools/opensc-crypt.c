@@ -27,7 +27,7 @@
 #include <opensc.h>
 #include <opensc-pkcs15.h>
 
-#include <sc-internal.h>
+#include "util.h"
 
 int opt_reader = 0, opt_pin = 0, quiet = 0;
 int opt_debug = 0;
@@ -155,7 +155,7 @@ int write_output(const u8 *buf, int len)
 		output_binary = 0;
 	}
 	if (output_binary == 0)
-		sc_print_binary(outf, buf, len);
+		print_binary(outf, buf, len);
 	else
 		fwrite(buf, len, 1, outf);
 	if (outf != stdout)

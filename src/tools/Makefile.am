@@ -6,5 +6,6 @@ LDFLAGS = @LDFLAGS@ \
 
 bin_PROGRAMS = opensc-crypt opensc-tool
 
-opensc_crypt_SOURCES = opensc-crypt.c
-opensc_tool_SOURCES = opensc-tool.c
+opensc_crypt_SOURCES = opensc-crypt.c util.c
+opensc_tool_SOURCES = opensc-tool.c util.c
+noinst_HEADERS = util.h

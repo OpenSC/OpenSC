@@ -104,7 +104,7 @@ static int get_prkeys_from_file(struct sc_pkcs15_card *card,
 		return r;
 	if (file->size > sizeof(buf))
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	r = sc_read_binary(card->card, 0, buf, file->size);
+	r = sc_read_binary(card->card, 0, buf, file->size, 0);
 	if (r < 0)
 		return r;
 	bytes_left = r;

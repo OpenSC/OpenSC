@@ -29,7 +29,7 @@
 #include <sys/stat.h>
 #include <ctype.h>
 
-#include <sc-internal.h>
+#include "util.h"
 
 #define OPT_CHANGE_PIN	0x100
 #define OPT_LIST_PINS	0x101
@@ -118,40 +118,6 @@ void print_usage_and_die()
 	}
 	exit(2);
 }
-
-void hex_dump(const u8 *in, int len)
-{
-	int i;
-	
-	for (i = 0; i < len; i++)
-		printf("%02X ", in[i]);
-}
-
-void hex_dump_asc(const u8 *in, size_t count)
-{
-	int lines = 0;
-
- 	while (count) {
-		char ascbuf[17];
-		int i;
-
-		for (i = 0; i < count && i < 16; i++) {
-			printf("%02X ", *in);
-			if (isprint(*in))
-				ascbuf[i] = *in;
-			else
-				ascbuf[i] = '.';
-			in++;
-		}
-		count -= i;
-		ascbuf[i] = 0;
-		for (; i < 16 && lines; i++)
-			printf("   ");
-		printf("%s\n", ascbuf);
-		lines++;
-	}
-}
-
 
 int list_readers()
 {
@@ -401,70 +367,132 @@ int change_pin()
 	return 0;
 }
 
+const char * print_acl(unsigned int acl)
+{
+	static char line[80];
+	
+	if (acl == SC_AC_UNKNOWN)
+		return "UNKN";
+	if (acl == SC_AC_NEVER)
+		return "NEVR";
+	if (acl == SC_AC_NONE)
+		return "NONE";
+	line[0] = 0;
+	if (acl & SC_AC_CHV1)
+		strcat(line, "CHV1 ");
+	if (acl & SC_AC_CHV2)
+		strcat(line, "CHV2 ");
+	if (acl & SC_AC_TERM)
+		strcat(line, "TERM ");
+	if (acl & SC_AC_PRO)
+		strcat(line, "PROT ");
+	line[strlen(line)-1] = 0; /* get rid of trailing space */
+	return line;
+}
+
+int print_file(struct sc_card *card, const struct sc_file *file, const struct sc_path *path, int depth)
+{
+	int r;
+	const char *tmps;
+	const char *ac_ops_df[] = {
+		"select", "lock", "delete", "create", "rehab", "inval"
+	};
+	const char *ac_ops_ef[] = {
+		"read", "update", "write", "erase", "rehab", "inval"
+	};
+	
+	for (r = 0; r < depth; r++)
+		printf("  ");
+	for (r = 0; r < path->len; r++) {
+		printf("%02X", path->value[r]);
+		if (r && (r & 1) == 1)
+			printf(" ");
+	}
+	if (file->namelen) {
+		printf("[");
+		print_binary(stdout, file->name, file->namelen);
+		printf("] ");
+	}
+	switch (file->type) {
+	case SC_FILE_TYPE_WORKING_EF:
+		tmps = "wEF";
+		break;
+	case SC_FILE_TYPE_INTERNAL_EF:
+		tmps = "iEF";
+		break;
+	case SC_FILE_TYPE_DF:
+		tmps = " DF";
+		break;
+	default:
+		tmps = "unknown";
+		break;
+	}
+	printf("type: %-3s, ", tmps);
+	if (file->type != SC_FILE_TYPE_DF) {
+		const char *structs[] = {
+			"unknown", "transpnt", "linrfix", "linrfix(TLV)",
+			"linvar", "linvar(TLV)", "lincyc", "lincyc(TLV)"
+		};
+		printf("ef structure: %s, ", structs[file->ef_structure]);
+	}
+	printf("size: %d\n", file->size);
+	for (r = 0; r < depth; r++)
+		printf("  ");
+	if (file->type == SC_FILE_TYPE_DF)
+		for (r = 0; r < sizeof(ac_ops_df)/sizeof(ac_ops_df[0]); r++)
+			printf("%s[%s] ", ac_ops_df[r], print_acl(file->acl[r]));
+	else
+		for (r = 0; r < sizeof(ac_ops_ef)/sizeof(ac_ops_ef[0]); r++)
+			printf("%s[%s] ", ac_ops_ef[r], print_acl(file->acl[r]));
+
+	if (file->sec_attr_len) {
+		printf("sec: ");
+		/* Octets are as follows:
+		 *   DF: select, lock, delete, create, rehab, inval
+		 *   EF: read, update, write, erase, rehab, inval
+		 * 4 MSB's of the octet mean:			 
+		 *  0 = ALW, 1 = PIN1, 2 = PIN2, 4 = SYS,
+		 * 15 = NEV */
+		hex_dump(stdout, file->sec_attr, file->sec_attr_len);
+	}
+	if (file->prop_attr_len) {
+		printf("\n");
+		for (r = 0; r < depth; r++)
+			printf("  ");
+		printf("prop: ");
+		hex_dump(stdout, file->prop_attr, file->prop_attr_len);
+	}
+	printf("\n\n");
+#if 0
+	if (file->type != SC_FILE_TYPE_DF) {
+		u8 buf[2048];
+		if (file->ef_structure == SC_FILE_EF_TRANSPARENT) {
+			r = sc_read_binary(card, 0, buf, file->size, 0);
+			if (r > 0)
+				hex_dump_asc(stdout, buf, r);
+		} else {
+			r = sc_read_record(card, 0, buf, file->size, 0);
+			if (r > 0)
+				hex_dump_asc(stdout, buf, r);
+		}
+	}
+#endif
+	return 0;
+}
+
 int enum_dir(struct sc_path path, int depth)
 {
 	struct sc_file file;
 	int r;
 	u8 files[MAX_BUFFER_SIZE];
-	u8 buf[2048];
-	const char *tmps;
 
 	r = sc_select_file(card, &path, &file);
 	if (r) {
 		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	for (r = 0; r < depth; r++) {
-		printf("  ");
-	}
-	for (r = 0; r < path.len; r++) {
-		printf("%02X", path.value[r]);
-		if (r && (r & 1) == 1)
-			printf(" ");
-	}
-	if (sc_file_valid(&file)) {
-		if (file.namelen) {
-			printf("[");
-			sc_print_binary(stdout, file.name, file.namelen);
-			printf("] ");
-		}
-		switch (file.type) {
-		case SC_FILE_TYPE_WORKING_EF:
-			tmps = "wEF";
-			break;
-		case SC_FILE_TYPE_INTERNAL_EF:
-			tmps = "iEF";
-			break;
-		case SC_FILE_TYPE_DF:
-			tmps = "DF";
-			break;
-		default:
-			tmps = "unknown";
-			break;
-		}	
-		printf("type: %-3s ", tmps);
-		if (file.type != SC_FILE_TYPE_DF)
-			printf("ef structure: %d ", file.ef_structure);
-		printf("size: %d ", file.size);
-		if (file.sec_attr_len) {
-			printf("sec: ");
-			/* Octets are as follows:
-			 *   DF: select, lock, delete, create, rehab, inval
-			 *   EF: read, update, write, erase, rehab, inval
-			 * 4 MSB's of the octet mean:			 
-			 *  0 = ALW, 1 = PIN1, 2 = PIN2, 4 = SYS,
-			 * 15 = NEV */
-			hex_dump(file.sec_attr, file.sec_attr_len);
-		}
-		printf("\n");
-		if (file.type != SC_FILE_TYPE_DF && 1) {
-			r = sc_read_binary(card, 0, buf, file.size);
-			if (r > 0)
-				hex_dump_asc(buf, r);
-		}
-	} else {
-		printf("\n");
-	}
+	if (sc_file_valid(&file))
+		print_file(card, &file, &path, depth);
 	if (!sc_file_valid(&file) || file.type == SC_FILE_TYPE_DF) {
 		int i;
 
@@ -599,7 +627,6 @@ int send_apdu()
 	apdu.resplen = sizeof(rbuf);
 	apdu.data = NULL;
 	apdu.datalen = 0;
-	apdu.no_response = 0;
 	len -= 4;
 	if (len > 1) {
 		apdu.lc = *p++;
@@ -643,7 +670,7 @@ int send_apdu()
 	printf("Received (SW1=0x%02X, SW2=0x%02X)%s\n", apdu.sw1, apdu.sw2,
 	       apdu.resplen ? ":" : "");
 	if (apdu.resplen)
-		hex_dump_asc(apdu.resp, apdu.resplen);
+		hex_dump_asc(stdout, apdu.resp, apdu.resplen);
 	return 0;
 }
 
@@ -771,7 +798,7 @@ int main(int argc, char * const argv[])
 		err = 1;
 		goto end;
 	}
-
+	printf("Using card driver: %s\n", card->driver->name);
 	r = sc_lock(card);
 	if (r) {
 		fprintf(stderr, "Unable to lock card: %s\n", sc_strerror(r));

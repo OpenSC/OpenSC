@@ -19,6 +19,7 @@
  */
 
 #include "sc-internal.h"
+#include "sc-log.h"
 
 static struct sc_card_operations emv_ops;
 static const struct sc_card_driver emv_drv = {
@@ -32,20 +33,85 @@ static int emv_finish(struct sc_card *card)
 	return 0;
 }
 
+static int parse_atr(const u8 *atr, size_t atr_len, int *t0_out, int *tx1, int *tx2,
+		     u8 *hist_bytes, int *hbcount)
+{
+	const u8 *p = atr;
+	int len = atr_len;
+	int nr_hist_bytes, tx, i;
+	
+	if (len < 2)
+		return -1;
+	p++;
+	len--;
+	*t0_out = *p;
+	nr_hist_bytes = *p & 0x0F;
+	tx = *p >> 4;
+	p++;
+	for (i = 0; i < 4; i++)
+		tx1[i] = tx2[i] = -1;
+	for (i = 0; i < 4; i++)
+		if (tx & (1 << i)) {
+			if (len <= 0)
+				return -1;
+			tx1[i] = *p++;
+			len--;
+		}
+	if (tx1[3] != -1) {
+		tx = tx1[3] >> 4;
+		for (i = 0; i < 4; i++)
+			if (tx & (1 << i)) {
+				if (len <= 0)
+					return -1;
+				tx2[i] = *p++;
+				len--;
+			}
+	}
+	/* FIXME: possibly check TD2 */
+	if (hist_bytes == NULL || nr_hist_bytes == 0)
+		return 0;
+	if (len < nr_hist_bytes)
+		return -1;
+	memcpy(hist_bytes, p, nr_hist_bytes);
+	*hbcount = nr_hist_bytes;
+	
+	return 0;
+}
+
 static int emv_match_card(struct sc_card *card)
 {
-	int i, match = -1;
-	const char *str = "BWAVANT";
+	int i, r, hbcount = 0, match = 1;
+	int tx1[4], tx2[4], t0;
+	char line[200], *linep = line;
+	u8 hist_bytes[32];
 
-	for (i = 0; i < card->atr_len - strlen(str); i++)
-		if (memcmp(card->atr + i, str, strlen(str)) == 0) {
-			match = 1;
-			break;
+	r = parse_atr(card->atr, card->atr_len, &t0, tx1, tx2, hist_bytes, &hbcount);
+	if (r)
+		return 0;
+	for (i = 0; i < 4; i++)
+		if (tx1[i] != -1)
+			linep += sprintf(linep, "T%c1 = 0x%02X ", 'A' + i, tx1[i]);
+	for (i = 0; i < 4; i++)
+		if (tx2[i] != -1)
+			linep += sprintf(linep, "T%c2 = 0x%02X ", 'A' + i, tx2[i]);
+	if (card->ctx->debug >= 4) {
+		debug(card->ctx, "ATR parse: %s\n", line);
+		if (hbcount) {
+			sc_hex_dump(card->ctx, hist_bytes, hbcount, line, sizeof(line));
+			debug(card->ctx, "historic bytes:\n%s", line);
 		}
-	
-	if (match == 1)
-		return 1;
-	return 0;
+	}
+	if ((t0 & 0xF0) != 0x60)
+		match = 0;
+	if (match && tx1[1] != 0x00)
+		match = 0;
+	if (match && tx1[2] == -1)
+		match = 0;
+	if (match)
+		for (i = 0; i < 4; i++)
+			if (tx2[i] != -1)
+				match = 0;
+	return match;
 }
 
 static int emv_init(struct sc_card *card)
@@ -65,6 +131,8 @@ static int emv_select_file(struct sc_card *card, const struct sc_path *path,
 
 	r = ops->select_file(card, path, file);
 	if (file != NULL && path->len == 2 && memcmp(path->value, "\x3F\x00", 2) == 0)
+		file->type = SC_FILE_TYPE_DF;
+	if (file->namelen)
 		file->type = SC_FILE_TYPE_DF;
 	return r;
 }

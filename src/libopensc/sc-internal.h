@@ -31,12 +31,6 @@
 #define SC_CARD_MAGIC			0x27182818
 
 /* Internal use only */
-inline int sc_card_valid(const struct sc_card *card);
-inline int sc_file_valid(const struct sc_file *file);
-
-void sc_print_binary(FILE *f, const u8 *buf, int len);
-int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2);
-void sc_format_path(const char *path_in, struct sc_path *path_out);
 
 #endif

@@ -241,7 +241,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 			sc_unlock(p15card->card);
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
-		r = sc_read_binary(p15card->card, 0, data, file.size);
+		r = sc_read_binary(p15card->card, 0, data, file.size, 0);
 		if (r < 0) {
 			sc_unlock(p15card->card);
 			free(data);
@@ -335,7 +335,7 @@ static int get_certs_from_file(struct sc_pkcs15_card *card,
 		return r;
 	if (file->size > sizeof(buf))
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	r = sc_read_binary(card->card, 0, buf, file->size);
+	r = sc_read_binary(card->card, 0, buf, file->size, 0);
 	if (r < 0)
 		return r;
 	bytes_left = r;

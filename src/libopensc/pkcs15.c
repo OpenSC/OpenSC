@@ -274,7 +274,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 		error(ctx, "Error selecting EF(DIR): %s\n", sc_strerror(err));
 		goto error;
 	}
-	err = sc_read_binary(card, 0, buf, p15card->file_dir.size);
+	err = sc_read_binary(card, 0, buf, p15card->file_dir.size, 0);
 	if (err < 0) {
 		error(ctx, "Error reading EF(DIR): %s\n", sc_strerror(err));
 		goto error;
@@ -303,7 +303,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 		err = sc_select_file(card, &tmppath, &p15card->file_odf);
 		if (err) /* FIXME: finish writing error stuff */
 			goto error;
-		err = sc_read_binary(card, 0, buf, p15card->file_odf.size);
+		err = sc_read_binary(card, 0, buf, p15card->file_odf.size, 0);
 		if (err < 0)
 			goto error;
 		if (err < 2) {
@@ -328,7 +328,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	err = sc_select_file(card, &tmppath, &p15card->file_tokeninfo);
 	if (err)
 		goto error;
-	err = sc_read_binary(card, 0, buf, p15card->file_tokeninfo.size);
+	err = sc_read_binary(card, 0, buf, p15card->file_tokeninfo.size, 0);
 	if (err < 0)
 		goto error;
 	if (err <= 2) {

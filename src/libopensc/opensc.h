@@ -1,4 +1,4 @@
-	/*
+/*
  * opensc.h: OpenSC library header file
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
@@ -63,7 +63,10 @@ extern "C" {
 #define SC_ERROR_ASN1_END_OF_CONTENTS		-1027
 #define SC_ERROR_TOO_MANY_OBJECTS		-1028
 #define SC_ERROR_INVALID_CARD			-1029
+#define SC_ERROR_WRONG_LENGTH			-1030
+#define SC_ERROR_RECORD_NOT_FOUND		-1031
 
+/* Different APDU cases */
 #define SC_APDU_CASE_NONE		0
 #define SC_APDU_CASE_1                  1
 #define SC_APDU_CASE_2_SHORT            2
@@ -73,19 +76,57 @@ extern "C" {
 #define SC_APDU_CASE_3_EXT              6
 #define SC_APDU_CASE_4_EXT              7
 
-#define SC_FILE_TYPE_DF			0x02
-#define SC_FILE_TYPE_INTERNAL_EF	0x01
-#define SC_FILE_TYPE_WORKING_EF		0x00
+/* File types */
+#define SC_FILE_TYPE_DF			0x04
+#define SC_FILE_TYPE_INTERNAL_EF	0x03
+#define SC_FILE_TYPE_WORKING_EF		0x01
 
+/* EF structures */
+#define SC_FILE_EF_UNKNOWN		0x00
 #define SC_FILE_EF_TRANSPARENT		0x01
 #define SC_FILE_EF_LINEAR_FIXED		0x02
 #define SC_FILE_EF_LINEAR_FIXED_TLV	0x03
 #define SC_FILE_EF_LINEAR_VARIABLE	0x04
+#define SC_FILE_EF_LINEAR_VARIABLE_TLV	0x05
 #define SC_FILE_EF_CYCLIC		0x06
+#define SC_FILE_EF_CYCLIC_TLV		0x07
 
+/* File status flags */
 #define SC_FILE_STATUS_ACTIVATED	0x00
 #define SC_FILE_STATUS_INVALIDATED	0x01
 
+/* Access Control flags */
+#define SC_AC_NONE			0x00000000 
+#define SC_AC_CHV1			0x00000001 /* Card Holder Verif. */
+#define SC_AC_CHV2			0x00000002 
+#define SC_AC_TERM			0x00000004 /* Terminal auth */
+#define SC_AC_PRO			0x00000008 /* Protected mode */
+#define SC_AC_NEVER		        0xFFFFFFFE
+#define SC_AC_UNKNOWN			0xFFFFFFFF
+
+/* Operations relating to access control (in case of DF) */
+#define SC_AC_OP_SELECT			0
+#define SC_AC_OP_LOCK			1
+#define SC_AC_OP_DELETE			2
+#define SC_AC_OP_CREATE			3
+#define SC_AC_OP_REHABILITATE		4
+#define SC_AC_OP_INVALIDATE		5
+
+/* Operations relating to access control (in case of EF) */
+#define SC_AC_OP_READ			0
+#define SC_AC_OP_UPDATE			1
+#define SC_AC_OP_WRITE			2
+#define SC_AC_OP_ERASE			3
+/* rehab and invalidate are the same as in DF case */
+
+#define SC_MAX_AC_OPS			6
+
+/* sc_read_binary() flags */
+#define SC_READ_RECORD_EF_ID_MASK	0x0001F
+#define SC_READ_RECORD_BY_REC_ID	0x00000
+#define SC_READ_RECORD_BY_REC_NR	0x00100
+
+/* various maximum values */
 #define SC_MAX_CARD_DRIVERS		16
 #define SC_MAX_READERS			4
 #define SC_MAX_APDU_BUFFER_SIZE		255
@@ -95,12 +136,12 @@ extern "C" {
 #define SC_MAX_SEC_ATTR_SIZE		16
 #define SC_MAX_PROP_ATTR_SIZE		16
 
-#define SC_ASN1_MAX_OBJECT_ID_OCTETS  16
+#define SC_MAX_OBJECT_ID_OCTETS  16
 
 typedef unsigned char u8;
 
 struct sc_object_id {
-	int value[SC_ASN1_MAX_OBJECT_ID_OCTETS];
+	int value[SC_MAX_OBJECT_ID_OCTETS];
 };
 
 #define SC_PATH_TYPE_FILE_ID	0
@@ -117,12 +158,15 @@ struct sc_path {
 
 struct sc_file {
 	struct sc_path path;
-	u8 name[16];
-	size_t namelen;
+	u8 name[16];	/* DF name */
+	size_t namelen; /* length of DF name */
 
 	int type, shareable, ef_structure;
-	size_t size;
-	int id, status;
+	size_t size;	/* Size of file (in bytes) */
+	int id;		/* Short file id (2 bytes) */
+	int status;	/* Status flags */
+	unsigned int acl[SC_MAX_AC_OPS]; /* Access Control List */
+
 	u8 sec_attr[SC_MAX_SEC_ATTR_SIZE];
 	size_t sec_attr_len;
 	u8 prop_attr[SC_MAX_PROP_ATTR_SIZE];
@@ -151,6 +195,7 @@ struct sc_card {
 	
 	pthread_mutex_t mutex;
 	int lock_count;
+	const struct sc_card_driver *driver;
 	const struct sc_card_operations *ops;
 	void *ops_data;
 	
@@ -175,22 +220,23 @@ struct sc_card_operations {
 	/* ISO 7816-4 functions */
 
 	int (*read_binary)(struct sc_card *card, unsigned int idx,
-			   u8 * buf, size_t count);
+			   u8 * buf, size_t count, unsigned long flags);
 	int (*write_binary)(struct sc_card *card, unsigned int idx,
-			    const u8 * buf, size_t count);
+			    const u8 * buf, size_t count, unsigned long flags);
 	int (*update_binary)(struct sc_card *card, unsigned int idx,
-			     const u8 * buf, size_t count);
+			     const u8 * buf, size_t count, unsigned long flags);
 	int (*erase_binary)(struct sc_card *card, unsigned int idx,
-			    size_t count);
+			    size_t count, unsigned long flags);
 	/* These may be left NULL.  If not present, multiple calls
 	 * to read_binary et al. will be made. */
 	int (*read_binary_large)(struct sc_card *card, unsigned int idx,
-				 u8 * buf, size_t count);
+				 u8 * buf, size_t count, unsigned long flags);
 	int (*write_binary_large)(struct sc_card *card, unsigned int idx,
-				  const u8 * buf, size_t count);
+				  const u8 * buf, size_t count, unsigned long flags);
 	int (*update_binary_large)(struct sc_card *card, unsigned int idx,
-				   const u8 * buf, size_t count);
-	/* possibly TODO: record handling */
+				   const u8 * buf, size_t count, unsigned long flags);
+	int (*read_record)(struct sc_card *card, unsigned int rec_nr,
+			   u8 * buf, size_t count, unsigned long flags);
 
 	/* select_file: Does the equivalent of SELECT FILE command specified
 	 *   in ISO7816-4. Stores information about the selected file to
@@ -247,15 +293,15 @@ struct sc_context {
 
 struct sc_apdu {
 	int cse;		/* APDU case */
-	u8 cla, ins, p1, p2;
-	size_t lc, le;
-	const u8 *data;		/* C-APDU */
-	size_t datalen;		/* length of C-APDU */
-	u8 *resp;		/* R-APDU */
-	size_t resplen;		/* length of R-APDU */
-	int no_response;	/* No response required */
+	u8 cla, ins, p1, p2;	/* CLA, INS, P1 and P2 bytes */
+	size_t lc, le;		/* Lc and Le bytes */
+	const u8 *data;		/* C-APDU data */
+	size_t datalen;		/* length of data in C-APDU */
+	u8 *resp;		/* R-APDU data buffer */
+	size_t resplen;		/* in: size of R-APDU buffer,
+				 * out: length of data returned in R-APDU */
 
-	unsigned int sw1, sw2;
+	unsigned int sw1, sw2;	/* Status words returned in R-APDU */
 };
 
 /* Base64 encoding/decoding functions */
@@ -273,6 +319,7 @@ int sc_destroy_context(struct sc_context *ctx);
 int sc_connect_card(struct sc_context *ctx,
 		    int reader, struct sc_card **card);
 int sc_disconnect_card(struct sc_card *card);
+inline int sc_card_valid(const struct sc_card *card);
 
 /* Checks if a card is present on the supplied reader
  * Returns: 1 if card present, 0 if card absent and < 0 in case of an error */
@@ -290,7 +337,10 @@ int sc_unlock(struct sc_card *card);
 /* ISO 7816-4 related functions */
 int sc_select_file(struct sc_card *card, const struct sc_path *path,
 		   struct sc_file *file);
-int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf, size_t count);
+int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
+		   size_t count, unsigned long flags);
+int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 * buf,
+		   size_t count, unsigned long flags);
 int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);
 
 /* ISO 7816-8 related functions */
@@ -312,6 +362,10 @@ int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
 /* ISO 7816-9 */
 int sc_create_file(struct sc_card *card, const struct sc_file *file);
 int sc_delete_file(struct sc_card *card, int file_id);
+
+inline int sc_file_valid(const struct sc_file *file);
+void sc_format_path(const char *path_in, struct sc_path *path_out);
+int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 
 /* Possibly only on Setec cards */
 int sc_list_files(struct sc_card *card, u8 * buf, int buflen);

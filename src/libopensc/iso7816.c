@@ -26,7 +26,8 @@
 #include <ctype.h>
 
 static int iso7816_read_binary(struct sc_card *card,
-			       unsigned int idx, u8 *buf, size_t count)
+			       unsigned int idx, u8 *buf, size_t count,
+			       unsigned long flags)
 {
 	struct sc_apdu apdu;
 	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -45,6 +46,60 @@ static int iso7816_read_binary(struct sc_card *card,
 	memcpy(buf, recvbuf, apdu.resplen);
 
 	SC_FUNC_RETURN(card->ctx, 2, apdu.resplen);
+}
+
+static int iso7816_read_record(struct sc_card *card,
+			       unsigned int rec_nr, u8 *buf, size_t count,
+			       unsigned long flags)
+{
+	struct sc_apdu apdu;
+	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int r;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB2, rec_nr, 0);
+	apdu.p2 = (rec_nr & SC_READ_RECORD_EF_ID_MASK) << 3;
+	if (flags & SC_READ_RECORD_BY_REC_NR)
+		apdu.p2 |= 0x04;
+	
+	apdu.le = count;
+	apdu.resplen = count;
+	apdu.resp = recvbuf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.resplen == 0)
+		SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	memcpy(buf, recvbuf, apdu.resplen);
+
+	SC_FUNC_RETURN(card->ctx, 2, apdu.resplen);
+}
+
+static unsigned int byte_to_acl(u8 byte)
+{
+	switch (byte >> 4) {
+	case 0:
+		return SC_AC_NONE;
+	case 1:
+		return SC_AC_CHV1;
+	case 2:
+		return SC_AC_CHV2;
+	case 4:
+		return SC_AC_TERM;
+	case 15:
+		return SC_AC_NEVER;
+	}
+	return SC_AC_UNKNOWN;
+}
+
+static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
+{
+	/* FIXME: confirm if this is specified in the ISO 7816-9 standard */
+	int i;
+	
+	if (len < 6)
+		return;
+	for (i = 0; i < 6; i++)
+		file->acl[i] = byte_to_acl(buf[i]);
 }
 
 static void process_fci(struct sc_context *ctx, struct sc_file *file,
@@ -79,23 +134,25 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 			if (ctx->debug >= 3)
 				debug(ctx, "  shareable: %s\n",
 				       (byte & 0x40) ? "yes" : "no");
-			file->type = (byte >> 3) & 7;
 			file->ef_structure = byte & 0x07;
+			switch ((byte >> 3) & 7) {
+			case 0:
+				type = "working EF";
+				file->type = SC_FILE_TYPE_WORKING_EF;
+				break;
+			case 1:
+				type = "internal EF";
+				file->type = SC_FILE_TYPE_INTERNAL_EF;
+				break;
+			case 7:
+				type = "DF";
+				file->type = SC_FILE_TYPE_DF;
+				break;
+			default:
+				type = "unknown";
+				break;
+			}
 			if (ctx->debug >= 3) {
-				switch ((byte >> 3) & 7) {
-				case 0:
-					type = "working EF";
-					break;
-				case 1:
-					type = "internal EF";
-					break;
-				case 7:
-					type = "DF";
-					break;
-				default:
-					type = "unknown";
-					break;
-				}
 				debug(ctx, "  type: %s\n", type);
 				debug(ctx, "  EF structure: %d\n",
 				       byte & 0x07);
@@ -128,10 +185,9 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 	} else
 		file->prop_attr_len = 0;
 	tag = sc_asn1_find_tag(p, len, 0x86, &taglen);
-	if (tag != NULL && taglen && taglen <= SC_MAX_SEC_ATTR_SIZE) {
-		memcpy(file->sec_attr, tag, taglen);
-		file->sec_attr_len = taglen;
-	} else
+	if (tag != NULL && taglen && taglen <= SC_MAX_SEC_ATTR_SIZE)
+		parse_sec_attr(file, tag, taglen);
+	else
 		file->sec_attr_len = 0;
 	file->magic = SC_FILE_MAGIC;
 }
@@ -184,16 +240,19 @@ static int iso7816_select_file(struct sc_card *card,
 	apdu.datalen = pathlen;
 
 	if (file != NULL) {
-		memset(file, 0, sizeof(*file));
+		int i;
+		/* initialize file to default values */
+		memset(file, 0, sizeof(struct sc_file));  
+		for (i = 0; i < SC_MAX_AC_OPS; i++)
+			file->acl[i] = SC_AC_UNKNOWN;
 		memcpy(&file->path.value, path, pathlen);
 		file->path.len = pathlen;
 	}
 	if (file == NULL || sc_file_valid(file))
-		apdu.no_response = 1;
+		apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	
-	if (apdu.no_response) {
+	if (file == NULL || sc_file_valid(file)) {
 		if (apdu.sw1 == 0x61)
 			SC_FUNC_RETURN(card->ctx, 2, 0);
 		SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
@@ -256,6 +315,7 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 	if (iso_ops.read_binary == NULL) {
 		memset(&iso_ops, 0, sizeof(iso_ops));
 		iso_ops.read_binary = iso7816_read_binary;
+		iso_ops.read_record = iso7816_read_record;
 		iso_ops.select_file = iso7816_select_file;
 		iso_ops.get_challenge = iso7816_get_challenge;
 	}

@@ -53,7 +53,6 @@ static int autodetect_class(struct sc_card *card)
 			debug(card->ctx, "trying with 0x%02X\n", classes[i]);
 		apdu.cla = classes[i];
 		apdu.cse = SC_APDU_CASE_3_SHORT;
-		apdu.no_response = 1;
 		memcpy(buf, "\x3F\x00", 2);
 		apdu.data = buf;
 		apdu.datalen = 2;

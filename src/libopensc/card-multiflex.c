@@ -116,7 +116,7 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 			     struct sc_file *file)
 {
-	int r;
+	int r, i;
 	struct sc_apdu apdu;
         u8 rbuf[MAX_BUFFER_SIZE];
 	u8 *pathptr = path->value;
@@ -167,12 +167,12 @@ static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 	/* No need to get file information, if file is NULL or already
          * valid. */
 	if (file == NULL || sc_file_valid(file))
-                apdu.no_response = 1;
+                apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
-	if (apdu.no_response)
+	if (file == NULL || sc_file_valid(file))
                 return 0;
 
 	if (apdu.resplen < 14)
@@ -180,8 +180,12 @@ static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 
 	if (apdu.resp[0] == 0x6F) {
 		error(card->ctx, "unsupported: Multiflex returned FCI\n");
-                return SC_ERROR_UNKNOWN_REPLY; /* FIXME */
+		return SC_ERROR_UNKNOWN_REPLY; /* FIXME */
 	}
+
+	memset(file, 0, sizeof(struct sc_file));
+	for (i = 0; i < SC_MAX_AC_OPS; i++)
+		file->acl[i] = SC_AC_UNKNOWN;
 
 	return parse_flex_sf_reply(card->ctx, apdu.resp, apdu.resplen, file);
 }

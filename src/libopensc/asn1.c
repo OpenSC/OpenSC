@@ -420,7 +420,7 @@ int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 	assert(id != NULL);
 	if (inlen < 1)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
-	for (i = 0; i < SC_ASN1_MAX_OBJECT_ID_OCTETS; i++)
+	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS; i++)
 		id->value[i] = -1;
 	a = *p;
 	*octet++ = a / 40;
@@ -438,7 +438,7 @@ int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 			inlen--;
 		}
 		*octet++ = a;
-		if (octet - id->value >= SC_ASN1_MAX_OBJECT_ID_OCTETS-1)
+		if (octet - id->value >= SC_MAX_OBJECT_ID_OCTETS-1)
 			return SC_ERROR_INVALID_ASN1_OBJECT;
 	};
 	

@@ -87,8 +87,7 @@ void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin)
 	printf("PIN [%s]\n", pin->com_attr.label);
 	printf("\tFlags     : %d\n", pin->com_attr.flags);
 	printf("\tLength    : %d..%d\n", pin->min_length, pin->stored_length);
-	printf("\tPad char  : ");
-	sc_print_binary(stdout, &pin->pad_char, 1);
+	printf("\tPad char  : 0x%02X", pin->pad_char);
 	printf("\n");
 	printf("\tPath      : %s\n", path);
 	printf("\tAuth ID   : ");
@@ -108,7 +107,7 @@ static int get_pins_from_file(struct sc_pkcs15_card *card,
 		return r;
 	if (file->size > sizeof(buf))
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	r = sc_read_binary(card->card, 0, buf, file->size);
+	r = sc_read_binary(card->card, 0, buf, file->size, 0);
 	if (r < 0)
 		return r;
 	bytes_left = r;
@@ -196,8 +195,8 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_pin_info *pin,
-			 const char *oldpin, int oldpinlen,
-			 const char *newpin, int newpinlen)
+			 const u8 *oldpin, int oldpinlen,
+			 const u8 *newpin, int newpinlen)
 {
 	int r;
 	struct sc_file file;

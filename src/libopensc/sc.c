@@ -37,22 +37,6 @@ const char *sc_version = VERSION;
 const char *sc_version = "(undef)";
 #endif
 
-void sc_print_binary(FILE *f, const u8 *buf, int count)
-{
-	int i;
-	
-	for (i = 0; i < count; i++) {
-		unsigned char c = buf[i];
-		const char *format;
-		if (!isalnum(c) && !ispunct(c) && !isspace(c))
-			format = "\\x%02X";
-		else
-			format = "%c";
-		fprintf(f, format, c);
-	}
-	(void) fflush(f);
-}
-
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 {
 	int err = 0;
@@ -279,6 +263,9 @@ const char *sc_strerror(int error)
 		"Required ASN.1 object not found",
 		"Premature end of ASN.1 stream",
 		"Too many objects",
+		"Card is invalid or cannot be handled",
+		"Wrong length",
+		"Record not found"
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);
 
