@@ -1168,13 +1168,73 @@ usage:
 	return -1;
 }
 
+int do_pgp_lsdo(int argc, char **argv)
+{
+	printf(
+	      "Data objects on card:\n"
+	      "   004F   Serial Number\n"
+	      "   005E   Login Data\n"
+	      "   0065   Cardholder Related Data\n"
+	      "   006E   Application Related Data\n"
+	      "   0073   Discretionary Data Objects\n"
+	      "   007A   Security Support Template\n"
+	      "   5F50   URL\n"
+		);
+	return 0;
+}
+
+int do_get_data(int argc, char **argv)
+{
+	unsigned char	buffer[256];
+	unsigned int	tag;
+	FILE		*fp;
+	int		r;
+
+	if (argc != 1 && argc != 2)
+		goto usage;
+
+	tag = strtoul(argv[0], NULL, 16);
+	r = sc_get_data(card, tag, buffer, sizeof(buffer));
+	if (r < 0) {
+		printf("Failed to get data object: %s\n", sc_strerror(r));
+		return -1;
+	}
+
+	if (argc == 2) {
+		const char	*filename = argv[1];
+
+		if (!(fp = fopen(filename, "w"))) {
+			perror(filename);
+			return -1;
+		}
+		fwrite(buffer, r, 1, fp);
+		fclose(fp);
+	} else {
+		printf("Object %04x:\n", tag & 0xFFFF);
+		hex_dump_asc(stdout, buffer, r, 0);
+	}
+
+	return 0;
+
+usage:	printf("Usage: %s hex_tag [dest_file]\n", argv[-1]);
+	return -1;
+}
+
+int do_put_data(int argc, char **argv)
+{
+usage:	printf("Usage: put hex_tag source_file\n"
+	       "or:    put hex_tag aa:bb:cc\n"
+	       "or:    put hex_tag \"foobar...\"\n");
+	return -1;
+}
+
 int do_quit(int argc, char **argv)
 {
 	die(0);
 	return 0;
 }
 
-struct command		cmds[] = {
+struct command		default_cmds[] = {
  { "ls",	do_ls,		"list all files in the current DF"	},
  { "cd",	do_cd,		"change to another DF"			},
  { "debug",	do_debug,	"set the debug level"			},
@@ -1195,6 +1255,22 @@ struct command		cmds[] = {
  { "quit",	do_quit,	"quit this program"			},
  { 0, 0, 0 }
 };
+
+struct command		pgp_cmds[] = {
+ { "ls",	do_pgp_lsdo,	"show all DOs on the card"		},
+ { "debug",	do_debug,	"set the debug level"			},
+ { "cat",	do_get_data,	"print the contents of a DO"		},
+ { "verify",	do_verify,	"present a PIN or key to the card"	},
+ { "change",	do_change,	"change a PIN"                          },
+ { "unblock",	do_unblock,	"unblock a PIN"                         },
+ { "put",	do_put_data,	"copy a local file to the card"		},
+ { "get",	do_get_data,	"copy a DO to a local file"		},
+ { "random",	do_random,	"obtain N random bytes from card"	},
+ { "quit",	do_quit,	"quit this program"			},
+ { 0, 0, 0 }
+};
+
+struct command		*cmds = default_cmds;
 
 void usage()
 {
@@ -1327,12 +1403,21 @@ int main(int argc, char * const argv[])
 		goto end;
 	}
 
-        sc_format_path("3F00", &current_path);
+	if (card->driver->short_name
+	 && !strcmp(card->driver->short_name, "openpgp")) {
+		sc_format_path("D276:0001:2401", &current_path);
+		current_path.type = SC_PATH_TYPE_DF_NAME;
+		cmds = pgp_cmds;
+	} else {
+		sc_format_path("3F00", &current_path);
+	}
+
 	r = sc_select_file(card, &current_path, &current_file);
 	if (r) {
 		printf("unable to select MF: %s\n", sc_strerror(r));
 		return 1;
 	}
+
 	while (1) {
 		struct command *c;
 		int i;
