@@ -30,7 +30,7 @@
 
 static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 				   const struct sc_path *path,
-				   u8 *buf, size_t bufsize)
+				   char *buf, size_t bufsize)
 {
 	char dir[80];
         char pathname[SC_MAX_PATH_SIZE*2+1];

@@ -602,7 +602,6 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_MODULUS_BITS:
 	case CKA_PUBLIC_EXPONENT:
-                //break;
 	default:
                 return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
