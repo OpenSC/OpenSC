@@ -39,6 +39,7 @@
 #define SC_ERROR_SECURITY_STATUS_NOT_SATISFIED	-1014
 #define SC_ERROR_CONNECTING_TO_RES_MGR		-1015
 #define SC_ERROR_INVALID_ASN1_OBJECT		-1016
+#define SC_ERROR_BUFFER_TOO_SMALL		-1017
 
 #define SC_APDU_CASE_NONE		0
 #define SC_APDU_CASE_1                  1
@@ -129,11 +130,15 @@ struct sc_security_env {
 	int key_ref;
 };
 
+/* ASN.1 parsing functions */
 const u8 *sc_asn1_find_tag(const u8 * buf, int buflen, int tag, int *taglen);
 const u8 *sc_asn1_verify_tag(const u8 * buf, int buflen, int tag, int *taglen);
 const u8 *sc_asn1_skip_tag(const u8 ** buf, int *buflen, int tag, int *taglen);
 
+/* ASN.1 printing functions */
 void sc_asn1_print_tags(const u8 * buf, int buflen);
+
+/* ASN.1 object decoding functions */
 int sc_asn1_utf8string_to_ascii(const u8 * buf,
 				int buflen, u8 * outbuf, int outlen);
 int sc_asn1_decode_bit_string(const u8 * inbuf,
@@ -144,6 +149,10 @@ int sc_asn1_decode_bit_string_ni(const u8 * inbuf,
 int sc_asn1_decode_integer(const u8 * inbuf, int inlen, int *out);
 int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 			     struct sc_object_id *id);
+
+/* Base64 converter functions */
+int sc_base64_convert_to(const u8 *in, int inlen, u8 *out, int outlen,
+			 int linelength);
 
 /* internal functions */
 int sc_check_apdu(const struct sc_apdu *apdu);

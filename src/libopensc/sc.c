@@ -610,6 +610,7 @@ const char *sc_strerror(int error)
 		"PIN code incorrect",
 		"Security status not satisfied",
 		"Error connecting to Resource Manager",
+		"Buffer too small",
 
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);

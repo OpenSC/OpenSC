@@ -27,6 +27,10 @@ int main(int argc, char *argv[])
 		freq[i] = 0;
 	c = 0;
 	while (1) {
+		if ((c % 10) == 1) {
+			printf(".");
+			fflush(stdout);
+		}
 		if (c == 0)
 			gettimeofday(&tv1, NULL);
 		if (sc_get_random(card, buf, 8) != 0) {
@@ -41,7 +45,7 @@ int main(int argc, char *argv[])
 			gettimeofday(&tv2, NULL);
 			foo = tv2.tv_sec * 1000 + tv2.tv_usec / 1000;
 			foo2 = tv1.tv_sec * 1000 + tv1.tv_usec / 1000;
-			printf("Time to generate 64 bits of randomness: %lld ms\n",
+			printf("\nTime to generate 64 bits of randomness: %lld ms\n",
 			       (foo - foo2)/100);
 			printf("Frequencies:\n");
 			for (i = 0; i < 256; i++) {

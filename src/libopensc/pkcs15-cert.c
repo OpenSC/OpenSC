@@ -54,10 +54,12 @@ static int parse_cert(const u8 *buf, int buflen, struct sc_pkcs15_cert *cert)
 	u8 *tmpbuf;
 	int taglen, left, r;
 	struct sc_pkcs15_rsa_pubkey *key = &cert->key;
+	const u8 *buf0 = buf;
 	
 	buf = sc_asn1_verify_tag(buf, buflen, 0x30, &buflen); /* SEQUENCE */
 	if (buf == NULL)				   /* Certificate */
 		return SC_ERROR_INVALID_ASN1_OBJECT;
+	cert->data_len = (buf - buf0) + buflen;
 	p = sc_asn1_skip_tag(&buf, &buflen, 0x30, &left);     /* SEQUENCE */
 	if (p == NULL)					/* tbsCertificate */
 		return SC_ERROR_INVALID_ASN1_OBJECT;
@@ -175,7 +177,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	cert->data = data;
-	cert->data_len = len;
+//	cert->data_len = len;
 	*cert_out = cert;
 	return 0;
 }
