@@ -1255,27 +1255,27 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 
 	printf("  Usage:      ");
 	sepa = "";
-	if (getENCRYPT(sess, obj)) {
+	if (pub && getENCRYPT(sess, obj)) {
 		printf("%sencrypt", sepa);
 		sepa = ", ";
 	}
-	if (getDECRYPT(sess, obj)) {
+	if (!pub && getDECRYPT(sess, obj)) {
 		printf("%sdecrypt", sepa);
 		sepa = ", ";
 	}
-	if (getSIGN(sess, obj)) {
+	if (!pub && getSIGN(sess, obj)) {
 		printf("%ssign", sepa);
 		sepa = ", ";
 	}
-	if (getVERIFY(sess, obj)) {
+	if (pub && getVERIFY(sess, obj)) {
 		printf("%sverify", sepa);
 		sepa = ", ";
 	}
-	if (getWRAP(sess, obj)) {
+	if (pub && getWRAP(sess, obj)) {
 		printf("%swrap", sepa);
 		sepa = ", ";
 	}
-	if (getUNWRAP(sess, obj)) {
+	if (!pub && getUNWRAP(sess, obj)) {
 		printf("%sunwrap", sepa);
 		sepa = ", ";
 	}
