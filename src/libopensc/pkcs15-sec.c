@@ -106,9 +106,13 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	}
 
 	senv.operation = SC_SEC_OPERATION_DECIPHER;
-	senv.key_ref_len = 1;
-	senv.key_ref[0] = prkey->key_reference & 0xFF;
-	senv.flags = SC_SEC_ENV_KEY_REF_PRESENT;
+	senv.flags = 0;
+	/* optional keyReference attribute (the default value is -1) */
+	if (prkey->key_reference >= 0) {
+		senv.key_ref_len = 1;
+		senv.key_ref[0] = prkey->key_reference & 0xFF;
+		senv.flags |= SC_SEC_ENV_KEY_REF_PRESENT;
+	}
 	senv.flags |= SC_SEC_ENV_ALG_PRESENT;
 
 	r = sc_lock(p15card->card);
@@ -281,9 +285,13 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 
 	senv.operation = SC_SEC_OPERATION_SIGN;
-	senv.key_ref_len = 1;
-	senv.key_ref[0] = prkey->key_reference & 0xFF;
-	senv.flags = SC_SEC_ENV_KEY_REF_PRESENT;
+	senv.flags = 0;
+	/* optional keyReference attribute (the default value is -1) */
+	if (prkey->key_reference >= 0) {
+		senv.key_ref_len = 1;
+		senv.key_ref[0] = prkey->key_reference & 0xFF;
+		senv.flags |= SC_SEC_ENV_KEY_REF_PRESENT;
+	}
 	senv.flags |= SC_SEC_ENV_ALG_PRESENT;
 
 	r = sc_lock(p15card->card);
