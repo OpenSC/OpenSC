@@ -783,7 +783,7 @@ if test "x$prefix" = xNONE; then
   prefix=$ac_default_prefix
 fi
 if test "x$exec_prefix" = xNONE; then
-  exec_prefix=$prefix
+  exec_prefix='$prefix'
 fi
 
 dnl Enable/disable debugging messages.
