@@ -48,13 +48,24 @@ static const struct sc_asn1_entry c_asn1_rsakey_attr[] = {
 	{ NULL }
 };
 
-static const struct sc_asn1_entry c_asn1_type_attr[] = {
+static const struct sc_asn1_entry c_asn1_prk_rsa_attr[] = {
 	{ "privateRSAKeyAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ NULL }
+};
+
+static const struct sc_asn1_entry c_asn1_dsakey_attr[] = {
+	{ "value",	   SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ NULL }
+};
+
+static const struct sc_asn1_entry c_asn1_prk_dsa_attr[] = {
+	{ "privateDSAKeyAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
 	{ NULL }
 };
 
 static const struct sc_asn1_entry c_asn1_prkey[] = {
 	{ "privateRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ "privateDSAKey", SC_ASN1_PKCS15_OBJECT,  2 | SC_ASN1_CONS, 0, NULL },
 	{ NULL }
 };		
 
@@ -68,23 +79,34 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	int usage_len = sizeof(info.usage);
 	int af_len = sizeof(info.access_flags);
 	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[1];
-	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_type_attr[2];
-	struct sc_asn1_entry asn1_prkey[2];
-	struct sc_asn1_pkcs15_object prkey_obj = { obj, asn1_com_key_attr,
-						    asn1_com_prkey_attr, asn1_type_attr };
+	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_prk_rsa_attr[2];
+	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_prk_dsa_attr[2];
+	struct sc_asn1_entry asn1_prkey[3];
+	struct sc_asn1_pkcs15_object rsa_prkey_obj = { obj, asn1_com_key_attr,
+						       asn1_com_prkey_attr, asn1_prk_rsa_attr };
+	struct sc_asn1_pkcs15_object dsa_prkey_obj = { obj, asn1_com_key_attr,
+						       asn1_com_prkey_attr, asn1_prk_dsa_attr };
 
         sc_copy_asn1_entry(c_asn1_prkey, asn1_prkey);
-        sc_copy_asn1_entry(c_asn1_type_attr, asn1_type_attr);
+
+        sc_copy_asn1_entry(c_asn1_prk_rsa_attr, asn1_prk_rsa_attr);
         sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
+        sc_copy_asn1_entry(c_asn1_prk_dsa_attr, asn1_prk_dsa_attr);
+        sc_copy_asn1_entry(c_asn1_dsakey_attr, asn1_dsakey_attr);
+
         sc_copy_asn1_entry(c_asn1_com_prkey_attr, asn1_com_prkey_attr);
         sc_copy_asn1_entry(c_asn1_com_key_attr, asn1_com_key_attr);
 
-	sc_format_asn1_entry(asn1_prkey + 0, &prkey_obj, NULL, 0);
+	sc_format_asn1_entry(asn1_prkey + 0, &rsa_prkey_obj, NULL, 0);
+	sc_format_asn1_entry(asn1_prkey + 1, &dsa_prkey_obj, NULL, 0);
 
-	sc_format_asn1_entry(asn1_type_attr + 0, asn1_rsakey_attr, NULL, 0);
+	sc_format_asn1_entry(asn1_prk_rsa_attr + 0, asn1_rsakey_attr, NULL, 0);
+	sc_format_asn1_entry(asn1_prk_dsa_attr + 0, asn1_dsakey_attr, NULL, 0);
 
 	sc_format_asn1_entry(asn1_rsakey_attr + 0, &info.path, NULL, 0);
 	sc_format_asn1_entry(asn1_rsakey_attr + 1, &info.modulus_length, NULL, 0);
+
+	sc_format_asn1_entry(asn1_dsakey_attr + 0, &info.path, NULL, 0);
 
 	sc_format_asn1_entry(asn1_com_key_attr + 0, &info.id, NULL, 0);
 	sc_format_asn1_entry(asn1_com_key_attr + 1, &info.usage, &usage_len, 0);
@@ -97,11 +119,16 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	info.key_reference = -1;
 	info.native = 1;
 
-	r = sc_asn1_decode(ctx, asn1_prkey, *buf, *buflen, buf, buflen);
+	r = sc_asn1_decode_choice(ctx, asn1_prkey, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
 	SC_TEST_RET(ctx, r, "ASN.1 decoding failed");
-	obj->type = SC_PKCS15_TYPE_PRKEY_RSA;
+	if (asn1_prkey[0].flags & SC_ASN1_PRESENT)
+		obj->type = SC_PKCS15_TYPE_PRKEY_RSA;
+	else if (asn1_prkey[1].flags & SC_ASN1_PRESENT)
+		obj->type = SC_PKCS15_TYPE_PRKEY_DSA;
+	else
+		SC_FUNC_RETURN(ctx, 0, SC_ERROR_INTERNAL);
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
@@ -109,34 +136,51 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 
 	return 0;
 }
+
 int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 				 const struct sc_pkcs15_object *obj,
 				 u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[1];
-	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_type_attr[2];
-	struct sc_asn1_entry asn1_prkey[2];
+	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_prk_rsa_attr[2];
+	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_prk_dsa_attr[2];
+	struct sc_asn1_entry asn1_prkey[3];
+	struct sc_asn1_pkcs15_object rsa_prkey_obj = { (struct sc_pkcs15_object *) obj, asn1_com_key_attr,
+						       asn1_com_prkey_attr, asn1_prk_rsa_attr };
+	struct sc_asn1_pkcs15_object dsa_prkey_obj = { (struct sc_pkcs15_object *) obj, asn1_com_key_attr,
+						       asn1_com_prkey_attr, asn1_prk_dsa_attr };
 	struct sc_pkcs15_prkey_info *prkey =
                 (struct sc_pkcs15_prkey_info *) obj->data;
-	struct sc_asn1_pkcs15_object prkey_obj = { (struct sc_pkcs15_object *) obj,
-						   asn1_com_key_attr,
-						   asn1_com_prkey_attr, asn1_type_attr };
 	int r;
 	int af_len, usage_len;
 
         sc_copy_asn1_entry(c_asn1_prkey, asn1_prkey);
-        sc_copy_asn1_entry(c_asn1_type_attr, asn1_type_attr);
+
+        sc_copy_asn1_entry(c_asn1_prk_rsa_attr, asn1_prk_rsa_attr);
         sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
+        sc_copy_asn1_entry(c_asn1_prk_dsa_attr, asn1_prk_dsa_attr);
+        sc_copy_asn1_entry(c_asn1_dsakey_attr, asn1_dsakey_attr);
+
         sc_copy_asn1_entry(c_asn1_com_prkey_attr, asn1_com_prkey_attr);
         sc_copy_asn1_entry(c_asn1_com_key_attr, asn1_com_key_attr);
 
-	sc_format_asn1_entry(asn1_prkey + 0, &prkey_obj, NULL, 1);
-
-	sc_format_asn1_entry(asn1_type_attr + 0, asn1_rsakey_attr, NULL, 1);
-
-	sc_format_asn1_entry(asn1_rsakey_attr + 0, &prkey->path, NULL, 1);
-	sc_format_asn1_entry(asn1_rsakey_attr + 1, &prkey->modulus_length, NULL, 1);
-
+	switch (obj->type) {
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+		sc_format_asn1_entry(asn1_prkey + 0, &rsa_prkey_obj, NULL, 1);
+		sc_format_asn1_entry(asn1_prk_rsa_attr + 0, asn1_rsakey_attr, NULL, 1);
+		sc_format_asn1_entry(asn1_rsakey_attr + 0, &prkey->path, NULL, 1);
+		sc_format_asn1_entry(asn1_rsakey_attr + 1, &prkey->modulus_length, NULL, 1);
+		break;
+	case SC_PKCS15_TYPE_PRKEY_DSA:
+		sc_format_asn1_entry(asn1_prkey + 1, &dsa_prkey_obj, NULL, 1);
+		sc_format_asn1_entry(asn1_prk_dsa_attr + 0, asn1_dsakey_attr, NULL, 1);
+		sc_format_asn1_entry(asn1_dsakey_attr + 0, &prkey->modulus_length, NULL, 1);
+                break;
+	default:
+		error(ctx, "Invalid private key type: %X\n", obj->type);
+		SC_FUNC_RETURN(ctx, 0, SC_ERROR_INTERNAL);
+		break;
+	}
 	sc_format_asn1_entry(asn1_com_key_attr + 0, &prkey->id, NULL, 1);
 	usage_len = _sc_count_bit_string_size(&prkey->usage, sizeof(prkey->usage));
 	sc_format_asn1_entry(asn1_com_key_attr + 1, &prkey->usage, &usage_len, 1);
