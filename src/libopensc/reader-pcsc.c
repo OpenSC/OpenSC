@@ -106,6 +106,7 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	LONG rv;
 	SCARDHANDLE card;
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
+	struct pcsc_private_data *prv = GET_PRIV_DATA(reader);
 
 	assert(pslot != NULL);
 	card = pslot->pcsc_card;
@@ -115,7 +116,7 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	sRecvPci.dwProtocol = opensc_proto_to_pcsc(slot->active_protocol);
 	sRecvPci.cbPciLength = 0;
 	
-	if (reader->gpriv->apdu_fix && sendsize >= 6) {
+	if (prv->gpriv->apdu_fix && sendsize >= 6) {
 		/* Check if the APDU in question is of Case 4 */
 		const u8 *p = sendbuf;
 		int lc;
@@ -308,10 +309,9 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	char *reader_buf, *p;
 	LPCSTR mszGroups = NULL;
 	SCARDCONTEXT pcsc_ctx;
-	int r;
+	int r, i, apdu_fix;
 	struct pcsc_global_private_data *gpriv;
 	scconf_block **blocks = NULL, *conf_block = NULL;
-	int apdu_fix;
 
 	rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL, "localhost", NULL,
 				   &pcsc_ctx);
