@@ -55,6 +55,7 @@ static void	bind_operations(struct pkcs15_init_operations *, const char *);
 static int	do_generate_key(struct sc_profile *, const char *);
 static int	do_store_private_key(struct sc_profile *profile);
 static int	do_store_public_key(struct sc_profile *profile);
+static int	do_store_certificate(struct sc_profile *profile);
 
 static int	sc_pkcs15init_generate_key_soft(struct sc_pkcs15_card *,
 			struct sc_profile *, struct sc_pkcs15init_keyargs *);
@@ -62,20 +63,27 @@ struct sc_pkcs15_object *
 		sc_pkcs15init_find_key(struct sc_pkcs15_card *p15card,
 			unsigned int type,
 			struct sc_pkcs15_id *id);
-int		sc_pkcs15init_new_private_key(struct sc_profile *profile,
+static int	sc_pkcs15init_new_private_key(struct sc_profile *profile,
 			unsigned int type,
 			struct sc_pkcs15init_keyargs *keyargs,
 			struct sc_key_template *out);
-int		sc_pkcs15init_new_public_key(struct sc_profile *profile,
+static int	sc_pkcs15init_new_public_key(struct sc_profile *profile,
 			unsigned int type,
 			struct sc_pkcs15init_keyargs *keyargs,
 			struct sc_key_template *out);
+static int	sc_pkcs15init_new_cert(struct sc_profile *profile,
+			unsigned int type,
+			struct sc_pkcs15init_certargs *certargs,
+			struct sc_cert_template *out);
 
 static int	sc_pkcs15init_store_private_key(struct sc_pkcs15_card *,
 			struct sc_profile *, struct sc_pkcs15init_keyargs *);
 static int	sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 			struct sc_profile *profile,
 			struct sc_pkcs15init_keyargs *keyargs);
+static int	sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
+			struct sc_profile *profile,
+			struct sc_pkcs15init_certargs *certargs);
 static int	sc_pkcs15init_update_dir(struct sc_card *card,
 			struct sc_profile *profile,
 			struct sc_app_info *app);
@@ -90,8 +98,11 @@ static int	do_select_parent(struct sc_profile *, struct sc_file *,
 			struct sc_file **);
 static int	do_read_pins(struct sc_profile *);
 static int	set_pins_from_args(struct sc_profile *);
+
 static int	do_read_private_key(const char *, const char *, EVP_PKEY **);
+static int	do_read_public_key(const char *, const char *, EVP_PKEY **);
 static int	do_write_public_key(const char *, const char *, EVP_PKEY *);
+static int	do_read_certificate(const char *, const char *, X509 **);
 static void	parse_commandline(int argc, char **argv);
 static void	read_options_file(const char *);
 static void	ossl_print_errors(void);
@@ -117,10 +128,12 @@ const struct option	options[] = {
 	{ "puk2",		required_argument, 0,	OPT_PUK2 },
 	{ "id",			required_argument, 0,	'i' },
 	{ "generate-key",	required_argument, 0,	'G' },
-	{ "pubkey-file",	required_argument, 0,	'o' },
-	{ "store-key",		required_argument, 0,	'S' },
-	{ "key-format",		required_argument, 0,	'f' },
+	{ "output-file",	required_argument, 0,	'o' },
+	{ "store-private-key",	required_argument, 0,	'S' },
+	{ "store-public-key",	required_argument, 0,	'P' },
+	{ "format",		required_argument, 0,	'f' },
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
+	{ "store-certificate",	required_argument, 0,	'X' },
 
 	{ "profile",		required_argument, 0,	'p' },
 	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
@@ -138,8 +151,10 @@ const char *		option_help[] = {
 	"Generate a new key and store it on the card",
 	"Output public portion of generated key to file",
 	"Store private key",
+	"Store public key",
 	"Specify key file format (default PEM)",
 	"Specify passphrase for unlocking secret key",
+	"Store an X.509 certificate",
 
 	"Specify the profile to use",
 	"Read additional command line options from file",
@@ -164,7 +179,7 @@ static int			opt_debug = 0,
 				opt_erase = 0;
 static char *			opt_driver = 0;
 static char *			opt_profile = "pkcs15";
-static char *			opt_keyfile = 0;
+static char *			opt_infile = 0;
 static char *			opt_format = 0;
 static char *			opt_objectid = 0;
 static char *			opt_objectlabel = 0;
@@ -250,6 +265,8 @@ main(int argc, char **argv)
 		r = do_store_private_key(&profile);
 	else if (opt_action == ACTION_STORE_PUBKEY)
 		r = do_store_public_key(&profile);
+	else if (opt_action == ACTION_STORE_CERT)
+		r = do_store_certificate(&profile);
 	else if (opt_action == ACTION_GENERATE_KEY)
 		r = do_generate_key(&profile, opt_newkey);
 	else
@@ -339,7 +356,7 @@ do_store_private_key(struct sc_profile *profile)
 	if (opt_objectlabel)
 		args.label = opt_objectlabel;
 
-	r = do_read_private_key(opt_keyfile, opt_format, &args.pkey);
+	r = do_read_private_key(opt_infile, opt_format, &args.pkey);
 	if (r < 0)
 		return -1;
 
@@ -374,11 +391,9 @@ do_store_public_key(struct sc_profile *profile)
 	if (opt_objectlabel)
 		args.label = opt_objectlabel;
 
-#ifdef notyet
-	r = do_read_public_key(opt_keyfile, opt_format, &args.pkey);
+	r = do_read_public_key(opt_infile, opt_format, &args.pkey);
 	if (r < 0)
 		return r;
-#endif
 
 	r = sc_pkcs15init_store_public_key(p15card, profile, &args);
 	if (r < 0)
@@ -388,6 +403,28 @@ do_store_public_key(struct sc_profile *profile)
 
 failed:	error("Failed to store public key: %s\n", sc_strerror(r));
 	return -1;
+}
+
+/*
+ * Download certificate to card
+ */
+static int
+do_store_certificate(struct sc_profile *profile)
+{
+	struct sc_pkcs15init_certargs args;
+	int	r;
+
+	memset(&args, 0, sizeof(args));
+
+	if (opt_objectid)
+		sc_pkcs15_format_id(opt_objectid, &args.id);
+	args.label = opt_objectlabel;
+
+	r = do_read_certificate(opt_infile, opt_format, &args.cert);
+	if (r < 0)
+		return r;
+
+	return sc_pkcs15init_store_certificate(p15card, profile, &args);
 }
 
 /*
@@ -830,6 +867,105 @@ sc_pkcs15init_new_public_key(struct sc_profile *profile,
 }
 
 /*
+ * See if there's a CDF entry matching this certinfo.
+ * If not, allocate a file and create a corresponding DF entry.
+ */
+static int
+sc_pkcs15init_setup_cert(struct sc_pkcs15_card *p15card,
+		struct sc_profile *profile,
+		struct sc_pkcs15init_certargs *certargs,
+		struct sc_cert_template *out)
+{
+	struct sc_pkcs15_object	*found = NULL;
+	int		r;
+
+	memset(out, 0, sizeof(*out));
+
+	/* If a key ID has been given, try to locate the key. */
+	r = sc_pkcs15_find_cert_by_id(p15card, &certargs->id, &found);
+
+	if (found) {
+		/* XXX: TBD set up out */
+		r = SC_ERROR_NOT_SUPPORTED; /* we don't support updates yet */
+	} else {
+		/* If there's no such key on the card yet, allocate an ID,
+		 * and a file.
+		 */
+		r = sc_pkcs15init_new_cert(profile,
+				SC_PKCS15_TYPE_CERT_X509,
+				certargs, out);
+	}
+
+	return r;
+}
+
+
+int
+sc_pkcs15init_new_cert(struct sc_profile *profile,
+		unsigned int type,
+		struct sc_pkcs15init_certargs *certargs,
+		struct sc_cert_template *out)
+{
+	struct sc_cert_template *template;
+	int		index, r;
+
+	index = sc_pkcs15_get_objects(p15card, type, NULL, 0);
+
+	if (certargs->template_name)
+		template = sc_profile_find_cert(profile,
+			       	certargs->template_name);
+	else
+		template = profile->cert_list;
+	if (template == NULL)
+		return SC_ERROR_OBJECT_NOT_FOUND;
+
+	out->file = template->file;
+
+	if (certargs->label)
+		strcpy(out->pkcs15_obj.label, certargs->label);
+	else if (!out->pkcs15_obj.label[0])
+		strcpy(out->pkcs15_obj.label, "Certificate");
+
+	if (certargs->id.len)
+		out->pkcs15.id = certargs->id;
+	else {
+		struct sc_pkcs15_id	*ip = &out->pkcs15.id;
+
+		if (!ip->len)
+			sc_pkcs15_format_id("45", ip);
+		ip->value[ip->len-1] += index;
+	}
+
+	/* Sanity checks */
+	if (!out->pkcs15.id.len) {
+		/* error("No ID set for certificate object"); */
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	/* Now allocate a file */
+	r = profile->ops->allocate_file(profile,
+			p15card->card, type, index,
+			&out->file);
+	if (r < 0) {
+		/* error("Unable to allocate certificate file"); */
+		return r;
+	}
+	out->pkcs15.path = out->file->path;
+	out->pkcs15_obj.data = &out->pkcs15;
+	out->pkcs15_obj.type = type;
+
+	r = sc_pkcs15_add_object(p15card, &p15card->df[SC_PKCS15_CDF],
+		       	0, &out->pkcs15_obj);
+	if (r) {
+		/* error("failed to add object to CDF"); */
+		return r;
+	}
+
+	/* Return the ID we selected, for reference */
+	certargs->id = out->pkcs15.id;
+	return 0;
+}
+/*
  * Find a key given its ID
  */
 static int
@@ -944,6 +1080,34 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 
 	/* Now update the PuKDF */
 	return sc_pkcs15init_update_df(p15card, profile, SC_PKCS15_PUKDF);
+}
+
+static int
+sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
+		struct sc_profile *profile,
+		struct sc_pkcs15init_certargs *args)
+{
+	struct sc_cert_template info;
+	unsigned char	*data, *p;
+	size_t		size;
+	int		r;
+
+	r = sc_pkcs15init_setup_cert(p15card, profile, args, &info);
+	if (r < 0)
+		return r;
+
+	size = i2d_X509(args->cert, NULL);
+	data = p = malloc(size);
+	i2d_X509(args->cert, NULL);
+
+	r = sc_pkcs15init_update_file(profile, info.file, data, size);
+	free(data);
+
+	if (r < 0)
+		return r;
+
+	/* Now update the CDF */
+	return sc_pkcs15init_update_df(p15card, profile, SC_PKCS15_CDF);
 }
 
 static int
@@ -1275,7 +1439,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 {
 	int		r;
 
-	if ((r = sc_select_file(card, &file->path, NULL)) < 0) {
+	if ((r = sc_select_file(card, &file->path, &file)) < 0) {
 		/* Create file if it doesn't exist */
 		if (file->size < datalen)
 			file->size = datalen;
@@ -1344,7 +1508,60 @@ do_read_private_key(const char *filename, const char *format, EVP_PKEY **pk)
 }
 
 /*
- * Write a PEM encoded publci key
+ * Read a public key
+ */
+static EVP_PKEY *
+do_read_pem_public_key(const char *filename)
+{
+	BIO		*bio;
+	EVP_PKEY	*pk;
+
+	bio = BIO_new(BIO_s_file());
+	if (BIO_read_filename(bio, filename) < 0)
+		fatal("Unable to open %s: %m", filename);
+	pk = PEM_read_bio_PUBKEY(bio, 0, 0, NULL);
+	BIO_free(bio);
+	if (pk == NULL) 
+		ossl_print_errors();
+	return pk;
+}
+
+static EVP_PKEY *
+do_read_der_public_key(const char *filename)
+{
+	BIO	*bio;
+	EVP_PKEY *pk;
+
+	bio = BIO_new(BIO_s_file());
+	if (BIO_read_filename(bio, filename) < 0)
+		fatal("Unable to open %s: %m", filename);
+	pk = d2i_PUBKEY_bio(bio, NULL);
+	BIO_free(bio);
+	if (pk == NULL) 
+		ossl_print_errors();
+	return pk;
+}
+
+static int
+do_read_public_key(const char *name, const char *format, EVP_PKEY **out)
+{
+	if (!format || !strcasecmp(format, "pem")) {
+		*out = do_read_pem_public_key(name);
+	} else if (!strcasecmp(format, "der")) {
+		*out = do_read_der_public_key(name);
+	} else {
+		fatal("Error when reading public key. "
+		      "File format \"%s\" not supported.\n",
+		      format);
+	}
+
+	if (!*out)
+		fatal("Unable to read public key from %s\n", name);
+	return 0;
+}
+
+/*
+ * Write a PEM encoded public key
  */
 static int
 do_write_pem_public_key(const char *filename, EVP_PKEY *pk)
@@ -1381,6 +1598,59 @@ do_write_public_key(const char *filename, const char *format, EVP_PKEY *pk)
 }
 
 /*
+ * Read a certificate
+ */
+static X509 *
+do_read_pem_certificate(const char *filename)
+{
+	BIO	*bio;
+	X509	*xp;
+
+	bio = BIO_new(BIO_s_file());
+	if (BIO_read_filename(bio, filename) < 0)
+		fatal("Unable to open %s: %m", filename);
+	xp = PEM_read_bio_X509(bio, 0, 0, 0);
+	BIO_free(bio);
+	if (xp == NULL) 
+		ossl_print_errors();
+	return xp;
+}
+
+static X509 *
+do_read_der_certificate(const char *filename)
+{
+	BIO	*bio;
+	X509	*xp;
+
+	bio = BIO_new(BIO_s_file());
+	if (BIO_read_filename(bio, filename) < 0)
+		fatal("Unable to open %s: %m", filename);
+	xp = d2i_X509_bio(bio, NULL);
+	BIO_free(bio);
+	if (xp == NULL) 
+		ossl_print_errors();
+	return xp;
+}
+
+static int
+do_read_certificate(const char *name, const char *format, X509 **out)
+{
+	if (!format || !strcasecmp(format, "pem")) {
+		*out = do_read_pem_certificate(name);
+	} else if (!strcasecmp(format, "der")) {
+		*out = do_read_der_certificate(name);
+	} else {
+		fatal("Error when reading certificate. "
+		      "File format \"%s\" not supported.\n",
+		      format);
+	}
+
+	if (!*out)
+		fatal("Unable to read certificate from %s\n", name);
+	return 0;
+}
+
+/*
  * Handle one option
  */
 static void
@@ -1399,7 +1669,15 @@ handle_option(int c)
 		break;
 	case 'S':
 		opt_action = ACTION_STORE_PRIVKEY;
-		opt_keyfile = optarg;
+		opt_infile = optarg;
+		break;
+	case 'P':
+		opt_action = ACTION_STORE_PUBKEY;
+		opt_infile = optarg;
+		break;
+	case 'X':
+		opt_action = ACTION_STORE_CERT;
+		opt_infile = optarg;
 		break;
 	case 'd':
 		opt_debug++;

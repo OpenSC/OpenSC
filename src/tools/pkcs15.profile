@@ -80,3 +80,12 @@ PublicKey SignKey
 	Label		"Non-repudiation Key"
 	ID		46
 	KeyUsage	NonRepudiation
+
+Certificate AuthCertificate
+	Label		"Authentication Certificate"
+	ID		45
+
+Certificate SignCertificate
+	Label		"Non-repudiation Certificate"
+	ID		46
+

@@ -44,7 +44,8 @@ enum {
        	PARSE_CARDINFO,
        	PARSE_PIN,
        	PARSE_PRKEY,
-	PARSE_PUBKEY
+	PARSE_PUBKEY,
+	PARSE_CERT
 };
 
 static struct parser_info {
@@ -58,6 +59,7 @@ static struct file_info *	cur_file;
 static struct sc_file *		cur_parent;
 static struct pin_info *	cur_pin;
 static struct sc_key_template *	cur_key;
+static struct sc_cert_template *cur_cert;
 
 struct map {
 	const char *		name;
@@ -1181,6 +1183,58 @@ do_pubkey_reference(int argc, char **argv)
 	return get_uint(argv[0], (unsigned int *) &ki->key_reference);
 }
 
+static int
+do_cert(int argc, char **argv)
+{
+	struct sc_profile	*pro = parser.profile;
+	struct sc_cert_template	*ci, **tail;
+
+	if ((ci = sc_profile_find_cert(pro, argv[0])) != NULL)
+		goto out;
+
+	ci = calloc(1, sizeof(*ci));
+	ci->ident = strdup(argv[0]);
+
+	ci->pkcs15_obj.type = SC_PKCS15_TYPE_CERT_X509;
+	ci->pkcs15_obj.data = &ci->pkcs15;
+
+	for (tail = &pro->cert_list; *tail; tail = &(*tail)->next)
+		;
+	*tail = ci;
+
+out:	parser.section = PARSE_CERT;
+	cur_cert = ci;
+	return 0;
+}
+
+static int
+do_cert_file(int argc, char **argv)
+{
+	struct file_info *fi;
+	const char	*name = argv[0];
+
+	if (!(fi = sc_profile_find_file(parser.profile, name))) {
+		parse_error("unknown certificate file \"%s\"\n", name);
+		return 1;
+	}
+	cur_cert->file = fi->file;
+	return 0;
+}
+
+static int
+do_cert_label(int argc, char **argv)
+{
+	strcpy(cur_cert->pkcs15_obj.label, argv[0]);
+	return 0;
+}
+
+static int
+do_cert_id(int argc, char **argv)
+{
+	sc_pkcs15_format_id(argv[0], &cur_cert->pkcs15.id);
+	return 0;
+}
+
 static struct command	commands[] = {
  { "CardInfo",		-1,		0,	0,	do_cardinfo	},
  { "Driver",		PARSE_CARDINFO,	1,	1,	do_card_driver	},
@@ -1231,6 +1285,10 @@ static struct command	commands[] = {
  { "KeyUsage",		PARSE_PUBKEY,	1,	1,	do_pubkey_usage	},
  { "AccessFlags",	PARSE_PUBKEY,	1,	-1,	do_pubkey_access_flags },
  { "Reference",		PARSE_PUBKEY,	1,	1,	do_pubkey_reference },
+ { "Certificate",	-1,		1,	1,	do_cert		},
+ { "Label",		PARSE_CERT,	1,	1,	do_cert_label	},
+ { "File",		PARSE_CERT,	1,	1,	do_cert_file	},
+ { "ID",		PARSE_CERT,	1,	1,	do_cert_id	},
 #if 0
 #endif
 
@@ -1350,6 +1408,18 @@ sc_profile_find_public_key(struct sc_profile *pro, const char *ident)
 	for (ki = pro->pubkey_list; ki; ki = ki->next) {
 		if (!strcasecmp(ki->ident, ident))
 			return ki;
+	}
+	return NULL;
+}
+
+struct sc_cert_template *
+sc_profile_find_cert(struct sc_profile *profile, const char *ident)
+{
+	struct sc_cert_template *ci;
+
+	for (ci = profile->cert_list; ci; ci = ci->next) {
+		if (!strcasecmp(ci->ident, ident))
+			return ci;
 	}
 	return NULL;
 }

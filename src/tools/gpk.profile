@@ -44,6 +44,13 @@ EF template-public-key
 	Structure	transparent
 	ACL		*=NONE
 
+# Certificate template
+EF template-certificate
+	Parent		PKCS15-AppDF
+	FileID		9000
+	Structure	transparent
+	ACL		*=NONE
+
 # CVH1. 7 attempts for the PIN, and 3 for the PUK
 # Reference 0x8 means "PIN0 in the local EFsc" in GPK parlance
 PIN CHV1

@@ -73,6 +73,14 @@ struct sc_key_template {
 	} pkcs15;
 };
 
+struct sc_cert_template {
+	char *			ident;
+	struct sc_cert_template *next;
+	struct sc_file *	file;
+	struct sc_pkcs15_object	pkcs15_obj;
+	struct sc_pkcs15_cert_info pkcs15;
+};
+
 struct sc_profile {
 	char *			driver;
 	struct pkcs15_init_operations *ops;
@@ -86,6 +94,7 @@ struct sc_profile {
 	struct auth_info *	auth_list;
 	struct sc_key_template *prkey_list;
 	struct sc_key_template *pubkey_list;
+	struct sc_cert_template *cert_list;
 
 	unsigned int		pin_maxlen;
 	unsigned int		pin_minlen;
@@ -114,5 +123,7 @@ struct sc_key_template *sc_profile_find_private_key(struct sc_profile *,
 struct sc_key_template *sc_profile_find_public_key(struct sc_profile *, const char *);
 struct auth_info *sc_profile_find_key(struct sc_profile *,
 			       unsigned int, unsigned int);
+struct sc_cert_template *sc_profile_find_cert(struct sc_profile *,
+				const char *);
 
 #endif /* _OPENSC_PROFILE_H */

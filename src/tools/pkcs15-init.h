@@ -8,6 +8,7 @@
 #define PKCS15_INIT_H
 
 #include <openssl/evp.h>
+#include <openssl/x509.h>
 #include "profile.h"
 
 struct pkcs15_init_operations {
@@ -32,6 +33,14 @@ struct sc_pkcs15init_keyargs {
 	unsigned int		keybits;
 
 	EVP_PKEY *		pkey;
+};
+
+struct sc_pkcs15init_certargs {
+	struct sc_pkcs15_id	id;
+	const char *		label;
+	const char *		template_name;
+
+	X509 *			cert;
 };
 
 extern int	sc_pkcs15init_add_app(struct sc_card *,

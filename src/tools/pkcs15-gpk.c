@@ -276,18 +276,18 @@ gpk_allocate_file(struct sc_profile *profile, struct sc_card *card,
 			tag = "public-key";
 			break;
 #ifdef SC_PKCS15_TYPE_PRKEY_DSA
-		case SC_PKCS15_TYPE_PRKEY_RSA:
-			desc = "RSA private key";
+		case SC_PKCS15_TYPE_PRKEY_DSA:
+			desc = "DSA private key";
 			tag = "data";
 			break;
-		case SC_PKCS15_TYPE_PUBKEY_RSA:
-			desc = "RSA public key";
+		case SC_PKCS15_TYPE_PUBKEY_DSA:
+			desc = "DSA public key";
 			tag = "data";
 			break;
 #endif
 		case SC_PKCS15_TYPE_CERT:
 			desc = "certificate";
-			tag = "data";
+			tag = "certificate";
 			break;
 		case SC_PKCS15_TYPE_DATA_OBJECT:
 			desc = "data object";
