@@ -189,11 +189,12 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
         CK_BBOOL is_private = TRUE;
 	CK_ATTRIBUTE private_attribute = { CKA_PRIVATE, &is_private, sizeof(is_private) };
 
-	int j, rv, match;
+	int j, rv, match, hide_private;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
 	struct sc_pkcs11_find_operation *operation;
         struct sc_pkcs11_pool_item *item;
+	struct sc_pkcs11_slot *slot;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -214,18 +215,25 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 
         operation->current_handle = 0;
 	operation->num_handles = 0;
+	slot = session->slot;
+
+	/* Check whether we should hide private objects */
+	hide_private = 0;
+	if (slot->login_user != CKU_USER
+	 && (slot->token_info.flags & CKF_LOGIN_REQUIRED))
+		hide_private = 1;
 
 	/* For each object in token do */
-	for (item = session->slot->object_pool.head; item != NULL; item = item->next) {
+	for (item = slot->object_pool.head; item != NULL; item = item->next) {
 		object = (struct sc_pkcs11_object*) item->item;
 
 		/* User not logged in and private object? */
-		if (session->slot->login_user != CKU_USER) {
+		if (hide_private) {
 			if (object->ops->get_attribute(session, object, &private_attribute) != CKR_OK)
 				continue;
 			if (is_private) {
 				debug(context, "Object %d/%d: Private object and not logged in.\n",
-                                      session->slot->id,
+                                      slot->id,
 				      item->handle);
 				continue;
 			}
@@ -239,7 +247,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 			if (rv == 0) {
 				if (context->debug >= 4) {
 					debug(context, "Object %d/%d: Attribute 0x%x does NOT match.\n",
-					      session->slot->id,
+					      slot->id,
 					      item->handle, pTemplate[j].type);
 				}
 				match = 0;
@@ -248,14 +256,14 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 
 			if (context->debug >= 4) {
 				debug(context, "Object %d/%d: Attribute 0x%x matches.\n",
-				      session->slot->id,
+				      slot->id,
 				      item->handle, pTemplate[j].type);
 			}
 		}
 
 		if (match) {
 			debug(context, "Object %d/%d matches\n",
-			      session->slot->id, item->handle);
+			      slot->id, item->handle);
 			/* Avoid buffer overflow --okir */
 			if (operation->num_handles >= SC_PKCS11_FIND_MAX_HANDLES) {
 				debug(context, "Too many matching objects\n");

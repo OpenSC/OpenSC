@@ -150,6 +150,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		       CK_SESSION_INFO_PTR pInfo)   /* receives session information */
 {
 	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_slot *slot;
         int rv;
 
 	rv = sc_pkcs11_lock();
@@ -170,15 +171,15 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,  /* the session's handle */
         pInfo->flags = session->flags;
         pInfo->ulDeviceError = 0;
 
-	switch (session->slot->login_user) {
-	case CKU_USER:
+	slot = session->slot;
+	if (slot->login_user == CKU_SO) {
+		pInfo->state = CKS_RW_SO_FUNCTIONS;
+	} else
+	if (slot->login_user == CKU_USER
+	 || (!(slot->token_info.flags & CKF_LOGIN_REQUIRED))) {
 		pInfo->state = (session->flags & CKF_RW_SESSION)
 			? CKS_RW_USER_FUNCTIONS : CKS_RO_USER_FUNCTIONS;
-                break;
-	case CKU_SO:
-		pInfo->state = CKS_RW_SO_FUNCTIONS;
-                break;
-	default:
+	} else {
 		pInfo->state = (session->flags & CKF_RW_SESSION)
 			? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
 	}
