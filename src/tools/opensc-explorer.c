@@ -40,10 +40,10 @@ const char *app_name = "opensc-explorer";
 int opt_reader = -1, opt_wait = 0, verbose = 0;
 const char *opt_driver = NULL;
 
-struct sc_file *current_file = NULL;
-struct sc_path current_path;
-struct sc_context *ctx = NULL;
-struct sc_card *card = NULL;
+sc_file_t *current_file = NULL;
+sc_path_t current_path;
+sc_context_t *ctx = NULL;
+sc_card_t *card = NULL;
 
 const struct option options[] = {
 	{ "reader",		1, 0, 'r' },
@@ -110,14 +110,14 @@ ambiguous_match(struct command *table, const char *cmd)
 	return last_match;
 }
 
-static void check_ret(int r, int op, const char *err, const struct sc_file *file)
+static void check_ret(int r, int op, const char *err, const sc_file_t *file)
 {
 	fprintf(stderr, "%s: %s\n", err, sc_strerror(r));
 	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
 		fprintf(stderr, "ACL for operation: %s\n", acl_to_str(sc_file_get_acl_entry(file, op)));
 }
 
-static int arg_to_path(const char *arg, struct sc_path *path, int is_id)
+static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 {
 	int buf[2];
 	u8 cbuf[2];
@@ -147,7 +147,7 @@ static int arg_to_path(const char *arg, struct sc_path *path, int is_id)
 	return 0;	
 }
 
-static void print_file(const struct sc_file *file)
+static void print_file(const sc_file_t *file)
 {
 	const char *st;
 
@@ -199,8 +199,8 @@ static int do_ls(int argc, char **argv)
 	count = r;
 	printf("FileID\tType  Size\n");
 	while (count >= 2) {
-		struct sc_path path;
-		struct sc_file *file = NULL;
+		sc_path_t path;
+		sc_file_t *file = NULL;
 
 		path = current_path;
 		sc_append_path_id(&path, cur, 2);
@@ -228,8 +228,8 @@ usage:
 
 static int do_cd(int argc, char **argv)
 {
-	struct sc_path path;
-	struct sc_file *file;
+	sc_path_t path;
+	sc_file_t *file;
 	int r;
 
 	if (argc != 1)
@@ -279,7 +279,7 @@ usage:
 	return -1;
 }
 
-static int read_and_print_binary_file(struct sc_file *file)
+static int read_and_print_binary_file(sc_file_t *file)
 {
 	unsigned int idx = 0;
 	u8 buf[128];
@@ -308,7 +308,7 @@ static int read_and_print_binary_file(struct sc_file *file)
 	return 0;
 }
 
-static int read_and_print_record_file(struct sc_file *file)
+static int read_and_print_record_file(sc_file_t *file)
 {
 	u8 buf[256];
 	int rec, r;
@@ -329,8 +329,8 @@ static int read_and_print_record_file(struct sc_file *file)
 static int do_cat(int argc, char **argv)
 {
 	int r, err = 0;
-	struct sc_path path;
-	struct sc_file *file;
+	sc_path_t path;
+	sc_file_t *file;
 	int not_current = 1;
 
 	if (argc > 1)
@@ -374,8 +374,8 @@ usage:
 
 static int do_info(int argc, char **argv)
 {
-	struct sc_file *file;
-	struct sc_path path;
+	sc_file_t *file;
+	sc_path_t path;
 	size_t i;
 	const char *st;
 	int r, not_current = 1;
@@ -480,7 +480,7 @@ usage:
 	return -1;
 }
 
-static int create_file(struct sc_file *file)
+static int create_file(sc_file_t *file)
 {
 	int r;
 	
@@ -501,8 +501,8 @@ static int create_file(struct sc_file *file)
 
 static int do_create(int argc, char **argv)
 {
-	struct sc_path path;
-	struct sc_file *file;
+	sc_path_t path;
+	sc_file_t *file;
 	unsigned int size;
 	int r, op;
 
@@ -532,8 +532,8 @@ static int do_create(int argc, char **argv)
 
 static int do_mkdir(int argc, char **argv)
 {
-	struct sc_path path;
-	struct sc_file *file;
+	sc_path_t path;
+	sc_file_t *file;
 	unsigned int size;
 	int r, op;
 
@@ -561,7 +561,7 @@ static int do_mkdir(int argc, char **argv)
 
 static int do_delete(int argc, char **argv)
 {
-	struct sc_path path;
+	sc_path_t path;
 	int r;
 
 	if (argc != 1)
@@ -812,8 +812,8 @@ static int do_get(int argc, char **argv)
 	int r, err = 0;
 	size_t count = 0;
 	unsigned int idx = 0;
-	struct sc_path path;
-	struct sc_file *file;
+	sc_path_t path;
+	sc_file_t *file;
 	char fbuf[256], *filename;
 	FILE *outf = NULL;
 	
@@ -926,8 +926,8 @@ static int do_update_binary(int argc, char **argv)
 	u8 buf[240];
 	int r, err = 1, in_len;
 	int offs;
-	struct sc_path path;
-	struct sc_file *file;
+	sc_path_t path;
+	sc_file_t *file;
 	char *in_str;
 	
 	if (argc < 2 || argc > 3)
@@ -988,8 +988,8 @@ static int do_update_record(int argc, char **argv)
 	u8 buf[240];
 	int r, i, err = 1;
 	int rec, offs;
-	struct sc_path path;
-	struct sc_file *file;
+	sc_path_t path;
+	sc_file_t *file;
 	char *in_str;
 	
 	if (argc < 3 || argc > 4)
@@ -1058,8 +1058,8 @@ static int do_put(int argc, char **argv)
 	int r, err = 0;
 	size_t count = 0;
 	unsigned int idx = 0;
-	struct sc_path path;
-	struct sc_file *file;
+	sc_path_t path;
+	sc_file_t *file;
 	const char *filename;
 	FILE *outf = NULL;
 
@@ -1160,7 +1160,7 @@ static int do_pksign(int argc, char **argv)
 	size_t indatalen = sizeof indata;
 	u8 outdata[128];
 	size_t outdatalen = sizeof outdata;
-	struct sc_security_env senv;
+	sc_security_env_t senv;
 	const u8 *oid;
 	int oidlen;
 	const char *s;
@@ -1254,7 +1254,7 @@ static int do_pkdecrypt(int argc, char **argv)
 	size_t indatalen = sizeof indata;
 	u8 outdata[128];
 	size_t outdatalen = sizeof outdata;
-	struct sc_security_env senv;
+	sc_security_env_t senv;
 	const char *s;
 
 	if (argc != 2)

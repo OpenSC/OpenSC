@@ -22,7 +22,7 @@
 #include <string.h>
 #include "sc-pkcs11.h"
 
-struct sc_context *context = NULL;
+sc_context_t *context = NULL;
 struct sc_pkcs11_pool session_pool;
 struct sc_pkcs11_slot virtual_slots[SC_PKCS11_MAX_VIRTUAL_SLOTS];
 struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
@@ -340,7 +340,7 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 			 CK_SLOT_ID_PTR pSlot,  /* location that receives the slot ID */
 			 CK_VOID_PTR pReserved) /* reserved.  Should be NULL_PTR */
 {
-	struct sc_reader *reader, *readers[SC_MAX_SLOTS * SC_MAX_READERS];
+	sc_reader_t *reader, *readers[SC_MAX_SLOTS * SC_MAX_READERS];
 	int slots[SC_MAX_SLOTS * SC_MAX_READERS];
 	int i, j, k, r, found;
 	unsigned int mask, events;

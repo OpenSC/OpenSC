@@ -56,7 +56,7 @@ enum {
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
 
 static int	authenticate(sc_pkcs15_object_t *obj);
-static int	pem_encode(struct sc_context *, int,
+static int	pem_encode(sc_context_t *, int,
 			sc_pkcs15_der_t *, sc_pkcs15_der_t *);
 
 const struct option options[] = {
@@ -106,8 +106,8 @@ const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-struct sc_context *ctx = NULL;
-struct sc_card *card = NULL;
+sc_context_t *ctx = NULL;
+sc_card_t *card = NULL;
 struct sc_pkcs15_card *p15card = NULL;
 
 static void print_cert_info(const struct sc_pkcs15_object *obj)
@@ -781,10 +781,10 @@ static int change_pin(void)
 	return 0;
 }
 
-static int read_and_cache_file(const struct sc_path *path)
+static int read_and_cache_file(const sc_path_t *path)
 {
-	struct sc_file *tfile;
-	const struct sc_acl_entry *e;
+	sc_file_t *tfile;
+	const sc_acl_entry_t *e;
 	u8 buf[16384];
 	int r;
 
@@ -1071,7 +1071,7 @@ static const struct sc_asn1_entry	c_asn1_pem_key[] = {
 };
 
 static int
-pem_encode(struct sc_context *ctx,
+pem_encode(sc_context_t *ctx,
 		int alg_id, sc_pkcs15_der_t *key, sc_pkcs15_der_t *out)
 {
 	struct sc_asn1_entry	asn1_pem_key[2],

@@ -44,8 +44,8 @@ static const char *eid_path = ".eid";
 static const char *auth_cert_file = "authorized_certificates";
 
 typedef struct _scam_method_data {
-	struct sc_context *ctx;
-	struct sc_card *card;
+	sc_context_t *ctx;
+	sc_card_t *card;
 	struct sc_pkcs15_card *p15card;
 	int card_locked;
 

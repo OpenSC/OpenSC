@@ -78,8 +78,8 @@ const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-struct sc_context *ctx = NULL;
-struct sc_card *card = NULL;
+sc_context_t *ctx = NULL;
+sc_card_t *card = NULL;
 
 static char *getpin(const char *prompt)
 {
@@ -134,8 +134,8 @@ static int verify_pin(int pin)
 
 static int select_app_df(void)
 {
-	struct sc_path path;
-	struct sc_file *file;
+	sc_path_t path;
+	sc_file_t *file;
 	char str[80];
 	int r;
 
@@ -332,8 +332,8 @@ static int parse_private_key(const u8 *key, size_t keysize, RSA *rsa)
 static int read_public_key(RSA *rsa)
 {
 	int r;
-	struct sc_path path;
-	struct sc_file *file;
+	sc_path_t path;
+	sc_file_t *file;
 	u8 buf[2048], *p = buf;
 	size_t bufsize, keysize;
 	
@@ -378,9 +378,9 @@ static int read_public_key(RSA *rsa)
 static int read_private_key(RSA *rsa)
 {
 	int r;
-	struct sc_path path;
-	struct sc_file *file;
-	const struct sc_acl_entry *e;
+	sc_path_t path;
+	sc_file_t *file;
+	const sc_acl_entry_t *e;
 	
 	u8 buf[2048], *p = buf;
 	size_t bufsize, keysize;
@@ -473,7 +473,7 @@ static int read_key(void)
 static int list_keys(void)
 {
 	int r, idx = 0;
-	struct sc_path path;
+	sc_path_t path;
 	u8 buf[2048], *p = buf;
 	size_t keysize, i;
 	int mod_lens[] = { 512, 768, 1024, 2048 };
@@ -513,7 +513,7 @@ static int list_keys(void)
 
 static int generate_key(void)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 sbuf[4];
 	u8 p2;
 	int r;
@@ -570,7 +570,7 @@ static int generate_key(void)
 
 static int create_key_files(void)
 {
-	struct sc_file *file;
+	sc_file_t *file;
 	int mod_lens[] = { 512, 768, 1024, 2048 };
 	int sizes[] = { 163, 243, 323, 643 };
 	int size = -1;
@@ -793,7 +793,7 @@ static int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
 static int update_public_key(const u8 *key, size_t keysize)
 {
 	int r, idx = 0;
-	struct sc_path path;
+	sc_path_t path;
 
 	r = select_app_df();
 	if (r)
@@ -816,7 +816,7 @@ static int update_public_key(const u8 *key, size_t keysize)
 static int update_private_key(const u8 *key, size_t keysize)
 {
 	int r, idx = 0;
-	struct sc_path path;
+	sc_path_t path;
 
 	r = select_app_df();
 	if (r)
@@ -872,9 +872,9 @@ static int store_key(void)
 }                              
 
 #if 0
-static int create_file(struct sc_file *file)
+static int create_file(sc_file_t *file)
 {
-	struct sc_path path;
+	sc_path_t path;
 	int r;
 	
 	path = file->path;
@@ -905,9 +905,9 @@ static int create_file(struct sc_file *file)
 #endif
 
 #if 0
-static int create_app_df(struct sc_path *path, size_t size)
+static int create_app_df(sc_path_t *path, size_t size)
 {
-	struct sc_file *file;
+	sc_file_t *file;
 	int i;
 	
 	file = sc_file_new();
@@ -930,12 +930,12 @@ static int create_app_df(struct sc_path *path, size_t size)
 }
 #endif
 
-static int create_pin_file(const struct sc_path *inpath, int chv, const char *key_id)
+static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 {
 	char prompt[40], *pin, *puk;
 	char buf[30], *p = buf;
-	struct sc_path file_id, path;
-	struct sc_file *file;
+	sc_path_t file_id, path;
+	sc_file_t *file;
 	size_t len;
 	int r;
 	
@@ -1050,7 +1050,7 @@ static int create_pin_file(const struct sc_path *inpath, int chv, const char *ke
 
 static int create_pin()
 {
-	struct sc_path path;
+	sc_path_t path;
 	char buf[80];
 	
 	if (opt_pin_num != 1 && opt_pin_num != 2) {

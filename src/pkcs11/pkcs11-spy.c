@@ -52,7 +52,7 @@ static CK_RV init_spy(void)
 {
   const char *mspec = NULL, *file = NULL, *env = NULL;
   scconf_block *conf_block = NULL, **blocks;
-  struct sc_context *ctx = NULL;
+  sc_context_t *ctx = NULL;
   int rv = CKR_OK, r, i;
 
   /* Allocates and initializes the pkcs11_spy structure */

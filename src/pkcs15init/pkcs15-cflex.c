@@ -50,8 +50,8 @@ static int	cflex_get_keyfiles(sc_profile_t *, sc_card_t *,
 static int
 cflex_delete_file(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
 {
-        struct sc_path  path;
-        struct sc_file  *parent;
+        sc_path_t  path;
+        sc_file_t  *parent;
         int             r = 0;
         /* Select the parent DF */
         path = df->path;
@@ -81,9 +81,9 @@ cflex_delete_file(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
 /*
  * Erase the card via rm
  */
-static int cflex_erase_card(struct sc_profile *profile, struct sc_card *card)
+static int cflex_erase_card(struct sc_profile *profile, sc_card_t *card)
 {
-	struct sc_file  *df = profile->df_info->file, *dir, *userpinfile;
+	sc_file_t  *df = profile->df_info->file, *dir, *userpinfile;
 	int             r;
 
 	/* Delete EF(DIR). This may not be very nice

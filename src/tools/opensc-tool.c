@@ -77,8 +77,8 @@ const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-struct sc_context *ctx = NULL;
-struct sc_card *card = NULL;
+sc_context_t *ctx = NULL;
+sc_card_t *card = NULL;
 
 static int list_readers(void)
 {
@@ -129,8 +129,8 @@ static int list_drivers(void)
 	return 0;
 }
 
-static int print_file(struct sc_card *in_card, const struct sc_file *file,
-	const struct sc_path *path, int depth)
+static int print_file(sc_card_t *in_card, const sc_file_t *file,
+	const sc_path_t *path, int depth)
 {
 	int r;
 	const char *tmps;
@@ -234,9 +234,9 @@ static int print_file(struct sc_card *in_card, const struct sc_file *file,
 	return 0;
 }
 
-static int enum_dir(struct sc_path path, int depth)
+static int enum_dir(sc_path_t path, int depth)
 {
-	struct sc_file *file;
+	sc_file_t *file;
 	int r, file_type;
 	u8 files[SC_MAX_APDU_BUFFER_SIZE];
 
@@ -260,7 +260,7 @@ static int enum_dir(struct sc_path path, int depth)
 			printf("Empty directory\n");
 		} else
 		for (i = 0; i < r/2; i++) {
-			struct sc_path tmppath;
+			sc_path_t tmppath;
 
 			memcpy(&tmppath, &path, sizeof(path));
 			memcpy(tmppath.value + tmppath.len, files + 2*i, 2);
@@ -273,7 +273,7 @@ static int enum_dir(struct sc_path path, int depth)
 
 static int list_files(void)
 {
-	struct sc_path path;
+	sc_path_t path;
 	int r;
 	
 	sc_format_path("3F00", &path);
@@ -283,7 +283,7 @@ static int list_files(void)
 
 static int send_apdu(void)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE],
 	   rbuf[SC_MAX_APDU_BUFFER_SIZE], *p;
 	size_t len, len0, r;
@@ -358,7 +358,7 @@ static int send_apdu(void)
 static void print_serial(sc_card_t *in_card)
 {
 	int r;
-	struct sc_serial_number serial;
+	sc_serial_number_t serial;
 
 	r = sc_card_ctl(in_card, SC_CARDCTL_GET_SERIALNR, &serial);
 	if (r)

@@ -40,7 +40,7 @@
  * Erase the card
  */
 static int
-jcop_erase_card(struct sc_profile *pro, struct sc_card *card) {
+jcop_erase_card(struct sc_profile *pro, sc_card_t *card) {
      /* later */
      return SC_ERROR_NOT_SUPPORTED;
 }
@@ -143,7 +143,7 @@ jcop_create_key(sc_profile_t *profile, sc_card_t *card, sc_pkcs15_object_t *obj
 )
 {
         sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-        struct sc_file  *keyfile = NULL;
+        sc_file_t  *keyfile = NULL;
         size_t          bytes, mod_len, exp_len, prv_len, pub_len;
         int             r;
 

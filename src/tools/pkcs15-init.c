@@ -57,13 +57,13 @@
 const char *app_name = "pkcs15-init";
 
 /* Handle encoding of PKCS15 on the card */
-typedef int	(*pkcs15_encoder)(struct sc_context *,
+typedef int	(*pkcs15_encoder)(sc_context_t *,
 			struct sc_pkcs15_card *, u8 **, size_t *);
 
 /* Local functions */
 static int	open_reader_and_card(int);
-static int	do_assert_pristine(struct sc_card *);
-static int	do_erase(struct sc_card *, struct sc_profile *);
+static int	do_assert_pristine(sc_card_t *);
+static int	do_erase(sc_card_t *, struct sc_profile *);
 static int	do_init_app(struct sc_profile *);
 static int	do_store_pin(struct sc_profile *);
 static int	do_generate_key(struct sc_profile *, const char *);
@@ -74,7 +74,7 @@ static int	do_convert_private_key(struct sc_pkcs15_prkey *, EVP_PKEY *);
 static int	do_convert_public_key(struct sc_pkcs15_pubkey *, EVP_PKEY *);
 static int	do_convert_cert(sc_pkcs15_der_t *, X509 *);
 static int	is_cacert_already_present(struct sc_pkcs15init_certargs *);
-static int	do_finalize_card(struct sc_card *, struct sc_profile *);
+static int	do_finalize_card(sc_card_t *, struct sc_profile *);
 
 static int	do_read_data_object(const char *name, u8 **out, size_t *outlen);
 static int	do_store_data_object(struct sc_profile *profile);
@@ -262,8 +262,8 @@ struct secret {
 	size_t			len;
 };
 
-static struct sc_context *	ctx = NULL;
-static struct sc_card *		card = NULL;
+static sc_context_t *	ctx = NULL;
+static sc_card_t *		card = NULL;
 static struct sc_pkcs15_card *	p15card = NULL;
 static unsigned int		opt_actions;
 static int			opt_reader = -1,
@@ -458,7 +458,7 @@ open_reader_and_card(int reader)
  * Make sure there's no pkcs15 structure on the card
  */
 static int
-do_assert_pristine(struct sc_card *in_card)
+do_assert_pristine(sc_card_t *in_card)
 {
 	sc_path_t	path;
 	int		r, res=0;
@@ -502,7 +502,7 @@ do_assert_pristine(struct sc_card *in_card)
  * Erase card
  */
 static int
-do_erase(struct sc_card *in_card, struct sc_profile *profile)
+do_erase(sc_card_t *in_card, struct sc_profile *profile)
 {
 	int	r;
 	ignore_cmdline_pins++;

@@ -73,18 +73,18 @@
 #define DEFAULT_DATA_FLAGS		0x02
 
 /* Handle encoding of PKCS15 on the card */
-typedef int	(*pkcs15_encoder)(struct sc_context *,
+typedef int	(*pkcs15_encoder)(sc_context_t *,
 			struct sc_pkcs15_card *, u8 **, size_t *);
 
 static int	sc_pkcs15init_store_data(struct sc_pkcs15_card *,
 			struct sc_profile *, sc_pkcs15_object_t *,
 			sc_pkcs15_id_t *,
-			sc_pkcs15_der_t *, struct sc_path *);
+			sc_pkcs15_der_t *, sc_path_t *);
 static size_t	sc_pkcs15init_keybits(sc_pkcs15_bignum_t *);
 
 static int	sc_pkcs15init_update_dir(struct sc_pkcs15_card *,
 			struct sc_profile *profile,
-			struct sc_app_info *app);
+			sc_app_info_t *app);
 static int	sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
 static int	sc_pkcs15init_update_odf(struct sc_pkcs15_card *,
@@ -105,8 +105,8 @@ static int	set_so_pin_from_card(struct sc_pkcs15_card *,
 			struct sc_profile *);
 static int	set_user_pin_from_authid(struct sc_pkcs15_card *,
 			struct sc_profile *, struct sc_pkcs15_id *);
-static int	do_select_parent(struct sc_profile *, struct sc_card *,
-			struct sc_file *, struct sc_file **);
+static int	do_select_parent(struct sc_profile *, sc_card_t *,
+			sc_file_t *, sc_file_t **);
 static int	sc_pkcs15init_create_pin(sc_pkcs15_card_t *, sc_profile_t *,
 			sc_pkcs15_object_t *, struct sc_pkcs15init_pinargs *);
 static int	check_key_compatibility(struct sc_pkcs15_card *,
@@ -165,9 +165,9 @@ sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *cb)
  * in the config file, or 0 otherwise.
  */
 static int
-get_profile_from_config(struct sc_card *card, char *buffer, size_t size)
+get_profile_from_config(sc_card_t *card, char *buffer, size_t size)
 {
-	struct sc_context *ctx = card->ctx;
+	sc_context_t *ctx = card->ctx;
 	const char *tmp;
 	scconf_block **blocks, *blk;
 	int i;
@@ -220,7 +220,7 @@ static const char *find_library(sc_context_t *ctx, const char *name)
 	return libname;
 }
 
-static void *load_dynamic_driver(struct sc_context *ctx, void **dll,
+static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 	const char *name)
 {
 	const char *version, *libname;
@@ -262,7 +262,7 @@ static void *load_dynamic_driver(struct sc_context *ctx, void **dll,
  * Set up profile
  */
 int
-sc_pkcs15init_bind(struct sc_card *card, const char *name,
+sc_pkcs15init_bind(sc_card_t *card, const char *name,
 		const char *profile_option,
 		struct sc_profile **result)
 {
@@ -366,7 +366,7 @@ sc_pkcs15init_set_lifecycle(sc_card_t *card, int lcycle)
  * Erase the card
  */
 int
-sc_pkcs15init_erase_card(struct sc_card *card, struct sc_profile *profile)
+sc_pkcs15init_erase_card(sc_card_t *card, struct sc_profile *profile)
 {
 	if (profile->ops->erase_card == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
@@ -374,7 +374,7 @@ sc_pkcs15init_erase_card(struct sc_card *card, struct sc_profile *profile)
 }
 
 int
-sc_pkcs15init_erase_card_recursively(struct sc_card *card, 
+sc_pkcs15init_erase_card_recursively(sc_card_t *card, 
 		struct sc_profile *profile,
 		int so_pin_ref)
 {
@@ -435,8 +435,8 @@ out:	/* Forget any cached keys, the objects on card are all gone. */
  * references a pin other than the SO pin.
  */
 int
-sc_pkcs15init_rmdir(struct sc_card *card, struct sc_profile *profile,
-		struct sc_file *df)
+sc_pkcs15init_rmdir(sc_card_t *card, struct sc_profile *profile,
+		sc_file_t *df)
 {
 	u8		buffer[1024];
 	struct sc_path	path;
@@ -508,7 +508,7 @@ sc_pkcs15init_rmdir(struct sc_card *card, struct sc_profile *profile,
 }
 
 int
-sc_pkcs15init_finalize_card(struct sc_card *card, struct sc_profile *profile)
+sc_pkcs15init_finalize_card(sc_card_t *card, struct sc_profile *profile)
 {
 	if (profile->ops->finalize_card == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
@@ -519,13 +519,13 @@ sc_pkcs15init_finalize_card(struct sc_card *card, struct sc_profile *profile)
  * Initialize the PKCS#15 application
  */
 int
-sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
+sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 		struct sc_pkcs15init_initargs *args)
 {
 	sc_pkcs15_card_t	*p15spec = profile->p15_spec;
 	sc_pkcs15_pin_info_t	pin_info, puk_info;
 	sc_pkcs15_object_t	*pin_obj = NULL;
-	struct sc_app_info	*app;
+	sc_app_info_t	*app;
 	sc_file_t		*df = profile->df_info->file;
 	int			r;
 
@@ -634,7 +634,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	 * all sorts of assumptions about DF and EF names, and
 	 * doesn't work if secure messaging is required for the
 	 * MF (which is the case with the GPK) */
-	app = (struct sc_app_info *) calloc(1, sizeof(*app));
+	app = (sc_app_info_t *) calloc(1, sizeof(*app));
 	if (app == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	app->path = p15spec->file_app->path;
@@ -1180,7 +1180,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 		}
 	} else {
 		sc_pkcs15_der_t	encoded, wrapped, *der = &encoded;
-		struct sc_context *ctx = p15card->card->ctx;
+		sc_context_t *ctx = p15card->card->ctx;
 
 		/* DER encode the private key */
 		encoded.value = wrapped.value = NULL;
@@ -1553,7 +1553,7 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
 		sc_pkcs15_object_t *object, sc_pkcs15_id_t *id,
 		sc_pkcs15_der_t *data,
-		struct sc_path *path)
+		sc_path_t *path)
 {
 	struct sc_file	*file = NULL;
 	int		r;
@@ -1672,7 +1672,7 @@ __check_key_compatibility(struct sc_pkcs15_card *p15card,
 			  unsigned int key_length,
 			  unsigned int flags)
 {
-	struct sc_algorithm_info *info;
+	sc_algorithm_info_t *info;
 	unsigned int count;
 	int bad_usage = 0;
 
@@ -2033,9 +2033,9 @@ select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 static int
 sc_pkcs15init_update_dir(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		struct sc_app_info *app)
+		sc_app_info_t *app)
 {
-	struct sc_card *card = p15card->card;
+	sc_card_t *card = p15card->card;
 	int	r, retry = 1;
 
 	do {
@@ -2541,7 +2541,7 @@ found:	if (type == SC_AC_CHV) {
 }
 
 static int
-do_verify_pin(struct sc_profile *pro, struct sc_card *card, sc_file_t *file,
+do_verify_pin(struct sc_profile *pro, sc_card_t *card, sc_file_t *file,
 		unsigned int type, unsigned int reference)
 {
 	size_t		pinsize;
@@ -2561,7 +2561,7 @@ sc_pkcs15init_set_secret(struct sc_profile *pro,
 }
 
 int
-sc_pkcs15init_verify_key(struct sc_profile *pro, struct sc_card *card,
+sc_pkcs15init_verify_key(struct sc_profile *pro, sc_card_t *card,
 		sc_file_t *file,  unsigned int type, unsigned int reference)
 {
 	size_t		keysize;
@@ -2660,10 +2660,10 @@ set_user_pin_from_authid(struct sc_pkcs15_card *p15card,
  * access conditions in their response to SELECT FILE)
  */
 int
-sc_pkcs15init_authenticate(struct sc_profile *pro, struct sc_card *card,
-		struct sc_file *file, int op)
+sc_pkcs15init_authenticate(struct sc_profile *pro, sc_card_t *card,
+		sc_file_t *file, int op)
 {
-	const struct sc_acl_entry *acl;
+	const sc_acl_entry_t *acl;
 	int		r = 0;
 
 	sc_debug(card->ctx, "path=%s, op=%u\n",
@@ -2685,8 +2685,8 @@ sc_pkcs15init_authenticate(struct sc_profile *pro, struct sc_card *card,
 }
 
 int
-do_select_parent(struct sc_profile *pro, struct sc_card *card,
-		struct sc_file *file, struct sc_file **parent)
+do_select_parent(struct sc_profile *pro, sc_card_t *card,
+		sc_file_t *file, sc_file_t **parent)
 {
 	struct sc_path	path;
 	int		r;
@@ -2729,8 +2729,8 @@ do_select_parent(struct sc_profile *pro, struct sc_card *card,
 }
 
 int
-sc_pkcs15init_create_file(struct sc_profile *pro, struct sc_card *card,
-		struct sc_file *file)
+sc_pkcs15init_create_file(struct sc_profile *pro, sc_card_t *card,
+		sc_file_t *file)
 {
 	struct sc_file	*parent = NULL;
 	int		r;
@@ -2753,8 +2753,8 @@ out:	if (parent)
 }
 
 int
-sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
-	       	struct sc_file *file, void *data, unsigned int datalen)
+sc_pkcs15init_update_file(struct sc_profile *profile, sc_card_t *card,
+	       	sc_file_t *file, void *data, unsigned int datalen)
 {
 	struct sc_file	*info = NULL;
 	void		*copy = NULL;
@@ -2815,7 +2815,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
  * Fix up all file ACLs
  */
 int
-sc_pkcs15init_fixup_file(struct sc_profile *profile, struct sc_file *file)
+sc_pkcs15init_fixup_file(struct sc_profile *profile, sc_file_t *file)
 {
 	sc_context_t	*ctx = profile->card->ctx;
 	sc_acl_entry_t	so_acl, user_acl;
@@ -2826,7 +2826,7 @@ sc_pkcs15init_fixup_file(struct sc_profile *profile, struct sc_file *file)
 	 * are still any symbolic references.
 	 */
 	for (op = 0; op < SC_MAX_AC_OPS; op++) {
-		const struct sc_acl_entry *acl;
+		const sc_acl_entry_t *acl;
 
 		acl = sc_file_get_acl_entry(file, op);
 		for (; acl; acl = acl->next) {
@@ -2876,17 +2876,17 @@ sc_pkcs15init_fixup_file(struct sc_profile *profile, struct sc_file *file)
  * PIN name with the real reference.
  */
 int
-sc_pkcs15init_fixup_acls(struct sc_profile *profile, struct sc_file *file,
-		struct sc_acl_entry *so_acl,
-		struct sc_acl_entry *user_acl)
+sc_pkcs15init_fixup_acls(struct sc_profile *profile, sc_file_t *file,
+		sc_acl_entry_t *so_acl,
+		sc_acl_entry_t *user_acl)
 {
 	sc_card_t	*card = profile->card;
-	struct sc_acl_entry acls[16];
+	sc_acl_entry_t acls[16];
 	unsigned int	op, num;
 	int		r = 0;
 
 	for (op = 0; r == 0 && op < SC_MAX_AC_OPS; op++) {
-		const struct sc_acl_entry *acl;
+		const sc_acl_entry_t *acl;
 		const char	*what;
 		int		added = 0;
 

@@ -44,7 +44,7 @@
 
 static int starcos_finalize_card(sc_card_t *card);
 
-static int starcos_erase_card(struct sc_profile *pro, struct sc_card *card)
+static int starcos_erase_card(struct sc_profile *pro, sc_card_t *card)
 {
 	return sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
 }

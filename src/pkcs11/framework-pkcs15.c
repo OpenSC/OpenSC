@@ -2107,7 +2107,7 @@ static int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 	struct pkcs15_fw_data *fw_data =
 		(struct pkcs15_fw_data *) session->slot->card->fw_data;
 	struct pkcs15_slot_data *data = slot_data(session->slot->fw_data);
-	struct sc_card *card = session->slot->card->card;
+	sc_card_t *card = session->slot->card->card;
 	int reader = session->slot->card->reader;
 
 	if (!out_data)

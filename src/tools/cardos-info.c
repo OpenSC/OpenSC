@@ -54,12 +54,12 @@ const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-struct sc_context *ctx = NULL;
-struct sc_card *card = NULL;
+sc_context_t *ctx = NULL;
+sc_card_t *card = NULL;
 
 int cardos_info(void)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 

@@ -83,8 +83,8 @@ const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-struct sc_context *ctx = NULL;
-struct sc_card *card = NULL;
+sc_context_t *ctx = NULL;
+sc_card_t *card = NULL;
 struct sc_pkcs15_card *p15card = NULL;
 
 static char * get_pin(struct sc_pkcs15_object *obj)

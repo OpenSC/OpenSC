@@ -32,7 +32,7 @@
 /*
  * Initialize the Application DF
  */
-static int miocos_init_app(struct sc_profile *profile, struct sc_card *card,
+static int miocos_init_app(struct sc_profile *profile, sc_card_t *card,
 		struct sc_pkcs15_pin_info *pin_info,
 		const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
@@ -47,7 +47,7 @@ static int miocos_init_app(struct sc_profile *profile, struct sc_card *card,
  * Store a PIN
  */
 static int
-miocos_new_pin(struct sc_profile *profile, struct sc_card *card,
+miocos_new_pin(struct sc_profile *profile, sc_card_t *card,
 		struct sc_pkcs15_pin_info *info, unsigned int idx,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
@@ -83,9 +83,9 @@ miocos_new_pin(struct sc_profile *profile, struct sc_card *card,
  * Allocate a file
  */
 static int
-miocos_new_file(struct sc_profile *profile, struct sc_card *card,
+miocos_new_file(struct sc_profile *profile, sc_card_t *card,
 		unsigned int type, unsigned int num,
-		struct sc_file **out)
+		sc_file_t **out)
 {
 	struct sc_file	*file;
 	struct sc_path	*p;
@@ -149,7 +149,7 @@ miocos_new_file(struct sc_profile *profile, struct sc_card *card,
 }
 
 static int
-miocos_update_private_key(struct sc_profile *profile, struct sc_card *card,
+miocos_update_private_key(struct sc_profile *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey_rsa *rsa)
 {
 	int r;
@@ -168,7 +168,7 @@ miocos_update_private_key(struct sc_profile *profile, struct sc_card *card,
  * Store a private key
  */
 static int
-miocos_new_key(struct sc_profile *profile, struct sc_card *card,
+miocos_new_key(struct sc_profile *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey *key, unsigned int idx,
 		struct sc_pkcs15_prkey_info *info)
 {

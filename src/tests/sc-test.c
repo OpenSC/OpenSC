@@ -16,8 +16,8 @@
 #include <opensc/opensc.h>
 #include "sc-test.h"
 
-struct sc_context *ctx;
-struct sc_card *card;
+sc_context_t *ctx;
+sc_card_t *card;
 
 const struct option	options[] = {
 	{ "reader",             1, 0,           'r' },

@@ -209,7 +209,7 @@ static file_info *	sc_profile_find_file(struct sc_profile *,
 				const sc_path_t *, const char *);
 static file_info *	sc_profile_find_file_by_path(
 				struct sc_profile *,
-				const struct sc_path *);
+				const sc_path_t *);
 
 static pin_info *	new_pin(struct sc_profile *, unsigned int);
 static file_info *	new_file(struct state *, const char *,
@@ -225,7 +225,7 @@ static void		set_pin_defaults(struct sc_profile *,
 static void		new_macro(sc_profile_t *, const char *, scconf_list *);
 static sc_macro_t *	find_macro(sc_profile_t *, const char *);
 
-static struct sc_file *
+static sc_file_t *
 init_file(unsigned int type)
 {
 	struct sc_file	*file;
@@ -502,7 +502,7 @@ sc_profile_get_file_in(sc_profile_t *profile,
 
 int
 sc_profile_get_file(struct sc_profile *profile,
-		const char *name, struct sc_file **ret)
+		const char *name, sc_file_t **ret)
 {
 	struct file_info *fi;
 
@@ -514,7 +514,7 @@ sc_profile_get_file(struct sc_profile *profile,
 
 int
 sc_profile_get_path(struct sc_profile *profile,
-		const char *name, struct sc_path *ret)
+		const char *name, sc_path_t *ret)
 {
 	struct file_info *fi;
 
@@ -526,7 +526,7 @@ sc_profile_get_path(struct sc_profile *profile,
 
 int
 sc_profile_get_file_by_path(struct sc_profile *profile,
-		const struct sc_path *path, struct sc_file **ret)
+		const sc_path_t *path, sc_file_t **ret)
 {
 	struct file_info *fi;
 
@@ -1178,7 +1178,7 @@ do_acl(struct state *cur, int argc, char **argv)
 				sc_file_add_acl_entry(file, op, method, id);
 			}
 		} else {
-			const struct sc_acl_entry *acl;
+			const sc_acl_entry_t *acl;
 
 			if (map_str2int(cur, oper, &op, fileOpNames))
 				goto bad;
@@ -1699,7 +1699,7 @@ sc_profile_find_file(struct sc_profile *pro,
 }
 
 struct file_info *
-sc_profile_find_file_by_path(struct sc_profile *pro, const struct sc_path *path)
+sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 {
 	struct file_info *fi;
 	struct sc_file	*fp;

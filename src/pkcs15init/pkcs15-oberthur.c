@@ -67,18 +67,18 @@
 #define COSM_TYPE_PRKEY_RSA (SC_DEVICE_SPECIFIC_TYPE | SC_PKCS15_TYPE_PRKEY_RSA)
 #define COSM_TYPE_PUBKEY_RSA (SC_DEVICE_SPECIFIC_TYPE | SC_PKCS15_TYPE_PUBKEY_RSA)
 
-static int cosm_update_pin(struct sc_profile *profile, struct sc_card *card,
+static int cosm_update_pin(struct sc_profile *profile, sc_card_t *card,
 		struct sc_pkcs15_pin_info *info, const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len);
 
-int cosm_delete_file(struct sc_card *card, struct sc_profile *profile,
-		struct sc_file *df);
+int cosm_delete_file(sc_card_t *card, struct sc_profile *profile,
+		sc_file_t *df);
 
-int cosm_delete_file(struct sc_card *card, struct sc_profile *profile,
-		struct sc_file *df)
+int cosm_delete_file(sc_card_t *card, struct sc_profile *profile,
+		sc_file_t *df)
 {
-	struct sc_path  path;
-	struct sc_file  *parent;
+	sc_path_t  path;
+	sc_file_t  *parent;
 	int rv = 0;
 	
 	sc_debug(card->ctx, " id %04X\n", df->id);
@@ -119,9 +119,9 @@ done:
 /*
  * Erase the card
  */
-static int cosm_erase_card(struct sc_profile *profile, struct sc_card *card)
+static int cosm_erase_card(struct sc_profile *profile, sc_card_t *card)
 {
-	struct sc_file  *df = profile->df_info->file, *dir;
+	sc_file_t  *df = profile->df_info->file, *dir;
 	int r;
 
 	/* Delete EF(DIR). This may not be very nice
@@ -180,13 +180,13 @@ done:
  * Initialize the Application DF
  */
 static int 
-cosm_init_app(struct sc_profile *profile, struct sc_card *card,	
+cosm_init_app(struct sc_profile *profile, sc_card_t *card,	
 		struct sc_pkcs15_pin_info *pinfo,
 		const u8 *pin,	size_t pin_len, 
 		const u8 *puk, size_t puk_len)
 {
 	int r;
-	struct sc_file *file = NULL;
+	sc_file_t *file = NULL;
 
 	sc_debug(card->ctx, "pin_len %i; puk_len %i\n", pin_len, puk_len);
 	/* Create the application DF */
@@ -233,7 +233,7 @@ cosm_init_app(struct sc_profile *profile, struct sc_card *card,
 	return 0;
 }
 
-static int cosm_create_reference_data(struct sc_profile *profile, struct sc_card *card,
+static int cosm_create_reference_data(struct sc_profile *profile, sc_card_t *card,
 		struct sc_pkcs15_pin_info *pinfo, 
 		const u8 *pin, size_t pin_len,	const u8 *puk, size_t puk_len )
 {
@@ -310,7 +310,7 @@ done:
 /*
  * Update PIN
  */
-static int cosm_update_pin(struct sc_profile *profile, struct sc_card *card,
+static int cosm_update_pin(struct sc_profile *profile, sc_card_t *card,
 		struct sc_pkcs15_pin_info *pinfo, const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len )
 {
@@ -426,8 +426,8 @@ cosm_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
  * Allocate a file
  */
 static int
-cosm_new_file(struct sc_profile *profile, struct sc_card *card,
-		unsigned int type, unsigned int num, struct sc_file **out)
+cosm_new_file(struct sc_profile *profile, sc_card_t *card,
+		unsigned int type, unsigned int num, sc_file_t **out)
 {
 	struct sc_file	*file;
 	const char *_template = NULL, *desc = NULL;
@@ -503,7 +503,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
  * RSA key generation
  */
 static int
-cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
+cosm_old_generate_key(struct sc_profile *profile, sc_card_t *card,
 		unsigned int idx, unsigned int keybits,
 		sc_pkcs15_pubkey_t *pubkey,
 		struct sc_pkcs15_prkey_info *info)
@@ -608,11 +608,11 @@ failed:
  * Store a private key
  */
 static int
-cosm_new_key(struct sc_profile *profile, struct sc_card *card,
+cosm_new_key(struct sc_profile *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey *key, unsigned int idx,
 		struct sc_pkcs15_prkey_info *info)
 {
-	struct sc_file *prvfile = NULL, *pubfile = NULL;
+	sc_file_t *prvfile = NULL, *pubfile = NULL;
 	struct sc_pkcs15_prkey_rsa *rsa = NULL;
 	struct sc_pkcs15_bignum bn[6];
 	u8 *buff;

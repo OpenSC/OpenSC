@@ -308,7 +308,7 @@ CK_RV attr_find_var(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 	return attr_extract(pTemplate, ptr, sizep);
 }
 
-void load_pkcs11_parameters(struct sc_pkcs11_config *conf, struct sc_context *ctx)
+void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 {
 	scconf_block *conf_block = NULL, **blocks;
 	int i;

@@ -60,7 +60,7 @@ static int	etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
 			const u8 *pin, size_t pin_len);
 static int	etoken_create_sec_env(sc_profile_t *, sc_card_t *,
 			unsigned int, unsigned int);
-static int	etoken_put_key(struct sc_profile *, struct sc_card *,
+static int	etoken_put_key(struct sc_profile *, sc_card_t *,
 			int, sc_pkcs15_prkey_info_t *,
 		       	struct sc_pkcs15_prkey_rsa *);
 static int	etoken_key_algorithm(unsigned int, int *);
@@ -124,7 +124,7 @@ tlv_len(struct tlv *tlv)
  * it's close enough to be useful.
  */
 static int
-etoken_erase(struct sc_profile *profile, struct sc_card *card)
+etoken_erase(struct sc_profile *profile, sc_card_t *card)
 {
 	return sc_pkcs15init_erase_card_recursively(card, profile, -1);
 }
@@ -460,7 +460,7 @@ etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
  * Create an empty security environment
  */
 static int
-etoken_create_sec_env(struct sc_profile *profile, struct sc_card *card,
+etoken_create_sec_env(struct sc_profile *profile, sc_card_t *card,
 		unsigned int se_id, unsigned int key_id)
 {
 	struct sc_cardctl_etoken_obj_info args;
@@ -520,7 +520,7 @@ etoken_key_algorithm(unsigned int usage, int *algop)
 #define ETOKEN_KEY_OPTIONS	0x02
 #define ETOKEN_KEY_FLAGS	0x00
 static int
-etoken_store_key_component(struct sc_card *card,
+etoken_store_key_component(sc_card_t *card,
 		int algorithm,
 		unsigned int key_id, unsigned int pin_id,
 		unsigned int num,
@@ -608,7 +608,7 @@ etoken_put_key(sc_profile_t *profile, sc_card_t *card,
  * GENERATE KEY PAIR
  */
 static int
-etoken_extract_pubkey(struct sc_card *card, int nr, u8 tag,
+etoken_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 			sc_pkcs15_bignum_t *bn)
 {
 	u8	buf[256];

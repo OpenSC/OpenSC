@@ -43,8 +43,8 @@
 #include "scam.h"
 
 typedef struct _scam_method_data {
-	struct sc_context *ctx;
-	struct sc_card *card;
+	sc_context_t *ctx;
+	sc_card_t *card;
 	struct sc_pkcs15_card *p15card;
 	int card_locked;
 

@@ -130,10 +130,10 @@ static void decode_options(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
-	struct sc_context *ctx = NULL;
+	sc_context_t *ctx = NULL;
 	sc_reader_t *reader = NULL;
-	struct sc_card *card = NULL;
-	struct sc_path path;
+	sc_card_t *card = NULL;
+	sc_path_t path;
 	int r, i;
 	char buff[512];
 

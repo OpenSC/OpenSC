@@ -15,7 +15,7 @@
 #include "openscd.h"
 
 static struct openscd_card * find_card(struct openscd_context *dctx,
-				       struct sc_reader *reader,
+				       sc_reader_t *reader,
 				       int slot_id)
 {
 	int i;
@@ -44,12 +44,12 @@ static struct openscd_card * find_card_by_id(struct openscd_context *dctx,
 }
 
 static void card_inserted(struct openscd_context *dctx,
-			  struct sc_reader *reader,
+			  sc_reader_t *reader,
 			  int slot_id)
 {
         int n = dctx->card_count;
         int r;
-	struct sc_card *card;
+	sc_card_t *card;
         struct sc_pkcs15_card *p15card;
 
 	dctx->cards = (struct openscd_card *) realloc(dctx->cards, (n + 1) * sizeof(struct openscd_card));
@@ -222,8 +222,8 @@ static void * sc_thread(void *arg)
 {
         struct openscd_thread_arg *targ = (struct openscd_thread_arg *) arg;
 	struct openscd_context *dctx = targ->dctx;
-        struct sc_reader *reader = targ->reader;
-	struct sc_context *ctx = dctx->ctx;
+        sc_reader_t *reader = targ->reader;
+	sc_context_t *ctx = dctx->ctx;
         const int sleep_time = 200;
         int r;
 

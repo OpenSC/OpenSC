@@ -75,8 +75,8 @@ static int	gpk_encode_rsa_key(sc_profile_t *, sc_card_t *,
 static int	gpk_encode_dsa_key(sc_profile_t *, sc_card_t *,
 			struct sc_pkcs15_prkey_dsa *, struct pkdata *,
 			struct sc_pkcs15_prkey_info *);
-static int	gpk_store_pk(struct sc_profile *, struct sc_card *,
-			struct sc_file *, struct pkdata *);
+static int	gpk_store_pk(struct sc_profile *, sc_card_t *,
+			sc_file_t *, struct pkdata *);
 static int	gpk_init_pinfile(sc_profile_t *, sc_card_t *, sc_file_t *);
 static int	gpk_pkfile_init_public(sc_profile_t *, sc_card_t *,
 			sc_file_t *, unsigned int, unsigned int, unsigned int);
@@ -88,7 +88,7 @@ static int	gpk_read_rsa_key(sc_card_t *, struct sc_pkcs15_pubkey_rsa *);
  * Erase the card
  */
 static int
-gpk_erase_card(struct sc_profile *pro, struct sc_card *card)
+gpk_erase_card(struct sc_profile *pro, sc_card_t *card)
 {
 	int	locked;
 
@@ -253,7 +253,7 @@ gpk_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
  * Lock a file operation
  */
 static int
-gpk_lock(struct sc_card *card, struct sc_file *file, unsigned int op)
+gpk_lock(sc_card_t *card, sc_file_t *file, unsigned int op)
 {
 	struct sc_cardctl_gpk_lock	args;
 
@@ -266,8 +266,8 @@ gpk_lock(struct sc_card *card, struct sc_file *file, unsigned int op)
  * Lock the pin file
  */
 static int
-gpk_lock_pinfile(struct sc_profile *profile, struct sc_card *card,
-		struct sc_file *pinfile)
+gpk_lock_pinfile(struct sc_profile *profile, sc_card_t *card,
+		sc_file_t *pinfile)
 {
 	struct sc_path	path;
 	struct sc_file	*parent = NULL;
@@ -295,10 +295,10 @@ gpk_lock_pinfile(struct sc_profile *profile, struct sc_card *card,
  * Initialize pin file
  */
 static int
-gpk_init_pinfile(struct sc_profile *profile, struct sc_card *card,
-		struct sc_file *file)
+gpk_init_pinfile(struct sc_profile *profile, sc_card_t *card,
+		sc_file_t *file)
 {
-	const struct sc_acl_entry *acl;
+	const sc_acl_entry_t *acl;
 	unsigned char	buffer[GPK_MAX_PINS * 8], *blk;
 	struct sc_file	*pinfile;
 	unsigned int	so_attempts[2], user_attempts[2];
@@ -608,7 +608,7 @@ gpk_pkfile_init_public(sc_profile_t *profile, sc_card_t *card, sc_file_t *file,
 		unsigned int algo, unsigned int bits,
 		unsigned int usage)
 {
-	const struct sc_acl_entry *acl;
+	const sc_acl_entry_t *acl;
 	sc_file_t	*tmp = NULL;
 	u8		sysrec[7], buffer[256];
 	unsigned int	n, npins;
@@ -715,7 +715,7 @@ out:	if (tmp)
 
 static int
 gpk_pkfile_update_public(struct sc_profile *profile,
-		struct sc_card *card, struct pkpart *part)
+		sc_card_t *card, struct pkpart *part)
 {
 	struct pkcomp	*pe;
 	unsigned char	buffer[256];
@@ -776,8 +776,8 @@ gpk_pkfile_update_public(struct sc_profile *profile,
 }
 
 static int
-gpk_pkfile_init_private(struct sc_card *card,
-		struct sc_file *file, unsigned int privlen)
+gpk_pkfile_init_private(sc_card_t *card,
+		sc_file_t *file, unsigned int privlen)
 {
 	struct sc_cardctl_gpk_pkinit args;
 
@@ -787,7 +787,7 @@ gpk_pkfile_init_private(struct sc_card *card,
 }
 
 static int
-gpk_pkfile_load_private(struct sc_card *card, struct sc_file *file,
+gpk_pkfile_load_private(sc_card_t *card, sc_file_t *file,
 			u8 *data, unsigned int len, unsigned int datalen)
 {
 	struct sc_cardctl_gpk_pkload args;
@@ -801,7 +801,7 @@ gpk_pkfile_load_private(struct sc_card *card, struct sc_file *file,
 
 static int
 gpk_pkfile_update_private(struct sc_profile *profile,
-			struct sc_card *card, struct sc_file *file,
+			sc_card_t *card, sc_file_t *file,
 			struct pkpart *part)
 {
 	unsigned int	m, size, nb, cks;
@@ -1038,8 +1038,8 @@ gpk_encode_dsa_key(sc_profile_t *profile, sc_card_t *card,
 }
 
 static int
-gpk_store_pk(struct sc_profile *profile, struct sc_card *card,
-		struct sc_file *file, struct pkdata *p)
+gpk_store_pk(struct sc_profile *profile, sc_card_t *card,
+		sc_file_t *file, struct pkdata *p)
 {
 	size_t	fsize;
 	int	r;

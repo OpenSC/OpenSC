@@ -15,7 +15,7 @@ int connect_card(sc_context_t *ctx, sc_card_t **cardp,
 	int r;
 
 	if (wait) {
-		struct sc_reader *readers[16];
+		sc_reader_t *readers[16];
 		int slots[16];
 		int i, j, k, found;
 		unsigned int event;
@@ -188,7 +188,7 @@ void print_usage_and_die(void)
 	exit(2);
 }
 
-const char * acl_to_str(const struct sc_acl_entry *e)
+const char * acl_to_str(const sc_acl_entry_t *e)
 {
 	static char line[80], buf[10];
 	unsigned int acl;
