@@ -16,6 +16,7 @@ gmon.out
 core
 Makefile
 Makefile.in
+cryptoflex-tool
 opensc-explorer
 opensc-tool
 pkcs15-crypt

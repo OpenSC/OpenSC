@@ -12,6 +12,7 @@
 *~
 *.lo
 *.la
+*.u
 gmon.out
 core
 Makefile
