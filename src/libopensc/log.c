@@ -68,17 +68,22 @@ void sc_do_log(struct sc_context *ctx, int type, const char *file, int line, con
 void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args)
 {
 	int	(*display_fn)(sc_context_t *, const char *);
-	char	buf[1536], *p;
+	char	buf[1536], *p, *tag = "";
 	int	left, r;
 
 	assert(ctx != NULL);
 
 	switch (type) {
 	case SC_LOG_TYPE_ERROR:
-		if (ctx->suppress_errors)
-			return;
-		display_fn = &sc_ui_display_error;
-		break;
+		if (!ctx->suppress_errors) {
+			display_fn = &sc_ui_display_error;
+			tag = "error:";
+			break;
+		}
+		/* Fall thru - suppressed errors are logged as
+		 * debug messages */
+		tag = "error (suppressed):";
+		type = SC_LOG_TYPE_DEBUG;
 
 	case SC_LOG_TYPE_DEBUG:
 		if (ctx->debug == 0)
