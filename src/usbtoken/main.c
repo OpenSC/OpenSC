@@ -138,7 +138,8 @@ int main(int argc, char **argv)
 		}
 
 		if (usbtoken.connfd && pollfd[2].revents) {
-			socket_xmit();
+			if (socket_xmit() != USBTOKEN_OK)
+				return 1;
 		}
 
 		/* ignore other poll results */

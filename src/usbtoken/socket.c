@@ -93,6 +93,10 @@ int socket_accept()
 		       strerror(errno), errno);
 		return USBTOKEN_ERROR;
 	}
+	if (usbtoken.connfd) {
+		close(rc);
+		return USBTOKEN_OK;
+	}
 	usbtoken.connfd = rc;
 
 	rc = write(usbtoken.connfd, usbtoken.atr, usbtoken.atrlen);

@@ -34,18 +34,36 @@
 	</section>
 
 	<section>
-		<title>Status</title>
+		<title>Status and Compatiblity</title>
 
 		<para>
-			At the moment the Aladdin eToken PRO works for
-			me, support for the other tokens is still under
-			development.
+			The Aladdin eToken seems to work fine.
+			However OpenSC is not compatible with
+			using the eToken under Windows:
+			the Aladdin driver stores certificates
+			and keys in a proprietory way, so we
+			cannot access these from Linux. Aladdin
+			has written their own Linux driver and
+			PKCS#11 implementation, however it is
+			hard to get. Ask you Aladdin representative
+			for it if you need compatility with windows.
 		</para>
 
 		<para>
 			If you have an Aladdin eToken PRO, you might want
 			to try the old etoken driver on <ulink
 				url="http://etoken.sourceforge.net"/>.
+		</para>
+
+		<para>
+			The green Eutron Cryptotoken 5 (with Siemens
+			CardOS) is working with opensc-explorer.
+			Eutrons implementation is also not using PKCS#15
+			but a proprietory storage format. Eutron has
+			an implementaion for linux, but only for
+			the black and blue keys. The pcsc driver
+			works also with the green key, but the
+			pkcs#11 implementation does not.
 		</para>
 	</section>
 
@@ -167,6 +185,15 @@ chmod 0750 /var/run/usbtoken/
 		<para>
 			TODO: send me problem reports and I will add
 			advice here.
+		</para>
+
+		<para>
+			Edit src/usbtoken/Makefile and Makefile.in
+			and add "-DUSB_DEBUG" to CFLAGS. make clean,
+			make, make install. Now it will dump
+			all usb traffic to syslog. I should be able
+			to understand what is going wrong based
+			on that log file.
 		</para>
 
 		<para>

@@ -85,6 +85,8 @@ int eutron_init()
 		}
 	}
 
+	rc = usb_control_xmit(0x41, 0x65, 0x98, 0x0000, 0x0000, buffer);
+	rc = usb_control_xmit(0x41, 0xa0, 0x0000, 0x0000, 0x0000, buffer);
 
 	return USBTOKEN_OK;
 }
@@ -113,7 +115,7 @@ int eutron_transmit(__u8 * buf_send, int len_send,
 			return USBTOKEN_ERROR;
 		}
 		lr+=rc;
-		if (lr >= 4 && lr > buf_recv[2] + 4)
+		if (lr >= 4 && lr >= buf_recv[2] + 4)
 			break;
 		c++;
 		if (c > 20) {

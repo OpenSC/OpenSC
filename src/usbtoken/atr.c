@@ -219,7 +219,7 @@ int increase_ifsc()
 
 	usbtoken.ifsc = 0x20;
 
-	if (max_ifsc = 0x20) {
+	if (max_ifsc == 0x20) {
 		return USBTOKEN_OK;
 	};
 
