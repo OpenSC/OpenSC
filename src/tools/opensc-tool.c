@@ -279,15 +279,13 @@ int send_apdu(void)
 		}
 		len = len0;
 		p = buf;
+		memset(&apdu, 0, sizeof(apdu));
 		apdu.cla = *p++;
 		apdu.ins = *p++;
 		apdu.p1 = *p++;
 		apdu.p2 = *p++;
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
-		apdu.data = NULL;
-		apdu.datalen = 0;
-		apdu.lc = apdu.le = 0;
 		len -= 4;
 		if (len > 1) {
 			apdu.lc = *p++;
