@@ -531,6 +531,14 @@ do_init_app(struct sc_profile *profile)
 	hints.p15card	= NULL;
 	hints.info.pin	= &info;
 
+	/* If it's the onepin option, we need the user PIN iso the SO PIN */
+	if (opt_profile && strstr(opt_profile, "+onepin")) {
+		if (opt_pins[0])
+			opt_pins[2] = opt_pins[0];
+		if (opt_pins[1])
+			opt_pins[3] = opt_pins[1];
+	}
+
 	memset(&args, 0, sizeof(args));
 	if (!opt_pins[2] && !opt_no_prompt && !opt_no_sopin) {
 		sc_pkcs15init_get_pin_info(profile,
