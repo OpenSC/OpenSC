@@ -683,7 +683,7 @@ int read_and_cache_file(const struct sc_path *path)
 		fprintf(stderr, "sc_read_binary() failed: %s\n", sc_strerror(r));
 		return -1;
 	}
-	r = sc_pkcs15_cache_file(p15card, path, buf, tmpfile->size);
+	r = sc_pkcs15_cache_file(p15card, path, buf, r);
 	if (r) {
 		fprintf(stderr, "Unable to cache file: %s\n", sc_strerror(r));
 		return -1;
