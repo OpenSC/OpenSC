@@ -555,6 +555,7 @@ struct sc_card_operations {
 				void *data);
 	int (*process_fci)(struct sc_card *card, struct sc_file *file,
 			const u8 *buf, size_t buflen);
+	int (*construct_fci)(const struct sc_file *file, u8 *out, size_t *outlen);
 
 	/* pin_cmd: verify/change/unblock command; optionally using the
 	 * card's pin pad if supported.
@@ -841,6 +842,7 @@ extern struct sc_card_driver *sc_get_mcrd_driver(void);
 extern struct sc_card_driver *sc_get_setcos_driver(void);
 extern struct sc_card_driver *sc_get_starcos_driver(void);
 extern struct sc_card_driver *sc_get_tcos_driver(void);
+extern struct sc_card_driver *sc_get_prisma_driver(void);
 
 #ifdef  __cplusplus
 }
