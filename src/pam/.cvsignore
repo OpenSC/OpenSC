@@ -23,4 +23,4 @@ Makefile
 Makefile.in
 core
 gmon.out
-pam_opensc-test
+test-pam

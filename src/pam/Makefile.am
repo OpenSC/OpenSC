@@ -12,10 +12,10 @@ SRC = pam_opensc.c pam_support.c pam_support.h
 
 if HAVE_PAM
 lib_LTLIBRARIES = pam_opensc.la
-noinst_PROGRAMS = pam_opensc-test
+noinst_PROGRAMS = test-pam
 endif
 
 pam_opensc_la_SOURCES = $(SRC)
 pam_opensc_la_LDFLAGS = -module -avoid-version
 
-pam_opensc_test_SOURCES = pamtest.c misc_conv.c
+test_pam_SOURCES = test-pam.c misc_conv.c
