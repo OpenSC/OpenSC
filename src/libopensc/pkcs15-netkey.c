@@ -39,20 +39,20 @@ set_string(char **strp, const char *value)
 
 static int
 sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
-	static struct {
+	static const struct {
 		int           id;
-		char         *path;
-		char         *label;
+		const char   *path;
+		const char   *label;
 		unsigned char pinref;
 	} pinlist[]={
 		{1, "DF015080", "lokale PIN0", 0x80},
 		{2, "DF015081", "lokale PIN1", 0x81},
 		{0}
 	};
-	static struct {
+	static const struct {
 		int           id, auth_id;
-		char         *path;
-		char         *label;
+		const char   *path;
+		const char   *label;
 		unsigned char keyref;
 		int           usage;
 	} keylist[]={
@@ -64,11 +64,11 @@ sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
                        SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT},
 		{0}
 	};
-	static struct {
-		int   id;
-		char *path;
-		char *label;
-		int  obj_flags;
+	static const struct {
+		int         id;
+		const char *path;
+		const char *label;
+		int         obj_flags;
 	} certlist[]={
 		{1, "DF01C000", "Telesec Signatur Zertifikat", 0},
 		{1, "DF014331", "User Signatur Zertifikat1", 
