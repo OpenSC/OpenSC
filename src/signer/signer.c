@@ -1,57 +1,13 @@
-/* -*- Mode: C; tab-width: 4; -*- */
-/******************************************************************************
- * Copyright (c) 1996 Netscape Communications. All rights reserved.
- ******************************************************************************/
-/*
- * UnixShell.c
- *
- * Netscape Client Plugin API
- * - Function that need to be implemented by plugin developers
- *
- * This file defines a "Template" plugin that plugin developers can use
- * as the basis for a real plugin.  This shell just provides empty
- * implementations of all functions that the plugin can implement
- * that will be called by Netscape (the NPP_xxx methods defined in 
- * npapi.h). 
- *
- * dp Suresh <dp@netscape.com>
- *
- */
-
 #include <stdio.h>
 #include <string.h>
 #include "npapi.h"
-
-/***********************************************************************
- * Instance state information about the plugin.
- *
- * PLUGIN DEVELOPERS:
- *	Use this struct to hold per-instance information that you'll
- *	need in the various functions in this file.
- ***********************************************************************/
-
-typedef struct _PluginInstance
-{
-    int nothing;
-    char *postUrl;
-    char *dataToSign;
-} PluginInstance;
-
-
-/***********************************************************************
- *
- * Empty implementations of plugin API functions
- *
- * PLUGIN DEVELOPERS:
- *	You will need to implement these functions as required by your
- *	plugin.
- *
- ***********************************************************************/
+#include "signer.h"
+#include "opensc-support.h"
 
 char*
 NPP_GetMIMEDescription(void)
 {
-	return("text/x-text-to-sign:sample:Text to be signed");
+	return("text/x-text-to-sign:sgn:Text to be signed");
 }
 
 NPError
@@ -98,25 +54,35 @@ NPP_Shutdown(void)
 
 static NPError
 post_data(NPP instance, const char *url, const char *target, uint32 len,
-	  const char* buf)
+	  const char *buf, const char *tag)
 {
 	NPError rv;
 	char headers[256], *sendbuf;
-	int hdrlen;
+	char *content;
+	unsigned int content_len, hdrlen, taglen;
 	
-	sprintf(headers, "Content-type: text/plain\r\n"
-			 "Content-Length: %u\r\n\r\n", (unsigned int) len);
+	taglen = strlen(tag);
+	content_len = taglen + len + 1;
+	content = NPN_MemAlloc(content_len);
+	if (content == NULL)
+		return NPERR_OUT_OF_MEMORY_ERROR;
+	memcpy(content, tag, taglen);
+	content[taglen] = '=';
+	memcpy(content+taglen+1, buf, len);
+	
+	sprintf(headers, "Content-type: application/x-www-form-urlencoded\r\n"
+			 "Content-Length: %u\r\n\r\n", (unsigned int) content_len);
 	hdrlen = strlen(headers);
-	sendbuf = NPN_MemAlloc(hdrlen + len + 1);
+	sendbuf = NPN_MemAlloc(hdrlen + content_len);
 	if (sendbuf == NULL)
 		return NPERR_OUT_OF_MEMORY_ERROR;
 	memcpy(sendbuf, headers, hdrlen);
-	memcpy(sendbuf + hdrlen, buf, len);
-	sendbuf[hdrlen + len] = 0;
+	memcpy(sendbuf + hdrlen, content, content_len);
+	sendbuf[hdrlen + content_len] = 0;
+	NPN_MemFree(content);
 	printf("Sending:\n---\n%s---\n", sendbuf);
-	printf("Url: '%s', target: '%s', len: %d\n", url, target, hdrlen + len);
-	rv = NPN_PostURL(instance, url, target, hdrlen + len, sendbuf, FALSE);
-//	NPN_MemFree(sendbuf);
+	printf("Url: '%s', target: '%s', len: %ld\n", url, target, hdrlen + len);
+	rv = NPN_PostURL(instance, url, target, hdrlen + content_len, sendbuf, FALSE);
 
 	return rv;
 }
@@ -130,10 +96,11 @@ NPP_New(NPMIMEType pluginType,
 	char* argv[],
 	NPSavedData* saved)
 {
-        PluginInstance* This;
+        PluginInstance* This = NULL;
 	NPError rv;
-	int i;
-	const char *resp = "Testing...1234567890 And testing, and testing\n";
+	int r, i, datalen, b64datalen;
+	u8 *data = NULL, *b64data = NULL;
+	char *postUrl = NULL, *dataToSign = NULL, *fieldName = NULL;
 
 	printf("NPP_New()\n");
 	if (instance == NULL)
@@ -145,23 +112,60 @@ NPP_New(NPMIMEType pluginType,
 	if (This == NULL)
 		return NPERR_OUT_OF_MEMORY_ERROR;
 
-	This->postUrl = This->dataToSign = NULL;
+	This->ctx = NULL;
+	This->card = NULL;
+	This->p15card = NULL;
+	
 	for (i = 0; i < argc; i++) {
 		if (strcmp(argn[i], "wsxaction") == 0) {
-			This->postUrl = strdup(argv[i]);
+			postUrl = strdup(argv[i]);
 		} else if (strcmp(argn[i], "wsxdatatosign") == 0) {
-			This->dataToSign = strdup(argv[i]);
+			dataToSign = strdup(argv[i]);
+		} else if (strcmp(argn[i], "wsxname") == 0) {
+			fieldName = strdup(argv[i]);
 		} else
 			printf("'%s' = '%s'\n", argn[i], argv[i]);
 	}
-	if (This->postUrl == NULL)
-		return NPERR_GENERIC_ERROR;
-	printf("Posting to '%s'\n", This->postUrl);
-	rv = post_data(instance, This->postUrl, "_self", strlen(resp), resp);
-	printf("PostURL returned %d\n", rv);
-	return NPERR_NO_ERROR;
+	if (postUrl == NULL || dataToSign == NULL) {
+		r = NPERR_GENERIC_ERROR;
+		goto err;
+	}
+	if (fieldName == NULL)
+		fieldName = strdup("SignedData");
+	This->signdata = dataToSign;
+	This->signdata_len = strlen(dataToSign);
+	r = create_envelope(This, &data, &datalen);
+	if (r) {
+		r = NPERR_GENERIC_ERROR;
+		goto err;
+	}
+	b64datalen = datalen * 4 / 3 + 4;
+	b64data = malloc(b64datalen);
+	r = sc_base64_encode(data, datalen, b64data, b64datalen, 0);
+	if (r) {
+		r = NPERR_GENERIC_ERROR;
+		goto err;
+	}
+	printf("Posting to '%s'\n", postUrl);
+	printf("Data to sign: %s\n", dataToSign);
+	printf("Signed: %s\n", b64data);
+	rv = post_data(instance, postUrl, "_self", strlen(b64data), b64data,
+		       fieldName);
+	printf("post_data returned %d\n", rv);
+	r = NPERR_NO_ERROR;
+err:
+	if (fieldName)
+		free(fieldName);
+	if (dataToSign)
+		free(dataToSign);
+	if (postUrl)
+		free(postUrl);
+	if (data)
+		free(data);
+	if (b64data)
+		free(b64data);
+	return r;
 }
-
 
 NPError 
 NPP_Destroy(NPP instance, NPSavedData** save)
@@ -183,10 +187,6 @@ NPP_Destroy(NPP instance, NPSavedData** save)
 	if (This == NULL)
 		return NPERR_NO_ERROR;
 	
-	if (This->postUrl)
-		NPN_MemFree(This->postUrl);
-	if (This->dataToSign)
-		NPN_MemFree(This->dataToSign);	
 	NPN_MemFree(instance->pdata);
 	instance->pdata = NULL;
 
