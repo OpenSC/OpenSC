@@ -50,6 +50,14 @@ int main(int argc, char **argv) {
     fprintf(stderr, "PKCS#15 card init failed: %s\n", sc_strerror(i));
     return 1;
   }
+  return 0;
+  i = sc_pkcs15_read_certificate(p15_card, 0);
+  if (i) {
+    fprintf(stderr, "Certificate read failed with %d\n", i);
+    return 1;
+  }
+
+  return 0;
 
   printf("Searching for PIN codes...\n");
 
@@ -91,10 +99,5 @@ int main(int argc, char **argv) {
 
   return 0;
   
-  i = sc_pkcs15_read_certificate(p15_card, 0);
-  if (i) {
-    fprintf(stderr, "Certificate read failed with %d\n", i);
-    return 1;
-  }
   return 0;
 }
