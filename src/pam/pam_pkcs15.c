@@ -303,9 +303,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	ctx->debug_file = stdout;
 	ctx->debug = 0;
 	for (i = 0; i < ctx->reader_count; i++) {
-		if (sc_detect_card(ctx, i) == 1) {
-			DBG(printf("Connecting to %s...\n", ctx->readers[i]));
-			if (sc_connect_card(ctx, i, &card) != 0) {
+		if (sc_detect_card_presence(ctx->reader[i], 0) == 1) {
+			DBG(printf("Connecting to %s...\n", ctx->reader[i]->name));
+			if (sc_connect_card(ctx->reader[i], 0, &card) != 0) {
 				printf("Connecting to card failed: %s\n", sc_strerror(r));
 				goto end;
 			}
@@ -388,7 +388,7 @@ end:
 	if (p15card)
 		sc_pkcs15_unbind(p15card);
 	if (card)
-		sc_disconnect_card(card);
+		sc_disconnect_card(card, 0);
 	if (ctx)
 		sc_destroy_context(ctx);
 	return err;

@@ -1,4 +1,3 @@
-
 /* Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi> 
  * All rights reserved.
  */

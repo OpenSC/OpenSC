@@ -12,6 +12,7 @@ typedef struct _PluginInstance
 {
     char *signdata;
     int signdata_len;
+    int reader_id;
     struct sc_context *ctx;
     struct sc_card *card;
     struct sc_pkcs15_card *p15card;

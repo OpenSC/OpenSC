@@ -1,4 +1,3 @@
-
 /* Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi> 
  * All rights reserved.
  *
@@ -24,24 +23,25 @@ int sc_test_init(int *argc, char *argv[])
 	}
 	ctx->error_file = stderr;
 	ctx->debug_file = stdout;
-	i = sc_detect_card(ctx, 0);
+	i = sc_detect_card_presence(ctx->reader[0], 0);
 	printf("Card %s.\n", i == 1 ? "present" : "absent");
 	if (i < 0) {
 		return i;
 	}
 	if (i == 0) {
-		printf("Please insert a smart card.");
+		printf("Please insert a smart card.\n");
 		fflush(stdout);
+#if 0
 		i = sc_wait_for_card(ctx, -1, -1);
-		printf("\n");
 		if (i < 0)
 			return i;
 		if (i != 1)
 			return -1;
+#endif
 		c = -1;
 		for (i = 0; i < ctx->reader_count; i++) {
-			if (sc_detect_card(ctx, i) == 1) {
-				printf("Card detected in reader '%s'\n", ctx->readers[i]);
+			if (sc_detect_card_presence(ctx->reader[i], 0) == 1) {
+				printf("Card detected in reader '%s'\n", ctx->reader[i]->name);
 				c = i;
 				break;
 			}
@@ -50,7 +50,7 @@ int sc_test_init(int *argc, char *argv[])
 		c = 0;
 	printf("Connecting... ");
 	fflush(stdout);
-	i = sc_connect_card(ctx, c, &card);
+	i = sc_connect_card(ctx->reader[c], 0, &card);
 	if (i != 0) {
 		printf("Connecting to card failed\n");
 		return i;
@@ -67,8 +67,8 @@ int sc_test_init(int *argc, char *argv[])
 	return 0;
 }
 
-void sc_test_cleanup()
+void sc_test_cleanup(void)
 {
-	sc_disconnect_card(card);
+	sc_disconnect_card(card, 0);
 	sc_destroy_context(ctx);
 }

@@ -1,4 +1,3 @@
-
 /* Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi> 
  * All rights reserved.
  *
@@ -14,7 +13,7 @@
 
 struct sc_pkcs15_card *p15card;
 
-int enum_pins()
+int enum_pins(void)
 {
 	int i, c;
 

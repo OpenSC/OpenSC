@@ -14,7 +14,7 @@ sc_close(struct sc_priv_data *priv)
 		priv->p15card = NULL;
 	}
 	if (priv->card) {
-		sc_disconnect_card(priv->card);
+		sc_disconnect_card(priv->card, 0);
 		priv->card = NULL;
 	}
 	if (priv->ctx) {
@@ -31,7 +31,7 @@ sc_init(struct sc_priv_data *priv)
 	r = sc_establish_context(&priv->ctx);
 	if (r)
 		goto err;
-	r = sc_connect_card(priv->ctx, priv->reader_id, &priv->card);
+	r = sc_connect_card(priv->ctx->reader[priv->reader_id], 0, &priv->card);
 	if (r)
 		goto err;
 	r = sc_pkcs15_bind(priv->card, &priv->p15card);

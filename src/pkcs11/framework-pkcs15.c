@@ -64,14 +64,14 @@ static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
 	int rc = sc_pkcs15_bind(p11card->card,
 				(struct sc_pkcs15_card**) &p11card->fw_data);
 	debug(context, "Binding to PKCS#15, rc=%d\n", rc);
-        return sc_to_cryptoki_error(rc, p11card->card->reader);
+        return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
 static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 {
         struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
 	int rc = sc_pkcs15_unbind(card);
-        return sc_to_cryptoki_error(rc, card->card->reader);
+        return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
 static void pkcs15_init_token_info(struct sc_pkcs15_card *card, CK_TOKEN_INFO_PTR pToken)
@@ -152,7 +152,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 {
         struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
 	struct sc_pkcs11_slot *slot;
-        int i, j, rv, reader = card->card->reader;
+        int i, j, rv, reader = p11card->reader;
 
 	debug(context, "Enumerating PINS\n");
 	rv = sc_pkcs15_enum_pins(card);
@@ -323,7 +323,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 	struct sc_pkcs15_pin_info *pin = (struct sc_pkcs15_pin_info*) fw_token;
 
 	rc = sc_pkcs15_verify_pin(card, pin, pPin, ulPinLen);
-	return sc_to_cryptoki_error(rc, card->card->reader);
+	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
 static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)

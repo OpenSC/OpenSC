@@ -12,7 +12,7 @@
 
 struct sc_pkcs15_card *p15card;
 
-int test()
+int test(void)
 {
 	struct sc_file file;
 	struct sc_apdu apdu;
@@ -69,7 +69,7 @@ err:
 	return r;
 }
 
-int test2()
+int test2(void)
 {
 	int r;
 	struct sc_path path;
@@ -106,7 +106,7 @@ int test2()
 	return 0;
 }
 
-int test3()
+int test3(void)
 {
 	FILE *inf;
 	u8 buf[256], txt[256];

@@ -59,7 +59,8 @@ static int init_pkcs15(PluginInstance *inst)
         r = sc_establish_context(&inst->ctx);
         if (r)
                 return r;
-        r = sc_connect_card(inst->ctx, 0, &inst->card);
+        inst->reader_id = 0;
+        r = sc_connect_card(inst->ctx->reader[inst->reader_id], 0, &inst->card);
         if (r)
                 return r;
         r = sc_pkcs15_bind(inst->card, &inst->p15card);
@@ -76,7 +77,7 @@ static void close_pkcs15(PluginInstance *inst)
                 inst->p15card = NULL;
         }
         if (inst->card) {
-                sc_disconnect_card(inst->card);
+                sc_disconnect_card(inst->card, 0);
                 inst->card = NULL;
         }
         if (inst->ctx) {
