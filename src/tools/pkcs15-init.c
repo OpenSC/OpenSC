@@ -497,13 +497,22 @@ do_store_private_key(struct sc_profile *profile)
 	if (ncerts) {
 		/* If the user requested a specific key usage on the
 		 * command line check if it includes _more_
-		 * usage bits than the one specified by the cert */
+		 * usage bits than the one specified by the cert,
+		 * and complain if it does.
+		 * If the usage specified on the command line
+		 * is more restrictive, use that.
+		 */
 		if (~cert[0]->ex_kusage & opt_x509_usage) {
 			fprintf(stderr,
 			    "Warning: requested key usage incompatible with "
 			    "key usage specified by X.509 certificate\n");
 		}
-		args.x509_usage = cert[0]->ex_kusage;
+
+		if (opt_x509_usage) {
+			args.x509_usage = opt_x509_usage;
+		} else {
+			args.x509_usage = cert[0]->ex_kusage;
+		}
 	}
 
 	r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
