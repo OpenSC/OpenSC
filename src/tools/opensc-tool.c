@@ -665,9 +665,13 @@ int send_apdu(void)
 	for (r = 0; r < len0; r++)
 		printf("%02X ", buf[r]);
 	printf("\n");
-//	ctx->debug = 5;
+#if 0
+	ctx->debug = 5;
+#endif
 	r = sc_transmit_apdu(card, &apdu);
-//	ctx->debug = opt_debug;
+#if 0
+	ctx->debug = opt_debug;
+#endif
 	if (r) {
 		fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(r));
 		return 1;
