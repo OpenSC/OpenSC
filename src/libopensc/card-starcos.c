@@ -792,15 +792,26 @@ static int starcos_set_security_env(struct sc_card *card,
 	}
 	else if (env->flags & SC_SEC_ENV_ALG_PRESENT &&
 		 env->algorithm == SC_ALGORITHM_RSA  &&
-		 env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1 &&
-		 env->operation == SC_SEC_OPERATION_DECIPHER)
+		 env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
 	{
-		/* XXX set a default value for the deciphering 
-		 * operations (PKCS#1 BT 2) */
-		*p++ = 0x80;
-		*p++ = 0x01;
-		*p++ = 0x02;
+		if (env->operation == SC_SEC_OPERATION_DECIPHER)
+		{
+			/* XXX set a default value for the deciphering 
+			 * operations (PKCS#1 BT 2) */
+			*p++ = 0x80;
+			*p++ = 0x01;
+			*p++ = 0x02;	
+		}
+		else if (env->operation == SC_SEC_OPERATION_SIGN ||
+			 env->operation == SC_SEC_OPERATION_AUTHENTICATE)
+		{
+			/* default value for signing PKCS#1 BT 1 */
+			*p++ = 0x80;
+			*p++ = 0x01;
+			*p++ = 0x12;
+		}
 	}
+
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
 	{
 		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
@@ -859,7 +870,7 @@ static int starcos_compute_signature(struct sc_card *card,
 			       0x90, 0x81);
 
 		apdu.resp = rbuf;
-		apdu.resplen = 0;
+		apdu.resplen = sizeof(rbuf);
 		apdu.le = 0;
 		memcpy(sbuf, data, datalen);
 		apdu.data = sbuf;
@@ -956,7 +967,7 @@ static int starcos_decipher(struct sc_card *card,
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x80  Resp: Plain value
 	 * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80, 0x86);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf); /* FIXME */
 	apdu.sensitive = 1;
@@ -966,6 +977,7 @@ static int starcos_decipher(struct sc_card *card,
 	apdu.data = sbuf;
 	apdu.lc = crgram_len + 1;
 	apdu.datalen = crgram_len + 1;
+	apdu.le = 256;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
