@@ -31,98 +31,106 @@
 
 #undef CACHE_CERTS
 
-static int parse_rsa_pubkey(const u8 *buf, int buflen, struct sc_pkcs15_rsa_pubkey *key)
+static int parse_rsa_pubkey(struct sc_context *ctx, struct sc_pkcs15_rsa_pubkey *key)
 {
-	const u8 *tag;
-	int taglen;
-
-	buf = sc_asn1_verify_tag(buf, buflen, 0x30, &buflen);
-	if (buf == NULL)
-		return -1;
-
-	tag = sc_asn1_verify_tag(buf, buflen, 0x02, &taglen);
-	if (tag == NULL)
-		return -1;
-	key->modulus = malloc(taglen);
-	memcpy(key->modulus, tag, taglen);
-	key->modulus_len = taglen;
-	tag += taglen;
-	buflen -= tag - buf;
-	tag = sc_asn1_verify_tag(tag, buflen, 0x02, &taglen);
-	if (sc_asn1_decode_integer(tag, taglen, (int *) &key->exponent)) {
-		free(key->modulus);
+	struct sc_asn1_struct asn1_rsa_pubkey[] = {
+		{ "modulus",	    SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, &key->modulus, &key->modulus_len },
+		{ "publicExponent", SC_ASN1_INTEGER, ASN1_INTEGER, 0, &key->exponent },
+		{ NULL }
+	};
+	const u8 *obj;
+	size_t objlen;
+	int r;
+	
+	obj = sc_asn1_verify_tag(ctx, key->data, key->data_len, ASN1_SEQUENCE | SC_ASN1_CONS,
+				 &objlen);
+	if (obj == NULL) {
+		error(ctx, "RSA public key not found\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
+	r = sc_asn1_parse(ctx, asn1_rsa_pubkey, obj, objlen, NULL, NULL);
+	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
+
 	return 0;
 }
 
-static int parse_cert(const u8 *buf, int buflen, struct sc_pkcs15_cert *cert)
+struct asn1_algorithm_id {
+	struct sc_object_id id;
+};
+
+static int parse_algorithm_id(struct sc_context *ctx, void *arg, const u8 *obj,
+			      size_t objlen, int depth)
 {
-	const u8 *tag, *p;
-	u8 *tmpbuf;
-	int taglen, left, r;
-	struct sc_pkcs15_rsa_pubkey *key = &cert->key;
-	const u8 *buf0 = buf;
+	struct asn1_algorithm_id *alg_id = (struct asn1_algorithm_id *) arg;
+	struct sc_asn1_struct asn1_alg_id[] = {
+		{ "algorithm",	SC_ASN1_OBJECT, ASN1_OBJECT, 0, &alg_id->id },
+		{ "parameters", SC_ASN1_STRUCT, 0, SC_ASN1_OPTIONAL, NULL },
+		{ NULL }
+	};
+	int r;
 	
-	buf = sc_asn1_verify_tag(buf, buflen, 0x30, &buflen); /* SEQUENCE */
-	if (buf == NULL)				   /* Certificate */
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	cert->data_len = (buf - buf0) + buflen;
-	p = sc_asn1_skip_tag(&buf, &buflen, 0x30, &left);     /* SEQUENCE */
-	if (p == NULL)					/* tbsCertificate */
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	cert->version = 0;
-	tag = sc_asn1_skip_tag(&p, &left, 0xA0, &taglen);     /* Version */
-	if (tag != NULL) {
-		tag = sc_asn1_verify_tag(tag, taglen, 0x02, &taglen);
-		if (tag != NULL) {
-			sc_asn1_decode_integer(tag, taglen, &cert->version);
-			cert->version++;
-		}
-	}
-	tag = sc_asn1_skip_tag(&p, &left, 0x02, &taglen);     /* INTEGER */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	sc_asn1_decode_integer(tag, taglen, (int *) &cert->serial);
+	r = sc_asn1_parse(ctx, asn1_alg_id, obj, objlen, NULL, NULL);
+	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
+	
+	return 0;
+}
 
-	tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen);  /* signatureId */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-
-	tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen);       /* issuer */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-
-	tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen);     /* validity */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-
-	tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen);      /* subject */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-
-	tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen);  /* subjectPKInfo */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	/* FIXME: get the algorithm ID */
-	tag = sc_asn1_find_tag(tag, taglen, 0x03, &taglen); /* subjectPubKey */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	tmpbuf = malloc(taglen-1);
-
-	r = sc_asn1_decode_bit_string_ni(tag, taglen, tmpbuf, taglen-1);
-	if (r < 0) {
-		free(tmpbuf);
+static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen, struct sc_pkcs15_cert *cert)
+{
+	int r;
+	struct sc_pkcs15_rsa_pubkey *key = &cert->key;
+	struct asn1_algorithm_id pk_alg, sig_alg;
+	u8 *pk = NULL;
+	size_t pklen = 0;
+	struct sc_asn1_struct asn1_version[] = {
+		{ "version",		SC_ASN1_INTEGER,   ASN1_INTEGER, 0, &cert->version },
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_pkinfo[] = {
+		{ "algorithm",		SC_ASN1_CALLBACK,      ASN1_SEQUENCE | SC_ASN1_CONS, 0, parse_algorithm_id, &pk_alg },
+		{ "subjectPublicKey",	SC_ASN1_BIT_STRING_NI, ASN1_BIT_STRING, SC_ASN1_ALLOC, &pk, &pklen },
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_tbscert[] = {
+		{ "version",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, asn1_version },
+		{ "serialNumber",	SC_ASN1_INTEGER,   ASN1_INTEGER, 0, &cert->serial },
+		{ "signature",		SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+		{ "issuer",		SC_ASN1_STRUCT,	   ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+		{ "validity",		SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+		{ "subject",		SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+		{ "subjectPublicKeyInfo",SC_ASN1_STRUCT,   ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_pkinfo },
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_cert[] = {
+		{ "tbsCertificate",	SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_tbscert },
+		{ "signatureAlgorithm",	SC_ASN1_CALLBACK,  ASN1_SEQUENCE | SC_ASN1_CONS, 0, parse_algorithm_id, &sig_alg },
+		{ "signatureValue",	SC_ASN1_BIT_STRING,ASN1_BIT_STRING, 0, NULL, 0 },
+		{ NULL }
+	};
+	const u8 *obj;
+	size_t objlen;
+	
+	obj = sc_asn1_verify_tag(ctx, buf, buflen, ASN1_SEQUENCE | SC_ASN1_CONS,
+				 &objlen);
+	if (obj == NULL) {
+		error(ctx, "X.509 certificate not found\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
-	r >>= 3;
-	key->data = tmpbuf;
-	key->data_len = taglen-1;
-	r = parse_rsa_pubkey(tmpbuf, r, key);
+	cert->data_len = objlen + (obj - buf);
+	r = sc_asn1_parse(ctx, asn1_cert, obj, objlen, NULL, NULL);
+	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
+
+	cert->version++;
+	pklen >>= 3;	/* convert number of bits to bytes */
+	key->data = pk;
+	key->data_len = pklen;
+	/* FIXME: ignore the object id for now, and presume it's RSA */
+	r = parse_rsa_pubkey(ctx, key);
 	if (r) {
-		free(tmpbuf);
+		free(key->data);
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
+
 	return 0;
 }
 
@@ -259,7 +267,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	memset(cert, 0, sizeof(struct sc_pkcs15_cert));
-	if (parse_cert(data, len, cert)) {
+	if (parse_x509_cert(p15card->card->ctx, data, len, cert)) {
 		free(data);
 		free(cert);
 		return SC_ERROR_INVALID_ASN1_OBJECT;

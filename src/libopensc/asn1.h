@@ -30,7 +30,7 @@ struct sc_asn1_struct {
 	unsigned int tag;
 	unsigned int flags;
 	void *parm;
-	int *len;
+	void *arg;
 };
 
 struct sc_pkcs15_object {
@@ -47,9 +47,12 @@ int sc_asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 int sc_asn1_parse_choice(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 		  const u8 *in, int len, const u8 **newp, int *left);
 
-const u8 *sc_asn1_find_tag(const u8 * buf, int buflen, int tag, int *taglen);
-const u8 *sc_asn1_verify_tag(const u8 * buf, int buflen, int tag, int *taglen);
-const u8 *sc_asn1_skip_tag(const u8 ** buf, int *buflen, int tag, int *taglen);
+const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
+			   size_t buflen, unsigned int tag, size_t *taglen);
+const u8 *sc_asn1_verify_tag(struct sc_context *ctx, const u8 * buf,
+			     size_t buflen, unsigned int tag, size_t *taglen);
+const u8 *sc_asn1_skip_tag(struct sc_context *ctx, const u8 ** buf,
+			   size_t *buflen, unsigned int tag, size_t *taglen);
 
 /* DER encoding */
 
@@ -82,10 +85,12 @@ int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 
 #define SC_ASN1_PRESENT			0x00000001
 #define SC_ASN1_OPTIONAL		0x00000002
+#define SC_ASN1_ALLOC			0x00000004
 
 #define SC_ASN1_BOOLEAN                 1
 #define SC_ASN1_INTEGER                 2
 #define SC_ASN1_BIT_STRING              3
+#define SC_ASN1_BIT_STRING_NI           128
 #define SC_ASN1_OCTET_STRING            4
 #define SC_ASN1_NULL                    5
 #define SC_ASN1_OBJECT                  6
@@ -98,13 +103,16 @@ int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 #define SC_ASN1_GENERALIZEDTIME         24
 
 /* internal structures */
-#define SC_ASN1_STRUCT			128
-#define SC_ASN1_CHOICE			129
+#define SC_ASN1_STRUCT			129
+#define SC_ASN1_CHOICE			130
 
 /* 'complex' structures */
 #define SC_ASN1_PATH			256
 #define SC_ASN1_PKCS15_ID		257
 #define SC_ASN1_PKCS15_OBJECT		258
+
+/* use callback function */
+#define SC_ASN1_CALLBACK		384
 
 #define ASN1_TAG_CLASS			0xC0
 #define ASN1_TAG_UNIVERSAL		0x00

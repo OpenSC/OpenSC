@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-New in 0.4.0; 2001-12-xx; Juha Yrjölä:
+New in 0.4.0; 2001-12-29; Juha Yrjölä:
 * Finished migrating to Autotools
 * Rewritten ASN.1 decoder (should work better on all PKCS #15 cards)
 * Abstracted card handling, so adding support for new cards is a whiz,

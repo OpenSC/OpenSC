@@ -103,28 +103,28 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 }
 
 static void process_fci(struct sc_context *ctx, struct sc_file *file,
-			const u8 *buf, int buflen)
+			const u8 *buf, size_t buflen)
 {
-	int taglen, len = buflen;
+	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p = buf;
 
 	if (ctx->debug >= 3)
 		debug(ctx, "processing FCI bytes\n");
-	tag = sc_asn1_find_tag(p, len, 0x83, &taglen);
+	tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
 	if (tag != NULL && taglen == 2) {
 		file->id = (tag[0] << 8) | tag[1];
 		if (ctx->debug >= 3)
 			debug(ctx, "  file identifier: 0x%02X%02X\n", tag[0],
 			       tag[1]);
 	}
-	tag = sc_asn1_find_tag(p, len, 0x81, &taglen);
+	tag = sc_asn1_find_tag(ctx, p, len, 0x81, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
 		if (ctx->debug >= 3)
 			debug(ctx, "  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
-	tag = sc_asn1_find_tag(p, len, 0x82, &taglen);
+	tag = sc_asn1_find_tag(ctx, p, len, 0x82, &taglen);
 	if (tag != NULL) {
 		if (taglen > 0) {
 			unsigned char byte = tag[0];
@@ -159,7 +159,7 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 			}
 		}
 	}
-	tag = sc_asn1_find_tag(p, len, 0x84, &taglen);
+	tag = sc_asn1_find_tag(ctx, p, len, 0x84, &taglen);
 	if (tag != NULL && taglen > 0 && taglen <= 16) {
 		char name[17];
 		int i;
@@ -178,18 +178,18 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 		if (ctx->debug >= 3)
 			debug(ctx, "File name: %s\n", name);
 	}
-	tag = sc_asn1_find_tag(p, len, 0x85, &taglen);
+	tag = sc_asn1_find_tag(ctx, p, len, 0x85, &taglen);
 	if (tag != NULL && taglen && taglen <= SC_MAX_PROP_ATTR_SIZE) {
 		memcpy(file->prop_attr, tag, taglen);
 		file->prop_attr_len = taglen;
 	} else
 		file->prop_attr_len = 0;
-	tag = sc_asn1_find_tag(p, len, 0xA5, &taglen);
+	tag = sc_asn1_find_tag(ctx, p, len, 0xA5, &taglen);
 	if (tag != NULL && taglen && taglen <= SC_MAX_PROP_ATTR_SIZE) {
 		memcpy(file->prop_attr, tag, taglen);
 		file->prop_attr_len = taglen;
 	}
-	tag = sc_asn1_find_tag(p, len, 0x86, &taglen);
+	tag = sc_asn1_find_tag(ctx, p, len, 0x86, &taglen);
 	if (tag != NULL && taglen && taglen <= SC_MAX_SEC_ATTR_SIZE)
 		parse_sec_attr(file, tag, taglen);
 	else

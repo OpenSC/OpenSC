@@ -248,9 +248,11 @@ void sc_asn1_print_tags(const u8 * buf, int buflen)
 	print_tags_recursive(buf, buf, buflen, 0);
 }
 
-const u8 *sc_asn1_find_tag(const u8 * buf, int buflen, int tag_in, int *taglen_in)
+const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
+			   size_t buflen, unsigned int tag_in, size_t *taglen_in)
 {
-	int left = buflen, cla, tag, taglen;
+	size_t left = buflen, taglen;
+	unsigned int cla, tag;
 	const u8 *p = buf;
 
 	*taglen_in = 0;
@@ -265,40 +267,18 @@ const u8 *sc_asn1_find_tag(const u8 * buf, int buflen, int tag_in, int *taglen_i
 			*taglen_in = taglen;
 			return p;
 		}
-		if ((cla | tag) == 0xF0) {	/* skip 0xF0 foobar tags */
-			fprintf(stderr, "Foobar tag skipped\n");
-			taglen = 0;
-		}
 		left -= taglen;
 		p += taglen;
 	}
 	return NULL;
 }
 
-const u8 *sc_asn1_skip_tag(const u8 ** buf, int *buflen, int tag_in, int *taglen_out)
+const u8 *sc_asn1_skip_tag(struct sc_context *ctx, const u8 ** buf, size_t *buflen,
+			   unsigned int tag_in, size_t *taglen_out)
 {
 	const u8 *p = *buf;
-	int len = *buflen, cla, tag, taglen;
-
-	if (read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != 1)
-		return NULL;
-	if ((tag | cla) != tag_in)
-		return NULL;
-	len -= (p - *buf);	/* header size */
-	if (taglen > len) {
-		fprintf(stderr, "skip_tag(): too long tag\n");
-		return NULL;
-	}
-	*buflen -= (p - *buf) + taglen;
-	*buf = p + taglen;	/* point to next tag */
-	*taglen_out = taglen;
-	return p;
-}
-
-static const u8 *sc_asn1_skip_tag2(struct sc_context *ctx, const u8 ** buf, int *buflen, unsigned int tag_in, int *taglen_out)
-{
-	const u8 *p = *buf;
-	int len = *buflen, cla, tag, taglen;
+	size_t len = *buflen, taglen;
+	unsigned int cla, tag;
 
 	if (read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != 1)
 		return NULL;
@@ -340,9 +320,10 @@ static const u8 *sc_asn1_skip_tag2(struct sc_context *ctx, const u8 ** buf, int 
 	return p;
 }
 
-const u8 *sc_asn1_verify_tag(const u8 * buf, int buflen, int tag_in, int *taglen_out)
+const u8 *sc_asn1_verify_tag(struct sc_context *ctx, const u8 * buf, size_t buflen,
+			     unsigned int tag_in, size_t *taglen_out)
 {
-	return sc_asn1_skip_tag(&buf, &buflen, tag_in, taglen_out);
+	return sc_asn1_skip_tag(ctx, &buf, &buflen, tag_in, taglen_out);
 }
 
 static int decode_bit_string(const u8 * inbuf, int inlen, void *outbuf,
@@ -523,10 +504,13 @@ static int asn1_parse_p15_object(struct sc_context *ctx, const u8 *in, int len,
 }
 
 static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entry,
-			     const u8 *obj, int objlen, int depth)
+			     const u8 *obj, size_t objlen, int depth)
 {
 	void *parm = entry->parm;
-	int *len = entry->len;
+	int (*callback_func)(struct sc_context *ctx, void *arg, const u8 *obj,
+			     size_t objlen, int depth) =
+		(int (*)(struct sc_context *, void *, const u8 *, size_t, int)) parm;
+	int *len = (int *) entry->arg;
 	int r = 0;
 
 	if (ctx->debug >= 3) {
@@ -562,9 +546,22 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entr
 		if (parm != NULL)
 			r = sc_asn1_decode_integer(obj, objlen, (int *) entry->parm);
 		break;
+	case SC_ASN1_BIT_STRING_NI:
 	case SC_ASN1_BIT_STRING:
-		if (parm != NULL && len != NULL) {
-			r = sc_asn1_decode_bit_string(obj, objlen, (u8 *) parm, *len);
+		if (parm != NULL) {
+			int invert = entry->type == SC_ASN1_BIT_STRING ? 1 : 0;
+			assert(len != NULL);
+			if (entry->flags & SC_ASN1_ALLOC) {
+				u8 **buf = (u8 **) parm;
+				*buf = malloc(objlen-1);
+				if (*buf == NULL) {
+					r = SC_ERROR_OUT_OF_MEMORY;
+					break;
+				}
+				*len = objlen-1;
+				parm = *buf;
+			}
+			r = decode_bit_string(obj, objlen, (u8 *) parm, *len, invert);
 			if (r >= 0) {
 				*len = r;
 				r = 0;
@@ -575,7 +572,17 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entr
 		if (parm != NULL) {
 			int c;
 			assert(len != NULL);
-			c = objlen > *len ? *len : objlen;
+			if (entry->flags & SC_ASN1_ALLOC) {
+				u8 **buf = (u8 **) parm;
+				*buf = malloc(objlen);
+				if (*buf == NULL) {
+					r = SC_ERROR_OUT_OF_MEMORY;
+					break;
+				}
+				c = *len = objlen;
+				parm = *buf;
+			} else
+				c = objlen > *len ? *len : objlen;
 
 			memcpy(parm, obj, c);
 			*len = c;
@@ -588,6 +595,16 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entr
 	case SC_ASN1_UTF8STRING:
 		if (parm != NULL) {
 			assert(len != NULL);
+			if (entry->flags & SC_ASN1_ALLOC) {
+				u8 **buf = (u8 **) parm;
+				*buf = malloc(objlen-1);
+				if (*buf == NULL) {
+					r = SC_ERROR_OUT_OF_MEMORY;
+					break;
+				}
+				*len = objlen-1;
+				parm = *buf;
+			}
 			r = sc_asn1_decode_utf8string(obj, objlen, parm, len);
 		}
 		break;
@@ -607,6 +624,10 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entr
 	case SC_ASN1_PKCS15_OBJECT:
 		if (entry->parm != NULL)
 			r = asn1_parse_p15_object(ctx, obj, objlen, (struct sc_pkcs15_object *) parm, depth);
+		break;
+	case SC_ASN1_CALLBACK:
+		if (entry->parm != NULL)
+			r = callback_func(ctx, entry->arg, obj, objlen, depth);
 		break;
 	default:
 		error(ctx, "invalid ASN.1 type: %d\n", entry->type);
@@ -639,7 +660,7 @@ static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 	for (idx = 0; asn1[idx].name != NULL; idx++) {
 		entry = &asn1[idx];
 		r = 0;
-		obj = sc_asn1_skip_tag2(ctx, &p, &left, entry->tag, &objlen);
+		obj = sc_asn1_skip_tag(ctx, &p, &left, entry->tag, &objlen);
 		if (obj == NULL) {
 			if (choice)
 				continue;

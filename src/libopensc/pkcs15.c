@@ -76,7 +76,7 @@ void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, int buflen)
 		{ NULL }
 	};
 
-	buf = sc_asn1_verify_tag(buf, buflen, 0x30, &buflen);	/* SEQUENCE */
+	buf = sc_asn1_verify_tag(card->card->ctx, buf, buflen, SC_ASN1_CONS | ASN1_SEQUENCE, &buflen);
 	if (buf == NULL) {
 		error(card->card->ctx, "invalid EF(TokenInfo)\n");
 		goto err;
@@ -134,7 +134,7 @@ static int parse_dir(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 		{ NULL }
 	};
 
-	buf = sc_asn1_verify_tag(buf, buflen, 0x61, &buflen);
+	buf = sc_asn1_verify_tag(card->card->ctx, buf, buflen, SC_ASN1_APP | 1 | SC_ASN1_CONS, &buflen);
 	if (buf == NULL) {
 		error(card->card->ctx, "No [APPLICATION 1] tag in EF(DIR)\n");
 		return -1;
