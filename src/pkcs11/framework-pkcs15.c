@@ -317,6 +317,10 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
         struct sc_pkcs15_object *auth_object = (struct sc_pkcs15_object*) fw_token;
 	struct sc_pkcs15_pin_info *pin = (struct sc_pkcs15_pin_info*) auth_object->data;
 
+	if (ulPinLen < pin->min_length ||
+	    ulPinLen > pin->stored_length)
+		return CKR_PIN_LEN_RANGE;
+
 	rc = sc_pkcs15_verify_pin(card, pin, pPin, ulPinLen);
         debug(context, "PIN verification returned %d\n", rc);
 	return sc_to_cryptoki_error(rc, p11card->reader);
@@ -549,6 +553,8 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
+	CK_ULONG	mask, bits, word, j, n;
+	CK_BYTE		exponent[4];
 
 	switch (attr->type) {
 	case CKA_CLASS:
@@ -597,7 +603,25 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		       pubkey->rsakey->modulus_len);
 		break;
 	case CKA_MODULUS_BITS:
+		bits = pubkey->rsakey->modulus_len * 8;
+		for (mask = 0x80; mask; mask >>= 1, bits--) {
+			if (pubkey->rsakey->modulus[0] & mask)
+				break;
+		}
+		check_attribute_buffer(attr, sizeof(bits));
+		*(CK_ULONG *) attr->pValue = bits;
+		break;
 	case CKA_PUBLIC_EXPONENT:
+		word = pubkey->rsakey->exponent;
+		for (j = 0, n = 4; j < n; word <<= 8) {
+			if ((word & 0xFF000000) || j)
+				exponent[j++] = word >> 24;
+			else
+				n--;
+		}
+		check_attribute_buffer(attr, n);
+		memcpy(attr->pValue, exponent, n);
+		break;
 	default:
                 return CKR_ATTRIBUTE_TYPE_INVALID;
 	}

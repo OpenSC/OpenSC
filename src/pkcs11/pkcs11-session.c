@@ -151,9 +151,6 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	if (userType != CKU_USER)
                 return CKR_USER_TYPE_INVALID;
 
-	if (ulPinLen < 4 || ulPinLen > 8)
-                return CKR_PIN_LEN_RANGE;
-
         rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		return rv;
