@@ -156,7 +156,7 @@ static const struct sc_asn1_entry c_asn1_com_cert_attr[] = {
 };
 static const struct sc_asn1_entry c_asn1_x509_cert_value_choice[] = {
 	{ "path",	SC_ASN1_PATH,	   ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
-	{ "direct",	SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL },
+	{ "direct",	SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL },
 	{ NULL }
 };
 static const struct sc_asn1_entry c_asn1_x509_cert_attr[] = {
@@ -203,7 +203,7 @@ int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
 	sc_format_asn1_entry(asn1_com_cert_attr + 2, asn1_cred_ident, NULL, 0);
 	sc_format_asn1_entry(asn1_x509_cert_attr + 0, asn1_x509_cert_value_choice, NULL, 0);
 	sc_format_asn1_entry(asn1_x509_cert_value_choice + 0, &info.path, NULL, 0);
-	sc_format_asn1_entry(asn1_x509_cert_value_choice + 1, &der->value, &der->len, SC_ASN1_ALLOC);
+	sc_format_asn1_entry(asn1_x509_cert_value_choice + 1, &der->value, &der->len, 0);
 	sc_format_asn1_entry(asn1_type_cert_attr + 0, asn1_x509_cert_attr, NULL, 0);
 	sc_format_asn1_entry(asn1_cert + 0, &cert_obj, NULL, 0);
 
