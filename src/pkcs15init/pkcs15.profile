@@ -83,7 +83,7 @@ filesystem {
 
 	    EF PKCS15-CDF {
 	        file-id		= 4404;
-		size		= 128;
+		size		= 256;
 		acl		= *=$SOPIN, READ=NONE;
 	    }
 
