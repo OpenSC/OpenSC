@@ -494,7 +494,7 @@ static void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *
 {
 	int i, r, count = 0;
 	scconf_block **blocks;
-	char *conf_path = OPENSC_CONF_PATH;
+	const char *conf_path = OPENSC_CONF_PATH;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
 #endif
