@@ -39,8 +39,8 @@ static void	cflex_delete_dummy_chvs(sc_profile_t *, sc_card_t *,
 			int, sc_file_t **);
 static int	cflex_create_pin_file(sc_profile_t *, sc_card_t *,
 			sc_path_t *, int,
-			const char *, size_t, int,
-			const char *, size_t, int,
+			const u8 *, size_t, int,
+			const u8 *, size_t, int,
 			sc_file_t **, int);
 static int	cflex_create_empty_pin_file(sc_profile_t *, sc_card_t *,
 			sc_path_t *, int, sc_file_t **);
@@ -172,8 +172,8 @@ cflex_select_pin_reference(sc_profile_t *profike, sc_card_t *card,
 static int
 cflex_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
 		sc_pkcs15_object_t *pin_obj,
-		const unsigned char *pin, size_t pin_len,
-		const unsigned char *puk, size_t puk_len)
+		const u8 *pin, size_t pin_len,
+		const u8 *puk, size_t puk_len)
 {
 	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
 	sc_file_t	*dummies[2];
@@ -453,7 +453,7 @@ cflex_delete_dummy_chvs(sc_profile_t *profile, sc_card_t *card,
  */
 static inline void
 put_pin(sc_profile_t *profile, unsigned char *buf,
-		const char *pin, size_t len, int retry)
+		const u8 *pin, size_t len, int retry)
 {
 	if (len > 8)
 		len = 8;
@@ -466,8 +466,8 @@ put_pin(sc_profile_t *profile, unsigned char *buf,
 static int
 cflex_create_pin_file(sc_profile_t *profile, sc_card_t *card,
 			sc_path_t *df_path, int ref,
-			const char *pin, size_t pin_len, int pin_tries,
-			const char *puk, size_t puk_len, int puk_tries,
+			const u8 *pin, size_t pin_len, int pin_tries,
+			const u8 *puk, size_t puk_len, int puk_tries,
 			sc_file_t **file_ret, int unprotected)
 {
 	unsigned char	buffer[23];
@@ -551,7 +551,7 @@ cflex_create_empty_pin_file(sc_profile_t *profile, sc_card_t *card,
 
 	*file_ret = NULL;
 	r = cflex_create_pin_file(profile, card, path, ref,
-			"0000", 4, 8,
+			(const u8 *) "0000", 4, 8,
 			NULL, 0, 0,
 			file_ret, 1);
 	if (r == SC_ERROR_FILE_ALREADY_EXISTS)

@@ -53,8 +53,8 @@ struct sc_pkcs15init_operations {
 	 */
 	int	(*create_pin)(sc_profile_t *, sc_card_t *, sc_file_t *,
 			sc_pkcs15_object_t *,
-			const unsigned char *pin, size_t pin_len,
-			const unsigned char *puk, size_t puk_len);
+			const u8 *pin, size_t pin_len,
+			const u8 *puk, size_t puk_len);
 
 	/*
 	 * Select a reference for a private key object
@@ -107,8 +107,8 @@ struct sc_pkcs15init_operations {
 	 */
 	int	(*init_app)(struct sc_profile *, struct sc_card *,
 			struct sc_pkcs15_pin_info *,
-			const unsigned char *pin, size_t pin_len,
-			const unsigned char *puk, size_t puk_len);
+			const u8 *pin, size_t pin_len,
+			const u8 *puk, size_t puk_len);
 
 	/*
 	 * Store a new PIN
@@ -120,8 +120,8 @@ struct sc_pkcs15init_operations {
 	 */
 	int	(*new_pin)(struct sc_profile *, struct sc_card *,
 			struct sc_pkcs15_pin_info *, unsigned int index,
-			const unsigned char *pin, size_t pin_len,
-			const unsigned char *puk, size_t puk_len);
+			const u8 *pin, size_t pin_len,
+			const u8 *puk, size_t puk_len);
 
 	/*
 	 * Store a key on the card

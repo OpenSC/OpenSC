@@ -1220,15 +1220,15 @@ int do_get_data(int argc, char **argv)
 
 	return 0;
 
-usage:	printf("Usage: %s hex_tag [dest_file]\n", argv[-1]);
+usage:	printf("Usage: do_get hex_tag [dest_file]\n");
 	return -1;
 }
 
 int do_put_data(int argc, char **argv)
 {
-usage:	printf("Usage: put hex_tag source_file\n"
-	       "or:    put hex_tag aa:bb:cc\n"
-	       "or:    put hex_tag \"foobar...\"\n");
+	printf("Usage: do_put hex_tag source_file\n"
+	       "or:    do_put hex_tag aa:bb:cc\n"
+	       "or:    do_put hex_tag \"foobar...\"\n");
 	return -1;
 }
 

@@ -80,7 +80,7 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 	sc_pkcs15_object_t *obj;
 	int		df_type;
 
-	obj = calloc(1, sizeof(*obj));
+	obj = (sc_pkcs15_object_t *) calloc(1, sizeof(*obj));
 	obj->type  = type;
 	obj->data  = data;
 	if (label)
@@ -225,7 +225,7 @@ read_file(sc_card_t *card, const char *path_name, void *buf, size_t len)
 
 	if (file->size < len)
 		len = file->size;
-	return sc_read_binary(card, 0, buf, len, 0);
+	return sc_read_binary(card, 0, (u8 *) buf, len, 0);
 }
 
 int

@@ -1351,7 +1351,7 @@ sc_der_copy(sc_pkcs15_der_t *dst, const sc_pkcs15_der_t *src)
 	memset(dst, 0, sizeof(*dst));
 	if (src->len) {
 		dst->len = src->len;
-		dst->value = malloc(src->len);
+		dst->value = (u8 *) malloc(src->len);
 		memcpy(dst->value, src->value, src->len);
 	}
 }

@@ -34,9 +34,9 @@ char * opt_cert = NULL;
 char * opt_data = NULL;
 char * opt_pubkey = NULL;
 char * opt_outfile = NULL;
-char * opt_newpin = NULL;
-char * opt_pin = NULL;
-char * opt_puk = NULL;
+u8 * opt_newpin = NULL;
+u8 * opt_pin = NULL;
+u8 * opt_puk = NULL;
 
 static int	quiet = 0;
 
@@ -577,7 +577,7 @@ authenticate(sc_pkcs15_object_t *obj)
 	pin = get_pin("Please enter PIN", pin_obj);
 
 	return sc_pkcs15_verify_pin(p15card, pin_info,
-			pin, pin? strlen(pin) : 0);
+			pin, pin? strlen((char *) pin) : 0);
 }
 
 void print_pin_info(const struct sc_pkcs15_object *obj)
@@ -898,13 +898,13 @@ int main(int argc, char * const argv[])
 			opt_reader = atoi(optarg);
 			break;
 		case OPT_PIN:
-			opt_pin = optarg;
+			opt_pin = (u8 *) optarg;
 			break;
 		case OPT_NEWPIN:
-			opt_newpin = optarg;
+			opt_newpin = (u8 *) optarg;
 			break;
 		case OPT_PUK:
-			opt_puk = optarg;
+			opt_puk = (u8 *) optarg;
 			break;
 		case 'o':
 			opt_outfile = optarg;

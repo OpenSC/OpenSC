@@ -149,7 +149,7 @@ search_key(const sc_path_t *path, int type, int ref)
 /*
  * Store a secret in the cache
  */
-struct secret *
+static struct secret *
 new_entry(const sc_path_t *path, int type, int ref)
 {
 	struct secret	*s;
@@ -200,10 +200,10 @@ sc_keycache_put_key(const sc_path_t *path, int type, int ref,
 }
 
 int
-sc_keycache_put_pin(const sc_path_t *path, int ref, const char *pin)
+sc_keycache_put_pin(const sc_path_t *path, int ref, const u8 *pin)
 {
 	return sc_keycache_put_key(path, SC_AC_CHV, ref, pin,
-					pin? strlen(pin) : 0);
+					pin? strlen((char *) pin) : 0);
 }
 
 /*
@@ -224,7 +224,7 @@ sc_keycache_get_key(const sc_path_t *path, int type, int ref,
 	return s->len;
 }
 
-const char *
+const u8 *
 sc_keycache_get_pin(const sc_path_t *path, int ref)
 {
 	struct secret	*s;

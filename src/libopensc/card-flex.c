@@ -455,7 +455,9 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 			file->ef_structure = SC_FILE_EF_CYCLIC;
 			break;
 		case  0x04:
-			// file->ef_structure = SC_FILE_EF_PROGRAM;
+#if 0
+			file->ef_structure = SC_FILE_EF_PROGRAM;
+#endif
 			break;
 		default:
 			sc_error(ctx, "invalid file type: 0x%02X\n", *p);

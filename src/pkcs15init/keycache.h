@@ -29,12 +29,12 @@ extern "C" {
 
 extern int	sc_keycache_put_key(const sc_path_t *, int, int,
 				const unsigned char *, size_t);
-extern int	sc_keycache_put_pin(const sc_path_t *, int, const char *);
+extern int	sc_keycache_put_pin(const sc_path_t *, int, const u8 *);
 extern int	sc_keycache_set_pin_name(const sc_path_t *, int, int);
 extern int	sc_keycache_get_pin_name(const sc_path_t *, int);
 extern int	sc_keycache_find_named_pin(const sc_path_t *, int);
 extern int	sc_keycache_get_key(const sc_path_t *, int, int, unsigned char *, size_t);
-extern const char *sc_keycache_get_pin(const sc_path_t *, int);
+extern const u8 *sc_keycache_get_pin(const sc_path_t *, int);
 extern void	sc_keycache_forget_key(const sc_path_t *, int, int);
 
 #ifdef  __cplusplus

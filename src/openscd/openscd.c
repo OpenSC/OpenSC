@@ -48,7 +48,7 @@ void die(int return_code, const char *errmsg, ...)
 {
 	if (errmsg != NULL) {
 		va_list ap;
-		char *p = malloc(strlen(errmsg)+2);
+		char *p = (char *) malloc(strlen(errmsg)+2);
 		
 		strcpy(p, errmsg);
 		strcat(p, "\n");
@@ -70,7 +70,7 @@ void setup_socket(void)
 	char *socket_name;
 	struct sockaddr_un serv_addr;
 
-	socket_name = malloc(strlen(socket_dir)+strlen(socket_file)+2);
+	socket_name = (char *) malloc(strlen(socket_dir)+strlen(socket_file)+2);
 	assert(socket_name != NULL);
 	strcpy(socket_name, socket_dir);
 
@@ -111,7 +111,7 @@ void do_fork(void)
 		char *infostr;
 		int n = strlen(dctx->socket_name) + 40;
 				
-		infostr = malloc(n);
+		infostr = (char *) malloc(n);
 		if (snprintf(infostr, n, "OPENSCD_INFO=%s:%lu:1",
 			     dctx->socket_name, (ulong) pid) < 0) {
 			kill(pid, SIGTERM);
@@ -138,7 +138,7 @@ void init_dctx(void)
 
 int main(int argc, char *argv[])
 {
-	dctx = malloc(sizeof(struct openscd_context));
+	dctx = (struct openscd_context *) malloc(sizeof(struct openscd_context));
 	assert(dctx != NULL);
 	memset(dctx, 0, sizeof(struct openscd_context));
 	

@@ -138,7 +138,7 @@ gpk_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
 			return r;
 
 		for (i = 0; i < GPK_MAX_PINS; i++)
-			sc_keycache_put_pin(&df->path, GPK_PIN_SCOPE|i, "        ");
+			sc_keycache_put_pin(&df->path, GPK_PIN_SCOPE|i, (const u8 *) "        ");
 	}
 
 	return r;
@@ -181,12 +181,12 @@ gpk_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 static int
 gpk_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
 		sc_pkcs15_object_t *pin_obj,
-		const unsigned char *pin, size_t pin_len,
-		const unsigned char *puk, size_t puk_len)
+		const u8 *pin, size_t pin_len,
+		const u8 *puk, size_t puk_len)
 {
 	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
-	unsigned char	nulpin[8];
-	int		r, type;
+	u8	nulpin[8];
+	int	r, type;
 
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		type = SC_PKCS15INIT_SO_PIN;

@@ -52,7 +52,7 @@ static void card_inserted(struct openscd_context *dctx,
 	struct sc_card *card;
         struct sc_pkcs15_card *p15card;
 
-	dctx->cards = realloc(dctx->cards, (n + 1) * sizeof(struct openscd_card));
+	dctx->cards = (struct openscd_card *) realloc(dctx->cards, (n + 1) * sizeof(struct openscd_card));
 	assert(dctx->cards != NULL);
         memset(dctx->cards + n, 0, sizeof(struct openscd_card));
 
@@ -101,13 +101,13 @@ static void card_removed(struct openscd_context *dctx,
 	}
 	assert(idx != dctx->card_count);
         dctx->card_count--;
-	dctx->cards = realloc(dctx->cards, dctx->card_count * sizeof(struct openscd_card));
+	dctx->cards = (struct openscd_card *) realloc(dctx->cards, dctx->card_count * sizeof(struct openscd_card));
         assert(dctx->cards != NULL || dctx->card_count == 0);
 }
 
 static int cmd_list_readers(ASSUAN_CONTEXT actx, char *line)
 {
-	struct openscd_context *dctx = assuan_get_pointer(actx);
+	struct openscd_context *dctx = (struct openscd_context *) assuan_get_pointer(actx);
 	int i, r;
 
 	for (i = 0; i < dctx->ctx->reader_count; i++) {
@@ -124,7 +124,7 @@ static int cmd_list_readers(ASSUAN_CONTEXT actx, char *line)
 
 static int cmd_list_cards(ASSUAN_CONTEXT actx, char *line)
 {
-	struct openscd_context *dctx = assuan_get_pointer(actx);
+	struct openscd_context *dctx = (struct openscd_context *) assuan_get_pointer(actx);
 	int i, r = 0;
 
         pthread_mutex_lock(&dctx->card_mutex);
@@ -143,7 +143,7 @@ static int cmd_list_cards(ASSUAN_CONTEXT actx, char *line)
 
 static int cmd_get_objects(ASSUAN_CONTEXT actx, char *line)
 {
-	struct openscd_context *dctx = assuan_get_pointer(actx);
+	struct openscd_context *dctx = (struct openscd_context *) assuan_get_pointer(actx);
         struct openscd_card *dcard;
 	int card_id, obj_type, i, obj_count, r = 0;
         struct sc_pkcs15_object *objs[32];
@@ -171,7 +171,7 @@ static int cmd_get_objects(ASSUAN_CONTEXT actx, char *line)
 	for (i = 0; i < obj_count; i++) {
 		char *line;
 		
-		line = malloc(objs[i]->der.len * 2 + 2);
+		line = (char *) malloc(objs[i]->der.len * 2 + 2);
 		if (line == NULL)
 			return ASSUAN_Out_Of_Core;
 		sc_bin_to_hex(objs[i]->der.value, objs[i]->der.len,
@@ -220,7 +220,7 @@ static int register_commands(ASSUAN_CONTEXT assuan_ctx)
 
 static void * sc_thread(void *arg)
 {
-        struct openscd_thread_arg *targ = arg;
+        struct openscd_thread_arg *targ = (struct openscd_thread_arg *) arg;
 	struct openscd_context *dctx = targ->dctx;
         struct sc_reader *reader = targ->reader;
 	struct sc_context *ctx = dctx->ctx;
@@ -298,12 +298,12 @@ static void spawn_reader_threads(struct openscd_context *dctx)
 	if (dctx->ctx->reader_count == 0)
 		return;
 	count = dctx->ctx->reader_count;
-	dctx->threads = calloc(count, sizeof(pthread_t));
+	dctx->threads = (pthread_t *) calloc(count, sizeof(pthread_t));
 	assert(dctx->threads != NULL);
 	for (i = 0; i < count; i++) {
 		struct openscd_thread_arg *arg;
 
-		arg = malloc(sizeof(struct openscd_thread_arg));
+		arg = (struct openscd_thread_arg *) malloc(sizeof(struct openscd_thread_arg));
 		assert(arg != NULL);
 		arg->dctx = dctx;
 		arg->reader = dctx->ctx->reader[i];
@@ -335,11 +335,11 @@ void command_handler(struct openscd_context *dctx)
 		r = assuan_init_socket_server(&assuan_ctx, dctx->socket_fd);
 	if (r)
 		die(1, "Failed to initialize the server: %s\n",
-		    assuan_strerror(r));
+		    assuan_strerror((AssuanError) r));
 	r = register_commands(assuan_ctx);
 	if (r)
 		die(1, "Failed to register commands with Assuan: %s\n",
-		    assuan_strerror(r));
+		    assuan_strerror((AssuanError) r));
 
 	assuan_set_pointer(assuan_ctx, dctx);
 
@@ -348,12 +348,12 @@ void command_handler(struct openscd_context *dctx)
 		if (r == -1)
 			break;
 		if (r) {
-			sc_error(dctx->ctx, "Assuan accept problem: %s\n", assuan_strerror(r));
+			sc_error(dctx->ctx, "Assuan accept problem: %s\n", assuan_strerror((AssuanError) r));
 			break;
 		}
 		r = assuan_process(assuan_ctx);
 		if (r) {
-			sc_error(dctx->ctx, "Assuan processing failed: %s\n", assuan_strerror(r));
+			sc_error(dctx->ctx, "Assuan processing failed: %s\n", assuan_strerror((AssuanError) r));
 			continue;
 		}
 	}

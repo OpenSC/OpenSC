@@ -205,7 +205,7 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 		free(blob->data);
 	blob->len    = len;
 	blob->status = 0;
-	blob->data   = malloc(len);
+	blob->data   = (unsigned char *) malloc(len);
 	memcpy(blob->data, data, len);
 
 	blob->file->size = len;

@@ -42,15 +42,15 @@
 # define mkdir(a,b) mkdir(a)
 #endif
 
-char *mkdtemp(char *template)
+char *mkdtemp(char *tmpl)
 {
 	int attempts, idx, count = 0;
-	unsigned char *ch;
+	char *ch;
 
-	idx = strlen(template);
+	idx = strlen(tmpl);
 
 	/* Walk backwards to count all the Xes */
-	while (idx > 0 && template[idx - 1] == 'X') {
+	while (idx > 0 && tmpl[idx - 1] == 'X') {
 		count++;
 		idx--;
 	}
@@ -60,7 +60,7 @@ char *mkdtemp(char *template)
 		return NULL;
 	}
 
-	ch = &template[idx];
+	ch = &tmpl[idx];
 
 	/* Try 4 times to make the temp directory */
 	for (attempts = 0; attempts < 4; attempts++) {
@@ -74,7 +74,7 @@ char *mkdtemp(char *template)
 		   worst thing that can happen with a directory name collision
 		   is that the function will return an error. */
 
-		randombits = malloc(4 * remaining);
+		randombits = (unsigned char *) malloc(4 * remaining);
 		assert(randombits != NULL);
 		assert(scrandom_get_data(randombits, 4 * remaining) ==
 		       4 * remaining);
@@ -92,12 +92,12 @@ char *mkdtemp(char *template)
 
 		free(randombits);
 
-		if (mkdir(template, 0700) == 0)
+		if (mkdir(tmpl, 0700) == 0)
 			break;
 	}
 
 	if (attempts == 4)
 		return NULL;	/* keeps the errno from mkdir, whatever it is */
 
-	return template;
+	return tmpl;
 }

@@ -2669,7 +2669,7 @@ sc_pkcs15init_get_serial(struct sc_profile *profile, const char **res)
 
 int
 sc_pkcs15init_set_pin_data(sc_profile_t *profile, int id,
-		const void *key, size_t len)
+		const u8 *key, size_t len)
 {
 	return sc_keycache_put_key(NULL, SC_AC_SYMBOLIC, id, key, len);
 }

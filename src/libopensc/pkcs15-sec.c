@@ -189,7 +189,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 * can strip the input so a more restrictive algo can be used */
 	if ((flags == (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
 	    !(alg_info->flags & (SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_NONE))) {
-		int algo;
+		unsigned int algo;
 		tmpoutlen = sizeof(buf);
 		r = sc_pkcs1_strip_digest_info_prefix(&algo, tmpin, inlen, tmpout, &tmpoutlen);
 		if (r != SC_SUCCESS || algo == SC_ALGORITHM_RSA_HASH_NONE)
