@@ -1,5 +1,5 @@
-
 #ifndef _SC_TEST_H
+#define _SC_TEST_H
 
 extern struct sc_context *ctx;
 extern struct sc_card *card;

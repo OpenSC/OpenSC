@@ -55,7 +55,7 @@ int sc_test_init(int *argc, char *argv[])
 		printf("Connecting to card failed\n");
 		return i;
 	}
-	printf("connected. ATR = ");
+	printf("connected.\nATR = ");
 	for (i = 0; i < card->atr_len; i++) {
 		if (i)
 			printf(":");

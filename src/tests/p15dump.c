@@ -1,22 +1,21 @@
 /* Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi> 
  * All rights reserved.
  *
- * PKCS#15 PIN code test
+ * PKCS#15 objects test
  */
 
-#include "sc-test.h"
-#include "opensc.h"
-#include "opensc-pkcs15.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <opensc.h>
+#include <opensc-pkcs15.h>
+#include "sc-test.h"
 
 struct sc_pkcs15_card *p15card;
 
-static int
-dump_objects(const char *what, int type)
+static int dump_objects(const char *what, int type)
 {
-	struct sc_pkcs15_object	**objs;
-	int	count, i;
+	struct sc_pkcs15_object **objs;
+	int count, i;
 
 	printf("\nEnumerating %s... ", what);
 	fflush(stdout);
@@ -47,11 +46,10 @@ dump_objects(const char *what, int type)
 	}
 	free(objs);
 	sc_unlock(card);
-	return (count < 0)? 1 : 0;
+	return (count < 0) ? 1 : 0;
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	int i;
 
@@ -75,6 +73,7 @@ main(int argc, char *argv[])
 	dump_objects("RSA public keys", SC_PKCS15_TYPE_PUBKEY_RSA);
 	dump_objects("X.509 certificates", SC_PKCS15_TYPE_CERT_X509);
 
+	sc_pkcs15_unbind(p15card);
 	sc_test_cleanup();
 	return 0;
 }

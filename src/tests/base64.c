@@ -1,5 +1,5 @@
-#include <opensc.h>
 #include <stdio.h>
+#include <opensc.h>
 #include <sc-asn1.h>
 
 int main(int argc, char *argv[])
