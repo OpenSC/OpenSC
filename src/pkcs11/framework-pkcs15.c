@@ -1669,6 +1669,24 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 	debug(context, "Initiating signing operation, mechanism 0x%x.\n",
 				pMechanism->mechanism);
 
+	/* If this key requires user consent for every N operations,
+	 * we may have to present the PIN again and again.
+	 * For now, we require that either the terminal has a key pad,
+	 * or the user allows pin caching. We may want to add GUI
+	 * function pointers though.
+	 */
+	if (prkey->prv_p15obj->user_consent) {
+		/* XXX we should really keep track how often the key
+		 * is used, and how often we need to ask the user for
+		 * her PIN. 
+		 * For now, we just assume user_consent is 1.
+		 */
+		/* XXX - do we require an sc_lock here? */
+		rv = revalidate_pin(data, ses);
+		if (rv < 0)
+			return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+	}
+
 	/* See which of the alternative keys supports signing */
 	while (prkey
 	 && !(prkey->prv_info->usage
@@ -2112,6 +2130,7 @@ revalidate_pin(struct pkcs15_slot_data *data, struct sc_pkcs11_session *ses)
 	int rv;
 	u8 value[MAX_CACHE_PIN];
 
+	debug(context, "revalidate_pin called\n");
 	if (!sc_pkcs11_conf.cache_pins &&
 	    !(ses->slot->token_info.flags & CKF_PROTECTED_AUTHENTICATION_PATH))
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
