@@ -36,7 +36,6 @@
 const char *app_name = "opensc-tool";
 
 static int	opt_reader = -1,
-		opt_no_cache = 0,
 		opt_debug = 0,
 		opt_wait = 0;
 static char **	opt_apdus;
