@@ -123,20 +123,20 @@ void sc_copy_asn1_entry(const struct sc_asn1_entry *src,
 
 size_t _sc_count_bit_string_size(const void * buf, size_t bufsize)
 {
-        const u8 *p = (const u8 *) buf + bufsize - 1;
-        u8 c;
-        size_t skip = 0;
-        int i;
-        
-        while (p >= (const u8 *) buf && *p == 0) {
-                skip += 8;
-                p--;
-        }
-        if (p < (const u8 *) buf)
-                return 0;
-        c = *p;
-        for (i = 0; (c >> (7-i)) == 0; i++);
-        return bufsize * 8 - (skip + i);
+	const u8 *p = (const u8 *) buf + bufsize - 1;
+	u8 c;
+	size_t skip = 0;
+	int i;
+
+	while (p >= (const u8 *) buf && *p == 0) {
+		skip += 8;
+		p--;
+	}
+	if (p < (const u8 *) buf)
+		return 0;
+	c = *p;
+	for (i = 0; (c >> (7-i)) == 0; i++);
+	return bufsize * 8 - (skip + i);
 }
 
 static void sc_asn1_print_octet_string(const u8 * buf, size_t buflen)
@@ -160,7 +160,7 @@ static void sc_asn1_print_integer(const u8 * buf, size_t buflen)
 #ifndef _WIN32
 	long long a = 0;
 #else
-        __int64 a = 0;
+	__int64 a = 0;
 #endif
 	size_t i;
 
@@ -180,7 +180,7 @@ static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen)
 #ifndef _WIN32
 	long long a = 0;
 #else
-        __int64 a = 0;
+	__int64 a = 0;
 #endif
 	int r, i;
 
@@ -943,8 +943,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 		}
 		break;
 	case SC_ASN1_GENERALIZEDTIME:
-                /* FIXME: we should parse the string and convert it
-                   into a standard ISO time string. */
+		/* FIXME: we should parse the string and convert it
+		   into a standard ISO time string. */
 		if (parm != NULL) {
 			size_t c;
 			assert(len != NULL);
@@ -1004,7 +1004,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_ALGORITHM_ID:
 		if (entry->parm != NULL)
 			r = sc_asn1_decode_algorithm_id(ctx, obj, objlen, (struct sc_algorithm_id *) parm, depth);
-                break;
+		break;
 	case SC_ASN1_CALLBACK:
 		if (entry->parm != NULL)
 			r = callback_func(ctx, entry->arg, obj, objlen, depth);
