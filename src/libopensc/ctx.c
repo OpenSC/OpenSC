@@ -621,9 +621,9 @@ int sc_release_context(struct sc_context *ctx)
 		if (drv->dll)
 			scdl_close(drv->dll);
 	}
-	if (ctx->debug_file)
+	if (ctx->debug_file && ctx->debug_file != stdout)
 		fclose(ctx->debug_file);
-	if (ctx->error_file)
+	if (ctx->error_file && ctx->error_file != stderr)
 		fclose(ctx->error_file);
 	if (ctx->preferred_language)
 		free(ctx->preferred_language);
