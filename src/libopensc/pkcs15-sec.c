@@ -176,6 +176,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	senv.algorithm = SC_ALGORITHM_RSA;
+
+	/* Probably never happens, but better make sure */
+	if (inlen > sizeof(buf))
+		return SC_ERROR_BUFFER_TOO_SMALL;
 	memcpy(buf, in, inlen);
         senv.algorithm_flags = 0;
 	if (flags & SC_ALGORITHM_RSA_HASH_SHA1) {
