@@ -55,11 +55,11 @@ char* get_pin(UI_METHOD* ui_method, char* sc_pin, int maxlen) {
 	UI* ui;
 	ui=UI_new();
 	UI_set_method(ui,ui_method);
-	if(!UI_add_input_string(ui, "SmartCard Password: ", 0, sc_pin, 1, maxlen)) {
-			fprintf(stderr, "UI_add_input_string failed"); 
+	if(!UI_add_input_string(ui, "SmartCard PIN: ", 0, sc_pin, 1, maxlen)) {
+			fprintf(stderr, "UI_add_input_string failed\n"); 
 			UI_free(ui); return NULL; }
 	if(!UI_process(ui)) {
-			fprintf(stderr, "UI_process failed"); return NULL;}
+			fprintf(stderr, "UI_process failed\n"); return NULL;}
 	UI_free(ui);
 	return sc_pin;
 
@@ -78,11 +78,11 @@ int pkcs11_init(ENGINE *engine) {
 	int r=0;
 	
 	if(!quiet)
-		fprintf(stderr,"initializing engine");
+		fprintf(stderr,"initializing engine\n");
 
 	ctx = PKCS11_CTX_new();
 	if (PKCS11_CTX_load(ctx, module) < 0) {
-		fprintf(stderr, "unable to load module");
+		fprintf(stderr, "unable to load module\n");
 		return 0;
 	}
 
@@ -98,24 +98,120 @@ pkcs11_rsa_finish(RSA* rsa) {
 
 }
 
+static int hex2byte(const char *hex)
+{
+	int b = 0;
+	if (hex[0]>='0' && hex[0]<='9')
+		b = hex[0] - '0';
+	else if (hex[0]>='a'&&hex[0]<='f')
+		b = hex[0] - 'a' + 10;
+	else if (hex[0]>='A'&&hex[0]<='F')
+		b = hex[0] - 'A' + 10;
+	else
+		return -1;
+	b *= 16;
+	if (hex[1]>='0' && hex[1]<='9')
+		return b + hex[1] - '0';
+	else if (hex[1]>='a'&&hex[1]<='f')
+		return b + hex[1] - 'a' + 10;
+	else if (hex[1]>='A'&&hex[1]<='F')
+		return b + hex[1] - 'A' + 10;
+	return -1;
+}
 
-EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_key_id,
+static int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
+{
+	int err = 0;
+	size_t left, count = 0;
+
+	if (in == NULL || *in == '\0') {
+		*outlen = 0;
+		return 1;
+	}
+
+        left = *outlen;
+
+	while (*in != '\0') {
+		int byte = 0, nybbles = 2;
+		char c;
+
+		while (nybbles-- && *in && *in != ':') {
+			byte <<= 4;
+			c = *in++;
+			if ('0' <= c && c <= '9')
+				c -= '0';
+			else
+			if ('a' <= c && c <= 'f')
+				c = c - 'a' + 10;
+			else
+			if ('A' <= c && c <= 'F')
+				c = c - 'A' + 10;
+			else {
+				printf("hex_to_bin(): invalid char '%c' in hex string\n", c);
+				*outlen = 0;
+				return 0;
+			}
+			byte |= c;
+		}
+		if (*in == ':')
+			in++;
+		if (left <= 0) {
+			printf("hex_to_bin(): hex string too long");
+			*outlen = 0;
+			return 0;
+		}
+		out[count++] = (unsigned char) byte;
+		left--;
+		c++;
+	}
+
+out:
+	*outlen = count;
+	return 1;
+}
+
+EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 	UI_METHOD *ui_method, void *callback_data, int private) {
 
 	PKCS11_SLOT	*slot_list, *slot;
 	PKCS11_TOKEN	*tok;
-	PKCS11_KEY	*keys;
+	PKCS11_KEY	*keys, *selected_key = NULL;
 	PKCS11_CERT	*certs;
 	EVP_PKEY	*pk;
 	unsigned int	count, n, m;
+	unsigned char	key_id[100];
+	const char	*s_key_id;
+	int		key_id_len = sizeof(key_id);
+	int		slot_nr = -1;
 
 	char		flags[64];
 	int		logged_in = 0;
  
 	/* if(pin) {free(pin); pin=NULL;} // keep cached key? */
 
+	/* Format of s_slot_key_id: [S<slotNr>-]keyID or NULL,
+	   with slotNr in decimal (0 = first slot, ...), and keyID in hex.
+	   E.g. "S0-45" or "46" */
+	s_key_id = s_slot_key_id;
+ 	if (s_slot_key_id != NULL &&
+ 	    (s_slot_key_id[0] == 's' || s_slot_key_id[0] == 'S')) {
+ 		for (n = 1; s_slot_key_id[n] != '\0' && n < 8; n++) {
+ 			if (s_slot_key_id[n] == '-') {
+ 				char tmp[8];
+ 				s_key_id += (n + 1);
+ 				memcpy(tmp, s_slot_key_id + 1, n - 1);
+ 				tmp[n - 1] = '\0';
+ 				printf("tmp=%s\n", tmp);
+ 				slot_nr = atoi(tmp);
+ 			}
+ 		}
+ 	}			
+
+	if (!hex_to_bin(s_key_id, key_id, &key_id_len))
+		fail("Invalid key ID\n");
+
 	if (PKCS11_enumerate_slots(ctx, &slot_list, &count) < 0)
-		fail("failed to enumerate slots");
+		fail("failed to enumerate slots\n");
 
 	printf("Found %u slot%s\n", count, (count <= 1)? "" : "s");
 again:
@@ -146,15 +242,21 @@ again:
 		printf("\n");
 	}
 
-	if (!(slot = PKCS11_find_token(ctx)))
-		fail("didn't find any tokens");
+	if (slot_nr == -1) {
+		if (!(slot = PKCS11_find_token(ctx)))
+			fail("didn't find any tokens\n");
+	}
+	else if (slot_nr >= 0 && slot_nr < count)
+		slot = slot_list + slot_nr;
+	else {
+		printf("Invalid slot number: %d\n", slot_nr);
+		return NULL;
+	}
 	tok = slot->token;
 
 	if (!tok->initialized) {
 		printf("Found uninitialized token; \n"); 
 		return NULL;
-
-
 	}
 
 	 if (private && !tok->userPinSet && !tok->readOnly) {
@@ -166,7 +268,7 @@ again:
 	printf("Found token: %s\n", slot->token->label);
 
 	if (PKCS11_enumerate_certs(tok, &certs, &count))
-		fail("unable to enumerate certificates");
+		fail("unable to enumerate certificates\n");
 
 	printf("Found %u certificate%s:\n", count, (count <= 1)? "" : "s");
 	for (n = 0; n < count; n++) {
@@ -186,7 +288,7 @@ again:
 
 	while (1) {
 		if (PKCS11_enumerate_keys(tok, &keys, &count))
-			fail("unable to enumerate keys");
+			fail("unable to enumerate keys\n");
 		if (count)
 			break;
 		if (logged_in || !tok->loginRequired)
@@ -196,7 +298,7 @@ again:
 			get_pin(ui_method,pin,12); 
 		}
 		if (PKCS11_login(slot, 0, pin))
-			fail("Card login failed");
+			fail("Card login failed\n");
 		logged_in++;
 	}
 
@@ -213,17 +315,29 @@ again:
 			k->private? 'P' : ' ',
 			k->needLogin? 'L' : ' ',
 			k->label);
+
+		if (key_id_len != 0 && k->id_len == key_id_len &&
+		    memcmp(k->id, key_id, key_id_len) == 0) {
+			printf("        ID = %s\n", s_key_id);
+			selected_key = k;
+		}
 	}
 
-	if (count == 0)
-		return NULL;
+	if (selected_key == NULL) {
+		if (s_key_id != NULL) {
+			printf("No key with ID \"%s\" found.\n", s_key_id);
+			return NULL;
+		}
+		else /* Take the first key that was found */
+			selected_key = &keys[0];
+	}
 
 	if(private) {
-		pk = PKCS11_get_private_key(&keys[0]);
+		pk = PKCS11_get_private_key(selected_key);
 	} else {
 		/*pk = PKCS11_get_public_key(&keys[0]);
 		need a get_public_key? */
-		pk = PKCS11_get_private_key(&keys[0]);
+		pk = PKCS11_get_private_key(selected_key);
 	}
 
 	return pk;
@@ -234,7 +348,7 @@ EVP_PKEY *pkcs11_load_public_key(ENGINE *e, const char *s_key_id,
 	EVP_PKEY *pk;
 	pk=pkcs11_load_key(e, s_key_id, ui_method, callback_data, 0);
 	if (pk == NULL)
-			fail("PKCS11_load_public_key returned NULL");
+			fail("PKCS11_load_public_key returned NULL\n");
 	return pk;
 }
 
@@ -243,6 +357,6 @@ EVP_PKEY *pkcs11_load_private_key(ENGINE *e, const char *s_key_id,
 		EVP_PKEY* pk;
 		pk=pkcs11_load_key(e, s_key_id, ui_method, callback_data, 1);
 		if (pk == NULL)
-			fail("PKCS11_get_private_key returned NULL");
+			fail("PKCS11_get_private_key returned NULL\n");
 		return pk;
 }

@@ -254,6 +254,7 @@ pkcs11_init_key(PKCS11_CTX *ctx, PKCS11_TOKEN *token,
 	PKCS11_KEY_private *kpriv;
 	PKCS11_KEY	*key;
 	char		label[256];
+	unsigned char	id[256];
 	CK_KEY_TYPE	key_type;
 	PKCS11_KEY_ops	*ops;
 	size_t		size;
@@ -283,6 +284,11 @@ pkcs11_init_key(PKCS11_CTX *ctx, PKCS11_TOKEN *token,
 
 	if (!pkcs11_getattr_s(token, obj, CKA_LABEL, label, sizeof(label)))
 		key->label = BUF_strdup(label);
+	key->id_len = sizeof(id);
+	if (!pkcs11_getattr_var(token, obj, CKA_ID, id, &key->id_len)) {
+		key->id = (unsigned char *) malloc(key->id_len);
+		memcpy(key->id, id, key->id_len);
+	}
 	key->private = (type == CKO_PRIVATE_KEY);
 
 	/* Initialize internal information */
@@ -310,6 +316,8 @@ pkcs11_destroy_keys(PKCS11_TOKEN *token)
 		if (key->evp_key)
 			EVP_PKEY_free(key->evp_key);
 		OPENSSL_free(key->label);
+		if (key->id)
+			free(key->id);
 	}
 	if (priv->keys)
 		OPENSSL_free(priv->keys);

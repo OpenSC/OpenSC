@@ -1,0 +1,20 @@
+engine-pkcs11
+-------------
+
+This is an OpenSSL engine for making certificate requests for
+a key that resides on an smart card. When the certificate
+request has to be signed, the smart card is contacted through
+the opensc-pkcs11 lib for creating the signature.
+
+Usage:
+
+- start the OpenSSL tool:  openssl
+- at the prompt, enter:    engine dynamic -pre SO_PATH:engine_pkcs11.so -pre ID:pkcs11 -pre LIST_ADD:1 -pre LOAD
+  (for Windows, use "engine_pkcs11" instead of "engine_pkcs11.so")
+- at the prompt, enter:    req -engine pkcs11 -new -key <key> -keyform engine -out req.pem -text
+
+In the last line, <key> has the format [S<slotNumber>-]keyID, in which
+  - the optional slotNumber indicates which pkcs11 slot to take (starting from 0, which is also the default)
+  - keyID is the key ID in hex notation
+Examples:  45     -> private key with ID = 0x45 in the first 'suited' slot
+           S2-46  -> private key with ID = 0x46 in the third slot

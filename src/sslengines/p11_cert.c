@@ -128,6 +128,7 @@ pkcs11_init_cert(PKCS11_CTX *ctx, PKCS11_TOKEN *token,
 	PKCS11_CERT_private *kpriv;
 	PKCS11_CERT	*cert;
 	char		label[256], data[2048];
+	unsigned char	id[256];
 	CK_CERTIFICATE_TYPE cert_type;
 	size_t		size;
 
@@ -158,6 +159,11 @@ pkcs11_init_cert(PKCS11_CTX *ctx, PKCS11_TOKEN *token,
 
 		cert->x509 = d2i_X509(NULL, &p, size);
 	}
+	cert->id_len = sizeof(id);
+	if (!pkcs11_getattr_var(token, obj, CKA_ID, id, &cert->id_len)) {
+		cert->id = (unsigned char *) malloc(cert->id_len);
+		memcpy(cert->id, id, cert->id_len);
+	}
 
 	/* Initialize internal information */
 	kpriv->id_len = sizeof(kpriv->id);
@@ -184,6 +190,8 @@ pkcs11_destroy_certs(PKCS11_TOKEN *token)
 		if (cert->x509)
 			X509_free(cert->x509);
 		OPENSSL_free(cert->label);
+		if (cert->id)
+			free(cert->id);
 	}
 	if (priv->certs)
 		OPENSSL_free(priv->certs);

@@ -115,6 +115,8 @@ ERR_PUT_error(ERR_LIB_PKCS11,(f),(r),__FILE__,__LINE__)
 /* PKCS11 key object (public or private) */
 typedef struct PKCS11_key_st {
 	char *		label;
+	unsigned char *	id;
+	int		id_len;
 	unsigned char	private;	/* private key present? */
 	unsigned char	needLogin;	/* login to read private key? */
 	EVP_PKEY *	evp_key;	/* initially NULL, need to call PKCS11_load_key */
@@ -124,6 +126,8 @@ typedef struct PKCS11_key_st {
 /* PKCS11 certificate object */
 typedef struct PKCS11_cert_st {
 	char *		label;
+	unsigned char *	id;
+	int		id_len;
 	X509 *		x509;
 	void *		_private;
 } PKCS11_CERT;
