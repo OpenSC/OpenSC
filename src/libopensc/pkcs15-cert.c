@@ -242,7 +242,7 @@ int sc_pkcs15_encode_cdf_entry(struct sc_context *ctx,
 				asn1_cert[2];
 	struct sc_pkcs15_cert_info *infop =
 		(struct sc_pkcs15_cert_info *) obj->data;
-	const struct sc_asn1_pkcs15_object cert_obj = { (struct sc_pkcs15_object *) obj,
+	struct sc_asn1_pkcs15_object cert_obj = { (struct sc_pkcs15_object *) obj,
 							asn1_com_cert_attr, NULL,
 							asn1_type_cert_attr };
 	int r;
