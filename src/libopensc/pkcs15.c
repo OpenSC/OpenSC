@@ -227,54 +227,6 @@ static int encode_ddo(struct sc_pkcs15_card *p15card, u8 **buf, size_t *buflen)
 }
 #endif
 
-#if 0
-int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, sc_card_t *card)
-{
-	sc_path_t path;
-	sc_file_t file;
-	u8 *buf;
-	size_t bufsize;
-	int r, i;
-
-	SC_FUNC_CALLED(card->ctx, 1);
-	sc_format_path("3F00", &path);
-	r = sc_select_file(card, &path, NULL);
-	SC_TEST_RET(card->ctx, r, "sc_select_file(MF) failed");
-	r = encode_dir(card->ctx, p15card, &buf, &bufsize);
-	SC_TEST_RET(card->ctx, r, "EF(DIR) encoding failed");
-	memset(&file, 0, sizeof(file));
-	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file.acl[i] = p15card->file_dir.acl[i];
-	file.size = bufsize;
-	file.type = SC_FILE_TYPE_WORKING_EF;
-	file.ef_structure = SC_FILE_EF_TRANSPARENT;
-	file.id = 0x2F00;
-	file.status = SC_FILE_STATUS_ACTIVATED;
-	sc_format_path("3F002F00", &path);
-	card->ctx->suppress_errors++;
-	r = sc_select_file(card, &path, NULL);
-	card->ctx->suppress_errors--;
-	if (r != 0) {
-		r = sc_create_file(card, &file);
-		if (r) {
-			sc_perror(card->ctx, r, "Error creating EF(DIR)");
-			free(buf);
-			return r;
-		}
-		r = sc_select_file(card, &path, NULL);
-		if (r) {
-			sc_perror(card->ctx, r, "Error selecting EF(DIR)");
-			free(buf);
-			return r;
-		}
-	}
-	r = sc_update_binary(card, 0, buf, bufsize, 0);
-	free(buf);
-	SC_TEST_RET(card->ctx, r, "Error updating EF(DIR)");
-	return 0;
-}
-#endif
-
 static const struct sc_asn1_entry c_asn1_odf[] = {
 	{ "privateKeys",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, NULL },
 	{ "publicKeys",		 SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, 0, NULL },

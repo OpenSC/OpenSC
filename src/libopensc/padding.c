@@ -71,8 +71,7 @@ int sc_pkcs1_add_01_padding(const u8 *in, size_t in_len, u8 *out,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	i = mod_length - in_len;
 	memmove(out + i, in, in_len);
-	*out++ = 0x00; /* XXX the leading zero octet does not really
-			* belong to the pkcs1 BT01 padding -- Nils */
+	*out++ = 0x00;
 	*out++ = 0x01;
 	
 	memset(out, 0xFF, i - 3);
