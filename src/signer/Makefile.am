@@ -22,3 +22,6 @@ noinst_HEADERS		 = opensc-crypto.h opensc-support.h \
 			   signer.h npinclude/jri.h npinclude/jri_md.h \
 			   npinclude/jritypes.h npinclude/npapi.h \
 			   npinclude/npupp.h npinclude/npunix.c
+
+install-exec-local: install-pluginLTLIBRARIES
+	-rm -f $(DESTDIR)$(plugindir)/opensc-signer.a $(DESTDIR)$(plugindir)/opensc-signer.la
