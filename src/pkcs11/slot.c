@@ -18,9 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "sc-pkcs11.h"
-#include <sc-log.h>
 #include <string.h>
+#include "sc-pkcs11.h"
 
 static struct sc_pkcs11_framework_ops *frameworks[] = {
         &framework_pkcs15,
@@ -207,4 +206,3 @@ CK_RV slot_token_removed(int id)
         return CKR_OK;
 
 }
-

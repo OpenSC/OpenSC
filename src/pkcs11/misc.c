@@ -20,9 +20,8 @@
 
 #include <stdlib.h>
 #include <malloc.h>
-#include "sc-pkcs11.h"
-#include <sc-log.h>
 #include <string.h>
+#include "sc-pkcs11.h"
 
 #define DUMP_TEMPLATE_MAX	32
 
@@ -86,7 +85,6 @@ void dump_template(const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCoun
 	}
 
 }
-
 
 /* Pool */
 CK_RV pool_initialize(struct sc_pkcs11_pool *pool)
@@ -200,4 +198,3 @@ CK_RV session_stop_operation(struct sc_pkcs11_session *session)
 	session->operation = NULL;
         return CKR_OK;
 }
-

@@ -19,10 +19,8 @@
  */
 
 #include <stdlib.h>
-#include "sc-pkcs11.h"
-
-#include <sc-log.h>
 #include <string.h>
+#include "sc-pkcs11.h"
 
 struct sc_context *context = NULL;
 struct sc_pkcs11_pool session_pool;
@@ -134,28 +132,6 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 
 	debug(context, "returned %d slots\n", numMatches);
         return CKR_OK;
-
-#if 0
-        int i;
-
-        LOG("C_GetSlotList(%d, 0x%x, 0x%x)\n", tokenPresent, pSlotList, pulCount);
-
-	if (pSlotList == NULL_PTR) {
-		*pulCount = ctx->reader_count;
-                return CKR_OK;
-	}
-
-	if (*pulCount < ctx->reader_count) {
-		*pulCount = ctx->reader_count;
-                return CKR_BUFFER_TOO_SMALL;
-	}
-
-	for (i = 0; i < ctx->reader_count; i++)
-		pSlotList[i] = i;
-        *pulCount = ctx->reader_count;
-
-	return CKR_OK;
-#endif
 }
 
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
@@ -176,34 +152,6 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	debug(context, "Getting info about slot %d\n", slotID);
 	memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
         return CKR_OK;
-
-#if 0
-	LOG("C_GetSlotInfo(%d, 0x%x)\n", slotID, pInfo);
-
-	if (slotID < 0 || slotID >= ctx->reader_count)
-                return CKR_SLOT_ID_INVALID;
-
-	strcpy_bp(pInfo->slotDescription, ctx->readers[slotID],
-		sizeof(pInfo->slotDescription));
-	strcpy_bp(pInfo->manufacturerID, "PC/SC interface",
-		sizeof(pInfo->manufacturerID));
-	pInfo->flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
-	if (sc_detect_card(ctx, slotID) == 1) {
-                LOG("Detected card in slot %d\n", slotID);
-		pInfo->flags |= CKF_TOKEN_PRESENT;
-	} else {
-		LOG("No card in slot %d\n", slotID);
-                slot_disconnect(slotID);
-	}
-	pInfo->hardwareVersion.major = 1;
-	pInfo->hardwareVersion.minor = 1;
-	pInfo->firmwareVersion.major = 1;
-	pInfo->firmwareVersion.minor = 1;
-	
-	LOG("C_GetSlotInfo() ret: flags %X\n", pInfo->flags);
-
-	return CKR_OK;
-#endif
 }
 
 CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
@@ -217,50 +165,6 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 
 	debug(context, "Getting info about token in slot %d\n", slotID);
 	memcpy(pInfo, &slot->token_info, sizeof(CK_TOKEN_INFO));
-        return CKR_OK;
-
-#if 0
-	int r;
-
-        LOG("C_GetTokenInfo(%d, 0x%x)\n", slotID, pInfo);
-	if (slotID < 0 || slotID >= ctx->reader_count)
-                return CKR_SLOT_ID_INVALID;
-
-	memset(pInfo, 0, sizeof(CK_SLOT_INFO));
-
-	if (!(slot[slotID].flags & SLOT_CONNECTED)) {
-		r = slot_connect(slotID);
-                if (r)
-			return r;
-	}
-	strcpy_bp(pInfo->label, slot[slotID].p15card->label, 32);
-	strcpy_bp(pInfo->manufacturerID, slot[slotID].p15card->manufacturer_id, 32);
-	strcpy_bp(pInfo->model, "PKCS #15 SC", sizeof(pInfo->model));
-	strcpy_bp(pInfo->serialNumber, slot[slotID].p15card->serial_number, 16);
-
-	pInfo->flags = CKF_RNG | CKF_USER_PIN_INITIALIZED | CKF_LOGIN_REQUIRED;
-	pInfo->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
-	pInfo->ulSessionCount = 0; /* FIXME */
-	pInfo->ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
-	pInfo->ulRwSessionCount = 0; /* FIXME */
-
-	if (slot[slotID].p15card->pin_info[0].magic == SC_PKCS15_PIN_MAGIC) {
-		pInfo->ulMaxPinLen = slot[slotID].p15card->pin_info[0].stored_length;
-		pInfo->ulMinPinLen = slot[slotID].p15card->pin_info[0].min_length;
-	} else {
-		/* choose reasonable defaults */
-		pInfo->ulMaxPinLen = 8;
-		pInfo->ulMinPinLen = 4;
-	}
-	pInfo->ulTotalPublicMemory = CK_UNAVAILABLE_INFORMATION;
-	pInfo->ulFreePublicMemory = CK_UNAVAILABLE_INFORMATION;
-	pInfo->ulTotalPrivateMemory = CK_UNAVAILABLE_INFORMATION;
-	pInfo->ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
-	pInfo->hardwareVersion.major = 1;
-	pInfo->hardwareVersion.minor = 0;
-	pInfo->firmwareVersion.major = 1;
-	pInfo->firmwareVersion.minor = 0;
-#endif
         return CKR_OK;
 }
 
@@ -312,8 +216,6 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 {
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
-
-
 
 CK_FUNCTION_LIST pkcs11_function_list = {
 	{ 2, 11 },
@@ -386,5 +288,3 @@ CK_FUNCTION_LIST pkcs11_function_list = {
         C_CancelFunction,
 	C_WaitForSlotEvent
 };
-
-

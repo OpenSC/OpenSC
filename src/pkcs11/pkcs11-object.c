@@ -22,7 +22,6 @@
 #include <malloc.h>
 #include <string.h>
 #include "sc-pkcs11.h"
-#include <sc-log.h>
 
 CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		     CK_ATTRIBUTE_PTR  pTemplate,   /* the object's template */
@@ -138,7 +137,6 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 
 	if (rv != CKR_OK)
                 return rv;
-
 
         operation->current_handle = 0;
 	operation->num_handles = 0;
@@ -426,7 +424,6 @@ CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,                /* the session's
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-
 CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		    CK_MECHANISM_PTR  pMechanism,  /* the decryption mechanism */
 		    CK_OBJECT_HANDLE  hKey)        /* handle of the decryption key */
@@ -458,7 +455,6 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,       /* the session's handle *
 {
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
-
 
 CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,            /* the session's handle */
 			    CK_BYTE_PTR       pPart,               /* the plaintext data */
@@ -600,7 +596,6 @@ CK_RV C_CancelFunction(CK_SESSION_HANDLE hSession) /* the session's handle */
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-
 CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		   CK_MECHANISM_PTR  pMechanism,  /* the verification mechanism */
 		   CK_OBJECT_HANDLE  hKey)        /* handle of the verification key */
@@ -646,7 +641,6 @@ CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,        /* the session's handle
 {
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
-
 
 /*
  * Helper function to compare attributes on any sort of object

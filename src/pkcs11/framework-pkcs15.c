@@ -22,7 +22,6 @@
 #include <malloc.h>
 #include <string.h>
 #include "sc-pkcs11.h"
-#include <sc-log.h>
 
 #define check_attribute_buffer(attr,size)	\
 	if (attr->pValue == NULL_PTR) {         \
@@ -466,7 +465,6 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_change_pin
 };
 
-
 /*
  * PKCS#15 Certificate Object
  */
@@ -591,7 +589,6 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	NULL,
         NULL
 };
-
 
 /*
  * PKCS#15 Private Key Object
@@ -761,7 +758,6 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 			(struct sc_pkcs11_object **) result);
 }
 
-
 struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	NULL,
 	NULL,
@@ -846,7 +842,6 @@ struct sc_pkcs11_object_ops pkcs15_cert_key_ops = {
         NULL
 };
 
-
 /*
  * PKCS#15 RSA Public Key Object (stored on card as-is)
  */
@@ -919,7 +914,6 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	NULL,
         NULL
 };
-
 
 /*
  * get_attribute helpers

@@ -21,8 +21,12 @@
 #ifndef __opensc_pkcs11_h__
 #define __opensc_pkcs11_h__
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <opensc.h>
 #include <opensc-pkcs15.h>
+#include <sc-log.h>
 #include "rsaref/pkcs11.h"
 
 #define SC_PKCS11_MAX_VIRTUAL_SLOTS	4

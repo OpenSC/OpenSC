@@ -25,7 +25,6 @@
 #include <malloc.h>
 #include <string.h>
 #include "sc-pkcs11.h"
-#include <sc-log.h>
 
 struct pkcs11_secret_key {
 	struct sc_pkcs11_object object;
@@ -55,7 +54,6 @@ extern struct sc_pkcs11_object_ops pkcs11_secret_key_ops;
 #define get_attr(attr, type, value)		\
 	check_attr(attr, sizeof(type));		\
 	*(type *) (attr->pValue) = value;
-
 
 CK_RV
 sc_pkcs11_create_secret_key(struct sc_pkcs11_session *session,
