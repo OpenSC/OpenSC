@@ -979,10 +979,12 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	unsigned char   sig1[1024], sig2[1024];
 	CK_ULONG        sigLen1, sigLen2;
 
+#ifdef HAVE_OPENSSL
 	int             err;
 	X509           *x509;
 	EVP_PKEY       *pkey;
 	EVP_MD_CTX      md_ctx;
+#endif
 
 	CK_MECHANISM_TYPE mechTypes[] = {
 		CKM_RSA_X_509,
@@ -1012,6 +1014,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		sizeof(verifyData),
 		sizeof(verifyData),
 	};
+#ifdef HAVE_OPENSSL
 	EVP_MD         *evp_mds[] = {
 		EVP_sha1(),
 		EVP_sha1(),
@@ -1019,6 +1022,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		EVP_md5(),
 		EVP_ripemd160(),
 	};
+#endif
 
 	rv = p11->C_GetSessionInfo(session, &sessionInfo);
 	if (rv == CKR_SESSION_HANDLE_INVALID) {
@@ -1158,7 +1162,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 		rv = p11->C_SignInit(session, &ck_mech, privKeyObject);
 		/* mechanism not implemented, don't test */
-		if (rv == CKR_FUNCTION_NOT_SUPPORTED)
+		if (rv == CKR_MECHANISM_INVALID)
 			continue;
 		if (rv != CKR_OK)
 			p11_fatal("C_SignInit", rv);
@@ -1176,7 +1180,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			printf("  ERR: wrong signature length: %ld instead of %ld\n", sigLen1, modLenBytes);
 		}
 #ifndef HAVE_OPENSSL
-		printf("unable to verify signature (compile with \DHAVE_OPENSSL)\n");
+		printf("unable to verify signature (compile with HAVE_OPENSSL)\n");
 #else
 		id = NULL;
 		id = getID(session, privKeyObject, &idLen);

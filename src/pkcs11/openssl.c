@@ -6,9 +6,9 @@
  */
 
 #include "sc-pkcs11.h"
-#include <openssl/evp.h>
 
 #ifdef HAVE_OPENSSL
+#include <openssl/evp.h>
 
 static CK_RV	sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *);
 static CK_RV	sc_pkcs11_openssl_md_update(sc_pkcs11_operation_t *,
