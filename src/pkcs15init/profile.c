@@ -36,6 +36,9 @@
 #include <opensc/scconf.h>
 #include "pkcs15-init.h"
 #include "profile.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #define DEF_PRKEY_RSA_ACCESS	0x1D
 #define DEF_PRKEY_DSA_ACCESS	0x12
@@ -350,6 +353,7 @@ static const char *
 sc_profile_locate(const char *name)
 {
 	static char	path[1024];
+	char            profile_dir[MAX_PATH];
 
 	/* Name with suffix tagged onto it? */
 	snprintf(path, sizeof(path), "%s.%s", name, SC_PKCS15_PROFILE_SUFFIX);
@@ -360,14 +364,26 @@ sc_profile_locate(const char *name)
 	if (strchr(path, '/'))
 		return path;
 
+#ifndef _WIN32
+	strncpy(profile_dir, SC_PKCS15_PROFILE_DIRECTORY, sizeof(profile_dir));
+#else
+	if (!strncmp(SC_PKCS15_PROFILE_DIRECTORY, "%windir%", 8)) {
+		GetWindowsDirectory(profile_dir, sizeof(profile_dir));
+		strncat(profile_dir, SC_PKCS15_PROFILE_DIRECTORY + 8,
+			sizeof(profile_dir) - strlen(profile_dir));
+	}
+	else
+		strncpy(profile_dir, SC_PKCS15_PROFILE_DIRECTORY, sizeof(profile_dir));
+#endif
+
 	/* Try directory */
 	snprintf(path, sizeof(path), "%s/%s",
-			SC_PKCS15_PROFILE_DIRECTORY, name);
+			profile_dir, name);
 	if (access(path, R_OK) == 0)
 		return path;
 
 	snprintf(path, sizeof(path), "%s/%s.%s",
-			SC_PKCS15_PROFILE_DIRECTORY, name,
+			profile_dir, name,
 			SC_PKCS15_PROFILE_SUFFIX);
 	if (access(path, R_OK) == 0)
 		return path;
