@@ -150,8 +150,10 @@ int sc_establish_context(struct sc_context **ctx_out)
 	ctx->log_errors = 1;
 	rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL, "localhost", NULL,
 				   &ctx->pcsc_ctx);
-	if (rv != SCARD_S_SUCCESS)
+	if (rv != SCARD_S_SUCCESS) {
+		free(ctx);
 		return SC_ERROR_CONNECTING_TO_RES_MGR;
+	}
 	SCardListReaders(ctx->pcsc_ctx, NULL, NULL,
 			 (LPDWORD) &reader_buf_size);
 	if (reader_buf_size < 2) {
