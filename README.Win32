@@ -68,6 +68,9 @@ pkcs11 signature mechs.
 - In win32/Make.rules.mak
   - Add /DHAVE_OPENSSL to the "COPTS" line
 
+- For the pkcs11 OpenSSL engine
+  - Add sslengines to the "SUBDIRS" line in opensc/src/Makefile.mak
+
 To add the OpenSSL code to the DLLs (so you won't need libeay32.dll
 anymore): statically compile OpenSSL and add gdi32.lib next to
 libeay32.lib in the 3 Makefile.mak files above.
