@@ -34,7 +34,7 @@ extern "C" {
 #define SC_PKCS15_MAX_PRKEYS		2
 #define SC_PKCS15_MAX_PUBKEYS		2
 #define SC_PKCS15_MAX_LABEL_SIZE	255
-#define SC_PKCS15_MAX_ID_SIZE		16
+#define SC_PKCS15_MAX_ID_SIZE		255
 #define SC_PKCS15_MAX_DFS		4
 #define SC_PKCS15_MAX_CERTS		4	/* Total certificates */
 
