@@ -56,11 +56,16 @@
 
 #endif
 
+#define MASQUERADE_NONE		0x00
+#define MASQUERADE_4AS3		0x01
+#define MASQUERADE_1AS2		0x02
+#define MASQUERADE_1AS2_ALWAYS	0x04
+#define DO_MASQ(priv, mask)	((prv)->gpriv->apdu_masquerade & (mask))
 /* Default value for apdu_fix option */
 #ifndef _WIN32
-# define DEF_APDU_FIX	0
+# define DEF_APDU_MASQ		MASQUERADE_NONE
 #else
-# define DEF_APDU_FIX	1
+# define DEF_APDU_MASQ		MASQUERADE_4AS3
 #endif
 
 #define GET_SLOT_PTR(s, i) (&(s)->slot[(i)])
@@ -69,7 +74,8 @@
 
 struct pcsc_global_private_data {
 	SCARDCONTEXT pcsc_ctx;
-	int apdu_fix;  /* flag to indicate whether to 'fix' some T=0 APDUs */
+	int apdu_masquerade;  /* bitmask to indicate whether to 
+				 'fix' some T=0 APDUs */
 };
 
 struct pcsc_private_data {
@@ -138,8 +144,10 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	DWORD dwSendLength, dwRecvLength;
 	LONG rv;
 	SCARDHANDLE card;
+	char masqueraded_apdu[5];
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	struct pcsc_private_data *prv = GET_PRIV_DATA(reader);
+	int protocol = slot->active_protocol;
 
 	assert(pslot != NULL);
 	card = pslot->pcsc_card;
@@ -149,8 +157,8 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	sRecvPci.dwProtocol = opensc_proto_to_pcsc(slot->active_protocol);
 	sRecvPci.cbPciLength = sizeof(sRecvPci);
 	
-	if (prv->gpriv->apdu_fix && sendsize >= 6
-	 && slot->active_protocol == SC_PROTO_T0) {
+	if (sendsize >= 6
+	 && DO_MASQ(prv, MASQUERADE_4AS3) && protocol == SC_PROTO_T0) {
 		/* Check if the APDU in question is of Case 4 */
 		const u8 *p = sendbuf;
 		int lc;
@@ -161,11 +169,28 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 			lc = 256;
 		if (sendsize == lc + 6) {
 			/* Le is present, cut it out */
-			sc_debug(reader->ctx, "Cutting out Le byte from Case 4 APDU\n");
+			if (reader->ctx->debug >= 5) {
+				sc_debug(reader->ctx,
+					"Removing Le byte from Case 4 APDU\n");
+			}
 			sendsize--;
 		}
 	}
-	
+
+	/* Masquerading case 1 APDUs */
+	if (sendsize == 4
+	 && (DO_MASQ(prv, MASQUERADE_1AS2_ALWAYS)
+	  || (DO_MASQ(priv, MASQUERADE_1AS2) && protocol == SC_PROTO_T0))) {
+		if (reader->ctx->debug >= 5) {
+			sc_debug(reader->ctx,
+				"Adding Lc byte to Case 1 APDU\n");
+		}
+		memcpy(masqueraded_apdu, sendbuf, 4);
+		masqueraded_apdu[4] = 0;
+		sendbuf = masqueraded_apdu;
+		sendsize = 5;
+	}
+
 	dwSendLength = sendsize;
 	dwRecvLength = *recvsize;
 
@@ -516,7 +541,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	gpriv->pcsc_ctx = pcsc_ctx;
-	gpriv->apdu_fix = DEF_APDU_FIX;
+	gpriv->apdu_masquerade = DEF_APDU_MASQ;
 	*reader_data = gpriv;
 	
 	reader_buf = (char *) malloc(sizeof(char) * reader_buf_size);
@@ -573,8 +598,30 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 			break;
 	}
 
-	if (conf_block != NULL)
-		gpriv->apdu_fix = scconf_get_bool(conf_block, "apdu_fix", DEF_APDU_FIX);
+	if (conf_block != NULL) {
+		const scconf_list *list;
+
+		gpriv->apdu_masquerade = 0;
+
+		list = scconf_find_list(conf_block, "apdu_masquerade");
+		for (; list; list = list->next) {
+			if (!strcmp(list->data, "case4as3")) {
+				gpriv->apdu_masquerade |= MASQUERADE_4AS3;
+			} else if (!strcmp(list->data, "case1as2")) {
+				gpriv->apdu_masquerade |= MASQUERADE_1AS2;
+			} else if (!strcmp(list->data, "case1as2_always")) {
+				gpriv->apdu_masquerade |= MASQUERADE_1AS2_ALWAYS;
+			} else if (!strcmp(list->data, "none")) {
+				gpriv->apdu_masquerade = 0;
+			} else {
+				/* no match. Should something be logged? */
+				sc_error(ctx,
+					"Unexpected keyword \"%s\" in "
+					"apdu_masquerade; ignored\n",
+					list->data);
+			}
+		}
+	}
 	
 	return 0;
 }
