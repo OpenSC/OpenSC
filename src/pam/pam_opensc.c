@@ -58,7 +58,7 @@ static void logmsg(scam_context * sctx, char *str)
 	scam_msg_data *msg = (scam_msg_data *) sctx->msg_data;
 
 	if (msg->pamh)
-		opensc_pam_log(LOG_NOTICE, msg->pamh, str);
+		opensc_pam_log(LOG_NOTICE, msg->pamh, "%s", str);
 }
 
 static void usage(void)

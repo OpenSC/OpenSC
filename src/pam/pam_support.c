@@ -40,7 +40,7 @@
 
 void opensc_pam_log(int err, pam_handle_t * pamh, const char *format,...)
 {
-	char logname[256], buf[256], *service = NULL;
+	char logname[256], *service = NULL;
 	va_list args;
 
 	pam_get_item(pamh, PAM_SERVICE, (PAM_CONST void **) &service);
@@ -52,12 +52,20 @@ void opensc_pam_log(int err, pam_handle_t * pamh, const char *format,...)
 		strncpy(logname, "pam_opensc", sizeof(logname) - 1);
 	}
 
-	memset(buf, 0, sizeof(buf));
-	va_start(args, format);
-	vsnprintf(buf, sizeof(buf), format, args);
-	va_end(args);
 	openlog(logname, LOG_CONS | LOG_PID, LOG_AUTH);
-	syslog(err, buf);
+#ifdef HAVE_VSYSLOG
+	vsyslog(err, format, args);
+#else
+	{
+		char	buf[256];
+
+		memset(buf, 0, sizeof(buf));
+		va_start(args, format);
+		vsnprintf(buf, sizeof(buf), format, args);
+		va_end(args);
+		syslog(err, "%s", buf);
+	}
+#endif
 	closelog();
 }
 
