@@ -28,38 +28,65 @@
 #include <errno.h>
 #include "scconf.h"
 
-void print_ldap_block(scconf_context * conf, scconf_block * block)
+static scconf_entry ldap_entry[] =
 {
-	scconf_block **blocks = NULL;
-	unsigned int i;
+	{"ldaphost", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+	{"ldapport", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+	{"scope", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+	{"binddn", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+	{"passwd", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+	{"base", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+	{"attributes", SCCONF_LIST, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+	{"filter", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+	{NULL}
+};
 
-	blocks = scconf_find_blocks(conf, block, "ldap", NULL);
-	for (i = 0; blocks[i]; i++) {
-		const scconf_block *block = blocks[i];
-		const scconf_list *list, *tmp;
+static int ldap_cb(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
+{
+	char *cardprefix = (char *) entry->arg;
+	char *str = scconf_list_strdup(block->name, " ");
 
-		printf("LDAP entry[%s]\n", block->name->data);
-		printf("ldaphost: %s\n", scconf_get_str(block, "ldaphost", NULL));
-		printf("ldapport: %s\n", scconf_get_str(block, "ldapport", NULL));
-		printf("scope: %s\n", scconf_get_str(block, "scope", NULL));
-		printf("binddn: %s\n", scconf_get_str(block, "binddn", NULL));
-		printf("passwd: %s\n", scconf_get_str(block, "passwd", NULL));
-		printf("base: %s\n", scconf_get_str(block, "base", NULL));
-		printf("attributes: [");
-		list = scconf_find_list(block, "attributes");
-		for (tmp = list; tmp; tmp = tmp->next) {
-			printf(" %s", tmp->data);
-		}
-		printf(" ]\n");
-		printf("filter: %s\n", scconf_get_str(block, "filter", NULL));
-		printf("\n");
+	if (!str)
+		return 1;
+	printf("LDAP entry[%s%s%s]\n", cardprefix ? cardprefix : "", cardprefix ? " " : "", str);
+	free(str);
+	if (scconf_parse_entries(config, block, ldap_entry) != 0) {
+		printf("scconf_parse_entries failed\n");
+		return 1;
 	}
-	free(blocks);
+	return 0;		/* 0 for ok, 1 for error */
+}
+
+static int card_cb(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
+{
+	char *str = scconf_list_strdup(block->name, " ");
+	scconf_entry card_entry[] =
+	{
+		{"ldap", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_VERBOSE | SCCONF_ALL_BLOCKS, (void *) ldap_cb, str},
+		{NULL}
+	};
+
+	if (!str)
+		return 1;
+	printf("CARD entry[%s]\n", str);
+	if (scconf_parse_entries(config, block, card_entry) != 0) {
+		printf("scconf_parse_entries failed\n");
+		free(str);
+		return 1;
+	}
+	free(str);
+	return 0;		/* 0 for ok, 1 for error */
 }
 
 int main(int argc, char **argv)
 {
 	scconf_context *conf = NULL;
+	scconf_entry entry[] =
+	{
+		{"ldap", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_VERBOSE | SCCONF_ALL_BLOCKS, (void *) ldap_cb},
+		{"card", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_VERBOSE | SCCONF_ALL_BLOCKS, (void *) card_cb},
+		{NULL}
+	};
 	char *in = NULL, *out = NULL;
 	int r;
 
@@ -80,9 +107,12 @@ int main(int argc, char **argv)
 		scconf_free(conf);
 		return 1;
 	}
-	/* See if the file contains any ldap configuration blocks */
-	print_ldap_block(conf, NULL);
-
+	conf->debug = 1;
+	if (scconf_parse_entries(conf, NULL, entry) != 0) {
+		printf("scconf_parse_entries failed\n");
+		scconf_free(conf);
+		return 1;
+	}
 	if ((r = scconf_write(conf, out)) != 0) {
 		printf("scconf_write: %s\n", strerror(r));
 	} else {

@@ -278,6 +278,8 @@ char *scconf_list_strdup(const scconf_list * list, const char *filler)
 		}
 		list = list->next;
 	}
+	if (filler)
+		buf[strlen(buf) - strlen(filler)] = '\0';
 	return buf;
 }
 
@@ -329,7 +331,7 @@ static int parse_type(scconf_context * config, const scconf_block * block, sccon
 				}
 			}
 			if (entry->flags & SCCONF_VERBOSE) {
-				char *buf = scconf_list_strdup(val, ";");
+				char *buf = scconf_list_strdup(val, ", ");
 				printf("%s = %s\n", entry->name, buf);
 				free(buf);
 			}
@@ -390,10 +392,10 @@ static int parse_type(scconf_context * config, const scconf_block * block, sccon
 		}
 		break;
 	default:
-		fprintf(stderr, "invalid scconf type: %d\n", entry->type);
+		fprintf(stderr, "invalid configuration type: %d\n", entry->type);
 	}
 	if (r) {
-		fprintf(stderr, "decoding of scconf entry '%s' failed.\n", entry->name);
+		fprintf(stderr, "decoding of configuration entry '%s' failed.\n", entry->name);
 		return r;
 	}
 	entry->flags |= SCCONF_PRESENT;
@@ -420,6 +422,8 @@ static scconf_block **getblocks(scconf_context * config, const scconf_block * bl
 			fprintf(stderr, "list found (%s)\n", entry->name);
 		}
 		blocks = realloc(blocks, sizeof(scconf_block *) * 2);
+		if (!blocks)
+			return NULL;
 		blocks[0] = (scconf_block *) block;
 		blocks[1] = NULL;
 	}
@@ -439,14 +443,14 @@ static int parse_entries(scconf_context * config, const scconf_block * block, sc
 		e = &entry[idx];
 		r = 0;
 		blocks = getblocks(config, block, e);
-		if (!blocks || !*blocks) {
+		if (!blocks) {
 			if (e->flags & SCCONF_OPTIONAL) {
 				if (config->debug)
-					fprintf(stderr, "optional scconf entry '%s' not present\n",
+					fprintf(stderr, "optional configuration entry '%s' not present\n",
 						e->name);
 				continue;
 			}
-			fprintf(stderr, "mandatory scconf entry '%s' not found\n", e->name);
+			fprintf(stderr, "mandatory configuration entry '%s' not found\n", e->name);
 			return 1;
 		}
 		for (i = 0; blocks[i]; i++) {
