@@ -1683,30 +1683,10 @@ select_id(sc_pkcs15_card_t *p15card, int type, sc_pkcs15_id_t *id,
 	unsigned int nid = DEFAULT_ID;
 	sc_pkcs15_id_t unused_id;
 	struct sc_pkcs15_object *obj;
-	int (*func)(struct sc_pkcs15_card *,
-			const struct sc_pkcs15_id *,
-			struct sc_pkcs15_object **);
 	int r;
 
 	if (reuse_obj)
 		*reuse_obj = NULL;
-
-	switch (type) {
-	case SC_PKCS15_TYPE_PRKEY:
-		func = sc_pkcs15_find_prkey_by_id;
-		break;
-	case SC_PKCS15_TYPE_PUBKEY:
-		func = sc_pkcs15_find_pubkey_by_id;
-		break;
-	case SC_PKCS15_TYPE_CERT:
-		func = sc_pkcs15_find_cert_by_id;
-		break;
-	case SC_PKCS15_TYPE_DATA_OBJECT:
-		func = sc_pkcs15_find_data_object_by_id;
-		break;
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
 
 	/* If the user provided an ID, make sure we can use it */
 	if (id->len != 0) {
