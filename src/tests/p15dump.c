@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	sc_lock(card);
 	i = sc_pkcs15_bind(card, &p15card);
-	sc_unlock(card);
+	/* Keep card locked to prevent useless calls to sc_logout */
 	if (i) {
 		fprintf(stderr, "failed: %s\n", sc_strerror(i));
 		return 1;
@@ -78,6 +78,7 @@ int main(int argc, char *argv[])
 	dump_objects("data objects", SC_PKCS15_TYPE_DATA_OBJECT);
 
 	sc_pkcs15_unbind(p15card);
+	sc_unlock(card);
 	sc_test_cleanup();
 	return 0;
 }
