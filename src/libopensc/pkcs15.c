@@ -305,8 +305,11 @@ int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 
 static const struct sc_asn1_entry c_asn1_odf[] = {
 	{ "privateKeys",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, NULL },
+	{ "publicKeys",		 SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, 0, NULL },
+	{ "trustedPublicKeys",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 2 | SC_ASN1_CONS, 0, NULL },
 	{ "certificates",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 4 | SC_ASN1_CONS, 0, NULL },
 	{ "trustedCertificates", SC_ASN1_STRUCT, SC_ASN1_CTX | 5 | SC_ASN1_CONS, 0, NULL },
+	{ "usefulCertificates",  SC_ASN1_STRUCT, SC_ASN1_CTX | 6 | SC_ASN1_CONS, 0, NULL },
 	{ "dataObjects",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 7 | SC_ASN1_CONS, 0, NULL },
 	{ "authObjects",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 8 | SC_ASN1_CONS, 0, NULL },
 	{ NULL }
@@ -314,8 +317,11 @@ static const struct sc_asn1_entry c_asn1_odf[] = {
 
 static const int odf_indexes[] = {
 	SC_PKCS15_PRKDF,
+	SC_PKCS15_PUKDF,
+	SC_PKCS15_PUKDF_TRUSTED,
 	SC_PKCS15_CDF,
 	SC_PKCS15_CDF_TRUSTED,
+	SC_PKCS15_CDF_USEFUL,
 	SC_PKCS15_DODF,
 	SC_PKCS15_AODF,
 };
@@ -330,7 +336,7 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path },
 		{ NULL }
 	};
-	struct sc_asn1_entry asn1_odf[6];
+	struct sc_asn1_entry asn1_odf[9];
 	
 	sc_copy_asn1_entry(c_asn1_odf, asn1_odf);
 	for (i = 0; asn1_odf[i].name != NULL; i++)
@@ -593,6 +599,148 @@ int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 	return 0;
 }
 
+int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, int type,
+			       int (* func)(struct sc_pkcs15_object *, void *),
+                               void *func_arg,
+			       struct sc_pkcs15_object **ret, int ret_size)
+{
+	const int prkey_df[] = { SC_PKCS15_PRKDF, -1 };
+	const int pubkey_df[] = { SC_PKCS15_PUKDF, SC_PKCS15_PUKDF_TRUSTED, -1 };
+	const int cert_df[] = { SC_PKCS15_CDF, SC_PKCS15_CDF_TRUSTED, SC_PKCS15_CDF_USEFUL, -1 };
+	const int auth_df[] = { SC_PKCS15_AODF, -1 };
+	const int *dfs;
+	int count = 0, i, r;
+	
+	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
+	case SC_PKCS15_TYPE_PRKEY:
+		dfs = prkey_df;
+		break;
+	case SC_PKCS15_TYPE_PUBKEY:
+		dfs = pubkey_df;
+		break;
+	case SC_PKCS15_TYPE_CERT:
+		dfs = cert_df;
+		break;
+	case SC_PKCS15_TYPE_AUTH:
+		dfs = auth_df;
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	for (i = 0; dfs[i] != -1; i++) {
+		int j;
+		struct sc_pkcs15_df *df = &p15card->df[dfs[i]];
+
+		if (!df->enumerated) {
+			r = sc_lock(p15card->card);
+			SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
+			for (j = 0; j < df->count; j++) {
+				r = sc_pkcs15_parse_df(p15card, df, j);
+				if (r < 0)
+					break;
+			}
+			sc_unlock(p15card->card);
+			SC_TEST_RET(p15card->card->ctx, r, "DF parsing failed");
+			df->enumerated = 1;
+		}
+		for (j = 0; j < df->count; j++) {
+			struct sc_pkcs15_object *obj = df->obj[j];
+			
+			for (; obj != NULL; obj = obj->next) {
+				if (obj->type != type)
+					continue;
+				if (func != NULL && func(obj, func_arg) <= 0)
+					continue;
+				count++;
+			}
+		}
+	}
+	if (count == 0)
+		return 0;
+	if (ret_size <= 0)
+		return count;
+	count = 0;
+	for (i = 0; dfs[i] != -1; i++) {
+		int j;
+		struct sc_pkcs15_df *df = &p15card->df[dfs[i]];
+
+		for (j = 0; j < df->count && count < ret_size; j++) {
+			struct sc_pkcs15_object *obj = df->obj[j];
+
+			for (; obj != NULL; obj = obj->next) {
+				if (count >= ret_size)
+					break;
+				if (obj->type != type)
+					continue;
+				if (func != NULL && func(obj, func_arg) <= 0)
+					continue;
+				ret[count] = obj;
+				count++;
+			}
+		}
+	}
+	return count;
+}
+
+int sc_pkcs15_get_objects(struct sc_pkcs15_card *p15card, int type,
+			  struct sc_pkcs15_object **ret, int ret_size)
+{
+        return sc_pkcs15_get_objects_cond(p15card, type, NULL, NULL, ret, ret_size);
+}
+
+static int compare_obj_id(struct sc_pkcs15_object *obj, void *arg)
+{
+	void *data = obj->data;
+	const struct sc_pkcs15_id *id = arg;
+	
+	switch (obj->type) {
+	case SC_PKCS15_TYPE_CERT_X509:
+		return sc_pkcs15_compare_id(&((struct sc_pkcs15_cert_info *) data)->id, id);
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+		return sc_pkcs15_compare_id(&((struct sc_pkcs15_prkey_info *) data)->id, id);
+	case SC_PKCS15_TYPE_PUBKEY_RSA:
+		return sc_pkcs15_compare_id(&((struct sc_pkcs15_pubkey_info *) data)->id, id);
+	case SC_PKCS15_TYPE_AUTH_PIN:
+		return sc_pkcs15_compare_id(&((struct sc_pkcs15_pin_info *) data)->auth_id, id);
+	}
+	return 0;
+}
+
+static int find_by_id(struct sc_pkcs15_card *p15card,
+		      int type, const struct sc_pkcs15_id *id,
+		      struct sc_pkcs15_object **out)
+{
+	int r;
+	
+	r = sc_pkcs15_get_objects_cond(p15card, type, compare_obj_id, (void *) id, out, 1);
+	if (r < 0)
+		return r;
+	if (r == 0)
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	return 0;
+}
+
+int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *p15card,
+			      const struct sc_pkcs15_id *id,
+			      struct sc_pkcs15_object **out)
+{
+	return find_by_id(p15card, SC_PKCS15_TYPE_CERT_X509, id, out);
+}
+
+int sc_pkcs15_find_prkey_by_id(struct sc_pkcs15_card *p15card,
+			       const struct sc_pkcs15_id *id,
+			       struct sc_pkcs15_object **out)
+{
+	return find_by_id(p15card, SC_PKCS15_TYPE_PRKEY_RSA, id, out);
+}
+
+int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *p15card,
+			     const struct sc_pkcs15_id *id,
+			     struct sc_pkcs15_object **out)
+{
+	return find_by_id(p15card, SC_PKCS15_TYPE_AUTH_PIN, id, out);
+}
+
 int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df,
                          int file_nr, struct sc_pkcs15_object *obj)
 {
@@ -624,6 +772,10 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 	switch (df->type) {
 	case SC_PKCS15_PRKDF:
 		func = sc_pkcs15_encode_prkdf_entry;
+		break;
+	case SC_PKCS15_PUKDF:
+	case SC_PKCS15_PUKDF_TRUSTED:
+		func = sc_pkcs15_encode_pukdf_entry;
 		break;
 	case SC_PKCS15_CDF:
 	case SC_PKCS15_CDF_TRUSTED:
@@ -854,18 +1006,23 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		struct sc_file *file = NULL;
 		size_t file_size;
 
+		r = sc_lock(p15card->card);
+		SC_TEST_RET(ctx, r, "sc_lock() failed");
 		r = sc_select_file(p15card->card, &path, &file);
 		if (r) {
 			sc_perror(ctx, r, "sc_select_file() failed");
+			sc_unlock(p15card->card);
 			return r;
 		}
 		file_size = file->size;
 		sc_file_free(file);
 		if (file_size > sizeof(buf)) {
 			error(ctx, "Buffer too small to handle DF contents\n");
+			sc_unlock(p15card->card);
 			return SC_ERROR_INTERNAL;
 		}
 		r = sc_read_binary(p15card->card, 0, buf, file_size, 0);
+		sc_unlock(p15card->card);
 		if (r < 0)
 			return r;
 		bufsize = file_size;

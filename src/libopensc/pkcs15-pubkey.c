@@ -1,7 +1,7 @@
 /*
- * pkcs15-prkey.c: PKCS #15 private key functions
+ * pkcs15-pubkey.c: PKCS #15 public key functions
  *
- * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -36,7 +36,7 @@ static const struct sc_asn1_entry c_asn1_com_key_attr[] = {
 	{ NULL }
 };
 
-static const struct sc_asn1_entry c_asn1_com_prkey_attr[] = {
+static const struct sc_asn1_entry c_asn1_com_pubkey_attr[] = {
         /* FIXME */
 	{ NULL }
 };
@@ -53,33 +53,33 @@ static const struct sc_asn1_entry c_asn1_type_attr[] = {
 	{ NULL }
 };
 
-static const struct sc_asn1_entry c_asn1_prkey[] = {
-	{ "privateRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+static const struct sc_asn1_entry c_asn1_pubkey[] = {
+	{ "publicRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
 	{ NULL }
 };		
 
-int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
+int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 				 struct sc_pkcs15_object *obj,
 				 const u8 ** buf, size_t *buflen)
 {
         struct sc_context *ctx = p15card->card->ctx;
-        struct sc_pkcs15_prkey_info info;
+        struct sc_pkcs15_pubkey_info info;
 	int r;
 	int usage_len = sizeof(info.usage);
 	int af_len = sizeof(info.access_flags);
-	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[1];
+	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_pubkey_attr[1];
 	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_type_attr[2];
-	struct sc_asn1_entry asn1_prkey[2];
-	struct sc_asn1_pkcs15_object prkey_obj = { obj, asn1_com_key_attr,
-						    asn1_com_prkey_attr, asn1_type_attr };
+	struct sc_asn1_entry asn1_pubkey[2];
+	struct sc_asn1_pkcs15_object pubkey_obj = { obj, asn1_com_key_attr,
+						    asn1_com_pubkey_attr, asn1_type_attr };
 
-        sc_copy_asn1_entry(c_asn1_prkey, asn1_prkey);
+        sc_copy_asn1_entry(c_asn1_pubkey, asn1_pubkey);
         sc_copy_asn1_entry(c_asn1_type_attr, asn1_type_attr);
         sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
-        sc_copy_asn1_entry(c_asn1_com_prkey_attr, asn1_com_prkey_attr);
+        sc_copy_asn1_entry(c_asn1_com_pubkey_attr, asn1_com_pubkey_attr);
         sc_copy_asn1_entry(c_asn1_com_key_attr, asn1_com_key_attr);
 
-	sc_format_asn1_entry(asn1_prkey + 0, &prkey_obj, NULL, 0);
+	sc_format_asn1_entry(asn1_pubkey + 0, &pubkey_obj, NULL, 0);
 
 	sc_format_asn1_entry(asn1_type_attr + 0, asn1_rsakey_attr, NULL, 0);
 
@@ -97,11 +97,11 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	info.key_reference = -1;
 	info.native = 1;
 
-	r = sc_asn1_decode(ctx, asn1_prkey, *buf, *buflen, buf, buflen);
+	r = sc_asn1_decode(ctx, asn1_pubkey, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
 	SC_TEST_RET(ctx, r, "ASN.1 decoding failed");
-	obj->type = SC_PKCS15_TYPE_PRKEY_RSA;
+	obj->type = SC_PKCS15_TYPE_PUBKEY_RSA;
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
@@ -109,46 +109,46 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 
 	return 0;
 }
-int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
+int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 				 const struct sc_pkcs15_object *obj,
 				 u8 **buf, size_t *buflen)
 {
-	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[1];
+	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_pubkey_attr[1];
 	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_type_attr[2];
-	struct sc_asn1_entry asn1_prkey[2];
-	struct sc_pkcs15_prkey_info *prkey =
-                (struct sc_pkcs15_prkey_info *) obj->data;
-	struct sc_asn1_pkcs15_object prkey_obj = { (struct sc_pkcs15_object *) obj,
-						   asn1_com_key_attr,
-						   asn1_com_prkey_attr, asn1_type_attr };
+	struct sc_asn1_entry asn1_pubkey[2];
+	struct sc_pkcs15_pubkey_info *pubkey =
+                (struct sc_pkcs15_pubkey_info *) obj->data;
+	struct sc_asn1_pkcs15_object pubkey_obj = { (struct sc_pkcs15_object *) obj,
+						    asn1_com_key_attr,
+						    asn1_com_pubkey_attr, asn1_type_attr };
 	int r;
 	int af_len, usage_len;
 
-        sc_copy_asn1_entry(c_asn1_prkey, asn1_prkey);
+        sc_copy_asn1_entry(c_asn1_pubkey, asn1_pubkey);
         sc_copy_asn1_entry(c_asn1_type_attr, asn1_type_attr);
         sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
-        sc_copy_asn1_entry(c_asn1_com_prkey_attr, asn1_com_prkey_attr);
+        sc_copy_asn1_entry(c_asn1_com_pubkey_attr, asn1_com_pubkey_attr);
         sc_copy_asn1_entry(c_asn1_com_key_attr, asn1_com_key_attr);
 
-	sc_format_asn1_entry(asn1_prkey + 0, &prkey_obj, NULL, 1);
+	sc_format_asn1_entry(asn1_pubkey + 0, &pubkey_obj, NULL, 1);
 
 	sc_format_asn1_entry(asn1_type_attr + 0, asn1_rsakey_attr, NULL, 1);
 
-	sc_format_asn1_entry(asn1_rsakey_attr + 0, &prkey->path, NULL, 1);
-	sc_format_asn1_entry(asn1_rsakey_attr + 1, &prkey->modulus_length, NULL, 1);
+	sc_format_asn1_entry(asn1_rsakey_attr + 0, &pubkey->path, NULL, 1);
+	sc_format_asn1_entry(asn1_rsakey_attr + 1, &pubkey->modulus_length, NULL, 1);
 
-	sc_format_asn1_entry(asn1_com_key_attr + 0, &prkey->id, NULL, 1);
-	usage_len = _sc_count_bit_string_size(&prkey->usage, sizeof(prkey->usage));
-	sc_format_asn1_entry(asn1_com_key_attr + 1, &prkey->usage, &usage_len, 1);
-	if (prkey->native == 0)
-		sc_format_asn1_entry(asn1_com_key_attr + 2, &prkey->native, NULL, 1);
-	if (prkey->access_flags) {
-		af_len = _sc_count_bit_string_size(&prkey->access_flags, sizeof(prkey->access_flags));
-		sc_format_asn1_entry(asn1_com_key_attr + 3, &prkey->access_flags, &af_len, 1);
+	sc_format_asn1_entry(asn1_com_key_attr + 0, &pubkey->id, NULL, 1);
+	usage_len = _sc_count_bit_string_size(&pubkey->usage, sizeof(pubkey->usage));
+	sc_format_asn1_entry(asn1_com_key_attr + 1, &pubkey->usage, &usage_len, 1);
+	if (pubkey->native == 0)
+		sc_format_asn1_entry(asn1_com_key_attr + 2, &pubkey->native, NULL, 1);
+	if (pubkey->access_flags) {
+		af_len = _sc_count_bit_string_size(&pubkey->access_flags, sizeof(pubkey->access_flags));
+		sc_format_asn1_entry(asn1_com_key_attr + 3, &pubkey->access_flags, &af_len, 1);
 	}
-	if (prkey->key_reference >= 0)
-		sc_format_asn1_entry(asn1_com_key_attr + 4, &prkey->key_reference, NULL, 1);
-	r = sc_asn1_encode(ctx, asn1_prkey, buf, buflen);
+	if (pubkey->key_reference >= 0)
+		sc_format_asn1_entry(asn1_com_key_attr + 4, &pubkey->key_reference, NULL, 1);
+	r = sc_asn1_encode(ctx, asn1_pubkey, buf, buflen);
 
 	return r;
 }

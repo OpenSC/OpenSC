@@ -1087,9 +1087,11 @@ int add_object(struct sc_pkcs15_card *p15card,
 
 int create_pkcs15()
 {
+#if 0
 	struct sc_pkcs15_card *p15card;
 	struct sc_file *file;
-        struct sc_path path;
+	struct sc_path path;
+        struct sc_pkcs15_object obj;
 	struct sc_pkcs15_cert_info cert;
 	struct sc_pkcs15_pin_info pin;
         struct sc_pkcs15_prkey_info prkey;
@@ -1223,6 +1225,7 @@ int create_pkcs15()
 		fprintf(stderr, "PKCS #15 structure creation failed: %s\n", sc_strerror(r));
 		return 1;
 	}
+#endif
 	return 0;
 }
 

@@ -159,7 +159,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 	for (i = 0; i < SC_MAX_READER_DRIVERS+1; i++)
 		ctx->reader_drivers[i] = NULL;
 	i = 0;
-#if 1
+#if 1 && defined(HAVE_LIBPCSCLITE)
 	ctx->reader_drivers[i++] = sc_get_pcsc_driver();
 #endif
 	i = 0;

@@ -74,20 +74,38 @@ struct sc_context *ctx = NULL;
 struct sc_card *card = NULL;
 struct sc_pkcs15_card *p15card = NULL;
 
+void print_cert_info(const struct sc_pkcs15_object *obj)
+{
+	int i;
+        struct sc_pkcs15_cert_info *cert = (struct sc_pkcs15_cert_info *) obj->data;
+
+	printf("X.509 Certificate [%s]\n", obj->label);
+	printf("\tFlags    : %d\n", obj->flags);
+	printf("\tAuthority: %s\n", cert->authority ? "yes" : "no");
+	printf("\tPath     : ");
+	for (i = 0; i < cert->path.len; i++)
+		printf("%02X", cert->path.value[i]);
+	printf("\n");
+	printf("\tID       : ");
+	sc_pkcs15_print_id(&cert->id);
+	printf("\n");
+}
+
+
 int list_certificates(void)
 {
 	int r, i;
+        struct sc_pkcs15_object *objs[32];
 	
-	r = sc_pkcs15_enum_certificates(p15card);
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, 32);
 	if (r < 0) {
 		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
 	if (!quiet)
-		printf("Card has %d certificate(s).\n\n", p15card->cert_count);
-	for (i = 0; i < p15card->cert_count; i++) {
-		struct sc_pkcs15_cert_info *cinfo = &p15card->cert_info[i];
-		sc_pkcs15_print_cert_info(cinfo);
+		printf("Card has %d certificate(s).\n\n", r);
+	for (i = 0; i < r; i++) {
+		print_cert_info(objs[i]);
 		printf("\n");
 	}
 	return 0;
@@ -123,20 +141,21 @@ int print_pem_certificate(struct sc_pkcs15_cert *cert)
 
 int read_certificate(void)
 {
-	int r, i;
+	int r, i, count;
 	struct sc_pkcs15_id id;
+	struct sc_pkcs15_object *objs[32];
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
 	sc_pkcs15_hex_string_to_id(opt_cert, &id);
-
-	r = sc_pkcs15_enum_certificates(p15card);
+	
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, 32);
 	if (r < 0) {
 		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	
-	for (i = 0; i < p15card->cert_count; i++) {
-		struct sc_pkcs15_cert_info *cinfo = &p15card->cert_info[i];
+	count = r;
+	for (i = 0; i < count; i++) {
+		struct sc_pkcs15_cert_info *cinfo = objs[i]->data;
 		struct sc_pkcs15_cert *cert;
 
 		if (sc_pkcs15_compare_id(&id, &cinfo->id) != 1)
@@ -157,37 +176,131 @@ int read_certificate(void)
 	return 2;
 }
 
+void print_prkey_info(const struct sc_pkcs15_object *obj)
+{
+	int i;
+        struct sc_pkcs15_prkey_info *prkey = (struct sc_pkcs15_prkey_info *) obj->data;
+	const char *usages[] = {
+		"encrypt", "decrypt", "sign", "signRecover",
+		"wrap", "unwrap", "verify", "verifyRecover",
+		"derive", "nonRepudiation"
+	};
+	const int usage_count = sizeof(usages)/sizeof(usages[0]);
+	const char *access_flags[] = {
+		"sensitive", "extract", "alwaysSensitive",
+		"neverExtract", "local"
+	};
+	const int af_count = sizeof(access_flags)/sizeof(access_flags[0]);
+
+	printf("Private RSA Key [%s]\n", obj->label);
+	printf("\tCom. Flags  : %X\n", obj->flags);
+	printf("\tUsage       : [0x%X]", prkey->usage);
+        for (i = 0; i < usage_count; i++)
+                if (prkey->usage & (1 << i)) {
+                        printf(", %s", usages[i]);
+                }
+	printf("\n");
+	printf("\tAccess Flags: [0x%X]", prkey->access_flags);
+        for (i = 0; i < af_count; i++)
+                if (prkey->access_flags & (1 << i)) {
+                        printf(", %s", access_flags[i]);   
+                }
+        printf("\n");
+	printf("\tModLength   : %d\n", prkey->modulus_length);
+	printf("\tKey ref     : %d\n", prkey->key_reference);
+	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");
+	printf("\tPath        : ");
+	for (i = 0; i < prkey->path.len; i++)
+		printf("%02X", prkey->path.value[i]);
+	printf("\n");
+	printf("\tAuth ID     : ");
+	sc_pkcs15_print_id(&obj->auth_id);
+	printf("\n");
+	printf("\tID          : ");
+	sc_pkcs15_print_id(&prkey->id);
+	printf("\n");
+}
+
+
 int list_private_keys(void)
 {
 	int r, i;
+        struct sc_pkcs15_object *objs[32];
 	
-	r = sc_pkcs15_enum_private_keys(p15card);
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY_RSA, objs, 32);
 	if (r < 0) {
 		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
 	if (!quiet)
-		printf("Card has %d private key(s).\n\n", p15card->prkey_count);
-	for (i = 0; i < p15card->prkey_count; i++) {
-		struct sc_pkcs15_prkey_info *pinfo = &p15card->prkey_info[i];
-		sc_pkcs15_print_prkey_info(pinfo);
+		printf("Card has %d private key(s).\n\n", r);
+	for (i = 0; i < r; i++) {
+		print_prkey_info(objs[i]);
 		printf("\n");
 	}
 	return 0;
 }
+
+void print_pubkey_info(const struct sc_pkcs15_object *obj)
+{
+	int i;
+        const struct sc_pkcs15_pubkey_info *pubkey = (const struct sc_pkcs15_pubkey_info *) obj->data;
+	const char *usages[] = {
+		"encrypt", "decrypt", "sign", "signRecover",
+		"wrap", "unwrap", "verify", "verifyRecover",
+		"derive", "nonRepudiation"
+	};
+	const int usage_count = sizeof(usages)/sizeof(usages[0]);
+	const char *access_flags[] = {
+		"sensitive", "extract", "alwaysSensitive",
+		"neverExtract", "local"
+	};
+	const int af_count = sizeof(access_flags)/sizeof(access_flags[0]);
+
+	printf("Public RSA Key [%s]\n", obj->label);
+	printf("\tCom. Flags  : %X\n", obj->flags);
+	printf("\tUsage       : [0x%X]", pubkey->usage);
+        for (i = 0; i < usage_count; i++)
+                if (pubkey->usage & (1 << i)) {
+                        printf(", %s", usages[i]);
+                }
+	printf("\n");
+	printf("\tAccess Flags: [0x%X]", pubkey->access_flags);
+        for (i = 0; i < af_count; i++)
+                if (pubkey->access_flags & (1 << i)) {
+                        printf(", %s", access_flags[i]);   
+                }
+        printf("\n");
+	printf("\tModLength   : %d\n", pubkey->modulus_length);
+	printf("\tKey ref     : %d\n", pubkey->key_reference);
+	printf("\tNative      : %s\n", pubkey->native ? "yes" : "no");
+	printf("\tPath        : ");
+	for (i = 0; i < pubkey->path.len; i++)
+		printf("%02X", pubkey->path.value[i]);
+	printf("\n");
+	printf("\tAuth ID     : ");
+	sc_pkcs15_print_id(&obj->auth_id);
+	printf("\n");
+	printf("\tID          : ");
+	sc_pkcs15_print_id(&pubkey->id);
+	printf("\n");
+}
+
+
 
 u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
 {
 	int r;
 	char buf[80];
 	char *pincode;
-	struct sc_pkcs15_pin_info *pinfo;
+        struct sc_pkcs15_object *objs[32], *obj;
+	struct sc_pkcs15_pin_info *pinfo = NULL;
 	
 	if (pin_out != NULL)
 		pinfo = *pin_out;
-		
+
 	if (pinfo == NULL && opt_pin_id == NULL) {
-		r = sc_pkcs15_enum_pins(p15card);
+                r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 		if (r < 0) {
 			fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
 			return NULL;
@@ -196,22 +309,24 @@ u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
 			fprintf(stderr, "No PIN codes found.\n");
 			return NULL;
 		}
-		pinfo = &p15card->pin_info[0];
+                obj = objs[0];
+		pinfo = obj->data;
 	} else if (pinfo == NULL) {
 		struct sc_pkcs15_id pin_id;
 		
 		sc_pkcs15_hex_string_to_id(opt_pin_id, &pin_id);
-		r = sc_pkcs15_find_pin_by_auth_id(p15card, &pin_id, &pinfo);
+		r = sc_pkcs15_find_pin_by_auth_id(p15card, &pin_id, &obj);
 		if (r) {
 			fprintf(stderr, "Unable to find PIN code: %s\n", sc_strerror(r));
 			return NULL;
 		}
+		pinfo = obj->data;
 	}
 	
 	if (pin_out != NULL)
 		*pin_out = pinfo;
-		
-	sprintf(buf, "%s [%s]: ", prompt, pinfo->com_attr.label);
+
+	sprintf(buf, "%s [%s]: ", prompt, obj->label);
 	while (1) {
 		pincode = getpass(buf);
 		if (strlen(pincode) == 0)
@@ -228,20 +343,59 @@ u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
 	}
 }
 
+void print_pin_info(const struct sc_pkcs15_object *obj)
+{
+	const char *pin_flags[] = {
+		"case-sensitive", "local", "change-disabled",
+		"unblock-disabled", "initialized", "needs-padding",
+		"unblockingPin", "soPin", "disable_allowed",
+		"integrity-protected", "confidentiality-protected",
+		"exchangeRefData"
+	};
+        const struct sc_pkcs15_pin_info *pin = (const struct sc_pkcs15_pin_info *) obj->data;
+	const int pf_count = sizeof(pin_flags)/sizeof(pin_flags[0]);
+	char path[SC_MAX_PATH_SIZE * 2 + 1];
+	int i;
+	char *p;
+
+	p = path;
+	*p = 0;
+	for (i = 0; i < pin->path.len; i++) {
+		sprintf(p, "%02X", pin->path.value[i]);
+		p += 2;
+	}
+	printf("PIN [%s]\n", obj->label);
+	printf("\tCom. Flags: 0x%X\n", obj->flags);
+	printf("\tAuth ID   : ");
+	sc_pkcs15_print_id(&pin->auth_id);
+	printf("\n");
+	printf("\tFlags     : [0x%02X]", pin->flags);
+	for (i = 0; i < pf_count; i++)
+		if (pin->flags & (1 << i)) {
+			printf(", %s", pin_flags[i]);
+		}
+	printf("\n");
+	printf("\tLength    : %d..%d\n", pin->min_length, pin->stored_length);
+	printf("\tPad char  : 0x%02X\n", pin->pad_char);
+	printf("\tReference : %d\n", pin->reference);
+	printf("\tType      : %d\n", pin->type);
+	printf("\tPath      : %s\n", path);
+}
+
 int list_pins(void)
 {
 	int r, i;
-
-	r = sc_pkcs15_enum_pins(p15card);
+        struct sc_pkcs15_object *objs[32];
+	
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 	if (r < 0) {
-		fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
+		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
 	if (!quiet)
-		printf("Card has %d PIN code(s).\n\n", p15card->pin_count);
-	for (i = 0; i < p15card->pin_count; i++) {
-		struct sc_pkcs15_pin_info *pinfo = &p15card->pin_info[i];
-		sc_pkcs15_print_pin_info(pinfo);
+		printf("Card has %d PIN code(s).\n\n", r);
+	for (i = 0; i < r; i++) {
+		print_pin_info(objs[i]);
 		printf("\n");
 	}
 	return 0;
@@ -332,8 +486,9 @@ int learn_card(void)
 {
 	struct stat stbuf;
 	char dir[120];
-	int r, i;
-	
+	int r, i, cert_count;
+        struct sc_pkcs15_object *certs[32];
+
 	r = sc_get_cache_dir(ctx, dir, sizeof(dir)); 
 	if (r) {
 		fprintf(stderr, "Unable to find cache directory: %s\n", sc_strerror(r));
@@ -349,19 +504,20 @@ int learn_card(void)
 		}
 	}
 	printf("Using cache directory '%s'.\n", dir);
-	r = sc_pkcs15_enum_certificates(p15card);
+        r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, certs, 32);
 	if (r < 0) {
 		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	r = sc_pkcs15_enum_private_keys(p15card);
+        cert_count = r;
+        r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY_RSA, NULL, 0);
 	if (r < 0) {
-		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
+		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	r = sc_pkcs15_enum_pins(p15card);
+        r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, NULL, 0);
 	if (r < 0) {
-		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
+		fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
 	for (i = 0; i < SC_PKCS15_DF_TYPE_COUNT; i++) {
@@ -375,10 +531,10 @@ int learn_card(void)
 		}
 	}
 	printf("Caching %d certificate(s)...\n", r);
-	for (i = 0; i < p15card->cert_count; i++) {
-		struct sc_pkcs15_cert_info *cinfo = &p15card->cert_info[i];
+	for (i = 0; i < cert_count; i++) {
+		struct sc_pkcs15_cert_info *cinfo = certs[i]->data;
 		
-		printf("[%s]\n", cinfo->com_attr.label);
+		printf("[%s]\n", certs[i]->label);
 		read_and_cache_file(&cinfo->path);
 	}
 
@@ -458,6 +614,11 @@ int main(int argc, char * const argv[])
 	ctx->error_file = stderr;
 	ctx->debug_file = stdout;
 	ctx->debug = opt_debug;
+	if (ctx->reader_count == 0) {
+		fprintf(stderr, "No readers configured.\n");
+		err = 1;
+		goto end;
+	}
 	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
 		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
 		err = 1;
@@ -465,7 +626,8 @@ int main(int argc, char * const argv[])
 	}
 	if (sc_detect_card_presence(ctx->reader[opt_reader], 0) != 1) {
 		fprintf(stderr, "Card not present.\n");
-		return 3;
+		err = 3;
+		goto end;
 	}
 	if (!quiet)
 		fprintf(stderr, "Connecting to card in reader %s...\n", ctx->reader[opt_reader]->name);

@@ -29,9 +29,9 @@
 #include <unistd.h>
 #include <assert.h>
 
-static int parse_rsa_pubkey(struct sc_context *ctx, struct sc_pkcs15_rsa_pubkey *key)
+static int parse_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key)
 {
-	struct sc_asn1_entry asn1_rsa_pubkey[] = {
+	struct sc_asn1_entry asn1_pubkey_rsa[] = {
 		{ "modulus",	    SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, &key->modulus, &key->modulus_len },
 		{ "publicExponent", SC_ASN1_INTEGER, ASN1_INTEGER, 0, &key->exponent },
 		{ NULL }
@@ -46,7 +46,7 @@ static int parse_rsa_pubkey(struct sc_context *ctx, struct sc_pkcs15_rsa_pubkey 
 		error(ctx, "RSA public key not found\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
-	r = sc_asn1_decode(ctx, asn1_rsa_pubkey, obj, objlen, NULL, NULL);
+	r = sc_asn1_decode(ctx, asn1_pubkey_rsa, obj, objlen, NULL, NULL);
 	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
 
 	return 0;
@@ -76,7 +76,7 @@ static int parse_algorithm_id(struct sc_context *ctx, void *arg, const u8 *obj,
 static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen, struct sc_pkcs15_cert *cert)
 {
 	int r;
-	struct sc_pkcs15_rsa_pubkey *key = &cert->key;
+	struct sc_pkcs15_pubkey_rsa *key = &cert->key;
 	struct asn1_algorithm_id pk_alg, sig_alg;
 	u8 *pk = NULL;
 	size_t pklen = 0;
@@ -123,7 +123,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	key->data = pk;
 	key->data_len = pklen;
 	/* FIXME: ignore the object id for now, and presume it's RSA */
-	r = parse_rsa_pubkey(ctx, key);
+	r = parse_pubkey_rsa(ctx, key);
 	if (r) {
 		free(key->data);
 		return SC_ERROR_INVALID_ASN1_OBJECT;
@@ -219,7 +219,7 @@ int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
 	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_cert_attr[4],
 				asn1_x509_cert_attr[2], asn1_type_cert_attr[2],
 				asn1_cert[2];
-	struct sc_asn1_pkcs15_object cert_obj = { &info.com_attr, asn1_com_cert_attr, NULL,
+	struct sc_asn1_pkcs15_object cert_obj = { obj, asn1_com_cert_attr, NULL,
 					     asn1_type_cert_attr };
 	u8 id_value[128];
 	int id_type, id_value_len = sizeof(id_value);
@@ -254,12 +254,6 @@ int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(obj->data, &info, sizeof(info));
 
-        /* Legacy code */
-	if (p15card->cert_count >= SC_PKCS15_MAX_CERTS)
-		return SC_ERROR_TOO_MANY_OBJECTS;
-	p15card->cert_info[p15card->cert_count] = info;
-	p15card->cert_count++;
-
 	return 0;
 }
 
@@ -272,8 +266,9 @@ int sc_pkcs15_encode_cdf_entry(struct sc_context *ctx,
 				asn1_cert[2];
 	struct sc_pkcs15_cert_info *infop =
 		(struct sc_pkcs15_cert_info *) obj->data;
-	const struct sc_asn1_pkcs15_object cert_obj = { &infop->com_attr, asn1_com_cert_attr, NULL,
-						   asn1_type_cert_attr };
+	const struct sc_asn1_pkcs15_object cert_obj = { (struct sc_pkcs15_object *) obj,
+							asn1_com_cert_attr, NULL,
+							asn1_type_cert_attr };
 	int r;
 
 	sc_copy_asn1_entry(c_asn1_cred_ident, asn1_cred_ident);
@@ -294,51 +289,6 @@ int sc_pkcs15_encode_cdf_entry(struct sc_context *ctx,
 	return r;
 }
 
-void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert)
-{
-	int i;
-	printf("X.509 Certificate [%s]\n", cert->com_attr.label);
-	printf("\tFlags    : %d\n", cert->com_attr.flags);
-	printf("\tAuthority: %s\n", cert->authority ? "yes" : "no");
-	printf("\tPath     : ");
-	for (i = 0; i < cert->path.len; i++)
-		printf("%02X", cert->path.value[i]);
-	printf("\n");
-	printf("\tID       : ");
-	sc_pkcs15_print_id(&cert->id);
-	printf("\n");
-}
-
-int sc_pkcs15_enum_certificates(struct sc_pkcs15_card *p15card)
-{
-	int r = 0, i, j;
-	const int df_types[] = {
-		SC_PKCS15_CDF, SC_PKCS15_CDF_TRUSTED, SC_PKCS15_CDF_USEFUL
-	};
-	const int nr_types = sizeof(df_types)/sizeof(df_types[0]);
-				
-	assert(p15card != NULL);
-
-	if (p15card->cert_count)
-		return p15card->cert_count;	/* already enumerated */
-	r = sc_lock(p15card->card);
-	SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
-	for (j = 0; j < nr_types; j++) {
-		int type = df_types[j];
-		for (i = 0; i < p15card->df[type].count; i++) {
-			r = sc_pkcs15_parse_df(p15card, &p15card->df[type], i);
-			if (r != 0)
-				break;
-		}
-		if (r != 0)
-			break;
-	}
-	sc_unlock(p15card->card);
-	if (r != 0)
-		return r;
-	return p15card->cert_count;
-}
-
 void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 {
 	assert(cert != NULL);
@@ -347,23 +297,4 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 	free(cert->key.modulus);
 	free(cert->data);
 	free(cert);
-}
-
-int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
-			      const struct sc_pkcs15_id *id,
-			      struct sc_pkcs15_cert_info **cert_out)
-{
-	int r, i;
-	
-	r = sc_pkcs15_enum_certificates(card);
-	if (r < 0)
-		return r;
-	for (i = 0; i < card->cert_count; i++) {
-		struct sc_pkcs15_cert_info *cert = &card->cert_info[i];
-		if (sc_pkcs15_compare_id(&cert->id, id) == 1) {
-			*cert_out = cert;
-			return 0;
-		}
-	}
-	return SC_ERROR_OBJECT_NOT_FOUND;
 }

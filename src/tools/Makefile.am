@@ -7,7 +7,7 @@ if HAVE_SSL
 PROGRAMS_SSL = cryptoflex-tool pkcs15-init
 endif
 
-bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-crypt pkcs15-tool \
+bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
 	       $(PROGRAMS_SSL)
 
 opensc_tool_SOURCES = opensc-tool.c util.c

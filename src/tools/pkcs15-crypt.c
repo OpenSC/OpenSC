@@ -73,14 +73,15 @@ struct sc_context *ctx = NULL;
 struct sc_card *card = NULL;
 struct sc_pkcs15_card *p15card = NULL;
 
-char * get_pin(struct sc_pkcs15_pin_info *pinfo)
+char * get_pin(struct sc_pkcs15_object *obj)
 {
 	char buf[80];
 	char *pincode;
+	struct sc_pkcs15_pin_info *pinfo = obj->data;
 	
 	if (opt_pincode != NULL)
 		return strdup(opt_pincode);
-	sprintf(buf, "Enter PIN [%s]: ", pinfo->com_attr.label);
+	sprintf(buf, "Enter PIN [%s]: ", obj->label);
 	while (1) {
 		pincode = getpass(buf);
 		if (strlen(pincode) == 0)
@@ -192,8 +193,7 @@ int main(int argc, char * const argv[])
 	int do_decipher = 0;
 	int do_sign = 0;
 	int action_count = 0;
-	struct sc_pkcs15_prkey_info *key;
-	struct sc_pkcs15_pin_info *pin;
+        struct sc_pkcs15_object *key, *pin, *objs[32];
 	struct sc_pkcs15_id id;
 	char *pincode;
 		
@@ -280,17 +280,17 @@ int main(int argc, char * const argv[])
 #endif
 
 	if (!quiet)
-		fprintf(stderr, "Trying to find a PKCS#15 compatible card...\n");
+		fprintf(stderr, "Trying to find a PKCS #15 compatible card...\n");
 	r = sc_pkcs15_bind(card, &p15card);
 	if (r) {
-		fprintf(stderr, "PKCS#15 initialization failed: %s\n", sc_strerror(r));
+		fprintf(stderr, "PKCS #15 initialization failed: %s\n", sc_strerror(r));
 		err = 1;
 		goto end;
 	}
 	if (!quiet)
 		fprintf(stderr, "Found %s!\n", p15card->label);
 
-	r = sc_pkcs15_enum_private_keys(p15card);
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY_RSA, objs, 32);
 	if (r <= 0) {
 		if (r == 0)
 			r = SC_ERROR_OBJECT_NOT_FOUND;
@@ -308,8 +308,8 @@ int main(int argc, char * const argv[])
 			goto end;
 		}
 	} else
-		key = &p15card->prkey_info[0];
-	r = sc_pkcs15_find_pin_by_auth_id(p15card, &key->com_attr.auth_id, &pin);
+		key = objs[0];
+	r = sc_pkcs15_find_pin_by_auth_id(p15card, &key->auth_id, &pin);
 	if (r) {
 		fprintf(stderr, "Unable to find PIN code for private key: %s\n",
 			sc_strerror(r));
@@ -321,7 +321,7 @@ int main(int argc, char * const argv[])
 		err = 5;
 		goto end;
 	}
-	r = sc_pkcs15_verify_pin(p15card, pin, (const u8 *) pincode, strlen(pincode));
+	r = sc_pkcs15_verify_pin(p15card, pin->data, (const u8 *) pincode, strlen(pincode));
 	if (r) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
 		err = 5;
@@ -331,12 +331,12 @@ int main(int argc, char * const argv[])
 	if (!quiet)
 		fprintf(stderr, "PIN code correct.\n");
 	if (do_decipher) {
-		if ((err = decipher(key)))
+		if ((err = decipher(key->data)))
 			goto end;
 		action_count--;
 	}
 	if (do_sign) {
-		if ((err = sign(key)))
+		if ((err = sign(key->data)))
 			goto end;
 		action_count--;
 	}

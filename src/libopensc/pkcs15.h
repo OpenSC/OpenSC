@@ -46,15 +46,6 @@ struct sc_pkcs15_id {
 #define SC_PKCS15_CO_FLAG_MODIFIABLE	0x00000002
 #define SC_PKCS15_CO_FLAG_OBJECT_SEEN	0x80000000 /* for PKCS #11 module */
 
-struct sc_pkcs15_common_obj_attr {
-	char label[SC_PKCS15_MAX_LABEL_SIZE];	/* zero terminated */
-	int flags;
-	struct sc_pkcs15_id auth_id;
-
-	int user_consent;
-	/* FIXME: add accessControlRules */
-};
-
 #define SC_PKCS15_PIN_FLAG_CASE_SENSITIVE		0x0001
 #define SC_PKCS15_PIN_FLAG_LOCAL			0x0002
 #define SC_PKCS15_PIN_FLAG_CHANGE_DISABLED		0x0004
@@ -73,8 +64,6 @@ struct sc_pkcs15_common_obj_attr {
 #define SC_PKCS15_PIN_TYPE_UTF8				2
 
 struct sc_pkcs15_pin_info {
-	struct sc_pkcs15_common_obj_attr com_attr;
-
 	struct sc_pkcs15_id auth_id;
 	int reference;
 	int flags, type;
@@ -100,11 +89,11 @@ struct sc_pkcs15_algorithm_info {
 	int algorithm, supported_operations;
 };
 
-struct sc_pkcs15_rsa_pubkey {
+struct sc_pkcs15_pubkey_rsa {
 	u8 *modulus;
 	int modulus_len;
 	unsigned int exponent;
-	
+
 	u8 *data;	/* DER encoded raw key */
 	int data_len;
 };
@@ -113,15 +102,13 @@ struct sc_pkcs15_cert {
 	int version;
 	unsigned long serial;
 
-	struct sc_pkcs15_rsa_pubkey key;
+	struct sc_pkcs15_pubkey_rsa key;
 	u8 *data;	/* DER encoded raw cert */
 	int data_len;
 };
 
 struct sc_pkcs15_cert_info {
-	struct sc_pkcs15_common_obj_attr com_attr;
-
-	struct sc_pkcs15_id id;	/* correlates to private RSA key id */
+	struct sc_pkcs15_id id;	/* correlates to private key id */
 	int authority;		/* boolean */
 	/* identifiers [2] SEQUENCE OF CredentialIdentifier{{KeyIdentifiers}} */
 	struct sc_path path;
@@ -145,8 +132,6 @@ struct sc_pkcs15_cert_info {
 #define SC_PKCS15_PRKEY_ACCESS_LOCAL		0x10
 
 struct sc_pkcs15_prkey_info {
-	struct sc_pkcs15_common_obj_attr com_attr;
-
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
 	unsigned int usage, access_flags;
 	int native, key_reference;
@@ -155,19 +140,44 @@ struct sc_pkcs15_prkey_info {
 	struct sc_path path;
 };
 
-#define SC_PKCS15_TYPE_PRKEY_RSA		0x100
-#define SC_PKCS15_TYPE_PUBKEY_RSA		0x200
-#define SC_PKCS15_TYPE_CERT_X509		0x400
+struct sc_pkcs15_pubkey_info {
+	struct sc_pkcs15_id id;	/* correlates to private key id */
+	unsigned int usage, access_flags;
+	int native, key_reference;
+	int modulus_length;
+
+	struct sc_path path;
+};
+
+#define SC_PKCS15_TYPE_CLASS_MASK		0xF00
+
+#define SC_PKCS15_TYPE_PRKEY			0x100
+#define SC_PKCS15_TYPE_PRKEY_RSA		0x101
+
+#define SC_PKCS15_TYPE_PUBKEY			0x200
+#define SC_PKCS15_TYPE_PUBKEY_RSA		0x201
+
+#define SC_PKCS15_TYPE_CERT			0x400
+#define SC_PKCS15_TYPE_CERT_X509		0x401
 #define SC_PKCS15_TYPE_CERT_SPKI		0x402
+
 #define SC_PKCS15_TYPE_DATA_OBJECT		0x500
-#define SC_PKCS15_TYPE_AUTH_PIN			0x600
+#define SC_PKCS15_TYPE_AUTH			0x600
+#define SC_PKCS15_TYPE_AUTH_PIN			0x601
 
 struct sc_pkcs15_object {
 	int type;
+	/* CommonObjectAttributes */
+	char label[SC_PKCS15_MAX_LABEL_SIZE];	/* zero terminated */
+	int flags;
+	struct sc_pkcs15_id auth_id;
+
+	int user_consent;
+
+	/* Object type specific data */
 	void *data;
-	
-	/* For linked list purposes */
-	struct sc_pkcs15_object *next;
+
+	struct sc_pkcs15_object *next; /* used only internally */
 };
 
 #define SC_PKCS15_PRKDF			0
@@ -187,6 +197,7 @@ struct sc_pkcs15_df {
 	struct sc_file *file[SC_PKCS15_MAX_DFS];
 	struct sc_pkcs15_object *obj[SC_PKCS15_MAX_DFS];
 	int count, record_length, type;
+	int enumerated;
 };
 
 #define SC_PKCS15_CARD_MAGIC		0x10203040
@@ -199,14 +210,6 @@ struct sc_pkcs15_card {
 	char *serial_number, *manufacturer_id;
 	unsigned long flags;
 	struct sc_pkcs15_algorithm_info alg_info[1];
-	/* FIXME: this could be done better with some C pre-processor
-	 * magic */
-	struct sc_pkcs15_cert_info cert_info[SC_PKCS15_MAX_CERTS];
-	int cert_count;
-	struct sc_pkcs15_prkey_info prkey_info[SC_PKCS15_MAX_PRKEYS];
-	int prkey_count;
-	struct sc_pkcs15_pin_info pin_info[SC_PKCS15_MAX_PINS];
-	int pin_count;
 
 	struct sc_file *file_app;
 	struct sc_file *file_tokeninfo, *file_odf;
@@ -223,7 +226,7 @@ struct sc_pkcs15_card {
 #define SC_PKCS15_CARD_FLAG_EID_COMPLIANT	0x08
 
 /* sc_pkcs15_bind:  Binds a card object to a PKCS #15 card object
- * and initializes a new PKCS#15 card object.  Will return
+ * and initializes a new PKCS #15 card object.  Will return
  * SC_ERROR_PKCS15_APP_NOT_FOUND, if the card hasn't got a
  * valid PKCS #15 file structure. */
 int sc_pkcs15_bind(struct sc_card *card,
@@ -231,6 +234,13 @@ int sc_pkcs15_bind(struct sc_card *card,
 /* sc_pkcs_unbind:  Releases a PKCS #15 card object, and frees any
  * memory allocations done on the card object. */
 int sc_pkcs15_unbind(struct sc_pkcs15_card *card);
+
+int sc_pkcs15_get_objects(struct sc_pkcs15_card *card, int type,
+			  struct sc_pkcs15_object **ret, int ret_count);
+int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *card, int type,
+			       int (* func)(struct sc_pkcs15_object *, void *),
+			       void *func_arg,
+			       struct sc_pkcs15_object **ret, int ret_count);
 
 struct sc_pkcs15_card * sc_pkcs15_card_new();
 void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card);
@@ -250,14 +260,13 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
 
 void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert);
-int sc_pkcs15_enum_certificates(struct sc_pkcs15_card *card);
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_cert_info *info,
 			       struct sc_pkcs15_cert **cert);
 void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert);
 int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
 			      const struct sc_pkcs15_id *id,
-			      struct sc_pkcs15_cert_info **out);
+			      struct sc_pkcs15_object **out);
 /* sc_pkcs15_create_cdf:  Creates a new certificate DF on a card pointed
  * by <card>.  Information about the file, such as the file ID, is read
  * from <file>.  <certs> has to be NULL-terminated. */
@@ -267,23 +276,21 @@ int sc_pkcs15_create_cdf(struct sc_pkcs15_card *card,
 int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card);
 
 void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey);
-int sc_pkcs15_enum_private_keys(struct sc_pkcs15_card *card);
 int sc_pkcs15_find_prkey_by_id(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_id *id,
-			       struct sc_pkcs15_prkey_info **out);
+			       struct sc_pkcs15_object **out);
 
-void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin);
-int sc_pkcs15_enum_pins(struct sc_pkcs15_card *card);
+void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *auth);
 int sc_pkcs15_verify_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_pin_info *pin,
-			 const u8 *pincode, int pinlen);
+			 const u8 *pincode, size_t pinlen);
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_pin_info *pin,
-			 const u8 *oldpincode, int oldpinlen,
-			 const u8 *newpincode, int newpinlen);
+			 const u8 *oldpincode, size_t oldpinlen,
+			 const u8 *newpincode, size_t newpinlen);
 int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
 				  const struct sc_pkcs15_id *id,
-				  struct sc_pkcs15_pin_info **out);
+				  struct sc_pkcs15_object **out);
 
 int sc_pkcs15_encode_dir(struct sc_context *ctx,
 			struct sc_pkcs15_card *card,
@@ -301,6 +308,9 @@ int sc_pkcs15_encode_cdf_entry(struct sc_context *ctx,
 			const struct sc_pkcs15_object *obj, u8 **buf,
 			size_t *bufsize);
 int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
+			const struct sc_pkcs15_object *obj, u8 **buf,
+			size_t *bufsize);
+int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 			const struct sc_pkcs15_object *obj, u8 **buf,
 			size_t *bufsize);
 int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,

@@ -707,17 +707,17 @@ static int asn1_decode_p15_object(struct sc_context *ctx, const u8 *in,
 				  int depth)
 {
 	int r;
-	struct sc_pkcs15_common_obj_attr *com_attr = obj->com_attr;
+	struct sc_pkcs15_object *p15_obj = obj->p15_obj;
 	struct sc_asn1_entry asn1_c_attr[6], asn1_p15_obj[5];
-	size_t flags_len = sizeof(com_attr->flags);
-	size_t label_len = sizeof(com_attr->label);
+	size_t flags_len = sizeof(p15_obj->flags);
+	size_t label_len = sizeof(p15_obj->label);
 
 	sc_copy_asn1_entry(c_asn1_com_obj_attr, asn1_c_attr);
 	sc_copy_asn1_entry(c_asn1_p15_obj, asn1_p15_obj);
-	sc_format_asn1_entry(asn1_c_attr + 0, com_attr->label, &label_len, 0);
-	sc_format_asn1_entry(asn1_c_attr + 1, &com_attr->flags, &flags_len, 0);
-	sc_format_asn1_entry(asn1_c_attr + 2, &com_attr->auth_id, NULL, 0);
-	sc_format_asn1_entry(asn1_c_attr + 3, &com_attr->user_consent, NULL, 0);
+	sc_format_asn1_entry(asn1_c_attr + 0, p15_obj->label, &label_len, 0);
+	sc_format_asn1_entry(asn1_c_attr + 1, &p15_obj->flags, &flags_len, 0);
+	sc_format_asn1_entry(asn1_c_attr + 2, &p15_obj->auth_id, NULL, 0);
+	sc_format_asn1_entry(asn1_c_attr + 3, &p15_obj->user_consent, NULL, 0);
 	/* FIXME: encode accessControlRules */
 	sc_format_asn1_entry(asn1_c_attr + 4, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_p15_obj + 0, asn1_c_attr, NULL, 0);
@@ -733,23 +733,23 @@ static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_asn1_p
 				  u8 **buf, size_t *bufsize, int depth)
 {
 	int r;
-	const struct sc_pkcs15_common_obj_attr *com_attr = obj->com_attr;
+	const struct sc_pkcs15_object *p15_obj = obj->p15_obj;
 	struct sc_asn1_entry asn1_c_attr[6], asn1_p15_obj[5];
 	size_t flags_len;
-	size_t label_len = strlen(com_attr->label);
+	size_t label_len = strlen(p15_obj->label);
 
 	sc_copy_asn1_entry(c_asn1_com_obj_attr, asn1_c_attr);
 	sc_copy_asn1_entry(c_asn1_p15_obj, asn1_p15_obj);
 	if (label_len != 0)
-		sc_format_asn1_entry(asn1_c_attr + 0, (void *) com_attr->label, &label_len, 1);
-	if (com_attr->flags) {
-		flags_len = _sc_count_bit_string_size(&com_attr->flags, sizeof(com_attr->flags));
-		sc_format_asn1_entry(asn1_c_attr + 1, (void *) &com_attr->flags, &flags_len, 1);
+		sc_format_asn1_entry(asn1_c_attr + 0, (void *) p15_obj->label, &label_len, 1);
+	if (p15_obj->flags) {
+		flags_len = _sc_count_bit_string_size(&p15_obj->flags, sizeof(p15_obj->flags));
+		sc_format_asn1_entry(asn1_c_attr + 1, (void *) &p15_obj->flags, &flags_len, 1);
 	}
-	if (com_attr->auth_id.len)
-		sc_format_asn1_entry(asn1_c_attr + 2, (void *) &com_attr->auth_id, NULL, 1);
-	if (com_attr->user_consent)
-		sc_format_asn1_entry(asn1_c_attr + 3, (void *) &com_attr->user_consent, NULL, 1);
+	if (p15_obj->auth_id.len)
+		sc_format_asn1_entry(asn1_c_attr + 2, (void *) &p15_obj->auth_id, NULL, 1);
+	if (p15_obj->user_consent)
+		sc_format_asn1_entry(asn1_c_attr + 3, (void *) &p15_obj->user_consent, NULL, 1);
 	/* FIXME: decode accessControlRules */
 	sc_format_asn1_entry(asn1_p15_obj + 0, asn1_c_attr, NULL, 1);
 	sc_format_asn1_entry(asn1_p15_obj + 1, obj->asn1_class_attr, NULL, 1);
