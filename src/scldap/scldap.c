@@ -632,6 +632,7 @@ int scldap_approx_base_by_dn(scldap_context * ctx, const char *entry, const char
 	for (i = 0; i < numdns; i++) {
 		free(founddns[i]);
 	}
+	free(founddns);
 	return 1;
 }
 
