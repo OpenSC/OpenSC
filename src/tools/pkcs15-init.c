@@ -1158,17 +1158,17 @@ parse_x509_usage(const char *list, unsigned int *res)
 			break;
 		len = strcspn(list, ",");
 		if (len == 4 && !strncasecmp(list, "help", 4)) {
-			printf("Valid X.509 usage names (vase-insensitive):");
+			printf("Valid X.509 usage names (case-insensitive):\n");
 			for (n = 0; x509_usage_names[n]; n++)
-				printf(" %s", x509_usage_names[n]);
+				printf("  %s\n", x509_usage_names[n]);
 			printf("\nAliases:\n");
 			for (n = 0; x509_usage_aliases[n].name; n++) {
 				printf("  %-12s %s\n",
 					x509_usage_aliases[n].name,
 					x509_usage_aliases[n].list);
 			}
-			printf("Use commas to separate several usage names; "
-			       "abbreviated names are okay if unique (e.g. dataEnc)\n");
+			printf("\nUse commas to separate several usage names.\n"
+			       "Abbreviated names are okay if unique (e.g. dataEnc)\n");
 			exit(0);
 		}
 		for (n = 0; x509_usage_names[n]; n++) {
