@@ -1,5 +1,24 @@
 NEWS for OpenSC -- History of user visible changes
 
+New in 0.8.1; 2003-09-xx; Olaf Kirch:
+* Upgrade libopensc versioning, hasn't been
+  accidently upgraded since 0.6.0 release
+* MacOS X specific changes:
+  - Allow to compile without PC/SC support
+  - Bundle installation fixes
+  - OpenSSL engine linking fixed
+  - Renamed OpenSC PKCS#11.bundle to
+    opensc-pkcs11.bundle
+  - CT-API module loading support
+* libopensc:
+  - Renamed sysdep_timestamp_t to sc_timestamp_t
+  - Renamed debug/error functions to sc_debug/sc_error
+  - Don't DER-en/decode the data in a pkcs15 object
+  - Portability fixes for the OpenCT reader driver
+* Fixed CRLF parsing for libscconf
+* Added PKCS#11 spy module by Mathias Brossard
+* Other minor bug/build fixes and cleanups
+
 New in 0.8.0; 2003-08-15; Juha Yrjölä:
 * New and/or improved card drivers:
   Aladdin eToken, MICARDO 2 and STARCOS
