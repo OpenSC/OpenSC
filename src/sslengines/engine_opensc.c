@@ -294,13 +294,20 @@ sc_private_decrypt(int flen, const u_char * from, u_char * to, RSA * rsa,
 {
 	struct sc_pkcs15_object *key_obj;
 	int r;
+	unsigned long flags = 0;
 
-	if (padding != RSA_PKCS1_PADDING)
-		return -1;
 	r = sc_prkey_op_init(rsa, &key_obj, SC_USAGE_DECRYPT);
 	if (r)
 		return -1;
-	r = sc_pkcs15_decipher(p15card, key_obj, 0, from, flen, to, flen);
+	/* set padding flags */
+	if (padding == RSA_PKCS1_PADDING)
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+	else if (padding == RSA_NO_PADDING)
+		flags |= SC_ALGORITHM_RSA_RAW;
+	else	/* not supported */
+		return -1;
+		
+	r = sc_pkcs15_decipher(p15card, key_obj, flags, from, flen, to, flen);
 	sc_unlock(card);
 	if (r < 0) {
 		fprintf(stderr, "sc_pkcs15_decipher() failed: %s", sc_strerror(r));
