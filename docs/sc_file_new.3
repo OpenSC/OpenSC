@@ -1,0 +1,18 @@
+.TH sc_file_new 3 "April 2003" "OpenSC Programmer's Manual
+.SH NAME
+sc_file_new \- create an OpenSC file object
+.SH SYNOPSIS
+.nf
+.B #include <opensc.h>
+.sp
+.BI "sc_file_t *sc_file_new(void);
+.fi
+.SH DESCRIPTION
+This function creates an empty OpenSC file object, which
+can later be passed to \fBsc_create_file\fP(3).
+.SH SEE ALSO
+.BR sc_file (3),
+.BR sc_file_free (3),
+.BR sc_create_file (3).
+.SH AUTHOR
+This manual page was written by Olaf Kirch <okir@suse.de>

@@ -1,0 +1,56 @@
+.TH sc_read_record 3 "April 2003" "OpenSC Programmer's Manual
+.SH NAME
+sc_read_record, sc_write_record, sc_update_record \- read and write files on a smart card
+.SH SYNOPSIS
+.nf
+.B #include <opensc.h>
+.sp
+.BI "int sc_read_record(sc_card_t *" card ",
+.BI "                   unsigned int " rec_nr ",
+.BI "                   unsigned char *" buffer ",
+.BI "                   size_t " count ",
+.BI "                   unsigned long " flags ");
+.BI "int sc_write_record(sc_card_t *" card ",
+.BI "                   unsigned int " rec_nr ",
+.BI "                   const unsigned char *" buffer ",
+.BI "                   size_t " count ",
+.BI "                   unsigned long " flags ");
+.BI "int sc_update_record(sc_card_t *" card ",
+.BI "                   unsigned int " rec_nr ",
+.BI "                   const unsigned char *" buffer ",
+.BI "                   size_t " count ",
+.BI "                   unsigned long " flags ");
+.BI "int sc_append_record(sc_card_t *" card ",
+.BI "                   const unsigned char *" buffer ",
+.BI "                   size_t " count ",
+.BI "                   unsigned long " flags ");
+.fi
+.SH DESCRIPTION
+This functions read and write record-structured elementary files
+(EFs) on a smart card. The correspond to the ISO 7816 functions READ
+RECORD, WRITE RECORD, APPEND RECORD and UPDATE RECORD, respectively.
+(The difference between write and update is that the former means writing
+to an uninitialized file, while the latter is intended to update a record
+previously written to - some card have different access conditions for
+these operations).
+.PP
+The \fIrec_nr\fP argument specifies the number of the record to be
+written to, starting at 0.
+.PP
+The \fIflags\fP argument is currently not used, and should be set
+to 0.
+.SH RETURN VALUE
+If an error occurred, a negative error code is returned, as described
+in \fbsc_error\fP(3). Otherwise, the function will return the
+number of bytes read or written.
+.SH SEE ALSO
+.BR sc_file (3),
+.BR sc_path (3),
+.BR sc_establish_context (3),
+.BR sc_select_file (3),
+.BR sc_read_binary (3),
+.BR sc_delete_file (3),
+.BR sc_create_file (3),
+.BR sc_file_free (3).
+.SH AUTHOR
+This manual page was written by Olaf Kirch <okir@suse.de>

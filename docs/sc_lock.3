@@ -1,0 +1,46 @@
+.TH sc_lock 3 "April 2003" "OpenSC Programmer's Manual
+.SH NAME
+sc_lock, sc_unlock \- lock or unlock smart card
+.SH SYNOPSIS
+.nf
+.B #include <opensc.h>
+.sp
+.BI "int sc_lock(sc_card_t *" card ");
+.BI "int sc_unlock(sc_card_t *" card ");
+.fi
+.SH DESCRIPTION
+These functions handle locking of smart cards, in order to prevent
+concurrent access to the same card by different users.
+.PP
+Locking is important to prevent unauthorized access to the card
+after presenting the PIN, for instance.
+.PP
+After a call to \fBsc_lock\fP, concurrent access by other application
+to the same smart card reader is disallowed, provided the reader
+middleware supports this (see below). A lock must later be released
+by calling \fBsc_unlock\fP. When disconnecting from the card using
+\fBsc_disconnect_card\fP, there must not be anymore locks on the
+card.
+.PP
+Calls to \fBsc_lock\fP may be nested, i.e. if \fBsc_lock\fP is called
+five times in a row, the lock will not be released until the fifth
+call to \fBsc_unlock\fP.
+.PP
+Note that these functions do not offer mutual exclusion for different
+threads within the same application process. Multithread locking is
+the application's job (Note that the OpenSC PKCS11 module provides
+MT locking facilities, as that's part of the standard).
+.SH NOTES
+Whether locking is effective depends a lot on the middleware
+used to talk to the card reader. CTAPI based drivers for instance
+perform no interprocess locking at all.
+.PP
+The only middleware implementation currently used by OpenSC that
+does perform this type of locking is PCSC.
+.SH RETURN VALUE
+If an error occurred, a negative error code is returned, as described
+in \fbsc_error\fP(3). Otherwise, the function will return 0.
+.SH SEE ALSO
+.BR sc_connect_card (3).
+.SH AUTHOR
+This manual page was written by Olaf Kirch <okir@suse.de>

@@ -1,0 +1,61 @@
+.TH sc_establish_context 3 "April 2003" "OpenSC Programmer's Manual
+.SH NAME
+sc_establish_context \- establish OpenSC context
+.SH SYNOPSIS
+.nf
+.B #include <opensc.h>
+.sp
+.BI "int sc_establish_context(sc_context_t **" ctx ",
+.BI "                         const char *" app_name ");
+.fi
+.SH DESCRIPTION
+This function establishes an OpenSC context. This context is required
+in all subsequent calls to OpenSC functions.
+.PP
+\fIctx\fP is a pointer to a pointer that will receive the allocated context.
+.PP
+\fIapp_name\fP is a string that identifies the application. This string will
+be used to apply application-specific from the \fBopensc.conf\fP(5) configuration
+file.  If \fBNULL\fP is passed, just the settings specified in the \fBdefault\fP
+section apply; otherwise, settings from the section identified by \fIapp_name\fP
+will be applied as well.
+.PP
+The \fBsc_context\fP structure contains the following members, among
+others:
+.PP
+.in +4
+.nf
+.B "typedef struct sc_context {
+.B "     struct sc_reader *reader[SC_MAX_READERS];
+.B "     int reader_count;
+.B "} sc_context_t;
+.fi
+.in
+.PP
+The \fBreader_count\fP field contains the number of readers found by
+OpenSC. Information on the individual card readers are stored in
+\fBsc_reader\fP objects, which look like follows:
+.PP
+.in +4
+.nf
+.B "typedef struct sc_reader {
+.B "     char *name;
+.B "     int slot_count;
+.B "} sc_reader_t;
+.fi
+.in
+.PP
+Here, \fBname\fP contains a printable name of the reader, and \fBslot_count\fP
+shows the number of slots supported by this device.
+.PP
+Of course, these structs contain other members as well, but applications
+usually should not use these fields.
+.SH RETURN VALUE
+If a context could be established, 0 is returned. Otherwise, a negative
+error code is returned, as described in \fbsc_error\fP(3).
+.SH SEE ALSO
+.BR sc_release_context (3),
+.BR sc_detect_card_presence (3),
+.BR sc_connect_card (3).
+.SH AUTHOR
+This manual page was written by Olaf Kirch <okir@suse.de>
