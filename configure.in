@@ -526,18 +526,6 @@ else
 	CFLAGS_PCSC=""
 fi
 
-dnl --enable-usbtoken option.
-AC_ARG_ENABLE(usbtoken, AC_HELP_STRING(
-[--enable-usbtoken],	[enable the usbtoken reader backed. [default=no]]),
-	, enable_usbtoken=no)
-if test "x$enable_usbtoken" = "xyes"; then
-	AC_DEFINE(HAVE_USBTOKEN, 1, [Enable usbtoken support])
-	USBTOKEN_MSG=yes
-else
-	USBTOKEN_MSG=no
-fi
-AM_CONDITIONAL(HAVE_USBTOKEN, test "x$USBTOKEN_MSG" = "xyes")
-
 OPENCT_MSG=no
 openct_path=/usr
 AC_SUBST(OPENCT_CFLAGS)
@@ -868,7 +856,6 @@ src/sslengines/Makefile
 src/tests/Makefile
 src/tests/regression/Makefile
 src/tools/Makefile
-src/usbtoken/Makefile
 win32/Makefile
 ])
 
@@ -910,7 +897,6 @@ echo "Random number collection: ${RAND_MSG}"
 echo "OpenSSL support:          ${SSL_MSG}"
 echo "        with engine:      ${ENGINE_MSG}"
 echo "PC/SC support:            ${PCSC_MSG}"
-echo "USBToken support:         ${USBTOKEN_MSG}"
 echo "OpenCT support:           ${OPENCT_MSG}"
 echo "Assuan support:           ${ASSUAN_MSG}"
 echo "LDAP support:             ${LDAP_MSG}"

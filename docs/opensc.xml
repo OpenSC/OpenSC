@@ -344,33 +344,6 @@ $ ./configure --with-openct=/path/to/openct
 			</para>
 
 			<para>
-				Usbtoken is a small driver for usb crypto
-				devices only. It does not need any other helper
-				software and is included in OpenSC for
-				convenience. However Usbtoken is deprecated,
-				the new OpenCT software is now the recommended
-				way to access usb crypto tokens. Usbtoken
-				is no longer actively developed, but bugs are
-				still fixed and help is provided on the
-				OpenSC mailing list at
-				<email>opensc-devel@opensc.org</email>.
-			</para>
-
-			<para>
-				If you still want to use OpenSC with Usbtoken,
-				please configure OpenSC like this:
-				<screen>
-$ cd opensc-&lt;version&gt;
-$ ./configure --enable-usbtoken
-				</screen>
-			</para>
-
-			<para>
-				Documentation on Usbtoken is in the file
-				<ulink url="usbtoken.html" />.
-			</para>
-
-			<para>
 				CT-API is a standard format for
 				drivers for smart card readers. It was
 				invented in the eighties for DOS applications

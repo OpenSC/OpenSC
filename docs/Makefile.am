@@ -1,8 +1,8 @@
 # Process this file with automake to create Makefile.in
 
 XSLTPROC = @XSLTPROC@
-HTMLFILES = usbtoken.html opensc.html opensc.css
-XMLFILES = usbtoken.xml opensc.xml opensc.xsl
+HTMLFILES = opensc.html opensc.css
+XMLFILES = opensc.xml opensc.xsl
 
 MAINTAINERCLEANFILES = Makefile.in pkcs15-profile.5
 

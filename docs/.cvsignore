@@ -24,4 +24,3 @@ Makefile.in
 core
 gmon.out
 pkcs15-profile.5
-usbtoken.html

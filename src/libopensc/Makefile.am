@@ -22,8 +22,7 @@ libopensc_la_SOURCES = \
 	\
 	emv.c \
 	\
-	ctbcs.c reader-ctapi.c reader-pcsc.c \
-	reader-openct.c reader-usbtoken.c \
+	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c \
 	\
 	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 	card-etoken.c card-tcos.c card-emv.c card-default.c \
