@@ -351,10 +351,6 @@ sc_profile_locate(const char *name)
 {
 	static char	path[1024];
 
-	/* Unchanged name? */
-	if (access(name, R_OK) == 0)
-		return name;
-
 	/* Name with suffix tagged onto it? */
 	snprintf(path, sizeof(path), "%s.%s", name, SC_PKCS15_PROFILE_SUFFIX);
 	if (access(path, R_OK) == 0)
@@ -375,6 +371,10 @@ sc_profile_locate(const char *name)
 			SC_PKCS15_PROFILE_SUFFIX);
 	if (access(path, R_OK) == 0)
 		return path;
+
+	/* Unchanged name? */
+	if (access(name, R_OK) == 0)
+		return name;
 
 	return NULL;
 }
