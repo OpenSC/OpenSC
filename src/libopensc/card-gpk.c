@@ -30,11 +30,15 @@
 #include <openssl/rand.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
-# define des_cleanse(k)	OPENSSL_cleanse(k.ks, sizeof(k.ks))
+#ifndef _WIN32
+#define des_cleanse(k)	OPENSSL_cleanse(k.ks, sizeof(k.ks))
+#else  /* OPENSSL_cleanse() isn't on Win32, at least not for V. 0x00907004L */
+#define des_cleanse(k)	memset(&k, 0, sizeof(k))
+#endif
 #else
-# define des_cleanse(k)	memset(&k, 0, sizeof(k))
-# define DES_set_key_unchecked(a,b) des_set_key_unchecked(a,*b)
-# define DES_ecb3_encrypt(a,b,c,d,e,f) des_ecb3_encrypt(a,b,*c,*d,*e,f)
+#define des_cleanse(k)	memset(&k, 0, sizeof(k))
+#define DES_set_key_unchecked(a,b) des_set_key_unchecked(a,*b)
+#define DES_ecb3_encrypt(a,b,c,d,e,f) des_ecb3_encrypt(a,b,*c,*d,*e,f)
 #endif
 
 /* Gemplus card variants */
