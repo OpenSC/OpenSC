@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <assert.h>
 
 static int parse_rsa_pubkey(const u8 *buf, int buflen, struct sc_pkcs15_rsa_pubkey *key)
@@ -121,44 +123,105 @@ static int parse_cert(const u8 *buf, int buflen, struct sc_pkcs15_cert *cert)
 	return 0;
 }
 
+static int generate_cert_filename(struct sc_pkcs15_card *p15card,
+				  const struct sc_pkcs15_cert_info *info,
+				  char *fname, int len)
+{
+	char *homedir;
+	u8 cert_id[SC_PKCS15_MAX_ID_SIZE*2+1];
+	int i, r;
+
+	homedir = getenv("HOME");
+	if (homedir == NULL)
+		return -1;
+	cert_id[0] = 0;
+	for (i = 0; i < info->id.len; i++) {
+		char tmp[3];
+
+		sprintf(tmp, "%02X", info->id.value[i]);
+		strcat(cert_id, tmp);
+	}
+	r = snprintf(fname, len, "%s/%s/%s_%s_%s.crt", homedir,
+		     SC_PKCS15_CACHE_DIR, p15card->label,
+		     p15card->serial_number, cert_id);
+	if (r < 0)
+		return -1;
+	return 0;
+}
+
+static int find_cached_cert(struct sc_pkcs15_card *p15card,
+			const struct sc_pkcs15_cert_info *info,
+			u8 **out, int *outlen)
+{
+	int r;
+	u8 *data;
+	u8 fname[1024];
+	FILE *crtf; 
+	struct stat stbuf;
+
+	if (getuid() != geteuid())  /* no caching in SUID processes */
+		return -1;
+	
+	r = generate_cert_filename(p15card, info, fname, sizeof(fname));
+	if (r)
+		return SC_ERROR_UNKNOWN;
+	r = stat(fname, &stbuf);
+	if (r)
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	crtf = fopen(fname, "r");
+	if (crtf == NULL)
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	data = malloc(stbuf.st_size);
+	if (data == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	r = fread(data, 1, stbuf.st_size, crtf);
+	fclose(crtf);
+	if (r <= 0) {
+		free(data);
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	}
+	*outlen = r;
+	*out = data;
+
+	return 0;
+}
+
+static int store_cert_to_cache(struct sc_pkcs15_card *p15card,
+			       const struct sc_pkcs15_cert_info *info,
+			       u8 *data, int len)
+{
+	u8 fname[1024];
+	FILE *crtf;
+	int r;
+	
+	if (getuid() != geteuid())  /* no caching in SUID processes */
+		return 0;
+
+	r = generate_cert_filename(p15card, info, fname, sizeof(fname));
+	if (r)
+		return SC_ERROR_UNKNOWN;
+	
+	crtf = fopen(fname, "w");
+	if (crtf == NULL)
+		return SC_ERROR_UNKNOWN;
+	fwrite(data, len, 1, crtf);
+	fclose(crtf);
+	return 0;
+}
+
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_cert_info *info,
 			       struct sc_pkcs15_cert **cert_out)
 {
 	int r, len = 0;
 	struct sc_file file;
-	char *data = NULL;
+	u8 *data = NULL;
 	struct sc_pkcs15_cert *cert;
-	char fname[150];
-	u8 buf[2048];
-
-	FILE *crtf = NULL;
-	int cert_found = 0;
-	char *homedir;
 
 	assert(p15card != NULL && info != NULL && cert_out != NULL);
 
-#if 1
-	/* FIXME: Remove this kludge */
-	homedir = getenv("HOME");
-	if (homedir == NULL)
-		goto no_cert;
-	sprintf(fname, "%s/.eid/%s_%02X.crt", homedir, p15card->label, info->id.value[0]);
-	crtf = fopen(fname, "r");
-	if (crtf == NULL)
-		goto no_cert;
-	
-	r = fread(buf, 1, sizeof(buf), crtf);
-	if (r > 0) {
-		data = malloc(r);
-		memcpy(data, buf, r);
-		len = r;
-		cert_found = 1;
-	}
-	fclose(crtf);
-no_cert:
-#endif
-	if (!cert_found) {
+	r = find_cached_cert(p15card, info, &data, &len);
+	if (r) {
 		r = sc_select_file(p15card->card, &file, &info->path,
 				   SC_SELECT_FILE_BY_PATH);
 		if (r)
@@ -172,13 +235,8 @@ no_cert:
 			return r;
 		}
 		len = r;
-		/* FIXME: kludge! */
-#if 1
-		crtf = fopen(fname, "w");
-		if (crtf != NULL) {
-			fwrite(data, len, 1, crtf);
-			fclose(crtf);
-		}
+#if 0
+		store_cert_to_cache(p15card, info, data, len);
 #endif
 	}
 	cert = malloc(sizeof(struct sc_pkcs15_cert));

@@ -27,6 +27,8 @@
 extern "C" {
 #endif
 
+#define SC_PKCS15_CACHE_DIR		".eid"
+
 #define SC_PKCS15_PIN_MAGIC		0x31415926
 #define SC_PKCS15_MAX_PINS		2
 #define SC_PKCS15_MAX_CERTS		3
