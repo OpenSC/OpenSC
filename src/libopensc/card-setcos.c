@@ -25,22 +25,22 @@
 
 static struct sc_atr_table setcos_atrs[] = {
 	/* some Nokia branded SC */
-	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_GENERIC },
+	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_GENERIC, 0 },
 	/* RSA SecurID 3100 */
-	{ "3B:9F:94:40:1E:00:67:16:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_PKI },
+	{ "3B:9F:94:40:1E:00:67:16:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_PKI, 0 },
 
 	/* FINEID 1016 (SetCOS 4.3.1B3/PKCS#15, VRK) */
-	{ "3b:9f:94:40:1e:00:67:00:43:46:49:53:45:10:52:66:ff:81:90:00", "ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID },
+	{ "3b:9f:94:40:1e:00:67:00:43:46:49:53:45:10:52:66:ff:81:90:00", "ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID, SC_CARD_FLAG_RNG },
 	/* FINEID 2032 (EIDApplet/7816-15, VRK test) */
-	{ "3b:6b:00:ff:80:62:00:a2:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID },
-	/* FINEID 2132 (EIDApplet/7816-15, OPK/EMV test) */
-	{ "3b:64:00:ff:80:62:00:a2", "ff:ff:00:ff:ff:ff:00:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID },
+	{ "3b:6b:00:ff:80:62:00:a2:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0 },
+	/* FINEID 2132 (EIDApplet/7816-15, 3rdparty test) */
+	{ "3b:64:00:ff:80:62:00:a2", "ff:ff:00:ff:ff:ff:00:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0 },
 	/* FINEID 2064 (EIDApplet/7816-15, VRK) */
-	{ "3b:7b:00:00:00:80:62:00:51:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:ff:f0:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID },
-	/* FINEID 2164 (EIDApplet/7816-15, OPK/EMV) */
-	{ "3b:64:00:00:80:62:00:51", "ff:ff:ff:ff:ff:ff:f0:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID },
+	{ "3b:7b:00:00:00:80:62:00:51:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:ff:f0:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0 },
+	/* FINEID 2164 (EIDApplet/7816-15, 3rdparty) */
+	{ "3b:64:00:00:80:62:00:51", "ff:ff:ff:ff:ff:ff:f0:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0 },
 	/* FINEID 2264 (EIDApplet/7816-15, OPK/EMV/AVANT) */
-	{ "3b:6e:00:00:00:62:00:00:57:41:56:41:4e:54:10:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_FINEID },
+	{ "3b:6e:00:00:00:62:00:00:57:41:56:41:4e:54:10:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0 },
 	{ NULL }
 };
 
@@ -83,7 +83,7 @@ static int setcos_match_card(struct sc_card *card)
 	if (i < 0) {
 		/* Unknown card, but has the FinEID application for sure */
 		if (match_hist_bytes(card, "FinEID", 0)) {
-			card->type = SC_CARD_TYPE_SETCOS_FINEID;
+			card->type = SC_CARD_TYPE_SETCOS_FINEID_V2;
 			return 1;
 		}
 		if (match_hist_bytes(card, "FISE", 0)) {
@@ -92,6 +92,7 @@ static int setcos_match_card(struct sc_card *card)
 		}
 		return 0;
 	}
+	card->flags = setcos_atrs[i].flags;
 	return 1;
 }
 
@@ -101,10 +102,10 @@ static int select_fineid_app(sc_card_t * card)
 	int r;
 
 	/* Regular PKCS#15 AID */
-	sc_format_path ("A000000063504B43532D3135", &app);
+	sc_format_path("A000000063504B43532D3135", &app);
 	app.type = SC_PATH_TYPE_DF_NAME;
 	card->ctx->suppress_errors++;
-	r = sc_select_file (card, &app, NULL);
+	r = sc_select_file(card, &app, NULL);
 	card->ctx->suppress_errors--;
 	return r;
 }
@@ -112,7 +113,6 @@ static int select_fineid_app(sc_card_t * card)
 static int setcos_init(struct sc_card *card)
 {
 	card->name = "SetCOS";
-	card->cla = 0x80;
 
 	/* Handle unknown or forced cards */
 	if (card->type < 0) {
@@ -120,25 +120,40 @@ static int setcos_init(struct sc_card *card)
 #if 0
 		/* Hmm. For now, assume it's a bank card with FinEID application */
 		if (match_hist_bytes(card, "AVANT", 0))
-			card->type = SC_CARD_TYPE_SETCOS_FINEID;
+			card->type = SC_CARD_TYPE_SETCOS_FINEID_V2;
 #endif
 	}
-	if (card->type == SC_CARD_TYPE_SETCOS_FINEID) {
+
+	switch (card->type) {
+	case SC_CARD_TYPE_SETCOS_FINEID:
+	case SC_CARD_TYPE_SETCOS_FINEID_V2:
 		card->cla = 0x00;
 		select_fineid_app(card);
+		if (card->flags & SC_CARD_FLAG_RNG)
+			card->caps |= SC_CARD_CAP_RNG;
+		break;
+	default:
+		/* XXX: Get SetCOS version */
+		card->cla = 0x80;	/* SetCOS 4.3.x */
+		/* State that we have an RNG */
+		card->caps |= SC_CARD_CAP_RNG;
+		break;
 	}
-	if (card->type == SC_CARD_TYPE_SETCOS_PKI || card->type == SC_CARD_TYPE_SETCOS_FINEID) {
-		unsigned long flags;
 
-		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
-		flags |= SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1;
+	switch (card->type) {
+	case SC_CARD_TYPE_SETCOS_PKI:
+	case SC_CARD_TYPE_SETCOS_FINEID:
+	case SC_CARD_TYPE_SETCOS_FINEID_V2:
+		{
+			unsigned long flags;
 
-		_sc_card_add_rsa_alg(card, 1024, flags, 0);
+			flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
+			flags |= SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1;
+
+			_sc_card_add_rsa_alg(card, 1024, flags, 0);
+		}
+		break;
 	}
-
-	/* State that we have an RNG */
-	card->caps |= SC_CARD_CAP_RNG;
-
 	return 0;
 }
 
@@ -204,8 +219,7 @@ static int setcos_create_file(struct sc_card *card, struct sc_file *file)
 }
 
 static int setcos_set_security_env2(struct sc_card *card,
-				    const struct sc_security_env *env,
-				    int se_num)
+				    const struct sc_security_env *env, int se_num)
 {
 	struct sc_apdu apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -216,11 +230,13 @@ static int setcos_set_security_env2(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
-		apdu.p1 = 0x41;	/* Should be 0x81 */
+		/* Should be 0x81 */
+		apdu.p1 = 0x41;
 		apdu.p2 = 0xB8;
 		break;
 	case SC_SEC_OPERATION_SIGN:
-		apdu.p1 = 0x81; /* Should be 0x41 */
+		/* Should be 0x41 */
+		apdu.p1 = (card->type == SC_CARD_TYPE_SETCOS_FINEID_V2) ? 0x41 : 0x81;
 		apdu.p2 = 0xB6;
 		break;
 	default:
@@ -284,8 +300,7 @@ err:
 }
 
 static int setcos_set_security_env(struct sc_card *card,
-				  const struct sc_security_env *env,
-				  int se_num)
+				   const struct sc_security_env *env, int se_num)
 {
 	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
 		struct sc_security_env tmp;
@@ -297,10 +312,15 @@ static int setcos_set_security_env(struct sc_card *card,
 			sc_error(card->ctx, "Only RSA algorithm supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-		if (!(card->type == SC_CARD_TYPE_SETCOS_PKI ||
-		      card->type == SC_CARD_TYPE_SETCOS_FINEID)) {
+		switch (card->type) {
+		case SC_CARD_TYPE_SETCOS_PKI:
+		case SC_CARD_TYPE_SETCOS_FINEID:
+		case SC_CARD_TYPE_SETCOS_FINEID_V2:
+			break;
+		default:
 			sc_error(card->ctx, "Card does not support RSA.\n");
 			return SC_ERROR_NOT_SUPPORTED;
+			break;
 		}
 		tmp.algorithm_ref = 0x00;
 		/* potential FIXME: return an error, if an unsupported
@@ -344,7 +364,7 @@ static void add_acl_entry(struct sc_file *file, int op, u8 byte)
 	sc_file_add_acl_entry(file, op, method, key_ref);
 }
 
-static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
+static void parse_sec_attr(struct sc_file *file, const u8 * buf, size_t len)
 {
 	int i;
 	int idx[6];
@@ -373,8 +393,7 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 }
 
 static int setcos_select_file(struct sc_card *card,
-			       const struct sc_path *in_path,
-			       struct sc_file **file)
+			      const struct sc_path *in_path, struct sc_file **file)
 {
 	int r;
 
@@ -386,7 +405,7 @@ static int setcos_select_file(struct sc_card *card,
 	return 0;
 }
 
-static int setcos_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+static int setcos_list_files(struct sc_card *card, u8 * buf, size_t buflen)
 {
 	struct sc_apdu apdu;
 	int r;
@@ -402,7 +421,14 @@ static int setcos_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	return apdu.resplen;
 }
 
-static struct sc_card_driver * sc_get_driver(void)
+#if 0
+static int setcos_logout(struct sc_card *card)
+{
+	return 0;
+}
+#endif
+
+static struct sc_card_driver *sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
@@ -416,12 +442,15 @@ static struct sc_card_driver * sc_get_driver(void)
 	setcos_ops.set_security_env = setcos_set_security_env;
 	setcos_ops.select_file = setcos_select_file;
 	setcos_ops.list_files = setcos_list_files;
+#if 0
+	setcos_ops.logout = setcos_logout;
+#endif
 
 	return &setcos_drv;
 }
 
 #if 1
-struct sc_card_driver * sc_get_setcos_driver(void)
+struct sc_card_driver *sc_get_setcos_driver(void)
 {
 	return sc_get_driver();
 }
