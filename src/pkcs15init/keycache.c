@@ -324,6 +324,8 @@ sc_keycache_forget_key(const sc_path_t *path, int type, int ref)
 	while ((s = *prev) != NULL) {
 		if (__match_entry(s, type, ref, path, 1)) {
 			*prev = s->next;
+			if (s->named_pin != -1 && s->ref == -1)
+				named_pin[s->named_pin] = NULL;
 			memset(s, 0, sizeof(*s));
 			free(s);
 		} else {
