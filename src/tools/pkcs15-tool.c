@@ -150,20 +150,36 @@ int list_certificates(void)
 int
 print_pem_object(const char *kind, const u8*data, size_t data_len)
 {
-	int r;
-	u8 buf[2048];
-	FILE *outf;
-	
-	r = sc_base64_encode(data, data_len, buf, sizeof(buf), 64);
-	if (r) {
-		fprintf(stderr, "Base64 encoding failed: %s\n", sc_strerror(r));
+	FILE		*outf;
+	unsigned char	*buf = NULL;
+	size_t		buf_len = 1024;
+	int		r;
+
+	/* With base64, every 3 bytes yield 4 characters, and with
+	 * 64 chars per line we know almost exactly how large a buffer we
+	 * will need. */
+	buf_len = (data_len + 2) / 3 * 4;
+	buf_len += 2 * (buf_len / 64 + 2); /* certain platforms use CRLF */
+	buf_len += 64;			   /* slack for checksum etc */
+
+	if (!(buf = (unsigned char *) malloc(buf_len))) {
+		perror("print_pem_object");
 		return 1;
 	}
+
+	r = sc_base64_encode(data, data_len, buf, buf_len, 64);
+	if (r < 0) {
+		fprintf(stderr, "Base64 encoding failed: %s\n", sc_strerror(r));
+		free(buf);
+		return 1;
+	}
+
 	if (opt_outfile != NULL) {
 		outf = fopen(opt_outfile, "w");
 		if (outf == NULL) {
 			fprintf(stderr, "Error opening file '%s': %s\n",
 				opt_outfile, strerror(errno));
+			free(buf);
 			return 2;
 		}
 	} else
@@ -175,6 +191,7 @@ print_pem_object(const char *kind, const u8*data, size_t data_len)
 		kind, buf, kind);
 	if (outf != stdout)
 		fclose(outf);
+	free(buf);
 	return 0;
 }
 
