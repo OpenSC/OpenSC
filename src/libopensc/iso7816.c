@@ -774,6 +774,7 @@ static int iso7816_decipher(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf); /* FIXME */
+	apdu.le = crgram_len;
 	apdu.sensitive = 1;
 	
 	sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
