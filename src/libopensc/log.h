@@ -2,6 +2,7 @@
  * log.h: Logging functions header file
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2003  Antti Tapaninen <aet@cc.hut.fi>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,7 +22,7 @@
 #ifndef _SC_LOG_H
 #define _SC_LOG_H
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -32,10 +33,17 @@ extern "C" {
 #define SC_LOG_TYPE_VERBOSE	1
 #define SC_LOG_TYPE_DEBUG	2
 
+/* You can't do #ifndef __FUNCTION__ */
+#if !defined(__GNUC__) && !defined(__IBMC__)
+#define __FUNCTION__ NULL
+#endif
+
+/* XXX: Add sc_ prefix? */
+
 #if defined(__GNUC__)
 
-#define error(ctx, format, args...)	do_log(ctx, SC_LOG_TYPE_ERROR,  __FILE__, __LINE__, __FUNCTION__, format , ## args)
-#define debug(ctx, format, args...)	do_log(ctx, SC_LOG_TYPE_DEBUG,  __FILE__, __LINE__, __FUNCTION__, format , ## args)
+#define error(ctx, format, args...)	sc_do_log(ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, format , ## args)
+#define debug(ctx, format, args...)	sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, format , ## args)
 
 #else
 
@@ -44,35 +52,39 @@ void debug(struct sc_context *ctx, const char *format, ...);
 
 #endif
 
-#define SC_FUNC_CALLED(ctx, level) {\
-	if ((ctx)->debug >= level)\
-		 debug(ctx, "called\n"); }
-#define SC_FUNC_RETURN(ctx, level, r) {\
-	int _ret = r;\
-	if (_ret < 0) {\
-		error(ctx, "returning with: %s\n", sc_strerror(_ret));\
-	} else if ((ctx)->debug >= level) {\
-		debug(ctx, "returning with: %d\n", _ret);\
-	}\
-	return _ret; }
-#define SC_TEST_RET(ctx, r, text) {\
-	int _ret = (r);\
-	if (_ret < 0) {\
-		error((ctx), "%s: %s\n", (text), sc_strerror(_ret));\
-		return _ret;\
-	}\
+void sc_do_log(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, ...);
+void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args);
+
+void sc_hex_dump(struct sc_context *ctx, const u8 * buf, size_t len, char *out, size_t outlen);
+
+#define SC_FUNC_CALLED(ctx, level) { \
+	if (ctx->debug >= level) \
+		 sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "called\n"); \
 }
 
-void do_log(struct sc_context *ctx, int facility, const char *file,
-	    int line, const char *func, const char *format, ...);
-void do_log2(struct sc_context *ctx, int type, const char *file,
-	     int line, const char *func, const char *format, va_list args);
+#define SC_FUNC_RETURN(ctx, level, r) { \
+	int _ret = r; \
+	if (_ret < 0) { \
+		sc_do_log(ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, "returning with: %s\n", sc_strerror(_ret)); \
+	} else if (ctx->debug >= level) { \
+		sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "returning with: %d\n", _ret); \
+	} \
+	return _ret; \
+}
 
-void sc_hex_dump(struct sc_context *ctx, const u8 *buf, size_t len,
-		 char *out, size_t outlen);
-#define sc_perror(ctx, errno, str) { error((ctx), "%s: %s\n", str, sc_strerror((errno))); }
+#define SC_TEST_RET(ctx, r, text) { \
+	int _ret = (r); \
+	if (_ret < 0) { \
+		sc_do_log(ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", (text), sc_strerror(_ret)); \
+		return _ret; \
+	} \
+}
 
-#ifdef  __cplusplus
+#define sc_perror(ctx, errno, str) { \
+	sc_do_log(ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", str, sc_strerror(errno)); \
+}
+
+#ifdef __cplusplus
 }
 #endif
 

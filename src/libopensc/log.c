@@ -2,6 +2,7 @@
  * log.c: Miscellaneous logging functions
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2003  Antti Tapaninen <aet@cc.hut.fi>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -43,7 +44,7 @@ void error(struct sc_context *ctx, const char *format, ...)
 	va_list ap;
 
 	va_start(ap, format);
-	do_log2(ctx, SC_LOG_TYPE_ERROR, NULL, 0, "", format, ap);
+	sc_do_log_va(ctx, SC_LOG_TYPE_ERROR, NULL, 0, NULL, format, ap);
 	va_end(ap);
 }
 
@@ -52,28 +53,18 @@ void debug(struct sc_context *ctx, const char *format, ...)
 	va_list ap;
 
 	va_start(ap, format);
-	do_log2(ctx, SC_LOG_TYPE_DEBUG, NULL, 0, "", format, ap);
+	sc_do_log_va(ctx, SC_LOG_TYPE_DEBUG, NULL, 0, NULL, format, ap);
 	va_end(ap);
 }
 
 #endif
 
-void do_log(struct sc_context *ctx, int facility, const char *file,
-	    int line, const char *func, const char *format, ...)
-{
-	va_list ap;
-
-	va_start(ap, format);
-	do_log2(ctx, facility, file, line, func, format, ap);
-	va_end(ap);
-}
-
-int use_color(struct sc_context *ctx, FILE *outf)
+static int use_color(struct sc_context *ctx, FILE * outf)
 {
 	static char *term = NULL;
 	static const char *terms[] = { "linux", "xterm", "Eterm" };
-	int term_count = sizeof(terms)/sizeof(terms[0]);
-	int do_color = 0;
+	int term_count = sizeof(terms) / sizeof(terms[0]);
+	int do_color;
 	int i;
 
 	if (!isatty(fileno(outf)))
@@ -89,13 +80,19 @@ int use_color(struct sc_context *ctx, FILE *outf)
 			do_color = 1;
 			break;
 		}
-	if (!do_color)
-		return 0;
 	return do_color;
 }
 
-void do_log2(struct sc_context *ctx, int type, const char *file,
-	     int line, const char *func, const char *format, va_list args)
+void sc_do_log(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	sc_do_log_va(ctx, type, file, line, func, format, ap);
+	va_end(ap);
+}
+
+void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args)
 {
 	FILE *outf = NULL;
 	char buf[1024], *p;
@@ -129,7 +126,7 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 		}
 	}
 	if (file != NULL) {
-		r = snprintf(buf, sizeof(buf), "%s:%d:%s: ", file, line, func);
+		r = snprintf(buf, sizeof(buf), "%s:%d:%s: ", file, line, func ? func : "");
 		if (r < 0)
 			return;
 	} else
@@ -147,17 +144,16 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 	fflush(outf);
 }
 
-void sc_hex_dump(struct sc_context *ctx, const u8 *in, size_t count,
-		 char *buf, size_t len)
+void sc_hex_dump(struct sc_context *ctx, const u8 * in, size_t count, char *buf, size_t len)
 {
 	char *p = buf;
 	int lines = 0;
 
 	assert(buf != NULL && in != NULL);
 	buf[0] = 0;
-	if (count*5 > len)
+	if ((count * 5) > len)
 		return;
- 	while (count) {
+	while (count) {
 		char ascbuf[17];
 		int i;
 
