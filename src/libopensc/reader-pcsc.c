@@ -25,6 +25,16 @@
 #include <string.h>
 #include <winscard.h>
 
+/* Default timeout value for SCardGetStatusChange
+ * Needs to be increased for some broken PC/SC
+ * Lite implementations.
+ */
+#ifndef SC_CUSTOM_STATUS_TIMEOUT
+#define SC_STATUS_TIMEOUT 0
+#else
+#define SC_STATUS_TIMEOUT SC_CUSTOM_STATUS_TIMEOUT
+#endif
+
 #define GET_SLOT_PTR(s, i) (&(s)->slot[(i)])
 #define GET_PRIV_DATA(r) ((struct pcsc_private_data *) (r)->drv_data)
 #define GET_SLOT_DATA(r) ((struct pcsc_slot_data *) (r)->drv_data)
@@ -142,7 +152,7 @@ static int pcsc_detect_card_presence(struct sc_reader *reader, struct sc_slot_in
 	rgReaderStates[0].szReader = priv->reader_name;
 	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
 	rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
-	ret = SCardGetStatusChange(priv->pcsc_ctx, 0, rgReaderStates, 1);
+	ret = SCardGetStatusChange(priv->pcsc_ctx, SC_STATUS_TIMEOUT, rgReaderStates, 1);
 	if (ret != 0) {
 		error(reader->ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(ret));
 		SC_FUNC_RETURN(reader->ctx, 1, pcsc_ret_to_error(ret));
@@ -164,7 +174,7 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 	rgReaderStates[0].szReader = priv->reader_name;
 	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
 	rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
-	ret = SCardGetStatusChange(priv->pcsc_ctx, 0, rgReaderStates, 1);
+	ret = SCardGetStatusChange(priv->pcsc_ctx, SC_STATUS_TIMEOUT, rgReaderStates, 1);
 	if (ret != 0) {
 		error(reader->ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(ret));
 		return pcsc_ret_to_error(ret);
