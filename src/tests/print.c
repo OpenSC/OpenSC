@@ -134,12 +134,14 @@ static void print_prkey(const struct sc_pkcs15_object *obj)
 		printf("\tModLength   : %d\n", prkey->modulus_length);
 	printf("\tKey ref     : %d\n", prkey->key_reference);
 	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");
-	printf("\tPath        : ");
-	for (i = 0; i < prkey->path.len; i++)
-		printf("%02X", prkey->path.value[i]);
-	if (prkey->path.type == SC_PATH_TYPE_PATH_PROT)
-		printf(" (protected)");
-	printf("\n");
+	if (prkey->path.len) {
+		printf("\tPath        : ");
+		for (i = 0; i < prkey->path.len; i++)
+			printf("%02X", prkey->path.value[i]);
+		if (prkey->path.type == SC_PATH_TYPE_PATH_PROT)
+			printf(" (protected)");
+		printf("\n");
+	}
 	printf("\tID          : ");
 	sc_pkcs15_print_id(&prkey->id);
 	printf("\n");
