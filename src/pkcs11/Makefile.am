@@ -31,7 +31,8 @@ libpkcs11_la_LIBADD = @LIBDL@ @LIBOPENSC@ \
 			 ../pkcs15init/libpkcs15init.la \
 			 ../scrandom/libscrandom.la
 
-include_HEADERS = pkcs11.h
+openscdir=@includedir@/opensc
+opensc_HEADERS = pkcs11.h
 
 jar-dir:
 	if test ! -d jar-dir ; then mkdir jar-dir ; fi
