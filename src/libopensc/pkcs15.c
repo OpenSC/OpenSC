@@ -167,7 +167,7 @@ int sc_pkcs15_encode_tokeninfo(struct sc_context *ctx,
 		sc_format_asn1_entry(asn1_toki + 3, card->label, &label_len, 1);
 	}
 	if (card->flags) {
-		flags_len = sc_count_bit_string_size(&card->flags, sizeof(card->flags));
+		flags_len = _sc_count_bit_string_size(&card->flags, sizeof(card->flags));
 		sc_format_asn1_entry(asn1_toki + 4, &card->flags, &flags_len, 1);
 	}
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki, NULL, 1);

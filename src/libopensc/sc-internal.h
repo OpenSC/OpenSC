@@ -30,9 +30,14 @@
 #define SC_FILE_MAGIC			0x14426950
 #define SC_CARD_MAGIC			0x27182818
 
+struct sc_atr_table {
+	const u8 *atr;
+	size_t atr_len;
+};
+
 /* Internal use only */
 int sc_check_sw(struct sc_card *card, int sw1, int sw2);
-size_t sc_count_bit_string_size(const void * buf, size_t bufsize);
+size_t _sc_count_bit_string_size(const void * buf, size_t bufsize);
 int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader);
 struct sc_slot_info * _sc_get_slot_info(struct sc_reader *reader, int slot_id);
 

@@ -187,12 +187,12 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 	sc_format_asn1_entry(asn1_rsakey_attr + 1, &prkey->modulus_length, NULL, 1);
 
 	sc_format_asn1_entry(asn1_com_key_attr + 0, &prkey->id, NULL, 1);
-	usage_len = sc_count_bit_string_size(&prkey->usage, sizeof(prkey->usage));
+	usage_len = _sc_count_bit_string_size(&prkey->usage, sizeof(prkey->usage));
 	sc_format_asn1_entry(asn1_com_key_attr + 1, &prkey->usage, &usage_len, 1);
 	if (prkey->native == 0)
 		sc_format_asn1_entry(asn1_com_key_attr + 2, &prkey->native, NULL, 1);
 	if (prkey->access_flags) {
-		af_len = sc_count_bit_string_size(&prkey->access_flags, sizeof(prkey->access_flags));
+		af_len = _sc_count_bit_string_size(&prkey->access_flags, sizeof(prkey->access_flags));
 		sc_format_asn1_entry(asn1_com_key_attr + 3, &prkey->access_flags, &af_len, 1);
 	}
 	if (prkey->key_reference >= 0)

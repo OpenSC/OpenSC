@@ -47,6 +47,7 @@ const struct option options[] = {
 	{ "atr",		0, 0,		'a' },
 	{ "list-readers",	0, 0, 		'l' },
 	{ "list-drivers",	0, 0,		'D' },
+	{ "list-rdrivers",	0, 0,		'R' },
 	{ "list-files",		0, 0,		'f' },
 	{ "send-apdu",		1, 0,		's' },
 	{ "reader",		1, 0,		'r' },
@@ -59,6 +60,7 @@ const struct option options[] = {
 const char *option_help[] = {
 	"Prints the ATR bytes of the card",
 	"Lists all configured readers",
+	"Lists all installed reader drivers",
 	"Lists all installed card drivers",
 	"Recursively lists files stored on card",
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
@@ -79,11 +81,27 @@ int list_readers(void)
 		printf("No readers configured!\n");
 		return 0;
 	}
-	printf("Configured readers:\n");
+	printf("Readers known about:\n");
 	printf("Nr.    Driver     Name\n");
 	for (i = 0; i < ctx->reader_count; i++) {
 		printf("%-7d%-11s%s\n", i, ctx->reader[i]->driver->short_name,
 		       ctx->reader[i]->name);
+	}
+	return 0;
+}
+
+int list_reader_drivers(void)
+{
+	int i;
+	
+	if (ctx->reader_drivers[0] == NULL) {
+		printf("No reader drivers installed!\n");
+		return 0;
+	}
+	printf("Configured reader drivers:\n");
+	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
+		printf("  %-16s %s\n", ctx->reader_drivers[i]->short_name,
+		       ctx->reader_drivers[i]->name);
 	}
 	return 0;
 }
@@ -326,6 +344,7 @@ int main(int argc, char * const argv[])
 	int err = 0, r, c, long_optind = 0;
 	int do_list_readers = 0;
 	int do_list_drivers = 0;
+	int do_list_rdrivers = 0;
 	int do_list_files = 0;
 	int do_send_apdu = 0;
 	int do_print_atr = 0;
@@ -333,7 +352,7 @@ int main(int argc, char * const argv[])
 	const char *opt_driver = NULL;
 		
 	while (1) {
-		c = getopt_long(argc, argv, "lfr:qds:Dc:a", options, &long_optind);
+		c = getopt_long(argc, argv, "lfr:qds:DRc:a", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -345,6 +364,10 @@ int main(int argc, char * const argv[])
 			break;
 		case 'D':
 			do_list_drivers = 1;
+			action_count++;
+			break;
+		case 'R':
+			do_list_rdrivers = 1;
 			action_count++;
 			break;
 		case 'f':
@@ -386,6 +409,11 @@ int main(int argc, char * const argv[])
 	ctx->error_file = stderr;
 	ctx->debug_file = stdout;
 	ctx->debug = opt_debug;
+	if (do_list_rdrivers) {
+		if ((err = list_reader_drivers()))
+			goto end;
+		action_count--;
+	}
 	if (do_list_readers) {
 		if ((err = list_readers()))
 			goto end;

@@ -115,8 +115,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 	senv.algorithm = SC_ALGORITHM_RSA;
 	senv.algorithm_flags = SC_ALGORITHM_RSA_PKCS1_PAD;
+#if 0
 	if (flags & SC_PKCS15_HASH_SHA1)
 		senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+#endif
 	if (flags & SC_PKCS15_PAD_PKCS1_V1_5) {
 		size_t modlen = prkey->modulus_length >> 3;
 		

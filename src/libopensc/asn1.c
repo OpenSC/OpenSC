@@ -115,7 +115,7 @@ void sc_copy_asn1_entry(const struct sc_asn1_entry *src,
 	dest->name = NULL;
 }
 
-size_t sc_count_bit_string_size(const void * buf, size_t bufsize)
+size_t _sc_count_bit_string_size(const void * buf, size_t bufsize)
 {
         const u8 *p = (const u8 *) buf + bufsize - 1;
         u8 c;
@@ -743,7 +743,7 @@ static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_asn1_p
 	if (label_len != 0)
 		sc_format_asn1_entry(asn1_c_attr + 0, (void *) com_attr->label, &label_len, 1);
 	if (com_attr->flags) {
-		flags_len = sc_count_bit_string_size(&com_attr->flags, sizeof(com_attr->flags));
+		flags_len = _sc_count_bit_string_size(&com_attr->flags, sizeof(com_attr->flags));
 		sc_format_asn1_entry(asn1_c_attr + 1, (void *) &com_attr->flags, &flags_len, 1);
 	}
 	if (com_attr->auth_id.len)

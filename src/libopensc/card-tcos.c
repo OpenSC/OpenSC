@@ -99,8 +99,10 @@ static int tcos_set_security_env(struct sc_card *card,
                 tmp.algorithm_ref = 0x00;
 		if (tmp.algorithm_flags & SC_ALGORITHM_RSA_PKCS1_PAD)
 			tmp.algorithm_ref = 0x02;
+#if 0
 		if (tmp.algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
                         tmp.algorithm_ref |= 0x10;
+#endif
                 return iso_ops->set_security_env(card, &tmp, se_num);
 
 	}

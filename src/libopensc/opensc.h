@@ -210,8 +210,8 @@ struct sc_file {
 	unsigned int magic;
 };
 
-#define SC_SEC_OPERATION_DECIPHER	0
-#define SC_SEC_OPERATION_SIGN		1
+#define SC_SEC_OPERATION_DECIPHER	0x0001
+#define SC_SEC_OPERATION_SIGN		0x0002
 
 /* sc_security_env flags */
 #define SC_SEC_ENV_ALG_REF_PRESENT	0x0001
@@ -221,12 +221,20 @@ struct sc_file {
 #define SC_SEC_ENV_KEY_REF_ASYMMETRIC	0x0008
 #define SC_SEC_ENV_ALG_PRESENT		0x0010
 
+/* PK algorithms */
 #define SC_ALGORITHM_RSA		0
 #define SC_ALGORITHM_DSA		1
 #define SC_ALGORITHM_EC			2
 
-#define SC_ALGORITHM_RSA_PKCS1_PAD	0x01
-#define SC_ALGORITHM_RSA_HASH_SHA1	0x02
+/* Symmetric algorithms */
+#define SC_ALGORITHM_DES		64
+#define SC_ALGORITHM_3DES		65
+
+#define SC_ALGORITHM_ONBOARD_KEY_GEN	0x80000000
+#define SC_ALGORITHM_SPECIFIC_FLAGS	0x0000FFFF
+#define SC_ALGORITHM_RSA_PKCS1_PAD	0x00000001
+#define SC_ALGORITHM_RSA_PAD_2		0x00000002 /* forgot the names of */
+#define SC_ALGORITHM_RSA_PAD_3		0x00000004 /* these two */
 
 struct sc_security_env {
 	int flags;
@@ -237,6 +245,19 @@ struct sc_security_env {
 	struct sc_path file_ref;
 	u8 key_ref[8];
 	size_t key_ref_len;
+};
+
+struct sc_algorithm_info {
+	unsigned int algorithm;
+	unsigned int key_length;
+	unsigned int flags;
+	
+	union {
+		struct sc_rsa_info {
+			long exponent;
+			int unwrap;
+		} _rsa;
+	} u;
 };
 
 struct sc_app_info {
@@ -255,23 +276,6 @@ struct sc_card_cache {
 	struct sc_path current_path;
 };
 
-/*
- * Card capabilities 
- */
-
-/* SC_CARD_APDU_EXT: Card can handle large (> 256 bytes) buffers in
- * calls to read_binary, write_binary and update_binary; if not,
- * several successive calls to the corresponding function is made. */
-#define SC_CARD_CAP_APDU_EXT		0x00000001
-
-/* SC_CARD_CAP_EMV: Card can handle operations specified in the
- * EMV 4.0 standard. */
-#define SC_CARD_CAP_EMV			0x00000002
-
-/*
- * Card flags
- */
-/* none yet */
 
 #define SC_PROTO_T0		0x00000001
 #define SC_PROTO_T1		0x00000002
@@ -344,6 +348,23 @@ struct sc_reader_operations {
 	int (*add_callback)(struct sc_reader *reader, struct sc_slot_info *slot,
 			    const struct sc_event_listener *, void *arg);
 };
+
+
+/*
+ * Card flags
+ */
+/* none yet */
+
+/*
+ * Card capabilities 
+ */
+/* SC_CARD_APDU_EXT: Card can handle large (> 256 bytes) buffers in
+ * calls to read_binary, write_binary and update_binary; if not,
+ * several successive calls to the corresponding function is made. */
+#define SC_CARD_CAP_APDU_EXT		0x00000001
+/* SC_CARD_CAP_EMV: Card can handle operations specified in the
+ * EMV 4.0 standard. */
+#define SC_CARD_CAP_EMV			0x00000002
 
 struct sc_card {
 	struct sc_context *ctx;
