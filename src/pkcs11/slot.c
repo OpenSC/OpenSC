@@ -135,6 +135,8 @@ CK_RV card_detect_all(void)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 	for (i = 0; i < context->reader_count; i++)
 		card_detect(i);
+
+	return CKR_OK=;
 }
 
 CK_RV card_removed(int reader)
@@ -227,7 +229,7 @@ CK_RV slot_token_removed(int id)
         struct sc_pkcs11_slot *slot;
         struct sc_pkcs11_object *object;
 
-        rv = slot_get_token(id, &slot);
+	rv = slot_get_slot(id, &slot);
 	if (rv != CKR_OK)
 		return rv;
 
