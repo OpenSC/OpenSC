@@ -82,22 +82,19 @@ out:
 	return err;
 }
 
-int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t *out_len)
+int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len)
 {
 	unsigned int	n;
 	char		*pos, *end;
 
 	pos = out;
-	end = out + *out_len;
+	end = out + out_len;
 	for (n = 0; n < in_len; n++) {
-		if (pos + 4 >= end)
+		if (pos + 3 >= end)
 			return SC_ERROR_BUFFER_TOO_SMALL;
-		if (n)
-			*pos++ = ':';
 		sprintf(pos, "%02x", in[n]);
 		pos += 2;
 	}
-	*out_len = pos - out;
 	*pos = '\0';
 	return 0;
 }
