@@ -34,7 +34,6 @@
 #ifdef HAVE_IO_H
 #include <io.h>
 #endif
-#include <opensc/ui.h>
 
 #ifndef __GNUC__
 void sc_error(struct sc_context *ctx, const char *format, ...)

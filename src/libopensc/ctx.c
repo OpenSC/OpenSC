@@ -431,6 +431,8 @@ int sc_release_context(struct sc_context *ctx)
 			drv->ops->finish(ctx, ctx->reader_drv_data[i]);
 	}
 	ctx->debug_file = ctx->error_file = NULL;
+	if (ctx->preferred_language)
+		free(ctx->preferred_language);
 	if (ctx->conf)
 		scconf_free(ctx->conf);
 	sc_mutex_free(ctx->mutex);

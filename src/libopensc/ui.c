@@ -10,20 +10,13 @@
  * Copyright (C) 2003  Olaf Kirch <okir@lse.de>
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <opensc/opensc.h>
-#include <opensc/scdl.h>
-#include <opensc/log.h>
-#include <opensc/ui.h>
-#include "internal.h"
 
 /*
  * We keep a global shared library handle here.
