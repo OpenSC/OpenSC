@@ -38,28 +38,6 @@ int enum_private_keys()
 	return 0;
 }
 
-int sc_list_files(struct sc_card *card, u8 *buf, int buflen)
-{
-	struct sc_apdu apdu;
-	int r;
-	
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
-	apdu.resp = buf;
-	apdu.resplen = buflen;
-	apdu.le = 0;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
-	if (apdu.resplen < 2)
-		return -1;
-	if (apdu.resplen == 2)
-// FIXME		return convert_sw_to_errorcode(apdu.resp);
-		return -1;
-	apdu.resplen -= 2;
-
-	return apdu.resplen;
-}
-
 int enum_dir(struct sc_path path, int depth)
 {
 	struct sc_file file;
@@ -79,40 +57,49 @@ int enum_dir(struct sc_path path, int depth)
 		if (r && (r & 1) == 1)
 			printf(" ");
 	}
-	if (file.namelen)
-		printf("[%s] ", file.name);
-	switch (file.type) {
-	case 0:
-		tmps = "wEF";
-		break;
-	case 1:
-		tmps = "iEF";
-		break;
-	case 7:
-		tmps = "DF";
-		break;
-	default:
-		tmps = "unknown";
-		break;
-	}	
-	printf("type: %-3s ", tmps);
-	if (file.type != 7)
-		printf("ef structure: %d ", file.ef_structure);
-	printf("size: %d\n", file.size);
-	if (file.type == 0 && 0) {
-		r = sc_read_binary(card, 0, buf, file.size);
-		if (r > 0)
-			sc_hex_dump(buf, r);
+	if (sc_file_valid(&file)) {
+		if (file.namelen) {
+			printf("[");
+			sc_print_binary(file.name, file.namelen);
+			printf("] ");
+		}
+		switch (file.type) {
+		case 0:
+			tmps = "wEF";
+			break;
+		case 1:
+			tmps = "iEF";
+			break;
+		case 7:
+			tmps = "DF";
+			break;
+		default:
+			tmps = "unknown";
+			break;
+		}	
+		printf("type: %-3s ", tmps);
+		if (file.type != 7)
+			printf("ef structure: %d ", file.ef_structure);
+		printf("size: %d\n", file.size);
+		if (file.type == 0 && 0) {
+			r = sc_read_binary(card, 0, buf, file.size);
+			if (r > 0)
+				sc_hex_dump(buf, r);
+		}
+	} else {
+		printf("\n");
 	}
-	if (file.type == 7) {
+	if (!sc_file_valid(&file) || file.type == 7) {
 		int i;
-		
+
 		r = sc_list_files(card, files, sizeof(files));
-		if (r <= 0)
+		if (r <= 0) {
+			fprintf(stderr, "sc_list_files() failed: %s\n", sc_strerror(r));
 			return r;
+		}
 		for (i = 0; i < r/2; i++) {
 			struct sc_path tmppath;
-			
+
 			memcpy(&tmppath, &path, sizeof(path));
 			memcpy(tmppath.value + tmppath.len, files + 2*i, 2);
 			tmppath.len += 2;
@@ -120,7 +107,7 @@ int enum_dir(struct sc_path path, int depth)
 		}
 	}
 	return 0;
-}
+}	
 
 int test()
 {

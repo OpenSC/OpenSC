@@ -49,6 +49,8 @@ static int convert_sw_to_errorcode(u8 * sw)
 		case 0x87:
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
+	case 0x6D:
+		return SC_ERROR_NOT_SUPPORTED;
 	}
 	return SC_ERROR_UNKNOWN;
 }
@@ -56,21 +58,29 @@ static int convert_sw_to_errorcode(u8 * sw)
 void sc_hex_dump(const u8 *buf, int count)
 {
 	int i;
-	int printch = 0;
+	
+	for (i = 0; i < count; i++) {
+		unsigned char c = buf[i];
+
+		printf("%02X", c);
+	}
+	printf("\n");
+	fflush(stdout);
+}
+
+void sc_print_binary(const u8 *buf, int count)
+{
+	int i;
 	
 	for (i = 0; i < count; i++) {
 		unsigned char c = buf[i];
 		const char *format;
-		if (printch) {
-			if (!isalnum(c) && !ispunct(c) && !isspace(c))
-				format = "\\x%02X";
-			else
-				format = "%c";
-		} else
-			format = "%02X";
+		if (!isalnum(c) && !ispunct(c) && !isspace(c))
+			format = "\\x%02X";
+		else
+			format = "%c";
 		printf(format, c);
 	}
-	printf("\n");
 	fflush(stdout);
 }
 
@@ -344,6 +354,8 @@ int sc_select_file(struct sc_card *card,
 		return r;
 	if (apdu.resplen < 2)
 		return SC_ERROR_UNKNOWN_RESPONSE;
+	if (file != NULL)
+		memset(file, 0, sizeof(*file));
 	switch (apdu.resp[0]) {
 	case 0x6A:
 		switch (apdu.resp[1]) {
@@ -355,16 +367,17 @@ int sc_select_file(struct sc_card *card,
 	case 0x6F:
 		break;
 	case 0x90:
+	case 0x00:	/* proprietary coding */
 		return 0;
 	default:
 		fprintf(stderr,
 			"SELECT FILE returned SW1=%02X, SW2=%02X.\n",
 			apdu.resp[0], apdu.resp[1]);
+		/* FIXME */
 		return SC_ERROR_UNKNOWN_RESPONSE;
 	}
 	if (file == NULL)
 		return 0;
-	memset(file, 0, sizeof(*file));
 	if (pathtype == SC_SELECT_FILE_BY_PATH) {
 		memcpy(&file->path.value, path, pathlen);
 		file->path.len = pathlen;
@@ -828,4 +841,32 @@ int sc_get_random(struct sc_card *card, u8 *rnd, int len)
 		rnd += n;
 	}	
 	return 0;
+}
+
+int sc_list_files(struct sc_card *card, u8 *buf, int buflen)
+{
+	struct sc_apdu apdu;
+	int r;
+	
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
+	apdu.resp = buf;
+	apdu.resplen = buflen;
+	apdu.le = 0;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r)
+		return r;
+	if (apdu.resplen < 2)
+		return -1; /* FIXME */
+	if (apdu.resplen == 2)
+		return convert_sw_to_errorcode(apdu.resp);
+	apdu.resplen -= 2;
+
+	return apdu.resplen;
+}
+
+int sc_file_valid(const struct sc_file *file)
+{
+	assert(file != NULL);
+	
+	return file->magic == SC_FILE_MAGIC;
 }

@@ -174,12 +174,15 @@ int sc_decipher(struct sc_card *card, const u8 * crgram, int crgram_len,
 int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 int data_len, u8 * out, int outlen);
 
+/* Possibly only on Setec cards */
+int sc_list_files(struct sc_card *card, u8 * buf, int buflen);
+
+int sc_file_valid(const struct sc_file *file);
 const char *sc_strerror(int error);
+void sc_hex_dump(const u8 *buf, int len);
+void sc_print_binary(const u8 *buf, int len);
 
 int sc_debug;
-
-void sc_hex_dump(const u8 *buf, int len);
-
 const char *sc_version;
 
 #endif

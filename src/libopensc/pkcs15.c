@@ -233,9 +233,8 @@ int sc_pkcs15_init(struct sc_card *card,
 
 	memcpy(tmppath.value, "\x2F\x00", 2);
 	tmppath.len = 2;
-	err =
-	    sc_select_file(card, &p15card->file_dir, &tmppath,
-			   SC_SELECT_FILE_BY_PATH);
+	err = sc_select_file(card, &p15card->file_dir, &tmppath,
+			     SC_SELECT_FILE_BY_PATH);
 	if (err)
 		goto error;
 	err = sc_read_binary(card, 0, buf, p15card->file_dir.size);
