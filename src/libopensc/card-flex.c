@@ -36,7 +36,7 @@ struct flex_private_data {
 static struct sc_card_operations flex_ops;
 static const struct sc_card_driver flex_drv = {
 	"Schlumberger Multiflex/Cryptoflex",
-	"slb",
+	"flex",
 	&flex_ops
 };
 
@@ -81,7 +81,7 @@ static int flex_init(struct sc_card *card)
 }
 
 static void add_acl_entry(struct sc_file *file, unsigned int op,
-			  u8 nibble)
+			  u8 nibble, int is_mf)
 {
 	switch (nibble) {
 	case 0:
@@ -97,7 +97,10 @@ static void add_acl_entry(struct sc_file *file, unsigned int op,
 		sc_file_add_acl_entry(file, op, SC_AC_PRO, SC_AC_KEY_REF_NONE);
 		break;
 	case 4:
-		sc_file_add_acl_entry(file, op, SC_AC_AUT, SC_AC_KEY_REF_NONE);
+		if (is_mf)
+			sc_file_add_acl_entry(file, op, SC_AC_AUT, 1);
+		else
+			sc_file_add_acl_entry(file, op, SC_AC_AUT, SC_AC_KEY_REF_NONE);
 		break;
 	case 6:
 		sc_file_add_acl_entry(file, op, SC_AC_CHV, 1);
@@ -129,7 +132,7 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 {
 	const u8 *p = buf + 2;
 	u8 b1, b2;
-        int left;
+        int left, is_mf = 0;
 	
 	if (buflen < 14)
 		return -1;
@@ -139,6 +142,8 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 	b1 = *p++;
 	b2 = *p++;
 	file->id = (b1 << 8) + b2;
+	if (file->id == 0x3F00)
+		is_mf = 1;
 	switch (*p) {
 	case 0x01:
 		file->type = SC_FILE_TYPE_WORKING_EF;
@@ -165,18 +170,18 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 	}
         p += 2;
 	if (file->type == SC_FILE_TYPE_DF) {
-		add_acl_entry(file, SC_AC_OP_LIST_FILES, p[0] >> 4);
-		add_acl_entry(file, SC_AC_OP_DELETE, p[1] >> 4);
-		add_acl_entry(file, SC_AC_OP_CREATE, p[1] & 0x0F);
+		add_acl_entry(file, SC_AC_OP_LIST_FILES, p[0] >> 4, is_mf);
+		add_acl_entry(file, SC_AC_OP_DELETE, p[1] >> 4, is_mf);
+		add_acl_entry(file, SC_AC_OP_CREATE, p[1] & 0x0F, is_mf);
 	} else { /* EF */
-		add_acl_entry(file, SC_AC_OP_READ, p[0] >> 4);
+		add_acl_entry(file, SC_AC_OP_READ, p[0] >> 4, 0);
 		switch (file->ef_structure) {
 		case SC_FILE_EF_TRANSPARENT:
-			add_acl_entry(file, SC_AC_OP_UPDATE, p[0] & 0x0F);
+			add_acl_entry(file, SC_AC_OP_UPDATE, p[0] & 0x0F, 0);
 			break;
 		case SC_FILE_EF_LINEAR_FIXED:
 		case SC_FILE_EF_LINEAR_VARIABLE:
-			add_acl_entry(file, SC_AC_OP_UPDATE, p[0] & 0x0F);
+			add_acl_entry(file, SC_AC_OP_UPDATE, p[0] & 0x0F, 0);
 			break;
 		case SC_FILE_EF_CYCLIC:
 #if 0
@@ -186,8 +191,8 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 			break;
 		}
 	}
-	add_acl_entry(file, SC_AC_OP_REHABILITATE, p[2] >> 4);
-	add_acl_entry(file, SC_AC_OP_INVALIDATE, p[2] & 0x0F);
+	add_acl_entry(file, SC_AC_OP_REHABILITATE, p[2] >> 4, is_mf);
+	add_acl_entry(file, SC_AC_OP_INVALIDATE, p[2] & 0x0F, is_mf);
 	p += 3;
 	if (*p++)
 		file->status = SC_FILE_STATUS_ACTIVATED;
@@ -268,6 +273,27 @@ void cache_path(struct sc_card *card, const struct sc_path *path)
 	}
 }
 
+static int get_flex_ac_keys(struct sc_card *card, struct sc_file *file)
+{
+#if 0
+	struct sc_apdu apdu;
+	u8 rbuf[3];
+	int r;
+	
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC4, 0x00, 0x00);
+	apdu.cla = 0xF0;
+	apdu.le = 3;
+	apdu.resplen = 3;
+	apdu.resp = rbuf;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
+		return 0;
+	debug(card->ctx, "AC Keys: %02X %02X %02X\n", rbuf[0], rbuf[1], rbuf[2]);
+#endif
+	return 0;
+}
+
 static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 			  u8 p1, struct sc_file **file_out)
 {
@@ -308,6 +334,8 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
                 sc_file_free(file);
 		return r;
 	}
+	r = get_flex_ac_keys(card, file);
+
 	*file_out = file;
         return 0;
 }
@@ -513,13 +541,15 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 	p[8] = p[9] = p[10] = 0;
 	p[13] = p[14] = p[15] = 0; /* Key numbers */
 	for (i = 0; i < 6; i++) {
+		const struct sc_acl_entry *entry;
 		if (ops[i] == -1)
 			continue;
-		r = acl_to_ac_nibble(file->acl[ops[i]]);
+		entry = sc_file_get_acl_entry(file, ops[i]);
+		r = acl_to_ac_nibble(entry);
 		SC_TEST_RET(card->ctx, r, "Invalid ACL value");
 		/* Do some magic to get the nibbles right */
 		p[8 + i/2] |= (r & 0x0F) << (((i+1) % 2) * 4);
-		r = acl_to_keynum_nibble(file->acl[ops[i]]);
+		r = acl_to_keynum_nibble(entry);
 		p[13 + i/2] |= (r & 0x0F) << (((i+1) % 2) * 4);
 	}
 	p[11] = (file->status & SC_FILE_STATUS_INVALIDATED) ? 0x00 : 0x01;

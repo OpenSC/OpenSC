@@ -465,7 +465,7 @@ int do_create(const char *arg, const char *arg2)
 	struct sc_path path;
 	struct sc_file *file;
 	unsigned int size;
-	int r;
+	int r, i;
 
 	if (arg_to_path(arg, &path, 1) != 0)
 		goto usage;
@@ -478,7 +478,9 @@ int do_create(const char *arg, const char *arg2)
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	file->size = (size_t) size;
 	file->status = SC_FILE_STATUS_ACTIVATED;
-	
+	for (i = 0; i < SC_MAX_AC_OPS; i++)
+		sc_file_add_acl_entry(file, i, SC_AC_NONE, SC_AC_KEY_REF_NONE);
+
 	r = create_file(file);
 	sc_file_free(file);
 	return r;

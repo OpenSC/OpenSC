@@ -129,6 +129,7 @@ extern "C" {
 #define SC_AC_OP_REHABILITATE		4
 #define SC_AC_OP_INVALIDATE		5
 #define SC_AC_OP_LIST_FILES		6
+#define SC_AC_OP_CRYPTO			7
 
 /* Operations relating to access control (in case of EF) */
 #define SC_AC_OP_READ			0
@@ -137,7 +138,7 @@ extern "C" {
 #define SC_AC_OP_ERASE			3
 /* rehab and invalidate are the same as in DF case */
 
-#define SC_MAX_AC_OPS			7
+#define SC_MAX_AC_OPS			8
 
 /* sc_*_record() flags */
 #define SC_RECORD_EF_ID_MASK		0x0001F

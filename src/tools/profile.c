@@ -507,6 +507,12 @@ do_default_pin_type(int argc, char **argv)
 }
 
 static int
+do_pin_pad_char(int argc, char **argv)
+{
+	return get_uint(argv[0], &parser.profile->pin_pad_char);
+}
+
+static int
 do_card_label(int argc, char **argv)
 {
 	struct sc_pkcs15_card	*p15card = parser.profile->p15_card;
@@ -533,7 +539,7 @@ do_default_access_flags(int argc, char **argv)
 	if (!strcasecmp(argv[0], "DSA")) {
 		flags = &parser.profile->dsa_access_flags;
 	} else {
-		parse_error("Unknown alforithm \"%s\"", argv[0]);
+		parse_error("Unknown algorithm \"%s\"", argv[0]);
 		return 1;
 	}
 	argc--, argv++;
@@ -1136,6 +1142,7 @@ static struct command	commands[] = {
  { "MaxPinLength",	PARSE_CARDINFO,	1,	1,	do_maxpinlength	},
  { "MinPinLength",	PARSE_CARDINFO,	1,	1,	do_minpinlength	},
  { "PinEncoding",	PARSE_CARDINFO,	1,	1,	do_default_pin_type },
+ { "PinPadChar",	PARSE_CARDINFO, 1,	1,	do_pin_pad_char },
  { "Key",		PARSE_CARDINFO,	3,	3,	do_key		},
  { "Label",		PARSE_CARDINFO,	1,	1,	do_card_label	},
  { "Manufacturer",	PARSE_CARDINFO,	1,	1,	do_card_manufacturer},

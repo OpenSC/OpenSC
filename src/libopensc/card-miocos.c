@@ -1,5 +1,5 @@
 /*
- * card-miocos.c: Support for MioCOS cards by Miotec
+ * card-miocos.c: Support for PKI cards by Miotec
  *
  * Copyright (C) 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -20,12 +20,19 @@
 
 #include "sc-internal.h"
 #include "sc-log.h"
+#include <string.h>
 
-static const char *miocos_atrs[] = {
-	/* MioCOS 1.1 Test Card */
-	"3B:9D:94:40:23:00:68:10:11:4D:69:6F:43:4F:53:00:90:00",
-	NULL
+static struct sc_atr_table miocos_atrs[] = {
+	{ "\x3B\x9D\x94\x40\x23\x00\x68\x10\x11\x4D\x69\x6F\x43\x4F"
+	  "\x53\x00\x90\x00", 18 },
+	{ NULL }
 };
+
+struct miocos_priv_data {
+	int type;
+};
+
+#define DRVDATA(card)        ((struct miocos_priv_data *) ((card)->drv_data))
 
 static struct sc_card_operations miocos_ops;
 static const struct sc_card_driver miocos_drv = {
@@ -41,32 +48,35 @@ static int miocos_finish(struct sc_card *card)
 
 static int miocos_match_card(struct sc_card *card)
 {
-	int i, match = -1;
+	int i;
 
-	for (i = 0; miocos_atrs[i] != NULL; i++) {
-		u8 defatr[SC_MAX_ATR_SIZE];
-		size_t len = sizeof(defatr);
-		const char *atrp = miocos_atrs[i];
-
-		if (sc_hex_to_bin(atrp, defatr, &len))
-			continue;
-		if (len != card->atr_len)
-			continue;
-		if (memcmp(card->atr, defatr, len) != 0)
-			continue;
-		match = i;
-		break;
-	}
-	if (match == -1)
+	i = _sc_match_atr(card, miocos_atrs, NULL);
+	if (i < 0)
 		return 0;
-
 	return 1;
 }
 
 static int miocos_init(struct sc_card *card)
 {
-	card->drv_data = NULL;
+	int i, id;
+	struct miocos_priv_data *priv = NULL;
+
+	i = _sc_match_atr(card, miocos_atrs, &id);
+	if (i < 0)
+		return 0;
+	priv = malloc(sizeof(struct miocos_priv_data));
+	if (priv == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	card->drv_data = priv;
 	card->cla = 0x00;
+	if (1) {
+		unsigned long flags;
+		
+		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
+		flags |= SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1;
+
+		_sc_card_add_rsa_alg(card, 1024, flags, -1);
+	}
 
 	return 0;
 }
@@ -98,41 +108,128 @@ static u8 acl_to_byte(const struct sc_acl_entry *e)
 	return 0x00;
 }
 
+static int encode_file_structure(struct sc_card *card, const struct sc_file *file,
+				 u8 *buf, size_t *buflen)
+{
+	u8 *p = buf;
+	const int df_ops[8] = {
+		SC_AC_OP_DELETE, SC_AC_OP_CREATE,
+		-1, /* CREATE AC */ -1, /* UPDATE AC */ -1, -1, -1, -1
+	};
+	const int ef_ops[8] = {
+		SC_AC_OP_DELETE, -1, SC_AC_OP_READ,
+		SC_AC_OP_UPDATE, -1, -1, SC_AC_OP_INVALIDATE,
+		SC_AC_OP_REHABILITATE
+	};
+	const int key_ops[8] = {
+		SC_AC_OP_DELETE, -1, -1,
+		SC_AC_OP_UPDATE, SC_AC_OP_CRYPTO, -1, SC_AC_OP_INVALIDATE,
+		SC_AC_OP_REHABILITATE
+	};
+        const int *ops;
+        int i;
+
+	*p++ = file->id >> 8;
+	*p++ = file->id & 0xFF;
+	switch (file->type) {
+	case SC_FILE_TYPE_DF:
+		*p++ = 0x20;
+		break;
+	case SC_FILE_TYPE_WORKING_EF:
+		switch (file->ef_structure) {
+		case SC_FILE_EF_TRANSPARENT:
+			*p++ = 0x40;
+			break;
+		case SC_FILE_EF_LINEAR_FIXED:
+			*p++ = 0x41;
+                        break;
+		case SC_FILE_EF_CYCLIC:
+			*p++ = 0x43;
+			break;
+		default:
+			error(card->ctx, "Invalid EF structure\n");
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
+		break;
+	case SC_FILE_TYPE_INTERNAL_EF:
+		*p++ = 0x44;
+		break;
+	default:
+		error(card->ctx, "Unknown file type\n");
+                return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	if (file->type == SC_FILE_TYPE_DF) {
+		*p++ = 0;
+		*p++ = 0;
+	} else {
+		*p++ = file->size >> 8;
+		*p++ = file->size & 0xFF;
+	}
+	switch (file->type) {
+	case SC_FILE_TYPE_WORKING_EF:
+		ops = ef_ops;
+		break;
+	case SC_FILE_TYPE_INTERNAL_EF:
+		ops = key_ops;
+		break;
+	case SC_FILE_TYPE_DF:
+		ops = df_ops;
+		break;
+	default:
+                return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	for (i = 0; i < 8; i++) {
+		u8 nibble;
+
+		if (ops[i] == -1)
+			nibble = 0x00;
+		else
+			nibble = acl_to_byte(sc_file_get_acl_entry(file, ops[i]));
+		if ((i & 1) == 0)
+			*p = nibble << 4;
+		else
+			*p++ = nibble & 0x0F;
+	}
+	if (file->type == SC_FILE_TYPE_WORKING_EF &&
+	    file->ef_structure != SC_FILE_EF_TRANSPARENT)
+                *p++ = file->record_length;
+	else
+		*p++ = 0;
+	if (file->status & SC_FILE_STATUS_INVALIDATED)
+		*p++ = 0;
+	else
+		*p++ = 0x01;
+	if (file->type == SC_FILE_TYPE_DF && file->namelen) {
+                assert(file->namelen <= 16);
+		memcpy(p, file->name, file->namelen);
+		p += file->namelen;
+	}
+	*buflen = p - buf;
+
+        return 0;
+}
+
 static int miocos_create_file(struct sc_card *card, struct sc_file *file)
 {
-	if (file->prop_attr_len == 0) {
-		memcpy(file->prop_attr, "\x03\x00\x00", 3);
-		file->prop_attr_len = 3;
-	}
-	if (file->sec_attr_len == 0) {
-		int idx[6], i;
-		u8 buf[6];
+	struct sc_apdu apdu;
+	u8 sbuf[32];
+        size_t buflen;
+	int r;
 
-		if (file->type == SC_FILE_TYPE_DF) {
-			const int df_idx[6] = {
-				SC_AC_OP_SELECT, SC_AC_OP_LOCK, SC_AC_OP_DELETE,
-				SC_AC_OP_CREATE, SC_AC_OP_REHABILITATE,
-				SC_AC_OP_INVALIDATE
-			};
-			for (i = 0; i < 6; i++)
-				idx[i] = df_idx[i];
-		} else {
-			const int ef_idx[6] = {
-				SC_AC_OP_READ, SC_AC_OP_UPDATE, SC_AC_OP_WRITE,
-				SC_AC_OP_ERASE, SC_AC_OP_REHABILITATE,
-				SC_AC_OP_INVALIDATE
-			};
-			for (i = 0; i < 6; i++)
-				idx[i] = ef_idx[i];
-		}
-		for (i = 0; i < 6; i++)
-			buf[i] = acl_to_byte(file->acl[idx[i]]);
+	r = encode_file_structure(card, file, sbuf, &buflen);
+	if (r)
+		return r;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
+	apdu.data = sbuf;
+	apdu.datalen = buflen;
+	apdu.lc = buflen;
 
-		memcpy(file->sec_attr, buf, 6);
-		file->sec_attr_len = 6;
-	}
+	r = sc_transmit_apdu(card, &apdu);
+        SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+        r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+        SC_TEST_RET(card->ctx, r, "Card returned error");
 
-	return iso_ops->create_file(card, file);
+	return 0;
 }
 
 static int miocos_set_security_env(struct sc_card *card,
@@ -143,21 +240,21 @@ static int miocos_set_security_env(struct sc_card *card,
 		struct sc_security_env tmp;
 
 		tmp = *env;
-                tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
+		tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
 		tmp.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 		if (tmp.algorithm != SC_ALGORITHM_RSA) {
 			error(card->ctx, "Only RSA algorithm supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-                tmp.algorithm_ref = 0x00;
-		if (tmp.algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		tmp.algorithm_ref = 0x00;
+		/* potential FIXME: return an error, if an unsupported
+		 * pad or hash was requested, although this shouldn't happen.
+		 */
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
 			tmp.algorithm_ref = 0x02;
-#if 0
 		if (tmp.algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
-                        tmp.algorithm_ref |= 0x10;
-#endif
-                return iso_ops->set_security_env(card, &tmp, se_num);
-
+			tmp.algorithm_ref |= 0x10;
+		return iso_ops->set_security_env(card, &tmp, se_num);
 	}
         return iso_ops->set_security_env(card, env, se_num);
 }
@@ -194,29 +291,45 @@ static void add_acl_entry(struct sc_file *file, int op, u8 byte)
 static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 {
 	int i;
-	int idx[6];
+	const int df_ops[8] = {
+		SC_AC_OP_DELETE, SC_AC_OP_CREATE,
+		-1, /* CREATE AC */ -1, /* UPDATE AC */ -1, -1, -1, -1
+	};
+	const int ef_ops[8] = {
+		SC_AC_OP_DELETE, -1, SC_AC_OP_READ,
+		SC_AC_OP_UPDATE, -1, -1, SC_AC_OP_INVALIDATE,
+		SC_AC_OP_REHABILITATE
+	};
+	const int key_ops[8] = {
+		SC_AC_OP_DELETE, -1, -1,
+		SC_AC_OP_UPDATE, SC_AC_OP_CRYPTO, -1, SC_AC_OP_INVALIDATE,
+		SC_AC_OP_REHABILITATE
+	};
+        const int *ops;
 
-	if (len < 6)
-		return;
-	if (file->type == SC_FILE_TYPE_DF) {
-		const int df_idx[6] = {
-			SC_AC_OP_SELECT, SC_AC_OP_LOCK, SC_AC_OP_DELETE,
-			SC_AC_OP_CREATE, SC_AC_OP_REHABILITATE,
-			SC_AC_OP_INVALIDATE
-		};
-		for (i = 0; i < 6; i++)
-			idx[i] = df_idx[i];
-	} else {
-		const int ef_idx[6] = {
-			SC_AC_OP_READ, SC_AC_OP_UPDATE, SC_AC_OP_WRITE,
-			SC_AC_OP_ERASE, SC_AC_OP_REHABILITATE,
-			SC_AC_OP_INVALIDATE
-		};
-		for (i = 0; i < 6; i++)
-			idx[i] = ef_idx[i];
+	if (len < 4)
+                return;
+	switch (file->type) {
+	case SC_FILE_TYPE_WORKING_EF:
+		ops = ef_ops;
+		break;
+	case SC_FILE_TYPE_INTERNAL_EF:
+		ops = key_ops;
+		break;
+	case SC_FILE_TYPE_DF:
+		ops = df_ops;
+		break;
+	default:
+                return;
 	}
-	for (i = 0; i < 6; i++)
-		add_acl_entry(file, idx[i], buf[i]);
+	for (i = 0; i < 8; i++) {
+		if (ops[i] == -1)
+			continue;
+		if ((i & 1) == 0)
+			add_acl_entry(file, ops[i], buf[i / 2] >> 4);
+		else
+			add_acl_entry(file, ops[i], buf[i / 2] & 0x0F);
+	}
 }
 
 static int miocos_select_file(struct sc_card *card,
@@ -249,6 +362,26 @@ static int miocos_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	return apdu.resplen;
 }
 
+static int miocos_delete_file(struct sc_card *card, const struct sc_path *path)
+{
+	int r;
+	struct sc_apdu apdu;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
+		error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	r = sc_select_file(card, path, NULL);
+	SC_TEST_RET(card->ctx, r, "Unable to select file to be deleted");
+	
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xE4, 0x00, 0x00);
+	
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+}
+
 static const struct sc_card_driver * sc_get_driver(void)
 {
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -263,6 +396,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 	miocos_ops.set_security_env = miocos_set_security_env;
 	miocos_ops.select_file = miocos_select_file;
 	miocos_ops.list_files = miocos_list_files;
+	miocos_ops.delete_file = miocos_delete_file;
 	
         return &miocos_drv;
 }

@@ -42,7 +42,6 @@ const char *opt_appdf = NULL, *opt_prkeyf = NULL, *opt_pubkeyf = NULL;
 u8 *pincode = NULL;
 
 const struct option options[] = {
-	{ "create-pkcs15",	0, 0,		'C' },
 	{ "list-keys",		0, 0, 		'l' },
 	{ "create-key-files",	1, 0,		'c' },
 	{ "create-pin-file",	1, 0,		'P' },
@@ -62,7 +61,6 @@ const struct option options[] = {
 };
 
 const char *option_help[] = {
-	"Creates a new PKCS #15 structure",
 	"Lists all keys in a public key file",
 	"Creates new RSA key files for <arg> keys",
 	"Creates a new CHV<arg> file",
@@ -1066,169 +1064,6 @@ int create_pin_file(const struct sc_path *inpath, int chv, const char *key_id)
 	return 0;
 }
 
-int add_object(struct sc_pkcs15_card *p15card, 
-	       struct sc_pkcs15_df *df, int file_nr,
-	       unsigned int type, void *data, size_t datalen)
-{
-	struct sc_pkcs15_object *obj;
-
-	obj = malloc(sizeof(*obj));
-	if (obj == NULL)
-		return -1;
-	obj->type = type;
-	obj->data = malloc(datalen);
-	if (obj->data == NULL) {
-		free(obj);
-		return -1;
-	}
-	memcpy(obj->data, data, datalen);
-        return sc_pkcs15_add_object(p15card, df, file_nr, obj);
-}
-
-int create_pkcs15()
-{
-#if 0
-	struct sc_pkcs15_card *p15card;
-	struct sc_file *file;
-	struct sc_path path;
-        struct sc_pkcs15_object obj;
-	struct sc_pkcs15_cert_info cert;
-	struct sc_pkcs15_pin_info pin;
-        struct sc_pkcs15_prkey_info prkey;
-	int r, file_no;
-
-	p15card = sc_pkcs15_card_new();
-	if (p15card == NULL)
-                return 1;
-	p15card->label = strdup("OpenSC Test Card");
-	p15card->manufacturer_id = strdup("OpenSC Project");
-	p15card->serial_number = strdup("1234");
-	p15card->flags = SC_PKCS15_CARD_FLAG_EID_COMPLIANT;
-	p15card->version = 1;
-	p15card->file_app = sc_file_new();
-	sc_format_path("3F005015", &p15card->file_app->path);
-	p15card->card = card;
-
-	file = sc_file_new();
-        file->size = 32; /* reserve 32 additional bytes in each DF */
-
-	sc_format_path("3F0050155032", &file->path);
-	sc_file_dup(&p15card->file_tokeninfo, file);
-
-	sc_format_path("3F0050155031", &file->path);
-	sc_file_dup(&p15card->file_odf, file);
-
-	sc_format_path("3F0050154403", &file->path);
-	file_no = new_pkcs15_df(p15card, SC_PKCS15_CDF, file);
-	if (file_no < 0)
-		return 1;
-
-	sc_format_path("3F0050154402", &file->path);
-	file_no = new_pkcs15_df(p15card, SC_PKCS15_PRKDF, file);
-	if (file_no < 0)
-		return 1;
-
-	sc_format_path("3F0050154401", &file->path);
-	file_no = new_pkcs15_df(p15card, SC_PKCS15_AODF, file);
-	if (file_no < 0)
-		return 1;
-
-	sc_file_free(file);
-	file = NULL;
-
-	memset(&cert, 0, sizeof(cert));
-	strcpy(cert.com_attr.label, "Authentication certificate");
-	sc_pkcs15_format_id("45", &cert.id);
-	sc_format_path("3F0050154301", &cert.path);
-	add_object(p15card, &p15card->df[SC_PKCS15_CDF], file_no,
-		   SC_PKCS15_TYPE_CERT_X509, &cert, sizeof(cert)),
-
-	strcpy(cert.com_attr.label, "Non-repudiation certificate");
-	sc_pkcs15_format_id("46", &cert.id);
-	sc_format_path("3F0050154302", &cert.path);
-	add_object(p15card, &p15card->df[SC_PKCS15_CDF], file_no,
-		   SC_PKCS15_TYPE_CERT_X509, &cert, sizeof(cert)),
-
-	memset(&prkey, 0, sizeof(prkey));
-	prkey.modulus_length = opt_mod_length;
-	prkey.com_attr.flags = 1;
-	prkey.native = 1;
-
-	strcpy(prkey.com_attr.label, "Authentication key");
-	sc_pkcs15_format_id("45", &prkey.id);
-	sc_pkcs15_format_id("01", &prkey.com_attr.auth_id);
-	sc_format_path("0012", &prkey.path);
-	prkey.key_reference = 0;
-	prkey.usage = SC_PKCS15_PRKEY_USAGE_SIGN;
-	prkey.access_flags = 0x1D;
-	add_object(p15card, &p15card->df[SC_PKCS15_PRKDF], file_no,
-		   SC_PKCS15_TYPE_PRKEY_RSA, &prkey, sizeof(prkey)),
-
-	strcpy(prkey.com_attr.label, "Non-repudiation key");
-	sc_pkcs15_format_id("46", &prkey.id);
-	sc_pkcs15_format_id("02", &prkey.com_attr.auth_id);
-	sc_format_path("3F004B020012", &prkey.path);
-	prkey.key_reference = 0;
-	prkey.usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
-	prkey.access_flags = 0x1D;
-	add_object(p15card, &p15card->df[SC_PKCS15_PRKDF], file_no,
-		   SC_PKCS15_TYPE_PRKEY_RSA, &prkey, sizeof(prkey)),
-
-	memset(&pin, 0, sizeof(pin));
-	pin.com_attr.flags = 0x03;
-	pin.magic = SC_PKCS15_PIN_MAGIC;
-	
-	strcpy(pin.com_attr.label, "Authentication PIN");
-	sc_pkcs15_format_id("01", &pin.auth_id);
-	sc_format_path("3F005015", &pin.path);
-	pin.reference = 1;
-	pin.flags = 0x32;
-	pin.min_length = 4;
-	pin.stored_length = 8;
-	pin.pad_char = 0x00;
-	pin.type = 1;
-	add_object(p15card, &p15card->df[SC_PKCS15_AODF], file_no,
-		   SC_PKCS15_TYPE_AUTH_PIN, &pin, sizeof(pin)),
-
-	strcpy(pin.com_attr.label, "Non-repuditiation PIN");
-	sc_pkcs15_format_id("02", &pin.auth_id);
-	sc_format_path("3F004B02", &pin.path);
-	pin.reference = 1;
-	pin.flags = 0x32;
-	pin.min_length = 4;
-	pin.stored_length = 8;
-	pin.pad_char = 0x00;
-	pin.type = 1;
-	add_object(p15card, &p15card->df[SC_PKCS15_AODF], file_no,
-		   SC_PKCS15_TYPE_AUTH_PIN, &pin, sizeof(pin)),
-
-	r = create_app_df(&p15card->file_app->path, 5000);
-	if (r) {
-		fprintf(stderr, "Unable to create app DF: %s\n", sc_strerror(r));
-		return 1;
-	}
-	r = create_pin_file(&p15card->file_app->path, 1, " (key 1)");
-	if (r)
-		return 1;
-        sc_format_path("3F004B02", &path);
-	r = create_app_df(&path, 1000);
-	if (r) {
-		fprintf(stderr, "Unable to create DF for key 2: %s\n", sc_strerror(r));
-		return 1;
-	}
-	r = create_pin_file(&path, 1, " (key 2)");
-	if (r)
-		return 1;
-	r = sc_pkcs15_create(p15card, card);
-        sc_pkcs15_card_free(p15card);
-	if (r) {
-		fprintf(stderr, "PKCS #15 structure creation failed: %s\n", sc_strerror(r));
-		return 1;
-	}
-#endif
-	return 0;
-}
-
 int create_pin()
 {
 	struct sc_path path;
@@ -1256,19 +1091,14 @@ int main(int argc, char * const argv[])
 	int do_list_keys = 0;
 	int do_store_key = 0;
 	int do_create_pin_file = 0;
-	int do_create_pkcs15 = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "P:Cvslgc:Rk:r:p:u:e:m:dqa:", options, &long_optind);
+		c = getopt_long(argc, argv, "P:vslgc:Rk:r:p:u:e:m:dqa:", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
 			print_usage_and_die("cryptoflex-tool");
 		switch (c) {
-		case 'C':
-			do_create_pkcs15 = 1;
-			action_count++;
-			break;
 		case 'l':
 			do_list_keys = 1;
 			action_count++;
@@ -1365,11 +1195,6 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Unable to lock card: %s\n", sc_strerror(r));
 		err = 1;
 		goto end;
-	}
-	if (do_create_pkcs15) {
-		if ((err = create_pkcs15()) != 0)
-			goto end;
-		action_count--;
 	}
 	if (do_create_pin_file) {
 		if ((err = create_pin()) != 0)

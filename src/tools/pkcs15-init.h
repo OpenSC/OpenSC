@@ -49,5 +49,6 @@ extern int	sc_pkcs15init_authenticate(struct sc_profile *,
 /* Card specific stuff */
 extern void	bind_gpk_operations(struct pkcs15_init_operations *);
 extern void	bind_miocos_operations(struct pkcs15_init_operations *);
+extern void	bind_cflex_operations(struct pkcs15_init_operations *);
 
 #endif /* PKCS15_INIT_H */
