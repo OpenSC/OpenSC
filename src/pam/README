@@ -40,3 +40,10 @@ LDAP specific options:
 
 auth_method[opensc-pkcs15-eid]:
  -r <reader>	Reader name
+
+# Copy your PEM encoded certificate to a file in your home directory
+# called '.eid/authorized_certificates'.
+# NOTE:
+#  You can use the 'pkcs15-tool -r <ID> -o ~/.eid/authorized_certificates'
+#  command to get the PEM encoded certificate. Find the ID by saying
+#  'pkcs15-tool -c'. FINEID card owners should use 45 for the ID.
