@@ -174,10 +174,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
         len = pin->stored_length;
         if (!(pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING))
                 len = pinlen;
-        ref = pin->reference & 0x1f;
-        if ((pin->flags & SC_PKCS15_PIN_FLAG_LOCAL))
-		ref |= 0x80;
-	r = sc_verify(card, SC_AC_CHV, ref,
+	r = sc_verify(card, SC_AC_CHV, pin->reference,
 		      pinbuf, len, &pin->tries_left);
 	memset(pinbuf, 0, pinlen);
 	sc_unlock(card);
