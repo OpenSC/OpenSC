@@ -1068,18 +1068,30 @@ ret:
 }
 
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
-			const struct sc_path *path,
+			const struct sc_path *in_path,
 			u8 **buf, size_t *buflen,
 			struct sc_file **file_out)
 {
-	struct sc_file *file;
+	struct sc_file *file = NULL;
+	struct sc_path tmp_path, *path = &tmp_path;
 	u8	*data = NULL;
 	size_t	len = 0, offset = 0;
 	int	r = -1;
 
-	assert(p15card != NULL && path != NULL && buf != NULL);
+	assert(p15card != NULL && in_path != NULL && buf != NULL);
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 
+	if (in_path->type == SC_PATH_TYPE_FILE_ID)
+	{
+		/* in case of a FID prepend the application DF */
+		memcpy(path, &p15card->file_app->path, sizeof(struct sc_path));
+		sc_append_path(path, in_path);
+		path->index = in_path->index;
+		path->count = in_path->count;
+	}
+	else
+		memcpy(path, in_path, sizeof(struct sc_path));
+	
 	if (p15card->opts.use_cache) {
 		r = sc_pkcs15_read_cached_file(p15card, path, &data, &len);
 	}
