@@ -83,6 +83,11 @@ app default {
 		#
 		max_send_size = 252;
 		max_recv_size = 252;
+		# Sometimes T=0 vs T=1 isses are easy to track down, if card supports both
+		# protocols, and one method works and another not. Force the connection to
+		# use a specific protocol. Possible value: t0, t1, raw.
+		# force_protocol = t0;
+		# 
 	}
 
 	# What card drivers to load at start-up
@@ -107,7 +112,7 @@ app default {
 	#  setcos	Setec
 	#  etoken	Aladdin eToken and other CardOS based cards
 	#  gpk		GPK 4K/8K/16K
-	#  mcrd		MICARDO 2
+	#  mcrd		MICARDO 2.1
 	#  miocos	MioCOS 1.1
 	#  openpgp	OpenPGP card
 	#  tcos		TCOS 2.0
