@@ -1,5 +1,6 @@
 # Process this file with automake to create Makefile.in
 
+CC = ccmalloc gcc
 INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 

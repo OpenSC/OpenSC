@@ -309,7 +309,7 @@ static int parse_x509_cert_info(struct sc_context *ctx,
 	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_cert_attr[4],
 				asn1_x509_cert_attr[2], asn1_type_cert_attr[2],
 				asn1_cert[2];
-	struct sc_pkcs15_object cert_obj = { &cert->com_attr, asn1_com_cert_attr, NULL,
+	struct sc_asn1_pkcs15_object cert_obj = { &cert->com_attr, asn1_com_cert_attr, NULL,
 					     asn1_type_cert_attr };
 	u8 id_value[128];
 	int id_type, id_value_len = sizeof(id_value);
@@ -337,14 +337,16 @@ static int parse_x509_cert_info(struct sc_context *ctx,
 	return r;
 }
 
-static int encode_x509_cert_info(struct sc_context *ctx,
-				 struct sc_pkcs15_cert_info *cert,
-				 u8 ** buf, size_t *buflen)
+int sc_pkcs15_encode_cdf_entry(struct sc_pkcs15_card *p15card,
+			       const struct sc_pkcs15_object *obj,
+			       u8 **buf, size_t *bufsize)
 {
 	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_cert_attr[4],
 				asn1_x509_cert_attr[2], asn1_type_cert_attr[2],
 				asn1_cert[2];
-	const struct sc_pkcs15_object cert_obj = { &cert->com_attr, asn1_com_cert_attr, NULL,
+	struct sc_pkcs15_cert_info *infop =
+		(struct sc_pkcs15_cert_info *) obj->data;
+	const struct sc_asn1_pkcs15_object cert_obj = { &infop->com_attr, asn1_com_cert_attr, NULL,
 						   asn1_type_cert_attr };
 	int r;
 
@@ -354,43 +356,16 @@ static int encode_x509_cert_info(struct sc_context *ctx,
 	sc_copy_asn1_entry(c_asn1_type_cert_attr, asn1_type_cert_attr);
 	sc_copy_asn1_entry(c_asn1_cert, asn1_cert);
 	
-	sc_format_asn1_entry(asn1_com_cert_attr + 0, (void *) &cert->id, NULL, 1);
-	if (cert->authority)
-		sc_format_asn1_entry(asn1_com_cert_attr + 1, (void *) &cert->authority, NULL, 1);
-	sc_format_asn1_entry(asn1_x509_cert_attr + 0, (void *) &cert->path, NULL, 1);
+	sc_format_asn1_entry(asn1_com_cert_attr + 0, (void *) &infop->id, NULL, 1);
+	if (infop->authority)
+		sc_format_asn1_entry(asn1_com_cert_attr + 1, (void *) &infop->authority, NULL, 1);
+	sc_format_asn1_entry(asn1_x509_cert_attr + 0, (void *) &infop->path, NULL, 1);
 	sc_format_asn1_entry(asn1_type_cert_attr + 0, (void *) asn1_x509_cert_attr, NULL, 1);
 	sc_format_asn1_entry(asn1_cert + 0, (void *) &cert_obj, NULL, 1);
 
-	r = sc_asn1_encode(ctx, asn1_cert, buf, buflen);
+	r = sc_asn1_encode(p15card->card->ctx, asn1_cert, buf, bufsize);
 
 	return r;
-}
-
-int sc_pkcs15_create_cdf(struct sc_pkcs15_card *p15card,
-                         struct sc_file *file,
-                         const struct sc_pkcs15_cert_info **certs)
-{
-	u8 *buf = NULL, *tmp;
-	size_t bufsize = 0, tmpsize;
-	int i = 0, r;
-	const struct sc_pkcs15_cert_info *cert;
-	char str[10240];
-	
-	for (i = 0; (cert = certs[i]) != NULL; i++) {
-		r = encode_x509_cert_info(p15card->card->ctx,
-					  (struct sc_pkcs15_cert_info *) cert, 
-					  &tmp, &tmpsize);
-		if (r) {
-			free(buf);
-			return r;
-		}
-		buf = realloc(buf, bufsize + tmpsize);
-		memcpy(buf + bufsize, tmp, tmpsize);
-		bufsize += tmpsize;
-	}
-	sc_hex_dump(p15card->card->ctx, buf, bufsize, str, sizeof(str));
-	printf("CDF:\n%s\n", str);
-	return 0;	
 }
 
 void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert)
@@ -408,36 +383,57 @@ void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert)
 	printf("\n");
 }
 
-static int get_certs_from_file(struct sc_pkcs15_card *card,
-			       struct sc_file *file)
+static int get_certs_from_file(struct sc_pkcs15_card *p15card,
+			       struct sc_pkcs15_df *df,
+			       int file_nr)
 {
 	int r;
 	size_t bytes_left;
 	u8 buf[2048];
 	const u8 *p = buf;
+	struct sc_file *file = df->file[file_nr];
 
-	r = sc_select_file(card->card, &file->path, file);
+	r = sc_select_file(p15card->card, &file->path, file);
 	if (r)
 		return r;
 	if (file->size > sizeof(buf))
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	r = sc_read_binary(card->card, 0, buf, file->size, 0);
+	r = sc_read_binary(p15card->card, 0, buf, file->size, 0);
 	if (r < 0)
 		return r;
 	bytes_left = r;
 	do {
-		struct sc_pkcs15_cert_info tmp;
+		struct sc_pkcs15_cert_info info, *infop;
+		struct sc_pkcs15_object *objp;
 
-		r = parse_x509_cert_info(card->card->ctx,
-					 &tmp, &p, &bytes_left);
+		memset(&info, 0, sizeof(info));
+		r = parse_x509_cert_info(p15card->card->ctx,
+					 &info, &p, &bytes_left);
 		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 			break;
 		if (r)
 			return r;
-		if (card->cert_count >= SC_PKCS15_MAX_CERTS)
-			return SC_ERROR_TOO_MANY_OBJECTS;
-                card->cert_info[card->cert_count] = tmp;
-		card->cert_count++;
+		infop = malloc(sizeof(info));
+		if (infop == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
+		memcpy(infop, &info, sizeof(info));
+		objp = malloc(sizeof(struct sc_pkcs15_object));
+		if (objp == NULL) {
+			free(infop);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+		objp->type = SC_PKCS15_TYPE_CERT_X509;
+		objp->data = infop;
+		r = sc_pkcs15_add_object(p15card->card->ctx, df, file_nr, objp);
+		if (r) {
+			free(infop);
+			free(objp);
+			return r;
+		}
+                if (p15card->cert_count >= SC_PKCS15_MAX_PRKEYS)
+			break;
+		p15card->cert_info[p15card->cert_count] = info;
+		p15card->cert_count++;
 	} while (bytes_left);
 
 	return 0;
@@ -461,7 +457,7 @@ int sc_pkcs15_enum_certificates(struct sc_pkcs15_card *card)
 		type = df_types[j];
 		
 		for (i = 0; i < card->df[type].count; i++) {
-			r = get_certs_from_file(card, card->df[type].file[i]);
+			r = get_certs_from_file(card, &card->df[type], i);
 			if (r != 0)
 				break;
 		}

@@ -54,7 +54,7 @@ static int parse_pin_info(struct sc_context *ctx,
 		{ "pinAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_pin_attr},
 		{ NULL }
 	};
-	struct sc_pkcs15_object pin_obj = { &pin->com_attr, asn1_com_ao_attr, NULL,
+	struct sc_asn1_pkcs15_object pin_obj = { &pin->com_attr, asn1_com_ao_attr, NULL,
 					    asn1_type_pin_attr };
 	struct sc_asn1_entry asn1_pin[] = {
 		{ "pin", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &pin_obj },

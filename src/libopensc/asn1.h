@@ -33,7 +33,7 @@ struct sc_asn1_entry {
 	void *arg;
 };
 
-struct sc_pkcs15_object {
+struct sc_asn1_pkcs15_object {
 	struct sc_pkcs15_common_obj_attr *com_attr;
 	struct sc_asn1_entry *asn1_class_attr;
 	struct sc_asn1_entry *asn1_subclass_attr;

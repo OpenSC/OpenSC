@@ -195,12 +195,18 @@ struct sc_file {
 #define SC_SEC_OPERATION_DECIPHER	0
 #define SC_SEC_OPERATION_SIGN		1
 
+/* sc_security_env flags */
+#define SC_SEC_ENV_ALG_REF_PRESENT	0x01
+#define SC_SEC_ENV_FILE_REF_PRESENT	0x02
+#define SC_SEC_ENV_KEY_REF_PRESENT	0x04
 
 struct sc_security_env {
 	int algorithm_ref;
 	struct sc_path key_file_id;
 	int operation;
 	int key_ref;
+	
+	int flags;
 };
 
 /*
@@ -291,8 +297,7 @@ struct sc_card_operations {
 	/* restore_security_env:  Restores a previously saved security
 	 *   environment, and stores information about the environment to
 	 *   <env_out>, if not NULL. */
-	int (*restore_security_env)(struct sc_card *card, int se_num,
-				    struct sc_security_env *env_out);
+	int (*restore_security_env)(struct sc_card *card, int se_num);
 
 	/* set_security_env:  Initializes the security environment on card
 	 *   according to <env>, and stores the environment as <se_num> on the
@@ -470,7 +475,7 @@ int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);
 /* ISO 7816-8 related functions */
 int sc_restore_security_env(struct sc_card *card, int se_num);
 int sc_set_security_env(struct sc_card *card,
-			const struct sc_security_env *env);
+			const struct sc_security_env *env, int se_num);
 int sc_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 		u8 * out, size_t outlen);
 int sc_compute_signature(struct sc_card *card, const u8 * data,

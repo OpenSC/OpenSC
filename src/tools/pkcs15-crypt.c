@@ -1,5 +1,5 @@
 /*
- * opensc-crypt.c: Tool for cryptography operations with SmartCards
+ * pkcs15-crypt.c: Tool for cryptography operations with SmartCards
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -198,7 +198,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die("opensc-crypt");
+			print_usage_and_die("pkcs15-crypt");
 		switch (c) {
 		case 's':
 			do_sign++;
@@ -236,7 +236,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die("opensc-crypt");
+		print_usage_and_die("pkcs15-crypt");
 	r = sc_establish_context(&ctx);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));

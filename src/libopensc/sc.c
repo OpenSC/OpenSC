@@ -33,7 +33,7 @@
 #ifdef VERSION
 const char *sc_version = VERSION;
 #else
-#warning FIXME: version info
+#warning FIXME: version info undefined
 const char *sc_version = "(undef)";
 #endif
 

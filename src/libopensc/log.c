@@ -173,3 +173,8 @@ void sc_hex_dump(struct sc_context *ctx, const u8 *in, size_t count,
 		lines++;
 	}
 }
+
+void sc_perror(struct sc_context *ctx, int error, const char *str)
+{
+	error(ctx, "%s: %s\n", sc_strerror(error), str);
+}

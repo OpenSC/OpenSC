@@ -39,6 +39,8 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	senv.key_file_id = prkey->file_id;
 	senv.operation = SC_SEC_OPERATION_DECIPHER;
 	senv.key_ref = 0x0100 | prkey->key_reference;
+	senv.flags  = SC_SEC_ENV_ALG_REF_PRESENT | SC_SEC_ENV_FILE_REF_PRESENT;
+	senv.flags |= SC_SEC_ENV_KEY_REF_PRESENT;
 	
 	SC_FUNC_CALLED(ctx, 1);
 	r = sc_select_file(p15card->card, &p15card->file_app.path,
@@ -49,7 +51,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	r = sc_restore_security_env(p15card->card, 0); /* empty SE */
 	SC_TEST_RET(ctx, r, "sc_restore_security_env() failed");
 #endif
-	r = sc_set_security_env(p15card->card, &senv);
+	r = sc_set_security_env(p15card->card, &senv, 0);
 	SC_TEST_RET(ctx, r, "sc_set_security_env() failed");
 	r = sc_decipher(p15card->card, in, inlen, out, outlen);
 	SC_TEST_RET(ctx, r, "sc_decipher() failed");
@@ -77,6 +79,8 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	senv.key_file_id = prkey->file_id;
 	senv.operation = SC_SEC_OPERATION_SIGN;
 	senv.key_ref = 0x0100 | prkey->key_reference;
+	senv.flags  = SC_SEC_ENV_ALG_REF_PRESENT | SC_SEC_ENV_FILE_REF_PRESENT;
+	senv.flags |= SC_SEC_ENV_KEY_REF_PRESENT;
 	
 	SC_FUNC_CALLED(ctx, 1);
 	r = sc_select_file(p15card->card, &p15card->file_app.path,
@@ -87,7 +91,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	r = sc_restore_security_env(p15card->card, 0); /* empty SE */
 	SC_TEST_RET(ctx, r, "sc_restore_security_env() failed");
 #endif
-	r = sc_set_security_env(p15card->card, &senv);
+	r = sc_set_security_env(p15card->card, &senv, 0);
 	SC_TEST_RET(ctx, r, "sc_set_security_env() failed");
 	r = sc_compute_signature(p15card->card, in, inlen, out, outlen);
 	SC_TEST_RET(ctx, r, "sc_compute_signature() failed");

@@ -66,5 +66,6 @@ void do_log2(struct sc_context *ctx, int facility, const char *file,
 
 void sc_hex_dump(struct sc_context *ctx, const u8 *buf, size_t len,
 		 char *out, size_t outlen);
+void sc_perror(struct sc_context *ctx, int error, const char *str);
 
 #endif

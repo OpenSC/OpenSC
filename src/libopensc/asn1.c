@@ -703,7 +703,7 @@ static const struct sc_asn1_entry c_asn1_p15_obj[5] = {
 };
 
 static int asn1_decode_p15_object(struct sc_context *ctx, const u8 *in,
-				  size_t len, struct sc_pkcs15_object *obj,
+				  size_t len, struct sc_asn1_pkcs15_object *obj,
 				  int depth)
 {
 	int r;
@@ -729,7 +729,7 @@ static int asn1_decode_p15_object(struct sc_context *ctx, const u8 *in,
 	return r;
 }
 
-static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_pkcs15_object *obj,
+static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_asn1_pkcs15_object *obj,
 				  u8 **buf, size_t *bufsize, int depth)
 {
 	int r;
@@ -885,7 +885,7 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
 		break;
 	case SC_ASN1_PKCS15_OBJECT:
 		if (entry->parm != NULL)
-			r = asn1_decode_p15_object(ctx, obj, objlen, (struct sc_pkcs15_object *) parm, depth);
+			r = asn1_decode_p15_object(ctx, obj, objlen, (struct sc_asn1_pkcs15_object *) parm, depth);
 		break;
 	case SC_ASN1_CALLBACK:
 		if (entry->parm != NULL)
@@ -1061,7 +1061,7 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 		}
 		break;
 	case SC_ASN1_PKCS15_OBJECT:
-		r = asn1_encode_p15_object(ctx, (const struct sc_pkcs15_object *) parm, &buf, &buflen, depth);
+		r = asn1_encode_p15_object(ctx, (const struct sc_asn1_pkcs15_object *) parm, &buf, &buflen, depth);
 		break;
 	case SC_ASN1_CALLBACK:
 		r = callback_func(ctx, entry->arg, &buf, &buflen, depth);
@@ -1071,7 +1071,7 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 		assert(0);
 	}
 	if (r) {
-		error(ctx, "decoding of ASN.1 object '%s' failed: %s\n", entry->name,
+		error(ctx, "encoding of ASN.1 object '%s' failed: %s\n", entry->name,
 		      sc_strerror(r));
 		if (buf)
 			free(buf);

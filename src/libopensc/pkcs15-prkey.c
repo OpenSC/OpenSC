@@ -77,7 +77,7 @@ static int parse_rsa_prkey_info(struct sc_context *ctx,
 		{ NULL }
 	};
 
-	struct sc_pkcs15_object prkey_obj = { &prkey->com_attr, asn1_com_key_attr,
+	struct sc_asn1_pkcs15_object prkey_obj = { &prkey->com_attr, asn1_com_key_attr,
 					      asn1_com_prkey_attr, asn1_type_attr };
 	struct sc_asn1_entry asn1_prkey[] = {
 		{ "privateRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &prkey_obj },

@@ -24,74 +24,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-int sc_set_security_env(struct sc_card *card,
-			const struct sc_security_env *env)
-{
-	struct sc_apdu apdu;
-	u8 sbuf[MAX_BUFFER_SIZE];
-	u8 *p;
-	int r;
-
-	assert(card != NULL && env != NULL);
-	SC_FUNC_CALLED(card->ctx, 2);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
-	switch (env->operation) {
-	case SC_SEC_OPERATION_DECIPHER:
-		apdu.p1 = 0x41;
-		apdu.p2 = 0xB8;
-		break;
-	case SC_SEC_OPERATION_SIGN:
-		apdu.p1 = 0x81;
-		apdu.p2 = 0xB6;
-		break;
-	
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	apdu.le = 0;
-	p = sbuf;
-	if (env->algorithm_ref >= 0) {
-		*p++ = 0x80;		/* algorithm reference */
-		*p++ = env->algorithm_ref >> 8;
-		*p++ = env->algorithm_ref & 0xFF;
-	}
-	if (env->key_file_id.len >= 0) {
-		*p++ = 0x81;
-		*p++ = env->key_file_id.len;
-		memcpy(p, env->key_file_id.value, env->key_file_id.len);
-		p += env->key_file_id.len;
-	}
-	if (env->key_ref >= 0) {
-		*p++ = 0x84;
-		*p++ = env->key_ref >> 8;
-		*p++ = env->key_ref & 0xFF;
-	}
-	r = p - sbuf;
-	apdu.lc = r;
-	apdu.datalen = r;
-	apdu.data = sbuf;
-	apdu.resplen = 0;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
-}
-
-int sc_restore_security_env(struct sc_card *card, int num)
-{
-	struct sc_apdu apdu;
-	int r;
-	u8 rbuf[MAX_BUFFER_SIZE];
-	
-	assert(card != NULL);
-	SC_FUNC_CALLED(card->ctx, 2);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, num);
-	apdu.resplen = sizeof(rbuf) > 250 ? 250 : sizeof(rbuf);
-	apdu.resp = rbuf;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
-}
-
 int sc_decipher(struct sc_card *card,
 		const u8 * crgram, size_t crgram_len, u8 * out, size_t outlen)
 {
@@ -157,6 +89,32 @@ int sc_compute_signature(struct sc_card *card,
 		SC_FUNC_RETURN(card->ctx, 2, len);
 	}
 	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+}
+
+int sc_set_security_env(struct sc_card *card,
+			const struct sc_security_env *env,
+			int se_num)
+{
+	int r;
+
+	assert(card != NULL);
+	SC_FUNC_CALLED(card->ctx, 2);
+	if (card->ops->set_security_env == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->set_security_env(card, env, se_num);
+        SC_FUNC_RETURN(card->ctx, 2, r);
+}
+
+int sc_restore_security_env(struct sc_card *card, int se_num)
+{
+	int r;
+
+	assert(card != NULL);
+	SC_FUNC_CALLED(card->ctx, 2);
+	if (card->ops->restore_security_env == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->restore_security_env(card, se_num);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_verify(struct sc_card *card, unsigned int type, int ref, 

@@ -42,7 +42,7 @@ const char *option_help[] = { NULL };
 
 const char *cmds[] = {
 	"ls", "cd", "debug", "cat", "info", "create", "delete",
-	"verify", "put", "get"
+	"verify", "put", "get", "mkdir"
 };
 
 const int nr_cmds = sizeof(cmds)/sizeof(cmds[0]);
@@ -376,12 +376,31 @@ int do_info(const char *arg)
 	return 0;
 }
 
+int create_file(const struct sc_file *file)
+{
+	int r;
+	
+	r = sc_create_file(card, file);
+	if (r) {
+		check_ret(r, SC_AC_OP_CREATE, "CREATE FILE failed", &current_file);
+		return -1;
+	}
+	/* Make sure we're back in the parent directory, because on some cards
+	 * CREATE FILE also selects the newly created file. */
+	r = sc_select_file(card, &current_path, NULL);
+	if (r) {
+		printf("unable to select parent file: %s\n", sc_strerror(r));
+		die(1);
+	}
+	return 0;
+}
+
 int do_create(const char *arg, const char *arg2)
 {
 	struct sc_path path;
 	struct sc_file file;
 	int size;
-	int i, r;
+	int i;
 
 	if (arg_to_path(arg, &path) != 0)
 		goto usage;
@@ -397,21 +416,34 @@ int do_create(const char *arg, const char *arg2)
 	file.size = (size_t) size;
 	file.status = SC_FILE_STATUS_ACTIVATED;
 	
-	r = sc_create_file(card, &file);
-	if (r) {
-		check_ret(r, SC_AC_OP_CREATE, "CREATE FILE failed", &current_file);
-		return -1;
-	}
-	/* Make sure we're back in the parent directory, because on some cards
-	 * CREATE FILE also selects the newly created file. */
-	r = sc_select_file(card, &current_path, NULL);
-	if (r) {
-		printf("unable to select parent file: %s\n", sc_strerror(r));
-		die(1);
-	}
-	return 0;
+	return create_file(&file);
 usage:
 	printf("Usage: create <file_id> <file_size>\n");
+	return -1;
+}
+
+int do_mkdir(const char *arg, const char *arg2)
+{
+	struct sc_path path;
+	struct sc_file file;
+	size_t size;
+	int i;
+
+	if (arg_to_path(arg, &path) != 0)
+		goto usage;
+	if (sscanf(arg2, "%d", &size) != 1)
+		goto usage;
+	memset(&file, 0, sizeof(file));
+	file.id = (path.value[0] << 8) | path.value[1];
+	file.type = SC_FILE_TYPE_DF;
+	for (i = 0; i < SC_MAX_AC_OPS; i++)
+		file.acl[i] = SC_AC_NONE;
+	file.size = size;
+	file.status = SC_FILE_STATUS_ACTIVATED;
+	
+	return create_file(&file);
+usage:
+	printf("Usage: mkdir <file_id> <df_size>\n");
 	return -1;
 }
 
@@ -657,6 +689,8 @@ int handle_cmd(int cmd, const char *arg, const char *arg2)
         	return do_put(arg, arg2);
         case 9:
         	return do_get(arg, arg2);
+        case 10:
+        	return do_mkdir(arg, arg2);
         default:
         	printf("Don't know how to handle command.\n");
 	}

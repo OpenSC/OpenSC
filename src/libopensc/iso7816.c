@@ -538,6 +538,98 @@ static int iso7816_verify(struct sc_card *card, unsigned int type, int ref,
 	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
 }
 
+static int iso7816_set_security_env(struct sc_card *card,
+				    const struct sc_security_env *env,
+				    int se_num)
+{
+	struct sc_apdu apdu;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 *p;
+	int r, locked = 0;
+
+	assert(card != NULL && env != NULL);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
+	switch (env->operation) {
+	case SC_SEC_OPERATION_DECIPHER:
+		apdu.p1 = 0x41;
+		apdu.p2 = 0xB8;
+		break;
+	case SC_SEC_OPERATION_SIGN:
+		apdu.p1 = 0x81;
+		apdu.p2 = 0xB6;
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	apdu.le = 0;
+	p = sbuf;
+	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
+		*p++ = 0x80;	/* algorithm reference */
+		*p++ = env->algorithm_ref >> 8;
+		*p++ = env->algorithm_ref & 0xFF;
+	}
+	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
+		*p++ = 0x81;
+		*p++ = env->key_file_id.len;
+		memcpy(p, env->key_file_id.value, env->key_file_id.len);
+		p += env->key_file_id.len;
+	}
+	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+		*p++ = 0x84;
+		*p++ = env->key_ref >> 8;
+		*p++ = env->key_ref & 0xFF;
+	}
+	r = p - sbuf;
+	apdu.lc = r;
+	apdu.datalen = r;
+	apdu.data = sbuf;
+	apdu.resplen = 0;
+	if (se_num > 0) {
+		r = sc_lock(card);
+		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
+		locked = 1;
+	}
+	if (apdu.datalen != 0) {
+		r = sc_transmit_apdu(card, &apdu);
+		if (r) {
+			sc_perror(card->ctx, r, "APDU transmit failed");
+			goto err;
+		}
+		r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+		if (r) {
+			sc_perror(card->ctx, r, "Card returned error");
+			goto err;
+		}
+	}
+	if (se_num <= 0)
+		return 0;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xF2, se_num);
+	r = sc_transmit_apdu(card, &apdu);
+	sc_unlock(card);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+err:
+	if (locked)
+		sc_unlock(card);
+	return r;
+}
+
+static int iso7816_restore_security_env(struct sc_card *card, int se_num)
+{
+	struct sc_apdu apdu;
+	int r;
+	u8 rbuf[MAX_BUFFER_SIZE];
+	
+	assert(card != NULL);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, se_num);
+	apdu.resplen = sizeof(rbuf) > 250 ? 250 : sizeof(rbuf);
+	apdu.resp = rbuf;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+}
+
 static struct sc_card_operations iso_ops = {
 	NULL,
 };
@@ -566,9 +658,11 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.select_file   = iso7816_select_file;
 		iso_ops.get_challenge = iso7816_get_challenge;
 		iso_ops.create_file   = iso7816_create_file;
-                iso_ops.delete_file   = iso7816_delete_file;
-                iso_ops.list_files    = iso7816_list_files;
-                iso_ops.verify	      = iso7816_verify;
+		iso_ops.delete_file   = iso7816_delete_file;
+		iso_ops.list_files    = iso7816_list_files;
+		iso_ops.verify	      = iso7816_verify;
+		iso_ops.set_security_env	= iso7816_set_security_env;
+		iso_ops.restore_security_env	= iso7816_restore_security_env;
 	}
 	return &iso_driver;
 }

@@ -128,7 +128,7 @@ err:
 	return;
 }
 
-int encode_tokeninfo(struct sc_pkcs15_card *card, u8 ** buf, size_t *buflen)
+int encode_tokeninfo(struct sc_context *ctx, struct sc_pkcs15_card *card, u8 ** buf, size_t *buflen)
 {
 	int i, r;
 	u8 serial[128];
@@ -170,27 +170,27 @@ int encode_tokeninfo(struct sc_pkcs15_card *card, u8 ** buf, size_t *buflen)
 	}
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki, NULL, 1);
 
-	r = sc_asn1_encode(card->card->ctx, asn1_tokeninfo, buf, buflen);
+	r = sc_asn1_encode(ctx, asn1_tokeninfo, buf, buflen);
 	if (r) {
-		error(card->card->ctx, "sc_asn1_encode() failed: %s\n", sc_strerror(r));
+		error(ctx, "sc_asn1_encode() failed: %s\n", sc_strerror(r));
 		return r;
 	}
 	return 0;
 }
 
-int sc_pkcs15_create_tokeninfo(struct sc_pkcs15_card *card)
+int sc_pkcs15_create_tokeninfo(struct sc_card *card, struct sc_pkcs15_card *p15card)
 {
 	int r;
 	u8 *buf;
 	size_t buflen;
 	char line[10240];
 	
-	r = encode_tokeninfo(card, &buf, &buflen);
+	r = encode_tokeninfo(card->ctx, p15card, &buf, &buflen);
 	if (r) {
-		error(card->card->ctx, "Error encoding EF(TokenInfo): %s\n", sc_strerror(r));
+		error(card->ctx, "Error encoding EF(TokenInfo): %s\n", sc_strerror(r));
 		return r;
 	}
-	sc_hex_dump(card->card->ctx, buf, buflen, line, sizeof(line));
+	sc_hex_dump(card->ctx, buf, buflen, line, sizeof(line));
 	printf("%s\n", line);
 	return 0;
 }
@@ -260,10 +260,9 @@ static int parse_dir(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 	return 0;
 }
 
-static int encode_dir(struct sc_pkcs15_card *card, u8 **buf, size_t *buflen)
+static int encode_dir(struct sc_context *ctx, struct sc_pkcs15_card *card, u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_ddo[5], asn1_dirrecord[5], asn1_dir[2];
-	struct sc_context *ctx = card->card->ctx;
 	int r;
 	size_t label_len;
 	
@@ -290,20 +289,17 @@ static int encode_dir(struct sc_pkcs15_card *card, u8 **buf, size_t *buflen)
 #endif
 	r = sc_asn1_encode(ctx, asn1_dir, buf, buflen);
 	if (r) {
-		error(card->card->ctx, "sc_asn1_encode() failed: %s\n",
+		error(ctx, "sc_asn1_encode() failed: %s\n",
 		      sc_strerror(r));
 		return r;
 	}
 	return 0;
 }
 
-
-
 /* FIXME: This should be done using sc_update_binary(),
  * and be generally wiser */
-int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card)
+int sc_pkcs15_create_dir(struct sc_card *card, struct sc_pkcs15_card *p15card)
 {
-	struct sc_card *card = p15card->card;
 	struct sc_path path;
 	u8 *buf;
 	size_t bufsize;
@@ -314,9 +310,9 @@ int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card)
 	sc_format_path("3F00", &path);
 	r = sc_select_file(card, &path, NULL);
 	SC_TEST_RET(card->ctx, r, "sc_select_file(MF) failed");
-	r = encode_dir(p15card, &buf, &bufsize);
+	r = encode_dir(card->ctx, p15card, &buf, &bufsize);
 	SC_TEST_RET(card->ctx, r, "EF(DIR) encoding failed");
-	sc_hex_dump(p15card->card->ctx, buf, bufsize, line, sizeof(line));
+	sc_hex_dump(card->ctx, buf, bufsize, line, sizeof(line));
 	free(buf);
 	printf("%s", line);
 	
@@ -380,11 +376,13 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 	return 0;
 }
 
-static int encode_odf(struct sc_pkcs15_card *card, u8 **buf, size_t *buflen)
+static int encode_odf(struct sc_context *ctx, struct sc_pkcs15_card *card,
+		      u8 **buf, size_t *buflen)
 {
 	struct sc_path path;
 	struct sc_asn1_entry asn1_obj_or_path[] = {
 		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path },
+		{ NULL }
 	};
 	struct sc_asn1_entry *asn1_paths = NULL;
 	struct sc_asn1_entry *asn1_odf = NULL;
@@ -415,7 +413,7 @@ static int encode_odf(struct sc_pkcs15_card *card, u8 **buf, size_t *buflen)
 				break;
 			}
 		if (type == -1) {
-			error(card->card->ctx, "Unsupported DF type.\n");
+			error(ctx, "Unsupported DF type.\n");
 			continue;
 		}
 		for (j = 0; j < df->count; j++) {
@@ -427,7 +425,7 @@ static int encode_odf(struct sc_pkcs15_card *card, u8 **buf, size_t *buflen)
 		}
 	}
 	asn1_odf[df_count].name = NULL;
-	r = sc_asn1_encode(card->card->ctx, asn1_odf, buf, buflen);
+	r = sc_asn1_encode(ctx, asn1_odf, buf, buflen);
 err:
 	if (asn1_paths != NULL)
 		free(asn1_paths);
@@ -436,16 +434,16 @@ err:
 	return r;
 }
 
-int sc_pkcs15_create_odf(struct sc_pkcs15_card *p15card)
+int sc_pkcs15_create_odf(struct sc_card *card, struct sc_pkcs15_card *p15card)
 {
 	u8 *buf;
 	size_t buflen;
 	char line[10240];
 	int r;
 	
-	r = encode_odf(p15card, &buf, &buflen);
-	SC_TEST_RET(p15card->card->ctx, r, "ODF encoding failed");
-	sc_hex_dump(p15card->card->ctx, buf, buflen, line, sizeof(line));
+	r = encode_odf(card->ctx, p15card, &buf, &buflen);
+	SC_TEST_RET(card->ctx, r, "ODF encoding failed");
+	sc_hex_dump(card->ctx, buf, buflen, line, sizeof(line));
 	printf("ODF:\n%s", line);
 	return 0;
 }
@@ -454,6 +452,44 @@ static const struct sc_pkcs15_defaults * find_defaults(u8 *dir, int dirlen)
 {
 	/* FIXME: CODEME */
 	return NULL;
+}
+
+struct sc_pkcs15_card * sc_pkcs15_card_new()
+{
+	struct sc_pkcs15_card *p15card;
+	int i;
+	
+	p15card = malloc(sizeof(struct sc_pkcs15_card));
+	if (p15card == NULL)
+		return NULL;
+	memset(p15card, 0, sizeof(struct sc_pkcs15_card));
+	for (i = 0; i < SC_PKCS15_DF_TYPE_COUNT; i++)
+		p15card->df[i].type = i;
+	return p15card;
+}
+
+void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
+{
+	int i, j;
+	
+	for (j = 0; j < SC_PKCS15_DF_TYPE_COUNT; j++)
+		for (i = 0; i < p15card->df[j].count; i++) {
+			struct sc_pkcs15_object *p;
+			if (p15card->df[j].file[i])
+				free(p15card->df[j].file[i]);
+			p = p15card->df[j].obj[i];
+			while (p != NULL) {
+				struct sc_pkcs15_object *p2 = p->next;
+				if (p->data != NULL)
+					free(p->data);
+				free(p);
+				p = p2;
+			}
+		}
+	free(p15card->label);
+	free(p15card->serial_number);
+	free(p15card->manufacturer_id);
+	free(p15card);
 }
 
 int sc_pkcs15_bind(struct sc_card *card,
@@ -470,10 +506,9 @@ int sc_pkcs15_bind(struct sc_card *card,
 	assert(sc_card_valid(card) && p15card_out != NULL);
 	ctx = card->ctx;
 	SC_FUNC_CALLED(ctx, 1);
-	p15card = malloc(sizeof(struct sc_pkcs15_card));
+	p15card = sc_pkcs15_card_new();
 	if (p15card == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(p15card, 0, sizeof(struct sc_pkcs15_card));
 	p15card->card = card;
 
 	sc_format_path("2F00", &tmppath);
@@ -577,19 +612,71 @@ int sc_pkcs15_detect(struct sc_card *card)
 
 int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 {
-	int i, j;
-	
 	assert(p15card != NULL);
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
-	for (j = 0; j < SC_PKCS15_DF_TYPE_COUNT; j++)
-		for (i = 0; i < p15card->df[j].count; i++)
-			if (p15card->df[j].file[i])
-				free(p15card->df[j].file[i]);
-	free(p15card->label);
-	free(p15card->serial_number);
-	free(p15card->manufacturer_id);
-	free(p15card);
+	sc_pkcs15_card_free(p15card);
 	return 0;
+}
+
+int sc_pkcs15_add_object(struct sc_context *ctx, struct sc_pkcs15_df *df,
+			 int file_nr, struct sc_pkcs15_object *obj)
+{
+	struct sc_pkcs15_object *p = df->obj[file_nr];
+	
+	obj->next = NULL;
+	if (p == NULL) {
+		df->obj[file_nr] = obj;
+		return 0;
+	}
+	while (p->next != NULL)
+		p = p->next;
+	p->next = obj;
+	
+	return 0;
+}                         
+
+int sc_pkcs15_encode_df(struct sc_pkcs15_card *p15card,
+			struct sc_pkcs15_df *df,
+			int file_no,
+			u8 **buf_out, size_t *bufsize_out)
+{
+	u8 *buf = NULL, *tmp;
+	size_t bufsize = 0, tmpsize;
+	int r;
+	const struct sc_pkcs15_object *obj = df->obj[file_no];
+	char str[10240];
+	int (* func)(struct sc_pkcs15_card *, const struct sc_pkcs15_object *obj,
+		     u8 **buf, size_t *bufsize) = NULL;
+	switch (df->type) {
+	case SC_PKCS15_PRKDF:
+		break;
+	case SC_PKCS15_CDF:
+	case SC_PKCS15_CDF_TRUSTED:
+	case SC_PKCS15_CDF_USEFUL:
+		func = sc_pkcs15_encode_cdf_entry;
+		break;
+	}
+	if (func == NULL) {
+		error(p15card->card->ctx, "unknown DF type\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	while (obj != NULL) {
+		r = func(p15card, obj, &tmp, &tmpsize);
+		if (r) {
+			free(buf);
+			return r;
+		}
+		buf = realloc(buf, bufsize + tmpsize);
+		memcpy(buf + bufsize, tmp, tmpsize);
+		bufsize += tmpsize;
+		obj = obj->next;
+	}
+	sc_hex_dump(p15card->card->ctx, buf, bufsize, str, sizeof(str));
+	printf("DF:\n%s\n", str);
+	*buf_out = buf;
+	*bufsize_out = bufsize;
+	
+	return 0;	
 }
 
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
