@@ -423,7 +423,15 @@ int _sc_parse_atr(struct sc_context *ctx, struct sc_slot_info *slot)
 	const int Di_table[] = {
 		-1, 1, 2, 4, 8, 16, 32, -1,
 		12, 20, -1, -1, -1, -1, -1, -1 };
-	
+
+	slot->atr_info.hist_bytes_len = 0;
+	slot->atr_info.hist_bytes = NULL;
+
+	if (atr_len == 0) {
+		error(ctx, "empty ATR - card not present?\n");
+		return SC_ERROR_INTERNAL;
+	}
+
 	if (p[0] != 0x3B && p[0] != 0x3F) {
 		error(ctx, "invalid sync byte in ATR: 0x%02X\n", p[0]);
 		return SC_ERROR_INTERNAL;
