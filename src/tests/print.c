@@ -143,12 +143,12 @@ static void print_cert_x509(const struct sc_pkcs15_object *obj)
 	int i;
 
 	cert = (struct sc_pkcs15_cert_info *) obj->data;
-	printf("\tAuthority: %s\n", cert->authority ? "yes" : "no");
-	printf("\tPath     : ");
+	printf("\tAuthority   : %s\n", cert->authority ? "yes" : "no");
+	printf("\tPath        : ");
 	for (i = 0; i < cert->path.len; i++)
 		printf("%02X", cert->path.value[i]);
 	printf("\n");
-	printf("\tID       : ");
+	printf("\tID          : ");
 	sc_pkcs15_print_id(&cert->id);
 	printf("\n");
 
