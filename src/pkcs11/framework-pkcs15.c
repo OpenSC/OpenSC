@@ -1401,7 +1401,6 @@ CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
                goto set_attr_done;
        }
 
-       printf("rc = %d\n", rc);
        rv = sc_to_cryptoki_error(rc, p11card->reader);
 
 set_attr_done:
@@ -1645,11 +1644,11 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_EXPONENT_2:
 	case CKA_COEFFICIENT:
 		return CKR_ATTRIBUTE_SENSITIVE;
-		/*
-		 case CKA_SUBJECT:
-		 case CKA_START_DATE:
-		 case CKA_END_DATE:
-		 */
+	case CKA_SUBJECT:
+	case CKA_START_DATE:
+	case CKA_END_DATE:
+	attr->ulValueLen = 0;
+		return CKR_OK;
 	default:
                 return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
