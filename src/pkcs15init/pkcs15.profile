@@ -18,6 +18,11 @@ option default {
         protected	= *=$SOPIN, READ=NONE;
         unprotected	= *=NONE;
 	so-pin-flags	= local, initialized, needs-padding, soPin;
+	so-min-pin-length = 6;
+	so-pin-attempts	= 2;
+	so-auth-id	= FF;
+	so-puk-attempts	= 4;
+	so-min-puk-length = 6;
 	default-df-size	= 256;
     }
 }
@@ -29,6 +34,11 @@ option onepin {
         protected	= *=$PIN, READ=NONE;
         unprotected	= *=NONE;
 	so-pin-flags	= local, initialized, needs-padding;
+	so-min-pin-length = 4;
+	so-pin-attempts	= 3;
+	so-auth-id	= 1;
+	so-puk-attempts	= 7;
+	so-min-puk-length = 4;
     }
 }
 
@@ -50,14 +60,14 @@ PIN user-puk {
     attempts	= 7;
 }
 PIN so-pin {
-    auth-id	= FF;
-    attempts	= 2;
-    min-length	= 6;
+    auth-id	= $so-auth-id;
+    attempts	= $so-pin-attempts;
+    min-length	= $so-min-pin-length;
     flags	= $so-pin-flags;
 }
 PIN so-puk {
-    attempts	= 4;
-    min-length	= 6;
+    attempts	= $so-puk-attempts;
+    min-length	= $so-min-puk-length;
 }
 
 filesystem {
