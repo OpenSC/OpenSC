@@ -1638,6 +1638,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	}
 
 	data[0] = 0;
+	data[1] = 1;
 	modLenBytes = (getMODULUS_BITS(sess, privKeyObject) + 7) / 8;
 
 	/* 1st test */
@@ -1645,6 +1646,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	switch (firstMechType) {
 	case CKM_RSA_PKCS:
 		dataLen = 35;
+		memcpy(data, datas[1], dataLen);
 		break;
 	case CKM_RSA_X_509:
 		dataLen = modLenBytes;
