@@ -675,13 +675,13 @@ int do_change(int argc, char **argv)
 	int i, ref, r, tries_left = -1;
 	u8 oldpin[30];
 	u8 newpin[30];
-        const char *s;
+	const char *s;
 	size_t oldpinlen = sizeof(oldpin);
 	size_t newpinlen = sizeof(newpin);
 	
-        if (argc < 2 || argc > 3)
+	if (argc < 2 || argc > 3)
 		goto usage;
-        if (strncasecmp(argv[0], "CHV", 3)) {
+	if (strncasecmp(argv[0], "CHV", 3)) {
 		printf("Invalid type.\n");
 		goto usage;
 	}
@@ -746,13 +746,13 @@ int do_unblock(int argc, char **argv)
 	int i, ref, r;
 	u8 puk[30];
 	u8 newpin[30];
-        const char *s;
+	const char *s;
 	size_t puklen = sizeof(puk);
 	size_t newpinlen = sizeof(newpin);
 	
-        if (argc < 2 || argc > 3)
+	if (argc < 2 || argc > 3)
 		goto usage;
-        if (strncasecmp(argv[0], "CHV", 3)) {
+	if (strncasecmp(argv[0], "CHV", 3)) {
 		printf("Invalid type.\n");
 		goto usage;
 	}
@@ -760,13 +760,13 @@ int do_unblock(int argc, char **argv)
 		printf("Invalid key reference.\n");
 		goto usage;
 	}
-        argc--;
-        argv++;
+	argc--;
+	argv++;
 
-        if (argc == 1) {
-                /* set without verification */
-                puklen = 0;
-        } else {
+	if (argc == 1) {
+		/* set without verification */
+		puklen = 0;
+	} else {
 		if (argv[0][0] == '"') {
 			for (s = argv[0] + 1, i = 0;
 			     i < sizeof(puk) && *s && *s != '"'; i++) 
@@ -812,14 +812,14 @@ int do_get(int argc, char **argv)
 	u8 buf[256];
 	int r, error = 0;
 	size_t count = 0;
-        unsigned int idx = 0;
+	unsigned int idx = 0;
 	struct sc_path path;
-        struct sc_file *file;
+	struct sc_file *file;
 	char fbuf[256], *filename;
 	FILE *outf = NULL;
 	
-        if (argc < 1 || argc > 2)
-                goto usage;
+	if (argc < 1 || argc > 2)
+		goto usage;
 	if (arg_to_path(argv[0], &path, 0) != 0)
 		goto usage;
 	if (argc == 2)
@@ -857,19 +857,19 @@ int do_get(int argc, char **argv)
 		if (r < 0) {
 			check_ret(r, SC_AC_OP_READ, "read failed", file);
 			error = 1;
-                        goto err;
+			goto err;
 		}
 		if (r != c) {
 			printf("expecting %d, got only %d bytes.\n", c, r);
 			error = 1;
-                        goto err;
+			goto err;
 		}
 		fwrite(buf, c, 1, outf);
 		idx += c;
 		count -= c;
 	}
 	printf("Total of %d bytes read from %s and saved to %s.\n",
-			idx, argv[0], filename);
+	       idx, argv[0], filename);
 err:
 	sc_file_free(file);
 	r = sc_select_file(card, &current_path, NULL);
@@ -879,7 +879,7 @@ err:
 	}
 	if (outf)
 		fclose(outf);
-        return -error;
+	return -error;
 usage:
 	printf("Usage: get <file id> [output file]\n");
 	return -1;
@@ -966,7 +966,7 @@ int do_update_binary(int argc, char **argv)
 	}
 
 	printf("Total of %d bytes written to %04X at %i offset.\n", 
-			r, file->id, offs);
+	       r, file->id, offs);
 	error = 0;
 err:
 	sc_file_free(file);
@@ -1034,7 +1034,7 @@ int do_update_record(int argc, char **argv)
 	}
 
 	printf("Total of %d bytes written to record %i at %i offset.\n", 
-			i, rec, offs);
+	       i, rec, offs);
 	error = 0;
 err:
 	sc_file_free(file);
@@ -1056,14 +1056,14 @@ int do_put(int argc, char **argv)
 	u8 buf[256];
 	int r, error = 0;
 	size_t count = 0;
-        unsigned int idx = 0;
+	unsigned int idx = 0;
 	struct sc_path path;
-        struct sc_file *file;
+	struct sc_file *file;
 	const char *filename;
 	FILE *outf = NULL;
-	
-        if (argc < 1 || argc > 2)
-                goto usage;
+
+	if (argc < 1 || argc > 2)
+		goto usage;
 	if (arg_to_path(argv[0], &path, 0) != 0)
 		goto usage;
 	if (argc == 2)
@@ -1098,12 +1098,12 @@ int do_put(int argc, char **argv)
 		if (r < 0) {
 			check_ret(r, SC_AC_OP_READ, "update failed", file);
 			error = 1;
-                        goto err;
+			goto err;
 		}
 		if (r != c) {
 			printf("expecting %d, wrote only %d bytes.\n", c, r);
 			error = 1;
-                        goto err;
+			goto err;
 		}
 		idx += c;
 		count -= c;
@@ -1118,7 +1118,7 @@ err:
 	}
 	if (outf)
 		fclose(outf);
-        return -error;
+	return -error;
 usage:
 	printf("Usage: put <file id> [input file]\n");
 	return -1;
@@ -1126,32 +1126,32 @@ usage:
 
 int do_debug(int argc, char **argv)
 {
-	int	i;
+	int i;
 
-        if (!argc)
-                printf("Current debug level is %d\n", ctx->debug);
-        else {
-                if (sscanf(argv[0], "%d", &i) != 1)
-                        return -1;
-                printf("Debug level set to %d\n", i);
-                ctx->debug = i;
-                if (i) {
-                        ctx->error_file = stderr;
-                        ctx->debug_file = stdout;
-                } else {
-                        ctx->error_file = NULL;
-                        ctx->debug_file = NULL;
-                }
-        }
-        return 0;
+	if (!argc)
+		printf("Current debug level is %d\n", ctx->debug);
+	else {
+		if (sscanf(argv[0], "%d", &i) != 1)
+			return -1;
+		printf("Debug level set to %d\n", i);
+		ctx->debug = i;
+		if (i) {
+			ctx->error_file = stderr;
+			ctx->debug_file = stdout;
+		} else {
+			ctx->error_file = NULL;
+			ctx->debug_file = NULL;
+		}
+	}
+	return 0;
 }
 
 
 
 static int do_pksign(int argc, char **argv)
 {
-        puts ("Not yet supported");
-        return -1;
+	puts ("Not yet supported");
+	return -1;
 #if 0
 	int i, ref, r;
 	u8 indata[128];
@@ -1159,12 +1159,12 @@ static int do_pksign(int argc, char **argv)
 	u8 outdata[128];
 	size_t outdatalen = sizeof outdata;
 	struct sc_security_env senv;
-        const u8 *oid;
-        int oidlen;
-        const char *s;
+	const u8 *oid;
+	int oidlen;
+	const char *s;
 
 	if (argc < 2 || argc > 3)
-                goto usage;
+		goto usage;
 	if (sscanf (argv[0], "%d", &ref) != 1 || ref < 0 || ref > 255) {
 		printf("Invalid key reference.\n");
 		goto usage;
@@ -1172,7 +1172,7 @@ static int do_pksign(int argc, char **argv)
 
 	if (argv[1][0] == '"') {
 		for (s = argv[1]+1, i = 0;
-                     i < sizeof indata && *s && *s != '"'; i++) 
+		     i < sizeof indata && *s && *s != '"'; i++) 
 			indata[i] = *s++;
 		indatalen = i;
 	} else if (sc_hex_to_bin(argv[1], indata, &indatalen)) {
@@ -1180,39 +1180,39 @@ static int do_pksign(int argc, char **argv)
 		goto usage;
 	}
 
-                
-        if (argc == 3) {
-                if (!strcasecmp(argv[2], "SHA1")) {
-                        oid = oid_sha1; oidlen = sizeof oid_sha1;
-                }
-                else if (!strcasecmp (argv[2], "MD5")) {
-                        oid = oid_md5; oidlen = sizeof oid_md5;
-                }
-                else if (!strcasecmp (argv[2], "RMD160")) {
-                        oid = oid_rmd160; oidlen = sizeof oid_rmd160;
-                }
-                else {
-                        goto usage;
-                }
-         }
-        else {
-                oid = ""; oidlen = 0;
-        }
-        
-        if (indatalen + oidlen > sizeof indata) {
-                printf("Data value to long.\n");
-                goto usage;
-        }
-        
-        memmove(indata + oidlen, indata, indatalen);
-        memcpy(indata, oid, oidlen);
-        indatalen += oidlen;
+		
+	if (argc == 3) {
+		if (!strcasecmp(argv[2], "SHA1")) {
+			oid = oid_sha1; oidlen = sizeof oid_sha1;
+		}
+		else if (!strcasecmp (argv[2], "MD5")) {
+			oid = oid_md5; oidlen = sizeof oid_md5;
+		}
+		else if (!strcasecmp (argv[2], "RMD160")) {
+			oid = oid_rmd160; oidlen = sizeof oid_rmd160;
+		}
+		else {
+			goto usage;
+		}
+	 }
+	else {
+		oid = ""; oidlen = 0;
+	}
+	
+	if (indatalen + oidlen > sizeof indata) {
+		printf("Data value to long.\n");
+		goto usage;
+	}
+	
+	memmove(indata + oidlen, indata, indatalen);
+	memcpy(indata, oid, oidlen);
+	indatalen += oidlen;
 
-        /* setup the security environment */
-        /* FIXME The values won't work for other cards.  They do work
-           for TCOS because there is no need for a security
-           environment there */
-        memset(&senv, 0, sizeof senv);
+	/* setup the security environment */
+	/* FIXME The values won't work for other cards.  They do work
+	   for TCOS because there is no need for a security
+	   environment there */
+	memset(&senv, 0, sizeof senv);
 	senv.operation = SC_SEC_OPERATION_SIGN;
 	senv.algorithm = SC_ALGORITHM_RSA;
 	senv.key_ref_len = 1;
@@ -1221,19 +1221,19 @@ static int do_pksign(int argc, char **argv)
 	r = sc_set_security_env(card, &senv, 0);
 	if (r) {
 		printf("Failed to set the security environment: %s\n",
-                       sc_strerror (r));
+		       sc_strerror (r));
 		return -1;
 	}
 
-        /* Perform the actual sign. */ 
+	/* Perform the actual sign. */ 
 	r = sc_compute_signature(card, indata, indatalen,
-                                 outdata, outdatalen);
+	                         outdata, outdatalen);
 	if (r<0) {
 		printf("Signing failed: %s\n",  sc_strerror (r));
 		return -1;
 	}
-        hex_dump_asc(stdout, outdata, r, -1);
-        printf ("Done.\n");
+	hex_dump_asc(stdout, outdata, r, -1);
+	printf ("Done.\n");
 	return 0;
 usage:
 	printf ("Usage: pksign <key ref> <data> [MD5|SHA1|RMD160]\n");
@@ -1244,8 +1244,8 @@ usage:
 
 static int do_pkdecrypt(int argc, char **argv)
 {
-        puts ("Not yet supported");
-        return -1;
+	puts ("Not yet supported");
+	return -1;
 #if 0
 	int i, ref, r;
 	u8 indata[128];
@@ -1253,7 +1253,7 @@ static int do_pkdecrypt(int argc, char **argv)
 	u8 outdata[128];
 	size_t outdatalen = sizeof outdata;
 	struct sc_security_env senv;
-        const char *s;
+	const char *s;
 
 	if (argc != 2)
 		goto usage;
@@ -1264,7 +1264,7 @@ static int do_pkdecrypt(int argc, char **argv)
 
 	if (argv[1][0] == '"') {
 		for (s=argv[1]+1, i = 0;
-                     i < sizeof indata && *s && *s != '"'; i++) 
+		     i < sizeof indata && *s && *s != '"'; i++) 
 			indata[i] = *s++;
 		indatalen = i;
 	} else if (sc_hex_to_bin (argv[1], indata, &indatalen)) {
@@ -1272,8 +1272,8 @@ static int do_pkdecrypt(int argc, char **argv)
 		goto usage;
 	}
 
-        /* setup the security environment */
-        memset (&senv, 0, sizeof senv);
+	/* setup the security environment */
+	memset (&senv, 0, sizeof senv);
 	senv.operation = SC_SEC_OPERATION_DECIPHER;
 	senv.algorithm = SC_ALGORITHM_RSA;
 	senv.key_ref_len = 1;
@@ -1282,22 +1282,22 @@ static int do_pkdecrypt(int argc, char **argv)
 	r = sc_set_security_env(card, &senv, 0);
 	if (r) {
 		printf("Failed to set the security environment: %s\n",
-                       sc_strerror (r));
+		       sc_strerror (r));
 		return -1;
 	}
 
-        /* perform the actual decryption */
-        /* FIXME: It is pretty useless to to this test padding :-; */
-        memmove(indata+(sizeof indata - indatalen), indata, indatalen);
-        memset(indata, 0, (sizeof indata - indatalen));
-        indatalen = sizeof indata;
+	/* perform the actual decryption */
+	/* FIXME: It is pretty useless to to this test padding :-; */
+	memmove(indata+(sizeof indata - indatalen), indata, indatalen);
+	memset(indata, 0, (sizeof indata - indatalen));
+	indatalen = sizeof indata;
 	r = sc_decipher(card, indata, indatalen, outdata, outdatalen);
 	if (r<0) {
 		printf("Decryption failed: %s\n",  sc_strerror (r));
 		return -1;
 	}
-        hex_dump_asc (stdout, outdata, r, -1);
-        printf("Done.\n");
+	hex_dump_asc (stdout, outdata, r, -1);
+	printf("Done.\n");
 	return 0;
 usage:
 	printf("Usage: pkdecrypt <key ref> <data>\n");
@@ -1329,7 +1329,7 @@ static int
 do_random(int argc, char **argv)
 {
 	unsigned char buffer[128];
-	int	r, count;
+	int r, count;
 
 	if (argc != 1)
 		goto usage;
@@ -1356,10 +1356,10 @@ usage:
 
 int do_get_data(int argc, char **argv)
 {
-	unsigned char	buffer[256];
-	unsigned int	tag;
-	FILE		*fp;
-	int		r;
+	unsigned char buffer[256];
+	unsigned int tag;
+	FILE *fp;
+	int r;
 
 	if (argc != 1 && argc != 2)
 		goto usage;
@@ -1469,27 +1469,27 @@ static int parse_line(char *in, char **argv, int maxargc)
 static char * my_readline(char *prompt)
 {
 	static char buf[256];
-        static int initialized;
-        static int interactive;
+	static int initialized;
+	static int interactive;
 
-        if (!initialized) {
-                initialized = 1;
-                interactive = isatty(fileno(stdin));
+	if (!initialized) {
+		initialized = 1;
+		interactive = isatty(fileno(stdin));
 #ifdef HAVE_READLINE
-                if (interactive)
-                        using_history ();
+		if (interactive)
+			using_history ();
 #endif
-        }
+	}
 #ifdef HAVE_READLINE
-        if (interactive) {
-            char *line = readline(prompt);
-            if (line && strlen(line) > 2 )
-                    add_history(line);
-            return line;
-        }
+	if (interactive) {
+		char *line = readline(prompt);
+		if (line && strlen(line) > 2 )
+			add_history(line);
+		return line;
+	}
 #endif
-        /* Either we don't have readline or we are not running
-           interactively */
+	/* Either we don't have readline or we are not running
+	   interactively */
 #ifndef HAVE_READLINE
 	printf("%s", prompt);
 #endif
@@ -1500,15 +1500,15 @@ static char * my_readline(char *prompt)
 		return NULL;
 	if (buf[strlen(buf)-1] == '\n')
 		buf[strlen(buf)-1] = '\0';
-        return buf;
+	return buf;
 }
 
 int main(int argc, char * const argv[])
 {
 	int r, c, long_optind = 0, err = 0;
 	char *line;
-        int cargc;
-        char *cargv[20];
+	int cargc;
+	char *cargv[20];
 
 	printf("OpenSC Explorer version %s\n", sc_get_version());
 
@@ -1568,16 +1568,16 @@ int main(int argc, char * const argv[])
 
 		sprintf(prompt, "OpenSC [");
 		for (i = 0; i < current_path.len; i++) {
-                        if ((i & 1) == 0 && i)
+			if ((i & 1) == 0 && i)
 				sprintf(prompt+strlen(prompt), "/");
 			sprintf(prompt+strlen(prompt), "%02X",
-                                current_path.value[i]);
+			        current_path.value[i]);
 		}
-                sprintf(prompt+strlen(prompt), "]> ");
+		sprintf(prompt+strlen(prompt), "]> ");
 		line = my_readline(prompt);
-                if (line == NULL)
-                	break;
-                cargc = parse_line(line, cargv, DIM(cargv));
+		if (line == NULL)
+			break;
+		cargc = parse_line(line, cargv, DIM(cargv));
 		if (cargc < 1)
 			continue;
 		for (r=cargc; r < DIM(cargv); r++)
@@ -1586,7 +1586,7 @@ int main(int argc, char * const argv[])
 		if (c == NULL) {
 			usage();
 		} else {
-                        c->func(cargc-1, cargv+1);
+			c->func(cargc-1, cargv+1);
 		}
 	}
 end:
