@@ -32,8 +32,8 @@
 #define ETOKEN_MAX_PAYLOAD	120
 
 /* Different eToken types */
-#define CARDOS_TYPE_ANY		0
-#define ETOKEN_TYPE_PRO		1
+#define CARDOS_TYPE_ANY		1
+#define CARDOS_TYPE_ETOKEN_PRO	2
 
 static const struct sc_card_operations *iso_ops = NULL;
 
@@ -48,12 +48,12 @@ const struct {
 	const char *	atr;
 	int		type;
 } etoken_atrs[] = {
-      {	"3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c",		ETOKEN_TYPE_PRO },
-      { "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15",	ETOKEN_TYPE_PRO },
-      /* Italian eID card: */
-      { "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", CARDOS_TYPE_ANY },
+    { "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c",	CARDOS_TYPE_ETOKEN_PRO },
+    { "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15",	CARDOS_TYPE_ETOKEN_PRO },
+    /* Italian eID card: */
+    { "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", CARDOS_TYPE_ANY },
 
-      { NULL }
+    { NULL }
 };
 
 int etoken_finish(struct sc_card *card)
