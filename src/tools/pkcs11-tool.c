@@ -2123,6 +2123,7 @@ encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	unsigned char	encrypted[512], data[512];
 	CK_MECHANISM	mech;
 	CK_ULONG	encrypted_len, data_len;
+	int             failed;
 	CK_RV           rv;
 
 	printf("    %s: ", p11_mechanism_to_name(mech_type));
@@ -2157,11 +2158,21 @@ encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (rv != CKR_OK)
 		p11_fatal("C_Decrypt", rv);
 
-	if (data_len != sizeof(orig_data) || memcmp(orig_data, data, data_len)) {
+	if (mech_type == CKM_RSA_X_509)
+		failed = (data[0] != 0) || (data[1] != 2) || (data_len <= sizeof(orig_data) - 2) ||
+		    memcmp(orig_data, data + data_len - sizeof(orig_data), sizeof(orig_data));
+	else
+		failed = data_len != sizeof(orig_data) || memcmp(orig_data, data, data_len);
+
+	if (failed) {
 		CK_ULONG n;
 
 		printf("resulting cleartext doesn't match input\n");
-		printf("    Decrypt:");
+		printf("    Original:");
+		for (n = 0; n < sizeof(orig_data); n++)
+			printf(" %02x", orig_data[n]);
+		printf("\n");
+		printf("    Decrypted:");
 		for (n = 0; n < data_len; n++)
 			printf(" %02x", data[n]);
 		printf("\n");
