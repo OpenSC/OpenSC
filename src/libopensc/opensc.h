@@ -431,6 +431,9 @@ void sc_mutex_free(struct sc_mutex *p);
  * by the flags must be handled by the card driver themselves.
  */
 
+/* Mask for card vendor specific values */
+#define SC_CARD_FLAG_VENDOR_MASK	0xFFFF0000
+
 /* Hint SC_ALGORITHM_ONBOARD_KEY_GEN */
 #define SC_CARD_FLAG_ONBOARD_KEY_GEN	0x00000001
 /* Hint SC_CARD_CAP_RNG */
