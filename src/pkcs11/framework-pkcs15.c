@@ -218,7 +218,8 @@ __pkcs15_release_object(struct pkcs15_any_object *obj)
 }
 
 static int
-__pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_object *cert)
+__pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data,
+	struct sc_pkcs15_object *cert, struct pkcs15_any_object **cert_object)
 {
 	struct sc_pkcs15_cert_info *p15_info;
 	struct sc_pkcs15_cert *p15_cert;
@@ -251,11 +252,15 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_obj
 	obj2->pub_cert = object;
 	object->cert_pubkey = obj2;
 
+	if (cert_object != NULL)
+		*cert_object = (struct pkcs15_any_object *) object;
+
 	return 0;
 }
 
 static int
-__pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_object *pubkey)
+__pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
+	struct sc_pkcs15_object *pubkey, struct pkcs15_any_object **pubkey_object)
 {
 	struct pkcs15_pubkey_object *object;
 	struct sc_pkcs15_pubkey *p15_key;
@@ -274,11 +279,15 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_o
 		object->pub_data = p15_key;
 	}
 
+	if (pubkey_object != NULL)
+		*pubkey_object = (struct pkcs15_any_object *) object;
+
 	return rv;
 }
 
 static int
-__pkcs15_create_prkey_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_object *prkey)
+__pkcs15_create_prkey_object(struct pkcs15_fw_data *fw_data,
+	struct sc_pkcs15_object *prkey, struct pkcs15_any_object **prkey_object)
 {
 	struct pkcs15_prkey_object *object;
 	int rv;
@@ -289,6 +298,9 @@ __pkcs15_create_prkey_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_ob
 	if (rv >= 0)
 		object->prv_info = (struct sc_pkcs15_prkey_info *) prkey->data;
 
+	if (prkey_object != NULL)
+		*prkey_object = (struct pkcs15_any_object *) object;
+
 	return 0;
 }
 
@@ -296,7 +308,8 @@ static int
 pkcs15_create_pkcs11_objects(struct pkcs15_fw_data *fw_data,
 			     int p15_type, const char *name,
 			     int (*create)(struct pkcs15_fw_data *,
-				     	   struct sc_pkcs15_object *))
+				     	   struct sc_pkcs15_object *,
+				     	   struct pkcs15_any_object **any_object))
 {
 	struct sc_pkcs15_object *p15_object[MAX_OBJECTS];
 	int i, count, rv;
@@ -309,7 +322,7 @@ pkcs15_create_pkcs11_objects(struct pkcs15_fw_data *fw_data,
 	}
 
 	for (i = 0; rv >= 0 && i < count; i++) {
-		rv = create(fw_data, p15_object[i]);
+		rv = create(fw_data, p15_object[i], NULL);
 	}
 
 	return count;
@@ -797,6 +810,7 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 {
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct sc_pkcs15init_prkeyargs args;
+	struct pkcs15_any_object *key_any_obj;
 	struct sc_pkcs15_object	*key_obj;
 	struct sc_pkcs15_pin_info *pin;
 	CK_KEY_TYPE		key_type;
@@ -876,7 +890,8 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 	}
 
 	/* Create a new pkcs11 object for it */
-	pkcs15_add_object(slot, (struct pkcs15_any_object *) key_obj, phObject);
+	__pkcs15_create_prkey_object(fw_data, key_obj, &key_any_obj);
+	pkcs15_add_object(slot, key_any_obj, phObject);
 
 	rv = CKR_OK;
 
@@ -891,6 +906,7 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 {
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct sc_pkcs15init_pubkeyargs args;
+	struct pkcs15_any_object *key_any_obj;
 	struct sc_pkcs15_object	*key_obj;
 	struct sc_pkcs15_pin_info *pin;
 	CK_KEY_TYPE		key_type;
@@ -963,7 +979,8 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 	}
 
 	/* Create a new pkcs11 object for it */
-	pkcs15_add_object(slot, (struct pkcs15_any_object *) key_obj, phObject);
+	__pkcs15_create_pubkey_object(fw_data, key_obj, &key_any_obj);
+	pkcs15_add_object(slot, key_any_obj, phObject);
 
 	rv = CKR_OK;
 
@@ -978,7 +995,8 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 {
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct sc_pkcs15init_certargs args;
-	struct sc_pkcs15_object	*key_obj;
+	struct pkcs15_any_object *cert_any_obj;
+	struct sc_pkcs15_object	*cert_obj;
 	CK_CERTIFICATE_TYPE	cert_type;
 	CK_BBOOL		bValue;
 	int			rc, rv;
@@ -1032,14 +1050,14 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 		goto out;
 	}
 
-	rc = sc_pkcs15init_store_certificate(fw_data->p15_card, profile, &args, &key_obj);
+	rc = sc_pkcs15init_store_certificate(fw_data->p15_card, profile, &args, &cert_obj);
 	if (rc < 0) {
 		rv = sc_to_cryptoki_error(rc, p11card->reader);
 		goto out;
 	}
-
 	/* Create a new pkcs11 object for it */
-	pkcs15_add_object(slot, (struct pkcs15_any_object *) key_obj, phObject);
+	__pkcs15_create_cert_object(fw_data, cert_obj, &cert_any_obj);
+	pkcs15_add_object(slot, cert_any_obj, phObject);
 
 	rv = CKR_OK;
 
@@ -1162,8 +1180,10 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	struct sc_pkcs15_card *p15card = fw_data->p15_card;
 	struct sc_pkcs15init_prkeyargs	priv_args;
 	struct sc_pkcs15init_pubkeyargs pub_args;
-	struct sc_pkcs15_object	*priv_key_obj;
-	struct sc_pkcs15_object	*pub_key_obj;
+	struct sc_pkcs15_object	 *priv_key_obj;
+	struct sc_pkcs15_object	 *pub_key_obj;
+	struct pkcs15_any_object *priv_any_obj;
+	struct pkcs15_any_object *pub_any_obj;
 	struct sc_pkcs15_id id;
 	size_t		len;
 	CK_KEY_TYPE	keytype = CKK_RSA;
@@ -1229,19 +1249,24 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 		goto kpgen_done;
 	pub_args.x509_usage = priv_args.x509_usage;
 
-	/* 2. Supply the user PIN to the profile */
+	/* 2. Add the PINs the user presented so far. Some initialization
+	 * routines need to present these PINs again because some
+	 * card operations may clobber the authentication state
+	 * (the GPK for instance) */
 
-	if (p15_data->pin[CKU_USER].len != 0)
-		sc_profile_set_secret(profile, SC_AC_CHV, 1,
+	if (p15_data->pin[CKU_SO].len)
+		sc_pkcs15init_set_pin_data(profile, SC_PKCS15INIT_SO_PIN,
+			p15_data->pin[CKU_SO].value, p15_data->pin[CKU_SO].len);
+	if (p15_data->pin[CKU_USER].len)
+		sc_pkcs15init_set_pin_data(profile, SC_PKCS15INIT_USER_PIN,
 			p15_data->pin[CKU_USER].value, p15_data->pin[CKU_USER].len);
-	else
-		debug(context, "User PIN not cached, keypair gen will probably fail\n");
+
 
 	/* 3.a Try on-card key pair generation */
 	rc = sc_pkcs15init_generate_key(fw_data->p15_card, profile,
 		&priv_args, keybits, &priv_key_obj);
 	if (rc >= 0) {
-		id = ((sc_pkcs15_prkey_info *) priv_key_obj->data)->id;
+		id = ((struct sc_pkcs15_prkey_info *) priv_key_obj->data)->id;
 		rc = sc_pkcs15_find_pubkey_by_id(fw_data->p15_card, &id, &pub_key_obj);
 		if (rc != 0) {
 			debug(context, "sc_pkcs15_find_pubkey_by_id returned %d\n", rc);
@@ -1286,40 +1311,16 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 
 	/* 4. Create new pkcs11 public and private key object */
 
-	rc = __pkcs15_create_prkey_object(fw_data, priv_key_obj);
+	rc = __pkcs15_create_prkey_object(fw_data, priv_key_obj, &priv_any_obj);
 	if (rc == 0)
-		__pkcs15_create_pubkey_object(fw_data, pub_key_obj);
+		__pkcs15_create_pubkey_object(fw_data, pub_key_obj, &pub_any_obj);
 	if (rc != 0) {
 		debug(context, "__pkcs15_create_pr/pubkey_object returned %d\n", rc);
 		rv = sc_to_cryptoki_error(rc, p11card->reader);
 		goto kpgen_done;
 	}
-
-	id = ((sc_pkcs15_prkey_info *) priv_key_obj->data)->id;
-
-	rc = 0;
-	for (j = 0; j < fw_data->num_objects; j++) {
-		struct pkcs15_any_object *obj = fw_data->objects[j];
-
-		if (is_privkey(obj)) {
-			struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) obj;
-			if (sc_pkcs15_compare_id(&prkey->prv_info->id, &id)) {
-				pkcs15_add_object(slot, obj, phPrivKey);
-				rc++;
-			}
-		}
-		if (is_pubkey(obj)) {
-			struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) obj;
-			if (sc_pkcs15_compare_id(&pubkey->pub_info->id, &id)) {
-				pkcs15_add_object(slot, obj, phPubKey);
-				rc++;
-			}
-		}
-	}
-	if (rc != 2) {
-		debug(context, "Err: should have gotten 2 pkcs11 objects, got %d\n", rc);
-		rv = CKR_GENERAL_ERROR;
-	}
+	pkcs15_add_object(slot, priv_any_obj, phPrivKey);
+	pkcs15_add_object(slot, pub_any_obj, phPubKey);
 
 kpgen_done:
 	sc_pkcs15init_unbind(profile);
