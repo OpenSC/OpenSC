@@ -117,8 +117,10 @@ struct sc_pkcs15init_certargs {
 };
 
 extern void	sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *);
-extern int	sc_pkcs15init_bind(struct sc_profile *,
-				struct sc_card *, const char *);
+extern int	sc_pkcs15init_bind(struct sc_card *, const char *,
+				struct sc_profile **);
+extern int	sc_pkcs15init_erase_card(struct sc_card *,
+				struct sc_profile *);
 extern int	sc_pkcs15init_add_app(struct sc_card *,
 				struct sc_profile *,
 				struct sc_pkcs15init_initargs *);
@@ -151,5 +153,7 @@ extern int	sc_pkcs15init_fixup_acls(struct sc_profile *,
 				struct sc_file *,
 				struct sc_acl_entry *,
 				struct sc_acl_entry *);
+extern int	sc_pkcs15init_get_pin_info(struct sc_profile *, unsigned int,
+				struct sc_pkcs15_pin_info *);
 
 #endif /* PKCS15_INIT_H */

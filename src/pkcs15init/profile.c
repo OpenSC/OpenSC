@@ -203,13 +203,13 @@ init_file(unsigned int type)
 /*
  * Initialize profile
  */
-void
-sc_profile_init(struct sc_profile *pro)
+struct sc_profile *
+sc_profile_new()
 {
 	struct sc_pkcs15_card *p15card;
+	struct sc_profile *pro;
 
-	memset(pro, 0, sizeof(*pro));
-
+	pro = (struct sc_profile *) calloc(1, sizeof(*pro));
 	pro->p15_card = p15card = sc_pkcs15_card_new();
 
 	/* Set up EF(TokenInfo) and EF(ODF) */
@@ -230,6 +230,8 @@ sc_profile_init(struct sc_profile *pro)
 	pro->pin_encoding = 0x01;
 	pro->pin_minlen = 4;
 	pro->pin_maxlen = 8;
+
+	return pro;
 }
 
 int
@@ -269,6 +271,13 @@ sc_profile_finish(struct sc_profile *profile)
 whine:	if (profile->cbs)
 		profile->cbs->error("%s\n", reason);
 	return SC_ERROR_INCONSISTENT_PROFILE;
+}
+
+void
+sc_profile_free(struct sc_profile *profile)
+{
+	/* XXX Needs to be done. Huge memory leak */
+	free(profile);
 }
 
 static const char *

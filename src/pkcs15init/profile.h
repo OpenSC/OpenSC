@@ -109,9 +109,10 @@ struct sc_profile {
 	char *			p15_serial;
 };
 
-void		sc_profile_init(struct sc_profile *);
+struct sc_profile *sc_profile_new();
 int		sc_profile_load(struct sc_profile *, const char *);
 int		sc_profile_finish(struct sc_profile *);
+void		sc_profile_free(struct sc_profile *);
 int		sc_profile_build_pkcs15(struct sc_profile *);
 void		sc_profile_set_so_pin(struct sc_profile *, const char *);
 void		sc_profile_set_user_pin(struct sc_profile *, const char *);

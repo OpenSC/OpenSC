@@ -84,13 +84,19 @@ static int	sc_pkcs15init_update_df(struct sc_pkcs15_card *,
 static int	sc_pkcs15init_x509_key_usage(X509 *, int);
 static int	do_select_parent(struct sc_profile *, struct sc_card *,
 			struct sc_file *, struct sc_file **);
+static void	default_error_handler(const char *fmt, ...);
+static void	default_debug_handler(const char *fmt, ...);
 
 /* Card specific functions */
 extern struct sc_pkcs15init_operations	sc_pkcs15init_gpk_operations;
 extern struct sc_pkcs15init_operations	sc_pkcs15init_miocos_operations;
 extern struct sc_pkcs15init_operations	sc_pkcs15init_cflex_operations;
 
-static struct sc_pkcs15init_callbacks *callbacks = NULL;
+static struct sc_pkcs15init_callbacks default_callbacks = {
+	default_error_handler,
+	default_debug_handler
+};
+static struct sc_pkcs15init_callbacks *callbacks = &default_callbacks;
 
 #define p15init_error	callbacks->error
 #define p15init_debug	callbacks->debug
@@ -109,13 +115,14 @@ sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *cb)
  * Set up profile
  */
 int
-sc_pkcs15init_bind(struct sc_profile *profile,
-		struct sc_card *card, const char *name)
+sc_pkcs15init_bind(struct sc_card *card, const char *name,
+		struct sc_profile **result)
 {
+	struct sc_profile *profile;
 	const char	*driver = card->driver->short_name;
 	int		r;
 
-	sc_profile_init(profile);
+	profile = sc_profile_new();
 
 	profile->cbs = callbacks;
 	if (!strcasecmp(driver, "GPK"))
@@ -126,15 +133,22 @@ sc_pkcs15init_bind(struct sc_profile *profile,
 		profile->ops = &sc_pkcs15init_cflex_operations;
 	else {
 		p15init_error("Unsupported card driver %s", driver);
+		sc_profile_free(profile);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if ((r = sc_profile_load(profile, name)) < 0
 	 || (r = sc_profile_load(profile, driver)) < 0
 	 || (r = sc_profile_finish(profile)) < 0)
-		return r;
+		sc_profile_free(profile);
 
-	return 0;
+	return r;
+}
+
+int
+sc_pkcs15init_erase_card(struct sc_card *card, struct sc_profile *profile)
+{
+	return profile->ops->erase_card(profile, card);
 }
 
 /*
@@ -1077,4 +1091,28 @@ sc_pkcs15init_fixup_acls(struct sc_profile *profile, struct sc_file *file,
 	}
 
 	return r;
+}
+
+int
+sc_pkcs15init_get_pin_info(struct sc_profile *profile,
+		unsigned int id, struct sc_pkcs15_pin_info *pin)
+{
+	sc_profile_get_pin_info(profile, id, pin);
+	return 0;
+}
+
+void
+default_error_handler(const char *fmt, ...)
+{
+	va_list	ap;
+
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+}
+
+void
+default_debug_handler(const char *fmt, ...)
+{
+	/* Nothing */
 }
