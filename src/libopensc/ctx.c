@@ -84,8 +84,8 @@ static const struct _sc_driver_entry internal_reader_drivers[] = {
 #if defined(HAVE_PCSC)
 	{ "pcsc", (void *) sc_get_pcsc_driver, NULL },
 #endif
-#ifndef _WIN32
 	{ "ctapi", (void *) sc_get_ctapi_driver, NULL },
+#ifndef _WIN32
 #ifdef HAVE_OPENCT
 	{ "openct", (void *) sc_get_openct_driver, NULL },
 #endif

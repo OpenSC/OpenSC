@@ -77,7 +77,7 @@ ctbcs_build_output_apdu(sc_apdu_t *apdu, const char *message)
 #endif
 
 static int
-ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
+ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data, sc_slot_info_t *slot)
 {
 	const char *prompt;
 	size_t buflen, count = 0, j = 0, len;
@@ -87,7 +87,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 	ctbcs_init_apdu(apdu,
 			SC_APDU_CASE_3_SHORT,
 			CTBCS_INS_PERFORM_VERIFICATION,
-			CTBCS_P1_KEYPAD,
+			CTBCS_P1_INTERFACE1 + (slot ? slot->id : 0),
 			0);
 
 	buflen = sizeof(buf);
@@ -121,7 +121,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 	if (data->pin1.min_length == data->pin1.max_length)
 		control |= data->pin1.min_length << CTBCS_PIN_CONTROL_LEN_SHIFT;
 	buf[j++] = control;
-	buf[j++] = data->pin1.offset;
+	buf[j++] = data->pin1.offset+1; /* Looks like offset is 1-based in CTBCS */
 	buf[j++] = data->apdu->cla;
 	buf[j++] = data->apdu->ins;
 	buf[j++] = data->apdu->p1;
@@ -145,7 +145,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 }
 
 static int
-ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
+ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data, sc_slot_info_t *slot)
 {
 	/* to be implemented */
 	return SC_ERROR_NOT_SUPPORTED;
@@ -162,11 +162,11 @@ ctbcs_pin_cmd(struct sc_reader *reader, sc_slot_info_t *slot,
 
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
-		r = ctbcs_build_perform_verification_apdu(&apdu, data);
+		r = ctbcs_build_perform_verification_apdu(&apdu, data, slot);
 		break;
 	case SC_PIN_CMD_CHANGE:
 	case SC_PIN_CMD_UNBLOCK:
-		r = ctbcs_build_modify_verification_apdu(&apdu, data);
+		r = ctbcs_build_modify_verification_apdu(&apdu, data, slot);
 		break;
 	default:
 		sc_error(reader->ctx, "Unknown PIN command %d", data->cmd);
@@ -208,6 +208,12 @@ ctbcs_pin_cmd(struct sc_reader *reader, sc_slot_info_t *slot,
 		break;
 	}
 	SC_TEST_RET(card->ctx, r, "PIN command failed");
+
+	/* Calling Function may expect SW1/SW2 in data-apdu set... */
+	if (data->apdu) {
+		data->apdu->sw1 = apdu.sw1;
+		data->apdu->sw2 = apdu.sw2;
+	}
 
 	return 0;
 }

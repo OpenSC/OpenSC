@@ -71,6 +71,13 @@
 #define CTBCS_P1_INTERFACE14		0x0E
 #define CTBCS_P1_DISPLAY		0x40
 #define CTBCS_P1_KEYPAD			0x50
+#define CTBCS_P1_PRINTER		0x60 /* New CT-BCS 1.0 */
+#define CTBCS_P1_FINGERPRINT		0x70 /* New CT-BCS 1.0 */
+#define CTBCS_P1_VOICEPRINT		0x71 /* New CT-BCS 1.0 */
+#define CTBCS_P1_DSV			0x72 /* "Dynamic Signature Verification" New CT-BCS 1.0 */
+#define CTBCS_P1_FACE_RECOGNITION	0x73 /* New CT-BCS 1.0 */
+#define CTBCS_P1_IRISSCAN		0x74 /* New CT-BCS 1.0 */
+/* Other biometric units may use values up to 0x7F */
 
 /*
  * P2 parameter for Reset CT: data to be returned
@@ -91,6 +98,7 @@
  */
 #define CTBCS_P2_STATUS_MANUFACTURER	0x46	/* Return manufacturer DO */
 #define CTBCS_P2_STATUS_ICC		0x80	/* Return ICC DO */
+#define CTBCS_P2_STATUS_TFU		0x81	/* Return Functional Units, new in Version 1.0 */
 
 /*
  * P2 parameter for Input
@@ -153,20 +161,20 @@
 #define CTBCS_SW2_REQUEST_NO_CARD	0x00
 #define CTBCS_SW1_REQUEST_CARD_PRESENT 	0x62	/* Card already present */
 #define CTBCS_SW2_REQUEST_CARD_PRESENT 	0x01
-#define CTBCS_SW1_REQUEST_ERROR   	0x64	/* Reset not successful */
-#define CTBCS_SW2_REQUEST_ERROR   	0x00
+#define CTBCS_SW1_REQUEST_ERROR		0x64	/* Reset not successful */
+#define CTBCS_SW2_REQUEST_ERROR		0x00
 #define CTBCS_SW1_REQUEST_TIMER_ERROR	0x69	/* Timer not supported */
 #define CTBCS_SW2_REQUEST_TIMER_ERROR	0x00
 
 /*
  * Return codes for Eject ICC
  */
-#define CTBCS_SW1_EJECT_OK              0x90    /* Command succesful, */
-#define CTBCS_SW2_EJECT_OK              0x00
-#define CTBCS_SW1_EJECT_REMOVED         0x90    /* Command succesful, */
-#define CTBCS_SW2_EJECT_REMOVED         0x01    /* Card removed */
-#define CTBCS_SW1_EJECT_NOT_REMOVED     0x62    /* Card not removed */
-#define CTBCS_SW2_EJECT_NOT_REMOVED     0x00
+#define CTBCS_SW1_EJECT_OK		0x90	/* Command succesful, */
+#define CTBCS_SW2_EJECT_OK		0x00
+#define CTBCS_SW1_EJECT_REMOVED		0x90	/* Command succesful, */
+#define CTBCS_SW2_EJECT_REMOVED		0x01	/* Card removed */
+#define CTBCS_SW1_EJECT_NOT_REMOVED	0x62	/* Card not removed */
+#define CTBCS_SW2_EJECT_NOT_REMOVED	0x00
 
 /*
  * Data returned on Get Status command
@@ -180,6 +188,4 @@
  */
 int ctbcs_pin_cmd(struct sc_reader *, sc_slot_info_t *, struct sc_pin_cmd_data *);
 
-
 #endif /* _CTBCS_ */
-
