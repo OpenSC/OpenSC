@@ -1841,6 +1841,20 @@ test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 	int key_len, i, errors = 0;
 	CK_OBJECT_HANDLE priv_key, pub_key;
 	CK_MECHANISM_TYPE first_mech_type;
+	CK_SESSION_INFO sessionInfo;
+	CK_RV rv;
+
+	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION, NULL, NULL, &sess);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+
+	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
+		printf("Verify: not logged in, skipping verify tests\n");
+		return errors;
+	}
 
 	first_mech_type = find_mechanism(slot, CKF_VERIFY, 0);
 	if (first_mech_type == NO_MECHANISM) {
