@@ -1,5 +1,7 @@
 # Process this file with automake to create Makefile.in
 
+MAINTAINERCLEANFILES = Makefile.in
+
 include_HEADERS = scrandom.h
 
 if HAVE_SSL

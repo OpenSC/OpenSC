@@ -1,5 +1,7 @@
 # Process this file with automake to create Makefile.in
 
+MAINTAINERCLEANFILES = Makefile.in
+
 INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@ -I../scrandom -I../scldap
 
 if HAVE_PAM

@@ -1,5 +1,7 @@
 # Process this file with automake to create Makefile.in
 
+MAINTAINERCLEANFILES = Makefile.in
+
 SUBDIRS = . rsaref
 
 libdir = ${prefix}/lib/pkcs11

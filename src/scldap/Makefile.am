@@ -1,5 +1,7 @@
 # Process this file with automake to create Makefile.in
 
+MAINTAINERCLEANFILES = Makefile.in
+
 include_HEADERS = scldap.h
 
 if HAVE_LDAP

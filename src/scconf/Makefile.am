@@ -1,5 +1,7 @@
 # Process this file with automake to create Makefile.in
 
+MAINTAINERCLEANFILES = Makefile.in lex-parse.c
+
 include_HEADERS = scconf.h
 noinst_HEADERS = internal.h
 
