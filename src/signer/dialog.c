@@ -83,7 +83,7 @@ int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 			sprintf(errtext, "PIN code too long, max. %d digits", pinfo->stored_length);
 			continue;
 		}
-		r = sc_pkcs15_verify_pin(p15card, pinfo, buf, strlen(buf));
+		r = sc_pkcs15_verify_pin(p15card, pinfo, (const u8 *) buf, strlen(buf));
 		switch (r) {
 		case SC_ERROR_PIN_CODE_INCORRECT:
 			sprintf(errtext, "PIN code incorrect (%d %s left)",

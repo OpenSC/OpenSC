@@ -150,7 +150,7 @@ NPP_New(NPMIMEType pluginType,
 	printf("Posting to '%s'\n", postUrl);
 	printf("Data to sign: %s\n", dataToSign);
 	printf("Signed: %s\n", b64data);
-	rv = post_data(instance, postUrl, "_self", strlen(b64data), b64data,
+	rv = post_data(instance, postUrl, "_self", strlen((char *) b64data), (char *) b64data,
 		       fieldName);
 	printf("post_data returned %d\n", rv);
 	r = NPERR_NO_ERROR;
