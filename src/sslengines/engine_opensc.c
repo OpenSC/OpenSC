@@ -92,7 +92,7 @@ opensc_rsa_finish(RSA* rsa) {
 	
 	struct sc_pkcs15_key_id *key_id;
 	key_id = RSA_get_app_data(rsa);
-	free(key_id); // which free?
+	free(key_id);
 	if(sc_pin) {free(sc_pin);}
 	return 1;
 
@@ -193,14 +193,14 @@ EVP_PKEY *opensc_load_public_key(ENGINE *e, const char *s_key_id,
 
 	r = sc_pkcs15_find_pubkey_by_id(p15card, id, &obj);
 	if (r >= 0) {
-	//	if (!quiet)
+		if (!quiet)
 			printf("Reading public key with ID '%s'\n", s_key_id);
 		r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
 	} else if (r == SC_ERROR_OBJECT_NOT_FOUND) {
 		/* No pubkey - try if there's a certificate */
 		r = sc_pkcs15_find_cert_by_id(p15card, id, &obj);
 		if (r >= 0) {
-//			if (!quiet)
+			if (!quiet)
 				printf("Reading certificate with ID '%s'\n", s_key_id);
 			r = sc_pkcs15_read_certificate(p15card,
 				(sc_pkcs15_cert_info_t *) obj->data,
@@ -219,13 +219,15 @@ EVP_PKEY *opensc_load_public_key(ENGINE *e, const char *s_key_id,
 		return NULL;
 	}
 
-	// now, set EVP_PKEY data from pubkey object
+	/* now, set EVP_PKEY data from pubkey object */
 	key_out=EVP_PKEY_new();
 	if(!key_out) 
 		{fprintf(stderr, "failed to create new EVP_PKEY\n"); return NULL;};
 	EVP_PKEY_assign_RSA(key_out,RSA_new_method(e));
-	//RSA_set_method(keyout->rsa, sc_get_rsa_method());
-	key_out->pkey.rsa->flags|=RSA_FLAG_EXT_PKEY||RSA_FLAG_SIGN_VER;// needed?
+#if 0
+	RSA_set_method(keyout->rsa, sc_get_rsa_method());
+#endif
+	key_out->pkey.rsa->flags|=RSA_FLAG_EXT_PKEY||RSA_FLAG_SIGN_VER;
 	RSA_set_app_data(key_out->pkey.rsa, id);
 	sc_set_pubkey_data(key_out, pubkey);
 
@@ -260,17 +262,16 @@ EVP_PKEY *opensc_load_private_key(ENGINE *e, const char *s_key_id,
 	if(sc_pin) {free(sc_pin); sc_pin=NULL;}
  	key_out=opensc_load_public_key(e, s_key_id, ui_method, callback_data); 
 	sc_pin=malloc(12);
-	get_pin(ui_method,sc_pin,12); // do this here, when storing sc_pin in RSA
-	//memset(sc_pin,0x0,12);
-	//free(sc_pin);
+	get_pin(ui_method,sc_pin,12); /* do this here, when storing sc_pin in RSA */
+#if 0
+	memset(sc_pin,0x0,12);
+	free(sc_pin);
+#endif
 	if(!key_out) {
 			fprintf(stderr,"Failed to get private key");
 			return NULL;
 	}
 	return key_out;
-//err:
-//	opensc_close();
-//	return NULL;
 }
 
 int
@@ -293,7 +294,6 @@ sc_private_decrypt(int flen, const u_char *from, u_char *to, RSA *rsa,
 	}
 	return r;
 err:
-	//sc_close();
 	return -1;
 }
 
@@ -315,8 +315,7 @@ sc_sign(int type, const u_char *m, unsigned int m_len,
 	/* FIXME: check 'type' and modify flags accordingly */
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1 ;
 	if(type==NID_sha1) flags|=SC_ALGORITHM_RSA_HASH_SHA1;
-	if(type==NID_md5) flags|=SC_ALGORITHM_RSA_HASH_MD5;
-       //	SC_ALGORITHM_RSA_HASH_SHA1;
+	if(type==NID_md5) flags|=SC_ALGORITHM_RSA_HASH_MD5;	/* SC_ALGORITHM_RSA_HASH_SHA1 */
 	r = sc_pkcs15_compute_signature(p15card, key_obj, flags,
 					m, m_len, sigret, RSA_size(rsa));
 	sc_unlock(card);
@@ -328,7 +327,6 @@ sc_sign(int type, const u_char *m, unsigned int m_len,
 	*siglen = r;
 	return 1;
 err:
-	//sc_close();
 	return 0;
 }
 

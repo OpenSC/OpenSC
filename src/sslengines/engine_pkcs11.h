@@ -47,5 +47,5 @@ EVP_PKEY *pkcs11_load_public_key(ENGINE *e, const char *s_key_id,
 EVP_PKEY *pkcs11_load_private_key(ENGINE *e, const char *s_key_id,
 	UI_METHOD *ui_method, void *callback_data) ;
 
-// defined in p11_rsa.c
+/* defined in p11_rsa.c */
 RSA_METHOD * pkcs11_get_rsa_method();
