@@ -1356,6 +1356,8 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	}
 	pkcs15_add_object(slot, priv_any_obj, phPrivKey);
 	pkcs15_add_object(slot, pub_any_obj, phPubKey);
+	((struct pkcs15_prkey_object *) priv_any_obj)->prv_pubkey =
+		(struct pkcs15_pubkey_object *)pub_any_obj;
 
 kpgen_done:
 	sc_unlock(p11card->card);
