@@ -167,7 +167,7 @@ app opensc-pkcs11 {
 		#
 		# Set this option to true to hide these empty
 		# slots.
-		hide_empty_slots = false;
+		hide_empty_tokens = false;
 
 		# By default, the OpenSC PKCS#11 module will
 		# try to lock this card once you have authenticated
