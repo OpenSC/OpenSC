@@ -739,10 +739,17 @@ sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	if (rv != CKR_OK)
 		p11_fatal("C_SignFinal", rv);
 
+#ifdef _WIN32
 	if (opt_output == NULL)
 		fd = 1;
 	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY, 0666)) < 0)
 		fatal("failed to open %s: %m", opt_output);
+#else
+	if (opt_output == NULL)
+		fd = 1;
+	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, 0666)) < 0)
+		fatal("failed to open %s: %m", opt_output);
+#endif /* _WIN32 */
 
 	r = write(fd, buffer, sig_len);
 	if (r < 0)
