@@ -33,6 +33,9 @@ struct sc_pkcs15_search_key {
 	const struct sc_pkcs15_id *	id;
 	unsigned int			usage_mask, usage_value;
 	unsigned int			flags_mask, flags_value;
+
+	unsigned int			match_reference : 1;
+	int				reference;
 };
 
 static int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *);
@@ -747,6 +750,21 @@ static int compare_obj_flags(sc_pkcs15_object_t *obj, unsigned int mask, unsigne
 	return !((flags ^ value) & mask);
 }
 
+static int compare_obj_reference(sc_pkcs15_object_t *obj, int value)
+{
+	void		*data = obj->data;
+	int		reference;
+
+	switch (obj->type) {
+	case SC_PKCS15_TYPE_AUTH_PIN:
+		reference = ((struct sc_pkcs15_pin_info *) data)->reference;
+		break;
+	default:
+		return 0;
+	}
+	return reference == value;
+}
+
 static int compare_obj_key(struct sc_pkcs15_object *obj, void *arg)
 {
 	struct sc_pkcs15_search_key *sk = (struct sc_pkcs15_search_key *) arg;
@@ -756,6 +774,8 @@ static int compare_obj_key(struct sc_pkcs15_object *obj, void *arg)
 	if (sk->usage_mask && !compare_obj_usage(obj, sk->usage_mask, sk->usage_value))
 		return 0;
 	if (sk->flags_mask && !compare_obj_flags(obj, sk->flags_mask, sk->flags_value))
+		return 0;
+	if (sk->match_reference && !compare_obj_reference(obj, sk->reference))
 		return 0;
 	return 1;
 }
@@ -812,6 +832,19 @@ int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *p15card,
 			     struct sc_pkcs15_object **out)
 {
 	return find_by_id(p15card, SC_PKCS15_TYPE_AUTH_PIN, id, out);
+}
+
+int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *p15card,
+				int reference,
+				struct sc_pkcs15_object **out)
+{
+	struct sc_pkcs15_search_key sk;
+
+	memset(&sk, 0, sizeof(sk));
+	sk.match_reference = 1;
+	sk.reference = reference;
+
+	return find_by_key(p15card, SC_PKCS15_TYPE_AUTH_PIN, &sk, out);
 }
 
 int sc_pkcs15_find_data_object_by_id(struct sc_pkcs15_card *p15card,
