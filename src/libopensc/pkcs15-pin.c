@@ -267,7 +267,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	memset(pinbuf, pin->pad_char, pin->max_length * 2);
 	memcpy(pinbuf, oldpin, oldpinlen);
 	memcpy(pinbuf + pin->max_length, newpin, newpinlen);
-change_pin:
+
 	r = sc_change_reference_data(card, SC_AC_CHV, pin->reference, pinbuf,
 				     pin->max_length, pinbuf+pin->max_length,
 				     pin->max_length, &pin->tries_left);
@@ -309,7 +309,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		sc_unlock(card);
 		return r;
 	}
-unblock_pin:
+
         r = sc_reset_retry_counter (card, SC_AC_CHV, pin->reference,
 				puk, puklen, newpin, newpinlen);
 	sc_unlock(card);

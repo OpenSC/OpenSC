@@ -1116,7 +1116,6 @@ EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObje
 	CK_OBJECT_HANDLE pubkeyObject;
 	unsigned char  *pubkey, *pubkey_sav;
 	CK_ULONG        pubkeyLen;
-	RSA	       *rsa;
 	EVP_PKEY       *pkey;
 
 	id = NULL;
@@ -1140,17 +1139,14 @@ EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObje
 	}
 
 	pubkey_sav = pubkey; /* The function below may change pubkey */
-	rsa = d2i_RSAPublicKey(NULL, &pubkey, pubkeyLen);
+	pkey = d2i_PublicKey(EVP_PKEY_RSA, NULL, &pubkey, pubkeyLen);
 	free(pubkey_sav);
 
-	if (rsa == NULL) {
+	if (pkey == NULL) {
 		printf(" couldn't parse pubkey, no verification done\n");
 		/* ERR_print_errors_fp(stderr); */
 		return NULL;
 	}
-
-	pkey = EVP_PKEY_new();
-	EVP_PKEY_set1_RSA(pkey, rsa);
 
 	return pkey;
 }

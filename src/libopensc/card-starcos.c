@@ -320,7 +320,7 @@ static int starcos_select_fid(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x00, 0x00);
 	apdu.resp = (u8*)resp;
 	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
-	apdu.le = 0;
+	apdu.le = 256;
 	apdu.lc = 2;
 	apdu.data = (u8*)data;
 	apdu.datalen = 2;
