@@ -11,9 +11,9 @@ MAINTAINERCLEANFILES = Makefile.in \
 
 all-local:
 	@$(RM) *.h
-	@$(LN_S) ../../../pkcs11/rsaref/pkcs11.h pkcs11.h
-	@$(LN_S) ../../../pkcs11/rsaref/pkcs11f.h pkcs11f.h
-	@$(LN_S) ../../../pkcs11/rsaref/pkcs11t.h pkcs11t.h
-	@$(LN_S) ../../../pkcs11/rsaref/unix.h unix.h
-	@$(LN_S) ../../../pkcs11/rsaref/win32.h win32.h
+	@$(LN_S) ${top_srcdir}/src/pkcs11/rsaref/pkcs11.h pkcs11.h
+	@$(LN_S) ${top_srcdir}/src/pkcs11/rsaref/pkcs11f.h pkcs11f.h
+	@$(LN_S) ${top_srcdir}/src/pkcs11/rsaref/pkcs11t.h pkcs11t.h
+	@$(LN_S) ${top_srcdir}/src/pkcs11/rsaref/unix.h unix.h
+	@$(LN_S) ${top_srcdir}/src/pkcs11/rsaref/win32.h win32.h
 
