@@ -160,9 +160,9 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 	char flags[64];
 	int logged_in = 0;
 
-	/* Parse s_slot_key_id: [slot:<slotNr>][;][id:<keyID>] or NULL,
+	/* Parse s_slot_key_id: [slot_<slotNr>][-][id_<keyID>] or NULL,
 	   with slotNr in decimal (0 = first slot, ...), and keyID in hex.
-	   E.g. "slot=1" or "id=46" or "slot=1;id=46 */
+	   E.g. "slot_1" or "id_46" or "slot_1-id_46 */
 	while (s_slot_key_id != NULL && *s_slot_key_id != '\0') {
 		char *p_sep1, *p_sep2;
 		char val[MAX_VALUE_LEN];
@@ -180,7 +180,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 		if (p_sep2 == NULL)
 			p_sep2 = p_sep1 + strlen(p_sep1);
 
-		/* val = the string between the = and the ; (or '\0') */
+		/* val = the string between the _ and the - (or '\0') */
 		val_len = p_sep2 - p_sep1 - 1;
 		if (val_len >= MAX_VALUE_LEN || val_len == 0)
 			fail("Too long or empty value after the \'-\' sign\n");
@@ -256,6 +256,10 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 	}
 	tok = slot->token;
 
+	if (tok == NULL) {
+		printf("Found empty token; \n");
+		return NULL;
+	}
 	if (!tok->initialized) {
 		printf("Found uninitialized token; \n");
 		return NULL;
