@@ -27,7 +27,9 @@
 #define _OPENSC_H
 
 #include <stdio.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
