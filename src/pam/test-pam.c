@@ -30,8 +30,8 @@
 #include <unistd.h>
 #endif
 #include <ctype.h>
-#include "pam_support.h"
-#include "scam.h"
+#include "pam_opensc.c"
+#include "pam_support.c"
 
 extern int misc_conv(int num_msg, PAM_CONST struct pam_message **msgm, struct pam_response **response, void *appdata_ptr);
 

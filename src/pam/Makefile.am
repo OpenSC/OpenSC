@@ -18,5 +18,4 @@ endif
 pam_opensc_la_SOURCES = $(SRC)
 pam_opensc_la_LDFLAGS = -module -avoid-version
 
-pam_opensc_test_LDADD = ../scrandom/libscrandom.la pam_opensc.la
 pam_opensc_test_SOURCES = pamtest.c misc_conv.c
