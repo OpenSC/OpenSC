@@ -336,7 +336,7 @@ typedef struct sc_pkcs15_card {
 	/* fields from TokenInfo: */
 	int version;
 	char *serial_number, *manufacturer_id;
-	unsigned long flags;
+	unsigned int flags;
 	struct sc_pkcs15_algorithm_info alg_info[1];
 
 	sc_file_t *file_app;
