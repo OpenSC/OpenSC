@@ -25,7 +25,7 @@ libopensc_la_SOURCES	= sc.c ctx.c module.c asn1.c log.c base64.c \
 			  card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 			  card-tcos.c card-emv.c card-default.c
 libopensc_la_LDFLAGS	= -version-info 0:6:0
-libopensc_la_LIBADD	= $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF)
+libopensc_la_LIBADD	= @LIBDL@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF)
 
 include_HEADERS		= opensc.h opensc-pkcs15.h opensc-emv.h \
 		   	  cardctl.h
