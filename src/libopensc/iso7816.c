@@ -110,6 +110,7 @@ static int iso7816_read_binary(struct sc_card *card,
 	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
+	assert(count <= card->max_recv_size);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0,
 		       (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.le = count;
@@ -237,7 +238,7 @@ static int iso7816_write_binary(struct sc_card *card,
 	struct sc_apdu apdu;
 	int r;
 
-	assert(count <= card->max_le);
+	assert(count <= card->max_send_size);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD0,
 		       (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.lc = count;
@@ -258,7 +259,7 @@ static int iso7816_update_binary(struct sc_card *card,
 	struct sc_apdu apdu;
 	int r;
 
-	assert(count <= card->max_le);
+	assert(count <= card->max_send_size);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6,
 		       (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.lc = count;

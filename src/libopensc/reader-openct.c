@@ -427,7 +427,7 @@ openct_error(struct sc_reader *reader, int code)
 	return SC_ERROR_READER;
 }
 
-const struct sc_reader_driver *sc_get_openct_driver(void)
+struct sc_reader_driver *sc_get_openct_driver(void)
 {
 	openct_ops.init = openct_reader_init;
 	openct_ops.finish = openct_reader_finish;

@@ -204,7 +204,7 @@ static int ctapi_release(struct sc_reader *reader)
 
 static struct sc_reader_operations ctapi_ops;
 
-static const struct sc_reader_driver ctapi_drv = {
+static struct sc_reader_driver ctapi_drv = {
 	"CT-API module",
 	"ctapi",
 	&ctapi_ops
@@ -362,7 +362,7 @@ static int ctapi_finish(struct sc_context *ctx, void *prv_data)
 	return 0;
 }
 
-const struct sc_reader_driver * sc_get_ctapi_driver(void)
+struct sc_reader_driver * sc_get_ctapi_driver(void)
 {
 	ctapi_ops.init = ctapi_init;
 	ctapi_ops.finish = ctapi_finish;

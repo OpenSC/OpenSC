@@ -239,6 +239,10 @@ gpk_init(struct sc_card *card)
 	/* State that we have an RNG */
 	card->caps |= SC_CARD_CAP_RNG;
 
+	/* Make sure max send/receive size is 4 byte aligned. */
+	card->max_send_size &= ~3;
+	card->max_recv_size &= ~3;
+
 	return 0;
 }
 

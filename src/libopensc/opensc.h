@@ -257,7 +257,14 @@ struct sc_reader_driver {
 	const char *name;
 	const char *short_name;
 	struct sc_reader_operations *ops;
+
+	size_t max_send_size, max_recv_size;
+	int apdu_masquerade;
 };
+#define SC_APDU_MASQUERADE_NONE		0x00
+#define SC_APDU_MASQUERADE_4AS3		0x01
+#define SC_APDU_MASQUERADE_1AS2		0x02
+#define SC_APDU_MASQUERADE_1AS2_ALWAYS	0x04
 
 /* slot flags */
 #define SC_SLOT_CARD_PRESENT	0x00000001
@@ -432,7 +439,8 @@ struct sc_card {
 	int cla;
 	u8 atr[SC_MAX_ATR_SIZE];
 	size_t atr_len;
-	size_t max_le;
+	size_t max_send_size;
+	size_t max_recv_size;
 
 	struct sc_app_info *app[SC_MAX_CARD_APPS];
 	int app_count;
@@ -842,9 +850,9 @@ struct sc_card_error {
 
 extern const char *sc_get_version(void);
 
-extern const struct sc_reader_driver *sc_get_pcsc_driver(void);
-extern const struct sc_reader_driver *sc_get_ctapi_driver(void);
-extern const struct sc_reader_driver *sc_get_openct_driver(void);
+extern struct sc_reader_driver *sc_get_pcsc_driver(void);
+extern struct sc_reader_driver *sc_get_ctapi_driver(void);
+extern struct sc_reader_driver *sc_get_openct_driver(void);
 
 extern struct sc_card_driver *sc_get_default_driver(void);
 extern struct sc_card_driver *sc_get_emv_driver(void);

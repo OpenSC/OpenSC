@@ -27,6 +27,13 @@
 #include <sys/stat.h>
 #include <limits.h>
 
+/* Default value for apdu_masquerade option */
+#ifndef _WIN32
+# define DEF_APDU_MASQ		SC_APDU_MASQUERADE_NONE
+#else
+# define DEF_APDU_MASQ		SC_APDU_MASQUERADE_4AS3
+#endif
+
 int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader)
 {
 	assert(reader != NULL);
@@ -41,29 +48,29 @@ int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader)
 
 struct _sc_driver_entry {
 	char *name;
-	void *func;
+	struct sc_reader_driver *(*func)(void);
 	char *libpath;
 	struct sc_atr_table *atrs;
 	unsigned int natrs;
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
-	{ "emv", (void *) sc_get_emv_driver, NULL },
-	{ "etoken", (void *) sc_get_etoken_driver, NULL },
-	{ "flex", (void *) sc_get_cryptoflex_driver, NULL },
-	{ "cyberflex", (void *) sc_get_cyberflex_driver, NULL },
+	{ "emv", sc_get_emv_driver, NULL },
+	{ "etoken", sc_get_etoken_driver, NULL },
+	{ "flex", sc_get_cryptoflex_driver, NULL },
+	{ "cyberflex", sc_get_cyberflex_driver, NULL },
 #ifdef HAVE_OPENSSL
-	{ "gpk", (void *) sc_get_gpk_driver, NULL },
+	{ "gpk", sc_get_gpk_driver, NULL },
 #endif
-	{ "miocos", (void *) sc_get_miocos_driver, NULL },
-	{ "mcrd", (void *) sc_get_mcrd_driver, NULL },
-	{ "setcos", (void *) sc_get_setcos_driver, NULL },
-	{ "starcos", (void *) sc_get_starcos_driver, NULL },
-	{ "tcos", (void *) sc_get_tcos_driver, NULL },
-	{ "opengpg", (void *) sc_get_openpgp_driver, NULL },
+	{ "miocos", sc_get_miocos_driver, NULL },
+	{ "mcrd", sc_get_mcrd_driver, NULL },
+	{ "setcos", sc_get_setcos_driver, NULL },
+	{ "starcos", sc_get_starcos_driver, NULL },
+	{ "tcos", sc_get_tcos_driver, NULL },
+	{ "opengpg", sc_get_openpgp_driver, NULL },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
-	{ "default", (void *) sc_get_default_driver, NULL },
+	{ "default", sc_get_default_driver, NULL },
 	{ NULL, NULL, NULL }
 };
 
@@ -224,6 +231,63 @@ static int load_parameters(struct sc_context *ctx, scconf_block *block,
 	return err;
 }
 
+static void load_reader_driver_options(sc_context_t *ctx,
+			struct sc_reader_driver *driver)
+{
+	const char	*name = driver->short_name;
+	scconf_block	*conf_block = NULL;
+	int		i;
+
+	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
+		scconf_block **blocks;
+
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+					    "reader_driver", name);
+		conf_block = blocks[0];
+		free(blocks);
+		if (conf_block != NULL)
+			break;
+	}
+
+	driver->apdu_masquerade = DEF_APDU_MASQ;
+	driver->max_send_size = SC_APDU_CHOP_SIZE;
+	driver->max_recv_size = SC_APDU_CHOP_SIZE;
+	if (conf_block != NULL) {
+		const scconf_list *list;
+
+		if (scconf_get_bool(conf_block, "apdu_fix", 0))
+			driver->apdu_masquerade |= SC_APDU_MASQUERADE_4AS3;
+
+		list = scconf_find_list(conf_block, "apdu_masquerade");
+		if (list)
+			driver->apdu_masquerade = 0;
+		for (; list; list = list->next) {
+			if (!strcmp(list->data, "case4as3")) {
+				driver->apdu_masquerade |= SC_APDU_MASQUERADE_4AS3;
+			} else if (!strcmp(list->data, "case1as2")) {
+				driver->apdu_masquerade |= SC_APDU_MASQUERADE_1AS2;
+			} else if (!strcmp(list->data, "case1as2_always")) {
+				driver->apdu_masquerade |= SC_APDU_MASQUERADE_1AS2_ALWAYS;
+			} else if (!strcmp(list->data, "none")) {
+				driver->apdu_masquerade = 0;
+			} else {
+				/* no match. Should something be logged? */
+				sc_error(ctx,
+					"Unexpected keyword \"%s\" in "
+					"apdu_masquerade; ignored\n",
+					list->data);
+			}
+		}
+
+		driver->max_send_size = scconf_get_int(conf_block,
+						"max_send_size",
+						SC_APDU_CHOP_SIZE);
+		driver->max_recv_size = scconf_get_int(conf_block,
+						"max_recv_size",
+						SC_APDU_CHOP_SIZE);
+	}
+}
+
 static int load_reader_drivers(struct sc_context *ctx,
 			       struct _sc_ctx_options *opts)
 {
@@ -234,13 +298,14 @@ static int load_reader_drivers(struct sc_context *ctx,
 	for (drv_count = 0; ctx->reader_drivers[drv_count] != NULL; drv_count++);
 
 	for (i = 0; i < opts->rcount; i++) {
-		const struct sc_reader_driver * (* func)(void) = NULL;
+		struct sc_reader_driver *driver;
+		struct sc_reader_driver * (*func)(void) = NULL;
 		int j;
 
 		ent = &opts->rdrv[i];
 		for (j = 0; internal_reader_drivers[j].name != NULL; j++)
 			if (strcmp(ent->name, internal_reader_drivers[j].name) == 0) {
-				func = (const struct sc_reader_driver * (*)(void)) internal_reader_drivers[j].func;
+				func = (struct sc_reader_driver * (*)(void)) internal_reader_drivers[j].func;
 				break;
 			}
 		if (func == NULL) {
@@ -250,8 +315,11 @@ static int load_reader_drivers(struct sc_context *ctx,
 			      ent->name);
 			continue;
 		}
-		ctx->reader_drivers[drv_count] = func();
-		ctx->reader_drivers[drv_count]->ops->init(ctx, &ctx->reader_drv_data[i]);
+		driver = func();
+		load_reader_driver_options(ctx, driver);
+		driver->ops->init(ctx, &ctx->reader_drv_data[i]);
+
+		ctx->reader_drivers[drv_count] = driver;
                 drv_count++;
 	}
 	return 0;	
