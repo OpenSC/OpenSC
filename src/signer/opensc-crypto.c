@@ -65,7 +65,10 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 			goto err;
 		}
 	}
-	r = sc_pkcs15_find_prkey_by_id(priv->p15card, &priv->cert_id, &key);
+	r = sc_pkcs15_find_prkey_by_id_usage(priv->p15card,
+				&priv->cert_id,
+				SC_PKCS15_PRKEY_USAGE_DECRYPT
+				&key);
 	if (r) {
 #if 0
 		error("Unable to find private key from SmartCard: %s", sc_strerror(r));
@@ -131,7 +134,10 @@ sc_sign(int type, const unsigned char *m, unsigned int m_len,
 			goto err;
 		}
 	}
-	r = sc_pkcs15_find_prkey_by_id(priv->p15card, &priv->cert_id, &key);
+	r = sc_pkcs15_find_prkey_by_id_usage(priv->p15card,
+					&priv->cert_id,
+					SC_PKCS15_PRKEY_USAGE_SIGN,
+					&key);
 	if (r) {
 		DBG(printf("Unable to find private key from SmartCard: %s", sc_strerror(r)));
 		goto err;

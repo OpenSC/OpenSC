@@ -118,6 +118,8 @@ struct sc_pkcs11_object {
 };
 
 #define SC_PKCS11_OBJECT_SEEN	0x0001
+#define SC_PKCS11_OBJECT_HIDDEN	0x0002
+#define SC_PKCS11_OBJECT_RECURS	0x8000
 
 
 /*

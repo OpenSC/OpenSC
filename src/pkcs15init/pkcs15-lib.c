@@ -667,12 +667,12 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 			keyargs->x509_usage, keybits, 0)) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key non-natively. */
-		if (!keyargs->extractable) {
+		if (!(keyargs->flags & SC_PKCS15INIT_EXTRACTABLE)) {
 			p15init_error("Card does not support this key.");
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		}
 		if (!keyargs->passphrase
-		 && !(keyargs->extractable & SC_PKCS15INIT_NO_PASSPHRASE)) {
+		 && !(keyargs->flags & SC_PKCS15INIT_NO_PASSPHRASE)) {
 			p15init_error("No key encryption passphrase given.");
 			return SC_ERROR_PASSPHRASE_REQUIRED;
 		}
@@ -689,6 +689,10 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 
 	/* Select a Key ID if the user didn't specify one, otherwise
 	 * make sure it's unique */
+	if (keyargs->id.len != 0
+	 && (keyargs->flags & SC_PKCS15INIT_SPLIT_KEY)) {
+		/* Split key; this ID exists already */
+	} else
 	if ((r = select_id(p15card, SC_PKCS15_TYPE_PRKEY, &keyargs->id)) < 0)
 		return r;
 
@@ -700,7 +704,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 
 	/* Get the number of private keys already on this card */
 	index = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
-	if (!keyargs->extractable) {
+	if (!(keyargs->flags & SC_PKCS15INIT_EXTRACTABLE)) {
 		r = profile->ops->new_key(profile, p15card->card,
 				&key, index, key_info);
 		if (r < 0)
@@ -1079,11 +1083,11 @@ sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
  * Check whether the card has native crypto support for this key.
  */
 static int
-check_key_compatibility(struct sc_pkcs15_card *p15card,
-			struct sc_pkcs15_prkey *key,
-			unsigned int x509_usage,
-			unsigned int key_length,
-			unsigned int flags)
+__check_key_compatibility(struct sc_pkcs15_card *p15card,
+			  struct sc_pkcs15_prkey *key,
+			  unsigned int x509_usage,
+			  unsigned int key_length,
+			  unsigned int flags)
 {
 	struct sc_algorithm_info *info;
 	unsigned int count;
@@ -1130,15 +1134,41 @@ check_key_compatibility(struct sc_pkcs15_card *p15card,
 		return 1;
 	}
 
-	if (bad_usage) {
+	return bad_usage? -1 : 0;
+}
+
+static int
+check_key_compatibility(struct sc_pkcs15_card *p15card,
+			struct sc_pkcs15_prkey *key,
+			unsigned int x509_usage,
+			unsigned int key_length,
+			unsigned int flags)
+{
+	int	res;
+
+	res = __check_key_compatibility(p15card, key,
+				x509_usage, key_length, flags);
+	if (res < 0) {
 		p15init_error("This device requires that keys have a "
 			"specific key usage.\n"
 			"Keys can be used for either signature or decryption, "
 			"but not both.\n"
 			"Please specify a key usage.\n");
-		return 0;
+		res = 0;
 	}
-	return 0;
+	return res;
+}
+
+int
+sc_pkcs15init_requires_restrictive_usage(struct sc_pkcs15_card *p15card,
+			struct sc_pkcs15init_prkeyargs *keyargs)
+{
+	int	res;
+
+	res = __check_key_compatibility(p15card, &keyargs->key,
+			 keyargs->x509_usage,
+			 prkey_bits(&keyargs->key), 0);
+	return res < 0;
 }
 
 /*

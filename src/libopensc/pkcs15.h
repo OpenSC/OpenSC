@@ -443,6 +443,10 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card);
 int sc_pkcs15_find_prkey_by_id(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_id *id,
 			       struct sc_pkcs15_object **out);
+int sc_pkcs15_find_prkey_by_id_usage(struct sc_pkcs15_card *card,
+			       const struct sc_pkcs15_id *id,
+			       unsigned int usage,
+			       struct sc_pkcs15_object **out);
 int sc_pkcs15_find_pubkey_by_id(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_id *id,
 			       struct sc_pkcs15_object **out);

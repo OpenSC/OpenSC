@@ -392,15 +392,75 @@ int decipher(struct sc_pkcs15_object *obj)
 	return 0;
 }
 
+static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
+{
+	sc_pkcs15_object_t *key, *pin;
+	const char	*usage_name;
+	sc_pkcs15_id_t	id;
+	int		r;
+
+	usage_name = (usage & SC_PKCS15_PRKEY_USAGE_SIGN)? "signature" : "decryption";
+
+	if (opt_key_id != NULL) {
+		sc_pkcs15_hex_string_to_id(opt_key_id, &id);
+		r = sc_pkcs15_find_prkey_by_id_usage(p15card, &id, usage, &key);
+		if (r < 0) {
+			fprintf(stderr, "Unable to find private %s key '%s': %s\n",
+				usage_name, opt_key_id, sc_strerror(r));
+			return 2;
+		}
+	} else {
+		r = sc_pkcs15_find_prkey_by_id_usage(p15card, NULL, usage, &key);
+		if (r < 0) {
+			fprintf(stderr, "Unable to find any private %s key: %s\n",
+				usage_name, sc_strerror(r));
+			return 2;
+		}
+	}
+
+	*result = key;
+
+	if (key->auth_id.len) {
+		static sc_pkcs15_object_t *prev_pin = NULL;
+		char	*pincode;
+
+		r = sc_pkcs15_find_pin_by_auth_id(p15card, &key->auth_id, &pin);
+		if (r) {
+			fprintf(stderr, "Unable to find PIN code for private key: %s\n",
+				sc_strerror(r));
+			return 1;
+		}
+
+		/* Pin already verified previously */
+		if (pin == prev_pin)
+			return 0;
+
+		pincode = get_pin(pin);
+		if (pincode == NULL || *pincode == '\0')
+			return 5;
+
+		r = sc_pkcs15_verify_pin(p15card, (struct sc_pkcs15_pin_info *) pin->data,
+					(const u8 *) pincode, strlen(pincode));
+		if (r) {
+			fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
+			return 5;
+		}
+		free(pincode);
+		if (!quiet)
+			fprintf(stderr, "PIN code correct.\n");
+		prev_pin = pin;
+	}
+
+	return 0;
+}
+
 int main(int argc, char * const argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	int do_decipher = 0;
 	int do_sign = 0;
 	int action_count = 0;
-        struct sc_pkcs15_object *key, *pin, *objs[32];
-	struct sc_pkcs15_id id;
-	char *pincode;
+        struct sc_pkcs15_object *key;
 		
 	while (1) {
 		c = getopt_long(argc, argv, "sck:r:i:o:qp:dw", options, &long_optind);
@@ -487,55 +547,15 @@ int main(int argc, char * const argv[])
 	if (!quiet)
 		fprintf(stderr, "Found %s!\n", p15card->label);
 
-	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, objs, 32);
-	if (r <= 0) {
-		if (r == 0)
-			r = SC_ERROR_OBJECT_NOT_FOUND;
-		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
-		err = 1;
-		goto end;
-	}
-	if (opt_key_id != NULL) {
-		sc_pkcs15_hex_string_to_id(opt_key_id, &id);
-		r = sc_pkcs15_find_prkey_by_id(p15card, &id, &key);
-		if (r < 0) {
-			fprintf(stderr, "Unable to find private key '%s': %s\n",
-				opt_key_id, sc_strerror(r));
-			err = 2;
-			goto end;
-		}
-	} else
-		key = objs[0];
-	if (key->auth_id.len) {
-		r = sc_pkcs15_find_pin_by_auth_id(p15card, &key->auth_id, &pin);
-		if (r) {
-			fprintf(stderr, "Unable to find PIN code for private key: %s\n",
-				sc_strerror(r));
-			err = 1;
-			goto end;
-		}
-		pincode = get_pin(pin);
-		if (pincode == NULL) {
-			err = 5;
-			goto end;
-		}
-		r = sc_pkcs15_verify_pin(p15card, (struct sc_pkcs15_pin_info *) pin->data, (const u8 *) pincode, strlen(pincode));
-		if (r) {
-			fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
-			err = 5;
-			goto end;
-		}
-		free(pincode);
-		if (!quiet)
-			fprintf(stderr, "PIN code correct.\n");
-	}
 	if (do_decipher) {
-		if ((err = decipher(key)))
+		if ((err = get_key(SC_PKCS15_PRKEY_USAGE_DECRYPT, &key)) < 0
+		 || (err = decipher(key)))
 			goto end;
 		action_count--;
 	}
 	if (do_sign) {
-		if ((err = sign(key)))
+		if ((err = get_key(SC_PKCS15_PRKEY_USAGE_SIGN, &key)) < 0
+		 || (err = sign(key)))
 			goto end;
 		action_count--;
 	}

@@ -136,9 +136,12 @@ int p15_ldap_init(scam_context * sctx, int argc, const char **argv)
 	/* FIXME: Add support for selecting certificate by ID */
 	data->cinfo = (struct sc_pkcs15_cert_info *) data->objs[0]->data;
 
-	r = sc_pkcs15_find_prkey_by_id(data->p15card, &data->cinfo->id, &data->prkey);
+	r = sc_pkcs15_find_prkey_by_id_usage(data->p15card,
+				&data->cinfo->id,
+				SC_PKCS15_PRKEY_USAGE_SIGN,
+				&data->prkey);
 	if (r != SC_SUCCESS) {
-		scam_print_msg(sctx, "sc_pkcs15_find_prkey_by_id: %s\n", sc_strerror(r));
+		scam_print_msg(sctx, "sc_pkcs15_find_prkey_by_id_usage: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
 	r = sc_pkcs15_find_pin_by_auth_id(data->p15card, &data->prkey->auth_id, &data->pin);

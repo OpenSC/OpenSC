@@ -118,15 +118,16 @@ struct sc_pkcs15init_prkeyargs {
 	const char *		label;
 	unsigned long		usage;
 	unsigned long		x509_usage;
+	unsigned int		flags;
 
 	sc_pkcs15_prkey_t	key;
 
 	/* support for non-native keys */
-	unsigned int		extractable;
 	char *			passphrase;
 };
 #define SC_PKCS15INIT_EXTRACTABLE	0x0001
 #define SC_PKCS15INIT_NO_PASSPHRASE	0x0002
+#define SC_PKCS15INIT_SPLIT_KEY		0x0004
 
 struct sc_pkcs15init_pubkeyargs {
 	struct sc_pkcs15_id	id;
@@ -219,6 +220,11 @@ extern int	sc_pkcs15init_erase_card_recursively(struct sc_card *,
 				struct sc_profile *, int so_ref);
 extern int	sc_pkcs15init_rmdir(struct sc_card *, struct sc_profile *,
 				struct sc_file *df);
+
+/* Helper function for CardOS */
+extern int	sc_pkcs15init_requires_restrictive_usage(
+				struct sc_pkcs15_card *,
+				struct sc_pkcs15init_prkeyargs *);
 
 #ifdef  __cplusplus
 }

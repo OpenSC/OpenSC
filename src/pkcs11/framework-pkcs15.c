@@ -63,6 +63,7 @@ struct pkcs15_any_object {
 	struct sc_pkcs15_object *	p15_object;
 	struct pkcs15_pubkey_object *	related_pubkey;
 	struct pkcs15_cert_object *	related_cert;
+	struct pkcs15_prkey_object *	related_privkey;
 };
 
 struct pkcs15_cert_object {
@@ -85,6 +86,7 @@ struct pkcs15_prkey_object {
 #define prv_p15obj		base.p15_object
 #define prv_pubkey		base.related_pubkey
 #define prv_cert		base.related_cert
+#define prv_next		base.related_privkey
 
 struct pkcs15_pubkey_object {
 	struct pkcs15_any_object	base;
@@ -320,6 +322,19 @@ __pkcs15_prkey_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_prkey_
 	for (i = 0; i < fw_data->num_objects; i++) {
 		struct pkcs15_any_object *obj = fw_data->objects[i];
 
+		if (is_privkey(obj) && obj != (struct pkcs15_any_object *) pk) {
+			/* merge private keys with the same ID and
+			 * different usage bits */
+			struct pkcs15_prkey_object *other, **pp;
+
+			other = (struct pkcs15_prkey_object *) obj;
+			if (sc_pkcs15_compare_id(&other->prv_info->id, id)) {
+				obj->base.flags |= SC_PKCS11_OBJECT_HIDDEN;
+				for (pp = &pk->prv_next; *pp; pp = &(*pp)->prv_next)
+					;
+				*pp = (struct pkcs15_prkey_object *) obj;
+			}
+		} else
 		if (is_cert(obj) && !pk->prv_cert) {
 			struct pkcs15_cert_object *cert;
 			
@@ -400,7 +415,8 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 		  struct pkcs15_any_object *obj,
 		  CK_OBJECT_HANDLE_PTR pHandle)
 {
-	if (obj == NULL)
+	if (obj == NULL
+	 || (obj->base.flags & (SC_PKCS11_OBJECT_HIDDEN | SC_PKCS11_OBJECT_RECURS)))
 		return;
 
 	if (pool_is_present(&slot->object_pool, obj))
@@ -414,6 +430,8 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 	 * XXX prevent infinite recursion when a card specifies two certificates
 	 * referring to each other.
 	 */
+	obj->base.flags |= SC_PKCS11_OBJECT_RECURS;
+
 	switch (__p15_type(obj)) {
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 	case SC_PKCS15_TYPE_CERT_X509:
@@ -421,6 +439,8 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 		pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_cert, NULL);
 		break;
 	}
+
+	obj->base.flags &= ~SC_PKCS11_OBJECT_RECURS;
 }
 
 static void pkcs15_init_slot(struct sc_pkcs15_card *card,

@@ -104,6 +104,7 @@ enum {
 	OPT_UNPROTECTED,
 	OPT_AUTHORITY,
 	OPT_SOFT_KEYGEN,
+	OPT_SPLIT_KEY,
 
 	OPT_PIN1 = 0x10000,	/* don't touch these values */
 	OPT_PUK1 = 0x10001,
@@ -136,6 +137,7 @@ const struct option	options[] = {
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
 	{ "authority",		no_argument,	   0,	OPT_AUTHORITY },
 	{ "key-usage",		required_argument, 0,	'u' },
+	{ "split-key",		no_argument,	   0,	OPT_SPLIT_KEY },
 
 	{ "extractable",	no_argument, 0,		OPT_EXTRACTABLE },
 	{ "insecure",		no_argument, 0,		OPT_UNPROTECTED },
@@ -173,6 +175,7 @@ const char *		option_help[] = {
 	"Specify passphrase for unlocking secret key",
 	"Mark certificate as a CA certificate",
 	"Specify X.509 key usage (use \"--key-usage help\" for more information)",
+	"Automatically create two keys with same ID and different usage (sign vs decipher)",
 
 	"Private key stored as an extractable key",
 	"Insecure mode: do not require PIN/passphrase for private key",
@@ -224,6 +227,7 @@ static int			opt_reader = -1,
 				opt_softkeygen = 0,
 				opt_noprompts = 0,
 				opt_use_defkeys = 0,
+				opt_split_key = 0,
 				opt_wait = 0;
 static char *			opt_profile = "pkcs15";
 static char *			opt_infile = 0;
@@ -495,6 +499,12 @@ do_store_private_key(struct sc_profile *profile)
 	if ((r = do_convert_private_key(&args.key, pkey)) < 0)
 		return r;
 	if (ncerts) {
+		unsigned int	usage = cert[0]->ex_kusage;
+
+		/* No certificate usage? Assume ordinary
+		 * user cert */
+		usage = 0x1F;
+
 		/* If the user requested a specific key usage on the
 		 * command line check if it includes _more_
 		 * usage bits than the one specified by the cert,
@@ -502,20 +512,42 @@ do_store_private_key(struct sc_profile *profile)
 		 * If the usage specified on the command line
 		 * is more restrictive, use that.
 		 */
-		if (~cert[0]->ex_kusage & opt_x509_usage) {
+		if (~usage & opt_x509_usage) {
 			fprintf(stderr,
 			    "Warning: requested key usage incompatible with "
 			    "key usage specified by X.509 certificate\n");
 		}
 
-		if (opt_x509_usage) {
-			args.x509_usage = opt_x509_usage;
-		} else {
-			args.x509_usage = cert[0]->ex_kusage;
-		}
+		args.x509_usage = opt_x509_usage? opt_x509_usage : usage;
 	}
 
-	r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
+	if (sc_pkcs15init_requires_restrictive_usage(p15card, &args)) {
+		unsigned int	usage = args.x509_usage;
+
+		if (!opt_split_key) {
+			fprintf(stderr, "\n"
+			"Error - this token requires a more restrictive key usage.\n"
+			"Keys stored on this token can be used either for signing or decipherment,\n"
+			"but not both. You can either specify a more restrictive usage through\n"
+			"the --key-usage command line argument, or allow me to transparently\n"
+			"create two key objects with separate usage by specifying --split-key\n");
+			exit(1);
+		}
+
+		/* keyEncipherment|dataEncipherment|keyAgreement */
+		args.x509_usage = usage & 0x1C;
+		r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
+		if (r >= 0) {
+			/* digitalSignature|nonRepudiation|certSign|cRLSign */
+			args.x509_usage = usage & 0x63;
+			/* Prevent pkcs15init from choking on duplicate ID */
+			args.flags |= SC_PKCS15INIT_SPLIT_KEY;
+			r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
+		}
+	} else {
+		r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
+	}
+
 	if (r < 0)
 		return r;
 
@@ -716,7 +748,7 @@ init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (opt_extractable) {
-		args->extractable |= SC_PKCS15INIT_EXTRACTABLE;
+		args->flags |= SC_PKCS15INIT_EXTRACTABLE;
 		if (opt_passphrase) {
 			args->passphrase = opt_passphrase;
 		} else {
@@ -727,7 +759,7 @@ init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 				      "--passphrase");
 				return SC_ERROR_PASSPHRASE_REQUIRED;
 			}
-			args->extractable |= SC_PKCS15INIT_NO_PASSPHRASE;
+			args->flags |= SC_PKCS15INIT_NO_PASSPHRASE;
 		}
 	}
 	args->label = opt_label;
@@ -1515,6 +1547,9 @@ handle_option(int c)
 		break;
 	case 'T':
 		opt_use_defkeys = 1;
+		break;
+	case OPT_SPLIT_KEY:
+		opt_split_key = 1;
 		break;
 	default:
 		print_usage_and_die();
