@@ -128,9 +128,8 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 {
 	char signature[1024];
         struct sc_pkcs15_card *p15card;
-	struct sc_security_env senv;
 	struct pkcs11_session *ses;
-        int i, c;
+        int c;
 
 	LOG("C_Sign(%d, 0x%x, %d, 0x%x, 0x%x)\n",
 	    hSession, pData, ulDataLen, pSignature, pulSignatureLen);
@@ -141,18 +140,9 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
         ses = session[hSession];
 	p15card = slot[ses->slot].p15card;
 
-	senv.signature = 1;
-	senv.algorithm_ref = ses->sign.algorithm_ref; //0x02;
-	senv.key_ref = 0;
-	senv.key_file_id = p15card->prkey_info[ses->sign.private_key_id].file_id;
-	senv.app_df_path = p15card->file_app.path;
-	i = sc_set_security_env(p15card->card, &senv);
-	if (i) {
-		LOG("Security environment set failed: %s\n", sc_strerror(i));
-		return CKR_DEVICE_ERROR;
-	}
-
-	c = sc_compute_signature(p15card->card, pData, ulDataLen, signature, sizeof(signature));
+	c = sc_pkcs15_compute_signature(p15card, &p15card->prkey_info[ses->sign.private_key_id],
+					SC_PKCS15_HASH_NONE, pData, ulDataLen,
+					signature, sizeof(signature));
 	if (c < 0) {
 		LOG("Compute signature failed: (%d) %s\n", c, sc_strerror(c));
                 return CKR_DEVICE_ERROR;
