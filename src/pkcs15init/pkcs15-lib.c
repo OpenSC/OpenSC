@@ -580,8 +580,6 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 
 	/* See if we've set an SO PIN */
 	if (pin_obj) {
-		sc_keycache_put_key(NULL, SC_AC_SYMBOLIC, SC_PKCS15INIT_SO_PIN,
-				args->so_pin, args->so_pin_len);
 		r = sc_pkcs15init_add_object(p15spec, profile,
 			       	SC_PKCS15_AODF, pin_obj);
 	} else {
@@ -2604,6 +2602,16 @@ do_select_parent(struct sc_profile *pro, struct sc_card *card,
 		}
 		if (!(r = sc_pkcs15init_create_file(pro, card, *parent)))
 			r = sc_select_file(card, &path, NULL);
+	} else if (r == SC_SUCCESS && !strcmp(card->name, "StarCOS")) {
+		/* in case of starcos spk 2.3 SELECT FILE does not
+		 * give us the ACLs => ask the profile */
+		sc_file_free(*parent);
+		r = sc_profile_get_file_by_path(pro, &path, parent);
+		if (r < 0) {
+			sc_error(card->ctx, "profile doesn't define a DF %s",
+					sc_print_path(&path));
+			return r;
+		}
 	}
 	return r;
 }
