@@ -155,7 +155,21 @@ int cardos_info(void)
 		return 1;
 	}
 
-	printf("Current life cycle: %d\n", rbuf[0]);
+
+	printf("Current life cycle: ");
+	if (rbuf[0] == 0x34) {
+		printf("%d (manufacturing)\n", rbuf[0]);
+	} else if (rbuf[0] == 0x26) {
+		printf("%d (initialization)\n", rbuf[0]);
+	} else if (rbuf[0] == 0x24) {
+		printf("%d (personalization)\n", rbuf[0]);
+	} else if (rbuf[0] == 0x20) {
+		printf("%d (administration)\n", rbuf[0]);
+	} else if (rbuf[0] == 0x10) {
+		printf("%d (operational)\n", rbuf[0]);
+	} else {
+		printf("%d (unknown)\n", rbuf[0]);
+	}
 
 	apdu.p2 = 0x84;
 	apdu.resplen = sizeof(rbuf);
@@ -218,25 +232,6 @@ int cardos_info(void)
 		printf("ATR Status: 0x%d unknown\n",rbuf[0]);
 	}
 	
-	apdu.p2 = 0x87;
-	apdu.resplen = sizeof(rbuf);
-	r = sc_transmit_apdu(card, &apdu);
-	if (r) {
-		fprintf(stderr, "APDU transmit failed: %s\n",
-			sc_strerror(r));
-		return 1;
-	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
-		return 1;
-	}
-
-	printf("Path to current DF:\n");
-	hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
-
 	apdu.p2 = 0x88;
 	apdu.resplen = sizeof(rbuf);
 	r = sc_transmit_apdu(card, &apdu);
@@ -313,6 +308,25 @@ int cardos_info(void)
 			rbuf[0], rbuf[1]);
 	printf("System keys: StartKey (version %d, retries %d)\n",
 			rbuf[2], rbuf[3]);
+
+	apdu.p2 = 0x87;
+	apdu.resplen = sizeof(rbuf);
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
+			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
+		if (apdu.resplen)
+			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		return 1;
+	}
+
+	printf("Path to current DF:\n");
+	hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 
 	return 0;
 }

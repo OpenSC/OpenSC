@@ -17,11 +17,34 @@ int main(int argc, char **argv)
 {
 	char *action, *device, *product;
 	int rc;
+	int pid;
 
+	/* some hotplugs script do not pass "usb" as parameter
 	if (argc == 0) {
 		perror("usbtoken hotplug should be called by the kernel");
 		return 1;
 	}
+	*/
+
+	/* usb device? first parameter shoiuld be "usb". */
+	/* some hotplug scripts to not pass usb as parameter 
+	if (!argv || argc < 1 || !argv[1] || strcmp(argv[1], "usb") != 0) {
+		syslog(LOG_DEBUG, "%s called with %s (not \"usb\")\n",
+		       argv[0], argv[1]);
+		return 0;
+	}
+	*/
+
+	pid = fork();
+	if (pid == -1) {
+		fprintf(stderr, "fork failed: %s (%d)", strerror(errno), errno);
+		return 1;
+	}
+	if (pid) {
+		/* parent process */
+		return 0;
+	}
+	/* child: continue */
 
 	openlog(SYSLOG_NAME, LOG_CONS | LOG_PERROR | LOG_PID, LOG_KERN);
 
@@ -29,13 +52,6 @@ int main(int argc, char **argv)
 		syslog(LOG_DEBUG,
 		       "all slots in use. increased MAXTOKEN, recompile");
 		return 1;
-	}
-
-	/* usb device? first parameter shoiuld be "usb". */
-	if (!argv || argc < 1 || !argv[1] || strcmp(argv[1], "usb") != 0) {
-		syslog(LOG_DEBUG, "%s called with %s (not \"usb\")\n",
-		       argv[0], argv[1]);
-		return 0;
 	}
 
 	/* action should be "add".
