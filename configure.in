@@ -98,6 +98,9 @@ AC_CACHE_CHECK([for common directory], ac_cv_commondir, [
 	ac_cv_commondir=$commondir
 ])
 
+dnl Options
+AM_MAINTAINER_MODE
+
 dnl Checks for programs.
 AC_PROG_CPP
 AC_PROG_INSTALL
