@@ -198,6 +198,8 @@ static int ctapi_release(struct sc_reader *reader)
 {
 	struct ctapi_private_data *priv = GET_PRIV_DATA(reader);
 
+	priv->funcs.CT_close(priv->ctn);
+
 	free(priv);
 	return 0;
 }
