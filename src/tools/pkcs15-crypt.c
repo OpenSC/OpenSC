@@ -254,13 +254,13 @@ int sign_ext(struct sc_pkcs15_object *obj,
 				return SC_ERROR_INVALID_ARGUMENTS;
 			}
 		}
-		r = RSA_sign(nid, data, len, out, &out_len,
+		r = RSA_sign(nid, data, len, out, (unsigned int *) &out_len,
 				pkey->pkey.rsa);
 		if (r <= 0)
 			r = SC_ERROR_INTERNAL;
 		break;
 	case SC_PKCS15_TYPE_PRKEY_DSA:
-		r = DSA_sign(NID_sha1, data, len, out, &out_len,
+		r = DSA_sign(NID_sha1, data, len, out, (unsigned int *) &out_len,
 				pkey->pkey.dsa);
 		if (r <= 0)
 			r = SC_ERROR_INTERNAL;
