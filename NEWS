@@ -1,25 +1,52 @@
 NEWS for OpenSC -- History of user visible changes
 
-New in 0.9.4; 2004-10-31; Andreas Jellinghaus
-* library version was broken in 0.9.3
-* update library version to 1:0:0, as we are no longer
+New in 0.9.5; 2005-xx-xx; Antti Tapaninen:
+* New generic ATR/card matching code with
+  atrmask support, used by all card drivers.
+* Much improved and unified ATR handling in
+  the configuration file.
+* Support for the next generation FinEID cards
+  with ISO/IEC 7816-15 data layout.
+* Preliminary code merge with the Belgian
+  Belpic EID project.
+* Experimental multi-slot support for CT-API
+  and dynamic loading support for win32.
+  Thanks to Bernhard Froehlich <ted@convey.de>
+* Experimental CCID pinpad support for libccid
+  using PC/SC reader driver interface.
+* Fixed OpenSSL behaviour in the configure
+  script.
+* PKCS#15 emulation layer improvements and
+  a new driver for the Italian postecert
+  card.
+* New API documentation and generic documentation
+  structure renovation to base future work on.
+  Many thanks to Bert Vermeulen <bert@biot.com>
+* Spanish manual translation from opensc-ceres
+  project merged.
+* Several memory leaks and other bugs fixed.
+
+New in 0.9.4; 2004-10-31; Andreas Jellinghaus:
+* Library version was broken in 0.9.3.
+* Update library version to 1:0:0, as we are no longer
   compatible with the 0:*:* line, I fear.
 
-New in 0.9.3;  2004-10-31; Andreas Jellinghaus
-* fix some LDFLAGS/LDADD issues for parallel build.
+New in 0.9.3;  2004-10-31; Andreas Jellinghaus:
+* Fix some LDFLAGS/LDADD issues for parallel build.
 
 New in 0.9.2; 2004-07-24; Andreas Jellinghaus:
 * This is an beta test version. Please be careful.
   Do not use in production environments.
 * Fix sslengine, link those dynamically with libcrypto
   for openssl 0.9.7d and later.
-* fixed small bug in pkcs11-tool
-* link pkcs11-tool and pkcs15-crypt with -lcrypto
+* Fixed small bug in pkcs11-tool
+* Link pkcs11-tool and pkcs15-crypt with -lcrypto
 * New driver for estonian ID card.
-* bumped version number to opensc 0.9.2
+* Bumped version number to opensc 0.9.2
 * New card supported: Oberthur AuthentIC v5
-* eid pam module now checks permissions, and supports several
-  certificates in ~/.eid/authorized_certificates
+* Pam_opensc's eid module now checks permissions,
+  and supports several certificates in
+  ~/.eid/authorized_certificates
   Thanks to Fritz Elfert <fritz.elfert@millenux.com>
 * Upgrade library version to 0.9, since incompatible changes
   are very likely somewhere.
