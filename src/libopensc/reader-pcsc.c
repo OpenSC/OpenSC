@@ -21,6 +21,9 @@
 #include "internal.h"
 #ifdef HAVE_PCSC
 #include "ctbcs.h"
+#ifdef MP_CCID_PINPAD
+#include "pinpad-ccid.h"
+#endif
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -125,7 +128,7 @@ static DWORD opensc_proto_to_pcsc(unsigned int proto)
 static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 			 const u8 *sendbuf, size_t sendsize,
 			 u8 *recvbuf, size_t *recvsize,
-			 int control)
+			 unsigned long control)
 {
 	SCARD_IO_REQUEST sSendPci, sRecvPci;
 	DWORD dwSendLength, dwRecvLength;
@@ -155,7 +158,7 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 		rv = SCardControl(card, sendbuf, dwSendLength,
 				  recvbuf, &dwRecvLength);
 #else
-		rv = SCardControl(card, 0, sendbuf, dwSendLength,
+		rv = SCardControl(card, (DWORD) control, sendbuf, dwSendLength,
 				  recvbuf, dwRecvLength, &dwRecvLength);
 #endif
 	}
@@ -436,6 +439,25 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	slot->active_protocol = pcsc_proto_to_opensc(active_proto);
 	pslot->pcsc_card = card_handle;
 
+#ifdef MP_CCID_PINPAD
+	/* check for PINPAD support, addon by -mp */
+	{
+		unsigned char attribute[1];
+		DWORD attribute_length;  
+		sc_debug(reader->ctx, "Testing for CCID pinpad support ... ");
+		/* See if this reader supports pinpad... */
+		attribute_length = 1;
+		rv = SCardGetAttrib(pslot->pcsc_card, IOCTL_SMARTCARD_VENDOR_VERIFY_PIN, attribute, &attribute_length);
+		if (rv == SCARD_S_SUCCESS) {
+			if (attribute[0] != 0) {
+				sc_debug(reader->ctx, "Reader supports CCID pinpad");
+				slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+			}
+		} else {
+			PCSC_ERROR(reader->ctx, "SCardGetAttrib failed", rv)
+		}
+	}
+#endif
 	return 0;
 }
 
@@ -618,10 +640,13 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 	pcsc_ops.release = pcsc_release;
 	pcsc_ops.connect = pcsc_connect;
 	pcsc_ops.disconnect = pcsc_disconnect;
+#ifdef MP_CCID_PINPAD
+	pcsc_ops.perform_verify = ccid_pin_cmd;
+#else
 	pcsc_ops.perform_verify = ctbcs_pin_cmd;
+#endif
 	pcsc_ops.wait_for_event = pcsc_wait_for_event;
 	
 	return &pcsc_drv;
 }
-
 #endif	/* HAVE_PCSC */

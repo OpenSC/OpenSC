@@ -45,7 +45,7 @@ static int openct_reader_disconnect(struct sc_reader *reader,
 static int openct_reader_transmit(struct sc_reader *reader,
 			struct sc_slot_info *slot,
 			const u8 *sendbuf, size_t sendsize,
-			u8 *recvbuf, size_t *recvsize, int control);
+			u8 *recvbuf, size_t *recvsize, unsigned long control);
 static int openct_reader_perform_verify(struct sc_reader *reader,
 			struct sc_slot_info *slot,
 			struct sc_pin_cmd_data *info);
@@ -274,7 +274,7 @@ int
 openct_reader_transmit(struct sc_reader *reader,
 		struct sc_slot_info *slot,
 		const u8 *sendbuf, size_t sendsize,
-		u8 *recvbuf, size_t *recvsize, int control)
+		u8 *recvbuf, size_t *recvsize, unsigned long control)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc;

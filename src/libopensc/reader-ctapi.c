@@ -105,7 +105,7 @@ static int refresh_slot_attributes(struct sc_reader *reader,
 static int ctapi_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 			 const u8 *sendbuf, size_t sendsize,
 			 u8 *recvbuf, size_t *recvsize,
-			 int control)
+			 unsigned long control)
 {
 	struct ctapi_private_data *priv = GET_PRIV_DATA(reader);
 	u8 dad, sad;

@@ -384,7 +384,7 @@ struct sc_reader_operations {
 	int (*transmit)(struct sc_reader *reader, struct sc_slot_info *slot,
 			const u8 *sendbuf, size_t sendsize,
 			u8 *recvbuf, size_t *recvsize,
-			int control);
+			unsigned long control);
 	int (*lock)(struct sc_reader *reader, struct sc_slot_info *slot);
 	int (*unlock)(struct sc_reader *reader, struct sc_slot_info *slot);
 	int (*set_protocol)(struct sc_reader *reader, struct sc_slot_info *slot,
