@@ -124,6 +124,8 @@ int sc_pkcs15_enum_private_keys(struct sc_pkcs15_card *card)
 
 	assert(card != NULL);
 
+	if (card->prkey_count)
+		return card->prkey_count;	/* already enumerated */
 	card->prkey_count = 0;
 	r = sc_select_file(card->card, &card->file_prkdf,
 			   &card->file_prkdf.path, SC_SELECT_FILE_BY_PATH);

@@ -273,8 +273,7 @@ static int get_certs_from_file(struct sc_pkcs15_card *card,
 		tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen);	/* SEQUENCE */
 		if (tag == NULL)
 			break;
-		if (parse_x509_cert_info
-		    (&card->cert_info[card->cert_count], tag, taglen))
+		if (parse_x509_cert_info(&card->cert_info[card->cert_count], tag, taglen))
 			break;
 		card->cert_count++;
 	}
@@ -285,6 +284,9 @@ int sc_pkcs15_enum_certificates(struct sc_pkcs15_card *card)
 {
 	int r;
 	assert(card != NULL);
+
+	if (card->cert_count)
+		return card->cert_count;	/* already enumerated */
 
 	card->cert_count = 0;
 	r = get_certs_from_file(card, &card->file_cdf1);

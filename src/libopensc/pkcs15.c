@@ -230,6 +230,26 @@ int sc_pkcs15_init(struct sc_card *card,
 	memset(p15card, 0, sizeof(struct sc_pkcs15_card));
 	p15card->card = card;
 
+	if (card->defaults != NULL && card->defaults->pkcs15_defaults_func != NULL) {
+		card->defaults->pkcs15_defaults_func(p15card);
+		err = sc_select_file(card, &p15card->file_tokeninfo,
+				     &p15card->file_tokeninfo.path,
+				     SC_SELECT_FILE_BY_PATH);
+		if (err)
+			goto error;
+		err = sc_read_binary(card, 0, buf, p15card->file_tokeninfo.size);
+		if (err < 0)
+			goto error;
+		if (err <= 2) {
+			err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
+			goto error;
+		}
+		parse_tokeninfo(p15card, buf, err);
+
+		*p15card_out = p15card;
+		return 0;
+	}
+
 	memcpy(tmppath.value, "\x2F\x00", 2);
 	tmppath.len = 2;
 	err = sc_select_file(card, &p15card->file_dir, &tmppath,
@@ -249,17 +269,14 @@ int sc_pkcs15_init(struct sc_card *card,
 		goto error;
 	}
 	memcpy(&tmppath, &p15card->file_app.path, sizeof(struct sc_path));
-	err =
-	    sc_select_file(card, &p15card->file_app,
-			   &p15card->file_app.path,
-			   SC_SELECT_FILE_BY_PATH);
+	err = sc_select_file(card, &p15card->file_app, &p15card->file_app.path,
+			     SC_SELECT_FILE_BY_PATH);
 	if (err)
 		goto error;
 	memcpy(tmppath.value + tmppath.len, "\x50\x31", 2);
 	tmppath.len += 2;
-	err =
-	    sc_select_file(card, &p15card->file_odf, &tmppath,
-			   SC_SELECT_FILE_BY_PATH);
+	err = sc_select_file(card, &p15card->file_odf, &tmppath,
+			     SC_SELECT_FILE_BY_PATH);
 	if (err)
 		goto error;
 	err = sc_read_binary(card, 0, buf, p15card->file_odf.size);
@@ -277,9 +294,8 @@ int sc_pkcs15_init(struct sc_card *card,
 	tmppath.len -= 2;
 	memcpy(tmppath.value + tmppath.len, "\x50\x32", 2);
 	tmppath.len += 2;
-	err =
-	    sc_select_file(card, &p15card->file_tokeninfo, &tmppath,
-			   SC_SELECT_FILE_BY_PATH);
+	err = sc_select_file(card, &p15card->file_tokeninfo, &tmppath,
+			     SC_SELECT_FILE_BY_PATH);
 	if (err)
 		goto error;
 	err = sc_read_binary(card, 0, buf, p15card->file_tokeninfo.size);

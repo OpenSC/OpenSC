@@ -18,9 +18,7 @@ int enum_pins()
 {
 	int i, c;
 
-	sc_lock(card);
 	c = sc_pkcs15_enum_pins(p15card);
-	sc_unlock(card);
 	if (c < 0) {
 		fprintf(stderr, "Error enumerating PIN codes: %s\n",
 			sc_strerror(i));

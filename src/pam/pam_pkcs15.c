@@ -119,7 +119,7 @@ static int get_random(u8 *buf, int len)
 {
 	int fd, r;
 	
-	fd = open("/dev/random", O_RDONLY);
+	fd = open("/dev/urandom", O_RDONLY);
 	if (fd < 0)
 		return PAM_SYSTEM_ERR;
 	while (len) {
@@ -169,7 +169,7 @@ static int set_sec_env(struct sc_card *card, const struct sc_pkcs15_card *p15car
 {
 	struct sc_security_env senv;
 	int r;
-	
+
 	senv.signature = 0;
 	senv.algorithm_ref = 0x02;
 	senv.key_ref = 0;
@@ -223,6 +223,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	pubkey = X509_get_pubkey(cert);
 	if (pubkey == NULL)
 		goto end;
+	DBG(printf("Getting random data...\n"));
 	r = get_random(random_data, sizeof(random_data));
 	if (r != PAM_SUCCESS)
 		goto end;
@@ -250,6 +251,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		printf("SmartCard absent.\n");
 		goto end;
 	}
+	DBG(printf("Locking card...\n"));
 	sc_lock(card);
 	locked = 1;
 	
@@ -259,7 +261,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		printf("PKCS#15 initialization failed: %s\n", sc_strerror(r));
 		goto end;
 	}
-	DBG(printf("Enumerating stuff...\n"));
+	DBG(printf("Enumerating certificates...\n"));
 	r = sc_pkcs15_enum_certificates(p15card);
 	if (r < 0) {
 		printf("Cert enum failed: %s\n", sc_strerror(r));
@@ -270,6 +272,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	for (i = 0; i < p15card->cert_count; i++) {
 	}
 	cinfo = &p15card->cert_info[0]; /* FIXME */
+	DBG(printf("Enumerating private keys...\n"));
 	r = sc_pkcs15_enum_private_keys(p15card);
 	if (r <= 0)
 		goto end;
@@ -284,6 +287,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	if (prkinfo == NULL)
 		goto end;
 	/* FIXME: Determine if PIN code needed */
+	DBG(printf("Enumerating PIN codes...\n"));
 	r = sc_pkcs15_enum_pins(p15card);
 	if (r < 0)
 		goto end;

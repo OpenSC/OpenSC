@@ -121,6 +121,8 @@ struct sc_card {
 	const char *reader;
 	char atr[SC_MAX_ATR_SIZE];
 	int atr_len;
+	
+	const struct sc_defaults *defaults;
 };
 
 struct sc_context {
@@ -146,6 +148,12 @@ struct sc_security_env {
 	/* signature=1 ==> digital signing, signature=0 ==> authentication */
 	int signature;
 	int key_ref;
+};
+
+struct sc_defaults {
+	const char *atr;
+	int (*defaults_func)(void *);
+	int (*pkcs15_defaults_func)(void *);
 };
 
 /* Base64 encoding/decoding functions */
@@ -198,5 +206,7 @@ void sc_print_binary(const u8 *buf, int len);
 
 int sc_debug;
 const char *sc_version;
+
+extern const struct sc_defaults sc_card_table[];
 
 #endif

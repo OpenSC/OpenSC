@@ -27,7 +27,7 @@
 #include <ctype.h>
 
 const char *sc_version = LIBSC_VERSION;
-int sc_debug = 0;
+int sc_debug = 1;
 
 static int convert_sw_to_errorcode(u8 * sw)
 {
@@ -167,7 +167,7 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 
 	dwSendLength = data - s;
 	dwRecvLength = apdu->resplen;
-	if (sc_debug) {
+	if (sc_debug > 2) {
 		printf("Sending: ");
 		sc_hex_dump(s, dwSendLength);
 	}
@@ -194,7 +194,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	r = sc_transceive_t0(card, apdu);
 	if (r)
 		return r;
-	if (sc_debug) {
+	if (sc_debug > 2) {
 		printf("Received: ");
 		sc_hex_dump(apdu->resp, apdu->resplen);
 	}
@@ -209,15 +209,13 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 		rspapdu.le = apdu->resp[1];
 		rspapdu.resp = rsp;
 		rspapdu.resplen = apdu->resp[1] + 2;
-		if (sc_debug)
-			printf("Sending response request with %d bytes\n", rspapdu.resplen);
 		r = sc_transceive_t0(card, &rspapdu);
 		if (r) {
 			fprintf(stderr, "Error %d when getting response\n",
 				r);
 			return r;
 		}
-		if (sc_debug) {
+		if (sc_debug > 2) {
 			printf("Response: ");
 			sc_hex_dump(rspapdu.resp, rspapdu.resplen);
 		}
@@ -236,14 +234,14 @@ static void process_fci(struct sc_file *file,
 	tag = sc_asn1_find_tag(p, len, 0x83, &taglen);
 	if (tag != NULL && taglen == 2) {
 		file->id = (tag[0] << 8) | tag[1];
-		if (sc_debug)
+		if (sc_debug > 1)
 			printf("File identifier: 0x%02X%02X\n", tag[0],
 			       tag[1]);
 	}
 	tag = sc_asn1_find_tag(p, len, 0x81, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
-		if (sc_debug)
+		if (sc_debug > 1)
 			printf("Bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
@@ -254,12 +252,12 @@ static void process_fci(struct sc_file *file,
 			const char *type;
 
 			file->shareable = byte & 0x40 ? 1 : 0;
-			if (sc_debug)
+			if (sc_debug > 1)
 				printf("\tShareable: %s\n",
 				       (byte & 0x40) ? "yes" : "no");
 			file->type = (byte >> 3) & 7;
 			file->ef_structure = byte & 0x07;
-			if (sc_debug) {
+			if (sc_debug > 1) {
 				switch ((byte >> 3) & 7) {
 				case 0:
 					type = "working EF";
@@ -296,7 +294,7 @@ static void process_fci(struct sc_file *file,
 				name[i] = '?';
 		}
 		name[taglen] = 0;
-		if (sc_debug)
+		if (sc_debug > 1)
 			printf("\tFile name: %s\n", name);
 	}
 	tag = sc_asn1_find_tag(p, len, 0x85, &taglen);
@@ -364,32 +362,29 @@ int sc_select_file(struct sc_card *card,
 	apdu.lc = pathlen;
 	apdu.data = path;
 	apdu.datalen = pathlen;
-	r = sc_transmit_apdu(card, &apdu);
+	/* FIXME: Some smarter way to do this... */
+	if (file == NULL || sc_file_valid(file)) {
+		r = sc_transceive_t0(card, &apdu); /* we don't need the response */
+		if (apdu.resplen == 2 && apdu.resp[0] == 0x61) {
+			apdu.resp[0] = 0x90;
+			apdu.resp[1] = 0;
+		}
+	} else {
+		memset(file, 0, sizeof(*file));
+		r = sc_transmit_apdu(card, &apdu);
+	}
 	if (r)
 		return r;
 	if (apdu.resplen < 2)
 		return SC_ERROR_UNKNOWN_RESPONSE;
-	if (file != NULL)
-		memset(file, 0, sizeof(*file));
 	switch (apdu.resp[0]) {
-	case 0x6A:
-		switch (apdu.resp[1]) {
-		case 0x82:
-			return SC_ERROR_FILE_NOT_FOUND;
-		default:
-			return SC_ERROR_UNKNOWN_RESPONSE;
-		}
 	case 0x6F:
 		break;
 	case 0x90:
 	case 0x00:	/* proprietary coding */
 		return 0;
 	default:
-		fprintf(stderr,
-			"SELECT FILE returned SW1=%02X, SW2=%02X.\n",
-			apdu.resp[0], apdu.resp[1]);
-		/* FIXME */
-		return SC_ERROR_UNKNOWN_RESPONSE;
+		return convert_sw_to_errorcode(apdu.resp);
 	}
 	if (file == NULL)
 		return 0;
@@ -456,7 +451,7 @@ int sc_read_binary(struct sc_card *card,
 	if (apdu.resplen == count + 2)
 		apdu.resplen = count;
 	memcpy(buf, recvbuf, apdu.resplen);
-	if (sc_debug == 2) {
+	if (sc_debug > 3) {
 		FILE *file = fopen("sc_recv", "w");
 		if (file != NULL) {
 			fwrite(buf, apdu.resplen, 1, file);
@@ -551,14 +546,17 @@ int sc_establish_context(struct sc_context **ctx_out)
 	rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL, "localhost", NULL,
 				   &ctx->pcsc_ctx);
 	if (rv != SCARD_S_SUCCESS) {
-		fprintf(stderr,
-			"ERROR: Cannot connect to Resource Manager\n");
+		if (sc_debug) {
+			fprintf(stderr,
+				"ERROR: Cannot connect to Resource Manager\n");
+		}
 		return SC_ERROR_CONNECTING_TO_RES_MGR;
 	}
 	SCardListReaders(ctx->pcsc_ctx, NULL, NULL,
 			 (LPDWORD) & reader_buf_size);
 	if (reader_buf_size == 0) {
-		fprintf(stderr, "No readers found!\n");
+		if (sc_debug)
+			fprintf(stderr, "No readers found!\n");
 		free(ctx);
 		return SC_ERROR_NO_READERS_FOUND;
 	}
@@ -589,6 +587,42 @@ int sc_destroy_context(struct sc_context *ctx)
 		free(ctx->readers[i]);
 	free(ctx);
 	return 0;
+}
+
+const struct sc_defaults * find_defaults(const u8 *atr, int atrlen)
+{
+	int i = 0;
+	const struct sc_defaults *match = NULL;
+
+	while (sc_card_table[i].atr != NULL) {
+		unsigned int byte;
+		u8 defatr[SC_MAX_ATR_SIZE], *p = defatr;
+		int len = 0;
+		const struct sc_defaults *def = &sc_card_table[i];
+		const char *atrp = def->atr;
+		i++;
+
+		if (atrp == NULL)
+			break;
+		if (strlen(atrp)/3 > SC_MAX_ATR_SIZE)
+			continue;
+		while (*atrp) {
+			if (sscanf(atrp, "%02X", (unsigned int *) &byte) != 1)
+				break;
+			*p++ = byte;
+			atrp += 2;
+			len++;
+			if (*atrp++ != ':')
+				break;
+		}
+		if (len != atrlen)
+			continue;
+		if (memcmp(atr, defatr, len) != 0)
+			continue;
+		match = def;
+		break;
+	}
+	return match;
 }
 
 int sc_connect_card(struct sc_context *ctx,
@@ -630,7 +664,13 @@ int sc_connect_card(struct sc_context *ctx,
 		i = SC_MAX_ATR_SIZE;
 	memcpy(card->atr, rgReaderStates[0].rgbAtr, i);
 	card->atr_len = i;
-	card->class = 0;	/* FIXME */
+
+	card->defaults = find_defaults(card->atr, card->atr_len);
+	if (card->defaults != NULL && card->defaults->defaults_func != NULL) {
+		card->defaults->defaults_func(card);
+	} else {
+		card->class = 0;	/* FIXME */
+	}
 	card->reader = ctx->readers[reader];
 	*card_out = card;
 
@@ -723,8 +763,9 @@ int sc_set_security_env(struct sc_card *card,
 	if (r)
 		return r;
 	if (apdu.resp[0] != 0x90) {
-		fprintf(stderr, "Set sec env: SWs=%02X%02X\n",
-			apdu.resp[0], apdu.resp[1]);
+		if (sc_debug)
+			fprintf(stderr, "Set sec env: SWs=%02X%02X\n",
+				apdu.resp[0], apdu.resp[1]);
 		return -1;
 	}
 	return 0;
@@ -781,7 +822,8 @@ int sc_decipher(struct sc_card *card,
 		memcpy(out, apdu.resp, len);
 		return len;
 	}
-	fprintf(stderr, "sc_decipher(): SW1=%02X, SW2=%02X\n", p[0], p[1]);
+	if (sc_debug)
+		fprintf(stderr, "sc_decipher(): SW1=%02X, SW2=%02X\n", p[0], p[1]);
 	return convert_sw_to_errorcode(p);
 }
 
@@ -818,8 +860,9 @@ int sc_compute_signature(struct sc_card *card,
 		memcpy(out, apdu.resp, len);
 		return len;
 	}
-	fprintf(stderr, "sc_compute_signature(): SW1=%02X, SW2=%02X\n",
-		p[0], p[1]);
+	if (sc_debug)
+		fprintf(stderr, "sc_compute_signature(): SW1=%02X, SW2=%02X\n",
+			p[0], p[1]);
 	return convert_sw_to_errorcode(p);
 }
 

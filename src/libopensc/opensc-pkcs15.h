@@ -129,13 +129,6 @@ struct sc_pkcs15_prkey_info {
 struct sc_pkcs15_card {
 	struct sc_card *card;
 	char *label;
-	struct sc_file file_dir, file_ao1, file_app;
-	/* in app DF */
-	struct sc_file file_tokeninfo, file_odf;
-	struct sc_file file_prkdf;
-	struct sc_file file_aodf, file_ao2;
-	struct sc_file file_cdf1, file_cdf2, file_cdf3;
-	struct sc_file file_dodf;
 	/* fields from TokenInfo: */
 	int version;
 	char *serial_number, *manufacturer_id;
@@ -147,6 +140,14 @@ struct sc_pkcs15_card {
 	int prkey_count;
 	struct sc_pkcs15_pin_info pin_info[SC_PKCS15_MAX_PINS];
 	int pin_count;
+
+	struct sc_file file_dir, file_ao1, file_app;
+	/* in app DF */
+	struct sc_file file_tokeninfo, file_odf;
+	struct sc_file file_prkdf;
+	struct sc_file file_aodf, file_ao2;
+	struct sc_file file_cdf1, file_cdf2, file_cdf3;
+	struct sc_file file_dodf;
 };
 
 #define SC_PKCS15_CARD_FLAG_READONLY		0x01

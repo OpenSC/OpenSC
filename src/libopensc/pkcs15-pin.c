@@ -121,6 +121,15 @@ int sc_pkcs15_enum_pins(struct sc_pkcs15_card *p15card)
 
 	assert(p15card != NULL);
 
+	if (p15card->pin_count) {
+		for (i = 0; i < p15card->pin_count; i++) {
+			if (p15card->pin_info[i].magic != SC_PKCS15_PIN_MAGIC)
+				break;
+		}
+		if (i == p15card->pin_count)
+			return i;	/* Already enumerated */
+	}
+	
 	r = sc_select_file(p15card->card, &p15card->file_aodf,
 			   &p15card->file_aodf.path,
 			   SC_SELECT_FILE_BY_PATH);
