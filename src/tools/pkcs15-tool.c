@@ -44,11 +44,8 @@ int quiet = 0;
 #define OPT_LIST_PUB	0x105
 #define OPT_READ_PUB	0x106
 
-#define PEM_RSA_KEY_PREFIX \
-	"\x30\x12\x30\x0D\x06\x09" \
-	"\x2A\x86\x48\x86\xF7\x0D\x01\x01\x01" \
-	"\x05\x00\x03\x00\x00"
-#define PEM_RSA_KEY_PREFIX_SIZE 20
+static int pem_encode(struct sc_context *, int,
+		sc_pkcs15_der_t *, sc_pkcs15_der_t *);
 
 const struct option options[] = {
 	{ "learn-card",		0, 0, 		'L' },
@@ -340,27 +337,44 @@ int read_public_key(void)
 	count = r;
 	for (i = 0; i < count; i++) {
 		struct sc_pkcs15_pubkey_info *info = objs[i]->data;
-		struct sc_pkcs15_pubkey_rsa *key;
-		u8 buffer[512];
+		sc_pkcs15_der_t raw_key, pem_key;
+		int algorithm;
 
 		if (sc_pkcs15_compare_id(&id, &info->id) != 1)
 			continue;
-			
-		if (!quiet)
-			printf("Reading public key with ID '%s'\n", opt_pubkey);
-		r = sc_pkcs15_read_pubkey(p15card, info, &key);
-		if (r) {
-			fprintf(stderr, "Public key read failed: %s\n", sc_strerror(r));
+
+		switch (objs[i]->type) {
+		case SC_PKCS15_TYPE_PUBKEY_RSA:
+			algorithm = SC_ALGORITHM_RSA;
+			break;
+		case SC_PKCS15_TYPE_PUBKEY_DSA:
+			algorithm = SC_ALGORITHM_DSA;
+			break;
+		default:
+			fprintf(stderr, "Unsupported key type.\n");
 			return 1;
 		}
-		memcpy(buffer, PEM_RSA_KEY_PREFIX, PEM_RSA_KEY_PREFIX_SIZE);
-		buffer[1] += key->data.len;
-		buffer[PEM_RSA_KEY_PREFIX_SIZE-2] = key->data.len + 1;
-		memcpy(buffer + PEM_RSA_KEY_PREFIX_SIZE,
-				key->data.value, key->data.len);
-		r = print_pem_object("PUBLIC KEY", buffer,
-				PEM_RSA_KEY_PREFIX_SIZE + key->data.len);
-		sc_pkcs15_free_pubkey(key);
+
+		if (!quiet)
+			printf("Reading public key with ID '%s'\n", opt_pubkey);
+		r = sc_pkcs15_read_file(p15card, &info->path,
+				&raw_key.value, &raw_key.len);
+		if (r) {
+			fprintf(stderr, "Failed to read public key: %s\n",
+					sc_strerror(r));
+			return 1;
+		}
+
+		r = pem_encode(ctx, algorithm, &raw_key, &pem_key);
+		if (r < 0) {
+			fprintf(stderr, "Error encoding PEM key: %s\n",
+					sc_strerror(r));
+			free(raw_key.value);
+			return 1;
+		}
+		r = print_pem_object("PUBLIC KEY", pem_key.value, pem_key.len);
+		free(raw_key.value);
+		free(pem_key.value);
 		return r;
 	}
 	fprintf(stderr, "Public key with ID '%s' not found.\n", opt_pubkey);
@@ -797,4 +811,42 @@ end:
 	if (ctx)
 		sc_release_context(ctx);
 	return err;
+}
+
+/*
+ * Helper function for PEM encoding public key
+ */
+#include "opensc/asn1.h"
+static const struct sc_asn1_entry	c_asn1_pem_key_items[] = {
+	{ "algorithm",	SC_ASN1_ALGORITHM_ID, SC_ASN1_CONS|ASN1_SEQUENCE, },
+	{ "key",	SC_ASN1_BIT_STRING_NI, ASN1_BIT_STRING },
+	{ NULL }
+};
+static const struct sc_asn1_entry	c_asn1_pem_key[] = {
+	{ "publicKey",	SC_ASN1_STRUCT, SC_ASN1_CONS|ASN1_SEQUENCE, },
+	{ NULL }
+};
+
+static int
+pem_encode(struct sc_context *ctx,
+		int alg_id, sc_pkcs15_der_t *key, sc_pkcs15_der_t *out)
+{
+	struct sc_asn1_entry	asn1_pem_key[2],
+				asn1_pem_key_items[3];
+	struct sc_algorithm_id algorithm;
+	int key_len;
+
+	memset(&algorithm, 0, sizeof(algorithm));
+	algorithm.algorithm = alg_id;
+
+	sc_copy_asn1_entry(c_asn1_pem_key, asn1_pem_key);
+	sc_copy_asn1_entry(c_asn1_pem_key_items, asn1_pem_key_items);
+	sc_format_asn1_entry(asn1_pem_key + 0, asn1_pem_key_items, NULL, 1);
+	sc_format_asn1_entry(asn1_pem_key_items + 0,
+			&algorithm, NULL, 1);
+	key_len = 8 * key->len;
+	sc_format_asn1_entry(asn1_pem_key_items + 1,
+			key->value, &key_len, 1);
+
+	return sc_asn1_encode(ctx, asn1_pem_key, &out->value, &out->len);
 }
