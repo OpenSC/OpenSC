@@ -39,8 +39,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../libopensc/card-oberthur.h"
-
 #define COSM_TITLE "OberthurAWP"
 
 #define COSM_TLV_TAG	0x00
