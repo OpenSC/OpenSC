@@ -4,8 +4,8 @@ dnl Process this file with autoconf to produce a configure script.
 # Require autoconf 2.52
 AC_PREREQ(2.52)
 
-AC_INIT(COPYING)
-AM_INIT_AUTOMAKE(opensc, CVS)
+AC_INIT(opensc, CVS)
+AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
 
 AC_CONFIG_SRCDIR(src/libopensc/sc.c)
@@ -249,12 +249,12 @@ AC_ARG_WITH(openssl,
 		LIBCRYPTO="-lcrypto"
 		CPPFLAGS="$saved_CPPFLAGS"
 		LDFLAGS="$saved_LDFLAGS"
-		LIBS="$saved_LIBS $LIBCRYPTO"
-		LDFLAGS="-L$ssldir/lib $saved_LDFLAGS"
+		LIBS="$LIBCRYPTO $saved_LIBS"
+		LDFLAGS="-L$withval/lib $saved_LDFLAGS"
 		if test ! -z "$need_dash_r" ; then
-			LDFLAGS="-R$ssldir/lib $LDFLAGS"
+			LDFLAGS="-R$withval/lib $LDFLAGS"
 		fi
-		CPPFLAGS="-I$ssldir/include $saved_CPPFLAGS"
+		CPPFLAGS="-I$withval/include $saved_CPPFLAGS"
 
 		AC_TRY_RUN(
 			[
@@ -271,17 +271,12 @@ int main(void)
 			[
 				SSL_MSG="yes"
 				ssldir="$withval"
-				LIBS="$saved_LIBS"
-				LDFLAGS="$saved_LDFLAGS"
-				CPPFLAGS="$saved_CPPFLAGS"
 				break
 			])
-	] , [
+			],[
 
-	# we didn't get a directory, so we start searching for openssl.
-
-	for tryssldir in /usr /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl; do
-
+	# we didn't get a directory, so we start searching for openssl
+	for tryssldir in $commondir /usr /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl; do
 		# Skip directories if they don't exist
 		if test ! -d "$tryssldir/" ; then
 			continue;
@@ -324,13 +319,18 @@ int main(void)
 				LIBS="$saved_LIBS"
 				LDFLAGS="$saved_LDFLAGS"
 				CPPFLAGS="$saved_CPPFLAGS"
-			]
-		)
+			])
 	done
 	])
 LIBS="$saved_LIBS"
 AC_SUBST(LIBCRYPTO)
 AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
+
+if test "x$SSL_MSG" = "xyes" ; then
+  AC_DEFINE(HAVE_OPENSSL, 1, [Have OpenSSL libraries])
+else
+  LIBCRYPTO=""
+fi
 
 # ok, we checked for basic ssl support.
 # if it is not available, we can skip the rest of
@@ -338,12 +338,11 @@ AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
 # of the openssl libs.
 
 ENGINE_MSG="no"
-if [ "x$SSL_MSG" = "xyes" ]
-then
+if test "x$SSL_MSG" = "xyes"; then
 	# engine has to be there and working
 	LIBS="$saved_LIBS $LIBCRYPTO $LIBDL"
 	AC_TRY_RUN(
-			[
+	[
 #include <string.h>
 #include <openssl/opensslv.h>
 #include <openssl/engine.h>
@@ -364,7 +363,8 @@ int main(void)
 	[
 		ENGINE_MSG=yes
 		ENGINE_LINK="$LIBCRYPTO"
-	], [
+	],
+	[
 		ENGINE_MSG=no
 	]);
 fi
@@ -377,24 +377,21 @@ AM_CONDITIONAL(HAVE_ENGINE, test "x$ENGINE_MSG" = "xyes")
 # with old engines.
 
 SSLHACK_MSG=no
-
-if [ "x$SSL_MSG" = "xyes" -a "x$ENGINE_MSG" = "xyes" ]
-then
+if test "x$SSL_MSG" = "xyes" -a "x$ENGINE_MSG" = "xyes"; then
 	# latest openssl version with engine
 	# properly integrated?
 	AC_MSG_CHECKING([for openssl version])
 	AC_TRY_RUN(
-		[
+	[
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/opensslv.h>
 
 int main(void)
 {
-
 	if(OPENSSL_VERSION_NUMBER >= 0x0090704fL) {
 		exit(0);
-	} else { 
+	} else {
 		exit(1);
 	}
 }
@@ -408,15 +405,13 @@ int main(void)
 		OLD_OPENSSL=yes
 	])
 
-	if test "x$OLD_OPENSSL" == "xyes" 
-	then
+	if test "x$OLD_OPENSSL" = "xyes"; then
 		# openssl found, but version less than 0.9.7d
+		# linking libcrypto.a statically possible?
 
-		# linking libcrypto.a staticaly possible?
-			
 		LIBS="$saved_LIBS $ssldir/lib/libcrypto.a $LIBDL"
 		AC_TRY_RUN(
-			[
+		[
 #include <string.h>
 #include <openssl/opensslv.h>
 #include <openssl/engine.h>
@@ -437,23 +432,21 @@ int main(void)
 		[
 			SSLHACK_MSG=yes
 			ENGINE_LINK="$ssldir/lib/libcrypto.a"
-		], []
-	)
+		])
+		LIBS="$saved_LIBS"
 	fi
 fi
-AM_CONDITIONAL(HAVE_SSLHACK, test "x$SSLHACK_MSG" = "xyes")
+#AM_CONDITIONAL(HAVE_SSLHACK, test "x$SSLHACK_MSG" = "xyes")
 
-# now - last part to do: check if we gain anything from 
+# now - last part to do: check if we gain anything from
 # funny parameters to link openssl with.
 
 saved_LDFLAGS="$LDFLAGS"
 if test "x$ENGINE_MSG" = "xyes" ; then
   for openssl_ldflag in "-Wl,-Bsymbolic" "-G -Wl,-Bsymbolic" "-shared -G -Wl,-Bsymbolic" "-Wl,-all_load"; do
 	AC_MSG_CHECKING([whether we can use $openssl_ldflag])
-	saved_CFLAGS=$CFLAGS
 	LDFLAGS="$saved_LDFLAGS $openssl_ldflag"
 	AC_TRY_LINK(,[return 1],ac_cv_use_openssl_flag="yes",ac_cv_use_openssl_flag="no")
-	CFLAGS=$saved_CFLAGS
 	AC_MSG_RESULT($ac_cv_use_openssl_flag)
 	if test "$ac_cv_use_openssl_flag" = "yes"; then
 		OPENSSL_LDFLAGS="$openssl_ldflag"
@@ -573,6 +566,7 @@ case "$host" in
 esac
 
 saved_LIBS="$LIBS"
+saved_CFLAGS="$CFLAGS"
 saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
 AC_ARG_WITH(pcsclite,
@@ -585,7 +579,7 @@ if test "x$pcsc_path" != "xno" -a "x$PCSC_MSG" != "xyes"; then
 	PKG_CHECK_MODULES(PCSC, libpcsclite, [
 		PCSC_MSG="yes"
 		AC_MSG_RESULT($PCSC_MSG)
-		],[ 
+		],[
 	AC_MSG_CHECKING(for PC/SC Lite support (old style))
 	for pcscdir in "" /pcsc /PCSC; do
 		CPPFLAGS="$saved_CPPFLAGS"
@@ -657,7 +651,7 @@ if test "x$PCSC_MSG" = "xyes"; then
 SCardControl(NULL, NULL, 0, NULL, NULL);
 	], [
 		AC_DEFINE(HAVE_PCSC_OLD, 1, [old version of pc/sc-lite])
-	])	
+	])
 	CPPFLAGS="$saved_CPPFLAGS"
 	CFLAGS="$saved_CFLAGS"
 	LIBS="$saved_LIBS"
@@ -670,8 +664,9 @@ AC_SUBST(OPENCT_LDFLAGS)
 AC_SUBST(OPENCT_LIBS)
 
 saved_LIBS="$LIBS"
-saved_LDFLAGS="$LDFLAGS"
 saved_CFLAGS="$CFLAGS"
+saved_LDFLAGS="$LDFLAGS"
+saved_CPPFLAGS="$CPPFLAGS"
 AC_ARG_WITH(openct,
 	[  --with-openct=PATH      use OpenCT in PATH],
 	[openct_path=$withval])
@@ -682,7 +677,7 @@ if test "x$openct_path" != "xno" -a "x$OPENCT_MSG" != "xyes"; then
 	PKG_CHECK_MODULES(OPENCT, libopenct, [
 		OPENCT_MSG="yes"
 		AC_MSG_RESULT($OPENCT_MSG)
-		], [
+		],[
 	AC_MSG_CHECKING(for OpenCT support (old style))
 	CPPFLAGS="$saved_CPPFLAGS"
 	LDFLAGS="$saved_LDFLAGS"
