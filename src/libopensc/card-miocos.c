@@ -113,15 +113,16 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 	u8 *p = buf;
 	const int df_ops[8] = {
 		SC_AC_OP_DELETE, SC_AC_OP_CREATE,
-		-1, /* CREATE AC */ -1, /* UPDATE AC */ -1, -1, -1, -1
+		/* RFU */ -1, /* CREATE AC */ SC_AC_OP_CREATE,
+		/* UPDATE AC */ SC_AC_OP_CREATE, -1, -1, -1
 	};
 	const int ef_ops[8] = {
-		SC_AC_OP_DELETE, -1, SC_AC_OP_READ,
+		/* DELETE */ SC_AC_OP_UPDATE, -1, SC_AC_OP_READ,
 		SC_AC_OP_UPDATE, -1, -1, SC_AC_OP_INVALIDATE,
 		SC_AC_OP_REHABILITATE
 	};
 	const int key_ops[8] = {
-		SC_AC_OP_DELETE, -1, -1,
+		/* DELETE */ SC_AC_OP_UPDATE, -1, -1,
 		SC_AC_OP_UPDATE, SC_AC_OP_CRYPTO, -1, SC_AC_OP_INVALIDATE,
 		SC_AC_OP_REHABILITATE
 	};

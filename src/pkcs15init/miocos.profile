@@ -45,6 +45,10 @@ filesystem {
 		file-id		= 4301;
 		ACL		= *=NEVER, READ=NONE, UPDATE=$PIN;
 	    }
+            EF template-extractable-key {
+    	        file-id		= 7000;
+    	        ACL		= *=NEVER, READ=$PIN, UPDATE=$PIN;
+            }
 	}
     }
 }

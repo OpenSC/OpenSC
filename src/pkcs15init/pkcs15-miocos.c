@@ -111,6 +111,10 @@ miocos_new_file(struct sc_profile *profile, struct sc_card *card,
 			desc = "RSA public key";
 			tag = "public-key";
 			break;
+		case SC_PKCS15_TYPE_PRKEY:
+			desc = "extractable private key";
+			tag = "extractable-key";
+			break;
 		case SC_PKCS15_TYPE_CERT:
 			desc = "certificate";
 			tag = "certificate";
