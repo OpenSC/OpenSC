@@ -1246,8 +1246,6 @@ static int mcrd_compute_signature(struct sc_card *card,
 	sc_security_env_t *env = &priv->sec_env;
 	int r;
 	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	assert(card != NULL && data != NULL && out != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
