@@ -576,10 +576,10 @@ do_init_app(struct sc_profile *profile)
 	}
 	args.so_pin = (const u8 *) opt_pins[2];
 	if (args.so_pin)
-		args.so_pin_len = strlen(args.so_pin);
+		args.so_pin_len = strlen((const char *) args.so_pin);
 	args.so_puk = (const u8 *) opt_pins[3];
 	if (args.so_puk)
-		args.so_puk_len = strlen(args.so_puk);
+		args.so_puk_len = strlen((const char *) args.so_puk);
 	args.serial = (const char *) opt_serial;
 	args.label = opt_label;
 
