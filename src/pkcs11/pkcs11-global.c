@@ -72,10 +72,10 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 	memset(pInfo, 0, sizeof(CK_INFO));
 	pInfo->cryptokiVersion.major = 2;
 	pInfo->cryptokiVersion.minor = 11;
-	strcpy_bp((char *) pInfo->manufacturerID,
+	strcpy_bp(pInfo->manufacturerID,
 		  "OpenSC Project (www.opensc.org)",
 		  sizeof(pInfo->manufacturerID));
-	strcpy_bp((char *) pInfo->libraryDescription,
+	strcpy_bp(pInfo->libraryDescription,
 		  "SmartCard PKCS#11 API",
 		  sizeof(pInfo->libraryDescription));
 	pInfo->libraryVersion.major = 0;
@@ -177,9 +177,9 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	if (slotID < 0 || slotID >= ctx->reader_count)
                 return CKR_SLOT_ID_INVALID;
 
-	strcpy_bp((char *) pInfo->slotDescription, ctx->readers[slotID],
+	strcpy_bp(pInfo->slotDescription, ctx->readers[slotID],
 		sizeof(pInfo->slotDescription));
-	strcpy_bp((char *) pInfo->manufacturerID, "PC/SC interface",
+	strcpy_bp(pInfo->manufacturerID, "PC/SC interface",
 		sizeof(pInfo->manufacturerID));
 	pInfo->flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 	if (sc_detect_card(ctx, slotID) == 1) {
@@ -227,10 +227,10 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
                 if (r)
 			return r;
 	}
-	strcpy_bp((char *) pInfo->label, slot[slotID].p15card->label, 32);
-	strcpy_bp((char *) pInfo->manufacturerID, slot[slotID].p15card->manufacturer_id, 32);
-	strcpy_bp((char *) pInfo->model, "PKCS#15 SC", sizeof(pInfo->model));
-	strcpy_bp((char *) pInfo->serialNumber, slot[slotID].p15card->serial_number, 16);
+	strcpy_bp(pInfo->label, slot[slotID].p15card->label, 32);
+	strcpy_bp(pInfo->manufacturerID, slot[slotID].p15card->manufacturer_id, 32);
+	strcpy_bp(pInfo->model, "PKCS#15 SC", sizeof(pInfo->model));
+	strcpy_bp(pInfo->serialNumber, slot[slotID].p15card->serial_number, 16);
 
 	pInfo->flags = CKF_RNG | CKF_USER_PIN_INITIALIZED | CKF_LOGIN_REQUIRED;
 	pInfo->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;

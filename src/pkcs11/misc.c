@@ -23,13 +23,13 @@
 #include "sc-pkcs11.h"
 #include <sc-log.h>
 
-void strcpy_bp(char *dst, const char *src, int dstsize)
+void strcpy_bp(u8 *dst, const char *src, int dstsize)
 {
 	int c = strlen(src) > dstsize ? dstsize : strlen(src);
 	
-	memcpy(dst, src, c);
+	memcpy((char *) dst, src, c);
 	dstsize -= c;
-	memset(dst + c, ' ', dstsize);
+	memset((char *) dst + c, ' ', dstsize);
 }
 
 CK_RV sc_to_cryptoki_error(int rc, int reader)

@@ -183,7 +183,7 @@ extern struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
 extern struct sc_pkcs11_framework_ops framework_pkcs15;
 
 
-void strcpy_bp(char *dst, const char *src, int dstsize);
+void strcpy_bp(u8 *dst, const char *src, int dstsize);
 CK_RV sc_to_cryptoki_error(int rc, int reader);
 void dump_template(const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
 

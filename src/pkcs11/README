@@ -8,7 +8,7 @@ Netscape:
 	
 	Click: Add
 
-	Module name: descriptive name about module (eg. sc-pkcs11)
+	Module name: descriptive name about module (eg. opensc-pkcs11)
 	Module file: absolute path of opensc-pkcs11.so
 
 
@@ -24,7 +24,7 @@ Mozilla:
 
 	Click: Load
 
-	Module name: descriptive name about module (eg. sc-pkcs11)
+	Module name: descriptive name about module (eg. opensc-pkcs11)
 	Module file: absolute path of opensc-pkcs11.so
 
 
