@@ -25,7 +25,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <opensc.h>
-#ifdef HAVE_READLINE
+#ifdef HAVE_READLINE__READLINE_H
 #include <readline/readline.h>
 #endif
 #include "util.h"
@@ -803,7 +803,7 @@ static int parse_line(char *in, char **argv)
 	return argc;
 }
 
-#ifndef HAVE_READLINE
+#if !defined(HAVE_READLINE__READLINE_H)
 char * readline(const char *prompt)
 {
 	static char buf[128];
