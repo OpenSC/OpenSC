@@ -24,10 +24,10 @@
 #define SC_OBERTHUR_MAX_ATTR_SIZE 8
 
 struct NTLV {
-	char *name;
+	const char *name;
 	unsigned int tag;
 	size_t len;
-	unsigned char *value;
+	const unsigned char *value;
 };
 typedef struct NTLV NTLV_t;
 

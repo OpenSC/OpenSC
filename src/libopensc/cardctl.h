@@ -265,7 +265,7 @@ struct sc_cardctl_oberthur_genkey_info {
 struct sc_cardctl_oberthur_updatekey_info {
 	enum SC_CARDCTL_OBERTHUR_KEY_TYPE  type;
 	unsigned int    component;
-	unsigned char 	*data;
+	const unsigned char *data;
 	unsigned int    len;
 };
 

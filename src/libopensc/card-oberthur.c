@@ -57,16 +57,16 @@ static NTLV_t oberthur_atrs[] = {
 	},
 #endif
 	{ "Oberthur 64k v4/2.1.1", ATR_OBERTHUR_64K, 18,
-	  (unsigned char *) "\x3B\x7D\x18\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x01\x00\x82\x90\x00"
+	  "\x3B\x7D\x18\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x01\x00\x82\x90\x00"
 	},
 	{ "Oberthur 64k v4/2.1.1", ATR_OBERTHUR_64K, 18,
-	  (unsigned char *) "\x3B\x7D\x18\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x02\x00\x82\x90\x00"
+	  "\x3B\x7D\x18\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x02\x00\x82\x90\x00"
 	},
 	{ "Oberthur 64k v5", ATR_OBERTHUR_64K, 18,
-	  (unsigned char *) "\x3B\x7D\x11\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x01\x00\x82\x90\x00"
+	  "\x3B\x7D\x11\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x01\x00\x82\x90\x00"
 	},
 	{ "Oberthur 64k v5/2.2.0", ATR_OBERTHUR_64K, 18,
-	  (unsigned char *) "\x3B\x7D\x11\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x02\x00\x82\x90\x00"
+	  "\x3B\x7D\x11\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x02\x00\x82\x90\x00"
 	},
 	{ NULL, 0, 0, NULL	}
 };
@@ -82,7 +82,7 @@ static NTLV_t oberthur_aids[] = {
 	},
 #endif
 	{ "AuthentIC v5", AID_OBERTHUR_V5, 16,
-	  (unsigned char *) "\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x00\x00\xF1\x00\x00\x00\x02"
+	  "\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x00\x00\xF1\x00\x00\x00\x02"
 	},
 	{ NULL, 0, 0, NULL }
 }; 
@@ -160,9 +160,7 @@ auth_select_aid(struct sc_card *card)
 	/* Try to select known AID */
 	for (ii = 0; oberthur_aids[ii].value != NULL; ii++) {
 		size_t len = oberthur_aids[ii].len;
-		unsigned char *ptr;
 		
-		ptr = oberthur_aids[ii].value;
 		apdu.lc = len;
 		apdu.le = len + 4;
 		apdu.data = oberthur_aids[ii].value;
@@ -690,7 +688,7 @@ select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 		struct sc_path *cache_path = &card->cache.current_path;
 		int len = cache_path->len;
 
-		if (len < sizeof(cache_path->value))   {
+		if (len < (int)sizeof(cache_path->value))   {
 			memcpy(&cache_path->value[len], buf, 2);
 			cache_path->len += 2;
 		}
@@ -924,7 +922,8 @@ encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
 				 u8 *buf, size_t *buflen)
 {
 	u8 *p = buf;
-	int rv=0, ii, size;
+	int rv=0, size;
+	size_t ii;
 	unsigned char  ops[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 	sc_debug(card->ctx, ": id %04X; size %i; type %i/%i\n",
@@ -1493,7 +1492,8 @@ auth_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
 static int 
 auth_encode_exponent(unsigned long exponent, u8 *buff, size_t buff_len)
 {
-	int ii, shift;
+	int    shift;
+	size_t ii;
 
 	for (shift=0; exponent >> (shift+8); shift += 8)
 		;
@@ -1958,7 +1958,8 @@ auth_reset_retry_counter(struct sc_card *card, unsigned int type,
         const u8 *pin, size_t pinlen)
 {
 	sc_apdu_t apdu;
-	int rv, pin_ref, len;
+	int rv, pin_ref;
+	size_t len;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_pin_cmd_pin pin_info, puk_info;
 	
@@ -2099,7 +2100,7 @@ write_publickey (struct sc_card *card, unsigned int offset,
 {
 	int ii, rv;
 	struct sc_pkcs15_pubkey_rsa key;
-	int len = 0, der_size = 0;
+	size_t len = 0, der_size = 0;
 	struct sc_cardctl_oberthur_updatekey_info args;
 
 	if (card->ctx->debug >= 5)  {
@@ -2185,9 +2186,9 @@ auth_update_binary(struct sc_card *card, unsigned int offset,
 		struct sc_cardctl_oberthur_updatekey_info args;
 	
 		memset(&args, 0, sizeof(args));
-	    args.type = SC_CARDCTL_OBERTHUR_KEY_DES;
+		args.type = SC_CARDCTL_OBERTHUR_KEY_DES;
 		args.component = 0;
-		args.data = (unsigned char *)buf;
+		args.data = buf;
 		args.len = count;
 		rv = auth_update_component(card, &args);
 	}
