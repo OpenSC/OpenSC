@@ -563,7 +563,7 @@ gpk_pkfile_update_private(struct sc_profile *profile,
 	struct auth_info *sm;
 	unsigned int	m, size, nb, cks;
 	struct pkcomp	*pe;
-	u8		*data;
+	u8		data[256];
 	int		r = 0;
 
 	if (card->ctx->debug > 1)
@@ -580,7 +580,10 @@ gpk_pkfile_update_private(struct sc_profile *profile,
 
 	for (m = 0; m < part->count; m++) {
 		pe = part->components + m;
-		data = pe->data;
+
+		if (pe->size + 8 > sizeof(data))
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		memcpy(data, pe->data, pe->size);
 		size = pe->size;
 
 		r = sc_verify(card, SC_AC_PRO,
