@@ -34,11 +34,11 @@ const char *sc_strerror(int error)
 		"Card removed",
 		"Card reset",
 		"Transmit failed",
-		"Timed out while waiting for input (keypad)",
-		"Input operation cancelled (keypad)",
-		"The two PINs did not match (keypad)",
+		"Timed out while waiting for user input",
+		"Input operation cancelled by user",
+		"The two PINs did not match",
 		"Message too long (keypad)",
-		"Timeout while waiting for event (card reader)",
+		"Timeout while waiting for event from card reader",
 		"Unresponsive card (correctly inserted?)",
 		"Reader detached (hotplug device?)",
 		"Reader reattached (hotplug device?)",
@@ -86,6 +86,7 @@ const char *sc_strerror(int error)
 		"Decryption failed",
 		"Wrong padding",
 		"Wrong card",
+		"Unable to load external module",
 	};
 	const int int_base = -SC_ERROR_INTERNAL;
 	const char *p15i_errors[] = {
