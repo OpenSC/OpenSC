@@ -20,6 +20,7 @@
 
 #include "opensc.h"
 #include "opensc-pkcs15.h"
+#include "sc-log.h"
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -32,24 +33,23 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 {
 	int r;
 	struct sc_security_env senv;
+	struct sc_context *ctx = p15card->card->ctx;
 	
 	senv.algorithm_ref = 0x02;
 	senv.key_file_id = prkey->file_id;
 	senv.signature = 0;
 	senv.key_ref = prkey->key_reference;
 	
+	SC_FUNC_CALLED(ctx);
 	r = sc_select_file(p15card->card, &p15card->file_app,
 			   &p15card->file_app.path, SC_SELECT_FILE_BY_PATH);
-	if (r)
-		return r;
+	SC_TEST_RET(ctx, r, "sc_select_file() failed");
 	r = sc_restore_security_env(p15card->card, 0); /* empty SE */
-	if (r)
-		return r;
+	SC_TEST_RET(ctx, r, "sc_restore_security_env() failed");
 	r = sc_set_security_env(p15card->card, &senv);
-	if (r)
-		return r;
+	SC_TEST_RET(ctx, r, "sc_set_security_env() failed");
 	r = sc_decipher(p15card->card, in, inlen, out, outlen);
-
+	SC_TEST_RET(ctx, r, "sc_decipher() failed");
 	return r;
 }
 
@@ -60,6 +60,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 {
 	int r;
 	struct sc_security_env senv;
+	struct sc_context *ctx = p15card->card->ctx;
 	
 	senv.algorithm_ref = 0x02;
 	switch (hash) {
@@ -74,17 +75,16 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	senv.signature = 1;
 	senv.key_ref = prkey->key_reference;
 	
+	SC_FUNC_CALLED(ctx);
 	r = sc_select_file(p15card->card, &p15card->file_app,
 			   &p15card->file_app.path, SC_SELECT_FILE_BY_PATH);
-	if (r)
-		return r;
+	SC_TEST_RET(ctx, r, "sc_select_file() failed");
 	r = sc_restore_security_env(p15card->card, 0); /* empty SE */
-	if (r)
-		return r;
+	SC_TEST_RET(ctx, r, "sc_restore_security_env() failed");
 	r = sc_set_security_env(p15card->card, &senv);
-	if (r)
-		return r;
+	SC_TEST_RET(ctx, r, "sc_set_security_env() failed");
 	r = sc_compute_signature(p15card->card, in, inlen, out, outlen);
+	SC_TEST_RET(ctx, r, "sc_compute_signature() failed");
 
 	return r;
 }
