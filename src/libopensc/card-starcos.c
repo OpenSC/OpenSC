@@ -24,9 +24,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* TODO: - secure messaging 
- */
-
 static struct sc_atr_table_hex starcos_atrs[] = {
 	{ "3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4" },
 	{ "3B:B7:94:00:81:31:fe:65:53:50:4b:32:33:90:00:d1" },
@@ -76,12 +73,12 @@ static int starcos_match_card(struct sc_card *card)
 	i = _sc_match_atr_hex(card, starcos_atrs, NULL);
 	if (i < 0)
 		return 0;
-	return i + 1;	/* XXX */
+	return 1;
 }
 
 static int starcos_init(struct sc_card *card)
 {
-	int type, flags;
+	int flags;
 	starcos_ex_data *ex_data;
 
 	ex_data = (starcos_ex_data *) malloc(sizeof(starcos_ex_data));
@@ -93,27 +90,18 @@ static int starcos_init(struct sc_card *card)
 	card->cla  = 0x00;
 	card->drv_data = (void *)ex_data;
 
-	/* set the supported algorithm */
-	type = starcos_match_card(card);
+	flags = SC_ALGORITHM_RSA_PAD_PKCS1 
+		| SC_ALGORITHM_ONBOARD_KEY_GEN
+		| SC_ALGORITHM_RSA_PAD_ISO9796
+		| SC_ALGORITHM_RSA_HASH_NONE
+		| SC_ALGORITHM_RSA_HASH_SHA1
+		| SC_ALGORITHM_RSA_HASH_MD5
+		| SC_ALGORITHM_RSA_HASH_RIPEMD160
+		| SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 
-	if (type == 1 || type == 2)
-	{
-		/* Starcos SPK 2.3 card */
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 
-			| SC_ALGORITHM_ONBOARD_KEY_GEN
-			| SC_ALGORITHM_RSA_PAD_ISO9796
-			| SC_ALGORITHM_RSA_HASH_NONE
-			| SC_ALGORITHM_RSA_HASH_SHA1
-			| SC_ALGORITHM_RSA_HASH_MD5
-			| SC_ALGORITHM_RSA_HASH_RIPEMD160
-			| SC_ALGORITHM_RSA_HASH_MD5_SHA1;
-
-		_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
-		_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
-		_sc_card_add_rsa_alg(card,1024, flags, 0x10001);
-	}
-	else
-		return SC_ERROR_INTERNAL;
+	_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
+	_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
+	_sc_card_add_rsa_alg(card,1024, flags, 0x10001);
 
 	/* we need read_binary&friends with max 128 bytes per read */
 	if (card->max_send_size > 128)
