@@ -225,6 +225,7 @@ int sc_pkcs1_encode(struct sc_context *ctx, unsigned long flags,
 	switch(pad_algo) {
 	case SC_ALGORITHM_RSA_PAD_NONE:
 		/* padding done by card => nothing to do */
+		memcpy(out, tmp, tmp_len);
 		*out_len = tmp_len;
 		return SC_SUCCESS;
 	case SC_ALGORITHM_RSA_PAD_PKCS1:
