@@ -116,7 +116,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 		  "SmartCard PKCS#11 API",
 		  sizeof(pInfo->libraryDescription));
 	pInfo->libraryVersion.major = 0;
-	pInfo->libraryVersion.minor = 2;
+	pInfo->libraryVersion.minor = 8;
 
 out:	sc_pkcs11_unlock();
         return rv;
