@@ -2173,10 +2173,12 @@ cache_pin(void *p, int user, const sc_path_t *path, const void *pin, size_t len)
 {
 	struct pkcs15_slot_data *data = (struct pkcs15_slot_data *) p;
 
+#ifdef USE_PKCS15_INIT
 	if (len == 0) {
 		sc_keycache_forget_key(path, SC_AC_SYMBOLIC,
 			user? SC_PKCS15INIT_USER_PIN : SC_PKCS15INIT_SO_PIN);
 	}
+#endif
 
 	if ((user != 0 && user != 1) || !sc_pkcs11_conf.cache_pins)
 		return;
