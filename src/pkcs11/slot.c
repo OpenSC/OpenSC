@@ -287,7 +287,7 @@ CK_RV slot_token_removed(int id)
 	/* Object pool */
 	while (pool_find_and_delete(&slot->object_pool, 0, (void**) &object) == CKR_OK) {
 		if (object->ops->release)
-   			object->ops->release(object);
+			object->ops->release(object);
 	}
 
 	/* Release framework stuff */
