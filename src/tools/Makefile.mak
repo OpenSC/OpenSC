@@ -2,7 +2,7 @@
 TOPDIR = ..\..
 
 TARGETS = opensc-explorer.exe opensc-tool.exe \
-	  pkcs15-tool.exe pkcs15-crypt.exe pkcs11-tool.exe #pkcs15-init.exe 
+	  pkcs15-tool.exe pkcs15-crypt.exe pkcs11-tool.exe cardos-info.exe #pkcs15-init.exe 
 
 all: util.obj $(TARGETS)
 
