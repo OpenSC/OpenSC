@@ -190,8 +190,8 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 		case SCARD_W_RESET_CARD:
 			return SC_ERROR_CARD_RESET;
 		case SCARD_E_NOT_TRANSACTED:
-			if (pcsc_detect_card_presence(reader, slot) &
-			    SC_SLOT_CARD_PRESENT == 0)
+			if ((pcsc_detect_card_presence(reader, slot) &
+			    SC_SLOT_CARD_PRESENT) == 0)
 				return SC_ERROR_CARD_REMOVED;
 			return SC_ERROR_TRANSMIT_FAILED;
                 default:
