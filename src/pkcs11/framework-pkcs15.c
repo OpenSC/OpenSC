@@ -375,7 +375,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 				if (rv != CKR_OK)
 					return rv;
 			}
-			pkcs15_add_cert_object(slot, card, certs[j]);
+			pkcs15_add_cert_object(slot, card, certs[j], NULL);
 		}
 	}
 
