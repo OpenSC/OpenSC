@@ -346,6 +346,6 @@ const struct sc_reader_driver *sc_get_usbtoken_driver(void)
 	usbtoken_ops.unlock = usbtoken_reader_unlock;
 
 	return &usbtoken_reader_driver;
-};
+}
 
 #endif	/* HAVE_USBTOKEN */

@@ -441,6 +441,6 @@ const struct sc_reader_driver *sc_get_openct_driver(void)
 	openct_ops.unlock = openct_reader_unlock;
 
 	return &openct_reader_driver;
-};
+}
 
 #endif	/* HAVE_OPENCT */
