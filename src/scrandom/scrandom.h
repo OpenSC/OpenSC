@@ -26,6 +26,15 @@
 extern "C" {
 #endif
 
+/* Get entropy from /dev/[u]random or PRNGD/EGD
+ *
+ * This is mostly needed for OpenSSL on some
+ * misconfigured systems, and also because
+ * OpenSSL's build system is.. ahem, ugly?
+ *
+ * Returns -1 on error, else length of data
+ */
+
 extern int scrandom_get_data(unsigned char *buf, unsigned int len);
 
 #ifdef __cplusplus
