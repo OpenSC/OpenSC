@@ -1800,7 +1800,7 @@ revalidate_pin(struct pkcs15_slot_data *data, struct sc_pkcs11_session *ses)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 
 	if (ses->slot->token_info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)
-		pkcs15_login(ses->slot->card, ses->slot->fw_data, CKU_USER, NULL, 0);
+		rv = pkcs15_login(ses->slot->card, ses->slot->fw_data, CKU_USER, NULL, 0);
 	else {
 		memcpy(value, data->pin[CKU_USER].value, data->pin[CKU_USER].len);
 		rv = pkcs15_login(ses->slot->card, ses->slot->fw_data, CKU_USER,
