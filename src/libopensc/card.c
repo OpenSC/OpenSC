@@ -44,7 +44,6 @@ static int _sc_pcscret_to_error(long rv)
 	}
 }
 
-
 static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 {
 	if (apdu->le > 256) {
@@ -326,6 +325,42 @@ void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
 	return;
 }
 
+static struct sc_card * sc_card_new()
+{
+	struct sc_card *card;
+	
+	card = malloc(sizeof(struct sc_card));
+	if (card == NULL)
+		return NULL;
+	memset(card, 0, sizeof(struct sc_card));
+	card->ops = malloc(sizeof(struct sc_card_operations));
+	if (card->ops == NULL) {
+		free(card);
+		return NULL;
+	}
+	card->app_count = -1;
+	pthread_mutex_init(&card->mutex, NULL);
+
+	return card;
+}
+
+static void sc_card_free(struct sc_card *card)
+{
+	int i;
+	
+	assert(sc_card_valid(card));
+	for (i = 0; i < card->app_count; i++) {
+		if (card->app[i]->label)
+			free(card->app[i]->label);
+		if (card->app[i]->ddo)
+			free(card->app[i]->ddo);
+		free(card->app[i]);
+	}
+	free(card->ops);
+	pthread_mutex_destroy(&card->mutex);
+	free(card);
+}
+
 int sc_connect_card(struct sc_context *ctx,
 		    int reader, struct sc_card **card_out)
 {
@@ -352,15 +387,9 @@ int sc_connect_card(struct sc_context *ctx,
 	if (!(rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT))
 		SC_FUNC_RETURN(ctx, 1, SC_ERROR_CARD_NOT_PRESENT);
 
-	card = malloc(sizeof(struct sc_card));
+	card = sc_card_new();
 	if (card == NULL)
 		SC_FUNC_RETURN(ctx, 1, SC_ERROR_OUT_OF_MEMORY);
-	memset(card, 0, sizeof(struct sc_card));
-	card->ops = malloc(sizeof(struct sc_card_operations));
-	if (card->ops == NULL) {
-		free(card);
-		SC_FUNC_RETURN(ctx, 1, SC_ERROR_OUT_OF_MEMORY);
-	}
 	rv = SCardConnect(ctx->pcsc_ctx, ctx->readers[reader],
 			  SCARD_SHARE_SHARED, SCARD_PROTOCOL_ANY,
 			  &card_handle, &active_proto);
@@ -369,7 +398,6 @@ int sc_connect_card(struct sc_context *ctx,
 		r = -1;		/* FIXME: invent a real error value */
 		goto err;
 	}
-
 	card->protocol = pcsc_proto_to_opensc(active_proto);
 	if (card->protocol == 0) {
 		error(ctx, "Unknown protocol (%X) selected.\n", active_proto);
@@ -379,7 +407,6 @@ int sc_connect_card(struct sc_context *ctx,
 	card->reader = reader;
 	card->ctx = ctx;
 	card->pcsc_card = card_handle;
-	card->lock_count = 0;
 	i = rgReaderStates[0].cbAtr;
 	if (i >= SC_MAX_ATR_SIZE)
 		i = SC_MAX_ATR_SIZE;
@@ -429,14 +456,13 @@ int sc_connect_card(struct sc_context *ctx,
 		r = SC_ERROR_INVALID_CARD;
 		goto err;
 	}
-	pthread_mutex_init(&card->mutex, NULL);
 	card->magic = SC_CARD_MAGIC;
 	*card_out = card;
 
 	SC_FUNC_RETURN(ctx, 1, 0);
 err:
-	free(card->ops);
-	free(card);
+	if (card != NULL)
+		sc_card_free(card);
 	SC_FUNC_RETURN(ctx, 1, r);
 }
 
@@ -454,9 +480,7 @@ int sc_disconnect_card(struct sc_card *card)
 			      sc_strerror(r));
 	}
 	SCardDisconnect(card->pcsc_card, SCARD_LEAVE_CARD);
-	pthread_mutex_destroy(&card->mutex);
-	free(card->ops);
-	free(card);
+	sc_card_free(card);
 	SC_FUNC_RETURN(ctx, 1, 0);
 }
 
@@ -676,7 +700,7 @@ int sc_update_binary(struct sc_card *card, unsigned int idx,
 
 int sc_select_file(struct sc_card *card,
 		   const struct sc_path *in_path,
-		   struct sc_file *file)
+		   struct sc_file **file)
 {
 	int r;
 

@@ -188,7 +188,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 #if 1
 	ctx->card_drivers[i++] = sc_get_tcos_driver();
 #endif
-#if 1 && defined(HAVE_OPENSSL)
+#if 0 && defined(HAVE_OPENSSL)
 	ctx->card_drivers[i++] = sc_get_gpk_driver();
 #endif
 #if 1
@@ -343,6 +343,142 @@ const char *sc_strerror(int error)
 	if (error >= nr_errors)
 		return errors[0];
 	return errors[error];
+}
+
+int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
+                          unsigned int method, unsigned long key_ref)
+{
+	struct sc_acl_entry *p, *new;
+
+	assert(file != NULL);
+	assert(operation < SC_MAX_AC_OPS);
+
+	switch (method) {
+	case SC_AC_NEVER:
+		sc_file_clear_acl_entries(file, operation);
+		file->acl[operation] = (struct sc_acl_entry *) 1;
+		return 0;
+	case SC_AC_NONE:
+		sc_file_clear_acl_entries(file, operation);
+		file->acl[operation] = (struct sc_acl_entry *) 2;
+		return 0;
+	case SC_AC_UNKNOWN:
+		sc_file_clear_acl_entries(file, operation);
+		file->acl[operation] = (struct sc_acl_entry *) 3;
+		return 0;
+	}
+	
+	new = malloc(sizeof(struct sc_acl_entry));
+	if (new == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	new->method = method;
+	new->key_ref = key_ref;
+	new->next = NULL;
+
+	p = file->acl[operation];
+	if (p == NULL) {
+		file->acl[operation] = new;
+		return 0;
+	}
+	while (p->next != NULL)
+		p = p->next;
+	p->next = new;
+
+	return 0;
+}
+
+const struct sc_acl_entry * sc_file_get_acl_entry(const struct sc_file *file,
+						  unsigned int operation)
+{
+	struct sc_acl_entry *p;
+	static const struct sc_acl_entry e_never = {
+		SC_AC_NEVER, SC_AC_KEY_REF_NONE, NULL
+	};
+	static const struct sc_acl_entry e_none = {
+		SC_AC_NONE, SC_AC_KEY_REF_NONE, NULL
+	};
+	static const struct sc_acl_entry e_unknown = {
+		SC_AC_UNKNOWN, SC_AC_KEY_REF_NONE, NULL
+	};
+
+	assert(file != NULL);
+	assert(operation < SC_MAX_AC_OPS);
+
+	p = file->acl[operation];
+	if (p == (struct sc_acl_entry *) 1)
+		return &e_never;
+	if (p == (struct sc_acl_entry *) 2)
+		return &e_none;
+	if (p == (struct sc_acl_entry *) 3)
+		return &e_unknown;
+
+	return file->acl[operation];
+}
+
+void sc_file_clear_acl_entries(struct sc_file *file, unsigned int operation)
+{
+	struct sc_acl_entry *e;
+	
+	assert(file != NULL);
+	assert(operation < SC_MAX_AC_OPS);
+
+	e = file->acl[operation];
+	if (e == (struct sc_acl_entry *) 1 || 
+	    e == (struct sc_acl_entry *) 2 ||
+	    e == (struct sc_acl_entry *) 3) {
+		file->acl[operation] = NULL;
+		return;
+	}
+
+	while (e != NULL) {
+		struct sc_acl_entry *tmp = e->next;
+		free(e);
+		e = tmp;
+	}
+	file->acl[operation] = NULL;
+}
+
+struct sc_file * sc_file_new()
+{
+	struct sc_file *file = malloc(sizeof(struct sc_file));
+	
+	if (file == NULL)
+		return NULL;
+	memset(file, 0, sizeof(struct sc_file));
+	file->magic = SC_FILE_MAGIC;
+	return file;
+}
+
+void sc_file_free(struct sc_file *file)
+{
+	int i;
+	assert(sc_file_valid(file));
+	file->magic = 0;
+	for (i = 0; i < SC_MAX_AC_OPS; i++)
+		sc_file_clear_acl_entries(file, i);
+	free(file);
+}
+
+void sc_file_dup(struct sc_file **dest, const struct sc_file *src)
+{
+	struct sc_file *newf;
+	const struct sc_acl_entry *e;
+	int op;
+	
+	assert(sc_file_valid(src));
+	*dest = NULL;
+	newf = sc_file_new();
+	if (newf == NULL)
+		return;
+	*dest = newf;
+	
+	*newf = *src;
+	for (op = 0; op < SC_MAX_AC_OPS; op++) {
+		newf->acl[op] = NULL;
+		e = sc_file_get_acl_entry(src, op);
+		if (e != NULL)
+			sc_file_add_acl_entry(newf, op, e->method, e->key_ref);
+	}
 }
 
 inline int sc_file_valid(const struct sc_file *file) {

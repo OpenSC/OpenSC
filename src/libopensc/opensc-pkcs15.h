@@ -208,9 +208,8 @@ struct sc_pkcs15_card {
 	struct sc_pkcs15_pin_info pin_info[SC_PKCS15_MAX_PINS];
 	int pin_count;
 
-	/* FIXME: Move file_dir somewhere else, perhaps to sc_card */
-	struct sc_file file_dir, file_app;
-	struct sc_file file_tokeninfo, file_odf;
+	struct sc_file *file_app;
+	struct sc_file *file_tokeninfo, *file_odf;
 	struct sc_pkcs15_df df[SC_PKCS15_DF_TYPE_COUNT];
 
 	int use_cache;

@@ -34,7 +34,7 @@
 int opt_reader = 0, opt_debug = 0;
 const char *opt_driver = NULL;
 
-struct sc_file current_file;
+struct sc_file *current_file = NULL;
 struct sc_path current_path;
 struct sc_context *ctx = NULL;
 struct sc_card *card = NULL;
@@ -68,6 +68,8 @@ const int nr_cmds = sizeof(cmds)/sizeof(cmds[0]);
 
 void die(int ret)
 {
+	if (current_file != NULL)
+		sc_file_free(current_file);
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);
@@ -100,10 +102,10 @@ void check_ret(int r, int op, const char *err, const struct sc_file *file)
 {
 	fprintf(stderr, "%s: %s\n", err, sc_strerror(r));
 	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
-		fprintf(stderr, "ACL for operation: %s\n", acl_to_str(file->acl[op]));
+		fprintf(stderr, "ACL for operation: %s\n", acl_to_str(sc_file_get_acl_entry(file, op)));
 }
 
-int arg_to_path(const char *arg, struct sc_path *path)
+int arg_to_path(const char *arg, struct sc_path *path, int is_id)
 {
 	int buf[2];
 	u8 cbuf[2];
@@ -118,10 +120,13 @@ int arg_to_path(const char *arg, struct sc_path *path)
 	}
 	cbuf[0] = buf[0];
 	cbuf[1] = buf[1];
-	if (cbuf[0] == 0x3F && cbuf[1] == 0x00) {
+	if ((cbuf[0] == 0x3F && cbuf[1] == 0x00) || is_id) {
 		path->len = 2;
 		memcpy(path->value, cbuf, 2);
-		path->type = SC_PATH_TYPE_PATH;
+		if (is_id)
+			path->type = SC_PATH_TYPE_FILE_ID;
+		else
+			path->type = SC_PATH_TYPE_PATH;
 	} else {
 		*path = current_path;
 		sc_append_path_id(path, cbuf, 2);
@@ -174,26 +179,27 @@ int do_ls()
 
 	r = sc_list_files(card, buf, sizeof(buf));
 	if (r < 0) {
-		check_ret(r, SC_AC_OP_LIST_FILES, "unable to receive file listing", &current_file);
+		check_ret(r, SC_AC_OP_LIST_FILES, "unable to receive file listing", current_file);
 		return -1;
 	}
 	count = r;
         printf("FileID\tType  Size\n");
 	while (count >= 2) {
 		struct sc_path path;
-		struct sc_file file;
+		struct sc_file *file = NULL;
 
 		path = current_path;
 		sc_append_path_id(&path, cur, 2);
 		r = sc_select_file(card, &path, &file);
 		if (r) {
-			check_ret(r, SC_AC_OP_SELECT, "unable to select file", &current_file);
+			check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 			return -1;
 		}
-		file.id = (cur[0] << 8) | cur[1];
+		file->id = (cur[0] << 8) | cur[1];
                 cur += 2;
 		count -= 2;
-                print_file(&file);
+                print_file(file);
+                sc_file_free(file);
 		r = sc_select_file(card, &current_path, NULL);
 		if (r) {
 			printf("unable to select parent DF: %s\n", sc_strerror(r));
@@ -206,7 +212,7 @@ int do_ls()
 int do_cd(const char *arg)
 {
 	struct sc_path path;
-        struct sc_file file;
+	struct sc_file *file;
 	int r;
 
 	if (strcmp(arg, "..") == 0) {
@@ -216,25 +222,28 @@ int do_cd(const char *arg)
 		}
                 path = current_path;
 		path.len -= 2;
-		r = sc_select_file(card, &path, &current_file);
+		r = sc_select_file(card, &path, &file);
 		if (r) {
 			printf("unable to go up: %s\n", sc_strerror(r));
 			return -1;
 		}
+		sc_file_free(current_file);
+		current_file = file;
 		current_path = path;
 		return 0;
 	}
-	if (arg_to_path(arg, &path) != 0) {
+	if (arg_to_path(arg, &path, 0) != 0) {
 		printf("Usage: cd <file_id>\n");
 		return -1;
 	}
 	r = sc_select_file(card, &path, &file);
 	if (r) {
-		check_ret(r, SC_AC_OP_SELECT, "unable to select DF", &current_file);
+		check_ret(r, SC_AC_OP_SELECT, "unable to select DF", current_file);
 		return -1;
 	}
-	if (file.type != SC_FILE_TYPE_DF) {
+	if (file->type != SC_FILE_TYPE_DF) {
 		printf("Error: file is not a DF.\n");
+		sc_file_free(file);
 		r = sc_select_file(card, &current_path, NULL);
 		if (r) {
 			printf("unable to select parent file: %s\n", sc_strerror(r));
@@ -243,7 +252,8 @@ int do_cd(const char *arg)
 		return -1;
 	}
 	current_path = path;
-        current_file = file;
+	sc_file_free(current_file);
+	current_file = file;
 
 	return 0;
 }
@@ -299,7 +309,7 @@ int do_cat(const char *arg)
 {
 	int r, error = 0;
 	struct sc_path path;
-        struct sc_file file;
+        struct sc_file *file;
 	int not_current = 1;
 
 	if (strlen(arg) == 0) {
@@ -307,21 +317,22 @@ int do_cat(const char *arg)
 		file = current_file;
 		not_current = 0;
 	} else {
-		if (arg_to_path(arg, &path) != 0) {
+		if (arg_to_path(arg, &path, 0) != 0) {
 			printf("Usage: cat [file_id]\n");
 			return -1;
 		}
 		r = sc_select_file(card, &path, &file);
 		if (r) {
-			check_ret(r, SC_AC_OP_SELECT, "unable to select file", &current_file);
+			check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 			return -1;
 		}
 	}
-	if (file.ef_structure == SC_FILE_EF_TRANSPARENT)
-		read_and_print_binary_file(&file);
+	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)
+		read_and_print_binary_file(file);
 	else
-		read_and_print_record_file(&file);
+		read_and_print_record_file(file);
 	if (not_current) {
+		sc_file_free(file);
 		r = sc_select_file(card, &current_path, NULL);
 		if (r) {
 			printf("unable to select parent file: %s\n", sc_strerror(r));
@@ -333,7 +344,7 @@ int do_cat(const char *arg)
 
 int do_info(const char *arg)
 {
-	struct sc_file file;
+	struct sc_file *file;
 	struct sc_path path;
 	int r, i;
 	const char *st;
@@ -344,7 +355,7 @@ int do_info(const char *arg)
 		file = current_file;
 		not_current = 0;
 	} else {
-		if (arg_to_path(arg, &path) != 0) {
+		if (arg_to_path(arg, &path, 0) != 0) {
 			printf("Usage: info [file_id]\n");
 			return -1;
 		}
@@ -354,7 +365,7 @@ int do_info(const char *arg)
 			return -1;
 		}
 	}
-	switch (file.type) {
+	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
 	case SC_FILE_TYPE_INTERNAL_EF:
 		st = "Elementary File";
@@ -366,7 +377,7 @@ int do_info(const char *arg)
 		st = "Unknown File";
 		break;
 	}
-	printf("\n%s  ID %04X\n\n", st, file.id);
+	printf("\n%s  ID %04X\n\n", st, file->id);
 	printf("%-15s", "File path:");
 	for (i = 0; i < path.len; i++) {
 		for (i = 0; i < path.len; i++) {
@@ -375,23 +386,23 @@ int do_info(const char *arg)
 			printf("%02X", path.value[i]);
 		}
 	}
-	printf("\n%-15s%d bytes\n", "File size:", file.size);
+	printf("\n%-15s%d bytes\n", "File size:", file->size);
 
-	if (file.type == SC_FILE_TYPE_DF) {
+	if (file->type == SC_FILE_TYPE_DF) {
 		const char *ops[] = {
 			"SELECT", "LOCK", "DELETE", "CREATE", "REHABILITATE",
 			"INVALIDATE", "LIST FILES"
 		};
-		if (file.namelen) {
+		if (file->namelen) {
 			printf("%-15s", "DF name:");
-			print_binary(stdout, file.name, file.namelen);
+			print_binary(stdout, file->name, file->namelen);
 			printf("\n");
 		}
 		for (i = 0; i < sizeof(ops)/sizeof(ops[0]); i++) {
 			char buf[80];
 			
 			sprintf(buf, "ACL for %s:", ops[i]);
-			printf("%-25s%s\n", buf, acl_to_str(file.acl[i]));
+			printf("%-25s%s\n", buf, acl_to_str(sc_file_get_acl_entry(file, i)));
 		}
 	} else {
                 const char *structs[] = {
@@ -403,28 +414,29 @@ int do_info(const char *arg)
 			"READ", "UPDATE", "WRITE", "ERASE", "REHABILITATE",
 			"INVALIDATE"
 		};
-		printf("%-15s%s\n", "EF structure:", structs[file.ef_structure]);
+		printf("%-15s%s\n", "EF structure:", structs[file->ef_structure]);
 		for (i = 0; i < sizeof(ops)/sizeof(ops[0]); i++) {
 			char buf[80];
 			
 			sprintf(buf, "ACL for %s:", ops[i]);
-			printf("%-25s%s\n", buf, acl_to_str(file.acl[i]));
+			printf("%-25s%s\n", buf, acl_to_str(sc_file_get_acl_entry(file, i)));
 		}
 	}	
-	if (file.prop_attr_len) {
+	if (file->prop_attr_len) {
 		printf("%-25s", "Proprietary attributes:");
-		for (i = 0; i < file.prop_attr_len; i++)
-			printf("%02X ", file.prop_attr[i]);
+		for (i = 0; i < file->prop_attr_len; i++)
+			printf("%02X ", file->prop_attr[i]);
 		printf("\n");
 	}
-	if (file.sec_attr_len) {
+	if (file->sec_attr_len) {
 		printf("%-25s", "Security attributes:");
-		for (i = 0; i < file.sec_attr_len; i++)
-			printf("%02X ", file.sec_attr[i]);
+		for (i = 0; i < file->sec_attr_len; i++)
+			printf("%02X ", file->sec_attr[i]);
 		printf("\n");
 	}
 	printf("\n");
 	if (not_current) {
+		sc_file_free(file);
 		r = sc_select_file(card, &current_path, NULL);
 		if (r) {
 			printf("unable to select parent file: %s\n", sc_strerror(r));
@@ -440,7 +452,7 @@ int create_file(struct sc_file *file)
 	
 	r = sc_create_file(card, file);
 	if (r) {
-		check_ret(r, SC_AC_OP_CREATE, "CREATE FILE failed", &current_file);
+		check_ret(r, SC_AC_OP_CREATE, "CREATE FILE failed", current_file);
 		return -1;
 	}
 	/* Make sure we're back in the parent directory, because on some cards
@@ -456,25 +468,25 @@ int create_file(struct sc_file *file)
 int do_create(const char *arg, const char *arg2)
 {
 	struct sc_path path;
-	struct sc_file file;
+	struct sc_file *file;
 	unsigned int size;
-	int i;
+	int r;
 
-	if (arg_to_path(arg, &path) != 0)
+	if (arg_to_path(arg, &path, 1) != 0)
 		goto usage;
 	/* %z isn't supported everywhere */
 	if (sscanf(arg2, "%d", &size) != 1)
 		goto usage;
-	memset(&file, 0, sizeof(file));
-	file.id = (path.value[0] << 8) | path.value[1];
-	file.type = SC_FILE_TYPE_WORKING_EF;
-	file.ef_structure = SC_FILE_EF_TRANSPARENT;
-	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file.acl[i] = SC_AC_NONE;
-	file.size = (size_t) size;
-	file.status = SC_FILE_STATUS_ACTIVATED;
+	file = sc_file_new();
+	file->id = (path.value[0] << 8) | path.value[1];
+	file->type = SC_FILE_TYPE_WORKING_EF;
+	file->ef_structure = SC_FILE_EF_TRANSPARENT;
+	file->size = (size_t) size;
+	file->status = SC_FILE_STATUS_ACTIVATED;
 	
-	return create_file(&file);
+	r = create_file(file);
+	sc_file_free(file);
+	return r;
 usage:
 	printf("Usage: create <file_id> <file_size>\n");
 	return -1;
@@ -483,23 +495,23 @@ usage:
 int do_mkdir(const char *arg, const char *arg2)
 {
 	struct sc_path path;
-	struct sc_file file;
+	struct sc_file *file;
 	unsigned int size;
-	int i;
+	int r;
 
-	if (arg_to_path(arg, &path) != 0)
+	if (arg_to_path(arg, &path, 1) != 0)
 		goto usage;
 	if (sscanf(arg2, "%d", &size) != 1)
 		goto usage;
-	memset(&file, 0, sizeof(file));
-	file.id = (path.value[0] << 8) | path.value[1];
-	file.type = SC_FILE_TYPE_DF;
-	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file.acl[i] = SC_AC_NONE;
-	file.size = size;
-	file.status = SC_FILE_STATUS_ACTIVATED;
-	
-	return create_file(&file);
+	file = sc_file_new();
+	file->id = (path.value[0] << 8) | path.value[1];
+	file->type = SC_FILE_TYPE_DF;
+	file->size = size;
+	file->status = SC_FILE_STATUS_ACTIVATED;
+
+	r = create_file(file);
+	sc_file_free(file);
+	return r;
 usage:
 	printf("Usage: mkdir <file_id> <df_size>\n");
 	return -1;
@@ -510,11 +522,14 @@ int do_delete(const char *arg)
 	struct sc_path path;
 	int r;
 
-	if (arg_to_path(arg, &path) != 0)
+	if (arg_to_path(arg, &path, 1) != 0)
 		goto usage;
+	if (path.len != 2)
+		goto usage;
+	path.type = SC_PATH_TYPE_FILE_ID;
 	r = sc_delete_file(card, &path);
 	if (r) {
-		check_ret(r, SC_AC_OP_DELETE, "DELETE FILE failed", &current_file);
+		check_ret(r, SC_AC_OP_DELETE, "DELETE FILE failed", current_file);
 		return -1;
 	}
 	return 0;
@@ -558,7 +573,7 @@ int do_verify(const char *arg, const char *arg2)
 	}
 	switch (type) {
 	case 0:
-		type = SC_AC_CHV1;
+		type = SC_AC_CHV;
 		break;
 	case 1:
 		type = SC_AC_AUT;
@@ -596,11 +611,11 @@ int do_get(const char *arg, const char *arg2)
 	size_t count = 0;
         unsigned int idx = 0;
 	struct sc_path path;
-        struct sc_file file;
+        struct sc_file *file;
 	const char *filename;
 	FILE *outf = NULL;
 	
-	if (arg_to_path(arg, &path) != 0)
+	if (arg_to_path(arg, &path, 0) != 0)
 		goto usage;
 	if (strlen(arg2))
 		filename = arg2;
@@ -615,16 +630,16 @@ int do_get(const char *arg, const char *arg2)
 	}
 	r = sc_select_file(card, &path, &file);
 	if (r) {
-		check_ret(r, SC_AC_OP_SELECT, "unable to select file", &current_file);
+		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 		return -1;
 	}
-	count = file.size;
+	count = file->size;
 	while (count) {
 		int c = count > sizeof(buf) ? sizeof(buf) : count;
 
 		r = sc_read_binary(card, idx, buf, c, 0);
 		if (r < 0) {
-			check_ret(r, SC_AC_OP_READ, "read failed", &file);
+			check_ret(r, SC_AC_OP_READ, "read failed", file);
 			error = 1;
                         goto err;
 		}
@@ -639,6 +654,7 @@ int do_get(const char *arg, const char *arg2)
 	}
 	printf("Total of %d bytes read.\n", idx);
 err:
+	sc_file_free(file);
 	r = sc_select_file(card, &current_path, NULL);
 	if (r) {
 		printf("unable to select parent file: %s\n", sc_strerror(r));
@@ -659,11 +675,11 @@ int do_put(const char *arg, const char *arg2)
 	size_t count = 0;
         unsigned int idx = 0;
 	struct sc_path path;
-        struct sc_file file;
+        struct sc_file *file;
 	const char *filename;
 	FILE *outf = NULL;
 	
-	if (arg_to_path(arg, &path) != 0)
+	if (arg_to_path(arg, &path, 0) != 0)
 		goto usage;
 	if (strlen(arg2))
 		filename = arg2;
@@ -678,10 +694,10 @@ int do_put(const char *arg, const char *arg2)
 	}
 	r = sc_select_file(card, &path, &file);
 	if (r) {
-		check_ret(r, SC_AC_OP_SELECT, "unable to select file", &current_file);
+		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 		return -1;
 	}
-	count = file.size;
+	count = file->size;
 	while (count) {
 		int c = count > sizeof(buf) ? sizeof(buf) : count;
 
@@ -695,7 +711,7 @@ int do_put(const char *arg, const char *arg2)
 			count = c = r;
 		r = sc_update_binary(card, idx, buf, c, 0);
 		if (r < 0) {
-			check_ret(r, SC_AC_OP_READ, "update failed", &file);
+			check_ret(r, SC_AC_OP_READ, "update failed", file);
 			error = 1;
                         goto err;
 		}
@@ -709,6 +725,7 @@ int do_put(const char *arg, const char *arg2)
 	}
 	printf("Total of %d bytes written.\n", idx);
 err:
+	sc_file_free(file);
 	r = sc_select_file(card, &current_path, NULL);
 	if (r) {
 		printf("unable to select parent file: %s\n", sc_strerror(r));
@@ -888,7 +905,7 @@ int main(int argc, char * const argv[])
 	}
 
         sc_format_path("3F00", &current_path);
-        r = sc_select_file(card, &current_path, &current_file);
+	r = sc_select_file(card, &current_path, &current_file);
 	if (r) {
 		printf("unable to select MF: %s\n", sc_strerror(r));
 		return 1;

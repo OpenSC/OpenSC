@@ -76,14 +76,66 @@ static int setec_init(struct sc_card *card)
 
 static const struct sc_card_operations *iso_ops = NULL;
 
+static u8 acl_to_byte(const struct sc_acl_entry *e)
+{
+	switch (e->method) {
+	case SC_AC_NONE:
+		return 0x00;
+	case SC_AC_CHV:
+		switch (e->key_ref) {
+		case 1:
+			return 0x01;
+			break;
+		case 2:
+			return 0x02;
+			break;
+		default:
+			return 0x00;
+		}
+		break;
+	case SC_AC_TERM:
+		return 0x04;
+	case SC_AC_NEVER:
+		return 0x0F;
+	}
+	return 0x00;
+}
+
 static int setec_create_file(struct sc_card *card, struct sc_file *file)
 {
-	struct sc_file tmp;
-	
-	tmp = *file;
-	memcpy(tmp.prop_attr, "\x03\x00\x00", 3);
-	tmp.prop_attr_len = 3;
-	return iso_ops->create_file(card, &tmp);
+	if (file->prop_attr_len == 0) {
+		memcpy(file->prop_attr, "\x03\x00\x00", 3);
+		file->prop_attr_len = 3;
+	}
+	if (file->sec_attr_len == 0) {
+		int idx[6], i;
+		u8 buf[6];
+
+		if (file->type == SC_FILE_TYPE_DF) {
+			const int df_idx[6] = {
+				SC_AC_OP_SELECT, SC_AC_OP_LOCK, SC_AC_OP_DELETE,
+				SC_AC_OP_CREATE, SC_AC_OP_REHABILITATE,
+				SC_AC_OP_INVALIDATE
+			};
+			for (i = 0; i < 6; i++)
+				idx[i] = df_idx[i];
+		} else {
+			const int ef_idx[6] = {
+				SC_AC_OP_READ, SC_AC_OP_UPDATE, SC_AC_OP_WRITE,
+				SC_AC_OP_ERASE, SC_AC_OP_REHABILITATE,
+				SC_AC_OP_INVALIDATE
+			};
+			for (i = 0; i < 6; i++)
+				idx[i] = ef_idx[i];
+		}
+		for (i = 0; i < 6; i++)
+			buf[i] = acl_to_byte(file->acl[idx[i]]);
+
+		memcpy(file->sec_attr, buf, 6);
+		file->sec_attr_len = 6;
+	}
+
+	return iso_ops->create_file(card, file);
 }
 
 static int setec_set_security_env(struct sc_card *card,
@@ -111,36 +163,66 @@ static int setec_set_security_env(struct sc_card *card,
         return iso_ops->set_security_env(card, env, se_num);
 }
 
-static unsigned int byte_to_acl(u8 byte)
+static void add_acl_entry(struct sc_file *file, int op, u8 byte)
 {
+	unsigned int method, key_ref = SC_AC_KEY_REF_NONE;
+
 	switch (byte >> 4) {
 	case 0:
-		return SC_AC_NONE;
+		method = SC_AC_NONE;
+		break;
 	case 1:
-		return SC_AC_CHV1;
+		method = SC_AC_CHV;
+		key_ref = 1;
+		break;
 	case 2:
-		return SC_AC_CHV2;
+		method = SC_AC_CHV;
+		key_ref = 2;
+		break;
 	case 4:
-		return SC_AC_TERM;
+		method = SC_AC_TERM;
+		break;
 	case 15:
-		return SC_AC_NEVER;
+		method = SC_AC_NEVER;
+		break;
+	default:
+		method = SC_AC_UNKNOWN;
+		break;
 	}
-	return SC_AC_UNKNOWN;
+	sc_file_add_acl_entry(file, op, method, key_ref);
 }
 
 static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 {
 	int i;
-	
+	int idx[6];
+
 	if (len < 6)
 		return;
+	if (file->type == SC_FILE_TYPE_DF) {
+		const int df_idx[6] = {
+			SC_AC_OP_SELECT, SC_AC_OP_LOCK, SC_AC_OP_DELETE,
+			SC_AC_OP_CREATE, SC_AC_OP_REHABILITATE,
+			SC_AC_OP_INVALIDATE
+		};
+		for (i = 0; i < 6; i++)
+			idx[i] = df_idx[i];
+	} else {
+		const int ef_idx[6] = {
+			SC_AC_OP_READ, SC_AC_OP_UPDATE, SC_AC_OP_WRITE,
+			SC_AC_OP_ERASE, SC_AC_OP_REHABILITATE,
+			SC_AC_OP_INVALIDATE
+		};
+		for (i = 0; i < 6; i++)
+			idx[i] = ef_idx[i];
+	}
 	for (i = 0; i < 6; i++)
-		file->acl[i] = byte_to_acl(buf[i]);
+		add_acl_entry(file, idx[i], buf[i]);
 }
 
 static int setec_select_file(struct sc_card *card,
 			       const struct sc_path *in_path,
-			       struct sc_file *file)
+			       struct sc_file **file)
 {
 	int r;
 	
@@ -148,7 +230,7 @@ static int setec_select_file(struct sc_card *card,
 	if (r)
 		return r;
 	if (file != NULL)
-		parse_sec_attr(file, file->sec_attr, file->sec_attr_len);
+		parse_sec_attr(*file, (*file)->sec_attr, (*file)->sec_attr_len);
 	return 0;
 }
 

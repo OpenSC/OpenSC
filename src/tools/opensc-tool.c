@@ -192,19 +192,19 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 
 int enum_dir(struct sc_path path, int depth)
 {
-	struct sc_file file;
-	int r;
+	struct sc_file *file;
+	int r, file_type;
 	u8 files[MAX_BUFFER_SIZE];
 
-	file.magic = 0;  /* make sure the file is invalid */
 	r = sc_select_file(card, &path, &file);
 	if (r) {
 		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (sc_file_valid(&file))
-		print_file(card, &file, &path, depth);
-	if (!sc_file_valid(&file) || file.type == SC_FILE_TYPE_DF) {
+	print_file(card, file, &path, depth);
+	file_type = file->type;
+	sc_file_free(file);
+	if (file->type == SC_FILE_TYPE_DF) {
 		int i;
 
 		r = sc_list_files(card, files, sizeof(files));

@@ -111,21 +111,14 @@ extern "C" {
 #define SC_FILE_STATUS_INVALIDATED	0x01
 
 /* Access Control flags */
-#define SC_AC_NONE			0x00000000 
-#define SC_AC_CHV1			0x00000001 /* Card Holder Verif. */
-#define SC_AC_CHV2			0x00000002 
-#define SC_AC_TERM			0x00000004 /* Terminal auth. */
-#define SC_AC_PRO			0x00000008 /* Secure Messaging */
-#define SC_AC_AUT			0x00000010 /* Key auth. */
+#define SC_AC_NONE			0x00000000
+#define SC_AC_CHV			0x00000001 /* Card Holder Verif. */
+#define SC_AC_TERM			0x00000002 /* Terminal auth. */
+#define SC_AC_PRO			0x00000004 /* Secure Messaging */
+#define SC_AC_AUT			0x00000008 /* Key auth. */
 
-#define SC_AC_KEY_NUM_0			0x00000000
-#define SC_AC_KEY_NUM_1			0x10000000
-#define SC_AC_KEY_NUM_2			0x20000000
-#define SC_AC_KEY_NUM_3			0x30000000
-#define SC_AC_KEY_NUM_MASK		0xF0000000
-
-#define SC_AC_NEVER		        0xFFFFFFFE
-#define SC_AC_UNKNOWN			0xFFFFFFFF
+#define SC_AC_UNKNOWN			0xFFFFFFFE
+#define SC_AC_NEVER			0xFFFFFFFF
 
 /* Operations relating to access control (in case of DF) */
 #define SC_AC_OP_SELECT			0
@@ -155,6 +148,7 @@ extern "C" {
 #define SC_MAX_CARD_DRIVERS		16
 #define SC_MAX_CARD_DRIVER_SNAME_SIZE	16
 #define SC_MAX_READERS			4
+#define SC_MAX_CARD_APPS		4
 #define SC_MAX_APDU_BUFFER_SIZE		258
 #define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PIN_SIZE			16
@@ -162,6 +156,7 @@ extern "C" {
 #define SC_MAX_SEC_ATTR_SIZE		20
 #define SC_MAX_PROP_ATTR_SIZE		16
 #define SC_MAX_OBJECT_ID_OCTETS		16
+#define SC_MAX_AID_SIZE			16
 #define SC_APDU_CHOP_SIZE		250
 
 typedef unsigned char u8;
@@ -182,6 +177,15 @@ struct sc_path {
 	int type;
 };
 
+#define SC_AC_KEY_REF_NONE	0xFFFFFFFF
+
+struct sc_acl_entry {
+	unsigned int method;
+	unsigned int key_ref;
+
+	struct sc_acl_entry *next;
+};
+
 struct sc_file {
 	struct sc_path path;
 	u8 name[16];	/* DF name */
@@ -191,7 +195,7 @@ struct sc_file {
 	size_t size;	/* Size of file (in bytes) */
 	int id;		/* Short file id (2 bytes) */
 	int status;	/* Status flags */
-	unsigned int acl[SC_MAX_AC_OPS]; /* Access Control List */
+	struct sc_acl_entry *acl[SC_MAX_AC_OPS]; /* Access Control List */
 
 	int record_length; /* In case of fixed-length or cyclic EF */
 	int record_count;  /* Valid, if not transparent EF or DF */
@@ -232,6 +236,17 @@ struct sc_security_env {
 	size_t key_ref_len;
 };
 
+struct sc_app_info {
+	u8 aid[SC_MAX_AID_SIZE];
+	size_t aid_len;
+	char *label;
+	struct sc_path path;
+	u8 *ddo;
+	size_t ddo_len;
+	
+	const char *desc;	/* App description, if known */
+};
+
 struct sc_card_cache {
 	struct sc_path current_path;
 };
@@ -269,9 +284,13 @@ struct sc_card {
 	int cla;
 	u8 atr[SC_MAX_ATR_SIZE];
 	size_t atr_len;
+
+	struct sc_app_info *app[SC_MAX_CARD_APPS];
+	int app_count;
 	
 	pthread_mutex_t mutex;
 	int lock_count;
+
 	const struct sc_card_driver *driver;
 	struct sc_card_operations *ops;
 	void *ops_data;
@@ -315,7 +334,7 @@ struct sc_card_operations {
 	 *   in ISO7816-4. Stores information about the selected file to
 	 *   <file>, if not NULL. */
 	int (*select_file)(struct sc_card *card, const struct sc_path *path,
-			   struct sc_file *file_out);
+			   struct sc_file **file_out);
 	int (*get_response)(struct sc_card *card, u8 * buf, size_t count);
 	int (*get_challenge)(struct sc_card *card, u8 * buf, size_t count);
 
@@ -498,11 +517,14 @@ int sc_unlock(struct sc_card *card);
  * Does the equivalent of ISO 7816-4 command SELECT FILE.
  * @param card The card on which to issue the command
  * @param path The path, file id or name of the desired file
- * @param file If not NULL, will contain information about the selected file
+ * @param file If not NULL, will receive a pointer to a new structure
  * @retval SC_SUCCESS on success
  */
 int sc_select_file(struct sc_card *card, const struct sc_path *path,
-		   struct sc_file *file);
+		   struct sc_file **file);
+
+int sc_list_files(struct sc_card *card, u8 * buf, size_t buflen);
+
 /* TODO: finish writing API docs */
 int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
 		   size_t count, unsigned long flags);
@@ -513,7 +535,7 @@ int sc_update_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
 /**
  * Reads a record from the current (i.e. selected) file.
  * @param card The card on which to issue the command
- * @param rec_nr SC_READ_RECORD_CURRENT or a record number beginning from 1
+ * @param rec_nr SC_READ_RECORD_CURRENT or a record number starting from 1
  * @param buf Pointer to a buffer for storing the data
  * @param count Number of bytes to read
  * @param flags Flags
@@ -546,14 +568,31 @@ int sc_create_file(struct sc_card *card, struct sc_file *file);
 int sc_delete_file(struct sc_card *card, const struct sc_path *path);
 
 inline int sc_file_valid(const struct sc_file *file);
+struct sc_file * sc_file_new();
+void sc_file_free(struct sc_file *file);
+void sc_file_dup(struct sc_file **dest, const struct sc_file *src);
+
+int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
+			  unsigned int method, unsigned long key_ref);
+const struct sc_acl_entry * sc_file_get_acl_entry(const struct sc_file *file,
+						  unsigned int operation);
+void sc_file_clear_acl_entries(struct sc_file *file, unsigned int operation);
+
 void sc_format_path(const char *path_in, struct sc_path *path_out);
 int sc_append_path(struct sc_path *dest, const struct sc_path *src);
 int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize);
 
-/* Possibly only valid on Setec cards */
-int sc_list_files(struct sc_card *card, u8 * buf, size_t buflen);
+int sc_enum_apps(struct sc_card *card);
+const struct sc_app_info * sc_find_app_by_aid(struct sc_card *card,
+					      const u8 *aid, size_t aid_len);
+
+struct sc_card_error {
+	int SWs;
+	int errorno;
+	const char *errorstr;
+};
 
 const char *sc_strerror(int sc_errno);
 

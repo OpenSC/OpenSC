@@ -114,10 +114,10 @@ void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t buflen)
 			card->manufacturer_id = strdup("(unknown)");
 	}
 	if (card->label == NULL) {
-		if (asn1_tokeninfo[2].flags & SC_ASN1_PRESENT)
-			card->manufacturer_id = strdup((char *) mnfid);
+		if (asn1_tokeninfo[3].flags & SC_ASN1_PRESENT)
+			card->label = strdup((char *) label);
 		else
-			card->manufacturer_id = strdup("(unknown)");
+			card->label = strdup("(unknown)");
 	}
 	return;
 err:
@@ -187,91 +187,63 @@ static const struct sc_asn1_entry c_asn1_ddo[] = {
 	{ "unusedPath",    SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL },
 	{ NULL }
 };
-static const struct sc_asn1_entry c_asn1_dirrecord[] = {
-	{ "aid",   SC_ASN1_OCTET_STRING, SC_ASN1_APP | 15, 0, NULL },
-	{ "label", SC_ASN1_UTF8STRING,   SC_ASN1_APP | 16, SC_ASN1_OPTIONAL, NULL },
-	{ "path",  SC_ASN1_OCTET_STRING, SC_ASN1_APP | 17, 0, NULL },
-	{ "ddo",   SC_ASN1_STRUCT,       SC_ASN1_APP | 19 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
-	{ NULL }
-};
-/* FIXME: this should be decoded elsewhere */
-static const struct sc_asn1_entry c_asn1_dir[] = {
-	{ "dirRecord", SC_ASN1_STRUCT, SC_ASN1_APP | 1 | SC_ASN1_CONS, 0, NULL },
-	{ NULL }
-};
 
-static const u8 *aidref = (const u8 *) "\xA0\x00\x00\x00\x63PKCS-15";
-static const int aidref_len = 12;
+static const u8 *pkcs15_aid = (const u8 *) "\xA0\x00\x00\x00\x63PKCS-15";
+static const size_t pkcs15_aid_len = 12;
 
-static int parse_dir(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
+static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
 {
-	struct sc_asn1_entry asn1_ddo[5], asn1_dirrecord[5], asn1_dir[2];
+	struct sc_asn1_entry asn1_ddo[5];
+	struct sc_path odf_path, ti_path;
 	int r;
-	u8 aid[128], label[128], path[128];
-	int aid_len = sizeof(aid), label_len = sizeof(label),
-	    path_len = sizeof(path);
-	
+
 	sc_copy_asn1_entry(c_asn1_ddo, asn1_ddo);
-	sc_copy_asn1_entry(c_asn1_dirrecord, asn1_dirrecord);
-	sc_copy_asn1_entry(c_asn1_dir, asn1_dir);
-	sc_format_asn1_entry(asn1_dir + 0, asn1_dirrecord, NULL, 0);
-	sc_format_asn1_entry(asn1_dirrecord + 0, aid, &aid_len, 0);
-	sc_format_asn1_entry(asn1_dirrecord + 1, label, &label_len, 0);
-	sc_format_asn1_entry(asn1_dirrecord + 2, path, &path_len, 0);
-	sc_format_asn1_entry(asn1_dirrecord + 3, asn1_ddo, NULL, 0);
-	sc_format_asn1_entry(asn1_ddo + 1, &card->file_odf.path, NULL, 0);
-	sc_format_asn1_entry(asn1_ddo + 2, &card->file_tokeninfo.path, NULL, 0);
-	
-	r = sc_asn1_decode(card->card->ctx, asn1_dir, buf, buflen, NULL, NULL);
+	sc_format_asn1_entry(asn1_ddo + 1, &odf_path, NULL, 0);
+	sc_format_asn1_entry(asn1_ddo + 2, &ti_path, NULL, 0);
+
+	r = sc_asn1_decode(p15card->card->ctx, asn1_ddo, buf, buflen, NULL, NULL);
 	if (r) {
-		error(card->card->ctx, "EF(DIR) parsing failed: %s\n",
+		error(p15card->card->ctx, "DDO parsing failed: %s\n",
 		      sc_strerror(r));
 		return r;
 	}
-	if (aid_len != aidref_len || memcmp(aidref, aid, aid_len) != 0) {
-		error(card->card->ctx, "AID in EF(DIR) is invalid\n");
-		return -1;
+	if (asn1_ddo[1].flags & SC_ASN1_PRESENT) {
+		p15card->file_odf = sc_file_new();
+		if (p15card->file_odf == NULL)
+			goto mem_err;
+		p15card->file_odf->path = odf_path;
 	}
-	if (asn1_dirrecord[1].flags & SC_ASN1_PRESENT)
-		card->label = strdup((char *) label);
-	else
-		card->label = strdup("(unknown)");
-	if (path_len > SC_MAX_PATH_SIZE)
-		return -1;
-	memcpy(card->file_app.path.value, path, path_len);
-	card->file_app.path.len = path_len;	
-	card->file_app.path.type = SC_PATH_TYPE_PATH;
-	
+	if (asn1_ddo[2].flags & SC_ASN1_PRESENT) {
+		p15card->file_tokeninfo = sc_file_new();
+		if (p15card->file_tokeninfo == NULL)
+			goto mem_err;
+		p15card->file_tokeninfo->path = ti_path;
+	}
 	return 0;
+mem_err:
+	if (p15card->file_odf != NULL) {
+		sc_file_free(p15card->file_odf);
+		p15card->file_odf = NULL;
+	}
+	if (p15card->file_tokeninfo != NULL) {
+		sc_file_free(p15card->file_tokeninfo);
+		p15card->file_tokeninfo = NULL;
+	}
+	return SC_ERROR_OUT_OF_MEMORY;
 }
 
-static int encode_dir(struct sc_context *ctx, struct sc_pkcs15_card *card, u8 **buf, size_t *buflen)
+#if 0
+static int encode_ddo(struct sc_pkcs15_card *p15card, u8 **buf, size_t *buflen)
 {
-	struct sc_asn1_entry asn1_ddo[5], asn1_dirrecord[5], asn1_dir[2];
+	struct sc_asn1_entry asn1_ddo[5];
 	int r;
 	size_t label_len;
 	
 	sc_copy_asn1_entry(c_asn1_ddo, asn1_ddo);
-	sc_copy_asn1_entry(c_asn1_dirrecord, asn1_dirrecord);
-	sc_copy_asn1_entry(c_asn1_dir, asn1_dir);
-	sc_format_asn1_entry(asn1_dir + 0, asn1_dirrecord, NULL, 1);
-	sc_format_asn1_entry(asn1_dirrecord + 0, (void *) aidref, (void *) &aidref_len, 1);
-	if (card->label != NULL) {
-		label_len = strlen(card->label);
-		sc_format_asn1_entry(asn1_dirrecord + 1, card->label, &label_len, 1);
-	}
-	if (card->file_app.path.len == 0) {
-		error(ctx, "Application path not set.\n");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	sc_format_asn1_entry(asn1_dirrecord + 2, card->file_app.path.value,
-			     &card->file_app.path.len, 1);
-#if 0
-	/* FIXME: encode DDO */
-	sc_format_asn1_entry(asn1_dirrecord + 3, asn1_ddo, NULL, 0);
+
 	sc_format_asn1_entry(asn1_ddo + 1, &card->file_odf.path, NULL, 0);
 	sc_format_asn1_entry(asn1_ddo + 2, &card->file_tokeninfo.path, NULL, 0);
-#endif
+
 	r = sc_asn1_encode(ctx, asn1_dir, buf, buflen);
 	if (r) {
 		error(ctx, "sc_asn1_encode() failed: %s\n",
@@ -280,17 +252,17 @@ static int encode_dir(struct sc_context *ctx, struct sc_pkcs15_card *card, u8 **
 	}
 	return 0;
 }
+#endif
 
-/* FIXME: This should be done using sc_update_binary(),
- * and be generally wiser */
 int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 {
+#if 0
 	struct sc_path path;
 	struct sc_file file;
 	u8 *buf;
 	size_t bufsize;
 	int r, i;
-	
+
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_format_path("3F00", &path);
 	r = sc_select_file(card, &path, NULL);
@@ -327,6 +299,7 @@ int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	r = sc_update_binary(card, 0, buf, bufsize, 0);
 	free(buf);
 	SC_TEST_RET(card->ctx, r, "Error updating EF(DIR)");
+#endif
 	return 0;
 }
 
@@ -376,10 +349,9 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 			error(card->card->ctx, "too many DF's on card\n");
 			continue;
 		}
-		file = malloc(sizeof(struct sc_file));
+		file = sc_file_new();
 		if (file == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
-		memset(file, 0, sizeof(struct sc_file));
 		file->path = path;
 		df->file[df->count] = file;
 		df->count++;
@@ -474,7 +446,7 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 		for (i = 0; i < p15card->df[j].count; i++) {
 			struct sc_pkcs15_object *p;
 			if (p15card->df[j].file[i])
-				free(p15card->df[j].file[i]);
+				sc_file_free(p15card->df[j].file[i]);
 			p = p15card->df[j].obj[i];
 			while (p != NULL) {
 				struct sc_pkcs15_object *p2 = p->next;
@@ -484,10 +456,19 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 				p = p2;
 			}
 		}
+	if (p15card->file_app != NULL)
+		sc_file_free(p15card->file_app);
+	if (p15card->file_tokeninfo != NULL)
+		sc_file_free(p15card->file_tokeninfo);
+	if (p15card->file_odf != NULL)
+		sc_file_free(p15card->file_odf);
 	p15card->magic = 0;
-	free(p15card->label);
-	free(p15card->serial_number);
-	free(p15card->manufacturer_id);
+	if (p15card->label)
+		free(p15card->label);
+	if (p15card->serial_number)
+		free(p15card->serial_number);
+	if (p15card->manufacturer_id)
+		free(p15card->manufacturer_id);
 	free(p15card);
 }
 
@@ -499,7 +480,6 @@ int sc_pkcs15_bind(struct sc_card *card,
 	struct sc_pkcs15_card *p15card = NULL;
 	struct sc_path tmppath;
 	struct sc_context *ctx;
-	struct sc_file file;
 
 	assert(sc_card_valid(card) && p15card_out != NULL);
 	ctx = card->ctx;
@@ -509,45 +489,48 @@ int sc_pkcs15_bind(struct sc_card *card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	p15card->card = card;
 
-	sc_format_path("2F00", &tmppath);
 	err = sc_lock(card);
 	if (err) {
 		error(ctx, "sc_lock() failed: %s\n", sc_strerror(err));
 		goto error;
 	}
-	err = sc_select_file(card, &tmppath, &file);
-	if (err) {
-		error(ctx, "Error selecting EF(DIR): %s\n", sc_strerror(err));
-		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
-		goto error;
-	}
-	err = sc_read_binary(card, 0, buf, file.size, 0);
-	if (err < 0) {
-		error(ctx, "Error reading EF(DIR): %s\n", sc_strerror(err));
-		goto error;
-	}
-	if (err <= 2) {
-		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
-		error(ctx, "Error reading EF(DIR): too few bytes read\n");
-		goto error;
-	}
-	len = err;
-	if (parse_dir(buf, len, p15card)) {
-		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
-		error(ctx, "Error parsing EF(DIR)\n");
-		goto error;
-	}
-	if (p15card->file_odf.path.len == 0) {
-		tmppath = p15card->file_app.path;
-		memcpy(tmppath.value + tmppath.len, "\x50\x31", 2);
-		tmppath.len += 2;
-	} else
-		tmppath = p15card->file_odf.path;
 	
-	err = sc_select_file(card, &tmppath, &file);
-	if (err) /* FIXME: finish writing error stuff */
+	if (card->app_count < 0) {
+		err = sc_enum_apps(card);
+		if (err < 0 && err != SC_ERROR_FILE_NOT_FOUND) {
+			error(ctx, "unable to enumerate apps: %s\n", sc_strerror(err));
+			goto error;
+		}
+	}
+	p15card->file_app = sc_file_new();
+	if (p15card->file_app == NULL) {
+		err = SC_ERROR_OUT_OF_MEMORY;
 		goto error;
-	err = sc_read_binary(card, 0, buf, file.size, 0);
+	}
+	sc_format_path("3F005015", &p15card->file_app->path);
+	if (card->app_count > 0) {
+		const struct sc_app_info *info;
+		
+		info = sc_find_app_by_aid(card, pkcs15_aid, pkcs15_aid_len);
+		if (info != NULL) {
+			if (info->path.len)
+				p15card->file_app->path = info->path;
+			if (info->ddo != NULL)
+				parse_ddo(p15card, info->ddo, info->ddo_len);
+		}
+	}
+	if (p15card->file_odf == NULL) {
+		tmppath = p15card->file_app->path;
+		sc_append_path_id(&tmppath, "\x50\x31", 2);
+	} else {
+		tmppath = p15card->file_odf->path;
+		sc_file_free(p15card->file_odf);
+		p15card->file_odf = NULL;
+	}
+	err = sc_select_file(card, &tmppath, &p15card->file_odf);
+	if (err) /* FIXME: finish writing error reporting stuff */
+		goto error;
+	err = sc_read_binary(card, 0, buf, p15card->file_odf->size, 0);
 	if (err < 0)
 		goto error;
 	if (err < 2) {
@@ -559,16 +542,18 @@ int sc_pkcs15_bind(struct sc_card *card,
 		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
 		goto error;
 	}
-	if (p15card->file_tokeninfo.path.len == 0) {
-		tmppath.len -= 2;
-		memcpy(tmppath.value + tmppath.len, "\x50\x32", 2);
-		tmppath.len += 2;
-	} else
-		tmppath = p15card->file_tokeninfo.path;
-	err = sc_select_file(card, &tmppath, &file);
+	if (p15card->file_tokeninfo == NULL) {
+		tmppath = p15card->file_app->path;
+		sc_append_path_id(&tmppath, "\x50\x32", 2);
+	} else {
+		tmppath = p15card->file_tokeninfo->path;
+		sc_file_free(p15card->file_tokeninfo);
+		p15card->file_tokeninfo = NULL;
+	}
+	err = sc_select_file(card, &tmppath, &p15card->file_tokeninfo);
 	if (err)
 		goto error;
-	err = sc_read_binary(card, 0, buf, file.size, 0);
+	err = sc_read_binary(card, 0, buf, p15card->file_tokeninfo->size, 0);
 	if (err < 0)
 		goto error;
 	if (err <= 2) {
@@ -583,7 +568,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	sc_unlock(card);
 	return 0;
 error:
-	free(p15card);
+	sc_pkcs15_card_free(p15card);
 	sc_unlock(card);
 	SC_FUNC_RETURN(ctx, 1, err);
 }
@@ -592,10 +577,9 @@ int sc_pkcs15_detect(struct sc_card *card)
 {
 	int r;
 	struct sc_path path;
-	struct sc_file file;
 
 	sc_format_path("NA0000063504B43532D3135", &path);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 	if (r != 0)
 		return 0;
 	return 1;
@@ -762,10 +746,11 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	u8 *tokinf_buf = NULL, *odf_buf = NULL;
 	size_t tokinf_size, odf_size;
 	
-	sc_format_path("3F0050155031", &p15card->file_odf.path);
-	sc_format_path("3F0050155032", &p15card->file_tokeninfo.path);
-	memcpy(p15card->file_app.name, "\xA0\x00\x00\x00cPKCS-15", 12);
-	p15card->file_app.namelen = 12;
+	if (p15card->file_app == NULL || p15card->file_odf == NULL ||
+	    p15card->file_tokeninfo == NULL) {
+	    	error(card->ctx, "Not all of the necessary files have been supplied\n");
+	    	return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	if (card->ctx->debug)
 		debug(card->ctx, "creating EF(DIR)\n");
 	r = sc_pkcs15_create_dir(p15card, card);
@@ -777,7 +762,7 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	}
 	if (card->ctx->debug)
 		debug(card->ctx, "creating EF(TokenInfo)\n");
-	r = create_and_update_file(p15card, card, &p15card->file_tokeninfo, tokinf_buf, tokinf_size);
+	r = create_and_update_file(p15card, card, p15card->file_tokeninfo, tokinf_buf, tokinf_size);
 	if (r) {
 		sc_perror(card->ctx, r, "Error creating EF(TokenInfo)");
 		goto err;
@@ -792,7 +777,7 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 		sc_perror(card->ctx, r, "Error encoding EF(ODF)");
 		goto err;
 	}
-	r = create_and_update_file(p15card, card, &p15card->file_odf, odf_buf, odf_size);
+	r = create_and_update_file(p15card, card, p15card->file_odf, odf_buf, odf_size);
 	if (r) {
 		sc_perror(card->ctx, r, "Error creating EF(ODF)");
 		goto err;
@@ -840,8 +825,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
         const u8 *p = buf;
 	size_t bufsize = sizeof(buf);
 	int r, cached_file = 0;
-	struct sc_file *file = df->file[file_nr];
-	struct sc_path path = file->path;
+	struct sc_path path = df->file[file_nr]->path;
 	struct sc_pkcs15_object *obj = NULL;
 	int (* func)(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 		     const u8 **buf, size_t *bufsize) = NULL;
@@ -864,25 +848,30 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (p15card->use_cache) {
-		r = sc_pkcs15_read_cached_file(p15card, &file->path,
+		r = sc_pkcs15_read_cached_file(p15card, &path,
 					       &bufptr, &bufsize);
 		if (r == 0)
 			cached_file = 1;
 	}
 	if (cached_file == 0) {
-		r = sc_select_file(p15card->card, &path, file);
+		struct sc_file *file = NULL;
+		size_t file_size;
+
+		r = sc_select_file(p15card->card, &path, &file);
 		if (r) {
 			sc_perror(ctx, r, "sc_select_file() failed");
 			return r;
 		}
-		if (file->size > sizeof(buf)) {
+		file_size = file->size;
+		sc_file_free(file);
+		if (file_size > sizeof(buf)) {
 			error(ctx, "Buffer too small to handle DF contents\n");
 			return SC_ERROR_INTERNAL;
 		}
-		r = sc_read_binary(p15card->card, 0, buf, file->size, 0);
+		r = sc_read_binary(p15card->card, 0, buf, file_size, 0);
 		if (r < 0)
 			return r;
-		bufsize = file->size;
+		bufsize = file_size;
 	}
 	do {
 		obj = malloc(sizeof(struct sc_pkcs15_object));

@@ -124,18 +124,20 @@ static int emv_init(struct sc_card *card)
 }
 
 static int emv_select_file(struct sc_card *card, const struct sc_path *path,
-			   struct sc_file *file)
+			   struct sc_file **file)
 {
 	int r;
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 	const struct sc_card_operations *ops = iso_drv->ops;
 
 	r = ops->select_file(card, path, file);
+	if (r)
+		return r;
 	if (file != NULL && path->len == 2 && memcmp(path->value, "\x3F\x00", 2) == 0)
-		file->type = SC_FILE_TYPE_DF;
-	if (file != NULL && file->namelen)
-		file->type = SC_FILE_TYPE_DF;
-	return r;
+		(*file)->type = SC_FILE_TYPE_DF;
+	if (file != NULL && (*file)->namelen)
+		(*file)->type = SC_FILE_TYPE_DF;
+	return 0;
 }
 
 static const struct sc_card_driver * sc_get_driver(void)

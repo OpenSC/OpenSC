@@ -25,12 +25,6 @@
 #include <assert.h>
 #include <ctype.h>
 
-struct sc_card_error {
-	int SWs;
-	int errorno;
-	const char *errorstr;
-};
-
 const static struct sc_card_error iso7816_errors[] = {
 	{ 0x6200, SC_ERROR_UNKNOWN_REPLY,	"State of non-volatile memory unchanged" },
 	{ 0x6281, SC_ERROR_UNKNOWN_REPLY,	"Part of returned data may be corrupted" },
@@ -291,13 +285,14 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 
 static int iso7816_select_file(struct sc_card *card,
 			       const struct sc_path *in_path,
-			       struct sc_file *file)
+			       struct sc_file **file_out)
 {
 	struct sc_context *ctx;
 	struct sc_apdu apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int r, pathlen;
+	struct sc_file *file = NULL;
 
 	assert(card != NULL && in_path != NULL);
 	ctx = card->ctx;
@@ -334,14 +329,7 @@ static int iso7816_select_file(struct sc_card *card,
 	apdu.data = path;
 	apdu.datalen = pathlen;
 
-	if (file != NULL) {
-		int i;
-		/* initialize file to default values */
-		memset(file, 0, sizeof(struct sc_file));  
-		for (i = 0; i < SC_MAX_AC_OPS; i++)
-			file->acl[i] = SC_AC_UNKNOWN;
-		file->path = *in_path;
-
+	if (file_out != NULL) {
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
 		apdu.le = 256;
@@ -353,7 +341,7 @@ static int iso7816_select_file(struct sc_card *card,
 	}
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (file == NULL) {
+	if (file_out == NULL) {
 		if (apdu.sw1 == 0x61)
 			SC_FUNC_RETURN(card->ctx, 2, 0);
 		SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
@@ -365,8 +353,13 @@ static int iso7816_select_file(struct sc_card *card,
 
 	switch (apdu.resp[0]) {
 	case 0x6F:
-		if (file != NULL && apdu.resp[1] <= apdu.resplen)
+		file = sc_file_new();
+		if (file == NULL)
+			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+		file->path = *in_path;
+		if (apdu.resp[1] <= apdu.resplen)
 			process_fci(card->ctx, file, apdu.resp+2, apdu.resp[1]);
+		*file_out = file;
 		break;
 	case 0x00:	/* proprietary coding */
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_UNKNOWN_REPLY);
@@ -402,28 +395,10 @@ static int iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	return 0;
 }
 
-static u8 acl_to_byte(unsigned int acl)
-{
-	switch (acl) {
-	case SC_AC_NONE:
-		return 0x00;
-	case SC_AC_CHV1:
-		return 0x01;
-	case SC_AC_CHV2:
-		return 0x02;
-	case SC_AC_TERM:
-		return 0x04;
-	case SC_AC_NEVER:
-		return 0x0F;
-	}
-	return 0x00;
-}
-
 static int construct_fci(const struct sc_file *file, u8 *out, size_t *outlen)
 {
 	u8 *p = out;
 	u8 buf[64];
-	int i;
 	
 	*p++ = 0x6F;
 	p++;
@@ -457,28 +432,6 @@ static int construct_fci(const struct sc_file *file, u8 *out, size_t *outlen)
 	if (file->sec_attr_len) {
 		memcpy(buf, file->sec_attr, file->sec_attr_len);
 		sc_asn1_put_tag(0x86, buf, file->sec_attr_len, p, 18, &p);
-	} else {
-		int idx[6];
-		if (file->type == SC_FILE_TYPE_DF) {
-			const int df_idx[6] = {
-				SC_AC_OP_SELECT, SC_AC_OP_LOCK, SC_AC_OP_DELETE,
-				SC_AC_OP_CREATE, SC_AC_OP_REHABILITATE,
-				SC_AC_OP_INVALIDATE
-			};
-			for (i = 0; i < 6; i++)
-				idx[i] = df_idx[i];
-		} else {
-			const int ef_idx[6] = {
-				SC_AC_OP_READ, SC_AC_OP_UPDATE, SC_AC_OP_WRITE,
-				SC_AC_OP_ERASE, SC_AC_OP_REHABILITATE,
-				SC_AC_OP_INVALIDATE
-			};
-			for (i = 0; i < 6; i++)
-				idx[i] = ef_idx[i];
-		}
-		for (i = 0; i < 6; i++)
-			buf[i] = acl_to_byte(file->acl[idx[i]]);
-		sc_asn1_put_tag(0x86, buf, 6, p, 18, &p);
 	}
 	out[1] = p - out - 2;
 
@@ -556,8 +509,7 @@ static int iso7816_verify(struct sc_card *card, unsigned int type, int ref,
 	if (pinlen >= SC_MAX_APDU_BUFFER_SIZE)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	switch (type) {
-	case SC_AC_CHV1:
-	case SC_AC_CHV2:
+	case SC_AC_CHV:
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -724,8 +676,7 @@ static int iso7816_change_reference_data(struct sc_card *card, unsigned int type
 	if (len >= SC_MAX_APDU_BUFFER_SIZE)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	switch (type) {
-	case SC_AC_CHV1:
-	case SC_AC_CHV2:
+	case SC_AC_CHV:
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -762,8 +713,7 @@ static int iso7816_reset_retry_counter(struct sc_card *card, unsigned int type, 
 	if (len >= MAX_BUFFER_SIZE)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	switch (type) {
-	case SC_AC_CHV1:
-	case SC_AC_CHV2:
+	case SC_AC_CHV:
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;

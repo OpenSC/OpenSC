@@ -115,7 +115,7 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 
 static int tcos_select_file(struct sc_card *card,
 			    const struct sc_path *in_path,
-			    struct sc_file *file)
+			    struct sc_file **file)
 {
 	int r;
 	
@@ -123,7 +123,7 @@ static int tcos_select_file(struct sc_card *card,
 	if (r)
 		return r;
 	if (file != NULL)
-		parse_sec_attr(file, file->sec_attr, file->sec_attr_len);
+		parse_sec_attr((*file), (*file)->sec_attr, (*file)->sec_attr_len);
 	return 0;
 }
 

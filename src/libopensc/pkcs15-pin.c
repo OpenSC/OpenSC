@@ -230,7 +230,6 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 			 const u8 *pincode, int pinlen)
 {
 	int r;
-	struct sc_file file;
 	struct sc_card *card;
 	u8 pinbuf[SC_MAX_PIN_SIZE];
 
@@ -242,14 +241,14 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	card = p15card->card;
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-	r = sc_select_file(card, &pin->path, &file);
+	r = sc_select_file(card, &pin->path, NULL);
 	if (r) {
 		sc_unlock(card);
 		return r;
 	}
 	memset(pinbuf, pin->pad_char, pin->stored_length);
 	memcpy(pinbuf, pincode, pinlen);
-	r = sc_verify(card, SC_AC_CHV1, pin->reference,
+	r = sc_verify(card, SC_AC_CHV, pin->reference,
 		      pinbuf, pin->stored_length, &pin->tries_left);
 	memset(pinbuf, 0, pinlen);
 	sc_unlock(card);
@@ -265,7 +264,6 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 			 const u8 *newpin, int newpinlen)
 {
 	int r;
-	struct sc_file file;
 	struct sc_card *card;
 	u8 pinbuf[SC_MAX_PIN_SIZE * 2];
 
@@ -280,7 +278,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	card = p15card->card;
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-	r = sc_select_file(card, &pin->path, &file);
+	r = sc_select_file(card, &pin->path, NULL);
 	if (r) {
 		sc_unlock(card);
 		return r;
@@ -288,7 +286,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	memset(pinbuf, pin->pad_char, pin->stored_length * 2);
 	memcpy(pinbuf, oldpin, oldpinlen);
 	memcpy(pinbuf + pin->stored_length, newpin, newpinlen);
-	r = sc_change_reference_data(card, SC_AC_CHV1, pin->auth_id.value[0], pinbuf,
+	r = sc_change_reference_data(card, SC_AC_CHV, pin->reference, pinbuf,
 				     pin->stored_length, pinbuf+pin->stored_length,
 				     pin->stored_length, &pin->tries_left);
 	memset(pinbuf, 0, pin->stored_length * 2);

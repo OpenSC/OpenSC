@@ -290,7 +290,8 @@ int change_pin(void)
 
 int read_and_cache_file(const struct sc_path *path)
 {
-	struct sc_file tmpfile;
+	struct sc_file *tmpfile;
+	const struct sc_acl_entry *e;
 	u8 buf[16384];
 	int r;
 
@@ -304,21 +305,23 @@ int read_and_cache_file(const struct sc_path *path)
 		fprintf(stderr, "sc_select_file() failed: %s\n", sc_strerror(r));
 		return -1;
 	}
-	if (tmpfile.acl[SC_AC_OP_READ] != SC_AC_NONE) {
+	e = sc_file_get_acl_entry(tmpfile, SC_AC_OP_READ);
+	if (e != NULL && e->method != SC_AC_NONE) {
 		if (!quiet)
 			printf("Skipping; ACL for read operation is not NONE.\n");
 		return -1;
 	}
-	r = sc_read_binary(card, 0, buf, tmpfile.size, 0);
+	r = sc_read_binary(card, 0, buf, tmpfile->size, 0);
 	if (r < 0) {
 		fprintf(stderr, "sc_read_binary() failed: %s\n", sc_strerror(r));
 		return -1;
 	}
-	r = sc_pkcs15_cache_file(p15card, path, buf, tmpfile.size);
+	r = sc_pkcs15_cache_file(p15card, path, buf, tmpfile->size);
 	if (r) {
 		fprintf(stderr, "Unable to cache file: %s\n", sc_strerror(r));
 		return -1;
 	}
+	sc_file_free(tmpfile);
 	return 0;
 }
 

@@ -81,16 +81,48 @@ static int flex_init(struct sc_card *card)
 	return 0;
 }
 
-static unsigned int ac_to_acl(u8 nibble)
+static void add_acl_entry(struct sc_file *file, unsigned int op,
+			  u8 nibble)
 {
-	unsigned int acl_table[16] = {
-		/* 0 */ SC_AC_NONE, SC_AC_CHV1, SC_AC_CHV2, SC_AC_PRO,
-		/* 4 */ SC_AC_AUT, SC_AC_UNKNOWN, SC_AC_CHV1 | SC_AC_PRO,
-		/* 7 */ SC_AC_CHV2 | SC_AC_PRO, SC_AC_CHV1 | SC_AC_AUT,
-		/* 9 */ SC_AC_CHV2 | SC_AC_AUT, SC_AC_UNKNOWN, SC_AC_UNKNOWN,
-		/* c */	SC_AC_UNKNOWN, SC_AC_UNKNOWN, SC_AC_UNKNOWN,
-		/* f */ SC_AC_NEVER };
-	return acl_table[nibble & 0x0F];
+	switch (nibble) {
+	case 0:
+		sc_file_add_acl_entry(file, op, SC_AC_NONE, SC_AC_KEY_REF_NONE);
+		break;
+	case 1:
+		sc_file_add_acl_entry(file, op, SC_AC_CHV, 1);
+		break;
+	case 2:
+		sc_file_add_acl_entry(file, op, SC_AC_CHV, 2);
+		break;
+	case 3:
+		sc_file_add_acl_entry(file, op, SC_AC_PRO, SC_AC_KEY_REF_NONE);
+		break;
+	case 4:
+		sc_file_add_acl_entry(file, op, SC_AC_AUT, SC_AC_KEY_REF_NONE);
+		break;
+	case 6:
+		sc_file_add_acl_entry(file, op, SC_AC_CHV, 1);
+		sc_file_add_acl_entry(file, op, SC_AC_PRO, SC_AC_KEY_REF_NONE);
+		break;
+	case 7:
+		sc_file_add_acl_entry(file, op, SC_AC_CHV, 2);
+		sc_file_add_acl_entry(file, op, SC_AC_PRO, SC_AC_KEY_REF_NONE);
+		break;
+	case 8:
+		sc_file_add_acl_entry(file, op, SC_AC_CHV, 1);
+		sc_file_add_acl_entry(file, op, SC_AC_AUT, SC_AC_KEY_REF_NONE);
+		break;
+	case 9:
+		sc_file_add_acl_entry(file, op, SC_AC_CHV, 2);
+		sc_file_add_acl_entry(file, op, SC_AC_AUT, SC_AC_KEY_REF_NONE);
+		break;
+	case 15:
+		sc_file_add_acl_entry(file, op, SC_AC_NEVER, SC_AC_KEY_REF_NONE);
+		break;
+	default:
+		sc_file_add_acl_entry(file, op, SC_AC_UNKNOWN, SC_AC_KEY_REF_NONE);
+		break;
+	}
 }
 
 static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen,
@@ -134,18 +166,18 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 	}
         p += 2;
 	if (file->type == SC_FILE_TYPE_DF) {
-		file->acl[SC_AC_OP_LIST_FILES] = ac_to_acl(p[0] >> 4);
-		file->acl[SC_AC_OP_DELETE] = ac_to_acl(p[1] >> 4);
-		file->acl[SC_AC_OP_CREATE] = ac_to_acl(p[1] & 0x0F);
+		add_acl_entry(file, SC_AC_OP_LIST_FILES, p[0] >> 4);
+		add_acl_entry(file, SC_AC_OP_DELETE, p[1] >> 4);
+		add_acl_entry(file, SC_AC_OP_CREATE, p[1] & 0x0F);
 	} else { /* EF */
-		file->acl[SC_AC_OP_READ] = ac_to_acl(p[0] >> 4);
+		add_acl_entry(file, SC_AC_OP_READ, p[0] >> 4);
 		switch (file->ef_structure) {
 		case SC_FILE_EF_TRANSPARENT:
-			file->acl[SC_AC_OP_UPDATE] = ac_to_acl(p[0] & 0x0F);
+			add_acl_entry(file, SC_AC_OP_UPDATE, p[0] & 0x0F);
 			break;
 		case SC_FILE_EF_LINEAR_FIXED:
 		case SC_FILE_EF_LINEAR_VARIABLE:
-			file->acl[SC_AC_OP_UPDATE] = ac_to_acl(p[0] & 0x0F);
+			add_acl_entry(file, SC_AC_OP_UPDATE, p[0] & 0x0F);
 			break;
 		case SC_FILE_EF_CYCLIC:
 #if 0
@@ -155,9 +187,9 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 			break;
 		}
 	}
-	file->acl[SC_AC_OP_REHABILITATE] = ac_to_acl(p[2] >> 4);
-	file->acl[SC_AC_OP_INVALIDATE] = ac_to_acl(p[2] & 0x0F);
-	p += 3; /* skip ACs */
+	add_acl_entry(file, SC_AC_OP_REHABILITATE, p[2] >> 4);
+	add_acl_entry(file, SC_AC_OP_INVALIDATE, p[2] & 0x0F);
+	p += 3;
 	if (*p++)
 		file->status = SC_FILE_STATUS_ACTIVATED;
 	else
@@ -238,11 +270,12 @@ void cache_path(struct sc_card *card, const struct sc_path *path)
 }
 
 static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
-			  u8 p1, struct sc_file *file)
+			  u8 p1, struct sc_file **file_out)
 {
-	int r, i;
+	int r;
 	struct sc_apdu apdu;
         u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+        struct sc_file *file;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, p1, 0);
 	apdu.resp = rbuf;
@@ -252,14 +285,14 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 	apdu.lc = buflen;
 
 	/* No need to get file information, if file is NULL. */
-	if (file == NULL)
+	if (file_out == NULL)
                 apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 
-	if (file == NULL)
+	if (file_out == NULL)
                 return 0;
 
 	if (apdu.resplen < 14)
@@ -268,17 +301,20 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 		error(card->ctx, "unsupported: card returned FCI\n");
 		return SC_ERROR_UNKNOWN_REPLY; /* FIXME */
 	}
-
-	memset(file, 0, sizeof(struct sc_file));
-	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file->acl[i] = SC_AC_UNKNOWN;
-
-	return parse_flex_sf_reply(card->ctx, apdu.resp, apdu.resplen, file);
-
+	file = sc_file_new();
+	if (file == NULL)
+		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+	r = parse_flex_sf_reply(card->ctx, apdu.resp, apdu.resplen, file);
+	if (r) {
+                sc_file_free(file);
+		return r;
+	}
+	*file_out = file;
+        return 0;
 }
 
 static int flex_select_file(struct sc_card *card, const struct sc_path *path,
-			     struct sc_file *file)
+			     struct sc_file **file_out)
 {
 	int r;
 	const u8 *pathptr = path->value;
@@ -291,7 +327,7 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 	case SC_PATH_TYPE_PATH:
 		if ((pathlen & 1) != 0) /* not divisible by 2 */
 			return SC_ERROR_INVALID_ARGUMENTS;
-		magic_done = check_path(card, &pathptr, &pathlen, file != NULL);
+		magic_done = check_path(card, &pathptr, &pathlen, file_out != NULL);
 		if (pathlen == 0)
 			return 0;
 		if (pathlen != 2 || memcmp(pathptr, "\x3F\x00", 2) != 0) {
@@ -322,7 +358,7 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 			return SC_ERROR_INVALID_ARGUMENTS;
                 break;
 	}
-	r = select_file_id(card, pathptr, pathlen, p1, file);
+	r = select_file_id(card, pathptr, pathlen, p1, file_out);
 	if (locked)
 		sc_unlock(card);
 	if (r)
@@ -388,40 +424,43 @@ static int flex_delete_file(struct sc_card *card, const struct sc_path *path)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-static int acl_to_ac(unsigned int acl)
+static int acl_to_ac_nibble(const struct sc_acl_entry *e)
 {
-	int i;
-	unsigned int acl_table[16] = {
-		/* 0 */ SC_AC_NONE, SC_AC_CHV1, SC_AC_CHV2, SC_AC_PRO,
-		/* 4 */ SC_AC_AUT, SC_AC_UNKNOWN, SC_AC_CHV1 | SC_AC_PRO,
-		/* 7 */ SC_AC_CHV2 | SC_AC_PRO, SC_AC_CHV1 | SC_AC_AUT,
-		/* 9 */ SC_AC_CHV2 | SC_AC_AUT, SC_AC_UNKNOWN, SC_AC_UNKNOWN,
-		/* c */	SC_AC_UNKNOWN, SC_AC_UNKNOWN, SC_AC_UNKNOWN,
-		/* f */ SC_AC_NEVER };
-	if (acl == SC_AC_NEVER)
-		return 0x0f;
-	else if (acl == SC_AC_UNKNOWN)
+	if (e == NULL)
 		return -1;
-	acl &= ~SC_AC_KEY_NUM_MASK;
-	for (i = 0; i < sizeof(acl_table)/sizeof(acl_table[0]); i++)
-		if (acl == acl_table[i])
-			return i;
+	if (e->next != NULL)	/* FIXME */
+		return -1;
+	switch (e->method) {
+	case SC_AC_NONE:
+		return 0x00;
+	case SC_AC_CHV:
+		switch (e->key_ref) {
+		case 1:
+			return 0x01;
+			break;
+		case 2:
+			return 0x02;
+			break;
+		}
+		return -1;
+	case SC_AC_PRO:
+		return 0x03;
+	case SC_AC_AUT:
+		return 0x04;
+	case SC_AC_NEVER:
+		return 0x0f;
+	}
 	return -1;
 }
 
-static int acl_to_keynum(unsigned int acl)
+static int acl_to_keynum_nibble(const struct sc_acl_entry *e)
 {
-	if (!(acl & SC_AC_AUT))
+	while (e != NULL && e->method != SC_AC_AUT)
+		e = e->next;
+	if (e == NULL || e->key_ref == SC_AC_KEY_REF_NONE)
 		return 0;
-	switch (acl & SC_AC_KEY_NUM_MASK) {
-	case SC_AC_KEY_NUM_0:
-		return 0x00;
-	case SC_AC_KEY_NUM_1:
-		return 0x01;
-	case SC_AC_KEY_NUM_2:
-		return 0x02;
-	}
-	return 0;
+
+        return e->key_ref & 0x0F;
 }
 
 static int encode_file_structure(struct sc_card *card, const struct sc_file *file,
@@ -477,11 +516,11 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 	for (i = 0; i < 6; i++) {
 		if (ops[i] == -1)
 			continue;
-		r = acl_to_ac(file->acl[ops[i]]);
+		r = acl_to_ac_nibble(file->acl[ops[i]]);
 		SC_TEST_RET(card->ctx, r, "Invalid ACL value");
 		/* Do some magic to get the nibbles right */
 		p[8 + i/2] |= (r & 0x0F) << (((i+1) % 2) * 4);
-		r = acl_to_keynum(file->acl[ops[i]]);
+		r = acl_to_keynum_nibble(file->acl[ops[i]]);
 		p[13 + i/2] |= (r & 0x0F) << (((i+1) % 2) * 4);
 	}
 	p[11] = (file->status & SC_FILE_STATUS_INVALIDATED) ? 0x00 : 0x01;
@@ -616,8 +655,7 @@ static int flex_verify(struct sc_card *card, unsigned int type, int ref,
 	if (buflen >= SC_MAX_APDU_BUFFER_SIZE)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	switch (type) {
-	case SC_AC_CHV1:
-	case SC_AC_CHV2:
+	case SC_AC_CHV:
 		cla = 0xC0;
 		ins = 0x20;
 		break;

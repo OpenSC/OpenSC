@@ -110,7 +110,7 @@ char *getpin(const char *prompt)
 int verify_pin(int pin)
 {
 	char prompt[50];
-	int r, type, tries_left = -1;
+	int r, tries_left = -1;
 	
 	if (pincode == NULL) {
 		sprintf(prompt, "Please enter CHV%d: ", pin);
@@ -118,13 +118,9 @@ int verify_pin(int pin)
 		if (pincode == NULL || strlen((char *) pincode) == 0)
 			return -1;
 	}
-	if (pin == 1)
-		type = SC_AC_CHV1;
-	else if (pin == 2)
-		type = SC_AC_CHV2;
-	else
+	if (pin != 1 && pin != 2)
 		return -3;
-	r = sc_verify(card, type, pin, pincode, 8, &tries_left);
+	r = sc_verify(card, SC_AC_CHV, pin, pincode, 8, &tries_left);
 	if (r) {
 		memset(pincode, 0, 8);
 		free(pincode);
@@ -138,7 +134,7 @@ int verify_pin(int pin)
 int select_app_df(void)
 {
 	struct sc_path path;
-	struct sc_file file;
+	struct sc_file *file;
 	char str[80];
 	int r;
 
@@ -151,10 +147,11 @@ int select_app_df(void)
 		fprintf(stderr, "Unable to select application DF: %s\n", sc_strerror(r));
 		return -1;
 	}
-	if (file.type != SC_FILE_TYPE_DF) {
+	if (file->type != SC_FILE_TYPE_DF) {
 		fprintf(stderr, "Selected application DF is not a DF.\n");
 		return -1;
 	}
+	sc_file_free(file);
 	if (opt_pin_num >= 0)
 		return verify_pin(opt_pin_num);
 	else
@@ -335,7 +332,7 @@ int read_public_key(RSA *rsa)
 {
 	int r;
 	struct sc_path path;
-	struct sc_file file;
+	struct sc_file *file;
 	u8 buf[2048], *p = buf;
 	size_t bufsize, keysize;
 	
@@ -348,7 +345,8 @@ int read_public_key(RSA *rsa)
 		fprintf(stderr, "Unable to select public key file: %s\n", sc_strerror(r));
 		return 2;
 	}
-	bufsize = file.size;
+	bufsize = file->size;
+	sc_file_free(file);
 	r = sc_read_binary(card, 0, buf, bufsize, 0);
 	if (r < 0) {
 		fprintf(stderr, "Unable to read public key file: %s\n", sc_strerror(r));
@@ -380,7 +378,9 @@ int read_private_key(RSA *rsa)
 {
 	int r;
 	struct sc_path path;
-	struct sc_file file;
+	struct sc_file *file;
+	const struct sc_acl_entry *e;
+	
 	u8 buf[2048], *p = buf;
 	size_t bufsize, keysize;
 	
@@ -393,9 +393,11 @@ int read_private_key(RSA *rsa)
 		fprintf(stderr, "Unable to select private key file: %s\n", sc_strerror(r));
 		return 2;
 	}
-	if (file.acl[SC_AC_OP_READ] == SC_AC_NEVER)
+	e = sc_file_get_acl_entry(file, SC_AC_OP_READ);
+	if (e == NULL || e->method == SC_AC_NEVER)
 		return 10;
-	bufsize = file.size;
+	bufsize = file->size;
+	sc_file_free(file);
 	r = sc_read_binary(card, 0, buf, bufsize, 0);
 	if (r < 0) {
 		fprintf(stderr, "Unable to read private key file: %s\n", sc_strerror(r));
@@ -471,7 +473,6 @@ int list_keys(void)
 {
 	int r, i, idx = 0;
 	struct sc_path path;
-	struct sc_file file;
 	u8 buf[2048], *p = buf;
 	size_t keysize;
 	int mod_lens[] = { 512, 768, 1024, 2048 };
@@ -481,7 +482,7 @@ int list_keys(void)
 	if (r)
 		return 1;
 	sc_format_path("I1012", &path);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 	if (r) {
 		fprintf(stderr, "Unable to select public key file: %s\n", sc_strerror(r));
 		return 2;
@@ -568,7 +569,7 @@ int generate_key(void)
 
 int create_key_files(void)
 {
-	struct sc_file file;
+	struct sc_file *file;
 	int mod_lens[] = { 512, 768, 1024, 2048 };
 	int sizes[] = { 163, 243, 323, 643 };
 	int size = -1;
@@ -587,35 +588,41 @@ int create_key_files(void)
 	if (!quiet)
 		printf("Creating key files for %d keys.\n", opt_key_count);
 	
-	memset(&file, 0, sizeof(file));
-	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file.acl[i] = SC_AC_NONE;
-	file.type = SC_FILE_TYPE_WORKING_EF;
-	file.ef_structure = SC_FILE_EF_TRANSPARENT;
+	file = sc_file_new();
+	file->type = SC_FILE_TYPE_WORKING_EF;
+	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 
-	file.id = 0x0012;
-	file.size = opt_key_count * size + 3;
-	file.acl[SC_AC_OP_READ] = SC_AC_NEVER;
-	file.acl[SC_AC_OP_UPDATE] = SC_AC_CHV1;
-	file.acl[SC_AC_OP_INVALIDATE] = SC_AC_CHV1;
-	file.acl[SC_AC_OP_REHABILITATE] = SC_AC_CHV1;
-	
+	file->id = 0x0012;
+	file->size = opt_key_count * size + 3;
+	sc_file_add_acl_entry(file, SC_AC_OP_READ, SC_AC_NEVER, SC_AC_KEY_REF_NONE);
+	sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, SC_AC_CHV, 1);
+	sc_file_add_acl_entry(file, SC_AC_OP_INVALIDATE, SC_AC_CHV, 1);
+	sc_file_add_acl_entry(file, SC_AC_OP_REHABILITATE, SC_AC_CHV, 1);
+
 	if (select_app_df())
 		return 1;
-	r = sc_create_file(card, &file);	
+	r = sc_create_file(card, file);
+	sc_file_free(file);
 	if (r) {
 		fprintf(stderr, "Unable to create private key file: %s\n", sc_strerror(r));
 		return 1;
 	}
-	file.id = 0x1012;
-	file.size = opt_key_count * (size + 4) + 3;
-	file.acl[SC_AC_OP_READ] = SC_AC_NONE;
-	file.acl[SC_AC_OP_UPDATE] = SC_AC_CHV1;
-	file.acl[SC_AC_OP_INVALIDATE] = SC_AC_CHV1;
-	file.acl[SC_AC_OP_REHABILITATE] = SC_AC_CHV1;
+
+	file = sc_file_new();
+	file->type = SC_FILE_TYPE_WORKING_EF;
+	file->ef_structure = SC_FILE_EF_TRANSPARENT;
+
+	file->id = 0x1012;
+	file->size = opt_key_count * (size + 4) + 3;
+	sc_file_add_acl_entry(file, SC_AC_OP_READ, SC_AC_NONE, SC_AC_KEY_REF_NONE);
+	sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, SC_AC_CHV, 1);
+	sc_file_add_acl_entry(file, SC_AC_OP_INVALIDATE, SC_AC_CHV, 1);
+	sc_file_add_acl_entry(file, SC_AC_OP_REHABILITATE, SC_AC_CHV, 1);
+
 	if (select_app_df())
 		return 1;
-	r = sc_create_file(card, &file);
+	r = sc_create_file(card, file);
+	sc_file_free(file);
 	if (r) {
 		fprintf(stderr, "Unable to create public key file: %s\n", sc_strerror(r));
 		return 1;
@@ -785,13 +792,12 @@ int update_public_key(const u8 *key, size_t keysize)
 {
 	int r, idx = 0;
 	struct sc_path path;
-	struct sc_file file;
 
 	r = select_app_df();
 	if (r)
 		return 1;
 	sc_format_path("I1012", &path);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 	if (r) {
 		fprintf(stderr, "Unable to select public key file: %s\n", sc_strerror(r));
 		return 2;
@@ -809,13 +815,12 @@ int update_private_key(const u8 *key, size_t keysize)
 {
 	int r, idx = 0;
 	struct sc_path path;
-	struct sc_file file;
 
 	r = select_app_df();
 	if (r)
 		return 1;
 	sc_format_path("I0012", &path);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 	if (r) {
 		fprintf(stderr, "Unable to select private key file: %s\n", sc_strerror(r));
 		return 2;
@@ -897,39 +902,46 @@ int create_file(struct sc_file *file)
 
 int create_app_df(struct sc_path *path, size_t size)
 {
-	struct sc_file file;
+	struct sc_file *file;
 	int i;
 	
-	memset(&file, 0, sizeof(file));
-	file.type = SC_FILE_TYPE_DF;
-	file.size = size;
-	file.path = *path;
-	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file.acl[i] = SC_AC_NONE;
-        file.acl[SC_AC_OP_CREATE] = SC_AC_CHV2;
-        file.acl[SC_AC_OP_DELETE] = SC_AC_CHV2;
-	file.status = SC_FILE_STATUS_ACTIVATED;
-	return create_file(&file);
+	file = sc_file_new();
+
+	file->type = SC_FILE_TYPE_DF;
+	file->size = size;
+	file->path = *path;
+
+	sc_file_add_acl_entry(file, SC_AC_OP_LIST_FILES, SC_AC_NONE, SC_AC_KEY_REF_NONE);
+	sc_file_add_acl_entry(file, SC_AC_OP_CREATE, SC_AC_CHV, 2);
+	sc_file_add_acl_entry(file, SC_AC_OP_DELETE, SC_AC_CHV, 2);
+	sc_file_add_acl_entry(file, SC_AC_OP_INVALIDATE, SC_AC_CHV, 2);
+	sc_file_add_acl_entry(file, SC_AC_OP_REHABILITATE, SC_AC_CHV, 2);
+
+	file->status = SC_FILE_STATUS_ACTIVATED;
+
+	i = create_file(file);
+	sc_file_free(file);
+	return i;
 }
 
 int new_pkcs15_df(struct sc_pkcs15_card *p15card, int df_type, struct sc_file *file)
 {
 	struct sc_pkcs15_df *df = &p15card->df[df_type];
-	struct sc_file *newfile;
+	struct sc_file *newfile = NULL;
 	int c = df->count;
 
 	if (c >= SC_PKCS15_MAX_DFS)
 		return -1;
-	file->acl[SC_AC_OP_UPDATE] = SC_AC_CHV2;
-	file->acl[SC_AC_OP_INVALIDATE] = SC_AC_NEVER;
-	file->acl[SC_AC_OP_REHABILITATE] = SC_AC_NEVER;
-	newfile = malloc(sizeof(struct sc_file));
+	sc_file_dup(&newfile, file);
 	if (newfile == NULL)
 		return -1;
+	sc_file_add_acl_entry(newfile, SC_AC_OP_LIST_FILES, SC_AC_NONE, SC_AC_KEY_REF_NONE);
+	sc_file_add_acl_entry(newfile, SC_AC_OP_UPDATE, SC_AC_CHV, 2);
+	sc_file_add_acl_entry(newfile, SC_AC_OP_INVALIDATE, SC_AC_CHV, 2);
+	sc_file_add_acl_entry(newfile, SC_AC_OP_REHABILITATE, SC_AC_CHV, 2);
 	df->file[c] = newfile;
-	memcpy(newfile, file, sizeof(struct sc_file));
-
 	df->count++;
+
 	return c;
 }
 
@@ -938,9 +950,9 @@ int create_pin_file(const struct sc_path *inpath, int chv, const char *key_id)
 	char prompt[40], *pin, *puk;
 	char buf[30], *p = buf;
 	struct sc_path file_id, path;
-	struct sc_file file;
+	struct sc_file *file;
 	size_t len;
-	int r, i;
+	int r;
 	
 	file_id = *inpath;
 	if (file_id.len < 2)
@@ -1014,21 +1026,23 @@ int create_pin_file(const struct sc_path *inpath, int chv, const char *key_id)
 	*p++ = opt_puk_attempts;
 	*p++ = opt_puk_attempts;
 	len = p - buf;
-	file.type = SC_FILE_TYPE_WORKING_EF;
-	file.ef_structure = SC_FILE_EF_TRANSPARENT;
-	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file.acl[i] = SC_AC_NONE;
-	file.acl[SC_AC_OP_READ] = SC_AC_NEVER;
+	
+	file = sc_file_new();
+	file->type = SC_FILE_TYPE_WORKING_EF;
+	file->ef_structure = SC_FILE_EF_TRANSPARENT;
+	sc_file_add_acl_entry(file, SC_AC_OP_READ, SC_AC_NEVER, SC_AC_KEY_REF_NONE);
 	if (inpath->len == 2 && inpath->value[0] == 0x3F &&
 	    inpath->value[1] == 0x00)
-		file.acl[SC_AC_OP_UPDATE] = SC_AC_AUT | SC_AC_KEY_NUM_1;
+		sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, SC_AC_AUT, 1);
 	else
-		file.acl[SC_AC_OP_UPDATE] = SC_AC_CHV2;
-	file.acl[SC_AC_OP_INVALIDATE] = SC_AC_AUT | SC_AC_KEY_NUM_1;
-	file.acl[SC_AC_OP_REHABILITATE] = SC_AC_AUT | SC_AC_KEY_NUM_1;
-	file.size = len;
-	file.id = (file_id.value[0] << 8) | file_id.value[1];
-	r = sc_create_file(card, &file);
+		sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, SC_AC_CHV, 2);
+
+	sc_file_add_acl_entry(file, SC_AC_OP_INVALIDATE, SC_AC_AUT, 1);
+	sc_file_add_acl_entry(file, SC_AC_OP_REHABILITATE, SC_AC_AUT, 1);
+	file->size = len;
+	file->id = (file_id.value[0] << 8) | file_id.value[1];
+	r = sc_create_file(card, file);
+	sc_file_free(file);
 	if (r) {
 		fprintf(stderr, "PIN file creation failed: %s\n", sc_strerror(r));
 		return r;
@@ -1071,12 +1085,12 @@ int add_object(struct sc_pkcs15_card *p15card,
 int create_pkcs15()
 {
 	struct sc_pkcs15_card *p15card;
-	struct sc_file file;
+	struct sc_file *file;
         struct sc_path path;
 	struct sc_pkcs15_cert_info cert;
 	struct sc_pkcs15_pin_info pin;
         struct sc_pkcs15_prkey_info prkey;
-	int i, r, file_no;
+	int r, file_no;
 
 	p15card = sc_pkcs15_card_new();
 	if (p15card == NULL)
@@ -1086,33 +1100,36 @@ int create_pkcs15()
 	p15card->serial_number = strdup("1234");
 	p15card->flags = SC_PKCS15_CARD_FLAG_EID_COMPLIANT;
 	p15card->version = 1;
-	sc_format_path("3F005015", &p15card->file_app.path);
+	p15card->file_app = sc_file_new();
+	sc_format_path("3F005015", &p15card->file_app->path);
 	p15card->card = card;
-	memset(&file, 0, sizeof(file));
-	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file.acl[i] = SC_AC_NONE;
-        file.size = 32;
 
-	sc_format_path("3F0050155031", &file.path);
-	p15card->file_tokeninfo = file;
+	file = sc_file_new();
+        file->size = 32; /* reserve 32 additional bytes in each DF */
 
-	sc_format_path("3F0050155031", &file.path);
-	p15card->file_odf = file;
+	sc_format_path("3F0050155032", &file->path);
+	sc_file_dup(&p15card->file_tokeninfo, file);
 
-	sc_format_path("3F0050154403", &file.path);
-	file_no = new_pkcs15_df(p15card, SC_PKCS15_CDF, &file);
+	sc_format_path("3F0050155031", &file->path);
+	sc_file_dup(&p15card->file_odf, file);
+
+	sc_format_path("3F0050154403", &file->path);
+	file_no = new_pkcs15_df(p15card, SC_PKCS15_CDF, file);
 	if (file_no < 0)
 		return 1;
 
-	sc_format_path("3F0050154402", &file.path);
-	file_no = new_pkcs15_df(p15card, SC_PKCS15_PRKDF, &file);
+	sc_format_path("3F0050154402", &file->path);
+	file_no = new_pkcs15_df(p15card, SC_PKCS15_PRKDF, file);
 	if (file_no < 0)
 		return 1;
 
-	sc_format_path("3F0050154401", &file.path);
-	file_no = new_pkcs15_df(p15card, SC_PKCS15_AODF, &file);
+	sc_format_path("3F0050154401", &file->path);
+	file_no = new_pkcs15_df(p15card, SC_PKCS15_AODF, file);
 	if (file_no < 0)
 		return 1;
+
+	sc_file_free(file);
+	file = NULL;
 
 	memset(&cert, 0, sizeof(cert));
 	strcpy(cert.com_attr.label, "Authentication certificate");
@@ -1180,12 +1197,12 @@ int create_pkcs15()
 	add_object(p15card, &p15card->df[SC_PKCS15_AODF], file_no,
 		   SC_PKCS15_TYPE_AUTH_PIN, &pin, sizeof(pin)),
 
-	r = create_app_df(&p15card->file_app.path, 5000);
+	r = create_app_df(&p15card->file_app->path, 5000);
 	if (r) {
 		fprintf(stderr, "Unable to create app DF: %s\n", sc_strerror(r));
 		return 1;
 	}
-	r = create_pin_file(&p15card->file_app.path, 1, " (key 1)");
+	r = create_pin_file(&p15card->file_app->path, 1, " (key 1)");
 	if (r)
 		return 1;
         sc_format_path("3F004B02", &path);

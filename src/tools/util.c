@@ -94,28 +94,48 @@ void print_usage_and_die(const char *pgmname)
 	exit(2);
 }
 
-const char * acl_to_str(unsigned int acl)
+const char * acl_to_str(const struct sc_acl_entry *e)
 {
-	static char line[80];
+	static char line[80], buf[10];
+	unsigned int acl;
 	
-	if (acl == SC_AC_UNKNOWN)
+	if (e == NULL)
 		return "N/A";
-	if (acl == SC_AC_NEVER)
-		return "NEVR";
-	if (acl == SC_AC_NONE)
-		return "NONE";
 	line[0] = 0;
-	if (acl & SC_AC_CHV1)
-		strcat(line, "CHV1 ");
-	if (acl & SC_AC_CHV2)
-		strcat(line, "CHV2 ");
-	if (acl & SC_AC_TERM)
-		strcat(line, "TERM ");
-	if (acl & SC_AC_PRO)
-		strcat(line, "PROT ");
-	if (acl & SC_AC_AUT)
-		strcat(line, "AUTH ");
-		
+	while (e != NULL) {
+		acl = e->method;
+
+		switch (acl) {
+		case SC_AC_UNKNOWN:
+			return "N/A";
+		case SC_AC_NEVER:
+			return "NEVR";
+		case SC_AC_NONE:
+			return "NONE";
+		case SC_AC_CHV:
+			strcpy(buf, "CHV");
+			if (e->key_ref != SC_AC_KEY_REF_NONE)
+				sprintf(buf + 3, "%d", e->key_ref);
+			break;
+		case SC_AC_TERM:
+			strcpy(buf, "TERM");
+			break;
+		case SC_AC_PRO:
+			strcpy(buf, "PROT");
+			break;
+		case SC_AC_AUT:
+			strcpy(buf, "AUTH");
+			if (e->key_ref != SC_AC_KEY_REF_NONE)
+				sprintf(buf + 4, "%d", e->key_ref);
+			break;
+		default:
+			strcpy(buf, "????");
+			break;
+		}
+		strcat(line, buf);
+		strcat(line, " ");
+		e = e->next;
+	}
 	line[strlen(line)-1] = 0; /* get rid of trailing space */
 	return line;
 }

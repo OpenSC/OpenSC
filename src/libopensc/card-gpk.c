@@ -20,7 +20,7 @@
 
 #include "sc-internal.h"
 #include "sc-log.h"
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) && 0
 #include <stdlib.h>
 #include <openssl/des.h>
 #include <openssl/rand.h>
