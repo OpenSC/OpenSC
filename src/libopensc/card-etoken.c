@@ -25,6 +25,9 @@
 #include <ctype.h>
 #include <string.h>
 
+/* andreas says: hm, my card only works for small payloads */
+#define ETOKEN_MAX_PAYLOAD	120
+
 static const struct sc_card_operations *iso_ops = NULL;
 
 struct sc_card_operations etoken_ops;
@@ -56,6 +59,9 @@ int etoken_init(struct sc_card *card)
 {
 	card->cla = 0x00;
 
+	/* Tell the upper layers we do our own payload chunking
+	 * in read/update/write_binary */
+	card->caps |= SC_CARD_CAP_APDU_EXT;
 
 	return 0;
 }
@@ -448,10 +454,38 @@ static int etoken_update_binary(struct sc_card *card,
 				unsigned int idx, const u8 *buf,
 				size_t count, unsigned long flags)
 {
-	/* hm, my card only works for small payloads */
-	if (count > 120)
-		count = 120;
-	return iso_ops->update_binary(card, idx, buf, count, flags);
+	int	n, total = 0;
+
+	do {
+		if ((n = count) > ETOKEN_MAX_PAYLOAD)
+			n = ETOKEN_MAX_PAYLOAD;
+		n = iso_ops->update_binary(card, idx+total, buf+total, n, flags);
+		if (n < 0)
+			break;
+		count -= n;
+		total += n;
+	} while (count);
+	
+	return total? total : n;
+}
+
+static int etoken_read_binary(struct sc_card *card,
+				unsigned int idx, u8 *buf,
+				size_t count, unsigned long flags)
+{
+	int	n, total = 0;
+
+	do {
+		if ((n = count) > ETOKEN_MAX_PAYLOAD)
+			n = ETOKEN_MAX_PAYLOAD;
+		n = iso_ops->read_binary(card, idx+total, buf+total, n, flags);
+		if (n < 0)
+			break;
+		count -= n;
+		total += n;
+	} while (count);
+	
+	return total? total : n;
 }
 
 /* eToken R2 supports WRITE_BINARY, PRO Tokens support UPDATE_BINARY */
@@ -467,6 +501,7 @@ const struct sc_card_driver * sc_get_driver(void)
 	etoken_ops.select_file = etoken_select_file;
 	etoken_ops.create_file = etoken_create_file;
 	etoken_ops.update_binary = etoken_update_binary;
+	etoken_ops.read_binary = etoken_read_binary;
 
 	etoken_ops.list_files = etoken_list_files;
 	etoken_ops.check_sw = etoken_check_sw;
