@@ -482,7 +482,7 @@ saved_CPPFLAGS="$CPPFLAGS"
 AC_SUBST(LIBCRYPTO)
 AC_SUBST(LIBCRYPTOA)
 AC_CACHE_CHECK([for OpenSSL directory], ac_cv_openssldir, [
-	for ssldir in $tryssldir /usr /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl ; do
+	for ssldir in $tryssldir $trycommondir "" /usr /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl ; do
 		# Skip directories if they don't exist
 		if test ! -z "$ssldir" -a ! -d "$ssldir" ; then
 			continue;

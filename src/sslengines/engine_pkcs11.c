@@ -76,8 +76,6 @@ int pkcs11_finish(ENGINE *engine) {
 }
 
 int pkcs11_init(ENGINE *engine) {
-	int r=0;
-	
 	if(!quiet)
 		fprintf(stderr,"initializing engine\n");
 
@@ -122,7 +120,6 @@ static int hex2byte(const char *hex)
 
 static int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 {
-	int err = 0;
 	size_t left, count = 0;
 
 	if (in == NULL || *in == '\0') {
@@ -166,7 +163,6 @@ static int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 		c++;
 	}
 
-out:
 	*outlen = count;
 	return 1;
 }
@@ -251,7 +247,6 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 		fail("failed to enumerate slots\n");
 
 	printf("Found %u slot%s\n", count, (count <= 1)? "" : "s");
-again:
 	for (n = 0; n < count; n++) {
 		slot = slot_list + n;
 		flags[0] = '\0';
