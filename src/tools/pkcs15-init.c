@@ -73,10 +73,7 @@ static int	do_convert_public_key(struct sc_pkcs15_pubkey *, EVP_PKEY *);
 static int	do_convert_cert(sc_pkcs15_der_t *, X509 *);
 
 static int	do_read_data_object(const char *name, u8 **out, size_t *outlen);
-static int	do_convert_data_object(struct sc_context *ctx, sc_pkcs15_der_t *der, u8 *data,size_t datalen);
 static int	do_store_data_object(struct sc_profile *profile);
-extern int	asn1_encode_data_object(struct sc_context *ctx, u8 *dataobj,size_t datalen,
-                                u8 **buf, size_t *buflen, int depth);
 
 static void	set_secrets(struct sc_profile *);
 static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
@@ -767,11 +764,13 @@ do_store_data_object(struct sc_profile *profile)
 	args.label = opt_label;
 
 	r = do_read_data_object(opt_infile, &data, &datalen);
-	if (r >= 0)
-		r = do_convert_data_object(p15card->card->ctx, &args.der_encoded, data, datalen);
-	if (r >= 0)
+	if (r >= 0) {
+		/* der_encoded contains the plain data, nothing DER encoded */
+		args.der_encoded.value = data;
+		args.der_encoded.len = datalen;
 		r = sc_pkcs15init_store_data_object(p15card, profile,
 					&args, NULL);
+	}
 
 	return r;
 }
@@ -1596,13 +1595,6 @@ do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
 	}
 
 	return 0;
-}
-
-int
-do_convert_data_object(struct sc_context *ctx, sc_pkcs15_der_t *der, 
-                       u8 *data,size_t datalen)
-{
-	return asn1_encode_data_object(ctx, data, datalen, &der->value, &der->len, 0);
 }
 
 int

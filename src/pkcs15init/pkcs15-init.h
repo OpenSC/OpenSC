@@ -144,8 +144,10 @@ struct sc_pkcs15init_dataargs {
 	struct sc_pkcs15_id	id;
 	const char *		label;
 	struct sc_pkcs15_id	auth_id;
+	const char *		app_label;
+	struct sc_object_id	app_oid;
 
-	sc_pkcs15_der_t		der_encoded;
+	sc_pkcs15_der_t		der_encoded; /* Wrong name: is not DER encoded */
 };
 
 struct sc_pkcs15init_certargs {

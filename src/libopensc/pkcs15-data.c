@@ -38,46 +38,6 @@ static const struct sc_asn1_entry     c_asn1_data_object[] = {
         { NULL }
 };
 
-int
-asn1_decode_data_object(struct sc_context *ctx, u8 **dataobj, size_t *datalen,
-                                const u8 *buf, size_t buflen, int depth)
-{
-        struct sc_asn1_entry asn1_data_obj[2];
-        u8      *data;
-        int      r;
-        int	data_len;
-
-        data = (u8 *) malloc(buflen+64);
-	if (data == NULL) {
-		return SC_ERROR_OUT_OF_MEMORY;
-	}
-        sc_copy_asn1_entry(c_asn1_data_object, asn1_data_obj);
-        sc_format_asn1_entry(asn1_data_obj + 0, data, &data_len, 0);
-        r = _sc_asn1_decode(ctx, asn1_data_obj, buf, buflen, NULL, NULL, 0, depth + 1);
-        *datalen=data_len;
-        if (r < 0) {
-        	free(data);
-                return r;
-        }
-        *dataobj = (u8 *) malloc(*datalen);   
-        memcpy(*dataobj, data, *datalen);
-        free(data);
-        return 0;
-}
-
-int
-asn1_encode_data_object(struct sc_context *ctx, u8 *dataobj,size_t datalen,
-                                u8 **buf, size_t *buflen, int depth)
-{
-	int r;
-        struct sc_asn1_entry asn1_data_obj[2];
-
-        sc_copy_asn1_entry(c_asn1_data_object, asn1_data_obj);
-        sc_format_asn1_entry(asn1_data_obj + 0, dataobj, &datalen, 1);
-        r= _sc_asn1_encode(ctx, asn1_data_obj, buf, buflen, depth + 1);
-        return r;
-}
-
 int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_data_info *info,
 			       struct sc_pkcs15_data **data_object_out)
@@ -99,9 +59,9 @@ int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	memset(data_object, 0, sizeof(struct sc_pkcs15_data));
-	if ((r=asn1_decode_data_object(p15card->card->ctx, &data_object->data, &data_object->data_len, data, len, 0)) < 0) {
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	}
+	
+	data_object->data = data;
+	data_object->data_len = len;
 	*data_object_out = data_object;
 	return 0;
 }

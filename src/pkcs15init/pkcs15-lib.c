@@ -1071,6 +1071,10 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 
 	data_object_info = (struct sc_pkcs15_data_info *) calloc(1, sizeof(*data_object_info));
 	data_object_info->id = args->id;
+	if (args->app_label != NULL)
+		strncpy(data_object_info->app_label, args->app_label,
+			sizeof(data_object_info->app_label) - 1);
+	data_object_info->app_oid = args->app_oid;
 
 	object = (struct sc_pkcs15_object *) calloc(1, sizeof(*object));
 	object->type = SC_PKCS15_TYPE_DATA_OBJECT;
