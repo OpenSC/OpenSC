@@ -246,17 +246,17 @@ sc_pkcs15_unwrap_data(struct sc_context *ctx,
  */
 static const struct sc_asn1_entry	c_asn1_enveloped_data_attr[] = {
 	{ "version",	SC_ASN1_INTEGER, ASN1_INTEGER, 0, NULL, 0 },
-	{ "originator",	SC_ASN1_STRUCT,	ASN1_SEQUENCE, SC_ASN1_OPTIONAL },
-	{ "recipients",	SC_ASN1_STRUCT, ASN1_SET, 0 },
-	{ "contentInfo",SC_ASN1_STRUCT, ASN1_SEQUENCE, 0 },
+	{ "originator",	SC_ASN1_STRUCT,	SC_ASN1_CONS|ASN1_SEQUENCE, SC_ASN1_OPTIONAL },
+	{ "recipients",	SC_ASN1_STRUCT, SC_ASN1_CONS|ASN1_SET, 0 },
+	{ "contentInfo",SC_ASN1_STRUCT, SC_ASN1_CONS|ASN1_SEQUENCE, 0 },
 	/* some more optional foo we ignore for now */
 	{ NULL}
 };
 
 static const struct sc_asn1_entry	c_asn1_content_attr[] = {
 	{ "contentType",SC_ASN1_OBJECT, ASN1_OBJECT, 0 },
-	{ "contentEncrAlg", SC_ASN1_ALGORITHM_ID, ASN1_SEQUENCE, 0 },
-	{ "encrContent",SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL|SC_ASN1_ALLOC },
+	{ "contentEncrAlg", SC_ASN1_ALGORITHM_ID, SC_ASN1_CONS|ASN1_SEQUENCE, 0 },
+	{ "encrContent",SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 , SC_ASN1_OPTIONAL|SC_ASN1_ALLOC },
 	{ NULL }
 };
 
@@ -267,8 +267,8 @@ static const struct sc_asn1_entry	c_asn1_recipients_attr[] = {
 
 static const struct sc_asn1_entry	c_asn1_kekri_attr[] = {
 	{ "version",	SC_ASN1_INTEGER, ASN1_INTEGER, 0 },
-	{ "id",		SC_ASN1_STRUCT, ASN1_SEQUENCE, 0 },
-	{ "keyEncrAlg",	SC_ASN1_ALGORITHM_ID, ASN1_SEQUENCE, 0 },
+	{ "id",		SC_ASN1_STRUCT, SC_ASN1_CONS|ASN1_SEQUENCE, 0 },
+	{ "keyEncrAlg",	SC_ASN1_ALGORITHM_ID, SC_ASN1_CONS|ASN1_SEQUENCE, 0 },
 	{ "keyEncrKey",	SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, SC_ASN1_ALLOC },
 	{ NULL }
 };
@@ -276,7 +276,7 @@ static const struct sc_asn1_entry	c_asn1_kekri_attr[] = {
 static const struct sc_asn1_entry	c_asn1_kek_attr[] = {
 	{ "id",		SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0 },
 	{ "date",	SC_ASN1_OCTET_STRING, ASN1_GENERALIZEDTIME, SC_ASN1_OPTIONAL },
-	{ "other",	SC_ASN1_STRUCT, ASN1_SEQUENCE, SC_ASN1_OPTIONAL },
+	{ "other",	SC_ASN1_STRUCT, SC_ASN1_CONS|ASN1_SEQUENCE, SC_ASN1_OPTIONAL },
 	{ NULL}
 };
 
