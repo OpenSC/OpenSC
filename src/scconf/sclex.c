@@ -177,7 +177,7 @@ int scconf_lex_parse(scconf_parser * parser, const char *filename)
 		parser->error = 1;
 		snprintf(parser->emesg, sizeof(parser->emesg),
 			 "File %s can't be opened\n", filename);
-		return -1;
+		return 0;
 	}
 	buf_init(&bhan, fp, (char *) NULL);
 	ret = scconf_lex_engine(parser, &bhan);
