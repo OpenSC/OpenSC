@@ -87,6 +87,7 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
         /* Fill in defaults */
         memset(&info, 0, sizeof(info));
 	info.reference = 0;
+	info.tries_left = -1;
 
 	r = sc_asn1_decode(ctx, asn1_pin, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
