@@ -37,7 +37,7 @@ int sc_set_card_driver(struct sc_context *ctx, const char *short_name);
 				<member>setcos</member>
 				<member>starcos</member>
 				<member>tcos</member>
-				<member>opengpg</member>
+				<member>openpgp</member>
 				<member>jcop</member>
 				<member>oberthur</member>
 				<member>belpic</member>
