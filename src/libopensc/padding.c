@@ -50,12 +50,12 @@ static const struct digest_info_prefix {
 	size_t		hdr_len;
 	size_t		hash_len;
 } digest_info_prefix[DIGEST_INFO_COUNT] = {
-      { SC_ALGORITHM_RSA_HASH_NONE,     NULL,           0,                      -1      },
+      { SC_ALGORITHM_RSA_HASH_NONE,     NULL,           0,                      0      },
       {	SC_ALGORITHM_RSA_HASH_MD5,	hdr_md5,	sizeof(hdr_md5),	16	},
       { SC_ALGORITHM_RSA_HASH_SHA1,	hdr_sha1,	sizeof(hdr_sha1),	20	},
       { SC_ALGORITHM_RSA_HASH_RIPEMD160,hdr_ripemd160,	sizeof(hdr_ripemd160),	20	},
       { SC_ALGORITHM_RSA_HASH_MD5_SHA1,	NULL,		0,			36	},
-      {	0,				NULL,		0,			-1	}
+      {	0,				NULL,		0,			0	}
 };
 
 /* add/remove pkcs1 BT01 padding */

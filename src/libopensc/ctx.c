@@ -417,7 +417,7 @@ static int load_card_drivers(struct sc_context *ctx,
 	return 0;	
 }
 
-void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
+static void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 {
 	int i, r, count = 0;
 	scconf_block **blocks;

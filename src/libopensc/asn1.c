@@ -32,9 +32,9 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 static int asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,
 		       u8 **ptr, size_t *size, int depth);
 
-const char *tag2str(int tag)
+static const char *tag2str(unsigned int tag)
 {
-	const static char *tags[] = {
+	static const char *tags[] = {
 		"EOC", "BOOLEAN", "INTEGER", "BIT STRING", "OCTET STRING",	/* 0-4 */
 		"NULL", "OBJECT", "OBJECT DESCRIPTOR", "EXTERNAL", "REAL",	/* 5-9 */
 		"ENUMERATED", "<ASN1 11>", "UTF8STRING", "<ASN1 13>",	/* 10-13 */
@@ -45,7 +45,7 @@ const char *tag2str(int tag)
 		"UNIVERSALSTRING", "<ASN1 29>", "BMPSTRING"	/* 28-30 */
 	};
 
-	if (tag < 0 || tag > 30)
+	if (tag > 30)
 		return "(unknown)";
 	return tags[tag];
 }
@@ -182,8 +182,7 @@ static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen)
 #else
         __int64 a = 0;
 #endif
-	int r;
-	size_t i;
+	int r, i;
 
 	if (buflen > sizeof(a) + 1) {
 		printf("too long");
@@ -316,7 +315,7 @@ const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 		buf = p;
 		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != 1)
 			return NULL;
-		assert(left >= (p - buf)); /* should not happen */
+		assert(left >= (size_t)(p - buf)); /* should not happen */
 		left -= (p - buf);
 		if ((tag | cla) == tag_in) {
 			if (taglen > left)
@@ -504,7 +503,7 @@ static int encode_bit_field(const u8 *inbuf, size_t inlen,
 {
 	u8		data[sizeof(unsigned int)];
 	unsigned int	field = 0;
-	int		i, bits;
+	size_t		i, bits;
 
 	if (inlen != sizeof(data))
 		return SC_ERROR_BUFFER_TOO_SMALL;
@@ -595,12 +594,13 @@ int sc_asn1_decode_object_id(const u8 * inbuf, size_t inlen,
 	return 0;
 }
 
-int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
+static int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
 			     const struct sc_object_id *id)
 {
 	u8 temp[SC_MAX_OBJECT_ID_OCTETS*5], *p = temp;
-	size_t count = 0;
-	int *value = (int *) id->value, i = 0;
+	size_t	count = 0;
+	int	i;
+	const int *value = (const int *) id->value;
 
 	for (i = 0; value[i] > 0 && i < SC_MAX_OBJECT_ID_OCTETS; i++) {
 		unsigned int k, shift;
@@ -635,7 +635,7 @@ int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
 	return 0;
 }
 
-int sc_asn1_decode_utf8string(const u8 *inbuf, size_t inlen,
+static int sc_asn1_decode_utf8string(const u8 *inbuf, size_t inlen,
 			      u8 *out, size_t *outlen)
 {
 	if (inlen+1 > *outlen)
@@ -661,15 +661,15 @@ int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen,
 	if (outlen < datalen)
 		return SC_ERROR_INVALID_ARGUMENTS;
 		
-	memcpy(p, data, datalen);
+	memcpy(p, data, (size_t)datalen);
 	p += datalen;
 	if (ptr != NULL)
 		*ptr = p;
 	return 0;
 }
 
-int asn1_write_element(struct sc_context *ctx, unsigned int tag, const u8 * data,
-		       size_t datalen, u8 ** out, size_t * outlen)
+static int asn1_write_element(struct sc_context *ctx, unsigned int tag,
+	const u8 * data, size_t datalen, u8 ** out, size_t * outlen)
 {
 	u8 t;
 	u8 *buf, *p;
@@ -758,12 +758,13 @@ static int asn1_encode_path(struct sc_context *ctx, const struct sc_path *path,
 {
 	int r;
  	struct sc_asn1_entry asn1_path[4];
+	struct sc_path tpath = *path;
 
 	sc_copy_asn1_entry(c_asn1_path, asn1_path);
-	sc_format_asn1_entry(asn1_path + 0, (void *) &path->value, (void *) &path->len, 1);
+	sc_format_asn1_entry(asn1_path + 0, (void *) &tpath.value, (void *) &tpath.len, 1);
 	if (path->count > 0) {
-		sc_format_asn1_entry(asn1_path + 1, (void *) &path->index, NULL, 1);
-		sc_format_asn1_entry(asn1_path + 2, (void *) &path->count, NULL, 1);
+		sc_format_asn1_entry(asn1_path + 1, (void *) &tpath.index, NULL, 1);
+		sc_format_asn1_entry(asn1_path + 2, (void *) &tpath.count, NULL, 1);
 	}
 	r = asn1_encode(ctx, asn1_path, buf, bufsize, depth + 1);
 	return r;	
@@ -817,23 +818,23 @@ static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_asn1_p
 				  u8 **buf, size_t *bufsize, int depth)
 {
 	int r;
-	const struct sc_pkcs15_object *p15_obj = obj->p15_obj;
-	struct sc_asn1_entry asn1_c_attr[6], asn1_p15_obj[5];
-	size_t label_len = strlen(p15_obj->label);
+	struct sc_pkcs15_object p15_obj = *obj->p15_obj;
+	struct sc_asn1_entry    asn1_c_attr[6], asn1_p15_obj[5];
+	size_t label_len = strlen(p15_obj.label);
 	size_t flags_len;
 
 	sc_copy_asn1_entry(c_asn1_com_obj_attr, asn1_c_attr);
 	sc_copy_asn1_entry(c_asn1_p15_obj, asn1_p15_obj);
 	if (label_len != 0)
-		sc_format_asn1_entry(asn1_c_attr + 0, (void *) p15_obj->label, &label_len, 1);
-	if (p15_obj->flags) {
-		flags_len = sizeof(p15_obj->flags);
-		sc_format_asn1_entry(asn1_c_attr + 1, (void *) &p15_obj->flags, &flags_len, 1);
+		sc_format_asn1_entry(asn1_c_attr + 0, (void *) p15_obj.label, &label_len, 1);
+	if (p15_obj.flags) {
+		flags_len = sizeof(p15_obj.flags);
+		sc_format_asn1_entry(asn1_c_attr + 1, (void *) &p15_obj.flags, &flags_len, 1);
 	}
-	if (p15_obj->auth_id.len)
-		sc_format_asn1_entry(asn1_c_attr + 2, (void *) &p15_obj->auth_id, NULL, 1);
-	if (p15_obj->user_consent)
-		sc_format_asn1_entry(asn1_c_attr + 3, (void *) &p15_obj->user_consent, NULL, 1);
+	if (p15_obj.auth_id.len)
+		sc_format_asn1_entry(asn1_c_attr + 2, (void *) &p15_obj.auth_id, NULL, 1);
+	if (p15_obj.user_consent)
+		sc_format_asn1_entry(asn1_c_attr + 3, (void *) &p15_obj.user_consent, NULL, 1);
 	/* FIXME: decode accessControlRules */
 	sc_format_asn1_entry(asn1_p15_obj + 0, asn1_c_attr, NULL, 1);
 	sc_format_asn1_entry(asn1_p15_obj + 1, obj->asn1_class_attr, NULL, 1);
@@ -845,12 +846,12 @@ static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_asn1_p
 	return r;
 }
 
-static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry,
+static int asn1_decode_entry(struct sc_context *ctx,struct sc_asn1_entry *entry,
 			     const u8 *obj, size_t objlen, int depth)
 {
 	void *parm = entry->parm;
-	int (*callback_func)(struct sc_context *ctx, void *arg, const u8 *obj,
-			     size_t objlen, int depth) =
+	int (*callback_func)(struct sc_context *nctx, void *arg, const u8 *nobj,
+			     size_t nobjlen, int ndepth) =
 		(int (*)(struct sc_context *, void *, const u8 *, size_t, int)) parm;
 	size_t *len = (size_t *) entry->arg;
 	int r = 0;
@@ -912,7 +913,7 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
 		break;
 	case SC_ASN1_OCTET_STRING:
 		if (parm != NULL) {
-			int c;
+			size_t c;
 			assert(len != NULL);
 
 			/* Strip off padding zero */
@@ -943,7 +944,7 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
                 /* FIXME: we should parse the string and convert it
                    into a standard ISO time string. */
 		if (parm != NULL) {
-			int c;
+			size_t c;
 			assert(len != NULL);
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
@@ -988,7 +989,7 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
 	case SC_ASN1_PKCS15_ID:
 		if (entry->parm != NULL) {
 			struct sc_pkcs15_id *id = (struct sc_pkcs15_id *) parm;
-			int c = objlen > sizeof(id->value) ? sizeof(id->value) : objlen;
+			size_t c = objlen > sizeof(id->value) ? sizeof(id->value) : objlen;
 			
 			memcpy(id->value, obj, c);
 			id->len = c;
@@ -1127,8 +1128,8 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 			     u8 **obj, size_t *objlen, int depth)
 {
 	void *parm = entry->parm;
-	int (*callback_func)(struct sc_context *ctx, void *arg, u8 **obj,
-			     size_t *objlen, int depth) =
+	int (*callback_func)(struct sc_context *nctx, void *arg, u8 **nobj,
+			     size_t *nobjlen, int ndepth) =
 		(int (*)(struct sc_context *, void *, u8 **, size_t *, int)) parm;
 	const size_t *len = (const size_t *) entry->arg;
 	int r = 0;

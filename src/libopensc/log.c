@@ -69,7 +69,8 @@ void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, 
 {
 	int	(*display_fn)(sc_context_t *, const char *);
 	char	buf[1536], *p, *tag = "";
-	int	left, r;
+	int	r;
+	size_t	left;
 
 	assert(ctx != NULL);
 
@@ -97,7 +98,7 @@ void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, 
 
 	if (file != NULL) {
 		r = snprintf(buf, sizeof(buf), "%s:%d:%s: ", file, line, func ? func : "");
-		if (r < 0 || r > sizeof(buf))
+		if (r < 0 || (unsigned int)r > sizeof(buf))
 			return;
 	} else {
 		r = 0;
