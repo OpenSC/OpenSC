@@ -69,6 +69,15 @@ enum {
 	SC_CARDCTL_ETOKEN_PUT_DATA_OCI,
 	SC_CARDCTL_ETOKEN_PUT_DATA_SECI,
 	SC_CARDCTL_ETOKEN_GENERATE_KEY,
+
+	/*
+	 * Starcos specific calls
+	 */
+	SC_CARDCTL_STARCOS_BASE = _CTL_PREFIX('S', 'T', 'A'),
+	SC_CARDCTL_STARCOS_SET_KEY_ATTR,
+	SC_CARDCTL_STARCOS_GET_KEY_ATTR,
+	SC_CARDCTL_STARCOS_CLEAR_KEY_ATTR,
+
 };
 
 enum {
@@ -160,6 +169,15 @@ struct sc_cardctl_cryptoflex_genkey_info {
 	unsigned long	exponent;
 	unsigned char *	pubkey;
 	unsigned int	pubkey_len;
+};
+
+/*
+ * Starcos private key attribute
+ */
+struct sc_cardctl_starcos_key_attr_st {
+	u8            keyID;	/* key reference */
+	unsigned long flag;	/* key attributes, e.g. SC_SEC_OPERATION_SIGN
+				 * or SC_SEC_OPERATION_AUTHENTICATE */
 };
 
 #ifdef  __cplusplus
