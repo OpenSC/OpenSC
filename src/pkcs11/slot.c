@@ -207,7 +207,7 @@ CK_RV card_removed(int reader)
 
 CK_RV slot_initialize(int id, struct sc_pkcs11_slot *slot)
 {
-        memset(slot, 0, sizeof(slot));
+	memset(slot, 0, sizeof(*slot));
 	slot->id = id;
 	slot->login_user = -1;
         init_slot_info(&slot->slot_info);
@@ -305,6 +305,7 @@ CK_RV slot_token_removed(int id)
 	slot->slot_info.flags = 0;
 	slot->login_user = -1;
 	slot->reader = reader;
+	pool_initialize(&slot->object_pool, POOL_TYPE_OBJECT);
 
 	if (token_was_present)
 		slot->events = SC_EVENT_CARD_REMOVED;
