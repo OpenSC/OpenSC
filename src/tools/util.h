@@ -39,7 +39,7 @@ void error(const char *fmt, ...);
 void fatal(const char *fmt, ...);
 /* All singing all dancing card connect routine */
 int connect_card(struct sc_context *, struct sc_card **,
-		int reader_id, int slot_id, int wait, int quiet);
+		int reader_id, int slot_id, int wait, int verbose);
 
 #ifdef  __cplusplus
 }

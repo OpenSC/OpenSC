@@ -8,7 +8,7 @@
 #include "util.h"
 
 int connect_card(sc_context_t *ctx, sc_card_t **cardp,
-		 int reader_id, int slot_id, int wait, int quiet)
+		 int reader_id, int slot_id, int wait, int verbose)
 {
 	sc_reader_t *reader;
 	sc_card_t *card;
@@ -67,7 +67,7 @@ int connect_card(sc_context_t *ctx, sc_card_t **cardp,
 		}
 	}
 
-	if (!quiet)
+	if (verbose)
 		printf("Connecting to card in reader %s...\n", reader->name);
 	if ((r = sc_connect_card(reader, slot_id, &card)) < 0) {
 		fprintf(stderr,
@@ -76,7 +76,7 @@ int connect_card(sc_context_t *ctx, sc_card_t **cardp,
 		return 1;
 	}
 
-	if (!quiet)
+	if (verbose)
 		printf("Using card driver %s.\n", card->driver->name);
 
 	if ((r = sc_lock(card)) < 0) {

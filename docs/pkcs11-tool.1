@@ -26,9 +26,6 @@ read the command line from the system or if it is embedded in a script.
 .BR \-\-change\-pin ", " \-c
 Change the user PIN on the token
 .TP
-.BR \-\-quiet ", " \-q
-Causes \*(nm to be less verbose about what is going on behind the scenes.
-.TP
 .BR \-\-test ", " \-t
 Performs some tests on the token.  This option is most useful when used with
 either \-\-login or \-\-pin.
@@ -92,6 +89,10 @@ Specify a module to load.
 .BR "\-\-moz\-cert " \fIpath\fP ", \-z " \fIpath\fP
 Tests a Mozilla-like keypair generation and certificate request.
 Specify the \fIpath\fP to the certificate file.
+.TP
+.BR \-\-verbose ", " \-v
+Causes \*(nm to be more verbose. Specify this flag several times
+to enable debug output in the opensc library.
 .SH SEE ALSO
 .BR opensc (7).
 .SH AUTHORS

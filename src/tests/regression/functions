@@ -35,7 +35,7 @@ if [ -z "$__p15init__" ]; then
 		--split-key|\
 		--no-prompt|\
 		--soft|\
-		-d*)
+		-v*)
 			p15init="$p15init $1";;
 		--reader)
 			P15_READER=$2
@@ -179,7 +179,7 @@ function run_check_output {
 
 function skip_if_card {
 
-	name=`$osctool -q --name`
+	name=`$osctool --name`
 	for __pat in "$@"; do
 		if expr "$name" : "${__pat}.*" >/dev/null; then
 			msg "Detected $name; skipping test"
@@ -190,7 +190,7 @@ function skip_if_card {
 
 function skip_unless_card {
 
-	name=`$osctool -q --name`
+	name=`$osctool --name`
 	for __pat in "$@"; do
 		if expr "$name" : "${__pat}.*" >/dev/null; then
 			return
@@ -217,7 +217,7 @@ function p15_init {
 	:::
 EOF
 
-	$p15init --assert-pristine -q ||
+	$p15init --assert-pristine ||
 		fail "This test requires a clean card, please erase existing pkcs15 structure"
 
 	msg "Initializing card ($*)"

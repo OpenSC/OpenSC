@@ -67,10 +67,9 @@ const struct option options[] = {
 	{ "input-file",		1, 0,		'i' },
 	{ "output-file",	1, 0,		'o' },
 	{ "module",		1, 0,		OPT_MODULE },
-	{ "quiet",		0, 0,		'q' },
-
 	{ "test",		0, 0,		't' },
 	{ "moz-cert",		1, 0,		'z' },
+	{ "verbose",		0, 0,		'v' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -98,15 +97,15 @@ const char *option_help[] = {
 	"Specify the input file",
 	"Specify the output file",
 	"Specify the module to load",
-	"Quiet operation",
 
 	"Test (best used with the --login or --pin option)",
-	"Test Mozilla-like keypair gen and cert req, <arg>=certfile"
+	"Test Mozilla-like keypair gen and cert req, <arg>=certfile",
+	"Verbose operation. Use several times to enable debug output.",
 };
 
 const char *		app_name = "pkcs11-tool"; /* for utils.c */
 
-static int		opt_quiet = 0;
+static int		verbose = 0;
 static const char *	opt_input = NULL;
 static const char *	opt_output = NULL;
 static const char *	opt_module = NULL;
@@ -312,8 +311,8 @@ main(int argc, char * const argv[])
 			opt_file_to_write = optarg;
 			action_count++;
 			break;
-		case 'q':
-			opt_quiet++;
+		case 'v':
+			verbose++;
 			break;
 		case OPT_SLOT:
 			opt_slot = (CK_SLOT_ID) atoi(optarg);
@@ -516,13 +515,13 @@ list_slots(void)
 			printf("(GetSlotInfo failed, error %u)\n", (unsigned int) rv);
 			continue;
 		}
-		if (opt_quiet && !(info.flags & CKF_TOKEN_PRESENT)) {
+		if ((!verbose) && !(info.flags & CKF_TOKEN_PRESENT)) {
 			printf("(empty)\n");
 			continue;
 		}
 		printf("%s\n", p11_utf8_to_local(info.slotDescription,
 					sizeof(info.slotDescription)));
-		if (!opt_quiet) {
+		if (verbose) {
 			printf("  manufacturer:  %s\n", p11_utf8_to_local(info.manufacturerID,
 						sizeof(info.manufacturerID)));
 			printf("  hardware ver:  %u.%u\n",
@@ -545,7 +544,7 @@ show_token(CK_SLOT_ID slot)
 
 	get_token_info(slot, &info);
 
-	if (!(info.flags & CKF_TOKEN_INITIALIZED) && opt_quiet) {
+	if (!(info.flags & CKF_TOKEN_INITIALIZED) && (!verbose)) {
 		printf("  token state:   uninitialized\n");
 		return;
 	}

@@ -22,14 +22,9 @@ The default is to auto-detect the correct card driver.
 .BR \-\-wait ", " \-w
 Causes \*(nm to wait for the token to be inserted into \fIreader\fP.
 .TP
-.BR \-\-quiet ", " \-q
-Causes \*(nm to be less verbose about what is going on behind the scenes.
-.TP
-.BR \-\-debug ", " \-d
-Causes \*(nm to print debugging information during operation.  This option
-may be specified more than once to incrementaly increase the amount
-of debugging information output.
-either \-\-login or \-\-pin.
+.BR \-\-verbose ", " \-v
+Causes \*(nm to be more verbose. Specify this flag several times
+to enable debug output in the opensc library.
 .SH SEE ALSO
 .BR opensc (7).
 .SH AUTHORS

@@ -36,11 +36,10 @@
 const char *app_name = "opensc-tool";
 
 static int	opt_reader = -1,
-		opt_debug = 0,
 		opt_wait = 0;
 static char **	opt_apdus;
 static int	opt_apdu_count = 0;
-static int	quiet = 0;
+static int	verbose = 0;
 
 const struct option options[] = {
 	{ "atr",		0, 0,		'a' },
@@ -52,9 +51,8 @@ const struct option options[] = {
 	{ "send-apdu",		1, 0,		's' },
 	{ "reader",		1, 0,		'r' },
 	{ "card-driver",	1, 0,		'c' },
-	{ "quiet",		0, 0,		'q' },
 	{ "wait",		0, 0,		'w' },
-	{ "debug",		0, 0,		'd' },
+	{ "verbose",		0, 0,		'v' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -68,9 +66,8 @@ const char *option_help[] = {
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
-	"Quiet operation",
 	"Wait for a card to be inserted",
-	"Debug output -- may be supplied several times",
+	"Verbose operation. Use several times to enable debug output.",
 };
 
 struct sc_context *ctx = NULL;
@@ -337,13 +334,7 @@ int send_apdu(void)
 		for (r = 0; r < len0; r++)
 			printf("%02X ", buf[r]);
 		printf("\n");
-	#if 0
-		ctx->debug = 5;
-	#endif
 		r = sc_transmit_apdu(card, &apdu);
-	#if 0
-		ctx->debug = opt_debug;
-	#endif
 		if (r) {
 			fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(r));
 			return 1;
@@ -415,11 +406,8 @@ int main(int argc, char * const argv[])
 		case 'r':
 			opt_reader = atoi(optarg);
 			break;
-		case 'q':
-			quiet++;
-			break;
-		case 'd':
-			opt_debug++;
+		case 'v':
+			verbose++;
 			break;
 		case 'c':
 			opt_driver = optarg;
@@ -436,8 +424,8 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (opt_debug)
-		ctx->debug = opt_debug;
+	if (verbose > 1)
+		ctx->debug = verbose-1;
 	if (do_list_rdrivers) {
 		if ((err = list_reader_drivers()))
 			goto end;
@@ -465,18 +453,18 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, quiet);
+	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
 	if (err)
 		goto end;
 
 	if (do_print_atr) {
-		if (!quiet)
+		if (verbose)
 			printf("Card ATR: ");
 		hex_dump_asc(stdout, card->atr, card->atr_len, -1);
 		action_count--;
 	}
 	if (do_print_name) {
-		if (!quiet)
+		if (verbose)
 			printf("Card name: ");
 		printf("%s\n", card->name);
 		action_count--;

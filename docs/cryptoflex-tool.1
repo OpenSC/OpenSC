@@ -14,7 +14,7 @@ stored on the smart card.  User PIN authentication is
 performed for those operations that require it.
 .SH OPTIONS
 .TP
-.BR \-\-verify\-pin ", " \-v
+.BR \-\-verify\-pin ", " \-V
 Verifies CHV1 before issuing commands
 .TP
 .BR \-\-list\-keys ", " \-l
@@ -57,13 +57,9 @@ value is 1024.
 Forces \*(nm to use reader number \fInum\fP for operations.  The default
 is to use reader number 0, the first reader in the system.
 .TP
-.BR \-\-quiet ", " \-q
-Perform operations quietly.  This causes \*(nm to be less 'chatty'
-about the status of the operation.
-.TP
-.BR \-\-debug ", " \-d
-Print debug output.  This option may be supplied many times each
-increasing the verbosity of debug messages.
+.BR \-\-verbose ", " \-v
+Causes \*(nm to be more verbose. Specify this flag several times
+to enable debug output in the opensc library.
 .SH SEE ALSO
 .BR opensc (7),
 .BR pkcs15-tool (1)

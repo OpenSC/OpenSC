@@ -36,7 +36,7 @@
 
 PKCS11_CTX *ctx;
 char *pin = NULL;
-int quiet = 1;
+int verbose = 0;
 
 char *module = PKCS11_DEFAULT_MODULE_NAME;
 int default_module = 1;
@@ -54,9 +54,9 @@ int set_pin(const char *_pin)
 	return 1;
 }
 
-int set_quiet(int i)
+int inc_verbose()
 {
-	quiet = i;
+	verbose++;
 	return 1;
 }
 
@@ -89,7 +89,7 @@ int pkcs11_finish(ENGINE * engine)
 
 int pkcs11_init(ENGINE * engine)
 {
-	if (!quiet) {
+	if (verbose) {
 		fprintf(stderr, "initializing engine\n");
 	}
 	ctx = PKCS11_CTX_new();
@@ -234,7 +234,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 	if (PKCS11_enumerate_slots(ctx, &slot_list, &count) < 0)
 		fail("failed to enumerate slots\n");
 
-	if(!quiet) {
+	if(verbose) {
 		fprintf(stderr,"Found %u slot%s\n", count, (count <= 1) ? "" : "s");
 	}
 	for (n = 0; n < count; n++) {
@@ -256,7 +256,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 			flags[m - 2] = '\0';
 		}
 		
-		if(!quiet) {
+		if(verbose) {
 			fprintf(stderr,"[%u] %-25.25s  %-16s", n, slot->description, flags);
 			if (slot->token) {
 				fprintf(stderr,"  (%s)",
@@ -292,7 +292,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 		return NULL;
 	}
 
-	if(!quiet) {
+	if(verbose) {
 		fprintf(stderr,"Found slot:  %s\n", slot->description);
 		fprintf(stderr,"Found token: %s\n", slot->token->label);
 	}
@@ -300,7 +300,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 	if (PKCS11_enumerate_certs(tok, &certs, &count))
 		fail("unable to enumerate certificates\n");
 
-	if(!quiet) {
+	if(verbose) {
 		fprintf(stderr,"Found %u certificate%s:\n", count, (count <= 1) ? "" : "s");
 		for (n = 0; n < count; n++) {
 			PKCS11_CERT *c = certs + n;
@@ -338,19 +338,19 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 		return NULL;
 	}
 
-	if(!quiet) {
+	if(verbose) {
 		fprintf(stderr,"Found %u key%s:\n", count, (count <= 1) ? "" : "s");
 	}
 	for (n = 0; n < count; n++) {
 		PKCS11_KEY *k = keys + n;
 
-		if(!quiet) {
+		if(verbose) {
 			fprintf(stderr,"  %2u %c%c %s\n", n + 1,
 			       k->isPrivate ? 'P' : ' ', k->needLogin ? 'L' : ' ', k->label);
 		}
 		if (key_id_len != 0 && k->id_len == key_id_len &&
 		    memcmp(k->id, key_id, key_id_len) == 0) {
-			if(!quiet) {
+			if(verbose) {
 				fprintf(stderr,"        ID = %s\n", s_key_id);
 			}
 			selected_key = k;

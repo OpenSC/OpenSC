@@ -125,9 +125,7 @@ static int pkcs11_engine_ctrl(ENGINE * e, int cmd, long i, void *p, void (*f) ()
 	case CMD_PIN:
 		return set_pin((const char *) p);
 	case CMD_VERBOSE:
-		return set_quiet(0);
-	case CMD_QUIET:
-		return set_quiet(1);
+		return inc_verbose();
 	default:
 		break;
 	}

@@ -36,7 +36,7 @@
 #include "engine_opensc.h"
 
 /* static state info one card/reader at a time */
-static int quiet = 1;
+static int verbose = 0;
 static int sc_reader_id = 0;
 static sc_context_t *ctx = NULL;
 static sc_card_t *card = NULL;
@@ -64,7 +64,7 @@ int opensc_init(void)
 {
 	int r = 0;
 
-	if (!quiet)
+	if (verbose)
 		fprintf(stderr, "initializing engine");
 
 	r = sc_establish_context(&ctx, "openssl");
@@ -191,7 +191,7 @@ EVP_PKEY *opensc_load_public_key(ENGINE * e, const char *s_key_id,
 	sc_pkcs15_cert_t *cert = NULL;
 	EVP_PKEY *key_out = NULL;
 
-	if (!quiet)
+	if (verbose)
 		fprintf(stderr, "Loading public key!\n");
 	id = (struct sc_pkcs15_id *) malloc(sizeof(struct sc_pkcs15_id));
 	id->len = SC_PKCS15_MAX_ID_SIZE;
@@ -199,14 +199,14 @@ EVP_PKEY *opensc_load_public_key(ENGINE * e, const char *s_key_id,
 
 	r = sc_pkcs15_find_pubkey_by_id(p15card, id, &obj);
 	if (r >= 0) {
-		if (!quiet)
+		if (verbose)
 			printf("Reading public key with ID '%s'\n", s_key_id);
 		r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
 	} else if (r == SC_ERROR_OBJECT_NOT_FOUND) {
 		/* No pubkey - try if there's a certificate */
 		r = sc_pkcs15_find_cert_by_id(p15card, id, &obj);
 		if (r >= 0) {
-			if (!quiet)
+			if (verbose)
 				printf("Reading certificate with ID '%s'\n",
 				       s_key_id);
 			r = sc_pkcs15_read_certificate(p15card,
@@ -272,7 +272,7 @@ EVP_PKEY *opensc_load_private_key(ENGINE * e, const char *s_key_id,
 {
 	EVP_PKEY *key_out;
 
-	if (!quiet)
+	if (verbose)
 		fprintf(stderr, "Loading private key!");
 	if (sc_pin) {
 		free(sc_pin);
@@ -319,7 +319,7 @@ sc_sign(int type, const u_char * m, unsigned int m_len,
 	int r;
 	unsigned long flags = 0;
 
-	if (!quiet)
+	if (verbose)
 		fprintf(stderr, "signing with type %d\n", type);
 	r = sc_prkey_op_init(rsa, &key_obj, SC_USAGE_SIGN);
 	if (r)

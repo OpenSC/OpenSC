@@ -39,8 +39,7 @@
 
 const char *app_name = "pkcs15-crypt";
 
-int opt_reader = -1, quiet = 0, opt_wait = 0;
-int opt_debug = 0;
+int opt_reader = -1, verbose = 0, opt_wait = 0;
 char * opt_pincode = NULL, * opt_key_id = NULL;
 char * opt_input = NULL, * opt_output = NULL;
 int opt_crypt_flags = 0;
@@ -61,10 +60,9 @@ const struct option options[] = {
 	{ "sha-1",		0, 0,		OPT_SHA1 },
 	{ "md5",		0, 0,		OPT_MD5 },
 	{ "pkcs1",		0, 0,		OPT_PKCS1 },
-	{ "quiet",		0, 0,		'q' },
-	{ "debug",		0, 0,		'd' },
 	{ "pin",		1, 0,		'p' },
 	{ "wait",		0, 0,		'w' },
+	{ "verbose",		0, 0,		'v' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -78,10 +76,9 @@ const char *option_help[] = {
 	"Input file is a SHA-1 hash",
 	"Input file is a MD5 hash",
 	"Use PKCS #1 v1.5 padding",
-	"Quiet operation",
-	"Debug output -- may be supplied several times",
 	"Uses password (PIN) <arg>",
 	"Wait for card insertion",
+	"Verbose operation. Use several times to enable debug output.",
 };
 
 struct sc_context *ctx = NULL;
@@ -445,7 +442,7 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 			return 5;
 		}
 		free(pincode);
-		if (!quiet)
+		if (verbose)
 			fprintf(stderr, "PIN code correct.\n");
 		prev_pin = pin;
 	}
@@ -498,11 +495,8 @@ int main(int argc, char * const argv[])
 		case OPT_PKCS1:
 			opt_crypt_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 			break;
-		case 'q':
-			quiet++;
-			break;
-		case 'd':
-			opt_debug++;
+		case 'v':
+			verbose++;
 			break;
 		case 'p':
 			opt_pincode = optarg;
@@ -519,14 +513,14 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (opt_debug)
-		ctx->debug = opt_debug;
+	if (verbose > 1)
+		ctx->debug = verbose-1;
 
-	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, quiet);
+	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
 	if (err)
 		goto end;
 
-	if (!quiet)
+	if (verbose)
 		fprintf(stderr, "Trying to find a PKCS #15 compatible card...\n");
 	r = sc_pkcs15_bind(card, &p15card);
 	if (r) {
@@ -534,7 +528,7 @@ int main(int argc, char * const argv[])
 		err = 1;
 		goto end;
 	}
-	if (!quiet)
+	if (verbose)
 		fprintf(stderr, "Found %s!\n", p15card->label);
 
 	if (do_decipher) {

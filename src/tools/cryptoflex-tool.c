@@ -31,9 +31,9 @@
 
 const char *app_name = "cryptoflex-tool";
 
-int opt_reader = 0, opt_debug = 0;
+int opt_reader = 0;
 int opt_key_num = 1, opt_pin_num = -1;
-int quiet = 0;
+int verbose = 0;
 int opt_exponent = 3;
 int opt_mod_length = 1024;
 int opt_key_count = 1;
@@ -49,7 +49,7 @@ const struct option options[] = {
 	{ "create-pin-file",	1, 0,		'P' },
 	{ "generate-key",	0, 0,		'g' },
 	{ "read-key",		0, 0,		'R' },
-	{ "verify-pin",		0, 0,		'v' },
+	{ "verify-pin",		0, 0,		'V' },
 	{ "key-num",		1, 0,		'k' },
 	{ "app-df",		1, 0,		'a' },
 	{ "prkey-file",		1, 0,		'p' },
@@ -57,8 +57,7 @@ const struct option options[] = {
 	{ "exponent",		1, 0,		'e' },
 	{ "modulus-length",	1, 0,		'm' },
 	{ "reader",		1, 0,		'r' },
-	{ "quiet",		0, 0,		'q' },
-	{ "debug",		0, 0,		'd' },
+	{ "verbose",		0, 0,		'v' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -76,8 +75,7 @@ const char *option_help[] = {
 	"The RSA exponent to use in key generation [3]",
 	"Modulus length to use in key generation [1024]",
 	"Uses reader number <arg> [0]",
-	"Quiet operation",
-	"Debug output -- may be supplied several times",
+	"Verbose operation. Use several times to enable debug output.",
 };
 
 struct sc_context *ctx = NULL;
@@ -549,7 +547,7 @@ int generate_key(void)
 	r = select_app_df();
 	if (r)
 		return 1;
-	if (!quiet)
+	if (verbose)
 		printf("Generating key...\n");
 	r = sc_transmit_apdu(card, &apdu);
 	if (r) {
@@ -588,7 +586,7 @@ int create_key_files(void)
 		return 1;
 	}
 	
-	if (!quiet)
+	if (verbose)
 		printf("Creating key files for %d keys.\n", opt_key_count);
 	
 	file = sc_file_new();
@@ -630,7 +628,7 @@ int create_key_files(void)
 		fprintf(stderr, "Unable to create public key file: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (!quiet)
+	if (verbose)
 		printf("Key files generated successfully.\n");	
 	return 0;
 }
@@ -853,7 +851,7 @@ int store_key(void)
 	r = encode_public_key(rsa, pub, &pubsize);
 	if (r)
 		return r;
-	if (!quiet)
+	if (verbose)
 		printf("Storing private key...\n");
 	r = select_app_df();
 	if (r)
@@ -861,7 +859,7 @@ int store_key(void)
 	r = update_private_key(prv, prvsize);
 	if (r)
 		return r;
-	if (!quiet)
+	if (verbose)
 		printf("Storing public key...\n");
 	r = select_app_df();
 	if (r)
@@ -1113,7 +1111,7 @@ int main(int argc, char * const argv[])
 				exit(2);
 			}
 			break;
-		case 'v':
+		case 'V':
 			opt_pin_num = 1;
 			break;
 		case 'e':
@@ -1131,11 +1129,8 @@ int main(int argc, char * const argv[])
 		case 'r':
 			opt_reader = atoi(optarg);
 			break;
-		case 'q':
-			quiet++;
-			break;
-		case 'd':
-			opt_debug++;
+		case 'v':
+			verbose++;
 			break;
 		case 'a':
 			opt_appdf = optarg;
@@ -1149,8 +1144,8 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (opt_debug)
-		ctx->debug = opt_debug;
+	if (verbose > 1)
+		ctx->debug = verbose-1;
 	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
 		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
 		err = 1;
@@ -1161,7 +1156,7 @@ int main(int argc, char * const argv[])
 		err = 3;
 		goto end;
 	}
-	if (!quiet)
+	if (verbose)
 		fprintf(stderr, "Connecting to card in reader %s...\n", ctx->reader[opt_reader]->name);
 	r = sc_connect_card(ctx->reader[opt_reader], 0, &card);
 	if (r) {

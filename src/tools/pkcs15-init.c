@@ -165,9 +165,8 @@ const struct option	options[] = {
 	{ "card-profile",	required_argument, 0,	'c' },
 	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
 	{ "wait",		no_argument, 0,		'w' },
-	{ "debug",		no_argument, 0,		'd' },
-	{ "quiet",		no_argument, 0,		'q' },
 	{ "help",		no_argument, 0,		'h' },
+	{ "verbose",		no_argument, 0,		'v' },
 
 	/* Hidden options for testing */
 	{ "assert-pristine",	no_argument, 0,		OPT_ASSERT_PRISTINE },
@@ -214,9 +213,8 @@ const char *		option_help[] = {
 	"Specify the card profile to use",
 	"Read additional command line options from file",
 	"Wait for card insertion",
-	"Enable debugging output",
-	"Be less verbose",
 	"Display this message",
+	"Verbose operation. Use several times to enable debug output.",
 
 	NULL,
 	NULL,
@@ -266,8 +264,6 @@ static struct sc_card *		card = NULL;
 static struct sc_pkcs15_card *	p15card = NULL;
 static unsigned int		opt_actions;
 static int			opt_reader = -1,
-				opt_debug = 0,
-				opt_quiet = 0,
 				opt_extractable = 0,
 				opt_unprotected = 0,
 				opt_authority = 0,
@@ -295,6 +291,7 @@ static unsigned int		opt_x509_usage = 0;
 static int			ignore_cmdline_pins = 0;
 static struct secret		opt_secrets[MAX_SECRETS];
 static unsigned int		opt_secret_count;
+static int			verbose = 0;
 
 static struct sc_pkcs15init_callbacks callbacks = {
 	get_pin_callback,	/* get_pin() */
@@ -364,13 +361,13 @@ main(int argc, char **argv)
 			/* XXX: should compare card to profile here to make
 			 * sure we're not messing things up */
 
-			if (!opt_quiet)
+			if (verbose)
 				printf("Found %s\n", p15card->label);
 
 			sc_pkcs15init_set_p15card(profile, p15card);
 		}
 
-		if (!opt_quiet && action != ACTION_ASSERT_PRISTINE)
+		if (verbose && action != ACTION_ASSERT_PRISTINE)
 			printf("About to %s.\n", action_names[action]);
 
 		switch (action) {
@@ -436,12 +433,12 @@ open_reader_and_card(int reader)
 		error("Failed to establish context: %s\n", sc_strerror(r));
 		return 0;
 	}
-	if (opt_debug) {
-		ctx->debug = opt_debug;
+	if (verbose > 1) {
+		ctx->debug = verbose-1;
 		ctx->debug_file = stderr;
 	}
 
-	if (connect_card(ctx, &card, reader, 0, opt_wait, opt_quiet))
+	if (connect_card(ctx, &card, reader, 0, opt_wait, verbose))
 		return 0;
 
 	return 1;
@@ -484,7 +481,7 @@ do_assert_pristine(struct sc_card *card)
 		fprintf(stderr,
 			"Card not pristine; detected (possibly incomplete) "
 			"PKCS#15 structure\n");
-	} else if (!opt_quiet) {
+	} else if (verbose) {
 		printf("Pristine card.\n");
 	}
 
@@ -945,7 +942,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 			keybits, NULL);
 		if (r >= 0 || r != SC_ERROR_NOT_SUPPORTED)
 			return r;
-		if (!opt_quiet)
+		if (verbose)
 			printf("Warning: card doesn't support on-board "
 			       "key generation.\n"
 			       "Trying software generation\n");
@@ -1832,8 +1829,8 @@ handle_option(const struct option *opt)
 		this_action = ACTION_STORE_DATA;
 		opt_infile = optarg;
 		break;
-	case 'd':
-		opt_debug++;
+	case 'v':
+		verbose++;
 		break;
 	case 'f':
 		opt_format = optarg;
@@ -1854,9 +1851,6 @@ handle_option(const struct option *opt)
 		break;
 	case 'c':
 		opt_card_profile = optarg;
-		break;
-	case 'q':
-		opt_quiet = 1;
 		break;
 	case 'r':
 		opt_reader = atoi(optarg);

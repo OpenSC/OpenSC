@@ -36,7 +36,7 @@
 
 const char *app_name = "opensc-explorer";
 
-int opt_reader = -1, opt_debug = 0, opt_wait = 0;
+int opt_reader = -1, opt_wait = 0, verbose = 0;
 const char *opt_driver = NULL;
 
 struct sc_file *current_file = NULL;
@@ -48,14 +48,14 @@ const struct option options[] = {
 	{ "reader",		1, 0, 'r' },
 	{ "card-driver",	1, 0, 'c' },
 	{ "wait",		1, 0, 'w' },
-	{ "debug",		0, 0, 'd' },
+	{ "verbose",		0, 0, 'v' },
 	{ 0, 0, 0, 0 }
 };
 const char *option_help[] = {
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
 	"Wait for card insertion",
-	"Debug output -- maybe supplied several times",
+	"Verbose operation. Use several times to enable debug output.",
 };
 
 
@@ -1241,7 +1241,6 @@ int do_quit(int argc, char **argv)
 struct command		cmds[] = {
  { "ls",	do_ls,		"list all files in the current DF"	},
  { "cd",	do_cd,		"change to another DF"			},
- { "debug",	do_debug,	"set the debug level"			},
  { "cat",	do_cat,		"print the contents of an EF"		},
  { "info",	do_info,	"display attributes of card file"	},
  { "create",	do_create,	"create a new EF"			},
@@ -1357,11 +1356,11 @@ int main(int argc, char * const argv[])
 		case 'c':
 			opt_driver = optarg;
 			break;
-		case 'd':
-			opt_debug++;
-			break;
 		case 'w':
 			opt_wait = 1;
+			break;
+		case 'v':
+			verbose++;
 			break;
 		}
 	}
@@ -1371,8 +1370,8 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (opt_debug)
-		ctx->debug = opt_debug;
+	if (verbose > 1)
+		ctx->debug = verbose-1;
 
 	if (opt_driver != NULL) {
 		err = sc_set_card_driver(ctx, opt_driver);
