@@ -183,7 +183,7 @@ int sc_pkcs15_create_tokeninfo(struct sc_pkcs15_card *card)
 	int r;
 	u8 *buf;
 	size_t buflen;
-	u8 line[10240];
+	char line[10240];
 	
 	r = encode_tokeninfo(card, &buf, &buflen);
 	if (r) {
@@ -308,7 +308,7 @@ int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card)
 	u8 *buf;
 	size_t bufsize;
 	int r;
-	u8 line[10240];
+	char line[10240];
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_format_path("3F00", &path);
@@ -440,7 +440,7 @@ int sc_pkcs15_create_odf(struct sc_pkcs15_card *p15card)
 {
 	u8 *buf;
 	size_t buflen;
-	u8 line[10240];
+	char line[10240];
 	int r;
 	
 	r = encode_odf(p15card, &buf, &buflen);

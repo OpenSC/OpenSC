@@ -380,11 +380,12 @@ int do_create(const char *arg, const char *arg2)
 {
 	struct sc_path path;
 	struct sc_file file;
-	size_t size;
+	int size;
 	int i, r;
 
 	if (arg_to_path(arg, &path) != 0)
 		goto usage;
+	/* %z isn't supported everywhere */
 	if (sscanf(arg2, "%d", &size) != 1)
 		goto usage;
 	memset(&file, 0, sizeof(file));
@@ -393,7 +394,7 @@ int do_create(const char *arg, const char *arg2)
 	file.ef_structure = SC_FILE_EF_TRANSPARENT;
 	for (i = 0; i < SC_MAX_AC_OPS; i++)
 		file.acl[i] = SC_AC_NONE;
-	file.size = size;
+	file.size = (size_t) size;
 	file.status = SC_FILE_STATUS_ACTIVATED;
 	
 	r = sc_create_file(card, &file);
@@ -506,8 +507,8 @@ int do_get(const char *arg, const char *arg2)
 	if (strlen(arg2))
 		filename = arg2;
 	else {
-		sprintf(buf, "%02X%02X", path.value[0], path.value[1]);
-		filename = buf;
+		sprintf((char *) buf, "%02X%02X", path.value[0], path.value[1]);
+		filename = (char *) buf;
 	}
 	outf = fopen(filename, "w");
 	if (outf == NULL) {
@@ -569,8 +570,8 @@ int do_put(const char *arg, const char *arg2)
 	if (strlen(arg2))
 		filename = arg2;
 	else {
-		sprintf(buf, "%02X%02X", path.value[0], path.value[1]);
-		filename = buf;
+		sprintf((char *) buf, "%02X%02X", path.value[0], path.value[1]);
+		filename = (char *) buf;
 	}
 	outf = fopen(filename, "r");
 	if (outf == NULL) {
