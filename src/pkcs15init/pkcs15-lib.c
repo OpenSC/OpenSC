@@ -1995,7 +1995,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 	if (info->size < datalen) {
 		char	buf[16];
 
-		sc_bin_to_hex(file->path.value, file->path.len, buf, sizeof(buf), "");
+		sc_bin_to_hex(file->path.value, file->path.len, buf, sizeof(buf), 0);
 		p15init_error("File %s too small - please increase size in profile", buf);
 		sc_file_free(info);
 		return SC_ERROR_TOO_MANY_OBJECTS;

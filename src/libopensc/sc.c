@@ -83,7 +83,7 @@ out:
 }
 
 int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
-		  int sep)
+		  char sep)
 {
 	unsigned int	n, sep_len;
 	char		*pos, *end;
