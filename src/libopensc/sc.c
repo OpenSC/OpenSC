@@ -118,28 +118,28 @@ int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 	switch (apdu->cse) {
 	case SC_APDU_CASE_1:
 		if (apdu->datalen)
-			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_APDU_CASE_2_SHORT:
 		if (apdu->datalen)
-			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		if (apdu->resplen < apdu->le)
-			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_APDU_CASE_3_SHORT:
 		if (apdu->datalen == 0 || apdu->data == NULL)
-			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_APDU_CASE_4_SHORT:
 		if (apdu->datalen == 0 || apdu->data == NULL)
-			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		if (apdu->resplen < apdu->le)
-			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_APDU_CASE_2_EXT:
 	case SC_APDU_CASE_3_EXT:
 	case SC_APDU_CASE_4_EXT:
-		SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	return 0;
 }
@@ -196,7 +196,7 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 	dwRecvLength = apdu->resplen + 2;
 	if (dwRecvLength > 255)		/* FIXME: PC/SC Lite quirk */
 		dwRecvLength = 255;
-	if (card->ctx->debug > 3) {
+	if (card->ctx->debug >= 5) {
 		char buf[2048];
 		
 		sc_hex_dump(card->ctx, s, dwSendLength, buf, sizeof(buf));
@@ -221,7 +221,7 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 		}
 	}
 	if (dwRecvLength < 2)
-		return SC_ERROR_UNKNOWN_RESPONSE;
+		return SC_ERROR_ILLEGAL_RESPONSE;
 	apdu->sw1 = r[dwRecvLength-2];
 	apdu->sw2 = r[dwRecvLength-1];
 	dwRecvLength -= 2;
@@ -239,12 +239,12 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 {
 	int r;
 	
-	SC_FUNC_CALLED(card->ctx);
+	SC_FUNC_CALLED(card->ctx, 4);
 	r = sc_check_apdu(card->ctx, apdu);
 	SC_TEST_RET(card->ctx, r, "APDU sanity check failed");
 	r = sc_transceive_t0(card, apdu);
 	SC_TEST_RET(card->ctx, r, "transceive_t0() failed");
-	if (card->ctx->debug > 3) {
+	if (card->ctx->debug >= 5) {
 		char buf[2048];
 
 		buf[0] = 0;
@@ -273,7 +273,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 			      sc_strerror(r));
 			return r;
 		}
-		if (card->ctx->debug > 3) {
+		if (card->ctx->debug >= 5) {
 			char buf[2048];
 			buf[0] = 0;
 			if (rspapdu.resplen) {
@@ -315,7 +315,7 @@ int sc_detect_card(struct sc_context *ctx, int reader)
 	SCARD_READERSTATE_A rgReaderStates[SC_MAX_READERS];
 
 	assert(ctx != NULL);
-	SC_FUNC_CALLED(ctx);
+	SC_FUNC_CALLED(ctx, 1);
 	if (reader >= ctx->reader_count || reader < 0)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
@@ -324,11 +324,16 @@ int sc_detect_card(struct sc_context *ctx, int reader)
 	ret = SCardGetStatusChange(ctx->pcsc_ctx, 0, rgReaderStates, 1);
 	if (ret != 0) {
 		error(ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(ret));
-		SC_FUNC_RETURN(ctx, -1);	/* FIXME */
+		SC_FUNC_RETURN(ctx, 1, -1);	/* FIXME */
 	}
-	if (rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT)
-		SC_FUNC_RETURN(ctx, 1);
-	SC_FUNC_RETURN(ctx, 0);
+	if (rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT) {
+		if (ctx->debug >= 1)
+			debug(ctx, "card present\n");
+		return 1;
+	}
+	if (ctx->debug >= 1)
+		debug(ctx, "card absent\n");
+	return 0;
 }
 
 int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout)
@@ -338,13 +343,13 @@ int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout)
 	int count = 0, i;
 
 	assert(ctx != NULL);
-	SC_FUNC_CALLED(ctx);
+	SC_FUNC_CALLED(ctx, 1);
 	if (reader >= ctx->reader_count)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		SC_FUNC_RETURN(ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (reader < 0) {
 		if (ctx->reader_count == 0)
-			SC_FUNC_RETURN(ctx, SC_ERROR_NO_READERS_FOUND);
+			SC_FUNC_RETURN(ctx, 1, SC_ERROR_NO_READERS_FOUND);
 		for (i = 0; i < ctx->reader_count; i++) {
 			rgReaderStates[i].szReader = ctx->readers[i];
 			rgReaderStates[i].dwCurrentState =
@@ -360,13 +365,13 @@ int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout)
 				   count);
 	if (ret != 0) {
 		error(ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(ret));
-		SC_FUNC_RETURN(ctx, -1);
+		SC_FUNC_RETURN(ctx, 1, -1);
 	}
 	for (i = 0; i < count; i++) {
 		if (rgReaderStates[i].dwEventState & SCARD_STATE_CHANGED)
-			SC_FUNC_RETURN(ctx, 1);
+			SC_FUNC_RETURN(ctx, 1, 1);
 	}
-	SC_FUNC_RETURN(ctx, 0);
+	SC_FUNC_RETURN(ctx, 1, 0);
 }
 
 int sc_establish_context(struct sc_context **ctx_out)
@@ -417,7 +422,7 @@ int sc_destroy_context(struct sc_context *ctx)
 	int i;
 
 	assert(ctx != NULL);
-	SC_FUNC_CALLED(ctx);
+	SC_FUNC_CALLED(ctx, 1);
 	for (i = 0; i < ctx->reader_count; i++)
 		free(ctx->readers[i]);
 	free(ctx);
@@ -462,23 +467,23 @@ int sc_connect_card(struct sc_context *ctx,
 	const struct sc_defaults *defaults;
 
 	assert(card_out != NULL);
-	SC_FUNC_CALLED(ctx);
+	SC_FUNC_CALLED(ctx, 1);
 	if (reader >= ctx->reader_count || reader < 0)
-		SC_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_FOUND);
+		SC_FUNC_RETURN(ctx, 1, SC_ERROR_OBJECT_NOT_FOUND);
 	
 	rgReaderStates[0].szReader = ctx->readers[reader];
 	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
 	rv = SCardGetStatusChange(ctx->pcsc_ctx, 0, rgReaderStates, 1);
 	if (rv != 0) {
 		error(ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(rv));
-		SC_FUNC_RETURN(ctx, SC_ERROR_RESOURCE_MANAGER);	/* FIXME */
+		SC_FUNC_RETURN(ctx, 1, SC_ERROR_RESOURCE_MANAGER);	/* FIXME */
 	}
 	if (!(rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT))
-		SC_FUNC_RETURN(ctx, SC_ERROR_CARD_NOT_PRESENT);
+		SC_FUNC_RETURN(ctx, 1, SC_ERROR_CARD_NOT_PRESENT);
 
 	card = malloc(sizeof(struct sc_card));
 	if (card == NULL)
-		SC_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		SC_FUNC_RETURN(ctx, 1, SC_ERROR_OUT_OF_MEMORY);
 	memset(card, 0, sizeof(struct sc_card));
 	rv = SCardConnect(ctx->pcsc_ctx, ctx->readers[reader],
 			  SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0,
@@ -506,17 +511,18 @@ int sc_connect_card(struct sc_context *ctx,
 	pthread_mutex_init(&card->mutex, NULL);
 	*card_out = card;
 
-	return 0;
+	SC_FUNC_RETURN(ctx, 1, 0);
 }
 
 int sc_disconnect_card(struct sc_card *card)
 {
+	struct sc_context *ctx = card->ctx;
 	assert(card != NULL);
+	SC_FUNC_CALLED(ctx, 1);
 	SCardDisconnect(card->pcsc_card, SCARD_LEAVE_CARD);
 	pthread_mutex_destroy(&card->mutex);
 	free(card);
-	
-	return 0;
+	SC_FUNC_RETURN(ctx, 1, 0);
 }
 
 const char *sc_strerror(int error)
@@ -578,8 +584,9 @@ int _sc_lock_int(struct sc_card *card)
 
 int sc_lock(struct sc_card *card)
 {
+	SC_FUNC_CALLED(card->ctx, 2);
 	pthread_mutex_lock(&card->mutex);
-	return _sc_lock_int(card);
+	SC_FUNC_RETURN(card->ctx, 2, _sc_lock_int(card));
 }
 
 int _sc_unlock_int(struct sc_card *card)
@@ -596,22 +603,23 @@ int _sc_unlock_int(struct sc_card *card)
 
 int sc_unlock(struct sc_card *card)
 {
+	SC_FUNC_CALLED(card->ctx, 2);
 	pthread_mutex_unlock(&card->mutex);
-	return _sc_unlock_int(card);
+	SC_FUNC_RETURN(card->ctx, 2, _sc_unlock_int(card));
 }
 
 int sc_list_files(struct sc_card *card, u8 *buf, int buflen)
 {
 	struct sc_apdu apdu;
 	int r;
-	
+
+	SC_FUNC_CALLED(card->ctx, 2);	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
 	apdu.resp = buf;
 	apdu.resplen = buflen;
 	apdu.le = 0;
 	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
 	return apdu.resplen;
@@ -658,10 +666,10 @@ int sc_create_file(struct sc_card *card, const struct sc_file *file)
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_apdu apdu;
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	len = SC_MAX_APDU_BUFFER_SIZE;
 	r = construct_fci(file, sbuf, &len);
-	if (r)
-		return r;
+	SC_TEST_RET(card->ctx, r, "construct_fci() failed");
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
 	apdu.lc = len;
@@ -671,9 +679,8 @@ int sc_create_file(struct sc_card *card, const struct sc_file *file)
 	apdu.resp = rbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
-	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_FUNC_RETURN(card->ctx, 1, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_delete_file(struct sc_card *card, int file_id)
@@ -683,6 +690,7 @@ int sc_delete_file(struct sc_card *card, int file_id)
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_apdu apdu;
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	sbuf[0] = (file_id >> 8) & 0xFF;
 	sbuf[1] = file_id & 0xFF;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
@@ -693,11 +701,10 @@ int sc_delete_file(struct sc_card *card, int file_id)
 	apdu.resp = rbuf;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
-	if (apdu.resplen != 2)
-		return -1;
-	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.resplen != 0)
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_ILLEGAL_RESPONSE);
+	SC_FUNC_RETURN(card->ctx, 1, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_file_valid(const struct sc_file *file)

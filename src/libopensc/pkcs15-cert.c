@@ -224,7 +224,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_cert *cert;
 
 	assert(p15card != NULL && info != NULL && cert_out != NULL);
-	SC_FUNC_CALLED(p15card->card->ctx);
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	r = find_cached_cert(p15card, info, &data, &len);
 	if (r) {
 		r = sc_select_file(p15card->card, &file, &info->path,
@@ -290,7 +290,7 @@ static int parse_x509_cert_info(struct sc_context *ctx,
 	struct sc_pkcs15_object cert_obj = { &cert->com_attr, asn1_com_cert_attr, NULL,
 					     asn1_type_cert_attr };
 	struct sc_asn1_struct asn1_cert[] = {
-		{ "x509Certificate", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &cert_obj,  },
+		{ "x509Certificate", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &cert_obj },
 		{ NULL }
 	};
 
@@ -332,15 +332,17 @@ static int get_certs_from_file(struct sc_pkcs15_card *card,
 		return r;
 	bytes_left = r;
 	do {
-		if (card->cert_count >= SC_PKCS15_MAX_CERTS)
-			return SC_ERROR_TOO_MANY_OBJECTS;
+		struct sc_pkcs15_cert_info tmp;
+
 		r = parse_x509_cert_info(card->card->ctx,
-					 &card->cert_info[card->cert_count],
-					 &p, &bytes_left);
+					 &tmp, &p, &bytes_left);
 		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 			break;
 		if (r)
 			return r;
+		if (card->cert_count >= SC_PKCS15_MAX_CERTS)
+			return SC_ERROR_TOO_MANY_OBJECTS;
+                card->cert_info[card->cert_count] = tmp;
 		card->cert_count++;
 	} while (bytes_left);
 

@@ -42,7 +42,7 @@ extern "C" {
 #define SC_ERROR_OUT_OF_MEMORY			-1009
 #define SC_ERROR_NO_READERS_FOUND		-1010
 #define SC_ERROR_OBJECT_NOT_VALID		-1011
-#define SC_ERROR_UNKNOWN_RESPONSE		-1012
+#define SC_ERROR_ILLEGAL_RESPONSE		-1012
 #define SC_ERROR_PIN_CODE_INCORRECT		-1013
 #define SC_ERROR_SECURITY_STATUS_NOT_SATISFIED	-1014
 #define SC_ERROR_CONNECTING_TO_RES_MGR		-1015
@@ -106,7 +106,6 @@ extern "C" {
 #define SC_ASN1_MAX_OBJECT_ID_OCTETS  16
 
 typedef unsigned char u8;
-typedef unsigned int uint32;
 
 struct sc_object_id {
 	int value[SC_ASN1_MAX_OBJECT_ID_OCTETS];
@@ -132,6 +131,9 @@ struct sc_file {
 	unsigned int magic;
 };
 
+#define SC_SEC_OPERATION_DECIPHER	0
+#define SC_SEC_OPERATION_SIGN		1
+
 struct sc_security_env {
 	int algorithm_ref;
 	struct sc_path key_file_id;
@@ -146,19 +148,19 @@ struct sc_card_operations {
 	int (*init)(struct sc_card *card);
 	int (*finish)(struct sc_card *card);
 
-	int (*read_binary)(struct sc_card *card, uint32 idx,
+	int (*read_binary)(struct sc_card *card, unsigned int idx,
 			   u8 * buf, size_t count);
-	int (*write_binary)(struct sc_card *card, uint32 idx,
+	int (*write_binary)(struct sc_card *card, unsigned int idx,
 			    const u8 * buf, size_t count);
-	int (*update_binary)(struct sc_card *card, uint32 idx,
+	int (*update_binary)(struct sc_card *card, unsigned int idx,
 			     const u8 * buf, size_t count);
-	int (*erase_binary)(struct sc_card *card, uint32 idx,
+	int (*erase_binary)(struct sc_card *card, unsigned int idx,
 			    size_t count);
-	int (*read_binary_large)(struct sc_card *card, uint32 idx,
+	int (*read_binary_large)(struct sc_card *card, unsigned int idx,
 				 u8 * buf, size_t count);
-	int (*write_binary_large)(struct sc_card *card, uint32 idx,
+	int (*write_binary_large)(struct sc_card *card, unsigned int idx,
 				  const u8 * buf, size_t count);
-	int (*update_binary_large)(struct sc_card *card, uint32 idx,
+	int (*update_binary_large)(struct sc_card *card, unsigned int idx,
 				   const u8 * buf, size_t count);
 	/* possibly TODO: record handling */
 	int (*select_file)(struct sc_card *card, struct sc_file *file,

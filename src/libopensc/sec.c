@@ -33,7 +33,7 @@ int sc_set_security_env(struct sc_card *card,
 	int r;
 
 	assert(card != NULL && env != NULL);
-	SC_FUNC_CALLED(card->ctx);
+	SC_FUNC_CALLED(card->ctx, 2);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
 	if (env->operation == 1) {
 		apdu.p1 = 0x81;
@@ -61,7 +61,7 @@ int sc_set_security_env(struct sc_card *card,
 	apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_restore_security_env(struct sc_card *card, int num)
@@ -71,13 +71,13 @@ int sc_restore_security_env(struct sc_card *card, int num)
 	u8 rbuf[MAX_BUFFER_SIZE];
 	
 	assert(card != NULL);
-	SC_FUNC_CALLED(card->ctx);
+	SC_FUNC_CALLED(card->ctx, 2);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, num);
 	apdu.resplen = sizeof(rbuf) > 250 ? 250 : sizeof(rbuf);
 	apdu.resp = rbuf;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_decipher(struct sc_card *card,
@@ -89,9 +89,9 @@ int sc_decipher(struct sc_card *card,
 	u8 sbuf[MAX_BUFFER_SIZE];
 
 	assert(card != NULL && crgram != NULL && out != NULL);
-	SC_FUNC_CALLED(card->ctx);
+	SC_FUNC_CALLED(card->ctx, 2);
 	if (crgram_len > 255)
-		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
@@ -108,9 +108,9 @@ int sc_decipher(struct sc_card *card,
 		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, len);
+		SC_FUNC_RETURN(card->ctx, 2, len);
 	}
-	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_compute_signature(struct sc_card *card,
@@ -123,9 +123,9 @@ int sc_compute_signature(struct sc_card *card,
 	u8 sbuf[MAX_BUFFER_SIZE];
 
 	assert(card != NULL && data != NULL && out != NULL);
-	SC_FUNC_CALLED(card->ctx);
+	SC_FUNC_CALLED(card->ctx, 2);
 	if (datalen > 255)
-		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x9E,
 		       0x9A);
@@ -142,9 +142,9 @@ int sc_compute_signature(struct sc_card *card,
 		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, len);
+		SC_FUNC_RETURN(card->ctx, 2, len);
 	}
-	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
@@ -154,9 +154,9 @@ int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
 	u8 sbuf[MAX_BUFFER_SIZE];
 	int r;
 	
-	SC_FUNC_CALLED(card->ctx);
+	SC_FUNC_CALLED(card->ctx, 2);
 	if (pinlen >= MAX_BUFFER_SIZE)
-		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, ref);
 	memcpy(sbuf, pin, pinlen);
 	apdu.lc = pinlen;
@@ -170,9 +170,9 @@ int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
 	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
 		if (tries_left != NULL)
 			*tries_left = apdu.sw2 & 0x0F;
-		SC_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_PIN_CODE_INCORRECT);
 	}
-	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
@@ -183,9 +183,9 @@ int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
 	u8 sbuf[MAX_BUFFER_SIZE];
 	int r, p1 = 0, len = oldlen + newlen;
 
-	SC_FUNC_CALLED(card->ctx);
+	SC_FUNC_CALLED(card->ctx, 1);
 	if (len >= MAX_BUFFER_SIZE)
-		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	if (oldlen == 0)
 		p1 = 1;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, p1, ref);
@@ -202,9 +202,9 @@ int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
 	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
 		if (tries_left != NULL)
 			*tries_left = apdu.sw2 & 0x0F;
-		SC_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_PIN_CODE_INCORRECT);
 	}
-	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, 1, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
@@ -215,7 +215,7 @@ int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
 	int r, p1 = 0, len = puklen + newlen;
 
 	if (len >= MAX_BUFFER_SIZE)
-		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	if (puklen == 0) {
 		if (newlen == 0)
 			p1 = 3;
@@ -238,5 +238,5 @@ int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
 	r = sc_transmit_apdu(card, &apdu);
 	memset(sbuf, 0, len);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, 1, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }

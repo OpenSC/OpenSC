@@ -47,105 +47,97 @@ void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey)
 	printf("\n");
 }
 
-static int parse_prkey_info(const u8 * buf,
-			    int buflen, struct sc_pkcs15_prkey_info *prkey)
+static int parse_rsa_prkey_info(struct sc_context *ctx,
+				struct sc_pkcs15_prkey_info *prkey,
+				const u8 **buf, int *buflen)
 {
-	const u8 *tag, *p;
-	int taglen, left;
+	int r;
+	int usage_len = sizeof(prkey->usage);
+	int af_len = sizeof(prkey->access_flags);
+	struct sc_asn1_struct asn1_com_key_attr[] = {
+		{ "iD",		 SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, &prkey->id, NULL },
+		{ "usage",	 SC_ASN1_BIT_STRING, ASN1_BIT_STRING, 0, &prkey->usage, &usage_len },
+		{ "native",	 SC_ASN1_BOOLEAN, ASN1_BOOLEAN, SC_ASN1_OPTIONAL, &prkey->native },
+		{ "accessFlags", SC_ASN1_BIT_STRING, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, &prkey->access_flags, &af_len },
+		{ "keyReference",SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, &prkey->key_reference },
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_com_prkey_attr[] = {
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_rsakey_attr[] = {
+		{ "value",	   SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &prkey->file_id },
+		{ "modulusLength", SC_ASN1_INTEGER, ASN1_INTEGER, 0, &prkey->modulus_length },
+		{ "keyInfo",	   SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_type_attr[] = {
+		{ "publicRSAKeyAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_rsakey_attr },
+		{ NULL }
+	};
 
-	tag = sc_asn1_skip_tag(&buf, &buflen, 0x30, &taglen);	/* SEQUENCE */
-	if (tag == NULL)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	sc_pkcs15_parse_common_object_attr(&prkey->com_attr, tag, taglen);
+	struct sc_pkcs15_object prkey_obj = { &prkey->com_attr, asn1_com_key_attr,
+					      asn1_com_prkey_attr, asn1_type_attr };
+	struct sc_asn1_struct asn1_prkey[] = {
+		{ "privateRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &prkey_obj },
+		{ NULL }
+	};		
 
-	p = sc_asn1_skip_tag(&buf, &buflen, 0x30, &left);	/* SEQUENCE */
-	if (tag == NULL)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
+	prkey->key_reference = -1;
+	prkey->native = 1;
 
-	tag = sc_asn1_skip_tag(&p, &left, 0x04, &taglen);	/* OCTET STRING */
-	if (tag == NULL)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	memcpy(prkey->id.value, tag, taglen);
-	prkey->id.len = taglen;
+	r = sc_asn1_parse(ctx, asn1_prkey, *buf, *buflen, buf, buflen);
 
-	tag = sc_asn1_skip_tag(&p, &left, 0x03, &taglen);	/* BIT STRING */
-	if (tag == NULL)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	sc_asn1_decode_bit_string(tag, taglen, &prkey->usage,
-				  sizeof(prkey->usage));
+	return r;
+}
 
-	tag = sc_asn1_skip_tag(&p, &left, 0x01, &taglen);	/* BOOLEAN */
-	if (tag != NULL) {
-		/* FIXME */
-	}
+static int get_prkeys_from_file(struct sc_pkcs15_card *card,
+				struct sc_file *file)
+{
+	int r, bytes_left;
+	u8 buf[2048];
+	const u8 *p = buf;
 
-	tag = sc_asn1_skip_tag(&p, &left, 0x03, &taglen);	/* BIT STRING */
-	if (tag != NULL) {
-		sc_asn1_decode_bit_string(tag, taglen,
-					  &prkey->access_flags,
-					  sizeof(prkey->access_flags));
-	} else
-		prkey->access_flags = 0;
+	r = sc_select_file(card->card, file, &file->path,
+			   SC_SELECT_FILE_BY_PATH);
+	if (r)
+		return r;
+	if (file->size > sizeof(buf))
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	r = sc_read_binary(card->card, 0, buf, file->size);
+	if (r < 0)
+		return r;
+	bytes_left = r;
+	do {
+		struct sc_pkcs15_prkey_info tmp;
 
-	tag = sc_asn1_skip_tag(&p, &left, 0x02, &taglen);	/* INTEGER */
-	if (tag != NULL && taglen) {
-		prkey->key_reference = tag[0];
-	} else
-		prkey->key_reference = -1;
-
-
-	/* FIXME */
-	p = sc_asn1_find_tag(buf, buflen, 0xA1, &left);
-	if (p == NULL)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	p = sc_asn1_verify_tag(p, left, 0x30, &left);	/* SEQUENCE 1 */
-	if (tag == NULL)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-
-	tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen);	/* SEQUENCE 2 */
-	if (tag == NULL)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	tag = sc_asn1_verify_tag(tag, taglen, 0x04, &taglen);	/* OCTET STRING */
-	if (tag == NULL)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	memcpy(prkey->file_id.value, tag, taglen);
-	prkey->file_id.len = taglen;
-
-	tag = sc_asn1_skip_tag(&p, &left, 0x02, &taglen);	/* INTEGER */
-	if (tag == NULL)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	sc_asn1_decode_integer(tag, taglen, &prkey->modulus_length);
+		r = parse_rsa_prkey_info(card->card->ctx,
+					 &tmp, &p, &bytes_left);
+		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
+			break;
+		if (r)
+			return r;
+		if (card->prkey_count >= SC_PKCS15_MAX_PRKEYS)
+			return SC_ERROR_TOO_MANY_OBJECTS;
+		card->prkey_info[card->prkey_count] = tmp;
+		card->prkey_count++;
+	} while (bytes_left);
 
 	return 0;
 }
 
+
 int sc_pkcs15_enum_private_keys(struct sc_pkcs15_card *card)
 {
-	int r, left, taglen;
-	const u8 *p, *tag;
-	u8 buf[1024];
-
+	int r, i;
 	assert(card != NULL);
 
 	if (card->prkey_count)
 		return card->prkey_count;	/* already enumerated */
-	card->prkey_count = 0;
-	r = sc_select_file(card->card, &card->file_prkdf,
-			   &card->file_prkdf.path, SC_SELECT_FILE_BY_PATH);
-	if (r)
-		return r;
-	r = sc_read_binary(card->card, 0, buf, card->file_prkdf.size);
-	if (r < 0)
-		return r;
-	left = r;
-	p = buf;
-	while ((tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen)) != NULL) {
-		struct sc_pkcs15_prkey_info *prkey =
-		    &card->prkey_info[card->prkey_count];
-
-		if (parse_prkey_info(tag, taglen, prkey))
-			break;
-		card->prkey_count++;
+	for (i = 0; i < 1; i++) {
+		r = get_prkeys_from_file(card, &card->file_prkdf);
+		if (r != 0)
+			return r;
 	}
 	return card->prkey_count;
 }

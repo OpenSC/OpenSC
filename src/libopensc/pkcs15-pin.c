@@ -27,73 +27,49 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static int decode_pin_info(const u8 *buf,
-			   int buflen, struct sc_pkcs15_pin_info *pin)
+static int parse_pin_info(struct sc_context *ctx,
+			  struct sc_pkcs15_pin_info *pin,
+			  const u8 ** buf, int *buflen)
 {
-	const u8 *tag, *p = buf;
-	int taglen, left = buflen;
+	int r;
+	struct sc_asn1_struct asn1_com_ao_attr[] = {
+		{ "authId",       SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, &pin->auth_id },
+		{ NULL }
+	};
+	int flags_len = sizeof(pin->flags);
+        int padchar_len = 1;
+	struct sc_asn1_struct asn1_pin_attr[] = {
+		{ "pinFlags",	  SC_ASN1_BIT_STRING, ASN1_BIT_STRING, 0, &pin->flags, &flags_len},
+		{ "pinType",      SC_ASN1_ENUMERATED, ASN1_ENUMERATED, 0, &pin->type },
+		{ "minLength",    SC_ASN1_INTEGER, ASN1_INTEGER, 0, &pin->min_length },
+		{ "storedLength", SC_ASN1_INTEGER, ASN1_INTEGER, 0, &pin->stored_length },
+		{ "maxLength",    SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
+		{ "pinReference", SC_ASN1_INTEGER, SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, &pin->reference },
+		{ "padChar",      SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, &pin->pad_char, &padchar_len },
+		{ "lastPinChange",SC_ASN1_GENERALIZEDTIME, ASN1_GENERALIZEDTIME, SC_ASN1_OPTIONAL, NULL },
+		{ "path",         SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, &pin->path },
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_type_pin_attr[] = {
+		{ "pinAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_pin_attr},
+		{ NULL }
+	};
+	struct sc_pkcs15_object pin_obj = { &pin->com_attr, asn1_com_ao_attr, NULL,
+					    asn1_type_pin_attr };
+	struct sc_asn1_struct asn1_pin[] = {
+		{ "pin", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &pin_obj },
+		{ NULL }
+	};
+
+        pin->reference = 0;
 
 	memset(pin, 0, sizeof(*pin));
 
-	tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen);	/* SEQUENCE */
-	if (tag == NULL)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	sc_pkcs15_parse_common_object_attr(&pin->com_attr, tag, taglen);
-	tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen);	/* SEQUENCE */
-	if (tag == NULL)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	tag = sc_asn1_verify_tag(tag, taglen, 0x04, &taglen);	/* OCTET STRING */
-	if (tag == NULL || taglen == 0)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	if (taglen > SC_PKCS15_MAX_ID_SIZE)
-		taglen = SC_PKCS15_MAX_ID_SIZE;
-	memcpy(pin->auth_id.value, tag, taglen);
-	pin->auth_id.len = taglen;
+	r = sc_asn1_parse(ctx, asn1_pin, *buf, *buflen, buf, buflen);
+        if (r == 0)
+		pin->magic = SC_PKCS15_PIN_MAGIC;
 
-	p = sc_asn1_verify_tag(p, left, 0xA1, &left);	/* CONS */
-	if (left == 0)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	p = sc_asn1_verify_tag(p, left, 0x30, &left);
-	if (left == 0)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-
-	tag = sc_asn1_skip_tag(&p, &left, 0x03, &taglen);
-	if (taglen == 0)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	sc_asn1_decode_bit_string(tag, taglen, &pin->flags,
-				  sizeof(pin->flags));
-
-	tag = sc_asn1_skip_tag(&p, &left, 0x0A, &taglen);
-	if (taglen == 0)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	pin->type = tag[0];
-
-	tag = sc_asn1_skip_tag(&p, &left, 0x02, &taglen);
-	if (taglen == 0)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	pin->min_length = tag[0];
-
-	tag = sc_asn1_skip_tag(&p, &left, 0x02, &taglen);
-	if (taglen == 0)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	pin->stored_length = tag[0];
-
-	tag = sc_asn1_find_tag(p, left, 0x04, &taglen);
-	if (taglen == 0)
-		return SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND;
-	pin->pad_char = tag[0];
-
-	tag = sc_asn1_find_tag(p, left, 0x30, &taglen);
-	if (taglen != 0) {
-		tag = sc_asn1_find_tag(tag, taglen, 0x04, &taglen);
-		if (taglen >= 0) {
-			memcpy(pin->path.value, tag, taglen);
-			pin->path.len = taglen;
-		}
-	}
-	pin->magic = SC_PKCS15_PIN_MAGIC;
-
-	return 0;
+	return r;
 }
 
 void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin)
@@ -120,36 +96,40 @@ void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin)
 	printf("\n");
 }
 
-static int get_pins_from_file(struct sc_pkcs15_card *p15card,
+static int get_pins_from_file(struct sc_pkcs15_card *card,
 			      struct sc_file *file)
 {
-	int r, taglen, left;
-	const u8 *p, *tag;
-	u8 buf[MAX_BUFFER_SIZE];
+	int r, bytes_left;
+	u8 buf[2048];
+	const u8 *p = buf;
 
-	r = sc_select_file(p15card->card, file, &file->path,
+	r = sc_select_file(card->card, file, &file->path,
 			   SC_SELECT_FILE_BY_PATH);
 	if (r)
 		return r;
 	if (file->size > sizeof(buf))
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	r = sc_read_binary(p15card->card, 0, buf, file->size);
+	r = sc_read_binary(card->card, 0, buf, file->size);
 	if (r < 0)
 		return r;
+	bytes_left = r;
+	do {
+		struct sc_pkcs15_pin_info tmp;
 
-	left = r;
-	p = buf;
-	while ((tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen)) != NULL) {
-		if (p15card->pin_count >= SC_PKCS15_MAX_PINS)
-			return SC_ERROR_TOO_MANY_OBJECTS;
-		r = decode_pin_info(tag, taglen,
-				    &p15card->pin_info[p15card->pin_count]);
+		r = parse_pin_info(card->card->ctx,
+				   &tmp, &p, &bytes_left);
+		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
+			break;
 		if (r)
 			return r;
+		if (card->pin_count >= SC_PKCS15_MAX_CERTS)
+			return SC_ERROR_TOO_MANY_OBJECTS;
+                card->pin_info[card->pin_count] = tmp;
+		card->pin_count++;
+	} while (bytes_left);
 
-		p15card->pin_count++;
-	}
 	return 0;
+
 }
 
 int sc_pkcs15_enum_pins(struct sc_pkcs15_card *p15card)
@@ -158,7 +138,7 @@ int sc_pkcs15_enum_pins(struct sc_pkcs15_card *p15card)
 	struct sc_context *ctx = p15card->card->ctx;
 
 	assert(p15card != NULL);
-	SC_FUNC_CALLED(ctx);
+	SC_FUNC_CALLED(ctx, 1);
 	if (p15card->pin_count) {
 		for (i = 0; i < p15card->pin_count; i++) {
 			if (p15card->pin_info[i].magic != SC_PKCS15_PIN_MAGIC)
@@ -167,6 +147,7 @@ int sc_pkcs15_enum_pins(struct sc_pkcs15_card *p15card)
 		if (i == p15card->pin_count)
 			return i;	/* Already enumerated */
 	}
+	p15card->pin_count = 0;
 	for (i = 0; i < p15card->aodf_count; i++) {
 		r = get_pins_from_file(p15card, &p15card->file_aodf[i]);
 		SC_TEST_RET(ctx, r, "Failed to read PINs from AODF");

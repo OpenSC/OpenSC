@@ -24,34 +24,29 @@
 #include "opensc.h"
 #include <stdarg.h>
 
-#define SC_LOG_ERROR	0
-#define SC_LOG_NORMAL	1
-#define SC_LOG_VERBOSE	2
-#define SC_LOG_DEBUG	3
-#define SC_LOG_DEBUG2	4
+#define SC_LOG_TYPE_ERROR	0
+#define SC_LOG_TYPE_VERBOSE	1
+#define SC_LOG_TYPE_DEBUG	2
 
 #ifdef __GNUC__
-#define error(ctx, format, args...)	do_log(ctx, SC_LOG_ERROR,  __FILE__, __LINE__, __FUNCTION__ , format , ## args)
-#define log(ctx, format, args...)	do_log(ctx, SC_LOG_NORMAL, __FILE__, __LINE__, __FUNCTION__, format , ## args)
-#define debug(ctx, format, args...)	do_log(ctx, SC_LOG_DEBUG,  __FILE__, __LINE__, __FUNCTION__, format , ## args)
-#define debug2(ctx, format, args...)	do_log(ctx, SC_LOG_DEBUG2, __FILE__, __LINE__, __FUNCTION__, format , ## args)
+#define error(ctx, format, args...)	do_log(ctx, SC_LOG_TYPE_ERROR,  __FILE__, __LINE__, __FUNCTION__ , format , ## args)
+#define debug(ctx, format, args...)	do_log(ctx, SC_LOG_TYPE_DEBUG,  __FILE__, __LINE__, __FUNCTION__, format , ## args)
+
 #else
 
 void error(struct sc_context *ctx, const char *format, ...);
-void log(struct sc_context *ctx, const char *format, ...);
 void debug(struct sc_context *ctx, const char *format, ...);
-void debug2(struct sc_context *ctx, const char *format, ...);
 
 #endif
 
-#define SC_FUNC_CALLED(ctx) {\
-	if ((ctx)->debug > 2)\
+#define SC_FUNC_CALLED(ctx, level) {\
+	if ((ctx)->debug >= level)\
 		 debug(ctx, "called\n"); }
-#define SC_FUNC_RETURN(ctx, r) {\
+#define SC_FUNC_RETURN(ctx, level, r) {\
 	int _ret = r;\
 	if (_ret < 0) {\
 		error(ctx, "returning with: %s\n", sc_strerror(_ret));\
-	} else if ((ctx)->debug > 2) {\
+	} else if ((ctx)->debug >= level) {\
 		debug(ctx, "returning with: %d\n", _ret);\
 	}\
 	return _ret; }

@@ -58,6 +58,7 @@ struct sc_pkcs15_pin_info {
 	struct sc_pkcs15_common_obj_attr com_attr;
 
 	struct sc_pkcs15_id auth_id;
+	int reference;
 	int flags, type;
 	int min_length, stored_length;
 	u8 pad_char;
@@ -129,7 +130,7 @@ struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_common_obj_attr com_attr;
 
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
-	int usage, access_flags;
+	int usage, access_flags, native;
 	int key_reference;
 
 	struct sc_path file_id;
@@ -173,9 +174,12 @@ struct sc_pkcs15_defaults {
 	int arg;
 };
 
-int sc_pkcs15_init(struct sc_card *card,
+/* Binds a card object to a PKCS#15 card object and initializes
+ * a new PKCS#15 card object */
+int sc_pkcs15_bind(struct sc_card *card,
 		   struct sc_pkcs15_card **pkcs15_card);
-int sc_pkcs15_destroy(struct sc_pkcs15_card *card);
+
+int sc_pkcs15_unbind(struct sc_pkcs15_card *card);
 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_prkey_info *prkey,

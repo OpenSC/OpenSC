@@ -354,6 +354,7 @@ static int decode_bit_string(const u8 * inbuf, int inlen, void *outbuf,
 	int octets_left = inlen - 1;
 	int i, count = 0;
 
+	memset(outbuf, 0, outlen);
 	in++;
 	if (outlen < octets_left)
 		return SC_ERROR_BUFFER_TOO_SMALL;
@@ -527,7 +528,7 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entr
 	int *len = entry->len;
 	int r = 0;
 
-	if (ctx->debug > 2) {
+	if (ctx->debug >= 3) {
 		u8 line[128], *linep = line;
 		int i;
 		
@@ -556,6 +557,7 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entr
 		}
 		break;
 	case SC_ASN1_INTEGER:
+	case SC_ASN1_ENUMERATED:
 		if (parm != NULL)
 			r = sc_asn1_decode_integer(obj, objlen, (int *) entry->parm);
 		break;
@@ -627,7 +629,7 @@ static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 	struct sc_asn1_struct *entry = asn1;
 	int left = len, objlen;
 
-	if (ctx->debug > 2)
+	if (ctx->debug >= 3)
 		debug(ctx, "called, depth %d%s\n", depth, choice ? ", choice" : "");
 	if (left < 2)
 		return SC_ERROR_ASN1_END_OF_CONTENTS;
@@ -640,8 +642,12 @@ static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 		if (obj == NULL) {
 			if (choice)
 				continue;
-			if (entry->flags & SC_ASN1_OPTIONAL)
+			if (entry->flags & SC_ASN1_OPTIONAL) {
+				if (ctx->debug >= 3)
+					debug(ctx, "optional ASN.1 object '%s' not present\n",
+					      entry->name);
 				continue;
+			}
 			error(ctx, "mandatory ASN.1 object '%s' not found\n", entry->name);
 			if (ctx->debug && left) {
 				u8 line[128], *linep = line;
@@ -654,7 +660,7 @@ static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 				}
 				debug(ctx, "next tag: %s\n", line);
 			}
-			SC_FUNC_RETURN(ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
+			SC_FUNC_RETURN(ctx, 3, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
 		}
 		r = asn1_decode_entry(ctx, entry, obj, objlen, depth);
 		if (r)
@@ -663,14 +669,14 @@ static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 			break;
  	}
  	if (choice && asn1[idx].name == NULL) /* No match */
-		SC_FUNC_RETURN(ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
+		SC_FUNC_RETURN(ctx, 3, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
  	if (newp != NULL)
 		*newp = p;
  	if (len_left != NULL)
 		*len_left = left;
 	if (choice)
-		SC_FUNC_RETURN(ctx, idx);
-	SC_FUNC_RETURN(ctx, 0);
+		SC_FUNC_RETURN(ctx, 3, idx);
+	SC_FUNC_RETURN(ctx, 3, 0);
 }
 
 int sc_asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,

@@ -236,7 +236,7 @@ static const struct sc_pkcs15_defaults * find_defaults(u8 *dir, int dirlen)
 	return match;
 }
 
-int sc_pkcs15_init(struct sc_card *card,
+int sc_pkcs15_bind(struct sc_card *card,
 		   struct sc_pkcs15_card **p15card_out)
 {
 	unsigned char buf[MAX_BUFFER_SIZE];
@@ -324,7 +324,7 @@ error:
 	return err;
 }
 
-int sc_pkcs15_destroy(struct sc_pkcs15_card *p15card)
+int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 {
 	free(p15card->label);
 	free(p15card->serial_number);
