@@ -32,6 +32,8 @@
 #include <opensc/opensc.h>
 #endif
 
+#define DIM(v)		(sizeof(v)/(sizeof((v)[0])))
+
 struct scam_framework_ops *scam_frameworks[] =
 {
 #ifdef HAVE_SCIDI
@@ -48,13 +50,9 @@ struct scam_framework_ops *scam_frameworks[] =
 
 int scam_enum_modules(void)
 {
-	int i = 0;
+	int count = DIM(scam_frameworks) - 1;
 
-	for (i = 0;; i++) {
-		if (!scam_frameworks[i])
-			return i - 1;
-	}
-	return -1;
+	return (!count ? -1 : count);
 }
 
 void scam_parse_parameters(scam_context * sctx, int argc, const char **argv)
@@ -165,23 +163,6 @@ static int compareatr(const char *a1, const char *a2)
 	free(atr2);
 	return ret;
 }
-
-int scam_select_by_atr(const char *atr)
-{
-	int i, j;
-
-	if (!atr)
-		return -1;
-	for (i = 0; scam_frameworks[i]; i++) {
-		for (j = 0; scam_frameworks[i]->atrs[j]; j++) {
-			if (!compareatr(scam_frameworks[i]->atrs[j], atr)) {
-				return i;
-				break;
-			}
-		}
-	}
-	return -1;
-}
 #endif
 
 int scam_select_by_name(const char *method)
@@ -229,7 +210,7 @@ const char *scam_name(scam_context * sctx)
 {
 	if (!sctx)
 		return NULL;
-	if (sctx->method > scam_enum_modules())
+	if (sctx->method >= scam_enum_modules())
 		return NULL;
 	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->name) {
 		return scam_frameworks[sctx->method]->name;
@@ -241,7 +222,7 @@ const char *scam_usage(scam_context * sctx)
 {
 	if (!sctx)
 		return NULL;
-	if (sctx->method > scam_enum_modules())
+	if (sctx->method >= scam_enum_modules())
 		return NULL;
 	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->usage) {
 		return scam_frameworks[sctx->method]->usage();
@@ -253,7 +234,7 @@ int scam_init(scam_context * sctx, int argc, const char **argv)
 {
 	if (!sctx)
 		return SCAM_FAILED;
-	if (sctx->method > scam_enum_modules())
+	if (sctx->method >= scam_enum_modules())
 		return SCAM_FAILED;
 	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->init) {
 		return scam_frameworks[sctx->method]->init(sctx, argc, argv);
@@ -265,7 +246,7 @@ const char *scam_pinentry(scam_context * sctx)
 {
 	if (!sctx)
 		return NULL;
-	if (sctx->method > scam_enum_modules())
+	if (sctx->method >= scam_enum_modules())
 		return NULL;
 	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->pinentry) {
 		return scam_frameworks[sctx->method]->pinentry(sctx);
@@ -277,7 +258,7 @@ int scam_qualify(scam_context * sctx, unsigned char *password)
 {
 	if (!sctx)
 		return SCAM_FAILED;
-	if (sctx->method > scam_enum_modules())
+	if (sctx->method >= scam_enum_modules())
 		return SCAM_FAILED;
 	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->qualify) {
 		return scam_frameworks[sctx->method]->qualify(sctx, password);
@@ -289,7 +270,7 @@ int scam_auth(scam_context * sctx, int argc, const char **argv, const char *user
 {
 	if (!sctx)
 		return SCAM_FAILED;
-	if (sctx->method > scam_enum_modules())
+	if (sctx->method >= scam_enum_modules())
 		return SCAM_FAILED;
 	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->auth) {
 		return scam_frameworks[sctx->method]->auth(sctx, argc, argv, user, password);
@@ -301,7 +282,7 @@ void scam_deinit(scam_context * sctx)
 {
 	if (!sctx)
 		return;
-	if (sctx->method > scam_enum_modules())
+	if (sctx->method >= scam_enum_modules())
 		return;
 	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->deinit) {
 		scam_frameworks[sctx->method]->deinit(sctx);
@@ -312,7 +293,7 @@ int scam_open_session(scam_context * sctx, int argc, const char **argv, const ch
 {
 	if (!sctx)
 		return SCAM_FAILED;
-	if (sctx->method > scam_enum_modules())
+	if (sctx->method >= scam_enum_modules())
 		return SCAM_FAILED;
 	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->open_session) {
 		return scam_frameworks[sctx->method]->open_session(sctx, argc, argv, user);
@@ -324,7 +305,7 @@ int scam_close_session(scam_context * sctx, int argc, const char **argv, const c
 {
 	if (!sctx)
 		return SCAM_FAILED;
-	if (sctx->method > scam_enum_modules())
+	if (sctx->method >= scam_enum_modules())
 		return SCAM_FAILED;
 	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->close_session) {
 		return scam_frameworks[sctx->method]->close_session(sctx, argc, argv, user);

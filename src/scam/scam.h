@@ -29,11 +29,6 @@ extern "C" {
 #define SCAM_FAILED	1
 #define SCAM_SUCCESS	0
 
-/* FIXME: Selecting the right authentication method by ATR needs some
- * more work, configuration file support, support for EMV cards, etc.
- */
-#undef ATR_SUPPORT
-
 typedef struct _scam_context scam_context;
 
 struct _scam_context {
@@ -82,11 +77,6 @@ extern struct scam_framework_ops *scam_frameworks[];
 extern int scam_enum_modules(void);
 
 extern void scam_parse_parameters(scam_context * sctx, int argc, const char **argv);
-
-#ifdef ATR_SUPPORT
-extern const char *scam_get_atr(unsigned int readernum);
-extern int scam_select_by_atr(const char *atr);
-#endif
 extern int scam_select_by_name(const char *method);
 
 extern void scam_print_msg(scam_context * sctx, char *str,...);
@@ -94,7 +84,6 @@ extern void scam_log_msg(scam_context * sctx, char *str,...);
 
 extern const char *scam_name(scam_context * sctx);
 extern const char *scam_usage(scam_context * sctx);
-extern void scam_handles(scam_context * sctx, void *ctx1, void *ctx2, void *ctx3);
 extern int scam_init(scam_context * sctx, int argc, const char **argv);
 extern const char *scam_pinentry(scam_context * sctx);
 extern int scam_qualify(scam_context * sctx, unsigned char *password);
