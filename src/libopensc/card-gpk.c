@@ -265,7 +265,7 @@ match_path(struct sc_card *card, unsigned short int **pathptr, size_t *pathlen,
 	}
 
 	/* In the case of an exact match:
-	 * If the callers needs info on the file to be selected,
+	 * If the caller needs info on the file to be selected,
 	 * make sure we at least select the file itself.
 	 * If the DF matches the current DF, just return the
 	 * FID */
@@ -494,18 +494,19 @@ gpk_select_id(struct sc_card *card, u8 kind, unsigned short int fid,
 	r = gpk_select(card, kind, fbuf, 2, file);
 	card->ctx->log_errors = log_errs;
 
-	/* Fix up the path cache */
+	/* Fix up the path cache.
+	 * NB we never cache the ID of an EF, just the DF path */
 	if (r == 0) {
-		unsigned short int	*path = (unsigned short int *) cp->value;
+		unsigned short int	*path;
 
-		if (fid == GPK_FID_MF) {
-			path[0] = fid;
-			cp->len = 1;
-		} else
-		if (cp->len + 1 <= SC_MAX_PATH_SIZE / 2) {
-			path[cp->len++] = fid;
-		} else {
+		switch (kind) {
+		case GPK_SEL_MF:
 			cp->len = 0;
+			/* fallthru */
+		case GPK_SEL_DF:
+			assert(cp->len + 1 <= SC_MAX_PATH_SIZE / 2);
+			path = (unsigned short int *) cp->value;
+			path[cp->len++] = fid;
 		}
 	} else {
 		cp->len = 0;
@@ -1233,14 +1234,20 @@ static int
 gpk_init_hashed(struct sc_card *card, const u8 *digest, unsigned int len)
 {
 	struct sc_apdu	apdu;
+	u8		tsegid[64];
+	unsigned int	k;
 	int		r;
+
+	assert(len <= sizeof(tsegid));
+	for (k = 0; k < len; k++)
+		tsegid[k] = digest[len-1-k];
 
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse = SC_APDU_CASE_3_SHORT;
 	apdu.cla = 0x80;
 	apdu.ins = 0xEA;
 	apdu.lc  = len;
-	apdu.data= digest;
+	apdu.data= tsegid;
 	apdu.datalen = len;
 
 	r = sc_transmit_apdu(card, &apdu);
@@ -1265,23 +1272,14 @@ gpk_compute_signature(struct sc_card *card, const u8 *data,
 	unsigned int	n, len;
 	int		r;
 
-	if (data_len != priv->sec_mod_len) {
+	if (data_len > priv->sec_mod_len) {
 		error(card->ctx,
-			"Data length (%u) does not match key modulus %u.",
+			"Data length (%u) does not match key modulus %u.\n",
 			data_len, priv->sec_mod_len);
 		return SC_ERROR_INTERNAL;
 	}
 
-	/* We're in a pinch here. The GPK insists on doing the
-	 * padding itself, but the upper layers of OpenSC insist on
-	 * doing the padding for us.  So strip away the pkcs#1 padding
-	 * first. */
-	/* XXX FIXME: There's no padding, if the card indicates that it's
-	 * able to do it itself. */
-	if (data_len < priv->sec_hash_len + 11)
-		return SC_ERROR_INTERNAL;
-	r = gpk_init_hashed(card, data + data_len - priv->sec_hash_len,
-			priv->sec_hash_len);
+	r = gpk_init_hashed(card, data, data_len);
 	SC_TEST_RET(card->ctx, r, "Failed to send hash to card");
 
 	/* Now sign the hash.
@@ -1306,7 +1304,7 @@ gpk_compute_signature(struct sc_card *card, const u8 *data,
 	 * Need to revert these */
 	len = priv->sec_mod_len;
 	if (len > outlen) {
-		error(card->ctx, "Signature buffer too small");
+		error(card->ctx, "Signature buffer too small\n");
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
 
