@@ -184,6 +184,11 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 		file->prop_attr_len = taglen;
 	} else
 		file->prop_attr_len = 0;
+	tag = sc_asn1_find_tag(p, len, 0xA5, &taglen);
+	if (tag != NULL && taglen && taglen <= SC_MAX_PROP_ATTR_SIZE) {
+		memcpy(file->prop_attr, tag, taglen);
+		file->prop_attr_len = taglen;
+	}
 	tag = sc_asn1_find_tag(p, len, 0x86, &taglen);
 	if (tag != NULL && taglen && taglen <= SC_MAX_SEC_ATTR_SIZE)
 		parse_sec_attr(file, tag, taglen);
@@ -306,8 +311,9 @@ static struct sc_card_operations iso_ops = {
 };
 
 static const struct sc_card_driver iso_driver = {
-	name: "ISO 7816-x reference driver",
-	ops: &iso_ops
+	NULL,
+	"ISO 7816-x reference driver",
+	&iso_ops
 };
 
 const struct sc_card_driver * sc_get_iso7816_driver(void)
