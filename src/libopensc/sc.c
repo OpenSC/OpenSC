@@ -152,28 +152,38 @@ static void set_defaults(struct sc_context *ctx)
 	ctx->error_file = stderr;
 }
 
-static int load_parameters(struct sc_context *ctx, scconf_block *block)
+static int load_parameters(struct sc_context *ctx, const char *app)
 {
+	scconf_block **blocks = NULL;
 	const char *val;
+	unsigned int i;
 
-	val = scconf_find_value_first(block, "debuglevel");
-	sscanf(val, "%d", &ctx->debug);
-	val = scconf_find_value_first(block, "debugfile");
-	if (ctx->debug_file)
-		fclose(ctx->debug_file);
-	if (strcmp(val, "stdout") == 0)
-		ctx->debug_file = fopen(val, "a");
-	val = scconf_find_value_first(block, "errorfile");
-	if (ctx->error_file)
-		fclose(ctx->error_file);
-	if (strcmp(val, "stderr") != 0)
-		ctx->error_file = fopen(val, "a");
+	blocks = scconf_find_blocks(ctx->conf, NULL, "app");
+	for (i = 0; blocks[i]; i++) {
+		scconf_block *block = blocks[i];
 
+		if (!block->name && strcmp(block->name->data, app))
+			continue;
+		val = scconf_find_value_first(block, "debug");
+		sscanf(val, "%d", &ctx->debug);
+		val = scconf_find_value_first(block, "debug_file");
+		if (ctx->debug_file)
+			fclose(ctx->debug_file);
+		if (strcmp(val, "stdout") == 0)
+			ctx->debug_file = fopen(val, "a");
+		val = scconf_find_value_first(block, "error_file");
+		if (ctx->error_file)
+			fclose(ctx->error_file);
+		if (strcmp(val, "stderr") != 0)
+			ctx->error_file = fopen(val, "a");
+	}
+	free(blocks);
 	return 0;
 }
 
 int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 {
+	const char *default_app = "default";
 	struct sc_context *ctx;
 	int i, r;
 
@@ -183,15 +193,19 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(ctx, 0, sizeof(struct sc_context));
 	set_defaults(ctx);
-	ctx->app_name = strdup(app_name);
+	ctx->app_name = app_name ? strdup(app_name) : strdup(default_app);
 	ctx->conf = scconf_init(OPENSC_CONF_PATH);
 	if (ctx->conf != NULL) {
 		r = scconf_parse(ctx->conf);
 		if (scconf_parse(ctx->conf) < 1) {
 			scconf_deinit(ctx->conf);
 			ctx->conf = NULL;
-		} else
-			load_parameters(ctx, ctx->conf->root);
+		} else {
+			load_parameters(ctx, default_app);
+			if (strcmp(default_app, ctx->app_name)) {
+				load_parameters(ctx, ctx->app_name);
+			}
+		}
 	}
 #ifdef HAVE_PTHREAD
 	pthread_mutex_init(&ctx->mutex, NULL);

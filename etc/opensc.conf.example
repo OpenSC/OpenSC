@@ -1,9 +1,17 @@
 # Configuration file for OpenSC
 # Example configuration file
 
-debuglevel = 0
-#debugfile = /tmp/opensc-debug.log
-#errorfile = /tmp/opensc-errors.log
+# Default values for any application
+# These can be overrided by the application
+# specific configuration block.
 
-app "pam_pkcs15" {
+app default {
+	debug = 0
+	#debug_file = /tmp/opensc-debug.log
+	#error_file = /tmp/opensc-errors.log
+}
+
+# For applications that use SCAM (pam_opensc, sia_opensc)
+app scam {
+	use_cache = false;
 }
