@@ -268,6 +268,7 @@ int p15_ldap_auth(scam_context * sctx, int argc, const char **argv,
 	u8 random_data[20], chg[256];
 	scldap_result *lresult = NULL;
 	int r = 0, i = 0, err = SCAM_FAILED, chglen;
+	char *dn;
 
 	if (!sctx->method_data) {
 		return SCAM_FAILED;
@@ -305,7 +306,9 @@ int p15_ldap_auth(scam_context * sctx, int argc, const char **argv,
 		goto end;
 	}
 	snprintf(data->scldap_entry, MAX_ENTRYLEN, "%s %s auth certificate", data->p15card->label, data->p15card->manufacturer_id);
-	modify_base(sctx, data->scldap_entry, certGetSubject(CardCert->cert));
+	dn = certGetSubject(CardCert->cert);
+	modify_base(sctx, data->scldap_entry, dn);
+	free(dn);
 	r = scldap_search(data->lctx, data->scldap_entry, &lresult, 1, user);
 	if ((r < 0) || (copy_result(lresult, &Cert->buf, &Cert->len) < 0)) {
 		scam_print_msg(sctx, "Search failed: no auth certificate found.\n");
