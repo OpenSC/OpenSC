@@ -122,6 +122,10 @@ static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen,
 		memcpy(app->path.value, path, path_len);
 		app->path.len = path_len;	
 		app->path.type = SC_PATH_TYPE_PATH;
+	} else if (aid_len < sizeof(app->path.value)) {
+		memcpy(app->path.value, aid, aid_len);
+		app->path.len = aid_len;
+		app->path.type = SC_PATH_TYPE_DF_NAME;
 	} else
 		app->path.len = 0;
 	if (asn1_dirrecord[3].flags & SC_ASN1_PRESENT) {

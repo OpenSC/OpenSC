@@ -112,7 +112,7 @@ extern "C" {
 #define SC_MAX_CARD_DRIVER_SNAME_SIZE	16
 #define SC_MAX_READERS			16
 #define SC_MAX_SLOTS			4
-#define SC_MAX_CARD_APPS		4
+#define SC_MAX_CARD_APPS		8
 #define SC_MAX_APDU_BUFFER_SIZE		258
 #define SC_MAX_PIN_SIZE			16
 #define SC_MAX_ATR_SIZE			33
