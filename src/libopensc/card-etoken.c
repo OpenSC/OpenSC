@@ -28,6 +28,9 @@
 #include <string.h>
 
 /* andreas says: hm, my card only works for small payloads */
+/* comment by okir: one of the examples in the developer guide
+ * also talks about copying data in chunks of 128.
+ * Either coincidence, or a known problem. */
 #define ETOKEN_MAX_PAYLOAD	120
 
 static const struct sc_card_operations *iso_ops = NULL;
@@ -510,6 +513,18 @@ static int etoken_read_binary(struct sc_card *card,
 	return total? total : n;
 }
 
+/*
+ * The 0x80 thing tells the card it's okay to search parent
+ * directories as well for the referenced object.
+ * Unfortunately, it doesn't seem to work without this flag :-/
+ */
+static int
+etoken_verify(struct sc_card *card, unsigned int type, int ref,
+		const u8 *pin, size_t pin_len, int *tries_left)
+{
+	return iso_ops->verify(card, type, ref|0x80, pin, pin_len, tries_left);
+}
+
 static int
 etoken_put_data_fci(struct sc_card *card,
 			struct sc_cardctl_etoken_pin_info *args)
@@ -564,6 +579,7 @@ const struct sc_card_driver * sc_get_driver(void)
 	etoken_ops.create_file = etoken_create_file;
 	etoken_ops.update_binary = etoken_update_binary;
 	etoken_ops.read_binary = etoken_read_binary;
+	etoken_ops.verify = etoken_verify;
 
 	etoken_ops.list_files = etoken_list_files;
 	etoken_ops.check_sw = etoken_check_sw;
