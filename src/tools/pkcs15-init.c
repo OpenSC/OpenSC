@@ -1472,7 +1472,7 @@ static int determine_filesize(const char *filename) {
 	FILE *fp;
 	size_t size;
 
-	if ((fp = fopen(filename,"r")) == NULL) {
+	if ((fp = fopen(filename,"rb")) == NULL) {
 	  fatal("Unable to open %s: %m", filename);
 	  }
 	fseek(fp,0L,SEEK_END);
@@ -1493,7 +1493,7 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
  
-        inf = fopen(name, "r");
+        inf = fopen(name, "rb");
         if (inf == NULL) {
                 fprintf(stderr, "Unable to open '%s' for reading.\n", name);
                 return -1;
