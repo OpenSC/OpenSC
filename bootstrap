@@ -1,8 +1,11 @@
 #!/bin/sh
 
 set -x
+make distclean
+rm -f *.cache *.status *.log *.m4
+cat aclocal/*.m4 > acinclude.m4
 aclocal
-libtoolize --force --copy
-autoheader
-automake --add-missing --copy
-autoconf
+libtoolize --copy --force --automake
+autoheader configure.in > config.h.in
+automake --add-missing --copy --force
+autoreconf --gnu
