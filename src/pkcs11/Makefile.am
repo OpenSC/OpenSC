@@ -50,3 +50,9 @@ if HAVE_BUNDLES
 	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(libdir)/pkcs11-spy.so \
 		$(DESTDIR)$(bundledir)/
 endif
+
+uninstall-local: uninstall-libLTLIBRARIES
+if HAVE_BUNDLES
+	rm -rf $(DESTDIR)$(bundledir)/opensc-pkcs11.bundle/
+	rm -rf $(DESTDIR)$(bundledir)/pkcs11-spy.bundle/
+endif

@@ -40,3 +40,11 @@ if HAVE_BUNDLES
 		$(DESTDIR)$(bundledir)/
 endif
 endif
+
+uninstall-local: uninstall-libLTLIBRARIES
+if HAVE_ENGINE
+if HAVE_BUNDLES
+	rm -rf $(DESTDIR)$(bundledir)/engine_opensc.bundle/
+	rm -rf $(DESTDIR)$(bundledir)/engine_pkcs11.bundle/
+endif
+endif
