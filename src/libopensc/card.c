@@ -299,7 +299,7 @@ void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
 	return;
 }
 
-static struct sc_card * sc_card_new()
+static struct sc_card * sc_card_new(void)
 {
 	struct sc_card *card;
 	
@@ -572,7 +572,7 @@ int sc_read_binary(struct sc_card *card, unsigned int idx,
 		r = sc_lock(card);
 		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 		while (count > 0) {
-			int n = count > max_le ? max_le : count;
+			size_t n = count > max_le ? max_le : count;
 			r = sc_read_binary(card, idx, p, n, flags);
 			if (r < 0) {
 				sc_unlock(card);
@@ -614,7 +614,7 @@ int sc_write_binary(struct sc_card *card, unsigned int idx,
 		r = sc_lock(card);
 		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 		while (count > 0) {
-			int n = count > max_lc? max_lc : count;
+			size_t n = count > max_lc? max_lc : count;
 			r = sc_write_binary(card, idx, p, n, flags);
 			if (r < 0) {
 				sc_unlock(card);
@@ -656,7 +656,7 @@ int sc_update_binary(struct sc_card *card, unsigned int idx,
 		r = sc_lock(card);
 		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 		while (count > 0) {
-			int n = count > max_lc? max_lc : count;
+			size_t n = count > max_lc? max_lc : count;
 			r = sc_update_binary(card, idx, p, n, flags);
 			if (r < 0) {
 				sc_unlock(card);
