@@ -11,7 +11,9 @@ INCLUDES = @CFLAGS_OPENSC@ @CFLAGS_ASSUAN@
 plugindir = $(PLUGINDIR)
 
 if HAVE_SSL
+if HAVE_ASSUAN
 plugin_LTLIBRARIES = opensc-signer.la
+endif
 endif
 
 opensc_signer_la_LDFLAGS = -module -avoid-version

@@ -922,6 +922,63 @@ fi
 AM_CONDITIONAL(HAVE_LDAP, test "x$LDAP_MSG" = "xyes")
 ### END LDAP SPECIFIC OPTIONS
 
+### BEGIN ASSUAN SPECIFIC OPTIONS
+AC_SUBST(CFLAGS_ASSUAN)
+AC_SUBST(LIBASSUAN)
+LIBASSUAN="-lassuan"
+AC_ARG_WITH(assuan,
+	[  --with-assuan=PATH      use Assuan libraries in PATH],
+	[
+		if test -d "$withval/lib"; then
+			if test -n "${need_dash_r}"; then
+				LDFLAGS="-L${withval}/lib -R${withval}/lib ${LDFLAGS}"
+			else
+				LDFLAGS="-L${withval}/lib ${LDFLAGS}"
+			fi
+		else
+			if test -n "${need_dash_r}"; then
+				LDFLAGS="-L${withval} -R${withval} ${LDFLAGS}"
+			else
+				LDFLAGS="-L${withval} ${LDFLAGS}"
+			fi
+		fi
+		if test -d "$withval/include"; then
+			CFLAGS_ASSUAN="-I${withval}/include ${CFLAGS_ASSUAN}"
+		else
+			CFLAGS_ASSUAN="-I${withval} ${CFLAGS_ASSUAN}"
+		fi
+	]
+)
+
+AC_CHECK_LIB(assuan, assuan_pipe_connect, , AC_MSG_ERROR([*** Assuan libraries not found - please install first]))
+
+saved_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="$CFLAGS_ASSUAN $CPPFLAGS"
+AC_CHECK_HEADER(assuan.h, , AC_MSG_ERROR([*** Assuan headers not found - please install first]))
+CPPFLAGS="$saved_CPPFLAGS"
+### END ASSUAN SPECIFIC OPTIONS
+
+PLUGINDIR="/usr/lib/mozilla/plugins"
+AC_ARG_WITH(plugin-dir,
+	[  --with-plugin-dir=PATH  install plugin to PATH [[/usr/lib/mozilla/plugins]]],
+	[
+		PLUGINDIR="$withval"
+	]
+)
+AC_SUBST(PLUGINDIR)
+
+# Check for pin entry-program used by OpenSC-Signer
+PIN_ENTRY="/usr/local/bin/gpinentry"
+AC_ARG_WITH(pin-entry,
+	[  --with-pin-entry=FILE   Run FILE as pin entry for OpenSC-Signer],
+	[
+		if test ! -z "$withval" -a "x$withval" != "xno" ; then
+			PIN_ENTRY="$withval"
+		fi
+	]
+)
+AC_DEFINE_UNQUOTED(PIN_ENTRY, "$PIN_ENTRY", [Pin entry program for OpenSC-Signer])
+
 if test "x$prefix" = xNONE; then
   prefix=$ac_default_prefix
 fi
@@ -986,6 +1043,8 @@ src/scconf/Makefile
 src/scldap/Makefile
 src/scrandom/Makefile
 src/sia/Makefile
+src/signer/Makefile
+src/signer/npinclude/Makefile
 src/tests/Makefile
 src/tools/Makefile
 ])
