@@ -1,6 +1,6 @@
 # Process this file with automake to create Makefile.in
 
-libdir = ${prefix}/lib/security
+libdir = ${exec_prefix}/lib/security
 
 MAINTAINERCLEANFILES = Makefile.in
 
