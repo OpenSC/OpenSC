@@ -98,6 +98,7 @@ int usbtoken_reader_init(struct sc_context *ctx, void **priv_data)
 		myprivslot = malloc(sizeof(struct usbtoken_privslot));
 		bzero(myprivslot, sizeof(struct usbtoken_privslot));
 		myreader->slot[0].drv_data = myprivslot;
+		myreader->slot[0].flags = SC_SLOT_CARD_PRESENT;
 
 		myprivslot->fd = -1;
 		myprivslot->sa_un.sun_family = AF_UNIX;
