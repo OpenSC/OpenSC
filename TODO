@@ -6,10 +6,9 @@
 Nitty gritty details:
 * Pin pad support
 * Merge DODF patches (mostly done)
+* put generic PEM encoding/decoding functions into libopensc?
 * Merge pkcs11 proxy from Zetes
-* pkcs11: support decrypt for those cards that support it
-* pkcs11: when asked for CKA_SIGN etc evaluate the pkcs15
-  keyUsage attribute
+* pkcs11: support decrypt for those cards that have it
 * all: support for RSA-PSS
 * pkcs15-init: support SOPIN on Cryptoflex
 
