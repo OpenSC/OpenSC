@@ -58,7 +58,13 @@ static int setcos_finish(struct sc_card *card)
 static int setcos_match_card(struct sc_card *card)
 {
 	int i;
+	const u8 *hist_bytes = card->slot->atr_info.hist_bytes;
 
+	if (card->slot->atr_info.hist_bytes_len < 8)
+		return 0;
+	if (memcmp(hist_bytes + 4, "FISE", 4) != 0)
+		return 0;
+	
 	i = _sc_match_atr(card, setcos_atrs, NULL);
 	if (i < 0)
 		return 0;
@@ -77,7 +83,7 @@ static int setcos_init(struct sc_card *card)
 	if (priv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->drv_data = priv;
-	card->cla = 0x00;
+	card->cla = 0x80;
 	priv->type = id;
 	if (id == SETEC_PKI) {
 		unsigned long flags;
@@ -152,6 +158,86 @@ static int setcos_create_file(struct sc_card *card, struct sc_file *file)
 	return iso_ops->create_file(card, file);
 }
 
+static int setcos_set_security_env2(struct sc_card *card,
+				    const struct sc_security_env *env,
+				    int se_num)
+{
+	struct sc_apdu apdu;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 *p;
+	int r, locked = 0;
+
+	assert(card != NULL && env != NULL);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
+	switch (env->operation) {
+	case SC_SEC_OPERATION_DECIPHER:
+		apdu.p1 = 0x41;	/* Should be 0x81 */
+		apdu.p2 = 0xB8;
+		break;
+	case SC_SEC_OPERATION_SIGN:
+		apdu.p1 = 0x81; /* Should be 0x41 */
+		apdu.p2 = 0xB6;
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	apdu.le = 0;
+	p = sbuf;
+	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
+		*p++ = 0x80;	/* algorithm reference */
+		*p++ = 0x01;
+		*p++ = env->algorithm_ref & 0xFF;
+	}
+	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
+		*p++ = 0x81;
+		*p++ = env->file_ref.len;
+		memcpy(p, env->file_ref.value, env->file_ref.len);
+		p += env->file_ref.len;
+	}
+	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
+			*p++ = 0x83;
+		else
+			*p++ = 0x84;
+		*p++ = env->key_ref_len;
+		memcpy(p, env->key_ref, env->key_ref_len);
+		p += env->key_ref_len;
+	}
+	r = p - sbuf;
+	apdu.lc = r;
+	apdu.datalen = r;
+	apdu.data = sbuf;
+	apdu.resplen = 0;
+	if (se_num > 0) {
+		r = sc_lock(card);
+		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
+		locked = 1;
+	}
+	if (apdu.datalen != 0) {
+		r = sc_transmit_apdu(card, &apdu);
+		if (r) {
+			sc_perror(card->ctx, r, "APDU transmit failed");
+			goto err;
+		}
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		if (r) {
+			sc_perror(card->ctx, r, "Card returned error");
+			goto err;
+		}
+	}
+	if (se_num <= 0)
+		return 0;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xF2, se_num);
+	r = sc_transmit_apdu(card, &apdu);
+	sc_unlock(card);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+err:
+	if (locked)
+		sc_unlock(card);
+	return r;
+}
+
 static int setcos_set_security_env(struct sc_card *card,
 				  const struct sc_security_env *env,
 				  int se_num)
@@ -180,9 +266,9 @@ static int setcos_set_security_env(struct sc_card *card,
 			tmp.algorithm_ref = 0x02;
 		if (tmp.algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
 			tmp.algorithm_ref |= 0x10;
-		return iso_ops->set_security_env(card, &tmp, se_num);
+		return setcos_set_security_env2(card, &tmp, se_num);
 	}
-        return iso_ops->set_security_env(card, env, se_num);
+        return setcos_set_security_env2(card, env, se_num);
 }
 
 static void add_acl_entry(struct sc_file *file, int op, u8 byte)

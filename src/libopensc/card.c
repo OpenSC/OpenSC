@@ -346,6 +346,8 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 	memcpy(card->atr, slot->atr, slot->atr_len);
 	card->atr_len = slot->atr_len;
 
+	_sc_parse_atr(reader->ctx, slot);
+
 	if (ctx->forced_driver != NULL) {
 		card->driver = ctx->forced_driver;
 		memcpy(card->ops, card->driver->ops, sizeof(struct sc_card_operations));

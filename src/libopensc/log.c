@@ -102,6 +102,8 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 		outf = ctx->error_file;
 		break;
 	case SC_LOG_TYPE_DEBUG:
+		if (ctx->debug == 0)
+			return;
 		outf = ctx->debug_file;
 		break;
 	}
