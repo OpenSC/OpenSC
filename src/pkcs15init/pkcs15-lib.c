@@ -1830,7 +1830,9 @@ select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 		return 0;
 	}
 
-printf("key-domain.%s @%s (auth_id.len=%d)\n", name, sc_print_path(path), obj->auth_id.len);
+	sc_debug(p15card->card->ctx,
+		"key-domain.%s @%s (auth_id.len=%d)\n",
+		name, sc_print_path(path), obj->auth_id.len);
 	r = sc_profile_instantiate_template(profile,
 					"key-domain", path, 
 					name, obj_id, &file);
