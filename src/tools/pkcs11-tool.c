@@ -1562,7 +1562,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_MECHANISM_TYPE firstMechType;
 	CK_SESSION_INFO sessionInfo;
 	CK_ULONG        i, j;
-	unsigned char   data[200];
+	unsigned char   data[256];
 	CK_ULONG        modLenBytes;
 	CK_ULONG        dataLen;
 	unsigned char   sig1[1024], sig2[1024];
