@@ -111,7 +111,8 @@ static const char *	opt_slot_label = NULL;
 static CK_MECHANISM_TYPE opt_mechanism = NO_MECHANISM;
 static const char *	opt_file_to_write = NULL;
 static const char *	opt_object_type = NULL;
-static int		opt_object_id = -1;
+static CK_BYTE		opt_object_id[100];
+static int		opt_object_id_len = 0;
 static char *		opt_object_label = NULL;
 
 static sc_pkcs11_module_t *module = NULL;
@@ -162,6 +163,7 @@ static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
 static void		p11_perror(const char *, CK_RV);
 static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
+static int		hex_to_bin(const char *in, CK_BYTE *out, size_t *outlen);
 
 /* win32 needs this in open(2) */
 #ifndef O_BINARY
@@ -233,9 +235,9 @@ main(int argc, char * const argv[])
 			opt_object_type = optarg;
 			break;
 		case 'd':
-			opt_object_id = atoi(optarg);
-			if (opt_object_id == 0 && optarg[0] != '0') {
-				printf("id should be an integer, is \"%s\"\n", opt_object_id);
+			opt_object_id_len = sizeof(opt_object_id);
+			if (!hex_to_bin(optarg, opt_object_id, &opt_object_id_len)) {
+				printf("Invalid ID \"%s\"\n", optarg);
 				print_usage_and_die();
 			}	
 			break;
@@ -738,7 +740,7 @@ hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		close(fd);
 }
 
-#define FILL_ATTR(attr, typ, val, len) (attr).type=(typ); (attr).pValue=(val); (attr).ulValueLen=len;
+#define FILL_ATTR(attr, typ, val, len) {(attr).type=(typ); (attr).pValue=(val); (attr).ulValueLen=len;}
 
 void
 gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
@@ -748,15 +750,19 @@ gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_ULONG modulusBits = 768;
 	CK_BYTE publicExponent[] = { 3 };
 	CK_BBOOL true = TRUE;
+	CK_OBJECT_CLASS pubkey_class = CKO_PUBLIC_KEY;
+	CK_OBJECT_CLASS privkey_class = CKO_PRIVATE_KEY;
 	CK_ATTRIBUTE publicKeyTemplate[20] = {
+		{CKA_CLASS, &pubkey_class, sizeof(pubkey_class)},
 		{CKA_ENCRYPT, &true, sizeof(true)},
 		{CKA_VERIFY, &true, sizeof(true)},
 		{CKA_WRAP, &true, sizeof(true)},
 		{CKA_MODULUS_BITS, &modulusBits, sizeof(modulusBits)},
 		{CKA_PUBLIC_EXPONENT, publicExponent, sizeof(publicExponent)}
 	};
-	int n_pubkey_attr = 5;
+	int n_pubkey_attr = 6;
 	CK_ATTRIBUTE privateKeyTemplate[20] = {
+		{CKA_CLASS, &privkey_class, sizeof(privkey_class)},
 		{CKA_TOKEN, &true, sizeof(true)},
 		{CKA_PRIVATE, &true, sizeof(true)},
 		{CKA_SENSITIVE, &true, sizeof(true)},
@@ -764,21 +770,25 @@ gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		{CKA_SIGN, &true, sizeof(true)},
 		{CKA_UNWRAP, &true, sizeof(true)}
 	};
-	int n_privkey_attr = 6;
+	int n_privkey_attr = 7;
 	CK_RV rv;
 
 	if (opt_object_label != NULL) {
-		FILL_ATTR(publicKeyTemplate[n_pubkey_attr++], CKA_LABEL,
+		FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_LABEL,
 			opt_object_label, strlen(opt_object_label));
-		FILL_ATTR(privateKeyTemplate[n_privkey_attr++], CKA_LABEL,
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_LABEL,
 			opt_object_label, strlen(opt_object_label));
+		n_pubkey_attr++;
+		n_privkey_attr++;
+		
 	}
-	if (opt_object_id != -1) {
-		CK_BYTE id = (CK_BYTE) opt_object_id;
-		FILL_ATTR(publicKeyTemplate[n_pubkey_attr++], CKA_ID,
-			&id, sizeof(id));
-		FILL_ATTR(privateKeyTemplate[n_privkey_attr++], CKA_ID,
-			&id, sizeof(id));
+	if (opt_object_id_len != 0) {
+		FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_ID,
+			opt_object_id, opt_object_id_len);
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_ID,
+			opt_object_id, opt_object_id_len);
+		n_pubkey_attr++;
+		n_privkey_attr++;
 	}
 
 	rv = p11->C_GenerateKeyPair(session, &mechanism,
@@ -825,13 +835,14 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		n_cert_attr = 4;
 
 		if (opt_object_label != NULL) {
-			FILL_ATTR(cert_templ[n_cert_attr++], CKA_LABEL,
+			FILL_ATTR(cert_templ[n_cert_attr], CKA_LABEL,
 				opt_object_label, strlen(opt_object_label));
+			n_cert_attr++;
 		}
-		if (opt_object_id != -1) {
-			CK_BYTE id = (CK_BYTE) opt_object_id;
-			FILL_ATTR(cert_templ[n_cert_attr++], CKA_ID,
-				&id, sizeof(id));
+		if (opt_object_id_len != 0) {
+			FILL_ATTR(cert_templ[n_cert_attr], CKA_ID,
+				opt_object_id, opt_object_id_len);
+			n_cert_attr++;
 		}
 	}
 	else
@@ -1072,7 +1083,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 	if ((id = getID(sess, obj, &size)) != NULL && size) {
 		unsigned int	n;
 
-		printf("  ID:         0x");
+		printf("  ID:         ");
 		for (n = 0; n < size; n++)
 			printf("%02x", id[n]);
 		printf("\n");
@@ -2039,6 +2050,57 @@ p11_perror(const char *msg, CK_RV rv)
 	fprintf(stderr,
 		"  ERR: %s failed: %s (0x%0x)\n",
 		msg, CKR2Str(rv), (unsigned int) rv);
+}
+
+int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
+{
+	int err = 0;
+	size_t left, count = 0;
+
+	if (in == NULL || *in == '\0') {
+		*outlen = 0;
+		return 1;
+	}
+
+        left = *outlen;
+
+	while (*in != '\0') {
+		int byte = 0, nybbles = 2;
+		char c;
+
+		while (nybbles-- && *in && *in != ':') {
+			byte <<= 4;
+			c = *in++;
+			if ('0' <= c && c <= '9')
+				c -= '0';
+			else
+			if ('a' <= c && c <= 'f')
+				c = c - 'a' + 10;
+			else
+			if ('A' <= c && c <= 'F')
+				c = c - 'A' + 10;
+			else {
+				printf("hex_to_bin(): invalid char '%c' in hex string\n", c);
+				*outlen = 0;
+				return 0;
+			}
+			byte |= c;
+		}
+		if (*in == ':')
+			in++;
+		if (left <= 0) {
+			printf("hex_to_bin(): hex string too long");
+			*outlen = 0;
+			return 0;
+		}
+		out[count++] = (unsigned char) byte;
+		left--;
+		c++;
+	}
+
+out:
+	*outlen = count;
+	return 1;
 }
 
 static struct mech_info	p11_mechanisms[] = {
