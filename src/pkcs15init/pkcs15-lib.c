@@ -38,12 +38,14 @@
 #include <string.h>
 #include <strings.h>
 #include <assert.h>
+#ifdef HAVE_OPENSSL
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/pkcs12.h>
+#endif
 #include <opensc/pkcs15.h>
 #include "profile.h"
 #include "pkcs15-init.h"
