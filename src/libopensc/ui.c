@@ -17,6 +17,11 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+#ifdef HAVE_LOCALE_H
+#include <locale.h>
+#endif
+#include <opensc/pkcs15.h>
+#include "internal.h"
 
 /*
  * We keep a global shared library handle here.
@@ -25,25 +30,22 @@
 static void *		sc_ui_lib_handle = NULL;
 static int		sc_ui_lib_loaded = 0;
 
-typedef int		sc_ui_get_pin_fn_t(sc_context_t *, const char *,
-				const char *,
-				const sc_ui_get_pin_info_t *, char **);
-typedef int		sc_ui_get_pin_pair_fn_t(sc_context_t *, const char *,
-				const char *,
-				const sc_ui_get_pin_info_t *, char **,
-				const sc_ui_get_pin_info_t *, char **);
+typedef int		sc_ui_get_pin_fn_t(sc_ui_hints_t *, char **);
+typedef int		sc_ui_get_pin_pair_fn_t(sc_ui_hints_t *,
+				char **, char **);
 typedef int		sc_ui_display_fn_t(sc_context_t *, const char *);
 
 static int		sc_ui_get_func(sc_context_t *, const char *, void **);
-static int		sc_ui_get_pin_default(sc_context_t *, const char *,
-				const char *,
-				const sc_ui_get_pin_info_t *, char **);
-static int		sc_ui_get_pin_pair_default(sc_context_t *, const char *,
-				const char *,
-				const sc_ui_get_pin_info_t *, char **,
-				const sc_ui_get_pin_info_t *, char **);
+static int		sc_ui_get_pin_default(sc_ui_hints_t *, char **);
+static int		sc_ui_get_pin_pair_default(sc_ui_hints_t *,
+				char **, char **);
 static int		sc_ui_display_error_default(sc_context_t *, const char *);
 static int		sc_ui_display_debug_default(sc_context_t *, const char *);
+
+static int		__sc_ui_read_pin(sc_context_t *, const char *,
+				const char *label, int flags,
+				sc_pkcs15_pin_info_t *pin_info,
+				char **out);
 
 /*
  * Set the language
@@ -63,8 +65,7 @@ sc_ui_set_language(sc_context_t *ctx, const char *lang)
  * Retrieve a PIN from the user.
  */
 int
-sc_ui_get_pin(sc_context_t *ctx, const char *name, const char *prompt,
-		const sc_ui_get_pin_info_t *info, char **out)
+sc_ui_get_pin(sc_ui_hints_t *hints, char **out)
 {
 	static sc_ui_get_pin_fn_t *get_pin_fn;
 	int		r;
@@ -72,7 +73,7 @@ sc_ui_get_pin(sc_context_t *ctx, const char *name, const char *prompt,
 	if (!get_pin_fn) {
 		void	*addr;
 
-		r = sc_ui_get_func(ctx,
+		r = sc_ui_get_func(hints->card->ctx,
 				"sc_ui_get_pin_handler",
 				&addr);
 		if (r < 0)
@@ -82,13 +83,11 @@ sc_ui_get_pin(sc_context_t *ctx, const char *name, const char *prompt,
 			get_pin_fn = sc_ui_get_pin_default;
 	}
 
-	return get_pin_fn(ctx, name, prompt, info, out);
+	return get_pin_fn(hints, out);
 }
 
 int
-sc_ui_get_pin_pair(sc_context_t *ctx, const char *name, const char *prompt,
-		const sc_ui_get_pin_info_t *old_info, char **old_out,
-		const sc_ui_get_pin_info_t *new_info, char **new_out)
+sc_ui_get_pin_pair(sc_ui_hints_t *hints, char **old_out, char **new_out)
 {
 	static sc_ui_get_pin_pair_fn_t *get_pin_pair_fn;
 	int		r;
@@ -96,7 +95,7 @@ sc_ui_get_pin_pair(sc_context_t *ctx, const char *name, const char *prompt,
 	if (!get_pin_pair_fn) {
 		void	*addr;
 
-		r = sc_ui_get_func(ctx,
+		r = sc_ui_get_func(hints->card->ctx,
 				"sc_ui_get_pin_pair_handler",
 				&addr);
 		if (r < 0)
@@ -106,9 +105,7 @@ sc_ui_get_pin_pair(sc_context_t *ctx, const char *name, const char *prompt,
 			get_pin_pair_fn = sc_ui_get_pin_pair_default;
 	}
 
-	return get_pin_pair_fn(ctx, name, prompt, 
-				old_info, old_out,
-				new_info, new_out);
+	return get_pin_pair_fn(hints, old_out, new_out);
 }
 
 int
@@ -121,7 +118,7 @@ sc_ui_display_error(sc_context_t *ctx, const char *msg)
 		void	*addr;
 
 		r = sc_ui_get_func(ctx,
-				"sc_ui_diaplay_error_handler",
+				"sc_ui_display_error_handler",
 				&addr);
 		if (r < 0)
 			return r;
@@ -143,7 +140,7 @@ sc_ui_display_debug(sc_context_t *ctx, const char *msg)
 		void	*addr;
 
 		r = sc_ui_get_func(ctx,
-				"sc_ui_diaplay_debug_handler",
+				"sc_ui_display_debug_handler",
 				&addr);
 		if (r < 0)
 			return r;
@@ -202,20 +199,94 @@ sc_ui_get_func(sc_context_t *ctx, const char *name, void **ret)
  * Default ui functions
  */
 int
-sc_ui_get_pin_default(sc_context_t *ctx, const char *name,
-				const char *prompt,
-				const sc_ui_get_pin_info_t *info,
-				char **out)
+sc_ui_get_pin_default(sc_ui_hints_t *hints, char **out)
 {
-	const char	*name_hint;
+	sc_context_t	*ctx = hints->card->ctx;
+	sc_pkcs15_pin_info_t *pin_info;
+	const char	*label, *language = "en";
+	int		flags = hints->flags;
 
-	if ((name_hint = info->name_hint) == NULL)
-		name_hint = "PIN";
+	pin_info = hints->info.pin;
+	if (!(label = hints->obj_label)) {
+		if (pin_info == NULL) {
+			label = "PIN";
+		} else if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+			label = "Security Officer PIN";
+		} else {
+			label = "User PIN";
+		}
+	}
 
+	if (hints->p15card) {
+		/* TBD: get preferredCard from TokenInfo */
+	}
+
+#ifdef HAVE_SETLOCALE
+	setlocale(LC_MESSAGES, language);
+#else
+	(void) language;
+#endif
+
+	return __sc_ui_read_pin(ctx, hints->prompt, label,
+				flags, pin_info, out);
+}
+
+int
+sc_ui_get_pin_pair_default(sc_ui_hints_t *hints, char **old_out, char **new_out)
+{
+	sc_context_t	*ctx = hints->card->ctx;
+	sc_pkcs15_pin_info_t *pin_info;
+	const char	*label, *language = "en";
+	int		r, flags = hints->flags, old_flags;
+
+	if (hints->prompt)
+		printf("%s\n", hints->prompt);
+
+	pin_info = hints->info.pin;
+	if (!(label = hints->obj_label)) {
+		if (pin_info == NULL) {
+			label = "PIN";
+		} else if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+			label = "Security Officer PIN";
+		} else {
+			label = "User PIN";
+		}
+	}
+
+	if (hints->p15card) {
+		/* TBD: get preferredCard from TokenInfo */
+	}
+
+#ifdef HAVE_SETLOCALE
+	setlocale(LC_MESSAGES, language);
+#else
+	(void) language;
+#endif
+
+	old_flags = flags;
+	if (hints->usage == SC_UI_USAGE_UNBLOCK_PIN
+	 || hints->usage == SC_UI_USAGE_CHANGE_PIN) {
+		old_flags &= ~(SC_UI_PIN_RETYPE|SC_UI_PIN_CHECK_LENGTH);
+	}
+
+	r = __sc_ui_read_pin(ctx, NULL, label, old_flags, NULL, old_out);
+	if (r >= 0)
+		r = __sc_ui_read_pin(ctx, NULL, label, flags, NULL, new_out);
+
+	return r;
+}
+
+int
+__sc_ui_read_pin(sc_context_t *ctx, const char *prompt,
+			const char *label, int flags,
+			sc_pkcs15_pin_info_t *pin_info,
+			char **out)
+{
 	if (prompt) {
-		printf("%s%s.\n", prompt,
-			(info->flags & SC_UI_PIN_OPTIONAL)? "" :
-				" (Optional - press return for no PIN)");
+		printf("%s", prompt);
+		if (flags & SC_UI_PIN_OPTIONAL)
+			printf(" (Optional - press return for no PIN)");
+		printf(".\n");
 	}
 
 	*out = NULL;
@@ -224,26 +295,27 @@ sc_ui_get_pin_default(sc_context_t *ctx, const char *name,
 		size_t	len;
 
 		snprintf(buffer, sizeof(buffer),
-				"Please enter %s: ", name_hint);
+				"Please enter %s: ", label);
 		
 		if ((pin = getpass(buffer)) == NULL)
 			return SC_ERROR_INTERNAL;
 
 		len = strlen(pin);
-		if (len == 0 && (info->flags & SC_UI_PIN_OPTIONAL))
-			return SC_ERROR_KEYPAD_CANCELLED;
+		if (len == 0 && (flags & SC_UI_PIN_OPTIONAL))
+			return 0;
 
-		if (info->flags & SC_UI_PIN_CHECK_LENGTH) {
-			if (len < info->min_len) {
+		if (pin_info && (flags & SC_UI_PIN_CHECK_LENGTH)) {
+			if (len < pin_info->min_length) {
 				fprintf(stderr,
 					"PIN too short (min %u characters)\n",
-					info->min_len);
+					pin_info->min_length);
 				continue;
 			}
-			if (len > info->max_len) {
+			if (pin_info->max_length
+			 && len > pin_info->max_length) {
 				fprintf(stderr,
 					"PIN too long (max %u characters)\n",
-					info->max_len);
+					pin_info->max_length);
 				continue;
 			}
 		}
@@ -251,7 +323,7 @@ sc_ui_get_pin_default(sc_context_t *ctx, const char *name,
 		*out = strdup(pin);
 		memset(pin, 0, len);
 
-		if (!(info->flags & SC_UI_PIN_RETYPE))
+		if (!(flags & SC_UI_PIN_RETYPE))
 			break;
 
 		pin = getpass("Please type again to verify: ");
@@ -263,11 +335,14 @@ sc_ui_get_pin_default(sc_context_t *ctx, const char *name,
 		free(*out);
 		*out = NULL;
 
-		if (!(info->flags & SC_UI_PIN_MISMATCH_RETRY)) {
+		if (!(flags & SC_UI_PIN_MISMATCH_RETRY)) {
 			fprintf(stderr, "PINs do not match.\n");
 			return SC_ERROR_KEYPAD_PIN_MISMATCH;
 		}
 
+		fprintf(stderr,
+			"Sorry, the two pins did not match. "
+			"Please try again.\n");
 		memset(pin, 0, strlen(pin));
 
 		/* Currently, there's no way out of this dialog.
@@ -276,24 +351,6 @@ sc_ui_get_pin_default(sc_context_t *ctx, const char *name,
 	}
 
 	return 0;
-}
-
-int
-sc_ui_get_pin_pair_default(sc_context_t *ctx, const char *name,
-			const char *prompt,
-			const sc_ui_get_pin_info_t *old_info, char **old_out,
-			const sc_ui_get_pin_info_t *new_info, char **new_out)
-{
-	int	r;
-
-	if (prompt)
-		printf("%s\n", prompt);
-
-	r = sc_ui_get_pin_default(ctx, "foo", NULL, old_info, old_out);
-	if (r < 0)
-		return r;
-
-	return sc_ui_get_pin_default(ctx, "foo", NULL, new_info, new_out);
 }
 
 /*

@@ -13,17 +13,43 @@
 extern "C" {
 #endif
 
-typedef struct sc_ui_get_pin_info {
-	const char *	name_hint;	/* PIN/PUK/old PIN etc */
-	int		flags;
-	unsigned int	min_len, max_len;
-} sc_ui_get_pin_info_t;
+/*
+ * Dialog types
+ */
+#define SC_UI_USAGE_OTHER		0x0000
+#define SC_UI_USAGE_NEW_PIN		0x0001
+#define SC_UI_USAGE_UNBLOCK_PIN		0x0002
+#define SC_UI_USAGE_CHANGE_PIN		0x0003
 
+/*
+ * Dialog flags
+ */
 #define SC_UI_PIN_RETYPE		0x0001	/* new pin, retype */
 #define SC_UI_PIN_OPTIONAL		0x0002	/* new pin optional */
 #define SC_UI_PIN_CHECK_LENGTH		0x0004	/* check pin length */
 #define SC_UI_PIN_MISMATCH_RETRY	0x0008	/* retry if new pin mismatch? */
 
+
+/* Hints passed to user interface functions
+ * M marks mandatory fields,
+ * O marks optional fields
+ */
+typedef struct sc_ui_hints {
+	const char *		prompt;		/* M: cmdline prompt */
+	const char *		dialog_name;	/* M: dialog name */
+	unsigned int		usage;		/* M: usage hint */
+	unsigned int		flags;		/* M: flags */
+	sc_card_t *		card;		/* M: card handle */
+	struct sc_pkcs15_card *	p15card;	/* O: pkcs15 handle */
+
+	/* We may not have a pkcs15 object yet when we get
+	 * here, but we may have an idea of what it's going to
+	 * look like. */
+	const char *		obj_label;	/* O: object (PIN) label */
+	union {
+	    struct sc_pkcs15_pin_info *pin;
+	} info;
+} sc_ui_hints_t;
 
 /*
  * Specify the dialog language, if the backend is localized.
@@ -33,44 +59,24 @@ extern int	sc_ui_set_language(sc_context_t *, const char *);
 /*
  * Retrieve a PIN from the user.
  *
- * @name	Dialog name, can be used by the dialog backend
- * 		to retrieve additional resources such as help
- * 		texts, icons etc.
- * @prompt	Text prompt that is displayed if there's no
- * 		GUI backend configured.
- * @info	Additional info on the dialog to display.
+ * @hints	dialog hints
  * @out		PIN entered by the user; must be freed.
  * 		NULL if dialog was canceled.
  */
-extern int	sc_ui_get_pin(sc_context_t *ctx,
-				const char *name,
-				const char *prompt,
-				const sc_ui_get_pin_info_t *info,
-				char **out);
+extern int	sc_ui_get_pin(sc_ui_hints_t *hints, char **out);
 
 /*
  * PIN pair dialog. Can be used for PIN change/unblock, but
  * also to enter a PIN/PUK pair.
  *
- * @name	Dialog name, can be used by the dialog backend
- * 		to retrieve additional resources such as help
- * 		texts, icons etc.
- * @prompt	Text prompt that is displayed if there's no
- * 		GUI backend configured.
- * @old_info	Additional info on the dialog to display.
+ * @hints	dialog hints
  * @old_out	PIN entered by the user; must be freed.
  * 		NULL if dialog was canceled.
- * @new_info	Additional info on the dialog to display.
  * @new_out	PIN entered by the user; must be freed.
  * 		NULL if dialog was canceled.
  */
-extern int	sc_ui_get_pin_pair(sc_context_t *ctx,
-				const char *name,
-				const char *prompt,
-				const sc_ui_get_pin_info_t *old_info,
-				char **old_out,
-				const sc_ui_get_pin_info_t *new_info,
-				char **new_out);
+extern int	sc_ui_get_pin_pair(sc_ui_hints_t *hints,
+				char **old_out, char **new_out);
 
 /*
  * Other ui functions, not fully spec'ed yet
