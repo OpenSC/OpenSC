@@ -864,7 +864,7 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 {
 	struct sc_apdu apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r, p2;
+	int r, p1, p2;
 	
 	switch (data->key_bits) {
 	case  512:	p2 = 0x40; break;
@@ -876,7 +876,9 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x46, 0x01, p2);
+	p1 = data->key_num;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x46, p1, p2);
 	apdu.cla = 0xF0;
 	apdu.data = sbuf;
 	apdu.datalen = 4;

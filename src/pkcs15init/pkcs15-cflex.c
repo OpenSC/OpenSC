@@ -301,6 +301,7 @@ cflex_generate_key(sc_profile_t *profile, sc_card_t *card,
 	memset(&args, 0, sizeof(args));
 	args.exponent = 0x10001;
 	args.key_bits = keybits;
+	args.key_num  = key_info->key_reference;
 	r = sc_card_ctl(card, SC_CARDCTL_CRYPTOFLEX_GENERATE_KEY, &args);
 	if (r < 0)
 		goto out;

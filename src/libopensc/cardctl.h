@@ -167,6 +167,7 @@ struct sc_cardctl_etoken_genkey_info {
  * Cryptoflex info
  */
 struct sc_cardctl_cryptoflex_genkey_info {
+	unsigned int	key_num;
 	unsigned int	key_bits;
 	unsigned long	exponent;
 	unsigned char *	pubkey;
