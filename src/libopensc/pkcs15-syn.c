@@ -30,12 +30,14 @@ static int	sc_pkcs15_bind_emulation(sc_pkcs15_card_t *, const char *,
 				scconf_block *, int);
 
 extern int	sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *);
+extern int 	sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *);
 
 static struct {
 	const char *		name;
 	int			(*handler)(sc_pkcs15_card_t *);
 } builtin_emulators[] = {
       {	"openpgp",		sc_pkcs15emu_openpgp_init	},
+      { "infocamere",           sc_pkcs15emu_infocamere_init    },
 
       { NULL }
 };

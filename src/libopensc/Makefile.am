@@ -28,7 +28,7 @@ libopensc_la_SOURCES = \
 	card-etoken.c card-tcos.c card-emv.c card-default.c \
 	card-mcrd.c card-starcos.c card-openpgp.c card-jcop.c\
 	\
-	pkcs15-openpgp.c
+	pkcs15-openpgp.c pkcs15-infocamere.c
 libopensc_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
 libopensc_la_LIBADD = @LIBSCCONF@ ../scdl/libscdl.la @LIBDL@ @LIBCRYPTO@ @OPENCT_LIBS@ @LIBPCSC@
 
