@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -8,12 +11,10 @@
 #include <errno.h>
 #include <signal.h>
 #include <unistd.h>
-
-#include "../assuan/assuan.h"
-#include "../libopensc/opensc.h"
-#include "../libopensc/pkcs15.h"
 #include <stdarg.h>
-
+#include <assuan.h>
+#include <opensc/opensc.h>
+#include <opensc/pkcs15.h>
 #include "openscd.h"
 
 struct openscd_context *dctx = NULL;

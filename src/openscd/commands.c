@@ -1,5 +1,6 @@
+#ifdef HAVE_CONFIG_H
 #include <config.h>
-
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -7,10 +8,10 @@
 #include <assert.h>
 #include <string.h>
 
-#include "../assuan/assuan.h"
-#include "../libopensc/opensc.h"
-#include "../libopensc/log.h"
-#include "../libopensc/pkcs15.h"
+#include <assuan.h>
+#include <opensc/opensc.h>
+#include <opensc/log.h>
+#include <opensc/pkcs15.h>
 #include "openscd.h"
 
 static struct openscd_card * find_card(struct openscd_context *dctx,
@@ -215,9 +216,10 @@ static int register_commands(ASSUAN_CONTEXT assuan_ctx)
 	}
 	assuan_set_hello_line(assuan_ctx, "openscd ready");
 
-//	assuan_register_reset_notify (ctx, reset_notify);
-//	assuan_register_option_handler (ctx, option_handler);
-
+#if 0
+	assuan_register_reset_notify (ctx, reset_notify);
+	assuan_register_option_handler (ctx, option_handler);
+#endif
 	return 0;
 }
 

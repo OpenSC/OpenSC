@@ -1,8 +1,11 @@
-#include "../assuan/assuan.h"
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assuan.h>
 
 static AssuanError reply_cb(void *opaque, const void *buf, size_t len)
 {

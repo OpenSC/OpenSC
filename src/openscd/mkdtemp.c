@@ -21,8 +21,9 @@
 /* This is a replacement function for mkdtemp in case the platform
    we're building on (like mine!) doesn't have it. */
 
+#ifdef HAVE_CONFIG_H
 #include <config.h>
-
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +35,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "../scrandom/scrandom.h"
+#include <opensc/scrandom.h>
 
 #ifdef MKDIR_TAKES_ONE_ARG
 # undef mkdir

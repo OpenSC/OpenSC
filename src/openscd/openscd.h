@@ -1,6 +1,7 @@
-#ifndef OPENSCD_H
+#ifndef _OPENSCD_H
+#define _OPENSCD_H
 
-#include "../libopensc/opensc.h"
+#include <opensc/opensc.h>
 #include <pthread.h>
 
 #define MAX_CARDS 4
@@ -39,4 +40,4 @@ void command_handler(struct openscd_context *dctx);
 void init_cmd_stuff(struct openscd_context *dctx);
 void cleanup_cmd_stuff(struct openscd_context *dctx);
 
-#endif
+#endif	/* _OPENSCD_H */
