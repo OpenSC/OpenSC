@@ -224,9 +224,9 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 			return CKR_SESSION_EXISTS;
 	}
 
-	if (slot->card->framework->initialize == NULL)
+	if (slot->card->framework->init_token == NULL)
 		return CKR_FUNCTION_NOT_SUPPORTED;
-	rv = slot->card->framework->initialize(slot->card,
+	rv = slot->card->framework->init_token(slot->card,
 				 slot->fw_data, pPin, ulPinLen, pLabel);
 
 	if (rv != CKR_OK)

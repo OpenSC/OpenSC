@@ -162,7 +162,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	struct sc_pkcs11_session *session;
         struct sc_pkcs11_slot *slot;
 
-	if (userType != CKU_USER)
+	if (userType != CKU_USER && userType != CKU_SO)
                 return CKR_USER_TYPE_INVALID;
 
         rv = pool_find(&session_pool, hSession, (void**) &session);
@@ -178,7 +178,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 
 	rv = slot->card->framework->login(slot->card,
                                           slot->fw_data,
-					  pPin, ulPinLen);
+					  userType, pPin, ulPinLen);
 	if (rv == CKR_OK)
                 slot->login_user = userType;
 
@@ -210,7 +210,21 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
 		CK_CHAR_PTR pPin,
 		CK_ULONG ulPinLen)
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_slot *slot;
+        int rv;
+
+        rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	slot = session->slot;
+	if (slot->login_user != CKU_SO)
+		return CKR_USER_NOT_LOGGED_IN;
+	if (slot->card->framework->init_pin == NULL)
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	return slot->card->framework->init_pin(slot->card, slot,
+			pPin, ulPinLen);
 }
 
 CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,

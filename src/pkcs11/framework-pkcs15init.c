@@ -48,7 +48,7 @@ static CK_RV pkcs15init_unbind(struct sc_pkcs11_card *p11card)
 	struct sc_profile *profile;
 
 	profile = (struct sc_profile *) p11card->fw_data;
-	sc_profile_free(profile);
+	sc_pkcs15init_unbind(profile);
 	return CKR_OK;
 }
 
@@ -110,7 +110,7 @@ pkcs15init_get_mechanism_info(struct sc_pkcs11_card *p11card, void *ptr,
 
 static CK_RV
 pkcs15init_login(struct sc_pkcs11_card *p11card, void *ptr,
-		CK_CHAR_PTR pin, CK_ULONG pinLength)
+		CK_USER_TYPE user, CK_CHAR_PTR pin, CK_ULONG pinLength)
 {
 	return CKR_CRYPTOKI_NOT_INITIALIZED;
 }
@@ -169,7 +169,7 @@ pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
 			slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
 	}
 
-	sc_profile_free(profile);
+	sc_pkcs15init_unbind(profile);
 	return CKR_OK;
 }
 

@@ -22,6 +22,9 @@
 #include <malloc.h>
 #include <string.h>
 #include "sc-pkcs11.h"
+#ifdef HAVE_OPENSSL
+#include "opensc/pkcs15-init.h"
+#endif
 
 #define check_attribute_buffer(attr,size)	\
 	if (attr->pValue == NULL_PTR) {         \
@@ -209,22 +212,12 @@ static struct pkcs15_prkey_object *pkcs15_add_prkey_object(struct sc_pkcs11_slot
         return object;
 }
 
-static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
-		struct sc_pkcs15_object *auth,
-		struct sc_pkcs11_slot **out)
+static void pkcs15_init_slot(struct sc_pkcs15_card *card,
+		struct sc_pkcs11_slot *slot,
+		struct sc_pkcs15_object *auth)
 {
-        struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
 	struct sc_pkcs15_pin_info *pin_info = NULL;
-	struct sc_pkcs11_slot *slot;
 	char tmp[64];
-	int rv;
-
-	if (*out)
-		return CKR_OK;
-
-	rv = slot_allocate(&slot, p11card);
-	if (rv != CKR_OK)
-		return rv;
 
 	pkcs15_init_token_info(card, &slot->token_info);
 	slot->token_info.flags = CKF_USER_PIN_INITIALIZED
@@ -252,7 +245,20 @@ static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
 	}
 
 	debug(context, "Initialized token '%s'\n", tmp);
-	*out = slot;
+}
+
+static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
+		struct sc_pkcs15_object *auth,
+		struct sc_pkcs11_slot **out)
+{
+        struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
+	int rv;
+
+	rv = slot_allocate(out, p11card);
+	if (rv != CKR_OK)
+		return rv;
+
+	pkcs15_init_slot(card, *out, auth);
 	return CKR_OK;
 }
 
@@ -293,18 +299,20 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	for (i = 0; i < auth_count; i++) {
 		struct sc_pkcs15_pin_info *pin_info = NULL;
 
-		/* Add all the private keys related to this pin */
 		pin_info = (struct sc_pkcs15_pin_info*) auths[i]->data;
-		slot = NULL;
+
+		/* Ignore any non-authentication PINs */
+		if ((pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+		 || (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))
+			continue;
+
+		/* Add all the private keys related to this pin */
+		rv = pkcs15_create_slot(p11card, auths[i], &slot);
+		if (rv != CKR_OK)
+			return rv;
 		for (j=0; j < prkey_count; j++) {
 			if (sc_pkcs15_compare_id(&pin_info->auth_id,
 						 &prkeys[j]->auth_id)) {
-				if (!slot) {
-					rv = pkcs15_create_slot(p11card,
-						auths[i], &slot);
-					if (rv != CKR_OK)
-						return rv;
-				}
                                 debug(context, "Adding private key %d to PIN %d\n", j, i);
 				pkcs15_add_prkey_object(slot, card, prkeys[j],
 					       	certs, cert_count,
@@ -408,13 +416,43 @@ static CK_RV pkcs15_get_mechanism_info(struct sc_pkcs11_card *p11card,
 
 static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 			  void *fw_token,
+			  CK_USER_TYPE userType,
 			  CK_CHAR_PTR pPin,
 			  CK_ULONG ulPinLen)
 {
 	int rc;
 	struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
-        struct sc_pkcs15_object *auth_object = (struct sc_pkcs15_object*) fw_token;
-	struct sc_pkcs15_pin_info *pin = (struct sc_pkcs15_pin_info*) auth_object->data;
+        struct sc_pkcs15_object *auth_object;
+	struct sc_pkcs15_pin_info *pin;
+
+	switch (userType) {
+	case CKU_USER:
+		auth_object = (struct sc_pkcs15_object*) fw_token;
+		if (auth_object == NULL)
+			return CKR_USER_PIN_NOT_INITIALIZED;
+		break;
+	case CKU_SO:
+		/* A card with no SO PIN is treated as if no SO login
+		 * is required */
+		rc = sc_pkcs15_find_so_pin(card, &auth_object);
+		if (rc == SC_ERROR_OBJECT_NOT_FOUND) {
+			/* Need to lock the card though */
+			rc = sc_lock(card->card);
+			if (rc < 0) {
+				 debug(context, "Failed to lock card (%d)\n",
+						 rc);
+				 return sc_to_cryptoki_error(rc,
+						 p11card->reader);
+			}
+			return CKR_OK;
+		}
+		else if (rc < 0)
+			return sc_to_cryptoki_error(rc, p11card->reader);
+		break;
+	default:
+		return CKR_USER_TYPE_INVALID;
+	}
+	pin = (struct sc_pkcs15_pin_info *) auth_object->data;
 
 	if (ulPinLen < pin->min_length ||
 	    ulPinLen > pin->stored_length)
@@ -460,6 +498,44 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
+static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
+			struct sc_pkcs11_slot *slot,
+			CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
+{
+#ifdef HAVE_OPENSSL
+	struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
+	struct sc_pkcs15init_pinargs args;
+	struct sc_profile	*profile;
+	struct sc_pkcs15_object	*auth_obj;
+	int			rc;
+
+	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", &profile);
+	if (rc < 0)
+		return sc_to_cryptoki_error(rc, p11card->reader);
+
+	memset(&args, 0, sizeof(args));
+	args.label = "User PIN";
+	args.pin = pPin;
+	args.pin_len = ulPinLen;
+	rc = sc_pkcs15init_store_pin(card, profile, &args);
+
+	sc_pkcs15init_unbind(profile);
+	if (rc < 0)
+		return sc_to_cryptoki_error(rc, p11card->reader);
+
+	rc = sc_pkcs15_find_pin_by_auth_id(card, &args.auth_id, &auth_obj);
+	if (rc < 0)
+		return sc_to_cryptoki_error(rc, p11card->reader);
+
+	/* Re-initialize the slot */
+	pkcs15_init_slot(card, slot, auth_obj);
+
+	return CKR_OK;
+#else
+	return CKR_ERROR_FUNCTION_NOT_SUPPORTED;
+#endif
+}
+
 struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_bind,
 	pkcs15_unbind,
@@ -469,7 +545,9 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_get_mechanism_info,
 	pkcs15_login,
         pkcs15_logout,
-	pkcs15_change_pin
+	pkcs15_change_pin,
+	NULL,
+	pkcs15_init_pin
 };
 
 /*

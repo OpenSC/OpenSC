@@ -103,7 +103,8 @@ struct sc_pkcs11_framework_ops {
         CK_RV (*get_mechanism_info)(struct sc_pkcs11_card *, void *, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo);
 
 	/* Login and logout */
-	CK_RV (*login)(struct sc_pkcs11_card *, void *, CK_CHAR_PTR, CK_ULONG);
+	CK_RV (*login)(struct sc_pkcs11_card *, void *,
+				CK_USER_TYPE, CK_CHAR_PTR, CK_ULONG);
         CK_RV (*logout)(struct sc_pkcs11_card *, void *);
 	CK_RV (*change_pin)(struct sc_pkcs11_card *, void *,
 				CK_CHAR_PTR, CK_ULONG,
@@ -113,9 +114,12 @@ struct sc_pkcs11_framework_ops {
 	 * In future: functions to create new objects
 	 * (ie. certificates, private keys)
          */
-	CK_RV (*initialize)(struct sc_pkcs11_card *, void *,
+	CK_RV (*init_token)(struct sc_pkcs11_card *, void *,
 				CK_UTF8CHAR_PTR, CK_ULONG,
 				CK_UTF8CHAR_PTR);
+	CK_RV (*init_pin)(struct sc_pkcs11_card *,
+				struct sc_pkcs11_slot *,
+				CK_UTF8CHAR_PTR, CK_ULONG);
 };
 
 
