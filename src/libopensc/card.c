@@ -354,7 +354,7 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 	if ((driver = ctx->forced_driver) == NULL) {
 		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 			driver = ctx->card_drivers[i];
-			if (_sc_match_atr(card, driver->atr_map, NULL) == 0)
+			if (_sc_match_atr(card, driver->atr_map, NULL) >= 0)
 				break;
 			driver = NULL;
 		}
