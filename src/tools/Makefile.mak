@@ -16,4 +16,5 @@ all: util.obj $(TARGETS)
         link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj util.obj \
         ..\common\common.lib ..\scconf\scconf.lib ..\libopensc\opensc.lib \
         ..\pkcs15init\pkcs15init.lib ..\pkcs11\libpkcs11.lib \
+        ..\scdl\scdl.lib \
         $(TOPDIR)\win32\version.res
