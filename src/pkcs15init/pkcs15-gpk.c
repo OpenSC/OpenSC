@@ -194,10 +194,18 @@ out:	sc_file_free(pinfile);
  * Initialize the Application DF and pin file
  */
 static int
-gpk_init_app(struct sc_profile *profile, struct sc_card *card)
+gpk_init_app(struct sc_profile *profile, struct sc_card *card,
+		const unsigned char *pin, size_t pin_len,
+		const unsigned char *puk, size_t puk_len)
 {
 	struct sc_file	*pinfile;
 	int		r;
+
+	/* SO pin not supported yet */
+	if (pin && pin_len) {
+		error(profile, "GPK doesn't support an SO PIN yet");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
 
 	/* Profile must define a "pinfile" */
 	if (sc_profile_get_file(profile, "pinfile", &pinfile) < 0) {
@@ -633,7 +641,7 @@ gpk_pkfile_update_private(struct sc_profile *profile,
 	 * command. Any key will do...
 	 * The GPK _is_ weird. */
 	keysize = sizeof(keybuf);
-	r = sc_profile_get_secret(profile, SC_AC_PRO, 0, keybuf, &keysize);
+	r = sc_profile_get_secret(profile, SC_AC_PRO, 1, keybuf, &keysize);
 	if (r < 0) {
 		error(profile, "No secure messaging key defined by profile");
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
@@ -647,7 +655,7 @@ gpk_pkfile_update_private(struct sc_profile *profile,
 		memcpy(data, pe->data, pe->size);
 		size = pe->size;
 
-		r = sc_verify(card, SC_AC_PRO, 0, keybuf, keysize, NULL);
+		r = sc_verify(card, SC_AC_PRO, 1, keybuf, keysize, NULL);
 		if (r < 0)
 			break;
 

@@ -21,9 +21,11 @@ struct sc_pkcs15init_operations {
 	int	(*erase_card)(struct sc_profile *, struct sc_card *);
 
 	/*
-	 * Initialize application
+	 * Initialize application, and optionally set a SO pin
 	 */
-	int	(*init_app)(struct sc_profile *, struct sc_card *);
+	int	(*init_app)(struct sc_profile *, struct sc_card *,
+			const unsigned char *pin, size_t pin_len,
+			const unsigned char *puk, size_t puk_len);
 
 	/*
 	 * Store a new PIN
@@ -74,6 +76,13 @@ struct sc_pkcs15init_callbacks {
 				const char *prompt, u8 *, size_t *);
 };
 
+struct sc_pkcs15init_initargs {
+	const u8 *		so_pin;
+	size_t			so_pin_len;
+	const u8 *		so_puk;
+	size_t			so_puk_len;
+};
+
 struct sc_pkcs15init_pinargs {
 	struct sc_pkcs15_id	auth_id;
 	const char *		label;
@@ -111,7 +120,8 @@ extern void	sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *);
 extern int	sc_pkcs15init_bind(struct sc_profile *,
 				struct sc_card *, const char *);
 extern int	sc_pkcs15init_add_app(struct sc_card *,
-				struct sc_profile *);
+				struct sc_profile *,
+				struct sc_pkcs15init_initargs *);
 extern int	sc_pkcs15init_store_pin(struct sc_pkcs15_card *,
 				struct sc_profile *,
 				struct sc_pkcs15init_pinargs *);

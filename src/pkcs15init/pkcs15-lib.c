@@ -144,7 +144,8 @@ sc_pkcs15init_bind(struct sc_profile *profile,
  * Initialize the PKCS#15 application
  */
 int
-sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile)
+sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
+		struct sc_pkcs15init_initargs *args)
 {
 	struct sc_pkcs15_card *p15card = profile->p15_card;
 	struct sc_app_info *app;
@@ -159,7 +160,10 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile)
 	}
 
 	/* Create the application DF and store the PINs */
-	if (profile->ops->init_app(profile, card))
+	r = profile->ops->init_app(profile, card,
+			args->so_pin, args->so_pin_len,
+			args->so_puk, args->so_puk_len);
+	if (r < 0)
 		return 1;
 
 	/* Store the PKCS15 information on the card
