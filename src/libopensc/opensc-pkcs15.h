@@ -42,6 +42,7 @@ struct sc_pkcs15_id {
 	u8 value[SC_PKCS15_MAX_ID_SIZE];
 	size_t len;
 };
+typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 
 #define SC_PKCS15_CO_FLAG_PRIVATE	0x00000001
 #define SC_PKCS15_CO_FLAG_MODIFIABLE	0x00000002
@@ -75,6 +76,7 @@ struct sc_pkcs15_pin_info {
 
 	unsigned int magic;
 };
+typedef struct sc_pkcs15_pin_info sc_pkcs15_pin_info;
 
 #define SC_PKCS15_ALGO_OP_COMPUTE_CHECKSUM	0x01
 #define SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE	0x02
@@ -112,6 +114,7 @@ struct sc_pkcs15_cert {
 	u8 *data;	/* DER encoded raw cert */
 	size_t data_len;
 };
+typedef struct sc_pkcs15_cert sc_pkcs15_cert_t;
 
 struct sc_pkcs15_cert_info {
 	struct sc_pkcs15_id id;	/* correlates to private key id */
@@ -119,6 +122,7 @@ struct sc_pkcs15_cert_info {
 	/* identifiers [2] SEQUENCE OF CredentialIdentifier{{KeyIdentifiers}} */
 	struct sc_path path;
 };
+typedef struct sc_pkcs15_cert_info sc_pkcs15_cert_info_t;
 
 #define SC_PKCS15_PRKEY_USAGE_ENCRYPT		0x01
 #define SC_PKCS15_PRKEY_USAGE_DECRYPT		0x02
@@ -145,6 +149,7 @@ struct sc_pkcs15_prkey_info {
 
 	struct sc_path path;
 };
+typedef struct sc_pkcs15_prkey_info sc_pkcs15_prkey_info;
 
 struct sc_pkcs15_pubkey_info {
 	struct sc_pkcs15_id id;	/* correlates to private key id */
@@ -154,6 +159,7 @@ struct sc_pkcs15_pubkey_info {
 
 	struct sc_path path;
 };
+typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info;
 
 #define SC_PKCS15_TYPE_CLASS_MASK		0xF00
 
@@ -187,6 +193,7 @@ struct sc_pkcs15_object {
 
 	struct sc_pkcs15_object *next; /* used only internally */
 };
+typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 
 #define SC_PKCS15_PRKDF			0
 #define SC_PKCS15_PUKDF			1
@@ -227,6 +234,7 @@ struct sc_pkcs15_card {
 	
 	unsigned int magic;
 };
+typedef struct sc_pkcs15_card sc_pkcs15_card_t;
 
 #define SC_PKCS15_CARD_FLAG_READONLY		0x01
 #define SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED	0x02
