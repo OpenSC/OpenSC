@@ -60,7 +60,7 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 		r = sc_init(priv);
 		if (r) {
 #if 0
-			error("SmartCard init failed: %s", sc_strerror(r));
+			sc_error("SmartCard init failed: %s", sc_strerror(r));
 #endif
 			goto err;
 		}
@@ -71,14 +71,14 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 				&key);
 	if (r) {
 #if 0
-		error("Unable to find private key from SmartCard: %s", sc_strerror(r));
+		sc_error("Unable to find private key from SmartCard: %s", sc_strerror(r));
 #endif
 		goto err;
 	}
 	r = sc_pkcs15_find_pin_by_auth_id(priv->p15card, &key->auth_id, &pin);
 	if (r) {
 #if 0
-		error("Unable to find PIN object from SmartCard: %s", sc_strerror(r));
+		sc_error("Unable to find PIN object from SmartCard: %s", sc_strerror(r));
 #endif
 		goto err;
 	}
@@ -91,7 +91,7 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 	r = sc_pkcs15_decipher(priv->p15card, (const struct sc_pkcs15_object *) key->data, 0, from, flen, to, flen);
 	if (r < 0) {
 #if 0
-		error("sc_pkcs15_decipher() failed: %s", sc_strerror(r));
+		sc_error("sc_pkcs15_decipher() failed: %s", sc_strerror(r));
 #endif
 		goto err;
 	}
@@ -105,7 +105,7 @@ static int
 sc_private_encrypt(int flen, const unsigned char *from, unsigned char *to, RSA *rsa, int padding)
 {
 #if 0
-	error("unsupported function sc_private_encrypt() called");
+	sc_error("unsupported function sc_private_encrypt() called");
 #endif
 	return -1;
 }
@@ -122,7 +122,7 @@ sc_sign(int type, const unsigned char *m, unsigned int m_len,
 	if (priv == NULL)
 		return -1;
 #if 0
-	debug("sc_sign() called on cert %02X: type = %d, m_len = %d",
+	sc_debug("sc_sign() called on cert %02X: type = %d, m_len = %d",
 	      priv->cert_id.value[0], type, m_len);
 #endif
 	DBG(printf("sc_sign() called\n"));
