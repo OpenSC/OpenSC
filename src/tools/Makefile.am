@@ -2,10 +2,8 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-INCLUDES = @CFLAGS_OPENSC@
+INCLUDES = @CFLAGS_OPENSC@ -I../pkcs15init
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
-
-EXTRA_DIST = flex.profile gpk.profile miocos.profile pkcs15.profile
 
 if HAVE_SSL
 PROGRAMS_SSL = cryptoflex-tool pkcs15-init
@@ -24,11 +22,7 @@ pkcs15_crypt_SOURCES = pkcs15-crypt.c util.c
 pkcs15_crypt_LDADD = @GETOPTSRC@
 cryptoflex_tool_SOURCES = cryptoflex-tool.c util.c
 cryptoflex_tool_LDADD = @GETOPTSRC@ @LIBCRYPTO@
-pkcs15_init_SOURCES = pkcs15-init.c profile.c util.c \
-		      pkcs15-gpk.c pkcs15-miocos.c pkcs15-cflex.c
-pkcs15_init_LDADD = @GETOPTSRC@ @LIBCRYPTO@
-pkcs15_init_CFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\" \
-		     $(AM_CFLAGS)
+pkcs15_init_SOURCES = pkcs15-init.c util.c
+pkcs15_init_LDADD = @GETOPTSRC@ @LIBCRYPTO@ ../pkcs15init/libpkcs15init.la
 
-noinst_HEADERS = util.h profile.h pkcs15-init.h
-pkgdata_DATA = flex.profile gpk.profile miocos.profile pkcs15.profile
+noinst_HEADERS = util.h

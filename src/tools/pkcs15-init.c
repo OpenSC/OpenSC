@@ -55,53 +55,19 @@ typedef int	(*pkcs15_encoder)(struct sc_context *,
 
 /* Local functions */
 static int	connect(int);
-static void	bind_operations(struct pkcs15_init_operations *, const char *);
+static int	do_init_app(struct sc_profile *);
+static int	do_store_pin(struct sc_profile *);
 static int	do_generate_key(struct sc_profile *, const char *);
 static int	do_store_private_key(struct sc_profile *profile);
 static int	do_store_public_key(struct sc_profile *profile);
 static int	do_store_certificate(struct sc_profile *profile);
 
-static int	sc_pkcs15init_generate_key_soft(struct sc_pkcs15_card *,
-			struct sc_profile *, struct sc_pkcs15init_keyargs *);
-struct sc_pkcs15_object *
-		sc_pkcs15init_find_key(struct sc_pkcs15_card *p15card,
-			unsigned int type,
-			struct sc_pkcs15_id *id);
-static int	sc_pkcs15init_new_private_key(struct sc_profile *profile,
-			unsigned int type,
-			struct sc_pkcs15init_keyargs *keyargs,
-			struct sc_key_template *out);
-static int	sc_pkcs15init_new_public_key(struct sc_profile *profile,
-			unsigned int type,
-			struct sc_pkcs15init_keyargs *keyargs,
-			struct sc_key_template *out);
-static int	sc_pkcs15init_new_cert(struct sc_profile *profile,
-			unsigned int type, const char *name,
-			struct sc_pkcs15_id *id, const char *label,
-			struct sc_cert_template *out);
 
-static int	sc_pkcs15init_store_private_key(struct sc_pkcs15_card *,
-			struct sc_profile *, struct sc_pkcs15init_keyargs *);
-static int	sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
-			struct sc_profile *profile,
-			struct sc_pkcs15init_keyargs *keyargs);
-static int	sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
-			struct sc_profile *profile,
-			struct sc_pkcs15init_certargs *certargs);
-static int	sc_pkcs15init_update_dir(struct sc_card *card,
-			struct sc_profile *profile,
-			struct sc_app_info *app);
-static int	sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *,
-			struct sc_profile *profile);
-static int	sc_pkcs15init_update_odf(struct sc_pkcs15_card *,
-			struct sc_profile *profile);
-static int	sc_pkcs15init_update_df(struct sc_pkcs15_card *,
-			struct sc_profile *profile,
-			unsigned int df_type);
-static int	do_select_parent(struct sc_profile *, struct sc_file *,
-			struct sc_file **);
-static int	do_read_pins(struct sc_profile *);
-static int	set_pins_from_args(struct sc_profile *);
+static int	read_one_pin(struct sc_profile *, const char *,
+			const struct sc_pkcs15_pin_info *, int, char **);
+static int	get_pin_callback(struct sc_profile *profile,
+			int id, const struct sc_pkcs15_pin_info *info,
+			u8 *pinbuf, size_t *pinsize);
 
 static int	do_read_private_key(const char *, const char *,
 				EVP_PKEY **, X509 **);
@@ -111,12 +77,12 @@ static int	do_read_certificate(const char *, const char *, X509 **);
 static void	parse_commandline(int argc, char **argv);
 static void	read_options_file(const char *);
 static void	ossl_print_errors(void);
-static void	ossl_seed_random(void);
 
 
 enum {
 	OPT_OPTIONS = 0x100,
 	OPT_PASSPHRASE,
+	OPT_PUBKEY,
 
 	OPT_PIN1 = 0x10000,	/* don't touch these values */
 	OPT_PUK1 = 0x10001,
@@ -127,15 +93,18 @@ enum {
 const struct option	options[] = {
 	{ "erase-card",		no_argument, 0,		'E' },
 	{ "create-pkcs15",	no_argument, 0,		'C' },
-	{ "pin1",		required_argument, 0,	OPT_PIN1 },
-	{ "puk1",		required_argument, 0,	OPT_PUK1 },
-	{ "pin2",		required_argument, 0,	OPT_PIN2 },
-	{ "puk2",		required_argument, 0,	OPT_PUK2 },
+	{ "store-pin",		no_argument, 0,		'P' },
+	{ "pin",		required_argument, 0,	OPT_PIN1 },
+	{ "puk",		required_argument, 0,	OPT_PUK1 },
+	{ "so-pin",		required_argument, 0,	OPT_PIN2 },
+	{ "so-puk",		required_argument, 0,	OPT_PUK2 },
+	{ "auth-id",		required_argument, 0,	'a' },
 	{ "id",			required_argument, 0,	'i' },
+	{ "label",		required_argument, 0,	'l' },
 	{ "generate-key",	required_argument, 0,	'G' },
 	{ "output-file",	required_argument, 0,	'o' },
 	{ "store-private-key",	required_argument, 0,	'S' },
-	{ "store-public-key",	required_argument, 0,	'P' },
+	{ "store-public-key",	required_argument, 0,	OPT_PUBKEY },
 	{ "format",		required_argument, 0,	'f' },
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
 	{ "store-certificate",	required_argument, 0,	'X' },
@@ -148,11 +117,14 @@ const struct option	options[] = {
 const char *		option_help[] = {
 	"Erase the smart card",
 	"Creates a new PKCS #15 structure",
-	"Specify PIN for CHV1",
-	"Specify unblock PIN for CHV1",
-	"Specify PIN for CHV2",
-	"Specify unblock PIN for CHV2",
+	"Store a new PIN/PUK on the card",
+	"Specify PIN",
+	"Specify unblock PIN",
+	"Specify security officer (SO) PIN",
+	"Specify unblock PIN for SO PIN",
+	"Specify ID of PIN to use/create",
 	"Specify ID of key/certificate",
+	"Specify label of PIN/key",
 	"Generate a new key and store it on the card",
 	"Output public portion of generated key to file",
 	"Store private key",
@@ -169,10 +141,20 @@ const char *		option_help[] = {
 enum {
 	ACTION_NONE = 0,
 	ACTION_INIT,
+	ACTION_STORE_PIN,
 	ACTION_GENERATE_KEY,
 	ACTION_STORE_PRIVKEY,
 	ACTION_STORE_PUBKEY,
 	ACTION_STORE_CERT
+};
+static char *			action_names[] = {
+	"do nothing",
+	"create PKCS #15 meta structure",
+	"store PIN",
+	"generate key",
+	"store private key",
+	"store public key",
+	"store certificate"
 };
 
 static struct sc_context *	ctx = NULL;
@@ -181,18 +163,25 @@ static struct sc_pkcs15_card *	p15card = NULL;
 static int			opt_debug = 0,
 				opt_quiet = 0,
 				opt_action = 0,
-				opt_erase = 0;
-static char *			opt_driver = 0;
+				opt_erase = 0,
+				opt_unprotected = 0;
 static char *			opt_profile = "pkcs15";
 static char *			opt_infile = 0;
 static char *			opt_format = 0;
+static char *			opt_authid = 0;
 static char *			opt_objectid = 0;
 static char *			opt_objectlabel = 0;
 static char *			opt_pins[4];
 static char *			opt_passphrase = 0;
 static char *			opt_newkey = 0;
 static char *			opt_outkey = 0;
-static struct pkcs15_init_operations ops;
+
+static struct sc_pkcs15init_callbacks callbacks = {
+	error,			/* error() */
+	NULL,			/* debug() */
+	get_pin_callback,	/* get_pin() */
+	NULL			/* get_secret() */
+};
 
 int
 main(int argc, char **argv)
@@ -204,6 +193,10 @@ main(int argc, char **argv)
 	/* OpenSSL magic */
 	SSLeay_add_all_algorithms();
 	CRYPTO_malloc_init();
+#ifdef RANDOM_POOL
+	if (!RAND_load_file(RANDOM_POOL, 32))
+		fatal("Unable to seed random number pool for key generation");
+#endif
 
 	parse_commandline(argc, argv);
 
@@ -222,31 +215,14 @@ main(int argc, char **argv)
 	if (!connect(opt_reader))
 		return 1;
 
-	/* Now bind the card specific operations */
-	bind_operations(&ops, opt_driver);
+	sc_pkcs15init_set_callbacks(&callbacks);
 
-	/* Now load the profile */
-	/* When asked to init the card, read the profile first.
-	 * This makes people writing new profiles happier because
-	 * they don't have to wait for the card to come around */
-	sc_profile_init(&profile);
-	if (sc_profile_load(&profile, opt_profile)
-	 || sc_profile_load(&profile, card->driver->short_name)
-	 || sc_profile_finish(&profile))
+	/* Bind the card-specific operations and load the profile */
+	if ((r = sc_pkcs15init_bind(&profile, card, opt_profile)) < 0)
 		return 1;
 
-	/* XXX lousy style */
-	profile.ops = &ops;
-
-	/* Associate all PINs given on the command line with the
-	 * CHVs used by the profile */
-	set_pins_from_args(&profile);
-
 	if (opt_action == ACTION_INIT) {
-		if (opt_erase)
-			r = ops.erase_card(&profile, card);
-		if (r >= 0)
-			r = sc_pkcs15init_add_app(card, &profile);
+		r = do_init_app(&profile);
 		goto done;
 	}
 
@@ -266,7 +242,9 @@ main(int argc, char **argv)
 	/* XXX: should compare card to profile here to make sure
 	 * we're not messing things up */
 
-	if (opt_action == ACTION_STORE_PRIVKEY)
+	if (opt_action == ACTION_STORE_PIN)
+		r = do_store_pin(&profile);
+	else if (opt_action == ACTION_STORE_PRIVKEY)
 		r = do_store_private_key(&profile);
 	else if (opt_action == ACTION_STORE_PUBKEY)
 		r = do_store_public_key(&profile);
@@ -277,28 +255,21 @@ main(int argc, char **argv)
 	else
 		fatal("Action not yet implemented\n");
 
-done:	if (card) {
+done:	if (r < 0) {
+		fprintf(stderr, "Failed to %s: %s\n",
+				action_names[opt_action],
+				sc_strerror(r));
+	} else if (!opt_quiet) {
+		printf("Was able to %s successfully.\n",
+				action_names[opt_action]);
+	}
+
+	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card, 0);
 	}
 	sc_release_context(ctx);
 	return r? 1 : 0;
-}
-
-static void
-bind_operations(struct pkcs15_init_operations *ops, const char *driver)
-{
-	if (driver == 0)
-		driver = card->driver->short_name;
-
-	if (!strcasecmp(driver, "GPK"))
-		bind_gpk_operations(ops);
-	else if (!strcasecmp(driver, "MioCOS"))
-		bind_miocos_operations(ops);
-	else if (!strcasecmp(driver, "flex"))
-		bind_cflex_operations(ops);
-	else
-		fatal("Don't know how to handle %s cards", driver);
 }
 
 static int
@@ -311,8 +282,10 @@ connect(int reader)
 		error("Failed to establish context: %s\n", sc_strerror(r));
 		return 0;
 	}
-	if (opt_debug)
+	if (opt_debug) {
 		ctx->debug = opt_debug;
+		ctx->debug_file = stderr;
+	}
 	if (reader >= ctx->reader_count || reader < 0) {
 		fprintf(stderr,
 			"Illegal reader number. Only %d reader%s configured.\n",
@@ -345,6 +318,62 @@ connect(int reader)
 }
 
 /*
+ * Initialize pkcs15 application
+ */
+static int
+do_init_app(struct sc_profile *profile)
+{
+	int	r = 0;
+
+	if (opt_erase)
+		r = profile->ops->erase_card(profile, card);
+	if (r >= 0)
+		r = sc_pkcs15init_add_app(card, profile);
+	return r;
+}
+
+/*
+ * Store a PIN/PUK pair
+ */
+static int
+do_store_pin(struct sc_profile *profile)
+{
+	struct sc_pkcs15init_pinargs args;
+	struct sc_pkcs15_pin_info info;
+
+	if (!opt_authid) {
+		error("No auth id specified\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	if (opt_pins[0] == NULL) {
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &info);
+		read_one_pin(profile, "New user PIN", &info, 0,
+				&opt_pins[0]);
+	}
+	if (*opt_pins[0] == '\0') {
+		error("You must specify a PIN\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	if (opt_pins[1] == NULL) {
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &info);
+		read_one_pin(profile, "Unlock code for new user PIN",
+				&info, 1, &opt_pins[1]);
+	}
+
+	memset(&args, 0, sizeof(args));
+	sc_pkcs15_format_id(opt_authid, &args.auth_id);
+	args.pin = (u8 *) opt_pins[0];
+	args.pin_len = strlen(opt_pins[0]);
+	args.puk = (u8 *) opt_pins[1];
+	args.puk_len = opt_pins[1]? strlen(opt_pins[1]) : 0;
+	args.label = opt_objectlabel;
+
+	return sc_pkcs15init_store_pin(p15card, profile, &args);
+}
+
+
+/*
  * Store a private key
  */
 static int
@@ -356,16 +385,22 @@ do_store_private_key(struct sc_profile *profile)
 	memset(&args, 0, sizeof(args));
 	if (opt_objectid)
 		sc_pkcs15_format_id(opt_objectid, &args.id);
-	if (opt_objectlabel)
-		args.label = opt_objectlabel;
+	if (opt_authid) {
+		sc_pkcs15_format_id(opt_authid, &args.auth_id);
+	} else if (!opt_unprotected) {
+		error("no PIN given for key - either use --unprotected or "
+		      "specify a PIN using --auth-id");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	args.label = opt_objectlabel;
 
 	r = do_read_private_key(opt_infile, opt_format, &args.pkey, &args.cert);
 	if (r < 0)
-		return -1;
+		return r;
 
 	r = sc_pkcs15init_store_private_key(p15card, profile, &args);
 	if (r < 0)
-		goto failed;
+		return r;
 
 	/* If there's a certificate as well (e.g. when reading the
 	 * private key from a PKCS #12 file) store it, too.
@@ -377,17 +412,12 @@ do_store_private_key(struct sc_profile *profile)
 		memset(&cargs, 0, sizeof(cargs));
 		cargs.id = args.id;
 		cargs.cert = args.cert;
-		r = sc_pkcs15init_store_certificate(p15card, profile,
-				&cargs);
+		r = sc_pkcs15init_store_certificate(p15card, profile, &cargs);
 	} else {
 		r = sc_pkcs15init_store_public_key(p15card, profile, &args);
 	}
 
-	if (r >= 0)
-		return 0;
-
-failed:	error("Failed to store private key: %s\n", sc_strerror(r));
-	return -1;
+	return r;
 }
 
 /*
@@ -406,16 +436,9 @@ do_store_public_key(struct sc_profile *profile)
 		args.label = opt_objectlabel;
 
 	r = do_read_public_key(opt_infile, opt_format, &args.pkey);
-	if (r < 0)
-		return r;
+	if (r >= 0)
+		r = sc_pkcs15init_store_public_key(p15card, profile, &args);
 
-	r = sc_pkcs15init_store_public_key(p15card, profile, &args);
-	if (r < 0)
-		goto failed;
-
-	return 0;
-
-failed:	error("Failed to store public key: %s\n", sc_strerror(r));
 	return -1;
 }
 
@@ -435,10 +458,10 @@ do_store_certificate(struct sc_profile *profile)
 	args.label = opt_objectlabel;
 
 	r = do_read_certificate(opt_infile, opt_format, &args.cert);
-	if (r < 0)
-		return r;
+	if (r >= 0)
+		r = sc_pkcs15init_store_certificate(p15card, profile, &args);
 
-	return sc_pkcs15init_store_certificate(p15card, profile, &args);
+	return r;
 }
 
 /*
@@ -447,1100 +470,141 @@ do_store_certificate(struct sc_profile *profile)
 static int
 do_generate_key(struct sc_profile *profile, const char *spec)
 {
-	struct sc_pkcs15init_keyargs keyargs;
-	const char	*reason;
+	struct sc_pkcs15init_keyargs args;
 	int		r;
 
 	/* Parse the key spec given on the command line */
-	memset(&keyargs, 0, sizeof(keyargs));
+	memset(&args, 0, sizeof(args));
 	if (!strncasecmp(spec, "rsa", 3)) {
-		keyargs.algorithm = SC_ALGORITHM_RSA;
+		args.algorithm = SC_ALGORITHM_RSA;
 		spec += 3;
 	} else if (!strncasecmp(spec, "dsa", 3)) {
-		keyargs.algorithm = SC_ALGORITHM_DSA;
+		args.algorithm = SC_ALGORITHM_DSA;
 		spec += 3;
 	} else {
-		reason = "algorithm not supported\n";
-		goto failed;
+		error("Unknown algorithm \"%s\"", spec);
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	if (*spec == '/' || *spec == '-')
 		spec++;
 	if (*spec) {
-		keyargs.keybits = strtoul(spec, (char **) &spec, 10);
-		if (*spec) {
-			reason = "invalid bit number";
-			goto failed;
+		char	*end;
+
+		args.keybits = strtoul(spec, &end, 10);
+		if (*end) {
+			error("Invalid number of key bits \"%s\"", spec);
+			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 	}
 
 	if (opt_objectid)
-		sc_pkcs15_format_id(opt_objectid, &keyargs.id);
+		sc_pkcs15_format_id(opt_objectid, &args.id);
+	if (opt_authid)
+		sc_pkcs15_format_id(opt_authid, &args.auth_id);
+	else if (!opt_unprotected) {
+		error("no PIN given for key - either use --unprotected or "
+		      "specify a PIN using --auth-id");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	args.label = opt_objectlabel;
 
 	while (1) {
-		r = sc_pkcs15init_generate_key(p15card, profile,
-			       	&keyargs);
-		if (r != SC_ERROR_NOT_SUPPORTED || !keyargs.onboard_keygen)
+		r = sc_pkcs15init_generate_key(p15card, profile, &args);
+		if (r != SC_ERROR_NOT_SUPPORTED || !args.onboard_keygen)
 			break;
 		if (!opt_quiet)
 			printf("Warning: card doesn't support on-board "
 			       "key generation; using software generation\n");
-		keyargs.onboard_keygen = 0;
+		args.onboard_keygen = 0;
 	}
-	if (r != 0)
-		goto sc_failed;
+	if (r < 0)
+		return r;
 
 	/* Store public key portion on card */
-	r = sc_pkcs15init_store_public_key(p15card, profile, &keyargs);
+	r = sc_pkcs15init_store_public_key(p15card, profile, &args);
 
-	if (opt_outkey) {
+	if (r >= 0 && opt_outkey) {
 		if (!opt_quiet)
 			printf("Writing public key to %s\n", opt_outkey);
-		r = do_write_public_key(opt_outkey, opt_format, keyargs.pkey);
+		r = do_write_public_key(opt_outkey, opt_format, args.pkey);
 	}
-	if (r >= 0)
-		return 0;
-
-sc_failed:
-	reason = sc_strerror(r);
-failed:	error("Unable to generate %s key: %s\n", spec, reason);
-	return -1;
-}
-
-/*
- * Generic funcions go here.
- * I would like to move these into a separate lib one day (soonishly).
- */
-static int
-sc_pkcs15init_build_aodf(struct sc_profile *profile)
-{
-	struct sc_pkcs15_card *p15card;
-	struct pin_info	*pi;
-	int		r;
-
-	p15card = profile->p15_card;
-
-	/* Loop over all PINs and make sure they're sane */
-	for (pi = profile->pin_list; pi; pi = pi->next) {
-		r = sc_pkcs15_add_object(p15card,
-				&p15card->df[SC_PKCS15_AODF],
-				0, &pi->pkcs15_obj);
-		if (r) {
-			error("Failed to add PIN to AODF: %s\n",
-					sc_strerror(r));
-			return -1;
-		}
-	}
-	return 0;
-}
-
-int
-sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile)
-{
-	struct sc_pkcs15_card *p15card = profile->p15_card;
-	struct sc_app_info *app;
-	int	r;
-
-	p15card->card = card;
-
-	if (card->app_count >= SC_MAX_CARD_APPS) {
-		fprintf(stderr,
-			"Too many applications on this card.\n");
-		return 1;
-	}
-
-	/* Get all necessary PINs from user */
-	if (do_read_pins(profile))
-		return 1;
-
-	/* Build the AODF */
-	if (sc_pkcs15init_build_aodf(profile))
-		return 1;
-
-	/* Create the application DF and store the PINs */
-	if (ops.init_app(profile, card))
-		return 1;
-
-	/* Store the PKCS15 information on the card
-	 * We cannot use sc_pkcs15_create() because it makes
-	 * all sorts of assumptions about DF and EF names, and
-	 * doesn't work if secure messaging is required for the
-	 * MF (which is the case with the GPK) */
-	app = (struct sc_app_info *) calloc(1, sizeof(*app));
-	app->path = p15card->file_app->path;
-	if (p15card->file_app->namelen <= SC_MAX_AID_SIZE) {
-		app->aid_len = p15card->file_app->namelen;
-		memcpy(app->aid, p15card->file_app->name, app->aid_len);
-	}
-	if (p15card->label)
-		app->label = strdup(p15card->label);
-	/* XXX: encode the DDO? */
-
-	r = sc_pkcs15init_update_dir(card, profile, app);
-	if (r >= 0)
-		r = sc_pkcs15init_update_tokeninfo(p15card, profile);
-	if (r >= 0)
-		r = sc_pkcs15init_update_df(p15card, profile,
-				SC_PKCS15_AODF);
-
-	if (r < 0) {
-		fprintf(stderr,
-			"PKCS #15 structure creation failed: %s\n",
-			sc_strerror(r));
-			return 1;
-	}
-
-	printf("Successfully created PKCS #15 meta structure\n");
-	return 0;
-}
-
-/*
- * Generate a new private key
- */
-int
-sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs)
-{
-	if (keyargs->onboard_keygen)
-		return SC_ERROR_NOT_SUPPORTED;
-
-	/* Fall back to software generated keys */
-	return sc_pkcs15init_generate_key_soft(p15card, profile, keyargs);
-}
-
-static int
-sc_pkcs15init_generate_key_soft(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs)
-{
-	int	r;
-
-	ossl_seed_random();
-
-	keyargs->pkey = EVP_PKEY_new();
-	switch (keyargs->algorithm) {
-	case SC_ALGORITHM_RSA: {
-			RSA	*rsa;
-			BIO	*err;
-
-			err = BIO_new(BIO_s_mem());
-			rsa = RSA_generate_key(keyargs->keybits,
-					0x10001, NULL, err);
-			BIO_free(err);
-			if (rsa == 0) {
-				error("RSA key generation error");
-				return -1;
-			}
-			EVP_PKEY_assign_RSA(keyargs->pkey, rsa);
-			break;
-		}
-	case SC_ALGORITHM_DSA: {
-			DSA	*dsa;
-			int	r = 0;
-
-			dsa = DSA_generate_parameters(keyargs->keybits,
-					NULL, 0, NULL,
-					NULL, NULL, NULL);
-			if (dsa)
-				r = DSA_generate_key(dsa);
-			if (r == 0 || dsa == 0) {
-				error("DSA key generation error");
-				return -1;
-			}
-			EVP_PKEY_assign_DSA(keyargs->pkey, dsa);
-			break;
-		}
-	default:
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	r = sc_pkcs15init_store_private_key(p15card, profile, keyargs);
-	if (r < 0)
-		return r;
-
-	return 0;
-}
-
-/*
- * See if there's a PrKDF or PuKDF entry matching this keyinfo.
- * If not, allocate a file and create a corresponding DF entry.
- */
-static int
-sc_pkcs15init_setup_key(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs, int is_private,
-		struct sc_key_template *out)
-{
-	struct sc_pkcs15_object	*found;
-	int		r, type;
-
-	memset(out, 0, sizeof(*out));
-	switch (keyargs->algorithm | (is_private << 16)) {
-	case SC_ALGORITHM_RSA | 0x10000:
-		type = SC_PKCS15_TYPE_PRKEY_RSA; break;
-#ifdef SC_PKCS15_TYPE_PRKEY_DSA
-	case SC_ALGORITHM_DSA | 0x10000:
-		type = SC_PKCS15_TYPE_PRKEY_DSA; break;
-#endif
-	case SC_ALGORITHM_RSA:
-		type = SC_PKCS15_TYPE_PUBKEY_RSA; break;
-#ifdef SC_PKCS15_TYPE_PRKEY_DSA
-	case SC_ALGORITHM_DSA:
-		type = SC_PKCS15_TYPE_PUBKEY_DSA; break;
-#endif
-	default:
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-
-	/* If a key ID has been given, try to locate the key. */
-	found = sc_pkcs15init_find_key(p15card, type, &keyargs->id);
-
-	if (found) {
-		/* XXX: TBD set up out */
-		r = SC_ERROR_NOT_SUPPORTED; /* we don't support updates yet */
-	} else {
-		/* If there's no such key on the card yet, allocate an ID,
-		 * and a file.
-		 */
-		switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
-		case SC_PKCS15_TYPE_PRKEY:
-			r = sc_pkcs15init_new_private_key(profile,
-					type, keyargs, out);
-			break;
-		case SC_PKCS15_TYPE_PUBKEY:
-			r = sc_pkcs15init_new_public_key(profile,
-					type, keyargs, out);
-			break;
-		default:
-			r = SC_ERROR_NOT_SUPPORTED;
-		}
-
-	}
-
-	return r;
-}
-
-/*
- * Map X509 keyUsage extension bits to PKCS#15 keyUsage bits
- */
-static unsigned int	x509_to_pkcs15_private_key_usage[16] = {
-	SC_PKCS15_PRKEY_USAGE_SIGN
-	| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,	/* digitalSignature */
-	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,	/* NonRepudiation */
-	SC_PKCS15_PRKEY_USAGE_UNWRAP,		/* keyEncipherment */
-	SC_PKCS15_PRKEY_USAGE_DECRYPT,		/* dataEncipherment */
-	SC_PKCS15_PRKEY_USAGE_DERIVE,		/* keyAgreement */
-	SC_PKCS15_PRKEY_USAGE_SIGN
-	| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,	/* keyCertSign */
-	SC_PKCS15_PRKEY_USAGE_SIGN
-	| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,	/* cRLSign */
-};
-static unsigned int	x509_to_pkcs15_public_key_usage[16] = {
-	SC_PKCS15_PRKEY_USAGE_VERIFY
-	| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,	/* digitalSignature */
-	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,	/* NonRepudiation */
-	SC_PKCS15_PRKEY_USAGE_WRAP,		/* keyEncipherment */
-	SC_PKCS15_PRKEY_USAGE_ENCRYPT,		/* dataEncipherment */
-	SC_PKCS15_PRKEY_USAGE_DERIVE,		/* keyAgreement */
-	SC_PKCS15_PRKEY_USAGE_VERIFY
-	| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,	/* keyCertSign */
-	SC_PKCS15_PRKEY_USAGE_VERIFY
-	| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,	/* cRLSign */
-};
-
-static int
-sc_pkcs15init_new_key(struct sc_profile *profile, unsigned int type,
-		const char *name, struct sc_pkcs15_id *id,
-		const char *label,
-		unsigned long x509KeyUsage,
-		struct sc_key_template *out)
-{
-	struct sc_key_template *list, *t;
-	struct sc_pkcs15_id *tid;
-	unsigned int	*tusage, *bits, n, pkcsKeyUsage;
-	int		r, is_private;
-
-	if ((type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY) {
-		list = profile->prkey_list;
-		is_private = 1;
-	} else {
-		list = profile->pubkey_list;
-		is_private = 0;
-	}
-
-	/* If we have a certificate, map the key usage */
-	bits = is_private? x509_to_pkcs15_private_key_usage
-			 : x509_to_pkcs15_public_key_usage;
-	for (n = pkcsKeyUsage = 0; n < 16; n++) {
-		if (x509KeyUsage & (1 << n))
-			pkcsKeyUsage |= bits[n];
-	}
-
-	/* First, see if there's a template with a matching
-	 * name. If there is no matching template, fail.
-	 * */
-	if (name) {
-		for (t = list; t; t = t->next) {
-			if (!strcasecmp(t->ident, name))
-				goto found;
-		}
-		return SC_ERROR_OBJECT_NOT_FOUND;
-	}
-
-	/* See if there is a key template with a matching ID */
-	for (t = list; t; t = t->next) {
-		tid = is_private? &t->pkcs15.priv.id : &t->pkcs15.pub.id;
-		if (sc_pkcs15_compare_id(tid, id))
-			goto found;
-	}
-
-	/* See if there is a key template with a matching key usage */
-	for (t = list; t; t = t->next) {
-		tusage = is_private? &t->pkcs15.priv.usage
-				   : &t->pkcs15.pub.usage;
-		if (pkcsKeyUsage == *tusage)
-			goto found;
-	}
-
-	/* Nope. Just use whatever key template was defined first */
-	t = list;
-
-found:	*out = *t;
-
-	/* Set the label */
-	if (label)
-		strcpy(out->pkcs15_obj.label, label);
-	if (!out->pkcs15_obj.label[0])
-		sprintf(out->pkcs15_obj.label, "%s Key",
-				is_private? "Private" : "Public");
-
-	tid = is_private? &out->pkcs15.priv.id : &out->pkcs15.pub.id;
-	if (id->len) {
-		/* Override ID with the ID specified by caller */
-		*tid = *id;
-	} else if (!tid->len) {
-		/* error("No keyUsage defined for key %s", out->ident); */
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	/* If we have a keyUsage, set it */
-	tusage = is_private? &out->pkcs15.priv.usage : &out->pkcs15.pub.usage;
-	if (pkcsKeyUsage) {
-		*tusage = pkcsKeyUsage;
-	} else if (*tusage == 0) {
-		/* error("No keyUsage defined for key %s", out->ident); */
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	/* Now allocate a file */
-	n = sc_pkcs15_get_objects(p15card, type, NULL, 0);
-	r = profile->ops->allocate_file(profile,
-			p15card->card, type, n,
-			&out->file);
-	if (r < 0) {
-		/* error("Unable to allocate key file"); */
-		return r;
-	}
-	if (is_private) {
-		out->pkcs15.priv.path = out->file->path;
-	} else {
-		out->pkcs15.pub.path = out->file->path;
-	}
-	out->pkcs15_obj.data = &out->pkcs15;
-	out->pkcs15_obj.type = type;
-
-	return 0;
-}
-
-int
-sc_pkcs15init_new_private_key(struct sc_profile *profile,
-		unsigned int type,
-		struct sc_pkcs15init_keyargs *keyargs,
-		struct sc_key_template *out)
-{
-	int	r;
-
-	r = sc_pkcs15init_new_key(profile, type, 
-			keyargs->template_name, &keyargs->id,
-			keyargs->label,
-			keyargs->cert? keyargs->cert->ex_kusage : 0,
-			out);
-
-	/* Find the PIN used to protect this key */
-	if (out->pkcs15_obj.auth_id.len) {
-		struct sc_pkcs15_object *obj;
-
-		r = sc_pkcs15_find_pin_by_auth_id(p15card,
-				&out->pkcs15_obj.auth_id, &obj);
-		if (r < 0) {
-			/* error("No PIN matching auth_id of private key"); */
-			return SC_ERROR_OBJECT_NOT_FOUND;
-		}
-		out->key_acl = calloc(1, sizeof(struct sc_acl_entry));
-		out->key_acl->method = SC_AC_CHV;
-		out->key_acl->key_ref =
-			((struct sc_pkcs15_pin_info *) obj->data)->reference;
-	} else {
-		/* XXX flag this as error/warning? */
-	}
-
-	r = sc_pkcs15_add_object(p15card, &p15card->df[SC_PKCS15_PRKDF],
-		       	0, &out->pkcs15_obj);
-	if (r) {
-		/* error("failed to add object to PrKDF"); */
-		return r;
-	}
-
-	/* Return the ID we selected, for reference
-	 * (in case the caller wants to know the ID, so he
-	 * can store public key/certificate with a corresponding
-	 * ID. */
-	keyargs->id = out->pkcs15.priv.id;
-	return 0;
-}
-
-int
-sc_pkcs15init_new_public_key(struct sc_profile *profile,
-		unsigned int type,
-		struct sc_pkcs15init_keyargs *keyargs,
-		struct sc_key_template *out)
-{
-	int		r;
-
-	r = sc_pkcs15init_new_key(profile, type, 
-			keyargs->template_name, &keyargs->id,
-			keyargs->label,
-			keyargs->cert? keyargs->cert->ex_kusage : 0,
-			out);
-
-	r = sc_pkcs15_add_object(p15card, &p15card->df[SC_PKCS15_PUKDF],
-		       	0, &out->pkcs15_obj);
-	if (r) {
-		/* error("failed to add object to PuKDF"); */
-		return r;
-	}
-
-	/* Return the ID we selected, for reference */
-	keyargs->id = out->pkcs15.pub.id;
-	return 0;
-}
-
-/*
- * See if there's a CDF entry matching this certinfo.
- * If not, allocate a file and create a corresponding DF entry.
- */
-static int
-sc_pkcs15init_setup_cert(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_certargs *certargs,
-		struct sc_cert_template *out)
-{
-	struct sc_pkcs15_object	*found = NULL;
-	int		r;
-
-	memset(out, 0, sizeof(*out));
-
-	/* If a key ID has been given, try to locate the key. */
-	r = sc_pkcs15_find_cert_by_id(p15card, &certargs->id, &found);
-
-	if (found) {
-		/* XXX: TBD set up out */
-		r = SC_ERROR_NOT_SUPPORTED; /* we don't support updates yet */
-	} else {
-		/* If there's no such key on the card yet, allocate an ID,
-		 * and a file.
-		 */
-		r = sc_pkcs15init_new_cert(profile,
-				SC_PKCS15_TYPE_CERT_X509,
-				certargs->template_name,
-				&certargs->id, certargs->label,
-				out);
-	}
-
 	return r;
 }
 
 
-int
-sc_pkcs15init_new_cert(struct sc_profile *profile,
-		unsigned int type,
-		const char *name, struct sc_pkcs15_id *id,
-		const char *label,
-		struct sc_cert_template *out)
-{
-	struct sc_cert_template *t = NULL;
-	int		index, r;
-
-	index = sc_pkcs15_get_objects(p15card, type, NULL, 0);
-
-	/* First, try to find a cert template with the given name.
-	 * Fail if a name was given, but no match found */
-	if (name) {
-		for (t = profile->cert_list; t; t = t->next) {
-			if (!strcasecmp(t->ident, name))
-				goto found;
-		}
-		return SC_ERROR_OBJECT_NOT_FOUND;
-	}
-
-	/* See if there is a key template with a matching ID */
-	for (t = profile->cert_list; t; t = t->next) {
-		if (sc_pkcs15_compare_id(&t->pkcs15.id, id))
-			goto found;
-	}
-
-	/* Bummer. Just use the first template defined */
-	t = profile->cert_list;
-
-found:	*out = *t;
-
-	if (label)
-		strcpy(out->pkcs15_obj.label, label);
-	if (!out->pkcs15_obj.label[0])
-		strcpy(out->pkcs15_obj.label, "Certificate");
-
-	if (id->len) {
-		out->pkcs15.id = *id;
-	} else if (!out->pkcs15.id.len) {
-		/* error("No ID defined for certificate"); */
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	/* Now allocate a file */
-	r = profile->ops->allocate_file(profile,
-			p15card->card, type, index,
-			&out->file);
-	if (r < 0) {
-		/* error("Unable to allocate certificate file"); */
-		return r;
-	}
-	out->pkcs15.path = out->file->path;
-	out->pkcs15_obj.data = &out->pkcs15;
-	out->pkcs15_obj.type = type;
-
-	r = sc_pkcs15_add_object(p15card, &p15card->df[SC_PKCS15_CDF],
-		       	0, &out->pkcs15_obj);
-	if (r) {
-		/* error("failed to add object to CDF"); */
-		return r;
-	}
-
-	/* Return the ID we selected, for reference */
-	*id = out->pkcs15.id;
-	return 0;
-}
-
 /*
- * Find a key given its ID
+ * Callbacks from the pkcs15init to retrieve PINs
  */
 static int
-compare_id(struct sc_pkcs15_object *obj, void *arg)
+read_one_pin(struct sc_profile *profile, const char *name,
+		const struct sc_pkcs15_pin_info *info,
+		int optional, char **out)
 {
-	struct sc_pkcs15_id	*ida, *idb = (struct sc_pkcs15_id *) arg;
+	char	*pin;
+	size_t	len;
 
-	switch (obj->type) {
-	case SC_PKCS15_TYPE_PRKEY_RSA:
-		ida = &((struct sc_pkcs15_prkey_info *) obj->data)->id;
-		break;
-	case SC_PKCS15_TYPE_PUBKEY_RSA:
-		ida = &((struct sc_pkcs15_pubkey_info *) obj->data)->id;
-		break;
-	default:
-		return 0;
-	}
-	return sc_pkcs15_compare_id(ida, idb);
-}
-
-struct sc_pkcs15_object *
-sc_pkcs15init_find_key(struct sc_pkcs15_card *p15card,
-		unsigned int type,
-		struct sc_pkcs15_id *id)
-{
-	struct sc_pkcs15_object	*ret = NULL;
-
-	if (sc_pkcs15_get_objects_cond(p15card, type,
-				compare_id, id, &ret, 1) <= 0)
-		return NULL;
-	return ret;
-}
-	
-
-/*
- * Store private key
- */
-int
-sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs)
-{
-	struct sc_key_template info;
-	int		r;
-
-	r = sc_pkcs15init_setup_key(p15card, profile, keyargs, 1, &info);
-	if (r < 0)
-		return r;
-
-	/* XXX: If the card doesn't have support for native keys of
-	 * this type, store this key non-natively */
-
-	r = SC_ERROR_NOT_SUPPORTED;
-	switch (keyargs->pkey->type) {
-	case EVP_PKEY_RSA:
-		if (ops.store_rsa) {
-			RSA	*rsa = EVP_PKEY_get1_RSA(keyargs->pkey);
-
-			r = ops.store_rsa(profile, card, &info, rsa);
-			info.pkcs15.priv.modulus_length = RSA_size(rsa) * 8;
-		}
-		break;
-	case EVP_PKEY_DSA:
-		if (ops.store_dsa) {
-			DSA	*dsa = EVP_PKEY_get1_DSA(keyargs->pkey);
-
-			r = ops.store_dsa(profile, card, &info, dsa);
-			info.pkcs15.priv.modulus_length = DSA_size(dsa) * 8;
-		}
-		break;
-	}
-	if (r < 0)
-		return r;
-
-	/* Now update the PrKDF */
-	return sc_pkcs15init_update_df(p15card, profile, SC_PKCS15_PRKDF);
-}
-
-static int
-sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs)
-{
-	struct sc_key_template info;
-	unsigned char	*data, *p;
-	size_t		size;
-	RSA		*rsa;
-	int		r;
-
-	r = sc_pkcs15init_setup_key(p15card, profile, keyargs, 0, &info);
-	if (r < 0)
-		return r;
-
-	switch (keyargs->pkey->type) {
-	case EVP_PKEY_RSA:
-		rsa = EVP_PKEY_get1_RSA(keyargs->pkey);
-		size = i2d_RSAPublicKey(rsa, NULL);
-		data = p = malloc(size);
-		i2d_RSAPublicKey(rsa, &p);
-
-		info.pkcs15.pub.modulus_length = RSA_size(rsa) * 8;
-		break;
-	default:
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	r = sc_pkcs15init_update_file(profile, info.file, data, size);
-	free(data);
-
-	if (r < 0)
-		return r;
-
-	/* Now update the PuKDF */
-	return sc_pkcs15init_update_df(p15card, profile, SC_PKCS15_PUKDF);
-}
-
-static int
-sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_certargs *args)
-{
-	struct sc_cert_template info;
-	unsigned char	*data, *p;
-	size_t		size;
-	int		r;
-
-	r = sc_pkcs15init_setup_cert(p15card, profile, args, &info);
-	if (r < 0)
-		return r;
-
-	size = i2d_X509(args->cert, NULL);
-	data = p = malloc(size);
-	i2d_X509(args->cert, &p);
-
-	r = sc_pkcs15init_update_file(profile, info.file, data, size);
-	free(data);
-
-	if (r < 0)
-		return r;
-
-	/* Now update the CDF */
-	return sc_pkcs15init_update_df(p15card, profile, SC_PKCS15_CDF);
-}
-
-static int
-sc_pkcs15init_update_dir(struct sc_card *card,
-		struct sc_profile *profile,
-		struct sc_app_info *app)
-{
-	int	r, retry = 1;
-
-	do {
-		struct file_info *info;
-		struct sc_path	path;
-
-		card->ctx->log_errors = 0;
-		r = sc_enum_apps(card);
-		card->ctx->log_errors = 1;
-
-		if (r != SC_ERROR_FILE_NOT_FOUND)
-			break;
-
-		sc_format_path("3F002F00", &path);
-		info = sc_profile_find_file_by_path(profile, &path);
+	printf("%s required.\n", name);
+	while (1) {
+		pin = getpass("Please enter code: ");
+		len = strlen(pin);
 		if (info == NULL)
-			return r;
-		r = sc_pkcs15init_update_file(profile, info->file, NULL, 0);
-	} while (retry--);
-
-	if (r >= 0) {
-		card->app[card->app_count++] = app;
-		r = sc_update_dir(card, NULL);
-	}
-	return r;
-}
-
-static int
-sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile)
-{
-	struct sc_context *ctx = p15card->card->ctx;
-	u8		*buf = NULL;
-	size_t		size;
-	int		r;
-
-	r = sc_pkcs15_encode_tokeninfo(ctx, p15card, &buf, &size);
-	if (r >= 0)
-		r = sc_pkcs15init_update_file(profile,
-			       p15card->file_tokeninfo, buf, size);
-	if (buf)
-		free(buf);
-	return r;
-}
-
-static int
-sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile)
-{
-	struct sc_context *ctx = p15card->card->ctx;
-	u8		*buf = NULL;
-	size_t		size;
-	int		r;
-
-	r = sc_pkcs15_encode_odf(ctx, p15card, &buf, &size);
-	if (r >= 0)
-		r = sc_pkcs15init_update_file(profile,
-			       p15card->file_odf, buf, size);
-	if (buf)
-		free(buf);
-	return r;
-}
-
-static int
-sc_pkcs15init_update_df(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		unsigned int df_type)
-{
-	struct sc_pkcs15_df *df;
-	struct sc_file	*file = NULL;
-	u8		*buf = NULL;
-	size_t		bufsize;
-	unsigned int	j;
-	int		r = 0;
-
-	df = &p15card->df[df_type];
-	if (df->count == 0) {
-		file = profile->df[df_type];
-		if (file == NULL) {
-			/* error("Profile doesn't define a DF file %u",
-			 		df_type); */
-			return SC_ERROR_NOT_SUPPORTED;
-		}
-		df->file[df->count++] = file;
-		if ((r = sc_pkcs15init_update_odf(p15card, profile)) < 0)
-			return r;
-	}
-
-	for (j = 0; r >= 0 && j < df->count; j++) {
-		struct file_info *info;
-		
-		file = df->file[j];
-		info = sc_profile_find_file_by_path(profile, &file->path);
-		if (info != NULL)
-			file = info->file;
-		r = sc_pkcs15_encode_df(card->ctx, df, j, &buf, &bufsize);
-		if (r >= 0) {
-			r = sc_pkcs15init_update_file(profile,
-					file, buf, bufsize);
-			free(buf);
-		}
-	}
-
-	return r;
-}
-
-/*
- * Associate all PINs given on the command line with the
- * CHVs used by the profile
- */
-static int
-set_pins_from_args(struct sc_profile *pro)
-{
-	static char	*types[2] = { "CHV1", "CHV2" };
-	struct pin_info	*info;
-	int		n, i;
-
-	for (n = 0; n < 2; n++) {
-		if (!(info = sc_profile_find_pin(pro, types[n])))
-			continue;
-
-		for (i = 0; i < 2; i++)
-			info->secret[i] = opt_pins[2*n + i];
-	}
-	return 0;
-}
-
-/*
- * Read one PIN/PUK
- */
-static int
-read_one_pin(struct pin_info *info, unsigned int n)
-{
-	static char	*names[2] = { "PIN", "PUK" };
-	char		prompt[64], *pass;
-	int		passlen;
-
-	if (info->pkcs15_obj.label[0]) {
-		sprintf(prompt, "Please enter %s for %s (%s):",
-				names[n], info->ident,
-				info->pkcs15_obj.label);
-	} else {
-		sprintf(prompt, "Please enter %s for %s:",
-				names[n], info->ident);
-	}
-
-	while (info->secret[n] == NULL) {
-		pass = getpass(prompt);
-		passlen = strlen(pass);
-		if (passlen < info->pkcs15.min_length) {
+			break;
+		if (len == 0 && optional)
+			return 0;
+		if (len < info->min_length) {
 			error("Password too short (%u characters min)",
-					info->pkcs15.min_length);
+					info->min_length);
 			continue;
 		}
-		if (passlen > info->pkcs15.stored_length) {
+		if (len > info->stored_length) {
 			error("Password too long (%u characters max)",
-					info->pkcs15.stored_length);
+					info->stored_length);
 			continue;
 		}
-		info->secret[n] = strdup(pass);
-		memset(pass, 0, passlen);
+
+		break;
 	}
-	return 0;
-}
 
-/*
- * Get all the PINs and PUKs we need from the user
- */
-static int
-do_read_pins(struct sc_profile *pro)
-{
-	static char	*types[3] = { "CHV1", "CHV2", "CHV3" };
-	int		n, r;
-
-	for (n = 0; n < 3; n++) {
-		struct pin_info	*info;
-		struct sc_file	*file;
-		int		i, npins = 2;
-
-		if (!(info = sc_profile_find_pin(pro, types[n])))
-			continue;
-
-		/* If the PIN file already exists, read just the PIN */
-		file = info->file->file;
-		ctx->log_errors = 0;
-		if (!sc_select_file(card, &file->path, NULL)) {
-			printf("PIN file for %s already exists.\n", info->ident);
-			npins = 1;
-		}
-		ctx->log_errors = 1;
-
-		/* Don't ask for a PUK if there's not supposed to be one */
-		if (info->attempt[1] == 0)
-			npins = 1;
-
-		/* Loop over all PINs and PUKs */
-		for (i = 0; i < npins; i++) {
-			if ((r = read_one_pin(info, i)) < 0)
-				return r;
-		}
-	}
-	return 0;
+	*out = strdup(pin);
+	memset(pin, 0, len);
+	return 1;
 }
 
 static int
-do_verify_pin(struct sc_profile *pro, unsigned int type, unsigned int reference)
+get_pin_callback(struct sc_profile *profile,
+		int id, const struct sc_pkcs15_pin_info *info,
+		u8 *pinbuf, size_t *pinsize)
 {
-	const char	*ident;
-	struct auth_info *auth;
-	struct pin_info	*info;
-	char		*pin;
-	int		r;
-	u8		pinbuf[32];
+	char	*name = NULL, *secret = NULL;
+	size_t	len;
 
-	ident = "authentication data";
-	if (type == SC_AC_CHV)
-		ident = "PIN";
-	else if (type == SC_AC_PRO)
-		ident = "secure messaging key";
-	else if (type == SC_AC_AUT)
-		ident = "authentication key";
-
-	if ((auth = sc_profile_find_key(pro, type, reference))
-	 || (auth = sc_profile_find_key(pro, type, -1))) {
-		r = sc_verify(card, type, reference,
-				       	auth->key, auth->key_len, NULL);
-		if (r) {
-			error("Failed to verify %s (ref=0x%x)",
-				ident, reference);
-			return r;
-		}
-		return 0;
+	switch (id) {
+	case SC_PKCS15INIT_USER_PIN:
+		name = "User PIN";
+		secret = opt_pins[OPT_PIN1 & 3]; break;
+	case SC_PKCS15INIT_USER_PUK:
+		name = "User PIN unlock key";
+		secret = opt_pins[OPT_PUK1 & 3]; break;
+	case SC_PKCS15INIT_SO_PIN:
+		name = "Security officer PIN";
+		secret = opt_pins[OPT_PIN2 & 3]; break;
+	case SC_PKCS15INIT_SO_PUK:
+		name = "Security officer PIN unlock key";
+		secret = opt_pins[OPT_PUK2 & 3]; break;
+	default:
+		return SC_ERROR_INTERNAL;
 	}
 
-	if (type != SC_AC_CHV)
-		goto no_secret;
-
-	for (info = pro->pin_list; info; info = info->next) {
-		if (info->pkcs15.reference == reference)
-			break;
-	}
-	if (info == NULL)
-		goto no_secret;
-
-	if (!info->secret[0] && (r = read_one_pin(info, 0)) < 0)
-		return r;
-
-	pin = info->secret[0];
-	assert(pro->pin_maxlen < sizeof(pinbuf));
-	memset(pinbuf, pro->pin_pad_char, pro->pin_maxlen);
-	/* FIXME: shouldn't assume that encoding is ascii-numeric */
-	strncpy((char *) pinbuf, pin, strlen(pin));
-	
-	return sc_verify(card, SC_AC_CHV, reference,
-				pinbuf, pro->pin_maxlen, NULL);
-
-no_secret:
-	/* No secret found that we could present.
-	 * XXX: Should we flag an error here, or let the
-	 * operation proceed and then fail? */
+	if (secret == NULL
+	 && !read_one_pin(profile, name, NULL, 0, &secret))
+		return SC_ERROR_INTERNAL;
+	len = strlen(secret);
+	if (len + 1 > *pinsize)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	memcpy(pinbuf, secret, len + 1);
+	*pinsize = len;
 	return 0;
-}
-
-int
-sc_pkcs15init_authenticate(struct sc_profile *pro,
-		struct sc_file *file, int op)
-{
-	const struct sc_acl_entry *acl;
-	int		r = 0;
-
-	acl = sc_file_get_acl_entry(file, op);
-	for (; r == 0 && acl; acl = acl->next) {
-		if (acl->method == SC_AC_NEVER)
-			return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
-		if (acl->method == SC_AC_NONE)
-			break;
-		r = do_verify_pin(pro, acl->method, acl->key_ref);
-	}
-	return r;
-}
-
-int
-do_select_parent(struct sc_profile *pro, struct sc_file *file,
-		struct sc_file **parent)
-{
-	struct sc_path	path;
-	struct file_info *info = NULL;
-	int		r;
-
-	/* Get the parent's path */
-	path = file->path;
-	if (path.len >= 2)
-		path.len -= 2;
-	if (path.len == 0)
-		sc_format_path("3F00", &path);
-
-	info = sc_profile_find_file_by_path(pro, &path);
-	ctx->log_errors = 0;
-	if (info != NULL) {
-		sc_file_dup(parent, info->file);
-		r = sc_select_file(card, &path, NULL);
-	} else {
-		/* Select the parent DF. */
-		r = sc_select_file(card, &path, parent);
-	}
-	ctx->log_errors = 1;
-	/* If DF doesn't exist, create it (unless it's the MF,
-	 * but then something's badly broken anyway :-) */
-	if (r == SC_ERROR_FILE_NOT_FOUND && path.len != 2) {
-		if (info != NULL
-		 && (r = sc_pkcs15init_create_file(pro, info->file)) == 0)
-			r = sc_select_file(card, &path, NULL);
-	}
-	return r;
-}
-
-int
-sc_pkcs15init_create_file(struct sc_profile *pro, struct sc_file *file)
-{
-	struct sc_file	*parent = NULL;
-	int		r;
-
-	/* Select parent DF and verify PINs/key as necessary */
-	if ((r = do_select_parent(pro, file, &parent)) < 0
-	 || (r = sc_pkcs15init_authenticate(pro, parent, SC_AC_OP_CREATE)) < 0) 
-		goto out;
-
-	r = sc_create_file(card, file);
-
-out:	if (parent)
-		sc_file_free(parent);
-	return r;
-}
-
-int
-sc_pkcs15init_update_file(struct sc_profile *profile,
-	       	struct sc_file *file, void *data, unsigned int datalen)
-{
-	int		r;
-
-	ctx->log_errors = 0;
-	if ((r = sc_select_file(card, &file->path, NULL)) < 0) {
-		ctx->log_errors = 1;
-		/* Create file if it doesn't exist */
-		if (file->size < datalen)
-			file->size = datalen;
-		if (r != SC_ERROR_FILE_NOT_FOUND
-		 || (r = sc_pkcs15init_create_file(profile, file)) < 0
-		 || (r = sc_select_file(card, &file->path, NULL)) < 0)
-			return r;
-	}
-	ctx->log_errors = 1;
-
-	/* Present authentication info needed */
-	r = sc_pkcs15init_authenticate(profile, file, SC_AC_OP_UPDATE);
-	if (r >= 0 && datalen)
-		r = sc_update_binary(card, 0, data, datalen, 0);
-
-	return r;
 }
 
 /*
@@ -1775,6 +839,9 @@ static void
 handle_option(int c)
 {
 	switch (c) {
+	case 'a':
+		opt_authid = optarg;
+		break;
 	case 'C':
 		opt_action = ACTION_INIT;
 		break;
@@ -1790,8 +857,7 @@ handle_option(int c)
 		opt_infile = optarg;
 		break;
 	case 'P':
-		opt_action = ACTION_STORE_PUBKEY;
-		opt_infile = optarg;
+		opt_action = ACTION_STORE_PIN;
 		break;
 	case 'X':
 		opt_action = ACTION_STORE_CERT;
@@ -1805,6 +871,9 @@ handle_option(int c)
 		break;
 	case 'i':
 		opt_objectid = optarg;
+		break;
+	case 'l':
+		opt_objectlabel = optarg;
 		break;
 	case 'o':
 		opt_outkey = optarg;
@@ -1821,6 +890,10 @@ handle_option(int c)
 		break;
 	case OPT_PASSPHRASE:
 		opt_passphrase = optarg;
+		break;
+	case OPT_PUBKEY:
+		opt_action = ACTION_STORE_PUBKEY;
+		opt_infile = optarg;
 		break;
 	default:
 		print_usage_and_die("pkcs15-init");
@@ -1925,18 +998,4 @@ ossl_print_errors()
 
 	while ((err = ERR_get_error()) != 0)
 		fprintf(stderr, "%s\n", ERR_error_string(err, NULL));
-}
-
-static void
-ossl_seed_random(void)
-{
-	static int	initialized = 0;
-
-	if (initialized)
-		return;
-
-	/* XXX: won't OpenSSL do that itself? */
-	if (!RAND_load_file("/dev/urandom", 32))
-		fatal("Unable to seed random number pool for key generation");
-	initialized = 1;
 }
