@@ -86,7 +86,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 out:	sc_pkcs11_unlock();
 	sc_pkcs11_free_lock();
 
-        return CKR_OK;
+        return rv;
 }
 
 CK_RV C_GetInfo(CK_INFO_PTR pInfo)
