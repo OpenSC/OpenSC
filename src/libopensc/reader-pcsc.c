@@ -40,7 +40,7 @@
 
 #ifdef _WIN32
 /* Some windows specific kludge */
-#define SCARD_PROTOCOL_ANY (SCARD_PROTOCOL_T0)
+#define SCARD_PROTOCOL_ANY (SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1)
 #define SCARD_SCOPE_GLOBAL SCARD_SCOPE_USER
 
 /* Error printing */
@@ -237,12 +237,6 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 		if (slot->atr_len > SC_MAX_ATR_SIZE)
 			slot->atr_len = SC_MAX_ATR_SIZE;
 		memcpy(slot->atr, pslot->readerState.rgbAtr, slot->atr_len);
-/* The following doesn't work on Win32 because there are other events,
- * so this code will set the SC_SLOT_CARD_CHANGED most of the time,
- * resulting in a complete re-read of the card.
- * Moreover, it seems card exchanges aren't detected this way (it's possible
- * add a check for different ATR, but if the ATRs are the same, it won't work.
- */
 #ifndef _WIN32
 		/* If there was a card in the slot previously, and the
 		 * PCSC driver reports a state change, we assume the
@@ -251,6 +245,22 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 		if ((pslot->readerState.dwEventState & SCARD_STATE_CHANGED)
 		 && (old_flags & SC_SLOT_CARD_PRESENT))
 			slot->flags |= SC_SLOT_CARD_CHANGED;
+#else
+/* The above doesn't work on Win32 because there are other events,
+ * so this code will set the SC_SLOT_CARD_CHANGED most of the time,
+ * resulting in a complete re-read of the card.
+ * So we give the card handle to a function (SCardStatus) and see
+ * if it returns SCARD_W_REMOVED_CARD.
+ */
+		if ((pslot->readerState.dwEventState & SCARD_STATE_CHANGED)
+			 	&& (old_flags & SC_SLOT_CARD_PRESENT)) {
+			DWORD readers_len = 0, state, prot, atr_len = 32;
+			byte atr[32];
+			int rv = SCardStatus(pslot->pcsc_card, NULL, &readers_len,
+				&state,	&prot, atr, &atr_len);
+			if (rv == SCARD_W_REMOVED_CARD)
+				slot->flags |= SC_SLOT_CARD_CHANGED;
+		}
 #endif
 	} else {
 		slot->flags &= ~(SC_SLOT_CARD_PRESENT|SC_SLOT_CARD_CHANGED);
