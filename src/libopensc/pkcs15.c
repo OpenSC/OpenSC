@@ -470,10 +470,9 @@ int sc_pkcs15_bind(struct sc_card *card,
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 			"framework", "pkcs15");
-		conf_block = blocks[0];
+		if (blocks[0] != NULL)
+			conf_block = blocks[0];
 		free(blocks);
-		if (conf_block != NULL)
-			break;
 	}
 	if (conf_block)
 		p15card->opts.use_cache = scconf_get_bool(conf_block, "use_caching", 0);
