@@ -51,6 +51,17 @@ if [ -z "$__p15init__" ]; then
 		p15init="$p15init --reader $P15_READER"
 	fi
 
+	# Get terminal control sequences
+	if tty >/dev/null 2>&1; then
+		__red=`tput setaf 1`
+		__green=`tput setaf 2`
+		__black=`tput setaf 0`
+	else
+		__red=
+		__green=
+		__black=
+	fi
+
 	# Redirect output to log file, but keep copies of
 	# stdout/stderr descriptors on fd 3 and 4
 	exec 3>&1 4>&2 >$p15log 2>&1
@@ -68,7 +79,7 @@ function atexit {
 	if ! $test_failed; then
 		msg <<-EOF
 		:::
-		::: Test set completed successfully
+		::: ${__green}Test set completed successfully${__black}
 		:::
 EOF
 	fi
@@ -102,7 +113,7 @@ function yesno {
 function fail {
 
 	(
-		echo "*** $*"
+		echo "*** ${__red}$*${__black}"
 		if [ -f $p15log ]; then
 			echo "--- Command output ---"
 			cat $p15log
