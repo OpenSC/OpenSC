@@ -9,9 +9,39 @@
 #endif
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <opensc/opensc.h>
 #include <opensc/pkcs15.h>
 #include "sc-test.h"
+
+void sc_test_print_card(const sc_pkcs15_card_t *card)
+{
+	const char *flags[] = {
+		"Read-only",
+		"Login required",
+		"PRN generation",
+		"EID compliant"
+	};
+	int i, count = 0;
+
+	assert(card != NULL);
+	printf("PKCS#15 Card [%s]:\n", card->label);
+	printf("\tVersion        : %d\n", card->version);
+	printf("\tSerial number  : %s\n", card->serial_number);
+	printf("\tManufacturer ID: %s\n", card->manufacturer_id);
+	if (card->preferred_language)
+		printf("\tLanguage       : %s\n", card->preferred_language);
+	printf("\tFlags          : ");
+	for (i = 0; i < 4; i++) {
+		if ((card->flags >> i) & 1) {
+			if (count)
+				printf(", ");
+			printf("%s", flags[i]);
+			count++;
+		}
+	}
+	printf("\n");
+}
 
 static void print_pin(const struct sc_pkcs15_object *obj)
 {
@@ -56,12 +86,16 @@ static void print_pin(const struct sc_pkcs15_object *obj)
 	default:
 		printf("[encoding %d]\n", pin->type);
 	}
-	printf("\tPath        : ");
-	for (i = 0; i < pin->path.len; i++) {
-		printf("%02X", pin->path.value[i]);
-		p += 2;
+	if (pin->path.len) {
+		printf("\tPath        : ");
+		for (i = 0; i < pin->path.len; i++) {
+			printf("%02X", pin->path.value[i]);
+			p += 2;
+		}
+		printf("\n");
 	}
-	printf("\n");
+	if (pin->tries_left >= 0)
+		printf("\tTries left  : %d\n", pin->tries_left);
 }
 
 static void print_prkey(const struct sc_pkcs15_object *obj)
