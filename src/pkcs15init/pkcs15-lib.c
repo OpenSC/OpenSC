@@ -725,6 +725,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 		/* Make sure we don't get duplicate PIN IDs */
 		card->ctx->suppress_errors++;
 		r = sc_pkcs15_find_pin_by_auth_id(p15card, &args->auth_id, &dummy);
+		card->ctx->suppress_errors--;
 		if (r != SC_ERROR_OBJECT_NOT_FOUND) {
 			sc_error(card->ctx, "There already is a PIN with this ID.");
 			return SC_ERROR_INVALID_ARGUMENTS;
@@ -2668,6 +2669,10 @@ sc_pkcs15init_authenticate(struct sc_profile *pro, struct sc_card *card,
 			return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 		if (acl->method == SC_AC_NONE)
 			break;
+		if (acl->method == SC_AC_UNKNOWN) {
+			sc_debug(card->ctx, "unknown acl method\n");
+			break;
+		}
 		r = do_verify_pin(pro, card, file, acl->method, acl->key_ref);
 	}
 	return r;
