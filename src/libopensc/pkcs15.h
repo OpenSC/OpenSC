@@ -270,10 +270,12 @@ struct sc_pkcs15_object {
 	/* Object type specific data */
 	void *data;
 
-	struct sc_pkcs15_object *next; /* used only internally */
+	struct sc_pkcs15_df *df; /* can be NULL, if object is 'floating' */
+	struct sc_pkcs15_object *next, *prev; /* used only internally */
 };
 typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 
+/* PKCS #15 DF types */
 #define SC_PKCS15_PRKDF			0
 #define SC_PKCS15_PUKDF			1
 #define SC_PKCS15_PUKDF_TRUSTED		2
@@ -285,19 +287,20 @@ typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 #define SC_PKCS15_AODF			8
 #define SC_PKCS15_DF_TYPE_COUNT		9
 
-#define SC_PKCS15_MAX_DFS		4
-
 struct sc_pkcs15_df {
-	struct sc_file *file[SC_PKCS15_MAX_DFS];
-	struct sc_pkcs15_object *obj[SC_PKCS15_MAX_DFS];
-	int count, record_length, type;
+	struct sc_file *file;
+
+	struct sc_path path;
+	int record_length, type;
 	int enumerated;
+
+	struct sc_pkcs15_df *next, *prev;
 };
 
 #define SC_PKCS15_CARD_MAGIC		0x10203040
 
-struct sc_pkcs15_card {
-	struct sc_card *card;
+typedef struct sc_pkcs15_card {
+	sc_card_t *card;
 	char *label;
 	/* fields from TokenInfo: */
 	int version;
@@ -305,15 +308,19 @@ struct sc_pkcs15_card {
 	unsigned long flags;
 	struct sc_pkcs15_algorithm_info alg_info[1];
 
-	struct sc_file *file_app;
-	struct sc_file *file_tokeninfo, *file_odf;
-	struct sc_pkcs15_df df[SC_PKCS15_DF_TYPE_COUNT];
+	sc_file_t *file_app;
+	sc_file_t *file_tokeninfo, *file_odf;
 
-	int use_cache;
-	
+	struct sc_pkcs15_df *df_list;
+	struct sc_pkcs15_object *obj_list;
+	int record_lengths[SC_PKCS15_DF_TYPE_COUNT];
+
+	struct sc_pkcs15_card_opts {
+		int use_cache;
+	} opts;
+
 	unsigned int magic;
-};
-typedef struct sc_pkcs15_card sc_pkcs15_card_t;
+} sc_pkcs15_card_t;
 
 #define SC_PKCS15_CARD_FLAG_READONLY		0x01
 #define SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED	0x02
@@ -349,8 +356,6 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				unsigned long alg_flags, const u8 *in,
 				size_t inlen, u8 *out, size_t outlen);
 
-void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
-
 int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *card,
 			const struct sc_pkcs15_object *obj,
 			struct sc_pkcs15_pubkey **out);
@@ -384,7 +389,6 @@ int sc_pkcs15_encode_prkey(struct sc_context *,
 void sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *prkey);
 void sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *prkey);
 
-void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert);
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_cert_info *info,
 			       struct sc_pkcs15_cert **cert);
@@ -400,7 +404,6 @@ int sc_pkcs15_create_cdf(struct sc_pkcs15_card *card,
 			 const struct sc_pkcs15_cert_info **certs);
 int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card);
 
-void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey);
 int sc_pkcs15_find_prkey_by_id(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_id *id,
 			       struct sc_pkcs15_object **out);
@@ -408,7 +411,6 @@ int sc_pkcs15_find_pubkey_by_id(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_id *id,
 			       struct sc_pkcs15_object **out);
 
-void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *auth);
 int sc_pkcs15_verify_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_pin_info *pin,
 			 const u8 *pincode, size_t pinlen);
@@ -432,7 +434,8 @@ int sc_pkcs15_encode_odf(struct sc_context *ctx,
 			struct sc_pkcs15_card *card,
 			u8 **buf, size_t *buflen);
 int sc_pkcs15_encode_df(struct sc_context *ctx,
-			struct sc_pkcs15_df *df, int file_nr,
+			struct sc_pkcs15_card *p15card,
+			struct sc_pkcs15_df *df,
 			u8 **buf, size_t *bufsize);
 int sc_pkcs15_encode_cdf_entry(struct sc_context *ctx,
 			const struct sc_pkcs15_object *obj, u8 **buf,
@@ -448,9 +451,9 @@ int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 			size_t *bufsize);
 
 int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
-		       struct sc_pkcs15_df *df, int file_nr);
+		       struct sc_pkcs15_df *df);
 int sc_pkcs15_read_df(struct sc_pkcs15_card *p15card,
-		      struct sc_pkcs15_df *df, int file_nr);
+		      struct sc_pkcs15_df *df);
 int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
 			       struct sc_pkcs15_object *obj,
 			       const u8 **buf, size_t *bufsize);
@@ -465,35 +468,37 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 				 const u8 **buf, size_t *bufsize);
 
 int sc_pkcs15_decode_enveloped_data(struct sc_context *ctx,
-				struct sc_pkcs15_enveloped_data *result,
-				const u8 *buf, size_t buflen);
+				    struct sc_pkcs15_enveloped_data *result,
+				    const u8 *buf, size_t buflen);
 int sc_pkcs15_encode_enveloped_data(struct sc_context *ctx,
-				struct sc_pkcs15_enveloped_data *data,
-				u8 **buf, size_t *buflen);
+				    struct sc_pkcs15_enveloped_data *data,
+				    u8 **buf, size_t *buflen);
 
-int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
-			 const struct sc_pkcs15_id *id2);
-void sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
-void sc_pkcs15_format_id(const char *id_in, struct sc_pkcs15_id *id_out);
-int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df,
-                         int file_nr, struct sc_pkcs15_object *obj);
-                         
-int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
+int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card,
+			 struct sc_pkcs15_object *obj);
+void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
+			     struct sc_pkcs15_object *obj);
+int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
+		     int type, const sc_path_t *path,
+		     const struct sc_file *file);
+void sc_pkcs15_remove_df(struct sc_pkcs15_card *p15card,
+			 struct sc_pkcs15_df *df);
 
-/* file content wrapping */
+/* File content wrapping */
 int sc_pkcs15_wrap_data(struct sc_context *ctx,
-				const char *passphrase,
-				const u8 *in, size_t in_len,
-				u8 **out, size_t *out_len);
+			const char *passphrase,
+			const u8 *in, size_t in_len,
+			u8 **out, size_t *out_len);
 int sc_pkcs15_unwrap_data(struct sc_context *ctx,
-				const char *passphrase,
-				const u8 *in, size_t in_len,
-				u8 **out, size_t *out_len);
+			  const char *passphrase,
+			  const u8 *in, size_t in_len,
+			  u8 **out, size_t *out_len);
 
 /* Generic file i/o */
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
-				const struct sc_path *path,
-				u8 **buf, size_t *buflen);
+			const struct sc_path *path,
+			u8 **buf, size_t *buflen,
+			struct sc_file **file_out);
 
 /* Caching functions */
 int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
@@ -502,6 +507,14 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 			 const struct sc_path *path,
 			 const u8 *buf, size_t bufsize);
+
+/* PKCS #15 ID handling functions */
+int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
+			 const struct sc_pkcs15_id *id2);
+void sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
+void sc_pkcs15_format_id(const char *id_in, struct sc_pkcs15_id *id_out);
+int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
+
 #ifdef  __cplusplus
 }
 #endif

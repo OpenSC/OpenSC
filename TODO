@@ -2,6 +2,7 @@
 * Finish TCOS driver (Werner Koch?)
 * DSA key handling
 * Non-native RSA private keys
+* Card driver forcing to config file
 
 * Debian packaging
 * GUI applications

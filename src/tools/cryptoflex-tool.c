@@ -927,27 +927,6 @@ int create_app_df(struct sc_path *path, size_t size)
 	return i;
 }
 
-int new_pkcs15_df(struct sc_pkcs15_card *p15card, int df_type, struct sc_file *file)
-{
-	struct sc_pkcs15_df *df = &p15card->df[df_type];
-	struct sc_file *newfile = NULL;
-	int c = df->count;
-
-	if (c >= SC_PKCS15_MAX_DFS)
-		return -1;
-	sc_file_dup(&newfile, file);
-	if (newfile == NULL)
-		return -1;
-	sc_file_add_acl_entry(newfile, SC_AC_OP_LIST_FILES, SC_AC_NONE, SC_AC_KEY_REF_NONE);
-	sc_file_add_acl_entry(newfile, SC_AC_OP_UPDATE, SC_AC_CHV, 2);
-	sc_file_add_acl_entry(newfile, SC_AC_OP_INVALIDATE, SC_AC_CHV, 2);
-	sc_file_add_acl_entry(newfile, SC_AC_OP_REHABILITATE, SC_AC_CHV, 2);
-	df->file[c] = newfile;
-	df->count++;
-
-	return c;
-}
-
 int create_pin_file(const struct sc_path *inpath, int chv, const char *key_id)
 {
 	char prompt[40], *pin, *puk;

@@ -330,7 +330,7 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 	if (path.type == SC_PATH_TYPE_PATH_PROT)
 		path.type = SC_PATH_TYPE_PATH;
 
-	r = sc_pkcs15_read_file(p15card, &path, &data, &len);
+	r = sc_pkcs15_read_file(p15card, &path, &data, &len, NULL);
 	if (r < 0) {
 		error(ctx, "Unable to read private key file.\n");
 		return r;

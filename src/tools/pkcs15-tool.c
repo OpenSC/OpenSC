@@ -358,7 +358,7 @@ int read_public_key(void)
 		if (!quiet)
 			printf("Reading public key with ID '%s'\n", opt_pubkey);
 		r = sc_pkcs15_read_file(p15card, &info->path,
-				&raw_key.value, &raw_key.len);
+				&raw_key.value, &raw_key.len, NULL);
 		if (r) {
 			fprintf(stderr, "Failed to read public key: %s\n",
 					sc_strerror(r));
@@ -583,6 +583,7 @@ int learn_card(void)
 	char dir[120];
 	int r, i, cert_count;
         struct sc_pkcs15_object *certs[32];
+	struct sc_pkcs15_df *df;
 
 	r = sc_get_cache_dir(ctx, dir, sizeof(dir)); 
 	if (r) {
@@ -615,16 +616,8 @@ int learn_card(void)
 		fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	for (i = 0; i < SC_PKCS15_DF_TYPE_COUNT; i++) {
-		int file_nr;
-		struct sc_pkcs15_df *df = &p15card->df[i];
-		
-		for (file_nr = 0; file_nr < df->count; file_nr++) {
-			struct sc_file *file = df->file[file_nr];
-			
-			read_and_cache_file(&file->path);
-		}
-	}
+	for (df = p15card->df_list; df != NULL; df = df->next)
+		read_and_cache_file(&df->path);
 	printf("Caching %d certificate(s)...\n", r);
 	for (i = 0; i < cert_count; i++) {
 		struct sc_pkcs15_cert_info *cinfo = certs[i]->data;
@@ -758,7 +751,7 @@ int main(int argc, char * const argv[])
 		goto end;
 	}
 	if (opt_no_cache)
-		p15card->use_cache = 0;
+		p15card->opts.use_cache = 0;
 	if (!quiet)
 		fprintf(stderr, "Found %s!\n", p15card->label);
 	if (do_learn_card) {

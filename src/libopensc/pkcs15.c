@@ -342,32 +342,21 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 	for (i = 0; asn1_odf[i].name != NULL; i++)
 		sc_format_asn1_entry(asn1_odf + i, asn1_obj_or_path, NULL, 0);
 	while (left > 0) {
-		struct sc_pkcs15_df *df = NULL;
-		struct sc_file *file;
-		
 		r = sc_asn1_decode_choice(card->card->ctx, asn1_odf, p, left, &p, &left);
 		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 			break;
 		if (r < 0)
 			return r;
-		df = &card->df[odf_indexes[r]];
-		if (df->count == SC_PKCS15_MAX_DFS) {
-			error(card->card->ctx, "too many DF's on card\n");
-			continue;
-		}
-		file = sc_file_new();
-		if (file == NULL)
-			return SC_ERROR_OUT_OF_MEMORY;
-		file->path = path;
-		df->file[df->count] = file;
-		df->count++;
+		r = sc_pkcs15_add_df(card, odf_indexes[r], &path, NULL);
+		if (r)
+			return r;
 	}
 	return 0;
 }
 
 int sc_pkcs15_encode_odf(struct sc_context *ctx,
-				struct sc_pkcs15_card *card,
-				u8 **buf, size_t *buflen)
+			 struct sc_pkcs15_card *p15card,
+			 u8 **buf, size_t *buflen)
 {
 	struct sc_path path;
 	struct sc_asn1_entry asn1_obj_or_path[] = {
@@ -376,11 +365,15 @@ int sc_pkcs15_encode_odf(struct sc_context *ctx,
 	};
 	struct sc_asn1_entry *asn1_paths = NULL;
 	struct sc_asn1_entry *asn1_odf = NULL;
-	int df_count = 0, i, r, c = 0;
+	int df_count = 0, r, c = 0;
 	const int nr_indexes = sizeof(odf_indexes)/sizeof(odf_indexes[0]);
+	struct sc_pkcs15_df *df;
 	
-	for (i = 0; i < SC_PKCS15_DF_TYPE_COUNT; i++)
-		df_count += card->df[i].count;
+	df = p15card->df_list;
+	while (df != NULL) {
+		df_count++;
+		df = df->next;
+	};
 	if (df_count == 0) {
 		error(ctx, "No DF's found.\n");
 		return SC_ERROR_OBJECT_NOT_FOUND;
@@ -395,14 +388,11 @@ int sc_pkcs15_encode_odf(struct sc_context *ctx,
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
-	for (i = 0; i < SC_PKCS15_DF_TYPE_COUNT; i++) {
-		struct sc_pkcs15_df *df = &card->df[i];
+	for (df = p15card->df_list; df != NULL; df = df->next) {
 		int j, type = -1;
-		
-		if (!df->count)
-			continue;
+
 		for (j = 0; j < nr_indexes; j++)
-			if (odf_indexes[j] == i) {
+			if (odf_indexes[j] == df->type) {
 				type = j;
 				break;
 			}
@@ -410,15 +400,13 @@ int sc_pkcs15_encode_odf(struct sc_context *ctx,
 			error(ctx, "Unsupported DF type.\n");
 			continue;
 		}
-		for (j = 0; j < df->count; j++) {
-			asn1_odf[c] = c_asn1_odf[type];
-			sc_format_asn1_entry(asn1_odf + c, asn1_paths + 2*c, NULL, 1);
-			sc_copy_asn1_entry(asn1_obj_or_path, asn1_paths + 2*c);
-			sc_format_asn1_entry(asn1_paths + 2*c, &df->file[j]->path, NULL, 1);
-			c++;
-		}
+		asn1_odf[c] = c_asn1_odf[type];
+		sc_format_asn1_entry(asn1_odf + c, asn1_paths + 2*c, NULL, 1);
+		sc_copy_asn1_entry(asn1_obj_or_path, asn1_paths + 2*c);
+		sc_format_asn1_entry(asn1_paths + 2*c, &df->path, NULL, 1);
+		c++;
 	}
-	asn1_odf[df_count].name = NULL;
+	asn1_odf[c].name = NULL;
 	r = sc_asn1_encode(ctx, asn1_odf, buf, buflen);
 err:
 	if (asn1_paths != NULL)
@@ -431,37 +419,22 @@ err:
 struct sc_pkcs15_card * sc_pkcs15_card_new()
 {
 	struct sc_pkcs15_card *p15card;
-	int i;
 	
 	p15card = malloc(sizeof(struct sc_pkcs15_card));
 	if (p15card == NULL)
 		return NULL;
 	memset(p15card, 0, sizeof(struct sc_pkcs15_card));
-	for (i = 0; i < SC_PKCS15_DF_TYPE_COUNT; i++)
-		p15card->df[i].type = i;
 	p15card->magic = SC_PKCS15_CARD_MAGIC;
 	return p15card;
 }
 
 void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 {
-	int i, j;
-	
 	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
-	for (j = 0; j < SC_PKCS15_DF_TYPE_COUNT; j++)
-		for (i = 0; i < p15card->df[j].count; i++) {
-			struct sc_pkcs15_object *p;
-			if (p15card->df[j].file[i])
-				sc_file_free(p15card->df[j].file[i]);
-			p = p15card->df[j].obj[i];
-			while (p != NULL) {
-				struct sc_pkcs15_object *p2 = p->next;
-				if (p->data != NULL)
-					free(p->data);
-				free(p);
-				p = p2;
-			}
-		}
+	while (p15card->obj_list)
+		sc_pkcs15_remove_object(p15card, p15card->obj_list);
+	while (p15card->df_list)
+		sc_pkcs15_remove_df(p15card, p15card->df_list);
 	if (p15card->file_app != NULL)
 		sc_file_free(p15card->file_app);
 	if (p15card->file_tokeninfo != NULL)
@@ -494,6 +467,9 @@ int sc_pkcs15_bind(struct sc_card *card,
 	if (p15card == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	p15card->card = card;
+
+	/* FIXME: parse config file */
+	p15card->opts.use_cache = 1;
 
 	err = sc_lock(card);
 	if (err) {
@@ -577,8 +553,6 @@ int sc_pkcs15_bind(struct sc_card *card,
 	}
 	parse_tokeninfo(p15card, buf, err);
 
-	p15card->use_cache = 1;
-
 	*p15card_out = p15card;
 	sc_unlock(card);
 	return 0;
@@ -618,7 +592,8 @@ int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, int type,
 	const int cert_df[] = { SC_PKCS15_CDF, SC_PKCS15_CDF_TRUSTED, SC_PKCS15_CDF_USEFUL, -1 };
 	const int auth_df[] = { SC_PKCS15_AODF, -1 };
 	const int *dfs;
-	int count = 0, i, r;
+	sc_pkcs15_object_t *obj;
+	int match_count = 0, i, r = 0;
 	
 	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PRKEY:
@@ -637,60 +612,37 @@ int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, int type,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	for (i = 0; dfs[i] != -1; i++) {
-		int j;
-		struct sc_pkcs15_df *df = &p15card->df[dfs[i]];
+		struct sc_pkcs15_df *df = p15card->df_list;
 
-		if (!df->enumerated) {
-			r = sc_lock(p15card->card);
-			SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
-			for (j = 0; j < df->count; j++) {
-				r = sc_pkcs15_parse_df(p15card, df, j);
-				if (r < 0)
-					break;
-			}
-			sc_unlock(p15card->card);
+		for (df = p15card->df_list; df != NULL; df = df->next) {
+			if (df->type != dfs[i])
+				continue;
+			if (df->enumerated)
+				continue;
+			/* Enumerate the DF's, so p15card->obj_list is
+			 * populated. */
+			r = sc_pkcs15_parse_df(p15card, df);
+			if (r < 0)
+				break;
 			SC_TEST_RET(p15card->card->ctx, r, "DF parsing failed");
 			df->enumerated = 1;
 		}
-		for (j = 0; j < df->count; j++) {
-			struct sc_pkcs15_object *obj = df->obj[j];
-			
-			for (; obj != NULL; obj = obj->next) {
-				if (obj->type != type
-				 && (obj->type & SC_PKCS15_TYPE_CLASS_MASK) != type)
-					continue;
-				if (func != NULL && func(obj, func_arg) <= 0)
-					continue;
-				count++;
-			}
-		}
 	}
-	if (count == 0)
-		return 0;
-	if (ret_size <= 0)
-		return count;
-	count = 0;
-	for (i = 0; dfs[i] != -1; i++) {
-		int j;
-		struct sc_pkcs15_df *df = &p15card->df[dfs[i]];
-
-		for (j = 0; j < df->count && count < ret_size; j++) {
-			struct sc_pkcs15_object *obj = df->obj[j];
-
-			for (; obj != NULL; obj = obj->next) {
-				if (count >= ret_size)
-					break;
-				if (obj->type != type
-				 && (obj->type & SC_PKCS15_TYPE_CLASS_MASK) != type)
-					continue;
-				if (func != NULL && func(obj, func_arg) <= 0)
-					continue;
-				ret[count] = obj;
-				count++;
-			}
-		}
+	for (obj = p15card->obj_list; obj != NULL; obj = obj->next) {
+		if (obj->type != type
+		 && (obj->type & SC_PKCS15_TYPE_CLASS_MASK) != type)
+			continue;
+		if (func != NULL && func(obj, func_arg) <= 0)
+			continue;
+		/* Okay, we have a match. */
+		match_count++;
+		if (ret_size <= 0)
+			continue;
+		ret[match_count-1] = obj;
+		if (ret_size <= match_count)
+			break;
 	}
-	return count;
+	return match_count;
 }
 
 int sc_pkcs15_get_objects(struct sc_pkcs15_card *p15card, int type,
@@ -792,34 +744,91 @@ int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
-int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df,
-                         int file_nr, struct sc_pkcs15_object *obj)
+int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card,
+			 struct sc_pkcs15_object *obj)
 {
-	struct sc_pkcs15_object *p = df->obj[file_nr];
+	struct sc_pkcs15_object *p = p15card->obj_list;
 
-	obj->next = NULL;
-	if (p == NULL) {
-		df->obj[file_nr] = obj;
+	obj->next = obj->prev = NULL;
+	if (p15card->obj_list == NULL) {
+		p15card->obj_list = obj;
 		return 0;
 	}
 	while (p->next != NULL)
  		p = p->next;
 	p->next = obj;
-        
+	obj->prev = p;
+
 	return 0;
-}                       
+}
+
+void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
+			     struct sc_pkcs15_object *obj)
+{
+	if (obj->prev == NULL)
+		p15card->obj_list = obj->next;
+	else
+		obj->prev->next = obj->next;
+	if (obj->next != NULL)
+		obj->next->prev = obj->prev;
+	if (obj->data)
+		free(obj->data);
+	free(obj);
+}
+
+int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
+		     int type, const sc_path_t *path,
+		     const sc_file_t *file)
+{
+	struct sc_pkcs15_df *p = p15card->df_list, *newdf;
+
+	newdf = malloc(sizeof(struct sc_pkcs15_df));
+	if (newdf == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memset(newdf, 0, sizeof(struct sc_pkcs15_df));
+	newdf->path = *path;
+	newdf->type = type;
+	if (file != NULL)
+		sc_file_dup(&newdf->file, file);
+	if (p15card->df_list == NULL) {
+		p15card->df_list = newdf;
+		return 0;
+	}
+	while (p->next != NULL)
+ 		p = p->next;
+	p->next = newdf;
+	newdf->prev = p;
+
+	return 0;
+}
+
+void sc_pkcs15_remove_df(struct sc_pkcs15_card *p15card,
+			 struct sc_pkcs15_df *obj)
+{
+	if (obj->prev == NULL)
+		p15card->df_list = obj->next;
+	else
+		obj->prev->next = obj->next;
+	if (obj->next != NULL)
+		obj->next->prev = obj->prev;
+	if (obj->file)
+		sc_file_free(obj->file);
+	free(obj);
+}
 
 int sc_pkcs15_encode_df(struct sc_context *ctx,
+			struct sc_pkcs15_card *p15card,
 			struct sc_pkcs15_df *df,
-			int file_no,
 			u8 **buf_out, size_t *bufsize_out)
 {
 	u8 *buf = NULL, *tmp;
 	size_t bufsize = 0, tmpsize;
-	int r;
-	const struct sc_pkcs15_object *obj = df->obj[file_no];
+	const struct sc_pkcs15_object *obj;
 	int (* func)(struct sc_context *, const struct sc_pkcs15_object *obj,
 		     u8 **buf, size_t *bufsize) = NULL;
+	int r;
+
+	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
 	switch (df->type) {
 	case SC_PKCS15_PRKDF:
 		func = sc_pkcs15_encode_prkdf_entry;
@@ -839,15 +848,13 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 	}
 	if (func == NULL) {
 		error(ctx, "unknown DF type: %d\n", df->type);
-#if 0
-		return SC_ERROR_INVALID_ARGUMENTS;
-#else
 		*buf_out = NULL;
 		*bufsize_out = 0;
 		return 0;
-#endif
 	}
-	while (obj != NULL) {
+	for (obj = p15card->obj_list; obj != NULL; obj = obj->next) {
+		if (obj->df != df)
+			continue;
 		r = func(ctx, obj, &tmp, &tmpsize);
 		if (r) {
 			free(buf);
@@ -857,7 +864,6 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 		memcpy(buf + bufsize, tmp, tmpsize);
 		free(tmp);
 		bufsize += tmpsize;
-		obj = obj->next;
 	}
 	*buf_out = buf;
 	*bufsize_out = bufsize;
@@ -866,14 +872,13 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 }
 
 int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
-		       struct sc_pkcs15_df *df, int file_nr)
+		       struct sc_pkcs15_df *df)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	u8 buf[2048], *bufptr = buf;
-        const u8 *p = buf;
-	size_t bufsize = sizeof(buf);
-	int r, cached_file = 0;
-	struct sc_path path = df->file[file_nr]->path;
+	u8 *buf;
+        const u8 *p;
+	size_t bufsize;
+	int r;
 	struct sc_pkcs15_object *obj = NULL;
 	int (* func)(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 		     const u8 **buf, size_t *bufsize) = NULL;
@@ -898,43 +903,19 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		error(ctx, "unknown DF type: %d\n", df->type);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-
-	/* XXX another candidate for using sc_pkcs15_read_file */
-	if (p15card->use_cache) {
-		r = sc_pkcs15_read_cached_file(p15card, &path,
-					       &bufptr, &bufsize);
-		if (r == 0)
-			cached_file = 1;
-	}
-	if (cached_file == 0) {
-		struct sc_file *file = NULL;
-		size_t file_size;
-
-		r = sc_lock(p15card->card);
-		SC_TEST_RET(ctx, r, "sc_lock() failed");
-		r = sc_select_file(p15card->card, &path, &file);
-		if (r) {
-			sc_perror(ctx, r, "sc_select_file() failed");
-			sc_unlock(p15card->card);
-			return r;
-		}
-		file_size = file->size;
-		sc_file_free(file);
-		if (file_size > sizeof(buf)) {
-			error(ctx, "Buffer too small to handle DF contents\n");
-			sc_unlock(p15card->card);
-			return SC_ERROR_INTERNAL;
-		}
-		r = sc_read_binary(p15card->card, 0, buf, file_size, 0);
-		sc_unlock(p15card->card);
-		if (r < 0)
-			return r;
-		bufsize = file_size;
-	}
+	if (df->file != NULL)
+		r = sc_pkcs15_read_file(p15card, &df->path,
+					&buf, &bufsize, NULL);
+	else
+		r = sc_pkcs15_read_file(p15card, &df->path,
+					&buf, &bufsize, &df->file);
+	p = buf;
 	do {
 		obj = malloc(sizeof(struct sc_pkcs15_object));
-		if (obj == NULL)
-			return SC_ERROR_OUT_OF_MEMORY;
+		if (obj == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto ret;
+		}
 		memset(obj, 0, sizeof(struct sc_pkcs15_object));
 		r = func(p15card, obj, &p, &bufsize);
 		if (r) {
@@ -942,24 +923,27 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 			if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 				break;
 			sc_perror(ctx, r, "Error decoding DF entry");
-			return r;
+			goto ret;
 		}
-		r = sc_pkcs15_add_object(p15card, df, file_nr, obj);
+		obj->df = df;
+		r = sc_pkcs15_add_object(p15card, obj);
 		if (r) {
 			if (obj->data)
 				free(obj->data);
 			free(obj);
 			sc_perror(ctx, r, "Error adding object");
-			return r;
+			goto ret;
 		}
 	} while (bufsize && *p != 0x00);
-	
-	return 0;	
+ret:
+	free(buf);
+	return r;
 }
 
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			const struct sc_path *path,
-			u8 **buf, size_t *buflen)
+			u8 **buf, size_t *buflen,
+			struct sc_file **file_out)
 {
 	struct sc_file *file;
 	u8	*data = NULL;
@@ -968,7 +952,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 
 	assert(p15card != NULL && path != NULL && buf != NULL);
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
-	if (p15card->use_cache) {
+	if (p15card->opts.use_cache) {
 		r = sc_pkcs15_read_cached_file(p15card, path, &data, &len);
 	}
 	if (r) {
@@ -980,7 +964,10 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			return r;
 		}
 		len = file->size;
-		sc_file_free(file);
+		if (file_out != NULL)
+			*file_out = file;
+		else
+			sc_file_free(file);
 		data = malloc(len);
 		if (data == NULL) {
 			sc_unlock(p15card->card);
