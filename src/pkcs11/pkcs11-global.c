@@ -30,8 +30,6 @@ struct sc_pkcs11_config sc_pkcs11_conf;
 
 extern CK_FUNCTION_LIST pkcs11_function_list;
 
-static sysdep_timestamp_t slot_state_expires = 0;
-
 CK_RV C_Initialize(CK_VOID_PTR pReserved)
 {
 	int i, rc, rv;
@@ -205,11 +203,11 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	rv = slot_get_slot(slotID, &slot);
 	if (rv == CKR_OK){
 		now = sc_current_time();
-		if (now >= slot_state_expires || now == 0) {
+		if (now >= card_table[slot->reader].slot_state_expires || now == 0) {
 			/* Update slot status */
 			rv = card_detect(slot->reader);
 			/* Don't ask again within the next second */ 
-			slot_state_expires = now + 1000;
+			card_table[slot->reader].slot_state_expires = now + 1000;
 		}
 	}
 	if (rv == CKR_TOKEN_NOT_PRESENT || rv == CKR_TOKEN_NOT_RECOGNIZED)
