@@ -19,6 +19,7 @@
  */
 
 #include "internal.h"
+#include <string.h>
 
 static struct sc_card_operations default_ops;
 static struct sc_card_driver default_drv = {
