@@ -48,6 +48,7 @@
 #include <opensc/pkcs15.h>
 #include <opensc/pkcs15-init.h>
 #include <opensc/log.h>
+#include <opensc/ui.h>
 #include "util.h"
 
 
@@ -78,8 +79,6 @@ static int	do_store_data_object(struct sc_profile *profile);
 
 static void	set_secrets(struct sc_profile *);
 static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
-static int	read_one_pin(struct sc_profile *, const char *,
-			const struct sc_pkcs15_pin_info *, int, char **);
 static int	get_pin_callback(struct sc_profile *profile,
 			int id, const struct sc_pkcs15_pin_info *info,
 			const char *label,
@@ -237,10 +236,6 @@ static char *			action_names[] = {
 	"store certificate",
 	"store data object"
 };
-
-/* Flags for read_one_pin */
-#define READ_PIN_OPTIONAL	0x01
-#define READ_PIN_RETYPE		0x02
 
 #define MAX_CERTS		4
 #define MAX_SECRETS		16
@@ -491,23 +486,42 @@ static int
 do_init_app(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_initargs args;
-	struct sc_pkcs15_pin_info info;
+	sc_pkcs15_pin_info_t	info;
+	sc_ui_hints_t		hints;
+	int			r;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.usage	= SC_UI_USAGE_NEW_PIN;
+	hints.flags	= SC_UI_PIN_RETYPE
+			   | SC_UI_PIN_OPTIONAL
+			   | SC_UI_PIN_CHECK_LENGTH
+			   | SC_UI_PIN_MISMATCH_RETRY;
+	hints.card	= card;
+	hints.p15card	= NULL;
+	hints.info.pin	= &info;
 
 	memset(&args, 0, sizeof(args));
 	if (!opt_pins[2] && !opt_no_prompt && !opt_no_sopin) {
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_SO_PIN, &info);
-		if (!read_one_pin(profile, "New security officer (SO) PIN",
-				&info, READ_PIN_RETYPE|READ_PIN_OPTIONAL,
-				&opt_pins[2]))
+
+		hints.dialog_name = "pkcs15init.new_so_pin";
+		hints.prompt	= "New security officer (SO) PIN";
+		hints.obj_label	= "Security Officer PIN";
+
+		if ((r = sc_ui_get_pin(&hints, &opt_pins[2])) < 0)
 			goto failed;
 	}
+
 	if (opt_pins[2] && !opt_pins[3] && !opt_no_prompt) {
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_SO_PUK, &info);
-		if (!read_one_pin(profile, "Unlock code for new SO PIN",
-				&info, READ_PIN_RETYPE|READ_PIN_OPTIONAL,
-				&opt_pins[3]))
+
+		hints.dialog_name = "pkcs15init.new_so_puk";
+		hints.prompt	= "Unblock code for new SO PIN";
+		hints.obj_label	= "Security Officer Unblock PIN (PUK)";
+
+		if ((r = sc_ui_get_pin(&hints, &opt_pins[3])) < 0)
 			goto failed;
 	}
 	args.so_pin = (const u8 *) opt_pins[2];
@@ -521,7 +535,7 @@ do_init_app(struct sc_profile *profile)
 
 	return sc_pkcs15init_add_app(card, profile, &args);
 
-failed:	
+failed:	sc_error(card->ctx, "Failed to read PIN: %s\n", sc_strerror(r));
 	return SC_ERROR_PKCS15INIT;
 }
 
@@ -532,7 +546,18 @@ static int
 do_store_pin(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_pinargs args;
-	struct sc_pkcs15_pin_info info;
+	sc_pkcs15_pin_info_t	info;
+	sc_ui_hints_t		hints;
+	int			r;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.usage	= SC_UI_USAGE_NEW_PIN;
+	hints.flags	= SC_UI_PIN_RETYPE
+			   | SC_UI_PIN_CHECK_LENGTH
+			   | SC_UI_PIN_MISMATCH_RETRY;
+	hints.card	= card;
+	hints.p15card	= p15card;
+	hints.info.pin	= &info;
 
 	if (!opt_authid) {
 		error("No auth id specified\n");
@@ -542,9 +567,12 @@ do_store_pin(struct sc_profile *profile)
 	if (opt_pins[0] == NULL) {
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_USER_PIN, &info);
-		if (!read_one_pin(profile, "New user PIN", &info,
-			       	READ_PIN_RETYPE,
-				&opt_pins[0]))
+
+		hints.dialog_name = "pkcs15init.new_user_pin";
+		hints.prompt	= "New user PIN";
+		hints.obj_label	= "New User PIN";
+
+		if ((r = sc_ui_get_pin(&hints, &opt_pins[0])) < 0)
 			goto failed;
 	}
 	if (*opt_pins[0] == '\0') {
@@ -554,10 +582,13 @@ do_store_pin(struct sc_profile *profile)
 	if (opt_pins[1] == NULL) {
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_USER_PUK, &info);
-		if (!read_one_pin(profile,
-			       	"Unlock code for new user PIN", &info,
-			       	READ_PIN_RETYPE|READ_PIN_OPTIONAL,
-			       	&opt_pins[1]))
+
+		hints.dialog_name = "pkcs15init.new_user_pin";
+		hints.prompt	= "Unblock code for New user PIN";
+		hints.obj_label	= "New User Unblock PIN (PUK)";
+		hints.flags    |= SC_UI_PIN_OPTIONAL;
+
+		if ((r = sc_ui_get_pin(&hints, &opt_pins[1])) < 0)
 			goto failed;
 	}
 
@@ -571,7 +602,7 @@ do_store_pin(struct sc_profile *profile)
 
 	return sc_pkcs15init_store_pin(p15card, profile, &args);
 
-failed:	
+failed:	sc_error(card->ctx, "Failed to read PIN: %s\n", sc_strerror(r));
 	return SC_ERROR_PKCS15INIT;
 }
 
@@ -959,66 +990,8 @@ set_secrets(struct sc_profile *profile)
 }
 
 /*
- * Callbacks from the pkcs15init to retrieve PINs
+ * PIN retrieval callback
  */
-static int
-read_one_pin(struct sc_profile *profile, const char *name,
-		const struct sc_pkcs15_pin_info *info,
-		int flags, char **out)
-{
-	char	*pin;
-	size_t	len;
-       	int	retries = 5;
-
-	printf("%s required", name);
-	if (flags & READ_PIN_OPTIONAL)
-		printf(" (press return for no PIN)");
-	printf(".\n");
-
-	*out = NULL;
-	while (retries--) {
-		pin = getpass("Please enter PIN: ");
-		if (pin == NULL)
-			return SC_ERROR_INTERNAL;
-		len = strlen(pin);
-		if (len == 0 && (flags & READ_PIN_OPTIONAL))
-			break;
-
-		if (info && len < info->min_length) {
-			error("Password too short (%u characters min)",
-					info->min_length);
-			continue;
-		}
-		if (info && len > info->max_length) {
-			error("Password too long (%u characters max)",
-					info->max_length);
-			continue;
-		}
-
-		*out = strdup(pin);
-		if (flags & READ_PIN_RETYPE) {
-			memset(pin, 0, len);
-			pin = getpass("Please type again to verify: ");
-			if (strcmp(*out, pin)) {
-				fprintf(stderr, "PINs do not match; "
-					       	"please try again.\n");
-				free(*out);
-				*out = NULL;
-				continue;
-			}
-		}
-		memset(pin, 0, len);
-		break;
-	}
-
-	if (retries < 0) {
-		error("Giving up.");
-		return 0;
-	}
-
-	return 1;
-}
-
 static int
 get_pin_callback(struct sc_profile *profile,
 		int id, const struct sc_pkcs15_pin_info *info,
@@ -1074,8 +1047,27 @@ get_pin_callback(struct sc_profile *profile,
 	}
 
 	if (!secret) {
-		if (!read_one_pin(profile, name, NULL, 0, &secret))
-			return SC_ERROR_INTERNAL;
+		sc_ui_hints_t	hints;
+		char		prompt[128];
+		int		r;
+
+		snprintf(prompt, sizeof(prompt), "%s required", name);
+
+		memset(&hints, 0, sizeof(hints));
+		hints.dialog_name = "pkcs15init.get_pin";
+		hints.prompt	= prompt;
+		hints.obj_label	= name;
+		hints.usage	= SC_UI_USAGE_OTHER;
+		hints.card	= card;
+		hints.p15card	= p15card;
+
+		if ((r = sc_ui_get_pin(&hints, &secret)) < 0) {
+			sc_error(card->ctx,
+				"Failed to read PIN from user: %s\n",
+				sc_strerror(r));
+			return r;
+		}
+
 		len = strlen(secret);
 		allocated = 1;
 	}
