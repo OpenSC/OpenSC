@@ -81,7 +81,8 @@ static void print_prkey(const struct sc_pkcs15_object *obj)
 			printf(", %s", access_flags[i]);
 		}
 	printf("\n");
-	printf("\tModLength   : %d\n", prkey->modulus_length);
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA)
+		printf("\tModLength   : %d\n", prkey->modulus_length);
 	printf("\tKey ref     : %d\n", prkey->key_reference);
 	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");
 	printf("\tPath        : ");
@@ -127,7 +128,8 @@ static void print_pubkey(const struct sc_pkcs15_object *obj)
 			printf(", %s", access_flags[i]);
 		}
 	printf("\n");
-	printf("\tModLength   : %d\n", pubkey->modulus_length);
+	if (obj->type == SC_PKCS15_TYPE_PUBKEY_RSA)
+		printf("\tModLength   : %d\n", pubkey->modulus_length);
 	printf("\tKey ref     : %d\n", pubkey->key_reference);
 	printf("\tNative      : %s\n", pubkey->native ? "yes" : "no");
 	printf("\tPath        : ");
