@@ -27,6 +27,9 @@
 #include <stdio.h>
 #include <assert.h>
 
+
+static int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *);
+
 void sc_pkcs15_print_card(const struct sc_pkcs15_card *card)
 {
 	const char *flags[] = {
@@ -506,6 +509,19 @@ int sc_pkcs15_bind(struct sc_card *card,
 				parse_ddo(p15card, info->ddo, info->ddo_len);
 		}
 	}
+
+	/* Check if pkcs15 directory exists */
+	i = ctx->log_errors;
+	ctx->log_errors = 0;
+	err = sc_select_file(card, &p15card->file_app->path, NULL);
+	ctx->log_errors = 1;
+	if (err < 0) {
+		err = sc_pkcs15_bind_synthetic(p15card);
+		if (err < 0)
+			goto error;
+		goto done;
+	}
+
 	if (p15card->file_odf == NULL) {
 		tmppath = p15card->file_app->path;
 		sc_append_path_id(&tmppath, (const u8 *) "\x50\x31", 2);
@@ -558,6 +574,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	}
 	parse_tokeninfo(p15card, buf, err);
 
+done:
 	*p15card_out = p15card;
 	sc_unlock(card);
 	return 0;
@@ -565,6 +582,12 @@ error:
 	sc_pkcs15_card_free(p15card);
 	sc_unlock(card);
 	SC_FUNC_RETURN(ctx, 1, err);
+}
+
+int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *p15card)
+{
+	/* Code to bind non pkcs15 cards as read-only will go here */
+	return SC_ERROR_PKCS15_APP_NOT_FOUND;
 }
 
 int sc_pkcs15_detect(struct sc_card *card)
