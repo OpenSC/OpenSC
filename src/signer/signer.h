@@ -13,13 +13,17 @@ typedef struct _PluginInstance
     struct sc_context *ctx;
     struct sc_card *card;
     struct sc_pkcs15_card *p15card;
+
+    const char *pinname;
+    char *pinbuf;
+    int pinlen;
 } PluginInstance;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int ask_pin_code(PluginInstance *inst, Display *dpy, Window win);
+int ask_pin_code(PluginInstance *inst);
 
 #ifdef __cplusplus
 }

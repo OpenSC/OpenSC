@@ -7,23 +7,22 @@
 char*
 NPP_GetMIMEDescription(void)
 {
-	return("text/x-text-to-sign:sgn:Text to be signed");
+	return (char *) "text/x-text-to-sign:sgn:Text to be signed";
 }
 
 NPError
-NPP_GetValue(NPP instance, NPPVariable variable, void *value)
+NPP_GetValue(void *inst, NPPVariable variable, void *value)
 {
 	NPError err = NPERR_NO_ERROR;
 	
 	printf("NPP_GetValue()\n");
 	switch (variable) {
 		case NPPVpluginNameString:
-			*((char **)value) = "Template plugin";
+			*((char **)value) = (char *) "Template plugin";
 			break;
 		case NPPVpluginDescriptionString:
-			*((char **)value) =
-				"This plugins handles nothing. This is only"
-				" a template.";
+			*((char **)value) = (char *) "This plugins handles"
+					    " nothing. This is only a template.";
 			break;
 		default:
 			err = NPERR_GENERIC_ERROR;
@@ -134,6 +133,7 @@ NPP_New(NPMIMEType pluginType,
 		fieldName = strdup("SignedData");
 	This->signdata = dataToSign;
 	This->signdata_len = strlen(dataToSign);
+
 	r = create_envelope(This, &data, &datalen);
 	if (r) {
 		r = NPERR_GENERIC_ERROR;
@@ -202,7 +202,6 @@ NPP_SetWindow(NPP instance, NPWindow* window)
 	Display *dpy;
 	NPSetWindowCallbackStruct *ws;
 	Window win;
-	int r;
 	
 	printf("NPP_SetWindow()\n");
 
@@ -216,7 +215,6 @@ NPP_SetWindow(NPP instance, NPWindow* window)
 	ws = (NPSetWindowCallbackStruct *) window->ws_info;
 	dpy = ws->display;
 	win = (Window) window->window;
-	r = ask_pin_code(This, dpy, win);
 	
 	/*
 	 * PLUGIN DEVELOPERS:

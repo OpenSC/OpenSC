@@ -3,8 +3,7 @@
 #include <opensc.h>
 #include <openssl/rsa.h>
 #include "opensc-crypto.h"
-
-#define SC_HARDCODED_PIN "1234"
+#include "signer.h"
 
 #define DBG(x) { x; }
 
@@ -76,10 +75,10 @@ static int sc_private_decrypt(int flen, u_char *from, u_char *to, RSA *rsa,
 //		error("Unable to find PIN object from SmartCard: %s", sc_strerror(r));
 		goto err;
 	}
-	r = sc_pkcs15_verify_pin(priv->p15card, pin, SC_HARDCODED_PIN,
-				 strlen(SC_HARDCODED_PIN));
+	r = ask_and_verify_pin_code(priv->p15card, pin);
 	if (r) {
-//		error("PIN code verification failed: %s", sc_strerror(r));
+		if (r == -2) /* User cancelled */
+			goto err;
 		goto err;
 	}
 	r = sc_pkcs15_decipher(priv->p15card, key, from, flen, to, flen);
@@ -133,10 +132,10 @@ sc_sign(int type, u_char *m, unsigned int m_len,
 		DBG(printf("Unable to find PIN object from SmartCard: %s", sc_strerror(r)));
 		goto err;
 	}
-	r = sc_pkcs15_verify_pin(priv->p15card, pin, SC_HARDCODED_PIN,
-				 strlen(SC_HARDCODED_PIN));
+	r = ask_and_verify_pin_code(priv->p15card, pin);
 	if (r) {
-		DBG(printf("PIN code verification failed: %s", sc_strerror(r)));
+		if (r == -2) /* User cancelled */
+			goto err;
 		goto err;
 	}
 	r = sc_pkcs15_compute_signature(priv->p15card, key, SC_PKCS15_HASH_SHA1,

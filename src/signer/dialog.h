@@ -1,10 +1,8 @@
 
-#include <qwidget.h>
+#ifndef _DIALOG_H
+#define _DIALOG_H
 
-class SignerDialog : public QWidget
-{
-    Q_OBJECT
-public:
-    SignerDialog(QWidget *parent = 0, const char *name = 0);
-    
-}
+#include "signer.h"
+
+
+#endif
