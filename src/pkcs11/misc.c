@@ -26,11 +26,16 @@
 
 void strcpy_bp(u8 *dst, const char *src, int dstsize)
 {
-	int c = strlen(src) > dstsize ? dstsize : strlen(src);
+	int c;
+
+	if (!dst || !src || !dstsize)
+		return;
+
+	memset((char *) dst, ' ', dstsize);
+	
+	c = strlen(src) > dstsize ? dstsize : strlen(src);
 	
 	memcpy((char *) dst, src, c);
-	dstsize -= c;
-	memset((char *) dst + c, ' ', dstsize);
 }
 
 CK_RV sc_to_cryptoki_error(int rc, int reader)
