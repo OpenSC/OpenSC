@@ -53,7 +53,7 @@ static void scconf_parse_error(scconf_parser * parser, const char *error)
 	/* FIXME: save the error somewhere */
 	parser->error = 1;
 
-	fprintf(stderr, "Line %d: %s\n", parser->line, error);
+	snprintf(parser->emesg, sizeof(parser->emesg), "Line %d: %s\n", parser->line, error);
 }
 
 static void scconf_parse_error_not_expect(scconf_parser * parser,
@@ -62,7 +62,7 @@ static void scconf_parse_error_not_expect(scconf_parser * parser,
 	/* FIXME: save the error somewhere */
 	parser->error = 1;
 
-	fprintf(stderr, "Line %d: not expecting '%s'\n", parser->line, token);
+	snprintf(parser->emesg, sizeof(parser->emesg), "Line %d: not expecting '%s'\n", parser->line, token);
 }
 
 static void scconf_parse_warning_expect(scconf_parser * parser, const char *token)
@@ -70,7 +70,8 @@ static void scconf_parse_warning_expect(scconf_parser * parser, const char *toke
 	/* FIXME: save the warnings somewhere */
 	parser->warnings = 1;
 
-	fprintf(stderr, "Line %d: missing '%s', ignoring\n",
+	snprintf(parser->emesg, sizeof(parser->emesg), 
+		"Line %d: missing '%s', ignoring\n",
 		parser->line, token);
 }
 
@@ -350,7 +351,9 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 			scconf_parse_reset_state(parser);
 			break;
 		default:
-			fprintf(stderr, "scconf_parse_token: shouldn't happen\n");
+			snprintf(parser->emesg, sizeof(parser->emesg), 
+				"Line %d: bad token ignoring\n",
+				parser->line);
 		}
 		break;
 	}

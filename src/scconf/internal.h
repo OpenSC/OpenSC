@@ -46,6 +46,7 @@ typedef struct _scconf_parser {
 
 	unsigned int error:1;
 	unsigned int warnings:1;
+	char emesg[256];
 } scconf_parser;
 
 extern int scconf_lex_parse(scconf_parser * parser, const char *filename);
