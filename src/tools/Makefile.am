@@ -27,6 +27,6 @@ pkcs15_init_SOURCES = pkcs15-init.c profile.c util.c \
 pkcs15_init_LDADD = @GETOPTSRC@ @LIBCRYPTO@
 pkcs15_init_CFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\" \
 		     $(AM_CFLAGS)
+
 noinst_HEADERS = util.h profile.h pkcs15-init.h
-pkgdata_DATA = pkcs15.profile flex.profile gpk.profile \
-	       miocos.profile
+pkgdata_DATA = flex.profile gpk.profile miocos.profile pkcs15.profile
