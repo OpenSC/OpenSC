@@ -191,6 +191,13 @@ int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen)
 	return 0;
 }
 
+int sc_append_file_id(struct sc_path *dest, unsigned int fid)
+{
+	u8 id[2] = { fid >> 8, fid & 0xff };
+
+	return sc_append_path_id(dest, id, 2);
+}
+
 const char *sc_print_path(const sc_path_t *path)
 {
 	static char	buffer[64];
@@ -203,6 +210,12 @@ const char *sc_print_path(const sc_path_t *path)
 		sprintf(buffer + 2*n, "%02x", path->value[n]);
 
 	return buffer;
+}
+
+int sc_compare_path(const sc_path_t *path1, const sc_path_t *path2)
+{
+	return path1->len == path2->len
+		&& !memcmp(path1->value, path2->value, path1->len);
 }
 
 int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
