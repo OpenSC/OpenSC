@@ -337,6 +337,7 @@ int pkcs11_check_token(PKCS11_CTX * ctx, PKCS11_SLOT * slot)
 	token->model = PKCS11_DUP(info.model);
 	token->initialized = (info.flags & CKF_TOKEN_INITIALIZED) ? 1 : 0;
 	token->loginRequired = (info.flags & CKF_LOGIN_REQUIRED) ? 1 : 0;
+	token->secureLogin = (info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) ? 1 : 0;
 	token->userPinSet = (info.flags & CKF_USER_PIN_INITIALIZED) ? 1 : 0;
 	token->readOnly = (info.flags & CKF_WRITE_PROTECTED) ? 1 : 0;
 	token->_private = tpriv;

@@ -116,6 +116,7 @@ typedef struct PKCS11_token_st {
 	char *model;
 	unsigned char initialized;
 	unsigned char loginRequired;
+	unsigned char secureLogin;
 	unsigned char userPinSet;
 	unsigned char readOnly;
 	void *_private;

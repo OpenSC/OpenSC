@@ -330,7 +330,8 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 			break;
 		if (pin == NULL) {
 			pin = (char *) calloc(12, sizeof(char));
-			get_pin(ui_method, pin, 12);
+			if (!tok->secureLogin)
+				get_pin(ui_method, pin, 12);
 		}
 		if (PKCS11_login(slot, 0, pin)) {
 			if(pin != NULL) {
