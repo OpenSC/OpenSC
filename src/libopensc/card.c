@@ -376,7 +376,6 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 	} else for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 		struct sc_card_driver *drv = ctx->card_drivers[i];
 		const struct sc_card_operations *ops = drv->ops;
-		int r;
 		
 		if (ctx->debug >= 3)
 			debug(ctx, "trying driver: %s\n", drv->name);
