@@ -873,7 +873,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 			RSA	*rsa = EVP_PKEY_get1_RSA(keyargs->pkey);
 
 			r = ops.store_rsa(profile, card, &info, rsa);
-			info.pkcs15.pub.modulus_length = RSA_size(rsa) * 8;
+			info.pkcs15.priv.modulus_length = RSA_size(rsa) * 8;
 		}
 		break;
 	case EVP_PKEY_DSA:
@@ -881,7 +881,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 			DSA	*dsa = EVP_PKEY_get1_DSA(keyargs->pkey);
 
 			r = ops.store_dsa(profile, card, &info, dsa);
-			info.pkcs15.pub.modulus_length = DSA_size(dsa) * 8;
+			info.pkcs15.priv.modulus_length = DSA_size(dsa) * 8;
 		}
 		break;
 	}
@@ -913,6 +913,8 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		size = i2d_RSAPublicKey(rsa, NULL);
 		data = p = malloc(size);
 		i2d_RSAPublicKey(rsa, &p);
+
+		info.pkcs15.pub.modulus_length = RSA_size(rsa) * 8;
 		break;
 	default:
 		return SC_ERROR_NOT_SUPPORTED;

@@ -1029,9 +1029,9 @@ do_pubkey(int argc, char **argv)
 	 * This value will be overwritten later when the keys are
 	 * loaded into the card. */
 	ki->pkcs15.pub.modulus_length = 1024;
-	ki->pkcs15.pub.access_flags = pro->rsa_access_flags;
+	ki->pkcs15.pub.access_flags = DEF_PUBKEY_ACCESS;
 
-	ki->pkcs15_obj.type = SC_PKCS15_TYPE_PRKEY_RSA;
+	ki->pkcs15_obj.type = SC_PKCS15_TYPE_PUBKEY_RSA;
 	ki->pkcs15_obj.data = &ki->pkcs15;
 
 	for (tail = &pro->pubkey_list; *tail; tail = &(*tail)->next)
