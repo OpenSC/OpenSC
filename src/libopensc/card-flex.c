@@ -58,7 +58,7 @@ static struct {
 	TYPE_CRYPTOFLEX|FLAG_KEYGEN,
 	"Cryptoflex 32K e-gate" },
       {	"3B:95:18:40:FF:62:04:01:01:05",       /* 32K e-gate v4 */
-	TYPE_CRYPTOFLEX,
+	TYPE_CRYPTOFLEX|FLAG_KEYGEN,
 	"Cryptoflex 32K e-gate v4" },
       {	"3B:E2:00:00:40:20:49:06",
 	TYPE_CRYPTOFLEX,
