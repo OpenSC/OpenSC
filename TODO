@@ -1,6 +1,4 @@
-* Finish TCOS driver (Werner Koch?)
-
 * Debian packaging
 * GUI applications
-* Ports to MacOS X (anyone?) and Win32 (fabled?)
+* Ports to MacOS X (jey) and Win32 (fabled?)
 * Add support for EMV and GSM (anyone?)

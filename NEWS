@@ -1,5 +1,16 @@
 NEWS for OpenSC -- History of user visible changes
 
+New in 0.7.0; 2002-06-03; Juha Yrjölä:
+* Support for config files
+* Yet another PKCS #15 generation rewrite
+* PAM module rewritten for more flexibility and compatibility
+* OpenSC Signer merged to the main source tree
+* CT-API support
+* Support for non-native RSA and DSA keys
+* Improved support for MioCOS cards by Miotec (http://www.miotec.fi)
+* Semi-working support for Aladdin eToken PRO
+* First version to work with OpenSSH without any patching
+
 New in 0.6.1; 2002-03-20; Juha Yrjölä:
 * Fixed certificate downloading in pkcs15-init
 * Improved PKCS #11 module, so it works with Mozilla 0.9.9 and

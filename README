@@ -10,7 +10,7 @@ Basic functionality (e.g. SELECT FILE, READ BINARY) should work on any ISO
 7816-4 compatible SmartCard. Encryption and decryption using private keys on
 the SmartCard is at the moment possible only with PKCS#15 compatible cards,
 such as the FINEID (Finnish Electronic IDentity) card manufactured by
-Setec.  Swedish eID Posten card has also confirmed to work.
+Setec.  
 
 
 Building and Installing libopensc
@@ -18,7 +18,8 @@ Building and Installing libopensc
 
 See the INSTALL file for instructions.  If you are using the CVS version,
 you have to run the 'bootstrap' script before running configure.  Please
-note that Autoconf, Automake and Libtool are required.
+note, that for bootstrap to work, you have to have the correct versions of 
+Autoconf, Automake and Libtool installed.
 
 
 Troubleshooting
