@@ -87,9 +87,9 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 	int i, r;
 	u8 serial[128];
 	size_t serial_len = sizeof(serial);
-	u8 mnfid[128];
+	u8 mnfid[SC_PKCS15_MAX_LABEL_SIZE];
 	size_t mnfid_len = sizeof(mnfid);
-	u8 label[128];
+	u8 label[SC_PKCS15_MAX_LABEL_SIZE];
 	size_t label_len = sizeof(label);
 	size_t flags_len = sizeof(card->flags);
 	struct sc_asn1_entry asn1_toki[9], asn1_tokeninfo[3];
