@@ -33,6 +33,9 @@
  * Either coincidence, or a known problem. */
 #define ETOKEN_MAX_PAYLOAD	120
 
+/* Different eToken types */
+#define ETOKEN_TYPE_PRO		1
+
 static const struct sc_card_operations *iso_ops = NULL;
 
 struct sc_card_operations etoken_ops;
@@ -42,22 +45,43 @@ const struct sc_card_driver etoken_drv = {
 	&etoken_ops
 };
 
-const u8 etoken_atr[] = { 0x3b, 0xe2, 0x00, 0xff, 0xc1,
-	0x10, 0x31, 0xfe, 0x55, 0xc8, 0x02, 0x9c };
+const struct {
+	const char *	atr;
+	int		type;
+} etoken_atrs[] = {
+      {	"3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c",	ETOKEN_TYPE_PRO },
+      { "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03",	ETOKEN_TYPE_PRO },
+
+      { NULL }
+};
 
 int etoken_finish(struct sc_card *card)
 {
 	return 0;
 }
 
+int etoken_identify_card(struct sc_card *card)
+{
+	int i;
+
+	for (i = 0; etoken_atrs[i].atr; i++) {
+		u8 defatr[SC_MAX_ATR_SIZE];
+		size_t len = sizeof(defatr);
+
+		if (sc_hex_to_bin(etoken_atrs[i].atr, defatr, &len))
+			continue;
+		if (len != card->atr_len)
+			continue;
+		if (!memcmp(card->atr, defatr, len))
+			return etoken_atrs[i].type;
+	}
+
+	return 0;
+}
+
 int etoken_match_card(struct sc_card *card)
 {
-
-	if (memcmp(card->atr, etoken_atr, sizeof(etoken_atr)) == 0) {
-		return 1;
-	} else {
-		return 0;
-	}
+	return etoken_identify_card(card) != 0;
 }
 
 int etoken_init(struct sc_card *card)
