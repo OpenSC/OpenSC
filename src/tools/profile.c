@@ -141,11 +141,14 @@ init_file(unsigned int type)
  * Initialize profile
  */
 void
-sc_profile_init(struct sc_profile *pro, struct sc_pkcs15_card *p15card)
+sc_profile_init(struct sc_profile *pro)
 {
+	struct sc_pkcs15_card *p15card;
 	struct sc_file	*file;
 
 	memset(pro, 0, sizeof(*pro));
+
+	pro->p15_card = p15card = sc_pkcs15_card_new();
 
 	/* set up the MF info */
 	pro->mf_info.file = file = init_file(SC_FILE_TYPE_DF);
@@ -161,7 +164,6 @@ sc_profile_init(struct sc_profile *pro, struct sc_pkcs15_card *p15card)
 	p15card->file_tokeninfo = init_file(SC_FILE_TYPE_WORKING_EF);
 	p15card->file_odf = init_file(SC_FILE_TYPE_WORKING_EF);
 
-	pro->p15_card = p15card;
 	if (p15card) {
 		p15card->label = strdup("OpenSC Card");
 		p15card->manufacturer_id = strdup("OpenSC Project");
@@ -216,7 +218,7 @@ fix_acl(struct sc_profile *pro, struct sc_acl_entry *acl)
 	struct auth_info *auth;
 	struct pin_info	*pin;
 
-	if (acl->method == SC_AC_NEVER || acl->method == SC_AC_NONE)
+	if (!acl || acl->method == SC_AC_NEVER || acl->method == SC_AC_NONE)
 		return;
 
 	for (; acl; acl = acl->next) {
@@ -271,6 +273,7 @@ sc_profile_finish(struct sc_profile *pro)
 {
 	struct file_info *fi;
 	struct pin_info	*pi;
+	struct prkey_info *pk;
 	int		res = 0;
 
 	/* Loop over all PINs and make sure they're sane */
@@ -292,6 +295,45 @@ sc_profile_finish(struct sc_profile *pro)
 	}
 	fix_file_acls(pro, pro->mf_info.file);
 	fix_file_acls(pro, pro->df_info.file);
+
+	/* Make sure all private keys are sane */
+	for (pk = pro->prkey_list; pk; pk = pk->next) {
+		struct sc_pkcs15_id *id;
+
+		if (!pk->file) {
+			error("No File given for private key %s", pk->ident);
+			res = 1;
+		}
+		if (!pk->pkcs15.com_attr.auth_id.len) {
+			error("No auth_id set for private key %s", pk->ident);
+			res = 1;
+		}
+		if (!pk->pkcs15.id.len) {
+			error("No key ID set for private key %s", pk->ident);
+			res = 1;
+		}
+		if (!pk->pkcs15.usage) {
+			error("No keyUsage specified for private key %s",
+					pk->ident);
+			res = 1;
+		}
+		pk->pkcs15.path = pk->file->file->path;
+
+		/* Set up the key ACL */
+		id = &pk->pkcs15.com_attr.auth_id;
+		for (pi = pro->pin_list; pi; pi = pi->next) {
+			if (sc_pkcs15_compare_id(&pi->pkcs15.auth_id, id) == 1)
+				break;
+		}
+		if (pi == NULL) {
+			error("Invalid or no AuthID on private key %s",
+					pk->ident);
+			res = 1;
+		}
+		pk->key_acl = calloc(1, sizeof(struct sc_acl_entry));
+		pk->key_acl->method = SC_AC_CHV;
+		pk->key_acl->key_ref = pi->pkcs15.reference;
+	}
 
 	return res;
 }

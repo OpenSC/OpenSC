@@ -28,6 +28,8 @@ enum {
 	 */
 	SC_CARDCTL_GPK_BASE = _CTL_PREFIX('G', 'P', 'K'),
 	SC_CARDCTL_GPK_LOCK,
+	SC_CARDCTL_GPK_PKINIT,
+	SC_CARDCTL_GPK_PKLOAD,
 
 	/*
 	 * Cryptoflex specific calls
@@ -43,6 +45,25 @@ enum {
 struct sc_cardctl_gpk_lock {
 	struct sc_file *	file;
 	unsigned int		operation;
+};
+
+/*
+ * GPK initialize private key file.
+ * Parent DF must be selected.
+ */
+struct sc_cardctl_gpk_pkinit {
+	struct sc_file *	file;
+	unsigned int		privlen;
+};
+
+/*
+ * GPK load private key portion.
+ */
+struct sc_cardctl_gpk_pkload {
+	struct sc_file *	file;
+	u8 *			data;
+	unsigned int		len;
+	unsigned int		datalen;
 };
 
 #endif /* _OPENSC_CARDCTL_H */

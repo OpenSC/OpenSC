@@ -18,6 +18,10 @@ DF
 	AID		A0:00:00:00:63:50:4B:43:53:2D:31:35
 	ACL		*=NONE
 
+# Note: many commands use the short file ID (i.e. the lower 5 bits
+# of the FID) so you must be careful when picking FIDs for the
+# public key and PIN files.
+
 # Currently we do not support PIN files that can be updated
 # by CHV2. Far too messy.
 EF pinfile
@@ -51,13 +55,19 @@ EF PKCS15-CDF
 	Path		3F0050154403
 	ACL		*=NEVER READ=NONE UPDATE=CHV2
 
+# Private key files.
+# GPK private key files will never let you read the private key
+# part, so it's okay to set READ=NONE. What's more, we need
+# read access so we're able to update the file.
 EF pk1
-	Path		3F0050150001
-	ACL		*=NEVER
+	Path		3F005015000E
+	Structure	0x2C	# GPK specific
+	ACL		*=NEVER READ=NONE UPDATE=CHV2 WRITE=CHV2
 
 EF pk2
-	Path		3F0050150002
-	ACL		*=NEVER
+	Path		3F005015000F
+	Structure	0x2C	# GPK specific
+	ACL		*=NEVER READ=NONE UPDATE=CHV2 WRITE=CHV2
 
 # CVH1. 7 attempts for the PIN, and 3 for the PUK
 # Reference 0x8 means "PIN0 in the local EFsc" in GPK parlance

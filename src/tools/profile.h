@@ -7,6 +7,8 @@
 #ifndef _OPENSC_PROFILE_H
 #define _OPENSC_PROFILE_H
 
+#include <openssl/rsa.h>
+#include <openssl/dsa.h>
 #include "opensc-pkcs15.h"
 
 struct auth_info {
@@ -53,16 +55,13 @@ struct prkey_info {
 	struct file_info *	file;
 	unsigned int		type;
 	unsigned int		index;	/* translates to file offset */
+	struct sc_acl_entry *	key_acl;/* PINs for key usage */
 
 	struct sc_pkcs15_prkey_info pkcs15;
 };
 
 struct sc_profile {
 	char *			driver;
-	int			(*erase_card)(struct sc_profile *,
-					struct sc_card *);
-	int			(*init_app)(struct sc_profile *,
-					struct sc_card *);
 
 	struct file_info	mf_info;
 	struct file_info	df_info;
@@ -82,7 +81,7 @@ struct sc_profile {
 	char *			p15_serial;
 };
 
-void		sc_profile_init(struct sc_profile *, struct sc_pkcs15_card *);
+void		sc_profile_init(struct sc_profile *);
 int		sc_profile_load(struct sc_profile *, const char *);
 int		sc_profile_finish(struct sc_profile *);
 int		sc_profile_build_pkcs15(struct sc_profile *);

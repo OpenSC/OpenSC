@@ -1002,6 +1002,77 @@ gpk_lock(struct sc_card *card, struct sc_cardctl_gpk_lock *args)
 }
 
 /*
+ * Initialize the private portion of a public key file
+ */
+static int
+gpk_pkfile_init(struct sc_card *card, struct sc_cardctl_gpk_pkinit *args)
+{
+	struct sc_apdu	apdu;
+	int		r;
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_1;
+	apdu.cla = 0x80;
+	apdu.ins = 0x12;
+	apdu.p1  = args->file->id & 0x1F;
+	apdu.p2  = args->privlen / 4;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	return r;
+}
+
+/*
+ * Store a privat key component
+ */
+static int
+gpk_pkfile_load(struct sc_card *card, struct sc_cardctl_gpk_pkload *args)
+{
+	struct gpk_private_data *priv = OPSDATA(card);
+	des_key_schedule k1, k2;
+	struct sc_apdu	apdu;
+	unsigned int	n;
+	u8		temp[256];
+	int		r;
+
+	apdu.cse = SC_APDU_CASE_3_SHORT;
+	apdu.cla = 0x80;
+	apdu.ins = 0x18;
+	apdu.p1  = args->file->id & 0x1F;
+	apdu.p2  = args->len;
+	apdu.lc  = args->datalen;
+
+	/* encrypt the private key material */
+	assert(args->datalen <= sizeof(temp));
+	if (!priv->key_set) {
+		error(card->ctx, "No secure messaging key set!\n");
+		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+	}
+	des_set_key_unchecked((des_cblock *) priv->key, k1);
+	des_set_key_unchecked((des_cblock *) (priv->key+8), k2);
+	for (n = 0; n < args->datalen; n += 8) {
+		des_ecb2_encrypt((des_cblock *) (args->data + n),
+				 (des_cblock *) (temp + n),
+				 k1, k2, DES_ENCRYPT);
+	}
+	apdu.data = temp;
+	apdu.datalen = args->datalen;
+
+	/* Forget the key. The card seems to forget it, too :) */
+	priv->key_set = 0;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	return r;
+}
+
+/*
  * Dispatch card_ctl calls
  */
 static int
@@ -1012,6 +1083,12 @@ gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		return gpk_erase_card(card);
 	case SC_CARDCTL_GPK_LOCK:
 		return gpk_lock(card, (struct sc_cardctl_gpk_lock *) ptr);
+	case SC_CARDCTL_GPK_PKINIT:
+		return gpk_pkfile_init(card,
+			       (struct sc_cardctl_gpk_pkinit *) ptr);
+	case SC_CARDCTL_GPK_PKLOAD:
+		return gpk_pkfile_load(card,
+			       (struct sc_cardctl_gpk_pkload *) ptr);
 	}
 	error(card->ctx, "card_ctl command %u not supported\n", cmd);
 	return SC_ERROR_NOT_SUPPORTED;
