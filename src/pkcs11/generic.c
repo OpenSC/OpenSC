@@ -8,7 +8,8 @@
 #include "../sc.h"
 
 struct sc_context *ctx = NULL;
-struct sc_pkcs15_card *p15card = NULL;
+struct sc_pkcs15_card *p15card[PKCS11_MAX_CARDS];
+struct pkcs11_session *session[PKCS11_MAX_SESSIONS];
 
 void LOG(char *format, ...)
 {
@@ -26,10 +27,12 @@ void LOG(char *format, ...)
 
 CK_RV C_Initialize(CK_VOID_PTR pReserved)
 {
-	int reader_count, reader_buf_size, rv;
-        char *reader_buf, *p;
+	int rv;
 
 	LOG("C_Initialize(0x%x)\n", pReserved);
+
+	memset(session, 0, sizeof(session));
+        memset(p15card, 0, sizeof(p15card));
 
 	ctx = NULL;
 	rv = sc_establish_context(&ctx);
@@ -42,13 +45,16 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 
 CK_RV C_Finalize(CK_VOID_PTR pReserved)
 {
-        int i;
+	int i;
 
 	LOG("C_Finalize(0x%x)\n", pReserved);
 
-	if (p15card != NULL) {
-		sc_disconnect_card(p15card->card);
-		sc_pkcs15_destroy(p15card);
+	for (i=0; i < PKCS11_MAX_CARDS; i++) {
+		if (p15card[i] != NULL) {
+			sc_disconnect_card(p15card[i]->card);
+			sc_pkcs15_destroy(p15card[i]);
+                        p15card[i] = NULL;
+		}
 	}
 	sc_destroy_context(ctx);
 
@@ -60,7 +66,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 	LOG("C_GetInfo(0x%x)\n", pInfo);
         memset(pInfo, 0, sizeof(CK_INFO));
 	pInfo->cryptokiVersion.major = 2;
-	pInfo->cryptokiVersion.minor = 10;
+	pInfo->cryptokiVersion.minor = 11;
 	strcpy(pInfo->manufacturerID, "Timo Teras & Juha Yrjola");
 	strcpy(pInfo->libraryDescription, "PC/SC PKCS#15 SmartCard reader");
 	pInfo->libraryVersion.major = 0;
@@ -79,7 +85,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		    CK_SLOT_ID_PTR pSlotList,     /* receives the array of slot IDs */
 		    CK_ULONG_PTR   pulCount)      /* receives the number of slots */
 {
-        int i, num;
+        int i;
 
         LOG("C_GetSlotList(%d, 0x%x, 0x%x)\n", tokenPresent, pSlotList, pulCount);
 
@@ -88,10 +94,14 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
                 return CKR_OK;
 	}
 
-	num = ctx->reader_count > *pulCount ? *pulCount : ctx->reader_count;
-	for (i = 0; i < num; i++)
+	if (*pulCount < ctx->reader_count) {
+		*pulCount = ctx->reader_count;
+                return CKR_BUFFER_TOO_SMALL;
+	}
+
+	for (i = 0; i < ctx->reader_count; i++)
 		pSlotList[i] = i;
-        *pulCount = num;
+        *pulCount = ctx->reader_count;
 
 	return CKR_OK;
 }
@@ -108,13 +118,14 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 		sizeof(pInfo->slotDescription));
 	strcpy(pInfo->manufacturerID, "PC/SC interface");
 	pInfo->flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
-	if (sc_detect_card(ctx, slotID) == 1)
+	if (sc_detect_card(ctx, slotID) == 1) {
+                LOG("Detected card in slot %d\n", slotID);
 		pInfo->flags |= CKF_TOKEN_PRESENT;
-	else {
-		if (p15card != NULL) {
-			sc_disconnect_card(p15card->card);
-			sc_pkcs15_destroy(p15card);
-			p15card = NULL;
+	} else {
+		if (p15card[slotID] != NULL) {
+			sc_disconnect_card(p15card[slotID]->card);
+			sc_pkcs15_destroy(p15card[slotID]);
+			p15card[slotID] = NULL;
 		}
 	}
 	pInfo->hardwareVersion.major = 1;
@@ -134,18 +145,21 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 
 	memset(pInfo, 0, sizeof(CK_SLOT_INFO));
 
-	if (p15card == NULL) {
+	if (p15card[slotID] == NULL) {
 		r = sc_connect_card(ctx, slotID, &card);
-		if (r)
-			return CKR_DEVICE_ERROR;
-		r = sc_pkcs15_init(card, &p15card);
 		if (r) {
+			LOG("Failed to connect in slot %d (r=%d)\n", slotID, r);
+			return CKR_DEVICE_ERROR;
+		}
+		r = sc_pkcs15_init(card, &p15card[slotID]);
+		if (r) {
+			LOG("sc_pkcs15_init failed for slot %d (r=%d)\n", slotID, r);
 			/* PKCS#15 compatible SC probably not present */
 			sc_disconnect_card(card);
 			return CKR_DEVICE_ERROR;
 		}
 	}
-	strcpy(pInfo->label, p15card->label);
+	strcpy(pInfo->label, p15card[slotID]->label);
 	strcpy(pInfo->manufacturerID, "unknown");
 	strcpy(pInfo->model, "unknown");
 	strcpy(pInfo->serialNumber, "unknown");
@@ -172,15 +186,35 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
 			 CK_MECHANISM_TYPE_PTR pMechanismList,
                          CK_ULONG_PTR pulCount)
 {
-        LOG("C_GetMechanismList(%d, 0x%x, 0x%x)\n", slotID, pMechanismList, pulCount);
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	static const CK_MECHANISM_TYPE mechanism_list[] = {
+		CKM_RSA_PKCS,
+		CKM_RSA_X_509
+	};
+        const int numMechanisms = sizeof(mechanism_list) / sizeof(mechanism_list[0]);
+
+	LOG("C_GetMechanismList(%d, 0x%x, 0x%x)\n", slotID, pMechanismList, pulCount);
+	if (slotID < 0 || slotID >= ctx->reader_count)
+                return CKR_SLOT_ID_INVALID;
+
+	if (pMechanismList == NULL_PTR) {
+		*pulCount = numMechanisms;
+                return CKR_OK;
+	}
+
+	if (*pulCount < numMechanisms) {
+		*pulCount = numMechanisms;
+                return CKR_BUFFER_TOO_SMALL;
+	}
+        memcpy(pMechanismList, &mechanism_list, sizeof(mechanism_list));
+
+        return CKR_OK;
 }
 
 CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
 			 CK_MECHANISM_TYPE type,
 			 CK_MECHANISM_INFO_PTR pInfo)
 {
-        LOG("C_GetMechanismInfo(%d, %d, 0x%x)\n", slotID, type, pInfo);
+	LOG("C_GetMechanismInfo(%d, %d, 0x%x)\n", slotID, type, pInfo);
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -193,20 +227,4 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
-		CK_CHAR_PTR pPin,
-		CK_ULONG ulPinLen)
-{
-        LOG("C_InitPIN(%d, '%s', %d)\n", hSession, pPin, ulPinLen);
-        return CKR_FUNCTION_NOT_SUPPORTED;
-}
 
-CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
-	       CK_CHAR_PTR pOldPin,
-	       CK_ULONG ulOldLen,
-	       CK_CHAR_PTR pNewPin,
-	       CK_ULONG ulNewLen)
-{
-        LOG("C_SetPIN(%d, '%s', %d, '%s', %d)\n", hSession, pOldPin, ulOldLen, pNewPin, ulNewLen);
-        return CKR_FUNCTION_NOT_SUPPORTED;
-}

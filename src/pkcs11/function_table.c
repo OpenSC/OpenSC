@@ -1,7 +1,7 @@
 #include "sc-pkcs11.h"
 
 CK_FUNCTION_LIST function_list = {
-	{ 2, 10 },
+	{ 2, 11 },
         // generic.c
 	C_Initialize,
 	C_Finalize,
