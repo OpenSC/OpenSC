@@ -44,6 +44,8 @@ CK_RV sc_to_cryptoki_error(int rc, int reader)
 		return CKR_HOST_MEMORY;
 	case SC_ERROR_PIN_CODE_INCORRECT:
 		return CKR_PIN_INCORRECT;
+	case SC_ERROR_AUTH_METHOD_BLOCKED:
+		return CKR_PIN_LOCKED;
 	case SC_ERROR_BUFFER_TOO_SMALL:
 		return CKR_BUFFER_TOO_SMALL;
 	case SC_ERROR_CARD_NOT_PRESENT:
