@@ -282,6 +282,9 @@ CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask)
 	card_detect_all();
 	for (id = 0; id < SC_PKCS11_MAX_VIRTUAL_SLOTS; id++) {
 		slot = &virtual_slots[id];
+		if ((slot->events & SC_EVENT_CARD_INSERTED)
+		 && !(slot->slot_info.flags & CKF_TOKEN_PRESENT))
+			slot->events &= ~SC_EVENT_CARD_INSERTED;
 		if (slot->events & mask) {
 			slot->events &= ~mask;
 			*idp = id;
