@@ -347,16 +347,16 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 				pin_info.min_length);
 		return SC_ERROR_WRONG_LENGTH;
 	}
-	if (args->so_pin_len > pin_info.stored_length)
-		args->so_pin_len = pin_info.stored_length;
+	if (args->so_pin_len > pin_info.max_length)
+		args->so_pin_len = pin_info.max_length;
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &pin_info);
 	if (args->so_puk_len && args->so_puk_len < pin_info.min_length) {
 		p15init_error("SO PUK too short (min length %u)",
 				pin_info.min_length);
 		return SC_ERROR_WRONG_LENGTH;
 	}
-	if (args->so_puk_len > pin_info.stored_length)
-		args->so_puk_len = pin_info.stored_length;
+	if (args->so_puk_len > pin_info.max_length)
+		args->so_puk_len = pin_info.max_length;
 
 	/* Create the application DF and store the PINs */
 	r = profile->ops->init_app(profile, card,

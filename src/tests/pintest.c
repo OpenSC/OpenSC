@@ -61,7 +61,7 @@ int ask_and_verify_pin(struct sc_pkcs15_object *obj)
 		}
 		if (strlen((char *) pass) < pin->min_length)
 			break;
-		if (strlen((char *) pass) > pin->stored_length)
+		if (strlen((char *) pass) > pin->max_length)
 			break;
 		break;
 	}

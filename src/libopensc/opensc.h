@@ -430,6 +430,7 @@ struct sc_card {
 	struct sc_card_driver *driver;
 	struct sc_card_operations *ops;
 	void *drv_data;
+	int max_pin_len;
 
 	struct sc_card_cache cache;
 	int cache_valid;

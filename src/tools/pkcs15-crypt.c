@@ -100,7 +100,7 @@ char * get_pin(struct sc_pkcs15_object *obj)
 		if (strlen(pincode) == 0)
 			return NULL;
 		if (strlen(pincode) < pinfo->min_length ||
-		    strlen(pincode) > pinfo->stored_length)
+		    strlen(pincode) > pinfo->max_length)
 		    	continue;
 		return pincode;
 	}

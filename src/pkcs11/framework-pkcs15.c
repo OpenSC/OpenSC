@@ -275,7 +275,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 	strcpy_bp(slot->token_info.label, tmp, 32);
 
 	if (pin_info && pin_info->magic == SC_PKCS15_PIN_MAGIC) {
-		slot->token_info.ulMaxPinLen = pin_info->stored_length;
+		slot->token_info.ulMaxPinLen = pin_info->max_length;
 		slot->token_info.ulMinPinLen = pin_info->min_length;
 	} else {
 		/* choose reasonable defaults */
@@ -369,7 +369,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	}
 
 	/* Add all public objects to a virtual slot without
-	 * pin protection */
+	* pin protection */
 	slot = NULL;
 
 	/* Add all the remaining private keys */
@@ -473,7 +473,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 		ulPinLen = 0;
 	} else
 	if (ulPinLen < pin->min_length ||
-	    ulPinLen > pin->stored_length)
+	    ulPinLen > pin->max_length)
 		return CKR_PIN_LEN_RANGE;
 
 	/* By default, we make the pcsc daemon keep other processes
@@ -533,7 +533,7 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 		ulOldLen = ulNewLen = 0;
 	} else
 	if (ulNewLen < pin->min_length ||
-	    ulNewLen > pin->stored_length)
+	    ulNewLen > pin->max_length)
 		return CKR_PIN_LEN_RANGE;
 
 	rc = sc_pkcs15_change_pin(card, pin, pOldPin, ulOldLen,

@@ -77,7 +77,7 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 	sc_format_asn1_entry(asn1_pin_attr + 1, &info.type, NULL, 0);
 	sc_format_asn1_entry(asn1_pin_attr + 2, &info.min_length, NULL, 0);
 	sc_format_asn1_entry(asn1_pin_attr + 3, &info.stored_length, NULL, 0);
-        /* fixme: we should also support max_length [wk] */
+	sc_format_asn1_entry(asn1_pin_attr + 4, &info.max_length, NULL, 0);
 	sc_format_asn1_entry(asn1_pin_attr + 5, &info.reference, NULL, 0);
 	sc_format_asn1_entry(asn1_pin_attr + 6, &info.pad_char, &padchar_len, 0);
         /* We don't support lastPinChange yet. */
@@ -98,6 +98,15 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+	if (info.max_length == 0) {
+		if (p15card->card->max_pin_len != 0)
+			info.max_length = p15card->card->max_pin_len;
+		else if (info.stored_length != 0)
+			info.max_length = info.type != SC_PKCS15_PIN_TYPE_BCD ?
+				info.stored_length : 2 * info.stored_length;
+		else
+			info.max_length = 8; /* shouldn't happen */
+	}
 	memcpy(obj->data, &info, sizeof(info));
 
 	return 0;
@@ -166,12 +175,12 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_OBJECT_NOT_VALID;
 
 	/* prevent buffer overflow from hostile card */
-	if (pin->stored_length > SC_MAX_PIN_SIZE)
+	if (pin->max_length > SC_MAX_PIN_SIZE)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	/* If application gave us a PIN, make sure it's within
 	 * the valid range */
-	if (pinlen && (pinlen > pin->stored_length || pinlen < pin->min_length))
+	if (pinlen && (pinlen > pin->max_length || pinlen < pin->min_length))
 		return SC_ERROR_INVALID_PIN_LENGTH;
 
 	card = p15card->card;
@@ -189,7 +198,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	args.pin_type = SC_AC_CHV;
 	args.pin_reference = pin->reference;
 	args.pin1.min_length = pin->min_length;
-	args.pin1.max_length = pin->stored_length;
+	args.pin1.max_length = pin->max_length;
 	args.pin1.pad_char = pin->pad_char;
 
 	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
@@ -241,8 +250,8 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 		(oldpin == NULL || newpin == NULL || oldpinlen == 0 || newpinlen == 0))
 			return SC_ERROR_NOT_SUPPORTED;
 
-	if ((oldpinlen > pin->stored_length)
-	    || (newpinlen > pin->stored_length))
+	if ((oldpinlen > pin->max_length)
+	    || (newpinlen > pin->max_length))
 		return SC_ERROR_INVALID_PIN_LENGTH;
 	if ((oldpinlen < pin->min_length) || (newpinlen < pin->min_length))
 		return SC_ERROR_INVALID_PIN_LENGTH;
@@ -255,13 +264,14 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 		sc_unlock(card);
 		return r;
 	}
-	memset(pinbuf, pin->pad_char, pin->stored_length * 2);
+	memset(pinbuf, pin->pad_char, pin->max_length * 2);
 	memcpy(pinbuf, oldpin, oldpinlen);
-	memcpy(pinbuf + pin->stored_length, newpin, newpinlen);
+	memcpy(pinbuf + pin->max_length, newpin, newpinlen);
+change_pin:
 	r = sc_change_reference_data(card, SC_AC_CHV, pin->reference, pinbuf,
-				     pin->stored_length, pinbuf+pin->stored_length,
-				     pin->stored_length, &pin->tries_left);
-	memset(pinbuf, 0, pin->stored_length * 2);
+				     pin->max_length, pinbuf+pin->max_length,
+				     pin->max_length, &pin->tries_left);
+	memset(pinbuf, 0, pin->max_length * 2);
 	sc_unlock(card);
 	return r;
 }

@@ -69,7 +69,7 @@ struct sc_pkcs15_pin_info {
 	struct sc_pkcs15_id auth_id;
 	int reference;
 	int flags, type;
-	int min_length, stored_length;
+	int min_length, stored_length, max_length;
 	u8 pad_char;
 	struct sc_path path;
 	int tries_left;

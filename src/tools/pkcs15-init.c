@@ -728,9 +728,9 @@ read_one_pin(struct sc_profile *profile, const char *name,
 					info->min_length);
 			continue;
 		}
-		if (info && len > info->stored_length) {
+		if (info && len > info->max_length) {
 			error("Password too long (%u characters max)",
-					info->stored_length);
+					info->max_length);
 			continue;
 		}
 
