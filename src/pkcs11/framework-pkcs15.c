@@ -164,8 +164,15 @@ static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 	unsigned int i;
 	int rc;
 
-	for (i = 0; i < fw_data->num_objects; i++) 
-		__pkcs15_release_object(fw_data->objects[i]);
+	for (i = 0; i < fw_data->num_objects; i++) {
+		struct pkcs15_any_object *obj = fw_data->objects[i];
+
+		/* use object specific release method if existing */
+		if (obj->base.ops && obj->base.ops->release)
+			obj->base.ops->release(obj);
+		else
+			__pkcs15_release_object(obj);
+	}
 
 	unlock_card(fw_data);
 
@@ -277,6 +284,15 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data,
 		return rv;
 
 	obj2->pub_data = &p15_cert->key;
+	obj2->pub_data = (sc_pkcs15_pubkey_t *)calloc(1, sizeof(sc_pkcs15_pubkey_t));
+	if (!obj2->pub_data)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memcpy(obj2->pub_data, &p15_cert->key, sizeof(sc_pkcs15_pubkey_t));
+	/* invalidate public data of the cert object so that sc_pkcs15_cert_free
+	 * does not free the public key data as well (something like
+	 * sc_pkcs15_pubkey_dup would have been nice here) -- Nils 
+	 */
+	memset(&p15_cert->key, 0, sizeof(sc_pkcs15_pubkey_t));
 	obj2->pub_cert = object;
 	object->cert_pubkey = obj2;
 
@@ -1481,10 +1497,14 @@ set_attr_done:
 void pkcs15_cert_release(void *obj)
 {
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object *) obj;
-	struct sc_pkcs15_cert *cert_data = cert->cert_data;
+	struct sc_pkcs15_cert      *cert_data = cert->cert_data;
+	struct sc_pkcs15_cert_info *cert_info = cert->cert_info;
 
-	if (__pkcs15_release_object((struct pkcs15_any_object *) obj) == 0)
+	if (__pkcs15_release_object((struct pkcs15_any_object *) obj) == 0) {
 		sc_pkcs15_free_certificate(cert_data);
+		if (cert_info && cert_info->value.value)
+			free(cert_info->value.value);
+	}
 }
 
 CK_RV pkcs15_cert_set_attribute(struct sc_pkcs11_session *session,
