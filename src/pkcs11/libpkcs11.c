@@ -27,7 +27,7 @@
 #elif defined(HAVE_DLFCN_H) && defined(__APPLE__)
 #define DEFAULT_MODULE_NAME	"opensc-pkcs11.so";
 #elif defined(__APPLE__)
-#define DEFAULT_MODULE_NAME	"OpenSC PKCS#11.bundle";
+#define DEFAULT_MODULE_NAME	"opensc-pkcs11.bundle";
 #else
 #define DEFAULT_MODULE_NAME	"opensc-pkcs11.so";
 #endif

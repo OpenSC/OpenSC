@@ -1,7 +1,7 @@
 # Process this file with automake to create Makefile.in
 
-plugindir = $(PLUGINDIR)
-openscdir = @libdir@/opensc
+plugindir = @PLUGINDIR@
+libdir = @libdir@/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -13,7 +13,7 @@ INCLUDES = @CPPFLAGS@ @CFLAGS_ASSUAN@
 
 if HAVE_SSL
 if HAVE_ASSUAN
-opensc_LTLIBRARIES = opensc-signer.la
+lib_LTLIBRARIES = opensc-signer.la
 endif
 endif
 
@@ -25,5 +25,5 @@ opensc_signer_la_SOURCES = \
 noinst_HEADERS = \
 	opensc-crypto.h opensc-support.h signer.h 
 
-install-exec-local: install-openscLTLIBRARIES
-	-$(LN_S) -f $(openscdir)/opensc-signer.so $(DESTDIR)$(plugindir)/
+install-exec-local: install-libLTLIBRARIES
+	-$(LN_S) -f $(libdir)/opensc-signer.so $(DESTDIR)$(plugindir)/

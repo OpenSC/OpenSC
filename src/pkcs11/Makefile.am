@@ -1,6 +1,6 @@
 # Process this file with automake to create Makefile.in
 
-bundledir = $(BUNDLEDIR)
+bundledir = @BUNDLEDIR@/pkcs11
 libdir = @libdir@/pkcs11
 includedir = @includedir@/opensc
 
@@ -44,5 +44,5 @@ install-exec-local: install-libLTLIBRARIES
 	-rm -f $(DESTDIR)$(libdir)/opensc-pkcs11.a $(DESTDIR)$(libdir)/opensc-pkcs11.la
 if HAVE_BUNDLES
 	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(libdir)/opensc-pkcs11.so \
-		$(DESTDIR)$(bundledir)/ "OpenSC PKCS#11"
+		$(DESTDIR)$(bundledir)/
 endif
