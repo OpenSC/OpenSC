@@ -482,7 +482,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	err = sc_lock(card);
 	if (err) {
 		error(ctx, "sc_lock() failed: %s\n", sc_strerror(err));
-		goto error;
+		goto error_unlock;
 	}
 	
 	if (card->app_count < 0) {
@@ -579,8 +579,9 @@ done:
 	sc_unlock(card);
 	return 0;
 error:
-	sc_pkcs15_card_free(p15card);
 	sc_unlock(card);
+error_unlock:
+	sc_pkcs15_card_free(p15card);
 	SC_FUNC_RETURN(ctx, 1, err);
 }
 
