@@ -14,6 +14,7 @@ int main(int argc, char **argv) {
   struct sc_pkcs15_card *p15_card = NULL;
   struct sc_pkcs15_pin_info pin;
   char buf[16], buf2[16];
+  char certbuf[2048];
   
   int i,c ;
 
@@ -57,9 +58,16 @@ int main(int argc, char **argv) {
     return 1;
   }
   printf("%d certificates found.\n", i);
-  for (i = 0; i < p15_card->cert_count; i++)
+  for (i = 0; i < p15_card->cert_count; i++) {
   	sc_pkcs15_print_cert_info(&p15_card->cert_info[i]);
-  
+	c = sc_pkcs15_read_certificate(p15_card, &p15_card->cert_info[i],
+				       (u8 *) certbuf, 2048);
+	if (c < 0) {
+		fprintf(stderr, "Certificate read failed.\n");
+		return 1;
+	}
+	printf("Certificate size is %d bytes\n", c);
+  }  
   return 0;
 
   printf("Searching for PIN codes...\n");
