@@ -6,12 +6,8 @@
 # $Id$
 # <aet@cc.hut.fi>
 #
-# TODO:
-# - Add -f and -v switches?
-# - Generate PkgInfo, Info.plist and version.plist
-#   to $bundleroot/Resources? Is this necessary?
-#
 
+set -e
 verbose=0
 
 verbose_msg ()
@@ -43,19 +39,52 @@ esac
 destdir=$2
 [ ! -d $destdir -o ! -w $destdir ] && error_msg "Not a directory or no write access: $destdir" && exit 1
 
-bundlename="$sofile"
-[ $# -eq 3 ] && bundlename=$3
-bundlename=`echo $bundlename | sed -e "s@.*/@@" -e "s@\.so.*@@"`
-bundleroot="$destdir/${bundlename}.bundle"
+name="$sofile"
+[ $# -eq 3 ] && name=$3
+name=`echo $name | sed -e "s@.*/@@" -e "s@\.so.*@@"`
+root="$destdir/${name}.bundle"
 
 verbose_msg "sofile: $sofile"
 verbose_msg "destdir: $destdir"
-verbose_msg "bundlename: $bundlename"
-verbose_msg "bundleroot: $bundleroot"
+verbose_msg "name: $name"
+verbose_msg "root: $root"
 
-#[ -d "$bundleroot" ] && error_msg "$bundleroot already exists, exit." && exit 1
+arch=`uname`
+[ x$arch = xDarwin ] && arch=MacOS
+type="BNDL"
+creator="????"
 
-mkdir -p "$bundleroot"/Contents/MacOS
-cp "$sofile" "$bundleroot"/Contents/MacOS/"$bundlename"
+# Overwrite existing bundle
+[ -d "$root" ] && rm -rf "$root"
 
-echo "Installed $sofile as $bundleroot"
+mkdir -p "$root"/Contents/$arch
+cp "$sofile" "$root"/Contents/$arch/"$name"
+echo "$type$creator" > "$root"/Contents/PkgInfo
+
+create_info_plist ()
+{
+  echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+  echo "<!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">"
+  echo "<plist version=\"1.0\">"
+  echo "<dict>"
+  echo "	<key>CFBundleDevelopmentRegion</key>"
+  echo "	<string>English</string>"
+  echo "	<key>CFBundleExecutable</key>"
+  echo "	<string>$name</string>"
+  echo "	<key>CFBundleInfoDictionaryVersion</key>"
+  echo "	<string>6.0</string>"
+  echo "	<key>CFBundleName</key>"
+  echo "	<string>$name</string>"
+  echo "	<key>CFBundlePackageType</key>"
+  echo "	<string>BNDL</string>"
+  echo "	<key>CFBundleSignature</key>"
+  echo "	<string>????</string>"
+  echo "	<key>CFBundleVersion</key>"
+  echo "	<string>0.0.1d1</string>"
+  echo "</dict>"
+  echo "</plist>"
+}
+
+create_info_plist > "$root"/Contents/Info.plist
+
+echo "Installed $sofile as $root"
