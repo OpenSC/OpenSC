@@ -76,7 +76,7 @@ const static struct sc_card_error iso7816_errors[] = {
 	{ 0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,  "Application exists"},
 };
 
-int iso7816_check_sw(struct sc_card *card, int sw1, int sw2)
+static int iso7816_check_sw(struct sc_card *card, int sw1, int sw2)
 {
 	const int err_count = sizeof(iso7816_errors)/sizeof(iso7816_errors[0]);
 	int i;
@@ -273,7 +273,7 @@ static int iso7816_update_binary(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 3, count);
 }
 
-int iso7816_process_fci(struct sc_card *card, struct sc_file *file,
+static int iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 		       const u8 *buf, size_t buflen)
 {
 	struct sc_context *ctx = card->ctx;

@@ -209,7 +209,7 @@ static int jcop_select_file(struct sc_card *card, const struct sc_path *path,
      struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
      const struct sc_card_operations *iso_ops = iso_drv->ops;
      sc_path_t       shortpath;
-     struct sc_file  *tmpfile, **fileptr;
+     struct sc_file  *tfile, **fileptr;
      
      if (!drvdata)
 	  return SC_ERROR_FILE_NOT_FOUND;
@@ -220,7 +220,7 @@ static int jcop_select_file(struct sc_card *card, const struct sc_path *path,
      if (file) {
 	  fileptr=file;
      } else {
-	  fileptr=&tmpfile;
+	  fileptr=&tfile;
      }
 
      /* Selecting the MF. return a copy of the constructed MF */
@@ -320,7 +320,7 @@ static int jcop_read_binary(struct sc_card *card, unsigned int idx,
      struct jcop_private_data *drvdata=DRVDATA(card);
      struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
      const struct sc_card_operations *iso_ops = iso_drv->ops;
-     struct sc_file  *tmpfile;
+     struct sc_file  *tfile;
      int r;
      
      if (drvdata->selected == SELECT_MF) {
@@ -334,12 +334,12 @@ static int jcop_read_binary(struct sc_card *card, unsigned int idx,
 	       count=128-idx;
 	  }
 	  card->ctx->suppress_errors++;
-	  r = iso_ops->select_file(card, &drvdata->aid, &tmpfile);
+	  r = iso_ops->select_file(card, &drvdata->aid, &tfile);
 	  card->ctx->suppress_errors--;
 	  if (r < 0) { /* no pkcs15 app, so return empty DIR. */
 	       memset(buf, 0, count);
 	  } else {
-	       sc_file_free(tmpfile);
+	       sc_file_free(tfile);
 	       memcpy(buf, (u8 *)(ef_dir_contents + idx), count);
 	  }
 	  return count;
@@ -351,7 +351,7 @@ static int jcop_list_files(struct sc_card *card, u8 *buf, size_t buflen) {
      struct jcop_private_data *drvdata=DRVDATA(card);
      struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
      const struct sc_card_operations *iso_ops = iso_drv->ops;
-     struct sc_file  *tmpfile;
+     struct sc_file  *tfile;
      int r;
 
      if (drvdata->selected == SELECT_MF) {
@@ -362,12 +362,12 @@ static int jcop_list_files(struct sc_card *card, u8 *buf, size_t buflen) {
 	       return 2;
 	  /* AppDF only exists if applet is selectable */
 	  card->ctx->suppress_errors++;
-	  r = iso_ops->select_file(card, &drvdata->aid, &tmpfile);
+	  r = iso_ops->select_file(card, &drvdata->aid, &tfile);
 	  card->ctx->suppress_errors--;
 	  if (r < 0) { 
 	       return 2;
 	  } else {
-	       sc_file_free(tmpfile);
+	       sc_file_free(tfile);
 	       memcpy(buf+2, "\x50\x15", 2);
 	       return 4;
 	  }
@@ -377,7 +377,7 @@ static int jcop_list_files(struct sc_card *card, u8 *buf, size_t buflen) {
 	  return SC_ERROR_NOT_ALLOWED;
      if (drvdata->nfiles == 0)
 	  return 0;
-     if (buflen > 2 * drvdata->nfiles)
+     if (buflen > 2 * (size_t)drvdata->nfiles)
 	  buflen=2*drvdata->nfiles;
      memcpy(buf, drvdata->filelist, buflen);
      return buflen;

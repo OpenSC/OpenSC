@@ -159,7 +159,7 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 
         sc_bin_to_hex(buffer, len_iccsn , serial, sizeof(serial), 0);
 
-	if (file->size < (len_iccsn + 5))
+	if (file->size < (size_t)(len_iccsn + 5))
 		{
 		/* Not CHN */
 		r = SC_ERROR_WRONG_CARD;

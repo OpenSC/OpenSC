@@ -185,7 +185,7 @@ sc_card_identify (struct sc_card *card, struct sc_card_atrs *atr_list)
  * Sad side: not available without a NDA.
  */
  
-int
+static int
 mcrd_delete_ref_to_authkey (struct sc_card *card)
 {
 	struct sc_apdu apdu;
@@ -205,7 +205,7 @@ mcrd_delete_ref_to_authkey (struct sc_card *card)
 	SC_FUNC_RETURN (card->ctx, 2, sc_check_sw (card, apdu.sw1, apdu.sw2));
 }
 
-int
+static int
 mcrd_delete_ref_to_signkey (struct sc_card *card)
 {
 	struct sc_apdu apdu;
@@ -226,7 +226,7 @@ mcrd_delete_ref_to_signkey (struct sc_card *card)
 
 }
 
-int
+static int
 mcrd_set_decipher_key_ref (struct sc_card *card, int key_reference)
 {
 	struct sc_apdu apdu;
@@ -1257,7 +1257,7 @@ static int mcrd_compute_signature(struct sc_card *card,
 }
 
 /* added by -mp */
-int mcrd_decipher(struct sc_card *card,
+static int mcrd_decipher(struct sc_card *card,
 		  const u8 * crgram, size_t crgram_len, u8 * out,
 		  size_t out_len)
 {
@@ -1303,7 +1303,7 @@ int mcrd_decipher(struct sc_card *card,
 }
 
 /* added by -mp, to give pin information in the card driver (pkcs15emu->driver needed) */
-int mcrd_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+static int mcrd_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 		 int *tries_left)
 {
 	SC_FUNC_CALLED(card->ctx, 3); 

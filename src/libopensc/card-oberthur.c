@@ -287,7 +287,7 @@ add_acl_entry(struct sc_card *card, struct sc_file *file, unsigned int op,
 }
 
 
-int 
+static int 
 tlv_get(unsigned char *msg, unsigned char tag, unsigned char *ret, int *ret_len)
 {
 	int len = *(msg+1);
@@ -501,7 +501,7 @@ check_path(struct sc_card *card, const u8 **pathptr, size_t *pathlen,
 }
 
 
-void 
+static void 
 auth_cache_path(struct sc_card *card, const struct sc_path *path)
 {
 	struct sc_path *curpath = &card->cache.current_path;
