@@ -315,7 +315,7 @@ openct_reader_perform_verify(struct sc_reader *reader,
 		return rc;
 
 	if (info->apdu == NULL) {
-		// complain
+		/* complain */
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
