@@ -58,7 +58,8 @@ enum {
 	 */
 	SC_CARDCTL_ETOKEN_BASE = _CTL_PREFIX('E', 'T', 'K'),
 	SC_CARDCTL_ETOKEN_PUT_DATA_FCI,
-	SC_CARDCTL_ETOKEN_PUT_DATA_OCI
+	SC_CARDCTL_ETOKEN_PUT_DATA_OCI,
+	SC_CARDCTL_ETOKEN_GENERATE_KEY
 };
 
 /*
@@ -113,8 +114,16 @@ struct sc_cardctl_miocos_ac_info {
  * eToken PIN info
  */
 struct sc_cardctl_etoken_pin_info {
-	u8 *data;
-	size_t len;
+	u8 *		data;
+	size_t		len;
+};
+
+struct sc_cardctl_etoken_genkey_info {
+	u8 *		random_data;
+	size_t		random_len;
+	unsigned int	key_id;
+	unsigned int	key_bits;
+	unsigned short	fid;
 };
 
 #ifdef  __cplusplus

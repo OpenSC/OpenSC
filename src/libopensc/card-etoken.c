@@ -472,6 +472,9 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 	}
 	r = iso_ops->create_file(card, file);
 
+	/* FIXME: if this is a DF and there's an AID, set it here
+	 * using PUT_DATA_FCI */
+
 out:	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
@@ -552,6 +555,48 @@ etoken_put_data_fci(struct sc_card *card,
 }
 
 static int
+etoken_generate_key(struct sc_card *card,
+		struct sc_cardctl_etoken_genkey_info *args)
+{
+	struct sc_apdu	apdu;
+	u8		data[8];
+	int		r;
+
+	if (args->random_len) {
+		/* XXX FIXME: do a GIVE_RANDOM command with this data */
+		error(card->ctx,
+			"initialization of card's random pool "
+			"not yet implemented\n");
+		return SC_ERROR_INTERNAL;
+	}
+
+	data[0] = 0x20;		/* store as PSO object */
+	data[1] = args->key_id;
+	data[2] = args->fid >> 8;
+	data[3] = args->fid & 0xff;
+	data[4] = 0;		/* additional Rabin Miller tests */
+	data[5] = 0;		/* length difference between p, q (bits) */
+	data[6] = 0;		/* default length of exponent, MSB */
+	data[7] = 0;		/* default length of exponent, LSB */
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_3_SHORT;
+	apdu.cla = 0x00;
+	apdu.ins = 0x46;
+	apdu.p1  = 0x00;
+	apdu.p2  = args->key_id;/* doc is not clear, it just says "ID" */
+	apdu.data= data;
+	apdu.datalen = apdu.lc = sizeof(data);
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "GENERATE_KEY failed");
+
+	return r;
+}
+
+static int
 etoken_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
 	switch (cmd) {
@@ -561,6 +606,9 @@ etoken_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		return etoken_put_data_fci(card,
 			(struct sc_cardctl_etoken_pin_info *) ptr);
 		break;
+	case SC_CARDCTL_ETOKEN_GENERATE_KEY:
+		return etoken_generate_key(card,
+			(struct sc_cardctl_etoken_genkey_info *) ptr);
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }
