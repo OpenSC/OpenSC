@@ -56,7 +56,7 @@ const static struct sc_card_error iso7816_errors[] = {
 
 	{ 0x6A00, SC_ERROR_INCORRECT_PARAMETERS,"Wrong parameter(s) P1-P2" },
 	{ 0x6A80, SC_ERROR_INCORRECT_PARAMETERS,"Incorrect parameters in the data field" },
-	{ 0x6A81, SC_ERROR_NOT_SUPPORTED,	"Function not supported" },
+	{ 0x6A81, SC_ERROR_NO_CARD_SUPPORT,	"Function not supported" },
 	{ 0x6A82, SC_ERROR_FILE_NOT_FOUND,	"File not found" },
 	{ 0x6A83, SC_ERROR_RECORD_NOT_FOUND,	"Record not found" },
 	{ 0x6A84, SC_ERROR_CARD_CMD_FAILED,	"Not enough memory space in the file" },
