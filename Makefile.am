@@ -11,3 +11,4 @@ MAINTAINERCLEANFILES = Makefile.in config.h.in configure \
 
 DEPCLEANFILES = config.log configure 
 
+AUTOMAKE_OPTIONS=foreign
