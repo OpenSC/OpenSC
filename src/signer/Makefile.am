@@ -1,5 +1,7 @@
 ## Makefile.am -- Process this file with automake to produce Makefile.in
 
+plugindir = $(PLUGINDIR)
+
 MAINTAINERCLEANFILES = Makefile.in
 
 SUBDIRS = . npinclude
@@ -7,8 +9,6 @@ SUBDIRS = . npinclude
 EXTRA_DIST = testprog.c
 
 INCLUDES = @CFLAGS_OPENSC@ @CFLAGS_ASSUAN@
-
-plugindir = $(PLUGINDIR)
 
 if HAVE_SSL
 if HAVE_ASSUAN

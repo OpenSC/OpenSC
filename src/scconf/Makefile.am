@@ -1,5 +1,7 @@
 # Process this file with automake to create Makefile.in
 
+includedir = ${prefix}/include/opensc
+
 MAINTAINERCLEANFILES = Makefile.in lex-parse.c
 
 include_HEADERS = scconf.h

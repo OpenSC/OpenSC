@@ -1,10 +1,10 @@
 # Process this file with automake to create Makefile.in
 
+libdir = ${prefix}/lib/pkcs11
+
 MAINTAINERCLEANFILES = Makefile.in
 
 SUBDIRS = . rsaref
-
-libdir = ${prefix}/lib/pkcs11
 
 INCLUDES = @CFLAGS_OPENSC@
 

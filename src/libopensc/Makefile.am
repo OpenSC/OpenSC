@@ -1,5 +1,7 @@
 ## Makefile.am -- Process this file with automake to produce Makefile.in
 
+includedir = ${prefix}/include/opensc
+
 MAINTAINERCLEANFILES = Makefile.in
 
 EXTRA_DIST = opensc-config.in
@@ -31,5 +33,5 @@ libopensc_la_LDFLAGS	= -version-info 0:6:0
 libopensc_la_LIBADD	= @LIBDL@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF)
 
 include_HEADERS		= opensc.h opensc-pkcs15.h opensc-emv.h \
-		   	  cardctl.h
-noinst_HEADERS		= ctbcs.h sc-asn1.h sc-log.h sc-internal.h
+		   	  cardctl.h sc-asn1.h sc-log.h
+noinst_HEADERS		= ctbcs.h sc-internal.h

@@ -1,5 +1,7 @@
 # Process this file with automake to create Makefile.in
 
+includedir = ${prefix}/include/opensc
+
 MAINTAINERCLEANFILES = Makefile.in
 
 include_HEADERS = scldap.h

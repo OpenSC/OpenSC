@@ -1,8 +1,8 @@
 # Process this file with automake to create Makefile.in
 
-MAINTAINERCLEANFILES = Makefile.in
-
 libdir = ${prefix}/lib/security
+
+MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES = -I../scam
 
