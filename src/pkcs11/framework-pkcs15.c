@@ -1252,16 +1252,16 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	if (rv == CKR_OK)
 		priv_args.id = pub_args.id = id;
 
-	len = sizeof(priv_label);
+	len = sizeof(priv_label) - 1;
 	rv = attr_find(pPrivTpl, ulPrivCnt, CKA_LABEL, priv_label, &len);
 	if (rv == CKR_OK) {
-		priv_label[SC_PKCS15_MAX_LABEL_SIZE - 1] = '\0';
+		priv_label[len] = '\0';
 		priv_args.label = priv_label;
 	}
-	len = sizeof(pub_label);
+	len = sizeof(pub_label) - 1;
 	rv = attr_find(pPubTpl, ulPubCnt, CKA_LABEL, pub_label, &len);
 	if (rv == CKR_OK) {
-		pub_label[SC_PKCS15_MAX_LABEL_SIZE - 1] = '\0';
+		pub_label[len] = '\0';
 		pub_args.label = pub_label;
 	}
 
