@@ -704,9 +704,13 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 {
 	sc_pkcs11_mechanism_type_t *hash_type, *new_type;
 	struct hash_signature_info *info;
+	CK_MECHANISM_INFO mech_info = sign_type->mech_info;
 
 	if (!(hash_type = sc_pkcs11_find_mechanism(p11card, hash_mech, CKF_DIGEST)))
 		return CKR_MECHANISM_INVALID;
+
+	/* These hash-based mechs can only be used for sign/verify */
+	mech_info.flags &= (CKF_SIGN | CKF_SIGN_RECOVER | CKF_VERIFY | CKF_VERIFY_RECOVER);
 
 	info = (struct hash_signature_info *) calloc(1, sizeof(*info));
 	info->mech = mech;
@@ -715,7 +719,7 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	info->sign_mech = sign_type->mech;
 	info->hash_mech = hash_mech;
 
-	new_type = sc_pkcs11_new_fw_mechanism(mech, &sign_type->mech_info,
+	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info,
 				sign_type->key_type, info);
 	if (new_type)
 		sc_pkcs11_register_mechanism(p11card, new_type);
