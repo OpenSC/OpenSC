@@ -25,7 +25,7 @@ all: install-headers $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-$(TARGET): $(OBJECTS)
+$(TARGET): $(OBJECTS) ..\scconf\scconf.lib
 	perl $(TOPDIR)\win32\makedef.pl $*.def $* $(OBJECTS)
 	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib winscard.lib
 
