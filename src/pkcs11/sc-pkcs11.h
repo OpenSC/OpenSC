@@ -381,7 +381,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *, struct sc_context *);
 
 /* Locking primitives at the pkcs11 level */
 CK_RV sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR);
-void sc_pkcs11_lock(void);
+CK_RV sc_pkcs11_lock(void);
 void sc_pkcs11_unlock(void);
 void sc_pkcs11_free_lock(void);
 

@@ -66,8 +66,14 @@ out:	debug(context, "C_Initialize: result = %d\n", rv);
 CK_RV C_Finalize(CK_VOID_PTR pReserved)
 {
 	int i;
+	CK_RV rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	if (pReserved != NULL)
+		return CKR_ARGUMENTS_BAD;
 
 	debug(context, "Shutting down Cryptoki\n");
 	for (i=0; i<context->reader_count; i++)
@@ -83,7 +89,14 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 
 CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 {
-	sc_pkcs11_lock();
+	CK_RV rv;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	if (pInfo == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
 
 	debug(context, "Cryptoki info query\n");
 
@@ -105,6 +118,9 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 
 CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
 {
+	if (ppFunctionList == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	*ppFunctionList = &pkcs11_function_list;
 	return CKR_OK;
 }
@@ -118,7 +134,12 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	sc_pkcs11_slot_t *slot;
 	CK_RV rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	if (pulCount == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
 
 	debug(context, "Getting slot listing\n");
 	card_detect_all();
@@ -160,7 +181,12 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	struct sc_pkcs11_slot *slot;
         CK_RV rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	if (pInfo == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
 
 	debug(context, "Getting info about slot %d\n", slotID);
 
@@ -182,7 +208,12 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	struct sc_pkcs11_slot *slot;
         CK_RV rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	if (pInfo == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
 
 	debug(context, "Getting info about token in slot %d\n", slotID);
 
@@ -201,7 +232,9 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
 	struct sc_pkcs11_slot *slot;
         CK_RV rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv == CKR_OK)
@@ -218,7 +251,12 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
 	struct sc_pkcs11_slot *slot;
         CK_RV rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	if (pInfo == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv == CKR_OK)
@@ -238,7 +276,9 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 	struct sc_pkcs11_slot *slot;
         CK_RV rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv != CKR_OK)
@@ -277,7 +317,9 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	unsigned int mask, events;
 	CK_RV rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	mask = SC_EVENT_CARD_INSERTED|SC_EVENT_CARD_REMOVED;
 
@@ -366,17 +408,22 @@ sc_pkcs11_free_lock()
 	_lock = NULL;
 }
 
-void
+CK_RV
 sc_pkcs11_lock()
 {
+	if (context == NULL)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
+
 	if (!_lock)
-		return;
+		return CKR_OK;
 	if (_locking)  {
 		while (_locking->LockMutex(_lock) != CKR_OK)
 			;
 	} else {
 		sc_mutex_lock((sc_mutex_t *) _lock);
 	}
+
+	return CKR_OK;
 }
 
 void

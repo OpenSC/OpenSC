@@ -37,7 +37,9 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	struct sc_pkcs11_card *card;
         int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
         dump_template("C_CreateObject()", pTemplate, ulCount);
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
@@ -94,7 +96,9 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 	struct sc_pkcs11_object *object;
 	int	res, res_type;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -144,7 +148,9 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -181,7 +187,9 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	struct sc_pkcs11_find_operation *operation;
         struct sc_pkcs11_pool_item *item;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -260,7 +268,9 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,          /* the session's han
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_find_operation *operation;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -292,7 +302,9 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) /* the session's handle */
         int rv;
 	struct sc_pkcs11_session *session;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -317,7 +329,9 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
         int rv;
 	struct sc_pkcs11_session *session;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv == CKR_OK)
@@ -337,7 +351,9 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,     /* the session's handle */
         int rv;
 	struct sc_pkcs11_session *session;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -360,7 +376,9 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
         int rv;
 	struct sc_pkcs11_session *session;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv == CKR_OK)
@@ -384,7 +402,9 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,     /* the session's handle */
         int rv;
 	struct sc_pkcs11_session *session;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv == CKR_OK)
@@ -407,7 +427,9 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	struct sc_pkcs11_object *object;
         int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -452,7 +474,9 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 	struct sc_pkcs11_session *session;
 	CK_ULONG length;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -489,7 +513,9 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	struct sc_pkcs11_session *session;
         int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv == CKR_OK)
@@ -508,7 +534,9 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,        /* the session's handle */
 	CK_ULONG length;
         int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -547,7 +575,9 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	struct sc_pkcs11_object *object;
         int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -737,7 +767,9 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE    hSession,          /* the session's handl
 	struct sc_pkcs11_object *object, *result;
 	int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -785,7 +817,9 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	struct sc_pkcs11_session *session;
 	int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv == CKR_OK)
@@ -806,7 +840,9 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	struct sc_pkcs11_session *session;
 	int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv == CKR_OK)

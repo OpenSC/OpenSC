@@ -33,7 +33,9 @@ CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
         struct sc_pkcs11_session *session;
 	int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	debug(context, "Opening new session for slot %d\n", slotID);
 
@@ -75,7 +77,9 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) /* the session's handle */
         struct sc_pkcs11_session *session;
 	int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	rv = pool_find_and_delete(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -122,8 +126,12 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) /* the token's slot */
 {
 	int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
 	rv = sc_pkcs11_close_all_sessions(slotID);
+
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -134,7 +142,9 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	struct sc_pkcs11_session *session;
         int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
         rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -187,7 +197,9 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	struct sc_pkcs11_session *session;
         struct sc_pkcs11_slot *slot;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
 	if (userType != CKU_USER && userType != CKU_SO) {
                 rv = CKR_USER_TYPE_INVALID;
@@ -228,7 +240,9 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) /* the session's handle */
 	struct sc_pkcs11_session *session;
         struct sc_pkcs11_slot *slot;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
         rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -255,7 +269,9 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
 	struct sc_pkcs11_slot *slot;
         int rv;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
         rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -286,7 +302,9 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	struct sc_pkcs11_session *session;
         struct sc_pkcs11_slot *slot;
 
-	sc_pkcs11_lock();
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
         rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
