@@ -149,8 +149,8 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_algorithm_info *alg_info;
         const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
-	u8 buf[512];
-	size_t buflen;
+	u8 buf[512], *tmpin, *tmpout, *help;
+	size_t tmpoutlen;
 	unsigned long pad_flags = 0;
 
 	SC_FUNC_CALLED(ctx, 1);
@@ -176,6 +176,32 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	if (inlen > sizeof(buf))
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	memcpy(buf, in, inlen);
+	tmpin = buf;
+	if (outlen < (prkey->modulus_length + 7) / 8)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	tmpout = out;
+
+	/* flags: the requested algo
+	 * algo_info->flags: what is supported by the card 
+	 * senv.algorithm_flags: what the card will have to do */
+
+	/* If the card doesn't support the requested algorithm, see if we
+	 * can strip the input so a more restrictive algo can be used */
+	if ((flags == (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
+	    !(alg_info->flags & (SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_NONE))) {
+		int algo;
+		tmpoutlen = sizeof(buf);
+		r = sc_pkcs1_strip_digest_info_prefix(&algo, tmpin, inlen, tmpout, &tmpoutlen);
+		if (r != SC_SUCCESS || algo == SC_ALGORITHM_RSA_HASH_NONE)
+			return SC_ERROR_INVALID_DATA;
+		help = tmpin;
+		tmpin = tmpout;
+		tmpout = help;
+		inlen = tmpoutlen;
+		flags &= ~SC_ALGORITHM_RSA_HASH_NONE;
+		flags |= algo;
+	}
+
         senv.algorithm_flags = 0;
 	if (flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 		if (inlen != 20)
@@ -209,6 +235,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		   (flags & SC_ALGORITHM_RSA_HASHES) == 0) {
 		pad_flags |= SC_ALGORITHM_RSA_HASH_NONE;
 	}
+
 	if (flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1))
 			pad_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
@@ -224,26 +251,31 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		senv.algorithm_flags |= SC_ALGORITHM_RSA_RAW;
+		pad_flags = 0;
 
 		/* Add zero-padding if input shorter than modulus */
 		if (inlen < prkey->modulus_length/8) {
 			unsigned int	modulus_len = prkey->modulus_length/8;
-
 			if (modulus_len > sizeof(buf))
 				return SC_ERROR_BUFFER_TOO_SMALL;
-			memset(buf, 0, sizeof(buf));
-			memcpy(buf + modulus_len - inlen, in, inlen);
+			memset(tmpout, 0, sizeof(buf));
+			memcpy(tmpout + modulus_len - inlen, tmpin, inlen);
 			inlen = modulus_len;
-			in = buf;
+			help = tmpin;
+			tmpin = tmpout;
+			tmpout = help;
 		}
 	}
+
 	if (pad_flags) {
-                buflen = sizeof(buf);
-		r = sc_pkcs1_encode(ctx, pad_flags, in, inlen, buf, &buflen,
+                tmpoutlen = sizeof(buf);
+		r = sc_pkcs1_encode(ctx, pad_flags, tmpin, inlen, tmpout, &tmpoutlen,
 			            prkey->modulus_length/8);
                 SC_TEST_RET(ctx, r, "Unable to add padding");
-		in = buf;
-		inlen = buflen;
+                help = tmpin;
+		tmpin = tmpout;
+		tmpout = help;
+		inlen = tmpoutlen;
 	}
 
 	senv.operation = SC_SEC_OPERATION_SIGN;
@@ -278,9 +310,12 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 * Right now we work around this by assuming that eToken keys
 	 * always have algorithm RSA_PURE_SIG so the input buffer
 	 * is padded and has the same length as the signature. --okir */
-	r = sc_compute_signature(p15card->card, in, inlen, out, outlen);
-	if (pad_flags)
-                memset(buf, 0, inlen);
+	if (tmpin == out) {
+		memcpy(tmpout, tmpin, inlen);
+		tmpin = tmpout;
+	}
+	r = sc_compute_signature(p15card->card, tmpin, inlen, out, outlen);
+	memset(buf, 0, sizeof(buf));
 	sc_unlock(p15card->card);
 	SC_TEST_RET(ctx, r, "sc_compute_signature() failed");
 

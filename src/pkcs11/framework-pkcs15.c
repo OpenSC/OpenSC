@@ -1745,32 +1745,7 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
-		/* Um. We need to guess what netscape is trying to
-		 * sign here. We're lucky that all these things have
-		 * different sizes. */
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1;
-		switch (ulDataLen) {
-		case 34:flags |= SC_ALGORITHM_RSA_HASH_MD5;  /* MD5 + header */
-			pData += 18; ulDataLen -= 18;
-			break;
-		case 35:
-			if (pData[7] == 0x24)
-				flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;   /* RIPEMD160 + hdr */
-			else
-				flags |= SC_ALGORITHM_RSA_HASH_SHA1;   /* SHA1 + hdr */
-			pData += 15; ulDataLen -= 15;
-			break;
-		case 36:flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1; /* SSL hash */
-			break;
-		case 20:
-			flags |= SC_ALGORITHM_RSA_HASH_SHA1;	/* SHA1 */
-			break;
-		case 16:
-			flags |= SC_ALGORITHM_RSA_HASH_MD5;	/* MD5 */
-			break;
-		default:
-			flags |= SC_ALGORITHM_RSA_HASH_NONE;
-		}
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 		break;
 	case CKM_MD5_RSA_PKCS:
 		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_MD5;
