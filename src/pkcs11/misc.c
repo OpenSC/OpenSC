@@ -51,6 +51,8 @@ CK_RV sc_to_cryptoki_error(int rc, int reader)
 		return CKR_TOKEN_NOT_PRESENT;
 	case SC_ERROR_INVALID_CARD:
 		return CKR_TOKEN_NOT_RECOGNIZED;
+	case SC_ERROR_WRONG_LENGTH:
+		return CKR_DATA_LEN_RANGE;
 	}
 	return CKR_GENERAL_ERROR;
 }
