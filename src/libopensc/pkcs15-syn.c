@@ -333,7 +333,7 @@ int sc_pkcs15emu_add_rsa_pubkey(sc_pkcs15_card_t *p15card,
 	if (key.access_flags == 0)
 		key.access_flags = SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
 
-	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_PUBKEY, obj, &key);
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_PUBKEY_RSA, obj, &key);
 }
 
 int sc_pkcs15emu_add_x509_cert(sc_pkcs15_card_t *p15card,
