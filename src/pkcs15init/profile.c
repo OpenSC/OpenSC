@@ -141,6 +141,21 @@ static struct map		pinIdNames[] = {
 	{ "so-puk",		SC_PKCS15INIT_SO_PUK	},
 	{ 0, 0 }
 };
+static struct map		pinFlagNames[] = {
+	{ "case-sensitive",		0x0001			},
+	{ "local",			0x0002			},
+	{ "change-disabled",		0x0004			},
+	{ "unblock-disabled",		0x0008			},
+	{ "initialized",		0x0010			},
+	{ "needs-padding",		0x0020			},
+	{ "unblockingPin",		0x0040			},
+	{ "soPin",			0x0080			},
+	{ "disable-allowed",		0x0100			},
+	{ "integrity-protected",	0x0200			},
+	{ "confidentiality-protected",	0x0400			},
+	{ "exchangeRefData",		0x0800			},
+	{ 0, 0 }
+};
 static struct {
 	const char *		name;
 	struct map *		addr;
@@ -152,6 +167,7 @@ static struct {
 	{ "PKCS#15 file name",	pkcs15DfNames	},
 	{ "pin encoding",	pinTypeNames	},
 	{ "pin name",		pinIdNames	},
+	{ "pin flag",		pinFlagNames	},
 	{ NULL, NULL }
 };
 
@@ -257,7 +273,9 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 int
 sc_profile_finish(struct sc_profile *profile)
 {
-	const char	*reason;
+	struct file_info *fi;
+	struct pin_info	*pi;
+	const char	*reason, *name;
 
 	reason = "Profile doesn't define a MF";
 	if (!(profile->mf_info = sc_profile_find_file(profile, "MF")))
@@ -266,6 +284,18 @@ sc_profile_finish(struct sc_profile *profile)
 	if (!(profile->df_info = sc_profile_find_file(profile, "PKCS15-AppDF")))
 		goto whine;
 	profile->p15_card->file_app = profile->df_info->file;
+
+	for (pi = profile->pin_list; pi; pi = pi->next) {
+		if (!(name = pi->file_name))
+			continue;
+		if (!(fi = sc_profile_find_file(profile, name))) {
+			if (profile->cbs)
+				profile->cbs->error(
+					"unknown PIN file \"%s\"\n", name);
+			return SC_ERROR_INCONSISTENT_PROFILE;
+		}
+		pi->file = fi;
+	}
 	return 0;
 
 whine:	if (profile->cbs)
@@ -828,14 +858,7 @@ new_pin(struct sc_profile *profile, unsigned int id)
 static int
 do_pin_file(struct state *cur, int argc, char **argv)
 {
-	struct file_info *fi;
-	const char	*name = argv[0];
-
-	if (!(fi = sc_profile_find_file(cur->profile, name))) {
-		parse_error(cur, "unknown PIN file \"%s\"\n", name);
-		return 1;
-	}
-	cur->pin->file = fi;
+	cur->pin->file_name = strdup(argv[0]);
 	return 0;
 }
 
@@ -913,7 +936,7 @@ do_pin_flags(struct state *cur, int argc, char **argv)
 {
 	unsigned int	flags;
 
-	if (get_uint(cur, argv[0], &flags))
+	if (map_str2int(cur, argv[0], &flags, pinTypeNames))
 		return 1;
 	cur->pin->pin.flags = flags;
 	return 0;

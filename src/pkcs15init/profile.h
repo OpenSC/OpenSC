@@ -47,8 +47,9 @@ struct file_info {
 struct pin_info {
 	unsigned int		id;
 	struct pin_info *	next;
-	struct file_info *	file;
+	char *			file_name;
 	unsigned int		file_offset;
+	struct file_info *	file;
 
 	struct sc_pkcs15_pin_info pin;
 };
