@@ -126,6 +126,8 @@ static int	revalidate_pin(struct pkcs15_slot_data *data,
 				struct sc_pkcs11_session *ses);
 static int	lock_card(struct pkcs15_fw_data *);
 static int	unlock_card(struct pkcs15_fw_data *);
+static void	add_pins_to_keycache(struct sc_pkcs11_card *p11card,
+				struct sc_pkcs11_slot *slot);
 
 /* PKCS#15 Framework */
 
@@ -1097,19 +1099,8 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 		return sc_to_cryptoki_error(rc, p11card->reader);
 	}
 
-	/* Add the PINs the user presented so far. Some initialization
-	 * routines need to present these PINs again because some
-	 * card operations may clobber the authentication state
-	 * (the GPK for instance) */
-	data = slot_data(slot->fw_data);
-	if (data->pin[CKU_SO].len)
-		sc_keycache_put_key(&data->pin[CKU_SO].path,
-			SC_AC_SYMBOLIC, SC_PKCS15INIT_SO_PIN,
-			data->pin[CKU_SO].value, data->pin[CKU_SO].len);
-	if (data->pin[CKU_USER].len)
-		sc_keycache_put_key(&data->pin[CKU_USER].path,
-			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN,
-			data->pin[CKU_USER].value, data->pin[CKU_USER].len);
+	/* Add the PINs the user presented so far to the keycache. */
+	add_pins_to_keycache(p11card, slot);
 
 	switch (_class) {
 	case CKO_PRIVATE_KEY:
@@ -1276,29 +1267,9 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 		goto kpgen_done;
 	pub_args.x509_usage = keygen_args.prkey_args.x509_usage;
 
-	/* 2. Add the PINs the user presented so far. Some initialization
-	 * routines need to present these PINs again because some
-	 * card operations may clobber the authentication state
-	 * (the GPK for instance) */
-	if (p15_data->pin[CKU_SO].len) {
-	        struct sc_pkcs15_object *auth_object;
-	        struct sc_pkcs15_pin_info *pin_info;
-		rc = sc_pkcs15_find_so_pin(p15card, &auth_object);
-		if (rc >= 0) {
-			pin_info = (struct sc_pkcs15_pin_info *) auth_object->data;
-			sc_keycache_put_key(&p15_data->pin[CKU_SO].path,
-				SC_AC_SYMBOLIC, SC_PKCS15INIT_SO_PIN,
-				p15_data->pin[CKU_SO].value, p15_data->pin[CKU_SO].len);
-			sc_keycache_set_pin_name(&pin_info->path, pin_info->reference,
-				SC_PKCS15INIT_SO_PIN);
-		}
-	}
-	if (p15_data->pin[CKU_USER].len) {
-		sc_keycache_put_key(&p15_data->pin[CKU_USER].path,
-			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN,
-			p15_data->pin[CKU_USER].value, p15_data->pin[CKU_USER].len);
-		sc_keycache_set_pin_name(&pin->path, pin->reference, SC_PKCS15INIT_USER_PIN);
-	}
+	/* 2. Add the PINs the user presented so far to the keycache */
+
+	add_pins_to_keycache(p11card, slot);
 
 	/* 3.a Try on-card key pair generation */
 
@@ -1415,19 +1386,8 @@ CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
 		return sc_to_cryptoki_error(rc, p11card->reader);
 	}
 
-       /* 2. Add the PINs the user presented so far. Some initialization
-        * routines need to present these PINs again because some
-        * card operations may clobber the authentication state
-        * (the GPK for instance) */
-
-	if (p15_data->pin[CKU_SO].len)
-		sc_keycache_put_key(&p15_data->pin[CKU_SO].path,
-			SC_AC_SYMBOLIC, SC_PKCS15INIT_SO_PIN,
-			p15_data->pin[CKU_SO].value, p15_data->pin[CKU_SO].len);
-	if (p15_data->pin[CKU_USER].len)
-		sc_keycache_put_key(&p15_data->pin[CKU_USER].path,
-			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN,
-			p15_data->pin[CKU_USER].value, p15_data->pin[CKU_USER].len);
+	/* Add the PINs the user presented so far to the keycache. */
+	add_pins_to_keycache(p11card, session->slot);
 
        switch(attr->type) {
        case CKA_LABEL:
@@ -2343,4 +2303,40 @@ unlock_card(struct pkcs15_fw_data *fw_data)
 		fw_data->locked--;
 	}
 	return 0;
+}
+
+/* Add the PINs the user presented so far. Some initialization routines
+ * need to present these PINs again because some  card operations may
+ * clobber the authentication state (the GPK for instance). */
+static void
+add_pins_to_keycache(struct sc_pkcs11_card *p11card, 
+		struct sc_pkcs11_slot *slot)
+{
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_pkcs15_card *p15card = fw_data->p15_card;
+	struct pkcs15_slot_data *p15_data = slot_data(slot->fw_data);
+	struct sc_pkcs15_pin_info *pin_info;
+
+	if (p15_data->pin[CKU_SO].len) {
+	        struct sc_pkcs15_object *auth_object;
+	        int rc = sc_pkcs15_find_so_pin(p15card, &auth_object);
+		if (rc >= 0) {
+			pin_info = (struct sc_pkcs15_pin_info *) auth_object->data;
+			sc_keycache_put_key(&p15_data->pin[CKU_SO].path,
+				SC_AC_SYMBOLIC, SC_PKCS15INIT_SO_PIN,
+				p15_data->pin[CKU_SO].value, p15_data->pin[CKU_SO].len);
+			sc_keycache_set_pin_name(&pin_info->path, pin_info->reference,
+				SC_PKCS15INIT_SO_PIN);
+		}
+	}
+	if (p15_data->pin[CKU_USER].len) {
+		pin_info = slot_data_pin_info(slot->fw_data);
+		if (pin_info != NULL) {
+			sc_keycache_put_key(&p15_data->pin[CKU_USER].path,
+				SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN,
+				p15_data->pin[CKU_USER].value, p15_data->pin[CKU_USER].len);
+			sc_keycache_set_pin_name(&pin_info->path, pin_info->reference,
+				SC_PKCS15INIT_USER_PIN);
+		}
+	}
 }
