@@ -414,7 +414,7 @@ do_store_private_key(struct sc_profile *profile)
 	if (r < 0)
 		return r;
 
-	r = sc_pkcs15init_store_private_key(p15card, profile, &args);
+	r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
 	if (r < 0)
 		return r;
 
@@ -428,9 +428,11 @@ do_store_private_key(struct sc_profile *profile)
 		memset(&cargs, 0, sizeof(cargs));
 		cargs.id = args.id;
 		cargs.cert = args.cert;
-		r = sc_pkcs15init_store_certificate(p15card, profile, &cargs);
+		r = sc_pkcs15init_store_certificate(p15card, profile,
+			       	&cargs, NULL);
 	} else {
-		r = sc_pkcs15init_store_public_key(p15card, profile, &args);
+		r = sc_pkcs15init_store_public_key(p15card, profile,
+			       	&args, NULL);
 	}
 
 	return r;
@@ -453,7 +455,8 @@ do_store_public_key(struct sc_profile *profile)
 
 	r = do_read_public_key(opt_infile, opt_format, &args.pkey);
 	if (r >= 0)
-		r = sc_pkcs15init_store_public_key(p15card, profile, &args);
+		r = sc_pkcs15init_store_public_key(p15card, profile,
+					&args, NULL);
 
 	return -1;
 }
@@ -475,7 +478,8 @@ do_store_certificate(struct sc_profile *profile)
 
 	r = do_read_certificate(opt_infile, opt_format, &args.cert);
 	if (r >= 0)
-		r = sc_pkcs15init_store_certificate(p15card, profile, &args);
+		r = sc_pkcs15init_store_certificate(p15card, profile,
+					&args, NULL);
 
 	return r;
 }
@@ -526,7 +530,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	args.label = opt_objectlabel;
 
 	while (1) {
-		r = sc_pkcs15init_generate_key(p15card, profile, &args);
+		r = sc_pkcs15init_generate_key(p15card, profile, &args, NULL);
 		if (r != SC_ERROR_NOT_SUPPORTED || !args.onboard_keygen)
 			break;
 		if (!opt_quiet)
@@ -538,7 +542,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 		return r;
 
 	/* Store public key portion on card */
-	r = sc_pkcs15init_store_public_key(p15card, profile, &args);
+	r = sc_pkcs15init_store_public_key(p15card, profile, &args, NULL);
 
 	if (r >= 0 && opt_outkey) {
 		if (!opt_quiet)
