@@ -24,19 +24,21 @@
 #endif
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include "scconf.h"
 
-void print_ldap_block(scconf_context * conf, scconf_block * block, char *cardprefix)
+void print_ldap_block(scconf_context * conf, scconf_block * block)
 {
 	scconf_block **blocks = NULL;
-	int i;
+	unsigned int i;
 
 	blocks = scconf_find_blocks(conf, block, "ldap");
 	for (i = 0; blocks[i]; i++) {
 		scconf_block *block = blocks[i];
 		scconf_list *list, *tmp;
 
-		printf("LDAP entry[%s%s]\n", !cardprefix ? "" : cardprefix, !block->name ? "Default" : block->name->data);
+		printf("LDAP entry[%s]\n", !block->name ? "Default" : block->name->data);
 		printf("ldaphost: %s\n", scconf_find_value_first(block, "ldaphost"));
 		printf("ldapport: %s\n", scconf_find_value_first(block, "ldapport"));
 		printf("scope: %s\n", scconf_find_value_first(block, "scope"));
@@ -46,49 +48,46 @@ void print_ldap_block(scconf_context * conf, scconf_block * block, char *cardpre
 		printf("attributes: [");
 		list = scconf_find_value(block, "attributes");
 		for (tmp = list; tmp; tmp = tmp->next) {
-			printf("%s ", tmp->data);
+			printf(" %s", tmp->data);
 		}
-		printf("]\n");
+		printf(" ]\n");
 		printf("filter: %s\n", scconf_find_value_first(block, "filter"));
 		printf("\n");
 	}
 	free(blocks);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
 	scconf_context *conf = NULL;
-	scconf_block **blocks = NULL;
-	int i;
+	char *in = NULL, *out = NULL;
+	int r;
 
-	conf = scconf_init("test.conf");
+	if (argc != 3) {
+		printf("Usage: test-conf <in.conf> <out.conf>\n");
+		return 1;
+	}
+	in = argv[argc - 2];
+	out = argv[argc - 1];
+
+	conf = scconf_init(in);
 	if (!conf) {
 		printf("scconf_init failed\n");
 		return 1;
 	}
 	if (scconf_parse(conf) < 1) {
+		printf("scconf_parse failed\n");
 		scconf_deinit(conf);
 		return 1;
 	}
-	/* Parse normal LDAP blocks first */
-	print_ldap_block(conf, NULL, NULL);
+	/* See if the file contains any ldap configuration blocks */
+	print_ldap_block(conf, NULL);
 
-	/* Parse card specific LDAP blocks */
-	blocks = scconf_find_blocks(conf, NULL, "card");
-	for (i = 0; blocks[i]; i++) {
-		scconf_block *block = blocks[i];
-		char *name = NULL;
-
-		name = scconf_list_strdup(block->name, " ");
-		print_ldap_block(conf, block, name);
-		if (name) {
-			free(name);
-		}
-		name = NULL;
+	if ((r = scconf_write(conf, out)) != 0) {
+		printf("scconf_write: %s\n", strerror(r));
+	} else {
+		printf("Successfully rewrote file \"%s\" as \"%s\"\n", in, out);
 	}
-	free(blocks);
-
-	scconf_write(conf, "test.conf.write");
 	scconf_deinit(conf);
 	return 0;
 }
