@@ -1130,7 +1130,34 @@ usage:
 	return -1;
 }
 
+static int
+do_random(int argc, char **argv)
+{
+	unsigned char buffer[128];
+	int	r, count;
 
+	if (argc != 1)
+		goto usage;
+
+	count = atoi(argv[0]);
+	if (count < 0 || count > 128) {
+		printf("Number must be in range 0..128\n");
+		return -1;
+	}
+
+	r = sc_get_challenge(card, buffer, count);
+	if (r < 0) {
+		printf("Failed to get random bytes: %s\n", sc_strerror(r));
+		return -1;
+	}
+
+	hex_dump_asc(stdout, buffer, count, 0);
+	return 0;
+
+usage:
+	printf("Usage: random count\n");
+	return -1;
+}
 
 int do_quit(int argc, char **argv)
 {
@@ -1155,6 +1182,7 @@ struct command		cmds[] = {
  { "pksign",    do_pksign,      "create a public key signature"         },
  { "pkdecrypt", do_pkdecrypt,   "perform a public key decryption"       },
  { "erase",	do_erase,	"erase card"				},
+ { "random",	do_random,	"obtain N random bytes from card"	},
  { "quit",	do_quit,	"quit this program"			},
  { 0, 0, 0 }
 };
