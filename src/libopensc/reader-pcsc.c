@@ -28,7 +28,7 @@
 #include <winscard.h>
 #include <time.h>
 #ifdef __APPLE__
-#define <wintypes.h>
+#include <wintypes.h>
 #endif
 
 /* Default timeout value for SCardGetStatusChange
