@@ -18,6 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <stdio.h>
 #include "errors.h"
 
 #define DIM(v)		(sizeof(v)/(sizeof((v)[0])))
@@ -86,7 +87,7 @@ const char *sc_strerror(int error)
 		"PKCS#15 compatible SmartCard not found",
 	};
 	const int misc_base = -SC_ERROR_UNKNOWN;
-	const char **errors;
+	const char **errors = NULL;
 	int count = 0, err_base = 0;
 	
 	if (error < 0)
