@@ -226,6 +226,8 @@ CK_RV attr_extract(CK_ATTRIBUTE_PTR pAttr, void *ptr, size_t *sizep)
 			size = sizeof(CK_BBOOL); break;
 		case CKA_CERTIFICATE_TYPE:
 			size = sizeof(CKA_CERTIFICATE_TYPE); break;
+		case CKA_MODULUS_BITS:
+			size = sizeof(CK_ULONG); break;
 		default:
 			return CKR_FUNCTION_FAILED;
 		}
