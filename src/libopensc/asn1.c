@@ -801,6 +801,8 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
 			r = asn1_decode(ctx, (struct sc_asn1_entry *) parm, obj,
 				       objlen, NULL, NULL, 0, depth + 1);
 		break;
+	case SC_ASN1_NULL:
+		break;
 	case SC_ASN1_BOOLEAN:
 		if (parm != NULL) {
 			if (objlen != 1) {
@@ -1030,11 +1032,15 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 		debug(ctx, (char *) line);
 	}
 	
-	assert(parm != NULL);
+	assert(entry->type == SC_ASN1_NULL || parm != NULL);
 	switch (entry->type) {
 	case SC_ASN1_STRUCT:
 		r = asn1_encode(ctx, (const struct sc_asn1_entry *) parm, &buf,
 				&buflen, depth + 1);
+		break;
+	case SC_ASN1_NULL:
+		buf = NULL;
+		buflen = 0;
 		break;
 	case SC_ASN1_BOOLEAN:
 		buf = malloc(1);
