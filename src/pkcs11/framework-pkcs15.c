@@ -1276,15 +1276,25 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	 * routines need to present these PINs again because some
 	 * card operations may clobber the authentication state
 	 * (the GPK for instance) */
-
-	if (p15_data->pin[CKU_SO].len)
-		sc_keycache_put_key(&p15_data->pin[CKU_SO].path,
-			SC_AC_SYMBOLIC, SC_PKCS15INIT_SO_PIN,
-			p15_data->pin[CKU_SO].value, p15_data->pin[CKU_SO].len);
-	if (p15_data->pin[CKU_USER].len)
+	if (p15_data->pin[CKU_SO].len) {
+	        struct sc_pkcs15_object *auth_object;
+	        struct sc_pkcs15_pin_info *pin_info;
+		rc = sc_pkcs15_find_so_pin(p15card, &auth_object);
+		if (rc >= 0) {
+			pin_info = (struct sc_pkcs15_pin_info *) auth_object->data;
+			sc_keycache_put_key(&p15_data->pin[CKU_SO].path,
+				SC_AC_SYMBOLIC, SC_PKCS15INIT_SO_PIN,
+				p15_data->pin[CKU_SO].value, p15_data->pin[CKU_SO].len);
+			sc_keycache_set_pin_name(&pin_info->path, pin_info->reference,
+				SC_PKCS15INIT_SO_PIN);
+		}
+	}
+	if (p15_data->pin[CKU_USER].len) {
 		sc_keycache_put_key(&p15_data->pin[CKU_USER].path,
 			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN,
 			p15_data->pin[CKU_USER].value, p15_data->pin[CKU_USER].len);
+		sc_keycache_set_pin_name(&pin->path, pin->reference, SC_PKCS15INIT_USER_PIN);
+	}
 
 	/* 3.a Try on-card key pair generation */
 
