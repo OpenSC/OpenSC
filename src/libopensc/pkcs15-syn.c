@@ -310,6 +310,8 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 	int		df_type;
 
 	obj = (sc_pkcs15_object_t *) calloc(1, sizeof(*obj));
+	if (!obj)
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	obj->type  = type;
 	obj->data  = data;
@@ -357,6 +359,8 @@ sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_pin_info_t *info;
                 
 	info = (sc_pkcs15_pin_info_t *) calloc(1, sizeof(*info));
+	if (!info)
+		return SC_ERROR_OUT_OF_MEMORY;
 	info->auth_id           = *id;
 	info->min_length        = min_length;
 	info->max_length        = max_length;
@@ -388,6 +392,8 @@ sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
 	/* const char *label = "Certificate"; */
 	sc_pkcs15_cert_info_t *info;
 	info = (sc_pkcs15_cert_info_t *) calloc(1, sizeof(*info));
+	if (!info)
+		return SC_ERROR_OUT_OF_MEMORY;
 	info->id		= *id;
 	info->authority		= authority;
 	if (path)
@@ -408,6 +414,8 @@ sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_prkey_info_t *info;   
         
 	info = (sc_pkcs15_prkey_info_t *) calloc(1, sizeof(*info));
+	if (!info)
+		return SC_ERROR_OUT_OF_MEMORY;
 	info->id                = *id;
 	info->modulus_length    = modulus_length;
 	info->usage             = usage;
@@ -436,6 +444,8 @@ sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_pubkey_info_t *info;
 
 	info = (sc_pkcs15_pubkey_info_t *) calloc(1, sizeof(*info));
+	if (!info)
+		return SC_ERROR_OUT_OF_MEMORY;
 	info->id		= *id;
 	info->modulus_length	= modulus_length;
 	info->usage		= usage;
