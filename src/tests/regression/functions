@@ -24,6 +24,19 @@ if [ -z "$__p15init__" ]; then
 	mkdir -p $p15temp
 	trap atexit 0 1 2 13 15
 
+	# Eat any arguments given on the command line
+	while [ $# -ne 0 ]; do
+		case $1 in
+		--use-default-transport-key|--split-key)
+			p15init="$p15init $1";;
+		--reader)
+			P15_READER=$2
+			shift;;
+		*)	fatal "Unexpected option $1";;
+		esac
+		shift
+	done
+
 	if test "$P15_READER"; then
 		p15crypt="$p15crypt --reader $P15_READER"
 		p15tool="$p15tool --reader $P15_READER"

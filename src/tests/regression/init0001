@@ -6,16 +6,11 @@
 
 . functions
 
-ask_key_question=true
-while [ $# -ne 0 ]; do
-	case $1 in
-	--use-default-transport-key)
-		p15init="$p15init $1"
-		ask_key_question=false;;
-	*)	fatal "Unexpected option $1";;
-	esac
-	shift
-done
+case $p15init in
+*" --use-default-transport-keys")
+	ask_key_question=false;;
+*)	ask_key_question=true;;
+esac
 
 msg <<EOF
 :::
@@ -90,6 +85,6 @@ msg <<EOF
 :::
 EOF
 yes x |
-run_display_output $p11tool --pin 0000 -t
+run_display_output $p11tool --pin 0000 -t --slot-label "OpenSC Test Card"
 success
 
