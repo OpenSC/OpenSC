@@ -1,0 +1,14 @@
+#!/bin/bash
+
+mkdir -p out
+for script in init* crypt*; do
+	echo -n "${script} ..."
+	if ./$script "$@" >out/$script 2>&1; then
+		echo "success"
+	else
+		echo "fail"
+		exit 1
+	fi
+done
+
+exit 0
