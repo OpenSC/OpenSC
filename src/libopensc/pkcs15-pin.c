@@ -221,16 +221,11 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	r = sc_pin_cmd(card, &args, &pin->tries_left);
 
 	sc_unlock(card);
-	if (r)
-		return r;
-
-	return 0;
+	return r;
 }
 
 /*
  * Change a PIN.
- * FIXME: Edit this to use the new sc_pin_cmd call just as
- * above.
  */
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_pin_info *pin,
@@ -239,7 +234,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 {
 	int r;
 	struct sc_card *card;
-	u8 pinbuf[SC_MAX_PIN_SIZE * 2];
+	struct sc_pin_cmd_data data;
 
 	assert(p15card != NULL);
 	if (pin->magic != SC_PKCS15_PIN_MAGIC)
@@ -250,10 +245,10 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 		(oldpin == NULL || newpin == NULL || oldpinlen == 0 || newpinlen == 0))
 			return SC_ERROR_NOT_SUPPORTED;
 
-	if ((oldpinlen > pin->max_length)
-	    || (newpinlen > pin->max_length))
+	/* check pin length */
+	if (oldpinlen > pin->max_length || newpinlen > pin->max_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
-	if ((oldpinlen < pin->min_length) || (newpinlen < pin->min_length))
+	if (oldpinlen < pin->min_length || newpinlen < pin->min_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
 
 	card = p15card->card;
@@ -264,14 +259,28 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 		sc_unlock(card);
 		return r;
 	}
-	memset(pinbuf, pin->pad_char, pin->max_length * 2);
-	memcpy(pinbuf, oldpin, oldpinlen);
-	memcpy(pinbuf + pin->max_length, newpin, newpinlen);
 
-	r = sc_change_reference_data(card, SC_AC_CHV, pin->reference, pinbuf,
-				     pin->max_length, pinbuf+pin->max_length,
-				     pin->max_length, &pin->tries_left);
-	memset(pinbuf, 0, pin->max_length * 2);
+	/* set pin_cmd data */
+	memset(&data, 0, sizeof(data));
+	data.cmd             = SC_PIN_CMD_CHANGE;
+	data.pin_type        = SC_AC_CHV;
+	data.pin_reference   = pin->reference;
+	data.pin1.data       = oldpin;
+	data.pin1.len        = oldpinlen;
+	data.pin1.pad_char   = pin->pad_char;
+	data.pin1.min_length = pin->min_length;
+	data.pin1.max_length = pin->max_length;
+	data.pin2.data       = newpin;
+	data.pin2.len        = newpinlen;
+	data.pin2.pad_char   = pin->pad_char;
+	data.pin2.min_length = pin->min_length;
+	data.pin2.max_length = pin->max_length;
+
+	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
+		data.flags |= SC_PIN_CMD_NEED_PADDING;
+
+	r = sc_pin_cmd(card, &data, &pin->tries_left);
+
 	sc_unlock(card);
 	return r;
 }
@@ -286,6 +295,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 {
 	int r;
 	struct sc_card *card;
+	struct sc_pin_cmd_data data;
 
 	assert(p15card != NULL);
 	if (pin->magic != SC_PKCS15_PIN_MAGIC)
@@ -296,9 +306,12 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		(newpin == NULL || newpinlen == 0))
 			return SC_ERROR_NOT_SUPPORTED;
 
-	if (newpinlen > pin->max_length)
+	/* Note: Actually two sc_pkcs15_pin_info would be needed
+	 * here, one for the pin to reset and one for the puk
+	 */
+	if (newpinlen > pin->max_length || puklen > pin->max_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
-	if (newpinlen < pin->min_length)
+	if (newpinlen < pin->min_length || puklen < pin->min_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
 
 	card = p15card->card;
@@ -310,8 +323,27 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		return r;
 	}
 
-        r = sc_reset_retry_counter (card, SC_AC_CHV, pin->reference,
-				puk, puklen, newpin, newpinlen);
+	/* set pin_cmd data */
+	memset(&data, 0, sizeof(data));
+	data.cmd             = SC_PIN_CMD_UNBLOCK;
+	data.pin_type        = SC_AC_CHV;
+	data.pin_reference   = pin->reference;
+	data.pin1.data       = puk;
+	data.pin1.len        = puklen;
+	data.pin1.pad_char   = pin->pad_char;
+	data.pin1.min_length = pin->min_length;
+	data.pin1.max_length = pin->max_length;
+	data.pin2.data       = newpin;
+	data.pin2.len        = newpinlen;
+	data.pin2.pad_char   = pin->pad_char;
+	data.pin2.min_length = pin->min_length;
+	data.pin2.max_length = pin->max_length;
+
+	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
+		data.flags |= SC_PIN_CMD_NEED_PADDING;
+
+	r = sc_pin_cmd(card, &data, &pin->tries_left);
+
 	sc_unlock(card);
 	return r;
 }
