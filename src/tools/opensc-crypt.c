@@ -32,19 +32,18 @@ char * opt_pincode = NULL, * opt_key_id = NULL;
 char * opt_input = NULL, * opt_output = NULL;
 int opt_hash_type = SC_PKCS15_HASH_NONE;
 
-#define OPT_DEBUG 0x100
 #define OPT_SHA1 0x101
 
 const struct option options[] = {
 	{ "sign",		0, 0,		's' },
-	{ "decipher",		0, 0,		'd' },
+	{ "decipher",		0, 0,		'c' },
 	{ "key",		1, 0,		'k' },
 	{ "reader",		1, 0,		'r' },
 	{ "input",		1, 0,		'i' },
 	{ "output",		1, 0,		'o' },
 	{ "sha-1",		0, 0,		OPT_SHA1 },
 	{ "quiet",		0, 0,		'q' },
-	{ "debug",		0, 0,		OPT_DEBUG },
+	{ "debug",		0, 0,		'd' },
 	{ "pin",		1, 0,		'p' },
 	{ "pin-id",		1, &opt_pin,	0   },
 	{ 0, 0, 0, 0 }
@@ -224,7 +223,7 @@ int main(int argc, char * const argv[])
 	const char *pincode;
 		
 	while (1) {
-		c = getopt_long(argc, argv, "sdk:r:i:o:qp:", options, &long_optind);
+		c = getopt_long(argc, argv, "sdk:r:i:o:qp:d", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -234,7 +233,7 @@ int main(int argc, char * const argv[])
 			do_sign++;
 			action_count++;
 			break;
-		case 'd':
+		case 'c':
 			do_decipher++;
 			action_count++;
 			break;
@@ -257,7 +256,7 @@ int main(int argc, char * const argv[])
 		case 'q':
 			quiet++;
 			break;
-		case OPT_DEBUG:
+		case 'd':
 			sc_debug++;
 			break;
 		case 'p':
