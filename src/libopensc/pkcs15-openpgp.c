@@ -125,9 +125,13 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	}
 
 	for (i = 0; i < 3; i++) {
-		sc_path_t	path;
-		sc_pkcs15_id_t	auth_id;
-		int		flags;
+		unsigned int	flags;
+
+		struct sc_pkcs15_pin_info pin_info;
+		struct sc_pkcs15_object   pin_obj;
+
+		memset(&pin_info, 0, sizeof(pin_info));
+		memset(&pin_obj,  0, sizeof(pin_obj));
 
 		flags =	SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
 			SC_PKCS15_PIN_FLAG_INITIALIZED |
@@ -137,15 +141,24 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				 SC_PKCS15_PIN_FLAG_SO_PIN;
 		}
 
-		sc_format_path("3F00", &path);
-		auth_id.value[0] = i + 1;
-		auth_id.len = 1;
-		sc_pkcs15emu_add_pin(p15card, &auth_id,
-				pgp_pin_name[i], &path, i+1,
-				SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-				0, buffer[1+i], flags, buffer[4+i], 0,
-				SC_PKCS15_CO_FLAG_MODIFIABLE | 
-				SC_PKCS15_CO_FLAG_PRIVATE);
+		pin_info.auth_id.len   = 1;
+		pin_info.auth_id.value[0] = i + 1;
+		pin_info.reference     = i + 1;
+		pin_info.flags         = flags;
+		pin_info.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+		pin_info.min_length    = 0;
+		pin_info.stored_length = buffer[1+i];
+		pin_info.max_length    = buffer[1+i];
+		pin_info.pad_char      = '\0';
+		sc_format_path("3F00", &pin_info.path);
+		pin_info.tries_left    = buffer[4+i];
+
+		strncpy(pin_obj.label, pgp_pin_name[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
+		pin_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
+
+		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
 	}
 
 	for (i = 0; i < 3; i++) {
@@ -158,19 +171,28 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 					| SC_PKCS15_PRKEY_USAGE_UNWRAP,
 					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
 				};
-		sc_pkcs15_id_t	id, auth_id;
 
-		id.value[0] = i + 1;
-		id.len = 1;
-		auth_id.value[0] = prkey_pin[i];
-		auth_id.len = 1;
-		sc_pkcs15emu_add_prkey(p15card, &id,
-				pgp_key_name[i],
-				SC_PKCS15_TYPE_PRKEY_RSA,
-				1024, prkey_usage[i],
-				NULL, i,
-				&auth_id, SC_PKCS15_CO_FLAG_PRIVATE |
-				SC_PKCS15_CO_FLAG_MODIFIABLE);
+		struct sc_pkcs15_prkey_info prkey_info;
+		struct sc_pkcs15_object     prkey_obj;
+
+		memset(&prkey_info, 0, sizeof(prkey_info));
+		memset(&prkey_obj,  0, sizeof(prkey_obj));
+
+		prkey_info.id.len        = 1;
+		prkey_info.id.value[0]   = i + 1;
+		prkey_info.usage         = prkey_usage[i];
+		prkey_info.native        = 1;
+		prkey_info.key_reference = i;
+		prkey_info.modulus_length= 1024;
+
+		strncpy(prkey_obj.label, pgp_key_name[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
+		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE;
+		prkey_obj.auth_id.len      = 1;
+		prkey_obj.auth_id.value[0] = prkey_pin[i];
+
+		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
 	}
 
 	for (i = 0; i < 3; i++) {
@@ -181,19 +203,27 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 					| SC_PKCS15_PRKEY_USAGE_WRAP,
 					SC_PKCS15_PRKEY_USAGE_VERIFY
 				};
-		sc_pkcs15_id_t	id, auth_id;
-		sc_path_t	path;
 
-		id.value[0] = i + 1;
-		id.len = 1;
-		auth_id.value[0] = 3;
-		auth_id.len = 1;
-		sc_format_path(pgp_pubkey_path[i], &path);
-		sc_pkcs15emu_add_pubkey(p15card, &id,
-				pgp_key_name[i],
-				SC_PKCS15_TYPE_PUBKEY_RSA,
-				1024, pubkey_usage[i],
-				&path, 0, &auth_id, SC_PKCS15_CO_FLAG_MODIFIABLE);
+		struct sc_pkcs15_pubkey_info pubkey_info;
+		struct sc_pkcs15_object      pubkey_obj;
+
+		memset(&pubkey_info, 0, sizeof(pubkey_info));
+		memset(&pubkey_obj,  0, sizeof(pubkey_obj));
+
+		pubkey_info.id.len = 1;
+		pubkey_info.id.value[0] = i +1;
+		pubkey_info.modulus_length = 1024;
+		pubkey_info.usage    = pubkey_usage[i];
+		sc_format_path(pgp_pubkey_path[i], &pubkey_info.path);
+
+		strncpy(pubkey_obj.label, pgp_key_name[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
+		pubkey_obj.auth_id.len      = 1;
+		pubkey_obj.auth_id.value[0] = 3;
+		pubkey_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
+
+		r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
 	}
 
 	return 0;
@@ -201,7 +231,6 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 failed:	sc_error(card->ctx, "Failed to initialize OpenPGP emulation: %s\n",
 			sc_strerror(r));
 	return r;
-
 }
 
 static int openpgp_detect_card(sc_pkcs15_card_t *p15card)
