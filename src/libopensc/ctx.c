@@ -335,8 +335,8 @@ void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 	if (!strncmp(conf_path, "%windir%", 8)) {
 		static char temp_path[PATH_MAX];
 
-		GetWindowsDirectory(opensc_conf_path, sizeof(temp_path));
-		strcat(opensc_conf_path, conf_path + 8);
+		GetWindowsDirectory(temp_path, sizeof(temp_path));
+		strcat(temp_path, conf_path + 8);
 		conf_path = temp_path;
 	}
 #endif
