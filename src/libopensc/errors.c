@@ -40,6 +40,8 @@ const char *sc_strerror(int error)
 		"Message too long (keypad)",
 		"Timeout while waiting for event (card reader)",
 		"Unresponsive card (correctly inserted?)",
+		"Reader detached (hotplug device?)",
+		"Reader reattached (hotplug device?)",
 	};
 	const int rdr_base = -SC_ERROR_READER;
 	const char *card_errors[] = {

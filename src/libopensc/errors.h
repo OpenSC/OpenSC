@@ -43,6 +43,8 @@ extern "C" {
 #define SC_ERROR_KEYPAD_MSG_TOO_LONG		-1111
 #define SC_ERROR_EVENT_TIMEOUT			-1112
 #define SC_ERROR_CARD_UNRESPONSIVE		-1113
+#define SC_ERROR_READER_DETACHED		-1114
+#define SC_ERROR_READER_REATTACHED		-1115
 
 /* Resulting from a card command or related to the card*/
 #define SC_ERROR_CARD_CMD_FAILED		-1200
