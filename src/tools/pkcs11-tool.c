@@ -70,6 +70,7 @@ const struct option options[] = {
 	{ "input-file",		1, 0,		'i' },
 	{ "output-file",	1, 0,		'o' },
 	{ "module",		1, 0,		OPT_MODULE },
+
 	{ "test",		0, 0,		't' },
 	{ "moz-cert",		1, 0,		'z' },
 	{ "verbose",		0, 0,		'v' },
@@ -79,8 +80,8 @@ const struct option options[] = {
 const char *option_help[] = {
 	"Show global token information",
 	"List slots available on the token",
-	"Show slot information",
 	"List mechanisms supported by the token",
+	"Show objects on token",
 
 	"Sign some data",
 	"Hash some data",
@@ -96,9 +97,9 @@ const char *option_help[] = {
 	"Specify the type of object (e.g. cert, privkey, pubkey)",
 	"Specify the id of the object",
 	"Specify the label of the object",
-	"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
 	"Specify number of the slot to use",
 	"Specify label of the slot to use",
+	"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
 	"Specify the input file",
 	"Specify the output file",
 	"Specify the module to load",
