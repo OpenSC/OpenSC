@@ -567,6 +567,9 @@ struct sc_card_operations {
 	 */
 	int (*pin_cmd)(struct sc_card *, struct sc_pin_cmd_data *,
 				int *tries_left);
+
+	int (*get_data)(sc_card_t *, unsigned int, u8 *, size_t);
+	int (*put_data)(sc_card_t *, unsigned int, const u8 *, size_t);
 };
 
 struct sc_card_driver {
@@ -747,6 +750,10 @@ int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
 int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
 		     size_t count, unsigned long flags);
 
+/* get/put data functions */
+int sc_get_data(sc_card_t *, unsigned int, u8 *, size_t);
+int sc_put_data(sc_card_t *, unsigned int, const u8 *, size_t);
+
 int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);
 
 /* ISO 7816-8 related functions */
@@ -851,6 +858,7 @@ extern struct sc_card_driver *sc_get_mcrd_driver(void);
 extern struct sc_card_driver *sc_get_setcos_driver(void);
 extern struct sc_card_driver *sc_get_starcos_driver(void);
 extern struct sc_card_driver *sc_get_tcos_driver(void);
+extern struct sc_card_driver *sc_get_openpgp_driver(void);
 
 #ifdef  __cplusplus
 }
