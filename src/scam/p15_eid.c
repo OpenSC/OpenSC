@@ -65,11 +65,47 @@ const char *p15_eid_usage(void)
 	return &buf[0];
 }
 
+/*
+ * Select a card reader
+ */
+static sc_reader_t *
+p15_eid_select_reader(scam_context *sctx, const char *name)
+{
+	sc_context_t	*ctx = ((scam_method_data *) sctx->method_data)->ctx;
+	sc_reader_t	*reader;
+	int		i;
+
+	if (name) {
+		int	name_len = strlen(name);
+
+		for (i = 0; i < ctx->reader_count; i++) {
+			reader = ctx->reader[i];
+			if (name_len <= strlen(reader->name)
+			 && !strncmp(name, reader->name, name_len))
+			 	return reader;
+		}
+		scam_print_msg(sctx,
+				"Card Reader \"%s\" not present\n",
+				name);
+		return NULL;
+	}
+
+	for (i = 0; i < ctx->reader_count; i++) {
+		reader = ctx->reader[i];
+		if (sc_detect_card_presence(reader, 0) & SC_SLOT_CARD_PRESENT)
+			return reader;
+	}
+
+	scam_print_msg(sctx, "No smart card present\n");
+	return NULL;
+}
+
 int p15_eid_init(scam_context * sctx, int argc, const char **argv)
 {
 	scam_method_data *data = NULL;
-	char *reader_name = NULL;
-	int r, i, reader = 0;
+	const char *reader_name = NULL;
+	sc_reader_t *reader;
+	int r, i;
 
 	if (sctx->method_data) {
 		return SCAM_FAILED;
@@ -92,29 +128,19 @@ int p15_eid_init(scam_context * sctx, int argc, const char **argv)
 				continue;
 			switch (argv[i][1]) {
 			case 'r':
-				reader_name = strdup(optarg);
+				reader_name = optarg;
 				break;
 			}
 		}
 	}
-	if (!reader_name) {
-		for (i = 0; i < data->ctx->reader_count; i++) {
-			printf("Reader #%d - %s%s\n", i + 1, data->ctx->reader[i]->name, reader == i ? " (*)" : "");
-		}
-	} else {
-		for (i = 0; i < data->ctx->reader_count; i++) {
-			if ((strlen(reader_name) < strlen(data->ctx->reader[i]->name))) {
-				if (!strncmp(reader_name, data->ctx->reader[i]->name, strlen(reader_name))) {
-					reader = i;
-					printf("Reader #%d - %s selected\n", i + 1, data->ctx->reader[reader]->name);
-					break;
-				}
-			}
-		}
-		free(reader_name);
-	}
 
-	if ((r = sc_connect_card(data->ctx->reader[reader], 0, &data->card)) != SC_SUCCESS) {
+	/* Select a card reader */
+	if (!(reader = p15_eid_select_reader(sctx, reader_name)))
+		return SCAM_FAILED;
+
+	scam_print_msg(sctx, "Using card reader %s\n", reader->name);
+
+	if ((r = sc_connect_card(reader, 0, &data->card)) != SC_SUCCESS) {
 		scam_print_msg(sctx, "sc_connect_card: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
@@ -296,20 +322,31 @@ int p15_eid_auth(scam_context * sctx, int argc, const char **argv,
 		scam_print_msg(sctx, "sc_pkcs15_verify_pin: %s\n", sc_strerror(r));
 		goto end;
 	}
-	r = sc_pkcs15_compute_signature(data->p15card, data->prkey, SC_ALGORITHM_RSA_PAD_PKCS1,
+
+	/* We currently assume that all cards are capable of signing
+	 * a SHA1 digest - that's a much safer bet than going for
+	 * raw RSA.
+	 * The best solution would be to look at the list of supported
+	 * algorithms and pick an appropriate hash.
+	 *
+	 * Note the hash algorithm must match the first argument in the
+	 * call to RSA_verify below
+	 */
+	r = sc_pkcs15_compute_signature(data->p15card, data->prkey,
+					SC_ALGORITHM_RSA_PAD_PKCS1
+					| SC_ALGORITHM_RSA_HASH_SHA1,
 					random_data, 20, chg, chglen);
 	if (r < 0) {
 		scam_print_msg(sctx, "sc_pkcs15_compute_signature: %s\n", sc_strerror(r));
 		goto end;
 	}
-	r = RSA_public_decrypt(chglen, chg, txt, pubkey->pkey.rsa, RSA_PKCS1_PADDING);
-	if (r < 0) {
+
+	r = RSA_verify(NID_sha1, random_data, 20, chg, chglen, pubkey->pkey.rsa);
+	if (r != 1) {
 		scam_print_msg(sctx, "Signature verification failed.\n");
 		goto end;
 	}
-	if (r == sizeof(random_data) && !memcmp(txt, random_data, r)) {
-		err = SCAM_SUCCESS;
-	}
+	err = SCAM_SUCCESS;
       end:
 	if (pubkey)
 		EVP_PKEY_free(pubkey);
