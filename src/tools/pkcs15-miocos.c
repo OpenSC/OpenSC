@@ -82,7 +82,8 @@ static int miocos_init_app(struct sc_profile *profile, struct sc_card *card)
  */
 static int miocos_store_rsa_key(struct sc_profile *profile,
 				struct sc_card *card,
-				struct prkey_info *info, RSA *rsa)
+				struct sc_key_template *info,
+			       	RSA *rsa)
 {
 	return 0;
 }

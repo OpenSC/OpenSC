@@ -7,23 +7,44 @@
 #ifndef PKCS15_INIT_H
 #define PKCS15_INIT_H
 
+#include <openssl/evp.h>
 #include "profile.h"
 
 struct pkcs15_init_operations {
 	int	(*erase_card)(struct sc_profile *, struct sc_card *);
 	int	(*init_app)(struct sc_profile *, struct sc_card *);
+	int	(*allocate_file)(struct sc_profile *, struct sc_card *,
+			unsigned int, unsigned int, struct sc_file **out);
 	int	(*store_rsa)(struct sc_profile *, struct sc_card *,
-			struct prkey_info *, RSA *);
+			struct sc_key_template *, RSA *);
 	int	(*store_dsa)(struct sc_profile *, struct sc_card *,
-			struct prkey_info *, DSA *);
+			struct sc_key_template *, DSA *);
 };
 
-extern int	do_create_file(struct sc_profile *, struct sc_file *);
-extern int	do_create_and_update_file(struct sc_profile *,
+struct sc_pkcs15init_keyargs {
+	struct sc_pkcs15_id	id;
+	const char *		label;
+	const char *		template_name;
+
+	/* For key generation */
+	unsigned char		onboard_keygen;
+	unsigned int		algorithm;
+	unsigned int		keybits;
+
+	EVP_PKEY *		pkey;
+};
+
+extern int	sc_pkcs15init_add_app(struct sc_card *,
+				struct sc_profile *);
+extern int	sc_pkcs15init_generate_key(struct sc_pkcs15_card *,
+				struct sc_profile *,
+				struct sc_pkcs15init_keyargs *);
+extern int	sc_pkcs15init_create_file(struct sc_profile *,
+				struct sc_file *);
+extern int	sc_pkcs15init_update_file(struct sc_profile *,
 				struct sc_file *, void *, unsigned int);
-extern int	do_select_parent(struct sc_profile *, struct sc_file *,
-				struct sc_file **);
-extern int	do_verify_authinfo(struct sc_profile *, struct sc_file *, int);
+extern int	sc_pkcs15init_authenticate(struct sc_profile *,
+				struct sc_file *, int);
 
 /* Card specific stuff */
 extern void	bind_gpk_operations(struct pkcs15_init_operations *);

@@ -97,11 +97,7 @@ gpk_update_pins(struct sc_card *card, struct pin_info *info)
 		blk[3] = ~cks;
 	}
 
-	/* FIXME: we shouldn't have to know about the offset shift
-	 * here. Implement a gpk_update_binary function that just
-	 * shifts the offset if required.
-	 */
-	r = sc_update_binary(card, info->file_offset/4, buffer, npins * 8, 0);
+	r = sc_update_binary(card, info->file_offset, buffer, npins * 8, 0);
 
 	return r < 0;
 }
@@ -139,13 +135,13 @@ gpk_store_pin(struct sc_profile *profile, struct sc_card *card,
 	}
 
 	/* Now create the file */
-	if ((r = do_create_file(profile, pinfile)) < 0)
+	if ((r = sc_pkcs15init_create_file(profile, pinfile)) < 0)
 		goto out;
 
 	/* If messing with the PIN file requires any sort of
 	 * authentication, send it to the card now */
 	if ((r = sc_select_file(card, &pinfile->path, NULL)) < 0
-	 || (r = do_verify_authinfo(profile, pinfile, SC_AC_OP_UPDATE)) < 0)
+	 || (r = sc_pkcs15init_authenticate(profile, pinfile, SC_AC_OP_UPDATE)) < 0)
 		goto out;
 
 	r = gpk_update_pins(card, info);
@@ -158,16 +154,24 @@ static int
 gpk_lock_pinfile(struct sc_profile *profile, struct sc_card *card,
 		struct sc_file *pinfile)
 {
+	struct sc_path	path;
 	struct sc_file	*parent = NULL;
 	int		r;
 
-	/* If the UPDATE AC should be NEVER, set the AC now */
-	if ((r = do_select_parent(profile, pinfile, &parent)) != 0
-	 || (r = do_verify_authinfo(profile, parent, SC_AC_OP_LOCK)) != 0)
-		goto out;
-	r = gpk_lock(card, pinfile, SC_AC_OP_UPDATE);
-out:	if (parent)
-		sc_file_free(parent);
+	/* Select the parent DF */
+	path = pinfile->path;
+	if (path.len >= 2)
+		path.len -= 2;
+	if (path.len == 0)
+		sc_format_path("3F00", &path);
+	if ((r = sc_select_file(card, &path, &parent)) < 0)
+		return r;
+
+	/* Present PINs etc as necessary */
+	if (!(r = sc_pkcs15init_authenticate(profile, parent, SC_AC_OP_LOCK)))
+		r = gpk_lock(card, pinfile, SC_AC_OP_UPDATE);
+
+	sc_file_free(parent);
 	return r;
 }
 
@@ -220,7 +224,7 @@ gpk_init_app(struct sc_profile *profile, struct sc_card *card)
 	 * in the application DF, create that file first */
 
 	/* Create the application DF */
-	if (do_create_file(profile, profile->df_info.file))
+	if (sc_pkcs15init_create_file(profile, profile->df_info.file))
 		return 1;
 
 	/* Store CHV2 */
@@ -244,6 +248,82 @@ gpk_init_app(struct sc_profile *profile, struct sc_card *card)
 	if (lockit && gpk_lock_pinfile(profile, card, pin2->file->file))
 		return 1;
 
+	return 0;
+}
+
+/*
+ * Allocate a file
+ */
+static int
+gpk_allocate_file(struct sc_profile *profile, struct sc_card *card,
+		unsigned int type, unsigned int num,
+		struct sc_file **out)
+{
+	struct file_info *templ;
+	struct sc_file	*file;
+	struct sc_path	*p;
+	char		name[64], *tag, *desc;
+
+	desc = tag = NULL;
+	while (1) {
+		switch (type) {
+		case SC_PKCS15_TYPE_PRKEY_RSA:
+			desc = "RSA private key";
+			tag = "private-key";
+			break;
+		case SC_PKCS15_TYPE_PUBKEY_RSA:
+			desc = "RSA public key";
+			tag = "public-key";
+			break;
+#ifdef SC_PKCS15_TYPE_PRKEY_DSA
+		case SC_PKCS15_TYPE_PRKEY_RSA:
+			desc = "RSA private key";
+			tag = "data";
+			break;
+		case SC_PKCS15_TYPE_PUBKEY_RSA:
+			desc = "RSA public key";
+			tag = "data";
+			break;
+#endif
+		case SC_PKCS15_TYPE_CERT:
+			desc = "certificate";
+			tag = "data";
+			break;
+		case SC_PKCS15_TYPE_DATA_OBJECT:
+			desc = "data object";
+			tag = "data";
+			break;
+		}
+		if (tag)
+			break;
+		/* If this is a specific type such as
+		 * SC_PKCS15_TYPE_CERT_FOOBAR, fall back to
+		 * the generic class (SC_PKCS15_TYPE_CERT)
+		 */
+		if (!(type & ~SC_PKCS15_TYPE_CLASS_MASK)) {
+			error("File type not supported by card driver");
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
+		type &= SC_PKCS15_TYPE_CLASS_MASK;
+	}
+
+	snprintf(name, sizeof(name), "template-%s", tag);
+	if (!(templ = sc_profile_find_file(profile, name))) {
+		error("Profile doesn't define %s template (%s)\n",
+				desc, name);
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	/* Now construct file from template */
+	sc_file_dup(&file, templ->file);
+	file->id += num;
+
+	p = &file->path;
+	*p = profile->df_info.file->path;
+	p->value[p->len++] = file->id >> 8;
+	p->value[p->len++] = file->id;
+
+	*out = file;
 	return 0;
 }
 
@@ -282,7 +362,7 @@ gpk_pkfile_create(struct sc_profile *profile, struct sc_card *card,
 	r = sc_select_file(card, &file->path, &found);
 	card->ctx->log_errors = 1;
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
-		r = do_create_file(profile, file);
+		r = sc_pkcs15init_create_file(profile, file);
 		if (r >= 0)
 			r = sc_select_file(card, &file->path, &found);
 	} else {
@@ -290,7 +370,7 @@ gpk_pkfile_create(struct sc_profile *profile, struct sc_card *card,
 	}
 
 	if (r >= 0)
-		r = do_verify_authinfo(profile, file, SC_AC_OP_UPDATE);
+		r = sc_pkcs15init_authenticate(profile, file, SC_AC_OP_UPDATE);
 	if (found)
 		sc_file_free(found);
 
@@ -761,14 +841,14 @@ gpk_store_pk(struct sc_profile *profile, struct sc_card *card,
  */
 static int
 gpk_store_rsa_key(struct sc_profile *profile, struct sc_card *card,
-			struct prkey_info *info, RSA *rsa)
+		struct sc_key_template *info, RSA *rsa)
 {
 	struct pkdata	data;
 	int		r;
 
-	if ((r = gpk_encode_rsa_key(rsa, &data, info->pkcs15.usage)) < 0)
+	if ((r = gpk_encode_rsa_key(rsa, &data, info->pkcs15.priv.usage)) < 0)
 		return r;
-	return gpk_store_pk(profile, card, info->file->file, &data, info->key_acl);
+	return gpk_store_pk(profile, card, info->file, &data, info->key_acl);
 }
 
 /*
@@ -776,14 +856,14 @@ gpk_store_rsa_key(struct sc_profile *profile, struct sc_card *card,
  */
 static int
 gpk_store_dsa_key(struct sc_profile *profile, struct sc_card *card,
-			struct prkey_info *info, DSA *dsa)
+		struct sc_key_template *info, DSA *dsa)
 {
 	struct pkdata	data;
 	int		r;
 
-	if ((r = gpk_encode_dsa_key(dsa, &data, info->pkcs15.usage)) < 0)
+	if ((r = gpk_encode_dsa_key(dsa, &data, info->pkcs15.priv.usage)) < 0)
 		return r;
-	return gpk_store_pk(profile, card, info->file->file, &data, info->key_acl);
+	return gpk_store_pk(profile, card, info->file, &data, info->key_acl);
 }
 
 #ifdef notdef
@@ -810,6 +890,7 @@ bind_gpk_operations(struct pkcs15_init_operations *ops)
 {
 	ops->erase_card = gpk_erase_card;
 	ops->init_app = gpk_init_app;
+	ops->allocate_file = gpk_allocate_file;
 	ops->store_rsa = gpk_store_rsa_key;
 	ops->store_dsa = gpk_store_dsa_key;
 }
