@@ -311,6 +311,8 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *card,
 int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
 				  const struct sc_pkcs15_id *id,
 				  struct sc_pkcs15_object **out);
+int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *card,
+			struct sc_pkcs15_object **out);
 
 int sc_pkcs15_encode_dir(struct sc_context *ctx,
 			struct sc_pkcs15_card *card,

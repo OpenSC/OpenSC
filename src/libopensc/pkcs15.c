@@ -751,6 +751,38 @@ int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *p15card,
 	return find_by_id(p15card, SC_PKCS15_TYPE_AUTH_PIN, id, out);
 }
 
+static int
+compare_flags(struct sc_pkcs15_object *obj, void *arg)
+{
+	struct sc_pkcs15_pin_info *pin;
+	unsigned int	*match = (unsigned int *) arg;
+
+	assert (obj->type == SC_PKCS15_TYPE_AUTH_PIN);
+	pin = (struct sc_pkcs15_pin_info *) obj->data;
+	return (pin->flags & match[0]) == match[1];
+}
+
+int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *p15card,
+			struct sc_pkcs15_object **out)
+{
+	unsigned int	match[2];
+	int r;
+	
+	/* The PIN flags are masked with the first word and
+	 * compared to the second word. */
+	match[0] = SC_PKCS15_PIN_FLAG_SO_PIN;
+	match[1] = SC_PKCS15_PIN_FLAG_SO_PIN;
+
+	r = sc_pkcs15_get_objects_cond(p15card,
+			SC_PKCS15_TYPE_AUTH_PIN, compare_flags,
+			match, out, 1);
+	if (r < 0)
+		return r;
+	if (r == 0)
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	return 0;
+}
+
 int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df,
                          int file_nr, struct sc_pkcs15_object *obj)
 {
