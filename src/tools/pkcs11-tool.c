@@ -762,9 +762,6 @@ sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		if (rv != CKR_OK)
 			p11_fatal("C_SignUpdate", rv);
 	}
-	if (rv < 0)
-		fatal("failed to read from %s: %m",
-				opt_input? opt_input : "<stdin>");
 	if (fd != 0)
 		close(fd);
 
@@ -824,9 +821,7 @@ hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		if (rv != CKR_OK)
 			p11_fatal("C_DigestUpdate", rv);
 	}
-	if (rv < 0)
-		fatal("failed to read from %s: %m",
-				opt_input? opt_input : "<stdin>");
+
 	if (fd != 0)
 		close(fd);
 
@@ -1134,7 +1129,7 @@ find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags, int stop_if_not_found)
 
 
 #define ATTR_METHOD(ATTR, TYPE) \
-TYPE \
+static TYPE \
 get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj) \
 { \
 	TYPE		type; \
@@ -1148,7 +1143,7 @@ get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj) \
 }
 
 #define VARATTR_METHOD(ATTR, TYPE) \
-TYPE * \
+static TYPE * \
 get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, CK_ULONG_PTR pulCount) \
 { \
 	CK_ATTRIBUTE	attr = { CKA_##ATTR, NULL, 0 }; \
@@ -1683,7 +1678,7 @@ test_digest(CK_SLOT_ID slot)
 }
 
 #ifdef HAVE_OPENSSL
-EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject)
+static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject)
 {
 	unsigned char  *id;
 	CK_ULONG        idLen;
@@ -1726,11 +1721,11 @@ EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObje
 }
 #endif
 
-int sign_verify_openssl(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+static int sign_verify_openssl(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_MECHANISM *ck_mech, CK_OBJECT_HANDLE privKeyObject,
 		unsigned char *data, CK_ULONG dataLen,
 		unsigned char *verifyData, CK_ULONG verifyDataLen,
-		int modLenBytes, int evp_md_index)
+		CK_ULONG modLenBytes, int evp_md_index)
 {
 	int 		errors = 0;
 	CK_RV           rv;
