@@ -42,11 +42,13 @@
 
 struct pcsc_global_private_data {
 	SCARDCONTEXT pcsc_ctx;
+	int apdu_fix;  /* flag to indicate whether to 'fix' some T=0 APDUs */
 };
 
 struct pcsc_private_data {
 	SCARDCONTEXT pcsc_ctx;
 	char *reader_name;
+	struct pcsc_global_private_data *gpriv;
 };
 
 struct pcsc_slot_data {
@@ -112,6 +114,22 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	sSendPci.cbPciLength = 0;
 	sRecvPci.dwProtocol = opensc_proto_to_pcsc(slot->active_protocol);
 	sRecvPci.cbPciLength = 0;
+	
+	if (reader->gpriv->apdu_fix && sendsize >= 6) {
+		/* Check if the APDU in question is of Case 4 */
+		const u8 *p = sendbuf;
+		int lc;
+		
+		p += 4;
+		lc = *p;
+		if (lc == 0)
+			lc = 256;
+		if (sendsize == lc + 6) {
+			/* Le is present, cut it out */
+			debug(reader->ctx, "Cutting out Le byte from Case 4 APDU\n");
+			sendsize--;
+		}
+	}
 	
 	dwSendLength = sendsize;
 	dwRecvLength = *recvsize;
@@ -292,6 +310,8 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	SCARDCONTEXT pcsc_ctx;
 	int r;
 	struct pcsc_global_private_data *gpriv;
+	scconf_block **blocks = NULL, *conf_block = NULL;
+	int apdu_fix;
 
 	rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL, "localhost", NULL,
 				   &pcsc_ctx);
@@ -309,6 +329,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	gpriv->pcsc_ctx = pcsc_ctx;
+	gpriv->apdu_fix = 0;
 	*reader_data = gpriv;
 	
 	reader_buf = (char *) malloc(sizeof(char) * reader_buf_size);
@@ -332,6 +353,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		reader->driver = &pcsc_drv;
 		reader->slot_count = 1;
 		reader->name = strdup(p);
+		priv->gpriv = gpriv;
 		priv->pcsc_ctx = pcsc_ctx;
 		priv->reader_name = strdup(p);
 		r = _sc_add_reader(ctx, reader);
@@ -352,6 +374,20 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		while (*p++ != 0);
 	} while (p < (reader_buf + reader_buf_size - 1));
 	free(reader_buf);
+	
+	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+					    "reader_driver", "pcsc");
+		conf_block = blocks[0];
+		free(blocks);
+		if (conf_block != NULL)
+			break;
+	}
+	if (conf_block == NULL)
+		return 0;
+	apdu_fix = scconf_get_bool(conf_block, "apdu_fix", 0);
+	if (apdu_fix)
+		gpriv->apdu_fix = apdu_fix;
 	
 	return 0;
 }
