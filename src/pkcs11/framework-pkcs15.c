@@ -41,20 +41,26 @@ extern struct sc_pkcs11_object_ops pkcs15_pubkey_ops;
 
 struct pkcs15_cert_object {
 	struct sc_pkcs11_object object;
-	struct sc_pkcs15_cert_info *cert_info;
-        struct sc_pkcs15_cert *cert;
+
+        struct sc_pkcs15_object *certificate_object;
+	struct sc_pkcs15_cert_info *certificate_info;
+        struct sc_pkcs15_cert *certificate;
 };
 
 struct pkcs15_prkey_object {
 	struct sc_pkcs11_object object;
+
+        struct sc_pkcs15_object *prkey_object;
 	struct sc_pkcs15_prkey_info *prkey_info;
         struct pkcs15_cert_object *cert_object;
 };
 
 struct pkcs15_pubkey_object {
 	struct sc_pkcs11_object object;
-	struct sc_pkcs15_rsa_pubkey *rsakey;
-	struct sc_pkcs15_cert_info *cert;
+
+        struct sc_pkcs15_object *certificate_object;
+	struct sc_pkcs15_cert_info *certificate_info;
+	struct sc_pkcs15_pubkey_rsa *rsakey;
 };
 
 /* PKCS#15 Framework */
@@ -95,7 +101,7 @@ static void pkcs15_init_token_info(struct sc_pkcs15_card *card, CK_TOKEN_INFO_PT
 
 static struct pkcs15_cert_object *pkcs15_add_cert_object(struct sc_pkcs11_slot *slot,
                                    struct sc_pkcs15_card *card,
-				   struct sc_pkcs15_cert_info *cert)
+				   struct sc_pkcs15_object *cert)
 {
 	struct pkcs15_cert_object *object;
         struct pkcs15_pubkey_object *obj2;
@@ -103,44 +109,50 @@ static struct pkcs15_cert_object *pkcs15_add_cert_object(struct sc_pkcs11_slot *
         /* Certificate object */
         object = (struct pkcs15_cert_object*) malloc(sizeof(struct pkcs15_cert_object));
 	object->object.ops = &pkcs15_cert_ops;
-	object->cert_info = cert;
-	sc_pkcs15_read_certificate(card, cert, &object->cert);
+	object->certificate_object = cert;
+        object->certificate_info = (struct sc_pkcs15_cert_info*) cert->data;
+	sc_pkcs15_read_certificate(card, object->certificate_info, &object->certificate);
 	pool_insert(&slot->object_pool, object, NULL);
 
         /* Corresponding public key */
         obj2 = (struct pkcs15_pubkey_object*) malloc(sizeof(struct pkcs15_pubkey_object));
 	obj2->object.ops = &pkcs15_pubkey_ops;
-	obj2->rsakey = &object->cert->key;
-        obj2->cert = cert;
+	obj2->rsakey = &object->certificate->key;
+	obj2->certificate_object = cert;
+        obj2->certificate_info = (struct sc_pkcs15_cert_info*) cert->data;
 	pool_insert(&slot->object_pool, obj2, NULL);
 
 	/* Mark as seen */
-	cert->com_attr.flags |= SC_PKCS15_CO_FLAG_OBJECT_SEEN;
+	cert->flags |= SC_PKCS15_CO_FLAG_OBJECT_SEEN;
 
         return object;
 }
 
 static struct pkcs15_prkey_object *pkcs15_add_prkey_object(struct sc_pkcs11_slot *slot,
-                                    struct sc_pkcs15_card *card,
-				    struct sc_pkcs15_prkey_info *prkey)
+							   struct sc_pkcs15_card *card,
+							   struct sc_pkcs15_object *prkey,
+							   struct sc_pkcs15_object **certs,
+                                                           int cert_count
+							  )
 {
 	struct pkcs15_prkey_object *object;
         int i;
 
         object = (struct pkcs15_prkey_object*) malloc(sizeof(struct pkcs15_prkey_object));
 	object->object.ops = &pkcs15_prkey_ops;
-        object->prkey_info = prkey;
+        object->prkey_object = prkey;
+        object->prkey_info = (struct sc_pkcs15_prkey_info*) prkey->data;
 	pool_insert(&slot->object_pool, object, NULL);
 
 	/* Mark as seen */
-        prkey->com_attr.flags |= SC_PKCS15_CO_FLAG_OBJECT_SEEN;
+        prkey->flags |= SC_PKCS15_CO_FLAG_OBJECT_SEEN;
 
 	/* Also add the related certificate if found */
-	for (i=0; i<card->cert_count; i++) {
-		if (sc_pkcs15_compare_id(&prkey->id,
-					 &card->cert_info[i].id)) {
+	for (i=0; i < cert_count; i++) {
+		if (sc_pkcs15_compare_id(&object->prkey_info->id,
+					 &((struct sc_pkcs15_cert_info*)certs[i]->data)->id)) {
 			debug(context, "Adding certificate %d relating to private key\n", i);
-                        object->cert_object = pkcs15_add_cert_object(slot, card, &card->cert_info[i]);
+                        object->cert_object = pkcs15_add_cert_object(slot, card, certs[i]);
                         break;
 		}
 	}
@@ -152,39 +164,49 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 {
         struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
 	struct sc_pkcs11_slot *slot;
-        int i, j, rv, reader = p11card->reader;
 
-	debug(context, "Enumerating PINS\n");
-	rv = sc_pkcs15_enum_pins(card);
+	struct sc_pkcs15_object
+		*auths[SC_PKCS15_MAX_PINS],
+		*certs[SC_PKCS15_MAX_CERTS],
+		*prkeys[SC_PKCS15_MAX_PRKEYS];
+
+	int i, j, rv, reader = p11card->reader;
+        int auth_count, cert_count, prkey_count;
+
+        rv = auth_count = sc_pkcs15_get_objects(card, SC_PKCS15_TYPE_AUTH_PIN, auths, SC_PKCS15_MAX_PINS);
 	if (rv < 0)
                 return sc_to_cryptoki_error(rv, reader);
+	debug(context, "Found %d authentication objects\n", auth_count);
 
-	debug(context, "Enumerating certs\n");
-	rv = sc_pkcs15_enum_certificates(card);
+        rv = cert_count = sc_pkcs15_get_objects(card, SC_PKCS15_TYPE_CERT_X509, certs, SC_PKCS15_MAX_CERTS);
 	if (rv < 0)
                 return sc_to_cryptoki_error(rv, reader);
+	debug(context, "Found %d certificates\n", cert_count);
 
-	debug(context, "Enumerating private keys\n");
-	rv = sc_pkcs15_enum_private_keys(card);
+        rv = prkey_count = sc_pkcs15_get_objects(card, SC_PKCS15_TYPE_PRKEY_RSA, prkeys, SC_PKCS15_MAX_PRKEYS);
  	if (rv < 0)
                 return sc_to_cryptoki_error(rv, reader);
+	debug(context, "Found %d private keys\n", prkey_count);
 
-	for (i = 0; i < card->pin_count; i++) {
-                char tmp[33];
+	for (i = 0; i < auth_count; i++) {
+		char tmp[33];
+                struct sc_pkcs15_pin_info *pin_info;
 
 		rv = slot_allocate(&slot, p11card);
 		if (rv != CKR_OK)
 			return rv;
 
 		pkcs15_init_token_info(card, &slot->token_info);
-                slot->fw_data = &card->pin_info[i];
+		slot->fw_data = auths[i];
 
-		snprintf(tmp, sizeof(tmp), "%s (%s)", card->label, card->pin_info[i].com_attr.label);
+                pin_info = (struct sc_pkcs15_pin_info*) auths[i]->data;
+
+		snprintf(tmp, sizeof(tmp), "%s (%s)", card->label, auths[i]->label);
 		strcpy_bp(slot->token_info.label, tmp, 32);
 
-		if (card->pin_info[i].magic == SC_PKCS15_PIN_MAGIC) {
-			slot->token_info.ulMaxPinLen = card->pin_info[i].stored_length;
-			slot->token_info.ulMinPinLen = card->pin_info[i].min_length;
+		if (pin_info->magic == SC_PKCS15_PIN_MAGIC) {
+			slot->token_info.ulMaxPinLen = pin_info->stored_length;
+			slot->token_info.ulMinPinLen = pin_info->min_length;
 		} else {
 			/* choose reasonable defaults */
 			slot->token_info.ulMaxPinLen = 8;
@@ -195,11 +217,11 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		debug(context, "Initialized token '%s'\n", tmp);
 
 		/* Add all the private keys related to this pin */
-		for (j=0; j<card->prkey_count; j++) {
-			if (sc_pkcs15_compare_id(&card->pin_info[i].auth_id,
-						 &card->prkey_info[j].com_attr.auth_id)) {
+		for (j=0; j < prkey_count; j++) {
+			if (sc_pkcs15_compare_id(&pin_info->auth_id,
+						 &prkeys[j]->auth_id)) {
                                 debug(context, "Adding private key %d to PIN %d\n", j, i);
-				pkcs15_add_prkey_object(slot, card, &card->prkey_info[j]);
+				pkcs15_add_prkey_object(slot, card, prkeys[j], certs, cert_count);
 			}
 		}
 	}
@@ -217,48 +239,20 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	slot->token_info.flags = 0;
 
 	/* Add all the remaining private keys */
-	for (j=0; j<card->prkey_count; j++) {
-		if (!(card->prkey_info[j].com_attr.flags & SC_PKCS15_CO_FLAG_OBJECT_SEEN)) {
+	for (j=0; j < prkey_count; j++) {
+		if (!(prkeys[j]->flags & SC_PKCS15_CO_FLAG_OBJECT_SEEN)) {
                         debug(context, "Private key %d was not seen previously\n", j);
-			pkcs15_add_prkey_object(slot, card, &card->prkey_info[j]);
+			pkcs15_add_prkey_object(slot, card, prkeys[j], certs, cert_count);
 		}
 	}
 
 	/* Add all the remaining certificates */
-	for (j=0; j<card->cert_count; j++) {
-		if (!(card->cert_info[j].com_attr.flags & SC_PKCS15_CO_FLAG_OBJECT_SEEN)) {
+	for (j=0; j < cert_count; j++) {
+		if (!(certs[j]->flags & SC_PKCS15_CO_FLAG_OBJECT_SEEN)) {
                         debug(context, "Certificate %d was not seen previously\n", j);
-			pkcs15_add_cert_object(slot, card, &card->cert_info[j]);
+			pkcs15_add_cert_object(slot, card, certs[j]);
 		}
 	}
-
-
-/*
-	for (i = 0; c < card->cert_count; c++) {
-		struct sc_pkcs15_cert *cert;
-		struct sc_pkcs15_cert_info *cinfo = &p15card->cert_info[c];
-
-		LOG("Reading '%s' certificate.\n", cinfo->com_attr.label);
-		r = sc_pkcs15_read_certificate(p15card, cinfo, &cert);
-		if (r)
-			return r;
-		LOG("Adding '%s' certificate object (id %X).\n",
-		    cinfo->com_attr.label, cinfo->id);
-		slot_add_certificate_object(id, c, cinfo, cert);
-		
-		for (i = 0; i < p15card->prkey_count; i++) {
-			struct sc_pkcs15_prkey_info *pinfo = &p15card->prkey_info[i];
-			if (sc_pkcs15_compare_id(&cinfo->id, &pinfo->id)) {
-				LOG("Adding '%s' private key object (id %X).\n", 
-				    pinfo->com_attr.label, pinfo->id.value[0]);
-				if (slot_add_private_key_object(id, i, pinfo, cert))
-					LOG("Private key addition failed.\n");
-			}
-		}
-		sc_pkcs15_free_certificate(cert);
-	}
-	*/
-
 
 	debug(context, "All tokens created\n");
 	return CKR_OK;
@@ -320,9 +314,11 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 {
 	int rc;
 	struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
-	struct sc_pkcs15_pin_info *pin = (struct sc_pkcs15_pin_info*) fw_token;
+        struct sc_pkcs15_object *auth_object = (struct sc_pkcs15_object*) fw_token;
+	struct sc_pkcs15_pin_info *pin = (struct sc_pkcs15_pin_info*) auth_object->data;
 
 	rc = sc_pkcs15_verify_pin(card, pin, pPin, ulPinLen);
+        debug(context, "PIN verification returned %d\n", rc);
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
@@ -350,7 +346,7 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 void pkcs15_cert_release(void *obj)
 {
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object *) obj;
-	sc_pkcs15_free_certificate(cert->cert);
+	sc_pkcs15_free_certificate(cert->certificate);
 }
 
 CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
@@ -374,29 +370,29 @@ CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = FALSE;
                 break;
 	case CKA_LABEL:
-		check_attribute_buffer(attr, strlen(cert->cert_info->com_attr.label));
-                memcpy(attr->pValue, cert->cert_info->com_attr.label, strlen(cert->cert_info->com_attr.label));
+		check_attribute_buffer(attr, strlen(cert->certificate_object->label));
+                memcpy(attr->pValue, cert->certificate_object->label, strlen(cert->certificate_object->label));
                 break;
 	case CKA_CERTIFICATE_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_CERTIFICATE_TYPE));
                 *(CK_CERTIFICATE_TYPE*)attr->pValue = CKC_X_509;
 		break;
 	case CKA_ID:
-		if (cert->cert_info->authority) {
+		if (cert->certificate_info->authority) {
 			check_attribute_buffer(attr, 1);
 			*(unsigned char*)attr->pValue = 0;
 		} else {
-			check_attribute_buffer(attr, cert->cert_info->id.len);
-			memcpy(attr->pValue, cert->cert_info->id.value, cert->cert_info->id.len);
+			check_attribute_buffer(attr, cert->certificate_info->id.len);
+			memcpy(attr->pValue, cert->certificate_info->id.value, cert->certificate_info->id.len);
                 }
                 break;
 	case CKA_TRUSTED:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = cert->cert_info->authority?TRUE:FALSE;
+		*(CK_BBOOL*)attr->pValue = cert->certificate_info->authority?TRUE:FALSE;
                 break;
 	case CKA_VALUE:
-		check_attribute_buffer(attr, cert->cert->data_len);
-		memcpy(attr->pValue, cert->cert->data, cert->cert->data_len);
+		check_attribute_buffer(attr, cert->certificate->data_len);
+		memcpy(attr->pValue, cert->certificate->data, cert->certificate->data_len);
 		break;
         /*
 	case CKA_SUBJECT:
@@ -456,8 +452,8 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = FALSE;
                 break;
 	case CKA_LABEL:
-		check_attribute_buffer(attr, strlen(prkey->prkey_info->com_attr.label));
-                memcpy(attr->pValue, prkey->prkey_info->com_attr.label, strlen(prkey->prkey_info->com_attr.label));
+		check_attribute_buffer(attr, strlen(prkey->prkey_object->label));
+                memcpy(attr->pValue, prkey->prkey_object->label, strlen(prkey->prkey_object->label));
 		break;
 	case CKA_KEY_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
@@ -472,10 +468,10 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
                 *(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
 	case CKA_MODULUS:
-		check_attribute_buffer(attr, prkey->cert_object->cert->key.modulus_len);
+		check_attribute_buffer(attr, prkey->cert_object->certificate->key.modulus_len);
 		memcpy(attr->pValue,
-		       prkey->cert_object->cert->key.modulus,
-		       prkey->cert_object->cert->key.modulus_len);
+		       prkey->cert_object->certificate->key.modulus,
+		       prkey->cert_object->certificate->key.modulus_len);
                 break;
 	case CKA_PUBLIC_EXPONENT:
 	case CKA_PRIVATE_EXPONENT:
@@ -579,16 +575,16 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = FALSE;
                 break;
 	case CKA_LABEL:
-		check_attribute_buffer(attr, strlen(pubkey->cert->com_attr.label));
-                memcpy(attr->pValue, pubkey->cert->com_attr.label, strlen(pubkey->cert->com_attr.label));
+		check_attribute_buffer(attr, strlen(pubkey->certificate_object->label));
+                memcpy(attr->pValue, pubkey->certificate_object->label, strlen(pubkey->certificate_object->label));
 		break;
 	case CKA_KEY_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
                 *(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
                 break;
 	case CKA_ID:
-		check_attribute_buffer(attr, pubkey->cert->id.len);
-		memcpy(attr->pValue, pubkey->cert->id.value, pubkey->cert->id.len);
+		check_attribute_buffer(attr, pubkey->certificate_info->id.len);
+		memcpy(attr->pValue, pubkey->certificate_info->id.value, pubkey->certificate_info->id.len);
                 break;
 	case CKA_KEY_GEN_MECHANISM:
 		check_attribute_buffer(attr, sizeof(CK_MECHANISM_TYPE));
