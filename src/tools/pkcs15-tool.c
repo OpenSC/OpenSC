@@ -323,10 +323,24 @@ int list_data_objects(void)
 	}
 	count = r;
 	for (i = 0; i < count; i++) {
+		int idx;
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 		struct sc_pkcs15_data *data_object;
 
-		printf("Reading data object <%i>, label = '%s'\n", i, cinfo->app_label);
+		printf("Reading data object <%i>\n", i);
+		printf("applicationName: %s\n", cinfo->app_label);
+		printf("applicationOID:  ");
+		if (cinfo->app_oid.value[0] >= 0) {
+			printf("%i", cinfo->app_oid.value[0]);
+			idx = 1;
+			while (idx < SC_MAX_OBJECT_ID_OCTETS) {
+				if (cinfo->app_oid.value[idx] < 0)
+					break;
+				printf(".%i", cinfo->app_oid.value[idx++]);
+			}
+			printf("\n");
+		} else
+			printf("NONE\n");
 		r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
 		if (r) {
 			fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
