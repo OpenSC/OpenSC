@@ -770,11 +770,51 @@ static int tcos_setperm(struct sc_card *card, int enable_nullpin)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
+/* read the card serial number from the EF_gdo system file */
+static int tcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
+{
+	int       r;
+	u8        buf[64];
+	size_t    len;
+	sc_path_t tpath;
+	sc_file_t *tfile = NULL;
+
+	if (!serial)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	/* see if we have cached serial number */
+	if (card->serialnr.len) {
+		memcpy(serial, &card->serialnr, sizeof(*serial));
+		return SC_SUCCESS;
+	}
+	/* read EF_gdo */
+	sc_format_path("3F002F02", &tpath);
+	r = sc_select_file(card, &tpath, &tfile);
+	if (r < 0)
+		return r;
+	len = tfile->size;
+	sc_file_free(tfile);
+	if (len > sizeof(buf) || len < 12)
+		return SC_ERROR_INTERNAL;
+	r = sc_read_binary(card, 0, buf, len, 0);
+	if (r < 0)
+		return r;
+	if (buf[0] != 0x5a || buf[1] > len - 2)
+		return SC_ERROR_INTERNAL;
+	card->serialnr.len = buf[1];	
+	memcpy(card->serialnr.value, buf+2, buf[1]);
+
+	memcpy(serial, &card->serialnr, sizeof(*serial));
+
+	return SC_SUCCESS;
+}
+
 static int tcos_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
 	switch (cmd) {
 	case SC_CARDCTL_TCOS_SETPERM:
 		return tcos_setperm(card, !!ptr);
+	case SC_CARDCTL_GET_SERIALNR:
+		return tcos_get_serialnr(card, (sc_serial_number_t *)ptr);
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }

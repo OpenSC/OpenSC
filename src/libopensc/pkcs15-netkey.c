@@ -21,6 +21,7 @@
  */
 
 #include "internal.h"
+#include "cardctl.h"
 #include "pkcs15.h"
 #include <stdlib.h>
 #include <string.h>
@@ -92,29 +93,16 @@ sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
 	unsigned char   ef_gdo[20];
 	unsigned char   serial[30];
 	int             i, r;
+	sc_serial_number_t serialnr;
 
-	/* Netkey cards serial file 2F02 has always length 12
-	 * format is:  5A 0A XX XX XX XX XX XX XX XX XX X0
-         * where XXXXXXXXXXXXXXXXXXX is the 19-digit serial number
-	 */
-
-	sc_format_path("2F02", &path);
-	card->ctx->suppress_errors++;
-	r=sc_select_file(card, &path, &file);
-	card->ctx->suppress_errors--;
-	if (r<0 || file->size!=12) {
-		sc_debug(ctx, "Cannot read 2F02 (r=%d)\n", r);
+	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serialnr);
+	if (r < 0) {
+		sc_debug(ctx, "unable to get ICCSN\n");
 		r = SC_ERROR_WRONG_CARD;
 		goto failed;
 	}
-	sc_read_binary(card, 0, ef_gdo, 12, 0);
-	if (ef_gdo[0]!=0x5A || ef_gdo[1]!=10) {
-		r = SC_ERROR_WRONG_CARD;
-		sc_debug(ctx, "Invalid 2F02 content %02X %02X ...\n", ef_gdo[0], ef_gdo[1]);
-		goto failed; 	
-	}
-        sc_bin_to_hex(ef_gdo+2, 10 , serial, sizeof(serial), 0);
-	serial[19]='\0';
+        sc_bin_to_hex(serialnr.value, serialnr.len , serial, sizeof(serial), 0);
+	serial[19] = '\0';
         set_string(&p15card->serial_number, serial);
 	set_string(&p15card->label, "Netkey E4 Card");
 	set_string(&p15card->manufacturer_id, "TeleSec");
