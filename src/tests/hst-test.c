@@ -50,6 +50,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "PKCS#15 card init failed: %s\n", sc_strerror(i));
     return 1;
   }
+  sc_pkcs15_print_card(p15_card);
   return 0;
   i = sc_pkcs15_read_certificate(p15_card, 0);
   if (i) {

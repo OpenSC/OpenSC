@@ -159,17 +159,26 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 			return CKR_DEVICE_ERROR;
 		}
 	}
-	strcpy(pInfo->label, p15card[slotID]->label);
-	strcpy(pInfo->manufacturerID, "unknown");
-	strcpy(pInfo->model, "unknown");
-	strcpy(pInfo->serialNumber, "unknown");
+	strncpy(pInfo->label, p15card[slotID]->label, 32);
+	pInfo->label[31] = 0;
+	strncpy(pInfo->manufacturerID, p15card[slotID]->manufacturer_id, 32);
+	pInfo->manufacturerID[31] = 0;
+	strcpy(pInfo->model, "PKCS#15 SC");
+	strncpy(pInfo->serialNumber, p15card[slotID]->serial_number, 16);
+	pInfo->serialNumber[15] = 0;
 	pInfo->flags = CKF_LOGIN_REQUIRED | CKF_USER_PIN_INITIALIZED;
 	pInfo->ulMaxSessionCount = 1;	/* opened in exclusive mode */
 	pInfo->ulSessionCount = 0;
 	pInfo->ulMaxRwSessionCount = 1;
 	pInfo->ulRwSessionCount = 0;
-	pInfo->ulMaxPinLen = 8;	/* FIXME: get these from PIN objects */
-	pInfo->ulMinPinLen = 4;
+	if (p15card[slotID]->pins[0].magic == SC_PKCS15_PIN_MAGIC) {
+		pInfo->ulMaxPinLen = p15card[slotID]->pins[0].stored_length;
+		pInfo->ulMinPinLen = p15card[slotID]->pins[0].min_length;
+	} else {
+		/* choose reasonable defaults */
+		pInfo->ulMaxPinLen = 8;
+		pInfo->ulMinPinLen = 4;
+	}
 	pInfo->ulTotalPublicMemory = 0;
 	pInfo->ulFreePublicMemory = 0;
 	pInfo->ulTotalPrivateMemory = 0;
