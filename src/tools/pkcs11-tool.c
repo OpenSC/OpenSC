@@ -742,12 +742,12 @@ sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 #ifdef _WIN32
 	if (opt_output == NULL)
 		fd = 1;
-	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY, 0666)) < 0)
+	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, 0666)) < 0)
 		fatal("failed to open %s: %m", opt_output);
 #else
 	if (opt_output == NULL)
 		fd = 1;
-	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, 0666)) < 0)
+	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY, 0666)) < 0)
 		fatal("failed to open %s: %m", opt_output);
 #endif /* _WIN32 */
 
