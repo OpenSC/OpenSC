@@ -23,6 +23,12 @@
 
 static struct sc_pkcs11_framework_ops *frameworks[] = {
         &framework_pkcs15,
+
+	/* This should be the last framework, because it
+	 * will assume the card is blank and try to initialize it */
+#ifdef HAVE_OPENSSL
+	&framework_pkcs15init,
+#endif
 	NULL
 };
 
@@ -46,6 +52,7 @@ CK_RV card_initialize(int reader)
 
 CK_RV card_detect(int reader)
 {
+	struct sc_pkcs11_card *card;
         int rc, rv, i;
 
         rv = CKR_OK;
@@ -71,9 +78,9 @@ CK_RV card_detect(int reader)
 	if (card_table[reader].framework == NULL) {
 		debug(context, "%d: Detecting Framework\n", reader);
 
-		i = 0;
-		while (frameworks[i] != NULL) {
-			rv = frameworks[i]->bind(&card_table[reader]);
+		card = &card_table[reader];
+		for (i = 0; frameworks[i]; i++) {
+			rv = frameworks[i]->bind(card);
 			if (rv == CKR_OK)
 				break;
 		}
@@ -83,7 +90,7 @@ CK_RV card_detect(int reader)
 
 		/* Initialize framework */
 		debug(context, "%d: Detected framework %d. Creating tokens.\n", reader, i);
-		rv = frameworks[i]->create_tokens(&card_table[reader]);
+		rv = frameworks[i]->create_tokens(card);
 		if (rv != CKR_OK)
                         return rv;
 
@@ -108,11 +115,13 @@ CK_RV card_removed(int reader)
 	}
 
 	card = &card_table[reader];
-	card->framework->unbind(card);
+	if (card->framework)
+		card->framework->unbind(card);
 	card->framework = NULL;
 	card->fw_data = NULL;
 
-	sc_disconnect_card(card->card, 0);
+	if (card->card)
+		sc_disconnect_card(card->card, 0);
         card->card = NULL;
 
         return CKR_OK;

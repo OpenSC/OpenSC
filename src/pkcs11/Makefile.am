@@ -6,12 +6,18 @@ MAINTAINERCLEANFILES = Makefile.in
 
 SUBDIRS = . rsaref
 
-INCLUDES = @CFLAGS_OPENSC@
+if HAVE_SSL
+SSL_SRC	= framework-pkcs15init.c
+SSL_LIBS = ../pkcs15init/libpkcs15init.la
+SSL_INCLUDES = -I../pkcs15init
+endif
 
-LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBOPENSC@
+INCLUDES = @CFLAGS_OPENSC@ $(SSL_INCLUDES)
+
+LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBOPENSC@ $(SSL_LIBS)
 
 SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
-	secretkey.c framework-pkcs15.c
+	secretkey.c framework-pkcs15.c $(SSL_SRC)
 INC = sc-pkcs11.h
 
 lib_LTLIBRARIES = opensc-pkcs11.la

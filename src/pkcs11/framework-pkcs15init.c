@@ -1,0 +1,165 @@
+/*
+ * framework-pkcs15.c: PKCS#15 framework and related objects
+ *
+ * Copyright (C) 2002  Timo Teräs <timo.teras@iki.fi>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+#include <stdlib.h>
+#include <malloc.h>
+#include <string.h>
+#include "sc-pkcs11.h"
+#ifdef HAVE_OPENSSL
+#include "pkcs15-init.h"
+#endif
+
+/*
+ * Deal with uninitialized cards
+ */
+static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card)
+{
+	struct sc_card	*card = p11card->card;
+	struct sc_profile *profile;
+	int		rc;
+
+	card->ctx->log_errors = 0;
+	rc = sc_pkcs15init_bind(card, "pkcs15", &profile);
+	card->ctx->log_errors = 1;
+	if (rc == 0)
+		p11card->fw_data = profile;
+	return sc_to_cryptoki_error(rc, p11card->reader);
+}
+
+static CK_RV pkcs15init_unbind(struct sc_pkcs11_card *p11card)
+{
+	struct sc_profile *profile;
+
+	profile = (struct sc_profile *) p11card->fw_data;
+	sc_profile_free(profile);
+	return CKR_OK;
+}
+
+static CK_RV pkcs15init_create_tokens(struct sc_pkcs11_card *p11card)
+{
+	struct sc_profile	*profile;
+	struct sc_pkcs11_slot	*slot;
+
+	profile = (struct sc_profile *) p11card->fw_data;
+	while (slot_allocate(&slot, p11card) == CKR_OK) {
+		CK_TOKEN_INFO_PTR pToken = &slot->token_info;
+		const char	*string;
+
+		strcpy_bp(pToken->model, "PKCS #15 SCard", 16);
+		sc_pkcs15init_get_manufacturer(profile, &string);
+		if (!string)
+			string = "Unknown";
+		strcpy_bp(pToken->manufacturerID, string, 32);
+		sc_pkcs15init_get_serial(profile, &string);
+		if (!string)
+			string = "";
+		strcpy_bp(pToken->serialNumber, string, 16);
+		pToken->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
+		pToken->ulSessionCount = 0; /* FIXME */
+		pToken->ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
+		pToken->ulRwSessionCount = 0; /* FIXME */
+		pToken->ulTotalPublicMemory = CK_UNAVAILABLE_INFORMATION;
+		pToken->ulFreePublicMemory = CK_UNAVAILABLE_INFORMATION;
+		pToken->ulTotalPrivateMemory = CK_UNAVAILABLE_INFORMATION;
+		pToken->ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
+		pToken->hardwareVersion.major = 1;
+		pToken->hardwareVersion.minor = 0;
+		pToken->firmwareVersion.major = 1;
+		pToken->firmwareVersion.minor = 0;
+	}
+
+	return CKR_OK;
+}
+
+static CK_RV
+pkcs15init_release_token(struct sc_pkcs11_card *p11card, void *ptr)
+{
+	return CKR_OK;
+}
+
+static CK_RV
+pkcs15init_get_mechanism_list(struct sc_pkcs11_card *p11card, void *ptr,
+		CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount)
+{
+	return CKR_CRYPTOKI_NOT_INITIALIZED;
+}
+
+static CK_RV
+pkcs15init_get_mechanism_info(struct sc_pkcs11_card *p11card, void *ptr,
+		CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo)
+{
+	return CKR_CRYPTOKI_NOT_INITIALIZED;
+}
+
+static CK_RV
+pkcs15init_login(struct sc_pkcs11_card *p11card, void *ptr,
+		CK_CHAR_PTR pin, CK_ULONG pinLength)
+{
+	return CKR_CRYPTOKI_NOT_INITIALIZED;
+}
+
+static CK_RV
+pkcs15init_logout(struct sc_pkcs11_card *p11card, void *ptr)
+{
+	return CKR_CRYPTOKI_NOT_INITIALIZED;
+}
+
+static CK_RV
+pkcs15init_change_pin(struct sc_pkcs11_card *p11card, void *ptr,
+			CK_CHAR_PTR oldPin, CK_ULONG oldPinLength,
+			CK_CHAR_PTR newPin, CK_ULONG newPinLength)
+{
+	return CKR_CRYPTOKI_NOT_INITIALIZED;
+}
+
+static CK_RV
+pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
+		CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen,
+		CK_UTF8CHAR_PTR pLabel)
+{
+	struct sc_profile *profile = (struct sc_profile *) p11card->fw_data;
+	struct sc_pkcs15init_initargs args;
+	int		rc;
+
+	memset(&args, 0, sizeof(args));
+	args.so_pin = pPin;
+	args.so_pin_len = ulPinLen;
+	args.so_puk = pPin;
+	args.so_puk_len = ulPinLen;
+	args.label = pLabel;
+	rc = sc_pkcs15init_add_app(p11card->card, profile, &args);
+	if (rc >= 0)
+		return CKR_OK;
+
+	return sc_to_cryptoki_error(rc, p11card->reader);
+}
+
+struct sc_pkcs11_framework_ops framework_pkcs15init = {
+	pkcs15init_bind,
+	pkcs15init_unbind,
+	pkcs15init_create_tokens,
+	pkcs15init_release_token,
+	pkcs15init_get_mechanism_list,
+	pkcs15init_get_mechanism_info,
+	pkcs15init_login,
+	pkcs15init_logout,
+	pkcs15init_change_pin,
+	pkcs15init_initialize,
+};
