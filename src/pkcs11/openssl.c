@@ -313,7 +313,7 @@ CK_RV sc_pkcs11_verify_data(unsigned char *pubkey, int pubkey_len,
 		 */
 		else if (data_len == 16 && rsa_outlen == 34 && memcmp(rsa_out + 18, data, 16) == 0)
 			rv = CKR_OK;
-		else if (data_len = 20 && rsa_outlen == 35 && memcmp(rsa_out + 15, data, 20) == 0)
+		else if (data_len == 20 && rsa_outlen == 35 && memcmp(rsa_out + 15, data, 20) == 0)
 			rv = CKR_OK;
 		else
 			rv = CKR_SIGNATURE_INVALID;
