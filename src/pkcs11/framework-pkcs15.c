@@ -1263,6 +1263,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	rv = attr_find(pPubTpl, ulPubCnt, CKA_LABEL, pub_label, &len);
 	if (rv == CKR_OK) {
 		pub_label[len] = '\0';
+		keygen_args.pubkey_label = pub_label;
 		pub_args.label = pub_label;
 	}
 
