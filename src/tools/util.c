@@ -45,7 +45,7 @@ int connect_card(struct sc_context *ctx, struct sc_card **cardp,
 	} else {
 		if (reader_id < 0)
 			reader_id = 0;
-		if (ctx->reader_count) {
+		if (ctx->reader_count == 0) {
 			fprintf(stderr,
 				"No smart card readers configured.\n");
 			return 1;
