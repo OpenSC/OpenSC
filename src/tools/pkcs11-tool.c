@@ -26,6 +26,12 @@
 #include <opensc/pkcs11.h>
 #include "util.h"
 
+#ifdef HAVE_OPENSSL
+#include "openssl/evp.h"
+#include "openssl/x509.h"
+#include "openssl/err.h"
+#endif
+
 #define NEED_SESSION_RO	0x01
 #define NEED_SESSION_RW	0x02
 #define NO_SLOT		((CK_SLOT_ID) -1)
@@ -47,11 +53,14 @@ const struct option options[] = {
 	{ "mechanism",		1, 0,		'm' },
 
 	{ "login",		0, 0,		'l' },
+       { "pin",                1, 0,           'p' },
 	{ "slot",		1, 0,		OPT_SLOT },
 	{ "input-file",		1, 0,		'i' },
 	{ "output-file",	1, 0,		'o' },
 	{ "module",		1, 0,		OPT_MODULE },
 	{ "verbose",		0, 0,		'v' },
+
+       { "test",               0, 0,           't' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -65,12 +74,15 @@ const char *option_help[] = {
 	"Hash some data",
 	"Specify mechanism (use -M for a list of supported mechanisms)",
 
-	"Log into the token first",
+	"Log into the token first (not needed when using --pin)",
+	"Supply PIN on the command line (if used in scripts: careful!)",
 	"Specify the slot to use",
 	"Specify the input file",
 	"Specify the output file",
 	"Specify the module to load",
 	"Verbose output",
+
+       "Test (best used with the --login or --pin option)",
 };
 
 const char *		app_name = "pkcs11-tool"; /* for utils.c */
@@ -108,8 +120,10 @@ static void		sign_data(CK_SLOT_ID,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int		find_first(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
-				CK_OBJECT_HANDLE_PTR, const char *);
-static CK_MECHANISM_TYPE find_mechanism(CK_SLOT_ID, CK_FLAGS);
+				CK_OBJECT_HANDLE_PTR,
+				const unsigned char *, size_t id_len);
+static CK_MECHANISM_TYPE find_mechanism(CK_SLOT_ID, CK_FLAGS,
+			 	int stop_if_not_found);
 static void		get_token_info(CK_SLOT_ID, CK_TOKEN_INFO_PTR);
 static void		get_mechanisms(CK_SLOT_ID,
 				CK_MECHANISM_TYPE_PTR *, CK_ULONG_PTR);
@@ -121,12 +135,14 @@ static const char *	p11_flag_names(struct flag_info *, CK_FLAGS);
 static const char *	p11_mechanism_to_name(CK_MECHANISM_TYPE);
 static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
 static const char *	CKR2Str(CK_ULONG res);
+static int		p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 
 int
 main(int argc, char * const argv[])
 {
 	CK_SESSION_HANDLE session = CK_INVALID_HANDLE;
 	CK_OBJECT_HANDLE object = CK_INVALID_HANDLE;
+	char *opt_pin = NULL;
 	int err = 0, c, long_optind = 0;
 	int do_show_info = 0;
 	int do_list_slots = 0;
@@ -134,13 +150,14 @@ main(int argc, char * const argv[])
 	int do_list_objects = 0;
 	int do_sign = 0;
 	int do_hash = 0;
+	int do_test = 0;
 	int need_session = 0;
 	int opt_login = 0;
 	int action_count = 0;
 	CK_RV rv;
 
 	while (1) {
-		c = getopt_long(argc, argv, "ILMOhi:lm:o:sv",
+               c = getopt_long(argc, argv, "ILMOhi:lm:o:p:svt",
 					options, &long_optind);
 		if (c == -1)
 			break;
@@ -162,6 +179,11 @@ main(int argc, char * const argv[])
 			do_list_objects = 1;
 			action_count++;
 			break;
+		case 'h':
+			need_session |= NEED_SESSION_RO;
+			do_hash = 1;
+			action_count++;
+			break;
 		case 'i':
 			opt_input = optarg;
 			break;
@@ -175,14 +197,18 @@ main(int argc, char * const argv[])
 		case 'o':
 			opt_output = optarg;
 			break;
+		case 'p':
+			need_session |= NEED_SESSION_RW;
+			opt_login = 1;
+			opt_pin = optarg;
+			break;
 		case 's':
 			need_session |= NEED_SESSION_RW;
 			do_sign = 1;
 			action_count++;
 			break;
-		case 'h':
-			need_session |= NEED_SESSION_RO;
-			do_hash = 1;
+		case 't':
+			do_test = 1;
 			action_count++;
 			break;
 		case 'v':
@@ -268,7 +294,10 @@ main(int argc, char * const argv[])
 		char	*pin;
 
 		/* Identify which pin to enter */
-		pin = getpass("Please enter PIN: ");
+		if (opt_pin == NULL)
+			pin = getpass("Please enter PIN: ");
+		else
+			pin = opt_pin;
 		if (!pin || !*pin)
 			return 1;
 		rv = p11->C_Login(session, CKU_USER, pin, strlen(pin));
@@ -277,16 +306,21 @@ main(int argc, char * const argv[])
 	}
 
 	if (do_sign) {
-		if (!find_first(session, CKO_PRIVATE_KEY, &object, NULL))
+		if (!find_first(session, CKO_PRIVATE_KEY, &object, NULL, 0))
 			fatal("Private key not found");
 	}
 
 	if (do_list_objects)
 		list_objects(session);
+
 	if (do_sign)
 		sign_data(opt_slot, session, object);
+
 	if (do_hash)
 		hash_data(opt_slot, session);
+
+	if (do_test)
+		p11_test(opt_slot, session);
 
 end:
 	if (session)
@@ -454,7 +488,7 @@ sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	int		fd, r;
 
 	if (opt_mechanism == NO_MECHANISM) {
-		opt_mechanism = find_mechanism(slot, CKF_SIGN|CKF_HW);
+		opt_mechanism = find_mechanism(slot, CKF_SIGN|CKF_HW, 1);
 		printf("Using signature algorithm %s\n",
 				p11_mechanism_to_name(opt_mechanism));
 	}
@@ -509,7 +543,7 @@ hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	int		fd, r;
 
 	if (opt_mechanism == NO_MECHANISM) {
-		opt_mechanism = find_mechanism(slot, CKF_DIGEST);
+		opt_mechanism = find_mechanism(slot, CKF_DIGEST, 1);
 		printf("Using digest algorithm %s\n",
 				p11_mechanism_to_name(opt_mechanism));
 	}
@@ -556,7 +590,8 @@ hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 int
 find_first(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
-		CK_OBJECT_HANDLE_PTR ret, const char *id)
+		CK_OBJECT_HANDLE_PTR ret,
+		const unsigned char *id, size_t id_len)
 {
 	CK_ATTRIBUTE attrs[2];
 	unsigned int nattrs = 0;
@@ -568,7 +603,10 @@ find_first(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 	attrs[0].ulValueLen = sizeof(cls);
 	nattrs++;
 	if (id) {
-		/* Parse the ID and add it to the attrs list */
+               attrs[nattrs].type = CKA_ID;
+               attrs[nattrs].pValue = (void *) id;
+               attrs[nattrs].ulValueLen = id_len;
+               nattrs++;
 	}
 
 	rv = p11->C_FindObjectsInit(sess, attrs, nattrs);
@@ -585,7 +623,7 @@ find_first(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 }
 
 CK_MECHANISM_TYPE
-find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags)
+find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags, int stop_if_not_found)
 {
 	CK_MECHANISM_TYPE *mechs = NULL, result;
 	CK_MECHANISM_INFO info;
@@ -604,7 +642,7 @@ find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags)
 			break;
 		}
 	}
-	if (result == NO_MECHANISM)
+	if (stop_if_not_found && result == NO_MECHANISM)
 		fatal("No appropriate mechanism found");
 	free(mechs);
 
@@ -667,6 +705,7 @@ ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);
 ATTR_METHOD(MODULUS_BITS, CK_ULONG);
 VARATTR_METHOD(LABEL, char);
 VARATTR_METHOD(ID, unsigned char);
+VARATTR_METHOD(VALUE, unsigned char);
 
 void
 show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
@@ -746,6 +785,471 @@ get_mechanisms(CK_SLOT_ID slot,
 	rv = p11->C_GetMechanismList(slot, *pList, pulCount);
 	if (rv != CKR_OK)
 		p11_fatal("C_GetMechanismList", rv);
+}
+
+static int
+test_digest(CK_SLOT_ID slot)
+{
+	int             errors = 0;
+	CK_RV           rv;
+	CK_SESSION_HANDLE session;
+	CK_MECHANISM    ck_mech = { CKM_MD5, NULL, 0 };
+	CK_ULONG        i, j;
+	unsigned char   data[100];
+	unsigned char   hash1[64], hash2[64];
+	CK_ULONG        hashLen1, hashLen2;
+	CK_MECHANISM_TYPE firstMechType;
+
+	CK_MECHANISM_TYPE mechTypes[] = {
+		CKM_MD5,
+		CKM_SHA_1,
+		CKM_RIPEMD160,
+		-1
+	};
+	unsigned char  *digests[] = {
+		"\x7a\x08\xb0\x7e\x84\x64\x17\x03\xe5\xf2\xc8\x36\xaa\x59\xa1\x70",
+		"\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
+		"\xda\x79\xa5\x8f\xb8\x83\x3d\x61\xf6\x32\x16\x17\xe3\xfd\xf0\x56\x26\x5f\xb7\xcd"
+	};
+	CK_ULONG        digestLens[] = {
+		16,
+		20,
+		20
+	};
+
+	firstMechType = find_mechanism(slot, CKF_DIGEST, 0);
+	if (firstMechType == NO_MECHANISM) {
+		printf("Digests: not implemented\n");
+		return errors;
+	} else
+		printf("Digests:\n");
+
+	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION,
+		NULL, NULL, &session);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+
+	/* 1st test */
+
+	ck_mech.mechanism = firstMechType;
+	rv = p11->C_DigestInit(session, &ck_mech);
+	if (rv != CKR_OK)
+		p11_fatal("C_DigestInit", rv);
+
+	rv = p11->C_DigestUpdate(session, data, 5);
+	if (rv == CKR_FUNCTION_NOT_SUPPORTED) {
+		printf("  Note: C_DigestUpdate(), DigestFinal() not supported\n");
+		/* finish the digest operation */
+		hashLen2 = sizeof(hash2);
+		rv = p11->C_Digest(session, data, sizeof(data), hash2,
+			&hashLen2);
+		if (rv != CKR_OK)
+			p11_fatal("C_Digest", rv);
+	} else {
+		if (rv != CKR_OK)
+			p11_fatal("C_DigestUpdate", rv);
+
+		rv = p11->C_DigestUpdate(session, data + 5, 50);
+		if (rv != CKR_OK)
+			p11_fatal("C_DigestUpdate", rv);
+
+		rv = p11->C_DigestUpdate(session, data + 55,
+			sizeof(data) - 55);
+		if (rv != CKR_OK)
+			p11_fatal("C_DigestUpdate", rv);
+
+		hashLen1 = sizeof(hash1);
+		rv = p11->C_DigestFinal(session, hash1, &hashLen1);
+		if (rv != CKR_OK)
+			p11_fatal("C_DigestFinal", rv);
+
+		rv = p11->C_DigestInit(session, &ck_mech);
+		if (rv != CKR_OK)
+			p11_fatal("C_DigestInit", rv);
+
+		hashLen2 = sizeof(hash2);
+		rv = p11->C_Digest(session, data, sizeof(data), hash2,
+			&hashLen2);
+		if (rv != CKR_OK)
+			p11_fatal("C_Digest", rv);
+
+		if (hashLen1 != hashLen2) {
+			errors++;
+			printf("  ERR: digest lengths returned by C_DigestFinal() different from C_Digest()\n");
+		} else if (memcmp(hash1, hash2, hashLen1) != 0) {
+			errors++;
+			printf("  ERR: digests returned by C_DigestFinal() different from C_Digest()\n");
+		} else
+			printf("  all 4 digest functions seem to work\n");
+	}
+
+	/* 2nd test */
+
+	/* input = "01234567890123456...456789" */
+	for (i = 0; i < 10; i++)
+		for (j = 0; j < 10; j++)
+			data[10 * i + j] = (unsigned char) (0x30 + j);
+
+
+	i = -1;
+	while (1) {
+		if (mechTypes[++i] == -1)
+			break;
+
+		ck_mech.mechanism = mechTypes[i];
+
+		rv = p11->C_DigestInit(session, &ck_mech);
+		if (rv == CKR_FUNCTION_NOT_SUPPORTED)
+			continue;	/* mechanism not implemented, don't test */
+		if (rv != CKR_OK)
+			p11_fatal("C_DigestInit", rv);
+
+		printf("  %s: ", p11_mechanism_to_name(mechTypes[i]));
+
+		hashLen1 = sizeof(hash1);
+		rv = p11->C_Digest(session, data, sizeof(data), hash1,
+			&hashLen1);
+		if (rv != CKR_OK)
+			p11_fatal("C_Digest", rv);
+
+		if (hashLen1 != digestLens[i]) {
+			errors++;
+			printf("ERR: wrong digest length: %ld instead of %ld\n",
+					hashLen1, digestLens[i]);
+		} else if (memcmp(hash1, digests[i], hashLen1) != 0) {
+			errors++;
+			printf("ERR: wrong digest value\n");
+		} else
+			printf("OK\n");
+	}
+
+	/* 3rd test */
+
+	ck_mech.mechanism = firstMechType;
+	rv = p11->C_DigestInit(session, &ck_mech);
+	if (rv != CKR_OK)
+		p11_fatal("C_DigestInit", rv);
+
+	hashLen2 = 1;		/* too short */
+	rv = p11->C_Digest(session, data, sizeof(data), hash2, &hashLen2);
+	if (rv != CKR_BUFFER_TOO_SMALL) {
+		errors++;
+		printf("  ERR: C_Digest() didn't return CKR_BUFFER_TOO_SMALL but %s (0x%0x)\n", CKR2Str(rv), (int) rv);
+	}
+	/* output buffer = NULL */
+	rv = p11->C_Digest(session, data, sizeof(data), NULL, &hashLen2);
+	if (rv != CKR_OK) {
+		errors++;
+		printf("  ERR: C_Digest() didn't return CKR_OK for a NULL output buffer, but %s (0x%0x)\n", CKR2Str(rv), (int) rv);
+	}
+
+	rv = p11->C_Digest(session, data, sizeof(data), hash2, &hashLen2);
+	if (rv == CKR_OPERATION_NOT_INITIALIZED) {
+		printf("  ERR: digest operation ended prematurely\n");
+		errors++;
+	} else if (rv != CKR_OK)
+		p11_fatal("C_Sign", rv);
+
+	rv = p11->C_CloseSession(session);
+	if (rv != CKR_OK)
+		p11_fatal("C_CloseSession", rv);
+
+	return errors;
+}
+
+static int
+test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	int             errors = 0;
+	CK_RV           rv;
+	CK_OBJECT_HANDLE privKeyObject;
+	CK_OBJECT_HANDLE certObject;
+	CK_MECHANISM    ck_mech = { CKM_MD5, NULL, 0 };
+	CK_MECHANISM_TYPE firstMechType;
+	CK_SESSION_INFO sessionInfo;
+	unsigned char  *id;
+	CK_ULONG        idLen;
+	unsigned char  *cert;
+	CK_ULONG        certLen;
+	CK_ULONG        i, j;
+	unsigned char   data[200];
+	unsigned char   verifyData[100];
+	CK_ULONG        modLenBytes;
+	CK_ULONG        dataLen;
+	unsigned char   sig1[1024], sig2[1024];
+	CK_ULONG        sigLen1, sigLen2;
+
+	int             err;
+	X509           *x509;
+	EVP_PKEY       *pkey;
+	EVP_MD_CTX      md_ctx;
+
+	CK_MECHANISM_TYPE mechTypes[] = {
+		CKM_RSA_X_509,
+		CKM_RSA_PKCS,
+		CKM_SHA1_RSA_PKCS,
+		CKM_MD5_RSA_PKCS,
+		CKM_RIPEMD160_RSA_PKCS,
+		-1
+	};
+	unsigned char  *datas[] = {
+		/* PCKS1_wrap(SHA1_encode(SHA-1(verifyData))),
+		 * is done further on
+		 */
+		NULL,
+
+		/* SHA1_encode(SHA-1(verifyData)) */
+		"\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
+
+		verifyData,
+		verifyData,
+		verifyData,
+	};
+	CK_ULONG        dataLens[] = {
+		0,		/* should be modulus length, is done further on */
+		35,
+		sizeof(verifyData),
+		sizeof(verifyData),
+		sizeof(verifyData),
+	};
+	EVP_MD         *evp_mds[] = {
+		EVP_sha1(),
+		EVP_sha1(),
+		EVP_sha1(),
+		EVP_md5(),
+		EVP_ripemd160(),
+	};
+
+	rv = p11->C_GetSessionInfo(session, &sessionInfo);
+	if (rv == CKR_SESSION_HANDLE_INVALID) {
+		rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION,
+			NULL, NULL, &session);
+		if (rv != CKR_OK)
+			p11_fatal("C_OpenSession", rv);
+	}
+
+	firstMechType = find_mechanism(slot, CKF_SIGN | CKF_HW, 0);
+	if (firstMechType == NO_MECHANISM) {
+		printf("Signatures: not implemented\n");
+		return errors;
+	} else if (!find_first(session, CKO_PRIVATE_KEY, &privKeyObject,
+			NULL, 0)) {
+		printf("Signatures: no private key found in this slot (supplied your PIN?)\n");
+		return errors;
+	} else
+		printf("Signatures (currently only RSA signatures):\n");
+
+	data[0] = 0;
+	modLenBytes = (getMODULUS_BITS(session, privKeyObject) + 7) / 8;
+
+	/* 1st test */
+
+	switch (firstMechType) {
+	case CKM_RSA_PKCS:
+		dataLen = 35;
+	case CKM_RSA_X_509:
+		dataLen = modLenBytes;
+		break;
+	default:
+		dataLen = sizeof(data);	/* let's hope it's OK */
+		break;
+	}
+
+	ck_mech.mechanism = firstMechType;
+	rv = p11->C_SignInit(session, &ck_mech, privKeyObject);
+	if (rv != CKR_OK)
+		p11_fatal("C_SignInit", rv);
+
+	rv = p11->C_SignUpdate(session, data, 5);
+	if (rv == CKR_FUNCTION_NOT_SUPPORTED) {
+		printf("  Note: C_SignUpdate(), SignFinal() not supported\n");
+		/* finish the digest operation */
+		sigLen2 = sizeof(sig2);
+		rv = p11->C_Sign(session, data, dataLen, sig2, &sigLen2);
+		if (rv != CKR_OK)
+			p11_fatal("C_Sign", rv);
+	} else {
+		if (rv != CKR_OK)
+			p11_fatal("C_SignUpdate", rv);
+
+		rv = p11->C_SignUpdate(session, data + 5, 10);
+		if (rv != CKR_OK)
+			p11_fatal("C_SignUpdate", rv);
+
+		rv = p11->C_SignUpdate(session, data + 15, dataLen - 15);
+		if (rv != CKR_OK)
+			p11_fatal("C_SignUpdate", rv);
+
+		sigLen1 = sizeof(sig1);
+		rv = p11->C_SignFinal(session, sig1, &sigLen1);
+		if (rv != CKR_OK)
+			p11_fatal("C_SignFinal", rv);
+
+		rv = p11->C_SignInit(session, &ck_mech, privKeyObject);
+		if (rv != CKR_OK)
+			p11_fatal("C_SignInit", rv);
+
+		sigLen2 = sizeof(sig2);
+		rv = p11->C_Sign(session, data, dataLen, sig2, &sigLen2);
+		if (rv != CKR_OK)
+			p11_fatal("C_Sign", rv);
+
+		if (sigLen1 != sigLen2) {
+			errors++;
+			printf("  ERR: signature lengths returned by C_SignFinal() different from C_Sign()\n");
+		} else if (memcmp(sig1, sig2, sigLen1) != 0) {
+			errors++;
+			printf("  ERR: signatures returned by C_SignFinal() different from C_Sign()\n");
+		} else
+			printf("  all 4 signature functions seem to work\n");
+	}
+
+	/* 2nd test */
+
+	ck_mech.mechanism = firstMechType;
+	rv = p11->C_SignInit(session, &ck_mech, privKeyObject);
+	if (rv != CKR_OK)
+		p11_fatal("C_SignInit", rv);
+
+	sigLen2 = 1;		/* too short */
+	rv = p11->C_Sign(session, data, dataLen, sig2, &sigLen2);
+	if (rv != CKR_BUFFER_TOO_SMALL) {
+		errors++;
+		printf("  ERR: C_Sign() didn't return CKR_BUFFER_TOO_SMALL but %s (0x%0x)\n", CKR2Str(rv), (int) rv);
+	}
+
+	/* output buf = NULL */
+	rv = p11->C_Sign(session, data, dataLen, NULL, &sigLen2);
+	if (rv != CKR_OK) {
+	   errors++;
+	   printf("  ERR: C_Sign() didn't return CKR_OK for a NULL output buf, but %s (0x%0x)\n",
+	   CKR2Str(rv), (int) rv);
+	}
+
+	rv = p11->C_Sign(session, data, dataLen, sig2, &sigLen2);
+	if (rv == CKR_OPERATION_NOT_INITIALIZED) {
+		printf("  ERR: signature operation ended prematurely\n");
+		errors++;
+	} else if (rv != CKR_OK)
+		p11_fatal("C_Sign", rv);
+
+	/* 3rd test */
+
+	/* input = "01234567890123456...456789" */
+	for (i = 0; i < 10; i++)
+		for (j = 0; j < 10; j++)
+			verifyData[10 * i + j] = (unsigned char) (0x30 + j);
+
+	/* Fill in data[0] and dataLens[0] */
+	dataLen = modLenBytes;
+	data[1] = 0x01;
+	memset(data + 2, 0xFF, dataLen - 3 - dataLens[1]);
+	data[dataLen - 36] = 0x00;
+	memcpy(data + (dataLen - dataLens[1]), datas[1], dataLens[1]);
+	datas[0] = data;
+	dataLens[0] = dataLen;
+
+	i = -1;
+	while (1) {
+		if (mechTypes[++i] == -1)
+			break;
+
+		ck_mech.mechanism = mechTypes[i];
+
+		rv = p11->C_SignInit(session, &ck_mech, privKeyObject);
+		/* mechanism not implemented, don't test */
+		if (rv == CKR_FUNCTION_NOT_SUPPORTED)
+			continue;
+		if (rv != CKR_OK)
+			p11_fatal("C_SignInit", rv);
+
+		printf("  %s: ", p11_mechanism_to_name(mechTypes[i]));
+
+		sigLen1 = sizeof(sig1);
+		rv = p11->C_Sign(session, datas[i], dataLens[i], sig1,
+			&sigLen1);
+		if (rv != CKR_OK)
+			p11_fatal("C_Sign", rv);
+
+		if (sigLen1 != modLenBytes) {
+			errors++;
+			printf("  ERR: wrong signature length: %ld instead of %ld\n", sigLen1, modLenBytes);
+		}
+#ifndef HAVE_OPENSSL
+		printf("unable to verify signature (compile with \DHAVE_OPENSSL)\n");
+#else
+		id = NULL;
+		id = getID(session, privKeyObject, &idLen);
+		if (id == NULL) {
+			printf("private key has no ID, can't lookup the corresponding cert for verification\n");
+			continue;
+		}
+
+		if (!find_first(session, CKO_CERTIFICATE, &certObject, id,
+				idLen)) {
+			free(id);
+			printf("coudn't find the corresponding cert for verification\n");
+			continue;
+		}
+		free(id);
+
+		cert = NULL;
+		cert = getVALUE(session, certObject, &certLen);
+		if (cert == NULL) {
+			printf("couldn't get the cert VALUE attribute, no verification done\n");
+			continue;
+		}
+
+		x509 = d2i_X509(NULL, &cert, certLen);
+		if (x509 == NULL) {
+			free(cert);
+			printf(" couldn't parse cert, no verification done\n");
+			/* ERR_print_errors_fp(stderr); */
+			continue;
+		}
+
+		pkey = X509_get_pubkey(x509);
+		if (pkey == NULL) {
+			free(cert);
+			printf(" couldn't get public key from the cert, no verification done\n");
+			/* ERR_print_errors_fp(stderr); */
+			continue;
+		}
+
+		EVP_VerifyInit(&md_ctx, evp_mds[i]);
+		EVP_VerifyUpdate(&md_ctx, verifyData, sizeof(verifyData));
+		err = EVP_VerifyFinal(&md_ctx, sig1, sigLen1, pkey);
+		if (err == 0) {
+			printf("ERR: verification failed\n");
+			errors++;
+		} else if (err != 1) {
+			printf("openssl error during verification: 0x%0x (%d)\n", err, err);
+			/* ERR_print_errors_fp(stderr); */
+		} else
+			printf("OK\n");
+
+		/* free(cert); */
+#endif
+	}
+
+	return errors;
+}
+
+static int
+p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+       int errors = 0;
+
+       errors += test_digest(slot);
+
+       errors += test_signature(slot, session);
+
+       if (errors == 0)
+               printf("No errors\n");
+       else
+               printf("%d errors\n", errors);
+
+       return errors;
 }
 
 const char *
