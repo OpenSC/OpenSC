@@ -149,6 +149,8 @@ sc_pkcs11_secret_key_set_attribute(struct sc_pkcs11_session *session,
 		if (key->value)
 			free(key->value);
 		key->value = (CK_BYTE *) malloc(attr->ulValueLen);
+		if (key->value == NULL)
+			return CKR_HOST_MEMORY;
 		key->value_len = attr->ulValueLen;
 		memcpy(key->value, attr->pValue, key->value_len);
 		break;

@@ -636,6 +636,8 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	 * doesn't work if secure messaging is required for the
 	 * MF (which is the case with the GPK) */
 	app = (struct sc_app_info *) calloc(1, sizeof(*app));
+	if (app == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	app->path = p15spec->file_app->path;
 	if (p15spec->file_app->namelen <= SC_MAX_AID_SIZE) {
 		app->aid_len = p15spec->file_app->namelen;
@@ -731,6 +733,8 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 
 	pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN,
 				args->label, NULL, NULL);
+	if (pin_obj == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, pin_info);
@@ -930,6 +934,8 @@ sc_pkcs15init_init_prkdf(sc_pkcs15_card_t *p15card,
 	object = sc_pkcs15init_new_object(prkey_pkcs15_algo(p15card, key),
 				label, &keyargs->auth_id,
 				NULL);
+	if (object == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	key_info = (sc_pkcs15_prkey_info_t *) object->data;
 	key_info->usage = usage;
@@ -1322,6 +1328,8 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	/* Set up the pkcs15 object. If we find below that we should
 	 * reuse an existing object, we'll dith this one. */
 	object = sc_pkcs15init_new_object(type, label, &keyargs->auth_id, NULL);
+	if (object == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	key_info = (sc_pkcs15_pubkey_info_t *) object->data;
 	key_info->usage = usage;
@@ -1417,6 +1425,8 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	}
 
 	object = sc_pkcs15init_new_object(SC_PKCS15_TYPE_CERT_X509, label, NULL, NULL);
+	if (object == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	cert_info = (sc_pkcs15_cert_info_t *) object->data;
 	cert_info->id = args->id;
 	cert_info->authority = args->authority;
@@ -1507,6 +1517,8 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 		return r;
 
 	object = sc_pkcs15init_new_object(SC_PKCS15_TYPE_DATA_OBJECT, label, &args->auth_id, NULL);
+	if (object == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	data_object_info = (sc_pkcs15_data_info_t *) object->data;
 	if (label != NULL) {
 		strncpy(data_object_info->app_label, label,
@@ -2266,6 +2278,8 @@ sc_pkcs15init_new_object(int type, const char *label, sc_pkcs15_id_t *auth_id, v
 	unsigned int		data_size = 0;
 
 	object = (sc_pkcs15_object_t *) calloc(1, sizeof(*object));
+	if (object == NULL)
+		return NULL;
 	object->type = type;
 
 	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
@@ -2765,6 +2779,10 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 		/* zero out the rest of the file - we may have shrunk
 		 * the file contents */
 		copy = calloc(1, info->size);
+		if (copy == NULL) {
+			sc_file_free(info);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		memcpy(copy, data, datalen);
 		datalen = info->size;
 		data = copy;

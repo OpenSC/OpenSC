@@ -251,6 +251,8 @@ sc_profile_new()
 	struct sc_profile *pro;
 
 	pro = (struct sc_profile *) calloc(1, sizeof(*pro));
+	if (pro == NULL)
+		return NULL;
 	pro->p15_spec = p15card = sc_pkcs15_card_new();
 
 	/* Set up EF(TokenInfo) and EF(ODF) */
@@ -445,6 +447,8 @@ sc_profile_get_pin_info(struct sc_profile *profile,
 	struct pin_info	*pi;
 
 	pi = new_pin(profile, id);
+	if (pi == NULL)
+		return;
 	*info = pi->pin;
 }
 
@@ -454,6 +458,8 @@ sc_profile_get_pin_retries(sc_profile_t *profile, unsigned int id)
 	struct pin_info	*pi;
 
 	pi = new_pin(profile, id);
+	if (pi == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	return pi->pin.tries_left;
 }
 
@@ -600,6 +606,8 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		parent = parent->instance;
 
 		instance = sc_profile_instantiate_file(profile, fi, parent, skew);
+		if (instance == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
 		instance->base_template = tmpl;
 		instance->inst_index = idx;
 		instance->inst_path = *base_path;
@@ -625,6 +633,8 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 	sc_card_t	*card = profile->card;
 
 	fi = (file_info *) calloc(1, sizeof(*fi));
+	if (fi == NULL)
+		return NULL;
 	fi->instance = fi;
 	fi->parent = parent;
 	fi->ident = strdup(ft->ident);
@@ -787,6 +797,8 @@ new_key(struct sc_profile *profile, unsigned int type, unsigned int ref)
 	}
 
 	ai = (struct auth_info *) calloc(1, sizeof(*ai));
+	if (ai == NULL)
+		return NULL;
 	ai->type = type;
 	ai->ref = ref;
 	*aip = ai;
@@ -869,9 +881,19 @@ process_tmpl(struct state *cur, struct block *info,
 	}
 
 	templ = (sc_profile_t *) calloc(1, sizeof(*templ));
+	if (templ == NULL) {
+		parse_error(cur, "memory allocation failed");
+		return 1;
+	}
+		
 	templ->cbs = cur->profile->cbs;
 
 	tinfo = (sc_template_t *) calloc(1, sizeof(*tinfo));
+	if (tinfo == NULL) {
+		parse_error(cur, "memory allocation failed");
+		free(templ);
+		return 1;
+	}
 	tinfo->name = strdup(name);
 	tinfo->data = templ;
 
@@ -911,6 +933,8 @@ add_file(sc_profile_t *profile, const char *name,
 	file_info	*info;
 
 	info = (struct file_info *) calloc(1, sizeof(*info));
+	if (info == NULL)
+		return NULL;
 	info->instance = info;
 	info->ident = strdup(name);
 
@@ -981,6 +1005,10 @@ new_file(struct state *cur, const char *name, unsigned int type)
 	}
 
 	info = add_file(profile, name, file, cur->file);
+	if (info == NULL) {
+		parse_error(cur, "memory allocation failed");
+		return NULL;
+	}
 	info->dont_free = dont_free;
 	return info;
 }
@@ -1194,6 +1222,8 @@ new_pin(struct sc_profile *profile, unsigned int id)
 	 * profile
 	 */
 	pi = (struct pin_info *) calloc(1, sizeof(*pi));
+	if (pi == NULL)
+		return NULL;
 	pi->id = id;
 	pi->pin.type = (unsigned int)-1;
 	pi->pin.flags = 0x32;
@@ -1360,6 +1390,8 @@ new_macro(sc_profile_t *profile, const char *name, scconf_list *value)
 
 	if ((mac = find_macro(profile, name)) == NULL) {
 		mac = (sc_macro_t *) calloc(1, sizeof(*mac));
+		if (mac == NULL)
+			return;
 		mac->name = strdup(name);
 		mac->next = profile->macro_list;
 		profile->macro_list = mac;

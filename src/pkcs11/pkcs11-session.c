@@ -59,8 +59,12 @@ CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
 		goto out;
 	}
 
-        session = (struct sc_pkcs11_session*) malloc(sizeof(struct sc_pkcs11_session));
-	memset(session, 0, sizeof(struct sc_pkcs11_session));
+        session = (struct sc_pkcs11_session*) calloc(1, sizeof(struct sc_pkcs11_session));
+	if (session == NULL) {
+		rv = CKR_HOST_MEMORY;
+		goto out;
+	}
+		
 	session->slot = slot;
 	session->notify_callback = Notify;
         session->notify_data = pApplication;

@@ -179,6 +179,8 @@ do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
 		return 0;
 	dst->len = BN_num_bytes(src);
 	dst->data = (u8 *) malloc(dst->len);
+	if (dst->data == NULL)
+		return 0;
 	BN_bn2bin(src, dst->data);
 	return 1;
 }
