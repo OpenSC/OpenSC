@@ -90,6 +90,8 @@ static int pcsc_ret_to_error(long rv)
 		return SC_ERROR_CARD_RESET;
 	case SCARD_E_NOT_TRANSACTED:
 		return SC_ERROR_TRANSMIT_FAILED;
+	case SCARD_W_UNRESPONSIVE_CARD:
+		return SC_ERROR_CARD_UNRESPONSIVE;
 	default:
 		return SC_ERROR_UNKNOWN;
 	}
