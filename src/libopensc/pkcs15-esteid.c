@@ -61,7 +61,6 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
   unsigned char buff[256];
   int r, i, flags;
   sc_path_t tmppath;
-  sc_pkcs15_id_t id;
 
   set_string (&p15card->label, "EstEID isikutunnistus");
   set_string (&p15card->manufacturer_id, "AS Sertifitseerimiskeskus");
@@ -92,8 +91,8 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
   for (i = 0; i < 2; i++)
     {
       static const char *esteid_cert_names[2] = {
-	"Autentimissertifikaat",
-	"Allkirjasertifikaat"
+	"Isikutuvastus",
+	"Allkirjastamine"
       };
       static char const *esteid_cert_paths[2] = {
 	"3f00eeeeaace",
@@ -103,17 +102,22 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	SC_ESTEID_AUTH,
 	SC_ESTEID_SIGN
       };
-      sc_path_t path;
-      sc_pkcs15_id_t auth_id;
 
-      sc_format_path (esteid_cert_paths[i], &path);
-      path.type = SC_PATH_TYPE_PATH;
-      auth_id.value[0] = esteid_cert_ids[i];
-      auth_id.len = 1;
+      struct sc_pkcs15_cert_info cert_info;
+      struct sc_pkcs15_object    cert_obj;
 
-      r = sc_pkcs15emu_add_cert (p15card,
-				 SC_PKCS15_TYPE_CERT_X509, 0,
-				 &path, &auth_id, esteid_cert_names[i], 0);
+      memset(&cert_info, 0, sizeof(cert_info));
+      memset(&cert_obj,  0, sizeof(cert_obj));
+
+      cert_info.id.value[0] = esteid_cert_ids[i];
+      cert_info.id.len = 1;
+      sc_format_path(esteid_cert_paths[i], &cert_info.path);
+      snprintf(cert_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s",
+               esteid_cert_names[i]);
+
+      r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+      if (r < 0)
+        return SC_ERROR_INTERNAL;
     }
 
   /* the file with key pin info (tries left) */
@@ -123,9 +127,9 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
   /* add pins */
   for (i = 0; i < 3; i++)
     {
-      char tries_left;
+      unsigned char tries_left;
       static const char *esteid_pin_names[3] = {
-	"PIN1 - Autentiseerimine",
+        "PIN1 - Isikutuvastus",
 	"PIN2 - Allkirjastamine",
 	"PUK"
       };
@@ -148,21 +152,34 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN
       };
 
+      struct sc_pkcs15_pin_info pin_info;
+      struct sc_pkcs15_object   pin_obj;
+
+      memset(&pin_info, 0, sizeof(pin_info));
+      memset(&pin_obj,  0, sizeof(pin_obj));
+
       r = sc_read_record (card, i + 1, buff, 128, SC_RECORD_BY_REC_NR);
+      if (r < 0)
+        return SC_ERROR_INTERNAL;
       tries_left = buff[5];
 
-      id.len = 1;
-      id.value[0] = i + 1;
+      pin_info.auth_id.len   = 1;
+      pin_info.auth_id.value[0] = i + 1;
+      pin_info.reference     = esteid_pin_ref[i];
+      pin_info.flags         = esteid_pin_flags[i];
+      pin_info.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+      pin_info.min_length    = esteid_pin_min[i];
+      pin_info.stored_length = 12;
+      pin_info.max_length    = 12;
+      pin_info.pad_char      = '\0';
+      pin_info.tries_left    = (int)tries_left;
 
+      snprintf(pin_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s", esteid_pin_names[i]);
+      pin_obj.flags = esteid_pin_flags[i];
 
-
-
-      sc_pkcs15emu_add_pin (p15card, &id,
-			    esteid_pin_names[i], NULL,
-			    esteid_pin_ref[i],
-			    SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-			    esteid_pin_min[i], 12,
-			    esteid_pin_flags[i], tries_left, '\0', 0);
+      r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
+      if (r < 0)
+        return SC_ERROR_INTERNAL;
     }
 
   /* add private keys */
@@ -179,22 +196,31 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
       };
       static const char *prkey_name[2] = {
-	"Autentiseerimise v\365ti",
-	"Allkirjastamise v\365ti"
+	"Isikutuvastus",
+	"Allkirjastamine"
       };
-      sc_pkcs15_id_t auth_id;
 
-      id.value[0] = prkey_pin[i];
-      id.len = 1;
-      auth_id.value[0] = prkey_pin[i];
-      auth_id.len = 1;
+      struct sc_pkcs15_prkey_info prkey_info;
+      struct sc_pkcs15_object     prkey_obj;
 
-      /* NULL may be a path.... ? */
-      r = sc_pkcs15emu_add_prkey (p15card, &id,
-				  prkey_name[i],
-				  SC_PKCS15_TYPE_PRKEY_RSA,
-				  1024, prkey_usage[i], NULL,
-				  i + 1, &auth_id, 0);
+      memset(&prkey_info, 0, sizeof(prkey_info));
+      memset(&prkey_obj,  0, sizeof(prkey_obj));
+
+      prkey_info.id.len = 1;
+      prkey_info.id.value[0] = prkey_pin[i];
+      prkey_info.usage  = prkey_usage[i];
+      prkey_info.native = 1;
+      prkey_info.key_reference = i + 1;
+      prkey_info.modulus_length= 1024;
+
+      snprintf(prkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s", prkey_name[i]);
+      prkey_obj.auth_id.len = 1;
+      prkey_obj.auth_id.value[0] = prkey_pin[i];
+      prkey_obj.user_consent = (i == 1) ? 1 : 0;
+
+      r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+      if (r < 0)
+        return SC_ERROR_INTERNAL;
     }
   return 0;
 }

@@ -18,9 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "pkcs15.h"
-#include "cardctl.h"
+#include <opensc/pkcs15.h>
+#include <opensc/cardctl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -46,6 +45,7 @@ typedef struct pdata_st {
 	int         type;
 	unsigned int maxlen;
 	unsigned int minlen;
+	unsigned int storedlen;
 	int         flags;	
 	int         tries_left;
 	const char  pad_char;
@@ -135,7 +135,7 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 	const pindata pins[] = {
 		{ "99", "DS pin", "3F00DF01", 0x99,
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-		  8, 8, SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
+		  8, 8, 8, SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
 		  SC_PKCS15_PIN_FLAG_LOCAL, -1, 0x00,
 		  SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
 		{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -181,45 +181,75 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 
 	/* set certs */
 	for (i = 0; certs[i].label; i++) {
-		struct sc_pkcs15_id  p15Id;
+		struct sc_pkcs15_cert_info cert_info;
+		struct sc_pkcs15_object    cert_obj;
 
-		sc_format_path(certs[i].path, &path);
-		if (!get_cert_len(card, &path))
+		memset(&cert_info, 0, sizeof(cert_info));
+		memset(&cert_obj,  0, sizeof(cert_obj));
+
+		sc_pkcs15_format_id(certs[i].id, &cert_info.id);
+		cert_info.authority = certs[i].authority;
+		sc_format_path(certs[i].path, &cert_info.path);
+		if (!get_cert_len(card, &cert_info.path))
 			/* skip errors */
 			continue;
-		sc_pkcs15_format_id(certs[i].id, &p15Id);
-		sc_pkcs15emu_add_cert(p15card, SC_PKCS15_TYPE_CERT_X509,
-				certs[i].authority, &path, &p15Id,
-				certs[i].label, certs[i].obj_flags);
+
+		snprintf(cert_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s", certs[i].label);
+		cert_obj.flags = certs[i].obj_flags;
+
+		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
 	}
 	/* set pins */
 	for (i = 0; pins[i].label; i++) {
-		struct sc_pkcs15_id  p15Id;
+		struct sc_pkcs15_pin_info pin_info;
+		struct sc_pkcs15_object   pin_obj;
 
-		sc_format_path(pins[i].path, &path);
-		sc_pkcs15_format_id(pins[i].id, &p15Id);
-		sc_pkcs15emu_add_pin(p15card, &p15Id, pins[i].label,
-				&path, pins[i].ref, pins[i].type,
-				pins[i].minlen, pins[i].maxlen, pins[i].flags,
-				pins[i].tries_left, pins[i].pad_char,
-				pins[i].obj_flags);
+		memset(&pin_info, 0, sizeof(pin_info));
+		memset(&pin_obj,  0, sizeof(pin_obj));
+
+		sc_pkcs15_format_id(pins[i].id, &pin_info.auth_id);
+		pin_info.reference     = pins[i].ref;
+		pin_info.flags         = pins[i].flags;
+		pin_info.type          = pins[i].type;
+		pin_info.min_length    = pins[i].minlen;
+		pin_info.stored_length = pins[i].storedlen;
+		pin_info.max_length    = pins[i].maxlen;
+		pin_info.pad_char      = pins[i].pad_char;
+		sc_format_path(pins[i].path, &pin_info.path);
+		pin_info.tries_left    = -1;
+
+		snprintf(pin_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s", pins[i].label);
+		pin_obj.flags = pins[i].obj_flags;
+
+		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
 	}
 	/* set private keys */
 	for (i = 0; prkeys[i].label; i++) {
-		struct sc_pkcs15_id p15Id, 
-				    authId, *pauthId;
-		sc_format_path(prkeys[i].path, &path);
-		sc_pkcs15_format_id(prkeys[i].id, &p15Id);
-		if (prkeys[i].auth_id) {
-			sc_pkcs15_format_id(prkeys[i].auth_id, &authId);
-			pauthId = &authId;
-		} else	
-			pauthId = NULL;
-		sc_pkcs15emu_add_prkey(p15card, &p15Id, prkeys[i].label,
-				SC_PKCS15_TYPE_PRKEY_RSA,
-				prkeys[i].modulus_len, prkeys[i].usage,
-				&path, prkeys[i].ref, pauthId,
-				prkeys[i].obj_flags);
+		struct sc_pkcs15_prkey_info prkey_info;
+		struct sc_pkcs15_object     prkey_obj;
+
+		memset(&prkey_info, 0, sizeof(prkey_info));
+		memset(&prkey_obj,  0, sizeof(prkey_obj));
+
+		sc_pkcs15_format_id(prkeys[i].id, &prkey_info.id);
+		prkey_info.usage         = prkeys[i].usage;
+		prkey_info.native        = 1;
+		prkey_info.key_reference = prkeys[i].ref;
+		prkey_info.modulus_length= prkeys[i].modulus_len;
+		sc_format_path(prkeys[i].path, &prkey_info.path);
+
+		snprintf(prkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s", prkeys[i].label);
+		prkey_obj.flags = prkeys[i].obj_flags;
+		if (prkeys[i].auth_id)
+			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
+
+		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
 	}
 		
 	/* select the application DF */

@@ -301,6 +301,97 @@ sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card, int type)
 	}
 }
 
+int sc_pkcs15emu_add_pin_obj(sc_pkcs15_card_t *p15card,
+	const sc_pkcs15_object_t *obj, const sc_pkcs15_pin_info_t *in_pin)
+{
+	sc_pkcs15_pin_info_t pin = *in_pin;
+
+	pin.magic = SC_PKCS15_PIN_MAGIC;
+
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_AUTH_PIN, obj, &pin);
+}
+
+int sc_pkcs15emu_add_rsa_prkey(sc_pkcs15_card_t *p15card,
+	const sc_pkcs15_object_t *obj, const sc_pkcs15_prkey_info_t *in_key)
+{
+	sc_pkcs15_prkey_info_t key = *in_key;
+
+	if (key.access_flags == 0)
+		key.access_flags = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+				| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+				| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+				| SC_PKCS15_PRKEY_ACCESS_LOCAL;
+
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_PRKEY_RSA, obj, &key);
+}
+
+int sc_pkcs15emu_add_rsa_pubkey(sc_pkcs15_card_t *p15card,
+	const sc_pkcs15_object_t *obj, const sc_pkcs15_pubkey_info_t *in_key)
+{
+	sc_pkcs15_pubkey_info_t key = *in_key;
+
+	if (key.access_flags == 0)
+		key.access_flags = SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_PUBKEY, obj, &key);
+}
+
+int sc_pkcs15emu_add_x509_cert(sc_pkcs15_card_t *p15card,
+	const sc_pkcs15_object_t *obj, const sc_pkcs15_cert_info_t *cert)
+{
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_CERT_X509, obj, cert);
+}
+
+int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
+	const sc_pkcs15_object_t *in_obj, const void *data)
+{
+	sc_pkcs15_object_t *obj;
+	unsigned int	df_type;
+	size_t		data_len;
+
+	obj = (sc_pkcs15_object_t *) calloc(1, sizeof(*obj));
+	if (!obj)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memcpy(obj, in_obj, sizeof(*obj));
+	obj->type  = type;
+
+	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
+	case SC_PKCS15_TYPE_AUTH:
+		df_type  = SC_PKCS15_AODF;
+		data_len = sizeof(struct sc_pkcs15_pin_info);
+		break;
+	case SC_PKCS15_TYPE_PRKEY:
+		df_type  = SC_PKCS15_PRKDF;
+		data_len = sizeof(struct sc_pkcs15_prkey_info);
+		break;
+	case SC_PKCS15_TYPE_PUBKEY:
+		df_type = SC_PKCS15_PUKDF;
+		data_len = sizeof(struct sc_pkcs15_pubkey_info);
+		break;
+	case SC_PKCS15_TYPE_CERT:
+		df_type = SC_PKCS15_CDF;
+		data_len = sizeof(struct sc_pkcs15_cert_info);
+		break;
+	default:
+		sc_error(p15card->card->ctx,
+			"Unknown PKCS15 object type %d\n", type);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	obj->data = calloc(1, data_len);
+	if (obj->data == NULL) {
+		free(obj);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+	memcpy(obj->data, data, data_len);
+
+	obj->df = sc_pkcs15emu_get_df(p15card, df_type);
+	sc_pkcs15_add_object(p15card, obj);
+
+	return SC_SUCCESS;
+}
+
+#ifndef OPENSC_NO_DEPRECATED
 int
 sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 		const char *label, void *data,
@@ -458,3 +549,4 @@ sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
 	return sc_pkcs15emu_add_object(p15card, type, label, info, auth_id,
 					obj_flags);
 }
+#endif /* OPENSC_NO_DEPRECATED */
