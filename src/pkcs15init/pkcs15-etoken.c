@@ -67,39 +67,13 @@ static void	error(struct sc_profile *, const char *, ...);
 #define ETOKEN_PUK_ID(idx)	(((idx) << 1) + 0x02)
 #define ETOKEN_MAX_PINS		0x10
 #define ETOKEN_KEY_ID(idx)	(0x40 + (idx))
+#define ETOKEN_SE_ID(idx)	(0x40 + (idx))
 #define ETOKEN_AC_NEVER		0xFF
 
-#define ETOKEN_ALGO_RSA		0x08
+#define ETOKEN_ALGO_RSA_SIG_SHA1 0xCC
+#define ETOKEN_ALGO_RSA_SIG	0x88
+#define ETOKEN_ALGO_RSA		ETOKEN_ALGO_RSA_SIG
 #define ETOKEN_ALGO_PIN		0x87
-
-#if 0
-struct etoken_pin_info {
-	int		profile_id;
-	u8		id;
-	u8		unblock;
-};
-static struct etoken_pin_info	etoken_so_pin = {
-	SC_PKCS15INIT_SO_PIN,
-	ETOKEN_SO_PIN_ID,
-	ETOKEN_SO_PUK_ID
-};
-static struct etoken_pin_info	etoken_so_puk = {
-	SC_PKCS15INIT_SO_PUK,
-	ETOKEN_SO_PUK_ID,
-	ETOKEN_AC_NEVER
-};
-static struct etoken_pin_info	etoken_user_pin = {
-	SC_PKCS15INIT_USER_PIN,
-	ETOKEN_PIN_ID,
-	ETOKEN_PUK_ID
-};
-static struct etoken_pin_info	etoken_user_puk = {
-	SC_PKCS15INIT_USER_PUK,
-	ETOKEN_PUK_ID,
-	ETOKEN_SO_PIN_ID
-};
-static u8	etoken_default_pin[8];
-#endif
 
 static inline void
 tlv_init(struct tlv *tlv, u8 *base, size_t size)
@@ -248,7 +222,7 @@ etoken_store_pin(struct sc_profile *profile, struct sc_card *card,
 		const u8 *pin, size_t pin_len)
 {
 	struct sc_pkcs15_pin_info params;
-	struct sc_cardctl_etoken_pin_info args;
+	struct sc_cardctl_etoken_obj_info args;
 	unsigned char	buffer[256];
 	unsigned char	pinpadded[16];
 	struct tlv	tlv;
@@ -321,6 +295,38 @@ etoken_store_pin(struct sc_profile *profile, struct sc_card *card,
 }
 
 /*
+ * Create an empty security environment
+ */
+static int
+etoken_create_sec_env(struct sc_profile *profile, struct sc_card *card,
+		unsigned int se_id, unsigned int key_id)
+{
+	struct sc_cardctl_etoken_obj_info args;
+	struct tlv	tlv;
+	unsigned char	buffer[64];
+
+	tlv_init(&tlv, buffer, sizeof(buffer));
+	tlv_next(&tlv, 0x83);
+	tlv_add(&tlv, se_id);
+
+	tlv_next(&tlv, 0x86);
+	tlv_add(&tlv, 0);
+	tlv_add(&tlv, 0);
+
+	tlv_next(&tlv, 0x8f);
+	tlv_add(&tlv, key_id);
+	tlv_add(&tlv, key_id);
+	tlv_add(&tlv, key_id);
+	tlv_add(&tlv, key_id);
+	tlv_add(&tlv, key_id);
+	tlv_add(&tlv, key_id);
+
+	args.data = buffer;
+	args.len = tlv_len(&tlv);
+	return sc_card_ctl(card, SC_CARDCTL_ETOKEN_PUT_DATA_SECI, &args);
+}
+
+/*
  * Initialize the Application DF and pin file
  */
 static int
@@ -357,6 +363,12 @@ etoken_init_app(struct sc_profile *profile, struct sc_card *card,
 					pin, pin_len);
 		}
 	}
+
+	/* Create a default security environment for this DF.
+	 * This SE autometically becomes the current SE when the
+	 * DF is selected. */
+	if (r >= 0)
+		r = etoken_create_sec_env(profile, card, 0x01, 0x00);
 
 	return r;
 }
@@ -408,8 +420,8 @@ etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
 /*
  * Create a private key object
  */
-#define ETOKEN_KEY_OPTIONS	0x82	/* "EnableBit" == b7? */
-#define ETOKEN_KEY_FLAGS	0x40	/* "GenerateBit" == b6? */
+#define ETOKEN_KEY_OPTIONS	0x02
+#define ETOKEN_KEY_FLAGS	0x00
 static int
 etoken_store_key_component(struct sc_card *card,
 		unsigned int key_id, unsigned int pin_id,
@@ -417,9 +429,10 @@ etoken_store_key_component(struct sc_card *card,
 		const u8 *data, size_t len,
 		int last)
 {
-	struct sc_cardctl_etoken_pin_info args;
+	struct sc_cardctl_etoken_obj_info args;
 	struct tlv	tlv;
 	unsigned char	buffer[256];
+	unsigned int	n;
 
 	/* Initialize the TLV encoder */
 	tlv_init(&tlv, buffer, sizeof(buffer));
@@ -435,8 +448,8 @@ etoken_store_key_component(struct sc_card *card,
 	tlv_add(&tlv, ETOKEN_KEY_FLAGS);
 	tlv_add(&tlv, ETOKEN_ALGO_RSA);
 	tlv_add(&tlv, 0x00);
-	tlv_add(&tlv, 0xFF);
-	tlv_add(&tlv, 0x00);
+	tlv_add(&tlv, 0xFF);	/* use count */
+	tlv_add(&tlv, 0xFF);	/* DEK (whatever this is) */
 	tlv_add(&tlv, 0x00);
 	tlv_add(&tlv, 0x00);
 
@@ -446,8 +459,14 @@ etoken_store_key_component(struct sc_card *card,
 	tlv_add(&tlv, pin_id);	/* AC CHANGE */
 	tlv_add(&tlv, pin_id);	/* AC GENKEY? */
 
+	/* SM bytes */
+	tlv_next(&tlv, 0x8B);
+	for (n = 0; n < 16; n++)
+		tlv_add(&tlv, 0xFF);
+
 	/* key component */
 	tlv_next(&tlv, 0x8f);
+	tlv_add(&tlv, len+1);
 	tlv_add(&tlv, 0);
 	while (len--)
 		tlv_add(&tlv, *data++);
@@ -465,7 +484,8 @@ etoken_store_key(struct sc_profile *profile, struct sc_card *card,
 	int		r, pin_id;
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &pin_info);
-	pin_id = pin_info.reference;
+	if ((pin_id = pin_info.reference) < 0)
+		pin_id = 0;
 
 	r = etoken_store_key_component(card, key_id, pin_id,
 			0, key->modulus.data, key->modulus.len, 0);
@@ -473,6 +493,7 @@ etoken_store_key(struct sc_profile *profile, struct sc_card *card,
 		return r;
 	r = etoken_store_key_component(card, key_id, pin_id,
 			1, key->d.data, key->d.len, 1);
+
 	return r;
 }
 
@@ -485,15 +506,20 @@ etoken_new_key(struct sc_profile *profile, struct sc_card *card,
 		struct sc_pkcs15_prkey_info *info)
 {
 	struct sc_pkcs15_prkey_rsa *rsa;
-	int		r;
+	int		key_id, r;
 
 	if (key->algorithm != SC_ALGORITHM_RSA) {
 		error(profile, "eToken supports RSA keys only.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	rsa = &key->u.rsa;
-	r = etoken_store_key(profile, card,
-			ETOKEN_KEY_ID(index), rsa);
+	key_id = ETOKEN_KEY_ID(index);
+	r = etoken_store_key(profile, card, key_id, rsa);
+	if (r >= 0) {
+		info->path = profile->df_info->file->path;
+		info->key_reference = key_id;
+	}
+
 	return r;
 }
 
@@ -583,6 +609,7 @@ etoken_generate_key(struct sc_profile *profile, struct sc_card *card,
 	struct sc_pkcs15_prkey_rsa key_obj;
 	struct sc_cardctl_etoken_genkey_info args;
 	struct sc_file	*temp;
+	u8		abignum[RSAKEY_MAX_SIZE];
 	u8		randbuf[64], key_id;
 	int		r;
 
@@ -604,8 +631,11 @@ etoken_generate_key(struct sc_profile *profile, struct sc_card *card,
 	key_id = ETOKEN_KEY_ID(index);
 
 	/* Create a key object, initializing components to 0xff */
-	memset(&key_obj, 0xff, sizeof(key_obj));
+	memset(&key_obj, 0, sizeof(key_obj));
+	memset(abignum, 0xFF, sizeof(abignum));
+	key_obj.modulus.data = abignum;
 	key_obj.modulus.len = keybits >> 3;
+	key_obj.d.data = abignum;
 	key_obj.d.len = keybits >> 3;
 	r = etoken_store_key(profile, card, key_id, &key_obj);
 	if (r < 0)
