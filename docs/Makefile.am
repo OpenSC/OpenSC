@@ -27,7 +27,8 @@ MANSRC  	= pkcs15-crypt.1 \
 		  sc_read_binary.3 \
 		  sc_read_record.3 \
 		  sc_release_context.3 \
-		  sc_select_file.3
+		  sc_select_file.3 \
+		  sc_pkcs15_compute_signature.3
 man_MANS	= $(MANSRC) pkcs15-profile.5
 noinst_DATA	= $(HTMLFILES)
 EXTRA_DIST	= $(MANSRC) pkcs15-profile.5.in pkcs-15v1_1.asn \
