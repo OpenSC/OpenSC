@@ -37,7 +37,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	struct sc_algorithm_id pk_alg, sig_alg;
 	sc_pkcs15_der_t pk = { NULL, 0 };
 	struct sc_asn1_entry asn1_version[] = {
-		{ "version",		SC_ASN1_INTEGER,   ASN1_INTEGER, SC_ASN1_OPTIONAL, &cert->version },
+		{ "version",		SC_ASN1_INTEGER,   ASN1_INTEGER, 0, &cert->version },
 		{ NULL }
 	};
 	struct sc_asn1_entry asn1_pkinfo[] = {
@@ -58,7 +58,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 		{ NULL }
 	};
 	struct sc_asn1_entry asn1_tbscert[] = {
-		{ "version",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, asn1_version },
+		{ "version",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, asn1_version },
 		{ "serialNumber",	SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, &cert->serial, &cert->serial_len },
 		{ "signature",		SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
 		{ "issuer",		SC_ASN1_OCTET_STRING, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &cert->issuer, &cert->issuer_len },
@@ -78,7 +78,6 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	size_t objlen;
 	
 	memset(cert, 0, sizeof(*cert));
-	cert->version = 1; /* defaults to 1 if version field not present */
 	obj = sc_asn1_verify_tag(ctx, buf, buflen, ASN1_SEQUENCE | SC_ASN1_CONS,
 				 &objlen);
 	if (obj == NULL) {
