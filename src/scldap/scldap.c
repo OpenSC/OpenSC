@@ -45,7 +45,6 @@
 static void scldap_parse_block(scldap_context * ctx, scconf_block * block, const char *cardprefix)
 {
 	scconf_block **blocks = NULL;
-	char fallback[32];
 	unsigned int i;
 
 	blocks = scconf_find_blocks(ctx->conf, block, "ldap", NULL);
@@ -64,18 +63,12 @@ static void scldap_parse_block(scldap_context * ctx, scconf_block * block, const
 		if (cardprefix) {
 			len = strlen(cardprefix) + 1;
 		}
-		if (block->name) {
-			len += strlen(block->name->data) + 1;
-		}
-		if (!len) {
-			snprintf(fallback, 32, "Entry #%03i", ctx->entries);
-			len = strlen(fallback) + 1;
-		}
+		len += strlen(block->name->data) + 1;
 		ctx->entry[ctx->entries].entry = malloc(len);
 		if (!ctx->entry[ctx->entries].entry)
 			break;
 		memset(ctx->entry[ctx->entries].entry, 0, len);
-		snprintf(ctx->entry[ctx->entries].entry, len, "%s%s", cardprefix ? cardprefix : "", block->name ? block->name->data : fallback);
+		snprintf(ctx->entry[ctx->entries].entry, len, "%s%s", cardprefix ? cardprefix : "", block->name->data);
 #define ADD(x, y) \
 { \
   val = scconf_find_value_first(block, y); \

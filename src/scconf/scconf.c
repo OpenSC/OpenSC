@@ -98,9 +98,8 @@ scconf_block **scconf_find_blocks(scconf_context * config, const scconf_block * 
 	for (item = block->items; item; item = item->next) {
 		if (item->type == SCCONF_ITEM_TYPE_BLOCK &&
 		    strcasecmp(item_name, item->key) == 0) {
-			if (key && item->value.block->name) {
-				if (strcasecmp(key, item->value.block->name->data))
-					continue;
+			if (key && strcasecmp(key, item->value.block->name->data)) {
+				continue;
 			}
 			if (size + 1 >= alloc_size) {
 				alloc_size *= 2;

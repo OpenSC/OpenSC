@@ -107,40 +107,6 @@ static scconf_item *scconf_item_add(scconf_parser * parser, int type)
 	return item;
 }
 
-static void scconf_block_add(scconf_parser * parser)
-{
-	scconf_block *block;
-	scconf_item *item;
-
-	item = scconf_item_add(parser, SCCONF_ITEM_TYPE_BLOCK);
-
-	block = malloc(sizeof(scconf_block));
-	if (!block) {
-		return;
-	}
-	memset(block, 0, sizeof(scconf_block));
-	block->parent = parser->block;
-	item->value.block = block;
-
-	block->name = parser->name;
-	parser->name = NULL;
-
-	parser->block = block;
-	parser->last_item = NULL;
-}
-
-static void scconf_parse_parent(scconf_parser * parser)
-{
-	parser->block = parser->block->parent;
-
-	parser->last_item = parser->block->items;
-	if (parser->last_item) {
-		while (parser->last_item->next) {
-			parser->last_item = parser->last_item->next;
-		}
-	}
-}
-
 static void scconf_parse_add_list(scconf_parser * parser, scconf_list ** list,
 				  const char *value)
 {
@@ -158,6 +124,43 @@ static void scconf_parse_add_list(scconf_parser * parser, scconf_list ** list,
 	} else {
 		for (tmp = list; *tmp; tmp = &(*tmp)->next);
 		*tmp = rec;
+	}
+}
+
+static void scconf_block_add(scconf_parser * parser)
+{
+	scconf_block *block;
+	scconf_item *item;
+
+	item = scconf_item_add(parser, SCCONF_ITEM_TYPE_BLOCK);
+
+	block = malloc(sizeof(scconf_block));
+	if (!block) {
+		return;
+	}
+	memset(block, 0, sizeof(scconf_block));
+	block->parent = parser->block;
+	item->value.block = block;
+
+	if (!parser->name) {
+		scconf_parse_add_list(parser, &parser->name, "");
+	}
+	block->name = parser->name;
+	parser->name = NULL;
+
+	parser->block = block;
+	parser->last_item = NULL;
+}
+
+static void scconf_parse_parent(scconf_parser * parser)
+{
+	parser->block = parser->block->parent;
+
+	parser->last_item = parser->block->items;
+	if (parser->last_item) {
+		while (parser->last_item->next) {
+			parser->last_item = parser->last_item->next;
+		}
 	}
 }
 

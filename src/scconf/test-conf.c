@@ -38,7 +38,7 @@ void print_ldap_block(scconf_context * conf, scconf_block * block)
 		const scconf_block *block = blocks[i];
 		const scconf_list *list, *tmp;
 
-		printf("LDAP entry[%s]\n", !block->name ? "Default" : block->name->data);
+		printf("LDAP entry[%s]\n", block->name->data);
 		printf("ldaphost: %s\n", scconf_find_value_first(block, "ldaphost"));
 		printf("ldapport: %s\n", scconf_find_value_first(block, "ldapport"));
 		printf("scope: %s\n", scconf_find_value_first(block, "scope"));

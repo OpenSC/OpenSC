@@ -156,7 +156,7 @@ static int load_parameters(struct sc_context *ctx, const char *app,
                 const scconf_list *list;
 		const char *s_internal = "internal", *val;
 
-		if (!block->name && strcmp(block->name->data, app))
+		if (strcmp(block->name->data, app))
 			continue;
 		val = scconf_find_value_first(block, "debug");
 		if (val)
