@@ -23,7 +23,7 @@
 #include <winscard.h>
 
 #include "sc-pkcs11.h"
-#include "../sc.h"
+#include <sc.h>
 
 struct sc_context *ctx = NULL;
 struct pkcs11_slot slot[PKCS11_MAX_SLOTS];
