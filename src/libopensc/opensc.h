@@ -213,7 +213,8 @@ int sc_compute_signature(struct sc_card *card, const u8 * data,
 int sc_verify(struct sc_card *card, int ref, const u8 *buf, int buflen,
 	      int *tries_left);
 int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
-			     int oldlen, const u8 *new, int newlen);
+			     int oldlen, const u8 *new, int newlen,
+			     int *tries_left);
 int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
 			   int puklen, const u8 *new, int newlen);
 

@@ -179,7 +179,8 @@ int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
 }
 
 int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
-			     int oldlen, const u8 *new, int newlen)
+			     int oldlen, const u8 *new, int newlen,
+			     int *tries_left)
 {
 	struct sc_apdu apdu;
 	u8 sbuf[MAX_BUFFER_SIZE];
@@ -201,6 +202,11 @@ int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
 	memset(sbuf, 0, len);
 	if (r)
 		return r;
+	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
+		if (tries_left != NULL)
+			*tries_left = apdu.sw2 & 0x0F;
+		return SC_ERROR_PIN_CODE_INCORRECT;
+	}
 	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }
 

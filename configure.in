@@ -50,8 +50,9 @@ AC_FUNC_MALLOC
 AC_FUNC_MEMCMP
 AC_CHECK_FUNCS(memset strdup)
 
-#AC_CONFIG_FILES(Makefile)
-
 AC_SUBST(ac_aux_dir)
 
-AC_OUTPUT(Makefile src/Makefile)
+CFLAGS="${CFLAGS} -Wall"
+
+AC_CONFIG_FILES(Makefile src/Makefile)
+AC_OUTPUT
