@@ -2585,7 +2585,8 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 	       	struct sc_file *file, void *data, unsigned int datalen)
 {
 	struct sc_file	*info = NULL;
-	int		r;
+	void		*copy = NULL;
+	int		r, need_to_zap = 0;
 
 	sc_debug(card->ctx, "called, path=%s, %u bytes\n",
 			sc_print_path(&file->path), datalen);
@@ -2602,6 +2603,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 			return r;
 	} else {
 		card->ctx->suppress_errors--;
+		need_to_zap = 1;
 	}
 
 	if (info->size < datalen) {
@@ -2612,6 +2614,13 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 			      datalen, info->size);
 		sc_file_free(info);
 		return SC_ERROR_TOO_MANY_OBJECTS;
+	} else if (info->size > datalen && need_to_zap) {
+		/* zero out the rest of the file - we may have shrunk
+		 * the file contents */
+		copy = calloc(1, info->size);
+		memcpy(copy, data, datalen);
+		datalen = info->size;
+		data = copy;
 	}
 
 	/* Present authentication info needed */
@@ -2620,17 +2629,8 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 	if (r >= 0 && datalen)
 		r = sc_update_binary(card, 0, (const u8 *) data, datalen, 0);
 
-	if (info->size > datalen) {
-		/* zero out the rest of the file - we may have shrunk
-		 * the file contents */
-		size_t	pad_len = info->size - datalen;
-
-		data = calloc(1, pad_len);
-		r = sc_update_binary(card, datalen,
-				(const u8 *) data, pad_len, 0);
-		free(data);
-	}
-
+	if (copy)
+		free(copy);
 	sc_file_free(info);
 	return r;
 }
