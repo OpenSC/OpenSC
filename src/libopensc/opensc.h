@@ -269,7 +269,7 @@ struct sc_card_operations {
 
 	/* verify:  Verifies reference data identified by <ref_qualifier>.
 	 *   If <tries_left> is not NULL, number of verify tries left is
-	 *   saved in case of verification failure.
+	 *   saved in case of verification failure. */
 	int (*verify)(struct sc_card *card, int ref_qualifier,
 		      const u8 *data, size_t data_len, int *tries_left);
 

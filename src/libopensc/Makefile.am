@@ -3,13 +3,13 @@
 INCLUDES = @CFLAGS_PCSC@
 
 lib_LTLIBRARIES		= libopensc.la
-libopensc_la_SOURCES	= sc-asn1.c sc-base64.c sc-defaults.c \
-			  sc-sec.c sc-log.c sc.c sc-card.c sc-iso7816.c \
-			  sc-pkcs15.c sc-pkcs15-cert.c sc-pkcs15-pin.c \
-			  sc-pkcs15-prkey.c sc-pkcs15-defaults.c \
-			  sc-pkcs15-sec.c \
-			  sc-card-setec.c sc-card-multiflex.c \
-			  sc-card-emv.c sc-card-default.c
+libopensc_la_SOURCES	= asn1.c base64.c defaults.c \
+			  sec.c log.c sc.c card.c iso7816.c \
+			  pkcs15.c pkcs15-cert.c pkcs15-pin.c \
+			  pkcs15-prkey.c pkcs15-defaults.c \
+			  pkcs15-sec.c \
+			  card-setec.c card-multiflex.c \
+			  card-emv.c card-default.c
 libopensc_la_LDFLAGS	= -version-info 0:4:0
 libopensc_la_LIBADD	= @LIBPCSC@
 

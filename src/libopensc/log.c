@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <string.h>
+#include <sys/time.h>
 
 #ifndef __GNUC__
 void error(struct sc_context *ctx, const char *format, ...)
