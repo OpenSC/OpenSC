@@ -22,7 +22,7 @@
 
 CK_FUNCTION_LIST function_list = {
 	{ 2, 11 },
-        // generic.c
+        /* generic.c */
 	C_Initialize,
 	C_Finalize,
 	C_GetInfo,
@@ -35,7 +35,7 @@ CK_FUNCTION_LIST function_list = {
 	C_InitToken,
 	C_InitPIN,
 	C_SetPIN,
-        // session.c
+        /* session.c */
 	C_OpenSession,
 	C_CloseSession,
 	C_CloseAllSessions,
@@ -44,7 +44,7 @@ CK_FUNCTION_LIST function_list = {
 	C_SetOperationState,
 	C_Login,
 	C_Logout,
-        // object.c
+        /* object.c */
 	C_CreateObject,
 	C_CopyObject,
 	C_DestroyObject,
@@ -54,7 +54,7 @@ CK_FUNCTION_LIST function_list = {
 	C_FindObjectsInit,
 	C_FindObjects,
 	C_FindObjectsFinal,
-        // endecypt.c
+        /* endecypt.c */
 	C_EncryptInit,
 	C_Encrypt,
 	C_EncryptUpdate,
@@ -63,7 +63,7 @@ CK_FUNCTION_LIST function_list = {
 	C_Decrypt,
 	C_DecryptUpdate,
 	C_DecryptFinal,
-        // digestsign.c
+        /* digestsign.c */
         C_DigestInit,
 	C_Digest,
 	C_DigestUpdate,
@@ -75,14 +75,14 @@ CK_FUNCTION_LIST function_list = {
 	C_SignFinal,
 	C_SignRecoverInit,
 	C_SignRecover,
-        // verify.c
+        /* verify.c */
 	C_VerifyInit,
 	C_Verify,
 	C_VerifyUpdate,
 	C_VerifyFinal,
 	C_VerifyRecoverInit,
 	C_VerifyRecover,
-        // misc.c
+        /* misc.c */
 	C_DigestEncryptUpdate,
 	C_DecryptDigestUpdate,
 	C_SignEncryptUpdate,

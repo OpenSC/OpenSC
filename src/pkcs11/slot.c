@@ -19,6 +19,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <malloc.h>
 #include "sc-pkcs11.h"
 
@@ -112,7 +113,7 @@ int slot_connect(int id)
         p15card = slot[id].p15card;
 
 	c = sc_pkcs15_enum_pins(p15card);
-	// FIXME: c < 0 ==> error
+	/* FIXME: c < 0 ==> error */
 
 	LOG("Found total of %d PIN codes.\n", c);
 	slot[id].flags = SLOT_CONNECTED;
@@ -132,8 +133,10 @@ int slot_connect(int id)
 		struct sc_pkcs15_cert *cert;
 		struct sc_pkcs15_cert_info *cinfo = &p15card->cert_info[c];
 
-//		if (cinfo->authority)
-//			continue;
+#if 0
+		if (cinfo->authority)
+			continue;
+#endif
 		LOG("Reading '%s' certificate.\n", cinfo->com_attr.label);
 		r = sc_pkcs15_read_certificate(p15card, cinfo, &cert);
 		if (r)

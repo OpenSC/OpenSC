@@ -21,11 +21,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-
-#include <winscard.h>
-
+#include <ctype.h>
 #include "sc-pkcs11.h"
-#include <opensc.h>
 
 struct sc_context *ctx = NULL;
 struct pkcs11_slot slot[PKCS11_MAX_SLOTS];
@@ -33,6 +30,7 @@ struct pkcs11_session *session[PKCS11_MAX_SESSIONS+1];
 
 void LOG(char *format, ...)
 {
+#if 1
 	va_list valist;
 	FILE *out;
 
@@ -43,6 +41,23 @@ void LOG(char *format, ...)
                 va_end(valist);
 		fclose(out);
 	}
+#endif
+}
+
+void hex_dump(const unsigned char *buf, int count)
+{
+	int i;
+	for (i = 0; i < count; i++) {
+                unsigned char c = buf[i];
+		int printch = 0;
+		if (!isalnum(c) && !ispunct(c) && !isspace(c))
+			printch = 0;
+                if (printch)
+			LOG("%02X%c ", c, c);
+		else
+                        LOG("%02X  ", c);
+	}
+	LOG("\n");
 }
 
 CK_RV C_Initialize(CK_VOID_PTR pReserved)
@@ -82,8 +97,8 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
         memset(pInfo, 0, sizeof(CK_INFO));
 	pInfo->cryptokiVersion.major = 2;
 	pInfo->cryptokiVersion.minor = 11;
-	strcpy(pInfo->manufacturerID, "Timo Teras & Juha Yrjola");
-	strcpy(pInfo->libraryDescription, "PC/SC PKCS#15 SmartCard reader");
+	strcpy((char *) pInfo->manufacturerID, "Timo Teras & Juha Yrjola");
+	strcpy((char *) pInfo->libraryDescription, "PC/SC PKCS#15 SmartCard reader");
 	pInfo->libraryVersion.major = 0;
 	pInfo->libraryVersion.minor = 1;
         return CKR_OK;
@@ -129,9 +144,9 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
                 return CKR_SLOT_ID_INVALID;
 
 	memset(pInfo, 0, sizeof(CK_SLOT_INFO));
-	strncpy(pInfo->slotDescription, ctx->readers[slotID],
+	strncpy((char *) pInfo->slotDescription, ctx->readers[slotID],
 		sizeof(pInfo->slotDescription));
-	strcpy(pInfo->manufacturerID, "PC/SC interface");
+	strcpy((char *) pInfo->manufacturerID, "PC/SC interface");
 	pInfo->flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 	if (sc_detect_card(ctx, slotID) == 1) {
                 LOG("Detected card in slot %d\n", slotID);
@@ -162,17 +177,20 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
                 if (r)
 			return r;
 	}
-	strncpy(pInfo->label, slot[slotID].p15card->label, 32);
+	strncpy((char *) pInfo->label, slot[slotID].p15card->label, 32);
 	pInfo->label[31] = 0;
-	strncpy(pInfo->manufacturerID, slot[slotID].p15card->manufacturer_id, 32);
+	strncpy((char *) pInfo->manufacturerID, slot[slotID].p15card->manufacturer_id, 32);
 	pInfo->manufacturerID[31] = 0;
-	strcpy(pInfo->model, "PKCS#15 SC");
-	strncpy(pInfo->serialNumber, slot[slotID].p15card->serial_number, 16);
+	strcpy((char *) pInfo->model, "PKCS#15 SC");
+	strncpy((char *) pInfo->serialNumber, slot[slotID].p15card->serial_number, 16);
 	pInfo->serialNumber[15] = 0;
 
 	pInfo->flags = CKF_USER_PIN_INITIALIZED | CKF_LOGIN_REQUIRED;
-//	pInfo->ulMaxSessionCount = 1;	/* opened in exclusive mode */
+#if 0
+	pInfo->ulMaxSessionCount = 1;	/* opened in exclusive mode */
+#else
 	pInfo->ulMaxSessionCount = 0; /* FIXME */
+#endif
 	pInfo->ulSessionCount = 0;
 	pInfo->ulMaxRwSessionCount = 1;
 	pInfo->ulRwSessionCount = 0;

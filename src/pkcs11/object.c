@@ -109,22 +109,22 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 	object = slt->object[hObject];
 
 	for (i = 0; i < ulCount; i++) {
-		// For each request attribute
+		/* For each request attribute */
 
-                // 1. Find matching attribute
+                /* 1. Find matching attribute */
 		for (j = 0; j < object->num_attributes; j++) {
 			if (pTemplate[i].type == object->attribute[j].type)
                                 break;
 		}
 
-		// 2. If object doesn't posses attribute
+		/* 2. If object doesn't posses attribute */
 		if (j >= object->num_attributes) {
 			LOG("C_GetAttributeValue: Attribute 0x%x not present\n", pTemplate[i].type);
 			pTemplate[i].ulValueLen = -1;
                         continue;
 		}
 
-		// 3. If pValue is NULL_PTR then it's a size inquiry
+		/* 3. If pValue is NULL_PTR then it's a size inquiry */
 		if (pTemplate[i].pValue == NULL_PTR) {
 			pTemplate[i].ulValueLen = object->attribute[j].ulValueLen;
 
@@ -133,7 +133,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
                         continue;
 		}
 
-		// 4. If value fits then copy it and update true length
+		/* 4. If value fits then copy it and update true length */
 		if (pTemplate[i].ulValueLen >= object->attribute[j].ulValueLen) {
 			LOG("C_GetAttributeValue: Copying attribute 0x%x length %d\n",
 			    pTemplate[i].type, object->attribute[j].ulValueLen);
@@ -144,7 +144,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
                         continue;
 		}
 
-		// 5. Otherwise set length to minus one
+		/* 5. Otherwise set length to minus one */
 		LOG("C_GetAttributeValue: Attribute 0x%x ignored\n", pTemplate[i].type);
 		pTemplate[i].ulValueLen = -1;
 	}
@@ -182,20 +182,20 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
         ses->search.position = 0;
 	ses->search.num_matches = 0;
 
-	// For each object in token do
+	/* For each object in token do */
 	for (i = 1; i <= slt->num_objects; i++) {
 		int matched = 1;
 
-		// Try to match every attribute
+		/* Try to match every attribute */
 		for (j = 0; j < ulCount; j++) {
 			struct pkcs11_object *object = slt->object[i];
 
-                        // Find the matching attribute in object
+                        /* Find the matching attribute in object */
 			for (k = 0; k < object->num_attributes; k++) {
 				if (pTemplate[j].type == object->attribute[k].type)
 					break;
 			}
-			// Is the attribute matching?
+			/* Is the attribute matching? */
 			if (k >= object->num_attributes ||
 			    pTemplate[j].ulValueLen != object->attribute[k].ulValueLen ||
 			    memcmp(pTemplate[j].pValue, object->attribute[k].pValue, pTemplate[j].ulValueLen)) {

@@ -31,25 +31,26 @@
 #define PKCS11_MAX_SESSIONS     8
 #define PKCS11_MAX_OBJECTS      16
 
-// Object information
+/* Object information */
 struct pkcs11_object {
         int object_type, token_id;
         int num_attributes;
 	CK_ATTRIBUTE_PTR attribute;
 };
 
-// Search information
+/* Search information */
 struct pkcs11_search_context {
         int num_matches, position;
         CK_OBJECT_HANDLE handles[PKCS11_MAX_OBJECTS];
 };
-// Signing information
+
+/* Signing information */
 struct pkcs11_sign_context {
 	int private_key_id;
         int algorithm_ref;
 };
 
-// Per session information; "context"
+/* Per session information; "context" */
 struct pkcs11_session {
 	int slot;
 	CK_STATE state;
@@ -59,12 +60,13 @@ struct pkcs11_session {
 
 	struct pkcs11_search_context search;
         struct pkcs11_sign_context sign;
-        //...
+        /* ... */
 };
 
-// Per slot (=card) information
+/* Per slot (=card) information */
 #define SLOT_CONNECTED 1
 #define SLOT_LOGGED_IN 2
+
 struct pkcs11_slot {
         int flags;
 	struct sc_pkcs15_card *p15card;
@@ -75,6 +77,7 @@ struct pkcs11_slot {
 
 extern CK_FUNCTION_LIST function_list;
 extern void LOG(char *format, ...);
+extern void hex_dump(const unsigned char *buf, int count);
 
 extern struct sc_context *ctx;
 extern struct pkcs11_slot slot[PKCS11_MAX_SLOTS];

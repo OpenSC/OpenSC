@@ -20,9 +20,9 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <malloc.h>
 #include "sc-pkcs11.h"
-
 
 CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
 		    CK_FLAGS              flags,         /* defined in CK_SESSION_INFO */
@@ -231,14 +231,15 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
-	//if (!(ses->flags & CKF_RW_SESSION))
-	//	return CKR_SESSION_READ_ONLY;
-
+#if 0
+	if (!(ses->flags & CKF_RW_SESSION))
+		return CKR_SESSION_READ_ONLY;
+#endif
 	ses = session[hSession];
 	card = slot[ses->slot].p15card;
 
 	LOG("Master PIN code update starts.\n");
-        rc = sc_pkcs15_change_pin(card, &card->pin_info[0], pOldPin, ulOldLen, pNewPin, ulNewLen);
+        rc = sc_pkcs15_change_pin(card, &card->pin_info[0], (char *) pOldPin, ulOldLen, (char *) pNewPin, ulNewLen);
 	switch (rc) {
 	case 0:
 		LOG("Master PIN code CHANGED succesfully.\n");

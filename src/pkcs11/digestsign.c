@@ -23,22 +23,6 @@
 
 #include "sc-pkcs11.h"
 
-static void hex_dump(const unsigned char *buf, int count)
-{
-	int i;
-	for (i = 0; i < count; i++) {
-                unsigned char c = buf[i];
-		int printch = 0;
-		if (!isalnum(c) && !ispunct(c) && !isspace(c))
-			printch = 0;
-                if (printch)
-			LOG("%02X%c ", c, c);
-		else
-                        LOG("%02X  ", c);
-	}
-	LOG("\n");
-}
-
 CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 		   CK_MECHANISM_PTR  pMechanism) /* the digesting mechanism */
 {
@@ -105,7 +89,7 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
-		// Signing according to PKCS#1 standard
+		/* Signing according to PKCS#1 standard */
                 LOG("CKM_RSA_PKCS mechanism requested\n");
 		ses->sign.algorithm_ref = 0x02;
 		break;
@@ -126,7 +110,7 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 	     CK_BYTE_PTR       pSignature,      /* receives the signature */
 	     CK_ULONG_PTR      pulSignatureLen) /* receives byte count of signature */
 {
-	char signature[1024];
+	unsigned char signature[1024];
         struct sc_pkcs15_card *p15card;
 	struct pkcs11_session *ses;
         int c;
