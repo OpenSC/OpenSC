@@ -245,7 +245,8 @@ static int starcos_init(struct sc_card *card)
 			| SC_ALGORITHM_RSA_HASH_NONE
 			| SC_ALGORITHM_RSA_HASH_SHA1
 			| SC_ALGORITHM_RSA_HASH_MD5
-			| SC_ALGORITHM_RSA_HASH_RIPEMD160;
+			| SC_ALGORITHM_RSA_HASH_RIPEMD160
+			| SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 
 		_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
 		_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
@@ -998,7 +999,7 @@ static int starcos_compute_signature(struct sc_card *card,
 	sc_starcos_ex_data_t ex_dat;
 
 	assert(card != NULL && data != NULL && out != NULL);
-	if (datalen > 20)
+	if (datalen > SC_MAX_APDU_BUFFER_SIZE)
 		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 
 	ex_dat.key = SC_STARCOS_PRV_DATA;
