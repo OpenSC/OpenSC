@@ -422,6 +422,9 @@ out:
 	if (profile) {
 		sc_pkcs15init_unbind(profile);
 	}
+	if (p15card) {
+		sc_pkcs15_unbind(p15card);
+	}
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card, 0);
@@ -868,6 +871,9 @@ do_store_certificate(struct sc_profile *profile)
 	if (r >= 0)
 		r = sc_pkcs15init_store_certificate(p15card, profile,
 					&args, NULL);
+
+	if (args.der_encoded.value)
+		free(args.der_encoded.value);
 
 	return r;
 }
