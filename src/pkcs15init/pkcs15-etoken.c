@@ -55,9 +55,6 @@ static void	error(struct sc_profile *, const char *, ...);
 
 #define ETOKEN_ALGO_PIN		0x87
 
-#define ETOKEN_DEFAULT_PIN	"null-pin"
-#define ETOKEN_DEFAULT_PIN_LEN	(sizeof(ETOKEN_DEFAULT_PIN)-1)
-
 struct etoken_pin_info {
 	int		profile_id;
 	u8		id;
@@ -83,6 +80,7 @@ static struct etoken_pin_info	etoken_user_puk = {
 	ETOKEN_PUK_ID,
 	ETOKEN_SO_PIN_ID
 };
+static u8	etoken_default_pin[8];
 
 static inline void
 tlv_init(struct tlv *tlv, u8 *base, size_t size)
@@ -128,7 +126,8 @@ etoken_set_ac(struct sc_file *file, int op, struct sc_acl_entry *acl)
 static int
 etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
 		struct etoken_pin_info *info,
-		const u8 *pin, size_t pin_len)
+		const u8 *pin, size_t pin_len,
+		int allow_unblock)
 {
 	struct sc_pkcs15_pin_info params;
 	struct sc_cardctl_etoken_pin_info args;
@@ -136,10 +135,9 @@ etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
 	struct tlv	tlv;
 	unsigned int	pin_id, puk_id, attempts, minlen;
 
-	/* XXX hack for testing */
 	if (!pin_len) {
-		pin = ETOKEN_DEFAULT_PIN;
-		pin_len = ETOKEN_DEFAULT_PIN_LEN;
+		pin = etoken_default_pin;
+		pin_len = sizeof(etoken_default_pin);
 	}
 
 	sc_profile_get_pin_info(profile, info->profile_id, &params);
@@ -147,7 +145,7 @@ etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
 	minlen = params.min_length;
 
 	pin_id = info->id;
-	puk_id = info->unblock;
+	puk_id = allow_unblock? info->unblock : ETOKEN_AC_NEVER;
 
 	tlv_init(&tlv, buffer, sizeof(buffer));
 
@@ -162,21 +160,32 @@ etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
 	tlv_add(&tlv, attempts & 0xf);	/* flags byte */
 	tlv_add(&tlv, ETOKEN_ALGO_PIN);	/* algorithm = pin-test */
 	tlv_add(&tlv, attempts & 0xf);	/* errcount = attempts */
-	tlv_add(&tlv, 0x00);		/* usecount = 0 */
-	tlv_add(&tlv, 0x00);		/* DEK (?) */
-	tlv_add(&tlv, 0x00);		/* ARA counter (?) */
-	tlv_add(&tlv, minlen);
 
-	/* data: PIN */
-	tlv_next(&tlv, 0x8f);
-	while (pin_len--)
-		tlv_add(&tlv, *pin++);
+	/* usecount: not documented, but seems to work like this:
+	 *  -	value of 0xff means pin can be presented any number
+	 *	of times
+	 *  -	anything less: max # of times before BS object is blocked.
+	 */
+	tlv_add(&tlv, 0xff);
+
+	/* DEK: not documented, no idea what it means */
+	tlv_add(&tlv, 0x00);
+
+	/* ARA counted: not documented, no idea what it means */
+	tlv_add(&tlv, 0x00);
+
+	tlv_add(&tlv, minlen);		/* minlen */
 
 	/* AC conditions */
 	tlv_next(&tlv, 0x86);
 	tlv_add(&tlv, 0x00);		/* use: always */
 	tlv_add(&tlv, puk_id);		/* change: PUK */
 	tlv_add(&tlv, puk_id);		/* unblock: PUK */
+
+	/* data: PIN */
+	tlv_next(&tlv, 0x8f);
+	while (pin_len--)
+		tlv_add(&tlv, *pin++);
 
 	args.data = buffer;
 	args.len = tlv_len(&tlv);
@@ -193,7 +202,7 @@ etoken_init_app(struct sc_profile *profile, struct sc_card *card,
 		const unsigned char *puk, size_t puk_len)
 {
 	struct sc_file	*df = profile->df_info->file;
-	int		r;
+	int		r, unblock = 0;
 
 	/* Create the application DF */
 	r = sc_pkcs15init_create_file(profile, card, df);
@@ -201,17 +210,30 @@ etoken_init_app(struct sc_profile *profile, struct sc_card *card,
 	if (r >= 0)
 		r = sc_select_file(card, &df->path, NULL);
 
-	/* Create the PIN objects */
+	/* Create the PIN objects.
+	 * First, the SO pin and PUK. Don't create objects for
+	 * these if none specified. */
+	if (pin && pin_len) {
+		if (r >= 0 && puk && puk_len)
+			r = etoken_new_pin(profile, card,
+				&etoken_so_puk, puk, puk_len, unblock++);
+		if (r >= 0)
+			r = etoken_new_pin(profile, card,
+				&etoken_so_pin, pin, pin_len, unblock++);
+	}
+	/* Create objects for user PIN and PUK. */
 	if (r >= 0)
 		r = etoken_new_pin(profile, card,
-				&etoken_so_puk, puk, puk_len);
+				&etoken_user_pin, 0, 0, unblock++);
 	if (r >= 0)
 		r = etoken_new_pin(profile, card,
-				&etoken_so_pin, pin, pin_len);
-	if (r >= 0)
-		r = etoken_new_pin(profile, card, &etoken_user_pin, 0, 0);
-	if (r >= 0)
-		r = etoken_new_pin(profile, card, &etoken_user_puk, 0, 0);
+				&etoken_user_puk, 0, 0, unblock);
+
+#if 0
+	r = sc_verify(card, SC_AC_CHV, 0x04,
+			etoken_default_pin, sizeof(etoken_default_pin),
+			NULL);
+#endif
 
 	return r;
 }
