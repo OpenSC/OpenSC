@@ -107,7 +107,11 @@ filesystem {
 		    file-id	= 4500;
 		    ACL		= *=$PIN, READ=NONE;
 		}
-    	    }
+		EF data {
+		    file-id	= 4600;
+		    ACL		= *=$PIN, READ=NONE;
+		}
+	    }
 	}
     }
 }
