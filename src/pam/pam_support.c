@@ -106,7 +106,7 @@ int opensc_pam_msg(pam_handle_t * pamh, unsigned int ctrl
 		struct pam_message *pmsg[1], msg[1];
 		struct pam_response *resp;
 		char *buf = strdup(text);
-		int i;
+		unsigned int i;
 
 		if (!buf) {
 			return PAM_BUF_ERR;
@@ -205,7 +205,8 @@ int opensc_pam_set_ctrl(pam_handle_t * pamh, int flags, int argc, const char **a
 
 static void _cleanup(pam_handle_t * pamh, void *x, int error_status)
 {
-	_pam_delete((char *) x);
+	char *y = (char *) x;
+	_pam_delete(y);
 }
 
 /* ************************************************************** *
