@@ -336,9 +336,8 @@ struct sc_pin_cmd_pin {
 	int encoding;		/* ASCII-numeric, BCD, etc */
 	size_t pad_length;	/* filled in by the card driver */
 	u8 pad_char;
-	size_t offset;		/* offset relative to the APDU's
-				 * argument buffer, where the
-				 * PIN should go */
+	size_t offset;          /* PIN offset in the APDU */
+	size_t length_offset;	/* Effective PIN length offset in the APDU */
 };
 
 struct sc_pin_cmd_data {
@@ -391,10 +390,6 @@ struct sc_reader_operations {
 	int (*unlock)(struct sc_reader *reader, struct sc_slot_info *slot);
 	int (*set_protocol)(struct sc_reader *reader, struct sc_slot_info *slot,
 			    unsigned int proto);
-	/* Not sure what that is supposed to do --okir */
-	int (*add_callback)(struct sc_reader *reader, struct sc_slot_info *slot,
-			    const struct sc_event_listener *, void *arg);
-
 	/* Pin pad functions */
 	int (*display_message)(struct sc_reader *, struct sc_slot_info *,
 			       const char *);
