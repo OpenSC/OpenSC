@@ -179,28 +179,6 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	return 0;
 }
 
-static int pcsc_detect_card_presence(struct sc_reader *reader, struct sc_slot_info *slot)
-{
-	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
-	LONG ret;
-	SCARD_READERSTATE_A rgReaderStates[SC_MAX_READERS];
-
-	rgReaderStates[0].szReader = priv->reader_name;
-	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
-	rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
-	ret = SCardGetStatusChange(priv->pcsc_ctx, SC_STATUS_TIMEOUT, rgReaderStates, 1);
-	if (ret != 0) {
-		PCSC_ERROR(reader->ctx, "SCardGetStatusChange failed", ret);
-		SC_FUNC_RETURN(reader->ctx, 1, pcsc_ret_to_error(ret));
-	}
-	if (rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT) {
-		slot->flags |= SC_SLOT_CARD_PRESENT;
-		return 1;
-	}
-	slot->flags &= ~SC_SLOT_CARD_PRESENT;
-	return 0;
-}
-
 static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info *slot)
 {
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
@@ -215,16 +193,26 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 		PCSC_ERROR(reader->ctx, "SCardGetStatusChange failed", ret);
 		return pcsc_ret_to_error(ret);
 	}
-	slot->flags = 0;
 	if (rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT) {
-		slot->flags = SC_SLOT_CARD_PRESENT;
+		slot->flags |= SC_SLOT_CARD_PRESENT;
 		slot->atr_len = rgReaderStates[0].cbAtr;
 		if (slot->atr_len > SC_MAX_ATR_SIZE)
 			slot->atr_len = SC_MAX_ATR_SIZE;
 		memcpy(slot->atr, rgReaderStates[0].rgbAtr, slot->atr_len);
+	} else {
+		slot->flags &= ~SC_SLOT_CARD_PRESENT;
 	}
 
 	return 0;
+}
+
+static int pcsc_detect_card_presence(struct sc_reader *reader, struct sc_slot_info *slot)
+{
+	int rv;
+
+	if ((rv = refresh_slot_attributes(reader, slot)) < 0)
+		return rv;
+	return (slot->flags & SC_SLOT_CARD_PRESENT)? 1 : 0;
 }
 
 static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
@@ -366,6 +354,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 				free(priv);
 			break;
 		}
+		memset(reader, 0, sizeof(*reader));
 		reader->drv_data = priv;
 		reader->ops = &pcsc_ops;
 		reader->driver = &pcsc_drv;
