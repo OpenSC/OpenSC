@@ -110,7 +110,7 @@ struct sc_context *ctx = NULL;
 struct sc_card *card = NULL;
 struct sc_pkcs15_card *p15card = NULL;
 
-void print_cert_info(const struct sc_pkcs15_object *obj)
+static void print_cert_info(const struct sc_pkcs15_object *obj)
 {
 	unsigned int i;
         struct sc_pkcs15_cert_info *cert = (struct sc_pkcs15_cert_info *) obj->data;
@@ -126,7 +126,7 @@ void print_cert_info(const struct sc_pkcs15_object *obj)
 }
 
 
-int list_certificates(void)
+static int list_certificates(void)
 {
 	int r, i;
         struct sc_pkcs15_object *objs[32];
@@ -145,7 +145,7 @@ int list_certificates(void)
 	return 0;
 }
 
-int
+static int
 print_pem_object(const char *kind, const u8*data, size_t data_len)
 {
 	FILE		*outf;
@@ -193,10 +193,10 @@ print_pem_object(const char *kind, const u8*data, size_t data_len)
 	return 0;
 }
 
-int
+static int
 list_data_object(const char *kind, const u8*data, size_t data_len)
 {
-	int i;
+	size_t i;
 	
 	printf("%s (%i bytes): <", kind, data_len);
 	for (i = 0; i < data_len; i++)
@@ -206,10 +206,10 @@ list_data_object(const char *kind, const u8*data, size_t data_len)
 	return 0;
 }
 
-int
+static int
 print_data_object(const char *kind, const u8*data, size_t data_len)
 {
-	int i;
+	size_t i;
 	
 	if (opt_outfile != NULL) {
 		FILE *outf;
@@ -235,7 +235,7 @@ print_data_object(const char *kind, const u8*data, size_t data_len)
 	return 0;
 }
 
-int read_certificate(void)
+static int read_certificate(void)
 {
 	int r, i, count;
 	struct sc_pkcs15_id id;
@@ -272,7 +272,7 @@ int read_certificate(void)
 	return 2;
 }
 
-int read_data_object(void)
+static int read_data_object(void)
 {
 	int    r, i, count, oid_len = 0;
 	struct sc_pkcs15_object *objs[32];
@@ -317,7 +317,7 @@ int read_data_object(void)
 	return 2;
 }
 
-int list_data_objects(void)
+static int list_data_objects(void)
 {
 	int r, i, count;
 	struct sc_pkcs15_object *objs[32];
@@ -359,7 +359,7 @@ int list_data_objects(void)
 	return 0;
 }
 
-void print_prkey_info(const struct sc_pkcs15_object *obj)
+static void print_prkey_info(const struct sc_pkcs15_object *obj)
 {
 	unsigned int i;
         struct sc_pkcs15_prkey_info *prkey = (struct sc_pkcs15_prkey_info *) obj->data;
@@ -368,7 +368,7 @@ void print_prkey_info(const struct sc_pkcs15_object *obj)
 		"wrap", "unwrap", "verify", "verifyRecover",
 		"derive", "nonRepudiation"
 	};
-	const int usage_count = sizeof(usages)/sizeof(usages[0]);
+	const size_t usage_count = sizeof(usages)/sizeof(usages[0]);
 	const char *access_flags[] = {
 		"sensitive", "extract", "alwaysSensitive",
 		"neverExtract", "local"
@@ -401,7 +401,7 @@ void print_prkey_info(const struct sc_pkcs15_object *obj)
 }
 
 
-int list_private_keys(void)
+static int list_private_keys(void)
 {
 	int r, i;
         struct sc_pkcs15_object *objs[32];
@@ -420,7 +420,7 @@ int list_private_keys(void)
 	return 0;
 }
 
-void print_pubkey_info(const struct sc_pkcs15_object *obj)
+static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 {
 	unsigned int i;
         const struct sc_pkcs15_pubkey_info *pubkey = (const struct sc_pkcs15_pubkey_info *) obj->data;
@@ -461,7 +461,7 @@ void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	printf("\tID          : %s\n", sc_pkcs15_print_id(&pubkey->id));
 }
 
-int list_public_keys(void)
+static int list_public_keys(void)
 {
 	int r, i;
         struct sc_pkcs15_object *objs[32];
@@ -480,7 +480,7 @@ int list_public_keys(void)
 	return 0;
 }
 
-int read_public_key(void)
+static int read_public_key(void)
 {
 	int r;
 	struct sc_pkcs15_id id;
@@ -572,7 +572,7 @@ get_pin_info(void)
 	return obj;
 }
 
-u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
+static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 {
 	sc_pkcs15_pin_info_t *pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
 	char buf[80];
@@ -616,7 +616,7 @@ authenticate(sc_pkcs15_object_t *obj)
 			pin, pin? strlen((char *) pin) : 0);
 }
 
-void print_pin_info(const struct sc_pkcs15_object *obj)
+static void print_pin_info(const struct sc_pkcs15_object *obj)
 {
 	const char *pin_flags[] = {
 		"case-sensitive", "local", "change-disabled",
@@ -628,9 +628,9 @@ void print_pin_info(const struct sc_pkcs15_object *obj)
 	const char *pin_types[] = {"bcd", "ascii-numeric", "UTF-8",
 		"halfnibble bcd", "iso 9664-1"}; 
         const struct sc_pkcs15_pin_info *pin = (const struct sc_pkcs15_pin_info *) obj->data;
-	const int pf_count = sizeof(pin_flags)/sizeof(pin_flags[0]);
+	const size_t pf_count = sizeof(pin_flags)/sizeof(pin_flags[0]);
 	char path[SC_MAX_PATH_SIZE * 2 + 1];
-	int i;
+	size_t i;
 	char *p;
 
 	p = path;
@@ -658,7 +658,7 @@ void print_pin_info(const struct sc_pkcs15_object *obj)
 		printf("\tTries left: %d\n", pin->tries_left);
 }
 
-int list_pins(void)
+static int list_pins(void)
 {
 	int r, i;
 	struct sc_pkcs15_object *objs[32];
@@ -677,7 +677,7 @@ int list_pins(void)
 	return 0;
 }
 
-int unblock_pin(void)
+static int unblock_pin(void)
 {
 	struct sc_pkcs15_pin_info *pinfo = NULL;
 	sc_pkcs15_object_t *pin_obj;
@@ -727,7 +727,7 @@ int unblock_pin(void)
 	return 0;
 }
 
-int change_pin(void)
+static int change_pin(void)
 {
 	sc_pkcs15_object_t *pin_obj;
 	sc_pkcs15_pin_info_t *pinfo = NULL;
@@ -781,9 +781,9 @@ int change_pin(void)
 	return 0;
 }
 
-int read_and_cache_file(const struct sc_path *path)
+static int read_and_cache_file(const struct sc_path *path)
 {
-	struct sc_file *tmpfile;
+	struct sc_file *tfile;
 	const struct sc_acl_entry *e;
 	u8 buf[16384];
 	int r;
@@ -793,18 +793,18 @@ int read_and_cache_file(const struct sc_path *path)
 		hex_dump(stdout, path->value, path->len, "");
 		printf("...\n");
 	}
-	r = sc_select_file(card, path, &tmpfile);
+	r = sc_select_file(card, path, &tfile);
 	if (r != 0) {
 		fprintf(stderr, "sc_select_file() failed: %s\n", sc_strerror(r));
 		return -1;
 	}
-	e = sc_file_get_acl_entry(tmpfile, SC_AC_OP_READ);
+	e = sc_file_get_acl_entry(tfile, SC_AC_OP_READ);
 	if (e != NULL && e->method != SC_AC_NONE) {
 		if (verbose)
 			printf("Skipping; ACL for read operation is not NONE.\n");
 		return -1;
 	}
-	r = sc_read_binary(card, 0, buf, tmpfile->size, 0);
+	r = sc_read_binary(card, 0, buf, tfile->size, 0);
 	if (r < 0) {
 		fprintf(stderr, "sc_read_binary() failed: %s\n", sc_strerror(r));
 		return -1;
@@ -814,11 +814,11 @@ int read_and_cache_file(const struct sc_path *path)
 		fprintf(stderr, "Unable to cache file: %s\n", sc_strerror(r));
 		return -1;
 	}
-	sc_file_free(tmpfile);
+	sc_file_free(tfile);
 	return 0;
 }
 
-int learn_card(void)
+static int learn_card(void)
 {
 	char dir[PATH_MAX];
 	int r, i, cert_count;
