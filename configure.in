@@ -1046,7 +1046,6 @@ src/include/opensc/Makefile
 src/include/opensc/rsaref/Makefile
 src/libopensc/Makefile
 src/libopensc/opensc-config
-src/openscd/Makefile
 src/openssh/Makefile
 src/pam/Makefile
 src/pkcs11/Makefile
