@@ -9,13 +9,14 @@ if [ -z "$__p15init__" ]; then
 	p15base=${P15_BASE:-../..}
 	p15temp=${P15_TEMP:-./test-data}
 
+	osctool=$p15base/tools/opensc-tool
 	p15crypt=$p15base/tools/pkcs15-crypt
 	p15tool=$p15base/tools/pkcs15-tool
 	p15init=$p15base/tools/pkcs15-init
 	p11tool=$p15base/tools/pkcs11-tool
 	p15log=$p15temp/test.log
 
-	for bin in $p15tool $p15crypt $p15init; do
+	for bin in $osctool $p15tool $p15crypt $p15init $p11tool; do
 		test -x $bin && continue
 		echo "*** Missing binary $bin" >&2
 		exit 1
@@ -49,6 +50,7 @@ if [ -z "$__p15init__" ]; then
 		p15crypt="$p15crypt --reader $P15_READER"
 		p15tool="$p15tool --reader $P15_READER"
 		p15init="$p15init --reader $P15_READER"
+		osctool="$osctool --reader $P15_READER"
 	fi
 
 	# Get terminal control sequences
@@ -169,6 +171,17 @@ function run_check_output {
 	"$msg")	return 0;;
 	*)	fail "Command failed (expected $msg): $*";;
 	esac
+}
+
+function skip_if_card {
+
+	name=`$osctool -q --name`
+	for __pat in "$@"; do
+		if expr "$name" : "${__pat}.*" >/dev/null; then
+			msg "Detected $name; skipping test"
+			exit 0
+		fi
+	done
 }
 
 ##################################################################
