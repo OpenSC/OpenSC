@@ -315,9 +315,21 @@ AC_SUBST(LIBDL)
 AC_CHECK_LIB(dl, dlopen, [LIBDL="$LIBDL -ldl" ac_cv_func_dlopen_ldl=yes], ac_cv_func_dlopen_ldl=no)
 
 AC_SUBST(LIBREADLINE)
-AC_CHECK_LIB(readline, readline, [LIBREADLINE="$LIBREADLINE -lreadline" ac_cv_func_readline_lreadline=yes], ac_cv_func_readline_lreadline=no)
-
+# libreadline will also need libtermcap on some OSes
 saved_LIBS="$LIBS"
+for add in "" "-ltermcap"; do
+	if test "X$add" != "X"; then
+		AC_MSG_CHECKING([whether -lreadline requires $add])
+	fi
+	LIBS="$saved_LIBS $add"
+	unset ac_cv_lib_readline_readline
+	AC_CHECK_LIB(readline, readline, [
+		LIBREADLINE="-lreadline $add"
+		ac_cv_func_readline_lreadline=yes
+	], ac_cv_func_readline_lreadline=no)
+	test "$ac_cv_func_readline_lreadline" = yes && break
+done
+
 LIBS="$LIBS $LIBREADLINE"
 AC_CHECK_FUNCS(readline)
 LIBS="$saved_LIBS"
