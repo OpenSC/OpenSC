@@ -1246,6 +1246,7 @@ struct command		cmds[] = {
  { "info",	do_info,	"display attributes of card file"	},
  { "create",	do_create,	"create a new EF"			},
  { "delete",	do_delete,	"remove an EF/DF"			},
+ { "rm",	do_delete,	"remove an EF/DF"			},
  { "verify",	do_verify,	"present a PIN or key to the card"	},
  { "change",	do_change,	"change a PIN"                          },
  { "unblock",	do_unblock,	"unblock a PIN"                         },
@@ -1259,6 +1260,7 @@ struct command		cmds[] = {
  { "erase",	do_erase,	"erase card"				},
  { "random",	do_random,	"obtain N random bytes from card"	},
  { "quit",	do_quit,	"quit this program"			},
+ { "exit",	do_quit,	"quit this program"			},
  { 0, 0, 0 }
 };
 
