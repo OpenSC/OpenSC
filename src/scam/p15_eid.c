@@ -276,7 +276,7 @@ int p15_eid_auth(scam_context * sctx, int argc, const char **argv,
 		goto end;
 	}
 	pubkey = X509_get_pubkey(cert);
-	if (!pubkey) {
+	if (!pubkey || pubkey->type != EVP_PKEY_RSA) {
 		scam_log_msg(sctx, "Invalid public key. (user %s)\n", user);
 		goto end;
 	}
