@@ -20,7 +20,9 @@
 
 #include "internal.h"
 #include "log.h"
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <stdio.h>
 #include <assert.h>
 

@@ -23,7 +23,9 @@
 #endif
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -128,7 +130,7 @@ int write_output(const u8 *buf, int len)
 	int output_binary = 1;
 	
 	if (opt_output != NULL) {
-		outf = fopen(opt_output, "w");
+		outf = fopen(opt_output, "wb");
 		if (outf == NULL) {
 			fprintf(stderr, "Unable to open '%s' for writing.\n", opt_output);
 			return -1;

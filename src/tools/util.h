@@ -9,11 +9,14 @@
 #endif
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <strings.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <getopt.h>
+#ifndef _WIN32
+#include <unistd.h>
+#include <strings.h>
+#endif
 #include <sys/stat.h>
 #include <opensc/opensc.h>
 

@@ -25,6 +25,7 @@
 #include "cardctl.h"
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 
 static const char *tcos_atrs[] = {
 	"3B:BA:13:00:81:31:86:5D:00:64:05:0A:02:01:31:80:90:00:8B", /* SLE44 */

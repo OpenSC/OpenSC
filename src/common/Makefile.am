@@ -2,4 +2,4 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-EXTRA_DIST = getopt.c getopt.h getopt1.c
+EXTRA_DIST = Makefile.mak getopt.c getopt.h getopt1.c getpass.c

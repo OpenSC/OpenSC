@@ -26,12 +26,17 @@
 #include <string.h>
 #include <assert.h>
 
+#undef sc_version
 #ifdef VERSION
 const char *sc_version = VERSION;
 #else
-#warning FIXME: version info undefined
 const char *sc_version = "(undef)";
 #endif
+
+const char *sc_get_version(void)
+{
+    return sc_version;
+}
 
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 {

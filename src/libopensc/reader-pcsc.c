@@ -23,7 +23,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <wintypes.h>
+/* #include <wintypes.h> */
 #include <winscard.h>
 
 /* Default timeout value for SCardGetStatusChange
@@ -34,6 +34,20 @@
 #define SC_STATUS_TIMEOUT 0
 #else
 #define SC_STATUS_TIMEOUT SC_CUSTOM_STATUS_TIMEOUT
+#endif
+
+#ifdef _WIN32
+/* Some windows specific kludge */
+#define SCARD_PROTOCOL_ANY (SCARD_PROTOCOL_T0)
+#define SCARD_SCOPE_GLOBAL SCARD_SCOPE_USER
+
+/* Error printing */
+#define PCSC_ERROR(ctx, desc, rv) error(ctx, desc ": %lx\n", rv);
+
+#else
+
+#define PCSC_ERROR(ctx, desc, rv) error(ctx, desc ": %s\n", pcsc_stringify_error(rv));
+
 #endif
 
 #define GET_SLOT_PTR(s, i) (&(s)->slot[(i)])
@@ -112,9 +126,9 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	card = pslot->pcsc_card;
 
 	sSendPci.dwProtocol = opensc_proto_to_pcsc(slot->active_protocol);
-	sSendPci.cbPciLength = 0;
+	sSendPci.cbPciLength = sizeof(sSendPci);
 	sRecvPci.dwProtocol = opensc_proto_to_pcsc(slot->active_protocol);
-	sRecvPci.cbPciLength = 0;
+	sRecvPci.cbPciLength = sizeof(sRecvPci);
 	
 	if (prv->gpriv->apdu_fix && sendsize >= 6) {
 		/* Check if the APDU in question is of Case 4 */
@@ -134,10 +148,13 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	
 	dwSendLength = sendsize;
 	dwRecvLength = *recvsize;
-	if (dwRecvLength > 255)
+
+        if (dwRecvLength > 255)
 		dwRecvLength = 255;
-	rv = SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
-			   &sRecvPci, recvbuf, &dwRecvLength);
+
+        rv = SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
+                           &sRecvPci, recvbuf, &dwRecvLength);
+
 	if (rv != SCARD_S_SUCCESS) {
 		switch (rv) {
 		case SCARD_W_REMOVED_CARD:
@@ -151,8 +168,8 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 				return SC_ERROR_CARD_REMOVED;
 #endif
 			return SC_ERROR_TRANSMIT_FAILED;
-		default:
-			error(reader->ctx, "SCardTransmit failed: %s\n", pcsc_stringify_error(rv));
+                default:
+                        PCSC_ERROR(reader->ctx, "SCardTransmit failed", rv);
 			return SC_ERROR_TRANSMIT_FAILED;
 		}
 	}
@@ -174,7 +191,7 @@ static int pcsc_detect_card_presence(struct sc_reader *reader, struct sc_slot_in
 	rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
 	ret = SCardGetStatusChange(priv->pcsc_ctx, SC_STATUS_TIMEOUT, rgReaderStates, 1);
 	if (ret != 0) {
-		error(reader->ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(ret));
+		PCSC_ERROR(reader->ctx, "SCardGetStatusChange failed", ret);
 		SC_FUNC_RETURN(reader->ctx, 1, pcsc_ret_to_error(ret));
 	}
 	if (rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT) {
@@ -196,7 +213,7 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 	rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
 	ret = SCardGetStatusChange(priv->pcsc_ctx, SC_STATUS_TIMEOUT, rgReaderStates, 1);
 	if (ret != 0) {
-		error(reader->ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(ret));
+		PCSC_ERROR(reader->ctx, "SCardGetStatusChange failed", ret);
 		return pcsc_ret_to_error(ret);
 	}
 	slot->flags = 0;
@@ -230,11 +247,11 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	pslot = (struct pcsc_slot_data *) malloc(sizeof(struct pcsc_slot_data));
 	if (pslot == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	rv = SCardConnect(priv->pcsc_ctx, priv->reader_name,
+        rv = SCardConnect(priv->pcsc_ctx, priv->reader_name,
 			  SCARD_SHARE_SHARED, SCARD_PROTOCOL_ANY,
-			  &card_handle, &active_proto);
+                          &card_handle, &active_proto);
 	if (rv != 0) {
-		error(reader->ctx, "SCardConnect failed: %s\n", pcsc_stringify_error(rv));
+		PCSC_ERROR(reader->ctx, "SCardConnect failed", rv);
 		free(pslot);
 		return pcsc_ret_to_error(rv);
 	}
@@ -265,7 +282,7 @@ static int pcsc_lock(struct sc_reader *reader, struct sc_slot_info *slot)
 	assert(pslot != NULL);
         rv = SCardBeginTransaction(pslot->pcsc_card);
         if (rv != SCARD_S_SUCCESS) {
-                error(reader->ctx, "SCardBeginTransaction failed: %s\n", pcsc_stringify_error(rv));
+		PCSC_ERROR(reader->ctx, "SCardBeginTransaction failed", rv);
                 return pcsc_ret_to_error(rv);
         }
 	return 0;
@@ -279,7 +296,7 @@ static int pcsc_unlock(struct sc_reader *reader, struct sc_slot_info *slot)
 	assert(pslot != NULL);
 	rv = SCardEndTransaction(pslot->pcsc_card, SCARD_LEAVE_CARD);
 	if (rv != SCARD_S_SUCCESS) {
-		error(reader->ctx, "SCardEndTransaction failed: %s\n", pcsc_stringify_error(rv));
+		PCSC_ERROR(reader->ctx, "SCardEndTransaction failed", rv);
                 return pcsc_ret_to_error(rv);
 	}
 	return 0;
@@ -313,7 +330,13 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	struct pcsc_global_private_data *gpriv;
 	scconf_block **blocks = NULL, *conf_block = NULL;
 
-	rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL, "localhost", NULL,
+        rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL,
+#ifndef _WIN32
+                                   "localhost",
+#else
+                                   NULL,
+#endif
+                                   NULL,
 				   &pcsc_ctx);
 	if (rv != SCARD_S_SUCCESS)
 		return pcsc_ret_to_error(rv);

@@ -60,10 +60,12 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 };
 
 static const struct _sc_driver_entry internal_reader_drivers[] = {
-#ifdef HAVE_LIBPCSCLITE
+#if defined(HAVE_LIBPCSCLITE) || defined(_WIN32)
 	{ "pcsc", (void *) sc_get_pcsc_driver, NULL },
 #endif
-	{ "ctapi", (void *) sc_get_ctapi_driver, NULL },
+#ifndef _WIN32
+        { "ctapi", (void *) sc_get_ctapi_driver, NULL },
+#endif
 	{ NULL, NULL, NULL }
 };
 

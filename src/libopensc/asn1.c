@@ -153,7 +153,11 @@ static void sc_asn1_print_utf8string(const u8 * buf, size_t buflen)
 
 static void sc_asn1_print_integer(const u8 * buf, size_t buflen)
 {
+#ifndef _WIN32
 	long long a = 0;
+#else
+        __int64 a = 0;
+#endif
 	int i;
 
 	if (buflen > sizeof(a)) {
@@ -169,7 +173,11 @@ static void sc_asn1_print_integer(const u8 * buf, size_t buflen)
 
 static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen)
 {
-	unsigned long long a = 0;
+#ifndef _WIN32
+	long long a = 0;
+#else
+        __int64 a = 0;
+#endif
 	int i, r;
 
 	if (buflen > sizeof(a) + 1) {

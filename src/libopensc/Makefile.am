@@ -4,7 +4,7 @@ includedir = ${prefix}/include/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
-EXTRA_DIST = opensc-config.in
+EXTRA_DIST = Makefile.mak opensc-config.in
 
 if HAVE_SSL
 SSL_LIB = @LIBCRYPTO@

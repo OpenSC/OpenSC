@@ -26,7 +26,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <assert.h>
 
 static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen, struct sc_pkcs15_cert *cert)

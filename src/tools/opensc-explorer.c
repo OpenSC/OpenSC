@@ -1169,7 +1169,7 @@ int main(int argc, char * const argv[])
         int cargc;
         char *cargv[20];
 
-	printf("OpenSC Explorer version %s\n", sc_version);
+	printf("OpenSC Explorer version %s\n", sc_get_version());
 
 	while (1) {
 		c = getopt_long(argc, argv, "r:c:d", options, &long_optind);

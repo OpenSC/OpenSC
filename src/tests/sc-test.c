@@ -16,7 +16,7 @@ int sc_test_init(int *argc, char *argv[])
 {
 	int i, c;
 
-	printf("Using libopensc version %s.\n", sc_version);
+	printf("Using libopensc version %s.\n", sc_get_version());
 	i = sc_establish_context(&ctx, "tests");
 	if (i != SC_SUCCESS) {
 		printf("Failed to establish context: %s\n", sc_strerror(i));

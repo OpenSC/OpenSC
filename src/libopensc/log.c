@@ -18,14 +18,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include "log.h"
 #include <stdarg.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <unistd.h>
 #include <ctype.h>
 #include <string.h>
+#ifndef _WIN32
+#include <unistd.h>
 #include <sys/time.h>
+#else
+#include <io.h>
+#endif
 
 #ifndef __GNUC__
 void error(struct sc_context *ctx, const char *format, ...)
@@ -90,11 +97,9 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 	FILE *outf = NULL;
 	char buf[1024], *p;
 	int left, r;
-	struct timeval tv;
 	const char *color_pfx = "", *color_sfx = "";
 
 	assert(ctx != NULL);
-	gettimeofday(&tv, NULL);
 	switch (type) {
 	case SC_LOG_TYPE_ERROR:
 		if (ctx->log_errors == 0)

@@ -25,7 +25,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 static int pkcs1_strip_padding(u8 *data, size_t len)
 {

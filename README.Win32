@@ -1,0 +1,26 @@
+README for Win32 port of OpenSC
+
+
+Compiling
+=========
+
+Type "nmake -f makefile.mak" to compile.
+
+You need also perl and flex installed for the compile process
+to complete succesfully.
+
+What works
+==========
+
+At the moment only libopensc and basic tools have been ported
+to windows. They should at least compile.
+
+What needs to be done
+=====================
+
+Other parts of OpenSC should ported as well (other tools & pkcs11
+module). Also we should implement native Win32 APIs such as
+CryptoAPI Provider, some login stuff and ActiveX plugin for
+Explorer to do the signing.
+                           
+

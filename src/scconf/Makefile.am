@@ -4,6 +4,8 @@ includedir = ${prefix}/include/opensc
 
 MAINTAINERCLEANFILES = Makefile.in lex-parse.c
 
+EXTRA_DIST = Makefile.am
+
 include_HEADERS = scconf.h
 noinst_HEADERS = internal.h
 

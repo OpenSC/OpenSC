@@ -27,6 +27,8 @@
 #include <dlfcn.h>
 #endif
 
+#ifndef _WIN32
+
 int sc_module_open(struct sc_context *ctx, void **mod_handle, const char *filename)
 {
 	const char *error;
@@ -96,3 +98,8 @@ int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_a
 	*sym_address = address;
 	return SC_SUCCESS;
 }
+
+#else
+
+#endif
+

@@ -688,7 +688,7 @@ struct sc_card_error {
 	const char *errorstr;
 };
 
-extern const char *sc_version;
+extern const char *sc_get_version(void);
 
 extern const struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern const struct sc_reader_driver *sc_get_ctapi_driver(void);

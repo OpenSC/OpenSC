@@ -319,9 +319,9 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 		if (ops[i] == -1)
 			continue;
 		if ((i & 1) == 0)
-			add_acl_entry(file, ops[i], buf[i / 2] >> 4);
+			add_acl_entry(file, ops[i], (u8)(buf[i / 2] >> 4));
 		else
-			add_acl_entry(file, ops[i], buf[i / 2] & 0x0F);
+			add_acl_entry(file, ops[i], (u8)(buf[i / 2] & 0x0F));
 	}
 }
 

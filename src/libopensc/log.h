@@ -32,8 +32,9 @@ extern "C" {
 #define SC_LOG_TYPE_VERBOSE	1
 #define SC_LOG_TYPE_DEBUG	2
 
-#ifdef __GNUC__
-#define error(ctx, format, args...)	do_log(ctx, SC_LOG_TYPE_ERROR,  __FILE__, __LINE__, __FUNCTION__ , format , ## args)
+#if defined(__GNUC__)
+
+#define error(ctx, format, args...)	do_log(ctx, SC_LOG_TYPE_ERROR,  __FILE__, __LINE__, __FUNCTION__, format , ## args)
 #define debug(ctx, format, args...)	do_log(ctx, SC_LOG_TYPE_DEBUG,  __FILE__, __LINE__, __FUNCTION__, format , ## args)
 
 #else
