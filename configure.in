@@ -263,13 +263,13 @@ found_pcsclite=no
 saved_LIBS="$LIBS"
 saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
+LIBS="$LIBPCSC $saved_LIBS"
 AC_ARG_WITH(pcsclite,
 	[  --with-pcsclite=PATH    use PC/SC Lite in PATH],
 	[
+	AC_MSG_CHECKING([for SCardEstablishContext])
 	for pcscdir in /pcsc ""; do
-		CPPFLAGS="$saved_CPPFLAGS"
 		LDFLAGS="$saved_LDFLAGS"
-		LIBS="$saved_LIBS"
 
 		if test -d "$withval/lib$pcscdir"; then
 			if test -n "${need_dash_r}"; then
@@ -289,11 +289,20 @@ AC_ARG_WITH(pcsclite,
 		else
 			CFLAGS_PCSC="-I${withval}${pcscdir} ${CFLAGS_PCSC}"
 		fi
-		AC_CHECK_LIB(pcsclite, SCardEstablishContext, found_pcsclite=yes, found_pcsclite=no)
-		if test "x$found_pcsclite" = "xyes" ; then
+		CPPFLAGS="$CFLAGS_PCSC $saved_CPPFLAGS"
+		AC_TRY_LINK([#include <stdlib.h>
+#include <winscard.h>],[SCardEstablishContext(0, NULL, NULL, NULL);], ac_cv_lib_pcsclite_SCardEstablishContext=yes)
+		CPPFLAGS="$saved_CPPFLAGS"
+		if test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes"; then
+			found_pcsclite=yes
 			break;
 		fi
 	done
+	if test "x$found_pcsclite" != "xyes" ; then
+		AC_MSG_RESULT(no)
+	else
+		AC_MSG_RESULT(yes)
+	fi
 	]
 )
 if test "x$found_pcsclite" != "xyes" ; then
