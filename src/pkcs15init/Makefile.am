@@ -9,12 +9,9 @@ LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
 PROFILES = \
 	flex.profile \
-	flex_so.profile \
-	flex_onepin.profile \
 	gpk.profile \
 	miocos.profile \
 	etoken.profile \
-	pkcs15-small.profile \
 	pkcs15.profile
 
 EXTRA_DIST = $(PROFILES) Makefile.mak
