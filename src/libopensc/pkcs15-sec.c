@@ -208,11 +208,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
                         senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 	} else if (flags & SC_ALGORITHM_RSA_HASH_NONE ||
 		   (flags & SC_ALGORITHM_RSA_HASHES) == 0) {
-		if (!(alg_info->flags & SC_ALGORITHM_RSA_HASH_NONE)) {
-			error(ctx, "Raw RSA not supported\n");
-			return SC_ERROR_NOT_SUPPORTED;
-		}
-		senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_NONE;
+		pad_flags |= SC_ALGORITHM_RSA_HASH_NONE;
 	}
 	if (flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1))
