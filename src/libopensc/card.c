@@ -230,7 +230,11 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 		}
 		r = card->ops->get_response(card, apdu, le);
 		sc_unlock(card);
-		return r;
+		if (r < 0) {
+			SC_FUNC_RETURN(card->ctx, 2, r);
+		}
+		else
+			return 0;
 	}
 	sc_unlock(card);
 	return 0;
