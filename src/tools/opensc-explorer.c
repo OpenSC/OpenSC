@@ -282,7 +282,7 @@ int read_and_print_record_file(struct sc_file *file)
 	int rec, r;
 
 	for (rec = 1; ; rec++) {
-		r = sc_read_record(card, rec, buf, sizeof(buf), SC_READ_RECORD_BY_REC_NR);
+		r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
 			return 0;
 		if (r < 0) {
