@@ -1,19 +1,21 @@
-/* Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
- * All rights reserved.
+/*
+ * sc.h: SmartCard library header file
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #ifndef _SC_H
@@ -131,28 +133,6 @@ struct sc_security_env {
 	int key_ref;
 };
 
-/* ASN.1 functions */
-
-/* DER tag and length parsing */
-const u8 *sc_asn1_find_tag(const u8 * buf, int buflen, int tag, int *taglen);
-const u8 *sc_asn1_verify_tag(const u8 * buf, int buflen, int tag, int *taglen);
-const u8 *sc_asn1_skip_tag(const u8 ** buf, int *buflen, int tag, int *taglen);
-
-/* ASN.1 printing functions */
-void sc_asn1_print_tags(const u8 * buf, int buflen);
-
-/* ASN.1 object decoding functions */
-int sc_asn1_utf8string_to_ascii(const u8 * buf,
-				int buflen, u8 * outbuf, int outlen);
-int sc_asn1_decode_bit_string(const u8 * inbuf,
-			      int inlen, void *outbuf, int outlen);
-/* non-inverting version */
-int sc_asn1_decode_bit_string_ni(const u8 * inbuf,
-				 int inlen, void *outbuf, int outlen);
-int sc_asn1_decode_integer(const u8 * inbuf, int inlen, int *out);
-int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
-			     struct sc_object_id *id);
-
 /* Base64 encoding/decoding functions */
 int sc_base64_encode(const u8 *in, int inlen, u8 *out, int outlen,
 		     int linelength);
@@ -180,7 +160,7 @@ int sc_select_file(struct sc_card *card, struct sc_file *file,
 int sc_read_binary(struct sc_card *card, int idx, u8 * buf, int count);
 int sc_get_random(struct sc_card *card, u8 * rndout, int len);
 
-/* ISO 7816-9 (?) related functions */
+/* ISO 7816-8 related functions */
 int sc_restore_security_env(struct sc_card *card, int se_num);
 int sc_set_security_env(struct sc_card *card,
 			const struct sc_security_env *env);

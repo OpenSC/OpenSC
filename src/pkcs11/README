@@ -38,29 +38,3 @@ Please note that the library currently writes debug log to
 /tmp/libsc-pkcs11.log.
 
 
-
-
-C_CreateObject(1, 0xbfffe484, 8, 0x-1073748876)
-	CKA_CLASS, CKO_PUBLIC_KEY	
-	CKA_KEY_TYPE, CKK_RSA
-	CKA_TOKEN, 00
-	CKA_WRAP, TRUE
-	CKA_ENCRYPT, TRUE
-	CKA_VERIFY, TRUE
-	CKA_MODULUS
-	CKA_PUBLIC_EXPOTENT, 100001
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
