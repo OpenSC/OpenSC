@@ -28,7 +28,7 @@ static int fineid_defaults(void *arg)
 {
 	struct sc_card *card = (struct sc_card *) arg;
 	
-	card->class = 0;
+	card->cla = 0;
 	
 	return 0;
 }
@@ -37,7 +37,7 @@ static int multiflex_defaults(void *arg)
 {
 	struct sc_card *card = (struct sc_card *) arg;
 	
-	card->class = 0xC0;
+	card->cla = 0xC0;
 	return 0;
 }
 

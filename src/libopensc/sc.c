@@ -219,15 +219,14 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 		switch (rv) {
 		case SCARD_W_REMOVED_CARD:
 			return SC_ERROR_CARD_REMOVED;
+		case SCARD_W_RESET_CARD:
+			return SC_ERROR_CARD_RESET;
 		case SCARD_E_NOT_TRANSACTED:
 			if (sc_detect_card(card->context, card->reader) != 1)
 				return SC_ERROR_CARD_REMOVED;
 			return SC_ERROR_TRANSMIT_FAILED;
 		default:
-			if (sc_debug) {
-				fprintf(stderr, "SCardTransmit returned 0x%08lX.\n", rv);
-				return SC_ERROR_TRANSMIT_FAILED;
-			}
+			return SC_ERROR_TRANSMIT_FAILED;
 		}
 	}
 	if (dwRecvLength < 2)
@@ -516,7 +515,7 @@ int sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
 {
 	assert(card != NULL && apdu != NULL);
 	memset(apdu, 0, sizeof(*apdu));
-	apdu->cla = card->class;
+	apdu->cla = card->cla;
 	apdu->cse = cse;
 	apdu->ins = ins;
 	apdu->p1 = p1;
@@ -710,7 +709,7 @@ int sc_connect_card(struct sc_context *ctx,
 	if (defaults != NULL && defaults->defaults_func != NULL) {
 		defaults->defaults_func(card);
 	} else {
-		card->class = 0;	/* FIXME */
+		card->cla = 0;	/* FIXME */
 	}
 	pthread_mutex_init(&card->mutex, NULL);
 	*card_out = card;
@@ -754,6 +753,7 @@ const char *sc_strerror(int error)
 		"Unknown SmartCard",
 		"Unknown reply from SmartCard",
 		"Requested object not found",
+		"Card reset"
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);
 

@@ -25,6 +25,10 @@
 #include <winscard.h>
 #include <stdio.h>
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #define SC_ERROR_MIN				-1000
 #define SC_ERROR_UNKNOWN			-1000
 #define SC_ERROR_CMD_TOO_SHORT			-1001
@@ -51,6 +55,7 @@
 #define SC_ERROR_UNKNOWN_SMARTCARD		-1022
 #define SC_ERROR_UNKNOWN_REPLY			-1023
 #define SC_ERROR_OBJECT_NOT_FOUND		-1024
+#define SC_ERROR_CARD_RESET			-1025
 
 #define SC_APDU_CASE_NONE		0
 #define SC_APDU_CASE_1                  1
@@ -122,7 +127,7 @@ struct sc_file {
 };
 
 struct sc_card {
-	int class;
+	int cla;
 	struct sc_context *context;
 
 	SCARDHANDLE pcsc_card;
@@ -213,10 +218,10 @@ int sc_compute_signature(struct sc_card *card, const u8 * data,
 int sc_verify(struct sc_card *card, int ref, const u8 *buf, int buflen,
 	      int *tries_left);
 int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
-			     int oldlen, const u8 *new, int newlen,
+			     int oldlen, const u8 *newref, int newlen,
 			     int *tries_left);
 int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
-			   int puklen, const u8 *new, int newlen);
+			   int puklen, const u8 *newref, int newlen);
 
 /* ISO 7816-9 */
 int sc_create_file(struct sc_card *card, const struct sc_file *file);
@@ -238,5 +243,10 @@ extern int sc_debug;
 extern const char *sc_version;
 
 extern const struct sc_defaults sc_card_table[];
+
+#ifdef  __cplusplus
+}
+#endif
+
 
 #endif

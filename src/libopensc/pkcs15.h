@@ -23,6 +23,10 @@
 
 #include "opensc.h"
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #define SC_PKCS15_PIN_MAGIC		0x31415926
 #define SC_PKCS15_MAX_PINS		2
 #define SC_PKCS15_MAX_CERTS		3
@@ -217,5 +221,9 @@ int sc_pkcs15_parse_common_object_attr(struct sc_pkcs15_common_obj_attr *attr,
 				       const u8 * buf, int buflen);
 
 extern const struct sc_pkcs15_defaults sc_pkcs15_card_table[];
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif
