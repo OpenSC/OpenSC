@@ -315,6 +315,8 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 #endif
 	load_reader_drivers(ctx, &opts);
 	load_card_drivers(ctx, &opts);
+	del_drvs(&opts, 0);
+	del_drvs(&opts, 1);
 
 	*ctx_out = ctx;
 	return 0;
