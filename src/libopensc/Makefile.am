@@ -17,8 +17,9 @@ INCLUDES = $(PCSC_FLAGS)
 bin_SCRIPTS = opensc-config
 
 lib_LTLIBRARIES		= libopensc.la
-libopensc_la_SOURCES	= asn1.c base64.c sec.c log.c sc.c card.c iso7816.c \
-			  dir.c pkcs15.c pkcs15-cert.c pkcs15-pin.c \
+libopensc_la_SOURCES	= sc.c ctx.c asn1.c base64.c sec.c log.c \
+			  card.c iso7816.c dir.c \
+			  pkcs15.c pkcs15-cert.c pkcs15-pin.c \
 			  pkcs15-prkey.c pkcs15-pubkey.c pkcs15-sec.c \
 			  pkcs15-cache.c $(PCSC_SRC) \
 			  card-setcos.c card-miocos.c card-flex.c card-gpk.c \

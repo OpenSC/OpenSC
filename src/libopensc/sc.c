@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <ctype.h>
 
 #ifdef VERSION
 const char *sc_version = VERSION;
@@ -65,18 +64,6 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 	}
 	*outlen = c;
 	return err;
-}
-
-int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader)
-{
-	assert(reader != NULL);
-	reader->ctx = ctx;
-	if (ctx->reader_count == SC_MAX_READERS)
-		return SC_ERROR_TOO_MANY_OBJECTS;
-	ctx->reader[ctx->reader_count] = reader;
-	ctx->reader_count++;
-	
-	return 0;
 }
 
 struct sc_slot_info * _sc_get_slot_info(struct sc_reader *reader, int slot_id)
@@ -142,173 +129,6 @@ int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout)
 }
 #endif
 
-static void set_defaults(struct sc_context *ctx)
-{
-	ctx->debug = 0;
-	if (ctx->debug_file)
-		fclose(ctx->debug_file);
-	ctx->debug_file = NULL;
-	ctx->log_errors = 1;
-	ctx->error_file = stderr;
-}
-
-static int load_parameters(struct sc_context *ctx, const char *app)
-{
-	scconf_block **blocks = NULL;
-	const char *val;
-	unsigned int i;
-
-	blocks = scconf_find_blocks(ctx->conf, NULL, "app");
-	for (i = 0; blocks[i]; i++) {
-		scconf_block *block = blocks[i];
-
-		if (!block->name && strcmp(block->name->data, app))
-			continue;
-		val = scconf_find_value_first(block, "debug");
-		sscanf(val, "%d", &ctx->debug);
-		val = scconf_find_value_first(block, "debug_file");
-		if (ctx->debug_file)
-			fclose(ctx->debug_file);
-		if (strcmp(val, "stdout") == 0)
-			ctx->debug_file = fopen(val, "a");
-		val = scconf_find_value_first(block, "error_file");
-		if (ctx->error_file)
-			fclose(ctx->error_file);
-		if (strcmp(val, "stderr") != 0)
-			ctx->error_file = fopen(val, "a");
-	}
-	free(blocks);
-	return 0;
-}
-
-int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
-{
-	const char *default_app = "default";
-	struct sc_context *ctx;
-	int i, r;
-
-	assert(ctx_out != NULL);
-	ctx = malloc(sizeof(struct sc_context));
-	if (ctx == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memset(ctx, 0, sizeof(struct sc_context));
-	set_defaults(ctx);
-	ctx->app_name = app_name ? strdup(app_name) : strdup(default_app);
-	ctx->conf = scconf_init(OPENSC_CONF_PATH);
-	if (ctx->conf) {
-		r = scconf_parse(ctx->conf);
-		if (r < 1) {
-			scconf_deinit(ctx->conf);
-			ctx->conf = NULL;
-		} else {
-			load_parameters(ctx, default_app);
-			if (strcmp(default_app, ctx->app_name)) {
-				load_parameters(ctx, ctx->app_name);
-			}
-		}
-	}
-#ifdef HAVE_PTHREAD
-	pthread_mutex_init(&ctx->mutex, NULL);
-#endif
-	for (i = 0; i < SC_MAX_READER_DRIVERS+1; i++)
-		ctx->reader_drivers[i] = NULL;
-	i = 0;
-#if 1 && defined(HAVE_LIBPCSCLITE)
-	ctx->reader_drivers[i++] = sc_get_pcsc_driver();
-#endif
-	i = 0;
-	while (ctx->reader_drivers[i] != NULL) {
-		ctx->reader_drivers[i]->ops->init(ctx, &ctx->reader_drv_data[i]);
-		i++;
-	}
-
-	ctx->forced_driver = NULL;
-	for (i = 0; i < SC_MAX_CARD_DRIVERS+1; i++)
-		ctx->card_drivers[i] = NULL;
-	i = 0;
-#if 1
-	ctx->card_drivers[i++] = sc_get_setcos_driver();
-#endif
-#if 1
-	ctx->card_drivers[i++] = sc_get_miocos_driver();
-#endif
-#if 1
-	ctx->card_drivers[i++] = sc_get_flex_driver();
-#endif
-#if 1
-	ctx->card_drivers[i++] = sc_get_emv_driver();
-#endif
-#if 1
-	ctx->card_drivers[i++] = sc_get_tcos_driver();
-#endif
-#if defined(HAVE_OPENSSL)
-	ctx->card_drivers[i++] = sc_get_gpk_driver();
-#endif
-#if 1
-	/* this should be last in line */
-	ctx->card_drivers[i++] = sc_get_default_driver();
-#endif
-
-	*ctx_out = ctx;
-	return 0;
-}
-
-int sc_release_context(struct sc_context *ctx)
-{
-	int i;
-
-	assert(ctx != NULL);
-	SC_FUNC_CALLED(ctx, 1);
-	for (i = 0; i < ctx->reader_count; i++) {
-		struct sc_reader *rdr = ctx->reader[i];
-		
-		if (rdr->ops->release != NULL)
-			rdr->ops->release(rdr);
-		free(rdr->name);
-		free(rdr);
-	}
-	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
-		const struct sc_reader_driver *drv = ctx->reader_drivers[i];
-		
-		if (drv->ops->finish != NULL)
-			drv->ops->finish(ctx->reader_drv_data[i]);
-	}
-	ctx->debug_file = ctx->error_file = NULL;
-	if (ctx->conf)
-		scconf_deinit(ctx->conf);
-	free(ctx->app_name);
-	free(ctx);
-	return 0;
-}
-
-int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
-{
-	int i = 0, match = 0;
-	
-#ifdef HAVE_PTHREAD
-	pthread_mutex_lock(&ctx->mutex);
-#endif
-	if (short_name == NULL) {
-		ctx->forced_driver = NULL;
-		match = 1;
-	} else while (ctx->card_drivers[i] != NULL && i < SC_MAX_CARD_DRIVERS) {
-		const struct sc_card_driver *drv = ctx->card_drivers[i];
-
-		if (strcmp(short_name, drv->short_name) == 0) {
-			ctx->forced_driver = drv;
-			match = 1;
-			break;
-		}
-		i++;
-	}
-#ifdef HAVE_PTHREAD
-	pthread_mutex_unlock(&ctx->mutex);
-#endif
-	if (match == 0)
-		return SC_ERROR_OBJECT_NOT_FOUND; /* FIXME: invent error */
-	return 0;
-}
-
 void sc_format_path(const char *str, struct sc_path *path)
 {
 	int len = 0;
@@ -350,19 +170,6 @@ int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	memcpy(dest->value + dest->len, id, idlen);
 	dest->len += idlen;
-	return 0;
-}
-
-int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
-{
-	char *homedir;
-	const char *cache_dir = ".eid/cache";
-
-	homedir = getenv("HOME");
-	if (homedir == NULL)
-		return SC_ERROR_INTERNAL;
-	if (snprintf(buf, bufsize, "%s/%s", homedir, cache_dir) < 0)
-		return SC_ERROR_BUFFER_TOO_SMALL;
 	return 0;
 }
 

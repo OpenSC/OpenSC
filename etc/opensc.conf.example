@@ -1,17 +1,77 @@
 # Configuration file for OpenSC
 # Example configuration file
 
-# Default values for any application
-# These can be overrided by the application
-# specific configuration block.
+# NOTE: All key-value pairs must be terminated by a semicolon.
 
+# Default values for any application
+# These can be overrided by an application
+# specific configuration block.
 app default {
+	# Amount of debug info to print
+	#
+	# A greater value means more debug info.
+	# Default: 0
+	#
 	debug = 0;
-	#debug_file = "/tmp/opensc-debug.log";
-	#error_file = "/tmp/opensc-errors.log";
+
+	# The file to which debug output will be written
+	#
+	# A special value of 'stdout' is recognized.
+	# Default: stdout
+	#
+	# debug_file = /tmp/opensc-debug.log;
+
+	# The file to which errors will be written
+	#
+	# A special value of 'stderr' is recognized.
+	# Default: stderr
+	#
+	# error_file = /tmp/opensc-errors.log;
+
+	# What reader drivers to load at start-up
+	#
+	# A special value of 'internal' will load all
+	# statically linked drivers. If an unknown (ie. not
+	# internal) driver is supplied, a separate configuration
+	# configuration block has to be written for the driver.
+	# Default: internal
+	#
+	# reader_drivers = pcsc, ctapi;
+
+	# What reader drivers to load at start-up
+	#
+	# A special value of 'internal' will load all
+	# statically linked drivers. If an unknown (ie. not
+	# internal) driver is supplied, a separate configuration
+	# configuration block has to be written for the driver.
+	# Default: internal
+	#
+	# card_drivers = internal, customcos;
+
+	# card_driver customcos {
+		# The location of the driver library
+		#
+		# module = /usr/lib/opensc/drivers/card_customcos.so
+	# }
+
+	# Below are the framework specific configuration blocks.
+
+	# PKCS #15
+	framework pkcs15 {
+		# Whether to use the cache files in the user's
+		# home directory.
+
+		# WARNING: This shouldn't be used in setuid root
+		# applications.
+		# Default: false
+		#
+		use_caching = true;
+	}
 }
 
 # For applications that use SCAM (pam_opensc, sia_opensc)
 app scam {
-	use_cache = false;
+	framework pkcs15 {
+		use_caching = false;
+	}
 }

@@ -331,6 +331,8 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		reader->driver = &pcsc_drv;
 		reader->slot_count = 1;
 		reader->name = strdup(p);
+		priv->pcsc_ctx = pcsc_ctx;
+		priv->reader_name = strdup(p);
 		r = _sc_add_reader(ctx, reader);
 		if (r) {
 			free(priv->reader_name);
@@ -345,8 +347,6 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		slot->atr_len = 0;
 		slot->drv_data = NULL;
 
-		priv->pcsc_ctx = pcsc_ctx;
-		priv->reader_name = strdup(p);
 		while (*p++ != 0);
 	} while (p < (reader_buf + reader_buf_size - 1));
 	free(reader_buf);
