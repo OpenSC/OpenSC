@@ -57,6 +57,17 @@ filesystem {
 					WRITE=$PIN;
             }
 
+	    # Extractable private keys are stored in transparent EFs.
+	    # Encryption of the content is performed by libopensc.
+            EF template-extractable-key {
+    	        file-id		= 7000;
+    	        structure	= transparent;
+    	        ACL		= *=NEVER,
+					READ=$PIN,
+					UPDATE=$PIN,
+					WRITE=$PIN;
+            }
+
             EF template-public-key {
     	        file-id		= 8000;
     	        structure	= transparent;

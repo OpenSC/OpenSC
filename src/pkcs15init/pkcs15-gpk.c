@@ -300,7 +300,7 @@ gpk_new_key(struct sc_profile *profile, struct sc_card *card,
 		struct sc_pkcs15_prkey *key, unsigned int index,
 		struct sc_pkcs15_prkey_info *info)
 {
-	struct sc_file	*keyfile;
+	struct sc_file	*keyfile = NULL;
 	struct pkdata	data;
 	int		r;
 
@@ -333,8 +333,10 @@ gpk_new_key(struct sc_profile *profile, struct sc_card *card,
 	if (r >= 0)
 		r = gpk_store_pk(profile, card, keyfile, &data);
 
-	info->path = keyfile->path;
-	sc_file_free(keyfile);
+	if (keyfile) {
+		info->path = keyfile->path;
+		sc_file_free(keyfile);
+	}
 	return r;
 }
 
@@ -364,13 +366,17 @@ gpk_new_file(struct sc_profile *profile, struct sc_card *card,
 #ifdef SC_PKCS15_TYPE_PRKEY_DSA
 		case SC_PKCS15_TYPE_PRKEY_DSA:
 			desc = "DSA private key";
-			tag = "data";
+			tag = "private-key";
 			break;
 		case SC_PKCS15_TYPE_PUBKEY_DSA:
 			desc = "DSA public key";
-			tag = "data";
+			tag = "public-key";
 			break;
 #endif
+		case SC_PKCS15_TYPE_PRKEY:
+			desc = "extractable private key";
+			tag = "extractable-key";
+			break;
 		case SC_PKCS15_TYPE_CERT:
 			desc = "certificate";
 			tag = "certificate";

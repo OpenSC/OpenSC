@@ -100,7 +100,13 @@ struct sc_pkcs15init_prkeyargs {
 	unsigned long		x509_usage;
 
 	sc_pkcs15_prkey_t	key;
+
+	/* support for non-native keys */
+	unsigned int		extractable;
+	char *			passphrase;
 };
+#define SC_PKCS15INIT_EXTRACTABLE	0x0001
+#define SC_PKCS15INIT_NO_PASSPHRASE	0x0002
 
 struct sc_pkcs15init_pubkeyargs {
 	struct sc_pkcs15_id	id;

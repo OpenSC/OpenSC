@@ -67,6 +67,7 @@ static int	do_convert_public_key(struct sc_pkcs15_pubkey *, EVP_PKEY *);
 static int	do_convert_cert(sc_pkcs15_der_t *, X509 *);
 
 
+static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
 static int	read_one_pin(struct sc_profile *, const char *,
 			const struct sc_pkcs15_pin_info *, int, char **);
 static int	get_pin_callback(struct sc_profile *profile,
@@ -87,6 +88,8 @@ enum {
 	OPT_OPTIONS = 0x100,
 	OPT_PASSPHRASE,
 	OPT_PUBKEY,
+	OPT_EXTRACTABLE,
+	OPT_UNPROTECTED,
 
 	OPT_PIN1 = 0x10000,	/* don't touch these values */
 	OPT_PUK1 = 0x10001,
@@ -115,6 +118,9 @@ const struct option	options[] = {
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
 	{ "store-certificate",	required_argument, 0,	'X' },
 
+	{ "extractable",	no_argument, 0,		OPT_EXTRACTABLE },
+	{ "insecure",		no_argument, 0,		OPT_UNPROTECTED },
+
 	{ "profile",		required_argument, 0,	'p' },
 	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
 	{ "debug",		no_argument, 0,		'd' },
@@ -139,6 +145,9 @@ const char *		option_help[] = {
 	"Specify key file format (default PEM)",
 	"Specify passphrase for unlocking secret key",
 	"Store an X.509 certificate",
+
+	"Private key stored as an extractable key",
+	"Insecure mode: do not require PIN/passphrase for private key",
 
 	"Specify the profile to use",
 	"Read additional command line options from file",
@@ -171,6 +180,7 @@ static int			opt_debug = 0,
 				opt_quiet = 0,
 				opt_action = 0,
 				opt_erase = 0,
+				opt_extractable = 0,
 				opt_unprotected = 0;
 static char *			opt_profile = "pkcs15";
 static char *			opt_infile = 0;
@@ -405,17 +415,8 @@ do_store_private_key(struct sc_profile *profile)
 	X509		*cert = NULL;
 	int		r;
 
-	memset(&args, 0, sizeof(args));
-	if (opt_objectid)
-		sc_pkcs15_format_id(opt_objectid, &args.id);
-	if (opt_authid) {
-		sc_pkcs15_format_id(opt_authid, &args.auth_id);
-	} else if (!opt_unprotected) {
-		error("no PIN given for key - either use --unprotected or "
-		      "specify a PIN using --auth-id");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	args.label = opt_objectlabel;
+	if ((r = init_keyargs(&args)) < 0)
+		return r;
 
 	r = do_read_private_key(opt_infile, opt_format, &pkey, &cert);
 	if (r < 0)
@@ -514,8 +515,10 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	unsigned int	evp_algo, keybits = 1024;
 	int		r;
 
+	if ((r = init_keyargs(&args)) < 0)
+		return r;
+
 	/* Parse the key spec given on the command line */
-	memset(&args, 0, sizeof(args));
 	if (!strncasecmp(spec, "rsa", 3)) {
 		args.key.algorithm = SC_ALGORITHM_RSA;
 		evp_algo = EVP_PKEY_RSA;
@@ -540,17 +543,6 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 	}
-
-	if (opt_objectid)
-		sc_pkcs15_format_id(opt_objectid, &args.id);
-	if (opt_authid)
-		sc_pkcs15_format_id(opt_authid, &args.auth_id);
-	else if (!opt_unprotected) {
-		error("no PIN given for key - either use --unprotected or "
-		      "specify a PIN using --auth-id");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	args.label = opt_objectlabel;
 
 	r = sc_pkcs15init_generate_key(p15card, profile, &args, keybits, NULL);
 	if (r < 0) {
@@ -584,6 +576,37 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	return r;
 }
 
+int
+init_keyargs(struct sc_pkcs15init_prkeyargs *args)
+{
+	memset(args, 0, sizeof(*args));
+	if (opt_objectid)
+		sc_pkcs15_format_id(opt_objectid, &args->id);
+	if (opt_authid) {
+		sc_pkcs15_format_id(opt_authid, &args->auth_id);
+	} else if (!opt_unprotected) {
+		error("no PIN given for key - either use --unprotected or \n"
+		      "specify a PIN using --auth-id");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	if (opt_extractable) {
+		args->extractable |= SC_PKCS15INIT_EXTRACTABLE;
+		if (opt_passphrase) {
+			args->passphrase = opt_passphrase;
+		} else {
+			if (!opt_unprotected) {
+				error("no pass phrase given for key - "
+				      "either use --unprotected or\n"
+				      "specify a pass phrase using "
+				      "--passphrase");
+				return SC_ERROR_PASSPHRASE_REQUIRED;
+			}
+			args->extractable |= SC_PKCS15INIT_NO_PASSPHRASE;
+		}
+	}
+	args->label = opt_objectlabel;
+	return 0;
+}
 
 /*
  * Callbacks from the pkcs15init to retrieve PINs
@@ -971,6 +994,7 @@ do_convert_private_key(struct sc_pkcs15_prkey *key, EVP_PKEY *pk)
 		do_convert_bignum(&dst->g, src->g);
 		do_convert_bignum(&dst->priv, src->priv_key);
 		DSA_free(src);
+		break;
 		}
 	default:
 		fatal("Unsupported key algorithm\n");
@@ -1085,6 +1109,12 @@ handle_option(int c)
 	case OPT_PUBKEY:
 		opt_action = ACTION_STORE_PUBKEY;
 		opt_infile = optarg;
+		break;
+	case OPT_UNPROTECTED:
+		opt_unprotected++;
+		break;
+	case OPT_EXTRACTABLE:
+		opt_extractable++;
 		break;
 	default:
 		print_usage_and_die("pkcs15-init");

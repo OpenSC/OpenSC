@@ -79,6 +79,8 @@ static int	do_select_parent(struct sc_profile *, struct sc_card *,
 			struct sc_file *, struct sc_file **);
 static int	aodf_add_pin(struct sc_pkcs15_card *, struct sc_profile *,
 			const struct sc_pkcs15_pin_info *, const char *);
+static int	check_key_compatibility(struct sc_pkcs15_card *,
+			struct sc_pkcs15_prkey *, unsigned int);
 static int	fixup_rsa_key(struct sc_pkcs15_prkey_rsa *);
 static int	fixup_dsa_key(struct sc_pkcs15_prkey_dsa *);
 static void	default_error_handler(const char *fmt, ...);
@@ -429,6 +431,21 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	if ((label = keyargs->label) == NULL)
 		label = "Private Key";
 
+	/* Now check whether the card is able to handle this key */
+	if (!check_key_compatibility(p15card, &key, keybits)) {
+		/* Make sure the caller explicitly tells us to store
+		 * the key non-natively. */
+		if (!keyargs->extractable) {
+			p15init_error("Card does not support this key.");
+			return SC_ERROR_INCOMPATIBLE_KEY;
+		}
+		if (!keyargs->passphrase
+		 && !(keyargs->extractable & SC_PKCS15INIT_NO_PASSPHRASE)) {
+			p15init_error("No key encryption passphrase given.");
+			return SC_ERROR_PASSPHRASE_REQUIRED;
+		}
+	}
+
 	key_info = calloc(1, sizeof(*key_info));
 	key_info->id = keyargs->id;
 	key_info->usage = usage;
@@ -444,23 +461,56 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	object->auth_id = keyargs->auth_id;
 	strncpy(object->label, label, sizeof(object->label));
 
-	/* Get the number of private keys already on this card */
-	index = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
-
 	/* Set the SO PIN reference from card */
 	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
 		return r;
 
-	r = profile->ops->new_key(profile, p15card->card,
-			&key, index, key_info);
-	if (r == SC_ERROR_NOT_SUPPORTED) {
-		/* XXX: handle extractable keys here.
-		 * Store the private key, encrypted.
-		 * So how does PKCS15 say this should be done? */
-	}
+	/* Get the number of private keys already on this card */
+	index = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
+	if (!keyargs->extractable) {
+		r = profile->ops->new_key(profile, p15card->card,
+				&key, index, key_info);
+		if (r < 0)
+			return r;
+	} else {
+		sc_pkcs15_der_t	encoded, wrapped, *der = &encoded;
+		struct sc_context *ctx = p15card->card->ctx;
 
-	if (r < 0)
-		return r;
+		key_info->native = 0;
+		object->flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+		object->flags &= ~SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
+
+		/* DER encode the private key */
+		encoded.value = wrapped.value = NULL;
+		r = sc_pkcs15_encode_prkey(ctx, &key, &encoded.value, &encoded.len);
+		if (r < 0)
+			return r;
+
+		if (keyargs->passphrase) {
+			r = sc_pkcs15_wrap_data(ctx, keyargs->passphrase,
+					der->value, der->len,
+					&wrapped.value, &wrapped.len);
+			if (r < 0) {
+				free(der->value);
+				return r;
+			}
+			der = &wrapped;
+		}
+
+		r = sc_pkcs15init_store_data(p15card, profile,
+			SC_PKCS15_TYPE_PRKEY, der, &key_info->path);
+
+		/* If the key is encrypted, flag the PrKDF entry as
+		 * indirect-protected */
+		if (keyargs->passphrase)
+			key_info->path.type = SC_PATH_TYPE_PATH_PROT;
+
+		free(encoded.value);
+		free(wrapped.value);
+
+		if (r < 0)
+			return r;
+	}
 
 	r = sc_pkcs15_add_object(p15card,
 			&p15card->df[SC_PKCS15_PRKDF], 0, object);
@@ -713,6 +763,44 @@ sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
 	for (mask = 0x80; !(bn->data[0] & mask); mask >>= 1)
 		bits--;
 	return bits;
+}
+
+/*
+ * Check whether the card has native crypto support for this key.
+ */
+static int
+check_key_compatibility(struct sc_pkcs15_card *p15card,
+			struct sc_pkcs15_prkey *key,
+			unsigned int key_length)
+{
+	struct sc_algorithm_info *info;
+	unsigned int count;
+
+	count = p15card->card->algorithm_count;
+	info = p15card->card->algorithms;
+	while (count--) {
+		/* XXX: check for equality, or <= ? */
+		if (info->algorithm != key->algorithm
+		 || info->key_length != key_length)
+			continue;
+		if (key->algorithm == SC_ALGORITHM_RSA
+		 && info->u._rsa.exponent != 0) {
+			sc_pkcs15_bignum_t *e = &key->u.rsa.exponent;
+			unsigned long	exponent = 0;
+			unsigned int	n;
+
+			if (e->len > 4)
+				continue;
+			for (n = 0; n < e->len; n++) {
+				exponent <<= 8;
+				exponent |= e->data[n];
+			}
+			if (info->u._rsa.exponent != exponent)
+				continue;
+		}
+		return 1;
+	}
+	return 0;
 }
 
 /*
