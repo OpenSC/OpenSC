@@ -49,7 +49,7 @@ static void print_pin(const struct sc_pkcs15_object *obj)
 	printf("\n");
 }
 
-static void print_prkey_rsa(const struct sc_pkcs15_object *obj)
+static void print_prkey(const struct sc_pkcs15_object *obj)
 {
 	int i;
 	const char *usages[] =
@@ -87,13 +87,15 @@ static void print_prkey_rsa(const struct sc_pkcs15_object *obj)
 	printf("\tPath        : ");
 	for (i = 0; i < prkey->path.len; i++)
 		printf("%02X", prkey->path.value[i]);
+	if (prkey->path.type == SC_PATH_TYPE_PATH_PROT)
+		printf(" (protected)");
 	printf("\n");
 	printf("\tID          : ");
 	sc_pkcs15_print_id(&prkey->id);
 	printf("\n");
 }
 
-static void print_pubkey_rsa(const struct sc_pkcs15_object *obj)
+static void print_pubkey(const struct sc_pkcs15_object *obj)
 {
 	int i;
 	const char *usages[] =
@@ -167,12 +169,20 @@ void sc_test_print_object(const struct sc_pkcs15_object *obj)
 		kind = "PIN";
 		break;
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		printer = print_prkey_rsa;
+		printer = print_prkey;
 		kind = "Private RSA key";
 		break;
 	case SC_PKCS15_TYPE_PUBKEY_RSA:
-		printer = print_pubkey_rsa;
+		printer = print_pubkey;
 		kind = "Public RSA key";
+		break;
+	case SC_PKCS15_TYPE_PRKEY_DSA:
+		printer = print_prkey;
+		kind = "Private DSA key";
+		break;
+	case SC_PKCS15_TYPE_PUBKEY_DSA:
+		printer = print_pubkey;
+		kind = "Public DSA key";
 		break;
 	case SC_PKCS15_TYPE_CERT_X509:
 		printer = print_cert_x509;

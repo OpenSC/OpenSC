@@ -69,8 +69,8 @@ int main(int argc, char *argv[])
 	sc_pkcs15_print_card(p15card);
 
 	dump_objects("PIN codes", SC_PKCS15_TYPE_AUTH_PIN);
-	dump_objects("RSA private keys", SC_PKCS15_TYPE_PRKEY_RSA);
-	dump_objects("RSA public keys", SC_PKCS15_TYPE_PUBKEY_RSA);
+	dump_objects("Private keys", SC_PKCS15_TYPE_PRKEY);
+	dump_objects("Public keys", SC_PKCS15_TYPE_PUBKEY);
 	dump_objects("X.509 certificates", SC_PKCS15_TYPE_CERT_X509);
 
 	sc_pkcs15_unbind(p15card);
