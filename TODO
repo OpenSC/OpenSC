@@ -2,3 +2,13 @@
 * GUI applications
 * Ports to MacOS X (jey) and Win32 (fabled?)
 * Add support for EMV and GSM (anyone?)
+
+Nitty gritty details:
+* Pin pad support
+* Merge DODF patches
+* pkcs11: support decrypt for those cards that support it
+* pkcs11: when asked for CKA_SIGN etc evaluate the pkcs15
+  keyUsage attribute
+* Support for RSA-PSS (pkcs11 et al)
+
+
