@@ -163,8 +163,8 @@ int slot_disconnect(int id)
         LOG("Disconnecting from slot %d\n", id);
         slot[id].flags = 0;
 	if (slot[id].p15card != NULL) {
-		sc_disconnect_card(slot[id].p15card->card);
 		sc_pkcs15_unbind(slot[id].p15card);
+		sc_disconnect_card(slot[id].p15card->card);
 		slot[id].p15card = NULL;
 	}
 
