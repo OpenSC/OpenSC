@@ -18,7 +18,7 @@ noinst_PROGRAMS =
 endif
 
 libpam_pkcs15_la_SOURCES = $(SRC) $(INC)
-libpam_pkcs15_la_LDFLAGS = -module
+libpam_pkcs15_la_LDFLAGS = -module -avoid-version
 
 pam_pkcs15_test_SOURCES = $(SRC) $(INC)
 pam_pkcs15_test_CFLAGS = -DTEST
