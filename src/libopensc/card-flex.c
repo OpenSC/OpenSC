@@ -515,7 +515,8 @@ static int check_path(struct sc_card *card, const u8 **pathptr, size_t *pathlen,
 	return 0;
 }
 
-void cache_path(struct sc_card *card, const struct sc_path *path, int result)
+static void cache_path(struct sc_card *card, const struct sc_path *path,
+	int result)
 {
 	struct sc_path *curpath = &card->cache.current_path;
 	
@@ -664,7 +665,6 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 		sc_unlock(card);
 	cache_path(card, path, r);
 	SC_FUNC_RETURN(card->ctx, 2, r);
-	return r;
 }
 
 static int cryptoflex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
