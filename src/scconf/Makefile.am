@@ -2,15 +2,15 @@
 
 includedir = @includedir@/opensc
 
-MAINTAINERCLEANFILES = Makefile.in lex-parse.c
+MAINTAINERCLEANFILES = Makefile.in
 
-EXTRA_DIST = Makefile.mak
+EXTRA_DIST = Makefile.mak lex-parse.l
 
 include_HEADERS = scconf.h
 noinst_HEADERS = internal.h
 
 lib_LTLIBRARIES = libscconf.la
-libscconf_la_SOURCES = scconf.c parse.c write.c lex-parse.l
+libscconf_la_SOURCES = scconf.c parse.c write.c sclex.c
 libscconf_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
 
 noinst_PROGRAMS = test-conf
