@@ -1,11 +1,12 @@
-teps for your OpenSSH pleasure:
+Steps for your OpenSSH pleasure:
 
-- Download, compile and install openssl (http://www.openssl.org)
-- Download OpenSSH 3.0.2p1 (http://www.openssh.com)
-- Apply 'openssh-3.0.2p1-patch.diff' from this directory
+- Download, compile and install OpenSSL (http://www.openssl.org)
+- Download the current version of OpenSSH/portable from CVS:
+ - export CVSROOT=openssh@anoncvs.be.openbsd.org:/cvs
+ - export CVS_RSH=ssh
+ - cvs get openssh
 - Run autoconf and autoheader
-- Run configure with the argument '--with-opensc'
-- Compile and install
+- Read openssh/README.smartcard, compile and install
 
 - Extract a public key from your SmartCard in OpenSSH format
     (e.g. with 'opensc-ssh -c <certificate ID> -k -o <file>')
@@ -17,9 +18,9 @@ teps for your OpenSSH pleasure:
 With luck you should be authenticated and ready to go. If it won't work,
 try enabling debug information with the '-d' switch.
 
-NOTE: PIN code is not asked by ssh when connecting. If you haven't 
-authenticated for the private key when connecting with PIN code, 
-verify the PIN with e.g. pkcs15-crypt tool. 
+NOTE: PIN code is not asked by ssh when connecting. If you haven't
+authenticated for the private key when connecting with PIN code,
+verify the PIN with e.g. pkcs15-crypt tool.
 
 --
 Markku Degerholm <mdegerho@cc.hut.fi>
