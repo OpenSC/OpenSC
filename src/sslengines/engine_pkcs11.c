@@ -46,6 +46,18 @@ int set_module(const char *modulename)
 	return 1;
 }
 
+int set_pin(const char *_pin)
+{
+	pin = strdup(_pin);
+	return 1;
+}
+
+int set_quiet(int i)
+{
+	quiet = i;
+	return 1;
+}
+
 char *get_pin(UI_METHOD * ui_method, char *sc_pin, int maxlen)
 {
 	UI *ui;

@@ -35,6 +35,10 @@
 
 int set_module(const char *modulename);
 
+int set_pin(const char *pin);
+
+int set_quiet(int i);
+
 int pkcs11_finish(ENGINE * engine);
 
 int pkcs11_init(ENGINE * engine);

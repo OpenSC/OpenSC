@@ -75,6 +75,9 @@
 
 #define CMD_SO_PATH		ENGINE_CMD_BASE
 #define CMD_MODULE_PATH 	(ENGINE_CMD_BASE+1)
+#define CMD_PIN		(ENGINE_CMD_BASE+2)
+#define CMD_VERBOSE		(ENGINE_CMD_BASE+3)
+#define CMD_QUIET		(ENGINE_CMD_BASE+4)
 
 static int pkcs11_engine_destroy(ENGINE * e);
 static int pkcs11_engine_ctrl(ENGINE * e, int cmd, long i, void *p, void (*f) ());
@@ -92,6 +95,18 @@ static const ENGINE_CMD_DEFN pkcs11_cmd_defns[] = {
 	 "MODULE_PATH",
 	 "Specifies the path to the pkcs11 module shared library",
 	 ENGINE_CMD_FLAG_STRING},
+	{CMD_PIN,
+	 "PIN",
+	 "Specifies the pin code",
+	 ENGINE_CMD_FLAG_STRING},
+	{CMD_VERBOSE,
+	 "VERBOSE",
+	 "Print additional details",
+	 ENGINE_CMD_FLAG_NO_INPUT},
+	{CMD_QUIET,
+	 "QUIET",
+	 "Remove additional details",
+	 ENGINE_CMD_FLAG_NO_INPUT},
 	{0, NULL, NULL, 0}
 };
 
@@ -107,7 +122,12 @@ static int pkcs11_engine_ctrl(ENGINE * e, int cmd, long i, void *p, void (*f) ()
 	switch (cmd) {
 	case CMD_MODULE_PATH:
 		return set_module((const char *) p);
-
+	case CMD_PIN:
+		return set_pin((const char *) p);
+	case CMD_VERBOSE:
+		return set_quiet(0);
+	case CMD_QUIET:
+		return set_quiet(1);
 	default:
 		break;
 	}
