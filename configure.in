@@ -791,12 +791,6 @@ if test "$pcsc_path" != "no"; then
 		LIBS="$saved_LIBS"
 	done
 	AC_MSG_RESULT($PCSC_MSG)
-	if test "x$PCSC_MSG" != "xyes" ; then
-		AC_CHECK_LIB(pcsclite, SCardEstablishContext, ,
-		AC_MSG_ERROR([*** PC/SC Lite missing - please install first]))
-	else
-		LIBPCSC="-lpcsclite"
-	fi
 fi
 AM_CONDITIONAL(HAVE_PCSCLITE, test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes")
 
@@ -1002,14 +996,14 @@ if (test x$enable_debug = xyes); then
 	AC_DEFINE(DEBUG, 1, [Enable debug messages.])
 fi
 
-CPPFLAGS="-I\${top_srcdir}/src/include $CPPFLAGS"
+CPPFLAGS="-I\${top_builddir}/src/include $CPPFLAGS"
 
 AC_SUBST(LIBSCCONF)
-LIBSCCONF="\${top_srcdir}/src/scconf/libscconf.la"
+LIBSCCONF="\${top_builddir}/src/scconf/libscconf.la"
 AC_SUBST(LIBSCLDAP)
-LIBSCLDAP="\${top_srcdir}/src/scldap/libscldap.la"
+LIBSCLDAP="\${top_builddir}/src/scldap/libscldap.la"
 AC_SUBST(LIBSCRANDOM)
-LIBSCRANDOM="\${top_srcdir}/src/scrandom/libscrandom.a"
+LIBSCRANDOM="\${top_builddir}/src/scrandom/libscrandom.a"
 
 AM_CONDITIONAL(HAVE_SCIDI, test "foo" = "bar")
 
@@ -1026,7 +1020,7 @@ AC_DEFINE_UNQUOTED(OPENSC_CONF_PATH, "$opensc_conf_path", [default config file f
 AC_SUBST(CFLAGS_OPENSC)
 CFLAGS_OPENSC=""
 AC_SUBST(LIBOPENSC)
-LIBOPENSC="\${top_srcdir}/src/libopensc/libopensc.la"
+LIBOPENSC="\${top_builddir}/src/libopensc/libopensc.la"
 
 # Pass information about installed OpenSC requirements, so that
 # a proper opensc-config file will be build.
@@ -1052,6 +1046,7 @@ src/include/opensc/Makefile
 src/include/opensc/rsaref/Makefile
 src/libopensc/Makefile
 src/libopensc/opensc-config
+src/libopensc/libopensc.pc
 src/openssh/Makefile
 src/pam/Makefile
 src/pkcs11/Makefile
@@ -1066,6 +1061,7 @@ src/signer/Makefile
 src/signer/npinclude/Makefile
 src/tests/Makefile
 src/tools/Makefile
+src/usbtoken/Makefile
 ])
 
 if test ! -z "$RANDOM_POOL" ; then
