@@ -795,6 +795,95 @@ out:	if (args.pkey) {
 	return rv;
 }
 
+static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
+		struct sc_pkcs11_slot *slot,
+		struct sc_profile *profile,
+		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
+		CK_OBJECT_HANDLE_PTR phObject)
+{
+	struct sc_pkcs15_card	*card;
+	struct sc_pkcs15init_certargs args;
+	struct sc_pkcs15_object	*key_obj;
+	CK_CERTIFICATE_TYPE	cert_type;
+	CK_BBOOL		bValue;
+	X509			*x509 = NULL;
+	unsigned char		*ptr;
+	int			rc, rv;
+
+	memset(&args, 0, sizeof(args));
+
+	/* Get the key type */
+	rv = attr_find(pTemplate, ulCount, CKA_CERTIFICATE_TYPE,
+				&cert_type, NULL);
+	if (rv != CKR_OK)
+		return rv;
+	if (cert_type != CKC_X_509)
+		return CKR_FUNCTION_NOT_SUPPORTED; /* XXX correct code? */
+
+	rv = CKR_OK;
+	while (ulCount--) {
+		CK_ATTRIBUTE_PTR attr = pTemplate++;
+
+		switch (attr->type) {
+		/* Skip attrs we already know or don't care for */
+		case CKA_CLASS:
+		       	break;
+		case CKA_PRIVATE:
+			rv = attr_extract(attr, &bValue, NULL);
+			if (bValue) {
+				rv = CKR_TEMPLATE_INCONSISTENT;
+				goto out;
+			}
+			break;
+		case CKA_LABEL:
+			args.label = (char *) attr->pValue;
+			break;
+		case CKA_ID:
+			args.id.len = sizeof(args.id.value);
+			rv = attr_extract(attr, args.id.value, &args.id.len);
+			if (rv != CKR_OK)
+				goto out;
+			break;
+		case CKA_VALUE:
+			if (x509) {
+				rv = CKR_TEMPLATE_INCONSISTENT;
+				goto out;
+			}
+			ptr = attr->pValue;
+			x509 = d2i_X509(NULL, &ptr, attr->ulValueLen);
+			if (x509 == NULL) {
+				rv = CKR_ATTRIBUTE_VALUE_INVALID;
+				goto out;
+			}
+			break;
+		default:
+			/* ignore unknown attrs, or flag error? */
+			continue;
+		}
+	}
+
+	if (!x509) {
+		rv = CKR_TEMPLATE_INCOMPLETE;
+		goto out;
+	}
+
+	card  = (struct sc_pkcs15_card*) p11card->fw_data;
+	rc = sc_pkcs15init_store_certificate(card, profile, &args, &key_obj);
+	if (rc < 0) {
+		rv = sc_to_cryptoki_error(rc, p11card->reader);
+		goto out;
+	}
+
+	/* Create a new pkcs11 object for it */
+	pkcs15_add_cert_object(slot, card, key_obj, phObject);
+
+	rv = CKR_OK;
+
+out:	if (x509)
+		X509_free(x509);
+	return rv;
+}
+
 static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 		struct sc_pkcs11_slot *slot,
 		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
@@ -833,6 +922,10 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 		break;
 	case CKO_PUBLIC_KEY:
 		rv = pkcs15_create_public_key(p11card, slot, profile,
+				pTemplate, ulCount, phObject);
+		break;
+	case CKO_CERTIFICATE:
+		rv = pkcs15_create_certificate(p11card, slot, profile,
 				pTemplate, ulCount, phObject);
 		break;
 	default:
