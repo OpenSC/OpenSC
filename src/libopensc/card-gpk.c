@@ -90,8 +90,6 @@ struct gpk_private_data {
 };
 #define DRVDATA(card)	((struct gpk_private_data *) ((card)->drv_data))
 
-static struct sc_pk_info *gpk_add_algorithm(struct sc_cardctl_pk_algorithms *,
-	       			unsigned int, unsigned int);
 
 /*
  * ATRs of GPK4000 cards courtesy of libscez
@@ -153,7 +151,7 @@ gpk_init(struct sc_card *card)
 {
 	struct gpk_private_data *priv;
 	struct atrinfo	*ai;
-	unsigned long	exponent, flags;
+	unsigned long	exponent, flags, kg;
 
 	if (!(ai = gpk_identify(card)))
 		return SC_ERROR_INVALID_CARD;
@@ -177,9 +175,10 @@ gpk_init(struct sc_card *card)
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_ANSI
 		| SC_ALGORITHM_RSA_PAD_ISO9796;
 	exponent = (ai->variant / 1000 < 16)? 0x10001 : -1;
-	_sc_card_add_rsa_alg(card,  512, flags, exponent);
+	kg = (ai->variant >= 8000)? SC_ALGORITHM_ONBOARD_KEY_GEN : 0;
+	_sc_card_add_rsa_alg(card,  512, flags|kg, exponent);
 	_sc_card_add_rsa_alg(card,  768, flags, exponent);
-	_sc_card_add_rsa_alg(card, 1024, flags, exponent);
+	_sc_card_add_rsa_alg(card, 1024, flags|kg, exponent);
 
 	return 0;
 }
@@ -1119,7 +1118,16 @@ gpk_set_security_env(struct sc_card *card,
 
 	/* Right now, the OpenSC flags do not support any padding
 	 * other than PKCS#1. */
-	priv->sec_padding = 0;
+	if (env->flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		priv->sec_padding = 0;
+	else if (env->flags & SC_ALGORITHM_RSA_PAD_ANSI)
+		priv->sec_padding = 1;
+	else if (env->flags & SC_ALGORITHM_RSA_PAD_ISO9796)
+		priv->sec_padding = 2;
+	else {
+		error(card->ctx, "Padding algorithm not supported.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
 
 	switch (env->operation) {
 	case SC_SEC_OPERATION_SIGN:
@@ -1131,9 +1139,17 @@ gpk_set_security_env(struct sc_card *card,
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 			context = GPK_AUTH_RSA_SHA;
 			priv->sec_hash_len = 20;
-		} else {
+		} else
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_MD5_SHA1) {
+			context = GPK_AUTH_RSA_SSL;
+			priv->sec_hash_len = 36;
+		} else
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_MD5) {
 			context = GPK_AUTH_RSA_MD5;
 			priv->sec_hash_len = 16;
+		} else {
+			error(card->ctx, "Unsupported signature algorithm");
+			return SC_ERROR_NOT_SUPPORTED;
 		}
 		break;
 	case SC_SEC_OPERATION_DECIPHER:
@@ -1205,6 +1221,21 @@ gpk_restore_security_env(struct sc_card *card, int se_num)
 }
 
 /*
+ * Revert buffer (needed for all GPK crypto operations because
+ * they want LSB byte order internally
+ */
+static int
+reverse(u8 *out, size_t outlen, const u8 *in, size_t inlen)
+{
+	if (inlen > outlen)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	outlen = inlen;
+	while (inlen--)
+		*out++ = in[inlen];
+	return outlen;
+}
+
+/*
  * Use the card's on-board hashing functions to hash some data
  */
 #ifdef dontuse
@@ -1256,12 +1287,10 @@ gpk_init_hashed(struct sc_card *card, const u8 *digest, unsigned int len)
 {
 	struct sc_apdu	apdu;
 	u8		tsegid[64];
-	unsigned int	k;
 	int		r;
 
-	assert(len <= sizeof(tsegid));
-	for (k = 0; k < len; k++)
-		tsegid[k] = digest[len-1-k];
+	r = reverse(tsegid, sizeof(tsegid), digest, len);
+	SC_TEST_RET(card->ctx, r, "Failed to reverse buffer");
 
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse = SC_APDU_CASE_3_SHORT;
@@ -1290,7 +1319,6 @@ gpk_compute_signature(struct sc_card *card, const u8 *data,
 	struct gpk_private_data *priv = DRVDATA(card);
 	struct sc_apdu	apdu;
 	u8		cardsig[1024/8];
-	unsigned int	n, len;
 	int		r;
 
 	if (data_len > priv->sec_mod_len) {
@@ -1323,15 +1351,62 @@ gpk_compute_signature(struct sc_card *card, const u8 *data,
 
 	/* The GPK returns the signature as little endian numbers.
 	 * Need to revert these */
-	len = priv->sec_mod_len;
-	if (len > outlen) {
-		error(card->ctx, "Signature buffer too small\n");
-		return SC_ERROR_BUFFER_TOO_SMALL;
+	r = reverse(out, outlen, cardsig, apdu.resplen);
+	SC_TEST_RET(card->ctx, r, "Failed to reverse signature");
+
+	return r;
+}
+
+/*
+ * Decrypt some RSA encrypted piece of data.
+ * Due to legal restrictions, the GPK will not let you see the
+ * full cleartext block, just the last N bytes.
+ * The GPK documentation refers to N as the MaxSessionKey size,
+ * probably because this feature limits the maximum size of an
+ * SSL session key you will be able to decrypt using this card.
+ */
+static int
+gpk_decipher(struct sc_card *card, const u8 *in, size_t inlen,
+		u8 *out, size_t outlen)
+{
+	struct gpk_private_data *priv = DRVDATA(card);
+	struct sc_apdu	apdu;
+	u8		buffer[256];
+	int		r;
+
+	if (inlen != priv->sec_mod_len) {
+		error(card->ctx,
+			"Data length (%u) does not match key modulus %u.\n",
+			inlen, priv->sec_mod_len);
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	for (n = 0; n < len; n++)
-		out[n] = cardsig[len-1-n];
-	return len;
+	/* First revert the cryptogram */
+	r = reverse(buffer, sizeof(buffer), in, inlen);
+	SC_TEST_RET(card->ctx, r, "Cryptogram too large");
+	in = buffer;
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_3_SHORT;
+	apdu.cla = 0x80;
+	apdu.ins = 0x1C;
+	apdu.p2  = 0;		/* PKCS1 padding */
+	apdu.lc  = inlen;
+	apdu.data= in;
+	apdu.datalen = inlen;
+	apdu.resp= buffer;
+	apdu.resplen = sizeof(buffer);
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	/* Reverse the data we got back */
+	r = reverse(out, outlen, buffer, apdu.resplen);
+	SC_TEST_RET(card->ctx, r, "Failed to reverse buffer");
+
+	return r;
 }
 
 /*
@@ -1379,99 +1454,6 @@ gpk_erase_card(struct sc_card *card)
 
 	priv->key_set = 0;
 	SC_FUNC_RETURN(card->ctx, 2, r);
-}
-
-/*
- * Get list of supported public key algorithms and sizes
- */
-static int
-gpk_get_pk_algorithms(struct sc_card *card,
-		struct sc_cardctl_pk_algorithms *res)
-{
-	struct gpk_private_data *priv = DRVDATA(card);
-	struct sc_apdu	apdu;
-	struct sc_path	path;
-	unsigned int	gpkclass;
-	u8		cardinfo[13], max_session_key;
-	int		r;
-
-	memset(res, 0, sizeof(*res));
-
-	gpk_add_algorithm(res, SC_ALGORITHM_RSA, 512);
-	gpk_add_algorithm(res, SC_ALGORITHM_RSA, 768);
-	gpk_add_algorithm(res, SC_ALGORITHM_RSA, 1024);
-
-	gpkclass = (priv->variant / 1000) * 1000;
-
-	/* GPK8000 and GPK16000 support on-board key generation
-	 * for 512 and 1024 bit keys */
-	if (gpkclass >= 8000) {
-		res->algorithms[0].pk_onboard_generation = 1;
-		res->algorithms[2].pk_onboard_generation = 1;
-	}
-
-	/* Cards prior to the GPK16000 do not allow RSA exponents
-	 * other that 0x10001 */
-	if (gpkclass < 16000) {
-		res->algorithms[0].pk_rsa_exponent = 0x10001;
-		res->algorithms[1].pk_rsa_exponent = 0x10001;
-		res->algorithms[1].pk_rsa_exponent = 0x10001;
-	}
-
-	/* GPK cards limit the amount of data they're willing
-	 * to RSA decrypt. This data is stored in EFMaxSessionKey */
-	sc_format_path("01000001", &path);
-	if ((r = sc_select_file(card, &path, NULL)) < 0
-	 || (r = sc_read_binary(card, 0, &max_session_key, 1, 0)) < 0)
-		return r;
-	res->algorithms[0].pk_rsa_unwrap = max_session_key;
-	res->algorithms[1].pk_rsa_unwrap = max_session_key;
-	res->algorithms[2].pk_rsa_unwrap = max_session_key;
-
-	/* Do a Get Info call to find out whether DSA is
-	 * supported. */
-	memset(&apdu, 0, sizeof(apdu));
-	apdu.cse = SC_APDU_CASE_2_SHORT;
-	apdu.cla = 0x80;
-	apdu.ins = 0xC0;
-	apdu.p1  = 0x02;
-	apdu.p2  = 0xA4;
-	apdu.le  = sizeof(cardinfo);
-	apdu.resp= cardinfo;
-	apdu.resplen = sizeof(cardinfo);
-
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
-
-	if (cardinfo[11] & 0x10) {
-		/* We have DSA support */
-		gpk_add_algorithm(res, SC_ALGORITHM_DSA, 512);
-		gpk_add_algorithm(res, SC_ALGORITHM_DSA, 1024);
-	}
-
-	return 0;
-}
-
-/*
- * This should really be made available to all card drivers,
- * and added to sc-internal.h
- */
-static struct sc_pk_info *
-gpk_add_algorithm(struct sc_cardctl_pk_algorithms *res,
-		unsigned int algo, unsigned int keysize)
-{
-	struct sc_pk_info	*p;
-
-	res->algorithms = realloc(res->algorithms,
-		       	(res->count + 1) * sizeof(*p));
-	p = res->algorithms + res->count++;
-
-	memset(p, 0, sizeof(*p));
-	p->pk_algorithm = algo;
-	p->pk_keylength = keysize;
-	return p;
 }
 
 /*
@@ -1612,6 +1594,33 @@ gpk_pkfile_load(struct sc_card *card, struct sc_cardctl_gpk_pkload *args)
 }
 
 /*
+ * Get the maximum size of a session key the card is
+ * willing to decrypt
+ */
+#if 0
+static int
+gpk_max_session_key(struct sc_card *card)
+{
+	struct gpk_private_data *priv = DRVDATA(card);
+	struct sc_path	path;
+	u8		value;
+	int		r;
+
+	if (priv->max_session_key)
+		return priv->max_session_key;
+
+	/* GPK cards limit the amount of data they're willing
+	 * to RSA decrypt. This data is stored in EFMaxSessionKey */
+	sc_format_path("01000001", &path);
+	if ((r = sc_select_file(card, &path, NULL)) < 0
+	 || (r = sc_read_binary(card, 0, &value, 1, 0)) < 0)
+		return r;
+	priv->max_session_key = value;
+	return value;
+}
+#endif
+
+/*
  * Dispatch card_ctl calls
  */
 static int
@@ -1620,9 +1629,6 @@ gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	switch (cmd) {
 	case SC_CARDCTL_ERASE_CARD:
 		return gpk_erase_card(card);
-	case SC_CARDCTL_GET_PK_ALGORITHMS:
-		return gpk_get_pk_algorithms(card,
-				(struct sc_cardctl_pk_algorithms *) ptr);
 	case SC_CARDCTL_GPK_LOCK:
 		return gpk_lock(card, (struct sc_cardctl_gpk_lock *) ptr);
 	case SC_CARDCTL_GPK_PKINIT:
@@ -1663,6 +1669,7 @@ sc_get_driver()
 		gpk_ops.set_security_env= gpk_set_security_env;
 		gpk_ops.restore_security_env= gpk_restore_security_env;
 		gpk_ops.compute_signature= gpk_compute_signature;
+		gpk_ops.decipher	= gpk_decipher;
 		gpk_ops.reset_retry_counter = gpk_reset_retry_counter;
 		gpk_ops.change_reference_data = gpk_change_reference_data;
 	}
