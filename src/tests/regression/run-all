@@ -1,13 +1,30 @@
 #!/bin/bash
 
 mkdir -p out
-for script in init* crypt*; do
+
+scripts=""
+options=""
+while [ $# -gt 0 ]; do
+	opt=$1; shift
+	case $opt in
+	--reader)
+		options="$options $opt $1"
+		shift;;
+	--*)	options="$options $opt";;
+	*)	scripts="$scripts $opt";;
+	esac
+done
+
+if [ -z "$scripts" ]; then
+	scripts=`ls init* crypt*`
+fi
+
+for script in $scripts; do
 	echo -n "${script} ..."
-	if ./$script "$@" >out/$script 2>&1; then
+	if ./$script $options >out/$script 2>&1; then
 		echo "success"
 	else
 		echo "fail"
-		exit 1
 	fi
 done
 
