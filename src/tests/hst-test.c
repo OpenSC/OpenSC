@@ -61,9 +61,8 @@ int ask_and_verify_pin(struct sc_pkcs15_pin_info *pin)
 	int i = 0;
 	char buf[32];
 
-//	i = sc_sec_ask_pin_code(pin, buf, sizeof(buf),
-//				"Please enter PIN code");
-	strcpy(buf, "1234");	
+	i = sc_sec_ask_pin_code(pin, buf, sizeof(buf),
+				"Please enter PIN code");
 	if (i == 0) {
 		i = sc_pkcs15_verify_pin(p15_card, pin, buf, strlen(buf));
 		if (i) {
