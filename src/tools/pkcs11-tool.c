@@ -773,9 +773,13 @@ ATTR_METHOD(NEVER_EXTRACTABLE, CK_BBOOL);
 ATTR_METHOD(PRIVATE, CK_BBOOL);
 ATTR_METHOD(MODIFIABLE, CK_BBOOL);
 ATTR_METHOD(ENCRYPT, CK_BBOOL);
+ATTR_METHOD(DECRYPT, CK_BBOOL);
+ATTR_METHOD(SIGN, CK_BBOOL);
+ATTR_METHOD(SIGN_RECOVER, CK_BBOOL);
 ATTR_METHOD(VERIFY, CK_BBOOL);
 ATTR_METHOD(VERIFY_RECOVER, CK_BBOOL);
 ATTR_METHOD(WRAP, CK_BBOOL);
+ATTR_METHOD(UNWRAP, CK_BBOOL);
 ATTR_METHOD(DERIVE, CK_BBOOL);
 ATTR_METHOD(EXTRACTABLE, CK_BBOOL);
 ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);
@@ -813,7 +817,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 	CK_KEY_TYPE	key_type = getKEY_TYPE(sess, obj);
 	CK_ULONG	size;
 	unsigned char	*id;
-	char		*label;
+	char		*label, *sepa;
 
 	printf("%s Key Object", pub? "Public" : "Private");
 	switch (key_type) {
@@ -839,6 +843,36 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 		printf("\n");
 		free(id);
 	}
+
+	printf("  Usage:      ");
+	sepa = "";
+	if (getENCRYPT(sess, obj)) {
+		printf("%sencrypt", sepa);
+		sepa = ", ";
+	}
+	if (getDECRYPT(sess, obj)) {
+		printf("%sdecrypt", sepa);
+		sepa = ", ";
+	}
+	if (getSIGN(sess, obj)) {
+		printf("%ssign", sepa);
+		sepa = ", ";
+	}
+	if (getVERIFY(sess, obj)) {
+		printf("%sverify", sepa);
+		sepa = ", ";
+	}
+	if (getWRAP(sess, obj)) {
+		printf("%swrap", sepa);
+		sepa = ", ";
+	}
+	if (getUNWRAP(sess, obj)) {
+		printf("%sunwrap", sepa);
+		sepa = ", ";
+	}
+	if (!*sepa)
+		printf("none");
+	printf("\n");
 }
 
 void
@@ -1074,6 +1108,53 @@ test_digest(CK_SLOT_ID slot)
 	return errors;
 }
 
+#ifdef HAVE_OPENSSL
+EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject)
+{
+	unsigned char  *id;
+	CK_ULONG        idLen;
+	CK_OBJECT_HANDLE pubkeyObject;
+	unsigned char  *pubkey;
+	CK_ULONG        pubkeyLen;
+	RSA	       *rsa;
+	EVP_PKEY       *pkey;
+
+	id = NULL;
+	id = getID(session, privKeyObject, &idLen);
+	if (id == NULL) {
+		printf("private key has no ID, can't lookup the corresponding pubkey for verification\n");
+		return NULL;
+	}
+
+	if (!find_object(session, CKO_PUBLIC_KEY, &pubkeyObject, id, idLen, 0)) {
+		free(id);
+		printf("coudn't find the corresponding pubkey for validation\n");
+		return NULL;
+	}
+	free(id);
+
+	pubkey = getVALUE(session, pubkeyObject, &pubkeyLen);
+	if (pubkey == NULL) {
+		printf("couldn't get the pubkey VALUE attribute, no validation done\n");
+		return NULL;
+	}
+
+	rsa = d2i_RSAPublicKey(NULL, &pubkey, pubkeyLen);
+	free(pubkey);
+
+	if (rsa == NULL) {
+		printf(" couldn't parse pubkey, no verification done\n");
+		/* ERR_print_errors_fp(stderr); */
+		return NULL;
+	}
+
+	pkey = EVP_PKEY_new();
+	EVP_PKEY_set1_RSA(pkey, rsa);
+
+	return pkey;
+}
+#endif
+
 int sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_MECHANISM *ck_mech, CK_OBJECT_HANDLE privKeyObject,
 		unsigned char *data, CK_ULONG dataLen,
@@ -1082,17 +1163,11 @@ int sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 {
 	int 		errors = 0;
 	CK_RV           rv;
-	unsigned char  *id;
-	CK_ULONG        idLen;
-	CK_OBJECT_HANDLE certObject;
-	unsigned char  *cert;
-	CK_ULONG        certLen;
 	unsigned char   sig1[1024];
 	CK_ULONG        sigLen1;
 
 #ifdef HAVE_OPENSSL
 	int             err;
-	X509           *x509;
 	EVP_PKEY       *pkey;
 	EVP_MD_CTX      md_ctx;
 
@@ -1129,43 +1204,9 @@ int sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 #ifndef HAVE_OPENSSL
 	printf("unable to verify signature (compile with HAVE_OPENSSL)\n");
 #else
-	id = NULL;
-	id = getID(session, privKeyObject, &idLen);
-	if (id == NULL) {
-		printf("private key has no ID, can't lookup the corresponding cert for verification\n");
-		return errors;
-	}
 
-	if (!find_object(session, CKO_CERTIFICATE, &certObject, id,
-			idLen, 0)) {
-		free(id);
-		printf("coudn't find the corresponding cert for verification\n");
+	if (!(pkey = get_public_key(session, privKeyObject)))
 		return errors;
-	}
-	free(id);
-
-	cert = NULL;
-	cert = getVALUE(session, certObject, &certLen);
-	if (cert == NULL) {
-		printf("couldn't get the cert VALUE attribute, no verification done\n");
-		return errors;
-	}
-
-	x509 = d2i_X509(NULL, &cert, certLen);
-	if (x509 == NULL) {
-		free(cert);
-		printf(" couldn't parse cert, no verification done\n");
-		/* ERR_print_errors_fp(stderr); */
-		return errors;
-	}
-
-	pkey = X509_get_pubkey(x509);
-	if (pkey == NULL) {
-		free(cert);
-		printf(" couldn't get public key from the cert, no verification done\n");
-		/* ERR_print_errors_fp(stderr); */
-		return errors;
-	}
 
 	EVP_VerifyInit(&md_ctx, evp_mds[evp_md_index]);
 	EVP_VerifyUpdate(&md_ctx, verifyData, verifyDataLen);
@@ -1185,7 +1226,9 @@ int sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	return errors;
 }
 
-
+/*
+ * Test signature functions
+ */
 static int
 test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
@@ -1408,6 +1451,144 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 }
 
 static int
+wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+	    EVP_CIPHER *algo, CK_OBJECT_HANDLE privKeyObject)
+{
+#ifndef HAVE_OPENSSL
+	printf("No OpenSSL support, unable to validate C_Unwrap\n");
+	return 0;
+#else
+	CK_OBJECT_HANDLE cipherKeyObject;
+	CK_RV           rv;
+	EVP_PKEY       *pkey;
+	EVP_CIPHER_CTX	seal_ctx;
+	unsigned char	keybuf[512], *key = keybuf;
+	int		key_len;
+	unsigned char	iv[32], ciphered[1024], cleartext[1024];
+	int		ciphered_len, cleartext_len, len;
+	CK_MECHANISM	mech;
+	CK_ULONG	key_type = CKM_DES_CBC;
+	CK_ATTRIBUTE	key_template = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
+
+	pkey = get_public_key(session, privKeyObject);
+	if (pkey == NULL)
+		return 0;
+
+	printf("    %s: ", OBJ_nid2sn(EVP_CIPHER_nid(algo)));
+
+	EVP_SealInit(&seal_ctx, algo,
+			&key, &key_len,
+			iv, &pkey, 1);
+	
+	/* Encrypt something */
+	len = sizeof(ciphered);
+	EVP_SealUpdate(&seal_ctx, ciphered, &len, "hello world", 11);
+	ciphered_len = len;
+
+	len = sizeof(ciphered) - ciphered_len;
+	EVP_SealFinal(&seal_ctx, ciphered + ciphered_len, &len);
+	ciphered_len += len;
+
+	mech.mechanism = CKM_RSA_PKCS;
+	rv = p11->C_UnwrapKey(session, &mech, privKeyObject,
+			key, key_len,
+			&key_template, 1,
+			&cipherKeyObject);
+
+	/* mechanism not implemented, don't test */
+	if (rv == CKR_MECHANISM_INVALID)
+		return 0;
+	if (rv != CKR_OK) {
+		p11_perror("C_UnwrapKey failed", rv);
+		return 1;
+	}
+
+	/* Try to decrypt */
+	key = getVALUE(session, cipherKeyObject, (unsigned long *) &key_len);
+	if (key == NULL) {
+		printf("  Could not get unwrapped key\n");
+		return 1;
+	}
+	if (key_len != EVP_CIPHER_key_length(algo)) {
+		printf("  Key length mismatch (%d != %d)\n",
+				key_len, EVP_CIPHER_key_length(algo));
+		return 1;
+	}
+
+	EVP_DecryptInit(&seal_ctx, algo, key, iv);
+
+	len = sizeof(cleartext);
+	EVP_DecryptUpdate(&seal_ctx, cleartext, &len, ciphered, ciphered_len);
+
+	cleartext_len = len;
+	len = sizeof(cleartext) - len;
+	EVP_DecryptFinal(&seal_ctx, cleartext + cleartext_len, &len);
+	cleartext_len += len;
+
+	if (cleartext_len != 11
+	 || memcmp(cleartext, "hello world", 11)) {
+		printf("  resulting cleartext doesn't match input\n");
+		return 1;
+	}
+
+	printf("OK\n");
+	return 0;
+#endif
+}
+
+
+/*
+ * Test unwrap functions
+ */
+static int
+test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	int             errors = 0;
+	CK_RV           rv;
+	CK_OBJECT_HANDLE privKeyObject;
+	CK_SESSION_HANDLE sess;
+	CK_MECHANISM_TYPE firstMechType;
+	CK_SESSION_INFO sessionInfo;
+	CK_ULONG        j;
+	char 		*label;
+
+	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION, NULL, NULL, &sess);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+
+	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
+		printf("Signatures: not logged in, skipping signature tests\n");
+		return errors;
+	}
+
+	firstMechType = find_mechanism(slot, CKF_UNWRAP | CKF_HW, 0);
+	if (firstMechType == NO_MECHANISM) {
+		printf("Unwrap: not implemented\n");
+		return errors;
+	}
+
+	printf("Key unwrap (RSA)\n");
+	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
+		printf("  testing key %ld ", j);
+		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
+			printf("(%s) ", label);
+			free(label);
+		}
+		printf("\n");
+
+		errors += wrap_unwrap(slot, sess, EVP_des_cbc(), privKeyObject);
+		errors += wrap_unwrap(slot, sess, EVP_des_ede3_cbc(), privKeyObject);
+		errors += wrap_unwrap(slot, sess, EVP_bf_cbc(), privKeyObject);
+		errors += wrap_unwrap(slot, sess, EVP_cast5_cfb(), privKeyObject);
+	}
+
+	return errors;
+}
+
+static int
 test_random(CK_SLOT_ID slot)
 {
 	CK_SESSION_HANDLE session;
@@ -1513,6 +1694,8 @@ p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	errors += test_digest(slot);
 
 	errors += test_signature(slot, session);
+
+	errors += test_unwrap(slot, session);
 
 	errors += test_card_detection(0);
 
