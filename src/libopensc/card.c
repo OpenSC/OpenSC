@@ -460,12 +460,19 @@ int sc_unlock(struct sc_card *card)
 	sc_mutex_lock(card->mutex);
 	assert(card->lock_count >= 1);
 	if (card->lock_count == 1) {
-		if (card->ops->logout != NULL)
+		memset(&card->cache, 0, sizeof(card->cache));
+		card->cache_valid = 0;
+		if (card->ops->logout != NULL) {
+			sc_mutex_unlock(card->mutex);
 			card->ops->logout(card);
+			sc_mutex_lock(card->mutex);
+		}
+	}
+	/* Check again, lock count may have changed
+	 * while we were in logout() */
+	if (card->lock_count == 1) {
 		if (card->reader->ops->unlock != NULL)
 			r = card->reader->ops->unlock(card->reader, card->slot);
-		card->cache_valid = 0;
-		memset(&card->cache, 0, sizeof(card->cache));
         }
         card->lock_count--;
         sc_mutex_unlock(card->mutex);
