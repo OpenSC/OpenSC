@@ -413,7 +413,6 @@ etoken_store_key_component(struct sc_card *card,
 	tlv_add(&tlv, 0);
 	while (len--)
 		tlv_add(&tlv, *data++);
-		//tlv_add(&tlv, data[len]);
 
 	args.data = buffer;
 	args.len = tlv_len(&tlv);
