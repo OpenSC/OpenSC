@@ -269,7 +269,7 @@ done:	if (r < 0) {
 		sc_disconnect_card(card, 0);
 	}
 	sc_release_context(ctx);
-	return r? 1 : 0;
+	return r < 0? 1 : 0;
 }
 
 static int
