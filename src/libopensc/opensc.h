@@ -522,6 +522,8 @@ int sc_delete_file(struct sc_card *card, const struct sc_path *path);
 
 inline int sc_file_valid(const struct sc_file *file);
 void sc_format_path(const char *path_in, struct sc_path *path_out);
+int sc_append_path(struct sc_path *dest, const struct sc_path *src);
+int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 
 /* Possibly only valid on Setec cards */

@@ -304,9 +304,9 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 			  CK_CHAR_PTR pPin,
 			  CK_ULONG ulPinLen)
 {
-        int rc;
-        struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
-        struct sc_pkcs15_pin_info *pin = (struct sc_pkcs15_pin_info*) fw_token;
+	int rc;
+	struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
+	struct sc_pkcs15_pin_info *pin = (struct sc_pkcs15_pin_info*) fw_token;
 
 	rc = sc_pkcs15_verify_pin(card, pin, pPin, ulPinLen);
 	return sc_to_cryptoki_error(rc, card->card->reader);

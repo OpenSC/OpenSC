@@ -258,6 +258,25 @@ void sc_format_path(const char *str, struct sc_path *path)
 	return;
 }
 
+int sc_append_path(struct sc_path *dest, const struct sc_path *src)
+{
+	assert(dest != NULL && src != NULL);
+	if (dest->len + src->len > SC_MAX_PATH_SIZE)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	memcpy(dest->value + dest->len, src->value, src->len);
+	dest->len += src->len;
+	return 0;
+}
+
+int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen)
+{
+	if (dest->len + idlen > SC_MAX_PATH_SIZE)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	memcpy(dest->value + dest->len, id, idlen);
+	dest->len += idlen;
+	return 0;
+}
+
 const char *sc_strerror(int error)
 {
 	const char *errors[] = {

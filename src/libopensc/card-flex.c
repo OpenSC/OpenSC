@@ -414,9 +414,11 @@ static int acl_to_keynum(unsigned int acl)
 		return 0;
 	switch (acl & SC_AC_KEY_NUM_MASK) {
 	case SC_AC_KEY_NUM_0:
-		return 1;
+		return 0x00;
 	case SC_AC_KEY_NUM_1:
-		return 0;
+		return 0x01;
+	case SC_AC_KEY_NUM_2:
+		return 0x02;
 	}
 	return 0;
 }
@@ -464,6 +466,8 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 	} else {
 		ops[0] = SC_AC_OP_READ;
 		ops[1] = SC_AC_OP_UPDATE;
+		ops[2] = SC_AC_OP_READ;
+		ops[3] = SC_AC_OP_UPDATE;
 		ops[4] = SC_AC_OP_REHABILITATE;
 		ops[5] = SC_AC_OP_INVALIDATE;
 	}
@@ -521,7 +525,14 @@ static int flex_create_file(struct sc_card *card, struct sc_file *file)
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
-	card->cache.current_path.len = 0;
+	if (card->cache_valid) {
+		u8 file_id[2];
+		
+		file_id[0] = file->id >> 8;
+		file_id[1] = file->id & 0xFF;
+		if (card->cache.current_path.len != 0)
+			sc_append_path_id(&card->cache.current_path, file_id, 2);
+	}		
 	return 0;
 }
 

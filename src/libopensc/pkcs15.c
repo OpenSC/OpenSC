@@ -290,7 +290,6 @@ int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	u8 *buf;
 	size_t bufsize;
 	int r, i;
-	char line[10240];
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_format_path("3F00", &path);
@@ -298,17 +297,9 @@ int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	SC_TEST_RET(card->ctx, r, "sc_select_file(MF) failed");
 	r = encode_dir(card->ctx, p15card, &buf, &bufsize);
 	SC_TEST_RET(card->ctx, r, "EF(DIR) encoding failed");
-	sc_hex_dump(card->ctx, buf, bufsize, line, sizeof(line));
-	printf("DIR:\n%s", line);
 	memset(&file, 0, sizeof(file));
 	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file.acl[i] = SC_AC_NONE;
-#if 0
-	file.acl[SC_AC_OP_UPDATE] = SC_AC_CHV2;
-	file.acl[SC_AC_OP_WRITE] = SC_AC_NEVER;
-	file.acl[SC_AC_OP_INVALIDATE] = SC_AC_NEVER;
-	file.acl[SC_AC_OP_REHABILITATE] = SC_AC_NEVER;
-#endif
+		file.acl[i] = p15card->file_dir.acl[i];
 	file.size = bufsize;
 	file.type = SC_FILE_TYPE_WORKING_EF;
 	file.ef_structure = SC_FILE_EF_TRANSPARENT;
@@ -746,22 +737,6 @@ static int create_file(struct sc_card *card, struct sc_file *file)
 	return r;
 }
 
-static int create_app_df(struct sc_pkcs15_card *p15card, struct sc_card *card)
-{
-	const struct sc_file *inf = &p15card->file_app;
-	struct sc_file file;
-	int i;
-	
-	memset(&file, 0, sizeof(file));
-	file.type = SC_FILE_TYPE_DF;
-	file.size = inf->size;
-	file.path = inf->path;
-	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file.acl[i] = SC_AC_NONE;
-	file.status = SC_FILE_STATUS_ACTIVATED;
-	return create_file(card, &file);
-}
-
 static int create_and_update_file(struct sc_pkcs15_card *p15card,
 				  struct sc_card *card,
 				  struct sc_file *inf, const u8 *buf,
@@ -776,7 +751,7 @@ static int create_and_update_file(struct sc_pkcs15_card *p15card,
 	file.size = inf->size + bufsize;
 	file.path = inf->path;
 	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file.acl[i] = SC_AC_NONE;
+		file.acl[i] = inf->acl[i];
 	file.status = SC_FILE_STATUS_ACTIVATED;
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
@@ -804,27 +779,22 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	int r, i;
 	u8 *tokinf_buf = NULL, *odf_buf = NULL;
 	size_t tokinf_size, odf_size;
-	char line[10240];
 	
 	sc_format_path("3F0050155031", &p15card->file_odf.path);
 	sc_format_path("3F0050155032", &p15card->file_tokeninfo.path);
 	memcpy(p15card->file_app.name, "\xA0\x00\x00\x00cPKCS-15", 12);
 	p15card->file_app.namelen = 12;
+	if (card->ctx->debug)
+		debug(card->ctx, "creating EF(DIR)\n");
 	r = sc_pkcs15_create_dir(p15card, card);
 	SC_TEST_RET(card->ctx, r, "Error creating EF(DIR)");
-	printf("Creating app DF\n");
-	r = create_app_df(p15card, card);
-	if (r) {
-		sc_perror(card->ctx, r, "Error creating PKCS #15 DF");
-		goto err;
-	}
 	r = sc_pkcs15_encode_tokeninfo(card->ctx, p15card, &tokinf_buf, &tokinf_size);
 	if (r) {
 		sc_perror(card->ctx, r, "Error encoding EF(TokenInfo)");
 		goto err;
 	}
-	sc_hex_dump(card->ctx, tokinf_buf, tokinf_size, line, sizeof(line));
-	printf("TokenInfo:\n%s\n", line);
+	if (card->ctx->debug)
+		debug(card->ctx, "creating EF(TokenInfo)\n");
 	r = create_and_update_file(p15card, card, &p15card->file_tokeninfo, tokinf_buf, tokinf_size);
 	if (r) {
 		sc_perror(card->ctx, r, "Error creating EF(TokenInfo)");
@@ -833,16 +803,16 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	free(tokinf_buf);
 	tokinf_buf = NULL;
 	
+	if (card->ctx->debug)
+		debug(card->ctx, "creating EF(ODF)\n");
 	r = sc_pkcs15_encode_odf(card->ctx, p15card, &odf_buf, &odf_size);
 	if (r) {
-		sc_perror(card->ctx, r, "Error creating EF(ODF)");
+		sc_perror(card->ctx, r, "Error encoding EF(ODF)");
 		goto err;
 	}
-	sc_hex_dump(card->ctx, odf_buf, odf_size, line, sizeof(line));
-	printf("ODF:\n%s\n", line);
 	r = create_and_update_file(p15card, card, &p15card->file_odf, odf_buf, odf_size);
 	if (r) {
-		sc_perror(card->ctx, r, "Error creating EF(TokenInfo)");
+		sc_perror(card->ctx, r, "Error creating EF(ODF)");
 		goto err;
 	}
 	free(odf_buf);
@@ -862,6 +832,8 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 				sc_perror(card->ctx, r, "Error encoding EF(xDF)");
 				goto err;
 			}
+			if (card->ctx->debug)
+				debug(card->ctx, "creating DF %d of type %d\n", file_no, i);
 			r = create_and_update_file(p15card, card, df->file[file_no], buf, bufsize);
 			free(buf);
 			if (r) {
