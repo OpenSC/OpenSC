@@ -491,7 +491,8 @@ static int iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	return 0;
 }
 
-static int iso7816_construct_fci(const struct sc_file *file, u8 *out, size_t *outlen)
+static int iso7816_construct_fci(struct sc_card *card, const struct sc_file *file,
+	u8 *out, size_t *outlen)
 {
 	u8 *p = out;
 	u8 buf[64];
@@ -552,7 +553,7 @@ static int iso7816_create_file(struct sc_card *card, struct sc_file *file)
 
 	if (card->ops->construct_fci == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
-	r = card->ops->construct_fci(file, sbuf, &len);
+	r = card->ops->construct_fci(card, file, sbuf, &len);
 	SC_TEST_RET(card->ctx, r, "construct_fci() failed");
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);

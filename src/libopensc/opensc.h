@@ -555,7 +555,8 @@ struct sc_card_operations {
 				void *data);
 	int (*process_fci)(struct sc_card *card, struct sc_file *file,
 			const u8 *buf, size_t buflen);
-	int (*construct_fci)(const struct sc_file *file, u8 *out, size_t *outlen);
+	int (*construct_fci)(struct sc_card *card, const struct sc_file *file,
+			u8 *out, size_t *outlen);
 
 	/* pin_cmd: verify/change/unblock command; optionally using the
 	 * card's pin pad if supported.
