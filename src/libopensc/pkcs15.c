@@ -1041,6 +1041,8 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		error(ctx, "unknown DF type: %d\n", df->type);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+
+	/* XXX another candidate for using sc_pkcs15_read_file */
 	if (p15card->use_cache) {
 		r = sc_pkcs15_read_cached_file(p15card, &path,
 					       &bufptr, &bufsize);
@@ -1096,6 +1098,48 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	} while (bufsize && *p != 0x00);
 	
 	return 0;	
+}
+
+int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
+			const struct sc_path *path,
+			u8 **buf, size_t *buflen)
+{
+	struct sc_file *file;
+	u8	*data = NULL;
+	size_t	len = 0;
+	int	r = -1;
+
+	assert(p15card != NULL && path != NULL && buf != NULL);
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	if (p15card->use_cache) {
+		r = sc_pkcs15_read_cached_file(p15card, path, &data, &len);
+	}
+	if (r) {
+		r = sc_lock(p15card->card);
+		SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
+		r = sc_select_file(p15card->card, path, &file);
+		if (r) {
+			sc_unlock(p15card->card);
+			return r;
+		}
+		len = file->size;
+		sc_file_free(file);
+		data = malloc(len);
+		if (data == NULL) {
+			sc_unlock(p15card->card);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+		r = sc_read_binary(p15card->card, 0, data, len, 0);
+		if (r < 0) {
+			sc_unlock(p15card->card);
+			free(data);
+			return r;
+		}
+		sc_unlock(p15card->card);
+	}
+	*buf = data;
+	*buflen = len;
+	return 0;
 }
 
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
