@@ -243,7 +243,7 @@ static const struct sc_asn1_entry	c_asn1_dsa_prkey_obj[] = {
 	{ NULL }
 };
 
-int
+static int
 sc_pkcs15_encode_prkey_dsa(struct sc_context *ctx,
 		struct sc_pkcs15_prkey_dsa *key,
 		u8 **buf, size_t *buflen)
@@ -257,7 +257,7 @@ sc_pkcs15_encode_prkey_dsa(struct sc_context *ctx,
 	return sc_asn1_encode(ctx, asn1_dsa_prkey_obj, buf, buflen);
 }
 
-int
+static int
 sc_pkcs15_decode_prkey_dsa(struct sc_context *ctx,
 		struct sc_pkcs15_prkey_dsa *key,
 		const u8 *buf, size_t buflen)

@@ -169,7 +169,7 @@ int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 					data->pin_type,
 					data->pin_reference,
 					data->pin1.data,
-					data->pin1.len,
+					(size_t) data->pin1.len,
 					tries_left);
 			break;
 		case SC_PIN_CMD_CHANGE:
@@ -178,9 +178,9 @@ int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 					data->pin_type,
 					data->pin_reference,
 					data->pin1.data,
-					data->pin1.len,
+					(size_t) data->pin1.len,
 					data->pin2.data,
-					data->pin2.len,
+					(size_t) data->pin2.len,
 					tries_left);
 			break;
 		case SC_PIN_CMD_UNBLOCK:
@@ -189,9 +189,9 @@ int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 					data->pin_type,
 					data->pin_reference,
 					data->pin1.data,
-					data->pin1.len,
+					(size_t) data->pin1.len,
 					data->pin2.data,
-					data->pin2.len);
+					(size_t) data->pin2.len);
 			break;
 		}
 		if (r == SC_ERROR_NOT_SUPPORTED)
