@@ -290,9 +290,7 @@ static struct sc_card * sc_card_new()
 	}
 	card->app_count = -1;
         card->magic = SC_CARD_MAGIC;
-#ifdef HAVE_PTHREAD
-	pthread_mutex_init(&card->mutex, NULL);
-#endif
+	card->mutex = sc_mutex_new();
 
 	return card;
 }
@@ -314,10 +312,8 @@ static void sc_card_free(struct sc_card *card)
 	free(card->ops);
 	if (card->algorithms != NULL)
 		free(card->algorithms);
-#ifdef HAVE_PTHREAD
-	pthread_mutex_destroy(&card->mutex);
-#endif
-        card->magic = 0;
+	sc_mutex_free(card->mutex);
+	memset(card, 0, sizeof(*card));
 	free(card);
 }
 
@@ -447,9 +443,7 @@ int sc_lock(struct sc_card *card)
 	
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
-#ifdef HAVE_PTHREAD
-	pthread_mutex_lock(&card->mutex);
-#endif
+	sc_mutex_lock(card->mutex);
         if (card->lock_count == 0) {
 		if (card->reader->ops->lock != NULL)
 			r = card->reader->ops->lock(card->reader, card->slot);
@@ -458,9 +452,7 @@ int sc_lock(struct sc_card *card)
 	}
 	if (r == 0)
 		card->lock_count++;
-#ifdef HAVE_PTHREAD
-	pthread_mutex_unlock(&card->mutex);
-#endif
+	sc_mutex_unlock(card->mutex);
         SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
@@ -470,9 +462,7 @@ int sc_unlock(struct sc_card *card)
 
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
-#ifdef HAVE_PTHREAD
-	pthread_mutex_lock(&card->mutex);
-#endif
+	sc_mutex_lock(card->mutex);
         card->lock_count--;
 	assert(card->lock_count >= 0);
 	if (card->lock_count == 0) {
@@ -481,9 +471,7 @@ int sc_unlock(struct sc_card *card)
 		card->cache_valid = 0;
 		memset(&card->cache, 0, sizeof(card->cache));
         }
-#ifdef HAVE_PTHREAD
-        pthread_mutex_unlock(&card->mutex);
-#endif
+        sc_mutex_unlock(card->mutex);
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 

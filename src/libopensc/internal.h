@@ -70,6 +70,14 @@ int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_a
 int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		     unsigned int *tag_out, size_t *taglen);
 
+/* portability.c
+ * Note: struct sc_mutex is a dummy used for type safety.
+ */
+struct sc_mutex *sc_mutex_new(void);
+void sc_mutex_lock(struct sc_mutex *);
+void sc_mutex_unlock(struct sc_mutex *);
+void sc_mutex_free(struct sc_mutex *);
+
 #ifdef  __cplusplus
 }
 #endif

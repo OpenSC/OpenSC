@@ -28,10 +28,6 @@
 
 #include <stdio.h>
 
-#ifdef HAVE_PTHREAD
-#include <pthread.h>
-#endif
-
 #ifdef  __cplusplus
 extern "C" {
 #endif
@@ -386,6 +382,12 @@ struct sc_reader_operations {
 };
 
 
+/* Mutexes - this is just a dummy struct used for type
+ * safety; internally we use objects defined by the
+ * underlying thread model
+ */
+typedef struct sc_mutex sc_mutex_t;
+
 /*
  * Card flags
  */
@@ -428,9 +430,8 @@ struct sc_card {
 	struct sc_card_cache cache;
 	int cache_valid;
 
-#ifdef HAVE_PTHREAD
-	pthread_mutex_t mutex;
-#endif
+	sc_mutex_t *mutex;
+
 	unsigned int magic;
 };
 typedef struct sc_card sc_card_t;
@@ -565,9 +566,8 @@ struct sc_context {
 	struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS+1];
 	struct sc_card_driver *forced_driver;
 
-#ifdef HAVE_PTHREAD
-	pthread_mutex_t mutex;
-#endif
+	sc_mutex_t *mutex;
+
 	unsigned int magic;
 };
 typedef struct sc_context sc_context_t;

@@ -371,9 +371,7 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 	set_defaults(ctx, &opts);
 	ctx->app_name = app_name ? strdup(app_name) : strdup(default_app);
 	process_config_file(ctx, &opts);
-#ifdef HAVE_PTHREAD
-	pthread_mutex_init(&ctx->mutex, NULL);
-#endif
+	ctx->mutex = sc_mutex_new();
 	load_reader_drivers(ctx, &opts);
 	load_card_drivers(ctx, &opts);
 	if (opts.forced_card_driver) {
@@ -413,7 +411,9 @@ int sc_release_context(struct sc_context *ctx)
 	ctx->debug_file = ctx->error_file = NULL;
 	if (ctx->conf)
 		scconf_free(ctx->conf);
+	sc_mutex_free(ctx->mutex);
 	free(ctx->app_name);
+	memset(ctx, 0, sizeof(*ctx));
 	free(ctx);
 	return 0;
 }
@@ -422,9 +422,7 @@ int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
 {
 	int i = 0, match = 0;
 	
-#ifdef HAVE_PTHREAD
-	pthread_mutex_lock(&ctx->mutex);
-#endif
+	sc_mutex_lock(ctx->mutex);
 	if (short_name == NULL) {
 		ctx->forced_driver = NULL;
 		match = 1;
@@ -438,9 +436,7 @@ int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
 		}
 		i++;
 	}
-#ifdef HAVE_PTHREAD
-	pthread_mutex_unlock(&ctx->mutex);
-#endif
+	sc_mutex_unlock(ctx->mutex);
 	if (match == 0)
 		return SC_ERROR_OBJECT_NOT_FOUND; /* FIXME: invent error */
 	return 0;
