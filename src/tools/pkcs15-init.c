@@ -454,25 +454,28 @@ static int
 do_assert_pristine(struct sc_card *card)
 {
 	sc_path_t	path;
-	int		r, res = 0;
+	int		r, res=0;
+
+	/* we need FILE NOT FOUND.
+	 * on starcos card NOT ALLOWED is also ok, as the MF does
+	 * not exist. */
 
 	card->ctx->suppress_errors++;
+
 	sc_format_path("2F00", &path);
-	/* Note: in case of an empty starcos card (no MF) the
-	 * card returns SC_ERROR_NOT_ALLOWED when one tries
-	 * to select a file. As no MF implies no pkcs15 structure
-	 * not error should returned in this case. I know
-	 * this isn't really beautiful ... Nils 
-	 */
-	if ((r = sc_select_file(card, &path, NULL)) >= 0
-	 || !(r == SC_ERROR_FILE_NOT_FOUND 
-	 || (r == SC_ERROR_NOT_ALLOWED && !strcmp(card->name, "StarCOS"))))
+	r = sc_select_file(card, &path, NULL);
+
+	if (r != SC_ERROR_FILE_NOT_FOUND)
+		if (r != SC_ERROR_NOT_ALLOWED ||
+		 	strcmp(card->name, "StarCOS") != 0)
 		res = -1;
+
 	sc_format_path("5015", &path);
-	if ((r = sc_select_file(card, &path, NULL)) >= 0
-	 || !(r != SC_ERROR_FILE_NOT_FOUND 
-	 || (r == SC_ERROR_NOT_ALLOWED && !strcmp(card->name, "StarCOS"))))
+	if (r != SC_ERROR_FILE_NOT_FOUND)
+		if (r != SC_ERROR_NOT_ALLOWED ||
+		 	strcmp(card->name, "StarCOS") != 0)
 		res = -1;
+
 	card->ctx->suppress_errors--;
 
 	if (res < 0) {
