@@ -35,10 +35,13 @@
 
 const char *app_name = "opensc-tool";
 
-int opt_reader = -1, opt_no_cache = 0, opt_debug = 0, opt_wait = 0;
-char * opt_apdus[8];
-int opt_apdu_count = 0;
-int quiet = 0;
+static int	opt_reader = -1,
+		opt_no_cache = 0,
+		opt_debug = 0,
+		opt_wait = 0;
+static char **	opt_apdus;
+static int	opt_apdu_count = 0;
+static int	quiet = 0;
 
 const struct option options[] = {
 	{ "atr",		0, 0,		'a' },
@@ -364,6 +367,9 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
 	const char *opt_driver = NULL;
 		
+	setlinebuf(stderr);
+	setlinebuf(stdout);
+
 	while (1) {
 		c = getopt_long(argc, argv, "nlfr:qds:DRc:aw", options, &long_optind);
 		if (c == -1)
@@ -388,6 +394,8 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case 's':
+			opt_apdus = (char **) realloc(opt_apdus,
+					(opt_apdu_count + 1) * sizeof(char *));
 			opt_apdus[opt_apdu_count] = optarg;
 			do_send_apdu++;
 			if (opt_apdu_count == 0)
