@@ -94,7 +94,7 @@ int sc_test_init(int *argc, char *argv[])
 				opt_reader = i - 1;
 		}
 
-		if (rc == 1) {
+		if (rc > 0) {
 			printf("Card detected in reader '%s'\n",
 					ctx->reader[opt_reader]->name);
 			break;

@@ -76,6 +76,7 @@ struct pcsc_private_data {
 
 struct pcsc_slot_data {
 	SCARDHANDLE pcsc_card;
+	SCARD_READERSTATE_A readerState;
 };
 
 static int pcsc_ret_to_error(long rv)
@@ -203,25 +204,40 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info *slot)
 {
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
+	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	LONG ret;
-	SCARD_READERSTATE_A rgReaderStates[SC_MAX_READERS];
 
-	rgReaderStates[0].szReader = priv->reader_name;
-	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
-	rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
-	ret = SCardGetStatusChange(priv->pcsc_ctx, SC_STATUS_TIMEOUT, rgReaderStates, 1);
+	if (pslot->readerState.szReader == NULL) {
+		pslot->readerState.szReader = priv->reader_name;
+		pslot->readerState.dwCurrentState = SCARD_STATE_UNAWARE;
+		pslot->readerState.dwEventState = SCARD_STATE_UNAWARE;
+	} else {
+		pslot->readerState.dwCurrentState = pslot->readerState.dwEventState;
+	}
+
+	ret = SCardGetStatusChange(priv->pcsc_ctx, SC_STATUS_TIMEOUT, &pslot->readerState, 1);
 	if (ret != 0) {
 		PCSC_ERROR(reader->ctx, "SCardGetStatusChange failed", ret);
 		return pcsc_ret_to_error(ret);
 	}
-	if (rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT) {
+	if (pslot->readerState.dwEventState & SCARD_STATE_PRESENT) {
+		int old_flags = slot->flags;
+
 		slot->flags |= SC_SLOT_CARD_PRESENT;
-		slot->atr_len = rgReaderStates[0].cbAtr;
+		slot->atr_len = pslot->readerState.cbAtr;
 		if (slot->atr_len > SC_MAX_ATR_SIZE)
 			slot->atr_len = SC_MAX_ATR_SIZE;
-		memcpy(slot->atr, rgReaderStates[0].rgbAtr, slot->atr_len);
+		memcpy(slot->atr, pslot->readerState.rgbAtr, slot->atr_len);
+
+		/* If there was a card in the slot previously, and the
+		 * PCSC driver reports a state change, we assume the
+		 * user removed the old card and inserted a new one in the
+		 * meantime. */
+		if ((pslot->readerState.dwEventState & SCARD_STATE_CHANGED)
+		 && (old_flags & SC_SLOT_CARD_PRESENT))
+			slot->flags |= SC_SLOT_CARD_CHANGED;
 	} else {
-		slot->flags &= ~SC_SLOT_CARD_PRESENT;
+		slot->flags &= ~(SC_SLOT_CARD_PRESENT|SC_SLOT_CARD_CHANGED);
 	}
 
 	return 0;
@@ -233,7 +249,7 @@ static int pcsc_detect_card_presence(struct sc_reader *reader, struct sc_slot_in
 
 	if ((rv = refresh_slot_attributes(reader, slot)) < 0)
 		return rv;
-	return (slot->flags & SC_SLOT_CARD_PRESENT)? 1 : 0;
+	return slot->flags;
 }
 
 /* Wait for an event to occur.
@@ -355,16 +371,11 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	int r;
 
-	if (pslot != NULL)
-		return SC_ERROR_SLOT_ALREADY_CONNECTED;
 	r = refresh_slot_attributes(reader, slot);
 	if (r)
 		return r;
 	if (!(slot->flags & SC_SLOT_CARD_PRESENT))
 		return SC_ERROR_CARD_NOT_PRESENT;
-	pslot = (struct pcsc_slot_data *) malloc(sizeof(struct pcsc_slot_data));
-	if (pslot == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
         rv = SCardConnect(priv->pcsc_ctx, priv->reader_name,
 			  SCARD_SHARE_SHARED, SCARD_PROTOCOL_ANY,
                           &card_handle, &active_proto);
@@ -374,7 +385,6 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 		return pcsc_ret_to_error(rv);
 	}
 	slot->active_protocol = pcsc_proto_to_opensc(active_proto);
-	slot->drv_data = pslot;
 	pslot->pcsc_card = card_handle;
 
 	return 0;
@@ -387,8 +397,8 @@ static int pcsc_disconnect(struct sc_reader *reader, struct sc_slot_info *slot,
 
 	/* FIXME: check action */
 	SCardDisconnect(pslot->pcsc_card, SCARD_LEAVE_CARD);
-	free(pslot);
-	slot->drv_data = NULL;
+	memset(pslot, 0, sizeof(*pslot));
+	slot->flags = 0;
 	return 0;
 }
                                           
@@ -476,15 +486,17 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	do {
 		struct sc_reader *reader = (struct sc_reader *) malloc(sizeof(struct sc_reader));
 		struct pcsc_private_data *priv = (struct pcsc_private_data *) malloc(sizeof(struct pcsc_private_data));
+		struct pcsc_slot_data *pslot = (struct pcsc_slot_data *) malloc(sizeof(struct pcsc_slot_data));
 		struct sc_slot_info *slot;
 		
-		if (reader == NULL || priv == NULL) {
+		if (reader == NULL || priv == NULL || pslot == NULL) {
 			if (reader)
 				free(reader);
 			if (priv)
 				free(priv);
 			break;
 		}
+
 		memset(reader, 0, sizeof(*reader));
 		reader->drv_data = priv;
 		reader->ops = &pcsc_ops;
@@ -503,11 +515,10 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 			break;
 		}
 		slot = &reader->slot[0];
-		slot->id = 0;
+		memset(slot, 0, sizeof(*slot));
+		slot->drv_data = pslot;
+		memset(pslot, 0, sizeof(*pslot));
 		refresh_slot_attributes(reader, slot);
-		slot->capabilities = 0;
-		slot->atr_len = 0;
-		slot->drv_data = NULL;
 
 		while (*p++ != 0);
 	} while (p < (reader_buf + reader_buf_size - 1));

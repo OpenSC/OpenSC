@@ -52,21 +52,39 @@ CK_RV card_initialize(int reader)
 CK_RV card_detect(int reader)
 {
 	struct sc_pkcs11_card *card;
-        int rc, rv, i;
+        int rc, rv, i, retry = 1;
 
         rv = CKR_OK;
 
 	debug(context, "%d: Detecting SmartCard\n", reader);
 
-	/* Already known to be present? */
-	if (card_table[reader].card == NULL) {
-		/* Check if someone inserted a card */
-		if (sc_detect_card_presence(context->reader[reader], 0) != 1) {
-			debug(context, "%d: Card absent\n", reader);
-			return CKR_TOKEN_NOT_PRESENT;
-		}
+	/* Check if someone inserted a card */
+again:	rc = sc_detect_card_presence(context->reader[reader], 0);
+	if (rc < 0) {
+		debug(context, "Card detection failed for reader %d: %s\n",
+				reader, sc_strerror(rc));
+		return sc_to_cryptoki_error(rc, reader);
+	}
+	if (rc == 0) {
+		debug(context, "%d: Card absent\n", reader);
+		card_removed(reader); /* Release all resources */
+		return CKR_TOKEN_NOT_PRESENT;
+	}
 
-		/* Detect the card */
+	/* If the card was changed, disconnect the current one */
+	if (rc & SC_SLOT_CARD_CHANGED) {
+		debug(context, "%d: Card changed\n", reader);
+		/* The following should never happen - but if it
+		 * does we'll be stuck in an endless loop.
+		 * So better be fussy. */
+		if (!retry--)
+			return CKR_TOKEN_NOT_PRESENT;
+		card_removed(reader);
+		goto again;
+	}
+
+	/* Detect the card if it's not known already */
+	if (card_table[reader].card == NULL) {
 		debug(context, "%d: Connecting to SmartCard\n", reader);
 		rc = sc_connect_card(context->reader[reader], 0, &card_table[reader].card);
 		if (rc != SC_SUCCESS)

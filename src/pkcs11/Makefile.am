@@ -8,7 +8,8 @@ SUBDIRS = . rsaref
 
 INCLUDES = @CFLAGS_OPENSC@ -I../pkcs15init
 
-LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBOPENSC@ ../pkcs15init/libpkcs15init.la
+LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBOPENSC@ ../pkcs15init/libpkcs15init.la \
+	  ../scrandom/libscrandom.la
 
 SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
         mechanism.c openssl.c \

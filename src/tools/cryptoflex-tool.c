@@ -1156,7 +1156,7 @@ int main(int argc, char * const argv[])
 		err = 1;
 		goto end;
 	}
-	if (sc_detect_card_presence(ctx->reader[opt_reader], 0) != 1) {
+	if (sc_detect_card_presence(ctx->reader[opt_reader], 0) <= 0) {
 		fprintf(stderr, "Card not present.\n");
 		err = 3;
 		goto end;

@@ -60,7 +60,7 @@ int connect_card(struct sc_context *ctx, struct sc_card **cardp,
 
 		reader = ctx->reader[reader_id];
 		slot_id = 0;
-		if (sc_detect_card_presence(reader, 0) != 1) {
+		if (sc_detect_card_presence(reader, 0) <= 0) {
 			fprintf(stderr, "Card not present.\n");
 			return 3;
 		}

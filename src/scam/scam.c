@@ -96,7 +96,7 @@ const char *scam_get_atr(unsigned int readernum)
 		sc_release_context(ctx);
 		return NULL;
 	}
-	if (sc_detect_card_presence(ctx->reader[readernum], 0) != 1) {
+	if (sc_detect_card_presence(ctx->reader[readernum], 0) <= 0) {
 		sc_release_context(ctx);
 		return NULL;
 	}

@@ -252,6 +252,7 @@ struct sc_reader_driver {
 
 /* slot flags */
 #define SC_SLOT_CARD_PRESENT	0x00000001
+#define SC_SLOT_CARD_CHANGED	0x00000002
 /* slot capabilities */
 #define SC_SLOT_CAP_DISPLAY	0x00000001
 #define SC_SLOT_CAP_PIN_PAD	0x00000002
@@ -629,10 +630,13 @@ inline int sc_card_valid(const struct sc_card *card);
 /**
  * Checks if a card is present in a reader
  * @param reader Reader structure
- * @param reader Slot ID
- * @retval 1 if a card is present
- * @retval 0 card absent
- * @retval < 0 if an error occured
+ * @param slot_id Slot ID
+ * @retval If an error occured, the return value is a (negative)
+ *	OpenSC error code. If no card is present, 0 is returned.
+ *	Otherwise, a positive value is returned, which is a
+ *	combination of flags. The flag SC_SLOT_CARD_PRESENT is
+ *	always set. In addition, if the card was exchanged,
+ *	the SC_SLOT_CARD_CHANGED flag is set.
  */
 int sc_detect_card_presence(struct sc_reader *reader, int slot_id);
 

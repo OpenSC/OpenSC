@@ -120,9 +120,7 @@ static int ctapi_detect_card_presence(struct sc_reader *reader, struct sc_slot_i
 	r = refresh_slot_attributes(reader, slot);
 	if (r)
 		return r;
-	if (slot->flags & SC_SLOT_CARD_PRESENT)
-		return 1;
-	return 0;
+	return slot->flags;
 }
 
 static int ctapi_connect(struct sc_reader *reader, struct sc_slot_info *slot)

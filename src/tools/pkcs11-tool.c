@@ -892,11 +892,7 @@ test_digest(CK_SLOT_ID slot)
 			data[10 * i + j] = (unsigned char) (0x30 + j);
 
 
-	i = 0xffffff;
-	while (1) {
-		if (mechTypes[++i] == 0xffffff)
-			break;
-
+	for (i = 0; mechTypes[i] != 0xffffff; i++) {
 		ck_mech.mechanism = mechTypes[i];
 
 		rv = p11->C_DigestInit(session, &ck_mech);
@@ -1299,22 +1295,41 @@ test_random(CK_SESSION_HANDLE session)
 }
 
 static int
+test_card_detection(void)
+{
+	char buffer[256];
+
+	while (1) {
+		printf("Please press return or x to exit: ");
+		fflush(stdout);
+		if (fgets(buffer, sizeof(buffer), stdin) == NULL
+		|| buffer[0] == 'x')
+			break;
+		list_slots();
+	}
+
+	return 0;
+}
+
+static int
 p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
-       int errors = 0;
+	int errors = 0;
 
-       errors += test_random(session);
+	errors += test_random(session);
 
-       errors += test_digest(slot);
+	errors += test_digest(slot);
 
-       errors += test_signature(slot, session);
+	errors += test_signature(slot, session);
 
-       if (errors == 0)
-               printf("No errors\n");
-       else
-               printf("%d errors\n", errors);
+	errors += test_card_detection();
 
-       return errors;
+	if (errors == 0)
+		printf("No errors\n");
+	else
+		printf("%d errors\n", errors);
+
+	return errors;
 }
 
 const char *

@@ -18,5 +18,6 @@ Nitty gritty details:
 * pkcs15-init: when using an unblock PIN, write an AODF entry for it
   (alternatively: set unblockDisabled flag for those PINs that have no PUK?)
 * pkcs15: fix sc_pkcs15_change_reference_data; add unblock function
+* pkcs11: make sure all PIN ops work through pkcs11
 
 
