@@ -176,7 +176,9 @@ static char *posixly_correct;
 /* Avoid depending on library functions or files
    whose names are inconsistent.  */
 
+#ifndef _WIN32
 char *getenv ();
+#endif
 
 static char *
 my_index (str, chr)

@@ -48,7 +48,9 @@
 #ifdef __GNU_LIBRARY__
 #include <stdlib.h>
 #else
+#ifndef _WIN32
 char *getenv ();
+#endif
 #endif
 
 #ifndef	NULL
