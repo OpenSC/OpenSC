@@ -635,8 +635,9 @@ int do_verify(int argc, char **argv)
 			buf[i] = *s++;
 		data.pin1.data = buf;
 		data.pin1.len = i;
-	} else if (!(r = sc_hex_to_bin(argv[1], buf, &buflen) != 0)) {
-		if (r) {
+	} else {
+	       	r = sc_hex_to_bin(argv[1], buf, &buflen); 
+		if (0 != r) {
 			printf("Invalid key value.\n");
 			goto usage;
 		}
