@@ -282,6 +282,8 @@ int scrandom_get_data(unsigned char *buf, unsigned int len)
 			if (!scrandom_get_bytes(p, bytes)) {
 				rv = -1;
 			} else {
+				if (rv < 0)
+					rv = 0;
 				rv += bytes;
 				p += bytes;
 			}
