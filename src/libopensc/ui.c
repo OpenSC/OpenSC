@@ -20,6 +20,7 @@
 #ifdef HAVE_LOCALE_H
 #include <locale.h>
 #endif
+#include <opensc/scdl.h>
 
 /*
  * We keep a global shared library handle here.
@@ -181,8 +182,8 @@ sc_ui_get_func(sc_context_t *ctx, const char *name, void **ret)
 		if (!lib_name)
 			return 0;
 
-		r = sc_module_open(ctx, &sc_ui_lib_handle, lib_name);
-		if (r < 0) {
+		sc_ui_lib_handle = scdl_open(lib_name);
+		if (!sc_ui_lib_handle) {
 			sc_error(ctx,
 				"Unable to open user interface library %s\n",
 				lib_name);
@@ -193,7 +194,9 @@ sc_ui_get_func(sc_context_t *ctx, const char *name, void **ret)
 	if (sc_ui_lib_handle == NULL)
 		return 0;
 
-	return sc_module_get_address(ctx, sc_ui_lib_handle, ret, name);
+	*ret = scdl_get_address(sc_ui_lib_handle, name);
+
+	return *ret ? SC_SUCCESS : SC_ERROR_UNKNOWN;
 }
 
 /*

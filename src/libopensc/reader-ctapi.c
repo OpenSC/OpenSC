@@ -23,6 +23,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <opensc/scdl.h>
 
 #define GET_SLOT_PTR(s, i) (&(s)->slot[(i)])
 #define GET_PRIV_DATA(r) ((struct ctapi_private_data *) (r)->drv_data)
@@ -243,20 +244,22 @@ static int ctapi_load_module(struct sc_context *ctx,
 	}
 
 	val = conf->name->data;
-	r = sc_module_open(ctx, &dlh, val);
-	if (r != SC_SUCCESS) {
+	dlh = scdl_open(val);
+	if (!dlh) {
 		sc_error(ctx, "Unable to open shared library '%s'\n", val);
 		return -1;
 	}
-	r = sc_module_get_address(ctx, dlh, (void **) &funcs.CT_init, "CT_init");
-	if (r != SC_SUCCESS)
+
+	funcs.CT_init  = scdl_get_address(dlh, "CT_init");
+	if (!funcs.CT_init)
 		goto symerr;
-	r = sc_module_get_address(ctx, dlh, (void **) &funcs.CT_close, "CT_close");
-	if (r != SC_SUCCESS)
+	funcs.CT_close = scdl_get_address(dlh, "CT_close");
+	if (!funcs.CT_close)
 		goto symerr;
-	r = sc_module_get_address(ctx, dlh, (void **) &funcs.CT_data, "CT_data");
-	if (r != SC_SUCCESS)
+	funcs.CT_data  = scdl_get_address(dlh, "CT_data");
+	if (!funcs.CT_close)
 		goto symerr;
+
 	mod = add_module(gpriv, val, dlh);
 	for (; list != NULL; list = list->next) {
 		int port;
@@ -307,7 +310,7 @@ static int ctapi_load_module(struct sc_context *ctx,
 	return 0;
 symerr:
 	sc_error(ctx, "Unable to resolve CT-API symbols.\n");
-	sc_module_close(ctx, dlh);
+	scdl_close(dlh);
 	return -1;
 }
 
