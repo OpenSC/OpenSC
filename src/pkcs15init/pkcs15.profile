@@ -11,6 +11,26 @@ cardinfo {
     max-pin-length	= 8;
 }
 
+# Define reasonable limits for PINs and PUK
+# Note that we do not set a file path or reference
+# for the user pin; that is done dynamically.
+PIN user-pin {
+    attempts	= 3;
+}
+PIN user-puk {
+    attempts	= 7;
+}
+PIN so-pin {
+    auth-id	= FF;
+    attempts	= 2;
+    min-length	= 6;
+    flags	= 0x32;
+}
+PIN so-puk {
+    attempts	= 4;
+    min-length	= 6;
+}
+
 filesystem {
     DF MF {
         path	= 3F00;
