@@ -136,7 +136,8 @@ pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
 {
 	struct sc_profile *profile = (struct sc_profile *) p11card->fw_data;
 	struct sc_pkcs15init_initargs args;
-	int		rc;
+	struct sc_pkcs11_slot *slot;
+	int		rc, rv, id;
 
 	memset(&args, 0, sizeof(args));
 	args.so_pin = pPin;
@@ -145,10 +146,31 @@ pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
 	args.so_puk_len = ulPinLen;
 	args.label = (const char *) pLabel;
 	rc = sc_pkcs15init_add_app(p11card->card, profile, &args);
-	if (rc >= 0)
-		return CKR_OK;
+	if (rc < 0)
+		return sc_to_cryptoki_error(rc, p11card->reader);
 
-	return sc_to_cryptoki_error(rc, p11card->reader);
+	/* Change the binding from the pkcs15init framework
+	 * to the pkcs15 framework on the fly.
+	 * First, try to bind pkcs15 framework */
+	if ((rv = framework_pkcs15.bind(p11card)) != CKR_OK) {
+		/* whoops, bad */
+		p11card->fw_data = profile;
+		return rv;
+	}
+
+	/* Change the function vector to the standard pkcs15 ops */
+	p11card->framework = &framework_pkcs15;
+
+	/* Loop over all slots belonging to this card, and fix up
+	 * the flags.
+	 */
+	for (id = 0; slot_get_slot(id, &slot) == CKR_OK; id++) {
+		if (slot->card == p11card)
+			slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
+	}
+
+	sc_profile_free(profile);
+	return CKR_OK;
 }
 
 struct sc_pkcs11_framework_ops framework_pkcs15init = {
