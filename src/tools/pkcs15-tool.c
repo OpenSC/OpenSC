@@ -595,7 +595,7 @@ int learn_card(void)
 		printf("No '%s' directory found, creating...\n", dir);
 #ifndef _WIN32
 		r = mkdir(dir, 0700);
-else
+#else
 		r = _mkdir(dir, 0700);
 #endif
 		if (r) {
