@@ -617,10 +617,10 @@ fi
 AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
 AM_CONDITIONAL(HAVE_ENGINE, test ! -z "$found_engine")
 
-ENGINE_MESG="no"
+ENGINE_MSG="no"
 if test !  -z "$found_engine"
 then
-	ENGINE_MESG="yes"
+	ENGINE_MSG="yes"
 fi
 
 AC_ARG_WITH(pam-dir,
