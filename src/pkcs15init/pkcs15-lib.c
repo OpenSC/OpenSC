@@ -783,7 +783,7 @@ do_verify_pin(struct sc_profile *pro, struct sc_card *card,
 {
 	struct sc_pkcs15_pin_info pin_info;
 	const char	*ident;
-	unsigned int	pin_id = -1;
+	unsigned int	pin_id = 0;
 	size_t		pinsize;
 	u8		pinbuf[32];
 	int		r;
