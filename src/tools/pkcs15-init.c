@@ -468,7 +468,7 @@ do_assert_pristine(struct sc_card *card)
 
 	if (r != SC_ERROR_FILE_NOT_FOUND)
 		if (r != SC_ERROR_NOT_ALLOWED ||
-		 	strcmp(card->name, "StarCOS") != 0)
+		 	strcmp(card->name, "STARCOS SPK 2.3") != 0)
 		res = -1;
 
 	sc_format_path("5015", &path);
@@ -476,7 +476,7 @@ do_assert_pristine(struct sc_card *card)
 
 	if (r != SC_ERROR_FILE_NOT_FOUND)
 		if (r != SC_ERROR_NOT_ALLOWED ||
-		 	strcmp(card->name, "StarCOS") != 0)
+		 	strcmp(card->name, "STARCOS SPK 2.3") != 0)
 		res = -1;
 
 	card->ctx->suppress_errors--;

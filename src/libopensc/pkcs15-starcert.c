@@ -127,7 +127,7 @@ int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 	struct sc_serial_number serial;
 
 	/* check if we have the correct card OS */
-	if (strcmp(card->name, "StarCOS"))
+	if (strcmp(card->name, "STARCOS SPK 2.3"))
 		return SC_ERROR_WRONG_CARD;
 	/* read EF_Info file */
 	sc_format_path("3F00FE13", &path);

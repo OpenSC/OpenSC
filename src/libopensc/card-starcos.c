@@ -105,7 +105,7 @@ static int starcos_init(struct sc_card *card)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(ex_data, 0, sizeof(starcos_ex_data));
 
-	card->name = "StarCOS";
+	card->name = "STARCOS SPK 2.3";
 	card->cla  = 0x00;
 	card->drv_data = (void *)ex_data;
 

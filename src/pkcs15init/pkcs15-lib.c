@@ -2602,7 +2602,7 @@ do_select_parent(struct sc_profile *pro, struct sc_card *card,
 		}
 		if (!(r = sc_pkcs15init_create_file(pro, card, *parent)))
 			r = sc_select_file(card, &path, NULL);
-	} else if (r == SC_SUCCESS && !strcmp(card->name, "StarCOS")) {
+	} else if (r == SC_SUCCESS && !strcmp(card->name, "STARCOS SPK 2.3")) {
 		/* in case of starcos spk 2.3 SELECT FILE does not
 		 * give us the ACLs => ask the profile */
 		sc_file_free(*parent);
