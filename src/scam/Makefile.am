@@ -4,7 +4,11 @@ MAINTAINERCLEANFILES = Makefile.in
 
 lib_LTLIBRARIES = libscam.la
 
-libscam_la_SOURCES = scam.c scam.h p15_eid.c p15_ldap.c
+libscam_la_SOURCES = \
+	scam.c cert_support.c \
+	p15_eid.c p15_ldap.c
 libscam_la_LDFLAGS = -avoid-version
 libscam_la_LIBADD = @LIBOPENSC@ @LIBCRYPTO@ @LIBSCLDAP@ \
 	../scrandom/libscrandom.la
+
+noinst_HEADERS = scam.h cert_support.h
