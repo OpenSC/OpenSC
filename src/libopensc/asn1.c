@@ -1036,7 +1036,7 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 		else
 			return 0;
 	}
-	if ((p[0] == 0 && p[1] == 0) || (p[0] == 0xFF && p[1] == 0xFF))
+	if (p[0] == 0 || p[0] == 0xFF)
 		return SC_ERROR_ASN1_END_OF_CONTENTS;
 	for (idx = 0; asn1[idx].name != NULL; idx++) {
 		entry = &asn1[idx];
