@@ -226,8 +226,15 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (pin->encoding == SC_PIN_ENCODING_GLP) {
+		int i;
+		while (pin_len > 0 && pin->data[pin_len - 1] == 0xFF)
+			pin_len--;
 		if (pin_len > 12)
 			return SC_ERROR_INVALID_ARGUMENTS;
+		for (i = 0; i < pin_len; i++) {
+			if (pin->data[i] < '0' || pin->data[i] > '9')
+				return SC_ERROR_INVALID_ARGUMENTS;
+		}
 		buf[0] = 0x20 | pin_len;
 		buf++;
 		buflen--;
