@@ -2396,8 +2396,9 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 		 || (r = sc_pkcs15init_create_file(profile, card, file)) < 0
 		 || (r = sc_select_file(card, &file->path, &info)) < 0)
 			return r;
+	} else {
+		card->ctx->suppress_errors--;
 	}
-	card->ctx->suppress_errors--;
 
 	if (info->size < datalen) {
 		sc_error(card->ctx,
