@@ -42,13 +42,14 @@ static const u8 hdr_ripemd160[] = {
 	0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x24, 0x03, 0x02, 0x01, 0x05, 0x00, 0x04, 0x14
 };
 
-#define DIGEST_INFO_COUNT 5
-static struct digest_info_prefix {
+#define DIGEST_INFO_COUNT 6
+static const struct digest_info_prefix {
 	unsigned int	algorithm;
 	const u8 *	hdr;
 	size_t		hdr_len;
 	int		hash_len;
 } digest_info_prefix[DIGEST_INFO_COUNT] = {
+      { SC_ALGORITHM_RSA_HASH_NONE,     NULL,           0,                      -1      },
       {	SC_ALGORITHM_RSA_HASH_MD5,	hdr_md5,	sizeof(hdr_md5),	16	},
       { SC_ALGORITHM_RSA_HASH_SHA1,	hdr_sha1,	sizeof(hdr_sha1),	20	},
       { SC_ALGORITHM_RSA_HASH_RIPEMD160,hdr_ripemd160,	sizeof(hdr_ripemd160),	20	},
@@ -187,7 +188,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 /*
  * No padding required - card will add the padding itself
  */
-static int add_no_padding(struct digest_info_prefix *pfx,
+static int add_no_padding(const struct digest_info_prefix *pfx,
 		          const u8 *in, size_t inlen,
 			  u8 *out, size_t *outlen,
 			  size_t mod_length)
@@ -208,7 +209,7 @@ static int add_no_padding(struct digest_info_prefix *pfx,
 /*
  * Add pkcs1 padding
  */
-static int add_pkcs1_padding(struct digest_info_prefix *pfx,
+static int add_pkcs1_padding(const struct digest_info_prefix *pfx,
 			     const u8 *in, size_t inlen,
 			     u8 *out, size_t *outlen,
 			     size_t mod_length)
@@ -237,17 +238,17 @@ static int add_pkcs1_padding(struct digest_info_prefix *pfx,
 static int add_padding(struct sc_context *ctx, const u8 *in, size_t inlen, u8 *out,
 		       size_t *outlen, unsigned long flags, unsigned int mod_length)
 {
-	struct digest_info_prefix *pfx;
+	const struct digest_info_prefix *pfx;
 	int j, hash_algo, pad_algo;
 
 	hash_algo = flags & SC_ALGORITHM_RSA_HASHES;
 	pad_algo  = flags & SC_ALGORITHM_RSA_PADS;
 
-	for (j = DIGEST_INFO_COUNT, pfx = digest_info_prefix; j--; pfx++) {
+	for (j = DIGEST_INFO_COUNT, pfx = digest_info_prefix; j-- >= 0; pfx++) {
 		if (pfx->algorithm == hash_algo)
 			break;
 	}
-	if (j <= 0) {
+	if (j < 0) {
 		error(ctx, "Unsupported digest algorithm 0x%x\n", hash_algo);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -331,12 +332,13 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 			pad_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 		else
                         senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
-	} else {
+	} else if (flags & SC_ALGORITHM_RSA_HASH_NONE ||
+		   (flags & SC_ALGORITHM_RSA_HASHES) == 0) {
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_HASH_NONE)) {
 			error(ctx, "Raw RSA not supported\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-                senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_NONE;
+		senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_NONE;
 	}
 	if (flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1))
