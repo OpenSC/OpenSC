@@ -305,7 +305,7 @@ static struct sc_pkcs15init_callbacks callbacks = {
 int
 main(int argc, char **argv)
 {
-	struct sc_profile	*profile;
+	struct sc_profile	*profile = NULL;
 	unsigned int		n;
 	int			r = 0;
 
@@ -419,6 +419,9 @@ main(int argc, char **argv)
 	}
 
 out:
+	if (profile) {
+		sc_pkcs15init_unbind(profile);
+	}
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card, 0);
