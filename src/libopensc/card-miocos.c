@@ -456,7 +456,8 @@ static int miocos_delete_file(struct sc_card *card, const struct sc_path *path)
 	SC_TEST_RET(card->ctx, r, "Unable to select file to be deleted");
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xE4, 0x00, 0x00);
-	
+	apdu.cla = 0xA0;
+
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
