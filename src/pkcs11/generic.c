@@ -109,7 +109,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 	strcpy_bp((char *) pInfo->manufacturerID, "OpenSC Project",
 		  sizeof(pInfo->manufacturerID));
 	strcpy_bp((char *) pInfo->libraryDescription, "PKCS#15 SmartCard reader",
-		  sizeof(pInfo->libraryDescription);
+		  sizeof(pInfo->libraryDescription));
 	pInfo->libraryVersion.major = 0;
 	pInfo->libraryVersion.minor = 1;
         return CKR_OK;
