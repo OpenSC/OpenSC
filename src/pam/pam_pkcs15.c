@@ -262,7 +262,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		printf("establish_context() failed: %s\n", sc_strerror(r));
 		return PAM_AUTH_ERR;
 	}
-
+	ctx->use_std_output = 1;
+	ctx->debug = 0;
 	for (i = 0; i < ctx->reader_count; i++) {
 		if (sc_detect_card(ctx, i) == 1) {
 			DBG(printf("Connecting to %s...\n", ctx->readers[i]));
@@ -281,7 +282,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	locked = 1;
 	
 	DBG(printf("PKCS#15 init...\n"));
-	r = sc_pkcs15_init(card, &p15card);
+	r = sc_pkcs15_bind(card, &p15card);
 	if (r != 0) {
 		printf("PKCS#15 initialization failed: %s\n", sc_strerror(r));
 		goto end;
@@ -346,7 +347,7 @@ end:
 	if (cert)
 		X509_free(cert);
 	if (p15card)
-		sc_pkcs15_destroy(p15card);
+		sc_pkcs15_unbind(p15card);
 	if (card)
 		sc_disconnect_card(card);
 	if (ctx)

@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 		if (c == 0)
 			gettimeofday(&tv1, NULL);
 		sc_lock(card);
-		r = sc_get_random(card, buf, 14);
+		r = sc_get_challenge(card, buf, 14);
 		sc_unlock(card);
 		if (r == 0) {
 			int i, jaljella = 39;

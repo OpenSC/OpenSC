@@ -101,7 +101,7 @@ int slot_connect(int id)
 		return CKR_TOKEN_NOT_PRESENT;
 	}
 
-	r = sc_pkcs15_init(card, &slot[id].p15card);
+	r = sc_pkcs15_bind(card, &slot[id].p15card);
 	if (r) {
 		LOG("sc_pkcs15_init failed for slot %d (r=%d)\n", id, r);
 		/* PKCS#15 compatible SC probably not present */
@@ -161,7 +161,7 @@ int slot_disconnect(int id)
         slot[id].flags = 0;
 	if (slot[id].p15card != NULL) {
 		sc_disconnect_card(slot[id].p15card->card);
-		sc_pkcs15_destroy(slot[id].p15card);
+		sc_pkcs15_unbind(slot[id].p15card);
 		slot[id].p15card = NULL;
 	}
 

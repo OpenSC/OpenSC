@@ -99,13 +99,13 @@ void print_usage_and_die()
 	exit(2);
 }
 
-const char * get_pin(struct sc_pkcs15_pin_info *pinfo)
+char * get_pin(struct sc_pkcs15_pin_info *pinfo)
 {
 	char buf[80];
 	char *pincode;
 	
 	if (opt_pincode != NULL)
-		return opt_pincode;
+		return strdup(opt_pincode);
 	sprintf(buf, "Enter PIN [%s]: ", pinfo->com_attr.label);
 	while (1) {
 		pincode = getpass(buf);
@@ -221,10 +221,10 @@ int main(int argc, char * const argv[])
 	struct sc_pkcs15_prkey_info *key;
 	struct sc_pkcs15_pin_info *pin;
 	struct sc_pkcs15_id id;
-	const char *pincode;
+	char *pincode;
 		
 	while (1) {
-		c = getopt_long(argc, argv, "sdk:r:i:o:qp:d", options, &long_optind);
+		c = getopt_long(argc, argv, "sck:r:i:o:qp:d", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -295,7 +295,7 @@ int main(int argc, char * const argv[])
 	sc_lock(card);
 	if (!quiet)
 		fprintf(stderr, "Trying to find a PKCS#15 compatible card...\n");
-	r = sc_pkcs15_init(card, &p15card);
+	r = sc_pkcs15_bind(card, &p15card);
 	if (r) {
 		fprintf(stderr, "PKCS#15 initialization failed: %s\n", sc_strerror(r));
 		err = 1;
@@ -341,6 +341,7 @@ int main(int argc, char * const argv[])
 		err = 5;
 		goto end;
 	}
+	free(pincode);
 	if (!quiet)
 		fprintf(stderr, "PIN code correct.\n");
 	if (do_decipher) {
@@ -355,7 +356,7 @@ int main(int argc, char * const argv[])
 	}
 end:
 	if (p15card)
-		sc_pkcs15_destroy(p15card);
+		sc_pkcs15_unbind(p15card);
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);

@@ -74,8 +74,8 @@ diff -ruN openssh-3.0.2p1/configure.ac openssh-new/configure.ac
 +			if test "$ac_cv_header_opensc_pkcs15_h" != yes; then
 +				AC_MSG_ERROR(Can't find opensc-pkcs15.h)
 +			fi
-+			AC_CHECK_LIB(opensc, sc_pkcs15_init)
-+			if test "$ac_cv_lib_opensc_sc_pkcs15_init" != yes; then
++			AC_CHECK_LIB(opensc, sc_pkcs15_bind)
++			if test "$ac_cv_lib_opensc_sc_pkcs15_bind" != yes; then
 +				AC_MSG_ERROR(Can't find libopensc)
 +			fi
 +			AC_DEFINE(SMARTCARD)
@@ -157,7 +157,7 @@ diff -ruN openssh-3.0.2p1/scard-opensc.c openssh-new/scard-opensc.c
 +	r = sc_connect_card(ctx, sc_reader_id, &card);
 +	if (r)
 +		goto err;
-+	r = sc_pkcs15_init(card, &p15card);
++	r = sc_pkcs15_bind(card, &p15card);
 +	if (r)
 +		goto err;
 +	return 0;
@@ -464,7 +464,7 @@ diff -ruN openssh-3.0.2p1/scard-opensc.c openssh-new/scard-opensc.c
 +sc_close(void)
 +{
 +	if (p15card) {
-+		sc_pkcs15_destroy(p15card);
++		sc_pkcs15_unbind(p15card);
 +		p15card = NULL;
 +	}
 +	if (card) {

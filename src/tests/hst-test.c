@@ -24,7 +24,7 @@ int test()
 	sc_lock(card);
 	
 #if 1
-	r = sc_pkcs15_init(card, &p15card);
+	r = sc_pkcs15_bind(card, &p15card);
 	if (r < 0) {
 		fprintf(stderr, "PKCS#15 init failed: %s\n", sc_strerror(r));
 		goto err;
@@ -34,10 +34,9 @@ int test()
 		fprintf(stderr, "PIN code enum failed: %s\n", sc_strerror(r));
 		goto err;
 	}
-	memcpy(path.value, "\x51\x10", 2);
-	path.len = 2;
+	sc_format_path("5110", &path);
 	ctx->debug = 3;
-	r = sc_select_file(card, &file, &path, SC_SELECT_FILE_BY_PATH);
+	r = sc_select_file(card, &file, &path);
 	ctx->debug = 0;
 	if (r) {
 		fprintf(stderr, "sc_select_file failed: %s\n", sc_strerror(r));
@@ -95,11 +94,10 @@ int test2()
 	struct sc_path path;
 	struct sc_file file;
 	
-	memcpy(path.value, "\x3F\x00", 2);
-	path.len = 2;
+	sc_format_path("3F00", &path);
 	
 	ctx->debug = 3;
-	r = sc_select_file(card, &file, &path, SC_SELECT_FILE_BY_PATH);
+	r = sc_select_file(card, &file, &path);
 	if (r) {
 		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
 		return r;
@@ -115,7 +113,7 @@ int test3()
 	struct sc_pkcs15_pin_info *pin;
 	struct sc_pkcs15_prkey_info *key;
 	
-	r = sc_pkcs15_init(card, &p15card);
+	r = sc_pkcs15_bind(card, &p15card);
 	if (r) {
 		fprintf(stderr, "pkcs15 init failed: %s\n", sc_strerror(r));
 		return -1;

@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 		}
 		if (c == 0)
 			gettimeofday(&tv1, NULL);
-		i = sc_get_random(card, buf, 8);
+		i = sc_get_challenge(card, buf, 8);
 		if (i != 0) {
 			fprintf(stderr, "sc_get_random() failed: %s\n", sc_strerror(i));
 			sc_test_cleanup();

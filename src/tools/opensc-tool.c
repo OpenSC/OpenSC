@@ -359,7 +359,7 @@ int enum_dir(struct sc_path path, int depth)
 	u8 buf[2048];
 	const char *tmps;
 
-	r = sc_select_file(card, &file, &path, SC_SELECT_FILE_BY_PATH);
+	r = sc_select_file(card, &file, &path);
 	if (r) {
 		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
 		return 1;
@@ -440,8 +440,7 @@ int list_files()
 	struct sc_path path;
 	int r;
 	
-	memcpy(path.value, "\x3F\x00", 2);
-	path.len = 2;
+	sc_format_path("3F00", &path);
 	r = enum_dir(path, 0);
 	return r;
 }
@@ -500,6 +499,7 @@ int learn_card()
 		return 1;
 	}
 	printf("Caching %d certificate(s)...\n", r);
+	p15card->use_cache = 0;
 	for (i = 0; i < p15card->cert_count; i++) {
 		struct sc_pkcs15_cert_info *cinfo = &p15card->cert_info[i];
 		struct sc_pkcs15_cert *cert;
@@ -556,6 +556,11 @@ int send_apdu()
 		apdu.data = sbuf;
 		apdu.datalen = apdu.lc;
 		len -= apdu.lc;
+		if (len < 0) {
+			fprintf(stderr, "APDU too short (need %d bytes).\n",
+				-len);
+			return 2;
+		}
 		if (len) {
 			apdu.le = *p++;
 			len--;
@@ -573,7 +578,7 @@ int send_apdu()
 	} else
 		apdu.cse = SC_APDU_CASE_1;
 	
-	ctx->debug = 4;
+	ctx->debug = 5;
 	r = sc_transmit_apdu(card, &apdu);
 	ctx->debug = opt_debug;
 	if (r) {
@@ -717,7 +722,7 @@ int main(int argc, char * const argv[])
 		goto end;
 	if (!quiet)
 		fprintf(stderr, "Trying to find a PKCS#15 compatible card...\n");
-	r = sc_pkcs15_init(card, &p15card);
+	r = sc_pkcs15_bind(card, &p15card);
 	if (r) {
 		fprintf(stderr, "PKCS#15 initialization failed: %s\n", sc_strerror(r));
 		err = 1;
@@ -757,7 +762,7 @@ int main(int argc, char * const argv[])
 	}
 end:
 	if (p15card)
-		sc_pkcs15_destroy(p15card);
+		sc_pkcs15_unbind(p15card);
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);
