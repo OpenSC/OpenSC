@@ -1254,7 +1254,7 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 			sc_error(ctx, "error writing ASN.1 tag and length: %s\n",
 					sc_strerror(r));
 	} else {
-		sc_error(ctx, "cannot encode empty non-optional ASN.1 object");
+		sc_error(ctx, "cannot encode empty non-optional ASN.1 object\n");
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	if (buf)
