@@ -151,9 +151,16 @@ static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 
 static void pkcs15_init_token_info(struct sc_pkcs15_card *card, CK_TOKEN_INFO_PTR pToken)
 {
+	int sn_start = strlen(card->serial_number) - 16;
 	strcpy_bp(pToken->manufacturerID, card->manufacturer_id, 32);
 	strcpy_bp(pToken->model, "PKCS #15 SCard", 16);
-	strcpy_bp(pToken->serialNumber, card->serial_number, 16);
+	/* Take the last 16 chars of the serial number (if the are more then 16).
+	   _Assuming_ that the serial number is a Big Endian counter, this will
+	   assure that the serial within each type of card will be unique in pkcs11
+	   (at least for the first 16^16 cards :-) */
+	if (sn_start < 0)
+		sn_start = 0;
+	strcpy_bp(pToken->serialNumber, card->serial_number + sn_start, 16);
 	pToken->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
 	pToken->ulSessionCount = 0; /* FIXME */
 	pToken->ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
