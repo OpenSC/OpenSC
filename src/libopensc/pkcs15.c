@@ -108,7 +108,7 @@ err:
 	return;
 }
 
-int sc_pkcs15_encode_tokeninfo(struct sc_context *ctx,
+int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 			       struct sc_pkcs15_card *card,
 			       u8 **buf, size_t *buflen)
 {
@@ -167,7 +167,7 @@ static const struct sc_asn1_entry c_asn1_ddo[] = {
 static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
 {
 	struct sc_asn1_entry asn1_ddo[5];
-	struct sc_path odf_path, ti_path;
+	sc_path_t odf_path, ti_path;
 	int r;
 
 	sc_copy_asn1_entry(c_asn1_ddo, asn1_ddo);
@@ -228,10 +228,10 @@ static int encode_ddo(struct sc_pkcs15_card *p15card, u8 **buf, size_t *buflen)
 #endif
 
 #if 0
-int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
+int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, sc_card_t *card)
 {
-	struct sc_path path;
-	struct sc_file file;
+	sc_path_t path;
+	sc_file_t file;
 	u8 *buf;
 	size_t bufsize;
 	int r, i;
@@ -303,7 +303,7 @@ static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 	const u8 *p = buf;
 	size_t left = buflen;
 	int r, i;
-	struct sc_path path;
+	sc_path_t path;
 	struct sc_asn1_entry asn1_obj_or_path[] = {
 		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path },
 		{ NULL }
@@ -326,11 +326,11 @@ static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 	return 0;
 }
 
-int sc_pkcs15_encode_odf(struct sc_context *ctx,
+int sc_pkcs15_encode_odf(sc_context_t *ctx,
 			 struct sc_pkcs15_card *p15card,
 			 u8 **buf, size_t *buflen)
 {
-	struct sc_path path;
+	sc_path_t path;
 	struct sc_asn1_entry asn1_obj_or_path[] = {
 		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path },
 		{ NULL }
@@ -469,9 +469,9 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
 	int    err, ok = 0;
 	size_t len;
-	struct sc_path tmppath;
-	struct sc_card    *card = p15card->card;
-	struct sc_context *ctx  = card->ctx;
+	sc_path_t tmppath;
+	sc_card_t    *card = p15card->card;
+	sc_context_t *ctx  = card->ctx;
 
 	if (ctx->debug > 4)
 		sc_debug(ctx, "trying normal pkcs15 processing\n");
@@ -491,7 +491,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 	}
 	sc_format_path("3F005015", &p15card->file_app->path);
 	if (card->app_count > 0) {
-		const struct sc_app_info *info;
+		const sc_app_info_t *info;
 		
 		info = sc_find_pkcs15_app(card);
 		if (info != NULL) {
@@ -594,11 +594,11 @@ end:
 	return SC_SUCCESS;
 }
 
-int sc_pkcs15_bind(struct sc_card *card,
+int sc_pkcs15_bind(sc_card_t *card,
 		   struct sc_pkcs15_card **p15card_out)
 {
 	struct sc_pkcs15_card *p15card = NULL;
-	struct sc_context *ctx;
+	sc_context_t *ctx;
 	scconf_block *conf_block = NULL, **blocks;
 	int    i, r, emu_first, enable_emu;
 
@@ -661,10 +661,10 @@ error:
 }
 
 #if 0
-int sc_pkcs15_detect(struct sc_card *card)
+int sc_pkcs15_detect(sc_card_t *card)
 {
 	int r;
-	struct sc_path path;
+	sc_path_t path;
 
 	sc_format_path("NA0000063504B43532D3135", &path);
 	r = sc_select_file(card, &path, NULL);
@@ -1119,7 +1119,7 @@ void sc_pkcs15_remove_df(struct sc_pkcs15_card *p15card,
 	free(obj);
 }
 
-int sc_pkcs15_encode_df(struct sc_context *ctx,
+int sc_pkcs15_encode_df(sc_context_t *ctx,
 			struct sc_pkcs15_card *p15card,
 			struct sc_pkcs15_df *df,
 			u8 **buf_out, size_t *bufsize_out)
@@ -1127,7 +1127,7 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 	u8 *buf = NULL, *tmp = NULL;
 	size_t bufsize = 0, tmpsize;
 	const struct sc_pkcs15_object *obj;
-	int (* func)(struct sc_context *, const struct sc_pkcs15_object *nobj,
+	int (* func)(sc_context_t *, const struct sc_pkcs15_object *nobj,
 		     u8 **nbuf, size_t *nbufsize) = NULL;
 	int r;
 
@@ -1181,7 +1181,7 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		       struct sc_pkcs15_df *df)
 {
-	struct sc_context *ctx = p15card->card->ctx;
+	sc_context_t *ctx = p15card->card->ctx;
 	u8 *buf;
 	const u8 *p;
 	size_t bufsize;
@@ -1269,12 +1269,12 @@ ret:
 }
 
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
-			const struct sc_path *in_path,
+			const sc_path_t *in_path,
 			u8 **buf, size_t *buflen,
-			struct sc_file **file_out)
+			sc_file_t **file_out)
 {
-	struct sc_file *file = NULL;
-	struct sc_path tmp_path, *path = &tmp_path;
+	sc_file_t *file = NULL;
+	sc_path_t tmp_path, *path = &tmp_path;
 	u8	*data = NULL;
 	size_t	len = 0, offset = 0;
 	int	r = -1;
@@ -1285,12 +1285,12 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 
 	if (in_path->type == SC_PATH_TYPE_FILE_ID) {
 		/* in case of a FID prepend the application DF */
-		memcpy(path, &p15card->file_app->path, sizeof(struct sc_path));
+		memcpy(path, &p15card->file_app->path, sizeof(sc_path_t));
 		sc_append_path(path, in_path);
 		path->index = in_path->index;
 		path->count = in_path->count;
 	} else {
-		memcpy(path, in_path, sizeof(struct sc_path));
+		memcpy(path, in_path, sizeof(sc_path_t));
 	}
 	
 	if (p15card->opts.use_cache) {

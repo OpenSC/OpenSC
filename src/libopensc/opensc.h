@@ -190,7 +190,7 @@ typedef unsigned __int64 sc_timestamp_t;
 #define SC_EVENT_CARD_INSERTED		0x0001
 #define SC_EVENT_CARD_REMOVED		0x0002
 
-struct sc_security_env {
+typedef struct sc_security_env {
 	unsigned long flags;
 	int operation;
 	unsigned int algorithm, algorithm_flags;
@@ -199,8 +199,7 @@ struct sc_security_env {
 	struct sc_path file_ref;
 	u8 key_ref[8];
 	size_t key_ref_len;
-};
-typedef struct sc_security_env sc_security_env_t;
+} sc_security_env_t;
 
 struct sc_algorithm_id {
 	unsigned int algorithm;
@@ -221,7 +220,7 @@ struct sc_pbes2_params {
 	struct sc_algorithm_id key_encr_alg;
 };
 
-struct sc_algorithm_info {
+typedef struct sc_algorithm_info {
 	unsigned int algorithm;
 	unsigned int key_length;
 	unsigned int flags;
@@ -231,10 +230,9 @@ struct sc_algorithm_info {
 			unsigned long exponent;
 		} _rsa;
 	} u;
-};
-typedef struct sc_algorithm_info sc_algorithm_info_t;
+} sc_algorithm_info_t;
 
-struct sc_app_info {
+typedef struct sc_app_info {
 	u8 aid[SC_MAX_AID_SIZE];
 	size_t aid_len;
 	char *label;
@@ -244,8 +242,7 @@ struct sc_app_info {
 
 	const char *desc;	/* App description, if known */
 	int rec_nr;		/* -1, if EF(DIR) is transparent */
-};
-typedef struct sc_app_info sc_app_info_t;
+} sc_app_info_t;
 
 struct sc_card_cache {
 	struct sc_path current_path;
@@ -277,7 +274,7 @@ struct sc_reader_driver {
 #define SC_SLOT_CAP_DISPLAY	0x00000001
 #define SC_SLOT_CAP_PIN_PAD	0x00000002
 
-struct sc_slot_info {
+typedef struct sc_slot_info {
 	int id;
 	unsigned long flags, capabilities;
 	unsigned int supported_protocols, active_protocol;
@@ -292,15 +289,14 @@ struct sc_slot_info {
 	} atr_info;
 
 	void *drv_data;
-};
-typedef struct sc_slot_info sc_slot_info_t;
+} sc_slot_info_t;
 
 struct sc_event_listener {
 	unsigned int event_mask;
 	void (*func)(void *, const struct sc_slot_info *, unsigned int event);
 };
 
-struct sc_reader {
+typedef struct sc_reader {
 	struct sc_context *ctx;
 	const struct sc_reader_driver *driver;
 	const struct sc_reader_operations *ops;
@@ -309,8 +305,7 @@ struct sc_reader {
 
 	struct sc_slot_info slot[SC_MAX_SLOTS];
 	int slot_count;
-};
-typedef struct sc_reader sc_reader_t;
+} sc_reader_t;
 
 /* This will be the new interface for handling PIN commands.
  * It is supposed to support pin pads (with or without display)
@@ -459,7 +454,7 @@ void sc_mutex_free(struct sc_mutex *p);
 /* Card doesn't return any File Control Info. */
 #define SC_CARD_CAP_NO_FCI		0x00000008
 
-struct sc_card {
+typedef struct sc_card {
 	struct sc_context *ctx;
 	struct sc_reader *reader;
 	struct sc_slot_info *slot;
@@ -496,8 +491,7 @@ struct sc_card {
 	sc_mutex_t *mutex;
 
 	unsigned int magic;
-};
-typedef struct sc_card sc_card_t;
+} sc_card_t;
 
 struct sc_card_operations {
 	/* Called in sc_connect_card().  Must return 1, if the current
@@ -616,16 +610,16 @@ struct sc_card_operations {
 	int (*delete_record)(sc_card_t *card, unsigned int rec_nr);
 };
 
-struct sc_card_driver {
+typedef struct sc_card_driver {
 	const char *name;
 	const char *short_name;
 	struct sc_card_operations *ops;
 	struct sc_atr_table *atr_map;
 	unsigned int natrs;
 	void *dll;
-};
+} sc_card_driver_t;
 
-struct sc_context {
+typedef struct sc_context {
 	scconf_context *conf;
 	scconf_block *conf_blocks[3];
 	char *app_name;
@@ -647,8 +641,7 @@ struct sc_context {
 	sc_mutex_t *mutex;
 
 	unsigned int magic;
-};
-typedef struct sc_context sc_context_t;
+} sc_context_t;
 
 /* Base64 encoding/decoding functions */
 int sc_base64_encode(const u8 *in, size_t inlen, u8 *out, size_t outlen,
@@ -659,8 +652,8 @@ int sc_base64_decode(const char *in, u8 *out, size_t outlen);
 sc_timestamp_t sc_current_time(void);
 
 /* APDU handling functions */
-int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
-void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu, int cse, int ins,
+int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu);
+void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu, int cse, int ins,
 		    int p1, int p2);
 
 /**
@@ -669,40 +662,40 @@ void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu, int cse, int ins
  * @param app_name A string that identifies the application, used primarily
  *	in finding application-specific configuration data. Can be NULL.
  */
-int sc_establish_context(struct sc_context **ctx, const char *app_name);
+int sc_establish_context(sc_context_t **ctx, const char *app_name);
 
 /**
  * Releases an established OpenSC context
  * @param ctx A pointer to the context structure to be released
  */
-int sc_release_context(struct sc_context *ctx);
+int sc_release_context(sc_context_t *ctx);
 /**
  * Forces the use of a specified card driver
  * @param ctx OpenSC context
  * @param short_name The short name of the driver to use (e.g. 'emv')
  */
-int sc_set_card_driver(struct sc_context *ctx, const char *short_name);
+int sc_set_card_driver(sc_context_t *ctx, const char *short_name);
 /**
  * Connects to a card in a reader and auto-detects the card driver.
  * The ATR (Answer to Reset) string of the card is also retrieved.
  * @param reader Reader structure
  * @param slot_id Slot ID to connect to
  * @param card The allocated card object will go here */
-int sc_connect_card(struct sc_reader *reader, int slot_id,
-		    struct sc_card **card);
+int sc_connect_card(sc_reader_t *reader, int slot_id,
+		    sc_card_t **card);
 /**
  * Disconnects from a card, and frees the card structure. Any locks
  * made by the application must be released before calling this function.
  * NOTE: The card is not reset nor powered down after the operation.
  * @param card The card to disconnect
  */
-int sc_disconnect_card(struct sc_card *card, int action);
+int sc_disconnect_card(sc_card_t *card, int action);
 /**
  * Returns 1 if the magic value of the card object is correct. Mostly
  * used internally by the library.
  * @param card The card object to check
  */
-inline int sc_card_valid(const struct sc_card *card);
+inline int sc_card_valid(const sc_card_t *card);
 
 /**
  * Checks if a card is present in a reader
@@ -715,7 +708,7 @@ inline int sc_card_valid(const struct sc_card *card);
  *	always set. In addition, if the card was exchanged,
  *	the SC_SLOT_CARD_CHANGED flag is set.
  */
-int sc_detect_card_presence(struct sc_reader *reader, int slot_id);
+int sc_detect_card_presence(sc_reader_t *reader, int slot_id);
 
 /**
  * Waits for an event on readers. Note: only the event is detected,
@@ -735,7 +728,7 @@ int sc_detect_card_presence(struct sc_reader *reader, int slot_id);
  * @retval = 0 if a an event happened
  * @retval = 1 if the timeout occured
  */
-int sc_wait_for_event(struct sc_reader **readers, int *slots, size_t nslots,
+int sc_wait_for_event(sc_reader_t **readers, int *slots, size_t nslots,
                       unsigned int event_mask,
                       int *reader, unsigned int *event, int timeout);
 
@@ -746,7 +739,7 @@ int sc_wait_for_event(struct sc_reader **readers, int *slots, size_t nslots,
  * @param card The card to lock
  * @retval SC_SUCCESS on success
  */
-int sc_lock(struct sc_card *card);
+int sc_lock(sc_card_t *card);
 /**
  * Unlocks a previously locked card. After the lock count drops to zero,
  * the card is again placed in shared mode, where other processes
@@ -754,7 +747,7 @@ int sc_lock(struct sc_card *card);
  * @param card The card to unlock
  * @retval SC_SUCCESS on success
  */
-int sc_unlock(struct sc_card *card);
+int sc_unlock(sc_card_t *card);
 
 /* ISO 7816-4 related functions */
 
@@ -765,17 +758,17 @@ int sc_unlock(struct sc_card *card);
  * @param file If not NULL, will receive a pointer to a new structure
  * @retval SC_SUCCESS on success
  */
-int sc_select_file(struct sc_card *card, const struct sc_path *path,
-		   struct sc_file **file);
+int sc_select_file(sc_card_t *card, const sc_path_t *path,
+		   sc_file_t **file);
 
-int sc_list_files(struct sc_card *card, u8 * buf, size_t buflen);
+int sc_list_files(sc_card_t *card, u8 * buf, size_t buflen);
 
 /* TODO: finish writing API docs */
-int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
+int sc_read_binary(sc_card_t *card, unsigned int idx, u8 * buf,
 		   size_t count, unsigned long flags);
-int sc_write_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
+int sc_write_binary(sc_card_t *card, unsigned int idx, const u8 * buf,
 		    size_t count, unsigned long flags);
-int sc_update_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
+int sc_update_binary(sc_card_t *card, unsigned int idx, const u8 * buf,
 		     size_t count, unsigned long flags);
 /**
  * Reads a record from the current (i.e. selected) file.
@@ -786,39 +779,39 @@ int sc_update_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
  * @param flags Flags
  * @retval Number of bytes read or an error value
  */
-int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 * buf,
+int sc_read_record(sc_card_t *card, unsigned int rec_nr, u8 * buf,
 		   size_t count, unsigned long flags);
-int sc_write_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
+int sc_write_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
 		    size_t count, unsigned long flags);
-int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
+int sc_append_record(sc_card_t *card, const u8 * buf, size_t count,
 		     unsigned long flags);
-int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
+int sc_update_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
 		     size_t count, unsigned long flags);
-int sc_delete_record(struct sc_card *card, unsigned int rec_nr);
+int sc_delete_record(sc_card_t *card, unsigned int rec_nr);
 
 /* get/put data functions */
 int sc_get_data(sc_card_t *, unsigned int, u8 *, size_t);
 int sc_put_data(sc_card_t *, unsigned int, const u8 *, size_t);
 
-int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);
+int sc_get_challenge(sc_card_t *card, u8 * rndout, size_t len);
 
 /* ISO 7816-8 related functions */
-int sc_restore_security_env(struct sc_card *card, int se_num);
-int sc_set_security_env(struct sc_card *card,
+int sc_restore_security_env(sc_card_t *card, int se_num);
+int sc_set_security_env(sc_card_t *card,
 			const struct sc_security_env *env, int se_num);
-int sc_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
+int sc_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len,
 		u8 * out, size_t outlen);
-int sc_compute_signature(struct sc_card *card, const u8 * data,
+int sc_compute_signature(sc_card_t *card, const u8 * data,
 			 size_t data_len, u8 * out, size_t outlen);
-int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *buf,
+int sc_verify(sc_card_t *card, unsigned int type, int ref, const u8 *buf,
 	      size_t buflen, int *tries_left);
-int sc_logout(struct sc_card *card);
-int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *, int *tries_left);
-int sc_change_reference_data(struct sc_card *card, unsigned int type,
+int sc_logout(sc_card_t *card);
+int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *, int *tries_left);
+int sc_change_reference_data(sc_card_t *card, unsigned int type,
 			     int ref, const u8 *old, size_t oldlen,
 			     const u8 *newref, size_t newlen,
 			     int *tries_left);
-int sc_reset_retry_counter(struct sc_card *card, unsigned int type,
+int sc_reset_retry_counter(sc_card_t *card, unsigned int type,
 			   int ref, const u8 *puk, size_t puklen,
 			   const u8 *newref, size_t newlen);
 int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad);
@@ -833,52 +826,52 @@ int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm, const u8 *in_dat,
 		size_t in_len, u8 *out_dat, size_t *out_len);
 int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 		const u8 *in_dat, size_t in_len, u8 *out_dat, size_t *out_len);
-int sc_pkcs1_encode(struct sc_context *ctx, unsigned long flags,
+int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_len);
 int sc_strip_zero_padding(const u8 *in,size_t in_len, u8 *out, size_t *out_len);
 /* ISO 7816-9 */
-int sc_create_file(struct sc_card *card, struct sc_file *file);
-int sc_delete_file(struct sc_card *card, const struct sc_path *path);
+int sc_create_file(sc_card_t *card, sc_file_t *file);
+int sc_delete_file(sc_card_t *card, const sc_path_t *path);
 
 /* Card controls */
-int sc_card_ctl(struct sc_card *card, unsigned long command, void *arg);
+int sc_card_ctl(sc_card_t *card, unsigned long command, void *arg);
 
-inline int sc_file_valid(const struct sc_file *file);
-struct sc_file * sc_file_new(void);
-void sc_file_free(struct sc_file *file);
-void sc_file_dup(struct sc_file **dest, const struct sc_file *src);
+inline int sc_file_valid(const sc_file_t *file);
+sc_file_t * sc_file_new(void);
+void sc_file_free(sc_file_t *file);
+void sc_file_dup(sc_file_t **dest, const sc_file_t *src);
 
-int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
+int sc_file_add_acl_entry(sc_file_t *file, unsigned int operation,
 			  unsigned int method, unsigned long key_ref);
-const struct sc_acl_entry * sc_file_get_acl_entry(const struct sc_file *file,
+const struct sc_acl_entry * sc_file_get_acl_entry(const sc_file_t *file,
 						  unsigned int operation);
-void sc_file_clear_acl_entries(struct sc_file *file, unsigned int operation);
+void sc_file_clear_acl_entries(sc_file_t *file, unsigned int operation);
 
-int sc_file_set_sec_attr(struct sc_file *file, const u8 *sec_attr,
+int sc_file_set_sec_attr(sc_file_t *file, const u8 *sec_attr,
 			 size_t sec_attr_len);
-int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
+int sc_file_set_prop_attr(sc_file_t *file, const u8 *prop_attr,
 			  size_t prop_attr_len);
-int sc_file_set_type_attr(struct sc_file *file, const u8 *type_attr,
+int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 			  size_t type_attr_len);
 
-void sc_format_path(const char *path_in, struct sc_path *path_out);
+void sc_format_path(const char *path_in, sc_path_t *path_out);
 const char *sc_print_path(const sc_path_t *path_in);
 int sc_compare_path(const sc_path_t *, const sc_path_t *);
-int sc_append_path(struct sc_path *dest, const struct sc_path *src);
-int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen);
-int sc_append_file_id(struct sc_path *dest, unsigned int fid);
+int sc_append_path(sc_path_t *dest, const sc_path_t *src);
+int sc_append_path_id(sc_path_t *dest, const u8 *id, size_t idlen);
+int sc_append_file_id(sc_path_t *dest, unsigned int fid);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_bin_to_hex(const u8 *, size_t, char *, size_t, char separator);
 
-int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize);
-int sc_make_cache_dir(struct sc_context *ctx);
+int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize);
+int sc_make_cache_dir(sc_context_t *ctx);
 
-int sc_enum_apps(struct sc_card *card);
-void sc_free_apps(struct sc_card *card);
-const struct sc_app_info * sc_find_pkcs15_app(struct sc_card *card);
-const struct sc_app_info * sc_find_app_by_aid(struct sc_card *card,
-					      const u8 *aid, size_t aid_len);
-int sc_update_dir(struct sc_card *card, struct sc_app_info *app);
+int sc_enum_apps(sc_card_t *card);
+void sc_free_apps(sc_card_t *card);
+const sc_app_info_t * sc_find_pkcs15_app(sc_card_t *card);
+const sc_app_info_t * sc_find_app_by_aid(sc_card_t *card,
+					 const u8 *aid, size_t aid_len);
+int sc_update_dir(sc_card_t *card, sc_app_info_t *app);
 
 struct sc_card_error {
 	int SWs;
@@ -899,22 +892,22 @@ extern struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern struct sc_reader_driver *sc_get_ctapi_driver(void);
 extern struct sc_reader_driver *sc_get_openct_driver(void);
 
-extern struct sc_card_driver *sc_get_default_driver(void);
-extern struct sc_card_driver *sc_get_emv_driver(void);
-extern struct sc_card_driver *sc_get_etoken_driver(void);
-extern struct sc_card_driver *sc_get_cryptoflex_driver(void);
-extern struct sc_card_driver *sc_get_cyberflex_driver(void);
-extern struct sc_card_driver *sc_get_gpk_driver(void);
-extern struct sc_card_driver *sc_get_iso7816_driver(void);
-extern struct sc_card_driver *sc_get_miocos_driver(void);
-extern struct sc_card_driver *sc_get_mcrd_driver(void);
-extern struct sc_card_driver *sc_get_setcos_driver(void);
-extern struct sc_card_driver *sc_get_starcos_driver(void);
-extern struct sc_card_driver *sc_get_tcos_driver(void);
-extern struct sc_card_driver *sc_get_openpgp_driver(void);
-extern struct sc_card_driver *sc_get_jcop_driver(void);
-extern struct sc_card_driver *sc_get_oberthur_driver(void);
-extern struct sc_card_driver *sc_get_belpic_driver(void);
+extern sc_card_driver_t *sc_get_default_driver(void);
+extern sc_card_driver_t *sc_get_emv_driver(void);
+extern sc_card_driver_t *sc_get_etoken_driver(void);
+extern sc_card_driver_t *sc_get_cryptoflex_driver(void);
+extern sc_card_driver_t *sc_get_cyberflex_driver(void);
+extern sc_card_driver_t *sc_get_gpk_driver(void);
+extern sc_card_driver_t *sc_get_iso7816_driver(void);
+extern sc_card_driver_t *sc_get_miocos_driver(void);
+extern sc_card_driver_t *sc_get_mcrd_driver(void);
+extern sc_card_driver_t *sc_get_setcos_driver(void);
+extern sc_card_driver_t *sc_get_starcos_driver(void);
+extern sc_card_driver_t *sc_get_tcos_driver(void);
+extern sc_card_driver_t *sc_get_openpgp_driver(void);
+extern sc_card_driver_t *sc_get_jcop_driver(void);
+extern sc_card_driver_t *sc_get_oberthur_driver(void);
+extern sc_card_driver_t *sc_get_belpic_driver(void);
 
 #ifdef __cplusplus
 }

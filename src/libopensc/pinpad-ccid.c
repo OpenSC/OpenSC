@@ -106,7 +106,7 @@ static int ccid_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cm
 
 /* Do the PIN command */
 int
-ccid_pin_cmd(struct sc_reader *reader, sc_slot_info_t * slot,
+ccid_pin_cmd(sc_reader_t *reader, sc_slot_info_t * slot,
 	     struct sc_pin_cmd_data *data)
 {
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE];

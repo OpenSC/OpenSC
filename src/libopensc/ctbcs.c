@@ -152,11 +152,11 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 }
 
 int
-ctbcs_pin_cmd(struct sc_reader *reader, sc_slot_info_t *slot,
+ctbcs_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	      struct sc_pin_cmd_data *data)
 {
-	struct sc_card dummy_card, *card;
-	struct sc_apdu apdu;
+	sc_card_t dummy_card, *card;
+	sc_apdu_t apdu;
 	struct sc_card_operations ops;
 	int r;
 

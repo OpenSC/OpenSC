@@ -199,7 +199,7 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 }
 
 /* general PKCS#1 encoding function */
-int sc_pkcs1_encode(struct sc_context *ctx, unsigned long flags,
+int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_len)
 {
 	int    i;

@@ -77,7 +77,7 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 				 struct sc_pkcs15_object *obj,
 				 const u8 ** buf, size_t *buflen)
 {
-        struct sc_context *ctx = p15card->card->ctx;
+        sc_context_t *ctx = p15card->card->ctx;
         struct sc_pkcs15_pubkey_info info;
 	int r;
 	size_t usage_len = sizeof(info.usage);
@@ -142,7 +142,7 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 
 	return 0;
 }
-int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
+int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 				 const struct sc_pkcs15_object *obj,
 				 u8 **buf, size_t *buflen)
 {
@@ -232,7 +232,7 @@ static struct sc_asn1_entry c_asn1_dsa_pub_coefficients[5] = {
 };
 
 int
-sc_pkcs15_decode_pubkey_rsa(struct sc_context *ctx,
+sc_pkcs15_decode_pubkey_rsa(sc_context_t *ctx,
 			struct sc_pkcs15_pubkey_rsa *key,
 			const u8 *buf, size_t buflen)
 {
@@ -256,7 +256,7 @@ sc_pkcs15_decode_pubkey_rsa(struct sc_context *ctx,
 }
 
 int
-sc_pkcs15_encode_pubkey_rsa(struct sc_context *ctx,
+sc_pkcs15_encode_pubkey_rsa(sc_context_t *ctx,
 		struct sc_pkcs15_pubkey_rsa *key,
 		u8 **buf, size_t *buflen)
 {
@@ -280,7 +280,7 @@ sc_pkcs15_encode_pubkey_rsa(struct sc_context *ctx,
 }
 
 int
-sc_pkcs15_decode_pubkey_dsa(struct sc_context *ctx,
+sc_pkcs15_decode_pubkey_dsa(sc_context_t *ctx,
 		struct sc_pkcs15_pubkey_dsa *key,
 		const u8 *buf, size_t buflen)
 {
@@ -309,7 +309,7 @@ sc_pkcs15_decode_pubkey_dsa(struct sc_context *ctx,
 }
 
 int
-sc_pkcs15_encode_pubkey_dsa(struct sc_context *ctx,
+sc_pkcs15_encode_pubkey_dsa(sc_context_t *ctx,
 		struct sc_pkcs15_pubkey_dsa *key,
 		u8 **buf, size_t *buflen)
 {
@@ -337,7 +337,7 @@ sc_pkcs15_encode_pubkey_dsa(struct sc_context *ctx,
 }
 
 int
-sc_pkcs15_encode_pubkey(struct sc_context *ctx,
+sc_pkcs15_encode_pubkey(sc_context_t *ctx,
 		struct sc_pkcs15_pubkey *key,
 		u8 **buf, size_t *len)
 {
@@ -351,7 +351,7 @@ sc_pkcs15_encode_pubkey(struct sc_context *ctx,
 }
 
 int
-sc_pkcs15_decode_pubkey(struct sc_context *ctx,
+sc_pkcs15_decode_pubkey(sc_context_t *ctx,
 		struct sc_pkcs15_pubkey *key,
 		const u8 *buf, size_t len)
 {

@@ -39,12 +39,12 @@ static struct sc_card_driver miocos_drv = {
 	&miocos_ops
 };
 
-static int miocos_finish(struct sc_card *card)
+static int miocos_finish(sc_card_t *card)
 {
 	return 0;
 }
 
-static int miocos_match_card(struct sc_card *card)
+static int miocos_match_card(sc_card_t *card)
 {
 	int i;
 
@@ -54,7 +54,7 @@ static int miocos_match_card(struct sc_card *card)
 	return 1;
 }
 
-static int miocos_init(struct sc_card *card)
+static int miocos_init(sc_card_t *card)
 {
 	card->name = "MioCOS";
 	card->cla = 0x00;
@@ -80,7 +80,7 @@ static int miocos_init(struct sc_card *card)
 
 static const struct sc_card_operations *iso_ops = NULL;
 
-static int acl_to_byte(const struct sc_acl_entry *e)
+static int acl_to_byte(const sc_acl_entry_t *e)
 {
 	switch (e->method) {
 	case SC_AC_NONE:
@@ -99,7 +99,7 @@ static int acl_to_byte(const struct sc_acl_entry *e)
 	return 0x00;
 }
 
-static int encode_file_structure(struct sc_card *card, const struct sc_file *file,
+static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 				 u8 *buf, size_t *buflen)
 {
 	u8 *p = buf;
@@ -202,9 +202,9 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
         return 0;
 }
 
-static int miocos_create_file(struct sc_card *card, struct sc_file *file)
+static int miocos_create_file(sc_card_t *card, sc_file_t *file)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 sbuf[32];
         size_t buflen;
 	int r;
@@ -227,12 +227,12 @@ static int miocos_create_file(struct sc_card *card, struct sc_file *file)
 	return 0;
 }
 
-static int miocos_set_security_env(struct sc_card *card,
-				  const struct sc_security_env *env,
+static int miocos_set_security_env(sc_card_t *card,
+				  const sc_security_env_t *env,
 				  int se_num)
 {
 	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
-		struct sc_security_env tmp;
+		sc_security_env_t tmp;
 
 		tmp = *env;
 		tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
@@ -254,7 +254,7 @@ static int miocos_set_security_env(struct sc_card *card,
 	return iso_ops->set_security_env(card, env, se_num);
 }
 
-static void add_acl_entry(struct sc_file *file, int op, u8 byte)
+static void add_acl_entry(sc_file_t *file, int op, u8 byte)
 {
 	unsigned int method, key_ref = SC_AC_KEY_REF_NONE;
 
@@ -273,7 +273,7 @@ static void add_acl_entry(struct sc_file *file, int op, u8 byte)
 	sc_file_add_acl_entry(file, op, method, key_ref);
 }
 
-static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
+static void parse_sec_attr(sc_file_t *file, const u8 *buf, size_t len)
 {
 	int i;
 	const int df_ops[8] = {
@@ -317,9 +317,9 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 	}
 }
 
-static int miocos_get_acl(struct sc_card *card, struct sc_file *file)
+static int miocos_get_acl(sc_card_t *card, sc_file_t *file)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 rbuf[256];
 	const u8 *seq = rbuf;
 	size_t left;
@@ -352,9 +352,9 @@ static int miocos_get_acl(struct sc_card *card, struct sc_file *file)
 		if (tag == NULL || taglen == 0)
 			continue;
 		for (j = 0; j < SC_MAX_AC_OPS; j++) {
-			struct sc_acl_entry *e;
+			sc_acl_entry_t *e;
 			
-			e = (struct sc_acl_entry *) sc_file_get_acl_entry(file, j);
+			e = (sc_acl_entry_t *) sc_file_get_acl_entry(file, j);
 			if (e == NULL)
 				continue;
 			if (e->method != SC_AC_CHV)
@@ -377,9 +377,9 @@ static int miocos_get_acl(struct sc_card *card, struct sc_file *file)
 	return 0;
 }
 
-static int miocos_select_file(struct sc_card *card,
-			       const struct sc_path *in_path,
-			       struct sc_file **file)
+static int miocos_select_file(sc_card_t *card,
+			       const sc_path_t *in_path,
+			       sc_file_t **file)
 {
 	int r;
 
@@ -394,9 +394,9 @@ static int miocos_select_file(struct sc_card *card,
 	return 0;
 }
 
-static int miocos_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+static int miocos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0);
@@ -410,10 +410,10 @@ static int miocos_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	return apdu.resplen;
 }
 
-static int miocos_delete_file(struct sc_card *card, const struct sc_path *path)
+static int miocos_delete_file(sc_card_t *card, const sc_path_t *path)
 {
 	int r;
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
@@ -434,7 +434,7 @@ static int miocos_delete_file(struct sc_card *card, const struct sc_path *path)
 static int miocos_create_ac(sc_card_t *card,
 			    struct sc_cardctl_miocos_ac_info *ac)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 sbuf[20];
 	int miocos_type, r;
 	size_t sendsize;
@@ -468,7 +468,7 @@ static int miocos_create_ac(sc_card_t *card,
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-static int miocos_card_ctl(struct sc_card *card, unsigned long cmd,
+static int miocos_card_ctl(sc_card_t *card, unsigned long cmd,
 			   void *arg)
 {
 	switch (cmd) {

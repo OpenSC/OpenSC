@@ -35,7 +35,7 @@
 # define DEF_APDU_MASQ		SC_APDU_MASQUERADE_4AS3
 #endif
 
-int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader)
+int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 {
 	assert(reader != NULL);
 	reader->ctx = ctx;
@@ -156,7 +156,7 @@ static void add_internal_drvs(struct _sc_ctx_options *opts, int type)
 	}
 }
 
-static void set_defaults(struct sc_context *ctx, struct _sc_ctx_options *opts)
+static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 {
 	ctx->debug = 0;
 	if (ctx->debug_file && ctx->debug_file != stdout)
@@ -171,7 +171,7 @@ static void set_defaults(struct sc_context *ctx, struct _sc_ctx_options *opts)
 	add_internal_drvs(opts, 1);
 }
 
-static int load_parameters(struct sc_context *ctx, scconf_block *block,
+static int load_parameters(sc_context_t *ctx, scconf_block *block,
 			   struct _sc_ctx_options *opts)
 {
 	int err = 0;
@@ -290,7 +290,7 @@ static void load_reader_driver_options(sc_context_t *ctx,
  * find library module for provided driver in configuration file
  * if not found assume library name equals to module name
  */
-static const char *find_library(struct sc_context *ctx, const char *name, int type)
+static const char *find_library(sc_context_t *ctx, const char *name, int type)
 {
 	int          i;
 	const char   *libname = NULL;
@@ -328,7 +328,7 @@ static const char *find_library(struct sc_context *ctx, const char *name, int ty
  * type == 0 -> reader driver
  * type == 1 -> card driver
  */
-static void *load_dynamic_driver(struct sc_context *ctx, void **dll,
+static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 	const char *name, int type)
 {
 	const char *version, *libname;
@@ -370,7 +370,7 @@ static void *load_dynamic_driver(struct sc_context *ctx, void **dll,
 	return modinit(name);
 }
 
-static int load_reader_drivers(struct sc_context *ctx,
+static int load_reader_drivers(sc_context_t *ctx,
 			       struct _sc_ctx_options *opts)
 {
 	const struct _sc_driver_entry *ent;
@@ -410,7 +410,7 @@ static int load_reader_drivers(struct sc_context *ctx,
 	return SC_SUCCESS;
 }
 
-static int load_card_driver_options(struct sc_context *ctx,
+static int load_card_driver_options(sc_context_t *ctx,
 				    struct sc_card_driver *driver)
 {
 	scconf_block **blocks, *blk;
@@ -431,7 +431,7 @@ static int load_card_driver_options(struct sc_context *ctx,
 	return SC_SUCCESS;
 }
 
-static int load_card_drivers(struct sc_context *ctx,
+static int load_card_drivers(sc_context_t *ctx,
 			     struct _sc_ctx_options *opts)
 {
 	const struct _sc_driver_entry *ent;
@@ -472,7 +472,7 @@ static int load_card_drivers(struct sc_context *ctx,
 	return SC_SUCCESS;
 }
 
-static int load_card_atrs(struct sc_context *ctx,
+static int load_card_atrs(sc_context_t *ctx,
 			  struct _sc_ctx_options *opts)
 {
 	struct sc_card_driver *driver;
@@ -550,7 +550,7 @@ static int load_card_atrs(struct sc_context *ctx,
 	return SC_SUCCESS;
 }
 
-static void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
+static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 {
 	int i, r, count = 0;
 	scconf_block **blocks;
@@ -637,14 +637,14 @@ static void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *
 		load_parameters(ctx, ctx->conf_blocks[i], opts);
 }
 
-int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
+int sc_establish_context(sc_context_t **ctx_out, const char *app_name)
 {
 	const char *default_app = "default";
-	struct sc_context *ctx;
+	sc_context_t *ctx;
 	struct _sc_ctx_options opts;
 
 	assert(ctx_out != NULL);
-	ctx = (struct sc_context *) calloc(1, sizeof(struct sc_context));
+	ctx = (sc_context_t *) calloc(1, sizeof(sc_context_t));
 	if (ctx == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(&opts, 0, sizeof(opts));
@@ -675,14 +675,14 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 	return SC_SUCCESS;
 }
 
-int sc_release_context(struct sc_context *ctx)
+int sc_release_context(sc_context_t *ctx)
 {
 	int i;
 
 	assert(ctx != NULL);
 	SC_FUNC_CALLED(ctx, 1);
 	for (i = 0; i < ctx->reader_count; i++) {
-		struct sc_reader *rdr = ctx->reader[i];
+		sc_reader_t *rdr = ctx->reader[i];
 
 		if (rdr->ops->release != NULL)
 			rdr->ops->release(rdr);
@@ -719,7 +719,7 @@ int sc_release_context(struct sc_context *ctx)
 	return SC_SUCCESS;
 }
 
-int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
+int sc_set_card_driver(sc_context_t *ctx, const char *short_name)
 {
 	int i = 0, match = 0;
 
@@ -743,7 +743,7 @@ int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
 	return SC_SUCCESS;
 }
 
-int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
+int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 {
 	char *homedir;
 	const char *cache_dir;
@@ -771,7 +771,7 @@ int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
 	return SC_SUCCESS;
 }
 
-int sc_make_cache_dir(struct sc_context *ctx)
+int sc_make_cache_dir(sc_context_t *ctx)
 {
 	char dirname[PATH_MAX], *sp;
 	int    r;

@@ -42,7 +42,7 @@
 
 #ifndef HAVE_OPENSSL
 int
-sc_pkcs15_wrap_data(struct sc_context *ctx,
+sc_pkcs15_wrap_data(sc_context_t *ctx,
 		const char *passphrase,
 		const u8 *in, size_t in_len,
 		u8 **out, size_t *out_len)
@@ -51,7 +51,7 @@ sc_pkcs15_wrap_data(struct sc_context *ctx,
 }
 
 int
-sc_pkcs15_unwrap_data(struct sc_context *ctx,
+sc_pkcs15_unwrap_data(sc_context_t *ctx,
 		const char *passphrase,
 		const u8 *in, size_t in_len,
 		u8 **out, size_t *out_len)
@@ -62,7 +62,7 @@ sc_pkcs15_unwrap_data(struct sc_context *ctx,
 #else /* HAVE_OPENSSL */
 
 static int
-sc_pkcs15_derive_key(struct sc_context *ctx,
+sc_pkcs15_derive_key(sc_context_t *ctx,
 		const struct sc_algorithm_id *der_alg, 
 		const struct sc_algorithm_id *enc_alg,
 		const char *passphrase,
@@ -120,7 +120,7 @@ sc_pkcs15_derive_key(struct sc_context *ctx,
 }
 
 static int
-do_cipher(struct sc_context *ctx, EVP_CIPHER_CTX *cipher_ctx,
+do_cipher(sc_context_t *ctx, EVP_CIPHER_CTX *cipher_ctx,
 		const u8 *in, size_t in_len,
 		u8 **out, size_t *out_len)
 {
@@ -156,7 +156,7 @@ fail:	free(p);
 }
 
 int
-sc_pkcs15_wrap_data(struct sc_context *ctx,
+sc_pkcs15_wrap_data(sc_context_t *ctx,
 		const char *passphrase,
 		const u8 *in, size_t in_len,
 		u8 **out, size_t *out_len)
@@ -201,7 +201,7 @@ sc_pkcs15_wrap_data(struct sc_context *ctx,
 
 
 int
-sc_pkcs15_unwrap_data(struct sc_context *ctx,
+sc_pkcs15_unwrap_data(sc_context_t *ctx,
 		const char *passphrase,
 		const u8 *in, size_t in_len,
 		u8 **out, size_t *out_len)
@@ -285,7 +285,7 @@ static const struct sc_asn1_entry	c_asn1_kek_attr[] = {
 };
 
 int
-sc_pkcs15_decode_enveloped_data(struct sc_context *ctx,
+sc_pkcs15_decode_enveloped_data(sc_context_t *ctx,
 				struct sc_pkcs15_enveloped_data *result,
 				const u8 *buf, size_t buflen)
 {
@@ -338,7 +338,7 @@ sc_pkcs15_decode_enveloped_data(struct sc_context *ctx,
 }
 
 int
-sc_pkcs15_encode_enveloped_data(struct sc_context *ctx,
+sc_pkcs15_encode_enveloped_data(sc_context_t *ctx,
 				struct sc_pkcs15_enveloped_data *data,
 				u8 **buf, size_t *buflen)
 {

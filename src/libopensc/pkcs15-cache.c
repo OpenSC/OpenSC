@@ -32,7 +32,7 @@
 #include <assert.h>
 
 static int generate_cache_filename(struct sc_pkcs15_card *p15card,
-				   const struct sc_path *path,
+				   const sc_path_t *path,
 				   char *buf, size_t bufsize)
 {
 	char dir[PATH_MAX];
@@ -64,7 +64,7 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 }
 
 int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
-			       const struct sc_path *path,
+			       const sc_path_t *path,
 			       u8 **buf, size_t *bufsize)
 {
 	char fname[PATH_MAX];
@@ -120,7 +120,7 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 }
 
 int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
-			 const struct sc_path *path,
+			 const sc_path_t *path,
 			 const u8 *buf, size_t bufsize)
 {
 	char fname[PATH_MAX];

@@ -47,9 +47,9 @@ static const struct app_entry * find_app_entry(const u8 * aid, size_t aid_len)
 	return NULL;
 }
 
-const struct sc_app_info * sc_find_pkcs15_app(struct sc_card *card)
+const sc_app_info_t * sc_find_pkcs15_app(sc_card_t *card)
 {
-	const struct sc_app_info *app = NULL;
+	const sc_app_info_t *app = NULL;
 	unsigned int i;
 
 	i = sizeof(apps)/sizeof(apps[0]);
@@ -72,11 +72,11 @@ static const struct sc_asn1_entry c_asn1_dir[] = {
 	{ NULL }
 };
 
-static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen,
+static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 			    int rec_nr)
 {
 	struct sc_asn1_entry asn1_dirrecord[5], asn1_dir[2];
-	struct sc_app_info *app = NULL;
+	sc_app_info_t *app = NULL;
 	const struct app_entry *ae;
 	int r;
 	u8 aid[128], label[128], path[128];
@@ -104,7 +104,7 @@ static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen,
 		sc_error(card->ctx, "AID is too long.\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
-	app = (struct sc_app_info *) malloc(sizeof(struct sc_app_info));
+	app = (sc_app_info_t *) malloc(sizeof(sc_app_info_t));
 	if (app == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	
@@ -150,9 +150,9 @@ static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen,
 	return 0;
 }
 
-int sc_enum_apps(struct sc_card *card)
+int sc_enum_apps(sc_card_t *card)
 {
-	struct sc_path path;
+	sc_path_t path;
 	int ef_structure;
 	size_t file_size;
 	int r;
@@ -230,7 +230,7 @@ int sc_enum_apps(struct sc_card *card)
 	return card->app_count;
 }
 
-void sc_free_apps(struct sc_card *card)
+void sc_free_apps(sc_card_t *card)
 {
 	int	i;
 
@@ -244,7 +244,7 @@ void sc_free_apps(struct sc_card *card)
 	card->app_count = -1;
 }
 
-const struct sc_app_info * sc_find_app_by_aid(struct sc_card *card,
+const sc_app_info_t * sc_find_app_by_aid(sc_card_t *card,
 					      const u8 *aid, size_t aid_len)
 {
 	int i;
@@ -258,11 +258,11 @@ const struct sc_app_info * sc_find_app_by_aid(struct sc_card *card,
 	return NULL;
 }
 
-static int encode_dir_record(struct sc_context *ctx, const struct sc_app_info *app,
+static int encode_dir_record(sc_context_t *ctx, const sc_app_info_t *app,
 			     u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_dirrecord[5], asn1_dir[2];
-	struct sc_app_info   tapp = *app;
+	sc_app_info_t   tapp = *app;
 	int r;
 	size_t label_len;
 
@@ -289,7 +289,7 @@ static int encode_dir_record(struct sc_context *ctx, const struct sc_app_info *a
 	return 0;
 }
 
-static int update_transparent(struct sc_card *card, struct sc_file *file)
+static int update_transparent(sc_card_t *card, sc_file_t *file)
 {
 	u8 *rec, *buf = NULL, *tmp;
 	size_t rec_size, buf_size = 0;
@@ -334,8 +334,8 @@ static int update_transparent(struct sc_card *card, struct sc_file *file)
 	return 0;
 }
 
-static int update_single_record(struct sc_card *card, struct sc_file *file,
-				struct sc_app_info *app)
+static int update_single_record(sc_card_t *card, sc_file_t *file,
+				sc_app_info_t *app)
 {
 	u8 *rec;
 	size_t rec_size;
@@ -350,7 +350,7 @@ static int update_single_record(struct sc_card *card, struct sc_file *file,
 	return 0;
 }
 
-static int update_records(struct sc_card *card, struct sc_file *file)
+static int update_records(sc_card_t *card, sc_file_t *file)
 {
 	int i, r;
 
@@ -362,10 +362,10 @@ static int update_records(struct sc_card *card, struct sc_file *file)
 	return 0;
 }
 
-int sc_update_dir(struct sc_card *card, struct sc_app_info *app)
+int sc_update_dir(sc_card_t *card, sc_app_info_t *app)
 {
-	struct sc_path path;
-	struct sc_file *file;
+	sc_path_t path;
+	sc_file_t *file;
 	int r;
 	
 	sc_format_path("3F002F00", &path);

@@ -102,7 +102,7 @@ int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
 	return 0;
 }
 
-struct sc_slot_info * _sc_get_slot_info(struct sc_reader *reader, int slot_id)
+sc_slot_info_t * _sc_get_slot_info(sc_reader_t *reader, int slot_id)
 {
 	assert(reader != NULL);
 	if (slot_id < 0 || slot_id > reader->slot_count)
@@ -110,10 +110,10 @@ struct sc_slot_info * _sc_get_slot_info(struct sc_reader *reader, int slot_id)
 	return &reader->slot[slot_id];
 }
 
-int sc_detect_card_presence(struct sc_reader *reader, int slot_id)
+int sc_detect_card_presence(sc_reader_t *reader, int slot_id)
 {
 	int r;
-	struct sc_slot_info *slot = _sc_get_slot_info(reader, slot_id);
+	sc_slot_info_t *slot = _sc_get_slot_info(reader, slot_id);
 
 	if (slot == NULL)
 		SC_FUNC_RETURN(reader->ctx, 0, SC_ERROR_SLOT_NOT_FOUND);
@@ -125,12 +125,12 @@ int sc_detect_card_presence(struct sc_reader *reader, int slot_id)
 	SC_FUNC_RETURN(reader->ctx, 1, r);
 }
 
-int sc_wait_for_event(struct sc_reader *readers[], int slot_id[], size_t nslots,
+int sc_wait_for_event(sc_reader_t *readers[], int slot_id[], size_t nslots,
                       unsigned int event_mask,
                       int *reader, unsigned int *event, int timeout)
 {
-	struct sc_slot_info *slotp[SC_MAX_SLOTS * SC_MAX_READERS];
-	struct sc_context *ctx;
+	sc_slot_info_t *slotp[SC_MAX_SLOTS * SC_MAX_READERS];
+	sc_context_t *ctx;
 	unsigned int j;
 	int r;
 
@@ -156,7 +156,7 @@ int sc_wait_for_event(struct sc_reader *readers[], int slot_id[], size_t nslots,
 	SC_FUNC_RETURN(ctx, 1, r);
 }
 
-void sc_format_path(const char *str, struct sc_path *path)
+void sc_format_path(const char *str, sc_path_t *path)
 {
 	int type = SC_PATH_TYPE_PATH;
 
@@ -173,7 +173,7 @@ void sc_format_path(const char *str, struct sc_path *path)
 	return;
 }
 
-int sc_append_path(struct sc_path *dest, const struct sc_path *src)
+int sc_append_path(sc_path_t *dest, const sc_path_t *src)
 {
 	assert(dest != NULL && src != NULL);
 	if (dest->len + src->len > SC_MAX_PATH_SIZE)
@@ -183,7 +183,7 @@ int sc_append_path(struct sc_path *dest, const struct sc_path *src)
 	return 0;
 }
 
-int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen)
+int sc_append_path_id(sc_path_t *dest, const u8 *id, size_t idlen)
 {
 	if (dest->len + idlen > SC_MAX_PATH_SIZE)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -192,7 +192,7 @@ int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen)
 	return 0;
 }
 
-int sc_append_file_id(struct sc_path *dest, unsigned int fid)
+int sc_append_file_id(sc_path_t *dest, unsigned int fid)
 {
 	u8 id[2] = { fid >> 8, fid & 0xff };
 
@@ -219,10 +219,10 @@ int sc_compare_path(const sc_path_t *path1, const sc_path_t *path2)
 		&& !memcmp(path1->value, path2->value, path1->len);
 }
 
-int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
+int sc_file_add_acl_entry(sc_file_t *file, unsigned int operation,
                           unsigned int method, unsigned long key_ref)
 {
-	struct sc_acl_entry *p, *_new;
+	sc_acl_entry_t *p, *_new;
 
 	assert(file != NULL);
 	assert(operation < SC_MAX_AC_OPS);
@@ -230,28 +230,28 @@ int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
 	switch (method) {
 	case SC_AC_NEVER:
 		sc_file_clear_acl_entries(file, operation);
-		file->acl[operation] = (struct sc_acl_entry *) 1;
+		file->acl[operation] = (sc_acl_entry_t *) 1;
 		return 0;
 	case SC_AC_NONE:
 		sc_file_clear_acl_entries(file, operation);
-		file->acl[operation] = (struct sc_acl_entry *) 2;
+		file->acl[operation] = (sc_acl_entry_t *) 2;
 		return 0;
 	case SC_AC_UNKNOWN:
 		sc_file_clear_acl_entries(file, operation);
-		file->acl[operation] = (struct sc_acl_entry *) 3;
+		file->acl[operation] = (sc_acl_entry_t *) 3;
 		return 0;
 	default:
 		/* NONE and UNKNOWN get zapped when a new AC is added.
 		 * If the ACL is NEVER, additional entries will be
 		 * dropped silently. */
-		if (file->acl[operation] == (struct sc_acl_entry *) 1)
+		if (file->acl[operation] == (sc_acl_entry_t *) 1)
 			return 0;
-		if (file->acl[operation] == (struct sc_acl_entry *) 2
-		 || file->acl[operation] == (struct sc_acl_entry *) 3)
+		if (file->acl[operation] == (sc_acl_entry_t *) 2
+		 || file->acl[operation] == (sc_acl_entry_t *) 3)
 			file->acl[operation] = NULL;
 	}
 
-	_new = (struct sc_acl_entry *) malloc(sizeof(struct sc_acl_entry));
+	_new = (sc_acl_entry_t *) malloc(sizeof(sc_acl_entry_t));
 	if (_new == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	_new->method = method;
@@ -270,17 +270,17 @@ int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
 	return 0;
 }
 
-const struct sc_acl_entry * sc_file_get_acl_entry(const struct sc_file *file,
+const sc_acl_entry_t * sc_file_get_acl_entry(const sc_file_t *file,
 						  unsigned int operation)
 {
-	struct sc_acl_entry *p;
-	static const struct sc_acl_entry e_never = {
+	sc_acl_entry_t *p;
+	static const sc_acl_entry_t e_never = {
 		SC_AC_NEVER, SC_AC_KEY_REF_NONE, NULL
 	};
-	static const struct sc_acl_entry e_none = {
+	static const sc_acl_entry_t e_none = {
 		SC_AC_NONE, SC_AC_KEY_REF_NONE, NULL
 	};
-	static const struct sc_acl_entry e_unknown = {
+	static const sc_acl_entry_t e_unknown = {
 		SC_AC_UNKNOWN, SC_AC_KEY_REF_NONE, NULL
 	};
 
@@ -288,51 +288,51 @@ const struct sc_acl_entry * sc_file_get_acl_entry(const struct sc_file *file,
 	assert(operation < SC_MAX_AC_OPS);
 
 	p = file->acl[operation];
-	if (p == (struct sc_acl_entry *) 1)
+	if (p == (sc_acl_entry_t *) 1)
 		return &e_never;
-	if (p == (struct sc_acl_entry *) 2)
+	if (p == (sc_acl_entry_t *) 2)
 		return &e_none;
-	if (p == (struct sc_acl_entry *) 3)
+	if (p == (sc_acl_entry_t *) 3)
 		return &e_unknown;
 
 	return file->acl[operation];
 }
 
-void sc_file_clear_acl_entries(struct sc_file *file, unsigned int operation)
+void sc_file_clear_acl_entries(sc_file_t *file, unsigned int operation)
 {
-	struct sc_acl_entry *e;
+	sc_acl_entry_t *e;
 
 	assert(file != NULL);
 	assert(operation < SC_MAX_AC_OPS);
 
 	e = file->acl[operation];
-	if (e == (struct sc_acl_entry *) 1 ||
-	    e == (struct sc_acl_entry *) 2 ||
-	    e == (struct sc_acl_entry *) 3) {
+	if (e == (sc_acl_entry_t *) 1 ||
+	    e == (sc_acl_entry_t *) 2 ||
+	    e == (sc_acl_entry_t *) 3) {
 		file->acl[operation] = NULL;
 		return;
 	}
 
 	while (e != NULL) {
-		struct sc_acl_entry *tmp = e->next;
+		sc_acl_entry_t *tmp = e->next;
 		free(e);
 		e = tmp;
 	}
 	file->acl[operation] = NULL;
 }
 
-struct sc_file * sc_file_new()
+sc_file_t * sc_file_new()
 {
-	struct sc_file *file = (struct sc_file *) malloc(sizeof(struct sc_file));
+	sc_file_t *file = (sc_file_t *) malloc(sizeof(sc_file_t));
 
 	if (file == NULL)
 		return NULL;
-	memset(file, 0, sizeof(struct sc_file));
+	memset(file, 0, sizeof(sc_file_t));
 	file->magic = SC_FILE_MAGIC;
 	return file;
 }
 
-void sc_file_free(struct sc_file *file)
+void sc_file_free(sc_file_t *file)
 {
 	unsigned int i;
 	assert(sc_file_valid(file));
@@ -348,10 +348,10 @@ void sc_file_free(struct sc_file *file)
 	free(file);
 }
 
-void sc_file_dup(struct sc_file **dest, const struct sc_file *src)
+void sc_file_dup(sc_file_t **dest, const sc_file_t *src)
 {
-	struct sc_file *newf;
-	const struct sc_acl_entry *e;
+	sc_file_t *newf;
+	const sc_acl_entry_t *e;
 	unsigned int op;
 
 	assert(sc_file_valid(src));
@@ -370,7 +370,7 @@ void sc_file_dup(struct sc_file **dest, const struct sc_file *src)
 	}
 }
 
-int sc_file_set_sec_attr(struct sc_file *file, const u8 *sec_attr,
+int sc_file_set_sec_attr(sc_file_t *file, const u8 *sec_attr,
 			 size_t sec_attr_len)
 {
 	u8 *tmp;
@@ -398,7 +398,7 @@ int sc_file_set_sec_attr(struct sc_file *file, const u8 *sec_attr,
 	return 0;
 }
 
-int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
+int sc_file_set_prop_attr(sc_file_t *file, const u8 *prop_attr,
 			 size_t prop_attr_len)
 {
 	u8 *tmp;
@@ -426,7 +426,7 @@ int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
 	return 0;
 }
 
-int sc_file_set_type_attr(struct sc_file *file, const u8 *type_attr,
+int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 			 size_t type_attr_len)
 {
 	u8 *tmp;
@@ -454,14 +454,14 @@ int sc_file_set_type_attr(struct sc_file *file, const u8 *type_attr,
 	return 0;
 }
 
-inline int sc_file_valid(const struct sc_file *file) {
+inline int sc_file_valid(const sc_file_t *file) {
 #ifndef NDEBUG
 	assert(file != NULL);
 #endif
 	return file->magic == SC_FILE_MAGIC;
 }
 
-int _sc_parse_atr(struct sc_context *ctx, struct sc_slot_info *slot)
+int _sc_parse_atr(sc_context_t *ctx, sc_slot_info_t *slot)
 {
 	u8 *p = slot->atr;
 	int atr_len = (int) slot->atr_len;

@@ -26,10 +26,10 @@
 #include <assert.h>
 #include <stdlib.h>
 
-static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
+static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 		       const u8 *in, size_t len, const u8 **newp, size_t *len_left,
 		       int choice, int depth);
-static int asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,
+static int asn1_encode(sc_context_t *ctx, const struct sc_asn1_entry *asn1,
 		       u8 **ptr, size_t *size, int depth);
 
 static const char *tag2str(unsigned int tag)
@@ -303,7 +303,7 @@ void sc_asn1_print_tags(const u8 * buf, size_t buflen)
 	print_tags_recursive(buf, buf, buflen, 0);
 }
 
-const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
+const u8 *sc_asn1_find_tag(sc_context_t *ctx, const u8 * buf,
 			   size_t buflen, unsigned int tag_in, size_t *taglen_in)
 {
 	size_t left = buflen, taglen;
@@ -330,7 +330,7 @@ const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 	return NULL;
 }
 
-const u8 *sc_asn1_skip_tag(struct sc_context *ctx, const u8 ** buf, size_t *buflen,
+const u8 *sc_asn1_skip_tag(sc_context_t *ctx, const u8 ** buf, size_t *buflen,
 			   unsigned int tag_in, size_t *taglen_out)
 {
 	const u8 *p = *buf;
@@ -377,7 +377,7 @@ const u8 *sc_asn1_skip_tag(struct sc_context *ctx, const u8 ** buf, size_t *bufl
 	return p;
 }
 
-const u8 *sc_asn1_verify_tag(struct sc_context *ctx, const u8 * buf, size_t buflen,
+const u8 *sc_asn1_verify_tag(sc_context_t *ctx, const u8 * buf, size_t buflen,
 			     unsigned int tag_in, size_t *taglen_out)
 {
 	return sc_asn1_skip_tag(ctx, &buf, &buflen, tag_in, taglen_out);
@@ -670,7 +670,7 @@ int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen,
 	return 0;
 }
 
-static int asn1_write_element(struct sc_context *ctx, unsigned int tag,
+static int asn1_write_element(sc_context_t *ctx, unsigned int tag,
 	const u8 * data, size_t datalen, u8 ** out, size_t * outlen)
 {
 	u8 t;
@@ -726,8 +726,8 @@ static const struct sc_asn1_entry c_asn1_path[4] = {
 	{ NULL }
 };
 
-static int asn1_decode_path(struct sc_context *ctx, const u8 *in, size_t len,
-			    struct sc_path *path, int depth)
+static int asn1_decode_path(sc_context_t *ctx, const u8 *in, size_t len,
+			    sc_path_t *path, int depth)
 {
 	int idx, count, r;
 	struct sc_asn1_entry asn1_path[4];
@@ -755,12 +755,12 @@ static int asn1_decode_path(struct sc_context *ctx, const u8 *in, size_t len,
 	return 0;
 }
 
-static int asn1_encode_path(struct sc_context *ctx, const struct sc_path *path,
+static int asn1_encode_path(sc_context_t *ctx, const sc_path_t *path,
 			    u8 **buf, size_t *bufsize, int depth)
 {
 	int r;
  	struct sc_asn1_entry asn1_path[4];
-	struct sc_path tpath = *path;
+	sc_path_t tpath = *path;
 
 	sc_copy_asn1_entry(c_asn1_path, asn1_path);
 	sc_format_asn1_entry(asn1_path + 0, (void *) &tpath.value, (void *) &tpath.len, 1);
@@ -789,7 +789,7 @@ static const struct sc_asn1_entry c_asn1_p15_obj[5] = {
 	{ NULL }
 };
 
-static int asn1_decode_p15_object(struct sc_context *ctx, const u8 *in,
+static int asn1_decode_p15_object(sc_context_t *ctx, const u8 *in,
 				  size_t len, struct sc_asn1_pkcs15_object *obj,
 				  int depth)
 {
@@ -816,7 +816,7 @@ static int asn1_decode_p15_object(struct sc_context *ctx, const u8 *in,
 	return r;
 }
 
-static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_asn1_pkcs15_object *obj,
+static int asn1_encode_p15_object(sc_context_t *ctx, const struct sc_asn1_pkcs15_object *obj,
 				  u8 **buf, size_t *bufsize, int depth)
 {
 	int r;
@@ -848,13 +848,13 @@ static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_asn1_p
 	return r;
 }
 
-static int asn1_decode_entry(struct sc_context *ctx,struct sc_asn1_entry *entry,
+static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			     const u8 *obj, size_t objlen, int depth)
 {
 	void *parm = entry->parm;
-	int (*callback_func)(struct sc_context *nctx, void *arg, const u8 *nobj,
+	int (*callback_func)(sc_context_t *nctx, void *arg, const u8 *nobj,
 			     size_t nobjlen, int ndepth) =
-		(int (*)(struct sc_context *, void *, const u8 *, size_t, int)) parm;
+		(int (*)(sc_context_t *, void *, const u8 *, size_t, int)) parm;
 	size_t *len = (size_t *) entry->arg;
 	int r = 0;
 
@@ -986,7 +986,7 @@ static int asn1_decode_entry(struct sc_context *ctx,struct sc_asn1_entry *entry,
 		break;
 	case SC_ASN1_PATH:
 		if (entry->parm != NULL)
-			r = asn1_decode_path(ctx, obj, objlen, (struct sc_path *) parm, depth);
+			r = asn1_decode_path(ctx, obj, objlen, (sc_path_t *) parm, depth);
 		break;
 	case SC_ASN1_PKCS15_ID:
 		if (entry->parm != NULL) {
@@ -1022,7 +1022,7 @@ static int asn1_decode_entry(struct sc_context *ctx,struct sc_asn1_entry *entry,
 	return 0;
 }
 
-static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
+static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 		       const u8 *in, size_t len, const u8 **newp, size_t *len_left,
 		       int choice, int depth)
 {
@@ -1114,25 +1114,25 @@ decode_ok:
 	SC_FUNC_RETURN(ctx, 3, 0);
 }
 
-int sc_asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
+int sc_asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 		   const u8 *in, size_t len, const u8 **newp, size_t *len_left)
 {
 	return asn1_decode(ctx, asn1, in, len, newp, len_left, 0, 0);
 }
 
-int sc_asn1_decode_choice(struct sc_context *ctx, struct sc_asn1_entry *asn1,
+int sc_asn1_decode_choice(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 			  const u8 *in, size_t len, const u8 **newp, size_t *len_left)
 {
 	return asn1_decode(ctx, asn1, in, len, newp, len_left, 1, 0);
 }
 
-static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry *entry,
+static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entry,
 			     u8 **obj, size_t *objlen, int depth)
 {
 	void *parm = entry->parm;
-	int (*callback_func)(struct sc_context *nctx, void *arg, u8 **nobj,
+	int (*callback_func)(sc_context_t *nctx, void *arg, u8 **nobj,
 			     size_t *nobjlen, int ndepth) =
-		(int (*)(struct sc_context *, void *, u8 **, size_t *, int)) parm;
+		(int (*)(sc_context_t *, void *, u8 **, size_t *, int)) parm;
 	const size_t *len = (const size_t *) entry->arg;
 	int r = 0;
 	u8 * buf = NULL;
@@ -1233,7 +1233,7 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 			r = sc_asn1_encode_object_id(&buf, &buflen, (struct sc_object_id *) parm);
 		break;
 	case SC_ASN1_PATH:
-		r = asn1_encode_path(ctx, (const struct sc_path *) parm, &buf, &buflen, depth);
+		r = asn1_encode_path(ctx, (const sc_path_t *) parm, &buf, &buflen, depth);
 		break;
 	case SC_ASN1_PKCS15_ID:
 		if (entry->parm != NULL) {
@@ -1308,7 +1308,7 @@ no_object:
 	return r;
 }
 
-static int asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,
+static int asn1_encode(sc_context_t *ctx, const struct sc_asn1_entry *asn1,
 		      u8 **ptr, size_t *size, int depth)
 {
 	int r, idx = 0;
@@ -1346,20 +1346,20 @@ static int asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,
 	return 0;
 }
 
-int sc_asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,
+int sc_asn1_encode(sc_context_t *ctx, const struct sc_asn1_entry *asn1,
 		   u8 **ptr, size_t *size)
 {
 	return asn1_encode(ctx, asn1, ptr, size, 0);
 }
 
-int _sc_asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,
+int _sc_asn1_encode(sc_context_t *ctx, const struct sc_asn1_entry *asn1,
 		    u8 **ptr, size_t *size, int depth)
 {
 	return asn1_encode(ctx, asn1, ptr, size, depth);
 }
 
 int
-_sc_asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
+_sc_asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 		       const u8 *in, size_t len, const u8 **newp, size_t *left,
 		       int choice, int depth)
 {

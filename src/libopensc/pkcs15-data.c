@@ -83,7 +83,7 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 			       struct sc_pkcs15_object *obj,
 			       const u8 ** buf, size_t *buflen)
 {
-        struct sc_context *ctx = p15card->card->ctx;
+        sc_context_t *ctx = p15card->card->ctx;
 	struct sc_pkcs15_data_info info;
 	struct sc_asn1_entry	asn1_com_data_attr[3],
 				asn1_type_data_attr[2],
@@ -120,7 +120,7 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
-int sc_pkcs15_encode_dodf_entry(struct sc_context *ctx,
+int sc_pkcs15_encode_dodf_entry(sc_context_t *ctx,
 			       const struct sc_pkcs15_object *obj,
 			       u8 **buf, size_t *bufsize)
 {

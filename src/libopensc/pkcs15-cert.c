@@ -30,7 +30,7 @@
 #endif
 #include <assert.h>
 
-static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen, struct sc_pkcs15_cert *cert)
+static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, struct sc_pkcs15_cert *cert)
 {
 	int r;
 	struct sc_algorithm_id pk_alg, sig_alg;
@@ -176,7 +176,7 @@ int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
 			       struct sc_pkcs15_object *obj,
 			       const u8 ** buf, size_t *buflen)
 {
-        struct sc_context *ctx = p15card->card->ctx;
+        sc_context_t *ctx = p15card->card->ctx;
 	struct sc_pkcs15_cert_info info;
 	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_cert_attr[4],
 				asn1_x509_cert_attr[2], asn1_type_cert_attr[2],
@@ -227,7 +227,7 @@ int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
-int sc_pkcs15_encode_cdf_entry(struct sc_context *ctx,
+int sc_pkcs15_encode_cdf_entry(sc_context_t *ctx,
 			       const struct sc_pkcs15_object *obj,
 			       u8 **buf, size_t *bufsize)
 {

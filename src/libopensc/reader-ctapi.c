@@ -79,7 +79,7 @@ struct ctapi_slot_data {
 };
 
 /* Reset slot or reader */
-static int ctapi_reset(struct sc_reader *reader, struct sc_slot_info *slot)
+static int ctapi_reset(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	struct ctapi_private_data *priv = GET_PRIV_DATA(reader);
 	char rv;
@@ -107,7 +107,7 @@ static int ctapi_reset(struct sc_reader *reader, struct sc_slot_info *slot)
 	return 0;
 }
 
-static void set_default_fu(struct sc_reader *reader)
+static void set_default_fu(sc_reader_t *reader)
 {
 	if (!reader) return;
 
@@ -120,7 +120,7 @@ static void set_default_fu(struct sc_reader *reader)
 
 /* Detect functional units of the reader according to CT-BCS spec version 1.0
    (14.04.2004, http://www.teletrust.de/down/mct1-0_t4.zip) */
-static void detect_functional_units(struct sc_reader *reader)
+static void detect_functional_units(sc_reader_t *reader)
 {
 	struct ctapi_private_data *priv = GET_PRIV_DATA(reader);
 	char rv;
@@ -237,8 +237,8 @@ static void detect_functional_units(struct sc_reader *reader)
 	}
 }
 
-static int refresh_slot_attributes(struct sc_reader *reader,
-				   struct sc_slot_info *slot)
+static int refresh_slot_attributes(sc_reader_t *reader,
+				   sc_slot_info_t *slot)
 {
 	struct ctapi_private_data *priv = GET_PRIV_DATA(reader);
 	char rv;
@@ -286,7 +286,7 @@ static int refresh_slot_attributes(struct sc_reader *reader,
 	return 0;
 }
 
-static int ctapi_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
+static int ctapi_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 			 const u8 *sendbuf, size_t sendsize,
 			 u8 *recvbuf, size_t *recvsize,
 			 unsigned long control)
@@ -315,7 +315,7 @@ static int ctapi_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	return 0;
 }
 
-static int ctapi_detect_card_presence(struct sc_reader *reader, struct sc_slot_info *slot)
+static int ctapi_detect_card_presence(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	int r;
 	
@@ -325,7 +325,7 @@ static int ctapi_detect_card_presence(struct sc_reader *reader, struct sc_slot_i
 	return slot->flags;
 }
 
-static int ctapi_connect(struct sc_reader *reader, struct sc_slot_info *slot)
+static int ctapi_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	struct ctapi_private_data *priv = GET_PRIV_DATA(reader);
 	char rv;
@@ -379,23 +379,23 @@ static int ctapi_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	return 0;
 }
 
-static int ctapi_disconnect(struct sc_reader *reader, struct sc_slot_info *slot,
+static int ctapi_disconnect(sc_reader_t *reader, sc_slot_info_t *slot,
 			   int action)
 {
 	return 0;
 }
 
-static int ctapi_lock(struct sc_reader *reader, struct sc_slot_info *slot)
+static int ctapi_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	return 0;
 }
 
-static int ctapi_unlock(struct sc_reader *reader, struct sc_slot_info *slot)
+static int ctapi_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	return 0;
 }
 
-static int ctapi_release(struct sc_reader *reader)
+static int ctapi_release(sc_reader_t *reader)
 {
 	struct ctapi_private_data *priv = GET_PRIV_DATA(reader);
 
@@ -428,7 +428,7 @@ static struct ctapi_module * add_module(struct ctapi_global_private_data *gpriv,
 	return &gpriv->modules[i];
 }
 
-static int ctapi_load_module(struct sc_context *ctx,
+static int ctapi_load_module(sc_context_t *ctx,
 			     struct ctapi_global_private_data *gpriv,
 			     scconf_block *conf)
 {
@@ -467,7 +467,7 @@ static int ctapi_load_module(struct sc_context *ctx,
 		int port;
 		char namebuf[128];
 		char rv;
-		struct sc_reader *reader;
+		sc_reader_t *reader;
 		struct ctapi_private_data *priv;
 		
 		if (sscanf(list->data, "%d", &port) != 1) {
@@ -479,7 +479,7 @@ static int ctapi_load_module(struct sc_context *ctx,
 			sc_error(ctx, "CT_init() failed with %d\n", rv);
 			continue;
 		}
-		reader = (struct sc_reader *) malloc(sizeof(struct sc_reader));
+		reader = (sc_reader_t *) malloc(sizeof(sc_reader_t));
 		priv = (struct ctapi_private_data *) malloc(sizeof(struct ctapi_private_data));
 		memset(reader, 0, sizeof(*reader));
 		reader->drv_data = priv;
@@ -514,7 +514,7 @@ symerr:
 	return -1;
 }
 
-static int ctapi_init(struct sc_context *ctx, void **reader_data)
+static int ctapi_init(sc_context_t *ctx, void **reader_data)
 {
 	int i;
 	struct ctapi_global_private_data *gpriv;
@@ -544,7 +544,7 @@ static int ctapi_init(struct sc_context *ctx, void **reader_data)
 	return 0;
 }
 
-static int ctapi_finish(struct sc_context *ctx, void *prv_data)
+static int ctapi_finish(sc_context_t *ctx, void *prv_data)
 {
 	struct ctapi_global_private_data *priv = (struct ctapi_global_private_data *) prv_data;
 

@@ -28,22 +28,22 @@ static struct sc_card_driver default_drv = {
 	&default_ops
 };
 
-static int default_finish(struct sc_card *card)
+static int default_finish(sc_card_t *card)
 {
 	return 0;
 }
 
-static int default_match_card(struct sc_card *card)
+static int default_match_card(sc_card_t *card)
 {
 	return 1;		/* always match */
 }
 
-static int autodetect_class(struct sc_card *card)
+static int autodetect_class(sc_card_t *card)
 {
 	int classes[] = { 0x00, 0xC0, 0xB0, 0xA0 };
 	int class_count = sizeof(classes)/sizeof(int);
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int i, r;
 
 	if (card->ctx->debug >= 2)
@@ -101,7 +101,7 @@ static int autodetect_class(struct sc_card *card)
 	return 0;
 }
 
-static int default_init(struct sc_card *card)
+static int default_init(sc_card_t *card)
 {
 	int r;
 	

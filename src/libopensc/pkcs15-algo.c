@@ -35,7 +35,7 @@ static struct sc_asn1_entry	c_asn1_des_iv[] = {
 };
 
 static int
-asn1_decode_des_params(struct sc_context *ctx, void **paramp,
+asn1_decode_des_params(sc_context_t *ctx, void **paramp,
 				const u8 *buf, size_t buflen, int depth)
 {
 	struct sc_asn1_entry asn1_des_iv[2];
@@ -57,7 +57,7 @@ asn1_decode_des_params(struct sc_context *ctx, void **paramp,
 }
 
 static int
-asn1_encode_des_params(struct sc_context *ctx, void *params,
+asn1_encode_des_params(sc_context_t *ctx, void *params,
 				u8 **buf, size_t *buflen, int depth)
 {
 	struct sc_asn1_entry asn1_des_iv[2];
@@ -77,7 +77,7 @@ static const struct sc_asn1_entry	c_asn1_pbkdf2_params[] = {
 };
 
 static int
-asn1_decode_pbkdf2_params(struct sc_context *ctx, void **paramp,
+asn1_decode_pbkdf2_params(sc_context_t *ctx, void **paramp,
 				const u8 *buf, size_t buflen, int depth)
 {
 	struct sc_pbkdf2_params info;
@@ -110,7 +110,7 @@ asn1_decode_pbkdf2_params(struct sc_context *ctx, void **paramp,
 }
 
 static int
-asn1_encode_pbkdf2_params(struct sc_context *ctx, void *params,
+asn1_encode_pbkdf2_params(sc_context_t *ctx, void *params,
 				u8 **buf, size_t *buflen, int depth)
 {
 	struct sc_pbkdf2_params *info;
@@ -140,7 +140,7 @@ static const struct sc_asn1_entry	c_asn1_pbes2_params[] = {
 };
 
 static int
-asn1_decode_pbes2_params(struct sc_context *ctx, void **paramp,
+asn1_decode_pbes2_params(sc_context_t *ctx, void **paramp,
 				const u8 *buf, size_t buflen, int depth)
 {
 	struct sc_asn1_entry asn1_pbes2_params[3];
@@ -165,7 +165,7 @@ asn1_decode_pbes2_params(struct sc_context *ctx, void **paramp,
 }
 
 static int
-asn1_encode_pbes2_params(struct sc_context *ctx, void *params,
+asn1_encode_pbes2_params(sc_context_t *ctx, void *params,
 				u8 **buf, size_t *buflen, int depth)
 {
 	struct sc_asn1_entry asn1_pbes2_params[3];
@@ -289,7 +289,7 @@ static const struct sc_asn1_entry c_asn1_alg_id[6] = {
 };
 
 int
-sc_asn1_decode_algorithm_id(struct sc_context *ctx, const u8 *in,
+sc_asn1_decode_algorithm_id(sc_context_t *ctx, const u8 *in,
 			    size_t len, struct sc_algorithm_id *id,
 			    int depth)
 {
@@ -321,7 +321,7 @@ sc_asn1_decode_algorithm_id(struct sc_context *ctx, const u8 *in,
 }
 
 int
-sc_asn1_encode_algorithm_id(struct sc_context *ctx,
+sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 			    u8 **buf, size_t *len,
 			    const struct sc_algorithm_id *id,
 			    int depth)

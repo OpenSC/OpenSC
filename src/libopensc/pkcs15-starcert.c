@@ -153,10 +153,10 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 
 	int    r, i;
 	char   buf[256];
-	struct sc_path path;
-	struct sc_file *file = NULL;
-	struct sc_card *card = p15card->card;
-	struct sc_serial_number serial;
+	sc_path_t path;
+	sc_file_t *file = NULL;
+	sc_card_t *card = p15card->card;
+	sc_serial_number_t serial;
 
 	/* get serial number */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);

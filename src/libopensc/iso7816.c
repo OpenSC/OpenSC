@@ -76,7 +76,7 @@ const static struct sc_card_error iso7816_errors[] = {
 	{ 0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,  "Application exists"},
 };
 
-static int iso7816_check_sw(struct sc_card *card, int sw1, int sw2)
+static int iso7816_check_sw(sc_card_t *card, int sw1, int sw2)
 {
 	const int err_count = sizeof(iso7816_errors)/sizeof(iso7816_errors[0]);
 	int i;
@@ -102,11 +102,11 @@ static int iso7816_check_sw(struct sc_card *card, int sw1, int sw2)
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
-static int iso7816_read_binary(struct sc_card *card,
+static int iso7816_read_binary(sc_card_t *card,
 			       unsigned int idx, u8 *buf, size_t count,
 			       unsigned long flags)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
@@ -126,11 +126,11 @@ static int iso7816_read_binary(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 3, apdu.resplen);
 }
 
-static int iso7816_read_record(struct sc_card *card,
+static int iso7816_read_record(sc_card_t *card,
 			       unsigned int rec_nr, u8 *buf, size_t count,
 			       unsigned long flags)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
@@ -152,11 +152,11 @@ static int iso7816_read_record(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 3, apdu.resplen);
 }
 
-static int iso7816_write_record(struct sc_card *card, unsigned int rec_nr,
+static int iso7816_write_record(sc_card_t *card, unsigned int rec_nr,
 			        const u8 *buf, size_t count,
 			        unsigned long flags)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 
 	if (count > 256) {
@@ -179,11 +179,11 @@ static int iso7816_write_record(struct sc_card *card, unsigned int rec_nr,
 	SC_FUNC_RETURN(card->ctx, 3, count);
 }
 
-static int iso7816_append_record(struct sc_card *card,
+static int iso7816_append_record(sc_card_t *card,
 				 const u8 *buf, size_t count,
 				 unsigned long flags)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 
 	if (count > 256) {
@@ -204,11 +204,11 @@ static int iso7816_append_record(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 3, count);
 }
 
-static int iso7816_update_record(struct sc_card *card, unsigned int rec_nr,
+static int iso7816_update_record(sc_card_t *card, unsigned int rec_nr,
 				 const u8 *buf, size_t count,
 				 unsigned long flags)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 
 	if (count > 256) {
@@ -231,11 +231,11 @@ static int iso7816_update_record(struct sc_card *card, unsigned int rec_nr,
 	SC_FUNC_RETURN(card->ctx, 3, count);
 }
 
-static int iso7816_write_binary(struct sc_card *card,
+static int iso7816_write_binary(sc_card_t *card,
 				unsigned int idx, const u8 *buf,
 				size_t count, unsigned long flags)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 
 	assert(count <= card->max_send_size);
@@ -252,11 +252,11 @@ static int iso7816_write_binary(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 3, count);
 }
 
-static int iso7816_update_binary(struct sc_card *card,
+static int iso7816_update_binary(sc_card_t *card,
 				 unsigned int idx, const u8 *buf,
 				size_t count, unsigned long flags)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 
 	assert(count <= card->max_send_size);
@@ -273,10 +273,10 @@ static int iso7816_update_binary(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 3, count);
 }
 
-static int iso7816_process_fci(struct sc_card *card, struct sc_file *file,
+static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 		       const u8 *buf, size_t buflen)
 {
-	struct sc_context *ctx = card->ctx;
+	sc_context_t *ctx = card->ctx;
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p = buf;
 
@@ -377,16 +377,16 @@ static int iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 	return 0;
 }
 
-static int iso7816_select_file(struct sc_card *card,
-			       const struct sc_path *in_path,
-			       struct sc_file **file_out)
+static int iso7816_select_file(sc_card_t *card,
+			       const sc_path_t *in_path,
+			       sc_file_t **file_out)
 {
-	struct sc_context *ctx;
-	struct sc_apdu apdu;
+	sc_context_t *ctx;
+	sc_apdu_t apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int r, pathlen;
-	struct sc_file *file = NULL;
+	sc_file_t *file = NULL;
 
 	assert(card != NULL && in_path != NULL);
 	ctx = card->ctx;
@@ -464,10 +464,10 @@ static int iso7816_select_file(struct sc_card *card,
 	return 0;
 }
 
-static int iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
+static int iso7816_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
 	int r;
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 buf[10];
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
@@ -490,7 +490,7 @@ static int iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	return 0;
 }
 
-static int iso7816_construct_fci(struct sc_card *card, const struct sc_file *file,
+static int iso7816_construct_fci(sc_card_t *card, const sc_file_t *file,
 	u8 *out, size_t *outlen)
 {
 	u8 *p = out;
@@ -541,12 +541,12 @@ static int iso7816_construct_fci(struct sc_card *card, const struct sc_file *fil
 	return 0;
 }
 
-static int iso7816_create_file(struct sc_card *card, struct sc_file *file)
+static int iso7816_create_file(sc_card_t *card, sc_file_t *file)
 {
 	int r;
 	size_t len;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 
 	len = SC_MAX_APDU_BUFFER_SIZE;
 
@@ -565,9 +565,9 @@ static int iso7816_create_file(struct sc_card *card, struct sc_file *file)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-static int iso7816_get_response(struct sc_card *card, sc_apdu_t *orig_apdu, size_t count)
+static int iso7816_get_response(sc_card_t *card, sc_apdu_t *orig_apdu, size_t count)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);
@@ -591,11 +591,11 @@ static int iso7816_get_response(struct sc_card *card, sc_apdu_t *orig_apdu, size
 	SC_FUNC_RETURN(card->ctx, 3, apdu.resplen);
 }
 
-static int iso7816_delete_file(struct sc_card *card, const struct sc_path *path)
+static int iso7816_delete_file(sc_card_t *card, const sc_path_t *path)
 {
 	int r;
 	u8 sbuf[2];
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
@@ -614,11 +614,11 @@ static int iso7816_delete_file(struct sc_card *card, const struct sc_path *path)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-static int iso7816_set_security_env(struct sc_card *card,
-				    const struct sc_security_env *env,
+static int iso7816_set_security_env(sc_card_t *card,
+				    const sc_security_env_t *env,
 				    int se_num)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
 	int r, locked = 0;
@@ -694,9 +694,9 @@ err:
 	return r;
 }
 
-static int iso7816_restore_security_env(struct sc_card *card, int se_num)
+static int iso7816_restore_security_env(sc_card_t *card, int se_num)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	
@@ -710,12 +710,12 @@ static int iso7816_restore_security_env(struct sc_card *card, int se_num)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-static int iso7816_compute_signature(struct sc_card *card,
+static int iso7816_compute_signature(sc_card_t *card,
 				     const u8 * data, size_t datalen,
 				     u8 * out, size_t outlen)
 {
 	int r;
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
@@ -748,12 +748,12 @@ static int iso7816_compute_signature(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static int iso7816_decipher(struct sc_card *card,
+static int iso7816_decipher(sc_card_t *card,
 			    const u8 * crgram, size_t crgram_len,
 			    u8 * out, size_t outlen)
 {
 	int r;
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
@@ -787,8 +787,8 @@ static int iso7816_decipher(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static int iso7816_build_pin_apdu(struct sc_card *card,
-		struct sc_apdu *apdu,
+static int iso7816_build_pin_apdu(sc_card_t *card,
+		sc_apdu_t *apdu,
 		struct sc_pin_cmd_data *data)
 {
 	static u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -866,10 +866,10 @@ static int iso7816_build_pin_apdu(struct sc_card *card,
 	return 0;
 }
 
-static int iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+static int iso7816_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   int *tries_left)
 {
-	struct sc_apdu local_apdu, *apdu;
+	sc_apdu_t local_apdu, *apdu;
 	int r;
 
 	if (tries_left)
@@ -933,9 +933,9 @@ static int iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 /*
  * For some cards, selecting the MF clears all access rights gained
  */
-static int iso7816_logout(struct sc_card *card)
+static int iso7816_logout(sc_card_t *card)
 {
-	struct sc_path in_path;
+	sc_path_t in_path;
 	in_path.value[0] = 0x3F;
 	in_path.value[1] = 0x00;
 	in_path.len = 2;
@@ -960,7 +960,7 @@ static struct sc_card_driver iso_driver = {
 	&iso_ops
 };
 
-static int no_match(struct sc_card *card)
+static int no_match(sc_card_t *card)
 {
 	return 0;
 }

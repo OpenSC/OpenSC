@@ -55,7 +55,7 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 				struct sc_pkcs15_object *obj,
 				const u8 ** buf, size_t *buflen)
 {
-	struct sc_context *ctx = p15card->card->ctx;
+	sc_context_t *ctx = p15card->card->ctx;
 	struct sc_pkcs15_pin_info info;
 	int r;
 	size_t flags_len = sizeof(info.flags);
@@ -112,7 +112,7 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
-int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
+int sc_pkcs15_encode_aodf_entry(sc_context_t *ctx,
 				 const struct sc_pkcs15_object *obj,
 				 u8 **buf, size_t *buflen)
 {
@@ -166,7 +166,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 			 const u8 *pincode, size_t pinlen)
 {
 	int r;
-	struct sc_card *card;
+	sc_card_t *card;
 	struct sc_pin_cmd_data args;
 
 	assert(p15card != NULL);
@@ -248,7 +248,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 			 const u8 *newpin, size_t newpinlen)
 {
 	int r;
-	struct sc_card *card;
+	sc_card_t *card;
 	struct sc_pin_cmd_data data;
 	size_t max_length;
 
@@ -327,7 +327,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 			 const u8 *newpin, size_t newpinlen)
 {
 	int r;
-	struct sc_card *card;
+	sc_card_t *card;
 	struct sc_pin_cmd_data data;
 	struct sc_pkcs15_object *pin_obj, *puk_obj;
 	struct sc_pkcs15_pin_info *puk_info = NULL;

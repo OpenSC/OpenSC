@@ -91,15 +91,15 @@ struct mcrd_priv_data {
 
 #define DRVDATA(card)        ((struct mcrd_priv_data *) ((card)->drv_data))
 
-static int load_special_files(struct sc_card *card);
-static int select_part (struct sc_card *card, u8 kind, unsigned short int fid,
-	                struct sc_file **file);
+static int load_special_files(sc_card_t *card);
+static int select_part (sc_card_t *card, u8 kind, unsigned short int fid,
+	                sc_file_t **file);
 
 /* Return the DF_info for the current path.  If does not yet exist,
    create it.  Returns NULL on error. */
-static struct df_info_s *get_df_info (struct sc_card *card)
+static struct df_info_s *get_df_info (sc_card_t *card)
 {
-	struct sc_context *ctx = card->ctx;
+	sc_context_t *ctx = card->ctx;
 	struct mcrd_priv_data *priv = DRVDATA (card);
 	struct df_info_s *dfi;
 
@@ -151,9 +151,9 @@ static void clear_special_files (struct df_info_s *dfi)
  */
 
 static int
-mcrd_delete_ref_to_authkey (struct sc_card *card)
+mcrd_delete_ref_to_authkey (sc_card_t *card)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	
@@ -171,9 +171,9 @@ mcrd_delete_ref_to_authkey (struct sc_card *card)
 }
 
 static int
-mcrd_delete_ref_to_signkey (struct sc_card *card)
+mcrd_delete_ref_to_signkey (sc_card_t *card)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	assert (card != NULL);
@@ -192,10 +192,10 @@ mcrd_delete_ref_to_signkey (struct sc_card *card)
 }
 
 static int
-mcrd_set_decipher_key_ref (struct sc_card *card, int key_reference)
+mcrd_set_decipher_key_ref (sc_card_t *card, int key_reference)
 {
-	struct sc_apdu apdu;
-	struct sc_path path;
+	sc_apdu_t apdu;
+	sc_path_t path;
 	int r;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 keyref_data[SC_ESTEID_KEYREF_FILE_RECLEN];
@@ -243,7 +243,7 @@ mcrd_set_decipher_key_ref (struct sc_card *card, int key_reference)
 	SC_FUNC_RETURN (card->ctx, 2, sc_check_sw (card, apdu.sw1, apdu.sw2));
 }
 
-static int mcrd_match_card(struct sc_card *card)
+static int mcrd_match_card(sc_card_t *card)
 {
 	int i;
 
@@ -253,7 +253,7 @@ static int mcrd_match_card(struct sc_card *card)
 	return 1;
 }
 
-static int mcrd_init(struct sc_card *card)
+static int mcrd_init(sc_card_t *card)
 {
 	unsigned long flags;
 	struct mcrd_priv_data *priv;
@@ -280,7 +280,7 @@ static int mcrd_init(struct sc_card *card)
 	return 0;
 }
 
-static int mcrd_finish(struct sc_card *card)
+static int mcrd_finish(sc_card_t *card)
 {
 	struct mcrd_priv_data *priv;
 
@@ -299,9 +299,9 @@ static int mcrd_finish(struct sc_card *card)
 
 /* Load the rule and keyd file into our private data.
    Return 0 on success */
-static int load_special_files (struct sc_card *card)
+static int load_special_files (sc_card_t *card)
 {
-	struct sc_context *ctx = card->ctx;
+	sc_context_t *ctx = card->ctx;
 	struct mcrd_priv_data *priv = DRVDATA (card);
 	int r, recno;
 	struct df_info_s *dfi;
@@ -321,7 +321,7 @@ static int load_special_files (struct sc_card *card)
 	SC_TEST_RET(ctx, r, "selecting EF_Rule failed");
 
 	for (recno=1;; recno++) {
-		struct sc_apdu apdu;
+		sc_apdu_t apdu;
 		u8 recvbuf[200];
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
@@ -358,7 +358,7 @@ static int load_special_files (struct sc_card *card)
 	SC_TEST_RET(ctx, r, "selecting EF_KeyD failed");
 
 	for (recno=1;; recno++) {
-		struct sc_apdu apdu;
+		sc_apdu_t apdu;
 		u8 recvbuf[200];
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
@@ -395,10 +395,10 @@ static int load_special_files (struct sc_card *card)
 /* Return the SE number from the keyD for the FID.  If ref_data is not
    NULL the reference data is returned; this shoudl be an array of at
    least 2 bytes.  Returns -1 on error.  */
-static int get_se_num_from_keyd (struct sc_card *card, unsigned short fid,
+static int get_se_num_from_keyd (sc_card_t *card, unsigned short fid,
 	                         u8 *ref_data)
 {
-	struct sc_context *ctx = card->ctx;
+	sc_context_t *ctx = card->ctx;
 	struct df_info_s *dfi;
 	struct keyd_record_s *keyd;
 	size_t len, taglen;
@@ -448,10 +448,10 @@ static int get_se_num_from_keyd (struct sc_card *card, unsigned short fid,
 }
 
 /* Process an ARR (7816-9/8.5.4) and setup the ACL. */
-static void process_arr(struct sc_card *card, struct sc_file *file,
+static void process_arr(sc_card_t *card, sc_file_t *file,
 	                const u8 *buf, size_t buflen)
 {
-	struct sc_context *ctx = card->ctx;
+	sc_context_t *ctx = card->ctx;
 	struct df_info_s *dfi;
 	struct rule_record_s *rule;
 	size_t left, taglen;
@@ -548,10 +548,10 @@ static void process_arr(struct sc_card *card, struct sc_file *file,
 }
 
 
-static void process_fcp(struct sc_card *card, struct sc_file *file,
+static void process_fcp(sc_card_t *card, sc_file_t *file,
 	                     const u8 *buf, size_t buflen)
 {
-	struct sc_context *ctx = card->ctx;
+	sc_context_t *ctx = card->ctx;
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p = buf;
 	int bad_fde = 0;
@@ -689,11 +689,11 @@ static void process_fcp(struct sc_card *card, struct sc_file *file,
 
 /* Send a select command and parse the response. */
 static int
-do_select(struct sc_card *card, u8 kind,
+do_select(sc_card_t *card, u8 kind,
 	  const u8 *buf, size_t buflen,
-	  struct sc_file **file)
+	  sc_file_t **file)
 {
-	struct sc_apdu	apdu;
+	sc_apdu_t	apdu;
 	u8	resbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
@@ -743,8 +743,8 @@ do_select(struct sc_card *card, u8 kind,
 /* Wrapper around do_select to be used when multiple selects are
    required. */
 static int
-select_part (struct sc_card *card, u8 kind, unsigned short int fid,
-	     struct sc_file **file)
+select_part (sc_card_t *card, u8 kind, unsigned short int fid,
+	     sc_file_t **file)
 {
 	u8 fbuf[2];
 	int r;
@@ -771,10 +771,10 @@ select_part (struct sc_card *card, u8 kind, unsigned short int fid,
    passed as true only DF are selected, otherwise the function tries
    to figure out whether the last path item is a DF or EF. */
 static int
-select_down (struct sc_card *card,
+select_down (sc_card_t *card,
 	     unsigned short *pathptr, size_t pathlen,
 	     int df_only,
-	     struct sc_file **file)
+	     sc_file_t **file)
 {
 	struct mcrd_priv_data *priv = DRVDATA (card);
 	int r;
@@ -817,9 +817,9 @@ select_down (struct sc_card *card,
    usual sc_path structure. */
 
 static int
-select_file_by_path (struct sc_card *card, unsigned short *pathptr,
+select_file_by_path (sc_card_t *card, unsigned short *pathptr,
 	             size_t pathlen,
-	             struct sc_file **file)
+	             sc_file_t **file)
 {
 	struct mcrd_priv_data *priv = DRVDATA (card);
 	int r;
@@ -902,8 +902,8 @@ select_file_by_path (struct sc_card *card, unsigned short *pathptr,
 }
 
 static int
-select_file_by_fid (struct sc_card *card, unsigned short *pathptr,
-	            size_t pathlen, struct sc_file **file)
+select_file_by_fid (sc_card_t *card, unsigned short *pathptr,
+	            size_t pathlen, sc_file_t **file)
 {
 	struct mcrd_priv_data *priv = DRVDATA (card);
 	int r;
@@ -966,8 +966,8 @@ select_file_by_fid (struct sc_card *card, unsigned short *pathptr,
 
 /* This drivers select command handler. */
 static int
-mcrd_select_file(struct sc_card *card, const struct sc_path *path,
-	         struct sc_file **file)
+mcrd_select_file(sc_card_t *card, const sc_path_t *path,
+	         sc_file_t **file)
 {
 	struct mcrd_priv_data *priv = DRVDATA (card);
 	int r = 0;
@@ -1038,9 +1038,9 @@ mcrd_select_file(struct sc_card *card, const struct sc_path *path,
 
 /* Crypto operations */
 
-static int mcrd_enable_se (struct sc_card *card, int se_num)
+static int mcrd_enable_se (sc_card_t *card, int se_num)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, se_num);
@@ -1057,12 +1057,12 @@ static int mcrd_enable_se (struct sc_card *card, int se_num)
    It has been generalized [?] and modified by information coming from
    openpgp card implementation, EstEID 'manual' and some other sources. -mp
    */
-static int mcrd_set_security_env(struct sc_card *card,
-	                         const struct sc_security_env *env,
+static int mcrd_set_security_env(sc_card_t *card,
+	                         const sc_security_env_t *env,
 	                         int se_num)
 {
 	struct mcrd_priv_data *priv = DRVDATA(card);
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
 	int r, locked = 0;
@@ -1177,14 +1177,14 @@ err:
 }
 
 /* heavily modified by -mp */
-static int mcrd_compute_signature(struct sc_card *card,
+static int mcrd_compute_signature(sc_card_t *card,
                                   const u8 * data, size_t datalen,
                                   u8 * out, size_t outlen)
 {
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	sc_security_env_t *env = &priv->sec_env;
 	int r;
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 
 	assert(card != NULL && data != NULL && out != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
@@ -1223,13 +1223,13 @@ static int mcrd_compute_signature(struct sc_card *card,
 }
 
 /* added by -mp */
-static int mcrd_decipher(struct sc_card *card,
+static int mcrd_decipher(sc_card_t *card,
 		  const u8 * crgram, size_t crgram_len, u8 * out,
 		  size_t out_len)
 {
 
 	int r;
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	sc_security_env_t *env = &priv->sec_env;
 	u8 *temp;
@@ -1269,7 +1269,7 @@ static int mcrd_decipher(struct sc_card *card,
 }
 
 /* added by -mp, to give pin information in the card driver (pkcs15emu->driver needed) */
-static int mcrd_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+static int mcrd_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		 int *tries_left)
 {
 	SC_FUNC_CALLED(card->ctx, 3);

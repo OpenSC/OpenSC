@@ -32,28 +32,28 @@
 #define PREALLOCATE	5
 
 /* function declarations */
-static int openct_reader_init(struct sc_context *ctx, void **priv_data);
-static int openct_add_reader(struct sc_context *ctx, unsigned int num, ct_info_t *info);
-static int openct_reader_finish(struct sc_context *ctx, void *priv_data);
-static int openct_reader_release(struct sc_reader *reader);
-static int openct_reader_detect_card_presence(struct sc_reader *reader,
-			struct sc_slot_info *slot);
-static int openct_reader_connect(struct sc_reader *reader,
-			struct sc_slot_info *slot);
-static int openct_reader_disconnect(struct sc_reader *reader,
-			struct sc_slot_info *slot, int action);
-static int openct_reader_transmit(struct sc_reader *reader,
-			struct sc_slot_info *slot,
+static int openct_reader_init(sc_context_t *ctx, void **priv_data);
+static int openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info);
+static int openct_reader_finish(sc_context_t *ctx, void *priv_data);
+static int openct_reader_release(sc_reader_t *reader);
+static int openct_reader_detect_card_presence(sc_reader_t *reader,
+			sc_slot_info_t *slot);
+static int openct_reader_connect(sc_reader_t *reader,
+			sc_slot_info_t *slot);
+static int openct_reader_disconnect(sc_reader_t *reader,
+			sc_slot_info_t *slot, int action);
+static int openct_reader_transmit(sc_reader_t *reader,
+			sc_slot_info_t *slot,
 			const u8 *sendbuf, size_t sendsize,
 			u8 *recvbuf, size_t *recvsize, unsigned long control);
-static int openct_reader_perform_verify(struct sc_reader *reader,
-			struct sc_slot_info *slot,
+static int openct_reader_perform_verify(sc_reader_t *reader,
+			sc_slot_info_t *slot,
 			struct sc_pin_cmd_data *info);
-static int openct_reader_lock(struct sc_reader *reader,
-			struct sc_slot_info *slot);
-static int openct_reader_unlock(struct sc_reader *reader,
-			struct sc_slot_info *slot);
-static int		openct_error(struct sc_reader *, int);
+static int openct_reader_lock(sc_reader_t *reader,
+			sc_slot_info_t *slot);
+static int openct_reader_unlock(sc_reader_t *reader,
+			sc_slot_info_t *slot);
+static int		openct_error(sc_reader_t *, int);
 
 static struct sc_reader_operations openct_ops;
 
@@ -82,7 +82,7 @@ struct slot_data {
  * is loaded
  */
 static int
-openct_reader_init(struct sc_context *ctx, void **priv_data)
+openct_reader_init(sc_context_t *ctx, void **priv_data)
 {
 	unsigned int	i;
 
@@ -101,7 +101,7 @@ openct_reader_init(struct sc_context *ctx, void **priv_data)
 }
 
 static int
-openct_add_reader(struct sc_context *ctx, unsigned int num, ct_info_t *info)
+openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
 {
 	sc_reader_t	*reader;
 	struct driver_data *data;
@@ -152,7 +152,7 @@ openct_add_reader(struct sc_context *ctx, unsigned int num, ct_info_t *info)
  * deallocate the private data and any resources.
  */
 int
-openct_reader_finish(struct sc_context *ctx, void *priv_data)
+openct_reader_finish(sc_context_t *ctx, void *priv_data)
 {
 	SC_FUNC_CALLED(ctx, 1);
 	return SC_NO_ERROR;
@@ -164,7 +164,7 @@ openct_reader_finish(struct sc_context *ctx, void *priv_data)
  * freed by OpenSC.
  */
 int
-openct_reader_release(struct sc_reader *reader)
+openct_reader_release(sc_reader_t *reader)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 
@@ -184,8 +184,8 @@ openct_reader_release(struct sc_reader *reader)
  * Check whether a card was added/removed
  */
 int
-openct_reader_detect_card_presence(struct sc_reader *reader,
-			struct sc_slot_info *slot)
+openct_reader_detect_card_presence(sc_reader_t *reader,
+			sc_slot_info_t *slot)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc, status;
@@ -208,8 +208,8 @@ openct_reader_detect_card_presence(struct sc_reader *reader,
 }
 
 static int
-openct_reader_connect(struct sc_reader *reader,
-			struct sc_slot_info *slot)
+openct_reader_connect(sc_reader_t *reader,
+			sc_slot_info_t *slot)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc;
@@ -243,8 +243,8 @@ openct_reader_connect(struct sc_reader *reader,
 }
 
 static int
-openct_reader_reconnect(struct sc_reader *reader,
-			struct sc_slot_info *slot)
+openct_reader_reconnect(sc_reader_t *reader,
+			sc_slot_info_t *slot)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int	rc;
@@ -258,8 +258,8 @@ openct_reader_reconnect(struct sc_reader *reader,
 }
 
 int
-openct_reader_disconnect(struct sc_reader *reader,
-			struct sc_slot_info *slot, int action)
+openct_reader_disconnect(sc_reader_t *reader,
+			sc_slot_info_t *slot, int action)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 
@@ -271,8 +271,8 @@ openct_reader_disconnect(struct sc_reader *reader,
 }
 
 int
-openct_reader_transmit(struct sc_reader *reader,
-		struct sc_slot_info *slot,
+openct_reader_transmit(sc_reader_t *reader,
+		sc_slot_info_t *slot,
 		const u8 *sendbuf, size_t sendsize,
 		u8 *recvbuf, size_t *recvsize, unsigned long control)
 {
@@ -300,8 +300,8 @@ openct_reader_transmit(struct sc_reader *reader,
 }
 
 int
-openct_reader_perform_verify(struct sc_reader *reader,
-		struct sc_slot_info *slot,
+openct_reader_perform_verify(sc_reader_t *reader,
+		sc_slot_info_t *slot,
 		struct sc_pin_cmd_data *info)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
@@ -363,8 +363,8 @@ openct_reader_perform_verify(struct sc_reader *reader,
 
 
 int
-openct_reader_lock(struct sc_reader *reader,
-			struct sc_slot_info *slot)
+openct_reader_lock(sc_reader_t *reader,
+			sc_slot_info_t *slot)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	struct slot_data *slot_data = (struct slot_data *) slot->drv_data;
@@ -390,8 +390,8 @@ openct_reader_lock(struct sc_reader *reader,
 }
 
 int
-openct_reader_unlock(struct sc_reader *reader,
-			struct sc_slot_info *slot)
+openct_reader_unlock(sc_reader_t *reader,
+			sc_slot_info_t *slot)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	struct slot_data *slot_data = (struct slot_data *) slot->drv_data;
@@ -416,7 +416,7 @@ openct_reader_unlock(struct sc_reader *reader,
  * Handle an error code returned by OpenCT
  */
 int
-openct_error(struct sc_reader *reader, int code)
+openct_error(sc_reader_t *reader, int code)
 {
 	if (code >= 0)
 		return code;

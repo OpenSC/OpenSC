@@ -83,7 +83,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 				 struct sc_pkcs15_object *obj,
 				 const u8 ** buf, size_t *buflen)
 {
-        struct sc_context *ctx = p15card->card->ctx;
+        sc_context_t *ctx = p15card->card->ctx;
         struct sc_pkcs15_prkey_info info;
 	int r;
 	size_t usage_len = sizeof(info.usage);
@@ -161,7 +161,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
-int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
+int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx,
 				 const struct sc_pkcs15_object *obj,
 				 u8 **buf, size_t *buflen)
 {
@@ -244,7 +244,7 @@ static const struct sc_asn1_entry	c_asn1_dsa_prkey_obj[] = {
 };
 
 static int
-sc_pkcs15_encode_prkey_dsa(struct sc_context *ctx,
+sc_pkcs15_encode_prkey_dsa(sc_context_t *ctx,
 		struct sc_pkcs15_prkey_dsa *key,
 		u8 **buf, size_t *buflen)
 {
@@ -258,7 +258,7 @@ sc_pkcs15_encode_prkey_dsa(struct sc_context *ctx,
 }
 
 static int
-sc_pkcs15_decode_prkey_dsa(struct sc_context *ctx,
+sc_pkcs15_decode_prkey_dsa(sc_context_t *ctx,
 		struct sc_pkcs15_prkey_dsa *key,
 		const u8 *buf, size_t buflen)
 {
@@ -272,7 +272,7 @@ sc_pkcs15_decode_prkey_dsa(struct sc_context *ctx,
 }
 
 int
-sc_pkcs15_encode_prkey(struct sc_context *ctx,
+sc_pkcs15_encode_prkey(sc_context_t *ctx,
 		struct sc_pkcs15_prkey *key,
 		u8 **buf, size_t *len)
 {
@@ -284,7 +284,7 @@ sc_pkcs15_encode_prkey(struct sc_context *ctx,
 }
 
 int
-sc_pkcs15_decode_prkey(struct sc_context *ctx,
+sc_pkcs15_decode_prkey(sc_context_t *ctx,
 		struct sc_pkcs15_prkey *key,
 		const u8 *buf, size_t len)
 {
@@ -301,10 +301,10 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 		const char *passphrase,
 		struct sc_pkcs15_prkey **out)
 {
-	struct sc_context *ctx = p15card->card->ctx;
+	sc_context_t *ctx = p15card->card->ctx;
 	struct sc_pkcs15_prkey_info *info;
 	struct sc_pkcs15_prkey key;
-	struct sc_path path;
+	sc_path_t path;
 	u8 *data = NULL;
 	size_t len;
 	int r;

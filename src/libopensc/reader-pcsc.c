@@ -77,7 +77,7 @@ struct pcsc_slot_data {
 	SCARD_READERSTATE_A reader_state;
 };
 
-static int pcsc_detect_card_presence(struct sc_reader *reader, struct sc_slot_info *slot);
+static int pcsc_detect_card_presence(sc_reader_t *reader, sc_slot_info_t *slot);
 
 static int pcsc_ret_to_error(long rv)
 {
@@ -123,7 +123,7 @@ static DWORD opensc_proto_to_pcsc(unsigned int proto)
 	}
 }
 
-static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
+static int pcsc_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 			 const u8 *sendbuf, size_t sendsize,
 			 u8 *recvbuf, size_t *recvsize,
 			 unsigned long control)
@@ -187,7 +187,7 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	return 0;
 }
 
-static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info *slot)
+static int refresh_slot_attributes(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
@@ -254,7 +254,7 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 	return 0;
 }
 
-static int pcsc_detect_card_presence(struct sc_reader *reader, struct sc_slot_info *slot)
+static int pcsc_detect_card_presence(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	int rv;
 
@@ -267,14 +267,14 @@ static int pcsc_detect_card_presence(struct sc_reader *reader, struct sc_slot_in
  * This function ignores the list of slots, because with
  * pcsc we have a 1:1 mapping of readers and slots anyway
  */
-static int pcsc_wait_for_event(struct sc_reader **readers,
-			       struct sc_slot_info **slots,
+static int pcsc_wait_for_event(sc_reader_t **readers,
+			       sc_slot_info_t **slots,
 			       size_t nslots,
                                unsigned int event_mask,
                                int *reader,
 			       unsigned int *event, int timeout)
 {
-	struct sc_context *ctx;
+	sc_context_t *ctx;
 	SCARDCONTEXT pcsc_ctx;
 	LONG ret;
 	SCARD_READERSTATE_A rgReaderStates[SC_MAX_READERS];
@@ -377,7 +377,7 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 	}
 }
 
-static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
+static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	DWORD active_proto, protocol;
 	SCARDHANDLE card_handle;
@@ -444,7 +444,7 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	return 0;
 }
 
-static int pcsc_disconnect(struct sc_reader *reader, struct sc_slot_info *slot,
+static int pcsc_disconnect(sc_reader_t *reader, sc_slot_info_t *slot,
 			   int action)
 {
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
@@ -456,7 +456,7 @@ static int pcsc_disconnect(struct sc_reader *reader, struct sc_slot_info *slot,
 	return 0;
 }
 
-static int pcsc_lock(struct sc_reader *reader, struct sc_slot_info *slot)
+static int pcsc_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	long rv;
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
@@ -470,7 +470,7 @@ static int pcsc_lock(struct sc_reader *reader, struct sc_slot_info *slot)
 	return 0;
 }
 
-static int pcsc_unlock(struct sc_reader *reader, struct sc_slot_info *slot)
+static int pcsc_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	long rv;
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
@@ -484,7 +484,7 @@ static int pcsc_unlock(struct sc_reader *reader, struct sc_slot_info *slot)
 	return 0;
 }
 
-static int pcsc_release(struct sc_reader *reader)
+static int pcsc_release(sc_reader_t *reader)
 {
 	int i;
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
@@ -508,7 +508,7 @@ static struct sc_reader_driver pcsc_drv = {
 	&pcsc_ops
 };
 
-static int pcsc_init(struct sc_context *ctx, void **reader_data)
+static int pcsc_init(sc_context_t *ctx, void **reader_data)
 {
 	LONG rv;
 	DWORD reader_buf_size;
@@ -554,10 +554,10 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	}
 	p = reader_buf;
 	do {
-		struct sc_reader *reader = (struct sc_reader *) malloc(sizeof(struct sc_reader));
+		sc_reader_t *reader = (sc_reader_t *) malloc(sizeof(sc_reader_t));
 		struct pcsc_private_data *priv = (struct pcsc_private_data *) malloc(sizeof(struct pcsc_private_data));
 		struct pcsc_slot_data *pslot = (struct pcsc_slot_data *) malloc(sizeof(struct pcsc_slot_data));
-		struct sc_slot_info *slot;
+		sc_slot_info_t *slot;
 		
 		if (reader == NULL || priv == NULL || pslot == NULL) {
 			if (reader)
@@ -600,7 +600,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	return 0;
 }
 
-static int pcsc_finish(struct sc_context *ctx, void *prv_data)
+static int pcsc_finish(sc_context_t *ctx, void *prv_data)
 {
 	struct pcsc_global_private_data *priv = (struct pcsc_global_private_data *) prv_data;
 
@@ -613,7 +613,7 @@ static int pcsc_finish(struct sc_context *ctx, void *prv_data)
 }
 
 static int
-pcsc_pin_cmd(struct sc_reader *reader, sc_slot_info_t * slot, struct sc_pin_cmd_data *data)
+pcsc_pin_cmd(sc_reader_t *reader, sc_slot_info_t * slot, struct sc_pin_cmd_data *data)
 {
 	/* XXX: temporary */
 	if (slot->capabilities & SC_SLOT_CAP_PIN_PAD) {

@@ -97,13 +97,13 @@ static struct sc_card_driver cyberflex_drv = {
 	&cyberflex_ops
 };
 
-static int flex_finish(struct sc_card *card)
+static int flex_finish(sc_card_t *card)
 {
 	free(card->drv_data);
 	return 0;
 }
 
-static int cryptoflex_match_card(struct sc_card *card)
+static int cryptoflex_match_card(sc_card_t *card)
 {
 	int i;
 
@@ -121,7 +121,7 @@ static int cryptoflex_match_card(struct sc_card *card)
 	return 0;
 }
 
-static int cyberflex_match_card(struct sc_card *card)
+static int cyberflex_match_card(sc_card_t *card)
 {
 	int i;
 
@@ -138,7 +138,7 @@ static int cyberflex_match_card(struct sc_card *card)
 	return 0;
 }
 
-static int flex_init(struct sc_card *card)
+static int flex_init(sc_card_t *card)
 {
 	struct flex_private_data *data;
 
@@ -228,10 +228,10 @@ add_acl_entry(sc_card_t *card, sc_file_t *file, unsigned int op, u8 nibble)
 }
 
 static int
-cryptoflex_get_ac_keys(struct sc_card *card, struct sc_file *file)
+cryptoflex_get_ac_keys(sc_card_t *card, sc_file_t *file)
 {
 #if 0
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 rbuf[3];
 	int r;
 	
@@ -430,7 +430,7 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 	return 0;
 }
 
-static int check_path(struct sc_card *card, const u8 **pathptr, size_t *pathlen,
+static int check_path(sc_card_t *card, const u8 **pathptr, size_t *pathlen,
 		      int need_info)
 {
 	const u8 *curptr = card->cache.current_path.value;
@@ -463,10 +463,10 @@ static int check_path(struct sc_card *card, const u8 **pathptr, size_t *pathlen,
 	return 0;
 }
 
-static void cache_path(struct sc_card *card, const struct sc_path *path,
+static void cache_path(sc_card_t *card, const sc_path_t *path,
 	int result)
 {
-	struct sc_path *curpath = &card->cache.current_path;
+	sc_path_t *curpath = &card->cache.current_path;
 	
 	if (result < 0) {
 		curpath->len = 0;
@@ -504,13 +504,13 @@ static void cache_path(struct sc_card *card, const struct sc_path *path,
 	}
 }
 
-static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
-			  u8 p1, struct sc_file **file_out)
+static int select_file_id(sc_card_t *card, const u8 *buf, size_t buflen,
+			  u8 p1, sc_file_t **file_out)
 {
 	int r;
-	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	struct sc_file *file;
+	sc_apdu_t apdu;
+        u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+        sc_file_t *file;
 
 	if (card->ctx->debug >= 4) {
 		char	string[32];
@@ -561,8 +561,8 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 	return 0;
 }
 
-static int flex_select_file(struct sc_card *card, const struct sc_path *path,
-			     struct sc_file **file_out)
+static int flex_select_file(sc_card_t *card, const sc_path_t *path,
+			     sc_file_t **file_out)
 {
 	int r;
 	const u8 *pathptr = path->value;
@@ -615,9 +615,9 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-static int cryptoflex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+static int cryptoflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 rbuf[4];
 	int r;
 	size_t count = 0;
@@ -651,9 +651,9 @@ static int cryptoflex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 /*
  * The Cyberflex LIST FILES command is slightly different...
  */
-static int cyberflex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+static int cyberflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 rbuf[6];
 	int r;
 	size_t count = 0, p2 = 0;
@@ -683,9 +683,9 @@ static int cyberflex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	return count;
 }
 
-static int flex_delete_file(struct sc_card *card, const struct sc_path *path)
+static int flex_delete_file(sc_card_t *card, const sc_path_t *path)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -705,7 +705,7 @@ static int flex_delete_file(struct sc_card *card, const struct sc_path *path)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-static int acl_to_ac_nibble(const struct sc_acl_entry *e)
+static int acl_to_ac_nibble(const sc_acl_entry_t *e)
 {
 	if (e == NULL)
 		return -1;
@@ -734,7 +734,7 @@ static int acl_to_ac_nibble(const struct sc_acl_entry *e)
 	return -1;
 }
 
-static int acl_to_keynum_nibble(const struct sc_acl_entry *e)
+static int acl_to_keynum_nibble(const sc_acl_entry_t *e)
 {
 	while (e != NULL && e->method != SC_AC_AUT)
 		e = e->next;
@@ -796,7 +796,7 @@ cryptoflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 	p[8] = p[9] = p[10] = 0;
 	p[13] = p[14] = p[15] = 0; /* Key numbers */
 	for (i = 0; i < 6; i++) {
-		const struct sc_acl_entry *entry;
+		const sc_acl_entry_t *entry;
 		if (ops[i] == -1)
 			continue;
 		entry = sc_file_get_acl_entry(file, ops[i]);
@@ -898,12 +898,12 @@ cyberflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 	return 0;
 }
 
-static int flex_create_file(struct sc_card *card, struct sc_file *file)
+static int flex_create_file(sc_card_t *card, sc_file_t *file)
 {
 	u8 sbuf[18];
 	size_t sendlen;
 	int r, rec_nr;
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	
 	/* Build the file attrs. These are not the real FCI bytes
 	 * in the standard sense, but its a convenient way of
@@ -939,9 +939,9 @@ static int flex_create_file(struct sc_card *card, struct sc_file *file)
 	return 0;
 }
 
-static int flex_set_security_env(struct sc_card *card,
-				 const struct sc_security_env *env,
-				 int se_num)
+static int flex_set_security_env(sc_card_t *card,
+				 const sc_security_env_t *env,
+				 int se_num)   
 {
 	struct flex_private_data *prv = (struct flex_private_data *) card->drv_data;
 
@@ -979,7 +979,7 @@ static int flex_set_security_env(struct sc_card *card,
 	return 0;
 }
 
-static int flex_restore_security_env(struct sc_card *card, int se_num)
+static int flex_restore_security_env(sc_card_t *card, int se_num)
 {
 	return 0;
 }
@@ -989,7 +989,7 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 				size_t data_len, u8 * out, size_t outlen)
 {
 	struct flex_private_data *prv = (struct flex_private_data *) card->drv_data;
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 	size_t i;
@@ -1043,7 +1043,7 @@ cyberflex_compute_signature(sc_card_t *card, const u8 *data,
 		size_t data_len, u8 * out, size_t outlen)
 {
 	struct flex_private_data *prv = DRV_DATA(card);
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 alg_id, key_id;
 	int r;
 	
@@ -1076,7 +1076,7 @@ cyberflex_compute_signature(sc_card_t *card, const u8 *data,
 	return apdu.resplen;
 }
 
-static int flex_decipher(struct sc_card *card,
+static int flex_decipher(sc_card_t *card,
 			    const u8 * crgram, size_t crgram_len,
 			    u8 * out, size_t outlen)
 {
@@ -1088,7 +1088,7 @@ static int flex_decipher(struct sc_card *card,
 }
 
 /* Return the default AAK for this type of card */
-static int flex_get_default_key(struct sc_card *card,
+static int flex_get_default_key(sc_card_t *card,
 				struct sc_cardctl_default_key *data)
 {
 	struct flex_private_data *prv = DRV_DATA(card);
@@ -1115,7 +1115,7 @@ static int flex_get_default_key(struct sc_card *card,
 /* Generate key on-card */
 static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genkey_info *data)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r, p1, p2;
 	
@@ -1191,7 +1191,7 @@ static int flex_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	return SC_SUCCESS;
 }
 
-static int flex_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
+static int flex_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	switch (cmd) {
 	case SC_CARDCTL_GET_DEFAULT_KEY:
@@ -1207,7 +1207,7 @@ static int flex_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
-static int flex_build_verify_apdu(struct sc_card *card, struct sc_apdu *apdu,
+static int flex_build_verify_apdu(sc_card_t *card, sc_apdu_t *apdu,
 				  struct sc_pin_cmd_data *data)
 {
 	static u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -1253,7 +1253,7 @@ static void flex_init_pin_info(struct sc_pin_cmd_pin *pin, unsigned int num)
 	pin->offset     = 5 + num * 8;
 }
 
-static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+static int flex_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			int *tries_left)
 {
 	sc_apdu_t apdu;
@@ -1288,9 +1288,9 @@ static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	return r;
 }
 
-static int flex_logout(struct sc_card *card)
+static int flex_logout(sc_card_t *card)
 {
-	struct	sc_apdu apdu;
+	sc_apdu_t apdu;
 	int	r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0x07, 0x00);

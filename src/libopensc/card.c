@@ -27,13 +27,13 @@
 #endif
 #include <string.h>
 
-int sc_check_sw(struct sc_card *card, int sw1, int sw2)
+int sc_check_sw(sc_card_t *card, int sw1, int sw2)
 {
 	assert(card->ops->check_sw != NULL);
 	return card->ops->check_sw(card, sw1, sw2);
 }
 
-static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
+static int sc_check_apdu(sc_context_t *ctx, const sc_apdu_t *apdu)
 {
 	if (apdu->le > 256) {
 		sc_error(ctx, "Value of Le too big (maximum 256 bytes)\n");
@@ -126,7 +126,7 @@ sc_masquerade_apdu(sc_card_t *card, sc_apdu_t *apdu)
 	return 0;
 }
 
-static int sc_transceive(struct sc_card *card, struct sc_apdu *apdu)
+static int sc_transceive(sc_card_t *card, sc_apdu_t *apdu)
 {
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -238,7 +238,7 @@ static int sc_transceive(struct sc_card *card, struct sc_apdu *apdu)
 	return 0;
 }
 
-int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
+int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 {
 	int r;
 	size_t orig_resplen;
@@ -304,7 +304,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	return 0;
 }
 
-void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
+void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
 		    int cse, int ins, int p1, int p2)
 {
 	assert(card != NULL && apdu != NULL);
@@ -318,11 +318,11 @@ void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
 	return;
 }
 
-static struct sc_card * sc_card_new(void)
+static sc_card_t * sc_card_new(void)
 {
-	struct sc_card *card;
+	sc_card_t *card;
 
-	card = (struct sc_card *) calloc(1, sizeof(struct sc_card));
+	card = (sc_card_t *) calloc(1, sizeof(struct sc_card));
 	if (card == NULL)
 		return NULL;
 	card->ops = (struct sc_card_operations *) malloc(sizeof(struct sc_card_operations));
@@ -338,7 +338,7 @@ static struct sc_card * sc_card_new(void)
 	return card;
 }
 
-static void sc_card_free(struct sc_card *card)
+static void sc_card_free(sc_card_t *card)
 {
 	assert(sc_card_valid(card));
 	sc_free_apps(card);
@@ -352,12 +352,12 @@ static void sc_card_free(struct sc_card *card)
 	free(card);
 }
 
-int sc_connect_card(struct sc_reader *reader, int slot_id,
-		    struct sc_card **card_out)
+int sc_connect_card(sc_reader_t *reader, int slot_id,
+		    sc_card_t **card_out)
 {
-	struct sc_card *card;
-	struct sc_context *ctx = reader->ctx;
-	struct sc_slot_info *slot = _sc_get_slot_info(reader, slot_id);
+	sc_card_t *card;
+	sc_context_t *ctx = reader->ctx;
+	sc_slot_info_t *slot = _sc_get_slot_info(reader, slot_id);
 	struct sc_card_driver *driver;
 	int i, r = 0, idx;
 
@@ -478,9 +478,9 @@ err:
 	SC_FUNC_RETURN(ctx, 1, r);
 }
 
-int sc_disconnect_card(struct sc_card *card, int action)
+int sc_disconnect_card(sc_card_t *card, int action)
 {
-	struct sc_context *ctx;
+	sc_context_t *ctx;
 	assert(sc_card_valid(card));
 	ctx = card->ctx;
 	SC_FUNC_CALLED(ctx, 1);
@@ -501,7 +501,7 @@ int sc_disconnect_card(struct sc_card *card, int action)
 	SC_FUNC_RETURN(ctx, 1, 0);
 }
 
-int sc_lock(struct sc_card *card)
+int sc_lock(sc_card_t *card)
 {
 	int r = 0;
 
@@ -520,7 +520,7 @@ int sc_lock(struct sc_card *card)
 	return r;
 }
 
-int sc_unlock(struct sc_card *card)
+int sc_unlock(sc_card_t *card)
 {
 	int r = 0;
 
@@ -549,7 +549,7 @@ int sc_unlock(struct sc_card *card)
 	return r;
 }
 
-int sc_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+int sc_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
 	int r;
 
@@ -561,7 +561,7 @@ int sc_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
-int sc_create_file(struct sc_card *card, struct sc_file *file)
+int sc_create_file(sc_card_t *card, sc_file_t *file)
 {
 	int r;
 
@@ -579,7 +579,7 @@ int sc_create_file(struct sc_card *card, struct sc_file *file)
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
-int sc_delete_file(struct sc_card *card, const struct sc_path *path)
+int sc_delete_file(sc_card_t *card, const sc_path_t *path)
 {
 	int r;
 
@@ -595,7 +595,7 @@ int sc_delete_file(struct sc_card *card, const struct sc_path *path)
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
-int sc_read_binary(struct sc_card *card, unsigned int idx,
+int sc_read_binary(sc_card_t *card, unsigned int idx,
 		   unsigned char *buf, size_t count, unsigned long flags)
 {
 	size_t max_le = card->max_recv_size;
@@ -637,7 +637,7 @@ int sc_read_binary(struct sc_card *card, unsigned int idx,
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-int sc_write_binary(struct sc_card *card, unsigned int idx,
+int sc_write_binary(sc_card_t *card, unsigned int idx,
 		    const u8 *buf, size_t count, unsigned long flags)
 {
 	size_t max_lc = card->max_send_size;
@@ -679,7 +679,7 @@ int sc_write_binary(struct sc_card *card, unsigned int idx,
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-int sc_update_binary(struct sc_card *card, unsigned int idx,
+int sc_update_binary(sc_card_t *card, unsigned int idx,
 		     const u8 *buf, size_t count, unsigned long flags)
 {
 	size_t max_lc = card->max_send_size;
@@ -721,9 +721,9 @@ int sc_update_binary(struct sc_card *card, unsigned int idx,
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-int sc_select_file(struct sc_card *card,
-		   const struct sc_path *in_path,
-		   struct sc_file **file)
+int sc_select_file(sc_card_t *card,
+		   const sc_path_t *in_path,
+		   sc_file_t **file)
 {
 	int r;
 
@@ -778,7 +778,7 @@ int sc_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t len)
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
-int sc_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
+int sc_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
 	int r;
 
@@ -790,7 +790,7 @@ int sc_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 *buf,
+int sc_read_record(sc_card_t *card, unsigned int rec_nr, u8 *buf,
 		   size_t count, unsigned long flags)
 {
 	int r;
@@ -803,7 +803,7 @@ int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 *buf,
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-int sc_write_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
+int sc_write_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
 		    size_t count, unsigned long flags)
 {
 	int r;
@@ -816,7 +816,7 @@ int sc_write_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
+int sc_append_record(sc_card_t *card, const u8 * buf, size_t count,
 		     unsigned long flags)
 {
 	int r;
@@ -829,7 +829,7 @@ int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
+int sc_update_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
 		     size_t count, unsigned long flags)
 {
 	int r;
@@ -842,7 +842,7 @@ int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-int sc_delete_record(struct sc_card *card, unsigned int rec_nr)
+int sc_delete_record(sc_card_t *card, unsigned int rec_nr)
 {
 	int r;
 
@@ -854,7 +854,7 @@ int sc_delete_record(struct sc_card *card, unsigned int rec_nr)
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-inline int sc_card_valid(const struct sc_card *card) {
+inline int sc_card_valid(const sc_card_t *card) {
 #ifndef NDEBUG
 	assert(card != NULL);
 #endif
@@ -862,7 +862,7 @@ inline int sc_card_valid(const struct sc_card *card) {
 }
 
 int
-sc_card_ctl(struct sc_card *card, unsigned long cmd, void *args)
+sc_card_ctl(sc_card_t *card, unsigned long cmd, void *args)
 {
 	int r = SC_ERROR_NOT_SUPPORTED;
 
@@ -879,12 +879,12 @@ sc_card_ctl(struct sc_card *card, unsigned long cmd, void *args)
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info)
+int _sc_card_add_algorithm(sc_card_t *card, const sc_algorithm_info_t *info)
 {
-	struct sc_algorithm_info *p;
+	sc_algorithm_info_t *p;
 
 	assert(sc_card_valid(card) && info != NULL);
-	p = (struct sc_algorithm_info *) realloc(card->algorithms, (card->algorithm_count + 1) * sizeof(*info));
+	p = (sc_algorithm_info_t *) realloc(card->algorithms, (card->algorithm_count + 1) * sizeof(*info));
 	if (!p) {
 		if (card->algorithms)
 			free(card->algorithms);
@@ -899,10 +899,10 @@ int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info 
 	return 0;
 }
 
-int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
+int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
 			 unsigned long flags, unsigned long exponent)
 {
-	struct sc_algorithm_info info;
+	sc_algorithm_info_t info;
 
 	memset(&info, 0, sizeof(info));
 	info.algorithm = SC_ALGORITHM_RSA;
@@ -913,13 +913,13 @@ int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
 	return _sc_card_add_algorithm(card, &info);
 }
 
-struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
+sc_algorithm_info_t * _sc_card_find_rsa_alg(sc_card_t *card,
 						 unsigned int key_length)
 {
 	int i;
 
 	for (i = 0; i < card->algorithm_count; i++) {
-		struct sc_algorithm_info *info = &card->algorithms[i];
+		sc_algorithm_info_t *info = &card->algorithms[i];
 
 		if (info->algorithm != SC_ALGORITHM_RSA)
 			continue;
@@ -930,7 +930,7 @@ struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
 	return NULL;
 }
 
-static int match_atr_table(struct sc_context *ctx, struct sc_atr_table *table, u8 *atr, size_t atr_len)
+static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *atr, size_t atr_len)
 {
 	u8 *card_atr_bin = atr;
 	size_t card_atr_bin_len = atr_len;
@@ -985,7 +985,7 @@ static int match_atr_table(struct sc_context *ctx, struct sc_atr_table *table, u
 	return -1;
 }
 
-int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *type_out)
+int _sc_match_atr(sc_card_t *card, struct sc_atr_table *table, int *type_out)
 {
 	int res;
 
@@ -1029,7 +1029,7 @@ scconf_block *_sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driv
 	return NULL;
 }
 
-int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src)
+int _sc_add_atr(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr_table *src)
 {
 	struct sc_atr_table *map, *dst;
 
@@ -1063,7 +1063,7 @@ int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc
 	return SC_SUCCESS;
 }
 
-int _sc_free_atr(struct sc_context *ctx, struct sc_card_driver *driver)
+int _sc_free_atr(sc_context_t *ctx, struct sc_card_driver *driver)
 {
 	unsigned int i;
 
@@ -1087,7 +1087,7 @@ int _sc_free_atr(struct sc_context *ctx, struct sc_card_driver *driver)
 	return SC_SUCCESS;
 }
 
-int _sc_check_forced_protocol(struct sc_context *ctx, u8 *atr, size_t atr_len, unsigned int *protocol)
+int _sc_check_forced_protocol(sc_context_t *ctx, u8 *atr, size_t atr_len, unsigned int *protocol)
 {
 	scconf_block *atrblock = NULL;
 	int ok = 0;

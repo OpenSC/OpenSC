@@ -51,12 +51,12 @@ static struct sc_card_driver setcos_drv = {
 	&setcos_ops
 };
 
-static int setcos_finish(struct sc_card *card)
+static int setcos_finish(sc_card_t *card)
 {
 	return 0;
 }
 
-static int match_hist_bytes(struct sc_card *card, const char *str, size_t len)
+static int match_hist_bytes(sc_card_t *card, const char *str, size_t len)
 {
 	const char *src = (const char *) card->slot->atr_info.hist_bytes;
 	size_t srclen = card->slot->atr_info.hist_bytes_len;
@@ -75,7 +75,7 @@ static int match_hist_bytes(struct sc_card *card, const char *str, size_t len)
 	return 0;
 }
 
-static int setcos_match_card(struct sc_card *card)
+static int setcos_match_card(sc_card_t *card)
 {
 	int i;
 
@@ -110,7 +110,7 @@ static int select_fineid_app(sc_card_t * card)
 	return r;
 }
 
-static int setcos_init(struct sc_card *card)
+static int setcos_init(sc_card_t *card)
 {
 	card->name = "SetCOS";
 
@@ -159,7 +159,7 @@ static int setcos_init(struct sc_card *card)
 
 static const struct sc_card_operations *iso_ops = NULL;
 
-static u8 acl_to_byte(const struct sc_acl_entry *e)
+static u8 acl_to_byte(const sc_acl_entry_t *e)
 {
 	switch (e->method) {
 	case SC_AC_NONE:
@@ -184,7 +184,7 @@ static u8 acl_to_byte(const struct sc_acl_entry *e)
 	return 0x00;
 }
 
-static int setcos_create_file(struct sc_card *card, struct sc_file *file)
+static int setcos_create_file(sc_card_t *card, sc_file_t *file)
 {
 	if (file->prop_attr_len == 0)
 		sc_file_set_prop_attr(file, (const u8 *) "\x03\x00\x00", 3);
@@ -218,10 +218,10 @@ static int setcos_create_file(struct sc_card *card, struct sc_file *file)
 	return iso_ops->create_file(card, file);
 }
 
-static int setcos_set_security_env2(struct sc_card *card,
-				    const struct sc_security_env *env, int se_num)
+static int setcos_set_security_env2(sc_card_t *card,
+				    const sc_security_env_t *env, int se_num)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
 	int r, locked = 0;
@@ -299,11 +299,11 @@ err:
 	return r;
 }
 
-static int setcos_set_security_env(struct sc_card *card,
-				   const struct sc_security_env *env, int se_num)
+static int setcos_set_security_env(sc_card_t *card,
+				   const sc_security_env_t *env, int se_num)
 {
 	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
-		struct sc_security_env tmp;
+		sc_security_env_t tmp;
 
 		tmp = *env;
 		tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
@@ -335,7 +335,7 @@ static int setcos_set_security_env(struct sc_card *card,
 	return setcos_set_security_env2(card, env, se_num);
 }
 
-static void add_acl_entry(struct sc_file *file, int op, u8 byte)
+static void add_acl_entry(sc_file_t *file, int op, u8 byte)
 {
 	unsigned int method, key_ref = SC_AC_KEY_REF_NONE;
 
@@ -364,7 +364,7 @@ static void add_acl_entry(struct sc_file *file, int op, u8 byte)
 	sc_file_add_acl_entry(file, op, method, key_ref);
 }
 
-static void parse_sec_attr(struct sc_file *file, const u8 * buf, size_t len)
+static void parse_sec_attr(sc_file_t *file, const u8 * buf, size_t len)
 {
 	int i;
 	int idx[6];
@@ -392,8 +392,8 @@ static void parse_sec_attr(struct sc_file *file, const u8 * buf, size_t len)
 		add_acl_entry(file, idx[i], buf[i]);
 }
 
-static int setcos_select_file(struct sc_card *card,
-			      const struct sc_path *in_path, struct sc_file **file)
+static int setcos_select_file(sc_card_t *card,
+			      const sc_path_t *in_path, sc_file_t **file)
 {
 	int r;
 
@@ -405,9 +405,9 @@ static int setcos_select_file(struct sc_card *card,
 	return 0;
 }
 
-static int setcos_list_files(struct sc_card *card, u8 * buf, size_t buflen)
+static int setcos_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
@@ -422,7 +422,7 @@ static int setcos_list_files(struct sc_card *card, u8 * buf, size_t buflen)
 }
 
 #if 0
-static int setcos_logout(struct sc_card *card)
+static int setcos_logout(sc_card_t *card)
 {
 	return 0;
 }

@@ -28,12 +28,12 @@
 
 int sc_pkcs15emu_postecert_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
-static int (*set_security_env) (sc_card_t *, const struct sc_security_env *, int);
+static int (*set_security_env) (sc_card_t *, const sc_security_env_t *, int);
 
-static int set_sec_env(sc_card_t * card, const struct sc_security_env *env,
+static int set_sec_env(sc_card_t * card, const sc_security_env_t *env,
 		       int se_num)
 {
-	struct sc_security_env tenv = *env;
+	sc_security_env_t tenv = *env;
 	if (tenv.operation == SC_SEC_OPERATION_SIGN)
 		tenv.operation = SC_SEC_OPERATION_DECIPHER;
 	return set_security_env(card, &tenv, se_num);

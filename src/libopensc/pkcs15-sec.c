@@ -30,9 +30,9 @@
 
 static int select_key_file(struct sc_pkcs15_card *p15card,
 			   const struct sc_pkcs15_prkey_info *prkey,
-			   struct sc_security_env *senv)
+			   sc_security_env_t *senv)
 {
-	struct sc_path path, file_id;
+	sc_path_t path, file_id;
 	int r;
 
 	if (prkey->path.len < 2)
@@ -63,9 +63,9 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const u8 * in, size_t inlen, u8 *out, size_t outlen)
 {
 	int r;
-	struct sc_algorithm_info *alg_info;
-	struct sc_security_env senv;
-	struct sc_context *ctx = p15card->card->ctx;
+	sc_algorithm_info_t *alg_info;
+	sc_security_env_t senv;
+	sc_context_t *ctx = p15card->card->ctx;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	unsigned long pad_flags = 0;
 
@@ -151,9 +151,9 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				u8 *out, size_t outlen)
 {
 	int r;
-	struct sc_security_env senv;
-	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_algorithm_info *alg_info;
+	sc_security_env_t senv;
+	sc_context_t *ctx = p15card->card->ctx;
+	sc_algorithm_info_t *alg_info;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	u8 buf[512], *tmpin, *tmpout, *help;
 	size_t tmpoutlen;

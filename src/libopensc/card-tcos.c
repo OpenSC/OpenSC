@@ -50,13 +50,13 @@ typedef struct tcos_data_st {
 	unsigned int pad_flags;
 } tcos_data;
 
-static int tcos_finish(struct sc_card *card)
+static int tcos_finish(sc_card_t *card)
 {
 	free(card->drv_data);
 	return 0;
 }
 
-static int tcos_match_card(struct sc_card *card)
+static int tcos_match_card(sc_card_t *card)
 {
 	int i;
 
@@ -66,7 +66,7 @@ static int tcos_match_card(struct sc_card *card)
 	return 1;
 }
 
-static int tcos_init(struct sc_card *card)
+static int tcos_init(sc_card_t *card)
 {
         unsigned long flags;
 
@@ -94,7 +94,7 @@ static int tcos_init(struct sc_card *card)
    OpenSC should be enhanced to allow for the command based security
    attributes of TCOS.  FIXME: This just allows to create a very basic
    file. */
-static int tcos_construct_fci(const struct sc_file *file,
+static int tcos_construct_fci(const sc_file_t *file,
                               u8 *out, size_t *outlen)
 {
 	u8 *p = out;
@@ -189,12 +189,12 @@ static int tcos_construct_fci(const struct sc_file *file,
 }
 
 
-static int tcos_create_file(struct sc_card *card, struct sc_file *file)
+static int tcos_create_file(sc_card_t *card, sc_file_t *file)
 {
 	int r;
 	size_t len;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 
 	len = SC_MAX_APDU_BUFFER_SIZE;
 	r = tcos_construct_fci(file, sbuf, &len);
@@ -250,8 +250,8 @@ static int map_operations (int commandbyte )
    OpenSC should be enhanced to allow for the command based security
    attributes of TCOS.  FIXME: This just allows to create a very basic
    file. */
-static void parse_sec_attr(struct sc_card *card,
-                           struct sc_file *file, const u8 *buf, size_t len)
+static void parse_sec_attr(sc_card_t *card,
+                           sc_file_t *file, const u8 *buf, size_t len)
 {
         int op;
         
@@ -316,7 +316,7 @@ static void parse_sec_attr(struct sc_card *card,
 }
 
 /* Arghh. duplicated from iso7816.c */
-static void tcos_process_fci(struct sc_context *ctx, struct sc_file *file,
+static void tcos_process_fci(sc_context_t *ctx, sc_file_t *file,
                              const u8 *buf, size_t buflen)
 {
 	size_t taglen, len = buflen;
@@ -422,16 +422,16 @@ static void tcos_process_fci(struct sc_context *ctx, struct sc_file *file,
    needed to cope with some starngeness in APDU construction.  It is
    probably better to have this specfic for TCOS, so that support for
    other cards does not break. */
-static int hacked_iso7816_select_file(struct sc_card *card,
-                                      const struct sc_path *in_path,
-                                      struct sc_file **file_out)
+static int hacked_iso7816_select_file(sc_card_t *card,
+                                      const sc_path_t *in_path,
+                                      sc_file_t **file_out)
 {
-	struct sc_context *ctx;
-	struct sc_apdu apdu;
+	sc_context_t *ctx;
+	sc_apdu_t apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int r, pathlen;
-	struct sc_file *file = NULL;
+	sc_file_t *file = NULL;
 
 	assert(card != NULL && in_path != NULL);
 	ctx = card->ctx;
@@ -515,9 +515,9 @@ static int hacked_iso7816_select_file(struct sc_card *card,
 
 
 
-static int tcos_select_file(struct sc_card *card,
-			    const struct sc_path *in_path,
-			    struct sc_file **file)
+static int tcos_select_file(sc_card_t *card,
+			    const sc_path_t *in_path,
+			    sc_file_t **file)
 {
 	int r;
 	
@@ -534,9 +534,9 @@ static int tcos_select_file(struct sc_card *card,
 	return 0;
 }
 
-static int tcos_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+static int tcos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 p1s[2] = { 0x01, 0x02 };
 	int r, i, count = 0;
@@ -565,11 +565,11 @@ static int tcos_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 
 
 
-static int tcos_delete_file(struct sc_card *card, const struct sc_path *path)
+static int tcos_delete_file(sc_card_t *card, const sc_path_t *path)
 {
 	int r;
 	u8 sbuf[2];
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
@@ -597,11 +597,11 @@ static int tcos_delete_file(struct sc_card *card, const struct sc_path *path)
    The problem is that I don't have the ISO specs and Juha's 7816 code
    uses parameters which are not described in the TCOS specs.  [wk] 
 */
-static int tcos_set_security_env(struct sc_card *card,
-                                 const struct sc_security_env *env,
+static int tcos_set_security_env(sc_card_t *card,
+                                 const sc_security_env_t *env,
                                  int se_num)
 {
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
 	int r, locked = 0;
@@ -678,7 +678,7 @@ err:
 
 /* See tcos_set_security_env() for comments.  So we always return
    success */
-static int tcos_restore_security_env(struct sc_card *card, int se_num)
+static int tcos_restore_security_env(sc_card_t *card, int se_num)
 {
 	return 0;
 }
@@ -687,12 +687,12 @@ static int tcos_restore_security_env(struct sc_card *card, int se_num)
  * TCOS decipher command (same as iso7816_decipher besides setting
  * the padding byte).
  */
-static int tcos_decipher(struct sc_card *card,
+static int tcos_decipher(sc_card_t *card,
 			    const u8 * crgram, size_t crgram_len,
 			    u8 * out, size_t outlen)
 {
 	int r;
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 	tcos_data *xdata;
 	u8 pad_byte;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -742,10 +742,10 @@ static int tcos_decipher(struct sc_card *card,
 /* Issue the SET PERMANENT command.  With ENABLE_NULLPIN set the
    NullPIN method will be activated, otherwise the permanent operation
    will be done on the active file. */
-static int tcos_setperm(struct sc_card *card, int enable_nullpin)
+static int tcos_setperm(sc_card_t *card, int enable_nullpin)
 {
 	int r;
-	struct sc_apdu apdu;
+	sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xEE, 0x00, 0x00);
@@ -797,7 +797,7 @@ static int tcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	return SC_SUCCESS;
 }
 
-static int tcos_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
+static int tcos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	switch (cmd) {
 	case SC_CARDCTL_TCOS_SETPERM:
