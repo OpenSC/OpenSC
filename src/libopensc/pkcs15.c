@@ -538,6 +538,19 @@ int sc_pkcs15_bind(struct sc_card *card,
 		sc_error(card->ctx, "Unable to parse ODF\n");
 		goto error;
 	}
+
+	if (card->ctx->debug) {
+		sc_pkcs15_df_t *df;
+
+		sc_debug(card->ctx, "The following DFs were found:\n");
+		for (df = p15card->df_list; df; df = df->next) {
+			sc_debug(card->ctx,
+				"  DF type %u, path %s, index %u, count %d\n",
+				df->type, sc_print_path(&df->path),
+				df->path.index, df->path.count);
+		}
+	}
+
 	if (p15card->file_tokeninfo == NULL) {
 		tmppath = p15card->file_app->path;
 		sc_append_path_id(&tmppath, (const u8 *) "\x50\x32", 2);
@@ -1172,7 +1185,8 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 	int	r = -1;
 
 	assert(p15card != NULL && in_path != NULL && buf != NULL);
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	sc_debug(p15card->card->ctx, "called, path=%s, index=%u, count=%d\n",
+				sc_print_path(in_path), in_path->index, in_path->count);
 
 	if (in_path->type == SC_PATH_TYPE_FILE_ID)
 	{
@@ -1252,12 +1266,12 @@ void sc_pkcs15_format_id(const char *str, struct sc_pkcs15_id *id)
 		id->len = len;
 }
 
-void sc_pkcs15_print_id(const struct sc_pkcs15_id *id)
+const char *sc_pkcs15_print_id(const struct sc_pkcs15_id *id)
 {
-	size_t i;
+	static char buffer[256];
 
-	for (i = 0; i < id->len; i++)
-		printf("%02X", id->value[i]);
+	sc_bin_to_hex(id->value, id->len, buffer, sizeof(buffer), '\0');
+	return buffer;
 }
 
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out)
