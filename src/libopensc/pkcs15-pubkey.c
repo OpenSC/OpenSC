@@ -62,11 +62,16 @@ static const struct sc_asn1_entry c_asn1_dsa_type_attr[] = {
 	{ NULL }
 };
 
-static const struct sc_asn1_entry c_asn1_pubkey[] = {
+static const struct sc_asn1_entry c_asn1_pubkey_choice[] = {
 	{ "publicRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
 	{ "publicDSAKey", SC_ASN1_PKCS15_OBJECT, 2 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL },
 	{ NULL }
-};		
+};
+
+static const struct sc_asn1_entry c_asn1_pubkey[] = {
+	{ "publicKey",	SC_ASN1_CHOICE, },
+	{ NULL }
+};
 
 int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 				 struct sc_pkcs15_object *obj,
@@ -80,13 +85,15 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_pubkey_attr[1];
 	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_rsa_type_attr[2];
 	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_dsa_type_attr[2];
-	struct sc_asn1_entry asn1_pubkey[3];
+	struct sc_asn1_entry asn1_pubkey_choice[3];
+	struct sc_asn1_entry asn1_pubkey[2];
 	struct sc_asn1_pkcs15_object rsakey_obj = { obj, asn1_com_key_attr,
 						    asn1_com_pubkey_attr, asn1_rsa_type_attr };
 	struct sc_asn1_pkcs15_object dsakey_obj = { obj, asn1_com_key_attr,
 						    asn1_com_pubkey_attr, asn1_dsa_type_attr };
 
         sc_copy_asn1_entry(c_asn1_pubkey, asn1_pubkey);
+        sc_copy_asn1_entry(c_asn1_pubkey_choice, asn1_pubkey_choice);
         sc_copy_asn1_entry(c_asn1_rsa_type_attr, asn1_rsa_type_attr);
         sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
         sc_copy_asn1_entry(c_asn1_dsa_type_attr, asn1_dsa_type_attr);
@@ -94,8 +101,8 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
         sc_copy_asn1_entry(c_asn1_com_pubkey_attr, asn1_com_pubkey_attr);
         sc_copy_asn1_entry(c_asn1_com_key_attr, asn1_com_key_attr);
 
-	sc_format_asn1_entry(asn1_pubkey + 0, &rsakey_obj, NULL, 0);
-	sc_format_asn1_entry(asn1_pubkey + 1, &dsakey_obj, NULL, 0);
+	sc_format_asn1_entry(asn1_pubkey_choice + 0, &rsakey_obj, NULL, 0);
+	sc_format_asn1_entry(asn1_pubkey_choice + 1, &dsakey_obj, NULL, 0);
 
 	sc_format_asn1_entry(asn1_rsa_type_attr + 0, asn1_rsakey_attr, NULL, 0);
 
@@ -112,16 +119,18 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	sc_format_asn1_entry(asn1_com_key_attr + 3, &info.access_flags, &af_len, 0);
 	sc_format_asn1_entry(asn1_com_key_attr + 4, &info.key_reference, NULL, 0);
 
+	sc_format_asn1_entry(asn1_pubkey + 0, asn1_pubkey_choice, NULL, 0);
+
         /* Fill in defaults */
         memset(&info, 0, sizeof(info));
 	info.key_reference = -1;
 	info.native = 1;
 
-	r = sc_asn1_decode_choice(ctx, asn1_pubkey, *buf, *buflen, buf, buflen);
+	r = sc_asn1_decode(ctx, asn1_pubkey, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
 	SC_TEST_RET(ctx, r, "ASN.1 decoding failed");
-	if (asn1_pubkey[0].flags & SC_ASN1_PRESENT) {
+	if (asn1_pubkey_choice[0].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_RSA;
 	} else {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_DSA;
@@ -140,7 +149,8 @@ int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_pubkey_attr[1];
 	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_rsa_type_attr[2];
 	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_dsa_type_attr[2];
-	struct sc_asn1_entry asn1_pubkey[3];
+	struct sc_asn1_entry asn1_pubkey_choice[3];
+	struct sc_asn1_entry asn1_pubkey[2];
 	struct sc_pkcs15_pubkey_info *pubkey =
                 (struct sc_pkcs15_pubkey_info *) obj->data;
 	struct sc_asn1_pkcs15_object rsakey_obj = { (struct sc_pkcs15_object *) obj,
@@ -153,6 +163,7 @@ int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 	size_t af_len, usage_len;
 
         sc_copy_asn1_entry(c_asn1_pubkey, asn1_pubkey);
+        sc_copy_asn1_entry(c_asn1_pubkey_choice, asn1_pubkey_choice);
         sc_copy_asn1_entry(c_asn1_rsa_type_attr, asn1_rsa_type_attr);
         sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
         sc_copy_asn1_entry(c_asn1_dsa_type_attr, asn1_dsa_type_attr);
@@ -162,7 +173,7 @@ int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 
 	switch (obj->type) {
 	case SC_PKCS15_TYPE_PUBKEY_RSA:
-		sc_format_asn1_entry(asn1_pubkey + 0, &rsakey_obj, NULL, 1);
+		sc_format_asn1_entry(asn1_pubkey_choice + 0, &rsakey_obj, NULL, 1);
 
 		sc_format_asn1_entry(asn1_rsa_type_attr + 0, asn1_rsakey_attr, NULL, 1);
 
@@ -171,7 +182,7 @@ int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 		break;
 
 	case SC_PKCS15_TYPE_PUBKEY_DSA:
-		sc_format_asn1_entry(asn1_pubkey + 1, &dsakey_obj, NULL, 1);
+		sc_format_asn1_entry(asn1_pubkey_choice + 1, &dsakey_obj, NULL, 1);
 
 		sc_format_asn1_entry(asn1_dsa_type_attr + 0, asn1_dsakey_attr, NULL, 1);
 
@@ -194,6 +205,8 @@ int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 	}
 	if (pubkey->key_reference >= 0)
 		sc_format_asn1_entry(asn1_com_key_attr + 4, &pubkey->key_reference, NULL, 1);
+	sc_format_asn1_entry(asn1_pubkey + 0, asn1_pubkey_choice, NULL, 1);
+
 	r = sc_asn1_encode(ctx, asn1_pubkey, buf, buflen);
 
 	return r;
