@@ -13,5 +13,5 @@ libopensc_la_SOURCES	= asn1.c base64.c defaults.c \
 libopensc_la_LDFLAGS	= -version-info 0:4:0
 libopensc_la_LIBADD	= @LIBPCSC@
 
-include_HEADERS		= opensc.h opensc-pkcs15.h
+include_HEADERS		= opensc.h opensc-pkcs15.h opensc-emv.h
 noinst_HEADERS		= sc-asn1.h sc-log.h sc-internal.h

@@ -146,22 +146,21 @@ int sc_establish_context(struct sc_context **ctx_out)
 	ctx = malloc(sizeof(struct sc_context));
 	if (ctx == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	ctx->use_std_output = 0;
+	memset(ctx, sizeof(struct sc_context), 0);
 	ctx->use_cache = 1;
-	ctx->debug = 0;
 	rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL, "localhost", NULL,
 				   &ctx->pcsc_ctx);
 	if (rv != SCARD_S_SUCCESS)
 		return SC_ERROR_CONNECTING_TO_RES_MGR;
 	SCardListReaders(ctx->pcsc_ctx, NULL, NULL,
-			 (LPDWORD) & reader_buf_size);
+			 (LPDWORD) &reader_buf_size);
 	if (reader_buf_size < 2) {
 		free(ctx);
 		return SC_ERROR_NO_READERS_FOUND;
 	}
 	reader_buf = (char *) malloc(sizeof(char) * reader_buf_size);
 	SCardListReaders(ctx->pcsc_ctx, mszGroups, reader_buf,
-			 (LPDWORD) & reader_buf_size);
+			 (LPDWORD) &reader_buf_size);
 	p = reader_buf;
 	ctx->reader_count = 0;
 	do {
@@ -206,6 +205,30 @@ int sc_destroy_context(struct sc_context *ctx)
 	for (i = 0; i < ctx->reader_count; i++)
 		free(ctx->readers[i]);
 	free(ctx);
+	return 0;
+}
+
+int sc_set_default_card_driver(struct sc_context *ctx, const char *short_name)
+{
+	int i = 0, match = 0;
+	
+	pthread_mutex_lock(&ctx->mutex);
+	if (short_name == NULL) {
+		ctx->default_driver = NULL;
+		match = 1;
+	} else while (ctx->card_drivers[i] != NULL && i < SC_MAX_CARD_DRIVERS) {
+		const struct sc_card_driver *drv = ctx->card_drivers[i];
+
+		if (strcmp(short_name, drv->short_name) == 0) {
+			ctx->default_driver = drv;
+			match = 1;
+			break;
+		}
+		i++;
+	}
+	pthread_mutex_unlock(&ctx->mutex);
+	if (match == 0)
+		return SC_ERROR_OBJECT_NOT_FOUND; /* FIXME: invent error */
 	return 0;
 }
 

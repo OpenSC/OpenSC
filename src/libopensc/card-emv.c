@@ -1,5 +1,5 @@
 /*
- * sc-card-emv.c: Functions specified by the EMV standard
+ * card-emv.c: Functions specified by the EMV standard
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -25,6 +25,7 @@ static struct sc_card_operations emv_ops;
 static const struct sc_card_driver emv_drv = {
 	NULL,
 	"EMV compatible cards",
+	"emv",
 	&emv_ops
 };
 

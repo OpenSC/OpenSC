@@ -153,6 +153,8 @@ static int parse_dir(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 		card->label = strdup((char *) label);
 	else
 		card->label = strdup("(unknown)");
+	if (path_len > SC_MAX_PATH_SIZE)
+		return -1;
 	memcpy(card->file_app.path.value, path, path_len);
 	card->file_app.path.len = path_len;	
 	card->file_app.path.type = SC_PATH_TYPE_PATH;
@@ -220,28 +222,7 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 
 static const struct sc_pkcs15_defaults * find_defaults(u8 *dir, int dirlen)
 {
-#if 0
-	int i = 0;
-	const struct sc_pkcs15_defaults *match = NULL;
-
-	while (sc_card_table[i].atr != NULL) {
-		u8 defdir[128];
-		int len = sizeof(defdir);
-		const struct sc_pkcs15_defaults *def = &sc_pkcs15_card_table[i];
-		const char *dirp = def->ef_dir_dump;
-		i++;
-
-		if (dirp == NULL)
-			break;
-		if (sc_hex_to_bin(dirp, defdir, &len))
-			continue;
-		if (memcmp(dir, defdir, len) != 0)
-			continue;
-		match = def;
-		break;
-	}
-	return match;
-#endif
+	/* FIXME: CODEME */
 	return NULL;
 }
 
@@ -350,6 +331,19 @@ error:
 	SC_FUNC_RETURN(ctx, 1, err);
 }
 
+int sc_pkcs15_detect(struct sc_card *card)
+{
+	int r;
+	struct sc_path path;
+	struct sc_file file;
+
+	sc_format_path("NA0000063504B43532D3135", &path);
+	r = sc_select_file(card, &path, &file);
+	if (r != 0)
+		return 0;
+	return 1;
+}
+
 int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 {
 	assert(p15card != NULL);
@@ -380,6 +374,6 @@ void sc_pkcs15_print_id(const struct sc_pkcs15_id *id)
 
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out)
 {
-        out->len = sizeof(out->value);
+	out->len = sizeof(out->value);
 	return sc_hex_to_bin(in, out->value, &out->len);
 }

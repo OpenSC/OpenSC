@@ -8,47 +8,29 @@
 #include <opensc.h>
 #include <opensc-pkcs15.h>
 #include "sc-test.h"
+#include "../libopensc/sc-log.h"
 
 struct sc_pkcs15_card *p15card;
 
 int test()
 {
 	struct sc_file file;
-	struct sc_path path;
 	struct sc_apdu apdu;
+	struct sc_path path;
 	u8 rbuf[MAX_BUFFER_SIZE], sbuf[MAX_BUFFER_SIZE];
 	
 	int r;
 	
 	sc_lock(card);
-	
-#if 1
-	r = sc_pkcs15_bind(card, &p15card);
-	if (r < 0) {
-		fprintf(stderr, "PKCS#15 init failed: %s\n", sc_strerror(r));
-		goto err;
-	}
-	r = sc_pkcs15_enum_pins(p15card);
-	if (r < 0) {
-		fprintf(stderr, "PIN code enum failed: %s\n", sc_strerror(r));
-		goto err;
-	}
-	sc_format_path("5110", &path);
-	ctx->debug = 3;
+
+	sc_format_path("I3F00", &path);
 	r = sc_select_file(card, &path, &file);
-	ctx->debug = 0;
 	if (r) {
-		fprintf(stderr, "sc_select_file failed: %s\n", sc_strerror(r));
-		goto err;
+		printf("SELECT FILE (MF) failed: %s\n", sc_strerror(r));
+		return -1;
 	}
-	r = sc_pkcs15_verify_pin(p15card, &p15card->pin_info[0], (const u8 *) "\x31\x32\x33\x34", 4);
-	if (r) {
-		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
-		goto err;
-	}
-#endif
-	ctx->debug = 3;
-	
+	ctx->debug = 5;
+#if 1
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, 1);
 	apdu.lc = 8;
 	apdu.data = sbuf;
@@ -61,27 +43,27 @@ int test()
 		fprintf(stderr, "transmit failed: %s\n", sc_strerror(r));
 		goto err;
 	}
-	r = sc_delete_file(card, 0x5110);
+	sc_format_path("I1234", &path);
+	r = sc_delete_file(card, &path);
 	if (r) {
 		fprintf(stderr, "fail: %s\n", sc_strerror(r));
 		goto err;
 	}
 
 	return 0;
-
+#endif
 	memset(&file, 0, sizeof(file));
-	file.id = 0x5110;
+	file.id = 0x1234;
 	file.sec_attr_len = 6;
 	memcpy(file.sec_attr, "\x00\x00\x00\x00\x00\x00", 6);
 	file.prop_attr_len = 3;
-	memcpy(file.prop_attr, "\x23\x00\x00", 3);
+	memcpy(file.prop_attr, "\x03\x00\x00", 3);
 	file.size = 32;
 	file.type = SC_FILE_TYPE_WORKING_EF;
 	file.ef_structure = SC_FILE_EF_TRANSPARENT;
 
-	ctx->debug = 1;
+	ctx->debug = 5;
 	r = sc_create_file(card, &file);
-
 err:
 	sc_unlock(card);
 	return r;
@@ -92,15 +74,35 @@ int test2()
 	int r;
 	struct sc_path path;
 	struct sc_file file;
+	u8 buf[32];
+	u8 output[1024];
+	int i;
 	
-	sc_format_path("3F00", &path);
+	sc_format_path("1234", &path);
 	
-	ctx->debug = 3;
+	ctx->debug = 5;
 	r = sc_select_file(card, &path, &file);
 	if (r) {
 		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
 		return r;
 	}
+	for (i = 0; i < sizeof(buf); i++)
+		buf[i] = i;
+	r = sc_write_binary(card, 0, buf, sizeof(buf), 0);
+	if (r < 0) {
+		fprintf(stderr, "WRITE BINARY failed: %s\n", sc_strerror(r));
+		return r;
+	} else
+		printf("%d bytes written.\n", r);
+	memset(buf, 0, sizeof(buf));
+	r = sc_read_binary(card, 0, buf, sizeof(buf), 0);
+	if (r < 0) {
+		fprintf(stderr, "READ BINARY failed: %s\n", sc_strerror(r));
+		return r;
+	} else
+		printf("%d bytes read.\n", r);
+	sc_hex_dump(ctx, buf, r, output, sizeof(output));
+	printf("%s", output);
 	return 0;
 }
 
@@ -156,7 +158,7 @@ int main(int argc, char **argv)
 		return 1;
 	
 	ctx->debug = 3;
-	if (test3())
+	if (test())
 		return 1;
 
 	sc_test_cleanup();

@@ -1,5 +1,5 @@
 /*
- * sc-card-multiflex.c: Support for Multiflex cards by Schlumberger
+ * card-multiflex.c: Support for Multiflex cards by Schlumberger
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -22,6 +22,7 @@
 #include "sc-log.h"
 
 static const char *mflex_atrs[] = {
+	"3B:95:94:40:FF:63:01:01:02:01", /* CryptoFlex 16k */
 	"3B:19:14:55:90:01:02:02:00:05:04:B0",
 	NULL
 };
@@ -30,6 +31,7 @@ static struct sc_card_operations mflex_ops;
 static const struct sc_card_driver mflex_drv = {
 	NULL,
 	"Multiflex/Schlumberger",
+	"mflex",
 	&mflex_ops
 };
 
@@ -70,13 +72,27 @@ static int mflex_init(struct sc_card *card)
 	return 0;
 }
 
+static unsigned int ac_to_acl(u8 nibble)
+{
+	unsigned int acl_table[16] = {
+		/* 0 */ SC_AC_NONE, SC_AC_CHV1, SC_AC_CHV2, SC_AC_PRO,
+		/* 4 */ SC_AC_AUT, SC_AC_UNKNOWN, SC_AC_CHV1 | SC_AC_PRO,
+		/* 7 */ SC_AC_CHV2 | SC_AC_PRO, SC_AC_CHV1 | SC_AC_AUT,
+		/* 9 */ SC_AC_CHV2 | SC_AC_AUT, SC_AC_UNKNOWN, SC_AC_UNKNOWN,
+		/* c */	SC_AC_UNKNOWN, SC_AC_UNKNOWN, SC_AC_UNKNOWN,
+		/* f */ SC_AC_NEVER };
+	return acl_table[nibble & 0x0F];
+}
+
 static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen,
 			       struct sc_file *file)
 {
 	const u8 *p = buf + 2;
 	u8 b1, b2;
         int left;
-
+	
+	if (buflen < 14)
+		return -1;
 	b1 = *p++;
 	b2 = *p++;
 	file->size = (b1 << 8) + b2;
@@ -107,13 +123,39 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 		error(ctx, "invalid file type: 0x%02X\n", *p);
                 return SC_ERROR_UNKNOWN_REPLY;
 	}
-        p++;
+        p += 2;
+	if (file->type == SC_FILE_TYPE_DF) {
+		file->acl[SC_AC_OP_LIST_FILES] = ac_to_acl(p[0] >> 4);
+		file->acl[SC_AC_OP_DELETE] = ac_to_acl(p[1] >> 4);
+		file->acl[SC_AC_OP_CREATE] = ac_to_acl(p[1] & 0x0F);
+	} else { /* EF */
+		file->acl[SC_AC_OP_READ] = ac_to_acl(p[0] >> 4);
+		switch (file->ef_structure) {
+		case SC_FILE_EF_TRANSPARENT:
+			file->acl[SC_AC_OP_UPDATE] = ac_to_acl(p[0] & 0x0F);
+			break;
+		case SC_FILE_EF_LINEAR_FIXED:
+		case SC_FILE_EF_LINEAR_VARIABLE:
+			file->acl[SC_AC_OP_UPDATE] = ac_to_acl(p[0] & 0x0F);
+			break;
+		case SC_FILE_EF_CYCLIC:
+#if 0
+			/* FIXME */
+			file->acl[SC_AC_OP_DECREASE] = ac_to_acl(p[0] & 0x0F);
+#endif
+			break;
+		}
+	}
+	file->acl[SC_AC_OP_REHABILITATE] = ac_to_acl(p[2] >> 4);
+	file->acl[SC_AC_OP_INVALIDATE] = ac_to_acl(p[2] & 0x0F);
 	p += 3; /* skip ACs */
 	if (*p++)
 		file->status = SC_FILE_STATUS_ACTIVATED;
 	else
                 file->status = SC_FILE_STATUS_INVALIDATED;
         left = *p++;
+	/* FIXME: CODEME */
+	file->magic = SC_FILE_MAGIC;
 
 	return 0;
 }

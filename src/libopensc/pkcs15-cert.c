@@ -1,5 +1,5 @@
 /*
- * sc-pkcs15-cert.c: PKCS#15 certificate functions
+ * pkcs15-cert.c: PKCS#15 certificate functions
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

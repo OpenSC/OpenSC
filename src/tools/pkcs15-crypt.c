@@ -18,22 +18,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#ifdef HAVE_GETOPT_H
-#include <getopt.h>
-#endif
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <opensc.h>
 #include <opensc-pkcs15.h>
-
-#include "util.h"
 
 int opt_reader = 0, opt_pin = 0, quiet = 0;
 int opt_debug = 0;
@@ -69,43 +62,12 @@ const char *option_help[] = {
 	"Quiet operation",
 	"Debug output -- may be supplied several times",
 	"Uses password (PIN) <arg>",
-	"The auth ID of the PIN to use [P15]",
+	"The auth ID of the PIN to use",
 };
 
 struct sc_context *ctx = NULL;
 struct sc_card *card = NULL;
 struct sc_pkcs15_card *p15card = NULL;
-
-void print_usage_and_die()
-{
-	int i = 0;
-	printf("Usage: opensc-crypt [OPTIONS]\nOptions:\n");
-
-	while (options[i].name) {
-		char buf[40], tmp[5];
-		const char *arg_str;
-		
-		if (options[i].val > 0 && options[i].val < 128)
-			sprintf(tmp, ", -%c", options[i].val);
-		else
-			tmp[0] = 0;
-		switch (options[i].has_arg) {
-		case 1:
-			arg_str = " <arg>";
-			break;
-		case 2:
-			arg_str = " [arg]";
-			break;
-		default:
-			arg_str = "";
-			break;
-		}
-		sprintf(buf, "--%s%s%s", options[i].name, tmp, arg_str);
-		printf("  %-30s%s\n", buf, option_help[i]);
-		i++;
-	}
-	exit(2);
-}
 
 char * get_pin(struct sc_pkcs15_pin_info *pinfo)
 {
@@ -236,7 +198,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die();
+			print_usage_and_die("opensc-crypt");
 		switch (c) {
 		case 's':
 			do_sign++;
@@ -274,7 +236,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die();
+		print_usage_and_die("opensc-crypt");
 	r = sc_establish_context(&ctx);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));

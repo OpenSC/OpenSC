@@ -1,5 +1,5 @@
 /*
- * sc-asn1.c: ASN.1 decoding functions (DER)
+ * asn1.c: ASN.1 decoding functions (DER)
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

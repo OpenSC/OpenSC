@@ -16,12 +16,13 @@ int sc_test_init(int *argc, char *argv[])
 {
 	int i, c;
 
-	printf("Using libsc version %s.\n", sc_version);
+	printf("Using libopensc version %s.\n", sc_version);
 	i = sc_establish_context(&ctx);
 	if (i < 0) {
 		printf("sc_establish_context() failed (%d)\n", i);
 		return i;
 	}
+	ctx->use_std_output = 1;
 	i = sc_detect_card(ctx, 0);
 	printf("Card %s.\n", i == 1 ? "present" : "absent");
 	if (i < 0) {

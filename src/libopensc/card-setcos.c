@@ -1,5 +1,5 @@
 /*
- * sc-card-setec.c: Support for PKI cards by Setec
+ * card-setec.c: Support for PKI cards by Setec
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -29,7 +29,8 @@ static const char *setec_atrs[] = {
 static struct sc_card_operations setec_ops;
 static const struct sc_card_driver setec_drv = {
 	NULL,
-	"Setec",
+	"Setec smartcards",
+	"setec",
 	&setec_ops
 };
 

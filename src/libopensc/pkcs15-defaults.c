@@ -1,5 +1,5 @@
 /*
- * sc-default.c: Card specific defaults
+ * pkcs15-default.c: Obsolete
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#if 0
 static void format_path(struct sc_path *path, const char *str)
 {
 	int len = 0;
@@ -166,3 +167,4 @@ const struct sc_pkcs15_defaults sc_pkcs15_card_table[] = {
 	  "07:2A:81:76:84:05:03:01", fineid_pkcs15_defaults, 2 },
 	{ NULL, NULL, 0 }
 };
+#endif

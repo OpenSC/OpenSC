@@ -1,5 +1,5 @@
 /*
- * sc-iso7816-4.c: Functions specified by the ISO 7816-4 standard
+ * iso7816.c: Functions specified by the ISO 7816 standard
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -45,7 +45,7 @@ static int iso7816_read_binary(struct sc_card *card,
 		SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 	memcpy(buf, recvbuf, apdu.resplen);
 
-	SC_FUNC_RETURN(card->ctx, 2, apdu.resplen);
+	SC_FUNC_RETURN(card->ctx, 3, apdu.resplen);
 }
 
 static int iso7816_read_record(struct sc_card *card,
@@ -71,7 +71,31 @@ static int iso7816_read_record(struct sc_card *card,
 		SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 	memcpy(buf, recvbuf, apdu.resplen);
 
-	SC_FUNC_RETURN(card->ctx, 2, apdu.resplen);
+	SC_FUNC_RETURN(card->ctx, 3, apdu.resplen);
+}
+
+static int iso7816_write_binary(struct sc_card *card,
+				unsigned int idx, const u8 *buf,
+				size_t count, unsigned long flags)
+{
+	struct sc_apdu apdu;
+	int r;
+
+	if (count > SC_APDU_CHOP_SIZE) {
+		error(card->ctx, "Too large buffer supplied\n");
+		return SC_ERROR_CMD_TOO_LONG;
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD0,
+		       (idx >> 8) & 0x7F, idx & 0xFF);
+	apdu.lc = count;
+	apdu.datalen = count;
+	apdu.data = buf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2),
+		    "Card returned error");
+	SC_FUNC_RETURN(card->ctx, 3, count);
 }
 
 static unsigned int byte_to_acl(u8 byte)
@@ -103,7 +127,7 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 }
 
 static void process_fci(struct sc_context *ctx, struct sc_file *file,
-			const u8 *buf, size_t buflen)
+		       const u8 *buf, size_t buflen)
 {
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p = buf;
@@ -306,12 +330,105 @@ static int iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	return 0;
 }
 
+static int construct_fci(const struct sc_file *file, u8 *out, size_t *outlen)
+{
+	u8 *p = out;
+	u8 buf[32];
+	
+	*p++ = 0x6F;
+	p++;
+	
+	buf[0] = (file->size >> 8) & 0xFF;
+	buf[1] = file->size & 0xFF;
+	sc_asn1_put_tag(0x81, buf, 2, p, 16, &p);
+	buf[0] = file->shareable ? 0x40 : 0;
+	switch (file->type) {
+	case SC_FILE_TYPE_WORKING_EF:
+		break;
+	case SC_FILE_TYPE_INTERNAL_EF:
+		buf[0] |= 0x08;
+		break;
+	case SC_FILE_TYPE_DF:
+		buf[0] |= 0x38;
+		break;
+	default:
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	buf[0] |= file->ef_structure & 7;
+	sc_asn1_put_tag(0x82, buf, 1, p, 16, &p);
+	buf[0] = (file->id >> 8) & 0xFF;
+	buf[1] = file->id & 0xFF;
+	sc_asn1_put_tag(0x83, buf, 2, p, 16, &p);
+	/* 0x84 = DF name */
+	if (file->prop_attr_len) {
+		memcpy(buf, file->prop_attr, file->prop_attr_len);
+		sc_asn1_put_tag(0x85, buf, file->prop_attr_len, p, 18, &p);
+	}
+	if (file->sec_attr_len) {
+		memcpy(buf, file->sec_attr, file->sec_attr_len);
+		sc_asn1_put_tag(0x86, buf, file->sec_attr_len, p, 18, &p);
+	}
+#if 0
+	*p++ = 0xDE;	/* what's this? */
+	*p++ = 0;
+#endif
+	out[1] = p - out - 2;
+
+	*outlen = p - out;
+	return 0;
+}
+
+static int iso7816_create_file(struct sc_card *card, const struct sc_file *file)
+{
+	int r, len;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	struct sc_apdu apdu;
+
+	len = SC_MAX_APDU_BUFFER_SIZE;
+	r = construct_fci(file, sbuf, &len);
+	SC_TEST_RET(card->ctx, r, "construct_fci() failed");
+	
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
+	apdu.lc = len;
+	apdu.datalen = len;
+	apdu.data = sbuf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+}
+
+static int iso7816_delete_file(struct sc_card *card, const struct sc_path *path)
+{
+	int r;
+	u8 sbuf[2];
+	struct sc_apdu apdu;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
+		error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	sbuf[0] = path->value[0];
+	sbuf[1] = path->value[1];
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
+	apdu.lc = 2;
+	apdu.datalen = 2;
+	apdu.data = sbuf;
+	
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+}
+
 static struct sc_card_operations iso_ops = {
 	NULL,
 };
+
 static const struct sc_card_driver iso_driver = {
 	NULL,
-	"ISO 7816-x reference driver",
+	"ISO 7816 reference driver",
+	"iso7816",
 	&iso_ops
 };
 
@@ -324,11 +441,14 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 {
 	if (iso_ops.match_card == NULL) {
 		memset(&iso_ops, 0, sizeof(iso_ops));
-		iso_ops.match_card = no_match;
-		iso_ops.read_binary = iso7816_read_binary;
-		iso_ops.read_record = iso7816_read_record;
-		iso_ops.select_file = iso7816_select_file;
+		iso_ops.match_card    = no_match;
+		iso_ops.read_binary   = iso7816_read_binary;
+		iso_ops.read_record   = iso7816_read_record;
+		iso_ops.write_binary  = iso7816_write_binary;
+		iso_ops.select_file   = iso7816_select_file;
 		iso_ops.get_challenge = iso7816_get_challenge;
+		iso_ops.create_file   = iso7816_create_file;
+                iso_ops.delete_file   = iso7816_delete_file;
 	}
 	return &iso_driver;
 }

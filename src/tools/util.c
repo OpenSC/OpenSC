@@ -55,3 +55,35 @@ void hex_dump_asc(FILE *f, const u8 *in, size_t count)
 		lines++;
 	}
 }
+
+void print_usage_and_die(const char *pgmname)
+{
+	int i = 0;
+	printf("Usage: %s [OPTIONS]\nOptions:\n", pgmname);
+
+	while (options[i].name) {
+		char buf[40], tmp[5];
+		const char *arg_str;
+		
+		if (options[i].val > 0 && options[i].val < 128)
+			sprintf(tmp, ", -%c", options[i].val);
+		else
+			tmp[0] = 0;
+		switch (options[i].has_arg) {
+		case 1:
+			arg_str = " <arg>";
+			break;
+		case 2:
+			arg_str = " [arg]";
+			break;
+		default:
+			arg_str = "";
+			break;
+		}
+		sprintf(buf, "--%s%s%s", options[i].name, tmp, arg_str);
+		printf("  %-30s%s\n", buf, option_help[i]);
+		i++;
+	}
+	exit(2);
+}
+

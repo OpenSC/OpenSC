@@ -1,5 +1,5 @@
 /*
- * sc-base64.c: Base64 converting functions
+ * base64.c: Base64 converting functions
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

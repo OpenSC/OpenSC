@@ -104,8 +104,9 @@ extern "C" {
 #define SC_AC_NONE			0x00000000 
 #define SC_AC_CHV1			0x00000001 /* Card Holder Verif. */
 #define SC_AC_CHV2			0x00000002 
-#define SC_AC_TERM			0x00000004 /* Terminal auth */
-#define SC_AC_PRO			0x00000008 /* Protected mode */
+#define SC_AC_TERM			0x00000004 /* Terminal auth. */
+#define SC_AC_PRO			0x00000008 /* Secure Messaging */
+#define SC_AC_AUT			0x00000010 /* Key auth. */
 #define SC_AC_NEVER		        0xFFFFFFFE
 #define SC_AC_UNKNOWN			0xFFFFFFFF
 
@@ -116,6 +117,7 @@ extern "C" {
 #define SC_AC_OP_CREATE			3
 #define SC_AC_OP_REHABILITATE		4
 #define SC_AC_OP_INVALIDATE		5
+#define SC_AC_OP_LIST_FILES		6
 
 /* Operations relating to access control (in case of EF) */
 #define SC_AC_OP_READ			0
@@ -124,15 +126,16 @@ extern "C" {
 #define SC_AC_OP_ERASE			3
 /* rehab and invalidate are the same as in DF case */
 
-#define SC_MAX_AC_OPS			6
+#define SC_MAX_AC_OPS			7
 
-/* sc_read_binary() flags */
+/* sc_read_record() flags */
 #define SC_READ_RECORD_EF_ID_MASK	0x0001F
 #define SC_READ_RECORD_BY_REC_ID	0x00000
 #define SC_READ_RECORD_BY_REC_NR	0x00100
 
 /* various maximum values */
 #define SC_MAX_CARD_DRIVERS		16
+#define SC_MAX_CARD_DRIVER_SNAME_SIZE	16
 #define SC_MAX_READERS			4
 #define SC_MAX_APDU_BUFFER_SIZE		255
 #define SC_MAX_PATH_SIZE		16
@@ -140,8 +143,8 @@ extern "C" {
 #define SC_MAX_ATR_SIZE			33
 #define SC_MAX_SEC_ATTR_SIZE		16
 #define SC_MAX_PROP_ATTR_SIZE		16
-
-#define SC_MAX_OBJECT_ID_OCTETS  16
+#define SC_MAX_OBJECT_ID_OCTETS		16
+#define SC_APDU_CHOP_SIZE		250
 
 typedef unsigned char u8;
 
@@ -221,7 +224,7 @@ struct sc_card {
 	pthread_mutex_t mutex;
 	int lock_count;
 	const struct sc_card_driver *driver;
-	const struct sc_card_operations *ops;
+	struct sc_card_operations *ops;
 	void *ops_data;
 	
 	unsigned int magic;
@@ -300,11 +303,17 @@ struct sc_card_operations {
 	int (*reset_retry_counter)(struct sc_card *card, int ref_qualifier,
 				   const u8 *puk, size_t puklen,
 				   const u8 *newref, size_t newlen);
+	/*
+	 * ISO 7816-9 functions
+	 */
+	int (*create_file)(struct sc_card *card, const struct sc_file *file);
+	int (*delete_file)(struct sc_card *card, const struct sc_path *path);
 };
 
 struct sc_card_driver {
 	char *libpath; /* NULL, if compiled in */
-	char *name;
+	const char *name;
+	const char *short_name;
 	struct sc_card_operations *ops;
 };
 
@@ -317,6 +326,7 @@ struct sc_context {
 
 	int use_std_output, use_cache;
 	const struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS+1];
+	const struct sc_card_driver *default_driver;
 	pthread_mutex_t mutex;
 };
 
@@ -345,6 +355,7 @@ void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu, int cse, int ins
 
 int sc_establish_context(struct sc_context **ctx);
 int sc_destroy_context(struct sc_context *ctx);
+int sc_set_default_card_driver(struct sc_context *ctx, const char *short_name);
 int sc_connect_card(struct sc_context *ctx,
 		    int reader, struct sc_card **card);
 int sc_disconnect_card(struct sc_card *card);
@@ -369,6 +380,8 @@ int sc_select_file(struct sc_card *card, const struct sc_path *path,
 		   struct sc_file *file);
 int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
 		   size_t count, unsigned long flags);
+int sc_write_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
+		    size_t count, unsigned long flags);
 int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 * buf,
 		   size_t count, unsigned long flags);
 int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);
@@ -391,7 +404,7 @@ int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
 
 /* ISO 7816-9 */
 int sc_create_file(struct sc_card *card, const struct sc_file *file);
-int sc_delete_file(struct sc_card *card, int file_id);
+int sc_delete_file(struct sc_card *card, const struct sc_path *path);
 
 inline int sc_file_valid(const struct sc_file *file);
 void sc_format_path(const char *path_in, struct sc_path *path_out);

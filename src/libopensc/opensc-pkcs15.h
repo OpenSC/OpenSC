@@ -180,7 +180,6 @@ struct sc_pkcs15_defaults {
  * a new PKCS#15 card object */
 int sc_pkcs15_bind(struct sc_card *card,
 		   struct sc_pkcs15_card **pkcs15_card);
-
 int sc_pkcs15_unbind(struct sc_pkcs15_card *card);
 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,

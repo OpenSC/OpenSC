@@ -1,5 +1,5 @@
 /*
- * sc-card-unknown.c: Support for cards with no driver
+ * card-default.c: Support for cards with no driver
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -25,6 +25,7 @@ static struct sc_card_operations default_ops;
 static const struct sc_card_driver default_drv = {
 	NULL,
 	"Default driver for unknown cards",
+	"default",
 	&default_ops
 };
 
@@ -43,6 +44,7 @@ static int autodetect_class(struct sc_card *card)
 	int classes[] = { 0x00, 0xC0, 0xB0, 0xA0 };
 	int class_count = sizeof(classes)/sizeof(int);
 	u8 buf[2];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_apdu apdu;
 	int i, r;
 
@@ -57,7 +59,8 @@ static int autodetect_class(struct sc_card *card)
 		apdu.data = buf;
 		apdu.datalen = 2;
 		apdu.lc = 2;
-		apdu.resplen = 0;
+		apdu.resplen = sizeof(rbuf);
+		apdu.resp = rbuf;
 		apdu.ins = 0xA4;
 		apdu.p1 = apdu.p2 = 0;
 		r = sc_transmit_apdu(card, &apdu);
@@ -77,6 +80,25 @@ static int autodetect_class(struct sc_card *card)
 	card->cla = classes[i];
 	if (card->ctx->debug >= 2)
 		debug(card->ctx, "detected CLA byte as 0x%02X\n", card->cla);
+	if (apdu.resplen < 2) {
+		if (card->ctx->debug >= 2)
+			debug(card->ctx, "SELECT FILE returned %d bytes\n",
+			      apdu.resplen);
+		return 0;
+	}
+	if (rbuf[0] == 0x6F) {
+		if (card->ctx->debug >= 2)
+			debug(card->ctx, "SELECT FILE seems to behave according to ISO 7816-4\n");
+		return 0;
+	}
+	if (rbuf[0] == 0x00 && rbuf[1] == 0x00) {
+		const struct sc_card_driver *drv;
+		if (card->ctx->debug >= 2)
+			debug(card->ctx, "SELECT FILE seems to return Schlumberger 'flex stuff\n");
+		drv = sc_get_mflex_driver();
+		card->ops->select_file = drv->ops->select_file;
+		return 0;
+	}
 	return 0;
 }
 
