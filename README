@@ -4,21 +4,22 @@ README for libopensc, the library component of the OpenSC project
 Introduction
 ============
 
-libopensc is the core part of the OpenSC project.
+libopensc is the core part of the OpenSC project. Only FINEID cards have
+been tested so far.
 
 
 Building and Installing libopensc
 =================================
 
-See the INSTALL file for this.
+See the INSTALL file for instructions.
 
 
 Troubleshooting
 ===============
 
 A mailing-list will be set up for support and discussion about the
-OpenSC project. Meanwhile, contact the authors directly. (See the AUTHORS
-file for email addresses)
+OpenSC project in the future. Meanwhile, contact the authors directly.
+(See the AUTHORS file for email addresses)
 
 
 Resources
