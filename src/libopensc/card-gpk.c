@@ -1094,7 +1094,7 @@ gpk_set_security_env(struct sc_card *card,
 		 * what the hell, we have all those nice macros,
 		 * so why not use them :) 
 		 */
-		if (env->algorithm_flags & SC_PKCS15_HASH_SHA1) {
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 			context = GPK_AUTH_RSA_SHA;
 			priv->sec_hash_len = 20;
 		} else {

@@ -59,6 +59,7 @@ do {                                              \
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/obj_mac.h>
+#include <openssl/err.h>
 
 #include <opensc.h>
 #include <opensc-pkcs15.h>
@@ -214,14 +215,15 @@ static int get_password(pam_handle_t * pamh, char **password, const char *pinnam
 #endif
 
 int verify_authenticity(struct sc_pkcs15_card *p15card,
-			struct sc_pkcs15_prkey_info *prkey,
+			struct sc_pkcs15_object *prkey,
 			RSA *rsa)
 {
 	int r;
 
 	u8 random_data[20];
-	u8 chg[256];
+	u8 chg[256], txt[256];
 	int chglen = sizeof(chg);
+	unsigned long flags;
 
 	DBG(printf("Getting random data...\n"));
 	r = get_random(random_data, sizeof(random_data));
@@ -232,27 +234,27 @@ int verify_authenticity(struct sc_pkcs15_card *p15card,
  		DBG(printf("Too large RSA key. Bailing out.\n"));
  		return -1;
  	}
- 	r = sc_pkcs15_compute_signature(p15card, prkey, SC_PKCS15_PAD_PKCS1_V1_5,
- 					random_data, 20, chg, chglen);
+ 	flags = SC_ALGORITHM_RSA_PAD_PKCS1;
+ 	r = sc_pkcs15_compute_signature(p15card, prkey, flags, random_data, 20,
+ 					chg, chglen);
  	if (r < 0) {
  		DBG(printf("Compute signature failed: %s\n", sc_strerror(r)));
  		return -1;
  	}
  	DBG(printf("Verifying signature...\n"));
-	r = RSA_verify(NID_sha1, random_data, 20, chg, r, rsa);
-	if (r != 1) {
+	r = RSA_public_decrypt(chglen, chg, txt, rsa, RSA_PKCS1_PADDING);
+	if (r < 0) {
 		DBG(printf("No luck this time.\n"));
-		return 0;
-	} else
+		DBG(ERR_load_ERR_strings());
+		DBG(ERR_load_crypto_strings());
+		DBG(ERR_print_errors_fp(stdout));
+		DBG(ERR_free_strings());
+		return -1;
+	}
+	if (r == sizeof(random_data) && memcmp(txt, random_data, r) == 0)
 		return 1;
-
 	return 0;
 }
-	u8 random_data[20];
-	u8 chg[256];
-	int chglen = sizeof(chg);
-	u8 plain_text[128];
-
 
 #ifdef TEST
 int main(int argc, const char **argv)
@@ -266,15 +268,15 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	X509 *cert = NULL;
 	EVP_PKEY *pubkey = NULL;
 	struct sc_pkcs15_cert_info *cinfo;
+	struct sc_pkcs15_object *prkey, *pin;
 	struct sc_pkcs15_prkey_info *prkinfo = NULL;
-	struct sc_pkcs15_pin_info *pinfo = NULL;
-	
-	
+	struct sc_pkcs15_object *objs[32];
+
 	for (i = 0; i < argc; i++)
 		printf("%s\n", argv[i]);
 
 #ifdef TEST
-	user = "jey";
+	user = getenv("USER");
 #else
 	r = pam_get_user(pamh, &user, NULL);
 	if (r != PAM_SUCCESS)
@@ -301,7 +303,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	}
 	ctx->error_file = stderr;
 	ctx->debug_file = stdout;
-	ctx->debug = 0;
 	for (i = 0; i < ctx->reader_count; i++) {
 		if (sc_detect_card_presence(ctx->reader[i], 0) == 1) {
 			DBG(printf("Connecting to %s...\n", ctx->reader[i]->name));
@@ -326,37 +327,36 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		goto end;
 	}
 	DBG(printf("Enumerating certificates...\n"));
-	r = sc_pkcs15_enum_certificates(p15card);
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, 32);
 	if (r < 0) {
 		printf("Cert enum failed: %s\n", sc_strerror(r));
 		goto end;
 	}
 	if (r == 0) /* No certificates found */
 		goto end;
-	for (i = 0; i < p15card->cert_count; i++) {
-	}
-	cinfo = &p15card->cert_info[0]; /* FIXME */
+	cinfo = objs[0]->data; /* FIXME */
 	DBG(printf("Finding private key...\n"));
-	r = sc_pkcs15_find_prkey_by_id(p15card, &cinfo->id, &prkinfo);
+	r = sc_pkcs15_find_prkey_by_id(p15card, &cinfo->id, &prkey);
 	if (r < 0)
 		goto end;
+	prkinfo = prkey->data;
 	DBG(printf("Finding PIN code...\n"));
-	r = sc_pkcs15_find_pin_by_auth_id(p15card, &prkinfo->com_attr.auth_id, &pinfo);
+	r = sc_pkcs15_find_pin_by_auth_id(p15card, &prkey->auth_id, &pin);
 	if (r < 0)
 		goto end;
-	DBG(printf("Asking for PIN code '%s'...\n", pinfo->com_attr.label));
+	DBG(printf("Asking for PIN code '%s'...\n", pin->label));
 #ifdef TEST
 	password = strdup(getpass("Enter PIN1: "));
 	r = 0;
 #else
-	r = get_password(pamh, &password, pinfo->com_attr.label);
+	r = get_password(pamh, &password, pin->label);
 #endif
 	if (r) {
 		err = r;
 		goto end;
 	}
 	DBG(printf("Verifying PIN code...\n"));
-	r = sc_pkcs15_verify_pin(p15card, pinfo, (const u8 *) password, strlen(password));
+	r = sc_pkcs15_verify_pin(p15card, pin->data, (const u8 *) password, strlen(password));
 	memset(password, 0, strlen(password));
 	if (r) {
 		DBG(printf("PIN code verification failed: %s\n", sc_strerror(r)));
@@ -365,16 +365,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		goto end;
 	}
 	DBG(printf("Awright! PIN code correct!\n"));
-	/* FIXME: clear password? */
-	DBG(printf("Deciphering...\n"));
-#if 0
-	r = sc_pkcs15_decipher(p15card, prkinfo, chg, sizeof(chg), plain_text, sizeof(plain_text));
-	if (r <= 0) {
-		DBG(printf("Decipher failed: %s\n", sc_strerror(r)));
-		goto end;
-	}
-#endif
- 	if (verify_authenticity(p15card, prkinfo, pubkey->pkey.rsa) != 1)
+	DBG(printf("Generating signature...\n"));
+ 	if (verify_authenticity(p15card, prkey, pubkey->pkey.rsa) != 1)
  		goto end;
 	DBG(printf("You're in!\n"));	
 	err = PAM_SUCCESS;

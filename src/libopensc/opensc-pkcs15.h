@@ -246,16 +246,13 @@ struct sc_pkcs15_card * sc_pkcs15_card_new();
 void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card);
 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
-		       const struct sc_pkcs15_prkey_info *prkey,
+		       const struct sc_pkcs15_object *prkey_obj,
 		       const u8 *in, size_t inlen, u8 *out, size_t outlen);
 
-#define SC_PKCS15_HASH_SHA1		0x0001
-#define SC_PKCS15_PAD_PKCS1_V1_5	0x10000
-
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
-				const struct sc_pkcs15_prkey_info *prkey,
-				unsigned int flags, const u8 *in, size_t inlen,
-				u8 *out, size_t outlen);
+				const struct sc_pkcs15_object *prkey_obj,
+				unsigned long alg_flags, const u8 *in,
+				size_t inlen, u8 *out, size_t outlen);
 
 void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
 

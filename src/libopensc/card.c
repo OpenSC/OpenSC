@@ -279,6 +279,7 @@ static struct sc_card * sc_card_new()
 		return NULL;
 	}
 	card->app_count = -1;
+	card->magic = SC_CARD_MAGIC;
 	pthread_mutex_init(&card->mutex, NULL);
 
 	return card;
@@ -297,7 +298,10 @@ static void sc_card_free(struct sc_card *card)
 		free(card->app[i]);
 	}
 	free(card->ops);
+	if (card->algorithms != NULL)
+		free(card->algorithms);
 	pthread_mutex_destroy(&card->mutex);
+	card->magic = 0;
 	free(card);
 }
 
@@ -374,7 +378,6 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 		r = SC_ERROR_INVALID_CARD;
 		goto err;
 	}
-	card->magic = SC_CARD_MAGIC;
 	*card_out = card;
 
 	SC_FUNC_RETURN(ctx, 1, 0);
@@ -721,4 +724,69 @@ sc_card_ctl(struct sc_card *card, unsigned long cmd, void *args)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->card_ctl(card, cmd, args);
         SC_FUNC_RETURN(card->ctx, 2, r);
+}
+
+int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info)
+{
+	struct sc_algorithm_info *p;
+	
+	assert(sc_card_valid(card) && info != NULL);
+	card->algorithms = realloc(card->algorithms, (card->algorithm_count + 1) * sizeof(*info));
+	if (card->algorithms == NULL) {
+		card->algorithm_count = 0;
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+	p = card->algorithms + card->algorithm_count;
+	card->algorithm_count++;
+	*p = *info;
+	return 0;
+}
+
+int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
+			 unsigned long flags, long exponent)
+{
+	struct sc_algorithm_info info;
+
+	memset(&info, 0, sizeof(info));
+	info.algorithm = SC_ALGORITHM_RSA;
+	info.key_length = key_length;
+	info.flags = flags;
+	info.u._rsa.exponent = exponent;
+	
+	return _sc_card_add_algorithm(card, &info);
+}
+
+struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
+						 unsigned int key_length)
+{
+	int i;
+
+	for (i = 0; i < card->algorithm_count; i++) {
+		struct sc_algorithm_info *info = &card->algorithms[i];
+		
+		if (info->algorithm != SC_ALGORITHM_RSA)
+			continue;
+		if (info->key_length != key_length)
+			continue;
+		return info;
+	}
+	return NULL;
+}
+
+int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out)
+{
+	const u8 *atr = card->atr;
+	size_t atr_len = card->atr_len;
+	int i = 0;
+	
+	for (i = 0; table[i].atr != NULL; i++) {
+		if (table[i].atr_len != atr_len)
+			continue;
+		if (memcmp(table[i].atr, atr, atr_len) != 0)
+			continue;
+		if (id_out != NULL)
+			*id_out = table[i].id;
+		return i;
+	}
+	return -1;
 }

@@ -97,7 +97,7 @@ static int tcos_set_security_env(struct sc_card *card,
 			return SC_ERROR_NOT_SUPPORTED;
 		}
                 tmp.algorithm_ref = 0x00;
-		if (tmp.algorithm_flags & SC_ALGORITHM_RSA_PKCS1_PAD)
+		if (tmp.algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
 			tmp.algorithm_ref = 0x02;
 #if 0
 		if (tmp.algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)

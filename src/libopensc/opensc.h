@@ -232,12 +232,18 @@ struct sc_file {
 
 #define SC_ALGORITHM_ONBOARD_KEY_GEN	0x80000000
 #define SC_ALGORITHM_SPECIFIC_FLAGS	0x0000FFFF
-#define SC_ALGORITHM_RSA_PKCS1_PAD	0x00000001
-#define SC_ALGORITHM_RSA_PAD_2		0x00000002 /* forgot the names of */
-#define SC_ALGORITHM_RSA_PAD_3		0x00000004 /* these two */
+
+#define SC_ALGORITHM_RSA_RAW		0x00000001
+#define SC_ALGORITHM_RSA_PAD_PKCS1	0x00000002
+#define SC_ALGORITHM_RSA_PAD_ANSI	0x00000004
+#define SC_ALGORITHM_RSA_PAD_ISO9796	0x00000008
+#define SC_ALGORITHM_RSA_HASH_NONE	0x00000010
+#define SC_ALGORITHM_RSA_HASH_SHA1	0x00000020
+#define SC_ALGORITHM_RSA_HASH_MD5	0x00000040
+#define SC_ALGORITHM_RSA_HASH_MD5_SHA1	0x00000080
 
 struct sc_security_env {
-	int flags;
+	unsigned long flags;
 	int operation;
 	unsigned int algorithm, algorithm_flags;
 	
@@ -247,11 +253,16 @@ struct sc_security_env {
 	size_t key_ref_len;
 };
 
+struct sc_algorithm_id {
+	unsigned int algorithm;
+	struct sc_object_id obj_id;
+};
+
 struct sc_algorithm_info {
 	unsigned int algorithm;
 	unsigned int key_length;
-	unsigned int flags;
-	
+	unsigned long flags;
+
 	union {
 		struct sc_rsa_info {
 			long exponent;
@@ -379,6 +390,9 @@ struct sc_card {
 	struct sc_app_info *app[SC_MAX_CARD_APPS];
 	int app_count;
 	struct sc_file *ef_dir;
+	
+	struct sc_algorithm_info *algorithms;
+	int algorithm_count;
 	
 	pthread_mutex_t mutex;
 	int lock_count;

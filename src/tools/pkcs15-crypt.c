@@ -136,9 +136,10 @@ int write_output(const u8 *buf, int len)
 	return 0;
 }
 
-int sign(struct sc_pkcs15_prkey_info *key)
+int sign(struct sc_pkcs15_object *obj)
 {
 	u8 buf[1024], out[1024];
+	struct sc_pkcs15_prkey_info *key = obj->data;
 	int r, c, len;
 	
 	if (opt_input == NULL) {
@@ -153,7 +154,12 @@ int sign(struct sc_pkcs15_prkey_info *key)
 	if (c < 0)
 		return 2;
 	len = sizeof(out);
-	r = sc_pkcs15_compute_signature(p15card, key, opt_crypt_flags,
+	if (!(opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1) && c != key->modulus_length) {
+		fprintf(stderr, "Input has to be exactly %d bytes, when using no padding.\n",
+			key->modulus_length/8);
+		return 2;
+	}
+	r = sc_pkcs15_compute_signature(p15card, obj, opt_crypt_flags,
 					buf, c, out, len);
 	if (r < 0) {
 		fprintf(stderr, "Compute signature failed: %s\n", sc_strerror(r));
@@ -164,7 +170,7 @@ int sign(struct sc_pkcs15_prkey_info *key)
 	return 0;
 }
 
-int decipher(struct sc_pkcs15_prkey_info *key)
+int decipher(struct sc_pkcs15_object *obj)
 {
 	u8 buf[1024], out[1024];
 	int r, c, len;
@@ -177,7 +183,7 @@ int decipher(struct sc_pkcs15_prkey_info *key)
 	if (c < 0)
 		return 2;
 	len = sizeof(out);
-	r = sc_pkcs15_decipher(p15card, key, buf, c, out, len);
+	r = sc_pkcs15_decipher(p15card, obj, buf, c, out, len);
 	if (r < 0) {
 		fprintf(stderr, "Decrypt failed: %s\n", sc_strerror(r));
 		return 1;
@@ -226,10 +232,10 @@ int main(int argc, char * const argv[])
 			opt_output = optarg;
 			break;
 		case OPT_SHA1:
-			opt_crypt_flags |= SC_PKCS15_HASH_SHA1;
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
 			break;
 		case OPT_PKCS1:
-			opt_crypt_flags |= SC_PKCS15_PAD_PKCS1_V1_5;
+			opt_crypt_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 			break;
 		case 'q':
 			quiet++;
@@ -331,12 +337,12 @@ int main(int argc, char * const argv[])
 	if (!quiet)
 		fprintf(stderr, "PIN code correct.\n");
 	if (do_decipher) {
-		if ((err = decipher(key->data)))
+		if ((err = decipher(key)))
 			goto end;
 		action_count--;
 	}
 	if (do_sign) {
-		if ((err = sign(key->data)))
+		if ((err = sign(key)))
 			goto end;
 		action_count--;
 	}

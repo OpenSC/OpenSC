@@ -118,6 +118,7 @@ int sc_asn1_decode_object_id(const u8 * inbuf, size_t inlen,
 #define SC_ASN1_PATH			256
 #define SC_ASN1_PKCS15_ID		257
 #define SC_ASN1_PKCS15_OBJECT		258
+#define SC_ASN1_ALGORITHM_ID		259
 
 /* use callback function */
 #define SC_ASN1_CALLBACK		384

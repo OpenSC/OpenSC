@@ -507,19 +507,21 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 
 	debug(context, "Initiating signing operation.\n");
 
+	flags = SC_ALGORITHM_RSA_PAD_PKCS1;
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
+		flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1; /* FIXME?? */
 		break;
 	case CKM_SHA1_RSA_PKCS:
-		flags = SC_PKCS15_HASH_SHA1;
+		flags |= SC_ALGORITHM_RSA_HASH_SHA1;
 		break;
 	default:
                 return CKR_MECHANISM_INVALID;
 	}
 
-        debug(context, "Selected flags %X. Now computing signature. %d bytes reserved.\n", flags, *pulDataLen);
+        debug(context, "Selected flags %X. Now computing signature for %d bytes. %d bytes reserved.\n", flags, ulDataLen, *pulDataLen);
 	rv = sc_pkcs15_compute_signature((struct sc_pkcs15_card*) ses->slot->card->fw_data,
-					 prkey->prkey_info,
+					 prkey->prkey_object,
 					 flags,
 					 pData,
 					 ulDataLen,

@@ -761,6 +761,46 @@ static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_asn1_p
 	return r;
 }
 
+static const struct sc_asn1_entry c_asn1_alg_id[6] = {
+	{ "algorithm",  SC_ASN1_OBJECT, ASN1_OBJECT, 0, NULL },
+	{ "parameters", SC_ASN1_STRUCT, 0, SC_ASN1_OPTIONAL, NULL },
+	{ NULL }
+};
+
+static int asn1_decode_algorithm_id(struct sc_context *ctx, const u8 *in,
+				    size_t len, struct sc_algorithm_id *id,
+				    int depth)
+{
+	int r;
+	struct sc_asn1_entry asn1_alg_id[3];
+
+	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
+	sc_format_asn1_entry(asn1_alg_id + 0, &id->obj_id, NULL, 0);
+
+	r = asn1_decode(ctx, asn1_alg_id, in, len, NULL, NULL, 0, depth + 1);
+	if (r < 0)
+		return r;
+
+	return 0;
+}
+
+static int asn1_encode_algorithm_id(struct sc_context *ctx,
+				    const struct sc_algorithm_id *id,
+				    u8 **buf, size_t *len, int depth)
+{
+	int r;
+	struct sc_asn1_entry asn1_alg_id[3];
+
+	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
+	sc_format_asn1_entry(asn1_alg_id + 0, (void *) &id->obj_id, NULL, 1);
+
+	r = asn1_encode(ctx, asn1_alg_id, buf, len, depth + 1);
+	if (r < 0)
+		return r;
+
+	return 0;
+}
+
 static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry,
 			     const u8 *obj, size_t objlen, int depth)
 {
@@ -887,6 +927,10 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
 		if (entry->parm != NULL)
 			r = asn1_decode_p15_object(ctx, obj, objlen, (struct sc_asn1_pkcs15_object *) parm, depth);
 		break;
+	case SC_ASN1_ALGORITHM_ID:
+		if (entry->parm != NULL)
+			r = asn1_decode_algorithm_id(ctx, obj, objlen, (struct sc_algorithm_id *) parm, depth);
+                break;
 	case SC_ASN1_CALLBACK:
 		if (entry->parm != NULL)
 			r = callback_func(ctx, entry->arg, obj, objlen, depth);
@@ -1066,6 +1110,9 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 		break;
 	case SC_ASN1_PKCS15_OBJECT:
 		r = asn1_encode_p15_object(ctx, (const struct sc_asn1_pkcs15_object *) parm, &buf, &buflen, depth);
+		break;
+	case SC_ASN1_ALGORITHM_ID:
+		r = asn1_encode_algorithm_id(ctx, (const struct sc_algorithm_id *) parm, &buf, &buflen, depth);
 		break;
 	case SC_ASN1_CALLBACK:
 		r = callback_func(ctx, entry->arg, &buf, &buflen, depth);
