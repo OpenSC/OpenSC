@@ -400,12 +400,11 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 		return r;
 	}
 
-	pubkey = (struct sc_pkcs15_pubkey *) malloc(sizeof(struct sc_pkcs15_pubkey));
+	pubkey = (struct sc_pkcs15_pubkey *) calloc(1, sizeof(struct sc_pkcs15_pubkey));
 	if (pubkey == NULL) {
 		free(data);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-	memset(pubkey, 0, sizeof(struct sc_pkcs15_pubkey));
 	pubkey->algorithm = algorithm;
 	pubkey->data.value = data;
 	pubkey->data.len = len;
@@ -424,6 +423,7 @@ void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 	switch (key->algorithm) {
 	case SC_ALGORITHM_RSA:
 		free(key->u.rsa.modulus.data);
+		free(key->u.rsa.exponent.data);
 		break;
 	case SC_ALGORITHM_DSA:
 		free(key->u.dsa.pub.data);
