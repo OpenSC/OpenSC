@@ -662,7 +662,9 @@ etoken_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
 	 */
 	if (ctx->debug >= 3)
 		sc_debug(ctx, "trying RSA_PURE_SIG (padded DigestInfo)\n");
+	ctx->suppress_errors++;
 	r = do_compute_signature(card, data, datalen, out, outlen);
+	ctx->suppress_errors--;
 	if (r >= SC_SUCCESS)
 		SC_FUNC_RETURN(ctx, 4, r);
 	if (ctx->debug >= 3)
@@ -676,7 +678,9 @@ etoken_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
 		if (r != SC_SUCCESS)
 			SC_FUNC_RETURN(ctx, 4, r);
 	}
+	ctx->suppress_errors++;
 	r = do_compute_signature(card, buf, tmp_len, out, outlen);
+	ctx->suppress_errors--;
 	if (r >= SC_SUCCESS)	
 		SC_FUNC_RETURN(ctx, 4, r);
 	if (ctx->debug >= 3)
