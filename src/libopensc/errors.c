@@ -35,7 +35,7 @@ const char *sc_strerror(int error)
 		"Card reset",
 		"Transmit failed",
 		"Timed out while waiting for input (keypad)",
-		"Input operation canelled (keypad)",
+		"Input operation cancelled (keypad)",
 		"The two PINs did not match (keypad)",
 		"Message too long (keypad)",
 		"Timeout while waiting for event (card reader)",
