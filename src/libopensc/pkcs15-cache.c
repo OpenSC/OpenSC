@@ -67,9 +67,9 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 			       u8 **buf, size_t *bufsize)
 {
 	char fname[160];
-	int r;
+	int r, got;
 	FILE *f;
-	size_t c;
+	size_t count, offset;
 	struct stat stbuf;
 	u8 *data = NULL;
 
@@ -79,13 +79,22 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 	r = stat(fname, &stbuf);
 	if (r)
 		return SC_ERROR_FILE_NOT_FOUND;
-	c = stbuf.st_size;
+	if (path->count < 0) {
+		count = stbuf.st_size;
+		offset = 0;
+	} else {
+		count = path->count;
+		offset = path->index;
+		if (offset >= stbuf.st_size
+		 || offset + count >= stbuf.st_size)
+			return SC_ERROR_FILE_NOT_FOUND; /* cache file bad? */
+	}
 	if (*buf == NULL) {
 		data = (u8 *) malloc(stbuf.st_size);
 		if (data == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 	} else
-		if (c > *bufsize)
+		if (count > *bufsize)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 	f = fopen(fname, "r");
 	if (f == NULL) {
@@ -93,16 +102,18 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 			free(data);
 		return SC_ERROR_FILE_NOT_FOUND;
 	}
+	if (offset)
+		fseek(f, offset, SEEK_SET);
 	if (data)
 		*buf = data;
-	c = fread(*buf, 1, c, f);
+	got = fread(*buf, 1, count, f);
         fclose(f);
-	if (c != stbuf.st_size) {
+	if (got != count) {
 		if (data)
 			free(data);
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
-	*bufsize = c;
+	*bufsize = count;
 	if (data)
 		*buf = data;
         return 0;

@@ -948,11 +948,12 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 {
 	struct sc_file *file;
 	u8	*data = NULL;
-	size_t	len = 0;
+	size_t	len = 0, offset = 0;
 	int	r = -1;
 
 	assert(p15card != NULL && path != NULL && buf != NULL);
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
+
 	if (p15card->opts.use_cache) {
 		r = sc_pkcs15_read_cached_file(p15card, path, &data, &len);
 	}
@@ -964,7 +965,21 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			sc_unlock(p15card->card);
 			return r;
 		}
-		len = file->size;
+		/* Handle the case where the ASN.1 Path object specified
+		 * index and length values */
+		if (path->count < 0) {
+			len = file->size;
+			offset = 0;
+		} else {
+			offset = path->index;
+			len = path->count;
+			/* Make sure we're within proper bounds */
+			if (offset >= file->size
+			 || offset + len >= file->size) {
+				sc_unlock(p15card->card);
+				return SC_ERROR_INVALID_ASN1_OBJECT;
+			}
+		}
 		if (file_out != NULL)
 			*file_out = file;
 		else
@@ -974,7 +989,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			sc_unlock(p15card->card);
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
-		r = sc_read_binary(p15card->card, 0, data, len, 0);
+		r = sc_read_binary(p15card->card, offset, data, len, 0);
 		if (r < 0) {
 			sc_unlock(p15card->card);
 			free(data);
