@@ -68,7 +68,7 @@ const static struct sc_card_error iso7816_errors[] = {
 	{ 0x6B00, SC_ERROR_INCORRECT_PARAMETERS,"Wrong parameter(s) P1-P2" },
 	{ 0x6D00, SC_ERROR_INS_NOT_SUPPORTED,	"Instruction code not supported or invalid" },
 	{ 0x6E00, SC_ERROR_CLASS_NOT_SUPPORTED,	"Class not supported" },
-	{ 0x6F00, SC_ERROR_CARD_CMD_FAILED,	"No precise diagnosis" }
+	{ 0x6F00, SC_ERROR_CARD_CMD_FAILED,	"No precise diagnosis" },
 
 	/* Possibly TCOS / Micardo specific errors */
 	{ 0x6600, SC_ERROR_INCORRECT_PARAMETERS, "Error setting the security env"},
