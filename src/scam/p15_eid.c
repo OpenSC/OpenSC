@@ -36,10 +36,10 @@
 #include <openssl/pem.h>
 #include "scam.h"
 
-#if defined(HAVE_PAM)
+#if defined(PAM_SCAM)
 static pam_handle_t *p15_eid_pamh = NULL;
 static unsigned int *p15_eid_ctrl = NULL;
-#elif defined(HAVE_OSF_SIA)
+#elif defined(SIA_SCAM)
 static sia_collect_func_t *p15_eid_collect = NULL;
 static SIAENTITY *p15_eid_entity = NULL;
 #endif
@@ -71,10 +71,10 @@ const char *p15_eid_usage(void)
 
 void p15_eid_handles(void *ctx1, void *ctx2, void *ctx3)
 {
-#if defined(HAVE_PAM)
+#if defined(PAM_SCAM)
 	p15_eid_pamh = (pam_handle_t *) ctx1;
 	p15_eid_ctrl = (unsigned int *) ctx2;
-#elif defined(HAVE_OSF_SIA)
+#elif defined(SIA_SCAM)
 	p15_eid_collect = (sia_collect_func_t *) ctx1;
 	p15_eid_entity = (SIAENTITY *) ctx2;
 #endif
@@ -89,10 +89,10 @@ void p15_eid_printmsg(char *str,...)
 	memset(buf, 0, 128);
 	vsnprintf(buf, 128, str, ap);
 	va_end(ap);
-#if defined(HAVE_PAM)
+#if defined(PAM_SCAM)
 	if (p15_eid_pamh && p15_eid_ctrl)
 		opensc_pam_msg(p15_eid_pamh, *p15_eid_ctrl, PAM_TEXT_INFO, buf);
-#elif defined(HAVE_OSF_SIA)
+#elif defined(SIA_SCAM)
 #endif
 }
 
@@ -105,10 +105,10 @@ void p15_eid_logmsg(char *str,...)
 	memset(buf, 0, 1024);
 	vsnprintf(buf, 1024, str, ap);
 	va_end(ap);
-#if defined(HAVE_PAM)
+#if defined(PAM_SCAM)
 	if (p15_eid_pamh)
 		opensc_pam_log(LOG_NOTICE, p15_eid_pamh, buf);
-#elif defined(HAVE_OSF_SIA)
+#elif defined(SIA_SCAM)
 	opensc_sia_log(buf);
 #endif
 }

@@ -37,10 +37,10 @@
 #include <openssl/rsa.h>
 #include "scam.h"
 
-#if defined(HAVE_PAM)
+#if defined(PAM_SCAM)
 static pam_handle_t *p15_ldap_pamh = NULL;
 static unsigned int *p15_ldap_ctrl = NULL;
-#elif defined(HAVE_OSF_SIA)
+#elif defined(SIA_SCAM)
 static sia_collect_func_t *p15_ldap_collect = NULL;
 static SIAENTITY *p15_ldap_entity = NULL;
 #endif
@@ -72,10 +72,10 @@ const char *p15_ldap_usage(void)
 
 void p15_ldap_handles(void *ctx1, void *ctx2, void *ctx3)
 {
-#if defined(HAVE_PAM)
+#if defined(PAM_SCAM)
 	p15_ldap_pamh = (pam_handle_t *) ctx1;
 	p15_ldap_ctrl = (unsigned int *) ctx2;
-#elif defined(HAVE_OSF_SIA)
+#elif defined(SIA_SCAM)
 	p15_ldap_collect = (sia_collect_func_t *) ctx1;
 	p15_ldap_entity = (SIAENTITY *) ctx2;
 #endif
@@ -90,10 +90,10 @@ void p15_ldap_printmsg(char *str,...)
 	memset(buf, 0, 128);
 	vsnprintf(buf, 128, str, ap);
 	va_end(ap);
-#if defined(HAVE_PAM)
+#if defined(PAM_SCAM)
 	if (p15_ldap_pamh && p15_ldap_ctrl)
 		opensc_pam_msg(p15_ldap_pamh, *p15_ldap_ctrl, PAM_TEXT_INFO, buf);
-#elif defined(HAVE_OSF_SIA)
+#elif defined(SIA_SCAM)
 #endif
 }
 
@@ -106,10 +106,10 @@ void p15_ldap_logmsg(char *str,...)
 	memset(buf, 0, 1024);
 	vsnprintf(buf, 1024, str, ap);
 	va_end(ap);
-#if defined(HAVE_PAM)
+#if defined(PAM_SCAM)
 	if (p15_ldap_pamh)
 		opensc_pam_log(LOG_NOTICE, p15_ldap_pamh, buf);
-#elif defined(HAVE_OSF_SIA)
+#elif defined(SIA_SCAM)
 	opensc_sia_log(buf);
 #endif
 }

@@ -17,9 +17,12 @@ The following options are recognized:
 				resulting in a delay of about 1 second.
 	auth_method=X	-	use authentication method X, the following
 				methods are currently recognized:
-				sp, opensc-pkcs15
+				pkcs15-ldap, pkcs15-eid
 
-auth_method[sp]:
+Generic options:
+ -h		Show help
+
+auth_method[opensc-pkcs15-ldap]:
  -r <reader>	Reader name
 LDAP specific options:
  -L ldap.conf	Configuration file to load
@@ -35,5 +38,5 @@ LDAP specific options:
    -a attribute(s)
    -f filter
 
-auth_method[opensc-pkcs15]:
-  TODO
+auth_method[opensc-pkcs15-eid]:
+ -r <reader>	Reader name

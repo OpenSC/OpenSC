@@ -26,13 +26,13 @@
 extern "C" {
 #endif
 
-#ifdef HAVE_CONFIH_H
+#ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#if defined(HAVE_PAM)
-#include "pam_support.h"
-#elif defined(HAVE_OSF_SIA)
-#include "sia_support.h"
+#if defined(PAM_SCAM)
+#include <pam_support.h>
+#elif defined(SIA_SCAM)
+#include <sia_support.h>
 #endif
 
 #define SCAM_FAILED	1

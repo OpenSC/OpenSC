@@ -756,7 +756,6 @@ if test "x$PAM_MSG" = "xyes" ; then
 fi
 LIBS="$saved_LIBS"
 AM_CONDITIONAL(HAVE_PAM, test "x$PAM_MSG" = "xyes")
-AM_CONDITIONAL(HAVE_PAM_AND_SSL, test "x$PAM_MSG" = "xyes" -a "x$SSL_MSG" = "xyes")
 
 dnl Check for SIA libs
 AC_SUBST(LIBSIA)

@@ -34,6 +34,7 @@
 #include <utmp.h>
 #endif
 #include <sys/types.h>
+#include "pam_support.h"
 #include "scam.h"
 
 #define PAM_SM_AUTH

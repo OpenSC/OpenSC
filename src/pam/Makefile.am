@@ -2,20 +2,13 @@
 
 libdir = ${prefix}/lib/security
 
-INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@ -I../scam -I../scconf -I../scrandom -I../scldap
+INCLUDES = -I../scam
 
-if HAVE_LDAP
-LDAP_LTLIBS = @LIBSCLDAP@
-else
-LDAP_LTLIBS = 
-endif
+LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBPAM@ ../scam/libpamscam.la
 
-LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBSCRANDOM@ $(LDAP_LTLIBS) @LIBCRYPTO@ @LIBOPENSC@ @LIBPAM@
+SRC = pam_opensc.c pam_support.c pam_support.h
 
-AUTHSRC = ../scam/scam.c ../scam/scam.h ../scam/p15_eid.c ../scam/p15_ldap.c
-SRC = $(AUTHSRC) pam_opensc.c pam_support.c pam_support.h
-
-if HAVE_PAM_AND_SSL
+if HAVE_PAM
 lib_LTLIBRARIES = pam_opensc.la
 noinst_PROGRAMS = pam_opensc-test
 else

@@ -26,6 +26,7 @@
 #include <stdarg.h>
 #include <pwd.h>
 #include <sys/types.h>
+#include "sia_support.h"
 #include "scam.h"
 
 static int scam_method = 0;

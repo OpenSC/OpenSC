@@ -26,7 +26,7 @@
 #include <stdarg.h>
 #include <pwd.h>
 #include <sys/types.h>
-#include "scam.h"
+#include "sia_support.h"
 
 /* opensc_sia_log logs to the standard sialog. */
 void opensc_sia_log(char *format,...)
