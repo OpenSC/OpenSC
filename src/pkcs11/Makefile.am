@@ -6,9 +6,7 @@ libdir = ${prefix}/lib/pkcs11
 
 INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@
 
-CFLAGS = -g
-
-LDFLAGS = -g @LDFLAGS@ @LIBDL@ @LIBOPENSC@
+LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBOPENSC@
 
 SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
 	framework-pkcs15.c
