@@ -3,7 +3,6 @@
 
 #include <stdio.h>
 #include <windows.h>
-#include <winreg.h>
 #include <sys/timeb.h>
 
 #ifndef strcasecmp
@@ -45,13 +44,6 @@
 #define HAVE_IO_H
 #define HAVE_GETPASS
 #define HAVE_PCSC
-
-/* %windir% is replaced by the path of the Windows directory,
- * this is C:\WINNT or C:\WINDOWS on most systems.
- */
-#define OPENSC_CONF_PATH "%windir%\\opensc.conf"
-
-#define SC_PKCS15_PROFILE_DIRECTORY "%windir%"
 
 #define PATH_MAX _MAX_PATH
 
