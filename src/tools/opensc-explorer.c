@@ -812,7 +812,7 @@ int do_get(int argc, char **argv)
 		fbuf[5*i-1] = 0;
 		filename =(char *) &fbuf;
 	}
-	outf = fopen(filename, "w");
+	outf = fopen(filename, "wb");
 	if (outf == NULL) {
 		perror(filename);
 		return -1;
@@ -884,7 +884,7 @@ int do_put(int argc, char **argv)
 		sprintf((char *) buf, "%02X%02X", path.value[0], path.value[1]);
 		filename = (char *) buf;
 	}
-	outf = fopen(filename, "r");
+	outf = fopen(filename, "rb");
 	if (outf == NULL) {
 		perror(filename);
 		return -1;
