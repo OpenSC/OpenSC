@@ -75,7 +75,7 @@ struct pkcs15_cert_key_object {
 
         struct sc_pkcs15_object *certificate_object;
 	struct sc_pkcs15_cert_info *certificate_info;
-	struct sc_pkcs15_pubkey_rsa *rsakey;
+	struct sc_pkcs15_pubkey *key;
 };
 
 struct pkcs15_pubkey_object {
@@ -83,14 +83,14 @@ struct pkcs15_pubkey_object {
 
 	struct sc_pkcs15_object *pubkey_object;
 	struct sc_pkcs15_pubkey_info *pubkey_info;
-	struct sc_pkcs15_pubkey_rsa *rsakey;
+	struct sc_pkcs15_pubkey *key;
 };
 
-static int	get_public_exponent(struct sc_pkcs15_pubkey_rsa *,
+static int	get_public_exponent(struct sc_pkcs15_pubkey *,
 					CK_ATTRIBUTE_PTR);
-static int	get_modulus(struct sc_pkcs15_pubkey_rsa *,
+static int	get_modulus(struct sc_pkcs15_pubkey *,
 					CK_ATTRIBUTE_PTR);
-static int	get_modulus_bits(struct sc_pkcs15_pubkey_rsa *,
+static int	get_modulus_bits(struct sc_pkcs15_pubkey *,
 					CK_ATTRIBUTE_PTR);
 static int	asn1_sequence_wrapper(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 static void	cache_pin(void *, int, const void *, size_t);
@@ -151,7 +151,7 @@ pkcs15_add_cert_object(struct sc_pkcs11_slot *slot,
         /* Corresponding public key */
         obj2 = (struct pkcs15_cert_key_object*) calloc(1, sizeof(struct pkcs15_cert_key_object));
 	obj2->object.ops = &pkcs15_cert_key_ops;
-	obj2->rsakey = &object->certificate->key;
+	obj2->key = &object->certificate->key;
 	obj2->certificate_object = cert;
         obj2->certificate_info = (struct sc_pkcs15_cert_info*) cert->data;
 	pool_insert(&slot->object_pool, obj2, NULL);
@@ -175,7 +175,7 @@ pkcs15_add_pubkey_object(struct sc_pkcs11_slot *slot,
 	object->object.ops = &pkcs15_pubkey_ops;
 	object->pubkey_object = pubkey;
         object->pubkey_info = (struct sc_pkcs15_pubkey_info*) pubkey->data;
-	sc_pkcs15_read_pubkey(card, object->pubkey_info, &object->rsakey);
+	sc_pkcs15_read_pubkey(card, pubkey, &object->key);
 	pool_insert(&slot->object_pool, object, pHandle);
 
 	/* Mark as seen */
@@ -1031,12 +1031,12 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) object;
-	struct sc_pkcs15_pubkey_rsa *key = NULL;
+	struct sc_pkcs15_pubkey *key = NULL;
 
 	if (prkey->cert_object && prkey->cert_object->certificate)
 		key = &prkey->cert_object->certificate->key;
 	else if (prkey->pubkey_object)
-		key = prkey->pubkey_object->rsakey;
+		key = prkey->pubkey_object->key;
 
 	switch (attr->type) {
 	case CKA_CLASS:
@@ -1258,11 +1258,11 @@ CK_RV pkcs15_cert_key_get_attribute(struct sc_pkcs11_session *session,
                 *(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
 	case CKA_MODULUS:
-		return get_modulus(pubkey->rsakey, attr);
+		return get_modulus(pubkey->key, attr);
 	case CKA_MODULUS_BITS:
-		return get_modulus_bits(pubkey->rsakey, attr);
+		return get_modulus_bits(pubkey->key, attr);
 	case CKA_PUBLIC_EXPONENT:
-		return get_public_exponent(pubkey->rsakey, attr);
+		return get_public_exponent(pubkey->key, attr);
 	default:
                 return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
@@ -1331,11 +1331,11 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
                 *(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
 	case CKA_MODULUS:
-		return get_modulus(pubkey->rsakey, attr);
+		return get_modulus(pubkey->key, attr);
 	case CKA_MODULUS_BITS:
-		return get_modulus_bits(pubkey->rsakey, attr);
+		return get_modulus_bits(pubkey->key, attr);
 	case CKA_PUBLIC_EXPONENT:
-		return get_public_exponent(pubkey->rsakey, attr);
+		return get_public_exponent(pubkey->key, attr);
 	default:
                 return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
@@ -1357,25 +1357,21 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
  * get_attribute helpers
  */
 static int
-get_modulus(struct sc_pkcs15_pubkey_rsa *key, CK_ATTRIBUTE_PTR attr)
+get_bignum(sc_pkcs15_bignum_t *bn, CK_ATTRIBUTE_PTR attr)
 {
-	if (key == NULL)
-		return CKR_ATTRIBUTE_TYPE_INVALID;
-	check_attribute_buffer(attr, key->modulus.len);
-	memcpy(attr->pValue, key->modulus.data, key->modulus.len);
+	check_attribute_buffer(attr, bn->len);
+	memcpy(attr->pValue, bn->data, bn->len);
 	return CKR_OK;
 }
 
 static int
-get_modulus_bits(struct sc_pkcs15_pubkey_rsa *key, CK_ATTRIBUTE_PTR attr)
+get_bignum_bits(sc_pkcs15_bignum_t *bn, CK_ATTRIBUTE_PTR attr)
 {
 	CK_ULONG	bits, mask;
 
-	if (key == NULL)
-		return CKR_ATTRIBUTE_TYPE_INVALID;
-	bits = key->modulus.len * 8;
+	bits = bn->len * 8;
 	for (mask = 0x80; mask; mask >>= 1, bits--) {
-		if (key->modulus.data[0] & mask)
+		if (bn->data[0] & mask)
 			break;
 	}
 	check_attribute_buffer(attr, sizeof(bits));
@@ -1384,13 +1380,39 @@ get_modulus_bits(struct sc_pkcs15_pubkey_rsa *key, CK_ATTRIBUTE_PTR attr)
 }
 
 static int
-get_public_exponent(struct sc_pkcs15_pubkey_rsa *key, CK_ATTRIBUTE_PTR attr)
+get_modulus(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
 	if (key == NULL)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
-	check_attribute_buffer(attr, key->exponent.len);
-	memcpy(attr->pValue, key->exponent.data, key->exponent.len);
-	return CKR_OK;
+	switch (key->algorithm) {
+	case SC_ALGORITHM_RSA:
+		return get_bignum(&key->u.rsa.modulus, attr);
+	}
+	return CKR_ATTRIBUTE_TYPE_INVALID;
+}
+
+static int
+get_modulus_bits(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
+{
+	if (key == NULL)
+		return CKR_ATTRIBUTE_TYPE_INVALID;
+	switch (key->algorithm) {
+	case SC_ALGORITHM_RSA:
+		return get_bignum_bits(&key->u.rsa.modulus, attr);
+	}
+	return CKR_ATTRIBUTE_TYPE_INVALID;
+}
+
+static int
+get_public_exponent(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
+{
+	if (key == NULL)
+		return CKR_ATTRIBUTE_TYPE_INVALID;
+	switch (key->algorithm) {
+	case SC_ALGORITHM_RSA:
+		return get_bignum(&key->u.rsa.exponent, attr);
+	}
+	return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
 static int
