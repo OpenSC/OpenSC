@@ -272,6 +272,7 @@ CK_RV slot_token_removed(int id)
         struct sc_pkcs11_slot *slot;
         struct sc_pkcs11_object *object;
 	CK_SLOT_INFO saved_slot_info;
+	int reader;
 
 	rv = slot_get_slot(id, &slot);
 	if (rv != CKR_OK)
@@ -298,10 +299,12 @@ CK_RV slot_token_removed(int id)
 	/* Zap everything else. Restore the slot_info afterwards (it contains the reader
 	 * name, for instance) but clear its flags */
 	saved_slot_info = slot->slot_info;
+	reader = slot->reader;
 	memset(slot, 0, sizeof(*slot));
 	slot->slot_info = saved_slot_info;
 	slot->slot_info.flags = 0;
 	slot->login_user = -1;
+	slot->reader = reader;
 
 	if (token_was_present)
 		slot->events = SC_EVENT_CARD_REMOVED;
