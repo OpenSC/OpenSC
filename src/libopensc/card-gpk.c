@@ -260,13 +260,19 @@ match_path(struct sc_card *card, unsigned short int **pathptr, size_t *pathlen,
 	if (ptr[0] != GPK_FID_MF || curptr[0] != GPK_FID_MF)
 		return 0;
 
-	/* You cannot select the parent with the GPK */
-	if (len < curlen)
-		return 0;
-
-	for (i = 1; i < curlen; i++) {
+	for (i = 1; i < len && i < curlen; i++) {
 		if (ptr[i] != curptr[i])
 			break;
+	}
+
+	if (len < curlen) {
+		/* Caller asked us to select the DF, but the
+		 * current file is some EF within the DF we're
+		 * interested in. Say ACK */
+		if (len == 2)
+			goto okay;
+		/* Anything else won't work */
+		return 0;
 	}
 
 	/* In the case of an exact match:
@@ -284,6 +290,7 @@ match_path(struct sc_card *card, unsigned short int **pathptr, size_t *pathlen,
 		return 0;
 	}
 
+okay:
 	*pathptr = ptr + i;
 	*pathlen = len - i;
 	return 1;
