@@ -841,12 +841,16 @@ int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info 
 	struct sc_algorithm_info *p;
 	
 	assert(sc_card_valid(card) && info != NULL);
-	card->algorithms = (struct sc_algorithm_info *) realloc(card->algorithms, (card->algorithm_count + 1) * sizeof(*info));
-	if (card->algorithms == NULL) {
+	p = (struct sc_algorithm_info *) realloc(card->algorithms, (card->algorithm_count + 1) * sizeof(*info));
+	if (!p) {
+		if (card->algorithms)
+			free(card->algorithms);
+		card->algorithms = NULL;
 		card->algorithm_count = 0;
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-	p = card->algorithms + card->algorithm_count;
+	card->algorithms = p;
+	p += card->algorithm_count;
 	card->algorithm_count++;
 	*p = *info;
 	return 0;

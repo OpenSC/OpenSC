@@ -120,7 +120,7 @@ pkcs11_init_cert(PKCS11_CTX * ctx, PKCS11_TOKEN * token,
 {
 	PKCS11_TOKEN_private *tpriv;
 	PKCS11_CERT_private *kpriv;
-	PKCS11_CERT *cert;
+	PKCS11_CERT *cert, *tmp;
 	char label[256], data[2048];
 	unsigned char id[256];
 	CK_CERTIFICATE_TYPE cert_type;
@@ -135,9 +135,14 @@ pkcs11_init_cert(PKCS11_CTX * ctx, PKCS11_TOKEN * token,
 		return 0;
 
 	tpriv = PRIVTOKEN(token);
-	tpriv->certs = (PKCS11_CERT *) OPENSSL_realloc(tpriv->certs,
-						       (tpriv->ncerts +
-							1) * sizeof(PKCS11_CERT));
+	tmp = (PKCS11_CERT *) OPENSSL_realloc(tpriv->certs,
+				(tpriv->ncerts + 1) * sizeof(PKCS11_CERT));
+	if (!tmp) {
+		free(tpriv->certs);
+		tpriv->certs = NULL;
+		return -1;
+	}
+	tpriv->certs = tmp;
 
 	cert = tpriv->certs + tpriv->ncerts++;
 	memset(cert, 0, sizeof(*cert));

@@ -75,7 +75,7 @@ static int string_need_quotes(const char *str)
 
 static char *scconf_list_get_string(scconf_list * list)
 {
-	char *buffer = NULL;
+	char *buffer = NULL, *tmp;
 	int datalen, len, alloc_len, quote;
 
 	if (!list) {
@@ -92,7 +92,12 @@ static char *scconf_list_get_string(scconf_list * list)
 		datalen = strlen(list->data);
 		if (len + datalen + 4 > alloc_len) {
 			alloc_len += datalen + 2;
-			buffer = (char *) realloc(buffer, alloc_len);
+			tmp = (char *) realloc(buffer, alloc_len);
+			if (!tmp) {
+				free(buffer);
+				return strdup("");
+			}
+			buffer = tmp;
 		}
 		if (len != 0) {
 			memcpy(buffer + len, ", ", 2);
@@ -138,14 +143,13 @@ static void scconf_write_items(scconf_writer * writer, const scconf_block * bloc
 			datalen = strlen(item->key) + strlen(name) + 6;
 			data = (char *) malloc(datalen);
 			if (!data) {
+				free(name);
 				continue;
 			}
 			snprintf(data, datalen, "%s %s {", item->key, name);
 			write_line(writer, data);
 			free(data);
-			data = NULL;
 			free(name);
-			name = NULL;
 
 			/* items */
 			writer->indent_pos += writer->indent_level;
@@ -160,14 +164,13 @@ static void scconf_write_items(scconf_writer * writer, const scconf_block * bloc
 			datalen = strlen(item->key) + strlen(name) + 6;
 			data = (char *) malloc(datalen);
 			if (!data) {
+				free(name);
 				continue;
 			}
 			snprintf(data, datalen, "%s = %s;", item->key, name);
 			write_line(writer, data);
 			free(data);
-			data = NULL;
 			free(name);
-			name = NULL;
 			break;
 		}
 	}

@@ -240,7 +240,7 @@ pkcs11_init_key(PKCS11_CTX * ctx, PKCS11_TOKEN * token,
 {
 	PKCS11_TOKEN_private *tpriv;
 	PKCS11_KEY_private *kpriv;
-	PKCS11_KEY *key;
+	PKCS11_KEY *key, *tmp;
 	char label[256];
 	unsigned char id[256];
 	CK_KEY_TYPE key_type;
@@ -261,9 +261,14 @@ pkcs11_init_key(PKCS11_CTX * ctx, PKCS11_TOKEN * token,
 	}
 
 	tpriv = PRIVTOKEN(token);
-	tpriv->keys = (PKCS11_KEY *) OPENSSL_realloc(tpriv->keys,
-						     (tpriv->nkeys +
-						      1) * sizeof(PKCS11_KEY));
+	tmp = (PKCS11_KEY *) OPENSSL_realloc(tpriv->keys,
+				(tpriv->nkeys + 1) * sizeof(PKCS11_KEY));
+	if (!tmp) {
+		free(tpriv->keys);
+		tpriv->keys = NULL;
+		return -1;
+	}
+	tpriv->keys = tmp;
 
 	key = tpriv->keys + tpriv->nkeys++;
 	memset(key, 0, sizeof(*key));

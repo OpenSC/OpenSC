@@ -1029,7 +1029,7 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 			struct sc_pkcs15_df *df,
 			u8 **buf_out, size_t *bufsize_out)
 {
-	u8 *buf = NULL, *tmp;
+	u8 *buf = NULL, *tmp = NULL;
 	size_t bufsize = 0, tmpsize;
 	const struct sc_pkcs15_object *obj;
 	int (* func)(struct sc_context *, const struct sc_pkcs15_object *obj,
@@ -1068,6 +1068,7 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 			continue;
 		r = func(ctx, obj, &tmp, &tmpsize);
 		if (r) {
+			free(tmp);
 			free(buf);
 			return r;
 		}

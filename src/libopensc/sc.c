@@ -373,6 +373,7 @@ void sc_file_dup(struct sc_file **dest, const struct sc_file *src)
 int sc_file_set_sec_attr(struct sc_file *file, const u8 *sec_attr,
 			 size_t sec_attr_len)
 {
+	u8 *tmp;
 	assert(sc_file_valid(file));
 
 	if (sec_attr == NULL) {
@@ -382,11 +383,15 @@ int sc_file_set_sec_attr(struct sc_file *file, const u8 *sec_attr,
 		file->sec_attr_len = 0;
 		return 0;
 	 }
-	file->sec_attr = (u8 *) realloc(file->sec_attr, sec_attr_len);
-	if (file->sec_attr == NULL) {
+	tmp = (u8 *) realloc(file->sec_attr, sec_attr_len);
+	if (!tmp) {
+		if (file->sec_attr)
+			free(file->sec_attr);
+		file->sec_attr     = NULL;
 		file->sec_attr_len = 0;
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
+	file->sec_attr = tmp;
 	memcpy(file->sec_attr, sec_attr, sec_attr_len);
 	file->sec_attr_len = sec_attr_len;
 
@@ -396,6 +401,7 @@ int sc_file_set_sec_attr(struct sc_file *file, const u8 *sec_attr,
 int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
 			 size_t prop_attr_len)
 {
+	u8 *tmp;
 	assert(sc_file_valid(file));
 
 	if (prop_attr == NULL) {
@@ -405,11 +411,15 @@ int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
 		file->prop_attr_len = 0;
 		return 0;
 	 }
-	file->prop_attr = (u8 *) realloc(file->prop_attr, prop_attr_len);
-	if (file->prop_attr == NULL) {
+	tmp = (u8 *) realloc(file->prop_attr, prop_attr_len);
+	if (!tmp) {
+		if (file->prop_attr)
+			free(file->prop_attr);
+		file->prop_attr = NULL;
 		file->prop_attr_len = 0;
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
+	file->prop_attr = tmp;
 	memcpy(file->prop_attr, prop_attr, prop_attr_len);
 	file->prop_attr_len = prop_attr_len;
 
@@ -419,6 +429,7 @@ int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
 int sc_file_set_type_attr(struct sc_file *file, const u8 *type_attr,
 			 size_t type_attr_len)
 {
+	u8 *tmp;
 	assert(sc_file_valid(file));
 
 	if (type_attr == NULL) {
@@ -428,11 +439,15 @@ int sc_file_set_type_attr(struct sc_file *file, const u8 *type_attr,
 		file->type_attr_len = 0;
 		return 0;
 	 }
-	file->type_attr = (u8 *) realloc(file->type_attr, type_attr_len);
-	if (file->type_attr == NULL) {
+	tmp = (u8 *) realloc(file->type_attr, type_attr_len);
+	if (!tmp) {
+		if (file->type_attr)
+			free(file->type_attr);
+		file->type_attr = NULL;
 		file->type_attr_len = 0;
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
+	file->type_attr = tmp;
 	memcpy(file->type_attr, type_attr, type_attr_len);
 	file->type_attr_len = type_attr_len;
 
