@@ -1,0 +1,100 @@
+.PU
+.ds nm \fBpkcs11-tool\fR
+.TH pkcs11-tool 1 "December 11, 2003" "" OpenSC
+.SH NAME
+pkcs11-tool \- utility for managing and using PKCS #11 security tokens 
+.SH SYNOPSIS
+\*(nm
+.RI [OPTIONS]
+.SH DESCRIPTION
+The \*(nm utility is used to manage the 
+data objects on smart cards and similar PKCS #11 security tokens.  
+Users can list and read PINs, keys and
+certificates stored on the token.  User PIN authentication is
+performed for those operations that require it.
+.SH OPTIONS
+.TP
+.BR \-\-login ", " \-l
+Authenticate to the token before performing other operations.
+This option is not needed if a PIN is provided on the command line.
+.TP
+.BR "\-\-pin " \fIpin\fP ", \-p " \fIpin\fP
+Use the given \fIpin\fP for token operations.
+WARNING: Be careful using this option as other users may be able to
+read the command line from the system or if it is embedded in a script.
+.TP
+.BR \-\-change\-pin ", " \-c
+Change the user PIN on the token
+.TP
+.BR \-\-quiet ", " \-q
+Causes \*(nm to be less verbose about what is going on behind the scenes.
+.TP
+.BR \-\-test ", " \-t
+Performs some tests on the token.  This option is most useful when used with
+either \-\-login or \-\-pin.
+.TP
+.BR \-\-show\-info ", " \-I
+Displays general token information.
+.TP
+.BR \-\-list\-slots ", " \-L
+Displays a list of available slots on the token.
+.TP
+.BR \-\-list\-mechanisms ", " \-M
+Displays a list of mechanisms supported by the token.
+.TP
+.BR \-\-list\-objects ", " \-O
+Displays a list of objects.
+.TP
+.BR \-\-sign ", " \-s
+Sign some data.
+.TP
+.BR \-\-hash ", " \-h
+Hash some data.
+.TP
+.Br "\-\-mechanism " \fImechanism\fP ", \-m " \fImechanism\fP
+Use the specified \fImechanism\fP for token operations.  
+See \-M for a list of mechanisms supported by your token.
+.TP
+.BR \-\-keypairgen ", " \-k
+Generate a new key pair (public and private pair.)
+.TP
+.BR "\-\-write\-object " \fIid\fP ", \-w " \fIid\fP
+Write a key or certificate object to the token.
+.TP
+.BR "\-\-type " \fItype\fP ", \-y " \fItype\fP
+Specify the type of object to operate on.  Examples are \fIcert\fP ,
+\fIprivkey\fP and \fIpubkey\fP .
+.TP
+.BR "\-\-id " \fIid\fP ", \-d " \fIid\fP
+Specify the id of the object to operate on."
+.TP
+.BR "\-\-label " \fIname\fP ", \-a " \fIname\fP
+Specify the name of the object to operate on.
+.TP
+.BR "\-\-slot " \fIid\fP 
+Specify the id of the slot to use.
+.TP
+.BR "\-\-slot\-id " \fIname\fP
+Specify the name of the slot to use.
+.TP
+.BR "\-\-set\-id " \fIid\fP ", \-e " \fIid\fP
+Set the CKA_ID of the object.
+.TP
+.BR "\-\-input\-file " \fIpath\fP ", \-i " \fIpath\fP
+Specify the path to a file for input.
+.TP
+.BR "\-\-output\-file " \fIpath\fP ", \-o " \fIpath\fP
+Specify the path to a file for output.
+.TP
+.BR "\-\-module " \fImod\fP 
+Specify a module to load.
+.TP
+.BR "\-\-moz\-cert " \fIpath\fP ", \-z " \fIpath\fP
+Tests a Mozilla-like keypair generation and certificate request.
+Specify the \fIpath\fP to the certificate file.
+.SH SEE ALSO
+.BR opensc (7),
+.SH AUTHORS
+\*(nm was written by Olaf Kirch
+This manpage was contributed by Joe Phillips <joe.phillips@innovationsw.com>
+for the Debian GNU/Linux system (but may be used by others).

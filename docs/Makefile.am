@@ -14,6 +14,8 @@ MANSRC = \
 	opensc-explorer.1 \
 	opensc-tool.1 \
 	pkcs15-tool.1 \
+	pkcs11-tool.1 \
+	cardos-info.1 \
 	opensc.7 \
 	pkcs15.7 \
 	sc_connect_card.3 \
