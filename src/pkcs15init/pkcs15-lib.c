@@ -1665,6 +1665,14 @@ do_verify_pin(struct sc_profile *pro, struct sc_card *card,
 			pinbuf, &pinsize, 1);
 }
 
+void
+sc_pkcs15init_set_secret(struct sc_profile *pro,
+			int type, int reference,
+			u8 *key, size_t len)
+{
+	sc_profile_set_secret(pro, type, reference, key, len);
+}
+
 int
 sc_pkcs15init_get_secret(struct sc_profile *pro, struct sc_card *card,
 		int type, int reference,

@@ -219,6 +219,8 @@ extern int	sc_pkcs15init_get_label(struct sc_profile *, const char **);
 
 extern void	sc_pkcs15init_set_pin_data(struct sc_profile *, int,
 				const void *, size_t);
+extern void	sc_pkcs15init_set_secret(struct sc_profile *,
+				int, int, u8 *, size_t);
 extern int	sc_pkcs15init_get_secret(struct sc_profile *,
 				struct sc_card *, int, int, u8 *, size_t *);
 
