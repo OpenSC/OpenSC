@@ -1,9 +1,10 @@
 #include <opensc.h>
 #include <stdio.h>
+#include <sc-asn1.h>
 
 int main(int argc, char *argv[])
 {
-	int i, len;
+	int len;
 	FILE *inf;
 	char buf[8192];
 

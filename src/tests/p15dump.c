@@ -15,12 +15,12 @@ struct sc_pkcs15_card *p15card;
 
 int enum_pins()
 {
-	int i, c;
+	int c, i;
 
 	c = sc_pkcs15_enum_pins(p15card);
 	if (c < 0) {
 		fprintf(stderr, "Error enumerating PIN codes: %s\n",
-			sc_strerror(i));
+			sc_strerror(c));
 		return 1;
 	}
 	if (c == 0)

@@ -27,6 +27,8 @@
 #include <opensc.h>
 #include <opensc-pkcs15.h>
 
+#include <sc-internal.h>
+
 int opt_reader = 0, opt_pin = 0, quiet = 0;
 int opt_debug = 0;
 char * opt_pincode = NULL, * opt_key_id = NULL;

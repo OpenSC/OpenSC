@@ -174,7 +174,7 @@ int extract_key()
 	struct sc_pkcs15_id id;
 	u8 *p = id.value;
 	char *certp = opt_cert;
-	struct sc_pkcs15_cert_info *cinfo;
+	struct sc_pkcs15_cert_info *cinfo = NULL;
 	struct sc_pkcs15_cert *cert;
 	X509 *x509;
 	EVP_PKEY *pubkey;

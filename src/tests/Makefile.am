@@ -1,6 +1,7 @@
 # Process this file with automake to create Makefile.in
 
 INCLUDES = -I$(top_srcdir)/src/libopensc
+CFLAGS = @CFLAGS@ -Werror
 LDFLAGS = @LDFLAGS@ \
 	$(top_srcdir)/src/libopensc/libopensc.la
 

@@ -29,6 +29,8 @@
 #include <sys/stat.h>
 #include <ctype.h>
 
+#include <sc-internal.h>
+
 #define OPT_CHANGE_PIN	0x100
 #define OPT_LIST_PINS	0x101
 #define OPT_READER	0x102
@@ -124,6 +126,32 @@ void hex_dump(const u8 *in, int len)
 	for (i = 0; i < len; i++)
 		printf("%02X ", in[i]);
 }
+
+void hex_dump_asc(const u8 *in, size_t count)
+{
+	int lines = 0;
+
+ 	while (count) {
+		char ascbuf[17];
+		int i;
+
+		for (i = 0; i < count && i < 16; i++) {
+			printf("%02X ", *in);
+			if (isprint(*in))
+				ascbuf[i] = *in;
+			else
+				ascbuf[i] = '.';
+			in++;
+		}
+		count -= i;
+		ascbuf[i] = 0;
+		for (; i < 16 && lines; i++)
+			printf("   ");
+		printf("%s\n", ascbuf);
+		lines++;
+	}
+}
+
 
 int list_readers()
 {
@@ -548,31 +576,6 @@ int learn_card()
 	}
 
 	return 0;
-}
-
-void hex_dump_asc(const u8 *in, size_t count)
-{
-	int lines = 0;
-
- 	while (count) {
-		char ascbuf[17];
-		int i;
-
-		for (i = 0; i < count && i < 16; i++) {
-			printf("%02X ", *in);
-			if (isprint(*in))
-				ascbuf[i] = *in;
-			else
-				ascbuf[i] = '.';
-			in++;
-		}
-		count -= i;
-		ascbuf[i] = 0;
-		for (; i < 16 && lines; i++)
-			printf("   ");
-		printf("%s\n", ascbuf);
-		lines++;
-	}
 }
 
 int send_apdu()
