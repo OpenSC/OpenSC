@@ -1,6 +1,5 @@
-#include <openssl/rsa.h>
-#include "opensc-crypto.h"
 #include "signer.h"
+#include "opensc-crypto.h"
 
 #define DBG(x) { x; }
 
