@@ -186,13 +186,13 @@ static int jcop_init(struct sc_card *card)
 static int jcop_get_default_key(struct sc_card *card,
                                 struct sc_cardctl_default_key *data)
 {
-        const char *key;
+	const char *key;
 
-        if (data->method != SC_AC_AUT || data->key_ref > 2)
-                return SC_ERROR_NO_DEFAULT_KEY;
+	if (data->method != SC_AC_PRO || data->key_ref > 2)
+		return SC_ERROR_NO_DEFAULT_KEY;
 
-	key = "40:41:42:43:44:45:46:47:47:49:4A:4B:4C:4D:4E:4F";
-        return sc_hex_to_bin(key, data->key_data, &data->len);
+	key = "40:41:42:43:44:45:46:47:48:49:4A:4B:4C:4D:4E:4F";
+	return sc_hex_to_bin(key, data->key_data, &data->len);
 }
 
 /* since the card is actually a javacard, we're expected to use ISO
