@@ -26,4 +26,8 @@ noinst_HEADERS = \
 	opensc-crypto.h opensc-support.h signer.h 
 
 install-exec-local: install-libLTLIBRARIES
+if HAVE_SSL
+if HAVE_ASSUAN
 	-$(LN_S) -f $(libdir)/opensc-signer.so $(DESTDIR)$(plugindir)/
+endif
+endif
