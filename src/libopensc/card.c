@@ -913,14 +913,14 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out)
 	i = sc_bin_to_hex(card->atr, card->atr_len, atr, sizeof(atr), ':');
 	if (i != 0)
 		return -1;
-	atr_len = sizeof(atr);
+	atr_len = strlen(atr);
 
 	if (ctx->debug >= 4)
 		sc_debug(ctx, "current ATR: %s\n", atr);
 
 	for (i = 0; table[i].atr != NULL; i++) {
 		const char *tatr = table[i].atr;
-		size_t tlen = sizeof(tatr);
+		size_t tlen = strlen(tatr);
 
 		if (ctx->debug >= 4)
 			sc_debug(ctx, "trying ATR: %s\n", tatr);
