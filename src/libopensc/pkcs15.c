@@ -587,6 +587,7 @@ int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, int type,
 	const int prkey_df[] = { SC_PKCS15_PRKDF, -1 };
 	const int pubkey_df[] = { SC_PKCS15_PUKDF, SC_PKCS15_PUKDF_TRUSTED, -1 };
 	const int cert_df[] = { SC_PKCS15_CDF, SC_PKCS15_CDF_TRUSTED, SC_PKCS15_CDF_USEFUL, -1 };
+	const int data_df[] = { SC_PKCS15_DODF, -1 };
 	const int auth_df[] = { SC_PKCS15_AODF, -1 };
 	const int *dfs;
 	sc_pkcs15_object_t *obj;
@@ -601,6 +602,9 @@ int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, int type,
 		break;
 	case SC_PKCS15_TYPE_CERT:
 		dfs = cert_df;
+		break;
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		dfs = data_df;
 		break;
 	case SC_PKCS15_TYPE_AUTH:
 		dfs = auth_df;
@@ -664,6 +668,8 @@ static int compare_obj_id(struct sc_pkcs15_object *obj, void *arg)
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_pubkey_info *) data)->id, id);
 	case SC_PKCS15_TYPE_AUTH_PIN:
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_pin_info *) data)->auth_id, id);
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		return sc_pkcs15_compare_id(&((struct sc_pkcs15_data_info *) data)->id, id);
 	}
 	return 0;
 }
@@ -708,6 +714,13 @@ int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *p15card,
 			     struct sc_pkcs15_object **out)
 {
 	return find_by_id(p15card, SC_PKCS15_TYPE_AUTH_PIN, id, out);
+}
+
+int sc_pkcs15_find_data_object_by_id(struct sc_pkcs15_card *p15card,
+				const struct sc_pkcs15_id *id,
+				struct sc_pkcs15_object **out)
+{
+	return find_by_id(p15card, SC_PKCS15_TYPE_DATA_OBJECT, id, out);
 }
 
 static int compare_flags(struct sc_pkcs15_object *obj, void *arg)
@@ -841,6 +854,9 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 	case SC_PKCS15_CDF_USEFUL:
 		func = sc_pkcs15_encode_cdf_entry;
 		break;
+	case SC_PKCS15_DODF:
+		func = sc_pkcs15_encode_dodf_entry;
+		break;
 	case SC_PKCS15_AODF:
 		func = sc_pkcs15_encode_aodf_entry;
 		break;
@@ -893,6 +909,9 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	case SC_PKCS15_CDF_TRUSTED:
 	case SC_PKCS15_CDF_USEFUL:
 		func = sc_pkcs15_decode_cdf_entry;
+		break;
+	case SC_PKCS15_DODF:
+		func = sc_pkcs15_decode_dodf_entry;
 		break;
 	case SC_PKCS15_AODF:
 		func = sc_pkcs15_decode_aodf_entry;

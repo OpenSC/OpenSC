@@ -11,7 +11,7 @@ HEADERSDIR		= $(TOPDIR)\src\include\opensc
 
 OBJECTS			= sc.obj ctx.obj module.obj asn1.obj log.obj base64.obj \
 			  errors.obj sec.obj card.obj iso7816.obj dir.obj \
-			  pkcs15.obj pkcs15-cert.obj pkcs15-pin.obj \
+			  pkcs15.obj pkcs15-cert.obj pkcs15-data.obj pkcs15-pin.obj \
 			  pkcs15-prkey.obj pkcs15-pubkey.obj pkcs15-sec.obj \
 			  pkcs15-wrap.obj pkcs15-algo.obj \
 			  pkcs15-cache.obj reader-pcsc.obj \

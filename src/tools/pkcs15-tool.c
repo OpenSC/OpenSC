@@ -57,6 +57,8 @@ const struct option options[] = {
 	{ "learn-card",		0, 0, 		'L' },
 	{ "read-certificate",	1, 0, 		'r' },
 	{ "list-certificates",	0, 0,		'c' },
+	{ "read-data-object",	1, 0, 		'R' },
+	{ "list-data-objects",	0, 0,		'C' },
 	{ "list-pins",		0, 0,		OPT_LIST_PINS },
 	{ "change-pin",		0, 0,		OPT_CHANGE_PIN },
 	{ "list-keys",          0, 0,           'k' },
@@ -75,6 +77,8 @@ const char *option_help[] = {
 	"Stores card info to cache",
 	"Reads certificate with ID <arg>",
 	"Lists certificates",
+	"Reads data object with ID <arg>",
+	"Lists data objects",
 	"Lists PIN codes",
 	"Changes the PIN code",
 	"Lists private keys",
@@ -160,6 +164,49 @@ print_pem_object(const char *kind, const u8*data, size_t data_len)
 	return 0;
 }
 
+int
+list_data_object(const char *kind, const u8*data, size_t data_len)
+{
+	int i;
+	
+	printf("%s (%i bytes): <", kind, data_len);
+	for (i = 0; i < data_len; i++)
+		printf(" %02X", data[i]);
+	printf(" >\n");
+
+	return 0;
+}
+
+int
+print_data_object(const char *kind, const u8*data, size_t data_len)
+{
+	int i;
+	
+	if (opt_outfile != NULL) {
+		FILE *outf;
+		outf = fopen(opt_outfile, "w");
+		if (outf == NULL) {
+			fprintf(stderr, "Error opening file '%s': %s\n",
+				opt_outfile, strerror(errno));
+			return 2;
+			}
+		for (i=0; i < data_len; i++)
+			fprintf(outf, "%c", data[i]);
+		printf("Dumping (%i bytes) to file <%s>: <", data_len, opt_outfile);
+		for (i=0; i < data_len; i++)
+			printf(" %02X", data[i]);
+		printf(" >\n");
+		fclose(outf);
+	} else {
+		printf("%s (%i bytes): <", kind, data_len);
+		for (i=0; i < data_len; i++)
+			printf(" %02X", data[i]);
+		printf(" >\n");
+	}
+	printf(" >\n");
+	return 0;
+}
+
 int read_certificate(void)
 {
 	int r, i, count;
@@ -195,6 +242,72 @@ int read_certificate(void)
 	}
 	fprintf(stderr, "Certificate with ID '%s' not found.\n", opt_cert);
 	return 2;
+}
+
+int read_data_object(void)
+{
+	int r, i, count;
+	struct sc_pkcs15_id id;
+	struct sc_pkcs15_object *objs[32];
+
+	id.len = SC_PKCS15_MAX_ID_SIZE;
+	sc_pkcs15_hex_string_to_id(opt_cert, &id);
+	
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, objs, 32);
+	if (r < 0) {
+		fprintf(stderr, "Data object enumeration failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+	count = r;
+	for (i = 0; i < count; i++) {
+		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
+		struct sc_pkcs15_data *data_object;
+
+		if (sc_pkcs15_compare_id(&id, &cinfo->id) != 1)
+			continue;
+			
+		if (!quiet)
+			printf("Reading data object with ID '%s'\n", opt_cert);
+		r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
+		if (r) {
+			fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
+			return 1;
+		}
+		r = print_data_object("Data Object", data_object->data, data_object->data_len);
+		sc_pkcs15_free_data_object(data_object);
+		return r;
+	}
+	fprintf(stderr, "Data object with ID '%s' not found.\n", opt_cert);
+	return 2;
+}
+
+int list_data_objects(void)
+{
+	int r, i, count;
+	struct sc_pkcs15_id id;
+	struct sc_pkcs15_object *objs[32];
+	id.len = SC_PKCS15_MAX_ID_SIZE;
+
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, objs, 32);
+	if (r < 0) {
+		fprintf(stderr, "Data object enumeration failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+	count = r;
+	for (i = 0; i < count; i++) {
+		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
+		struct sc_pkcs15_data *data_object;
+
+		printf("Reading data object <%i> ---------------------------\n", i);
+		r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
+		if (r) {
+			fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
+			return 1;
+		}
+		r = list_data_object("Data Object", data_object->data, data_object->data_len);
+		sc_pkcs15_free_data_object(data_object);
+	}
+	return 0;
 }
 
 void print_prkey_info(const struct sc_pkcs15_object *obj)
@@ -641,6 +754,8 @@ int main(int argc, char * const argv[])
 	int err = 0, r, c, long_optind = 0;
 	int do_read_cert = 0;
 	int do_list_certs = 0;
+	int do_read_data_object = 0;
+	int do_list_data_objects = 0;
 	int do_list_pins = 0;
 	int do_list_prkeys = 0;
 	int do_list_pubkeys = 0;
@@ -650,7 +765,7 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:cko:qdp:L", options, &long_optind);
+		c = getopt_long(argc, argv, "r:cko:qdp:LR:C", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -663,6 +778,15 @@ int main(int argc, char * const argv[])
 			break;
 		case 'c':
 			do_list_certs = 1;
+			action_count++;
+			break;
+		case 'R':
+			opt_cert = optarg;
+			do_read_data_object = 1;
+			action_count++;
+			break;
+		case 'C':
+			do_list_data_objects = 1;
 			action_count++;
 			break;
 		case OPT_CHANGE_PIN:
@@ -773,6 +897,16 @@ int main(int argc, char * const argv[])
 	}
 	if (do_read_cert) {
 		if ((err = read_certificate()))
+			goto end;
+		action_count--;
+	}
+	if (do_list_data_objects) {
+		if ((err = list_data_objects()))
+			goto end;
+		action_count--;
+	}
+	if (do_read_data_object) {
+		if ((err = read_data_object()))
 			goto end;
 		action_count--;
 	}

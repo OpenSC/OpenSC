@@ -86,6 +86,13 @@ filesystem {
 		size		= 128;
 		acl		= *=$SOPIN, READ=NONE;
 	    }
+
+	    EF PKCS15-DODF {
+	        file-id		= 4405;
+		size		= 128;
+		ACL		= *=NONE;
+	    }
+
 	}
     }
 }

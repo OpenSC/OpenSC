@@ -58,6 +58,7 @@
 #define DEFAULT_PRKEY_FLAGS	0x1d
 #define DEFAULT_PUBKEY_FLAGS	0x02
 #define DEFAULT_CERT_FLAGS	0x02
+#define DEFAULT_DATA_FLAGS	0x03
 
 /* Handle encoding of PKCS15 on the card */
 typedef int	(*pkcs15_encoder)(struct sc_context *,
@@ -845,6 +846,10 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	if ((r = select_id(p15card, SC_PKCS15_TYPE_CERT, &args->id)) < 0)
 		return r;
 
+	/* If there is a private key corresponding to the ID given
+	 * by the user, make sure $PIN references the pin protecting
+	 * this key
+	 */
 	if (args->id.len != 0) {
 		sc_pkcs15_object_t *objp;
 		struct sc_pkcs15_pin_info *pin_info;
@@ -894,6 +899,77 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	return r;
 }
 
+/*
+ * Store a data object
+ */
+int
+sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
+		struct sc_profile *profile,
+		struct sc_pkcs15init_dataargs *args,
+		struct sc_pkcs15_object **res_obj)
+{
+	struct sc_pkcs15_data_info *data_object_info;
+	struct sc_pkcs15_object *object;
+	const char	*label;
+	int		r;
+
+	if ((label = args->label) == NULL)
+		label = "Data Object";
+
+	/* Select an ID if the user didn't specify one, otherwise
+	 * make sure it's unique */
+	if ((r = select_id(p15card, SC_PKCS15_TYPE_DATA_OBJECT, &args->id)) < 0)
+		return r;
+
+#ifdef notused
+	if (args->id.len != 0) {
+		sc_pkcs15_object_t *objp;
+		struct sc_pkcs15_pin_info *pin_info;
+
+		r = sc_pkcs15_find_prkey_by_id(p15card,
+				&args->id, &objp);
+		if (r == 0) {
+			r = sc_pkcs15_find_pin_by_auth_id(p15card,
+				&objp->auth_id, &objp);
+		}
+		if (r < 0) {
+			/* XXX: Fallback to the first PIN object */
+			r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN,
+					&objp, 1);
+			if (r != 1)
+				r = SC_ERROR_OBJECT_NOT_FOUND;
+		}
+		if (r >= 0) {
+			pin_info = (struct sc_pkcs15_pin_info *) objp->data;
+			sc_profile_set_pin_info(profile,
+					SC_PKCS15INIT_SO_PIN, pin_info);
+		}
+	}
+#endif
+
+	data_object_info = (struct sc_pkcs15_data_info *) calloc(1, sizeof(*data_object_info));
+	data_object_info->id = args->id;
+
+	object = (struct sc_pkcs15_object *) calloc(1, sizeof(*object));
+	object->type = SC_PKCS15_TYPE_DATA_OBJECT;
+	object->data = data_object_info;
+	object->flags = DEFAULT_DATA_FLAGS;
+	strncpy(object->label, label, sizeof(object->label));
+	r = sc_pkcs15init_store_data(p15card, profile,
+			SC_PKCS15_TYPE_DATA_OBJECT, &args->der_encoded,
+			&data_object_info->path);
+
+	/* Now update the DDF */
+	if (r >= 0)
+		r = sc_pkcs15init_add_object(p15card, profile,
+				SC_PKCS15_DODF, object);
+
+	if (r >= 0 && res_obj)
+		*res_obj = object;
+
+	return r;
+}
+
 static int
 sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
@@ -907,7 +983,6 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 	/* Get the number of objects of this type already on this card */
 	index = sc_pkcs15_get_objects(p15card,
 			type & SC_PKCS15_TYPE_CLASS_MASK, NULL, 0);
-
 	/* Set the SO PIN reference from card */
 	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
 		return r;
@@ -918,7 +993,6 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 		p15init_error("Unable to allocate file");
 		goto done;
 	}
-
 	r = sc_pkcs15init_update_file(profile, p15card->card,
 			file, data->value, data->len);
 	*path = file->path;
@@ -1192,6 +1266,9 @@ select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 		break;
 	case SC_PKCS15_TYPE_CERT:
 		func = sc_pkcs15_find_cert_by_id;
+		break;
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		func = sc_pkcs15_find_data_object_by_id;
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;

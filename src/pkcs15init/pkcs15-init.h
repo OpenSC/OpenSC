@@ -138,6 +138,13 @@ struct sc_pkcs15init_pubkeyargs {
 	sc_pkcs15_pubkey_t	key;
 };
 
+struct sc_pkcs15init_dataargs {
+	struct sc_pkcs15_id	id;
+	const char *		label;
+
+	sc_pkcs15_der_t		der_encoded;
+};
+
 struct sc_pkcs15init_certargs {
 	struct sc_pkcs15_id	id;
 	const char *		label;
@@ -175,6 +182,10 @@ extern int	sc_pkcs15init_store_public_key(struct sc_pkcs15_card *,
 extern int	sc_pkcs15init_store_certificate(struct sc_pkcs15_card *,
 				struct sc_profile *,
 				struct sc_pkcs15init_certargs *,
+				struct sc_pkcs15_object **);
+extern int	sc_pkcs15init_store_data_object(struct sc_pkcs15_card *,
+				struct sc_profile *,
+				struct sc_pkcs15init_dataargs *,
 				struct sc_pkcs15_object **);
 
 extern int	sc_pkcs15init_create_file(struct sc_profile *,

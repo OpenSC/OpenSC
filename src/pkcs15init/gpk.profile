@@ -62,6 +62,16 @@ filesystem {
 					WRITE=$PIN;
             }
 
+	    # data objects are stored in transparent EFs.
+            EF template-data {
+    	        file-id		= 5000;
+    	        structure	= transparent;
+    	        ACL		= *=NEVER,
+					READ=NONE,
+					UPDATE=$PIN,
+					WRITE=$PIN;
+            }
+
             EF template-public-key {
     	        file-id		= 8000;
     	        structure	= transparent;

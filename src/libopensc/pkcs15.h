@@ -205,6 +205,19 @@ struct sc_pkcs15_cert_info {
 };
 typedef struct sc_pkcs15_cert_info sc_pkcs15_cert_info_t;
 
+struct sc_pkcs15_data {
+	u8 *data;	/* DER encoded raw data object */
+	size_t data_len;
+};
+typedef struct sc_pkcs15_data sc_pkcs15_data_t;
+
+struct sc_pkcs15_data_info {
+	struct sc_pkcs15_id id;	/* correlates to data object id */
+	/* identifiers [2] SEQUENCE OF CredentialIdentifier{{KeyIdentifiers}} */
+	struct sc_path path;
+};
+typedef struct sc_pkcs15_data_info sc_pkcs15_data_info_t;
+
 #define SC_PKCS15_PRKEY_USAGE_ENCRYPT		0x01
 #define SC_PKCS15_PRKEY_USAGE_DECRYPT		0x02
 #define SC_PKCS15_PRKEY_USAGE_SIGN		0x04
@@ -396,6 +409,14 @@ int sc_pkcs15_encode_prkey(struct sc_context *,
 void sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *prkey);
 void sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *prkey);
 
+int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
+			       const struct sc_pkcs15_data_info *info,
+			       struct sc_pkcs15_data **data_object_out);
+int sc_pkcs15_find_data_object_by_id(struct sc_pkcs15_card *p15card,
+				     const struct sc_pkcs15_id *id,
+				     struct sc_pkcs15_object **out);
+void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object);
+
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_cert_info *info,
 			       struct sc_pkcs15_cert **cert);
@@ -453,6 +474,9 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 			const struct sc_pkcs15_object *obj, u8 **buf,
 			size_t *bufsize);
+int sc_pkcs15_encode_dodf_entry(struct sc_context *ctx,
+			const struct sc_pkcs15_object *obj, u8 **buf,
+			size_t *bufsize);
 int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 			const struct sc_pkcs15_object *obj, u8 **buf,
 			size_t *bufsize);
@@ -462,6 +486,9 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 int sc_pkcs15_read_df(struct sc_pkcs15_card *p15card,
 		      struct sc_pkcs15_df *df);
 int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
+			       struct sc_pkcs15_object *obj,
+			       const u8 **buf, size_t *bufsize);
+int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 			       struct sc_pkcs15_object *obj,
 			       const u8 **buf, size_t *bufsize);
 int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,

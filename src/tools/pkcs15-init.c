@@ -72,6 +72,11 @@ static int	do_convert_private_key(struct sc_pkcs15_prkey *, EVP_PKEY *);
 static int	do_convert_public_key(struct sc_pkcs15_pubkey *, EVP_PKEY *);
 static int	do_convert_cert(sc_pkcs15_der_t *, X509 *);
 
+static int	do_read_data_object(const char *name, u8 **out, size_t *outlen);
+static int	do_convert_data_object(struct sc_context *ctx, sc_pkcs15_der_t *der, u8 *data,size_t datalen);
+static int	do_store_data_object(struct sc_profile *profile);
+extern int	asn1_encode_data_object(struct sc_context *ctx, u8 *dataobj,size_t datalen,
+                                u8 **buf, size_t *buflen, int depth);
 
 static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
 static int	read_one_pin(struct sc_profile *, const char *,
@@ -129,6 +134,7 @@ const struct option	options[] = {
 	{ "format",		required_argument, 0,	'f' },
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
 	{ "store-certificate",	required_argument, 0,	'X' },
+	{ "store-data",		required_argument, 0,	'W' },
 	{ "authority",		no_argument,	   0,	OPT_AUTHORITY },
 	{ "key-usage",		required_argument, 0,	'u' },
 
@@ -163,6 +169,7 @@ const char *		option_help[] = {
 	"Specify key file format (default PEM)",
 	"Specify passphrase for unlocking secret key",
 	"Store an X.509 certificate",
+	"Store a data object",
 	"Mark certificate as a CA certificate",
 	"Specify X.509 key usage (use \"--key-usage help\" for more information)",
 
@@ -183,7 +190,8 @@ enum {
 	ACTION_GENERATE_KEY,
 	ACTION_STORE_PRIVKEY,
 	ACTION_STORE_PUBKEY,
-	ACTION_STORE_CERT
+	ACTION_STORE_CERT,
+	ACTION_STORE_DATA
 };
 static char *			action_names[] = {
 	"do nothing",
@@ -192,7 +200,8 @@ static char *			action_names[] = {
 	"generate key",
 	"store private key",
 	"store public key",
-	"store certificate"
+	"store certificate",
+	"store data object"
 };
 
 /* Flags for read_one_pin */
@@ -299,6 +308,8 @@ main(int argc, char **argv)
 		r = do_store_public_key(profile, NULL);
 	else if (opt_action == ACTION_STORE_CERT)
 		r = do_store_certificate(profile);
+	else if (opt_action == ACTION_STORE_DATA)
+		r = do_store_data_object(profile);
 	else if (opt_action == ACTION_GENERATE_KEY)
 		r = do_generate_key(profile, opt_newkey);
 	else
@@ -569,6 +580,33 @@ do_store_certificate(struct sc_profile *profile)
 		r = do_convert_cert(&args.der_encoded, cert);
 	if (r >= 0)
 		r = sc_pkcs15init_store_certificate(p15card, profile,
+					&args, NULL);
+
+	return r;
+}
+
+/*
+ * Download data object to card
+ */
+static int
+do_store_data_object(struct sc_profile *profile)
+{
+	struct sc_pkcs15init_dataargs args;
+	u8	*data;
+	size_t	datalen;
+	int	r=0;
+
+	memset(&args, 0, sizeof(args));
+
+	if (opt_objectid)
+		sc_pkcs15_format_id(opt_objectid, &args.id);
+	args.label = opt_label;
+
+	r = do_read_data_object(opt_infile, &data, &datalen);
+	if (r >= 0)
+		r = do_convert_data_object(p15card->card->ctx, &args.der_encoded, data, datalen);
+	if (r >= 0)
+		r = sc_pkcs15init_store_data_object(p15card, profile,
 					&args, NULL);
 
 	return r;
@@ -1113,6 +1151,47 @@ do_read_certificate(const char *name, const char *format, X509 **out)
 	return 0;
 }
 
+static int determine_filesize(const char *filename) {
+	FILE *fp;
+	size_t size;
+
+	if ((fp = fopen(filename,"r")) == NULL) {
+	  fatal("Unable to open %s: %m", filename);
+	  }
+	fseek(fp,0L,SEEK_END);
+	size = ftell(fp);
+	fclose(fp);
+	return size;
+	}
+
+static int
+do_read_data_object(const char *name, u8 **out, size_t *outlen)
+{
+        FILE *inf;
+	size_t filesize = determine_filesize(name);
+	int c;
+
+	*out = malloc(filesize);
+	if (*out == NULL) {
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+ 
+        inf = fopen(name, "r");
+        if (inf == NULL) {
+                fprintf(stderr, "Unable to open '%s' for reading.\n", name);
+                return -1;
+        }
+        c = fread(*out, 1, filesize, inf);
+        fclose(inf);
+        if (c < 0) {
+                perror("read");
+                return -1;
+        }
+
+	*outlen = filesize;
+	return 0;
+}
+
 static int
 do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
 {
@@ -1199,6 +1278,13 @@ do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
 	}
 
 	return 0;
+}
+
+int
+do_convert_data_object(struct sc_context *ctx, sc_pkcs15_der_t *der, 
+                       u8 *data,size_t datalen)
+{
+	return asn1_encode_data_object(ctx, data, datalen, &der->value, &der->len, 0);
 }
 
 int
@@ -1314,6 +1400,10 @@ handle_option(int c)
 		break;
 	case 'X':
 		opt_action = ACTION_STORE_CERT;
+		opt_infile = optarg;
+		break;
+	case 'W':
+		opt_action = ACTION_STORE_DATA;
 		opt_infile = optarg;
 		break;
 	case 'd':

@@ -161,6 +161,24 @@ static void print_cert_x509(const struct sc_pkcs15_object *obj)
 	 * and dump the label */
 }
 
+static void print_data_object_summary(const struct sc_pkcs15_object *obj)
+{
+	struct sc_pkcs15_data_info *data_object;
+	int i;
+
+	data_object = (struct sc_pkcs15_data_info *) obj->data;
+	printf("\tPath        : ");
+	for (i = 0; i < data_object->path.len; i++)
+		printf("%02X", data_object->path.value[i]);
+	printf("\n");
+	printf("\tID          : ");
+	sc_pkcs15_print_id(&data_object->id);
+	printf("\n");
+
+	/* XXX original p15dump code would read the data object
+	 * and dump the label */
+}
+
 void sc_test_print_object(const struct sc_pkcs15_object *obj)
 {
 	const char *kind;
@@ -190,6 +208,10 @@ void sc_test_print_object(const struct sc_pkcs15_object *obj)
 	case SC_PKCS15_TYPE_CERT_X509:
 		printer = print_cert_x509;
 		kind = "X.509 Certificate";
+		break;
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		printer = print_data_object_summary;
+		kind = "Data Object";
 		break;
 	default:
 		printer = NULL;

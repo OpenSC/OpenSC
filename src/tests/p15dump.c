@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
 	dump_objects("Private keys", SC_PKCS15_TYPE_PRKEY);
 	dump_objects("Public keys", SC_PKCS15_TYPE_PUBKEY);
 	dump_objects("X.509 certificates", SC_PKCS15_TYPE_CERT_X509);
+	dump_objects("data objects", SC_PKCS15_TYPE_DATA_OBJECT);
 
 	sc_pkcs15_unbind(p15card);
 	sc_test_cleanup();

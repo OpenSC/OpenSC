@@ -1,0 +1,216 @@
+/*
+ * pkcs15-data.c: PKCS #15 data object functions
+ *
+ * Copyright (C) 2002  Danny De Cock <daniel.decock@postbox.be>
+ *
+ * This source file was inspired by pkcs15-cert.c.
+ * 
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+#include "internal.h"
+#include "pkcs15.h"
+#include "log.h"
+#include "asn1.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#include <assert.h>
+
+static const struct sc_asn1_entry     c_asn1_data_object[] = {
+        { "dataObject", SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0 },
+        { NULL }
+};
+
+int
+asn1_decode_data_object(struct sc_context *ctx, u8 **dataobj, size_t *datalen,
+                                const u8 *buf, size_t buflen, int depth)
+{
+        struct sc_asn1_entry asn1_data_obj[2];
+        u8      *data;
+        int      r;
+        int	data_len;
+
+        data=malloc(buflen+64);
+	if (data == NULL) {
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+        sc_copy_asn1_entry(c_asn1_data_object, asn1_data_obj);
+        sc_format_asn1_entry(asn1_data_obj + 0, data, &data_len, 0);
+        r = _sc_asn1_decode(ctx, asn1_data_obj, buf, buflen, NULL, NULL, 0, depth + 1);
+        *datalen=data_len;
+        if (r < 0) {
+        	free(data);
+                return r;
+        }
+        *dataobj = malloc(*datalen);   
+        memcpy(*dataobj, data, *datalen);
+        free(data);
+        return 0;
+}
+
+int
+asn1_encode_data_object(struct sc_context *ctx, u8 *dataobj,size_t datalen,
+                                u8 **buf, size_t *buflen, int depth)
+{
+	int r;
+        struct sc_asn1_entry asn1_data_obj[2];
+
+        sc_copy_asn1_entry(c_asn1_data_object, asn1_data_obj);
+        sc_format_asn1_entry(asn1_data_obj + 0, dataobj, &datalen, 1);
+        r= _sc_asn1_encode(ctx, asn1_data_obj, buf, buflen, depth + 1);
+        return r;
+}
+
+int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
+			       const struct sc_pkcs15_data_info *info,
+			       struct sc_pkcs15_data **data_object_out)
+{
+	int r;
+	struct sc_pkcs15_data *data_object;
+	u8 *data = NULL;
+	size_t len;
+	
+	assert(p15card != NULL && info != NULL && data_object_out != NULL);
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
+
+	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
+	if (r)
+		return r;
+	data_object = (struct sc_pkcs15_data *) malloc(sizeof(struct sc_pkcs15_data));
+	if (data_object == NULL) {
+		free(data);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+	memset(data_object, 0, sizeof(struct sc_pkcs15_data));
+	if ((r=asn1_decode_data_object(p15card->card->ctx, &data_object->data, &data_object->data_len, data, len, 0)) < 0) {
+		return SC_ERROR_INVALID_ASN1_OBJECT;
+	}
+	*data_object_out = data_object;
+	return 0;
+}
+
+static const struct sc_asn1_entry c_asn1_cred_ident[] = {
+	{ "idType",	SC_ASN1_INTEGER,      ASN1_INTEGER, 0, NULL },
+	{ "idValue",	SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL },
+	{ NULL }
+};
+static const struct sc_asn1_entry c_asn1_com_data_attr[] = {
+	{ "dataID",         SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, NULL },
+	{ NULL }
+};
+static const struct sc_asn1_entry c_asn1_type_data_attr[] = {
+	{ "dataType", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ NULL }
+};
+static const struct sc_asn1_entry c_asn1_data[] = {
+	{ "data", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ NULL }
+};
+static const struct sc_asn1_entry c_asn1_x509_data_attr[] = {
+	{ "dataValue",	SC_ASN1_PATH,	   ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ NULL }
+};
+
+static const struct sc_asn1_entry     c_asn1_datalen_object[] = {
+	{ "dataLen", SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0 },
+	{ NULL }
+	};
+
+int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
+			       struct sc_pkcs15_object *obj,
+			       const u8 ** buf, size_t *buflen)
+{
+        struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_data_info info;
+	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_data_attr[4],
+				asn1_x509_data_attr[2], asn1_type_data_attr[2],
+				asn1_data[2],asn1_datalen[2];
+	struct sc_asn1_pkcs15_object data_obj = { obj, asn1_com_data_attr, NULL,
+					     asn1_type_data_attr };
+	u8 id_value[128];
+	int id_type;
+	size_t id_value_len = sizeof(id_value);
+	int r;
+	sc_copy_asn1_entry(c_asn1_cred_ident, asn1_cred_ident);
+	sc_copy_asn1_entry(c_asn1_com_data_attr, asn1_com_data_attr);
+	sc_copy_asn1_entry(c_asn1_x509_data_attr, asn1_x509_data_attr);
+	sc_copy_asn1_entry(c_asn1_datalen_object , asn1_datalen);
+	sc_copy_asn1_entry(c_asn1_type_data_attr, asn1_type_data_attr);
+	sc_copy_asn1_entry(c_asn1_data, asn1_data);
+	
+	sc_format_asn1_entry(asn1_cred_ident + 0, &id_type, NULL, 0);
+	sc_format_asn1_entry(asn1_cred_ident + 1, &id_value, &id_value_len, 0);
+	sc_format_asn1_entry(asn1_com_data_attr + 0, &info.id, NULL, 0);
+	sc_format_asn1_entry(asn1_com_data_attr + 1, asn1_cred_ident, NULL, 0);
+	sc_format_asn1_entry(asn1_x509_data_attr + 0, &info.path, NULL, 0);
+	sc_format_asn1_entry(asn1_type_data_attr + 0, asn1_x509_data_attr, NULL, 0);
+	sc_format_asn1_entry(asn1_data + 0, &data_obj, NULL, 0);
+
+        /* Fill in defaults */
+        memset(&info, 0, sizeof(info));
+	r = sc_asn1_decode(ctx, asn1_data, *buf, *buflen, buf, buflen);
+	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
+		return r;
+
+	SC_TEST_RET(ctx, r, "ASN.1 decoding failed");
+	obj->type = SC_PKCS15_TYPE_DATA_OBJECT;
+	obj->data = malloc(sizeof(info));
+	if (obj->data == NULL)
+		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+	memcpy(obj->data, &info, sizeof(info));
+
+	return 0;
+}
+
+int sc_pkcs15_encode_dodf_entry(struct sc_context *ctx,
+			       const struct sc_pkcs15_object *obj,
+			       u8 **buf, size_t *bufsize)
+{
+	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_data_attr[4],
+				asn1_x509_data_attr[2], asn1_type_data_attr[2],
+				asn1_data[2],asn1_datalen[2];
+	struct sc_pkcs15_data_info *infop =
+		(struct sc_pkcs15_data_info *) obj->data;
+	struct sc_asn1_pkcs15_object data_obj = { (struct sc_pkcs15_object *) obj,
+							asn1_com_data_attr, NULL,
+							asn1_type_data_attr };
+	int r;
+	sc_copy_asn1_entry(c_asn1_cred_ident, asn1_cred_ident);
+	sc_copy_asn1_entry(c_asn1_com_data_attr, asn1_com_data_attr);
+	sc_copy_asn1_entry(c_asn1_x509_data_attr, asn1_x509_data_attr);
+	sc_copy_asn1_entry(c_asn1_datalen_object, asn1_datalen);
+	sc_copy_asn1_entry(c_asn1_type_data_attr, asn1_type_data_attr);
+	sc_copy_asn1_entry(c_asn1_data, asn1_data);
+	sc_format_asn1_entry(asn1_com_data_attr + 0, (void *) &infop->id, NULL, 1);
+	sc_format_asn1_entry(asn1_x509_data_attr + 0, (void *) &infop->path, NULL, 1);
+	sc_format_asn1_entry(asn1_type_data_attr + 0, (void *) asn1_x509_data_attr, NULL, 1);
+	sc_format_asn1_entry(asn1_data + 0, (void *) &data_obj, NULL, 1);
+
+	r = sc_asn1_encode(ctx, asn1_data, buf, bufsize);
+	return r;
+}
+
+void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object)
+{
+	assert(data_object != NULL);
+
+	free(data_object->data);
+	free(data_object);
+}
