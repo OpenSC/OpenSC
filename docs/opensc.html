@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>OpenSC Manual</title><link rel="stylesheet" href="opensc.css" type="text/css" /><meta name="generator" content="DocBook XSL Stylesheets V1.60.1" /></head><body><div class="book" lang="en" xml:lang="en"><div class="titlepage"><div><div><h1 class="title"><a id="id2752096"></a>OpenSC Manual</h1></div><div><div class="author"><h3 class="author"></h3></div></div></div><div></div><hr /></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt>1. <a href="#id2752135">Introduction</a></dt><dt>2. <a href="#id2594989">Authors and Contributors</a></dt><dd><dl><dt><a href="#id2796688">Thanks</a></dt></dl></dd><dt>3. <a href="#id2796747">Copyright and License</a></dt><dt>4. <a href="#id2796773">Building and Installing libopensc</a></dt><dd><dl><dt><a href="#id2796790">Windows </a></dt><dt><a href="#id2796838">Windows with OpenSSL</a></dt></dl></dd><dt>5. <a href="#id2796916">Status</a></dt><dd><dl><dt><a href="#id2796924">Card Status</a></dt><dt><a href="#id2797056">Windows</a></dt><dt><a href="#id2797072">PKCS#11 Module in Netscape and Mozilla</a></dt></dl></dd><dt>6. <a href="#id2797116">Using OpenSC</a></dt><dd><dl><dt><a href="#id2797123">OpenSC and Netscape</a></dt><dt><a href="#id2797188">OpenSC and Mozilla</a></dt><dt><a href="#id2797236">OpenSC and OpenSSL</a></dt><dt><a href="#id2797372">OpenSC and OpenSSH</a></dt><dt><a href="#id2797484">Pluggable Authentication Module</a></dt><dd><dl><dt><a href="#id2797654">eid based authentication</a></dt><dt><a href="#id2797697">ldap based authentication</a></dt></dl></dd></dl></dd><dt>7. <a href="#id2797867">What needs to be done</a></dt><dd><dl><dt><a href="#id2797899">Windows</a></dt></dl></dd><dt>8. <a href="#id2797917">Troubleshooting</a></dt><dt>9. <a href="#id2797931">Resources</a></dt><dt>10. <a href="#id2797962">Signer</a></dt><dd><dl><dt><a href="#id2797976">Building and Installing libopensc</a></dt></dl></dd><dt>11. <a href="#id2798020">A few hints on docbook documents</a></dt></dl></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2752135"></a>Chapter 1. Introduction</h2></div></div><div></div></div><p>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>OpenSC Manual</title><link rel="stylesheet" href="opensc.css" type="text/css" /><meta name="generator" content="DocBook XSL Stylesheets V1.60.1" /></head><body><div class="book" lang="en" xml:lang="en"><div class="titlepage"><div><div><h1 class="title"><a id="id2755323"></a>OpenSC Manual</h1></div><div><div class="author"><h3 class="author"></h3></div></div></div><div></div><hr /></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt>1. <a href="#id2752120">Introduction</a></dt><dt>2. <a href="#id2752137">Authors and Contributors</a></dt><dd><dl><dt><a href="#id2796698">Thanks</a></dt></dl></dd><dt>3. <a href="#id2796764">Copyright and License</a></dt><dt>4. <a href="#id2796789">Building and Installing libopensc</a></dt><dd><dl><dt><a href="#id2796806">Windows </a></dt><dt><a href="#id2796854">Windows with OpenSSL</a></dt></dl></dd><dt>5. <a href="#id2796932">Status</a></dt><dd><dl><dt><a href="#id2796937">Card Status</a></dt><dt><a href="#id2797072">Windows</a></dt><dt><a href="#id2797088">PKCS#11 Module in Netscape and Mozilla</a></dt></dl></dd><dt>6. <a href="#id2797132">Using OpenSC</a></dt><dd><dl><dt><a href="#id2797139">OpenSC and Netscape</a></dt><dt><a href="#id2797204">OpenSC and Mozilla</a></dt><dt><a href="#id2797252">OpenSC and OpenSSL</a></dt><dt><a href="#id2797448">OpenSC and OpenSSH</a></dt><dt><a href="#id2797558">Pluggable Authentication Module</a></dt><dd><dl><dt><a href="#id2797728">eid based authentication</a></dt><dt><a href="#id2797772">ldap based authentication</a></dt></dl></dd></dl></dd><dt>7. <a href="#id2797942">The OpenSC PKCS11 library</a></dt><dd><dl><dt><a href="#id2797949">What is PKCS11</a></dt><dt><a href="#id2798015">Virtual slots</a></dt></dl></dd><dt>8. <a href="#id2798125">What needs to be done</a></dt><dd><dl><dt><a href="#id2798158">Windows</a></dt></dl></dd><dt>9. <a href="#id2798176">Troubleshooting</a></dt><dt>10. <a href="#id2798191">Resources</a></dt><dt>11. <a href="#id2798224">Signer</a></dt><dd><dl><dt><a href="#id2798237">Building and Installing libopensc</a></dt></dl></dd><dt>12. <a href="#id2798279">A few hints on docbook documents</a></dt></dl></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2752120"></a>Chapter 1. Introduction</h2></div></div><div></div></div><p>
 			libopensc is a library for accessing SmartCard devices
 			using PC/SC Lite middleware package.  It is also the
 			core library of the OpenSC project.  Basic
@@ -10,7 +10,7 @@
 			at the moment possible only with PKCS#15 compatible
 			cards, such as the FINEID (Finnish Electronic IDentity)
 			card manufactured by Setec.  
-		</p></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2594989"></a>Chapter 2. Authors and Contributors</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2796688">Thanks</a></dt></dl></div><p>
+		</p></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2752137"></a>Chapter 2. Authors and Contributors</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2796698">Thanks</a></dt></dl></div><p>
 			Here is a list of all Authors and Contributors
 			of OpenSC in alphabetical order:
 		</p><div class="itemizedlist"><ul type="disc"><li>
@@ -22,7 +22,7 @@
 				Kevin Stefanik <tt class="email">&lt;<a href="mailto:kstef@mtppi.org">kstef@mtppi.org</a>&gt;</tt></li><li>
 				Antti Tapaninen <tt class="email">&lt;<a href="mailto:aet@cc.hut.fi">aet@cc.hut.fi</a>&gt;</tt></li><li>
 				Timo Teräs <tt class="email">&lt;<a href="mailto:timo.teras@iki.fi">timo.teras@iki.fi</a>&gt;</tt></li><li>
-				Juha Yrjölä <tt class="email">&lt;<a href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</tt></li></ul></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2796688"></a>Thanks</h2></div></div><div></div></div><p>
+				Juha Yrjölä <tt class="email">&lt;<a href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</tt></li></ul></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2796698"></a>Thanks</h2></div></div><div></div></div><p>
 				The following people provided inspiration,
 				moral support and/or valuable information
 				during the development of OpenSC:
@@ -40,7 +40,7 @@
 				</li><li>
 					Markus Friedl
 				</li><li>
-					Geoff Thrope <tt class="email">&lt;<a href="mailto:geoff@geoffthorpe.net">geoff@geoffthorpe.net</a>&gt;</tt></li></ul></div></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2796747"></a>Chapter 3. Copyright and License</h2></div></div><div></div></div><table border="0" bgcolor="#E0E0E0"><tr><td><pre class="screen">
+					Geoff Thrope <tt class="email">&lt;<a href="mailto:geoff@geoffthorpe.net">geoff@geoffthorpe.net</a>&gt;</tt></li></ul></div></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2796764"></a>Chapter 3. Copyright and License</h2></div></div><div></div></div><table border="0" bgcolor="#E0E0E0"><tr><td><pre class="screen">
 OpenSC smart card library
 Copyright (C) OpenSC developers 
 
@@ -57,13 +57,13 @@ Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-</pre></td></tr></table></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2796773"></a>Chapter 4. Building and Installing libopensc</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2796790">Windows </a></dt><dt><a href="#id2796838">Windows with OpenSSL</a></dt></dl></div><p>
+</pre></td></tr></table></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2796789"></a>Chapter 4. Building and Installing libopensc</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2796806">Windows </a></dt><dt><a href="#id2796854">Windows with OpenSSL</a></dt></dl></div><p>
 			See the INSTALL file for instructions.  If you are
 			using the CVS version, you have to run the 'bootstrap'
 			script before running configure.  Please note, that for
 			bootstrap to work, you have to have the correct
 			versions of Autoconf, Automake and Libtool installed.
-		</p><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2796790"></a>Windows </h2></div></div><div></div></div><p>
+		</p><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2796806"></a>Windows </h2></div></div><div></div></div><p>
 				Type &quot;nmake -f makefile.mak&quot;  in the opensc\
 				dir to compile.
 			</p><p>
@@ -84,7 +84,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 					make sure the *.profile files in the
 					pkcs15-init\ dir are in the same
 					directory as pkcs15-init.exe.
-				</li></ol></div></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2796838"></a>Windows with OpenSSL</h2></div></div><div></div></div><p>
+				</li></ol></div></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2796854"></a>Windows with OpenSSL</h2></div></div><div></div></div><p>
 				This adds extended functionality.  E.g. the
 				pkcs15-init tool, pkcs11 hash mechanisms and
 				more pkcs11 signature mechs.
@@ -119,7 +119,7 @@ set path=%path%;....\out32dll
 				won't need libeay32.dll anymore): statically
 				compile OpenSSL and add gdi32.lib next to
 				libeay32.lib in the 3 Makefile.mak files above.
-			</p></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2796916"></a>Chapter 5. Status</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2796924">Card Status</a></dt><dt><a href="#id2797056">Windows</a></dt><dt><a href="#id2797072">PKCS#11 Module in Netscape and Mozilla</a></dt></dl></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2796924"></a>Card Status</h2></div></div><div></div></div><div class="variablelist"><dl><dt><span class="term">CryptoFlex</span></dt><dd><p>
+			</p></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2796932"></a>Chapter 5. Status</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2796937">Card Status</a></dt><dt><a href="#id2797072">Windows</a></dt><dt><a href="#id2797088">PKCS#11 Module in Netscape and Mozilla</a></dt></dl></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2796937"></a>Card Status</h2></div></div><div></div></div><div class="variablelist"><dl><dt><span class="term">CryptoFlex</span></dt><dd><p>
 				Support signing/decrypting, and initialization
 			</p></dd><dt><span class="term">Gemplus PK 4K, 8K, 16K</span></dt><dd><p>
 				Support signing/decrypting, and initialization.
@@ -143,12 +143,12 @@ set path=%path%;....\out32dll
 				Supported - need to fill in the details
 			</p></dd><dt><span class="term">Tcos</span></dt><dd><p>
 				Supported - need to fill in the details
-			</p></dd></dl></div></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797056"></a>Windows</h2></div></div><div></div></div><p>
+			</p></dd></dl></div></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797072"></a>Windows</h2></div></div><div></div></div><p>
 				At the moment only libopensc.dll and
 				opensc-pkcs11.dll, and most executables in the
 				tools\ and tests\ dir have been ported.  They
 				are tested on Win98, WinNT, Win2000 and WinXP.
-			</p></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797072"></a>PKCS#11 Module in Netscape and Mozilla</h2></div></div><div></div></div><p>
+			</p></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797088"></a>PKCS#11 Module in Netscape and Mozilla</h2></div></div><div></div></div><p>
 				Netscape seems to show more information about
 				the security module than Mozilla. Otherwise all
 				stuff is untested.
@@ -173,7 +173,7 @@ set path=%path%;....\out32dll
 				PTHREAD lib is used and there the problem
 				doesn't occur. So there the OS locking is
 				enabled.
-			</p></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2797116"></a>Chapter 6. Using OpenSC</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2797123">OpenSC and Netscape</a></dt><dt><a href="#id2797188">OpenSC and Mozilla</a></dt><dt><a href="#id2797236">OpenSC and OpenSSL</a></dt><dt><a href="#id2797372">OpenSC and OpenSSH</a></dt><dt><a href="#id2797484">Pluggable Authentication Module</a></dt><dd><dl><dt><a href="#id2797654">eid based authentication</a></dt><dt><a href="#id2797697">ldap based authentication</a></dt></dl></dd></dl></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797123"></a>OpenSC and Netscape</h2></div></div><div></div></div><div class="procedure"><ol type="1"><li>
+			</p></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2797132"></a>Chapter 6. Using OpenSC</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2797139">OpenSC and Netscape</a></dt><dt><a href="#id2797204">OpenSC and Mozilla</a></dt><dt><a href="#id2797252">OpenSC and OpenSSL</a></dt><dt><a href="#id2797448">OpenSC and OpenSSH</a></dt><dt><a href="#id2797558">Pluggable Authentication Module</a></dt><dd><dl><dt><a href="#id2797728">eid based authentication</a></dt><dt><a href="#id2797772">ldap based authentication</a></dt></dl></dd></dl></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797139"></a>OpenSC and Netscape</h2></div></div><div></div></div><div class="procedure"><ol type="1"><li>
 					Select menu: Communicator -&gt; Tools -&gt; Security Info
 				</li><li>
 					Select Cryptographic Modules
@@ -201,7 +201,7 @@ set path=%path%;....\out32dll
 				for all public key operations, and will fail horribly.
 			</p><p>
 				FIXME: this is for which versions of netscape?
-			</p></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797188"></a>OpenSC and Mozilla</h2></div></div><div></div></div><div class="procedure"><ol type="1"><li>
+			</p></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797204"></a>OpenSC and Mozilla</h2></div></div><div></div></div><div class="procedure"><ol type="1"><li>
 					Make sure Personal Security Manager (PSM) is
 					installed (eg. mozilla-psm package is
 					installed).
@@ -217,7 +217,7 @@ set path=%path%;....\out32dll
 				</li><li>
 					Fill in module name: &quot;OpenSC PKCS#11 Module&quot;
 					and module file: /path/to/opensc/lib/pkcs11/opensc-pkcs11.so
-				</li></ol></div></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797236"></a>OpenSC and OpenSSL</h2></div></div><div></div></div><p>
+				</li></ol></div></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797252"></a>OpenSC and OpenSSL</h2></div></div><div></div></div><p>
 				OpenSSL is a robust, full-featured toolkit
 				implementing the ssl protocols as well as
 				a general purpose cryptography library.
@@ -235,8 +235,7 @@ set path=%path%;....\out32dll
 				enter any command as usual (e.g. create or sign
 				a certificate).
 			</p><p>
-				Here is an example how to load the engine and
-				create a new certificate. 
+				Here is an example of how to load the engine. 
 				</p><table border="0" bgcolor="#E0E0E0"><tr><td><pre class="screen">
 aj@simulacron:~$ openssl
 OpenSSL&gt; engine dynamic -pre SO_PATH:/home/aj/opensc/lib/opensc/engine_opensc.so -pre ID:opensc -pre LIST_ADD:1 -pre LOAD
@@ -249,18 +248,13 @@ Loaded: (opensc) opensc engine
 OpenSSL&gt; 
 				</pre></td></tr></table><p>
 			</p><p>
-				For Windows use &quot;engine_opensc&quot; instead of &quot;engine_opensc.so&quot;.
-			</p><p>
-				A typical OpenSSL command might be
-				<tt class="prompt">req -engine pkcs11 -new -key <i class="replaceable"><tt>key</tt></i> -keyform engine -out req.pem -text</tt>.
+				A typical OpenSSL command might be to make a certificate request:
+				<tt class="prompt">req -engine opensc -new -key <i class="replaceable"><tt>key</tt></i> -keyform engine -out req.pem -text</tt>.
 				See the OpenSSL documentation for details.
 			</p><p>
-				key can specify the ID of a key in hex
-				with an optional prefix of the slot to use.
-				Slots are counted starting with 0.
-				&quot;45&quot; would be key 0x45 in the first slot,
-				S2-46 would be key 0x56 in the third slot.
-			</p><p>
+-				<i class="replaceable"><tt>key</tt></i> can specify the ID of a key in hex,
+-				e.g. &quot;45&quot; would be key 0x45.
+-			</p><p>
 				Actualy Opensc has even two engines for Openssl:
 				<tt class="filename">engine_opensc.so</tt> and
 				<tt class="filename">engine_pkcs11.so</tt>.
@@ -296,7 +290,28 @@ Loaded: (pkcs11) pkcs11 engine
 OpenSSL&gt; 
 				</pre></td></tr></table><p>
 				and then proceed as normal.
-			</p></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797372"></a>OpenSC and OpenSSH</h2></div></div><div></div></div><p>
+			</p><p>
+				A typical OpenSSL command might be to make a certificate request:
+				<tt class="prompt">req -engine pkcs11 -new -key <i class="replaceable"><tt>key</tt></i> -keyform engine -out req.pem -text</tt>.
+				See the OpenSSL documentation for details.
+			</p><p>
+				<i class="replaceable"><tt>key</tt></i> has the format [slot_&lt;slotNr&gt;][-][id_&lt;keyID&gt;], in which
+				</p><div class="itemizedlist"><ul type="disc"><li>
+						the optional slotNr indicates which pkcs11 slot to take
+						(starting from 0, which is also the default)
+					</li><li>
+						keyID is the key ID in hex notation
+					</li></ul></div><p>
+				Examples:
+				</p><div class="itemizedlist"><ul type="disc"><li>
+						id_45     =&gt; private key with ID = 0x45 in the first 'suited' slot
+					</li><li>
+						slot_2-id_46  =&gt; private key with ID = 0x46 in the third slot
+					</li></ul></div><p>
+			</p><p>
+				For Windows, only the pkcs11 engine (not the opensc engine) has been ported;
+				use &quot;engine_pkcs11&quot; instead of &quot;engine_pkcs11.so&quot;.
+			</p></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797448"></a>OpenSC and OpenSSH</h2></div></div><div></div></div><p>
 				Version 3.6.1p2 of OpenSSH needs a patch to
 				compile with OpenSC. You will find this patch
 				in src/openssh/.
@@ -328,7 +343,7 @@ OpenSSL&gt;
 				You can also use the OpenSSH ssh-agent tool
 				with OpenSC. If you want to do so, use
 				<tt class="prompt">ssh-add -s <i class="replaceable"><tt>reader</tt></i></tt>
-			</p></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797484"></a>Pluggable Authentication Module</h2></div></div><div></div></div><p>
+			</p></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797558"></a>Pluggable Authentication Module</h2></div></div><div></div></div><p>
 				Pluggable authantication modules or pam is
 				the default way under linux and other unix
 				operating systems to configure authentication.
@@ -340,7 +355,7 @@ OpenSSL&gt;
 			</p><p>
 				Generic options:
 				</p><div class="variablelist"><dl><dt><span class="term">-h</span></dt><dd>Show help</dd><dt><span class="term">-r reader</span></dt><dd>Reader name (FIXME: not number?)</dd></dl></div><p>
-			</p><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id2797654"></a>eid based authentication</h3></div></div><div></div></div><p>
+			</p><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id2797728"></a>eid based authentication</h3></div></div><div></div></div><p>
 					This is the default authentication
 					method. Create a directory
 					<tt class="filename">.eid</tt> in your home
@@ -355,7 +370,7 @@ OpenSSL&gt;
 					will save the certificate
 					<i class="replaceable"><tt>ID</tt></i> to that
 					file.
-				</p></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id2797697"></a>ldap based authentication</h3></div></div><div></div></div><p>
+				</p></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id2797772"></a>ldap based authentication</h3></div></div><div></div></div><p>
 					Setting auth_method to pkcs15-ldap will
 					enable ldap based authenticaton.
 					These options are supported:
@@ -363,7 +378,90 @@ OpenSSL&gt;
 					FIXME: provide an example
 					of ldap data structure, config
 					file etc.
-				</p></div></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2797867"></a>Chapter 7. What needs to be done</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2797899">Windows</a></dt></dl></div><table border="0" bgcolor="#E0E0E0"><tr><td><pre class="screen">
+				</p></div></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2797942"></a>Chapter 7. The OpenSC PKCS11 library</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2797949">What is PKCS11</a></dt><dt><a href="#id2798015">Virtual slots</a></dt></dl></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797949"></a>What is PKCS11</h2></div></div><div></div></div><p>
+				PKCS11 is a standard API for accessing cryptographic tokens
+				such as smart cards, Hardware Security Modules, ...
+				It contains functions like C_GetSlotList(), C_OpenSession(),
+				C_FindObjects(), C_Login(), C_Decrypt(), ...
+			</p><p>
+				Some core concepts of pkcs11 are:
+				</p><div class="itemizedlist"><ul type="disc"><li>
+						slot: the place in which a smart card can be put. Usually this
+						corresponds with a card reader (but: see below, Virtual slots).
+					</li><li>
+						token: the thing that is put in a slot. Usually this corresponds
+						with a smart card (but: see below, virtual slots).
+					</li><li>
+						object: a key, a certificate, some data, ... Is either a token
+						object (if it resides on the card) or a session object (if it
+						doesn't reside on the card, e.g. a certificate given to the
+						pkcs11 library to do a verification).
+					</li><li>
+						session: before you can do anything with a token, you have to
+						open a session on it.
+					</li><li>
+						operation: a signature, decryption, digest, ... operation, that
+						can consist of multiple function calls. Example: C_SignInit(),
+						C_SignUpdate(), C_SignFinal(); here the first function starts
+						the operation, the third one ends it. Only one operation can be
+						done in the same session, but multiple sessions can be opened
+						on the same token.
+					</li></ul></div><p>
+			</p></div><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2798015"></a>Virtual slots</h2></div></div><div></div></div><p>
+				Per token, only 2 PINs can be given: the SO (Security Officer) PIN
+				and the user PIN. However, smart cards can have more than 1 user
+				PIN.
+				A way to this solve problem is to have multiple 'virtual' slots,
+				as explained in appendix D of the pkcs11 standard. So per physical
+				reader, you have a number of virtual slots. If you insert a card
+				in the reader, a token will appear in all the virtual slots,
+				and each token will contain 1 PIN along with the private keys
+				it protects and certificates corresponding to those private keys.
+			</p><p>
+				Because OpenSC supports multiple cards, it is not known in advance
+				how many PINs a smart card will have. Therefore, a default number
+				of 4 virtual slots is used. You can change this default in the
+				pkcs11 section of opensc.conf: num_slots.
+			</p><p>
+				Opensc implements the following behaviour: for each PIN, its
+				private keys and corresponding certs, there is 1 virtual slot
+				allocated. If there are any objects left, they are put in the
+				next free virtual slot. And if there are some virtual slots left,
+				an 'empty' token is 'put' in them; on this empty token a PIN and
+				data can then be put. If you find this too confusing, you
+				can hide empty tokens with the hide_empty_tokens option in
+				the config file.
+			</p><p>
+				Example:
+				Take a card with 2 PINs. Each PIN protects a private key and
+				each private key has a corresponding cert chain. And then there
+				are 3 other roots certs that have nothing to do with the other
+				data.
+				Now if num_slots = 4, hide_empty_tokens = false; and if you put
+				the card your second card reader, you'll get the following:
+				</p><div class="itemizedlist"><ul type="disc"><li>
+						token in slot 4: PIN 1, key 1, cert chain 1
+					</li><li>
+						token in slot 5: PIN 2, key 2, cert chain 2
+					</li><li>
+						token in slot 6: the 3 other root certs
+					</li><li>
+						token in slot 7: no data
+					</li></ul></div><p>
+				If hide_empty_tokens would have been true, slot 7 wouldn't show
+				a token.
+			</p><p>
+				Note: if in the example the 2 cert chain would have common
+				certificates, those certificates would appear in the tokens
+				in slots 4 and 5. (Which would cause a problem if those
+				certs were deleted, this hasn't been solved yet in OpenSC).
+			</p><p>
+				Another good-to-know: the number of virtual slots has been
+				hard-coded (it is 8 at the moment). So if num_slots = 4,
+				only the first 2 readers will be visible. Or if you'd put
+				num_slots to 3, the first 2 readers will have 3 virtual
+				slots and the third reader will have 2.
+			</p></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2798125"></a>Chapter 8. What needs to be done</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2798158">Windows</a></dt></dl></div><table border="0" bgcolor="#E0E0E0"><tr><td><pre class="screen">
 * Debian packaging
 * GUI applications
 * Ports to MacOS X (jey) and Win32 (fabled?)
@@ -384,26 +482,26 @@ OpenSSL&gt;
   (alternatively: set unblockDisabled flag for those PINs that have no PUK?)
 * pkcs15: fix sc_pkcs15_change_reference_data; add unblock function
 * pkcs11: make sure all PIN ops work through pkcs11
-		</pre></td></tr></table><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797899"></a>Windows</h2></div></div><div></div></div><p>
+		</pre></td></tr></table><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2798158"></a>Windows</h2></div></div><div></div></div><p>
 				Other parts of OpenSC be should ported as well.
 				Also we should implement native Win32 APIs such
 				as CryptoAPI Provider, some login stuff and
 				ActiveX plugin for Explorer to do the signing.
-			</p></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2797917"></a>Chapter 8. Troubleshooting</h2></div></div><div></div></div><p>
+			</p></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2798176"></a>Chapter 9. Troubleshooting</h2></div></div><div></div></div><p>
 			A mailing-list has been set up for support and
 			discussion about the OpenSC project. Additional info is
 			available at OpenSC web site.
-		</p></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2797931"></a>Chapter 9. Resources</h2></div></div><div></div></div><p>
+		</p></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2798191"></a>Chapter 10. Resources</h2></div></div><div></div></div><p>
 			See the OpenSC web site at
 			<a href="http://www.opensc.org/" target="_top">http://www.opensc.org/</a>
 		</p><p>
 			Information about Assuan and project Ägypten:
 			<a href="http://www.gnupg.org/aegypten/" target="_top">http://www.gnupg.org/aegypten/</a>
-		</p></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2797962"></a>Chapter 10. Signer</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2797976">Building and Installing libopensc</a></dt></dl></div><p>
+		</p></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2798224"></a>Chapter 11. Signer</h2></div></div><div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><a href="#id2798237">Building and Installing libopensc</a></dt></dl></div><p>
 			OpenSC Signer is a Netscape plugin that will generate
 			digital signatures using facilities on PKI-capable
 			smartcards.
-		</p><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2797976"></a>Building and Installing libopensc</h2></div></div><div></div></div><p>
+		</p><div class="section" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id2798237"></a>Building and Installing libopensc</h2></div></div><div></div></div><p>
 				You should specify your plugin directory with:
 				<tt class="prompt"> $ configure --with-plugin-dir=<i class="replaceable"><tt>&lt;directory&gt;</tt></i></tt>
 			</p><p>
@@ -417,7 +515,7 @@ OpenSSL&gt;
 				from Project Ägypten.  If you don't have it
 				installed already, download it from the link
 				below.
-			</p></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2798020"></a>Chapter 11. A few hints on docbook documents</h2></div></div><div></div></div><p>
+			</p></div></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="id2798279"></a>Chapter 12. A few hints on docbook documents</h2></div></div><div></div></div><p>
 			This document is maintained as docbook xml
 			document. Here are some hints and links for
 			newcomers.

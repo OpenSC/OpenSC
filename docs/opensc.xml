@@ -494,8 +494,7 @@ set path=%path%;....\out32dll
 			</para>
 	
 			<para>
-				Here is an example how to load the engine and
-				create a new certificate. 
+				Here is an example of how to load the engine. 
 				<screen>
 aj@simulacron:~$ openssl
 OpenSSL> engine dynamic -pre SO_PATH:/home/aj/opensc/lib/opensc/engine_opensc.so -pre ID:opensc -pre LIST_ADD:1 -pre LOAD
@@ -510,23 +509,16 @@ OpenSSL>
 			</para>
 
 			<para>
-				For Windows use "engine_opensc" instead of "engine_opensc.so".
-			</para>
-
-			<para>
-				A typical OpenSSL command might be
-				<prompt>req -engine pkcs11 -new -key <replaceable>key</replaceable> -keyform engine -out req.pem -text</prompt>.
+				A typical OpenSSL command might be to make a certificate request:
+				<prompt>req -engine opensc -new -key <replaceable>key</replaceable> -keyform engine -out req.pem -text</prompt>.
 				See the OpenSSL documentation for details.
 			</para>
 
-			<para>
-				key can specify the ID of a key in hex
-				with an optional prefix of the slot to use.
-				Slots are counted starting with 0.
-				"45" would be key 0x45 in the first slot,
-				S2-46 would be key 0x56 in the third slot.
-			</para>
-	
+ 			<para>
+-				<replaceable>key</replaceable> can specify the ID of a key in hex,
+-				e.g. "45" would be key 0x45.
+-			</para>
+
 			<para>
 				Actualy Opensc has even two engines for Openssl:
 				<filename>engine_opensc.so</filename> and
@@ -569,6 +561,39 @@ Loaded: (pkcs11) pkcs11 engine
 OpenSSL> 
 				</screen>
 				and then proceed as normal.
+			</para>
+
+			<para>
+				A typical OpenSSL command might be to make a certificate request:
+				<prompt>req -engine pkcs11 -new -key <replaceable>key</replaceable> -keyform engine -out req.pem -text</prompt>.
+				See the OpenSSL documentation for details.
+			</para>
+
+			<para>
+				<replaceable>key</replaceable> has the format <![CDATA[[slot_<slotNr>][-][id_<keyID>]]]>, in which
+				<itemizedlist>
+					<listitem>
+						the optional slotNr indicates which pkcs11 slot to take
+						(starting from 0, which is also the default)
+					</listitem>
+					<listitem>
+						keyID is the key ID in hex notation
+					</listitem>
+				</itemizedlist>
+				Examples:
+				<itemizedlist>
+					<listitem>
+						id_45     => private key with ID = 0x45 in the first 'suited' slot
+					</listitem>
+					<listitem>
+						slot_2-id_46  => private key with ID = 0x46 in the third slot
+					</listitem>
+				</itemizedlist>
+			</para>
+
+			<para>
+				For Windows, only the pkcs11 engine (not the opensc engine) has been ported;
+				use "engine_pkcs11" instead of "engine_pkcs11.so".
 			</para>
 
 		</section>
@@ -789,6 +814,128 @@ OpenSSL>
 					file etc.
 				</para>
 			</section>
+		</section>
+	</chapter>
+
+	<chapter>
+		<title>The OpenSC PKCS11 library</title>
+
+		<section>
+			<title>What is PKCS11</title>
+
+			<para>
+				PKCS11 is a standard API for accessing cryptographic tokens
+				such as smart cards, Hardware Security Modules, ...
+				It contains functions like C_GetSlotList(), C_OpenSession(),
+				C_FindObjects(), C_Login(), C_Decrypt(), ...
+			</para>
+
+			<para>
+				Some core concepts of pkcs11 are:
+				<itemizedlist>
+					<listitem>
+						slot: the place in which a smart card can be put. Usually this
+						corresponds with a card reader (but: see below, Virtual slots).
+					</listitem>
+					<listitem>
+						token: the thing that is put in a slot. Usually this corresponds
+						with a smart card (but: see below, virtual slots).
+					</listitem>
+					<listitem>
+						object: a key, a certificate, some data, ... Is either a token
+						object (if it resides on the card) or a session object (if it
+						doesn't reside on the card, e.g. a certificate given to the
+						pkcs11 library to do a verification).
+					</listitem>
+					<listitem>
+						session: before you can do anything with a token, you have to
+						open a session on it.
+					</listitem>
+					<listitem>
+						operation: a signature, decryption, digest, ... operation, that
+						can consist of multiple function calls. Example: C_SignInit(),
+						C_SignUpdate(), C_SignFinal(); here the first function starts
+						the operation, the third one ends it. Only one operation can be
+						done in the same session, but multiple sessions can be opened
+						on the same token.
+					</listitem>
+				</itemizedlist>
+			</para>
+		</section>
+
+		<section>
+			<title>Virtual slots</title>
+
+			<para>
+				Per token, only 2 PINs can be given: the SO (Security Officer) PIN
+				and the user PIN. However, smart cards can have more than 1 user
+				PIN.
+				A way to this solve problem is to have multiple 'virtual' slots,
+				as explained in appendix D of the pkcs11 standard. So per physical
+				reader, you have a number of virtual slots. If you insert a card
+				in the reader, a token will appear in all the virtual slots,
+				and each token will contain 1 PIN along with the private keys
+				it protects and certificates corresponding to those private keys.
+			</para>
+
+			<para>
+				Because OpenSC supports multiple cards, it is not known in advance
+				how many PINs a smart card will have. Therefore, a default number
+				of 4 virtual slots is used. You can change this default in the
+				pkcs11 section of opensc.conf: num_slots.
+			</para>
+
+			<para>
+				Opensc implements the following behaviour: for each PIN, its
+				private keys and corresponding certs, there is 1 virtual slot
+				allocated. If there are any objects left, they are put in the
+				next free virtual slot. And if there are some virtual slots left,
+				an 'empty' token is 'put' in them; on this empty token a PIN and
+				data can then be put. If you find this too confusing, you
+				can hide empty tokens with the hide_empty_tokens option in
+				the config file.
+			</para>
+
+			<para>
+				Example:
+				Take a card with 2 PINs. Each PIN protects a private key and
+				each private key has a corresponding cert chain. And then there
+				are 3 other roots certs that have nothing to do with the other
+				data.
+				Now if num_slots = 4, hide_empty_tokens = false; and if you put
+				the card your second card reader, you'll get the following:
+				<itemizedlist>
+					<listitem>
+						token in slot 4: PIN 1, key 1, cert chain 1
+					</listitem>
+					<listitem>
+						token in slot 5: PIN 2, key 2, cert chain 2
+					</listitem>
+					<listitem>
+						token in slot 6: the 3 other root certs
+					</listitem>
+					<listitem>
+						token in slot 7: no data
+					</listitem>
+				</itemizedlist>
+				If hide_empty_tokens would have been true, slot 7 wouldn't show
+				a token.
+			</para>
+
+			<para>
+				Note: if in the example the 2 cert chain would have common
+				certificates, those certificates would appear in the tokens
+				in slots 4 and 5. (Which would cause a problem if those
+				certs were deleted, this hasn't been solved yet in OpenSC).
+			</para>
+
+			<para>
+				Another good-to-know: the number of virtual slots has been
+				hard-coded (it is 8 at the moment). So if num_slots = 4,
+				only the first 2 readers will be visible. Or if you'd put
+				num_slots to 3, the first 2 readers will have 3 virtual
+				slots and the third reader will have 2.
+			</para>
 		</section>
 	</chapter>
 
