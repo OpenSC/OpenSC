@@ -1549,6 +1549,9 @@ gpk_pkfile_init(struct sc_card *card, struct sc_cardctl_gpk_pkinit *args)
 	struct sc_apdu	apdu;
 	int		r;
 
+	if (card->ctx->debug)
+		debug(card->ctx, "gpk_pkfile_init(%u)\n", args->privlen);
+
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse = SC_APDU_CASE_1;
 	apdu.cla = 0x80;
@@ -1577,12 +1580,27 @@ gpk_pkfile_load(struct sc_card *card, struct sc_cardctl_gpk_pkload *args)
 	u8		temp[256];
 	int		r;
 
+	debug(card->ctx, "gpk_pkfile_load(fid=%04x, len=%d, datalen=%d)\n",
+			args->file->id, args->len, args->datalen);
+
+#if 0
+	if (card->ctx->debug > 5) {
+		char buf[2048];
+
+		sc_hex_dump(card->ctx, args->data, args->datalen,
+				buf, sizeof(buf));
+		debug(card->ctx, "Sending %d bytes (cleartext):\n%s",
+				args->datalen, buf);
+	}
+#endif
+
 	apdu.cse = SC_APDU_CASE_3_SHORT;
 	apdu.cla = 0x80;
 	apdu.ins = 0x18;
 	apdu.p1  = args->file->id & 0x1F;
 	apdu.p2  = args->len;
 	apdu.lc  = args->datalen;
+	apdu.sensitive = 1;
 
 	/* encrypt the private key material */
 	assert(args->datalen <= sizeof(temp));
@@ -1608,7 +1626,7 @@ gpk_pkfile_load(struct sc_card *card, struct sc_cardctl_gpk_pkload *args)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 
-	return r;
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 /*
@@ -1647,6 +1665,9 @@ gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	switch (cmd) {
 	case SC_CARDCTL_ERASE_CARD:
 		return gpk_erase_card(card);
+	case SC_CARDCTL_GPK_VARIANT:
+		*(int *) ptr = DRVDATA(card)->variant;
+		return 0;
 	case SC_CARDCTL_GPK_LOCK:
 		return gpk_lock(card, (struct sc_cardctl_gpk_lock *) ptr);
 	case SC_CARDCTL_GPK_PKINIT:
