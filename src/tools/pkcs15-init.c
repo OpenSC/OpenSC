@@ -81,6 +81,7 @@ static int	read_one_pin(struct sc_profile *, const char *,
 			const struct sc_pkcs15_pin_info *, int, char **);
 static int	get_pin_callback(struct sc_profile *profile,
 			int id, const struct sc_pkcs15_pin_info *info,
+			const char *label,
 			u8 *pinbuf, size_t *pinsize);
 static int	get_key_callback(struct sc_profile *,
 			int method, int reference,
@@ -382,9 +383,8 @@ do_init_app(struct sc_profile *profile)
 	struct sc_pkcs15_pin_info info;
 	int	r = 0;
 
-	if (opt_erase)
-		r = sc_pkcs15init_erase_card(card, profile);
-	if (r < 0)
+	if (opt_erase
+	 && (r = sc_pkcs15init_erase_card(card, profile)) < 0)
 		return r;
 
 	memset(&args, 0, sizeof(args));
@@ -469,6 +469,20 @@ failed:
 	return SC_ERROR_PKCS15INIT;
 }
 
+/*
+ * Display split key error message
+ */
+static void
+split_key_error(void)
+{
+	fprintf(stderr, "\n"
+	"Error - this token requires a more restrictive key usage.\n"
+	"Keys stored on this token can be used either for signing or decipherment,\n"
+	"but not both. You can either specify a more restrictive usage through\n"
+	"the --key-usage command line argument, or allow me to transparently\n"
+	"create two key objects with separate usage by specifying --split-key\n");
+	exit(1);
+}
 
 /*
  * Store a private key
@@ -525,29 +539,12 @@ do_store_private_key(struct sc_profile *profile)
 		args.x509_usage = opt_x509_usage? opt_x509_usage : usage;
 	}
 
-	if (sc_pkcs15init_requires_restrictive_usage(p15card, &args)) {
-		unsigned int	usage = args.x509_usage;
+	if (sc_pkcs15init_requires_restrictive_usage(p15card, &args, 0)) {
+		if (!opt_split_key)
+			split_key_error();
 
-		if (!opt_split_key) {
-			fprintf(stderr, "\n"
-			"Error - this token requires a more restrictive key usage.\n"
-			"Keys stored on this token can be used either for signing or decipherment,\n"
-			"but not both. You can either specify a more restrictive usage through\n"
-			"the --key-usage command line argument, or allow me to transparently\n"
-			"create two key objects with separate usage by specifying --split-key\n");
-			exit(1);
-		}
-
-		/* keyEncipherment|dataEncipherment|keyAgreement */
-		args.x509_usage = usage & 0x1C;
-		r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
-		if (r >= 0) {
-			/* digitalSignature|nonRepudiation|certSign|cRLSign */
-			args.x509_usage = usage & 0x63;
-			/* Prevent pkcs15init from choking on duplicate ID */
-			args.flags |= SC_PKCS15INIT_SPLIT_KEY;
-			r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
-		}
+		r = sc_pkcs15init_store_split_key(p15card, profile,
+				&args, NULL, NULL);
 	} else {
 		r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
 	}
@@ -678,7 +675,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	struct sc_pkcs15init_prkeyargs args;
 	unsigned int	evp_algo, keybits = 1024;
 	EVP_PKEY	*pkey;
-	int		r;
+	int		r, split_key = 0;
 
 	if ((r = init_keyargs(&args)) < 0)
 		return r;
@@ -709,7 +706,15 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 		}
 	}
 
-	if (!opt_softkeygen) {
+	/* If the card doesn't support keys that can both sign _and_
+	 * decipher, make sure the user specified --split-key */
+	if (sc_pkcs15init_requires_restrictive_usage(p15card, &args, keybits)) {
+		if (!opt_split_key)
+			split_key_error();
+		split_key = 1;
+	}
+
+	if (!opt_softkeygen && !opt_split_key) {
 		r = sc_pkcs15init_generate_key(p15card, profile,
 				&args, keybits, NULL);
 		if (r >= 0 || r != SC_ERROR_NOT_SUPPORTED)
@@ -721,19 +726,23 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	}
 
 	/* Generate the key ourselves */
-	r = do_generate_key_soft(evp_algo, keybits, &pkey);
-	if (r >= 0) {
-		r = do_convert_private_key(&args.key, pkey);
-	}
+	if ((r = do_generate_key_soft(evp_algo, keybits, &pkey)) < 0
+	 || (r = do_convert_private_key(&args.key, pkey) ) < 0)
+		goto out;
 
-	if (r >= 0)
-		r = sc_pkcs15init_store_private_key(p15card, profile,
-				&args, NULL);
+	if (split_key) {
+		sc_pkcs15init_store_split_key(p15card,
+				profile, &args, NULL, NULL);
+	} else {
+		r = sc_pkcs15init_store_private_key(p15card,
+				profile, &args, NULL);
+	}
 
 	/* Store public key portion on card */
 	if (r >= 0)
 		r = do_store_public_key(profile, pkey);
 
+out:
 	EVP_PKEY_free(pkey);
 	return r;
 }
@@ -835,8 +844,10 @@ read_one_pin(struct sc_profile *profile, const char *name,
 static int
 get_pin_callback(struct sc_profile *profile,
 		int id, const struct sc_pkcs15_pin_info *info,
+		const char *label,
 		u8 *pinbuf, size_t *pinsize)
 {
+	char	namebuf[64];
 	char	*name = NULL, *secret = NULL;
 	size_t	len;
 
@@ -854,7 +865,14 @@ get_pin_callback(struct sc_profile *profile,
 		name = "Security officer PIN unlock key";
 		secret = opt_pins[OPT_PUK2 & 3]; break;
 	default:
-		return SC_ERROR_INTERNAL;
+		if (label) {
+			snprintf(namebuf, sizeof(namebuf), "PIN [%s]", label);
+		} else {
+			snprintf(namebuf, sizeof(namebuf),
+				"Unspecified PIN [reference %u]",
+				info->reference);
+		}
+		name = namebuf;
 	}
 
 	if (secret == NULL
