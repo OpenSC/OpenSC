@@ -76,16 +76,6 @@ struct _sc_ctx_options {
 	int ccount;
 };
 
-static void set_defaults(struct sc_context *ctx, struct _sc_ctx_options *opts)
-{
-	ctx->debug = 0;
-	if (ctx->debug_file)
-		fclose(ctx->debug_file);
-	ctx->debug_file = NULL;
-	ctx->log_errors = 1;
-	ctx->error_file = stderr;
-	ctx->forced_driver = NULL;
-}
 
 static void del_drvs(struct _sc_ctx_options *opts, int type)
 {
@@ -145,6 +135,21 @@ static void add_internal_drvs(struct _sc_ctx_options *opts, int type)
 	}
 }
 
+static void set_defaults(struct sc_context *ctx, struct _sc_ctx_options *opts)
+{
+	ctx->debug = 0;
+	if (ctx->debug_file && ctx->debug_file != stdout)
+		fclose(ctx->debug_file);
+	ctx->debug_file = stdout;
+	ctx->log_errors = 1;
+	if (ctx->error_file && ctx->error_file != stderr)
+		fclose(ctx->error_file);
+	ctx->error_file = stderr;
+	ctx->forced_driver = NULL;
+	add_internal_drvs(opts, 0);
+	add_internal_drvs(opts, 1);
+}
+
 static int load_parameters(struct sc_context *ctx, scconf_block *block,
 			   struct _sc_ctx_options *opts)
 {
@@ -173,10 +178,7 @@ static int load_parameters(struct sc_context *ctx, scconf_block *block,
 			ctx->error_file = stderr;
 	}
 	list = scconf_find_list(block, "reader_drivers");
-	if (list == NULL) {
-		if (opts->rcount == 0) /* Add the internal drivers */
-			add_internal_drvs(opts, 0);
-	} else
+	if (list != NULL)
 		del_drvs(opts, 0);
 	while (list != NULL) {
 		if (strcmp(list->data, s_internal) == 0)
@@ -187,10 +189,7 @@ static int load_parameters(struct sc_context *ctx, scconf_block *block,
 	}
 
 	list = scconf_find_list(block, "card_drivers");
-	if (list == NULL) {
-		if (opts->ccount == 0) /* Add the internal drivers */
-			add_internal_drvs(opts, 1);
-	} else
+	if (list != NULL)
 		del_drvs(opts, 1);
 	while (list != NULL) {
 		if (strcmp(list->data, s_internal) == 0)

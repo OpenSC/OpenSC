@@ -340,7 +340,7 @@ static int miocos_select_file(struct sc_card *card,
 			       struct sc_file **file)
 {
 	int r;
-	
+
 	r = iso_ops->select_file(card, in_path, file);
 	if (r)
 		return r;

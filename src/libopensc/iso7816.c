@@ -354,20 +354,17 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 			debug(ctx, "File name: %s\n", name);
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x85, &taglen);
-	if (tag != NULL && taglen && taglen <= SC_MAX_PROP_ATTR_SIZE) {
-		memcpy(file->prop_attr, tag, taglen);
-		file->prop_attr_len = taglen;
+	if (tag != NULL && taglen) {
+		sc_file_set_prop_attr(file, tag, taglen); 
 	} else
 		file->prop_attr_len = 0;
 	tag = sc_asn1_find_tag(ctx, p, len, 0xA5, &taglen);
-	if (tag != NULL && taglen && taglen <= SC_MAX_PROP_ATTR_SIZE) {
-		memcpy(file->prop_attr, tag, taglen);
-		file->prop_attr_len = taglen;
+	if (tag != NULL && taglen) {
+		sc_file_set_prop_attr(file, tag, taglen); 
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x86, &taglen);
-	if (tag != NULL && taglen && taglen <= SC_MAX_SEC_ATTR_SIZE) {
-		memcpy(file->sec_attr, tag, taglen);
-		file->sec_attr_len = taglen;
+	if (tag != NULL && taglen) {
+		sc_file_set_sec_attr(file, tag, taglen); 
 	}
 	file->magic = SC_FILE_MAGIC;
 }

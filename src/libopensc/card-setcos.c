@@ -148,8 +148,7 @@ static int setcos_create_file(struct sc_card *card, struct sc_file *file)
 		for (i = 0; i < 6; i++)
 			buf[i] = acl_to_byte(file->acl[idx[i]]);
 
-		memcpy(file->sec_attr, buf, 6);
-		file->sec_attr_len = 6;
+		sc_file_set_sec_attr(file, buf, 6);
 	}
 
 	return iso_ops->create_file(card, file);

@@ -160,8 +160,6 @@ extern "C" {
 #define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PIN_SIZE			16
 #define SC_MAX_ATR_SIZE			33
-#define SC_MAX_SEC_ATTR_SIZE		20
-#define SC_MAX_PROP_ATTR_SIZE		16
 #define SC_MAX_OBJECT_ID_OCTETS		16
 #define SC_MAX_AID_SIZE			16
 /* Beware: the following needs to be a mutiple of 4
@@ -210,9 +208,9 @@ struct sc_file {
 	int record_length; /* In case of fixed-length or cyclic EF */
 	int record_count;  /* Valid, if not transparent EF or DF */
 
-	u8 sec_attr[SC_MAX_SEC_ATTR_SIZE];
+	u8 *sec_attr;
 	size_t sec_attr_len;
-	u8 prop_attr[SC_MAX_PROP_ATTR_SIZE];
+	u8 *prop_attr;
 	size_t prop_attr_len;
 	unsigned int magic;
 };
@@ -744,6 +742,11 @@ int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
 const struct sc_acl_entry * sc_file_get_acl_entry(const struct sc_file *file,
 						  unsigned int operation);
 void sc_file_clear_acl_entries(struct sc_file *file, unsigned int operation);
+
+int sc_file_set_sec_attr(struct sc_file *file, const u8 *sec_attr,
+			 size_t sec_attr_len);
+int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
+			  size_t prop_attr_len);
 
 void sc_format_path(const char *path_in, struct sc_path *path_out);
 int sc_append_path(struct sc_path *dest, const struct sc_path *src);

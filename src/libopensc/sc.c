@@ -345,6 +345,10 @@ void sc_file_free(struct sc_file *file)
 	file->magic = 0;
 	for (i = 0; i < SC_MAX_AC_OPS; i++)
 		sc_file_clear_acl_entries(file, i);
+	if (file->sec_attr)
+		free(file->sec_attr);
+	if (file->prop_attr)
+		free(file->prop_attr);
 	free(file);
 }
 
@@ -369,6 +373,52 @@ void sc_file_dup(struct sc_file **dest, const struct sc_file *src)
 			sc_file_add_acl_entry(newf, op, e->method, e->key_ref);
 	}
 }
+
+int sc_file_set_sec_attr(struct sc_file *file, const u8 *sec_attr,
+			 size_t sec_attr_len)
+{
+	assert(sc_file_valid(file));
+
+	if (sec_attr == NULL) {
+		if (file->sec_attr != NULL)
+			free(file->sec_attr);
+		file->sec_attr = NULL;
+		file->sec_attr_len = 0;
+		return 0;
+	 }
+	file->sec_attr = realloc(file->sec_attr, sec_attr_len);
+	if (file->sec_attr == NULL) {
+		file->sec_attr_len = 0;
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+	memcpy(file->sec_attr, sec_attr, sec_attr_len);
+	file->sec_attr_len = sec_attr_len;
+
+	return 0;
+}                         
+
+int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
+			 size_t prop_attr_len)
+{
+	assert(sc_file_valid(file));
+
+	if (prop_attr == NULL) {
+		if (file->prop_attr != NULL)
+			free(file->prop_attr);
+		file->prop_attr = NULL;
+		file->prop_attr_len = 0;
+		return 0;
+	 }
+	file->prop_attr = realloc(file->prop_attr, prop_attr_len);
+	if (file->prop_attr == NULL) {
+		file->prop_attr_len = 0;
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+	memcpy(file->prop_attr, prop_attr, prop_attr_len);
+	file->prop_attr_len = prop_attr_len;
+
+	return 0;
+}                         
 
 inline int sc_file_valid(const struct sc_file *file) {
 #ifndef NDEBUG
