@@ -915,8 +915,12 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 
 	if (ctx->debug >= 3)
 		debug(ctx, "called, depth %d%s\n", depth, choice ? ", choice" : "");
-	if (left < 2)
-		return SC_ERROR_ASN1_END_OF_CONTENTS;
+	if (left < 2) {
+		if (asn1->name != NULL)
+			return SC_ERROR_ASN1_END_OF_CONTENTS;
+		else
+			return 0;
+	}
 	if (p[0] == 0 && p[1] == 0)
 		return SC_ERROR_ASN1_END_OF_CONTENTS;
 	for (idx = 0; asn1[idx].name != NULL; idx++) {

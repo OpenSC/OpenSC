@@ -48,6 +48,37 @@ void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey)
 	printf("\n");
 }
 
+static const struct sc_asn1_entry c_asn1_com_key_attr[] = {
+	{ "iD",		 SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, NULL },
+	{ "usage",	 SC_ASN1_BIT_STRING, ASN1_BIT_STRING, 0, NULL },
+	{ "native",	 SC_ASN1_BOOLEAN, ASN1_BOOLEAN, SC_ASN1_OPTIONAL, NULL },
+	{ "accessFlags", SC_ASN1_BIT_STRING, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, NULL },
+	{ "keyReference",SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
+	{ NULL }
+};
+
+static const struct sc_asn1_entry c_asn1_com_prkey_attr[] = {
+        /* FIXME */
+	{ NULL }
+};
+
+static const struct sc_asn1_entry c_asn1_rsakey_attr[] = {
+	{ "value",	   SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ "modulusLength", SC_ASN1_INTEGER, ASN1_INTEGER, 0, NULL },
+	{ "keyInfo",	   SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
+	{ NULL }
+};
+
+static const struct sc_asn1_entry c_asn1_type_attr[] = {
+	{ "privateRSAKeyAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ NULL }
+};
+
+static const struct sc_asn1_entry c_asn1_prkey[] = {
+	{ "privateRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ NULL }
+};		
+
 static int parse_rsa_prkey_info(struct sc_context *ctx,
 				struct sc_pkcs15_prkey_info *prkey,
 				const u8 **buf, size_t *buflen)
@@ -55,35 +86,33 @@ static int parse_rsa_prkey_info(struct sc_context *ctx,
 	int r;
 	int usage_len = sizeof(prkey->usage);
 	int af_len = sizeof(prkey->access_flags);
-	struct sc_asn1_entry asn1_com_key_attr[] = {
-		{ "iD",		 SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, &prkey->id, NULL },
-		{ "usage",	 SC_ASN1_BIT_STRING, ASN1_BIT_STRING, 0, &prkey->usage, &usage_len },
-		{ "native",	 SC_ASN1_BOOLEAN, ASN1_BOOLEAN, SC_ASN1_OPTIONAL, &prkey->native },
-		{ "accessFlags", SC_ASN1_BIT_STRING, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, &prkey->access_flags, &af_len },
-		{ "keyReference",SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, &prkey->key_reference },
-		{ NULL }
-	};
-	struct sc_asn1_entry asn1_com_prkey_attr[] = {
-		{ NULL }
-	};
-	struct sc_asn1_entry asn1_rsakey_attr[] = {
-		{ "value",	   SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &prkey->file_id },
-		{ "modulusLength", SC_ASN1_INTEGER, ASN1_INTEGER, 0, &prkey->modulus_length },
-		{ "keyInfo",	   SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
-		{ NULL }
-	};
-	struct sc_asn1_entry asn1_type_attr[] = {
-		{ "publicRSAKeyAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_rsakey_attr },
-		{ NULL }
-	};
+	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[1];
+	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_type_attr[2];
+	struct sc_asn1_entry asn1_prkey[2];
 
 	struct sc_asn1_pkcs15_object prkey_obj = { &prkey->com_attr, asn1_com_key_attr,
-					      asn1_com_prkey_attr, asn1_type_attr };
-	struct sc_asn1_entry asn1_prkey[] = {
-		{ "privateRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &prkey_obj },
-		{ NULL }
-	};		
+						   asn1_com_prkey_attr, asn1_type_attr };
 
+        sc_copy_asn1_entry(c_asn1_prkey, asn1_prkey);
+        sc_copy_asn1_entry(c_asn1_type_attr, asn1_type_attr);
+        sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
+        sc_copy_asn1_entry(c_asn1_com_prkey_attr, asn1_com_prkey_attr);
+        sc_copy_asn1_entry(c_asn1_com_key_attr, asn1_com_key_attr);
+
+	sc_format_asn1_entry(asn1_prkey + 0, &prkey_obj, NULL, 0);
+
+	sc_format_asn1_entry(asn1_type_attr + 0, asn1_rsakey_attr, NULL, 0);
+
+	sc_format_asn1_entry(asn1_rsakey_attr + 0, &prkey->file_id, NULL, 0);
+	sc_format_asn1_entry(asn1_rsakey_attr + 1, &prkey->modulus_length, NULL, 0);
+
+	sc_format_asn1_entry(asn1_com_key_attr + 0, &prkey->id, NULL, 0);
+	sc_format_asn1_entry(asn1_com_key_attr + 1, &prkey->usage, &usage_len, 0);
+	sc_format_asn1_entry(asn1_com_key_attr + 2, &prkey->native, NULL, 0);
+	sc_format_asn1_entry(asn1_com_key_attr + 3, &prkey->access_flags, &af_len, 0);
+	sc_format_asn1_entry(asn1_com_key_attr + 4, &prkey->key_reference, NULL, 0);
+
+        /* Fill in defaults */
 	prkey->key_reference = -1;
 	prkey->native = 1;
 
@@ -92,36 +121,88 @@ static int parse_rsa_prkey_info(struct sc_context *ctx,
 	return r;
 }
 
-static int get_prkeys_from_file(struct sc_pkcs15_card *card,
-				struct sc_file *file)
+int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
+				 const struct sc_pkcs15_object *obj,
+				 u8 **buf, size_t *buflen)
+{
+	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[1];
+	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_type_attr[2];
+	struct sc_asn1_entry asn1_prkey[2];
+	struct sc_pkcs15_prkey_info *prkey =
+                (struct sc_pkcs15_prkey_info *) obj->data;
+	struct sc_asn1_pkcs15_object prkey_obj = { &prkey->com_attr, asn1_com_key_attr,
+						   asn1_com_prkey_attr, asn1_type_attr };
+	int r;
+	int af_len, usage_len;
+
+        sc_copy_asn1_entry(c_asn1_prkey, asn1_prkey);
+        sc_copy_asn1_entry(c_asn1_type_attr, asn1_type_attr);
+        sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
+        sc_copy_asn1_entry(c_asn1_com_prkey_attr, asn1_com_prkey_attr);
+        sc_copy_asn1_entry(c_asn1_com_key_attr, asn1_com_key_attr);
+
+	sc_format_asn1_entry(asn1_prkey + 0, &prkey_obj, NULL, 1);
+
+	sc_format_asn1_entry(asn1_type_attr + 0, asn1_rsakey_attr, NULL, 1);
+
+	sc_format_asn1_entry(asn1_rsakey_attr + 0, &prkey->file_id, NULL, 1);
+	sc_format_asn1_entry(asn1_rsakey_attr + 1, &prkey->modulus_length, NULL, 1);
+
+	sc_format_asn1_entry(asn1_com_key_attr + 0, &prkey->id, NULL, 1);
+	usage_len = sc_count_bit_string_size(&prkey->usage, sizeof(prkey->usage));
+	sc_format_asn1_entry(asn1_com_key_attr + 1, &prkey->usage, &usage_len, 1);
+	if (prkey->native == 0)
+		sc_format_asn1_entry(asn1_com_key_attr + 2, &prkey->native, NULL, 1);
+	if (prkey->access_flags) {
+		af_len = sc_count_bit_string_size(&prkey->access_flags, sizeof(prkey->access_flags));
+		sc_format_asn1_entry(asn1_com_key_attr + 3, &prkey->access_flags, &af_len, 1);
+	}
+	if (prkey->key_reference >= 0)
+		sc_format_asn1_entry(asn1_com_key_attr + 4, &prkey->key_reference, NULL, 1);
+	r = sc_asn1_encode(ctx, asn1_prkey, buf, buflen);
+
+	return r;
+}
+
+
+static int get_prkeys_from_file(struct sc_pkcs15_card *p15card,
+				struct sc_pkcs15_df *df,
+				int file_nr)
 {
 	int r;
 	size_t bytes_left;
 	u8 buf[2048];
 	const u8 *p = buf;
+	struct sc_file *file = df->file[file_nr];
 
-	r = sc_select_file(card->card, &file->path, file);
+	r = sc_select_file(p15card->card, &file->path, file);
 	if (r)
 		return r;
 	if (file->size > sizeof(buf))
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	r = sc_read_binary(card->card, 0, buf, file->size, 0);
+	r = sc_read_binary(p15card->card, 0, buf, file->size, 0);
 	if (r < 0)
 		return r;
 	bytes_left = r;
 	do {
-		struct sc_pkcs15_prkey_info tmp;
+		struct sc_pkcs15_prkey_info info;
 
-		r = parse_rsa_prkey_info(card->card->ctx,
-					 &tmp, &p, &bytes_left);
+		memset(&info, 0, sizeof(info));
+		r = parse_rsa_prkey_info(p15card->card->ctx,
+					 &info, &p, &bytes_left);
 		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 			break;
 		if (r)
 			return r;
-		if (card->prkey_count >= SC_PKCS15_MAX_PRKEYS)
-			return SC_ERROR_TOO_MANY_OBJECTS;
-		card->prkey_info[card->prkey_count] = tmp;
-		card->prkey_count++;
+		r = sc_pkcs15_add_object(p15card->card->ctx, df, file_nr,
+					 SC_PKCS15_TYPE_PRKEY_RSA,
+					 &info, sizeof(info));
+		if (r)
+			return r;
+		if (p15card->prkey_count >= SC_PKCS15_MAX_PRKEYS)
+			break;
+		p15card->prkey_info[p15card->prkey_count] = info;
+		p15card->prkey_count++;
 	} while (bytes_left);
 
 	return 0;
@@ -146,8 +227,13 @@ int sc_pkcs15_enum_private_keys(struct sc_pkcs15_card *card)
 	for (j = 0; r == 0 && j < nr_types; j++) {
 		int type = df_types[j];
 		
-		for (i = 0; r == 0 && i < card->df[type].count; i++)
-			r = get_prkeys_from_file(card, card->df[type].file[i]);
+		for (i = 0; r == 0 && i < card->df[type].count; i++) {
+			r = get_prkeys_from_file(card, &card->df[type], i);
+			if (r != 0)
+                                break;
+		}
+		if (r != 0)
+			break;
 	}
 	sc_unlock(card->card);
 	if (r != 0)

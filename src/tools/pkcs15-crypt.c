@@ -28,13 +28,13 @@
 #include <opensc.h>
 #include <opensc-pkcs15.h>
 
-int opt_reader = 0, opt_pin = 0, quiet = 0;
+int opt_reader = 0, quiet = 0;
 int opt_debug = 0;
 char * opt_pincode = NULL, * opt_key_id = NULL;
 char * opt_input = NULL, * opt_output = NULL;
 int opt_hash_type = SC_PKCS15_HASH_NONE;
 
-#define OPT_SHA1 0x101
+#define OPT_SHA1	0x101
 
 const struct option options[] = {
 	{ "sign",		0, 0,		's' },
@@ -47,7 +47,6 @@ const struct option options[] = {
 	{ "quiet",		0, 0,		'q' },
 	{ "debug",		0, 0,		'd' },
 	{ "pin",		1, 0,		'p' },
-	{ "pin-id",		1, &opt_pin,	0   },
 	{ 0, 0, 0, 0 }
 };
 
@@ -62,7 +61,6 @@ const char *option_help[] = {
 	"Quiet operation",
 	"Debug output -- may be supplied several times",
 	"Uses password (PIN) <arg>",
-	"The auth ID of the PIN to use",
 };
 
 struct sc_context *ctx = NULL;

@@ -20,11 +20,16 @@
 
 #include "sc-internal.h"
 #include "sc-log.h"
+#include <stdlib.h>
 
 static const char *flex_atrs[] = {
 	"3B:95:94:40:FF:63:01:01:02:01", /* Cryptoflex 16k */
 	"3B:19:14:55:90:01:02:02:00:05:04:B0",
 	NULL
+};
+
+struct flex_private_data {
+	int rsa_key_ref;
 };
 
 static struct sc_card_operations flex_ops;
@@ -37,6 +42,7 @@ static const struct sc_card_driver flex_drv = {
 
 static int flex_finish(struct sc_card *card)
 {
+	free(card->ops_data);
 	return 0;
 }
 
@@ -66,7 +72,9 @@ static int flex_match_card(struct sc_card *card)
 
 static int flex_init(struct sc_card *card)
 {
-	card->ops_data = NULL;
+	card->ops_data = malloc(sizeof(struct flex_private_data));;
+	if (card->ops_data == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	card->cla = 0xC0;
 
 	return 0;
@@ -354,6 +362,7 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 			p[6] = 0x06;
 			break;
 		default:
+			error(card->ctx, "Invalid EF structure\n");
 			return -1;
 		}
 	p[7] = 0xFF;	/* allow Decrease and Increase */
@@ -424,6 +433,37 @@ static int flex_create_file(struct sc_card *card, struct sc_file *file)
 	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
 }
 
+static int flex_set_security_env(struct sc_card *card,
+				 const struct sc_security_env *env,
+				 int se_num)   
+{
+	struct flex_private_data *prv = (struct flex_private_data *) card->ops_data;
+
+	if (env->operation != SC_SEC_OPERATION_SIGN) {
+		error(card->ctx, "Invalid crypto operation supplied.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+		if (env->key_ref != 1 && env->key_ref != 2) {
+			error(card->ctx, "Invalid key reference supplied.\n");
+			return SC_ERROR_NOT_SUPPORTED;
+		}	
+		prv->rsa_key_ref = env->key_ref;
+	}
+	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT)
+		return SC_ERROR_NOT_SUPPORTED;
+	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT)
+		if (memcmp(env->key_file_id.value, "\x00\x12", 2) != 0)
+			return SC_ERROR_NOT_SUPPORTED;
+	
+	return 0;
+}
+
+static int flex_restore_security_env(struct sc_card *card, int se_num)
+{
+	return 0;
+}
+
 static const struct sc_card_driver * sc_get_driver(void)
 {
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -436,6 +476,8 @@ static const struct sc_card_driver * sc_get_driver(void)
 	flex_ops.list_files = flex_list_files;
 	flex_ops.delete_file = flex_delete_file;
 	flex_ops.create_file = flex_create_file;
+	flex_ops.set_security_env = flex_set_security_env;
+	flex_ops.restore_security_env = flex_restore_security_env;
 
         return &flex_drv;
 }

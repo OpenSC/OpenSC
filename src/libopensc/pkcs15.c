@@ -286,9 +286,10 @@ static int encode_dir(struct sc_context *ctx, struct sc_pkcs15_card *card, u8 **
 int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 {
 	struct sc_path path;
+	struct sc_file file;
 	u8 *buf;
 	size_t bufsize;
-	int r;
+	int r, i;
 	char line[10240];
 	
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -298,9 +299,37 @@ int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	r = encode_dir(card->ctx, p15card, &buf, &bufsize);
 	SC_TEST_RET(card->ctx, r, "EF(DIR) encoding failed");
 	sc_hex_dump(card->ctx, buf, bufsize, line, sizeof(line));
-	free(buf);
 	printf("DIR:\n%s", line);
-	
+	memset(&file, 0, sizeof(file));
+	for (i = 0; i < SC_MAX_AC_OPS; i++)
+		file.acl[i] = SC_AC_NONE;
+#if 0
+	file.acl[SC_AC_OP_UPDATE] = SC_AC_AUT;
+	file.acl[SC_AC_OP_WRITE] = SC_AC_NEVER;
+	file.acl[SC_AC_OP_INVALIDATE] = SC_AC_NEVER;
+	file.acl[SC_AC_OP_REHABILITATE] = SC_AC_NEVER;
+#endif
+	file.size = bufsize;
+	file.type = SC_FILE_TYPE_WORKING_EF;
+	file.ef_structure = SC_FILE_EF_TRANSPARENT;
+	file.id = 0x2F00;
+	file.status = SC_FILE_STATUS_ACTIVATED;
+	r = sc_create_file(card, &file);
+	if (r) {
+		sc_perror(card->ctx, r, "Error creating EF(DIR)");
+		free(buf);
+		return r;
+	}
+	sc_format_path("3F002F00", &path);
+	r = sc_select_file(card, &path, NULL);
+	if (r) {
+		sc_perror(card->ctx, r, "Error selecting EF(DIR)");
+		free(buf);
+		return r;
+	}
+	r = sc_update_binary(card, 0, buf, bufsize, 0);
+	free(buf);
+	SC_TEST_RET(card->ctx, r, "Error updating EF(DIR)");
 	return 0;
 }
 
@@ -624,7 +653,7 @@ int sc_pkcs15_add_object(struct sc_context *ctx, struct sc_pkcs15_df *df,
 	return 0;
 }                         
 
-int sc_pkcs15_encode_df(struct sc_pkcs15_card *p15card,
+int sc_pkcs15_encode_df(struct sc_context *ctx,
 			struct sc_pkcs15_df *df,
 			int file_no,
 			u8 **buf_out, size_t *bufsize_out)
@@ -633,23 +662,33 @@ int sc_pkcs15_encode_df(struct sc_pkcs15_card *p15card,
 	size_t bufsize = 0, tmpsize;
 	int r;
 	const struct sc_pkcs15_object *obj = df->obj[file_no];
-	int (* func)(struct sc_pkcs15_card *, const struct sc_pkcs15_object *obj,
+	int (* func)(struct sc_context *, const struct sc_pkcs15_object *obj,
 		     u8 **buf, size_t *bufsize) = NULL;
 	switch (df->type) {
 	case SC_PKCS15_PRKDF:
+		func = sc_pkcs15_encode_prkdf_entry;
 		break;
 	case SC_PKCS15_CDF:
 	case SC_PKCS15_CDF_TRUSTED:
 	case SC_PKCS15_CDF_USEFUL:
 		func = sc_pkcs15_encode_cdf_entry;
 		break;
+	case SC_PKCS15_AODF:
+		func = sc_pkcs15_encode_aodf_entry;
+		break;
 	}
 	if (func == NULL) {
-		error(p15card->card->ctx, "unknown DF type\n");
+		error(ctx, "unknown DF type: %d\n", df->type);
+#if 0
 		return SC_ERROR_INVALID_ARGUMENTS;
+#else
+		*buf_out = NULL;
+		*bufsize_out = 0;
+		return 0;
+#endif
 	}
 	while (obj != NULL) {
-		r = func(p15card, obj, &tmp, &tmpsize);
+		r = func(ctx, obj, &tmp, &tmpsize);
 		if (r) {
 			free(buf);
 			return r;
@@ -665,6 +704,92 @@ int sc_pkcs15_encode_df(struct sc_pkcs15_card *p15card,
 	return 0;	
 }
 
+static int create_file(struct sc_card *card, struct sc_file *file)
+{
+	struct sc_path path;
+	int r;
+	
+	path = file->path;
+	if (path.len < 2) {
+		error(card->ctx, "file path too small\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	r = sc_lock(card);
+	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
+	path.len -= 2;
+	r = sc_select_file(card, &path, NULL);
+	if (r) {
+		sc_perror(card->ctx, r, "Unable to select parent DF");
+		sc_unlock(card);
+		return r;
+	}
+	file->id = (path.value[path.len] << 8) | (path.value[path.len+1] & 0xFF);
+	r = sc_create_file(card, file);
+	if (r) {
+		sc_perror(card->ctx, r, "sc_create_file()");
+		sc_unlock(card);
+		return r;
+	}
+	r = sc_select_file(card, &file->path, NULL);
+	sc_unlock(card);
+	SC_TEST_RET(card->ctx, r, "Unable to select created file");
+
+	return r;
+}
+
+static int create_app_df(struct sc_pkcs15_card *p15card, struct sc_card *card)
+{
+	const struct sc_file *inf = &p15card->file_app;
+	struct sc_file file;
+	int i;
+	
+	memset(&file, 0, sizeof(file));
+	file.type = SC_FILE_TYPE_DF;
+	file.size = inf->size;
+	file.path = inf->path;
+	for (i = 0; i < SC_MAX_AC_OPS; i++)
+		file.acl[i] = SC_AC_NONE;
+	file.status = SC_FILE_STATUS_ACTIVATED;
+	return create_file(card, &file);
+}
+
+static int create_and_update_file(struct sc_pkcs15_card *p15card,
+				  struct sc_card *card,
+				  struct sc_file *inf, const u8 *buf,
+				  size_t bufsize)
+{
+	struct sc_file file;
+	int i, r;
+	
+	memset(&file, 0, sizeof(file));
+	file.type = SC_FILE_TYPE_WORKING_EF;
+	file.ef_structure = SC_FILE_EF_TRANSPARENT;
+	file.size = inf->size + bufsize;
+	file.path = inf->path;
+	for (i = 0; i < SC_MAX_AC_OPS; i++)
+		file.acl[i] = SC_AC_NONE;
+	file.status = SC_FILE_STATUS_ACTIVATED;
+	r = sc_lock(card);
+	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
+	r = create_file(card, &file);
+	if (r) {
+		sc_unlock(card);
+		return r;
+	}
+	r = sc_update_binary(card, 0, buf, bufsize, 0);
+	sc_unlock(card);
+	if (r < 0) {
+		sc_perror(card->ctx, r, "sc_update_binary() failed");
+		return r;
+	}
+	if (r != bufsize) {
+		error(card->ctx, "tried to write %d bytes, only wrote %d bytes",
+		      bufsize, r);
+		return -1;
+	}
+	return 0;
+}
+
 int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 {
 	int r, i;
@@ -672,16 +797,33 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	size_t tokinf_size, odf_size;
 	u8 line[10240];
 	
+	sc_format_path("3F0050155031", &p15card->file_odf.path);
+	sc_format_path("3F0050155032", &p15card->file_tokeninfo.path);
+	memcpy(p15card->file_app.name, "\xA0\x00\x00\x00cPKCS-15", 12);
+	p15card->file_app.namelen = 12;
 	r = sc_pkcs15_create_dir(p15card, card);
 	SC_TEST_RET(card->ctx, r, "Error creating EF(DIR)\n");
 	printf("Creating app DF\n");
+	r = create_app_df(p15card, card);
+	if (r) {
+		sc_perror(card->ctx, r, "Error creating PKCS #15 DF");
+		goto err;
+	}
 	r = sc_pkcs15_encode_tokeninfo(card->ctx, p15card, &tokinf_buf, &tokinf_size);
 	if (r) {
-		sc_perror(card->ctx, r, "Error creating EF(TokenInfo)");
+		sc_perror(card->ctx, r, "Error encoding EF(TokenInfo)");
 		goto err;
 	}
 	sc_hex_dump(card->ctx, tokinf_buf, tokinf_size, line, sizeof(line));
 	printf("TokenInfo:\n%s\n", line);
+	r = create_and_update_file(p15card, card, &p15card->file_tokeninfo, tokinf_buf, tokinf_size);
+	if (r) {
+		sc_perror(card->ctx, r, "Error creating EF(TokenInfo)");
+		goto err;
+	}
+	free(tokinf_buf);
+	tokinf_buf = NULL;
+	
 	r = sc_pkcs15_encode_odf(card->ctx, p15card, &odf_buf, &odf_size);
 	if (r) {
 		sc_perror(card->ctx, r, "Error creating EF(ODF)");
@@ -689,6 +831,14 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	}
 	sc_hex_dump(card->ctx, odf_buf, odf_size, line, sizeof(line));
 	printf("ODF:\n%s\n", line);
+	r = create_and_update_file(p15card, card, &p15card->file_odf, odf_buf, odf_size);
+	if (r) {
+		sc_perror(card->ctx, r, "Error creating EF(TokenInfo)");
+		goto err;
+	}
+	free(odf_buf);
+	odf_buf = NULL;
+
 	for (i = 0; i < SC_PKCS15_DF_TYPE_COUNT; i++) {
 		struct sc_pkcs15_df *df = &p15card->df[i];
 		int file_no;
@@ -698,15 +848,16 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 		if (df->count == 0)
 			continue;
 		for (file_no = 0; file_no < df->count; file_no++) {
-			r = sc_pkcs15_encode_df(p15card, df, file_no, &buf, &bufsize);
+			r = sc_pkcs15_encode_df(card->ctx, df, file_no, &buf, &bufsize);
 			if (r) {
 				sc_perror(card->ctx, r, "Error encoding EF(xDF)");
 				goto err;
 			}
-			if (buf != NULL) {
-				sc_hex_dump(card->ctx, buf, bufsize, line, sizeof(line));
-				printf("DF %d, file %d:\n%s\n", i, file_no, line);
-				free(buf);
+			r = create_and_update_file(p15card, card, df->file[file_no], buf, bufsize);
+			free(buf);
+			if (r) {
+				sc_perror(card->ctx, r, "Error creating EF(TokenInfo)");
+				goto err;
 			}
 		}
 	}
@@ -726,6 +877,24 @@ int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
 	if (id1->len != id2->len)
 		return 0;
 	return memcmp(id1->value, id2->value, id1->len) == 0;
+}
+
+void sc_pkcs15_format_id(const char *str, struct sc_pkcs15_id *id)
+{
+	int len = 0;
+	u8 *p = id->value;
+
+	while (*str) {
+		int byte;
+		
+		if (sscanf(str, "%02X", &byte) != 1)
+			break;
+		*p++ = byte;
+		len++;
+		str += 2;
+	}
+	id->len = len;
+	return;
 }
 
 void sc_pkcs15_print_id(const struct sc_pkcs15_id *id)

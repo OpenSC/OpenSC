@@ -337,7 +337,7 @@ static int parse_x509_cert_info(struct sc_context *ctx,
 	return r;
 }
 
-int sc_pkcs15_encode_cdf_entry(struct sc_pkcs15_card *p15card,
+int sc_pkcs15_encode_cdf_entry(struct sc_context *ctx,
 			       const struct sc_pkcs15_object *obj,
 			       u8 **buf, size_t *bufsize)
 {
@@ -363,7 +363,7 @@ int sc_pkcs15_encode_cdf_entry(struct sc_pkcs15_card *p15card,
 	sc_format_asn1_entry(asn1_type_cert_attr + 0, (void *) asn1_x509_cert_attr, NULL, 1);
 	sc_format_asn1_entry(asn1_cert + 0, (void *) &cert_obj, NULL, 1);
 
-	r = sc_asn1_encode(p15card->card->ctx, asn1_cert, buf, bufsize);
+	r = sc_asn1_encode(ctx, asn1_cert, buf, bufsize);
 
 	return r;
 }
@@ -417,7 +417,7 @@ static int get_certs_from_file(struct sc_pkcs15_card *p15card,
 					 &info, sizeof(info));
 		if (r)
 			return r;
-                if (p15card->cert_count >= SC_PKCS15_MAX_PRKEYS)
+                if (p15card->cert_count >= SC_PKCS15_MAX_CERTS)
 			break;
 		p15card->cert_info[p15card->cert_count] = info;
 		p15card->cert_count++;

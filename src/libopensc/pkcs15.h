@@ -269,16 +269,24 @@ int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
 				  const struct sc_pkcs15_id *id,
 				  struct sc_pkcs15_pin_info **out);
 
-int sc_pkcs15_encode_df(struct sc_pkcs15_card *card,
+int sc_pkcs15_encode_df(struct sc_context *ctx,
 			struct sc_pkcs15_df *df, int file_nr,
 			u8 **buf, size_t *bufsize);
-int sc_pkcs15_encode_cdf_entry(struct sc_pkcs15_card *card,
-			       const struct sc_pkcs15_object *obj, u8 **buf,
-			       size_t *bufsize);
+int sc_pkcs15_encode_cdf_entry(struct sc_context *ctx,
+			const struct sc_pkcs15_object *obj, u8 **buf,
+			size_t *bufsize);
+int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
+			const struct sc_pkcs15_object *obj, u8 **buf,
+			size_t *bufsize);
+int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
+			const struct sc_pkcs15_object *obj, u8 **buf,
+			size_t *bufsize);
 
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
 			 const struct sc_pkcs15_id *id2);
 void sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
+void sc_pkcs15_format_id(const char *id_in, struct sc_pkcs15_id *id_out);
+
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
 int sc_pkcs15_add_object(struct sc_context *ctx, struct sc_pkcs15_df *df,
 			 int file_nr, int obj_type, const void *data,
