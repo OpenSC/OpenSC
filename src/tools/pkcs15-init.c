@@ -471,6 +471,8 @@ do_assert_pristine(struct sc_card *card)
 		res = -1;
 
 	sc_format_path("5015", &path);
+	r = sc_select_file(card, &path, NULL);
+
 	if (r != SC_ERROR_FILE_NOT_FOUND)
 		if (r != SC_ERROR_NOT_ALLOWED ||
 		 	strcmp(card->name, "StarCOS") != 0)
