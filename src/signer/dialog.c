@@ -30,7 +30,7 @@ getpin_cb (void *opaque, const void *buffer, size_t length)
 }
 
 int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
-			    struct sc_pkcs15_pin_info *pinfo)
+			    struct sc_pkcs15_object *pin)
 {
 	int r;
 	const char *argv[3];
@@ -39,6 +39,7 @@ int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 	char buf[500];
 	char errtext[100];
 	struct entry_parm_s parm;
+	struct sc_pkcs15_pin_info *pinfo = pin->data;
 	
 	argv[0] = pgmname;
 	argv[1] = NULL;
@@ -49,8 +50,8 @@ int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 		       assuan_strerror(r));
 		goto err;
 	}
-	sprintf(buf, "SETDESC Enter PIN [%s] for digital signing  ", pinfo->com_attr.label);
-	r = assuan_transact(ctx, buf, NULL, NULL, NULL, NULL);
+	sprintf(buf, "SETDESC Enter PIN [%s] for digital signing  ", pin->label);
+	r = assuan_transact(ctx, buf, NULL, NULL, NULL, NULL, NULL, NULL);
 	if (r) {
 		printf("SETDESC: %s\n", assuan_strerror(r));
 		goto err;
@@ -59,15 +60,15 @@ int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 	while (1) {
 		if (errtext[0]) {
 			sprintf(buf, "SETERROR %s", errtext);
-			r = assuan_transact(ctx, buf, NULL, NULL, NULL, NULL);
+			r = assuan_transact(ctx, buf, NULL, NULL, NULL, NULL, NULL, NULL);
 			errtext[0] = 0;
 		}
 		parm.lines = 0;
 		parm.size = sizeof(buf);
 		parm.buffer = buf;
-		r = assuan_transact(ctx, "GETPIN", getpin_cb, &parm, NULL, NULL);
+		r = assuan_transact(ctx, "GETPIN", getpin_cb, &parm, NULL, NULL, NULL, NULL);
 		if (r == ASSUAN_Canceled) {
-			assuan_pipe_disconnect(ctx);
+			assuan_disconnect(ctx);
 			return -2;
 		}
 		if (r) {
@@ -99,9 +100,9 @@ int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 			break;
 	}
 
-	assuan_pipe_disconnect(ctx);	
+	assuan_disconnect(ctx);	
 	return 0;
 err:	
-	assuan_pipe_disconnect(ctx);
+	assuan_disconnect(ctx);
 	return -1;
 }

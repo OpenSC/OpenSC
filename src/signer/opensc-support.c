@@ -9,19 +9,21 @@ static int get_certificate(PluginInstance *inst,
 {
         struct sc_pkcs15_cert *cert;
         struct sc_pkcs15_cert_info *cinfo;
-        int r, i;
+	struct sc_pkcs15_object *objs[32], *cert_obj;
+        int r, i, count;
         X509 *x509;
         struct sc_pkcs15_id cert_id;
         u8 *p;
 
-        r = sc_pkcs15_enum_private_keys(inst->p15card);
+        r = sc_pkcs15_get_objects(inst->p15card, SC_PKCS15_TYPE_PRKEY_RSA, objs, 32);
         if (r < 0)
                 return r;
         if (r == 0)
                 return SC_ERROR_OBJECT_NOT_FOUND;
         cert_id.len = 0;
-        for (i = 0; i < inst->p15card->prkey_count; i++) {
-                struct sc_pkcs15_prkey_info *key = &inst->p15card->prkey_info[i];
+        count = r;
+        for (i = 0; i < count; i++) {
+                struct sc_pkcs15_prkey_info *key = objs[i]->data;
 
 #if 0
                 if (key->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION) {
@@ -35,9 +37,10 @@ static int get_certificate(PluginInstance *inst,
         }
         if (cert_id.len == 0)
                 return SC_ERROR_OBJECT_NOT_FOUND;
-        r = sc_pkcs15_find_cert_by_id(inst->p15card, &cert_id, &cinfo);
+        r = sc_pkcs15_find_cert_by_id(inst->p15card, &cert_id, &cert_obj);
         if (r)
                 return r;
+	cinfo = cert_obj->data;
         r = sc_pkcs15_read_certificate(inst->p15card, cinfo, &cert);
         if (r)
                 return r;

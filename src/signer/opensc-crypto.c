@@ -4,7 +4,7 @@
 #define DBG(x) { x; }
 
 extern int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
-				   struct sc_pkcs15_pin_info *pinfo);
+				   struct sc_pkcs15_object *pin);
 
 void
 sc_close(struct sc_priv_data *priv)
@@ -48,8 +48,7 @@ static int sc_private_decrypt(int flen, u_char *from, u_char *to, RSA *rsa,
 {
 	int r;
 	struct sc_priv_data *priv;
-	struct sc_pkcs15_prkey_info *key;
-	struct sc_pkcs15_pin_info *pin;
+	struct sc_pkcs15_object *key, *pin;
 
 	if (padding != RSA_PKCS1_PADDING)
 		return -1;	
@@ -73,7 +72,7 @@ static int sc_private_decrypt(int flen, u_char *from, u_char *to, RSA *rsa,
 #endif
 		goto err;
 	}
-	r = sc_pkcs15_find_pin_by_auth_id(priv->p15card, &key->com_attr.auth_id, &pin);
+	r = sc_pkcs15_find_pin_by_auth_id(priv->p15card, &key->auth_id, &pin);
 	if (r) {
 #if 0
 		error("Unable to find PIN object from SmartCard: %s", sc_strerror(r));
@@ -86,7 +85,7 @@ static int sc_private_decrypt(int flen, u_char *from, u_char *to, RSA *rsa,
 			goto err;
 		goto err;
 	}
-	r = sc_pkcs15_decipher(priv->p15card, key, from, flen, to, flen);
+	r = sc_pkcs15_decipher(priv->p15card, key->data, from, flen, to, flen);
 	if (r < 0) {
 #if 0
 		error("sc_pkcs15_decipher() failed: %s", sc_strerror(r));
@@ -114,8 +113,7 @@ sc_sign(int type, u_char *m, unsigned int m_len,
 {
 	int r;
 	struct sc_priv_data *priv;
-	struct sc_pkcs15_prkey_info *key;
-	struct sc_pkcs15_pin_info *pin;
+	struct sc_pkcs15_object *key, *pin;
 	
 	priv = (struct sc_priv_data *) RSA_get_app_data(rsa);
 	if (priv == NULL)
@@ -138,7 +136,7 @@ sc_sign(int type, u_char *m, unsigned int m_len,
 		DBG(printf("Unable to find private key from SmartCard: %s", sc_strerror(r)));
 		goto err;
 	}
-	r = sc_pkcs15_find_pin_by_auth_id(priv->p15card, &key->com_attr.auth_id, &pin);
+	r = sc_pkcs15_find_pin_by_auth_id(priv->p15card, &key->auth_id, &pin);
 	if (r) {
 		DBG(printf("Unable to find PIN object from SmartCard: %s", sc_strerror(r)));
 		goto err;
@@ -149,7 +147,7 @@ sc_sign(int type, u_char *m, unsigned int m_len,
 			goto err;
 		goto err;
 	}
-	r = sc_pkcs15_compute_signature(priv->p15card, key, SC_PKCS15_HASH_SHA1,
+	r = sc_pkcs15_compute_signature(priv->p15card, key->data, SC_PKCS15_HASH_SHA1,
 					m, m_len, sigret, RSA_size(rsa));
 	if (r < 0) {
 		DBG(printf("sc_pkcs15_compute_signature() failed: %s", sc_strerror(r)));
