@@ -714,7 +714,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 		split_key = 1;
 	}
 
-	if (!opt_softkeygen && !opt_split_key) {
+	if (!opt_softkeygen && !split_key) {
 		r = sc_pkcs15init_generate_key(p15card, profile,
 				&args, keybits, NULL);
 		if (r >= 0 || r != SC_ERROR_NOT_SUPPORTED)
