@@ -174,12 +174,12 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_OBJECT_NOT_VALID;
 
 	/* prevent buffer overflow from hostile card */
-	if (pin->max_length > SC_MAX_PIN_SIZE)
+	if (pin->stored_length > SC_MAX_PIN_SIZE)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	/* If application gave us a PIN, make sure it's within
 	 * the valid range */
-	if (pinlen && (pinlen > pin->max_length || pinlen < pin->min_length))
+	if (pinlen && (pinlen > pin->stored_length || pinlen < pin->min_length))
 		return SC_ERROR_INVALID_PIN_LENGTH;
 
 	card = p15card->card;
@@ -250,6 +250,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	int r;
 	struct sc_card *card;
 	struct sc_pin_cmd_data data;
+	size_t max_length;
 
 	assert(p15card != NULL);
 	if (pin->magic != SC_PKCS15_PIN_MAGIC)
@@ -260,8 +261,9 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 		(oldpin == NULL || newpin == NULL || oldpinlen == 0 || newpinlen == 0))
 			return SC_ERROR_NOT_SUPPORTED;
 
+	max_length = pin->max_length != 0 ? pin->max_length : SC_MAX_PIN_SIZE;
 	/* check pin length */
-	if (oldpinlen > pin->max_length || newpinlen > pin->max_length)
+	if (oldpinlen > pin->stored_length || newpinlen > max_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
 	if (oldpinlen < pin->min_length || newpinlen < pin->min_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
@@ -329,6 +331,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	struct sc_pin_cmd_data data;
 	struct sc_pkcs15_object *pin_obj, *puk_obj;
 	struct sc_pkcs15_pin_info *puk_info = NULL;
+	size_t max_length;
 
 	assert(p15card != NULL);
 	if (pin->magic != SC_PKCS15_PIN_MAGIC)
@@ -342,9 +345,10 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	/* Note: Actually two sc_pkcs15_pin_info would be needed
 	 * here, one for the pin to reset and one for the puk
 	 */
-	if (newpinlen > pin->max_length || puklen > pin->max_length)
+	max_length = pin->max_length != 0 ? pin->max_length : SC_MAX_PIN_SIZE;
+	if (newpinlen > max_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
-	if (newpinlen < pin->min_length || puklen < pin->min_length)
+	if (newpinlen < pin->min_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
 
 	card = p15card->card;
@@ -366,6 +370,10 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		sc_debug(card->ctx, "unable to get puk object use pin object instead\n");
 		puk_info = pin;
 	}
+	if (puklen > puk_info->stored_length)
+		return SC_ERROR_INVALID_PIN_LENGTH;
+	if (puklen < puk_info->min_length)
+		return SC_ERROR_INVALID_PIN_LENGTH;
 
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
