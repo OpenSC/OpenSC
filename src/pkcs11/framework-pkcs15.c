@@ -88,13 +88,14 @@ struct pkcs15_pubkey_object {
 };
 
 static int	register_mechanisms(struct sc_pkcs11_card *p11card);
-static int	get_public_exponent(struct sc_pkcs15_pubkey *,
+static CK_RV	get_public_exponent(struct sc_pkcs15_pubkey *,
 					CK_ATTRIBUTE_PTR);
-static int	get_modulus(struct sc_pkcs15_pubkey *,
+static CK_RV	get_modulus(struct sc_pkcs15_pubkey *,
 					CK_ATTRIBUTE_PTR);
-static int	get_modulus_bits(struct sc_pkcs15_pubkey *,
+static CK_RV	get_modulus_bits(struct sc_pkcs15_pubkey *,
 					CK_ATTRIBUTE_PTR);
-static int	asn1_sequence_wrapper(const u8 *, size_t, CK_ATTRIBUTE_PTR);
+static CK_RV	get_usage_bit(unsigned int usage, CK_ATTRIBUTE_PTR attr);
+static CK_RV	asn1_sequence_wrapper(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 static void	cache_pin(void *, int, const void *, size_t);
 
 /* PKCS#15 Framework */
@@ -1067,17 +1068,11 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_SENSITIVE:
 	case CKA_ALWAYS_SENSITIVE:
 	case CKA_NEVER_EXTRACTABLE:
-	case CKA_SIGN:
 	case CKA_PRIVATE:
-	case CKA_UNWRAP: /* XXX should make an attempt to find out whether
-			    the card supports unwrap */
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
                 break;
 	case CKA_MODIFIABLE:
-	case CKA_DERIVE:
-	case CKA_DECRYPT:
-	case CKA_SIGN_RECOVER:
 	case CKA_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = FALSE;
@@ -1098,6 +1093,16 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_MECHANISM_TYPE));
                 *(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
+	case CKA_ENCRYPT:
+	case CKA_DECRYPT:
+	case CKA_SIGN:
+	case CKA_SIGN_RECOVER:
+	case CKA_WRAP:
+	case CKA_UNWRAP:
+	case CKA_VERIFY:
+	case CKA_VERIFY_RECOVER:
+	case CKA_DERIVE:
+		return get_usage_bit(prkey->prkey_info->usage, attr);
 	case CKA_MODULUS:
 		return get_modulus(key, attr);
 	case CKA_MODULUS_BITS:
@@ -1253,11 +1258,6 @@ CK_RV pkcs15_cert_key_get_attribute(struct sc_pkcs11_session *session,
                 break;
 	case CKA_PRIVATE:
 	case CKA_MODIFIABLE:
-	case CKA_ENCRYPT:
-	case CKA_VERIFY:
-	case CKA_VERIFY_RECOVER:
-	case CKA_WRAP:
-	case CKA_DERIVE:
 	case CKA_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = FALSE;
@@ -1278,6 +1278,19 @@ CK_RV pkcs15_cert_key_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_MECHANISM_TYPE));
                 *(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
+	case CKA_ENCRYPT:
+	case CKA_DECRYPT:
+	case CKA_SIGN:
+	case CKA_SIGN_RECOVER:
+	case CKA_WRAP:
+	case CKA_UNWRAP:
+	case CKA_VERIFY:
+	case CKA_VERIFY_RECOVER:
+	case CKA_DERIVE:
+		return get_usage_bit(SC_PKCS15_PRKEY_USAGE_ENCRYPT
+					|SC_PKCS15_PRKEY_USAGE_VERIFY
+					|SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,
+					attr);
 	case CKA_MODULUS:
 		return get_modulus(pubkey->key, attr);
 	case CKA_MODULUS_BITS:
@@ -1326,11 +1339,6 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
                 break;
 	case CKA_PRIVATE:
 	case CKA_MODIFIABLE:
-	case CKA_ENCRYPT:
-	case CKA_VERIFY:
-	case CKA_VERIFY_RECOVER:
-	case CKA_WRAP:
-	case CKA_DERIVE:
 	case CKA_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = FALSE;
@@ -1351,6 +1359,16 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_MECHANISM_TYPE));
                 *(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
+	case CKA_ENCRYPT:
+	case CKA_DECRYPT:
+	case CKA_SIGN:
+	case CKA_SIGN_RECOVER:
+	case CKA_WRAP:
+	case CKA_UNWRAP:
+	case CKA_VERIFY:
+	case CKA_VERIFY_RECOVER:
+	case CKA_DERIVE:
+		return get_usage_bit(pubkey->pubkey_info->usage, attr);
 	case CKA_MODULUS:
 		return get_modulus(pubkey->key, attr);
 	case CKA_MODULUS_BITS:
@@ -1377,7 +1395,7 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 /*
  * get_attribute helpers
  */
-static int
+static CK_RV
 get_bignum(sc_pkcs15_bignum_t *bn, CK_ATTRIBUTE_PTR attr)
 {
 	check_attribute_buffer(attr, bn->len);
@@ -1385,7 +1403,7 @@ get_bignum(sc_pkcs15_bignum_t *bn, CK_ATTRIBUTE_PTR attr)
 	return CKR_OK;
 }
 
-static int
+static CK_RV
 get_bignum_bits(sc_pkcs15_bignum_t *bn, CK_ATTRIBUTE_PTR attr)
 {
 	CK_ULONG	bits, mask;
@@ -1400,7 +1418,7 @@ get_bignum_bits(sc_pkcs15_bignum_t *bn, CK_ATTRIBUTE_PTR attr)
 	return CKR_OK;
 }
 
-static int
+static CK_RV
 get_modulus(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
 	if (key == NULL)
@@ -1412,7 +1430,7 @@ get_modulus(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
-static int
+static CK_RV
 get_modulus_bits(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
 	if (key == NULL)
@@ -1424,7 +1442,7 @@ get_modulus_bits(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
-static int
+static CK_RV
 get_public_exponent(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
 	if (key == NULL)
@@ -1436,7 +1454,47 @@ get_public_exponent(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
-static int
+/*
+ * Map pkcs15 usage bits to pkcs11 usage attributes.
+ *
+ * It's not totally clear to me whether SC_PKCS15_PRKEY_USAGE_NONREPUDIATION should
+ * be treated as being equivalent with CKA_SIGN or not...
+ */
+static CK_RV
+get_usage_bit(unsigned int usage, CK_ATTRIBUTE_PTR attr)
+{
+	static struct {
+		CK_ATTRIBUTE_TYPE type;
+		unsigned int	flag;
+	} flag_mapping[] = {
+	      	{ CKA_ENCRYPT,		SC_PKCS15_PRKEY_USAGE_ENCRYPT },
+	      	{ CKA_DECRYPT,		SC_PKCS15_PRKEY_USAGE_DECRYPT },
+		{ CKA_SIGN,		SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_NONREPUDIATION },
+		{ CKA_SIGN_RECOVER,	SC_PKCS15_PRKEY_USAGE_SIGNRECOVER },
+		{ CKA_WRAP,		SC_PKCS15_PRKEY_USAGE_WRAP },
+		{ CKA_UNWRAP,		SC_PKCS15_PRKEY_USAGE_UNWRAP },
+		{ CKA_VERIFY,		SC_PKCS15_PRKEY_USAGE_VERIFY },
+		{ CKA_VERIFY_RECOVER,	SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER },
+		{ CKA_DERIVE,		SC_PKCS15_PRKEY_USAGE_DERIVE },
+		{ 0, 0 }
+	};
+	unsigned int mask = 0, j;
+
+	for (j = 0; (mask = flag_mapping[j].flag) != 0; j++) {
+		if (flag_mapping[j].type == attr->type)
+			break;
+	}
+	if (mask == 0)
+		return CKR_ATTRIBUTE_TYPE_INVALID;
+
+	check_attribute_buffer(attr, sizeof(CK_BBOOL));
+	*(CK_BBOOL*)attr->pValue = (usage & mask)? TRUE : FALSE;
+
+	return CKR_OK;
+}
+
+
+static CK_RV
 asn1_sequence_wrapper(const u8 *data, size_t len, CK_ATTRIBUTE_PTR attr)
 {
 	u8		*dest;
