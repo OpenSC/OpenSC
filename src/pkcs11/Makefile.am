@@ -25,8 +25,8 @@ libpkcs11_la_SOURCES = libpkcs11.c
 libpkcs11_la_LIBADD = $(LIBDL)
 libpkcs11_la_LDFLAGS = -version-info 0:6:0
 
-include_HEADERS = pkcs11.h rsaref/pkcs11.h rsaref/pkcs11f.h rsaref/pkcs11t.h \
-		  rsaref/unix.h rsaref/win32.h
+include_HEADERS = pkcs11.h rsaref/pkcs11.h rsaref/pkcs11f.h rsaref/pkcs11t.h
+noinst_HEADERS = rsaref/unix.h rsaref/win32.h
 
 jar-dir:
 	if test ! -d jar-dir ; then mkdir jar-dir ; fi
