@@ -6,8 +6,6 @@
 <!ENTITY sccardt SYSTEM "sc_card_t.xml">
 <!ENTITY scappinfot SYSTEM "sc_app_info_t.xml">
 <!ENTITY scasn1entry SYSTEM "sc_asn1_entry.xml">
-
-<!ENTITY includes "#include &lt;opensc.h&gt;">
 ]>
 
 <chapter>
