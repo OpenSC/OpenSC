@@ -91,20 +91,17 @@
 #endif
 #endif
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 #ifdef BELPIC_PIN_PAD
 #include "winscard.h"
 #include "scr.h"
 #endif
 
-/* These defines are disabled for OpenSC *
+/* These defines are disabled for OpenSC */
+#if 0
 #define BELPIC_SET_LANG
 #define GET_LANG_FROM_CARD
 #define HAVE_ALLOW_SSO
-*/
+#endif
 
 #ifdef HAVE_GUI
 #include "scgui.h"
@@ -145,10 +142,12 @@ static struct sc_atr_table belpic_atrs[] = {
 	{ (const u8 *) "\x3B\x98\x94\x40\x0A\xA5\x03\x01\x01\x01\xAD\x13\x10", 13, BELPIC_EID },
 	/* Applet beta 5 + V 1.0 */
 	{ (const u8 *) "\x3B\x98\x94\x40\xFF\xA5\x03\x01\x01\x01\xAD\x13\x10", 13, BELPIC_EID },
+#if 0
 	/* Applet beta 3 + 4 */
-	/*{ (const u8 *) "\x3B\x98\x11\x40\xFF\xA5\x03\x01\x01\x01\xAD\x13\x04", 13, BELPIC_EID },*/
+	{ (const u8 *) "\x3B\x98\x11\x40\xFF\xA5\x03\x01\x01\x01\xAD\x13\x04", 13, BELPIC_EID },
 	/* Applet beta 2 */
-	/*{ (const u8 *) "\x3B\x68\x00\x00\x29\x05\x01\x02\x01\xAD\x13\x03", 12, BELPIC_EID },*/
+	{ (const u8 *) "\x3B\x68\x00\x00\x29\x05\x01\x02\x01\xAD\x13\x03", 12, BELPIC_EID },
+#endif
 	{ NULL }
 };
 
@@ -189,7 +188,7 @@ static const struct sc_card_operations *iso_ops = NULL;
 
 #ifdef BELPIC_PIN_PAD
 
-/* Option flags from the config file*/
+/* Option flags from the config file */
 #define PP_MSG_AUTH_PIN			0x00000001
 #define PP_MSG_WRONG_PIN		0x00000002
 #define PP_MSG_CHANGEPIN_MISMATCH	0x00000004
@@ -392,7 +391,8 @@ static char *pin_blocked_msgs[4] = {
 
 #endif /* HAVE_GUI */
 
-/* To be removed *
+/* To be removed */
+#if 0
 static void dumphex(char *msg, const u8 *buf, int len)
 {
 	int i;
@@ -400,7 +400,8 @@ static void dumphex(char *msg, const u8 *buf, int len)
 	for (i = 0; i < len; i++)
 		printf("%02X ", buf[i]);
 	printf(" (%d bytes)\n", len);
-}*/
+}
+#endif
 
 #ifdef BELPIC_PIN_PAD
 
@@ -483,8 +484,8 @@ static LONG SCR_SCardInit(LPCTSTR szPinPadDll, LPCTSTR szReader, DWORD version, 
  	TLVNext(&tlv, 0x04); /* Version */ 
     sprintf(szTemp, "%ld", version);
 	TLVAddBuffer(&tlv, (u8 *)szTemp, strlen(szTemp));
-    
-#ifndef _WIN32
+
+#ifdef HAVE_PCSC_OLD
 		rv = SCardControl(SCR_CARD_HANDLE, sendbuf, TLVLen(&tlv), recvbuf, &dwRecvLength);
 #else
 		rv = SCardControl(SCR_CARD_HANDLE, 0, sendbuf, TLVLen(&tlv),
@@ -506,7 +507,6 @@ static LONG SCR_SCardPIN(long lAction, LPCTSTR szPinPadDll, const SCR_Card *pCar
                                const SCR_Application *pApp, BYTE *pCardStatus)
 {
     LONG rv;
-
 	unsigned char sendbuf[256];
 	unsigned char recvbuf[2];
     char szTemp[32];
@@ -571,7 +571,7 @@ static LONG SCR_SCardPIN(long lAction, LPCTSTR szPinPadDll, const SCR_Card *pCar
 	    TLVAddBuffer(&tlv, (u8 *)pApp->longString, strlen(pApp->longString));
     }
     
-#ifndef _WIN32
+#ifdef HAVE_PCSC_OLD
 		rv = SCardControl(SCR_CARD_HANDLE, sendbuf, TLVLen(&tlv), recvbuf, &dwRecvLength);
 #else
 		rv = SCardControl(SCR_CARD_HANDLE, 0, sendbuf, TLVLen(&tlv),
@@ -622,7 +622,7 @@ static int belpic_calculate_lang(struct sc_card *card)
 				lang = lang_infos[i].lang;
 		}
 	}
-#endif  /* BELPIC_SET_LANG*/
+#endif  /* BELPIC_SET_LANG */
 
 	return lang;
 }
@@ -676,7 +676,7 @@ int belpic_set_language(const char *reader, int lang)
 	return 0;
 }
 
-#endif  /* BELPIC_SET_LANG*/
+#endif  /* BELPIC_SET_LANG */
 
 static int str2lang(struct sc_context *ctx, char *lang)
 {
@@ -794,7 +794,9 @@ static int get_language(struct sc_card *card)
 		goto prefs_error;
 	}
 
-	/*dumphex("Prefs: ", prefs, r);*/
+#if 0
+	dumphex("Prefs: ", prefs, r);
+#endif
 	i = get_pref(prefs, r, "[gen]", "lg", &len);
 	if (i <= 0 || len < 2) {
 		sc_debug(card->ctx, "Couldn't find language in prefs file: %d\n", i);
@@ -896,8 +898,7 @@ static int belpic_load_pin_pad_lib(struct sc_card *card, struct belpic_priv_data
 		return SC_ERROR_READER;
 	}
 
-    /*
-
+#if 0
     HINSTANCE dll = LoadLibrary(pp_reader_lib);
 
 	sc_debug(card->ctx, "Pin pad reader \"%s\" found, now loading corresponding lib \"%s\"\n",
@@ -928,7 +929,7 @@ static int belpic_load_pin_pad_lib(struct sc_card *card, struct belpic_priv_data
 		load_pin_pad_err(reader_name, pp_reader_lib, "Initialization of library returned UNSUPPORTED");
 		return SC_ERROR_READER;
 	}
-*/
+#endif
 	return 1;	
 }
 
@@ -1123,7 +1124,7 @@ static int belpic_read_binary(struct sc_card *card,
 	int r;
 
 	if (next_idx == idx)
-		return 0; /* File was allready read entirely */
+		return 0; /* File was already read entirely */
 
 t1 = clock();
 	r = iso_ops->read_binary(card, idx, buf, count, flags);
@@ -1141,8 +1142,9 @@ t2 = clock();
 dur = t2 - t1;
 tot_dur += dur;
 tot_read += r;
-/*printf("%d bytes: %d ms - %d bytes total: %d ms\n", r, dur, tot_read, tot_dur);*/
-
+#if 0
+printf("%d bytes: %d ms - %d bytes total: %d ms\n", r, dur, tot_read, tot_dur);*/
+#endif
 	return r;
 }
 
@@ -1152,8 +1154,9 @@ tot_read += r;
 static int belpic_pp_test_res(struct sc_card *card,
 			int r, const u8 *card_status, int *tries_left)
 {
-	/*printf("PP res: 0x%0x (%d), SW1-SW2 = %02x %02x\n", r, r, card_status[0], card_status[1]);*/
-
+#if 0
+	printf("PP res: 0x%0x (%d), SW1-SW2 = %02x %02x\n", r, r, card_status[0], card_status[1]);
+#endif
 	if (r != SCARD_S_SUCCESS) {
 		switch (r) {
 		case SCARD_E_CANCELLED:
@@ -1208,6 +1211,7 @@ static int belpic_pp_verify(struct sc_card *card, SCR_Card *scr_card,
 			if (priv->options & PP_MSG_WRONG_PIN) {
 				int r1;
 				char msg[200];
+
 				sprintf(msg, wrong_pin_msgs[lang], *tries_left);
 				r1 = scgui_ask_message(app_msg[lang], pp_msg_login_sh, msg,
 					btn_msg_retry[lang], btn_msg_cancel[lang], reader_name);
@@ -1227,7 +1231,9 @@ static int belpic_pp_verify(struct sc_card *card, SCR_Card *scr_card,
 			scgui_display_message(app_msg[lang], pp_msg_login_sh, pp_msg_login,
 				NULL, &hDlg, icon, reader_name);
 		}
-//printf("belpic_pp_verify(): reader=%s, hCard=0x%0x\n", card->reader->name, scr_card->hCard);
+#if 0
+		printf("belpic_pp_verify(): reader=%s, hCard=0x%0x\n", card->reader->name, scr_card->hCard);
+#endif
 		r = priv->scr_verify_pin(priv->szPinPadDll, scr_card, pin_ref,
 			&scr_pin_usage, &scr_app_belpic, card_status);
 		if (mesg_on_screen)
@@ -1263,6 +1269,7 @@ static int belpic_pp_change(struct sc_card *card, SCR_Card *scr_card,
 			}
 			if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 				char msg[200];
+				
 				if (!(priv->options & PP_MSG_WRONG_PIN))
 					return r;
 				sprintf(msg, wrong_pin_msgs[lang], *tries_left);
@@ -1502,7 +1509,7 @@ static int belpic_set_security_env(struct sc_card *card,
 	* so we use the iso7816_compute_signature() function, and because this function
 	* doesn't know about the key reference.
 	* It's not a problem either, because this function is (for pkcs11) only called
-	* by sc_pkcs15_compute_signature(), where the card is allready locked, and
+	* by sc_pkcs15_compute_signature(), where the card is already locked, and
 	* the next function to be executed will be the compute_signature function.
 	*/
 	if (*env->key_ref == BELPIC_KEY_REF_NONREP) {
@@ -1542,7 +1549,7 @@ static int belpic_compute_signature(struct sc_card *card, const u8 * data,
 
 static int belpic_logout(struct sc_card *card)
 {
-	/*
+#if 0
 	struct	sc_apdu apdu;
 	int	r;
 
@@ -1556,8 +1563,7 @@ static int belpic_logout(struct sc_card *card)
 	SC_TEST_RET(card->ctx, r, "LOGOFF returned error");
 
 	SC_FUNC_RETURN(card->ctx, 1, r);
-	*/
-
+#endif
 	return 0;
 }
 
