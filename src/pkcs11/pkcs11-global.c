@@ -60,6 +60,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
                 card_removed(i);
 
 	sc_release_context(context);
+	context = NULL;
         return CKR_OK;
 }
 
@@ -207,7 +208,33 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 		  CK_ULONG ulPinLen,
 		  CK_CHAR_PTR pLabel)
 {
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	struct sc_pkcs11_pool_item *item;
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_slot *slot;
+        CK_RV rv;
+
+	rv = slot_get_token(slotID, &slot);
+	if (rv != CKR_OK)
+		return rv;
+
+	/* Make sure there's no open session for this token */
+	for (item = session_pool.head; item; item = item->next) {
+		session = (struct sc_pkcs11_session*) item->item;
+		if (session->slot == slot)
+			return CKR_SESSION_EXISTS;
+	}
+
+	if (slot->card->framework->initialize == NULL)
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	rv = slot->card->framework->initialize(slot->card,
+				 slot->fw_data, pPin, ulPinLen, pLabel);
+
+	if (rv != CKR_OK)
+		return rv;
+
+	/* Now we should re-bind all tokens so they get the
+	 * corresponding function vector and flags */
+	return CKR_OK;
 }
 
 CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
