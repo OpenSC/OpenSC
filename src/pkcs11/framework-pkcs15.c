@@ -460,9 +460,9 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 	case SC_PKCS15_TYPE_CERT_X509:
 		if (obj->related_cert != NULL)
-			pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_pubkey, NULL);
-		else
 			pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_cert, NULL);
+		else
+			pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_pubkey, NULL);
 		break;
 	}
 
