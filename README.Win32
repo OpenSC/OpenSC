@@ -57,13 +57,13 @@ pkcs11 signature mechs.
 
 - In src/tools/Makefile.mak
   - uncomment pkcs15-init.exe in the "TARGETS" line  (optionally)
-  - Add libeay32.lib to the "link" line
+  - Add libeay32.lib (and gdi32.lib) to the "link" line
 
 - In src/libopensc/Makefile.mak
-  - Add libeay32.lib to the "link" line
+  - Add libeay32.lib (and gdi32.lib) to the "link" line
 
 - In src/pkcs11/Makefile.mak
-  - Add libeay32.lib to the "link" line
+  - Add libeay32.lib (and gdi32.lib) to the "link" line
 
 - In win32/Make.rules.mak
   - Add /DHAVE_OPENSSL to the "COPTS" line
