@@ -42,7 +42,18 @@ acx_pthread_ok=no
 
 # First, check if the POSIX threads header, pthread.h, is available.
 # If it isn't, don't bother looking for the threads libraries.
-AC_CHECK_HEADER(pthread.h, , acx_pthread_ok=noheader)
+
+# Latest Tru64's require that you always use -pthread,
+# just assume pthread.h exists
+
+case "${host_cpu}-${host_os}" in
+ alpha*-osf*) acx_pthread_check_header=no; acx_pthread_ok=yes ;;
+ *) acx_pthread_check_header=yes ;;
+esac
+
+if test "x$acx_pthread_check_header" = xyes; then
+  AC_CHECK_HEADER(pthread.h, , acx_pthread_ok=noheader)
+fi
 
 # We must check for the threads library under a number of different
 # names; the ordering is very important because some systems
