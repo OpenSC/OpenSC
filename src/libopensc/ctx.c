@@ -323,6 +323,7 @@ void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 	int i, r, count = 0;
 	scconf_block **blocks;
 	
+	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 	ctx->conf = scconf_new(OPENSC_CONF_PATH);
 	if (ctx->conf == NULL)
 		return;
@@ -342,7 +343,9 @@ void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 		    	ctx->conf_blocks[count++] = blocks[0];
 		free(blocks);
 	}
-	for (i = 0; i < count; i++)
+	/* Above we add 2 blocks at most, but conf_blocks has 3 elements,
+	 * so at least one is NULL */
+	for (i = 0; ctx->conf_blocks[i]; i++)
 		load_parameters(ctx, ctx->conf_blocks[i], opts);
 }
 
