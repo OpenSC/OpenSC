@@ -68,7 +68,8 @@ void sc_do_log(struct sc_context *ctx, int type, const char *file, int line, con
 void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args)
 {
 	int	(*display_fn)(sc_context_t *, const char *);
-	char	buf[1536], *p, *tag = "";
+	char	buf[1536], *p;
+	const char *tag = "";
 	int	r;
 	size_t	left;
 
