@@ -24,44 +24,6 @@ AC_SUBST(OPENSC_LT_REVISION)
 AC_SUBST(OPENSC_LT_AGE)
 
 AC_CANONICAL_HOST
-case "$host" in
-  *darwin* | *rhapsody*)
-  AC_DEFINE(OS_MACOSX,1,[MacOS X])
-  ;;
-  *beos*)
-  AC_DEFINE(OS_BEOS,1,[BeOS])
-  ;;
-  *cygwin* | *mingw* | *pw32*)
-  AC_DEFINE(OS_CYGWIN32,1,[Cywin32 and friends])
-  ;;
-  *irix*)
-  AC_DEFINE(OS_IRIX,1,[SGI IRIX])
-  ;;
-  *hpux*)
-  AC_DEFINE(OS_HPUX,1,[HP-UX])
-  ;;
-  *solaris* | *sunos*)
-  AC_DEFINE(OS_SOLARIS,1,[Sun Solaris])
-  ;;
-  *osf*)
-  AC_DEFINE(OS_DIGITAL_UNIX,1,[Digital UNIX])
-  ;;
-  *aix*)
-  AC_DEFINE(OS_AIX,1,[IBM AIX])
-  ;;
-  *freebsd*)
-  AC_DEFINE(OS_FREEBSD,1,[FreeBSD])
-  ;;
-  *netbsd*)
-  AC_DEFINE(OS_NETBSD,1,[NetBSD])
-  ;;
-  *openbsd*)
-  AC_DEFINE(OS_OPENBSD,1,[OpenBSD])
-  ;;
-  *linux*)
-  AC_DEFINE(OS_LINUX,1,[Linux])
-  ;;
-esac
 AC_PROG_CC
 AC_C_BIGENDIAN
 
@@ -79,7 +41,6 @@ case "$host" in
 	;;
 *-*-sunos4*)
 	CPPFLAGS="$CPPFLAGS -DSUNOS4"
-	AC_CHECK_FUNCS(getpwanam)
 	AC_DEFINE(PAM_SUN_CODEBASE, 1, [PAM based on SUN codebase])
 	;;
 *-*-aix*)
@@ -167,19 +128,13 @@ dnl Automatically update the libtool script if it becomes out-of-date.
 dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h strings.h sys/time.h unistd.h libgen.h utmp.h getopt.h dlfcn.h security/pam_appl.h security/_pam_macros.h pam/pam_appl.h pam/_pam_macros.h])
+AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h strings.h sys/time.h unistd.h getopt.h dlfcn.h utmp.h security/pam_appl.h security/_pam_macros.h pam/pam_appl.h pam/_pam_macros.h])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_TYPE_UID_T
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
-
-AC_SUBST(GETOPTSRC)
-AC_CHECK_FUNC(getopt_long, AC_DEFINE(HAVE_GETOPT_LONG, 1, [Define if you have the `getopt_long' function.]),
-              [GETOPTSRC="$GETOPTSRC \$(top_srcdir)/src/common/getopt.c \$(top_srcdir)/src/common/getopt1.c"
-               CPPFLAGS="-I\$(top_srcdir)/src/common $CPPFLAGS"
-               AC_DEFINE(HAVE_GETOPT_H, 1, [Define if you have the <getopt.h> header file.])])
 
 dnl Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
@@ -196,20 +151,11 @@ fi
 AC_SUBST(LIBDL)
 AC_CHECK_LIB(dl, dlopen, [LIBDL="$LIBDL -ldl" ac_cv_func_dlopen_ldl=yes], ac_cv_func_dlopen_ldl=no)
 
-AC_SUBST(OPENSSL_LDFLAGS)
-OPENSSL_LDFLAGS=""
-for openssl_ldflag in "-Wl,-Bsymbolic" "-G -Wl,-Bsymbolic" "-shared -G -Wl,-Bsymbolic" "-Wl,-all_load"; do
-	AC_MSG_CHECKING([whether we can use $openssl_ldflag])
-	saved_CFLAGS=$CFLAGS
-	CFLAGS="$CFLAGS $openssl_ldflag"
-	AC_TRY_LINK(,[return 1],ac_cv_use_openssl_flag="yes",ac_cv_use_openssl_flag="no")
-	CFLAGS=$saved_CFLAGS
-	AC_MSG_RESULT($ac_cv_use_openssl_flag)
-	if test "$ac_cv_use_openssl_flag" = "yes"; then
-		OPENSSL_LDFLAGS="$openssl_ldflag"
-		break;
-	fi
-done
+AC_SUBST(GETOPTSRC)
+AC_CHECK_FUNC(getopt_long, AC_DEFINE(HAVE_GETOPT_LONG, 1, [Define if you have the `getopt_long' function.]),
+              [GETOPTSRC="$GETOPTSRC \$(top_srcdir)/src/common/getopt.c \$(top_srcdir)/src/common/getopt1.c"
+               CPPFLAGS="-I\$(top_srcdir)/src/common $CPPFLAGS"
+               AC_DEFINE(HAVE_GETOPT_H, 1, [Define if you have the <getopt.h> header file.])])
 
 AC_CHECK_HEADERS([readline/readline.h])
 AC_SUBST(LIBREADLINE)
@@ -477,6 +423,21 @@ if test "x$SSL_MSG" = "xyes" ; then
 fi
 AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
 AM_CONDITIONAL(HAVE_ENGINE, test "x$ENGINE_MSG" = "xyes")
+
+AC_SUBST(OPENSSL_LDFLAGS)
+OPENSSL_LDFLAGS=""
+for openssl_ldflag in "-Wl,-Bsymbolic" "-G -Wl,-Bsymbolic" "-shared -G -Wl,-Bsymbolic" "-Wl,-all_load"; do
+	AC_MSG_CHECKING([whether we can use $openssl_ldflag])
+	saved_CFLAGS=$CFLAGS
+	CFLAGS="$CFLAGS $openssl_ldflag"
+	AC_TRY_LINK(,[return 1],ac_cv_use_openssl_flag="yes",ac_cv_use_openssl_flag="no")
+	CFLAGS=$saved_CFLAGS
+	AC_MSG_RESULT($ac_cv_use_openssl_flag)
+	if test "$ac_cv_use_openssl_flag" = "yes"; then
+		OPENSSL_LDFLAGS="$openssl_ldflag"
+		break;
+	fi
+done
 
 AC_ARG_WITH(pam-dir,
 	[  --with-pam-dir=PATH     Specify path for PAM installation libraries],
@@ -908,18 +869,6 @@ AC_ARG_WITH(pin-entry,
 )
 AC_DEFINE_UNQUOTED(PIN_ENTRY, "$PIN_ENTRY", [PIN-entry program for OpenSC Signer])
 
-if test "x$prefix" = xNONE; then
-  prefix=$ac_default_prefix
-fi
-
-dnl Enable/disable debugging messages.
-AC_ARG_ENABLE(debug,
-[  --enable-debug          enable debug messages. [default=no]],
-	, enable_debug=no)
-if (test x$enable_debug = xyes); then
-	AC_DEFINE(DEBUG, 1, [Enable debug messages.])
-fi
-
 dnl Check for SGML processor
 AC_ARG_WITH(docbook,
 [  --without-docbook       do no generate html manual (needs docbook)],
@@ -933,14 +882,20 @@ if test "x$XSLTPROC" = "x"; then
 fi
 AM_CONDITIONAL(HAVE_DOCBOOK, test "x$with_docbook" = "xyes")
 
-CPPFLAGS="-I\${top_builddir}/src/include $CPPFLAGS"
+if test "x$prefix" = xNONE; then
+  prefix=$ac_default_prefix
+fi
 
-AC_SUBST(LIBSCCONF)
-LIBSCCONF="\${top_builddir}/src/scconf/libscconf.la"
-AC_SUBST(LIBSCLDAP)
-LIBSCLDAP="\${top_builddir}/src/scldap/libscldap.la"
-AC_SUBST(LIBSCRANDOM)
-LIBSCRANDOM="\${top_builddir}/src/scrandom/libscrandom.la"
+dnl Enable/disable debugging messages.
+AC_ARG_ENABLE(debug,
+[  --enable-debug          enable debug messages. [default=no]],
+	, enable_debug=no)
+if (test x$enable_debug = xyes); then
+	AC_DEFINE(DEBUG, 1, [Enable debug messages.])
+fi
+
+CPPFLAGS="-I\${top_builddir}/src/include $CPPFLAGS"
+AM_CONDITIONAL(HAVE_BUNDLES, test "x$with_bundles" = "xyes")
 
 scldap_etc_path=`eval echo ${sysconfdir}` ; scldap_etc_path=`eval echo ${scldap_etc_path}`
 AC_DEFINE_UNQUOTED(SCLDAP_ETC_PATH, "$scldap_etc_path", [etc path for libscldap])
@@ -952,10 +907,12 @@ AC_DEFINE_UNQUOTED(OPENSC_ETC_PATH, "$opensc_etc_path", [etc path for libopensc]
 opensc_conf_path=`eval echo ${opensc_etc_path}/opensc.conf`
 AC_DEFINE_UNQUOTED(OPENSC_CONF_PATH, "$opensc_conf_path", [default config file for libopensc])
 
+AC_SUBST(LIBSCCONF)
+LIBSCCONF="\${top_builddir}/src/scconf/libscconf.la"
+AC_SUBST(LIBSCLDAP)
+LIBSCLDAP="\${top_builddir}/src/scldap/libscldap.la"
 AC_SUBST(LIBOPENSC)
 LIBOPENSC="\${top_builddir}/src/libopensc/libopensc.la"
-
-AM_CONDITIONAL(HAVE_BUNDLES, test "x$with_bundles" = "xyes")
 
 # Pass information about installed OpenSC requirements, so that
 # a proper opensc-config file will be build.
@@ -1053,13 +1010,12 @@ case "$host" in
 esac
 echo ""
 
-if test "x$ENGINE_MSG" = "xno" -a "x$SSL_MSG" = "xyes"
-then
-	echo "OpenSSL was found. But to use the engine you will need"
-	echo "version 0.9.7a or later."
+if test "x$ENGINE_MSG" = "xno" -a "x$SSL_MSG" = "xyes"; then
+  echo "OpenSSL was found. But to use the engine you will need"
+  echo "version 0.9.7a or later."
 fi
 
-if test ! -z "$BUILTIN_RNG" ; then
+if test ! -z "$BUILTIN_RNG"; then
   echo "WARNING: you are using the builtin random number service."
   echo "The random number service is very simple and is only"
   echo "intended for testing purposes. Please request your OS"
