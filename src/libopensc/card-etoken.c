@@ -52,6 +52,8 @@ const struct {
     { "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12",	CARDOS_TYPE_ANY }, /* 4.01a */
     /* Italian eID card: */
     { "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", CARDOS_TYPE_ANY },
+    /* Italian eID card from Infocamere */
+    { "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", CARDOS_TYPE_ANY },
 
     { NULL }
 };
