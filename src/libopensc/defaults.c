@@ -129,7 +129,16 @@ static int fineid_pkcs15_defaults(void *arg)
 	return 0;
 }
 
+static int multiflex_defaults(void *arg)
+{
+	struct sc_card *card = (struct sc_card *) arg;
+	
+	card->class = 0xC0;
+	return 0;
+}
+
 const struct sc_defaults sc_card_table[] = {
 	{ "3B:9F:94:40:1E:00:67:11:43:46:49:53:45:10:52:66:FF:81:90:00", fineid_defaults, fineid_pkcs15_defaults },
+	{ "3B:19:14:55:90:01:02:02:00:05:04:B0", multiflex_defaults, NULL },
 	{ NULL, NULL, NULL }
 };

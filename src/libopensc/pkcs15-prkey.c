@@ -39,6 +39,9 @@ void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey)
 	for (i = 0; i < prkey->file_id.len; i++)
 		printf("%02X", prkey->file_id.value[i]);
 	printf("\n");
+	printf("\tAuth ID     : ");
+	sc_pkcs15_print_id(&prkey->com_attr.auth_id);
+	printf("\n");
 	printf("\tID          : ");
 	sc_pkcs15_print_id(&prkey->id);
 	printf("\n");
@@ -145,4 +148,23 @@ int sc_pkcs15_enum_private_keys(struct sc_pkcs15_card *card)
 		card->prkey_count++;
 	}
 	return card->prkey_count;
+}
+
+int sc_pkcs15_find_prkey_by_id(struct sc_pkcs15_card *card,
+				    const struct sc_pkcs15_id *id,
+				    struct sc_pkcs15_prkey_info **key_out)
+{
+	int r, i;
+	
+	r = sc_pkcs15_enum_private_keys(card);
+	if (r < 0)
+		return r;
+	for (i = 0; i < card->prkey_count; i++) {
+		struct sc_pkcs15_prkey_info *key = &card->prkey_info[i];
+		if (sc_pkcs15_compare_id(&key->id, id) == 1) {
+			*key_out = key;
+			return 0;
+		}
+	}
+	return SC_ERROR_OBJECT_NOT_FOUND;
 }

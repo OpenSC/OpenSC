@@ -29,18 +29,18 @@
 const char *sc_version = LIBSC_VERSION;
 int sc_debug = 1;
 
-static int convert_sw_to_errorcode(u8 * sw)
+int _sc_sw_to_errorcode(int sw1, int sw2)
 {
-	switch (sw[0]) {
+	switch (sw1) {
 	case 0x69:
-		switch (sw[1]) {
+		switch (sw2) {
 		case 0x82:
 			return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 		default:
-			return SC_ERROR_UNKNOWN;
+			return SC_ERROR_UNKNOWN_REPLY;
 		}
 	case 0x6A:
-		switch (sw[1]) {
+		switch (sw2) {
 		case 0x81:
 			return SC_ERROR_NOT_SUPPORTED;
 		case 0x82:
@@ -50,15 +50,18 @@ static int convert_sw_to_errorcode(u8 * sw)
 		case 0x87:
 			return SC_ERROR_INVALID_ARGUMENTS;
 		default:
-			return SC_ERROR_UNKNOWN;
+			return SC_ERROR_UNKNOWN_REPLY;
 		}
 	case 0x6D:
 		return SC_ERROR_NOT_SUPPORTED;
+	case 0x6E:
+		return SC_ERROR_UNKNOWN_SMARTCARD;
 	case 0x90:
-		if (sw[1] == 0)
+		if (sw2 == 0)
 			return 0;
+		return SC_ERROR_UNKNOWN_REPLY;
 	}
-	return SC_ERROR_UNKNOWN;
+	return SC_ERROR_UNKNOWN_REPLY;
 }
 
 void sc_hex_dump(const u8 *buf, int count)
@@ -88,6 +91,35 @@ void sc_print_binary(const u8 *buf, int count)
 		printf(format, c);
 	}
 	fflush(stdout);
+}
+
+int sc_hex_to_bin(const char *in, u8 *out, int *outlen)
+{
+	int c = 0, err = 0, left;
+
+	assert(in != NULL && out != NULL && outlen != NULL);
+        left = *outlen;
+
+	while (*in) {
+		int byte;
+
+		if (sscanf(in, "%02X", &byte) != 1) {
+                        err = SC_ERROR_INVALID_ARGUMENTS;
+			break;
+		}
+		in += 2;
+		if (*in == ':')
+			in++;
+		if (left <= 0) {
+                        err = SC_ERROR_BUFFER_TOO_SMALL;
+			break;
+		}
+		*out++ = byte;
+		left--;
+		c++;
+	}
+	*outlen = c;
+	return err;
 }
 
 int sc_check_apdu(const struct sc_apdu *apdu)
@@ -170,7 +202,7 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 	sRecvPci.cbPciLength = 0;
 
 	dwSendLength = data - s;
-	dwRecvLength = apdu->resplen;
+	dwRecvLength = apdu->resplen + 2;
 	if (sc_debug > 2) {
 		printf("Sending: ");
 		sc_hex_dump(s, dwSendLength);
@@ -192,8 +224,14 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 			}
 		}
 	}
+	if (dwRecvLength < 2)
+		return SC_ERROR_UNKNOWN_RESPONSE;
+	apdu->sw1 = r[dwRecvLength-2];
+	apdu->sw2 = r[dwRecvLength-1];
+	dwRecvLength -= 2;
 	apdu->resplen = dwRecvLength;
-	memcpy(apdu->resp, r, dwRecvLength);
+	if (dwRecvLength)
+		memcpy(apdu->resp, r, dwRecvLength);
 
 	return 0;
 }
@@ -209,20 +247,25 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	if (r)
 		return r;
 	if (sc_debug > 2) {
-		printf("Received: ");
-		sc_hex_dump(apdu->resp, apdu->resplen);
+		printf("Received (SW1=%02X SW2=%02X)", apdu->sw1, apdu->sw2);
+		if (apdu->resplen) {
+			printf(": ");
+			sc_hex_dump(apdu->resp, apdu->resplen);
+		} else
+			printf("\n");
 	}
-	if (apdu->resp[0] == 0x61 && apdu->resplen == 2) {
+	if (apdu->sw1 == 0x61 && apdu->resplen == 0) {
 		struct sc_apdu rspapdu;
 		BYTE rsp[MAX_BUFFER_SIZE];
 
-		rspapdu.cla = apdu->cla;
-		rspapdu.cse = SC_APDU_CASE_2_SHORT;
-		rspapdu.ins = 0xC0;
-		rspapdu.p1 = rspapdu.p2 = 0;
-		rspapdu.le = apdu->resp[1];
+		if (apdu->no_response)
+			return 0;
+
+		sc_format_apdu(card, &rspapdu, SC_APDU_CASE_2_SHORT,
+			       0xC0, 0, 0);
+		rspapdu.le = apdu->sw2;
 		rspapdu.resp = rsp;
-		rspapdu.resplen = apdu->resp[1] + 2;
+		rspapdu.resplen = apdu->sw2;
 		r = sc_transceive_t0(card, &rspapdu);
 		if (r) {
 			fprintf(stderr, "Error %d when getting response\n",
@@ -230,11 +273,15 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 			return r;
 		}
 		if (sc_debug > 2) {
-			printf("Response: ");
+			printf("Response (SW1=%02X SW2=%02X): ", rspapdu.sw1,
+			       rspapdu.sw2);
 			sc_hex_dump(rspapdu.resp, rspapdu.resplen);
 		}
+		/* FIXME: Check apdu->resplen */
 		memcpy(apdu->resp, rspapdu.resp, rspapdu.resplen);
 		apdu->resplen = rspapdu.resplen;
+		apdu->sw1 = rspapdu.sw1;
+		apdu->sw2 = rspapdu.sw2;
 	}
 	return 0;
 }
@@ -333,7 +380,7 @@ int sc_select_file(struct sc_card *card,
 {
 	struct sc_context *ctx;
 	struct sc_apdu apdu;
-	char buf[MAX_BUFFER_SIZE], cmd[15];
+	char buf[MAX_BUFFER_SIZE];
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int r, pathlen;
 
@@ -345,12 +392,10 @@ int sc_select_file(struct sc_card *card,
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 
-	apdu.cse = SC_APDU_CASE_3_SHORT;
-	apdu.cla = card->class;
-	apdu.ins = 0xA4;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0, 0);
 	apdu.resp = buf;
-	apdu.resplen = 2;
-	memcpy(cmd, "\x00\xA4", 2);
+	apdu.resplen = 0;
+	
 	switch (pathtype) {
 	case SC_SELECT_FILE_BY_FILE_ID:
 		apdu.p1 = 0;
@@ -376,47 +421,37 @@ int sc_select_file(struct sc_card *card,
 	apdu.lc = pathlen;
 	apdu.data = path;
 	apdu.datalen = pathlen;
-#if 0
-	/* FIXME: Some smarter way to do this... */
-	if (file == NULL || sc_file_valid(file)) {
-		r = sc_transceive_t0(card, &apdu); /* we don't need the response */
-		if (apdu.resplen == 2 && apdu.resp[0] == 0x61) {
-			apdu.resp[0] = 0x90;
-			apdu.resp[1] = 0;
-		}
-	} else {
-#endif
-		if (file != NULL)
-			memset(file, 0, sizeof(*file));
-		r = sc_transmit_apdu(card, &apdu);
-#if 0
-	}
-#endif
-	if (r)
-		return r;
-	if (apdu.resplen < 2)
-		return SC_ERROR_UNKNOWN_RESPONSE;
-	switch (apdu.resp[0]) {
-	case 0x6F:
-		break;
-	case 0x90:
-	case 0x00:	/* proprietary coding */
-		return 0;
-	default:
-		return convert_sw_to_errorcode(apdu.resp);
-	}
-	if (file == NULL)
-		return 0;
-	if (pathtype == SC_SELECT_FILE_BY_PATH) {
+
+	if (file != NULL) {
+		memset(file, 0, sizeof(*file));
 		memcpy(&file->path.value, path, pathlen);
 		file->path.len = pathlen;
 	}
-	if (apdu.resp[0] == 0x6F) {
-//              int l1 = apdu.resplen - 2, l2 = apdu.resp[1];
-		int l1 = apdu.resplen, l2 = apdu.resp[1];
-		int len = l1 > l2 ? l2 : l1;
+	if (file == NULL || sc_file_valid(file))
+		apdu.no_response = 1;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r)
+		return r;
+	
+	if (apdu.no_response) {
+		if (apdu.sw1 == 0x61)
+			return 0;
+		return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	}
 
-		process_fci(file, apdu.resp + 2, len);
+	r = _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	if (r)
+		return r;
+
+	switch (apdu.resp[0]) {
+	case 0x6F:
+		if (file != NULL && apdu.resp[1] <= apdu.resplen)
+			process_fci(file, apdu.resp+2, apdu.resp[1]);
+		break;
+	case 0x00:	/* proprietary coding */
+		return 0;
+	default:
+		return SC_ERROR_UNKNOWN_RESPONSE;
 	}
 	return 0;
 }
@@ -426,14 +461,12 @@ int sc_read_binary(struct sc_card *card,
 {
 #define RB_BUF_SIZE 250
 	struct sc_apdu apdu;
-	struct sc_context *ctx;
 	u8 recvbuf[MAX_BUFFER_SIZE];
 	int r;
 
 	assert(card != NULL && buf != NULL);
-	ctx = card->context;
-
-	memset(&apdu, 0, sizeof(apdu));
+	if (count == 0)
+		return 0;
 	if (count > RB_BUF_SIZE) {
 		int bytes_read = 0;
 		unsigned char *p = buf;
@@ -452,38 +485,25 @@ int sc_read_binary(struct sc_card *card,
 		}
 		return bytes_read;
 	}
-	apdu.cse = SC_APDU_CASE_2_SHORT;
-	apdu.cla = 0;
-	apdu.ins = 0xB0;
-	apdu.p1 = (idx >> 8) & 0x7f;
-	apdu.p2 = idx & 0xFF;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0,
+		       (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.le = count;
-	apdu.resplen = count + 2;
+	apdu.resplen = count;
 	apdu.resp = recvbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r)
 		return r;
-	if (apdu.resplen == 2) {
-		return convert_sw_to_errorcode(apdu.resp);
-	}
-	if (apdu.resplen == count + 2)
-		apdu.resplen = count;
+	if (apdu.resplen == 0)
+		return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 	memcpy(buf, recvbuf, apdu.resplen);
-	if (sc_debug > 3) {
-		FILE *file = fopen("sc_recv", "w");
-		if (file != NULL) {
-			fwrite(buf, apdu.resplen, 1, file);
-			fclose(file);
-		}
-	}
+
 	return apdu.resplen;
 }
 
-int sc_format_apdu(struct sc_card *card,
-		   struct sc_apdu *apdu,
-		   unsigned char cse,
-		   unsigned char ins, unsigned char p1, unsigned char p2)
+int sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
+		   unsigned char cse, unsigned char ins,
+		   unsigned char p1, unsigned char p2)
 {
 	assert(card != NULL && apdu != NULL);
 	memset(apdu, 0, sizeof(*apdu));
@@ -492,6 +512,8 @@ int sc_format_apdu(struct sc_card *card,
 	apdu->ins = ins;
 	apdu->p1 = p1;
 	apdu->p2 = p2;
+	apdu->no_response = 0;
+	
 	return 0;
 }
 
@@ -691,6 +713,7 @@ int sc_connect_card(struct sc_context *ctx,
 	} else {
 		card->class = 0;	/* FIXME */
 	}
+	pthread_mutex_init(&card->mutex, NULL);
 	*card_out = card;
 
 	return 0;
@@ -700,6 +723,7 @@ int sc_disconnect_card(struct sc_card *card)
 {
 	assert(card != NULL);
 	SCardDisconnect(card->pcsc_card, SCARD_LEAVE_CARD);
+	pthread_mutex_destroy(&card->mutex);
 	return 0;
 }
 
@@ -727,7 +751,10 @@ const char *sc_strerror(int error)
 		"Card not present",
 		"Error with Resource Manager",
 		"Card removed",
-		"Invalid PIN length"
+		"Invalid PIN length",
+		"Unknown SmartCard",
+		"Unknown reply from SmartCard",
+		"Requested object not found",
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);
 
@@ -740,159 +767,10 @@ const char *sc_strerror(int error)
 	return errors[error];
 }
 
-int sc_set_security_env(struct sc_card *card,
-			const struct sc_security_env *env)
-{
-	struct sc_apdu apdu;
-	u8 recv[MAX_BUFFER_SIZE], send[MAX_BUFFER_SIZE];
-	u8 *p;
-	int r;
-	struct sc_file file;
-
-	assert(card != NULL && env != NULL);
-	r = sc_select_file(card, &file, &env->app_df_path,
-			   SC_SELECT_FILE_BY_PATH);
-	if (r)
-		return r;
-	apdu.cla = card->class;
-	apdu.cse = SC_APDU_CASE_3_SHORT;
-	apdu.ins = 0x22;
-	if (env->signature) {
-		apdu.p1 = 0x81;
-		apdu.p2 = 0xB6;
-	} else {
-		apdu.p1 = 0x41;
-		apdu.p2 = 0xB8;
-	}
-	apdu.le = 0;
-	p = send;
-	*p++ = 0x80;		/* algorithm reference */
-	*p++ = 1;
-	*p++ = env->algorithm_ref;
-	*p++ = 0x81;
-	*p++ = env->key_file_id.len;
-	memcpy(p, env->key_file_id.value, env->key_file_id.len);
-	p += env->key_file_id.len;
-	*p++ = 0x84;
-	*p++ = 1;
-	*p++ = env->key_ref;
-	r = p - send;
-	apdu.lc = r;
-	apdu.datalen = r;
-	apdu.data = send;
-	apdu.resplen = 2;
-	apdu.resp = recv;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
-	if (apdu.resp[0] != 0x90) {
-		if (sc_debug)
-			fprintf(stderr, "Set sec env: SWs=%02X%02X\n",
-				apdu.resp[0], apdu.resp[1]);
-		return -1;
-	}
-	return 0;
-}
-
-int sc_restore_security_env(struct sc_card *card, int num)
-{
-	struct sc_apdu apdu;
-	int r;
-	u8 rbuf[2];
-	
-	assert(card != NULL);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, num);
-	apdu.resp = rbuf;
-	apdu.resplen = 2;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
-	if (apdu.resplen != 2)
-		return -1;
-	return convert_sw_to_errorcode(apdu.resp);
-}
-
-int sc_decipher(struct sc_card *card,
-		const u8 * crgram, int crgram_len, u8 * out, int outlen)
-{
-	int r;
-	struct sc_apdu apdu;
-	u8 recv[MAX_BUFFER_SIZE];
-	u8 send[MAX_BUFFER_SIZE], *p;
-
-	assert(card != NULL && crgram != NULL && out != NULL);
-	if (crgram_len > 255)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80,
-		       0x86);
-	apdu.resp = recv;
-	apdu.resplen = 2;
-
-	send[0] = 0; /* padding indicator byte */ ;
-	memcpy(send + 1, crgram, crgram_len);
-	apdu.data = send;
-	apdu.lc = crgram_len + 1;
-	apdu.datalen = crgram_len + 1;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
-	p = apdu.resp + apdu.resplen - 2;
-	if (p[0] == 0x90 && p[1] == 0x00) {	/* FIXME */
-		int l1 = apdu.resplen - 2, l2 = outlen;
-		int len = l1 > l2 ? l2 : l1;
-
-		memcpy(out, apdu.resp, len);
-		return len;
-	}
-	if (sc_debug)
-		fprintf(stderr, "sc_decipher(): SW1=%02X, SW2=%02X\n", p[0], p[1]);
-	return convert_sw_to_errorcode(p);
-}
-
-int sc_compute_signature(struct sc_card *card,
-			 const u8 * data,
-			 int datalen, u8 * out, int outlen)
-{
-	int r;
-	struct sc_apdu apdu;
-	u8 recv[MAX_BUFFER_SIZE], *p;
-	u8 send[MAX_BUFFER_SIZE];
-
-	assert(card != NULL && data != NULL && out != NULL);
-	if (datalen > 255)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x9E,
-		       0x9A);
-	apdu.resp = recv;
-	apdu.resplen = 2;
-
-	memcpy(send, data, datalen);
-	apdu.data = send;
-	apdu.lc = datalen;
-	apdu.datalen = datalen;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
-	p = apdu.resp + apdu.resplen - 2;
-	if (p[0] == 0x90 && p[1] == 0x00) {	/* FIXME */
-		int l1 = apdu.resplen - 2, l2 = outlen;
-		int len = l1 > l2 ? l2 : l1;
-
-		memcpy(out, apdu.resp, len);
-		return len;
-	}
-	if (sc_debug)
-		fprintf(stderr, "sc_compute_signature(): SW1=%02X, SW2=%02X\n",
-			p[0], p[1]);
-	return convert_sw_to_errorcode(p);
-}
-
-int sc_lock(struct sc_card *card)
+int _sc_lock_int(struct sc_card *card)
 {
 	long rv;
-	
+
 	rv = SCardBeginTransaction(card->pcsc_card);
 	
 	if (rv != SCARD_S_SUCCESS)
@@ -901,7 +779,13 @@ int sc_lock(struct sc_card *card)
 	return 0;
 }
 
-int sc_unlock(struct sc_card *card)
+int sc_lock(struct sc_card *card)
+{
+	pthread_mutex_lock(&card->mutex);
+	return _sc_lock_int(card);
+}
+
+int _sc_unlock_int(struct sc_card *card)
 {
 	long rv;
 	
@@ -909,6 +793,12 @@ int sc_unlock(struct sc_card *card)
 	if (rv != SCARD_S_SUCCESS)
 		return -1;
 	return 0;
+}
+
+int sc_unlock(struct sc_card *card)
+{
+	pthread_mutex_unlock(&card->mutex);
+	return _sc_unlock_int(card);
 }
 
 int sc_get_random(struct sc_card *card, u8 *rnd, int len)
@@ -921,7 +811,7 @@ int sc_get_random(struct sc_card *card, u8 *rnd, int len)
 		       0x84, 0x00, 0x00);
 	apdu.le = 8;
 	apdu.resp = buf;
-	apdu.resplen = 10;	/* include SW's */
+	apdu.resplen = 8;	/* include SW's */
 
 	while (len > 0) {
 		int n = len > 8 ? 8 : len;
@@ -929,11 +819,8 @@ int sc_get_random(struct sc_card *card, u8 *rnd, int len)
 		r = sc_transmit_apdu(card, &apdu);
 		if (r)
 			return r;
-		if (apdu.resplen != 10) {
-			if (apdu.resplen == 2)
-				return convert_sw_to_errorcode(apdu.resp);
-			return SC_ERROR_UNKNOWN;
-		}
+		if (apdu.resplen != 8)
+			return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 		memcpy(rnd, apdu.resp, n);
 		len -= n;
 		rnd += n;
@@ -953,12 +840,8 @@ int sc_list_files(struct sc_card *card, u8 *buf, int buflen)
 	r = sc_transmit_apdu(card, &apdu);
 	if (r)
 		return r;
-	if (apdu.resplen < 2)
-		return -1; /* FIXME */
-	if (apdu.resplen == 2)
-		return convert_sw_to_errorcode(apdu.resp);
-	apdu.resplen -= 2;
-
+	if (apdu.resplen == 0)
+		return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 	return apdu.resplen;
 }
 
@@ -1018,11 +901,7 @@ int sc_create_file(struct sc_card *card, const struct sc_file *file)
 	r = sc_transmit_apdu(card, &apdu);
 	if (r)
 		return r;
-	if (apdu.resplen != 2)
-		return -1;
-	if (apdu.resp[0] == 0x90 && apdu.resp[1] == 0x00)
-		return 0;
-	return convert_sw_to_errorcode(apdu.resp);
+	return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }
 
 int sc_delete_file(struct sc_card *card, int file_id)
@@ -1046,9 +925,7 @@ int sc_delete_file(struct sc_card *card, int file_id)
 		return r;
 	if (apdu.resplen != 2)
 		return -1;
-	if (apdu.resp[0] == 0x90 && apdu.resp[1] == 0x00)
-		return 0;
-	return convert_sw_to_errorcode(apdu.resp);
+	return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }
 
 int sc_file_valid(const struct sc_file *file)

@@ -21,6 +21,7 @@
 #ifndef _SC_H
 #define _SC_H
 
+#include <pthread.h>
 #include <winscard.h>
 
 #define SC_ERROR_MIN				-1000
@@ -46,6 +47,9 @@
 #define SC_ERROR_RESOURCE_MANAGER		-1019
 #define SC_ERROR_CARD_REMOVED			-1020
 #define SC_ERROR_INVALID_PIN_LENGTH		-1021
+#define SC_ERROR_UNKNOWN_SMARTCARD		-1022
+#define SC_ERROR_UNKNOWN_REPLY			-1023
+#define SC_ERROR_OBJECT_NOT_FOUND		-1024
 
 #define SC_APDU_CASE_NONE		0
 #define SC_APDU_CASE_1                  1
@@ -126,6 +130,7 @@ struct sc_card {
 	int atr_len;
 	
 	const struct sc_defaults *defaults;
+	pthread_mutex_t mutex;
 };
 
 struct sc_context {
@@ -142,11 +147,13 @@ struct sc_apdu {
 	int datalen;		/* length of C-APDU */
 	u8 *resp;		/* R-APDU */
 	int resplen;		/* length of R-APDU */
+	int no_response;	/* No response required */
+
+	int sw1, sw2;
 };
 
 struct sc_security_env {
 	int algorithm_ref;
-	struct sc_path app_df_path;
 	struct sc_path key_file_id;
 	/* signature=1 ==> digital signing, signature=0 ==> authentication */
 	int signature;
@@ -187,6 +194,7 @@ int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout);
 int sc_lock(struct sc_card *card);
 int sc_unlock(struct sc_card *card);
 
+
 /* ISO 7816-4 related functions */
 int sc_select_file(struct sc_card *card, struct sc_file *file,
 		   const struct sc_path *path, int pathtype);
@@ -201,6 +209,12 @@ int sc_decipher(struct sc_card *card, const u8 * crgram, int crgram_len,
 		u8 * out, int outlen);
 int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 int data_len, u8 * out, int outlen);
+int sc_verify(struct sc_card *card, int ref, const u8 *buf, int buflen,
+	      int *tries_left);
+int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
+			     int oldlen, const u8 *new, int newlen);
+int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
+			   int puklen, const u8 *new, int newlen);
 
 /* ISO 7816-9 */
 int sc_create_file(struct sc_card *card, const struct sc_file *file);
@@ -209,10 +223,14 @@ int sc_delete_file(struct sc_card *card, int file_id);
 /* Possibly only on Setec cards */
 int sc_list_files(struct sc_card *card, u8 * buf, int buflen);
 
-int sc_file_valid(const struct sc_file *file);
 const char *sc_strerror(int error);
+
+/* Internal use only */
+int sc_file_valid(const struct sc_file *file);
 void sc_hex_dump(const u8 *buf, int len);
 void sc_print_binary(const u8 *buf, int len);
+int sc_hex_to_bin(const char *in, u8 *out, int *outlen);
+int _sc_sw_to_errorcode(int sw1, int sw2);
 
 extern int sc_debug;
 extern const char *sc_version;

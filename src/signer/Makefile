@@ -5,8 +5,8 @@ CC= gcc
 OPTIMIZER= -g
 CFLAGS=-Wall $(OPTIMIZER) $(PLUGIN_DEFINES)
 
-SRC= UnixShell.c stubs.c 
-OBJ= UnixShell.o stubs.o
+SRC= signer.c stubs.c 
+OBJ= signer.o stubs.o
 
 SHAREDTARGET=signer.so
 
@@ -15,8 +15,8 @@ default all: $(SHAREDTARGET)
 $(SHAREDTARGET): $(OBJ)
 	$(CC) -shared -o $(SHAREDTARGET) $(OBJ) $(LDFLAGS)
 
-UnixShell.o: UnixShell.c
-	$(CC) -c $(CFLAGS) UnixShell.c
+signer.o: signer.c
+	$(CC) -c $(CFLAGS) signer.c
 
 stubs.o: stubs.c
 	$(CC) -c $(CFLAGS) stubs.c

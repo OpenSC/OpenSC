@@ -229,8 +229,10 @@ int sc_pkcs15_init(struct sc_card *card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(p15card, 0, sizeof(struct sc_pkcs15_card));
 	p15card->card = card;
-
-	if (card->defaults != NULL && card->defaults->pkcs15_defaults_func != NULL) {
+	
+	if (card->defaults != NULL && card->defaults->pkcs15_defaults_func == NULL)
+		return SC_ERROR_NOT_SUPPORTED;
+	if (card->defaults != NULL) {
 		card->defaults->pkcs15_defaults_func(p15card);
 		err = sc_select_file(card, &p15card->file_tokeninfo,
 				     &p15card->file_tokeninfo.path,
@@ -368,4 +370,10 @@ void sc_pkcs15_print_id(const struct sc_pkcs15_id *id)
 
 	for (i = 0; i < id->len; i++)
 		printf("%02X", id->value[i]);
+}
+
+int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out)
+{
+        out->len = sizeof(out->value);
+	return sc_hex_to_bin(in, out->value, &out->len);
 }

@@ -34,8 +34,6 @@ static const char *auth_cert_file = "authorized_certificates";
 
 static int pamdebug = 1;
 
-static const struct pam_message msg_pin =
-{	PAM_PROMPT_ECHO_OFF, "Enter PIN 1: " };
 
 static int format_eid_dir_path(const char *user, char **buf)
 {
@@ -133,23 +131,31 @@ static int get_random(u8 *buf, int len)
 }
 
 #ifndef TEST
-static int get_password(pam_handle_t * pamh, char **password)
+static int get_password(pam_handle_t * pamh, char **password, const char *pinname)
 {
 	int r;
 	
 	DBG(printf("Trying to get AUTHTOK...\n"));
 	r = pam_get_item(pamh, PAM_AUTHTOK, (void *) password);
 	if (!*password) {
-		const struct pam_message *msg[1] = { &msg_pin };
+		char buf[50];
+		struct pam_message msg_template =
+		{	PAM_PROMPT_ECHO_OFF, buf };
+		const struct pam_message *pin_msg[1] = { &msg_template };
 		struct pam_response *resp;
 		struct pam_conv *conv;
+		char tmp[30];
+
+		strncpy(tmp, pinname, sizeof(tmp)-1);
+		tmp[sizeof(tmp)-1] = 0;
+		sprintf(buf, "Enter PIN [%s]: ", tmp);
 		
 		DBG(printf("failed; Trying to get CONV object...\n"));
 		r = pam_get_item(pamh, PAM_CONV, (const void **) &conv);
 		if (r != PAM_SUCCESS)
 			return r;
 		DBG(printf("Conversing...\n"));
-		r = conv->conv(1, msg, &resp, conv->appdata_ptr);
+		r = conv->conv(1, pin_msg, &resp, conv->appdata_ptr);
 		if (r != PAM_SUCCESS)
 			return r;
 		if (resp) {
@@ -164,23 +170,6 @@ static int get_password(pam_handle_t * pamh, char **password)
 }
 #endif
 
-static int set_sec_env(struct sc_card *card, const struct sc_pkcs15_card *p15card,
-		       const struct sc_pkcs15_prkey_info *prkinfo)
-{
-	struct sc_security_env senv;
-	int r;
-
-	senv.signature = 0;
-	senv.algorithm_ref = 0x02;
-	senv.key_ref = 0;
-	senv.key_file_id = prkinfo->file_id;
-	senv.app_df_path = p15card->file_app.path;
-	r = sc_set_security_env(p15card->card, &senv);
-	if (r)
-		return PAM_AUTH_ERR;
-	return PAM_SUCCESS;
-}
-
 #ifdef TEST
 int main(int argc, const char **argv)
 #else
@@ -194,7 +183,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	EVP_PKEY *pubkey = NULL;
 	struct sc_pkcs15_cert_info *cinfo;
 	struct sc_pkcs15_prkey_info *prkinfo = NULL;
-
+	struct sc_pkcs15_pin_info *pinfo = NULL;
+	
 	u8 random_data[117];
 	u8 chg[128];
 	u8 plain_text[128];
@@ -272,38 +262,27 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	for (i = 0; i < p15card->cert_count; i++) {
 	}
 	cinfo = &p15card->cert_info[0]; /* FIXME */
-	DBG(printf("Enumerating private keys...\n"));
-	r = sc_pkcs15_enum_private_keys(p15card);
-	if (r <= 0)
-		goto end;
-	for (i = 0; i < p15card->prkey_count; i++) {
-		struct sc_pkcs15_prkey_info *tmp = &p15card->prkey_info[i];
-		
-		if (sc_pkcs15_compare_id(&tmp->id, &cinfo->id)) {
-			prkinfo = tmp;
-			break;
-		}
-	}
-	if (prkinfo == NULL)
-		goto end;
-	/* FIXME: Determine if PIN code needed */
-	DBG(printf("Enumerating PIN codes...\n"));
-	r = sc_pkcs15_enum_pins(p15card);
+	DBG(printf("Finding private key...\n"));
+	r = sc_pkcs15_find_prkey_by_id(p15card, &cinfo->id, &prkinfo);
 	if (r < 0)
 		goto end;
-	DBG(printf("Asking for PIN code...\n"));
+	DBG(printf("Finding PIN code...\n"));
+	r = sc_pkcs15_find_pin_by_auth_id(p15card, &prkinfo->com_attr.auth_id, &pinfo);
+	if (r < 0)
+		goto end;
+	DBG(printf("Asking for PIN code '%s'...\n", pinfo->com_attr.label));
 #ifdef TEST
 	password = strdup(getpass("Enter PIN1: "));
 	r = 0;
 #else
-	r = get_password(pamh, &password);
+	r = get_password(pamh, &password, pinfo->com_attr.label);
 #endif
 	if (r) {
 		err = r;
 		goto end;
 	}
 	DBG(printf("Verifying PIN code...\n"));
-	r = sc_pkcs15_verify_pin(p15card, &p15card->pin_info[0], password, strlen(password));
+	r = sc_pkcs15_verify_pin(p15card, pinfo, password, strlen(password));
 	if (r) {
 		DBG(printf("PIN code verification failed: %s\n", sc_strerror(r)));
 		if (r == SC_ERROR_CARD_REMOVED)
@@ -312,26 +291,19 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	}
 	DBG(printf("Awright! PIN code correct!\n"));
 	/* FIXME: clear password? */
-#if 0
-	r = sc_restore_security_env(card, 0); /* empty SE */
-	if (r)
-		goto end;
-#endif
-	r = set_sec_env(card, p15card, prkinfo);
-	if (r != PAM_SUCCESS) {
-		err = r;
+	DBG(printf("Deciphering...\n"));
+	r = sc_pkcs15_decipher(p15card, prkinfo, chg, sizeof(chg), plain_text, sizeof(plain_text));
+	if (r <= 0) {
+		DBG(printf("Decipher failed: %s\n", sc_strerror(r)));
 		goto end;
 	}
-	DBG(printf("Deciphering...\n"));
-	r = sc_decipher(card, chg, sizeof(chg), plain_text, sizeof(plain_text));
-	if (r <= 0)
-		goto end;
 	if (r != sizeof(random_data))
 		goto end;
-	if (memcmp(random_data, plain_text, sizeof(random_data)) != 0)
+	if (memcmp(random_data, plain_text, sizeof(random_data)) != 0) {
+		DBG(printf("No luck this time.\n"));
 		goto end;
-
-	DBG(printf("Cool, dude! You're in!\n"));	
+	}
+	DBG(printf("You're in!\n"));	
 	err = PAM_SUCCESS;
 end:
 	if (locked)

@@ -17,18 +17,22 @@ char * opt_cert = NULL;
 char * opt_outfile = NULL;
 char * opt_pincode = NULL;
 char * opt_newpin = NULL;
+char * opt_apdu = NULL;
 int quiet = 0;
 
 const struct option options[] = {
 	{ "list-readers",	0, 0, 		'l' },
 	{ "list-files",		0, 0,		'f' },
+	{ "send-apdu",		1, 0,		's' },
 	{ "read-certificate",	1, 0, 		'r' },
 	{ "list-certificates",	0, 0,		'c' },
 	{ "list-pins",		0, 0,		OPT_LIST_PINS },
 	{ "change-pin",		2, 0,		OPT_CHANGE_PIN },
+	{ "list-private-keys",	0, 0,		'k' },
 	{ "reader",		1, 0,		OPT_READER },
 	{ "output",		1, 0,		'o' },
 	{ "quiet",		0, 0,		'q' },
+	{ "debug",		0, 0,		'd' },
 	{ "pin",		1, 0,		'p' },
 	{ "pin-id",		1, &opt_pin,	0   },
 	{ 0, 0, 0, 0 }
@@ -37,15 +41,18 @@ const struct option options[] = {
 const char *option_help[] = {
 	"Lists all configured readers",
 	"Recursively lists files stored on card",
-	"Read certificate with ID <arg>",
-	"Lists certificates",
-	"Lists PIN codes",
-	"Changes the PIN code to <arg>",
+	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
+	"Reads certificate with ID <arg> [P15]",
+	"Lists certificates [P15]",
+	"Lists PIN codes [P15]",
+	"Changes the PIN code to <arg> [P15]",
+	"Lists private keys [P15]",
 	"Uses reader number <arg>",
 	"Outputs to file <arg>",
 	"Quiet operation",
-	"Uses PIN <arg>; if not supplied, asks the user",
-	"Choose which PIN to use",
+	"Debug output -- may be supplied several timeso"
+	"Uses password (PIN) <arg>",
+	"The auth ID of the PIN to use [P15]",
 };
 
 struct sc_context *ctx = NULL;
@@ -113,69 +120,85 @@ int list_certificates()
 	return 0;
 }
 
+int print_pem_certificate(struct sc_pkcs15_cert *cert)
+{
+	int r;
+	u8 buf[2048];
+	FILE *outf;
+	
+	r = sc_base64_encode(cert->data, cert->data_len, buf,
+			     sizeof(buf), 64);
+	if (r) {
+		fprintf(stderr, "Base64 encoding failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+	if (opt_outfile != NULL) {
+		outf = fopen(opt_outfile, "w");
+		if (outf == NULL) {
+			fprintf(stderr, "Error opening file '%s': %s\n",
+				opt_outfile, strerror(errno));
+			return 2;
+		}
+	} else
+		outf = stdout;
+	fprintf(outf, "-----BEGIN CERTIFICATE-----\n%s-----END CERTIFICATE-----\n",
+		buf);
+	if (outf != stdout)
+		fclose(outf);
+	return 0;
+}
+
 int read_certificate()
 {
 	int r, i;
 	struct sc_pkcs15_id id;
-	u8 *p = id.value;
-	char *certp = opt_cert;
-	FILE *outf;
 
-	if (strlen(opt_cert)/2 >= SC_PKCS15_MAX_ID_SIZE) {
-		fprintf(stderr, "Certificate id too long.\n");
-		return 2;
-	}
-	if (!quiet)
-		printf("Reading certificate with ID '%s'\n", opt_cert);
-	id.len = 0;
-	while (*certp) {
-		int byte;
+	id.len = SC_PKCS15_MAX_ID_SIZE;
+	sc_pkcs15_hex_string_to_id(opt_cert, &id);
 
-		if (sscanf(certp, "%02X", &byte) != 1)
-			break;
-		certp += 2;
-		*p = byte;
-		p++;
-		id.len++;
-	}
 	r = sc_pkcs15_enum_certificates(p15card);
 	if (r < 0) {
 		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
+	
 	for (i = 0; i < p15card->cert_count; i++) {
 		struct sc_pkcs15_cert_info *cinfo = &p15card->cert_info[i];
 		struct sc_pkcs15_cert *cert;
-		u8 buf[2048];
 
 		if (sc_pkcs15_compare_id(&id, &cinfo->id) != 1)
 			continue;
 			
+		if (!quiet)
+			printf("Reading certificate with ID '%s'\n", opt_cert);
 		r = sc_pkcs15_read_certificate(p15card, cinfo, &cert);
 		if (r) {
 			fprintf(stderr, "Certificate read failed: %s\n", sc_strerror(r));
 			return 1;
 		}
-		r = sc_base64_encode(cert->data, cert->data_len, buf,
-				     sizeof(buf), 64);
+		r = print_pem_certificate(cert);
 		sc_pkcs15_free_certificate(cert);
-		if (r) {
-			fprintf(stderr, "Base64 encoding failed: %s\n", sc_strerror(r));
-			return 1;
-		}
-		if (opt_outfile != NULL) {
-			outf = fopen(opt_outfile, "w");
-			if (outf == NULL) {
-				fprintf(stderr, "Error opening file '%s': %s\n",
-					opt_outfile, strerror(errno));
-				return 2;
-			}
-		} else
-			outf = stdout;
-		fprintf(outf, "-----BEGIN CERTIFICATE-----\n%s-----END CERTIFICATE-----\n",
-			buf);
-		if (outf != stdout)
-			fclose(outf);
+		return r;
+	}
+	fprintf(stderr, "Certificate with ID '%s' not found.\n", opt_cert);
+	return 2;
+}
+
+int list_private_keys()
+{
+	int r, i;
+	
+	r = sc_pkcs15_enum_private_keys(p15card);
+	if (r < 0) {
+		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+	if (!quiet)
+		printf("Card has %d private key(s).\n\n", p15card->prkey_count);
+	for (i = 0; i < p15card->prkey_count; i++) {
+		struct sc_pkcs15_prkey_info *pinfo = &p15card->prkey_info[i];
+		sc_pkcs15_print_prkey_info(pinfo);
+		printf("\n");
 	}
 	return 0;
 }
@@ -343,6 +366,60 @@ int list_files()
 	return r;
 }
 
+int send_apdu()
+{
+	struct sc_apdu apdu;
+	u8 buf[MAX_BUFFER_SIZE], sbuf[MAX_BUFFER_SIZE],
+	   rbuf[MAX_BUFFER_SIZE], *p = buf;
+	int len = sizeof(buf), r;
+	
+	sc_hex_to_bin(opt_apdu, buf, &len);
+	if (len < 5) {
+		fprintf(stderr, "APDU too short (must be at least 5 bytes).\n");
+		return 2;
+	}
+	apdu.cla = *p++;
+	apdu.ins = *p++;
+	apdu.p1 = *p++;
+	apdu.p2 = *p++;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	len -= 4;
+	if (len > 1) {
+		apdu.lc = *p++;
+		len--;
+		memcpy(sbuf, p, apdu.lc);
+		apdu.data = sbuf;
+		apdu.datalen = apdu.lc;
+		len -= apdu.lc;
+		if (len) {
+			apdu.le = *p++;
+			len--;
+			apdu.cse = SC_APDU_CASE_4_SHORT;
+		} else
+			apdu.cse = SC_APDU_CASE_3_SHORT;
+		if (len) {
+			fprintf(stderr, "APDU too long (%d bytes extra).\n", len);
+			return 2;
+		}
+	} else if (len == 1) {
+		apdu.le = *p++;
+		len--;
+		apdu.cse = SC_APDU_CASE_2_SHORT;
+	} else
+		apdu.cse = SC_APDU_CASE_1;
+	
+	sc_debug = 3;
+	r = sc_transmit_apdu(card, &apdu);
+	sc_debug = 0;
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+	
+	return 0;
+}
+
 int main(int argc, char * const argv[])
 {
 	int err = 0, r, c, long_optind = 0;
@@ -351,11 +428,13 @@ int main(int argc, char * const argv[])
 	int do_list_certs = 0;
 	int do_list_pins = 0;
 	int do_list_files = 0;
+	int do_list_prkeys = 0;
 	int do_change_pin = 0;
+	int do_send_apdu = 0;
 	int action_count = 0;
 		
 	while (1) {
-		c = getopt_long(argc, argv, "lfr:coqp:", options, &long_optind);
+		c = getopt_long(argc, argv, "lfr:kco:qdp:s:", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -378,12 +457,21 @@ int main(int argc, char * const argv[])
 			do_list_certs = 1;
 			action_count++;
 			break;
+		case 's':
+			opt_apdu = optarg;
+			do_send_apdu++;
+			action_count++;
+			break;
 		case OPT_CHANGE_PIN:
 			do_change_pin = 1;
 			action_count++;
 			break;
 		case OPT_LIST_PINS:
 			do_list_pins = 1;
+			action_count++;
+			break;
+		case 'k':
+			do_list_prkeys = 1;
 			action_count++;
 			break;
 		case OPT_READER:
@@ -394,6 +482,9 @@ int main(int argc, char * const argv[])
 			break;
 		case 'q':
 			quiet++;
+			break;
+		case 'd':
+			sc_debug++;
 			break;
 		case 'p':
 			if (optarg == NULL && opt_pincode == NULL)
@@ -437,12 +528,17 @@ int main(int argc, char * const argv[])
 
 	sc_lock(card);
 	
+	if (do_send_apdu) {
+		if ((err = send_apdu()))
+			goto end;
+		action_count--;
+	}
+	
 	if (do_list_files) {
 		if ((err = list_files()))
 			goto end;
 		action_count--;
 	}
-	/* Here go the actions that do not require PKCS#15 */
 	
 	if (action_count <= 0)
 		goto end;
@@ -463,6 +559,11 @@ int main(int argc, char * const argv[])
 	}
 	if (do_read_cert) {
 		if ((err = read_certificate()))
+			goto end;
+		action_count--;
+	}
+	if (do_list_prkeys) {
+		if ((err = list_private_keys()))
 			goto end;
 		action_count--;
 	}

@@ -11,40 +11,19 @@
 #include <sc-asn1.h>
 #include "sc-test.h"
 
-#define DO_PRKEY_ENUM		0
-#define	DO_PIN_ENUM		0
-#define DO_PIN_VERIFY		0
-#define DO_DECIPHER		0
-#define DO_SIGN			0
-#define DO_TEST			0
-
 struct sc_pkcs15_card *p15card;
-
-int enum_private_keys()
-{
-	int i;
-	i = sc_pkcs15_enum_private_keys(p15card);
-	if (i < 0) {
-		fprintf(stderr, "Private key enumeration failed with %s\n",
-			sc_strerror(i));
-		return 1;
-	}
-
-	printf("%d private keys found!\n", i);
-	for (i = 0; i < p15card->prkey_count; i++) {
-		sc_pkcs15_print_prkey_info(&p15card->prkey_info[i]);
-	}
-	return 0;
-}
 
 int test()
 {
 	struct sc_file file;
 	struct sc_path path;
+	struct sc_apdu apdu;
+	u8 rbuf[MAX_BUFFER_SIZE], sbuf[MAX_BUFFER_SIZE];
 	
 	int r;
 	
 	sc_lock(card);
+	
 #if 1
 	r = sc_pkcs15_init(card, &p15card);
 	if (r < 0) {
@@ -56,18 +35,33 @@ int test()
 		fprintf(stderr, "PIN code enum failed: %s\n", sc_strerror(r));
 		goto err;
 	}
+	memcpy(path.value, "\x51\x10", 2);
+	path.len = 2;
+	sc_debug = 3;
+	r = sc_select_file(card, &file, &path, SC_SELECT_FILE_BY_PATH);
+	sc_debug = 0;
+	if (r) {
+		fprintf(stderr, "sc_select_file failed: %s\n", sc_strerror(r));
+		goto err;
+	}
 	r = sc_pkcs15_verify_pin(p15card, &p15card->pin_info[0], "\x31\x32\x33\x34", 4);
 	if (r) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
 		goto err;
 	}
 #endif
-	memcpy(path.value, "\x3f\x00", 2);
-	path.len = 2;
-	sc_debug = 1;
-	r = sc_select_file(card, &file, &path, SC_SELECT_FILE_BY_PATH);
+	sc_debug = 3;
+	
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, 1);
+	apdu.lc = 8;
+	apdu.data = sbuf;
+	apdu.datalen = 8;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	memcpy(sbuf, "\x31\x32\x33\x34\x00\x00\x00\x00", 8);
+	r = sc_transmit_apdu(card, &apdu);
 	if (r) {
-		fprintf(stderr, "sc_select_file failed: %s\n", sc_strerror(r));
+		fprintf(stderr, "transmit failed: %s\n", sc_strerror(r));
 		goto err;
 	}
 	r = sc_delete_file(card, 0x5110);
@@ -75,6 +69,7 @@ int test()
 		fprintf(stderr, "fail: %s\n", sc_strerror(r));
 		goto err;
 	}
+
 	return 0;
 
 	memset(&file, 0, sizeof(file));
@@ -95,6 +90,67 @@ err:
 	return r;
 }
 
+int test2()
+{
+	int r;
+	struct sc_path path;
+	struct sc_file file;
+	
+	memcpy(path.value, "\x3F\x00", 2);
+	path.len = 2;
+	
+	sc_debug = 3;
+	r = sc_select_file(card, &file, &path, SC_SELECT_FILE_BY_PATH);
+	if (r) {
+		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
+		return r;
+	}
+	return 0;
+}
+
+int test3()
+{
+	FILE *inf;
+	u8 buf[256], txt[256];
+	int len, r;
+	struct sc_pkcs15_pin_info *pin;
+	struct sc_pkcs15_prkey_info *key;
+	
+	r = sc_pkcs15_init(card, &p15card);
+	if (r) {
+		fprintf(stderr, "pkcs15 init failed: %s\n", sc_strerror(r));
+		return -1;
+	}
+	r = sc_pkcs15_enum_private_keys(p15card);
+	if (r < 0) {
+		fprintf(stderr, "pkcs15 enum prk: %s\n", sc_strerror(r));
+		return -1;
+	}
+	key = &p15card->prkey_info[0];
+	r = sc_pkcs15_enum_pins(p15card);
+	if (r < 0) {
+		fprintf(stderr, "pkcs15 enum pins: %s\n", sc_strerror(r));
+		return -1;
+	}
+	pin = &p15card->pin_info[0];
+	inf = fopen("crypt.dat", "r");
+	if (inf == NULL)
+		return -1;
+	len = fread(buf, 1, sizeof(buf), inf);
+
+	r = sc_pkcs15_verify_pin(p15card, pin, "\x31\x32\x33\x34", 4);
+	if (r) {
+		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
+		return -1;
+	}
+	r = sc_pkcs15_decipher(p15card, key, buf, len, txt, sizeof(txt));
+	if (r < 0) {
+		fprintf(stderr, "decipher failed: %s\n", sc_strerror(r));
+		return -1;
+	}
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int i;
@@ -102,94 +158,11 @@ int main(int argc, char **argv)
 	i = sc_test_init(&argc, argv);
 	if (i != 0)
 		return 1;
-
-	if (test())
+	
+	sc_debug = 3;
+	if (test3())
 		return 1;
 
-	return 0;
-		
-	i = sc_pkcs15_init(card, &p15card);
-	if (i != 0) {
-		fprintf(stderr, "PKCS#15 card init failed: %s\n",
-			sc_strerror(i));
-		return 1;
-	}
-	sc_pkcs15_print_card(p15card);
-
-#if DO_PRKEY_ENUM
-	if (enum_private_keys())
-		return 1;
-#endif
-#if DO_DECIPHER
-	senv.signature = 0;
-	senv.algorithm_ref = 0x02;
-	senv.key_ref = 0;
-	senv.key_file_id = p15card->prkey_info[0].file_id;
-	senv.app_df_path = p15card->file_app.path;
-	i = sc_set_security_env(p15card->card, &senv);
-	if (i) {
-		fprintf(stderr, "Security environment set failed: %s\n",
-			sc_strerror(i));
-		return 1;
-	}
-	file = fopen("cryptogram", "r");
-	if (file != NULL) {
-		i = fread(buf, 1, sizeof(buf), file);
-		c = sc_decipher(card, buf, i, buf2, sizeof(buf2));
-		if (c < 0) {
-			fprintf(stderr, "Decipher failed: (%d) %s\n", c,
-				sc_strerror(c));
-		} else {
-			printf("Decrypted payload: ");
-			for (i = 0; i < c; i++) {
-				printf("%02X ", buf2[i]);
-			}
-			printf("\n");
-			fclose(file);
-			file = fopen("decrypted.dat", "w");
-			fwrite(buf2, c, 1, file);
-			fclose(file);
-		}
-	} else {
-		printf("File 'cryptogram' not found, not decrypting.\n");
-	}
-#endif
-#if DO_SIGN
-	senv.signature = 1;
-	senv.algorithm_ref = 0x02;
-	senv.key_ref = 0;
-	senv.key_file_id = p15card->prkey_info[0].file_id;
-	senv.app_df_path = p15card->file_app.path;
-	i = sc_set_security_env(p15card->card, &senv);
-	if (i) {
-		fprintf(stderr, "Security environment set failed: %s\n",
-			sc_strerror(i));
-		return 1;
-	}
-	file = fopen("input", "r");
-	if (file != NULL) {
-		i = fread(buf, 1, sizeof(buf), file);
-		SCardSetTimeout(ctx->pcsc_ctx, 15000);
-		c = sc_compute_signature(card, buf, i, buf2, sizeof(buf2));
-		if (c < 0) {
-			fprintf(stderr, "Signing failed: (%d) %s\n", c,
-				sc_strerror(c));
-		} else {
-			printf("Signed payload: ");
-			for (i = 0; i < c; i++) {
-				printf("%02X ", buf2[i]);
-			}
-			printf("\n");
-			fclose(file);
-			file = fopen("signed.dat", "w");
-			fwrite(buf2, c, 1, file);
-			fclose(file);
-		}
-	} else {
-		printf("File 'input' not found, not signing.\n");
-	}
-#endif
-	printf("Cleaning up...\n");
 	sc_test_cleanup();
 
 	return 0;

@@ -169,10 +169,8 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 {
 	int r;
 	struct sc_file file;
-	struct sc_apdu apdu;
 	struct sc_card *card;
 	char pinbuf[SC_MAX_PIN_SIZE];
-	char resp[MAX_BUFFER_SIZE];
 
 	assert(p15card != NULL);
 	if (pin->magic != SC_PKCS15_PIN_MAGIC)
@@ -185,30 +183,15 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	if (r)
 		return r;
 
-	sc_format_apdu(p15card->card, &apdu, SC_APDU_CASE_3_SHORT,
-		       0x20, 0, pin->auth_id.value[0]);
-	apdu.lc = pin->stored_length;
-	apdu.data = pinbuf;
-	apdu.datalen = pin->stored_length;
-	apdu.resp = resp;
-	apdu.resplen = 2;
 	memset(pinbuf, pin->pad_char, pin->stored_length);
-
 	memcpy(pinbuf, pincode, pinlen);
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_verify(card, pin->auth_id.value[0],
+		      pinbuf, pin->stored_length, &pin->tries_left);
 	memset(pinbuf, 0, pinlen);
-
 	if (r)
 		return r;
-	if (apdu.resplen == 2) {
-		if (apdu.resp[0] == 0x90 && apdu.resp[1] == 0x00)
-			return 0;
-		if (apdu.resp[0] == 0x63 && (apdu.resp[1] & 0xF0) == 0xC0) {
-			pin->tries_left = apdu.resp[1] & 0x0F;
-			return SC_ERROR_PIN_CODE_INCORRECT;
-		}
-	}
-	return -1;
+
+	return 0;
 }
 
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
@@ -262,4 +245,23 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 		}
 	}
 	return -1;
+}
+
+int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
+				  const struct sc_pkcs15_id *id,
+				  struct sc_pkcs15_pin_info **pin_out)
+{
+	int r, i;
+	
+	r = sc_pkcs15_enum_pins(card);
+	if (r < 0)
+		return r;
+	for (i = 0; i < card->pin_count; i++) {
+		struct sc_pkcs15_pin_info *pin = &card->pin_info[i];
+		if (sc_pkcs15_compare_id(&pin->auth_id, id) == 1) {
+			*pin_out = pin;
+			return 0;
+		}
+	}
+	return SC_ERROR_OBJECT_NOT_FOUND;
 }

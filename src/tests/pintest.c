@@ -10,6 +10,7 @@
 #include "sc-pkcs15.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 struct sc_pkcs15_card *p15card;
 
@@ -35,29 +36,40 @@ int enum_pins()
 int ask_and_verify_pin(struct sc_pkcs15_pin_info *pin)
 {
 	int i = 0;
-	char buf[32];
+        char prompt[80];
+        char *pass;
 
-	i = sc_sec_ask_pin_code(pin, buf, sizeof(buf),
-				"Please enter PIN code");
-	if (i == 0) {
-		sc_lock(card);
-		i = sc_pkcs15_verify_pin(p15card, pin, buf, strlen(buf));
-		sc_unlock(card);
-		if (i) {
-			if (i == SC_ERROR_PIN_CODE_INCORRECT)
-				fprintf(stderr,
-					"Incorrect PIN code (%d tries left)\n",
-					pin->tries_left);
-			else
-				fprintf(stderr,
-					"PIN verifying failed: %s\n",
-					sc_strerror(i));
-			return 1;
+	while (1) {
+		sprintf(prompt, "Please enter PIN code [%s]: ", pin->com_attr.label);
+                pass = getpass(prompt);
+
+		if (strlen(pass) == 0) {
+			printf("Not verifying PIN code.\n");
+			return -1;
 		}
-		printf("PIN code correct.\n");
-	} else {
-		printf("\nNot verifying PIN code.\n");
+		if (strlen(pass) < pin->min_length)
+			break;
+		if (strlen(pass) > pin->stored_length)
+			break;
+		break;
 	}
+
+       	sc_lock(card);
+       	i = sc_pkcs15_verify_pin(p15card, pin, pass, strlen(pass));
+       	sc_unlock(card);
+       	if (i) {
+       		if (i == SC_ERROR_PIN_CODE_INCORRECT)
+       			fprintf(stderr,
+       				"Incorrect PIN code (%d tries left)\n",
+       				pin->tries_left);
+       		else
+       			fprintf(stderr,
+       				"PIN verifying failed: %s\n",
+       				sc_strerror(i));
+       		return 1;
+       	} else
+		printf("PIN code correct.\n");
+
 	return 0;
 }
 

@@ -158,6 +158,11 @@ struct sc_pkcs15_card {
 int sc_pkcs15_init(struct sc_card *card,
 		   struct sc_pkcs15_card **pkcs15_card);
 int sc_pkcs15_destroy(struct sc_pkcs15_card *card);
+
+int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
+		       const struct sc_pkcs15_prkey_info *prkey,
+		       const u8 * in, int inlen, u8 *out, int outlen);
+
 void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
 
 void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert);
@@ -169,6 +174,9 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert);
 
 void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey);
 int sc_pkcs15_enum_private_keys(struct sc_pkcs15_card *card);
+int sc_pkcs15_find_prkey_by_id(struct sc_pkcs15_card *card,
+			       const struct sc_pkcs15_id *id,
+			       struct sc_pkcs15_prkey_info **out);
 
 void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin);
 int sc_pkcs15_enum_pins(struct sc_pkcs15_card *card);
@@ -179,13 +187,14 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_pin_info *pin,
 			 char *oldpincode,
 			 int oldpinlen, char *newpincode, int newpinlen);
+int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
+				  const struct sc_pkcs15_id *id,
+				  struct sc_pkcs15_pin_info **out);
 
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
 			 const struct sc_pkcs15_id *id2);
 void sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
-
-int sc_sec_ask_pin_code(struct sc_pkcs15_pin_info *pin,
-			char *out, int outlen, const char *prompt);
+int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
 
 int sc_pkcs15_parse_common_object_attr(struct sc_pkcs15_common_obj_attr *attr,
 				       const u8 * buf, int buflen);
