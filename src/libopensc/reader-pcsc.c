@@ -395,7 +395,6 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
                           &card_handle, &active_proto);
 	if (rv != 0) {
 		PCSC_ERROR(reader->ctx, "SCardConnect failed", rv);
-		free(pslot);
 		return pcsc_ret_to_error(rv);
 	}
 	slot->active_protocol = pcsc_proto_to_opensc(active_proto);
@@ -446,10 +445,17 @@ static int pcsc_unlock(struct sc_reader *reader, struct sc_slot_info *slot)
 
 static int pcsc_release(struct sc_reader *reader)
 {
+	int i;
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
 	free(priv->reader_name);
 	free(priv);
+	for (i = 0; i < reader->slot_count; i++) {
+		if (reader->slot[i].drv_data != NULL) {
+			free(reader->slot[i].drv_data);
+			reader->slot[i].drv_data = NULL;
+		}
+	}
 	return 0;
 }
 
@@ -520,6 +526,8 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 				free(reader);
 			if (priv)
 				free(priv);
+			if (pslot)
+				free(pslot);
 			break;
 		}
 
@@ -538,6 +546,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 			free(priv);
 			free(reader->name);
 			free(reader);
+			free(pslot);
 			break;
 		}
 		slot = &reader->slot[0];
