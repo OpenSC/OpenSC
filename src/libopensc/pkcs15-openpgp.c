@@ -19,9 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "pkcs15.h"
-#include "asn1.h"
+#include <opensc/pkcs15.h>
+#include <opensc/log.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
