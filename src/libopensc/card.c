@@ -964,7 +964,7 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out)
 }
 
 /* XXX: temporary, will be rewritten soon */
-int _sc_add_atr(struct sc_card_driver *driver, struct sc_atr_table *src)
+int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src)
 {
 	struct sc_atr_table *map, *dst;
 
