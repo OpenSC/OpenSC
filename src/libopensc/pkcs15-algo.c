@@ -270,6 +270,7 @@ sc_asn1_get_algorithm_info(const struct sc_algorithm_id *id)
 		while (aip->id >= 0) {
 			if (aip->id == id->algorithm)
 				return aip;
+			aip++;
 		}
 	}
 	return NULL;
@@ -277,6 +278,7 @@ sc_asn1_get_algorithm_info(const struct sc_algorithm_id *id)
 
 static const struct sc_asn1_entry c_asn1_alg_id[6] = {
 	{ "algorithm",  SC_ASN1_OBJECT, ASN1_OBJECT, 0, NULL },
+	{ "nullParam",  SC_ASN1_NULL, ASN1_NULL, SC_ASN1_OPTIONAL, NULL },
 	{ NULL }
 };
 
@@ -286,7 +288,7 @@ sc_asn1_decode_algorithm_id(struct sc_context *ctx, const u8 *in,
 			    int depth)
 {
 	struct sc_asn1_pkcs15_algorithm_info *alg_info;
-	struct sc_asn1_entry asn1_alg_id[2];
+	struct sc_asn1_entry asn1_alg_id[3];
 	int r;
 
 	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
@@ -301,8 +303,11 @@ sc_asn1_decode_algorithm_id(struct sc_context *ctx, const u8 *in,
 	 * whether we know how to decode any additional parameters */
 	if ((alg_info = sc_asn1_get_algorithm_info(id)) != NULL) {
 		id->algorithm = alg_info->id;
-		if (alg_info->decode)
+		if (alg_info->decode) {
+			if (asn1_alg_id[1].flags & SC_ASN1_PRESENT)
+				return SC_ERROR_INVALID_ASN1_OBJECT;
 			r = alg_info->decode(ctx, &id->params, in, len, depth);
+		}
 	}
 
 	return r;
@@ -338,6 +343,10 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx,
 	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
 	sc_format_asn1_entry(asn1_alg_id + 0, (void *) &id->obj_id, NULL, 1);
 
+	/* no parameters, write NULL tag */
+	if (!id->params || !alg_info->encode)
+		asn1_alg_id[1].flags |= SC_ASN1_PRESENT;
+
 	r = _sc_asn1_encode(ctx, asn1_alg_id, buf, len, depth + 1);
 	if (r < 0)
 		return r;
@@ -347,10 +356,6 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx,
 		r = alg_info->encode(ctx, id->params, &obj, &obj_len, depth+1);
 		if (r < 0)
 			return r;
-	} else {
-		/* we should really encode an ASN.1 NULL object here */
-		obj = NULL;
-		obj_len = 0;
 	}
 
 	if (obj_len) {
