@@ -220,7 +220,6 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 	size_t i = 0, j, pad_length = 0;
 	size_t pin_len = pin->len;
 
-	/* XXX: Should we silently truncate PINs that are too long? */
 	if (pin->max_length && pin_len > pin->max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
