@@ -160,8 +160,6 @@ sc_ui_display_debug(sc_context_t *ctx, const char *msg)
 int
 sc_ui_get_func(sc_context_t *ctx, const char *name, void **ret)
 {
-	int	r;
-
 	*ret = NULL;
 	if (!sc_ui_lib_handle && !sc_ui_lib_loaded) {
 		const char	*lib_name = NULL;
@@ -187,7 +185,7 @@ sc_ui_get_func(sc_context_t *ctx, const char *name, void **ret)
 			sc_error(ctx,
 				"Unable to open user interface library %s\n",
 				lib_name);
-			return r;
+			return SC_ERROR_INTERNAL;
 		}
 	}
 
