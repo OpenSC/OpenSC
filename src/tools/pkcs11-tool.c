@@ -541,6 +541,7 @@ change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 		new_pin, new_pin == NULL ? 0 : strlen(new_pin));
 	if (rv != CKR_OK)
 		p11_fatal("C_SetPIN", rv);
+	printf("PIN successfully changed\n");
 
 	return 0;
 }
@@ -1191,6 +1192,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	int             errors = 0;
 	CK_RV           rv;
 	CK_OBJECT_HANDLE privKeyObject;
+	CK_SESSION_HANDLE sess;
 	CK_MECHANISM    ck_mech = { CKM_MD5, NULL, 0 };
 	CK_MECHANISM_TYPE firstMechType;
 	CK_SESSION_INFO sessionInfo;
@@ -1232,25 +1234,31 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		sizeof(verifyData),
 	};
 
-	rv = p11->C_GetSessionInfo(session, &sessionInfo);
-	if (rv == CKR_SESSION_HANDLE_INVALID) {
-		rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION,
-			NULL, NULL, &session);
-		if (rv != CKR_OK)
-			p11_fatal("C_OpenSession", rv);
+	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION,
+		NULL, NULL, &sess);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+
+	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+printf("sessionInfo.state = 0x%0x\n", sessionInfo.state);
+	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
+		printf("Signatures: not logged in, skipping signature tests\n");
+		return errors;
 	}
 
 	firstMechType = find_mechanism(slot, CKF_SIGN | CKF_HW, 0);
 	if (firstMechType == NO_MECHANISM) {
 		printf("Signatures: not implemented\n");
 		return errors;
-	} else if (!find_object(session, CKO_PRIVATE_KEY, &privKeyObject,
+	} else if (!find_object(sess, CKO_PRIVATE_KEY, &privKeyObject,
 			NULL, 0, 0)) {
-		printf("Signatures: no private key found in this slot (supplied your PIN?)\n");
+		printf("Signatures: no private key found in this slot\n");
 		return errors;
 	} else {
 		printf("Signatures (currently only RSA signatures)");
-		if ((label = getLABEL(session, privKeyObject, NULL)) != NULL) {
+		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
 			printf(", key = %s", label);
 			free(label);
 		}
@@ -1258,7 +1266,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	}
 
 	data[0] = 0;
-	modLenBytes = (getMODULUS_BITS(session, privKeyObject) + 7) / 8;
+	modLenBytes = (getMODULUS_BITS(sess, privKeyObject) + 7) / 8;
 
 	/* 1st test */
 
@@ -1275,41 +1283,41 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	}
 
 	ck_mech.mechanism = firstMechType;
-	rv = p11->C_SignInit(session, &ck_mech, privKeyObject);
+	rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
 
-	rv = p11->C_SignUpdate(session, data, 5);
+	rv = p11->C_SignUpdate(sess, data, 5);
 	if (rv == CKR_FUNCTION_NOT_SUPPORTED) {
 		printf("  Note: C_SignUpdate(), SignFinal() not supported\n");
 		/* finish the digest operation */
 		sigLen2 = sizeof(sig2);
-		rv = p11->C_Sign(session, data, dataLen, sig2, &sigLen2);
+		rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
 		if (rv != CKR_OK)
 			p11_fatal("C_Sign", rv);
 	} else {
 		if (rv != CKR_OK)
 			p11_fatal("C_SignUpdate", rv);
 
-		rv = p11->C_SignUpdate(session, data + 5, 10);
+		rv = p11->C_SignUpdate(sess, data + 5, 10);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignUpdate", rv);
 
-		rv = p11->C_SignUpdate(session, data + 15, dataLen - 15);
+		rv = p11->C_SignUpdate(sess, data + 15, dataLen - 15);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignUpdate", rv);
 
 		sigLen1 = sizeof(sig1);
-		rv = p11->C_SignFinal(session, sig1, &sigLen1);
+		rv = p11->C_SignFinal(sess, sig1, &sigLen1);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignFinal", rv);
 
-		rv = p11->C_SignInit(session, &ck_mech, privKeyObject);
+		rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignInit", rv);
 
 		sigLen2 = sizeof(sig2);
-		rv = p11->C_Sign(session, data, dataLen, sig2, &sigLen2);
+		rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
 		if (rv != CKR_OK)
 			p11_fatal("C_Sign", rv);
 
@@ -1326,26 +1334,26 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	/* 2nd test */
 
 	ck_mech.mechanism = firstMechType;
-	rv = p11->C_SignInit(session, &ck_mech, privKeyObject);
+	rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
 
 	sigLen2 = 1;		/* too short */
-	rv = p11->C_Sign(session, data, dataLen, sig2, &sigLen2);
+	rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
 	if (rv != CKR_BUFFER_TOO_SMALL) {
 		errors++;
 		printf("  ERR: C_Sign() didn't return CKR_BUFFER_TOO_SMALL but %s (0x%0x)\n", CKR2Str(rv), (int) rv);
 	}
 
 	/* output buf = NULL */
-	rv = p11->C_Sign(session, data, dataLen, NULL, &sigLen2);
+	rv = p11->C_Sign(sess, data, dataLen, NULL, &sigLen2);
 	if (rv != CKR_OK) {
 	   errors++;
 	   printf("  ERR: C_Sign() didn't return CKR_OK for a NULL output buf, but %s (0x%0x)\n",
 	   CKR2Str(rv), (int) rv);
 	}
 
-	rv = p11->C_Sign(session, data, dataLen, sig2, &sigLen2);
+	rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
 	if (rv == CKR_OPERATION_NOT_INITIALIZED) {
 		printf("  ERR: signature operation ended prematurely\n");
 		errors++;
@@ -1371,7 +1379,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	printf("  testing signature mechanisms:\n");
 	for (i = 0; mechTypes[i] != 0xffffff; i++) {
 		ck_mech.mechanism = mechTypes[i];
-		errors += sign_verify(slot, session, &ck_mech, privKeyObject,
+		errors += sign_verify(slot, sess, &ck_mech, privKeyObject,
 			datas[i], dataLens[i], verifyData, sizeof(verifyData),
 			modLenBytes, i);
 	}
@@ -1383,16 +1391,16 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			break;
 	ck_mech.mechanism = mechTypes[i];
 	j = 1;  /* j-th signature key */
-	while (find_object(session, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j++) != 0) {
+	while (find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j++) != 0) {
 
 		printf("  testing key %d ", (int) (j-1));
-		if ((label = getLABEL(session, privKeyObject, NULL)) != NULL) {
+		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
 			printf("(%s) ", label);
 			free(label);
 		}
 		printf("with 1 signature mechanism\n");
 
-		errors += sign_verify(slot, session, &ck_mech, privKeyObject,
+		errors += sign_verify(slot, sess, &ck_mech, privKeyObject,
 			datas[i], dataLens[i], verifyData, sizeof(verifyData),
 			modLenBytes, i);
 	}
