@@ -841,31 +841,27 @@ static int compare_obj_reference(sc_pkcs15_object_t *obj, int value)
 static int compare_obj_path(sc_pkcs15_object_t *obj, const sc_path_t *path)
 {
 	void *data = obj->data;
-	int r;
 	
 	switch (obj->type) {
 	case SC_PKCS15_TYPE_CERT_X509:
-		r = sc_compare_path(&((struct sc_pkcs15_cert_info *) data)->path, path);
+		return sc_compare_path(&((struct sc_pkcs15_cert_info *) data)->path, path);
 		break;
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 	case SC_PKCS15_TYPE_PRKEY_DSA:
-		r = sc_compare_path(&((struct sc_pkcs15_prkey_info *) data)->path, path);
+		return sc_compare_path(&((struct sc_pkcs15_prkey_info *) data)->path, path);
 		break;
 	case SC_PKCS15_TYPE_PUBKEY_RSA:
 	case SC_PKCS15_TYPE_PUBKEY_DSA:
-		r = sc_compare_path(&((struct sc_pkcs15_pubkey_info *) data)->path, path);
+		return sc_compare_path(&((struct sc_pkcs15_pubkey_info *) data)->path, path);
 		break;
 	case SC_PKCS15_TYPE_AUTH_PIN:
-		r = sc_compare_path(&((struct sc_pkcs15_pin_info *) data)->path, path);
+		return sc_compare_path(&((struct sc_pkcs15_pin_info *) data)->path, path);
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
-		r = sc_compare_path(&((struct sc_pkcs15_data_info *) data)->path, path);
-		break;
-	default:
-		r = -1;
+		return sc_compare_path(&((struct sc_pkcs15_data_info *) data)->path, path);
 		break;
 	}
-	return r == 0;
+	return 0;
 }
 
 static int compare_obj_key(struct sc_pkcs15_object *obj, void *arg)
