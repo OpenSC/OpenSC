@@ -59,6 +59,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "setcos", (void *) sc_get_setcos_driver, NULL },
 	{ "starcos", (void *) sc_get_starcos_driver, NULL },
 	{ "tcos", (void *) sc_get_tcos_driver, NULL },
+	{ "opengpg", (void *) sc_get_openpgp_driver, NULL },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default", (void *) sc_get_default_driver, NULL },
