@@ -26,6 +26,7 @@
 #include <string.h>
 #include <opensc.h>
 #include <opensc-pkcs15.h>
+#include <sys/stat.h>
 
 #define OPT_CHANGE_PIN	0x100
 #define OPT_LIST_PINS	0x101
@@ -43,6 +44,7 @@ int quiet = 0;
 const struct option options[] = {
 	{ "list-readers",	0, 0, 		'l' },
 	{ "list-files",		0, 0,		'f' },
+	{ "learn-card",		0, 0, 		'L' },
 	{ "send-apdu",		1, 0,		's' },
 	{ "read-certificate",	1, 0, 		'r' },
 	{ "list-certificates",	0, 0,		'c' },
@@ -60,6 +62,7 @@ const struct option options[] = {
 const char *option_help[] = {
 	"Lists all configured readers",
 	"Recursively lists files stored on card",
+	"Stores card info to cache [P15]",
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
 	"Reads certificate with ID <arg> [P15]",
 	"Lists certificates [P15]",
@@ -433,6 +436,88 @@ int list_files()
 	return r;
 }
 
+static int generate_cert_filename(struct sc_pkcs15_card *p15card,
+				  const struct sc_pkcs15_cert_info *info,
+				  char *fname, int len)
+{
+	char *homedir;
+	u8 cert_id[SC_PKCS15_MAX_ID_SIZE*2+1];
+	int i, r;
+
+	homedir = getenv("HOME");
+	if (homedir == NULL)
+		return -1;
+	cert_id[0] = 0;
+	for (i = 0; i < info->id.len; i++) {
+		char tmp[3];
+
+		sprintf(tmp, "%02X", info->id.value[i]);
+		strcat(cert_id, tmp);
+	}
+	r = snprintf(fname, len, "%s/%s/%s_%s_%s.crt", homedir,
+		     SC_PKCS15_CACHE_DIR, p15card->label,
+		     p15card->serial_number, cert_id);
+	if (r < 0)
+		return -1;
+	return 0;
+}
+
+int learn_card()
+{
+	struct stat stbuf;
+	char fname[512], *home;
+	int r, i;
+	
+	home = getenv("HOME");
+	if (home == NULL) {
+		fprintf(stderr, "No $HOME environment variable set.\n");
+		return 1;
+	}
+	sprintf(fname, "%s/%s", home, SC_PKCS15_CACHE_DIR);
+	r = stat(fname, &stbuf);
+	if (r) {
+		printf("No '%s' directory found, creating...\n", fname);
+		r = mkdir(fname, 0700);
+		if (r) {
+			perror("Directory creation failed");
+			return 1;
+		}
+	}
+	printf("Using cache directory '%s'.\n", fname);
+	r = sc_pkcs15_enum_certificates(p15card);
+	if (r < 0) {
+		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+	printf("Caching %d certificate(s)...\n", r);
+	for (i = 0; i < p15card->cert_count; i++) {
+		struct sc_pkcs15_cert_info *cinfo = &p15card->cert_info[i];
+		struct sc_pkcs15_cert *cert;
+		FILE *crtf;
+		
+		printf("Reading certificate: %s...\n", cinfo->com_attr.label);
+		r = sc_pkcs15_read_certificate(p15card, cinfo, &cert);
+		if (r) {
+			fprintf(stderr, "Certificate read failed: %s\n", sc_strerror(r));
+			return 1;
+		}
+		r = generate_cert_filename(p15card, cinfo, fname, sizeof(fname));
+		if (r)
+			return 1;
+		crtf = fopen(fname, "w");
+		if (crtf == NULL) {
+			perror(fname);
+			return 1;
+		}
+		fwrite(cert->data, cert->data_len, 1, crtf);
+		fclose(crtf);
+
+		sc_pkcs15_free_certificate(cert);
+	}
+
+	return 0;
+}
+
 int send_apdu()
 {
 	struct sc_apdu apdu;
@@ -498,10 +583,11 @@ int main(int argc, char * const argv[])
 	int do_list_prkeys = 0;
 	int do_change_pin = 0;
 	int do_send_apdu = 0;
+	int do_learn_card = 0;
 	int action_count = 0;
 		
 	while (1) {
-		c = getopt_long(argc, argv, "lfr:kco:qdp:s:", options, &long_optind);
+		c = getopt_long(argc, argv, "lfr:kco:qdp:s:L", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -539,6 +625,10 @@ int main(int argc, char * const argv[])
 			break;
 		case 'k':
 			do_list_prkeys = 1;
+			action_count++;
+			break;
+		case 'L':
+			do_learn_card = 1;
 			action_count++;
 			break;
 		case OPT_READER:
@@ -616,6 +706,11 @@ int main(int argc, char * const argv[])
 	}
 	if (!quiet)
 		fprintf(stderr, "Found %s!\n", p15card->label);
+	if (do_learn_card) {
+		if ((err = learn_card()))
+			goto end;
+		action_count--;
+	}
 	if (do_list_certs) {
 		if ((err = list_certificates()))
 			goto end;
