@@ -33,4 +33,4 @@ all: install-headers $(TARGET)
 
 $(TARGET): $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib
 	perl $(TOPDIR)\win32\makedef.pl $*.def $* $(OBJECTS)
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib winscard.lib  libeay32.lib gdi32.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib winscard.lib
