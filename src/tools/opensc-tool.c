@@ -31,6 +31,7 @@
 #include <ctype.h>
 #include <sys/stat.h>
 #include <opensc/opensc.h>
+#include <opensc/cardctl.h>
 #include "util.h"
 
 const char *app_name = "opensc-tool";
@@ -41,8 +42,13 @@ static char **	opt_apdus;
 static int	opt_apdu_count = 0;
 static int	verbose = 0;
 
+enum {
+	OPT_SERIAL = 0x100,
+};
+
 const struct option options[] = {
 	{ "atr",		0, 0,		'a' },
+	{ "serial",		0, 0,	OPT_SERIAL  },
 	{ "name",		0, 0,		'n' },
 	{ "list-readers",	0, 0, 		'l' },
 	{ "list-drivers",	0, 0,		'D' },
@@ -58,6 +64,7 @@ const struct option options[] = {
 
 const char *option_help[] = {
 	"Prints the ATR bytes of the card",
+	"Prints the card serial number",
 	"Identify the card and print its name",
 	"Lists all configured readers",
 	"Lists all installed card drivers",
@@ -347,6 +354,18 @@ int send_apdu(void)
 	return 0;
 }
 
+void print_serial(sc_card_t *card)
+{
+	int r;
+	struct sc_serial_number serial;
+
+	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
+	if (r)
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GET_SERIALNR, *) failed\n");
+
+	hex_dump_asc(stdout, serial.value, serial.len, -1);
+}
+
 int main(int argc, char * const argv[])
 {
 	int err = 0, r, c, long_optind = 0;
@@ -356,6 +375,7 @@ int main(int argc, char * const argv[])
 	int do_list_files = 0;
 	int do_send_apdu = 0;
 	int do_print_atr = 0;
+	int do_print_serial = 0;
 	int do_print_name = 0;
 	int action_count = 0;
 	const char *opt_driver = NULL;
@@ -415,6 +435,10 @@ int main(int argc, char * const argv[])
 		case 'w':
 			opt_wait = 1;
 			break;
+		case OPT_SERIAL:
+			do_print_serial = 1;
+			action_count++;
+			break;
 		}
 	}
 	if (action_count == 0)
@@ -461,6 +485,12 @@ int main(int argc, char * const argv[])
 		if (verbose)
 			printf("Card ATR: ");
 		hex_dump_asc(stdout, card->atr, card->atr_len, -1);
+		action_count--;
+	}
+	if (do_print_serial) {
+		if (verbose)
+			printf("Card serial number:");
+		print_serial(card);
 		action_count--;
 	}
 	if (do_print_name) {
