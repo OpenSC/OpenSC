@@ -189,19 +189,24 @@ void scldap_show_parameters(scldap_context * ctx)
 	if (!ctx)
 		return;
 	for (i = 0; i < ctx->entries; i++) {
-		if (ctx->entry[i].entry) {
+		if (ctx->entry[i].entry)
 			printf("[%i]->entry=%s\n", i, ctx->entry[i].entry);
+		if (ctx->entry[i].ldaphost)
 			printf("[%i]->ldaphost=%s\n", i, ctx->entry[i].ldaphost);
-			printf("[%i]->ldapport=%i\n", i, ctx->entry[i].ldapport);
-			printf("[%i]->scope=%i\n", i, ctx->entry[i].scope);
+		printf("[%i]->ldapport=%i\n", i, ctx->entry[i].ldapport);
+		printf("[%i]->scope=%i\n", i, ctx->entry[i].scope);
+		if (ctx->entry[i].binddn)
 			printf("[%i]->binddn=%s\n", i, ctx->entry[i].binddn);
+		if (ctx->entry[i].passwd)
 			printf("[%i]->passwd=%s\n", i, ctx->entry[i].passwd);
+		if (ctx->entry[i].base)
 			printf("[%i]->base=%s\n", i, ctx->entry[i].base);
-			for (j = 0; j < ctx->entry[i].numattrs; j++) {
+		for (j = 0; j < ctx->entry[i].numattrs; j++) {
+			if (ctx->entry[i].attributes[j])
 				printf("[%i]->attribute[%i]=%s\n", i, j, ctx->entry[i].attributes[j]);
-			}
-			printf("[%i]->filter=%s\n\n", i, ctx->entry[i].filter);
 		}
+		if (ctx->entry[i].filter)
+			printf("[%i]->filter=%s\n\n", i, ctx->entry[i].filter);
 	}
 }
 
