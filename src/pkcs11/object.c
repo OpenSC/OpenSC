@@ -30,6 +30,7 @@ static void dump_template(char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCou
 	}
 }
 
+
 CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		     CK_ATTRIBUTE_PTR  pTemplate,   /* the object's template */
 		     CK_ULONG          ulCount,     /* attributes in template */
@@ -100,6 +101,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 
 		// 2. If object doesn't posses attribute
 		if (j >= object->num_attributes) {
+			LOG("C_GetAttributeValue: Attribute 0x%x not present\n", pTemplate[i].type);
 			pTemplate[i].ulValueLen = -1;
                         continue;
 		}
@@ -147,23 +149,47 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 			CK_ULONG          ulCount)    /* attributes in search template */
 {
 	struct pkcs11_session *ses;
+        struct pkcs11_slot *slt;
+        int i, j, k;
 
 	LOG("C_FindObjectsInit(%d, %d, 0x%x, %d)\n", hSession, pTemplate, ulCount);
 	dump_template("C_FindObjectsInit", pTemplate, ulCount);
 
-	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
-	if (ulCount != 1 || pTemplate[0].type != CKA_CLASS)
-		return CKR_ATTRIBUTE_TYPE_INVALID;
-
-	if (pTemplate[0].ulValueLen != 4 || *((CK_ULONG_PTR) pTemplate[0].pValue) != CKO_CERTIFICATE)
-		return CKR_ATTRIBUTE_VALUE_INVALID;
-
-        ses = session[hSession];
-        ses->search.num_matches = 1;
+	ses = session[hSession];
+        slt = &slot[ses->slot];
         ses->search.position = 0;
-        ses->search.handles[0] = 1;
+	ses->search.num_matches = 0;
+
+	// For each object in token do
+	for (i = 1; i <= slt->num_objects; i++) {
+		int matched = 1;
+
+		// Try to match every attribute
+		for (j = 0; j < ulCount; j++) {
+			struct pkcs11_object *object = slt->object[i];
+
+                        // Find the matching attribute in object
+			for (k = 0; k < object->num_attributes; k++) {
+				if (pTemplate[j].type == object->attribute[k].type)
+					break;
+			}
+			// Is the attribute matching?
+			if (k >= object->num_attributes ||
+			    pTemplate[j].ulValueLen != object->attribute[k].ulValueLen ||
+			    memcmp(pTemplate[j].pValue, object->attribute[k].pValue, pTemplate[j].ulValueLen)) {
+				matched = 0;
+				break;
+			}
+		}
+
+		if (matched) {
+			LOG("C_FindObjectsInit(): Object %d matches search criteria\n", i);
+			ses->search.handles[ses->search.num_matches++] = i;
+		}
+	}
 
         return CKR_OK;
 }
@@ -177,7 +203,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,          /* the session's han
         int to_return;
 
 	LOG("C_FindObjects(%d, 0x%x, %d, 0x%x)\n", hSession, phObject, ulMaxObjectCount, pulObjectCount);
-	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
 	ses = session[hSession];
@@ -199,7 +225,7 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) /* the session's handle */
 	struct pkcs11_session *ses;
 
         LOG("C_FindObjectsFinal(%d)\n", hSession);
-	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
 	ses = session[hSession];

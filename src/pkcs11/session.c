@@ -48,7 +48,7 @@ CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
 CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) /* the session's handle */
 {
 	LOG("C_CloseSession(%d)\n", hSession);
-	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
 	free(session[hSession]);
@@ -75,7 +75,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,  /* the session's handle */
         struct pkcs11_session *ses;
 
 	LOG("C_GetSessionInfo(%d, 0x%x)\n", hSession, pInfo);
-	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
         ses = session[hSession];
@@ -118,7 +118,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
         int rc;
 
 	LOG("C_Login(%d, %d, 0x%x, %d)\n", hSession, userType, pPin, ulPinLen);
-	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
 	if (userType != CKU_USER) {
@@ -161,7 +161,7 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) /* the session's handle */
 	struct pkcs11_session *ses;
 
 	LOG("C_Logout(%d)\n", hSession);
-	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
 	ses = session[hSession];
@@ -200,7 +200,7 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	int rc;
 
 	LOG("C_SetPIN(%d, '%s', %d, '%s', %d)\n", hSession, pOldPin, ulOldLen, pNewPin, ulNewLen);
-	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
 	//if (!(ses->flags & CKF_RW_SESSION))
