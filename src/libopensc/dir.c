@@ -177,11 +177,9 @@ int sc_enum_apps(struct sc_card *card)
 			free(buf);
 			SC_TEST_RET(card->ctx, r, "read_binary() failed");
 		}
-		bufsize = file_size;
+		bufsize = r;
 		while (bufsize > 0) {
 			if (card->app_count == SC_MAX_CARD_APPS) {
-				free(buf);
-				buf = NULL;
 				error(card->ctx, "Too many applications on card");
 				break;
 			}
