@@ -208,7 +208,7 @@ int certCheckKeyUsage(X509 * cert, unsigned int bit)
     return -1;
   }
   /* Try to parse keyUsage extension out of the certificate */
-  loc = X509_get_ext_by_NID(cert, NID_key_usage, 0);
+  loc = X509_get_ext_by_NID(cert, NID_key_usage, -1);
   /* No keyUsage existing, bail out */
   if (loc < 0) {
     return -1;
