@@ -1236,7 +1236,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 		if (pub)
 			printf("; RSA %lu bits\n", getMODULUS_BITS(sess, obj));
 		else
-			printf("; RSA %lu bits\n", get_private_key_length(sess, obj));
+			printf("; RSA \n");
 		break;
 	default:
 		printf("; unknown key algorithm %lu\n", key_type);
