@@ -20,8 +20,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "pkcs15.h"
+#include <opensc/pkcs15.h>
+#include <opensc/log.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -29,7 +29,6 @@
 int sc_pkcs15emu_infocamere_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
 static int (*set_security_env)(sc_card_t *,  const struct sc_security_env *, int);
-static int (*compute_signature)(sc_card_t *, const u8 *, size_t, u8 *, size_t);
 
 static int set_sec_env(sc_card_t *card, const struct sc_security_env *env, int se_num)
 {
@@ -327,20 +326,11 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 	r = sc_select_file(card, &path, NULL);
 
 	if (change_sign) {
-		struct sc_card_operations *new_ops;
-		new_ops = (struct sc_card_operations *) calloc(1, sizeof(*new_ops));
-		if (!new_ops)
-			return SC_ERROR_OUT_OF_MEMORY;
-		/* copy normal cardos card ops */
-		*new_ops = *card->ops;
 		/* save old signature funcs */
-		set_security_env  = new_ops->set_security_env;
-		compute_signature = new_ops->compute_signature;
-		/* set new one              */
-		new_ops->set_security_env  = set_sec_env;
-		new_ops->compute_signature = do_sign;
-		/* use new ops */
-		card->ops = new_ops;
+		set_security_env  = card->ops->set_security_env;
+		/* set new one */
+		card->ops->set_security_env  = set_sec_env;
+		card->ops->compute_signature = do_sign;
 	}
 
 	return 0;
@@ -348,7 +338,6 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 failed: sc_error(card->ctx, "Failed to initialize Infocamere emulation: %s\n",
                         sc_strerror(r));
         return r;
-
 }
 
 static int infocamere_detect_card(sc_pkcs15_card_t *p15card)
