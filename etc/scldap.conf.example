@@ -5,7 +5,7 @@ ldap example {
 	# Hostname for LDAP server (required)
 	ldaphost = "ldap.foobar.tld";
 	# Port for LDAP server
-	ldapport = 0;
+	ldapport = 389;
 	# Scope for ldap search
 	# 0 = LDAP_SCOPE_BASE
 	# 1 = LDAP_SCOPE_ONELEVEL
@@ -30,6 +30,7 @@ ldap example {
 card "FINEID S4-1-1", "VRK-FINSIGN" {
 	ldap "auth certificate" {
 		ldaphost = ldap.example.com;
+		ldapport = 389;
 		scope = 2;
 		base = "dc=example,dc=com";
 		attributes = userCertificate;
@@ -39,11 +40,13 @@ card "FINEID S4-1-1", "VRK-FINSIGN" {
 		# unnecessary, data for crl is usually generated from
 		# auth cert's crlDistributionPoints 
 		ldaphost = ldap.example.com;
+		ldapport = 389;
 		scope = 2;
 		base = "dc=example,dc=com";
 	}
 	ldap "ca certificate" {
 		ldaphost = ldap.example.com;
+		ldapport = 389;
 		scope = 2;
 		base = "dc=example,dc=com";
 		attributes = cACertificate;
@@ -51,6 +54,7 @@ card "FINEID S4-1-1", "VRK-FINSIGN" {
 	}
 	ldap "approx base" {
 		ldaphost = ldap.example.com;
+		ldapport = 389;
 		scope = 2;
 		base = "dc=example,dc=com";
 	}
@@ -59,6 +63,7 @@ card "FINEID S4-1-1", "VRK-FINSIGN" {
 card "FINEID S4-1", "VRK-FINSIGN" {
 	ldap "auth certificate" {
 		ldaphost = ldap.example.com;
+		ldapport = 389;
 		scope = 2;
 		base = "dc=example,dc=com";
 		attributes = userCertificate;
@@ -68,11 +73,13 @@ card "FINEID S4-1", "VRK-FINSIGN" {
 		# unnecessary, data for crl is usually generated from
 		# auth cert's crlDistributionPoints 
 		ldaphost = ldap.example.com;
+		ldapport = 389;
 		scope = 2;
 		base = "dc=example,dc=com";
 	}
 	ldap "ca certificate" {
 		ldaphost = ldap.example.com;
+		ldapport = 389;
 		scope = 2;
 		base = "dc=example,dc=com";
 		attributes = cACertificate;
@@ -80,6 +87,7 @@ card "FINEID S4-1", "VRK-FINSIGN" {
 	}
 	ldap "approx base" {
 		ldaphost = ldap.example.com;
+		ldapport = 389;
 		scope = 2;
 		base = "dc=example,dc=com";
 	}

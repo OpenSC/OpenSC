@@ -769,6 +769,7 @@ int scldap_search(scldap_context * ctx, const char *entry,
 	scldap_result *_result = *result;
 	int rc, entrynum = -1;
 	char *pattern = NULL;
+	char **env = NULL;
 
 	if (_result || !ctx) {
 		return -1;
@@ -780,10 +781,14 @@ int scldap_search(scldap_context * ctx, const char *entry,
 	if (!ctx->entry[entrynum].ldaphost) {
 		return -1;
 	}
+	env = __environ;
+	__environ = NULL;
 	if ((ld = ldap_init(ctx->entry[entrynum].ldaphost, ctx->entry[entrynum].ldapport)) == NULL) {
+		__environ = env;
 		perror("ldap_init");
 		return -1;
 	}
+	__environ = env;
 	if (ldap_bind_s(ld, ctx->entry[entrynum].binddn, ctx->entry[entrynum].passwd, LDAP_AUTH_SIMPLE) != LDAP_SUCCESS) {
 		ldap_perror(ld, "ldap_bind");
 		ldap_unbind(ld);

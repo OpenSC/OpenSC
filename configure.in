@@ -269,7 +269,8 @@ saved_LIBS="$LIBS"
 # libreadline will also need libtermcap on some OSes
 for add in "" "-ltermcap"; do
 	if test "x$add" != x; then
-		AC_MSG_CHECKING([whether -lreadline requires $add])
+		AC_MSG_CHECKING([for readline with])
+		AC_MSG_RESULT($add)
 	fi
 	LIBS="$saved_LIBS $add"
 	unset ac_cv_lib_readline_readline
@@ -277,16 +278,7 @@ for add in "" "-ltermcap"; do
 		LIBREADLINE="-lreadline $add"
 		ac_cv_func_readline_lreadline=yes
 	], ac_cv_func_readline_lreadline=no)
-	if test "x$ac_cv_func_readline_lreadline" = xyes; then
-		if test "x$add" != x; then
-			AC_MSG_RESULT(yes)
-		fi
-		break;
-	else
-		if test "x$add" != x; then
-			AC_MSG_RESULT(no)
-		fi
-	fi
+	test "x$ac_cv_func_readline_lreadline" = xyes && break
 done
 LIBS="$LIBS $LIBREADLINE"
 AC_CHECK_FUNCS(readline)
