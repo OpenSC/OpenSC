@@ -777,8 +777,7 @@ check_key_compatibility(struct sc_pkcs15_card *p15card,
 	unsigned int count;
 
 	count = p15card->card->algorithm_count;
-	info = p15card->card->algorithms;
-	while (count--) {
+	for (info = p15card->card->algorithms; count--; info++) {
 		/* XXX: check for equality, or <= ? */
 		if (info->algorithm != key->algorithm
 		 || info->key_length != key_length)
