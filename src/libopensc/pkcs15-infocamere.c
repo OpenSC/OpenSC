@@ -333,7 +333,7 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 
 	if (change_sign) {
 		struct sc_card_operations *new_ops;
-		new_ops = calloc(0, sizeof(*new_ops));
+		new_ops = calloc(1, sizeof(*new_ops));
 		if (!new_ops)
 			return SC_ERROR_OUT_OF_MEMORY;
 		/* copy normal cardos card ops */
@@ -361,7 +361,7 @@ static int infocamere_detect_card(sc_pkcs15_card_t *p15card)
        sc_card_t *card = p15card->card;
 
        /* check if we have the correct card OS */
-       if (strcmp(card->name, "STARCOS SPK 2.3"))
+       if (strcmp(card->name, "STARCOS SPK 2.3") && strcmp(card->name, "CardOS M4"))
                return SC_ERROR_WRONG_CARD;
        return SC_SUCCESS;
 }
