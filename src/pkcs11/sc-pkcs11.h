@@ -113,8 +113,11 @@ struct sc_pkcs11_object_ops {
 };
 
 struct sc_pkcs11_object {
+	int flags;
         struct sc_pkcs11_object_ops *ops;
 };
+
+#define SC_PKCS11_OBJECT_SEEN	0x0001
 
 
 /*
