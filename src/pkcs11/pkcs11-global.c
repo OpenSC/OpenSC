@@ -413,17 +413,19 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 	 */
 	_locking = NULL;
 	if (args->flags & CKF_OS_LOCKING_OK) {
-#ifdef HAVE_PTHREAD
+#if (defined(HAVE_PTHREAD) && !defined(PKCS11_THREAD_LOCKING))
 		/* FIXME:
-		 * Mozilla uses the CKF_OS_LOCKING_OK flag. But the result
-		 * is that the Mozilla process doesn't end when closing
-		 * Mozilla, so you have to kill the process yourself.
+		 * Mozilla uses the CKF_OS_LOCKING_OK flag in C_Initialize().
+		 * The result is that the Mozilla process doesn't end when
+		 * closing Mozilla, so you have to kill the process yourself.
 		 * (If Mozilla would do a C_Finalize, the sc_pkcs11_free_lock()
 		 * would be called and there wouldn't be a problem.)
 		 * Therefore, we don't use the PTHREAD locking mechanisms, even
 		 * if they are requested. This is the old situation which seems
-		 * work fine for Mozilla, BUT will cause problems for apps
+		 * to work fine for Mozilla, BUT will cause problems for apps
 		 * that use multiple threads to access this lib simultaneously.
+		 * If you do want to use OS threading, compile with
+		 *   -DPKCS11_THREAD_LOCKING
 		 */
 		 return CKR_OK;
 #endif

@@ -47,4 +47,18 @@ Notes
 -----
 
 Netscape seems to show more information about the security module
-than mozilla. Otherwise all stuff is untested.	
+than Mozilla. Otherwise all stuff is untested.	
+
+Thread safety on Linux and Mac OS X:
+Netscape/Mozilla uses the CKF_OS_LOCKING_OK flag in C_Initialize().
+The result is that the browser process doesn't end when closing
+the browser, so you have to kill the process yourself.
+(If the browser would do a C_Finalize, the sc_pkcs11_free_lock()
+would be called and there wouldn't be a problem.)
+Therefore, we don't use the PTHREAD locking mechanisms, even if they
+are requested. This seems to work fine for Mozilla, BUT will cause
+problems for apps that use multiple threads to access this lib
+simultaneously.
+If you do want to use OS threading, compile with -DPKCS11_THREAD_LOCKING
+On Windows, no PTHREAD lib is used and there the problem doesn't
+occur. So there the OS locking is enabled.
