@@ -1,6 +1,6 @@
 # Process this file with automake to create Makefile.in
 
-libdir = ${exec_prefix}/lib/pkcs11
+libdir = @libdir@/pkcs11
 
 MAINTAINERCLEANFILES = Makefile.in
 
