@@ -134,7 +134,7 @@ static struct df_info_s *get_df_info (struct sc_card *card)
 	/* Not found, create it. */
 	dfi = (struct df_info_s *) calloc (1, sizeof *dfi);
 	if (!dfi) {
-		sc_debug(ctx, "out of core while allocating df_info\n");
+		sc_debug(ctx, "out of memory while allocating df_info\n");
 		return NULL;
 	}
 	dfi->pathlen = priv->curpathlen;
@@ -325,10 +325,6 @@ static int mcrd_finish(struct sc_card *card)
 	free(priv);
 	return 0;
 }
-
-
-
-
 
 
 /* Load the rule and keyd file into our private data.
