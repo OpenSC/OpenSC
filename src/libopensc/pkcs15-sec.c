@@ -223,10 +223,6 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	if (prkey->path.len < 2)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (prkey->key_reference >= 0) {
-		path = prkey->path;
-		file_id.len = 0;
-	} else
 	if (prkey->path.len == 2) {
 		path = p15card->file_app->path;
 		file_id = prkey->path;
@@ -301,14 +297,11 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		inlen = buflen;
 	}
 
+        senv.file_ref = file_id;
 	senv.operation = SC_SEC_OPERATION_SIGN;
 	senv.key_ref_len = 1;
 	senv.key_ref[0] = prkey->key_reference & 0xFF;
-	senv.flags = SC_SEC_ENV_KEY_REF_PRESENT;
-	if (file_id.len) {
-		senv.file_ref = file_id;
-		senv.flags |= SC_SEC_ENV_FILE_REF_PRESENT;
-	}
+	senv.flags = SC_SEC_ENV_KEY_REF_PRESENT | SC_SEC_ENV_FILE_REF_PRESENT;
 	senv.flags |= SC_SEC_ENV_ALG_PRESENT;
 
 	r = sc_select_file(p15card->card, &path, NULL);
