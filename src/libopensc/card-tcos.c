@@ -1,5 +1,5 @@
 /*
- * card-setec.c: Support for PKI cards by Setec
+ * card-setec.c: Support for TCOS 2.0 cards
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -21,35 +21,32 @@
 #include "sc-internal.h"
 #include "sc-log.h"
 
-static const char *setec_atrs[] = {
-	/* the current FINEID card has this ATR: */
-	"3B:9F:94:40:1E:00:67:11:43:46:49:53:45:10:52:66:FF:81:90:00",
-	/* this is from a Nokia branded SC */
-	"3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00",
+static const char *tcos_atrs[] = {
+	"3B:BA:96:00:81:31:86:5D:00:64:05:60:02:03:31:80:90:00:66",
 	NULL
 };
 
-static struct sc_card_operations setec_ops;
-static const struct sc_card_driver setec_drv = {
+static struct sc_card_operations tcos_ops;
+static const struct sc_card_driver tcos_drv = {
 	NULL,
-	"Setec smartcards",
-	"setec",
-	&setec_ops
+	"TCOS 2.0 cards",
+	"tcos",
+	&tcos_ops
 };
 
-static int setec_finish(struct sc_card *card)
+static int tcos_finish(struct sc_card *card)
 {
 	return 0;
 }
 
-static int setec_match_card(struct sc_card *card)
+static int tcos_match_card(struct sc_card *card)
 {
 	int i, match = -1;
 
-	for (i = 0; setec_atrs[i] != NULL; i++) {
+	for (i = 0; tcos_atrs[i] != NULL; i++) {
 		u8 defatr[SC_MAX_ATR_SIZE];
 		size_t len = sizeof(defatr);
-		const char *atrp = setec_atrs[i];
+		const char *atrp = tcos_atrs[i];
 
 		if (sc_hex_to_bin(atrp, defatr, &len))
 			continue;
@@ -66,7 +63,7 @@ static int setec_match_card(struct sc_card *card)
 	return 1;
 }
 
-static int setec_init(struct sc_card *card)
+static int tcos_init(struct sc_card *card)
 {
 	card->ops_data = NULL;
 	card->cla = 0x00;
@@ -76,7 +73,7 @@ static int setec_init(struct sc_card *card)
 
 static const struct sc_card_operations *iso_ops = NULL;
 
-static int setec_create_file(struct sc_card *card, struct sc_file *file)
+static int tcos_create_file(struct sc_card *card, struct sc_file *file)
 {
 	struct sc_file tmp;
 	
@@ -86,7 +83,7 @@ static int setec_create_file(struct sc_card *card, struct sc_file *file)
 	return iso_ops->create_file(card, &tmp);
 }
 
-static int setec_set_security_env(struct sc_card *card,
+static int tcos_set_security_env(struct sc_card *card,
 				  const struct sc_security_env *env,
 				  int se_num)
 {
@@ -111,36 +108,14 @@ static int setec_set_security_env(struct sc_card *card,
         return iso_ops->set_security_env(card, env, se_num);
 }
 
-static unsigned int byte_to_acl(u8 byte)
-{
-	switch (byte >> 4) {
-	case 0:
-		return SC_AC_NONE;
-	case 1:
-		return SC_AC_CHV1;
-	case 2:
-		return SC_AC_CHV2;
-	case 4:
-		return SC_AC_TERM;
-	case 15:
-		return SC_AC_NEVER;
-	}
-	return SC_AC_UNKNOWN;
-}
-
 static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 {
-	int i;
-	
-	if (len < 6)
-		return;
-	for (i = 0; i < 6; i++)
-		file->acl[i] = byte_to_acl(buf[i]);
+	return;
 }
 
-static int setec_select_file(struct sc_card *card,
-			       const struct sc_path *in_path,
-			       struct sc_file *file)
+static int tcos_select_file(struct sc_card *card,
+			    const struct sc_path *in_path,
+			    struct sc_file *file)
 {
 	int r;
 	
@@ -152,25 +127,55 @@ static int setec_select_file(struct sc_card *card,
 	return 0;
 }
 
+static int tcos_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+{
+	struct sc_apdu apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 p1s[2] = { 0x01, 0x02 };
+	int r, i, count = 0;
+
+	for (i = 0; i < 2; i++) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, p1s[i], 0);
+		apdu.cla = 0x80;
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+		apdu.le = 256;
+		r = sc_transmit_apdu(card, &apdu);
+		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+		if (r == SC_ERROR_FILE_NOT_FOUND)
+			continue;
+		SC_TEST_RET(card->ctx, r, "Card returned error");
+		if (apdu.resplen > buflen)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		memcpy(buf, apdu.resp, apdu.resplen);
+		buf += apdu.resplen;
+		buflen -= apdu.resplen;
+		count += apdu.resplen;
+	}
+	return count;
+}
+
 static const struct sc_card_driver * sc_get_driver(void)
 {
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
-	setec_ops = *iso_drv->ops;
-	setec_ops.match_card = setec_match_card;
-	setec_ops.init = setec_init;
-        setec_ops.finish = setec_finish;
+	tcos_ops = *iso_drv->ops;
+	tcos_ops.match_card = tcos_match_card;
+	tcos_ops.init = tcos_init;
+        tcos_ops.finish = tcos_finish;
 	if (iso_ops == NULL)
                 iso_ops = iso_drv->ops;
-	setec_ops.create_file = setec_create_file;
-	setec_ops.set_security_env = setec_set_security_env;
-	setec_ops.select_file = setec_select_file;
+	tcos_ops.create_file = tcos_create_file;
+	tcos_ops.set_security_env = tcos_set_security_env;
+	tcos_ops.select_file = tcos_select_file;
+	tcos_ops.list_files = tcos_list_files;
 	
-        return &setec_drv;
+        return &tcos_drv;
 }
 
 #if 1
-const struct sc_card_driver * sc_get_setec_driver(void)
+const struct sc_card_driver * sc_get_tcos_driver(void)
 {
 	return sc_get_driver();
 }

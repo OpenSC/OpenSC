@@ -31,7 +31,7 @@
 
 #include "util.h"
 
-int opt_reader = 0;
+int opt_reader = 0, opt_debug = 0;
 const char *opt_driver = NULL;
 
 struct sc_file current_file;
@@ -41,12 +41,14 @@ struct sc_card *card = NULL;
 
 const struct option options[] = {
 	{ "reader",		1, 0, 'r' },
-	{ "card-driver",	1, 0, 'd' },
+	{ "card-driver",	1, 0, 'D' },
+	{ "debug",		0, 0, 'd' },
 	{ 0, 0, 0, 0 }
 };
 const char *option_help[] = {
 	"Uses reader number <arg> [0]",
-	"Forces the use of driver <arg> [auto-detect]"
+	"Forces the use of driver <arg> [auto-detect]",
+	"Debug output -- maybe supplied several times",
 };
 
 #define CMD_LS		0
@@ -103,17 +105,28 @@ void check_ret(int r, int op, const char *err, const struct sc_file *file)
 
 int arg_to_path(const char *arg, struct sc_path *path)
 {
-	char buf[6];
+	int buf[2];
+	u8 cbuf[2];
 	
 	if (strlen(arg) != 4) {
 		printf("Wrong ID length.\n");
 		return -1;
 	}
-	strcpy(buf, "I");
-        strcat(buf, arg);
-	sc_format_path(buf, path);
-	if (path->len != 2)
+	if (sscanf(arg, "%02X%02X", &buf[0], &buf[1]) != 2) {
+		printf("Invalid ID.\n");
 		return -1;
+	}
+	cbuf[0] = buf[0];
+	cbuf[1] = buf[1];
+	if (cbuf[0] == 0x3F && cbuf[1] == 0x00) {
+		path->len = 2;
+		memcpy(path->value, cbuf, 2);
+		path->type = SC_PATH_TYPE_PATH;
+	} else {
+		*path = current_path;
+		sc_append_path_id(path, cbuf, 2);
+	}
+
 	return 0;	
 }
 
@@ -170,9 +183,8 @@ int do_ls()
 		struct sc_path path;
 		struct sc_file file;
 
-		memcpy(path.value, cur, 2);
-		path.len = 2;
-                path.type = SC_PATH_TYPE_FILE_ID;
+		path = current_path;
+		sc_append_path_id(&path, cur, 2);
 		r = sc_select_file(card, &path, &file);
 		if (r) {
 			check_ret(r, SC_AC_OP_SELECT, "unable to select file", &current_file);
@@ -230,8 +242,7 @@ int do_cd(const char *arg)
 		}
 		return -1;
 	}
-	memcpy(current_path.value + current_path.len, path.value, path.len);
-        current_path.len += path.len;
+	current_path = path;
         current_file = file;
 
 	return 0;
@@ -269,7 +280,7 @@ int read_and_print_record_file(struct sc_file *file)
 	u8 buf[256];
 	int rec, r;
 
-	for (rec = 0; ; rec++) {
+	for (rec = 1; ; rec++) {
 		r = sc_read_record(card, rec, buf, sizeof(buf), SC_READ_RECORD_BY_REC_NR);
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
 			return 0;
@@ -333,20 +344,15 @@ int do_info(const char *arg)
 		file = current_file;
 		not_current = 0;
 	} else {
-		struct sc_path tmppath;
-		
-		if (arg_to_path(arg, &tmppath) != 0) {
+		if (arg_to_path(arg, &path) != 0) {
 			printf("Usage: info [file_id]\n");
 			return -1;
 		}
-		r = sc_select_file(card, &tmppath, &file);
+		r = sc_select_file(card, &path, &file);
 		if (r) {
 			printf("unable to select file: %s\n", sc_strerror(r));
 			return -1;
 		}
-		path = current_path;
-		memcpy(path.value + path.len, tmppath.value, 2);
-		path.len += 2;
 	}
 	switch (file.type) {
 	case SC_FILE_TYPE_WORKING_EF:
@@ -409,6 +415,12 @@ int do_info(const char *arg)
 		printf("%-25s", "Proprietary attributes:");
 		for (i = 0; i < file.prop_attr_len; i++)
 			printf("%02X ", file.prop_attr[i]);
+		printf("\n");
+	}
+	if (file.sec_attr_len) {
+		printf("%-25s", "Security attributes:");
+		for (i = 0; i < file.sec_attr_len; i++)
+			printf("%02X ", file.sec_attr[i]);
 		printf("\n");
 	}
 	printf("\n");
@@ -815,7 +827,7 @@ int main(int argc, char * const argv[])
 	printf("OpenSC Explorer version %s\n", sc_version);
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:c:", options, &long_optind);
+		c = getopt_long(argc, argv, "r:c:d", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -827,12 +839,20 @@ int main(int argc, char * const argv[])
 		case 'c':
 			opt_driver = optarg;
 			break;
+		case 'd':
+			opt_debug++;
+			break;
 		}
 	}
 	r = sc_establish_context(&ctx);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
+	}
+	if (opt_debug) {
+		ctx->error_file = stderr;
+		ctx->debug_file = stdout;
+		ctx->debug = opt_debug;
 	}
 	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
 		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);

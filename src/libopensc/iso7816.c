@@ -122,34 +122,6 @@ static int iso7816_update_binary(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 3, count);
 }
 
-static unsigned int byte_to_acl(u8 byte)
-{
-	switch (byte >> 4) {
-	case 0:
-		return SC_AC_NONE;
-	case 1:
-		return SC_AC_CHV1;
-	case 2:
-		return SC_AC_CHV2;
-	case 4:
-		return SC_AC_TERM;
-	case 15:
-		return SC_AC_NEVER;
-	}
-	return SC_AC_UNKNOWN;
-}
-
-static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
-{
-	/* FIXME: confirm if this is specified in the ISO 7816-9 standard */
-	int i;
-	
-	if (len < 6)
-		return;
-	for (i = 0; i < 6; i++)
-		file->acl[i] = byte_to_acl(buf[i]);
-}
-
 static void process_fci(struct sc_context *ctx, struct sc_file *file,
 		       const u8 *buf, size_t buflen)
 {
@@ -238,10 +210,10 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 		file->prop_attr_len = taglen;
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x86, &taglen);
-	if (tag != NULL && taglen && taglen <= SC_MAX_SEC_ATTR_SIZE)
-		parse_sec_attr(file, tag, taglen);
-	else
-		file->sec_attr_len = 0;
+	if (tag != NULL && taglen && taglen <= SC_MAX_SEC_ATTR_SIZE) {
+		memcpy(file->sec_attr, tag, taglen);
+		file->sec_attr_len = taglen;
+	}
 	file->magic = SC_FILE_MAGIC;
 }
 
@@ -260,9 +232,7 @@ static int iso7816_select_file(struct sc_card *card,
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0, 0);
-	apdu.resp = buf;
-	apdu.resplen = sizeof(buf);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0);
 	
 	switch (in_path->type) {
 	case SC_PATH_TYPE_FILE_ID:
@@ -287,7 +257,7 @@ static int iso7816_select_file(struct sc_card *card,
 	default:
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	apdu.p2 = 0;		/* first record */
+	apdu.p2 = 0;		/* first record, return FCI */
 	apdu.lc = pathlen;
 	apdu.data = path;
 	apdu.datalen = pathlen;
@@ -299,9 +269,16 @@ static int iso7816_select_file(struct sc_card *card,
 		for (i = 0; i < SC_MAX_AC_OPS; i++)
 			file->acl[i] = SC_AC_UNKNOWN;
 		file->path = *in_path;
-	}
-	if (file == NULL)
+
+		apdu.resp = buf;
+		apdu.resplen = sizeof(buf);
+		apdu.le = 256;
+	} else {
 		apdu.resplen = 0;
+		apdu.le = 0;
+		apdu.cse = SC_APDU_CASE_3_SHORT;
+		apdu.p2 = 0x0c;
+	}
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (file == NULL) {
@@ -489,7 +466,7 @@ static int iso7816_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
 	apdu.resp = buf;
 	apdu.resplen = buflen;
-	apdu.le = 0;
+	apdu.le = buflen > 256 ? 256 : buflen;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)

@@ -43,7 +43,6 @@ static int autodetect_class(struct sc_card *card)
 {
 	int classes[] = { 0x00, 0xC0, 0xB0, 0xA0 };
 	int class_count = sizeof(classes)/sizeof(int);
-	u8 buf[2];
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_apdu apdu;
 	int i, r;
@@ -54,26 +53,22 @@ static int autodetect_class(struct sc_card *card)
 		if (card->ctx->debug >= 2)
 			debug(card->ctx, "trying with 0x%02X\n", classes[i]);
 		apdu.cla = classes[i];
-		apdu.cse = SC_APDU_CASE_3_SHORT;
-		memcpy(buf, "\x3F\x00", 2);
-		apdu.data = buf;
-		apdu.datalen = 2;
-		apdu.lc = 2;
-		apdu.resplen = sizeof(rbuf);
-		apdu.resp = rbuf;
-		apdu.ins = 0xA4;
+		apdu.cse = SC_APDU_CASE_1;
+		apdu.ins = 0xC0;
 		apdu.p1 = apdu.p2 = 0;
+		apdu.datalen = 0;
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		if (apdu.sw1 == 0x6E)
+			continue;
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 			break;
 		if (apdu.sw1 == 0x61)
 			break;
-		if (apdu.sw1 == 0x6E)
-			continue;
 		if (card->ctx->debug >= 2)
 			debug(card->ctx, "got strange SWs: 0x%02X 0x%02X\n",
 			      apdu.sw1, apdu.sw2);
+		break;
 	}
 	if (i == class_count)
 		return -1;

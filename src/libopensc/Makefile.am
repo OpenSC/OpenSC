@@ -11,7 +11,7 @@ libopensc_la_SOURCES	= asn1.c base64.c sec.c log.c sc.c card.c iso7816.c \
 			  pkcs15.c pkcs15-cert.c pkcs15-pin.c \
 			  pkcs15-prkey.c pkcs15-sec.c pkcs15-cache.c \
 			  card-setec.c card-flex.c card-gpk.c \
-			  card-emv.c card-default.c
+			  card-tcos.c card-emv.c card-default.c
 libopensc_la_LDFLAGS	= -version-info 0:5:0
 
 if HAVE_SSL

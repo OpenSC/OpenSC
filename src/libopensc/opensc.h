@@ -147,12 +147,13 @@ extern "C" {
 #define SC_READ_RECORD_EF_ID_MASK	0x0001F
 #define SC_READ_RECORD_BY_REC_ID	0x00000
 #define SC_READ_RECORD_BY_REC_NR	0x00100
+#define SC_READ_RECORD_CURRENT		0
 
 /* various maximum values */
 #define SC_MAX_CARD_DRIVERS		16
 #define SC_MAX_CARD_DRIVER_SNAME_SIZE	16
 #define SC_MAX_READERS			4
-#define SC_MAX_APDU_BUFFER_SIZE		255
+#define SC_MAX_APDU_BUFFER_SIZE		258
 #define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PIN_SIZE			16
 #define SC_MAX_ATR_SIZE			33
@@ -505,6 +506,15 @@ int sc_write_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
 		    size_t count, unsigned long flags);
 int sc_update_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
 		     size_t count, unsigned long flags);
+/**
+ * Reads a record from the current (i.e. selected) file.
+ * @param card The card on which to issue the command
+ * @param rec_nr SC_READ_RECORD_CURRENT or a record number beginning from 1
+ * @param buf Pointer to a buffer for storing the data
+ * @param count Number of bytes to read
+ * @param flags Flags
+ * @retval Number of bytes read or an error value
+ */
 int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 * buf,
 		   size_t count, unsigned long flags);
 int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);
@@ -550,6 +560,7 @@ extern const struct sc_card_driver *sc_get_emv_driver(void);
 extern const struct sc_card_driver *sc_get_setec_driver(void);
 extern const struct sc_card_driver *sc_get_flex_driver(void);
 extern const struct sc_card_driver *sc_get_gpk_driver(void);
+extern const struct sc_card_driver *sc_get_tcos_driver(void);
 extern const struct sc_card_driver *sc_get_default_driver(void);
 
 #ifdef  __cplusplus

@@ -259,6 +259,7 @@ int send_apdu(void)
 		apdu.resplen = sizeof(rbuf);
 		apdu.data = NULL;
 		apdu.datalen = 0;
+		apdu.lc = apdu.le = 0;
 		len -= 4;
 		if (len > 1) {
 			apdu.lc = *p++;
@@ -274,6 +275,8 @@ int send_apdu(void)
 			len -= apdu.lc;
 			if (len) {
 				apdu.le = *p++;
+				if (apdu.le == 0)
+					apdu.le = 256;
 				len--;
 				apdu.cse = SC_APDU_CASE_4_SHORT;
 			} else
@@ -284,6 +287,8 @@ int send_apdu(void)
 			}
 		} else if (len == 1) {
 			apdu.le = *p++;
+			if (apdu.le == 0)
+				apdu.le = 256;
 			len--;
 			apdu.cse = SC_APDU_CASE_2_SHORT;
 		} else

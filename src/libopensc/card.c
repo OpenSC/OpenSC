@@ -89,6 +89,14 @@ static int _sc_pcscret_to_error(long rv)
 
 static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 {
+	if (apdu->le > 256) {
+		error(ctx, "Value of Le too big (maximum 256 bytes)\n");
+		SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	if (apdu->lc > 256) {
+		error(ctx, "Value of Lc too big (maximum 256 bytes)\n");
+		SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+	}
 	switch (apdu->cse) {
 	case SC_APDU_CASE_1:
 		if (apdu->datalen > 0) {
@@ -99,6 +107,10 @@ static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 	case SC_APDU_CASE_2_SHORT:
 		if (apdu->datalen > 0) {
 			error(ctx, "Case 2 APDU with data supplied\n");
+			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+		}
+		if (apdu->le == 0) {
+			error(ctx, "Case 2 APDU with no response expected\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (apdu->resplen < apdu->le) {
@@ -115,6 +127,10 @@ static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 	case SC_APDU_CASE_4_SHORT:
 		if (apdu->datalen == 0 || apdu->data == NULL) {
 			error(ctx, "Case 3 APDU with no data supplied\n");
+			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+		}
+		if (apdu->le == 0) {
+			error(ctx, "Case 4 APDU with no response expected\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (apdu->resplen < apdu->le) {
@@ -197,7 +213,10 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		memcpy(data, apdu->data, data_bytes);
 		data += data_bytes;
-		*data++ = (u8) apdu->le;
+		if (apdu->le == 256)
+			*data++ = 0x00;
+		else
+			*data++ = (u8) apdu->le;
 		break;
 	}
 
