@@ -13,7 +13,7 @@ while [ $# -gt 0 ]; do
 	--reader)
 		options="$options $opt $1"
 		shift;;
-	--*)	options="$options $opt";;
+	-*)	options="$options $opt";;
 	*)	scripts="$scripts $opt";;
 	esac
 done
