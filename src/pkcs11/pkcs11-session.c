@@ -59,18 +59,30 @@ CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
 	rv = pool_insert(&session_pool, session, phSession);
 	if (rv != CKR_OK)
                 free(session);
+	else
+		slot->nsessions++;
 
         return rv;
 }
 
 CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) /* the session's handle */
 {
+	struct sc_pkcs11_slot *slot;
 	int rv;
         struct sc_pkcs11_session *session;
 
 	rv = pool_find_and_delete(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
                 return rv;
+
+	/* If we're the last session using this slot, make sure
+	 * we log out */
+	slot = session->slot;
+	slot->nsessions--;
+	if (slot->nsessions == 0 && slot->login_user >= 0) {
+		slot->login_user = -1;
+		slot->card->framework->logout(slot->card, slot->fw_data);
+	}
 
 	free(session);
         return CKR_OK;
