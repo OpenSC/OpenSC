@@ -123,18 +123,39 @@ static const struct sc_card_driver gpk_drv = {
 
 /*
  * Identify the card variant based on the ATR
+ *   returns the variant number or 0 on error
  */
-static struct atrinfo *
+static int
 gpk_identify(struct sc_card *card)
 {
 	struct atrinfo	*ai;
 
+	/* Gemplus GPK docs say we can use just the 
+	 * FMN and PRN fields of the historical bytes
+	 * to recognize a GPK card
+	 *  See Table 43, pp. 188
+	 * We'll use the first 2 bytes as well
+	 */
+	if ( (card->slot->atr_info.hist_bytes_len >= 7)
+		&& (card->slot->atr_info.hist_bytes[0] == 0x80)
+		&& (card->slot->atr_info.hist_bytes[1] == 0x65)
+		&& (card->slot->atr_info.hist_bytes[2] == 0xa2)) /* FMN */
+	{
+		if (card->slot->atr_info.hist_bytes[3] == 0x08){ /* PRN? */
+			return GPK8000;
+		}
+		if (card->slot->atr_info.hist_bytes[3] == 0x09){ /* PRN? */
+			return GPK16000;
+		}
+	}
+
+	/* if the above ATR-analysis fails, check the known ATR list */
 	for (ai = atrlist; ai->atr_len; ai++) {
 		if (card->atr_len >= ai->atr_len
 		 && !memcmp(card->atr, ai->atr, ai->atr_len))
-			return ai;
+			return ai->variant;
 	}
-	return NULL;
+	return 0;
 }
 
 /*
@@ -153,16 +174,17 @@ static int
 gpk_init(struct sc_card *card)
 {
 	struct gpk_private_data *priv;
-	struct atrinfo	*ai;
 	unsigned long	exponent, flags, kg;
+	int variant;
 
-	if (!(ai = gpk_identify(card)))
+	if (!(variant = gpk_identify(card)))
 		return SC_ERROR_INVALID_CARD;
 	card->drv_data = priv = (struct gpk_private_data *) malloc(sizeof(*priv));
 	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(priv, 0, sizeof(*priv));
-	priv->variant = ai->variant;
+	priv->variant = variant;
+
 	/* read/write/update binary expect offset to be the
 	 * number of 32 bit words.
 	 * offset_shift is the shift value.
@@ -177,8 +199,8 @@ gpk_init(struct sc_card *card)
 		| SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_ANSI
 		| SC_ALGORITHM_RSA_PAD_ISO9796;
-	exponent = (ai->variant / 1000 < 16)? 0x10001 : 0;
-	kg = (ai->variant >= 8000)? SC_ALGORITHM_ONBOARD_KEY_GEN : 0;
+	exponent = (variant < 16000)? 0x10001 : 0;
+	kg = (variant >= 8000)? SC_ALGORITHM_ONBOARD_KEY_GEN : 0;
 	_sc_card_add_rsa_alg(card,  512, flags|kg, exponent);
 	_sc_card_add_rsa_alg(card,  768, flags, exponent);
 	_sc_card_add_rsa_alg(card, 1024, flags|kg, exponent);
@@ -736,8 +758,8 @@ gpk_compute_crycks(struct sc_card *card, struct sc_apdu *apdu,
 	apdu->le += 3;
 	if (crycks1)
 		memcpy(crycks1, out, 3);
-	memset(k1, 0, sizeof(k1));
-	memset(k2, 0, sizeof(k2));
+	memset(&k1, 0, sizeof(k1));
+	memset(&k2, 0, sizeof(k2));
 	memset(in, 0, sizeof(in));
 	memset(out, 0, sizeof(out));
 	memset(block, 0, sizeof(block));
@@ -879,8 +901,8 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	if (memcmp(r_rn, out+4, 4) != 0)
 		r = SC_ERROR_INVALID_ARGUMENTS;
 
-	memset(k1, 0, sizeof(k1));
-	memset(k2, 0, sizeof(k2));
+	memset(&k1, 0, sizeof(k1));
+	memset(&k2, 0, sizeof(k2));
 	memset(out, 0, sizeof(out));
 	return r;
 }
@@ -1150,15 +1172,15 @@ gpk_set_security_env(struct sc_card *card,
 		 * so why not use them :) 
 		 */
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
-			context = GPK_AUTH_RSA_SHA;
+			context = GPK_SIGN_RSA_SHA;
 			priv->sec_hash_len = 20;
 		} else
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_MD5_SHA1) {
-			context = GPK_AUTH_RSA_SSL;
+			context = GPK_SIGN_RSA_SSL;
 			priv->sec_hash_len = 36;
 		} else
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_MD5) {
-			context = GPK_AUTH_RSA_MD5;
+			context = GPK_SIGN_RSA_MD5;
 			priv->sec_hash_len = 16;
 		} else {
 			error(card->ctx, "Unsupported signature algorithm");
@@ -1279,7 +1301,7 @@ gpk_hash(struct sc_card *card, const u8 *data, size_t datalen)
 		memset(&apdu, 0, sizeof(apdu));
 		apdu.cse = SC_APDU_CASE_3_SHORT;
 		apdu.cla = 0x80;
-		apdu.ins = 0xDa;
+		apdu.ins = 0xDA;
 		apdu.p1  = chain;
 		apdu.p2  = len;
 		apdu.lc  = len + 2;
@@ -1357,7 +1379,7 @@ gpk_compute_signature(struct sc_card *card, const u8 *data,
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse = SC_APDU_CASE_2_SHORT;
 	apdu.cla = 0x80;
-	apdu.ins = 0x88;
+	apdu.ins = 0x86;
 #if 0
 	/* Don't know why I did this. It conflicts with the spec
 	 * (but it worked with the gpk4k, strange). --okir */
@@ -1461,6 +1483,7 @@ gpk_erase_card(struct sc_card *card)
 	case GPK8000:
 	case GPK8000_8K:
 	case GPK8000_16K:
+	case GPK16000:
 		offset = 0;
 		break;
 
