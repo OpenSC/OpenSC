@@ -52,11 +52,13 @@ static int autodetect_class(struct sc_card *card)
 		if (card->ctx->debug >= 2)
 			debug(card->ctx, "trying with 0x%02X\n", classes[i]);
 		apdu.cla = classes[i];
-		apdu.cse = SC_APDU_CASE_1;
+		apdu.cse = SC_APDU_CASE_2_SHORT;
 		apdu.ins = 0xC0;
 		apdu.p1 = apdu.p2 = 0;
 		apdu.datalen = 0;
-		apdu.lc = apdu.le = 0;
+		apdu.lc = 0;
+		apdu.le = 256;
+		apdu.resplen = sizeof(rbuf);
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x6E)

@@ -37,8 +37,8 @@ static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 		error(ctx, "Value of Le too big (maximum 256 bytes)\n");
 		SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	if (apdu->lc > 256) {
-		error(ctx, "Value of Lc too big (maximum 256 bytes)\n");
+	if (apdu->lc > 255) {
+		error(ctx, "Value of Lc too big (maximum 255 bytes)\n");
 		SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	switch (apdu->cse) {

@@ -24,9 +24,21 @@
 #include <string.h>
 
 static const char *flex_atrs[] = {
-	"3B:95:94:40:FF:63:01:01:02:01", /* Cryptoflex 16k */
-	"3B:85:40:20:68:01:01:05:01",    /* Cryptoflex 8k */
+	"3B:95:94:40:FF:63:01:01:02:01",       /* Cryptoflex 16k */
+	"3B:85:40:20:68:01:01:05:01",          /* Cryptoflex 8k */
 	"3B:19:14:55:90:01:02:02:00:05:04:B0",
+	"3B:02:14:50",                         /* Multiflex 3K */
+	"3B:19:14:55:90:01:02:01:00:05:04:B0", /* Multiflex 4K */
+	"3B:32:15:00:06:80",                   /* Multiflex 8K */
+	"3B:32:15:00:06:95",                   /* Multiflex 8K + full DES option */
+	"3B:19:14:59:01:01:0F:01:00:05:08:B0", /* Multiflex 8K */
+	"3B:19:14:55:90:01:01:01:00:05:08:B0", /* Multiflex 8K */
+	"3B:E2:00:00:40:20:49:06",             /* Cryptoflex */
+	"3B:E2:00:00:40:20:49:05",             /* Cryptoflex + full DES option */
+	"3B:E2:00:00:40:20:49:07",             /* Cryptoflex + Key Generation */
+	"3B:85:40:20:68:01:01:03:05",          /* Cryptoflex + Key Generation */
+	"3B:16:94:81:10:06:01:81:3F",          /* Cyberflex Access Crypto */
+	"3B:16:94:81:10:06:01:81:2F",          /* Cyberflex Access Aug. Crypto */
 	NULL
 };
 
