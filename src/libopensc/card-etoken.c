@@ -71,7 +71,7 @@ int etoken_init(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_APDU_EXT;
 
 	/* Set up algorithm info. */
-	flags = 0
+	flags = SC_ALGORITHM_NEED_USAGE
 #if 0
 		| SC_ALGORITHM_RSA_HASH_MD5
 		| SC_ALGORITHM_RSA_HASH_SHA1
