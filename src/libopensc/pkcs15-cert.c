@@ -34,7 +34,6 @@
 static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen, struct sc_pkcs15_cert *cert)
 {
 	int r;
-	struct sc_pkcs15_pubkey *key = &cert->key;
 	struct sc_algorithm_id pk_alg, sig_alg;
 	sc_pkcs15_der_t pk = { NULL, 0 };
 	struct sc_asn1_entry asn1_version[] = {
@@ -92,11 +91,11 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 
 	cert->version++;
 
-	key->algorithm = pk_alg.algorithm;
+	cert->key.algorithm = pk_alg.algorithm;
 	pk.len >>= 3;	/* convert number of bits to bytes */
-	key->data = pk;
+	cert->key.data = pk;
 
-	r = sc_pkcs15_decode_pubkey(ctx, key, pk.value, pk.len);
+	r = sc_pkcs15_decode_pubkey(ctx, &cert->key, pk.value, pk.len);
 	if (r < 0)
 		free(pk.value);
 	sc_asn1_clear_algorithm_id(&pk_alg);
