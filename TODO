@@ -9,7 +9,14 @@ Nitty gritty details:
 * put generic PEM encoding/decoding functions into libopensc?
 * Merge pkcs11 proxy from Zetes
 * pkcs11: support decrypt for those cards that have it
+* pkcs11: make sure all PIN ops work through pkcs11
+* pkcs11: unblock pins: check for unblock pins in AODF
 * all: support for RSA-PSS
 * pkcs15-init: support SOPIN on Cryptoflex
+* pkcs15-init: use max. possible usage by default
+* pkcs15-init: during keygen, make sure the pubkey usage is right
+* pkcs15-init: when using an unblock PIN, write an AODF entry for it
+  (alternatively: set unblockDisabled flag for those PINs that have no PUK?)
+* pkcs15: fix sc_pkcs15_change_reference_data; add unblock function
 
 
