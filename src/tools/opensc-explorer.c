@@ -788,6 +788,7 @@ usage:
 int do_get(int argc, char **argv)
 {
 	u8 buf[256];
+	u8 fbuf[256];
 	int r, error = 0;
 	size_t count = 0;
         unsigned int idx = 0;
@@ -803,8 +804,13 @@ int do_get(int argc, char **argv)
 	if (argc == 2)
 		filename = argv[1];
 	else {
-		sprintf((char *) buf, "%02X%02X", path.value[0], path.value[1]);
-		filename = (char *) buf;
+		int i = 0;
+		while (2*i < path.len) {
+			sprintf(&fbuf[5*i], "%02X%02X_", path.value[2*i], path.value[2*i+1]);
+			i++;
+		}
+		fbuf[5*i-1] = 0;
+		filename =(char *) &fbuf;
 	}
 	outf = fopen(filename, "w");
 	if (outf == NULL) {
@@ -840,7 +846,8 @@ int do_get(int argc, char **argv)
 		idx += c;
 		count -= c;
 	}
-	printf("Total of %d bytes read.\n", idx);
+	printf("Total of %d bytes read from %s and saved to %s.\n",
+			idx, argv[0], filename);
 err:
 	sc_file_free(file);
 	r = sc_select_file(card, &current_path, NULL);
