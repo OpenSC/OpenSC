@@ -46,7 +46,7 @@
  * The consequences are:
  *
  * For (1): we let the SELECT FILE command return that the file length is
- * a fixed large number (5000) and that each file is a transparant working EF
+ * a fixed large number and that each file is a transparant working EF
  * (except the root dir 3F 00). This way however, there is a problem with the
  * sc_read_binary() function that will only stop reading untill it receivces
  * a 0. Therefore, we use the 'next_idx' trick. Or, if that might fail
@@ -124,7 +124,7 @@ static long t1, t2, tot_read = 0, tot_dur = 0, dur;
  * because this driver has no access to them, it's hardcoded here. If
  * other Belpic cards with other 'settings' appear, we'll have to move
  * these #defines to the struct belpic_priv_data */
-#define BELPIC_MAX_FILE_SIZE		5000
+#define BELPIC_MAX_FILE_SIZE		65535
 #define BELPIC_PIN_BUF_SIZE		8
 #define BELPIC_MIN_USER_PIN_LEN		4
 #define BELPIC_MAX_USER_PIN_LEN		12
@@ -1015,6 +1015,8 @@ static int belpic_init(struct sc_card *card)
 
 	/* State that we have an RNG */
 	card->caps |= SC_CARD_CAP_RNG;
+	/* State that we don't return FCI (no file type, no file size, ...) */
+	card->caps |= SC_CARD_CAP_NO_FCI;
 
 	/* Language prefences */
 	priv->lang = -1;
