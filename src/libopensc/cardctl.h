@@ -9,6 +9,7 @@
  * 	0x0000xxxx	generic
  * 	0x4C4658xx	Cryptoflex
  * 	0x47504Bxx	GPK
+ *      0x544353xx      TCOS
  */
 
 #ifndef _OPENSC_CARDCTL_H
@@ -45,6 +46,12 @@ enum {
 	 */
 	SC_CARDCTL_MIOCOS_BASE = _CTL_PREFIX('M', 'I', 'O'),
 	SC_CARDCTL_MIOCOS_CREATE_AC,
+
+        /*
+         * TCOS specific calls
+         */
+        SC_CARDCTL_TCOS_BASE = _CTL_PREFIX('T','C','S'),
+        SC_CARDCTL_TCOS_SETPERM
 };
 
 /*
