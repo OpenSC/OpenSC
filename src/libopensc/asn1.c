@@ -491,7 +491,8 @@ static int asn1_parse_path(struct sc_context *ctx, const u8 *in, int len,
 	r = asn1_parse(ctx, asn1_path, in, len, NULL, NULL, 0, depth + 1);
 	if (r)
 		return r;
-	
+	path->type = SC_PATH_TYPE_PATH;
+
 	return 0;
 }
 

@@ -155,6 +155,7 @@ static int parse_dir(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 		card->label = strdup("(unknown)");
 	memcpy(card->file_app.path.value, path, path_len);
 	card->file_app.path.len = path_len;	
+	card->file_app.path.type = SC_PATH_TYPE_PATH;
 	
 	return 0;
 }
@@ -185,6 +186,8 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 			return r;
 		switch (r) {
 		case 0:
+			if (card->file_prkdf.path.len)
+				error(card->card->ctx, "warning: card has too many PrKDF's\n");
 			card->file_prkdf.path = path;
 			break;
 		case 1:
@@ -197,6 +200,8 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 			card->cdf_count++;
 			break;
 		case 3:
+			if (card->file_dodf.path.len)
+				error(card->card->ctx, "warning: card has too many DODF's\n");
 			card->file_dodf.path = path;
 			break;
 		case 4:
@@ -214,6 +219,7 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 
 static const struct sc_pkcs15_defaults * find_defaults(u8 *dir, int dirlen)
 {
+#if 0
 	int i = 0;
 	const struct sc_pkcs15_defaults *match = NULL;
 
@@ -234,6 +240,8 @@ static const struct sc_pkcs15_defaults * find_defaults(u8 *dir, int dirlen)
 		break;
 	}
 	return match;
+#endif
+	return NULL;
 }
 
 int sc_pkcs15_bind(struct sc_card *card,
@@ -246,16 +254,15 @@ int sc_pkcs15_bind(struct sc_card *card,
 	const struct sc_pkcs15_defaults *defaults = NULL;
 
 	assert(card != NULL && p15card_out != NULL);
+	SC_FUNC_CALLED(card->ctx, 1);
 	p15card = malloc(sizeof(struct sc_pkcs15_card));
 	if (p15card == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(p15card, 0, sizeof(struct sc_pkcs15_card));
 	p15card->card = card;
 
-	memcpy(tmppath.value, "\x2F\x00", 2);
-	tmppath.len = 2;
-	err = sc_select_file(card, &p15card->file_dir, &tmppath,
-			     SC_SELECT_FILE_BY_PATH);
+	sc_format_path("2F00", &tmppath);
+	err = sc_select_file(card, &p15card->file_dir, &tmppath);
 	if (err)
 		goto error;
 	err = sc_read_binary(card, 0, buf, p15card->file_dir.size);
@@ -270,7 +277,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
 		goto error;
 	}
-	if (p15card->card->ctx->use_cache)
+	if (p15card->use_cache)
 		defaults = find_defaults(buf, err);
 	if (defaults == NULL) {
 		if (p15card->file_odf.path.len == 0) {
@@ -279,8 +286,8 @@ int sc_pkcs15_bind(struct sc_card *card,
 			tmppath.len += 2;
 		} else
 			tmppath = p15card->file_odf.path;
-		err = sc_select_file(card, &p15card->file_odf, &tmppath,
-				     SC_SELECT_FILE_BY_PATH);
+		
+		err = sc_select_file(card, &p15card->file_odf, &tmppath);
 		if (err)
 			goto error;
 		err = sc_read_binary(card, 0, buf, p15card->file_odf.size);
@@ -305,8 +312,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 		defaults->defaults_func(p15card, defaults->arg);
 		tmppath = p15card->file_tokeninfo.path;
 	}
-	err = sc_select_file(card, &p15card->file_tokeninfo, &tmppath,
-			     SC_SELECT_FILE_BY_PATH);
+	err = sc_select_file(card, &p15card->file_tokeninfo, &tmppath);
 	if (err)
 		goto error;
 	err = sc_read_binary(card, 0, buf, p15card->file_tokeninfo.size);
@@ -317,6 +323,9 @@ int sc_pkcs15_bind(struct sc_card *card,
 		goto error;
 	}
 	parse_tokeninfo(p15card, buf, err);
+
+	p15card->use_cache = card->ctx->use_cache;
+
 	*p15card_out = p15card;
 	return 0;
 error:
@@ -326,42 +335,12 @@ error:
 
 int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 {
+	assert(p15card != NULL);
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	free(p15card->label);
 	free(p15card->serial_number);
 	free(p15card->manufacturer_id);
 	free(p15card);
-	return 0;
-}
-
-int sc_pkcs15_parse_common_object_attr(struct sc_pkcs15_common_obj_attr *attr,
-				       const u8 * buf, int buflen)
-{
-	int taglen;
-	const u8 *tag;
-
-	tag = sc_asn1_find_tag(buf, buflen, 0x0C, &taglen);	/* UTF8STRING */
-	if (tag != NULL && taglen < SC_PKCS15_MAX_LABEL_SIZE) {
-		memcpy(attr->label, tag, taglen);
-		attr->label[taglen] = 0;
-	} else
-		attr->label[0] = 0;
-	tag = sc_asn1_find_tag(buf, buflen, 0x03, &taglen);	/* BIT STRING */
-	if (tag != NULL) {
-		if (sc_asn1_decode_bit_string(buf, buflen, &attr->flags,
-					      sizeof(attr->flags)) < 0)
-			attr->flags = 0;
-	} else
-		attr->flags = 0;
-	tag = sc_asn1_find_tag(buf, buflen, 0x04, &taglen);	/* OCTET STRING */
-	if (tag != NULL) {
-		memcpy(attr->auth_id.value, tag, taglen);
-		attr->auth_id.len = taglen;
-	} else
-		attr->auth_id.len = 0;
-
-	/* FIXME: parse rest */
-	attr->user_consent = 0;
-
 	return 0;
 }
 

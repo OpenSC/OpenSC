@@ -103,8 +103,7 @@ static int get_pins_from_file(struct sc_pkcs15_card *card,
 	u8 buf[2048];
 	const u8 *p = buf;
 
-	r = sc_select_file(card->card, file, &file->path,
-			   SC_SELECT_FILE_BY_PATH);
+	r = sc_select_file(card->card, file, &file->path);
 	if (r)
 		return r;
 	if (file->size > sizeof(buf))
@@ -170,8 +169,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	if (pinlen > pin->stored_length || pinlen < pin->min_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
 	card = p15card->card;
-	r = sc_select_file(card, &file, &pin->path,
-			   SC_SELECT_FILE_BY_PATH);
+	r = sc_select_file(card, &file, &pin->path);
 	if (r)
 		return r;
 
@@ -205,8 +203,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	if ((oldpinlen < pin->min_length) || (newpinlen < pin->min_length))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	card = p15card->card;
-	r = sc_select_file(card, &file, &pin->path,
-			   SC_SELECT_FILE_BY_PATH);
+	r = sc_select_file(card, &file, &pin->path);
 	if (r)
 		return r;
 

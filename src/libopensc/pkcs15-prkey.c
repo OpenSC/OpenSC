@@ -98,8 +98,7 @@ static int get_prkeys_from_file(struct sc_pkcs15_card *card,
 	u8 buf[2048];
 	const u8 *p = buf;
 
-	r = sc_select_file(card->card, file, &file->path,
-			   SC_SELECT_FILE_BY_PATH);
+	r = sc_select_file(card->card, file, &file->path);
 	if (r)
 		return r;
 	if (file->size > sizeof(buf))

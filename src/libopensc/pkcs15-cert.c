@@ -164,6 +164,8 @@ static int find_cached_cert(struct sc_pkcs15_card *p15card,
 
 	if (getuid() != geteuid())  /* no caching in SUID processes */
 		return -1;
+	if (p15card->use_cache == 0)
+		return -1;
 	
 	r = generate_cert_filename(p15card, info, fname, sizeof(fname));
 	if (r)
@@ -227,8 +229,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	r = find_cached_cert(p15card, info, &data, &len);
 	if (r) {
-		r = sc_select_file(p15card->card, &file, &info->path,
-				   SC_SELECT_FILE_BY_PATH);
+		r = sc_select_file(p15card->card, &file, &info->path);
 		if (r)
 			return r;
 		data = malloc(file.size);
@@ -321,8 +322,7 @@ static int get_certs_from_file(struct sc_pkcs15_card *card,
 	u8 buf[2048];
 	const u8 *p = buf;
 
-	r = sc_select_file(card->card, file, &file->path,
-			   SC_SELECT_FILE_BY_PATH);
+	r = sc_select_file(card->card, file, &file->path);
 	if (r)
 		return r;
 	if (file->size > sizeof(buf))

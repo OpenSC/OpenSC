@@ -161,6 +161,8 @@ struct sc_pkcs15_card {
 	struct sc_file file_aodf[SC_PKCS15_MAX_AODFS];
 	int aodf_count;
 	struct sc_file file_dodf;
+
+	int use_cache;
 };
 
 #define SC_PKCS15_CARD_FLAG_READONLY		0x01
@@ -228,9 +230,6 @@ int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
 			 const struct sc_pkcs15_id *id2);
 void sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
-
-int sc_pkcs15_parse_common_object_attr(struct sc_pkcs15_common_obj_attr *attr,
-				       const u8 * buf, int buflen);
 
 extern const struct sc_pkcs15_defaults sc_pkcs15_card_table[];
 

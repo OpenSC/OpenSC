@@ -59,6 +59,7 @@ extern "C" {
 #define SC_ERROR_ASN1_OBJECT_NOT_FOUND		-1026
 #define SC_ERROR_ASN1_END_OF_CONTENTS		-1027
 #define SC_ERROR_TOO_MANY_OBJECTS		-1028
+#define SC_ERROR_INVALID_CARD			-1029
 
 #define SC_APDU_CASE_NONE		0
 #define SC_APDU_CASE_1                  1
@@ -95,6 +96,7 @@ extern "C" {
 #define SC_FILE_EF_LINEAR_FIXED		0x02
 #define SC_FILE_EF_LINEAR_FIXED_TLV	0x03
 
+#define SC_MAX_CARD_DRIVERS		16
 #define SC_MAX_READERS			4
 #define SC_MAX_APDU_BUFFER_SIZE		255
 #define SC_MAX_PATH_SIZE		16
@@ -111,10 +113,16 @@ struct sc_object_id {
 	int value[SC_ASN1_MAX_OBJECT_ID_OCTETS];
 };
 
+#define SC_PATH_TYPE_FILE_ID	0
+#define SC_PATH_TYPE_DF_NAME	1
+#define SC_PATH_TYPE_PATH	2
+
 struct sc_path {
 	u8 value[SC_MAX_PATH_SIZE];
 	size_t len;
 	int index;
+
+	int type;
 };
 
 struct sc_file {
@@ -143,11 +151,36 @@ struct sc_security_env {
 	int key_ref;
 };
 
-struct sc_card;
+struct sc_card {
+	int cla;
+	struct sc_context *ctx;
+
+	SCARDHANDLE pcsc_card;
+	int reader;
+	u8 atr[SC_MAX_ATR_SIZE];
+	size_t atr_len;
+	
+	pthread_mutex_t mutex;
+	const struct sc_card_operations *ops;
+	void *ops_data;
+};
 
 struct sc_card_operations {
+	/* Called in sc_connect_card().  Must return 1, if the current
+	 * card can be handled with this driver, or 0 otherwise.  ATR
+	 * field of the sc_card struct is filled in before calling
+	 * this function. */
+	int (*match_card)(struct sc_card *card);
+
+	/* Called when ATR of the inserted card matches an entry in ATR
+	 * table.  May return SC_ERROR_INVALID_CARD to indicate that
+	 * the card cannot be handled with this driver. */
 	int (*init)(struct sc_card *card);
+	/* Called when the card object is being freed.  finish() has to
+	 * deallocate all possible private data. */
 	int (*finish)(struct sc_card *card);
+	
+	/* ISO 7816-4 functions */
 
 	int (*read_binary)(struct sc_card *card, unsigned int idx,
 			   u8 * buf, size_t count);
@@ -157,6 +190,8 @@ struct sc_card_operations {
 			     const u8 * buf, size_t count);
 	int (*erase_binary)(struct sc_card *card, unsigned int idx,
 			    size_t count);
+	/* These may be left NULL.  If not present, multiple calls
+	 * to read_binary et al. will be made. */
 	int (*read_binary_large)(struct sc_card *card, unsigned int idx,
 				 u8 * buf, size_t count);
 	int (*write_binary_large)(struct sc_card *card, unsigned int idx,
@@ -164,17 +199,30 @@ struct sc_card_operations {
 	int (*update_binary_large)(struct sc_card *card, unsigned int idx,
 				   const u8 * buf, size_t count);
 	/* possibly TODO: record handling */
+
+	/* select_file: Does the equivalent of SELECT FILE command specified
+	 *   in ISO7816-4. Stores information about the selected file to
+	 *   <file>, if not NULL. */	
 	int (*select_file)(struct sc_card *card, struct sc_file *file,
-			   const struct sc_path *path, int selection_type);
+			   const struct sc_path *path);
 	int (*get_response)(struct sc_card *card, u8 * buf, size_t count);
 	int (*get_challenge)(struct sc_card *card, u8 * buf, size_t count);
 
 	/* ISO 7816-8 */
 	int (*verify)(struct sc_card *card, int ref_qualifier,
 		      const u8 *data, size_t data_len, int *tries_left);
-	int (*restore_security_env)(struct sc_card *card, int se_num);
+
+	/* restore_security_env:  Restores a previously saved security
+	 *   environment, and stores information about the environment to
+	 *   <env_out>, if not NULL. */
+	int (*restore_security_env)(struct sc_card *card, int se_num,
+				    struct sc_security_env *env_out);
+
+	/* set_security_env:  Initializes the security environment on card
+	 *   according to <env>, and stores the environment as <se_num> on the
+	 *   card. If se_num <= 0, the environment will not be stored. */
 	int (*set_security_env)(struct sc_card *card,
-			        const struct sc_security_env *env);
+			        const struct sc_security_env *env, int se_num);
 	int (*decipher)(struct sc_card *card, const u8 * crgram,
 		        size_t crgram_len, u8 * out, size_t outlen);
 	int (*compute_signature)(struct sc_card *card, const u8 * data,
@@ -188,16 +236,9 @@ struct sc_card_operations {
 				   const u8 *newref, size_t newlen);
 };
 
-struct sc_card {
-	int cla;
-	struct sc_context *ctx;
-
-	SCARDHANDLE pcsc_card;
-	int reader;
-	u8 atr[SC_MAX_ATR_SIZE];
-	size_t atr_len;
-	
-	pthread_mutex_t mutex;
+struct sc_card_driver {
+	char *libpath; /* NULL, if compiled in */
+	char *name;
 	struct sc_card_operations *ops;
 };
 
@@ -209,6 +250,7 @@ struct sc_context {
 	int debug;
 
 	int use_std_output, use_cache;
+	const  struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS];
 };
 
 struct sc_apdu {
@@ -222,13 +264,6 @@ struct sc_apdu {
 	int no_response;	/* No response required */
 
 	unsigned int sw1, sw2;
-};
-
-
-struct sc_defaults {
-	const char *atr;
-	int (*defaults_func)(void *);
-	int (*pkcs15_defaults_func)(void *);
 };
 
 /* Base64 encoding/decoding functions */
@@ -263,9 +298,9 @@ int sc_unlock(struct sc_card *card);
 
 /* ISO 7816-4 related functions */
 int sc_select_file(struct sc_card *card, struct sc_file *file,
-		   const struct sc_path *path, int pathtype);
-int sc_read_binary(struct sc_card *card, int idx, u8 * buf, size_t count);
-int sc_get_random(struct sc_card *card, u8 * rndout, size_t len);
+		   const struct sc_path *path);
+int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf, size_t count);
+int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);
 
 /* ISO 7816-8 related functions */
 int sc_restore_security_env(struct sc_card *card, int se_num);
@@ -297,10 +332,12 @@ int sc_file_valid(const struct sc_file *file);
 void sc_print_binary(FILE *f, const u8 *buf, int len);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2);
+void sc_format_path(const char *path_in, struct sc_path *path_out);
 
 extern const char *sc_version;
 
-extern const struct sc_defaults sc_card_table[];
+extern const struct sc_card_driver *sc_get_iso7816_driver(void);
+extern const struct sc_card_driver *sc_get_setec_driver(void);
 
 #ifdef  __cplusplus
 }

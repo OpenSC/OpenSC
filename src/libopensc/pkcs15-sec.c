@@ -42,14 +42,16 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	
 	SC_FUNC_CALLED(ctx, 1);
 	r = sc_select_file(p15card->card, &p15card->file_app,
-			   &p15card->file_app.path, SC_SELECT_FILE_BY_PATH);
+			   &p15card->file_app.path);
 	SC_TEST_RET(ctx, r, "sc_select_file() failed");
 	r = sc_select_file(p15card->card, &p15card->file_app,
-			   &p15card->file_app.path, SC_SELECT_FILE_BY_PATH);
+			   &p15card->file_app.path);
 	SC_TEST_RET(ctx, r, "sc_select_file() failed");
-	usleep(100*1000); /* PC/SC Lite quirks */
+#if 0
+	/* FIXME! */
 	r = sc_restore_security_env(p15card->card, 0); /* empty SE */
 	SC_TEST_RET(ctx, r, "sc_restore_security_env() failed");
+#endif
 	r = sc_set_security_env(p15card->card, &senv);
 	SC_TEST_RET(ctx, r, "sc_set_security_env() failed");
 	r = sc_decipher(p15card->card, in, inlen, out, outlen);
@@ -81,11 +83,13 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	
 	SC_FUNC_CALLED(ctx, 1);
 	r = sc_select_file(p15card->card, &p15card->file_app,
-			   &p15card->file_app.path, SC_SELECT_FILE_BY_PATH);
+			   &p15card->file_app.path);
 	SC_TEST_RET(ctx, r, "sc_select_file() failed");
-	usleep(100*1000); /* PC/SC Lite quirks */
+#if 0
+	/* FIXME! */
 	r = sc_restore_security_env(p15card->card, 0); /* empty SE */
 	SC_TEST_RET(ctx, r, "sc_restore_security_env() failed");
+#endif
 	r = sc_set_security_env(p15card->card, &senv);
 	SC_TEST_RET(ctx, r, "sc_set_security_env() failed");
 	r = sc_compute_signature(p15card->card, in, inlen, out, outlen);
