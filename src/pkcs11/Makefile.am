@@ -44,8 +44,6 @@ pkcs11-jar: jar-dir
 		 -k"testcert" jar-dir
 
 install-exec-local: install-libLTLIBRARIES
-	-rm -f $(DESTDIR)$(libdir)/opensc-pkcs11.a $(DESTDIR)$(libdir)/opensc-pkcs11.la
-	-rm -f $(DESTDIR)$(libdir)/opensc-spy.a $(DESTDIR)$(libdir)/opensc-spy.la
 if HAVE_BUNDLES
 	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(libdir)/opensc-pkcs11.so \
 		$(DESTDIR)$(bundledir)/
