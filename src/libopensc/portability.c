@@ -19,8 +19,14 @@
  */
 
 #include "internal.h"
+#include "opensc.h"
 #include <assert.h>
 #include <stdlib.h>
+#ifndef _WIN32
+#include <sys/time.h>
+#else
+#include <sys/timeb.h>
+#endif
 
 #if defined(HAVE_PTHREAD)
 #include <pthread.h>
@@ -109,5 +115,37 @@ void
 sc_mutex_free(sc_mutex_t *p)
 {
 	/* NOP */
+}
+#endif
+
+#ifndef _WIN32
+sysdep_timestamp_t sc_current_time()
+{
+	struct timeval tv;
+	struct timezone tz;
+	sysdep_timestamp_t curr;
+
+	if (gettimeofday(&tv, &tz) != 0)
+		return 0;
+
+	curr = tv.tv_sec;
+	curr *= 1000;
+	curr += tv.tv_usec / 1000;
+
+	return curr;
+}
+#else
+sysdep_timestamp_t sc_current_time()
+{
+	struct _timeb time_buf;
+	sysdep_timestamp_t curr;
+
+	_ftime(&time_buf);
+
+	curr = time_buf.time;
+	curr *= 1000;
+	curr += time_buf.millitm;
+
+	return curr;
 }
 #endif

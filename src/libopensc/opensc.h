@@ -174,6 +174,13 @@ extern "C" {
 #define SC_ALGORITHM_RSA_HASH_MD5_SHA1	0x00000080
 #define SC_ALGORITHM_RSA_HASH_RIPEMD160	0x00000100
 
+/* A 64-bit uint, used in sc_current_time() */
+#ifndef _WIN32
+typedef unsigned long long sysdep_timestamp_t;
+#else
+typedef unsigned __int64 sysdep_timestamp_t;
+#endif
+
 /* Event masks for sc_wait_for_event() */
 #define SC_EVENT_CARD_INSERTED		0x0001
 #define SC_EVENT_CARD_REMOVED		0x0002
@@ -581,6 +588,9 @@ typedef struct sc_context sc_context_t;
 int sc_base64_encode(const u8 *in, size_t inlen, u8 *out, size_t outlen,
 		     size_t linelength);
 int sc_base64_decode(const char *in, u8 *out, size_t outlen);
+
+/* Returns the current time in milliseconds */
+sysdep_timestamp_t sc_current_time();
 
 /* APDU handling functions */
 int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
