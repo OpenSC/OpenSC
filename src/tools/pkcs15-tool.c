@@ -31,6 +31,7 @@ int opt_reader = -1, opt_debug = 0, opt_wait = 0;
 int opt_no_cache = 0;
 char * opt_auth_id;
 char * opt_cert = NULL;
+char * opt_data = NULL;
 char * opt_pubkey = NULL;
 char * opt_outfile = NULL;
 char * opt_newpin = NULL;
@@ -81,7 +82,7 @@ const char *option_help[] = {
 	"Stores card info to cache",
 	"Reads certificate with ID <arg>",
 	"Lists certificates",
-	"Reads data object with ID <arg>",
+	"Reads data object with label <arg>",
 	"Lists data objects",
 	"Lists PIN codes",
 	"Unblock PIN code",
@@ -210,7 +211,6 @@ print_data_object(const char *kind, const u8*data, size_t data_len)
 			printf(" %02X", data[i]);
 		printf(" >\n");
 	}
-	printf(" >\n");
 	return 0;
 }
 
@@ -258,7 +258,7 @@ int read_data_object(void)
 	struct sc_pkcs15_object *objs[32];
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
-	sc_pkcs15_hex_string_to_id(opt_cert, &id);
+	sc_pkcs15_hex_string_to_id(opt_data, &id);
 	
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, objs, 32);
 	if (r < 0) {
@@ -270,11 +270,11 @@ int read_data_object(void)
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 		struct sc_pkcs15_data *data_object;
 
-		if (sc_pkcs15_compare_id(&id, &cinfo->id) != 1)
+		if (memcmp(opt_data, &cinfo->app_label, strlen(opt_data)) != 0)
 			continue;
 			
 		if (!quiet)
-			printf("Reading data object with ID '%s'\n", opt_cert);
+			printf("Reading data object with label '%s'\n", opt_data);
 		r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
 		if (r) {
 			fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
@@ -284,7 +284,7 @@ int read_data_object(void)
 		sc_pkcs15_free_data_object(data_object);
 		return r;
 	}
-	fprintf(stderr, "Data object with ID '%s' not found.\n", opt_cert);
+	fprintf(stderr, "Data object with label '%s' not found.\n", opt_data);
 	return 2;
 }
 
@@ -305,7 +305,7 @@ int list_data_objects(void)
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 		struct sc_pkcs15_data *data_object;
 
-		printf("Reading data object <%i> ---------------------------\n", i);
+		printf("Reading data object <%i>, label = '%s'\n", i, cinfo->app_label);
 		r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
 		if (r) {
 			fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
@@ -830,7 +830,7 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case 'R':
-			opt_cert = optarg;
+			opt_data = optarg;
 			do_read_data_object = 1;
 			action_count++;
 			break;
