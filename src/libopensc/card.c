@@ -188,9 +188,18 @@ static int sc_transceive(struct sc_card *card, struct sc_apdu *apdu)
 	if (card->ctx->debug >= 5) {
 		char buf[2048];
 
-		buf[0] = 0;
+#ifndef OPENSC_DONT_LOG_SENSITIVE
 		if (!apdu->sensitive || card->ctx->debug >= 6)
+#else
+		if (!apdu->sensitive)
+#endif
 			sc_hex_dump(card->ctx, sbuf, sendsize, buf, sizeof(buf));
+		else
+			/* sensitive information: just print the command
+			 * header and no data */
+			snprintf(buf, sizeof(buf), "%02x %02x %02x %02x [sensitve data]",
+				apdu->cla, apdu->ins, apdu->p1, apdu->p2);
+
 		sc_debug(card->ctx, "Sending %d bytes (resp. %d bytes%s):\n%s",
 			sendsize, recvsize,
 			apdu->sensitive ? ", sensitive" : "", buf);
