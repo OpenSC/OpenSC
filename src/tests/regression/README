@@ -5,3 +5,46 @@ work in progress, hopefully we will add more scripts by and by.
 
 Run the test scripts from this directory. You need to have
 OpenSC fully built in order for them to do anything useful.
+
+All test scripts accept the following set of arguments
+
+ --use-default-transport-keys
+	if your card requires a transport key in pkcs15-init (for
+	instance, the GPK and Cryptoflex do), and the default transport
+	key as determined by OpenSC works fine.  [If it doesn't please
+	get in contact with us!]
+
+ --split-key
+	For CardOS/M4 - when creating or installing a key intended for
+	both signing and decryption, pkcs15-init must install a the same
+	key twice, with different usage labels: one for each usage. This
+	is called a "split key".
+
+ --reader N
+ 	Use the specified reader
+
+
+ *** ATTENTION ***
+
+Some cards require that you present one or several PINs when erasing
+them. That is because these cards to not support a native mechanism
+for erasing the card. In this case, OpenSC will perform a recursive
+removal of files, pretty much like a "rm -rf" in Unix.
+
+As some of these files are PIN protected against deletion, we have
+to present the PIN before being allowed to do so. For this reason,
+the tests may ask you for various PINs.
+
+When asking for the SO PIN, the prompt will always refer to the
+"Security Officer PIN". Any other prompts (Test User PIN, etc)
+refer to the user PIN.
+
+All tests use the same PINs:
+
+	999999		as the SO PIN, if one is used
+	888888		as the SO PUK, if one is used
+	0000		as the user PIN, if one is used
+	111111		as the user PUK, if one is used
+
+Some tests will install more than one user PIN, but they will
+all have the same value.

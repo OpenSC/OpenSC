@@ -7,8 +7,7 @@
 . functions
 
 p15_init --no-so-pin
-p15_set_pin -a 01
-p15_gen_key rsa/1024 -a 01 --key-usage sign,decrypt
+p15_gen_key rsa/1024 --key-usage decrypt --insecure
 p15_validate
 p15_erase
 

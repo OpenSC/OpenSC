@@ -27,12 +27,20 @@ if [ -z "$__p15init__" ]; then
 	# Eat any arguments given on the command line
 	while [ $# -ne 0 ]; do
 		case $1 in
-		--use-default-transport-key|--split-key)
+		--*)	var=`expr "$1" : '--\(.*\)'|tr - _`
+			eval opt_$var=true;;
+		esac
+
+		case $1 in
+		--use-default-transport-keys|\
+		--split-key|\
+		--no-prompt)
 			p15init="$p15init $1";;
 		--reader)
 			P15_READER=$2
 			shift;;
-		*)	fatal "Unexpected option $1";;
+		*)	echo "Unexpected option $1" >&2
+			exit 1;;
 		esac
 		shift
 	done
@@ -125,7 +133,8 @@ function run_display_output {
 
 function run_check_status {
 
-	echo ":::::: run_check_status $*"
+	echo ":::::: run_check_status $*" >&3
+	cp /dev/null $p15log
 	"$@" || fail "Command failed (status code $?): $*"
 }
 
@@ -134,7 +143,8 @@ function run_check_output {
 	msg=$1
 	shift
 
-	echo ":::::: run_check_output \"$1\" $*"
+	echo ":::::: run_check_output \"$1\" $*" >&3
+	cp /dev/null $p15log
 	out=`eval "$@" 2>&1`
 
 	# Make sure output makes it to log file
@@ -145,3 +155,100 @@ function run_check_output {
 	*)	fail "Command failed (expected $msg): $*";;
 	esac
 }
+
+##################################################################
+#
+# Common pkcs15 functions
+#
+##################################################################
+function p15_init {
+
+	msg <<-EOF
+	:::
+	::: Testing pkcs15-init
+	:::
+	::: The PINs used by this test script (if applicable) are
+	:::   Test SO PIN	abcdef
+	:::   Test User PIN	0000
+	:::
+EOF
+
+	msg <<-EOF
+	:::
+	::: The following test will erase your card, if possible,
+	::: and create a new pkcs15 structure on it.
+	:::
+EOF
+
+	if [ -z $opt_no_prompt ] &&
+	  ! yesno "Erase and re-initialize card?"; then
+		msg "Aborting test"
+		exit 0
+	fi
+
+	msg "Initializing card ($*)"
+	run_display_output $p15init -EC \
+			--label "OpenSC Test Card" \
+			--serial DEADBEEF \
+			$* >&3 >&4
+	success
+}
+
+function p15_erase {
+
+	msg "Erasing card ($*)"
+	run_display_output $p15init --erase
+			"$@" >&3 >&4
+	success
+}
+
+function p15_set_pin {
+
+	msg "Setting user PIN ($*)"
+	run_display_output $p15init -P \
+		--label "Test User PIN" \
+		--pin "0000" --puk "111111" \
+		"$@"
+	success
+
+}
+
+function p15_gen_key {
+
+	type=$1
+	shift
+
+	msg "Generating key ($*)"
+	run_display_output $p15init -G $type \
+		--split-key \
+		--pin 0000 \
+		--id 45 \
+		--label "Test User Key" \
+		"$@"
+	success
+}
+
+function p15_store_key {
+
+	keyfile=$1
+	shift
+
+	msg "Storing private key $keyfile ($*)"
+	run_display_output $p15init -S $keyfile \
+		--split-key \
+		--pin 0000 \
+		--id 45 \
+		--label "Test User Key" \
+		"$@"
+	success
+}
+
+function p15_validate {
+
+	msg "Validating card using pkcs11-tool"
+	yes x |
+	run_display_output $p11tool -t --pin 0000 \
+		--slot-label "OpenSC Test Card" $*
+	success
+}
+
