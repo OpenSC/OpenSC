@@ -1,6 +1,6 @@
 /*
- * PKCS15 emulation layer for Infocamere SPK2.3 card.
- * To see how this works, run p15dump on your Infocamere SPK2.3 card.
+ * PKCS15 emulation layer for 1202 and 1203 Infocamere card.
+ * To see how this works, run p15dump on your Infocamere card.
  *
  * Copyright (C) 2004, Antonino Iacono <ant_iacono@tin.it>
  * Copyright (C) 2003, Olaf Kirch <okir@suse.de>
@@ -26,6 +26,22 @@
 #include <string.h>
 #include <stdio.h>
 
+int (*set_security_env)(sc_card_t *,  const struct sc_security_env *, int);
+int (*compute_signature)(sc_card_t *, const u8 *, size_t, u8 *, size_t);
+
+static int set_sec_env(sc_card_t *card, const struct sc_security_env *env, int se_num)
+{
+	struct sc_security_env tenv = *env;
+	if (tenv.operation == SC_SEC_OPERATION_SIGN)
+		tenv.operation = SC_SEC_OPERATION_DECIPHER;
+	return set_security_env(card, &tenv, se_num);
+}
+
+static int do_sign(sc_card_t *card, const u8 *in, size_t inlen, u8 *out, size_t outlen)
+{
+	return card->ops->decipher(card, in, inlen, out, outlen);
+}
+
 static void
 set_string(char **strp, const char *value)
 {
@@ -38,9 +54,14 @@ int
 sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 {
 
-   static int      prkey_usage =         SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 
-   static int      authprkey_usage =      SC_PKCS15_PRKEY_USAGE_SIGN
+   const int     prkey_usage [2] = {
+                                SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,  
+                                SC_PKCS15_PRKEY_USAGE_DECRYPT
+                        };
+
+
+   const int      authprkey_usage =      SC_PKCS15_PRKEY_USAGE_SIGN
                                         | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
 					| SC_PKCS15_PRKEY_USAGE_ENCRYPT         
 					| SC_PKCS15_PRKEY_USAGE_DECRYPT  ;
@@ -53,16 +74,56 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 	unsigned char   ef_gdo[256];
 	unsigned char   serial[256];
 	unsigned char	certlen[2];
-        int             flags;
-	int 		authority;
+	int 		authority, change_sign = 0;
 
 	const char *label	=	"User Non-repudiation Certificate";
 	const char *calabel  	= 	"CA Certificate";
 	const char *authlabel	= 	"User Authentication Certificate";
 
-	const char *infocamere_cert_path	= "DF01C000";
-	const char *infocamere_auth_cert_path	= "11111A02";
-	const char *infocamere_cacert_path	= "DF01C008";
+	const char *infocamere_cert_path [2] = {
+                        	"DF01C000",  
+			        "3F00000011111A02"
+                        };
+
+	const char *infocamere_auth_certpath [2] = {
+                        	"11111A02",  
+			        "000011111B02"
+                        };
+
+	const char *infocamere_cacert_path [2] = {
+                        	"DF01C008",  
+			        "000011114101"
+                        };
+
+	const char *infocamere_auth_path [2] = {
+                        	"3F001111",  
+			        "3F0000001111"
+                        };
+
+	const char *infocamere_nrepud_path [2] = {
+                        	"3F00DF01",  
+			        "3F0000001111"
+                        };
+
+	const int infocamere_idpin_auth_obj [2] = {
+                        	0x95,  
+			        0x81
+                        };
+
+	const int infocamere_idpin_nrepud_obj [2] = {
+                        	0x99,  
+			        0x81
+                        };
+
+	const int infocamere_idprkey_auth_obj [2] = {
+                        	0x9B,  
+			        0x01
+                        };
+
+	const int infocamere_idprkey_nrepud_obj [2] = {
+                        	0x84,  
+			        0x01
+                        };
 
 	const char *authPIN	= 	"Authentication PIN";
 	const char *nonrepPIN	= 	"Non-repudiation PIN";
@@ -70,8 +131,11 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 	const char *authPRKEY	= 	"Authentication Key";
 	const char *nonrepPRKEY	= 	"Non repudiation Key";
 
-	int		r;
-	size_t		len_chn, len_iccsn;
+        const int flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
+                          SC_PKCS15_PIN_FLAG_INITIALIZED |
+                          SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
+
+	int		r, len_iccsn, len_chn;
 
 	sc_format_path("3F002F02", &path);
 
@@ -81,7 +145,7 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 		{
 		/* Not EF.GDO */
 		r = SC_ERROR_WRONG_CARD;
-		goto failed;
+                goto failed;
 		}
 
 	sc_read_binary(card, 0, ef_gdo, file->size, 0);
@@ -90,7 +154,7 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 		{
 		/* Not EF.GDO */
 		r = SC_ERROR_WRONG_CARD;
-		goto failed; 	
+                goto failed;  
 		}
 
 	len_iccsn = ef_gdo[1];
@@ -118,50 +182,80 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 	if (len_chn < 2 || len_chn > 8)
 		{
 		/* Length CHN incorrect */
-		r = SC_ERROR_WRONG_CARD;
+                r = SC_ERROR_WRONG_CARD;
 		goto failed; 	
 		}
 
-	if (!(ef_gdo[len_iccsn+5]==0x12 && ef_gdo[len_iccsn+6]==0x02))
+	if (!(ef_gdo[len_iccsn+5]==0x12 && (ef_gdo[len_iccsn+6]==0x02 || ef_gdo[len_iccsn+6]==0x03)))
 		{
-		/* Not Infocamere SPK2.3 Card*/
+		/* Not Infocamere Card*/
 		r = SC_ERROR_WRONG_CARD;
 		goto failed; 	
 		}
 
         set_string(&p15card->serial_number, serial);
-	set_string(&p15card->label, "Infocamere SPK2.3 Card");
+	
+	if (ef_gdo[len_iccsn+6]==0x02)
+		set_string(&p15card->label, "Infocamere 1202 Card");
+	else {
+		set_string(&p15card->label, "Infocamere 1203 Card");
+		change_sign = 1;
+	}
+
 	set_string(&p15card->manufacturer_id, "Infocamere");
 
 	authority = 0;
 
-	/* Get the non-repudiation certificate length */
+        /* Get the authentication certificate length */
 
-	sc_format_path(infocamere_auth_cert_path, &path);
+	sc_format_path(infocamere_auth_certpath[ef_gdo[len_iccsn+6]-2], &path);
 
-	if (sc_select_file(card, &path, NULL) < 0)
-		{
-		r = SC_ERROR_WRONG_CARD;
-		goto failed;
-		}
+        if (sc_select_file(card, &path, NULL) >= 0)
 
-	sc_read_binary(card, 0, certlen, 2, 0);
+                {
 
-	/* Now set the certificate offset/len */
-	path.index = 2;
-	path.count = (certlen[1] << 8) + certlen[0];
+                sc_read_binary(card, 0, certlen, 2, 0);
 
-	id.value[0] = 1;
-	id.len = 1;
+                /* Now set the certificate offset/len */
 
-	sc_pkcs15emu_add_cert(p15card,
+                path.index = 2;
+                path.count = (certlen[1] << 8) + certlen[0];
+
+                id.value[0] = 1;
+                id.len = 1;
+
+                sc_pkcs15emu_add_cert(p15card,
 				SC_PKCS15_TYPE_CERT_X509, authority,
 				&path, &id, authlabel, SC_PKCS15_CO_FLAG_MODIFIABLE);
 
+        
+		/* add authentication PIN */
 
-	/* Get the authentication certificate length */
+                sc_format_path(infocamere_auth_path[ef_gdo[len_iccsn+6]-2], &path);
+                
+		sc_pkcs15emu_add_pin(p15card, &id,
+                                authPIN, &path, infocamere_idpin_auth_obj[ef_gdo[len_iccsn+6]-2],
+                                SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
+                                5, 8, flags, 3, 0, 
+				SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE);
 
-	sc_format_path(infocamere_cert_path, &path);
+		/* add authentication private key */
+
+                auth_id.value[0] = 1;
+                auth_id.len = 1;
+
+                sc_pkcs15emu_add_prkey(p15card, &id,
+                                authPRKEY,
+                                SC_PKCS15_TYPE_PRKEY_RSA, 
+                                1024, authprkey_usage,
+                                &path, infocamere_idprkey_auth_obj[ef_gdo[len_iccsn+6]-2],
+                                &auth_id, SC_PKCS15_CO_FLAG_PRIVATE);
+
+        }
+
+        /* Get the non-repudiation certificate length */
+
+	sc_format_path(infocamere_cert_path[ef_gdo[len_iccsn+6]-2], &path);
 
 	if (sc_select_file(card, &path, NULL) < 0)
 		{
@@ -176,6 +270,8 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 	path.count = (certlen[1] << 8) + certlen[0];
 	
 	id.value[0] = 2;
+        id.len = 1;
+
 
 	sc_pkcs15emu_add_cert(p15card,
 				SC_PKCS15_TYPE_CERT_X509, authority,
@@ -186,13 +282,11 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 
 	authority = 1;
 
-	sc_format_path(infocamere_cacert_path, &path);
+	sc_format_path(infocamere_cacert_path[ef_gdo[len_iccsn+6]-2], &path);
 
-	if (sc_select_file(card, &path, NULL) < 0)
-		{
-		r = SC_ERROR_INTERNAL;
-		goto failed;
-		}
+        if (sc_select_file(card, &path, NULL) >= 0)
+
+	{
 
 	sc_read_binary(card, 0, certlen, 2, 0);
 
@@ -206,53 +300,30 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 				SC_PKCS15_TYPE_CERT_X509, authority,
 				&path, &id, calabel, SC_PKCS15_CO_FLAG_MODIFIABLE);
 
-               
-        flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
-                SC_PKCS15_PIN_FLAG_INITIALIZED |
-                SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
-        
-		/* add authntication PIN */
+	}               
 
-                sc_format_path("3F001111", &path);
-                id.value[0] = 1;
+        /* add non repudiation PIN */
+
+        sc_format_path(infocamere_nrepud_path[ef_gdo[len_iccsn+6]-2], &path);
+        id.value[0] = 2;
                 
 		sc_pkcs15emu_add_pin(p15card, &id,
-                                authPIN, &path, 0x95,
+                                nonrepPIN, &path, infocamere_idpin_nrepud_obj[ef_gdo[len_iccsn+6]-2],
                                 SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-                                5, 8, flags, 3, 0, 
-				SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE);
-
-		/* add authentication private key */
-
-                auth_id.value[0] = 1;
-                auth_id.len = 1;
-                sc_pkcs15emu_add_prkey(p15card, &id,
-                                authPRKEY,
-                                SC_PKCS15_TYPE_PRKEY_RSA, 
-                                1024, authprkey_usage,
-                                &path, 0x9B,
-                                &auth_id, SC_PKCS15_CO_FLAG_PRIVATE);
-
-		/* add non repudiation PIN */
-
-                sc_format_path("3F00DF01", &path);
-                id.value[0] = 2;
-                
-		sc_pkcs15emu_add_pin(p15card, &id,
-                                nonrepPIN, &path, 0x99,
-                                SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-                                5, 8, flags, -1, 0,
+                                5, 8, flags, 3, 0,
 				SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE);
 
 
-		/* add non repudiation private key */
+        /* add non repudiation private key */
 
-                auth_id.value[0] = 2;
+        auth_id.value[0] = 2;
+        auth_id.len = 1;
+
                 sc_pkcs15emu_add_prkey(p15card, &id,
                                 nonrepPRKEY,
                                 SC_PKCS15_TYPE_PRKEY_RSA, 
-                                1024, prkey_usage,
-                                &path, 0x84,
+                                1024, prkey_usage[ef_gdo[len_iccsn+6]-2],
+                                &path, infocamere_idprkey_nrepud_obj[ef_gdo[len_iccsn+6]-2],
                                 &auth_id, SC_PKCS15_CO_FLAG_PRIVATE);
 
 
@@ -260,35 +331,52 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 	sc_format_path("3F00", &path);
 	r = sc_select_file(card, &path, NULL);
 
+	if (change_sign) {
+		struct sc_card_operations *new_ops;
+		new_ops = calloc(0, sizeof(*new_ops));
+		if (!new_ops)
+			return SC_ERROR_OUT_OF_MEMORY;
+		/* copy normal cardos card ops */
+		*new_ops = *card->ops;
+		/* save old signature funcs */
+		set_security_env  = new_ops->set_security_env;
+		compute_signature = new_ops->compute_signature;
+		/* set new one              */
+		new_ops->set_security_env  = set_sec_env;
+		new_ops->compute_signature = do_sign;
+		/* use new ops */
+		card->ops = new_ops;
+	}
+
 	return 0;
 
-failed: 
-	if (r != SC_ERROR_WRONG_CARD)
-		sc_error(card->ctx, "Failed to initialize Infocamere SPK2.3 emulation: %s\n", sc_strerror(r));
+failed: sc_error(card->ctx, "Failed to initialize Infocamere emulation: %s\n",
+                        sc_strerror(r));
         return r;
 
 }
 
 static int infocamere_detect_card(sc_pkcs15_card_t *p15card)
 {
-	sc_card_t *card = p15card->card;
+       sc_card_t *card = p15card->card;
 
-	/* check if we have the correct card OS */
-	if (strcmp(card->name, "STARCOS SPK 2.3"))
-		return SC_ERROR_WRONG_CARD;
-	return SC_SUCCESS;
+       /* check if we have the correct card OS */
+       if (strcmp(card->name, "STARCOS SPK 2.3"))
+               return SC_ERROR_WRONG_CARD;
+       return SC_SUCCESS;
 }
 
 
 int sc_pkcs15emu_infocamere_init_ex(sc_pkcs15_card_t *p15card,
-				    sc_pkcs15emu_opt_t *opts)
+                                   sc_pkcs15emu_opt_t *opts)
 {
-	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
-		return sc_pkcs15emu_infocamere_init(p15card);
-	else {
-		int r = infocamere_detect_card(p15card);
-		if (r)
-			return SC_ERROR_WRONG_CARD;
-		return sc_pkcs15emu_infocamere_init(p15card);
-	}
+       if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
+               return sc_pkcs15emu_infocamere_init(p15card);
+       else {
+               int r = infocamere_detect_card(p15card);
+               if (r)
+                       return SC_ERROR_WRONG_CARD;
+               return sc_pkcs15emu_infocamere_init(p15card);
+       }
 }
+
