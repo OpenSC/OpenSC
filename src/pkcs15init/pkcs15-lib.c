@@ -93,6 +93,7 @@ static void	default_debug_handler(const char *fmt, ...);
 extern struct sc_pkcs15init_operations	sc_pkcs15init_gpk_operations;
 extern struct sc_pkcs15init_operations	sc_pkcs15init_miocos_operations;
 extern struct sc_pkcs15init_operations	sc_pkcs15init_cflex_operations;
+extern struct sc_pkcs15init_operations	sc_pkcs15init_etoken_operations;
 
 static struct sc_pkcs15init_callbacks default_callbacks = {
 	default_error_handler,
@@ -133,6 +134,8 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 		profile->ops = &sc_pkcs15init_miocos_operations;
 	else if (!strcasecmp(driver, "flex"))
 		profile->ops = &sc_pkcs15init_cflex_operations;
+	else if (!strcasecmp(driver, "eToken"))
+		profile->ops = &sc_pkcs15init_etoken_operations;
 	else {
 		p15init_error("Unsupported card driver %s", driver);
 		sc_profile_free(profile);
@@ -141,8 +144,13 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 
 	if ((r = sc_profile_load(profile, name)) < 0
 	 || (r = sc_profile_load(profile, driver)) < 0
-	 || (r = sc_profile_finish(profile)) < 0)
+	 || (r = sc_profile_finish(profile)) < 0) {
+		fprintf(stderr,
+			"Failed to load profile: %s\n",
+			sc_strerror(r));
 		sc_profile_free(profile);
+		return r;
+	}
 	*result = profile;
 
 	if (r == 0)

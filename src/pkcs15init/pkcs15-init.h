@@ -56,6 +56,7 @@ struct sc_pkcs15init_operations {
 			unsigned int, unsigned int, struct sc_file **out);
 };
 
+/* Do not change these or reorder these */
 #define SC_PKCS15INIT_SO_PIN		0
 #define SC_PKCS15INIT_SO_PUK		1
 #define SC_PKCS15INIT_USER_PIN		2
