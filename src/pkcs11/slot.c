@@ -149,6 +149,7 @@ int slot_connect(int id)
 				slot_add_private_key_object(id, i, pinfo, cert);
 			}
 		}
+		sc_pkcs15_free_certificate(cert);
 	}
 
         return CKR_OK;
