@@ -330,8 +330,13 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 			pin = (char *) malloc(12);
 			get_pin(ui_method, pin, 12);
 		}
-		if (PKCS11_login(slot, 0, pin))
+		if (PKCS11_login(slot, 0, pin)) {
+			if(pin != NULL) {
+				free(pin);
+				pin = NULL;
+			}
 			fail("Card login failed\n");
+		}
 		logged_in++;
 	}
 
