@@ -20,10 +20,8 @@
 
 struct sc_pkcs11_module {
 	unsigned int _magic;
-#if defined(HAVE_DLFCN_H) || defined(_WIN32)
 	void *_dl_handle;
-#elif defined(__APPLE__)
-	const struct mach_header *_dl_handle;
+#if defined(__APPLE__)
 	CFBundleRef bundleRef;
 #endif
 };
@@ -201,16 +199,10 @@ sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 int
 sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
 {
-	int name_len;
-
 	if (name == NULL)
-		name = "libopensc-pkcs11.dylib";
+		name = "OpenSC PKCS#11.bundle";
 
-	name_len = strlen(name);
-	if (name_len > 7 && strcmp(name + name_len - 7, ".bundle") != 0) {
-		mod->_dl_handle = NSAddImage(name, NSADDIMAGE_OPTION_WITH_SEARCHING);
-		mod->bundleRef = NULL;
-	} else {
+	if (strstr(name, ".bundle")) {
 		CFStringRef text = CFStringCreateWithFormat(
 			NULL, NULL, CFSTR("%s"), name);
 		CFURLRef urlRef = CFURLCreateWithFileSystemPath(
@@ -219,6 +211,10 @@ sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
 		CFRelease(urlRef);
 		CFRelease(text);
 		mod->_dl_handle = NULL;
+	} else {
+		mod->_dl_handle = (struct mach_header *) NSAddImage(name,
+			NSADDIMAGE_OPTION_WITH_SEARCHING);
+		mod->bundleRef = NULL;
 	}
 
 	return (mod->_dl_handle == NULL && mod->bundleRef == NULL ? -1 : 0);
@@ -240,22 +236,23 @@ sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 {
 	NSSymbol symbol = NULL;
 
-	if (mod->_dl_handle != NULL) {
-		char u_name[4096];
-
-		snprintf(u_name, sizeof(u_name), "_%s", name);
-		symbol = NSLookupSymbolInImage(mod->_dl_handle, u_name,
-			NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_NOW);
-		if (symbol == NULL)
-			return NULL;
-		return NSAddressOfSymbol(symbol);
-	} else {
+	if (mod->bundleRef != NULL) {
 		CFStringRef text = CFStringCreateWithFormat(
 			NULL, NULL, CFSTR("%s"), name);
 		symbol = CFBundleGetFunctionPointerForName(
 			mod->bundleRef, text);
 		CFRelease(text);
 		return symbol;
+	} else {
+		char sym_name[4096];
+
+		snprintf(sym_name, sizeof(sym_name), "_%s", name);
+		symbol = NSLookupSymbolInImage((const struct mach_header *)
+			mod->_dl_handle, sym_name,
+			NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_NOW);
+		if (symbol == NULL)
+			return NULL;
+		return NSAddressOfSymbol(symbol);
 	}
 }
 #endif
