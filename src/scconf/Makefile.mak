@@ -3,14 +3,14 @@ TOPDIR = ..\..
 TARGET = scconf.lib
 HEADERS = scconf.h
 HEADERSDIR = $(TOPDIR)\src\include\opensc
-OBJECTS = parse.obj scconf.obj write.obj lex-parse.obj
+OBJECTS = parse.obj scconf.obj write.obj lex-parse-win32.obj
 
 .SUFFIXES : .l
 
 all: install-headers $(TARGET)
 
-lex-parse.c: lex-parse.l
-	flex -olex-parse.c < lex-parse.l
+lex-parse-win32.c: lex-parse.l
+	flex -olex-parse-win32.c < lex-parse.l
                 
 $(TARGET): $(OBJECTS)
 	lib /nologo /machine:ix86 /out:$(TARGET) $(OBJECTS)
