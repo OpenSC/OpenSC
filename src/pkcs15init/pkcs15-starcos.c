@@ -729,8 +729,12 @@ static int starcos_create_key(sc_profile_t *profile, sc_card_t *card,
 	tkey.key_header[1] = (STARCOS_MAX_PR_KEYSIZE >> 8) & 0xff;
 	tkey.key_header[2] = STARCOS_MAX_PR_KEYSIZE & 0xff;
 	pin_id = sc_keycache_find_named_pin(&kinfo->path, SC_PKCS15INIT_USER_PIN);
-	state  = STARCOS_PINID2STATE(pin_id);	/* get the necessary state */
-	state |= pin_id & 0x80 ? 0x10 : 0x00;	/* local vs. global key id */
+	if (pin_id < 0)
+		state = STARCOS_AC_ALWAYS;
+	else {
+		state  = STARCOS_PINID2STATE(pin_id);	/* get the necessary state */
+		state |= pin_id & 0x80 ? 0x10 : 0x00;	/* local vs. global key id */
+	}
 	tkey.key_header[3] = state;		/* AC to access key        */
 	if (obj->user_consent)
 		tkey.key_header[4] = 0x0f;	/* do state transition */
