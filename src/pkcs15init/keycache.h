@@ -21,6 +21,12 @@
 #ifndef _PKCS15INIT_KEYCACHE_H
 #define _PKCS15INIT_KEYCACHE_H
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
+#include <opensc/opensc.h>
+
 extern int	sc_keycache_put_key(const sc_path_t *, int, int,
 				const unsigned char *, size_t);
 extern int	sc_keycache_put_pin(const sc_path_t *, int, const char *);
@@ -30,5 +36,9 @@ extern int	sc_keycache_find_named_pin(const sc_path_t *, int);
 extern int	sc_keycache_get_key(const sc_path_t *, int, int, unsigned char *, size_t);
 extern const char *sc_keycache_get_pin(const sc_path_t *, int);
 extern void	sc_keycache_forget_key(const sc_path_t *, int, int);
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif /* _PKCS15INIT_KEYCACHE_H */

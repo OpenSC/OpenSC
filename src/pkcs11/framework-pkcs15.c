@@ -22,8 +22,8 @@
 #include <string.h>
 #include "sc-pkcs11.h"
 #ifdef USE_PKCS15_INIT
-#include "opensc/pkcs15-init.h"
-#include "../pkcs15init/keycache.h"
+#include <opensc/pkcs15-init.h>
+#include <opensc/keycache.h>
 #endif
 
 #define MAX_CACHE_PIN		32

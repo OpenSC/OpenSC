@@ -394,12 +394,16 @@ struct sc_reader_operations {
 			      int timeout);
 };
 
-
 /* Mutexes - this is just a dummy struct used for type
  * safety; internally we use objects defined by the
  * underlying thread model
  */
 typedef struct sc_mutex sc_mutex_t;
+
+struct sc_mutex *sc_mutex_new(void);
+void sc_mutex_lock(struct sc_mutex *p);
+void sc_mutex_unlock(struct sc_mutex *p);
+void sc_mutex_free(struct sc_mutex *p);
 
 /*
  * Card flags

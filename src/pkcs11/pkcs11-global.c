@@ -389,7 +389,6 @@ out:	sc_pkcs11_unlock();
 /*
  * Locking functions
  */
-#include "../libopensc/internal.h"
 
 static CK_C_INITIALIZE_ARGS_PTR	_locking;
 static void *			_lock = NULL;
