@@ -53,16 +53,17 @@ struct _sc_driver_entry {
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
-	{ "setcos", (void *) sc_get_setcos_driver, NULL },
-	{ "miocos", (void *) sc_get_miocos_driver, NULL },
-	{ "flex", (void *) sc_get_flex_driver, NULL },
-	{ "tcos", (void *) sc_get_tcos_driver, NULL },
 	{ "emv", (void *) sc_get_emv_driver, NULL },
+	{ "etoken", (void *) sc_get_etoken_driver, NULL },
+	{ "flex", (void *) sc_get_flex_driver, NULL },
 #ifdef HAVE_OPENSSL
 	{ "gpk", (void *) sc_get_gpk_driver, NULL },
 #endif
-	{ "etoken", (void *) sc_get_etoken_driver, NULL },
+	{ "miocos", (void *) sc_get_miocos_driver, NULL },
 	{ "mcrd", (void *) sc_get_mcrd_driver, NULL },
+	{ "setcos", (void *) sc_get_setcos_driver, NULL },
+	{ "starcos", (void *) sc_get_starcos_driver, NULL },
+	{ "tcos", (void *) sc_get_tcos_driver, NULL },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default", (void *) sc_get_default_driver, NULL },
