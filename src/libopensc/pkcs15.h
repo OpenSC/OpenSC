@@ -551,6 +551,13 @@ int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 void sc_pkcs15_remove_df(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_df *df);
 
+void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key);
+void sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *key);
+void sc_pkcs15_free_cert_info(sc_pkcs15_cert_info_t *cert);
+void sc_pkcs15_free_data_info(sc_pkcs15_data_info_t *data);
+void sc_pkcs15_free_pin_info(sc_pkcs15_pin_info_t *pin);
+void sc_pkcs15_free_object(sc_pkcs15_object_t *obj);
+
 /* File content wrapping */
 int sc_pkcs15_wrap_data(struct sc_context *ctx,
 			const char *passphrase,

@@ -1037,8 +1037,31 @@ void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
 		obj->prev->next = obj->next;
 	if (obj->next != NULL)
 		obj->next->prev = obj->prev;
-	if (obj->data)
+	sc_pkcs15_free_object(obj);
+}
+
+void sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
+{
+	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
+	case SC_PKCS15_TYPE_PRKEY:
+		sc_pkcs15_free_prkey_info((sc_pkcs15_prkey_info_t *)obj->data);
+		break;
+	case SC_PKCS15_TYPE_PUBKEY:
+		sc_pkcs15_free_pubkey_info((sc_pkcs15_pubkey_info_t *)obj->data);
+		break;
+	case SC_PKCS15_TYPE_CERT:
+		sc_pkcs15_free_cert_info((sc_pkcs15_cert_info_t *)obj->data);
+		break;
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		sc_pkcs15_free_data_info((sc_pkcs15_data_info_t *)obj->data);
+		break;
+	case SC_PKCS15_TYPE_AUTH:
+		sc_pkcs15_free_pin_info((sc_pkcs15_pin_info_t *)obj->data);
+		break;
+	default:
 		free(obj->data);
+	}
+
 	if (obj->der.value)
 		free(obj->der.value);
 	free(obj);

@@ -276,3 +276,12 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 	free(cert->crl);
 	free(cert);
 }
+
+void sc_pkcs15_free_cert_info(sc_pkcs15_cert_info_t *cert)
+{
+	if (!cert)
+		return;
+	if (cert->value.value)
+		free(cert->value.value);
+	free(cert);
+}

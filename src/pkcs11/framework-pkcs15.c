@@ -1498,13 +1498,9 @@ void pkcs15_cert_release(void *obj)
 {
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object *) obj;
 	struct sc_pkcs15_cert      *cert_data = cert->cert_data;
-	struct sc_pkcs15_cert_info *cert_info = cert->cert_info;
 
-	if (__pkcs15_release_object((struct pkcs15_any_object *) obj) == 0) {
+	if (__pkcs15_release_object((struct pkcs15_any_object *) obj) == 0)
 		sc_pkcs15_free_certificate(cert_data);
-		if (cert_info && cert_info->value.value)
-			free(cert_info->value.value);
-	}
 }
 
 CK_RV pkcs15_cert_set_attribute(struct sc_pkcs11_session *session,

@@ -441,3 +441,8 @@ void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *key)
 	sc_pkcs15_erase_pubkey(key);
 	free(key);
 }
+
+void sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *key)
+{
+	free(key);
+}

@@ -161,3 +161,8 @@ void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object)
 	free(data_object->data);
 	free(data_object);
 }
+
+void sc_pkcs15_free_data_info(sc_pkcs15_data_info_t *data)
+{
+	free(data);
+}

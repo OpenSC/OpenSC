@@ -356,3 +356,8 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	sc_unlock(card);
 	return r;
 }
+
+void sc_pkcs15_free_pin_info(sc_pkcs15_pin_info_t *pin)
+{
+	free(pin);
+}

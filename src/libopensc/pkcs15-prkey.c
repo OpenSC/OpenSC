@@ -411,3 +411,8 @@ sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
 	sc_pkcs15_erase_prkey(key);
 	free(key);
 }
+
+void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key)
+{
+	free(key);
+}
