@@ -111,6 +111,7 @@ enum {
 	OPT_SPLIT_KEY,
 	OPT_ASSERT_PRISTINE,
 	OPT_SECRET,
+	OPT_PUBKEY_LABEL,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -141,6 +142,7 @@ const struct option	options[] = {
 	{ "auth-id",		required_argument, 0,	'a' },
 	{ "id",			required_argument, 0,	'i' },
 	{ "label",		required_argument, 0,	'l' },
+	{ "public-key-label",	required_argument, 0,	OPT_PUBKEY_LABEL },
 	{ "output-file",	required_argument, 0,	'o' },
 	{ "format",		required_argument, 0,	'f' },
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
@@ -188,6 +190,7 @@ const char *		option_help[] = {
 	"Specify ID of PIN to use/create",
 	"Specify ID of key/certificate",
 	"Specify label of PIN/key",
+	"Specify public key label (use with --generate-key)",
 	"Output public portion of generated key to file",
 	"Specify key file format (default PEM)",
 	"Specify passphrase for unlocking secret key",
@@ -273,6 +276,7 @@ static char *			opt_format = 0;
 static char *			opt_authid = 0;
 static char *			opt_objectid = 0;
 static char *			opt_label = 0;
+static char *			opt_pubkey_label = 0;
 static char *			opt_pins[4];
 static char *			opt_serial = 0;
 static char *			opt_passphrase = 0;
@@ -862,6 +866,9 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	unsigned int	evp_algo, keybits = 1024;
 	EVP_PKEY	*pkey;
 	int		r, split_key = 0;
+
+	memset(&keygen_args, 0, sizeof(keygen_args));
+	keygen_args.pubkey_label = opt_pubkey_label;
 
 	if ((r = init_keyargs(&keygen_args.prkey_args)) < 0)
 		return r;
@@ -1875,6 +1882,9 @@ handle_option(const struct option *opt)
 	case OPT_SECRET:
 		parse_secret(&opt_secrets[opt_secret_count], optarg);
 		opt_secret_count++;
+		break;
+	case OPT_PUBKEY_LABEL:
+		opt_pubkey_label = optarg;
 		break;
 	default:
 		print_usage_and_die();
