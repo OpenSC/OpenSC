@@ -166,6 +166,12 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	if (rv != CKR_OK)
 		return rv;
 
+	if (!(slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
+		int i;
+		for (i=0; i<context->reader_count; i++)
+			card_detect(i);
+	}
+
 	debug(context, "Getting info about slot %d\n", slotID);
 	memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
         return CKR_OK;

@@ -156,7 +156,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
                 return sc_to_cryptoki_error(rv, reader);
 
 	for (i = 0; i < card->pin_count; i++) {
-                char tmp[32];
+                char tmp[33];
 
 		rv = slot_allocate(&slot, p11card);
 		if (rv != CKR_OK)
@@ -165,7 +165,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		pkcs15_init_token_info(card, &slot->token_info);
                 slot->fw_data = &card->pin_info[i];
 
-		sprintf(tmp, "%s (%s)", card->label, card->pin_info[i].com_attr.label);
+		snprintf(tmp, sizeof(tmp), "%s (%s)", card->label, card->pin_info[i].com_attr.label);
 		strcpy_bp(slot->token_info.label, tmp, 32);
 
 		if (card->pin_info[i].magic == SC_PKCS15_PIN_MAGIC) {
@@ -498,7 +498,7 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
                 return CKR_MECHANISM_INVALID;
 	}
 
-        debug(context, "Selected flags %X. Now computing signature.\n", flags);
+        debug(context, "Selected flags %X. Now computing signature. %d bytes reserved.\n", flags, *pulDataLen);
 	rv = sc_pkcs15_compute_signature((struct sc_pkcs15_card*) ses->slot->card->fw_data,
 					 prkey->prkey_info,
 					 flags,

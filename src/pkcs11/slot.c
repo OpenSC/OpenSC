@@ -102,7 +102,8 @@ CK_RV card_removed(int reader)
 	debug(context, "%d: SmartCard removed\n", reader);
 
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++) {
-		if (virtual_slots[i].card->reader == reader)
+		if (virtual_slots[i].card &&
+		    virtual_slots[i].card->reader == reader)
                         slot_token_removed(i);
 	}
 
