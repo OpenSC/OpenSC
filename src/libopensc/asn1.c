@@ -469,6 +469,52 @@ static int encode_bit_string(const u8 * inbuf, size_t bits_left, u8 **outbuf,
 	return 0;
 }
 
+/*
+ * Bitfields are just bit strings, stored in an unsigned int
+ * (taking endianness into account)
+ */
+static int decode_bit_field(const u8 * inbuf, size_t inlen, void *outbuf, size_t outlen)
+{
+	u8		data[sizeof(unsigned int)];
+	unsigned int	field = 0;
+	int		i, n;
+
+	if (outlen != sizeof(data))
+		return SC_ERROR_BUFFER_TOO_SMALL;
+
+	n = decode_bit_string(inbuf, inlen, data, sizeof(data), 1);
+	if (n < 0)
+		return n;
+
+	for (i = 0; i < n; i += 8) {
+		field |= (data[i/8] << i);
+	}
+	memcpy(outbuf, &field, outlen);
+	return 0;
+}
+
+static int encode_bit_field(const u8 *inbuf, size_t inlen,
+			    u8 **outbuf, size_t *outlen)
+{
+	u8		data[sizeof(unsigned int)];
+	unsigned int	field = 0;
+	int		i, bits;
+
+	if (inlen != sizeof(data))
+		return SC_ERROR_BUFFER_TOO_SMALL;
+
+	/* count the bits */
+	memcpy(&field, inbuf, inlen);
+	for (bits = 0; field; bits++)
+		field >>= 1;
+
+	memcpy(&field, inbuf, inlen);
+	for (i = 0; i < bits; i += 8)
+		data[i/8] = field >> i;
+
+	return encode_bit_string(data, bits, outbuf, outlen, 1);
+}
+
 int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
 {
 	int i, a = 0;
@@ -763,15 +809,15 @@ static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_asn1_p
 	int r;
 	const struct sc_pkcs15_object *p15_obj = obj->p15_obj;
 	struct sc_asn1_entry asn1_c_attr[6], asn1_p15_obj[5];
-	size_t flags_len;
 	size_t label_len = strlen(p15_obj->label);
+	size_t flags_len;
 
 	sc_copy_asn1_entry(c_asn1_com_obj_attr, asn1_c_attr);
 	sc_copy_asn1_entry(c_asn1_p15_obj, asn1_p15_obj);
 	if (label_len != 0)
 		sc_format_asn1_entry(asn1_c_attr + 0, (void *) p15_obj->label, &label_len, 1);
 	if (p15_obj->flags) {
-		flags_len = _sc_count_bit_string_size(&p15_obj->flags, sizeof(p15_obj->flags));
+		flags_len = sizeof(p15_obj->flags);
 		sc_format_asn1_entry(asn1_c_attr + 1, (void *) &p15_obj->flags, &flags_len, 1);
 	}
 	if (p15_obj->auth_id.len)
@@ -859,6 +905,10 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
 				r = 0;
 			}
 		}
+		break;
+	case SC_ASN1_BIT_FIELD:
+		if (parm != NULL)
+			r = decode_bit_field(obj, objlen, (u8 *) parm, *len);
 		break;
 	case SC_ASN1_OCTET_STRING:
 		if (parm != NULL) {
@@ -1112,6 +1162,10 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 			r = encode_bit_string((const u8 *) parm, *len, &buf, &buflen, 1);
 		else
 			r = encode_bit_string((const u8 *) parm, *len, &buf, &buflen, 0);
+		break;
+	case SC_ASN1_BIT_FIELD:
+		assert(len != NULL);
+		r = encode_bit_field((const u8 *) parm, *len, &buf, &buflen);
 		break;
 	case SC_ASN1_OCTET_STRING:
 	case SC_ASN1_UTF8STRING:

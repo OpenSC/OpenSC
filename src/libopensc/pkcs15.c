@@ -63,7 +63,7 @@ static const struct sc_asn1_entry c_asn1_toki[] = {
 	{ "serialNumber",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL },
 	{ "manufacturerID", SC_ASN1_UTF8STRING,   ASN1_UTF8STRING, SC_ASN1_OPTIONAL, NULL },
 	{ "label",	    SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL },
-	{ "tokenflags",	    SC_ASN1_BIT_STRING,   ASN1_BIT_STRING, 0, NULL },
+	{ "tokenflags",	    SC_ASN1_BIT_FIELD,   ASN1_BIT_STRING, 0, NULL },
 	{ "seInfo",	    SC_ASN1_SEQUENCE,	  SC_ASN1_CONS | ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL },
 	{ "recordInfo",	    SC_ASN1_STRUCT,       SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL },
 	{ "supportedAlgorithms", SC_ASN1_STRUCT,  SC_ASN1_CONS | SC_ASN1_CTX | 2, SC_ASN1_OPTIONAL, NULL },
@@ -168,7 +168,7 @@ int sc_pkcs15_encode_tokeninfo(struct sc_context *ctx,
 		sc_format_asn1_entry(asn1_toki + 3, card->label, &label_len, 1);
 	}
 	if (card->flags) {
-		flags_len = _sc_count_bit_string_size(&card->flags, sizeof(card->flags));
+		flags_len = sizeof(card->flags);
 		sc_format_asn1_entry(asn1_toki + 4, &card->flags, &flags_len, 1);
 	}
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki, NULL, 1);

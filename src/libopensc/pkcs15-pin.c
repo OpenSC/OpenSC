@@ -32,7 +32,7 @@ static const struct sc_asn1_entry c_asn1_com_ao_attr[] = {
 	{ NULL }
 };
 static const struct sc_asn1_entry c_asn1_pin_attr[] = {
-	{ "pinFlags",	  SC_ASN1_BIT_STRING, ASN1_BIT_STRING, 0, NULL },
+	{ "pinFlags",	  SC_ASN1_BIT_FIELD, ASN1_BIT_STRING, 0, NULL },
 	{ "pinType",      SC_ASN1_ENUMERATED, ASN1_ENUMERATED, 0, NULL },
 	{ "minLength",    SC_ASN1_INTEGER, ASN1_INTEGER, 0, NULL },
 	{ "storedLength", SC_ASN1_INTEGER, ASN1_INTEGER, 0, NULL },
@@ -136,7 +136,7 @@ int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 
 	sc_format_asn1_entry(asn1_type_pin_attr + 0, asn1_pin_attr, NULL, 1);
 
-	flags_len = _sc_count_bit_string_size(&pin->flags, sizeof(pin->flags));
+	flags_len = sizeof(pin->flags);
 	sc_format_asn1_entry(asn1_pin_attr + 0, &pin->flags, &flags_len, 1);
 	sc_format_asn1_entry(asn1_pin_attr + 1, &pin->type, NULL, 1);
 	sc_format_asn1_entry(asn1_pin_attr + 2, &pin->min_length, NULL, 1);

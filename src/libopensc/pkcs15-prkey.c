@@ -29,9 +29,9 @@
 
 static const struct sc_asn1_entry c_asn1_com_key_attr[] = {
 	{ "iD",		 SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, NULL },
-	{ "usage",	 SC_ASN1_BIT_STRING, ASN1_BIT_STRING, 0, NULL },
+	{ "usage",	 SC_ASN1_BIT_FIELD, ASN1_BIT_STRING, 0, NULL },
 	{ "native",	 SC_ASN1_BOOLEAN, ASN1_BOOLEAN, SC_ASN1_OPTIONAL, NULL },
-	{ "accessFlags", SC_ASN1_BIT_STRING, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, NULL },
+	{ "accessFlags", SC_ASN1_BIT_FIELD, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, NULL },
 	{ "keyReference",SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
 	{ NULL }
 };
@@ -219,12 +219,12 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 		break;
 	}
 	sc_format_asn1_entry(asn1_com_key_attr + 0, &prkey->id, NULL, 1);
-	usage_len = _sc_count_bit_string_size(&prkey->usage, sizeof(prkey->usage));
+	usage_len = sizeof(prkey->usage);
 	sc_format_asn1_entry(asn1_com_key_attr + 1, &prkey->usage, &usage_len, 1);
 	if (prkey->native == 0)
 		sc_format_asn1_entry(asn1_com_key_attr + 2, &prkey->native, NULL, 1);
 	if (prkey->access_flags) {
-		af_len = _sc_count_bit_string_size(&prkey->access_flags, sizeof(prkey->access_flags));
+		af_len = sizeof(prkey->access_flags);
 		sc_format_asn1_entry(asn1_com_key_attr + 3, &prkey->access_flags, &af_len, 1);
 	}
 	if (prkey->key_reference >= 0)

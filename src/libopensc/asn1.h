@@ -141,6 +141,7 @@ void sc_asn1_clear_algorithm_id(struct sc_algorithm_id *);
 /* internal structures */
 #define SC_ASN1_STRUCT			129
 #define SC_ASN1_CHOICE			130
+#define SC_ASN1_BIT_FIELD		131	/* bit string as integer */
 
 /* 'complex' structures */
 #define SC_ASN1_PATH			256
