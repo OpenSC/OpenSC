@@ -1,7 +1,7 @@
 /*
  * pkcs15-crypt.c: Tool for cryptography operations with SmartCards
  *
- * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001  Juha Yrjï¿½ï¿½<juha.yrjola@iki.fi>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -428,11 +428,12 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 			return 0;
 
 		pincode = get_pin(pin);
-		if (pincode == NULL || *pincode == '\0')
-			return 5;
+		if (((pincode == NULL || *pincode == '\0')) &&
+		    !(p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD))
+				return 5;
 
 		r = sc_pkcs15_verify_pin(p15card, (struct sc_pkcs15_pin_info *) pin->data,
-					(const u8 *) pincode, strlen(pincode));
+				(const u8 *) pincode, pincode == NULL ? 0 : strlen(pincode));
 		if (r) {
 			fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
 			return 5;
