@@ -69,10 +69,10 @@ static int	sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
 static int	sc_pkcs15init_update_odf(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
-static int	sc_pkcs15init_update_df(struct sc_pkcs15_card *,
+static int	sc_pkcs15init_add_object(struct sc_pkcs15_card *,
 			struct sc_profile *profile,
-			struct sc_pkcs15_df *df,
-			unsigned int df_type);
+			unsigned int df_type,
+			struct sc_pkcs15_object *);
 static int	sc_pkcs15init_map_usage(unsigned long, int);
 static int	set_so_pin_from_card(struct sc_pkcs15_card *,
 			struct sc_profile *);
@@ -248,9 +248,8 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		r = aodf_add_pin(p15card, profile, &pin_info,
 				"Security Officer PIN");
 	} else {
-		r = sc_pkcs15init_update_df(p15card, profile,
-				find_df_by_type(p15card, SC_PKCS15_AODF),
-				SC_PKCS15_AODF);
+		r = sc_pkcs15init_add_object(p15card, profile,
+				SC_PKCS15_AODF, NULL);
 	}
 
 	if (r >= 0)
@@ -349,14 +348,9 @@ aodf_add_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	object->flags = 0x3; /* XXX */
 	if (label)
 		strncpy(object->label, label, sizeof(object->label));
-	object->df = find_df_by_type(p15card, SC_PKCS15_AODF);
-	r = sc_pkcs15_add_object(p15card, object); 
 
-	if (r >= 0)
-		r = sc_pkcs15init_update_df(p15card, profile, object->df,
-				SC_PKCS15_AODF);
-
-	return r;
+	return sc_pkcs15init_add_object(p15card, profile,
+				SC_PKCS15_AODF, object);
 }
 
 /*
@@ -514,14 +508,11 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 		if (r < 0)
 			return r;
 	}
-	object->df = find_df_by_type(p15card, SC_PKCS15_PRKDF);
-	r = sc_pkcs15_add_object(p15card, object);
-	if (r < 0)
-		return r;
 
 	/* Now update the PrKDF */
-	r = sc_pkcs15init_update_df(p15card, profile, object->df,
-			SC_PKCS15_PRKDF);
+	r = sc_pkcs15init_add_object(p15card, profile,
+			SC_PKCS15_PRKDF, object);
+
 	if (r >= 0 && res_obj)
 		*res_obj = object;
 
@@ -594,12 +585,9 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 			type, &der_encoded, &key_info->path);
 
 	/* Update the PuKDF */
-	object->df = find_df_by_type(p15card, SC_PKCS15_PUKDF);
-	if (r >= 0)
-		r = sc_pkcs15_add_object(p15card, object);
-	if (r >= 0)
-		r = sc_pkcs15init_update_df(p15card, profile, object->df,
-				SC_PKCS15_PUKDF);
+	r = sc_pkcs15init_add_object(p15card, profile,
+			SC_PKCS15_PUKDF, object);
+
 	if (r >= 0 && res_obj)
 		*res_obj = object;
 
@@ -667,12 +655,10 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 			&cert_info->path);
 
 	/* Now update the CDF */
-	object->df = find_df_by_type(p15card, SC_PKCS15_CDF);
 	if (r >= 0)
-		r = sc_pkcs15_add_object(p15card, object);
-	if (r >= 0)
-		r = sc_pkcs15init_update_df(p15card, profile, object->df,
-				SC_PKCS15_CDF);
+		r = sc_pkcs15init_add_object(p15card, profile,
+				SC_PKCS15_CDF, object);
+
 	if (r >= 0 && res_obj)
 		*res_obj = object;
 
@@ -968,18 +954,19 @@ sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card,
 }
 
 static int
-sc_pkcs15init_update_df(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile, struct sc_pkcs15_df *df,
-		unsigned int df_type)
+sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
+		struct sc_profile *profile,
+		unsigned int df_type,
+		struct sc_pkcs15_object *object)
 {
+	struct sc_pkcs15_df *df;
 	struct sc_card	*card = p15card->card;
-	struct sc_file	*file = NULL;
+	struct sc_file	*file = NULL, *pfile;
 	u8		*buf = NULL;
 	size_t		bufsize;
-	int		r = 0;
+	int		update_odf = 0, r = 0;
 
-	if (df == NULL)
-		df = find_df_by_type(p15card, df_type);
+	df = find_df_by_type(p15card, df_type);
 	if (df == NULL) {
 		file = profile->df[df_type];
 		if (file == NULL) {
@@ -988,26 +975,34 @@ sc_pkcs15init_update_df(struct sc_pkcs15_card *p15card,
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		sc_pkcs15_add_df(p15card, df_type, &file->path, file);
-		if ((r = sc_pkcs15init_update_odf(p15card, profile)) < 0)
-			return r;
 		df = find_df_by_type(p15card, df_type);
 		assert(df != NULL);
+		update_odf = 1;
 	}
 
-	if (1) { /* XXX: Go through all of the DFs, or just the one? */
-		struct sc_file	*pfile = NULL;
-		
-		if (!sc_profile_get_file_by_path(profile, &df->file->path, &pfile))
-			file = pfile;
-		r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
-		if (r >= 0) {
-			r = sc_pkcs15init_update_file(profile, card,
-					file, buf, bufsize);
-			free(buf);
-		}
-		if (pfile)
-			sc_file_free(pfile);
+	if (object) {
+		object->df = df;
+		r = sc_pkcs15_add_object(p15card, object); 
+		if (r < 0)
+			return r;
 	}
+
+	
+	if (!sc_profile_get_file_by_path(profile, &df->file->path, &pfile))
+		file = pfile;
+
+	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
+	if (r >= 0) {
+		r = sc_pkcs15init_update_file(profile, card,
+				file, buf, bufsize);
+		free(buf);
+	}
+	if (pfile)
+		sc_file_free(pfile);
+
+	/* Now update the ODF if we have to */
+	if (r >= 0 && update_odf)
+		r = sc_pkcs15init_update_odf(p15card, profile);
 
 	return r;
 }
