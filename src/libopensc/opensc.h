@@ -506,6 +506,9 @@ struct sc_card_operations {
 		      int ref_qualifier, const u8 *data, size_t data_len,
 		      int *tries_left);
 
+	/* logout: Resets all access rights that were gained. */
+	int (*logout)(struct sc_card *card);
+
 	/* restore_security_env:  Restores a previously saved security
 	 *   environment, and stores information about the environment to
 	 *   <env_out>, if not NULL. */
@@ -744,6 +747,7 @@ int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 size_t data_len, u8 * out, size_t outlen);
 int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *buf,
 	      size_t buflen, int *tries_left);
+int sc_logout(struct sc_card *card);
 int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *, int *tries_left);
 int sc_change_reference_data(struct sc_card *card, unsigned int type,
 			     int ref, const u8 *old, size_t oldlen,

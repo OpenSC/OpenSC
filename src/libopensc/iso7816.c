@@ -877,6 +877,20 @@ static int iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	return sc_check_sw(card, apdu->sw1, apdu->sw2);
 }
 
+/* For some cards, selecting the MF clears all access rights gained */
+static int iso7816_logout(struct sc_card *card)
+{
+	struct sc_path in_path;
+	in_path.value[0] = 0x3F;
+	in_path.value[1] = 0x00;
+	in_path.len = 2;
+	in_path.index = 0;
+	in_path.count = 2;
+	in_path.type = SC_PATH_TYPE_PATH;
+
+	return iso7816_select_file(card, &in_path, NULL);
+}
+
 static struct sc_card_operations iso_ops = {
 	NULL,
 };
@@ -914,6 +928,7 @@ struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.decipher		= iso7816_decipher;
 		iso_ops.check_sw      = iso7816_check_sw;
 		iso_ops.pin_cmd	      = iso7816_pin_cmd;
+		iso_ops.logout        = iso7816_logout;
 	}
 	return &iso_driver;
 }

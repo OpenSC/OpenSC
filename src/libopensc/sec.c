@@ -95,6 +95,16 @@ int sc_verify(struct sc_card *card, unsigned int type, int ref,
 	return sc_pin_cmd(card, &data, tries_left);
 }
 
+int sc_logout(struct sc_card *card)
+{
+	int r;
+	if (card->ops->logout == NULL)
+		/* Or should we return SC_ERROR_NOT_SUPPORTED? */
+		SC_FUNC_RETURN(card->ctx, 2, SC_NO_ERROR);
+	r = card->ops->logout(card);
+        SC_FUNC_RETURN(card->ctx, 2, r);
+}
+
 int sc_change_reference_data(struct sc_card *card, unsigned int type,
 			     int ref, const u8 *old, size_t oldlen,
 			     const u8 *newref, size_t newlen,

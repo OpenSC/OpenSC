@@ -709,6 +709,8 @@ static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
 	cache_pin(fw_token, CKU_SO, NULL, 0);
 	cache_pin(fw_token, CKU_USER, NULL, 0);
 
+	sc_logout(fw_data->p15_card->card);
+
 	if (sc_pkcs11_conf.lock_login)
 		rc = sc_unlock(fw_data->p15_card->card);
 	return sc_to_cryptoki_error(rc, p11card->reader);

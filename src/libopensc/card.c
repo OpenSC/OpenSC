@@ -458,14 +458,16 @@ int sc_unlock(struct sc_card *card)
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
 	sc_mutex_lock(card->mutex);
-        card->lock_count--;
-	assert(card->lock_count >= 0);
-	if (card->lock_count == 0) {
+	assert(card->lock_count >= 1);
+	if (card->lock_count == 1) {
+		if (card->ops->logout != NULL)
+			card->ops->logout(card);
 		if (card->reader->ops->unlock != NULL)
 			r = card->reader->ops->unlock(card->reader, card->slot);
 		card->cache_valid = 0;
 		memset(&card->cache, 0, sizeof(card->cache));
         }
+        card->lock_count--;
         sc_mutex_unlock(card->mutex);
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }

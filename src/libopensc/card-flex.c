@@ -895,6 +895,24 @@ static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	return r;
 }
 
+static int flex_logout(struct sc_card *card)
+{
+	struct	sc_apdu apdu;
+	int	r;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0x07, 0x00);
+	apdu.cla = 0xF0;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	SC_FUNC_RETURN(card->ctx, 1, r);
+}
+
+
 static struct sc_card_driver * sc_get_driver(void)
 {
 	if (iso_ops == NULL)
@@ -914,6 +932,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	flex_ops.compute_signature = flex_compute_signature;
 	flex_ops.decipher = flex_decipher;
 	flex_ops.pin_cmd = flex_pin_cmd;
+	flex_ops.logout = flex_logout;
         return &flex_drv;
 }
 
