@@ -7,9 +7,10 @@
 
 int main(int argc, char *argv[])
 {
-	int len;
+	int len, r;
 	FILE *inf;
 	u8 buf[8192];
+	u8 outbuf[8192];
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: base64 <file>\n");
@@ -29,6 +30,12 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Too long input file.\n");
 		return 1;
 	}
-	sc_asn1_print_tags(buf, len);
+	len = sc_base64_decode(buf, outbuf, sizeof(outbuf));
+	if (len < 0) {
+		fprintf(stderr, "Base64 decoding failed: %s\n", sc_strerror(len));	
+		return 1;
+	}
+	fwrite(outbuf, len, 1, stdout);
+
 	return 0;
 }
