@@ -214,8 +214,8 @@ const char *sc_strerror(int error);
 void sc_hex_dump(const u8 *buf, int len);
 void sc_print_binary(const u8 *buf, int len);
 
-int sc_debug;
-const char *sc_version;
+extern int sc_debug;
+extern const char *sc_version;
 
 extern const struct sc_defaults sc_card_table[];
 

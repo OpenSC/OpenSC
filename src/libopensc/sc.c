@@ -36,6 +36,8 @@ static int convert_sw_to_errorcode(u8 * sw)
 		switch (sw[1]) {
 		case 0x82:
 			return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+		default:
+			return SC_ERROR_UNKNOWN;
 		}
 	case 0x6A:
 		switch (sw[1]) {
@@ -47,6 +49,8 @@ static int convert_sw_to_errorcode(u8 * sw)
 		case 0x86:
 		case 0x87:
 			return SC_ERROR_INVALID_ARGUMENTS;
+		default:
+			return SC_ERROR_UNKNOWN;
 		}
 	case 0x6D:
 		return SC_ERROR_NOT_SUPPORTED;
@@ -64,7 +68,7 @@ void sc_hex_dump(const u8 *buf, int count)
 	for (i = 0; i < count; i++) {
 		unsigned char c = buf[i];
 
-		printf("%02X  ", c);
+		printf("%02X  ", (unsigned int) c);
 	}
 	printf("\n");
 	fflush(stdout);
@@ -372,6 +376,7 @@ int sc_select_file(struct sc_card *card,
 	apdu.lc = pathlen;
 	apdu.data = path;
 	apdu.datalen = pathlen;
+#if 0
 	/* FIXME: Some smarter way to do this... */
 	if (file == NULL || sc_file_valid(file)) {
 		r = sc_transceive_t0(card, &apdu); /* we don't need the response */
@@ -380,9 +385,13 @@ int sc_select_file(struct sc_card *card,
 			apdu.resp[1] = 0;
 		}
 	} else {
-		memset(file, 0, sizeof(*file));
+#endif
+		if (file != NULL)
+			memset(file, 0, sizeof(*file));
 		r = sc_transmit_apdu(card, &apdu);
+#if 0
 	}
+#endif
 	if (r)
 		return r;
 	if (apdu.resplen < 2)

@@ -2,7 +2,7 @@
 /* Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi> 
  * All rights reserved.
  *
- * Pseudo-random number generator test program
+ * Common functions for test programs
  */
 
 #include <stdio.h>

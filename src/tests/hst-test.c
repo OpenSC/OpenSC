@@ -16,8 +16,6 @@
 #define DO_PIN_VERIFY		0
 #define DO_DECIPHER		0
 #define DO_SIGN			0
-#define DO_CERT_ENUM		1
-#define DO_CERT_READ		1
 #define DO_TEST			0
 
 struct sc_pkcs15_card *p15card;
@@ -39,107 +37,11 @@ int enum_private_keys()
 	return 0;
 }
 
-int enum_dir(struct sc_path path, int depth)
-{
-	struct sc_file file;
-	int r;
-	u8 files[MAX_BUFFER_SIZE];
-	u8 buf[2048];
-	const char *tmps;
-
-	r = sc_select_file(card, &file, &path, SC_SELECT_FILE_BY_PATH);
-	if (r)
-		return r;
-	for (r = 0; r < depth; r++) {
-		printf("  ");
-	}
-	for (r = 0; r < path.len; r++) {
-		printf("%02X", path.value[r]);
-		if (r && (r & 1) == 1)
-			printf(" ");
-	}
-	if (sc_file_valid(&file)) {
-		if (file.namelen) {
-			printf("[");
-			sc_print_binary(file.name, file.namelen);
-			printf("] ");
-		}
-		switch (file.type) {
-		case 0:
-			tmps = "wEF";
-			break;
-		case 1:
-			tmps = "iEF";
-			break;
-		case 7:
-			tmps = "DF";
-			break;
-		default:
-			tmps = "unknown";
-			break;
-		}	
-		printf("type: %-3s ", tmps);
-		if (file.type != 7)
-			printf("ef structure: %d ", file.ef_structure);
-		printf("size: %d ", file.size);
-		if (file.type == 0 && 0) {
-			r = sc_read_binary(card, 0, buf, file.size);
-			if (r > 0)
-				sc_hex_dump(buf, r);
-		}
-		if (file.sec_attr_len) {
-			printf("sec: ");
-			/* Octets are as follows:
-			 *   DF: select, lock, delete, create, rehab, inval
-			 *   EF: read, update, write, erase, rehab, inval
-			 * 4 MSB's of the octet mean:			 
-			 *  0 = ALW, 1 = PIN1, 2 = PIN2, 4 = SYS,
-			 * 15 = NEV */
-			sc_hex_dump(file.sec_attr, file.sec_attr_len);
-		} else {
-			printf("\n");
-		}
-	} else {
-		printf("\n");
-	}
-	if (!sc_file_valid(&file) || file.type == 7) {
-		int i;
-
-		r = sc_list_files(card, files, sizeof(files));
-		if (r <= 0) {
-			fprintf(stderr, "sc_list_files() failed: %s\n", sc_strerror(r));
-			return r;
-		}
-		for (i = 0; i < r/2; i++) {
-			struct sc_path tmppath;
-
-			memcpy(&tmppath, &path, sizeof(path));
-			memcpy(tmppath.value + tmppath.len, files + 2*i, 2);
-			tmppath.len += 2;
-			enum_dir(tmppath, depth + 1);
-		}
-	}
-	return 0;
-}	
-
-#if 0
 int test()
 {
-	struct sc_path path;
-	
-	memcpy(path.value, "\x3F\x00", 2);
-	path.len = 2;
-	enum_dir(path, 0);
-	return 1;
-}
-#else
-int test()
-{
-	struct sc_apdu apdu;
 	struct sc_file file;
 	struct sc_path path;
 	
-	u8 sbuf[32], rbuf[MAX_BUFFER_SIZE];
 	int r;
 	
 	sc_lock(card);
@@ -192,15 +94,10 @@ err:
 	sc_unlock(card);
 	return r;
 }
-#endif
 
 int main(int argc, char **argv)
 {
-	u8 buf[256], buf2[256];
-	struct sc_security_env senv;
-	FILE *file;
-	struct sc_object_id oid;
-	int i, c;
+	int i;
 
 	i = sc_test_init(&argc, argv);
 	if (i != 0)
@@ -290,43 +187,6 @@ int main(int argc, char **argv)
 		}
 	} else {
 		printf("File 'input' not found, not signing.\n");
-	}
-#endif
-#if DO_CERT_ENUM
-	i = sc_pkcs15_enum_certificates(p15card);
-	if (i < 0) {
-		fprintf(stderr, "Certificate enumeration failed: %s\n",
-			sc_strerror(i));
-		return 1;
-	}
-	printf("%d certificates found.\n", i);
-#endif
-#if DO_CERT_READ
-	for (i = 0; i < p15card->cert_count; i++) {
-		char fname[16];
-		struct sc_pkcs15_cert *cert;
-
-		sc_pkcs15_print_cert_info(&p15card->cert_info[i]);
-
-		strcpy(fname, "cert-");
-		sprintf(fname + 5, "%02X",
-			p15card->cert_info[i].id.value[0]);
-		file = fopen(fname, "w");
-		if (file != NULL) {
-			c = sc_pkcs15_read_certificate(p15card,
-						       &p15card->cert_info[i],
-						       &cert);
-			if (c) {
-				fprintf(stderr,
-					"Certificate read failed.\n ");
-				return 1;
-			}
-			printf("Dumping certificate to file '%s' (%d bytes)\n",
-			       fname, cert->data_len);
-			fwrite(cert->data, cert->data_len, 1, file);
-			sc_pkcs15_free_certificate(cert);
-			fclose(file);
-		}
 	}
 #endif
 	printf("Cleaning up...\n");

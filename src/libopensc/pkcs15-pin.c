@@ -107,9 +107,16 @@ void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin)
 		sprintf(p, "%02X", pin->path.value[i]);
 		p += 2;
 	}
-	printf("PIN number %d: %s, path %s, pad char 0x%02X\n",
-	       pin->auth_id.value[0], pin->com_attr.label,
-	       path, pin->pad_char);
+	printf("PIN [%s]\n", pin->com_attr.label);
+	printf("\tFlags     : %d\n", pin->com_attr.flags);
+	printf("\tLength    : %d..%d\n", pin->min_length, pin->stored_length);
+	printf("\tPad char  : ");
+	sc_print_binary(&pin->pad_char, 1);
+	printf("\n");
+	printf("\tPath      : %s\n", path);
+	printf("\tAuth ID   : ");
+	sc_pkcs15_print_id(&pin->auth_id);
+	printf("\n");
 }
 
 int sc_pkcs15_enum_pins(struct sc_pkcs15_card *p15card)
