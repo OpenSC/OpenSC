@@ -14,7 +14,7 @@
 #ifndef _OPENSC_CARDCTL_H
 #define _OPENSC_CARDCTL_H
 
-#define _CTL_PREFIX(a, b, c) (((a) << 24) | ((b) << 16) || ((c) << 8))
+#define _CTL_PREFIX(a, b, c) (((a) << 24) | ((b) << 16) | ((c) << 8))
 
 enum {
 	/*
@@ -22,6 +22,7 @@ enum {
 	 */
 	SC_CARDCTL_GENERIC_BASE = 0x00000000,
 	SC_CARDCTL_ERASE_CARD,
+	SC_CARDCTL_GET_PK_ALGORITHMS,
 
 	/*
 	 * GPK specific calls
@@ -36,6 +37,33 @@ enum {
 	 */
 	SC_CARDCTL_CRYPTOFLEX_BASE = _CTL_PREFIX('C', 'F', 'X'),
 
+};
+
+/*
+ * Per algorithm/key size info
+ */
+struct sc_pk_info {
+	unsigned int	pk_algorithm;
+	unsigned int	pk_keylength;
+	unsigned char	pk_onboard_generation;
+	union {
+	    struct {
+		unsigned long	exponent;
+		unsigned int	unwrap;
+	    } _rsa;
+	} u;
+};
+#define pk_rsa_exponent	u._rsa.exponent
+#define pk_rsa_unwrap	u._rsa.unwrap
+
+/*
+ * Get list of supported algorithm/key sizes.
+ * This is not really an argument to the cardctl, but
+ * a return struct.
+ */
+struct sc_cardctl_pk_algorithms {
+	unsigned int		count;
+	struct sc_pk_info	*algorithms;
 };
 
 /*
