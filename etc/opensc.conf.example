@@ -52,6 +52,15 @@ app default {
 		# }
 	}
 
+	reader_driver pcsc {
+		# Whether to convert Case 4 APDUs to Case 3
+		#
+		# At least SCM SCR111 reader seems to require this.
+		# Default: false
+		#
+		apdu_fix = false;
+	}
+
 	# What card drivers to load at start-up
 	#
 	# A special value of 'internal' will load all
