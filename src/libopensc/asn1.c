@@ -538,7 +538,7 @@ int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
 {
 	u8 temp[SC_MAX_OBJECT_ID_OCTETS*5], *p = temp;
 	size_t count = 0;
-	int *value = id->value, i = 0;
+	int *value = (int *) id->value, i = 0;
 
 	for (i = 0; value[i] > 0 && i < SC_MAX_OBJECT_ID_OCTETS; i++) {
 		unsigned int k, shift;

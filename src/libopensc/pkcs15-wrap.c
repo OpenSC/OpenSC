@@ -139,14 +139,14 @@ do_cipher(struct sc_context *ctx, EVP_CIPHER_CTX *cipher_ctx,
 		if ((left = end - in) > bl)
 			left = bl;
 		if (!EVP_CipherUpdate(cipher_ctx,
-					p + total, &done,
+					p + total, (int *) &done,
 					(u8 *) in, left))
 			goto fail;
 		total += done;
 		in += left;
 	}
 	if (1 || total < in_len) {
-		if (!EVP_CipherFinal(cipher_ctx, p + total, &done))
+		if (!EVP_CipherFinal(cipher_ctx, p + total, (int *) &done))
 			goto fail;
 		total += done;
 	}
@@ -181,7 +181,7 @@ sc_pkcs15_wrap_data(struct sc_context *ctx,
 	envdata.ke_alg.params = &der_info;
 	envdata.ce_alg.algorithm = SC_ALGORITHM_3DES;
 	envdata.ce_alg.params = des_iv;
-	envdata.key = "";
+	envdata.key = (u8 *) "";
 	r = sc_pkcs15_derive_key(ctx, &envdata.ke_alg, &envdata.ce_alg,
 			passphrase, &cipher_ctx, 1);
 	if (r < 0)
