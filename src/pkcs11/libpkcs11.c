@@ -19,13 +19,12 @@
 #define MAGIC			0xd00bed00
 
 struct sc_pkcs11_module {
-	unsigned int		_magic;
+	unsigned int _magic;
 #if defined(HAVE_DLFCN_H) || defined(_WIN32)
-	void *			_dl_handle;
-#endif
-#ifdef __APPLE__
-	struct mach_header	*_dl_handle;
-	CFBundleRef		bundleRef;  
+	void *_dl_handle;
+#elif defined(__APPLE__)
+	const struct mach_header *_dl_handle;
+	CFBundleRef bundleRef;  
 #endif
 };
 
@@ -133,18 +132,29 @@ sys_dlclose(struct sc_pkcs11_module *mod)
 	return 0;
 }
 
-
 void *
 sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 {
+	char sym_name[256];
+	void *address;
+
 	if (!mod->_dl_handle)
 		return NULL;
-	return dlsym(mod->_dl_handle, name);
+
+	/* Some platforms might need a leading underscore for the symbol */
+	sym_name[0] = '_';
+	strncpy(&sym_name[1], name, sizeof(sym_name) - 1);
+
+	address = dlsym(mod->_dl_handle, sym_name);
+
+	/* Failed? Try again without the leading underscore */
+	if (address == NULL)
+		address = dlsym(mod->_dl_handle, name);
+
+	return address;
 }
 
-#endif
-
-#ifdef _WIN32
+#elif defined(_WIN32)
 #include <windows.h>
 
 /*
@@ -184,9 +194,7 @@ sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 	return GetProcAddress(mod->_dl_handle, name);
 }
 
-#endif
-
-#ifdef __APPLE__
+#elif defined(__APPLE__)
 #include <mach-o/dyld.h>
 
 /*
