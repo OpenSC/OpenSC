@@ -34,7 +34,7 @@ config.status: configure
 		--infodir=\$${prefix}/share/info \
 		--with-pam \
 		--with-ldap-lib=auto \
-		--with-pcsc \
+		--with-pcsclite \
 		--disable-rpath
 
 
