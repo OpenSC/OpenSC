@@ -1183,6 +1183,11 @@ gpk_set_security_env(struct sc_card *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
+	/* Select the PK file. The caller has already selected
+	 * the DF. */
+	r = gpk_select_id(card, GPK_SEL_EF, file_id, NULL);
+	SC_TEST_RET(card->ctx, r, "Failed to select PK file");
+
 	/* Read the sys record of the PK file to find out the key length */
 	r = sc_read_record(card, 1, sysrec, sizeof(sysrec),
 			SC_RECORD_BY_REC_NR);
