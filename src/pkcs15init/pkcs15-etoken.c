@@ -71,11 +71,10 @@ static int	etoken_extract_pubkey(sc_card_t *, int,
  * SO PIN = 0x01, SO PUK = 0x02
  * each user pin is 2*N+1, each corresponding PUK is 2*N+2
  */
-#define ETOKEN_PIN_ID(idx)	(((idx) << 1) + 0x01)
-#define ETOKEN_PUK_ID(idx)	(((idx) << 1) + 0x02)
-#define ETOKEN_MAX_PINS		0x10
-#define ETOKEN_KEY_ID(idx)	(0x40 + (idx))
-#define ETOKEN_SE_ID(idx)	(0x40 + (idx))
+#define ETOKEN_PIN_ID_MIN	1
+#define ETOKEN_PIN_ID_MAX	15
+#define ETOKEN_KEY_ID_MIN	16
+#define ETOKEN_KEY_ID_MAX	31
 #define ETOKEN_AC_NEVER		0xFF
 
 #define ETOKEN_ALGO_RSA			0x08
@@ -165,7 +164,7 @@ etoken_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 	int	preferred, current;
 
 	if ((current = pin_info->reference) < 0)
-		current = 1;
+		current = ETOKEN_PIN_ID_MIN;
 
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		preferred = 1;
@@ -178,7 +177,7 @@ etoken_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 			return SC_ERROR_TOO_MANY_OBJECTS;
 	}
 
-	if (current > preferred)
+	if (current > preferred || preferred > ETOKEN_PIN_ID_MAX)
 		return SC_ERROR_TOO_MANY_OBJECTS;
 	pin_info->reference = preferred;
 	return 0;
@@ -232,7 +231,9 @@ etoken_select_key_reference(sc_profile_t *profile, sc_card_t *card,
 {
 	struct sc_file	*df = profile->df_info->file;
 
-	if (key_info->key_reference > 255)
+	if (key_info->key_reference < ETOKEN_KEY_ID_MIN)
+		key_info->key_reference = ETOKEN_KEY_ID_MIN;
+	if (key_info->key_reference > ETOKEN_KEY_ID_MAX)
 		return SC_ERROR_TOO_MANY_OBJECTS;
 
 	key_info->path = df->path;
@@ -491,7 +492,8 @@ etoken_create_sec_env(struct sc_profile *profile, struct sc_card *card,
  * Note that CardOS/M4 does not support keys that can be used
  * for signing _and_ decipherment
  */
-#define USAGE_ANY_SIGN		(SC_PKCS15_PRKEY_USAGE_SIGN)
+#define USAGE_ANY_SIGN		(SC_PKCS15_PRKEY_USAGE_SIGN|\
+				 SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)
 #define USAGE_ANY_DECIPHER	(SC_PKCS15_PRKEY_USAGE_DECRYPT|\
 				 SC_PKCS15_PRKEY_USAGE_UNWRAP)
 
@@ -502,13 +504,13 @@ etoken_key_algorithm(unsigned int usage, int *algop)
 
 	if (usage & USAGE_ANY_SIGN) {
 		*algop = ETOKEN_SIGN_RSA;
-		sign++;
+		sign = 1;
 	}
 	if (usage & USAGE_ANY_DECIPHER) {
 		*algop = ETOKEN_DECIPHER_RSA;
-		decipher++;
+		decipher = 1;
 	}
-	return (sign && decipher)? -1 : 0;
+	return (sign == decipher)? -1 : 0;
 }
 
 /*
