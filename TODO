@@ -1,3 +1,11 @@
+* CT-API driver (jey)
+* Finish MioCOS driver (jey)
+* Finish TCOS driver (Werner Koch?)
+* PKCS #15 profile conversion to scconf format (aet/okir)
+* DSA key handling
+* Non-native RSA private keys
 
--- add support for EMV and GSM (any takers?)
--- add support for more cards
+* Debian packaging
+* GUI applications
+* Ports to MacOS X (anyone?) and Win32 (fabled?)
+* Add support for EMV and GSM (anyone?)
