@@ -18,38 +18,17 @@ CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
 	if (!(flags & CKF_SERIAL_SESSION))
 		return CKR_SESSION_PARALLEL_NOT_SUPPORTED;
 
-	for (i=0; i<PKCS11_MAX_SESSIONS; i++)
+	for (i=1; i<PKCS11_MAX_SESSIONS; i++)
 		if (session[i] == NULL)
 			break;
 
 	if (i >= PKCS11_MAX_SESSIONS)
 		return CKR_SESSION_COUNT;
 
-	if (p15card[slotID] == NULL) {
-		struct sc_card *card;
-
-		rc = sc_connect_card(ctx, slotID, &card);
-		if (rc) {
-			LOG("Failed to connect in slot %d (rc=%d)\n", slotID, rc);
-			return CKR_DEVICE_ERROR;
-		}
-		rc = sc_pkcs15_init(card, &p15card[slotID]);
-		if (rc) {
-			LOG("sc_pkcs15_init failed for slot %d (rc=%d)\n", slotID, rc);
-			/* PKCS#15 compatible SC probably not present */
-			sc_disconnect_card(card);
-			return CKR_DEVICE_ERROR;
-		}
-	}
-
-	if (p15card[slotID]->pins[0].magic != SC_PKCS15_PIN_MAGIC) {
-                struct sc_pkcs15_pin_object pin;
-		int c = 0;
-
-		LOG("Searching for PIN codes...\n");
-		while (sc_pkcs15_read_pin_object(p15card[slotID], ++c, &pin) == 0) {
-			sc_pkcs15_print_pin_object(&pin);
-		}
+	if (!(slot[slotID].flags & SLOT_CONNECTED)) {
+		rc = slot_connect(slotID);
+		if (rc)
+                        return rc;
 	}
 
 	ses = session[i] = (struct pkcs11_session*) malloc(sizeof(struct pkcs11_session));
@@ -68,8 +47,8 @@ CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
 
 CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) /* the session's handle */
 {
-	LOG("C_CloseSession(0x%x)\n", hSession);
-	if (hSession < 0 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	LOG("C_CloseSession(%d)\n", hSession);
+	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
 	free(session[hSession]);
@@ -95,8 +74,8 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,  /* the session's handle */
 {
         struct pkcs11_session *ses;
 
-	LOG("C_GetSessionInfo(0x%x, 0x%x)\n", hSession, pInfo);
-	if (hSession < 0 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	LOG("C_GetSessionInfo(%d, 0x%x)\n", hSession, pInfo);
+	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
         ses = session[hSession];
@@ -112,7 +91,7 @@ CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession,             /* the session
 			  CK_BYTE_PTR       pOperationState,      /* location receiving state */
 			  CK_ULONG_PTR      pulOperationStateLen) /* location receiving state length */
 {
-	LOG("C_GetOperationState(0x%x, %0x%x, %d)\n", hSession,
+	LOG("C_GetOperationState(%d, %0x%x, %d)\n", hSession,
 	    pOperationState, pulOperationStateLen);
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -123,7 +102,7 @@ CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,            /* the session'
 			  CK_OBJECT_HANDLE hEncryptionKey,       /* handle of en/decryption key */
 			  CK_OBJECT_HANDLE hAuthenticationKey)   /* handle of sign/verify key */
 {
-	LOG("C_SetOperationState(0x%x, 0x%x, %d, 0x%x, 0x%x)\n",
+	LOG("C_SetOperationState(%d, 0x%x, %d, 0x%x, 0x%x)\n",
 	    hSession, pOperationState, ulOperationStateLen,
 	    hEncryptionKey, hAuthenticationKey);
         return CKR_FUNCTION_NOT_SUPPORTED;
@@ -138,8 +117,8 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
         struct sc_pkcs15_card *card;
         int rc;
 
-	LOG("C_Login(0x%x, %d, 0x%x, %d)\n", hSession, userType, pPin, ulPinLen);
-	if (hSession < 0 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	LOG("C_Login(%d, %d, 0x%x, %d)\n", hSession, userType, pPin, ulPinLen);
+	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
 	if (userType != CKU_USER) {
@@ -151,7 +130,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
                 return CKR_PIN_LEN_RANGE;
 
 	ses = session[hSession];
-	card = p15card[ses->slot];
+	card = slot[ses->slot].p15card;
 
 	if (ses->state != CKS_RO_PUBLIC_SESSION &&
 	    ses->state != CKS_RW_PUBLIC_SESSION)
@@ -181,8 +160,8 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) /* the session's handle */
 {
 	struct pkcs11_session *ses;
 
-	LOG("C_Logout(0x%x)\n", hSession);
-	if (hSession < 0 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	LOG("C_Logout(%d)\n", hSession);
+	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
 	ses = session[hSession];
@@ -221,14 +200,14 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	int rc;
 
 	LOG("C_SetPIN(%d, '%s', %d, '%s', %d)\n", hSession, pOldPin, ulOldLen, pNewPin, ulNewLen);
-	if (hSession < 0 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+	if (hSession < 1 || hSession >= PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
 
 	//if (!(ses->flags & CKF_RW_SESSION))
 	//	return CKR_SESSION_READ_ONLY;
 
 	ses = session[hSession];
-	card = p15card[ses->slot];
+	card = slot[ses->slot].p15card;
 
 	LOG("Master PIN code update starts.\n");
         rc = sc_pkcs15_change_pin(card, &card->pins[0], pOldPin, ulOldLen, pNewPin, ulNewLen);

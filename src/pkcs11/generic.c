@@ -8,8 +8,8 @@
 #include "../sc.h"
 
 struct sc_context *ctx = NULL;
-struct sc_pkcs15_card *p15card[PKCS11_MAX_CARDS];
-struct pkcs11_session *session[PKCS11_MAX_SESSIONS];
+struct pkcs11_slot slot[PKCS11_MAX_SLOTS];
+struct pkcs11_session *session[PKCS11_MAX_SESSIONS+1];
 
 void LOG(char *format, ...)
 {
@@ -32,7 +32,7 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	LOG("C_Initialize(0x%x)\n", pReserved);
 
 	memset(session, 0, sizeof(session));
-        memset(p15card, 0, sizeof(p15card));
+        memset(slot, 0, sizeof(slot));
 
 	ctx = NULL;
 	rv = sc_establish_context(&ctx);
@@ -49,15 +49,10 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 
 	LOG("C_Finalize(0x%x)\n", pReserved);
 
-	for (i=0; i < PKCS11_MAX_CARDS; i++) {
-		if (p15card[i] != NULL) {
-			sc_disconnect_card(p15card[i]->card);
-			sc_pkcs15_destroy(p15card[i]);
-                        p15card[i] = NULL;
-		}
-	}
-	sc_destroy_context(ctx);
+	for (i=0; i < PKCS11_MAX_SLOTS; i++)
+		slot_disconnect(i);
 
+	sc_destroy_context(ctx);
         return CKR_OK;
 }
 
@@ -122,11 +117,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
                 LOG("Detected card in slot %d\n", slotID);
 		pInfo->flags |= CKF_TOKEN_PRESENT;
 	} else {
-		if (p15card[slotID] != NULL) {
-			sc_disconnect_card(p15card[slotID]->card);
-			sc_pkcs15_destroy(p15card[slotID]);
-			p15card[slotID] = NULL;
-		}
+                slot_disconnect(slotID);
 	}
 	pInfo->hardwareVersion.major = 1;
 	pInfo->firmwareVersion.major = 1;
@@ -137,7 +128,6 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 {
 	int r;
-	struct sc_card *card;
 	
         LOG("C_GetTokenInfo(%d, 0x%x)\n", slotID, pInfo);
 	if (slotID < 0 || slotID >= ctx->reader_count)
@@ -145,35 +135,27 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 
 	memset(pInfo, 0, sizeof(CK_SLOT_INFO));
 
-	if (p15card[slotID] == NULL) {
-		r = sc_connect_card(ctx, slotID, &card);
-		if (r) {
-			LOG("Failed to connect in slot %d (r=%d)\n", slotID, r);
-			return CKR_DEVICE_ERROR;
-		}
-		r = sc_pkcs15_init(card, &p15card[slotID]);
-		if (r) {
-			LOG("sc_pkcs15_init failed for slot %d (r=%d)\n", slotID, r);
-			/* PKCS#15 compatible SC probably not present */
-			sc_disconnect_card(card);
-			return CKR_DEVICE_ERROR;
-		}
+	if (!(slot[slotID].flags & SLOT_CONNECTED)) {
+		r = slot_connect(slotID);
+                if (r)
+			return r;
 	}
-	strncpy(pInfo->label, p15card[slotID]->label, 32);
+	strncpy(pInfo->label, slot[slotID].p15card->label, 32);
 	pInfo->label[31] = 0;
-	strncpy(pInfo->manufacturerID, p15card[slotID]->manufacturer_id, 32);
+	strncpy(pInfo->manufacturerID, slot[slotID].p15card->manufacturer_id, 32);
 	pInfo->manufacturerID[31] = 0;
 	strcpy(pInfo->model, "PKCS#15 SC");
-	strncpy(pInfo->serialNumber, p15card[slotID]->serial_number, 16);
+	strncpy(pInfo->serialNumber, slot[slotID].p15card->serial_number, 16);
 	pInfo->serialNumber[15] = 0;
+
 	pInfo->flags = CKF_LOGIN_REQUIRED | CKF_USER_PIN_INITIALIZED;
 	pInfo->ulMaxSessionCount = 1;	/* opened in exclusive mode */
 	pInfo->ulSessionCount = 0;
 	pInfo->ulMaxRwSessionCount = 1;
 	pInfo->ulRwSessionCount = 0;
-	if (p15card[slotID]->pins[0].magic == SC_PKCS15_PIN_MAGIC) {
-		pInfo->ulMaxPinLen = p15card[slotID]->pins[0].stored_length;
-		pInfo->ulMinPinLen = p15card[slotID]->pins[0].min_length;
+	if (slot[slotID].p15card->pins[0].magic == SC_PKCS15_PIN_MAGIC) {
+		pInfo->ulMaxPinLen = slot[slotID].p15card->pins[0].stored_length;
+		pInfo->ulMinPinLen = slot[slotID].p15card->pins[0].min_length;
 	} else {
 		/* choose reasonable defaults */
 		pInfo->ulMaxPinLen = 8;

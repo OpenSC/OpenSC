@@ -4,6 +4,7 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		    CK_MECHANISM_PTR  pMechanism,  /* the encryption mechanism */
 		    CK_OBJECT_HANDLE  hKey)        /* handle of encryption key */
 {
+        LOG("C_EncryptInit\n");
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -13,6 +14,7 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,            /* the session's handle *
 		CK_BYTE_PTR       pEncryptedData,      /* receives encrypted data */
 		CK_ULONG_PTR      pulEncryptedDataLen) /* receives encrypted byte count */
 {
+        LOG("C_Encrypt\n");
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -22,6 +24,7 @@ CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,           /* the session's han
 		      CK_BYTE_PTR       pEncryptedPart,     /* receives encrypted data */
 		      CK_ULONG_PTR      pulEncryptedPartLen)/* receives encrypted byte count */
 {
+        LOG("C_EncryptUpdate\n");
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -29,6 +32,7 @@ CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,                /* the session's
 		     CK_BYTE_PTR       pLastEncryptedPart,      /* receives encrypted last part */
 		     CK_ULONG_PTR      pulLastEncryptedPartLen) /* receives byte count */
 {
+        LOG("C_EncryptFinal\n");
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -37,6 +41,7 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		    CK_MECHANISM_PTR  pMechanism,  /* the decryption mechanism */
 		    CK_OBJECT_HANDLE  hKey)        /* handle of the decryption key */
 {
+        LOG("C_DecryptInit\n");
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -46,6 +51,7 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,           /* the session's handle */
 		CK_BYTE_PTR       pData,              /* receives decrypted output */
 		CK_ULONG_PTR      pulDataLen)         /* receives decrypted byte count */
 {
+        LOG("C_Decrypt\n");
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -55,6 +61,7 @@ CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,            /* the session's ha
 		      CK_BYTE_PTR       pPart,               /* receives decrypted output */
 		      CK_ULONG_PTR      pulPartLen)          /* receives decrypted byte count */
 {
+        LOG("C_DecryptUpdate\n");
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -62,6 +69,7 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,       /* the session's handle *
 		     CK_BYTE_PTR       pLastPart,      /* receives decrypted output */
 		     CK_ULONG_PTR      pulLastPartLen)  /* receives decrypted byte count */
 {
+        LOG("C_DecryptFinal\n");
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
