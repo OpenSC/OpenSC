@@ -322,7 +322,7 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx,
 {
 	struct sc_asn1_pkcs15_algorithm_info *alg_info;
 	struct sc_algorithm_id temp_id;
-	struct sc_asn1_entry asn1_alg_id[2];
+	struct sc_asn1_entry asn1_alg_id[3];
 	u8 *obj;
 	size_t obj_len = 0;
 	int r;
