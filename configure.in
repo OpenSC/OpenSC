@@ -543,27 +543,25 @@ openct_path=/usr
 AC_SUBST(OPENCT_CFLAGS)
 AC_SUBST(OPENCT_LDFLAGS)
 AC_SUBST(OPENCT_LIBS)
-found_openct=no
+
+saved_LIBS="$LIBS"
+saved_LDFLAGS="$LDFLAGS"
+saved_CFLAGS="$CFLAGS"
 AC_ARG_WITH(openct,
 	[  --with-openct=PATH      use OpenCT in PATH],
-	[with_openct=$withval])
-
-if test "x$with_openct" != "xno" -a "x$with_openct" != "x"; then
-	if test "x$with_openct" != "xyes"; then
-		openct_path=$with_openct
-		with_openct=yes
-	fi
-	saved_LIBS="$LIBS"
-	saved_LDFLAGS="$LDFLAGS"
-	saved_CFLAGS="$CFLAGS"
-
+	[openct_path=$withval])
+if test "x$openct_path" = "xno"; then
+	OPENCT_MSG="no"
+fi
+if test "x$openct_path" != "xno" -a "x$OPENCT_MSG" != "xyes"; then
 	AC_MSG_CHECKING(for OpenCT support)
-	LDFLAGS="$saved_LDFLAGS"
 	CPPFLAGS="$saved_CPPFLAGS"
+	LDFLAGS="$saved_LDFLAGS"
+	LIBS="$saved_LIBS"
 
 	OPENCT_CFLAGS="-I${openct_path}/include"
 	OPENCT_LIBS="-lopenct"
-	OPENCT_LDFLAGS=
+	OPENCT_LDFLAGS=""
 	if test -n "${need_dash_r}"; then
 		OPENCT_LDFLAGS="-R${openct_path}/lib"
 	fi
@@ -573,29 +571,22 @@ if test "x$with_openct" != "xno" -a "x$with_openct" != "x"; then
 	LDFLAGS="$OPENCT_LDFLAGS $saved_LDFLAGS"
 	CFLAGS="$OPENCT_CFLAGS $saved_CFLAGS"
 
-	AC_TRY_LINK([#include <openct/openct.h>],
-		    [ct_reader_connect(0);],
-	[
-		AC_DEFINE(HAVE_OPENCT, 1,
-			  [Have OpenCT libraries and header files])
-		OPENCT_MSG=yes
-		LIBOPENCT="-lopenct"
-	],[
-		if test "x$with_openct" != "xno"; then
-			AC_MSG_ERROR([OpenCT not found in $openct_path!])
-		fi
-	   	OPENCT_LDFLAGS=
-		OPENCT_LIBS=
-		OPENCT_CFLAGS=
-	])
+	AC_TRY_LINK([#include <openct/openct.h>],[ct_reader_connect(0);],OPENCT_MSG=yes,OPENCT_MSG=no)
 	AC_MSG_RESULT($OPENCT_MSG)
 
 	CFLAGS="$saved_CFLAGS"
 	LDFLAGS="$saved_LDFLAGS"
 	LIBS="$saved_LIBS"
 fi
-	
+
 AM_CONDITIONAL(HAVE_OPENCT, test "x$OPENCT_MSG" = "xyes")
+if test "x$OPENCT_MSG" = "xyes"; then
+	AC_DEFINE(HAVE_OPENCT, 1, [Have OpenCT libraries and header files])
+else
+	OPENCT_LDFLAGS=""
+	OPENCT_LIBS=""
+	OPENCT_CFLAGS=""
+fi
 
 # Check for user-specified random device, otherwise check /dev/urandom
 AC_ARG_WITH(random,
