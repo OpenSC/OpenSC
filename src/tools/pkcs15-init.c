@@ -80,6 +80,8 @@ static int	do_store_data_object(struct sc_profile *profile);
 
 static void	set_secrets(struct sc_profile *);
 static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
+static int	get_new_pin(sc_ui_hints_t *, const char *, const char *,
+			char **);
 static int	get_pin_callback(struct sc_profile *profile,
 			int id, const struct sc_pkcs15_pin_info *info,
 			const char *label,
@@ -489,12 +491,12 @@ do_init_app(struct sc_profile *profile)
 	struct sc_pkcs15init_initargs args;
 	sc_pkcs15_pin_info_t	info;
 	sc_ui_hints_t		hints;
+	const char		*role = "so";
 	int			r;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.usage	= SC_UI_USAGE_NEW_PIN;
 	hints.flags	= SC_UI_PIN_RETYPE
-			   | SC_UI_PIN_OPTIONAL
 			   | SC_UI_PIN_CHECK_LENGTH
 			   | SC_UI_PIN_MISMATCH_RETRY;
 	hints.card	= card;
@@ -506,11 +508,15 @@ do_init_app(struct sc_profile *profile)
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_SO_PIN, &info);
 
-		hints.dialog_name = "pkcs15init.new_so_pin";
-		hints.prompt	= "New security officer (SO) PIN";
-		hints.obj_label	= "Security Officer PIN";
+		if (!(info.flags & SC_PKCS15_PIN_FLAG_SO_PIN)) {
+			role = "user";
+		} else {
+			/* SO pin is always optional */
+			hints.flags |= SC_UI_PIN_OPTIONAL;
+		}
 
-		if ((r = sc_ui_get_pin(&hints, &opt_pins[2])) < 0)
+		r = get_new_pin(&hints, role, "pin", &opt_pins[2]);
+		if (r < 0)
 			goto failed;
 	}
 
@@ -518,11 +524,12 @@ do_init_app(struct sc_profile *profile)
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_SO_PUK, &info);
 
-		hints.dialog_name = "pkcs15init.new_so_puk";
-		hints.prompt	= "Unblock code for new SO PIN";
-		hints.obj_label	= "Security Officer Unblock PIN (PUK)";
+		if (!(info.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+			role = "user";
 
-		if ((r = sc_ui_get_pin(&hints, &opt_pins[3])) < 0)
+		hints.flags |= SC_UI_PIN_OPTIONAL;
+		r = get_new_pin(&hints, role, "puk", &opt_pins[3]);
+		if (r < 0)
 			goto failed;
 	}
 	args.so_pin = (const u8 *) opt_pins[2];
@@ -569,11 +576,7 @@ do_store_pin(struct sc_profile *profile)
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_USER_PIN, &info);
 
-		hints.dialog_name = "pkcs15init.new_user_pin";
-		hints.prompt	= "New user PIN";
-		hints.obj_label	= "New User PIN";
-
-		if ((r = sc_ui_get_pin(&hints, &opt_pins[0])) < 0)
+		if ((r = get_new_pin(&hints, "user", "pin", &opt_pins[0])) < 0)
 			goto failed;
 	}
 	if (*opt_pins[0] == '\0') {
@@ -584,12 +587,8 @@ do_store_pin(struct sc_profile *profile)
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_USER_PUK, &info);
 
-		hints.dialog_name = "pkcs15init.new_user_pin";
-		hints.prompt	= "Unblock code for New user PIN";
-		hints.obj_label	= "New User Unblock PIN (PUK)";
-		hints.flags    |= SC_UI_PIN_OPTIONAL;
-
-		if ((r = sc_ui_get_pin(&hints, &opt_pins[1])) < 0)
+		hints.flags |= SC_UI_PIN_OPTIONAL;
+		if ((r = get_new_pin(&hints, "user", "puk", &opt_pins[1])) < 0)
 			goto failed;
 	}
 
@@ -1040,6 +1039,42 @@ set_secrets(struct sc_profile *profile)
 				secret->key,
 				secret->len);
 	}
+}
+
+/*
+ * Prompt for a new PIN
+ * @role can be "user" or "so"
+ * @usage can be "pin" or "puk"
+ */
+int
+get_new_pin(sc_ui_hints_t *hints,
+		const char *role, const char *usage,
+		char **retstr)
+{
+	char	name[32], prompt[64], label[64];
+
+	snprintf(name, sizeof(name), "pkcs15init.new_%s_%s", role, usage);
+
+	if (!strcmp(role, "user"))
+		role = "User";
+	else
+		role = "Security Officer";
+
+	if (!strcmp(usage, "pin")) {
+		snprintf(prompt, sizeof(prompt), "New %s PIN", role);
+		snprintf(label, sizeof(label), "%s PIN", role);
+	} else {
+		snprintf(prompt, sizeof(prompt),
+			"Unblock Code for New %s PIN", role);
+		snprintf(label, sizeof(label),
+			"%s unblocking PIN (PUK)", role);
+	}
+
+	hints->dialog_name	= name;
+	hints->prompt		= prompt;
+	hints->obj_label	= label;
+
+	return sc_ui_get_pin(hints, retstr);
 }
 
 /*
