@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <refentry id="scpatht">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
     <refmeta>
     	<refentrytitle>sc_path_t</refentrytitle>
         <manvolnum>3</manvolnum>
@@ -15,8 +16,8 @@
         <title>Synopsis</title>
         <para>
         	<programlisting>
-&includes;
-        		
+#include &lt;opensc.h&gt;
+
 #define SC_MAX_PATH_SIZE		16
 
 typedef struct sc_path {

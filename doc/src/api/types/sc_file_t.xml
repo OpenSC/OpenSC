@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <refentry id="scfilet">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
     <refmeta>
     	<refentrytitle>sc_file_t</refentrytitle>
         <manvolnum>3</manvolnum>
@@ -15,7 +16,7 @@
         <title>Synopsis</title>
         <para>
         	<programlisting>
-&includes;
+#include &lt;opensc.h&gt;
 
 typedef struct sc_file {
     struct sc_path    path;

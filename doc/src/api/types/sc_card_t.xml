@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <refentry id="sccardt">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
     <refmeta>
     	<refentrytitle>sc_card_t</refentrytitle>
         <manvolnum>3</manvolnum>
@@ -15,9 +16,9 @@
         <title>Synopsis</title>
         <para>
         	<programlisting>
-&includes;
+#include &lt;opensc.h&gt;
 
-#define SC_MAX_ATR_SIZE			33
+#define SC_MAX_ATR_SIZE         33
 #define SC_MAX_CARD_APPS         8
 
 typedef struct sc_card {

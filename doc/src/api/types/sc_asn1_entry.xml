@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <refentry id="scasn1entry">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_asn1_entry</refentrytitle>
 		<manvolnum>3</manvolnum>
@@ -15,6 +16,8 @@
 		<title>Synopsis</title>
 		<para>
 			<programlisting>
+#include &lt;opensc.h&gt;
+
 struct sc_asn1_entry {
 	const char *name;
 	unsigned int type;
