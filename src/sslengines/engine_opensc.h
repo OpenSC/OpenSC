@@ -8,6 +8,9 @@
 int opensc_finish(void);
 int opensc_init(void);
 
+void unset_pin(void);
+int set_pin(const char *pin);
+
 EVP_PKEY *opensc_load_public_key(ENGINE * e, const char *s_key_id,
 				 UI_METHOD * ui_method, void *callback_data);
 EVP_PKEY *opensc_load_private_key(ENGINE * e, const char *s_key_id,

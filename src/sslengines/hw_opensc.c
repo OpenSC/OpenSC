@@ -78,6 +78,7 @@
 #define OPENSC_ENGINE_NAME "opensc engine"
 
 #define CMD_SO_PATH		ENGINE_CMD_BASE
+#define CMD_PIN			(ENGINE_CMD_BASE+1)
 
 static int opensc_engine_destroy(ENGINE * e);
 static int opensc_engine_init(ENGINE * e);
@@ -92,6 +93,10 @@ static const ENGINE_CMD_DEFN opensc_cmd_defns[] = {
 	{CMD_SO_PATH,
 	 "SO_PATH",
 	 "Specifies the path to the 'opensc-engine' shared library",
+	 ENGINE_CMD_FLAG_STRING},
+	{CMD_PIN,
+	 "PIN",
+	 "Specifies the pin code",
 	 ENGINE_CMD_FLAG_STRING},
 	{0, NULL, NULL, 0}
 };
@@ -115,6 +120,8 @@ static int opensc_engine_destroy(ENGINE * e)
 static int opensc_engine_ctrl(ENGINE * e, int cmd, long i, void *p, void (*f) ())
 {
 	switch (cmd) {
+	case CMD_PIN:
+		return set_pin((const char *) p);
 	default:
 		break;
 	}

@@ -57,6 +57,7 @@ int opensc_finish(void)
 		sc_release_context(ctx);
 		ctx = NULL;
 	}
+	unset_pin();
 	return 1;
 }
 
@@ -91,9 +92,7 @@ int opensc_rsa_finish(RSA * rsa)
 
 	key_id = (struct sc_pkcs15_key_id *) RSA_get_app_data(rsa);
 	free(key_id);
-	if (sc_pin) {
-		free(sc_pin);
-	}
+	unset_pin();
 	return 1;
 }
 
@@ -170,6 +169,8 @@ int sc_prkey_op_init(const RSA * rsa, struct sc_pkcs15_object **key_obj_out,
 			sc_unlock(card);
 			fprintf(stderr, "PIN code verification failed: %s",
 				sc_strerror(r));
+			/* forget the pin if verification fails */
+			unset_pin();
 			goto err;
 		}
 	} else {
@@ -253,6 +254,28 @@ EVP_PKEY *opensc_load_public_key(ENGINE * e, const char *s_key_id,
 	return key_out;
 }
 
+void unset_pin(void)
+{
+	if (sc_pin) {
+		free(sc_pin);
+		sc_pin = NULL;
+	}
+}
+
+int set_pin(const char *_pin)
+{
+	/* free the old pin if set */
+	unset_pin();
+	if (!_pin) {
+		return 0;
+	}
+	sc_pin = strdup(_pin);
+	if (!sc_pin) {
+		return 0;
+	}
+	return 1;
+}
+
 char *get_pin(UI_METHOD * ui_method, char *sc_pin, int maxlen)
 {
 	UI *ui;
@@ -281,20 +304,24 @@ EVP_PKEY *opensc_load_private_key(ENGINE * e, const char *s_key_id,
 
 	if (verbose)
 		fprintf(stderr, "Loading private key!");
-	if (sc_pin) {
-		free(sc_pin);
-		sc_pin = NULL;
-	}
 	key_out = opensc_load_public_key(e, s_key_id, ui_method, callback_data);
 	if (!key_out) {
 		fprintf(stderr, "Failed to load public key");
 		return NULL;
 	}
-	sc_pin = (char *) malloc(12);
-	get_pin(ui_method, sc_pin, 12);	/* do this here, when storing sc_pin in RSA */
-	if (!key_out) {
-		fprintf(stderr, "Failed to get private key");
-		return NULL;
+	if (!sc_pin) {
+		sc_pin = (char *) malloc(12);
+		if (!sc_pin) {
+			EVP_PKEY_free(key_out);
+			return NULL;
+		}
+		if (!get_pin(ui_method, sc_pin, 12)) {
+			fprintf(stderr, "Failed to get pin");
+			unset_pin();
+			EVP_PKEY_free(key_out);
+			return NULL;
+		}
+		/* do this here, when storing sc_pin in RSA */
 	}
 	return key_out;
 }
