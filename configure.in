@@ -946,6 +946,10 @@ src/include/opensc/rsaref/Makefile
 src/libopensc/Makefile
 src/libopensc/opensc-config
 src/libopensc/libopensc.pc
+src/libopensc/libpkcs15init.pc
+src/libopensc/libscam.pc
+src/libopensc/libscconf.pc
+src/libopensc/libscldap.pc
 src/openscd/Makefile
 src/openssh/Makefile
 src/pam/Makefile

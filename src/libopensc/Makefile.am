@@ -4,7 +4,8 @@ includedir = @includedir@/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
-EXTRA_DIST = Makefile.mak libopensc.pc.in
+EXTRA_DIST = Makefile.mak libopensc.pc.in libpkcs15init.pc.in \
+	libscam.pc.in libscconf.pc.in libscldap.pc.in
 
 INCLUDES = @CPPFLAGS@ @OPENCT_CFLAGS@ @PCSC_CFLAGS@
 AM_LDFLAGS = @OPENCT_LDFLAGS@
@@ -42,4 +43,5 @@ include_HEADERS = \
 noinst_HEADERS = ctbcs.h internal.h esteid.h
 
 pkgconfigdir = @libdir@/pkgconfig
-pkgconfig_DATA = libopensc.pc
+pkgconfig_DATA = libopensc.pc libpkcs15init.pc \
+	libscam.pc libscconf.pc libscldap.pc

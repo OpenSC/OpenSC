@@ -1,0 +1,2077 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<book 
+	ns="http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" 
+	id="opensc"
+	lang="es"
+>
+	<title>Manual de OpenSC</title>
+	<bookinfo>
+		<author>
+			<name>OpenSC Development Team</name>
+			<email>opensc-devel@opensc.org</email>
+		</author>
+		<author>
+			<name>Traducción: Juan Antonio Martínez</name>
+			<email>jonsito@teleline.es</email>
+		</author>
+	</bookinfo>
+
+	<toc />
+
+	<chapter id="opensc.intro">
+		<title>Introducción</title>
+
+		<para>
+		<!--
+			libopensc is a library for accessing SmartCard devices. It is also
+			the core library of the OpenSC project. Basic functionality (e.g.
+			SELECT FILE, READ BINARY) should work on any ISO 7816-4 compatible
+			SmartCard. Encryption and decryption using private keys on the
+			SmartCard is possible with PKCS #15 compatible cards, such as
+			the FINEID (Finnish Electronic IDentity) card.
+		-->
+			libopensc es una biblioteca de acceso a dispositivos tipo Tarjeta Inteligente (SmartCards). Cualquier tarjeta que soporte el estandard ISO 7816-4 deberia poder ser utilizada para las funcionalidades básicas ( manejo de ficheros ). Si además la tarjeta es compatible con el standard PKCS#15, la biblioteca ofrece a estas tarjetas el soporte de diversas funciones criptográficas
+		</para>
+	</chapter>
+
+	<chapter id="opensc.authors">
+		<title>Autores y Colaboradores</title>
+
+		<para>
+		<!--
+			Here is a list of all Authors and Contributors
+			of OpenSC in alphabetical order:
+		-->
+			Se adjunta la lista de todos los autores y colaboradores de OpenSC en orden alfabético
+		</para>
+
+		<itemizedlist>
+			<listitem>
+				Robert Bihlmeyer <email>robbe@orcus.priv.at</email>
+			</listitem>
+
+			<listitem>
+				Stef Hoeben <email>Hoeben.S@Zetes.com</email>
+			</listitem>
+
+			<listitem>
+				Andreas Jellinghaus <email>aj@dungeon.inka.de</email> 
+			</listitem>
+
+			<listitem>
+				Olaf Kirch <email>okir@suse.de</email>
+			</listitem>
+
+			<listitem>
+				Nils Larsch <email>larsch@trustcenter.de</email>
+			</listitem>
+
+			<listitem>
+				Juan Antonio Martinez <email>jonsito@teleline.es</email>
+			</listitem>
+
+			<listitem>
+				Ville Skyttä
+			</listitem>
+
+			<listitem>
+				Kevin Stefanik <email>kstef@mtppi.org</email>
+			</listitem>
+
+			<listitem>
+				Antti Tapaninen <email>aet@cc.hut.fi</email>
+			</listitem>
+
+			<listitem>
+				Timo Teräs <email>timo.teras@iki.fi</email>
+			</listitem>
+
+			<listitem>
+				Juha Yrjölä <email>juha.yrjola@iki.fi</email>
+			</listitem>
+
+			<listitem>
+				Jörn Zukowski <email>zukowski@trustcenter.de</email>
+			</listitem>
+		</itemizedlist>
+
+		<section id="opensc.authors.thanks">
+			<title>Agradecimientos</title>
+
+			<para>
+			<!--
+				The following people provided inspiration,
+				moral support and/or valuable information
+				during the development of OpenSC:
+			-->
+			Las siguientes personas an aportado ideas, apoyo y/o información para el desarrollo de OpenSC
+			</para>
+
+			<itemizedlist>
+				<listitem>
+					Antti Partanen
+					<email>antti.partanen@vrk.intermin.fi</email>
+				</listitem>
+
+				<listitem>
+					David Corcoran <email>corcoran@linuxnet.com</email>
+				</listitem>
+			</itemizedlist>
+
+			<para>
+			<!--
+				OpenSC did neither invent the wheel nor
+				write all code from scratch. We could
+				reuse some code from other projects
+				mostly to interface with these projects.
+				Thanks to the original authors:
+			-->
+			OpenSC no ha inventado la rueda ni escrito el código desde cero. Se ha usado código de otros proyectos, principalmente para desarrollar el interfaz con éstos. Los autores originales son:
+			</para>
+
+			<itemizedlist>
+				<listitem>
+					Matthias Brüstle
+				</listitem>
+
+				<listitem>
+					Markus Friedl
+				</listitem>
+
+				<listitem>
+					Geoff Thrope <email>geoff@geoffthorpe.net</email>
+				</listitem>
+			</itemizedlist>
+		</section>
+	</chapter>
+
+	<chapter id="opensc.license">
+		<title>Licencia. Copyright</title>
+
+		<screen>
+OpenSC smart card library
+Copyright (C) OpenSC developers 
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+</screen>
+	</chapter>
+
+	<chapter id="opensc.overview">
+		<title>Introducción</title>
+
+		<para>
+		<!--
+			OpenSC is a large toolkit. The main building
+			block is the opensc library. It has three layers
+			of code, each with several drivers in it.
+			Other libraries are the PKCS #11 module,
+			a PAM module, two engines for OpenSSL.
+			In addition there are several tools to test and
+			use these tools and libraries.
+		-->
+		OpenSC está basado en diversos componentes. 
+El principal es la biblioteca OpenSC, a su vez dividida en tres capas, cada una con diversos drivers
+Otros componentes son: la biblioteca PKCS#11, el módulo PAM, diversos plugins para OpenSSL... Adicionalmente, se incluyen diversas utilidades y aplicaciones de test que usan estas bibliotecas
+		</para>
+
+		<para>
+		<!--
+			Purpose of this chapter is to give an overview
+			of the inner workings of the opensc library,
+			to give a short presentation what the other
+			libraries do, and finally what the opensc toolchest
+			has to offer. Each tool has it's own man page,
+			each library it's own section in this document.
+		-->
+El objetivo de este capítulo es proporcionar información sobre el funcionamiento interno de la biblioteca OpenSC, cómo funciona, y finalmente qué ofrecen las utilidades. Cada una de éstas, así como las bibliotecas, tienen su propia pagina de manual, y su sección en este documento
+		</para>
+
+		<section id="opensc.overview.layers">
+			<title>Estructura de OpenSC</title>
+
+			<para>
+			<!--
+				libopensc is the basic library used by
+				everything else. It offer basic
+				functionality like talking to smart
+				cards, but also advances functions
+				like generating RSA keys on a smart card.
+			-->
+La biblioteca básica de OpenSC es libopensc. Ofrece tanto funcionalidades básicas para la comunicación con las tarjetas inteligentes, como avanzadas, (eg. generar claves RSA en una tarjeta)
+			</para>
+
+			<para>
+			<!--
+				libopensc has several layers of functionality,
+				each implemented by one or several drivers.
+				The layers are:
+			-->
+Para ello, libopensc está estructurado en diversas capas, a su vez implementadas mediante uno o más drivers. Estas capas son:
+			</para>
+
+			<variablelist>
+
+				<varlistentry>
+				<term>Lector</term>
+				<listitem>
+				<!--
+					OpenSC needs some way to talk to
+					smart card readers and cards in
+					the smart card readers. Different
+					software can be used for that purpose,
+					each software has it's own reader
+					module so OpenSC can use that software.
+				-->
+				OpenSc necesita poder enlazar con los diversos manejadores de lectores de tarjetas. Dado que cada uno tiene su propio software (CT-api, PC/SC, etc), OpenSC provee un módulo específico para cada uno
+				</listitem>
+				</varlistentry>
+
+				<varlistentry>
+				<term>Tarjetas</term>
+				<listitem>
+				<!--
+					In a perfect world all smart cards
+					would implement ISO 7816 standard,
+					and thus accept the same commands
+					and give the same answers. Unfortunately
+					most cards have their own commands,
+					syntax and responses. The card modules
+					in libopensc implement these different
+					commands.
+				-->
+				Idealmente, todas las tarjetas inteligentes, de berían implementar el standard ISO 7816 de la misma forma, y aceptar y generar los mismos comandos y respuestas. Desafortunadamente, este no es el caso. OpenSC ofrece pues un módulo específico por cada tarjeta (o familia de tarjetas)
+				</listitem>
+				</varlistentry>
+
+				<varlistentry>
+				<term>pkcs15init</term>
+				<listitem>
+				<!--
+					Smart cards usually have a file system.
+					To store or create keys or certificates
+					on a smart card one needs to format
+					the card, create directories and objects
+					and set permissions in a secure way.
+					Not only are the commands to do this
+					different from card to card, also the
+					security model is often very different.
+					These pkcs15init modules implement
+					these differences.
+				-->
+Las tarjetas inteligentes suelen incorporar un sistema de ficheros, donde almacenar claves y certificados. Asímismo incorporan comandos para crear directorios y ficheros, ajustar permisos y seguridad, etc. En función de la tarjeta no solo los comandos son distintos, sino que incluso la estructura de ficheros y modelo de seguridad difieren. El módulo pkcs15init esconde estas diferencias al resto de la aplicación
+				</listitem>
+				</varlistentry>
+
+				<varlistentry>
+				<term>La infraestructura PKCS #15</term>
+				<listitem>
+					<para>
+					<ulink url="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-15/">PKCS #15</ulink> 
+				<!--
+					is the standard on how to
+					store certificates and keys on a
+					smart card or crypto token. But many
+					vendors have their own proprietary
+					mechanism for storing these
+					informations, for example in different
+					directories. OpenSC implements
+					the PKCS #15 standard, but there is
+					also an emulation module for a
+					slightly incompatible storage mechanism
+					in the works.
+				-->
+				Es el estandard de manejo y almacenamiento de claves y certificados en un dispositivo criptográfico. A pesar de ello, muchos fabricantes de tarjetas implementan sus propios mecanismos, por ejemplo especificando diferentes directorios. OpenSC implementa el estandard PKCS#15, existiendo un módulo de emulación para aquellas tarjetas que se apartan del estandard
+				</para>
+
+					<para>
+				<!--
+					It should be possible to implement a
+					completely different framework
+					for compatibility with a non
+					PKCS #15 way of storing and accessing
+					keys and certificates.
+				-->
+				De hecho es posible elaborar una infraestructura nueva para implementar compatibilidad con sistemas que no cumplan dicho estandard
+					</para>
+				</listitem>
+				</varlistentry>
+			</variablelist>
+		</section>
+
+		<section id="opensc.overview.readers">
+			<title>El módulo lector</title>
+
+			<para>
+			<!--
+				PC/SC Lite is well known as smart card
+				middleware. It interacts with drivers for
+				the smart card readers on the bottom,
+				and with smart card applications on the top.
+				OpenSC can use PC/SC Lite via the pcsc
+				reader module, but also supports a number
+				of alternatives.
+			-->
+			PC/SC Lite es una aplicación middleware que sirve para interactuar, por un lado con los drivers para lectores de tarjetas, y por otro con las aplicaciones que las manejan. OpenSC puede usar PC/SC Lite mediante el modulo lector pcsc, aunque soporta otras alternativas
+			</para>
+
+			<para>
+			<!--
+				PC/SC is a standard with interfaces between
+				applications, a resource manager and drivers
+				for smart card readers. This standard is
+				very popular on the Windows operating System.
+				The documents are available from
+			-->
+			PC/SC es un API estandard entre aplicaciones, como gestor de recursos para lectores de tarjetas inteligentes. Es muy popular en el entorno operativo Windows. La documentación está disponible en:
+				<ulink url="http://www.pcscworkgroup.com/" />.
+			</para>
+
+			<para>
+			<!--
+				PC/SC Lite is an implementation of the
+				PC/SC standard for Linux, Unix, Mac OS X
+				and Windows by David Corcoran
+				<email>corcoran@linuxnet.com</email>. The
+				software is available with full source code and
+				available for free. To download the software,
+				please visit the website of the Movement
+				for the use of smart cards in a Linux
+				environment (M.U.S.C.L.E.) at 
+			-->
+			PC/SC Lite es la implementación del estandard PCSC para sistemas Linux, Unix, Windows y MacOS X, realizada por David Corcoran <email>corcoran@linuxnet.com</email>. La aplicación está disponible como software libre y gratuíto. Para descargar esta aplicación, refierase a la página web del Movimiento para el Uso de SmartCards en Entornos Linux ( M.U.S.C.L.E ) 
+				<ulink url="http://www.linuxnet.com/" />.
+			</para>
+
+			<para>
+			<!--
+				To install OpenSC with support for PC/SC Lite,
+				please install PC/SC Lite first. Then configure
+				OpenSC to use PC/SC Lite and specify the
+				location where PC/SC Lite is installed like
+				this:
+			-->
+			Para instalar el soporte de OpenSC para pcsc-lite, es necesario instalar PCSCLite primero, y seguidamente configurar OpenSC especificando la ubicación de la instalación de PCSC
+				<screen>
+$ cd opensc-&lt;version&gt;
+$ ./configure --with-pcsclite=/path/to/pcsclite
+				</screen>
+			</para>
+
+			<para>
+			<!--
+				OpenCT is a new framework for accessing 
+				smart cards, card readers and card terminals.
+				It was written from scratch, already includes
+				all drivers, and is very lightweight. OpenCT
+				is available for Linux, but if you want to
+				use it on other Unix or BSD operating systems,
+				please ask for help on the opensc-devel mailing
+				list.
+			-->
+			OpenCT es una nueva aplicación para manejo de tarjetas inteligentes, lectores y terminales de acceso. OpenCT ha sido escrito desde cero , constituyendo un entorno muy ligero, e incluyendo todos los drivers. Está dispobible para sistemas Linux, pero si se desea su uso en otros entornos Unix o BSD, por favor consulte en la lista de correo de opensc-devel
+			</para>
+
+			<para>
+			<!--
+				OpenCT is open source software. As such
+				it is available with full source code for
+				free. OpenCT is a software companion
+				to OpenSC and the preferred way of accessing
+				smart cards under Linux. OpenCT is available
+				from the OpenSC website <ulink
+					url="http://www.opensc.org/" /> and
+				questions go to the
+				<email>opensc-devel@opensc.org</email> mailing
+				list.
+			-->
+			OpenCT es software libre. El código fuente está disponible de manera gratuita. OpenCT es desarrollado conjuntamente con OpenSC y se recomienda su uso preferente para entornos Linux. OpenCT está disponible en la página web de OpenSC <ulink url="http://www.opensc.org/" />. Para dudas y consultas acudan a la lista de correo <email>opensc-devel@opensc.org</email>
+			</para>
+
+			<para>
+			<!--
+				To compile OpenSC with support for OpenCT,
+				please install OpenCT first. Documentation
+				on OpenCT is part of the source code, and
+				also available online at 
+			-->
+			Para compilar OpenSC con soporte OpenCT, es necesario tener instalado éste primero. La documentación de OpenCT está incluída en el código fuente, así como disponible en línea a través del enlace:
+			<ulink url="http://www.opensc.org/files/doc/openct.html" />.
+			<!--
+				Then configure OpenSC to use OpenCT and specify
+				the location where OpenCT is installed like
+				this:
+			-->
+			Una vez instalado OpenCT, recompile OpenSC indicando la ubicación de las bibliotecas OpenCT
+				<screen>
+$ cd opensc-&lt;version&gt;
+$ ./configure --with-openct=/path/to/openct
+				</screen>
+			</para>
+
+			<para>
+			<!--
+				CT-API is a standard format for
+				drivers for smart card readers. It was
+				invented in the eighties for DOS applications
+				and is maybe not very fit for todays
+				multiuser multitasking applications.
+				However CT-API is still quite popular,
+				and many smart card readers have drivers
+				in CT-API format even for Linux. It is
+				recommended to use these drivers if 
+				the PC/SC Lite middleware described above.
+			-->
+CT-API es un estandard para manejadores de tarjetas inteligentes. 
+Fué desarrollado en la década de los 80, para aplicaciones MS-Dos, 
+y quizás no sea muy conocido en los ambientes multi-usuario y multi-tarea 
+de la actualidad. Sin embargo, CT-API está muy extendido y muchos 
+lectores proveen soporte para este estándard incluso bajo Linux.
+			</para>
+
+			<para>
+			<!--
+				But OpenSC can also use CT-API drivers
+				directly. This is meant for debugging mostly
+				and not recommended in a multi user or
+				multi application environment.
+			-->
+			OpenSC puede usar drivers CT-API directamente.
+No obstante su uso se reserva para aplicaciones de depuración y no se 
+recomienda en instalaciones multi-usuario o con múltiples aplicaciones 
+que usen el lector
+			</para>
+
+			<para>
+			<!--
+				OpenSC includes always support for drivers
+				in CT-API format, you don't need to do
+				anything special for compiling. 
+				See the <filename>opensc.conf</filename>
+				configuration file on how to configure
+				an CT-API driver with OpenSC.
+			-->
+El soporte CT-API en OpenSC no necesita párametros especiales a la hora de
+recompilar. Léase el fichero de configuración <filename>opensc.conf</filename> para saber como configurar el driver CT-API bajo OpenSC
+			</para>
+
+		</section>
+
+
+	</chapter>
+
+	<chapter id="opensc.install">
+		<title>Compilación e Instalación de libopensc</title>
+
+		<section id="opensc.install.linux">
+			<title>Linux </title>
+			<para>
+			<!--
+			See the INSTALL file for instructions.  If you are
+			using the CVS version, you have to run the 'bootstrap'
+			script before running configure.  Please note, that for
+			bootstrap to work, you have to have the correct
+			versions of Autoconf, Automake and Libtool installed.
+			-->
+			Lea el fichero <filename>INSTALL</filename> para ver las instrucciones de compilación. Si se está partiendo de una versión descargada del CVS, necesitará ejecutar previamente el script 'bootstrap' antes de ejecutar 'configure'. Del mismo modo, deberá tener versiones actualizadas de Autoconf, Automake, y Libtool
+			</para>
+		</section>
+
+		<section id="opensc.install.windows">
+			<title>Windows </title>
+
+			<para>
+			<!--
+				Type "nmake -f makefile.mak"  in the opensc\
+				dir to compile.
+			-->
+Ejecute "nmake -f makefile.mak" en el directorio opensc para compilar
+			</para>
+
+			<para>
+			<!--
+				You need also perl and flex installed for the
+				compile process to complete successfully.
+			-->
+Además de nmake, deberá tener perl y flex instalados para poder realizar la 
+compilación
+			</para>
+
+			<para>
+			<!--
+				No installation script has been provided, so
+				you have to do this manually:
+			-->
+El fichero Makefile.mak no incorpora mecanismos para "make install", por lo que deberá realizar la instalación de manera manual
+			</para>
+
+			<procedure>
+				<step>
+				<!--
+					Copy opensc.conf to your Windows
+					directory (usually C:\WINDOWS or
+					C:\WINNT). This is optional.
+				-->
+Copiar opensc.conf al directorio Windows ( generalmente C:\WINDOWS o C:\WINNT). Esta operación es opcional
+				</step>
+
+				<step>
+				<!--
+					Copy opensc.dll and opensc-pkcs11.dll
+					to your path.
+				-->
+Copiar opensc.dll y opensc-pkcs11.dll a una ubicación dentro del path
+				</step>
+			       
+				<step>
+				<!--
+					If you want to use pkcs15-init.exe,
+					make sure the *.profile files in the
+					pkcs15-init\ dir are in the same
+					directory as pkcs15-init.exe, or in
+					your Windows directory.
+				-->
+Si se quiere utilizar el comando pkcs15-init.exe, asegurese de que los ficheros *.profile residentes en el directorio src\pkcs15init\ están en el mismo directorio que pkcs15-init.exe, o en el directorio Windows
+				</step>
+			</procedure>
+		</section>
+
+		<section id="opensc.install.windowsopenssl">
+			<title>Windows con soporte OpenSSL</title>
+
+			<para>
+			<!--
+				This adds extended functionality.  E.g. the
+				pkcs15-init tool, PKCS #11 hash mechanisms and
+				more PKCS #11 signature mechanisms.
+			-->
+Esta opción añade funcionalidad extra (por ejemplo PKCS#11 hash y mecanismos de firmas pkcs#11 adicionales
+			</para>
+
+			<procedure>
+				<step>
+			<!--
+				Download and compile the OpenSSL sources from 
+			-->
+			Descargar y compilar los fuentes de OpenSSL de:
+				<ulink url="http://www.openssl.org/source/" />
+				</step>
+				
+				<step>
+			<!--
+					Add the inc32\ dir to your include
+					path, the out32dll\ to your lib path
+					and your executable path
+			-->
+Añadir el directorio \inc32 al include_path, y el \out32dll 
+al library_path y exec_path
+					<screen>
+set include=%include%;.....\inc32
+set lib=%lib%;.....\out32dll
+set path=%path%;....\out32dll
+					</screen>
+				</step>
+
+				<step>
+			<!--
+					In src/tools/Makefile.mak uncomment
+					pkcs15-init.exe in the "TARGETS" line
+					(optionally) and add libeay32.lib (and
+					gdi32.lib) to the "link" line
+			-->
+En el fichero src\tools\Makefile.mak descomentar "pkcs15-init.exe en la línea
+"TARGETS", y (opcionalmente) añadir "libeay32.lib" y "gdi32.lib" al la línea marcada como "link" (enlace) 
+				</step>
+
+				<step>
+			<!--
+					In src/libopensc/Makefile.mak add
+					libeay32.lib (and gdi32.lib) to the
+					"link" line
+			-->
+En el fichero src\libopensc\Makefile.mak, añadir "libeay32.dll" y "gdi32.dll"
+a la línea marcada como "link" (enlace)
+				</step>
+
+				<step>
+				<!--
+					In src/pkcs11/Makefile.mak add
+					libeay32.lib (and gdi32.lib) to the
+					"link" lines of TARGET and TARGET3.
+				-->
+Realizar la misma inclusión en el fichero src\pkcs11\Makefile.mak en las
+entradas "link" de las secciones "TARGET" y "TARGET3"
+				</step>
+
+				<step>
+				<!--
+					In win32/Make.rules.mak add
+					/DHAVE_OPENSSL to the "COPTS" line
+				-->
+En el fichero win32\Make.rules.mak, añadir /DHAVE_OPENSSL a la línea "COPTS"
+				</step>
+			</procedure>
+
+			<para>
+			<!--
+				To add the OpenSSL code to the DLLs (so you
+				won't need libeay32.dll anymore): statically
+				compile OpenSSL and add gdi32.lib next to
+				libeay32.lib in the 3 Makefile.mak files above.
+			-->
+Para no necesitar las librerías dinámicas: compilar OpenSSL estáticamente y substituír los ficheros gdi32.dll y libeay32.dll por los ficheros gdi32.lib t libeay32.lib, respectivamente, en los tres ficheros Makefile.mak anteriormente indicados
+			</para>
+
+		</section>
+
+	</chapter>
+
+	<chapter id="opensc.status">
+		<title>Estado del desarrollo</title>
+
+
+		<section id="opensc.status.cards">
+			<title>Tarjetas</title>
+
+			<variablelist>
+
+				<varlistentry>
+
+				<term>CryptoFlex</term>
+
+				<listitem>
+
+			<para>
+				Soporta firma/desencriptación e inicialización
+				<!--
+				Support signing/decrypting, and initialization
+				-->
+			</para>
+	</listitem></varlistentry>
+
+			<varlistentry><term>Gemplus PK 4K, 8K, 16K</term>
+			
+			<listitem>
+			<para>
+				Soporta firma/desencriptación e inicialización
+				<!--
+				Support signing/decrypting, and initialization
+				-->
+			</para>
+
+			<para>
+				<!--
+				NOTE: You will not be able to initialize a
+				GemSafe cards - these card already have been
+				personalized by Gemplus, and you cannot erase
+				them or create new key files on them.
+				-->
+				Nota: no le será posible inicializar una tarjeta GemSafe - estas tarjetas vienen personalizadas por GemPlus y no se pueden borrar o añadir nuevos ficheros de claves en ellas
+			</para>
+	</listitem></varlistentry>
+
+	<varlistentry><term>Aladdin eToken PRO</term>
+
+			<listitem>
+			<para>
+				Soporta firma/desencriptación e inicialización
+				<!--
+				Support signing/decrypting, and initialization
+				-->
+			</para>
+
+			<para>
+			<!--
+				NOTE: CardOS only supports keys for 
+				decryption or signing, but not both.
+				If you create/store keys with '- -split-keys'
+				OpenSC will work around this limitation.
+			-->
+			Nota: CardOS solo soporta claves para firmado, o desencriptación, pero no para ambas. Esta limitación puede ser evitada creando/almacenando claves con la opción "--split-keys"
+			</para>
+	</listitem></varlistentry>
+
+	<varlistentry><term>Eutron CryptoIdendity IT-SEC</term>
+
+			<listitem>
+			<para>
+				Soporta firma/desencriptación e inicialización
+				<!--
+				Support signing/decrypting, and initialization
+				-->
+			</para>
+
+			<para>
+			<!--
+				NOTE: CardOS only supports keys for 
+				decryption or signing, but not both.
+				If you create/store keys with "- -split-keys"
+				OpenSC will work around this limitation.
+			-->
+			Nota: CardOS solo soporta claves para firmado, o desencriptación, pero no para ambas. Esta limitación puede ser evitada creando/almacenando claves con la opción "--split-keys"
+			</para>
+	</listitem></varlistentry>
+
+			<varlistentry><term>Micardo</term>
+		<listitem>
+
+			<para>
+				Soportada ( TODO: incluir detalles )
+				<!--
+				Supported - need to fill in the details
+				-->
+			</para>
+	</listitem></varlistentry>
+
+			<varlistentry><term>Miocos</term>
+		<listitem>
+
+			<para>
+				Soportada ( TODO: incluir detalles )
+				<!--
+				Supported - need to fill in the details
+				-->
+			</para>
+	</listitem></varlistentry>
+
+			<varlistentry><term>Setcos</term>
+		<listitem>
+
+			<para>
+				Soportada ( TODO: incluir detalles )
+				<!--
+				Supported - need to fill in the details
+				-->
+			</para>
+	</listitem></varlistentry>
+
+			<varlistentry><term>Tcos</term>
+		<listitem>
+
+			<para>
+				Soportada ( TODO: incluir detalles )
+				<!--
+				Supported - need to fill in the details
+				-->
+			</para>
+	</listitem></varlistentry>
+	</variablelist>
+	</section>
+
+	<section id="opensc.status.windows">
+			<title>Windows</title>
+
+			<para>
+			<!--
+				At the moment only libopensc.dll, pkcs11-spy.dll
+				opensc-pkcs11.dll, and most executables in the
+				tools\ and tests\ dir have been ported.  They
+				are tested on Win98, WinNT, Win2000 and WinXP.
+			-->
+Actualmente, solo han sido portados a Windows: libopensc.dll, pkcs11-spy.dll, opensc-pkcs11.dll y la mayor parte de los ejecutables del directorio \tools y \tests. Estas bibliotecas han sido testeadas en Win98, WinNT, Win2000 y WinXP
+			</para>
+		</section>
+
+		<section id="opensc.status.pkcs11">
+			<title>Módulo PKCS #11 en Netscape y Mozilla</title>
+
+			<para>
+			<!--
+				Netscape seems to show more information about
+				the security module than Mozilla. Otherwise all
+				stuff is untested.
+			-->
+			Netscape parece mostrar más información acerca de sus módulos de seguridad que Mozilla. No obstante el soporte no ha sido testeado
+			</para>
+
+			<para>
+			<!--
+				Thread safety on Linux and Mac OS X:
+				Netscape/Mozilla uses the CKF_OS_LOCKING_OK
+				flag in C_Initialize().  The result is that the
+				browser process doesn't end when closing the
+				browser, so you have to kill the process
+				yourself.  (If the browser would do a
+				C_Finalize, the sc_pkcs11_free_lock() would be
+				called and there wouldn't be a problem.) 
+			-->
+Notas sobre threads en Linux y MacOS X:
+Netscape y Mozilla usan el parámetro CKF_OS_LOCKING_OK en la función
+C_Initialize(). Como resultado, el thread del navegador no termina cuando se cierra éste, y debe ser abortado manualmente. Esto es debido a que el navegador no invoca C_Finalize, que liberaría los locks, tal y como especifica el estandard
+			</para>
+
+			<para>
+			<!--
+				Therefore, we don't use the PTHREAD locking
+				mechanisms, even if they are requested. This
+				seems to work fine for Mozilla, BUT will cause
+				problems for apps that use multiple threads to
+				access this lib simultaneously.
+			-->
+Por consiguiente OpenSC no utiliza los mecanismos de bloqueos de threads,
+incluso aunque sean solicitados. Esto parece funcionar en Mozilla, pero puede
+causar problemas en aplicaciones que utilicen múltiples hilos que accedan
+simultáneamente a la librería pkcs11
+			</para>
+
+			<para>
+			<!--
+				If you do want to use OS threading, compile
+				with -DPKCS11_THREAD_LOCKING On Windows, no
+				PTHREAD lib is used and there the problem
+				doesn't occur. So there the OS locking is
+				enabled.
+			-->
+Si se desea utilizar los mecanismos de threading, recompilar con la opción
+-DPKCS11_THREAD_LOCKING. En Windows no se usan hilos, y por consiguiente este
+problema no existe, por lo que se usa el mecanismo de bloqueos del sistema
+			</para>
+		</section>
+	</chapter>
+
+	<chapter id="opensc.using">
+		<title>Uso de OpenSC</title>
+
+		<section id="opensc.using.netscape">
+			<title>OpenSC y Netscape</title>
+
+			<procedure>
+				<step>
+					Seleccionar: Communicator -&gt; Tools -&gt; Security Info
+				</step>
+	
+				<step>
+					Seleccionar: Cryptographic Modules
+				</step>
+	
+				<step>
+					Pulsar: Add
+				</step>
+	
+				<step>
+					Indicar nombre del módulo: "OpenSC PKCS #11 Module"
+					Indicar ubicación del fichero: /path/to/opensc/lib/pkcs11/opensc-pkcs11.so
+				</step>
+			</procedure>
+	
+			<para>
+			<!--
+			For proper operation, you also need to configure the
+			module: In the Cryptographic Modules dialog, select
+			the OpenSC card, and click on the "Config" button to
+			the right. Select the "Enable this token" radio button,
+			and select the "Publicly readable Certs" button.  
+			-->
+Para que el módulo funcione adecuadamente, es necesario activarlo: En el Menú
+"Cryptographic Modules" Seleccionar la tarjeta OpenSC, y pulsando en "Config",
+activar los botones "Enable this token" y "Publicly readable Certs"
+			</para>
+	
+			<para>
+			<!--
+			This will ensure that Netscape uses the card when
+			trying to display encrypted messages in Netscape
+			messenger.  Setting "Publicly readable Certs" will also
+			stop a pretty annoying habit of Netscape which is to
+			ask for all PINs when browsing sites requiring client
+			authentication.
+			-->
+Con esto se garantiza que Netscape utilizará la tarjeta cuando intente mostrar
+mensajes encriptados en el Netscape Messenger. Del mismo modo habilitar "Publicly readable Certs" evitará que Netscape nos pida el PIN cada vez que se acceda a una página que requiera autenticación del Cliente
+			</para>
+	
+			<para>
+			<!--
+			You should _not_ select the "RSA" button. If this
+			option is selected, Netscape will try to use the card
+			for all public key operations, and will fail horribly.
+			-->
+El boton "RSA" NO DEBE ser activado. En caso contrario, Netscape intentará usar
+la tarjeta cada vez que vaya a generar claves públicas, y fallará (no todas las tarjetas soportan esta funcionalidad)
+			</para>
+	
+			<para>
+				FIXME: Especificar versión de Netscape a la que se aplican estas instrucciones
+			</para>
+		</section>
+
+		<section id="opensc.using.mozilla">
+			<title>OpenSC y Mozilla</title>
+	
+			<procedure>
+				<step>
+				<!--
+				Make sure Personal Security Manager (PSM) is
+				installed (eg. mozilla-psm package is
+				installed).
+				-->
+Asegurese que el Personal Security Manager (PSM) está instalado (paquete mozilla-psm)
+				</step>
+	
+				<step>
+					Seleccionar menú: Edit -&gt; Preferences
+				</step>
+	
+				<step>
+					Seleccionar Categoría: Privacy &amp; Security -&gt;
+					Certificates
+				</step>
+	
+				<step>
+					Pulsar en: "Manage Security Devices"
+				</step>
+	
+				<step>
+					Seleccionar: Load
+				</step>
+	
+				<step>
+					Indicar nombre del módulo: "OpenSC PKCS #11 Module"
+					y ubicación del fichero: /path/to/opensc/lib/pkcs11/opensc-pkcs11.so
+				</step>
+			</procedure>
+		</section>
+	
+		<section id="opensc.using.openssl">
+			<title>OpenSC y OpenSSL</title>
+		
+			<para>
+			<!--
+				OpenSSL is a robust, full-featured toolkit
+				implementing the SSL protocols as well as
+				a general purpose cryptography library.
+				It features a so called engine interface
+				to combine the toolkit with the cryptographic
+				abilities of some hardware.
+			-->
+OpenSSL es una potente utilidad que implementa los protocolos SSL, 
+así como una biblioteca criptográfica de uso general. 
+Entre sus características, se incluye la posibilidad de incluir "al vuelo"
+capacidades criptográficas adicionales (engines), como pueda ser la adicción 
+de hardware criptográfico
+			</para>
+	
+			<para>
+			<!--
+			OpenSC includes an engine for OpenSSL. This
+			allows to use the OpenSSL library and command line
+			utilities in combination with smart card cryptography.
+			-->
+OpenSC incluye dos "engines" para OpenSSL. Esto permite el uso de OpenSSL y sus
+diversas utilidades asociadas en combinación con las capacidades criptográficas de las tarjetas inteligentes
+			</para>
+	
+			<para>
+			<!--
+				Here is an example how it works with the command
+				line tool <command>openssl</command>. You need
+				to load the opensc engine first, and then can
+				enter any command as usual (e.g. create or sign
+				a certificate).
+			-->
+Para utilizar estas habilidades, es preciso cargar el "engine" dentro de OpenSSL, y luego utilizar de la manera habitual las aplicaciones. He aquí un ejemplo de utilización desde el comando <command>openssl</command>:
+			</para>
+	
+			<para>
+				Ejemplo de cómo cargar el "engine" OpenSC
+				<screen>
+aj@simulacron:~$ openssl
+OpenSSL> engine dynamic -pre SO_PATH:/home/aj/opensc/lib/opensc/engine_opensc.so -pre ID:opensc -pre LIST_ADD:1 -pre LOAD
+(dynamic) Dynamic engine loading support
+[Success]: SO_PATH:/home/aj/opensc/lib/opensc/engine_opensc.so
+[Success]: ID:opensc
+[Success]: LIST_ADD:1
+[Success]: LOAD
+Loaded: (opensc) opensc engine
+OpenSSL> 
+				</screen>
+			</para>
+
+			<para>
+			<!--
+				A typical OpenSSL command might be to make a certificate request:
+			-->
+Un comando OpenSSL típico puede ser la recuperación de un certificado:
+				<prompt>req -engine opensc -new -key <replaceable>key</replaceable> -keyform engine -out req.pem -text</prompt>.
+			<!--
+				See the OpenSSL documentation for details.
+			-->
+			Consulte la documentación de OpenSSL para detalles adicionales
+			</para>
+
+ 			<para>
+-				<replaceable>key</replaceable> 
+			<!--
+			can specify the ID of a key in hex,-e.g. "45" would be key 0x45.-			
+			-->
+			Especifica el identificador de una clave en Hexadecimal. - por ejemplo "45" corresponde al la clave con ID="0x45"
+			</para>
+
+			<para>
+			<!--
+				Actually OpenSC has even two engines for OpenSSL:
+			-->
+			OpenSC incluye dos "engines" para OpenSSL:
+				<filename>engine_opensc.so</filename> y
+				<filename>engine_pkcs11.so</filename>.
+			</para>
+	
+			<para>
+			<!--
+				The opensc engine does only work with OpenSC.
+				It will not work, if several applications
+				try to use the smart card at the same time
+				or one applications tries to use several
+				smart cards at the same time. Or several
+				certificates or keys within one card.
+				But for the simple case (one app, one cert, one
+				smart card) it is working very fine.
+			-->
+El módulo engine_opensc.so sólo funciona bajo OpenSC, y no funcionará cuando
+haya múltiples aplicaciones accediendo concurrentemente a la tarjeta, o existan en la tarjeta varios certificados. Pero en los casos simples: (una aplicación, una tarjeta, un certificado) es el módulo indicado por su simplicidad
+			</para>
+	
+			<para>
+			<!--
+			The PKCS #11 engine is very generic and flexible.
+			It will always work, even in complex situations
+			involving several cards, keys, objects, certificates
+			or concurrent applications. Also it is fully based
+			on PKCS #11 and that way it can use the OpenSC
+			PKCS #11 library (and does so by default), but
+			it will work with any other PKCS #11 library,
+			too.
+			-->
+El módulo engine_pkcs11.so es mucho mas genérico y flexible.
+funcionará en todos los casos, incluídos aquellos en que existan múltiples
+tarjetas, claves, certificados, con aplicaciones concurrentes. 
+Además está basado en el estandard PKCS#11, por lo que no solo puede usar la
+biblioteca OpenSC (como hace por defecto), sino cualquier otra implementación
+de PKCS#11
+			</para>
+	
+			<para>
+			<!--
+				To load the PKCS #11 engine, issue this command:
+			-->
+			Para cargar dicho "engine", ejecutar el comando:
+				<screen>
+aj@simulacron:~$ openssl
+OpenSSL> engine dynamic -pre SO_PATH:/home/aj/opensc/lib/opensc/engine_pkcs11.so -pre ID:pkcs11 -pre LIST_ADD:1 -pre LOAD -pre MODULE_PATH:/home/aj/opensc/lib/pkcs11/opensc-pkcs11.so
+(dynamic) Dynamic engine loading support
+[Success]: SO_PATH:/home/aj/opensc/lib/opensc/engine_pkcs11.so
+[Success]: ID:pkcs11
+[Success]: LIST_ADD:1
+[Success]: LOAD
+[Success]: MODULE_PATH:/home/aj/opensc/pkcs11/opensc-pkcs11.so
+Loaded: (pkcs11) pkcs11 engine
+OpenSSL> 
+				</screen>
+				<!--
+				and then proceed as normal.
+				-->
+				Y luego proceda normalmente
+			</para>
+
+			<para>
+			<!--
+				A typical OpenSSL command might be to make a certificate request:
+			-->
+Un comando típico OpenSSL puede ser la recuperación de un certificado:
+				<prompt>req -engine pkcs11 -new -key <replaceable>key</replaceable> -keyform engine -out req.pem -text</prompt>.
+			<!--
+				See the OpenSSL documentation for details.
+			-->
+Consulte la documentación de OpenSSL para más detalles
+			</para>
+
+			<para>
+				<replaceable>key</replaceable> tiene el formato <![CDATA[[slot_<slotNr>][-][id_<keyID>]]]>, donde
+				<itemizedlist>
+					<listitem>
+					<!--
+						the optional slotNr indicates which PKCS #11 slot to take
+						(starting from 0, which is also the default)
+					-->
+					El parámetro (opcional) slotNr indica el slot PKCS#11 a usar (empezando por cero, que es el valor por defecto
+					</listitem>
+					<listitem>
+					<!--
+						keyID is the key ID in hex notation
+					-->
+					keyID es el identificador de clave en notación hexadecimal
+					</listitem>
+				</itemizedlist>
+				Ejemplos:
+				<itemizedlist>
+					<listitem>
+						id_45     => clave privada con ID = 0x45 en el primer slot disponible
+					</listitem>
+					<listitem>
+						slot_2-id_46  => clave privada con ID = 0x46 en el tercer slot
+					</listitem>
+				</itemizedlist>
+			</para>
+
+			<para>
+			<!--
+				For Windows, only the PKCS #11 engine (not the OpenSC engine) has been ported;
+				use "engine_pkcs11" instead of "engine_pkcs11.so".
+			-->
+			En sistemas Windows, solo está portado el módulo pkcs11. Al cargar dicho engine, utilize el nombre "engine_pkcs11" en lugar de "engine_pkcs11.so"
+			</para>
+
+		</section>
+
+		<section id="opensc.using.openssh">
+			<title>OpenSC y OpenSSH</title>
+	
+			<para>
+			<!--
+				Version 3.6.1p2 of OpenSSH needs a patch to
+				compile with OpenSC. You will find this patch
+				in src/openssh/.
+			-->
+La versión 3.6.1p2 de OpenSSH necesita un parche para compilar con soporte
+OpenSC. Encontrará dicho parche en el directorio src/openssh
+			</para>
+	
+			<para>
+			<!--
+			When compiling OpenSSH you need to run configure like
+			this:
+			-->
+Para compilar OpenSSH, ejecute el comando "configure" de la siguiente manera:
+			<prompt>./configure --with-opensc=/path/to/opensc</prompt>
+			</para>
+	
+			<para>
+			<!--
+			You need to have a certificate on your smart card.
+			A key is not enough. Download the public key
+			of your certificate in Openssh format with
+			this command:
+			-->
+Necesitará tener certificados en su tarjeta: un par de claves no es suficiente.
+Descargue el certificado en formato OpenSSH con el comando:
+				<prompt>ssh-keygen -D <replaceable>reader</replaceable><optional>:<replaceable>certificate ID</replaceable></optional> &gt; <replaceable>file</replaceable></prompt>
+			</para>
+	
+			<para>
+<!--
+			Replace <replaceable>reader</replaceable> with the
+			number of the reader you want to use, default it 0.
+			<prompt>opensc-tool -l</prompt> will give you a list
+			of available readers. Add the certificate ID
+			if you need to select one. Default is 45.
+			<prompt>pkcs11-tool -O</prompt> will give you a list
+			of available certificates and their IDs.
+-->
+			Reemplace <replaceable>reader</replaceable> 
+			con el número del lector que desea ( por defecto 0).
+			El comando <prompt>opensc-tool -l</prompt> 
+			le proporcionará la lista de lectores disponibles.
+
+			Añada el identificador del certificado en caso necesario
+			( por defecto ID=45 ).
+			El comando <prompt>pkcs11-tool -O</prompt> le indica 
+			la lista de certificados y sus identificadores
+			</para>
+	
+			<para>
+			<!--	
+			Then transfer the public key to the desired server
+			and add it to <filename>~/.ssh/authorized_keys</filename> as usual.
+			-->
+			Una vez realizada la extracción del certificado, copielo al servidor e incluyalo en el fichero  <filename>~/.ssh/authorized_keys</filename> tal y como se hace habitualmente
+			</para>
+	
+			<para>
+				Para usar una tarjeta con OpenSSH, ejecute:	
+				<prompt>ssh -I <replaceable>reader</replaceable><optional>:<replaceable>certificate ID</replaceable></optional></prompt>
+			</para>
+	
+			<para>
+			<!--
+				You can also use the OpenSSH ssh-agent tool
+				with OpenSC. If you want to do so, use
+			-->
+			Del mismo modo se puede usar la utilidad ssh-agent
+			con OpenSC. para ello use el comando:
+				<prompt>ssh-add -s <replaceable>reader</replaceable></prompt>
+			</para>
+		</section>
+
+		<section id="opensc.using.pam">
+			<title>Pluggable Authentication Module</title>
+
+			<para>
+			<!--
+				Pluggable authentication modules (PAM) is
+				the default way under Linux and other Unix
+				operating systems to configure authentication.
+				OpenSC includes a module to allow smart card
+				based authentication: pam_opensc.
+			-->
+			El sistema PAM (Pluggable authentication modules)
+es el mecanismo por el que Linux, y otros sistemas Unix utilizan para los
+procedimientos de autentificación de usuarios. 
+OpenSC incluye un módulo que permite añadir la autentificación mediante
+tarjetas inteligentes: "pam_opensc"
+			</para>
+
+			<para>
+			pam_opensc identifica las siguientes opciones:
+				<variablelist>
+					<varlistentry>
+						<term>debug</term>
+						<listitem>registra información para depuración</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>audit</term>
+						<listitem>registra información sobre trazas</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>use_first_pass</term>
+						<listitem>No solicita contraseñas al usuario, sino que utiliza los elementos definidos en la configuración de los módulos PAM
+<!-- don't prompt the user for passwords, take them from PAM_ items instead -->
+						</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>try_first_pass</term>
+						<listitem><!-- don't prompt the user for passwords unless PAM_(OLD)AUTHTOK in used--> No solicita contraseña, a menos que la opción PAM_(OLD)AUTHOK esté especificada</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>use_authtok</term>
+						<listitem><!-- require PAM_AUTHTOK set, use it, fail otherwise--> Exige la opción PAM_AUTHOK, fallando en caso contrario</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>set_pass</term>
+						<listitem><!-- set the PAM_ item with the passwords used by this module--> Ajusta las opciones PAM_ con las contraseñas usadas en éste módulo</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>nodelay</term>
+						<listitem><!-- used to prevent failed authentication resulting in a delay of about 1 second.--> Elimina el retardo de un segundo en caso de autenticación fallida</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>auth_method=X</term>
+						<listitem><!--choose either pkcs15-ldap or pkcs15-eid authentication. pkcs15-eid is the default.--> Selecciona entre pkcs15-ldap o pkcs15-eid (opción por defecto) como modo de funcionamiento del módulo</listitem>
+					</varlistentry>
+				</variablelist>
+			</para>
+
+			<para>
+				Opciones Genéricas:
+				<variablelist>
+					<varlistentry>
+						<term>-h</term>
+						<listitem>muestra ayuda</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>-r reader</term>
+						<listitem>Nombre del lector (FIXME: not number?)</listitem>
+					</varlistentry>
+				</variablelist>
+			</para>
+
+			<section id="opensc.using.pam.eid">
+				<title>eid based authentication</title>
+
+				<para>
+				<!--
+					This is the default authentication
+					method. Create a directory
+					<filename>.eid</filename> in your home
+					directory and copy your PEM encoded
+					certificate to the file
+				-->
+				Este es el método de autentificación por defecto: Cree un directorio <filename>.eid</filename> en su directorio raíz y copie su certificado (en formato PEM) en el fichero
+					<filename>.eid/authorized_certificates</filename>.
+				</para>
+
+				<para>
+				<!--
+					Note: <prompt>pkcs15-tool -c</prompt>
+					will show you all certificates and
+					their ID, <prompt>pkcs15-tool -r ID -o
+						~/.eid/authorized_certificates</prompt>
+					will save the certificate
+					<replaceable>ID</replaceable> to that
+					file.
+				-->
+Nota: <prompt>pkcs15-tool -c</prompt> le mostrará los certificados y sus identificadores. El comando <prompt>pkcs15-tool -r ID -o ~/.eid/authorized_certificates</prompt> le permitirá recuperar y guardar el certificado en el fichero deseado
+				</para>
+			</section>
+
+			<section id="opensc.using.pam.ldap">
+				<title>Autenticación basada en LDAP</title>
+
+				<para>
+				<!--
+					Setting auth_method to pkcs15-ldap will
+					enable LDAP based authentication.
+					These options are supported:
+				-->
+				Si escogemos la opción auth_metod=pkcs15-ldap, 
+se activará el soporte LDAP para autenticación a través de OpenSC. Las siguientes opciones están contempladas:
+				</para>
+
+				<variablelist>
+					<varlistentry>
+						<term>-L ldap.conf</term>
+						<listitem>especifica el fichero de configuración a usar</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>-A entry</term>
+						<listitem>Añadir nueva entrada</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>-E entry</term>
+						<listitem>Activar entrada actual</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>-H hostname</term>
+						<listitem>Nombre del servidor LDAP</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>-P port</term>
+						<listitem>Puerto en el que el servidor está escuchando</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>-S scope</term>
+						<listitem>Ambito (scope) del servidor</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>-b binddn</term>
+						<listitem>binddn de la conexión</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>-p passwd</term>
+						<listitem>contraseña del binding LDAP</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>-B base</term>
+						<listitem>base del binding LDAP</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>-a attributes</term>
+						<listitem>Atributos a recuperar</listitem>
+					</varlistentry>
+
+					<varlistentry>
+						<term>-f filter</term>
+						<listitem>filtro de búsqueda</listitem>
+					</varlistentry>
+				</variablelist>
+
+				<para>
+				<!--
+					FIXME: provide an example
+					of LDAP data structure, config
+					file etc.
+				-->
+FIXME: incluir un ejemplo de estructura de datos LDAP: fichero de configuración, etc
+
+				</para>
+			</section>
+		</section>
+	</chapter>
+
+	<chapter id="opensc.pkcs11">
+		<title>The OpenSC PKCS #11 library</title>
+
+		<section id="opensc.pkcs11.whatis">
+			<title>Qué es PKCS #11</title>
+
+			<para>
+				<ulink url="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-11/">PKCS #11</ulink> 
+			<!--
+			is a standard API for accessing cryptographic tokens
+			such as smart cards, Hardware Security Modules, ...
+			It contains functions like 
+			-->
+es el API estandard para el acceso a dispositivos criptográficos, tales como
+tarjetas inteligentes, modulos de seguridad hardware, etc... El API está definido mediante funciones como:
+			C_GetSlotList(), C_OpenSession(), C_FindObjects(), 
+			C_Login(), C_Sign(), C_GenerateKeyPair(), ...
+			</para>
+
+			<para>
+				<!--Some core concepts of PKCS #11 are: -->
+			Algo de terminología básica de PKCS #11
+				<itemizedlist>
+					<listitem>
+					<!--
+						slot: the place in which a smart card can be put. Usually this
+						corresponds with a card reader (but: see below, Virtual slots).
+					-->
+Slot: ubicación en la que se puede insertar una tarjeta inteligente. Normalmente se corresponde con un lector de tarjetas ( ver "slots virtual" )
+					</listitem>
+					<listitem>
+					<!--
+						token: the thing that is put in a slot. Usually this corresponds
+						with a smart card (but: see below, virtual slots).
+					-->
+Token: elemento que se sitúa en un slot. Habitualmente se refiere a una SmartCard (ver slots virtual)
+					</listitem>
+					<listitem>
+					<!--
+						object: a key, a certificate, some data, ... Is either a token
+						object (if it resides on the card) or a session object (if it
+						doesn't reside on the card, e.g. a certificate given to the
+						PKCS #11 library to do a verification).
+					-->
+Objeto (Object) una clave, certificado, datos, etc. 
+Puede ser un objeto referido a un token (eg. un certificado 
+residente en la tarjeta) o bien un objeto referido a la sesion 
+(eg. un dato a firmar/encriptar )
+					</listitem>
+					<listitem>
+					<!--
+						session: before you can do anything with a token, you have to
+						open a session on it.
+					-->
+Sesión: antes de poder operar con un token, es necesario abrir una sesión y asociarla con él
+					</listitem>
+					<listitem>
+					<!--
+						operation: a signature, decryption, digest, ... operation, that
+						can consist of multiple function calls. Example: C_SignInit(),
+						C_SignUpdate(), C_SignFinal(); here the first function starts
+						the operation, the third one ends it. Only one operation can be
+						done in the same session, but multiple sessions can be opened
+						on the same token.
+					-->
+Operación: una firma, una desencriptación, etc que puede conllevar
+una o varias llamadas a la biblioteca. Solo se puede realizar una operación por cada sesion, pero pueden ser abiertas múltiples sesiones sobre el mismo token
+					</listitem>
+				</itemizedlist>
+			</para>
+		</section>
+
+		<section id="opensc.pkcs11.slots">
+			<title>Slots Virtuales</title>
+
+			<para>
+			<!--
+				Per token, only 2 PINs can be given: the SO (Security Officer) PIN
+				and the user PIN. However, smart cards can have more than 1 user
+				PIN.
+				A way to this solve problem is to have multiple 'virtual' slots,
+				as explained in appendix D of the <ulink
+				url="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-11/">PKCS #11 standard</ulink>. So per physical
+				reader, you have a number of virtual slots. If you insert a card
+				in the reader, a token will appear in all the virtual slots,
+				and each token will contain 1 PIN along with the private keys
+				it protects and certificates corresponding to those private keys.
+			-->
+PKCS#11 define que cada token tiene asociado dos PIN's (Personal 
+Identification Number): el del usuario (User PIN) y el del administrador 
+(Security Officer PIN). A pesar de ello muchas tarjetas soportan más de un PIN
+de usuario (eg PIN1 y PIN2 en tarjetas de telefonos móviles). La manera de
+resolver este problema es la de proveer de múltiples "slots virtuales" 
+( definidos en el apéndice D del  
+<ulink url="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-11/">
+estándard PKCS #11</ulink>. 
+Por ello cada lector simula uno o varios slots. Si se inserta una tarjeta, 
+aparecerán tantos slots como PIN's disponibles. En cada slot aparecerá un
+token que contiene los objetos asociados a cada PIN. Es el equivalente
+a disponer de "varias tarjetas en una", cada una con su PIN
+			</para>
+
+			<para>
+			<!--
+				Because OpenSC supports multiple cards, it is not known in advance
+				how many PINs a smart card will have. Therefore, a default number
+				of 4 virtual slots is used. You can change this default in the
+				pkcs11 section of opensc.conf: num_slots.
+			-->
+OpenSC puede trabajar simultáneamente con varias tarjetas, y no sabe
+a priori cuantos slots se crean por cada tarjeta. Por ello se crean por
+defecto 4 slots virtuales. Se puede cambiar dicho número en el parámetro
+"num_slots" del fichero /etc/opensc.conf
+			</para>
+
+			<para>
+			<!--
+		OpenSC implements the following behaviour: for each PIN, its
+		private keys and corresponding certs, there is 1 virtual slot
+		allocated. If there are any objects left, they are put in the
+		next free virtual slot. And if there are some virtual slots left,
+		an 'empty' token is 'put' in them; on this empty token a PIN and
+		data can then be put. If you find this too confusing, you
+		can hide empty tokens with the hide_empty_tokens option in
+		the config file.
+			-->
+Para numerar los slots, OpenSC adopta el siguiente convenio: por cada PIN, 
+sus claves, y certificados, se le asigna un slot virtual. 
+Si hay más objetos son asignados al siguiente slot libre. 
+Si quedan slots libres se crean en ellos slots adicionales marcados como 
+vacíos donde pueden ser insertados tanto un nuevo PIN como sus 
+objetos asociados.
+Si no se desea añadir nuevos objetos, la directiva "hide_empty_tokens"
+del fichero de configuración esconde los slots libres
+			</para>
+
+			<para>
+		<!--
+		Example:
+		Take a card with 2 PINs. Each PIN protects a private key and
+		each private key has a corresponding cert chain. And then there
+		are 3 other roots certs that have nothing to do with the other
+		data.
+		Now if num_slots = 4, hide_empty_tokens = false; and if you put
+		the card your second card reader, you'll get the following:
+		-->
+Ejemplo. Sea un sistema con dos lectores.
+Sea una tarjeta con dos PINs. Cada PIN proteje una clave privada y
+un certificado. Además existen tres certificados raíz no asociados a dicho
+PIN.
+Si tenemos la configuracion num_slots=4 , hide_empty_tokens=false, e
+insertamos la tarjeta en el segundo lector, obtendremos lo siguiente:
+				<itemizedlist>
+					<listitem>
+				token en slot 4: PIN 1, key 1, cert 1
+					</listitem>
+					<listitem>
+				token en slot 5: PIN 2, key 2, cert 2
+					</listitem>
+					<listitem>
+				token en slot 6: los 3 certificados raíz
+					</listitem>
+					<listitem>
+				token en slot 7: vacío
+					</listitem>
+				</itemizedlist>
+		<!--
+		If hide_empty_tokens would have been true, slot 7 wouldn't show
+		a token.
+		-->
+Si se hubiera especificado "hide_empty_tokens=false", el slot 7 no contendría ningún token
+			</para>
+
+			<para>
+		<!--
+		Note: if in the example the 2 cert chain would have common
+		certificates, those certificates would appear in the tokens
+		in slots 4 and 5. (Which would cause a problem if those
+		certs were deleted, this hasn't been solved yet in OpenSC).
+		-->
+Nota: si en el anterior ejemplo, la cadena de certificados contuviera 
+algún certificado común, dicho certificado aparecería duplicado en los slots
+4 y 5 (lo que causaría problemas si se intentara borrar. Este problema
+no está aún resuelto en OpenSC )
+			</para>
+
+			<para>
+		<!--
+		Another good-to-know: the number of virtual slots has been
+		hard-coded (it is 8 at the moment). So if num_slots = 4,
+		only the first 2 readers will be visible. Or if you'd put
+		num_slots to 3, the first 2 readers will have 3 virtual
+		slots and the third reader will have 2.
+		-->
+Otra cosa a recordar: OpenSC tiene prefijado el número máximo de slots 
+virtuales a 8. por ello, si se selecciona "num_slots = 4" solo se podrán
+manejar dos lectores. O, por ejemplo, si se seleciona "num_slots = 3", 
+los dos primeros lectores verán 3 slots, mientras que el tercero verá
+solo 2
+			</para>
+		</section>
+	</chapter>
+
+	<chapter id="security">
+		<title>Seguridad</title>
+
+		<section id="sec_cmd_line">
+			<title>Ordenes desde línea de Comandos</title>
+
+			<para>
+		<!--
+		The OpenSC tools allow you to specify PINs and keys on the command line.
+		This is only suitable for testing or when you are the only user of the machine.
+		If there are multiple users, other users usually are able to run things like 'ps'
+		or 'top', and probably are able to see the arguments given to some process, too.
+		Also, the arguments probably get logged to some shell history file like ~/.bash_history.
+		-->
+OpenSC permite especificar el PIN y las claves como argumentos en la línea de comandos. Esta operación sólo es recomendable en casos de test o cuando se es el único usuario del sistema. En sistemas multiusuario, los otros usuarios pueden ejecutar comandos como "ps" o "top", y probablemente puedan ver los argumentos asociados al comando en ejecución. Del mismo modo, dichos comandos suelen quedar registrados en los archivos "history"
+			</para>
+
+			<para>
+		<!--
+		The solution is to use a script or, in the case of the pkcs15-init tool to put PINS
+		and keys into a file and used through the -_-options-file options.
+		-->
+La solución pasa por usar un script, o en el caso del comando pkcs15-init, 
+especificar los PINS y claves en un fichero, e indicar el nombre de éste 
+con la opción "--options-file"
+			</para>
+
+		</section>
+
+		<section id="sec_card_access">
+			<title>Acceso a la card</title>
+
+			<para>
+			<!--
+				Some other problems if multiple users have access to the reader(s):
+			-->
+Pueden aparecer otros problemas en entornos multiusuario donde más de un usuario tenga acceso al lector:
+				<itemizedlist>
+					<listitem>
+					<!--
+						If the user forgets a card to the reader while the session isn't locked, a malicious
+						other user could run PIN verify commands to the card and probably lock the PIN, or even
+						lock the card for good.
+					-->
+Si el usuario deja la tarjeta insertada con la sesion abierta, otro usuario podría modificar el pin, bloquearlo, o incluso anular la tarjeta
+					</listitem>
+					<listitem>
+					<!--
+						If a user is logged in to the card but the session isn't locked, a malicious user could
+						use the previliged functionality (e.g. doing a signature, writing data to the card).
+					-->
+Si la sesión realiza caché de PIN's o claves, otro usuario podría usar nuestra tarjeta y suplantar nuestra personalidad
+					</listitem>
+				</itemizedlist>
+			</para>
+
+			<para>
+			<!--
+				A solution is to add the user to a specific "scard" group after they've logged in through
+				xdm. pcsc-lite's pcscd runs as pseudouser/group scard/scard, and limit the access to the
+				server socket (pcscd.comm) as 770 scard:scard. This way, other possible users that may
+				have logged in through ssh won't have any access to the local card readers. Not a perfect
+				solution, but works for single-reader workstations well enough.
+			-->
+Una solución puede ser crear un usuario/grupo "scard/scard" bajo el que se ejecuta el servidor pcscd y al que solo se puede acceder desde xdm. No es una solución perfecta, pero funciona en estaciones que solo disponen de un lector
+			</para>
+
+			<para>
+			<!--
+				In case your application uses the pkcs11 library, that application will have, exclusive
+				access access to the card once you provided a PIN. This is the default setting. If you would
+				like multiple apps to use the pkcs11 library, you can set 'lock_login = false;' in the
+				opensc.conf file, but this leaves your card open to other user's applications as well.
+			-->
+En el caso de que las aplicaciones utilicen la biblioteca PKCS#11, el sistema
+garantiza acceso exclusivo una vez que se proporciona el PIN. Esta es la configuración por defecto. Si se desea que múltiples aplicaciones puedan trabajar a la vez con dicha biblioteca, es necesario especificar la opción "lock_login = false" en el fichero /etc/opensc.conf; pero en este caso la tarjeta quedará accesible por terceros
+			</para>
+
+			<para>
+			<!--
+				Other tools/libs (signer, openssh, pam) don't provide unique access once you are logged in. 
+			-->
+Las otras aplicaciones OpenSC no garantizan el acceso exclusivo
+			</para>
+
+		</section>
+
+		<section id="sec_p15_init">
+			<title>Protegiendo tarjetas con la utilidad pkcs15-init</title>
+
+			<para>
+			<!--
+				Most cards have a default transport key that is used to create a pkcs15 directory on the card.
+				Within the pkcs15 directory, files and keys are protected by PINs so the transport key has
+				no power there.
+			-->
+Muchas tarjetas incorporan una clave "de fábrica", que se usa para crear el sistema de ficheros inicial en la tarjeta. Una vez creado el sistema de ficheros se protege mediante PIN, con lo que dicha clave ya no es válida
+			</para>
+
+			<para>
+			<!--
+				This means that your keys and sensitive data are safe against others (who know the default
+				transport key), in the sense that they can't be read or used.
+			-->
+Esto significa que los datos del usuario no son accesibles para nadie que posea la clave de fábrica, en el sentido de que no pueden ser accedidos o usados
+			</para>
+
+			<para>
+			<!--
+				However,anyone knowing the transport key and who has access to your card can delete the
+				pkcs15 directory with all its keys, certs, data, ...
+			-->
+No obstante, con dicha clave, otro usuario podría destruír el sistema de ficheros, borrando todo su contenido
+			</para>
+
+			<para>
+			<!-- 
+				On itself, that may be a good thing if you lost your card, but there's another problem:
+				If your card contains trusted certificates, and an adversary steals your card, puts another
+				pkcs15 dir with other  certs on the card and puts it back without you knowing, you may not
+				find out until you put trust in those untrusted certs.
+				Bottomline: be very carefull when using the card as a tamper-resistant storage -_- make
+				them PIN-protected for example. (Note: this if often not the case: the trusted certificates
+				are stored usually stored in the application using them.)
+			-->
+En si mismo esto es positivo: en el caso de pérdida de tarjeta, los datos solo
+pueden ser destruídos, no leídos. Pero puede darse otro problema: 
+los certificados pueden ser substituídos por otros falsos.
+Por consiguiente: sea muy cuidadoso cuando utilice las tarjetas en entornos 
+hostiles, y proteja SIEMPRE los certificados con PIN
+			</para>
+
+		</section>
+
+		<section id="sec_files">
+			<title>Protección de los ficheros de configuración, profiles, y caché</title>
+
+			<para>
+			<!--
+				While the opensc.conf and xxx.profile files don't contain any sensitive information, it
+				is very important that they are not tampered with.
+			-->
+Aunque por sí mismos, los ficheros opensc.conf y xxx.profile no contienen
+información sensible, es muy importante garantizar que no son modificados
+			</para>
+
+			<para>
+			<!--
+				Some examples of what an adversary with write access to those files or an absent-minded
+				administrator could do:
+			-->
+Algunos ejemplos de lo que se puede hacer modificando dichos ficheros:
+				<itemizedlist>
+					<listitem>
+					<!--
+						Set the debug level to 6, which means all sensitive info (like PINs) is logged
+					-->
+Ajustar el nivel de depuración a un nivel mayor o igual a 6, con lo que la información sensible (PINs) queda registrada
+					</listitem>
+					<listitem>
+					<!--
+						Change the access conditions in the profiles, so that a card that is initialised
+				  with pkcs15-init will be wide open for anyone to read/write/sign
+					-->
+Cambiar los permisos de acceso del sistema de ficheros, con lo que la tarjeta
+quedaría "abierta"
+					</listitem>
+					<listitem>
+					<!--
+						Change trusted certs in the pkcs15 cache
+					-->
+Cambiar los certificados en el directorio caché
+					</listitem>
+				</itemizedlist>
+			</para>
+
+			<para>
+			<!--
+				By default, the config and profile files can only be written by root/Adminstrator and
+				the cache files are in the user home dir, so this is OK. Note however, that if there
+				are profile files in the current dir, it will be those files that are used instead of
+				the ones that were installed in a system dir!
+			-->
+Por defecto, el fichero de configuración y los ficheros profiles deberían 
+ser propiedad del administrador, con permisos 644. Del mismo modo, 
+el caché de certificados debería residir en el directorio $HOME del 
+usuario con permisos 600. No obstante, si el directorio en el que se ejecutan
+tiene ficheros profile, estos toman precedencia sobre los del sistema 
+
+			</para>
+
+		</section>
+
+		<section id="sec_root">
+			<title>Acceso como administrador (root)</title>
+
+			<para>
+			<!--
+				From the above, it follows that you can't protect your card, nor use your card to
+				protect something against someone with root access or who can change the config/profile
+				files, binaries or sniff/modify the communication with the card.
+			-->
+De lo anterior se deduce que no se puede proteger la tarjeta ante alguien
+que tenga permisos de root, que pueda cambiar los profiles, o que pueda 
+modificar los ejecutables o supervisar las comunicaciones con las tarjetas
+
+			</para>
+
+		</section>
+
+	</chapter>
+
+	<chapter id="opensc.todo">
+		<title>Tareas pendientes de desarrollo</title>
+
+		<section id="opensc.todo.general">
+			<title>General</title>
+
+			<screen>
+<!--
+* Debian packaging
+* GUI applications
+* Add support for EMV, GSM and Java cards (anyone?)
+-->
+* Generación de paquetes Debian
+* Aplicaciones gráficas
+* Soporte de tarjetas EMV, GSM y JavaCards ( algún voluntario? )
+			</screen>
+
+			<screen>
+<!--
+* put generic PEM encoding/decoding functions into libopensc?
+* pkcs11: support decrypt for those cards that have it
+* pkcs11: make sure all PIN ops work through pkcs11
+* pkcs11: unblock pins: check for unblock pins in AODF
+* all: support for RSA-PSS
+* pkcs15-init: support SOPIN on Cryptoflex
+* pkcs15-init: use max. possible usage by default
+* pkcs15-init: during keygen, make sure the pubkey usage is right
+* pkcs15-init: when using an unblock PIN, write an AODF entry for it
+  (alternatively: set unblockDisabled flag for those PINs that have no PUK?)
+* pkcs15: fix sc_pkcs15_change_reference_data; add unblock function
+* pkcs11: make sure all PIN ops work through pkcs11
+-->
+* incluir funciones de (de)codificación PEM en LibOpenSC
+* pkcs11: soporte de desencriptación en aquellas tarjetas que lo soportan
+* pkcs11: asegurarse que todas las operaciones de manejo de PIN se gestionan a través del API pkcs11
+* pkcs11: gestion de desbloqueo de PIN's mediante PUK
+* general: soporte de operaciones RSA-PSS
+* pkcs15-init: soporte de SOPIN en CryptoFlex
+* pkcs15-init: al generar claves, comprobar que las claves son correctas
+* pkcs15-init: al manejar PUK crear la entrada AODF asociada
+ ( alternativamente, ajustar unblockDisabled para aquellos PIN's sin PUK )
+* pkcs15: corregir sc_pkcs15_change_reference_data: añadir funcion de desbloqueo
+
+			</screen>
+
+		</section>
+
+		<section id="opensc.todo.windows">
+			<title>Windows</title>
+
+			<para>
+			<!--
+				Other parts of OpenSC be should ported as well.
+				Also we should implement native Win32 APIs such
+				as CryptoAPI Provider, some login stuff and
+				ActiveX plugin for Internet Explorer to do the
+				signing.
+			-->
+Toda la funcionalidad de OpenSC debería ser portada a Windows. 
+Del mismo modo se debería implementar una biblioteca para que OpenSC actue 
+como CryptoAPI Provider, implementar mecanismos de autenticación (login), y
+controles ActiveX para que Internet Explorer pueda realizar signados
+			</para>
+		</section>
+	</chapter>
+
+
+	<chapter id="opensc.help">
+		<title>Resolución de problemas</title>
+
+		<para>
+		<!--
+			A mailing list has been set up for support and
+			discussion about the OpenSC project. Additional info is
+			available at the
+		-->
+Existe una lista de correo para soporte y discusión en el proyecto OpenSC. 
+Información adicional sobre el proyecto se puede encontrar en el
+			<ulink url="http://www.opensc.org/">sitio Web</ulink>.
+		</para>
+		<para>
+		<!--
+			You could follow these steps to get a first idea about what
+			is going wrong:
+		-->
+Se pueden seguir los siguientes procedimientos para comprobar qué es lo
+que falla:
+			<itemizedlist>
+				<listitem>
+					<!--
+					See if any readers can be found:
+					-->
+Comprobar que se encuentra el lector
+					<prompt>opensc-tool -l</prompt>
+				</listitem>
+				<listitem>
+				<!--
+					See if your smart card can be found with
+					<prompt>opensc-tool -a</prompt> (this
+					should show the	ATR of the card).
+				-->
+Comprobar que se reconoce la tarjeta: <prompt>opensc-tool -a</prompt> debería mostrar el ATR de ésta
+				</listitem>
+				<listitem>
+				<!--
+					See if your card is a pkcs15 card, and which
+					pkcs15 objects are on it:
+				-->
+Comprobar que la tarjeta soporta el estandard pkcs15, obteniendo la lista de objetos almacenados:
+					<prompt>pkcs15-tool -C -c -k --list-public-keys</prompt>
+				</listitem>
+			</itemizedlist>
+		</para>
+		<para>
+		<!--
+			You can turn on debugging by setting "debug = 5;" in the
+			opensc.conf file and un-commenting the names of the debug
+			and error files.
+		-->
+Ajustando el nivel de depuración a valores superiores a 5, y especificando los ficheros de error y log en el fichero de configuración
+		</para>
+	</chapter>
+
+	<chapter id="opensc.links">
+		<title>Recursos y enlaces</title>
+
+		<para>
+			La página web del proyecto OpenSC
+			<ulink url="http://www.opensc.org/" />
+		</para>
+
+		<para>
+			Información sobre los proyectos Assuan y Ägypten:
+			<ulink url="http://www.gnupg.org/aegypten/" />
+		</para>
+	</chapter>
+
+	<chapter id="opensc.signer">
+		<title>Modulo de firmado</title>
+
+		<para>
+		<!--
+			OpenSC Signer is a Netscape plugin that will generate
+			digital signatures using facilities on PKI-capable
+			smart cards.
+		-->
+		OpenSC Signer es un plugin para Netscape/Mozilla, que puede 
+generar firmas digitales a partir de tarjetas inteligentes. Se utiliza para 
+el firmado de páginas web ( mimetype .sgn )
+		</para>
+
+		<section id="opensc.signer.install">
+			<title>Compilando e instalando el Módulo signer</title>
+
+			<para>
+			<!--
+				You should specify your plugin directory with:
+			-->
+Especifique el directorio de instalación para el módulo al ejecutar "configure":
+				<prompt> $ configure --with-plugin-dir=<replaceable>&lt;directory&gt;</replaceable></prompt>
+			</para>
+
+			<para>
+				Directorios típicos son
+				/usr/lib/mozilla/plugins y
+				/usr/lib/netscape/plugins.
+			</para>
+
+			<para>
+				Consulte el fichero INSTALL para instrucciones adicionales
+			</para>
+
+			<para>
+			<!--
+				NOTE: PIN code dialog is done through libassuan
+				from Project Ägypten.  If you don't have it
+				installed already, download it from the link
+				below.
+			-->
+			Nota: este módulo necesita abrir ventanas de diálogo para introducir el PIN. Dichas ventanas se generan con la biblioteca libassuan, del proyecto  Ägypten. Si no las tiene instaladas, deberá hacerlo antes de proceder a compilar OpenSC
+			</para>
+		</section>
+	</chapter>
+
+	<chapter id="opensc.docbook">
+		<title>Notas sobre DocBook</title>
+
+		<para>
+		<!--
+			This document is maintained as DocBook XML
+			document. Here are some hints and links for
+			newcomers.
+		-->
+Este documento está realizado y mantenido con DocBook XML. A continuación
+se indican algunos enlaces de introducción
+		</para>
+
+		<para>
+		<!--
+			This document is written in XML not SGML.
+			To convert it, use a XSL stylesheet, not
+			an DSSSL stylesheet. Ignore all tools and
+			web pages talking about SGML or DSSSL, those
+			talk about legacy technology no longer used
+			and no longer up to date.
+		-->
+Este documento ha sido escrito como XML, no SGML. Para convertirlo, 
+utilice una hoja de estilo XSL, no DSSSL. Rechace el uso de utilidades
+que manejen SGML o DSSSL. Ya no son usadas y se consideran obsoletas
+		</para>
+
+		<para>
+		El enlace
+			<ulink url="http://docbook.sourceforge.net/">DocBook
+			Open Repository project</ulink> 
+en SourceForge, contiene las hojas de estilo necesarias para convertir 
+este documentos a otros formatos
+		</para>
+
+		<para>
+		El libro
+			<ulink url="http://www.docbook.org/">DocBook: The
+			Definitive Guide (O'Reilly Book)</ulink> 
+		
+		ilustra DocBook, es muy manejable, y puede ser utilizado
+como herramienta en línea de manera gratuita
+		</para>
+
+		<para>
+		El libro
+			<ulink url="http://www.sagehill.net/docbookxsl/">DocBook
+			XSL: The Complete Guide</ulink> 
+		<!--
+			is a book
+			with a great introduction on how to create a document,
+			how to convert it, where to get the software, tools
+			and everything. It you a fast road to editing this
+			document, look at this book.
+		-->
+		Contiene una buena introducción sobre como crear y manejar
+documentos, dónde obtener el software y las utilidades, y como procesar
+los textos. Es un libro muy recomendable
+		</para>
+
+		<para>
+		<!--
+			This document might be ugly. If you know html,
+			please help us to improve it. Some stuff can
+			be tuned in the XSL stylesheet (see <ulink url="http://docbook.sourceforge.net/release/xsl/current/doc/html/">Reference for the HTML stylesheet parameters</ulink>), but most stuff can be improved via CSS
+			styles. We need help on this ! 
+		-->
+Este documento es demasiado engorroso. Si sabe HTML, por favor ayúdenos a mejorarlo. Algunas partes deberían ser ajustadas mediante hotas de estilo (<ulink url="http://docbook.sourceforge.net/release/xsl/current/doc/html/">Reference for the HTML stylesheet parameters</ulink>), pero la mayor parte puede ser hecha con CSS. !Ayúdanos!
+		</para>
+	</chapter>
+</book>

@@ -1,8 +1,8 @@
 # Process this file with automake to create Makefile.in
 
 XSLTPROC = @XSLTPROC@
-HTMLFILES = opensc.html opensc.css
-XMLFILES = opensc.xml opensc.xsl
+HTMLFILES = opensc.html opensc.css opensc-es.html
+XMLFILES = opensc.xml opensc.xsl opensc-es.xml
 
 MAINTAINERCLEANFILES = Makefile.in pkcs15-profile.5
 
