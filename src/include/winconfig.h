@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <windows.h>
+#include <winreg.h>
 #include <sys/timeb.h>
 
 #ifndef strcasecmp

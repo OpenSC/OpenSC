@@ -186,7 +186,7 @@ typedef struct pin_info pin_info;
 typedef struct file_info file_info;
 typedef struct auth_info auth_info;
 
-static const char *	sc_profile_locate(const char *);
+static const char *	sc_profile_locate(struct sc_profile *, const char *);
 static int		process_conf(struct sc_profile *, scconf_context *);
 static int		process_block(struct state *, struct block *,
 				const char *, scconf_block *);
@@ -245,7 +245,7 @@ init_file(unsigned int type)
  * Initialize profile
  */
 struct sc_profile *
-sc_profile_new()
+sc_profile_new(void)
 {
 	struct sc_pkcs15_card *p15card;
 	struct sc_profile *pro;
@@ -284,7 +284,7 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	scconf_context	*conf;
 	int		res = 0;
 
-	if (!(filename = sc_profile_locate(filename)))
+	if (!(filename = sc_profile_locate(profile, filename)))
 		return SC_ERROR_FILE_NOT_FOUND;
 	conf = scconf_new(filename);
 	res = scconf_parse(conf);
@@ -387,10 +387,13 @@ sc_profile_free(struct sc_profile *profile)
 }
 
 static const char *
-sc_profile_locate(const char *name)
+sc_profile_locate(struct sc_profile *profile, const char *name)
 {
-	static char	path[1024];
-	char            profile_dir[PATH_MAX];
+	struct sc_context *ctx = profile->card->ctx;
+	const char *profile_default = SC_PKCS15_PROFILE_DIRECTORY;
+	char profile_dir[PATH_MAX];
+	static char path[1024];
+	int i;
 
 	/* append ".profile" unless already in the name */
 	if (strstr(name, SC_PKCS15_PROFILE_SUFFIX)) {
@@ -408,16 +411,22 @@ sc_profile_locate(const char *name)
 	if (strchr(path, '/'))
 		return path;
 
+	for (i = 0; ctx->conf_blocks[i]; i++) {
+		profile_default = scconf_get_str(ctx->conf_blocks[i], "profile_dir", NULL);
+		if (profile_default)
+			break;
+		profile_default = SC_PKCS15_PROFILE_DIRECTORY;
+	}
 #ifndef _WIN32
-	strncpy(profile_dir, SC_PKCS15_PROFILE_DIRECTORY, sizeof(profile_dir));
+	strncpy(profile_dir, profile_default, sizeof(profile_dir));
 #else
-	if (!strncmp(SC_PKCS15_PROFILE_DIRECTORY, "%windir%", 8)) {
+	if (!strncmp(profile_default, "%windir%", 8)) {
 		GetWindowsDirectory(profile_dir, sizeof(profile_dir));
-		strncat(profile_dir, SC_PKCS15_PROFILE_DIRECTORY + 8,
+		strncat(profile_dir, profile_default + 8,
 			sizeof(profile_dir) - strlen(profile_dir));
 	}
 	else
-		strncpy(profile_dir, SC_PKCS15_PROFILE_DIRECTORY, sizeof(profile_dir));
+		strncpy(profile_dir, profile_default, sizeof(profile_dir));
 #endif
 
 	/* Try directory */

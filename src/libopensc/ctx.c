@@ -554,18 +554,51 @@ static void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *
 {
 	int i, r, count = 0;
 	scconf_block **blocks;
-	const char *conf_path = OPENSC_CONF_PATH;
+	const char *conf_path = NULL;
 #ifdef _WIN32
-	char temp_path[PATH_MAX];
+	char tpath[PATH_MAX];
+	size_t tlen;
+	long rc;
+	HKEY hKey;
 #endif
 
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
-	if (!strncmp(conf_path, "%windir%", 8)) {
-		GetWindowsDirectory(temp_path, sizeof(temp_path));
-		strncat(temp_path, conf_path + 8, sizeof(temp_path) - strlen(temp_path));
-		conf_path = temp_path;
+	rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
+	if (rc == ERROR_SUCCESS) {
+		tlen = sizeof(tlen);
+		rc = RegQueryValueEx(hKey, "ConfigFile", NULL, NULL, (LPBYTE) tpath, (LPDWORD) &tlen);
+		if ((rc == ERROR_SUCCESS) && (tlen < PATH_MAX))
+			conf_path = tpath;
+		RegCloseKey(hKey);
 	}
+
+	if (!conf_path) {
+		rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
+		if (rc == ERROR_SUCCESS) {
+			tlen = sizeof(tlen);
+			rc = RegQueryValueEx(hKey, "ConfigFile", NULL, NULL, (LPBYTE) tpath, (LPDWORD) &tlen);
+			if ((rc == ERROR_SUCCESS) && (tlen < PATH_MAX))
+				conf_path = tpath;
+			RegCloseKey(hKey);
+		}
+	}
+
+	if (!conf_path) {
+		conf_path = OPENSC_CONF_PATH;
+		if (!strncmp(conf_path, "%windir%", 8)) {
+			GetWindowsDirectory(tpath, sizeof(tpath));
+			strncat(tpath, conf_path + 8, sizeof(tpath) - strlen(tpath));
+			conf_path = tpath;
+		}
+	}
+#else
+	/* XXX: Enhance scconf and opensc internals to suit
+	 * better into site / user configuration model. -aet
+	 */
+	conf_path = getenv("OPENSC_CONF");
+	if (!conf_path)
+		conf_path = OPENSC_CONF_PATH;
 #endif
 	ctx->conf = scconf_new(conf_path);
 	if (ctx->conf == NULL)
@@ -715,7 +748,7 @@ int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
 	char *homedir;
 	const char *cache_dir;
 #ifdef _WIN32
-	char temp_path[PATH_MAX];
+	char tpath[PATH_MAX];
 #endif
 
 #ifndef _WIN32
@@ -727,8 +760,8 @@ int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
 	/* If USERPROFILE isn't defined, assume it's a single-user OS
 	 * and put the cache dir in the Windows dir (usually C:\\WINDOWS) */
 	if (homedir == NULL || homedir[0] == '\0') {
-		GetWindowsDirectory(temp_path, sizeof(temp_path));
-		homedir = temp_path;
+		GetWindowsDirectory(tpath, sizeof(tpath));
+		homedir = tpath;
 	}
 #endif
 	if (homedir == NULL)
