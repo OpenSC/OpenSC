@@ -1560,7 +1560,7 @@ gpk_generate_key(struct sc_card *card, struct sc_cardctl_gpk_genkey *args)
 	apdu.ins = 0xD2;
 	apdu.p1  = 0x80 | (args->fid & 0x1F);
 	apdu.p2  = (args->privlen == 1024) ? 0x11 : 0;
-	apdu.le  = 256;
+	apdu.le  = args->privlen / 8 + 2;
 	apdu.resp = buffer;
 	apdu.resplen = 256;
 
@@ -1569,11 +1569,15 @@ gpk_generate_key(struct sc_card *card, struct sc_cardctl_gpk_genkey *args)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 
-	/* Reverse the data we got back */
-	r = reverse(args->pubkey, args->pubkey_len, buffer, apdu.resplen);
-	SC_TEST_RET(card->ctx, r, "Failed to reverse buffer");
+	/* Return the public key, inverted.
+	 * The first two bytes must be stripped off. */
+	if (args->pubkey_len && apdu.resplen > 2) {
+		r = reverse(args->pubkey, args->pubkey_len,
+				buffer + 2, apdu.resplen - 2);
+		SC_TEST_RET(card->ctx, r, "Failed to reverse buffer");
+		args->pubkey_len = r;
+	}
 
-	args->pubkey_len = r;
 	return r;
 }
 
