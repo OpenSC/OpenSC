@@ -319,6 +319,10 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 	del_drvs(&opts, 0);
 	del_drvs(&opts, 1);
 
+	if (ctx->reader_count == 0) {
+		sc_release_context(ctx);
+		return SC_ERROR_NO_READERS_FOUND;
+	}
 	*ctx_out = ctx;
 	return 0;
 }

@@ -17,8 +17,8 @@ int sc_test_init(int *argc, char *argv[])
 
 	printf("Using libopensc version %s.\n", sc_version);
 	i = sc_establish_context(&ctx, "tests");
-	if (i < 0) {
-		printf("sc_establish_context() failed (%d)\n", i);
+	if (i != SC_SUCCESS) {
+		printf("Failed to establish context: %s\n", sc_strerror(i));
 		return i;
 	}
 	i = sc_detect_card_presence(ctx->reader[0], 0);
@@ -49,8 +49,8 @@ int sc_test_init(int *argc, char *argv[])
 	printf("Connecting... ");
 	fflush(stdout);
 	i = sc_connect_card(ctx->reader[c], 0, &card);
-	if (i != 0) {
-		printf("Connecting to card failed\n");
+	if (i != SC_SUCCESS) {
+		printf("Connecting to card failed: %s\n", sc_strerror(i));
 		return i;
 	}
 	printf("connected.\nATR = ");
