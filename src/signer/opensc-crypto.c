@@ -11,7 +11,7 @@ void
 sc_close(struct sc_priv_data *priv)
 {
 	if (priv->p15card) {
-		sc_pkcs15_destroy(priv->p15card);
+		sc_pkcs15_unbind(priv->p15card);
 		priv->p15card = NULL;
 	}
 	if (priv->card) {
@@ -35,7 +35,7 @@ sc_init(struct sc_priv_data *priv)
 	r = sc_connect_card(priv->ctx, priv->reader_id, &priv->card);
 	if (r)
 		goto err;
-	r = sc_pkcs15_init(priv->card, &priv->p15card);
+	r = sc_pkcs15_bind(priv->card, &priv->p15card);
 	if (r)
 		goto err;
 	return 0;

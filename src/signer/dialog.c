@@ -40,7 +40,7 @@ int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 	argv[0] = pgmname;
 	argv[1] = NULL;
 	
-	r = assuan_pipe_connect(&ctx, pgmname, (char **) argv);
+	r = assuan_pipe_connect(&ctx, pgmname, (char **) argv, 0);
 	if (r) {
 		printf("Can't connect to the PIN entry module: %s\n",
 		       assuan_strerror(r));

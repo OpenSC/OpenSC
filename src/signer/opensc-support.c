@@ -59,7 +59,7 @@ static int init_pkcs15(PluginInstance *inst)
         r = sc_connect_card(inst->ctx, 0, &inst->card);
         if (r)
                 return r;
-        r = sc_pkcs15_init(inst->card, &inst->p15card);
+        r = sc_pkcs15_bind(inst->card, &inst->p15card);
         if (r)
                 return r;
         return 0;
@@ -69,7 +69,7 @@ static int init_pkcs15(PluginInstance *inst)
 static void close_pkcs15(PluginInstance *inst)
 {
         if (inst->p15card) {
-                sc_pkcs15_destroy(inst->p15card);
+                sc_pkcs15_unbind(inst->p15card);
                 inst->p15card = NULL;
         }
         if (inst->card) {
