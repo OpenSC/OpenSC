@@ -6,7 +6,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES = -I${top_srcdir}/src/scam
 
-LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBPAM@ ${top_builddir}/src/scam/libscam.la
+AM_LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBPAM@ ${top_builddir}/src/scam/libscam.la
 
 SRC = pam_opensc.c pam_support.c pam_support.h
 

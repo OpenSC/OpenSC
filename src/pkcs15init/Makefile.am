@@ -5,7 +5,7 @@ includedir = ${prefix}/include/opensc
 MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES = @CFLAGS_OPENSC@ -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
-LDFLAGS = @LDFLAGS@ @LIBOPENSC@
+AM_LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
 EXTRA_DIST = flex.profile gpk.profile miocos.profile etoken.profile \
 	     pkcs15.profile

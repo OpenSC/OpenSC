@@ -6,7 +6,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES = -I../scam
 
-LDFLAGS = @LDFLAGS@ @LIBDL@ ../scam/libscam.la
+AM_LDFLAGS = @LDFLAGS@ @LIBDL@ ../scam/libscam.la
 
 SRC = sia_opensc.c sia_support.c sia_support.h
 

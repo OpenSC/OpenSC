@@ -690,10 +690,10 @@ error(struct sc_profile *profile, const char *fmt, ...)
 }
 
 struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations = {
-	etoken_erase,
-	etoken_init_app,
-	etoken_new_pin,
-	etoken_new_key,
-	etoken_new_file,
-	etoken_generate_key
+	.erase_card	= etoken_erase,
+	.init_app	= etoken_init_app,
+	.new_pin	= etoken_new_pin,
+	.new_key	= etoken_new_key,
+	.new_file	= etoken_new_file,
+	.generate_key	= etoken_generate_key
 };

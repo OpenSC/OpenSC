@@ -388,9 +388,9 @@ err:
 }
 
 struct sc_pkcs15init_operations sc_pkcs15init_cflex_operations = {
-	cflex_erase_card,
-	cflex_init_app,
-	cflex_new_pin,
-	cflex_new_key,
-	cflex_new_file,
+	.erase_card	= cflex_erase_card,
+	.init_app	= cflex_init_app,
+	.new_pin	= cflex_new_pin,
+	.new_key	= cflex_new_key,
+	.new_file	= cflex_new_file,
 };
