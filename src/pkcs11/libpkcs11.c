@@ -18,9 +18,24 @@
 
 #define MAGIC			0xd00bed00
 
+#define DL_TYPE_DLFCN		0x01
+#define DL_TYPE_WIN32		0x02
+#define DL_TYPE_MAC		0x03
+
+#if defined(_WIN32)
+#define DEFAULT_MODULE_NAME	"opensc-pkcs11";
+#elif defined(HAVE_DLFCN_H) && defined(__APPLE__)
+#define DEFAULT_MODULE_NAME	"opensc-pkcs11.so";
+#elif defined(__APPLE__)
+#define DEFAULT_MODULE_NAME	"OpenSC PKCS#11.bundle";
+#else
+#define DEFAULT_MODULE_NAME	"opensc-pkcs11.so";
+#endif
+
 struct sc_pkcs11_module {
 	unsigned int _magic;
 	void *_dl_handle;
+	unsigned int _type;
 #if defined(__APPLE__)
 	CFBundleRef bundleRef;
 #endif
@@ -78,7 +93,7 @@ C_UnloadModule(sc_pkcs11_module_t *mod)
 	return CKR_OK;
 }
 
-#ifdef HAVE_DLFCN_H
+#if defined(HAVE_DLFCN_H)
 #include <dlfcn.h>
 
 /*
@@ -88,7 +103,7 @@ C_UnloadModule(sc_pkcs11_module_t *mod)
  * elaborate loader in libopensc one day
  */
 int
-sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
+dl_dlopen(struct sc_pkcs11_module *mod, const char *name)
 {
 	const char	**dir, *ldlist[64];
 	char		pathbuf[4096], *ldenv;
@@ -101,9 +116,6 @@ sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
 			ldlist[n] = strtok(NULL, ":");
 	}
 	ldlist[n] = NULL;
-
-	if (name == NULL)
-		name = "opensc-pkcs11.so";
 
 	for (dir = ldlist; *dir; dir++) {
 		snprintf(pathbuf, sizeof(pathbuf), "%s/%s", *dir, name);
@@ -118,11 +130,12 @@ sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
 	if (ldenv)
 		free(ldenv);
 
+	mod->_type = DL_TYPE_DLFCN;
 	return (mod->_dl_handle? 0 : -1);
 }
 
 int
-sys_dlclose(struct sc_pkcs11_module *mod)
+dl_dlclose(struct sc_pkcs11_module *mod)
 {
 	if (mod->_dl_handle)
 		dlclose(mod->_dl_handle);
@@ -131,7 +144,7 @@ sys_dlclose(struct sc_pkcs11_module *mod)
 }
 
 void *
-sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
+dl_dlsym(sc_pkcs11_module_t *mod, const char *name)
 {
 	char sym_name[256];
 	void *address;
@@ -150,25 +163,24 @@ sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 	return address;
 }
 
-#elif defined(_WIN32)
+#endif
+#ifdef _WIN32
 #include <windows.h>
 
 /*
  * Module loader for the Windows platform.
  */
 int
-sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
+win32_dlopen(struct sc_pkcs11_module *mod, const char *name)
 {
-	if (name == NULL)
-		name = "opensc-pkcs11";
-
 	mod->_dl_handle = LoadLibrary(name);
+	mod->_type = DL_TYPE_WIN32;
 
 	return (mod->_dl_handle? 0 : GetLastError());
 }
 
 int
-sys_dlclose(struct sc_pkcs11_module *mod)
+win32_dlclose(struct sc_pkcs11_module *mod)
 {
 	if (mod->_dl_handle) {
 		if (FreeLibrary(mod->_dl_handle)) {
@@ -183,25 +195,23 @@ sys_dlclose(struct sc_pkcs11_module *mod)
 }
 
 void *
-sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
+win32_dlsym(sc_pkcs11_module_t *mod, const char *name)
 {
 	if (!mod->_dl_handle)
 		return NULL;
 	return GetProcAddress(mod->_dl_handle, name);
 }
 
-#elif defined(__APPLE__)
+#endif
+#if defined(__APPLE__)
 #include <mach-o/dyld.h>
 
 /*
  * Module loader for MacOS X
  */
 int
-sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
+mac_dlopen(struct sc_pkcs11_module *mod, const char *name)
 {
-	if (name == NULL)
-		name = "OpenSC PKCS#11.bundle";
-
 	if (strstr(name, ".bundle")) {
 		CFStringRef text = CFStringCreateWithFormat(
 			NULL, NULL, CFSTR("%s"), name);
@@ -216,12 +226,13 @@ sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
 			NSADDIMAGE_OPTION_WITH_SEARCHING);
 		mod->bundleRef = NULL;
 	}
+	mod->_type = DL_TYPE_MAC;
 
 	return (mod->_dl_handle == NULL && mod->bundleRef == NULL ? -1 : 0);
 }
 
 int
-sys_dlclose(struct sc_pkcs11_module *mod)
+mac_dlclose(struct sc_pkcs11_module *mod)
 {
 	if (mod->bundleRef != NULL) {
 		CFBundleUnloadExecutable(mod->bundleRef);
@@ -232,7 +243,7 @@ sys_dlclose(struct sc_pkcs11_module *mod)
 }
 
 void *
-sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
+mac_dlsym(sc_pkcs11_module_t *mod, const char *name)
 {
 	NSSymbol symbol = NULL;
 
@@ -256,3 +267,68 @@ sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 	}
 }
 #endif
+
+int
+sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
+{
+	if (name == NULL)
+		name = DEFAULT_MODULE_NAME;
+#if defined(_WIN32)
+	return win32_dlopen(mod, name);
+#elif defined(HAVE_DLFCN_H) && defined(__APPLE__)
+	if (strstr(name, ".bundle") || strstr(name, ".dylib")) {
+		return mac_dlopen(mod, name);
+	} else {
+		return dl_dlopen(mod, name);
+	}
+#elif defined(__APPLE__)
+	return mac_dlopen(mod, name);
+#elif defined(HAVE_DLFCN_H)
+	return dl_dlopen(mod, name);
+#endif
+	return -1;
+}
+
+int
+sys_dlclose(struct sc_pkcs11_module *mod)
+{
+#if defined(_WIN32)
+	return win32_dlclose(mod);
+#elif defined(HAVE_DLFCN_H) && defined(__APPLE__)
+	switch(mod->_type) {
+	case DL_TYPE_MAC:
+		return mac_dlclose(mod);
+		break;
+	case DL_TYPE_DLFCN:
+		return dl_dlclose(mod);
+		break;
+	}
+#elif defined(__APPLE__)
+	return mac_dlclose(mod);
+#elif defined(HAVE_DLFCN_H)
+	return dl_dlclose(mod);
+#endif
+	return 0;
+}
+
+void *
+sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
+{
+#if defined(_WIN32)
+	return win32_dlsym(mod, name);
+#elif defined(HAVE_DLFCN_H) && defined(__APPLE__)
+	switch(mod->_type) {
+	case DL_TYPE_MAC:
+		return mac_dlsym(mod, name);
+		break;
+	case DL_TYPE_DLFCN:
+		return dl_dlsym(mod, name);
+		break;
+	}
+#elif defined(__APPLE__)
+	return mac_dlsym(mod, name);
+#elif defined(HAVE_DLFCN_H)
+	return dl_dlsym(mod, name);
+#endif
+	return NULL;
+}
