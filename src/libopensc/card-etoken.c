@@ -19,8 +19,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "internal.h"
 #include "errors.h"
 #include "opensc.h"
+#include "cardctl.h"
 #include "log.h"
 #include <ctype.h>
 #include <string.h>
@@ -219,12 +221,13 @@ int etoken_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 {
 	struct sc_apdu apdu;
 	u8 rbuf[256];
-	u8 fidbuf[256];
 	int r,i;
 	int fids;
 	int len;
 	u8 offset;
 	u8 *fid;
+
+	SC_FUNC_CALLED(card->ctx, 1);
 
 	fids=0;
 	offset=0;
@@ -238,9 +241,12 @@ get_next_part:
 	apdu.le = 256;
 	apdu.resplen = 256;
 	apdu.resp = rbuf;
+
 	r = sc_transmit_apdu(card, &apdu);
-	if (r) 
-		return r;
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "DIRECTORY command returned error");
+
 	if (apdu.resplen > 256) {
 		error(card->ctx, "directory listing > 256 bytes, cutting");
 		r = 256;
@@ -263,24 +269,21 @@ get_next_part:
 		fid = etoken_extract_fid(&rbuf[i+2], len);
 
 		if (fid) {
-			fidbuf[fids++] = fid[0];
-			fidbuf[fids++] = fid[1];
-			if (fids >= 128) {
-				error(card->ctx,"only memory for 128 fids etoken_list_files");
-				fids=128;
-				goto end;
-			}
+			if (fids + 2 >= buflen)
+				break;
+			buf[fids++] = fid[0];
+			buf[fids++] = fid[1];
 		}
 
 		offset = etoken_extract_offset(&rbuf[i+2], len);
 		if (offset) 
 			goto get_next_part;
-		i+=len+2;
+		i += len+2;
 	}
 
-end:
-	memcpy(buf,fidbuf,2*fids);
-	return fids;
+	r = fids;
+
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 static void add_acl_entry(struct sc_file *file, int op, u8 byte)
@@ -349,6 +352,8 @@ static const int ef_acl[9] = {
 	SC_AC_OP_REHABILITATE,	/* EF */
 	SC_AC_OP_ERASE,		/* (delete) EF */
 
+	/* XXX: ADMIN should be an ACL type of its own, or mapped
+	 * to erase */
 	-1,			/* ADMIN EF (modify meta information?) */
 	-1,			/* INC (-> cylic fixed files) */
 	-1			/* DEC */
@@ -373,12 +378,12 @@ static int etoken_select_file(struct sc_card *card,
 {
 	int r;
 	
+	SC_FUNC_CALLED(card->ctx, 1);
 	r = iso_ops->select_file(card, in_path, file);
-	if (r)
-		return r;
-	if (file != NULL)
+	if (r >= 0 && file)
 		parse_sec_attr((*file), (*file)->sec_attr, (*file)->sec_attr_len);
-	return 0;
+	SC_FUNC_RETURN(card->ctx, 1, r);
+	return r;
 }
 
 static int etoken_create_file(struct sc_card *card, struct sc_file *file)
@@ -386,6 +391,18 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 	int r, i, byte;
 	const int *idx;
 	u8 acl[9], type[3], status[3];
+
+	if (card->ctx->debug >= 1) {
+		char	pbuf[128+1];
+		int	n;
+
+		for (n = 0; n < file->path.len; n++) {
+			snprintf(pbuf + 2 * n, sizeof(pbuf) - 2 * n,
+				"%02X", file->path.value[n]);
+		}
+
+		debug(card->ctx, "etoken_create_file(%s)\n", pbuf);
+	}
 
 	if (file->type_attr_len == 0) {
 		type[0] = 0x00;
@@ -399,14 +416,16 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 			type[0] = 0x38;
 			break;
 		default:
-			return SC_ERROR_NOT_SUPPORTED;
+			r = SC_ERROR_NOT_SUPPORTED;
+			goto out;
 		}
 		if (file->type != SC_FILE_TYPE_DF) {
 			switch (file->ef_structure) {
 			case SC_FILE_EF_LINEAR_FIXED_TLV:
 			case SC_FILE_EF_LINEAR_VARIABLE:
 			case SC_FILE_EF_CYCLIC_TLV:
-				return SC_ERROR_NOT_SUPPORTED;
+				r = SC_ERROR_NOT_SUPPORTED;
+				goto out;
 			default:
 				type[0] |= file->ef_structure & 7;
 				break;
@@ -415,19 +434,19 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 		type[1] = type[2] = 0x00; /* not used, but required */
 		r = sc_file_set_type_attr(file, type, sizeof(type));
 		if (r)
-			return r;
+			goto out;
 	}
 	if (file->prop_attr_len == 0) {
 		status[0] = 0x01;
 		if (file->type == SC_FILE_TYPE_DF) {
-			status[1] = 0;	/* bodys size of DF in bigendian */
-			status[2] = 0;
+			status[1] = file->size >> 8;
+			status[2] = file->size;
 		} else {
 			status[1] = status[2] = 0x00; /* not used */
 		}
 		r = sc_file_set_prop_attr(file, status, sizeof(status));
 		if (r)
-			return r;
+			goto out;
 	}
 	if (file->sec_attr_len == 0) {
 		idx = (file->type == SC_FILE_TYPE_DF) ?  df_acl : ef_acl;
@@ -439,15 +458,18 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 				    sc_file_get_acl_entry(file, idx[i]));
                         if (byte < 0) {
                                 error(card->ctx, "Invalid ACL\n");
-                                return SC_ERROR_INVALID_ARGUMENTS;
+                                r = SC_ERROR_INVALID_ARGUMENTS;
+				goto out;
                         }
 			acl[i] = byte;
 		}
 		r = sc_file_set_sec_attr(file, acl, sizeof(acl));
 		if (r)
-			return r;
+			goto out;
 	}
-	return iso_ops->create_file(card, file);
+	r = iso_ops->create_file(card, file);
+
+out:	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 static int etoken_update_binary(struct sc_card *card,
@@ -488,6 +510,46 @@ static int etoken_read_binary(struct sc_card *card,
 	return total? total : n;
 }
 
+static int
+etoken_put_data_fci(struct sc_card *card,
+			struct sc_cardctl_etoken_pin_info *args)
+{
+	struct sc_apdu	apdu;
+	int		r;
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_3_SHORT;
+	apdu.cla = 0x00;
+	apdu.ins = 0xda;
+	apdu.p1  = 0x01;
+	apdu.p2  = 0x6e;
+	apdu.lc  = args->len;
+	apdu.data = args->data;
+	apdu.datalen = args->len;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	return r;
+}
+
+static int
+etoken_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
+{
+	switch (cmd) {
+	case SC_CARDCTL_ETOKEN_PUT_DATA_FCI:
+		break;
+	case SC_CARDCTL_ETOKEN_PUT_DATA_OCI:
+		return etoken_put_data_fci(card,
+			(struct sc_cardctl_etoken_pin_info *) ptr);
+		break;
+	}
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
 /* eToken R2 supports WRITE_BINARY, PRO Tokens support UPDATE_BINARY */
 
 const struct sc_card_driver * sc_get_driver(void)
@@ -505,6 +567,7 @@ const struct sc_card_driver * sc_get_driver(void)
 
 	etoken_ops.list_files = etoken_list_files;
 	etoken_ops.check_sw = etoken_check_sw;
+	etoken_ops.card_ctl = etoken_card_ctl;
 
 	return &etoken_drv;
 }
