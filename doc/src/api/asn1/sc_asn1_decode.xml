@@ -28,7 +28,7 @@ int sc_asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 		<para>
 			This function extracts information from the ASN.1 stream pointed to by <emphasis>inbuf</emphasis>
 			(which is <emphasis>len</emphasis> bytes in size) and stores it into the array of
-			<structname><link linkend="scasn1">struct sc_asn_1</link></structname> entries pointed to by
+			<link linkend="scasn1entry"><structname>struct sc_asn_1</structname></link> entries pointed to by
 			<emphasis>asn1</emphasis>. The array must be big enough to contain all the entries that will be
 			found, or an error will be flagged. The last entry in the array must be a NULL entry, i.e. the
 			<structfield>name</structfield> field must be set to NULL.
@@ -40,16 +40,16 @@ int sc_asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 			<structfield>type</structfield>, <structfield>tag</structfield> and
 			<structfield>flags</structfield> fields must be filled in.
 		</para>
-	</refsect1>
 
-	<para>
-		The function will then scan the stream and fill in the remaining fields.
-		<emphasis>newbuf</emphasis> will point to the byte immediately following the extracted record, and
-		<emphasis>len_left</emphasis> will contain the number of bytes left in the buffer. Thus, the
-		<emphasis>newbuf</emphasis> and <emphasis>len_left</emphasis> fields may be passed in to
-		sc_asn1_decode() again, as the <emphasis>inbuf</emphasis> and <emphasis>len</emphasis> parameters,
-		until <emphasis>len</emphasis> reaches 0.
-	</para>
+		<para>
+			The function will then scan the stream and fill in the remaining fields.
+			<emphasis>newbuf</emphasis> will point to the byte immediately following the extracted record, and
+			<emphasis>len_left</emphasis> will contain the number of bytes left in the buffer. Thus, the
+			<emphasis>newbuf</emphasis> and <emphasis>len_left</emphasis> fields may be passed in to
+			sc_asn1_decode() again, as the <emphasis>inbuf</emphasis> and <emphasis>len</emphasis> parameters,
+			until <emphasis>len</emphasis> reaches 0.
+		</para>
+	</refsect1>
 
 	<refsect1>
 		<title>Return value</title>

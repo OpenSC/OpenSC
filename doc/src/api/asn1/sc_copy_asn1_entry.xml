@@ -24,8 +24,8 @@ void sc_copy_asn1_entry(const struct sc_asn1_entry *src, struct sc_asn1_entry *d
 	<refsect1>
 		<title>Description</title>
 		<para>
-			This function copies an array of <structname><link linkend="scasn1">struct
-				sc_asn1_entry</link></structname> entries pointed to be <emphasis>src</emphasis> to
+			This function copies an array of <link linkend="scasn1entry"><structname>struct
+				sc_asn1_entry</structname></link> entries pointed to be <emphasis>src</emphasis> to
 			<emphasis>dest</emphasis>. The array must be NULL-terminated (that is, the last entry must have
 			its <structfield>name</structfield> field set to NULL). There must be enough space available in
 			<emphasis>dest</emphasis>.

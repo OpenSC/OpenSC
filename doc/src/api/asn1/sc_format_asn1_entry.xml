@@ -25,7 +25,7 @@ void sc_format_asn1_entry(struct sc_asn1_entry *entry, void *parm, void *arg, in
 		<title>Description</title>
 		<para>
 			This function stores the <emphasis>parm</emphasis> and <emphasis>arg</emphasis> pointers in the
-			<structname><link linkend="scasn1">struct sc_asn1_entry</link></structname>
+			<link linkend="scasn1entry"><structname>struct sc_asn1_entry</structname></link>
 			<emphasis>entry</emphasis>. No checking is done. Since the pointers are copied directly, the
 			storage they point to must not be freed by the calling application until the entry itself is
 			destroyed.
