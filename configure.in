@@ -1042,6 +1042,7 @@ src/Makefile
 src/common/Makefile
 src/include/Makefile
 src/include/opensc/Makefile
+src/include/opensc/rsaref/Makefile
 src/assuan/Makefile
 src/libopensc/Makefile
 src/libopensc/opensc-config

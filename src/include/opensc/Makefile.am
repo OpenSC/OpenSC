@@ -2,6 +2,8 @@
 
 RM = rm -f
 
+SUBDIRS = rsaref
+
 MAINTAINERCLEANFILES = Makefile.in \
 	asn1.h \
 	cardctl.h \
@@ -27,6 +29,8 @@ all-local:
 	@$(LN_S) ../../libopensc/types.h types.h
 	@$(LN_S) ../../libopensc/pkcs15.h pkcs15.h
 	@$(LN_S) ../../pkcs15init/pkcs15-init.h pkcs15-init.h
+	@$(LN_S) ../../pkcs11/pkcs11.h pkcs11.h
 	@$(LN_S) ../../scconf/scconf.h scconf.h
 	@$(LN_S) ../../scldap/scldap.h scldap.h
 	@$(LN_S) ../../scrandom/scrandom.h scrandom.h
+
