@@ -1039,13 +1039,14 @@ docs/Makefile
 docs/pkcs15-profile.5
 etc/Makefile
 src/Makefile
+src/assuan/Makefile
 src/common/Makefile
 src/include/Makefile
 src/include/opensc/Makefile
 src/include/opensc/rsaref/Makefile
-src/assuan/Makefile
 src/libopensc/Makefile
 src/libopensc/opensc-config
+src/openscd/Makefile
 src/openssh/Makefile
 src/pam/Makefile
 src/pkcs11/Makefile
@@ -1060,7 +1061,6 @@ src/signer/Makefile
 src/signer/npinclude/Makefile
 src/tests/Makefile
 src/tools/Makefile
-src/openscd/Makefile
 ])
 
 if test ! -z "$RANDOM_POOL" ; then
