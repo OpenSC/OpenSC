@@ -62,11 +62,25 @@ int etoken_match_card(struct sc_card *card)
 
 int etoken_init(struct sc_card *card)
 {
+	unsigned long	flags;
+
 	card->cla = 0x00;
 
 	/* Tell the upper layers we do our own payload chunking
 	 * in read/update/write_binary */
 	card->caps |= SC_CARD_CAP_APDU_EXT;
+
+	/* Set up algorithm info. */
+	flags = SC_ALGORITHM_RSA_HASH_MD5 | SC_ALGORITHM_RSA_HASH_SHA1
+		| SC_ALGORITHM_RSA_HASH_MD5_SHA1
+		| SC_ALGORITHM_RSA_PAD_PKCS1
+#ifdef notyet
+		| SC_ALGORITHM_ONBOARD_KEY_GEN
+#endif
+		;
+	_sc_card_add_rsa_alg(card,  512, flags, 0);
+	_sc_card_add_rsa_alg(card,  768, flags, 0);
+	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 
 	return 0;
 }
