@@ -1493,7 +1493,7 @@ wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (rv == CKR_MECHANISM_INVALID)
 		return 0;
 	if (rv != CKR_OK) {
-		p11_perror("C_UnwrapKey failed", rv);
+		p11_perror("C_UnwrapKey", rv);
 		return 1;
 	}
 
@@ -1570,6 +1570,10 @@ test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
 			printf("(%s) ", label);
 			free(label);
+		}
+		if (!getUNWRAP(sess, privKeyObject)) {
+			printf(" -- can't be used to unwrap, skipping\n");
+			continue;
 		}
 		printf("\n");
 
