@@ -17,7 +17,7 @@ filesystem {
         type	= DF;
 
 	# This is the DIR file
-	EF PKCS15-DIR {
+	EF DIR {
 	    type	= EF;
 	    file-id	= 2F00;
 	    size	= 128;

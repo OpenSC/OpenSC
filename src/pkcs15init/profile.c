@@ -536,8 +536,6 @@ new_file(struct state *cur, const char *name, unsigned int type)
 		file = profile->p15_card->file_tokeninfo;
 	} else if (!strcasecmp(name+7, "ODF")) {
 		file = profile->p15_card->file_odf;
-	} else if (!strcasecmp(name+7, "DIR")) {
-		file = init_file(SC_FILE_TYPE_WORKING_EF);
 	} else if (!strcasecmp(name+7, "AppDF")) {
 		file = init_file(SC_FILE_TYPE_DF);
 	} else {
