@@ -13,7 +13,7 @@ bin_SCRIPTS = opensc-config
 
 lib_LTLIBRARIES = libopensc.la
 libopensc_la_SOURCES = \
-	sc.c ctx.c ui.c log.c errors.c portability.c module.c \
+	sc.c ctx.c ui.c log.c errors.c portability.c \
 	asn1.c base64.c sec.c card.c iso7816.c dir.c padding.c \
 	\
 	pkcs15.c pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \

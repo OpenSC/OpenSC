@@ -65,10 +65,6 @@ int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
 struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
 						 unsigned int key_length);
 
-int sc_module_open(struct sc_context *ctx, void **mod_handle, const char *filename);
-int sc_module_close(struct sc_context *ctx, void *mod_handle);
-int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_address, const char *sym_name);
-
 int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		     unsigned int *tag_out, size_t *taglen);
 
