@@ -322,6 +322,8 @@ __pkcs15_prkey_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_prkey_
 	for (i = 0; i < fw_data->num_objects; i++) {
 		struct pkcs15_any_object *obj = fw_data->objects[i];
 
+		if (obj->base.flags & SC_PKCS11_OBJECT_HIDDEN)
+			continue;
 		if (is_privkey(obj) && obj != (struct pkcs15_any_object *) pk) {
 			/* merge private keys with the same ID and
 			 * different usage bits */
@@ -389,6 +391,8 @@ pkcs15_bind_related_objects(struct pkcs15_fw_data *fw_data)
 	for (i = 0; i < fw_data->num_objects; i++) {
 		struct pkcs15_any_object *obj = fw_data->objects[i];
 
+		if (obj->base.flags & SC_PKCS11_OBJECT_HIDDEN)
+			continue;
 		if (is_privkey(obj)) {
 			__pkcs15_prkey_bind_related(fw_data, (struct pkcs15_prkey_object *) obj);
 		} else if (is_cert(obj)) {
