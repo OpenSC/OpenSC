@@ -731,7 +731,10 @@ static int asn1_decode_path(struct sc_context *ctx, const u8 *in, size_t len,
 	r = asn1_decode(ctx, asn1_path, in, len, NULL, NULL, 0, depth + 1);
 	if (r)
 		return r;
-	path->type = SC_PATH_TYPE_PATH;
+	if (path->len == 2)
+		path->type = SC_PATH_TYPE_FILE_ID;
+	else
+		path->type = SC_PATH_TYPE_PATH;
 	if ((asn1_path[1].flags & SC_ASN1_PRESENT)
 	 && (asn1_path[2].flags & SC_ASN1_PRESENT)) {
 		path->index = idx;
