@@ -5,7 +5,7 @@ TARGET = pkcs15init.lib
 HEADERS = pkcs15-init.h
 HEADERSDIR = $(TOPDIR)\src\include\opensc
 
-OBJECTS = profile.obj pkcs15-lib.obj \
+OBJECTS = profile.obj pkcs15-lib.obj keycache.obj \
           pkcs15-miocos.obj pkcs15-gpk.obj pkcs15-cflex.obj \
           pkcs15-etoken.obj
 

@@ -1,5 +1,5 @@
 /*
- * eToken PRO specific operation for PKCS15 initialization
+ * CardOS specific operation for PKCS15 initialization
  *
  * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
  *
@@ -54,9 +54,19 @@ struct rsakey {
 /*
  * Local functions
  */
+static int	etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
+			sc_pkcs15_pin_info_t *pin_info, int puk_id,
+			const u8 *pin, size_t pin_len);
+static int	etoken_create_sec_env(sc_profile_t *, sc_card_t *,
+			unsigned int, unsigned int);
 static int	etoken_new_file(struct sc_profile *, struct sc_card *,
 			unsigned int, unsigned int,
 			struct sc_file **);
+static int	etoken_put_key(struct sc_profile *, struct sc_card *,
+			int, unsigned int, struct sc_pkcs15_prkey_rsa *);
+static int	etoken_key_algorithm(unsigned int, int *);
+static int	etoken_extract_pubkey(sc_card_t *, int,
+			u8, sc_pkcs15_bignum_t *);
 static void	error(struct sc_profile *, const char *, ...);
 
 /* Object IDs for PIN objects.
@@ -123,20 +133,273 @@ etoken_erase(struct sc_profile *profile, struct sc_card *card)
 }
 
 /*
- * Initialize pin file
+ * Create the Application DF
  */
 static int
-etoken_store_pin(struct sc_profile *profile, struct sc_card *card,
-		int pin_type, unsigned int pin_id, unsigned int puk_id,
+etoken_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
+{
+	int	r;
+
+	/* Create the application DF */
+	if ((r = sc_pkcs15init_create_file(profile, card, df)) < 0)
+		return r;
+
+	if ((r = sc_select_file(card, &df->path, NULL)) < 0)
+		return r;
+
+	/* Create a default security environment for this DF.
+	 * This SE autometically becomes the current SE when the
+	 * DF is selected. */
+	if ((r = etoken_create_sec_env(profile, card, 0x01, 0x00)) < 0)
+		return r;
+
+	return 0;
+}
+
+/*
+ * Caller passes in a suggested PIN reference.
+ * See if it's good, and if it isn't, propose something better
+ */
+static int
+etoken_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
+		sc_pkcs15_pin_info_t *pin_info)
+{
+	int	preferred, current;
+
+	if ((current = pin_info->reference) < 0)
+		current = 1;
+
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+		preferred = 1;
+	} else {
+		preferred = current;
+		/* PINs are even numbered, PUKs are odd */
+		if (!(preferred & 1))
+			preferred++;
+		if (preferred >= 126)
+			return SC_ERROR_TOO_MANY_OBJECTS;
+	}
+
+	if (current > preferred)
+		return SC_ERROR_TOO_MANY_OBJECTS;
+	pin_info->reference = preferred;
+	return 0;
+}
+
+/*
+ * Store a PIN
+ */
+static int
+etoken_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
+		sc_pkcs15_pin_info_t *pin_info,
+		const u8 *pin, size_t pin_len,
+		const u8 *puk, size_t puk_len)
+{
+	unsigned int	puk_id = ETOKEN_AC_NEVER;
+	int		r;
+
+	if (!pin || !pin_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	r = sc_select_file(card, &df->path, NULL);
+	if (r < 0)
+		return r;
+
+	if (puk && puk_len) {
+		struct sc_pkcs15_pin_info puk_info;
+
+		sc_profile_get_pin_info(profile,
+				SC_PKCS15INIT_USER_PUK, &puk_info);
+		puk_info.reference = puk_id = pin_info->reference + 1;
+		r = etoken_store_pin(profile, card,
+				&puk_info, ETOKEN_AC_NEVER,
+				puk, puk_len);
+	}
+
+	if (r >= 0) {
+		r = etoken_store_pin(profile, card,
+				pin_info, puk_id,
+				pin, pin_len);
+	}
+
+	return r;
+}
+
+/*
+ * Select a key reference
+ */
+static int
+etoken_select_key_reference(sc_profile_t *profile, sc_card_t *card,
+			sc_pkcs15_prkey_info_t *key_info)
+{
+	struct sc_file	*df = profile->df_info->file;
+
+	if (key_info->key_reference > 255)
+		return SC_ERROR_TOO_MANY_OBJECTS;
+
+	key_info->path = df->path;
+	return 0;
+}
+
+/*
+ * Create a private key object.
+ * This is a no-op.
+ */
+static int
+etoken_create_key(sc_profile_t *profile, sc_card_t *card,
+			sc_pkcs15_object_t *obj)
+{
+	return 0;
+}
+
+/*
+ * Store a private key object.
+ */
+static int
+etoken_store_key(sc_profile_t *profile, sc_card_t *card,
+			sc_pkcs15_object_t *obj,
+			sc_pkcs15_prkey_t *key)
+{
+	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	int		algorithm, r;
+
+	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
+		error(profile, "CardOS supports RSA keys only.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	if (etoken_key_algorithm(key_info->usage, &algorithm) < 0) {
+		error(profile, "CardOS does not support keys "
+			       "that can both sign _and_ decrypt.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	r = etoken_put_key(profile, card, algorithm,
+				key_info->key_reference,
+				&key->u.rsa);
+
+	return r;
+}
+
+/*
+ * Key generation
+ */
+static int
+etoken_generate_key(sc_profile_t *profile, sc_card_t *card,
+		sc_pkcs15_object_t *obj,
+		sc_pkcs15_pubkey_t *pubkey)
+{
+	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	struct sc_pkcs15_prkey_rsa key_obj;
+	struct sc_cardctl_etoken_genkey_info args;
+	struct sc_file	*temp;
+	u8		abignum[RSAKEY_MAX_SIZE];
+	u8		randbuf[64];
+	unsigned int	keybits;
+	int		algorithm, r, delete_it = 0;
+	
+	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
+		error(profile, "CardOS supports only RSA keys.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	if (etoken_key_algorithm(key_info->usage, &algorithm) < 0) {
+		error(profile, "CardOS does not support keys "
+			       "that can both sign _and_ decrypt.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	keybits = key_info->modulus_length & ~7UL;
+	if (keybits > RSAKEY_MAX_BITS) {
+		error(profile, "Unable to generate key, max size is %d\n",
+				RSAKEY_MAX_BITS);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	if (sc_profile_get_file(profile, "tempfile", &temp) < 0) {
+		error(profile, "Profile doesn't define temporary file "
+				"for key generation.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	memset(pubkey, 0, sizeof(*pubkey));
+
+	if ((r = sc_pkcs15init_create_file(profile, card, temp)) < 0)
+		goto out;
+	delete_it = 1;
+
+	/* Create a key object, initializing components to 0xff */
+	memset(&key_obj, 0, sizeof(key_obj));
+	memset(abignum, 0xFF, sizeof(abignum));
+	key_obj.modulus.data = abignum;
+	key_obj.modulus.len = keybits >> 3;
+	key_obj.d.data = abignum;
+	key_obj.d.len = keybits >> 3;
+	r = etoken_put_key(profile, card, algorithm,
+			key_info->key_reference, &key_obj);
+	if (r < 0)
+		goto out;
+
+	memset(&args, 0, sizeof(args));
+#ifdef notyet
+	if ((r = scrandom_get_data(randbuf, sizeof(randbuf))) < 0)
+		goto out;
+
+	/* For now, we have to rely on the card's internal number
+	 * generator because libscrandom is static, which causes
+	 * all sorts of headaches when linking against it
+	 * (some platforms don't allow non-PIC code in a shared lib,
+	 * such as ia64).
+	 */
+	args.random_data = randbuf;
+	args.random_len = sizeof(randbuf);
+#endif
+	args.key_id = key_info->key_reference;
+	args.key_bits = keybits;
+	args.fid = temp->id;
+	r = sc_card_ctl(card, SC_CARDCTL_ETOKEN_GENERATE_KEY, &args);
+	memset(randbuf, 0, sizeof(randbuf));
+	if (r < 0)
+		goto out;
+
+	/* extract public key from file and delete it */
+	if ((r = sc_select_file(card, &temp->path, NULL)) < 0)
+		goto out;
+	r = etoken_extract_pubkey(card, 1, 0x10, &pubkey->u.rsa.modulus);
+	if (r < 0)
+		goto out;
+	r = etoken_extract_pubkey(card, 2, 0x11, &pubkey->u.rsa.exponent);
+	if (r < 0)
+		goto out;
+	pubkey->algorithm = SC_ALGORITHM_RSA;
+
+out:	if (delete_it) {
+		sc_pkcs15init_rmdir(card, profile, temp);
+	}
+	sc_file_free(temp);
+	if (r < 0) {
+		if (pubkey->u.rsa.modulus.data)
+			free (pubkey->u.rsa.modulus.data);
+		if (pubkey->u.rsa.exponent.data)
+			free (pubkey->u.rsa.exponent.data);
+	}
+	return r;
+}
+
+/*
+ * Store a PIN or PUK
+ */
+static int
+etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
+		sc_pkcs15_pin_info_t *pin_info, int puk_id,
 		const u8 *pin, size_t pin_len)
 {
-	struct sc_pkcs15_pin_info params;
 	struct sc_cardctl_etoken_obj_info args;
 	unsigned char	buffer[256];
 	unsigned char	pinpadded[16];
 	struct tlv	tlv;
 	unsigned int	attempts, minlen, maxlen;
 
+printf("etoken_store_pin(ref=%d, puk=%d\n", pin_info->reference, puk_id);
 	/* We need to do padding because pkcs15-lib.c does it.
 	 * Would be nice to have a flag in the profile that says
 	 * "no padding required". */
@@ -148,21 +411,15 @@ etoken_store_pin(struct sc_profile *profile, struct sc_card *card,
 		pinpadded[pin_len++] = profile->pin_pad_char;
 	pin = pinpadded;
 
-	sc_profile_get_pin_info(profile, pin_type, &params);
-	attempts = params.tries_left;
-	minlen = params.min_length;
-
-	/* Set the profile's PIN reference */
-	params.reference = pin_id;
-	params.path = profile->df_info->file->path;
-	sc_profile_set_pin_info(profile, pin_type, &params);
+	attempts = pin_info->tries_left;
+	minlen = pin_info->min_length;
 
 	tlv_init(&tlv, buffer, sizeof(buffer));
 
 	/* object address: class, id */
 	tlv_next(&tlv, 0x83);
 	tlv_add(&tlv, 0x00);		/* class byte: usage TEST, k=0 */
-	tlv_add(&tlv, pin_id);
+	tlv_add(&tlv, pin_info->reference);
 
 	/* parameters */
 	tlv_next(&tlv, 0x85);
@@ -181,16 +438,16 @@ etoken_store_pin(struct sc_profile *profile, struct sc_card *card,
 	/* DEK: not documented, no idea what it means */
 	tlv_add(&tlv, 0x00);
 
-	/* ARA counter: not documented, no idea what it means */
+	/* ARA counter: Nils says this is the userConsent field */
 	tlv_add(&tlv, 0x00);
 
-	tlv_add(&tlv, minlen);		/* minlen */
+	tlv_add(&tlv, minlen);			/* minlen */
 
 	/* AC conditions */
 	tlv_next(&tlv, 0x86);
-	tlv_add(&tlv, 0x00);		/* use: always */
-	tlv_add(&tlv, pin_id);		/* change: PIN */
-	tlv_add(&tlv, puk_id);		/* unblock: PUK */
+	tlv_add(&tlv, 0x00);			/* use: always */
+	tlv_add(&tlv, pin_info->reference);	/* change: PIN */
+	tlv_add(&tlv, puk_id);			/* unblock: PUK */
 
 	/* data: PIN */
 	tlv_next(&tlv, 0x8f);
@@ -235,11 +492,13 @@ etoken_create_sec_env(struct sc_profile *profile, struct sc_card *card,
 	return sc_card_ctl(card, SC_CARDCTL_ETOKEN_PUT_DATA_SECI, &args);
 }
 
+#if 0
 /*
  * Initialize the Application DF and pin file
  */
 static int
 etoken_init_app(struct sc_profile *profile, struct sc_card *card,
+		struct sc_pkcs15_pin_info *pin_info,
 		const unsigned char *pin, size_t pin_len,
 		const unsigned char *puk, size_t puk_len)
 {
@@ -259,16 +518,20 @@ etoken_init_app(struct sc_profile *profile, struct sc_card *card,
 		u8	puk_id = ETOKEN_AC_NEVER;
 
 		if (r >= 0 && puk && puk_len) {
-			puk_id = ETOKEN_PUK_ID(0);
+			struct sc_pkcs15_pin_info puk_info;
+
+			sc_profile_get_pin_info(profile,
+					SC_PKCS15INIT_SO_PUK, &puk_info);
+
+			puk_id = puk_info.reference;
 			r = etoken_store_pin(profile, card,
-					SC_PKCS15INIT_SO_PUK,
-					puk_id, ETOKEN_AC_NEVER,
+					&puk_info, ETOKEN_AC_NEVER,
 					puk, puk_len);
 		}
 		if (r >= 0) {
+			pin_info->path = df->path;
 			r = etoken_store_pin(profile, card,
-					SC_PKCS15INIT_SO_PIN,
-					ETOKEN_PIN_ID(0), puk_id,
+					pin_info, puk_id,
 					pin, pin_len);
 		}
 	}
@@ -281,50 +544,7 @@ etoken_init_app(struct sc_profile *profile, struct sc_card *card,
 
 	return r;
 }
-
-/*
- * Store a PIN
- */
-static int
-etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
-		struct sc_pkcs15_pin_info *info, unsigned int index,
-		const u8 *pin, size_t pin_len,
-		const u8 *puk, size_t puk_len)
-{
-	struct sc_file	*df = profile->df_info->file;
-	unsigned int	puk_id = ETOKEN_AC_NEVER, pin_id;
-	int		r;
-
-	if (!pin || !pin_len)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	r = sc_select_file(card, &df->path, NULL);
-	if (r < 0)
-		return r;
-
-	if (index >= ETOKEN_MAX_PINS)
-		return SC_ERROR_TOO_MANY_OBJECTS;
-
-	if (puk && puk_len) {
-		puk_id = ETOKEN_PUK_ID(index);
-		r = etoken_store_pin(profile, card,
-				SC_PKCS15INIT_USER_PUK,
-				puk_id, ETOKEN_AC_NEVER,
-				puk, puk_len);
-	}
-
-	if (r >= 0) {
-		pin_id = ETOKEN_PIN_ID(index);
-		r = etoken_store_pin(profile, card,
-				SC_PKCS15INIT_USER_PIN,
-				pin_id, puk_id,
-				pin, pin_len);
-		info->reference = pin_id;
-		info->path = df->path;
-	}
-
-	return r;
-}
+#endif
 
 /*
  * Determine the key algorithm based on the intended usage
@@ -419,7 +639,7 @@ etoken_store_key_component(struct sc_card *card,
 }
 
 static int
-etoken_store_key(struct sc_profile *profile, struct sc_card *card,
+etoken_put_key(struct sc_profile *profile, struct sc_card *card,
 		int algorithm, unsigned int key_id,
 		struct sc_pkcs15_prkey_rsa *key)
 {
@@ -436,38 +656,6 @@ etoken_store_key(struct sc_profile *profile, struct sc_card *card,
 		return r;
 	r = etoken_store_key_component(card, algorithm, key_id, pin_id, 1,
 			key->d.data, key->d.len, 1);
-
-	return r;
-}
-
-/*
- * Store a private key
- */
-static int
-etoken_new_key(struct sc_profile *profile, struct sc_card *card,
-		struct sc_pkcs15_prkey *key, unsigned int index,
-		struct sc_pkcs15_prkey_info *info)
-{
-	struct sc_pkcs15_prkey_rsa *rsa;
-	int		algorithm, key_id, r;
-
-	if (key->algorithm != SC_ALGORITHM_RSA) {
-		error(profile, "eToken supports RSA keys only.\n");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-	if (etoken_key_algorithm(info->usage, &algorithm) < 0) {
-		error(profile, "eToken does not support keys "
-			       "that can both sign _and_ decrypt.");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	rsa = &key->u.rsa;
-	key_id = ETOKEN_KEY_ID(index);
-	r = etoken_store_key(profile, card, algorithm, key_id, rsa);
-	if (r >= 0) {
-		info->path = profile->df_info->file->path;
-		info->key_reference = key_id;
-	}
 
 	return r;
 }
@@ -574,107 +762,6 @@ etoken_extract_pubkey(struct sc_card *card, int nr, u8 tag,
 	return 0;
 }
 
-/*
- * Key generation
- */
-static int
-etoken_generate_key(struct sc_profile *profile, struct sc_card *card,
-		unsigned int index, unsigned int keybits,
-		sc_pkcs15_pubkey_t *pubkey,
-		struct sc_pkcs15_prkey_info *info)
-{
-	struct sc_pkcs15_prkey_rsa key_obj;
-	struct sc_cardctl_etoken_genkey_info args;
-	struct sc_file	*temp;
-	u8		abignum[RSAKEY_MAX_SIZE];
-	u8		randbuf[64], key_id;
-	int		algorithm, r, delete_it = 0;
-
-	keybits &= ~7UL;
-	if (keybits > RSAKEY_MAX_BITS) {
-		error(profile, "Unable to generate key, max size is %d\n",
-				RSAKEY_MAX_BITS);
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	if (etoken_key_algorithm(info->usage, &algorithm) < 0) {
-		error(profile, "eToken does not support keys "
-			       "that can both sign _and_ decrypt.");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	if (sc_profile_get_file(profile, "tempfile", &temp) < 0) {
-		error(profile, "Profile doesn't define temporary file "
-				"for key generation.\n");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-	memset(pubkey, 0, sizeof(*pubkey));
-
-	if ((r = sc_pkcs15init_create_file(profile, card, temp)) < 0)
-		goto out;
-	delete_it = 1;
-
-	key_id = ETOKEN_KEY_ID(index);
-
-	/* Create a key object, initializing components to 0xff */
-	memset(&key_obj, 0, sizeof(key_obj));
-	memset(abignum, 0xFF, sizeof(abignum));
-	key_obj.modulus.data = abignum;
-	key_obj.modulus.len = keybits >> 3;
-	key_obj.d.data = abignum;
-	key_obj.d.len = keybits >> 3;
-	r = etoken_store_key(profile, card, algorithm, key_id, &key_obj);
-	if (r < 0)
-		goto out;
-
-	memset(&args, 0, sizeof(args));
-#ifdef notyet
-	if ((r = scrandom_get_data(randbuf, sizeof(randbuf))) < 0)
-		goto out;
-
-	/* For now, we have to rely on the card's internal number
-	 * generator because libscrandom is static, which causes
-	 * all sorts of headaches when linking against it
-	 * (some platforms don't allow non-PIC code in a shared lib,
-	 * such as ia64).
-	 */
-	args.random_data = randbuf;
-	args.random_len = sizeof(randbuf);
-#endif
-	args.key_id = key_id;
-	args.key_bits = keybits;
-	args.fid = temp->id;
-	r = sc_card_ctl(card, SC_CARDCTL_ETOKEN_GENERATE_KEY, &args);
-	memset(randbuf, 0, sizeof(randbuf));
-	if (r < 0)
-		goto out;
-
-	/* extract public key from file and delete it */
-	if ((r = sc_select_file(card, &temp->path, NULL)) < 0)
-		goto out;
-	r = etoken_extract_pubkey(card, 1, 0x10, &pubkey->u.rsa.modulus);
-	if (r < 0)
-		goto out;
-	r = etoken_extract_pubkey(card, 2, 0x11, &pubkey->u.rsa.exponent);
-	if (r < 0)
-		goto out;
-	pubkey->algorithm = SC_ALGORITHM_RSA;
-	info->key_reference = key_id;
-	info->path = profile->df_info->file->path;
-
-out:	if (delete_it) {
-		sc_pkcs15init_rmdir(card, profile, temp);
-	}
-	sc_file_free(temp);
-	if (r < 0) {
-		if (pubkey->u.rsa.modulus.data)
-			free (pubkey->u.rsa.modulus.data);
-		if (pubkey->u.rsa.exponent.data)
-			free (pubkey->u.rsa.exponent.data);
-	}
-	return r;
-}
-
 static void
 error(struct sc_profile *profile, const char *fmt, ...)
 {
@@ -689,10 +776,15 @@ error(struct sc_profile *profile, const char *fmt, ...)
 }
 
 struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations = {
-	etoken_erase,
-	etoken_init_app,
-	etoken_new_pin,
-	etoken_new_key,
-	etoken_new_file,
-	etoken_generate_key
+	.erase_card		= etoken_erase,
+	.create_dir		= etoken_create_dir,
+	.select_pin_reference	= etoken_select_pin_reference,
+	.create_pin		= etoken_create_pin,
+	.select_key_reference	= etoken_select_key_reference,
+	.create_key		= etoken_create_key,
+	.store_key		= etoken_store_key,
+	//.new_pin		= etoken_new_pin,
+	//.new_key		= etoken_new_key,
+	.generate_key		= etoken_generate_key
+	//.new_file		= etoken_new_file,
 };

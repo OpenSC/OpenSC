@@ -1,18 +1,24 @@
 #
-# PKCS15 r/w profile for Cryptoflex cards
+# General purpose PKCS15 profile for Cryptoflex cards
 #
 cardinfo {
     max-pin-length	= 8;
     pin-encoding	= ascii-numeric;
     pin-pad-char	= 0x00;
+    pin-domains		= yes;
+
+    # This profile does not PIN-protect certificates
+    # stored on the card. If you enable this, you MUST
+    # adjust the sizes of the pin-domain and key-dir DFs
+    # accordingly.
+    protect-certificates = no;
 }
 
 # Define reasonable limits for PINs and PUK
-# Note that we do not set a file path or reference
-# here; that is done dynamically.
+# The user pin must always be CHV1, otherwise things
+# won't work (crypto operations are protected by CHV1)
 PIN user-pin {
     attempts	= 3;
-    flags	= 0x32; # local, initialized, needs-padding
 }
 PIN user-puk {
     attempts	= 10;
@@ -22,70 +28,80 @@ PIN user-puk {
 # This is added to the file system info specified in the
 # main profile.
 filesystem {
+    # Define default ACLs and file ids for CHV1/CHV2
+    EF CHV1 {
+    	file-id	= 0000;
+	ACL	= *=NEVER, UPDATE=CHV1;
+    }
+    EF CHV2 {
+    	file-id	= 0100;
+	ACL	= *=NEVER, UPDATE=CHV2;
+    }
+
     DF MF {
 	ACL	= *=AUT1;
 
+	# The DELETE=NONE ACLs will go away once the code
+	# works. It's here to make sure I can erase the card
+	# even if I mess up big time.
 	DF PKCS15-AppDF {
-	    ACL		= *=AUT1, FILES=NONE;
-	    DF keydir-1 {
-		ACL		= *=AUT1, FILES=NONE;
-		file-id		= 4B01;
-		size		= 1370;	# Sufficient for a 2048-bit key
-		EF pinfile-1 {
-    	            file-id		= 0000;
-    	            size		= 23;
-    	            ACL			= *=NEVER, UPDATE=AUT1;
-            	}
-		EF template-private-key-1 {
-		    file-id		= 0012;
-		    ACL			= *=NEVER, CRYPTO=$PIN, UPDATE=AUT1;
+	    ACL		= *=$SOPIN, FILES=NONE, DELETE=NONE;
+	    size	= 7500;
+
+	    # This "pin-domain" DF is a template that is
+	    # instantiated for each PIN created on the card.
+	    #
+	    # When instantiating the template, each file id will be
+	    # combined with the last octet of the object's pkcs15 id
+	    # to form a unique file ID. That is, PIN 01 will reside
+	    # in 4b01, PIN 02 will reside in 4b02, etc.
+    	    template pin-domain {
+		DF pin-dir {
+		    ACL		= *=$SOPIN, FILES=NONE, DELETE=NONE;
+		    file-id	= 4B00;
+
+		    # The minimum size for a 2048 bit key is 1396
+		    size	= 1396;
 		}
-                EF template-extractable-key-1 {
-    	            file-id		= 7000;
-    	            ACL			= *=NEVER, READ=CHV1, UPDATE=AUT1;
-                }
-            }
-	    DF keydir-2 {
-		ACL		= *=AUT1, FILES=NONE;
-		file-id		= 4B02;
-		size		= 1370;	# Sufficient for a 2048-bit key
-		EF pinfile-2 {
-    	            file-id		= 0000;
-    	            size		= 23;
-    	            ACL			= *=NEVER, UPDATE=AUT1;
-            	}
-		EF template-private-key-2 {
-		    file-id		= 0012;
-		    ACL			= *=NEVER, CRYPTO=CHV1, UPDATE=AUT1;
+	    }
+
+	    # For PIN-protected files, instantiate this template
+	    # below the pin directory.
+	    # For unprotected objects, install within the application DF.
+	    #
+	    # When instantiating the template, each file id will be
+	    # combined with the last octet of the object's pkcs15 id
+	    # to form a unique file ID.
+	    template key-domain {
+		# In order to support more than one key per PIN,
+		# each key must be within its own subdirectory.
+	    	DF key-directory {
+		    ACL	= *=$PIN, FILES=NONE;
+		    file-id	= 3000;
+		    size	= 1332;
+
+	            EF private-key {
+		        file-id	= 0012;
+		        ACL		= *=NEVER, CRYPTO=$PIN, UPDATE=$PIN;
+		    }
+		    EF internal-pubkey-file {
+		        file-id	= 1012;
+		        ACL		= *=$PIN, READ=NONE;
+		    }
 		}
-                EF template-extractable-key-2 {
-    	            file-id		= 7000;
-    	            ACL			= *=NEVER, READ=$PIN, UPDATE=AUT1;
-                }
-            }
-	    EF template-public-key-1 {
-		file-id		= 5201;
-		ACL		= *=AUT1, READ=NONE;
-	    }
-	    EF template-public-key-2 {
-		file-id		= 5202;
-		ACL		= *=AUT1, READ=NONE;
-	    }
-	    EF template-certificate-1 {
-		file-id		= 5501;
-		ACL		= *=AUT1, READ=NONE;
-	    }
-	    EF template-certificate-2 {
-		file-id		= 5502;
-		ACL		= *=AUT1, READ=NONE;
-	    }
+		EF extractable-key {
+    	            file-id	= 4300;
+    	            ACL		= *=NEVER, READ=$PIN, UPDATE=$PIN;
+		}
+		EF public-key {
+		    file-id	= 4400;
+		    ACL		= *=$PIN, READ=NONE;
+		}
+		EF certificate {
+		    file-id	= 4500;
+		    ACL		= *=$PIN, READ=NONE;
+		}
+    	    }
 	}
     }
 }
-
-# Define an SO pin
-# This PIN is not used yet.
-#PIN sopin {
-#    file	= sopinfile;
-#    reference	= 0;
-#}

@@ -47,6 +47,7 @@
 #include <opensc/cardctl.h>
 #include <opensc/pkcs15.h>
 #include <opensc/pkcs15-init.h>
+#include <opensc/log.h>
 #include "util.h"
 
 
@@ -95,6 +96,7 @@ static int	do_read_certificate(const char *, const char *, X509 **);
 static void	parse_commandline(int argc, char **argv);
 static void	read_options_file(const char *);
 static void	ossl_print_errors(void);
+static void	p15init_debug(int, const char *, ...);
 
 
 enum {
@@ -199,7 +201,7 @@ const char *		option_help[] = {
 	"Do not prompt the user, except for PINs",
 
 	"Specify the general profile to use",
-	"Specify the card profile option to use",
+	"Specify the card profile to use",
 	"Read additional command line options from file",
 	"Wait for card insertion",
 	"Enable debugging output",
@@ -286,7 +288,7 @@ static unsigned int		opt_secret_count;
 
 static struct sc_pkcs15init_callbacks callbacks = {
 	error,			/* error() */
-	NULL,			/* debug() */
+	p15init_debug,		/* debug() */
 	get_pin_callback,	/* get_pin() */
 	get_key_callback,	/* get_key() */
 };
@@ -517,7 +519,7 @@ do_init_app(struct sc_profile *profile)
 		args.so_puk_len = strlen((char *) args.so_puk);
 	args.serial = (const char *) opt_serial;
 	args.label = opt_label;
-	
+
 	return sc_pkcs15init_add_app(card, profile, &args);
 
 failed:	
@@ -699,6 +701,7 @@ static int
 do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 {
 	struct sc_pkcs15init_pubkeyargs args;
+	sc_pkcs15_object_t *dummy;
 	int		r = 0;
 
 	memset(&args, 0, sizeof(args));
@@ -712,7 +715,7 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 		r = do_convert_public_key(&args.key, pkey);
 	if (r >= 0)
 		r = sc_pkcs15init_store_public_key(p15card, profile,
-					&args, NULL);
+					&args, &dummy);
 
 	return r;
 }
@@ -1934,4 +1937,23 @@ ossl_print_errors()
 
 	while ((err = ERR_get_error()) != 0)
 		fprintf(stderr, "%s\n", ERR_error_string(err, NULL));
+}
+
+/*
+ * Debug helper function
+ */
+void
+p15init_debug(int level, const char *fmt, ...)
+{
+	char	buffer[128];
+	va_list	ap;
+
+	if (ctx->debug < level)
+		return;
+
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
+
+	sc_debug(ctx, "%s", buffer);
 }

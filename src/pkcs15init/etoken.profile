@@ -8,8 +8,14 @@ cardinfo {
 }
 
 # Define reasonable limits for PINs and PUK
-# Note that we do not set a file path or reference
-# here; that is done dynamically.
+# We set the reference for SO pin+puk here, because
+# those are hard-coded (if a PUK us assigned).
+PIN so-pin {
+    reference = 0;
+}
+PIN so-puk {
+    reference = 1;
+}
 PIN user-pin {
     attempts	= 3;
 }
@@ -31,24 +37,66 @@ filesystem {
 		size		= 256;
 	    }
 
-            EF template-private-key {
-		type		= internal-ef;
-    	        file-id		= 4B01;	# This is the base FileID
-		size		= 266;  # 266 is enough for 1024-bit keys
-    	        ACL		= *=NEVER, UPDATE=$PIN, ERASE=$PIN;
-            }
-	    EF template-public-key {
-		file-id		= 5501;
-		ACL		= *=NEVER, READ=NONE, UPDATE=$PIN, ERASE=$PIN;
+	    # This template defines files for keys, certificates etc.
+	    #
+	    # When instantiating the template, each file id will be
+	    # combined with the last octet of the object's pkcs15 id
+	    # to form a unique file ID.
+	    template key-domain {
+		# This is a dummy entry - pkcs15-init insists that
+		# this is present
+		EF private-key {
+		    file-id	= FFFF;
+		}
+                EF public-key {
+    	            file-id	= 3003;
+    	            structure	= transparent;
+		    ACL		= *=NEVER,
+		    			READ=NONE,
+					UPDATE=$PIN,
+					ERASE=$PIN;
+                }
+
+                # Certificate template
+                EF certificate {
+    	            file-id	= 3004;
+    	            structure	= transparent;
+		    ACL		= *=NEVER,
+		    			READ=NONE,
+					UPDATE=$PIN,
+					ERASE=$PIN;
+                }
+
+	        # Extractable private keys are stored in transparent EFs.
+	        # Encryption of the content is performed by libopensc.
+                EF extractable-key {
+    	            file-id	= 3001;
+    	            structure	= transparent;
+    	            ACL		= *=NEVER,
+		    			READ=$PIN,
+					UPDATE=$PIN,
+					ERASE=$PIN;
+                }
+
+	        # data objects are stored in transparent EFs.
+                EF data {
+    	            file-id	= 3002;
+    	            structure	= transparent;
+    	            ACL		= *=NEVER,
+					READ=NONE,
+					UPDATE=$PIN,
+					WRITE=$PIN;
+                }
+
 	    }
-	    EF template-certificate {
-		file-id		= 4301;
-		ACL		= *=NEVER, READ=NONE, UPDATE=$PIN, ERASE=$PIN;
-	    }
-            EF template-extractable-key {
-    	        file-id		= 7000;
-    	        ACL		= *=NEVER, READ=$PIN, UPDATE=$PIN, ERASE=$PIN;
-            }
+#	    EF template-private-key {
+#		type		= internal-ef;
+#	        file-id		= 4B01;	# This is the base FileID
+#		size		= 266;  # 266 is enough for 1024-bit keys
+#    	        ACL		= *=NEVER, UPDATE=$PIN, ERASE=$PIN;
+#	    }
+
+	    # This is needed when generating a key on-card.
 	    EF tempfile {
 	        file-id		= 7EAD;
 		structure	= linear-variable-tlv;
@@ -58,10 +106,3 @@ filesystem {
 	}
     }
 }
-
-# Define an SO pin
-# This PIN is not used yet.
-#PIN sopin {
-#    file	= sopinfile;
-#    reference	= 0;
-#}

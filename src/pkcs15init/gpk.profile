@@ -7,12 +7,6 @@ cardinfo {
     pin-pad-char	= 0x00;
 }
 
-# Define reference for SO PIN
-PIN so-pin {
-    file	= pinfile;
-    reference	= 0x08;
-}
-
 # Additional filesystem info.
 # This is added to the file system info specified in the
 # main profile.
@@ -37,53 +31,60 @@ filesystem {
     	        ACL		= *=NEVER;
             }
 
-            # Private key files.
-            # GPK private key files will never let you read the private key
-            # part, so it's okay to set READ=NONE. What's more, we may need
-            # read access so we're able to check the key size/type.
-            EF template-private-key {
-    	        file-id		= 0006;	# This is the base FileID
-    	        structure	= 0x2C;	# GPK specific
-    	        ACL		= *=NEVER,
-					READ=NONE,
-					CRYPTO=$PIN,
-					UPDATE=$PIN,
-					WRITE=$PIN;
-            }
+	    # This template defines files for keys, certificates etc.
+	    #
+	    # When instantiating the template, each file id will be
+	    # combined with the last octet of the object's pkcs15 id
+	    # to form a unique file ID.
+	    template key-domain {
+                # Private key files.
+                # GPK private key files will never let you read the private key
+                # part, so it's okay to set READ=NONE. What's more, we may need
+                # read access so we're able to check the key size/type.
+                EF private-key {
+    	            file-id	= 3000;	# This is the base FileID
+    	            structure	= 0x2C;	# GPK specific
+    	            ACL		= *=NEVER,
+				    READ=NONE,
+				    CRYPTO=$PIN,
+				    UPDATE=$PIN,
+				    WRITE=$PIN;
+                }
 
-	    # Extractable private keys are stored in transparent EFs.
-	    # Encryption of the content is performed by libopensc.
-            EF template-extractable-key {
-    	        file-id		= 7000;
-    	        structure	= transparent;
-    	        ACL		= *=NEVER,
+	        # Extractable private keys are stored in transparent EFs.
+	        # Encryption of the content is performed by libopensc.
+                EF extractable-key {
+    	            file-id	= 3001;
+    	            structure	= transparent;
+    	            ACL		= *=NEVER,
 					READ=$PIN,
 					UPDATE=$PIN,
 					WRITE=$PIN;
-            }
+                }
 
-	    # data objects are stored in transparent EFs.
-            EF template-data {
-    	        file-id		= 5000;
-    	        structure	= transparent;
-    	        ACL		= *=NEVER,
+	        # data objects are stored in transparent EFs.
+                EF data {
+    	            file-id	= 3002;
+    	            structure	= transparent;
+    	            ACL		= *=NEVER,
 					READ=NONE,
 					UPDATE=$PIN,
 					WRITE=$PIN;
-            }
+                }
 
-            EF template-public-key {
-    	        file-id		= 8000;
-    	        structure	= transparent;
-    	        ACL		= *=NONE;
-            }
+                EF public-key {
+    	            file-id	= 3003;
+    	            structure	= transparent;
+    	            ACL		= *=NONE;
+                }
 
-            # Certificate template
-            EF template-certificate {
-    	        file-id		= 9000;
-    	        structure	= transparent;
-    	        ACL		= *=NONE;
-            }
+                # Certificate template
+                EF certificate {
+    	            file-id	= 3004;
+    	            structure	= transparent;
+    	            ACL		= *=NONE;
+                }
+	    }
 	}
     }
 }

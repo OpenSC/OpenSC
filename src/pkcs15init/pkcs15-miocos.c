@@ -32,6 +32,7 @@
  * Initialize the Application DF
  */
 static int miocos_init_app(struct sc_profile *profile, struct sc_card *card,
+		struct sc_pkcs15_pin_info *pin_info,
 		const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
 	/* Create the application DF */
@@ -200,8 +201,8 @@ miocos_new_key(struct sc_profile *profile, struct sc_card *card,
 
 struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations = {
 	NULL,
-	miocos_init_app,
-	miocos_new_pin,
-	miocos_new_key,
-	miocos_new_file,
+	.init_app = miocos_init_app,
+	.new_pin  = miocos_new_pin,
+	.new_key  = miocos_new_key,
+	.new_file = miocos_new_file,
 };

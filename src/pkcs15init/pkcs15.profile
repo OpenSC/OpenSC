@@ -11,11 +11,40 @@ cardinfo {
     max-pin-length	= 8;
 }
 
+# Default settings.
+# This option block will always be processed.
+option default {
+    macros {
+        protected	= *=$SOPIN, READ=NONE;
+        unprotected	= *=NONE;
+	so-pin-flags	= local, initialized, needs-padding, soPin;
+	default-df-size	= 256;
+    }
+}
+
+# This option sets up the card so that a single
+# user PIN protects all files
+option onepin {
+    macros {
+        protected	= *=$PIN, READ=NONE;
+        unprotected	= *=NONE;
+	so-pin-flags	= local, initialized, needs-padding;
+    }
+}
+
+# This option is for cards with very little memory
+option small {
+    macros {
+	default-df-size	= 128;
+    }
+}
+
 # Define reasonable limits for PINs and PUK
 # Note that we do not set a file path or reference
 # for the user pin; that is done dynamically.
 PIN user-pin {
     attempts	= 3;
+    flags	= local, initialized, needs-padding;
 }
 PIN user-puk {
     attempts	= 7;
@@ -24,7 +53,7 @@ PIN so-pin {
     auth-id	= FF;
     attempts	= 2;
     min-length	= 6;
-    flags	= 0x32;
+    flags	= $so-pin-flags;
 }
 PIN so-puk {
     attempts	= 4;
@@ -54,43 +83,43 @@ filesystem {
 
 	    EF PKCS15-ODF {
 	        file-id		= 5031;
-		size		= 256;
-		ACL		= *=NONE;
+		size		= $default-df-size;
+		ACL		= $unprotected;
 	    }
 
 	    EF PKCS15-TokenInfo {
 		file-id		= 5032;
-		ACL		= *=NONE;
+		ACL		= $unprotected;
 	    }
 
 	    EF PKCS15-AODF {
 	        file-id		= 4401;
-		size		= 256;
-		ACL		= *=$SOPIN, READ=NONE;
+		size		= $default-df-size;
+		ACL		= $protected;
 	    }
 
 	    EF PKCS15-PrKDF {
 	        file-id		= 4402;
-		size		= 256;
-		acl		= *=$SOPIN, READ=NONE;
+		size		= $default-df-size;
+		acl		= $protected;
 	    }
 
 	    EF PKCS15-PuKDF {
 	        file-id		= 4403;
-		size		= 256;
-		acl		= *=$SOPIN, READ=NONE;
+		size		= $default-df-size;
+		acl		= $protected;
 	    }
 
 	    EF PKCS15-CDF {
 	        file-id		= 4404;
-		size		= 512;
-		acl		= *=$SOPIN, READ=NONE;
+		size		= "2 * $default-df-size";
+		acl		= $protected;
 	    }
 
 	    EF PKCS15-DODF {
 	        file-id		= 4405;
-		size		= 256;
-		ACL		= *=NONE;
+		size		= $default-df-size;
+		ACL		= $protected;
 	    }
 
 	}

@@ -32,6 +32,7 @@
 #include "profile.h"
 
 #define GPK_MAX_PINS		8
+#define GPK_PIN_SCOPE		8
 #define GPK_FTYPE_SECRET_CODE	0x21
 #define GPK_FTYPE_PUBLIC_KEY	0x2C
 
@@ -60,13 +61,7 @@ struct pkdata {
 /*
  * Local functions
  */
-static int	gpk_new_pin(struct sc_profile *profile, struct sc_card *card,
-			struct sc_pkcs15_pin_info *info, unsigned int index,
-			const u8 *pin, size_t pin_len,
-			const u8 *puk, size_t puk_len);
-static int	gpk_new_file(struct sc_profile *, struct sc_card *,
-			unsigned int, unsigned int,
-			struct sc_file **);
+static int	gpk_pkfile_create(sc_profile_t *, sc_card_t *, sc_file_t *);
 static int	gpk_encode_rsa_key(struct sc_profile *,
 			struct sc_pkcs15_prkey_rsa *, struct pkdata *,
 			struct sc_pkcs15_prkey_info *);
@@ -75,6 +70,7 @@ static int	gpk_encode_dsa_key(struct sc_profile *,
 			struct sc_pkcs15_prkey_info *);
 static int	gpk_store_pk(struct sc_profile *, struct sc_card *,
 			struct sc_file *, struct pkdata *);
+static int	gpk_init_pinfile(sc_profile_t *, sc_card_t *, sc_file_t *);
 static void	error(struct sc_profile *, const char *, ...);
 static void	debug(struct sc_profile *, const char *, ...);
 
@@ -96,6 +92,152 @@ gpk_erase_card(struct sc_profile *pro, struct sc_card *card)
 	}
 	return sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
 }
+
+/*
+ * Create a new DF
+ * This will usually be the application DF
+ */
+static int
+gpk_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
+{
+	struct sc_file	*pinfile;
+	int		r, locked, i;
+
+	if (sc_card_ctl(card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0
+	 && locked) {
+		error(profile,
+			"This card is already personalized, unable to "
+			"create PKCS#15 structure.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	/* Create the DF. */
+	r = sc_pkcs15init_create_file(profile, card, df);
+	if (r < 0)
+		return r;
+
+	/* See if there's a file called "pinfile" that resides within
+	 * this DF. If so, create it */
+	if (sc_profile_get_file(profile, "pinfile", &pinfile) >= 0) {
+		/* Build the pin file's path from the DF path + its
+		 * file ID */
+		pinfile->path = df->path;
+		sc_append_file_id(&pinfile->path, pinfile->id);
+
+		r = gpk_init_pinfile(profile, card, pinfile);
+		sc_file_free(pinfile);
+		if (r < 0)
+			return r;
+
+		for (i = 0; i < GPK_MAX_PINS; i++)
+			sc_keycache_put_pin(&df->path, GPK_PIN_SCOPE|i, "        ");
+	}
+
+	return r;
+}
+
+/*
+ * Select a PIN reference
+ */
+static int
+gpk_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
+		sc_pkcs15_pin_info_t *pin_info)
+{
+	int	preferred, current;
+
+	if ((current = pin_info->reference) < 0)
+		current = 0;
+
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+		preferred = GPK_PIN_SCOPE | 0;
+	} else {
+		preferred = current | GPK_PIN_SCOPE;
+
+		if (preferred & 1)
+			preferred++;
+		if (preferred < (GPK_PIN_SCOPE | 2))
+			preferred = GPK_PIN_SCOPE | 2;
+		if (preferred > 15)
+			return SC_ERROR_TOO_MANY_OBJECTS;
+	}
+
+	if (current > preferred)
+		return SC_ERROR_TOO_MANY_OBJECTS;
+	pin_info->reference = preferred;
+	return 0;
+}
+
+/*
+ * Store a PIN
+ */
+static int
+gpk_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
+		sc_pkcs15_pin_info_t *pin_info,
+		const unsigned char *pin, size_t pin_len,
+		const unsigned char *puk, size_t puk_len)
+{
+	unsigned char	nulpin[8];
+	int		r, type;
+
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+		type = SC_PKCS15INIT_SO_PIN;
+
+		/* SO PIN reference must be 0 */
+		if (pin_info->reference != (GPK_PIN_SCOPE | 0))
+			return SC_ERROR_INVALID_ARGUMENTS;
+	} else {
+		type = SC_PKCS15INIT_USER_PIN;
+
+		/* PIN references must be even numbers
+		 * (the odd numbered PIN entries contain the
+		 * PUKs).
+		 * Returning SC_ERROR_INVALID_PIN_REFERENCE will
+		 * tell the caller to pick a different value.
+		 */
+		if ((pin_info->reference & 1) || !(pin_info->reference & GPK_PIN_SCOPE))
+			return SC_ERROR_INVALID_PIN_REFERENCE;
+		if (pin_info->reference >= (GPK_PIN_SCOPE + GPK_MAX_PINS))
+			return SC_ERROR_TOO_MANY_OBJECTS;
+	}
+
+	/* No PUK given, but the PIN file specifies an unblock
+	 * PIN for every PIN.
+	 * Use the same value for the PUK for now.
+	 * Alternatively, we could leave the unblock PIN at the default
+	 * value, but deliberately block it. */
+	if (puk == NULL || puk_len == 0) {
+		puk = pin;
+		puk_len = pin_len;
+	}
+
+	r = sc_select_file(card, &df->path, NULL);
+	if (r < 0)
+		return r;
+
+	/* Current PIN is 00:00:00:00:00:00:00:00 */
+	memset(nulpin, 0, sizeof(nulpin));
+	r = sc_change_reference_data(card, SC_AC_CHV,
+			pin_info->reference,
+			nulpin, sizeof(nulpin),
+			pin, pin_len, NULL);
+	if (r < 0)
+		return r;
+
+	/* Current PUK is 00:00:00:00:00:00:00:00 */
+	r = sc_change_reference_data(card, SC_AC_CHV,
+			pin_info->reference + 1,
+			nulpin, sizeof(nulpin),
+			puk, puk_len, NULL);
+	if (r < 0)
+		return r;
+
+	sc_keycache_set_pin_name(&df->path,
+			pin_info->reference,
+			type);
+
+	return r;
+}
+
 
 /*
  * Lock a file operation
@@ -146,7 +288,6 @@ static int
 gpk_init_pinfile(struct sc_profile *profile, struct sc_card *card,
 		struct sc_file *file)
 {
-	struct sc_pkcs15_pin_info sopin_info, pin_info;
 	const struct sc_acl_entry *acl;
 	unsigned char	buffer[GPK_MAX_PINS * 8], *blk;
 	struct sc_file	*pinfile;
@@ -155,14 +296,10 @@ gpk_init_pinfile(struct sc_profile *profile, struct sc_card *card,
 	int		r;
 
 	/* Set defaults */
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin_info);
-	so_attempts[0] = sopin_info.tries_left;
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &pin_info);
-	so_attempts[1] = pin_info.tries_left;
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &pin_info);
-	user_attempts[0] = pin_info.tries_left;
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &pin_info);
-	user_attempts[1] = pin_info.tries_left;
+	so_attempts[0] = sc_profile_get_pin_retries(profile, SC_PKCS15INIT_SO_PIN);
+	so_attempts[1] = sc_profile_get_pin_retries(profile, SC_PKCS15INIT_SO_PUK);
+	user_attempts[0] = sc_profile_get_pin_retries(profile, SC_PKCS15INIT_USER_PIN);
+	user_attempts[1] = sc_profile_get_pin_retries(profile, SC_PKCS15INIT_USER_PUK);
 
 	sc_file_dup(&pinfile, file);
 
@@ -199,7 +336,7 @@ gpk_init_pinfile(struct sc_profile *profile, struct sc_card *card,
 			 * the next will be a PUK so take note of the
 			 * unlock code */
 			if (i + 1 < npins)
-				blk[2] = 0x8 | (i + 1);
+				blk[2] = GPK_PIN_SCOPE | (i + 1);
 		}
 
 		/* Compute the CKS */
@@ -217,106 +354,104 @@ out:	sc_file_free(pinfile);
 }
 
 /*
- * Initialize the Application DF and pin file
+ * Create a key file
  */
 static int
-gpk_init_app(struct sc_profile *profile, struct sc_card *card,
-		const unsigned char *pin, size_t pin_len,
-		const unsigned char *puk, size_t puk_len)
+gpk_create_key(sc_profile_t *profile, sc_card_t *card, sc_pkcs15_object_t *obj)
 {
-	struct sc_pkcs15_pin_info sopin_info;
-	struct sc_file	*pinfile;
-	int		r, locked;
-
-	if (sc_card_ctl(card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0
-	 && locked) {
-		error(profile,
-			"This card is already personalized, unable to "
-			"create PKCS#15 structure.");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	/* Profile must define a "pinfile" */
-	if (sc_profile_get_file(profile, "pinfile", &pinfile) < 0) {
-		error(profile, "Profile doesn't define a \"pinfile\"");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	/* Create the application DF */
-	r = sc_pkcs15init_create_file(profile, card, profile->df_info->file);
-
-	/* Create the PIN file */
-	if (r >= 0)
-		r = gpk_init_pinfile(profile, card, pinfile);
-
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin_info);
-	if (r >= 0 && pin_len) {
-		r = gpk_new_pin(profile, card, &sopin_info, 0,
-				pin, pin_len,
-				puk, puk_len);
-		if (r >= 0)
-			sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN,
-					&sopin_info);
-	}
-
-	sc_file_free(pinfile);
-	return r;
-}
-
-/*
- * Store a PIN
- */
-static int
-gpk_new_pin(struct sc_profile *profile, struct sc_card *card,
-		struct sc_pkcs15_pin_info *info, unsigned int index,
-		const u8 *pin, size_t pin_len,
-		const u8 *puk, size_t puk_len)
-{
-	unsigned char	nulpin[8];
+	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	struct sc_file	*keyfile = NULL;
+	size_t		bytes, mod_len, exp_len, prv_len, pub_len;
 	int		r;
 
-	/* Profile must define a "pinfile" */
-	if (sc_profile_get_path(profile, "pinfile", &info->path) < 0) {
-		error(profile, "Profile doesn't define a \"pinfile\"");
+	/* The caller is supposed to have chosen a key file path for us */
+	if (key_info->path.len == 0 || key_info->modulus_length == 0)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	if (info->path.len > 2)
-		info->path.len -= 2;
 
-	r = sc_select_file(card, &info->path, NULL);
+	/* Get the file we're supposed to create */
+	r = sc_profile_get_file_by_path(profile, &key_info->path, &keyfile);
 	if (r < 0)
 		return r;
 
-	index <<= 2;
-	if (index >= GPK_MAX_PINS)
-		return SC_ERROR_TOO_MANY_OBJECTS;
-	if (puk == NULL || puk_len == 0) {
-		puk = pin;
-		puk_len = pin_len;
+	/* Compute the file size.
+	 * We assume private keys are stored as CRT elements.
+	 *  -	512, 768 bit keys: all CRT elements fit into one record
+	 *  -	>= 1024: each CRT element into a record of its own
+	 *
+	 * We also assume the public exponent is 32bit max
+	 *
+	 * Rules
+	 *  -	private key records must have a length divisible by 8
+	 */
+	mod_len = key_info->modulus_length / 8;
+	exp_len = 4;
+	bytes   = mod_len / 2;
+	pub_len = 8 + ((3 + mod_len + 3 + exp_len + 3) & ~3UL);
+	if (5 * bytes < 256) {
+		prv_len = 8 + ((3 + 5 * bytes + 7) & ~7UL);
+	} else {
+		prv_len = 8 + 5 * ((3 + bytes + 7) & ~7UL);
 	}
+	keyfile->size = pub_len + prv_len;
 
-	/* Current PIN is 00:00:00:00:00:00:00:00 */
-	memset(nulpin, 0, sizeof(nulpin));
-	r = sc_change_reference_data(card, SC_AC_CHV,
-			0x8 | index,
-			nulpin, sizeof(nulpin),
-			pin, pin_len, NULL);
-	if (r < 0)
-		return r;
+	/* Fix up PIN references in file ACL */
+	r = sc_pkcs15init_fixup_file(profile, keyfile);
 
-	/* Current PUK is 00:00:00:00:00:00:00:00 */
-	r = sc_change_reference_data(card, SC_AC_CHV,
-			0x8 | (index + 1),
-			nulpin, sizeof(nulpin),
-			puk, puk_len, NULL);
+	if (r >= 0)
+		r = gpk_pkfile_create(profile, card, keyfile);
 
-	info->reference = 0x8 | index;
+	if (keyfile)
+		sc_file_free(keyfile);
 	return r;
 }
 
 /*
  * Store a private key
  */
+static int
+gpk_store_key(sc_profile_t *profile, sc_card_t *card,
+		sc_pkcs15_object_t *obj, struct sc_pkcs15_prkey *key)
+{
+	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	struct sc_file	*keyfile = NULL;
+	struct pkdata	data;
+	int		r;
+
+	/* The caller is supposed to have chosen a key file path for us */
+	if (key_info->path.len == 0 || key_info->modulus_length == 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	/* Get the file we're supposed to create */
+	r = sc_select_file(card, &key_info->path, &keyfile);
+	if (r < 0)
+		return r;
+
+	switch (key->algorithm) {
+	case SC_ALGORITHM_RSA:
+		r = gpk_encode_rsa_key(profile, &key->u.rsa,
+					&data, key_info);
+		break;
+
+	case SC_ALGORITHM_DSA:
+		r = gpk_encode_dsa_key(profile, &key->u.dsa,
+					&data, key_info);
+		break;
+	default:
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	if (r >= 0)
+		r = gpk_store_pk(profile, card, keyfile, &data);
+
+	if (keyfile)
+		sc_file_free(keyfile);
+	return r;
+}
+
+/*
+ * Store a private key
+ */
+#if 0
 static int
 gpk_new_key(struct sc_profile *profile, struct sc_card *card,
 		struct sc_pkcs15_prkey *key, unsigned int index,
@@ -439,6 +574,7 @@ gpk_new_file(struct sc_profile *profile, struct sc_card *card,
 	*out = file;
 	return 0;
 }
+#endif
 
 /*
  * GPK public/private key file handling is hideous.
@@ -449,8 +585,7 @@ gpk_new_file(struct sc_profile *profile, struct sc_card *card,
  * XXX: Handle the UPDATE ACL = NEVER case just like for EFsc files
  */
 static int
-gpk_pkfile_create(struct sc_profile *profile, struct sc_card *card,
-		struct sc_file *file)
+gpk_pkfile_create(sc_profile_t *profile, sc_card_t *card, sc_file_t *file)
 {
 	struct sc_file	*found = NULL;
 	int		r;
@@ -500,12 +635,12 @@ gpk_pkfile_keyalgo(unsigned int algo, unsigned char *p)
  * Set up the public key record for a signature only public key
  */
 static int
-gpk_pkfile_init_public(struct sc_profile *profile,
-		struct sc_card *card, struct sc_file *file,
+gpk_pkfile_init_public(sc_profile_t *profile, sc_card_t *card, sc_file_t *file,
 		unsigned int algo, unsigned int bits,
 		unsigned int usage)
 {
 	const struct sc_acl_entry *acl;
+	sc_file_t	*tmp = NULL;
 	u8		sysrec[7], buffer[256];
 	unsigned int	n, npins;
 	int		r, gpkclass;
@@ -531,8 +666,17 @@ gpk_pkfile_init_public(struct sc_profile *profile,
 	 || (r = gpk_pkfile_keyalgo(algo, &sysrec[5])) < 0)
 		return r;
 
-	/* Set PIN protection if requested.  */
-	acl = sc_file_get_acl_entry(file, SC_AC_OP_CRYPTO);
+	/* Set PIN protection if requested.
+	 * As the crypto ACLs are stored inside the file,
+	 * we have to get them from the profile here. */
+	r = sc_profile_get_file_by_path(profile, &file->path, &tmp);
+	if (r < 0)
+		return r;
+	/* Fix up PIN references in file ACL */
+	if ((r = sc_pkcs15init_fixup_file(profile, tmp)) < 0) 
+		goto out;
+
+	acl = sc_file_get_acl_entry(tmp, SC_AC_OP_CRYPTO);
 	for (npins = 0; acl; acl = acl->next) {
 		if (acl->method == SC_AC_NONE
 		 || acl->method == SC_AC_NEVER)
@@ -540,11 +684,13 @@ gpk_pkfile_init_public(struct sc_profile *profile,
 		if (acl->method != SC_AC_CHV) {
 			error(profile, "Authentication method not "
 				"supported for private key files.\n");
-			return SC_ERROR_NOT_SUPPORTED;
+			r = SC_ERROR_NOT_SUPPORTED;
+			goto out;
 		}
 		if (++npins >= 2) {
 			error(profile, "Too many pins for PrKEY file!\n");
-			return SC_ERROR_NOT_SUPPORTED;
+			r = SC_ERROR_NOT_SUPPORTED;
+			goto out;
 		}
 		sysrec[2] += 0x40;
 		sysrec[3] >>= 4;
@@ -578,6 +724,9 @@ gpk_pkfile_init_public(struct sc_profile *profile,
 	} else {
 		r = sc_append_record(card, sysrec, sizeof(sysrec), 0);
 	}
+
+out:	if (tmp)
+		sc_file_free(tmp);
 	return r;
 }
 
@@ -673,23 +822,11 @@ gpk_pkfile_update_private(struct sc_profile *profile,
 {
 	unsigned int	m, size, nb, cks;
 	struct pkcomp	*pe;
-	u8		keybuf[32], data[256];
-	size_t		keysize;
+	u8		data[256];
 	int		r = 0;
 
 	if (card->ctx->debug > 1)
 		debug(profile, "Updating private key elements\n");
-
-	/* We must set a secure messaging key before each Load Private Key
-	 * command. Any key will do...
-	 * The GPK _is_ weird. */
-	keysize = sizeof(keybuf);
-	r = sc_pkcs15init_get_secret(profile, card,
-				SC_AC_PRO, 1, keybuf, &keysize);
-	if (r < 0) {
-		error(profile, "No secure messaging key defined by profile");
-		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
-	}
 
 	for (m = 0; m < part->count; m++) {
 		pe = part->components + m;
@@ -699,7 +836,10 @@ gpk_pkfile_update_private(struct sc_profile *profile,
 		memcpy(data, pe->data, pe->size);
 		size = pe->size;
 
-		r = sc_verify(card, SC_AC_PRO, 1, keybuf, keysize, NULL);
+		/* We must set a secure messaging key before each
+		 * Load Private Key command. Any key will do...
+		 * The GPK _is_ weird. */
+		r = sc_pkcs15init_verify_key(profile, card, NULL, SC_AC_PRO, 1);
 		if (r < 0)
 			break;
 
@@ -912,6 +1052,7 @@ static int
 gpk_store_pk(struct sc_profile *profile, struct sc_card *card,
 		struct sc_file *file, struct pkdata *p)
 {
+	size_t	fsize;
 	int	r;
 
 	/* Compute length of private/public key parts */
@@ -923,10 +1064,9 @@ gpk_store_pk(struct sc_profile *profile, struct sc_card *card,
 			"Storing pk: %u bits, pub %u bytes, priv %u bytes\n",
 			p->bits, p->_public.size, p->_private.size);
 
-	file->size = p->_public.size + p->_private.size;
-	r = gpk_pkfile_create(profile, card, file);
-	if (r < 0)
-		return r;
+	fsize = p->_public.size + p->_private.size;
+	if (fsize > file->size)
+		return SC_ERROR_FILE_TOO_SMALL;
 
 	/* Put the system record */
 	r = gpk_pkfile_init_public(profile, card, file, p->algo,
@@ -973,14 +1113,17 @@ debug(struct sc_profile *profile, const char *fmt, ...)
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 	if (profile->cbs && profile->cbs->debug)
-		profile->cbs->debug("%s", buffer);
+		profile->cbs->debug(2, "%s", buffer);
 	printf("%s", buffer); /* XXX */
 }
 
 struct sc_pkcs15init_operations sc_pkcs15init_gpk_operations = {
-	gpk_erase_card,
-	gpk_init_app,
-	gpk_new_pin,
-	gpk_new_key,
-	gpk_new_file,
+	.erase_card 		= gpk_erase_card,
+	.create_dir 		= gpk_create_dir,
+	.select_pin_reference 	= gpk_select_pin_reference,
+	.create_pin 		= gpk_create_pin,
+	.create_key		= gpk_create_key,
+	.store_key		= gpk_store_key,
+//	.new_key    		= gpk_new_key,
+//	.new_file   		= gpk_new_file,
 };
