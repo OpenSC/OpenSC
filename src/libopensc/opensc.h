@@ -114,7 +114,7 @@ extern "C" {
 #define SC_MAX_SLOTS			4
 #define SC_MAX_CARD_APPS		8
 #define SC_MAX_APDU_BUFFER_SIZE		258
-#define SC_MAX_PIN_SIZE			16
+#define SC_MAX_PIN_SIZE			256 /* OpenPGP card has 254 max */
 #define SC_MAX_ATR_SIZE			33
 #define SC_MAX_AID_SIZE			16
 /* Beware: the following needs to be a mutiple of 4
