@@ -12,7 +12,7 @@ mechanism)
   set path=%path%;....\out32dll
 
 - In src/tools/Makefile.mak
-  - uncomment pkcs15-init.exe in the "TARGETS" line
+  - uncomment pkcs15-init.exe in the "TARGETS" line  (optionally)
   - Add libeay32.lib to the "link" line
 
 - In src/libopensc/Makefile.mak
@@ -21,8 +21,10 @@ mechanism)
 - In src/pkcs11/Makefile.mak
   - Add libeay32.lib to the "link" line
 
-- In src/pkcs15init/Makefile.mak
-  - Add libeay32.lib to the "lib" line
-
 - In win32/Make.rules.mak
   - Add /DHAVE_OPENSSL to the "COPTS" line
+
+
+To add the OpenSSL code to the DLLs (so you won't need libeay32.dll
+anymore): statically compile OpenSSL and add gdi32.lib next to
+libeay32.lib in the 3 Makefile.mak files above.
