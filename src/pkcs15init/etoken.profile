@@ -27,7 +27,7 @@ filesystem {
 	    # For the time being, in order to ease debugging.
 	    EF PKCS15-AODF {
 		ACL             = *=NEVER, READ=NONE,
-				  WRITE=$SOPIN, UPDATE=$SOPIN, ERASE=NONE;
+				  WRITE=$SOPIN, UPDATE=$SOPIN, ERASE=$SOPIN;
 	    }
             EF template-private-key {
 		type		= internal-ef;
