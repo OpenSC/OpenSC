@@ -191,7 +191,8 @@ int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
 	struct sc_asn1_pkcs15_object cert_obj = { obj, asn1_com_cert_attr, NULL,
 					     asn1_type_cert_attr };
 	u8 id_value[128];
-	int id_type, id_value_len = sizeof(id_value);
+	int id_type;
+	size_t id_value_len = sizeof(id_value);
 	int r;
 
 	sc_copy_asn1_entry(c_asn1_cred_ident, asn1_cred_ident);

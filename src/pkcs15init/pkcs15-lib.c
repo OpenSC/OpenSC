@@ -989,7 +989,7 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 	}
 
 	
-	if (!sc_profile_get_file_by_path(profile, &df->file->path, &pfile))
+	if (!sc_profile_get_file_by_path(profile, &df->path, &pfile))
 		file = pfile;
 
 	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);

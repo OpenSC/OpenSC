@@ -59,8 +59,8 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
         struct sc_context *ctx = p15card->card->ctx;
         struct sc_pkcs15_pin_info info;
 	int r;
-	int flags_len = sizeof(info.flags);
-        int padchar_len = 1;
+	size_t flags_len = sizeof(info.flags);
+        size_t padchar_len = 1;
 	struct sc_asn1_entry asn1_com_ao_attr[2], asn1_pin_attr[10], asn1_type_pin_attr[2];
 	struct sc_asn1_entry asn1_pin[2];
 	struct sc_asn1_pkcs15_object pin_obj = { obj, asn1_com_ao_attr, NULL, asn1_type_pin_attr };
@@ -114,8 +114,8 @@ int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 						 asn1_com_ao_attr, NULL,
 				   		 asn1_type_pin_attr };
 	int r;
-	int flags_len;
-        int padchar_len = 1;
+	size_t flags_len;
+        size_t padchar_len = 1;
 
 	sc_copy_asn1_entry(c_asn1_pin, asn1_pin);
         sc_copy_asn1_entry(c_asn1_type_pin_attr, asn1_type_pin_attr);

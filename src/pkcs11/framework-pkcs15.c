@@ -1421,7 +1421,9 @@ asn1_sequence_wrapper(const u8 *data, size_t len, CK_ATTRIBUTE_PTR attr)
 {
 	u8		*dest;
 	unsigned int	n;
+	size_t		len2;
 
+	len2 = len;
 	check_attribute_buffer(attr, len + 1 + sizeof(len));
 
 	dest = (u8 *) attr->pValue;
@@ -1437,8 +1439,8 @@ asn1_sequence_wrapper(const u8 *data, size_t len, CK_ATTRIBUTE_PTR attr)
 			len <<= 8;
 		}
 	}
-	memcpy(dest, data, len);
-	attr->ulValueLen = (dest - (u8 *) attr->pValue) + len;
+	memcpy(dest, data, len2);
+	attr->ulValueLen = (dest - (u8 *) attr->pValue) + len2;
 	return CKR_OK;
 }
 

@@ -87,8 +87,8 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
         struct sc_context *ctx = p15card->card->ctx;
         struct sc_pkcs15_prkey_info info;
 	int r;
-	int usage_len = sizeof(info.usage);
-	int af_len = sizeof(info.access_flags);
+	size_t usage_len = sizeof(info.usage);
+	size_t af_len = sizeof(info.access_flags);
 	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[1];
 	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_prk_rsa_attr[2];
 	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_prk_dsa_attr[2],
@@ -177,7 +177,7 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 	struct sc_pkcs15_prkey_info *prkey =
                 (struct sc_pkcs15_prkey_info *) obj->data;
 	int r;
-	int af_len, usage_len;
+	size_t af_len, usage_len;
 
         sc_copy_asn1_entry(c_asn1_prkey, asn1_prkey);
 

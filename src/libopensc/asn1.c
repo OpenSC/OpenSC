@@ -109,11 +109,11 @@ void sc_format_asn1_entry(struct sc_asn1_entry *entry, void *parm, void *arg,
 void sc_copy_asn1_entry(const struct sc_asn1_entry *src,
 			struct sc_asn1_entry *dest)
 {
-	do {
+	while (src->name != NULL) {
 		*dest = *src;
 		dest++;
 		src++;
-	} while (src->name != NULL);
+	}
 	dest->name = NULL;
 }
 
@@ -777,7 +777,7 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
 {
 	void *parm = entry->parm;
 	int (*callback_func)(struct sc_context *ctx, void *arg, const u8 *obj,
-			     int objlen, int depth) =
+			     size_t objlen, int depth) =
 		(int (*)(struct sc_context *, void *, const u8 *, int, int)) parm;
 	size_t *len = (size_t *) entry->arg;
 	int r = 0;

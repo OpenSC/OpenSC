@@ -76,12 +76,12 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 {
 	int i, r;
 	u8 serial[128];
-	int serial_len = sizeof(serial);
+	size_t serial_len = sizeof(serial);
 	u8 mnfid[128];
-	int mnfid_len = sizeof(mnfid);
+	size_t mnfid_len = sizeof(mnfid);
 	u8 label[128];
-	int label_len = sizeof(label);
-	int flags_len = sizeof(card->flags);
+	size_t label_len = sizeof(label);
+	size_t flags_len = sizeof(card->flags);
 	struct sc_asn1_entry asn1_toki[9], asn1_tokeninfo[3];
 
 	sc_copy_asn1_entry(c_asn1_toki, asn1_toki);
@@ -134,10 +134,10 @@ int sc_pkcs15_encode_tokeninfo(struct sc_context *ctx,
 {
 	int i, r;
 	u8 serial[128];
-	int serial_len = 0;
-	int mnfid_len;
-	int label_len;
-	int flags_len;
+	size_t serial_len = 0;
+	size_t mnfid_len;
+	size_t label_len;
+	size_t flags_len;
 	int version = card->version;
 	
 	struct sc_asn1_entry asn1_toki[9], asn1_tokeninfo[2];
@@ -455,7 +455,8 @@ int sc_pkcs15_bind(struct sc_card *card,
 		   struct sc_pkcs15_card **p15card_out)
 {
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
-	int err, len;
+	int err;
+	size_t len;
 	struct sc_pkcs15_card *p15card = NULL;
 	struct sc_path tmppath;
 	struct sc_context *ctx;
