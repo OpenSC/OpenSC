@@ -321,6 +321,11 @@ extern int	sc_pkcs15init_requires_restrictive_usage(
 extern int	sc_pkcs15_create_pin_domain(sc_profile_t *, sc_card_t *,
 				const sc_pkcs15_id_t *, sc_file_t **);
 
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_miocos_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cflex_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_etoken_ops(void);
+
 #ifdef  __cplusplus
 }
 #endif

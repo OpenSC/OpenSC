@@ -113,22 +113,26 @@ static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *, int);
 static void	default_error_handler(const char *fmt, ...);
 static void	default_debug_handler(int, const char *fmt, ...);
 
-/* Card specific functions */
-extern struct sc_pkcs15init_operations	sc_pkcs15init_gpk_operations;
-extern struct sc_pkcs15init_operations	sc_pkcs15init_miocos_operations;
-extern struct sc_pkcs15init_operations	sc_pkcs15init_cflex_operations;
-extern struct sc_pkcs15init_operations	sc_pkcs15init_etoken_operations;
+static struct profile_operations {
+	char *name;
+	void *func;
+} profile_operations[] = {
+	{ "gpk", (void *) sc_pkcs15init_get_gpk_ops },
+	{ "miocos", (void *) sc_pkcs15init_get_miocos_ops },
+	{ "flex", (void *) sc_pkcs15init_get_cflex_ops },
+	{ "etoken", (void *) sc_pkcs15init_get_etoken_ops },
+	{ NULL, NULL },
+};
 
 static struct sc_pkcs15init_callbacks callbacks = {
 	default_error_handler,
 	default_debug_handler,
 	NULL,
-	NULL
+	NULL,
 };
 
 #define p15init_error	callbacks.error
 #define p15init_debug	callbacks.debug
-
 
 /*
  * Set the application callbacks
@@ -182,11 +186,12 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 		struct sc_profile **result)
 {
 	struct sc_profile *profile;
+	struct sc_pkcs15init_operations * (* func)(void) = NULL;
 	const char	*driver = card->driver->short_name;
 	char		main_profile[128],
 			card_profile[PATH_MAX],
 			*option = "default";
-	int		r;
+	int		r, i;
 
 	/* Put the card into administrative mode */
 	r = sc_pkcs15init_set_lifecycle(card, SC_CARDCTRL_LIFECYCLE_ADMIN);
@@ -194,17 +199,16 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 		return r;
 
 	profile = sc_profile_new();
-
 	profile->cbs = &callbacks;
-	if (!strcasecmp(driver, "GPK"))
-		profile->ops = &sc_pkcs15init_gpk_operations;
-	else if (!strcasecmp(driver, "MioCOS"))
-		profile->ops = &sc_pkcs15init_miocos_operations;
-	else if (!strcasecmp(driver, "flex"))
-		profile->ops = &sc_pkcs15init_cflex_operations;
-	else if (!strcasecmp(driver, "eToken"))
-		profile->ops = &sc_pkcs15init_etoken_operations;
-	else {
+	for (i = 0; profile_operations[i].name; i++) {
+		if (!strcasecmp(driver, profile_operations[i].name)) {
+			func = (struct sc_pkcs15init_operations * (*)(void)) profile_operations[i].func;
+			break;
+		}
+	}
+	if (func) {
+		profile->ops = func();
+	} else {
 		p15init_error("Unsupported card driver %s", driver);
 		sc_profile_free(profile);
 		return SC_ERROR_NOT_SUPPORTED;

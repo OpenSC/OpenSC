@@ -59,9 +59,6 @@ static int	etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
 			const u8 *pin, size_t pin_len);
 static int	etoken_create_sec_env(sc_profile_t *, sc_card_t *,
 			unsigned int, unsigned int);
-static int	etoken_new_file(struct sc_profile *, struct sc_card *,
-			unsigned int, unsigned int,
-			struct sc_file **);
 static int	etoken_put_key(struct sc_profile *, struct sc_card *,
 			int, unsigned int, struct sc_pkcs15_prkey_rsa *);
 static int	etoken_key_algorithm(unsigned int, int *);
@@ -660,6 +657,7 @@ etoken_put_key(struct sc_profile *profile, struct sc_card *card,
 	return r;
 }
 
+#if 0
 /*
  * Allocate a file
  */
@@ -737,6 +735,7 @@ etoken_new_file(struct sc_profile *profile, struct sc_card *card,
 	*out = file;
 	return 0;
 }
+#endif
 
 /*
  * Extract a key component from the public key file populated by
@@ -775,16 +774,18 @@ error(struct sc_profile *profile, const char *fmt, ...)
 		profile->cbs->error("%s", buffer);
 }
 
-struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations = {
-	.erase_card		= etoken_erase,
-	.create_dir		= etoken_create_dir,
-	.select_pin_reference	= etoken_select_pin_reference,
-	.create_pin		= etoken_create_pin,
-	.select_key_reference	= etoken_select_key_reference,
-	.create_key		= etoken_create_key,
-	.store_key		= etoken_store_key,
-	//.new_pin		= etoken_new_pin,
-	//.new_key		= etoken_new_key,
-	.generate_key		= etoken_generate_key
-	//.new_file		= etoken_new_file,
-};
+static struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations;
+
+struct sc_pkcs15init_operations *sc_pkcs15init_get_etoken_ops(void)
+{
+	sc_pkcs15init_etoken_operations.erase_card = etoken_erase;
+	sc_pkcs15init_etoken_operations.create_dir = etoken_create_dir;
+	sc_pkcs15init_etoken_operations.select_pin_reference = etoken_select_pin_reference;
+	sc_pkcs15init_etoken_operations.create_pin = etoken_create_pin;
+	sc_pkcs15init_etoken_operations.select_key_reference = etoken_select_key_reference;
+	sc_pkcs15init_etoken_operations.create_key = etoken_create_key;
+	sc_pkcs15init_etoken_operations.store_key = etoken_store_key;
+	sc_pkcs15init_etoken_operations.generate_key = etoken_generate_key;
+
+	return &sc_pkcs15init_etoken_operations;
+}

@@ -30,12 +30,9 @@
 #endif
 #include <assert.h>
 #include <opensc/pkcs15.h>
+#include <opensc/cardctl.h>
 #include "profile.h"
 #include "pkcs15-init.h"
-#include <opensc/cardctl.h>
-#ifdef _WIN32
-#include <windows.h>
-#endif
 
 #undef KEYCACHE_DEBUG
 #define MAX_SECRET	32	/* sufficient for 128bit symmetric keys */

@@ -707,11 +707,11 @@ cflex_encode_private_key(struct sc_pkcs15_prkey_rsa *rsa,
         *key++ = (5 * base + 3) & 0xFF;
         *key++ = key_num;
 
-	if ((r < bn2cf(&rsa->p,    key + 0 * base, base)) < 0
-	 || (r < bn2cf(&rsa->q,    key + 1 * base, base)) < 0
-	 || (r < bn2cf(&rsa->iqmp, key + 2 * base, base)) < 0
-	 || (r < bn2cf(&rsa->dmp1, key + 3 * base, base)) < 0
-	 || (r < bn2cf(&rsa->dmq1, key + 4 * base, base)) < 0)
+	if ((r = bn2cf(&rsa->p,    key + 0 * base, base)) < 0
+	 || (r = bn2cf(&rsa->q,    key + 1 * base, base)) < 0
+	 || (r = bn2cf(&rsa->iqmp, key + 2 * base, base)) < 0
+	 || (r = bn2cf(&rsa->dmp1, key + 3 * base, base)) < 0
+	 || (r = bn2cf(&rsa->dmq1, key + 4 * base, base)) < 0)
 		return r;
 
         key += 5 * base;
@@ -765,14 +765,18 @@ cflex_encode_public_key(struct sc_pkcs15_prkey_rsa *rsa,
         return 0;
 }
 
-struct sc_pkcs15init_operations sc_pkcs15init_cflex_operations = {
-	.erase_card	= cflex_erase_card,
-	.create_dir	= cflex_create_dir,
-	.create_domain	= cflex_create_domain,
-	.select_pin_reference = cflex_select_pin_reference,
-	.create_pin	= cflex_create_pin,
-	.create_key	= cflex_create_key,
-	.generate_key	= cflex_generate_key,
-	.store_key	= cflex_store_key,
+static struct sc_pkcs15init_operations sc_pkcs15init_cflex_operations;
 
-};
+struct sc_pkcs15init_operations *sc_pkcs15init_get_cflex_ops(void)
+{
+	sc_pkcs15init_cflex_operations.erase_card = cflex_erase_card;
+	sc_pkcs15init_cflex_operations.create_dir = cflex_create_dir;
+	sc_pkcs15init_cflex_operations.create_domain = cflex_create_domain;
+	sc_pkcs15init_cflex_operations.select_pin_reference = cflex_select_pin_reference;
+	sc_pkcs15init_cflex_operations.create_pin = cflex_create_pin;
+	sc_pkcs15init_cflex_operations.create_key = cflex_create_key;
+	sc_pkcs15init_cflex_operations.generate_key = cflex_generate_key;
+	sc_pkcs15init_cflex_operations.store_key = cflex_store_key;
+
+	return &sc_pkcs15init_cflex_operations;
+}
