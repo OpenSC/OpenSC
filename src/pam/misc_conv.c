@@ -21,7 +21,11 @@
 #include <unistd.h>
 #endif
 
+#ifdef HAVE_SECURITY_PAM_APPL_H
 #include <security/pam_appl.h>
+#else
+#include <pam/pam_appl.h>
+#endif
 #include "pam_support.h"
 
 #undef D

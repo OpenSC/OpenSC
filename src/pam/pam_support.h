@@ -24,10 +24,17 @@
 #define _PAM_SUPPORT_H
 
 #include <syslog.h>
+#ifdef HAVE_SECURITY_PAM_APPL_H
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
+#else
+#include <pam/pam_appl.h>
+#include <pam/pam_modules.h>
+#endif
 #ifdef HAVE_SECURITY__PAM_MACROS_H
 #include <security/_pam_macros.h>
+#elif HAVE_PAM__PAM_MACROS_H
+#include <pam/_pam_macros.h>
 #else
 #define x_strdup(s) ((s) ? strdup(s):NULL)
 #define _pam_overwrite(x)        \
