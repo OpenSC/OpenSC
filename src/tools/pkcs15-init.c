@@ -112,6 +112,7 @@ enum {
 	OPT_ASSERT_PRISTINE,
 	OPT_SECRET,
 	OPT_PUBKEY_LABEL,
+	OPT_CERT_LABEL,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -143,6 +144,7 @@ const struct option	options[] = {
 	{ "id",			required_argument, 0,	'i' },
 	{ "label",		required_argument, 0,	'l' },
 	{ "public-key-label",	required_argument, 0,	OPT_PUBKEY_LABEL },
+	{ "cert-label",		required_argument, 0,	OPT_CERT_LABEL },
 	{ "output-file",	required_argument, 0,	'o' },
 	{ "format",		required_argument, 0,	'f' },
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
@@ -191,6 +193,7 @@ const char *		option_help[] = {
 	"Specify ID of key/certificate",
 	"Specify label of PIN/key",
 	"Specify public key label (use with --generate-key)",
+	"Specify user cert label (use with --store-private-key)",
 	"Output public portion of generated key to file",
 	"Specify key file format (default PEM)",
 	"Specify passphrase for unlocking secret key",
@@ -277,6 +280,7 @@ static char *			opt_authid = 0;
 static char *			opt_objectid = 0;
 static char *			opt_label = 0;
 static char *			opt_pubkey_label = 0;
+static char *			opt_cert_label = 0;
 static char *			opt_pins[4];
 static char *			opt_serial = 0;
 static char *			opt_passphrase = 0;
@@ -708,6 +712,8 @@ do_store_private_key(struct sc_profile *profile)
 		 * an ID of their own */
 		if (i == 0) {
 			cargs.id = args.id;
+			if (opt_cert_label != 0)
+				cargs.label = opt_cert_label;
 		} else {
 			if (is_cacert_already_present(&cargs)) {
 				printf("Certificate #%d already present, "
@@ -785,7 +791,7 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 	memset(&args, 0, sizeof(args));
 	if (opt_objectid)
 		sc_pkcs15_format_id(opt_objectid, &args.id);
-	args.label = opt_label;
+	args.label = (opt_pubkey_label != 0 ? opt_pubkey_label : opt_label);
 
 	if (pkey == NULL)
 		r = do_read_public_key(opt_infile, opt_format, &pkey);
@@ -812,7 +818,7 @@ do_store_certificate(struct sc_profile *profile)
 
 	if (opt_objectid)
 		sc_pkcs15_format_id(opt_objectid, &args.id);
-	args.label = opt_label;
+	args.label = (opt_cert_label != 0 ? opt_cert_label : opt_label);
 	args.authority = opt_authority;
 
 	r = do_read_certificate(opt_infile, opt_format, &cert);
@@ -1885,6 +1891,9 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_PUBKEY_LABEL:
 		opt_pubkey_label = optarg;
+		break;
+	case OPT_CERT_LABEL:
+		opt_cert_label = optarg;
 		break;
 	default:
 		print_usage_and_die();
