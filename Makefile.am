@@ -2,8 +2,7 @@
 
 SUBDIRS = . tools aclocal docs etc src win32
 
-EXTRA_DIST = CodingStyle README.cards README.signer README.Win32 \
-	bootstrap Makefile.mak
+EXTRA_DIST = CodingStyle bootstrap Makefile.mak
 
 MAINTAINERCLEANFILES = Makefile.in config.h.in configure
 DEPCLEANFILES = config.log configure 
