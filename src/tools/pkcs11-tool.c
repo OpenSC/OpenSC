@@ -417,8 +417,8 @@ main(int argc, char * const argv[])
 		 * we safely stop here. */
 		return change_pin(opt_slot, session);
 
-	if (opt_login) {
-		char	*pin;
+	if (opt_login || opt_pin) {
+		char		*pin = NULL;
 		CK_TOKEN_INFO	info;
 
 		get_token_info(opt_slot, &info);
@@ -426,7 +426,8 @@ main(int argc, char * const argv[])
 		/* Identify which pin to enter */
 
 		if (info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) {
-			pin = NULL;
+			if (opt_pin)
+				pin = opt_pin;
 		} else
 		if (info.flags & CKF_LOGIN_REQUIRED) {
 			if (opt_pin == NULL)
