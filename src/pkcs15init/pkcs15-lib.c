@@ -2719,7 +2719,7 @@ sc_pkcs15init_read_info(sc_card_t *card, sc_profile_t *profile)
 	int		r;
 
 	card->ctx->suppress_errors++;
-	sc_format_path(OPENSC_INFO_PATH, &path);
+	sc_format_path(OPENSC_INFO_FILEPATH, &path);
 	if ((r = sc_select_file(card, &path, &file)) >= 0) {
 		len = file->size;
 		sc_file_free(file);
