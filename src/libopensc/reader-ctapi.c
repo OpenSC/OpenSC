@@ -343,11 +343,21 @@ static int ctapi_init(struct sc_context *ctx, void **reader_data)
 	return 0;
 }
 
-static int ctapi_finish(void *prv_data)
+static int ctapi_finish(struct sc_context *ctx, void *prv_data)
 {
 	struct ctapi_global_private_data *priv = (struct ctapi_global_private_data *) prv_data;
 
 	if (priv) {
+		int i;
+		
+		for (i = 0; i < priv->module_count; i++) {
+			struct ctapi_module *mod = &priv->modules[i];
+			
+			free(mod->name);
+			sc_module_close(ctx, &mod->dlhandle);
+		}
+		if (priv->module_count)
+			free(priv->modules);
 		free(priv);
 	}
 	

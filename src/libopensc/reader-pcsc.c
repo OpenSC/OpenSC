@@ -355,7 +355,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	return 0;
 }
 
-static int pcsc_finish(void *prv_data)
+static int pcsc_finish(struct sc_context *ctx, void *prv_data)
 {
 	struct pcsc_global_private_data *priv = (struct pcsc_global_private_data *) prv_data;
 

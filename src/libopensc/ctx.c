@@ -341,7 +341,7 @@ int sc_release_context(struct sc_context *ctx)
 		const struct sc_reader_driver *drv = ctx->reader_drivers[i];
 		
 		if (drv->ops->finish != NULL)
-			drv->ops->finish(ctx->reader_drv_data[i]);
+			drv->ops->finish(ctx, ctx->reader_drv_data[i]);
 	}
 	ctx->debug_file = ctx->error_file = NULL;
 	if (ctx->conf)

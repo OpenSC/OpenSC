@@ -1,7 +1,7 @@
 /*
  * opensc.h: OpenSC library header file
  *
- * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -86,6 +86,7 @@ extern "C" {
 #define SC_ERROR_AUTH_METHOD_BLOCKED		-1036
 #define SC_ERROR_SYNTAX_ERROR			-1037
 #define SC_ERROR_INCONSISTENT_PROFILE		-1038
+#define SC_ERROR_FILE_ALREADY_EXISTS		-1039
 
 /* Different APDU cases */
 #define SC_APDU_CASE_NONE		0
@@ -363,7 +364,7 @@ struct sc_reader_operations {
 	int (*init)(struct sc_context *ctx, void **priv_data);
 	/* Called when the driver is being unloaded.  finish() has to
 	 * deallocate the private data and any resources. */
-	int (*finish)(void *priv_data);
+	int (*finish)(struct sc_context *ctx, void *priv_data);
 	/* Called when releasing a reader.  release() has to
 	 * deallocate the private data.  Other fields will be
 	 * freed by OpenSC. */

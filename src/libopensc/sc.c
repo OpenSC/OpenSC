@@ -1,7 +1,7 @@
 /*
  * sc.c: General functions
  *
- * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -212,6 +212,7 @@ const char *sc_strerror(int error)
 		"Authentication method blocked",
 		"Syntax error",
 		"Inconsistent or incomplete pkcs15 profile",
+		"File already exists",
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);
 

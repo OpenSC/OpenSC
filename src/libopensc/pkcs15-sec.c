@@ -1,7 +1,7 @@
 /*
  * pkcs15-sec.c: PKCS#15 cryptography functions
  *
- * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -41,12 +41,12 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (prkey->path.len == 2) {
 		path = p15card->file_app->path;
-		sc_append_path(&path, &prkey->path);
 		file_id = prkey->path;
-	} else {	/* path.len > 2 */
+	} else {
 		path = prkey->path;
 		memcpy(file_id.value, prkey->path.value + prkey->path.len - 2, 2);
 		file_id.len = 2;
+		path.len -= 2;
 	}
 	senv.algorithm = SC_ALGORITHM_RSA;
 	senv.algorithm_flags = 0;
@@ -163,13 +163,12 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (prkey->path.len == 2) {
 		path = p15card->file_app->path;
-		memcpy(path.value + path.len, prkey->path.value, prkey->path.len);
-		path.len += prkey->path.len;
 		file_id = prkey->path;
 	} else {
 		path = prkey->path;
 		memcpy(file_id.value, prkey->path.value + prkey->path.len - 2, 2);
 		file_id.len = 2;
+		path.len -= 2;
 	}
 	alg_info = _sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
 	if (alg_info == NULL) {
