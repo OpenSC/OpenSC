@@ -1389,6 +1389,9 @@ CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
                rc = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object,
                        P15_ATTR_TYPE_ID, &id, sizeof(id));
                break;
+	case CKA_SUBJECT:
+		rc = SC_SUCCESS;
+		break;
        default:
                rv = CKR_ATTRIBUTE_READ_ONLY;
                goto set_attr_done;
