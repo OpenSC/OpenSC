@@ -73,6 +73,7 @@ static int	do_store_certificate(struct sc_profile *);
 static int	do_convert_private_key(struct sc_pkcs15_prkey *, EVP_PKEY *);
 static int	do_convert_public_key(struct sc_pkcs15_pubkey *, EVP_PKEY *);
 static int	do_convert_cert(sc_pkcs15_der_t *, X509 *);
+static int	is_cacert_already_present(struct sc_pkcs15init_certargs *);
 
 static int	do_read_data_object(const char *name, u8 **out, size_t *outlen);
 static int	do_store_data_object(struct sc_profile *profile);
@@ -697,22 +698,32 @@ do_store_private_key(struct sc_profile *profile)
 		char	namebuf[SC_PKCS15_MAX_LABEL_SIZE-1];
 
 		memset(&cargs, 0, sizeof(cargs));
-		/* Just the first certificate gets the same ID
-		 * as the private key. All others get
-		 * an ID of their own */
-		if (i == 0)
-			cargs.id = args.id;
-		else
-			cargs.authority = 1;
 
+		/* Encode the cert */
+		if ((r = do_convert_cert(&cargs.der_encoded, cert[i])) < 0)
+			return r;
+
+		cargs.x509_usage = cert[i]->ex_kusage;
 		cargs.label = X509_NAME_oneline(cert[i]->cert_info->subject,
 					namebuf, sizeof(namebuf));
 
-		cargs.x509_usage = cert[i]->ex_kusage;
-		r = do_convert_cert(&cargs.der_encoded, cert[i]);
-		if (r >= 0)
-			r = sc_pkcs15init_store_certificate(p15card, profile,
+		/* Just the first certificate gets the same ID
+		 * as the private key. All others get
+		 * an ID of their own */
+		if (i == 0) {
+			cargs.id = args.id;
+		} else {
+			if (is_cacert_already_present(&cargs)) {
+				printf("Certificate #%d already present, "
+					"not stored.\n", i);
+				goto next_cert;
+			}
+			cargs.authority = 1;
+		}
+
+		r = sc_pkcs15init_store_certificate(p15card, profile,
 			       	&cargs, NULL);
+next_cert:
 		free(cargs.der_encoded.value);
 	}
 	
@@ -722,6 +733,47 @@ do_store_private_key(struct sc_profile *profile)
 	}
 
 	return r;
+}
+
+/*
+ * Check if the CA certificate is already present
+ */
+static int
+is_cacert_already_present(struct sc_pkcs15init_certargs *args)
+{
+	sc_pkcs15_object_t	*objs[32];
+	sc_pkcs15_cert_info_t	*cinfo;
+	sc_pkcs15_cert_t	*cert;
+	int			i, count, r, match = 0;
+
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, 32);
+	if (r <= 0)
+		return 0;
+
+	count = r;
+	for (i = 0; !match && i < count; i++) {
+		cinfo = (sc_pkcs15_cert_info_t *) objs[i]->data;
+
+		if (!cinfo->authority)
+			continue;
+		if (args->label && objs[i]->label
+		 && strcmp(args->label, objs[i]->label))
+			continue;
+		/* XXX we should also match the usage field here */
+
+		/* Compare the DER representation of the certificates */
+		r = sc_pkcs15_read_certificate(p15card, cinfo, &cert);
+		if (r < 0)
+			continue;
+
+		match = cert->data_len == args->der_encoded.len
+		     && !memcmp(cert->data, args->der_encoded.value,
+				     cert->data_len);
+
+		sc_pkcs15_free_certificate(cert);
+	}
+
+	return match;
 }
 
 /*
