@@ -133,7 +133,6 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 
 	LOG("C_Sign(%d, 0x%x, %d, 0x%x, 0x%x)\n",
 	    hSession, pData, ulDataLen, pSignature, pulSignatureLen);
-        hex_dump(pData, ulDataLen);
 
 	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
@@ -154,7 +153,6 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 	}
 
         LOG("Got signature, %d bytes (buffer was %d)\n", c, *pulSignatureLen);
-        hex_dump(signature, c);
 	memcpy(pSignature, signature, c);
         *pulSignatureLen = c;
 

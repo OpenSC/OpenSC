@@ -30,11 +30,12 @@
 #define OPT_CHANGE_PIN	0x100
 #define OPT_LIST_PINS	0x101
 #define OPT_READER	0x102
+#define OPT_PIN_ID	0x103
 
-int opt_reader = 0, opt_pin = 0;
+int opt_reader = 0;
+char * opt_pin_id;
 char * opt_cert = NULL;
 char * opt_outfile = NULL;
-char * opt_pincode = NULL;
 char * opt_newpin = NULL;
 char * opt_apdu = NULL;
 int quiet = 0;
@@ -46,14 +47,13 @@ const struct option options[] = {
 	{ "read-certificate",	1, 0, 		'r' },
 	{ "list-certificates",	0, 0,		'c' },
 	{ "list-pins",		0, 0,		OPT_LIST_PINS },
-	{ "change-pin",		2, 0,		OPT_CHANGE_PIN },
+	{ "change-pin",		0, 0,		OPT_CHANGE_PIN },
 	{ "list-private-keys",	0, 0,		'k' },
 	{ "reader",		1, 0,		OPT_READER },
 	{ "output",		1, 0,		'o' },
 	{ "quiet",		0, 0,		'q' },
 	{ "debug",		0, 0,		'd' },
-	{ "pin",		1, 0,		'p' },
-	{ "pin-id",		1, &opt_pin,	0   },
+	{ "pin-id",		1, 0,		'p' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -64,13 +64,12 @@ const char *option_help[] = {
 	"Reads certificate with ID <arg> [P15]",
 	"Lists certificates [P15]",
 	"Lists PIN codes [P15]",
-	"Changes the PIN code to <arg> [P15]",
+	"Changes the PIN code [P15]",
 	"Lists private keys [P15]",
 	"Uses reader number <arg>",
 	"Outputs to file <arg>",
 	"Quiet operation",
 	"Debug output -- may be supplied several times",
-	"Uses password (PIN) <arg>",
 	"The auth ID of the PIN to use [P15]",
 };
 
@@ -222,35 +221,55 @@ int list_private_keys()
 	return 0;
 }
 
-const char * get_pin()
+char * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
 {
 	int r;
 	char buf[80];
 	char *pincode;
 	struct sc_pkcs15_pin_info *pinfo;
 	
-	if (opt_pincode != NULL)
-		return opt_pincode;
-
-	r = sc_pkcs15_enum_pins(p15card);
-	if (r < 0) {
-		fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
-		return NULL;
+	if (pin_out != NULL)
+		pinfo = *pin_out;
+		
+	if (pinfo == NULL && opt_pin_id == NULL) {
+		r = sc_pkcs15_enum_pins(p15card);
+		if (r < 0) {
+			fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
+			return NULL;
+		}
+		if (r == 0) {
+			fprintf(stderr, "No PIN codes found.\n");
+			return NULL;
+		}
+		pinfo = &p15card->pin_info[0];
+	} else if (pinfo == NULL) {
+		struct sc_pkcs15_id pin_id;
+		
+		sc_pkcs15_hex_string_to_id(opt_pin_id, &pin_id);
+		r = sc_pkcs15_find_pin_by_auth_id(p15card, &pin_id, &pinfo);
+		if (r) {
+			fprintf(stderr, "Unable to find PIN code: %s\n", sc_strerror(r));
+			return NULL;
+		}
 	}
-	if (opt_pin < 0 || opt_pin >= p15card->pin_count) {
-		fprintf(stderr, "Selected PIN code not found.\n");
-		return NULL;
-	}
-	pinfo = &p15card->pin_info[opt_pin];
-	sprintf(buf, "Enter PIN [%s]: ", pinfo->com_attr.label);
+	
+	if (pin_out != NULL)
+		*pin_out = pinfo;
+		
+	sprintf(buf, "%s [%s]: ", prompt, pinfo->com_attr.label);
 	while (1) {
 		pincode = getpass(buf);
 		if (strlen(pincode) == 0)
 			return NULL;
-		if (strlen(pincode) < pinfo->min_length ||
-		    strlen(pincode) > pinfo->stored_length)
-		    	continue;
-		return pincode;
+		if (strlen(pincode) < pinfo->min_length) {
+			printf("PIN code too short, try again.\n");
+			continue;
+		}
+		if (strlen(pincode) > pinfo->stored_length) {
+			printf("PIN code too long, try again.\n");
+			continue;
+		}
+		return strdup(pincode);
 	}
 }
 
@@ -275,17 +294,46 @@ int list_pins()
 
 int change_pin()
 {
-	const char *pincode = opt_pincode;
+	char *pincode;
+	char *newpin;
+	struct sc_pkcs15_pin_info *pinfo = NULL;
+	int r;
 	
-	if (pincode == NULL)
-		pincode = get_pin();
+	pincode = get_pin("Enter old PIN", &pinfo);
 	if (pincode == NULL)
 		return 2;
 	if (strlen(pincode) == 0) {
 		fprintf(stderr, "No PIN code supplied.\n");
 		return 2;
 	}
-	printf("Not working yet!\n");
+	while (1) {
+		char *newpin2;
+		
+		newpin = get_pin("Enter new PIN", &pinfo);
+		if (newpin == NULL || strlen(newpin) == 0)
+			return 2;
+		newpin2 = get_pin("Enter new PIN again", &pinfo);
+		if (newpin2 == NULL || strlen(newpin2) == 0)
+			return 2;
+		if (strcmp(newpin, newpin2) == 0) {
+			free(newpin2);
+			break;
+		}
+		printf("PIN codes do not match, try again.\n");
+		free(newpin);
+		free(newpin2);
+	}
+	r = sc_pkcs15_change_pin(p15card, pinfo, pincode, strlen(pincode),
+				 newpin, strlen(newpin));
+	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
+		fprintf(stderr, "PIN code incorrect; tries left: %d\n", pinfo->tries_left);
+		return 3;
+	} else if (r) {
+		fprintf(stderr, "PIN code change failed: %s\n", sc_strerror(r));
+		return 2;
+	}
+	if (!quiet)
+		printf("PIN code changed successfully.\n");
 	return 0;
 }
 
@@ -506,10 +554,7 @@ int main(int argc, char * const argv[])
 			sc_debug++;
 			break;
 		case 'p':
-			if (optarg == NULL && opt_pincode == NULL)
-				opt_pincode = getpass("Enter PIN code: ");
-			else if (optarg != NULL)
-				opt_pincode = optarg;
+			opt_pin_id = optarg;
 			break;
 		}
 	}

@@ -19,6 +19,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include "npapi.h"
 
 /***********************************************************************
@@ -32,6 +33,8 @@
 typedef struct _PluginInstance
 {
     int nothing;
+    char *postUrl;
+    char *dataToSign;
 } PluginInstance;
 
 
@@ -55,7 +58,8 @@ NPError
 NPP_GetValue(NPP instance, NPPVariable variable, void *value)
 {
 	NPError err = NPERR_NO_ERROR;
-
+	
+	printf("NPP_GetValue()\n");
 	switch (variable) {
 		case NPPVpluginNameString:
 			*((char **)value) = "Template plugin";
@@ -82,14 +86,40 @@ NPP_Initialize(void)
 jref
 NPP_GetJavaClass()
 {
-    return NULL;
+	printf("NPP_GetJavaClass()\n");
+	return NULL;
 }
 
 void
 NPP_Shutdown(void)
 {
+	printf("NPP_Shutdown()\n");
 }
 
+static NPError
+post_data(NPP instance, const char *url, const char *target, uint32 len,
+	  const char* buf)
+{
+	NPError rv;
+	char headers[256], *sendbuf;
+	int hdrlen;
+	
+	sprintf(headers, "Content-type: text/plain\r\n"
+			 "Content-Length: %u\r\n\r\n", (unsigned int) len);
+	hdrlen = strlen(headers);
+	sendbuf = NPN_MemAlloc(hdrlen + len + 1);
+	if (sendbuf == NULL)
+		return NPERR_OUT_OF_MEMORY_ERROR;
+	memcpy(sendbuf, headers, hdrlen);
+	memcpy(sendbuf + hdrlen, buf, len);
+	sendbuf[hdrlen + len] = 0;
+	printf("Sending:\n---\n%s---\n", sendbuf);
+	printf("Url: '%s', target: '%s', len: %d\n", url, target, hdrlen + len);
+	rv = NPN_PostURL(instance, url, target, hdrlen + len, sendbuf, FALSE);
+//	NPN_MemFree(sendbuf);
+
+	return rv;
+}
 
 NPError 
 NPP_New(NPMIMEType pluginType,
@@ -101,23 +131,35 @@ NPP_New(NPMIMEType pluginType,
 	NPSavedData* saved)
 {
         PluginInstance* This;
+	NPError rv;
 	int i;
+	const char *resp = "Testing...1234567890 And testing, and testing\n";
 
-	printf("NPP_New() called, attributes:\n");
-	for (i = 0; i < argc; i++) {
-		printf("'%s' = '%s'\n", argn[i], argv[i]);
-	}
+	printf("NPP_New()\n");
 	if (instance == NULL)
 		return NPERR_INVALID_INSTANCE_ERROR;
-		
 	instance->pdata = NPN_MemAlloc(sizeof(PluginInstance));
 	
 	This = (PluginInstance*) instance->pdata;
 
-	if (This != NULL)
-		return NPERR_NO_ERROR;
-	else
+	if (This == NULL)
 		return NPERR_OUT_OF_MEMORY_ERROR;
+
+	This->postUrl = This->dataToSign = NULL;
+	for (i = 0; i < argc; i++) {
+		if (strcmp(argn[i], "wsxaction") == 0) {
+			This->postUrl = strdup(argv[i]);
+		} else if (strcmp(argn[i], "wsxdatatosign") == 0) {
+			This->dataToSign = strdup(argv[i]);
+		} else
+			printf("'%s' = '%s'\n", argn[i], argv[i]);
+	}
+	if (This->postUrl == NULL)
+		return NPERR_GENERIC_ERROR;
+	printf("Posting to '%s'\n", This->postUrl);
+	rv = post_data(instance, This->postUrl, "_self", strlen(resp), resp);
+	printf("PostURL returned %d\n", rv);
+	return NPERR_NO_ERROR;
 }
 
 
@@ -126,6 +168,7 @@ NPP_Destroy(NPP instance, NPSavedData** save)
 {
 	PluginInstance* This;
 
+	printf("NPP_Destroy()\n");
 	if (instance == NULL)
 		return NPERR_INVALID_INSTANCE_ERROR;
 
@@ -137,11 +180,15 @@ NPP_Destroy(NPP instance, NPSavedData** save)
 	 *	that you want restored if this plugin instance is later
 	 *	recreated.
 	 */
-
-	if (This != NULL) {
-		NPN_MemFree(instance->pdata);
-		instance->pdata = NULL;
-	}
+	if (This == NULL)
+		return NPERR_NO_ERROR;
+	
+	if (This->postUrl)
+		NPN_MemFree(This->postUrl);
+	if (This->dataToSign)
+		NPN_MemFree(This->dataToSign);	
+	NPN_MemFree(instance->pdata);
+	instance->pdata = NULL;
 
 	return NPERR_NO_ERROR;
 }
@@ -181,7 +228,6 @@ NPP_NewStream(NPP instance,
 			  NPBool seekable,
 			  uint16 *stype)
 {
-	NPByteRange range;
 	PluginInstance* This;
 	printf("NPP_NewStream()\n");
 
@@ -223,11 +269,13 @@ NPP_WriteReady(NPP instance, NPStream *stream)
 int32 
 NPP_Write(NPP instance, NPStream *stream, int32 offset, int32 len, void *buffer)
 {
+#if 0
 	if (instance != NULL)
 	{
 		PluginInstance* This = (PluginInstance*) instance->pdata;
 	}
-	printf("NPP_Write(offset %d, len %d)\n", offset, len);
+#endif
+	printf("NPP_Write(offset %d, len %d)\n", (int) offset, (int) len);
 
 	return len;		/* The number of bytes accepted */
 }
@@ -251,34 +299,17 @@ void
 NPP_StreamAsFile(NPP instance, NPStream *stream, const char* fname)
 {
 	PluginInstance* This;
-	FILE *inf, *outf;
-	unsigned char buf[1024];
-	int i;
 	
 	if (instance != NULL)
 		This = (PluginInstance*) instance->pdata;
 	printf("NPP_StreamAsFile('%s')\n", fname);
-	inf = fopen(fname, "r");
-	if (inf == NULL)
-		return; /* FIXME */
-	i = 0;
-	outf = fopen("/tmp/empty.sgn", "w");
-	if (outf == NULL) {
-		fclose(inf);
-		return;
-	}
-	while ((i = fread(buf, 1, 1024, inf)) > 0) {
-		fwrite(buf, 1, i, outf);
-	}
-	fclose(outf);
-	fclose(inf);
-	
 }
 
 
 void 
 NPP_Print(NPP instance, NPPrint* printInfo)
 {
+#if 0
 	if(printInfo == NULL)
 		return;
 
@@ -330,4 +361,5 @@ NPP_Print(NPP instance, NPPrint* printInfo)
 				printInfo->print.embedPrint.platformPrint;
 		}
 	}
+#endif
 }
