@@ -10,5 +10,5 @@ all: $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-$(TARGET): $(OBJECTS)
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\pkcs11\libpkcs11.obj ..\scconf\scconf.lib winscard.lib libeay32.lib gdi32.lib
+$(TARGET): $(OBJECTS) ..\pkcs11\libpkcs11.obj ..\scconf\scconf.lib ..\scdl\scdl.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\pkcs11\libpkcs11.obj ..\scconf\scconf.lib ..\scdl\scdl.lib winscard.lib libeay32.lib gdi32.lib
