@@ -749,7 +749,8 @@ find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 	if (rv != CKR_OK)
 		p11_fatal("C_FindObjects", rv);
 
-done:
+done:	if (count == 0)
+		*ret = CK_INVALID_HANDLE;
 	p11->C_FindObjectsFinal(sess);
 
 	return count;
@@ -1347,17 +1348,25 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (firstMechType == NO_MECHANISM) {
 		printf("Signatures: not implemented\n");
 		return errors;
-	} else if (!find_object(sess, CKO_PRIVATE_KEY, &privKeyObject,
-			NULL, 0, 0)) {
-		printf("Signatures: no private key found in this slot\n");
-		return errors;
-	} else {
-		printf("Signatures (currently only RSA signatures)");
+	}
+
+	printf("Signatures (currently only RSA signatures)");
+	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
+		printf("  testing key %ld ", j);
 		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
-			printf(", key = %s", label);
+			printf("(%s) ", label);
 			free(label);
 		}
-		printf(" :\n");
+		if (!getSIGN(sess, privKeyObject)) {
+			printf(" -- can't be used for signature, skipping\n");
+			continue;
+		}
+		printf("\n");
+		break;
+	}
+	if (privKeyObject == CK_INVALID_HANDLE) {
+		printf("Signatures: no private key found in this slot\n");
+		return 0;
 	}
 
 	data[0] = 0;
