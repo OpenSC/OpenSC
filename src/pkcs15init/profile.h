@@ -30,15 +30,8 @@ struct file_info {
 	char *			ident;
 	struct file_info *	next;
 	struct sc_file *	file;
+	unsigned int		dont_free;
 	struct file_info *	parent;
-
-	/* PKCS15 book-keeping info */
-	/*
-	struct {
-		unsigned int	fileno;
-		unsigned int	type;
-	}			pkcs15;
-	 */
 };
 
 /* For now, we assume the PUK always resides
@@ -54,30 +47,6 @@ struct pin_info {
 	struct sc_pkcs15_pin_info pin;
 };
 
-/* OBSOLESCENT */
-struct sc_key_template {
-	char *			ident;
-	struct sc_key_template *next;
-	struct sc_file *	file;
-	unsigned int		index;	/* translates to file offset */
-	struct sc_acl_entry *	key_acl;/* PINs for key usage */
-
-	struct sc_pkcs15_object	pkcs15_obj;
-	union {
-		struct sc_pkcs15_prkey_info priv;
-		struct sc_pkcs15_pubkey_info pub;
-	} pkcs15;
-};
-
-/* OBSOLESCENT */
-struct sc_cert_template {
-	char *			ident;
-	struct sc_cert_template *next;
-	struct sc_file *	file;
-	struct sc_pkcs15_object	pkcs15_obj;
-	struct sc_pkcs15_cert_info pkcs15;
-};
-
 struct sc_profile {
 	char *			driver;
 	struct sc_pkcs15init_operations *ops;
@@ -90,11 +59,6 @@ struct sc_profile {
 
 	struct pin_info *	pin_list;
 	struct auth_info *	auth_list;
-#if 0
-	struct sc_key_template *prkey_list;
-	struct sc_key_template *pubkey_list;
-	struct sc_cert_template *cert_list;
-#endif
 
 	unsigned int		pin_maxlen;
 	unsigned int		pin_minlen;
@@ -107,9 +71,6 @@ struct sc_profile {
 
 	/* PKCS15 information */
 	struct sc_pkcs15_card *	p15_card;
-	char *			p15_label;
-	char *			p15_manufacturer;
-	char *			p15_serial;
 };
 
 struct sc_profile *sc_profile_new();
