@@ -29,6 +29,11 @@
 #include <string.h>
 #include <opensc/opensc.h>
 #include <opensc/pkcs15.h>
+#ifdef HAVE_OPENSSL
+#include <openssl/evp.h>
+#include <openssl/rsa.h>
+#include <openssl/dsa.h>
+#endif
 #include "util.h"
 
 const char *app_name = "pkcs15-crypt";
@@ -141,6 +146,133 @@ int write_output(const u8 *buf, int len)
 	return 0;
 }
 
+#ifdef HAVE_OPENSSL
+#define GETBN(bn)	((bn)->len? BN_bin2bn((bn)->data, (bn)->len, NULL) : NULL)
+int extract_key(struct sc_pkcs15_object *obj, EVP_PKEY **pk)
+{
+	struct sc_pkcs15_prkey	*key;
+	const char	*pass = NULL;
+	int		r;
+
+	while (1) {
+		r = sc_pkcs15_read_prkey(p15card, obj, pass, &key);
+		if (r != SC_ERROR_PASSPHRASE_REQUIRED)
+			break;
+
+		if (pass)
+			return SC_ERROR_INTERNAL;
+		pass = "lalla"; continue;
+		pass = getpass("Please enter pass phrase "
+				"to unlock secret key: ");
+		if (!pass || !*pass)
+			break;
+	}
+
+	if (r < 0)
+		return r;
+
+	*pk = EVP_PKEY_new();
+	switch (key->algorithm) {
+	case SC_ALGORITHM_RSA:
+		{
+		RSA	*rsa = RSA_new();
+
+		EVP_PKEY_set1_RSA(*pk, rsa);
+		rsa->n = GETBN(&key->u.rsa.modulus);
+		rsa->e = GETBN(&key->u.rsa.exponent);
+		rsa->d = GETBN(&key->u.rsa.d);
+		rsa->p = GETBN(&key->u.rsa.p);
+		rsa->q = GETBN(&key->u.rsa.q);
+		break;
+		}
+	case SC_ALGORITHM_DSA:
+		{
+		DSA	*dsa = DSA_new();
+
+		EVP_PKEY_set1_DSA(*pk, dsa);
+		dsa->priv_key = GETBN(&key->u.dsa.priv);
+		break;
+		}
+	default:
+		r = SC_ERROR_NOT_SUPPORTED;
+	}
+
+	/* DSA keys need additional parameters from public key file */
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_DSA) {
+		struct sc_pkcs15_id     *id;
+		struct sc_pkcs15_object *pub_obj;
+		struct sc_pkcs15_pubkey *pub;
+		DSA			*dsa;
+
+		id = &((struct sc_pkcs15_prkey_info *) obj->data)->id;
+		r = sc_pkcs15_find_pubkey_by_id(p15card, id, &pub_obj);
+		if (r < 0)
+			goto done;
+		r = sc_pkcs15_read_pubkey(p15card, pub_obj, &pub);
+		if (r < 0)
+			goto done;
+
+		dsa = (*pk)->pkey.dsa;
+		dsa->pub_key = GETBN(&pub->u.dsa.pub);
+		dsa->p = GETBN(&pub->u.dsa.p);
+		dsa->q = GETBN(&pub->u.dsa.q);
+		dsa->g = GETBN(&pub->u.dsa.g);
+		sc_pkcs15_free_pubkey(pub);
+	}
+
+done:	if (r < 0)
+		EVP_PKEY_free(*pk);
+	sc_pkcs15_free_prkey(key);
+	return r;
+}
+
+int sign_ext(struct sc_pkcs15_object *obj,
+		u8 *data, size_t len, u8 *out, size_t out_len)
+{
+	EVP_PKEY *pkey = NULL;
+	int	r, nid = -1;
+
+	r = extract_key(obj, &pkey);
+	if (r < 0)
+		return r;
+
+	switch (obj->type) {
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+		if (opt_crypt_flags & SC_ALGORITHM_RSA_HASH_MD5) {
+			nid = NID_md5;
+		} else if (opt_crypt_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
+			nid = NID_sha1;
+		} else {
+			if (len == 16)
+				nid = NID_md5;
+			else if (len == 20)
+				nid = NID_sha1;
+			else {
+				fprintf(stderr,
+					"Invalid input size (%u bytes)\n",
+					len);
+				return SC_ERROR_INVALID_ARGUMENTS;
+			}
+		}
+		r = RSA_sign(nid, data, len, out, &out_len,
+				pkey->pkey.rsa);
+		if (r <= 0)
+			r = SC_ERROR_INTERNAL;
+		break;
+	case SC_PKCS15_TYPE_PRKEY_DSA:
+		r = DSA_sign(NID_sha1, data, len, out, &out_len,
+				pkey->pkey.dsa);
+		if (r <= 0)
+			r = SC_ERROR_INTERNAL;
+		break;
+	}
+	if (r >= 0)
+		r = out_len;
+	EVP_PKEY_free(pkey);
+	return r;
+}
+#endif
+
 int sign(struct sc_pkcs15_object *obj)
 {
 	u8 buf[1024], out[1024];
@@ -159,13 +291,26 @@ int sign(struct sc_pkcs15_object *obj)
 	if (c < 0)
 		return 2;
 	len = sizeof(out);
-	if (!(opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1) && c != key->modulus_length) {
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA
+	 && !(opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+	 && c != key->modulus_length) {
 		fprintf(stderr, "Input has to be exactly %d bytes, when using no padding.\n",
 			key->modulus_length/8);
 		return 2;
 	}
-	r = sc_pkcs15_compute_signature(p15card, obj, opt_crypt_flags,
+	if (!key->native) {
+#ifdef HAVE_OPENSSL
+		r = sign_ext(obj, buf, c, out, len);
+#else
+		fprintf(stderr, "Cannot use extractable key because this "
+				"program was compiled without crypto "
+				"support.\n");
+		r = SC_ERROR_NOT_SUPPORTED;
+#endif
+	} else {
+		r = sc_pkcs15_compute_signature(p15card, obj, opt_crypt_flags,
 					buf, c, out, len);
+	}
 	if (r < 0) {
 		fprintf(stderr, "Compute signature failed: %s\n", sc_strerror(r));
 		return 1;
@@ -174,6 +319,33 @@ int sign(struct sc_pkcs15_object *obj)
 	
 	return 0;
 }
+
+#ifdef HAVE_OPENSSL
+static int decipher_ext(struct sc_pkcs15_object *obj,
+		u8 *data, size_t len, u8 *out, size_t out_len)
+{
+	EVP_PKEY *pkey = NULL;
+	int	r;
+
+	r = extract_key(obj, &pkey);
+	if (r < 0)
+		return r;
+
+	switch (obj->type) {
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+		r = EVP_PKEY_decrypt(out, data, len, pkey);
+		if (r <= 0) {
+			fprintf(stderr, "Decryption failed.\n");
+			r = SC_ERROR_INTERNAL;
+		}
+		break;
+	default:
+		fprintf(stderr, "Key type not supported.\n");
+		r = SC_ERROR_NOT_SUPPORTED;
+	}
+	return r;
+}
+#endif
 
 int decipher(struct sc_pkcs15_object *obj)
 {
@@ -187,8 +359,21 @@ int decipher(struct sc_pkcs15_object *obj)
 	c = read_input(buf, sizeof(buf));
 	if (c < 0)
 		return 2;
+
 	len = sizeof(out);
-	r = sc_pkcs15_decipher(p15card, obj, buf, c, out, len);
+	if (!((struct sc_pkcs15_prkey_info *) obj->data)->native) {
+#ifdef HAVE_OPENSSL
+		r = decipher_ext(obj, buf, c, out, len);
+#else
+		fprintf(stderr, "Cannot use extractable key because this "
+				"program was compiled without crypto "
+				"support.\n");
+		r = SC_ERROR_NOT_SUPPORTED;
+#endif
+	} else {
+		r = sc_pkcs15_decipher(p15card, obj, buf, c, out, len);
+	}
+
 	if (r < 0) {
 		fprintf(stderr, "Decrypt failed: %s\n", sc_strerror(r));
 		return 1;
@@ -303,7 +488,7 @@ int main(int argc, char * const argv[])
 	if (!quiet)
 		fprintf(stderr, "Found %s!\n", p15card->label);
 
-	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY_RSA, objs, 32);
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, objs, 32);
 	if (r <= 0) {
 		if (r == 0)
 			r = SC_ERROR_OBJECT_NOT_FOUND;
