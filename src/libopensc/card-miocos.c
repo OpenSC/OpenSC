@@ -83,6 +83,10 @@ static int miocos_init(struct sc_card *card)
 		_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	}
 
+	/* read_binary and friends shouldn't do more than 128 bytes
+	 * per operation */
+	card->max_le = 0x80;
+
 	return 0;
 }
 
