@@ -778,7 +778,7 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
 	void *parm = entry->parm;
 	int (*callback_func)(struct sc_context *ctx, void *arg, const u8 *obj,
 			     size_t objlen, int depth) =
-		(int (*)(struct sc_context *, void *, const u8 *, int, int)) parm;
+		(int (*)(struct sc_context *, void *, const u8 *, size_t, int)) parm;
 	size_t *len = (size_t *) entry->arg;
 	int r = 0;
 
