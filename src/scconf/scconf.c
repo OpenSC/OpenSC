@@ -146,7 +146,7 @@ int scconf_get_int(const scconf_block * block, const char *option, int def)
 	const scconf_list *list;
 
 	list = scconf_find_list(block, option);
-	return !list ? def : atoi(list->data);
+	return !list ? def : strtol(list->data, NULL, 0);
 }
 
 int scconf_get_bool(const scconf_block * block, const char *option, int def)
