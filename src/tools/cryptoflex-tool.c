@@ -81,7 +81,7 @@ const char *option_help[] = {
 struct sc_context *ctx = NULL;
 struct sc_card *card = NULL;
 
-char *getpin(const char *prompt)
+static char *getpin(const char *prompt)
 {
 	char *buf, pass[20];
 	int i;
@@ -108,7 +108,7 @@ char *getpin(const char *prompt)
 	return buf;
 }
 
-int verify_pin(int pin)
+static int verify_pin(int pin)
 {
 	char prompt[50];
 	int r, tries_left = -1;
@@ -132,7 +132,7 @@ int verify_pin(int pin)
 	return 0;
 }
 
-int select_app_df(void)
+static int select_app_df(void)
 {
 	struct sc_path path;
 	struct sc_file *file;
@@ -159,15 +159,15 @@ int select_app_df(void)
 		return 0;
 }
 
-void invert_buf(u8 *dest, const u8 *src, size_t c)
+static void invert_buf(u8 *dest, const u8 *src, size_t c)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < c; i++)
 		dest[i] = src[c-1-i];	
 }
 
-BIGNUM * cf2bn(const u8 *buf, size_t bufsize, BIGNUM *num)
+static BIGNUM * cf2bn(const u8 *buf, size_t bufsize, BIGNUM *num)
 {
 	u8 tmp[512];
 	
@@ -176,7 +176,7 @@ BIGNUM * cf2bn(const u8 *buf, size_t bufsize, BIGNUM *num)
 	return BN_bin2bn(tmp, bufsize, num);
 }
 
-int bn2cf(const BIGNUM *num, u8 *buf)
+static int bn2cf(const BIGNUM *num, u8 *buf)
 {
 	u8 tmp[512];
 	int r;
@@ -224,7 +224,7 @@ int mont(RSA *rsa, u8 *j0)
 
 #endif
 
-int parse_public_key(const u8 *key, size_t keysize, RSA *rsa)
+static int parse_public_key(const u8 *key, size_t keysize, RSA *rsa)
 {
 	const u8 *p = key;
 	BIGNUM *n, *e;
@@ -252,31 +252,31 @@ int parse_public_key(const u8 *key, size_t keysize, RSA *rsa)
 	return 0;
 }
 
-int gen_d(RSA *rsa)
+static int gen_d(RSA *rsa)
 {
-	BN_CTX *ctx, *ctx2;
+	BN_CTX *bnctx;
 	BIGNUM *r0, *r1, *r2;
 	
-	ctx = BN_CTX_new();
-	ctx2 = BN_CTX_new();
-	BN_CTX_start(ctx);
-	r0 = BN_CTX_get(ctx);
-	r1 = BN_CTX_get(ctx);
-	r2 = BN_CTX_get(ctx);
+	bnctx = BN_CTX_new();
+	if (bnctx == NULL)
+		return -1;
+	BN_CTX_start(bnctx);
+	r0 = BN_CTX_get(bnctx);
+	r1 = BN_CTX_get(bnctx);
+	r2 = BN_CTX_get(bnctx);
 	BN_sub(r1, rsa->p, BN_value_one());
 	BN_sub(r2, rsa->q, BN_value_one());
-	BN_mul(r0, r1, r2, ctx);
-	if ((rsa->d = BN_mod_inverse(NULL, rsa->e, r0, ctx2)) == NULL) {
+	BN_mul(r0, r1, r2, bnctx);
+	if ((rsa->d = BN_mod_inverse(NULL, rsa->e, r0, bnctx)) == NULL) {
 		fprintf(stderr, "BN_mod_inverse() failed.\n");
 		return -1;
 	}
-	BN_CTX_end(ctx);
-	BN_CTX_free(ctx);
-	BN_CTX_free(ctx2);
+	BN_CTX_end(bnctx);
+	BN_CTX_free(bnctx);
 	return 0;
 }
 
-int parse_private_key(const u8 *key, size_t keysize, RSA *rsa)
+static int parse_private_key(const u8 *key, size_t keysize, RSA *rsa)
 {
 	const u8 *p = key;
 	BIGNUM *bn_p, *q, *dmp1, *dmq1, *iqmp;
@@ -329,7 +329,7 @@ int parse_private_key(const u8 *key, size_t keysize, RSA *rsa)
 	return 0;
 }
 
-int read_public_key(RSA *rsa)
+static int read_public_key(RSA *rsa)
 {
 	int r;
 	struct sc_path path;
@@ -375,7 +375,7 @@ int read_public_key(RSA *rsa)
 }
 
 
-int read_private_key(RSA *rsa)
+static int read_private_key(RSA *rsa)
 {
 	int r;
 	struct sc_path path;
@@ -425,7 +425,7 @@ int read_private_key(RSA *rsa)
 	return parse_private_key(p, keysize, rsa);
 }
 
-int read_key(void)
+static int read_key(void)
 {
 	RSA *rsa = RSA_new();
 	u8 buf[1024], *p = buf;
@@ -470,14 +470,14 @@ int read_key(void)
 	return 0;
 }
 
-int list_keys(void)
+static int list_keys(void)
 {
-	int r, i, idx = 0;
+	int r, idx = 0;
 	struct sc_path path;
 	u8 buf[2048], *p = buf;
-	size_t keysize;
+	size_t keysize, i;
 	int mod_lens[] = { 512, 768, 1024, 2048 };
-	int sizes[] = { 167, 247, 327, 647 };
+	size_t sizes[] = { 167, 247, 327, 647 };
 
 	r = select_app_df();
 	if (r)
@@ -511,7 +511,7 @@ int list_keys(void)
 	return 0;
 }
 
-int generate_key(void)
+static int generate_key(void)
 {
 	struct sc_apdu apdu;
 	u8 sbuf[4];
@@ -568,13 +568,14 @@ int generate_key(void)
 	return 1;
 }
 
-int create_key_files(void)
+static int create_key_files(void)
 {
 	struct sc_file *file;
 	int mod_lens[] = { 512, 768, 1024, 2048 };
 	int sizes[] = { 163, 243, 323, 643 };
 	int size = -1;
-	int i, r;
+	int r;
+	size_t i;
 	
 	for (i = 0; i < sizeof(mod_lens) / sizeof(int); i++)
 		if (mod_lens[i] == opt_mod_length) {
@@ -633,7 +634,7 @@ int create_key_files(void)
 	return 0;
 }
 
-int read_rsa_privkey(RSA **rsa_out)
+static int read_rsa_privkey(RSA **rsa_out)
 {
 	RSA *rsa = NULL;
 	BIO *in = NULL;
@@ -659,7 +660,7 @@ int read_rsa_privkey(RSA **rsa_out)
 	return 0;
 }
 
-int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
+static int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
 {
 	u8 buf[512], *p = buf;
 	u8 bnbuf[256];
@@ -733,7 +734,7 @@ int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
 	return 0;
 }
 
-int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
+static int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
 {
 	u8 buf[512], *p = buf;
 	u8 bnbuf[256];
@@ -789,7 +790,7 @@ int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
 	return 0;
 }
 
-int update_public_key(const u8 *key, size_t keysize)
+static int update_public_key(const u8 *key, size_t keysize)
 {
 	int r, idx = 0;
 	struct sc_path path;
@@ -812,7 +813,7 @@ int update_public_key(const u8 *key, size_t keysize)
 	return 0;
 }
 
-int update_private_key(const u8 *key, size_t keysize)
+static int update_private_key(const u8 *key, size_t keysize)
 {
 	int r, idx = 0;
 	struct sc_path path;
@@ -835,7 +836,7 @@ int update_private_key(const u8 *key, size_t keysize)
 	return 0;
 }
 
-int store_key(void)
+static int store_key(void)
 {
 	u8 prv[1024], pub[1024];
 	size_t prvsize, pubsize;
@@ -870,7 +871,8 @@ int store_key(void)
 	return 0;	
 }                              
 
-int create_file(struct sc_file *file)
+#if 0
+static int create_file(struct sc_file *file)
 {
 	struct sc_path path;
 	int r;
@@ -900,8 +902,10 @@ int create_file(struct sc_file *file)
 	}
         return 0;
 }
+#endif
 
-int create_app_df(struct sc_path *path, size_t size)
+#if 0
+static int create_app_df(struct sc_path *path, size_t size)
 {
 	struct sc_file *file;
 	int i;
@@ -924,8 +928,9 @@ int create_app_df(struct sc_path *path, size_t size)
 	sc_file_free(file);
 	return i;
 }
+#endif
 
-int create_pin_file(const struct sc_path *inpath, int chv, const char *key_id)
+static int create_pin_file(const struct sc_path *inpath, int chv, const char *key_id)
 {
 	char prompt[40], *pin, *puk;
 	char buf[30], *p = buf;
@@ -1043,7 +1048,7 @@ int create_pin_file(const struct sc_path *inpath, int chv, const char *key_id)
 	return 0;
 }
 
-int create_pin()
+static int create_pin()
 {
 	struct sc_path path;
 	char buf[80];
