@@ -38,11 +38,13 @@ PKCS11_CTX *ctx;
 char *pin = NULL;
 int quiet = 1;
 
-const char *module = PKCS11_DEFAULT_MODULE_NAME;
+char *module = PKCS11_DEFAULT_MODULE_NAME;
+int default_module = 1;
 
 int set_module(const char *modulename)
 {
-	module = modulename;
+	module = strdup (modulename);
+	default_module = 0;
 	return 1;
 }
 
@@ -92,7 +94,7 @@ int pkcs11_init(ENGINE * engine)
 	}
 	ctx = PKCS11_CTX_new();
 	if (PKCS11_CTX_load(ctx, module) < 0) {
-		fprintf(stderr, "unable to load module\n");
+		fprintf(stderr, "unable to load module %s\n", module);
 		return 0;
 	}
 	return 1;
@@ -102,6 +104,9 @@ int pkcs11_rsa_finish(RSA * rsa)
 {
 	if (pin) {
 		free(pin);
+	}
+	if (!default_module && module) {
+		free(module);
 	}
 	/* need to free RSA_ex_data? */
 	return 1;
