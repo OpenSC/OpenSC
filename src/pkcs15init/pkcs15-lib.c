@@ -2647,29 +2647,35 @@ set_user_pin_from_authid(struct sc_pkcs15_card *p15card,
 /*
  * Present any authentication info as required by the file.
  *
- * XXX: There's a problem here if e.g. the SO PIN defined by
- * the profile is optional, and hasn't been set. In this case,
- * it would be better if we based our authentication on the
- * real ACLs of the file (i.e. the data returned by a previous
- * sc_select_file()). Current practice though is to prefer
- * checking against the ACL defined by the profile (introduced by
- * Juha for some reason) and I'm not sure we can change this
- * easily.
+ * Depending on the SC_CARD_CAP_USE_FCI_AC caps file in sc_card_t,
+ * we read the ACs of the file on the card, or rely on the ACL
+ * info for that file in the profile file.
  *
- * (In fact, this is a requirement, as some cards do not return
- * access conditions in their response to SELECT FILE)
+ * In the latter case, there's a problem here if e.g. the SO PIN
+ * defined by the profile is optional, and hasn't been set. 
+ * On the orther hands, some cards do not return access conditions
+ * in their response to SELECT FILE), so the latter case has been
+ * used in most cards while the first case was added much later.
  */
 int
 sc_pkcs15init_authenticate(struct sc_profile *pro, sc_card_t *card,
 		sc_file_t *file, int op)
 {
 	const sc_acl_entry_t *acl;
+	sc_file_t *file_tmp = NULL;
 	int		r = 0;
 
 	sc_debug(card->ctx, "path=%s, op=%u\n",
 				sc_print_path(&file->path), op);
 
-	acl = sc_file_get_acl_entry(file, op);
+	if (card->caps & SC_CARD_CAP_USE_FCI_AC) {
+		if ((r = sc_select_file(card, &file->path, &file_tmp)) < 0)
+			return r;
+		acl = sc_file_get_acl_entry(file_tmp, op);
+	}
+	else
+		acl = sc_file_get_acl_entry(file, op);
+
 	for (; r == 0 && acl; acl = acl->next) {
 		if (acl->method == SC_AC_NEVER)
 			return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
@@ -2679,8 +2685,13 @@ sc_pkcs15init_authenticate(struct sc_profile *pro, sc_card_t *card,
 			sc_debug(card->ctx, "unknown acl method\n");
 			break;
 		}
-		r = do_verify_pin(pro, card, file, acl->method, acl->key_ref);
+		r = do_verify_pin(pro, card, file_tmp ? file_tmp : file,
+			acl->method, acl->key_ref);
 	}
+
+	if (file_tmp)
+		sc_file_free(file_tmp);
+
 	return r;
 }
 
