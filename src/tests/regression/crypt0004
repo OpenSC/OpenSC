@@ -23,13 +23,13 @@ s=$p15temp/signed
 p=$p15temp/public.pem
 
 msg "Initializing card"
-run_check_status $p15init -EC
+run_display_output $p15init -EC --no-so-pin
 
 msg "Generating key pair on-board"
-run_check_status $p15init --insecure -G rsa/1024 --id 45
+run_display_output $p15init --insecure -G rsa/1024 --id 45
 
 msg "Extracting public key"
-run_check_status $p15tool --read-public-key 45 > $p
+run_display_output $p15tool --read-public-key 45 -o $p
 
 # Set up message file
 echo lalla > $m
