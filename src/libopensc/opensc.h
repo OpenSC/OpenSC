@@ -585,7 +585,7 @@ struct sc_context {
 
 	int suppress_errors;
 	FILE *debug_file, *error_file;
-	void (*log_error_func)(struct sc_context *, const char *);
+	char *preferred_language;
 
 	const struct sc_reader_driver *reader_drivers[SC_MAX_READER_DRIVERS+1];
 	void *reader_drv_data[SC_MAX_READER_DRIVERS];

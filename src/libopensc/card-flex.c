@@ -468,7 +468,9 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 	int locked = 0, magic_done;
 	u8 p1 = 0;
 
-	SC_FUNC_CALLED(card->ctx, 3);
+	if (card->ctx->debug >= 2)
+		sc_debug(card->ctx, "called, cached path=%s\n", sc_print_path(&card->cache.current_path));
+
 	switch (path->type) {
 	case SC_PATH_TYPE_PATH:
 		if ((pathlen & 1) != 0) /* not divisible by 2 */
@@ -508,7 +510,7 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 	if (locked)
 		sc_unlock(card);
 	cache_path(card, path, r);
-	SC_FUNC_RETURN(card->ctx, 3, r);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 	return r;
 }
 

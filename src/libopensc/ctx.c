@@ -218,6 +218,10 @@ static int load_parameters(struct sc_context *ctx, scconf_block *block,
 		list = list->next;
 	}
 
+	val = scconf_get_str(block, "preferred_language", "en");
+	if (val)
+		sc_ui_set_language(ctx, val);
+
 	return err;
 }
 

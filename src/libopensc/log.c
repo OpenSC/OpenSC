@@ -34,6 +34,7 @@
 #ifdef HAVE_IO_H
 #include <io.h>
 #endif
+#include <opensc/ui.h>
 
 #ifndef __GNUC__
 void sc_error(struct sc_context *ctx, const char *format, ...)
@@ -56,30 +57,6 @@ void sc_debug(struct sc_context *ctx, const char *format, ...)
 
 #endif
 
-static int use_color(struct sc_context *ctx, FILE * outf)
-{
-	static char *term = NULL;
-	static const char *terms[] = { "linux", "xterm", "Eterm" };
-	int term_count = sizeof(terms) / sizeof(terms[0]);
-	int do_color;
-	int i;
-
-	if (!isatty(fileno(outf)))
-		return 0;
-	if (term == NULL) {
-		term = getenv("TERM");
-		if (term == NULL)
-			return 0;
-	}
-	do_color = 0;
-	for (i = 0; i < term_count; i++)
-		if (strcmp(terms[i], term) == 0) {
-			do_color = 1;
-			break;
-		}
-	return do_color;
-}
-
 void sc_do_log(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, ...)
 {
 	va_list ap;
@@ -91,43 +68,36 @@ void sc_do_log(struct sc_context *ctx, int type, const char *file, int line, con
 
 void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args)
 {
-	FILE *outf = NULL;
-	char buf[1536], *p;
-	int left, r;
-	const char *color_pfx = "", *color_sfx = "";
+	int	(*display_fn)(sc_context_t *, const char *);
+	char	buf[1536], *p;
+	int	left, r;
 
 	assert(ctx != NULL);
+
 	switch (type) {
 	case SC_LOG_TYPE_ERROR:
 		if (ctx->suppress_errors)
 			return;
-		outf = ctx->error_file;
+		display_fn = &sc_ui_display_error;
 		break;
+
 	case SC_LOG_TYPE_DEBUG:
 		if (ctx->debug == 0)
 			return;
-		outf = ctx->debug_file;
+		display_fn = &sc_ui_display_debug;
 		break;
-	}
-	if (!ctx->log_error_func && outf == NULL)
+
+	default:
 		return;
-	if (use_color(ctx, outf)) {
-		color_sfx = "\33[0m";
-		switch (type) {
-		case SC_LOG_TYPE_ERROR:
-			color_pfx = "\33[01;31m";
-			break;
-		case SC_LOG_TYPE_DEBUG:
-			color_pfx = "\33[00;32m";
-			break;
-		}
 	}
+
 	if (file != NULL) {
 		r = snprintf(buf, sizeof(buf), "%s:%d:%s: ", file, line, func ? func : "");
-		if (r < 0)
+		if (r < 0 || r > sizeof(buf))
 			return;
-	} else
+	} else {
 		r = 0;
+	}
 	p = buf + r;
 	left = sizeof(buf) - r;
 
@@ -137,12 +107,7 @@ void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, 
 	p += r;
 	left -= r;
 
-	if (ctx->log_error_func) {
-		ctx->log_error_func(ctx, buf);
-	} else {
-		fprintf(outf, "%s%s%s", color_pfx, buf, color_sfx);
-		fflush(outf);
-	}
+	display_fn(ctx, buf);
 }
 
 void sc_hex_dump(struct sc_context *ctx, const u8 * in, size_t count, char *buf, size_t len)

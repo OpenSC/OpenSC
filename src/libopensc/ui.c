@@ -37,6 +37,7 @@ typedef int		sc_ui_get_pin_pair_fn_t(sc_context_t *, const char *,
 				const char *,
 				const sc_ui_get_pin_info_t *, char **,
 				const sc_ui_get_pin_info_t *, char **);
+typedef int		sc_ui_display_fn_t(sc_context_t *, const char *);
 
 static int		sc_ui_get_func(sc_context_t *, const char *, void **);
 static int		sc_ui_get_pin_default(sc_context_t *, const char *,
@@ -46,6 +47,22 @@ static int		sc_ui_get_pin_pair_default(sc_context_t *, const char *,
 				const char *,
 				const sc_ui_get_pin_info_t *, char **,
 				const sc_ui_get_pin_info_t *, char **);
+static int		sc_ui_display_error_default(sc_context_t *, const char *);
+static int		sc_ui_display_debug_default(sc_context_t *, const char *);
+
+/*
+ * Set the language
+ */
+int
+sc_ui_set_language(sc_context_t *ctx, const char *lang)
+{
+	if (ctx->preferred_language)
+		free(ctx->preferred_language);
+	ctx->preferred_language = NULL;
+	if (lang)
+		ctx->preferred_language = strdup(lang);
+	return 0;
+}
 
 /*
  * Retrieve a PIN from the user.
@@ -99,6 +116,50 @@ sc_ui_get_pin_pair(sc_context_t *ctx, const char *name, const char *prompt,
 				new_info, new_out);
 }
 
+int
+sc_ui_display_error(sc_context_t *ctx, const char *msg)
+{
+	static sc_ui_display_fn_t *display_fn;
+	int		r;
+
+	if (!display_fn) {
+		void	*addr;
+
+		r = sc_ui_get_func(ctx,
+				"sc_ui_diaplay_error_handler",
+				&addr);
+		if (r < 0)
+			return r;
+		display_fn = (sc_ui_display_fn_t *) addr;
+		if (display_fn == NULL)
+			display_fn = sc_ui_display_error_default;
+	}
+
+	return display_fn(ctx, msg);
+}
+
+int
+sc_ui_display_debug(sc_context_t *ctx, const char *msg)
+{
+	static sc_ui_display_fn_t *display_fn;
+	int		r;
+
+	if (!display_fn) {
+		void	*addr;
+
+		r = sc_ui_get_func(ctx,
+				"sc_ui_diaplay_debug_handler",
+				&addr);
+		if (r < 0)
+			return r;
+		display_fn = (sc_ui_display_fn_t *) addr;
+		if (display_fn == NULL)
+			display_fn = sc_ui_display_debug_default;
+	}
+
+	return display_fn(ctx, msg);
+}
+
 /*
  * Get the named functions from the user interface
  * library. If no library is configured, or if the
@@ -110,6 +171,7 @@ sc_ui_get_func(sc_context_t *ctx, const char *name, void **ret)
 {
 	int	r;
 
+	*ret = NULL;
 	if (!sc_ui_lib_handle && !sc_ui_lib_loaded) {
 		const char	*lib_name = NULL;
 		scconf_block	*blk;
@@ -237,4 +299,81 @@ sc_ui_get_pin_pair_default(sc_context_t *ctx, const char *name,
 		return r;
 
 	return sc_ui_get_pin_default(ctx, "foo", NULL, new_info, new_out);
+}
+
+/*
+ * Default debug/error message output
+ */
+static int
+use_color(sc_context_t *ctx, FILE * outf)
+{
+	static const char *terms[] = { "linux", "xterm", "Eterm" };
+	static char	*term = NULL;
+	int		term_count = sizeof(terms) / sizeof(terms[0]);
+	int		do_color, i;
+
+	if (!isatty(fileno(outf)))
+		return 0;
+	if (term == NULL) {
+		term = getenv("TERM");
+		if (term == NULL)
+			return 0;
+	}
+
+	do_color = 0;
+	for (i = 0; i < term_count; i++) {
+		if (strcmp(terms[i], term) == 0) {
+			do_color = 1;
+			break;
+		}
+	}
+
+	return do_color;
+}
+
+static int
+sc_ui_display_msg(sc_context_t *ctx, int type, const char *msg)
+{
+	const char	*color_pfx = "", *color_sfx = "";
+	FILE		*outf = NULL;
+
+	switch (type) {
+	case SC_LOG_TYPE_ERROR:
+		outf = ctx->error_file;
+		break;
+
+	case SC_LOG_TYPE_DEBUG:
+		outf = ctx->debug_file;
+		break;
+	}
+	if (outf == NULL)
+		return 0;
+
+	if (use_color(ctx, outf)) {
+		color_sfx = "\33[0m";
+		switch (type) {
+		case SC_LOG_TYPE_ERROR:
+			color_pfx = "\33[01;31m";
+			break;
+		case SC_LOG_TYPE_DEBUG:
+			color_pfx = "\33[00;32m";
+			break;
+		}
+	}
+
+	fprintf(outf, "%s%s%s", color_pfx, msg, color_sfx);
+	fflush(outf);
+	return 0;
+}
+
+int
+sc_ui_display_error_default(sc_context_t *ctx, const char *msg)
+{
+	return sc_ui_display_msg(ctx, SC_LOG_TYPE_ERROR, msg);
+}
+
+int
+sc_ui_display_debug_default(sc_context_t *ctx, const char *msg)
+{
+	return sc_ui_display_msg(ctx, SC_LOG_TYPE_DEBUG, msg);
 }
