@@ -32,17 +32,15 @@ extern "C" {
 #define SC_LOG_TYPE_VERBOSE	1
 #define SC_LOG_TYPE_DEBUG	2
 
+/* You can't do #ifndef __FUNCTION__ */
+#if !defined(__GNUC__) && !defined(__IBMC__)
+#define __FUNCTION__ NULL
+#endif
+
 #if defined(__GNUC__)
 
 #define error(ctx, format, args...)	do_log(ctx, SC_LOG_TYPE_ERROR,  __FILE__, __LINE__, __FUNCTION__, format , ## args)
 #define debug(ctx, format, args...)	do_log(ctx, SC_LOG_TYPE_DEBUG,  __FILE__, __LINE__, __FUNCTION__, format , ## args)
-
-#else
-
-void error(struct sc_context *ctx, const char *format, ...);
-void debug(struct sc_context *ctx, const char *format, ...);
-
-#endif
 
 #define SC_FUNC_CALLED(ctx, level) {\
 	if ((ctx)->debug >= level)\
@@ -62,6 +60,32 @@ void debug(struct sc_context *ctx, const char *format, ...);
 		return _ret;\
 	}\
 }
+
+#else
+
+void error(struct sc_context *ctx, const char* file, int line, const char *func, const char *format, ...);
+void debug(struct sc_context *ctx, const char* file, int line, const char *func, const char *format, ...);
+
+#define SC_FUNC_CALLED(ctx, level) {\
+	if ((ctx)->debug >= level)\
+		 debug(ctx, __FILE__, __LINE__, __FUNCTION__, "called\n"); }
+#define SC_FUNC_RETURN(ctx, level, r) {\
+	int _ret = r;\
+	if (_ret < 0) {\
+		error(ctx, __FILE__, __LINE__, __FUNCTION__, "returning with: %s\n", sc_strerror(_ret));\
+	} else if ((ctx)->debug >= level) {\
+		debug(ctx, __FILE__, __LINE__, __FUNCTION__, "returning with: %d\n", _ret);\
+	}\
+	return _ret; }
+#define SC_TEST_RET(ctx, r, text) {\
+	int _ret = (r);\
+	if (_ret < 0) {\
+		error((ctx), __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", (text), sc_strerror(_ret));\
+		return _ret;\
+	}\
+}
+
+#endif
 
 void do_log(struct sc_context *ctx, int facility, const char *file,
 	    int line, const char *func, const char *format, ...);
