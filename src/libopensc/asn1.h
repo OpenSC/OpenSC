@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _SC_ASN1_H
-#define _SC_ASN1_H
+#ifndef _OPENSC_ASN1_H
+#define _OPENSC_ASN1_H
 
 #ifdef  __cplusplus
 extern "C" {

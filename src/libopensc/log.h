@@ -19,8 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _SC_LOG_H
-#define _SC_LOG_H
+#ifndef _OPENSC_LOG_H
+#define _OPENSC_LOG_H
 
 #ifdef __cplusplus
 extern "C" {
