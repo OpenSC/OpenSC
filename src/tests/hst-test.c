@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
   struct sc_pkcs15_card *p15_card = NULL;
   struct sc_pkcs15_pin_info pin;
   char buf[16], buf2[16];
-  char certbuf[2048];
+  u8 *certbuf;
   
   int i,c ;
 
@@ -52,6 +52,16 @@ int main(int argc, char **argv) {
     return 1;
   }
   sc_pkcs15_print_card(p15_card);
+
+#if 0
+  i = sc_pkcs15_enum_private_keys(p15_card);
+  if (i < 0) {
+    fprintf(stderr, "Private key enumeration failed with %s\n", sc_strerror(i));
+    return 1;
+  }
+
+  return 0;
+#endif
   i = sc_pkcs15_enum_certificates(p15_card);
   if (i < 0) {
     fprintf(stderr, "Certificate enumeration failed with %s\n", sc_strerror(i));
@@ -61,12 +71,13 @@ int main(int argc, char **argv) {
   for (i = 0; i < p15_card->cert_count; i++) {
   	sc_pkcs15_print_cert_info(&p15_card->cert_info[i]);
 	c = sc_pkcs15_read_certificate(p15_card, &p15_card->cert_info[i],
-				       (u8 *) certbuf, 2048);
+				       &certbuf);
 	if (c < 0) {
 		fprintf(stderr, "Certificate read failed.\n");
 		return 1;
 	}
 	printf("Certificate size is %d bytes\n", c);
+	free(certbuf);
   }  
   return 0;
 
