@@ -980,7 +980,6 @@ src/libopensc/libpkcs15init.pc
 src/libopensc/libscam.pc
 src/libopensc/libscconf.pc
 src/libopensc/libscldap.pc
-src/openscd/Makefile
 src/openssh/Makefile
 src/pam/Makefile
 src/pkcs11/Makefile
