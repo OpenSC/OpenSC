@@ -104,7 +104,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		cert_info.id.value[0] = esteid_cert_ids[i];
 		cert_info.id.len = 1;
 		sc_format_path(esteid_cert_paths[i], &cert_info.path);
-		snprintf(cert_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s", esteid_cert_names[i]);
+		strncpy(cert_obj.label, esteid_cert_names[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
@@ -149,7 +149,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		pin_info.pad_char = '\0';
 		pin_info.tries_left = (int)tries_left;
 
-		snprintf(pin_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s", esteid_pin_names[i]);
+		strncpy(pin_obj.label, esteid_pin_names[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = esteid_pin_flags[i];
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
@@ -186,7 +186,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		prkey_info.key_reference = i + 1;
 		prkey_info.modulus_length= 1024;
 
-		snprintf(prkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s", prkey_name[i]);
+		strncpy(prkey_obj.label, prkey_name[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
 		prkey_obj.auth_id.len = 1;
 		prkey_obj.auth_id.value[0] = prkey_pin[i];
 		prkey_obj.user_consent = (i == 1) ? 1 : 0;

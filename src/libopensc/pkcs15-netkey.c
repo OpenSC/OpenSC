@@ -20,9 +20,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "cardctl.h"
-#include "pkcs15.h"
+#include <opensc/pkcs15.h>
+#include <opensc/cardctl.h>
+#include <opensc/log.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -119,42 +119,67 @@ sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
 	set_string(&p15card->manufacturer_id, "TeleSec");
 
 	for(i=0; pinlist[i].id; ++i){
-		sc_pkcs15_id_t id;
+		struct sc_pkcs15_pin_info pin_info;
+		struct sc_pkcs15_object pin_obj;
 
-		if (ctx->debug >= 2) sc_debug(ctx, "Netkey: Loading %s: %s\n", pinlist[i].path, pinlist[i].label);
-		sc_format_path(pinlist[i].path, &path);
+		memset(&pin_info, 0, sizeof(pin_info));
+		memset(&pin_obj, 0, sizeof(pin_obj));
+		
+		if (ctx->debug >= 2)
+			sc_debug(ctx, "Netkey: Loading %s: %s\n", pinlist[i].path, pinlist[i].label);
 
-		id.value[0]=pinlist[i].id; id.len=1;
+		pin_info.auth_id.len = 1;
+		pin_info.auth_id.value[0] = pinlist[i].id;
+		pin_info.reference = pinlist[i].pinref;
+		pin_info.flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED;
+		pin_info.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+		pin_info.min_length = 6;
+		pin_info.stored_length = 16;
+		pin_info.max_length = 16;
+		pin_info.pad_char = '\0';
+		sc_format_path(pinlist[i].path, &pin_info.path);
+		pin_info.tries_left = -1;
 
-		sc_pkcs15emu_add_pin(
-			p15card, &id, pinlist[i].label, &path, pinlist[i].pinref,
-			SC_PKCS15_PIN_TYPE_ASCII_NUMERIC, 6, 16,
-        		SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED,
-			-1, 0, 
-			SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE
-		);
+		strncpy(pin_obj.label, pinlist[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		pin_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
+
+		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
 	}
 
 	for(i=0; keylist[i].id; ++i){
-		sc_pkcs15_id_t id, auth_id;
+		struct sc_pkcs15_prkey_info prkey_info;
+		struct sc_pkcs15_object     prkey_obj;
 
-		if (ctx->debug >= 2) sc_debug(ctx, "Netkey: Loading %s\n", keylist[i].label);
+		memset(&prkey_info, 0, sizeof(prkey_info));
+		memset(&prkey_obj,  0, sizeof(prkey_obj));
 
-		id.value[0]      = keylist[i].id;      id.len=1;
-		auth_id.value[0] = keylist[i].auth_id; auth_id.len=1;
+		if (ctx->debug >= 2)
+			sc_debug(ctx, "Netkey: Loading %s\n", keylist[i].label);
 
-		sc_format_path(keylist[i].path, &path);
+		prkey_info.id.len      = 1;
+		prkey_info.id.value[0] = keylist[i].id;
+		prkey_info.usage       = keylist[i].usage;
+		prkey_info.native      = 1;
+		prkey_info.key_reference = keylist[i].keyref;
+		prkey_info.modulus_length= 1024;
+		sc_format_path(keylist[i].path, &prkey_info.path);
 
-                sc_pkcs15emu_add_prkey(
-			p15card, &id, keylist[i].label, SC_PKCS15_TYPE_PRKEY_RSA, 
-			1024, keylist[i].usage, &path, keylist[i].keyref,
-			&auth_id, SC_PKCS15_CO_FLAG_PRIVATE
-		);
+		strncpy(prkey_obj.label, keylist[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
+		prkey_obj.auth_id.len      = 1;
+		prkey_obj.auth_id.value[0] = keylist[i].auth_id;
+
+		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
 	}
 
 	for(i=0; certlist[i].id; ++i){
 		unsigned char   cert[20];
-		sc_pkcs15_id_t  id;
+		struct sc_pkcs15_cert_info cert_info;
+		struct sc_pkcs15_object    cert_obj;
 
 		if (ctx->debug >= 2)
 			sc_debug(ctx, "Netkey: Loading %s: %s\n", certlist[i].path, certlist[i].label);
@@ -180,11 +205,20 @@ sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
 			path.count=(cert[2]<<8) + cert[3] + 4;
 		}
 
-		id.value[0]=certlist[i].id; id.len=1;
+		memset(&cert_info, 0, sizeof(cert_info));
+		memset(&cert_obj,  0, sizeof(cert_obj));
 
-		sc_pkcs15emu_add_cert(
-			p15card, SC_PKCS15_TYPE_CERT_X509, 0,
-			&path, &id, certlist[i].label, certlist[i].obj_flags);
+		cert_info.id.len      = 1;
+		cert_info.id.value[0] = certlist[i].id;
+		cert_info.authority   = 0;
+		cert_info.path        = path;
+
+		strncpy(cert_obj.label, certlist[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		cert_obj.flags = certlist[i].obj_flags;
+
+		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
 	}
 
 	/* return to MF */

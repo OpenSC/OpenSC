@@ -18,10 +18,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <opensc/pkcs15.h>
 #include <opensc/cardctl.h>
 #include <stdlib.h>
@@ -198,7 +194,7 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 			/* skip errors */
 			continue;
 
-		snprintf(cert_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s", certs[i].label);
+		strncpy(cert_obj.label, certs[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		cert_obj.flags = certs[i].obj_flags;
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
@@ -224,7 +220,7 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 		sc_format_path(pins[i].path, &pin_info.path);
 		pin_info.tries_left    = -1;
 
-		snprintf(pin_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s", pins[i].label);
+		strncpy(pin_obj.label, pins[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = pins[i].obj_flags;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
@@ -246,7 +242,7 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 		prkey_info.modulus_length= prkeys[i].modulus_len;
 		sc_format_path(prkeys[i].path, &prkey_info.path);
 
-		snprintf(prkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, "%s", prkeys[i].label);
+		strncpy(prkey_obj.label, prkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		prkey_obj.flags = prkeys[i].obj_flags;
 		if (prkeys[i].auth_id)
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
