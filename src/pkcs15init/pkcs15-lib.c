@@ -2198,10 +2198,16 @@ found:	if (type == SC_AC_CHV) {
 		}
 	}
 
-	if (verify
-	 && (r = sc_verify(card, type, reference, pinbuf, *pinsize, 0)) < 0) {
-		sc_error(card->ctx, "Failed to verify %s (ref=0x%x)",
-				ident, reference);
+	if (verify) {
+		/* We may have selected the AODF instead of the file
+		 * itself: */
+		if (file)
+			r = sc_select_file(card, &file->path, NULL);
+	 	if (r >= 0
+		 && (r = sc_verify(card, type, reference, pinbuf, *pinsize, 0)) < 0) {
+			sc_error(card->ctx, "Failed to verify %s (ref=0x%x)",
+					ident, reference);
+		}
 	}
 
 	return r;
@@ -2409,6 +2415,9 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 	struct sc_file	*info = NULL;
 	int		r;
 
+	sc_debug(card->ctx, "called, path=%s, %u bytes\n",
+			sc_print_path(&file->path), datalen);
+
 	card->ctx->suppress_errors++;
 	if ((r = sc_select_file(card, &file->path, &info)) < 0) {
 		card->ctx->suppress_errors--;
@@ -2435,11 +2444,6 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 
 	/* Present authentication info needed */
 	r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_UPDATE);
-
-	/* Authentication may have selected a parent DF instead of the file
-	 * itself: */
-	if (r >= 0)
-		r = sc_select_file(card, &file->path, NULL);
 
 	if (r >= 0 && datalen)
 		r = sc_update_binary(card, 0, (const u8 *) data, datalen, 0);
