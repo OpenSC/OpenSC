@@ -27,3 +27,17 @@ config.h
 libtool
 stamp-h
 stamp-h1
+acinclude.m4
+aclocal.m4
+compile
+config.guess
+config.h.in
+config.sub
+configure
+depcomp
+install-sh
+libtool.m4
+ltmain.sh
+missing
+mkinstalldirs
+stamp-h.in
