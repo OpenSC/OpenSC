@@ -212,7 +212,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 			slot_state_expires = now + 1000;
 		}
 	}
-	if (rv == CKR_TOKEN_NOT_PRESENT)
+	if (rv == CKR_TOKEN_NOT_PRESENT || rv == CKR_TOKEN_NOT_RECOGNIZED)
 		rv = CKR_OK;
 
 	if (rv == CKR_OK)
@@ -364,6 +364,7 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 		}
 	}
 
+again:
 	sc_pkcs11_unlock();
 	r = sc_wait_for_event(readers, slots, k, mask, &found, &events, -1);
 
@@ -377,8 +378,10 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 		goto out;
 	}
 
+	/* If no changed slot was found (maybe an unsupported card
+	 * was inserted/removed) then go waiting again */
 	if ((rv = slot_find_changed(pSlot, mask)) != CKR_OK)
-		rv = CKR_FUNCTION_FAILED;
+		goto again;
 
 out:	sc_pkcs11_unlock();
 	return rv;
