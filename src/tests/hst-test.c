@@ -223,7 +223,6 @@ int main(int argc, char **argv) {
 		}
 		printf("Dumping certificate to file '%s' (%d bytes)\n", fname, c);
 		fwrite(certbuf, c, 1, file);
-		fclose(file);
 		free(certbuf);
 	}
 	fclose(file);
