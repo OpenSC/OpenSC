@@ -824,7 +824,7 @@ if (test x$enable_ldap = xyes); then
     saved_LIBS="$LIBS"
     LIBS="$LIBS $LIBLDAP"
     AC_CHECK_FUNCS(ldap_init)
-    if test "$enable_ssl" \!= "no"; then
+    if test "$enable_ldap_ssl" \!= "no"; then
       AC_CHECK_FUNCS(ldapssl_init ldap_start_tls_s ldap_pvt_tls_set_option)
     fi
     LIBS="$saved_LIBS"
