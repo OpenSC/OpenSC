@@ -1,5 +1,6 @@
 /*
- * card-etoken.c: Support for Aladdin eToken PRO 
+ * card-etoken.c: Support for Siemens CardOS based cards and tokens
+ * 	(for example Aladdin eToken PRO, Eutron CryptoIdentity IT-SEC)
  *
  * Copyright (C) 2002  Andreas Jellinghaus <aj@dungeon.inka.de>
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
@@ -40,7 +41,7 @@ static const struct sc_card_operations *iso_ops = NULL;
 
 struct sc_card_operations etoken_ops;
 struct sc_card_driver etoken_drv = {
-	"Aladdin eToken PRO",
+	"Siemens CardOS",
 	"etoken",
 	&etoken_ops
 };
