@@ -214,6 +214,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	}
 	if (apdu->sw1 == 0x61 && apdu->resplen == 0) {
 		struct sc_apdu rspapdu;
+		unsigned int le;
 		u8 rsp[SC_MAX_APDU_BUFFER_SIZE];
 
 		if (orig_resplen == 0) {
@@ -222,12 +223,14 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 			sc_unlock(card);
 			return 0;
 		}
-		
+
+		le = apdu->sw2? (size_t) apdu->sw2 : 256;
+
 		sc_format_apdu(card, &rspapdu, SC_APDU_CASE_2_SHORT,
 			       0xC0, 0, 0);
-		rspapdu.le = (size_t) apdu->sw2;
+		rspapdu.le = le;
 		rspapdu.resp = rsp;
-		rspapdu.resplen = (size_t) apdu->sw2;
+		rspapdu.resplen = le;
 		r = sc_transceive(card, &rspapdu);
 		if (r != 0) {
 			error(card->ctx, "error while getting response: %s\n",
