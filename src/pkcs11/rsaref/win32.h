@@ -9,7 +9,7 @@
    returnType __declspec(dllexport) name
 
 #define CK_DECLARE_FUNCTION(returnType, name) \
-   returnType __declspec(dllimport) name
+   returnType __declspec(dllexport) name
 
 #define CK_DECLARE_FUNCTION_POINTER(returnType, name) \
    returnType __declspec(dllimport) (* name)
