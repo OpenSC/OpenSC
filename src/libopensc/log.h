@@ -60,9 +60,8 @@ void debug(struct sc_context *ctx, const char *format, ...);
 
 void do_log(struct sc_context *ctx, int facility, const char *file,
 	    int line, const char *func, const char *format, ...);
-void do_log2(struct sc_context *ctx, int facility, const char *file,
-	     int line, const char *func, const char *format,
-	     va_list args);
+void do_log2(struct sc_context *ctx, int type, const char *file,
+	     int line, const char *func, const char *format, va_list args);
 
 void sc_hex_dump(struct sc_context *ctx, const u8 *buf, size_t len,
 		 char *out, size_t outlen);

@@ -409,7 +409,7 @@ int do_create(const char *arg, const char *arg2)
 {
 	struct sc_path path;
 	struct sc_file file;
-	int size;
+	unsigned int size;
 	int i;
 
 	if (arg_to_path(arg, &path) != 0)
@@ -436,7 +436,7 @@ int do_mkdir(const char *arg, const char *arg2)
 {
 	struct sc_path path;
 	struct sc_file file;
-	size_t size;
+	unsigned int size;
 	int i;
 
 	if (arg_to_path(arg, &path) != 0)

@@ -90,7 +90,7 @@ int verify_pin(int pin)
 			return -2;
 		}
 		memset(pinbuf, 0, sizeof(pinbuf));
-		strncpy(pinbuf, pass, sizeof(pinbuf));
+		strncpy((char *) pinbuf, pass, sizeof(pinbuf));
 		memset(pass, 0, strlen(pass));
 	}
 	if (pin == 1)
@@ -109,7 +109,7 @@ int verify_pin(int pin)
 	return 0;
 }
 
-int select_app_df()
+int select_app_df(void)
 {
 	struct sc_path path;
 	struct sc_file file;
@@ -396,7 +396,7 @@ int read_private_key(RSA *rsa)
 	return parse_private_key(p, keysize, rsa);
 }
 
-int read_key()
+int read_key(void)
 {
 	RSA *rsa = RSA_new();
 	u8 buf[1024], *p = buf;
@@ -441,7 +441,7 @@ int read_key()
 	return 0;
 }
 
-int list_keys()
+int list_keys(void)
 {
 	int r, i, idx = 0;
 	struct sc_path path;
@@ -483,7 +483,7 @@ int list_keys()
 	return 0;
 }
 
-int generate_key()
+int generate_key(void)
 {
 	struct sc_apdu apdu;
 	u8 sbuf[4];
@@ -540,7 +540,7 @@ int generate_key()
 	return 1;
 }
 
-int create_key_files()
+int create_key_files(void)
 {
 	struct sc_file file;
 	int mod_lens[] = { 512, 768, 1024, 2048 };
@@ -804,7 +804,7 @@ int update_private_key(const u8 *key, size_t keysize)
 	return 0;
 }
 
-int store_key()
+int store_key(void)
 {
 	u8 prv[1024], pub[1024];
 	size_t prvsize, pubsize;

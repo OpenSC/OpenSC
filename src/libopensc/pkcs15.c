@@ -804,7 +804,7 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	int r, i;
 	u8 *tokinf_buf = NULL, *odf_buf = NULL;
 	size_t tokinf_size, odf_size;
-	u8 line[10240];
+	char line[10240];
 	
 	sc_format_path("3F0050155031", &p15card->file_odf.path);
 	sc_format_path("3F0050155032", &p15card->file_tokeninfo.path);
