@@ -521,6 +521,8 @@ int sc_read_binary(struct sc_card *card, unsigned int idx,
 	assert(card != NULL && card->ops != NULL && buf != NULL);
 	if (card->ctx->debug >= 2)
 		debug(card->ctx, "sc_read_binary: %d bytes at index %d\n", count, idx);
+	if (count == 0)
+		return 0;
 	if (card->ops->read_binary == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	if (count > SC_APDU_CHOP_SIZE && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
@@ -560,6 +562,8 @@ int sc_write_binary(struct sc_card *card, unsigned int idx,
 	assert(card != NULL && card->ops != NULL && buf != NULL);
 	if (card->ctx->debug >= 2)
 		debug(card->ctx, "sc_write_binary: %d bytes at index %d\n", count, idx);
+	if (count == 0)
+		return 0;
 	if (card->ops->write_binary == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	if (count > SC_APDU_CHOP_SIZE && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
@@ -599,6 +603,8 @@ int sc_update_binary(struct sc_card *card, unsigned int idx,
 	assert(card != NULL && card->ops != NULL && buf != NULL);
 	if (card->ctx->debug >= 2)
 		debug(card->ctx, "sc_update_binary: %d bytes at index %d\n", count, idx);
+	if (count == 0)
+		return 0;
 	if (card->ops->update_binary == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	if (count > SC_APDU_CHOP_SIZE && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
