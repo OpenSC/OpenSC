@@ -12,21 +12,18 @@ msg <<EOF
 :::
 ::: Testing on-card decryption facilities
 :::
-::: This test needs a card with a private key and certificate at ID 45.
-:::
 EOF
 
 o=$p15temp/plaintext
 e=$p15temp/encrypted
 d=$p15temp/decrypted
-x=$p15temp/cert.pem
 p=$p15temp/key.pem
 
-msg "Extracting certificate"
-run_check_status $p15tool -r 45 -o $x
+p15_init --no-so-pin
+p15_gen_key rsa/1024 --insecure --id 45 --key-usage decrypt
 
 msg "Extracting public key"
-run_check_status openssl  x509 -in $x -noout -pubkey > $p
+run_check_status $p15tool --read-public-key 45 -o $p
 
 msg "Encrypting message (pkcs1 padding)"
 echo lalla > $o
@@ -34,3 +31,5 @@ run_check_status openssl rsautl -pubin -inkey $p -encrypt -in $o -out $e
 run_check_status $p15crypt -c --pkcs1 -i $e -o $d
 cmp $o $d || fail "Decrypted file does not match plain text file"
 success
+
+p15_erase

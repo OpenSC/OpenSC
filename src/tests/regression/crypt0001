@@ -12,21 +12,18 @@ msg <<EOF
 :::
 ::: Testing on-card signature facilities
 :::
-::: This test needs a card with a private key and certificate at ID 45.
-:::
 EOF
 
 m=$p15temp/message
 d=$p15temp/digest
 s=$p15temp/signed
-x=$p15temp/cert.pem
 p=$p15temp/key.pem
 
-msg "Extracting certificate"
-run_check_status $p15tool -r 45 -o $x
+p15_init --no-so-pin
+p15_gen_key rsa/1024 --insecure --id 45
 
 msg "Extracting public key"
-run_check_status openssl  x509 -in $x -noout -pubkey > $p
+run_check_status $p15tool --read-public-key 45 -o $p
 
 # Set up message file
 echo lalla > $m
@@ -44,3 +41,5 @@ run_check_status $p15crypt -s --sha-1 --pkcs1 -i $d -o $s
 run_check_output "Verified OK" \
 	openssl dgst -verify $p -sha1 -signature $s < $m
 success
+
+p15_erase

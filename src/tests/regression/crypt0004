@@ -22,11 +22,8 @@ d=$p15temp/digest
 s=$p15temp/signed
 p=$p15temp/public.pem
 
-msg "Initializing card"
-run_display_output $p15init -EC --no-so-pin
-
-msg "Generating key pair on-board"
-run_display_output $p15init --insecure -G rsa/1024 --id 45
+p15_init --no-so-pin
+p15_gen_key rsa/1024 --insecure --id 45
 
 msg "Extracting public key"
 run_display_output $p15tool --read-public-key 45 -o $p
@@ -47,3 +44,5 @@ run_check_status $p15crypt -s --sha-1 --pkcs1 -i $d -o $s
 run_check_output "Verified OK" \
 	openssl dgst -verify $p -sha1 -signature $s < $m
 success
+
+p15_erase

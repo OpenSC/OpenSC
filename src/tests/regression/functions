@@ -103,10 +103,15 @@ function fail {
 
 	(
 		echo "*** $*"
-		echo "---"
-		cat $p15log
+		if [ -f $p15log ]; then
+			echo "--- Command output ---"
+			cat $p15log
+		fi
+		echo "--- Test files left in $p15temp ---"
+		ls -a $p15temp
 	) >&4
 	test_failed=true
+	trap ""
 	exit 1
 }
 

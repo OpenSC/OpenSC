@@ -27,11 +27,8 @@ msg "Generating key pair off the card"
 run_check_status openssl genrsa -out $k -f4 512
 run_check_status openssl rsa -in $k -out $p -pubout
 
-msg "Initializing card"
-run_check_status $p15init -EC
-
-msg "Storing private key"
-run_check_status $p15init --insecure -S $k
+p15_init --no-so-pin
+p15_store_key $k --insecure
 
 # Set up message file
 echo lalla > $m
@@ -49,3 +46,5 @@ run_check_status $p15crypt -s --sha-1 --pkcs1 -i $d -o $s
 run_check_output "Verified OK" \
 	openssl dgst -verify $p -sha1 -signature $s < $m
 success
+
+p15_erase
