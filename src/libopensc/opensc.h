@@ -654,7 +654,7 @@ int sc_delete_file(struct sc_card *card, const struct sc_path *path);
 int sc_card_ctl(struct sc_card *card, unsigned long command, void *arg);
 
 inline int sc_file_valid(const struct sc_file *file);
-struct sc_file * sc_file_new();
+struct sc_file * sc_file_new(void);
 void sc_file_free(struct sc_file *file);
 void sc_file_dup(struct sc_file **dest, const struct sc_file *src);
 
@@ -702,6 +702,7 @@ extern const struct sc_card_driver *sc_get_gpk_driver(void);
 extern const struct sc_card_driver *sc_get_tcos_driver(void);
 extern const struct sc_card_driver *sc_get_default_driver(void);
 extern const struct sc_card_driver *sc_get_etoken_driver(void);
+extern const struct sc_card_driver *sc_get_mcrd_driver(void);
 
 #ifdef  __cplusplus
 }

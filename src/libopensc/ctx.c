@@ -53,6 +53,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "gpk", (void *) sc_get_gpk_driver, NULL },
 #endif
 	{ "etoken", (void *) sc_get_etoken_driver, NULL },
+	{ "mcrd", (void *) sc_get_mcrd_driver, NULL },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default", (void *) sc_get_default_driver, NULL },
