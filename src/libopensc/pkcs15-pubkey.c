@@ -273,7 +273,7 @@ sc_pkcs15_decode_pubkey_dsa(struct sc_context *ctx,
 		const u8 *buf, size_t buflen)
 {
 	struct sc_asn1_entry asn1_public_key[2];
-	struct sc_asn1_entry asn1_dsa_pub_coeff[3];
+	struct sc_asn1_entry asn1_dsa_pub_coeff[5];
 	int r;
 	
 	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
@@ -302,7 +302,7 @@ sc_pkcs15_encode_pubkey_dsa(struct sc_context *ctx,
 		u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_public_key[2];
-	struct sc_asn1_entry asn1_dsa_pub_coeff[3];
+	struct sc_asn1_entry asn1_dsa_pub_coeff[5];
 	int r;
 	
 	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
