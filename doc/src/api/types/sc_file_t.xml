@@ -55,7 +55,7 @@ typedef struct sc_file {
             		<term><structfield>ef_structure</structfield></term>
             		<listitem><para>For elementary files (EFs), this field describes the file's structure.
             		It can be one of:
-            			<simplelist>
+            			<simplelist type="vert" columns="1">
             				<member>SC_FILE_EF_TRANSPARENT</member>
             				<member>SC_FILE_EF_LINEAR_FIXED</member>
             				<member>SC_FILE_EF_LINEAR_FIXED_TLV</member>

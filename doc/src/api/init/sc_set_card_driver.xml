@@ -29,7 +29,7 @@ int sc_set_card_driver(struct sc_context *ctx, const char *short_name);
 			This function forces the use of a a specific card driver to be used in context
 			<emphasis>ctx</emphasis>. The name of the driver is specified in <emphasis>short_name</emphasis>.
 			Possible options are:
-			<simplelist>
+			<simplelist type="vert" columns="1">
 				<member>etoken</member>
 				<member>flex</member>
 				<member>cyberflex</member>
