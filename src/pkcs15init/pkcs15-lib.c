@@ -57,8 +57,9 @@
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
 
-#define OPENSC_INFO_PATH		"3F002F01"
-#define OPENSC_INFO_FILEID		0x2F01
+#define OPENSC_INFO_FILEPATH		"3F0050154946"
+#define OPENSC_INFO_PATH		"\x49\x46"
+#define OPENSC_INFO_FILEID		0x4946
 #define OPENSC_INFO_TAG_PROFILE		0x01
 #define OPENSC_INFO_TAG_OPTION		0x02
 
@@ -121,7 +122,8 @@ static int	sc_pkcs15init_qualify_pin(sc_card_t *, const char *,
 static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *, int);
 static int	sc_pkcs15init_read_info(sc_card_t *card, sc_profile_t *);
 static int	sc_pkcs15init_parse_info(sc_card_t *, const u8 *, size_t, sc_profile_t *);
-static int	sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *);
+static int	sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *,
+			sc_pkcs15_object_t *pin_obj);
 
 static struct profile_operations {
 	char *name;
@@ -557,7 +559,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		r = sc_pkcs15init_update_tokeninfo(p15spec, profile);
 
 	card->ctx->suppress_errors++;
-	sc_pkcs15init_write_info(card, profile);
+	sc_pkcs15init_write_info(card, profile, pin_obj);
 	card->ctx->suppress_errors--;
 	return r;
 }
@@ -2821,22 +2823,38 @@ do_encode_string(u8 **memp, u8 *end, u8 tag, const char *s)
 }
 
 int
-sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile)
+sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile, sc_pkcs15_object_t *pin_obj)
 {
 	sc_file_t	*file = NULL;
+	sc_file_t	*df = profile->df_info->file;
 	u8		buffer[512], *p, *end;
+	unsigned int	method;
+	unsigned long	key_ref;
 	int		n, r;
 
 	file = sc_file_new();
-	sc_format_path(OPENSC_INFO_PATH, &file->path);
+	file->path.type = SC_PATH_TYPE_PATH;
+	memcpy(file->path.value, df->path.value, df->path.len);
+	file->path.len = df->path.len;
+	sc_append_file_id(&file->path, OPENSC_INFO_FILEID);
 	file->type = SC_FILE_TYPE_WORKING_EF;
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	file->id = OPENSC_INFO_FILEID;
 
-	/* XXX Maybe we should move the file to the AppDF
-	 * and protect updates using the SO PIN */
-	for (n = 0; n < SC_MAX_AC_OPS; n++)
-		sc_file_add_acl_entry(file, n, SC_AC_NONE, 0);
+	if (pin_obj != NULL) {
+		method = SC_AC_CHV;
+		key_ref = ((sc_pkcs15_pin_info_t *) pin_obj->data)->reference;
+	}
+	else {
+		method = SC_AC_NONE; /* Unprotected */
+		key_ref = 0;
+	}
+	for (n = 0; n < SC_MAX_AC_OPS; n++) {
+		if (n == SC_AC_OP_READ)
+			sc_file_add_acl_entry(file, n, SC_AC_NONE, 0);
+		else
+			sc_file_add_acl_entry(file, n, method, key_ref);
+	}
 
 	p = buffer;
 	end = buffer + sizeof(buffer);
@@ -2847,8 +2865,8 @@ sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile)
 
 	if (r >= 0) {
 		file->size = p - buffer;
-		if (file->size < 256)
-			file->size = 256;
+		if (file->size < 128)
+			file->size = 128;
 		r = sc_pkcs15init_update_file(profile, card, file, buffer, p - buffer);
 	}
 
