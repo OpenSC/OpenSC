@@ -528,6 +528,7 @@ AC_SUBST(OPENSC_CFLAGS)
 AC_OUTPUT([
 Makefile
 aclocal/Makefile
+docs/Makefile
 src/Makefile
 src/common/Makefile
 src/libopensc/Makefile
