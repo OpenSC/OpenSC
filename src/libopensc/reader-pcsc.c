@@ -330,14 +330,16 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 	/* Wait for a status change and return if it's a card insert/removal
 	 */
 	for( ; ; ) {
+		SCARD_READERSTATE_A *rsp;
+
 		/* Scan the current state of all readers to see if they
 		 * match any of the events we're polling for */
 		*event = 0;
-	       	for (i = 0; i < nslots; i++) {
+	       	for (i = 0, rsp = rgReaderStates; i < nslots; i++, rsp++) {
 			unsigned long state, prev_state;
 
-			prev_state = rgReaderStates[i].dwCurrentState;
-			state = rgReaderStates[i].dwEventState;
+			prev_state = rsp->dwCurrentState;
+			state = rsp->dwEventState;
 			if ((state & on_bits & SCARD_STATE_PRESENT) &&
 			    (prev_state & SCARD_STATE_EMPTY))
 				*event |= SC_EVENT_CARD_INSERTED;
@@ -351,7 +353,7 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 
 			/* No match - copy the state so pcscd knows
 			 * what to watch out for */
-			rgReaderStates[i].dwCurrentState = rgReaderStates[i].dwEventState;
+			rsp->dwCurrentState = rsp->dwEventState;
 	       	}
 
 		/* Set the timeout if caller wants to time out */
