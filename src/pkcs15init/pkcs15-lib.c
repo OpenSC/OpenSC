@@ -489,6 +489,30 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	if (args->id.len == 0)
 		sc_pkcs15_format_id(DEFAULT_ID, &args->id);
 
+	if (args->id.len != 0) {
+		sc_pkcs15_object_t *objp;
+		struct sc_pkcs15_pin_info *pin_info;
+
+		r = sc_pkcs15_find_prkey_by_id(p15card,
+				&args->id, &objp);
+		if (r == 0) {
+			r = sc_pkcs15_find_pin_by_auth_id(p15card,
+				&objp->auth_id, &objp);
+		}
+		if (r < 0) {
+			/* XXX: Fallback to the first PIN object */
+			r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN,
+					&objp, 1);
+			if (r != 1)
+				r = SC_ERROR_OBJECT_NOT_FOUND;
+		}
+		if (r >= 0) {
+			pin_info = (struct sc_pkcs15_pin_info *) objp->data;
+			sc_profile_set_pin_info(profile,
+					SC_PKCS15INIT_USER_PIN, pin_info);
+		}
+	}
+
 	cert_info = calloc(1, sizeof(*cert_info));
 	cert_info->id = args->id;
 
