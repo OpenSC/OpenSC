@@ -415,9 +415,9 @@ int sc_lock(struct sc_card *card)
 	int r = 0;
 	
 	assert(card != NULL);
-	SC_FUNC_CALLED(card->ctx, 7);
 	sc_mutex_lock(card->mutex);
-        if (card->lock_count == 0) {
+	if (card->lock_count == 0) {
+		SC_FUNC_CALLED(card->ctx, 3);
 		if (card->reader->ops->lock != NULL)
 			r = card->reader->ops->lock(card->reader, card->slot);
 		if (r == 0)
@@ -426,7 +426,7 @@ int sc_lock(struct sc_card *card)
 	if (r == 0)
 		card->lock_count++;
 	sc_mutex_unlock(card->mutex);
-        SC_FUNC_RETURN(card->ctx, 7, r);
+	return r;
 }
 
 int sc_unlock(struct sc_card *card)
@@ -434,10 +434,10 @@ int sc_unlock(struct sc_card *card)
 	int r = 0;
 
 	assert(card != NULL);
-	SC_FUNC_CALLED(card->ctx, 7);
 	sc_mutex_lock(card->mutex);
 	assert(card->lock_count >= 1);
 	if (card->lock_count == 1) {
+		SC_FUNC_CALLED(card->ctx, 3);
 		memset(&card->cache, 0, sizeof(card->cache));
 		card->cache_valid = 0;
 		if (card->ops->logout != NULL) {
@@ -455,7 +455,7 @@ int sc_unlock(struct sc_card *card)
         }
         card->lock_count--;
         sc_mutex_unlock(card->mutex);
-	SC_FUNC_RETURN(card->ctx, 7, r);
+	return r;
 }
 
 int sc_list_files(struct sc_card *card, u8 *buf, size_t buflen)
