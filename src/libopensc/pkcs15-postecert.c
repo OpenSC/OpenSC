@@ -48,7 +48,7 @@ static int do_sign(sc_card_t * card, const u8 * in, size_t inlen, u8 * out,
 static void set_string(char **strp, const char *value)
 {
 	if (*strp)
-		free(strp);
+		free(*strp);
 	*strp = value ? strdup(value) : NULL;
 }
 
