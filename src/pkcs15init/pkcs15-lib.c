@@ -136,6 +136,11 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 	const char	*driver = card->driver->short_name;
 	int		r;
 
+	/* Put the card into administrative mode */
+	r = sc_pkcs15init_set_lifecycle(card, SC_CARDCTRL_LIFECYCLE_ADMIN);
+	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
+		return r;
+
 	profile = sc_profile_new();
 
 	profile->cbs = callbacks;
@@ -173,6 +178,15 @@ void
 sc_pkcs15init_unbind(struct sc_profile *profile)
 {
 	sc_profile_free(profile);
+}
+
+/*
+ * Set the card's lifecycle
+ */
+int
+sc_pkcs15init_set_lifecycle(sc_card_t *card, int lcycle)
+{
+	return sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &lcycle);
 }
 
 /*
