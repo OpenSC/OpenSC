@@ -707,16 +707,23 @@ etoken_lifecycle_get(struct sc_card *card, int *mode)
 		SC_TEST_RET(card->ctx, r, "Lifecycle byte not in response");
 	}
 
-	if (rbuf[0] == 32) {
-		*mode = SC_CARDCTRL_LIFECYCLE_ADMIN;
-	} else if (rbuf[0] == 16) {
+	r = SC_SUCCESS;
+	switch (rbuf[0]) {
+	case 0x10:
 		*mode = SC_CARDCTRL_LIFECYCLE_USER;
-	} else {
-		sc_error(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
-		return SC_ERROR_INTERNAL;
+		break;
+	case 0x20:
+		*mode = SC_CARDCTRL_LIFECYCLE_ADMIN;
+		break;
+	case 0x34: /* MANUFACTURING */
+		*mode = SC_CARDCTRL_LIFECYCLE_OTHER;
+		break;
+	default:
+		error(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
+		r = SC_ERROR_INTERNAL;
 	}
 
-	SC_FUNC_RETURN(card->ctx, 1, SC_SUCCESS);
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 static int
@@ -737,7 +744,7 @@ etoken_lifecycle_set(struct sc_card *card, int *mode)
 	if (r != SC_SUCCESS)
 		return r;
 
-	if (current == target)
+	if (current == target || current == SC_CARDCTRL_LIFECYCLE_OTHER)
 		return SC_SUCCESS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x10, 0, 0);
