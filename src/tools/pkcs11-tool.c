@@ -1242,7 +1242,6 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
-printf("sessionInfo.state = 0x%0x\n", sessionInfo.state);
 	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
 		printf("Signatures: not logged in, skipping signature tests\n");
 		return errors;
