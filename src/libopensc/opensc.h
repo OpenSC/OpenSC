@@ -421,8 +421,20 @@ void sc_mutex_free(struct sc_mutex *p);
 
 /*
  * Card flags
+ *
+ * Used to hint about card specific capabilities and algorithms
+ * supported to the card driver. Used in sc_atr_table and
+ * card_atr block structures in the configuration file.
+ *
+ * Unknown, card vendor specific values may exists, but must
+ * not conflict with values defined here. All actions defined
+ * by the flags must be handled by the card driver themselves.
  */
-/* none yet */
+
+/* Hint SC_ALGORITHM_ONBOARD_KEY_GEN */
+#define SC_CARD_FLAG_ONBOARD_KEY_GEN	0x00000001
+/* Hint SC_CARD_CAP_RNG */
+#define SC_CARD_FLAG_RNG		0x00000002
 
 /*
  * Card capabilities

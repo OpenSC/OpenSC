@@ -144,39 +144,6 @@ out:	if (r == SC_SUCCESS) {
 	return r;
 }
 
-static int emu_detect_card(const sc_card_t *card, const scconf_block *blk)
-{
-	int   r = 1, match = 0;
-	const scconf_list *list, *item;
-	/* currently only ATR matching is supported (more to follow) */
-
-	/* check the ATR */
-	list = scconf_find_list(blk, "atr");
-	if (list) {
-		for (item = list; item; item = item->next) {
-			u8     atr[SC_MAX_ATR_SIZE];
-			size_t len = sizeof(atr);
-
-			if (!item->data)
-				/* skip empty data */
-				continue;
-			if (sc_hex_to_bin(item->data, atr, &len) != SC_SUCCESS)
-				/* ignore errors, try next atr */
-				continue;
-			if (len == card->atr_len && !memcmp(card->atr, atr, len)){
-				match = 1;
-				break;
-			}
-		}
-		if (match)
-			r = 1;
-		else
-			r = 0;
-	}
-
-	return r;
-}
-
 static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 {
 	sc_card_t	*card = p15card->card;
@@ -186,11 +153,19 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	int		(*init_func)(sc_pkcs15_card_t *);
 	int		(*init_func_ex)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 	int		r;
-	const char	*driver, *module_name;
+	scconf_block	*atrblock = NULL;
+	const char	*driver, *matchstr, *module_name;
 
 	driver = conf->name->data;
-	r = emu_detect_card(card, conf);
-	if (!r)
+	/* XXX: Pass card->driver? Requires that the pkcs15emu
+	 * parameter is assigned to actual card driver used. */
+	atrblock = _sc_match_atr_block(ctx, NULL, card->atr, card->atr_len);
+	if (!atrblock)
+		return SC_ERROR_WRONG_CARD;
+	matchstr = scconf_get_str(atrblock, "pkcs15emu", NULL);
+	if (!matchstr)
+		return SC_ERROR_WRONG_CARD;
+	if (strcmp(driver, matchstr))
 		return SC_ERROR_WRONG_CARD;
 
 	init_func    = NULL;

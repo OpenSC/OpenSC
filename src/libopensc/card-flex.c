@@ -23,9 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FLAG_KEYGEN		0x0001
-#define FLAG_FULL_DES		0x0002	/* whatever that means */
-
 #define IS_CYBERFLEX(card)	(card->type == SC_CARD_TYPE_FLEX_CYBER)
 
 static struct sc_atr_table flex_atrs[] = {
@@ -37,21 +34,21 @@ static struct sc_atr_table flex_atrs[] = {
 	/* 8k */
 	{ "3B:85:40:20:68:01:01:05:01", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
 	/* 16k */
-	{ "3B:95:94:40:FF:63:01:01:02:01", NULL, "Cryptoflex 16K", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
+	{ "3B:95:94:40:FF:63:01:01:02:01", NULL, "Cryptoflex 16K", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
 	/* 32K v4 */
-	{ "3B:95:18:40:FF:64:02:01:01:02", NULL, "Cryptoflex 32K v4", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
+	{ "3B:95:18:40:FF:64:02:01:01:02", NULL, "Cryptoflex 32K v4", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
 	/* 32K e-gate */
-	{ "3B:95:18:40:FF:62:01:02:01:04", NULL, "Cryptoflex 32K e-gate", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
+	{ "3B:95:18:40:FF:62:01:02:01:04", NULL, "Cryptoflex 32K e-gate", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
 	/* 32K e-gate v4 */
-	{ "3B:95:18:40:FF:62:04:01:01:05", NULL, "Cryptoflex 32K e-gate v4", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
+	{ "3B:95:18:40:FF:62:04:01:01:05", NULL, "Cryptoflex 32K e-gate v4", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
 
 	{ "3B:E2:00:00:40:20:49:06", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
 	/* + full DES option */
-	{ "3B:E2:00:00:40:20:49:05", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_FULL_DES },
+	{ "3B:E2:00:00:40:20:49:05", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
 	/* + Key Generation */
-	{ "3B:E2:00:00:40:20:49:07", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
+	{ "3B:E2:00:00:40:20:49:07", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
 	/* + Key Generation */
-	{ "3B:85:40:20:68:01:01:03:05", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
+	{ "3B:85:40:20:68:01:01:03:05", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
 
 	/* Multiflex */
 	/* 3K */
@@ -61,7 +58,7 @@ static struct sc_atr_table flex_atrs[] = {
 	/* 8K */
 	{ "3B:32:15:00:06:80", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0 },
 	/* 8K + full DES option */
-	{ "3B:32:15:00:06:95", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, FLAG_FULL_DES },
+	{ "3B:32:15:00:06:95", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0 },
 	/* 8K */
 	{ "3B:19:14:59:01:01:0F:01:00:05:08:B0", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0 },
 	/* 8K */
@@ -166,7 +163,7 @@ static int flex_init(struct sc_card *card)
 		
 		flags = SC_ALGORITHM_RSA_RAW;
 		flags |= SC_ALGORITHM_RSA_HASH_NONE;
-		if (card->flags & FLAG_KEYGEN)
+		if (card->flags & SC_CARD_FLAG_ONBOARD_KEY_GEN)
 			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 
 		_sc_card_add_rsa_alg(card, 512, flags, 0);

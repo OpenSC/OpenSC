@@ -102,34 +102,12 @@ app default {
 
 	# Card driver configuration blocks.
 
-	# For all drivers, you can specify ATRs of cards that
-	# should be handled by this driver (in addition to the
-	# list of compiled-in ATRs).
-	#
-	# The supported internal card driver names are
-	#  flex		Cryptoflex/Multiflex
-	#  setcos	Setec
-	#  etoken	Aladdin eToken and other CardOS based cards
-	#  gpk		GPK 4K/8K/16K
-	#  mcrd		MICARDO 2.1
-	#  miocos	MioCOS 1.1
-	#  openpgp	OpenPGP card
-	#  tcos		TCOS 2.0
-	#  emv		EMV compatible cards
-
-	# GPK card driver additional ATR entry:
-	card_driver gpk {
-		# atr = 00:11:22;
-	}
-
 	# For card drivers loaded from an external shared library/DLL,
 	# you need to specify the path name of the module
 	#
 	# card_driver customcos {
 		# The location of the driver library
 		# module = /usr/lib/opensc/drivers/card_customcos.so;
-		# atr = 00:11:22:33:44;
-		# atr = 55:66:77:88:99:aa:bb;
 	# }
 
 	# Force using specific card driver
@@ -140,6 +118,108 @@ app default {
 	# Default: autodetect
 	#
 	# force_card_driver = customcos;
+
+	# In addition to the built-in list of known cards in the
+	# card driver, you can configure a new card for the driver
+	# using the card_atr block. The goal is to centralize
+	# everything related to a certain card to card_atr.
+	#
+	# The supported internal card driver names are
+	#  etoken           Aladdin eToken and other Siemens CardOS cards
+	#  flex             Schlumberger Multiflex/Cryptoflex
+	#  cyberflex        Schlumberger Cyberflex
+	#  gpk              Gemplus GPK
+	#  miocos           MioCOS 1.1
+	#  mcrd             MICARDO 2.1
+	#  setcos           Setec cards
+	#  starcos          STARCOS SPK 2.3
+	#  tcos             TCOS 2.0
+	#  openpgp          OpenPGP card
+	#  jcop             JCOP cards with BlueZ PKCS#15 applet
+	#  oberthur         Oberthur AuthentIC.v2/CosmopolIC.v4
+	#  belpic           Belpic cards
+	#  emv              EMV compatible cards
+
+	# Generic format: card_atr <hex encoded ATR (case-sensitive!)>
+
+	# New card entry for the flex card driver
+	# card_atr 3b:f0:0d:ca:fe {
+		# All parameters for the context are
+		# optional unless specified otherwise.
+
+		# Context: global, card driver
+		#
+		# ATR mask value
+		#
+		# The mask is logically AND'd with an
+		# card ATR prior to comparison with the
+		# ATR reference value above. Using mask
+		# allows identifying and configuring
+		# multiple ATRs as the same card model.
+		# atrmask = "ff:ff:ff:ff:ff";
+
+		# Context: card driver
+		#
+		# Specify used card driver (REQUIRED).
+		#
+		# When enabled, overrides all possible
+		# settings from the card drivers built-in
+		# card configuration list.
+		# driver = "flex";
+
+		# Set card name for card drivers that allows it.
+		# name = "My CryptoFlex card";
+
+		# Card type as an integer value.
+		#
+		# Depending on card driver, this allows
+		# tuning the behaviour of the card driver
+		# for your card.
+		# type = "2002";
+
+		# Card flags as an hex value.
+		# Multiple values are OR'd together.
+		#
+		# Depending on card driver, this allows
+		# fine-tuning the capabilities in
+		# the card driver for your card.
+		#
+		# Optionally, some known parameters
+		# can be specified as strings:
+		#
+		# keygen - On-board key generation capability
+		# rng - On-board random number source
+		#
+		# flags = "keygen", "rng", "0x80000000";
+
+		#
+		# Context: PKCS#15 emulation layer
+		#
+		# When using PKCS#15 emulation, force
+		# the emulation driver for specific cards.
+		#
+		# Required for external drivers, but can
+		# be used with built-in drivers, too.
+		# pkcs15emu = "custom";
+
+		#
+		# Context: reader driver
+		#
+		# Force protocol selection for specific cards.
+		# Known parameters: t0, t1, raw
+		# force_protocol = "t0";
+	# }
+
+	# Estonian ID card and Micardo driver currently play together with T=0 only.
+	# In theory only the 'cold' ATR should be specified, as T=0 will be the preferred
+	# protocol once you boot it up with T=0, but be paranoid.
+	card_atr 3b:6e:00:ff:45:73:74:45:49:44:20:76:65:72:20:31:2e:30 {
+		force_protocol = t0;
+	}
+	card_atr 3b:fe:94:00:ff:80:b1:fa:45:1f:03:45:73:74:45:49:44:20:76:65:72:20:31:2e:30:43 {
+		force_protocol = t0;
+	}
+
 
 	# Below are the framework specific configuration blocks.
 
@@ -172,26 +252,13 @@ app default {
 		# additional settings per driver
 		#
 		# For pkcs15 emulators loaded from an external shared library/DLL,
-		# you need to specify the path name of the module
+		# you need to specify the path name of the module and customize
+		# the card_atr example above correctly.
 		#
 		# emulate custom {
 			# The location of the driver library
-			# module = builtin;
-			# atr = 11:22:33:44;
+			# module = /usr/lib/opensc/drivers/p15emu_custom.so;
 		# }
-	}
-
-	# Estonian ID card and Micardo driver currently play together with T=0 only.
-	# In theory only the 'cold' ATR should be specified, as T=0 will be the preferred
-	# protocol once you boot it up with T=0, but be paranoid.
-
-	# Generic format: card_atr <hex encoded ATR (case-sensitive!)>
-	# Only parameter currently understood is force_protocol
-	card_atr 3b:6e:00:ff:45:73:74:45:49:44:20:76:65:72:20:31:2e:30 {
-		force_protocol = t0;
-	}
-	card_atr 3b:fe:94:00:ff:80:b1:fa:45:1f:03:45:73:74:45:49:44:20:76:65:72:20:31:2e:30:43 {
-		force_protocol = t0;
 	}
 }
 

@@ -50,6 +50,9 @@ struct sc_atr_table {
 	char *name;
 	int type;
 	unsigned long flags;
+	/* Reference to card_atr configuration block,
+	 * available to user configured card entries. */
+	scconf_block *card_atr;
 };
 
 /* Internal use only */
@@ -58,15 +61,22 @@ size_t _sc_count_bit_string_size(const void * buf, size_t bufsize);
 
 int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader);
 int _sc_parse_atr(struct sc_context *ctx, struct sc_slot_info *slot);
-struct sc_slot_info * _sc_get_slot_info(struct sc_reader *reader, int slot_id);
+struct sc_slot_info *_sc_get_slot_info(struct sc_reader *reader, int slot_id);
 
 /* Add an ATR to the card driver's struct sc_atr_table */
 int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src);
 int _sc_free_atr(struct sc_context *ctx, struct sc_card_driver *driver);
 
+/* Returns an scconf_block entry with matching ATR/ATRmask to the ATR specified,
+ * NULL otherwise. Additionally, if card driver is not specified, search through
+ * all card drivers user configured ATRs. */
+scconf_block *_sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driver, u8 *atr, size_t atr_len);
+
 /* Returns an index number if a match was found, -1 otherwise. table has to
  * be null terminated. */
 int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *type_out);
+
+int _sc_check_forced_protocol(struct sc_context *ctx, u8 *atr, size_t atr_len, unsigned int *protocol);
 
 int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info);
 int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,

@@ -414,7 +414,6 @@ static int load_card_driver_options(struct sc_context *ctx,
 				    struct sc_card_driver *driver)
 {
 	scconf_block **blocks, *blk;
-	const scconf_list *list;
 	int i;
 
 	for (i = 0; ctx->conf_blocks[i]; i++) {
@@ -427,15 +426,7 @@ static int load_card_driver_options(struct sc_context *ctx,
 		if (blk == NULL)
 			continue;
 
-		list = scconf_find_list(blk, "atr");
-		while (list != NULL) {
-			struct sc_atr_table t;
-
-			memset(&t, 0, sizeof(struct sc_atr_table));
-			t.atr = list->data;
-			_sc_add_atr(ctx, driver, &t);
-			list = list->next;
-		}
+		/* no options at the moment */
 	}
 	return SC_SUCCESS;
 }
@@ -477,6 +468,84 @@ static int load_card_drivers(struct sc_context *ctx,
 
 		load_card_driver_options(ctx, ctx->card_drivers[drv_count]);
 		drv_count++;
+	}
+	return SC_SUCCESS;
+}
+
+static int load_card_atrs(struct sc_context *ctx,
+			  struct _sc_ctx_options *opts)
+{
+	struct sc_card_driver *driver;
+	scconf_block **blocks;
+	int i, j, k;
+
+	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i], "card_atr", NULL);
+		if (!blocks)
+			continue;
+		for (j = 0; blocks[j] != NULL; j++) {
+			scconf_block *b = blocks[j];
+			char *atr = b->name->data;
+			const scconf_list *list;
+			struct sc_atr_table t;
+			const char *dname;
+
+			driver = NULL;
+
+			if (strlen(atr) < 4)
+				continue;
+
+			/* The interesting part. If there's no card
+			 * driver assigned for the ATR, add it to
+			 * the default driver. This will reduce the
+			 * amount of code required to process things
+			 * related to card_atr blocks in situations,
+			 * where the code is not exactly related to
+			 * card driver settings, but for example
+			 * forcing a protocol at the reader driver.
+			 */
+			dname = scconf_get_str(b, "driver", "default");
+
+			/* Find the card driver structure according to dname */
+			for (k = 0; ctx->card_drivers[k] != NULL; k++) {
+				driver = ctx->card_drivers[k];
+				if (!strcmp(dname, driver->short_name))
+					break;
+				driver = NULL;
+			}
+
+			if (!driver)
+				continue;
+
+			memset(&t, 0, sizeof(struct sc_atr_table));
+			t.atr = atr;
+			t.atrmask = (char *) scconf_get_str(b, "atrmask", NULL);
+			t.name = (char *) scconf_get_str(b, "name", NULL);
+			t.type = scconf_get_int(b, "type", -1);
+			list = scconf_find_list(b, "flags");
+			while (list != NULL) {
+				unsigned int flags;
+
+				if (!list->data) {
+					list = list->next;
+					continue;
+				}
+				flags = 0;
+				if (!strcmp(list->data, "keygen")) {
+					flags = SC_CARD_FLAG_ONBOARD_KEY_GEN;
+				} else if (!strcmp(list->data, "rng")) {
+					flags = SC_CARD_FLAG_RNG;
+				} else {
+					if (sscanf(list->data, "%x", &flags) != 1)
+						flags = 0;
+				}
+				t.flags |= flags;
+				list = list->next;
+			}
+			t.card_atr = b;
+			_sc_add_atr(ctx, driver, &t);
+		}
+		free(blocks);
 	}
 	return SC_SUCCESS;
 }
@@ -558,6 +627,7 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 	sc_debug(ctx, "opensc version: %s\n", sc_get_version());
 	load_reader_drivers(ctx, &opts);
 	load_card_drivers(ctx, &opts);
+	load_card_atrs(ctx, &opts);
 	if (opts.forced_card_driver) {
 		sc_set_card_driver(ctx, opts.forced_card_driver);
 		free(opts.forced_card_driver);

@@ -374,13 +374,12 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 		       	PCSC_ERROR(ctx, "SCardGetStatusChange(2) failed", ret);
 		       	return pcsc_ret_to_error(ret);
 	       	}
-
 	}
 }
 
 static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 {
-	DWORD active_proto, protocol = SCARD_PROTOCOL_ANY;
+	DWORD active_proto, protocol;
 	SCARDHANDLE card_handle;
 	LONG rv;
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
@@ -394,36 +393,10 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	if (!(slot->flags & SC_SLOT_CARD_PRESENT))
 		return SC_ERROR_CARD_NOT_PRESENT;
 
-	/* force a protocol */
-	/* XXX: Why it's at reader driver level, and not shared by others? */
-	for (i = 0; reader->ctx->conf_blocks[i] != NULL; i++) {
-		char name[3 * SC_MAX_ATR_SIZE];
-		
-		r = sc_bin_to_hex(slot->atr, slot->atr_len, name, sizeof(name), ':');
-		assert(r == 0);
-		blocks = scconf_find_blocks(reader->ctx->conf, reader->ctx->conf_blocks[i],
-		                            "card_atr", name);
-		conf_block = blocks[0];
-		free(blocks);
-		if (conf_block != NULL)
-			break;
-	}
-
-	if (conf_block != NULL) {
-		const char *forcestr;
-		
-		sc_debug(reader->ctx, "Found card_atr with current atr");
-		forcestr = scconf_get_str(conf_block, "force_protocol", NULL);
-			if (forcestr) {
-				if (!strcmp(forcestr, "t0"))
-					protocol = SCARD_PROTOCOL_T0;
-				else if (!strcmp(forcestr, "t1"))
-					protocol = SCARD_PROTOCOL_T1;
-				else if (!strcmp(forcestr, "raw"))
-					protocol = SCARD_PROTOCOL_RAW;
-				else
-					sc_error(reader->ctx, "Unknown force_protocol: %s (Ignored)", forcestr);
-		}
+	if (_sc_check_forced_protocol(reader->ctx, slot->atr, slot->atr_len, (unsigned int *) &protocol)) {
+		protocol = opensc_proto_to_pcsc(protocol);
+	} else {
+		protocol = SCARD_PROTOCOL_ANY;
 	}
 
 	for (i = 0; reader->ctx->conf_blocks[i] != NULL; i++) {

@@ -395,7 +395,8 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 			driver = ctx->card_drivers[i];
 
-			if (driver->atr_map == NULL) {
+			if (driver->atr_map == NULL ||
+			    !strcmp(driver->short_name, "default")) {
 				driver = NULL;
 				continue;
 			}
@@ -929,21 +930,21 @@ struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
 	return NULL;
 }
 
-int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *type_out)
+static int match_atr_table(struct sc_context *ctx, struct sc_atr_table *table, u8 *atr, size_t atr_len)
 {
-	struct sc_context *ctx = card->ctx;
-	char card_atr[3 * SC_MAX_ATR_SIZE];
-	size_t card_atr_len;
+	u8 *card_atr_bin = atr;
+	size_t card_atr_bin_len = atr_len;
+	char card_atr_hex[3 * SC_MAX_ATR_SIZE];
+	size_t card_atr_hex_len;
 	unsigned int i = 0;
 
-	if (table == NULL || card == NULL)
+	if (ctx == NULL || table == NULL || atr == NULL)
 		return -1;
-
-	sc_bin_to_hex(card->atr, card->atr_len, card_atr, sizeof(card_atr), ':');
-	card_atr_len = strlen(card_atr);
+	sc_bin_to_hex(card_atr_bin, card_atr_bin_len, card_atr_hex, sizeof(card_atr_hex), ':');
+	card_atr_hex_len = strlen(card_atr_hex);
 
 	if (ctx->debug >= 4)
-		sc_debug(ctx, "ATR     : %s\n", card_atr);
+		sc_debug(ctx, "ATR     : %s\n", card_atr_hex);
 
 	for (i = 0; table[i].atr != NULL; i++) {
 		const char *tatr = table[i].atr;
@@ -953,7 +954,7 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *type_ou
 		if (ctx->debug >= 4)
 			sc_debug(ctx, "ATR try : %s\n", tatr);
 
-		if (tatr_len != card_atr_len)
+		if (tatr_len != card_atr_hex_len)
 			continue;
 		if (matr != NULL) {
 			u8 mbin[SC_MAX_ATR_SIZE], tbin[SC_MAX_ATR_SIZE];
@@ -967,23 +968,65 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *type_ou
 				continue;
 			mbin_len = sizeof(mbin);
 			sc_hex_to_bin(matr, mbin, &mbin_len);
-			if (mbin_len != card->atr_len)
+			if (mbin_len != card_atr_bin_len)
 				continue;
 			for (s = 0; s < mbin_len; s++)
-				mbin[s] = (card->atr[s] & mbin[s]);
+				mbin[s] = (card_atr_bin[s] & mbin[s]);
 			tbin_len = sizeof(tbin);
 			sc_hex_to_bin(tatr, tbin, &tbin_len);
 			if (memcmp(tbin, mbin, tbin_len) != 0)
 				continue;
 		} else {
-			if (strncasecmp(tatr, card_atr, tatr_len) != 0)
+			if (strncasecmp(tatr, card_atr_hex, tatr_len) != 0)
 				continue;
 		}
-		if (type_out != NULL)
-			*type_out = table[i].type;
 		return i;
 	}
 	return -1;
+}
+
+int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *type_out)
+{
+	int res;
+
+	if (card == NULL)
+		return -1;
+	res = match_atr_table(card->ctx, table, card->atr, card->atr_len);
+	if (res < 0)
+		return res;
+	if (type_out != NULL)
+		*type_out = table[res].type;
+	return res;
+}
+
+scconf_block *_sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driver, u8 *atr, size_t atr_len)
+{
+	struct sc_card_driver *drv;
+	struct sc_atr_table *table;
+	int res;
+
+	if (ctx == NULL)
+		return NULL;
+	if (driver) {
+		drv = driver;
+		table = drv->atr_map;
+		res = match_atr_table(ctx, table, atr, atr_len);
+		if (res < 0)
+			return NULL;
+		return table[res].card_atr;
+	} else {
+		unsigned int i;
+
+		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
+			drv = ctx->card_drivers[i];
+			table = drv->atr_map;
+			res = match_atr_table(ctx, table, atr, atr_len);
+			if (res < 0)
+				continue;
+			return table[res].card_atr;
+		}
+	}
+	return NULL;
 }
 
 int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src)
@@ -1016,6 +1059,7 @@ int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc
 	}
 	dst->type = src->type;
 	dst->flags = src->flags;
+	dst->card_atr = src->card_atr;
 	return SC_SUCCESS;
 }
 
@@ -1032,6 +1076,7 @@ int _sc_free_atr(struct sc_context *ctx, struct sc_card_driver *driver)
 			free(src->atrmask);
 		if (src->name)
 			free(src->name);
+		src->card_atr = NULL;
 		src = NULL;
 	}
 	if (driver->atr_map)
@@ -1040,4 +1085,32 @@ int _sc_free_atr(struct sc_context *ctx, struct sc_card_driver *driver)
 	driver->natrs = 0;
 
 	return SC_SUCCESS;
+}
+
+int _sc_check_forced_protocol(struct sc_context *ctx, u8 *atr, size_t atr_len, unsigned int *protocol)
+{
+	scconf_block *atrblock = NULL;
+	int ok = 0;
+
+	if (!protocol)
+		return 0;
+	atrblock = _sc_match_atr_block(ctx, NULL, atr, atr_len);
+	if (atrblock != NULL) {
+		const char *forcestr;
+
+		forcestr = scconf_get_str(atrblock, "force_protocol", "unknown");
+		if (!strcmp(forcestr, "t0")) {
+			*protocol = SC_PROTO_T0;
+			ok = 1;
+		} else if (!strcmp(forcestr, "t1")) {
+			*protocol = SC_PROTO_T1;
+			ok = 1;
+		} else if (!strcmp(forcestr, "raw")) {
+			*protocol = SC_PROTO_RAW;
+			ok = 1;
+		}
+		if (ok)
+			sc_debug(ctx, "force_protocol: %s\n", forcestr);
+	}
+	return ok;
 }
