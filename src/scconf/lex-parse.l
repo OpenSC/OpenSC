@@ -50,6 +50,10 @@ static scconf_parser *parser;
 
 %%
 
+#ifndef YY_CURRENT_BUFFER_LVALUE
+# define YY_CURRENT_BUFFER_LVALUE	yy_current_buffer
+#endif
+
 static void do_lex(scconf_parser *p)
 {
 	parser = p;
@@ -58,9 +62,9 @@ static void do_lex(scconf_parser *p)
 
 #if 1
 	/* For non-reentrant C scanner only. */
-	if (yy_current_buffer) {
-		yy_delete_buffer(yy_current_buffer);
-		yy_current_buffer = NULL;
+	if (YY_CURRENT_BUFFER) {
+		yy_delete_buffer(YY_CURRENT_BUFFER);
+		YY_CURRENT_BUFFER_LVALUE = NULL;
 		yy_init = 1;
 		yy_start = 0;
 	}
