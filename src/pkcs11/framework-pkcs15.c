@@ -474,7 +474,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 	} else
 	if (ulPinLen < pin->min_length ||
 	    ulPinLen > pin->max_length)
-		return CKR_PIN_LEN_RANGE;
+		return CKR_ARGUMENTS_BAD;
 
 	/* By default, we make the pcsc daemon keep other processes
 	 * from accessing the card while we're logged in. Otherwise
