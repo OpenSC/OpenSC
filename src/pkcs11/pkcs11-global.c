@@ -89,7 +89,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 
 CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 {
-	CK_RV rv;
+	CK_RV rv = CKR_OK;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -115,7 +115,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 	pInfo->libraryVersion.minor = 2;
 
 out:	sc_pkcs11_unlock();
-        return CKR_OK;
+        return rv;
 }	
 
 CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
