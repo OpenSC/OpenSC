@@ -342,9 +342,6 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		(newpin == NULL || newpinlen == 0))
 			return SC_ERROR_NOT_SUPPORTED;
 
-	/* Note: Actually two sc_pkcs15_pin_info would be needed
-	 * here, one for the pin to reset and one for the puk
-	 */
 	max_length = pin->max_length != 0 ? pin->max_length : SC_MAX_PIN_SIZE;
 	if (newpinlen > max_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
