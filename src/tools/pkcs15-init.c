@@ -106,11 +106,12 @@ enum {
 	OPT_SOFT_KEYGEN,
 	OPT_SPLIT_KEY,
 
-	OPT_PIN1 = 0x10000,	/* don't touch these values */
-	OPT_PUK1 = 0x10001,
-	OPT_PIN2 = 0x10002,
-	OPT_PUK2 = 0x10003,
-	OPT_SERIAL=0x10004,
+	OPT_PIN1     = 0x10000,	/* don't touch these values */
+	OPT_PUK1     = 0x10001,
+	OPT_PIN2     = 0x10002,
+	OPT_PUK2     = 0x10003,
+	OPT_SERIAL   = 0x10004,
+	OPT_NO_SOPIN = 0x10005,
 };
 
 const struct option	options[] = {
@@ -128,6 +129,7 @@ const struct option	options[] = {
 	{ "puk",		required_argument, 0,	OPT_PUK1 },
 	{ "so-pin",		required_argument, 0,	OPT_PIN2 },
 	{ "so-puk",		required_argument, 0,	OPT_PUK2 },
+	{ "no-so-pin",		no_argument,	   0,	OPT_NO_SOPIN },
 	{ "serial",		required_argument, 0,	OPT_SERIAL },
 	{ "auth-id",		required_argument, 0,	'a' },
 	{ "id",			required_argument, 0,	'i' },
@@ -166,6 +168,7 @@ const char *		option_help[] = {
 	"Specify unblock PIN",
 	"Specify security officer (SO) PIN",
 	"Specify unblock PIN for SO PIN",
+	"Do not install a SO PIN, and dont prompt for it",
 	"Specify the serial number of the card",
 	"Specify ID of PIN to use/create",
 	"Specify ID of key/certificate",
@@ -226,6 +229,7 @@ static int			opt_reader = -1,
 				opt_authority = 0,
 				opt_softkeygen = 0,
 				opt_noprompts = 0,
+				opt_no_sopin = 0,
 				opt_use_defkeys = 0,
 				opt_split_key = 0,
 				opt_wait = 0;
@@ -384,7 +388,7 @@ do_init_app(struct sc_profile *profile)
 		return r;
 
 	memset(&args, 0, sizeof(args));
-	if (!opt_pins[2] && !opt_noprompts) {
+	if (!opt_pins[2] && !opt_noprompts && !opt_no_sopin) {
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_SO_PIN, &info);
 		if (!read_one_pin(profile, "New security officer (SO) PIN",
@@ -895,11 +899,11 @@ use_default_key:
 
 	printf("Transport key (%s #%d) required.\n", kind, reference);
 	printf("Please enter key in hexadecimal notation "
-	       "(e.g. 00:11:22:aa:bb:cc)%s\n",
-	       def_key_size? ",\n or press return to accept default" : "");
+	       "(e.g. 00:11:22:aa:bb:cc)%s.\n\n",
+	       def_key_size? ",\nor press return to accept default" : "");
 	printf("To use the default transport keys without being prompted,\n"
 	       "specify the --use-default-transport-keys option on the\n"
-	       "command line (or -T for short).\n");
+	       "command line (or -T for short), or press Ctrl-C to abort.\n");
 
 	while (1) {
 		char	buffer[256];
@@ -1551,7 +1555,17 @@ handle_option(int c)
 	case OPT_SPLIT_KEY:
 		opt_split_key = 1;
 		break;
+	case OPT_NO_SOPIN:
+		opt_no_sopin = 1;
+		break;
 	default:
+		print_usage_and_die();
+	}
+
+	if ((opt_pins[OPT_PIN2&3] || opt_pins[OPT_PUK2&3]) && opt_no_sopin) {
+		fprintf(stderr, "Error: "
+		"The --no-so-pin option and --so-pin/--so-puk are mutually\n"
+		"exclusive.\n");
 		print_usage_and_die();
 	}
 }
