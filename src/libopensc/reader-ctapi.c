@@ -362,7 +362,7 @@ static int ctapi_finish(struct sc_context *ctx, void *prv_data)
 	return 0;
 }
 
-const struct sc_reader_driver * sc_get_ctapi_driver()
+const struct sc_reader_driver * sc_get_ctapi_driver(void)
 {
 	ctapi_ops.init = ctapi_init;
 	ctapi_ops.finish = ctapi_finish;

@@ -43,30 +43,12 @@ int usbtoken_reader_lock(struct sc_reader *reader,
 int usbtoken_reader_unlock(struct sc_reader *reader,
 			   struct sc_slot_info *slot);
 
-/* the operations struct, already initialized */
-static struct sc_reader_operations usbtoken_reader_operations = {
-	.init = usbtoken_reader_init,
-	.finish = usbtoken_reader_finish,
-	.release = usbtoken_reader_release,
-	.detect_card_presence = usbtoken_reader_detect_card_presence,
-	.connect = usbtoken_reader_connect,
-	.disconnect = usbtoken_reader_disconnect,
-	.transmit = usbtoken_reader_transmit,
-	.lock = usbtoken_reader_lock,
-	.unlock = usbtoken_reader_unlock,
-};
+static struct sc_reader_operations usbtoken_ops;
 
-/* also, the driver struct */
 static struct sc_reader_driver usbtoken_reader_driver = {
-	.name = "USB Crypto Token Reader",
-	.short_name = "usbtoken",
-	.ops = &usbtoken_reader_operations
-};
-
-/* return our structure */
-const struct sc_reader_driver *sc_get_usbtoken_driver()
-{
-	return &usbtoken_reader_driver;
+	"USB Crypto Token Reader",
+	"usbtoken",
+	&usbtoken_ops
 };
 
 /* private data structures */
@@ -90,7 +72,7 @@ int usbtoken_reader_init(struct sc_context *ctx, void **priv_data)
 		myreader = malloc(sizeof(struct sc_reader));
 		bzero(myreader, sizeof(struct sc_reader));
 		myreader->driver = &usbtoken_reader_driver;
-		myreader->ops = &usbtoken_reader_operations;
+		myreader->ops = &usbtoken_ops;
 		myreader->slot_count = 1;
 		myreader->name = strdup("USB Crypto Token %d");
 		snprintf(myreader->name, strlen(myreader->name),
@@ -350,5 +332,20 @@ int usbtoken_reader_unlock(struct sc_reader *reader,
 	SC_FUNC_CALLED(reader->ctx, 4);
 	return usbtoken_reader_unix_cmd(reader, slot, 5);
 }
+
+const struct sc_reader_driver *sc_get_usbtoken_driver(void)
+{
+	usbtoken_ops.init = usbtoken_reader_init;
+	usbtoken_ops.finish = usbtoken_reader_finish;
+	usbtoken_ops.release = usbtoken_reader_release;
+	usbtoken_ops.detect_card_presence = usbtoken_reader_detect_card_presence;
+	usbtoken_ops.connect = usbtoken_reader_connect;
+	usbtoken_ops.disconnect = usbtoken_reader_disconnect;
+	usbtoken_ops.transmit = usbtoken_reader_transmit;
+	usbtoken_ops.lock = usbtoken_reader_lock;
+	usbtoken_ops.unlock = usbtoken_reader_unlock;
+
+	return &usbtoken_reader_driver;
+};
 
 #endif	/* HAVE_USBTOKEN */

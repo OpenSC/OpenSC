@@ -591,7 +591,7 @@ static int pcsc_finish(struct sc_context *ctx, void *prv_data)
 	return 0;
 }
 
-const struct sc_reader_driver * sc_get_pcsc_driver()
+const struct sc_reader_driver * sc_get_pcsc_driver(void)
 {
 	pcsc_ops.init = pcsc_init;
 	pcsc_ops.finish = pcsc_finish;

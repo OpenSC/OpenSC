@@ -55,30 +55,12 @@ static int openct_reader_unlock(struct sc_reader *reader,
 			struct sc_slot_info *slot);
 static int		openct_error(struct sc_reader *, int);
 
-/* the operations struct, already initialized */
-static struct sc_reader_operations openct_reader_operations = {
-	.init			= openct_reader_init,
-	.finish			= openct_reader_finish,
-	.release		= openct_reader_release,
-	.detect_card_presence	= openct_reader_detect_card_presence,
-	.connect		= openct_reader_connect,
-	.disconnect		= openct_reader_disconnect,
-	.transmit		= openct_reader_transmit,
-	.perform_verify		= openct_reader_perform_verify,
-	.lock			= openct_reader_lock,
-	.unlock			= openct_reader_unlock,
-};
+static struct sc_reader_operations openct_ops;
 
-/* also, the driver struct */
 static struct sc_reader_driver openct_reader_driver = {
-	.name = "OpenCT Reader",
-	.short_name = "openct",
-	.ops = &openct_reader_operations
-};
-
-/* return our structure */
-const struct sc_reader_driver *sc_get_openct_driver() {
-	return &openct_reader_driver;
+	"OpenCT Reader",
+	"openct",
+	&openct_ops
 };
 
 /* private data structures */
@@ -141,7 +123,7 @@ openct_add_reader(struct sc_context *ctx, unsigned int num, ct_info_t *info)
 	data->num = num;
 
 	reader->driver = &openct_reader_driver;
-	reader->ops = &openct_reader_operations;
+	reader->ops = &openct_ops;
 	reader->drv_data = data;
 	reader->name = strdup(data->info.ct_name);
 	reader->slot_count = data->info.ct_slots;
@@ -444,5 +426,21 @@ openct_error(struct sc_reader *reader, int code)
 	}
 	return SC_ERROR_READER;
 }
+
+const struct sc_reader_driver *sc_get_openct_driver(void)
+{
+	openct_ops.init = openct_reader_init;
+	openct_ops.finish = openct_reader_finish;
+	openct_ops.release = openct_reader_release;
+	openct_ops.detect_card_presence = openct_reader_detect_card_presence;
+	openct_ops.connect = openct_reader_connect;
+	openct_ops.disconnect = openct_reader_disconnect;
+	openct_ops.transmit = openct_reader_transmit;
+	openct_ops.perform_verify = openct_reader_perform_verify;
+	openct_ops.lock = openct_reader_lock;
+	openct_ops.unlock = openct_reader_unlock;
+
+	return &openct_reader_driver;
+};
 
 #endif	/* HAVE_OPENCT */
