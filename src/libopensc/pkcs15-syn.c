@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include <opensc/scdl.h>
+
 extern int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
 extern int sc_pkcs15emu_infocamere_init_ex(sc_pkcs15_card_t *,
@@ -218,15 +220,14 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		sc_debug(ctx, "Loading %s\n", module_name);
 		
 		/* try to open dynamic library */
-		r = sc_module_open(ctx, &dll, module_name);
-		if (r != SC_SUCCESS)
-			return r;
+		dll = scdl_open(module_name);
+		if (!dll) {
+			sc_debug(ctx, "unable to open dynamic library '%s'\n",
+			         module_name);
+			return SC_ERROR_INTERNAL;
+		}
 		/* try to get version of the driver/api */
-		r = sc_module_get_address(ctx, dll, &address, "sc_driver_version");
-		if (r < 0)
-			get_version = NULL;
-		else
-			get_version = (const char *(*)())address;
+		get_version =  (const char *(*)(void)) scdl_get_address(dll, "sc_driver_version");
 		if (!get_version || strcmp(get_version(), "0.9.3") < 0) {
 			/* no sc_driver_version function => assume old style
 			 * init function (note: this should later give an error
@@ -234,13 +235,13 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 			/* get the init function name */
 			name = scconf_get_str(conf, "function", func_name);
 
-			r = sc_module_get_address(ctx, dll, &address, name);
-			if (r == SC_SUCCESS)
+			address = scdl_get_address(dll, name);
+			if (address)
 				init_func = (int (*)(sc_pkcs15_card_t *)) address;
 		} else {
 			name = scconf_get_str(conf, "function", exfunc_name);
 
-			r = sc_module_get_address(ctx, dll, &address, name);
+			address = scdl_get_address(dll, name);
 			if (r == SC_SUCCESS)
 				init_func_ex = (int (*)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *)) address;
 		}
@@ -263,7 +264,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		/* clear pkcs15 card */
 		sc_pkcs15_card_clear(p15card);
 		if (dll)
-			sc_module_close(ctx, dll);
+			scdl_close(dll);
 	}
 
 	return r;
