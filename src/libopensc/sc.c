@@ -126,45 +126,36 @@ int sc_detect_card_presence(struct sc_reader *reader, int slot_id)
 	SC_FUNC_RETURN(reader->ctx, 1, r);
 }
 
-#if 0
-int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout)
+int sc_wait_for_event(struct sc_reader *readers[], int slot_id[], size_t nslots,
+                      unsigned int event_mask,
+                      int *reader, unsigned int *event, int timeout)
 {
-	LONG ret;
-	SCARD_READERSTATE_A rgReaderStates[SC_MAX_READERS];
-	int count = 0, i;
+	struct sc_slot_info *slotp[SC_MAX_SLOTS * SC_MAX_READERS];
+	struct sc_context *ctx;
+	unsigned int j;
+	int r;
 
-	assert(ctx != NULL);
+	if (nslots == 0 || nslots > SC_MAX_SLOTS * SC_MAX_READERS)
+	       return SC_ERROR_INVALID_ARGUMENTS;
+	ctx = readers[0]->ctx;
+
 	SC_FUNC_CALLED(ctx, 1);
-	if (reader >= ctx->reader_count)
-		SC_FUNC_RETURN(ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+	for (j = 0; j < nslots; j++) {
+		slotp[j] = _sc_get_slot_info(readers[j], slot_id[j]);
 
-	if (reader < 0) {
-		if (ctx->reader_count == 0)
-			SC_FUNC_RETURN(ctx, 1, SC_ERROR_NO_READERS_FOUND);
-		for (i = 0; i < ctx->reader_count; i++) {
-			rgReaderStates[i].szReader = ctx->readers[i];
-			rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
-			rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
-		}
-		count = ctx->reader_count;
-	} else {
-		rgReaderStates[0].szReader = ctx->readers[reader];
-		rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
-		rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
-		count = 1;
+		if (slotp[j] == NULL)
+			SC_FUNC_RETURN(ctx, 0, SC_ERROR_SLOT_NOT_FOUND);
+		/* XXX check to make sure all readers share the same operations
+		 * struct */
 	}
-	ret = SCardGetStatusChange(ctx->pcsc_ctx, timeout, rgReaderStates, count);
-	if (ret != 0) {
-		error(ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(ret));
-		SC_FUNC_RETURN(ctx, 1, -1);
-	}
-	for (i = 0; i < count; i++) {
-		if (rgReaderStates[i].dwEventState & SCARD_STATE_CHANGED)
-			SC_FUNC_RETURN(ctx, 1, 1);
-	}
-	SC_FUNC_RETURN(ctx, 1, 0);
+
+	if (readers[0]->ops->wait_for_event == NULL)
+	       SC_FUNC_RETURN(ctx, 0, SC_ERROR_NOT_SUPPORTED);
+
+	r = readers[0]->ops->wait_for_event(readers, slotp, nslots,
+				       event_mask, reader, event, timeout);
+	SC_FUNC_RETURN(ctx, 1, r);
 }
-#endif
 
 void sc_format_path(const char *str, struct sc_path *path)
 {

@@ -178,6 +178,10 @@ extern "C" {
 #define SC_ALGORITHM_RSA_HASH_MD5_SHA1	0x00000080
 #define SC_ALGORITHM_RSA_HASH_RIPEMD160	0x00000100
 
+/* Event masks for sc_wait_for_event() */
+#define SC_EVENT_CARD_INSERTED		0x0001
+#define SC_EVENT_CARD_REMOVED		0x0002
+
 struct sc_security_env {
 	unsigned long flags;
 	int operation;
@@ -361,6 +365,7 @@ struct sc_reader_operations {
 	int (*unlock)(struct sc_reader *reader, struct sc_slot_info *slot);
 	int (*set_protocol)(struct sc_reader *reader, struct sc_slot_info *slot,
 			    unsigned int proto);
+	/* Not sure what that is supposed to do --okir */
 	int (*add_callback)(struct sc_reader *reader, struct sc_slot_info *slot,
 			    const struct sc_event_listener *, void *arg);
 
@@ -369,6 +374,15 @@ struct sc_reader_operations {
 			       const char *);
 	int (*enter_pin)(struct sc_reader *, struct sc_slot_info *,
 			 struct sc_pin_cmd_data *);
+
+	/* Wait for an event */
+	int (*wait_for_event)(struct sc_reader **readers, 
+			      struct sc_slot_info **slots,
+			      size_t nslots,
+			      unsigned int event_mask,
+			      int *reader_index,
+			      unsigned int *event,
+			      int timeout);
 };
 
 
@@ -620,17 +634,23 @@ inline int sc_card_valid(const struct sc_card *card);
 int sc_detect_card_presence(struct sc_reader *reader, int slot_id);
 
 /**
- * Waits for an event on a reader
- * @param reader Reader structure
+ * Waits for an event on readers. Note: only the event is detected,
+ * there is no update of any card or other info.
+ * @param readers array of pointer to a Reader structure
+ * @param reader_count amount of readers in the array
  * @param slot_id Slot ID
- * @param event_mask The types of events to wait for
+ * @param event_mask The types of events to wait for, currently only
+ *   SC_EVENT_CARD_INSERT_REMOVAL is supported
+ * @param reader (OUT) the reader on which the event was detected
+ * @param event (OUT) the type of event that occurred
  * @param timeout Amount of millisecs to wait; -1 means forever
- * @retval 1 if a card was inserted
- * @retval 0 if operation timed out
  * @retval < 0 if an error occured
+ * @retval = 0 if a an event happened
+ * @retval = 1 if the timeout occured
  */
-int sc_wait_for_event(struct sc_reader *reader, int slot_id,
-		      unsigned int event_mask, int timeout);
+int sc_wait_for_event(struct sc_reader **readers, int *slots, size_t nslots,
+                      unsigned int event_mask,
+                      int *reader, unsigned int *event, int timeout);
 
 /**
  * Locks the card against modification from other threads.

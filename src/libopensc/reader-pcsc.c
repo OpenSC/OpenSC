@@ -235,6 +235,113 @@ static int pcsc_detect_card_presence(struct sc_reader *reader, struct sc_slot_in
 	return (slot->flags & SC_SLOT_CARD_PRESENT)? 1 : 0;
 }
 
+/* Wait for an event to occur.
+ * This function ignores the list of slots, because with
+ * pcsc we have a 1:1 mapping of readers and slots anyway
+ */
+static int pcsc_wait_for_event(struct sc_reader **readers,
+			       struct sc_slot_info **slots,
+			       size_t nslots,
+                               unsigned int event_mask,
+                               int *reader,
+			       unsigned int *event, int timeout)
+{
+	struct sc_context *ctx;
+	SCARDCONTEXT pcsc_ctx;
+	LONG ret;
+	SCARD_READERSTATE_A rgReaderStates[SC_MAX_READERS];
+	unsigned long on_bits, off_bits;
+	time_t end_time, now, delta;
+	int i;
+
+	/* Prevent buffer overflow */
+	if (nslots >= SC_MAX_READERS)
+	       return SC_ERROR_INVALID_ARGUMENTS;
+
+	on_bits = off_bits = 0;
+	if (event_mask & SC_EVENT_CARD_INSERTED) {
+		event_mask &= ~SC_EVENT_CARD_INSERTED;
+		on_bits |= SCARD_STATE_PRESENT;
+	}
+	if (event_mask & SC_EVENT_CARD_REMOVED) {
+		event_mask &= ~SC_EVENT_CARD_REMOVED;
+		off_bits |= SCARD_STATE_PRESENT;
+	}
+	if (event_mask != 0)
+	       return SC_ERROR_INVALID_ARGUMENTS;
+
+	// Find out the current status
+	ctx = readers[0]->ctx;
+	pcsc_ctx = GET_PRIV_DATA(readers[0])->pcsc_ctx;
+	for (i = 0; i < nslots; i++) {
+		struct pcsc_private_data *priv = GET_PRIV_DATA(readers[i]);
+
+		rgReaderStates[i].szReader = priv->reader_name;
+		rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
+		rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
+
+		/* Can we handle readers from different PCSC contexts? */
+		if (priv->pcsc_ctx != pcsc_ctx)
+			return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	ret = SCardGetStatusChange(pcsc_ctx, 0, rgReaderStates, nslots);
+	if (ret != 0) {
+		PCSC_ERROR(ctx, "SCardGetStatusChange(1) failed", ret);
+		return pcsc_ret_to_error(ret);
+	}
+
+	time(&now);
+	end_time = now + timeout;
+
+	/* Wait for a status change and return if it's a card insert/removal
+	 */
+	for( ; ; ) {
+		/* Scan the current state of all readers to see if they
+		 * match any of the events we're polling for */
+		*event = 0;
+	       	for (i = 0; i < nslots; i++) {
+			unsigned long state;
+
+			state = rgReaderStates[i].dwEventState;
+			if (state & on_bits & SCARD_STATE_PRESENT)
+				*event |= SC_EVENT_CARD_INSERTED;
+			if (~state & off_bits & SCARD_STATE_PRESENT)
+				*event |= SC_EVENT_CARD_REMOVED;
+			if (*event) {
+				*reader = i;
+			       	return 0;
+		       	}
+
+			/* No match - copy the state so pcscd knows
+			 * what to watch out for */
+			rgReaderStates[i].dwCurrentState = rgReaderStates[i].dwEventState;
+	       	}
+
+		/* Set the timeout if caller wants to time out */
+		if (timeout == 0)
+			return SC_ERROR_EVENT_TIMEOUT;
+		if (timeout > 0) {
+			time(&now);
+			if (now >= end_time)
+				return SC_ERROR_EVENT_TIMEOUT;
+			delta = end_time - now;
+		} else {
+			delta = 3600;
+		}
+
+		ret = SCardGetStatusChange(pcsc_ctx, delta,
+				rgReaderStates, nslots);
+	       	if (ret == SCARD_E_TIMEOUT)
+		       	return SC_ERROR_EVENT_TIMEOUT;
+	       	if (ret != 0) {
+		       	PCSC_ERROR(ctx, "SCardGetStatusChange(2) failed", ret);
+		       	return pcsc_ret_to_error(ret);
+	       	}
+
+	}
+}
+
 static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 {
 	DWORD active_proto;
@@ -443,6 +550,7 @@ const struct sc_reader_driver * sc_get_pcsc_driver()
 	pcsc_ops.connect = pcsc_connect;
 	pcsc_ops.disconnect = pcsc_disconnect;
 	pcsc_ops.enter_pin = ctbcs_pin_cmd;
+	pcsc_ops.wait_for_event = pcsc_wait_for_event;
 	
 	return &pcsc_drv;
 }
