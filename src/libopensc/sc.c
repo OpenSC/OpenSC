@@ -169,6 +169,7 @@ void sc_format_path(const char *str, struct sc_path *path)
 	if (sc_hex_to_bin(str, path->value, &path->len) >= 0) {
 		path->type = type;
 	}
+	path->count = -1;
 	return;
 }
 
