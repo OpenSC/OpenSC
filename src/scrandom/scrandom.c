@@ -32,32 +32,7 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#ifdef HAVE_OPENSSL
-#include <openssl/rand.h>
-#endif
 #include "scrandom.h"
-
-static ssize_t atomicio(ssize_t(*f) (int fd, void *_s, size_t n), int fd, void *_s, size_t n)
-{
-	char *s = (char *) _s;
-	size_t pos = 0;
-	ssize_t res;
-
-	while (n > pos) {
-		res = (f) (fd, s + pos, n - pos);
-		switch (res) {
-		case -1:
-			if (errno == EINTR || errno == EAGAIN) {
-				continue;
-			}
-		case 0:
-			return res;
-		default:
-			pos += res;
-		}
-	}
-	return pos;
-}
 
 #if defined(PRNGD_SOCKET) || defined(PRNGD_PORT)
 #include <signal.h>
@@ -98,6 +73,28 @@ static mysig_t mysignal(int sig, mysig_t act)
 #endif
 
 #if defined(RANDOM_POOL) || defined(PRNGD_PORT) || defined(PRNGD_SOCKET)
+
+static ssize_t atomicio(ssize_t(*f) (int fd, void *_s, size_t n), int fd, void *_s, size_t n)
+{
+	char *s = (char *) _s;
+	size_t pos = 0;
+	ssize_t res;
+
+	while (n > pos) {
+		res = (f) (fd, s + pos, n - pos);
+		switch (res) {
+		case -1:
+			if (errno == EINTR || errno == EAGAIN) {
+				continue;
+			}
+		case 0:
+			return res;
+		default:
+			pos += res;
+		}
+	}
+	return pos;
+}
 
 /* Get entropy from:
  * /dev/[u]random or pipe
@@ -245,31 +242,10 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 	}
 	return rval;
 #endif
+	return 0;
 }
 
 #endif
-
-/*
- * Seed OpenSSL's random number pool
- */
-
-static int scrandom_seed_generator(void)
-{
-#ifdef HAVE_OPENSSL
-	unsigned char buf[32];
-
-	if (!scrandom_get_bytes(buf, sizeof(buf))) {
-		if (!RAND_status()) {
-			fprintf(stderr, "Entropy collection failed and entropy exhausted\n");
-			return 0;
-		}
-	} else {
-		RAND_add(buf, sizeof(buf), sizeof(buf));
-	}
-	memset(buf, '\0', sizeof(buf));
-#endif
-	return 1;
-}
 
 /* Read random data from random data source */
 
@@ -287,9 +263,6 @@ int scrandom_get_data(unsigned char *buf, unsigned int len)
 		return -1;
 	}
 #if defined(RANDOM_POOL) || defined(PRNGD_PORT) || defined(PRNGD_SOCKET)
-	if (!scrandom_seed_generator()) {
-		return -1;
-	}
 	div = len / BLOCK_SIZE;
 	mod = len % BLOCK_SIZE;
 	p = buf;

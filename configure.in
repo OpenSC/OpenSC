@@ -1002,7 +1002,7 @@ LIBSCCONF="\${top_srcdir}/src/scconf/libscconf.la"
 AC_SUBST(LIBSCLDAP)
 LIBSCLDAP="\${top_srcdir}/src/scldap/libscldap.la"
 AC_SUBST(LIBSCRANDOM)
-LIBSCRANDOM="\${top_srcdir}/src/scrandom/libscrandom.la"
+LIBSCRANDOM="\${top_srcdir}/src/scrandom/libscrandom.a"
 
 AM_CONDITIONAL(HAVE_SCIDI, test "foo" = "bar")
 

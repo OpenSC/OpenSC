@@ -7,15 +7,14 @@ MAINTAINERCLEANFILES = Makefile.in
 include_HEADERS = scrandom.h
 
 if HAVE_SSL
-SSL_LTLIB = @LIBCRYPTO@
+SSL_LIB = @LIBCRYPTO@
 endif
 
-lib_LTLIBRARIES = libscrandom.la
+lib_LIBRARIES = libscrandom.a
 
-libscrandom_la_SOURCES = scrandom.c scrandom.h
-libscrandom_la_LIBADD = $(SSL_LTLIB)
+libscrandom_a_SOURCES = scrandom.c scrandom.h
 
 noinst_PROGRAMS = test-random
 
 test_random_SOURCES = test-random.c
-test_random_LDFLAGS = @LDFLAGS@ @LIBSCRANDOM@
+test_random_LDFLAGS = @LDFLAGS@ @LIBSCRANDOM@ $(SSL_LIB)

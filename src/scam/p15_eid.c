@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <openssl/x509.h>
 #include <openssl/rsa.h>
+#include <openssl/rand.h>
 #include <openssl/pem.h>
 #include <opensc/opensc.h>
 #include <opensc/pkcs15.h>
@@ -287,6 +288,7 @@ int p15_eid_auth(scam_context * sctx, int argc, const char **argv,
 		scam_log_msg(sctx, "scrandom_get_data failed.\n");
 		goto end;
 	}
+	RAND_seed(random_data, sizeof(random_data));
 	r = sc_pkcs15_verify_pin(data->p15card, (struct sc_pkcs15_pin_info *) data->pin->data, (const u8 *) password, strlen(password));
 	if (r != SC_SUCCESS) {
 		scam_print_msg(sctx, "sc_pkcs15_verify_pin: %s\n", sc_strerror(r));
