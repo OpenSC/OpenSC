@@ -9,7 +9,7 @@ EXTRA_DIST = Makefile.mak lex-parse.l
 include_HEADERS = scconf.h
 noinst_HEADERS = internal.h
 
-noinst_LTLIBRARIES = libscconf.la
+lib_LTLIBRARIES = libscconf.la
 libscconf_la_SOURCES = scconf.c parse.c write.c sclex.c
 libscconf_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
 

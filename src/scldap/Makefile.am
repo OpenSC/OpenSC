@@ -7,7 +7,7 @@ MAINTAINERCLEANFILES = Makefile.in
 include_HEADERS = scldap.h
 
 if HAVE_LDAP
-noinst_LTLIBRARIES = libscldap.la
+lib_LTLIBRARIES = libscldap.la
 noinst_PROGRAMS = test-ldap
 endif
 
