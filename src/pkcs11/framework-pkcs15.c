@@ -410,6 +410,7 @@ static CK_RV pkcs15_get_mechanism_list(struct sc_pkcs11_card *p11card,
 {
 	static const CK_MECHANISM_TYPE mechanism_list[] = {
 		CKM_RSA_PKCS,
+		CKM_RSA_X_509,
 #ifdef HAVE_OPENSSL
                 CKM_SHA1_RSA_PKCS,
 #endif
@@ -1161,6 +1162,9 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 		default:
 			flags |= SC_ALGORITHM_RSA_HASH_NONE;
 		}
+		break;
+	case CKM_RSA_X_509:
+		flags = SC_ALGORITHM_RSA_RAW;
 		break;
 #ifdef HAVE_OPENSSL
 	case CKM_SHA1_RSA_PKCS:
