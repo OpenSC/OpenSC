@@ -137,6 +137,7 @@ static struct profile_operations {
 	{ "cyberflex", (void *) sc_pkcs15init_get_cyberflex_ops },
 	{ "etoken", (void *) sc_pkcs15init_get_etoken_ops },
 	{ "jcop", (void *) sc_pkcs15init_get_jcop_ops },
+	{ "starcos", (void *) sc_pkcs15init_get_starcos_ops },
 	{ NULL, NULL },
 };
 
@@ -429,6 +430,13 @@ sc_pkcs15init_rmdir(struct sc_card *card, struct sc_profile *profile,
 	return r;
 }
 
+int
+sc_pkcs15init_finalize_card(struct sc_card *card, struct sc_profile *profile)
+{
+	if (profile->ops->finalize_card == NULL)
+		return SC_ERROR_NOT_SUPPORTED;
+	return profile->ops->finalize_card(card);
+}
 
 /*
  * Initialize the PKCS#15 application

@@ -106,6 +106,14 @@ struct sc_pkcs15init_operations {
 			u8 *buf, size_t *bufsize, int key_ref);
 
 	/*
+	 * Finalize card
+	 * Ends the initialization phase of the smartcard/token
+	 * (actually this command is currently only for starcos spk 2.3
+	 * cards).
+	 */
+	int	(*finalize_card)(sc_card_t *);
+
+	/*
 	 * Old-style API
 	 */
 
@@ -262,6 +270,9 @@ extern void	sc_pkcs15init_set_p15card(sc_profile_t *,
 extern int	sc_pkcs15init_set_lifecycle(sc_card_t *card, int lcycle);
 extern int	sc_pkcs15init_erase_card(struct sc_card *,
 				struct sc_profile *);
+/* XXX could this function be merged with ..._set_lifecycle ?? */
+extern int	sc_pkcs15init_finalize_card(sc_card_t *,
+				struct sc_profile *);
 extern int	sc_pkcs15init_add_app(struct sc_card *,
 				struct sc_profile *,
 				struct sc_pkcs15init_initargs *);
@@ -353,6 +364,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cryptoflex_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cyberflex_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_etoken_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_jcop_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_starcos_ops(void);
 
 #ifdef  __cplusplus
 }
