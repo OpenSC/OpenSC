@@ -250,7 +250,7 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 			putchar(' ');
 		}
 		printf("%02X %s: tag 0x%02X, length %3d: ",
-		       cla | tag, classes[cla >> 6], tag & 0x1f, len);
+		       cla | tag, classes[cla >> 6], tag & 0x1f, (int) len);
 		if (len + hlen > bytesleft) {
 			printf(" Illegal length!\n");
 			return;
@@ -296,7 +296,7 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 
 void sc_asn1_print_tags(const u8 * buf, size_t buflen)
 {
-	printf("Printing tags for buffer of length %d\n", buflen);
+	printf("Printing tags for buffer of length %d\n", (int) buflen);
 	print_tags_recursive(buf, buf, buflen, 0);
 }
 
