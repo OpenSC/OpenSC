@@ -180,7 +180,7 @@ gpk_init(struct sc_card *card)
 	 * offset_mask is the corresponding mask. */
 	priv->offset_shift = 2;
 	priv->offset_mask = 3;
-	card->cla = 0;
+	card->cla = 0x00;
 
 	/* Set up algorithm info. GPK 16000 will do any RSA
 	 * exponent, earlier ones are restricted to 0x10001 */

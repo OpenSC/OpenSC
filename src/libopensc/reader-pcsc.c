@@ -401,7 +401,6 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 		
 		r = sc_bin_to_hex(slot->atr, slot->atr_len, name, sizeof(name), ':');
 		assert(r == 0);
-		sc_debug(reader->ctx, "Looking for a card_atr %s", name);
 		blocks = scconf_find_blocks(reader->ctx->conf, reader->ctx->conf_blocks[i],
 		                            "card_atr", name);
 		conf_block = blocks[0];
@@ -416,15 +415,14 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 		sc_debug(reader->ctx, "Found card_atr with current atr");
 		forcestr = scconf_get_str(conf_block, "force_protocol", NULL);
 			if (forcestr) {
-			sc_debug(reader->ctx,"Protocol force in action: %s", forcestr);
-			if (!strcmp(forcestr,"t0"))
-				protocol = SCARD_PROTOCOL_T0;
-			else if (!strcmp(forcestr,"t1"))
-				protocol = SCARD_PROTOCOL_T1;
-			else if (!strcmp(forcestr,"raw"))
-				protocol = SCARD_PROTOCOL_RAW;
-			else
-				sc_error(reader->ctx,"Unknown force_protocol: %s (Ignored)", forcestr);
+				if (!strcmp(forcestr, "t0"))
+					protocol = SCARD_PROTOCOL_T0;
+				else if (!strcmp(forcestr, "t1"))
+					protocol = SCARD_PROTOCOL_T1;
+				else if (!strcmp(forcestr, "raw"))
+					protocol = SCARD_PROTOCOL_RAW;
+				else
+					sc_error(reader->ctx, "Unknown force_protocol: %s (Ignored)", forcestr);
 		}
 	}
 
