@@ -146,8 +146,8 @@ int sc_establish_context(struct sc_context **ctx_out)
 	ctx = malloc(sizeof(struct sc_context));
 	if (ctx == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(ctx, sizeof(struct sc_context), 0);
-	ctx->use_cache = 1;
+	memset(ctx, 0, sizeof(struct sc_context));
+	ctx->log_errors = 1;
 	rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL, "localhost", NULL,
 				   &ctx->pcsc_ctx);
 	if (rv != SCARD_S_SUCCESS)
@@ -274,6 +274,19 @@ int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	memcpy(dest->value + dest->len, id, idlen);
 	dest->len += idlen;
+	return 0;
+}
+
+int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
+{
+	char *homedir;
+	const char *cache_dir = ".eid/cache";
+
+	homedir = getenv("HOME");
+	if (homedir == NULL)
+		return SC_ERROR_INTERNAL;
+	if (snprintf(buf, bufsize, "%s/%s", homedir, cache_dir) < 0)
+		return SC_ERROR_BUFFER_TOO_SMALL;
 	return 0;
 }
 

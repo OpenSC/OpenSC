@@ -299,7 +299,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		printf("establish_context() failed: %s\n", sc_strerror(r));
 		return PAM_AUTH_ERR;
 	}
-	ctx->use_std_output = 1;
+	ctx->error_file = stderr;
+	ctx->debug_file = stdout;
 	ctx->debug = 0;
 	for (i = 0; i < ctx->reader_count; i++) {
 		if (sc_detect_card(ctx, i) == 1) {

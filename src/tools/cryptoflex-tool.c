@@ -872,7 +872,9 @@ int create_file(struct sc_file *file)
 	path = file->path;
 	if (path.len < 2)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	ctx->log_errors = 0;
 	r = sc_select_file(card, &path, NULL);
+	ctx->log_errors = 1;
 	if (r == 0)
 		return 0;	/* File already exists */
 	path.len -= 2;
@@ -952,7 +954,9 @@ int create_pin_file(const struct sc_path *inpath, int chv, const char *key_id)
 	r = sc_select_file(card, inpath, NULL);
 	if (r)
 		return -1;
+	ctx->log_errors = 0;
 	r = sc_select_file(card, &file_id, NULL);
+	ctx->log_errors = 1;
 	if (r == 0)
 		return 0;
 	for (;;) {
@@ -1045,6 +1049,25 @@ int create_pin_file(const struct sc_path *inpath, int chv, const char *key_id)
 	return 0;
 }
 
+int add_object(struct sc_pkcs15_card *p15card, 
+	       struct sc_pkcs15_df *df, int file_nr,
+	       unsigned int type, void *data, size_t datalen)
+{
+	struct sc_pkcs15_object *obj;
+
+	obj = malloc(sizeof(*obj));
+	if (obj == NULL)
+		return -1;
+	obj->type = type;
+	obj->data = malloc(datalen);
+	if (obj->data == NULL) {
+		free(obj);
+		return -1;
+	}
+	memcpy(obj->data, data, datalen);
+        return sc_pkcs15_add_object(p15card, df, file_nr, obj);
+}
+
 int create_pkcs15()
 {
 	struct sc_pkcs15_card *p15card;
@@ -1095,14 +1118,14 @@ int create_pkcs15()
 	strcpy(cert.com_attr.label, "Authentication certificate");
 	sc_pkcs15_format_id("41", &cert.id);
 	sc_format_path("3F0050154301", &cert.path);
-	sc_pkcs15_add_object(ctx, &p15card->df[SC_PKCS15_CDF], file_no,
-			     SC_PKCS15_TYPE_CERT_X509, &cert, sizeof(cert)), 
+	add_object(p15card, &p15card->df[SC_PKCS15_CDF], file_no,
+		   SC_PKCS15_TYPE_CERT_X509, &cert, sizeof(cert)),
 
 	strcpy(cert.com_attr.label, "Non-repudiation certificate");
 	sc_pkcs15_format_id("42", &cert.id);
 	sc_format_path("3F0050154302", &cert.path);
-	sc_pkcs15_add_object(ctx, &p15card->df[SC_PKCS15_CDF], file_no,
-			     SC_PKCS15_TYPE_CERT_X509, &cert, sizeof(cert)), 
+	add_object(p15card, &p15card->df[SC_PKCS15_CDF], file_no,
+		   SC_PKCS15_TYPE_CERT_X509, &cert, sizeof(cert)),
 
 	memset(&prkey, 0, sizeof(prkey));
 	prkey.modulus_length = 1024;
@@ -1112,16 +1135,16 @@ int create_pkcs15()
 	sc_pkcs15_format_id("01", &prkey.com_attr.auth_id);
 	sc_format_path("0012", &prkey.path);
 	prkey.key_reference = 0;
-	sc_pkcs15_add_object(ctx, &p15card->df[SC_PKCS15_PRKDF], file_no,
-			     SC_PKCS15_TYPE_PRKEY_RSA, &prkey, sizeof(prkey)), 
+	add_object(p15card, &p15card->df[SC_PKCS15_PRKDF], file_no,
+		   SC_PKCS15_TYPE_PRKEY_RSA, &prkey, sizeof(prkey)),
 
 	strcpy(prkey.com_attr.label, "Non-repudiation key");
 	sc_pkcs15_format_id("42", &prkey.id);
 	sc_pkcs15_format_id("02", &prkey.com_attr.auth_id);
 	sc_format_path("3F004B020012", &prkey.path);
 	prkey.key_reference = 0;
-	sc_pkcs15_add_object(ctx, &p15card->df[SC_PKCS15_PRKDF], file_no,
-			     SC_PKCS15_TYPE_PRKEY_RSA, &prkey, sizeof(prkey)), 
+	add_object(p15card, &p15card->df[SC_PKCS15_PRKDF], file_no,
+		   SC_PKCS15_TYPE_PRKEY_RSA, &prkey, sizeof(prkey)),
 
 	memset(&pin, 0, sizeof(pin));
 	pin.magic = SC_PKCS15_PIN_MAGIC;
@@ -1133,8 +1156,8 @@ int create_pkcs15()
 	pin.stored_length = 8;
 	pin.pad_char = 0x00;
 	pin.type = 1;
-	sc_pkcs15_add_object(ctx, &p15card->df[SC_PKCS15_AODF], file_no,
-			     SC_PKCS15_TYPE_AUTH_PIN, &pin, sizeof(pin)), 
+	add_object(p15card, &p15card->df[SC_PKCS15_AODF], file_no,
+		   SC_PKCS15_TYPE_AUTH_PIN, &pin, sizeof(pin)),
 
 	strcpy(pin.com_attr.label, "Non-repuditiation PIN");
 	sc_pkcs15_format_id("02", &pin.auth_id);
@@ -1144,8 +1167,8 @@ int create_pkcs15()
 	pin.stored_length = 8;
 	pin.pad_char = 0x00;
 	pin.type = 1;
-	sc_pkcs15_add_object(ctx, &p15card->df[SC_PKCS15_AODF], file_no,
-			     SC_PKCS15_TYPE_AUTH_PIN, &pin, sizeof(pin)), 
+	add_object(p15card, &p15card->df[SC_PKCS15_AODF], file_no,
+		   SC_PKCS15_TYPE_AUTH_PIN, &pin, sizeof(pin)),
 
 	r = create_app_df(&p15card->file_app.path, 5000);
 	if (r) {
@@ -1282,7 +1305,8 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	ctx->use_std_output = 1;
+	ctx->error_file = stderr;
+	ctx->debug_file = stdout;
 	ctx->debug = opt_debug;
 	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
 		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);

@@ -52,7 +52,7 @@ const char *option_help[] = {
 
 const char *cmds[] = {
 	"ls", "cd", "debug", "cat", "info", "create", "delete",
-	"verify", "put", "get", "mkdir"
+	"verify", "put", "get", "mkdir", "quit"
 };
 
 const int nr_cmds = sizeof(cmds)/sizeof(cmds[0]);
@@ -681,9 +681,12 @@ int handle_cmd(int cmd, const char *arg, const char *arg2)
 		printf("Debug level set to %d\n", i);
 		ctx->debug = i;
 		if (i) {
-			ctx->use_std_output = 1;
-		} else
-			ctx->use_std_output = 0;
+			ctx->error_file = stderr;
+			ctx->debug_file = stdout;
+		} else {
+			ctx->error_file = NULL;
+			ctx->debug_file = NULL;
+		}
 		return 0;
 	case 3:
                 return do_cat(arg);
@@ -701,6 +704,8 @@ int handle_cmd(int cmd, const char *arg, const char *arg2)
         	return do_get(arg, arg2);
         case 10:
         	return do_mkdir(arg, arg2);
+        case 11:
+        	die(0);
         default:
         	printf("Don't know how to handle command.\n");
 	}

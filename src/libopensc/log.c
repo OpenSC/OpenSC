@@ -66,7 +66,7 @@ int use_color(struct sc_context *ctx, FILE *outf)
 	int do_color = 0;
 	int i;
 
-	if (!ctx->use_std_output)
+	if (!isatty(fileno(outf)))
 		return 0;
 	if (term == NULL) {
 		term = getenv("TERM");
@@ -81,8 +81,6 @@ int use_color(struct sc_context *ctx, FILE *outf)
 		}
 	if (!do_color)
 		return 0;
-	if (!isatty(fileno(outf)))
-		return 0;
 	return do_color;
 }
 
@@ -93,48 +91,49 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 	char buf[1024], *p;
 	int left, r;
 	struct timeval tv;
+	const char *color_pfx = "", *color_sfx = "";
 
 	assert(ctx != NULL);
 	gettimeofday(&tv, NULL);
-	if (ctx->use_std_output) {
+	switch (type) {
+	case SC_LOG_TYPE_ERROR:
+		if (ctx->log_errors == 0)
+			return;
+		outf = ctx->error_file;
+		break;
+	case SC_LOG_TYPE_DEBUG:
+		outf = ctx->debug_file;
+		break;
+	}
+	if (outf == NULL)
+		return;
+	if (use_color(ctx, outf)) {
+		color_sfx = "\33[0m";
 		switch (type) {
 		case SC_LOG_TYPE_ERROR:
-			outf = stderr;
+			color_pfx = "\33[01;31m";
 			break;
-
 		case SC_LOG_TYPE_DEBUG:
-			outf = stdout;
+			color_pfx = "\33[00;32m";
+			break;
 		}
-		if (outf == NULL)
-			return;
 	}
-	r = 0;
 	if (file != NULL) {
 		r = snprintf(buf, sizeof(buf), "%s:%d:%s: ", file, line, func);
 		if (r < 0)
 			return;
-	}
+	} else
+		r = 0;
 	p = buf + r;
 	left = sizeof(buf) - r;
 
-	if (vsnprintf(p, left, format, args) < 0)
+	r = vsnprintf(p, left, format, args);
+	if (r < 0)
 		return;
-	if (ctx->use_std_output) {
-		const char *color_pfx = "", *color_sfx = "";
-		if (use_color(ctx, outf)) {
-			color_sfx = "\33[0m";
-			switch (type) {
-			case SC_LOG_TYPE_ERROR:
-				color_pfx = "\33[01;31m";
-				break;
-			case SC_LOG_TYPE_DEBUG:
-				color_pfx = "\33[00;32m";
-				break;
-			}
-		}
-		fprintf(outf, "%s%s%s", color_pfx, buf, color_sfx);
-		fflush(outf);
-	}
+	p += r;
+	left -= r;
+
+	fprintf(outf, "%s%s%s", color_pfx, buf, color_sfx);
 }
 
 void sc_hex_dump(struct sc_context *ctx, const u8 *in, size_t count,

@@ -373,7 +373,8 @@ struct sc_context {
 
 	int debug;
 
-	int use_std_output, use_cache;
+	FILE *debug_file, *error_file;
+	int log_errors;
 	const struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS+1];
 	const struct sc_card_driver *forced_driver;
 	pthread_mutex_t mutex;
@@ -525,6 +526,7 @@ void sc_format_path(const char *path_in, struct sc_path *path_out);
 int sc_append_path(struct sc_path *dest, const struct sc_path *src);
 int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
+int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize);
 
 /* Possibly only valid on Setec cards */
 int sc_list_files(struct sc_card *card, u8 * buf, size_t buflen);

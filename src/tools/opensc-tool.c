@@ -163,14 +163,14 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 		 * 4 MSB's of the octet mean:			 
 		 *  0 = ALW, 1 = PIN1, 2 = PIN2, 4 = SYS,
 		 * 15 = NEV */
-		hex_dump(stdout, file->sec_attr, file->sec_attr_len);
+		hex_dump(stdout, file->sec_attr, file->sec_attr_len, ":");
 	}
 	if (file->prop_attr_len) {
 		printf("\n");
 		for (r = 0; r < depth; r++)
 			printf("  ");
 		printf("prop: ");
-		hex_dump(stdout, file->prop_attr, file->prop_attr_len);
+		hex_dump(stdout, file->prop_attr, file->prop_attr_len, ":");
 	}
 	printf("\n\n");
 #if 1
@@ -373,10 +373,9 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	ctx->use_std_output = 1;
+	ctx->error_file = stderr;
+	ctx->debug_file = stdout;
 	ctx->debug = opt_debug;
-	if (opt_no_cache)
-		ctx->use_cache = 0;
 	if (do_list_readers) {
 		if ((err = list_readers()))
 			goto end;

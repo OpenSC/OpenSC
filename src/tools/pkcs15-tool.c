@@ -288,84 +288,92 @@ int change_pin(void)
 	return 0;
 }
 
-static int generate_cert_filename(struct sc_pkcs15_card *p15card,
-				  const struct sc_pkcs15_cert_info *info,
-				  char *fname, int len)
+int read_and_cache_file(const struct sc_path *path)
 {
-	char *homedir;
-	char cert_id[SC_PKCS15_MAX_ID_SIZE*2+1];
-	int i, r;
+	struct sc_file tmpfile;
+	u8 buf[16384];
+	int r;
 
-	homedir = getenv("HOME");
-	if (homedir == NULL)
-		return -1;
-	cert_id[0] = 0;
-	for (i = 0; i < info->id.len; i++) {
-		char tmp[3];
-
-		sprintf(tmp, "%02X", info->id.value[i]);
-		strcat(cert_id, tmp);
+	if (!quiet) {
+		printf("Reading file ");
+		hex_dump(stdout, path->value, path->len, "");
+		printf("...\n");
 	}
-	r = snprintf(fname, len, "%s/%s/%s_%s_%s.crt", homedir,
-		     SC_PKCS15_CACHE_DIR, p15card->label,
-		     p15card->serial_number, cert_id);
-	if (r < 0)
+	r = sc_select_file(card, path, &tmpfile);
+	if (r != 0) {
+		fprintf(stderr, "sc_select_file() failed: %s\n", sc_strerror(r));
 		return -1;
+	}
+	if (tmpfile.acl[SC_AC_OP_READ] != SC_AC_NONE) {
+		if (!quiet)
+			printf("Skipping; ACL for read operation is not NONE.\n");
+		return -1;
+	}
+	r = sc_read_binary(card, 0, buf, tmpfile.size, 0);
+	if (r < 0) {
+		fprintf(stderr, "sc_read_binary() failed: %s\n", sc_strerror(r));
+		return -1;
+	}
+	r = sc_pkcs15_cache_file(p15card, path, buf, tmpfile.size);
+	if (r) {
+		fprintf(stderr, "Unable to cache file: %s\n", sc_strerror(r));
+		return -1;
+	}
 	return 0;
 }
 
 int learn_card(void)
 {
 	struct stat stbuf;
-	char fname[512], *home;
+	char dir[120];
 	int r, i;
 	
-	home = getenv("HOME");
-	if (home == NULL) {
-		fprintf(stderr, "No $HOME environment variable set.\n");
+	r = sc_get_cache_dir(ctx, dir, sizeof(dir)); 
+	if (r) {
+		fprintf(stderr, "Unable to find cache directory: %s\n", sc_strerror(r));
 		return 1;
 	}
-	sprintf(fname, "%s/%s", home, SC_PKCS15_CACHE_DIR);
-	r = stat(fname, &stbuf);
+	r = stat(dir, &stbuf);
 	if (r) {
-		printf("No '%s' directory found, creating...\n", fname);
-		r = mkdir(fname, 0700);
+		printf("No '%s' directory found, creating...\n", dir);
+		r = mkdir(dir, 0700);
 		if (r) {
 			perror("Directory creation failed");
 			return 1;
 		}
 	}
-	printf("Using cache directory '%s'.\n", fname);
+	printf("Using cache directory '%s'.\n", dir);
 	r = sc_pkcs15_enum_certificates(p15card);
 	if (r < 0) {
 		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
+	r = sc_pkcs15_enum_private_keys(p15card);
+	if (r < 0) {
+		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+	r = sc_pkcs15_enum_pins(p15card);
+	if (r < 0) {
+		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+	for (i = 0; i < SC_PKCS15_DF_TYPE_COUNT; i++) {
+		int file_nr;
+		struct sc_pkcs15_df *df = &p15card->df[i];
+		
+		for (file_nr = 0; file_nr < df->count; file_nr++) {
+			struct sc_file *file = df->file[file_nr];
+			
+			read_and_cache_file(&file->path);
+		}
+	}
 	printf("Caching %d certificate(s)...\n", r);
-	p15card->use_cache = 0;
 	for (i = 0; i < p15card->cert_count; i++) {
 		struct sc_pkcs15_cert_info *cinfo = &p15card->cert_info[i];
-		struct sc_pkcs15_cert *cert;
-		FILE *crtf;
 		
-		printf("Reading certificate: %s...\n", cinfo->com_attr.label);
-		r = sc_pkcs15_read_certificate(p15card, cinfo, &cert);
-		if (r) {
-			fprintf(stderr, "Certificate read failed: %s\n", sc_strerror(r));
-			return 1;
-		}
-		r = generate_cert_filename(p15card, cinfo, fname, sizeof(fname));
-		if (r)
-			return 1;
-		crtf = fopen(fname, "w");
-		if (crtf == NULL) {
-			perror(fname);
-			return 1;
-		}
-		fwrite(cert->data, cert->data_len, 1, crtf);
-		fclose(crtf);
-
-		sc_pkcs15_free_certificate(cert);
+		printf("[%s]\n", cinfo->com_attr.label);
+		read_and_cache_file(&cinfo->path);
 	}
 
 	return 0;
@@ -441,10 +449,9 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	ctx->use_std_output = 1;
+	ctx->error_file = stderr;
+	ctx->debug_file = stdout;
 	ctx->debug = opt_debug;
-	if (opt_no_cache)
-		ctx->use_cache = 0;
 	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
 		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
 		err = 1;
@@ -477,6 +484,8 @@ int main(int argc, char * const argv[])
 		err = 1;
 		goto end;
 	}
+	if (opt_no_cache)
+		p15card->use_cache = 0;
 	if (!quiet)
 		fprintf(stderr, "Found %s!\n", p15card->label);
 	if (do_learn_card) {

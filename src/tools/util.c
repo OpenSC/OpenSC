@@ -23,12 +23,15 @@ void print_binary(FILE *f, const u8 *buf, int count)
 	(void) fflush(f);
 }
 
-void hex_dump(FILE *f, const u8 *in, int len)
+void hex_dump(FILE *f, const u8 *in, int len, const char *sep)
 {
 	int i;
 	
-	for (i = 0; i < len; i++)
-		fprintf(f, "%02X ", in[i]);
+	for (i = 0; i < len; i++) {
+		if (sep != NULL && i)
+			fprintf(f, "%s", sep);
+		fprintf(f, "%02X", in[i]);
+	}
 }
 
 void hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)

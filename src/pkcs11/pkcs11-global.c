@@ -41,9 +41,11 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	if (rc != 0)
 		return CKR_DEVICE_ERROR;
 #ifdef DEBUG
-        context->use_std_output = 1;
+        context->debug_file = stdout;
+        context->error_file = stderr;
 #else
-        context->use_std_output = 0;
+	context->debug_file = NULL;
+	context->error_file = NULL;
 #endif
 
         pool_initialize(&session_pool);

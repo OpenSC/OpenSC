@@ -42,6 +42,8 @@ struct sc_pkcs15_id {
 	size_t len;
 };
 
+#define SC_PKCS15_CO_FLAG_PRIVATE	0x00000001
+#define SC_PKCS15_CO_FLAG_MODIFIABLE	0x00000002
 #define SC_PKCS15_CO_FLAG_OBJECT_SEEN	0x80000000 /* for PKCS #11 module */
 
 struct sc_pkcs15_common_obj_attr {
@@ -52,6 +54,23 @@ struct sc_pkcs15_common_obj_attr {
 	int user_consent;
 	/* FIXME: add accessControlRules */
 };
+
+#define SC_PKCS15_PIN_FLAG_CASE_SENSITIVE		0x0001
+#define SC_PKCS15_PIN_FLAG_LOCAL			0x0002
+#define SC_PKCS15_PIN_FLAG_CHANGE_DISABLED		0x0004
+#define SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED		0x0008
+#define SC_PKCS15_PIN_FLAG_INITIALIZED			0x0010
+#define SC_PKCS15_PIN_FLAG_NEEDS_PADDING		0x0020
+#define SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN		0x0040
+#define SC_PKCS15_PIN_FLAG_SO_PIN			0x0080
+#define SC_PKCS15_PIN_FLAG_DISABLE_ALLOW		0x0100
+#define SC_PKCS15_PIN_FLAG_INTEGRITY_PROTECTED		0x0200
+#define SC_PKCS15_PIN_FLAG_CONFIDENTIALITY_PROTECTED	0x0400
+#define SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA		0x0800
+
+#define SC_PKCS15_PIN_TYPE_BCD				0
+#define SC_PKCS15_PIN_TYPE_ASCII_NUMERIC		1
+#define SC_PKCS15_PIN_TYPE_UTF8				2
 
 struct sc_pkcs15_pin_info {
 	struct sc_pkcs15_common_obj_attr com_attr;
@@ -93,7 +112,7 @@ struct sc_pkcs15_rsa_pubkey {
 struct sc_pkcs15_cert {
 	int version;
 	unsigned long serial;
-	
+
 	struct sc_pkcs15_rsa_pubkey key;
 	u8 *data;	/* DER encoded raw cert */
 	int data_len;
@@ -125,13 +144,6 @@ struct sc_pkcs15_cert_info {
 #define SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE	0x08
 #define SC_PKCS15_PRKEY_ACCESS_LOCAL		0x10
 
-#define SC_PKCS15_TYPE_PRKEY_RSA		0x100
-#define SC_PKCS15_TYPE_PUBKEY_RSA		0x200
-#define SC_PKCS15_TYPE_CERT_X509		0x400
-#define SC_PKCS15_TYPE_CERT_SPKI		0x402
-#define SC_PKCS15_TYPE_DATA_OBJECT		0x500
-#define SC_PKCS15_TYPE_AUTH_PIN			0x600
-
 struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_common_obj_attr com_attr;
 
@@ -142,6 +154,13 @@ struct sc_pkcs15_prkey_info {
 
 	struct sc_path path;
 };
+
+#define SC_PKCS15_TYPE_PRKEY_RSA		0x100
+#define SC_PKCS15_TYPE_PUBKEY_RSA		0x200
+#define SC_PKCS15_TYPE_CERT_X509		0x400
+#define SC_PKCS15_TYPE_CERT_SPKI		0x402
+#define SC_PKCS15_TYPE_DATA_OBJECT		0x500
+#define SC_PKCS15_TYPE_AUTH_PIN			0x600
 
 struct sc_pkcs15_object {
 	int type;
@@ -199,12 +218,6 @@ struct sc_pkcs15_card {
 #define SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED	0x02
 #define SC_PKCS15_CARD_FLAG_PRN_GENERATION	0x04
 #define SC_PKCS15_CARD_FLAG_EID_COMPLIANT	0x08
-
-struct sc_pkcs15_defaults {
-	const char *ef_dir_dump;
-	int (*defaults_func)(struct sc_pkcs15_card *, int arg);
-	int arg;
-};
 
 /* sc_pkcs15_bind:  Binds a card object to a PKCS #15 card object
  * and initializes a new PKCS#15 card object.  Will return
@@ -282,17 +295,36 @@ int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 			const struct sc_pkcs15_object *obj, u8 **buf,
 			size_t *bufsize);
 
+int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
+		       struct sc_pkcs15_df *df, int file_nr);
+int sc_pkcs15_read_df(struct sc_pkcs15_card *p15card,
+		      struct sc_pkcs15_df *df, int file_nr);
+int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
+			       struct sc_pkcs15_object *obj,
+			       const u8 **buf, size_t *bufsize);
+int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
+			        struct sc_pkcs15_object *obj,
+			        const u8 **buf, size_t *bufsize);
+int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
+				 struct sc_pkcs15_object *obj,
+				 const u8 **buf, size_t *bufsize);
+
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
 			 const struct sc_pkcs15_id *id2);
 void sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
 void sc_pkcs15_format_id(const char *id_in, struct sc_pkcs15_id *id_out);
-
+int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df,
+                         int file_nr, struct sc_pkcs15_object *obj);
+                         
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
-int sc_pkcs15_add_object(struct sc_context *ctx, struct sc_pkcs15_df *df,
-			 int file_nr, int obj_type, const void *data,
-			 size_t data_size);
-extern const struct sc_pkcs15_defaults sc_pkcs15_card_table[];
 
+/* Caching functions */
+int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
+                               const struct sc_path *path,
+                               u8 **buf, size_t *bufsize);
+int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
+			 const struct sc_path *path,
+			 const u8 *buf, size_t bufsize);
 #ifdef  __cplusplus
 }
 #endif

@@ -298,19 +298,12 @@ static int iso7816_select_file(struct sc_card *card,
 		memset(file, 0, sizeof(struct sc_file));  
 		for (i = 0; i < SC_MAX_AC_OPS; i++)
 			file->acl[i] = SC_AC_UNKNOWN;
-		memcpy(&file->path.value, path, pathlen);
-		file->path.len = pathlen;
+		file->path = *in_path;
 	}
-#if 0
-	if (file == NULL || sc_file_valid(file))
-#endif
 	if (file == NULL)
 		apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-#if 0
-	if (file == NULL || sc_file_valid(file))
-#endif
 	if (file == NULL) {
 		if (apdu.sw1 == 0x61)
 			SC_FUNC_RETURN(card->ctx, 2, 0);
