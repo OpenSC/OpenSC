@@ -44,7 +44,13 @@ struct sc_object_id {
 typedef struct sc_path {
 	u8 value[SC_MAX_PATH_SIZE];
 	size_t len;
+
+	/* The next two fields are used in PKCS15, where
+	 * a Path object can reference a portion of a file -
+	 * count octets starting at offset index.
+	 */
 	int index;
+	int count;
 
 	int type;
 } sc_path_t;
