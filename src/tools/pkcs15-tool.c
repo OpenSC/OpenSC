@@ -585,7 +585,8 @@ void print_pin_info(const struct sc_pkcs15_object *obj)
 			printf(", %s", pin_flags[i]);
 		}
 	printf("\n");
-	printf("\tLength    : min_len:%d, max_len:%d, stored_len:d\n", pin->min_length, pin->max_length, pin->stored_length);
+	printf("\tLength    : min_len:%d, max_len:%d, stored_len:%d\n",
+				pin->min_length, pin->max_length, pin->stored_length);
 	printf("\tPad char  : 0x%02X\n", pin->pad_char);
 	printf("\tReference : %d\n", pin->reference);
 	printf("\tType      : %d\n", pin->type);
