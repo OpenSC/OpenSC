@@ -23,8 +23,8 @@ required during card intialization, such as location of
 PIN files, key references etc.
 .PP
 Profiles currently reside in
-.\" XXX FIXME this should really be set to $(pkgdatadir)
-.B /usr/share/opensc .
+.PP
+.B @pkgdata@
 .SH SYNTAX
 This section should contain information about the profile
 syntax. Will add this soonishly.

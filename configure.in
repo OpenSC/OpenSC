@@ -1028,10 +1028,14 @@ OPENSC_CFLAGS=""
 AC_SUBST(OPENSC_LIBS)
 AC_SUBST(OPENSC_CFLAGS)
 
+pkgdata=`eval echo ${datadir}/${PACKAGE}` ; pkgdata=`eval echo ${pkgdata}`
+AC_SUBST(pkgdata)
+
 AC_OUTPUT([
 Makefile
 aclocal/Makefile
 docs/Makefile
+docs/pkcs15-profile.5
 etc/Makefile
 src/Makefile
 src/common/Makefile
