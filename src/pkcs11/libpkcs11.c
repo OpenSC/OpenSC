@@ -24,7 +24,7 @@ struct sc_pkcs11_module {
 	void *_dl_handle;
 #elif defined(__APPLE__)
 	const struct mach_header *_dl_handle;
-	CFBundleRef bundleRef;  
+	CFBundleRef bundleRef;
 #endif
 };
 
@@ -96,7 +96,7 @@ sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
 	char		pathbuf[4096], *ldenv;
 	unsigned int	n = 0;
 
-	if ((ldenv = getenv("LD_LIBRARY_PATH")) 
+	if ((ldenv = getenv("LD_LIBRARY_PATH"))
 	 && (ldenv = strdup(ldenv))) {
 		ldlist[n] = strtok(ldenv, ":");
 		while (ldlist[n] != NULL && ++n < 63)
@@ -142,9 +142,7 @@ sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 		return NULL;
 
 	/* Some platforms might need a leading underscore for the symbol */
-	sym_name[0] = '_';
-	strncpy(&sym_name[1], name, sizeof(sym_name) - 1);
-
+	snprintf(sym_name, sizeof(sym_name), "_%s", name);
 	address = dlsym(mod->_dl_handle, sym_name);
 
 	/* Failed? Try again without the leading underscore */
@@ -209,12 +207,10 @@ sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
 		name = "libopensc-pkcs11.dylib";
 
 	name_len = strlen(name);
-	if (name_len > 7 && strcmp(name +  name_len - 7, ".bundle") != 0) {
-		mod->_dl_handle = NSAddImage(name,
-			NSADDIMAGE_OPTION_WITH_SEARCHING);
-	mod->bundleRef = NULL;
-	}
-	else {
+	if (name_len > 7 && strcmp(name + name_len - 7, ".bundle") != 0) {
+		mod->_dl_handle = NSAddImage(name, NSADDIMAGE_OPTION_WITH_SEARCHING);
+		mod->bundleRef = NULL;
+	} else {
 		CFStringRef text = CFStringCreateWithFormat(
 			NULL, NULL, CFSTR("%s"), name);
 		CFURLRef urlRef = CFURLCreateWithFileSystemPath(
@@ -236,27 +232,24 @@ sys_dlclose(struct sc_pkcs11_module *mod)
 		CFRelease(mod->bundleRef);
 	}
 
-	return CKR_OK;
+	return 0;
 }
 
 void *
 sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 {
 	NSSymbol symbol = NULL;
-	
+
 	if (mod->_dl_handle != NULL) {
 		char u_name[4096];
 
-		if (strlen(name) > 4094)
-			return NULL;
-		sprintf(u_name, "_%s", name);
+		snprintf(u_name, sizeof(u_name), "_%s", name);
 		symbol = NSLookupSymbolInImage(mod->_dl_handle, u_name,
 			NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_NOW);
-		if (symbol==NULL)
+		if (symbol == NULL)
 			return NULL;
 		return NSAddressOfSymbol(symbol);
-	}
-	else {
+	} else {
 		CFStringRef text = CFStringCreateWithFormat(
 			NULL, NULL, CFSTR("%s"), name);
 		symbol = CFBundleGetFunctionPointerForName(
