@@ -768,7 +768,7 @@ static int flex_get_default_key(struct sc_card *card,
 	prv = (struct flex_private_data *) card->drv_data;
 
 	/* These seem to be the default AAKs used by Schlumberger */
-	switch (prv->card_type) {
+	switch (prv->card_type & TYPE_MASK) {
 	case TYPE_CRYPTOFLEX:
 		key = "2c:15:e5:26:e9:3e:8a:19";
 		break;
