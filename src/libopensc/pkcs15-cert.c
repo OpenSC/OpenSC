@@ -321,3 +321,22 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 	free(cert->data);
 	free(cert);
 }
+
+int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
+			      const struct sc_pkcs15_id *id,
+			      struct sc_pkcs15_cert_info **cert_out)
+{
+	int r, i;
+	
+	r = sc_pkcs15_enum_certificates(card);
+	if (r < 0)
+		return r;
+	for (i = 0; i < card->cert_count; i++) {
+		struct sc_pkcs15_cert_info *cert = &card->cert_info[i];
+		if (sc_pkcs15_compare_id(&cert->id, id) == 1) {
+			*cert_out = cert;
+			return 0;
+		}
+	}
+	return SC_ERROR_OBJECT_NOT_FOUND;
+}

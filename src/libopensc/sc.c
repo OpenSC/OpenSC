@@ -587,8 +587,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 				   &ctx->pcsc_ctx);
 	if (rv != SCARD_S_SUCCESS) {
 		if (sc_debug) {
-			fprintf(stderr,
-				"ERROR: Cannot connect to Resource Manager\n");
+			fprintf(stderr, "ERROR: Cannot connect to Resource Manager\n");
 		}
 		return SC_ERROR_CONNECTING_TO_RES_MGR;
 	}

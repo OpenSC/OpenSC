@@ -123,6 +123,7 @@ int write_ssh_key(struct sc_pkcs15_cert_info *cinfo, RSA *rsa)
 {
 	u8 *buf = malloc(10240), *p = buf, *num;
 	int r, len, skip, left = 10240;
+	FILE *outf;
 	
 	if (buf == NULL)
 		return 1;
@@ -151,7 +152,17 @@ int write_ssh_key(struct sc_pkcs15_cert_info *cinfo, RSA *rsa)
 		fprintf(stderr, "Base64 encoding failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	printf("ssh-rsa %s libsc-cert-%02X\n", p, cinfo->id.value[0]);
+	if (opt_outfile == NULL)
+		outf = stdin;
+	else {
+		outf = fopen(opt_outfile, "w");
+		if (outf == NULL) {
+			fprintf(stderr, "Unable to open '%s' for writing.\n",
+				opt_outfile);
+			return 2;
+		}
+	}
+	fprintf(outf, "ssh-rsa %s libsc-cert-%02X\n", p, cinfo->id.value[0]);
 	free(p),
 	free(buf);
 	return 0;

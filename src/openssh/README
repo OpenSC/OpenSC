@@ -1,0 +1,27 @@
+
+Steps for your OpenSSH pleasure:
+
+- Download, compile and install openssl-engine (http://www.openssl.org)
+- Download OpenSSH 3.0.1p1 (http://www.openssh.com)
+- Apply 'openssh-3.0.1p1-patch.diff' from this directory
+- Run autoconf and autoheader
+- Run configure with the argument '--with-libsc'
+- Change the hardcoded PIN to the one set on your card... =)
+  The line to modify can be found in file scard-libsc.c.
+  (This will be fixed in the future)
+- Compile and install
+
+- Extract a public key from your SmartCard in OpenSSH format
+    (e.g. with 'sc-ssh -c <certificate ID> -k -o <file>')
+- Transfer the public key to desired server
+- Run OpenSSH with 'ssh -I <reader num>[:<certificate ID>] <host>'
+    (e.g. '-I 0:45' uses first available reader and certificate with
+     ID 45h, '-I 0' uses the first found certificate')
+
+With luck you should be authenticated and ready to go. If it won't work,
+try enabling debug information with the '-d' switch.
+
+NOTE: ssh-agent should also work.
+
+--
+Juha Yrjölä <juha.yrjola@iki.fi>

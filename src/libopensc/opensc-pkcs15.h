@@ -161,7 +161,15 @@ int sc_pkcs15_destroy(struct sc_pkcs15_card *card);
 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_prkey_info *prkey,
-		       const u8 * in, int inlen, u8 *out, int outlen);
+		       const u8 *in, int inlen, u8 *out, int outlen);
+
+#define SC_PKCS15_HASH_NONE	0
+#define SC_PKCS15_HASH_SHA1	1
+
+int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
+				const struct sc_pkcs15_prkey_info *prkey,
+				int hash, const u8 *in, int inlen, u8 *out,
+				int outlen);
 
 void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
 
@@ -171,6 +179,9 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_cert_info *info,
 			       struct sc_pkcs15_cert **cert);
 void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert);
+int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
+			      const struct sc_pkcs15_id *id,
+			      struct sc_pkcs15_cert_info **out);
 
 void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey);
 int sc_pkcs15_enum_private_keys(struct sc_pkcs15_card *card);

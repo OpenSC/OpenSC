@@ -32,7 +32,6 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	int r;
 	struct sc_security_env senv;
 	
-	
 	senv.algorithm_ref = 0x02;
 	senv.key_file_id = prkey->file_id;
 	senv.signature = 0;
@@ -49,8 +48,42 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	if (r)
 		return r;
 	r = sc_decipher(p15card->card, in, inlen, out, outlen);
+
+	return r;
+}
+
+int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
+				const struct sc_pkcs15_prkey_info *prkey,
+				int hash, const u8 *in, int inlen, u8 *out,
+				int outlen)
+{
+	int r;
+	struct sc_security_env senv;
+	
+	senv.algorithm_ref = 0x02;
+	switch (hash) {
+	case SC_PKCS15_HASH_SHA1:
+		senv.algorithm_ref |= 0x10;
+		break;
+	case SC_PKCS15_HASH_NONE:
+	default:
+		break;
+	}
+	senv.key_file_id = prkey->file_id;
+	senv.signature = 1;
+	senv.key_ref = prkey->key_reference;
+	
+	r = sc_select_file(p15card->card, &p15card->file_app,
+			   &p15card->file_app.path, SC_SELECT_FILE_BY_PATH);
 	if (r)
 		return r;
-	
-	return 0;
+	r = sc_restore_security_env(p15card->card, 0); /* empty SE */
+	if (r)
+		return r;
+	r = sc_set_security_env(p15card->card, &senv);
+	if (r)
+		return r;
+	r = sc_compute_signature(p15card->card, in, inlen, out, outlen);
+
+	return r;
 }
