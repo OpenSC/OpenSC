@@ -172,10 +172,11 @@ extern "C" {
 /* If the card is willing to produce a cryptogram with the following 
  * hash values, set these flags accordingly. */
 #define SC_ALGORITHM_RSA_HASH_NONE	0x00000010
-#define SC_ALGORITHM_RSA_HASHES		0x000000E0
+#define SC_ALGORITHM_RSA_HASHES		0x000001E0
 #define SC_ALGORITHM_RSA_HASH_SHA1	0x00000020
 #define SC_ALGORITHM_RSA_HASH_MD5	0x00000040
 #define SC_ALGORITHM_RSA_HASH_MD5_SHA1	0x00000080
+#define SC_ALGORITHM_RSA_HASH_RIPEMD160	0x00000100
 
 struct sc_security_env {
 	unsigned long flags;
