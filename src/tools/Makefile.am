@@ -12,6 +12,7 @@ PROGRAMS_SSL = cryptoflex-tool pkcs15-init
 endif
 
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
+	       pkcs11-tool \
 	       $(PROGRAMS_SSL)
 
 opensc_tool_SOURCES = opensc-tool.c util.c
@@ -20,6 +21,8 @@ opensc_explorer_SOURCES = opensc-explorer.c util.c
 opensc_explorer_LDADD = @GETOPTSRC@ @LIBREADLINE@
 pkcs15_tool_SOURCES = pkcs15-tool.c util.c
 pkcs15_tool_LDADD = @GETOPTSRC@
+pkcs11_tool_SOURCES = pkcs11-tool.c util.c
+pkcs11_tool_LDADD = @GETOPTSRC@ ../pkcs11/libpkcs11.la
 pkcs15_crypt_SOURCES = pkcs15-crypt.c util.c
 pkcs15_crypt_LDADD = @GETOPTSRC@
 cryptoflex_tool_SOURCES = cryptoflex-tool.c util.c
