@@ -20,30 +20,66 @@
 
 #include "internal.h"
 #include "log.h"
+#include "cardctl.h"
 #include <stdlib.h>
 #include <string.h>
 
-static const char *flex_atrs[] = {
-	"3B:95:94:40:FF:63:01:01:02:01",       /* Cryptoflex 16k */
-	"3B:85:40:20:68:01:01:05:01",          /* Cryptoflex 8k */
-	"3B:19:14:55:90:01:02:02:00:05:04:B0",
-	"3B:02:14:50",                         /* Multiflex 3K */
-	"3B:19:14:55:90:01:02:01:00:05:04:B0", /* Multiflex 4K */
-	"3B:32:15:00:06:80",                   /* Multiflex 8K */
-	"3B:32:15:00:06:95",                   /* Multiflex 8K + full DES option */
-	"3B:19:14:59:01:01:0F:01:00:05:08:B0", /* Multiflex 8K */
-	"3B:19:14:55:90:01:01:01:00:05:08:B0", /* Multiflex 8K */
-	"3B:E2:00:00:40:20:49:06",             /* Cryptoflex */
-	"3B:E2:00:00:40:20:49:05",             /* Cryptoflex + full DES option */
-	"3B:E2:00:00:40:20:49:07",             /* Cryptoflex + Key Generation */
-	"3B:85:40:20:68:01:01:03:05",          /* Cryptoflex + Key Generation */
-	"3B:16:94:81:10:06:01:81:3F",          /* Cyberflex Access Crypto */
-	"3B:16:94:81:10:06:01:81:2F",          /* Cyberflex Access Aug. Crypto */
-	"3B:95:18:40:FF:62:04:01:01:05",	/* Cryptoflex 32k e-gate v4*/
-	NULL
+#define TYPE_UNKNOWN		0x0000
+#define TYPE_CRYPTOFLEX		0x0100
+#define TYPE_MULTIFLEX		0x0200
+#define TYPE_CYBERFLEX		0x0300
+#define FLAG_KEYGEN		0x0001
+#define FLAG_FULL_DES		0x0002	/* whatever that means */
+
+#define TYPE_MASK		0xFF00
+
+/* We may want to change sc_atr_table to hold the string representation
+ * of the ATR instead */
+static struct {
+	const char *		atr;
+	int			id;
+} flex_atrs[] = {
+      /* Cryptoflex */
+      {	"3B:85:40:20:68:01:01:05:01",          /* 8k */
+	TYPE_CRYPTOFLEX },
+      {	"3B:95:94:40:FF:63:01:01:02:01",       /* 16k */
+	TYPE_CRYPTOFLEX },
+      {	"3B:19:14:55:90:01:02:02:00:05:04:B0", /* 32K e-gate v4 */
+	TYPE_CRYPTOFLEX },
+      {	"3B:E2:00:00:40:20:49:06",
+	TYPE_CRYPTOFLEX },
+      {	"3B:E2:00:00:40:20:49:05",             /* + full DES option */
+	TYPE_CRYPTOFLEX|FLAG_FULL_DES },
+      {	"3B:E2:00:00:40:20:49:07",             /* + Key Generation */
+	TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+      {	"3B:85:40:20:68:01:01:03:05",          /* + Key Generation */
+	TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+
+      /* Multiflex */
+      {	"3B:02:14:50",                         /* 3K */
+	TYPE_MULTIFLEX },
+      {	"3B:19:14:55:90:01:02:01:00:05:04:B0", /* 4K */
+	TYPE_MULTIFLEX },
+      {	"3B:32:15:00:06:80",                   /* 8K */
+	TYPE_MULTIFLEX },
+      {	"3B:32:15:00:06:95",                   /* 8K + full DES option */
+	TYPE_MULTIFLEX },
+      {	"3B:19:14:59:01:01:0F:01:00:05:08:B0", /* 8K */
+	TYPE_MULTIFLEX },
+      {	"3B:19:14:55:90:01:01:01:00:05:08:B0", /* 8K */
+	TYPE_MULTIFLEX },
+
+      /* Cyberflex Access */
+      {	"3B:16:94:81:10:06:01:81:3F",          /* Crypto */
+	TYPE_CYBERFLEX },
+      {	"3B:16:94:81:10:06:01:81:2F",          /* Aug. Crypto */
+	TYPE_CYBERFLEX },
+
+      { NULL, TYPE_UNKNOWN }
 };
 
 struct flex_private_data {
+	int card_type;
 	int rsa_key_ref;
 };
 
@@ -60,35 +96,40 @@ static int flex_finish(struct sc_card *card)
 	return 0;
 }
 
-static int flex_match_card(struct sc_card *card)
+static int flex_identify_card(struct sc_card *card)
 {
-	int i, match = -1;
+	int i;
 
-	for (i = 0; flex_atrs[i] != NULL; i++) {
+	for (i = 0; flex_atrs[i].atr != NULL; i++) {
 		u8 defatr[SC_MAX_ATR_SIZE];
 		size_t len = sizeof(defatr);
-		const char *atrp = flex_atrs[i];
+		const char *atrp = flex_atrs[i].atr;
 
 		if (sc_hex_to_bin(atrp, defatr, &len))
 			continue;
 		if (len != card->atr_len)
 			continue;
-		if (memcmp(card->atr, defatr, len) != 0)
-			continue;
-		match = i;
-		break;
+		if (memcmp(card->atr, defatr, len) == 0)
+			break;
 	}
-	if (match == -1)
-		return 0;
 
-	return 1;
+	return flex_atrs[i].id;
+}
+
+static int flex_match_card(struct sc_card *card)
+{
+	return flex_identify_card(card) != TYPE_UNKNOWN;
 }
 
 static int flex_init(struct sc_card *card)
 {
-	card->drv_data = malloc(sizeof(struct flex_private_data));;
-	if (card->drv_data == NULL)
+	struct flex_private_data *data;
+
+	if (!(data = malloc(sizeof(struct flex_private_data))))
 		return SC_ERROR_OUT_OF_MEMORY;
+	data->card_type = flex_identify_card(card);
+
+	card->drv_data = data;
 	card->cla = 0xC0;
 	/* FIXME: Card type detection */
 	if (1) {
@@ -96,6 +137,8 @@ static int flex_init(struct sc_card *card)
 		
 		flags = SC_ALGORITHM_RSA_RAW;
 		flags |= SC_ALGORITHM_RSA_HASH_NONE;
+		if (data->card_type & FLAG_KEYGEN)
+			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 
 		_sc_card_add_rsa_alg(card, 512, flags, 0);
 		_sc_card_add_rsa_alg(card, 768, flags, 0);
@@ -747,6 +790,45 @@ static int flex_verify(struct sc_card *card, unsigned int type, int ref,
         return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }              
 
+/* Return the default AAK for this type of card */
+static int flex_get_default_key(struct sc_card *card,
+				struct sc_cardctl_default_key *data)
+{
+	struct flex_private_data *prv;
+	const char *key;
+
+	if (data->method != SC_AC_AUT || data->key_ref != 1)
+		return SC_ERROR_NO_DEFAULT_KEY;
+
+	prv = (struct flex_private_data *) card->drv_data;
+
+	/* These seem to be the default AAKs used by Schlumberger */
+	switch (prv->card_type) {
+	case TYPE_CRYPTOFLEX:
+		key = "2c:15:e5:26:e9:3e:8a:19";
+		break;
+	case TYPE_CYBERFLEX:
+		key = "ad:9f:61:fe:fa:20:ce:63";
+		break;
+	default:
+		return SC_ERROR_NO_DEFAULT_KEY;
+	}
+
+	return sc_hex_to_bin(key, data->key_data, &data->len);
+}
+
+static int flex_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
+{
+	switch (cmd) {
+	case SC_CARDCTL_GET_DEFAULT_KEY:
+		return flex_get_default_key(card,
+				(struct sc_cardctl_default_key *) ptr);
+	}
+
+	error(card->ctx, "card_ctl command %u not supported\n", cmd);
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
 static const struct sc_card_driver * sc_get_driver(void)
 {
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -760,6 +842,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 	flex_ops.delete_file = flex_delete_file;
 	flex_ops.create_file = flex_create_file;
 	flex_ops.verify = flex_verify;
+	flex_ops.card_ctl = flex_card_ctl;
 	flex_ops.set_security_env = flex_set_security_env;
 	flex_ops.restore_security_env = flex_restore_security_env;
 	flex_ops.compute_signature = flex_compute_signature;
