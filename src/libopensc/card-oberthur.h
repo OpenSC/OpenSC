@@ -26,7 +26,7 @@
 struct NTLV {
 	char *name;
 	unsigned int tag;
-	int len;
+	size_t len;
 	unsigned char *value;
 };
 typedef struct NTLV NTLV_t;
