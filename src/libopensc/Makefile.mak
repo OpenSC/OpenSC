@@ -5,8 +5,8 @@ TARGET                  = opensc.dll
 
 HEADERS			= \
 	opensc.h pkcs15.h emv.h \
-	cardctl.h asn1.h log.h ui.h \
-	errors.h types.h
+	cardctl.h cards.h asn1.h \
+	log.h ui.h errors.h types.h
 
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
 
