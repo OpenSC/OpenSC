@@ -1404,6 +1404,9 @@ do_read_private_key(const char *filename, const char *format,
 	char	*passphrase = NULL;
 	int	r;
 
+	if (opt_passphrase)
+		passphrase = opt_passphrase;
+
 	while (1) {
 		if (!format || !strcasecmp(format, "pem")) {
 			r = do_read_pem_private_key(filename, passphrase, pk);
@@ -1420,8 +1423,7 @@ do_read_private_key(const char *filename, const char *format,
 
 		if (r >= 0 || passphrase)
 			break;
-		if ((passphrase = opt_passphrase) != 0)
-			continue;
+		/* second try ... */
 		passphrase = getpass("Please enter passphrase "
 				     "to unlock secret key: ");
 		if (!passphrase)
