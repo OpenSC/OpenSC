@@ -518,9 +518,9 @@ if test "x$pcsc_path" != "xno" -a "x$PCSC_MSG" != "xyes"; then
 		LIBS="$saved_LIBS"
 	fi
 fi
-AM_CONDITIONAL(HAVE_PCSCLITE, test "x$PCSC_MSG" = "xyes")
+AM_CONDITIONAL(HAVE_PCSC, test "x$PCSC_MSG" = "xyes")
 if test "x$PCSC_MSG" = "xyes"; then
-	AC_DEFINE(HAVE_PCSCLITE, 1, [Have PC/SC Lite])
+	AC_DEFINE(HAVE_PCSC, 1, [Have PC/SC implementation])
 else
 	LIBPCSC=""
 	CFLAGS_PCSC=""
