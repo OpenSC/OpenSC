@@ -888,7 +888,7 @@ static int iso7816_logout(struct sc_card *card)
 	in_path.count = 2;
 	in_path.type = SC_PATH_TYPE_PATH;
 
-	return iso7816_select_file(card, &in_path, NULL);
+	return sc_select_file(card, &in_path, NULL);
 }
 
 static struct sc_card_operations iso_ops = {
