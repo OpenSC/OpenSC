@@ -598,7 +598,7 @@ int sc_update_binary(struct sc_card *card, unsigned int idx,
 			r = sc_update_binary(card, idx, p, n, flags);
 			if (r < 0) {
 				sc_unlock(card);
-				SC_TEST_RET(card->ctx, r, "sc_read_binary() failed");
+				SC_TEST_RET(card->ctx, r, "sc_update_binary() failed");
 			}
 			p += r;
 			idx += r;
