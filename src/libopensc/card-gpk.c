@@ -20,11 +20,10 @@
 
 #include "sc-internal.h"
 #include "sc-log.h"
+#ifdef HAVE_OPENSSL
 #include <stdlib.h>
 #include <openssl/des.h>
 #include <openssl/rand.h>
-
-#ifdef HAVE_OPENSSL
 
 /* GPK4000 variants */
 enum {
@@ -47,13 +46,13 @@ struct gpk_private_data {
 	int		variant;
 
 	/* access control bits of file most recently selected */
-	u_int16_t	ac[3];
+	unsigned short int	ac[3];
 
 	/* is non-zero if we should use secure messaging */
-	u_int8_t	key_set   : 1;
-	u_int8_t	key_local : 1,
+	u8	key_set   : 1;
+	u8	key_local : 1,
 			key_sfi   : 5;
-	u_int8_t	key[16];
+	u8	key[16];
 };
 #define OPSDATA(card)	((struct gpk_private_data *) ((card)->ops_data))
 
@@ -149,9 +148,9 @@ gpk_finish(struct sc_card *card)
  * status words the GPK is capable of returning
  */
 static int
-gpk_sw_to_errorcode(struct sc_card *card, u_int8_t sw1, u_int8_t sw2)
+gpk_sw_to_errorcode(struct sc_card *card, u8 sw1, u8 sw2)
 {
-	u_int16_t	sw = (sw1 << 8) | sw2;
+	unsigned short int	sw = (sw1 << 8) | sw2;
 
 	if ((sw & 0xFFF0) == 0x63C0) {
 		error(card->ctx, "wrong PIN, %u tries left", sw&0xf);
@@ -179,14 +178,14 @@ gpk_sw_to_errorcode(struct sc_card *card, u_int8_t sw1, u_int8_t sw2)
  * Select a DF/EF
  */
 static int
-match_path(struct sc_card *card, u_int16_t **pathptr, size_t *pathlen,
+match_path(struct sc_card *card, unsigned short int **pathptr, size_t *pathlen,
 		int need_info)
 {
-	u_int16_t	*curptr, *ptr;
+	unsigned short int	*curptr, *ptr;
 	size_t		curlen, len;
 	size_t		i;
 
-	curptr = (u_int16_t *) card->cache.current_path.value;
+	curptr = (unsigned short int *) card->cache.current_path.value;
 	curlen = card->cache.current_path.len;
 	ptr    = *pathptr;
 	len    = *pathlen;
@@ -218,7 +217,7 @@ match_path(struct sc_card *card, u_int16_t **pathptr, size_t *pathlen,
 }
 
 static inline unsigned int
-ac_to_acl(u_int16_t ac)
+ac_to_acl(unsigned short int ac)
 {
 	unsigned int	npins, pin;
 	unsigned int	res = 0;
@@ -249,7 +248,7 @@ ac_to_acl(u_int16_t ac)
  * some fuzz involved.
  */
 static inline void
-acl_to_ac(unsigned int acl, u_int8_t *ac)
+acl_to_ac(unsigned int acl, u8 *ac)
 {
 	ac[0] = ac[1] = 0;
 
@@ -283,11 +282,11 @@ acl_to_ac(unsigned int acl, u_int8_t *ac)
 
 static int
 gpk_parse_fileinfo(struct sc_card *card,
-		const u_int8_t *buf, size_t buflen,
+		const u8 *buf, size_t buflen,
 		struct sc_file *file)
 {
 	struct gpk_private_data *priv = OPSDATA(card);
-	const u_int8_t	*sp, *end, *next;
+	const u8	*sp, *end, *next;
 	int		i;
 
 	memset(file, 0, sizeof(*file));
@@ -356,13 +355,13 @@ gpk_parse_fileinfo(struct sc_card *card,
 }
 
 static int
-gpk_select(struct sc_card *card, u_int8_t kind,
-		const u_int8_t *buf, size_t buflen,
+gpk_select(struct sc_card *card, u8 kind,
+		const u8 *buf, size_t buflen,
 		struct sc_file *file)
 {
 	struct gpk_private_data *priv = OPSDATA(card);
 	struct sc_apdu	apdu;
-	u_int8_t	resbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8	resbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int		r;
 
 	/* If we're about to select a DF, invalidate secure messaging keys */
@@ -397,11 +396,11 @@ gpk_select(struct sc_card *card, u_int8_t kind,
 }
 
 static int
-gpk_select_id(struct sc_card *card, u_int8_t kind, u_int16_t fid,
+gpk_select_id(struct sc_card *card, u8 kind, unsigned short int fid,
 		struct sc_file *file)
 {
 	struct sc_path	*cp = &card->cache.current_path;
-	u_int8_t	fbuf[2];
+	u8	fbuf[2];
 	int		r;
 
 	fbuf[0] = fid >> 8;
@@ -410,7 +409,7 @@ gpk_select_id(struct sc_card *card, u_int8_t kind, u_int16_t fid,
 
 	/* Fix up the path cache */
 	if (r == 0) {
-		u_int16_t	*path = (u_int16_t *) cp->value;
+		unsigned short int	*path = (unsigned short int *) cp->value;
 
 		if (fid == GPK_FID_MF) {
 			path[0] = fid;
@@ -431,11 +430,11 @@ static int
 gpk_select_file(struct sc_card *card, const struct sc_path *path,
 		struct sc_file *file)
 {
-	u_int16_t	pathtmp[SC_MAX_PATH_SIZE/2];
-	u_int16_t	*pathptr;
+	unsigned short int	pathtmp[SC_MAX_PATH_SIZE/2];
+	unsigned short int	*pathptr;
 	size_t		pathlen, n;
 	int		locked = 0, r = 0, use_relative = 0;
-	u_int8_t	leaf_type;
+	u8	leaf_type;
 
 	SC_FUNC_CALLED(card->ctx, 3);
 
@@ -540,11 +539,11 @@ done:
  */
 static int
 gpk_compute_crycks(struct sc_card *card, struct sc_apdu *apdu,
-			u_int8_t *crycks1)
+			u8 *crycks1)
 {
 	struct gpk_private_data *priv = OPSDATA(card);
 	des_key_schedule k1, k2;
-	u_int8_t	in[8], out[8], block[64];
+	u8	in[8], out[8], block[64];
 	unsigned int	len = 0, i, j;
 
 	/* Set the key schedule */
@@ -575,7 +574,7 @@ gpk_compute_crycks(struct sc_card *card, struct sc_apdu *apdu,
 		memcpy(in, out, 8);
 	}
 
-	memcpy((u_int8_t *) (apdu->data + apdu->datalen), out + 5, 3);
+	memcpy((u8 *) (apdu->data + apdu->datalen), out + 5, 3);
 	apdu->datalen += 3;
 	apdu->lc += 3;
 	apdu->le = 3;
@@ -600,7 +599,7 @@ gpk_create_file(struct sc_card *card, struct sc_file *file)
 {
 	struct gpk_private_data *priv = OPSDATA(card);
 	struct sc_apdu	apdu;
-	u_int8_t	data[28+3], crycks[3], resp[3];
+	u8	data[28+3], crycks[3], resp[3];
 	size_t		datalen, namelen;
 	int		r;
 
@@ -682,8 +681,8 @@ gpk_create_file(struct sc_card *card, struct sc_file *file)
  * Set the secure messaging key following a Select FileKey
  */
 static int
-gpk_set_filekey(const u_int8_t *key, const u_int8_t *challenge,
-		const u_int8_t *r_rn, u_int8_t *kats)
+gpk_set_filekey(const u8 *key, const u8 *challenge,
+		const u8 *r_rn, u8 *kats)
 {
 	des_key_schedule	k1, k2;
 	des_cblock		out;
@@ -723,7 +722,7 @@ gpk_select_key(struct sc_card *card, int ref, const u8 *buf, size_t buflen)
 {
 	struct gpk_private_data *priv = OPSDATA(card);
 	struct sc_apdu	apdu;
-	u_int8_t	random[8], resp[258];
+	u8	random[8], resp[258];
 	unsigned int	n, sfi, key_sfi = 0;
 	int		r;
 
@@ -834,4 +833,4 @@ sc_get_gpk_driver()
 	return sc_get_driver();
 }
 
-#endif /* ifdef OPENSSL */
+#endif /* HAVE_OPENSSL */
