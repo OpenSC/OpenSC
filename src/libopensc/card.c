@@ -669,6 +669,20 @@ int sc_select_file(struct sc_card *card,
 	int r;
 
 	assert(card != NULL && in_path != NULL);
+	if (in_path->len > SC_MAX_PATH_SIZE)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
+	if (in_path->type == SC_PATH_TYPE_PATH) {
+		/* Perform a sanity check */
+		int i;
+		if ((in_path->len & 1) != 0)
+			SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
+		for (i = 0; i < in_path->len/2; i++) {
+			u8 p1 = in_path->value[2*i],
+			   p2 = in_path->value[2*i+1];
+			if ((p1 == 0x3F && p2 == 0x00) && i > 0)
+				SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
+		}
+	}
 	if (card->ctx->debug >= 2) {
 		char line[128], *linep = line;
 
@@ -680,8 +694,6 @@ int sc_select_file(struct sc_card *card,
 		strcpy(linep, "\n");
 		debug(card->ctx, line);
 	}
-	if (in_path->len > SC_MAX_PATH_SIZE)
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
         if (card->ops->select_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->select_file(card, in_path, file);

@@ -266,7 +266,7 @@ int main(int argc, char * const argv[])
 		goto end;
 	}
 
-#if 0
+#if 1
 	r = sc_lock(card);
 	if (r) {
 		fprintf(stderr, "Unable to lock card: %s\n", sc_strerror(r));
@@ -340,7 +340,7 @@ end:
 	if (p15card)
 		sc_pkcs15_unbind(p15card);
 	if (card) {
-#if 0
+#if 1
 		sc_unlock(card);
 #endif
 		sc_disconnect_card(card);

@@ -152,7 +152,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 
 	debug(context, "Enumerating private keys\n");
 	rv = sc_pkcs15_enum_private_keys(card);
-	if (rv < 0)
+ 	if (rv < 0)
                 return sc_to_cryptoki_error(rv, reader);
 
 	for (i = 0; i < card->pin_count; i++) {
@@ -484,25 +484,24 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 			CK_ULONG_PTR pulDataLen)
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
-	int rv, hash;
+	int rv, flags = 0;
 
 	debug(context, "Initiating signing operation.\n");
 
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
-		hash = SC_PKCS15_HASH_NONE;
 		break;
 	case CKM_SHA1_RSA_PKCS:
-		hash = SC_PKCS15_HASH_SHA1;
+		flags = SC_PKCS15_HASH_SHA1;
 		break;
 	default:
                 return CKR_MECHANISM_INVALID;
 	}
 
-        debug(context, "Selected hash %d. Now computing signature.\n", hash);
+        debug(context, "Selected flags %X. Now computing signature.\n", flags);
 	rv = sc_pkcs15_compute_signature((struct sc_pkcs15_card*) ses->slot->card->fw_data,
 					 prkey->prkey_info,
-					 hash,
+					 flags,
 					 pData,
 					 ulDataLen,
 					 pSignature,

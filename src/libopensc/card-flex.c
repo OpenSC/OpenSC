@@ -168,85 +168,101 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 	return 0;
 }
 
-static int flex_select_file(struct sc_card *card, const struct sc_path *path,
-			     struct sc_file *file)
+static int check_path(struct sc_card *card, const u8 **pathptr, size_t *pathlen,
+		      int need_info)
+{
+	const u8 *curptr = card->cache.current_path.value;
+	const u8 *ptr = *pathptr;
+	size_t curlen = card->cache.current_path.len;
+	size_t len = *pathlen;
+
+	if (curlen < 2)
+		return 0;
+	if (len < 2)
+		return 0;
+	if (memcmp(ptr, "\x3F\x00", 2) != 0) {
+		/* Skip the MF id */
+		curptr += 2;
+		curlen -= 2;
+	}
+	if (len == curlen && memcmp(ptr, curptr, len) == 0) {
+		if (need_info)
+			return 0;
+		*pathptr = ptr + len;
+		*pathlen = 0;
+		return 1;
+	}
+	if (curlen < len && memcmp(ptr, curptr, curlen) == 0) {
+		*pathptr = ptr + curlen;
+		*pathlen = len - curlen;
+		return 1;
+	}
+	/* FIXME: Build additional logic */
+	return 0;
+}
+
+void cache_path(struct sc_card *card, const struct sc_path *path)
+{
+	struct sc_path *curpath = &card->cache.current_path;
+	
+	switch (path->type) {
+	case SC_PATH_TYPE_FILE_ID:
+		if (path->value[0] == 0x3F && path->value[1] == 0x00)
+			sc_format_path("3F00", curpath);
+		else {
+			if (curpath->len + 2 > SC_MAX_PATH_SIZE) {
+				curpath->len = 0;
+				return;
+			}
+			memcpy(curpath->value + curpath->len, path->value, 2);
+			curpath->len += 2;
+		}
+		break;
+	case SC_PATH_TYPE_PATH:
+		curpath->len = 0;
+		if (path->value[0] != 0x3F || path->value[1] != 0)
+			sc_format_path("3F00", curpath);
+		if (curpath->len + path->len > SC_MAX_PATH_SIZE) {
+			curpath->len = 0;
+			return;
+		}
+		memcpy(curpath->value + curpath->len, path->value, path->len);
+		curpath->len += path->len;
+		break;
+	case SC_PATH_TYPE_DF_NAME:
+		/* All bets are off */
+		curpath->len = 0;
+		break;
+	}
+}
+
+static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
+			  u8 p1, struct sc_file *file)
 {
 	int r, i;
 	struct sc_apdu apdu;
         u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	const u8 *pathptr = path->value;
-	size_t pathlen = path->len;
-	int locked = 0;
 
-	SC_FUNC_CALLED(card->ctx, 3);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, p1, 0);
 	apdu.resp = rbuf;
         apdu.resplen = sizeof(rbuf);
-        apdu.p1 = apdu.p2 = 0;
+	apdu.datalen = buflen;
+        apdu.data = buf;
+	apdu.lc = buflen;
 
-	switch (path->type) {
-	case SC_PATH_TYPE_PATH:
-		if ((pathlen & 1) != 0) /* not divisible by 2 */
-			return SC_ERROR_INVALID_ARGUMENTS;
-		if (pathlen != 2 || memcmp(pathptr, "\x3F\x00", 2) != 0) {
-			struct sc_path tmppath;
-
-			locked = 1;
-			r = sc_lock(card);
-			SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-			if (memcmp(pathptr, "\x3F\x00", 2) != 0) {
-				sc_format_path("I3F00", &tmppath);
-				r = flex_select_file(card, &tmppath, NULL);
-				if (r)
-					sc_unlock(card);
-				SC_TEST_RET(card->ctx, r, "Unable to select Master File (MF)");
-			}
-			while (pathlen > 2) {
-				memcpy(tmppath.value, pathptr, 2);
-				tmppath.len = 2;
-				r = flex_select_file(card, &tmppath, NULL);
-				if (r)
-					sc_unlock(card);
-				SC_TEST_RET(card->ctx, r, "Unable to select DF");
-				pathptr += 2;
-				pathlen -= 2;
-			}
-		}
-                break;
-	case SC_PATH_TYPE_DF_NAME:
-		apdu.p1 = 0x04;
-		break;
-	case SC_PATH_TYPE_FILE_ID:
-		if ((pathlen & 1) != 0)
-			return SC_ERROR_INVALID_ARGUMENTS;
-                break;
-	}
-	apdu.datalen = pathlen;
-        apdu.data = pathptr;
-        apdu.lc = pathlen;
-
-	/* No need to get file information, if file is NULL or already
-         * valid. */
-#if 0
-	if (file == NULL || sc_file_valid(file))
-#endif
+	/* No need to get file information, if file is NULL. */
 	if (file == NULL)
                 apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
-	if (locked)
-		sc_unlock(card);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
-#if 0
-	if (file == NULL || sc_file_valid(file))
-#endif
+
 	if (file == NULL)
                 return 0;
 
 	if (apdu.resplen < 14)
 		return SC_ERROR_UNKNOWN_REPLY;
-
 	if (apdu.resp[0] == 0x6F) {
 		error(card->ctx, "unsupported: card returned FCI\n");
 		return SC_ERROR_UNKNOWN_REPLY; /* FIXME */
@@ -257,6 +273,61 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 		file->acl[i] = SC_AC_UNKNOWN;
 
 	return parse_flex_sf_reply(card->ctx, apdu.resp, apdu.resplen, file);
+
+}
+
+static int flex_select_file(struct sc_card *card, const struct sc_path *path,
+			     struct sc_file *file)
+{
+	int r;
+	const u8 *pathptr = path->value;
+	size_t pathlen = path->len;
+	int locked = 0, magic_done;
+	u8 p1 = 0;
+
+	SC_FUNC_CALLED(card->ctx, 3);
+	switch (path->type) {
+	case SC_PATH_TYPE_PATH:
+		if ((pathlen & 1) != 0) /* not divisible by 2 */
+			return SC_ERROR_INVALID_ARGUMENTS;
+		magic_done = check_path(card, &pathptr, &pathlen, file != NULL);
+		if (pathlen == 0)
+			return 0;
+		if (pathlen != 2 || memcmp(pathptr, "\x3F\x00", 2) != 0) {
+			locked = 1;
+			r = sc_lock(card);
+			SC_TEST_RET(card->ctx, r, "sc_lock() failed");
+			if (!magic_done && memcmp(pathptr, "\x3F\x00", 2) != 0) {
+				r = select_file_id(card, "\x3F\x00", 2, 0, NULL);
+				if (r)
+					sc_unlock(card);
+				SC_TEST_RET(card->ctx, r, "Unable to select Master File (MF)");
+			}
+			while (pathlen > 2) {
+				r = select_file_id(card, pathptr, 2, 0, NULL);
+				if (r)
+					sc_unlock(card);
+				SC_TEST_RET(card->ctx, r, "Unable to select DF");
+				pathptr += 2;
+				pathlen -= 2;
+			}
+		}
+                break;
+	case SC_PATH_TYPE_DF_NAME:
+		p1 = 0x04;
+		break;
+	case SC_PATH_TYPE_FILE_ID:
+		if (pathlen != 2)
+			return SC_ERROR_INVALID_ARGUMENTS;
+                break;
+	}
+	r = select_file_id(card, pathptr, pathlen, p1, file);
+	if (locked)
+		sc_unlock(card);
+	if (r)
+		return r;
+	cache_path(card, path);
+	return 0;
 }
 
 static int flex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
@@ -448,7 +519,10 @@ static int flex_create_file(struct sc_card *card, struct sc_file *file)
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+	card->cache.current_path.len = 0;
+	return 0;
 }
 
 static int flex_set_security_env(struct sc_card *card,

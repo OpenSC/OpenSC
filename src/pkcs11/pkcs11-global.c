@@ -37,7 +37,6 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 		error(context, "C_Initialize(): Cryptoki already initialized\n");
                 return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
-
 	rc = sc_establish_context(&context);
 	if (rc != 0)
 		return CKR_DEVICE_ERROR;
