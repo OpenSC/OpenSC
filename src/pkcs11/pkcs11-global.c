@@ -95,8 +95,10 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pInfo == NULL_PTR)
-		return CKR_ARGUMENTS_BAD;
+	if (pInfo == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	debug(context, "Cryptoki info query\n");
 
@@ -112,7 +114,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 	pInfo->libraryVersion.major = 0;
 	pInfo->libraryVersion.minor = 2;
 
-	sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
         return CKR_OK;
 }	
 
@@ -138,8 +140,10 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pulCount == NULL_PTR)
-		return CKR_ARGUMENTS_BAD;
+	if (pulCount == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	debug(context, "Getting slot listing\n");
 	card_detect_all();
@@ -185,8 +189,10 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pInfo == NULL_PTR)
-		return CKR_ARGUMENTS_BAD;
+	if (pInfo == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	debug(context, "Getting info about slot %d\n", slotID);
 
@@ -199,7 +205,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	if (rv == CKR_OK)
 		memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
 
-	sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -212,8 +218,10 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pInfo == NULL_PTR)
-		return CKR_ARGUMENTS_BAD;
+	if (pInfo == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	debug(context, "Getting info about token in slot %d\n", slotID);
 
@@ -221,7 +229,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	if (rv == CKR_OK)
 		memcpy(pInfo, &slot->token_info, sizeof(CK_TOKEN_INFO));
 
-	sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -255,14 +263,15 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pInfo == NULL_PTR)
-		return CKR_ARGUMENTS_BAD;
-
+	if (pInfo == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 	rv = slot_get_token(slotID, &slot);
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_get_mechanism_info(slot->card, type, pInfo);
 
-	sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -320,6 +329,11 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+
+	if (pReserved != NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	mask = SC_EVENT_CARD_INSERTED|SC_EVENT_CARD_REMOVED;
 

@@ -44,6 +44,11 @@ CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
 		goto out;
 	}
 
+	if (flags & ~(CKF_SERIAL_SESSION | CKF_RW_SESSION) != 0) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
+
         rv = slot_get_token(slotID, &slot);
 	if (rv != CKR_OK)
 		goto out;
@@ -124,15 +129,20 @@ CK_RV sc_pkcs11_close_all_sessions(CK_SLOT_ID slotID)
 
 CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) /* the token's slot */
 {
+	struct sc_pkcs11_slot *slot;
 	int rv;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
 
+        rv = slot_get_token(slotID, &slot);
+	if (rv != CKR_OK)
+		goto out;
+
 	rv = sc_pkcs11_close_all_sessions(slotID);
 
-	sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
