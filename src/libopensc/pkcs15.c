@@ -908,6 +908,9 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	else
 		r = sc_pkcs15_read_file(p15card, &df->path,
 					&buf, &bufsize, &df->file);
+	if (r < 0)
+		return r;
+
 	p = buf;
 	do {
 		const u8 *oldp;
