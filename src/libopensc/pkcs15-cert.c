@@ -367,6 +367,7 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 	assert(cert != NULL);
 
 	free(cert->key.data);
+	free(cert->key.modulus);
 	free(cert->data);
 	free(cert);
 }

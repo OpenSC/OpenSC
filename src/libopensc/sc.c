@@ -514,6 +514,8 @@ int sc_disconnect_card(struct sc_card *card)
 	assert(card != NULL);
 	SCardDisconnect(card->pcsc_card, SCARD_LEAVE_CARD);
 	pthread_mutex_destroy(&card->mutex);
+	free(card);
+	
 	return 0;
 }
 

@@ -1,5 +1,6 @@
 ## Makefile.am -- Process this file with automake to produce Makefile.in
 
+LD = ccmalloc gcc
 
 lib_LTLIBRARIES		= libopensc.la
 libopensc_la_SOURCES	= sc-asn1.c sc-base64.c sc-defaults.c \

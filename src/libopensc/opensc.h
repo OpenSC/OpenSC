@@ -106,6 +106,7 @@ extern "C" {
 #define SC_ASN1_MAX_OBJECT_ID_OCTETS  16
 
 typedef unsigned char u8;
+typedef unsigned int uint32;
 
 struct sc_object_id {
 	int value[SC_ASN1_MAX_OBJECT_ID_OCTETS];
@@ -131,6 +132,59 @@ struct sc_file {
 	unsigned int magic;
 };
 
+struct sc_security_env {
+	int algorithm_ref;
+	struct sc_path key_file_id;
+	/* operation=1 ==> digital signing, signature=0 ==> decipher */
+	int operation;
+	int key_ref;
+};
+
+struct sc_card;
+
+struct sc_card_operations {
+	int (*init)(struct sc_card *card);
+	int (*finish)(struct sc_card *card);
+
+	int (*read_binary)(struct sc_card *card, uint32 idx,
+			   u8 * buf, size_t count);
+	int (*write_binary)(struct sc_card *card, uint32 idx,
+			    const u8 * buf, size_t count);
+	int (*update_binary)(struct sc_card *card, uint32 idx,
+			     const u8 * buf, size_t count);
+	int (*erase_binary)(struct sc_card *card, uint32 idx,
+			    size_t count);
+	int (*read_binary_large)(struct sc_card *card, uint32 idx,
+				 u8 * buf, size_t count);
+	int (*write_binary_large)(struct sc_card *card, uint32 idx,
+				  const u8 * buf, size_t count);
+	int (*update_binary_large)(struct sc_card *card, uint32 idx,
+				   const u8 * buf, size_t count);
+	/* possibly TODO: record handling */
+	int (*select_file)(struct sc_card *card, struct sc_file *file,
+			   const struct sc_path *path, int selection_type);
+	int (*get_response)(struct sc_card *card, u8 * buf, size_t count);
+	int (*get_challenge)(struct sc_card *card, u8 * buf, size_t count);
+
+	/* ISO 7816-8 */
+	int (*verify)(struct sc_card *card, int ref_qualifier,
+		      const u8 *data, size_t data_len, int *tries_left);
+	int (*restore_security_env)(struct sc_card *card, int se_num);
+	int (*set_security_env)(struct sc_card *card,
+			        const struct sc_security_env *env);
+	int (*decipher)(struct sc_card *card, const u8 * crgram,
+		        size_t crgram_len, u8 * out, size_t outlen);
+	int (*compute_signature)(struct sc_card *card, const u8 * data,
+				 size_t data_len, u8 * out, size_t outlen);
+	int (*change_reference_data)(struct sc_card *card, int ref_qualifier,
+				     const u8 *old, size_t oldlen,
+				     const u8 *newref, size_t newlen,
+				     int *tries_left);
+	int (*reset_retry_counter)(struct sc_card *card, int ref_qualifier,
+				   const u8 *puk, size_t puklen,
+				   const u8 *newref, size_t newlen);
+};
+
 struct sc_card {
 	int cla;
 	struct sc_context *ctx;
@@ -141,6 +195,7 @@ struct sc_card {
 	int atr_len;
 	
 	pthread_mutex_t mutex;
+	struct sc_card_operations *ops;
 };
 
 struct sc_context {
@@ -166,13 +221,6 @@ struct sc_apdu {
 	int sw1, sw2;
 };
 
-struct sc_security_env {
-	int algorithm_ref;
-	struct sc_path key_file_id;
-	/* signature=1 ==> digital signing, signature=0 ==> authentication */
-	int signature;
-	int key_ref;
-};
 
 struct sc_defaults {
 	const char *atr;

@@ -630,9 +630,9 @@ static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 	if (ctx->debug > 2)
 		debug(ctx, "called, depth %d%s\n", depth, choice ? ", choice" : "");
 	if (left < 2)
-		SC_FUNC_RETURN(ctx, SC_ERROR_ASN1_END_OF_CONTENTS);
+		return SC_ERROR_ASN1_END_OF_CONTENTS;
 	if (p[0] == 0 && p[1] == 0)
-		SC_FUNC_RETURN(ctx, SC_ERROR_ASN1_END_OF_CONTENTS);
+		return SC_ERROR_ASN1_END_OF_CONTENTS;
 	for (idx = 0; asn1[idx].name != NULL; idx++) {
 		entry = &asn1[idx];
 		r = 0;

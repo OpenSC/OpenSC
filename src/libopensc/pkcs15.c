@@ -95,10 +95,12 @@ void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, int buflen)
 		sprintf(byte, "%02X", serial[i]);
 		strcat(card->serial_number, byte);
 	}
-	if (asn1_tokeninfo[2].flags & SC_ASN1_PRESENT)
-		card->manufacturer_id = strdup(mnfid);
-	else
-		card->manufacturer_id = strdup("(unknown)");
+	if (card->manufacturer_id == NULL) {
+		if (asn1_tokeninfo[2].flags & SC_ASN1_PRESENT)
+			card->manufacturer_id = strdup(mnfid);
+		else
+			card->manufacturer_id = strdup("(unknown)");
+	}
 	return;
 err:
 	if (card->serial_number == NULL)
@@ -325,6 +327,8 @@ error:
 int sc_pkcs15_destroy(struct sc_pkcs15_card *p15card)
 {
 	free(p15card->label);
+	free(p15card->serial_number);
+	free(p15card->manufacturer_id);
 	free(p15card);
 	return 0;
 }

@@ -35,7 +35,7 @@ int sc_set_security_env(struct sc_card *card,
 	assert(card != NULL && env != NULL);
 	SC_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
-	if (env->signature) {
+	if (env->operation == 1) {
 		apdu.p1 = 0x81;
 		apdu.p2 = 0xB6;
 	} else {

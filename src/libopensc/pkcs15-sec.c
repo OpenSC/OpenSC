@@ -37,10 +37,13 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	
 	senv.algorithm_ref = 0x02;
 	senv.key_file_id = prkey->file_id;
-	senv.signature = 0;
+	senv.operation = 0;
 	senv.key_ref = prkey->key_reference;
 	
 	SC_FUNC_CALLED(ctx);
+	r = sc_select_file(p15card->card, &p15card->file_app,
+			   &p15card->file_app.path, SC_SELECT_FILE_BY_PATH);
+	SC_TEST_RET(ctx, r, "sc_select_file() failed");
 	r = sc_select_file(p15card->card, &p15card->file_app,
 			   &p15card->file_app.path, SC_SELECT_FILE_BY_PATH);
 	SC_TEST_RET(ctx, r, "sc_select_file() failed");
@@ -72,7 +75,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		break;
 	}
 	senv.key_file_id = prkey->file_id;
-	senv.signature = 1;
+	senv.operation = 1;
 	senv.key_ref = prkey->key_reference;
 	
 	SC_FUNC_CALLED(ctx);
