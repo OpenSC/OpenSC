@@ -336,7 +336,7 @@ int main(int argc, char *const argv[])
 	const char *opt_driver = NULL;
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:qdc:w", options,
+		c = getopt_long(argc, argv, "r:vc:w", options,
 				&long_optind);
 		if (c == -1)
 			break;

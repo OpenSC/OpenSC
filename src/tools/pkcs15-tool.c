@@ -856,7 +856,7 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:cuko:qda:LR:Cw", options, &long_optind);
+		c = getopt_long(argc, argv, "r:cuko:va:LR:Cw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')

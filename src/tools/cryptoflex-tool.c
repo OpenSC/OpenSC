@@ -1072,7 +1072,7 @@ int main(int argc, char * const argv[])
 	int do_create_pin_file = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "P:vslgc:Rk:r:p:u:e:m:dqa:", options, &long_optind);
+		c = getopt_long(argc, argv, "P:Vslgc:Rk:r:p:u:e:m:va:", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')

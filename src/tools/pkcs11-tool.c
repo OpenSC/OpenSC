@@ -203,7 +203,7 @@ main(int argc, char * const argv[])
 	CK_RV rv;
 
 	while (1) {
-               c = getopt_long(argc, argv, "ILMOa:d:e:hi:klm:o:p:scqty:w:z:",
+               c = getopt_long(argc, argv, "ILMOa:d:e:hi:klm:o:p:scvty:w:z:",
 					options, &long_optind);
 		if (c == -1)
 			break;

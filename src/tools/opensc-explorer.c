@@ -1344,7 +1344,7 @@ int main(int argc, char * const argv[])
 	printf("OpenSC Explorer version %s\n", sc_get_version());
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:c:dw", options, &long_optind);
+		c = getopt_long(argc, argv, "r:c:vw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')

@@ -459,7 +459,7 @@ int main(int argc, char * const argv[])
         struct sc_pkcs15_object *key;
 		
 	while (1) {
-		c = getopt_long(argc, argv, "sck:r:i:o:qp:dw", options, &long_optind);
+		c = getopt_long(argc, argv, "sck:r:i:o:p:vw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
