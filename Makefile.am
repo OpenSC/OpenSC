@@ -2,7 +2,7 @@
 
 SUBDIRS = . aclocal src docs
 
-EXTRA_DIST = CodingStyle README.Cryptoflex bootstrap
+EXTRA_DIST = CodingStyle bootstrap
 
 # require automake 1.5
 AUTOMAKE_OPTIONS = 1.5
