@@ -130,10 +130,10 @@ cryptoflex_init_card(sc_profile_t *profile, sc_card_t *card)
 	sc_file_t	*file;
 	u8		buf[32], serial[128];
 	size_t		len;
-	int		r, i;
+	int		r;
 
 	sc_format_path("3F000002", &path);
-	if (sc_select_file(card, &path, &file) < 0) {
+	if ((r = sc_select_file(card, &path, &file)) < 0) {
 		if (r == SC_ERROR_FILE_NOT_FOUND)
 			return 0;
 		return r;
