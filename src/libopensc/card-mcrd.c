@@ -119,7 +119,7 @@ static struct df_info_s *get_df_info (struct sc_card *card)
                         return dfi;
         }
         /* Not found, create it. */
-        dfi = calloc (1, sizeof *dfi);
+        dfi = (struct df_info_s *) calloc (1, sizeof *dfi);
         if (!dfi) {
 		debug(ctx, "out of core while allocating df_info\n");
                 return NULL;
@@ -179,7 +179,7 @@ static int mcrd_init(struct sc_card *card)
         unsigned long flags;
         struct mcrd_priv_data *priv;
 
-	priv = calloc (1, sizeof *priv);
+	priv = (struct mcrd_priv_data *) calloc (1, sizeof *priv);
 	if (!priv)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->drv_data = priv;
@@ -261,7 +261,7 @@ static int load_special_files (struct sc_card *card)
                       ||(apdu.sw1 == 0x62 && apdu.sw2 == 0x82)))
                         SC_FUNC_RETURN(ctx, 2,
                                        sc_check_sw(card, apdu.sw1, apdu.sw2));
-                rule = malloc (sizeof*rule + apdu.resplen);
+                rule = (struct rule_record_s *) malloc (sizeof*rule + apdu.resplen);
                 if (!rule)
                         SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
                 rule->recno = recno;
@@ -298,7 +298,7 @@ static int load_special_files (struct sc_card *card)
                       ||(apdu.sw1 == 0x62 && apdu.sw2 == 0x82)))
                         SC_FUNC_RETURN(ctx, 2,
                                        sc_check_sw(card, apdu.sw1, apdu.sw2));
-                keyd = malloc (sizeof *keyd + apdu.resplen);
+                keyd = (struct keyd_record_s *) malloc (sizeof *keyd + apdu.resplen);
                 if (!keyd)
                         SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
                 keyd->recno = recno;

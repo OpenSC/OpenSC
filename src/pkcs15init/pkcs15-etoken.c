@@ -571,7 +571,7 @@ etoken_extract_pubkey(struct sc_card *card, int nr, u8 tag,
 	 || buf[2] != count + 1 || buf[3] != 0)
 		return SC_ERROR_INTERNAL;
 	bn->len = count;
-	bn->data = malloc(count);
+	bn->data = (u8 *) malloc(count);
 	memcpy(bn->data, buf + 4, count);
 	return 0;
 }

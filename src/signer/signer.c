@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include "npapi.h"
+#include "npinclude/npapi.h"
 #include "signer.h"
 #include "opensc-support.h"
 

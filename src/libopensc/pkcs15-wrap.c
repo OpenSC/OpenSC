@@ -72,7 +72,7 @@ sc_pkcs15_derive_key(struct sc_context *ctx,
 {
 	struct sc_pbkdf2_params *info;
 	unsigned int	key_len;
-	EVP_CIPHER	*cipher;
+	const EVP_CIPHER	*cipher;
 	u8		*iv = NULL, key[64];
 	int		r;
 

@@ -43,7 +43,7 @@ err:
 	return r;
 }
 
-static int sc_private_decrypt(int flen, u_char *from, u_char *to, RSA *rsa,
+static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char *to, RSA *rsa,
 			      int padding)
 {
 	int r;
@@ -99,7 +99,7 @@ err:
 }
 
 static int
-sc_private_encrypt(int flen, u_char *from, u_char *to, RSA *rsa, int padding)
+sc_private_encrypt(int flen, const unsigned char *from, unsigned char *to, RSA *rsa, int padding)
 {
 #if 0
 	error("unsupported function sc_private_encrypt() called");
@@ -108,8 +108,8 @@ sc_private_encrypt(int flen, u_char *from, u_char *to, RSA *rsa, int padding)
 }
 
 static int
-sc_sign(int type, u_char *m, unsigned int m_len,
-	unsigned char *sigret, unsigned int *siglen, RSA *rsa)
+sc_sign(int type, const unsigned char *m, unsigned int m_len,
+	unsigned char *sigret, unsigned int *siglen, const RSA *rsa)
 {
 	int r;
 	struct sc_priv_data *priv;
@@ -202,7 +202,7 @@ static RSA_METHOD opensc_rsa =
 
 RSA_METHOD * sc_get_method(void)
 {
-	RSA_METHOD *def;
+	const RSA_METHOD *def;
 
 	def = RSA_get_default_method();
         orig_finish             = def->finish;

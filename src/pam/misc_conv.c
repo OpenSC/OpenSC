@@ -7,6 +7,9 @@
  * Slightly modified for pam_opensc-test by Antti Tapaninen <aet@cc.hut.fi>
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,6 +24,7 @@
 #include <security/pam_appl.h>
 #include "pam_support.h"
 
+#undef D
 #define D(x)
 
 #define INPUTSIZE PAM_MAX_MSG_SIZE	/* maximum length of input+1 */
