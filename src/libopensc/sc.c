@@ -195,9 +195,9 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 	set_defaults(ctx);
 	ctx->app_name = app_name ? strdup(app_name) : strdup(default_app);
 	ctx->conf = scconf_init(OPENSC_CONF_PATH);
-	if (ctx->conf != NULL) {
+	if (ctx->conf) {
 		r = scconf_parse(ctx->conf);
-		if (scconf_parse(ctx->conf) < 1) {
+		if (r < 1) {
 			scconf_deinit(ctx->conf);
 			ctx->conf = NULL;
 		} else {
