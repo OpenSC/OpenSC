@@ -18,18 +18,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-/*
- * There is a range of generic card_ctls, and card-specific
- * ranges. I've used a 3-letter abbreviation of the card in
- * the prefix, but that's just a fad :)
- *
- * For now, I've reserved these:
- * 	0x0000xxxx	generic
- * 	0x4C4658xx	Cryptoflex
- * 	0x47504Bxx	GPK
- *      0x544353xx      TCOS
- */
-
 #ifndef _OPENSC_CARDCTL_H
 #define _OPENSC_CARDCTL_H
 
@@ -99,6 +87,9 @@ enum {
 	SC_CARDCTL_STARCOS_WRITE_KEY,
 	SC_CARDCTL_STARCOS_GENERATE_KEY,
 
+	/*
+	 * JCOP specific calls
+	 */
 	SC_CARDCTL_JCOP_BASE = _CTL_PREFIX('J', 'C', 'P'),
 	SC_CARDCTL_JCOP_LOCK,
 	SC_CARDCTL_JCOP_GENERATE_KEY,
