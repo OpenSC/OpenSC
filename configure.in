@@ -540,11 +540,11 @@ int main(void)
 			if test -z "$ssldir" ; then
 				# we don't know where the library actually
 				# is; let linker take care of finding it
-				LIBCRYPTOA="-lcrypto -ldl"
+				LIBCRYPTOA="-lcrypto $LIBDL"
 			elif test -d "$ssldir/lib" ; then
-				LIBCRYPTOA="$ssldir/lib/libcrypto.a -ldl"
+				LIBCRYPTOA="$ssldir/lib/libcrypto.a $LIBDL"
 			else
-				LIBCRYPTOA="$ssldir/libcrypto.a -ldl"
+				LIBCRYPTOA="$ssldir/libcrypto.a $LIBDL"
 			fi
 			LIBS="$saved_LIBS $LIBCRYPTOA"
 			AC_TRY_RUN(
