@@ -971,7 +971,7 @@ static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 		if (r < 0)
 			return r;
 		data->apdu = &apdu;
-	} else if (data->cmd == SC_PIN_CMD_CHANGE) {
+	} else if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) {
 		if (data->pin_type != SC_AC_CHV)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		old_cla = card->cla;
