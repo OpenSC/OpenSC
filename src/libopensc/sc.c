@@ -27,7 +27,6 @@
 #include <ctype.h>
 
 const char *sc_version = LIBSC_VERSION;
-
 int sc_debug = 0;
 
 static int convert_sw_to_errorcode(u8 * sw)
@@ -229,14 +228,15 @@ static void sc_process_fci(struct sc_file *file,
 			   const u8 *buf, int buflen)
 {
 	int taglen, len = buflen;
-	const u8 *tag, *p = buf;
+	const u8 *tag = NULL, *p = buf;
+
+	tag = sc_asn1_find_tag(p, len, 0x83, &taglen);
 	if (tag != NULL && taglen == 2) {
 		file->id = (tag[0] << 8) | tag[1];
 		if (sc_debug)
 			printf("File identifier: 0x%02X%02X\n", tag[0],
 			       tag[1]);
 	}
-
 	tag = sc_asn1_find_tag(p, len, 0x81, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
@@ -244,7 +244,6 @@ static void sc_process_fci(struct sc_file *file,
 			printf("Bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
-	tag = sc_asn1_find_tag(p, len, 0x83, &taglen);
 	tag = sc_asn1_find_tag(p, len, 0x82, &taglen);
 	if (tag != NULL) {
 		if (taglen > 0) {
@@ -527,8 +526,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 	LONG rv;
 	DWORD reader_buf_size;
 	char *reader_buf, *p;
-	LPCSTR mszGroups;
-	int reader_count;
+	LPCSTR mszGroups = NULL;
 
 	assert(ctx_out != NULL);
 	ctx = malloc(sizeof(struct sc_context));
@@ -557,7 +555,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 		ctx->readers[ctx->reader_count] = strdup(p);
 		ctx->reader_count++;
 		while (*p++ != 0);
-		if (reader_count == SC_MAX_READERS)
+		if (ctx->reader_count == SC_MAX_READERS)
 			break;
 	} while (p < (reader_buf + reader_buf_size - 1));
 	free(reader_buf);

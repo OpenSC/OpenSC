@@ -213,8 +213,7 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 	if (extract_path(tag, taglen, &card->file_dodf.path))
 		return -1;
 	return 0;
-};
-
+}
 
 int sc_pkcs15_init(struct sc_card *card,
 		   struct sc_pkcs15_card **p15card_out)

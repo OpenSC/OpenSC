@@ -125,13 +125,13 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_cert_info *info,
 			       struct sc_pkcs15_cert **cert_out)
 {
-	int r, len;
+	int r, len = 0;
 	struct sc_file file;
-	char *data;
+	char *data = NULL;
 	struct sc_pkcs15_cert *cert;
 	char fname[50];
 	u8 buf[2048];
-	FILE *crtf;
+	FILE *crtf = NULL;
 	int cert_found = 0;
 	
 
