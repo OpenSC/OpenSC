@@ -9,7 +9,7 @@ SUBDIRS = . npinclude
 
 EXTRA_DIST = testprog.c
 
-INCLUDES = @CPPFLAGS@ @CFLAGS_ASSUAN@
+INCLUDES = @CPPFLAGS@ @CFLAGS_ASSUAN@ -I$(top_srcdir)/src/signer/npinclude
 
 if HAVE_SSL
 if HAVE_ASSUAN
@@ -19,7 +19,7 @@ endif
 
 opensc_signer_la_LDFLAGS = -module -avoid-version
 opensc_signer_la_LIBADD = @LIBOPENSC@ @LIBCRYPTO@ @LIBASSUAN@
-opensc_signer_la_CFLAGS = $(AM_CFLAGS) -Inpinclude -DXP_UNIX
+opensc_signer_la_CFLAGS = $(AM_CFLAGS) -DXP_UNIX
 opensc_signer_la_SOURCES = \
 	opensc-crypto.c opensc-support.c signer.c stubs.c dialog.c
 noinst_HEADERS = \

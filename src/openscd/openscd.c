@@ -21,7 +21,7 @@ struct openscd_context *dctx = NULL;
 
 int opt_pipe = 0;
 
-void cleanup()
+void cleanup(void)
 {
 	if (dctx == NULL)
 		return;
@@ -100,7 +100,7 @@ void setup_socket(void)
 	dctx->socket_fd = fd;
 }
 
-void do_fork()
+void do_fork(void)
 {
 	int pid;
 	
@@ -126,7 +126,7 @@ void do_fork()
 	}
 }
 
-void init_dctx()
+void init_dctx(void)
 {
 	int r;
 	
@@ -138,8 +138,6 @@ void init_dctx()
 
 int main(int argc, char *argv[])
 {
-	int r;
-	
 	dctx = malloc(sizeof(struct openscd_context));
 	assert(dctx != NULL);
 	memset(dctx, 0, sizeof(struct openscd_context));

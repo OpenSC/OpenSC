@@ -61,12 +61,12 @@ static void card_inserted(struct openscd_context *dctx,
 
 	r = sc_connect_card(reader, slot_id, &card);
 	if (r) {
-		error(dctx->ctx, "Unable to connect to card: %s\n", sc_strerror(r));
+		sc_error(dctx->ctx, "Unable to connect to card: %s\n", sc_strerror(r));
 	} else {
 		dctx->cards[n].card = card;
 		r = sc_pkcs15_bind(card, &p15card);
 		if (r) {
-			error(dctx->ctx, "Error with PKCS #15 card: %s\n", sc_strerror(r));
+			sc_error(dctx->ctx, "Error with PKCS #15 card: %s\n", sc_strerror(r));
 		} else
 			dctx->cards[n].p15card = p15card;
 	}
@@ -348,12 +348,12 @@ void command_handler(struct openscd_context *dctx)
 		if (r == -1)
 			break;
 		if (r) {
-			error(dctx->ctx, "Assuan accept problem: %s\n", assuan_strerror(r));
+			sc_error(dctx->ctx, "Assuan accept problem: %s\n", assuan_strerror(r));
 			break;
 		}
 		r = assuan_process(assuan_ctx);
 		if (r) {
-			error(dctx->ctx, "Assuan processing failed: %s\n", assuan_strerror(r));
+			sc_error(dctx->ctx, "Assuan processing failed: %s\n", assuan_strerror(r));
 			continue;
 		}
 	}
