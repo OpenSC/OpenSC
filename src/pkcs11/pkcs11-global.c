@@ -83,7 +83,8 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 
 	sc_release_context(context);
 	context = NULL;
-out:	sc_pkcs11_unlock();
+
+out:	/* Release and destroy the mutex */
 	sc_pkcs11_free_lock();
 
         return rv;
@@ -355,7 +356,10 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 
 	sc_pkcs11_unlock();
 	r = sc_wait_for_event(readers, slots, k, mask, &found, &events, -1);
-	sc_pkcs11_lock();
+
+	/* There may have been a C_Finalize while we slept */
+	if ((rv = sc_pkcs11_lock()) != CKR_OK)
+		return rv;
 
 	if (r != SC_SUCCESS) {
 		error(context, "sc_wait_for_event() returned %d\n",  r);
@@ -413,19 +417,6 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 	return rv;
 }
 
-void
-sc_pkcs11_free_lock()
-{
-	if (!_lock)
-		return;
-	if (_locking)
-		_locking->DestroyMutex(_lock);
-	else
-		sc_mutex_free((sc_mutex_t *) _lock);
-	_locking = NULL;
-	_lock = NULL;
-}
-
 CK_RV
 sc_pkcs11_lock()
 {
@@ -444,17 +435,51 @@ sc_pkcs11_lock()
 	return CKR_OK;
 }
 
+static void
+__sc_pkcs11_unlock(void *lock)
+{
+	if (!lock)
+		return;
+	if (_locking) {
+		while (_locking->UnlockMutex(lock) != CKR_OK)
+			;
+	} else {
+		sc_mutex_unlock((sc_mutex_t *) lock);
+	}
+}
+
 void
 sc_pkcs11_unlock()
 {
-	if (!_lock)
+	__sc_pkcs11_unlock(_lock);
+}
+
+/*
+ * Free the lock - note the lock must be held when
+ * you come here
+ */
+void
+sc_pkcs11_free_lock()
+{
+	void	*tempLock;
+
+	if (!(tempLock = _lock))
 		return;
-	if (_locking) {
-		while (_locking->UnlockMutex(_lock) != CKR_OK)
-			;
-	} else {
-		sc_mutex_unlock((sc_mutex_t *) _lock);
-	}
+
+	/* Clear the global lock pointer - once we've
+	 * unlocked the mutex it's as good as gone */
+	_lock = NULL;
+
+	/* Now unlock. On SMP machines the synchronization
+	 * primitives should take care of flushing out 
+	 * all changed data to RAM */
+	__sc_pkcs11_unlock(tempLock);
+
+	if (_locking)
+		_locking->DestroyMutex(tempLock);
+	else
+		sc_mutex_free((sc_mutex_t *) tempLock);
+	_locking = NULL;
 }
 
 CK_FUNCTION_LIST pkcs11_function_list = {
