@@ -202,7 +202,7 @@ static int mcrd_finish(struct sc_card *card)
 {
         struct mcrd_priv_data *priv;
 
-        if (card)
+        if (card == NULL)
                 return 0;
 	priv = DRVDATA (card);
         while (priv->df_infos) {
