@@ -37,29 +37,6 @@ static const char *mcrd_atrs[] = {
 	NULL
 };
 
-
-const static struct sc_card_error mcrd_errors[] = {
-        { 0x6600, SC_ERROR_INCORRECT_PARAMETERS, "Error setting the security env"},
-        { 0x66F0, SC_ERROR_INCORRECT_PARAMETERS, "No space left for padding"},
-        { 0x69F0, SC_ERROR_NOT_ALLOWED,          "Command not allowed"},
-        { 0x6A89, SC_ERROR_FILE_ALREADY_EXISTS, "Files exists"},
-        { 0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS, "Application exists"},
-};
-
-static int mcrd_check_sw(struct sc_card *card, int sw1, int sw2)
-{
-	const int err_count = sizeof(mcrd_errors)/sizeof(mcrd_errors[0]);
-	int i;
-	
-	for (i = 0; i < err_count; i++)
-		if (mcrd_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			error(card->ctx, "%s\n", mcrd_errors[i].errorstr);
-			return mcrd_errors[i].errorno;
-		}
-	/* Fall back to ISO 7816 error codes */
-	return iso7816_check_sw(card, sw1, sw2);
-}
-
 static struct sc_card_operations mcrd_ops;
 static const struct sc_card_driver mcrd_drv = {
 	"MICARDO 2 cards",

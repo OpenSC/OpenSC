@@ -43,35 +43,6 @@ static const struct sc_card_driver tcos_drv = {
 
 static const struct sc_card_operations *iso_ops = NULL;
 
-const static struct sc_card_error tcos_errors[] = {
-  { 0x6600, SC_ERROR_INCORRECT_PARAMETERS, "Error setting the security env"},
-  { 0x66F0, SC_ERROR_INCORRECT_PARAMETERS, "No space left for padding"},
-  { 0x69F0, SC_ERROR_NOT_ALLOWED,          "Command not allowed"},
-  { 0x6A89, SC_ERROR_FILE_ALREADY_EXISTS,  "Files exists"},
-  { 0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,  "Application exists"},
-};
-
-static int tcos_check_sw(struct sc_card *card, int sw1, int sw2)
-{
-	const int err_count = sizeof(tcos_errors)/sizeof(tcos_errors[0]);
-	int i;
-	
-	if (sw1 == 0x90)
-		return SC_NO_ERROR;
-        if (sw1 == 0x63 && (sw2 & ~0x0f) == 0xc0 ) {
-             error(card->ctx, "Verification failed (remaining tries: %d)\n",
-                   (sw2 & 0x0f));
-             return SC_ERROR_PIN_CODE_INCORRECT;
-        }
-          
-	for (i = 0; i < err_count; i++)
-		if (tcos_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			error(card->ctx, "%s\n", tcos_errors[i].errorstr);
-			return tcos_errors[i].errorno;
-		}
-	return iso_ops->check_sw(card, sw1, sw2);
-}
-
 
 static int tcos_finish(struct sc_card *card)
 {
@@ -278,7 +249,7 @@ static int map_operations (int commandbyte )
 
 
 /* Hmmm, I don't know what to do.  It seems that the ACL design of
-   OpenSC should be enhacned to allow for the command based security
+   OpenSC should be enhanced to allow for the command based security
    attributes of TCOS.  FIXME: This just allows to create a very basic
    file. */
 static void parse_sec_attr(struct sc_card *card,
@@ -755,7 +726,6 @@ static const struct sc_card_driver * sc_get_driver(void)
         tcos_ops.finish = tcos_finish;
 	if (iso_ops == NULL)
                 iso_ops = iso_drv->ops;
-        tcos_ops.check_sw   = tcos_check_sw;
 	tcos_ops.create_file = tcos_create_file;
 	tcos_ops.set_security_env = tcos_set_security_env;
 	tcos_ops.select_file = tcos_select_file;
