@@ -50,15 +50,12 @@ static scconf_parser *parser;
 
 %%
 
-int scconf_lex_parse(scconf_parser *p, const char *filename)
+static void do_lex(scconf_parser *p)
 {
 	parser = p;
 
-	yyin = fopen(filename, "r");
-	if (yyin == NULL)
-		return 0;
-
 	yylex();
+
 #if 1
 	/* For non-reentrant C scanner only. */
 	if (yy_current_buffer) {
@@ -68,6 +65,24 @@ int scconf_lex_parse(scconf_parser *p, const char *filename)
 		yy_start = 0;
 	}
 #endif
+}
+
+int scconf_lex_parse(scconf_parser *p, const char *filename)
+{
+	yyin = fopen(filename, "r");
+	if (yyin == NULL)
+		return 0;
+
+	do_lex(p);
+
 	fclose(yyin);
+	yyin = NULL;
+	return 1;
+}
+
+int scconf_lex_parse_string(scconf_parser *p, const char *conf_string)
+{
+	yy_scan_string(conf_string);
+	do_lex(p);
 	return 1;
 }

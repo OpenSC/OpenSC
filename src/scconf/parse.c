@@ -372,3 +372,18 @@ int scconf_parse(scconf_context * config)
 	}
 	return p.error ? 0 : 1;
 }
+
+int scconf_parse_string(scconf_context * config, const char *string)
+{
+	scconf_parser p;
+
+	memset(&p, 0, sizeof(p));
+	p.config = config;
+	p.block = config->root;
+	p.line = 1;
+
+	if (!scconf_lex_parse_string(&p, string)) {
+		return -1;
+	}
+	return p.error ? 0 : 1;
+}

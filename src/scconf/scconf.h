@@ -100,6 +100,11 @@ extern void scconf_free(scconf_context * config);
  */
 extern int scconf_parse(scconf_context * config);
 
+/* Parse a static configuration string
+ * Returns 1 = ok, 0 = error
+ */
+extern int scconf_parse_string(scconf_context * config, const char *string);
+
 /* Parse entries
  */
 extern int scconf_parse_entries(const scconf_context * config, const scconf_block * block, scconf_entry * entry);
