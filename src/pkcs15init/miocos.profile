@@ -25,15 +25,9 @@ filesystem {
 	ACL	= *=NONE;
 
         DF PKCS15-AppDF {
-            EF pinfile-chv1 {
+            EF pinfile {
 		type		= internal-ef;
     	        file-id		= 5001;
-    	        size		= 20;
-    	        ACL		= *=NEVER;
-            }
-            EF pinfile-chv2 {
-		type		= internal-ef;
-    	        file-id		= 5002;
     	        size		= 20;
     	        ACL		= *=NEVER;
             }

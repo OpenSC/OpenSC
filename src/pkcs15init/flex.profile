@@ -1,111 +1,77 @@
 #
 # PKCS15 r/w profile for Cryptoflex cards
 #
-CardInfo
-	Label		"OpenSC Card"
-	Manufacturer	"OpenSC Project"
-	MinPinLength	1
-	MaxPinLength	8
-	PinEncoding	ascii-numeric
-	PinPadChar	0x00
-	PrKeyAccessFlags RSA 0x1D
+cardinfo {
+    max-pin-length	= 8;
+    pin-encoding	= ascii-numeric;
+    pin-pad-char	= 0x00;
 
-	# This is the AAK (ie. transport key) required for
-	# creating files in the MF
-	Key		AUT1 0x0001 "=Muscle00"
+    # This is the secure messaging key required for
+    # creating files in the MF
+    key AUT1 {
+        value		= "=Muscle00";
+    }
+}
 
-DF MF
-	Path		3F00
-	ACL		*=AUT1
+# Define reasonable limits for PINs and PUK
+# Note that we do not set a file path or reference
+# here; that is done dynamically.
+PIN user-pin {
+    attempts	= 3;
+}
+PIN user-puk {
+    attempts	= 10;
+}
 
-DF key1df
-	Parent		PKCS15-AppDF
-	FileID		4B01
-	Size		750	# Sufficient for a 1024-bit key
-	ACL		*=AUT1 FILES=NONE
+# Additional filesystem info.
+# This is added to the file system info specified in the
+# main profile.
+filesystem {
+    DF MF {
+	ACL	= *=AUT1;
 
-DF key2df
-	Parent		PKCS15-AppDF
-	FileID		4B02
-	Size		750	# Sufficient for a 1024-bit key
-	ACL		*=AUT1 FILES=NONE
+	DF PKCS15-AppDF {
+	    DF keydir-1 {
+		file-id		= 4B01;
+		size		= 750;	# Sufficient for a 1024-bit key
+		EF pinfile-1 {
+    	            file-id		= 0000;
+    	            size		= 23;
+    	            ACL			= *=NEVER, UPDATE=AUT1;
+            	}
+		EF template-private-key-1 {
+		    file-id		= 0012;
+		    ACL			= *=NEVER, CRYPTO=CHV1, UPDATE=AUT1;
+		}
+            }
+	    DF keydir-2 {
+		file-id		= 4B02;
+		size		= 750;	# Sufficient for a 1024-bit key
+		EF pinfile-2 {
+    	            file-id		= 0000;
+    	            size		= 23;
+    	            ACL			= *=NEVER, UPDATE=AUT1;
+            	}
+		EF template-private-key-2 {
+		    file-id		= 0012;
+		    ACL			= *=NEVER, CRYPTO=CHV1, UPDATE=AUT1;
+		}
+            }
+	    EF template-public-key-1 {
+		file-id		= 5201;
+		ACL		= *=AUT1, READ=NONE;
+	    }
+	    EF template-public-key-2 {
+		file-id		= 5202;
+		ACL		= *=AUT1, READ=NONE;
+	    }
+	}
+    }
+}
 
-EF pinfile-chv1
-	Parent		key1df
-	FileID		0000
-	Structure	transparent
-	Size		23
-	ACL		*=NEVER UPDATE=AUT1
-
-EF pinfile-chv2
-	Parent		key2df
-	FileID		0000
-	Structure	transparent
-	Size		23
-	ACL		*=NEVER UPDATE=AUT1
-
-EF template-private-key-1
-	Parent		key1df
-	FileID		0012
-	Structure	transparent
-	Size		330
-	ACL		*=AUT1 READ=NEVER
-
-EF template-private-key-2
-	Parent		key2df
-	FileID		0012
-	Structure	transparent
-	Size		330
-	ACL		*=AUT1 READ=NEVER
-
-EF template-public-key-1
-	Parent		PKCS15-AppDF
-	FileID		5201
-	Structure	transparent
-	ACL		*=AUT1 READ=NONE
-
-EF template-public-key-2
-	Parent		PKCS15-AppDF
-	FileID		5202
-	Structure	transparent
-	ACL		*=AUT1 READ=NONE
-
-EF PKCS15-DIR
-	ACL		*=NEVER READ=NONE UPDATE=AUT1
-
-EF PKCS15-ODF
-	ACL		*=NEVER READ=NONE UPDATE=AUT1
-
-EF PKCS15-AODF
-	ACL		*=NEVER READ=NONE UPDATE=AUT1
-
-EF PKCS15-PrKDF
-	ACL		*=NEVER READ=NONE UPDATE=AUT1
-
-EF PKCS15-PuKDF
-	ACL		*=NEVER READ=NONE UPDATE=AUT1
-
-EF PKCS15-CDF
-	ACL		*=NEVER READ=NONE UPDATE=AUT1
-
-# CHV1. 3 attempts for the PIN, and 10 for the PUK
-PIN CHV1
-	File		pinfile-chv1
-	Reference	0x01
-	Attempts	3 10
-
-# CHV2. 3 attempts for the PIN, and 10 for the PUK
-PIN CHV2
-	File		pinfile-chv2
-	Reference	0x01
-	Attempts	3 10
-
-PrivateKey AuthKey
-	Reference	0x00
-	Index		1
-	File		template-private-key-1
-
-PrivateKey SignKey
-	Reference	0x00
-	Index		1
-	File		template-private-key-2
+# Define an SO pin
+# This PIN is not used yet.
+#PIN sopin {
+#    file	= sopinfile;
+#    reference	= 0;
+#}

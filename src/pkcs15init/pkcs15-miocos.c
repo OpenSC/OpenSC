@@ -51,21 +51,21 @@ miocos_new_pin(struct sc_profile *profile, struct sc_card *card,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
 {
-	char template[18];
 	sc_file_t *pinfile;
 	struct sc_pkcs15_pin_info tmpinfo;
 	struct sc_cardctl_miocos_ac_info ac_info;
 	int r;
 	
-	sprintf(template, "pinfile-chv%d", index + 1);
-	/* Profile must define a "pinfile" for each PIN */
-	if (sc_profile_get_file(profile, template, &pinfile) < 0) {
-		profile->cbs->error("Profile doesn't define \"%s\"", template);
+	/* Profile must define a "pinfile" */
+	if (sc_profile_get_file(profile, "pinfile", &pinfile) < 0) {
+		profile->cbs->error("Profile doesn't define \"pinfile\"");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	info->path = pinfile->path;
 	if (info->path.len > 2)
 		info->path.len -= 2;
+	pinfile->id += index;
+	pinfile->path.value[pinfile->path.len-1] += index;
 	r = sc_pkcs15init_create_file(profile, card, pinfile);
 	sc_file_free(pinfile);
 	if (r)

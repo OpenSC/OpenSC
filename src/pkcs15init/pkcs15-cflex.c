@@ -25,135 +25,105 @@
 #include <string.h>
 #include <openssl/bn.h>
 #include "opensc.h"
-#include "cardctl.h"
 #include "pkcs15-init.h"
-#include "util.h"
+#include "profile.h"
+
+/*
+ * Initialize the Application DF
+ */
+static int cflex_init_app(struct sc_profile *profile, struct sc_card *card,
+		const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
+{
+	/* Create the application DF */
+	if (sc_pkcs15init_create_file(profile, card, profile->df_info->file))
+		return 1;
+
+	return 0;
+}
 
 /*
  * Update the contents of a PIN file
  */
-static int cflex_update_pin(struct sc_card *card, struct pin_info *info)
+static int cflex_update_pin(struct sc_profile *profile, struct sc_card *card,
+		sc_file_t *file,
+		const u8 *pin, size_t pin_len, int pin_tries,
+		const u8 *puk, size_t puk_len, int puk_tries)
 {
 	u8		buffer[23], *p = buffer;
 	int		r;
 	size_t		len;
 
-	if (!info->puk.tries_left) {
-		error("Cryptoflex needs a PUK code");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
 	memset(p, 0xFF, 3);
 	p += 3;
-	memset(p, info->pin.pad_char, 8);
-	strncpy((char *) p, info->secret[0], 8);
+	memset(p, profile->pin_pad_char, 8);
+	strncpy((char *) p, pin, pin_len);
 	p += 8;
-	*p++ = info->pin.tries_left;
-	*p++ = info->pin.tries_left;
-	memset(p, info->puk.pad_char, 8);
-	strncpy((char *) p, info->secret[1], 8);
+	*p++ = pin_tries;
+	*p++ = pin_tries;
+	memset(p, profile->pin_pad_char, 8);
+	strncpy((char *) p, puk, puk_len);
 	p += 8;
-	*p++ = info->puk.tries_left;
-	*p++ = info->puk.tries_left;
+	*p++ = puk_tries;
+	*p++ = puk_tries;
 	len = 23;
 
-	r = sc_update_binary(card, 0, buffer, len, 0);
+	r = sc_pkcs15init_update_file(profile, card, file, buffer, len);
 	if (r < 0)
 		return r;
 	return 0;
 }
 
 /*
- * Create the PIN file and write the PINs
+ * Store a PIN
  */
-static int cflex_store_pin(struct sc_profile *profile, struct sc_card *card,
-			   struct pin_info *info)
+static int
+cflex_new_pin(struct sc_profile *profile, struct sc_card *card,
+		struct sc_pkcs15_pin_info *info, unsigned int index,
+		const u8 *pin, size_t pin_len,
+		const u8 *puk, size_t puk_len)
 {
-	struct sc_file	*pinfile;
-	int		r;
-
-	sc_file_dup(&pinfile, info->file->file);
-
-	card->ctx->log_errors = 0;
-	r = sc_select_file(card, &pinfile->path, NULL);
-	card->ctx->log_errors = 1;
-	if (r == SC_ERROR_FILE_NOT_FOUND) {
-		/* Now create the file */
-		if ((r = sc_pkcs15init_create_file(profile, card, pinfile)) < 0)
-			goto out;
-		/* The PIN EF is automatically selected */
-	} else if (r < 0)
-		goto out;
-
-	/* If messing with the PIN file requires any sort of
-	 * authentication, send it to the card now */
-	r = sc_pkcs15init_authenticate(profile, card, pinfile, SC_AC_OP_UPDATE);
-	if (r < 0)
-		goto out;
-
-	r = cflex_update_pin(card, info);
-
-out:	sc_file_free(pinfile);
-	return r;
-}
-
-/*
- * Initialize the Application DF and store the PINs
- *
- */
-static int cflex_init_app(struct sc_profile *profile, struct sc_card *card)
-{
-	struct pin_info	*pin1, *pin2, *pin3;
+	sc_file_t *pinfile;
+	struct sc_pkcs15_pin_info tmpinfo;
+	char template[30];
+	int pin_tries, puk_tries;
 	int r;
 
-	pin1 = sc_profile_find_pin(profile, "CHV1");
-	pin2 = sc_profile_find_pin(profile, "CHV2");
-	pin3 = sc_profile_find_pin(profile, "CHV3");
-	if (pin1 == NULL) {
-		fprintf(stderr, "No CHV1 defined\n");
-		return 1;
+	index++;
+	sprintf(template, "pinfile-%d", index);
+	/* Profile must define a "pinfile" for each PIN */
+	if (sc_profile_get_file(profile, template, &pinfile) < 0) {
+		profile->cbs->error("Profile doesn't define \"%s\"", template);
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-
-	card->ctx->log_errors = 0;
-	r = sc_select_file(card, &profile->df_info.file->path, NULL);
-	card->ctx->log_errors = 1;
-	if (r == SC_ERROR_FILE_NOT_FOUND) {
-		/* Create the application DF */
-		if (sc_pkcs15init_create_file(profile, card, profile->df_info.file))
-			return 1;
-	} else if (r < 0) {
-		fprintf(stderr, "Unable to select application DF: %s\n",
-			sc_strerror(r));
-		return 1;
-	}
-
-	/* Store CHV3 (ie. SO PIN) */
-	if (pin3) {
-		if (cflex_store_pin(profile, card, pin3))
-			return 1;
-	}
-
-	/* Store CHV1 */
-	if (cflex_store_pin(profile, card, pin1))
-		return 1;
-
-	/* Store CHV2 */
-	if (pin2) {
-		if (cflex_store_pin(profile, card, pin2))
-			return 1;
-	}
+	info->path = pinfile->path;
+	if (info->path.len > 2)
+		info->path.len -= 2;
+	info->reference = 1;
+	if (pin_len > 8)
+		pin_len = 8;
+	if (puk_len > 8)
+		puk_len = 8;
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
+	pin_tries = tmpinfo.tries_left;
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &tmpinfo);
+	puk_tries = tmpinfo.tries_left;
 	
-	return 0;
+	r = cflex_update_pin(profile, card, pinfile, pin, pin_len, pin_tries,
+				puk, puk_len, puk_tries);
+	sc_file_free(pinfile);
+	return r;
 }
 
 /*
  * Allocate a file
  */
-static int cflex_allocate_file(struct sc_profile *profile, struct sc_card *card,
+static int
+cflex_new_file(struct sc_profile *profile, struct sc_card *card,
 		unsigned int type, unsigned int num,
 		struct sc_file **out)
 {
-	char	name[64], *tag, *desc;
+	struct sc_file	*file;
+	char		name[64], *tag, *desc;
 
 	desc = tag = NULL;
 	while (1) {
@@ -168,7 +138,7 @@ static int cflex_allocate_file(struct sc_profile *profile, struct sc_card *card,
 			break;
 		case SC_PKCS15_TYPE_CERT:
 			desc = "certificate";
-			tag = "data";
+			tag = "certificate";
 			break;
 		case SC_PKCS15_TYPE_DATA_OBJECT:
 			desc = "data object";
@@ -182,19 +152,20 @@ static int cflex_allocate_file(struct sc_profile *profile, struct sc_card *card,
 		 * the generic class (SC_PKCS15_TYPE_CERT)
 		 */
 		if (!(type & ~SC_PKCS15_TYPE_CLASS_MASK)) {
-			error("File type not supported by card driver");
+			profile->cbs->error("File type not supported by card driver");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		type &= SC_PKCS15_TYPE_CLASS_MASK;
 	}
 
-	snprintf(name, sizeof(name), "template-%s-%d", tag, num + 1);
-	if (sc_profile_get_file(profile, name, out) < 0) {
-		error("Profile doesn't define %s template (%s)",
+	snprintf(name, sizeof(name), "template-%s-%d", tag, num+1);
+	if (sc_profile_get_file(profile, name, &file) < 0) {
+		profile->cbs->error("Profile doesn't define %s template '%s'\n",
 				desc, name);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
+	*out = file;
 	return 0;
 }
 
@@ -378,28 +349,42 @@ static int cflex_encode_public_key(RSA *rsa, u8 *key, size_t *keysize, int key_n
 }
 
 /*
- * Store a RSA key on the card
+ * Store a private key
  */
-static int cflex_store_rsa_key(struct sc_profile *profile, struct sc_card *card,
-		struct sc_key_template *info, RSA *rsa)
+static int
+cflex_new_key(struct sc_profile *profile, struct sc_card *card,
+		EVP_PKEY *key, unsigned int index,
+		struct sc_pkcs15_prkey_info *info)
 {
 	u8 prv[1024], pub[1024];
 	size_t prvsize, pubsize;
-	struct sc_file *tmpfile;
+	struct sc_file *keyfile = NULL, *tmpfile = NULL;
+	RSA *rsa = NULL;
         int r;
 
+	if (key->type != EVP_PKEY_RSA) {
+		profile->cbs->error("Cryptoflex supports only RSA keys.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	rsa = EVP_PKEY_get1_RSA(key);
 	r = cflex_encode_private_key(rsa, prv, &prvsize, 1);
 	if (r)
-		return -1;
+		goto err;
 	r = cflex_encode_public_key(rsa, pub, &pubsize, 1);
 	if (r)
-		return -1;
-	info->file->size = prvsize;
+		goto err;
 	printf("Updating RSA private key...\n");
-	r = sc_pkcs15init_update_file(profile, card, info->file, prv, prvsize);
+	r = cflex_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, index,
+			    &keyfile);
 	if (r < 0)
-		return r;
-	sc_file_dup(&tmpfile, info->file);
+		goto err;
+	keyfile->size = prvsize;
+	r = sc_pkcs15init_update_file(profile, card, keyfile, prv, prvsize);
+	if (r < 0)
+		goto err;
+	info->path = keyfile->path;
+	info->modulus_length = RSA_size(rsa)*8;
+	sc_file_dup(&tmpfile, keyfile);
 	sc_file_clear_acl_entries(tmpfile, SC_AC_OP_READ);
 	sc_file_add_acl_entry(tmpfile, SC_AC_OP_READ, SC_AC_NONE, SC_AC_KEY_REF_NONE);
 	tmpfile->path.len -= 2;
@@ -408,16 +393,18 @@ static int cflex_store_rsa_key(struct sc_profile *profile, struct sc_card *card,
 	tmpfile->size = pubsize;
 	printf("Updating RSA public key...\n");
 	r = sc_pkcs15init_update_file(profile, card, tmpfile, pub, pubsize);
-	sc_file_free(tmpfile);
-	if (r)
-		return r;
-		
-	return 0;
+err:
+	if (rsa)
+		RSA_free(rsa);
+	if (tmpfile)
+		sc_file_free(tmpfile);
+	return r;
 }
 
-void bind_cflex_operations(struct pkcs15_init_operations *ops)
-{
-	ops->init_app = cflex_init_app;
-	ops->allocate_file = cflex_allocate_file;
-	ops->store_rsa = cflex_store_rsa_key;
-}
+struct sc_pkcs15init_operations sc_pkcs15init_cflex_operations = {
+	NULL,
+	cflex_init_app,
+	cflex_new_pin,
+	cflex_new_key,
+	cflex_new_file,
+};

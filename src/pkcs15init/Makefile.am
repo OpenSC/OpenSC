@@ -13,8 +13,7 @@ endif
 
 libpkcs15init_la_SOURCES = \
 		  pkcs15-lib.c profile.c \
-		  pkcs15-gpk.c pkcs15-miocos.c
-#pkcs15-cflex.c
+		  pkcs15-gpk.c pkcs15-miocos.c pkcs15-cflex.c
 
 include_HEADERS = pkcs15-init.h
 noinst_HEADERS = profile.h
