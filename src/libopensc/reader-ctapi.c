@@ -355,7 +355,7 @@ static int ctapi_finish(struct sc_context *ctx, void *prv_data)
 			struct ctapi_module *mod = &priv->modules[i];
 			
 			free(mod->name);
-			sc_module_close(ctx, mod->dlhandle);
+			scdl_close(mod->dlhandle);
 		}
 		if (priv->module_count)
 			free(priv->modules);
