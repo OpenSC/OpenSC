@@ -49,7 +49,7 @@ void print_boolean(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_V
 void print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
   CK_ULONG i;
-  if(size > 0) {
+  if(size > 0 && value != NULL) {
     fprintf(f, "[size : 0x%lX (%ld)]\n    ", size, size);
     for(i = 0; i < size; i++) {
       if (i != 0) {
@@ -61,7 +61,10 @@ void print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_V
       fprintf(f, "%02X", ((CK_BYTE *)value)[i]);
     }
   } else {
-    fprintf(f, "EMPTY");
+    if (value != NULL)
+      fprintf(f, "EMPTY");
+    else
+      fprintf(f, "NULL [size : 0x%lX (%ld)]", size, size);
   }
   fprintf(f, "\n");
 }
