@@ -25,3 +25,6 @@ pkcs11-jar: jar-dir
 	cp opensc_pkcs11_install.js jar-dir
 	signtool -Z"opensc-pkcs11.jar" -i"opensc_pkcs11_install.js" \
 		 -k"testcert" jar-dir
+
+install-exec-local: install-libLTLIBRARIES
+	-rm -f $(DESTDIR)$(libdir)/opensc-pkcs11.a $(DESTDIR)$(libdir)/opensc-pkcs11.la
