@@ -1099,8 +1099,6 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
-	else
-		sc_pkcs15_free_object(object);
 		
 	sc_pkcs15_erase_pubkey(&pubkey_args.key);
 
@@ -1223,8 +1221,6 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
-	else
-		sc_pkcs15_free_object(object);
 
 	return r;
 }
@@ -1387,8 +1383,6 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
-	else
-		sc_pkcs15_free_object(object);
 
 	if (der_encoded.value)
 		free(der_encoded.value);
@@ -1471,8 +1465,6 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
-	else
-		sc_pkcs15_free_object(object);
 
 	return r;
 }
@@ -1553,8 +1545,6 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
-	else
-		sc_pkcs15_free_object(object);
 
 	return r;
 }
