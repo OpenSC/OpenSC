@@ -3,7 +3,7 @@
 INCLUDES = @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
-EXTRA_DIST = gpk.profile miocos-rw.profile pkcs15.profile
+EXTRA_DIST = flex.profile gpk.profile miocos.profile pkcs15.profile
 
 if HAVE_SSL
 PROGRAMS_SSL = cryptoflex-tool pkcs15-init
