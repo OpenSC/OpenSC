@@ -84,6 +84,7 @@ struct sc_pkcs11_config {
 	unsigned char hide_empty_tokens;
 	unsigned char lock_login;
 	unsigned char cache_pins;
+	unsigned char soft_keygen_allowed;
 };
 
 /*
@@ -159,6 +160,12 @@ struct sc_pkcs11_framework_ops {
 				struct sc_pkcs11_slot *,
 				CK_ATTRIBUTE_PTR, CK_ULONG,
 				CK_OBJECT_HANDLE_PTR);
+	CK_RV (*gen_keypair)(struct sc_pkcs11_card *p11card,
+				struct sc_pkcs11_slot *slot,
+				CK_MECHANISM_PTR pMechanism,
+				CK_ATTRIBUTE_PTR pPubKeyTempl, CK_ULONG ulPubKeyAttrCnt,
+				CK_ATTRIBUTE_PTR pPrivKeyTempl, CK_ULONG ulPrivKeyAttrCnt,
+				CK_OBJECT_HANDLE_PTR phPubKey, CK_OBJECT_HANDLE_PTR phPrivKey);
 };
 
 
@@ -343,6 +350,8 @@ int sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *,
 
 /* Get attributes from template (misc.c) */
 CK_RV attr_find(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
+CK_RV attr_find2(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG,
+		CK_ULONG, void *, size_t *);
 CK_RV attr_find_ptr(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void **, size_t *);
 CK_RV attr_find_var(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
 CK_RV attr_extract(CK_ATTRIBUTE_PTR, void *, size_t *);
@@ -384,6 +393,8 @@ CK_RV sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *,
 /* Random generation functions */
 CK_RV sc_pkcs11_openssl_add_seed_rand(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
 CK_RV sc_pkcs11_openssl_add_gen_rand(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
+CK_RV sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
+	struct sc_pkcs15_prkey *privkey, struct sc_pkcs15_pubkey *pubkey);
 #endif
 
 /* Load configuration defaults */

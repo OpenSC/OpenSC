@@ -56,6 +56,7 @@ const struct option options[] = {
 	{ "login",		0, 0,		'l' },
 	{ "pin",		1, 0,		'p' },
 	{ "change-pin",		0, 0,		'c' },
+	{ "keypairgen", 	0, 0, 		'k' },
 	{ "slot",		1, 0,		OPT_SLOT },
 	{ "slot-label",		1, 0,		OPT_SLOT_LABEL },
 	{ "input-file",		1, 0,		'i' },
@@ -80,6 +81,7 @@ const char *option_help[] = {
 	"Log into the token first (not needed when using --pin)",
 	"Supply PIN on the command line (if used in scripts: careful!)",
 	"Change your (user) PIN",
+	"Key pair generation",
 	"Specify number of the slot to use",
 	"Specify label of the slot to use",
 	"Specify the input file",
@@ -127,6 +129,7 @@ static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		sign_data(CK_SLOT_ID,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
+static void		gen_keypair(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
@@ -165,6 +168,7 @@ main(int argc, char * const argv[])
 	int do_list_objects = 0;
 	int do_sign = 0;
 	int do_hash = 0;
+	int do_gen_keypair = 0;
 	int do_test = 0;
 	int need_session = 0;
 	int opt_login = 0;
@@ -173,7 +177,7 @@ main(int argc, char * const argv[])
 	CK_RV rv;
 
 	while (1) {
-               c = getopt_long(argc, argv, "ILMOhi:lm:o:p:scqt",
+               c = getopt_long(argc, argv, "ILMOghi:lm:o:p:scqt",
 					options, &long_optind);
 		if (c == -1)
 			break;
@@ -198,6 +202,11 @@ main(int argc, char * const argv[])
 		case 'h':
 			need_session |= NEED_SESSION_RO;
 			do_hash = 1;
+			action_count++;
+			break;
+		case 'g':
+			need_session |= NEED_SESSION_RW;
+			do_gen_keypair = 1;
 			action_count++;
 			break;
 		case 'i':
@@ -379,6 +388,9 @@ skip_login:
 
 	if (do_hash)
 		hash_data(opt_slot, session);
+
+	if (do_gen_keypair)
+		gen_keypair(opt_slot, session);
 
 	if (do_test)
 		p11_test(opt_slot, session);
@@ -685,6 +697,43 @@ hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		fatal("Failed to write to %s: %m", opt_output);
 	if (fd != 1)
 		close(fd);
+}
+
+void
+gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	CK_SESSION_HANDLE hSession;
+	CK_OBJECT_HANDLE hPublicKey, hPrivateKey;
+	CK_MECHANISM mechanism = {CKM_RSA_PKCS_KEY_PAIR_GEN, NULL_PTR, 0};
+	CK_ULONG modulusBits = 768;
+	CK_BYTE publicExponent[] = { 3 };
+	CK_BBOOL true = TRUE;
+	CK_ATTRIBUTE publicKeyTemplate[] = {
+		{CKA_ENCRYPT, &true, sizeof(true)},
+		{CKA_VERIFY, &true, sizeof(true)},
+		{CKA_WRAP, &true, sizeof(true)},
+		{CKA_MODULUS_BITS, &modulusBits, sizeof(modulusBits)},
+		{CKA_PUBLIC_EXPONENT, publicExponent, sizeof
+		(publicExponent)}
+	};
+	CK_ATTRIBUTE privateKeyTemplate[] = {
+		{CKA_TOKEN, &true, sizeof(true)},
+		{CKA_PRIVATE, &true, sizeof(true)},
+		{CKA_SENSITIVE, &true, sizeof(true)},
+		{CKA_DECRYPT, &true, sizeof(true)},
+		{CKA_SIGN, &true, sizeof(true)},
+		{CKA_UNWRAP, &true, sizeof(true)}
+	};
+	CK_RV rv;
+
+	rv = p11->C_GenerateKeyPair(session, &mechanism,
+		publicKeyTemplate, 5, privateKeyTemplate, 6, &hPublicKey, &hPrivateKey);
+	if (rv != CKR_OK)
+		p11_fatal("C_GenerateKeyPair", rv);
+
+	printf("Key pair generated:\n");
+	show_object(session, hPrivateKey);
+	show_object(session, hPublicKey);
 }
 
 CK_SLOT_ID

@@ -190,5 +190,11 @@ app opensc-pkcs11 {
 		#
 		# Default: false
 		cache_pins = false;
+
+		# Set this value to false if you want to enfore on-card
+		# keypair generation
+		#
+		# Default: true
+		soft_keygen_allowed = true;
 	}
 }

@@ -820,6 +820,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_pubkey_info *key_info;
 	sc_pkcs15_pubkey_t key;
 	sc_pkcs15_der_t	der_encoded;
+	sc_path_t 	*path;
 	const char	*label;
 	unsigned int	keybits, type, usage;
 	int		r;
@@ -874,6 +875,12 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	/* Now create key file and store key */
 	r = sc_pkcs15init_store_data(p15card, profile,
 			type, &der_encoded, &key_info->path);
+
+	path = &((sc_pkcs15_pubkey_info *) object->data)->path;
+	if (path->count == 0) {
+		path->index = 0;
+		path->count = -1;
+	}
 
 	/* Update the PuKDF */
 	if (r >= 0)
@@ -1058,6 +1065,10 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 	if (r < 0) {
 		p15init_error("Unable to allocate file");
 		goto done;
+	}
+	if (file->path.count == 0) {
+		file->path.index = 0;
+		file->path.count = -1;
 	}
 	r = sc_pkcs15init_update_file(profile, p15card->card,
 			file, data->value, data->len);

@@ -246,6 +246,19 @@ CK_RV attr_find(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 	return attr_extract(pTemplate, ptr, sizep);
 }
 
+CK_RV attr_find2(CK_ATTRIBUTE_PTR pTemp1, CK_ULONG ulCount1,
+		CK_ATTRIBUTE_PTR pTemp2, CK_ULONG ulCount2,
+		CK_ULONG type, void *ptr, size_t *sizep)
+{
+	CK_RV rv;
+	
+	rv = attr_find(pTemp1, ulCount1, type, ptr, sizep);
+	if (rv != CKR_OK)
+		rv = attr_find(pTemp2, ulCount2, type, ptr, sizep);
+
+	return rv;
+}
+
 CK_RV attr_find_ptr(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 		CK_ULONG type, void **ptr, size_t *sizep)
 {
@@ -291,6 +304,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, struct sc_context *ct
 	conf->hide_empty_tokens = 0;
 	conf->lock_login = 1;
 	conf->cache_pins = 0;
+	conf->soft_keygen_allowed = 1;
 
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
@@ -308,4 +322,5 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, struct sc_context *ct
 	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", 0);
 	conf->lock_login = scconf_get_bool(conf_block, "lock_login", 1);
 	conf->cache_pins = scconf_get_bool(conf_block, "cache_pins", 0);
+	conf->soft_keygen_allowed = scconf_get_bool(conf_block, "soft_keygen_allowed", 1);
 }

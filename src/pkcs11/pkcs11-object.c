@@ -762,7 +762,30 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE    hSession,                    /* the
 			CK_OBJECT_HANDLE_PTR phPublicKey,                 /* gets pub. key handle */
 			CK_OBJECT_HANDLE_PTR phPrivateKey)                /* gets priv. key handle */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_slot *slot;
+        int rv;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+        rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		goto out;
+
+	slot = session->slot;
+	if (slot->card->framework->gen_keypair == NULL) {
+		rv = CKR_FUNCTION_NOT_SUPPORTED;
+	} else {
+		rv = slot->card->framework->gen_keypair(slot->card, slot,
+			pMechanism, pPublicKeyTemplate, ulPublicKeyAttributeCount,
+			pPrivateKeyTemplate, ulPrivateKeyAttributeCount,
+			phPublicKey, phPrivateKey);
+	}
+
+out:	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,        /* the session's handle */

@@ -815,7 +815,7 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 	if (rv != CKR_OK)
 		return rv;
 	if (key_type != CKK_RSA)
-		return CKR_FUNCTION_NOT_SUPPORTED; /* XXX correct code? */
+		return CKR_ATTRIBUTE_VALUE_INVALID;
 	args.key.algorithm = SC_ALGORITHM_RSA;
 	rsa = &args.key.u.rsa;
 
@@ -909,7 +909,7 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 	if (rv != CKR_OK)
 		return rv;
 	if (key_type != CKK_RSA)
-		return CKR_FUNCTION_NOT_SUPPORTED; /* XXX correct code? */
+		return CKR_ATTRIBUTE_VALUE_INVALID;
 	args.key.algorithm = SC_ALGORITHM_RSA;
 	rsa = &args.key.u.rsa;
 
@@ -991,7 +991,7 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 	if (rv != CKR_OK)
 		return rv;
 	if (cert_type != CKC_X_509)
-		return CKR_FUNCTION_NOT_SUPPORTED; /* XXX correct code? */
+		return CKR_ATTRIBUTE_VALUE_INVALID;
 
 	rv = CKR_OK;
 	while (ulCount--) {
@@ -1097,6 +1097,235 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 	sc_pkcs15init_unbind(profile);
 	return rv;
 }
+
+static CK_RV
+get_X509_usage_privk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x509_usage)
+{
+	CK_ULONG i;
+	for (i = 0; i < ulCount; i++) {
+		CK_ATTRIBUTE_TYPE typ = pTempl[i].type;
+		CK_BBOOL *val = (CK_BBOOL *) pTempl[i].pValue;
+		if (val == NULL)
+			continue;
+		if (typ == CKA_SIGN && *val)
+			*x509_usage |= 1;
+		if (typ == CKA_UNWRAP && *val)
+			*x509_usage |= 4;
+		if (typ == CKA_DECRYPT && *val)
+			*x509_usage |= 8;
+		if (typ == CKA_DERIVE && *val)
+			*x509_usage |= 16;
+		if (typ == CKA_VERIFY || typ == CKA_WRAP || typ == CKA_ENCRYPT) {
+			debug(context, "get_X509_usage_privk(): invalid typ = 0x%0x\n", typ);
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+		}
+	}
+	return CKR_OK;
+}
+
+static CK_RV
+get_X509_usage_pubk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x509_usage)
+{
+	CK_ULONG i;
+	for (i = 0; i < ulCount; i++) {
+		CK_ATTRIBUTE_TYPE typ = pTempl[i].type;
+		CK_BBOOL *val = (CK_BBOOL *) pTempl[i].pValue;
+		if (val == NULL)
+			continue;
+		if (typ == CKA_VERIFY && *val)
+			*x509_usage |= 1;
+		if (typ == CKA_WRAP && *val)
+			*x509_usage |= 4;
+		if (typ == CKA_ENCRYPT && *val)
+			*x509_usage |= 8;
+		if (typ == CKA_DERIVE && *val)
+			*x509_usage |= 16;
+		if (typ == CKA_SIGN || typ == CKA_UNWRAP || typ == CKA_DECRYPT) {
+			debug(context, "get_X509_usage_pubk(): invalid typ = 0x%0x\n", typ);
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+		}
+	}
+	return CKR_OK;
+}
+
+/* FIXME: check for the public exponent in public key template and use this value */
+CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *slot,
+			CK_MECHANISM_PTR pMechanism,
+			CK_ATTRIBUTE_PTR pPubTpl, CK_ULONG ulPubCnt,
+			CK_ATTRIBUTE_PTR pPrivTpl, CK_ULONG ulPrivCnt,
+			CK_OBJECT_HANDLE_PTR phPubKey, CK_OBJECT_HANDLE_PTR phPrivKey)                /* gets priv. key handle */
+{
+	struct sc_profile *profile = NULL;
+	struct sc_pkcs15_pin_info *pin;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct pkcs15_slot_data *p15_data = slot_data(slot->fw_data);
+	struct sc_pkcs15_card *p15card = fw_data->p15_card;
+	struct sc_pkcs15init_prkeyargs	priv_args;
+	struct sc_pkcs15init_pubkeyargs pub_args;
+	struct sc_pkcs15_object	*priv_key_obj;
+	struct sc_pkcs15_object	*pub_key_obj;
+	struct sc_pkcs15_id id;
+	size_t		len;
+	CK_KEY_TYPE	keytype = CKK_RSA;
+	CK_ULONG	keybits;
+	char		pub_label[SC_PKCS15_MAX_LABEL_SIZE];
+	char		priv_label[SC_PKCS15_MAX_LABEL_SIZE];
+	int j, rc, rv = CKR_OK;
+
+	debug(context, "Keypair generation, mech = 0x%0x\n", pMechanism->mechanism);
+
+	if (pMechanism->mechanism != CKM_RSA_PKCS_KEY_PAIR_GEN)
+		return CKR_MECHANISM_INVALID;
+
+	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", &profile);
+	if (rc < 0)
+		return sc_to_cryptoki_error(rc, p11card->reader);
+
+	memset(&priv_args, 0, sizeof(priv_args));
+	memset(&pub_args, 0, sizeof(pub_args));
+
+	/* 1. Convert the pkcs11 attributes to pkcs15init args */
+
+	if ((pin = slot_data_pin_info(slot->fw_data)) != NULL)
+		priv_args.auth_id = pub_args.auth_id = pin->auth_id;
+
+	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt, CKA_KEY_TYPE,
+		&keytype, NULL);
+	if (rv == CKR_OK && keytype != CKK_RSA) {
+		rv = CKR_ATTRIBUTE_VALUE_INVALID;
+		goto kpgen_done;
+	}
+	priv_args.key.algorithm = pub_args.key.algorithm = SC_ALGORITHM_RSA;
+
+	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt,	CKA_MODULUS_BITS,
+		&keybits, NULL);
+	if (rv != CKR_OK)
+			keybits = 1024; /* Default key size */
+	/* To do: check allowed values of keybits */
+
+	id.len = SC_PKCS15_MAX_ID_SIZE;
+	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt,	CKA_ID,
+		&id.value, &id.len);
+	if (rv == CKR_OK)
+		priv_args.id = pub_args.id = id;
+
+	len = sizeof(priv_label);
+	rv = attr_find(pPrivTpl, ulPrivCnt, CKA_LABEL, priv_label, &len);
+	if (rv != CKR_OK) {
+		priv_label[SC_PKCS15_MAX_LABEL_SIZE - 1] = '\0';
+		priv_args.label = priv_label;
+	}
+	len = sizeof(pub_label);
+	rv = attr_find(pPubTpl, ulPubCnt, CKA_LABEL, pub_label, &len);
+	if (rv != CKR_OK) {
+		pub_label[SC_PKCS15_MAX_LABEL_SIZE - 1] = '\0';
+		pub_args.label = pub_label;
+	}
+
+	rv = get_X509_usage_privk(pPrivTpl, ulPrivCnt, &priv_args.x509_usage);
+	if (rv == CKR_OK)
+		rv = get_X509_usage_pubk(pPubTpl, ulPubCnt, &priv_args.x509_usage);
+	if (rv != CKR_OK)
+		goto kpgen_done;
+	pub_args.x509_usage = priv_args.x509_usage;
+
+	/* 2. Supply the user PIN to the profile */
+
+	if (p15_data->pin[CKU_USER].len != 0)
+		sc_profile_set_secret(profile, SC_AC_CHV, 1,
+			p15_data->pin[CKU_USER].value, p15_data->pin[CKU_USER].len);
+	else
+		debug(context, "User PIN not cached, keypair gen will probably fail\n");
+
+	/* 3.a Try on-card key pair generation */
+	rc = sc_pkcs15init_generate_key(fw_data->p15_card, profile,
+		&priv_args, keybits, &priv_key_obj);
+	if (rc >= 0) {
+		id = ((sc_pkcs15_prkey_info *) priv_key_obj->data)->id;
+		rc = sc_pkcs15_find_pubkey_by_id(fw_data->p15_card, &id, &pub_key_obj);
+		if (rc != 0) {
+			debug(context, "sc_pkcs15_find_pubkey_by_id returned %d\n", rc);
+			rv = sc_to_cryptoki_error(rc, p11card->reader);
+			goto kpgen_done;
+		}
+	}
+	else if (rc != SC_ERROR_NOT_SUPPORTED) {
+		debug(context, "sc_pkcs15init_generate_key returned %d\n", rc);
+		rv = sc_to_cryptoki_error(rc, p11card->reader);
+		goto kpgen_done;
+	}
+	else {
+		/* 3.b Try key pair generation in software, if allowed */
+		
+		if (!sc_pkcs11_conf.soft_keygen_allowed) {
+			debug(context, "On card keypair gen not supported, software keypair gen not allowed");
+			rv = CKR_FUNCTION_FAILED;
+			goto kpgen_done;
+		}
+
+		debug(context, "Doing key pair generation in software\n");
+		rv = sc_pkcs11_gen_keypair_soft(keytype, keybits,
+			&priv_args.key, &pub_args.key);
+		if (rv != CKR_OK) {
+			debug(context, "sc_pkcs11_gen_keypair_soft failed: 0x%0x\n", rv);
+			goto kpgen_done;
+		}
+
+		/* Write the new public and private keys to the pkcs15 files */
+		rc = sc_pkcs15init_store_private_key(p15card, profile,
+			&priv_args, &priv_key_obj);
+		if (rc >= 0)
+			rc = sc_pkcs15init_store_public_key(p15card, profile,
+				&pub_args, &pub_key_obj);
+		if (rc < 0) {
+			debug(context, "private/public keys not stored: %d\n", rc);
+			rv = sc_to_cryptoki_error(rc, p11card->reader);
+			goto kpgen_done;
+		}
+	}
+
+	/* 4. Create new pkcs11 public and private key object */
+
+	rc = __pkcs15_create_prkey_object(fw_data, priv_key_obj);
+	if (rc == 0)
+		__pkcs15_create_pubkey_object(fw_data, pub_key_obj);
+	if (rc != 0) {
+		debug(context, "__pkcs15_create_pr/pubkey_object returned %d\n", rc);
+		rv = sc_to_cryptoki_error(rc, p11card->reader);
+		goto kpgen_done;
+	}
+
+	id = ((sc_pkcs15_prkey_info *) priv_key_obj->data)->id;
+
+	rc = 0;
+	for (j = 0; j < fw_data->num_objects; j++) {
+		struct pkcs15_any_object *obj = fw_data->objects[j];
+
+		if (is_privkey(obj)) {
+			struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) obj;
+			if (sc_pkcs15_compare_id(&prkey->prv_info->id, &id)) {
+				pkcs15_add_object(slot, obj, phPrivKey);
+				rc++;
+			}
+		}
+		if (is_pubkey(obj)) {
+			struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) obj;
+			if (sc_pkcs15_compare_id(&pubkey->pub_info->id, &id)) {
+				pkcs15_add_object(slot, obj, phPubKey);
+				rc++;
+			}
+		}
+	}
+	if (rc != 2) {
+		debug(context, "Err: should have gotten 2 pkcs11 objects, got %d\n", rc);
+		rv = CKR_GENERAL_ERROR;
+	}
+
+kpgen_done:
+	sc_pkcs15init_unbind(profile);
+
+	return rv;
+}
 #endif
 
 struct sc_pkcs11_framework_ops framework_pkcs15 = {
@@ -1110,7 +1339,8 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
         NULL,			/* init_token */
 #ifdef USE_PKCS15_INIT
 	pkcs15_init_pin,
-        pkcs15_create_object
+        pkcs15_create_object,
+        pkcs15_gen_keypair,
 #else
         NULL,
         NULL
@@ -1831,7 +2061,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	/* Register generic mechanisms */
 	sc_pkcs11_register_generic_mechanisms(p11card);
 
-	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP;
+	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP | CKF_GENERATE_KEY_PAIR;
 	mech_info.ulMinKeySize = ~0;
 	mech_info.ulMaxKeySize = 0;
 

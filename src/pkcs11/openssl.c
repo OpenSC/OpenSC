@@ -170,4 +170,68 @@ sc_pkcs11_openssl_add_gen_rand(struct sc_pkcs11_session *session,
 	return r == 1 ? CKR_OK : CKR_FUNCTION_FAILED;
 }
 
+static int
+do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
+{
+	if (src == 0)
+		return 0;
+	dst->len = BN_num_bytes(src);
+	dst->data = (u8 *) malloc(dst->len);
+	BN_bn2bin(src, dst->data);
+	return 1;
+}
+
+CK_RV
+sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
+	struct sc_pkcs15_prkey *privkey, struct sc_pkcs15_pubkey *pubkey)
+{
+	switch (keytype) {
+	case CKK_RSA: {
+		RSA	*rsa;
+		BIO	*err;
+		struct sc_pkcs15_prkey_rsa  *sc_priv = &privkey->u.rsa;
+		struct sc_pkcs15_pubkey_rsa *sc_pub  = &pubkey->u.rsa;
+
+		err = BIO_new(BIO_s_mem());
+		rsa = RSA_generate_key(keybits, 0x10001, NULL, err);
+		BIO_free(err);
+		if (rsa == NULL) {
+			debug(context, "RSA_generate_key() failed\n");
+			return CKR_FUNCTION_FAILED;
+		}
+
+		privkey->algorithm = pubkey->algorithm = SC_ALGORITHM_RSA;
+
+		if (!do_convert_bignum(&sc_priv->modulus, rsa->n)
+		 || !do_convert_bignum(&sc_priv->exponent, rsa->e)
+		 || !do_convert_bignum(&sc_priv->d, rsa->d)
+		 || !do_convert_bignum(&sc_priv->p, rsa->p)
+		 || !do_convert_bignum(&sc_priv->q, rsa->q)) {
+		 	debug(context, "do_convert_bignum() failed\n");
+		 	RSA_free(rsa);
+			return CKR_FUNCTION_FAILED;
+		}
+		if (rsa->iqmp && rsa->dmp1 && rsa->dmq1) {
+			do_convert_bignum(&sc_priv->iqmp, rsa->iqmp);
+			do_convert_bignum(&sc_priv->dmp1, rsa->dmp1);
+			do_convert_bignum(&sc_priv->dmq1, rsa->dmq1);
+		}
+
+		if (!do_convert_bignum(&sc_pub->modulus, rsa->n)
+		 || !do_convert_bignum(&sc_pub->exponent, rsa->e)) {
+		 	debug(context, "do_convert_bignum() failed\n");
+		 	RSA_free(rsa);
+			return CKR_FUNCTION_FAILED;
+		}
+
+		RSA_free(rsa);
+
+		break;
+		}
+	default:
+		return CKR_MECHANISM_PARAM_INVALID;
+	}
+
+	return CKR_OK;
+}
 #endif
