@@ -51,7 +51,14 @@ enum {
          * TCOS specific calls
          */
         SC_CARDCTL_TCOS_BASE = _CTL_PREFIX('T','C','S'),
-        SC_CARDCTL_TCOS_SETPERM
+        SC_CARDCTL_TCOS_SETPERM,
+
+	/*
+	 * eToken specific calls
+	 */
+	SC_CARDCTL_ETOKEN_BASE = _CTL_PREFIX('E', 'T', 'K'),
+	SC_CARDCTL_ETOKEN_PUT_DATA_FCI,
+	SC_CARDCTL_ETOKEN_PUT_DATA_OCI
 };
 
 /*
@@ -100,6 +107,14 @@ struct sc_cardctl_miocos_ac_info {
 	u8 key_value[8];
 	int max_unblock_tries;	/* same here */
 	u8 unblock_value[8];	/* and here */
+};
+
+/*
+ * eToken PIN info
+ */
+struct sc_cardctl_etoken_pin_info {
+	u8 *data;
+	size_t len;
 };
 
 #ifdef  __cplusplus
