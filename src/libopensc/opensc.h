@@ -490,8 +490,8 @@ struct sc_context {
 	struct sc_reader *reader[SC_MAX_READERS];
 	int reader_count;
 	
-	const struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS+1];
-	const struct sc_card_driver *forced_driver;
+	struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS+1];
+	struct sc_card_driver *forced_driver;
 
 #ifdef HAVE_PTHREAD
 	pthread_mutex_t mutex;

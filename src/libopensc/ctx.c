@@ -294,13 +294,13 @@ static int load_card_drivers(struct sc_context *ctx,
 	for (drv_count = 0; ctx->card_drivers[drv_count] != NULL; drv_count++);
 
 	for (i = 0; i < opts->ccount; i++) {
-		const struct sc_card_driver * (* func)(void) = NULL;
+		struct sc_card_driver * (* func)(void) = NULL;
 		int j;
 
 		ent = &opts->cdrv[i];
 		for (j = 0; internal_card_drivers[j].name != NULL; j++)
 			if (strcmp(ent->name, internal_card_drivers[j].name) == 0) {
-				func = (const struct sc_card_driver * (*)(void)) internal_card_drivers[j].func;
+				func = (struct sc_card_driver * (*)(void)) internal_card_drivers[j].func;
 				break;
 			}
 		if (func == NULL) {
@@ -419,7 +419,7 @@ int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
 		ctx->forced_driver = NULL;
 		match = 1;
 	} else while (ctx->card_drivers[i] != NULL && i < SC_MAX_CARD_DRIVERS) {
-		const struct sc_card_driver *drv = ctx->card_drivers[i];
+		struct sc_card_driver *drv = ctx->card_drivers[i];
 
 		if (strcmp(short_name, drv->short_name) == 0) {
 			ctx->forced_driver = drv;
