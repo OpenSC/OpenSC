@@ -5,6 +5,6 @@ set -x
 if test -f Makefile; then
   make distclean
 fi
-rm -rf *.cache *.status *.log *.m4
+rm -rf *.cache *.status *.guess *.sub *.log *.m4 ltmain.sh depcomp
 cat aclocal/*.m4 > acinclude.m4
 autoreconf --verbose --install
