@@ -88,7 +88,7 @@ sc_mutex_free(sc_mutex_t *p)
 sc_mutex_t *
 sc_mutex_new(void)
 {
-	*p = NULL;
+	return (sc_mutex_t *) NULL;
 }
 
 void
