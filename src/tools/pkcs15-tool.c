@@ -324,63 +324,60 @@ int list_public_keys(void)
 
 int read_public_key(void)
 {
-	int r, i, count;
+	int r;
 	struct sc_pkcs15_id id;
-	struct sc_pkcs15_object *objs[32];
+	struct sc_pkcs15_object *obj;
+	sc_pkcs15_pubkey_t *pubkey = NULL;
+	sc_pkcs15_cert_t *cert = NULL;
+	sc_pkcs15_der_t pem_key;
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
 	sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
 
-	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY_RSA, objs, 32);
+	r = sc_pkcs15_find_pubkey_by_id(p15card, &id, &obj);
+	if (r >= 0) {
+		if (!quiet)
+			printf("Reading public key with ID '%s'\n", opt_pubkey);
+		r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
+	} else if (r == SC_ERROR_OBJECT_NOT_FOUND) {
+		/* No pubkey - try if there's a certificate */
+		r = sc_pkcs15_find_cert_by_id(p15card, &id, &obj);
+		if (r >= 0) {
+			if (!quiet)
+				printf("Reading certificate with ID '%s'\n", opt_pubkey);
+			r = sc_pkcs15_read_certificate(p15card,
+				(sc_pkcs15_cert_info_t *) obj->data,
+				&cert);
+		}
+		if (r >= 0)
+			pubkey = &cert->key;
+	}
+
+	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
+		fprintf(stderr, "Public key with ID '%s' not found.\n", opt_pubkey);
+		return 2;
+	}
 	if (r < 0) {
 		fprintf(stderr, "Public key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	count = r;
-	for (i = 0; i < count; i++) {
-		struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *) objs[i]->data;
-		sc_pkcs15_der_t raw_key, pem_key;
-		int algorithm;
 
-		if (sc_pkcs15_compare_id(&id, &info->id) != 1)
-			continue;
-
-		switch (objs[i]->type) {
-		case SC_PKCS15_TYPE_PUBKEY_RSA:
-			algorithm = SC_ALGORITHM_RSA;
-			break;
-		case SC_PKCS15_TYPE_PUBKEY_DSA:
-			algorithm = SC_ALGORITHM_DSA;
-			break;
-		default:
-			fprintf(stderr, "Unsupported key type.\n");
-			return 1;
-		}
-
-		if (!quiet)
-			printf("Reading public key with ID '%s'\n", opt_pubkey);
-		r = sc_pkcs15_read_file(p15card, &info->path,
-				&raw_key.value, &raw_key.len, NULL);
-		if (r) {
-			fprintf(stderr, "Failed to read public key: %s\n",
-					sc_strerror(r));
-			return 1;
-		}
-
-		r = pem_encode(ctx, algorithm, &raw_key, &pem_key);
-		if (r < 0) {
-			fprintf(stderr, "Error encoding PEM key: %s\n",
-					sc_strerror(r));
-			free(raw_key.value);
-			return 1;
-		}
+	r = pem_encode(ctx, pubkey->algorithm, &pubkey->data, &pem_key);
+	if (r < 0) {
+		fprintf(stderr, "Error encoding PEM key: %s\n",
+				sc_strerror(r));
+		r = 1;
+	} else {
 		r = print_pem_object("PUBLIC KEY", pem_key.value, pem_key.len);
-		free(raw_key.value);
-		free(pem_key.value);
-		return r;
 	}
-	fprintf(stderr, "Public key with ID '%s' not found.\n", opt_pubkey);
-	return 2;
+
+	free(pem_key.value);
+	if (cert)
+		sc_pkcs15_free_certificate(cert);
+	else if (pubkey)
+		sc_pkcs15_free_pubkey(pubkey);
+
+	return r;
 }
 
 
