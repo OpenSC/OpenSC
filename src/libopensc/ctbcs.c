@@ -37,6 +37,7 @@ ctbcs_init_apdu(sc_apdu_t *apdu, int cse, int ins, int p1, int p2)
 	apdu->control = 1;
 }
 
+#if 0
 int
 ctbcs_build_input_apdu(sc_apdu_t *apdu, int echo, const char *prompt,
 			u8 *rbuf, size_t rbuflen)
@@ -73,8 +74,9 @@ ctbcs_build_output_apdu(sc_apdu_t *apdu, const char *message)
 
 	return 0;
 }
+#endif
 
-int
+static int
 ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
 {
 	const char *prompt;
@@ -142,7 +144,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 	return 0;
 }
 
-int
+static int
 ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
 {
 	/* to be implemented */
