@@ -748,7 +748,7 @@ static int starcos_set_security_env(struct sc_card *card,
 				    const struct sc_security_env *env,
 				    int se_num)
 {
-	/* NOTE: starcos_set_security_env() does not call MSE ! 
+	/* NOTE: starcos_set_security_env() does not call MSE!
 	 *       MSE is called immediately before the corresponding 
 	 *       crypto operation by the corresponding function.
 	 *       starcos_set_security_env() evaluates the sc_security_env
