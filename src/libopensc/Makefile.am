@@ -20,5 +20,6 @@ else
 libopensc_la_LIBADD	= @LIBPCSC@
 endif
 
-include_HEADERS		= opensc.h opensc-pkcs15.h opensc-emv.h
+include_HEADERS		= opensc.h opensc-pkcs15.h opensc-emv.h \
+		   	  cardctl.h
 noinst_HEADERS		= sc-asn1.h sc-log.h sc-internal.h

@@ -20,17 +20,23 @@
 
 #include "sc-internal.h"
 #include "sc-log.h"
-#if defined(HAVE_OPENSSL) && 0
+#include "cardctl.h"
+
+#ifdef HAVE_OPENSSL
 #include <stdlib.h>
+#include <string.h>
 #include <openssl/des.h>
 #include <openssl/rand.h>
 
-/* GPK4000 variants */
+/* Gemplus card variants */
 enum {
 	GPK4000_su256,
 	GPK4000_s,
 	GPK4000_sp,
 	GPK4000_sdo,
+	GPK8000,
+	GPK8000_8K,
+	GPK8000_16K,
 };
 
 #define GPK_SEL_MF	0x00
@@ -38,6 +44,10 @@ enum {
 #define GPK_SEL_EF	0x02
 #define GPK_SEL_AID	0x04
 #define GPK_FID_MF	0x3F00
+
+#define GPK_FTYPE_SC	0x21
+
+#define GPK_MAX_PINS	8
 
 /*
  * GPK4000 private data
@@ -50,9 +60,8 @@ struct gpk_private_data {
 
 	/* is non-zero if we should use secure messaging */
 	unsigned	key_set   : 1;
-	unsigned	key_local : 1,
-			key_sfi   : 5;
-	u8	key[16];
+	unsigned int	key_reference;
+	u8		key[16];
 };
 #define OPSDATA(card)	((struct gpk_private_data *) ((card)->ops_data))
 
@@ -147,22 +156,30 @@ gpk_finish(struct sc_card *card)
  * sc_check_sw doesn't seem to handle all of the
  * status words the GPK is capable of returning
  */
+#if 0
 static int
-gpk_sw_to_errorcode(struct sc_card *card, u8 sw1, u8 sw2)
+gpk_check_sw(struct sc_card *card, u8 sw1, u8 sw2)
 {
 	unsigned short int	sw = (sw1 << 8) | sw2;
 
 	if ((sw & 0xFFF0) == 0x63C0) {
-		error(card->ctx, "wrong PIN, %u tries left", sw&0xf);
+		error(card->ctx, "wrong PIN, %u tries left\n", sw&0xf);
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
 
 	switch (sw) {
 	case 0x6400:
-		error(card->ctx, "wrong crypto context");
+		error(card->ctx, "wrong crypto context\n");
 		return SC_ERROR_OBJECT_NOT_VALID; /* XXX ??? */
+
+	/* The following are handled by iso7816_check_sw
+	 * but all return SC_ERROR_UNKNOWN_REPLY
+	 * XXX: fix in the iso driver? */
+	case 0x6983:
+		error(card->ctx, "PIN is blocked\n");
+		return SC_ERROR_PIN_CODE_INCORRECT;
 	case 0x6581:
-		error(card->ctx, "out of space on card or file");
+		error(card->ctx, "out of space on card or file\n");
 		return SC_ERROR_OUT_OF_MEMORY;
 	case 0x6981:
 		return SC_ERROR_FILE_NOT_FOUND;
@@ -171,8 +188,9 @@ gpk_sw_to_errorcode(struct sc_card *card, u8 sw1, u8 sw2)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	return sc_check_sw(card, sw1, sw2);
+	return iso7816_check_sw(card, sw1, sw2);
 }
+#endif
 
 /*
  * Select a DF/EF
@@ -202,7 +220,7 @@ match_path(struct sc_card *card, unsigned short int **pathptr, size_t *pathlen,
 	if (len < curlen)
 		return 0;
 
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < curlen; i++) {
 		if (ptr[i] != curptr[i])
 			return 0;
 	}
@@ -216,30 +234,28 @@ match_path(struct sc_card *card, unsigned short int **pathptr, size_t *pathlen,
 	return 1;
 }
 
-static inline unsigned int
-ac_to_acl(unsigned short int ac)
+static void
+ac_to_acl(u_int16_t ac, struct sc_file *file, unsigned int op)
 {
 	unsigned int	npins, pin;
-	unsigned int	res = 0;
 
 	npins = (ac >> 14) & 3;
-	if (npins == 3)
-		return SC_AC_NEVER;
-	pin = ac & 0xFF;
-	while (npins--) {
-		switch (pin & 7) {
-		case 0:	res |= SC_AC_CHV1; break;
-		case 1:	res |= SC_AC_CHV2; break;
-		default:return SC_AC_NEVER;
-		}
-		pin >>= 4;
+	if (npins == 3) {
+		sc_file_add_acl_entry(file, op, SC_AC_NEVER,
+			       	SC_AC_KEY_REF_NONE);
+		return;
 	}
 
-	/* Check whether secure messaging key is specified */
-	if (ac & 0x1F00)
-		res |= SC_AC_PRO;
+	sc_file_add_acl_entry(file, op, SC_AC_NONE, SC_AC_KEY_REF_NONE);
+	pin = ac & 0xFF;
+	if (npins >= 1)
+		sc_file_add_acl_entry(file, op, SC_AC_CHV, (pin >> 4) & 0xF);
+	if (npins == 2)
+		sc_file_add_acl_entry(file, op, SC_AC_CHV, pin & 0xF);
 
-	return res;
+	/* Check whether secure messaging key is specified */
+	if (ac & 0x3F00)
+		sc_file_add_acl_entry(file, op, SC_AC_PRO, (ac & 0x3F00) >> 8);
 }
 
 /*
@@ -247,36 +263,38 @@ ac_to_acl(unsigned short int ac)
  * bits supported by the GPK. Since these do not map 1:1 there's
  * some fuzz involved.
  */
-static inline void
-acl_to_ac(unsigned int acl, u8 *ac)
+static void
+acl_to_ac(struct sc_file *file, unsigned int op, u8 *ac)
 {
+	const struct sc_acl_entry *acl;
+	unsigned int	npins = 0;
+
 	ac[0] = ac[1] = 0;
 
-	if (acl == SC_AC_NEVER) {
+	acl = sc_file_get_acl_entry(file, op);
+
+	assert(acl->method != SC_AC_UNKNOWN);
+	switch (acl->method) {
+	case SC_AC_NEVER:
 		ac[0] = 0xC0;
+		return;
+	case SC_AC_NONE:
 		return;
 	}
 
-	/* XXX should we set the "local" flag for PINs or not?
-	 * OpenSC does not provide for a "lock file" operation
-	 * that lets us freeze the ac bits after setting up the file.
-	 */
-	if (acl & SC_AC_CHV2) {
-		ac[0] += 0x40;
-		ac[1] |= 1;
-	}
-	if (acl & SC_AC_CHV1) {
-		ac[0] += 0x40;
-		ac[1] <<= 4;
-		ac[1] |= 0;
-	}
-
-	/* XXX should we set the "local" flag on key files or not?
-	 * OpenSC does not provide for a "lock file" operation
-	 * that lets us freeze the ac bits after setting up the file.
-	 */
-	if (acl & SC_AC_PRO) {
-		ac[0] |= 0x01;
+	while (acl) {
+		if (acl->method == SC_AC_CHV) {
+			/* Support up to 2 PINS only */
+			if (++npins >= 2)
+				continue;
+			ac[1] >>= 4;
+			ac[1] |= acl->key_ref << 4;
+			ac[0] += 0x40;
+		}
+		if (acl->method == SC_AC_PRO) {
+			ac[0] |= acl->key_ref & 0x1f;
+		}
+		acl = acl->next;
 	}
 }
 
@@ -285,13 +303,12 @@ gpk_parse_fileinfo(struct sc_card *card,
 		const u8 *buf, size_t buflen,
 		struct sc_file *file)
 {
-	struct gpk_private_data *priv = OPSDATA(card);
 	const u8	*sp, *end, *next;
 	int		i;
 
 	memset(file, 0, sizeof(*file));
 	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file->acl[i] = SC_AC_UNKNOWN;
+		sc_file_add_acl_entry(file, i, SC_AC_UNKNOWN, SC_AC_KEY_REF_NONE);
 
 	end = buf + buflen;
 	for (sp = buf; sp + 2 < end; sp = next) {
@@ -306,19 +323,16 @@ gpk_parse_fileinfo(struct sc_card *card,
 			memcpy(file->name, sp+2, sp[1]);
 		} else
 		if (sp[0] == 0x85) {
-			unsigned int	ac1, ac2, ac3;
+			unsigned int	ac[3], n;
 
 			file->id = (sp[4] << 8) | sp[5];
 			file->size = (sp[8] << 8) | sp[9];
 			file->record_length = sp[7];
 
-			/* Map ACLs */
-			priv->ac[0] = (sp[10] << 8) | sp[11];
-			priv->ac[1] = (sp[12] << 8) | sp[13];
-			priv->ac[2] = (sp[14] << 8) | sp[15]; /* EF only */
-			ac1 = ac_to_acl(priv->ac[0]);
-			ac2 = ac_to_acl(priv->ac[1]);
-			ac3 = ac_to_acl(priv->ac[2]);
+			/* Map ACLs. Note the third AC byte is
+			 * valid of EFs only */
+			for (n = 0; n < 3; n++)
+				ac[n] = (sp[10+2*n] << 8) | sp[11+2*n];
 
 			/* Examine file type */
 			switch (sp[6] & 7) {
@@ -326,22 +340,27 @@ gpk_parse_fileinfo(struct sc_card *card,
 			case 0x05: case 0x06: case 0x07:
 				file->type = SC_FILE_TYPE_WORKING_EF;
 				file->ef_structure = sp[6] & 7;
-				file->acl[SC_AC_OP_READ] = ac3;
-				file->acl[SC_AC_OP_WRITE] = ac3;
-				file->acl[SC_AC_OP_UPDATE] = ac1;
+				ac_to_acl(ac[0], file, SC_AC_OP_UPDATE);
+				ac_to_acl(ac[1], file, SC_AC_OP_WRITE);
+				ac_to_acl(ac[2], file, SC_AC_OP_READ);
 				break;
 			case 0x00: /* 0x38 is DF */
 				file->type = SC_FILE_TYPE_DF;
-				file->acl[SC_AC_OP_SELECT] = SC_AC_NONE;
-				file->acl[SC_AC_OP_LOCK] = ac1;
 				/* Icky: the GPK uses different ACLs
 				 * for creating data files and
 				 * 'sensitive' i.e. key files */
-				file->acl[SC_AC_OP_CREATE] = ac2;
-				file->acl[SC_AC_OP_DELETE] = SC_AC_NEVER;
-				file->acl[SC_AC_OP_REHABILITATE] = SC_AC_NEVER;
-				file->acl[SC_AC_OP_INVALIDATE] = SC_AC_NEVER;
-				file->acl[SC_AC_OP_LIST_FILES] = SC_AC_NEVER;
+				ac_to_acl(ac[0], file, SC_AC_OP_LOCK);
+				ac_to_acl(ac[1], file, SC_AC_OP_CREATE);
+				sc_file_add_acl_entry(file, SC_AC_OP_SELECT,
+					SC_AC_NONE, SC_AC_KEY_REF_NONE);
+				sc_file_add_acl_entry(file, SC_AC_OP_DELETE,
+					SC_AC_NEVER, SC_AC_KEY_REF_NONE);
+				sc_file_add_acl_entry(file, SC_AC_OP_REHABILITATE,
+					SC_AC_NEVER, SC_AC_KEY_REF_NONE);
+				sc_file_add_acl_entry(file, SC_AC_OP_INVALIDATE,
+					SC_AC_NEVER, SC_AC_KEY_REF_NONE);
+				sc_file_add_acl_entry(file, SC_AC_OP_LIST_FILES,
+					SC_AC_NEVER, SC_AC_KEY_REF_NONE);
 				break;
 			}
 		}
@@ -357,11 +376,11 @@ gpk_parse_fileinfo(struct sc_card *card,
 static int
 gpk_select(struct sc_card *card, u8 kind,
 		const u8 *buf, size_t buflen,
-		struct sc_file *file)
+		struct sc_file **file)
 {
 	struct gpk_private_data *priv = OPSDATA(card);
 	struct sc_apdu	apdu;
-	u8	resbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8		resbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int		r;
 
 	/* If we're about to select a DF, invalidate secure messaging keys */
@@ -371,7 +390,12 @@ gpk_select(struct sc_card *card, u8 kind,
 	}
 
 	/* do the apdu thing */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, kind, 0);
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cla = 0x00;
+	apdu.cse = SC_APDU_CASE_3_SHORT;
+	apdu.ins = 0xA4;
+	apdu.p1 = kind;
+	apdu.p2 = 0;
 	apdu.data = buf;
 	apdu.datalen = buflen;
 	apdu.lc = apdu.datalen;
@@ -380,7 +404,7 @@ gpk_select(struct sc_card *card, u8 kind,
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = gpk_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 
 	/* Nothing we can say about it... invalidate
@@ -391,21 +415,34 @@ gpk_select(struct sc_card *card, u8 kind,
 
 	if (file == NULL)
 		return 0;
+	*file = sc_file_new();
 
-	return gpk_parse_fileinfo(card, apdu.resp, apdu.resplen, file);
+	r = gpk_parse_fileinfo(card, apdu.resp, apdu.resplen, *file);
+	if (r < 0) {
+		sc_file_free(*file);
+		*file = NULL;
+	}
+	return r;
 }
 
 static int
 gpk_select_id(struct sc_card *card, u8 kind, unsigned short int fid,
-		struct sc_file *file)
+		struct sc_file **file)
 {
 	struct sc_path	*cp = &card->cache.current_path;
-	u8	fbuf[2];
-	int		r;
+	u8		fbuf[2];
+	int		r, log_errs;
+
+	if (card->ctx->debug)
+		debug(card->ctx, "gpk_select_id(0x%04X)\n", fid);
 
 	fbuf[0] = fid >> 8;
 	fbuf[1] = fid & 0xff;
+
+	log_errs = card->ctx->log_errors;
+	card->ctx->log_errors = 0;
 	r = gpk_select(card, kind, fbuf, 2, file);
+	card->ctx->log_errors = log_errs;
 
 	/* Fix up the path cache */
 	if (r == 0) {
@@ -428,15 +465,15 @@ gpk_select_id(struct sc_card *card, u8 kind, unsigned short int fid,
 
 static int
 gpk_select_file(struct sc_card *card, const struct sc_path *path,
-		struct sc_file *file)
+		struct sc_file **file)
 {
 	unsigned short int	pathtmp[SC_MAX_PATH_SIZE/2];
 	unsigned short int	*pathptr;
-	size_t		pathlen, n;
-	int		locked = 0, r = 0, use_relative = 0;
-	u8	leaf_type;
+	size_t			pathlen, n;
+	int			locked = 0, r = 0, use_relative = 0, retry = 1;
+	u8			leaf_type;
 
-	SC_FUNC_CALLED(card->ctx, 3);
+	SC_FUNC_CALLED(card->ctx, 1);
 
 	/* Handle the AID case first */
 	if (path->type == SC_PATH_TYPE_DF_NAME) {
@@ -467,6 +504,10 @@ try_again:
 	/* See whether we can skip an initial portion of the
 	 * (absolute) path */
 	if (path->type == SC_PATH_TYPE_PATH) {
+		/* Do not retry selecting if this cannot be a DF */
+		if ((pathptr[0] == GPK_FID_MF && pathlen > 2)
+		 || (pathptr[0] != GPK_FID_MF && pathlen > 1))
+			retry = 0;
 		use_relative = match_path(card, &pathptr, &pathlen, file != 0);
 		if (pathlen == 0)
 			goto done;
@@ -521,7 +562,7 @@ try_again:
 	if (r) {
 		/* Did we guess EF, and were wrong? If so, invalidate
 		 * path cache and try again; this time aiming for a DF */
-		if (leaf_type == GPK_SEL_EF) {
+		if (leaf_type == GPK_SEL_EF && retry) {
 			card->cache.current_path.len = 0;
 			leaf_type = GPK_SEL_DF;
 			goto try_again;
@@ -543,7 +584,7 @@ gpk_compute_crycks(struct sc_card *card, struct sc_apdu *apdu,
 {
 	struct gpk_private_data *priv = OPSDATA(card);
 	des_key_schedule k1, k2;
-	u8	in[8], out[8], block[64];
+	u8		in[8], out[8], block[64];
 	unsigned int	len = 0, i, j;
 
 	/* Set the key schedule */
@@ -577,7 +618,7 @@ gpk_compute_crycks(struct sc_card *card, struct sc_apdu *apdu,
 	memcpy((u8 *) (apdu->data + apdu->datalen), out + 5, 3);
 	apdu->datalen += 3;
 	apdu->lc += 3;
-	apdu->le = 3;
+	apdu->le += 3;
 	if (crycks1)
 		memcpy(crycks1, out, 3);
 	memset(k1, 0, sizeof(k1));
@@ -585,6 +626,22 @@ gpk_compute_crycks(struct sc_card *card, struct sc_apdu *apdu,
 	memset(in, 0, sizeof(in));
 	memset(out, 0, sizeof(out));
 	memset(block, 0, sizeof(block));
+	return 0;
+}
+
+/*
+ * Verify secure messaging response
+ */
+static int
+gpk_verify_crycks(struct sc_card *card, struct sc_apdu *apdu, u8 *crycks)
+{
+	if (apdu->resplen < 3
+	 || memcmp(apdu->resp + apdu->resplen - 3, crycks, 3)) {
+		if (card->ctx->debug)
+			debug(card->ctx, "Invalid secure messaging reply\n");
+		return SC_ERROR_UNKNOWN_REPLY;
+	}
+	apdu->resplen -= 3;
 	return 0;
 }
 
@@ -599,9 +656,12 @@ gpk_create_file(struct sc_card *card, struct sc_file *file)
 {
 	struct gpk_private_data *priv = OPSDATA(card);
 	struct sc_apdu	apdu;
-	u8	data[28+3], crycks[3], resp[3];
+	u8		data[28+3], crycks[3], resp[3];
 	size_t		datalen, namelen;
 	int		r;
+
+	if (card->ctx->debug)
+		debug(card->ctx, "gpk_create_file(0x%04X)\n", file->id);
 
 	/* Prepare APDU */
 	memset(&apdu, 0, sizeof(apdu));
@@ -627,8 +687,8 @@ gpk_create_file(struct sc_card *card, struct sc_file *file)
 		 */
 		apdu.p1 = 0x01; /* create DF */
 		data[2] = 0x38;
-		acl_to_ac(file->acl[SC_AC_OP_CREATE], data + 6);
-		acl_to_ac(file->acl[SC_AC_OP_CREATE], data + 8);
+		acl_to_ac(file, SC_AC_OP_CREATE, data + 6);
+		acl_to_ac(file, SC_AC_OP_CREATE, data + 8);
 		if ((namelen = file->namelen) != 0) {
 			if (namelen > 16)
 				return SC_ERROR_INVALID_ARGUMENTS;
@@ -642,9 +702,9 @@ gpk_create_file(struct sc_card *card, struct sc_file *file)
 		data[3] = file->record_length;
 		data[4] = file->size >> 8;
 		data[5] = file->size & 0xff;
-		acl_to_ac(file->acl[SC_AC_OP_UPDATE], data + 6);
-		acl_to_ac(file->acl[SC_AC_OP_WRITE],  data + 8);
-		acl_to_ac(file->acl[SC_AC_OP_READ],   data + 10);
+		acl_to_ac(file, SC_AC_OP_UPDATE, data + 6);
+		acl_to_ac(file, SC_AC_OP_WRITE, data + 8);
+		acl_to_ac(file, SC_AC_OP_READ, data + 10);
 	}
 
 	apdu.data = data;
@@ -663,16 +723,12 @@ gpk_create_file(struct sc_card *card, struct sc_file *file)
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = gpk_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 
-	if (priv->key_set) {
-		/* verify CRYCKS response? */
-		if (apdu.resplen != 3
-		 || memcmp(resp, crycks, 3)) {
-			printf("XXX Secure messaging: bad resp\n");
-		}
-	}
+	/* verify secure messaging response */
+	if (priv->key_set)
+		r = gpk_verify_crycks(card, &apdu, crycks);
 
 	return r;
 }
@@ -718,59 +774,36 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
  * Verify a key presented by the user for secure messaging
  */
 static int
-gpk_select_key(struct sc_card *card, int ref, const u8 *buf, size_t buflen)
+gpk_select_key(struct sc_card *card, int key_sfi, const u8 *buf, size_t buflen)
 {
 	struct gpk_private_data *priv = OPSDATA(card);
 	struct sc_apdu	apdu;
-	u8	random[8], resp[258];
-	unsigned int	n, sfi, key_sfi = 0;
+	u8		random[8], resp[258];
 	int		r;
+
+	SC_FUNC_CALLED(card->ctx, 1);
 
 	if (buflen != 16)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	/* The opensc API doesn't tell us what key it wants to
-	 * select, and why. We need to look at the ACs of
-	 * the most recently selected file and guess
-	 */
-	key_sfi = 0;
-	for (n = 0; n < 3; n++) {
-		sfi = (priv->ac[n] >> 8) & 0x3F;
-		if (sfi & 0xF) {
-			if (key_sfi && key_sfi != sfi) {
-				/* Hm, the file has ACLs with two
-				 * different keys. I'm unable to guess
-				 * which one I should use, so I throw
-				 * up my hands in disgust.
-				 */
-				/* XXX fix errror code? */
-				return SC_ERROR_INVALID_ARGUMENTS;
-			}
-			key_sfi = sfi;
-		}
-	}
-
-	/* If no key required, assume transport key :-/ */
-	if (key_sfi == 0)
-		key_sfi = 0x01;
-
-	/* XXX now do the SelFk */
+	/* now do the SelFk */
 	RAND_pseudo_bytes(random, sizeof(random));
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cla = 0x80;
 	apdu.cse = SC_APDU_CASE_4_SHORT;
 	apdu.ins = 0x28;
-	apdu.p1  = ref << 1;
+	apdu.p1  = 0;
 	apdu.p2  = key_sfi;
 	apdu.data = random;
 	apdu.datalen = sizeof(random);
 	apdu.lc = apdu.datalen;
 	apdu.resp = resp;
 	apdu.resplen = sizeof(resp);
+	apdu.le = 12;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = gpk_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 
 	if (apdu.resplen != 12) {
@@ -778,11 +811,60 @@ gpk_select_key(struct sc_card *card, int ref, const u8 *buf, size_t buflen)
 	} else
 	if ((r = gpk_set_filekey(buf, random, resp, priv->key)) == 0) {
 		priv->key_set = 1;
-		priv->key_local = (key_sfi & 0x20)? 1 : 0;
-		priv->key_sfi = key_sfi & 0x1f;
+		priv->key_reference = key_sfi;
 	}
 
 	memset(resp, 0, sizeof(resp));
+	return r;
+}
+
+/*
+ * Verify a PIN
+ * XXX Checking for a PIN from the global EFsc is quite hairy,
+ * because we can do this only when the MF is selected.
+ * So, simply don't do this :-)
+ */
+static int
+gpk_verify_pin(struct sc_card *card, int ref,
+	const u8 *pin, size_t pinlen, int *tries_left)
+{
+	u_int8_t	buffer[8];
+	struct sc_apdu	apdu;
+	int		r;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	if (pinlen > 8)
+		return SC_ERROR_INVALID_PIN_LENGTH;
+
+	/* Copy PIN, 0-padded */
+	memset(buffer, 0, sizeof(buffer));
+	memcpy(buffer, pin, pinlen);
+
+	/* XXX deal with secure messaging here */
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_3_SHORT;
+	apdu.cla = 0x00;
+	apdu.ins = 0x20;
+	apdu.p1  = 0x00;
+	apdu.p2  = ref & 7;
+	apdu.lc  = 8;
+	apdu.datalen = 8;
+	apdu.data = buffer;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	/* Special case: extract tries_left */
+	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
+		if (tries_left)
+			*tries_left = apdu.sw2 & 0xF;
+		return SC_ERROR_PIN_CODE_INCORRECT;
+	}
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
 	return r;
 }
 
@@ -799,8 +881,140 @@ gpk_verify(struct sc_card *card, unsigned int type, int ref,
 	switch (type) {
 	case SC_AC_PRO:
 		return gpk_select_key(card, ref, buf, buflen);
+	case SC_AC_CHV:
+		return gpk_verify_pin(card, ref, buf, buflen, tries_left);
 	}
 	return SC_ERROR_INVALID_ARGUMENTS;
+}
+
+
+/*
+ * Erase card
+ */
+static int
+gpk_erase_card(struct sc_card *card)
+{
+	struct gpk_private_data *priv = OPSDATA(card);
+	struct sc_apdu	apdu;
+	u_int8_t	offset;
+	int		r;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+	switch (priv->variant) {
+	case GPK4000_su256:
+	case GPK4000_sdo:
+		offset = 0x6B;  /* courtesy gemplus hotline */
+		break;
+
+	case GPK4000_s:
+		offset = 7;
+		break;
+
+	case GPK8000:
+	case GPK8000_8K:
+	case GPK8000_16K:
+		offset = 0;
+		break;
+
+	default:
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_1;
+	apdu.cla = 0xDB;
+	apdu.ins = 0xDE;
+	apdu.p2  = offset;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	priv->key_set = 0;
+	SC_FUNC_RETURN(card->ctx, 2, r);
+}
+
+/*
+ * Lock a file Access Condition.
+ *
+ * File must be selected, and we assume that any authentication
+ * that needs to be presented in order to allow this operation
+ * have been presented (ACs from the DF; AC1 for sensitive files,
+ * AC2 for normal files).
+ */
+static int
+gpk_lock(struct sc_card *card, struct sc_cardctl_gpk_lock *args)
+{
+	struct gpk_private_data *priv = OPSDATA(card);
+	struct sc_file	*file = args->file;
+	struct sc_apdu	apdu;
+	u8		data[8], crycks[3], resp[3];
+	int		r;
+
+	if (card->ctx->debug)
+		debug(card->ctx, "gpk_lock(0x%04X, %u)\n",
+				file->id, args->operation);
+
+	memset(data, 0, sizeof(data));
+	data[0] = file->id >> 8;
+	data[1] = file->id;
+	switch (args->operation) {
+	case SC_AC_OP_UPDATE:
+		data[2] = 0x40; break;
+	case SC_AC_OP_WRITE:
+		data[3] = 0x40; break;
+	case SC_AC_OP_READ:
+		data[4] = 0x40; break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_3_SHORT;
+	apdu.cla = 0x80;
+	apdu.ins = 0x16;
+	apdu.p1  = (file->type == SC_FILE_TYPE_DF)? 1 : 2;
+	apdu.p2  = 0;
+	apdu.lc  = 5;
+	apdu.datalen = 5;
+	apdu.data = data;
+
+	if (priv->key_set) {
+		apdu.cla = 0x84;
+		apdu.cse = SC_APDU_CASE_4_SHORT;
+		r = gpk_compute_crycks(card, &apdu, crycks);
+		if (r)
+			return r;
+		apdu.resp = resp;
+		apdu.resplen = sizeof(resp); /* XXX? */
+	}
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	if (priv->key_set)
+		r = gpk_verify_crycks(card, &apdu, crycks);
+
+	return r;
+}
+
+/*
+ * Dispatch card_ctl calls
+ */
+static int
+gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
+{
+	switch (cmd) {
+	case SC_CARDCTL_ERASE_CARD:
+		return gpk_erase_card(card);
+	case SC_CARDCTL_GPK_LOCK:
+		return gpk_lock(card, (struct sc_cardctl_gpk_lock *) ptr);
+	}
+	error(card->ctx, "card_ctl command %u not supported\n", cmd);
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /*
@@ -819,12 +1033,10 @@ sc_get_driver()
 		gpk_ops.init		= gpk_init;
 		gpk_ops.finish		= gpk_finish;
 		gpk_ops.select_file	= gpk_select_file;
-		/* The GPK4000 doesn't have a read directory command. */
-#if 0
-		gpk_ops.list_files	= gpk_list_files;
-#endif
 		gpk_ops.verify		= gpk_verify;
 		gpk_ops.create_file	= gpk_create_file;
+		/* gpk_ops.check_sw	= gpk_check_sw; */
+		gpk_ops.card_ctl	= gpk_card_ctl;
 	}
 	return &gpk_drv;
 }
@@ -834,5 +1046,4 @@ sc_get_gpk_driver()
 {
 	return sc_get_driver();
 }
-
 #endif /* HAVE_OPENSSL */

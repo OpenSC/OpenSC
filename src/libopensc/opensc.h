@@ -316,7 +316,7 @@ struct sc_card_operations {
 	/* Called when the card object is being freed.  finish() has to
 	 * deallocate all possible private data. */
 	int (*finish)(struct sc_card *card);
-	
+
 	/* ISO 7816-4 functions */
 
 	int (*read_binary)(struct sc_card *card, unsigned int idx,
@@ -389,6 +389,8 @@ struct sc_card_operations {
 	int (*list_files)(struct sc_card *card, u8 *buf, size_t buflen);
 	
 	int (*check_sw)(struct sc_card *card, int sw1, int sw2);
+	int (*card_ctl)(struct sc_card *card, unsigned long request,
+				void *data);
 };
 
 struct sc_card_driver {
@@ -566,6 +568,9 @@ int sc_reset_retry_counter(struct sc_card *card, unsigned int type,
 /* ISO 7816-9 */
 int sc_create_file(struct sc_card *card, struct sc_file *file);
 int sc_delete_file(struct sc_card *card, const struct sc_path *path);
+
+/* Card controls */
+int sc_card_ctl(struct sc_card *card, unsigned long command, void *arg);
 
 inline int sc_file_valid(const struct sc_file *file);
 struct sc_file * sc_file_new();

@@ -26,5 +26,8 @@ void hex_dump(FILE *f, const u8 *in, int len, const char *sep);
 void hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr);
 void print_usage_and_die(const char *pgmname);
 const char * acl_to_str(const struct sc_acl_entry *e);
+void warn(const char *fmt, ...);
+void error(const char *fmt, ...);
+void fatal(const char *fmt, ...);
 
 #endif

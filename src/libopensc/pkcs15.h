@@ -285,6 +285,15 @@ int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
 				  const struct sc_pkcs15_id *id,
 				  struct sc_pkcs15_pin_info **out);
 
+int sc_pkcs15_encode_dir(struct sc_context *ctx,
+			struct sc_pkcs15_card *card,
+			u8 **buf, size_t *buflen);
+int sc_pkcs15_encode_tokeninfo(struct sc_context *ctx,
+			struct sc_pkcs15_card *card,
+			u8 **buf, size_t *buflen);
+int sc_pkcs15_encode_odf(struct sc_context *ctx,
+			struct sc_pkcs15_card *card,
+			u8 **buf, size_t *buflen);
 int sc_pkcs15_encode_df(struct sc_context *ctx,
 			struct sc_pkcs15_df *df, int file_nr,
 			u8 **buf, size_t *bufsize);

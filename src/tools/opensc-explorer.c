@@ -51,20 +51,11 @@ const char *option_help[] = {
 	"Debug output -- maybe supplied several times",
 };
 
-#define CMD_LS		0
-#define CMD_CD		1
-#define CMD_DEBUG	2
-#define CMD_CAT		3
-#define CMD_INFO	4
-#define CMD_DELETE	5
-#define CMD_VERIFY	6
-
-const char *cmds[] = {
-	"ls", "cd", "debug", "cat", "info", "create", "delete",
-	"verify", "put", "get", "mkdir", "quit"
+struct command {
+	const char *	name;
+	int		(*func)(const char *, const char *);
+	const char *	help;
 };
-
-const int nr_cmds = sizeof(cmds)/sizeof(cmds[0]);
 
 void die(int ret)
 {
@@ -79,22 +70,22 @@ void die(int ret)
 	exit(ret);
 }
 
-static int ambiguous_match(const char **table, int nr_entries, const char *cmd)
+static struct command *
+ambiguous_match(struct command *table, const char *cmd)
 {
+	struct command *last_match = NULL;
 	int matches = 0;
-	int last_match = 0;
-	int i;
 
-	for (i = 0; i < nr_entries; i++) {
-                if (strncasecmp(cmd, table[i], strlen(cmd)) == 0) {
+	for (; table->name; table++) {
+                if (strncasecmp(cmd, table->name, strlen(cmd)) == 0) {
+			last_match = table;
 			matches++;
-			last_match = i;
 		}
 	}
-	if (matches > 1)
-		return -1;
-	if (matches == 0)
-		return -2;
+	if (matches > 1) {
+		printf("Ambiguous command: %s\n", cmd);
+		return NULL;
+	}
 	return last_match;
 }
 
@@ -172,7 +163,7 @@ void print_file(const struct sc_file *file)
 	return;
 }
 
-int do_ls()
+int do_ls(const char *dummy, const char *dummy2)
 {
 	u8 buf[256], *cur = buf;
 	int r, count;
@@ -209,7 +200,7 @@ int do_ls()
         return 0;
 }
 
-int do_cd(const char *arg)
+int do_cd(const char *arg, const char *dummy2)
 {
 	struct sc_path path;
 	struct sc_file *file;
@@ -305,7 +296,7 @@ int read_and_print_record_file(struct sc_file *file)
 	return 0;
 }
 
-int do_cat(const char *arg)
+int do_cat(const char *arg, const char *dummy2)
 {
 	int r, error = 0;
 	struct sc_path path;
@@ -342,7 +333,7 @@ int do_cat(const char *arg)
         return -error;
 }
 
-int do_info(const char *arg)
+int do_info(const char *arg, const char *dummy2)
 {
 	struct sc_file *file;
 	struct sc_path path;
@@ -517,7 +508,7 @@ usage:
 	return -1;
 }
 
-int do_delete(const char *arg)
+int do_delete(const char *arg, const char *dummy2)
 {
 	struct sc_path path;
 	int r;
@@ -739,59 +730,53 @@ usage:
 	return -1;
 }
 
-int handle_cmd(int cmd, const char *arg, const char *arg2)
+int do_debug(const char *arg, const char *dummy2)
 {
-        int i;
+	int	i;
 
-	switch (cmd) {
-	case 0:
-		return do_ls();
-	case 1:
-		return do_cd(arg);
-	case 2:
-		if (sscanf(arg, "%d", &i) != 1)
-			return -1;
-		printf("Debug level set to %d\n", i);
-		ctx->debug = i;
-		if (i) {
-			ctx->error_file = stderr;
-			ctx->debug_file = stdout;
-		} else {
-			ctx->error_file = NULL;
-			ctx->debug_file = NULL;
-		}
-		return 0;
-	case 3:
-                return do_cat(arg);
-        case 4:
-        	return do_info(arg);
-        case 5:
-        	return do_create(arg, arg2);
-        case 6:
-        	return do_delete(arg);
-        case 7:
-        	return do_verify(arg, arg2);
-        case 8:
-        	return do_put(arg, arg2);
-        case 9:
-        	return do_get(arg, arg2);
-        case 10:
-        	return do_mkdir(arg, arg2);
-        case 11:
-        	die(0);
-        default:
-        	printf("Don't know how to handle command.\n");
+	if (sscanf(arg, "%d", &i) != 1)
+		return -1;
+	printf("Debug level set to %d\n", i);
+	ctx->debug = i;
+	if (i) {
+		ctx->error_file = stderr;
+		ctx->debug_file = stdout;
+	} else {
+		ctx->error_file = NULL;
+		ctx->debug_file = NULL;
 	}
-        return -1;
+	return 0;
 }
+
+int do_quit(const char *dummy, const char *dummy2)
+{
+	die(0);
+	return 0;
+}
+
+struct command		cmds[] = {
+ { "ls",	do_ls,		"list all files in the current DF"	},
+ { "cd",	do_cd,		"change to another DF"			},
+ { "debug",	do_debug,	"set the debug level"			},
+ { "cat",	do_cat,		"print the contents of an EF"		},
+ { "info",	do_info,	"display attributes of card file"	},
+ { "create",	do_create,	"create a new EF"			},
+ { "delete",	do_delete,	"remove an EF/DF"			},
+ { "verify",	do_verify,	"present a PIN or key to the card"	},
+ { "put",	do_put,		"copy a local file to the card"		},
+ { "get",	do_get,		"copy an EF to a local file"		},
+ { "mkdir",	do_mkdir,	"create a DF"				},
+ { "quit",	do_quit,	"quit this program"			},
+ { 0, 0, 0 }
+};
 
 void usage()
 {
-	int i;
-	
+	struct command	*cmd;
+
 	printf("Supported commands:\n");
-	for (i = 0; i < nr_cmds; i++)
-		printf("  %s\n", cmds[i]);
+	for (cmd = cmds; cmd->name; cmd++)
+		printf("  %-10s %s\n", cmd->name, cmd->help);
 }
 
 static int parse_line(char *in, char **argv)
@@ -911,6 +896,7 @@ int main(int argc, char * const argv[])
 		return 1;
 	}
 	while (1) {
+		struct command *c;
 		int i;
 		char prompt[40];
 
@@ -929,12 +915,12 @@ int main(int argc, char * const argv[])
 			continue;
 		while (r < 3)
 			cargv[r++] = "";
-		r = ambiguous_match(cmds, nr_cmds, cargv[0]);
-		if (r < 0) {
+		c = ambiguous_match(cmds, cargv[0]);
+		if (c == NULL) {
 			usage();
-                        continue;
+		} else {
+			c->func(cargv[1], cargv[2]);
 		}
-                handle_cmd(r, cargv[1], cargv[2]);
 	}
 end:
 	die(err);

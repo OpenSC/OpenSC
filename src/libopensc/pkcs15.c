@@ -359,7 +359,7 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 	return 0;
 }
 
-static int sc_pkcs15_encode_odf(struct sc_context *ctx,
+int sc_pkcs15_encode_odf(struct sc_context *ctx,
 				struct sc_pkcs15_card *card,
 				u8 **buf, size_t *buflen)
 {

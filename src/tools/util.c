@@ -3,6 +3,7 @@
 #endif
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <ctype.h>
 
 #include "util.h"
@@ -138,4 +139,41 @@ const char * acl_to_str(const struct sc_acl_entry *e)
 	}
 	line[strlen(line)-1] = 0; /* get rid of trailing space */
 	return line;
+}
+
+void
+fatal(const char *fmt, ...)
+{
+	va_list	ap;
+
+	va_start(ap, fmt);
+	fprintf(stderr, "error: ");
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\nAborting.\n");
+	va_end(ap);
+	exit(1);
+}
+
+void
+error(const char *fmt, ...)
+{
+	va_list	ap;
+
+	va_start(ap, fmt);
+	fprintf(stderr, "error: ");
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
+	va_end(ap);
+}
+
+void
+warn(const char *fmt, ...)
+{
+	va_list	ap;
+
+	va_start(ap, fmt);
+	fprintf(stderr, "warning: ");
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
+	va_end(ap);
 }

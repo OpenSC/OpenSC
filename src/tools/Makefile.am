@@ -5,7 +5,7 @@ LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
 if HAVE_SSL
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-crypt pkcs15-tool \
-	       cryptoflex-tool
+	       cryptoflex-tool pkcs15-init
 else
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-crypt pkcs15-tool
 endif
@@ -21,4 +21,7 @@ pkcs15_crypt_SOURCES = pkcs15-crypt.c util.c
 pkcs15_crypt_LDADD = @GETOPTSRC@
 cryptoflex_tool_SOURCES = cryptoflex-tool.c util.c
 cryptoflex_tool_LDADD = @GETOPTSRC@ @LIBCRYPTO@
-noinst_HEADERS = util.h
+pkcs15_init_SOURCES = pkcs15-init.c profile.c util.c \
+		pkcs15-gpk.c
+pkcs15_init_LDADD = @GETOPTSRC@ @LIBCRYPTO@
+noinst_HEADERS = util.h profile.h

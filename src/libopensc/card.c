@@ -767,3 +767,16 @@ inline int sc_card_valid(const struct sc_card *card) {
 #endif
 	return card->magic == SC_CARD_MAGIC;
 }
+
+int
+sc_card_ctl(struct sc_card *card, unsigned long cmd, void *args)
+{
+	int r;
+
+	assert(card != NULL);
+	SC_FUNC_CALLED(card->ctx, 2);
+        if (card->ops->card_ctl == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->card_ctl(card, cmd, args);
+        SC_FUNC_RETURN(card->ctx, 2, r);
+}

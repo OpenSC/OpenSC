@@ -190,7 +190,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 #if 1
 	ctx->card_drivers[i++] = sc_get_tcos_driver();
 #endif
-#if 0 && defined(HAVE_OPENSSL)
+#if defined(HAVE_OPENSSL)
 	ctx->card_drivers[i++] = sc_get_gpk_driver();
 #endif
 #if 1
@@ -368,6 +368,15 @@ int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
 		sc_file_clear_acl_entries(file, operation);
 		file->acl[operation] = (struct sc_acl_entry *) 3;
 		return 0;
+	default:
+		/* NONE and UNKNOWN get zapped when a new AC is added.
+		 * If the ACL is NEVER, additional entries will be
+		 * dropped silently. */
+		if (file->acl[operation] == (struct sc_acl_entry *) 1)
+			return 0;
+		if (file->acl[operation] == (struct sc_acl_entry *) 2
+		 || file->acl[operation] == (struct sc_acl_entry *) 3)
+			file->acl[operation] = NULL;
 	}
 	
 	new = malloc(sizeof(struct sc_acl_entry));
