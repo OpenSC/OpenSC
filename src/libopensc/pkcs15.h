@@ -346,7 +346,7 @@ int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *card, int type,
 			       void *func_arg,
 			       struct sc_pkcs15_object **ret, int ret_count);
 
-struct sc_pkcs15_card * sc_pkcs15_card_new();
+struct sc_pkcs15_card * sc_pkcs15_card_new(void);
 void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card);
 
 void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
