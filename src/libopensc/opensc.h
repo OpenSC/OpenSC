@@ -72,6 +72,8 @@ extern "C" {
 /* File status flags */
 #define SC_FILE_STATUS_ACTIVATED	0x00
 #define SC_FILE_STATUS_INVALIDATED	0x01
+#define SC_FILE_STATUS_CREATION		0x02 /* Full access in this state,
+						(at least for SetCOS 4.4 */
 
 /* Access Control flags */
 #define SC_AC_NONE			0x00000000
