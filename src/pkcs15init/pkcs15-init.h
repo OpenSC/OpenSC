@@ -139,10 +139,6 @@ struct sc_pkcs15init_operations {
 #define SC_PKCS15INIT_NPINS		4
 
 struct sc_pkcs15init_callbacks {
-	/* Error and debug output */
-	void	(*error)(const char *, ...);
-	void	(*debug)(int level, const char *, ...);
-
 	/*
 	 * Get a PIN from the front-end. The first argument is
 	 * one of the SC_PKCS15INIT_XXX_PIN/PUK macros.

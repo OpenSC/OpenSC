@@ -28,6 +28,7 @@
 #include <stdarg.h>
 #include <opensc/opensc.h>
 #include <opensc/cardctl.h>
+#include <opensc/log.h>
 #include <opensc/scrandom.h>
 #include "pkcs15-init.h"
 #include "profile.h"
@@ -64,7 +65,6 @@ static int	etoken_put_key(struct sc_profile *, struct sc_card *,
 static int	etoken_key_algorithm(unsigned int, int *);
 static int	etoken_extract_pubkey(sc_card_t *, int,
 			u8, sc_pkcs15_bignum_t *);
-static void	error(struct sc_profile *, const char *, ...);
 
 /* Object IDs for PIN objects.
  * SO PIN = 0x01, SO PUK = 0x02
@@ -261,12 +261,12 @@ etoken_store_key(sc_profile_t *profile, sc_card_t *card,
 	int		algorithm, r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		error(profile, "CardOS supports RSA keys only.\n");
+		sc_error(card->ctx, "CardOS supports RSA keys only.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (etoken_key_algorithm(key_info->usage, &algorithm) < 0) {
-		error(profile, "CardOS does not support keys "
+		sc_error(card->ctx, "CardOS does not support keys "
 			       "that can both sign _and_ decrypt.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -296,26 +296,26 @@ etoken_generate_key(sc_profile_t *profile, sc_card_t *card,
 	int		algorithm, r, delete_it = 0;
 	
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		error(profile, "CardOS supports only RSA keys.");
+		sc_error(card->ctx, "CardOS supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (etoken_key_algorithm(key_info->usage, &algorithm) < 0) {
-		error(profile, "CardOS does not support keys "
+		sc_error(card->ctx, "CardOS does not support keys "
 			       "that can both sign _and_ decrypt.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	keybits = key_info->modulus_length & ~7UL;
 	if (keybits > RSAKEY_MAX_BITS) {
-		error(profile, "Unable to generate key, max size is %d\n",
+		sc_error(card->ctx, "Unable to generate key, max size is %d",
 				RSAKEY_MAX_BITS);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	if (sc_profile_get_file(profile, "tempfile", &temp) < 0) {
-		error(profile, "Profile doesn't define temporary file "
-				"for key generation.\n");
+		sc_error(card->ctx, "Profile doesn't define temporary file "
+				"for key generation.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	memset(pubkey, 0, sizeof(*pubkey));
@@ -625,19 +625,6 @@ etoken_extract_pubkey(struct sc_card *card, int nr, u8 tag,
 	bn->data = (u8 *) malloc(count);
 	memcpy(bn->data, buf + 4, count);
 	return 0;
-}
-
-static void
-error(struct sc_profile *profile, const char *fmt, ...)
-{
-	char	buffer[256];
-	va_list	ap;
-
-	va_start(ap, fmt);
-	vsnprintf(buffer, sizeof(buffer), fmt, ap);
-	va_end(ap);
-	if (profile->cbs)
-		profile->cbs->error("%s", buffer);
 }
 
 static struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations;

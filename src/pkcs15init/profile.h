@@ -78,6 +78,7 @@ typedef struct sc_template {
 } sc_template_t;
 
 struct sc_profile {
+	sc_card_t *		card;
 	char *			driver;
 	struct sc_pkcs15init_operations *ops;
 	struct sc_pkcs15init_callbacks *cbs;

@@ -38,6 +38,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <opensc/scconf.h>
+#include <opensc/log.h>
 #include "pkcs15-init.h"
 #include "profile.h"
 
@@ -332,8 +333,7 @@ sc_profile_finish(struct sc_profile *profile)
 	}
 	return 0;
 
-whine:	if (profile->cbs)
-		profile->cbs->error("%s\n", reason);
+whine:	sc_error(profile->card->ctx, "%s", reason);
 	return SC_ERROR_INCONSISTENT_PROFILE;
 }
 
@@ -525,6 +525,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		const char *file_name, const sc_pkcs15_id_t *id,
 		sc_file_t **ret)
 {
+	sc_card_t	*card = profile->card;
 	sc_profile_t	*tmpl;
 	sc_template_t	*info;
 	unsigned int	index;
@@ -549,12 +550,15 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		}
 	}
 
-	profile->cbs->debug(2, "Instantiating template %s at %s\n",
+	if (profile->card->ctx->debug >= 2) {
+		sc_debug(profile->card->ctx,
+			"Instantiating template %s at %s",
 			template_name, sc_print_path(base_path));
+	}
 
 	base_file = sc_profile_find_file_by_path(profile, base_path);
 	if (base_file == NULL) {
-		profile->cbs->error("Directory %s not defined in profile\n",
+		sc_error(card->ctx, "Directory %s not defined in profile",
 					sc_print_path(base_path));
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
@@ -584,7 +588,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	}
 
 	if (match == NULL) {
-		profile->cbs->error("No file named \"%s\" in template \"%s\"",
+		sc_error(card->ctx, "No file named \"%s\" in template \"%s\"",
 				file_name, template_name);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
@@ -597,6 +601,7 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 		file_info *parent, unsigned int skew)
 {
 	struct file_info *fi;
+	sc_card_t	*card = profile->card;
 
 	fi = (file_info *) calloc(1, sizeof(*fi));
 	fi->instance = fi;
@@ -611,9 +616,13 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 
 	ft->instance = fi;
 
-	profile->cbs->debug(2, "Instantiated %s at %s\n", ft->ident,
-			sc_print_path(&fi->file->path));
-	profile->cbs->debug(2, "  parent=%s@%s\n", parent->ident, sc_print_path(&parent->file->path));
+	if (card->ctx->debug >= 2) {
+		sc_debug(card->ctx, "Instantiated %s at %s",
+				ft->ident, sc_print_path(&fi->file->path));
+		sc_debug(card->ctx, "  parent=%s@%s",
+				parent->ident,
+				sc_print_path(&parent->file->path));
+	}
 
 	return fi;
 }
@@ -1919,7 +1928,5 @@ parse_error(struct state *cur, const char *fmt, ...)
 	if ((sp = strchr(buffer, '\n')) != NULL)
 		*sp = '\0';
 
-	if (cur->profile->cbs)
-		cur->profile->cbs->error("%s: %s",
-			cur->filename, buffer);
+	sc_error(cur->profile->card->ctx, "%s: %s", cur->filename, buffer);
 }

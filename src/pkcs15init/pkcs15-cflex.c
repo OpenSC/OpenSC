@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <opensc/opensc.h>
 #include <opensc/cardctl.h>
+#include <opensc/log.h>
 #include "pkcs15-init.h"
 #include "keycache.h"
 #include "profile.h"
@@ -43,8 +44,8 @@ static int	cflex_create_pin_file(sc_profile_t *, sc_card_t *,
 			sc_file_t **, int);
 static int	cflex_create_empty_pin_file(sc_profile_t *, sc_card_t *,
 			sc_path_t *, int, sc_file_t **);
-static int	cflex_get_keyfiles(sc_profile_t *, const sc_path_t *,
-			sc_file_t **, sc_file_t **);
+static int	cflex_get_keyfiles(sc_profile_t *, sc_card_t *,
+			const sc_path_t *, sc_file_t **, sc_file_t **);
 static int	cflex_encode_private_key(struct sc_pkcs15_prkey_rsa *,
 			u8 *, size_t *, int);
 static int	cflex_encode_public_key(struct sc_pkcs15_prkey_rsa *,
@@ -75,9 +76,9 @@ cflex_delete_file(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
         path.value[1] = df->id & 0xFF;
         path.len = 2;
 
-        card->ctx->log_errors = 0;
+        card->ctx->suppress_errors++;
         r = sc_delete_file(card, &path);
-        card->ctx->log_errors = 1;
+        card->ctx->suppress_errors--;
         return r;
 }
 
@@ -222,12 +223,13 @@ cflex_create_key(sc_profile_t *profile, sc_card_t *card, sc_pkcs15_object_t *obj
 	int		r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		profile->cbs->error("Cryptoflex supports only RSA keys.");
+		sc_error(card->ctx, "Cryptoflex supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	/* Get the public and private key file */
-	if ((r = cflex_get_keyfiles(profile, &key_info->path, &prkf, &pukf)) < 0)
+	r = cflex_get_keyfiles(profile, card,  &key_info->path, &prkf, &pukf);
+	if (r < 0)
 		return r;
 
 	/* Adjust the file sizes, if necessary */
@@ -237,7 +239,7 @@ cflex_create_key(sc_profile_t *profile, sc_card_t *card, sc_pkcs15_object_t *obj
 	case 1024: size = 326; break;
 	case 2048: size = 646; break;
 	default:
-		profile->cbs->error("Unsupported key size %u\n",
+		sc_error(card->ctx, "Unsupported key size %u\n",
 				key_info->modulus_length);
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto out;
@@ -278,12 +280,13 @@ cflex_generate_key(sc_profile_t *profile, sc_card_t *card,
 	int		r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		profile->cbs->error("Cryptoflex supports only RSA keys.");
+		sc_error(card->ctx, "Cryptoflex supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	/* Get the public and private key file */
-	if ((r = cflex_get_keyfiles(profile, &key_info->path, &prkf, &pukf)) < 0)
+	r = cflex_get_keyfiles(profile, card, &key_info->path, &prkf, &pukf);
+	if (r < 0)
 		return r;
 
 	/* Make sure we authenticate first */
@@ -336,12 +339,13 @@ cflex_store_key(sc_profile_t *profile, sc_card_t *card,
 	int		r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		profile->cbs->error("Cryptoflex supports only RSA keys.");
+		sc_error(card->ctx, "Cryptoflex supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	/* Get the public and private key file */
-	if ((r = cflex_get_keyfiles(profile, &key_info->path, &prkf, &pukf)) < 0)
+	r = cflex_get_keyfiles(profile, card, &key_info->path, &prkf, &pukf);
+	if (r < 0)
 		return r;
 
 	size = sizeof(keybuf);
@@ -396,9 +400,9 @@ cflex_create_dummy_chvs(sc_profile_t *profile, sc_card_t *card,
 			 && !memcmp(ef.value, parent.value, ef.len))
 				continue;
 
-			card->ctx->log_errors = 0;
+			card->ctx->suppress_errors++;
 			r = sc_select_file(card, &ef, NULL);
-			card->ctx->log_errors = 1;
+			card->ctx->suppress_errors--;
 		}
 
 		/* If a valid EF(CHVx) was found, we're fine */
@@ -470,9 +474,9 @@ cflex_create_pin_file(sc_profile_t *profile, sc_card_t *card,
 	path.value[path.len++] = 0;
 
 	/* See if the CHV already exists */
-        card->ctx->log_errors = 0;
+        card->ctx->suppress_errors++;
         r = sc_select_file(card, &path, NULL);
-        card->ctx->log_errors = 1;
+        card->ctx->suppress_errors--;
 	if (r >= 0)
 		return SC_ERROR_FILE_ALREADY_EXISTS;
 
@@ -480,7 +484,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_card_t *card,
 	if (sc_profile_get_file_by_path(profile, &path, &file) < 0
 	 && sc_profile_get_file(profile, (ref == 1)? "CHV1" : "CHV2", &file) < 0
 	 && sc_profile_get_file(profile, "CHV", &file) < 0) {
-		profile->cbs->error("profile does not define pin file ACLs\n");
+		sc_error(card->ctx, "profile does not define pin file ACLs\n");
 		return SC_ERROR_FILE_NOT_FOUND;
 	}
 
@@ -544,7 +548,8 @@ cflex_create_empty_pin_file(sc_profile_t *profile, sc_card_t *card,
  * Get private and public key file
  */
 int
-cflex_get_keyfiles(sc_profile_t *profile, const sc_path_t *df_path,
+cflex_get_keyfiles(sc_profile_t *profile, sc_card_t *card,
+			const sc_path_t *df_path,
 			sc_file_t **prkf, sc_file_t **pukf)
 {
 	sc_path_t	path = *df_path;
@@ -553,7 +558,7 @@ cflex_get_keyfiles(sc_profile_t *profile, const sc_path_t *df_path,
 	/* Get the private key file */
 	r = sc_profile_get_file_by_path(profile, &path, prkf);
 	if (r < 0) {
-		profile->cbs->error("Cannot find private key file info "
+		sc_error(card->ctx, "Cannot find private key file info "
 				"in profile (path=%s).",
 				sc_print_path(&path));
 		return r;
@@ -564,7 +569,7 @@ cflex_get_keyfiles(sc_profile_t *profile, const sc_path_t *df_path,
 	sc_append_file_id(&path, 0x1012);
 	r = sc_profile_get_file_by_path(profile, &path, pukf);
 	if (r < 0) {
-		profile->cbs->error("Cannot find public key file info in profile.");
+		sc_error(card->ctx, "Cannot find public key file info in profile.");
 		sc_file_free(*prkf);
 		return r;
 	}
