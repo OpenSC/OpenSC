@@ -1,3 +1,3 @@
-EXTRA_DIST = Make.rules.mak makedef.pl readme.txt
+EXTRA_DIST = Make.rules.mak makedef.pl
 
 MAINTAINERCLEANFILES = Makefile.in
