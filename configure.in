@@ -55,7 +55,7 @@ AC_C_BIGENDIAN
 dnl Check for some target-specific stuff
 case "$host" in
 *-*-hpux*)
-	CPPFLAGS="$CPPFLAGS -D_HPUX_SOURCE"
+	CPPFLAGS="$CPPFLAGS -D_HPUX_SOURCE -D_XOPEN_SOURCE_EXTENDED"
 	AC_DEFINE(PAM_SUN_CODEBASE, 1, [PAM based on SUN codebase])
 	;;
 *-*-solaris*)
@@ -76,8 +76,14 @@ case "$host" in
 		blibpath="/usr/lib:/lib:/usr/local/lib"
 	fi
 	;;
+*-*-osf*)
+	CPPFLAGS="$CPPFLAGS -D_POSIX_PII_SOCKET"
+	;;
 *-*-darwin*)
 	LIBS="$LIBS -lobjc"
+	if test "$GCC" = "yes"; then
+		CFLAGS="$CFLAGS -no-cpp-precomp"
+	fi
 	;;
 esac
 
@@ -95,33 +101,18 @@ saved_CPPFLAGS="$CPPFLAGS"
 AC_CACHE_CHECK([for common directory], ac_cv_commondir, [
 	for commondir in $trycommondir "" /usr/local /usr/pkg /opt ; do
 		# Skip directories if they don't exist
-		if test ! -z "$commondir" -a ! -d "$commondir" ; then
+		if test ! -z "$commondir" -a ! -d "$commondir/" ; then
 			continue;
 		fi
 		CPPFLAGS="$saved_CPPFLAGS"
 		LDFLAGS="$saved_LDFLAGS"
 
 		if test ! -z "$commondir" -a "x$commondir" != "x/usr"; then
-			# Try to use $commondir/lib if it exists, otherwise
-			# $commondir
-			if test -d "$commondir/lib" ; then
-				LDFLAGS="-L$commondir/lib $saved_LDFLAGS"
-				if test ! -z "$need_dash_r" ; then
-					LDFLAGS="-R$commondir/lib $LDFLAGS"
-				fi
-			else
-				LDFLAGS="-L$commondir $saved_LDFLAGS"
-				if test ! -z "$need_dash_r" ; then
-					LDFLAGS="-R$commondir $LDFLAGS"
-				fi
+			LDFLAGS="-L$commondir/lib $saved_LDFLAGS"
+			if test ! -z "$need_dash_r" ; then
+				LDFLAGS="-R$commondir/lib $LDFLAGS"
 			fi
-			# Try to use $commondir/include if it exists, otherwise
-			# $commondir
-			if test -d "$commondir/include" ; then
-				CPPFLAGS="-I$commondir/include $saved_CPPFLAGS"
-			else
-				CPPFLAGS="-I$commondir $saved_CPPFLAGS"
-			fi
+			CPPFLAGS="-I$commondir/include $saved_CPPFLAGS"
 		fi
 		break;
 	done
@@ -187,18 +178,6 @@ AC_C_INLINE
 if test "$GCC" = "yes"; then
 	CFLAGS="-Wall $CFLAGS"
 fi
-
-dnl OS specific options
-case "$host_os" in
-  hpux*)
-    CFLAGS="$CFLAGS -D_XOPEN_SOURCE_EXTENDED"
-    ;;
-  osf*)
-    CFLAGS="$CFLAGS -D_POSIX_PII_SOCKET"
-    ;;
-  *)
-    ;;
-esac
 
 AC_SUBST(LIBDL)
 AC_CHECK_LIB(dl, dlopen, [LIBDL="$LIBDL -ldl" ac_cv_func_dlopen_ldl=yes], ac_cv_func_dlopen_ldl=no)
@@ -351,7 +330,7 @@ AC_SUBST(LIBFL)
 AC_CACHE_CHECK([for flex directory], ac_cv_flexdir, [
 	for flexdir in $tryflexdir "" /usr/local/flex /usr/lib/flex /usr/local/flex /usr/lib/flex /usr/local /usr/pkg /opt /opt/flex ; do
 		# Skip directories if they don't exist
-		if test ! -z "$flexdir" -a ! -d "$flexdir" ; then
+		if test ! -z "$flexdir" -a ! -d "$flexdir/" ; then
 			continue;
 		fi
 
@@ -359,26 +338,11 @@ AC_CACHE_CHECK([for flex directory], ac_cv_flexdir, [
 		CPPFLAGS="$saved_CPPFLAGS"
 		LDFLAGS="$saved_LDFLAGS"
 		if test ! -z "$flexdir" -a "x$flexdir" != "x/usr"; then
-			# Try to use $flexdir/lib if it exists, otherwise
-			# $flexdir
-			if test -d "$flexdir/lib" ; then
-				LDFLAGS="-L$flexdir/lib $saved_LDFLAGS"
-				if test ! -z "$need_dash_r" ; then
-					LDFLAGS="-R$flexdir/lib $LDFLAGS"
-				fi
-			else
-				LDFLAGS="-L$flexdir $saved_LDFLAGS"
-				if test ! -z "$need_dash_r" ; then
-					LDFLAGS="-R$flexdir $LDFLAGS"
-				fi
+			LDFLAGS="-L$flexdir/lib $saved_LDFLAGS"
+			if test ! -z "$need_dash_r" ; then
+				LDFLAGS="-R$flexdir/lib $LDFLAGS"
 			fi
-			# Try to use $flexdir/include if it exists, otherwise
-			# $flexdir
-			if test -d "$flexdir/include" ; then
-				CPPFLAGS="-I$flexdir/include $saved_CPPFLAGS"
-			else
-				CPPFLAGS="-I$flexdir $saved_CPPFLAGS"
-			fi
+			CPPFLAGS="-I$flexdir/include $saved_CPPFLAGS"
 		fi
 		break;
 	done
@@ -390,12 +354,9 @@ AC_CACHE_CHECK([for flex directory], ac_cv_flexdir, [
 ])
 
 dnl The big mess with OpenSSL
-AC_ARG_WITH(ssl-dir,
-	[  --with-ssl-dir=PATH     Specify path to OpenSSL installation ('no' to disable)],
-	[
-		tryssldir=$withval
-	]
-)
+AC_ARG_WITH(openssl,
+	[  --with-openssl=PATH     use OpenSSL n PATH],
+	[tryssldir=$withval])
 
 SSL_MSG="no"
 ENGINE_MSG="no"
@@ -517,33 +478,18 @@ saved_CPPFLAGS="$CPPFLAGS"
 AC_CACHE_CHECK([for pam directory], ac_cv_pamdir, [
 	for pamdir in $trypamdir "" /usr/local /usr/pkg /opt ; do
 		# Skip directories if they don't exist
-		if test ! -z "$pamdir" -a ! -d "$pamdir" ; then
+		if test ! -z "$pamdir" -a ! -d "$pamdir/" ; then
 			continue;
 		fi
 
 		CPPFLAGS="$saved_CPPFLAGS"
 		LDFLAGS="$saved_LDFLAGS"
 		if test ! -z "$pamdir" -a "x$pamdir" != "x/usr"; then
-			# Try to use $pamdir/lib if it exists, otherwise
-			# $pamdir
-			if test -d "$pamdir/lib" ; then
-				LDFLAGS="-L$pamdir/lib $saved_LDFLAGS"
-				if test ! -z "$need_dash_r" ; then
-					LDFLAGS="-R$pamdir/lib $LDFLAGS"
-				fi
-			else
-				LDFLAGS="-L$pamdir $saved_LDFLAGS"
-				if test ! -z "$need_dash_r" ; then
-					LDFLAGS="-R$pamdir $LDFLAGS"
-				fi
+			LDFLAGS="-L$pamdir/lib $saved_LDFLAGS"
+			if test ! -z "$need_dash_r" ; then
+				LDFLAGS="-R$pamdir/lib $LDFLAGS"
 			fi
-			# Try to use $pamdir/include if it exists, otherwise
-			# $pamdir
-			if test -d "$pamdir/include" ; then
-				CPPFLAGS="-I$pamdir/include $saved_CPPFLAGS"
-			else
-				CPPFLAGS="-I$pamdir $saved_CPPFLAGS"
-			fi
+			CPPFLAGS="-I$pamdir/include $saved_CPPFLAGS"
 		fi
 		break;
 	done
@@ -894,24 +840,12 @@ LIBASSUAN="-lassuan"
 AC_ARG_WITH(assuan,
 	[  --with-assuan=PATH      use Assuan libraries in PATH],
 	[
-		if test -d "$withval/lib"; then
-			if test -n "${need_dash_r}"; then
-				LDFLAGS="-L${withval}/lib -R${withval}/lib ${LDFLAGS}"
-			else
-				LDFLAGS="-L${withval}/lib ${LDFLAGS}"
-			fi
+		if test -n "${need_dash_r}"; then
+			LDFLAGS="-L${withval}/lib -R${withval}/lib ${LDFLAGS}"
 		else
-			if test -n "${need_dash_r}"; then
-				LDFLAGS="-L${withval} -R${withval} ${LDFLAGS}"
-			else
-				LDFLAGS="-L${withval} ${LDFLAGS}"
-			fi
+			LDFLAGS="-L${withval}/lib ${LDFLAGS}"
 		fi
-		if test -d "$withval/include"; then
-			CFLAGS_ASSUAN="-I${withval}/include ${CFLAGS_ASSUAN}"
-		else
-			CFLAGS_ASSUAN="-I${withval} ${CFLAGS_ASSUAN}"
-		fi
+		CFLAGS_ASSUAN="-I${withval}/include ${CFLAGS_ASSUAN}"
 	]
 )
 
@@ -1082,7 +1016,7 @@ echo "Assuan support:           ${ASSUAN_MSG}"
 echo "LDAP support:             ${LDAP_MSG}"
 echo "PAM support:              ${PAM_MSG}"
 case "$host" in
-  *osf*)
+*-*-osf*)
 	echo "SIA support:              ${SIA_MSG}"
 	;;
 esac
