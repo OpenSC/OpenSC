@@ -1,6 +1,8 @@
 # Process this file with automake to create Makefile.in
 
-MAINTAINERCLEANFILES = Makefile.in pkcs15-profile.5 usbtoken.html
+HTMLFILES := usbtoken.html
+
+MAINTAINERCLEANFILES = Makefile.in pkcs15-profile.5 $(HTMLFILES)
 
 MANSRC  	= pkcs15-crypt.1 \
 	   	  pkcs15-init.1 \
@@ -25,8 +27,9 @@ MANSRC  	= pkcs15-crypt.1 \
 		  sc_release_context.3 \
 		  sc_select_file.3
 man_MANS	= $(MANSRC) pkcs15-profile.5
+noinst_DATA	= $(HTMLFILES)
 EXTRA_DIST	= $(MANSRC) pkcs15-profile.5.in pkcs-15v1_1.asn \
-	     	  usbtoken.xml usbtoken.html doxygen.conf pkcs11.txt
+	     	  usbtoken.xml $(HTMLFILES) doxygen.conf pkcs11.txt
 
 STYLESHEET=/usr/share/sgml/docbook/stylesheet/xsl/nwalsh/xhtml/docbook.xsl
 
