@@ -3,8 +3,9 @@ dnl Process this file with autoconf to produce a configure script.
 
 # Require autoconf 2.52
 AC_PREREQ(2.52)
-
 AC_INIT(src/libopensc/sc.c)
+AC_CONFIG_AUX_DIR(tools)
+
 AM_INIT_AUTOMAKE(opensc, 0.8.0-rc1)
 AM_CONFIG_HEADER(config.h)
 
@@ -1176,6 +1177,7 @@ src/sslengines/Makefile
 src/tests/Makefile
 src/tools/Makefile
 src/usbtoken/Makefile
+tools/Makefile
 win32/Makefile
 ])
 
