@@ -120,6 +120,40 @@ out:	/* Forget all cached keys, the pin files on card are all gone. */
 }
 
 /*
+ * Card initialization.
+ * For the cryptoflex, read the card's serial number from 3F00 0002
+ */
+static int
+cryptoflex_init_card(sc_profile_t *profile, sc_card_t *card)
+{
+	sc_path_t	path;
+	sc_file_t	*file;
+	u8		buf[32], serial[128];
+	size_t		len;
+	int		r, i;
+
+	sc_format_path("3F000002", &path);
+	if (sc_select_file(card, &path, &file) < 0) {
+		if (r == SC_ERROR_FILE_NOT_FOUND)
+			return 0;
+		return r;
+	}
+
+	if ((len = file->size) > sizeof(buf))
+		len = sizeof(buf);
+	if ((r = sc_read_binary(card, 0, buf, len, 0)) < 0)
+		return r;
+	len = r;
+	if (len == 0)
+		return 0;
+
+	if ((r = sc_bin_to_hex(buf, len, serial, sizeof(serial), '\0')) < 0)
+		return r;
+	sc_pkcs15init_set_serial(profile, serial);
+	return 0;
+}
+
+/*
  * Create a DF
  */
 static int
@@ -829,6 +863,7 @@ sc_pkcs15init_get_cryptoflex_ops(void)
 	
 	ops = &sc_pkcs15init_cryptoflex_operations;
 	ops->erase_card = cflex_erase_card;
+	ops->init_card = cryptoflex_init_card;
 	ops->create_dir = cflex_create_dir;
 	ops->create_domain = cflex_create_domain;
 	ops->select_pin_reference = cflex_select_pin_reference;

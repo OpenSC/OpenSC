@@ -254,10 +254,8 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 		sc_profile_free(profile);
 		return r;
 	}
-	*result = profile;
 
-	if (r == 0)
-		*result = profile;
+	*result = profile;
 	return r;
 }
 
@@ -444,6 +442,13 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	int			r;
 
 	p15spec->card = card;
+
+	/* Perform card-specific initialization */
+	if (profile->ops->init_card
+	 && (r = profile->ops->init_card(profile, card)) < 0) {
+		sc_profile_free(profile);
+		return r;
+	}
 
 	if (card->app_count >= SC_MAX_CARD_APPS) {
 		sc_error(card->ctx, "Too many applications on this card.");

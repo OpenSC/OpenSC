@@ -26,6 +26,13 @@ struct sc_pkcs15init_operations {
 	 */
 
 	/*
+	 * Card-specific initialization of PKCS15 meta-information.
+	 * Currently used by the cflex driver to read the card's
+	 * serial number and use it as the pkcs15 serial number.
+	 */
+	int	(*init_card)(sc_profile_t *, sc_card_t *);
+
+	/*
 	 * Create a DF
 	 */
 	int	(*create_dir)(sc_profile_t *, sc_card_t *, sc_file_t *);
