@@ -218,4 +218,5 @@ struct sc_pkcs11_object_ops pkcs11_secret_key_ops = {
 	sc_pkcs11_secret_key_release,
 	sc_pkcs11_secret_key_set_attribute,
 	sc_pkcs11_secret_key_get_attribute,
+	sc_pkcs11_any_cmp_attribute,
 };

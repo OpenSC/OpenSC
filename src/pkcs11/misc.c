@@ -23,6 +23,8 @@
 #include "sc-pkcs11.h"
 #include <sc-log.h>
 
+#define DUMP_TEMPLATE_MAX	32
+
 void strcpy_bp(u8 *dst, const char *src, int dstsize)
 {
 	int c = strlen(src) > dstsize ? dstsize : strlen(src);
@@ -57,23 +59,25 @@ CK_RV sc_to_cryptoki_error(int rc, int reader)
 
 void dump_template(const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
 {
-	int i, j;
+	int i, j, count;
 
 	for (i = 0; i < ulCount; i++) {
-		char foo[1024] = "";
+		char foo[4 * DUMP_TEMPLATE_MAX + 1] = "", *p;
 		unsigned char *value = (unsigned char*) pTemplate[i].pValue;
 
 		if (pTemplate[i].pValue) {
-			if (pTemplate[i].ulValueLen < 32) {
-				for (j = 0; j < pTemplate[i].ulValueLen; j++)
-					sprintf(&foo[j*2], "%02X", value[j]);
-
-				debug(context, "%s: Attribute 0x%x = %s (length=%d)\n",
-				    info, pTemplate[i].type, foo, pTemplate[i].ulValueLen);
-			} else {
-				debug(context, "%s: Attribute 0x%x = ... (length=%d)\n",
-				    info, pTemplate[i].type, pTemplate[i].ulValueLen);
+			count = pTemplate[i].ulValueLen;
+			if (count > DUMP_TEMPLATE_MAX)
+				count = DUMP_TEMPLATE_MAX;
+			for (j = 0, p = foo; j < count; j++) {
+				p += sprintf(p, "%02X", value[j]);
 			}
+
+			debug(context,
+				"%s: Attribute 0x%x = %s%s (length=%d)\n",
+				info, pTemplate[i].type, foo,
+				(count < pTemplate[i].ulValueLen)? "..." : "",
+				pTemplate[i].ulValueLen);
 		} else {
 			debug(context, "%s: Attribute 0x%x, length inquiry\n",
 			    info, pTemplate[i].type);

@@ -11,6 +11,17 @@ Netscape:
 	Module name: descriptive name about module (eg. opensc-pkcs11)
 	Module file: absolute path of opensc-pkcs11.so
 
+	For proper operation, you also need to configure the module:
+	In the Crypthographic Modules dialog, select the OpenSC card,
+	and click on the "Config" button to the right. Select the
+	"Enable this token" radio button, and select both the "RSA"
+	and the "Publicly readable Certs" buttons.
+
+	This will ensure that netscape uses the card when trying to
+	display encrypted messages in netscape messenger.  Setting
+	"Publicly readable Certs" will also stop a pretty annoying habit
+	of netscape which is to ask for all PINs when browsing sites
+	requiring client authentication.
 
 Mozilla:
 	Make sure Personal Security Manager (PSM) is installed

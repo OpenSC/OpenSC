@@ -115,10 +115,8 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 			CK_ATTRIBUTE_PTR  pTemplate,  /* attribute values to match */
 			CK_ULONG          ulCount)    /* attributes in search template */
 {
-        char temp[1024];
         CK_BBOOL is_private = TRUE;
 	CK_ATTRIBUTE private_attribute = { CKA_PRIVATE, &is_private, sizeof(is_private) };
-	CK_ATTRIBUTE temp_attribute = { 0, temp, sizeof(temp) };
 
 	int j, rv, match;
 	struct sc_pkcs11_session *session;
@@ -164,15 +162,9 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 		/* Try to match every attribute */
                 match = 1;
 		for (j = 0; j < ulCount; j++) {
-			/* Is the attribute matching? */
-		    	temp_attribute.type = pTemplate[j].type;
-                        temp_attribute.ulValueLen = sizeof(temp);
-			rv = object->ops->get_attribute(session, object, &temp_attribute);
-
-			if (rv != CKR_OK ||
-			    temp_attribute.ulValueLen != pTemplate[j].ulValueLen ||
-			    memcmp(temp_attribute.pValue, pTemplate[j].pValue, temp_attribute.ulValueLen) != 0) {
-
+			rv = object->ops->cmp_attribute(session, object,
+					&pTemplate[j]);
+			if (rv == 0) {
 			    	debug(context, "Object %d/%d: Attribute 0x%x does NOT match.\n",
                                       session->slot->id,
 				      item->handle, pTemplate[j].type);
@@ -656,3 +648,36 @@ CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,        /* the session's handle
 }
 
 
+/*
+ * Helper function to compare attributes on any sort of object
+ */
+int
+sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *session,
+		void *ptr, CK_ATTRIBUTE_PTR attr)
+{
+	struct sc_pkcs11_object *object;
+	u8		temp[1024];
+	CK_ATTRIBUTE	temp_attr;
+	int		rv;
+
+	object = (struct sc_pkcs11_object *) ptr;
+	temp_attr.type = attr->type;
+	temp_attr.pValue = temp;
+	temp_attr.ulValueLen = sizeof(temp);
+
+	rv = object->ops->get_attribute(session, object, &temp_attr);
+	if (rv != CKR_OK)
+		return 0;
+
+#ifdef DEBUG
+	{
+		char	foo[64];
+
+		snprintf(foo, sizeof(foo), "Object %p (slot %d)",
+				object, session->slot->id);
+		dump_template(foo, &temp_attr, 1);
+	}
+#endif
+	return temp_attr.ulValueLen == attr->ulValueLen
+	    && !memcmp(temp, attr->pValue, attr->ulValueLen);
+}

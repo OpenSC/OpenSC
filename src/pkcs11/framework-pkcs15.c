@@ -209,6 +209,52 @@ static struct pkcs15_prkey_object *pkcs15_add_prkey_object(struct sc_pkcs11_slot
         return object;
 }
 
+static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
+		struct sc_pkcs15_object *auth,
+		struct sc_pkcs11_slot **out)
+{
+        struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
+	struct sc_pkcs15_pin_info *pin_info = NULL;
+	struct sc_pkcs11_slot *slot;
+	char tmp[33];
+	int rv;
+
+	if (*out)
+		return CKR_OK;
+
+	rv = slot_allocate(&slot, p11card);
+	if (rv != CKR_OK)
+		return rv;
+
+	pkcs15_init_token_info(card, &slot->token_info);
+	slot->token_info.flags = CKF_USER_PIN_INITIALIZED;
+	slot->fw_data = auth;
+
+	if (auth != NULL) {
+		pin_info = (struct sc_pkcs15_pin_info*) auth->data;
+
+		snprintf(tmp, sizeof(tmp), "%s (%s)",
+				card->label, auth->label);
+		strcpy_bp(slot->token_info.label, tmp, 32);
+		slot->token_info.flags |= CKF_LOGIN_REQUIRED;
+	} else {
+		strcpy_bp(slot->token_info.label, "public", 32);
+	}
+
+	if (pin_info && pin_info->magic == SC_PKCS15_PIN_MAGIC) {
+		slot->token_info.ulMaxPinLen = pin_info->stored_length;
+		slot->token_info.ulMinPinLen = pin_info->min_length;
+	} else {
+		/* choose reasonable defaults */
+		slot->token_info.ulMaxPinLen = 8;
+		slot->token_info.ulMinPinLen = 4;
+	}
+
+	debug(context, "Initialized token '%s'\n", tmp);
+	*out = slot;
+	return CKR_OK;
+}
+
 static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 {
         struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
@@ -244,37 +290,20 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	debug(context, "Found %d public keys\n", pubkey_count);
 
 	for (i = 0; i < auth_count; i++) {
-		char tmp[33];
-                struct sc_pkcs15_pin_info *pin_info;
-
-		rv = slot_allocate(&slot, p11card);
-		if (rv != CKR_OK)
-			return rv;
-
-		pkcs15_init_token_info(card, &slot->token_info);
-		slot->fw_data = auths[i];
-
-                pin_info = (struct sc_pkcs15_pin_info*) auths[i]->data;
-
-		snprintf(tmp, sizeof(tmp), "%s (%s)", card->label, auths[i]->label);
-		strcpy_bp(slot->token_info.label, tmp, 32);
-
-		if (pin_info->magic == SC_PKCS15_PIN_MAGIC) {
-			slot->token_info.ulMaxPinLen = pin_info->stored_length;
-			slot->token_info.ulMinPinLen = pin_info->min_length;
-		} else {
-			/* choose reasonable defaults */
-			slot->token_info.ulMaxPinLen = 8;
-			slot->token_info.ulMinPinLen = 4;
-		}
-		slot->token_info.flags = CKF_LOGIN_REQUIRED | CKF_USER_PIN_INITIALIZED;
-
-		debug(context, "Initialized token '%s'\n", tmp);
+		struct sc_pkcs15_pin_info *pin_info = NULL;
 
 		/* Add all the private keys related to this pin */
+		pin_info = (struct sc_pkcs15_pin_info*) auths[i]->data;
+		slot = NULL;
 		for (j=0; j < prkey_count; j++) {
 			if (sc_pkcs15_compare_id(&pin_info->auth_id,
 						 &prkeys[j]->auth_id)) {
+				if (!slot) {
+					rv = pkcs15_create_slot(p11card,
+						auths[i], &slot);
+					if (rv != CKR_OK)
+						return rv;
+				}
                                 debug(context, "Adding private key %d to PIN %d\n", j, i);
 				pkcs15_add_prkey_object(slot, card, prkeys[j],
 					       	certs, cert_count,
@@ -283,22 +312,19 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		}
 	}
 
-        /* Add a virtual slot without pin protection */
-	rv = slot_allocate(&slot, p11card);
-	if (rv != CKR_OK)
-		return rv;
-
-	pkcs15_init_token_info(card, &slot->token_info);
-
-	strcpy_bp(slot->token_info.label, card->label, 32);
-	slot->token_info.ulMaxPinLen = 8;
-	slot->token_info.ulMinPinLen = 4;
-	slot->token_info.flags = 0;
+	/* Add all public objects to a virtual slot without
+	 * pin protection */
+	slot = NULL;
 
 	/* Add all the remaining private keys */
 	for (j=0; j < prkey_count; j++) {
 		if (!(prkeys[j]->flags & SC_PKCS15_CO_FLAG_OBJECT_SEEN)) {
                         debug(context, "Private key %d was not seen previously\n", j);
+			if (!slot) {
+				rv = pkcs15_create_slot(p11card, NULL, &slot);
+				if (rv != CKR_OK)
+					return rv;
+			}
 			pkcs15_add_prkey_object(slot, card, prkeys[j],
 				       	certs, cert_count,
 					pubkeys, pubkey_count);
@@ -307,8 +333,15 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 
 	/* Add all the remaining certificates */
 	for (j=0; j < cert_count; j++) {
+		/* XXX netscape wants to see all certificates in a slot
+		 * that doesn't require login */
 		if (!(certs[j]->flags & SC_PKCS15_CO_FLAG_OBJECT_SEEN)) {
                         debug(context, "Certificate %d was not seen previously\n", j);
+			if (!slot) {
+				rv = pkcs15_create_slot(p11card, NULL, &slot);
+				if (rv != CKR_OK)
+					return rv;
+			}
 			pkcs15_add_cert_object(slot, card, certs[j]);
 		}
 	}
@@ -486,10 +519,52 @@ CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
         return CKR_OK;
 }
 
+static int
+pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
+				void *object,
+				CK_ATTRIBUTE_PTR attr)
+{
+	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object*) object;
+	u8	*data;
+	size_t	len;
+
+	switch (attr->type) {
+	/* Check the issuer. Some pkcs11 callers (i.e. netscape) will pass
+	 * in the ASN.1 encoded SEQUENCE OF SET ... while OpenSC just
+	 * keeps the SET in the issuer field. */
+	case CKA_ISSUER:
+		if (cert->certificate->issuer_len == 0)
+			break;
+		data = attr->pValue;
+		len = attr->ulValueLen;
+		/* SEQUENCE is tag 0x30, SET is 0x31
+		 * I know this code is icky, but hey... this is netscape
+		 * we're dealing with :-) */
+		if (cert->certificate->issuer[0] == 0x31
+		 && data[0] == 0x30 && len >= 2) {
+			/* skip the length byte(s) */
+			len = (data[1] & 0x80)? (data[1] & 0x7F) : 0;
+			if (attr->ulValueLen < len + 2)
+				break;
+			data += len + 2;
+			len = attr->ulValueLen - len - 2;
+		}
+		if (len == cert->certificate->issuer_len
+		 && !memcmp(cert->certificate->issuer, data, len))
+			return 1;
+		break;
+	default:
+                return sc_pkcs11_any_cmp_attribute(session, object, attr);
+	}
+
+        return 0;
+}
+
 struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	pkcs15_cert_release,
         NULL,
 	pkcs15_cert_get_attribute,
+	pkcs15_cert_cmp_attribute,
 	NULL,
 	NULL,
         NULL
@@ -669,6 +744,7 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	NULL,
 	NULL,
 	pkcs15_prkey_get_attribute,
+	sc_pkcs11_any_cmp_attribute,
 	NULL,
 	NULL,
         pkcs15_prkey_sign,
@@ -742,6 +818,7 @@ struct sc_pkcs11_object_ops pkcs15_cert_key_ops = {
 	NULL,
 	NULL,
 	pkcs15_cert_key_get_attribute,
+	sc_pkcs11_any_cmp_attribute,
 	NULL,
 	NULL,
         NULL
@@ -815,6 +892,7 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	NULL,
 	NULL,
 	pkcs15_pubkey_get_attribute,
+	sc_pkcs11_any_cmp_attribute,
 	NULL,
 	NULL,
         NULL
@@ -871,4 +949,3 @@ get_public_exponent(struct sc_pkcs15_pubkey_rsa *key, CK_ATTRIBUTE_PTR attr)
 	memcpy(attr->pValue, exponent, n);
 	return CKR_OK;
 }
-

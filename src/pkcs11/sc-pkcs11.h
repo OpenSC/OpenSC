@@ -59,6 +59,7 @@ struct sc_pkcs11_object_ops {
         /* Management methods */
 	CK_RV (*set_attribute)(struct sc_pkcs11_session *, void *, CK_ATTRIBUTE_PTR);
 	CK_RV (*get_attribute)(struct sc_pkcs11_session *, void *, CK_ATTRIBUTE_PTR);
+	int   (*cmp_attribute)(struct sc_pkcs11_session *, void *, CK_ATTRIBUTE_PTR);
 
 	CK_RV (*destroy_object)(struct sc_pkcs11_session *, void *);
         CK_RV (*get_size)(struct sc_pkcs11_session *, void *);
@@ -212,5 +213,8 @@ CK_RV sc_pkcs11_create_secret_key(struct sc_pkcs11_session *,
 			const u8 *, size_t,
 			CK_ATTRIBUTE_PTR, CK_ULONG,
 			struct sc_pkcs11_object **);
+/* Generic object handling */
+int sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *,
+			void *, CK_ATTRIBUTE_PTR);
 
 #endif
