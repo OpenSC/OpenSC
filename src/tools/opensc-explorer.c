@@ -29,6 +29,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
+#include "cardctl.h"
 #include "util.h"
 
 #define DIM(v) (sizeof(v)/sizeof((v)[0]))
@@ -1042,7 +1043,25 @@ usage:
 #endif
 }
 
+static int
+do_erase(int argc, char **argv)
+{
+	int	r;
 
+	if (argc != 0)
+		goto usage;
+
+	r = sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
+	if (r) {
+		printf("Failed to erase card: %s\n", sc_strerror (r));
+		return -1;
+	}
+	return 0;
+
+usage:
+	printf("Usage: erase\n");
+	return -1;
+}
 
 
 
@@ -1067,6 +1086,7 @@ struct command		cmds[] = {
  { "mkdir",	do_mkdir,	"create a DF"				},
  { "pksign",    do_pksign,      "create a public key signature"         },
  { "pkdecrypt", do_pkdecrypt,   "perform a public key decryption"       },
+ { "erase",	do_erase,	"erase card"				},
  { "quit",	do_quit,	"quit this program"			},
  { 0, 0, 0 }
 };
