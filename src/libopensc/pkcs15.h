@@ -262,6 +262,7 @@ int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *card,
 			  struct sc_pkcs15_pubkey_rsa **out);
 int sc_pkcs15_parse_pubkey_rsa(struct sc_context *ctx,
 	       		   struct sc_pkcs15_pubkey_rsa *pubkey);
+void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey_rsa *pubkey);
 
 void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert);
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *card,

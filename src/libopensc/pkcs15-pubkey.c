@@ -231,3 +231,11 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 	*out = pubkey;
 	return 0;
 }
+
+void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey_rsa *key)
+{
+	assert(key != NULL);
+	free(key->modulus);
+	free(key->data);
+	free(key);
+}
