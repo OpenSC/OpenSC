@@ -428,13 +428,6 @@ open_reader_and_card(int reader)
 	if (connect_card(ctx, &card, reader, 0, opt_wait, opt_quiet))
 		return 0;
 
-	if (!opt_quiet)
-		printf("Using card driver: %s\n", card->driver->name);
-	r = sc_lock(card);
-	if (r) {
-		error("Unable to lock card: %s\n", sc_strerror(r));
-		return 0;
-	}
 	return 1;
 }
 

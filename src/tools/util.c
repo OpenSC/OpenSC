@@ -7,10 +7,11 @@
 #include <ctype.h>
 #include "util.h"
 
-int connect_card(struct sc_context *ctx, struct sc_card **cardp,
+int connect_card(sc_context_t *ctx, sc_card_t **cardp,
 		 int reader_id, int slot_id, int wait, int quiet)
 {
-	struct sc_reader *reader;
+	sc_reader_t *reader;
+	sc_card_t *card;
 	int r;
 
 	if (wait) {
@@ -66,17 +67,27 @@ int connect_card(struct sc_context *ctx, struct sc_card **cardp,
 		}
 	}
 
-	if (!quiet) {
-		fprintf(stderr, "Connecting to card in reader %s...\n",
-			reader->name);
-	}
-	if ((r = sc_connect_card(reader, slot_id, cardp)) < 0) {
+	if (!quiet)
+		printf("Connecting to card in reader %s...\n", reader->name);
+	if ((r = sc_connect_card(reader, slot_id, &card)) < 0) {
 		fprintf(stderr,
 			"Failed to connect to card: %s\n",
 			sc_strerror(r));
 		return 1;
 	}
 
+	if (!quiet)
+		printf("Using card driver %s.\n", card->driver->name);
+
+	if ((r = sc_lock(card)) < 0) {
+		fprintf(stderr,
+			"Failed to lock card: %s\n",
+			sc_strerror(r));
+		sc_disconnect_card(card, 0);
+		return 1;
+	}
+
+	*cardp = card;
 	return 0;
 }
 

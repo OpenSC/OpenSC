@@ -385,14 +385,6 @@ int main(int argc, char *const argv[])
 	if (err)
 		goto end;
 
-	printf("Using card driver: %s\n", card->driver->name);
-	r = sc_lock(card);
-	if (r) {
-		fprintf(stderr, "Unable to lock card: %s\n",
-			sc_strerror(r));
-		err = 1;
-		goto end;
-	}
 	if ((err = cardos_info())) {
 		goto end;
 	}
