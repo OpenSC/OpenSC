@@ -326,7 +326,8 @@ sc_pkcs15init_rmdir(struct sc_card *card, struct sc_profile *profile,
 		printf(")\n");
 	}
 #endif
-
+	if (df == NULL)
+		return SC_ERROR_INTERNAL;
 	if (df->type == SC_FILE_TYPE_DF) {
 		r = sc_pkcs15init_authenticate(profile, card, df,
 				SC_AC_OP_LIST_FILES);
@@ -1567,6 +1568,71 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 		r = sc_pkcs15init_update_odf(p15card, profile);
 
 	return r;
+}
+
+int
+sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card,
+		struct sc_profile *profile,
+		struct sc_pkcs15_object *object,
+		int new_attrib_type,
+		void *new_value,
+		int new_len)
+{
+	struct sc_card	*card = p15card->card;
+	u8		*buf = NULL;
+	size_t		bufsize;
+	int		df_type, r = 0;
+	struct sc_pkcs15_df *df;
+
+	if (object == NULL || object->df == NULL)
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	df_type = object->df->type;
+
+	df = find_df_by_type(p15card, df_type);
+	if (df == NULL)
+		return SC_ERROR_OBJECT_NOT_FOUND;
+
+	switch(new_attrib_type)
+	{
+	case P15_ATTR_TYPE_LABEL:
+		if (new_len >= SC_PKCS15_MAX_LABEL_SIZE)
+			return SC_ERROR_INVALID_ARGUMENTS;
+		memcpy(object->label, new_value, new_len);
+		object->label[new_len] = '\0';
+		break;
+	case P15_ATTR_TYPE_ID:
+		switch(df_type) {
+		case SC_PKCS15_PRKDF:
+			((sc_pkcs15_prkey_info_t *) object->data)->id =
+				*((sc_pkcs15_id_t *) new_value);
+			break;
+		case SC_PKCS15_PUKDF:
+		case SC_PKCS15_PUKDF_TRUSTED:
+			((sc_pkcs15_pubkey_info_t *) object->data)->id =
+				*((sc_pkcs15_id_t *) new_value);
+			break;
+		case SC_PKCS15_CDF:
+		case SC_PKCS15_CDF_TRUSTED:
+		case SC_PKCS15_CDF_USEFUL:
+			((sc_pkcs15_cert_info_t *) object->data)->id =
+				*((sc_pkcs15_id_t *) new_value);
+			break;
+		default:
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+		break;
+	default:
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
+	if (r >= 0) {
+		r = sc_pkcs15init_update_file(profile, card,
+				df->file, buf, bufsize);
+		free(buf);
+	}
+
+	return r < 0 ? r : 0;
 }
 
 void

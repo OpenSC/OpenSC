@@ -157,6 +157,9 @@ struct sc_pkcs15init_certargs {
 	sc_pkcs15_der_t		der_encoded;
 };
 
+#define P15_ATTR_TYPE_LABEL	0
+#define P15_ATTR_TYPE_ID	1
+
 extern void	sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *);
 extern int	sc_pkcs15init_bind(struct sc_card *, const char *, const char *,
 				struct sc_profile **);
@@ -196,6 +199,18 @@ extern int	sc_pkcs15init_store_data_object(struct sc_pkcs15_card *,
 				struct sc_profile *,
 				struct sc_pkcs15init_dataargs *,
 				struct sc_pkcs15_object **);
+/* Change the value of a pkcs15 attribute.
+ * new_attrib_type can (currently) be either P15_ATTR_TYPE_LABEL or
+ *   P15_ATTR_TYPE_ID.
+ * If P15_ATTR_TYPE_LABEL, then *new_value is a struct sc_pkcs15_id;
+ * If P15_ATTR_TYPE_ID, then *new_value is a char array.
+ */
+extern int	sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card,
+				struct sc_profile *profile,
+				struct sc_pkcs15_object *object,
+				int new_attrib_type,
+				void *new_value,
+				int new_len);
 
 extern int	sc_pkcs15init_create_file(struct sc_profile *,
 				struct sc_card *, struct sc_file *);
