@@ -1,5 +1,5 @@
 #
-# General purpose PKCS15 profile for Cyberflex Access cards
+# General purpose PKCS15 profile for Cyberflex Access 16K cards
 #
 cardinfo {
     max-pin-length	= 8;
@@ -52,7 +52,7 @@ filesystem {
 	DF PKCS15-AppDF {
 	    ACL		= *=$SOPIN, FILES=NONE, DELETE=NONE;
 	    # Cyberflex Access 16K
-	    size	= 13000;
+	    size	= 7500;
 
 	    # This "pin-domain" DF is a template that is
 	    # instantiated for each PIN created on the card.

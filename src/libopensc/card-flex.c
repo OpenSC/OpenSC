@@ -1100,7 +1100,7 @@ cyberflex_compute_signature(sc_card_t *card, const u8 *data,
 	switch (data_len) {
 	case 64:  alg_id = 0xC4; break;
 	case 96:  alg_id = 0xC6; break;
-	case 128: alg_id = 0xC6; break;
+	case 128: alg_id = 0xC8; break;
 	default:
 		sc_error(card->ctx, "Illegal input length: %d\n", data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1182,7 +1182,8 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 	p1 = data->key_num;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x46, p1, p2);
-	apdu.cla = 0xF0;
+	if (!IS_CYBERFLEX(card))
+		apdu.cla = 0xF0;
 	apdu.data = sbuf;
 	apdu.datalen = 4;
 	apdu.lc = 4;

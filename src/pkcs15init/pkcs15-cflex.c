@@ -626,7 +626,7 @@ bn2cft(sc_pkcs15_bignum_t *num, u8 tag, u8 *buf, size_t bufsize)
 	memset(buf, 0, bufsize);
 	buf[0] = tag;
 	buf[1] = len + 1;
-	memcpy(buf + 2, num->data, len);
+	memcpy(buf + 3, num->data, len);
 	return 0;
 }
 
@@ -759,18 +759,19 @@ cyberflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 	 * NULL pad byte */
 	bnlen = base + 3;
 
-	if ((r = bn2cft(&rsa->p,    0xC2, key + 0 * bnlen, bnlen)) < 0
-	 || (r = bn2cft(&rsa->q,    0xC2, key + 1 * bnlen, bnlen)) < 0
+	if ((r = bn2cft(&rsa->q,    0xC2, key + 0 * bnlen, bnlen)) < 0
+	 || (r = bn2cft(&rsa->p,    0xC2, key + 1 * bnlen, bnlen)) < 0
 	 || (r = bn2cft(&rsa->iqmp, 0xC2, key + 2 * bnlen, bnlen)) < 0
-	 || (r = bn2cft(&rsa->dmp1, 0xC2, key + 3 * bnlen, bnlen)) < 0
-	 || (r = bn2cft(&rsa->dmq1, 0xC2, key + 4 * bnlen, bnlen)) < 0)
+	 || (r = bn2cft(&rsa->dmq1, 0xC2, key + 3 * bnlen, bnlen)) < 0
+	 || (r = bn2cft(&rsa->dmp1, 0xC2, key + 4 * bnlen, bnlen)) < 0)
 		return r;
 
         key += 5 * bnlen;
-	*key++ = 0;
-	*key++ = 0;
-	*key++ = 0;
-	
+	key[0] = 0x0A;
+	key[1] = 0x0A;
+	key[2] = 0x00;
+	key[3] = 0x00;
+
         return 0;
 }
 
@@ -790,7 +791,7 @@ cyberflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
         }
 
-	key_blob_size = 12 + base + 3 + 7;
+	key_blob_size = 12 + 3 + base + 7 + 4;
 	if (*keysize < key_blob_size)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	*keysize = key_blob_size;
@@ -810,6 +811,11 @@ cyberflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 	 || (r = bn2cft(&rsa->exponent, 0xC0, key + bnlen, 3 + 4)) < 0)
 	 	return r;
 
+	key += bnlen + 3 + 4;
+	key[0] = 0x0A;
+	key[1] = 0x0A;
+	key[2] = 0x00;
+	key[3] = 0x00;
         return 0;
 }
 
