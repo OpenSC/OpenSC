@@ -39,8 +39,11 @@ extern "C" {
 #define SC_CTX_MAGIC			0x0A550335
 
 struct sc_atr_table {
-	const char *atr;
-	const char *atrmask;
+	const char *atr;	/* The atr fields are required to
+				   be in aa:bb:cc hex format. */
+	const char *atrmask;	/* The atrmask is logically AND'd with an
+				   card atr prior to comparison with the
+				   atr reference value above. */
 	const char *name;
 	int id;
 	unsigned long flags;
