@@ -559,7 +559,7 @@ do_key_value(struct state *cur, int argc, char **argv)
 		}
 	}
 
-	memcpy(ai->key, key, key_len);
+	memcpy(ai->key, keybuf, key_len);
 	ai->key_len = key_len;
 	return 0;
 }
