@@ -65,6 +65,7 @@ static const struct _sc_driver_entry internal_reader_drivers[] = {
 #ifdef HAVE_LIBPCSCLITE
 	{ "pcsc", sc_get_pcsc_driver },
 #endif
+	{ "ctapi", sc_get_ctapi_driver },
 	{ NULL }
 };
 
@@ -144,75 +145,61 @@ static void add_internal_drvs(struct _sc_ctx_options *opts, int type)
 	}
 }
 
-static int load_parameters(struct sc_context *ctx, const char *app,
+static int load_parameters(struct sc_context *ctx, scconf_block *block,
 			   struct _sc_ctx_options *opts)
 {
-	scconf_block **blocks = NULL;
-	int i, err = 0;
-
-	blocks = scconf_find_blocks(ctx->conf, NULL, "app", NULL);
-	for (i = 0; blocks[i]; i++) {
-		const scconf_block *block = blocks[i];
-                const scconf_list *list;
-		const char *s_internal = "internal", *val;
-
-		if (strcmp(block->name->data, app))
-			continue;
-		val = scconf_get_str(block, "debug", NULL);
-		if (val)
-			sscanf(val, "%d", &ctx->debug);
-		val = scconf_get_str(block, "debug_file", NULL);
-		if (val) {
-			if (ctx->debug_file && ctx->debug_file != stdout)
-				fclose(ctx->debug_file);
-			if (strcmp(val, "stdout") == 0)
-				ctx->debug_file = fopen(val, "a");
-			else
-				ctx->debug_file = stdout;
-		}
-		val = scconf_get_str(block, "error_file", NULL);
-		if (val) {
-			if (ctx->error_file && ctx->error_file != stderr)
-				fclose(ctx->error_file);
-			if (strcmp(val, "stderr") != 0)
-				ctx->error_file = fopen(val, "a");
-			else
-				ctx->error_file = stderr;
-		}
-
-		list = scconf_find_list(block, "reader_drivers");
-		if (list == NULL) {
-			if (opts->rcount == 0) /* Add the internal drivers */
-				add_internal_drvs(opts, 0);
-		} else
-			del_drvs(opts, 0);
-		while (list != NULL) {
-			if (strcmp(list->data, s_internal) == 0)
-				add_internal_drvs(opts, 1);
-			else
-				add_drv(opts, 0, list->data);
-			list = list->next;
-		}
-		if (err)
-			break;
-
-		list = scconf_find_list(block, "card_drivers");
-		if (list == NULL) {
-			if (opts->ccount == 0) /* Add the internal drivers */
-				add_internal_drvs(opts, 1);
-		} else
-			del_drvs(opts, 1);
-		while (list != NULL) {
-			if (strcmp(list->data, s_internal) == 0)
-				add_internal_drvs(opts, 1);
-			else
-				add_drv(opts, 1, list->data);
-			list = list->next;
-		}
-		if (err)
-			break;
+	int err = 0;
+	const scconf_list *list;
+	const char *val;
+	const char *s_internal = "internal";
+ 
+	ctx->debug = scconf_get_int(block, "debug", ctx->debug);
+	val = scconf_get_str(block, "debug_file", NULL);
+	if (val) {
+		if (ctx->debug_file && ctx->debug_file != stdout)
+			fclose(ctx->debug_file);
+		if (strcmp(val, "stdout") == 0)
+			ctx->debug_file = fopen(val, "a");
+		else
+			ctx->debug_file = stdout;
 	}
-	free(blocks);
+	val = scconf_get_str(block, "error_file", NULL);
+	if (val) {
+		if (ctx->error_file && ctx->error_file != stderr)
+			fclose(ctx->error_file);
+		if (strcmp(val, "stderr") != 0)
+			ctx->error_file = fopen(val, "a");
+		else
+			ctx->error_file = stderr;
+	}
+	list = scconf_find_list(block, "reader_drivers");
+	if (list == NULL) {
+		if (opts->rcount == 0) /* Add the internal drivers */
+			add_internal_drvs(opts, 0);
+	} else
+		del_drvs(opts, 0);
+	while (list != NULL) {
+		if (strcmp(list->data, s_internal) == 0)
+			add_internal_drvs(opts, 1);
+		else
+			add_drv(opts, 0, list->data);
+		list = list->next;
+	}
+
+	list = scconf_find_list(block, "card_drivers");
+	if (list == NULL) {
+		if (opts->ccount == 0) /* Add the internal drivers */
+			add_internal_drvs(opts, 1);
+	} else
+		del_drvs(opts, 1);
+	while (list != NULL) {
+		if (strcmp(list->data, s_internal) == 0)
+			add_internal_drvs(opts, 1);
+		else
+			add_drv(opts, 1, list->data);
+		list = list->next;
+	}
+
 	return err;
 }
 
@@ -281,12 +268,39 @@ static int load_card_drivers(struct sc_context *ctx,
 	return 0;	
 }			     
 
+void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
+{
+	int i, r, count = 0;
+	scconf_block **blocks;
+	
+	ctx->conf = scconf_init(OPENSC_CONF_PATH);
+	if (ctx->conf == NULL)
+		return;
+	r = scconf_parse(ctx->conf);
+	if (r < 1) {
+		scconf_deinit(ctx->conf);
+		ctx->conf = NULL;
+		return;
+	}
+	blocks = scconf_find_blocks(ctx->conf, NULL, "app", ctx->app_name);
+	if (blocks[0])
+	    	ctx->conf_blocks[count++] = blocks[0];
+	free(blocks);
+	if (strcmp(ctx->app_name, "default") != 0) {
+		blocks = scconf_find_blocks(ctx->conf, NULL, "app", "default");
+		if (blocks[0])
+		    	ctx->conf_blocks[count++] = blocks[0];
+		free(blocks);
+	}
+	for (i = 0; i < count; i++)
+		load_parameters(ctx, ctx->conf_blocks[i], opts);
+}
+
 int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 {
 	const char *default_app = "default";
 	struct sc_context *ctx;
 	struct _sc_ctx_options opts;
-	int r;
 
 	assert(ctx_out != NULL);
 	ctx = malloc(sizeof(struct sc_context));
@@ -296,19 +310,7 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 	memset(&opts, 0, sizeof(opts));
 	set_defaults(ctx, &opts);
 	ctx->app_name = app_name ? strdup(app_name) : strdup(default_app);
-	ctx->conf = scconf_init(OPENSC_CONF_PATH);
-	if (ctx->conf) {
-		r = scconf_parse(ctx->conf);
-		if (r < 1) {
-			scconf_deinit(ctx->conf);
-			ctx->conf = NULL;
-		} else {
-			load_parameters(ctx, default_app, &opts);
-			if (strcmp(default_app, ctx->app_name)) {
-				load_parameters(ctx, ctx->app_name, &opts);
-			}
-		}
-	}
+	process_config_file(ctx, &opts);
 #ifdef HAVE_PTHREAD
 	pthread_mutex_init(&ctx->mutex, NULL);
 #endif

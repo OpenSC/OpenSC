@@ -337,6 +337,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		if (r) {
 			free(priv->reader_name);
 			free(priv);
+			free(reader->name);
 			free(reader);
 			break;
 		}

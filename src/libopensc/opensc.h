@@ -323,7 +323,14 @@ struct sc_slot_info {
 	unsigned int supported_protocols, active_protocol;
 	u8 atr[SC_MAX_ATR_SIZE];
 	size_t atr_len;
-	
+
+	struct _atr_info {
+		u8 *hist_bytes;
+		size_t hist_bytes_len;
+		int Fi, f, Di, N;
+		u8 FI, DI;
+	} atr_info;
+
 	void *drv_data;
 };
 typedef struct sc_slot_info sc_slot_info_t;
@@ -533,6 +540,7 @@ struct sc_card_driver {
 
 struct sc_context {
 	scconf_context *conf;
+	scconf_block *conf_blocks[3];
 	char *app_name;
 	int debug;
 
@@ -759,6 +767,7 @@ const char *sc_strerror(int sc_errno);
 extern const char *sc_version;
 
 extern const struct sc_reader_driver *sc_get_pcsc_driver(void);
+extern const struct sc_reader_driver *sc_get_ctapi_driver(void);
 
 extern const struct sc_card_driver *sc_get_iso7816_driver(void);
 extern const struct sc_card_driver *sc_get_emv_driver(void);

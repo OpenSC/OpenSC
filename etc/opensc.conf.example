@@ -38,7 +38,21 @@ app default {
 	#
 	# reader_drivers = pcsc, ctapi;
 
-	# What reader drivers to load at start-up
+	reader_driver ctapi {
+		module /usr/local/towitoko/lib/libtowitoko.so {
+			# CT-API ports:
+			# 0..3		COM1..4
+			# 4		Printer
+			# 5		Modem
+			# 6..7		LPT1..2
+			ports = 0;
+		}
+		# module /usr/local/lib/ctapi/ctapi2.so {
+		#	ports = 1, 6;
+		# }
+	}
+
+	# What card drivers to load at start-up
 	#
 	# A special value of 'internal' will load all
 	# statically linked drivers. If an unknown (ie. not
