@@ -55,12 +55,14 @@ sc_mutex_free(sc_mutex_t *p)
 	free(p);
 }
 #elif defined(_WIN32)
+#include <windows.h>
+
 sc_mutex_t *
 sc_mutex_new(void)
 {
 	CRITICAL_SECTION *mutex;
 
-	mutex = (CRITICAL_SECTION *) malloc(sizeof(*m));
+	mutex = (CRITICAL_SECTION *) malloc(sizeof(*mutex));
 	assert(mutex);
 	InitializeCriticalSection(mutex);
 	return (sc_mutex_t *) mutex;
