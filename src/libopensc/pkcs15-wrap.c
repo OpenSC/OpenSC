@@ -170,6 +170,7 @@ sc_pkcs15_wrap_data(struct sc_context *ctx,
 	int	r;
 
 	memset(&envdata, 0, sizeof(envdata));
+	memset(&der_info, 0, sizeof(der_info));
 
 	RAND_bytes(des_iv, sizeof(des_iv));
 	der_info.salt_len = sizeof(der_info.salt);
