@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# Erase p15 card
+#
+# Run this from the regression test directory.
+
+. functions
+
+p15_erase --secret @01=0000
+
