@@ -47,7 +47,7 @@ dlfcn_open(scdl_context_t *mod, const char *name)
 {
 	const char	**dir, *ldlist[64];
 	char		pathbuf[4096], *ldenv;
-	unsigned int	n = 0;
+	unsigned int	n = 0, flags = 0;
 
 	if ((ldenv = getenv("LD_LIBRARY_PATH"))
 	 && (ldenv = strdup(ldenv))) {
@@ -57,15 +57,18 @@ dlfcn_open(scdl_context_t *mod, const char *name)
 	}
 	ldlist[n] = NULL;
 
+#ifdef RTLD_NOW
+	flags |= RTLD_NOW;
+#endif
 	for (dir = ldlist; *dir; dir++) {
 		snprintf(pathbuf, sizeof(pathbuf), "%s/%s", *dir, name);
-		mod->handle = dlopen(pathbuf, RTLD_NOW);
+		mod->handle = dlopen(pathbuf, flags);
 		if (mod->handle != NULL)
 			break;
 	}
 
 	if (mod->handle == NULL)
-		mod->handle = dlopen(name, RTLD_NOW);
+		mod->handle = dlopen(name, flags);
 
 	if (ldenv)
 		free(ldenv);
