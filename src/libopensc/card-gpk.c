@@ -559,7 +559,7 @@ gpk_select(struct sc_card *card, u8 kind,
 	/* do the apdu thing */
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cla = 0x00;
-	apdu.cse = SC_APDU_CASE_3_SHORT;
+	apdu.cse = SC_APDU_CASE_4_SHORT;
 	apdu.ins = 0xA4;
 	apdu.p1 = kind;
 	apdu.p2 = 0;

@@ -418,16 +418,19 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 		sc_debug(card->ctx, "called, p1=%u, path=%s\n", p1, string);
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, p1, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0);
 	apdu.resp = rbuf;
-        apdu.resplen = sizeof(rbuf);
+	apdu.resplen = sizeof(rbuf);
 	apdu.datalen = buflen;
-        apdu.data = buf;
+	apdu.data = buf;
 	apdu.lc = buflen;
+	apdu.le = 252;
 
 	/* No need to get file information, if file is NULL. */
-	if (file_out == NULL)
-                apdu.resplen = 0;
+	if (file_out == NULL) {
+		apdu.cse = SC_APDU_CASE_3_SHORT;
+		apdu.le = 0;
+	}
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
