@@ -88,7 +88,8 @@ static int	do_select_parent(struct sc_profile *, struct sc_card *,
 static int	aodf_add_pin(struct sc_pkcs15_card *, struct sc_profile *,
 			const struct sc_pkcs15_pin_info *, const char *);
 static int	check_key_compatibility(struct sc_pkcs15_card *,
-			struct sc_pkcs15_prkey *, unsigned int, unsigned int);
+			struct sc_pkcs15_prkey *, unsigned int,
+			unsigned int, unsigned int);
 static int	prkey_fixup(sc_pkcs15_prkey_t *);
 static int	prkey_bits(sc_pkcs15_prkey_t *);
 static int	prkey_pkcs15_algo(sc_pkcs15_prkey_t *);
@@ -558,6 +559,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 
 	/* For now, we support just RSA key pair generation */
 	if (!check_key_compatibility(p15card, &keyargs->key,
+		 keyargs->x509_usage,
 		 keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
 		return SC_ERROR_NOT_SUPPORTED;
 
@@ -632,7 +634,8 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 		return r;
 
 	/* Now check whether the card is able to handle this key */
-	if (!check_key_compatibility(p15card, &key, keybits, 0)) {
+	if (!check_key_compatibility(p15card, &key,
+			keyargs->x509_usage, keybits, 0)) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key non-natively. */
 		if (!keyargs->extractable) {
@@ -965,11 +968,13 @@ sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
 static int
 check_key_compatibility(struct sc_pkcs15_card *p15card,
 			struct sc_pkcs15_prkey *key,
+			unsigned int x509_usage,
 			unsigned int key_length,
 			unsigned int flags)
 {
 	struct sc_algorithm_info *info;
 	unsigned int count;
+	int bad_usage = 0;
 
 	count = p15card->card->algorithm_count;
 	for (info = p15card->card->algorithms; count--; info++) {
@@ -993,7 +998,32 @@ check_key_compatibility(struct sc_pkcs15_card *p15card,
 			if (info->u._rsa.exponent != exponent)
 				continue;
 		}
+
+		/* Some cards will not support keys to do
+		 * both sign/decrypt.
+		 * For the convenience of the user, catch these
+		 * here. */
+		if (info->flags & SC_ALGORITHM_NEED_USAGE) {
+			unsigned int	usage;
+
+			usage = sc_pkcs15init_map_usage(x509_usage, 1);
+			if ((usage & (SC_PKCS15_PRKEY_USAGE_UNWRAP
+				     |SC_PKCS15_PRKEY_USAGE_DECRYPT))
+			 && (usage & SC_PKCS15_PRKEY_USAGE_SIGN)) {
+				bad_usage = 1;
+				continue;
+			}
+		}
 		return 1;
+	}
+
+	if (bad_usage) {
+		p15init_error("This device requires that keys have a "
+			"specific key usage.\n"
+			"Keys can be used for either signature or decryption, "
+			"but not both.\n"
+			"Please specify a key usage.\n");
+		return 0;
 	}
 	return 0;
 }
