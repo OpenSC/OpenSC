@@ -858,7 +858,7 @@ err:
 		fclose(outf);
         return -error;
 usage:
-	printf("Usage: put <file id> [output file]\n");
+	printf("Usage: put <file id> [input file]\n");
 	return -1;
 }
 
