@@ -442,6 +442,7 @@ int sc_unlock(struct sc_card *card)
 		card->cache_valid = 0;
 		if (card->ops->logout != NULL) {
 			sc_mutex_unlock(card->mutex);
+			sc_debug(card->ctx, "Calling card logout function\n");
 			card->ops->logout(card);
 			sc_mutex_lock(card->mutex);
 		}
@@ -658,6 +659,28 @@ int sc_select_file(struct sc_card *card,
 	/* Remember file path */
 	if (r == 0 && file && *file)
 		(*file)->path = *in_path;
+        SC_FUNC_RETURN(card->ctx, 1, r);
+}
+
+int sc_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t len)
+{
+	int	r;
+
+	sc_debug(card->ctx, "called, tag=%04x\n", tag);
+        if (card->ops->get_data == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->get_data(card, tag, buf, len);
+        SC_FUNC_RETURN(card->ctx, 1, r);
+}
+
+int sc_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t len)
+{
+	int	r;
+
+	sc_debug(card->ctx, "called, tag=%04x\n", tag);
+        if (card->ops->put_data == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->put_data(card, tag, buf, len);
         SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
