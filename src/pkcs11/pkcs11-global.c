@@ -97,7 +97,8 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		    CK_SLOT_ID_PTR pSlotList,     /* receives the array of slot IDs */
 		    CK_ULONG_PTR   pulCount)      /* receives the number of slots */
 {
-	int numMatches, i;
+	int numMatches, i, flags = 0;
+	struct sc_pkcs11_slot *slot;
 
 	if (context == NULL_PTR)
 	    return CKR_CRYPTOKI_NOT_INITIALIZED;
@@ -107,14 +108,13 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	for (i=0; i<context->reader_count; i++)
 		card_detect(i);
 
-	if (tokenPresent) {
-		numMatches = 0;
-		for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++)
-			if (virtual_slots[i].slot_info.flags & CKF_TOKEN_PRESENT)
-                                numMatches++;
-	} else {
-                numMatches = SC_PKCS11_MAX_VIRTUAL_SLOTS;
-	}
+	if (tokenPresent)
+		flags |= CKF_TOKEN_PRESENT;
+
+	numMatches = 0;
+	for (i=0, slot = virtual_slots; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++, slot++)
+		if (slot->card && (slot->slot_info.flags & flags) == flags)
+			numMatches++;
 
 	if (pSlotList == NULL_PTR) {
 		debug(context, "was only a size inquiry (%d)\n", numMatches);
@@ -129,8 +129,8 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	}
 
         numMatches = 0;
-	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++)
-		if ((!tokenPresent) || (virtual_slots[i].slot_info.flags & CKF_TOKEN_PRESENT))
+	for (i=0, slot = virtual_slots; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++, slot++)
+		if (slot->card && (slot->slot_info.flags & flags) == flags)
                         pSlotList[numMatches++] = i;
 
 	*pulCount = numMatches;

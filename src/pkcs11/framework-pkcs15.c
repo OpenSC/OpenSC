@@ -250,7 +250,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 	char tmp[64];
 
 	pkcs15_init_token_info(card, &slot->token_info);
-	slot->token_info.flags = CKF_USER_PIN_INITIALIZED
+	slot->token_info.flags |= CKF_USER_PIN_INITIALIZED
 				| CKF_TOKEN_INITIALIZED
 				| CKF_WRITE_PROTECTED;
 	slot->fw_data = fw_data = (struct pkcs15_slot_data *) calloc(1, sizeof(*fw_data));
@@ -389,10 +389,10 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	}
 
 	/* Create read/write slots */
-	if (sc_pkcs11_conf.num_slots != 0) {
+	if (!sc_pkcs11_conf.hide_empty_slots) {
 		while (slot_allocate(&slot, p11card) == CKR_OK) {
 			pkcs15_init_token_info(card, &slot->token_info);
-			slot->token_info.flags = CKF_TOKEN_INITIALIZED;
+			slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
 		}
 	}
 

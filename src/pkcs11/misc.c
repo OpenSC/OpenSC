@@ -304,6 +304,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, struct sc_context *ct
 	
 	/* Set defaults */
 	conf->num_slots = SC_PKCS11_MAX_VIRTUAL_SLOTS;
+	conf->hide_empty_slots = 0;
 
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
@@ -318,4 +319,5 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, struct sc_context *ct
 		return;
 
 	conf->num_slots = scconf_get_int(conf_block, "num_slots", conf->num_slots);
+	conf->hide_empty_slots = scconf_get_bool(conf_block, "hide_empty_slots", 0);
 }
