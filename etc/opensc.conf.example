@@ -204,10 +204,10 @@ app opensc-pkcs11 {
 }
 
 # Parameters for the OpenSC PKCS11-Spy module, that logs all the
-# communcation between a pkcs11 module and it's calling application:
+# communication between a pkcs11 module and it's calling application:
 #    app <--> pkcs11-spy <--> pkcs11 module
 app pkcs11-spy {
-	init {
+	spy {
 		# Where to log to.
 		#
 		# By default, the value of the PKCS11SPY_OUTPUT environment
