@@ -91,6 +91,7 @@ enum {
 	OPT_EXTRACTABLE,
 	OPT_UNPROTECTED,
 	OPT_AUTHORITY,
+	OPT_SOFT_KEYGEN,
 
 	OPT_PIN1 = 0x10000,	/* don't touch these values */
 	OPT_PUK1 = 0x10001,
@@ -122,6 +123,7 @@ const struct option	options[] = {
 
 	{ "extractable",	no_argument, 0,		OPT_EXTRACTABLE },
 	{ "insecure",		no_argument, 0,		OPT_UNPROTECTED },
+	{ "soft",		no_argument, 0,		OPT_SOFT_KEYGEN },
 
 	{ "profile",		required_argument, 0,	'p' },
 	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
@@ -151,6 +153,7 @@ const char *		option_help[] = {
 
 	"Private key stored as an extractable key",
 	"Insecure mode: do not require PIN/passphrase for private key",
+	"Use software key generation, even if the card supports on-board key generation",
 
 	"Specify the profile to use",
 	"Read additional command line options from file",
@@ -185,7 +188,8 @@ static int			opt_debug = 0,
 				opt_erase = 0,
 				opt_extractable = 0,
 				opt_unprotected = 0,
-				opt_authority = 0;
+				opt_authority = 0,
+				opt_softkeygen = 0;
 static char *			opt_profile = "pkcs15";
 static char *			opt_infile = 0;
 static char *			opt_format = 0;
@@ -518,6 +522,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 {
 	struct sc_pkcs15init_prkeyargs args;
 	unsigned int	evp_algo, keybits = 1024;
+	EVP_PKEY	*pkey;
 	int		r;
 
 	if ((r = init_keyargs(&args)) < 0)
@@ -549,35 +554,31 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 		}
 	}
 
-	r = sc_pkcs15init_generate_key(p15card, profile, &args, keybits, NULL);
-	if (r < 0) {
-		EVP_PKEY	*pkey;
-
-		if (r != SC_ERROR_NOT_SUPPORTED)
+	if (!opt_softkeygen) {
+		r = sc_pkcs15init_generate_key(p15card, profile,
+				&args, keybits, NULL);
+		if (r >= 0 || r != SC_ERROR_NOT_SUPPORTED)
 			return r;
 		if (!opt_quiet)
 			printf("Warning: card doesn't support on-board "
 			       "key generation; using software generation\n");
-
-		/* Generate the key ourselves */
-		r = do_generate_key_soft(evp_algo, keybits, &pkey);
-		if (r >= 0) {
-			r = do_convert_private_key(&args.key, pkey);
-		}
-
-		if (r >= 0)
-			r = sc_pkcs15init_store_private_key(p15card, profile,
-					&args, NULL);
-
-		/* Store public key portion on card */
-		if (r >= 0)
-			r = do_store_public_key(profile, pkey);
-
-		EVP_PKEY_free(pkey);
-		if (r < 0)
-			return r;
 	}
 
+	/* Generate the key ourselves */
+	r = do_generate_key_soft(evp_algo, keybits, &pkey);
+	if (r >= 0) {
+		r = do_convert_private_key(&args.key, pkey);
+	}
+
+	if (r >= 0)
+		r = sc_pkcs15init_store_private_key(p15card, profile,
+				&args, NULL);
+
+	/* Store public key portion on card */
+	if (r >= 0)
+		r = do_store_public_key(profile, pkey);
+
+	EVP_PKEY_free(pkey);
 	return r;
 }
 
@@ -1127,6 +1128,9 @@ handle_option(int c)
 		break;
 	case OPT_AUTHORITY:
 		opt_authority = 1;
+		break;
+	case OPT_SOFT_KEYGEN:
+		opt_softkeygen = 1;
 		break;
 	default:
 		print_usage_and_die();
