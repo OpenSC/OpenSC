@@ -48,7 +48,7 @@ FILE *spy_output = NULL;
     pkcs11_spy->name = name;
 
 /* Inits the spy. If successfull, po != NULL */
-CK_RV init_spy(void)
+static CK_RV init_spy(void)
 {
   const char *mspec = NULL, *file = NULL, *env = NULL;
   scconf_block *conf_block = NULL, **blocks;
@@ -109,66 +109,66 @@ CK_RV init_spy(void)
   return rv;
 }
 
-void enter(char *function)
+static void enter(const char *function)
 {
   static int count = 0;
   fprintf(spy_output, "\n\n%d: %s\n", count++, function);
 }
 
-CK_RV retne(CK_RV rv)
+static CK_RV retne(CK_RV rv)
 {
 	fprintf(spy_output, "Returned:  %ld %s\n", rv, lookup_enum ( RV_T, rv ));
 	fflush(spy_output);
 	return rv;
 }
 
-void spy_dump_string_in(char *name, CK_VOID_PTR data, CK_ULONG size)
+static void spy_dump_string_in(const char *name, CK_VOID_PTR data, CK_ULONG size)
 {
   fprintf(spy_output, "[in] %s ", name);
   print_generic(spy_output, 0, data, size, NULL);
 }
 
-void spy_dump_string_out(char *name, CK_VOID_PTR data, CK_ULONG size)
+static void spy_dump_string_out(const char *name, CK_VOID_PTR data, CK_ULONG size)
 {
   fprintf(spy_output, "[out] %s ", name);
   print_generic(spy_output, 0, data, size, NULL);
 }
 
-void spy_dump_ulong_in(char *name, CK_ULONG value)
+static void spy_dump_ulong_in(const char *name, CK_ULONG value)
 {
   fprintf(spy_output, "[in] %s = 0x%lx\n", name, value);
 }
 
-void spy_dump_ulong_out(char *name, CK_ULONG value)
+static void spy_dump_ulong_out(const char *name, CK_ULONG value)
 {
   fprintf(spy_output, "[out] %s = 0x%lx\n", name, value);
 }
 
-void spy_dump_desc_out(char *name)
+static void spy_dump_desc_out(const char *name)
 {
   fprintf(spy_output, "[out] %s: \n", name);
 }
 
-void spy_dump_array_out(char *name, CK_ULONG size)
+static void spy_dump_array_out(const char *name, CK_ULONG size)
 {
   fprintf(spy_output, "[out] %s[%ld]: \n", name, size);
 }
 
-void spy_attribute_req_in(char *name, CK_ATTRIBUTE_PTR pTemplate,
+static void spy_attribute_req_in(const char *name, CK_ATTRIBUTE_PTR pTemplate,
 			  CK_ULONG  ulCount)
 {
   fprintf(spy_output, "[in] %s[%ld]: \n", name, ulCount);
   print_attribute_list_req(spy_output, pTemplate, ulCount);
 }
 
-void spy_attribute_list_in(char *name, CK_ATTRIBUTE_PTR pTemplate,
+static void spy_attribute_list_in(const char *name, CK_ATTRIBUTE_PTR pTemplate,
 			  CK_ULONG  ulCount)
 {
   fprintf(spy_output, "[in] %s[%ld]: \n", name, ulCount);
   print_attribute_list(spy_output, pTemplate, ulCount);
 }
 
-void spy_attribute_list_out(char *name, CK_ATTRIBUTE_PTR pTemplate,
+static void spy_attribute_list_out(const char *name, CK_ATTRIBUTE_PTR pTemplate,
 			  CK_ULONG  ulCount)
 {
   fprintf(spy_output, "[out] %s[%ld]: \n", name, ulCount);

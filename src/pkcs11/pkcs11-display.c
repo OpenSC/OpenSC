@@ -549,7 +549,7 @@ const char *lookup_enum_spec(enum_spec *spec, CK_ULONG value)
   return NULL;
 }
 
-const char *lookup_enum(CK_LONG type, CK_ULONG value)
+const char *lookup_enum(CK_ULONG type, CK_ULONG value)
 {
   CK_ULONG i;
   for(i = 0; ck_types[i].type < ( sizeof(ck_types) / sizeof(enum_spec) ) ; i++) {

@@ -33,20 +33,20 @@ typedef void (display_func) \
 		 (FILE *, CK_LONG, CK_VOID_PTR, CK_ULONG, CK_VOID_PTR);
 
 typedef struct {
-  CK_LONG type;
-  char *   name;
+  CK_ULONG   type;
+  const char *name;
 } enum_specs;
 
 typedef struct {
-  CK_LONG type;
+  CK_ULONG type;
   enum_specs *specs;
-  CK_ULONG    size;
-  char       *name;
+  CK_ULONG   size;
+  const char *name;
 } enum_spec;
 
 typedef struct {
-  CK_LONG           type;
-  char *            name;
+  CK_ULONG          type;
+  const char *      name;
   display_func*     display;
   void *            arg;
 } type_spec;
@@ -62,7 +62,7 @@ enum ck_type{
 };
 
 const char *lookup_enum_spec(enum_spec *spec, CK_ULONG value);
-const char *lookup_enum(CK_LONG type, CK_ULONG value);
+const char *lookup_enum(CK_ULONG type, CK_ULONG value);
 void print_enum    (FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg);
 void print_boolean (FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg);
 void print_generic (FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg);
