@@ -1,0 +1,7 @@
+
+
+This directory contains regression test scripts.  Note this is still
+work in progress, hopefully we will add more scripts by and by.
+
+Run the test scripts from this directory. You need to have
+OpenSC fully built in order for them to do anything useful.

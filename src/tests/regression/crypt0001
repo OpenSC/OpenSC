@@ -1,0 +1,46 @@
+#!/bin/bash
+#
+# This test checks various aspects of RSA signature generation
+#
+# It needs a card with a private key+certificate pair at ID 45
+#
+# Run this from the regression test directory.
+
+. functions
+
+msg <<EOF
+:::
+::: Testing on-card signature facilities
+:::
+::: This test needs a card with a private key and certificate at ID 45.
+:::
+EOF
+
+m=$p15temp/message
+d=$p15temp/digest
+s=$p15temp/signed
+x=$p15temp/cert.pem
+p=$p15temp/key.pem
+
+msg "Extracting certificate"
+run_check_status $p15tool -r 45 -o $x
+
+msg "Extracting public key"
+run_check_status openssl  x509 -in $x -noout -pubkey > $p
+
+# Set up message file
+echo lalla > $m
+
+msg "Signing and verifying using MD5"
+run_check_status openssl dgst -md5 -binary -out $d < $m
+run_check_status $p15crypt -s --md5 --pkcs1 -i $d -o $s
+run_check_output "Verified OK" \
+	openssl dgst -verify $p -md5 -signature $s < $m
+success
+
+msg "Signing and verifying using SHA1"
+run_check_status openssl dgst -sha1 -binary -out $d < $m
+run_check_status $p15crypt -s --sha-1 --pkcs1 -i $d -o $s
+run_check_output "Verified OK" \
+	openssl dgst -verify $p -sha1 -signature $s < $m
+success

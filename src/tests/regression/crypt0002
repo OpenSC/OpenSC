@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# This test checks various aspects of RSA decryption
+#
+# It needs a card with a private key+certificate pair at ID 45
+#
+# Run this from the regression test directory.
+
+. functions
+
+msg <<EOF
+:::
+::: Testing on-card decryption facilities
+:::
+::: This test needs a card with a private key and certificate at ID 45.
+:::
+EOF
+
+o=$p15temp/plaintext
+e=$p15temp/encrypted
+d=$p15temp/decrypted
+x=$p15temp/cert.pem
+p=$p15temp/key.pem
+
+msg "Extracting certificate"
+run_check_status $p15tool -r 45 -o $x
+
+msg "Extracting public key"
+run_check_status openssl  x509 -in $x -noout -pubkey > $p
+
+msg "Encrypting message (pkcs1 padding)"
+echo lalla > $o
+run_check_status openssl rsautl -pubin -inkey $p -encrypt -in $o -out $e
+run_check_status $p15crypt -c --pkcs1 -i $e -o $d
+cmp $o $d || fail "Decrypted file does not match plain text file"
+success

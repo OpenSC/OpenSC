@@ -1,0 +1,79 @@
+#!/bin/bash
+#
+# Functions for the regression test scripts
+#
+
+if [ -z "$__p15init__" ]; then
+	__p15init__=1
+
+	p15base=${P15_BASE:-../..}
+	p15temp=${P15_TEMP:-./test-data}
+
+	p15crypt=$p15base/tools/pkcs15-crypt
+	p15tool=$p15base/tools/pkcs15-tool
+	p15log=$p15temp/test.log
+
+	for bin in $p15tool $p15crypt; do
+		test -x $bin && continue
+		echo "*** Missing binary $bin" >&2
+		exit 1
+	done
+
+	mkdir -p $p15temp
+	trap "rm -rf $p15temp" 0 1 2 13 15
+
+	# Redirect output to log file, but keep copies of
+	# stdout/stderr descriptors on fd 3 and 4
+	exec 3>&1 4>&2 >$p15log 2>&1
+fi
+
+# Clobber log file
+cp /dev/null $p15log
+
+
+function msg {
+
+	if [ $# -eq 0 ]; then
+		# This is a here script
+		cat >&3
+	else
+		echo "::: $*" >&3
+	fi
+}
+
+function fail {
+	(
+		echo "*** $*"
+		echo "---"
+		cat $p15log
+	) >&4
+	exit 1
+}
+
+function success {
+
+	msg "SUCCESS"
+}
+
+function run_check_status {
+
+	echo ":::::: run_check_status $*"
+	eval "$@" || fail "Command failed (status code $?): $*"
+}
+
+function run_check_output {
+
+	msg=$1
+	shift
+
+	echo ":::::: run_check_output \"$1\" $*"
+	out=`eval "$@" 2>&1`
+
+	# Make sure output makes it to log file
+	echo $out
+
+	case $out in
+	"$msg")	return 0;;
+	*)	fail "Command failed (expected $msg): $*";;
+	esac
+}
