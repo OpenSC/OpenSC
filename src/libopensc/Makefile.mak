@@ -9,7 +9,7 @@ HEADERS			= opensc.h pkcs15.h emv.h \
 
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
 
-OBJECTS			= sc.obj ctx.obj module.obj asn1.obj log.obj base64.obj \
+OBJECTS			= sc.obj ctx.obj module.obj asn1.obj log.obj base64.obj padding.obj \
 			  errors.obj sec.obj card.obj iso7816.obj dir.obj \
 			  portability.obj \
 			  pkcs15.obj pkcs15-cert.obj pkcs15-data.obj pkcs15-pin.obj \
