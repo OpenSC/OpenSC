@@ -828,7 +828,14 @@ int scldap_search(scldap_context * ctx, const char *entry,
 	} else if (!searchpattern && ctx->entry[entrynum].filter) {
 		pattern = strdup(ctx->entry[entrynum].filter);
 	}
-#if 0
+	/* This ifdef is currently not actually used or probed in any way,
+	 * older versions of OpenLDAP, eg. <=1.2.12.1 seem to need this
+	 * sanity check. This check cannot be enabled at least for newer
+	 * versions of OpenLDAP, otherwise it'll block certificate CRL
+	 * fetches. scldap used to work at least with solaris built-in
+	 * ldap library, nowadays untested, so beware. -aet
+	 */
+#ifdef HAVE_OLD_OPENLDAP
 	/* Note: pattern *can* be empty but NOT NULL! Therefore, this is illegal. */
 	if (!pattern) {
 		ldap_unbind(ld);
