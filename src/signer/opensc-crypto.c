@@ -147,7 +147,7 @@ sc_sign(int type, u_char *m, unsigned int m_len,
 			goto err;
 		goto err;
 	}
-	r = sc_pkcs15_compute_signature(priv->p15card, key->data, SC_PKCS15_HASH_SHA1,
+	r = sc_pkcs15_compute_signature(priv->p15card, key->data, SC_ALGORITHM_RSA_HASH_SHA1,
 					m, m_len, sigret, RSA_size(rsa));
 	if (r < 0) {
 		DBG(printf("sc_pkcs15_compute_signature() failed: %s", sc_strerror(r)));
