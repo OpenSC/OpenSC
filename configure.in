@@ -794,6 +794,48 @@ if test "$pcsc_path" != "no"; then
 fi
 AM_CONDITIONAL(HAVE_PCSCLITE, test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes")
 
+dnl --enable-usbtoken option.
+AC_ARG_ENABLE(usbtoken, AC_HELP_STRING(
+[--enable-usbtoken],	[enable the usbtoken reader backed. [default=yes]]),
+	, enable_usbtoken=yes)
+if test "x$enable_usbtoken" = "xyes"; then
+	AC_DEFINE(HAVE_USBTOKEN, 1, [Enable usbtoken support])
+	USBTOKEN_MSG=yes
+else
+	USBTOKEN_MSG=no
+fi
+AM_CONDITIONAL(HAVE_USBTOKEN, test "x$USBTOKEN_MSG" = "xyes")
+
+dnl --with-openct option
+OPENCT_MSG=no
+AC_ARG_WITH(openct, AC_HELP_STRING(
+[--with-openct=PATH],	[enable the OpenCT reader backend]))
+if test "x$with_openct" != "xno"; then
+	AC_MSG_CHECKING(for OpenCT support)
+	saved_LIBS="$LIBS"
+	saved_LDFLAGS="$LDFLAGS"
+	saved_CPPFLAGS="$CPPFLAGS"
+
+	if test "x$with_openct" != "x" -a -d "$with_openct"; then
+		LDFLAGS="$LDFLAGS -L$openct_path";
+		CPPFLAGS="$CPPFLAGS -I$openct_path";
+	fi
+
+	LIBS="$LIBS -lopenct"
+	AC_TRY_LINK([#include <openct/openct.h>],
+		    [ct_reader_connect(0);],
+	[
+		AC_DEFINE(HAVE_OPENCT, 1, [Have OpenCT libraries and header files])
+		OPENCT_MSG=yes
+	],[
+		CPPFLAGS="$saved_CPPFLAGS"
+		LDFLAGS="$saved_LDFLAGS"
+		LIBS="$saved_LIBS"
+	])
+	AC_MSG_RESULT($OPENCT_MSG)
+fi
+AM_CONDITIONAL(HAVE_OPENCT, test "x$OPENCT_MSG" = "xyes")
+
 # Check for user-specified random device, otherwise check /dev/urandom
 AC_ARG_WITH(random,
 	[  --with-random=FILE      read entropy from FILE (default=/dev/urandom)],
@@ -1101,6 +1143,8 @@ echo ""
 echo "Random number collection: ${RAND_MSG}"
 echo "OpenSSL support:          ${SSL_MSG}"
 echo "PC/SC support:            ${PCSC_MSG}"
+echo "USBToken support:         ${USBTOKEN_MSG}"
+echo "OpenCT support:           ${OPENCT_MSG}"
 echo "Assuan support:           ${ASSUAN_MSG}"
 echo "LDAP support:             ${LDAP_MSG}"
 echo "PAM support:              ${PAM_MSG}"
