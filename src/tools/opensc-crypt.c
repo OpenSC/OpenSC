@@ -28,6 +28,7 @@
 #include <opensc-pkcs15.h>
 
 int opt_reader = 0, opt_pin = 0, quiet = 0;
+int opt_debug = 0;
 char * opt_pincode = NULL, * opt_key_id = NULL;
 char * opt_input = NULL, * opt_output = NULL;
 int opt_hash_type = SC_PKCS15_HASH_NONE;
@@ -257,7 +258,7 @@ int main(int argc, char * const argv[])
 			quiet++;
 			break;
 		case 'd':
-			sc_debug++;
+			opt_debug++;
 			break;
 		case 'p':
 			opt_pincode = optarg;
@@ -272,6 +273,7 @@ int main(int argc, char * const argv[])
 		return 1;
 	}
 	ctx->use_std_output = 1;
+	ctx->debug = opt_debug;
 	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
 		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
 		err = 1;

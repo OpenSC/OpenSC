@@ -36,9 +36,9 @@ int test()
 	}
 	memcpy(path.value, "\x51\x10", 2);
 	path.len = 2;
-	sc_debug = 3;
+	ctx->debug = 3;
 	r = sc_select_file(card, &file, &path, SC_SELECT_FILE_BY_PATH);
-	sc_debug = 0;
+	ctx->debug = 0;
 	if (r) {
 		fprintf(stderr, "sc_select_file failed: %s\n", sc_strerror(r));
 		goto err;
@@ -49,7 +49,7 @@ int test()
 		goto err;
 	}
 #endif
-	sc_debug = 3;
+	ctx->debug = 3;
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, 1);
 	apdu.lc = 8;
@@ -81,7 +81,7 @@ int test()
 	file.type = SC_FILE_TYPE_WORKING_EF;
 	file.ef_structure = SC_FILE_EF_TRANSPARENT;
 
-	sc_debug = 1;
+	ctx->debug = 1;
 	r = sc_create_file(card, &file);
 
 err:
@@ -98,7 +98,7 @@ int test2()
 	memcpy(path.value, "\x3F\x00", 2);
 	path.len = 2;
 	
-	sc_debug = 3;
+	ctx->debug = 3;
 	r = sc_select_file(card, &file, &path, SC_SELECT_FILE_BY_PATH);
 	if (r) {
 		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 	if (i != 0)
 		return 1;
 	
-	sc_debug = 3;
+	ctx->debug = 3;
 	if (test3())
 		return 1;
 

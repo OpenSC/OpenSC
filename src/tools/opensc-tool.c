@@ -32,8 +32,9 @@
 #define OPT_LIST_PINS	0x101
 #define OPT_READER	0x102
 #define OPT_PIN_ID	0x103
+#define OPT_NO_CACHE	0x104
 
-int opt_reader = 0;
+int opt_reader = 0, opt_no_cache = 0, opt_debug = 0;
 char * opt_pin_id;
 char * opt_cert = NULL;
 char * opt_outfile = NULL;
@@ -55,6 +56,7 @@ const struct option options[] = {
 	{ "output",		1, 0,		'o' },
 	{ "quiet",		0, 0,		'q' },
 	{ "debug",		0, 0,		'd' },
+	{ "no-cache",		0, 0,		OPT_NO_CACHE },
 	{ "pin-id",		1, 0,		'p' },
 	{ 0, 0, 0, 0 }
 };
@@ -73,6 +75,7 @@ const char *option_help[] = {
 	"Outputs to file <arg>",
 	"Quiet operation",
 	"Debug output -- may be supplied several times",
+	"Disable card caching",
 	"The auth ID of the PIN to use [P15]",
 };
 
@@ -109,6 +112,14 @@ void print_usage_and_die()
 		i++;
 	}
 	exit(2);
+}
+
+void hex_dump(const u8 *in, int len)
+{
+	int i;
+	
+	for (i = 0; i < len; i++)
+		printf("%02X ", in[i]);
 }
 
 int list_readers()
@@ -388,7 +399,7 @@ int enum_dir(struct sc_path path, int depth)
 		if (file.type == 0 && 0) {
 			r = sc_read_binary(card, 0, buf, file.size);
 			if (r > 0)
-				sc_hex_dump(ctx, buf, r);
+				hex_dump(buf, r);
 		}
 		if (file.sec_attr_len) {
 			printf("sec: ");
@@ -398,10 +409,9 @@ int enum_dir(struct sc_path path, int depth)
 			 * 4 MSB's of the octet mean:			 
 			 *  0 = ALW, 1 = PIN1, 2 = PIN2, 4 = SYS,
 			 * 15 = NEV */
-			sc_hex_dump(ctx, file.sec_attr, file.sec_attr_len);
-		} else {
-			printf("\n");
+			hex_dump(file.sec_attr, file.sec_attr_len);
 		}
+		printf("\n");
 	} else {
 		printf("\n");
 	}
@@ -526,8 +536,8 @@ int send_apdu()
 	int len = sizeof(buf), r;
 	
 	sc_hex_to_bin(opt_apdu, buf, &len);
-	if (len < 5) {
-		fprintf(stderr, "APDU too short (must be at least 5 bytes).\n");
+	if (len < 4) {
+		fprintf(stderr, "APDU too short (must be at least 4 bytes).\n");
 		return 2;
 	}
 	apdu.cla = *p++;
@@ -536,6 +546,8 @@ int send_apdu()
 	apdu.p2 = *p++;
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
+	apdu.data = NULL;
+	apdu.datalen = 0;
 	len -= 4;
 	if (len > 1) {
 		apdu.lc = *p++;
@@ -561,9 +573,9 @@ int send_apdu()
 	} else
 		apdu.cse = SC_APDU_CASE_1;
 	
-	sc_debug = 3;
+	ctx->debug = 4;
 	r = sc_transmit_apdu(card, &apdu);
-	sc_debug = 0;
+	ctx->debug = opt_debug;
 	if (r) {
 		fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(r));
 		return 1;
@@ -641,10 +653,13 @@ int main(int argc, char * const argv[])
 			quiet++;
 			break;
 		case 'd':
-			sc_debug++;
+			opt_debug++;
 			break;
 		case 'p':
 			opt_pin_id = optarg;
+			break;
+		case OPT_NO_CACHE:
+			opt_no_cache++;
 			break;
 		}
 	}
@@ -656,6 +671,9 @@ int main(int argc, char * const argv[])
 		return 1;
 	}
 	ctx->use_std_output = 1;
+	ctx->debug = opt_debug;
+	if (opt_no_cache)
+		ctx->use_cache = 0;
 	if (do_list_readers) {
 		if ((err = list_readers()))
 			goto end;
