@@ -28,11 +28,25 @@
 #include "profile.h"
 
 /*
+ * Erase the card via rm -rf
+ */
+static int cflex_erase_card(struct sc_profile *profile, struct sc_card *card)
+{
+	return sc_pkcs15init_erase_card_recursively(card, profile, -1);
+}
+
+/*
  * Initialize the Application DF
  */
 static int cflex_init_app(struct sc_profile *profile, struct sc_card *card,
 		const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
+	if (pin && pin_len) {
+		profile->cbs->error("Cryptoflex card driver doesn't "
+				"support SO PIN\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
 	/* Create the application DF */
 	if (sc_pkcs15init_create_file(profile, card, profile->df_info->file))
 		return 1;
@@ -400,7 +414,7 @@ err:
 }
 
 struct sc_pkcs15init_operations sc_pkcs15init_cflex_operations = {
-	NULL,
+	cflex_erase_card,
 	cflex_init_app,
 	cflex_new_pin,
 	cflex_new_key,
