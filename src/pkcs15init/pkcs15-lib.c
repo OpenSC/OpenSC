@@ -126,15 +126,44 @@ sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *cb)
 	callbacks = cb;
 }
 
+/* Returns 1 if the a profile was found in the card's card_driver block
+ *   in the config file, or 0 otherwise.
+ * card_prof_name is a PATH_MAX -sized buffer that will hold the profile name */
+static int get_profile_from_config(struct sc_card *card, char *card_prof_name)
+{
+	struct sc_context *ctx = card->ctx;
+	const char *tmp;
+	scconf_block **blocks, *blk;
+	int i, r;
+
+	for (i = 0; ctx->conf_blocks[i]; i++) {
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+					"card_driver", card->driver->short_name);
+		blk = blocks[0];
+		free(blocks);
+		if (blk == NULL)
+			continue;
+
+		tmp = scconf_get_str(blk, "profile", NULL);
+		if (tmp != NULL) {
+			strncpy(card_prof_name, tmp, PATH_MAX);
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 /*
  * Set up profile
  */
 int
 sc_pkcs15init_bind(struct sc_card *card, const char *name,
-		struct sc_profile **result)
+		const char *card_profile_name, struct sc_profile **result)
 {
 	struct sc_profile *profile;
 	const char	*driver = card->driver->short_name;
+	char		card_prof_name[PATH_MAX];
 	int		r;
 
 	/* Put the card into administrative mode */
@@ -159,8 +188,17 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
+	/* 1. Use card_profile_name if present,
+	 * 2. otherwise look in the config file, or
+	 * 3. otherwise use the default profile name.
+	 */
+	if (card_profile_name != NULL)
+		strcpy(card_prof_name, card_profile_name);         /* 1 */
+	else if (!get_profile_from_config(card, card_prof_name)) /* 2 */
+			strcpy(card_prof_name, driver);            /* 3 */
+
 	if ((r = sc_profile_load(profile, name)) < 0
-	 || (r = sc_profile_load(profile, driver)) < 0
+	 || (r = sc_profile_load(profile, card_prof_name)) < 0
 	 || (r = sc_profile_finish(profile)) < 0) {
 		fprintf(stderr,
 			"Failed to load profile: %s\n",

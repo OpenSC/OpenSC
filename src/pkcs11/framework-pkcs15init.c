@@ -34,7 +34,7 @@ static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card)
 	int		rc;
 
 	card->ctx->log_errors = 0;
-	rc = sc_pkcs15init_bind(card, "pkcs15", &profile);
+	rc = sc_pkcs15init_bind(card, "pkcs15", NULL, &profile);
 	card->ctx->log_errors = 1;
 	if (rc == 0)
 		p11card->fw_data = profile;

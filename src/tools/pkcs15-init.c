@@ -156,6 +156,7 @@ const struct option	options[] = {
 	{ "no-prompt",		no_argument, 0,		OPT_NO_PROMPT },
 
 	{ "profile",		required_argument, 0,	'p' },
+	{ "card-profile",	required_argument, 0,	'c' },
 	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
 	{ "wait",		no_argument, 0,		'w' },
 	{ "debug",		no_argument, 0,		'd' },
@@ -200,7 +201,8 @@ const char *		option_help[] = {
 	"Always ask for transport keys etc, even if the driver thinks it knows the key",
 	"Do not prompt the user, except for PINs",
 
-	"Specify the profile to use",
+	"Specify the general profile to use",
+	"Specify the card profile option to use",
 	"Read additional command line options from file",
 	"Wait for card insertion",
 	"Enable debugging output",
@@ -269,6 +271,7 @@ static int			opt_reader = -1,
 				opt_split_key = 0,
 				opt_wait = 0;
 static char *			opt_profile = "pkcs15";
+static char *			opt_card_profile = NULL;
 static char *			opt_infile = 0;
 static char *			opt_format = 0;
 static char *			opt_authid = 0;
@@ -326,7 +329,8 @@ main(int argc, char **argv)
 	sc_pkcs15init_set_callbacks(&callbacks);
 
 	/* Bind the card-specific operations and load the profile */
-	if ((r = sc_pkcs15init_bind(card, opt_profile, &profile)) < 0)
+	if ((r = sc_pkcs15init_bind(card, opt_profile,
+		opt_card_profile, &profile)) < 0)
 		return 1;
 
 	set_secrets(profile);
@@ -1741,6 +1745,9 @@ handle_option(const struct option *opt)
 		break;
 	case 'p':
 		opt_profile = optarg;
+		break;
+	case 'c':
+		opt_card_profile = optarg;
 		break;
 	case 'q':
 		opt_quiet = 1;

@@ -775,7 +775,7 @@ static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 	struct sc_pkcs15_object	*auth_obj;
 	int			rc;
 
-	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", &profile);
+	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
 
@@ -1079,7 +1079,7 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 		return rv;
 
 	/* Bind the profile */
-	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", &profile);
+	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
 
@@ -1197,7 +1197,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	if (pMechanism->mechanism != CKM_RSA_PKCS_KEY_PAIR_GEN)
 		return CKR_MECHANISM_INVALID;
 
-	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", &profile);
+	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
 

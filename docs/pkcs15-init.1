@@ -19,7 +19,7 @@ will create the basic files on the card, and initialize
 user PINs. To create the initial PKCS #15 structure,
 invoke the utility as
 .PP
-.B "   pkcs15-init --create-pkcs15 --profile pkcs15
+.B "   pkcs15-init --create-pkcs15
 .PP
 You will then be asked for several PINs (secret codes used to protect
 e.g. keys stored on the card), and PUKs. PUKs are secret codes that can
@@ -106,11 +106,14 @@ to contain the DER encoded X.509 certificate.
 .SH OPTIONS
 .TP
 .BR \-\-profile " \fIname\fP, " \-p " \fIname\fP"
-Tells \*(nm to load the specified profile. Currently, the
+Tells \*(nm to load the specified general profile. Currently, the
 only application profile defined is
 .BR pkcs15 ,
 but you can write your own profiles and specify them using this
 option.
+.TP
+.BR \-\-card-profile " \fIname\fP, " \-c " \fIname\fP"
+Tells \*(nm to load the specified card profile option.
 .TP
 .BR \-\-create-pkcs15 ", " \-C
 This tells \*(nm to create a PKCS #15 structure on the card, and

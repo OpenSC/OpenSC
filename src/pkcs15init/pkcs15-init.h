@@ -158,7 +158,7 @@ struct sc_pkcs15init_certargs {
 };
 
 extern void	sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *);
-extern int	sc_pkcs15init_bind(struct sc_card *, const char *,
+extern int	sc_pkcs15init_bind(struct sc_card *, const char *, const char *,
 				struct sc_profile **);
 extern void	sc_pkcs15init_unbind(struct sc_profile *);
 extern int	sc_pkcs15init_set_lifecycle(sc_card_t *card, int lcycle);
