@@ -875,7 +875,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 				sc_error(ctx, "invalid ASN.1 object length: %d\n", objlen);
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 			} else
-				*((u8 *) parm) = obj[0] ? 1 : 0;
+				*((int *) parm) = obj[0] ? 1 : 0;
 		}
 		break;
 	case SC_ASN1_INTEGER:
@@ -1191,7 +1191,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 			r = SC_ERROR_OUT_OF_MEMORY;
 			break;
 		}
-		buf[0] = *((u8 *) parm) ? 0xFF : 0;
+		buf[0] = *((int *) parm) ? 0xFF : 0;
 		buflen = 1;
 		break;
 	case SC_ASN1_INTEGER:
