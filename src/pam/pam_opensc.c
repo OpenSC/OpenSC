@@ -28,6 +28,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <pwd.h>
+#include <grp.h>
+#ifdef HAVE_UTMP_H
+#include <utmp.h>
+#endif
+#include <sys/types.h>
 #include "scam.h"
 
 #define PAM_SM_AUTH
@@ -37,6 +43,41 @@
 
 static int scam_method = 0;
 static char *auth_method = NULL;
+
+/*
+ * Because getlogin() is braindead and sometimes it just
+ * doesn't work, we reimplement it here.
+ */
+static char *get_login(void)
+{
+  char *user = NULL;
+#ifdef HAVE_SETUTENT
+  struct utmp *ut = NULL, line;
+  static char curr_user[sizeof(ut->ut_user) + 4];
+  char *curr_tty = NULL;
+
+  curr_tty = ttyname(0);
+  if (curr_tty) {
+    curr_tty += 5;
+    setutent();
+    strncpy(line.ut_line, curr_tty, sizeof line.ut_line);
+    if ((ut = getutline(&line))) {
+      strncpy(curr_user, ut->ut_user, sizeof(ut->ut_user));
+      user = curr_user;
+    }
+    endutent();
+  }
+#else
+  user = getlogin();
+#endif
+#if 1
+  if (!user) {
+    struct passwd *pw_user = getpwuid(geteuid());
+    user = pw_user->pw_name;
+  }
+#endif
+  return user;
+}
 
 static void usage(void)
 {
@@ -159,7 +200,10 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	/* No remote logins allowed through xdm */
 	if ((!strcmp(service, "xdm") &&
 	     strcmp(tty, ":0"))) {
-		log_message("User %s (tty %s) tried remote login through service %s, permission denied.\n", user, tty, service);
+		char buf[256];
+
+		snprintf(buf, 256, "User %s (tty %s) tried remote login through service %s, permission denied.\n", user, tty, service);
+		opensc_pam_log(LOG_NOTICE, pamh, buf);
 		scam_deinit(scam_method);
 		return PAM_PERM_DENIED;
 	}
@@ -231,7 +275,7 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t * pamh, int flags, int argc,
 		opensc_pam_log(LOG_CRIT, pamh, "open_session - scam_open_session failed\n");
 		return PAM_SESSION_ERR;
 	}
-	opensc_pam_log(LOG_INFO, pamh, "session opened for user %s by %s(uid=%d)\n", user, GetLogin() == NULL ? "" : GetLogin(), getuid());
+	opensc_pam_log(LOG_INFO, pamh, "session opened for user %s by %s(uid=%d)\n", user, get_login() == NULL ? "" : get_login(), getuid());
 	return PAM_SUCCESS;
 }
 

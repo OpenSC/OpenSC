@@ -25,6 +25,7 @@
 #endif
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
 #include "pam_support.h"
@@ -60,15 +61,11 @@ int converse(pam_handle_t * pamh, int ctrl, int nargs
 	int retval;
 	struct pam_conv *conv;
 
-	log_messagex(L_DEBUG, "begin to converse");
-
 	retval = pam_get_item(pamh, PAM_CONV, (PAM_CONST void **) &conv);
 	if (retval == PAM_SUCCESS) {
 
 		retval = conv->conv(nargs, (PAM_CONST struct pam_message **) message
 				    ,response, conv->appdata_ptr);
-
-		log_messagex(L_DEBUG, "returned from application's conversation function");
 
 		if (retval != PAM_SUCCESS && on(OPENSC_DEBUG, ctrl)) {
 			opensc_pam_log(LOG_DEBUG, pamh, "conversation failure [%s]"
@@ -79,8 +76,6 @@ int converse(pam_handle_t * pamh, int ctrl, int nargs
 			       ,"couldn't obtain conversation function [%s]"
 			       ,pam_strerror(pamh, retval));
 	}
-	log_messagex(L_DEBUG, "ready to return from module conversation");
-
 	return retval;		/* propagate error status */
 }
 
@@ -140,36 +135,28 @@ int _set_ctrl(pam_handle_t * pamh, int flags, char **auth_method, int argc, cons
 {
 	unsigned int ctrl;
 
-	log_messagex(L_DEBUG, "called.");
-
 	ctrl = OPENSC_DEFAULTS;	/* the default selection of options */
 
 	/* set some flags manually */
 	if (getuid() == 0 && !(flags & PAM_CHANGE_EXPIRED_AUTHTOK)) {
-		log_messagex(L_DEBUG, "IAMROOT");
 		set(OPENSC__IAMROOT, ctrl);
 	}
 	if (flags & PAM_UPDATE_AUTHTOK) {
-		log_messagex(L_DEBUG, "UPDATE_AUTHTOK");
 		set(OPENSC__UPDATE, ctrl);
 	}
 	if (flags & PAM_PRELIM_CHECK) {
-		log_messagex(L_DEBUG, "PRELIM_CHECK");
 		set(OPENSC__PRELIM, ctrl);
 	}
 	if (flags & PAM_DISALLOW_NULL_AUTHTOK) {
-		log_messagex(L_DEBUG, "DISALLOW_NULL_AUTHTOK");
 		set(OPENSC__NONULL, ctrl);
 	}
 	if (flags & PAM_SILENT) {
-		log_messagex(L_DEBUG, "SILENT");
 		set(OPENSC__QUIET, ctrl);
 	}
 	/* now parse the arguments to this module */
 	while (argc-- > 0) {
 		int j;
 
-		log_messagex(L_DEBUG, "pam_opensc arg: %s", *argv);
 		for (j = 0; j < OPENSC_CTRLS_; ++j) {
 			if (opensc_args[j].token
 			    && !strncmp(*argv, opensc_args[j].token, strlen(opensc_args[j].token))) {
@@ -204,8 +191,6 @@ int _set_ctrl(pam_handle_t * pamh, int flags, char **auth_method, int argc, cons
 		set(OPENSC_DEBUG, ctrl);
 	}
 	/* return the set of flags */
-
-	log_messagex(L_DEBUG, "done.");
 #if 0
 	print_ctrl(ctrl);
 #endif
@@ -232,18 +217,9 @@ int _read_password(pam_handle_t * pamh
 		   ,PAM_CONST char *data_name
 		   ,PAM_CONST char **pass)
 {
-	int authtok_flag;
-	int retval;
-	PAM_CONST char *item;
-	char *token;
-
-	log_messagex(L_DEBUG, "called");
-
-	/*
-	 * make sure nothing inappropriate gets returned
-	 */
-
-	*pass = token = NULL;
+	int authtok_flag, retval;
+	PAM_CONST char *item = NULL;
+	char *token = NULL;
 
 	/*
 	 * which authentication token are we getting?

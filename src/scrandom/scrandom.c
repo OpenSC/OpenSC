@@ -22,6 +22,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
@@ -31,7 +32,9 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#ifdef HAVE_OPENSSL
 #include <openssl/rand.h>
+#endif
 
 static ssize_t atomicio(ssize_t(*f) (), int fd, void *_s, size_t n)
 {
@@ -111,12 +114,12 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 #if defined(RANDOM_POOL)
 	fd = open(RANDOM_POOL, O_RDONLY);
 	if (fd == -1) {
-		log_message("Couldn't open random pool \"%s\": %s\n",
+		fprintf(stderr, "Couldn't open random pool \"%s\": %s\n",
 			    RANDOM_POOL, strerror(errno));
 		return 0;
 	}
 	if (atomicio(read, fd, buf, len) != len) {
-		log_message("Couldn't read from random pool \"%s\": %s\n",
+		fprintf(stderr, "Couldn't read from random pool \"%s\": %s\n",
 			    RANDOM_POOL, strerror(errno));
 		close(fd);
 		return 0;
@@ -132,11 +135,11 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 	memset(&addr, '\0', sizeof(addr));
 	/* Sanity checks */
 	if (sizeof(PRNGD_SOCKET) > sizeof(addr.sun_path)) {
-		log_message("Random pool path is too long");
+		fprintf(stderr, "Random pool path is too long");
 		return 0;
 	}
 	if (len > 255) {
-		log_message("Too many bytes to read from PRNGD");
+		fprintf(stderr, "Too many bytes to read from PRNGD");
 		return 0;
 	}
 	addr.sun_family = AF_UNIX;
@@ -148,11 +151,11 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
       reopen:
 	fd = socket(addr.sun_family, SOCK_STREAM, 0);
 	if (fd == -1) {
-		log_message("Couldn't create AF_UNIX socket: %s\n", strerror(errno));
+		fprintf(stderr, "Couldn't create AF_UNIX socket: %s\n", strerror(errno));
 		goto done;
 	}
 	if (connect(fd, (struct sockaddr *) &addr, addr_len) == -1) {
-		log_message("Couldn't connect to PRNGD socket \"%s\": %s\n",
+		fprintf(stderr, "Couldn't connect to PRNGD socket \"%s\": %s\n",
 			    addr.sun_path, strerror(errno));
 		goto done;
 	}
@@ -166,7 +169,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 			errors++;
 			goto reopen;
 		}
-		log_message("Couldn't write to PRNGD socket: %s\n",
+		fprintf(stderr, "Couldn't write to PRNGD socket: %s\n",
 			    strerror(errno));
 		goto done;
 	}
@@ -176,7 +179,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 			errors++;
 			goto reopen;
 		}
-		log_message("Couldn't read from PRNGD socket: %s\n",
+		fprintf(stderr, "Couldn't read from PRNGD socket: %s\n",
 			    strerror(errno));
 		goto done;
 	}
@@ -204,11 +207,11 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
       reopen:
 	fd = socket(addr.sin_family, SOCK_STREAM, 0);
 	if (fd == -1) {
-		log_message("Couldn't create AF_INET socket: %s\n", strerror(errno));
+		fprintf(stderr, "Couldn't create AF_INET socket: %s\n", strerror(errno));
 		goto done;
 	}
 	if (connect(fd, (struct sockaddr *) &addr, addr_len) == -1) {
-		log_message("Couldn't connect to PRNGD port %d: %s\n",
+		fprintf(stderr, "Couldn't connect to PRNGD port %d: %s\n",
 			    PRNGD_PORT, strerror(errno));
 		goto done;
 	}
@@ -222,7 +225,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 			errors++;
 			goto reopen;
 		}
-		log_message("Couldn't write to PRNGD socket: %s\n",
+		fprintf(stderr, "Couldn't write to PRNGD socket: %s\n",
 			    strerror(errno));
 		goto done;
 	}
@@ -232,7 +235,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 			errors++;
 			goto reopen;
 		}
-		log_message("Couldn't read from PRNGD socket: %s\n",
+		fprintf(stderr, "Couldn't read from PRNGD socket: %s\n",
 			    strerror(errno));
 		goto done;
 	}
@@ -257,10 +260,9 @@ static int scrandom_seed_generator(void)
 #ifdef HAVE_OPENSSL
 	unsigned char buf[32];
 
-	log_messagex(L_DEBUG, "Seeding random number generator");
 	if (!scrandom_get_bytes(buf, sizeof(buf))) {
 		if (!RAND_status()) {
-			log_message("Entropy collection failed and entropy exhausted");
+			fprintf(stderr, "Entropy collection failed and entropy exhausted\n");
 			return 0;
 		}
 	} else {

@@ -146,7 +146,7 @@ int main(int argc, char **argv)
 	if (verbose > 2)
 		scldap_show_parameters(lctx);
 	if (scldap_search(lctx, entry, &lresult, 0, searchword) < 0) {
-		log_message("scldap_search failed.\n");
+		fprintf(stderr, "scldap_search failed.\n");
 		scldap_free_parameters(lctx);
 		return 1;
 	}

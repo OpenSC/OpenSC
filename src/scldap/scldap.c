@@ -165,7 +165,8 @@ void scldap_show_parameters(scldap_context * ctx)
 {
 	int i, j;
 
-	CHECK_CTX_VOID(ctx);
+	if (!ctx)
+		return;
 	for (i = 0; i < ctx->entries; i++) {
 		if (ctx->entry[i].entry) {
 			printf("[%i]->entry=%s\n", i, ctx->entry[i].entry);
@@ -187,7 +188,8 @@ void scldap_free_parameters(scldap_context * ctx)
 {
 	int i, j;
 
-	CHECK_CTX_VOID(ctx);
+	if (!ctx)
+		return;
 	if (ctx) {
 		for (i = 0; i < ctx->entries; i++) {
 			if (ctx->entry[i].entry) {
@@ -245,13 +247,8 @@ void scldap_parse_arguments(scldap_context ** ctx, int argc, const char **argv)
 	scldap_context *ptr = *ctx;
 	int i;
 
-	CHECK_CTX_VOID(ptr);
-
-	if (argc < 0)
+	if (!ptr || !argv || argc < 0)
 		return;
-	if (!argv)
-		return;
-
 	for (i = 0; i < argc; i++) {
 		if (argv[i][0] == '-') {
 			char *optarg = (char *) argv[i + 1];
@@ -346,7 +343,8 @@ int scldap_add_entry(scldap_context * ctx, const char *entry)
 {
 	int i;
 
-	CHECK_CTX(ctx, 0);
+	if (!ctx)
+		return 0;
 	if (entry) {
 		for (i = 0; i < ctx->entries; i++) {
 			if (!ctx->entry[i].entry) {
@@ -372,7 +370,8 @@ int scldap_get_entry(scldap_context * ctx, const char *entry)
 {
 	int i;
 
-	CHECK_CTX(ctx, 0);
+	if (!ctx)
+		return 0;
 	if (entry) {
 		for (i = 0; i < ctx->entries; i++) {
 			if (ctx->entry[i].entry) {
@@ -389,7 +388,8 @@ void scldap_set_entry(scldap_context * ctx, const char *entry)
 {
 	int i;
 
-	CHECK_CTX_VOID(ctx);
+	if (!ctx)
+		return;
 	if (entry) {
 		for (i = 0; i < ctx->entries; i++) {
 			if (ctx->entry[i].entry) {
@@ -406,7 +406,8 @@ void scldap_remove_entry(scldap_context * ctx, const char *entry)
 {
 	int i, j;
 
-	CHECK_CTX_VOID(ctx);
+	if (!ctx)
+		return;
 	if (entry) {
 		for (i = 0; i < ctx->entries; i++) {
 			if (ctx->entry[i].entry) {
@@ -455,7 +456,8 @@ void scldap_remove_entry(scldap_context * ctx, const char *entry)
 
 int scldap_is_valid_url(const char *url)
 {
-	CHECK_CTX(url, 0);
+	if (!url)
+		return 0;
 	return ldap_is_ldap_url((char *) url);
 }
 
@@ -472,56 +474,56 @@ int scldap_url_to_entry(scldap_context * ctx, const char *entry, const char *url
 		switch (rv) {
 #ifdef LDAP_URL_ERR_BADSCHEME
 		case LDAP_URL_ERR_BADSCHEME:
-			log_messagex(L_DEBUG, "Not an LDAP URL: %s", url);
+			fprintf(stderr, "Not an LDAP URL: %s", url);
 			break;
 #endif
 #ifdef LDAP_URL_ERR_BADENCLOSURE
 		case LDAP_URL_ERR_BADENCLOSURE:
-			log_messagex(L_DEBUG, "Bad Enclosure in URL: %s", url);
+			fprintf(stderr, "Bad enclosure in URL: %s", url);
 			break;
 #endif
 #ifdef LDAP_URL_ERR_BADURL
 		case LDAP_URL_ERR_BADURL:
-			log_messagex(L_DEBUG, "Bad URL: %s", url);
+			fprintf(stderr, "Bad URL: %s", url);
 			break;
 #endif
 #ifdef LDAP_URL_ERR_BADHOST
 		case LDAP_URL_ERR_BADHOST:
-			log_messagex(L_DEBUG, "Host is invalid in URL: %s", url);
+			fprintf(stderr, "Host is invalid in URL: %s", url);
 			break;
 #endif
 #ifdef LDAP_URL_ERR_BADATTRS
 		case LDAP_URL_ERR_BADATTRS:
-			log_messagex(L_DEBUG, "Attributes are invalid in URL: %s", url);
+			fprintf(stderr, "Attributes are invalid in URL: %s", url);
 			break;
 #endif
 #ifdef LDAP_URL_ERR_BADSCOPE
 		case LDAP_URL_ERR_BADSCOPE:
-			log_messagex(L_DEBUG, "Scope is invalid in URL: %s", url);
+			fprintf(stderr, "Scope is invalid in URL: %s", url);
 			break;
 #endif
 #ifdef LDAP_URL_ERR_BADFILTER
 		case LDAP_URL_ERR_BADFILTER:
-			log_messagex(L_DEBUG, "Filter is invalid in URL: %s", url);
+			fprintf(stderr, "Filter is invalid in URL: %s", url);
 			break;
 #endif
 #ifdef LDAP_URL_ERR_BADEXTS
 		case LDAP_URL_ERR_BADEXTS:
-			log_messagex(L_DEBUG, "Extensions are invalid in URL: %s", url);
+			fprintf(stderr, "Extensions are invalid in URL: %s", url);
 			break;
 #endif
 #ifdef LDAP_URL_ERR_MEM
 		case LDAP_URL_ERR_MEM:
-			log_messagex(L_DEBUG, "Out of memory parsing URL: %s", url);
+			fprintf(stderr, "Out of memory parsing URL: %s", url);
 			break;
 #endif
 #ifdef LDAP_URL_ERR_PARAM
 		case LDAP_URL_ERR_PARAM:
-			log_messagex(L_DEBUG, "bad parameter parsing URL: %s", url);
+			fprintf(stderr, "Bad parameter parsing URL: %s", url);
 			break;
 #endif
 		default:
-			log_messagex(L_DEBUG, "Unknown error %d parsing URL: %s", rv, url);
+			fprintf(stderr, "Unknown error %d parsing URL: %s", rv, url);
 			break;
 		}
 		return -1;
@@ -706,7 +708,6 @@ static void scldap_get_result(LDAP * ld, LDAPMessage * res, scldap_param_entry *
     result->results++; \
     result->result = (scldap_result_entry *) realloc(result->result, (result->results + 2) * sizeof(scldap_result_entry)); \
     memset(&result->result[result->results], 0, sizeof(scldap_result_entry)); \
-    log_messagex(L_DEBUG, "ADD: %s[%li]\n", result->result[result->results].name, result->result[result->results].datalen); \
   } \
 }
 		if (attrsonly) {
@@ -721,7 +722,6 @@ static void scldap_get_result(LDAP * ld, LDAPMessage * res, scldap_param_entry *
 			}
 		} else if ((bvals = ldap_get_values_len(ld, res, name))) {
 			for (i = 0; bvals[i]; i++) {
-				log_messagex(L_DEBUG, "scldap_get_result: %s[%li]\n", name, bvals[i]->bv_len);
 				if (param->numattrs) {
 					for (j = 0; j < param->numattrs; j++) {
 						if (!strncasecmp(param->attributes[j], name, strlen(param->attributes[j]))) {
@@ -802,7 +802,7 @@ int scldap_search(scldap_context * ctx, const char *entry,
 		return -1;
 	}
 	if (pattern)
-		log_messagex(L_DEBUG, "pattern: %s\n", pattern);
+		fprintf(stderr, "pattern: %s\n", pattern);
 	if (ldap_search(ld, ctx->entry[entrynum].base, ctx->entry[entrynum].scope, pattern, ctx->entry[entrynum].attributes, ctx->entry[entrynum].attrsonly) == -1) {
 		ldap_perror(ld, "ldap_search");
 		if (pattern)
@@ -856,7 +856,6 @@ void scldap_free_result(scldap_result * result)
 {
 	int i;
 
-	CHECK_CTX_VOID(result);
 	if (result) {
 		for (i = 0; i < result->results; i++) {
 			if (result->result[i].name) {

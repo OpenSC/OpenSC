@@ -2,7 +2,7 @@
 
 libdir = ${prefix}/lib/security
 
-INCLUDES = @CFLAGS_PCSC@ @CFLAGS_SSP@ @CFLAGS_OPENSC@ -I../scam -I../scconf -I../scrandom -I../scldap
+INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@ -I../scam -I../scconf -I../scrandom -I../scldap
 
 if HAVE_LDAP
 LDAP_LTLIBS = @LIBSCLDAP@
@@ -10,9 +10,9 @@ else
 LDAP_LTLIBS = 
 endif
 
-LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBSCRANDOM@ $(LDAP_LTLIBS) @LIBSSP@ @LIBOPENSC@
+LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBSCRANDOM@ $(LDAP_LTLIBS) @LIBOPENSC@
 
-AUTHSRC = ../scam/scam.c ../scam/scam.h ../scam/sp.c ../scam/p15_eid.c ../scam/p15_ldap.c
+AUTHSRC = ../scam/scam.c ../scam/scam.h ../scam/p15_eid.c ../scam/p15_ldap.c
 SRC = $(AUTHSRC) sia_opensc.c sia_support.c sia_support.h
 
 if HAVE_SIA

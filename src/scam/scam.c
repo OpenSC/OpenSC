@@ -32,7 +32,9 @@
 
 struct scam_framework_ops *scam_frameworks[] =
 {
+#ifdef HAVE_SCIDI
 	&scam_fw_sp,
+#endif
 #ifndef HAVE_LDAP
 	&scam_fw_p15_eid,
 	&scam_fw_p15_ldap,

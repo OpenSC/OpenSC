@@ -144,14 +144,14 @@ int p15_eid_init(int argc, const char **argv)
 	}
 	if (!reader_name) {
 		for (i = 0; i < ctx->reader_count; i++) {
-			log_message("Reader #%d - %s%s\n", i + 1, ctx->reader[i]->name, reader == i ? " (*)" : "");
+			printf("Reader #%d - %s%s\n", i + 1, ctx->reader[i]->name, reader == i ? " (*)" : "");
 		}
 	} else {
 		for (i = 0; i < ctx->reader_count; i++) {
 			if ((strlen(reader_name) < strlen(ctx->reader[i]->name))) {
 				if (!strncmp(reader_name, ctx->reader[i]->name, strlen(reader_name))) {
 					reader = i;
-					log_message("Reader #%d - %s selected\n", i + 1, ctx->reader[reader]->name);
+					printf("Reader #%d - %s selected\n", i + 1, ctx->reader[reader]->name);
 					break;
 				}
 			}
@@ -382,29 +382,31 @@ void p15_eid_deinit(void)
 int p15_eid_open_session(int argc, const char **argv, const char *user)
 {
 	struct passwd *userstr = NULL;
+#ifdef PCSCLITE_SERVER_PATH
 	uid_t useruid = 65534, uid = 65534;
 	gid_t gid = 65534;
 	int r;
+#endif
 
 	if (!user) {
-		log_messagex(L_DEBUG, "No user.\n");
+		scam_fw_p15_eid.printmsg("No user.\n");
 		return SCAM_FAILED;
 	}
 	userstr = getpwnam(user);
 	if (!userstr) {
-		log_messagex(L_DEBUG, "Can't get user structure. (%s)", user);
+		scam_fw_p15_eid.printmsg("Can't get user structure. (%s)", user);
 		return SCAM_FAILED;
 	}
+#ifdef PCSCLITE_SERVER_PATH
 	useruid = userstr->pw_uid;
 	r = GetIdentity(&uid, &gid);
 	if (r < 0) {
 		scam_fw_p15_eid.logmsg("Could not get uid/gid for pcscd.\n");
 		return SCAM_FAILED;
 	}
-#ifdef PCSCLITE_SERVER_PATH
 	r = chown(PCSCLITE_SERVER_PATH, useruid, gid);
 	if (r < 0) {
-		log_messagex(L_DEBUG, "Opening session failed, cannot chown socket to user %.", user);
+		scam_fw_p15_eid.printmsg("Opening session failed, cannot chown socket to user %.", user);
 		return SCAM_FAILED;
 	}
 #endif
@@ -413,23 +415,25 @@ int p15_eid_open_session(int argc, const char **argv, const char *user)
 
 int p15_eid_close_session(int argc, const char **argv, const char *user)
 {
+#ifdef PCSCLITE_SERVER_PATH
 	uid_t uid = 65534;
 	gid_t gid = 65534;
 	int r;
+#endif
 
 	if (!user) {
-		log_messagex(L_DEBUG, "No user.\n");
+		scam_fw_p15_eid.printmsg("No user.\n");
 		return SCAM_FAILED;
 	}
+#ifdef PCSCLITE_SERVER_PATH
 	r = GetIdentity(&uid, &gid);
 	if (r < 0) {
 		scam_fw_p15_eid.logmsg("Could not get uid/gid for pcscd.\n");
 		return SCAM_FAILED;
 	}
-#ifdef PCSCLITE_SERVER_PATH
 	r = chown(PCSCLITE_SERVER_PATH, uid, gid);
 	if (r < 0) {
-		log_messagex(L_DEBUG, "Closing session failed, cannot chown socket to smartcard user.");
+		scam_fw_p15_eid.printmsg("Closing session failed, cannot chown socket to smartcard user.");
 		return SCAM_SUCCESS;
 	}
 	r = CleanupClientSockets();
