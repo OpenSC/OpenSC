@@ -174,12 +174,13 @@ int write_ssh_key(struct sc_pkcs15_cert_info *cinfo, RSA *rsa)
 
 int extract_key(void)
 {
-	int r, i;
+	int r, i, count;
 	struct sc_pkcs15_id id;
 	u8 *p = id.value;
 	char *certp = opt_cert;
-	struct sc_pkcs15_cert_info *cinfo = NULL;
 	struct sc_pkcs15_cert *cert;
+	struct sc_pkcs15_object *objs[32];
+	struct sc_pkcs15_cert_info *cinfo = NULL;
 	X509 *x509;
 	EVP_PKEY *pubkey;
 	
@@ -200,27 +201,29 @@ int extract_key(void)
 			id.len++;
 		}
 	}
-	r = sc_pkcs15_enum_certificates(p15card);
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, 32);
 	if (r < 0) {
 		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
+	count = r;
 	if (opt_cert) {
-		for (i = 0; i < p15card->cert_count; i++) {
-			cinfo = &p15card->cert_info[i];
+		for (i = 0; i < count; i++) {
+			cinfo = objs[i]->data;
 	
 			if (sc_pkcs15_compare_id(&id, &cinfo->id) == 1)
 				break;
 		}
-		if (i == p15card->cert_count) {
+		if (i == count) {
 			fprintf(stderr, "Certificate with ID '%s' not found.\n", opt_cert);
 			return 2;
 		}
 	} else {
-		cinfo = &p15card->cert_info[0];
+		i = 0;
+		cinfo = objs[i]->data;
 	}
 	if (!quiet)
-		fprintf(stderr, "Using certificate '%s'.\n", cinfo->com_attr.label);
+		fprintf(stderr, "Using certificate '%s'.\n", objs[i]->label);
 	r = sc_pkcs15_read_certificate(p15card, cinfo, &cert);
 	if (r) {
 		fprintf(stderr, "Certificate read failed: %s\n", sc_strerror(r));
