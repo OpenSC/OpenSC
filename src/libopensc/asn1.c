@@ -949,6 +949,8 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 			r = asn1_decode(ctx,
 				(struct sc_asn1_entry *) entry->parm,
 				p, left, &p, &left, 1, depth + 1);
+			if (r >= 0)
+				r = 0;
 			goto decode_ok;
 		}
 
