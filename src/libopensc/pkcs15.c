@@ -934,7 +934,7 @@ int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *p15card,
 }
 
 int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *p15card,
-				int reference,
+				const sc_path_t *path, int reference,
 				struct sc_pkcs15_object **out)
 {
 	struct sc_pkcs15_search_key sk;
@@ -942,6 +942,7 @@ int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *p15card,
 	memset(&sk, 0, sizeof(sk));
 	sk.match_reference = 1;
 	sk.reference = reference;
+	sk.path = path;
 
 	return find_by_key(p15card, SC_PKCS15_TYPE_AUTH_PIN, &sk, out);
 }
