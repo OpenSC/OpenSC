@@ -7,20 +7,20 @@ cardos-info \- Displays information about Card OS based security tokens
 \*(nm
 .RI [OPTIONS]
 .SH DESCRIPTION
-The \*(nm utility is used to display information about Card OS based
-smart cards and similar security tokens.  
+The \*(nm utility is used to display information about
+smart cards and similar security tokens based on Siemens Card/OS M4.
 .SH OPTIONS
 .TP
 .BR "\-\-reader " \fInumber\fP ", \-r " \fInumber\fP
-Display information about the token in reader number \fInumber\fP .  
+Display information about the token in reader number \fInumber\fP.
 The default is reader 0.
 .TP
-.Br "\-\-card\-driver " \fIname\fP ", \-c " \fIname\fP
-Use the card driver specified by \fIname\fP .  
+.BR "\-\-card\-driver " \fIname\fP ", \-c " \fIname\fP
+Use the card driver specified by \fIname\fP.
 The default is to auto-detect the correct card driver.
 .TP
 .BR \-\-wait ", " \-w
-Causes \*(nm to wait for the token to be inserted into \fIreader\fP .
+Causes \*(nm to wait for the token to be inserted into \fIreader\fP.
 .TP
 .BR \-\-quiet ", " \-q
 Causes \*(nm to be less verbose about what is going on behind the scenes.
@@ -31,8 +31,8 @@ may be specified more than once to incrementaly increase the amount
 of debugging information output.
 either \-\-login or \-\-pin.
 .SH SEE ALSO
-.BR opensc (7),
+.BR opensc (7).
 .SH AUTHORS
-\*(nm was written by Juha Yrj and Andreas Jellinghaus <aj@dungeon.inka.de>.
+\*(nm was written by Juha Yrjölä and Andreas Jellinghaus <aj@dungeon.inka.de>.
 This manpage was contributed by Joe Phillips <joe.phillips@innovationsw.com>
 for the Debian GNU/Linux system (but may be used by others).
