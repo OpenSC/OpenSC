@@ -21,6 +21,10 @@
 #ifndef _OPENSC_ERRORS_H
 #define _OPENSC_ERRORS_H
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #define SC_SUCCESS				0
 #define SC_NO_ERROR				0
 
@@ -81,5 +85,11 @@
 /* Errors that do not fit the categories above */
 #define SC_ERROR_UNKNOWN			-1900
 #define SC_ERROR_PKCS15_APP_NOT_FOUND		-1901
+
+const char *sc_strerror(int sc_errno);
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif

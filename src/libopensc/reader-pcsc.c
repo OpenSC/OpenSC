@@ -207,7 +207,7 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 		return r;
 	if (!(slot->flags & SC_SLOT_CARD_PRESENT))
 		return SC_ERROR_CARD_NOT_PRESENT;
-	pslot = malloc(sizeof(struct pcsc_slot_data));
+	pslot = (struct pcsc_slot_data *) malloc(sizeof(struct pcsc_slot_data));
 	if (pslot == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	rv = SCardConnect(priv->pcsc_ctx, priv->reader_name,
@@ -302,7 +302,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		SCardReleaseContext(pcsc_ctx);
 		return 0;	/* No readers configured */
 	}
-	gpriv = malloc(sizeof(struct pcsc_global_private_data));
+	gpriv = (struct pcsc_global_private_data *) malloc(sizeof(struct pcsc_global_private_data));
 	if (gpriv == NULL) {
 		SCardReleaseContext(pcsc_ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -315,8 +315,8 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 			 (LPDWORD) &reader_buf_size);
 	p = reader_buf;
 	do {
-		struct sc_reader *reader = malloc(sizeof(struct sc_reader));
-		struct pcsc_private_data *priv = malloc(sizeof(struct pcsc_private_data));
+		struct sc_reader *reader = (struct sc_reader *) malloc(sizeof(struct sc_reader));
+		struct pcsc_private_data *priv = (struct pcsc_private_data *) malloc(sizeof(struct pcsc_private_data));
 		struct sc_slot_info *slot;
 		
 		if (reader == NULL || priv == NULL) {

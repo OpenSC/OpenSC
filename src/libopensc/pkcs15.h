@@ -21,11 +21,11 @@
 #ifndef _OPENSC_PKCS15_H
 #define _OPENSC_PKCS15_H
 
-#include <opensc/opensc.h>
-
 #ifdef  __cplusplus
 extern "C" {
 #endif
+
+#include <opensc/opensc.h>
 
 #define SC_PKCS15_CACHE_DIR		".eid"
 
@@ -333,7 +333,7 @@ typedef struct sc_pkcs15_card {
  * valid PKCS #15 file structure. */
 int sc_pkcs15_bind(struct sc_card *card,
 		   struct sc_pkcs15_card **pkcs15_card);
-/* sc_pkcs_unbind:  Releases a PKCS #15 card object, and frees any
+/* sc_pkcs15_unbind:  Releases a PKCS #15 card object, and frees any
  * memory allocations done on the card object. */
 int sc_pkcs15_unbind(struct sc_pkcs15_card *card);
 
@@ -346,6 +346,8 @@ int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *card, int type,
 
 struct sc_pkcs15_card * sc_pkcs15_card_new();
 void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card);
+
+void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,

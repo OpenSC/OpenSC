@@ -97,7 +97,7 @@ char *getpin(const char *prompt)
 			pass[i] = 0;
 	if (strlen(pass) == 0)
 		return NULL;
-	buf = malloc(8);
+	buf = (char *) malloc(8);
 	if (buf == NULL)
 		return NULL;
 	if (strlen(pass) > 8) {
@@ -1078,7 +1078,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die("cryptoflex-tool");
+			print_usage_and_die();
 		switch (c) {
 		case 'l':
 			do_list_keys = 1;

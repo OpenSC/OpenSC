@@ -87,7 +87,7 @@ char * get_pin(struct sc_pkcs15_object *obj)
 {
 	char buf[80];
 	char *pincode;
-	struct sc_pkcs15_pin_info *pinfo = obj->data;
+	struct sc_pkcs15_pin_info *pinfo = (struct sc_pkcs15_pin_info *) obj->data;
 	
 	if (opt_pincode != NULL)
 		return strdup(opt_pincode);
@@ -276,7 +276,7 @@ int sign_ext(struct sc_pkcs15_object *obj,
 int sign(struct sc_pkcs15_object *obj)
 {
 	u8 buf[1024], out[1024];
-	struct sc_pkcs15_prkey_info *key = obj->data;
+	struct sc_pkcs15_prkey_info *key = (struct sc_pkcs15_prkey_info *) obj->data;
 	int r, c, len;
 	
 	if (opt_input == NULL) {
@@ -398,7 +398,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die("pkcs15-crypt");
+			print_usage_and_die();
 		switch (c) {
 		case 's':
 			do_sign++;
@@ -442,7 +442,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die("pkcs15-crypt");
+		print_usage_and_die();
 	r = sc_establish_context(&ctx, app_name);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
@@ -519,7 +519,7 @@ int main(int argc, char * const argv[])
 		err = 5;
 		goto end;
 	}
-	r = sc_pkcs15_verify_pin(p15card, pin->data, (const u8 *) pincode, strlen(pincode));
+	r = sc_pkcs15_verify_pin(p15card, (struct sc_pkcs15_pin_info *) pin->data, (const u8 *) pincode, strlen(pincode));
 	if (r) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
 		err = 5;

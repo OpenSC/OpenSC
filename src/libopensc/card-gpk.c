@@ -155,7 +155,7 @@ gpk_init(struct sc_card *card)
 
 	if (!(ai = gpk_identify(card)))
 		return SC_ERROR_INVALID_CARD;
-	card->drv_data = priv = malloc(sizeof(*priv));
+	card->drv_data = priv = (struct gpk_private_data *) malloc(sizeof(*priv));
 	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(priv, 0, sizeof(*priv));

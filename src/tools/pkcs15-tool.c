@@ -170,7 +170,7 @@ int read_certificate(void)
 	}
 	count = r;
 	for (i = 0; i < count; i++) {
-		struct sc_pkcs15_cert_info *cinfo = objs[i]->data;
+		struct sc_pkcs15_cert_info *cinfo = (struct sc_pkcs15_cert_info *) objs[i]->data;
 		struct sc_pkcs15_cert *cert;
 
 		if (sc_pkcs15_compare_id(&id, &cinfo->id) != 1)
@@ -336,7 +336,7 @@ int read_public_key(void)
 	}
 	count = r;
 	for (i = 0; i < count; i++) {
-		struct sc_pkcs15_pubkey_info *info = objs[i]->data;
+		struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *) objs[i]->data;
 		sc_pkcs15_der_t raw_key, pem_key;
 		int algorithm;
 
@@ -405,7 +405,7 @@ u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
 			return NULL;
 		}
                 obj = objs[0];
-		pinfo = obj->data;
+		pinfo = (struct sc_pkcs15_pin_info *) obj->data;
 	} else if (pinfo == NULL) {
 		struct sc_pkcs15_id pin_id;
 		
@@ -415,7 +415,7 @@ u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
 			fprintf(stderr, "Unable to find PIN code: %s\n", sc_strerror(r));
 			return NULL;
 		}
-		pinfo = obj->data;
+		pinfo = (struct sc_pkcs15_pin_info *) obj->data;
 	}
 	
 	if (pin_out != NULL)
@@ -620,7 +620,7 @@ int learn_card(void)
 		read_and_cache_file(&df->path);
 	printf("Caching %d certificate(s)...\n", r);
 	for (i = 0; i < cert_count; i++) {
-		struct sc_pkcs15_cert_info *cinfo = certs[i]->data;
+		struct sc_pkcs15_cert_info *cinfo = (struct sc_pkcs15_cert_info *) certs[i]->data;
 		
 		printf("[%s]\n", certs[i]->label);
 		read_and_cache_file(&cinfo->path);
@@ -647,7 +647,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die("pkcs15-tool");
+			print_usage_and_die();
 		switch (c) {
 		case 'r':
 			opt_cert = optarg;
@@ -704,7 +704,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die("pkcs15-tool");
+		print_usage_and_die();
 	r = sc_establish_context(&ctx, app_name);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));

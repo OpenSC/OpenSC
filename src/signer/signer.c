@@ -63,7 +63,7 @@ post_data(NPP instance, const char *url, const char *target, uint32 len,
 	
 	taglen = strlen(tag);
 	content_len = taglen + len + 1;
-	content = NPN_MemAlloc(content_len);
+	content = (char *) NPN_MemAlloc(content_len);
 	if (content == NULL)
 		return NPERR_OUT_OF_MEMORY_ERROR;
 	memcpy(content, tag, taglen);
@@ -73,7 +73,7 @@ post_data(NPP instance, const char *url, const char *target, uint32 len,
 	sprintf(headers, "Content-type: application/x-www-form-urlencoded\r\n"
 			 "Content-Length: %u\r\n\r\n", (unsigned int) content_len);
 	hdrlen = strlen(headers);
-	sendbuf = NPN_MemAlloc(hdrlen + content_len);
+	sendbuf = (char *) NPN_MemAlloc(hdrlen + content_len);
 	if (sendbuf == NULL)
 		return NPERR_OUT_OF_MEMORY_ERROR;
 	memcpy(sendbuf, headers, hdrlen);
@@ -141,7 +141,7 @@ NPP_New(NPMIMEType pluginType,
 		goto err;
 	}
 	b64datalen = datalen * 4 / 3 + 4;
-	b64data = malloc(b64datalen);
+	b64data = (u8 *) malloc(b64datalen);
 	r = sc_base64_encode(data, datalen, b64data, b64datalen, 0);
 	if (r) {
 		r = NPERR_GENERIC_ERROR;

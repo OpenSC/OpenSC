@@ -112,7 +112,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 		}
 		len = file->size;
 		sc_file_free(file);
-		data = malloc(len);
+		data = (u8 *) malloc(len);
 		if (data == NULL) {
 			sc_unlock(p15card->card);
 			return SC_ERROR_OUT_OF_MEMORY;
@@ -125,7 +125,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 		}
 		sc_unlock(p15card->card);
 	}
-	cert = malloc(sizeof(struct sc_pkcs15_cert));
+	cert = (struct sc_pkcs15_cert *) malloc(sizeof(struct sc_pkcs15_cert));
 	if (cert == NULL) {
 		free(data);
 		return SC_ERROR_OUT_OF_MEMORY;

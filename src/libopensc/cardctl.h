@@ -14,6 +14,10 @@
 #ifndef _OPENSC_CARDCTL_H
 #define _OPENSC_CARDCTL_H
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #define _CTL_PREFIX(a, b, c) (((a) << 24) | ((b) << 16) | ((c) << 8))
 
 enum {
@@ -90,5 +94,9 @@ struct sc_cardctl_miocos_ac_info {
 	int max_unblock_tries;	/* same here */
 	u8 unblock_value[8];	/* and here */
 };
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif /* _OPENSC_CARDCTL_H */

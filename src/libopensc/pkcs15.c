@@ -99,7 +99,7 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 		goto err;
 	}
 	card->version += 1;
-	card->serial_number = malloc(serial_len * 2 + 1);
+	card->serial_number = (char *) malloc(serial_len * 2 + 1);
 	card->serial_number[0] = 0;
 	for (i = 0; i < serial_len; i++) {
 		char byte[3];
@@ -378,12 +378,12 @@ int sc_pkcs15_encode_odf(struct sc_context *ctx,
 		error(ctx, "No DF's found.\n");
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
-	asn1_odf = malloc(sizeof(struct sc_asn1_entry) * (df_count + 1));
+	asn1_odf = (struct sc_asn1_entry *) malloc(sizeof(struct sc_asn1_entry) * (df_count + 1));
 	if (asn1_odf == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
-	asn1_paths = malloc(sizeof(struct sc_asn1_entry) * (df_count * 2));
+	asn1_paths = (struct sc_asn1_entry *) malloc(sizeof(struct sc_asn1_entry) * (df_count * 2));
 	if (asn1_paths == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
@@ -420,7 +420,7 @@ struct sc_pkcs15_card * sc_pkcs15_card_new()
 {
 	struct sc_pkcs15_card *p15card;
 	
-	p15card = malloc(sizeof(struct sc_pkcs15_card));
+	p15card = (struct sc_pkcs15_card *) malloc(sizeof(struct sc_pkcs15_card));
 	if (p15card == NULL)
 		return NULL;
 	memset(p15card, 0, sizeof(struct sc_pkcs15_card));
@@ -654,7 +654,7 @@ int sc_pkcs15_get_objects(struct sc_pkcs15_card *p15card, int type,
 static int compare_obj_id(struct sc_pkcs15_object *obj, void *arg)
 {
 	void *data = obj->data;
-	const struct sc_pkcs15_id *id = arg;
+	const struct sc_pkcs15_id *id = (const struct sc_pkcs15_id *) arg;
 	
 	switch (obj->type) {
 	case SC_PKCS15_TYPE_CERT_X509:
@@ -782,7 +782,7 @@ int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 {
 	struct sc_pkcs15_df *p = p15card->df_list, *newdf;
 
-	newdf = malloc(sizeof(struct sc_pkcs15_df));
+	newdf = (struct sc_pkcs15_df *) malloc(sizeof(struct sc_pkcs15_df));
 	if (newdf == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(newdf, 0, sizeof(struct sc_pkcs15_df));
@@ -860,7 +860,7 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 			free(buf);
 			return r;
 		}
-		buf = realloc(buf, bufsize + tmpsize);
+		buf = (u8 *) realloc(buf, bufsize + tmpsize);
 		memcpy(buf + bufsize, tmp, tmpsize);
 		free(tmp);
 		bufsize += tmpsize;
@@ -911,7 +911,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 					&buf, &bufsize, &df->file);
 	p = buf;
 	do {
-		obj = malloc(sizeof(struct sc_pkcs15_object));
+		obj = (struct sc_pkcs15_object *) malloc(sizeof(struct sc_pkcs15_object));
 		if (obj == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto ret;
@@ -968,7 +968,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			*file_out = file;
 		else
 			sc_file_free(file);
-		data = malloc(len);
+		data = (u8 *) malloc(len);
 		if (data == NULL) {
 			sc_unlock(p15card->card);
 			return SC_ERROR_OUT_OF_MEMORY;

@@ -21,6 +21,10 @@
 #ifndef _OPENSC_TYPES_H
 #define _OPENSC_TYPES_H
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 typedef unsigned char u8;
 
 #define SC_MAX_OBJECT_ID_OCTETS		16
@@ -93,5 +97,9 @@ typedef struct sc_apdu {
 
 	unsigned int sw1, sw2;	/* Status words returned in R-APDU */
 } sc_apdu_t;
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif

@@ -21,6 +21,10 @@
 #ifndef _SC_ASN1_H
 #define _SC_ASN1_H
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #include <opensc/opensc.h>
 #include <opensc/pkcs15.h>
 
@@ -185,5 +189,9 @@ void sc_asn1_clear_algorithm_id(struct sc_algorithm_id *);
 #define ASN1_GENERALSTRING            27
 #define ASN1_UNIVERSALSTRING          28
 #define ASN1_BMPSTRING                30
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif

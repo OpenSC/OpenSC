@@ -35,7 +35,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	struct sc_security_env senv;
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_path path, file_id;
-        const struct sc_pkcs15_prkey_info *prkey = obj->data;
+        const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 
 	/* If the key is extractable, the caller should extract the
 	 * key and do the crypto himself */
@@ -158,7 +158,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	struct sc_security_env senv;
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_algorithm_info *alg_info;
-        const struct sc_pkcs15_prkey_info *prkey = obj->data;
+        const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	u8 buf[512];
 	size_t buflen;
 	struct sc_path path, file_id;

@@ -131,7 +131,7 @@ int p15_ldap_init(scam_context * sctx, int argc, const char **argv)
 		return SCAM_FAILED;
 
 	/* FIXME: Add support for selecting certificate by ID */
-	data->cinfo = data->objs[0]->data;
+	data->cinfo = (struct sc_pkcs15_cert_info *) data->objs[0]->data;
 
 	r = sc_pkcs15_find_prkey_by_id(data->p15card, &data->cinfo->id, &data->prkey);
 	if (r != SC_SUCCESS) {
@@ -160,7 +160,7 @@ const char *p15_ldap_pinentry(scam_context * sctx)
 	if (!sctx->method_data) {
 		return NULL;
 	}
-	pininfo = data->pin->data;
+	pininfo = (struct sc_pkcs15_pin_info *) data->pin->data;
 	snprintf(buf, 64, "Enter PIN%d [%s]: ", pininfo->reference, data->pin->label);
 	return buf;
 }
@@ -220,7 +220,7 @@ int p15_ldap_auth(scam_context * sctx, int argc, const char **argv,
 		scam_log_msg(sctx, "scrandom_get_data failed.\n");
 		goto end;
 	}
-	r = sc_pkcs15_verify_pin(data->p15card, data->pin->data, (const u8 *) password, strlen(password));
+	r = sc_pkcs15_verify_pin(data->p15card, (struct sc_pkcs15_pin_info *) data->pin->data, (const u8 *) password, strlen(password));
 	if (r != SC_SUCCESS) {
 		scam_print_msg(sctx, "sc_pkcs15_verify_pin: %s\n", sc_strerror(r));
 		goto end;

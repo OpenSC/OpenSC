@@ -25,6 +25,10 @@
 #include <config.h>
 #endif
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #include "opensc.h"
 #include <assert.h>
 
@@ -59,5 +63,9 @@ struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
 int sc_module_open(struct sc_context *ctx, void **mod_handle, const char *filename);
 int sc_module_close(struct sc_context *ctx, void *mod_handle);
 int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_address, const char *sym_name);
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif

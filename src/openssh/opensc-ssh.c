@@ -76,7 +76,7 @@ u8 * bignum_to_buf(BIGNUM *value, int *length, int *skip)
 	/* Function ripped from bufaux.c in OpenSSH
 	 * Compliments to Tatu Ylönen */
         int bytes = BN_num_bytes(value) + 1;
-        u8 *buf = malloc(bytes);
+        u8 *buf = (u8 *) malloc(bytes);
         int oi;
         int hasnohigh = 0;
         buf[0] = '\0';
@@ -124,7 +124,7 @@ int put_string(const u8 *in, int inlen, u8 *out, int outlen, int *skip)
 
 int write_ssh_key(struct sc_pkcs15_cert_info *cinfo, RSA *rsa)
 {
-	u8 *buf = malloc(10240), *p = buf, *num;
+	u8 *buf = (u8 *) malloc(10240), *p = buf, *num;
 	int r, len, skip, left = 10240;
 	FILE *outf;
 	
@@ -149,7 +149,7 @@ int write_ssh_key(struct sc_pkcs15_cert_info *cinfo, RSA *rsa)
 	free(num);
 
 	len = p - buf;
-	p = malloc(len*5/3);
+	p = (u8 *) malloc(len*5/3);
 	r = sc_base64_encode(buf, len, p, len*5/3, 0);
 	if (r) {
 		fprintf(stderr, "Base64 encoding failed: %s\n", sc_strerror(r));
@@ -208,7 +208,7 @@ int extract_key(void)
 	count = r;
 	if (opt_cert) {
 		for (i = 0; i < count; i++) {
-			cinfo = objs[i]->data;
+			cinfo = (struct sc_pkcs15_cert_info *) objs[i]->data;
 	
 			if (sc_pkcs15_compare_id(&id, &cinfo->id) == 1)
 				break;
@@ -219,7 +219,7 @@ int extract_key(void)
 		}
 	} else {
 		i = 0;
-		cinfo = objs[i]->data;
+		cinfo = (struct sc_pkcs15_cert_info *) objs[i]->data;
 	}
 	if (!quiet)
 		fprintf(stderr, "Using certificate '%s'.\n", objs[i]->label);

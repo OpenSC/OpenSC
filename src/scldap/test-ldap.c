@@ -36,7 +36,7 @@ static void hex_dump_asc(FILE * f, const unsigned char *in, size_t count, int ad
 
 	while (count) {
 		char ascbuf[17];
-		int i;
+		unsigned int i;
 
 		if (addr >= 0) {
 			fprintf(f, "%08X: ", addr);
@@ -74,11 +74,11 @@ static void usage(void)
 int main(int argc, char **argv)
 {
 	char *entry = NULL, *searchword = NULL;
-	int i, verbose = 0, dump = 0, save = 0, ffound = 0;
+	unsigned int i, verbose = 0, dump = 0, save = 0, ffound = 0;
 	scldap_context *lctx = NULL;
 	scldap_result *lresult = NULL;
 
-	for (i = 0; i < argc; i++) {
+	for (i = 0; i < (unsigned int) argc; i++) {
 		if (argv[i][0] == '-') {
 			char *optarg = (char *) argv[i + 1];
 			switch (argv[i][1]) {
@@ -163,7 +163,7 @@ int main(int argc, char **argv)
 		if (save && lresult->result[i].name) {
 			const char *prefix = "ldap-dump-";
 			int filenamelen = strlen(lresult->result[i].name) + strlen(prefix) + 6;
-			char *filename = malloc(filenamelen);
+			char *filename = (char *) malloc(filenamelen);
 			FILE *fp = NULL;
 
 			if (!filename)

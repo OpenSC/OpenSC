@@ -23,7 +23,7 @@ static int get_certificate(PluginInstance *inst,
         cert_id.len = 0;
         count = r;
         for (i = 0; i < count; i++) {
-                struct sc_pkcs15_prkey_info *key = objs[i]->data;
+                struct sc_pkcs15_prkey_info *key = (struct sc_pkcs15_prkey_info *) objs[i]->data;
 
 #if 0
                 if (key->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION) {
@@ -40,7 +40,7 @@ static int get_certificate(PluginInstance *inst,
         r = sc_pkcs15_find_cert_by_id(inst->p15card, &cert_id, &cert_obj);
         if (r)
                 return r;
-	cinfo = cert_obj->data;
+	cinfo = (struct sc_pkcs15_cert_info *) cert_obj->data;
         r = sc_pkcs15_read_certificate(inst->p15card, cinfo, &cert);
         if (r)
                 return r;
@@ -119,7 +119,7 @@ static int extract_certificate_and_pkey(PluginInstance *inst,
 		goto err;
 	rsa->flags |= RSA_FLAG_SIGN_VER;
 	RSA_set_method(rsa, sc_get_method());
-	priv = malloc(sizeof(*priv));
+	priv = (struct sc_priv_data *) malloc(sizeof(*priv));
 	if (priv == NULL)
 		goto err;
 	memset(priv, 0, sizeof(struct sc_priv_data));
@@ -206,7 +206,7 @@ int create_envelope(PluginInstance *inst, u8 **data, int *datalen)
 		r = -1;
 		goto err;
 	}
-	buf = malloc(r);
+	buf = (u8 *) malloc(r);
 	if (buf == NULL)
 		goto err;
 	*data = buf;

@@ -58,7 +58,7 @@ extern struct sc_pkcs11_object_ops pkcs11_secret_key_ops;
 CK_RV
 sc_pkcs11_create_secret_key(struct sc_pkcs11_session *session,
 		const u8 *value, size_t value_len,
-		CK_ATTRIBUTE_PTR template,
+		CK_ATTRIBUTE_PTR _template,
 		CK_ULONG attribute_count,
 		struct sc_pkcs11_object **out)
 {
@@ -66,8 +66,8 @@ sc_pkcs11_create_secret_key(struct sc_pkcs11_session *session,
 	CK_ATTRIBUTE_PTR attr;
 	int		n, rv;
 
-	if (!(key = calloc(1, sizeof(*key)))
-	 || !(key->value = malloc(value_len))) {
+	if (!(key = (struct pkcs11_secret_key *) calloc(1, sizeof(*key)))
+	 || !(key->value = (CK_BYTE *) malloc(value_len))) {
 		pkcs11_secret_key_ops.release(key);
 		return CKR_HOST_MEMORY; /* XXX correct? */
 	}
@@ -76,7 +76,7 @@ sc_pkcs11_create_secret_key(struct sc_pkcs11_session *session,
 	key->object.ops = &pkcs11_secret_key_ops;
 
 	/* Make sure the key type is given in the template */
-	for (n = attribute_count, attr = template; n--; attr++) {
+	for (n = attribute_count, attr = _template; n--; attr++) {
 		if (attr->type == CKA_KEY_TYPE) {
 			set_attr(key->type, attr);
 			break;
@@ -88,7 +88,7 @@ sc_pkcs11_create_secret_key(struct sc_pkcs11_session *session,
 	}
 
 	/* Set all the other attributes */
-	for (n = attribute_count, attr = template; n--; attr++) {
+	for (n = attribute_count, attr = _template; n--; attr++) {
 		rv = key->object.ops->set_attribute(session, key, attr);
 		if (rv != CKR_OK) {
 			pkcs11_secret_key_ops.release(key);
@@ -139,7 +139,7 @@ sc_pkcs11_secret_key_set_attribute(struct sc_pkcs11_session *session,
 	case CKA_LABEL:
 		if (key->label)
 			free(key->label);
-		key->label = strdup(attr->pValue);
+		key->label = strdup((const char *) attr->pValue);
 		break;
 	case CKA_TOKEN:
 		set_attr(ck_bbool, attr);
@@ -149,7 +149,7 @@ sc_pkcs11_secret_key_set_attribute(struct sc_pkcs11_session *session,
 	case CKA_VALUE:
 		if (key->value)
 			free(key->value);
-		key->value = malloc(attr->ulValueLen);
+		key->value = (CK_BYTE *) malloc(attr->ulValueLen);
 		key->value_len = attr->ulValueLen;
 		memcpy(key->value, attr->pValue, key->value_len);
 		break;

@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <scrandom.h>
+#include "scrandom.h"
 
 int main(int argc, char **argv)
 {

@@ -7,6 +7,10 @@
 #ifndef PKCS15_INIT_H
 #define PKCS15_INIT_H
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #include <opensc/pkcs15.h>
 
 struct sc_profile; /* opaque type */
@@ -179,5 +183,9 @@ extern int	sc_pkcs15init_get_label(struct sc_profile *, const char **);
 
 extern void	sc_pkcs15init_set_pin_data(struct sc_profile *, int,
 				const void *, size_t);
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif /* PKCS15_INIT_H */

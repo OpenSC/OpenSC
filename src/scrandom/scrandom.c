@@ -35,21 +35,19 @@
 #ifdef HAVE_OPENSSL
 #include <openssl/rand.h>
 #endif
+#include "scrandom.h"
 
-static ssize_t atomicio(ssize_t(*f) (), int fd, void *_s, size_t n)
+static ssize_t atomicio(ssize_t(*f) (int fd, void *_s, size_t n), int fd, void *_s, size_t n)
 {
-	char *s = _s;
-	ssize_t res, pos = 0;
+	char *s = (char *) _s;
+	size_t pos = 0;
+	ssize_t res;
 
 	while (n > pos) {
 		res = (f) (fd, s + pos, n - pos);
 		switch (res) {
 		case -1:
-#ifdef EWOULDBLOCK
-			if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
-#else
 			if (errno == EINTR || errno == EAGAIN) {
-#endif
 				continue;
 			}
 		case 0:

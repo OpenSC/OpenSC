@@ -302,7 +302,7 @@ sc_asn1_decode_algorithm_id(struct sc_context *ctx, const u8 *in,
 
 	/* See if we understand the algorithm, and if we do, check
 	 * whether we know how to decode any additional parameters */
-	id->algorithm = -1;
+	id->algorithm = (unsigned int ) -1;
 	if ((alg_info = sc_asn1_get_algorithm_info(id)) != NULL) {
 		id->algorithm = alg_info->id;
 		if (alg_info->decode) {
@@ -361,7 +361,7 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx,
 	}
 
 	if (obj_len) {
-		*buf = realloc(*buf, *len + obj_len);
+		*buf = (u8 *) realloc(*buf, *len + obj_len);
 		memcpy(*buf + *len, obj, obj_len);
 		*len += obj_len;
 		free(obj);

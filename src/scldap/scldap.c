@@ -99,7 +99,7 @@ static int ldap_cb(scconf_context * config, const scconf_block * block, scconf_e
 		len = strlen(cardprefix) + 1;
 	}
 	len += strlen(ldapsuffix) + 1;
-	lentry->entry = malloc(len);
+	lentry->entry = (char *) malloc(len);
 	if (!lentry->entry) {
 		free(ldapsuffix);
 		return 1;
@@ -184,7 +184,7 @@ scldap_context *scldap_parse_parameters(const char *filename)
 
 void scldap_show_parameters(scldap_context * ctx)
 {
-	int i, j;
+	unsigned int i, j;
 
 	if (!ctx)
 		return;
@@ -212,7 +212,7 @@ void scldap_show_parameters(scldap_context * ctx)
 
 void scldap_free_parameters(scldap_context * ctx)
 {
-	int i, j;
+	unsigned int i, j;
 
 	if (!ctx)
 		return;
@@ -367,7 +367,7 @@ const char *scldap_show_arguments(void)
 
 int scldap_add_entry(scldap_context * ctx, const char *entry)
 {
-	int i;
+	unsigned int i;
 
 	if (!ctx)
 		return 0;
@@ -394,7 +394,7 @@ int scldap_add_entry(scldap_context * ctx, const char *entry)
 
 int scldap_get_entry(scldap_context * ctx, const char *entry)
 {
-	int i;
+	unsigned int i;
 
 	if (!ctx)
 		return 0;
@@ -412,7 +412,7 @@ int scldap_get_entry(scldap_context * ctx, const char *entry)
 
 void scldap_set_entry(scldap_context * ctx, const char *entry)
 {
-	int i;
+	unsigned int i;
 
 	if (!ctx)
 		return;
@@ -430,7 +430,7 @@ void scldap_set_entry(scldap_context * ctx, const char *entry)
 
 void scldap_remove_entry(scldap_context * ctx, const char *entry)
 {
-	int i, j;
+	unsigned int i, j;
 
 	if (!ctx)
 		return;
@@ -590,7 +590,7 @@ int scldap_url_to_entry(scldap_context * ctx, const char *entry, const char *url
 int scldap_approx_base_by_dn(scldap_context * ctx, const char *entry, const char *dn, char **base)
 {
 	scldap_result *splitdn = NULL;
-	int i = 0, j = 0, numdns = 0;
+	unsigned int i = 0, j = 0, numdns = 0;
 	char **founddns = NULL;
 
 	if (!ctx || !entry || !dn) {
@@ -645,7 +645,7 @@ int scldap_dn_to_result(const char *dn, scldap_result ** result, int notypes)
 {
 	scldap_result *_result = NULL;
 	char *buf = NULL, **tmp = NULL;
-	int i;
+	unsigned int i;
 
 	if (!dn || *result)
 		return -1;
@@ -667,7 +667,7 @@ int scldap_dn_to_result(const char *dn, scldap_result ** result, int notypes)
 	memset(buf, 0, (strlen(dn) + 1) * 2);
 
 	if (dn[0] == '/') {
-		int i, c = 0;
+		unsigned int c = 0;
 
 		for (i = 1; i < strlen(dn); i++) {
 			if (dn[i] == '/') {
@@ -710,7 +710,7 @@ static void scldap_get_result(LDAP * ld, LDAPMessage * res, scldap_param_entry *
 	struct berval **bvals = NULL;
 	BerElement *ber = NULL;
 	char *name = NULL;
-	int i = 0, j, o, k;
+	unsigned int i = 0, j, o;
 
 	for (name = ldap_first_attribute(ld, res, &ber); name;
 	     name = ldap_next_attribute(ld, res, ber)) {
@@ -725,7 +725,7 @@ static void scldap_get_result(LDAP * ld, LDAPMessage * res, scldap_param_entry *
       memset(result->result[result->results].data, 0, result->result[result->results].datalen + 1); \
       memcpy(result->result[result->results].data, bvals[i]->bv_val, result->result[result->results].datalen); \
       for (o = 0; o < bvals[i]->bv_len; o++) { \
-        k = bvals[i]->bv_val[o]; \
+        int k = bvals[i]->bv_val[o]; \
         if (!isascii(k)) { \
           result->result[result->results].binary = 1; \
           break; \
@@ -774,7 +774,7 @@ static char *combinestr(char *str,...)
 	if (!str) {
 		return NULL;
 	}
-	buf = malloc(MAX_BUF_LEN);
+	buf = (char *) malloc(MAX_BUF_LEN);
 	if (!buf) {
 		return NULL;
 	}
@@ -888,7 +888,7 @@ int scldap_search(scldap_context * ctx, const char *entry,
 
 void scldap_free_result(scldap_result * result)
 {
-	int i;
+	unsigned int i;
 
 	if (result) {
 		for (i = 0; i < result->results; i++) {

@@ -29,6 +29,10 @@
 #include <opensc/log.h>
 #include "rsaref/pkcs11.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define SC_PKCS11_MAX_VIRTUAL_SLOTS	4
 #define SC_PKCS11_MAX_READERS           2
 
@@ -241,5 +245,9 @@ CK_RV attr_find(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
 CK_RV attr_find_ptr(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void **, size_t *);
 CK_RV attr_find_var(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
 CK_RV attr_extract(CK_ATTRIBUTE_PTR, void *, size_t *);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

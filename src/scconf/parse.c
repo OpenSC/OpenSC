@@ -88,7 +88,7 @@ static scconf_item *scconf_item_add(scconf_parser * parser, int type)
 			return item;
 		}
 	}
-	item = malloc(sizeof(scconf_item));
+	item = (scconf_item *) malloc(sizeof(scconf_item));
 	if (!item) {
 		return NULL;
 	}
@@ -114,7 +114,7 @@ static void scconf_block_add(scconf_parser * parser)
 
 	item = scconf_item_add(parser, SCCONF_ITEM_TYPE_BLOCK);
 
-	block = malloc(sizeof(scconf_block));
+	block = (scconf_block *) malloc(sizeof(scconf_block));
 	if (!block) {
 		return;
 	}

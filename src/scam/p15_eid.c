@@ -132,7 +132,7 @@ int p15_eid_init(scam_context * sctx, int argc, const char **argv)
 		return SCAM_FAILED;
 
 	/* FIXME: Add support for selecting certificate by ID */
-	data->cinfo = data->objs[0]->data;
+	data->cinfo = (struct sc_pkcs15_cert_info *) data->objs[0]->data;
 
 	r = sc_pkcs15_find_prkey_by_id(data->p15card, &data->cinfo->id, &data->prkey);
 	if (r != SC_SUCCESS) {
@@ -156,7 +156,7 @@ const char *p15_eid_pinentry(scam_context * sctx)
 	if (!sctx->method_data) {
 		return NULL;
 	}
-	pininfo = data->pin->data;
+	pininfo = (struct sc_pkcs15_pin_info *) data->pin->data;
 	snprintf(buf, 64, "Enter PIN%d [%s]: ", pininfo->reference, data->pin->label);
 	return buf;
 }
@@ -183,7 +183,7 @@ static int format_eid_dir_path(const char *user, char **buf)
 
 	if (!pwent)
 		return SCAM_FAILED;
-	dir = malloc(strlen(pwent->pw_dir) + strlen(eid_path) + 2);
+	dir = (char *) malloc(strlen(pwent->pw_dir) + strlen(eid_path) + 2);
 	if (!dir)
 		return SCAM_FAILED;
 	strcpy(dir, pwent->pw_dir);
@@ -221,7 +221,7 @@ static int get_certificate(const char *user, X509 ** cert_out)
 	r = format_eid_dir_path(user, &dir);
 	if (r != SCAM_SUCCESS)
 		return r;
-	cert_path = malloc(strlen(dir) + strlen(auth_cert_file) + 2);
+	cert_path = (char *) malloc(strlen(dir) + strlen(auth_cert_file) + 2);
 	if (!cert_path) {
 		goto end;
 	}
@@ -287,7 +287,7 @@ int p15_eid_auth(scam_context * sctx, int argc, const char **argv,
 		scam_log_msg(sctx, "scrandom_get_data failed.\n");
 		goto end;
 	}
-	r = sc_pkcs15_verify_pin(data->p15card, data->pin->data, (const u8 *) password, strlen(password));
+	r = sc_pkcs15_verify_pin(data->p15card, (struct sc_pkcs15_pin_info *) data->pin->data, (const u8 *) password, strlen(password));
 	if (r != SC_SUCCESS) {
 		scam_print_msg(sctx, "sc_pkcs15_verify_pin: %s\n", sc_strerror(r));
 		goto end;

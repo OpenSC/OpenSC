@@ -242,7 +242,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 	slot->token_info.flags = CKF_USER_PIN_INITIALIZED
 				| CKF_TOKEN_INITIALIZED
 				| CKF_WRITE_PROTECTED;
-	slot->fw_data = fw_data = calloc(1, sizeof(*fw_data));
+	slot->fw_data = fw_data = (struct pkcs15_slot_data *) calloc(1, sizeof(*fw_data));
 	fw_data->auth_obj = auth;
 
 	if (auth != NULL) {
@@ -639,7 +639,7 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 			if (attr->ulValueLen > 1024)
 				return CKR_ATTRIBUTE_VALUE_INVALID;
 			bn->len = attr->ulValueLen;
-			bn->data = attr->pValue;
+			bn->data = (u8 *) attr->pValue;
 		}
 	}
 
@@ -729,7 +729,7 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 			if (attr->ulValueLen > 1024)
 				return CKR_ATTRIBUTE_VALUE_INVALID;
 			bn->len = attr->ulValueLen;
-			bn->data = attr->pValue;
+			bn->data = (u8 *) attr->pValue;
 		}
 	}
 
@@ -802,7 +802,7 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 			break;
 		case CKA_VALUE:
 			args.der_encoded.len = attr->ulValueLen;
-			args.der_encoded.value = attr->pValue;
+			args.der_encoded.value = (u8 *) attr->pValue;
 			break;
 		default:
 			/* ignore unknown attrs, or flag error? */
@@ -837,10 +837,10 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 {
 	struct sc_profile *profile = NULL;
 	struct pkcs15_slot_data *data;
-	CK_OBJECT_CLASS	class;
+	CK_OBJECT_CLASS	_class;
 	int		rv, rc;
 
-	rv = attr_find(pTemplate, ulCount, CKA_CLASS, &class, NULL);
+	rv = attr_find(pTemplate, ulCount, CKA_CLASS, &_class, NULL);
 	if (rv != CKR_OK)
 		return rv;
 
@@ -861,7 +861,7 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 		sc_pkcs15init_set_pin_data(profile, SC_PKCS15INIT_USER_PIN,
 			data->pin[CKU_USER].value, data->pin[CKU_USER].len);
 
-	switch (class) {
+	switch (_class) {
 	case CKO_PRIVATE_KEY:
 		rv = pkcs15_create_private_key(p11card, slot, profile,
 				pTemplate, ulCount, phObject);
@@ -987,7 +987,7 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 	case CKA_ISSUER:
 		if (cert->certificate->issuer_len == 0)
 			break;
-		data = attr->pValue;
+		data = (u8 *) attr->pValue;
 		len = attr->ulValueLen;
 		/* SEQUENCE is tag 0x30, SET is 0x31
 		 * I know this code is icky, but hey... this is netscape
@@ -1423,7 +1423,7 @@ asn1_sequence_wrapper(const u8 *data, size_t len, CK_ATTRIBUTE_PTR attr)
 
 	check_attribute_buffer(attr, len + 1 + sizeof(len));
 
-	dest = attr->pValue;
+	dest = (u8 *) attr->pValue;
 	*dest++ = 0x30;	/* SEQUENCE tag */
 	if (len <= 127) {
 		*dest++ = len;

@@ -300,7 +300,7 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 	struct _sc_ctx_options opts;
 
 	assert(ctx_out != NULL);
-	ctx = malloc(sizeof(struct sc_context));
+	ctx = (struct sc_context *) malloc(sizeof(struct sc_context));
 	if (ctx == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(ctx, 0, sizeof(struct sc_context));

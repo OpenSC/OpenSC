@@ -32,13 +32,13 @@ scconf_context *scconf_new(const char *filename)
 {
 	scconf_context *config;
 
-	config = malloc(sizeof(scconf_context));
+	config = (scconf_context *) malloc(sizeof(scconf_context));
 	if (!config) {
 		return NULL;
 	}
 	memset(config, 0, sizeof(scconf_context));
 	config->filename = filename ? strdup(filename) : NULL;
-	config->root = malloc(sizeof(scconf_block));
+	config->root = (scconf_block *) malloc(sizeof(scconf_block));
 	if (!config->root) {
 		if (config->filename) {
 			free(config->filename);
@@ -95,7 +95,7 @@ scconf_block **scconf_find_blocks(scconf_context * config, const scconf_block * 
 	}
 	size = 0;
 	alloc_size = 10;
-	blocks = realloc(blocks, sizeof(scconf_block *) * alloc_size);
+	blocks = (scconf_block **) realloc(blocks, sizeof(scconf_block *) * alloc_size);
 
 	for (item = block->items; item; item = item->next) {
 		if (item->type == SCCONF_ITEM_TYPE_BLOCK &&
@@ -105,7 +105,7 @@ scconf_block **scconf_find_blocks(scconf_context * config, const scconf_block * 
 			}
 			if (size + 1 >= alloc_size) {
 				alloc_size *= 2;
-				blocks = realloc(blocks, sizeof(scconf_block *) * alloc_size);
+				blocks = (scconf_block **) realloc(blocks, sizeof(scconf_block *) * alloc_size);
 			}
 			blocks[size++] = item->value.block;
 		}
@@ -203,7 +203,7 @@ scconf_list *scconf_list_add(scconf_list ** list, const char *value)
 {
 	scconf_list *rec, **tmp;
 
-	rec = malloc(sizeof(scconf_list));
+	rec = (scconf_list *) malloc(sizeof(scconf_list));
 	if (!rec) {
 		return NULL;
 	}
@@ -267,7 +267,7 @@ char *scconf_list_strdup(const scconf_list * list, const char *filler)
 	if (filler) {
 		len += scconf_list_array_length(list) * (strlen(filler) + 1);
 	}
-	buf = malloc(len);
+	buf = (char *) malloc(len);
 	if (!buf) {
 		return NULL;
 	}
@@ -374,7 +374,7 @@ static int parse_type(scconf_context * config, const scconf_block * block, sccon
 			if (parm) {
 				if (entry->flags & SCCONF_ALLOC) {
 					char **buf = (char **) parm;
-					*buf = malloc(vallen + 1);
+					*buf = (char *) malloc(vallen + 1);
 					if (*buf == NULL) {
 						r = 1;
 						break;
@@ -422,7 +422,7 @@ static scconf_block **getblocks(scconf_context * config, const scconf_block * bl
 		if (config->debug) {
 			fprintf(stderr, "list found (%s)\n", entry->name);
 		}
-		blocks = realloc(blocks, sizeof(scconf_block *) * 2);
+		blocks = (scconf_block **) realloc(blocks, sizeof(scconf_block *) * 2);
 		if (!blocks)
 			return NULL;
 		blocks[0] = (scconf_block *) block;

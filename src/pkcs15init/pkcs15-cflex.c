@@ -83,15 +83,15 @@ cflex_new_pin(struct sc_profile *profile, struct sc_card *card,
 {
 	sc_file_t *pinfile;
 	struct sc_pkcs15_pin_info tmpinfo;
-	char template[30];
+	char _template[30];
 	int pin_tries, puk_tries;
 	int r;
 
 	index++;
-	sprintf(template, "pinfile-%d", index);
+	sprintf(_template, "pinfile-%d", index);
 	/* Profile must define a "pinfile" for each PIN */
-	if (sc_profile_get_file(profile, template, &pinfile) < 0) {
-		profile->cbs->error("Profile doesn't define \"%s\"", template);
+	if (sc_profile_get_file(profile, _template, &pinfile) < 0) {
+		profile->cbs->error("Profile doesn't define \"%s\"", _template);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	info->path = pinfile->path;

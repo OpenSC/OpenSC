@@ -145,7 +145,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		return rv;
 	}
 	/* Check tty */
-	rv = pam_get_item(pamh, PAM_TTY, (void *) &tty);
+	rv = pam_get_item(pamh, PAM_TTY, (PAM_CONST void **) &tty);
 	/* Get the name of the service */
 	rv = pam_get_item(pamh, PAM_SERVICE, (PAM_CONST void **) &service);
 	if (rv != PAM_SUCCESS) {
@@ -247,14 +247,14 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t * pamh, int flags, int argc,
 	if (sctx.method < 0) {
 		return PAM_SESSION_ERR;
 	}
-	rv = pam_get_item(pamh, PAM_USER, (void *) &user);
+	rv = pam_get_item(pamh, PAM_USER, (PAM_CONST void **) &user);
 	if (!user || rv != PAM_SUCCESS) {
 		opensc_pam_log(LOG_CRIT, pamh, "open_session - error recovering username\n");
 		return PAM_SESSION_ERR;		/* How did we get authenticated with no username?! */
 	}
 	if (on(OPENSC_DEBUG, ctrl))
 		opensc_pam_log(LOG_INFO, pamh, "Pam user name %s\n", user);
-	rv = pam_get_item(pamh, PAM_SERVICE, (void *) &service);
+	rv = pam_get_item(pamh, PAM_SERVICE, (PAM_CONST void **) &service);
 	if (!service || rv != PAM_SUCCESS) {
 		opensc_pam_log(LOG_CRIT, pamh, "open_session - error recovering service\n");
 		return PAM_SESSION_ERR;
@@ -290,12 +290,12 @@ PAM_EXTERN int pam_sm_close_session(pam_handle_t * pamh, int flags, int argc,
 	if (sctx.method < 0) {
 		return PAM_SESSION_ERR;
 	}
-	rv = pam_get_item(pamh, PAM_USER, (void *) &user);
+	rv = pam_get_item(pamh, PAM_USER, (PAM_CONST void **) &user);
 	if (!user || rv != PAM_SUCCESS) {
 		opensc_pam_log(LOG_CRIT, pamh, "close_session - error recovering username\n");
 		return PAM_SESSION_ERR;		/* How did we get authenticated with no username?! */
 	}
-	rv = pam_get_item(pamh, PAM_SERVICE, (void *) &service);
+	rv = pam_get_item(pamh, PAM_SERVICE, (PAM_CONST void **) &service);
 	if (!service || rv != PAM_SUCCESS) {
 		opensc_pam_log(LOG_CRIT, pamh, "close_session - error recovering service\n");
 		return PAM_SESSION_ERR;

@@ -165,7 +165,7 @@ AC_CHECK_FUNCS([getpass gettimeofday memset mkdir strdup strerror setutent])
 dnl C Compiler features
 AC_C_INLINE
 if test "$GCC" = "yes"; then
-	CFLAGS="$CFLAGS -Wall"
+	CFLAGS="-Wall $CFLAGS"
 # Disabled until lex-parse.l doesn't give us a warning
 # -Werror
 fi

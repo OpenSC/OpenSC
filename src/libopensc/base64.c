@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-static const u8 base64_table[65] =
+static const u8 base64_table[66] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	"0123456789+/=";
 

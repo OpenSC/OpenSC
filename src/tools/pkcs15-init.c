@@ -219,14 +219,14 @@ main(int argc, char **argv)
 	parse_commandline(argc, argv);
 
 	if (optind != argc)
-		print_usage_and_die("pkcs15-init");
+		print_usage_and_die();
 	if (opt_action == ACTION_NONE) {
 		fprintf(stderr, "No action specified.\n");
-		print_usage_and_die("pkcs15-init");
+		print_usage_and_die();
 	}
 	if (!opt_profile) {
 		fprintf(stderr, "No profile specified.\n");
-		print_usage_and_die("pkcs15-init");
+		print_usage_and_die();
 	}
 
 	/* Connect to the card */
@@ -955,7 +955,7 @@ do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
 	if (src == 0)
 		return 0;
 	dst->len = BN_num_bytes(src);
-	dst->data = malloc(dst->len);
+	dst->data = (u8 *) malloc(dst->len);
 	BN_bn2bin(src, dst->data);
 	return 1;
 }
@@ -1040,10 +1040,10 @@ do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
 int
 do_convert_cert(sc_pkcs15_der_t *der, X509 *cert)
 {
-	unsigned char	*p;
+	u8	*p;
 
 	der->len = i2d_X509(cert, NULL);
-	der->value = p = malloc(der->len);
+	der->value = p = (u8 *) malloc(der->len);
 	i2d_X509(cert, &p);
 	return 0;
 }
@@ -1121,7 +1121,7 @@ handle_option(int c)
 		opt_extractable++;
 		break;
 	default:
-		print_usage_and_die("pkcs15-init");
+		print_usage_and_die();
 	}
 }
 
@@ -1184,7 +1184,7 @@ read_options_file(const char *filename)
 					break;
 			if (!o->name) {
 				error("Unknown option \"%s\"\n", name);
-				print_usage_and_die("pkcs15-init");
+				print_usage_and_die();
 			}
 			if (o->has_arg != no_argument) {
 				optarg = strtok(NULL, "");
@@ -1197,7 +1197,7 @@ read_options_file(const char *filename)
 			if (o->has_arg == required_argument
 			 && (!optarg || !*optarg)) {
 				error("Option %s: missing argument\n", name);
-				print_usage_and_die("pkcs15-init");
+				print_usage_and_die();
 			}
 			handle_option(o->val);
 			name = strtok(NULL, " \t");

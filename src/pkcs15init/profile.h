@@ -7,6 +7,10 @@
 #ifndef _OPENSC_PROFILE_H
 #define _OPENSC_PROFILE_H
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #include <opensc/pkcs15.h>
 
 #ifndef SC_PKCS15_PROFILE_DIRECTORY
@@ -95,5 +99,8 @@ int		sc_profile_get_file_by_path(struct sc_profile *,
 int		sc_profile_get_path(struct sc_profile *,
 			const char *, struct sc_path *);
 
+#ifdef  __cplusplus
+}
+#endif
 
 #endif /* _OPENSC_PROFILE_H */

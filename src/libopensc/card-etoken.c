@@ -22,8 +22,8 @@
 #include "errors.h"
 #include "opensc.h"
 #include "log.h"
-
 #include <ctype.h>
+#include <string.h>
 
 static const struct sc_card_operations *iso_ops = NULL;
 

@@ -43,14 +43,17 @@ struct pkcomp {
 	u8 *		data;
 	unsigned int	size;
 };
+
+struct pkpart {
+	struct pkcomp	components[7];
+	unsigned int	count;
+	unsigned int	size;
+};
+
 struct pkdata {
 	unsigned int	algo;
 	unsigned int	usage;
-	struct pkpart {
-		struct pkcomp	components[7];
-		unsigned int	count;
-		unsigned int	size;
-	}		public, private;
+	struct pkpart _public, _private;
 	unsigned int	bits, bytes;
 };
 
@@ -752,7 +755,7 @@ gpk_add_bignum(struct pkpart *part, unsigned int tag,
 	memset(comp, 0, sizeof(*comp));
 	comp->tag  = tag;
 	comp->size = size + 1;
-	comp->data = malloc(size + 1);
+	comp->data = (u8 *) malloc(size + 1);
 
 	/* Add the tag */
 	comp->data[0] = tag;
@@ -788,8 +791,8 @@ gpk_encode_rsa_key(struct sc_profile *profile,
 	p->bits  = p->bytes << 3;
 
 	/* Set up the list of public elements */
-	gpk_add_bignum(&p->public, 0x01, &rsa->modulus, 0);
-	gpk_add_bignum(&p->public, 0x07, &rsa->exponent, 0);
+	gpk_add_bignum(&p->_public, 0x01, &rsa->modulus, 0);
+	gpk_add_bignum(&p->_public, 0x07, &rsa->exponent, 0);
 
 	/* Set up the list of private elements */
 	if (!rsa->p.len || !rsa->q.len || !rsa->dmp1.len || !rsa->dmq1.len || !rsa->iqmp.len) {
@@ -798,14 +801,14 @@ gpk_encode_rsa_key(struct sc_profile *profile,
 			error(profile, "incomplete RSA private key");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
-		gpk_add_bignum(&p->private, 0x04, &rsa->d, 0);
+		gpk_add_bignum(&p->_private, 0x04, &rsa->d, 0);
 	} else if (5 * (p->bytes / 2) < 256) {
 		/* All CRT elements are stored in one record */
 		struct pkcomp	*comp;
 		unsigned int	K = p->bytes / 2;
 		u8		*crtbuf;
 
-		crtbuf = malloc(5 * K + 1);
+		crtbuf = (u8 *) malloc(5 * K + 1);
 
 		crtbuf[0] = 0x05;
 		gpk_bn2bin(crtbuf + 1 + 0 * K, &rsa->p, K);
@@ -814,7 +817,7 @@ gpk_encode_rsa_key(struct sc_profile *profile,
 		gpk_bn2bin(crtbuf + 1 + 3 * K, &rsa->dmp1, K);
 		gpk_bn2bin(crtbuf + 1 + 4 * K, &rsa->dmq1, K);
 
-		comp = &p->private.components[p->private.count++];
+		comp = &p->_private.components[p->_private.count++];
 		comp->tag  = 0x05;
 		comp->size = 5 * K + 1;
 		comp->data = crtbuf;
@@ -822,11 +825,11 @@ gpk_encode_rsa_key(struct sc_profile *profile,
 		/* CRT elements stored in individual records.
 		 * Make sure they're all fixed length even if they're
 		 * shorter */
-		gpk_add_bignum(&p->private, 0x51, &rsa->p, p->bytes/2);
-		gpk_add_bignum(&p->private, 0x52, &rsa->q, p->bytes/2);
-		gpk_add_bignum(&p->private, 0x53, &rsa->iqmp, p->bytes/2);
-		gpk_add_bignum(&p->private, 0x54, &rsa->dmp1, p->bytes/2);
-		gpk_add_bignum(&p->private, 0x55, &rsa->dmq1, p->bytes/2);
+		gpk_add_bignum(&p->_private, 0x51, &rsa->p, p->bytes/2);
+		gpk_add_bignum(&p->_private, 0x52, &rsa->q, p->bytes/2);
+		gpk_add_bignum(&p->_private, 0x53, &rsa->iqmp, p->bytes/2);
+		gpk_add_bignum(&p->_private, 0x54, &rsa->dmp1, p->bytes/2);
+		gpk_add_bignum(&p->_private, 0x55, &rsa->dmq1, p->bytes/2);
 	}
 
 	return 0;
@@ -868,13 +871,13 @@ gpk_encode_dsa_key(struct sc_profile *profile,
 	}
 
 	/* Set up the list of public elements */
-	gpk_add_bignum(&p->public, 0x09, &dsa->p, 0);
-	gpk_add_bignum(&p->public, 0x0a, &dsa->q, 0);
-	gpk_add_bignum(&p->public, 0x0b, &dsa->g, 0);
-	gpk_add_bignum(&p->public, 0x0c, &dsa->pub, 0);
+	gpk_add_bignum(&p->_public, 0x09, &dsa->p, 0);
+	gpk_add_bignum(&p->_public, 0x0a, &dsa->q, 0);
+	gpk_add_bignum(&p->_public, 0x0b, &dsa->g, 0);
+	gpk_add_bignum(&p->_public, 0x0c, &dsa->pub, 0);
 
 	/* Set up the list of private elements */
-	gpk_add_bignum(&p->private, 0x0d, &dsa->priv, 0);
+	gpk_add_bignum(&p->_private, 0x0d, &dsa->priv, 0);
 
 	return 0;
 }
@@ -886,18 +889,18 @@ gpk_store_pk(struct sc_profile *profile, struct sc_card *card,
 	int	r;
 
 	/* Compute length of private/public key parts */
-	gpk_compute_publen(&p->public);
-	gpk_compute_privlen(&p->private);
+	gpk_compute_publen(&p->_public);
+	gpk_compute_privlen(&p->_private);
 
 	if (card->ctx->debug)
 		printf("Storing pk: %u bits, pub %u bytes, priv %u bytes\n",
-				p->bits, p->bytes, p->private.size);
+				p->bits, p->bytes, p->_private.size);
 
 	/* Strange, strange, strange... when I create the public part with
 	 * the exact size of 8 + PK elements, the card refuses to store
 	 * the last record even though there's enough room in the file.
 	 * XXX: Check why */
-	file->size = p->public.size + 8 + p->private.size + 8;
+	file->size = p->_public.size + 8 + p->_private.size + 8;
 	r = gpk_pkfile_create(profile, card, file);
 	if (r < 0)
 		return r;
@@ -909,17 +912,17 @@ gpk_store_pk(struct sc_profile *profile, struct sc_card *card,
 		return r;
 
 	/* Put the public key elements */
-	r = gpk_pkfile_update_public(profile, card, &p->public);
+	r = gpk_pkfile_update_public(profile, card, &p->_public);
 	if (r < 0)
 		return r;
 
 	/* Create the private key part */
-	r = gpk_pkfile_init_private(card, file, p->private.size);
+	r = gpk_pkfile_init_private(card, file, p->_private.size);
 	if (r < 0)
 		return r;
 
 	/* Now store the private key elements */
-	r = gpk_pkfile_update_private(profile, card, file, &p->private);
+	r = gpk_pkfile_update_private(profile, card, file, &p->_private);
 
 	return r;
 }

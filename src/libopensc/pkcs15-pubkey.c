@@ -388,7 +388,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 		return r;
 	}
 
-	pubkey = malloc(sizeof(struct sc_pkcs15_pubkey));
+	pubkey = (struct sc_pkcs15_pubkey *) malloc(sizeof(struct sc_pkcs15_pubkey));
 	if (pubkey == NULL) {
 		free(data);
 		return SC_ERROR_OUT_OF_MEMORY;

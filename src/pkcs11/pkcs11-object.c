@@ -89,7 +89,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 		debug(context, "Object %d, Attribute 0x%x\n", hObject, pTemplate[i].type);
 		rv = object->ops->get_attribute(session, object, &pTemplate[i]);
 		if (rv != CKR_OK)
-                        pTemplate[i].ulValueLen = -1;
+                        pTemplate[i].ulValueLen = (CK_ULONG) -1;
 	}
 
         return CKR_OK;

@@ -173,7 +173,7 @@ int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen)
 int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
                           unsigned int method, unsigned long key_ref)
 {
-	struct sc_acl_entry *p, *new;
+	struct sc_acl_entry *p, *_new;
 
 	assert(file != NULL);
 	assert(operation < SC_MAX_AC_OPS);
@@ -202,21 +202,21 @@ int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
 			file->acl[operation] = NULL;
 	}
 	
-	new = malloc(sizeof(struct sc_acl_entry));
-	if (new == NULL)
+	_new = (struct sc_acl_entry *) malloc(sizeof(struct sc_acl_entry));
+	if (_new == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	new->method = method;
-	new->key_ref = key_ref;
-	new->next = NULL;
+	_new->method = method;
+	_new->key_ref = key_ref;
+	_new->next = NULL;
 
 	p = file->acl[operation];
 	if (p == NULL) {
-		file->acl[operation] = new;
+		file->acl[operation] = _new;
 		return 0;
 	}
 	while (p->next != NULL)
 		p = p->next;
-	p->next = new;
+	p->next = _new;
 
 	return 0;
 }
@@ -274,7 +274,7 @@ void sc_file_clear_acl_entries(struct sc_file *file, unsigned int operation)
 
 struct sc_file * sc_file_new()
 {
-	struct sc_file *file = malloc(sizeof(struct sc_file));
+	struct sc_file *file = (struct sc_file *) malloc(sizeof(struct sc_file));
 	
 	if (file == NULL)
 		return NULL;
@@ -333,7 +333,7 @@ int sc_file_set_sec_attr(struct sc_file *file, const u8 *sec_attr,
 		file->sec_attr_len = 0;
 		return 0;
 	 }
-	file->sec_attr = realloc(file->sec_attr, sec_attr_len);
+	file->sec_attr = (u8 *) realloc(file->sec_attr, sec_attr_len);
 	if (file->sec_attr == NULL) {
 		file->sec_attr_len = 0;
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -356,7 +356,7 @@ int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
 		file->prop_attr_len = 0;
 		return 0;
 	 }
-	file->prop_attr = realloc(file->prop_attr, prop_attr_len);
+	file->prop_attr = (u8 *) realloc(file->prop_attr, prop_attr_len);
 	if (file->prop_attr == NULL) {
 		file->prop_attr_len = 0;
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -379,7 +379,7 @@ int sc_file_set_type_attr(struct sc_file *file, const u8 *type_attr,
 		file->type_attr_len = 0;
 		return 0;
 	 }
-	file->type_attr = realloc(file->type_attr, type_attr_len);
+	file->type_attr = (u8 *) realloc(file->type_attr, type_attr_len);
 	if (file->type_attr == NULL) {
 		file->type_attr_len = 0;
 		return SC_ERROR_OUT_OF_MEMORY;

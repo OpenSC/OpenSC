@@ -79,7 +79,7 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_FILE_NOT_FOUND;
 	c = stbuf.st_size;
 	if (*buf == NULL) {
-		data = malloc(stbuf.st_size);
+		data = (u8 *) malloc(stbuf.st_size);
 		if (data == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 	} else

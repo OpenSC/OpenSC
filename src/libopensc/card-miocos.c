@@ -69,7 +69,7 @@ static int miocos_init(struct sc_card *card)
 	i = _sc_match_atr(card, miocos_atrs, &id);
 	if (i < 0)
 		return 0;
-	priv = malloc(sizeof(struct miocos_priv_data));
+	priv = (struct miocos_priv_data *) malloc(sizeof(struct miocos_priv_data));
 	if (priv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->drv_data = priv;

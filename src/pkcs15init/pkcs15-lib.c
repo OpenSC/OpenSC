@@ -337,7 +337,6 @@ aodf_add_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 {
 	struct sc_pkcs15_pin_info *info;
 	struct sc_pkcs15_object *object;
-	int	r;
 
 	info = (struct sc_pkcs15_pin_info *) calloc(1, sizeof(*info));
 	*info = *pin;
@@ -443,7 +442,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-	key_info = calloc(1, sizeof(*key_info));
+	key_info = (struct sc_pkcs15_prkey_info *) calloc(1, sizeof(*key_info));
 	key_info->id = keyargs->id;
 	key_info->usage = usage;
 	key_info->native = 1;
@@ -451,7 +450,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	key_info->modulus_length = keybits;
 	/* path set by card driver */
 
-	object = calloc(1, sizeof(*object));
+	object = (struct sc_pkcs15_object *) calloc(1, sizeof(*object));
 	object->type = type;
 	object->data = key_info;
 	object->flags = DEFAULT_PRKEY_FLAGS;
@@ -563,12 +562,12 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	if ((label = keyargs->label) == NULL)
 		label = "Public Key";
 
-	key_info = calloc(1, sizeof(*key_info));
+	key_info = (struct sc_pkcs15_pubkey_info *) calloc(1, sizeof(*key_info));
 	key_info->id = keyargs->id;
 	key_info->usage = usage;
 	key_info->modulus_length = keybits;
 
-	object = calloc(1, sizeof(*object));
+	object = (struct sc_pkcs15_object *) calloc(1, sizeof(*object));
 	object->type = type;
 	object->data = key_info;
 	object->flags = DEFAULT_PUBKEY_FLAGS;
@@ -641,10 +640,10 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-	cert_info = calloc(1, sizeof(*cert_info));
+	cert_info = (struct sc_pkcs15_cert_info *) calloc(1, sizeof(*cert_info));
 	cert_info->id = args->id;
 
-	object = calloc(1, sizeof(*object));
+	object = (struct sc_pkcs15_object *) calloc(1, sizeof(*object));
 	object->type = SC_PKCS15_TYPE_CERT_X509;
 	object->data = cert_info;
 	object->flags = DEFAULT_CERT_FLAGS;
@@ -729,11 +728,11 @@ static unsigned int	x509_to_pkcs15_public_key_usage[16] = {
 };
 
 static int
-sc_pkcs15init_map_usage(unsigned long x509_usage, int private)
+sc_pkcs15init_map_usage(unsigned long x509_usage, int _private)
 {
 	unsigned int	p15_usage, n, *bits;
 
-	bits = private? x509_to_pkcs15_private_key_usage
+	bits = _private? x509_to_pkcs15_private_key_usage
 		      : x509_to_pkcs15_public_key_usage;
 	for (n = p15_usage = 0; n < 16; n++) {
 		if (x509_usage & (1 << n))
@@ -1011,7 +1010,7 @@ void
 sc_pkcs15init_set_pin_data(struct sc_profile *profile, int pin_id,
 				const void *value, size_t len)
 {
-	sc_profile_set_secret(profile, SC_AC_SYMBOLIC, pin_id, value, len);
+	sc_profile_set_secret(profile, SC_AC_SYMBOLIC, pin_id, (const u8 *) value, len);
 }
 
 /*
@@ -1245,7 +1244,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 	/* Present authentication info needed */
 	r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_UPDATE);
 	if (r >= 0 && datalen)
-		r = sc_update_binary(card, 0, data, datalen, 0);
+		r = sc_update_binary(card, 0, (const u8 *) data, datalen, 0);
 
 	return r;
 }

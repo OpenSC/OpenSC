@@ -218,7 +218,7 @@ static struct ctapi_module * add_module(struct ctapi_global_private_data *gpriv,
 	int i;
 
 	i = gpriv->module_count;
-	gpriv->modules = realloc(gpriv->modules, sizeof(struct ctapi_module) * (i+1));
+	gpriv->modules = (struct ctapi_module *) realloc(gpriv->modules, sizeof(struct ctapi_module) * (i+1));
 	gpriv->modules[i].name = strdup(name);
 	gpriv->modules[i].dlhandle = dlhandle;
 	gpriv->modules[i].ctn_count = 0;
@@ -250,13 +250,13 @@ static int ctapi_load_module(struct sc_context *ctx,
 		error(ctx, "Unable to open shared library '%s'\n", val);
 		return -1;
 	}
-	r = sc_module_get_address(ctx, dlh, (void *) &funcs.CT_init, "CT_init");
+	r = sc_module_get_address(ctx, dlh, (void **) &funcs.CT_init, "CT_init");
 	if (r != SC_SUCCESS)
 		goto symerr;
-	r = sc_module_get_address(ctx, dlh, (void *) &funcs.CT_close, "CT_close");
+	r = sc_module_get_address(ctx, dlh, (void **) &funcs.CT_close, "CT_close");
 	if (r != SC_SUCCESS)
 		goto symerr;
-	r = sc_module_get_address(ctx, dlh, (void *) &funcs.CT_data, "CT_data");
+	r = sc_module_get_address(ctx, dlh, (void **) &funcs.CT_data, "CT_data");
 	if (r != SC_SUCCESS)
 		goto symerr;
 	mod = add_module(gpriv, val, dlh);
@@ -277,8 +277,8 @@ static int ctapi_load_module(struct sc_context *ctx,
 			error(ctx, "CT_init() failed with %d\n", rv);
 			continue;
 		}
-		reader = malloc(sizeof(struct sc_reader));
-		priv = malloc(sizeof(struct ctapi_private_data));
+		reader = (struct sc_reader *) malloc(sizeof(struct sc_reader));
+		priv = (struct ctapi_private_data *) malloc(sizeof(struct ctapi_private_data));
 		memset(reader, 0, sizeof(*reader));
 		reader->drv_data = priv;
 		reader->ops = &ctapi_ops;
@@ -319,7 +319,7 @@ static int ctapi_init(struct sc_context *ctx, void **reader_data)
 	struct ctapi_global_private_data *gpriv;
 	scconf_block **blocks = NULL, *conf_block = NULL;
 
-	gpriv = malloc(sizeof(struct ctapi_global_private_data));
+	gpriv = (struct ctapi_global_private_data *) malloc(sizeof(struct ctapi_global_private_data));
 	if (gpriv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(gpriv, 0, sizeof(*gpriv));

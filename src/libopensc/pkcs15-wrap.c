@@ -130,7 +130,7 @@ do_cipher(struct sc_context *ctx, EVP_CIPHER_CTX *cipher_ctx,
 	u8	*p;
 	size_t	bl, done, left, total;
 
-	*out = p = malloc(in_len + EVP_CIPHER_CTX_key_length(cipher_ctx));
+	*out = p = (u8 *) malloc(in_len + EVP_CIPHER_CTX_key_length(cipher_ctx));
 	*out_len = total = 0;
 
 	bl = EVP_CIPHER_CTX_block_size(cipher_ctx);

@@ -278,11 +278,11 @@ static struct sc_card * sc_card_new()
 {
 	struct sc_card *card;
 	
-	card = malloc(sizeof(struct sc_card));
+	card = (struct sc_card *) malloc(sizeof(struct sc_card));
 	if (card == NULL)
 		return NULL;
 	memset(card, 0, sizeof(struct sc_card));
-	card->ops = malloc(sizeof(struct sc_card_operations));
+	card->ops = (struct sc_card_operations *) malloc(sizeof(struct sc_card_operations));
 	if (card->ops == NULL) {
 		free(card);
 		return NULL;
@@ -742,7 +742,7 @@ int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info 
 	struct sc_algorithm_info *p;
 	
 	assert(sc_card_valid(card) && info != NULL);
-	card->algorithms = realloc(card->algorithms, (card->algorithm_count + 1) * sizeof(*info));
+	card->algorithms = (struct sc_algorithm_info *) realloc(card->algorithms, (card->algorithm_count + 1) * sizeof(*info));
 	if (card->algorithms == NULL) {
 		card->algorithm_count = 0;
 		return SC_ERROR_OUT_OF_MEMORY;

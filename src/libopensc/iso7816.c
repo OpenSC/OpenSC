@@ -781,7 +781,7 @@ static int iso7816_decipher(struct sc_card *card,
 
 static int iso7816_change_reference_data(struct sc_card *card, unsigned int type,
 					 int ref, const u8 *old, size_t oldlen,
-					 const u8 *new, size_t newlen,
+					 const u8 *_new, size_t newlen,
 					 int *tries_left)
 {
 	struct sc_apdu apdu;
@@ -800,7 +800,7 @@ static int iso7816_change_reference_data(struct sc_card *card, unsigned int type
 		p1 = 1;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, p1, ref);
 	memcpy(sbuf, old, oldlen);
-	memcpy(sbuf + oldlen, new, newlen);
+	memcpy(sbuf + oldlen, _new, newlen);
 	apdu.lc = len;
 	apdu.datalen = len;
 	apdu.data = sbuf;
@@ -819,7 +819,7 @@ static int iso7816_change_reference_data(struct sc_card *card, unsigned int type
 }
 
 static int iso7816_reset_retry_counter(struct sc_card *card, unsigned int type, int ref,
-				       const u8 *puk, size_t puklen, const u8 *new,
+				       const u8 *puk, size_t puklen, const u8 *_new,
 				       size_t newlen)
 {
 	struct sc_apdu apdu;
@@ -847,7 +847,7 @@ static int iso7816_reset_retry_counter(struct sc_card *card, unsigned int type, 
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, p1, ref);
 	memcpy(sbuf, puk, puklen);
-	memcpy(sbuf + puklen, new, newlen);
+	memcpy(sbuf + puklen, _new, newlen);
 	apdu.lc = len;
 	apdu.datalen = len;
 	apdu.data = sbuf;

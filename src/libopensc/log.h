@@ -21,6 +21,10 @@
 #ifndef _SC_LOG_H
 #define _SC_LOG_H
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 #include <stdarg.h>
 #include <opensc/opensc.h>
 
@@ -66,5 +70,9 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 void sc_hex_dump(struct sc_context *ctx, const u8 *buf, size_t len,
 		 char *out, size_t outlen);
 #define sc_perror(ctx, errno, str) { error((ctx), "%s: %s\n", str, sc_strerror((errno))); }
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif

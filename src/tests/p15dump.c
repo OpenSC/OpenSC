@@ -36,7 +36,7 @@ static int dump_objects(const char *what, int type)
 	}
 	printf("%u found.\n", count);
 
-	objs = calloc(count, sizeof(*objs));
+	objs = (struct sc_pkcs15_object **) calloc(count, sizeof(*objs));
 	if ((count = sc_pkcs15_get_objects(p15card, type, objs, count)) < 0) {
 		fprintf(stderr, "Error enumerating %s: %s\n",
 			what, sc_strerror(count));

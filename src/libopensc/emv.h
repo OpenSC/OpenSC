@@ -38,5 +38,4 @@ int sc_emv_unbind(struct sc_emv_card *emv_card);
 }
 #endif
 
-
 #endif

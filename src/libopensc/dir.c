@@ -92,7 +92,7 @@ static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen,
 		error(card->ctx, "AID is too long.\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
-	app = malloc(sizeof(struct sc_app_info));
+	app = (struct sc_app_info *) malloc(sizeof(struct sc_app_info));
 	if (app == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	
@@ -113,7 +113,7 @@ static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen,
 	} else
 		app->path.len = 0;
 	if (asn1_dirrecord[3].flags & SC_ASN1_PRESENT) {
-		app->ddo = malloc(ddo_len);
+		app->ddo = (u8 *) malloc(ddo_len);
 		if (app->ddo == NULL)
 			return 0;
 		memcpy(app->ddo, ddo, ddo_len);
@@ -261,7 +261,7 @@ static int update_transparent(struct sc_card *card, struct sc_file *file)
 			free(buf);
 			return r;
 		}
-		buf = realloc(buf, buf_size + rec_size);
+		buf = (u8 *) realloc(buf, buf_size + rec_size);
 		if (buf == NULL) {
 			free(rec);
 			return SC_ERROR_OUT_OF_MEMORY;
@@ -270,7 +270,7 @@ static int update_transparent(struct sc_card *card, struct sc_file *file)
 		buf_size += rec_size;
 	}
 	if (file->size > buf_size) {
-		buf = realloc(buf, file->size);
+		buf = (u8 *) realloc(buf, file->size);
 		memset(buf + buf_size, 0, file->size - buf_size);
 		buf_size = file->size;
 	}

@@ -83,7 +83,7 @@ static char *scconf_list_get_string(scconf_list * list)
 	}
 	len = 0;
 	alloc_len = 1024;
-	buffer = realloc(buffer, alloc_len);
+	buffer = (char *) realloc(buffer, alloc_len);
 	if (!buffer) {
 		return strdup("");
 	}
@@ -92,7 +92,7 @@ static char *scconf_list_get_string(scconf_list * list)
 		datalen = strlen(list->data);
 		if (len + datalen + 4 > alloc_len) {
 			alloc_len += datalen + 2;
-			buffer = realloc(buffer, alloc_len);
+			buffer = (char *) realloc(buffer, alloc_len);
 		}
 		if (len != 0) {
 			memcpy(buffer + len, ", ", 2);
@@ -131,7 +131,7 @@ static void scconf_write_items(scconf_writer * writer, scconf_block * block)
 			/* header */
 			name = scconf_list_get_string(subblock->name);
 			datalen = strlen(item->key) + strlen(name) + 6;
-			data = malloc(datalen);
+			data = (char *) malloc(datalen);
 			if (!data) {
 				continue;
 			}
@@ -153,7 +153,7 @@ static void scconf_write_items(scconf_writer * writer, scconf_block * block)
 		case SCCONF_ITEM_TYPE_VALUE:
 			name = scconf_list_get_string(item->value.list);
 			datalen = strlen(item->key) + strlen(name) + 6;
-			data = malloc(datalen);
+			data = (char *) malloc(datalen);
 			if (!data) {
 				continue;
 			}

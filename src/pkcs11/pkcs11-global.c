@@ -27,7 +27,7 @@ struct sc_pkcs11_pool session_pool;
 struct sc_pkcs11_slot virtual_slots[SC_PKCS11_MAX_VIRTUAL_SLOTS];
 struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
 
-CK_FUNCTION_LIST pkcs11_function_list;
+extern CK_FUNCTION_LIST pkcs11_function_list;
 
 CK_RV C_Initialize(CK_VOID_PTR pReserved)
 {

@@ -32,13 +32,13 @@
 #include <pthread.h>
 #endif
 
-#include <opensc/scconf.h>
-#include <opensc/errors.h>
-#include <opensc/types.h>
-
 #ifdef  __cplusplus
 extern "C" {
 #endif
+
+#include <opensc/scconf.h>
+#include <opensc/errors.h>
+#include <opensc/types.h>
 
 #ifndef __GNUC__
 #undef inline
@@ -687,8 +687,6 @@ struct sc_card_error {
 	int errorno;
 	const char *errorstr;
 };
-
-const char *sc_strerror(int sc_errno);
 
 extern const char *sc_version;
 

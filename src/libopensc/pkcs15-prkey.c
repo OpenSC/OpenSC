@@ -364,7 +364,7 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 		goto fail;
 	}
 
-	*out = malloc(sizeof(key));
+	*out = (struct sc_pkcs15_prkey *) malloc(sizeof(key));
 	if (*out == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto fail;

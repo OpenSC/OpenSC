@@ -10,8 +10,6 @@
 #include <opensc/pkcs15.h>
 #include "sc-test.h"
 
-struct sc_pkcs15_card *p15card;
-
 static void print_pin(const struct sc_pkcs15_object *obj)
 {
 	const char *pin_flags[] =
