@@ -6,9 +6,9 @@
 # specific configuration block.
 
 app default {
-	debug = 0
-	#debug_file = /tmp/opensc-debug.log
-	#error_file = /tmp/opensc-errors.log
+	debug = 0;
+	#debug_file = "/tmp/opensc-debug.log";
+	#error_file = "/tmp/opensc-errors.log";
 }
 
 # For applications that use SCAM (pam_opensc, sia_opensc)
