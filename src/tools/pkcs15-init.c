@@ -44,7 +44,6 @@
 #include <openssl/pkcs12.h>
 #include "opensc-pkcs15.h"
 #include "util.h"
-#include "profile.h"
 #include "pkcs15-init.h"
 
 const char *app_name = "pkcs15-init";
@@ -186,7 +185,7 @@ static struct sc_pkcs15init_callbacks callbacks = {
 int
 main(int argc, char **argv)
 {
-	struct sc_profile	profile;
+	struct sc_profile	*profile;
 	int			opt_reader = 0;
 	int			r = 0;
 
@@ -218,11 +217,11 @@ main(int argc, char **argv)
 	sc_pkcs15init_set_callbacks(&callbacks);
 
 	/* Bind the card-specific operations and load the profile */
-	if ((r = sc_pkcs15init_bind(&profile, card, opt_profile)) < 0)
+	if ((r = sc_pkcs15init_bind(card, opt_profile, &profile)) < 0)
 		return 1;
 
 	if (opt_action == ACTION_INIT) {
-		r = do_init_app(&profile);
+		r = do_init_app(profile);
 		goto done;
 	}
 
@@ -243,15 +242,15 @@ main(int argc, char **argv)
 	 * we're not messing things up */
 
 	if (opt_action == ACTION_STORE_PIN)
-		r = do_store_pin(&profile);
+		r = do_store_pin(profile);
 	else if (opt_action == ACTION_STORE_PRIVKEY)
-		r = do_store_private_key(&profile);
+		r = do_store_private_key(profile);
 	else if (opt_action == ACTION_STORE_PUBKEY)
-		r = do_store_public_key(&profile);
+		r = do_store_public_key(profile);
 	else if (opt_action == ACTION_STORE_CERT)
-		r = do_store_certificate(&profile);
+		r = do_store_certificate(profile);
 	else if (opt_action == ACTION_GENERATE_KEY)
-		r = do_generate_key(&profile, opt_newkey);
+		r = do_generate_key(profile, opt_newkey);
 	else
 		fatal("Action not yet implemented\n");
 
@@ -327,7 +326,7 @@ do_init_app(struct sc_profile *profile)
 	int	r = 0;
 
 	if (opt_erase)
-		r = profile->ops->erase_card(profile, card);
+		r = sc_pkcs15init_erase_card(card, profile);
 	if (r < 0)
 		return r;
 
@@ -356,7 +355,8 @@ do_store_pin(struct sc_profile *profile)
 	}
 
 	if (opt_pins[0] == NULL) {
-		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &info);
+		sc_pkcs15init_get_pin_info(profile,
+				SC_PKCS15INIT_USER_PIN, &info);
 		read_one_pin(profile, "New user PIN", &info, 0,
 				&opt_pins[0]);
 	}
@@ -365,7 +365,8 @@ do_store_pin(struct sc_profile *profile)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (opt_pins[1] == NULL) {
-		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &info);
+		sc_pkcs15init_get_pin_info(profile,
+				SC_PKCS15INIT_SO_PIN, &info);
 		read_one_pin(profile, "Unlock code for new user PIN",
 				&info, 1, &opt_pins[1]);
 	}
