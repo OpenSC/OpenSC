@@ -167,6 +167,8 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	rv = slot_get_slot(slotID, &slot);
 	if (rv == CKR_OK)
 		rv = card_detect(slot->reader);
+	if (rv == CKR_TOKEN_NOT_PRESENT)
+		return CKR_OK;
 
 	if (rv == CKR_OK)
 		memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
