@@ -147,7 +147,8 @@ sc_sign(int type, u_char *m, unsigned int m_len,
 			goto err;
 		goto err;
 	}
-	r = sc_pkcs15_compute_signature(priv->p15card, key->data,
+	DBG(printf("PIN code received successfully.\n"));
+	r = sc_pkcs15_compute_signature(priv->p15card, key,
 					SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_PAD_PKCS1,
 					m, m_len, sigret, RSA_size(rsa));
 	if (r < 0) {
@@ -155,6 +156,7 @@ sc_sign(int type, u_char *m, unsigned int m_len,
 		goto err;
 	}
 	*siglen = r;
+	DBG(printf("Received signature from card (%d bytes).\n", r));
 	return 1;
 err:
 	printf("Returning with error %s\n", sc_strerror(r));
