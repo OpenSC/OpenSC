@@ -21,6 +21,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -884,6 +885,172 @@ usage:
 	return -1;
 }
 
+static size_t hex2binary(u8 *out, size_t outlen, const char *in)
+{
+	size_t      inlen = strlen(in), len = outlen;
+	const char *p = in;
+	int	    s = 0;
+
+	out--;
+	while (inlen && len) {
+		char c = *p++;
+		inlen--;
+		if (!isxdigit(c))
+			continue;
+		if (c >= '0' && c <= '9')
+			c -= '0';
+		else if (c >= 'a' && c <= 'f')
+			c -= 'a' - 10;
+		else /* (c >= 'A' && c <= 'F') */
+			c -= 'A' - 10;
+		if (s)
+			*out <<= 4;
+		else {
+			len--;
+			*(++out) = 0;
+		}
+		s = !s;
+		*out |= (u8)c;
+	} 
+	if (s) {
+		printf("Error: the number of hex digits must be even.\n");
+		return 0;
+	}
+
+	return outlen - len;
+}
+
+int do_update_binary(int argc, char **argv)
+{
+	u8 buf[240];
+	int r, error = 1, in_len;
+	int offs;
+	struct sc_path path;
+	struct sc_file *file;
+	char *in_str;
+	
+	if (argc < 2 || argc > 3)
+		goto usage;
+	if (arg_to_path(argv[0], &path, 0) != 0)
+		goto usage;
+	offs = strtol(argv[1],NULL,10);
+
+	in_str = argv[2];
+	printf("in: %i; %s\n", offs, in_str);
+	if (*in_str=='\"')   {
+		in_len = strlen(in_str)-2 > sizeof(buf) ? sizeof(buf) : strlen(in_str)-2;
+		strncpy(buf, in_str+1, in_len);
+	} else {
+		in_len = hex2binary(buf, sizeof(buf), in_str);
+		if (!in_len) {
+			printf("unable to parse hex value\n");
+			return -1;
+		}
+	}
+	
+	r = sc_select_file(card, &path, &file);
+	if (r) {
+		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
+		return -1;
+	}
+
+	if (file->ef_structure != SC_FILE_EF_TRANSPARENT)   {
+		printf("EF structure should be SC_FILE_EF_TRANSPARENT\n");
+		goto err;
+	}
+	
+	r = sc_update_binary(card, offs, buf, in_len, 0);
+	if (r < 0) {
+		printf("Cannot update %04X; return %i\n", file->id, r);
+		goto err;
+	}
+
+	printf("Total of %d bytes written to %04X at %i offset.\n", 
+			r, file->id, offs);
+	error = 0;
+err:
+	sc_file_free(file);
+	r = sc_select_file(card, &current_path, NULL);
+	if (r) {
+		printf("unable to select parent file: %s\n", sc_strerror(r));
+		die(1);
+	}
+
+	return -error;
+usage:
+	printf("Usage: update <file id> offs <hex value> | <'\"' enclosed string>\n");
+	return -1;
+}
+
+int do_update_record(int argc, char **argv)
+{
+	u8 buf[240];
+	int r, i, error = 1;
+	int rec, offs;
+	struct sc_path path;
+	struct sc_file *file;
+	char *in_str;
+	
+	if (argc < 3 || argc > 4)
+		goto usage;
+	if (arg_to_path(argv[0], &path, 0) != 0)
+		goto usage;
+	rec  = strtol(argv[1],NULL,10);
+	offs = strtol(argv[2],NULL,10);
+
+	in_str = argv[3];
+	printf("in: %i; %i; %s\n", rec, offs, in_str);
+
+	r = sc_select_file(card, &path, &file);
+	if (r) {
+		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
+		return -1;
+	}
+
+	if (file->ef_structure != SC_FILE_EF_LINEAR_VARIABLE)   {
+		printf("EF structure should be SC_FILE_EF_LINEAR_VARIABLE\n");
+		goto err;
+	} else if (rec < 1 || rec > file->record_count)   {
+		printf("Invalid record number %i\n", rec);
+		goto err;
+	}
+	
+	r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+	if (r<0)   {
+		printf("Cannot read record %i; return %i\n", rec, r);
+		goto err;;
+	}
+
+	i = hex2binary(buf + offs, sizeof(buf) - offs, in_str);
+	if (!i) {
+		printf("unable to parse hex value\n");
+		goto err;
+	}
+
+	r = sc_update_record(card, rec, buf, r, SC_RECORD_BY_REC_NR);
+	if (r<0)   {
+		printf("Cannot update record %i; return %i\n", rec, r);
+		goto err;
+	}
+
+	printf("Total of %d bytes written to record %i at %i offset.\n", 
+			i, rec, offs);
+	error = 0;
+err:
+	sc_file_free(file);
+	r = sc_select_file(card, &current_path, NULL);
+	if (r) {
+		printf("unable to select parent file: %s\n", sc_strerror(r));
+		die(1);
+	}
+
+	return -error;
+usage:
+	printf("Usage: update_record <file id> rec_nr rec_offs <hex value>\n");
+	return -1;
+}
+
+
 int do_put(int argc, char **argv)
 {
 	u8 buf[256];
@@ -1260,6 +1427,8 @@ struct command		cmds[] = {
  { "random",	do_random,	"obtain N random bytes from card"	},
  { "quit",	do_quit,	"quit this program"			},
  { "exit",	do_quit,	"quit this program"			},
+ { "update_record", do_update_record, "update record"			},
+ { "update_binary", do_update_binary, "update binary"			},
  { 0, 0, 0 }
 };
 
