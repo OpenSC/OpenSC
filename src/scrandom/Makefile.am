@@ -11,9 +11,9 @@ SSL_LIB = @LIBCRYPTO@
 endif
 
 noinst_LTLIBRARIES = libscrandom.la
-libscrandom_la_SOURCES=scrandom.c scrandom.h
+libscrandom_la_SOURCES = scrandom.c scrandom.h
 
 noinst_PROGRAMS = test-random
 
-test_random_SOURCES = test-random.c 
+test_random_SOURCES = test-random.c
 test_random_LDADD = $(SSL_LIB) libscrandom.la

@@ -10,11 +10,9 @@ SUBDIRS = . rsaref
 
 INCLUDES = @CFLAGS_OPENSC@ -I../pkcs15init
 
-
 SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
-        mechanism.c openssl.c \
-	secretkey.c framework-pkcs15.c framework-pkcs15init.c \
-	debug.c
+	mechanism.c openssl.c secretkey.c framework-pkcs15.c \
+	framework-pkcs15init.c debug.c
 INC = sc-pkcs11.h
 
 lib_LTLIBRARIES = opensc-pkcs11.la libpkcs11.la
@@ -22,14 +20,12 @@ lib_LTLIBRARIES = opensc-pkcs11.la libpkcs11.la
 opensc_pkcs11_la_SOURCES = $(SRC) $(INC)
 opensc_pkcs11_la_LDFLAGS = -module -avoid-version
 opensc_pkcs11_la_LIBADD = @LIBDL@ @LIBOPENSC@ \
-			 ../pkcs15init/libpkcs15init.la \
-			 ../scrandom/libscrandom.la
+	../pkcs15init/libpkcs15init.la ../scrandom/libscrandom.la
 
-libpkcs11_la_SOURCES = libpkcs11.c 
+libpkcs11_la_SOURCES = libpkcs11.c
 libpkcs11_la_LDFLAGS = -version-info 0:6:0
 libpkcs11_la_LIBADD = @LIBDL@ @LIBOPENSC@ \
-			 ../pkcs15init/libpkcs15init.la \
-			 ../scrandom/libscrandom.la
+	../pkcs15init/libpkcs15init.la ../scrandom/libscrandom.la
 
 openscdir=@includedir@/opensc
 opensc_HEADERS = pkcs11.h

@@ -1,4 +1,4 @@
-## Makefile.am -- Process this file with automake to produce Makefile.in
+# Process this file with automake to create Makefile.in
 
 plugindir = $(PLUGINDIR)
 openscdir = @libdir@/opensc
@@ -20,12 +20,10 @@ endif
 opensc_signer_la_LDFLAGS = -module -avoid-version
 opensc_signer_la_LIBADD = @LIBOPENSC@ @LIBCRYPTO@ @LIBASSUAN@
 opensc_signer_la_CFLAGS = $(AM_CFLAGS) -Inpinclude -DXP_UNIX
-opensc_signer_la_SOURCES = opensc-crypto.c opensc-support.c \
-			   signer.c stubs.c dialog.c
-noinst_HEADERS		 = opensc-crypto.h opensc-support.h \
-			   signer.h npinclude/jri.h npinclude/jri_md.h \
-			   npinclude/jritypes.h npinclude/npapi.h \
-			   npinclude/npupp.h npinclude/npunix.c
+opensc_signer_la_SOURCES = \
+	opensc-crypto.c opensc-support.c signer.c stubs.c dialog.c
+noinst_HEADERS		 = \
+	opensc-crypto.h opensc-support.h signer.h 
 
 install-exec-local: install-openscLTLIBRARIES
 	-$(LN_S) -f $(openscdir)/opensc-signer.so $(DESTDIR)$(plugindir)/

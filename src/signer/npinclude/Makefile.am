@@ -1,4 +1,4 @@
-## Makefile.am -- Process this file with automake to produce Makefile.in
+# Process this file with automake to create Makefile.in
 
 MAINTAINERCLEANFILES = Makefile.in
 

@@ -2,22 +2,23 @@
 
 RM = rm -f
 
-SUBDIRS = rsaref
+SUBDIRS = . rsaref
 
-MAINTAINERCLEANFILES = Makefile.in 
-DISTCLEANFILES= asn1.h \
-	cardctl.h \
-	emv.h \
-	log.h \
-	opensc.h \
-	errors.h \
-	types.h \
-	pkcs11.h \
-	pkcs15.h \
-	pkcs15-init.h \
-	scconf.h \
-	scldap.h \
-	scrandom.h
+MAINTAINERCLEANFILES = Makefile.in
+DISTCLEANFILES = \
+asn1.h \
+cardctl.h \
+emv.h \
+log.h \
+opensc.h \
+errors.h \
+types.h \
+pkcs11.h \
+pkcs15.h \
+pkcs15-init.h \
+scconf.h \
+scldap.h \
+scrandom.h
 
 all-local:
 	@$(RM) *.h
@@ -34,4 +35,3 @@ all-local:
 	@$(LN_S) ${top_srcdir}/src/scconf/scconf.h scconf.h
 	@$(LN_S) ${top_srcdir}/src/scldap/scldap.h scldap.h
 	@$(LN_S) ${top_srcdir}/src/scrandom/scrandom.h scrandom.h
-

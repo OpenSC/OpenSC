@@ -3,4 +3,4 @@
 MAINTAINERCLEANFILES = Makefile.in
 
 EXTRA_DIST = opensc.conf.example scldap.conf.example
-pkgdata_DATA = opensc.conf.example scldap.conf.example
+pkgdata_DATA = $(EXTRA_DIST)

@@ -2,9 +2,9 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-SUBDIRS=regression
+SUBDIRS = . regression
 
-EXTRA_DIST = Makefile.mak 
+EXTRA_DIST = Makefile.mak
 
 INCLUDES = @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@

@@ -2,4 +2,4 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-EXTRA_DIST= openssh-3.6.1p2.diff openssh-3.6.1p2.README
+EXTRA_DIST = openssh-3.6.1p2.diff openssh-3.6.1p2.README

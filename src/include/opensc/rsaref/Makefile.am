@@ -2,12 +2,13 @@
 
 RM = rm -f
 
-MAINTAINERCLEANFILES = Makefile.in 
-DISTCLEANFILES= pkcs11.h \
-	pkcs11f.h \
-	pkcs11t.h \
-	unix.h \
-	win32.h
+MAINTAINERCLEANFILES = Makefile.in
+DISTCLEANFILES = \
+pkcs11.h \
+pkcs11f.h \
+pkcs11t.h \
+unix.h \
+win32.h
 
 all-local:
 	@$(RM) *.h
