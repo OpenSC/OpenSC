@@ -145,7 +145,7 @@ AC_CHECK_FUNCS([getpass gettimeofday memset mkdir strdup strerror setutent])
 dnl C Compiler features
 AC_C_INLINE
 if test "$GCC" = "yes"; then
-	CFLAGS="-Wall $CFLAGS"
+	CFLAGS="-Wall -fno-strict-aliasing $CFLAGS"
 fi
 
 AC_SUBST(LIBDL)
