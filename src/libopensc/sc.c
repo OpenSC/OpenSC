@@ -176,6 +176,9 @@ int sc_establish_context(struct sc_context **ctx_out)
 	ctx->card_drivers[i++] = sc_get_setec_driver();
 #endif
 #if 1
+	ctx->card_drivers[i++] = sc_get_miocos_driver();
+#endif
+#if 1
 	ctx->card_drivers[i++] = sc_get_flex_driver();
 #endif
 #if 1

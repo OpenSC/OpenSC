@@ -233,6 +233,8 @@ bind_operations(struct pkcs15_init_operations *ops, const char *driver)
 
 	if (!strcasecmp(driver, "GPK"))
 		bind_gpk_operations(ops);
+	else if (!strcasecmp(driver, "MioCOS"))
+		bind_miocos_operations(ops);
 	else
 		fatal("Don't know how to handle %s cards", driver);
 }

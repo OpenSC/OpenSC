@@ -708,20 +708,17 @@ static int create_and_update_file(struct sc_pkcs15_card *p15card,
 				  struct sc_file *inf, const u8 *buf,
 				  size_t bufsize)
 {
-	struct sc_file file;
-	int i, r;
-	
-	memset(&file, 0, sizeof(file));
-	file.type = SC_FILE_TYPE_WORKING_EF;
-	file.ef_structure = SC_FILE_EF_TRANSPARENT;
-	file.size = inf->size + bufsize;
-	file.path = inf->path;
-	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		file.acl[i] = inf->acl[i];
-	file.status = SC_FILE_STATUS_ACTIVATED;
+	struct sc_file *file;
+	int r;
+
+	sc_file_dup(&file, inf);
+	file->type = SC_FILE_TYPE_WORKING_EF;
+	file->ef_structure = SC_FILE_EF_TRANSPARENT;
+	file->size = inf->size + bufsize;
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-	r = create_file(card, &file);
+	r = create_file(card, file);
+	sc_file_free(file);
 	if (r) {
 		sc_unlock(card);
 		return r;
@@ -745,11 +742,11 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	int r, i;
 	u8 *tokinf_buf = NULL, *odf_buf = NULL;
 	size_t tokinf_size, odf_size;
-	
+
 	if (p15card->file_app == NULL || p15card->file_odf == NULL ||
 	    p15card->file_tokeninfo == NULL) {
-	    	error(card->ctx, "Not all of the necessary files have been supplied\n");
-	    	return SC_ERROR_INVALID_ARGUMENTS;
+		error(card->ctx, "Not all of the necessary files have been supplied\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (card->ctx->debug)
 		debug(card->ctx, "creating EF(DIR)\n");

@@ -248,6 +248,7 @@ struct sc_app_info {
 	size_t ddo_len;
 	
 	const char *desc;	/* App description, if known */
+	int rec_nr;		/* -1, if EF(DIR) is transparent */
 };
 
 struct sc_card_cache {
@@ -356,6 +357,7 @@ struct sc_card {
 
 	struct sc_app_info *app[SC_MAX_CARD_APPS];
 	int app_count;
+	struct sc_file *ef_dir;
 	
 	pthread_mutex_t mutex;
 	int lock_count;
@@ -562,18 +564,18 @@ inline int sc_card_valid(const struct sc_card *card);
  */
 int sc_detect_card_presence(struct sc_reader *reader, int slot_id);
 
-#if 0
 /**
- * Waits for card insertion to a reader
- * @param ctx OpenSC context
- * @param reader Reader number; -1 implies to listen on all readers
+ * Waits for an event on a reader
+ * @param reader Reader structure
+ * @param slot_id Slot ID
+ * @param event_mask The types of events to wait for
  * @param timeout Amount of millisecs to wait; -1 means forever
  * @retval 1 if a card was inserted
  * @retval 0 if operation timed out
  * @retval < 0 if an error occured
  */
-int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout);
-#endif
+int sc_wait_for_event(struct sc_reader *reader, int slot_id,
+		      unsigned int event_mask, int timeout);
 
 /**
  * Locks the card against modification from other threads.
@@ -694,6 +696,7 @@ extern const struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern const struct sc_card_driver *sc_get_iso7816_driver(void);
 extern const struct sc_card_driver *sc_get_emv_driver(void);
 extern const struct sc_card_driver *sc_get_setec_driver(void);
+extern const struct sc_card_driver *sc_get_miocos_driver(void);
 extern const struct sc_card_driver *sc_get_flex_driver(void);
 extern const struct sc_card_driver *sc_get_gpk_driver(void);
 extern const struct sc_card_driver *sc_get_tcos_driver(void);

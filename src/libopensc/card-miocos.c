@@ -1,7 +1,7 @@
 /*
- * card-setec.c: Support for PKI cards by Setec
+ * card-miocos.c: Support for MioCOS cards by Miotec
  *
- * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,36 +21,32 @@
 #include "sc-internal.h"
 #include "sc-log.h"
 
-static const char *setec_atrs[] = {
-	/* the current FINEID card has this ATR: */
-	"3B:9F:94:40:1E:00:67:11:43:46:49:53:45:10:52:66:FF:81:90:00",
-	/* this is from a Nokia branded SC */
-	"3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00",
-	/* RSA SecurID 3100 */
-	"3B:9F:94:40:1E:00:67:16:43:46:49:53:45:10:52:66:FF:81:90:00",
+static const char *miocos_atrs[] = {
+	/* MioCOS 1.1 Test Card */
+	"3B:9D:94:40:23:00:68:10:11:4D:69:6F:43:4F:53:00:90:00",
 	NULL
 };
 
-static struct sc_card_operations setec_ops;
-static const struct sc_card_driver setec_drv = {
-	"Setec smartcards",
-	"setec",
-	&setec_ops
+static struct sc_card_operations miocos_ops;
+static const struct sc_card_driver miocos_drv = {
+	"MioCOS 1.1 cards",
+	"miocos",
+	&miocos_ops
 };
 
-static int setec_finish(struct sc_card *card)
+static int miocos_finish(struct sc_card *card)
 {
 	return 0;
 }
 
-static int setec_match_card(struct sc_card *card)
+static int miocos_match_card(struct sc_card *card)
 {
 	int i, match = -1;
 
-	for (i = 0; setec_atrs[i] != NULL; i++) {
+	for (i = 0; miocos_atrs[i] != NULL; i++) {
 		u8 defatr[SC_MAX_ATR_SIZE];
 		size_t len = sizeof(defatr);
-		const char *atrp = setec_atrs[i];
+		const char *atrp = miocos_atrs[i];
 
 		if (sc_hex_to_bin(atrp, defatr, &len))
 			continue;
@@ -67,7 +63,7 @@ static int setec_match_card(struct sc_card *card)
 	return 1;
 }
 
-static int setec_init(struct sc_card *card)
+static int miocos_init(struct sc_card *card)
 {
 	card->drv_data = NULL;
 	card->cla = 0x00;
@@ -102,7 +98,7 @@ static u8 acl_to_byte(const struct sc_acl_entry *e)
 	return 0x00;
 }
 
-static int setec_create_file(struct sc_card *card, struct sc_file *file)
+static int miocos_create_file(struct sc_card *card, struct sc_file *file)
 {
 	if (file->prop_attr_len == 0) {
 		memcpy(file->prop_attr, "\x03\x00\x00", 3);
@@ -139,7 +135,7 @@ static int setec_create_file(struct sc_card *card, struct sc_file *file)
 	return iso_ops->create_file(card, file);
 }
 
-static int setec_set_security_env(struct sc_card *card,
+static int miocos_set_security_env(struct sc_card *card,
 				  const struct sc_security_env *env,
 				  int se_num)
 {
@@ -221,7 +217,7 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 		add_acl_entry(file, idx[i], buf[i]);
 }
 
-static int setec_select_file(struct sc_card *card,
+static int miocos_select_file(struct sc_card *card,
 			       const struct sc_path *in_path,
 			       struct sc_file **file)
 {
@@ -235,12 +231,12 @@ static int setec_select_file(struct sc_card *card,
 	return 0;
 }
 
-static int setec_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+static int miocos_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 {
 	struct sc_apdu apdu;
 	int r;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0);
 	apdu.resp = buf;
 	apdu.resplen = buflen;
 	apdu.le = buflen > 256 ? 256 : buflen;
@@ -255,22 +251,22 @@ static const struct sc_card_driver * sc_get_driver(void)
 {
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
-	setec_ops = *iso_drv->ops;
-	setec_ops.match_card = setec_match_card;
-	setec_ops.init = setec_init;
-        setec_ops.finish = setec_finish;
+	miocos_ops = *iso_drv->ops;
+	miocos_ops.match_card = miocos_match_card;
+	miocos_ops.init = miocos_init;
+        miocos_ops.finish = miocos_finish;
 	if (iso_ops == NULL)
                 iso_ops = iso_drv->ops;
-	setec_ops.create_file = setec_create_file;
-	setec_ops.set_security_env = setec_set_security_env;
-	setec_ops.select_file = setec_select_file;
-	setec_ops.list_files = setec_list_files;
+	miocos_ops.create_file = miocos_create_file;
+	miocos_ops.set_security_env = miocos_set_security_env;
+	miocos_ops.select_file = miocos_select_file;
+	miocos_ops.list_files = miocos_list_files;
 	
-        return &setec_drv;
+        return &miocos_drv;
 }
 
 #if 1
-const struct sc_card_driver * sc_get_setec_driver(void)
+const struct sc_card_driver * sc_get_miocos_driver(void)
 {
 	return sc_get_driver();
 }

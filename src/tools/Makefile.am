@@ -21,6 +21,6 @@ pkcs15_crypt_LDADD = @GETOPTSRC@
 cryptoflex_tool_SOURCES = cryptoflex-tool.c util.c
 cryptoflex_tool_LDADD = @GETOPTSRC@ @LIBCRYPTO@
 pkcs15_init_SOURCES = pkcs15-init.c profile.c util.c \
-		pkcs15-gpk.c
+		      pkcs15-gpk.c pkcs15-miocos.c
 pkcs15_init_LDADD = @GETOPTSRC@ @LIBCRYPTO@
 noinst_HEADERS = util.h profile.h

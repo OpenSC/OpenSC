@@ -60,7 +60,8 @@ static const struct sc_asn1_entry c_asn1_dir[] = {
 	{ NULL }
 };
 
-static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen)
+static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen,
+			    int rec_nr)
 {
 	struct sc_asn1_entry asn1_dirrecord[5], asn1_dir[2];
 	struct sc_app_info *app = NULL;
@@ -126,6 +127,7 @@ static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen)
 		app->desc = ae->desc;
 	else
 		app->desc = NULL;
+	app->rec_nr = rec_nr;
 	card->app[card->app_count] = app;
 	card->app_count++;
 	
@@ -134,27 +136,31 @@ static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen)
 
 int sc_enum_apps(struct sc_card *card)
 {
-	struct sc_file *file;
 	struct sc_path path;
 	int ef_structure;
 	size_t file_size;
 	int r;
-	
+
 	if (card->app_count < 0)
 		card->app_count = 0;
 	sc_format_path("3F002F00", &path);
-	r = sc_select_file(card, &path, &file);
+	if (card->ef_dir != NULL) {
+		sc_file_free(card->ef_dir);
+		card->ef_dir = NULL;
+	}
+	r = sc_select_file(card, &path, &card->ef_dir);
 	if (r)
 		return r;
-	if (file->type != SC_FILE_TYPE_WORKING_EF) {
+	if (card->ef_dir->type != SC_FILE_TYPE_WORKING_EF) {
 		error(card->ctx, "EF(DIR) is not a working EF.\n");
-		sc_file_free(file);
+		sc_file_free(card->ef_dir);
+		card->ef_dir = NULL;
 		return SC_ERROR_INVALID_CARD;
 	}
-	ef_structure = file->ef_structure;
-	file_size = file->size;
-	sc_file_free(file);
-	file = NULL;
+	ef_structure = card->ef_dir->ef_structure;
+	file_size = card->ef_dir->size;
+	if (file_size == 0)
+		return 0;
 	if (ef_structure == SC_FILE_EF_TRANSPARENT) {
 		u8 buf[1024], *p = buf;
 		size_t bufsize;
@@ -169,7 +175,7 @@ int sc_enum_apps(struct sc_card *card)
 				error(card->ctx, "Too many applications on card");
 				break;
 			}
-			r = parse_dir_record(card, &p, &bufsize);
+			r = parse_dir_record(card, &p, &bufsize, -1);
 			if (r)
 				break;
 		}
@@ -190,7 +196,7 @@ int sc_enum_apps(struct sc_card *card)
 			}
 			rec_size = r;
 			p = buf;
-			parse_dir_record(card, &p, &rec_size);
+			parse_dir_record(card, &p, &rec_size, rec_nr);
 		}
 	}
 	return card->app_count;
@@ -200,7 +206,7 @@ const struct sc_app_info * sc_find_app_by_aid(struct sc_card *card,
 					      const u8 *aid, size_t aid_len)
 {
 	int i;
-	
+
 	assert(card->app_count > 0);
 	for (i = 0; i < card->app_count; i++) {
 		if (card->app[i]->aid_len == aid_len &&
@@ -240,24 +246,81 @@ static int encode_dir_record(struct sc_context *ctx, const struct sc_app_info *a
 	return 0;
 }
 
-int sc_update_dir(struct sc_card *card)
+static int update_transparent(struct sc_card *card, struct sc_file *file)
+{
+	u8 *rec, *buf = NULL;
+	size_t rec_size, buf_size = 0;
+	int i, r;
+
+	for (i = 0; i < card->app_count; i++) {
+		r = encode_dir_record(card->ctx, card->app[i], &rec, &rec_size);
+		if (r) {
+			free(buf);
+			return r;
+		}
+		buf = realloc(buf, buf_size + rec_size);
+		if (buf == NULL) {
+			free(rec);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+		memcpy(buf + buf_size, rec, rec_size);
+		buf_size += rec_size;
+	}
+	if (file->size > buf_size) {
+		buf = realloc(buf, file->size);
+		memset(buf + buf_size, 0, file->size - buf_size);
+		buf_size = file->size;
+	}
+	r = sc_update_binary(card, 0, buf, buf_size, 0);
+	SC_TEST_RET(card->ctx, r, "Unable to update EF(DIR)");
+	
+	return 0;
+}
+
+static int update_single_record(struct sc_card *card, struct sc_file *file,
+				struct sc_app_info *app)
+{
+	u8 *rec;
+	size_t rec_size;
+	int r;
+	
+	r = encode_dir_record(card->ctx, app, &rec, &rec_size);
+	if (r)
+		return r;
+	r = sc_update_record(card, app->rec_nr, rec, rec_size, 0);
+	free(rec);
+	SC_TEST_RET(card->ctx, r, "Unable to update EF(DIR) record");
+	return 0;
+}
+
+static int update_records(struct sc_card *card, struct sc_file *file)
+{
+	int i, r;
+
+	for (i = 0; i < card->app_count; i++) {
+		r = update_single_record(card, file, card->app[i]);
+		if (r)
+			return r;
+	}
+	return 0;
+}
+
+int sc_update_dir(struct sc_card *card, struct sc_app_info *app)
 {
 	struct sc_path path;
 	struct sc_file *file;
-	u8 *rec;
-	size_t rec_size;
-	int i, r;
+	int r;
 	
 	sc_format_path("3F002F00", &path);
 
 	r = sc_select_file(card, &path, &file);
 	SC_TEST_RET(card->ctx, r, "unable to select EF(DIR)");
-	for (i = 0; i < card->app_count; i++) {
-		r = encode_dir_record(card->ctx, card->app[i], &rec, &rec_size);
-		if (r)
-			return r;
-		
-		free(rec);
-	}
+	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)
+		r = update_transparent(card, file);
+	else if (app == NULL)
+		r = update_records(card, file);
+	else
+		r = update_single_record(card, file, app);
+	sc_file_free(file);
 	return r;
 }

@@ -92,7 +92,7 @@ static int pkcs1_add_padding(const u8 *in, size_t inlen, u8 *out, size_t outlen)
 
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_prkey_info *prkey,
-				unsigned int hash, const u8 *in, size_t inlen,
+				unsigned int flags, const u8 *in, size_t inlen,
 				u8 *out, size_t outlen)
 {
 	int r;
@@ -115,9 +115,9 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 	senv.algorithm = SC_ALGORITHM_RSA;
 	senv.algorithm_flags = SC_ALGORITHM_RSA_PKCS1_PAD;
-	if (hash & SC_PKCS15_HASH_SHA1)
+	if (flags & SC_PKCS15_HASH_SHA1)
 		senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
-	if (hash & SC_PKCS15_PAD_PKCS1_V1_5) {
+	if (flags & SC_PKCS15_PAD_PKCS1_V1_5) {
 		size_t modlen = prkey->modulus_length >> 3;
 		
 		if (inlen > (modlen - 11)) {

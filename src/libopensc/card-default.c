@@ -56,6 +56,7 @@ static int autodetect_class(struct sc_card *card)
 		apdu.ins = 0xC0;
 		apdu.p1 = apdu.p2 = 0;
 		apdu.datalen = 0;
+		apdu.lc = apdu.le = 0;
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x6E)

@@ -27,5 +27,6 @@ extern int	do_verify_authinfo(struct sc_profile *, struct sc_file *, int);
 
 /* Card specific stuff */
 extern void	bind_gpk_operations(struct pkcs15_init_operations *);
+extern void	bind_miocos_operations(struct pkcs15_init_operations *);
 
 #endif /* PKCS15_INIT_H */

@@ -289,6 +289,15 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 			debug(ctx, "  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
+	if (tag == NULL) {
+		tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
+		if (tag != NULL && taglen >= 2) {
+			int bytes = (tag[0] << 8) + tag[1];
+			if (ctx->debug >= 3)
+				debug(ctx, "  bytes in file: %d\n", bytes);
+			file->size = bytes;
+		}
+	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x82, &taglen);
 	if (tag != NULL) {
 		if (taglen > 0) {
@@ -416,7 +425,6 @@ static int iso7816_select_file(struct sc_card *card,
 		apdu.resplen = 0;
 		apdu.le = 0;
 		apdu.cse = SC_APDU_CASE_3_SHORT;
-		apdu.p2 = 0x0c;
 	}
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -560,22 +568,6 @@ static int iso7816_delete_file(struct sc_card *card, const struct sc_path *path)
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
-}
-
-static int iso7816_list_files(struct sc_card *card, u8 *buf, size_t buflen)
-{
-	struct sc_apdu apdu;
-	int r;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
-	apdu.resp = buf;
-	apdu.resplen = buflen;
-	apdu.le = buflen > 256 ? 256 : buflen;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.resplen == 0)
-		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	return apdu.resplen;
 }
 
 static int iso7816_verify(struct sc_card *card, unsigned int type, int ref,
@@ -853,7 +845,6 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.get_challenge = iso7816_get_challenge;
 		iso_ops.create_file   = iso7816_create_file;
 		iso_ops.delete_file   = iso7816_delete_file;
-		iso_ops.list_files    = iso7816_list_files;
 		iso_ops.verify	      = iso7816_verify;
 		iso_ops.set_security_env	= iso7816_set_security_env;
 		iso_ops.restore_security_env	= iso7816_restore_security_env;

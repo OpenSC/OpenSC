@@ -25,7 +25,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <opensc.h>
-#ifdef HAVE_READLINE__READLINE_H
+#ifdef HAVE_READLINE_READLINE_H
 #include <readline/readline.h>
 #endif
 #include "util.h"
@@ -316,6 +316,11 @@ int do_cat(const char *arg, const char *dummy2)
 			check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 			return -1;
 		}
+	}
+	if (file->type != SC_FILE_TYPE_WORKING_EF) {
+		printf("only working EFs may be read\n");
+		sc_file_free(file);
+		return -1;
 	}
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)
 		read_and_print_binary_file(file);
@@ -623,6 +628,11 @@ int do_get(const char *arg, const char *arg2)
 		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 		return -1;
 	}
+	if (file->type != SC_FILE_TYPE_WORKING_EF) {
+		printf("only working EFs may be read\n");
+		sc_file_free(file);
+		return -1;
+	}
 	count = file->size;
 	while (count) {
 		int c = count > sizeof(buf) ? sizeof(buf) : count;
@@ -803,7 +813,7 @@ static int parse_line(char *in, char **argv)
 	return argc;
 }
 
-#if !defined(HAVE_READLINE__READLINE_H)
+#if !defined(HAVE_READLINE_READLINE_H)
 char * readline(const char *prompt)
 {
 	static char buf[128];
