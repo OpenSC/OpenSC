@@ -230,7 +230,7 @@ int enum_dir(struct sc_path path, int depth)
 	print_file(card, file, &path, depth);
 	file_type = file->type;
 	sc_file_free(file);
-	if (file->type == SC_FILE_TYPE_DF) {
+	if (file_type == SC_FILE_TYPE_DF) {
 		int i;
 
 		r = sc_list_files(card, files, sizeof(files));
