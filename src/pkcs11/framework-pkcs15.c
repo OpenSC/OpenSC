@@ -289,13 +289,20 @@ static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
 		struct sc_pkcs11_slot **out)
 {
         struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
+	struct sc_pkcs11_slot *slot;
 	int rv;
 
-	rv = slot_allocate(out, p11card);
+	rv = slot_allocate(&slot, p11card);
 	if (rv != CKR_OK)
 		return rv;
 
-	pkcs15_init_slot(card, *out, auth);
+	/* There's a token in this slot */
+	slot->slot_info.flags |= CKF_TOKEN_PRESENT;
+
+	/* Fill in the slot/token info from pkcs15 data */
+	pkcs15_init_slot(card, slot, auth);
+
+	*out = slot;
 	return CKR_OK;
 }
 
@@ -396,8 +403,11 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 
 	/* Create read/write slots */
 	while (slot_allocate(&slot, p11card) == CKR_OK) {
-		pkcs15_init_token_info(card, &slot->token_info);
-		slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
+		if (!sc_pkcs11_conf.hide_empty_tokens) {
+			slot->slot_info.flags |= CKF_TOKEN_PRESENT;
+			pkcs15_init_token_info(card, &slot->token_info);
+			slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
+		}
 	}
 
 	debug(context, "All tokens created\n");

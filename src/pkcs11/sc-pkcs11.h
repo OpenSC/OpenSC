@@ -51,6 +51,7 @@ extern "C" {
 #endif
 
 #define SC_PKCS11_MAX_VIRTUAL_SLOTS	8
+#define SC_PKCS11_DEF_SLOTS_PER_CARD	4
 #define SC_PKCS11_MAX_READERS           SC_MAX_READERS
 
 struct sc_pkcs11_session;
@@ -80,7 +81,7 @@ struct sc_pkcs11_pool {
 
 struct sc_pkcs11_config {
 	unsigned int num_slots;
-	unsigned char hide_empty_slots;
+	unsigned char hide_empty_tokens;
 	unsigned char lock_login;
 	unsigned char cache_pins;
 };

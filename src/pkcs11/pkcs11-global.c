@@ -112,16 +112,9 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	numMatches = 0;
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++) {
 		slot = &virtual_slots[i];
-		if (!slot->card)
-			continue;
-		if (tokenPresent && !(slot->slot_info.flags & CKF_TOKEN_PRESENT))
-			continue;
 
-		/* Hide all empty slots */
-		if (sc_pkcs11_conf.hide_empty_slots && !slot->fw_data)
-			continue;
-
-		found[numMatches++] = i;
+		if (!tokenPresent || (slot->slot_info.flags & CKF_TOKEN_PRESENT))
+			found[numMatches++] = i;
 	}
 
 	if (pSlotList == NULL_PTR) {
@@ -152,7 +145,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	if (rv != CKR_OK)
 		return rv;
 
-	if (!(slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
+	if (!slot->card) {
 		int i;
 		for (i=0; i<context->reader_count; i++)
 			card_detect(i);

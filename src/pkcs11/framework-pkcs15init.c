@@ -60,6 +60,11 @@ static CK_RV pkcs15init_create_tokens(struct sc_pkcs11_card *p11card)
 		CK_TOKEN_INFO_PTR pToken = &slot->token_info;
 		const char	*string;
 
+		if (sc_pkcs11_conf.hide_empty_tokens)
+			continue;
+
+		slot->slot_info.flags |= CKF_TOKEN_PRESENT;
+
 		strcpy_bp(pToken->model, "PKCS #15 SCard", 16);
 		sc_pkcs15init_get_manufacturer(profile, &string);
 		if (!string)

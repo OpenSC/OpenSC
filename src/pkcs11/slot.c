@@ -31,7 +31,7 @@ static struct sc_pkcs11_framework_ops *frameworks[] = {
 	NULL
 };
 
-void clear_slot_info(CK_SLOT_INFO_PTR pInfo)
+static void init_slot_info(CK_SLOT_INFO_PTR pInfo)
 {
 	strcpy_bp(pInfo->slotDescription, "Virtual slot", 64);
 	strcpy_bp(pInfo->manufacturerID, "OpenSC project (www.opensc.org)", 32);
@@ -80,7 +80,7 @@ CK_RV card_detect(int reader)
 		card = &card_table[reader];
 
 		if (sc_pkcs11_conf.num_slots == 0)
-			card->max_slots = SC_PKCS11_MAX_VIRTUAL_SLOTS;
+			card->max_slots = SC_PKCS11_DEF_SLOTS_PER_CARD;
 		else
 			card->max_slots = sc_pkcs11_conf.num_slots;
 		card->num_slots = 0;
@@ -140,7 +140,7 @@ CK_RV slot_initialize(int id, struct sc_pkcs11_slot *slot)
         memset(slot, 0, sizeof(slot));
 	slot->id = id;
 	slot->login_user = -1;
-        clear_slot_info(&slot->slot_info);
+        init_slot_info(&slot->slot_info);
 	pool_initialize(&slot->object_pool, POOL_TYPE_OBJECT);
 
         return CKR_OK;
@@ -154,10 +154,9 @@ CK_RV slot_allocate(struct sc_pkcs11_slot **slot, struct sc_pkcs11_card *card)
 		return CKR_FUNCTION_FAILED;
 
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++) {
-		if (!(virtual_slots[i].slot_info.flags & CKF_TOKEN_PRESENT)) {
+		if (!virtual_slots[i].card) {
 			debug(context, "Allocated slot %d\n", i);
 
-                        virtual_slots[i].slot_info.flags |= CKF_TOKEN_PRESENT;
                         virtual_slots[i].card = card;
 			*slot = &virtual_slots[i];
 			card->num_slots++;
@@ -214,16 +213,13 @@ CK_RV slot_token_removed(int id)
 	}
 
 	/* Release framework stuff */
-	if (slot->card != NULL && slot->fw_data != NULL) {
+	if (slot->card != NULL && slot->fw_data != NULL)
 		slot->card->framework->release_token(slot->card, slot->fw_data);
 
-		slot->card = NULL;
-		slot->fw_data = NULL;
-	}
-
         /* Zap everything else */
+	memset(slot, 0, sizeof(*slot));
+        init_slot_info(&slot->slot_info);
 	slot->login_user = -1;
-	clear_slot_info(&slot->slot_info);
 
         return CKR_OK;
 
