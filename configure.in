@@ -859,10 +859,13 @@ AC_SUBST(OPENCT_LIBS)
 found_openct=no
 AC_ARG_WITH(openct,
 	[  --with-openct=PATH    use OpenCT in PATH],
-	[openct_path=$withval
-	 with_openct=yes])
+	[with_openct=$withval])
 
-if test "$openct_path" != "no"; then
+if test "x$with_openct" != "xno"; then
+	if test "x$with_openct" != "xyes"; then
+		openct_path=$with_openct
+		with_openct=yes
+	fi
 	saved_LIBS="$LIBS"
 	saved_LDFLAGS="$LDFLAGS"
 	saved_CFLAGS="$CFLAGS"
@@ -891,8 +894,7 @@ if test "$openct_path" != "no"; then
 		OPENCT_MSG=yes
 		LIBOPENCT="-lopenct"
 	],[
-		if test "x$with_openct" = "xyes"
-		then
+		if test "x$with_openct" != "xno"; then
 			AC_MSG_ERROR([OpenCT not found in $openct_path!])
 		fi
 	   	OPENCT_LDFLAGS=
@@ -1109,6 +1111,9 @@ AC_ARG_ENABLE(debug,
 if (test x$enable_debug = xyes); then
 	AC_DEFINE(DEBUG, 1, [Enable debug messages.])
 fi
+
+dnl Check for SGML processor
+AC_CHECK_PROG(XSLTPROC, xsltproc, xsltproc)
 
 CPPFLAGS="-I\${top_builddir}/src/include $CPPFLAGS"
 
