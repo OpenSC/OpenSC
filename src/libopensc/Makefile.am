@@ -1,6 +1,6 @@
 # Process this file with automake to create Makefile.in
 
-includedir = ${prefix}/include/opensc
+includedir = @includedir@/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -54,5 +54,5 @@ include_HEADERS = \
 
 noinst_HEADERS = ctbcs.h internal.h
 
-pkgconfigdir = $(libdir)/pkgconfig
+pkgconfigdir = @libdir@/pkgconfig
 pkgconfig_DATA = libopensc.pc

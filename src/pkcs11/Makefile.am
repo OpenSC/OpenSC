@@ -2,6 +2,7 @@
 
 bundledir = $(BUNDLEDIR)
 libdir = @libdir@/pkcs11
+includedir = @includedir@/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -28,8 +29,7 @@ libpkcs11_la_LDFLAGS = -version-info 0:6:0
 libpkcs11_la_LIBADD = @LIBDL@ @LIBOPENSC@ \
 	../pkcs15init/libpkcs15init.la ../scrandom/libscrandom.la
 
-openscdir=@includedir@/opensc
-opensc_HEADERS = pkcs11.h
+include_HEADERS = pkcs11.h
 
 jar-dir:
 	if test ! -d jar-dir ; then mkdir jar-dir ; fi
