@@ -70,8 +70,7 @@ const char *sc_strerror(int error)
 		"Premature end of ASN.1 stream",
 		"Out of memory",
 		"Object not valid",
-		"Too many objects",
-		"Object not valid",
+		"Object not found",
 		"Requested object not found",
 		"Not supported",
 	};
