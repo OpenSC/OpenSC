@@ -6,6 +6,7 @@
 Nitty gritty details:
 * Pin pad support
 * Merge DODF patches
+* Merge pkcs11 proxy from Zetes
 * pkcs11: support decrypt for those cards that support it
 * pkcs11: when asked for CKA_SIGN etc evaluate the pkcs15
   keyUsage attribute
