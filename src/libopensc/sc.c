@@ -40,30 +40,45 @@ const char *sc_get_version(void)
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 {
 	int err = 0;
-	size_t left, c = 0;
+	size_t left, count = 0;
 
 	assert(in != NULL && out != NULL && outlen != NULL);
         left = *outlen;
 
-	while (*in != (char) 0) {
-		int byte;
+	while (*in != '\0') {
+		int byte = 0, nybbles = 2;
+		char c;
 
-		if (sscanf(in, "%02X", &byte) != 1) {
-                        err = SC_ERROR_INVALID_ARGUMENTS;
-			break;
+		while (nybbles-- && *in && *in != ':') {
+			byte <<= 4;
+			c = *in++;
+			if ('0' <= c && c <= '9')
+				c -= '0';
+			else
+			if ('a' <= c && c <= 'f')
+				c = c - 'a' + 10;
+			else
+			if ('A' <= c && c <= 'F')
+				c = c - 'A' + 10;
+			else {
+				err = SC_ERROR_INVALID_ARGUMENTS;
+				goto out;
+			}
+			byte |= c;
 		}
-		in += 2;
 		if (*in == ':')
 			in++;
 		if (left <= 0) {
                         err = SC_ERROR_BUFFER_TOO_SMALL;
 			break;
 		}
-		*out++ = (u8) byte;
+		out[count++] = (u8) byte;
 		left--;
 		c++;
 	}
-	*outlen = c;
+
+out:
+	*outlen = count;
 	return err;
 }
 
@@ -132,26 +147,17 @@ int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout)
 
 void sc_format_path(const char *str, struct sc_path *path)
 {
-	int len = 0;
 	int type = SC_PATH_TYPE_PATH;
-	u8 *p = path->value;
 
+	memset(path, 0, sizeof(*path));
 	if (*str == 'i' || *str == 'I') {
 		type = SC_PATH_TYPE_FILE_ID;
 		str++;
 	}
-	while (*str) {
-		int byte;
-		
-		if (sscanf(str, "%02X", &byte) != 1)
-			break;
-		*p++ = byte;
-		len++;
-		str += 2;
+	path->len = sizeof(path->value);
+	if (sc_hex_to_bin(str, path->value, &path->len) >= 0) {
+		path->type = type;
 	}
-	path->len = len;
-	path->type = type;
-	path->index = 0;
 	return;
 }
 

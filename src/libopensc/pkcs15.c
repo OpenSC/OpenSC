@@ -132,7 +132,7 @@ int sc_pkcs15_encode_tokeninfo(struct sc_context *ctx,
 			       struct sc_pkcs15_card *card,
 			       u8 **buf, size_t *buflen)
 {
-	int i, r;
+	int r;
 	u8 serial[128];
 	size_t serial_len = 0;
 	size_t mnfid_len;
@@ -149,13 +149,9 @@ int sc_pkcs15_encode_tokeninfo(struct sc_context *ctx,
 	if (card->serial_number != NULL) {
 		if (strlen(card->serial_number)/2 > sizeof(serial))
 			return SC_ERROR_BUFFER_TOO_SMALL;
-		for (i = 0; card->serial_number[i] != 0; i += 2) {
-			int c;
-			if (sscanf(&card->serial_number[i], "%02X", &c) != 1)
-				return SC_ERROR_INVALID_ARGUMENTS;
-			serial[i/2] = c & 0xFF;
-			serial_len++;
-		}
+		serial_len = sizeof(serial);
+		if (sc_hex_to_bin(card->serial_number, serial, &serial_len) < 0)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		sc_format_asn1_entry(asn1_toki + 1, serial, &serial_len, 1);
 	}
 	if (card->manufacturer_id != NULL) {
@@ -1013,20 +1009,10 @@ int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
 
 void sc_pkcs15_format_id(const char *str, struct sc_pkcs15_id *id)
 {
-	int len = 0;
-	u8 *p = id->value;
+	size_t len = sizeof(id->value);
 
-	while (*str) {
-		int byte;
-		
-		if (sscanf(str, "%02X", &byte) != 1)
-			break;
-		*p++ = byte;
-		len++;
-		str += 2;
-	}
-	id->len = len;
-	return;
+	if (sc_hex_to_bin(str, id->value, &len) >= 0)
+		id->len = len;
 }
 
 void sc_pkcs15_print_id(const struct sc_pkcs15_id *id)
