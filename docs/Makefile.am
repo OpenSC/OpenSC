@@ -35,8 +35,8 @@ EXTRA_DIST	= $(MANSRC) pkcs15-profile.5.in pkcs-15v1_1.asn \
 STYLESHEET=/usr/share/sgml/docbook/stylesheet/xsl/nwalsh/xhtml/docbook.xsl
 
 %.html: %.xml
-	if test "$(XSLTPROC)"; then \
-		$(XSLTPROC) -o $@ $(STYLESHEET) $< ; \
-	else \
-		echo "xsltproc not installed; html docs not built" >&2; \
-	fi
+if HAVE_DOCBOOK
+	$(XSLTPROC) -o $@ $(STYLESHEET) $<
+else
+	@echo "Docbook support disabled, not building $@" >&2
+endif
