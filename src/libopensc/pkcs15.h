@@ -188,6 +188,8 @@ struct sc_pkcs15_cert {
 	size_t issuer_len;
 	u8 *subject;
 	size_t subject_len;
+	u8 *crl;
+	size_t crl_len;
 
 	struct sc_pkcs15_pubkey key;
 	u8 *data;	/* DER encoded raw cert */

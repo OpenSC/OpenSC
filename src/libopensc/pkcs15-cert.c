@@ -44,6 +44,18 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 		{ "subjectPublicKey",	SC_ASN1_BIT_STRING_NI, ASN1_BIT_STRING, SC_ASN1_ALLOC, &pk.value, &pk.len },
 		{ NULL }
 	};
+	struct sc_asn1_entry asn1_x509v3[] = {
+		{ "certificatePolicies",	SC_ASN1_OCTET_STRING, SC_ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
+		{ "subjectKeyIdentifier",	SC_ASN1_OCTET_STRING, SC_ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
+		{ "crlDistributionPoints",	SC_ASN1_OCTET_STRING, SC_ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, &cert->crl, &cert->crl_len },
+		{ "authorityKeyIdentifier",	SC_ASN1_OCTET_STRING, SC_ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
+		{ "keyUsage",			SC_ASN1_BOOLEAN, SC_ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
+		{ NULL }
+	};
+	struct sc_asn1_entry asn1_extensions[] = {
+		{ "x509v3",		SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, asn1_x509v3 },
+		{ NULL }
+	};
 	struct sc_asn1_entry asn1_tbscert[] = {
 		{ "version",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, asn1_version },
 		{ "serialNumber",	SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, &cert->serial, &cert->serial_len },
@@ -52,6 +64,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 		{ "validity",		SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
 		{ "subject",		SC_ASN1_OCTET_STRING, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &cert->subject, &cert->subject_len },
 		{ "subjectPublicKeyInfo",SC_ASN1_STRUCT,   ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_pkinfo },
+		{ "extensions",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 3 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, asn1_extensions },
 		{ NULL }
 	};
 	struct sc_asn1_entry asn1_cert[] = {
