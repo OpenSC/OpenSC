@@ -73,7 +73,8 @@ struct gpk_private_data {
 	 * should really query for this during gpk_init */
 	unsigned int	offset_shift;
 	unsigned int	offset_mask;
-	unsigned int	locked : 1;
+	unsigned int	locked : 1,
+			sample_card : 1;
 
 	/* access control bits of file most recently selected */
 	unsigned short int ac[3];
@@ -221,6 +222,10 @@ gpk_init(struct sc_card *card)
 		}
 		if (info[12] & 0x08) {
 			priv->locked = 1;
+		}
+		/* Sample cards use a transport key of "TEST KEYTEST KEY" */
+		if (!memcmp(info+5, "\x00\xff\x00", 3)) {
+			priv->sample_card = 1;
 		}
 	}
 
@@ -1726,6 +1731,22 @@ gpk_pkfile_load(struct sc_card *card, struct sc_cardctl_gpk_pkload *args)
 }
 
 /*
+ * This function lets pkcs15init query for the transport key
+ */
+static int
+gpk_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
+{
+	if (data->method == SC_AC_PRO && data->key_ref == 1) {
+		if (data->len < 16)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		memcpy(data->key_data, "TEST KEYTEST KEY", 16);
+		data->len = 16;
+		return 0;
+	}
+	return SC_ERROR_NO_DEFAULT_KEY;
+}
+
+/*
  * Get the maximum size of a session key the card is
  * willing to decrypt
  */
@@ -1788,6 +1809,9 @@ gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	switch (cmd) {
 	case SC_CARDCTL_ERASE_CARD:
 		return gpk_erase_card(card);
+	case SC_CARDCTL_GET_DEFAULT_KEY:
+		return gpk_get_default_key(card,
+				(struct sc_cardctl_default_key *) ptr);
 	case SC_CARDCTL_GPK_VARIANT:
 		*(int *) ptr = DRVDATA(card)->variant;
 		return 0;

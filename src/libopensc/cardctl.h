@@ -27,6 +27,7 @@ enum {
 	 */
 	SC_CARDCTL_GENERIC_BASE = 0x00000000,
 	SC_CARDCTL_ERASE_CARD,
+	SC_CARDCTL_GET_DEFAULT_KEY,
 
 	/*
 	 * GPK specific calls
@@ -63,6 +64,18 @@ enum {
 	SC_CARDCTL_ETOKEN_PUT_DATA_OCI,
 	SC_CARDCTL_ETOKEN_PUT_DATA_SECI,
 	SC_CARDCTL_ETOKEN_GENERATE_KEY
+};
+
+/*
+ * Generic cardctl - check if the required key is a default
+ * key (such as the GPK "TEST KEYTEST KEY" key, or the Cryptoflex AAK)
+ */
+struct sc_cardctl_default_key {
+	int		method;		/* SC_AC_XXX */
+	int		key_ref;	/* key reference */
+
+	size_t		len;		/* in: max size, out: actual size */
+	u8 *		key_data;	/* out: key data */
 };
 
 /*
