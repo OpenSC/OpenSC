@@ -138,15 +138,21 @@ pkcs15_add_cert_object(struct sc_pkcs11_slot *slot,
 		       struct sc_pkcs15_object *cert,
 		       CK_OBJECT_HANDLE_PTR pHandle)
 {
+	struct sc_pkcs15_cert_info *p15_info;
+	struct sc_pkcs15_cert *p15_cert;
 	struct pkcs15_cert_object *object;
         struct pkcs15_cert_key_object *obj2;
+
+	p15_info = (struct sc_pkcs15_cert_info *) cert->data;
+	if (sc_pkcs15_read_certificate(card, p15_info, &p15_cert) < 0)
+		return NULL;
 
         /* Certificate object */
         object = (struct pkcs15_cert_object*) calloc(1, sizeof(struct pkcs15_cert_object));
 	object->object.ops = &pkcs15_cert_ops;
 	object->certificate_object = cert;
-        object->certificate_info = (struct sc_pkcs15_cert_info*) cert->data;
-	sc_pkcs15_read_certificate(card, object->certificate_info, &object->certificate);
+	object->certificate_info = p15_info;
+	object->certificate = p15_cert;
 	pool_insert(&slot->object_pool, object, pHandle);
 
         /* Corresponding public key */
@@ -154,7 +160,7 @@ pkcs15_add_cert_object(struct sc_pkcs11_slot *slot,
 	obj2->object.ops = &pkcs15_cert_key_ops;
 	obj2->key = &object->certificate->key;
 	obj2->certificate_object = cert;
-        obj2->certificate_info = (struct sc_pkcs15_cert_info*) cert->data;
+	obj2->certificate_info = p15_info;
 	pool_insert(&slot->object_pool, obj2, NULL);
 
 	/* Mark as seen */
