@@ -103,6 +103,8 @@ struct sc_pkcs15_cert {
 	int version;
 	u8 *serial;
 	size_t serial_len;
+	u8 *issuer;
+	size_t issuer_len;
 
 	struct sc_pkcs15_pubkey_rsa key;
 	u8 *data;	/* DER encoded raw cert */

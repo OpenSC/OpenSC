@@ -70,7 +70,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 		{ "version",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, asn1_version },
 		{ "serialNumber",	SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, &cert->serial, &cert->serial_len },
 		{ "signature",		SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
-		{ "issuer",		SC_ASN1_STRUCT,	   ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+		{ "issuer",		SC_ASN1_OCTET_STRING, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &cert->issuer, &cert->issuer_len },
 		{ "validity",		SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
 		{ "subject",		SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
 		{ "subjectPublicKeyInfo",SC_ASN1_STRUCT,   ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_pkinfo },
@@ -272,6 +272,7 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 
 	free(cert->key.data);
 	free(cert->key.modulus);
+	free(cert->issuer);
 	free(cert->data);
 	free(cert);
 }
