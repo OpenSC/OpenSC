@@ -16,7 +16,7 @@ OBJECTS			= \
 	\
 	pkcs15.obj pkcs15-cert.obj pkcs15-data.obj pkcs15-pin.obj \
 	pkcs15-prkey.obj pkcs15-pubkey.obj pkcs15-sec.obj \
-	pkcs15-wrap.obj pkcs15-algo.obj pkcs15-cache.obj \
+	pkcs15-wrap.obj pkcs15-algo.obj pkcs15-cache.obj pkcs15-syn.obj \
 	\
 	emv.obj \
 	\
@@ -24,7 +24,9 @@ OBJECTS			= \
 	\
 	card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
 	card-etoken.obj card-tcos.obj card-emv.obj card-default.obj \
-	card-mcrd.obj card-starcos.obj \
+	card-mcrd.obj card-starcos.obj card-openpgp.obj \
+	\
+	pkcs15-openpgp.obj \
 	\
 	$(TOPDIR)\win32\version.res
 
