@@ -300,8 +300,8 @@ EVP_PKEY *opensc_load_private_key(ENGINE * e, const char *s_key_id,
 }
 
 int
-sc_private_decrypt(int flen, const u_char * from, u_char * to, RSA * rsa,
-		   int padding)
+sc_private_decrypt(int flen, const unsigned char * from, unsigned char * to,
+		   RSA * rsa, int padding)
 {
 	struct sc_pkcs15_object *key_obj;
 	int r;
@@ -330,7 +330,7 @@ sc_private_decrypt(int flen, const u_char * from, u_char * to, RSA * rsa,
 }
 
 int
-sc_sign(int type, const u_char * m, unsigned int m_len,
+sc_sign(int type, const unsigned char * m, unsigned int m_len,
 	unsigned char *sigret, unsigned int *siglen, const RSA * rsa)
 {
 	struct sc_pkcs15_object *key_obj;
@@ -364,8 +364,8 @@ sc_sign(int type, const u_char * m, unsigned int m_len,
 }
 
 int
-sc_private_encrypt(int flen, const u_char * from, u_char * to, RSA * rsa,
-		   int padding)
+sc_private_encrypt(int flen, const unsigned char * from, unsigned char * to,
+		   RSA * rsa, int padding)
 {
 	fprintf(stderr, "Private key encryption not supported");
 	return -1;
