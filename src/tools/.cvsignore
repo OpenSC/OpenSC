@@ -12,10 +12,16 @@
 *~
 *.lo
 *.la
+*.lib
+*.exe
+*.pdb
+*.dll
+*.
 gmon.out
 core
 Makefile
 Makefile.in
+cardos-info
 cryptoflex-tool
 opensc-explorer
 opensc-tool

@@ -15,6 +15,7 @@
 gmon.out
 core
 archive
+autom4te.cache
 conftest
 conftest.c
 config.cache

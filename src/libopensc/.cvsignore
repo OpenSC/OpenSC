@@ -13,8 +13,14 @@
 *.lo
 *.la
 *.u
+*.lib
+*.exe
+*.pdb
+*.dll
+*.def
 gmon.out
 core
 Makefile
 Makefile.in
+libopensc.pc
 opensc-config

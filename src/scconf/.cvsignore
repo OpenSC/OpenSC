@@ -12,6 +12,10 @@
 *~
 *.lo
 *.la
+*.lib
+*.exe
+*.pdb
+*.dll
 gmon.out
 core
 test-conf
