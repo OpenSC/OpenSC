@@ -1,12 +1,20 @@
 NEWS for OpenSC -- History of user visible changes
 
+New in 0.9.4; 2004-10-31; Andreas Jellinghaus
+* library version was broken in 0.9.3
+* update library version to 1:0:0, as we are no longer
+  compatible with the 0:*:* line, I fear.
+
+New in 0.9.3;  2004-10-31; Andreas Jellinghaus
+* fix some LDFLAGS/LDADD issues for parallel build.
+
 New in 0.9.2; 2004-07-24; Andreas Jellinghaus:
 * This is an beta test version. Please be careful.
   Do not use in production environments.
-* Fix sslengine, link those dynamicaly with libcrypto
+* Fix sslengine, link those dynamically with libcrypto
   for openssl 0.9.7d and later.
 * fixed small bug in pkcs11-tool
-* link pkcs11-toll and pkcs15-crypt with -lcrypto
+* link pkcs11-tool and pkcs15-crypt with -lcrypto
 * New driver for estonian ID card.
 * bumped version number to opensc 0.9.2
 * New card supported: Oberthur AuthentIC v5

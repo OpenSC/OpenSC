@@ -3,9 +3,9 @@ A quick installation guide to opensc
 
 To install opensc, please do as user,
 
-$ wget http://www.opensc.org/files/opensc-0.9.2.tar.gz
-$ tar xfvz opensc-0.9.2.tar.gz
-$ cd opensc-0.9.2
+$ wget http://www.opensc.org/files/opensc-x.y.z.tar.gz
+$ tar xfvz opensc-x.y.z.tar.gz
+$ cd opensc-x.y.z
 
 nothing special so far.
 
