@@ -49,7 +49,7 @@ static const struct sc_asn1_entry c_asn1_rsakey_attr[] = {
 };
 
 static const struct sc_asn1_entry c_asn1_type_attr[] = {
-	{ "privateRSAKeyAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ "publicRSAKeyAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
 	{ NULL }
 };
 
