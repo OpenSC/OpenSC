@@ -342,6 +342,11 @@ sc_profile_free(struct sc_profile *profile)
 {
 	struct auth_info *ai;
 	struct pin_info *pi;
+	sc_macro_t	*mi;
+	sc_template_t	*ti;
+
+	if (profile->name)
+		free(profile->name);
 
 	free_file_list(&profile->ef_list);
 
@@ -350,10 +355,26 @@ sc_profile_free(struct sc_profile *profile)
 		free(ai);
 	}
 
+	while ((ti = profile->template_list) != NULL) {
+		profile->template_list = ti->next;
+		if (ti->data)
+			free(ti->data);
+		if (ti->name)
+			free(ti->name);
+		free(ti);
+	}
+
+	while ((mi = profile->macro_list) != NULL) {
+		profile->macro_list = mi->next;
+		if (mi->name)
+			free(mi->name);
+		free(mi);
+	}
+
 	while ((pi = profile->pin_list) != NULL) {
+		profile->pin_list = pi->next;
 		if (pi->file_name)
 			free(pi->file_name);
-		profile->pin_list = pi->next;
 		free(pi);
 	}
 
