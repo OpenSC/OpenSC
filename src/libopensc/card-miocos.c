@@ -72,6 +72,7 @@ static int miocos_init(struct sc_card *card)
 	priv = (struct miocos_priv_data *) malloc(sizeof(struct miocos_priv_data));
 	if (priv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
+	card->name = "MioCOS";
 	card->drv_data = priv;
 	card->cla = 0x00;
 	if (1) {

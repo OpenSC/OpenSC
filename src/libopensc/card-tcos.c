@@ -77,6 +77,7 @@ static int tcos_init(struct sc_card *card)
 {
         unsigned long flags;
 
+	card->name = "TCOS";
 	card->drv_data = NULL;
 	card->cla = 0x00;
 

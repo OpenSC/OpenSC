@@ -182,6 +182,7 @@ static int mcrd_init(struct sc_card *card)
 	priv = (struct mcrd_priv_data *) calloc (1, sizeof *priv);
 	if (!priv)
 		return SC_ERROR_OUT_OF_MEMORY;
+	card->name = "MICARDO";
 	card->drv_data = priv;
 	card->cla = 0x00;
 

@@ -400,6 +400,8 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 		r = SC_ERROR_INVALID_CARD;
 		goto err;
 	}
+	if (card->name == NULL)
+		card->name = card->driver->name;
 	*card_out = card;
 
 	SC_FUNC_RETURN(ctx, 1, 0);

@@ -89,6 +89,7 @@ int etoken_init(struct sc_card *card)
 {
 	unsigned long	flags;
 
+	card->name = "CardOS M4";
 	card->cla = 0x00;
 
 	/* Set up algorithm info. */

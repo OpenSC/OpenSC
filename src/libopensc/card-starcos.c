@@ -209,6 +209,7 @@ static int starcos_init(struct sc_card *card)
 		return SC_ERROR_OUT_OF_MEMORY;
 	state->sec_ops = 0;
 
+	card->name = "StarCOS";
 	card->drv_data = state;
 	card->cla = 0x00;
 

@@ -37,47 +37,65 @@
  * of the ATR instead */
 static struct {
 	const char *		atr;
-	int			id;
+	int			type;
+	const char *		name;
 } flex_atrs[] = {
       /* Cryptoflex */
       {	"3B:85:40:20:68:01:01:05:01",          /* 8k */
-	TYPE_CRYPTOFLEX },
+	TYPE_CRYPTOFLEX,
+	"Cryptoflex 8K" },
       {	"3B:95:94:40:FF:63:01:01:02:01",       /* 16k */
-	TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+	TYPE_CRYPTOFLEX|FLAG_KEYGEN,
+	"Cryptoflex 16K" },
       { "3B:95:18:40:FF:64:02:01:01:02",       /* 32K v4 */
-	TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+	TYPE_CRYPTOFLEX|FLAG_KEYGEN,
+	"Cryptoflex 32K v4" },
       {	"3B:95:18:40:FF:62:01:02:01:04",       /* 32K e-gate */
-	TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+	TYPE_CRYPTOFLEX|FLAG_KEYGEN,
+	"Cryptoflex 32K e-gate" },
       {	"3B:95:18:40:FF:62:04:01:01:05",       /* 32K e-gate v4 */
-	TYPE_CRYPTOFLEX },
+	TYPE_CRYPTOFLEX,
+	"Cryptoflex 32K e-gate v4" },
       {	"3B:E2:00:00:40:20:49:06",
-	TYPE_CRYPTOFLEX },
+	TYPE_CRYPTOFLEX,
+	"Cryptoflex" },
       {	"3B:E2:00:00:40:20:49:05",             /* + full DES option */
-	TYPE_CRYPTOFLEX|FLAG_FULL_DES },
+	TYPE_CRYPTOFLEX|FLAG_FULL_DES,
+	"Cryptoflex" },
       {	"3B:E2:00:00:40:20:49:07",             /* + Key Generation */
-	TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+	TYPE_CRYPTOFLEX|FLAG_KEYGEN,
+	"Cryptoflex" },
       {	"3B:85:40:20:68:01:01:03:05",          /* + Key Generation */
-	TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+	TYPE_CRYPTOFLEX|FLAG_KEYGEN,
+	"Cryptoflex" },
 
       /* Multiflex */
       {	"3B:02:14:50",                         /* 3K */
-	TYPE_MULTIFLEX },
+	TYPE_MULTIFLEX,
+	"Multiflex 3K" },
       {	"3B:19:14:55:90:01:02:01:00:05:04:B0", /* 4K */
-	TYPE_MULTIFLEX },
+	TYPE_MULTIFLEX,
+	"Multiflex 4K" },
       {	"3B:32:15:00:06:80",                   /* 8K */
-	TYPE_MULTIFLEX },
+	TYPE_MULTIFLEX,
+	"Multiflex 8K" },
       {	"3B:32:15:00:06:95",                   /* 8K + full DES option */
-	TYPE_MULTIFLEX },
+	TYPE_MULTIFLEX,
+	"Multiflex 8K" },
       {	"3B:19:14:59:01:01:0F:01:00:05:08:B0", /* 8K */
-	TYPE_MULTIFLEX },
+	TYPE_MULTIFLEX,
+	"Multiflex 8K" },
       {	"3B:19:14:55:90:01:01:01:00:05:08:B0", /* 8K */
-	TYPE_MULTIFLEX },
+	TYPE_MULTIFLEX,
+	"Multiflex 8K" },
 
       /* Cyberflex Access */
       {	"3B:16:94:81:10:06:01:81:3F",          /* Crypto */
-	TYPE_CYBERFLEX },
+	TYPE_CYBERFLEX,
+	"Cyberflex Access" },
       {	"3B:16:94:81:10:06:01:81:2F",          /* Aug. Crypto */
-	TYPE_CYBERFLEX },
+	TYPE_CYBERFLEX,
+	"Cyberflex Access" },
 
       { NULL, TYPE_UNKNOWN }
 };
@@ -118,22 +136,28 @@ static int flex_identify_card(struct sc_card *card)
 			break;
 	}
 
-	return flex_atrs[i].id;
+	return i;
 }
 
 static int flex_match_card(struct sc_card *card)
 {
-	return flex_identify_card(card) != TYPE_UNKNOWN;
+	int	idx;
+
+	idx = flex_identify_card(card);
+	return flex_atrs[idx].type != TYPE_UNKNOWN;
 }
 
 static int flex_init(struct sc_card *card)
 {
 	struct flex_private_data *data;
+	int idx;
 
 	if (!(data = (struct flex_private_data *) malloc(sizeof(struct flex_private_data))))
 		return SC_ERROR_OUT_OF_MEMORY;
-	data->card_type = flex_identify_card(card);
+	idx = flex_identify_card(card);
+	data->card_type = flex_atrs[idx].type;
 
+	card->name = flex_atrs[idx].name;
 	card->drv_data = data;
 	card->cla = 0xC0;
 	/* FIXME: Card type detection */

@@ -82,6 +82,7 @@ static int setcos_init(struct sc_card *card)
 	priv = (struct setcos_priv_data *) malloc(sizeof(struct setcos_priv_data));
 	if (priv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
+	card->name = "SetCOS";
 	card->drv_data = priv;
 	card->cla = 0x80;
 	priv->type = id;

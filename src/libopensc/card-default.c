@@ -104,6 +104,7 @@ static int default_init(struct sc_card *card)
 {
 	int r;
 	
+	card->name = "Unidentified card";
 	card->drv_data = NULL;
 	r = autodetect_class(card);
 	if (r) {

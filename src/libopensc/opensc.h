@@ -439,6 +439,7 @@ struct sc_card {
 
 	struct sc_card_driver *driver;
 	struct sc_card_operations *ops;
+	const char *name;
 	void *drv_data;
 	int max_pin_len;
 
