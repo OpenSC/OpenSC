@@ -758,22 +758,22 @@ if test "$pcsc_path" != "no"; then
 		CFLAGS_PCSC=
 		LIBS="-lpcsclite $saved_LIBS"
 
-		for libdir in $pcsc_path/lib$pcscdir \
+		for pcsc_libdir in $pcsc_path/lib$pcscdir \
 			      $pcsc_path$pcscdir/lib \
 			      $pcsc_path$pcscdir; do
-			if test -d $libdir; then
+			if test -d $pcsc_libdir; then
 				if test -n "${need_dash_r}"; then
-					LDFLAGS="-R${libdir}/ ${LDFLAGS}"
+					LDFLAGS="-R${pcsc_libdir}/ ${LDFLAGS}"
 				fi
-				LDFLAGS="-L${libdir} ${LDFLAGS}"
+				LDFLAGS="-L${pcsc_libdir} ${LDFLAGS}"
 			fi
 		done
 
-		for incdir in $pcsc_path/include$pcscdir \
+		for pcsc_incdir in $pcsc_path/include$pcscdir \
 			      $pcsc_path$pcscdir/include \
 			      $pcsc_path$pcscdir; do
-		      if test -d $incdir; then
-				CFLAGS_PCSC="-I${incdir}"
+		      if test -d $pcsc_incdir; then
+				CFLAGS_PCSC="-I${pcsc_incdir}"
 				break;
 		      fi
 		done
