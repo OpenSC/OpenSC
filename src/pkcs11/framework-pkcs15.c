@@ -228,6 +228,7 @@ static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
 
 	pkcs15_init_token_info(card, &slot->token_info);
 	slot->token_info.flags = CKF_USER_PIN_INITIALIZED
+				| CKF_TOKEN_INITIALIZED
 				| CKF_WRITE_PROTECTED;
 	slot->fw_data = auth;
 
@@ -344,6 +345,12 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 			}
 			pkcs15_add_cert_object(slot, card, certs[j]);
 		}
+	}
+
+	/* Create read/write slots */
+	while (slot_allocate(&slot, p11card) == CKR_OK) {
+		pkcs15_init_token_info(card, &slot->token_info);
+		slot->token_info.flags = CKF_TOKEN_INITIALIZED;
 	}
 
 	debug(context, "All tokens created\n");
