@@ -29,29 +29,6 @@
 #include <unistd.h>
 #include <assert.h>
 
-static int parse_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key)
-{
-	struct sc_asn1_entry asn1_pubkey_rsa[] = {
-		{ "modulus",	    SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, &key->modulus, &key->modulus_len },
-		{ "publicExponent", SC_ASN1_INTEGER, ASN1_INTEGER, 0, &key->exponent },
-		{ NULL }
-	};
-	const u8 *obj;
-	size_t objlen;
-	int r;
-	
-	obj = sc_asn1_verify_tag(ctx, key->data, key->data_len, ASN1_SEQUENCE | SC_ASN1_CONS,
-				 &objlen);
-	if (obj == NULL) {
-		error(ctx, "RSA public key not found\n");
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	}
-	r = sc_asn1_decode(ctx, asn1_pubkey_rsa, obj, objlen, NULL, NULL);
-	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
-
-	return 0;
-}
-
 struct asn1_algorithm_id {
 	struct sc_object_id id;
 };
@@ -123,7 +100,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	key->data = pk;
 	key->data_len = pklen;
 	/* FIXME: ignore the object id for now, and presume it's RSA */
-	r = parse_pubkey_rsa(ctx, key);
+	r = sc_pkcs15_parse_pubkey_rsa(ctx, key);
 	if (r) {
 		free(key->data);
 		return SC_ERROR_INVALID_ASN1_OBJECT;

@@ -32,6 +32,7 @@ extern "C" {
 #define SC_PKCS15_PIN_MAGIC		0x31415926
 #define SC_PKCS15_MAX_PINS		2
 #define SC_PKCS15_MAX_PRKEYS		2
+#define SC_PKCS15_MAX_PUBKEYS		2
 #define SC_PKCS15_MAX_LABEL_SIZE	32
 #define SC_PKCS15_MAX_ID_SIZE		16
 #define SC_PKCS15_MAX_DFS		4
@@ -255,6 +256,12 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				size_t inlen, u8 *out, size_t outlen);
 
 void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
+
+int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *card,
+			  const struct sc_pkcs15_pubkey_info *info,
+			  struct sc_pkcs15_pubkey_rsa **out);
+int sc_pkcs15_parse_pubkey_rsa(struct sc_context *ctx,
+	       		   struct sc_pkcs15_pubkey_rsa *pubkey);
 
 void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert);
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *card,

@@ -152,3 +152,82 @@ int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 
 	return r;
 }
+
+int
+sc_pkcs15_parse_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key)
+{
+	struct sc_asn1_entry asn1_pubkey_rsa[] = {
+		{ "modulus",	    SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, &key->modulus, &key->modulus_len },
+		{ "publicExponent", SC_ASN1_INTEGER, ASN1_INTEGER, 0, &key->exponent },
+		{ NULL }
+	};
+	const u8 *obj;
+	size_t objlen;
+	int r;
+	
+	obj = sc_asn1_verify_tag(ctx, key->data, key->data_len, ASN1_SEQUENCE | SC_ASN1_CONS,
+				 &objlen);
+	if (obj == NULL) {
+		error(ctx, "RSA public key not found\n");
+		return SC_ERROR_INVALID_ASN1_OBJECT;
+	}
+	r = sc_asn1_decode(ctx, asn1_pubkey_rsa, obj, objlen, NULL, NULL);
+	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
+
+	return 0;
+}
+
+int
+sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
+			const struct sc_pkcs15_pubkey_info *info,
+			struct sc_pkcs15_pubkey_rsa **out)
+{
+	struct sc_file *file;
+	struct sc_pkcs15_pubkey_rsa *pubkey;
+	u8	*data;
+	size_t	len;
+	int	r;
+
+	assert(p15card != NULL && info != NULL && out != NULL);
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	r = sc_pkcs15_read_cached_file(p15card, &info->path, &data, &len);
+	if (r) {
+		r = sc_lock(p15card->card);
+		SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
+		r = sc_select_file(p15card->card, &info->path, &file);
+		if (r) {
+			sc_unlock(p15card->card);
+			return r;
+		}
+		len = file->size;
+		sc_file_free(file);
+		data = malloc(len);
+		if (data == NULL) {
+			sc_unlock(p15card->card);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+		r = sc_read_binary(p15card->card, 0, data, len, 0);
+		if (r < 0) {
+			sc_unlock(p15card->card);
+			free(data);
+			return r;
+		}
+		len = len;
+		sc_unlock(p15card->card);
+	}
+	pubkey = malloc(sizeof(struct sc_pkcs15_pubkey_rsa));
+	if (pubkey == NULL) {
+		free(data);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+	memset(pubkey, 0, sizeof(struct sc_pkcs15_pubkey_rsa));
+	pubkey->data = data;
+	pubkey->data_len = len;
+	if (sc_pkcs15_parse_pubkey_rsa(p15card->card->ctx, pubkey)) {
+		free(data);
+		free(pubkey);
+		return SC_ERROR_INVALID_ASN1_OBJECT;
+	}
+	*out = pubkey;
+	return 0;
+}
