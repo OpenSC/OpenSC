@@ -50,6 +50,9 @@ int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader);
 int _sc_parse_atr(struct sc_context *ctx, struct sc_slot_info *slot);
 struct sc_slot_info * _sc_get_slot_info(struct sc_reader *reader, int slot_id);
 
+/* Add an ATR to the card driver's struct sc_atr_table */
+int _sc_add_atr(struct sc_card_driver *, const u8 *, size_t, int);
+
 /* Returns an index number if a match was found, -1 otherwise. table has to
  * be null terminated. */
 int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out);

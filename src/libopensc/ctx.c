@@ -41,6 +41,8 @@ struct _sc_driver_entry {
 	char *name;
 	void *func;
 	char *libpath;
+	struct sc_atr_table *atrs;
+	unsigned int natrs;
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
@@ -243,6 +245,45 @@ static int load_reader_drivers(struct sc_context *ctx,
 	return 0;	
 }			     
 
+static int load_card_driver_options(struct sc_context *ctx,
+				    struct sc_card_driver *driver)
+{
+	scconf_block **blocks, *blk;
+	const scconf_list *list;
+	int i, r;
+
+	for (i = 0; ctx->conf_blocks[i]; i++) {
+		u8	atr_buf[SC_MAX_ATR_SIZE];
+		size_t	atr_len;
+
+		blocks = scconf_find_blocks(ctx->conf,
+					ctx->conf_blocks[i],
+					"card_driver", driver->short_name);
+		blk = blocks[0];
+		free(blocks);
+
+		if (blk == NULL)
+			continue;
+
+		list = scconf_find_list(blk, "atr");
+		while (list != NULL) {
+			atr_len = sizeof(atr_buf);
+			r = sc_hex_to_bin(list->data,
+					atr_buf, &atr_len);
+			if (r < 0) {
+				error(ctx,
+				      "Unable to parse ATR '%s'.\n",
+				      list->data);
+				continue;
+			}
+			_sc_add_atr(driver, atr_buf, atr_len, 0);
+			list = list->next;
+		}
+	}
+
+	return 0;
+}
+
 static int load_card_drivers(struct sc_context *ctx,
 			     struct _sc_ctx_options *opts)
 {
@@ -270,10 +311,12 @@ static int load_card_drivers(struct sc_context *ctx,
 			continue;
 		}
 		ctx->card_drivers[drv_count] = func();
+
+		load_card_driver_options(ctx, ctx->card_drivers[drv_count]);
                 drv_count++;
 	}
 	return 0;	
-}			     
+}
 
 void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 {

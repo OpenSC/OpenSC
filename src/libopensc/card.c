@@ -326,6 +326,7 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 	struct sc_card *card;
 	struct sc_context *ctx = reader->ctx;
 	struct sc_slot_info *slot = _sc_get_slot_info(reader, slot_id);
+	const struct sc_card_driver *driver;
 	int i, r = 0, connected = 0;
 
 	assert(card_out != NULL);
@@ -352,8 +353,20 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 
 	_sc_parse_atr(reader->ctx, slot);
 
-	if (ctx->forced_driver != NULL) {
-		card->driver = ctx->forced_driver;
+	/* See if the ATR matches any ATR specified in the config file */
+	if ((driver = ctx->forced_driver) == NULL) {
+		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
+			driver = ctx->card_drivers[i];
+			if (_sc_match_atr(card, driver->atr_map, NULL) == 0)
+				break;
+			driver = NULL;
+		}
+	}
+
+	if (driver != NULL) {
+		/* Forced driver, or matched via ATR mapping from
+		 * config file */
+		card->driver = driver;
 		memcpy(card->ops, card->driver->ops, sizeof(struct sc_card_operations));
 		if (card->ops->init != NULL) {
 			r = card->ops->init(card);
@@ -804,6 +817,9 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out)
 	size_t atr_len = card->atr_len;
 	int i = 0;
 	
+	if (table == NULL)
+		return -1;
+
 	for (i = 0; table[i].atr != NULL; i++) {
 		if (table[i].atr_len != atr_len)
 			continue;
@@ -814,4 +830,26 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out)
 		return i;
 	}
 	return -1;
+}
+
+int _sc_add_atr(struct sc_card_driver *driver,
+		 const u8 *atr, size_t atrlen, int id)
+{
+	struct sc_atr_table *map, *entry;
+	u8 *dst_atr;
+
+	map = (struct sc_atr_table *) realloc(driver->atr_map,
+			(driver->natrs + 2) * sizeof(struct sc_atr_table));
+	if (!map)
+		return SC_ERROR_OUT_OF_MEMORY;
+	driver->atr_map = map;
+	if (!(dst_atr = (u8 *) malloc(atrlen)))
+		return SC_ERROR_OUT_OF_MEMORY;
+	entry = &driver->atr_map[driver->natrs++];
+	memset(entry+1, 0, sizeof(*entry));
+	entry->atr = dst_atr;
+	entry->atr_len = atrlen;
+	entry->id = id;
+	memcpy(dst_atr, atr, atrlen);
+	return 0;
 }

@@ -470,6 +470,8 @@ struct sc_card_driver {
 	const char *name;
 	const char *short_name;
 	struct sc_card_operations *ops;
+	struct sc_atr_table *atr_map;
+	unsigned int natrs;
 };
 
 struct sc_context {
