@@ -47,7 +47,7 @@ static const struct digest_info_prefix {
 	unsigned int	algorithm;
 	const u8 *	hdr;
 	size_t		hdr_len;
-	int		hash_len;
+	size_t		hash_len;
 } digest_info_prefix[DIGEST_INFO_COUNT] = {
       { SC_ALGORITHM_RSA_HASH_NONE,     NULL,           0,                      -1      },
       {	SC_ALGORITHM_RSA_HASH_MD5,	hdr_md5,	sizeof(hdr_md5),	16	},
@@ -242,7 +242,8 @@ static int add_padding(struct sc_context *ctx, const u8 *in, size_t inlen, u8 *o
 		       size_t *outlen, unsigned long flags, unsigned int mod_length)
 {
 	const struct digest_info_prefix *pfx;
-	int j, hash_algo, pad_algo;
+	int j, pad_algo;
+	unsigned int hash_algo;
 
 	hash_algo = flags & SC_ALGORITHM_RSA_HASHES;
 	pad_algo  = flags & SC_ALGORITHM_RSA_PADS;

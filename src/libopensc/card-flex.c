@@ -758,7 +758,8 @@ static int flex_compute_signature(struct sc_card *card, const u8 *data,
 	struct flex_private_data *prv = (struct flex_private_data *) card->drv_data;
 	struct sc_apdu apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int i, r;
+	int r;
+	size_t i;
 	
 	if (data_len != 64 && data_len != 96 && data_len != 128  && data_len != 256) {
 		error(card->ctx, "Illegal input length: %d\n", data_len);

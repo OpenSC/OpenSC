@@ -269,7 +269,7 @@ sc_asn1_get_algorithm_info(const struct sc_algorithm_id *id)
 		}
 	} else {
 		while (aip->id >= 0) {
-			if (aip->id == id->algorithm)
+			if (aip->id == (int)id->algorithm)
 				return aip;
 			aip++;
 		}

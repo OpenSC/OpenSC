@@ -651,22 +651,23 @@ int sc_select_file(struct sc_card *card,
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 	if (in_path->type == SC_PATH_TYPE_PATH) {
 		/* Perform a sanity check */
-		int i;
+		size_t i;
 		if ((in_path->len & 1) != 0)
 			SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 		for (i = 0; i < in_path->len/2; i++) {
 			u8 p1 = in_path->value[2*i],
 			   p2 = in_path->value[2*i+1];
-			if ((p1 == 0x3F && p2 == 0x00) && i > 0)
+			if ((p1 == 0x3F && p2 == 0x00) && i != 0)
 				SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 		}
 	}
 	if (card->ctx->debug >= 2) {
+		size_t i;
 		char line[128], *linep = line;
 
 		linep += sprintf(linep, "called with type %d, path ", in_path->type);
-		for (r = 0; r < in_path->len; r++) {
-			sprintf(linep, "%02X", in_path->value[r]);
+		for (i = 0; i < in_path->len; i++) {
+			sprintf(linep, "%02X", in_path->value[i]);
 			linep += 2;
 		}
 		strcpy(linep, "\n");

@@ -87,8 +87,9 @@ static const struct sc_asn1_entry c_asn1_tokeninfo[] = {
 
 static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t buflen)
 {
-	int i, r;
+	int r;
 	u8 serial[128];
+	size_t i;
 	size_t serial_len = sizeof(serial);
 	u8 mnfid[SC_PKCS15_MAX_LABEL_SIZE];
 	size_t mnfid_len = sizeof(mnfid);
@@ -1194,7 +1195,7 @@ void sc_pkcs15_format_id(const char *str, struct sc_pkcs15_id *id)
 
 void sc_pkcs15_print_id(const struct sc_pkcs15_id *id)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < id->len; i++)
 		printf("%02X", id->value[i]);

@@ -258,9 +258,9 @@ int etoken_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 {
 	struct sc_apdu apdu;
 	u8 rbuf[256];
-	int r,i;
-	int fids;
+	int r;
 	int len;
+	size_t i, fids;
 	u8 offset;
 	u8 *fid;
 
@@ -398,7 +398,7 @@ static const int ef_acl[9] = {
 
 static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 {
-	int i;
+	size_t i;
 	const int *idx;
 
 	idx = (file->type == SC_FILE_TYPE_DF) ?  df_acl : ef_acl;
@@ -430,7 +430,7 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 
 	if (card->ctx->debug >= 1) {
 		char	pbuf[128+1];
-		int	n;
+		size_t	n;
 
 		for (n = 0; n < file->path.len; n++) {
 			snprintf(pbuf + 2 * n, sizeof(pbuf) - 2 * n,

@@ -71,7 +71,7 @@ struct sc_pkcs15_pin_info {
 	struct sc_pkcs15_id auth_id;
 	int reference;
 	int flags, type;
-	int min_length, stored_length, max_length;
+	size_t min_length, stored_length, max_length;
 	u8 pad_char;
 	struct sc_path path;
 	int tries_left;
@@ -247,7 +247,7 @@ struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
 	unsigned int usage, access_flags;
 	int native, key_reference;
-	int modulus_length;
+	size_t modulus_length;
 
 	struct sc_path path;
 };

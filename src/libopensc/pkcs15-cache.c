@@ -38,9 +38,9 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 {
 	char dir[PATH_MAX];
         char pathname[SC_MAX_PATH_SIZE*2+1];
-	int i, r;
+	int  r;
         const u8 *pathptr;
-        size_t pathlen;
+        size_t i, pathlen;
 
 	if (path->type != SC_PATH_TYPE_PATH)
                 return SC_ERROR_INVALID_ARGUMENTS;
@@ -69,9 +69,9 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 			       u8 **buf, size_t *bufsize)
 {
 	char fname[160];
-	int r, got;
+	int r;
 	FILE *f;
-	size_t count, offset;
+	size_t count, offset, got;
 	struct stat stbuf;
 	u8 *data = NULL;
 
@@ -87,8 +87,8 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 	} else {
 		count = path->count;
 		offset = path->index;
-		if (offset >= stbuf.st_size
-		 || offset + count >= stbuf.st_size)
+		if (offset >= (size_t)stbuf.st_size
+		 || offset + count >= (size_t)stbuf.st_size)
 			return SC_ERROR_FILE_NOT_FOUND; /* cache file bad? */
 	}
 	if (*buf == NULL) {

@@ -208,7 +208,7 @@ struct sc_pbkdf2_params {
 	u8 salt[16];
 	size_t salt_len;
 	int iterations;
-	int key_length;
+	size_t key_length;
 	struct sc_algorithm_id hash_alg;
 };
 
@@ -426,7 +426,7 @@ struct sc_card {
 	int cla;
 	u8 atr[SC_MAX_ATR_SIZE];
 	size_t atr_len;
-	int max_le;
+	size_t max_le;
 
 	struct sc_app_info *app[SC_MAX_CARD_APPS];
 	int app_count;

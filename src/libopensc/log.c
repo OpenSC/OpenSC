@@ -155,7 +155,7 @@ void sc_hex_dump(struct sc_context *ctx, const u8 * in, size_t count, char *buf,
 		return;
 	while (count) {
 		char ascbuf[17];
-		int i;
+		size_t i;
 
 		for (i = 0; i < count && i < 16; i++) {
 			sprintf(p, "%02X ", *in);

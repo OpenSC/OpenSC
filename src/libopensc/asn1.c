@@ -517,7 +517,8 @@ static int encode_bit_field(const u8 *inbuf, size_t inlen,
 
 int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
 {
-	int i, a = 0;
+	int    a = 0;
+	size_t i;
 
 	if (inlen > sizeof(int))
 		return SC_ERROR_INVALID_ASN1_OBJECT;

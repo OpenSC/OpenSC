@@ -260,7 +260,8 @@ static int starcos_select_aid(struct sc_card *card,
 {
 	sc_apdu_t apdu;
 	sc_file_t *file = NULL;
-	int i = 0, r;
+	int r;
+	size_t i = 0;
 
 	if (!card )
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
@@ -425,7 +426,8 @@ static int starcos_select_file(struct sc_card *card,
 			       struct sc_file **file_out)
 {
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen, i;
+	int    r;
+	size_t i, pathlen;
 
 	if ( !card || !in_path )
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);

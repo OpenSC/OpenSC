@@ -38,7 +38,7 @@ static const struct app_entry apps[] = {
 
 static const struct app_entry * find_app_entry(const u8 * aid, size_t aid_len)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < sizeof(apps)/sizeof(apps[0]); i++) {
 		if (apps[i].aid_len == aid_len &&

@@ -78,14 +78,14 @@ struct keyd_record_s {
 struct df_info_s {
         struct df_info_s *next;
         unsigned short path[MAX_CURPATH];
-        int pathlen; 
+        size_t pathlen; 
         struct rule_record_s *rule_file; /* keeps records of EF_Rule. */
         struct keyd_record_s *keyd_file; /* keeps records of EF_KeyD. */
 };
 
 struct mcrd_priv_data {
         unsigned short curpath[MAX_CURPATH]; /* The currently selected path. */
-        int curpathlen; /* Length of this path or 0 if unknown. */
+        size_t curpathlen; /* Length of this path or 0 if unknown. */
         int is_ef;      /* True if the path points to an EF. */
         struct df_info_s *df_infos; 
 };
@@ -559,7 +559,7 @@ static void process_fcp(struct sc_card *card, struct sc_file *file,
 	tag = sc_asn1_find_tag(ctx, p, len, 0x84, &taglen);
 	if (tag != NULL && taglen > 0 && taglen <= 16) {
 		char name[17];
-		int i;
+		size_t i;
 
 		memcpy(file->name, tag, taglen);
 		file->namelen = taglen;
@@ -750,7 +750,7 @@ select_file_by_path (struct sc_card *card, unsigned short *pathptr,
 {
 	struct mcrd_priv_data *priv = DRVDATA (card);
         int r;
-        int i;
+        size_t i;
 
         assert (!priv->curpathlen || priv->curpath[0] == MFID);
         
@@ -913,7 +913,7 @@ mcrd_select_file(struct sc_card *card, const struct sc_path *path,
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (card->ctx->debug >= 3) {
 		char line[256], *linep = line;
-                int i;
+                size_t i;
 
 		linep += sprintf(linep,
                                  "requesting type %d, path ",
@@ -964,7 +964,7 @@ mcrd_select_file(struct sc_card *card, const struct sc_path *path,
 
 	if (card->ctx->debug >= 3) {
 		char line[256], *linep = line;
-                int i;
+                size_t i;
 
 		linep += sprintf(linep, "  result=%d, ef=%d, curpath=",
                                  r, priv->is_ef);

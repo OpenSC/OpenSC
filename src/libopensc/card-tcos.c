@@ -388,7 +388,7 @@ static void tcos_process_fci(struct sc_context *ctx, struct sc_file *file,
 	tag = sc_asn1_find_tag(ctx, p, len, 0x84, &taglen);
 	if (tag != NULL && taglen > 0 && taglen <= 16) {
 		char name[17];
-		int i;
+		size_t i;
 
 		memcpy(file->name, tag, taglen);
 		file->namelen = taglen;
