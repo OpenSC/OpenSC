@@ -495,8 +495,14 @@ saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
 AC_SUBST(LIBCRYPTO)
 AC_SUBST(LIBCRYPTOA)
+if test "x$tryssldir" != "x" ; then
+	tryssldir="/usr"
+fi
+if test "x$trycommondir" != "x" ; then
+	trycommondir="/usr"
+fi
 AC_CACHE_CHECK([for OpenSSL directory], ac_cv_openssldir, [
-	for ssldir in $tryssldir $trycommondir "" /usr /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl ; do
+	for ssldir in $tryssldir $trycommondir /usr /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl ; do
 		# Skip directories if they don't exist
 		if test ! -z "$ssldir" -a ! -d "$ssldir" ; then
 			continue;
@@ -553,11 +559,7 @@ int main(void)
 			# has an engine
 #			CPPFLAGS="$saved_CPPFLAGS"
 #			LDFLAGS="$saved_LDFLAGS"
-			if test -z "$ssldir" ; then
-				# we don't know where the library actually
-				# is; let linker take care of finding it
-				LIBCRYPTOA="-lcrypto $LIBDL"
-			elif test -d "$ssldir/lib" ; then
+			if test -d "$ssldir/lib" ; then
 				LIBCRYPTOA="$ssldir/lib/libcrypto.a $LIBDL"
 			else
 				LIBCRYPTOA="$ssldir/libcrypto.a $LIBDL"
