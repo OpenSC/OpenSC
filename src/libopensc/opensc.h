@@ -677,6 +677,7 @@ extern const struct sc_card_driver *sc_get_flex_driver(void);
 extern const struct sc_card_driver *sc_get_gpk_driver(void);
 extern const struct sc_card_driver *sc_get_tcos_driver(void);
 extern const struct sc_card_driver *sc_get_default_driver(void);
+extern const struct sc_card_driver *sc_get_etoken_driver(void);
 
 #ifdef  __cplusplus
 }

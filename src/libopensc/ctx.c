@@ -52,6 +52,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #ifdef HAVE_OPENSSL
 	{ "gpk", (void *) sc_get_gpk_driver, NULL },
 #endif
+	{ "etoken", (void *) sc_get_etoken_driver, NULL },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default", (void *) sc_get_default_driver, NULL },
