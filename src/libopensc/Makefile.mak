@@ -27,7 +27,7 @@ OBJECTS			= \
 	card-mcrd.obj card-starcos.obj card-openpgp.obj card-jcop.obj \
 	card-oberthur.obj \
 	\
-	pkcs15-openpgp.obj pkcs15-infocamere.obj \
+	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	\
 	$(TOPDIR)\win32\version.res
 
