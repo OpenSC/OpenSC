@@ -13,7 +13,7 @@ SRC = function_table.c generic.c session.c object.c \
 	endecrypt.c digestsign.c verify.c misc.c slot.c
 INC = sc-pkcs11.h
 
-lib_LTLIBRARIES = libopensc-pkcs11.la
+lib_LTLIBRARIES = opensc-pkcs11.la
 
-libopensc_pkcs11_la_SOURCES = $(SRC) $(INC)
-libopensc_pkcs11_la_LDFLAGS = -module -version-info 1:0:0
+opensc_pkcs11_la_SOURCES = $(SRC) $(INC)
+opensc_pkcs11_la_LDFLAGS = -module -avoid-version
