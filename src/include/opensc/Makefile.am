@@ -6,19 +6,19 @@ SUBDIRS = . rsaref
 
 MAINTAINERCLEANFILES = Makefile.in
 DISTCLEANFILES = \
-asn1.h \
-cardctl.h \
-emv.h \
-log.h \
-opensc.h \
-errors.h \
-types.h \
-pkcs11.h \
-pkcs15.h \
-pkcs15-init.h \
-scconf.h \
-scldap.h \
-scrandom.h
+	asn1.h \
+	cardctl.h \
+	emv.h \
+	log.h \
+	opensc.h \
+	errors.h \
+	types.h \
+	pkcs11.h \
+	pkcs15.h \
+	pkcs15-init.h \
+	scconf.h \
+	scldap.h \
+	scrandom.h
 
 all-local:
 	@$(RM) *.h
