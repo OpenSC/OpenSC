@@ -203,7 +203,11 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 	printf("\n\n");
 #if 1
 	if (file->type != SC_FILE_TYPE_DF) {
-		u8 buf[2048];
+		u8 *buf = malloc(file->size);
+		if (!buf) {
+			fprintf(stderr, "out of memory");
+			return 1;
+		}
 		if (file->ef_structure == SC_FILE_EF_TRANSPARENT) {
 			r = sc_read_binary(card, 0, buf, file->size, 0);
 			if (r > 0)
@@ -213,6 +217,7 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 			if (r > 0)
 				hex_dump_asc(stdout, buf, r, 0);
 		}
+		free(buf);
 	}
 #endif
 	return 0;
