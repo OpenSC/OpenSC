@@ -1218,7 +1218,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			len = path->count;
 			/* Make sure we're within proper bounds */
 			if (offset >= file->size
-			 || offset + len >= file->size) {
+			 || offset + len > file->size) {
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 				goto fail_unlock;
 			}
