@@ -196,6 +196,7 @@ extern int _read_password(pam_handle_t * pamh
 			  ,PAM_CONST char *prompt2
 			  ,PAM_CONST char *data_name
 			  ,PAM_CONST char **pass);
+extern char *_get_login(void);
 
 #define _PAM_AUTHTOK "-OPENSC-PASS"
 
