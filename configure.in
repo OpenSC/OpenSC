@@ -309,7 +309,7 @@ if test "x$found_pcsclite" != "xyes" ; then
 	AC_CHECK_LIB(pcsclite, SCardEstablishContext, , AC_MSG_ERROR([*** PC/SC Lite missing - please install first]))
 fi
 LIBS="$saved_LIBS"
-AM_CONDITIONAL(HAVE_PCSCLITE, test "x$found_pcsclite" = "xyes")
+AM_CONDITIONAL(HAVE_PCSCLITE, test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes")
 
 AC_SUBST(LIBDL)
 AC_CHECK_LIB(dl, dlopen, [LIBDL="$LIBDL -ldl" ac_cv_func_dlopen_ldl=yes], ac_cv_func_dlopen_ldl=no)
