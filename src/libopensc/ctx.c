@@ -688,7 +688,8 @@ int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
 int sc_make_cache_dir(struct sc_context *ctx)
 {
 	char dirname[PATH_MAX], *sp;
-	int r, j, namelen;
+	int    r;
+	size_t j, namelen;
 
 	if ((r = sc_get_cache_dir(ctx, dirname, sizeof(dirname))) < 0)
 		return r;

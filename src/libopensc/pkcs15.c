@@ -837,21 +837,16 @@ static int compare_obj_path(sc_pkcs15_object_t *obj, const sc_path_t *path)
 	switch (obj->type) {
 	case SC_PKCS15_TYPE_CERT_X509:
 		return sc_compare_path(&((struct sc_pkcs15_cert_info *) data)->path, path);
-		break;
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 	case SC_PKCS15_TYPE_PRKEY_DSA:
 		return sc_compare_path(&((struct sc_pkcs15_prkey_info *) data)->path, path);
-		break;
 	case SC_PKCS15_TYPE_PUBKEY_RSA:
 	case SC_PKCS15_TYPE_PUBKEY_DSA:
 		return sc_compare_path(&((struct sc_pkcs15_pubkey_info *) data)->path, path);
-		break;
 	case SC_PKCS15_TYPE_AUTH_PIN:
 		return sc_compare_path(&((struct sc_pkcs15_pin_info *) data)->path, path);
-		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		return sc_compare_path(&((struct sc_pkcs15_data_info *) data)->path, path);
-		break;
 	}
 	return 0;
 }

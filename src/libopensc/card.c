@@ -258,7 +258,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 		}
 	}
 	if (apdu->sw1 == 0x61 && apdu->resplen == 0) {
-		unsigned int le;
+		size_t le;
 
 		if (orig_resplen == 0) {
 			apdu->sw1 = 0x90;	/* FIXME: should we do this? */
