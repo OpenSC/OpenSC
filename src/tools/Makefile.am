@@ -11,7 +11,7 @@ PROGRAMS_SSL = cryptoflex-tool pkcs15-init
 endif
 
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
-	pkcs11-tool cardos-info \
+	pkcs11-tool cardos-info eidenv \
 	$(PROGRAMS_SSL)
 
 opensc_tool_SOURCES = opensc-tool.c util.c
@@ -30,5 +30,6 @@ pkcs15_init_SOURCES = pkcs15-init.c util.c
 pkcs15_init_LDADD = @GETOPTSRC@ @LIBCRYPTO@ ../pkcs15init/libpkcs15init.la
 cardos_info_SOURCES = cardos-info.c util.c
 cardos_info_LDADD = @GETOPTSRC@
+eidenv_SOURCES = eidenv.c
 
 noinst_HEADERS = util.h
