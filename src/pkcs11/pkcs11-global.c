@@ -234,7 +234,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	}
 	strcpy_bp(pInfo->label, slot[slotID].p15card->label, 32);
 	strcpy_bp(pInfo->manufacturerID, slot[slotID].p15card->manufacturer_id, 32);
-	strcpy_bp(pInfo->model, "PKCS#15 SC", sizeof(pInfo->model));
+	strcpy_bp(pInfo->model, "PKCS #15 SC", sizeof(pInfo->model));
 	strcpy_bp(pInfo->serialNumber, slot[slotID].p15card->serial_number, 16);
 
 	pInfo->flags = CKF_RNG | CKF_USER_PIN_INITIALIZED | CKF_LOGIN_REQUIRED;

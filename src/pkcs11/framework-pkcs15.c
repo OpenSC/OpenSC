@@ -71,7 +71,7 @@ static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 static void pkcs15_init_token_info(struct sc_pkcs15_card *card, CK_TOKEN_INFO_PTR pToken)
 {
 	strcpy_bp(pToken->manufacturerID, card->manufacturer_id, 32);
-	strcpy_bp(pToken->model, "PKCS#15 Smartcard", 16);
+	strcpy_bp(pToken->model, "PKCS #15 SCard", 16);
 	strcpy_bp(pToken->serialNumber, card->serial_number, 16);
 	pToken->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
 	pToken->ulSessionCount = 0; /* FIXME */
