@@ -1872,11 +1872,12 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulAttributeCount,
 		void **result)
 {
-	u8	unwrapped_key[256];
-	int	key_len = sizeof(unwrapped_key), rv;
+	u8 unwrapped_key[256];
+	CK_ULONG key_len = sizeof(unwrapped_key);
+	CK_RV rv;
 
 	rv = pkcs15_prkey_decrypt(ses, obj, pMechanism, pData, ulDataLen,
-	                          unwrapped_key, &key_len);
+			unwrapped_key, &key_len);
 
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, ses->slot->card->reader);

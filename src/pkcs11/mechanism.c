@@ -641,15 +641,17 @@ done:
 /*
  * Initialize a decryption context. When we get here, we know
  * the key object is capable of decrypting _something_
- */sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
-                       CK_MECHANISM_PTR pMechanism,
-                       struct sc_pkcs11_object *key,
-                       CK_MECHANISM_TYPE key_type)
+ */
+CK_RV
+sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
+			CK_MECHANISM_PTR pMechanism,
+			struct sc_pkcs11_object *key,
+			CK_MECHANISM_TYPE key_type)
 {
 	struct sc_pkcs11_card *p11card;
 	sc_pkcs11_operation_t *operation;
 	sc_pkcs11_mechanism_type_t *mt;
-	int rv;
+	CK_RV rv;
 
 	if (!session || !session->slot
 	 || !(p11card = session->slot->card))
@@ -679,8 +681,8 @@ done:
 
 CK_RV
 sc_pkcs11_decr(struct sc_pkcs11_session *session,
-		     CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
-		     CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+		CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
+		CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
 	sc_pkcs11_operation_t *op;
 	int rv;
@@ -692,7 +694,6 @@ sc_pkcs11_decr(struct sc_pkcs11_session *session,
 	rv = op->type->decrypt(op, pEncryptedData, ulEncryptedDataLen,
 	                       pData, pulDataLen);
 
-done:
 	if (rv != CKR_BUFFER_TOO_SMALL && pData != NULL)
 		session_stop_operation(session, SC_PKCS11_OPERATION_DECRYPT);
 
@@ -704,7 +705,7 @@ done:
  */
 static CK_RV
 sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
-                       struct sc_pkcs11_object *key)
+			struct sc_pkcs11_object *key)
 {
 	struct signature_data *data;
 
@@ -717,13 +718,13 @@ sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
 	return CKR_OK;
 }
 
+static CK_RV
 sc_pkcs11_decrypt(sc_pkcs11_operation_t *operation,
-		     CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
-		     CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+		CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
+		CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
 	struct signature_data *data;
 	struct sc_pkcs11_object *key;
-	int rv;
 
 	data = (struct signature_data*) operation->priv_data;
 

@@ -2079,11 +2079,10 @@ static int
 encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject)
 {
 	EVP_PKEY       *pkey;
-	EVP_CIPHER_CTX	encrypt_ctx;
 	unsigned char	orig_data[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', '\0'};
 	unsigned char	encrypted[512], data[512];
 	CK_MECHANISM	mech;
-	int		encrypted_len, data_len, r;
+	CK_ULONG	encrypted_len, data_len;
 	CK_RV           rv;
 
 	pkey = get_public_key(session, privKeyObject);
@@ -2115,7 +2114,7 @@ encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE pri
 	data_len = encrypted_len;
 	rv = p11->C_Decrypt(session, encrypted, encrypted_len, data, &data_len);
 	if (rv != CKR_OK)
-		p11_fatal("C_DecryptInit", rv);
+		p11_fatal("C_Decrypt", rv);
 
 	if (data_len != sizeof(orig_data) || memcmp(orig_data, data, data_len)) {
 		printf("  resulting cleartext doesn't match input\n");
