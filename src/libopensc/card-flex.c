@@ -45,7 +45,7 @@ static struct {
       {	"3B:95:94:40:FF:63:01:01:02:01",       /* 16k */
 	TYPE_CRYPTOFLEX },
       { "3B:95:18:40:FF:64:02:01:01:02",       /* 32K v4 */
-	TYPE_CRYPTOFLEX },
+	TYPE_CRYPTOFLEX|FLAG_KEYGEN },
       {	"3B:95:18:40:FF:62:04:01:01:05",       /* 32K e-gate v4 */
 	TYPE_CRYPTOFLEX },
       {	"3B:E2:00:00:40:20:49:06",
