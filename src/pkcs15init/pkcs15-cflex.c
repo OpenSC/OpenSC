@@ -28,6 +28,9 @@
 #include "pkcs15-init.h"
 #include "profile.h"
 
+static const char *TMP_PIN 		= "0000";
+static const char *TMP_PUK 		= "000000";
+
 static void	invert_buf(u8 *dest, const u8 *src, size_t c);
 static int cflex_update_pin(struct sc_profile *profile, struct sc_card *card,
 			    sc_file_t *file,
@@ -70,8 +73,8 @@ static int cflex_delete_file(struct sc_card *card, struct sc_profile *profile,
  */
 static int cflex_erase_card(struct sc_profile *profile, struct sc_card *card)
 {
-        struct sc_file  *df = profile->df_info->file, *dir;
-        int             r;
+	struct sc_file  *df = profile->df_info->file, *dir, *userpinfile;
+	int             r;
 
 	/* Delete EF(DIR). This may not be very nice
          * against other applications that use this file, but
@@ -85,7 +88,18 @@ static int cflex_erase_card(struct sc_profile *profile, struct sc_card *card)
                 if (r < 0 && r != SC_ERROR_FILE_NOT_FOUND)
                         goto out;
         }
+
 	r=cflex_delete_file(card, profile, df);
+
+	/* If the user pin file isn't in a sub-DF of the pkcs15 DF, delete it */
+	if (sc_profile_get_file(profile, "pinfile-1", &userpinfile) >= 0 &&
+	    userpinfile->path.len <= profile->df_info->file->path.len + 2 &&
+	    memcmp(userpinfile->path.value, profile->df_info->file->path.value,
+	           userpinfile->path.len) != 0) {
+           	r = cflex_delete_file(card, profile, userpinfile);
+		sc_file_free(userpinfile);
+	}
+
         /* Unfrob the SO pin reference, and return */
 out:    sc_profile_forget_secrets(profile, SC_AC_CHV, -1);
         sc_free_apps(card);
@@ -100,8 +114,8 @@ out:    sc_profile_forget_secrets(profile, SC_AC_CHV, -1);
 static int cflex_init_app(struct sc_profile *profile, struct sc_card *card,
 		const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
-     sc_file_t *pinfile, *keyfile;
-     struct sc_pkcs15_pin_info sopin,tmpinfo;
+     sc_file_t *pinfile, *keyfile, *userpinfile;
+     struct sc_pkcs15_pin_info sopin, tmpinfo;
      int pin_tries, puk_tries;
      int r;
      char extkey_contents[15];
@@ -125,6 +139,33 @@ static int cflex_init_app(struct sc_profile *profile, struct sc_card *card,
 	  memcpy(&sopin.path, &profile->df_info->file->path, sizeof(sc_path_t));
 	  sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
      }
+
+	/* If the user pin file isn't in the pkcs15 DF, create it first.
+	 * This is the case if the "flex-onepin.profile" is used. */
+	if (sc_profile_get_file(profile, "pinfile-1", &userpinfile) >= 0 &&
+	    userpinfile->path.len <= profile->df_info->file->path.len) {
+
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
+		pin_tries = tmpinfo.tries_left;
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &tmpinfo);
+		puk_tries = tmpinfo.tries_left;
+
+		r = cflex_update_pin(profile, card, userpinfile,
+			TMP_PIN, strlen(TMP_PIN), pin_tries,
+			TMP_PUK, strlen(TMP_PUK), puk_tries);
+		if (r != 0) {
+			profile->cbs->error("Couldn't create PIN file\n");
+			return r;
+		}
+
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &tmpinfo);
+		tmpinfo.reference = 0x1;
+		memcpy(&tmpinfo.path, &userpinfile->path, sizeof(sc_path_t));
+		sc_profile_set_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
+
+		sc_profile_set_secret(profile, SC_AC_CHV, 1, TMP_PIN, strlen(TMP_PIN));
+	}
+
      /* Create the application DF */
      if (sc_pkcs15init_create_file(profile, card, profile->df_info->file))
 	  return 1;
@@ -153,9 +194,7 @@ static int cflex_init_app(struct sc_profile *profile, struct sc_card *card,
 	       profile->cbs->error("update_file failed for extkey file\n");
 	       return r;
 	  }
-	  
      }
-     
      
      return 0;
 }
