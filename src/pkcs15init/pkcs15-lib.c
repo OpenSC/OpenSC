@@ -250,6 +250,13 @@ sc_pkcs15init_unbind(struct sc_profile *profile)
 	sc_profile_free(profile);
 }
 
+void
+sc_pkcs15init_set_p15card(sc_profile_t *profile,
+		sc_pkcs15_card_t *p15card)
+{
+	profile->p15_data = p15card;
+}
+
 /*
  * Set the card's lifecycle
  */
@@ -275,7 +282,7 @@ sc_pkcs15init_erase_card_recursively(struct sc_card *card,
 		struct sc_profile *profile,
 		int so_pin_ref)
 {
-	struct sc_pkcs15_card *p15orig = profile->p15_card;
+	struct sc_pkcs15_card *p15orig = profile->p15_data;
 	struct sc_file	*df = profile->df_info->file, *dir;
 	int		r;
 
@@ -286,7 +293,7 @@ sc_pkcs15init_erase_card_recursively(struct sc_card *card,
 		card->ctx->suppress_errors++;
 		if (sc_pkcs15_bind(card, &p15card) >= 0) {
 			set_so_pin_from_card(p15card, profile);
-			profile->p15_card = p15card;
+			profile->p15_data = p15card;
 		}
 		card->ctx->suppress_errors--;
 	}
@@ -294,9 +301,9 @@ sc_pkcs15init_erase_card_recursively(struct sc_card *card,
 	/* Delete EF(DIR). This may not be very nice
 	 * against other applications that use this file, but
 	 * extremely useful for testing :)
-	 * Note we need to delete if before the DF because we create
+	 * Note we need to delete it before the DF because we create
 	 * it *after* the DF. Some cards (e.g. the cryptoflex) want
-	 * us to delete file in reverse order of creation.
+	 * us to delete files in reverse order of creation.
 	 * */
 	if (sc_profile_get_file(profile, "DIR", &dir) >= 0) {
 		r = sc_pkcs15init_rmdir(card, profile, dir);
@@ -319,9 +326,9 @@ out:	/* Forget any cached keys, the objects on card are all gone. */
 	sc_keycache_forget_key(NULL, -1, -1);
 
 	sc_free_apps(card);
-	if (profile->p15_card != p15orig) {
-		sc_pkcs15_unbind(profile->p15_card);
-		profile->p15_card = p15orig;
+	if (profile->p15_data != p15orig) {
+		sc_pkcs15_unbind(profile->p15_data);
+		profile->p15_data = p15orig;
 	}
 	return r;
 }
@@ -412,14 +419,14 @@ int
 sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		struct sc_pkcs15init_initargs *args)
 {
-	sc_pkcs15_card_t	*p15card = profile->p15_card;
+	sc_pkcs15_card_t	*p15spec = profile->p15_spec;
 	sc_pkcs15_pin_info_t	pin_info, puk_info;
 	sc_pkcs15_object_t	*pin_obj = NULL;
 	struct sc_app_info	*app;
 	sc_file_t		*df = profile->df_info->file;
 	int			r;
 
-	p15card->card = card;
+	p15spec->card = card;
 
 	if (card->app_count >= SC_MAX_CARD_APPS) {
 		sc_error(card->ctx, "Too many applications on this card.");
@@ -502,20 +509,20 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	 * doesn't work if secure messaging is required for the
 	 * MF (which is the case with the GPK) */
 	app = (struct sc_app_info *) calloc(1, sizeof(*app));
-	app->path = p15card->file_app->path;
-	if (p15card->file_app->namelen <= SC_MAX_AID_SIZE) {
-		app->aid_len = p15card->file_app->namelen;
-		memcpy(app->aid, p15card->file_app->name, app->aid_len);
+	app->path = p15spec->file_app->path;
+	if (p15spec->file_app->namelen <= SC_MAX_AID_SIZE) {
+		app->aid_len = p15spec->file_app->namelen;
+		memcpy(app->aid, p15spec->file_app->name, app->aid_len);
 	}
 	if (args->serial)
 		sc_pkcs15init_set_serial(profile, args->serial);
 
 	if (args->label) {
-		if (p15card->label)
-			free(p15card->label);
-		p15card->label = strdup(args->label);
+		if (p15spec->label)
+			free(p15spec->label);
+		p15spec->label = strdup(args->label);
 	}
-	app->label = strdup(p15card->label);
+	app->label = strdup(p15spec->label);
 
 	/* XXX: encode the DDO? */
 
@@ -523,17 +530,17 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	if (pin_obj) {
 		sc_keycache_put_key(NULL, SC_AC_SYMBOLIC, SC_PKCS15INIT_SO_PIN,
 				args->so_pin, args->so_pin_len);
-		r = sc_pkcs15init_add_object(p15card, profile,
+		r = sc_pkcs15init_add_object(p15spec, profile,
 			       	SC_PKCS15_AODF, pin_obj);
 	} else {
-		r = sc_pkcs15init_add_object(p15card, profile,
+		r = sc_pkcs15init_add_object(p15spec, profile,
 				SC_PKCS15_AODF, NULL);
 	}
 
 	if (r >= 0)
-		r = sc_pkcs15init_update_dir(p15card, profile, app);
+		r = sc_pkcs15init_update_dir(p15spec, profile, app);
 	if (r >= 0)
-		r = sc_pkcs15init_update_tokeninfo(p15card, profile);
+		r = sc_pkcs15init_update_tokeninfo(p15spec, profile);
 
 	return r;
 }
@@ -658,9 +665,8 @@ sc_pkcs15init_create_pin(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 			retry = 1;
 		}
 
-		/* XXX sc_pkcs15_find_pin_by_reference should take a
-		 * path argument as well */
 		r = sc_pkcs15_find_pin_by_reference(p15card,
+				&pin_info->path,
 				pin_info->reference, &dummy);
 		if (r == SC_ERROR_OBJECT_NOT_FOUND)
 			break;
@@ -2061,14 +2067,16 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card,
 /*
  * PIN verification
  */
-int
-do_get_and_verify_secret(struct sc_profile *pro, struct sc_card *card,
+static int
+do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 		sc_file_t *file, int type, int reference,
 		u8 *pinbuf, size_t *pinsize,
 		int verify)
 {
-	struct sc_pkcs15_pin_info pin_info;
 	struct sc_cardctl_default_key data;
+	sc_pkcs15_card_t *p15card = pro->p15_data;
+	sc_pkcs15_object_t *pin_obj = NULL;
+	sc_pkcs15_pin_info_t pin_info;
 	sc_path_t	*path;
 	const char	*ident, *label = NULL;
 	int		pin_id = -1;
@@ -2080,22 +2088,27 @@ do_get_and_verify_secret(struct sc_profile *pro, struct sc_card *card,
 
 	ident = "authentication data";
 	if (type == SC_AC_CHV) {
-		sc_pkcs15_object_t *pin_obj;
-
 		ident = "PIN";
 		memset(&pin_info, 0, sizeof(pin_info));
 		pin_info.reference = reference;
 
+		/* Maybe this is the $SOPIN or $PIN? */
+		pin_id = sc_keycache_get_pin_name(path, reference);
+		if (pin_id >= 0)
+			sc_profile_get_pin_info(pro, pin_id, &pin_info);
+
 		/* Try to get information on the PIN, such as the
 		 * label, max length etc */
-		if (pro->p15_card
-		 && sc_pkcs15_find_pin_by_reference(pro->p15_card, reference, &pin_obj) == 0) {
-			memcpy(&pin_info, pin_obj->data, sizeof(pin_info));
-		} else {
-			/* Maybe this is the $SOPIN or $PIN? */
-			pin_id = sc_keycache_get_pin_name(path, reference);
-			if (pin_id >= 0)
-				sc_profile_get_pin_info(pro, pin_id, &pin_info);
+		if (p15card && path != NULL && !(path->len & 1)) {
+			sc_path_t tmp_path = *path;
+
+			do {
+				r = sc_pkcs15_find_pin_by_reference(p15card,
+					&tmp_path, reference, &pin_obj);
+				tmp_path.len -= 2;
+			} while (r < 0 && tmp_path.len > 1);
+			if (pin_obj)
+				memcpy(&pin_info, pin_obj->data, sizeof(pin_info));
 		}
 	} else if (type == SC_AC_PRO) {
 		ident = "secure messaging key";
@@ -2148,15 +2161,8 @@ do_get_and_verify_secret(struct sc_profile *pro, struct sc_card *card,
 		data.key_data = defbuf;
 		if (sc_card_ctl(card, SC_CARDCTL_GET_DEFAULT_KEY, &data) >= 0)
 			defsize = data.len;
-	} else if (pro->p15_card) {
-		/* Get the label, if we have one */
-		struct sc_pkcs15_object *obj;
-		int r;
-
-		r = sc_pkcs15_find_pin_by_reference(pro->p15_card,
-					reference, &obj);
-		if (r >= 0 && obj->label[0])
-			label = obj->label;
+	} else if (pin_obj && pin_obj->label[0]) {
+		label = pin_obj->label;
 	}
 
 	switch (type) {
@@ -2596,14 +2602,14 @@ sc_pkcs15init_get_pin_info(struct sc_profile *profile,
 int
 sc_pkcs15init_get_manufacturer(struct sc_profile *profile, const char **res)
 {
-	*res = profile->p15_card->manufacturer_id;
+	*res = profile->p15_spec->manufacturer_id;
 	return 0;
 }
 
 int
 sc_pkcs15init_get_serial(struct sc_profile *profile, const char **res)
 {
-	*res = profile->p15_card->serial_number;
+	*res = profile->p15_spec->serial_number;
 	return 0;
 }
 
@@ -2617,9 +2623,9 @@ sc_pkcs15init_set_pin_data(sc_profile_t *profile, int id,
 int
 sc_pkcs15init_set_serial(struct sc_profile *profile, const char *serial)
 {
-	if (profile->p15_card->serial_number)
-		free(profile->p15_card->serial_number);
-	profile->p15_card->serial_number = strdup(serial);
+	if (profile->p15_spec->serial_number)
+		free(profile->p15_spec->serial_number);
+	profile->p15_spec->serial_number = strdup(serial);
 
 	return 0;
 }
@@ -2627,7 +2633,7 @@ sc_pkcs15init_set_serial(struct sc_profile *profile, const char *serial)
 int
 sc_pkcs15init_get_label(struct sc_profile *profile, const char **res)
 {
-	*res = profile->p15_card->label;
+	*res = profile->p15_spec->label;
 	return 0;
 }
 

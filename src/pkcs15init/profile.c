@@ -253,7 +253,7 @@ sc_profile_new()
 	struct sc_profile *pro;
 
 	pro = (struct sc_profile *) calloc(1, sizeof(*pro));
-	pro->p15_card = p15card = sc_pkcs15_card_new();
+	pro->p15_spec = p15card = sc_pkcs15_card_new();
 
 	/* Set up EF(TokenInfo) and EF(ODF) */
 	p15card->file_tokeninfo = init_file(SC_FILE_TYPE_WORKING_EF);
@@ -315,7 +315,7 @@ sc_profile_finish(struct sc_profile *profile)
 		strcpy(reason, "Profile doesn't define a PKCS15-AppDF");
 		goto whine;
 	}
-	profile->p15_card->file_app = profile->df_info->file;
+	profile->p15_spec->file_app = profile->df_info->file;
 	profile->df_info->dont_free = 1;
 
 	for (pi = profile->pin_list; pi; pi = pi->next) {
@@ -357,8 +357,8 @@ sc_profile_free(struct sc_profile *profile)
 		free(pi);
 	}
 
-	if (profile->p15_card)
-		sc_pkcs15_card_free(profile->p15_card);
+	if (profile->p15_spec)
+		sc_pkcs15_card_free(profile->p15_spec);
 	memset(profile, 0, sizeof(*profile));
 	free(profile);
 }
@@ -686,7 +686,7 @@ do_protect_certificates(struct state *cur, int argc, char **argv)
 static int
 do_card_label(struct state *cur, int argc, char **argv)
 {
-	struct sc_pkcs15_card	*p15card = cur->profile->p15_card;
+	struct sc_pkcs15_card	*p15card = cur->profile->p15_spec;
 
 	return setstr(&p15card->label, argv[0]);
 }
@@ -694,7 +694,7 @@ do_card_label(struct state *cur, int argc, char **argv)
 static int
 do_card_manufacturer(struct state *cur, int argc, char **argv)
 {
-	struct sc_pkcs15_card	*p15card = cur->profile->p15_card;
+	struct sc_pkcs15_card	*p15card = cur->profile->p15_spec;
 
 	return setstr(&p15card->manufacturer_id, argv[0]);
 }
@@ -913,10 +913,10 @@ new_file(struct state *cur, const char *name, unsigned int type)
 	if (strncasecmp(name, "PKCS15-", 7)) {
 		file = init_file(type);
 	} else if (!strcasecmp(name+7, "TokenInfo")) {
-		file = profile->p15_card->file_tokeninfo;
+		file = profile->p15_spec->file_tokeninfo;
 		dont_free = 1;
 	} else if (!strcasecmp(name+7, "ODF")) {
-		file = profile->p15_card->file_odf;
+		file = profile->p15_spec->file_odf;
 		dont_free = 1;
 	} else if (!strcasecmp(name+7, "AppDF")) {
 		file = init_file(SC_FILE_TYPE_DF);

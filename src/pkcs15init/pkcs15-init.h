@@ -229,6 +229,8 @@ extern void	sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *);
 extern int	sc_pkcs15init_bind(struct sc_card *, const char *, const char *,
 				struct sc_profile **);
 extern void	sc_pkcs15init_unbind(struct sc_profile *);
+extern void	sc_pkcs15init_set_p15card(sc_profile_t *,
+				sc_pkcs15_card_t *);
 extern int	sc_pkcs15init_set_lifecycle(sc_card_t *card, int lcycle);
 extern int	sc_pkcs15init_erase_card(struct sc_card *,
 				struct sc_profile *);

@@ -105,7 +105,8 @@ struct sc_profile {
 	unsigned int		protect_certificates;
 
 	/* PKCS15 information */
-	struct sc_pkcs15_card *	p15_card;
+	sc_pkcs15_card_t *	p15_spec; /* as given by profile */
+	sc_pkcs15_card_t *	p15_data; /* as found on card */
 };
 
 struct sc_profile *sc_profile_new();
