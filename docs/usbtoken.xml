@@ -8,6 +8,19 @@
 		<title>Driver for USB Crypto Token</title>
 	</articleinfo>
 
+	<warning>
+		Usbtoken is obsolete. Please use OpenCT, a new and
+		much improved smartcard framework. You can download
+		OpenCT from
+		<ulink url="http://www.opensc.org/files/snapshots" />
+	</warning>
+
+	<para>
+		If you still want to use ustoken, you need to enable it
+		while configureing OpenSC. For example
+		<prompt>./configure --enable-usbtoken</prompt>
+	</para>
+
 	<toc></toc>
 
 	<section>
