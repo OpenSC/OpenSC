@@ -474,7 +474,13 @@ int sc_create_file(struct sc_card *card, struct sc_file *file)
 	int r;
 
 	assert(card != NULL);
-	SC_FUNC_CALLED(card->ctx, 1);
+	if (card->ctx->debug >= 1) {
+		const sc_path_t *in_path = &file->path;
+
+		sc_debug(card->ctx, "called; type=%d, path=%s\n",
+				in_path->type,
+				sc_print_path(in_path));
+	}
         if (card->ops->create_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->create_file(card, file);
@@ -486,7 +492,11 @@ int sc_delete_file(struct sc_card *card, const struct sc_path *path)
 	int r;
 
 	assert(card != NULL);
-	SC_FUNC_CALLED(card->ctx, 1);
+	if (card->ctx->debug >= 1) {
+		sc_debug(card->ctx, "called; type=%d, path=%s\n",
+				path->type,
+				sc_print_path(path));
+	}
         if (card->ops->delete_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->delete_file(card, path);
@@ -623,6 +633,11 @@ int sc_select_file(struct sc_card *card,
 	int r;
 
 	assert(card != NULL && in_path != NULL);
+	if (card->ctx->debug >= 1) {
+		sc_debug(card->ctx, "called; type=%d, path=%s\n",
+				in_path->type,
+				sc_print_path(in_path));
+	}
 	if (in_path->len > SC_MAX_PATH_SIZE)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 	if (in_path->type == SC_PATH_TYPE_PATH) {
@@ -637,25 +652,13 @@ int sc_select_file(struct sc_card *card,
 				SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 		}
 	}
-	if (card->ctx->debug >= 2) {
-		size_t i;
-		char line[128], *linep = line;
-
-		linep += sprintf(linep, "called with type %d, path ", in_path->type);
-		for (i = 0; i < in_path->len; i++) {
-			sprintf(linep, "%02X", in_path->value[i]);
-			linep += 2;
-		}
-		strcpy(linep, "\n");
-		sc_debug(card->ctx, line);
-	}
         if (card->ops->select_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->select_file(card, in_path, file);
 	/* Remember file path */
 	if (r == 0 && file && *file)
 		(*file)->path = *in_path;
-        SC_FUNC_RETURN(card->ctx, 2, r);
+        SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 int sc_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
