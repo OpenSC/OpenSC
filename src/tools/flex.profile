@@ -1,5 +1,5 @@
 #
-# PKCS #15 r/w profile for GPK cards
+# PKCS15 r/w profile for Cryptoflex cards
 #
 CardInfo
 	Label		"OpenSC Card"
