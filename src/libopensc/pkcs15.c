@@ -680,7 +680,8 @@ int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, int type,
 			for (; obj != NULL; obj = obj->next) {
 				if (count >= ret_size)
 					break;
-				if (obj->type != type)
+				if (obj->type != type
+				 && (obj->type & SC_PKCS15_TYPE_CLASS_MASK) != type)
 					continue;
 				if (func != NULL && func(obj, func_arg) <= 0)
 					continue;
