@@ -55,6 +55,8 @@ CK_RV sc_to_cryptoki_error(int rc, int reader)
 		return CKR_DATA_LEN_RANGE;
 	case SC_ERROR_INVALID_PIN_LENGTH:
 		return CKR_PIN_LEN_RANGE;
+	case SC_ERROR_KEYPAD_CANCELLED:
+		return CKR_FUNCTION_CANCELED;
 	}
 	return CKR_GENERAL_ERROR;
 }
