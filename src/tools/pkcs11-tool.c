@@ -116,6 +116,7 @@ static void		list_mechs(CK_SLOT_ID);
 static void		list_objects(CK_SESSION_HANDLE);
 static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE, int);
+static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		sign_data(CK_SLOT_ID,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
@@ -708,6 +709,7 @@ ATTR_METHOD(WRAP, CK_BBOOL);
 ATTR_METHOD(DERIVE, CK_BBOOL);
 ATTR_METHOD(EXTRACTABLE, CK_BBOOL);
 ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);
+ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);
 ATTR_METHOD(MODULUS_BITS, CK_ULONG);
 VARATTR_METHOD(LABEL, char);
 VARATTR_METHOD(ID, unsigned char);
@@ -724,6 +726,9 @@ show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		break;
 	case CKO_PRIVATE_KEY:
 		show_key(sess, obj, 0);
+		break;
+	case CKO_CERTIFICATE:
+		show_cert(sess, obj);
 		break;
 	default:
 		printf("Object %u, type %u\n",
@@ -747,6 +752,46 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 		break;
 	default:
 		printf("; unknown key algorithm %lu\n", key_type);
+		break;
+	}
+
+	if ((label = getLABEL(sess, obj, NULL)) != NULL) {
+		printf("  label:      %s\n", label);
+		free(label);
+	}
+
+	if ((id = getID(sess, obj, &size)) != NULL && size) {
+		unsigned int	n;
+
+		printf("  ID:         ");
+		for (n = 0; n < size; n++)
+			printf("%02x", id[n]);
+		printf("\n");
+		free(id);
+	}
+}
+
+void
+show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
+{
+	CK_CERTIFICATE_TYPE	cert_type = getCERTIFICATE_TYPE(sess, obj);
+	CK_ULONG	size;
+	unsigned char	*id;
+	char		*label;
+
+	printf("Certificate Object, type = ");
+	switch (cert_type) {
+	case CKC_X_509:
+		printf("X.509 cert\n");
+		break;
+	case CKC_X_509_ATTR_CERT:
+		printf("X.509 attribute cert\n");
+		break;
+	case CKC_VENDOR_DEFINED:
+		printf("vendor defined");
+		break;
+	default:
+		printf("; unknown cert type\n");
 		break;
 	}
 
@@ -1061,6 +1106,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	switch (firstMechType) {
 	case CKM_RSA_PKCS:
 		dataLen = 35;
+		break;
 	case CKM_RSA_X_509:
 		dataLen = modLenBytes;
 		break;
@@ -1246,8 +1292,9 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 }
 
 static int
-test_random(CK_SESSION_HANDLE session)
+test_random(CK_SLOT_ID slot)
 {
+	CK_SESSION_HANDLE session;
 	CK_BYTE buf1[100], buf2[100];
 	CK_BYTE seed1[100];
 	CK_RV rv;
@@ -1255,16 +1302,19 @@ test_random(CK_SESSION_HANDLE session)
 
 	printf("C_SeedRandom() and C_GenerateRandom():\n");
 
+	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION,
+		NULL, NULL, &session);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+
 	rv = p11->C_SeedRandom(session, seed1, 10);
 	if (rv == CKR_RANDOM_NO_RNG || rv == CKR_FUNCTION_NOT_SUPPORTED) {
 		printf("  not implemented\n");
 		return 0;
 	}
-	if (rv == CKR_RANDOM_SEED_NOT_SUPPORTED) {
+	if (rv == CKR_RANDOM_SEED_NOT_SUPPORTED)
 		printf("  seeding (C_SeedRandom) not supported\n");
-		return 0;
-	}
-	if (rv != CKR_OK) {
+	else if (rv != CKR_OK) {
 		printf("  ERR: C_SeedRandom returned %s (0x%0x)\n", CKR2Str(rv), rv);
 		return 1;
 	}
@@ -1325,7 +1375,7 @@ p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
 	int errors = 0;
 
-	errors += test_random(session);
+	errors += test_random(slot);
 
 	errors += test_digest(slot);
 
