@@ -18,7 +18,7 @@ libopensc_la_SOURCES = \
 	\
 	pkcs15.c pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \
 	pkcs15-prkey.c pkcs15-pubkey.c pkcs15-sec.c \
-	pkcs15-wrap.c pkcs15-algo.c pkcs15-cache.c \
+	pkcs15-wrap.c pkcs15-algo.c pkcs15-cache.c pkcs15-syn.c \
 	\
 	emv.c \
 	\
@@ -27,7 +27,9 @@ libopensc_la_SOURCES = \
 	\
 	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 	card-etoken.c card-tcos.c card-emv.c card-default.c \
-	card-mcrd.c card-starcos.c card-openpgp.c
+	card-mcrd.c card-starcos.c card-openpgp.c \
+	\
+	pkcs15-openpgp.c
 libopensc_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
 libopensc_la_LIBADD = @LIBSCCONF@ ../scdl/libscdl.la @LIBDL@ @LIBCRYPTO@ @OPENCT_LIBS@ @LIBPCSC@
 
