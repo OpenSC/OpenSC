@@ -155,12 +155,12 @@ pkcs11_init_cert(PKCS11_CTX *ctx, PKCS11_TOKEN *token,
 		cert->label = BUF_strdup(label);
 	size = sizeof(data);
 	if (!pkcs11_getattr_var(token, obj, CKA_VALUE, data, &size)) {
-		unsigned char	*p = data;
+		unsigned char	*p = (unsigned char *) data;
 
 		cert->x509 = d2i_X509(NULL, &p, size);
 	}
 	cert->id_len = sizeof(id);
-	if (!pkcs11_getattr_var(token, obj, CKA_ID, id, &cert->id_len)) {
+	if (!pkcs11_getattr_var(token, obj, CKA_ID, id, (size_t *) &cert->id_len)) {
 		cert->id = (unsigned char *) malloc(cert->id_len);
 		memcpy(cert->id, id, cert->id_len);
 	}

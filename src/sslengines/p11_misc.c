@@ -78,7 +78,7 @@ pkcs11_strdup(char *mem, size_t size)
 
 	while (size && mem[size-1] == ' ')
 		size--;
-	res = OPENSSL_malloc(size+1);
+	res = (char *) OPENSSL_malloc(size+1);
 	memcpy(res, mem, size);
 	res[size] = '\0';
 	return res;

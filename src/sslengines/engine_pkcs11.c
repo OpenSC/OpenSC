@@ -142,7 +142,7 @@ static int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 #define MAX_VALUE_LEN	200
 
 EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
-	UI_METHOD *ui_method, void *callback_data, int private) {
+	UI_METHOD *ui_method, void *callback_data, int isPrivate) {
 
 	PKCS11_SLOT	*slot_list, *slot;
 	PKCS11_TOKEN	*tok;
@@ -152,12 +152,10 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 	unsigned int	count, n, m;
 	unsigned char	key_id[MAX_VALUE_LEN / 2];
 	char		*s_key_id = NULL, buf[MAX_VALUE_LEN];
-	int		key_id_len = sizeof(key_id);
+	size_t		key_id_len = sizeof(key_id);
 	int		slot_nr = -1;
 	char		flags[64];
 	int		logged_in = 0;
-
-	/* if(pin) {free(pin); pin=NULL;} // keep cached key? */
 
 	/* Parse s_slot_key_id: [slot:<slotNr>][;][id:<keyID>] or NULL,
 	   with slotNr in decimal (0 = first slot, ...), and keyID in hex.
@@ -263,7 +261,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 		return NULL;
 	}
 
-	 if (private && !tok->userPinSet && !tok->readOnly) {
+	 if (isPrivate && !tok->userPinSet && !tok->readOnly) {
 		printf("Found slot without user PIN\n");
 		return NULL;
 	}
@@ -298,7 +296,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 		if (logged_in || !tok->loginRequired)
 			break;
 		if (pin == NULL) {
-			pin=malloc(12);
+			pin=(char *) malloc(12);
 			get_pin(ui_method,pin,12);
 		}
 		if (PKCS11_login(slot, 0, pin))
@@ -316,7 +314,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 		PKCS11_KEY	*k = keys + n;
 
 		printf("  %2u %c%c %s\n", n+1,
-			k->private? 'P' : ' ',
+			k->isPrivate? 'P' : ' ',
 			k->needLogin? 'L' : ' ',
 			k->label);
 
@@ -336,7 +334,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 			selected_key = &keys[0];
 	}
 
-	if(private) {
+	if(isPrivate) {
 		pk = PKCS11_get_private_key(selected_key);
 	} else {
 		/*pk = PKCS11_get_public_key(&keys[0]);

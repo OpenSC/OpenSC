@@ -58,22 +58,13 @@
 #include "pkcs11-internal.h"
 #include <string.h>
 
-/* I don't think the comment below applies...?  _KLS */
-/* Currently, when we dlclose the pkcs11 module, this will
- * also unload all sorts of other libraries, e.g. the pcsc-lite
- * library. This library installs an exit handler using atexit.
- * So when we return from main(), we end up with an exit handler
- * pointing to some area of memory where libpcsc-lite used to be,
- * but is not anymore. The typical ``watch me walk over the edge
- * of that cliff there'' thing.
- */
 static void *handle = NULL;
 
 /*
  * Create a new context
  */
 PKCS11_CTX *
-PKCS11_CTX_new()
+PKCS11_CTX_new(void)
 {
 	PKCS11_CTX_private *priv;
 	PKCS11_CTX	*ctx;
@@ -110,17 +101,6 @@ PKCS11_CTX_load(PKCS11_CTX *ctx, const char *name)
 		PKCS11err(PKCS11_F_PKCS11_CTX_LOAD, PKCS11_LOAD_MODULE_ERROR);
 		return -1;
 	}
-#if 0
-	priv->method = PKCS11_NEW(PKCS11_method);
-	base = (caddr_t) (priv->method);
-	for (sym = pkcs11_symbols; sym->name; sym++) {
-		if (!bind_symbol(priv, sym->name, (void **) (base + sym->offset))) {
-			PKCS11err(PKCS11_F_PKCS11_CTX_LOAD,
-				  PKCS11_SYMBOL_NOT_FOUND_ERROR);
-			return -1;
-		}
-	}
-#endif
 
 	/* Tell the PKCS11 to initialize itself */
 	rv = priv->method->C_Initialize(NULL);

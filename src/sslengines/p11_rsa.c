@@ -67,7 +67,7 @@
 
 static int	pkcs11_get_rsa_public(PKCS11_KEY *, EVP_PKEY *);
 static int	pkcs11_get_rsa_private(PKCS11_KEY *, EVP_PKEY *);
-RSA_METHOD * pkcs11_get_rsa_method();
+RSA_METHOD * pkcs11_get_rsa_method(void);
 
 #define key_getattr(k, t, p, s) \
 	pkcs11_getattr(KEY2TOKEN(key), PRIVKEY(key)->object, t, p, s)
@@ -175,7 +175,7 @@ pkcs11_rsa_sign(int type, const unsigned char *m, unsigned int m_len,
 	 * by OpenSSL). The library assumes that the memory passed
 	 * by the caller is always big enough */
 	sigsize = BN_num_bytes(rsa->n);
-	rv = CRYPTOKI_call(ctx, C_Sign(session, m, m_len, sigret, &sigsize));
+	rv = CRYPTOKI_call(ctx, C_Sign(session, (CK_BYTE *) m, m_len, sigret, &sigsize));
 	if (rv)
 		goto fail;
 
@@ -194,14 +194,15 @@ fail:	PKCS11err(PKCS11_F_PKCS11_RSA_SIGN, pkcs11_map_err(rv));
  */
 static int
 pkcs11_rsa_verify(int type, const unsigned char *m, unsigned int m_len,
-	unsigned char *signature, unsigned int siglen, RSA *rsa)
+	unsigned char *signature, unsigned int siglen, const RSA *rsa)
 {
+	RSA *r = (RSA *) rsa;	/* Ugly hack to get rid of compiler warning */
 	int	res;
 
-	if (rsa->flags & RSA_FLAG_SIGN_VER) {
-		rsa->flags &= ~RSA_FLAG_SIGN_VER;
-		res = RSA_verify(type, m, m_len, signature, siglen, rsa);
-		rsa->flags |= RSA_FLAG_SIGN_VER;
+	if (r->flags & RSA_FLAG_SIGN_VER) {
+		r->flags &= ~RSA_FLAG_SIGN_VER;
+		res = RSA_verify(type, m, m_len, signature, siglen, r);
+		r->flags |= RSA_FLAG_SIGN_VER;
 	} else {
 		PKCS11err(PKCS11_F_PKCS11_RSA_VERIFY, PKCS11_NOT_SUPPORTED);
 		res = 0;
@@ -213,7 +214,7 @@ pkcs11_rsa_verify(int type, const unsigned char *m, unsigned int m_len,
  * Overload the default OpenSSL methods for RSA
  */
 RSA_METHOD *
-pkcs11_get_rsa_method()
+pkcs11_get_rsa_method(void)
 {
 	static RSA_METHOD ops;
 

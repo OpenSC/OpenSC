@@ -86,7 +86,7 @@ err:
 int
 opensc_rsa_finish(RSA* rsa) {
 	struct sc_pkcs15_key_id *key_id;
-	key_id = RSA_get_app_data(rsa);
+	key_id = (struct sc_pkcs15_key_id *) RSA_get_app_data(rsa);
 	free(key_id);
 	if(sc_pin) {free(sc_pin);}
 	return 1;
@@ -135,7 +135,7 @@ sc_prkey_op_init(const RSA *rsa, struct sc_pkcs15_object **key_obj_out)
 		      sc_strerror(r));
 		goto err;
 	}
-	key = key_obj->data;
+	key = (struct sc_pkcs15_prkey_info *) key_obj->data;
 	r = sc_pkcs15_find_pin_by_auth_id(p15card, &key_obj->auth_id,
 					  &pin_obj);
 	if (r) {
@@ -143,7 +143,7 @@ sc_prkey_op_init(const RSA *rsa, struct sc_pkcs15_object **key_obj_out)
 		      sc_strerror(r));
 		goto err;
 	}
-	pin = pin_obj->data;
+	pin = (struct sc_pkcs15_pin_info *) pin_obj->data;
 
 	r = sc_lock(card);
 	if (r) {
@@ -151,7 +151,7 @@ sc_prkey_op_init(const RSA *rsa, struct sc_pkcs15_object **key_obj_out)
 		goto err;
 	}
 	if (sc_pin != NULL) {
-		r = sc_pkcs15_verify_pin(p15card, pin, sc_pin,
+		r = sc_pkcs15_verify_pin(p15card, pin, (const u8 *) sc_pin,
 					 strlen(sc_pin));
 		if (r) {
 			sc_unlock(card);
@@ -180,7 +180,7 @@ EVP_PKEY *opensc_load_public_key(ENGINE *e, const char *s_key_id,
 
 	if(!quiet)
 		 fprintf(stderr,"Loading public key!\n");
- 	id=malloc(sizeof(struct sc_pkcs15_id));
+ 	id = (struct sc_pkcs15_id *) malloc(sizeof(struct sc_pkcs15_id));
 	id->len = SC_PKCS15_MAX_ID_SIZE;
 	sc_pkcs15_hex_string_to_id(s_key_id, id);
 
@@ -253,12 +253,8 @@ EVP_PKEY *opensc_load_private_key(ENGINE *e, const char *s_key_id,
 
 	if(sc_pin) {free(sc_pin); sc_pin=NULL;}
  	key_out=opensc_load_public_key(e, s_key_id, ui_method, callback_data);
-	sc_pin=malloc(12);
+	sc_pin=(char *) malloc(12);
 	get_pin(ui_method,sc_pin,12); /* do this here, when storing sc_pin in RSA */
-#if 0
-	memset(sc_pin,0x0,12);
-	free(sc_pin);
-#endif
 	if(!key_out) {
 			fprintf(stderr,"Failed to get private key");
 			return NULL;
@@ -306,7 +302,7 @@ sc_sign(int type, const u_char *m, unsigned int m_len,
 	/* FIXME: check 'type' and modify flags accordingly */
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	if(type==NID_sha1) flags|=SC_ALGORITHM_RSA_HASH_SHA1;
-	if(type==NID_md5) flags|=SC_ALGORITHM_RSA_HASH_MD5;	/* SC_ALGORITHM_RSA_HASH_SHA1 */
+	if(type==NID_md5) flags|=SC_ALGORITHM_RSA_HASH_MD5;
 	r = sc_pkcs15_compute_signature(p15card, key_obj, flags,
 					m, m_len, sigret, RSA_size(rsa));
 	sc_unlock(card);

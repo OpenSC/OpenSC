@@ -24,6 +24,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _ENGINE_PKCS11_H
+#define _ENGINE_PKCS11_H
+
 #include <stdio.h>
 #include <string.h>
 #include <openssl/crypto.h>
@@ -45,4 +48,6 @@ EVP_PKEY *pkcs11_load_private_key(ENGINE *e, const char *s_key_id,
 	UI_METHOD *ui_method, void *callback_data);
 
 /* defined in p11_rsa.c */
-RSA_METHOD * pkcs11_get_rsa_method();
+RSA_METHOD * pkcs11_get_rsa_method(void);
+
+#endif

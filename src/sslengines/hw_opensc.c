@@ -97,7 +97,6 @@ static const ENGINE_CMD_DEFN opensc_cmd_defns[] = {
 	};
 
 static int opensc_engine_finish(ENGINE *e) {
-	/*opensc_close();*/
 	return opensc_finish();
 }
 
@@ -115,7 +114,6 @@ static int opensc_engine_destroy(ENGINE *e)
 
 static int opensc_engine_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f)())
 	{
-	/*int initialised = ((opensc_dso == NULL) ? 0 : 1);*/
 	switch(cmd)
 		{
 	default:

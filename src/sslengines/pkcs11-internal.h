@@ -55,8 +55,8 @@
  *
  */
 
-#ifndef HEADER_PKCS11_INTERNAL_H
-#define HEADER_PKCS11_INTERNAL_H
+#ifndef _PKCS11_INTERNAL_H
+#define _PKCS11_INTERNAL_H
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -100,7 +100,7 @@ typedef struct PKCS11_key_st {
 	char *		label;
 	unsigned char *	id;
 	int		id_len;
-	unsigned char	private;	/* private key present? */
+	unsigned char	isPrivate;	/* private key present? */
 	unsigned char	needLogin;	/* login to read private key? */
 	EVP_PKEY *	evp_key;	/* initially NULL, need to call PKCS11_load_key */
 	void *		_private;
@@ -142,7 +142,7 @@ typedef struct PKCS11_ctx_st {
 	void *		_private;
 } PKCS11_CTX;
 
-extern PKCS11_CTX *     PKCS11_CTX_new();
+extern PKCS11_CTX *     PKCS11_CTX_new(void);
 extern int              PKCS11_CTX_load(PKCS11_CTX *, const char *ident);
 extern void             PKCS11_CTX_unload(PKCS11_CTX *);
 extern void             PKCS11_CTX_free(PKCS11_CTX *);
@@ -309,7 +309,7 @@ typedef struct pkcs11_cert_private {
 #define PKCS11_NEW(type) \
 	((type *) pkcs11_malloc(sizeof(type)))
 #define PKCS11_DUP(s) \
-	pkcs11_strdup(s, sizeof(s))
+	pkcs11_strdup((char *) s, sizeof(s))
 
 extern int	PKCS11_open_session(PKCS11_SLOT *, int);
 extern void	pkcs11_destroy_all_slots(PKCS11_CTX *);

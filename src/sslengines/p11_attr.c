@@ -123,7 +123,7 @@ pkcs11_addattr_obj(CK_ATTRIBUTE_PTR ap, int type, pkcs11_i2d_fn enc, void *obj)
 
 	ap->type = type;
 	ap->ulValueLen = enc(obj, NULL);
-	ap->pValue = p = malloc(ap->ulValueLen);
+	ap->pValue = p = (unsigned char *) malloc(ap->ulValueLen);
 	enc(obj, &p);
 }
 

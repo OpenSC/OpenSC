@@ -285,11 +285,11 @@ pkcs11_init_key(PKCS11_CTX *ctx, PKCS11_TOKEN *token,
 	if (!pkcs11_getattr_s(token, obj, CKA_LABEL, label, sizeof(label)))
 		key->label = BUF_strdup(label);
 	key->id_len = sizeof(id);
-	if (!pkcs11_getattr_var(token, obj, CKA_ID, id, &key->id_len)) {
+	if (!pkcs11_getattr_var(token, obj, CKA_ID, id, (size_t *) &key->id_len)) {
 		key->id = (unsigned char *) malloc(key->id_len);
 		memcpy(key->id, id, key->id_len);
 	}
-	key->private = (type == CKO_PRIVATE_KEY);
+	key->isPrivate = (type == CKO_PRIVATE_KEY);
 
 	/* Initialize internal information */
 	kpriv->id_len = sizeof(kpriv->id);

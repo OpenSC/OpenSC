@@ -179,7 +179,7 @@ PKCS11_login(PKCS11_SLOT *slot, int so, char *pin)
 
 	rv = CRYPTOKI_call(ctx, C_Login(priv->session,
 				so? CKU_SO : CKU_USER,
-			       	pin, strlen(pin)));
+			       	(CK_UTF8CHAR *) pin, strlen(pin)));
 	CRYPTOKI_checkerr(PKCS11_F_PKCS11_LOGIN, rv);
 	priv->loggedIn = 1;
 	return 0;
@@ -224,7 +224,7 @@ PKCS11_init_token(PKCS11_TOKEN *token, char *pin, char *label)
 	if (!label)
 		label = "PKCS#11 Token";
 	rv = CRYPTOKI_call(ctx, C_InitToken(priv->id,
-				pin, strlen(pin), label));
+				(CK_UTF8CHAR *) pin, strlen(pin), (CK_UTF8CHAR *) label));
 	CRYPTOKI_checkerr(PKCS11_F_PKCS11_INIT_TOKEN, rv);
 
 	cpriv = PRIVCTX(ctx);
@@ -252,7 +252,7 @@ PKCS11_init_pin(PKCS11_TOKEN *token, char *pin)
 	}
 
 	len = pin? strlen(pin) : 0;
-	rv = CRYPTOKI_call(ctx, C_InitPIN(priv->session, pin, len));
+	rv = CRYPTOKI_call(ctx, C_InitPIN(priv->session, (CK_UTF8CHAR *) pin, len));
 	CRYPTOKI_checkerr(PKCS11_F_PKCS11_INIT_PIN, rv);
 
 	return pkcs11_check_token(ctx, TOKEN2SLOT(token));
@@ -345,7 +345,7 @@ pkcs11_check_token(PKCS11_CTX *ctx, PKCS11_SLOT *slot)
 
 	token->label = PKCS11_DUP(info.label);
 	token->manufacturer = PKCS11_DUP(info.manufacturerID);
-	token->model = PKCS11_DUP(info. model);
+	token->model = PKCS11_DUP(info.model);
 	token->initialized = (info.flags & CKF_TOKEN_INITIALIZED)? 1 : 0;
 	token->loginRequired = (info.flags & CKF_LOGIN_REQUIRED)? 1 : 0;
 	token->userPinSet = (info.flags & CKF_USER_PIN_INITIALIZED)? 1 : 0;
