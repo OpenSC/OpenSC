@@ -1710,7 +1710,7 @@ select_id(sc_pkcs15_card_t *p15card, int type, sc_pkcs15_id_t *id,
 
 	/* If the user provided an ID, make sure we can use it */
 	if (id->len != 0) {
-		r = func(p15card, id, &obj);
+		r = sc_pkcs15_find_object_by_id(p15card, type, id, &obj);
 		if (r == SC_ERROR_OBJECT_NOT_FOUND)
 			return 0;
 		if (strcmp(obj->label, "deleted"))
@@ -1727,8 +1727,29 @@ select_id(sc_pkcs15_card_t *p15card, int type, sc_pkcs15_id_t *id,
 		id->value[0] = nid++;
 		id->len = 1;
 
-		r = func(p15card, id, &obj);
+		r = sc_pkcs15_find_object_by_id(p15card, type, id, &obj);
 		if (r == SC_ERROR_OBJECT_NOT_FOUND) {
+			/* We don't have an object of that type yet.
+			 * If we're allocating a PRKEY object, make
+			 * sure there's no conflicting pubkey or cert
+			 * object either. */
+			if (type == SC_PKCS15_TYPE_PRKEY) {
+				sc_pkcs15_search_key_t search_key;
+
+				memset(&search_key, 0, sizeof(search_key));
+				search_key.class_mask = 
+					SC_PKCS15_SEARCH_CLASS_PUBKEY |
+					SC_PKCS15_SEARCH_CLASS_CERT;
+				search_key.id = id;
+
+				r = sc_pkcs15_search_objects(p15card,
+						&search_key,
+						NULL, 0);
+				/* If there is a pubkey or cert with
+				 * this ID, skip it. */
+				if (r > 0)
+					continue;
+			}
 			if (!unused_id.len)
 				unused_id = *id;
 			continue;

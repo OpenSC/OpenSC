@@ -44,9 +44,15 @@ filesystem {
 	# The DELETE=NONE ACLs will go away once the code
 	# works. It's here to make sure I can erase the card
 	# even if I mess up big time.
+	#
+	# If you have a 16K card and wish to store
+	# two cert/key pairs.
+	# Note if you want the two keys to be protected by the
+	# same pin, you need to increase the size of the pin-dir.
 	DF PKCS15-AppDF {
 	    ACL		= *=$SOPIN, FILES=NONE, DELETE=NONE;
 	    size	= 7500;
+	    #size	= 10000;
 
 	    # This "pin-domain" DF is a template that is
 	    # instantiated for each PIN created on the card.
