@@ -662,9 +662,9 @@ select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 	
 	if (file->type == SC_FILE_TYPE_DF)   {
 		struct sc_path *cache_path = &card->cache.current_path;
-		int len = cache_path->len;
+		size_t len = cache_path->len;
 
-		if (len < (int)sizeof(cache_path->value))   {
+		if (len < sizeof(cache_path->value))   {
 			memcpy(&cache_path->value[len], buf, 2);
 			cache_path->len += 2;
 		}
