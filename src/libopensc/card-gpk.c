@@ -916,6 +916,87 @@ gpk_verify(struct sc_card *card, unsigned int type, int ref,
 }
 
 /*
+ * Change secret code. This is used by reset_retry_counter and
+ * change_reference_data
+ */
+static int
+gpk_set_secret_code(struct sc_card *card, unsigned int mode,
+		unsigned int type, int ref,
+		const u8 *puk, size_t puklen,
+		const u8 *pin, size_t pinlen,
+		int *tries_left)
+{
+	struct sc_apdu	apdu;
+	u8		data[8];
+	unsigned int	n;
+	int		r;
+
+	if (card->ctx->debug)
+		debug(card->ctx, "gpk_set_secret_code(mode=%d, ref=%d)\n",
+				mode, ref);
+	if (type != SC_AC_CHV || !puk || !puklen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_3_SHORT;
+	apdu.cla = 0x80;
+	apdu.ins = 0x24;
+	apdu.p1  = mode;
+	apdu.p2  = ref & 7;
+	apdu.lc  = 8;
+	apdu.data= data;
+	apdu.datalen = 8;
+
+	memset(data, 0, sizeof(data));
+	for (n = 0; n < 8 && n < puklen; n += 2)
+		data[n >> 1] = (puk[n] << 4) | (puk[n+1] & 0xf);
+	for (n = 0; n < 8 && n < pinlen; n += 2)
+		data[4 + (n >> 1)] = (pin[n] << 4) | (pin[n+1] & 0xf);
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	/* Special case: extract tries_left */
+	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
+		if (tries_left)
+			*tries_left = apdu.sw2 & 0xF;
+		return SC_ERROR_PIN_CODE_INCORRECT;
+	}
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	return r;
+}
+
+/*
+ * Unblock the CHV
+ */
+static int
+gpk_reset_retry_counter(struct sc_card *card,
+		unsigned int type, int ref,
+		const u8 *puk, size_t puklen,
+		const u8 *pin, size_t pinlen)
+{
+	return gpk_set_secret_code(card, 0x01, type, ref,
+			puk, puklen, pin, pinlen, NULL);
+}
+
+/*
+ * Change the PIN
+ */
+static int
+gpk_change_reference_data(struct sc_card *card,
+		unsigned int type, int ref,
+		const u8 *puk, size_t puklen,
+		const u8 *pin, size_t pinlen,
+		int *tries_left)
+{
+	return gpk_set_secret_code(card, 0x00, type, ref,
+			puk, puklen, pin, pinlen, tries_left);
+}
+
+/*
  * Select a security environment (Set Crypto Context in GPK docs).
  * When we get here, the PK file has already been selected.
  *
@@ -1405,6 +1486,8 @@ sc_get_driver()
 		gpk_ops.set_security_env= gpk_set_security_env;
 		gpk_ops.restore_security_env= gpk_restore_security_env;
 		gpk_ops.compute_signature= gpk_compute_signature;
+		gpk_ops.reset_retry_counter = gpk_reset_retry_counter;
+		gpk_ops.change_reference_data = gpk_change_reference_data;
 	}
 	return &gpk_drv;
 }
