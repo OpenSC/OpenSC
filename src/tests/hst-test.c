@@ -14,10 +14,10 @@ struct sc_card *card = NULL;
 struct sc_pkcs15_card *p15_card = NULL;
 
 #define DO_PRKEY_ENUM		1
-#define	DO_PIN_ENUM		0
-#define DO_PIN_VERIFY		0
-#define DO_DECIPHER		0
-#define DO_SIGN			0
+#define	DO_PIN_ENUM		1
+#define DO_PIN_VERIFY		1
+#define DO_DECIPHER		1
+#define DO_SIGN			1
 #define DO_CERT_ENUM		1
 #define DO_CERT_READ		1
 
