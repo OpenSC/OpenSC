@@ -48,6 +48,8 @@
 #include <opensc/pkcs15-init.h>
 #include "util.h"
 
+#undef GET_KEY_ECHO_OFF
+
 const char *app_name = "pkcs15-init";
 
 /* Handle encoding of PKCS15 on the card */
@@ -73,6 +75,9 @@ static int	read_one_pin(struct sc_profile *, const char *,
 static int	get_pin_callback(struct sc_profile *profile,
 			int id, const struct sc_pkcs15_pin_info *info,
 			u8 *pinbuf, size_t *pinsize);
+static int	get_key_callback(struct sc_profile *,
+			int method, int reference,
+			const u8 *, size_t, u8 *, size_t *);
 
 static int	do_generate_key_soft(int, unsigned int, EVP_PKEY **);
 static int	do_read_private_key(const char *, const char *,
@@ -126,6 +131,8 @@ const struct option	options[] = {
 	{ "extractable",	no_argument, 0,		OPT_EXTRACTABLE },
 	{ "insecure",		no_argument, 0,		OPT_UNPROTECTED },
 	{ "soft",		no_argument, 0,		OPT_SOFT_KEYGEN },
+	{ "use-default-transport-keys",
+				no_argument, 0,		'T' },
 
 	{ "profile",		required_argument, 0,	'p' },
 	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
@@ -158,6 +165,7 @@ const char *		option_help[] = {
 	"Private key stored as an extractable key",
 	"Insecure mode: do not require PIN/passphrase for private key",
 	"Use software key generation, even if the card supports on-board key generation",
+	"Always ask for transport keys etc, even if the driver thinks it knows the key",
 
 	"Specify the profile to use",
 	"Read additional command line options from file",
@@ -199,7 +207,8 @@ static int			opt_reader = 0,
 				opt_unprotected = 0,
 				opt_authority = 0,
 				opt_softkeygen = 0,
-				opt_noprompts = 0;
+				opt_noprompts = 0,
+				opt_use_defkeys = 0;
 static char *			opt_profile = "pkcs15";
 static char *			opt_infile = 0;
 static char *			opt_format = 0;
@@ -217,7 +226,7 @@ static struct sc_pkcs15init_callbacks callbacks = {
 	error,			/* error() */
 	NULL,			/* debug() */
 	get_pin_callback,	/* get_pin() */
-	NULL			/* get_secret() */
+	get_key_callback,	/* get_key() */
 };
 
 int
@@ -683,6 +692,8 @@ read_one_pin(struct sc_profile *profile, const char *name,
 	*out = NULL;
 	while (retries--) {
 		pin = getpass("Please enter PIN: ");
+		if (pin == NULL)
+			return SC_ERROR_INTERNAL;
 		len = strlen(pin);
 		if (len == 0 && (flags & READ_PIN_OPTIONAL))
 			break;
@@ -756,6 +767,79 @@ get_pin_callback(struct sc_profile *profile,
 	memcpy(pinbuf, secret, len + 1);
 	*pinsize = len;
 	return 0;
+}
+
+int
+get_key_callback(struct sc_profile *profile,
+			int method, int reference,
+			const u8 *def_key, size_t def_key_size,
+			u8 *key_buf, size_t *buf_size)
+{
+	const char	*kind, *prompt, *key;
+
+	if (def_key_size && opt_use_defkeys) {
+use_default_key:
+		if (*buf_size < def_key_size)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		memcpy(key_buf, def_key, def_key_size);
+		*buf_size = def_key_size;
+		return 0;
+	}
+
+	switch (method) {
+	case SC_AC_PRO:
+		kind = "Secure messaging key";
+		break;
+	case SC_AC_AUT:
+		kind = "External authentication key";
+		break;
+	default: /* don't really know what sort of key */
+		kind = "Key";
+		break;
+	}
+
+	printf("Transport key (%s #%d) required.\n", kind, reference);
+	printf("Please enter key in hexadecimal notation "
+	       "(e.g. 00:11:22:aa:bb:cc)%s\n",
+	       def_key_size? ",\n or press return to accept default" : "");
+
+	while (1) {
+		char	buffer[256];
+
+		prompt = "Please enter key";
+		if (def_key_size && def_key_size < 64) {
+			unsigned int	j, k = 0;
+
+			sprintf(buffer, "%s [", prompt);
+			k = strlen(buffer);
+			for (j = 0; j < def_key_size; j++, k += 2) {
+				if (j) buffer[k++] = ':';
+				sprintf(buffer+k, "%02x", def_key[j]);
+			}
+			buffer[k++] = ']';
+			buffer[k++] = '\0';
+			prompt = buffer;
+		}
+
+#ifdef GET_KEY_ECHO_OFF
+		/* Read key with echo off - will users really manage? */
+		key = getpass(prompt);
+#else
+		printf("%s: ", prompt);
+		fflush(stdout);
+		key = fgets(buffer, sizeof(buffer), stdin);
+		if (key)
+			buffer[strcspn(buffer, "\r\n")] = '\0';
+#endif
+		if (key == NULL)
+			return SC_ERROR_INTERNAL;
+
+		if (key[0] == '\0' && def_key_size)
+			goto use_default_key;
+
+		if (sc_hex_to_bin(key, key_buf, buf_size) >= 0)
+			return 0;
+	}
 }
 
 /*
@@ -1280,6 +1364,9 @@ handle_option(int c)
 		break;
 	case OPT_SOFT_KEYGEN:
 		opt_softkeygen = 1;
+		break;
+	case 'T':
+		opt_use_defkeys = 1;
 		break;
 	default:
 		print_usage_and_die();

@@ -44,6 +44,8 @@ int quiet = 0;
 #define OPT_LIST_PUB	0x105
 #define OPT_READ_PUB	0x106
 
+#define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
+
 static int pem_encode(struct sc_context *, int,
 		sc_pkcs15_der_t *, sc_pkcs15_der_t *);
 
@@ -88,7 +90,7 @@ struct sc_pkcs15_card *p15card = NULL;
 
 void print_cert_info(const struct sc_pkcs15_object *obj)
 {
-	int i;
+	unsigned int i;
         struct sc_pkcs15_cert_info *cert = (struct sc_pkcs15_cert_info *) obj->data;
 
 	printf("X.509 Certificate [%s]\n", obj->label);
@@ -193,7 +195,7 @@ int read_certificate(void)
 
 void print_prkey_info(const struct sc_pkcs15_object *obj)
 {
-	int i;
+	unsigned int i;
         struct sc_pkcs15_prkey_info *prkey = (struct sc_pkcs15_prkey_info *) obj->data;
 	const char *usages[] = {
 		"encrypt", "decrypt", "sign", "signRecover",
@@ -205,7 +207,7 @@ void print_prkey_info(const struct sc_pkcs15_object *obj)
 		"sensitive", "extract", "alwaysSensitive",
 		"neverExtract", "local"
 	};
-	const int af_count = sizeof(access_flags)/sizeof(access_flags[0]);
+	const unsigned int af_count = NELEMENTS(access_flags);
 
 	printf("Private RSA Key [%s]\n", obj->label);
 	printf("\tCom. Flags  : %X\n", obj->flags);
@@ -258,19 +260,19 @@ int list_private_keys(void)
 
 void print_pubkey_info(const struct sc_pkcs15_object *obj)
 {
-	int i;
+	unsigned int i;
         const struct sc_pkcs15_pubkey_info *pubkey = (const struct sc_pkcs15_pubkey_info *) obj->data;
 	const char *usages[] = {
 		"encrypt", "decrypt", "sign", "signRecover",
 		"wrap", "unwrap", "verify", "verifyRecover",
 		"derive", "nonRepudiation"
 	};
-	const int usage_count = sizeof(usages)/sizeof(usages[0]);
+	const unsigned int usage_count = NELEMENTS(usages);
 	const char *access_flags[] = {
 		"sensitive", "extract", "alwaysSensitive",
 		"neverExtract", "local"
 	};
-	const int af_count = sizeof(access_flags)/sizeof(access_flags[0]);
+	const unsigned int af_count = NELEMENTS(access_flags);
 
 	printf("Public RSA Key [%s]\n", obj->label);
 	printf("\tCom. Flags  : %X\n", obj->flags);
