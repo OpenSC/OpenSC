@@ -117,7 +117,7 @@ static const char *	opt_file_to_write = NULL;
 static const char *	opt_object_class_str = NULL;
 static CK_OBJECT_CLASS	opt_object_class = -1;
 static CK_BYTE		opt_object_id[100], new_object_id[100];
-static int		opt_object_id_len = 0, new_object_id_len = 0;
+static size_t		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
 
 static void *module = NULL;
@@ -671,8 +671,8 @@ change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 	}
 
 	rv = p11->C_SetPIN(sess,
-		old_pin, old_pin == NULL ? 0 : strlen(old_pin),
-		new_pin, new_pin == NULL ? 0 : strlen(new_pin));
+		(CK_UTF8CHAR *) old_pin, old_pin == NULL ? 0 : strlen(old_pin),
+		(CK_UTF8CHAR *) new_pin, new_pin == NULL ? 0 : strlen(new_pin));
 	if (rv != CKR_OK)
 		p11_fatal("C_SetPIN", rv);
 	printf("PIN successfully changed\n");
@@ -799,26 +799,26 @@ gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_KEY_PAIR_GEN, NULL_PTR, 0};
 	CK_ULONG modulusBits = 768;
 	CK_BYTE publicExponent[] = { 3 };
-	CK_BBOOL true = TRUE;
+	CK_BBOOL _true = TRUE;
 	CK_OBJECT_CLASS pubkey_class = CKO_PUBLIC_KEY;
 	CK_OBJECT_CLASS privkey_class = CKO_PRIVATE_KEY;
 	CK_ATTRIBUTE publicKeyTemplate[20] = {
 		{CKA_CLASS, &pubkey_class, sizeof(pubkey_class)},
-		{CKA_ENCRYPT, &true, sizeof(true)},
-		{CKA_VERIFY, &true, sizeof(true)},
-		{CKA_WRAP, &true, sizeof(true)},
+		{CKA_ENCRYPT, &_true, sizeof(_true)},
+		{CKA_VERIFY, &_true, sizeof(_true)},
+		{CKA_WRAP, &_true, sizeof(_true)},
 		{CKA_MODULUS_BITS, &modulusBits, sizeof(modulusBits)},
 		{CKA_PUBLIC_EXPONENT, publicExponent, sizeof(publicExponent)}
 	};
 	int n_pubkey_attr = 6;
 	CK_ATTRIBUTE privateKeyTemplate[20] = {
 		{CKA_CLASS, &privkey_class, sizeof(privkey_class)},
-		{CKA_TOKEN, &true, sizeof(true)},
-		{CKA_PRIVATE, &true, sizeof(true)},
-		{CKA_SENSITIVE, &true, sizeof(true)},
-		{CKA_DECRYPT, &true, sizeof(true)},
-		{CKA_SIGN, &true, sizeof(true)},
-		{CKA_UNWRAP, &true, sizeof(true)}
+		{CKA_TOKEN, &_true, sizeof(_true)},
+		{CKA_PRIVATE, &_true, sizeof(_true)},
+		{CKA_SENSITIVE, &_true, sizeof(_true)},
+		{CKA_DECRYPT, &_true, sizeof(_true)},
+		{CKA_SIGN, &_true, sizeof(_true)},
+		{CKA_UNWRAP, &_true, sizeof(_true)}
 	};
 	int n_privkey_attr = 7;
 	CK_RV rv;
@@ -859,7 +859,7 @@ gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 int
 write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
-	CK_BBOOL true = TRUE;
+	CK_BBOOL _true = TRUE;
 	unsigned char contents[5000];
 	int contents_len;
 	FILE *f;
@@ -880,7 +880,7 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		CK_OBJECT_CLASS clazz = CKO_CERTIFICATE;
 		CK_CERTIFICATE_TYPE cert_type = CKC_X_509;
 
-		FILL_ATTR(cert_templ[0], CKA_TOKEN, &true, sizeof(true));
+		FILL_ATTR(cert_templ[0], CKA_TOKEN, &_true, sizeof(_true));
 		FILL_ATTR(cert_templ[1], CKA_VALUE, contents, contents_len);
 		FILL_ATTR(cert_templ[2], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(cert_templ[3], CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type));
@@ -1792,7 +1792,7 @@ sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,	CK_OBJECT_HANDLE priv_ke
 	unsigned char buf[512] = {0};
 	unsigned char *datas[] = {
 		buf,
-		"\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
+		(unsigned char *) "\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
 		buf,
 		buf,
 		buf
@@ -1882,7 +1882,8 @@ test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 	printf("Verify (currently only for RSA):\n");
 
 	for (i = 0; find_object(sess, CKO_PRIVATE_KEY, &priv_key, NULL, 0, i); i++) {
-		char *label, *id;
+		char *label;
+		unsigned char *id;
 		CK_ULONG id_len;
 		
 		printf("  testing key %d", i);
@@ -1953,7 +1954,7 @@ wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	
 	/* Encrypt something */
 	len = sizeof(ciphered);
-	EVP_SealUpdate(&seal_ctx, ciphered, &len, "hello world", 11);
+	EVP_SealUpdate(&seal_ctx, ciphered, &len, (const unsigned char *) "hello world", 11);
 	ciphered_len = len;
 
 	len = sizeof(ciphered) - ciphered_len;
@@ -2207,14 +2208,14 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_BYTE			md5_and_digestinfo[34] = "\x30\x20\x30\x0c\x06\x08\x2a\x86\x48\x86\xf7\x0d\x02\x05\x05\x00\x04\x10";
 	CK_BYTE			*data, sig[512];
 	CK_ULONG		data_len, sig_len;
-	CK_BYTE			*id = "abcdefghijklmnopqrst";
+	CK_BYTE			*id = (CK_BYTE *) "abcdefghijklmnopqrst";
 	CK_ULONG		id_len = 20;
-	CK_BYTE			*label = "Just a label";
+	CK_BYTE			*label = (CK_BYTE *) "Just a label";
 	CK_ULONG		label_len = 12;
 	CK_ATTRIBUTE		attribs[3] = {
 		{CKA_ID, id, id_len},
 		{CKA_LABEL, label, label_len},
-		{CKA_SUBJECT, "This won't be used in our lib", 29}
+		{CKA_SUBJECT, (void *) "This won't be used in our lib", 29}
 	};
 	FILE			*f;
 
@@ -2243,7 +2244,7 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (!gen_keypair(slot, session, &pub_key, &priv_key))
 		return;
 
-	tmp = getID(session, priv_key, &opt_object_id_len);
+	tmp = getID(session, priv_key, (CK_ULONG *) &opt_object_id_len);
 	if (opt_object_id == NULL || opt_object_id_len == 0) {
 		printf("ERR: newly generated private key has no (or an empty) CKA_ID\n");
 		return;
@@ -2312,7 +2313,7 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	opt_object_class = CKO_CERTIFICATE;
 	memcpy(opt_object_id, id, id_len);
 	opt_object_id_len = id_len;
-	opt_object_label = label;
+	opt_object_label = (char *) label;
 	if (!write_object(slot, session))
 		return;
 

@@ -152,8 +152,8 @@ static int cflex_init_app(struct sc_profile *profile, struct sc_card *card,
 		puk_tries = tmpinfo.tries_left;
 
 		r = cflex_update_pin(profile, card, userpinfile,
-			TMP_PIN, strlen(TMP_PIN), pin_tries,
-			TMP_PUK, strlen(TMP_PUK), puk_tries);
+			(const u8 *) TMP_PIN, strlen(TMP_PIN), pin_tries,
+			(const u8 *) TMP_PUK, strlen(TMP_PUK), puk_tries);
 		if (r != 0) {
 			profile->cbs->error("Couldn't create PIN file\n");
 			return r;
@@ -164,7 +164,7 @@ static int cflex_init_app(struct sc_profile *profile, struct sc_card *card,
 		memcpy(&tmpinfo.path, &userpinfile->path, sizeof(sc_path_t));
 		sc_profile_set_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
 
-		sc_profile_set_secret(profile, SC_AC_CHV, 1, TMP_PIN, strlen(TMP_PIN));
+		sc_profile_set_secret(profile, SC_AC_CHV, 1, (const u8 *) TMP_PIN, strlen(TMP_PIN));
 	}
 
      /* Create the application DF */

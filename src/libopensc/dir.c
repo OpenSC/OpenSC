@@ -25,14 +25,14 @@
 #include <string.h>
 
 struct app_entry {
-	const char *aid;
+	const u8 *aid;
 	size_t aid_len;
 	const char *desc;
 };
 
 static const struct app_entry apps[] = {
-	{ "\xA0\x00\x00\x00\x63PKCS-15", 12, "PKCS #15" },
-	{ "\xA0\x00\x00\x01\x77PKCS-15", 12, "Belgian eID" },
+	{ (const u8 *) "\xA0\x00\x00\x00\x63PKCS-15", 12, "PKCS #15" },
+	{ (const u8 *) "\xA0\x00\x00\x01\x77PKCS-15", 12, "Belgian eID" },
 };
 
 static const struct app_entry * find_app_entry(const u8 * aid, size_t aid_len)
