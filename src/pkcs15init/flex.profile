@@ -5,13 +5,6 @@ cardinfo {
     max-pin-length	= 8;
     pin-encoding	= ascii-numeric;
     pin-pad-char	= 0x00;
-
-    # This is the secure messaging key required for
-    # creating files in the MF
-    key AUT1 {
-        #value		= "=12345678";
-        #value		= 2c:15:e5:26:e9:3e:8a:19;
-    }
 }
 
 # Define reasonable limits for PINs and PUK

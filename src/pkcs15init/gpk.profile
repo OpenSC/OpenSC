@@ -5,12 +5,6 @@ cardinfo {
     max-pin-length	= 8;
     pin-encoding	= BCD;
     pin-pad-char	= 0x00;
-
-    # This is the secure messaging key required for
-    # creating files in the MF
-    key PRO1 {
-        value		= "=TEST KEYTEST KEY";
-    }
 }
 
 # Define reference for SO PIN
