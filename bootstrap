@@ -1,11 +1,13 @@
 #!/bin/sh
 
 set -x
-make distclean
+if test -f Makefile; then
+  make distclean
+fi
 rm -f *.cache *.status *.log *.m4
 cat aclocal/*.m4 > acinclude.m4
 aclocal
 libtoolize --copy --force --automake
 autoheader
 automake --add-missing --copy
-autoreconf --gnu
+autoreconf
