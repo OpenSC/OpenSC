@@ -21,7 +21,6 @@
 #include "internal.h"
 #ifdef HAVE_PCSC
 #include "ctbcs.h"
-#include "pinpad-ccid.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +31,7 @@
 #else
 #include <winscard.h>
 #endif
+#include "pinpad-ccid.h"
 
 /* Default timeout value for SCardGetStatusChange
  * Needs to be increased for some broken PC/SC
