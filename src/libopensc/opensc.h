@@ -251,10 +251,16 @@ struct sc_card_cache {
  */
 /* none yet */
 
+#define SC_PROTO_T0		0x00000001
+#define SC_PROTO_T1		0x00000002
+#define SC_PROTO_RAW		0x00001000
+#define SC_PROTO_ANY		0xFFFFFFFF
+
 struct sc_card {
 	struct sc_context *ctx;
 
 	SCARDHANDLE pcsc_card;
+	unsigned int protocol;
 	int reader;
 	unsigned long caps, flags;
 	int cla;

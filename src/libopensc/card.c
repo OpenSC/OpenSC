@@ -130,6 +130,34 @@ static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 	return 0;
 }
 
+static unsigned int pcsc_proto_to_opensc(DWORD proto)
+{
+	switch (proto) {
+	case SCARD_PROTOCOL_T0:
+		return SC_PROTO_T0;
+	case SCARD_PROTOCOL_T1:
+		return SC_PROTO_T1;
+	case SCARD_PROTOCOL_RAW:
+		return SC_PROTO_RAW;
+	default:
+		return 0;
+	}
+}
+
+static DWORD opensc_proto_to_pcsc(unsigned int proto)
+{
+	switch (proto) {
+	case SC_PROTO_T0:
+		return SCARD_PROTOCOL_T0;
+	case SC_PROTO_T1:
+		return SCARD_PROTOCOL_T1;
+	case SC_PROTO_RAW:
+		return SCARD_PROTOCOL_RAW;
+	default:
+		return 0;
+	}
+}
+
 static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 {
 	SCARD_IO_REQUEST sSendPci, sRecvPci;
@@ -173,9 +201,9 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 		break;
 	}
 
-	sSendPci.dwProtocol = SCARD_PROTOCOL_T0;
+	sSendPci.dwProtocol = opensc_proto_to_pcsc(card->protocol);
 	sSendPci.cbPciLength = 0;
-	sRecvPci.dwProtocol = SCARD_PROTOCOL_T0;
+	sRecvPci.dwProtocol = opensc_proto_to_pcsc(card->protocol);
 	sRecvPci.cbPciLength = 0;
 
 	dwSendLength = data - s;
@@ -357,11 +385,18 @@ int sc_connect_card(struct sc_context *ctx,
 		SC_FUNC_RETURN(ctx, 1, SC_ERROR_OUT_OF_MEMORY);
 	}
 	rv = SCardConnect(ctx->pcsc_ctx, ctx->readers[reader],
-			  SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0,
+			  SCARD_SHARE_SHARED, SCARD_PROTOCOL_ANY,
 			  &card_handle, &active_proto);
 	if (rv != 0) {
 		error(ctx, "SCardConnect failed: %s\n", pcsc_stringify_error(rv));
 		r = -1;		/* FIXME: invent a real error value */
+		goto err;
+	}
+
+	card->protocol = pcsc_proto_to_opensc(active_proto);
+	if (card->protocol == 0) {
+		error(ctx, "Unknown protocol (%X) selected.\n", active_proto);
+		r = SC_ERROR_RESOURCE_MANAGER;
 		goto err;
 	}
 	card->reader = reader;
