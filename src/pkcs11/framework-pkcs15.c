@@ -477,8 +477,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 
 	pkcs15_init_token_info(card, &slot->token_info);
 	slot->token_info.flags |= CKF_USER_PIN_INITIALIZED
-				| CKF_TOKEN_INITIALIZED
-				| CKF_WRITE_PROTECTED;
+				| CKF_TOKEN_INITIALIZED;
 	if (card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
 		slot->token_info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 		sc_pkcs11_conf.cache_pins = 0;
