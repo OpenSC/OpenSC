@@ -39,7 +39,6 @@ enum {
 	/* etoken driver */
 	SC_CARD_TYPE_ETOKEN_BASE = 1000,
 	SC_CARD_TYPE_ETOKEN_GENERIC,
-	SC_CARD_TYPE_ETOKEN_INFOCAMERE,
 
 	/* flex/cyberflex drivers */
 	SC_CARD_TYPE_FLEX_BASE = 2000,
