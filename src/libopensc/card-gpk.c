@@ -1685,7 +1685,6 @@ gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		*(int *) ptr = DRVDATA(card)->locked;
 		return 0;
 	}
-	error(card->ctx, "card_ctl command %u not supported\n", cmd);
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
