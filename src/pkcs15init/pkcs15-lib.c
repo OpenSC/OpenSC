@@ -358,7 +358,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	key_info->id = keyargs->id;
 	key_info->usage = usage;
 	key_info->native = 1;
-	key_info->key_reference = pin_info? pin_info->reference : 0;
+	key_info->key_reference = 0;
 	/* modulus_length and path set by card driver */
 
 	object = calloc(1, sizeof(*object));
