@@ -332,7 +332,7 @@ struct sc_pin_cmd_pin {
 
 	size_t min_length;	/* min/max length of PIN */
 	size_t max_length;
-	int encoding;		/* ASCII-numeric, BCD, etc */
+	unsigned int encoding;	/* ASCII-numeric, BCD, etc */
 	size_t pad_length;	/* filled in by the card driver */
 	u8 pad_char;
 	size_t offset;          /* PIN offset in the APDU */
