@@ -860,12 +860,16 @@ new_pin(struct sc_profile *profile, unsigned int id)
 	pi->id = id;
 	pi->pin.type = profile->pin_encoding;
 	pi->pin.flags = 0x32;
+	pi->pin.max_length = profile->pin_maxlen;
 	pi->pin.min_length = profile->pin_minlen;
 	pi->pin.stored_length = profile->pin_maxlen;
 	pi->pin.pad_char = profile->pin_pad_char;
 	pi->pin.magic = SC_PKCS15_PIN_MAGIC;
 	pi->pin.reference = -1;
 	pi->pin.tries_left = 3;
+	/* BCD encoded PIN takes half the space */
+	if (pi->pin.type == SC_PKCS15_PIN_TYPE_BCD)
+		pi->pin.stored_length = (pi->pin.stored_length + 1) / 2;
 
 	*tail = pi;
 	return pi;
