@@ -860,6 +860,8 @@ static int iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 			r = card->reader->ops->enter_pin(card->reader,
 					card->slot,
 					data);
+			apdu->sw1 = 0x90;
+			apdu->sw2 = 0x00;
 		} else {
 			error(card->ctx,
 				"Card reader driver does not support "
