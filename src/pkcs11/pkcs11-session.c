@@ -30,7 +30,7 @@ CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
 		    CK_SESSION_HANDLE_PTR phSession)     /* receives new session handle */
 {
 	struct sc_pkcs11_slot *slot;
-        struct sc_pkcs11_session *session;
+	struct sc_pkcs11_session *session;
 	int rv;
 
 	rv = sc_pkcs11_lock();
@@ -49,7 +49,7 @@ CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
 		goto out;
 	}
 
-        rv = slot_get_token(slotID, &slot);
+	rv = slot_get_token(slotID, &slot);
 	if (rv != CKR_OK)
 		goto out;
 
@@ -85,7 +85,7 @@ out:	sc_pkcs11_unlock();
 static CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
 {
 	struct sc_pkcs11_slot *slot;
-        struct sc_pkcs11_session *session;
+	struct sc_pkcs11_session *session;
 	int rv;
 
 	rv = pool_find_and_delete(&session_pool, hSession, (void**) &session);
@@ -178,8 +178,8 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,  /* the session's handle */
 
 	sc_debug(context, "C_GetSessionInfo(slot %d).\n", session->slot->id);
 	pInfo->slotID = session->slot->id;
-        pInfo->flags = session->flags;
-        pInfo->ulDeviceError = 0;
+	pInfo->flags = session->flags;
+	pInfo->ulDeviceError = 0;
 
 	slot = session->slot;
 	if (slot->login_user == CKU_SO) {
@@ -211,7 +211,7 @@ CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,            /* the session'
 			  CK_OBJECT_HANDLE hEncryptionKey,       /* handle of en/decryption key */
 			  CK_OBJECT_HANDLE hAuthenticationKey)   /* handle of sign/verify key */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
@@ -228,7 +228,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		return rv;
 
 	if (userType != CKU_USER && userType != CKU_SO) {
-                rv = CKR_USER_TYPE_INVALID;
+		rv = CKR_USER_TYPE_INVALID;
 		goto out;
 	}
 
@@ -246,7 +246,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	}
 
 	if (slot->login_user >= 0) {
-                rv = CKR_USER_ALREADY_LOGGED_IN;
+		rv = CKR_USER_ALREADY_LOGGED_IN;
 		goto out;
 	}
 

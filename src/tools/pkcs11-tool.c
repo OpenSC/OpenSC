@@ -219,8 +219,8 @@ main(int argc, char * const argv[])
 	CK_RV rv;
 
 	while (1) {
-               c = getopt_long(argc, argv, "ILMOa:d:e:hi:klm:o:p:scvty:w:z:r",
-					options, &long_optind);
+		c = getopt_long(argc, argv, "ILMOa:d:e:hi:klm:o:p:scvty:w:z:r",
+		                options, &long_optind);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -1043,10 +1043,10 @@ find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 	attrs[0].ulValueLen = sizeof(cls);
 	nattrs++;
 	if (id) {
-               attrs[nattrs].type = CKA_ID;
-               attrs[nattrs].pValue = (void *) id;
-               attrs[nattrs].ulValueLen = id_len;
-               nattrs++;
+		attrs[nattrs].type = CKA_ID;
+		attrs[nattrs].pValue = (void *) id;
+		attrs[nattrs].ulValueLen = id_len;
+		nattrs++;
 	}
 
 	rv = p11->C_FindObjectsInit(sess, attrs, nattrs);
@@ -1370,12 +1370,11 @@ show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	}
 
 	printf("  flags:          ");
-    if (getMODIFIABLE(sess, obj)) 
+	if (getMODIFIABLE(sess, obj)) 
 		printf(" modifiable");
-    if (getPRIVATE(sess, obj)) 
+	if (getPRIVATE(sess, obj)) 
 		printf(" private");
 	printf ("\n");
-			
 }
 
 void
@@ -2065,7 +2064,7 @@ sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,	CK_OBJECT_HANDLE priv_ke
 	CK_ULONG signat_len;
 	int j, errors = 0;
 
-    memcpy(buf, "\x00\x01\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00", 11);
+	memcpy(buf, "\x00\x01\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00", 11);
 
 	for (j = 0, mech_type = mech_types; *mech_type != 0xffffff; mech_type++, j++) {
 		CK_MECHANISM mech = {*mech_type, NULL, 0};
@@ -2863,7 +2862,7 @@ int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 		return 1;
 	}
 
-        left = *outlen;
+	left = *outlen;
 
 	while (*in != '\0') {
 		int byte = 0, nybbles = 2;

@@ -40,7 +40,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-        dump_template("C_CreateObject()", pTemplate, ulCount);
+	dump_template("C_CreateObject()", pTemplate, ulCount);
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -316,7 +316,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,          /* the session's han
 	       &operation->handles[operation->current_handle],
 	       to_return * sizeof(CK_OBJECT_HANDLE));
 
-        operation->current_handle += to_return;
+	operation->current_handle += to_return;
 
 out:	sc_pkcs11_unlock();
 	return rv;
@@ -361,10 +361,10 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_init(session, pMechanism);
-        sc_debug(context, "C_DigestInit returns %d\n", rv);
+	sc_debug(context, "C_DigestInit returns %d\n", rv);
 
 	sc_pkcs11_unlock();
-        return rv;
+	return rv;
 }
 
 CK_RV C_Digest(CK_SESSION_HANDLE hSession,     /* the session's handle */
@@ -391,7 +391,7 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,     /* the session's handle */
 out:	sc_debug(context, "C_Digest returns %d\n", rv);
 	sc_pkcs11_unlock();
 
-        return rv;
+	return rv;
 }
 
 CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
@@ -409,15 +409,15 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_update(session, pPart, ulPartLen);
 
-        sc_debug(context, "C_DigestUpdate returns %d\n", rv);
+	sc_debug(context, "C_DigestUpdate returns %d\n", rv);
 	sc_pkcs11_unlock();
-        return rv;
+	return rv;
 }
 
 CK_RV C_DigestKey(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		  CK_OBJECT_HANDLE  hKey)      /* handle of secret key to digest */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,     /* the session's handle */
@@ -435,9 +435,9 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,     /* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
-        sc_debug(context, "C_DigestFinal returns %d\n", rv);
+	sc_debug(context, "C_DigestFinal returns %d\n", rv);
 	sc_pkcs11_unlock();
-        return rv;
+	return rv;
 }
 
 CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
@@ -465,18 +465,18 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		goto out;
 
 	if (object->ops->sign == NULL_PTR) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 
 	rv = object->ops->get_attribute(session, object, &sign_attribute);
-        if (rv != CKR_OK || !can_sign) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+	if (rv != CKR_OK || !can_sign) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 	rv = object->ops->get_attribute(session, object, &key_type_attr);
-        if (rv != CKR_OK) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+	if (rv != CKR_OK) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 
@@ -485,7 +485,7 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 out:	sc_debug(context, "Sign initialization returns %d\n", rv);
 	sc_pkcs11_unlock();
 
-        return rv;
+	return rv;
 }
 
 CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
@@ -526,7 +526,7 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 
 out:	sc_debug(context, "Signing result was %d\n", rv);
 	sc_pkcs11_unlock();
-        return rv;
+	return rv;
 }
 
 CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
@@ -583,14 +583,14 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,        /* the session's handle */
 out:	sc_debug(context, "C_SignFinal returns %d\n", rv);
 	sc_pkcs11_unlock();
 
-        return rv;
+	return rv;
 }
 
 CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 			CK_MECHANISM_PTR  pMechanism, /* the signature mechanism */
 			CK_OBJECT_HANDLE  hKey)       /* handle of the signature key */
 {
-        CK_BBOOL can_sign;
+	CK_BBOOL can_sign;
 	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE sign_attribute = { CKA_SIGN, &can_sign, sizeof(can_sign) };
 	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
@@ -611,30 +611,30 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 		goto out;
 
 	if (object->ops->sign == NULL_PTR) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 
 	rv = object->ops->get_attribute(session, object, &sign_attribute);
-        if (rv != CKR_OK || !can_sign) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+	if (rv != CKR_OK || !can_sign) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 	rv = object->ops->get_attribute(session, object, &key_type_attr);
-        if (rv != CKR_OK) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+	if (rv != CKR_OK) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 
 	/* XXX: need to tell the signature algorithm that we want
 	 * to recover the signature */
-        sc_debug(context, "SignRecover operation initialized\n");
+	sc_debug(context, "SignRecover operation initialized\n");
 
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
 out:	sc_debug(context, "Sign initialization returns %d\n", rv);
 	sc_pkcs11_unlock();
-        return rv;
+	return rv;
 }
 
 CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,        /* the session's handle */
@@ -643,14 +643,14 @@ CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,        /* the session's handle *
 		    CK_BYTE_PTR       pSignature,      /* receives the signature */
 		    CK_ULONG_PTR      pulSignatureLen) /* receives byte count of signature */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		    CK_MECHANISM_PTR  pMechanism,  /* the encryption mechanism */
 		    CK_OBJECT_HANDLE  hKey)        /* handle of encryption key */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,            /* the session's handle */
@@ -659,7 +659,7 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,            /* the session's handle *
 		CK_BYTE_PTR       pEncryptedData,      /* receives encrypted data */
 		CK_ULONG_PTR      pulEncryptedDataLen) /* receives encrypted byte count */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,           /* the session's handle */
@@ -668,14 +668,14 @@ CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,           /* the session's han
 		      CK_BYTE_PTR       pEncryptedPart,     /* receives encrypted data */
 		      CK_ULONG_PTR      pulEncryptedPartLen)/* receives encrypted byte count */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,                /* the session's handle */
 		     CK_BYTE_PTR       pLastEncryptedPart,      /* receives encrypted last part */
 		     CK_ULONG_PTR      pulLastEncryptedPartLen) /* receives byte count */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
@@ -703,18 +703,18 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		goto out;
 
 	if (object->ops->decrypt == NULL_PTR) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 
 	rv = object->ops->get_attribute(session, object, &decrypt_attribute);
-        if (rv != CKR_OK || !can_decrypt) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+	if (rv != CKR_OK || !can_decrypt) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 	rv = object->ops->get_attribute(session, object, &key_type_attr);
-        if (rv != CKR_OK) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+	if (rv != CKR_OK) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 
@@ -828,10 +828,10 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE    hSession,                    /* the
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-        dump_template("C_CreateObject(), PrivKey attrs", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
-        dump_template("C_CreateObject(), PubKey attrs", pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	dump_template("C_CreateObject(), PrivKey attrs", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	dump_template("C_CreateObject(), PubKey attrs", pPublicKeyTemplate, ulPublicKeyAttributeCount);
 
-        rv = pool_find(&session_pool, hSession, (void**) &session);
+	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		goto out;
 
@@ -886,7 +886,7 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE    hSession,          /* the session's handl
 		goto out;
 
 	if (object->ops->sign == NULL_PTR) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 
@@ -978,7 +978,7 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 #else
 #if 0
-        CK_BBOOL can_verify;
+	CK_BBOOL can_verify;
 	CK_ATTRIBUTE verify_attribute = { CKA_VERIFY, &can_verify, sizeof(can_verify) };
 #endif
 	CK_KEY_TYPE key_type;
@@ -1001,14 +1001,14 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 
 #if 0
 	rv = object->ops->get_attribute(session, object, &verify_attribute);
-        if (rv != CKR_OK || !can_verify) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+	if (rv != CKR_OK || !can_verify) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 #endif
 	rv = object->ops->get_attribute(session, object, &key_type_attr);
-        if (rv != CKR_OK) {
-                rv = CKR_KEY_TYPE_INCONSISTENT;
+	if (rv != CKR_OK) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto out;
 	}
 

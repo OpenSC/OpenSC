@@ -22,11 +22,11 @@
 #include "sc-pkcs11.h"
 
 static struct sc_pkcs11_framework_ops *frameworks[] = {
-        &framework_pkcs15,
+	&framework_pkcs15,
 #ifdef USE_PKCS15_INIT
 	/* This should be the last framework, because it
 	 * will assume the card is blank and try to initialize it */
-        &framework_pkcs15init,
+	&framework_pkcs15init,
 #endif
 	NULL
 };
@@ -241,7 +241,7 @@ CK_RV slot_allocate(struct sc_pkcs11_slot **slot, struct sc_pkcs11_card *card)
 CK_RV slot_get_slot(int id, struct sc_pkcs11_slot **slot)
 {
 	if (context == NULL)
-                return CKR_CRYPTOKI_NOT_INITIALIZED;
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	if (id < 0 || id >= SC_PKCS11_MAX_VIRTUAL_SLOTS)
 		return CKR_SLOT_ID_INVALID;

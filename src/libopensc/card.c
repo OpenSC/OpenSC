@@ -519,9 +519,9 @@ int sc_unlock(struct sc_card *card)
 	if (card->lock_count == 1) {
 		if (card->reader->ops->unlock != NULL)
 			r = card->reader->ops->unlock(card->reader, card->slot);
-        }
-        card->lock_count--;
-        sc_mutex_unlock(card->mutex);
+	}
+	card->lock_count--;
+	sc_mutex_unlock(card->mutex);
 	return r;
 }
 
@@ -531,10 +531,10 @@ int sc_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 1);
-        if (card->ops->list_files == NULL)
+	if (card->ops->list_files == NULL)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->list_files(card, buf, buflen);
-        SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 int sc_create_file(struct sc_card *card, struct sc_file *file)
@@ -549,10 +549,10 @@ int sc_create_file(struct sc_card *card, struct sc_file *file)
 				in_path->type,
 				sc_print_path(in_path), file->size);
 	}
-        if (card->ops->create_file == NULL)
+	if (card->ops->create_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->create_file(card, file);
-        SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 int sc_delete_file(struct sc_card *card, const struct sc_path *path)
@@ -565,10 +565,10 @@ int sc_delete_file(struct sc_card *card, const struct sc_path *path)
 				path->type,
 				sc_print_path(path));
 	}
-        if (card->ops->delete_file == NULL)
+	if (card->ops->delete_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->delete_file(card, path);
-        SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 int sc_read_binary(struct sc_card *card, unsigned int idx,
@@ -610,7 +610,7 @@ int sc_read_binary(struct sc_card *card, unsigned int idx,
 		SC_FUNC_RETURN(card->ctx, 2, bytes_read);
 	}
 	r = card->ops->read_binary(card, idx, buf, count, flags);
-        SC_FUNC_RETURN(card->ctx, 2, r);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_write_binary(struct sc_card *card, unsigned int idx,
@@ -652,7 +652,7 @@ int sc_write_binary(struct sc_card *card, unsigned int idx,
 		SC_FUNC_RETURN(card->ctx, 2, bytes_written);
 	}
 	r = card->ops->write_binary(card, idx, buf, count, flags);
-        SC_FUNC_RETURN(card->ctx, 2, r);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_update_binary(struct sc_card *card, unsigned int idx,
@@ -694,7 +694,7 @@ int sc_update_binary(struct sc_card *card, unsigned int idx,
 		SC_FUNC_RETURN(card->ctx, 2, bytes_written);
 	}
 	r = card->ops->update_binary(card, idx, buf, count, flags);
-        SC_FUNC_RETURN(card->ctx, 2, r);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_select_file(struct sc_card *card,
@@ -729,7 +729,7 @@ int sc_select_file(struct sc_card *card,
 	/* Remember file path */
 	if (r == 0 && file && *file)
 		(*file)->path = *in_path;
-        SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 int sc_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t len)
@@ -737,10 +737,10 @@ int sc_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t len)
 	int	r;
 
 	sc_debug(card->ctx, "called, tag=%04x\n", tag);
-        if (card->ops->get_data == NULL)
+	if (card->ops->get_data == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->get_data(card, tag, buf, len);
-        SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 int sc_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t len)
@@ -748,10 +748,10 @@ int sc_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t len)
 	int	r;
 
 	sc_debug(card->ctx, "called, tag=%04x\n", tag);
-        if (card->ops->put_data == NULL)
+	if (card->ops->put_data == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->put_data(card, tag, buf, len);
-        SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 int sc_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
@@ -760,10 +760,10 @@ int sc_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
-        if (card->ops->get_challenge == NULL)
+	if (card->ops->get_challenge == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->get_challenge(card, rnd, len);
-        SC_FUNC_RETURN(card->ctx, 2, r);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 *buf,
@@ -773,10 +773,10 @@ int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 *buf,
 
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
-        if (card->ops->read_record == NULL)
+	if (card->ops->read_record == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->read_record(card, rec_nr, buf, count, flags);
-        SC_FUNC_RETURN(card->ctx, 2, r);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_write_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
@@ -786,10 +786,10 @@ int sc_write_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
 
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
-        if (card->ops->write_record == NULL)
+	if (card->ops->write_record == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->write_record(card, rec_nr, buf, count, flags);
-        SC_FUNC_RETURN(card->ctx, 2, r);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
@@ -799,10 +799,10 @@ int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
 
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
-        if (card->ops->append_record == NULL)
+	if (card->ops->append_record == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->append_record(card, buf, count, flags);
-        SC_FUNC_RETURN(card->ctx, 2, r);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
@@ -812,10 +812,10 @@ int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
 
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
-        if (card->ops->update_record == NULL)
+	if (card->ops->update_record == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->update_record(card, rec_nr, buf, count, flags);
-        SC_FUNC_RETURN(card->ctx, 2, r);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_delete_record(struct sc_card *card, unsigned int rec_nr)
@@ -844,7 +844,7 @@ sc_card_ctl(struct sc_card *card, unsigned long cmd, void *args)
 
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
-        if (card->ops->card_ctl != NULL)
+	if (card->ops->card_ctl != NULL)
 		r = card->ops->card_ctl(card, cmd, args);
 
 	/* suppress "not supported" error messages */
@@ -852,7 +852,7 @@ sc_card_ctl(struct sc_card *card, unsigned long cmd, void *args)
 		sc_debug(card->ctx, "card_ctl(%lu) not supported\n", cmd);
 		return r;
 	}
-        SC_FUNC_RETURN(card->ctx, 2, r);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info)

@@ -765,7 +765,7 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 int sc_pkcs15_get_objects(struct sc_pkcs15_card *p15card, int type,
 			  struct sc_pkcs15_object **ret, int ret_size)
 {
-        return sc_pkcs15_get_objects_cond(p15card, type, NULL, NULL, ret, ret_size);
+	return sc_pkcs15_get_objects_cond(p15card, type, NULL, NULL, ret, ret_size);
 }
 
 static int compare_obj_id(struct sc_pkcs15_object *obj, const sc_pkcs15_id_t *id)
@@ -1183,7 +1183,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	u8 *buf;
-        const u8 *p;
+	const u8 *p;
 	size_t bufsize;
 	int r;
 	struct sc_pkcs15_object *obj = NULL;

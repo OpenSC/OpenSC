@@ -48,11 +48,11 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	load_pkcs11_parameters(&sc_pkcs11_conf, context);
 
 	first_free_slot = 0;
-        pool_initialize(&session_pool, POOL_TYPE_SESSION);
+	pool_initialize(&session_pool, POOL_TYPE_SESSION);
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++)
-                slot_initialize(i, &virtual_slots[i]);
+		slot_initialize(i, &virtual_slots[i]);
 	for (i=0; i<SC_PKCS11_MAX_READERS; i++)
-                card_initialize(i);
+		card_initialize(i);
 
 	/* Detect any card, but do not flag "insert" events */
 	__card_detect_all(0);
@@ -213,7 +213,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 		if (now >= card_table[slot->reader].slot_state_expires || now == 0) {
 			/* Update slot status */
 			rv = card_detect(slot->reader);
-			/* Don't ask again within the next second */ 
+			/* Don't ask again within the next second */
 			card_table[slot->reader].slot_state_expires = now + 1000;
 		}
 	}
@@ -504,7 +504,7 @@ sc_pkcs11_free_lock()
 	_lock = NULL;
 
 	/* Now unlock. On SMP machines the synchronization
-	 * primitives should take care of flushing out 
+	 * primitives should take care of flushing out
 	 * all changed data to RAM */
 	__sc_pkcs11_unlock(tempLock);
 

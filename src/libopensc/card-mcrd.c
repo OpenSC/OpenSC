@@ -57,7 +57,7 @@ enum {
 #define EF_KeyD 0x0013  /* File with extra key information. */
 #define EF_Rule 0x0030  /* Default ACL file. */
 
-#define MAX_CURPATH 10 
+#define MAX_CURPATH 10
 
 struct rule_record_s {
 	struct rule_record_s *next;
@@ -76,7 +76,7 @@ struct keyd_record_s {
 struct df_info_s {
 	struct df_info_s *next;
 	unsigned short path[MAX_CURPATH];
-	size_t pathlen; 
+	size_t pathlen;
 	struct rule_record_s *rule_file; /* keeps records of EF_Rule. */
 	struct keyd_record_s *keyd_file; /* keeps records of EF_KeyD. */
 };
@@ -85,7 +85,7 @@ struct mcrd_priv_data {
 	unsigned short curpath[MAX_CURPATH]; /* The currently selected path. */
 	size_t curpathlen; /* Length of this path or 0 if unknown. */
 	int is_ef;      /* True if the path points to an EF. */
-	struct df_info_s *df_infos; 
+	struct df_info_s *df_infos;
 	sc_security_env_t sec_env;	/* current security environment */
 };
 
@@ -145,11 +145,11 @@ static void clear_special_files (struct df_info_s *dfi)
 	}
 }
 
-/* Some functionality straight from the EstEID manual. 
+/* Some functionality straight from the EstEID manual.
  * Official notice: Refer to the Micardo 2.1 Public manual.
  * Sad side: not available without a NDA.
  */
- 
+
 static int
 mcrd_delete_ref_to_authkey (struct sc_card *card)
 {
@@ -201,7 +201,7 @@ mcrd_set_decipher_key_ref (struct sc_card *card, int key_reference)
 	u8 keyref_data[SC_ESTEID_KEYREF_FILE_RECLEN];
 	assert (card != NULL);
 
-	sc_format_apdu (card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB8);   
+	sc_format_apdu (card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB8);
 	/* track the active keypair  */
 	sc_format_path("0033", &path);
 	r = sc_select_file(card, &path, NULL);
@@ -214,12 +214,12 @@ mcrd_set_decipher_key_ref (struct sc_card *card, int key_reference)
 		    "Can't read keyref info file!");
 
 	sc_debug(card->ctx,
-		 "authkey reference 0x%02x%02x\n", 
+		 "authkey reference 0x%02x%02x\n",
 		  keyref_data[9], keyref_data[10]);
 
 	sc_debug(card->ctx,
-		 "signkey reference 0x%02x%02x\n", 
-		  keyref_data[19], keyref_data[20]);		  
+		 "signkey reference 0x%02x%02x\n",
+		  keyref_data[19], keyref_data[20]);
 
 
 	sbuf[0] = 0x83;
@@ -312,7 +312,7 @@ static int load_special_files (struct sc_card *card)
 
 	/* First check whether we already cached it. */
 	dfi = get_df_info (card);
-	if (dfi && dfi->rule_file) 
+	if (dfi && dfi->rule_file)
 		return 0; /* yes. */
 	clear_special_files (dfi);
 
@@ -413,7 +413,7 @@ static int get_se_num_from_keyd (struct sc_card *card, unsigned short fid,
 	if (!dfi || !dfi->keyd_file) {
 		sc_debug (ctx, "EF_keyD not loaded\n");
 		return -1;
-	}    
+	}
 
 	for (keyd=dfi->keyd_file; keyd; keyd = keyd->next) {
 		p = keyd->data;
@@ -654,20 +654,20 @@ static void process_fcp(struct sc_card *card, struct sc_file *file,
 	/* Proprietary information. */
 	tag = bad_fde? NULL : sc_asn1_find_tag(ctx, p, len, 0x85, &taglen);
 	if (tag != NULL && taglen) {
-		sc_file_set_prop_attr(file, tag, taglen); 
+		sc_file_set_prop_attr(file, tag, taglen);
 	} else
 		file->prop_attr_len = 0;
 
 	/* Proprietary information, constructed. */
 	tag = sc_asn1_find_tag(ctx, p, len, 0xA5, &taglen);
 	if (tag != NULL && taglen) {
-		sc_file_set_prop_attr(file, tag, taglen); 
+		sc_file_set_prop_attr(file, tag, taglen);
 	}
 
 	/* Security attributes, proprietary format. */
 	tag = sc_asn1_find_tag(ctx, p, len, 0x86, &taglen);
 	if (tag != NULL && taglen) {
-		sc_file_set_sec_attr(file, tag, taglen); 
+		sc_file_set_sec_attr(file, tag, taglen);
 	}
 
 	/* Security attributes, reference to expanded format. */
@@ -716,7 +716,7 @@ do_select(struct sc_card *card, u8 kind,
 		if (apdu.sw1 == 0x61)
 				SC_FUNC_RETURN(card->ctx, 2, 0);
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (!r && kind == MCRD_SEL_AID) 
+		if (!r && kind == MCRD_SEL_AID)
 				card->cache.current_path.len = 0;
 		SC_FUNC_RETURN(card->ctx, 2, r);
 	}
@@ -781,7 +781,7 @@ select_down (struct sc_card *card,
 	int found_ef = 0;
 
 	if (!pathlen)
-		return SC_ERROR_INVALID_ARGUMENTS; 
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	for (; pathlen; pathlen--, pathptr++) {
 		if (priv->curpathlen == MAX_CURPATH)
@@ -792,7 +792,7 @@ select_down (struct sc_card *card,
 			/* first try to select an EF and retry an DF
 			   on error. */
 			r = select_part (card, MCRD_SEL_EF,*pathptr, file);
-			if (!r) 
+			if (!r)
 				found_ef = 1;
 		}
 		if (r)
@@ -803,7 +803,7 @@ select_down (struct sc_card *card,
 		priv->curpathlen++;
 	}
 	priv->is_ef = found_ef;
-	if (!found_ef) 
+	if (!found_ef)
 		load_special_files (card);
 	
 	return 0;
@@ -815,7 +815,7 @@ select_down (struct sc_card *card,
    this is accomplished be keeping track of the currently selected
    file.  Note that PATH is an array of PATHLEN file ids and not the
    usual sc_path structure. */
-   
+
 static int
 select_file_by_path (struct sc_card *card, unsigned short *pathptr,
 	             size_t pathlen,
@@ -879,7 +879,7 @@ select_file_by_path (struct sc_card *card, unsigned short *pathptr,
 			priv->curpathlen = 0;
 			priv->is_ef = 0;
 			r = select_down (card, pathptr, pathlen, 0, file);
-		} 
+		}
 	} else {
 		/* Relative addressing. */
 		if (!priv->curpathlen) {
@@ -913,7 +913,7 @@ select_file_by_fid (struct sc_card *card, unsigned short *pathptr,
 	if (pathlen > 1)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (pathlen && *pathptr == 0x3FFF) 
+	if (pathlen && *pathptr == 0x3FFF)
 		return 0;
 
 	if (!pathlen) {
@@ -1014,7 +1014,7 @@ mcrd_select_file(struct sc_card *card, const struct sc_path *path,
 		for (n = 0; n < path->len; n += 2)
 			pathptr[n>>1] = (path->value[n] << 8)|path->value[n+1];
 		pathlen = path->len >> 1;
-		if (path->type == SC_PATH_TYPE_PATH) 
+		if (path->type == SC_PATH_TYPE_PATH)
 			r = select_file_by_path (card, pathptr, pathlen, file);
 		else {  /* SC_PATH_TYPE_FILEID */
 			r = select_file_by_fid (card, pathptr, pathlen, file);
@@ -1053,7 +1053,7 @@ static int mcrd_enable_se (struct sc_card *card, int se_num)
 
 /* It seems that MICARDO does not fully comply with ISO, so I use
    values gathered from peeking actual signing opeations using a
-   different system. 
+   different system.
    It has been generalized [?] and modified by information coming from
    openpgp card implementation, EstEID 'manual' and some other sources. -mp
    */
@@ -1272,7 +1272,7 @@ static int mcrd_decipher(struct sc_card *card,
 static int mcrd_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 		 int *tries_left)
 {
-	SC_FUNC_CALLED(card->ctx, 3); 
+	SC_FUNC_CALLED(card->ctx, 3);
 	data->pin1.offset = 5;
 	data->pin1.length_offset = 4;
 	data->pin2.offset = 5;

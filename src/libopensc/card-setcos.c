@@ -116,13 +116,12 @@ static int setcos_init(struct sc_card *card)
 
 	/* Handle unknown or forced cards */
 	if (card->type < 0) {
+		card->type = SC_CARD_TYPE_SETCOS_GENERIC;
 #if 0
 		/* Hmm. For now, assume it's a bank card with FinEID application */
 		if (match_hist_bytes(card, "AVANT", 0)) {
 			card->type = SC_CARD_TYPE_SETCOS_FINEID;
-		} else
 #endif
-			card->type = SC_CARD_TYPE_SETCOS_GENERIC;
 	}
 	if (card->type == SC_CARD_TYPE_SETCOS_FINEID) {
 		card->cla = 0x00;
@@ -130,7 +129,7 @@ static int setcos_init(struct sc_card *card)
 	}
 	if (card->type == SC_CARD_TYPE_SETCOS_PKI || card->type == SC_CARD_TYPE_SETCOS_FINEID) {
 		unsigned long flags;
-		
+
 		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
 		flags |= SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1;
 
@@ -313,7 +312,7 @@ static int setcos_set_security_env(struct sc_card *card,
 			tmp.algorithm_ref |= 0x10;
 		return setcos_set_security_env2(card, &tmp, se_num);
 	}
-        return setcos_set_security_env2(card, env, se_num);
+	return setcos_set_security_env2(card, env, se_num);
 }
 
 static void add_acl_entry(struct sc_file *file, int op, u8 byte)
@@ -378,7 +377,7 @@ static int setcos_select_file(struct sc_card *card,
 			       struct sc_file **file)
 {
 	int r;
-	
+
 	r = iso_ops->select_file(card, in_path, file);
 	if (r)
 		return r;
@@ -410,15 +409,15 @@ static struct sc_card_driver * sc_get_driver(void)
 	setcos_ops = *iso_drv->ops;
 	setcos_ops.match_card = setcos_match_card;
 	setcos_ops.init = setcos_init;
-        setcos_ops.finish = setcos_finish;
+	setcos_ops.finish = setcos_finish;
 	if (iso_ops == NULL)
-                iso_ops = iso_drv->ops;
+		iso_ops = iso_drv->ops;
 	setcos_ops.create_file = setcos_create_file;
 	setcos_ops.set_security_env = setcos_set_security_env;
 	setcos_ops.select_file = setcos_select_file;
 	setcos_ops.list_files = setcos_list_files;
-	
-        return &setcos_drv;
+
+	return &setcos_drv;
 }
 
 #if 1

@@ -63,10 +63,8 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	set_string (&p15card->label, "EstEID isikutunnistus");
 	set_string (&p15card->manufacturer_id, "AS Sertifitseerimiskeskus");
 
-	select_esteid_df (card);
-
 	/* read the serial (document number) */
-	sc_format_path ("5044", &tmppath);
+	sc_format_path ("3f00eeee5044", &tmppath);
 	tmppath.type = SC_PATH_TYPE_PATH;
 	r = sc_select_file (card, &tmppath, NULL);
 	SC_TEST_RET (card->ctx, r, "select esteid PD failed");

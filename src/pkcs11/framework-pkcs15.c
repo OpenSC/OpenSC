@@ -49,7 +49,7 @@ struct pkcs15_slot_data {
 		attr->ulValueLen = size;	\
 		return CKR_BUFFER_TOO_SMALL;    \
 	}                                       \
-        attr->ulValueLen = size;
+	attr->ulValueLen = size;
 
 #define MAX_OBJECTS	64
 struct pkcs15_fw_data {
@@ -291,7 +291,7 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data,
 	memcpy(obj2->pub_data, &p15_cert->key, sizeof(sc_pkcs15_pubkey_t));
 	/* invalidate public data of the cert object so that sc_pkcs15_cert_free
 	 * does not free the public key data as well (something like
-	 * sc_pkcs15_pubkey_dup would have been nice here) -- Nils 
+	 * sc_pkcs15_pubkey_dup would have been nice here) -- Nils
 	 */
 	memset(&p15_cert->key, 0, sizeof(sc_pkcs15_pubkey_t));
 	obj2->pub_cert = object;
@@ -692,7 +692,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		struct pkcs15_any_object *obj = fw_data->objects[j];
 
 		if (!(obj->base.flags & SC_PKCS11_OBJECT_SEEN)) {
-                        sc_debug(context, "Object %d was not seen previously\n", j);
+			sc_debug(context, "Object %d was not seen previously\n", j);
 			if (!slot) {
 				rv = pkcs15_create_slot(p11card, NULL, &slot);
 				if (rv != CKR_OK)
@@ -719,7 +719,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 static CK_RV pkcs15_release_token(struct sc_pkcs11_card *p11card, void *fw_token)
 {
 	unlock_card((struct pkcs15_fw_data *) p11card->fw_data);
-        return CKR_OK;
+	return CKR_OK;
 }
 
 static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
@@ -926,7 +926,7 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 		case CKA_KEY_TYPE:
 		case CKA_MODULUS_BITS:
 		case CKA_PRIVATE:
-		       	break;
+			break;
 		case CKA_LABEL:
 			args.label = (char *) attr->pValue;
 			break;
@@ -991,9 +991,9 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 	struct pkcs15_any_object *key_any_obj;
 	struct sc_pkcs15_object	*key_obj;
 	struct sc_pkcs15_pin_info *pin;
-	CK_KEY_TYPE		key_type;
+	CK_KEY_TYPE	key_type;
 	struct sc_pkcs15_pubkey_rsa *rsa;
-	int			rc, rv;
+	int rc, rv;
 
 	memset(&args, 0, sizeof(args));
 
@@ -1022,7 +1022,7 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 		case CKA_KEY_TYPE:
 		case CKA_MODULUS_BITS:
 		case CKA_PRIVATE:
-		       	break;
+			break;
 		case CKA_LABEL:
 			args.label = (char *) attr->pValue;
 			break;
@@ -1100,7 +1100,7 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 		switch (attr->type) {
 		/* Skip attrs we already know or don't care for */
 		case CKA_CLASS:
-		       	break;
+			break;
 		case CKA_PRIVATE:
 			rv = attr_extract(attr, &bValue, NULL);
 			if (bValue) {
@@ -1153,7 +1153,7 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 {
 	struct sc_profile *profile = NULL;
 	CK_OBJECT_CLASS	_class;
-	int		rv, rc;
+	int rv, rc;
 
 	rv = attr_find(pTemplate, ulCount, CKA_CLASS, &_class, NULL);
 	if (rv != CKR_OK)
@@ -1563,17 +1563,15 @@ static CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 		memcpy(attr->pValue, cert->cert_data->data, cert->cert_data->data_len);
 		break;
 	case CKA_SERIAL_NUMBER:
-		 check_attribute_buffer(attr, cert->cert_data->serial_len);
-		 memcpy(attr->pValue, cert->cert_data->serial, cert->cert_data->serial_len);
-		 break;
+		check_attribute_buffer(attr, cert->cert_data->serial_len);
+		memcpy(attr->pValue, cert->cert_data->serial, cert->cert_data->serial_len);
+		break;
 	case CKA_SUBJECT:
-		 return asn1_sequence_wrapper(cert->cert_data->subject,
-				 cert->cert_data->subject_len,
-				 attr);
+		return asn1_sequence_wrapper(cert->cert_data->subject,
+		                             cert->cert_data->subject_len, attr);
 	case CKA_ISSUER:
-		 return asn1_sequence_wrapper(cert->cert_data->issuer,
-				 cert->cert_data->issuer_len,
-				 attr);
+		return asn1_sequence_wrapper(cert->cert_data->issuer,
+				 cert->cert_data->issuer_len, attr);
 	default:
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
@@ -1762,7 +1760,7 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 	if (prkey->prv_p15obj->user_consent) {
 		/* XXX we should really keep track how often the key
 		 * is used, and how often we need to ask the user for
-		 * her PIN. 
+		 * her PIN.
 		 * For now, we just assume user_consent is 1.
 		 */
 		/* XXX - do we require an sc_lock here? */
@@ -1775,7 +1773,7 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 	while (prkey
 	 && !(prkey->prv_info->usage
 	     & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER|
-	     	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION))) 
+	     	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)))
 		prkey = prkey->prv_next;
 
 	if (prkey == NULL)
@@ -1870,7 +1868,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 	/* Select the proper padding mechanism */
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
-		flags |= SC_ALGORITHM_RSA_PAD_PKCS1; 
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 		break;
 	case CKM_RSA_X_509:
 		flags |= SC_ALGORITHM_RSA_RAW;
@@ -1892,8 +1890,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 	}
 
 	rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj,
-				 flags,
-				 pEncryptedData, ulEncryptedDataLen,
+				 flags, pEncryptedData, ulEncryptedDataLen,
 				 decrypted, sizeof(decrypted));
 
 	/* Do we have to try a re-login and then try to decrypt again? */
@@ -1901,8 +1898,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 		rv = revalidate_pin(data, ses);
 		if (rv == 0)
 			rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj,
-						flags,
-						pEncryptedData, ulEncryptedDataLen,
+						flags, pEncryptedData, ulEncryptedDataLen,
 						decrypted, sizeof(decrypted));
 	}
 	sc_unlock(ses->slot->card->card);
@@ -1989,7 +1985,7 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_CLASS:
 		check_attribute_buffer(attr, sizeof(CK_OBJECT_CLASS));
 		*(CK_OBJECT_CLASS*)attr->pValue = CKO_PUBLIC_KEY;
-                break;
+		break;
 	case CKA_TOKEN:
 	case CKA_LOCAL:
 	case CKA_SENSITIVE:
@@ -1997,13 +1993,13 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_NEVER_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
-                break;
+		break;
 	case CKA_PRIVATE:
 	case CKA_MODIFIABLE:
 	case CKA_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = FALSE;
-                break;
+		break;
 	case CKA_LABEL:
 		if (pubkey->pub_p15obj) {
 			len = strlen(pubkey->pub_p15obj->label);
@@ -2019,8 +2015,8 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_KEY_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
-                *(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
-                break;
+		*(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
+		break;
 	case CKA_ID:
 		if (pubkey->pub_info) {
 			check_attribute_buffer(attr, pubkey->pub_info->id.len);
@@ -2031,10 +2027,10 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		} else {
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
-                break;
+		break;
 	case CKA_KEY_GEN_MECHANISM:
 		check_attribute_buffer(attr, sizeof(CK_MECHANISM_TYPE));
-                *(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
+		*(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
 	case CKA_ENCRYPT:
 	case CKA_DECRYPT:
@@ -2105,10 +2101,10 @@ static CK_RV pkcs15_dobj_set_attribute(struct sc_pkcs11_session *session,
 
 static int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 		struct pkcs15_data_object *dobj,
-		struct sc_pkcs15_data **out_data)   
+		struct sc_pkcs15_data **out_data)
 {
 	int rv;
-	struct pkcs15_fw_data *fw_data = 
+	struct pkcs15_fw_data *fw_data =
 		(struct pkcs15_fw_data *) session->slot->card->fw_data;
 	struct pkcs15_slot_data *data = slot_data(session->slot->fw_data);
 	struct sc_card *card = session->slot->card->card;
@@ -2158,12 +2154,12 @@ static CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = 
+		*(CK_BBOOL*)attr->pValue =
 			(dobj->base.p15_object->flags & 0x01) != 0;
 		break;
 	case CKA_MODIFIABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = 
+		*(CK_BBOOL*)attr->pValue =
 			(dobj->base.p15_object->flags & 0x02) != 0;
 		break;
 	case CKA_LABEL:
@@ -2180,7 +2176,7 @@ static CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_ID:
 		check_attribute_buffer(attr, dobj->info->id.len);
 		memcpy(attr->pValue, dobj->info->id.value, dobj->info->id.len);
-        break;
+		break;
 #endif
 	case CKA_OBJECT_ID:
 		{
@@ -2189,7 +2185,7 @@ static CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 			check_attribute_buffer(attr, len);
 			memcpy(attr->pValue, dobj->info->app_oid.value, len);
 		}
-        break;
+		break;
 	case CKA_VALUE:
 		{
 			CK_RV rv;
@@ -2225,7 +2221,6 @@ struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
 	NULL,
 	NULL,
 };
-
 
 
 /*
@@ -2535,7 +2530,7 @@ unlock_card(struct pkcs15_fw_data *fw_data)
  * need to present these PINs again because some  card operations may
  * clobber the authentication state (the GPK for instance). */
 static void
-add_pins_to_keycache(struct sc_pkcs11_card *p11card, 
+add_pins_to_keycache(struct sc_pkcs11_card *p11card,
 		struct sc_pkcs11_slot *slot)
 {
 #ifdef USE_PKCS15_INIT

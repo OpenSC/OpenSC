@@ -61,9 +61,9 @@ struct sc_pkcs11_card;
 /* Object Pool */
 struct sc_pkcs11_pool_item {
 	int handle;
-        void *item;
+	void *item;
 	struct sc_pkcs11_pool_item *next;
-        struct sc_pkcs11_pool_item *prev;
+	struct sc_pkcs11_pool_item *prev;
 };
 
 enum {
@@ -73,10 +73,10 @@ enum {
 
 struct sc_pkcs11_pool {
 	int type;
-        int next_free_handle;
+	int next_free_handle;
 	int num_items;
 	struct sc_pkcs11_pool_item *head;
-        struct sc_pkcs11_pool_item *tail;
+	struct sc_pkcs11_pool_item *tail;
 };
 
 struct sc_pkcs11_config {
@@ -92,16 +92,16 @@ struct sc_pkcs11_config {
  */
 
 struct sc_pkcs11_object_ops {
-        /* Generic operations */
-        void (*release)(void *);
+	/* Generic operations */
+	void (*release)(void *);
 
-        /* Management methods */
+	/* Management methods */
 	CK_RV (*set_attribute)(struct sc_pkcs11_session *, void *, CK_ATTRIBUTE_PTR);
 	CK_RV (*get_attribute)(struct sc_pkcs11_session *, void *, CK_ATTRIBUTE_PTR);
 	int   (*cmp_attribute)(struct sc_pkcs11_session *, void *, CK_ATTRIBUTE_PTR);
 
 	CK_RV (*destroy_object)(struct sc_pkcs11_session *, void *);
-        CK_RV (*get_size)(struct sc_pkcs11_session *, void *);
+	CK_RV (*get_size)(struct sc_pkcs11_session *, void *);
 
 	/* Cryptographic methods */
 	CK_RV (*sign)(struct sc_pkcs11_session *, void *,
@@ -118,12 +118,12 @@ struct sc_pkcs11_object_ops {
 			CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
 			CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen);
 
-        /* Others to be added when implemented */
+	/* Others to be added when implemented */
 };
 
 struct sc_pkcs11_object {
 	int flags;
-        struct sc_pkcs11_object_ops *ops;
+	struct sc_pkcs11_object_ops *ops;
 };
 
 #define SC_PKCS11_OBJECT_SEEN	0x0001
@@ -136,20 +136,20 @@ struct sc_pkcs11_object {
  */
 
 struct sc_pkcs11_framework_ops {
-        /* Detect and bind card to framework */
+	/* Detect and bind card to framework */
 	CK_RV (*bind)(struct sc_pkcs11_card *);
-        /* Unbind and release allocated resources */
+	/* Unbind and release allocated resources */
 	CK_RV (*unbind)(struct sc_pkcs11_card *);
 
 	/* Create tokens to virtual slots and
 	 * objects in tokens; called after bind */
 	CK_RV (*create_tokens)(struct sc_pkcs11_card *);
-        CK_RV (*release_token)(struct sc_pkcs11_card *, void *);
+	CK_RV (*release_token)(struct sc_pkcs11_card *, void *);
 
 	/* Login and logout */
 	CK_RV (*login)(struct sc_pkcs11_card *, void *,
 				CK_USER_TYPE, CK_CHAR_PTR, CK_ULONG);
-        CK_RV (*logout)(struct sc_pkcs11_card *, void *);
+	CK_RV (*logout)(struct sc_pkcs11_card *, void *);
 	CK_RV (*change_pin)(struct sc_pkcs11_card *, void *,
 				CK_CHAR_PTR, CK_ULONG,
 				CK_CHAR_PTR, CK_ULONG);
@@ -157,7 +157,7 @@ struct sc_pkcs11_framework_ops {
 	/*
 	 * In future: functions to create new objects
 	 * (ie. certificates, private keys)
-         */
+	 */
 	CK_RV (*init_token)(struct sc_pkcs11_card *, void *,
 				CK_UTF8CHAR_PTR, CK_ULONG,
 				CK_UTF8CHAR_PTR);
@@ -182,9 +182,9 @@ struct sc_pkcs11_framework_ops {
  */
 
 struct sc_pkcs11_card {
-        int reader;
+	int reader;
 	struct sc_card *card;
-        struct sc_pkcs11_framework_ops *framework;
+	struct sc_pkcs11_framework_ops *framework;
 	void *fw_data;
 	sc_timestamp_t slot_state_expires;
 
@@ -200,17 +200,17 @@ struct sc_pkcs11_card {
 
 struct sc_pkcs11_slot {
 	int id;
-        int login_user;
-        /* Slot specific information (information about reader) */
+	int login_user;
+	/* Slot specific information (information about reader) */
 	CK_SLOT_INFO slot_info;
 	/* Token specific information (information about card) */
-        CK_TOKEN_INFO token_info;
+	CK_TOKEN_INFO token_info;
 
 	/* Reader to which card is allocated (same as card->reader
 	 * if there's a card present) */
 	int reader;
 
-        /* The card associated with this slot */
+	/* The card associated with this slot */
 	struct sc_pkcs11_card *card;
 	/* Card events SC_EVENT_CARD_{INSERTED,REMOVED} */
 	int events;
@@ -293,8 +293,8 @@ struct sc_pkcs11_operation {
 #define SC_PKCS11_FIND_MAX_HANDLES	32
 struct sc_pkcs11_find_operation {
 	struct sc_pkcs11_operation operation;
-        int num_handles, current_handle;
-        CK_OBJECT_HANDLE handles[SC_PKCS11_FIND_MAX_HANDLES];
+	int num_handles, current_handle;
+	CK_OBJECT_HANDLE handles[SC_PKCS11_FIND_MAX_HANDLES];
 };
 
 /*
@@ -304,10 +304,10 @@ struct sc_pkcs11_find_operation {
 struct sc_pkcs11_session {
 	/* Session to this slot */
 	struct sc_pkcs11_slot *slot;
-        CK_FLAGS flags;
+	CK_FLAGS flags;
 	/* Notifications */
 	CK_NOTIFY notify_callback;
-        CK_VOID_PTR notify_data;
+	CK_VOID_PTR notify_data;
 	/* Active operations - one per type */
 	struct sc_pkcs11_operation *operation[SC_PKCS11_OPERATION_MAX];
 };
@@ -353,7 +353,7 @@ CK_RV pool_find(struct sc_pkcs11_pool *, CK_ULONG, void **);
 CK_RV pool_find_and_delete(struct sc_pkcs11_pool *, CK_ULONG, void **);
 
 /* Session manipulation */
-CK_RV session_start_operation(struct sc_pkcs11_session *, 
+CK_RV session_start_operation(struct sc_pkcs11_session *,
 			int, sc_pkcs11_mechanism_type_t *,
 			struct sc_pkcs11_operation **);
 CK_RV session_get_operation(struct sc_pkcs11_session *, int,

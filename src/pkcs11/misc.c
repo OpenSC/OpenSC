@@ -145,7 +145,7 @@ CK_RV pool_find_and_delete(struct sc_pkcs11_pool *pool, CK_ULONG handle, void **
 			if (item->prev) item->prev->next = item->next;
 			if (item->next) item->next->prev = item->prev;
 			if (pool->head == item) pool->head = item->next;
-                        if (pool->tail == item) pool->tail = item->prev;
+			if (pool->tail == item) pool->tail = item->prev;
 
 			*item_ptr = item->item;
 			free(item);

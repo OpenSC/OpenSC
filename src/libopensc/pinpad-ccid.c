@@ -1,4 +1,4 @@
-/* 
+/*
  * OpenSC pinpad support for CCID compatible readers.
  *
  * These functions build CCID PIN control blocks to be used with
@@ -64,7 +64,6 @@ static int ccid_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cm
 
 	if (!data->pin1.min_length || !data->pin1.max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
-
 	buf[count++] = data->pin1.max_length;	/* wPINMaxExtraDigit: max */	
 	buf[count++] = data->pin1.min_length;	/* wPINMaxExtraDigit: min */
 
@@ -95,7 +94,7 @@ static int ccid_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cm
 	 *
 	 * Otherwise we assume a proper APDU and CCID compatible operations
 	 * and the APDU is copied verbatim.
-    */
+	 */
 	if (data->pin1.length_offset > 4) {
 		memcpy(&buf[count], apdu->data, apdu->datalen);
 		count += apdu->datalen;	
@@ -150,7 +149,7 @@ ccid_pin_cmd(struct sc_reader *reader, sc_slot_info_t * slot,
 
 	/* The slot must be manually locked, as the control does not pass through card.c
 	 * wrappers that lock the card (card_transmit is not OK in this case, as it assumes
-	 * a proper APDU as a parameter, not a arbitary binary blob to be sent to the reader)
+	 * a proper APDU as a parameter, not an arbitary binary blob to be sent to the reader)
 	 */
 	r = reader->ops->lock(reader, slot);
 	SC_TEST_RET(reader->ctx, r, "CCID PIN: Could not lock!");

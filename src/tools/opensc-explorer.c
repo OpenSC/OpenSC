@@ -98,7 +98,7 @@ ambiguous_match(struct command *table, const char *cmd)
 	int matches = 0;
 
 	for (; table->name; table++) {
-                if (strncasecmp(cmd, table->name, strlen(cmd)) == 0) {
+		if (strncasecmp(cmd, table->name, strlen(cmd)) == 0) {
 			last_match = table;
 			matches++;
 		}
@@ -154,12 +154,12 @@ static void print_file(const struct sc_file *file)
 	if (file->type == SC_FILE_TYPE_DF)
 		printf("[");
 	else
-                printf(" ");
+		printf(" ");
 	printf("%02X%02X", file->id >> 8, file->id & 0xFF);
 	if (file->type == SC_FILE_TYPE_DF)
 		printf("]");
 	else
-                printf(" ");
+		printf(" ");
 	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
 		st = "wEF";
@@ -175,12 +175,12 @@ static void print_file(const struct sc_file *file)
 		break;
 	}
 	printf("\t%4s", st);
-        printf(" %5d", file->size);
+	printf(" %5d", file->size);
 	if (file->namelen) {
 		printf("\tName: ");
 		print_binary(stdout, file->name, file->namelen);
 	}
-        printf("\n");
+	printf("\n");
 	return;
 }
 
@@ -189,15 +189,15 @@ static int do_ls(int argc, char **argv)
 	u8 buf[256], *cur = buf;
 	int r, count;
 
-        if (argc)
-                goto usage;
+	if (argc)
+		goto usage;
 	r = sc_list_files(card, buf, sizeof(buf));
 	if (r < 0) {
 		check_ret(r, SC_AC_OP_LIST_FILES, "unable to receive file listing", current_file);
 		return -1;
 	}
 	count = r;
-        printf("FileID\tType  Size\n");
+	printf("FileID\tType  Size\n");
 	while (count >= 2) {
 		struct sc_path path;
 		struct sc_file *file = NULL;
@@ -210,17 +210,17 @@ static int do_ls(int argc, char **argv)
 			return -1;
 		}
 		file->id = (cur[0] << 8) | cur[1];
-                cur += 2;
+		cur += 2;
 		count -= 2;
-                print_file(file);
-                sc_file_free(file);
+		print_file(file);
+		sc_file_free(file);
 		r = sc_select_file(card, &current_path, NULL);
 		if (r) {
 			printf("unable to select parent DF: %s\n", sc_strerror(r));
 			die(1);
 		}
 	}
-        return 0;
+	return 0;
 usage:
 	puts("Usage: ls");
 	return -1;
@@ -232,14 +232,14 @@ static int do_cd(int argc, char **argv)
 	struct sc_file *file;
 	int r;
 
-        if (argc != 1)
-                goto usage;
+	if (argc != 1)
+		goto usage;
 	if (strcmp(argv[0], "..") == 0) {
 		if (current_path.len < 4) {
 			printf("unable to go up, already in MF.\n");
 			return -1;
 		}
-                path = current_path;
+		path = current_path;
 		path.len -= 2;
 		r = sc_select_file(card, &path, &file);
 		if (r) {
@@ -252,7 +252,7 @@ static int do_cd(int argc, char **argv)
 		return 0;
 	}
 	if (arg_to_path(argv[0], &path, 0) != 0) 
-                goto usage;
+		goto usage;
 
 	r = sc_select_file(card, &path, &file);
 	if (r) {
@@ -330,18 +330,18 @@ static int do_cat(int argc, char **argv)
 {
 	int r, err = 0;
 	struct sc_path path;
-        struct sc_file *file;
+	struct sc_file *file;
 	int not_current = 1;
 
-        if (argc > 1)
-                goto usage;
+	if (argc > 1)
+		goto usage;
 	if (!argc) {
 		path = current_path;
 		file = current_file;
 		not_current = 0;
 	} else {
 		if (arg_to_path(argv[0], &path, 0) != 0) 
-                        goto usage;
+			goto usage;
 
 		r = sc_select_file(card, &path, &file);
 		if (r) {
@@ -366,10 +366,10 @@ static int do_cat(int argc, char **argv)
 			die(1);
 		}
 	}
-        return -err;
- usage:
-        puts("Usage: cat [file_id]");
-        return -1;
+   return -err;
+usage:
+	puts("Usage: cat [file_id]");
+	return -1;
 }
 
 static int do_info(int argc, char **argv)
@@ -386,15 +386,14 @@ static int do_info(int argc, char **argv)
 		not_current = 0;
 	} else if (argc == 1) {
 		if (arg_to_path(argv[0], &path, 0) != 0) 
-                        goto usage;
+			goto usage;
 		r = sc_select_file(card, &path, &file);
 		if (r) {
 			printf("unable to select file: %s\n", sc_strerror(r));
 			return -1;
 		}
-	}
-        else 
-                goto usage;
+	} else 
+		goto usage;
 
 	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
@@ -412,7 +411,7 @@ static int do_info(int argc, char **argv)
 	printf("%-15s", "File path:");
 	for (i = 0; i < path.len; i++) {
 		for (i = 0; i < path.len; i++) {
-                        if ((i & 1) == 0 && i)
+			if ((i & 1) == 0 && i)
 				printf("/");
 			printf("%02X", path.value[i]);
 		}
@@ -436,11 +435,11 @@ static int do_info(int argc, char **argv)
 			printf("%-25s%s\n", buf, acl_to_str(sc_file_get_acl_entry(file, i)));
 		}
 	} else {
-                const char *structs[] = {
-                        "Unknown", "Transparent", "Linear fixed",
+		const char *structs[] = {
+			"Unknown", "Transparent", "Linear fixed",
 			"Linear fixed, SIMPLE-TLV", "Linear variable",
 			"Linear variable TLV", "Cyclic, SIMPLE-TLV",
-                };
+		};
 		const char *ops[] = {
 			"READ", "UPDATE", "WRITE", "ERASE", "REHABILITATE",
 			"INVALIDATE", "LIST_FILES", "CRYPTO",
@@ -476,9 +475,9 @@ static int do_info(int argc, char **argv)
 	}
 	return 0;
 
- usage:
-        puts("Usage: info [file_id]");
-        return -1;
+usage:
+	puts("Usage: info [file_id]");
+	return -1;
 }
 
 static int create_file(struct sc_file *file)
@@ -507,8 +506,8 @@ static int do_create(int argc, char **argv)
 	unsigned int size;
 	int r, op;
 
-        if (argc != 2)
-                goto usage;
+	if (argc != 2)
+		goto usage;
 	if (arg_to_path(argv[0], &path, 1) != 0)
 		goto usage;
 	/* %z isn't supported everywhere */
@@ -538,8 +537,8 @@ static int do_mkdir(int argc, char **argv)
 	unsigned int size;
 	int r, op;
 
-        if (argc != 2)
-                goto usage;
+	if (argc != 2)
+		goto usage;
 	if (arg_to_path(argv[0], &path, 1) != 0)
 		goto usage;
 	if (sscanf(argv[1], "%d", &size) != 1)
@@ -565,8 +564,8 @@ static int do_delete(int argc, char **argv)
 	struct sc_path path;
 	int r;
 
-        if (argc != 1)
-                goto usage;
+	if (argc != 1)
+		goto usage;
 	if (arg_to_path(argv[0], &path, 1) != 0)
 		goto usage;
 	if (path.len != 2)
@@ -597,12 +596,12 @@ static int do_verify(int argc, char **argv)
 	};
 	int r, tries_left = -1;
 	u8 buf[30];
-        const char *s;
+	const char *s;
 	size_t buflen = sizeof(buf), i;
 	struct sc_pin_cmd_data data;
 
 	if (argc < 1 || argc > 2)
-                goto usage;
+		goto usage;
 
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_VERIFY;
@@ -613,7 +612,7 @@ static int do_verify(int argc, char **argv)
 			data.pin_type = typeNames[i].type;
 			break;
 		}
-        }
+	}
 	if (data.pin_type == SC_AC_NONE) {
 		printf("Invalid type.\n");
 		goto usage;
@@ -623,21 +622,21 @@ static int do_verify(int argc, char **argv)
 		goto usage;
 	}
 
-        if (argc < 2) {
+	if (argc < 2) {
 		if (!(card->reader->slot[0].capabilities & SC_SLOT_CAP_PIN_PAD)) {
 			printf("Card reader or driver doesn't support PIN PAD\n");
 			return -1;
 		}
 		printf("Please enter PIN on the reader's pin pad.\n");
 		data.pin1.prompt = "Please enter PIN";
-                data.flags |= SC_PIN_CMD_USE_PINPAD;
-        } else if (argv[1][0] == '"') {
+		data.flags |= SC_PIN_CMD_USE_PINPAD;
+	} else if (argv[1][0] == '"') {
 		for (s=argv[1]+1, i=0; i < sizeof(buf) && *s && *s != '"';i++) 
 			buf[i] = *s++;
 		data.pin1.data = buf;
 		data.pin1.len = i;
 	} else {
-	       	r = sc_hex_to_bin(argv[1], buf, &buflen); 
+		r = sc_hex_to_bin(argv[1], buf, &buflen); 
 		if (0 != r) {
 			printf("Invalid key value.\n");
 			goto usage;
@@ -711,7 +710,7 @@ static int do_change(int argc, char **argv)
 
 	if (argv[0][0] == '"') {
 		for (s = argv[0] + 1, i = 0;
-                     i < sizeof(newpin) && *s && *s != '"'; i++) 
+		     i < sizeof(newpin) && *s && *s != '"'; i++) 
 			newpin[i] = *s++;
 		newpinlen = i;
 	} else if (sc_hex_to_bin(argv[0], newpin, &newpinlen) != 0) {
@@ -782,7 +781,7 @@ static int do_unblock(int argc, char **argv)
 
 	if (argv[0][0] == '"') {
 		for (s = argv[0] + 1, i = 0;
-                     i < sizeof(newpin) && *s && *s != '"'; i++) 
+		     i < sizeof(newpin) && *s && *s != '"'; i++) 
 			newpin[i] = *s++;
 		newpinlen = i;
 	} else if (sc_hex_to_bin(argv[0], newpin, &newpinlen) != 0) {

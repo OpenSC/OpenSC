@@ -79,7 +79,7 @@ int opensc_init(void)
 	if (r)
 		goto err;
 	return 1;
-      err:
+err:
 	/* need to do engine stuff? */
 	fprintf(stderr, "error: %d", r);
 	opensc_finish();
@@ -178,7 +178,7 @@ int sc_prkey_op_init(const RSA * rsa, struct sc_pkcs15_object **key_obj_out,
 	}
 	*key_obj_out = key_obj;
 	return 0;
-      err:
+err:
 	return -1;
 }
 
@@ -352,7 +352,7 @@ sc_private_decrypt(int flen, const unsigned char * from, unsigned char * to,
 		goto err;
 	}
 	return r;
-      err:
+err:
 	return -1;
 }
 
@@ -386,7 +386,7 @@ sc_sign(int type, const unsigned char * m, unsigned int m_len,
 	}
 	*siglen = r;
 	return 1;
-      err:
+err:
 	return 0;
 }
 
