@@ -7,8 +7,8 @@ MAINTAINERCLEANFILES = Makefile.in
 INCLUDES = @CFLAGS_OPENSC@ -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
-PROFILES = flex.profile flex_so.profile gpk.profile miocos.profile \
-	   etoken.profile pkcs15.profile
+PROFILES = flex.profile flex_so.profile flex_onepin.profile gpk.profile \
+	   miocos.profile etoken.profile pkcs15.profile
 EXTRA_DIST = $(PROFILES) Makefile.mak
 
 lib_LTLIBRARIES	= libpkcs15init.la
