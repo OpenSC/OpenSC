@@ -49,6 +49,11 @@ app default {
 		# }
 	}
 
+	# Define parameters specific to your readers.
+	# The following section shows definitions for PC/SC readers,
+	# but the same set of variables are applicatable to ctapi and
+	# openct readers, simply by using "reader_driver ctapi" and
+	# "reader_driver openct", respectively.
 	reader_driver pcsc {
 		# Whether to transform some APDU's from one case to another
 		# Possible values:
@@ -69,6 +74,13 @@ app default {
 		# Default: none
 		#
 		apdu_masquerade = none;
+		#
+		# This sets the maximum send and receive sizes.
+		# Some IFD handlers do not properly handle APDUs with
+		# large lc or le bytes.
+		#
+		max_send_size = 252;
+		max_recv_size = 252;
 	}
 
 	# What card drivers to load at start-up
@@ -99,10 +111,11 @@ app default {
 	# The card driver names are
 	#  flex		Cryptoflex/Multiflex
 	#  setcos	Setec
-	#  etoken	Aladdin eToken
+	#  etoken	Aladdin eToken and other CardOS based cards
 	#  gpk		GPK 4K/8K/16K
 	#  mcrd		MICARDO 2
 	#  miocos	MioCOS 1.1
+	#  openpgp	OpenPGP card
 	#  tcos		TCOS 2.0
 	#  emv		EMV compatible cards
 
