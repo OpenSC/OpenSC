@@ -19,6 +19,7 @@ Makefile.in
 cryptoflex-tool
 opensc-explorer
 opensc-tool
+pkcs11-tool
 pkcs15-crypt
 pkcs15-init
 pkcs15-tool
