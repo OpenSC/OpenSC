@@ -688,7 +688,8 @@ static int flex_set_security_env(struct sc_card *card,
 {
 	struct flex_private_data *prv = (struct flex_private_data *) card->drv_data;
 
-	if (env->operation != SC_SEC_OPERATION_SIGN) {
+	if (env->operation != SC_SEC_OPERATION_SIGN &&
+	    env->operation != SC_SEC_OPERATION_DECIPHER) {
 		error(card->ctx, "Invalid crypto operation supplied.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -776,6 +777,17 @@ static int flex_compute_signature(struct sc_card *card, const u8 *data,
 	for (i = 0; i < apdu.resplen; i++)
 		out[i] = sbuf[apdu.resplen-1-i];
 	return apdu.resplen;
+}
+
+static int flex_decipher(struct sc_card *card,
+			    const u8 * crgram, size_t crgram_len,
+			    u8 * out, size_t outlen)
+{
+	/* There seems to be no Decipher command, but an RSA signature
+	 * is the same operation as an RSA decryption.
+	 * Off course, the (PKCS#1) padding is different, but at least
+	 * a Cryptoflex 32K e-gate doesn't seem to check this. */
+	return flex_compute_signature(card, crgram, crgram_len, out, outlen);
 }
 
 /* Return the default AAK for this type of card */
@@ -900,6 +912,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	flex_ops.set_security_env = flex_set_security_env;
 	flex_ops.restore_security_env = flex_restore_security_env;
 	flex_ops.compute_signature = flex_compute_signature;
+	flex_ops.decipher = flex_decipher;
 	flex_ops.pin_cmd = flex_pin_cmd;
         return &flex_drv;
 }
