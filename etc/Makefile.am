@@ -7,4 +7,4 @@ EXTRA_DIST = opensc.conf.in scldap.conf.in
 noinst_DATA = opensc.conf.in scldap.conf.in opensc.conf scldap.conf
 
 %: %.in
-        sed -e "s#PKGDATADIR#$(shell eval echo $(pkgdatadir))#" < $^ > $@
+	sed -e "s#PKGDATADIR#$(shell eval echo $(pkgdatadir))#" < $^ > $@
