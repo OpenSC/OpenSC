@@ -36,17 +36,17 @@ static scconf_parser *parser;
 
 %%
 
-"#"[^\n]*	scconf_parse_token(parser, TOKEN_TYPE_COMMENT, yytext);
+"#"[^\r\n]*	scconf_parse_token(parser, TOKEN_TYPE_COMMENT, yytext);
 
 \n		scconf_parse_token(parser, TOKEN_TYPE_NEWLINE, NULL);
 
-[ \t]+		/* eat up whitespace */
+[ \t\r]+	/* eat up whitespace */
 
 [,{}=;]		scconf_parse_token(parser, TOKEN_TYPE_PUNCT, yytext);
 
-\"[^\"\n]*[\"\n] scconf_parse_token(parser, TOKEN_TYPE_STRING, yytext);
+\"[^\"\n\r]*\r*[\"\n] scconf_parse_token(parser, TOKEN_TYPE_STRING, yytext);
 
-[^;, \t\n]+    	scconf_parse_token(parser, TOKEN_TYPE_STRING, yytext);
+[^;, \t\r\n]+  	scconf_parse_token(parser, TOKEN_TYPE_STRING, yytext);
 
 %%
 
