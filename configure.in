@@ -185,7 +185,7 @@ AC_CHECK_LIB(dl, dlopen, [LIBDL="$LIBDL -ldl" ac_cv_func_dlopen_ldl=yes], ac_cv_
 
 AC_SUBST(OPENSSL_LDFLAGS)
 OPENSSL_LDFLAGS=""
-for openssl_ldflag in "-Wl,-Bsymbolic" "-G -Wl,-Bsymbolic" "-shared -G -Wl,-Bsymbolic"; do
+for openssl_ldflag in "-Wl,-Bsymbolic" "-G -Wl,-Bsymbolic" "-shared -G -Wl,-Bsymbolic" "-Wl,-all_load"; do
 	AC_MSG_CHECKING([whether we can use $openssl_ldflag])
 	saved_CFLAGS=$CFLAGS
 	CFLAGS="$CFLAGS $openssl_ldflag"
