@@ -102,8 +102,10 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 	sc_format_asn1_entry(asn1_type_data_attr + 0, &info.path, NULL, 0);
 	sc_format_asn1_entry(asn1_data + 0, &data_obj, NULL, 0);
 
-        /* Fill in defaults */
-        memset(&info, 0, sizeof(info));
+	/* Fill in defaults */
+	memset(&info, 0, sizeof(info));
+	info.app_oid.value[0] = -1;
+
 	r = sc_asn1_decode(ctx, asn1_data, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
