@@ -27,7 +27,6 @@
 #include "sc-pkcs11.h"
 #ifdef USE_PKCS15_INIT
 #include "pkcs15-init.h"
-#endif
 
 /*
  * Deal with uninitialized cards
@@ -188,3 +187,12 @@ struct sc_pkcs11_framework_ops framework_pkcs15init = {
 	pkcs15init_change_pin,
 	pkcs15init_initialize,
 };
+
+#else /* ifdef USE_PKCS15_INIT */
+
+struct sc_pkcs11_framework_ops framework_pkcs15init = {
+	NULL,
+	NULL,
+};
+
+#endif

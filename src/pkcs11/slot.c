@@ -83,6 +83,8 @@ CK_RV card_detect(int reader)
 
 		card = &card_table[reader];
 		for (i = 0; frameworks[i]; i++) {
+			if (frameworks[i]->bind == NULL)
+				continue;
 			rv = frameworks[i]->bind(card);
 			if (rv == CKR_OK)
 				break;
