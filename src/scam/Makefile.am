@@ -2,7 +2,7 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-lib_LTLIBRARIES = libscam.la
+noinst_LTLIBRARIES = libscam.la
 
 libscam_la_SOURCES = \
 	scam.c cert_support.c \

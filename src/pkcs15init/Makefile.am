@@ -18,7 +18,7 @@ PROFILES = \
 
 EXTRA_DIST = $(PROFILES) Makefile.mak
 
-lib_LTLIBRARIES = libpkcs15init.la
+noinst_LTLIBRARIES = libpkcs15init.la
 
 libpkcs15init_la_SOURCES = \
 	pkcs15-lib.c profile.c keycache.c \
