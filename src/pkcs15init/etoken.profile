@@ -85,16 +85,10 @@ filesystem {
     	            ACL		= *=NEVER,
 					READ=NONE,
 					UPDATE=$PIN,
-					WRITE=$PIN;
+					ERASE=$PIN;
                 }
 
 	    }
-#	    EF template-private-key {
-#		type		= internal-ef;
-#	        file-id		= 4B01;	# This is the base FileID
-#		size		= 266;  # 266 is enough for 1024-bit keys
-#    	        ACL		= *=NEVER, UPDATE=$PIN, ERASE=$PIN;
-#	    }
 
 	    # This is needed when generating a key on-card.
 	    EF tempfile {
