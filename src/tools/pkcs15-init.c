@@ -10,7 +10,7 @@
  *
  * There are a very few tasks that are too card specific to have
  * a generic implementation; that is how PINs and keys are stored
- * on the card. These should be implemented in pkcs-<cardname>.c
+ * on the card. These should be implemented in pkcs15-<cardname>.c
  *
  * Copyright (C) 2002, Olaf Kirch <okir@lst.de>
  *
@@ -170,8 +170,6 @@ static char *			opt_passphrase = 0;
 static char *			opt_newkey = 0;
 static char *			opt_outkey = 0;
 static struct pkcs15_init_operations ops;
-
-#include <mcheck.h>
 
 int
 main(int argc, char **argv)

@@ -46,12 +46,12 @@ static int cflex_update_pin(struct sc_card *card, struct pin_info *info)
 	memset(p, 0xFF, 3);
 	p += 3;
 	memset(p, '-', 8);
-	strncpy(p, info->secret[0], 8);
+	strncpy((char *) p, info->secret[0], 8);
 	p += 8;
 	*p++ = info->attempt[0];
 	*p++ = info->attempt[0];
 	memset(p, '-', 8);
-	strncpy(p, info->secret[0], 8);
+	strncpy((char *) p, info->secret[0], 8);
 	p += 8;
 	*p++ = info->attempt[1];
 	*p++ = info->attempt[1];

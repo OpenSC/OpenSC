@@ -947,7 +947,7 @@ do_prkey_algorithm(int argc, char **argv)
 {
 	struct sc_key_template	*ki = cur_key;
 
-	if (map_str2int(argv[0], &ki->pkcs15_obj.type, algorithmNames))
+	if (map_str2int(argv[0], (unsigned int *) &ki->pkcs15_obj.type, algorithmNames))
 		return 1;
 	switch (ki->pkcs15_obj.type) {
 	case SC_PKCS15_TYPE_PRKEY_RSA:
@@ -1074,7 +1074,7 @@ do_pubkey_algorithm(int argc, char **argv)
 {
 	struct sc_key_template	*ki = cur_key;
 
-	if (map_str2int(argv[0], &ki->pkcs15_obj.type, algorithmNames))
+	if (map_str2int(argv[0], (unsigned int *) &ki->pkcs15_obj.type, algorithmNames))
 		return 1;
 	ki->pkcs15.pub.access_flags = DEF_PUBKEY_ACCESS;
 	return 0;

@@ -20,11 +20,11 @@
 
 #include "sc-internal.h"
 #include "sc-log.h"
+#include <stdlib.h>
 #include <string.h>
 
 static struct sc_atr_table miocos_atrs[] = {
-	{ "\x3B\x9D\x94\x40\x23\x00\x68\x10\x11\x4D\x69\x6F\x43\x4F"
-	  "\x53\x00\x90\x00", 18 },
+	{ (const u8 *) "\x3B\x9D\x94\x40\x23\x00\x68\x10\x11\x4D\x69\x6F\x43\x4F\x53\x00\x90\x00", 18 },
 	{ NULL }
 };
 
