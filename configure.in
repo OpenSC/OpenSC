@@ -255,6 +255,7 @@ fi
 
 AC_SUBST(LIBPCSCLITE)
 LIBPCSCLITE="-lpcsclite"
+found_pcsclite=no
 saved_LIBS="$LIBS"
 saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
@@ -264,7 +265,7 @@ AC_ARG_WITH(pcsclite,
 	for pcscdir in /pcsc ""; do
 		CPPFLAGS="$saved_CPPFLAGS"
 		LDFLAGS="$saved_LDFLAGS"
-		LIBS="$saved_LIBS $LIBCRYPTO"
+		LIBS="$saved_LIBS"
 
 		if test -d "$withval/lib$pcscdir"; then
 			if test -n "${need_dash_r}"; then
@@ -284,15 +285,18 @@ AC_ARG_WITH(pcsclite,
 		else
 			CPPFLAGS="-I${withval}${pcscdir} ${CPPFLAGS}"
 		fi
-		AC_CHECK_LIB(pcsclite, SCardEstablishContext)
-		if test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes" ; then
+		AC_CHECK_LIB(pcsclite, SCardEstablishContext, found_pcsclite=yes, found_pcsclite=no)
+		if test "x$found_pcsclite" = "xyes" ; then
 			break;
 		fi
 	done
 	]
 )
-AC_CHECK_LIB(pcsclite, SCardEstablishContext, , AC_MSG_ERROR([*** PC/SC Lite missing - please install first]))
-AM_CONDITIONAL(HAVE_PCSCLITE, test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes")
+if test "x$found_pcsclite" != "xyes" ; then
+	AC_CHECK_LIB(pcsclite, SCardEstablishContext, , AC_MSG_ERROR([*** PC/SC Lite missing - please install first]))
+fi
+LIBS="$saved_LIBS"
+AM_CONDITIONAL(HAVE_PCSCLITE, test "x$found_pcsclite" = "xyes")
 
 AC_SUBST(LIBDL)
 AC_CHECK_LIB(dl, dlopen, [LIBDL="$LIBDL -ldl" ac_cv_func_dlopen_ldl=yes], ac_cv_func_dlopen_ldl=no)
@@ -307,6 +311,7 @@ AC_ARG_WITH(ssl-dir,
 	]
 )
 
+SSL_MSG="no"
 saved_LIBS="$LIBS"
 saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
@@ -373,12 +378,12 @@ int main(void)
 		fi
 	done
 
-	if test -z "$ssldir" ; then
-		ssldir="(system)"
-	fi
 	if test -n "$found_crypto" ; then
-		AM_CONDITIONAL(HAVE_SSL, test -n "$found_crypto")
+		if test -z "$ssldir" ; then
+			ssldir="(system)"
+		fi
 		ac_cv_openssldir=$ssldir
+		SSL_MSG="yes"
 	fi
 ])
 
@@ -410,6 +415,7 @@ if (test ! -z "$ac_cv_openssldir" && test "x$ac_cv_openssldir" != "x(system)") ;
 	fi
 fi
 LIBS="$saved_LIBS"
+AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
 
 dnl Check for PAM libs
 PAM_MSG="no"
@@ -461,6 +467,7 @@ if test "x$PAM_MSG" = "xyes" ; then
 fi
 LIBS="$saved_LIBS"
 AM_CONDITIONAL(HAVE_PAM, test "x$PAM_MSG" = "xyes")
+AM_CONDITIONAL(HAVE_PAM_AND_SSL, test "x$PAM_MSG" = "xyes" -a "x$SSL_MSG" = "xyes")
 
 dnl Enable/disable debugging messages.
 AC_ARG_ENABLE(debug,
@@ -502,6 +509,7 @@ echo "Linker flags:        ${LDFLAGS}"
 echo "Libraries:           ${LIBS}"
 
 echo ""
+echo "OpenSSL support:     ${SSL_MSG}"
 echo "PAM support:         ${PAM_MSG}"
 
 echo ""
