@@ -128,7 +128,7 @@ dnl Automatically update the libtool script if it becomes out-of-date.
 dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h strings.h sys/time.h unistd.h getopt.h dlfcn.h utmp.h security/pam_appl.h security/_pam_macros.h pam/pam_appl.h pam/_pam_macros.h])
+AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h strings.h sys/time.h unistd.h locale.h getopt.h dlfcn.h utmp.h security/pam_appl.h security/_pam_macros.h pam/pam_appl.h pam/_pam_macros.h])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -140,7 +140,7 @@ dnl Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STAT
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([getpass gettimeofday memset mkdir strdup strerror setutent])
+AC_CHECK_FUNCS([getpass gettimeofday memset mkdir strdup strerror setutent vsyslog setlocale])
 
 dnl C Compiler features
 AC_C_INLINE
