@@ -52,7 +52,7 @@ static int ccid_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cm
 		/* GLP pin length is encoded in 4 bits and block size is always 8 bytes */
 		tmp |= 0x40 | 0x08;
 	}
-	buf[count++] = 0x00; /* bmPINBlockString */
+	buf[count++] = tmp; /* bmPINBlockString */
 	
 	/* bmPINLengthFormat */
 	tmp = 0x00;
