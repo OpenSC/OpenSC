@@ -4,7 +4,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 EXTRA_DIST = Makefile.mak
 
-LDFLAGS = @LDFLAGS@ @LIBOPENSC@
+AM_LDFLAGS = @LIBOPENSC@
 
 if HAVE_SSL
 PROGRAMS_SSL = cryptoflex-tool pkcs15-init

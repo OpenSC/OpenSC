@@ -4,8 +4,8 @@ includedir = @includedir@/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
-CFLAGS = @CFLAGS@ -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
-LDFLAGS = @LDFLAGS@ @LIBOPENSC@
+AM_CFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
+AM_LDFLAGS = @LIBOPENSC@
 
 PROFILES = \
 	cyberflex.profile \

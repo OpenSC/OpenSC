@@ -241,7 +241,7 @@ AC_SUBST(LIBCRYPTO)
 AC_SUBST(ENGINE_LINK)
 AC_CACHE_CHECK([for OpenSSL directory], ac_cv_openssldir, [
 	if test "x$tryssldir" = "x" ; then
-		tryssldir="$trycommandir /usr/ /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl"
+		tryssldir="$trycommondir /usr /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl"
 	fi
 
 	for ssldir in $tryssldir ; do
@@ -316,11 +316,11 @@ int main(void)
 }
 		],
 		[
-			AC_MSG_RESULT("good, 0.9.7d or later")
+			AC_MSG_RESULT([good, 0.9.7d or later])
 			GOOD_OPENSSL=yes
 		],
 		[
-			AC_MSG_RESULT("not so good, 0.9.7d or later woudl be better")
+			AC_MSG_RESULT([not so good, 0.9.7d or later would be better])
 			GOOD_OPENSSL=no
 		]
 		)
@@ -406,11 +406,13 @@ LIBS="$saved_LIBS"
 
 if test "x$SSL_MSG" = "xyes" ; then
   AC_DEFINE(HAVE_OPENSSL, 1, [Have OpenSSL libraries])
-  LDFLAGS="-L$ac_cv_openssldir/lib $LDFLAGS"
-  if test ! -z "$need_dash_r" ; then
+  if test "x$ac_cv_openssldir" != "x/usr"; then
+    LDFLAGS="-L$ac_cv_openssldir/lib $LDFLAGS"
+    if test ! -z "$need_dash_r" ; then
        LDFLAGS="-R$ac_cv_openssldir/lib $LDFLAGS"
+    fi
+    CPPFLAGS="-I$ac_cv_openssldir/include $saved_CPPFLAGS"
   fi
-  CPPFLAGS="-I$ac_cv_openssldir/include $saved_CPPFLAGS"
 else
   LIBCRYPTO=""
   LIBCRYPTOA=""

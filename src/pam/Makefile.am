@@ -6,7 +6,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES = @CPPFLAGS@ -I${top_srcdir}/src/scam
 
-LDFLAGS = @LDFLAGS@ ${top_builddir}/src/scam/libscam.la
+AM_LDFLAGS = ${top_builddir}/src/scam/libscam.la
 
 if HAVE_PAM
 lib_LTLIBRARIES = pam_opensc.la

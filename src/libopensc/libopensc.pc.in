@@ -6,6 +6,6 @@ includedir=@includedir@
 Name: libopensc
 Description: libopensc
 Version: @VERSION@
-Libs: -L${libdir} -lopensc
+Libs: -L${libdir} -lopensc -lscconf
 Cflags: -I${includedir}
 
