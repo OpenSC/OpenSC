@@ -176,9 +176,9 @@ static int tcos_construct_fci(const struct sc_file *file,
                 }
                 else {
                         /* TCOS needs one, so we use a faked one */
-                        snprintf (buf, sizeof(buf)-1, "foo-%lu",
+                        snprintf ((char *) buf, sizeof(buf)-1, "foo-%lu",
                                   (unsigned long) time (NULL));
-                        sc_asn1_put_tag(0x84, buf, strlen (buf), p, 16, &p);
+                        sc_asn1_put_tag(0x84, buf, strlen ((char *) buf), p, 16, &p);
                 }
         }
 
