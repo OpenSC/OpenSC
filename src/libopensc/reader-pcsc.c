@@ -194,8 +194,8 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	dwSendLength = sendsize;
 	dwRecvLength = *recvsize;
 
-        if (dwRecvLength > 256)
-		dwRecvLength = 256;
+        if (dwRecvLength > 258)
+		dwRecvLength = 258;
 
 	if (!control) {
 		rv = SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
