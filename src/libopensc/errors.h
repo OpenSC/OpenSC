@@ -95,6 +95,10 @@ extern "C" {
 #define SC_ERROR_NO_DEFAULT_KEY			-1504
 #define SC_ERROR_ID_NOT_UNIQUE			-1505
 #define SC_ERROR_CANNOT_LOAD_KEY		-1006
+#define SC_ERROR_INCOMPATIBLE_OBJECT		-1007
+#define SC_ERROR_TEMPLATE_NOT_FOUND		-1008
+#define SC_ERROR_INVALID_PIN_REFERENCE		-1009
+#define SC_ERROR_FILE_TOO_SMALL			-1010
 
 /* Errors that do not fit the categories above */
 #define SC_ERROR_UNKNOWN			-1900

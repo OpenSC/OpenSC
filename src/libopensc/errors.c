@@ -96,6 +96,10 @@ const char *sc_strerror(int error)
 		"No default (transport) key available",
 		"The PKCS#15 Key/certificate ID specified is not unique",
 		"Unable to load key and certificate(s) from file",
+		"Object is not compatible with intended use",
+		"File template not found",
+		"Invalid PIN reference",
+		"File too small",
 	};
 	const int p15i_base = -SC_ERROR_PKCS15INIT;
 	const char *misc_errors[] = {
