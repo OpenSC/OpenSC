@@ -1344,6 +1344,8 @@ gpk_compute_signature(struct sc_card *card, const u8 *data,
 			data_len, priv->sec_mod_len);
 		return SC_ERROR_INTERNAL;
 	}
+	if (sizeof(cardsig) < priv->sec_mod_len)
+		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	r = gpk_init_hashed(card, data, data_len);
 	SC_TEST_RET(card->ctx, r, "Failed to send hash to card");
@@ -1355,8 +1357,14 @@ gpk_compute_signature(struct sc_card *card, const u8 *data,
 	apdu.cse = SC_APDU_CASE_2_SHORT;
 	apdu.cla = 0x80;
 	apdu.ins = 0x88;
+#if 0
+	/* Don't know why I did this. It conflicts with the spec
+	 * (but it worked with the gpk4k, strange). --okir */
 	apdu.p1  = priv->sec_padding;
 	apdu.p2  = priv->sec_mod_len;
+#else
+	apdu.p2  = priv->sec_padding;
+#endif
 	apdu.resp= cardsig;
 	apdu.resplen = sizeof(cardsig);
 	apdu.le  = priv->sec_mod_len;
