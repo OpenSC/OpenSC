@@ -101,6 +101,7 @@ enum {
 };
 
 const struct option	options[] = {
+	{ "reader",		required_argument, 0,	'r' },
 	{ "erase-card",		no_argument, 0,		'E' },
 	{ "create-pkcs15",	no_argument, 0,		'C' },
 	{ "store-pin",		no_argument, 0,		'P' },
@@ -120,6 +121,7 @@ const struct option	options[] = {
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
 	{ "store-certificate",	required_argument, 0,	'X' },
 	{ "authority",		no_argument,	   0,	OPT_AUTHORITY },
+	{ "key-usage",		required_argument, 0,	'u' },
 
 	{ "extractable",	no_argument, 0,		OPT_EXTRACTABLE },
 	{ "insecure",		no_argument, 0,		OPT_UNPROTECTED },
@@ -131,6 +133,7 @@ const struct option	options[] = {
 	{ 0, 0, 0, 0 }
 };
 const char *		option_help[] = {
+	"Specify which reader to use [default 0]",
 	"Erase the smart card",
 	"Creates a new PKCS #15 structure",
 	"Store a new PIN/PUK on the card",
@@ -150,6 +153,7 @@ const char *		option_help[] = {
 	"Specify passphrase for unlocking secret key",
 	"Store an X.509 certificate",
 	"Mark certificate as a CA certificate",
+	"Specify X.509 key usage (use \"--key-usage help\" for more information)",
 
 	"Private key stored as an extractable key",
 	"Insecure mode: do not require PIN/passphrase for private key",
@@ -186,7 +190,8 @@ static char *			action_names[] = {
 static struct sc_context *	ctx = NULL;
 static struct sc_card *		card = NULL;
 static struct sc_pkcs15_card *	p15card = NULL;
-static int			opt_debug = 0,
+static int			opt_reader = 0,
+				opt_debug = 0,
 				opt_quiet = 0,
 				opt_action = 0,
 				opt_erase = 0,
@@ -206,6 +211,7 @@ static char *			opt_serial = 0;
 static char *			opt_passphrase = 0;
 static char *			opt_newkey = 0;
 static char *			opt_outkey = 0;
+static unsigned int		opt_x509_usage = 0;
 
 static struct sc_pkcs15init_callbacks callbacks = {
 	error,			/* error() */
@@ -218,7 +224,6 @@ int
 main(int argc, char **argv)
 {
 	struct sc_profile	*profile;
-	int			opt_reader = 0;
 	int			r = 0;
 
 	/* OpenSSL magic */
@@ -465,8 +470,17 @@ do_store_private_key(struct sc_profile *profile)
 
 	if ((r = do_convert_private_key(&args.key, pkey)) < 0)
 		return r;
-	if (cert)
+	if (cert) {
+		/* If the user requested a specific key usage on the
+		 * command line check if it includes _more_
+		 * usage bits than the one specified by the cert */
+		if (~cert->ex_kusage & opt_x509_usage) {
+			fprintf(stderr,
+			    "Warning: requested key usage incompatible with "
+			    "key usage specified by X.509 certificate\n");
+		}
 		args.x509_usage = cert->ex_kusage;
+	}
 
 	r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
 	if (r < 0)
@@ -594,7 +608,8 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 			return r;
 		if (!opt_quiet)
 			printf("Warning: card doesn't support on-board "
-			       "key generation; using software generation\n");
+			       "key generation.\n"
+			       "Trying software generation\n");
 	}
 
 	/* Generate the key ourselves */
@@ -644,6 +659,7 @@ init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 		}
 	}
 	args->label = opt_objectlabel;
+	args->x509_usage = opt_x509_usage;
 	return 0;
 }
 
@@ -1109,6 +1125,79 @@ do_convert_cert(sc_pkcs15_der_t *der, X509 *cert)
 }
 
 /*
+ * Parse X.509 key usage list
+ */
+static void
+parse_x509_usage(const char *list, unsigned int *res)
+{
+	static const char *	x509_usage_names[] = {
+		"digitalSignature",
+		"nonRepudiation",
+		"keyEncipherment",
+		"dataEncipherment",
+		"keyAgreement",
+		"keyCertSign",
+		"cRLSign",
+		NULL
+	};
+	static struct {
+		const char *	name;
+		const char *	list;
+	}			x509_usage_aliases[] = {
+	 { "sign",	"digitalSignature,nonRepudiation,keyCertSign,cRLSign" },
+	 { "decrypt",	"keyEncipherment,dataEncipherment" },
+	 { NULL, NULL }
+	};
+
+	while (1) {
+		int	len, n, match = 0;
+		
+		while (*list == ',')
+			list++;
+		if (!*list)
+			break;
+		len = strcspn(list, ",");
+		if (len == 4 && !strncasecmp(list, "help", 4)) {
+			printf("Valid X.509 usage names (vase-insensitive):");
+			for (n = 0; x509_usage_names[n]; n++)
+				printf(" %s", x509_usage_names[n]);
+			printf("\nAliases:\n");
+			for (n = 0; x509_usage_aliases[n].name; n++) {
+				printf("  %-12s %s\n",
+					x509_usage_aliases[n].name,
+					x509_usage_aliases[n].list);
+			}
+			printf("Use commas to separate several usage names; "
+			       "abbreviated names are okay if unique (e.g. dataEnc)\n");
+			exit(0);
+		}
+		for (n = 0; x509_usage_names[n]; n++) {
+			if (!strncasecmp(x509_usage_names[n], list, len)) {
+				*res |= (1 << n);
+				match++;
+			}
+		}
+		for (n = 0; x509_usage_aliases[n].name; n++) {
+			if (!strncasecmp(x509_usage_aliases[n].name, list, len)) {
+				parse_x509_usage(x509_usage_aliases[n].list, res);
+				match++;
+			}
+		}
+		if (match == 0) {
+			fprintf(stderr,
+				"Unknown X.509 key usage %.*s\n", len, list);
+			exit(1);
+		}
+		if (match > 1) {
+			fprintf(stderr,
+				"Ambiguous X.509 key usage %.*s\n", len, list);
+			exit(1);
+		}
+		list += len;
+	}
+}
+
+/*
  * Handle one option
  */
 static void
@@ -1156,6 +1245,12 @@ handle_option(int c)
 		break;
 	case 'p':
 		opt_profile = optarg;
+		break;
+	case 'r':
+		opt_reader = atoi(optarg);
+		break;
+	case 'u':
+		parse_x509_usage(optarg, &opt_x509_usage);
 		break;
 	case OPT_OPTIONS:
 		read_options_file(optarg);
