@@ -32,6 +32,8 @@ struct sc_object_id {
 #define SC_PATH_TYPE_FILE_ID	0
 #define SC_PATH_TYPE_DF_NAME	1
 #define SC_PATH_TYPE_PATH	2
+#define SC_PATH_TYPE_PATH_PROT	3	/* path of a file containing
+					   EnveleopedData objects */
 
 #define SC_MAX_PATH_SIZE		16
 
