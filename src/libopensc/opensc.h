@@ -639,10 +639,13 @@ int sc_detect_card_presence(struct sc_reader *reader, int slot_id);
  * @param readers array of pointer to a Reader structure
  * @param reader_count amount of readers in the array
  * @param slot_id Slot ID
- * @param event_mask The types of events to wait for, currently only
- *   SC_EVENT_CARD_INSERT_REMOVAL is supported
+ * @param event_mask The types of events to wait for; this should
+ *   be ORed from one of the following
+ *   	SC_EVENT_CARD_REMOVED
+ *   	SC_EVENT_CARD_INSERTED
  * @param reader (OUT) the reader on which the event was detected
- * @param event (OUT) the type of event that occurred
+ * @param event (OUT) the events that occurred. This is also ORed
+ *   from the SC_EVENT_CARD_* constants listed above.
  * @param timeout Amount of millisecs to wait; -1 means forever
  * @retval < 0 if an error occured
  * @retval = 0 if a an event happened
