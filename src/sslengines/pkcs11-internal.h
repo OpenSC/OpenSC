@@ -339,11 +339,11 @@ extern void *	pkcs11_malloc(size_t);
 extern char *	pkcs11_strdup(char *, size_t);
 
 extern int	pkcs11_getattr(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
-			unsigned int, void *, unsigned int);
+			unsigned int, void *, size_t);
 extern int	pkcs11_getattr_s(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
-			unsigned int, void *, unsigned int);
+			unsigned int, void *, size_t);
 extern int	pkcs11_getattr_var(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
-			unsigned int, void *, unsigned int *);
+			unsigned int, void *, size_t *);
 extern int	pkcs11_getattr_bn(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
 			unsigned int, BIGNUM **);
 

@@ -321,7 +321,7 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 	if (event_mask != 0)
 	       return SC_ERROR_INVALID_ARGUMENTS;
 
-	// Find out the current status
+	/* Find out the current status */
 	ctx = readers[0]->ctx;
 	pcsc_ctx = GET_PRIV_DATA(readers[0])->pcsc_ctx;
 	for (i = 0; i < nslots; i++) {

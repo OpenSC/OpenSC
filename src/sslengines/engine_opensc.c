@@ -42,9 +42,8 @@ static sc_context_t *ctx = NULL;
 static sc_card_t *card = NULL;
 static sc_pkcs15_card_t *p15card = NULL;
 static char* sc_pin=NULL;
-int opensc_finish() {
-	
 
+int opensc_finish(void) {
 	if (p15card) {
 		sc_pkcs15_unbind(p15card);
 		p15card = NULL;
@@ -57,11 +56,10 @@ int opensc_finish() {
 		sc_release_context(ctx);
 		ctx = NULL;
 	}
-
 	return 1;
 }
 
-int opensc_init() {
+int opensc_init(void) {
 	int r=0;
 	
 	if(!quiet)
@@ -84,12 +82,10 @@ err:
 	fprintf(stderr, "error: %d",r);
 	opensc_finish();
 	return 0;
-
 }
 
 int
 opensc_rsa_finish(RSA* rsa) {
-	
 	struct sc_pkcs15_key_id *key_id;
 	key_id = RSA_get_app_data(rsa);
 	free(key_id);
@@ -97,7 +93,6 @@ opensc_rsa_finish(RSA* rsa) {
 	return 1;
 
 }
-
 
 BIGNUM *sc_bignum_t_to_BIGNUM(sc_pkcs15_bignum_t* bignum, BIGNUM* BN) {
 	BN_bin2bn( (unsigned char *) bignum->data, bignum->len, BN);
@@ -129,7 +124,7 @@ sc_prkey_op_init(const RSA *rsa, struct sc_pkcs15_object **key_obj_out)
 
 	if (p15card == NULL) {
 		opensc_finish();
-		r = opensc_init(NULL);
+		r = opensc_init();
 		if (r) {
 			fprintf(stderr,"SmartCard init failed: %s", sc_strerror(r));
 			goto err;
@@ -236,8 +231,7 @@ EVP_PKEY *opensc_load_public_key(ENGINE *e, const char *s_key_id,
 	else if (pubkey)
 		sc_pkcs15_free_pubkey(pubkey);
 	return key_out;
-
-};
+}
 
 char* get_pin(UI_METHOD* ui_method, char* sc_pin, int maxlen) {
 	UI* ui;
