@@ -34,8 +34,7 @@ enum {
 	/*
 	 * Cryptoflex specific calls
 	 */
-	SC_CARDCTL_CRYPTOFLEX_BASE = _CTL_PREFIX('C', 'F', 'X'),
-
+	SC_CARDCTL_CRYPTOFLEX_BASE = _CTL_PREFIX('C', 'F', 'X')
 };
 
 /*
