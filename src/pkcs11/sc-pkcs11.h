@@ -191,6 +191,7 @@ struct sc_pkcs11_slot {
 	/* Number of sessions using this slot */
 	unsigned int nsessions;
 };
+typedef struct sc_pkcs11_slot sc_pkcs11_slot_t;
 
 
 /* Forward decl */
