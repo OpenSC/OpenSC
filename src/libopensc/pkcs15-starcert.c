@@ -102,9 +102,8 @@ static int get_cert_len(sc_card_t *card, sc_path_t *path)
 {
 	int r;
 	u8  buf[8];
-	struct sc_file *file;
 
-	r = sc_select_file(card, path, &file);
+	r = sc_select_file(card, path, NULL);
 	if (r < 0)
 		return 0;
 	r = sc_read_binary(card, 0, buf, sizeof(buf), 0);

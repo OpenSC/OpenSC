@@ -273,5 +273,6 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 	free(cert->issuer);
 	free(cert->serial);
 	free(cert->data);
+	free(cert->crl);
 	free(cert);
 }
