@@ -21,7 +21,7 @@
 int main(int argc, char *argv[])
 {
 	struct timeval tv1, tv2;
-	int i, c, freq[256];
+	int i, c, cnt = 3, freq[256];
 	u8 buf[8];
 
 	i = sc_test_init(&argc, argv);
@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < 256; i++)
 		freq[i] = 0;
 	c = 0;
-	while (1) {
+	while (cnt) {
 		if ((c % 10) == 1) {
 			printf(".");
 			fflush(stdout);
@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
 			}
 			printf("\n");
 			c = 0;
+			cnt--;
 		}
 	}
 	sc_test_cleanup();
