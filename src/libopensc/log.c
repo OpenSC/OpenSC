@@ -96,8 +96,10 @@ void do_log2(struct sc_context *ctx, int facility, const char *file,
 
 	if (vsnprintf(p, left, format, args) < 0)
 		return;
-	if (ctx->use_std_output)
+	if (ctx->use_std_output) {
 		fputs(buf, outf);
+		fflush(outf);
+	}
 }
 
 void sc_hex_dump(struct sc_context *ctx, const u8 *in, int count,

@@ -68,11 +68,13 @@ int sc_restore_security_env(struct sc_card *card, int num)
 {
 	struct sc_apdu apdu;
 	int r;
+	u8 rbuf[MAX_BUFFER_SIZE];
 	
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, num);
-	apdu.resplen = 0;
+	apdu.resplen = sizeof(rbuf) > 250 ? 250 : sizeof(rbuf);
+	apdu.resp = rbuf;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));

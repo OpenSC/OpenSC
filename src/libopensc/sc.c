@@ -148,7 +148,7 @@ int sc_check_apdu(const struct sc_apdu *apdu)
 static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 {
 	SCARD_IO_REQUEST sSendPci, sRecvPci;
-	BYTE s[MAX_BUFFER_SIZE], r[MAX_BUFFER_SIZE];
+	BYTE s[SC_MAX_APDU_BUFFER_SIZE], r[SC_MAX_APDU_BUFFER_SIZE];
 	DWORD dwSendLength, dwRecvLength;
 	LONG rv;
 	u8 *data = s;
@@ -240,9 +240,9 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	
 	SC_FUNC_CALLED(card->ctx);
 	r = sc_check_apdu(apdu);
-	SC_TEST_RET(card->ctx, r, "APDU sanity check failed\n");
+	SC_TEST_RET(card->ctx, r, "APDU sanity check failed");
 	r = sc_transceive_t0(card, apdu);
-	SC_TEST_RET(card->ctx, r, "transceive_t0() failed\n");
+	SC_TEST_RET(card->ctx, r, "transceive_t0() failed");
 	if (sc_debug > 3) {
 		char buf[2048];
 
@@ -256,7 +256,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	}
 	if (apdu->sw1 == 0x61 && apdu->resplen == 0) {
 		struct sc_apdu rspapdu;
-		BYTE rsp[MAX_BUFFER_SIZE];
+		BYTE rsp[SC_MAX_APDU_BUFFER_SIZE];
 
 		if (apdu->no_response)
 			return 0;
@@ -275,7 +275,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 		if (sc_debug > 3) {
 			char buf[2048];
 			buf[0] = 0;
-			if (apdu->resplen) {
+			if (rspapdu.resplen) {
 				sc_hex_dump(card->ctx, rspapdu.resp,
 					    rspapdu.resplen,
 					    buf, sizeof(buf));
@@ -387,7 +387,7 @@ int sc_select_file(struct sc_card *card,
 {
 	struct sc_context *ctx;
 	struct sc_apdu apdu;
-	char buf[MAX_BUFFER_SIZE];
+	char buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int r, pathlen;
 
@@ -402,7 +402,7 @@ int sc_select_file(struct sc_card *card,
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0, 0);
 	apdu.resp = buf;
-	apdu.resplen = 0;
+	apdu.resplen = sizeof(buf);
 	
 	switch (pathtype) {
 	case SC_SELECT_FILE_BY_FILE_ID:
@@ -468,7 +468,7 @@ int sc_read_binary(struct sc_card *card,
 {
 #define RB_BUF_SIZE 250
 	struct sc_apdu apdu;
-	u8 recvbuf[MAX_BUFFER_SIZE];
+	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
 	assert(card != NULL && buf != NULL);
@@ -890,11 +890,11 @@ static int construct_fci(const struct sc_file *file, u8 *out, int *outlen)
 int sc_create_file(struct sc_card *card, const struct sc_file *file)
 {
 	int r, len;
-	u8 sbuf[MAX_BUFFER_SIZE];
-	u8 rbuf[MAX_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_apdu apdu;
 
-	len = MAX_BUFFER_SIZE;
+	len = SC_MAX_APDU_BUFFER_SIZE;
 	r = construct_fci(file, sbuf, &len);
 	if (r)
 		return r;
@@ -916,7 +916,7 @@ int sc_delete_file(struct sc_card *card, int file_id)
 {
 	int r;
 	u8 sbuf[2];
-	u8 rbuf[MAX_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_apdu apdu;
 
 	sbuf[0] = (file_id >> 8) & 0xFF;

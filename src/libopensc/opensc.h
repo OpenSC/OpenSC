@@ -93,6 +93,7 @@ extern "C" {
 #define SC_FILE_EF_LINEAR_FIXED_TLV	0x03
 
 #define SC_MAX_READERS			4
+#define SC_MAX_APDU_BUFFER_SIZE		255
 #define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PIN_SIZE			16
 #define SC_MAX_ATR_SIZE			33
