@@ -76,6 +76,7 @@
 #define SC_ERROR_PKCS15INIT			-1500
 #define SC_ERROR_SYNTAX_ERROR			-1501
 #define SC_ERROR_INCONSISTENT_PROFILE		-1502
+#define SC_ERROR_INCOMPATIBLE_KEY		-1503
 
 /* Errors that do not fit the categories above */
 #define SC_ERROR_UNKNOWN			-1900
