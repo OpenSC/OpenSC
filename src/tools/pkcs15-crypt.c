@@ -113,7 +113,7 @@ int read_input(u8 *buf, int buflen)
 	FILE *inf;
 	int c;
 	
-	inf = fopen(opt_input, "r");
+	inf = fopen(opt_input, "rb");
 	if (inf == NULL) {
 		fprintf(stderr, "Unable to open '%s' for reading.\n", opt_input);
 		return -1;
