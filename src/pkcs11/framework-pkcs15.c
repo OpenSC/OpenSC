@@ -1122,7 +1122,7 @@ CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = FALSE;
                 break;
 	case CKA_LABEL:
-		len = strlen(cert->cert_p15obj->label) + 1;
+		len = strlen(cert->cert_p15obj->label);
 		check_attribute_buffer(attr, len);
                 memcpy(attr->pValue, cert->cert_p15obj->label, len);
                 break;
@@ -1131,6 +1131,8 @@ CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
                 *(CK_CERTIFICATE_TYPE*)attr->pValue = CKC_X_509;
 		break;
 	case CKA_ID:
+		/* Not sure why CA certs should be reported with an
+		 * ID of 00. --okir 20030413 */
 		if (cert->cert_info->authority) {
 			check_attribute_buffer(attr, 1);
 			*(unsigned char*)attr->pValue = 0;
@@ -1258,7 +1260,7 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = FALSE;
                 break;
 	case CKA_LABEL:
-		len = strlen(prkey->prv_p15obj->label) + 1;
+		len = strlen(prkey->prv_p15obj->label);
 		check_attribute_buffer(attr, len);
                 memcpy(attr->pValue, prkey->prv_p15obj->label, len);
 		break;
@@ -1470,11 +1472,11 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
                 break;
 	case CKA_LABEL:
 		if (pubkey->pub_p15obj) {
-			len = strlen(pubkey->pub_p15obj->label) + 1;
+			len = strlen(pubkey->pub_p15obj->label);
 			check_attribute_buffer(attr, len);
 			memcpy(attr->pValue, pubkey->pub_p15obj->label, len);
 		} else if (cert && cert->cert_p15obj) {
-			len = strlen(cert->cert_p15obj->label) + 1;
+			len = strlen(cert->cert_p15obj->label);
 			check_attribute_buffer(attr, len);
 			memcpy(attr->pValue, cert->cert_p15obj->label, len);
 		} else {
