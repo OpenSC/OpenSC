@@ -382,12 +382,28 @@ pkcs15_bind_related_objects(struct pkcs15_fw_data *fw_data)
 	}
 }
 
+static int
+pool_is_present(struct sc_pkcs11_pool *pool, struct pkcs15_any_object *obj)
+{
+	struct sc_pkcs11_pool_item *item;
+
+	for (item = pool->head; item != NULL; item = item->next) {
+		if (obj == (struct pkcs15_any_object *) item->item)
+			return 1;
+	}
+
+	return 0;
+}
+
 static void
 pkcs15_add_object(struct sc_pkcs11_slot *slot,
 		  struct pkcs15_any_object *obj,
 		  CK_OBJECT_HANDLE_PTR pHandle)
 {
 	if (obj == NULL)
+		return;
+
+	if (pool_is_present(&slot->object_pool, obj))
 		return;
 
 	pool_insert(&slot->object_pool, obj, pHandle);
