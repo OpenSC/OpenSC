@@ -456,6 +456,8 @@ int sc_pkcs15_bind(struct sc_card *card,
 	struct sc_pkcs15_card *p15card = NULL;
 	struct sc_path tmppath;
 	struct sc_context *ctx;
+	scconf_block *conf_block = NULL, **blocks;
+	int i;
 
 	assert(sc_card_valid(card) && p15card_out != NULL);
 	ctx = card->ctx;
@@ -465,8 +467,16 @@ int sc_pkcs15_bind(struct sc_card *card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	p15card->card = card;
 
-	/* FIXME: parse config file */
-	p15card->opts.use_cache = 1;
+	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+			"framework", "pkcs15");
+		conf_block = blocks[0];
+		free(blocks);
+		if (conf_block != NULL)
+			break;
+	}
+	if (conf_block)
+		p15card->opts.use_cache = scconf_get_bool(conf_block, "use_caching", 0);
 
 	err = sc_lock(card);
 	if (err) {
