@@ -791,7 +791,7 @@ etoken_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 
 /* eToken R2 supports WRITE_BINARY, PRO Tokens support UPDATE_BINARY */
 
-const struct sc_card_driver * sc_get_driver(void)
+static const struct sc_card_driver * sc_get_driver(void)
 {
 	if (iso_ops == NULL)
 		iso_ops = sc_get_iso7816_driver()->ops;
