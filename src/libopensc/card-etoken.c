@@ -74,7 +74,7 @@ int etoken_init(struct sc_card *card)
 	flags = SC_ALGORITHM_RSA_HASH_MD5 | SC_ALGORITHM_RSA_HASH_SHA1
 		| SC_ALGORITHM_RSA_HASH_MD5_SHA1
 		| SC_ALGORITHM_RSA_PAD_PKCS1
-#ifdef notyet
+#if 1
 		| SC_ALGORITHM_ONBOARD_KEY_GEN
 #endif
 		;
@@ -400,7 +400,6 @@ static int etoken_select_file(struct sc_card *card,
 	if (r >= 0 && file)
 		parse_sec_attr((*file), (*file)->sec_attr, (*file)->sec_attr_len);
 	SC_FUNC_RETURN(card->ctx, 1, r);
-	return r;
 }
 
 static int etoken_create_file(struct sc_card *card, struct sc_file *file)
@@ -542,9 +541,156 @@ etoken_verify(struct sc_card *card, unsigned int type, int ref,
 	return iso_ops->verify(card, type, ref|0x80, pin, pin_len, tries_left);
 }
 
+/*
+ * Restore the indicated SE
+ */
 static int
-etoken_put_data_fci(struct sc_card *card,
-			struct sc_cardctl_etoken_pin_info *args)
+etoken_restore_security_env(struct sc_card *card, int se_num)
+{
+	struct sc_apdu apdu;
+	int	r;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 3, se_num);
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	SC_FUNC_RETURN(card->ctx, 1, r);
+}
+
+/*
+ * Set the security context
+ * Things get a little messy here. It seems you cannot do any
+ * crypto without a security environment - but there isn't really
+ * a way to specify the security environment in PKCS15.
+ * What I'm doing here (for now) is to assume that for a key
+ * object with ID 0xNN there is always a corresponding SE object
+ * with the same ID.
+ * XXX Need to find out how the Aladdin drivers do it.
+ */
+static int
+etoken_set_security_env(struct sc_card *card,
+			    const struct sc_security_env *env,
+			    int se_num)
+{
+	struct sc_apdu apdu;
+	u8	data[3];
+	int	key_id, r;
+
+	assert(card != NULL && env != NULL);
+
+	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
+	 || env->key_ref_len != 1) {
+		error(card->ctx, "No or invalid key reference\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	key_id = env->key_ref[0];
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 1, 0);
+	switch (env->operation) {
+	case SC_SEC_OPERATION_DECIPHER:
+		apdu.p2 = 0xB8;
+		break;
+	case SC_SEC_OPERATION_SIGN:
+		apdu.p2 = 0xB6;
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	data[0] = 0x83;
+	data[1] = 0x01;
+	data[2] = key_id;
+	apdu.lc = apdu.datalen = 3;
+	apdu.data = data;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	SC_FUNC_RETURN(card->ctx, 1, r);
+}
+
+/*
+ * Compute digital signature
+ */
+static int
+etoken_compute_signature(struct sc_card *card,
+			     const u8 *data, size_t datalen,
+			     u8 *out, size_t outlen)
+{
+	int r;
+	struct sc_apdu apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+
+	assert(card != NULL && data != NULL && out != NULL);
+	if (datalen > 255)
+		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+
+	/* INS: 0x2A  PERFORM SECURITY OPERATION
+	 * P1:  0x9E  Resp: Digital Signature
+	 * P2:  0x9A  Cmd: Input for Digital Signature */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x9E, 0x9A);
+	apdu.resp = rbuf;
+	apdu.resplen = 64;
+
+	memcpy(sbuf, data, datalen);
+	apdu.data = sbuf;
+	apdu.lc = datalen;
+	apdu.datalen = datalen;
+	apdu.sensitive = 1;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+
+		memcpy(out, apdu.resp, len);
+		SC_FUNC_RETURN(card->ctx, 4, len);
+	}
+	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
+}
+
+
+
+static int
+etoken_put_data_oci(struct sc_card *card,
+			struct sc_cardctl_etoken_obj_info *args)
+{
+	struct sc_apdu	apdu;
+	int		r;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_3_SHORT;
+	apdu.cla = 0x00;
+	apdu.ins = 0xda;
+	apdu.p1  = 0x01;
+	apdu.p2  = 0x6e;
+	apdu.lc  = args->len;
+	apdu.data = args->data;
+	apdu.datalen = args->len;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	SC_FUNC_RETURN(card->ctx, 1, r);
+}
+
+static int
+etoken_put_data_seci(struct sc_card *card,
+			struct sc_cardctl_etoken_obj_info *args)
 {
 	struct sc_apdu	apdu;
 	int		r;
@@ -554,7 +700,7 @@ etoken_put_data_fci(struct sc_card *card,
 	apdu.cla = 0x00;
 	apdu.ins = 0xda;
 	apdu.p1  = 0x01;
-	apdu.p2  = 0x6e;
+	apdu.p2  = 0x6d;
 	apdu.lc  = args->len;
 	apdu.data = args->data;
 	apdu.datalen = args->len;
@@ -589,9 +735,9 @@ etoken_generate_key(struct sc_card *card,
 	data[2] = args->fid >> 8;
 	data[3] = args->fid & 0xff;
 	data[4] = 0;		/* additional Rabin Miller tests */
-	data[5] = 0;		/* length difference between p, q (bits) */
+	data[5] = 0x10;		/* length difference between p, q (bits) */
 	data[6] = 0;		/* default length of exponent, MSB */
-	data[7] = 0;		/* default length of exponent, LSB */
+	data[7] = 0x20;		/* default length of exponent, LSB */
 
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse = SC_APDU_CASE_3_SHORT;
@@ -599,6 +745,7 @@ etoken_generate_key(struct sc_card *card,
 	apdu.ins = 0x46;
 	apdu.p1  = 0x00;
 	apdu.p2  = args->key_id;/* doc is not clear, it just says "ID" */
+	apdu.p2  = 0x00;
 	apdu.data= data;
 	apdu.datalen = apdu.lc = sizeof(data);
 
@@ -617,8 +764,12 @@ etoken_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_ETOKEN_PUT_DATA_FCI:
 		break;
 	case SC_CARDCTL_ETOKEN_PUT_DATA_OCI:
-		return etoken_put_data_fci(card,
-			(struct sc_cardctl_etoken_pin_info *) ptr);
+		return etoken_put_data_oci(card,
+			(struct sc_cardctl_etoken_obj_info *) ptr);
+		break;
+	case SC_CARDCTL_ETOKEN_PUT_DATA_SECI:
+		return etoken_put_data_seci(card,
+			(struct sc_cardctl_etoken_obj_info *) ptr);
 		break;
 	case SC_CARDCTL_ETOKEN_GENERATE_KEY:
 		return etoken_generate_key(card,
@@ -642,6 +793,9 @@ const struct sc_card_driver * sc_get_driver(void)
 	etoken_ops.update_binary = etoken_update_binary;
 	etoken_ops.read_binary = etoken_read_binary;
 	etoken_ops.verify = etoken_verify;
+	etoken_ops.set_security_env = etoken_set_security_env;
+	etoken_ops.restore_security_env = etoken_restore_security_env;
+	etoken_ops.compute_signature = etoken_compute_signature;
 
 	etoken_ops.list_files = etoken_list_files;
 	etoken_ops.check_sw = etoken_check_sw;
