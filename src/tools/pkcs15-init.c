@@ -96,7 +96,6 @@ static int	do_read_certificate(const char *, const char *, X509 **);
 static void	parse_commandline(int argc, char **argv);
 static void	read_options_file(const char *);
 static void	ossl_print_errors(void);
-static void	p15init_debug(int, const char *, ...);
 
 
 enum {
@@ -1935,23 +1934,4 @@ ossl_print_errors()
 
 	while ((err = ERR_get_error()) != 0)
 		fprintf(stderr, "%s\n", ERR_error_string(err, NULL));
-}
-
-/*
- * Debug helper function
- */
-void
-p15init_debug(int level, const char *fmt, ...)
-{
-	char	buffer[128];
-	va_list	ap;
-
-	if (ctx->debug < level)
-		return;
-
-	va_start(ap, fmt);
-	vsnprintf(buffer, sizeof(buffer), fmt, ap);
-	va_end(ap);
-
-	sc_debug(ctx, "%s", buffer);
 }

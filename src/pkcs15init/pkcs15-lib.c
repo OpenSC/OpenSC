@@ -111,8 +111,6 @@ static int	select_object_path(sc_pkcs15_card_t *, sc_profile_t *,
 static int	sc_pkcs15init_get_pin_path(sc_pkcs15_card_t *,
 			sc_pkcs15_id_t *, sc_path_t *);
 static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *, int);
-static void	default_error_handler(const char *fmt, ...);
-static void	default_debug_handler(int, const char *fmt, ...);
 
 static struct profile_operations {
 	char *name;
@@ -2617,21 +2615,4 @@ sc_pkcs15init_get_label(struct sc_profile *profile, const char **res)
 {
 	*res = profile->p15_card->label;
 	return 0;
-}
-
-void
-default_error_handler(const char *fmt, ...)
-{
-	va_list	ap;
-
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	fputs("\n", stderr);
-	va_end(ap);
-}
-
-void
-default_debug_handler(int level, const char *fmt, ...)
-{
-	/* Nothing */
 }
