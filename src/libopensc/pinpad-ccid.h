@@ -6,7 +6,6 @@
  * Martin Paljak <martin@paljak.pri.ee>
  */
 
-#ifdef MP_CCID_PINPAD
 #ifndef _PINPAD_CCID_H
 #define _PINPAD_CCID_H
 
@@ -29,4 +28,3 @@
 int ccid_pin_cmd(struct sc_reader *, sc_slot_info_t *, struct sc_pin_cmd_data *);
 
 #endif /* _PINPAD_CCID_H */
-#endif /* MP_CCID_PINPAD */

@@ -775,13 +775,6 @@ AC_ARG_WITH(prngd-socket,
 	]
 )
 
-dnl pin-pad code for ccid by Martin Paljak <martin@paljak.pri.ee>
-
-dnl --enable-ccid-pinpad option.
-AC_ARG_ENABLE(ccid-pinpad,
-[  --enable-ccid-pinpad         enable new pin pad code for ccid readers [default=no]],
-	AC_DEFINE(MP_CCID_PINPAD,1,[Enable new pin pad code for ccid readers]))
-
 dnl enable/disable logging of sensitive apdu data
 AC_ARG_ENABLE(sensitive-logging,
 [  --disable-sensitive-logging  disable logging of sensitive APDU data [default=no]],

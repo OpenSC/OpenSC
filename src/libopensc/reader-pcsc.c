@@ -21,9 +21,7 @@
 #include "internal.h"
 #ifdef HAVE_PCSC
 #include "ctbcs.h"
-#ifdef MP_CCID_PINPAD
 #include "pinpad-ccid.h"
-#endif
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -629,6 +627,16 @@ static int pcsc_finish(struct sc_context *ctx, void *prv_data)
 	return 0;
 }
 
+static int
+pcsc_pin_cmd(struct sc_reader *reader, sc_slot_info_t * slot, struct sc_pin_cmd_data *data)
+{
+#ifdef MP_CCID_PINPAD
+	return ccid_pin_cmd(reader, slot, data);
+#else
+	return ctbcs_pin_cmd(reader, slot, data);
+#endif
+}
+
 struct sc_reader_driver * sc_get_pcsc_driver(void)
 {
 	pcsc_ops.init = pcsc_init;
@@ -640,11 +648,7 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 	pcsc_ops.release = pcsc_release;
 	pcsc_ops.connect = pcsc_connect;
 	pcsc_ops.disconnect = pcsc_disconnect;
-#ifdef MP_CCID_PINPAD
-	pcsc_ops.perform_verify = ccid_pin_cmd;
-#else
-	pcsc_ops.perform_verify = ctbcs_pin_cmd;
-#endif
+	pcsc_ops.perform_verify = pcsc_pin_cmd;
 	pcsc_ops.wait_for_event = pcsc_wait_for_event;
 	
 	return &pcsc_drv;

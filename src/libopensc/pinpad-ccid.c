@@ -9,7 +9,6 @@
  *
  * (C) 2004 Martin Paljak <martin@paljak.pri.ee>
  */
-#ifdef MP_CCID_PINPAD
 #include "internal.h"
 #include "pinpad-ccid.h"
 #include <assert.h>
@@ -152,4 +151,3 @@ ccid_pin_cmd(struct sc_reader *reader, sc_slot_info_t * slot,
 	/* PIN command completed, all is good */
 	return SC_SUCCESS;
 }
-#endif /* MP_CCID_PINPAD */

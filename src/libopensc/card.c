@@ -197,7 +197,7 @@ static int sc_transceive(struct sc_card *card, struct sc_apdu *apdu)
 		else
 			/* sensitive information: just print the command
 			 * header and no data */
-			snprintf(buf, sizeof(buf), "%02x %02x %02x %02x [sensitve data]",
+			snprintf(buf, sizeof(buf), "%02x %02x %02x %02x [sensitive data]",
 				apdu->cla, apdu->ins, apdu->p1, apdu->p2);
 
 		sc_debug(card->ctx, "Sending %d bytes (resp. %d bytes%s):\n%s",
