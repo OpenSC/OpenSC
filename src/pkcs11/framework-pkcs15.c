@@ -2312,6 +2312,7 @@ static void
 add_pins_to_keycache(struct sc_pkcs11_card *p11card, 
 		struct sc_pkcs11_slot *slot)
 {
+#ifdef USE_PKCS15_INIT
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct sc_pkcs15_card *p15card = fw_data->p15_card;
 	struct pkcs15_slot_data *p15_data = slot_data(slot->fw_data);
@@ -2339,4 +2340,5 @@ add_pins_to_keycache(struct sc_pkcs11_card *p11card,
 				SC_PKCS15INIT_USER_PIN);
 		}
 	}
+#endif
 }
