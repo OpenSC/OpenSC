@@ -70,7 +70,8 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 	const char *authPRKEY	= 	"Authentication Key";
 	const char *nonrepPRKEY	= 	"Non repudiation Key";
 
-	int		r, len_iccsn, len_chn;
+	int		r;
+	size_t		len_chn, len_iccsn;
 
 	sc_format_path("2F02", &path);
 

@@ -849,13 +849,13 @@ auth_delete_file(struct sc_card *card, const struct sc_path *path)
 		SC_TEST_RET(card->ctx, len, "list DF failed");
 		
 		for (ii=0; ii<len/2; ii++)   {
-			sc_path_t path;
+			sc_path_t tpath;
 
-			path.value[0] = *(lbuf + ii*2);
-			path.value[1] = *(lbuf + ii*2 + 1);
-			path.len = 2;
+			tpath.value[0] = *(lbuf + ii*2);
+			tpath.value[1] = *(lbuf + ii*2 + 1);
+			tpath.len = 2;
 
-			rv = auth_delete_file(card, &path);
+			rv = auth_delete_file(card, &tpath);
 			SC_TEST_RET(card->ctx, rv, "delete failed");
 		}
 //		rv = select_parent(card, &file);
@@ -1153,8 +1153,6 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 			return SC_ERROR_CARD_CMD_FAILED; 
 			
 		if (card->cache_valid) {
-			u8 file_id[2];
-		
 			file_id[0] = file->id >> 8;
 			file_id[1] = file->id & 0xFF;
 			if (card->cache.current_path.len != 0)
