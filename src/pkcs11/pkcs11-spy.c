@@ -22,14 +22,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "pkcs11-display.h"
+#include "opensc/opensc.h"
+#include "opensc/scconf.h"
 
 #define __PASTE(x,y)      x##y
 
 /*  Declare all spy_* Cryptoki function */
 
 #define CK_NEED_ARG_LIST  1
-#define CK_PKCS11_FUNCTION_INFO(name) \
-CK_RV __PASTE(spy_,name)
+#define CK_PKCS11_FUNCTION_INFO(name) CK_RV name
 
 #include "rsaref/pkcs11f.h"
 
@@ -45,12 +46,37 @@ FILE *spy_output = NULL;
 #undef CK_NEED_ARG_LIST
 #undef CK_PKCS11_FUNCTION_INFO
 #define CK_PKCS11_FUNCTION_INFO(name) \
-    pkcs11_spy->name = &__PASTE(spy_,name);
+    pkcs11_spy->name = name;
 
-CK_RV C_GetFunctionList
-(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
+/* Returns false if the pkcs11-spy block in the conf file was found */
+int get_conf(struct sc_context **ctx, scconf_block **conf_block)
 {
-  char *mspec = NULL, *file = NULL;
+  int r, i;
+  scconf_block **blocks;
+
+  r = sc_establish_context(ctx, "pkcs11-spy");
+  if (r != 0)
+    return 1;
+
+  for (i = 0; (*ctx)->conf_blocks[i] != NULL; i++) {
+    blocks = scconf_find_blocks((*ctx)->conf, (*ctx)->conf_blocks[i],
+      "init", NULL);
+    *conf_block = blocks[0];
+    free(blocks);
+    if (*conf_block != NULL)
+      break;
+  }
+
+  return (*conf_block == NULL);
+}
+
+/* Inits the spy. If successfull, po != NULL */
+CK_RV init_spy()
+{
+  const char *mspec = NULL, *file = NULL;
+  struct sc_context *ctx = NULL;
+  scconf_block *conf_block = NULL;
+  int rv = CKR_OK, no_conf_block_found = 0;
 
   /* Allocates and initializes the pkcs11_spy structure */
   pkcs11_spy =
@@ -58,25 +84,45 @@ CK_RV C_GetFunctionList
   if (pkcs11_spy) {
 #include "rsaref/pkcs11f.h"
   } else {
-    goto error;
-  }
-  
-  file = getenv("PKCS11SPY_OUTPUT");
-  if (file) {
-    spy_output = fopen(file, "a");
-  } else {
-    spy_output = stderr;
+    return CKR_HOST_MEMORY;
   }
 
-  mspec = getenv("PKCS11SPY");
-  modhandle = C_LoadModule(mspec, &po);
-  
-  if (modhandle && po) {
-    *ppFunctionList = pkcs11_spy;
-    return CKR_OK;
+  file = getenv("PKCS11SPY_OUTPUT");
+  if (file == NULL && !no_conf_block_found) {
+    if (conf_block == NULL)
+      no_conf_block_found = get_conf(&ctx, &conf_block);
+    if (conf_block != NULL)
+      file = scconf_get_str(conf_block, "output", NULL);
   }
- error:
-  return CKR_HOST_MEMORY;
+  if (file) {
+    spy_output = fopen(file, "a");
+  }
+  if (!spy_output) {
+    spy_output = stderr;
+  }
+  fprintf(spy_output, "\n\n*************** OpenSC PKCS#11 spy *****************\n");
+
+  mspec = getenv("PKCS11SPY");
+  if (mspec == NULL && !no_conf_block_found) {
+    if (conf_block == NULL)
+      no_conf_block_found = get_conf(&ctx, &conf_block);
+    if (conf_block != NULL)
+      mspec = scconf_get_str(conf_block, "module", NULL);
+  }
+  modhandle = C_LoadModule(mspec, &po);
+  if (modhandle && po) {
+    fprintf(spy_output, "Loaded: \"%s\"\n", mspec == NULL ? "default module" : mspec);
+  }
+  else {
+  	po = NULL;
+  	free(pkcs11_spy);
+  	rv = CKR_GENERAL_ERROR;
+  }
+
+  if (ctx != NULL)
+    sc_release_context(ctx);
+
+  return rv;
 }
 
 void enter(char *function)
@@ -145,15 +191,36 @@ void spy_attribute_list_out(char *name, CK_ATTRIBUTE_PTR pTemplate,
   print_attribute_list(spy_output, pTemplate, ulCount);
 }
 
-CK_RV spy_C_Initialize(CK_VOID_PTR pInitArgs)
+CK_RV C_GetFunctionList
+(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
+{
+  if (po == NULL) {
+    CK_RV rv = init_spy();
+    if (rv != CKR_OK)
+    	return rv;
+  }
+
+  enter("C_GetFunctionList");
+  *ppFunctionList = pkcs11_spy;
+  return retne(CKR_OK);
+}
+
+CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 {
   CK_RV rv;
+
+  if (po == NULL) {
+    rv = init_spy();
+    if (rv != CKR_OK)
+    	return rv;
+  }
+
   enter("C_Initialize");
   rv = po->C_Initialize(pInitArgs);
   return retne(rv);
 }
 
-CK_RV spy_C_Finalize(CK_VOID_PTR pReserved)
+CK_RV C_Finalize(CK_VOID_PTR pReserved)
 {
   CK_RV rv;
   enter("C_Finalize");
@@ -164,7 +231,7 @@ CK_RV spy_C_Finalize(CK_VOID_PTR pReserved)
   return retne(rv);
 }
 
-CK_RV spy_C_GetInfo(CK_INFO_PTR pInfo)
+CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 {
   CK_RV rv;
   enter("C_GetInfo");
@@ -175,16 +242,7 @@ CK_RV spy_C_GetInfo(CK_INFO_PTR pInfo)
   return retne(rv);
 }
 
-CK_RV spy_C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
-{
-  CK_RV rv;
-  enter("C_GetFunctionList");
-  rv = po->C_GetFunctionList(ppFunctionList);
-  return retne(rv);
-}
-
-
-CK_RV spy_C_GetSlotList(CK_BBOOL tokenPresent,
+CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
 			CK_SLOT_ID_PTR pSlotList,
 			CK_ULONG_PTR pulCount)
 {
@@ -200,7 +258,7 @@ CK_RV spy_C_GetSlotList(CK_BBOOL tokenPresent,
   return retne(rv);
 }
 
-CK_RV spy_C_GetSlotInfo(CK_SLOT_ID slotID,
+CK_RV C_GetSlotInfo(CK_SLOT_ID slotID,
 			CK_SLOT_INFO_PTR pInfo)
 {
   CK_RV rv;
@@ -214,7 +272,7 @@ CK_RV spy_C_GetSlotInfo(CK_SLOT_ID slotID,
   return retne(rv);
 }
 
-CK_RV spy_C_GetTokenInfo(CK_SLOT_ID slotID,
+CK_RV C_GetTokenInfo(CK_SLOT_ID slotID,
 			 CK_TOKEN_INFO_PTR pInfo)
 {
   CK_RV rv;
@@ -228,7 +286,7 @@ CK_RV spy_C_GetTokenInfo(CK_SLOT_ID slotID,
   return retne(rv);
 }
 
-CK_RV spy_C_GetMechanismList(CK_SLOT_ID  slotID,
+CK_RV C_GetMechanismList(CK_SLOT_ID  slotID,
 			     CK_MECHANISM_TYPE_PTR pMechanismList,
 			     CK_ULONG_PTR  pulCount)
 {
@@ -243,7 +301,7 @@ CK_RV spy_C_GetMechanismList(CK_SLOT_ID  slotID,
   return retne(rv);
 }
 
-CK_RV spy_C_GetMechanismInfo(CK_SLOT_ID  slotID,
+CK_RV C_GetMechanismInfo(CK_SLOT_ID  slotID,
 			     CK_MECHANISM_TYPE type,
 			     CK_MECHANISM_INFO_PTR pInfo)
 {
@@ -264,7 +322,7 @@ CK_RV spy_C_GetMechanismInfo(CK_SLOT_ID  slotID,
   return retne(rv);
 }
 
-CK_RV spy_C_InitToken (CK_SLOT_ID slotID,
+CK_RV C_InitToken (CK_SLOT_ID slotID,
 		       CK_UTF8CHAR_PTR pPin,
 		       CK_ULONG ulPinLen,
 		       CK_UTF8CHAR_PTR pLabel)
@@ -278,7 +336,7 @@ CK_RV spy_C_InitToken (CK_SLOT_ID slotID,
   return retne(rv);
 }
 
-CK_RV spy_C_InitPIN(CK_SESSION_HANDLE hSession,
+CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
 		    CK_UTF8CHAR_PTR pPin,
 		    CK_ULONG  ulPinLen)
 {
@@ -290,7 +348,7 @@ CK_RV spy_C_InitPIN(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_SetPIN(CK_SESSION_HANDLE hSession,
+CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 		   CK_UTF8CHAR_PTR pOldPin,
 		   CK_ULONG  ulOldLen,
 		   CK_UTF8CHAR_PTR pNewPin,
@@ -306,7 +364,7 @@ CK_RV spy_C_SetPIN(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_OpenSession(CK_SLOT_ID  slotID,
+CK_RV C_OpenSession(CK_SLOT_ID  slotID,
 			CK_FLAGS  flags,
 			CK_VOID_PTR  pApplication,
 			CK_NOTIFY  Notify,
@@ -325,7 +383,7 @@ CK_RV spy_C_OpenSession(CK_SLOT_ID  slotID,
 }
 
 
-CK_RV spy_C_CloseSession(CK_SESSION_HANDLE hSession)
+CK_RV C_CloseSession(CK_SESSION_HANDLE hSession)
 {
   CK_RV rv;
   enter("C_CloseSession");
@@ -335,7 +393,7 @@ CK_RV spy_C_CloseSession(CK_SESSION_HANDLE hSession)
 }
 
 
-CK_RV spy_C_CloseAllSessions(CK_SLOT_ID slotID)
+CK_RV C_CloseAllSessions(CK_SLOT_ID slotID)
 {
   CK_RV rv;
   enter("C_CloseAllSessions");
@@ -345,7 +403,7 @@ CK_RV spy_C_CloseAllSessions(CK_SLOT_ID slotID)
 }
 
 
-CK_RV spy_C_GetSessionInfo(CK_SESSION_HANDLE hSession,
+CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,
 			   CK_SESSION_INFO_PTR pInfo)
 {
   CK_RV rv;
@@ -360,7 +418,7 @@ CK_RV spy_C_GetSessionInfo(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_GetOperationState(CK_SESSION_HANDLE hSession,
+CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession,
 			      CK_BYTE_PTR pOperationState,
 			      CK_ULONG_PTR pulOperationStateLen)
 {
@@ -377,7 +435,7 @@ CK_RV spy_C_GetOperationState(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_SetOperationState(CK_SESSION_HANDLE hSession,
+CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,
 			      CK_BYTE_PTR pOperationState,
 			      CK_ULONG  ulOperationStateLen,
 			      CK_OBJECT_HANDLE hEncryptionKey,
@@ -398,7 +456,7 @@ CK_RV spy_C_SetOperationState(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_Login(CK_SESSION_HANDLE hSession,
+CK_RV C_Login(CK_SESSION_HANDLE hSession,
 		  CK_USER_TYPE userType,
 		  CK_UTF8CHAR_PTR pPin,
 		  CK_ULONG  ulPinLen)
@@ -413,7 +471,7 @@ CK_RV spy_C_Login(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_Logout(CK_SESSION_HANDLE hSession)
+CK_RV C_Logout(CK_SESSION_HANDLE hSession)
 {
   CK_RV rv;
   enter("C_Logout");
@@ -422,7 +480,7 @@ CK_RV spy_C_Logout(CK_SESSION_HANDLE hSession)
   return retne(rv);
 }
 
-CK_RV spy_C_CreateObject(CK_SESSION_HANDLE hSession,
+CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,
 			 CK_ATTRIBUTE_PTR pTemplate,
 			 CK_ULONG  ulCount,
 			 CK_OBJECT_HANDLE_PTR phObject)
@@ -438,7 +496,7 @@ CK_RV spy_C_CreateObject(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_CopyObject(CK_SESSION_HANDLE hSession,
+CK_RV C_CopyObject(CK_SESSION_HANDLE hSession,
 		       CK_OBJECT_HANDLE hObject,
 		       CK_ATTRIBUTE_PTR pTemplate,
 		       CK_ULONG  ulCount,
@@ -457,7 +515,7 @@ CK_RV spy_C_CopyObject(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_DestroyObject(CK_SESSION_HANDLE hSession,
+CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession,
 			  CK_OBJECT_HANDLE hObject)
 {
   CK_RV rv;
@@ -469,7 +527,7 @@ CK_RV spy_C_DestroyObject(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_GetObjectSize(CK_SESSION_HANDLE hSession,
+CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession,
 			  CK_OBJECT_HANDLE hObject,
 			  CK_ULONG_PTR pulSize)
 {
@@ -485,7 +543,7 @@ CK_RV spy_C_GetObjectSize(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_GetAttributeValue(CK_SESSION_HANDLE hSession,
+CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,
 			      CK_OBJECT_HANDLE hObject,
 			      CK_ATTRIBUTE_PTR pTemplate,
 			      CK_ULONG  ulCount)
@@ -502,7 +560,7 @@ CK_RV spy_C_GetAttributeValue(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_SetAttributeValue(CK_SESSION_HANDLE hSession,
+CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,
 			      CK_OBJECT_HANDLE hObject,
 			      CK_ATTRIBUTE_PTR pTemplate,
 			      CK_ULONG  ulCount)
@@ -517,7 +575,7 @@ CK_RV spy_C_SetAttributeValue(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_FindObjectsInit(CK_SESSION_HANDLE hSession,
+CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,
 			    CK_ATTRIBUTE_PTR pTemplate,
 			    CK_ULONG  ulCount)
 {
@@ -530,7 +588,7 @@ CK_RV spy_C_FindObjectsInit(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_FindObjects(CK_SESSION_HANDLE hSession,
+CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,
 			CK_OBJECT_HANDLE_PTR phObject,
 			CK_ULONG  ulMaxObjectCount,
 			CK_ULONG_PTR  pulObjectCount)
@@ -552,7 +610,7 @@ CK_RV spy_C_FindObjects(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_FindObjectsFinal(CK_SESSION_HANDLE hSession)
+CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession)
 {
   CK_RV rv;
   enter("C_FindObjectsFinal");
@@ -561,7 +619,7 @@ CK_RV spy_C_FindObjectsFinal(CK_SESSION_HANDLE hSession)
   return retne(rv);
 }
 
-CK_RV spy_C_EncryptInit(CK_SESSION_HANDLE hSession,
+CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession,
 			CK_MECHANISM_PTR pMechanism,
 			CK_OBJECT_HANDLE hKey)
 {
@@ -576,7 +634,7 @@ CK_RV spy_C_EncryptInit(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_Encrypt(CK_SESSION_HANDLE hSession,
+CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,
 		    CK_BYTE_PTR pData,
 		    CK_ULONG  ulDataLen,
 		    CK_BYTE_PTR pEncryptedData,
@@ -596,7 +654,7 @@ CK_RV spy_C_Encrypt(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_EncryptUpdate(CK_SESSION_HANDLE hSession,
+CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,
 			  CK_BYTE_PTR pPart,
 			  CK_ULONG  ulPartLen,
 			  CK_BYTE_PTR pEncryptedPart,
@@ -615,7 +673,7 @@ CK_RV spy_C_EncryptUpdate(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_EncryptFinal(CK_SESSION_HANDLE hSession,
+CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,
 			 CK_BYTE_PTR pLastEncryptedPart,
 			 CK_ULONG_PTR pulLastEncryptedPartLen)
 {
@@ -632,7 +690,7 @@ CK_RV spy_C_EncryptFinal(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_DecryptInit(CK_SESSION_HANDLE hSession,
+CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,
 			CK_MECHANISM_PTR pMechanism,
 			CK_OBJECT_HANDLE hKey)
 {
@@ -647,7 +705,7 @@ CK_RV spy_C_DecryptInit(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_Decrypt(CK_SESSION_HANDLE hSession,
+CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,
 		    CK_BYTE_PTR pEncryptedData,
 		    CK_ULONG  ulEncryptedDataLen,
 		    CK_BYTE_PTR pData,
@@ -667,7 +725,7 @@ CK_RV spy_C_Decrypt(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_DecryptUpdate(CK_SESSION_HANDLE hSession,
+CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,
 			  CK_BYTE_PTR pEncryptedPart,
 			  CK_ULONG  ulEncryptedPartLen,
 			  CK_BYTE_PTR pPart,
@@ -687,7 +745,7 @@ CK_RV spy_C_DecryptUpdate(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_DecryptFinal(CK_SESSION_HANDLE hSession,
+CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,
 			 CK_BYTE_PTR pLastPart,
 			 CK_ULONG_PTR pulLastPartLen)
 {
@@ -702,7 +760,7 @@ CK_RV spy_C_DecryptFinal(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_DigestInit(CK_SESSION_HANDLE hSession,
+CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,
 		       CK_MECHANISM_PTR pMechanism)
 {
   CK_RV rv;
@@ -715,7 +773,7 @@ CK_RV spy_C_DigestInit(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_Digest(CK_SESSION_HANDLE hSession,
+CK_RV C_Digest(CK_SESSION_HANDLE hSession,
 		   CK_BYTE_PTR pData,
 		   CK_ULONG  ulDataLen,
 		   CK_BYTE_PTR pDigest,
@@ -734,7 +792,7 @@ CK_RV spy_C_Digest(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_DigestUpdate(CK_SESSION_HANDLE hSession,
+CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,
 			 CK_BYTE_PTR pPart,
 			 CK_ULONG  ulPartLen)
 {
@@ -747,7 +805,7 @@ CK_RV spy_C_DigestUpdate(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_DigestKey(CK_SESSION_HANDLE hSession,
+CK_RV C_DigestKey(CK_SESSION_HANDLE hSession,
 		      CK_OBJECT_HANDLE hKey)
 {
   CK_RV rv;
@@ -759,7 +817,7 @@ CK_RV spy_C_DigestKey(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_DigestFinal(CK_SESSION_HANDLE hSession,
+CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,
 			CK_BYTE_PTR pDigest,
 			CK_ULONG_PTR pulDigestLen)
 {
@@ -774,7 +832,7 @@ CK_RV spy_C_DigestFinal(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_SignInit(CK_SESSION_HANDLE hSession,
+CK_RV C_SignInit(CK_SESSION_HANDLE hSession,
 		     CK_MECHANISM_PTR pMechanism,
 		     CK_OBJECT_HANDLE hKey)
 {
@@ -789,7 +847,7 @@ CK_RV spy_C_SignInit(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_Sign(CK_SESSION_HANDLE hSession,
+CK_RV C_Sign(CK_SESSION_HANDLE hSession,
 		 CK_BYTE_PTR pData,
 		 CK_ULONG  ulDataLen,
 		 CK_BYTE_PTR pSignature,
@@ -808,7 +866,7 @@ CK_RV spy_C_Sign(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_SignUpdate(CK_SESSION_HANDLE hSession,
+CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,
 		       CK_BYTE_PTR pPart,
 		       CK_ULONG  ulPartLen)
 {
@@ -821,7 +879,7 @@ CK_RV spy_C_SignUpdate(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_SignFinal(CK_SESSION_HANDLE hSession,
+CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,
 		      CK_BYTE_PTR pSignature,
 		      CK_ULONG_PTR pulSignatureLen)
 {
@@ -837,7 +895,7 @@ CK_RV spy_C_SignFinal(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_SignRecoverInit(CK_SESSION_HANDLE hSession,
+CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,
 			    CK_MECHANISM_PTR pMechanism,
 			    CK_OBJECT_HANDLE hKey)
 {
@@ -852,7 +910,7 @@ CK_RV spy_C_SignRecoverInit(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_SignRecover(CK_SESSION_HANDLE hSession,
+CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,
 			CK_BYTE_PTR pData,
 			CK_ULONG  ulDataLen,
 			CK_BYTE_PTR pSignature,
@@ -871,7 +929,7 @@ CK_RV spy_C_SignRecover(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_VerifyInit(CK_SESSION_HANDLE hSession,
+CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,
 		       CK_MECHANISM_PTR pMechanism,
 		       CK_OBJECT_HANDLE hKey)
 {
@@ -886,7 +944,7 @@ CK_RV spy_C_VerifyInit(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_Verify(CK_SESSION_HANDLE hSession,
+CK_RV C_Verify(CK_SESSION_HANDLE hSession,
 		   CK_BYTE_PTR pData,
 		   CK_ULONG  ulDataLen,
 		   CK_BYTE_PTR pSignature,
@@ -903,7 +961,7 @@ CK_RV spy_C_Verify(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_VerifyUpdate(CK_SESSION_HANDLE hSession,
+CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,
 			 CK_BYTE_PTR pPart,
 			 CK_ULONG  ulPartLen)
 {
@@ -916,7 +974,7 @@ CK_RV spy_C_VerifyUpdate(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_VerifyFinal(CK_SESSION_HANDLE hSession,
+CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,
 			CK_BYTE_PTR pSignature,
 			CK_ULONG  ulSignatureLen)
 {
@@ -930,7 +988,7 @@ CK_RV spy_C_VerifyFinal(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_VerifyRecoverInit(CK_SESSION_HANDLE hSession,
+CK_RV C_VerifyRecoverInit(CK_SESSION_HANDLE hSession,
 			      CK_MECHANISM_PTR pMechanism,
 			      CK_OBJECT_HANDLE hKey)
 {
@@ -945,7 +1003,7 @@ CK_RV spy_C_VerifyRecoverInit(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_VerifyRecover(CK_SESSION_HANDLE hSession,
+CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,
 			  CK_BYTE_PTR pSignature,
 			  CK_ULONG  ulSignatureLen,
 			  CK_BYTE_PTR pData,
@@ -964,7 +1022,7 @@ CK_RV spy_C_VerifyRecover(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
+CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
 				CK_BYTE_PTR pPart,
 				CK_ULONG  ulPartLen,
 				CK_BYTE_PTR pEncryptedPart,
@@ -984,7 +1042,7 @@ CK_RV spy_C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
+CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
 				CK_BYTE_PTR pEncryptedPart,
 				CK_ULONG  ulEncryptedPartLen,
 				CK_BYTE_PTR pPart,
@@ -1005,7 +1063,7 @@ CK_RV spy_C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
+CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
 			      CK_BYTE_PTR pPart,
 			      CK_ULONG  ulPartLen,
 			      CK_BYTE_PTR pEncryptedPart,
@@ -1025,7 +1083,7 @@ CK_RV spy_C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
+CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
 				CK_BYTE_PTR pEncryptedPart,
 				CK_ULONG  ulEncryptedPartLen,
 				CK_BYTE_PTR pPart,
@@ -1045,7 +1103,7 @@ CK_RV spy_C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_GenerateKey(CK_SESSION_HANDLE hSession,
+CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession,
 			CK_MECHANISM_PTR pMechanism,
 			CK_ATTRIBUTE_PTR pTemplate,
 			CK_ULONG  ulCount,
@@ -1065,7 +1123,7 @@ CK_RV spy_C_GenerateKey(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
+CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
 			    CK_MECHANISM_PTR pMechanism,
 			    CK_ATTRIBUTE_PTR pPublicKeyTemplate,
 			    CK_ULONG  ulPublicKeyAttributeCount,
@@ -1095,7 +1153,7 @@ CK_RV spy_C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_WrapKey(CK_SESSION_HANDLE hSession,
+CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,
 		    CK_MECHANISM_PTR pMechanism,
 		    CK_OBJECT_HANDLE hWrappingKey,
 		    CK_OBJECT_HANDLE hKey,
@@ -1118,7 +1176,7 @@ CK_RV spy_C_WrapKey(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_UnwrapKey(CK_SESSION_HANDLE hSession,
+CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,
 		      CK_MECHANISM_PTR pMechanism,
 		      CK_OBJECT_HANDLE hUnwrappingKey,
 		      CK_BYTE_PTR  pWrappedKey,
@@ -1145,7 +1203,7 @@ CK_RV spy_C_UnwrapKey(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_DeriveKey(CK_SESSION_HANDLE hSession,
+CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
 		      CK_MECHANISM_PTR pMechanism,
 		      CK_OBJECT_HANDLE hBaseKey,
 		      CK_ATTRIBUTE_PTR pTemplate,
@@ -1167,7 +1225,7 @@ CK_RV spy_C_DeriveKey(CK_SESSION_HANDLE hSession,
   return retne(rv);
 }
 
-CK_RV spy_C_SeedRandom(CK_SESSION_HANDLE hSession,
+CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,
 		       CK_BYTE_PTR pSeed,
 		       CK_ULONG  ulSeedLen)
 {
@@ -1180,7 +1238,7 @@ CK_RV spy_C_SeedRandom(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_GenerateRandom(CK_SESSION_HANDLE hSession,
+CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,
 			   CK_BYTE_PTR RandomData,
 			   CK_ULONG  ulRandomLen)
 {
@@ -1196,7 +1254,7 @@ CK_RV spy_C_GenerateRandom(CK_SESSION_HANDLE hSession,
 }
 
 
-CK_RV spy_C_GetFunctionStatus(CK_SESSION_HANDLE hSession)
+CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE hSession)
 {
   CK_RV rv;
   enter("C_GetFunctionStatus");
@@ -1205,7 +1263,7 @@ CK_RV spy_C_GetFunctionStatus(CK_SESSION_HANDLE hSession)
   return retne(rv);
 }
 
-CK_RV spy_C_CancelFunction(CK_SESSION_HANDLE hSession)
+CK_RV C_CancelFunction(CK_SESSION_HANDLE hSession)
 {
   CK_RV rv;
   enter("C_CancelFunction");
@@ -1214,7 +1272,7 @@ CK_RV spy_C_CancelFunction(CK_SESSION_HANDLE hSession)
   return retne(rv);
 }
 
-CK_RV spy_C_WaitForSlotEvent(CK_FLAGS flags,
+CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
 			     CK_SLOT_ID_PTR pSlot,
 			     CK_VOID_PTR pRserved)
 {

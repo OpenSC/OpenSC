@@ -17,7 +17,7 @@ SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
 	framework-pkcs15init.c debug.c
 INC = sc-pkcs11.h
 
-lib_LTLIBRARIES = opensc-pkcs11.la libpkcs11.la opensc-spy.la
+lib_LTLIBRARIES = opensc-pkcs11.la libpkcs11.la pkcs11-spy.la
 
 opensc_pkcs11_la_SOURCES = $(SRC) $(INC)
 opensc_pkcs11_la_LDFLAGS = -module -avoid-version
@@ -28,9 +28,9 @@ libpkcs11_la_SOURCES = libpkcs11.c
 libpkcs11_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
 libpkcs11_la_LIBADD = ../scdl/libscdl.la @LIBDL@
 
-opensc_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h
-opensc_spy_la_LDFLAGS = -module -avoid-version
-opensc_spy_la_LIBADD = @LIBCRYPTO@ libpkcs11.la
+pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h
+pkcs11_spy_la_LDFLAGS = -module -avoid-version
+pkcs11_spy_la_LIBADD = @LIBCRYPTO@ libpkcs11.la
 
 include_HEADERS = pkcs11.h
 
@@ -47,6 +47,6 @@ install-exec-local: install-libLTLIBRARIES
 if HAVE_BUNDLES
 	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(libdir)/opensc-pkcs11.so \
 		$(DESTDIR)$(bundledir)/
-	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(libdir)/opensc-spy.so \
+	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(libdir)/pkcs11-spy.so \
 		$(DESTDIR)$(bundledir)/
 endif
