@@ -284,7 +284,8 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 		fprintf(stderr,"Found empty token; \n");
 		return NULL;
 	}
-#if 0 // Removed for interop with some other pkcs11 libs.
+/* Removed for interop with some other pkcs11 libs. */
+#if 0
 	if (!tok->initialized) {
 		fprintf(stderr,"Found uninitialized token; \n");
 		return NULL;

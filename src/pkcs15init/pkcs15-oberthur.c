@@ -58,7 +58,7 @@
 #define TLV_TYPE_LV      1
 #define TLV_TYPE_TLV	2
 
-// Should be greater then SC_PKCS15_TYPE_CLASS_MASK
+/* Should be greater then SC_PKCS15_TYPE_CLASS_MASK */
 #define SC_DEVICE_SPECIFIC_TYPE	 0x1000
 
 #define COSM_PUBLIC_LIST (SC_DEVICE_SPECIFIC_TYPE | 0x02)
@@ -581,7 +581,7 @@ cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
 		goto failed;
 	}
 	
-	//FIXME and if the exponent length is not 3? 
+	/* FIXME and if the exponent length is not 3? */
 	pubkey->u.rsa.exponent.len  = 3;
 	pubkey->u.rsa.exponent.data = (u8 *) malloc(3);
 	if (!pubkey->u.rsa.exponent.data)   {
@@ -695,7 +695,7 @@ sc_pkcs15init_get_oberthur_ops(void)
 	
 	ops->erase_card = cosm_erase_card;
 	
-//NEW	
+/* NEW */
 	ops->create_dir = NULL;
 	ops->create_domain = NULL;
 	ops->select_pin_reference = cosm_select_pin_reference;
@@ -707,7 +707,7 @@ sc_pkcs15init_get_oberthur_ops(void)
 	ops->encode_private_key = NULL; 
 	ops->encode_public_key = NULL;
 
-//OLD
+/* OLD */
 	ops->init_app = cosm_init_app;
 	ops->new_pin = NULL;
 	ops->new_key = cosm_new_key;

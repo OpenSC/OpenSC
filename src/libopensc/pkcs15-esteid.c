@@ -74,7 +74,6 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
   r = sc_read_record (card, SC_ESTEID_PD_DOCUMENT_NR, buff, 8,
 		      SC_RECORD_BY_REC_NR);
   SC_TEST_RET (card->ctx, r, "read document number failed");
-  // null-terminate
   buff[r] = '\0';
   set_string (&p15card->serial_number, buff);
 
@@ -188,7 +187,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
       auth_id.value[0] = prkey_pin[i];
       auth_id.len = 1;
 
-      // NULL may be a path.... ?
+      /* NULL may be a path.... ? */
       r = sc_pkcs15emu_add_prkey (p15card, &id,
 				  prkey_name[i],
 				  SC_PKCS15_TYPE_PRKEY_RSA,

@@ -128,7 +128,7 @@ auth_select_aid(struct sc_card *card)
 	int rv, ii;
 	unsigned char cm[7] = {0xA0,0x00,0x00,0x00,0x03,0x00,0x00};
 
-	// Select Card Manager (to deselect previously selected application) 
+	/* Select Card Manager (to deselect previously selected application) */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x00);
 	apdu.lc = sizeof(cm);
 	apdu.le = sizeof(cm)+4;
@@ -140,7 +140,7 @@ auth_select_aid(struct sc_card *card)
 	rv = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
 	
-	// Get smart card serial number
+	/* Get smart card serial number */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x9F, 0x7F);
 	apdu.cla = 0x80;
 	apdu.le = 0x2D;
@@ -156,7 +156,7 @@ auth_select_aid(struct sc_card *card)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x00);
 	apdu.resp = apdu_resp;
 
-	// Try to select known AID 
+	/* Try to select known AID */
 	for (ii = 0; oberthur_aids[ii].value != NULL; ii++) {
 		size_t len = oberthur_aids[ii].len;
 		unsigned char *ptr;
@@ -764,8 +764,10 @@ auth_select_file(struct sc_card *card, const struct sc_path *path,
 	if (locked)
 		sc_unlock(card);
 	
-//	if (!rv)
-//		auth_cache_path(card, path);
+#if 0
+	if (!rv)
+		auth_cache_path(card, path);
+#endif
 	
 	sc_debug(card->ctx, "return %i\n",rv);
 	return rv;
@@ -837,15 +839,18 @@ auth_delete_file(struct sc_card *card, const struct sc_path *path)
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
 	if (apdu.sw1==0x6A && apdu.sw2==0x82)   {
 		/* Clean the DF contents.*/
-//		struct sc_file *file;
 		u8 lbuf[SC_MAX_APDU_BUFFER_SIZE];
 		int ii, len;
+#if 0
+		struct sc_file *file;
 
-//		if (!(file = sc_file_new()))
-//			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+		if (!(file = sc_file_new()))
+			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 		
-//		rv = select_file_id(card, sbuf, 2, 0x01, &file);
+		rv = select_file_id(card, sbuf, 2, 0x01, &file);
+#else
 		rv = select_file_id(card, sbuf, 2, 0x01, NULL);
+#endif
 		SC_TEST_RET(card->ctx, rv, "select DF failed");
 		
 		len = auth_list_files(card, lbuf, sizeof(lbuf));
@@ -861,8 +866,11 @@ auth_delete_file(struct sc_card *card, const struct sc_path *path)
 			rv = auth_delete_file(card, &tpath);
 			SC_TEST_RET(card->ctx, rv, "delete failed");
 		}
-//		rv = select_parent(card, &file);
+#if 0
+		rv = select_parent(card, &file);
+#else
 		rv = select_parent(card, NULL);
+#endif
 		SC_TEST_RET(card->ctx, rv, "select parent DF failed");
 		
 		apdu.p1 = 1;
@@ -1032,9 +1040,9 @@ encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
 		ops[1] = SC_AC_OP_CRYPTO;
 		ops[2] = SC_AC_OP_LIST_FILES;
 		ops[3] = SC_AC_OP_DELETE;
-		ops[4] = SC_AC_OP_LIST_FILES;  // SC_AC_OP_SET_REFERENCE
-		ops[5] = SC_AC_OP_LIST_FILES;  // SC_AC_OP_CHANGE_REFERENCE
-		ops[6] = SC_AC_OP_LIST_FILES;  // SC_AC_OP_RESET_COUNTER
+		ops[4] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_SET_REFERENCE */
+		ops[5] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_CHANGE_REFERENCE */
+		ops[6] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_RESET_COUNTER */
 	} 
 	else if (file->type == SC_FILE_TYPE_WORKING_EF)   {
 		if (file->ef_structure == SC_FILE_EF_TRANSPARENT)   {
@@ -1056,22 +1064,22 @@ encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
 		if (file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_DES)  {
 			sc_debug(card->ctx, "EF_DES\n");
 			ops[0] = SC_AC_OP_UPDATE;
-			ops[1] = SC_AC_OP_READ;  // SC_AC_OP_DECRYPT
-			ops[2] = SC_AC_OP_READ;  // SC_AC_OP_ENCRYPT
-			ops[3] = SC_AC_OP_READ;  // SC_AC_OP_CHECKSUM
-			ops[4] = SC_AC_OP_READ;  // SC_AC_OP_CHECKSUM
+			ops[1] = SC_AC_OP_READ;  /* SC_AC_OP_DECRYPT */
+			ops[2] = SC_AC_OP_READ;  /* SC_AC_OP_ENCRYPT */
+			ops[3] = SC_AC_OP_READ;  /* SC_AC_OP_CHECKSUM */
+			ops[4] = SC_AC_OP_READ;  /* SC_AC_OP_CHECKSUM */
 		}
 		else if (file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC)  {
 			sc_debug(card->ctx, "EF_RSA_PUBLIC\n");
 			ops[0] = SC_AC_OP_UPDATE;
-			ops[2] = SC_AC_OP_READ;  // SC_AC_OP_ENCRYPT
-			ops[4] = SC_AC_OP_READ;  // SC_AC_OP_SIGN
+			ops[2] = SC_AC_OP_READ;  /* SC_AC_OP_ENCRYPT */
+			ops[4] = SC_AC_OP_READ;  /* SC_AC_OP_SIGN */
 		}
 		else if (file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_CRT)  {
 			sc_debug(card->ctx, "EF_RSA_PRIVATE\n");
 			ops[0] = SC_AC_OP_UPDATE;
-			ops[1] = SC_AC_OP_READ;  // SC_AC_OP_ENCRYPT
-			ops[3] = SC_AC_OP_READ;  // SC_AC_OP_SIGN
+			ops[1] = SC_AC_OP_READ;  /* SC_AC_OP_ENCRYPT */
+			ops[3] = SC_AC_OP_READ;  /* SC_AC_OP_SIGN */
 		}
 	}
 	

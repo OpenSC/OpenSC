@@ -160,7 +160,7 @@ static void clear_special_files (struct df_info_s *dfi)
 	}
 }
 
-// this function should be somewhere else in opensc code, too
+/* this function should be somewhere else in opensc code, too */
 static int
 sc_card_identify (struct sc_card *card, struct sc_card_atrs *atr_list)
 {
@@ -1115,7 +1115,7 @@ static int mcrd_set_security_env(struct sc_card *card,
 		    || env->key_ref_len != 1)
 			return SC_ERROR_INVALID_ARGUMENTS;
 
-		select_esteid_df(card);	// is it needed?
+		select_esteid_df(card);	/* is it needed? */
 		switch (env->operation) {
 		case SC_SEC_OPERATION_DECIPHER:
 			sc_debug(card->ctx,
