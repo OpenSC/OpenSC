@@ -39,6 +39,7 @@ static const char *flex_atrs[] = {
 	"3B:85:40:20:68:01:01:03:05",          /* Cryptoflex + Key Generation */
 	"3B:16:94:81:10:06:01:81:3F",          /* Cyberflex Access Crypto */
 	"3B:16:94:81:10:06:01:81:2F",          /* Cyberflex Access Aug. Crypto */
+	"3B:95:18:40:FF:62:04:01:01:05",	/* Cryptoflex 32k e-gate v4*/
 	NULL
 };
 
