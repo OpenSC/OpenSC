@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "../common/scdl.c"
+#include <opensc/scdl.h>
 
 #define MAGIC			0xd00bed00
 

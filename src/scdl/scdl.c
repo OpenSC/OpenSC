@@ -207,7 +207,7 @@ mac_get_address(scdl_context_t *mod, const char *symbol)
 }
 #endif
 
-static scdl_context_t *
+scdl_context_t *
 scdl_open(const char *name)
 {
 	scdl_context_t *mod;
@@ -240,7 +240,7 @@ scdl_open(const char *name)
 	return mod;
 }
 
-static int
+int
 scdl_close(scdl_context_t *mod)
 {
 	int rv;
@@ -268,7 +268,7 @@ scdl_close(scdl_context_t *mod)
 	return 0;
 }
 
-static void *
+void *
 scdl_get_address(scdl_context_t *mod, const char *symbol)
 {
 	if (!mod || mod->magic != SCDL_MAGIC)

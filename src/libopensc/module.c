@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "../common/scdl.c"
+#include <opensc/scdl.h>
 
 int sc_module_open(struct sc_context *ctx, void **mod_handle, const char *filename)
 {

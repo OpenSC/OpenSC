@@ -1,5 +1,5 @@
 
-SUBDIRS = include common scconf libopensc tests scrandom pkcs15init pkcs11 tools
+SUBDIRS = include common scconf scdl libopensc tests scrandom pkcs15init pkcs11 tools
 
 all::
 
