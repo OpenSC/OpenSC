@@ -23,18 +23,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TYPE_UNKNOWN		0x0000
 #define TYPE_CRYPTOFLEX		0x0100
 #define TYPE_MULTIFLEX		0x0200
 #define TYPE_CYBERFLEX		0x0300
+
 #define FLAG_KEYGEN		0x0001
 #define FLAG_FULL_DES		0x0002	/* whatever that means */
 
 #define TYPE_MASK		0xFF00
 
-#define IS_CYBERFLEX(card)	((DRV_DATA(card)->card_type & TYPE_MASK) == TYPE_CYBERFLEX)
+#define IS_CYBERFLEX(card)	((card->type & TYPE_MASK) == TYPE_CYBERFLEX)
 
-static struct sc_atr_table_hex flex_atrs[] = {
+static struct sc_atr_table flex_atrs[] = {
 	/* Cryptoflex */
 	/* 8k */
 	{ "3B:95:15:40:FF:68:01:02:02:04", "Cryptoflex 8K", TYPE_CRYPTOFLEX },
@@ -80,11 +80,10 @@ static struct sc_atr_table_hex flex_atrs[] = {
 };
 
 struct flex_private_data {
-	int	card_type;
 	int	rsa_key_ref;
 
 	/* Support card variations without having to
-	 * do the if (DRV_DATA(card)->card_type ...) thing
+	 * do the if (card->type ...) thing
 	 * all the time */
 	u8	aak_key_ref;
 };
@@ -115,12 +114,13 @@ static int cryptoflex_match_card(struct sc_card *card)
 {
 	int	idx;
 
-	idx = _sc_match_atr_hex(card, flex_atrs, NULL);
+	idx = _sc_match_atr(card, flex_atrs, NULL);
 	if (idx < 0)
 		return 0;
 	switch (flex_atrs[idx].id & TYPE_MASK) {
 	case TYPE_CRYPTOFLEX:
 	case TYPE_MULTIFLEX:
+		card->type = idx;
 		return 1;
 	}
 	return 0;
@@ -130,11 +130,12 @@ static int cyberflex_match_card(struct sc_card *card)
 {
 	int	idx;
 
-	idx = _sc_match_atr_hex(card, flex_atrs, NULL);
+	idx = _sc_match_atr(card, flex_atrs, NULL);
 	if (idx < 0)
 		return 0;
 	switch (flex_atrs[idx].id & TYPE_MASK) {
 	case TYPE_CYBERFLEX:
+		card->type = idx;
 		return 1;
 	}
 	return 0;
@@ -143,23 +144,22 @@ static int cyberflex_match_card(struct sc_card *card)
 static int flex_init(struct sc_card *card)
 {
 	struct flex_private_data *data;
-	int idx;
+	int idx = card->type;
 
-	idx = _sc_match_atr_hex(card, flex_atrs, NULL);
-	if (idx < 0)
-		return 0;
 	if (!(data = (struct flex_private_data *) malloc(sizeof(*data))))
 		return SC_ERROR_OUT_OF_MEMORY;
+	card->drv_data = data;
 
-	data->card_type = flex_atrs[idx].id;
+	if (idx >= 0) {
+		card->name = flex_atrs[idx].name;
+		card->type = flex_atrs[idx].id;
+	}
+
+	card->cla = 0xC0;
 	data->aak_key_ref = 1;
 
-	card->name = flex_atrs[idx].name;
-	card->drv_data = data;
-	card->cla = 0xC0;
-
 	/* Override Cryptoflex defaults for specific card types */
-	switch (data->card_type & TYPE_MASK) {
+	switch (card->type & TYPE_MASK) {
 	case TYPE_CYBERFLEX:
 		card->cla = 0x00;
 		data->aak_key_ref = 0;
@@ -172,7 +172,7 @@ static int flex_init(struct sc_card *card)
 		
 		flags = SC_ALGORITHM_RSA_RAW;
 		flags |= SC_ALGORITHM_RSA_HASH_NONE;
-		if (data->card_type & FLAG_KEYGEN)
+		if (card->type & FLAG_KEYGEN)
 			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 
 		_sc_card_add_rsa_alg(card, 512, flags, 0);
@@ -1109,7 +1109,7 @@ static int flex_get_default_key(struct sc_card *card,
 		return SC_ERROR_NO_DEFAULT_KEY;
 
 	/* These seem to be the default AAKs used by Schlumberger */
-	switch (prv->card_type & TYPE_MASK) {
+	switch (card->type & TYPE_MASK) {
 	case TYPE_CRYPTOFLEX:
 		key = "2c:15:e5:26:e9:3e:8a:19";
 		break;

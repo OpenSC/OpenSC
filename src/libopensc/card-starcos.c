@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct sc_atr_table_hex starcos_atrs[] = {
+static struct sc_atr_table starcos_atrs[] = {
 	{ "3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4" },
 	{ "3B:B7:94:00:81:31:fe:65:53:50:4b:32:33:90:00:d1" },
 	{ NULL }
@@ -70,7 +70,7 @@ static int starcos_match_card(struct sc_card *card)
 {
 	int i;
 
-	i = _sc_match_atr_hex(card, starcos_atrs, NULL);
+	i = _sc_match_atr(card, starcos_atrs, NULL);
 	if (i < 0)
 		return 0;
 	return 1;

@@ -25,7 +25,7 @@
 #include <string.h>
 #include <ctype.h>
 
-static struct sc_atr_table_hex pgp_atrs[] = {
+static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1" },
 	{ NULL }
 };
@@ -110,7 +110,7 @@ pgp_match_card(sc_card_t *card)
 {
 	int i;
 
-	i = _sc_match_atr_hex(card, pgp_atrs, NULL);
+	i = _sc_match_atr(card, pgp_atrs, NULL);
 	if (i < 0)
 		return 0;
 	return 1;

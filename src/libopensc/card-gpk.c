@@ -72,8 +72,6 @@ enum {
  * GPK4000 private data
  */
 struct gpk_private_data {
-	int		variant;
-
 	/* The GPK usually do file offsets in multiples of
 	 * 4 bytes. This can be customized however. We
 	 * should really query for this during gpk_init */
@@ -103,7 +101,7 @@ static int	gpk_get_info(struct sc_card *, u8, u8, u8 *, size_t);
 /*
  * ATRs of GPK4000 cards courtesy of libscez
  */
-static struct sc_atr_table_hex gpk_atrs[] = {
+static struct sc_atr_table gpk_atrs[] = {
 	{ "3B:27:00:80:65:A2:04:01:01:37", "GPK 4K", GPK4000_s },
 	{ "3B:27:00:80:65:A2:05:01:01:37", "GPK 4K", GPK4000_sp },
 	{ "3B:27:00:80:65:A2:0C:01:01:37", "GPK 4K", GPK4000_su256 },
@@ -124,48 +122,41 @@ static struct sc_card_driver gpk_drv = {
 	&gpk_ops
 };
 
-
-/*
- * Identify the card variant based on the ATR
- *   returns the variant number or 0 on error
- */
-static int
-gpk_identify(struct sc_card *card)
-{
-	int i, variant;
-
-	/* Gemplus GPK docs say we can use just the 
-	 * FMN and PRN fields of the historical bytes
-	 * to recognize a GPK card
-	 *  See Table 43, pp. 188
-	 * We'll use the first 2 bytes as well
-	 */
-	if ( (card->slot->atr_info.hist_bytes_len >= 7)
-		&& (card->slot->atr_info.hist_bytes[0] == 0x80)
-		&& (card->slot->atr_info.hist_bytes[1] == 0x65)
-		&& (card->slot->atr_info.hist_bytes[2] == 0xa2)) { /* FMN */
-		if (card->slot->atr_info.hist_bytes[3] == 0x08) { /* PRN? */
-			return GPK8000;
-		}
-		if (card->slot->atr_info.hist_bytes[3] == 0x09) { /* PRN? */
-			return GPK16000;
-		}
-	}
-
-	/* if the above ATR-analysis fails, check the known ATR list */
-	i = _sc_match_atr_hex(card, gpk_atrs, &variant);
-	if (i < 0)
-		return 0;
-	return variant;
-}
-
 /*
  * return 1 if this driver can handle the card
  */
 static int
 gpk_match_card(struct sc_card *card)
 {
-	return gpk_identify(card) ? 1 : 0;
+	int i;
+
+	i = _sc_match_atr(card, gpk_atrs, &card->type);
+	if (i < 0) {
+		const u8 *hist_bytes = card->slot->atr_info.hist_bytes;
+
+		/* Gemplus GPK docs say we can use just the 
+		 * FMN and PRN fields of the historical bytes
+		 * to recognize a GPK card
+		 *  See Table 43, pp. 188
+		 * We'll use the first 2 bytes as well
+		 */
+
+		if ((card->slot->atr_info.hist_bytes_len >= 7)
+			&& (hist_bytes[0] == 0x80)
+			&& (hist_bytes[1] == 0x65)
+			&& (hist_bytes[2] == 0xa2)) {	/* FMN */
+			if (hist_bytes[3] == 0x08) {	/* PRN? */
+				card->type = GPK8000;
+				return 1;
+			}
+			if (hist_bytes[3] == 0x09) {	/* PRN? */
+				card->type = GPK16000;
+				return 1;
+			}
+		}
+		return 0;
+	}
+	return 1;
 }
 
 /*
@@ -177,15 +168,11 @@ gpk_init(struct sc_card *card)
 	struct gpk_private_data *priv;
 	unsigned long	exponent, flags, kg;
 	unsigned char info[13];
-	int variant;
 
-	if (!(variant = gpk_identify(card)))
-		return SC_ERROR_INVALID_CARD;
 	card->drv_data = priv = (struct gpk_private_data *) malloc(sizeof(*priv));
 	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(priv, 0, sizeof(*priv));
-	priv->variant = variant;
 
 	/* read/write/update binary expect offset to be the
 	 * number of 32 bit words.
@@ -201,8 +188,8 @@ gpk_init(struct sc_card *card)
 		| SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_ANSI
 		| SC_ALGORITHM_RSA_PAD_ISO9796;
-	exponent = (variant < 16000)? 0x10001 : 0;
-	kg = (variant >= 8000)? SC_ALGORITHM_ONBOARD_KEY_GEN : 0;
+	exponent = (card->type < 16000)? 0x10001 : 0;
+	kg = (card->type >= 8000)? SC_ALGORITHM_ONBOARD_KEY_GEN : 0;
 	_sc_card_add_rsa_alg(card,  512, flags|kg, exponent);
 	_sc_card_add_rsa_alg(card,  768, flags, exponent);
 	_sc_card_add_rsa_alg(card, 1024, flags|kg, exponent);
@@ -1397,7 +1384,7 @@ gpk_erase_card(struct sc_card *card)
 	int		r;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	switch (priv->variant) {
+	switch (card->type) {
 	case GPK4000_su256:
 	case GPK4000_sdo:
 		offset = 0x6B;  /* courtesy gemplus hotline */
@@ -1730,9 +1717,8 @@ static int gpk_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	int r;
 	u8  rbuf[10];
 	struct sc_apdu apdu;
-	struct gpk_private_data *priv = DRVDATA(card);
 
-	if (priv->variant != GPK16000)
+	if (card->type != GPK16000)
 		return SC_ERROR_NOT_SUPPORTED;
 
 	if (!serial)
@@ -1775,7 +1761,7 @@ gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		return gpk_get_default_key(card,
 				(struct sc_cardctl_default_key *) ptr);
 	case SC_CARDCTL_GPK_VARIANT:
-		*(int *) ptr = DRVDATA(card)->variant;
+		*(int *) ptr = card->type;
 		return 0;
 	case SC_CARDCTL_GPK_LOCK:
 		return gpk_lock(card, (struct sc_cardctl_gpk_lock *) ptr);

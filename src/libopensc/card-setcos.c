@@ -22,24 +22,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SETEC_PKI	1
-#define SETEC_OTHER	2
+#define TYPE_GENERIC	0
+#define TYPE_PKI	1
 
-static struct sc_atr_table_hex setcos_atrs[] = {
-	/* the current FINEID card has this ATR: */
-	{ "3B:9F:94:40:1E:00:67:11:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, SETEC_PKI },
-	/* RSA SecurID 3100 */
-	{ "3B:9F:94:40:1E:00:67:16:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, SETEC_PKI },
+static struct sc_atr_table setcos_atrs[] = {
 	/* this is from a Nokia branded SC */
-	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, SETEC_OTHER },
+	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, TYPE_GENERIC },
+	/* RSA SecurID 3100 */
+	{ "3B:9F:94:40:1E:00:67:16:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, TYPE_PKI },
+	/* FinEID card */
+	{ "3B:9F:94:40:1E:00:67:11:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, TYPE_PKI },
 	{ NULL }
 };
-
-struct setcos_priv_data {
-	int type;
-};
-
-#define DRVDATA(card)        ((struct setcos_priv_data *) ((card)->drv_data))
 
 static struct sc_card_operations setcos_ops;
 static struct sc_card_driver setcos_drv = {
@@ -50,41 +44,35 @@ static struct sc_card_driver setcos_drv = {
 
 static int setcos_finish(struct sc_card *card)
 {
-	free(DRVDATA(card));
 	return 0;
 }
 
 static int setcos_match_card(struct sc_card *card)
 {
 	int i;
-	const u8 *hist_bytes = card->slot->atr_info.hist_bytes;
 
-	if (card->slot->atr_info.hist_bytes_len < 8)
+	i = _sc_match_atr(card, setcos_atrs, &card->type);
+	if (i < 0) {
+		const u8 *hist_bytes = card->slot->atr_info.hist_bytes;
+
+		if (card->slot->atr_info.hist_bytes_len < 8)
+			return 0;
+		if (memcmp(hist_bytes + 4, "FISE", 4) == 0)
+			return 1;
 		return 0;
-	if (memcmp(hist_bytes + 4, "FISE", 4) != 0)
-		return 0;
-	i = _sc_match_atr_hex(card, setcos_atrs, NULL);
-	if (i < 0)
-		return 0;
+	}
 	return 1;
 }
 
 static int setcos_init(struct sc_card *card)
 {
-	int i, id;
-	struct setcos_priv_data *priv = NULL;
-
-	i = _sc_match_atr_hex(card, setcos_atrs, &id);
-	if (i < 0)
-		return 0;
-	priv = (struct setcos_priv_data *) malloc(sizeof(struct setcos_priv_data));
-	if (priv == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
 	card->name = "SetCOS";
-	card->drv_data = priv;
 	card->cla = 0x80;
-	priv->type = id;
-	if (id == SETEC_PKI) {
+
+	if (card->type < 0)
+		card->type = TYPE_GENERIC;
+
+	if (card->type == TYPE_PKI) {
 		unsigned long flags;
 		
 		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
@@ -244,8 +232,6 @@ static int setcos_set_security_env(struct sc_card *card,
 				  const struct sc_security_env *env,
 				  int se_num)
 {
-	struct setcos_priv_data *priv = DRVDATA(card);
-	
 	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
 		struct sc_security_env tmp;
 
@@ -256,7 +242,7 @@ static int setcos_set_security_env(struct sc_card *card,
 			sc_error(card->ctx, "Only RSA algorithm supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-		if (priv->type != SETEC_PKI) {
+		if (card->type != TYPE_PKI) {
 			sc_error(card->ctx, "Card does not support RSA.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}

@@ -444,6 +444,7 @@ struct sc_card {
 	struct sc_reader *reader;
 	struct sc_slot_info *slot;
 
+	int type;			/* Card type, for card driver internal use */
 	unsigned long caps, flags;
 	unsigned int wait_resend_apdu;	/* Delay (msec) before responding to an SW12 = 6CXX */
 	int cla;

@@ -39,16 +39,10 @@ extern "C" {
 #define SC_CTX_MAGIC			0x0A550335
 
 struct sc_atr_table {
-	const u8 *atr;
-	size_t atr_len;
-	int id;
-};
-
-struct sc_atr_table_hex {
 	const char *atr;
 	const char *name;
 	int id;
-	unsigned flags;
+	unsigned long flags;
 };
 
 /* Internal use only */
@@ -60,12 +54,11 @@ int _sc_parse_atr(struct sc_context *ctx, struct sc_slot_info *slot);
 struct sc_slot_info * _sc_get_slot_info(struct sc_reader *reader, int slot_id);
 
 /* Add an ATR to the card driver's struct sc_atr_table */
-int _sc_add_atr(struct sc_card_driver *, const u8 *, size_t, int);
+int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src);
 
 /* Returns an index number if a match was found, -1 otherwise. table has to
  * be null terminated. */
 int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out);
-int _sc_match_atr_hex(struct sc_card *card, struct sc_atr_table_hex *table, int *id_out);
 
 int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info);
 int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,

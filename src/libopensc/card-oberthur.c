@@ -41,7 +41,7 @@
 #define DES_ecb_encrypt(a,b,c,d) 	des_ecb_encrypt(a,b,*c,d)
 #endif
 
-static struct sc_atr_table_hex oberthur_atrs[] = {
+static struct sc_atr_table oberthur_atrs[] = {
 #if 0
 	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:04:00:82:90:00", "Oberthur 32k", ATR_OBERTHUR_32K },
 	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:05:00:82:90:00", "Oberthur 32k BIO", ATR_OBERTHUR_32K_BIO },
@@ -171,7 +171,7 @@ auth_match_card(struct sc_card *card)
 {
 	int i;
 
-	i = _sc_match_atr_hex(card, oberthur_atrs, NULL);
+	i = _sc_match_atr(card, oberthur_atrs, NULL);
 	if (i < 0)
 		return 0;
 	return 1;

@@ -44,7 +44,7 @@ int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader)
 		return SC_ERROR_TOO_MANY_OBJECTS;
 	ctx->reader[ctx->reader_count] = reader;
 	ctx->reader_count++;
-	
+
 	return 0;
 }
 
@@ -107,7 +107,7 @@ static void del_drvs(struct _sc_ctx_options *opts, int type)
 {
 	struct _sc_driver_entry *lst;
 	int *cp, i;
-	
+
 	if (type == 0) {
 		lst = opts->rdrv;
 		cp = &opts->rcount;
@@ -127,7 +127,7 @@ static void add_drv(struct _sc_ctx_options *opts, int type, const char *name)
 {
 	struct _sc_driver_entry *lst;
 	int *cp, i;
-	
+
 	if (type == 0) {
 		lst = opts->rdrv;
 		cp = &opts->rcount;
@@ -149,7 +149,7 @@ static void add_internal_drvs(struct _sc_ctx_options *opts, int type)
 {
 	const struct _sc_driver_entry *lst;
 	int i;
-	
+
 	if (type == 0)
 		lst = internal_reader_drivers;
 	else
@@ -183,7 +183,7 @@ static int load_parameters(struct sc_context *ctx, scconf_block *block,
 	const scconf_list *list;
 	const char *val;
 	const char *s_internal = "internal";
- 
+
 	ctx->debug = scconf_get_int(block, "debug", ctx->debug);
 	val = scconf_get_str(block, "debug_file", NULL);
 	if (val) {
@@ -261,7 +261,7 @@ static void load_reader_driver_options(sc_context_t *ctx,
 	driver->max_recv_size = SC_APDU_CHOP_SIZE;
 	if (conf_block != NULL) {
 		const scconf_list *list;
-		
+
 		list = scconf_find_list(conf_block, "apdu_masquerade");
 		if (list)
 			driver->apdu_masquerade = 0;
@@ -411,20 +411,17 @@ static int load_reader_drivers(struct sc_context *ctx,
 		ctx->reader_drivers[drv_count] = driver;
                 drv_count++;
 	}
-	return 0;	
-}			     
+	return 0;
+}
 
 static int load_card_driver_options(struct sc_context *ctx,
 				    struct sc_card_driver *driver)
 {
 	scconf_block **blocks, *blk;
 	const scconf_list *list;
-	int i, r;
+	int i;
 
 	for (i = 0; ctx->conf_blocks[i]; i++) {
-		u8	atr_buf[SC_MAX_ATR_SIZE];
-		size_t	atr_len;
-
 		blocks = scconf_find_blocks(ctx->conf,
 					ctx->conf_blocks[i],
 					"card_driver", driver->short_name);
@@ -436,16 +433,11 @@ static int load_card_driver_options(struct sc_context *ctx,
 
 		list = scconf_find_list(blk, "atr");
 		while (list != NULL) {
-			atr_len = sizeof(atr_buf);
-			r = sc_hex_to_bin(list->data,
-					atr_buf, &atr_len);
-			if (r < 0) {
-				sc_error(ctx,
-				      "Unable to parse ATR '%s'.\n",
-				      list->data);
-				continue;
-			}
-			_sc_add_atr(driver, atr_buf, atr_len, 0);
+			struct sc_atr_table t;
+
+			memset(&t, 0, sizeof(struct sc_atr_table));
+			t.atr = list->data;
+			_sc_add_atr(ctx, driver, &t);
 			list = list->next;
 		}
 	}
@@ -488,7 +480,7 @@ static int load_card_drivers(struct sc_context *ctx,
 		load_card_driver_options(ctx, ctx->card_drivers[drv_count]);
                 drv_count++;
 	}
-	return 0;	
+	return 0;
 }
 
 static void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
@@ -571,7 +563,7 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 	if (opts.forced_card_driver) {
 		sc_set_card_driver(ctx, opts.forced_card_driver);
 		free(opts.forced_card_driver);
-	}		
+	}
 	del_drvs(&opts, 0);
 	del_drvs(&opts, 1);
 	if (ctx->reader_count == 0) {
@@ -590,7 +582,7 @@ int sc_release_context(struct sc_context *ctx)
 	SC_FUNC_CALLED(ctx, 1);
 	for (i = 0; i < ctx->reader_count; i++) {
 		struct sc_reader *rdr = ctx->reader[i];
-		
+
 		if (rdr->ops->release != NULL)
 			rdr->ops->release(rdr);
 		free(rdr->name);
@@ -598,7 +590,7 @@ int sc_release_context(struct sc_context *ctx)
 	}
 	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
 		const struct sc_reader_driver *drv = ctx->reader_drivers[i];
-		
+
 		if (drv->ops->finish != NULL)
 			drv->ops->finish(ctx, ctx->reader_drv_data[i]);
 		if (drv->dll)
@@ -627,7 +619,7 @@ int sc_release_context(struct sc_context *ctx)
 int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
 {
 	int i = 0, match = 0;
-	
+
 	sc_mutex_lock(ctx->mutex);
 	if (short_name == NULL) {
 		ctx->forced_driver = NULL;

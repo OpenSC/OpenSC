@@ -198,22 +198,17 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	return 0;
 }
 
-static struct sc_atr_table_hex esteid_atrs[] = {
-	{ "3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43" },
-	{ "3B:6E:00:FF:45:73:74:45:49:44:20:76:65:72:20:31:2E:30" },
-	{ NULL }
-};
-
 static int esteid_detect_card(sc_pkcs15_card_t *p15card)
 {
 	sc_card_t *card = p15card->card;
-	int i;
 
-	/* XXX: save type of the micardo card in the card structure */
-	i = _sc_match_atr_hex(card, esteid_atrs, NULL);
-	if (i < 0)
+	/* check if we have the correct card OS */
+	if (strcmp(card->name, "MICARDO 2.1"))
 		return SC_ERROR_WRONG_CARD;
-	return SC_SUCCESS;
+	/* Assume type == 1 is just for EstEID cards */
+	if (card->type == 1)
+		return SC_SUCCESS;
+	return SC_ERROR_WRONG_CARD;
 }
 
 int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *p15card,

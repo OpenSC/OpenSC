@@ -23,7 +23,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-static struct sc_atr_table_hex jcop_atrs[] = {
+static struct sc_atr_table jcop_atrs[] = {
 	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:33:31:06" },
 #if 0
 	/* Requires secure messaging */
@@ -77,7 +77,7 @@ static int jcop_match_card(struct sc_card *card)
 {
 	int i;
 
-	i = _sc_match_atr_hex(card, jcop_atrs, NULL);
+	i = _sc_match_atr(card, jcop_atrs, NULL);
 	if (i < 0)
 		return 0;
 	return 1;

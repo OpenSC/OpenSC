@@ -24,19 +24,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct sc_atr_table_hex miocos_atrs[] = {
+#define TYPE_PKI	1
+
+static struct sc_atr_table miocos_atrs[] = {
 	/* Test card with 32 kB memory */
-	{ "3B:9D:94:40:23:00:68:10:11:4D:69:6F:43:4F:53:00:90:00" },
+	{ "3B:9D:94:40:23:00:68:10:11:4D:69:6F:43:4F:53:00:90:00", NULL, TYPE_PKI },
 	/* Test card with 64 kB memory */
-	{ "3B:9D:94:40:23:00:68:20:01:4D:69:6F:43:4F:53:00:90:00" },
+	{ "3B:9D:94:40:23:00:68:20:01:4D:69:6F:43:4F:53:00:90:00", NULL, TYPE_PKI },
 	{ NULL }
 };
-
-struct miocos_priv_data {
-	int type;
-};
-
-#define DRVDATA(card)        ((struct miocos_priv_data *) ((card)->drv_data))
 
 static struct sc_card_operations miocos_ops;
 static struct sc_card_driver miocos_drv = {
@@ -54,7 +50,7 @@ static int miocos_match_card(struct sc_card *card)
 {
 	int i;
 
-	i = _sc_match_atr_hex(card, miocos_atrs, NULL);
+	i = _sc_match_atr(card, miocos_atrs, &card->type);
 	if (i < 0)
 		return 0;
 	return 1;
@@ -62,15 +58,9 @@ static int miocos_match_card(struct sc_card *card)
 
 static int miocos_init(struct sc_card *card)
 {
-	struct miocos_priv_data *priv = NULL;
-
-	priv = (struct miocos_priv_data *) malloc(sizeof(struct miocos_priv_data));
-	if (priv == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
 	card->name = "MioCOS";
-	card->drv_data = priv;
 	card->cla = 0x00;
-	if (1) {
+	if (card->type == TYPE_PKI) {
 		unsigned long flags;
 		
 		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;

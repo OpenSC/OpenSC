@@ -102,7 +102,7 @@ sc_masquerade_apdu(sc_card_t *card, sc_apdu_t *apdu)
 	sc_context_t	*ctx = card->reader->ctx;
 	int	masq = card->reader->driver->apdu_masquerade;
 	int	is_t0;
-	
+
 	is_t0 = (card->slot->active_protocol == SC_PROTO_T0);
 
 	if (apdu->cse == SC_APDU_CASE_4_SHORT
@@ -236,7 +236,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 {
 	int r;
 	size_t orig_resplen;
-	
+
 	assert(card != NULL && apdu != NULL);
 	SC_FUNC_CALLED(card->ctx, 4);
 	orig_resplen = apdu->resplen;
@@ -315,7 +315,7 @@ void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
 static struct sc_card * sc_card_new(void)
 {
 	struct sc_card *card;
-	
+
 	card = (struct sc_card *) calloc(1, sizeof(struct sc_card));
 	if (card == NULL)
 		return NULL;
@@ -324,6 +324,7 @@ static struct sc_card * sc_card_new(void)
 		free(card);
 		return NULL;
 	}
+	card->type = -1;
 	card->app_count = -1;
 	card->magic = SC_CARD_MAGIC;
 	card->mutex = sc_mutex_new();
@@ -408,7 +409,7 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 	} else for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 		struct sc_card_driver *drv = ctx->card_drivers[i];
 		const struct sc_card_operations *ops = drv->ops;
-		
+
 		if (ctx->debug >= 3)
 			sc_debug(ctx, "trying driver: %s\n", drv->name);
 		if (ops == NULL || ops->match_card == NULL)
@@ -458,7 +459,7 @@ int sc_disconnect_card(struct sc_card *card, int action)
 		int r = card->ops->finish(card);
 		if (r)
 			sc_error(card->ctx, "card driver finish() failed: %s\n",
-			      sc_strerror(r)); 
+			      sc_strerror(r));
 	}
 	if (card->reader->ops->disconnect) {
 		int r = card->reader->ops->disconnect(card->reader, card->slot, action);
@@ -473,7 +474,7 @@ int sc_disconnect_card(struct sc_card *card, int action)
 int sc_lock(struct sc_card *card)
 {
 	int r = 0;
-	
+
 	assert(card != NULL);
 	sc_mutex_lock(card->mutex);
 	if (card->lock_count == 0) {
@@ -851,7 +852,7 @@ sc_card_ctl(struct sc_card *card, unsigned long cmd, void *args)
 int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info)
 {
 	struct sc_algorithm_info *p;
-	
+
 	assert(sc_card_valid(card) && info != NULL);
 	p = (struct sc_algorithm_info *) realloc(card->algorithms, (card->algorithm_count + 1) * sizeof(*info));
 	if (!p) {
@@ -878,7 +879,7 @@ int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
 	info.key_length = key_length;
 	info.flags = flags;
 	info.u._rsa.exponent = exponent;
-	
+
 	return _sc_card_add_algorithm(card, &info);
 }
 
@@ -889,7 +890,7 @@ struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
 
 	for (i = 0; i < card->algorithm_count; i++) {
 		struct sc_algorithm_info *info = &card->algorithms[i];
-		
+
 		if (info->algorithm != SC_ALGORITHM_RSA)
 			continue;
 		if (info->key_length != key_length)
@@ -901,43 +902,32 @@ struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
 
 int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out)
 {
-	const u8 *atr = card->atr;
-	size_t atr_len = card->atr_len;
-	int i = 0;
-	
-	if (table == NULL)
+	struct sc_context *ctx = card->ctx;
+	char atr[3 * SC_MAX_ATR_SIZE];
+	size_t atr_len;
+	unsigned int i = 0;
+
+	if (table == NULL || card == NULL)
 		return -1;
 
-	for (i = 0; table[i].atr != NULL; i++) {
-		if (table[i].atr_len != atr_len)
-			continue;
-		if (memcmp(table[i].atr, atr, atr_len) != 0)
-			continue;
-		if (id_out != NULL)
-			*id_out = table[i].id;
-		return i;
-	}
-	return -1;
-}
-
-int _sc_match_atr_hex(struct sc_card *card, struct sc_atr_table_hex *table, int *id_out)
-{
-	const u8 *atr = card->atr;
-	size_t atr_len = card->atr_len;
-	int i = 0;
-
-	if (table == NULL)
+	i = sc_bin_to_hex(card->atr, card->atr_len, atr, sizeof(atr), ':');
+	if (i != 0)
 		return -1;
+	atr_len = sizeof(atr);
+
+	if (ctx->debug >= 4)
+		sc_debug(ctx, "current ATR: %s\n", atr);
 
 	for (i = 0; table[i].atr != NULL; i++) {
-		u8 tatr[SC_MAX_ATR_SIZE];
+		const char *tatr = table[i].atr;
 		size_t tlen = sizeof(tatr);
 
-		if (sc_hex_to_bin(table[i].atr, tatr, &tlen))
-			continue;
+		if (ctx->debug >= 4)
+			sc_debug(ctx, "trying ATR: %s\n", tatr);
+
 		if (tlen != atr_len)
 			continue;
-		if (memcmp(tatr, atr, tlen) != 0)
+		if (strncasecmp(tatr, atr, tlen) != 0)
 			continue;
 		if (id_out != NULL)
 			*id_out = table[i].id;
@@ -946,24 +936,31 @@ int _sc_match_atr_hex(struct sc_card *card, struct sc_atr_table_hex *table, int 
 	return -1;
 }
 
-int _sc_add_atr(struct sc_card_driver *driver,
-		 const u8 *atr, size_t atrlen, int id)
+/* XXX: wtf? I don't see any memory freeing code. -aet */
+int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src)
 {
-	struct sc_atr_table *map, *entry;
-	u8 *dst_atr;
+	struct sc_atr_table *map, *dst;
 
 	map = (struct sc_atr_table *) realloc(driver->atr_map,
 			(driver->natrs + 2) * sizeof(struct sc_atr_table));
 	if (!map)
 		return SC_ERROR_OUT_OF_MEMORY;
 	driver->atr_map = map;
-	if (!(dst_atr = (u8 *) malloc(atrlen)))
+	dst = &driver->atr_map[driver->natrs++];
+	memset(dst, 0, sizeof(*dst));
+	dst->atr = strdup(src->atr);
+	if (!dst->atr)
 		return SC_ERROR_OUT_OF_MEMORY;
-	entry = &driver->atr_map[driver->natrs++];
-	memset(entry+1, 0, sizeof(*entry));
-	entry->atr = dst_atr;
-	entry->atr_len = atrlen;
-	entry->id = id;
-	memcpy(dst_atr, atr, atrlen);
+	if (src->name) {
+		dst->name = strdup(src->name);
+		if (!dst->name)
+			return SC_ERROR_OUT_OF_MEMORY;
+	} else {
+		dst->name = NULL;
+	}
+	dst->id = src->id;
+	dst->flags = src->flags;
+	if (ctx->debug >= 4)
+		sc_debug(ctx, "added ATR: %s\n", src->atr);
 	return 0;
 }

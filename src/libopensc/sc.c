@@ -114,13 +114,13 @@ int sc_detect_card_presence(struct sc_reader *reader, int slot_id)
 {
 	int r;
 	struct sc_slot_info *slot = _sc_get_slot_info(reader, slot_id);
-	
+
 	if (slot == NULL)
 		SC_FUNC_RETURN(reader->ctx, 0, SC_ERROR_SLOT_NOT_FOUND);
 	SC_FUNC_CALLED(reader->ctx, 1);
 	if (reader->ops->detect_card_presence == NULL)
 		SC_FUNC_RETURN(reader->ctx, 0, SC_ERROR_NOT_SUPPORTED);
-	
+
 	r = reader->ops->detect_card_presence(reader, slot);
 	SC_FUNC_RETURN(reader->ctx, 1, r);
 }
@@ -250,7 +250,7 @@ int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
 		 || file->acl[operation] == (struct sc_acl_entry *) 3)
 			file->acl[operation] = NULL;
 	}
-	
+
 	_new = (struct sc_acl_entry *) malloc(sizeof(struct sc_acl_entry));
 	if (_new == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -301,12 +301,12 @@ const struct sc_acl_entry * sc_file_get_acl_entry(const struct sc_file *file,
 void sc_file_clear_acl_entries(struct sc_file *file, unsigned int operation)
 {
 	struct sc_acl_entry *e;
-	
+
 	assert(file != NULL);
 	assert(operation < SC_MAX_AC_OPS);
 
 	e = file->acl[operation];
-	if (e == (struct sc_acl_entry *) 1 || 
+	if (e == (struct sc_acl_entry *) 1 ||
 	    e == (struct sc_acl_entry *) 2 ||
 	    e == (struct sc_acl_entry *) 3) {
 		file->acl[operation] = NULL;
@@ -324,7 +324,7 @@ void sc_file_clear_acl_entries(struct sc_file *file, unsigned int operation)
 struct sc_file * sc_file_new()
 {
 	struct sc_file *file = (struct sc_file *) malloc(sizeof(struct sc_file));
-	
+
 	if (file == NULL)
 		return NULL;
 	memset(file, 0, sizeof(struct sc_file));
@@ -353,14 +353,14 @@ void sc_file_dup(struct sc_file **dest, const struct sc_file *src)
 	struct sc_file *newf;
 	const struct sc_acl_entry *e;
 	unsigned int op;
-	
+
 	assert(sc_file_valid(src));
 	*dest = NULL;
 	newf = sc_file_new();
 	if (newf == NULL)
 		return;
 	*dest = newf;
-	
+
 	*newf = *src;
 	for (op = 0; op < SC_MAX_AC_OPS; op++) {
 		newf->acl[op] = NULL;
@@ -396,7 +396,7 @@ int sc_file_set_sec_attr(struct sc_file *file, const u8 *sec_attr,
 	file->sec_attr_len = sec_attr_len;
 
 	return 0;
-}                         
+}
 
 int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
 			 size_t prop_attr_len)
@@ -424,7 +424,7 @@ int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
 	file->prop_attr_len = prop_attr_len;
 
 	return 0;
-}                         
+}
 
 int sc_file_set_type_attr(struct sc_file *file, const u8 *type_attr,
 			 size_t type_attr_len)
@@ -452,7 +452,7 @@ int sc_file_set_type_attr(struct sc_file *file, const u8 *type_attr,
 	file->type_attr_len = type_attr_len;
 
 	return 0;
-}                         
+}
 
 inline int sc_file_valid(const struct sc_file *file) {
 #ifndef NDEBUG
@@ -534,6 +534,5 @@ int _sc_parse_atr(struct sc_context *ctx, struct sc_slot_info *slot)
 		n_hist = atr_len;
 	slot->atr_info.hist_bytes_len = n_hist;
 	slot->atr_info.hist_bytes = p;
-	
 	return 0;
 }

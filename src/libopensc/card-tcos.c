@@ -27,7 +27,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-static struct sc_atr_table_hex tcos_atrs[] = {
+static struct sc_atr_table tcos_atrs[] = {
 	/* SLE44 */
 	{ "3B:BA:13:00:81:31:86:5D:00:64:05:0A:02:01:31:80:90:00:8B" },
 	/* SLE66S */
@@ -60,7 +60,7 @@ static int tcos_match_card(struct sc_card *card)
 {
 	int i;
 
-	i = _sc_match_atr_hex(card, tcos_atrs, NULL);
+	i = _sc_match_atr(card, tcos_atrs, NULL);
 	if (i < 0)
 		return 0;
 	return 1;
