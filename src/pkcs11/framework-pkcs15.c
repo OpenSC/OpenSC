@@ -887,6 +887,7 @@ CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object*) object;
+	size_t len;
 
 	switch (attr->type) {
 	case CKA_CLASS:
@@ -903,8 +904,9 @@ CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = FALSE;
                 break;
 	case CKA_LABEL:
-		check_attribute_buffer(attr, strlen(cert->certificate_object->label));
-                memcpy(attr->pValue, cert->certificate_object->label, strlen(cert->certificate_object->label));
+		len = strlen(cert->certificate_object->label) + 1;
+		check_attribute_buffer(attr, len);
+                memcpy(attr->pValue, cert->certificate_object->label, len);
                 break;
 	case CKA_CERTIFICATE_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_CERTIFICATE_TYPE));
@@ -1007,6 +1009,7 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) object;
 	struct sc_pkcs15_pubkey *key = NULL;
+	size_t len;
 
 	if (prkey->cert_object && prkey->cert_object->certificate)
 		key = &prkey->cert_object->certificate->key;
@@ -1033,8 +1036,9 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = FALSE;
                 break;
 	case CKA_LABEL:
-		check_attribute_buffer(attr, strlen(prkey->prkey_object->label));
-                memcpy(attr->pValue, prkey->prkey_object->label, strlen(prkey->prkey_object->label));
+		len = strlen(prkey->prkey_object->label) + 1;
+		check_attribute_buffer(attr, len);
+                memcpy(attr->pValue, prkey->prkey_object->label, len);
 		break;
 	case CKA_KEY_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
@@ -1206,6 +1210,7 @@ CK_RV pkcs15_cert_key_get_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_cert_key_object *pubkey = (struct pkcs15_cert_key_object*) object;
+	size_t len;
 
 	switch (attr->type) {
 	case CKA_CLASS:
@@ -1227,8 +1232,9 @@ CK_RV pkcs15_cert_key_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = FALSE;
                 break;
 	case CKA_LABEL:
-		check_attribute_buffer(attr, strlen(pubkey->certificate_object->label));
-                memcpy(attr->pValue, pubkey->certificate_object->label, strlen(pubkey->certificate_object->label));
+		len = strlen(pubkey->certificate_object->label) + 1;
+		check_attribute_buffer(attr, len);
+                memcpy(attr->pValue, pubkey->certificate_object->label, len);
 		break;
 	case CKA_KEY_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
@@ -1287,6 +1293,7 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
+	size_t len;
 
 	switch (attr->type) {
 	case CKA_CLASS:
@@ -1308,8 +1315,9 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = FALSE;
                 break;
 	case CKA_LABEL:
-		check_attribute_buffer(attr, strlen(pubkey->pubkey_object->label));
-                memcpy(attr->pValue, pubkey->pubkey_object->label, strlen(pubkey->pubkey_object->label));
+		len = strlen(pubkey->pubkey_object->label) + 1;
+		check_attribute_buffer(attr, len);
+                memcpy(attr->pValue, pubkey->pubkey_object->label, len);
 		break;
 	case CKA_KEY_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
