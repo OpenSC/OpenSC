@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <refentry id="sccreatefile">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_create_file</refentrytitle>
 		<manvolnum>3</manvolnum>
@@ -15,7 +16,7 @@
 		<title>Synopsis</title>
 		<para>
 		<programlisting>
-&includes;
+#include &lt;opensc.h&gt;
 
 int sc_create_file(<link linkend="sccardt">sc_card_t</link> *card, <link linkend="scfilet">sc_file_t</link> *file);
 		</programlisting>

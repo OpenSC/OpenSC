@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <refentry id="scselectfile">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_select_file</refentrytitle>
 		<manvolnum>3</manvolnum>
@@ -14,7 +16,7 @@
 		<title>Synopsis</title>
 		<para>
 		<programlisting>
-&includes;
+#include &lt;opensc.h&gt;
 
 int sc_select_file(<link linkend="sccardt">sc_card_t</link> *card,
                    const <link linkend="scpatht">sc_path_t</link> *path,

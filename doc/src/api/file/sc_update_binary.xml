@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <refentry id="scupdatebinary">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_update_binary</refentrytitle>
 		<manvolnum>3</manvolnum>

@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <refentry id="screadrecord">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_read_record</refentrytitle>
 		<manvolnum>3</manvolnum>

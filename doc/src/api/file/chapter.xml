@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook V4.2//EN"
                       "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd" [
+
 <!ENTITY scfilenew SYSTEM "sc_file_new.xml">
 <!ENTITY scfiledup SYSTEM "sc_file_dup.xml">
 <!ENTITY sccreatefile SYSTEM "sc_create_file.xml">
@@ -17,7 +18,6 @@
 <!ENTITY scappendrecord SYSTEM "sc_append_record.xml">
 <!ENTITY scdeleterecord SYSTEM "sc_delete_record.xml">
 
-<!ENTITY includes "#include &lt;opensc.h&gt;">
 ]>
 
 <chapter>

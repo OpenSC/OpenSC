@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <refentry id="scfiledup">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_file_dup</refentrytitle>
 		<manvolnum>3</manvolnum>
@@ -14,7 +16,7 @@
 		<title>Synopsis</title>
 		<para>
 		<programlisting>
-&includes;
+#include &lt;opensc.h&gt;
 
 void sc_file_dup(<link linkend="scfilet">sc_file_t</link> **dest, const <link
 	linkend="scfilet">sc_file_t</link> *src)
