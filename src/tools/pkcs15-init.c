@@ -1414,6 +1414,9 @@ handle_option(int c)
 	case 'u':
 		parse_x509_usage(optarg, &opt_x509_usage);
 		break;
+	case 'w':
+		opt_wait = 1;
+		break;
 	case OPT_OPTIONS:
 		read_options_file(optarg);
 		break;
