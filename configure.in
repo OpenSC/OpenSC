@@ -417,7 +417,7 @@ AC_CACHE_CHECK([for OpenSSL directory], ac_cv_openssldir, [
 			break;
 		fi
 		# Skip directories if they don't exist
-		if test ! -d "$ssldir" ; then
+		if test ! -d "$ssldir/" ; then
 			continue;
 		fi
 		LIBCRYPTO="-lcrypto"
@@ -425,27 +425,12 @@ AC_CACHE_CHECK([for OpenSSL directory], ac_cv_openssldir, [
 		LDFLAGS="$saved_LDFLAGS"
 		LIBS="$saved_LIBS $LIBCRYPTO"
 
-		if test ! -z "$ssldir" -a "x$ssldir" != "x/usr"; then
-			# Try to use $ssldir/lib if it exists, otherwise
-			# $ssldir
-			if test -d "$ssldir/lib" ; then
-				LDFLAGS="-L$ssldir/lib $saved_LDFLAGS"
-				if test ! -z "$need_dash_r" ; then
-					LDFLAGS="-R$ssldir/lib $LDFLAGS"
-				fi
-			else
-				LDFLAGS="-L$ssldir $saved_LDFLAGS"
-				if test ! -z "$need_dash_r" ; then
-					LDFLAGS="-R$ssldir $LDFLAGS"
-				fi
+		if test "x$ssldir" != "x/usr"; then
+			LDFLAGS="-L$ssldir/lib $saved_LDFLAGS"
+			if test ! -z "$need_dash_r" ; then
+				LDFLAGS="-R$ssldir/lib $LDFLAGS"
 			fi
-			# Try to use $ssldir/include if it exists, otherwise
-			# $ssldir
-			if test -d "$ssldir/include" ; then
-				CPPFLAGS="-I$ssldir/include $saved_CPPFLAGS"
-			else
-				CPPFLAGS="-I$ssldir $saved_CPPFLAGS"
-			fi
+			CPPFLAGS="-I$ssldir/include $saved_CPPFLAGS"
 		fi
 
 		# Basic test to check for compatible version and correct linking
@@ -469,11 +454,7 @@ int main(void)
 
 		if test "x$SSL_MSG" = "xyes" ; then
 			# openssl with engine support?
-			if test -d "$ssldir/lib" ; then
-				LIBCRYPTOA="$ssldir/lib/libcrypto.a $LIBDL"
-			else
-				LIBCRYPTOA="$ssldir/libcrypto.a $LIBDL"
-			fi
+			LIBCRYPTOA="$ssldir/lib/libcrypto.a $LIBDL"
 			LIBS="$saved_LIBS $LIBCRYPTOA"
 			AC_TRY_RUN(
 			[
