@@ -1,18 +1,18 @@
 NEWS for OpenSC -- History of user visible changes
 
-New in 0.8.0; 2003-04-xx; Juha Yrjölä:
-* New and/or improved card drivers: Aladdin eToken, MICARDO 2,
-  STARCOS
+New in 0.8.0; 2003-08-15; Juha Yrjölä:
+* New and/or improved card drivers:
+  Aladdin eToken, MICARDO 2 and STARCOS
 * New reader driver: OpenCT (Olaf's framework)
-* USBtoken by Andreas Jellinghaus integrated
-* Compiles (and actually works!) also on Win32
-* Improved support for MacOS X, off-the-box using
-  autoconf.
+* USBtoken by Andreas Jellinghaus integrated,
+  to be obsoleted by OpenCT in future releases.
+* Improved support for win32 and MacOS X.
 * PKCS #11 stuff improved massively
-* Added an engine driver for OpenSSL
-* New manpages
+* Added PKCS #11 and native OpenSC engine drivers
+  for OpenSSL
 * Added support for reading the PIN from the PIN keypad
   of a reader
+* New manpages
 * Loads of other improvements and bug-fixes
 
 New in 0.7.0; 2002-06-03; Juha Yrjölä:
