@@ -1337,6 +1337,8 @@ static int pass_cb(char *buf, int len, int flags, void *d)
 	else
 		pass = getpass("Please enter passphrase "
 				"to unlock secret key: ");
+	if (!pass)
+		return 0;
 	plen = strlen(pass);
 	if (plen <= 0)
 		return 0;
