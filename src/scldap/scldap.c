@@ -44,70 +44,99 @@
 
 extern char **environ;
 
-static void scldap_parse_block(scldap_context * ctx, scconf_block * block, const char *cardprefix)
+typedef struct _cb_data {
+	scldap_context *ctx;
+	char *cardprefix;
+} cb_data;
+
+static int attrs_cb(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
 {
-	scconf_block **blocks = NULL;
-	unsigned int i;
+	scldap_param_entry *lentry = (scldap_param_entry *) entry->arg;
+	const scconf_list *list = scconf_find_list(block, entry->name);
 
-	blocks = scconf_find_blocks(ctx->conf, block, "ldap", NULL);
-	for (i = 0; blocks[i]; i++) {
-		const scconf_block *block = blocks[i];
-		const scconf_list *list = NULL, *tmp = NULL;
-		const char *val = NULL;
-		size_t len = 0;
-
-		if (ctx->entries >= SCLDAP_MAX_ENTRIES)
+	for (; list; list = list->next) {
+		if (lentry->numattrs >= SCLDAP_MAX_ATTRIBUTES) {
 			break;
-		ctx->entry = (scldap_param_entry *) realloc(ctx->entry, (ctx->entries + 2) * sizeof(scldap_param_entry));
-		if (!ctx->entry)
-			break;
-		memset(&ctx->entry[ctx->entries], 0, sizeof(scldap_param_entry));
-		if (cardprefix) {
-			len = strlen(cardprefix) + 1;
 		}
-		len += strlen(block->name->data) + 1;
-		ctx->entry[ctx->entries].entry = malloc(len);
-		if (!ctx->entry[ctx->entries].entry)
-			break;
-		memset(ctx->entry[ctx->entries].entry, 0, len);
-		snprintf(ctx->entry[ctx->entries].entry, len, "%s%s", cardprefix ? cardprefix : "", block->name->data);
-#define ADD(x, y) \
-{ \
-  val = scconf_get_str(block, y, NULL); \
-  x = val ? strdup(val) : NULL; \
-}
-		ADD(ctx->entry[ctx->entries].ldaphost, "ldaphost");
-		ctx->entry[ctx->entries].ldapport = scconf_get_int(block, "ldapport", 389);
-		ctx->entry[ctx->entries].scope = scconf_get_int(block, "scope", 0);
-		ADD(ctx->entry[ctx->entries].binddn, "binddn");
-		ADD(ctx->entry[ctx->entries].passwd, "passwd");
-		ADD(ctx->entry[ctx->entries].base, "base");
-		ADD(ctx->entry[ctx->entries].filter, "filter");
-#undef ADD
-		list = scconf_find_list(block, "attributes");
-		for (tmp = list; tmp; tmp = tmp->next) {
-			if (ctx->entry[ctx->entries].numattrs >= SCLDAP_MAX_ATTRIBUTES) {
-				break;
-			}
-			ctx->entry[ctx->entries].attributes = (char **) realloc(ctx->entry[ctx->entries].attributes, (ctx->entry[ctx->entries].numattrs + 2) * sizeof(char *));
-			if (!ctx->entry[ctx->entries].attributes)
-				break;
-			memset(&ctx->entry[ctx->entries].attributes[ctx->entry[ctx->entries].numattrs], 0, sizeof(char *));
-			ctx->entry[ctx->entries].attributes[ctx->entry[ctx->entries].numattrs] = tmp->data ? strdup(tmp->data) : NULL;
-			ctx->entry[ctx->entries].numattrs++;
-			ctx->entry[ctx->entries].attributes[ctx->entry[ctx->entries].numattrs] = NULL;
-		}
-		ctx->entries++;
-		memset(&ctx->entry[ctx->entries], 0, sizeof(scldap_param_entry));
+		lentry->attributes = (char **) realloc(lentry->attributes, (lentry->numattrs + 2) * sizeof(char *));
+		if (!lentry->attributes)
+			return 1;
+		lentry->attributes[lentry->numattrs] = strdup(list->data);
+		lentry->numattrs++;
+		lentry->attributes[lentry->numattrs] = NULL;
 	}
-	free(blocks);
+	return 0;		/* 0 for ok, 1 for error */
+}
+
+static int ldap_cb(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
+{
+	cb_data *trans = (cb_data *) entry->arg;
+	scldap_context *ctx = trans->ctx;
+	char *cardprefix = trans->cardprefix;
+	scldap_param_entry *lentry = (scldap_param_entry *) &ctx->entry[ctx->entries];
+	scconf_entry centry[] =
+	{
+		{"ldaphost", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->ldaphost, NULL},
+		{"ldapport", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->ldapport, NULL},
+		{"scope", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->scope, NULL},
+		{"binddn", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->binddn, NULL},
+		{"passwd", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->passwd, NULL},
+		{"base", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->base, NULL},
+		{"attributes", SCCONF_CALLBACK, SCCONF_OPTIONAL, (void *) attrs_cb, lentry},
+		{"filter", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->filter, NULL},
+		{NULL}
+	};
+	char *ldapsuffix = NULL;
+	size_t len = 0;
+
+	if (ctx->entries >= SCLDAP_MAX_ENTRIES)
+		return 0;	/* Hard limit reached, just return OK */
+	ldapsuffix = scconf_list_strdup(block->name, " ");
+	if (cardprefix) {
+		len = strlen(cardprefix) + 1;
+	}
+	len += strlen(ldapsuffix) + 1;
+	lentry->entry = malloc(len);
+	if (!lentry->entry)
+		return 1;
+	memset(lentry->entry, 0, len);
+	snprintf(lentry->entry, len, "%s%s%s", cardprefix ? cardprefix : "", cardprefix ? " " : "", ldapsuffix);
+	free(ldapsuffix);
+	if (scconf_parse_entries(config, block, centry) != 0) {
+		return 1;
+	}
+	ctx->entries++;
+	ctx->entry = (scldap_param_entry *) realloc(ctx->entry, (ctx->entries + 2) * sizeof(scldap_param_entry));
+	if (!ctx->entry)
+		return 1;
+	memset(&ctx->entry[ctx->entries], 0, sizeof(scldap_param_entry));
+
+	return 0;		/* 0 for ok, 1 for error */
+}
+
+static int card_cb(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
+{
+	cb_data *trans = (cb_data *) entry->arg;
+	scconf_entry card_entry[] =
+	{
+		{"ldap", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_ALL_BLOCKS, (void *) ldap_cb, trans},
+		{NULL}
+	};
+
+	trans->cardprefix = scconf_list_strdup(block->name, " ");
+	if (scconf_parse_entries(config, block, card_entry) != 0) {
+		free(trans->cardprefix);
+		trans->cardprefix = NULL;
+		return 1;
+	}
+	free(trans->cardprefix);
+	trans->cardprefix = NULL;
+	return 0;		/* 0 for ok, 1 for error */
 }
 
 scldap_context *scldap_parse_parameters(const char *filename)
 {
 	scldap_context *ctx = NULL;
-	scconf_block **blocks = NULL;
-	unsigned int i;
 
 	ctx = (scldap_context *) malloc(sizeof(scldap_context));
 	if (!ctx) {
@@ -122,6 +151,13 @@ scldap_context *scldap_parse_parameters(const char *filename)
 	memset(&ctx->entry[ctx->entries], 0, sizeof(scldap_param_entry));
 
 	if (filename) {
+		cb_data trans = {ctx, NULL};
+		scconf_entry entry[] =
+		{
+			{"ldap", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_ALL_BLOCKS, (void *) ldap_cb, &trans},
+			{"card", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_ALL_BLOCKS, (void *) card_cb, &trans},
+			{NULL}
+		};
 		ctx->conf = scconf_new(filename);
 		if (!ctx->conf) {
 			scldap_free_parameters(ctx);
@@ -131,23 +167,10 @@ scldap_context *scldap_parse_parameters(const char *filename)
 			scldap_free_parameters(ctx);
 			return NULL;
 		}
-		/* Parse normal LDAP blocks first */
-		scldap_parse_block(ctx, NULL, NULL);
-
-		/* Parse card specific LDAP blocks */
-		blocks = scconf_find_blocks(ctx->conf, NULL, "card", NULL);
-		for (i = 0; blocks[i]; i++) {
-			scconf_block *block = blocks[i];
-			char *name = NULL;
-
-			name = scconf_list_strdup(block->name, " ");
-			scldap_parse_block(ctx, block, name);
-			if (name) {
-				free(name);
-			}
-			name = NULL;
+		if (scconf_parse_entries(ctx->conf, NULL, entry) != 0) {
+			scldap_free_parameters(ctx);
+			return NULL;
 		}
-		free(blocks);
 	}
 	ctx->entries++;
 	ctx->active = 0;

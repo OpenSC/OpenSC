@@ -231,9 +231,9 @@ static int ctapi_load_module(struct sc_context *ctx,
 {
 	const char *val;
 	struct ctapi_functions funcs;
-	void *dlh, *func;
 	struct ctapi_module *mod;
 	const scconf_list *list;
+	void *dlh;
 	int r;
 	
 	list = scconf_find_list(conf, "ports");
@@ -248,18 +248,15 @@ static int ctapi_load_module(struct sc_context *ctx,
 		error(ctx, "Unable to open shared library '%s'\n", val);
 		return -1;
 	}
-	r = sc_module_get_address(ctx, dlh, &func, "CT_init");
+	r = sc_module_get_address(ctx, dlh, (void *) &funcs.CT_init, "CT_init");
 	if (r != SC_SUCCESS)
 		goto symerr;
-	funcs.CT_init = func;
-	r = sc_module_get_address(ctx, dlh, &func, "CT_close");
+	r = sc_module_get_address(ctx, dlh, (void *) &funcs.CT_close, "CT_close");
 	if (r != SC_SUCCESS)
 		goto symerr;
-	funcs.CT_close = func;
-	r = sc_module_get_address(ctx, dlh, &func, "CT_data");
+	r = sc_module_get_address(ctx, dlh, (void *) &funcs.CT_data, "CT_data");
 	if (r != SC_SUCCESS)
 		goto symerr;
-	funcs.CT_data = func;
 	mod = add_module(gpriv, val, dlh);
 	for (; list != NULL; list = list->next) {
 		int port;

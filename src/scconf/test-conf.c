@@ -28,21 +28,20 @@
 #include <errno.h>
 #include "scconf.h"
 
-static scconf_entry ldap_entry[] =
-{
-	{"ldaphost", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-	{"ldapport", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-	{"scope", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-	{"binddn", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-	{"passwd", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-	{"base", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-	{"attributes", SCCONF_LIST, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-	{"filter", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-	{NULL}
-};
-
 static int ldap_cb(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
 {
+	scconf_entry ldap_entry[] =
+	{
+		{"ldaphost", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+		{"ldapport", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+		{"scope", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+		{"binddn", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+		{"passwd", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+		{"base", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+		{"attributes", SCCONF_LIST, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+		{"filter", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+		{NULL}
+	};
 	char *cardprefix = (char *) entry->arg;
 	char *str = scconf_list_strdup(block->name, " ");
 
