@@ -65,28 +65,74 @@ typedef struct _scldap_result {
 	scldap_result_entry *result;
 } scldap_result;
 
+/* Allocate scldap_context
+ * The filename can be NULL
+ */
 extern scldap_context *scldap_parse_parameters(const char *filename);
+
+/* Print all entries and configurations to stdout
+ */
 extern void scldap_show_parameters(scldap_context * ctx);
+
+/* Free scldap_context
+ */
 extern void scldap_free_parameters(scldap_context * ctx);
 
+/* Parse command line arguments
+ */
 extern void scldap_parse_arguments(scldap_context ** ctx, int argc, const char **argv);
-extern char *scldap_show_arguments(void);
 
+/* Return a string that contains all
+ * known command line arguments
+ */
+extern const char *scldap_show_arguments(void);
+
+/* Add new configuration entry
+ */
 extern int scldap_add_entry(scldap_context * ctx, const char *entry);
+
+/* Return entry index number
+ *
 extern int scldap_get_entry(scldap_context * ctx, const char *entry);
+
+/* Set entry as the current active entry
+ */
 extern void scldap_set_entry(scldap_context * ctx, const char *entry);
+
+/* Remove entry and all configurations for it
+ */
 extern void scldap_remove_entry(scldap_context * ctx, const char *entry);
 
+/* See if the string is a valid URL
+ * Returns 1 = ok, 0 = not valid
+ */
 extern int scldap_is_valid_url(const char *url);
+
+/* Convert URL to a search entry
+ */
 extern int scldap_url_to_entry(scldap_context * ctx, const char *entry, const char *url);
 
 extern int scldap_approx_base_by_dn(scldap_context * ctx, const char *entry, const char *dn, char **base);
+
+/* Split DN to result entries
+ *
+ * If notypes is a non-zero, just values
+ * will be added to result entries
+ */
 extern int scldap_dn_to_result(const char *dn, scldap_result ** result, int notypes);
 
+/* Search data from LDAP server
+ *
+ * If numwantedresults is a non-zero, we require
+ * that the given value will match with the number
+ * of the actual results we have got from the server
+ */
 extern int scldap_search(scldap_context * ctx, const char *entry,
 			 scldap_result ** result, unsigned int numwantedresults,
 			 const char *searchpattern);
 
+/* Free search results
+ */
 extern void scldap_free_result(scldap_result * result);
 
 #ifdef __cplusplus

@@ -120,7 +120,7 @@ scldap_context *scldap_parse_parameters(const char *filename)
 	memset(&ctx->entry[ctx->entries], 0, sizeof(scldap_param_entry));
 
 	if (filename) {
-		ctx->conf = scconf_init(filename);
+		ctx->conf = scconf_new(filename);
 		if (!ctx->conf) {
 			scldap_free_parameters(ctx);
 			return NULL;
@@ -225,7 +225,7 @@ void scldap_free_parameters(scldap_context * ctx)
 		ctx->entry = NULL;
 		ctx->entries = 0;
 		if (ctx->conf) {
-			scconf_deinit(ctx->conf);
+			scconf_free(ctx->conf);
 		}
 		ctx->conf = NULL;
 		free(ctx);
@@ -309,7 +309,7 @@ void scldap_parse_arguments(scldap_context ** ctx, int argc, const char **argv)
 	*ctx = ptr;
 }
 
-char *scldap_show_arguments(void)
+const char *scldap_show_arguments(void)
 {
 	static char buf[250];
 

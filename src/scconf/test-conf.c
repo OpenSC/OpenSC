@@ -70,14 +70,14 @@ int main(int argc, char **argv)
 	in = argv[argc - 2];
 	out = argv[argc - 1];
 
-	conf = scconf_init(in);
+	conf = scconf_new(in);
 	if (!conf) {
-		printf("scconf_init failed\n");
+		printf("scconf_new failed\n");
 		return 1;
 	}
 	if (scconf_parse(conf) < 1) {
 		printf("scconf_parse failed\n");
-		scconf_deinit(conf);
+		scconf_free(conf);
 		return 1;
 	}
 	/* See if the file contains any ldap configuration blocks */
@@ -88,6 +88,6 @@ int main(int argc, char **argv)
 	} else {
 		printf("Successfully rewrote file \"%s\" as \"%s\"\n", in, out);
 	}
-	scconf_deinit(conf);
+	scconf_free(conf);
 	return 0;
 }

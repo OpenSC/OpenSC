@@ -273,12 +273,12 @@ void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 	int i, r, count = 0;
 	scconf_block **blocks;
 	
-	ctx->conf = scconf_init(OPENSC_CONF_PATH);
+	ctx->conf = scconf_new(OPENSC_CONF_PATH);
 	if (ctx->conf == NULL)
 		return;
 	r = scconf_parse(ctx->conf);
 	if (r < 1) {
-		scconf_deinit(ctx->conf);
+		scconf_free(ctx->conf);
 		ctx->conf = NULL;
 		return;
 	}
@@ -345,7 +345,7 @@ int sc_release_context(struct sc_context *ctx)
 	}
 	ctx->debug_file = ctx->error_file = NULL;
 	if (ctx->conf)
-		scconf_deinit(ctx->conf);
+		scconf_free(ctx->conf);
 	free(ctx->app_name);
 	free(ctx);
 	return 0;

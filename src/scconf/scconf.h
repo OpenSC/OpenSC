@@ -61,14 +61,14 @@ typedef struct {
 	scconf_block *root;
 } scconf_context;
 
-/* Init configuration
+/* Allocate scconf_context
  * The filename can be NULL
  */
-extern scconf_context *scconf_init(const char *filename);
+extern scconf_context *scconf_new(const char *filename);
 
-/* Free configuration
+/* Free scconf_context
  */
-extern void scconf_deinit(scconf_context * config);
+extern void scconf_free(scconf_context * config);
 
 /* Parse configuration
  * Returns 1 = ok, 0 = error, -1 = error opening config file
@@ -88,7 +88,7 @@ extern const scconf_block *scconf_find_block(scconf_context * config, const scco
 
 /* Find a config by the item_name
  * If the block is NULL, the root block is used
- * The key can be used to specify what the blocks first name should be.
+ * The key can be used to specify what the blocks first name should be
  */
 extern scconf_block **scconf_find_blocks(scconf_context * config, const scconf_block * block, const char *item_name, const char *key);
 

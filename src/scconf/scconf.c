@@ -27,7 +27,7 @@
 #include <ctype.h>
 #include "scconf.h"
 
-scconf_context *scconf_init(const char *filename)
+scconf_context *scconf_new(const char *filename)
 {
 	scconf_context *config;
 
@@ -49,7 +49,7 @@ scconf_context *scconf_init(const char *filename)
 	return config;
 }
 
-void scconf_deinit(scconf_context * config)
+void scconf_free(scconf_context * config)
 {
 	if (config) {
 		scconf_block_destroy(config->root);
