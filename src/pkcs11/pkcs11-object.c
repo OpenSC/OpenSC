@@ -476,7 +476,6 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		goto out;
 	}
 
-        debug(context, "Sign operation initialized\n");
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
 out:	debug(context, "Sign initialization returns %d\n", rv);
@@ -915,7 +914,47 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		   CK_MECHANISM_PTR  pMechanism,  /* the verification mechanism */
 		   CK_OBJECT_HANDLE  hKey)        /* handle of the verification key */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+#ifndef HAVE_OPENSSL
+	return CKR_FUNCTION_NOT_SUPPORTED;
+#else
+        CK_BBOOL can_verify;
+	CK_KEY_TYPE key_type;
+	CK_ATTRIBUTE verify_attribute = { CKA_VERIFY, &can_verify, sizeof(can_verify) };
+	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_object *object;
+        int rv;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		goto out;
+
+	rv = pool_find(&session->slot->object_pool, hKey, (void**) &object);
+	if (rv != CKR_OK)
+		goto out;
+
+	//rv = object->ops->get_attribute(session, object, &verify_attribute);
+        //if (rv != CKR_OK || !can_verify) {
+        //        rv = CKR_KEY_TYPE_INCONSISTENT;
+	//	goto out;
+	//}
+	rv = object->ops->get_attribute(session, object, &key_type_attr);
+        if (rv != CKR_OK) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	rv = sc_pkcs11_verif_init(session, pMechanism, object, key_type);
+
+out:	debug(context, "Verify initialization returns %d\n", rv);
+	sc_pkcs11_unlock();
+
+        return rv;
+#endif
 }
 
 CK_RV C_Verify(CK_SESSION_HANDLE hSession,       /* the session's handle */
@@ -924,21 +963,79 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,       /* the session's handle */
 	       CK_BYTE_PTR       pSignature,     /* the signature to be verified */
 	       CK_ULONG          ulSignatureLen) /* count of bytes of signature */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+#ifndef HAVE_OPENSSL
+	return CKR_FUNCTION_NOT_SUPPORTED;
+#else
+        int rv;
+	struct sc_pkcs11_session *session;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		goto out;
+
+	rv = sc_pkcs11_verif_update(session, pData, ulDataLen);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_verif_final(session, pSignature, ulSignatureLen);
+
+out:	debug(context, "Verify result was %d\n", rv);
+	sc_pkcs11_unlock();
+        return rv;
+#endif
 }
 
 CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		     CK_BYTE_PTR       pPart,     /* plaintext data (digest) to compare */
 		     CK_ULONG          ulPartLen) /* length of data (digest) in bytes */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+#ifndef HAVE_OPENSSL
+	return CKR_FUNCTION_NOT_SUPPORTED;
+#else
+	struct sc_pkcs11_session *session;
+        int rv;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_verif_update(session, pPart, ulPartLen);
+
+	debug(context, "C_VerifyUpdate returns %d\n", rv);
+	sc_pkcs11_unlock();
+        return rv;
+#endif
 }
 
 CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,       /* the session's handle */
 		    CK_BYTE_PTR       pSignature,     /* the signature to be verified */
 		    CK_ULONG          ulSignatureLen) /* count of bytes of signature */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+#ifndef HAVE_OPENSSL
+	return CKR_FUNCTION_NOT_SUPPORTED;
+#else
+	struct sc_pkcs11_session *session;
+        int rv;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		goto out;
+
+	rv = sc_pkcs11_verif_final(session, pSignature, ulSignatureLen);
+
+out:	debug(context, "C_VerifyFinal returns %d\n", rv);
+	sc_pkcs11_unlock();
+
+        return rv;
+#endif
 }
 
 CK_RV C_VerifyRecoverInit(CK_SESSION_HANDLE hSession,    /* the session's handle */

@@ -2143,6 +2143,9 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	sc_pkcs11_register_generic_mechanisms(p11card);
 
 	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP;
+#ifdef HAVE_OPENSSL
+	mech_info.flags |= CKF_VERIFY;
+#endif
 	mech_info.ulMinKeySize = ~0;
 	mech_info.ulMaxKeySize = 0;
 

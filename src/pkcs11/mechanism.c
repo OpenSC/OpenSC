@@ -8,6 +8,7 @@
 #include <string.h>
 #include "sc-pkcs11.h"
 
+/* Also used for verification data */
 struct hash_signature_info {
 	CK_MECHANISM_TYPE	mech;
 	CK_MECHANISM_TYPE	hash_mech;
@@ -16,6 +17,7 @@ struct hash_signature_info {
 	sc_pkcs11_mechanism_type_t *sign_type;
 };
 
+/* Also used for verification data */
 struct signature_data {
 	struct sc_pkcs11_object *key;
 	struct hash_signature_info *info;
@@ -412,6 +414,177 @@ sc_pkcs11_signature_release(sc_pkcs11_operation_t *operation)
 	free(data);
 }
 
+#ifdef HAVE_OPENSSL
+/*
+ * Initialize a verify context. When we get here, we know
+ * the key object is capable of verifying _something_
+ */
+CK_RV
+sc_pkcs11_verif_init(struct sc_pkcs11_session *session,
+		    CK_MECHANISM_PTR pMechanism,
+		    struct sc_pkcs11_object *key,
+		    CK_MECHANISM_TYPE key_type)
+{
+	struct sc_pkcs11_card *p11card;
+	sc_pkcs11_operation_t *operation;
+	sc_pkcs11_mechanism_type_t *mt;
+	int rv;
+
+	if (!session || !session->slot
+	 || !(p11card = session->slot->card))
+		return CKR_ARGUMENTS_BAD;
+
+	/* See if we support this mechanism type */
+	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_VERIFY);
+	if (mt == NULL)
+		return CKR_MECHANISM_INVALID;
+
+	/* See if compatible with key type */
+	if (mt->key_type != key_type)
+		return CKR_KEY_TYPE_INCONSISTENT;
+
+	rv = session_start_operation(session, SC_PKCS11_OPERATION_VERIFY, mt, &operation);
+	if (rv != CKR_OK)
+		return rv;
+
+	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
+	return mt->verif_init(operation, key);
+}
+
+CK_RV
+sc_pkcs11_verif_update(struct sc_pkcs11_session *session,
+		      CK_BYTE_PTR pData, CK_ULONG ulDataLen)
+{
+	sc_pkcs11_operation_t *op;
+	int rv;
+
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_VERIFY, &op);
+	if (rv != CKR_OK)
+		return rv;
+
+	if (op->type->verif_update == NULL)
+		return CKR_KEY_TYPE_INCONSISTENT;
+
+	return op->type->verif_update(op, pData, ulDataLen);
+}
+
+CK_RV
+sc_pkcs11_verif_final(struct sc_pkcs11_session *session,
+		     CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen)
+{
+	sc_pkcs11_operation_t *op;
+	int rv;
+
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_VERIFY, &op);
+	if (rv != CKR_OK)
+		return rv;
+
+	if (op->type->verif_final == NULL)
+		return CKR_KEY_TYPE_INCONSISTENT;
+
+	rv = op->type->verif_final(op, pSignature, ulSignatureLen);
+
+	session_stop_operation(session, SC_PKCS11_OPERATION_VERIFY);
+	return rv;
+}
+
+/*
+ * Initialize a signature operation
+ */
+static CK_RV
+sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
+		    struct sc_pkcs11_object *key)
+{
+	struct hash_signature_info *info;
+	struct signature_data *data;
+	int rv;
+
+	if (!(data = (struct signature_data *) calloc(1, sizeof(*data))))
+		return CKR_HOST_MEMORY;
+
+	data->info = NULL;
+	data->key = key;
+
+	/* If this is a verify with hash operation, set up the
+	 * hash operation */
+	info = (struct hash_signature_info *) operation->type->mech_data;
+	if (info != NULL) {
+		/* Initialize hash operation */
+		data->md = sc_pkcs11_new_operation(operation->session,
+						   info->hash_type);
+		if (data->md == NULL)
+			rv = CKR_HOST_MEMORY;
+		else
+			rv = info->hash_type->md_init(data->md);
+		if (rv != CKR_OK) {
+			sc_pkcs11_release_operation(&data->md);
+			free(data);
+			return rv;
+		}
+		data->info = info;
+	}
+
+	operation->priv_data = data;
+	return CKR_OK;
+}
+
+static CK_RV
+sc_pkcs11_verify_update(sc_pkcs11_operation_t *operation,
+		    CK_BYTE_PTR pPart, CK_ULONG ulPartLen)
+{
+	struct signature_data *data;
+
+	data = (struct signature_data *) operation->priv_data;
+	if (data->md) {
+		sc_pkcs11_operation_t	*md = data->md;
+
+		return md->type->md_update(md, pPart, ulPartLen);
+	}
+
+	/* This verification mechanism operates on the raw data */
+	if (data->buffer_len + ulPartLen > sizeof(data->buffer))
+		return CKR_DATA_LEN_RANGE;
+	memcpy(data->buffer + data->buffer_len, pPart, ulPartLen);
+	data->buffer_len += ulPartLen;
+	return CKR_OK;
+}
+
+static CK_RV
+sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
+			CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen)
+{
+	struct signature_data *data;
+	struct sc_pkcs11_object *key;
+	unsigned char *pubkey_value;
+	CK_ATTRIBUTE attr = {CKA_VALUE, NULL, 0};
+	int rv;
+
+	data = (struct signature_data *) operation->priv_data;
+
+	if (pSignature == NULL)
+		return CKR_ARGUMENTS_BAD;
+
+	key = data->key;
+	rv = key->ops->get_attribute(operation->session, key, &attr);
+	if (rv != CKR_OK)
+		return rv;
+	pubkey_value = (unsigned char *) malloc(attr.ulValueLen);
+	attr.pValue = pubkey_value;
+	rv = key->ops->get_attribute(operation->session, key, &attr);
+	if (rv != CKR_OK)
+		goto done;
+
+	rv = sc_pkcs11_verify_data(pubkey_value, attr.ulValueLen,
+		operation->mechanism.mechanism, data->md,
+		data->buffer, data->buffer_len, pSignature, ulSignatureLen);
+
+done:
+	free(pubkey_value);
+
+	return rv;
+}
+#endif
+
 /*
  * Create new mechanism type for a mechanism supported by
  * the card
@@ -440,6 +613,11 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 		mt->sign_update = sc_pkcs11_signature_update;
 		mt->sign_final = sc_pkcs11_signature_final;
 		mt->sign_size = sc_pkcs11_signature_size;
+#ifdef HAVE_OPENSSL
+		mt->verif_init = sc_pkcs11_verify_init;
+		mt->verif_update = sc_pkcs11_verify_update;
+		mt->verif_final = sc_pkcs11_verify_final;
+#endif
 	}
 	if (pInfo->flags & CKF_UNWRAP) {
 		/* ... */

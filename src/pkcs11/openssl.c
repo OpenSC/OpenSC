@@ -235,4 +235,79 @@ sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 
 	return CKR_OK;
 }
+
+/* If no hash function was used, finish with RSA_public_decrypt().
+ * If a hash function was used, we can make a big shortcut by
+ *   finishing with EVP_VerifyFinal().
+ */
+CK_RV sc_pkcs11_verify_data(unsigned char *pubkey, int pubkey_len,
+			CK_MECHANISM_TYPE mech, sc_pkcs11_operation_t *md,
+			unsigned char *data, int data_len,
+			unsigned char *signat, int signat_len)
+{
+	int res;
+	CK_RV rv = CKR_GENERAL_ERROR;
+	EVP_PKEY *pkey;
+
+	pkey = d2i_PublicKey(EVP_PKEY_RSA, NULL, &pubkey, pubkey_len);
+	if (pkey == NULL)
+		return CKR_GENERAL_ERROR;
+		
+
+	if (md != NULL) {
+		EVP_MD_CTX *md_ctx = DIGEST_CTX(md);
+
+		res = EVP_VerifyFinal(md_ctx, signat, signat_len, pkey);
+		EVP_PKEY_free(pkey);
+		if (res == 1)
+			return CKR_OK;
+		else if (res == 0)
+			return CKR_SIGNATURE_INVALID;
+		else if (res != 1)
+			return CKR_GENERAL_ERROR;
+	}
+	else {
+		RSA *rsa;
+		unsigned char *rsa_out = NULL, pad;
+		int rsa_outlen = 0;
+
+		switch(mech) {
+		case CKM_RSA_PKCS:
+		 	pad = RSA_PKCS1_PADDING;
+		 	break;
+		 case CKM_RSA_X_509:
+		 	pad = RSA_NO_PADDING;
+		 	break;
+		 default:
+		 	return CKR_ARGUMENTS_BAD;
+		 }
+
+		rsa = EVP_PKEY_get1_RSA(pkey);
+		EVP_PKEY_free(pkey);
+		if (rsa == NULL)
+			return CKR_DEVICE_MEMORY;
+
+		rsa_out = (unsigned char *) malloc(RSA_size(rsa));
+		if (rsa_out == NULL) {
+			free(rsa);
+			return CKR_DEVICE_MEMORY;
+		}
+		
+		rsa_outlen = RSA_public_decrypt(signat_len, signat, rsa_out, rsa, pad);
+		RSA_free(rsa);
+		if(rsa_outlen <= 0) {
+			free(rsa_out);
+			return CKR_GENERAL_ERROR;
+		}
+
+		if (rsa_outlen == data_len && memcmp(rsa_out, data, data_len) == 0)
+			rv = CKR_OK;
+		else
+			rv = CKR_SIGNATURE_INVALID;
+
+		free(rsa_out);
+	}
+
+	return rv;
+}
 #endif
