@@ -1538,11 +1538,17 @@ do_get_and_verify_secret(struct sc_profile *pro, struct sc_card *card,
 
 	ident = "authentication data";
 	if (type == SC_AC_CHV) {
+		sc_pkcs15_object_t *pin_obj;
+
 		ident = "PIN";
 		memset(&pin_info, 0, sizeof(pin_info));
-		if (sc_profile_get_pin_id(pro, reference, &pin_id) >= 0)
+		if (sc_profile_get_pin_id(pro, reference, &pin_id) >= 0) {
 			sc_profile_get_pin_info(pro, pin_id, &pin_info);
-		else {
+		} else
+		if (pro->p15_card
+		 && sc_pkcs15_find_pin_by_reference(pro->p15_card, reference, &pin_obj) == 0) {
+			memcpy(&pin_info, pin_obj->data, sizeof(pin_info));
+		} else {
 			/* This is all info we have */
 			pin_info.reference = reference;
 		}
