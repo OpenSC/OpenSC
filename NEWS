@@ -1,5 +1,11 @@
 NEWS for OpenSC -- History of user visible changes
 
+New in 0.6.1; 2002-03-20; Juha Yrjölä:
+* Fixed certificate downloading in pkcs15-init
+* Improved PKCS #11 module, so it works with Mozilla 0.9.9 and
+  is capable of signing and decrypting mails in Netscape
+* Other various small fixes and improvements
+
 New in 0.6.0; 2002-03-13; Juha Yrjölä:
 * Many, many new features -- too many to list here
 * New cards supported: Gemplus GPK family, TCOS 2.0, MioCOS
