@@ -79,6 +79,7 @@ static int	get_modulus(struct sc_pkcs15_pubkey_rsa *,
 					CK_ATTRIBUTE_PTR);
 static int	get_modulus_bits(struct sc_pkcs15_pubkey_rsa *,
 					CK_ATTRIBUTE_PTR);
+static int	asn1_sequence_wrapper(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 
 /* PKCS#15 Framework */
 
@@ -526,13 +527,13 @@ CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 		 memcpy(attr->pValue, cert->certificate->serial, cert->certificate->serial_len);
 		 break;
 	case CKA_SUBJECT:
-		 check_attribute_buffer(attr, cert->certificate->subject_len);
-		 memcpy(attr->pValue, cert->certificate->subject, cert->certificate->subject_len);
-		 break;
+		 return asn1_sequence_wrapper(cert->certificate->subject,
+				 cert->certificate->subject_len,
+				 attr);
 	case CKA_ISSUER:
-		 check_attribute_buffer(attr, cert->certificate->issuer_len);
-		 memcpy(attr->pValue, cert->certificate->issuer, cert->certificate->issuer_len);
-		 break;
+		 return asn1_sequence_wrapper(cert->certificate->issuer,
+				 cert->certificate->issuer_len,
+				 attr);
 	default:
                 return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
@@ -968,5 +969,31 @@ get_public_exponent(struct sc_pkcs15_pubkey_rsa *key, CK_ATTRIBUTE_PTR attr)
 	}
 	check_attribute_buffer(attr, n);
 	memcpy(attr->pValue, exponent, n);
+	return CKR_OK;
+}
+
+static int
+asn1_sequence_wrapper(const u8 *data, size_t len, CK_ATTRIBUTE_PTR attr)
+{
+	u8		*dest;
+	unsigned int	n;
+
+	check_attribute_buffer(attr, len + 1 + sizeof(len));
+
+	dest = attr->pValue;
+	*dest++ = 0x30;	/* SEQUENCE tag */
+	if (len <= 127) {
+		*dest++ = len;
+	} else {
+		for (n = 4; (len & 0xFF000000) == 0; n--)
+			len <<= 8;
+		*dest++ = 0x80 + n;
+		while (n--) {
+			*dest++ = len >> 24;
+			len <<= 8;
+		}
+	}
+	memcpy(dest, data, len);
+	attr->ulValueLen = (dest - (u8 *) attr->pValue) + len;
 	return CKR_OK;
 }
