@@ -299,7 +299,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 				location where PC/SC Lite is installed like
 				this:
 				<screen>
-$ cd opensc-0.8.0
+$ cd opensc-&lt;version>
 $ ./configure --with-pcsclite=/path/to/pcsclite
 				</screen>
 			</para>
@@ -338,7 +338,7 @@ $ ./configure --with-pcsclite=/path/to/pcsclite
 				the location where OpenCT is installed like
 				this:
 				<screen>
-$ cd opensc-0.8.0
+$ cd opensc-&lt;version>
 $ ./configure --with-openct=/path/to/openct
 				</screen>
 			</para>
@@ -360,7 +360,7 @@ $ ./configure --with-openct=/path/to/openct
 				If you still want to use OpenSC with Usbtoken,
 				please configure OpenSC like this:
 				<screen>
-$ cd opensc-0.8.0
+$ cd opensc-&lt;version>
 $ ./configure --enable-usbtoken
 				</screen>
 			</para>
