@@ -51,6 +51,11 @@ int ask_and_verify_pin(struct sc_pkcs15_object *obj)
 	u8 *pass;
 
 	pin = (struct sc_pkcs15_pin_info *) obj->data;
+	if (pin->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) {
+		printf("Skipping unblocking pin [%s]\n", obj->label);
+		return 0;
+	}
+
 	while (1) {
 		sprintf(prompt, "Please enter PIN code [%s]: ", obj->label);
 		pass = (u8 *) getpass(prompt);
