@@ -789,7 +789,6 @@ PCSC_MSG=no
 pcsc_path=/usr
 AC_SUBST(CFLAGS_PCSC)
 AC_SUBST(LIBPCSC)
-found_pcsclite=no
 saved_LIBS="$LIBS"
 saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
@@ -800,10 +799,10 @@ AC_ARG_WITH(pcsclite,
 if test "$pcsc_path" != "no"; then
 	AC_MSG_CHECKING(for PC/SC-Lite support)
 	for pcscdir in /pcsc ""; do
-		LDFLAGS="$saved_LDFLAGS"
 		CPPFLAGS="$saved_CPPFLAGS"
-		CFLAGS_PCSC=
+		LDFLAGS="$saved_LDFLAGS"
 		LIBS="-lpcsclite $saved_LIBS"
+		CFLAGS_PCSC=""
 
 		for pcsc_libdir in $pcsc_path/lib$pcscdir \
 			      $pcsc_path$pcscdir/lib \
@@ -836,8 +835,14 @@ if test "$pcsc_path" != "no"; then
 		CPPFLAGS="$saved_CPPFLAGS"
 		LDFLAGS="$saved_LDFLAGS"
 		LIBS="$saved_LIBS"
+		CFLAGS_PCSC=""
 	done
 	AC_MSG_RESULT($PCSC_MSG)
+	if test "x$PCSC_MSG" = "xyes" ; then
+		LIBPCSC="-lpcsclite"
+		CPPFLAGS="$saved_CPPFLAGS"
+		LIBS="$saved_LIBS"
+	fi
 fi
 AM_CONDITIONAL(HAVE_PCSCLITE, test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes")
 
