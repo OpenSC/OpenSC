@@ -240,7 +240,11 @@ saved_CPPFLAGS="$CPPFLAGS"
 AC_SUBST(LIBCRYPTO)
 AC_SUBST(ENGINE_LINK)
 AC_CACHE_CHECK([for OpenSSL directory], ac_cv_openssldir, [
-	for ssldir in $tryssldir $trycommondir /usr /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl ; do
+	if test "x$tryssldir" = "x" ; then
+		tryssldir="$trycommandir /usr/ /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl"
+	fi
+
+	for ssldir in $tryssldir ; do
 		# Skip empty variables
 		if test -z "$ssldir"; then
 			continue;
@@ -324,7 +328,7 @@ int main(void)
 		if test "x$GOOD_OPENSSL" == "xyes" 
 		then
 			# engine has to be there and working
-			LIBS="$saved_LIBS $LIBCRYPTO"
+			LIBS="$saved_LIBS $LIBCRYPTO $LIBDL"
 			AC_TRY_RUN(
 			[
 #include <string.h>
@@ -402,6 +406,11 @@ LIBS="$saved_LIBS"
 
 if test "x$SSL_MSG" = "xyes" ; then
   AC_DEFINE(HAVE_OPENSSL, 1, [Have OpenSSL libraries])
+  LDFLAGS="-L$ac_cv_openssldir/lib $LDFLAGS"
+  if test ! -z "$need_dash_r" ; then
+       LDFLAGS="-R$ac_cv_openssldir/lib $LDFLAGS"
+  fi
+  CPPFLAGS="-I$ac_cv_openssldir/include $saved_CPPFLAGS"
 else
   LIBCRYPTO=""
   LIBCRYPTOA=""
