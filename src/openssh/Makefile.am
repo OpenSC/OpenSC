@@ -5,8 +5,6 @@ MAINTAINERCLEANFILES = Makefile.in
 INCLUDES = @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBCRYPTO@ @LIBOPENSC@
 
-EXTRA_DIST = openssh-3.0.2p1-patch.diff
-
 if HAVE_SSL
 bin_PROGRAMS = opensc-ssh
 endif
