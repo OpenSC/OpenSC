@@ -33,5 +33,6 @@ libopensc_la_LDFLAGS	= -version-info 0:6:0
 libopensc_la_LIBADD	= @LIBDL@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF)
 
 include_HEADERS		= opensc.h pkcs15.h emv.h \
-		   	  cardctl.h asn1.h log.h
+			  errors.h types.h \
+			  cardctl.h asn1.h log.h
 noinst_HEADERS		= ctbcs.h internal.h
