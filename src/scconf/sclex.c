@@ -125,7 +125,7 @@ static int scconf_lex_engine(scconf_parser * parser, BUFHAN * bp)
 		switch (this_char = buf_nextch(bp)) {
 		case '#':
 			/* comment till end of line */
-			buf_eat_till(bp, '#', "\n");
+			buf_eat_till(bp, '#', "\r\n");
 			scconf_parse_token(parser, TOKEN_TYPE_COMMENT, bp->buf);
 			buf_zero(bp);
 			continue;
@@ -134,6 +134,7 @@ static int scconf_lex_engine(scconf_parser * parser, BUFHAN * bp)
 			continue;
 		case ' ':
 		case '\t':
+		case '\r':
 			/* eat up whitespace */
 			continue;
 		case ',':
@@ -146,7 +147,7 @@ static int scconf_lex_engine(scconf_parser * parser, BUFHAN * bp)
 			buf_zero(bp);
 			continue;
 		case '"':
-			buf_eat_till(bp, (char) this_char, "\"\n");
+			buf_eat_till(bp, (char) this_char, "\"\r\n");
 			buf_addch(bp, (char) buf_nextch(bp));
 			scconf_parse_token(parser, TOKEN_TYPE_STRING, bp->buf);
 			buf_zero(bp);
@@ -154,7 +155,7 @@ static int scconf_lex_engine(scconf_parser * parser, BUFHAN * bp)
 		case EOF:
 			break;
 		default:
-			buf_eat_till(bp, (char) this_char, ";,{}= \t\n");
+			buf_eat_till(bp, (char) this_char, ";,{}= \t\r\n");
 			scconf_parse_token(parser, TOKEN_TYPE_STRING, bp->buf);
 			buf_zero(bp);
 			continue;
