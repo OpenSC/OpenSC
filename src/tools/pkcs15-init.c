@@ -344,7 +344,12 @@ do_store_private_key(struct sc_profile *profile)
 	if (r < 0)
 		goto failed;
 
-	/* XXX: store public key as well */
+	/* Always store public key as well.
+	 * XXX allow caller to turn this off? */
+	r = sc_pkcs15init_store_public_key(p15card, profile, &args);
+	if (r < 0)
+		goto failed;
+
 	return 0;
 
 failed:	error("Failed to store private key: %s\n", sc_strerror(r));
