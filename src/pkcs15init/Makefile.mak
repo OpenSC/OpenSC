@@ -2,7 +2,7 @@ TOPDIR = ..\..
 
 TARGET = pkcs15init.lib
 
-HEADERS = pkcs15-init.h
+HEADERS = pkcs15-init.h keycache.h
 HEADERSDIR = $(TOPDIR)\src\include\opensc
 
 OBJECTS = profile.obj pkcs15-lib.obj keycache.obj \
