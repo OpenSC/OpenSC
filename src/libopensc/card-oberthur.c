@@ -32,11 +32,20 @@
 #include <ctype.h>
 
 #include <openssl/des.h>
+#include <openssl/opensslv.h>
 
 #include "log.h"
 #include "pkcs15.h"
 
 #include "card-oberthur.h"
+
+/* keep OpenSSL 0.9.6 users happy ;-) */
+#if OPENSSL_VERSION_NUMBER < 0x00907000L
+#define DES_cblock			des_cblock
+#define DES_key_schedule		des_key_schedule
+#define DES_set_key_unchecked(a,b)	des_set_key_unchecked(a,*b)
+#define DES_ecb_encrypt(a,b,c,d) 	des_ecb_encrypt(a,b,*c,d)
+#endif
 
 NTLV_t oberthur_atrs[] = {
 	/* not jet supported
