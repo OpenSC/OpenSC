@@ -76,16 +76,21 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 	len = *p & 0x7f;
 	if (*p++ & 0x80) {
 		unsigned int a = 0;
-		if (len > 4) {
+		if (len > 4 || len > left) {
 			fprintf(stderr, "ASN.1 tag too long!\n");
 			goto error;
 		}
+		left -= len;
 		for (i = 0; i < len; i++) {
 			a <<= 8;
 			a |= *p;
 			p++;
 		}
 		len = a;
+	}
+	if (len > left) {
+		fprintf(stderr, "ASN.1 value too long!\n");
+		goto error;
 	}
 	*cla_out = cla;
 	*tag_out = tag;
@@ -311,8 +316,7 @@ const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 		buf = p;
 		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != 1)
 			return NULL;
-		if (left < (p - buf))
-			return NULL;
+		assert(left >= (p - buf)); /* should not happen */
 		left -= (p - buf);
 		if ((tag | cla) == tag_in) {
 			if (taglen > left)
@@ -320,6 +324,7 @@ const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 			*taglen_in = taglen;
 			return p;
 		}
+		assert(left >= taglen); /* should not happen */
 		left -= taglen;
 		p += taglen;
 	}
