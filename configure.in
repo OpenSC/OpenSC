@@ -925,8 +925,8 @@ if test "x$exec_prefix" = xNONE; then
 fi
 
 dnl Enable/disable debugging messages.
-AC_ARG_ENABLE(debug, 
-	AC_HELP_STRING([--enable-debug], [enable debug messages. [[default=no]]]), 
+AC_ARG_ENABLE(debug,
+	AC_HELP_STRING([--enable-debug], [enable debug messages. [[default=no]]]),
 	AC_DEFINE(DEBUG, 1, [Enable debug messages.]))
 
 CPPFLAGS="-I\${top_builddir}/src/include $CPPFLAGS"
