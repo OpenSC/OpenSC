@@ -274,6 +274,8 @@ struct sc_pkcs15_object {
 
 	struct sc_pkcs15_df *df; /* can be NULL, if object is 'floating' */
 	struct sc_pkcs15_object *next, *prev; /* used only internally */
+	
+	struct sc_pkcs15_der der;
 };
 typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 

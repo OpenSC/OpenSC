@@ -770,6 +770,8 @@ void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
 		obj->next->prev = obj->prev;
 	if (obj->data)
 		free(obj->data);
+	if (obj->der.value)
+		free(obj->der.value);
 	free(obj);
 }
 
@@ -908,12 +910,16 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 					&buf, &bufsize, &df->file);
 	p = buf;
 	do {
+		const u8 *oldp;
+		size_t obj_len;
+		
 		obj = (struct sc_pkcs15_object *) malloc(sizeof(struct sc_pkcs15_object));
 		if (obj == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto ret;
 		}
 		memset(obj, 0, sizeof(struct sc_pkcs15_object));
+		oldp = p;
 		r = func(p15card, obj, &p, &bufsize);
 		if (r) {
 			free(obj);
@@ -922,6 +928,16 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 			sc_perror(ctx, r, "Error decoding DF entry");
 			goto ret;
 		}
+		obj_len = p - oldp;
+
+		obj->der.value = malloc(obj_len);
+		if (obj->der.value == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto ret;
+		}
+		memcpy(obj->der.value, oldp, obj_len);
+		obj->der.len = obj_len;
+
 		obj->df = df;
 		r = sc_pkcs15_add_object(p15card, obj);
 		if (r) {
