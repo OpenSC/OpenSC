@@ -311,6 +311,8 @@ const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 		buf = p;
 		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != 1)
 			return NULL;
+		if (left < (p - buf))
+			return NULL;
 		left -= (p - buf);
 		if ((tag | cla) == tag_in) {
 			if (taglen > left)
