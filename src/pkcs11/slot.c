@@ -31,6 +31,8 @@ static struct sc_pkcs11_framework_ops *frameworks[] = {
 	NULL
 };
 
+static unsigned int first_free_slot = 0;
+
 static void init_slot_info(CK_SLOT_INFO_PTR pInfo)
 {
 	strcpy_bp(pInfo->slotDescription, "Virtual slot", 64);
@@ -44,19 +46,49 @@ static void init_slot_info(CK_SLOT_INFO_PTR pInfo)
 
 CK_RV card_initialize(int reader)
 {
-	memset(&card_table[reader], 0, sizeof(struct sc_pkcs11_card));
-	card_table[reader].reader = reader;
+	struct sc_pkcs11_card *card = card_table + reader;
+	unsigned int avail;
+
+	if (reader < 0 || reader >= SC_PKCS11_MAX_READERS)
+		return CKR_FUNCTION_FAILED;
+
+	memset(card, 0, sizeof(struct sc_pkcs11_card));
+	card->reader = reader;
+
+	/* Always allocate a fixed slot range to one reader/card.
+	 * Some applications get confused if readers pop up in
+	 * different slots. */
+	if (sc_pkcs11_conf.num_slots == 0)
+		avail = SC_PKCS11_DEF_SLOTS_PER_CARD;
+	else
+		avail = sc_pkcs11_conf.num_slots;
+
+	if (first_free_slot + avail > SC_PKCS11_MAX_VIRTUAL_SLOTS)
+		avail = SC_PKCS11_MAX_VIRTUAL_SLOTS - first_free_slot;
+	card->first_slot = first_free_slot;
+	card->max_slots = avail;
+	card->num_slots = 0;
+
+	first_free_slot += card->max_slots;
         return CKR_OK;
 }
 
 static CK_RV card_detect(int reader)
 {
-	struct sc_pkcs11_card *card;
+	struct sc_pkcs11_card *card = &card_table[reader];
         int rc, rv, i, retry = 1;
 
         rv = CKR_OK;
 
 	debug(context, "%d: Detecting SmartCard\n", reader);
+	for (i = card->max_slots; i--; ) {
+		struct sc_pkcs11_slot *slot;
+
+		slot = virtual_slots + card->first_slot + i;
+		strcpy_bp(slot->slot_info.slotDescription,
+				context->reader[reader]->name, 64);
+	}
+
 
 	/* Check if someone inserted a card */
 again:	rc = sc_detect_card_presence(context->reader[reader], 0);
@@ -84,24 +116,16 @@ again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 	}
 
 	/* Detect the card if it's not known already */
-	if (card_table[reader].card == NULL) {
+	if (card->card == NULL) {
 		debug(context, "%d: Connecting to SmartCard\n", reader);
-		rc = sc_connect_card(context->reader[reader], 0, &card_table[reader].card);
+		rc = sc_connect_card(context->reader[reader], 0, &card->card);
 		if (rc != SC_SUCCESS)
 			return sc_to_cryptoki_error(rc, reader);
 	}
 
 	/* Detect the framework */
-	if (card_table[reader].framework == NULL) {
+	if (card->framework == NULL) {
 		debug(context, "%d: Detecting Framework\n", reader);
-
-		card = &card_table[reader];
-
-		if (sc_pkcs11_conf.num_slots == 0)
-			card->max_slots = SC_PKCS11_DEF_SLOTS_PER_CARD;
-		else
-			card->max_slots = sc_pkcs11_conf.num_slots;
-		card->num_slots = 0;
 
 		for (i = 0; frameworks[i]; i++) {
 			if (frameworks[i]->bind == NULL)
@@ -120,7 +144,7 @@ again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 		if (rv != CKR_OK)
                         return rv;
 
-		card_table[reader].framework = frameworks[i];
+		card->framework = frameworks[i];
 	}
 
 	debug(context, "%d: Detection ended\n", reader);
@@ -163,6 +187,10 @@ CK_RV card_removed(int reader)
                         slot_token_removed(i);
 	}
 
+	/* beware - do not clean the entire sc_pkcs11_card struct;
+	 * fields such as first_slot and max_slots are initialized
+	 * _once_ and need to be left untouched across card removal/
+	 * insertion */
 	card = &card_table[reader];
 	if (card->framework)
 		card->framework->unbind(card);
@@ -189,20 +217,20 @@ CK_RV slot_initialize(int id, struct sc_pkcs11_slot *slot)
 
 CK_RV slot_allocate(struct sc_pkcs11_slot **slot, struct sc_pkcs11_card *card)
 {
-        int i;
+	unsigned int i, first, last;
 
 	if (card->num_slots >= card->max_slots)
 		return CKR_FUNCTION_FAILED;
+	first = card->first_slot;
+	last  = first + card->max_slots;
 
-	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++) {
+	for (i = first; i < last; i++) {
 		if (!virtual_slots[i].card) {
 			debug(context, "Allocated slot %d\n", i);
 
                         virtual_slots[i].card = card;
                         virtual_slots[i].events = SC_EVENT_CARD_INSERTED;
 			*slot = &virtual_slots[i];
-			strcpy_bp((*slot)->slot_info.slotDescription,
-				card->card->reader->name, 64);
 			card->num_slots++;
 			return CKR_OK;
 		}
@@ -259,8 +287,11 @@ CK_RV slot_token_removed(int id)
 	}
 
 	/* Release framework stuff */
-	if (slot->card != NULL && slot->fw_data != NULL)
-		slot->card->framework->release_token(slot->card, slot->fw_data);
+	if (slot->card != NULL) {
+		if (slot->fw_data != NULL)
+			slot->card->framework->release_token(slot->card, slot->fw_data);
+		slot->card->num_slots--;
+	}
 
         /* Zap everything else */
 	memset(slot, 0, sizeof(*slot));

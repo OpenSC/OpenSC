@@ -170,6 +170,7 @@ struct sc_pkcs11_card {
 	/* Number of slots owned by this card object */
 	unsigned int num_slots;
 	unsigned int max_slots;
+	unsigned int first_slot;
 
 	/* List of supported mechanisms */
 	struct sc_pkcs11_mechanism_type **mechanisms;
