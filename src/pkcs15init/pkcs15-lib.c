@@ -474,10 +474,9 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		r = profile->ops->create_dir(profile, card, df);
 
 		/* Set the SO PIN */
-		if (r >= 0 && args->so_pin_len) {
+		if (r >= 0 && pin_obj) {
 			r = profile->ops->create_pin(profile, card,
-					df,
-				       	pin_obj? (sc_pkcs15_pin_info_t *) pin_obj->data : NULL,
+					df, pin_obj,
 					args->so_pin, args->so_pin_len,
 					args->so_puk, args->so_puk_len);
 		}
@@ -682,7 +681,7 @@ sc_pkcs15init_create_pin(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 		pin_info->flags |= SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED;
 
 	r = profile->ops->create_pin(profile, card,
-			df, pin_info,
+			df, pin_obj,
 			args->pin, args->pin_len,
 			args->puk, args->puk_len);
 

@@ -188,10 +188,11 @@ etoken_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
  */
 static int
 etoken_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
-		sc_pkcs15_pin_info_t *pin_info,
+		sc_pkcs15_object_t *pin_obj,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
 {
+	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
 	unsigned int	puk_id = ETOKEN_AC_NEVER;
 	int		r;
 

@@ -175,12 +175,13 @@ cflex_select_pin_reference(sc_profile_t *profike, sc_card_t *card,
  */
 static int
 cflex_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
-		sc_pkcs15_pin_info_t *pin_info,
+		sc_pkcs15_object_t *pin_obj,
 		const unsigned char *pin, size_t pin_len,
 		const unsigned char *puk, size_t puk_len)
 {
-	sc_file_t *dummies[2];
-	int	ndummies, pin_type, puk_type, r;
+	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	sc_file_t	*dummies[2];
+	int		ndummies, pin_type, puk_type, r;
 
 	/* If the profile doesn't specify a reference for this PIN, guess */
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {

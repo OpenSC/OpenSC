@@ -52,7 +52,7 @@ struct sc_pkcs15init_operations {
 	 * the caller needs to adjust it.
 	 */
 	int	(*create_pin)(sc_profile_t *, sc_card_t *, sc_file_t *,
-			struct sc_pkcs15_pin_info *,
+			sc_pkcs15_object_t *,
 			const unsigned char *pin, size_t pin_len,
 			const unsigned char *puk, size_t puk_len);
 
