@@ -4,6 +4,7 @@
  * Copyright (C) 2002, Olaf Kirch <okir@lst.de>
  */
 
+#include <string.h>
 #include "pkcs11-internal.h"
 
 static int	pkcs11_find_certs(PKCS11_TOKEN *);

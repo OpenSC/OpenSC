@@ -8,6 +8,7 @@
  */
 
 #include <assert.h>
+#include <string.h>
 #include "pkcs11-internal.h"
 
 static int	pkcs11_getattr_int(PKCS11_CTX *, CK_SESSION_HANDLE,

@@ -55,6 +55,7 @@
  *
  */
 
+#include <string.h>
 #include "pkcs11-internal.h"
 
 static int	pkcs11_find_keys(PKCS11_TOKEN *, unsigned int);

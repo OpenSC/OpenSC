@@ -55,6 +55,7 @@
  *
  */
 
+#include <string.h>
 #include <openssl/crypto.h>
 #include "pkcs11-internal.h"
 

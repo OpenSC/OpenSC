@@ -60,6 +60,7 @@
  * PKCS11 token
  */
 
+#include <string.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 
