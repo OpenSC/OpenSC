@@ -4,6 +4,8 @@ INCLUDES = -I$(top_srcdir)/src/libopensc
 LDFLAGS = @LDFLAGS@ @LIBCRYPTO@ \
 	$(top_srcdir)/src/libopensc/libopensc.la
 
+EXTRA_DIST = openssh-3.0.2p1-patch.diff
+
 bin_PROGRAMS = opensc-ssh
 
 opensc_ssh_SOURCES = opensc-ssh.c

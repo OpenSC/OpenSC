@@ -7,11 +7,12 @@ LDFLAGS = @LDFLAGS@ \
 noinst_PROGRAMS = base64 hst-test lottery p15dump \
 		  pintest prngtest
 
-COMMON_SRC = sc-test.c
+SRC = sc-test.c
+INC = sc-test.h
 
-base64_SOURCES = base64.c $(COMMON_SRC)
-hst_test_SOURCES = hst-test.c $(COMMON_SRC)
-lottery_SOURCES = lottery.c $(COMMON_SRC)
-p15dump_SOURCES = p15dump.c $(COMMON_SRC)
-pintest_SOURCES = pintest.c $(COMMON_SRC)
-prngtest_SOURCES = prngtest.c $(COMMON_SRC)
+base64_SOURCES = base64.c $(SRC) $(INC)
+hst_test_SOURCES = hst-test.c $(SRC) $(INC)
+lottery_SOURCES = lottery.c $(SRC) $(INC)
+p15dump_SOURCES = p15dump.c $(SRC) $(INC)
+pintest_SOURCES = pintest.c $(SRC) $(INC)
+prngtest_SOURCES = prngtest.c $(SRC) $(INC)
