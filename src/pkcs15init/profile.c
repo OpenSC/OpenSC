@@ -52,7 +52,6 @@
 struct state {
 	struct state *		frame;
 	const char *		filename;
-	const char *		option;
 	struct sc_profile *	profile;
 	struct file_info *	file;
 	struct pin_info *	pin;
@@ -188,8 +187,7 @@ typedef struct file_info file_info;
 typedef struct auth_info auth_info;
 
 static const char *	sc_profile_locate(const char *);
-static int		process_conf(struct sc_profile *, scconf_context *,
-				const char *);
+static int		process_conf(struct sc_profile *, scconf_context *);
 static int		process_block(struct state *, struct block *,
 				const char *, scconf_block *);
 static void		init_state(struct state *, struct state *);
@@ -278,8 +276,7 @@ sc_profile_new()
 }
 
 int
-sc_profile_load(struct sc_profile *profile, const char *filename,
-		const char *option)
+sc_profile_load(struct sc_profile *profile, const char *filename)
 {
 	scconf_context	*conf;
 	int		res = 0;
@@ -293,7 +290,7 @@ sc_profile_load(struct sc_profile *profile, const char *filename,
 	if (res == 0)
 		return SC_ERROR_SYNTAX_ERROR;
 
-	res = process_conf(profile, conf, option);
+	res = process_conf(profile, conf);
 	scconf_free(conf);
 	return res;
 }
@@ -700,14 +697,33 @@ do_card_manufacturer(struct state *cur, int argc, char **argv)
 }
 
 /*
+ * Command related to the pkcs15 we generate
+ */
+static int
+do_direct_certificates(struct state *cur, int argc, char **argv)
+{
+	return get_bool(cur, argv[0], &cur->profile->pkcs15.direct_certificates);
+}
+
+static int
+do_encode_df_length(struct state *cur, int argc, char **argv)
+{
+	return get_bool(cur, argv[0], &cur->profile->pkcs15.encode_df_length);
+}
+
+/*
  * Process an option block
  */
 static int
 process_option(struct state *cur, struct block *info,
 		const char *name, scconf_block *blk)
 {
-	if (strcmp("default", name)
-	 && strcmp(cur->option, name))
+	sc_profile_t	*profile = cur->profile;
+	int		match = 0, i;
+
+	for (i = 0; profile->options[i]; i++)
+		match |= !strcmp(profile->options[i], name);
+	if (!match && strcmp("default", name))
 		return 0;
 	return process_block(cur, info, name, blk);
 }
@@ -1394,12 +1410,22 @@ static struct command	pi_commands[] = {
  { NULL, 0, 0, NULL }
 };
 
+/*
+ * pkcs15 dialect section
+ */
+static struct command	p15_commands[] = {
+ { "direct-certificates", 1,	1,	do_direct_certificates },
+ { "encode-df-length",	1,	1,	do_encode_df_length },
+ { NULL, 0, 0, NULL }
+};
+
 static struct block	root_blocks[] = {
  { "filesystem",	process_block,	NULL,		fs_blocks },
  { "cardinfo",		process_block,	ci_commands,	ci_blocks },
  { "pin",		process_pin,	pi_commands,	NULL	},
  { "option",		process_option,	NULL,		root_blocks },
  { "macros",		process_macros,	NULL,		NULL	},
+ { "pkcs15",		process_block,	p15_commands,	NULL	},
 
  { NULL, NULL , NULL }
 };
@@ -1559,15 +1585,13 @@ process_block(struct state *cur, struct block *info,
 }
 
 static int
-process_conf(struct sc_profile *profile, scconf_context *conf,
-		const char *option)
+process_conf(struct sc_profile *profile, scconf_context *conf)
 {
 	struct state	state;
 
 	memset(&state, 0, sizeof(state));
 	state.filename = conf->filename;
 	state.profile = profile;
-	state.option = option? option : "default";
 	return process_block(&state, &root_ops, "root", conf->root);
 }
 

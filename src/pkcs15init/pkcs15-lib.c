@@ -57,6 +57,11 @@
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
 
+#define OPENSC_INFO_PATH		"3F002F01"
+#define OPENSC_INFO_FILEID		0x2F01
+#define OPENSC_INFO_TAG_PROFILE		0x01
+#define OPENSC_INFO_TAG_OPTION		0x02
+
 /* Default ID for new key/pin */
 #define DEFAULT_ID			0x45
 #define DEFAULT_PIN_FLAGS		0x03
@@ -114,6 +119,9 @@ static int	sc_pkcs15init_get_pin_path(sc_pkcs15_card_t *,
 static int	sc_pkcs15init_qualify_pin(sc_card_t *, const char *,
 	       		unsigned int, sc_pkcs15_pin_info_t *);
 static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *, int);
+static int	sc_pkcs15init_read_info(sc_card_t *card, sc_profile_t *);
+static int	sc_pkcs15init_parse_info(sc_card_t *, const u8 *, size_t, sc_profile_t *);
+static int	sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *);
 
 static struct profile_operations {
 	char *name;
@@ -141,7 +149,8 @@ sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *cb)
 	callbacks.get_key = cb? cb->get_key : NULL;
 }
 
-/* Returns 1 if the a profile was found in the card's card_driver block
+/*
+ * Returns 1 if the a profile was found in the card's card_driver block
  * in the config file, or 0 otherwise.
  */
 static int
@@ -183,9 +192,7 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 	struct sc_profile *profile;
 	struct sc_pkcs15init_operations * (* func)(void) = NULL;
 	const char	*driver = card->driver->short_name;
-	char		main_profile[128],
-			card_profile[PATH_MAX],
-			*option = "default";
+	char		card_profile[PATH_MAX];
 	int		r, i;
 
 	/* Put the card into administrative mode */
@@ -211,15 +218,24 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	/* Massage the main profile name to see if there's
-	 * an option in there
+	/* Massage the main profile name to see if there are
+	 * any options in there
 	 */
-	if (strchr(name, '+') != NULL) {
-		strncpy(main_profile, name, sizeof(main_profile)-1);
-		main_profile[sizeof(main_profile)-1] = '\0';
-		name = main_profile;
-		if ((option = strchr(main_profile, '+')) != NULL)
-			*option++ = '\0';
+	profile->name = strdup(name);
+	if (strchr(profile->name, '+') != NULL) {
+		char	*s;
+		int	i = 0;
+
+		(void) strtok(profile->name, "+");
+		while ((s = strtok(NULL, "+")) != NULL) {
+			if (i < SC_PKCS15INIT_MAX_OPTIONS-1)
+				profile->options[i++] = strdup(s);
+		}
+	}
+
+	if ((r = sc_pkcs15init_read_info(card, profile)) < 0) {
+		sc_profile_free(profile);
+		return r;
 	}
 
 	/* Check the config file for a profile name. 
@@ -228,12 +244,10 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 	if (!get_profile_from_config(card, card_profile, sizeof(card_profile)))
 		strcpy(card_profile, driver);
 
-	if ((r = sc_profile_load(profile, name, option)) < 0
-	 || (r = sc_profile_load(profile, card_profile, option)) < 0
+	if ((r = sc_profile_load(profile, profile->name)) < 0
+	 || (r = sc_profile_load(profile, card_profile)) < 0
 	 || (r = sc_profile_finish(profile)) < 0) {
-		fprintf(stderr,
-			"Failed to load profile: %s\n",
-			sc_strerror(r));
+		sc_error(card->ctx, "Failed to load profile: %s\n", sc_strerror(r));
 		sc_profile_free(profile);
 		return r;
 	}
@@ -542,6 +556,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	if (r >= 0)
 		r = sc_pkcs15init_update_tokeninfo(p15spec, profile);
 
+	sc_pkcs15init_write_info(card, profile);
 	return r;
 }
 
@@ -1279,8 +1294,13 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	cert_info->id = args->id;
 	cert_info->authority = args->authority;
 
-	r = sc_pkcs15init_store_data(p15card, profile, object, &args->id,
-			&args->der_encoded, &cert_info->path);
+	if (profile->pkcs15.direct_certificates) {
+		sc_der_copy(&cert_info->value, &args->der_encoded);
+	} else {
+		r = sc_pkcs15init_store_data(p15card, profile,
+				object, &args->id,
+				&args->der_encoded, &cert_info->path);
+	}
 
 	/* Now update the CDF */
 	if (r >= 0)
@@ -1882,6 +1902,7 @@ sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card,
 	size_t		size;
 	int		r;
 
+	sc_debug(card->ctx, "called\n");
 	r = sc_pkcs15_encode_odf(card->ctx, p15card, &buf, &size);
 	if (r >= 0)
 		r = sc_pkcs15init_update_file(profile, card,
@@ -1891,6 +1912,9 @@ sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card,
 	return r;
 }
 
+/*
+ * Add an object to one of the pkcs15 directory files.
+ */
 static int
 sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
@@ -1903,6 +1927,8 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 	u8		*buf = NULL;
 	size_t		bufsize;
 	int		update_odf = 0, r = 0;
+
+	sc_debug(card->ctx, "called, DF %u obj %p\n", df_type, object);
 
 	df = find_df_by_type(p15card, df_type);
 	if (df == NULL) {
@@ -1942,6 +1968,20 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 	if (r >= 0) {
 		r = sc_pkcs15init_update_file(profile, card,
 				file, buf, bufsize);
+		/* For better performance and robustness, we want
+		 * to note which portion of the file actually
+		 * contains valid data.
+		 *
+		 * This is paticularly useful if we store certificates
+		 * directly in the CDF - we may want to make the CDF
+		 * fairly big, without having to read the entire file
+		 * every time we parse the CDF.
+		 */
+		if (profile->pkcs15.encode_df_length) {
+			df->path.count = bufsize;
+			df->path.index = 0;
+			update_odf = 1;
+		}
 		free(buf);
 	}
 	if (pfile)
@@ -2660,4 +2700,152 @@ sc_pkcs15init_qualify_pin(sc_card_t *card, const char *pin_name,
 	}
 
 	return 0;
+}
+
+/*
+ * Get the list of options from the card, if it specifies them
+ */
+static int
+sc_pkcs15init_read_info(sc_card_t *card, sc_profile_t *profile)
+{
+	sc_path_t	path;
+	sc_file_t	*file = NULL;
+	u8		*mem = NULL;
+	size_t		len = 0;
+	int		r;
+
+	card->ctx->suppress_errors++;
+	sc_format_path(OPENSC_INFO_PATH, &path);
+	if ((r = sc_select_file(card, &path, &file)) >= 0) {
+		len = file->size;
+		sc_file_free(file);
+		r = SC_ERROR_OUT_OF_MEMORY;
+		if ((mem = (u8 *) malloc(file->size)) != NULL) {
+			r = sc_read_binary(card, 0, mem, len, 0);
+		}
+	} else {
+		r = 0;
+	}
+	card->ctx->suppress_errors--;
+
+	if (r >= 0)
+		r = sc_pkcs15init_parse_info(card, mem, len, profile);
+	if (mem)
+		free(mem);
+	return r;
+}
+
+static int
+set_info_string(char **strp, const u8 *p, size_t len)
+{
+	char	*s;
+
+	if (!(s = (char *) malloc(len)))
+		return SC_ERROR_OUT_OF_MEMORY;
+	memcpy(s, p, len);
+	s[len] = '\0';
+	if (*strp)
+		free(*strp);
+	*strp = s;
+	return 0;
+}
+
+/*
+ * Parse OpenSC Info file. We rudely clobber any information
+ * given on the command line.
+ */
+static int
+sc_pkcs15init_parse_info(sc_card_t *card,
+	       			const u8 *p, size_t len,
+				sc_profile_t *profile)
+{
+	u8		tag;
+       	const u8	*end;
+	unsigned int	nopts = 0;
+	size_t		n;
+
+	end = p + len;
+	while (p < end && (tag = *p++) != 0) {
+		int	r = 0;
+
+		if (p >= end || p + (n = *p++) > end)
+			goto error;
+
+		switch (tag) {
+		case OPENSC_INFO_TAG_PROFILE:
+			r = set_info_string(&profile->name, p, n);
+			if (r < 0)
+				return r;
+			break;
+		case OPENSC_INFO_TAG_OPTION:
+			if (nopts >= SC_PKCS15INIT_MAX_OPTIONS - 1) {
+				sc_error(card->ctx,
+					"Too many options in OpenSC Info file\n");
+				return SC_ERROR_PKCS15INIT;
+			}
+			r = set_info_string(&profile->options[nopts], p, n);
+			if (r < 0)
+				return r;
+			profile->options[++nopts] = NULL;
+			break;
+		default:
+			/* Unknown options ignored */ ;
+		}
+		p += n;
+	}
+	return 0;
+
+error:
+	sc_error(card->ctx, "OpenSC info file corrupted\n");
+	return SC_ERROR_PKCS15INIT;
+}
+
+static int
+do_encode_string(u8 **memp, u8 *end, u8 tag, const char *s)
+{
+	u8	*p = *memp;
+	int	n;
+
+	n = s? strlen(s) : 0;
+	if (n > 255)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	if (p + 2 + n > end)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	*p++ = tag;
+	*p++ = n;
+	memcpy(p, s, n);
+	*memp = p + n;
+	return 0;
+}
+
+int
+sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile)
+{
+	sc_file_t	*file = NULL;
+	u8		buffer[512], *p, *end;
+	int		n, r;
+
+	card->ctx->suppress_errors++;
+	file = sc_file_new();
+	sc_format_path(OPENSC_INFO_PATH, &file->path);
+	file->type = SC_FILE_TYPE_WORKING_EF;
+	file->ef_structure = SC_FILE_EF_TRANSPARENT;
+	file->id = OPENSC_INFO_FILEID;
+
+	p = buffer;
+	end = buffer + sizeof(buffer);
+
+	r = do_encode_string(&p, end, OPENSC_INFO_TAG_PROFILE, profile->name);
+	for (n = 0; r >= 0 && profile->options[n]; n++)
+		r = do_encode_string(&p, end, OPENSC_INFO_TAG_OPTION, profile->options[n]);
+
+	if (r >= 0) {
+		file->size = p - buffer;
+		if (file->size < 256)
+			file->size = 256;
+		r = sc_pkcs15init_update_file(profile, card, file, buffer, p - buffer);
+	}
+
+	sc_file_free(file);
+	return r;
 }

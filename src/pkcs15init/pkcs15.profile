@@ -11,6 +11,17 @@ cardinfo {
     max-pin-length	= 8;
 }
 
+#
+# The following controls some aspects of the PKCS15 we put onto
+# the card.
+#
+pkcs15 {
+    # Put certificates into the CDF itself?
+    direct-certificates	= no;
+    # Put the DF length into the ODF file?
+    encode-df-length	= no;
+}
+
 # Default settings.
 # This option block will always be processed.
 option default {
@@ -23,7 +34,12 @@ option default {
 	so-auth-id	= FF;
 	so-puk-attempts	= 4;
 	so-min-puk-length = 6;
-	default-df-size	= 256;
+	odf-size	= 256;
+	aodf-size	= 256;
+	cdf-size	= 512;
+	prkdf-size	= 256;
+	pukdf-size	= 256;
+	dodf-size	= 256;
     }
 }
 
@@ -42,10 +58,31 @@ option onepin {
     }
 }
 
-# This option is for cards with very little memory
+# This option is for cards with very little memory.
+# It sets the size of various PKCS15 directory files
+# to 128 or 256, respectively.
 option small {
     macros {
-	default-df-size	= 128;
+	odf-size	= 128;
+	aodf-size	= 128;
+	cdf-size	= 256;
+	prkdf-size	= 128;
+	pukdf-size	= 128;
+	dodf-size	= 128;
+    }
+}
+
+# This option tells pkcs15-init to use the direct option
+# when storing certificates on the card (i.e. put the
+# certificates into the CDF itself, rather than a
+# separate file)
+option direct-cert {
+    pkcs15 {
+        direct-certificates	= yes;
+	encode-df-length	= yes;
+    }
+    macros {
+	cdf-size	= 3192;
     }
 }
 
@@ -91,9 +128,15 @@ filesystem {
 	    acl		= *=NONE;
 	    size	= 5000;
 
+	    EF OPENSC-Info {
+		file-id		= 01FF;
+		size		= 0;
+		ACL		= $unprotected;
+	    }
+
 	    EF PKCS15-ODF {
 	        file-id		= 5031;
-		size		= $default-df-size;
+		size		= $odf-size;
 		ACL		= $unprotected;
 	    }
 
@@ -104,31 +147,31 @@ filesystem {
 
 	    EF PKCS15-AODF {
 	        file-id		= 4401;
-		size		= $default-df-size;
+		size		= $aodf-size;
 		ACL		= $protected;
 	    }
 
 	    EF PKCS15-PrKDF {
 	        file-id		= 4402;
-		size		= $default-df-size;
+		size		= $prkdf-size;
 		acl		= $protected;
 	    }
 
 	    EF PKCS15-PuKDF {
 	        file-id		= 4403;
-		size		= $default-df-size;
+		size		= $pukdf-size;
 		acl		= $protected;
 	    }
 
 	    EF PKCS15-CDF {
 	        file-id		= 4404;
-		size		= "2 * $default-df-size";
+		size		= $cdf-size;
 		acl		= $protected;
 	    }
 
 	    EF PKCS15-DODF {
 	        file-id		= 4405;
-		size		= $default-df-size;
+		size		= $dodf-size;
 		ACL		= $protected;
 	    }
 

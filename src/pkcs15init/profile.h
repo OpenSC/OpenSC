@@ -77,7 +77,11 @@ typedef struct sc_template {
 	struct file_info *	file;
 } sc_template_t;
 
+#define SC_PKCS15INIT_MAX_OPTIONS 16
 struct sc_profile {
+	char *			name;
+	char *			options[SC_PKCS15INIT_MAX_OPTIONS];
+
 	sc_card_t *		card;
 	char *			driver;
 	struct sc_pkcs15init_operations *ops;
@@ -104,14 +108,18 @@ struct sc_profile {
 	unsigned int		dsa_access_flags;
 	unsigned int		protect_certificates;
 
+	struct {
+		unsigned int	direct_certificates;
+		unsigned int	encode_df_length;
+	} pkcs15;
+
 	/* PKCS15 information */
 	sc_pkcs15_card_t *	p15_spec; /* as given by profile */
 	sc_pkcs15_card_t *	p15_data; /* as found on card */
 };
 
 struct sc_profile *sc_profile_new();
-int		sc_profile_load(struct sc_profile *, const char *,
-			const char *);
+int		sc_profile_load(struct sc_profile *, const char *);
 int		sc_profile_finish(struct sc_profile *);
 void		sc_profile_free(struct sc_profile *);
 int		sc_profile_build_pkcs15(struct sc_profile *);
