@@ -1,5 +1,6 @@
 #!/bin/sh
 
+set -e
 set -x
 if test -f Makefile; then
   make distclean
