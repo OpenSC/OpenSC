@@ -720,6 +720,7 @@ int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize);
 int sc_enum_apps(struct sc_card *card);
 const struct sc_app_info * sc_find_app_by_aid(struct sc_card *card,
 					      const u8 *aid, size_t aid_len);
+int sc_update_dir(struct sc_card *card, struct sc_app_info *app);
 
 struct sc_card_error {
 	int SWs;
