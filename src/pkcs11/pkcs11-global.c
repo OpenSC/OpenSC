@@ -51,6 +51,9 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	for (i=0; i<SC_PKCS11_MAX_READERS; i++)
                 card_initialize(i);
 
+	/* Detect any card, but do not flag "insert" events */
+	__card_detect_all(0);
+
 	debug(context, "Cryptoki initialized\n");
 	return CKR_OK;
 }
@@ -231,7 +234,36 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 			 CK_SLOT_ID_PTR pSlot,  /* location that receives the slot ID */
 			 CK_VOID_PTR pReserved) /* reserved.  Should be NULL_PTR */
 {
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	struct sc_reader *reader, *readers[SC_MAX_SLOTS * SC_MAX_READERS];
+	int slots[SC_MAX_SLOTS * SC_MAX_READERS];
+	int i, j, k, r, found;
+	unsigned int mask, events;
+	CK_RV rv;
+
+	mask = SC_EVENT_CARD_INSERTED|SC_EVENT_CARD_REMOVED;
+
+	if ((rv = slot_find_changed(pSlot, mask)) == CKR_OK
+	 || (flags & CKF_DONT_BLOCK))
+		return rv;
+
+	for (i = k = 0; i < context->reader_count; i++) {
+		reader = context->reader[i];
+		for (j = 0; j < reader->slot_count; j++, k++) {
+			readers[k] = reader;
+			slots[k] = j;
+		}
+	}
+
+	r = sc_wait_for_event(readers, slots, k, mask, &found, &events, -1);
+	if (r != SC_SUCCESS) {
+		error(context, "sc_wait_for_event() returned %d\n",  r);
+		return sc_to_cryptoki_error(r, -1);
+	}
+
+	if ((rv = slot_find_changed(pSlot, mask)) == CKR_OK)
+		return rv;
+
+	return CKR_FUNCTION_FAILED;
 }
 
 CK_FUNCTION_LIST pkcs11_function_list = {

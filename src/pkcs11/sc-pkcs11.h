@@ -185,6 +185,8 @@ struct sc_pkcs11_slot {
         CK_TOKEN_INFO token_info;
         /* The card associated with this slot */
 	struct sc_pkcs11_card *card;
+	/* Card events SC_EVENT_CARD_{INSERTED,REMOVED} */
+	int events;
 	/* Framework specific data */
 	void *fw_data;
 	/* Object pools */
@@ -288,11 +290,13 @@ void dump_template(const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCoun
 /* Slot and card handling functions */
 CK_RV card_initialize(int reader);
 CK_RV card_detect_all(void);
+CK_RV __card_detect_all(int);
 CK_RV card_removed(int reader);
 CK_RV slot_initialize(int id, struct sc_pkcs11_slot *);
 CK_RV slot_get_slot(int id, struct sc_pkcs11_slot **);
 CK_RV slot_get_token(int id, struct sc_pkcs11_slot **);
 CK_RV slot_token_removed(int id);
+CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask);
 CK_RV slot_allocate(struct sc_pkcs11_slot **, struct sc_pkcs11_card *);
 
 /* Pool */

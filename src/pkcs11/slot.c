@@ -127,7 +127,7 @@ again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 	return rv;
 }
 
-CK_RV card_detect_all(void)
+CK_RV __card_detect_all(int report_events)
 {
 	int i;
 
@@ -135,8 +135,19 @@ CK_RV card_detect_all(void)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 	for (i = 0; i < context->reader_count; i++)
 		card_detect(i);
+	if (!report_events) {
+		CK_SLOT_ID id;
+
+		for (id = 0; id < SC_PKCS11_MAX_VIRTUAL_SLOTS; id++)
+			virtual_slots[id].events = 0;
+	}
 
 	return CKR_OK;
+}
+
+CK_RV card_detect_all(void)
+{
+	return __card_detect_all(1);
 }
 
 CK_RV card_removed(int reader)
@@ -188,6 +199,7 @@ CK_RV slot_allocate(struct sc_pkcs11_slot **slot, struct sc_pkcs11_card *card)
 			debug(context, "Allocated slot %d\n", i);
 
                         virtual_slots[i].card = card;
+                        virtual_slots[i].events = SC_EVENT_CARD_INSERTED;
 			*slot = &virtual_slots[i];
 			strcpy_bp((*slot)->slot_info.slotDescription,
 				card->card->reader->name, 64);
@@ -227,13 +239,15 @@ CK_RV slot_get_token(int id, struct sc_pkcs11_slot **slot)
 
 CK_RV slot_token_removed(int id)
 {
-	int rv;
+	int rv, token_was_present;
         struct sc_pkcs11_slot *slot;
         struct sc_pkcs11_object *object;
 
 	rv = slot_get_slot(id, &slot);
 	if (rv != CKR_OK)
 		return rv;
+
+	token_was_present = (slot->slot_info.flags & CKF_TOKEN_PRESENT);
 
         /* Terminate active sessions */
         C_CloseAllSessions(id);
@@ -253,6 +267,26 @@ CK_RV slot_token_removed(int id)
         init_slot_info(&slot->slot_info);
 	slot->login_user = -1;
 
+	if (token_was_present)
+		slot->events = SC_EVENT_CARD_REMOVED;
+
         return CKR_OK;
 
+}
+
+CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask)
+{
+	sc_pkcs11_slot_t *slot;
+	CK_SLOT_ID id;
+
+	card_detect_all();
+	for (id = 0; id < SC_PKCS11_MAX_VIRTUAL_SLOTS; id++) {
+		slot = &virtual_slots[id];
+		if (slot->events & mask) {
+			slot->events &= ~mask;
+			*idp = id;
+			return CKR_OK;
+		}
+	}
+	return CKR_NO_EVENT;
 }
