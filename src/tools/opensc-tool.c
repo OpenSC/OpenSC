@@ -201,25 +201,33 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 		hex_dump(stdout, file->prop_attr, file->prop_attr_len, ":");
 	}
 	printf("\n\n");
-#if 1
-	if (file->type != SC_FILE_TYPE_DF) {
-		u8 *buf = malloc(file->size);
-		if (!buf) {
+
+	if (file->type == SC_FILE_TYPE_DF)
+		return 0;
+
+	if (file->ef_structure == SC_FILE_EF_TRANSPARENT) {
+		unsigned char *buf;
+		
+		if (!(buf = malloc(file->size))) {
 			fprintf(stderr, "out of memory");
 			return 1;
 		}
-		if (file->ef_structure == SC_FILE_EF_TRANSPARENT) {
-			r = sc_read_binary(card, 0, buf, file->size, 0);
-			if (r > 0)
-				hex_dump_asc(stdout, buf, r, 0);
-		} else {
-			r = sc_read_record(card, 0, buf, file->size, 0);
+
+		r = sc_read_binary(card, 0, buf, file->size, 0);
+		if (r > 0)
+			hex_dump_asc(stdout, buf, r, 0);
+		free(buf);
+	} else {
+		unsigned char buf[256];
+		int i;
+
+		for (i=0; i < file->record_count; i++) {
+			printf("Record %d\n", i);
+			r = sc_read_record(card, i, buf, 256, 0);
 			if (r > 0)
 				hex_dump_asc(stdout, buf, r, 0);
 		}
-		free(buf);
 	}
-#endif
 	return 0;
 }
 
