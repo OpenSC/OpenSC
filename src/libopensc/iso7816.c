@@ -720,7 +720,7 @@ static int iso7816_compute_signature(struct sc_card *card,
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
 	 * P2:  0x9A  Cmd: Input for Digital Signature */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x9E,
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E,
 		       0x9A);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf); /* FIXME */
@@ -758,7 +758,7 @@ static int iso7816_decipher(struct sc_card *card,
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x80  Resp: Plain value
 	 * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80, 0x86);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf); /* FIXME */
 	apdu.sensitive = 1;
