@@ -1832,7 +1832,7 @@ sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,	CK_OBJECT_HANDLE priv_ke
 
 		rv = p11->C_SignInit(session, &mech, priv_key);
 		if (rv == CKR_MECHANISM_INVALID)
-			break;
+			continue;
 		if (rv != CKR_OK) {
 			printf("  ERR: C_SignInit() returned %s (0x%0x)\n", CKR2Str(rv), (int) rv);
 			return ++errors;
