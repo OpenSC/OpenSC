@@ -1,0 +1,20 @@
+This package was debianized by Joe Phillips <joe.phillips@innovationsw.com> on
+Thu, 15 Aug 2002 16:49:44 -0400.
+
+It was downloaded from http://www.opensc.org/
+
+Upstream Author(s): 
+OpenSC developers <opensc-devel@opensc.org>
+Juha Yrjölä <juha.yrjola@iki.fi>
+Antti Tapaninen <aet@cc.hut.fi>
+Timo Teräs <timo.teras@iki.fi>
+Olaf Kirch <okir@caldera.de>
+
+
+Copyright (C) 2001, 2002 Juha Yrj, Timo Teras, Antti Tapaninen, Olaf Kirch
+
+You are free to distribute this software under the terms of
+the GNU Lesser General Public License.
+On Debian systems, the complete text of the GNU Lesser General Public
+License can be found in the file `/usr/share/common-licenses/LGPL'.
+

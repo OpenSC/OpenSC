@@ -1,0 +1,4 @@
+usr/lib
+usr/lib/pkcs11
+etc/opensc
+usr/share/opensc

@@ -2437,8 +2437,7 @@ int
 sc_pkcs15init_fixup_file(struct sc_profile *profile, struct sc_file *file)
 {
 	sc_context_t	*ctx = profile->card->ctx;
-	sc_pkcs15_pin_info_t so_pin, user_pin;
-	sc_acl_entry_t so_acl, user_acl;
+	sc_acl_entry_t	so_acl, user_acl;
 	unsigned int	op, needfix = 0;
 	int		ref;
 
@@ -2457,9 +2456,6 @@ sc_pkcs15init_fixup_file(struct sc_profile *profile, struct sc_file *file)
 
 	if (!needfix)
 		return 0;
-
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &so_pin);
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &user_pin);
 
 	/* If the profile doesn't specify a SO pin, change all
 	 * ACLs that reference $sopin to NONE */

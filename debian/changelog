@@ -1,0 +1,20 @@
+opensc (0.8.1-1) unstable; urgency=low
+
+  * new upstream
+
+ -- Joe Phillips <joe.phillips@innovationsw.com>  Tue, 30 Sep 2003 16:24:40 -0400
+
+opensc (0.7.0-2) unstable; urgency=low
+
+  * copyright includes author names instead of reference
+  * fixed reference to libsasl
+  * added pkcs15-profile manpage
+  * added pkcs11 package
+
+ -- Joe Phillips <joe.phillips@innovationsw.com>  Mon, 09 Sep 2002 23:08:18 -0400
+
+opensc (0.7.0-1) unstable; urgency=low
+
+  * Initial Release, closes: bug#157979
+
+ -- Joe Phillips <joe.phillips@innovationsw.com>  Thu, 15 Aug 2002 16:49:44 -0400
