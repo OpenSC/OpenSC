@@ -27,4 +27,4 @@ cmp $p15temp/message $p15temp/decrypted \
 	|| fail "Decrypted file does not match plain text file"
 success
 
-p15_erase
+p15_erase --secret @01=0000

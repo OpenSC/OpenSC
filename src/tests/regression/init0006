@@ -17,5 +17,5 @@ success
 
 p15_store_key $k -a 01
 p15_validate
-p15_erase
+p15_erase --secret @01=0000
 

@@ -202,7 +202,8 @@ EOF
 function p15_erase {
 
 	msg "Erasing card ($*)"
-	run_display_output $p15init --erase
+	run_display_output $p15init --erase \
+			--secret @FF=999999 \
 			"$@" >&3 >&4
 	success
 }

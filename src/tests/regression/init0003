@@ -10,5 +10,5 @@ p15_init --no-so-pin
 p15_set_pin -a 01
 p15_gen_key rsa/1024 --key-usage decrypt -a 01
 p15_validate 
-p15_erase
+p15_erase --secret @01=0000
 

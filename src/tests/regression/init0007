@@ -14,5 +14,5 @@ p15_gen_key rsa/512 -a 02 --key-usage nonRepudiation \
 		--id feeb \
 		--label "Non-Repudiation Key"
 p15_validate
-p15_erase
+p15_erase --secret @01=0000 --secret @02=0000
 
