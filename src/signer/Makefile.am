@@ -1,9 +1,17 @@
+## Makefile.am -- Process this file with automake to produce Makefile.in
+
+INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@ @CFLAGS_ASSUAN@
 
 plugindir = $(PLUGINDIR)
+if HAVE_SSL
+plugin_LTLIBRARIES = opensc-signer.la
+else
+plugin_LTLIBRARIES = 
+endif
 
-plugin_LTLIBRARIES       = opensc-signer.la
-opensc_signer_la_LDFLAGS = -module -avoid-version -lcrypto -lassuan
-opensc_signer_la_CFLAGS  = $(AM_CFLAGS) -Inpinclude -DXP_UNIX
+opensc_signer_la_LDFLAGS = -module -avoid-version
+opensc_signer_la_LIBADD = @LIBOPENSC@ @LIBCRYPTO@ @LIBASSUAN@
+opensc_signer_la_CFLAGS = $(AM_CFLAGS) -Inpinclude -DXP_UNIX
 opensc_signer_la_SOURCES = opensc-crypto.c opensc-support.c \
 			   signer.c stubs.c dialog.c
 noinst_HEADERS		 = opensc-crypto.h opensc-support.h \

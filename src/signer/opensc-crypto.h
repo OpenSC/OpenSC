@@ -1,4 +1,3 @@
-
 #ifndef _OPENSC_CRYPTO_H
 #define _OPENSC_CRYPTO_H
 

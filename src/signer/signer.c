@@ -40,7 +40,7 @@ NPP_Initialize(void)
 
 
 jref
-NPP_GetJavaClass()
+NPP_GetJavaClass(void)
 {
 	printf("NPP_GetJavaClass()\n");
 	return NULL;

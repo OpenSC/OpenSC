@@ -1,4 +1,3 @@
-
 #ifndef _OPENSC_SUPPORT_H
 #define _OPENSC_SUPPORT_H
 

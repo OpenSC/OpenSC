@@ -1,7 +1,10 @@
-
 #include "signer.h"
 #include <assuan.h>
 #include <stdarg.h>
+
+#ifndef PIN_ENTRY
+#define PIN_ENTRY "/usr/local/bin/gpinentry"
+#endif
 
 struct entry_parm_s {
   int lines;
@@ -31,7 +34,7 @@ int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 {
 	int r;
 	const char *argv[3];
-	const char *pgmname = "/usr/local/bin/gpinentry";
+	const char *pgmname = PIN_ENTRY;
 	ASSUAN_CONTEXT ctx;
 	char buf[500];
 	char errtext[100];

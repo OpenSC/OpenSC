@@ -1,15 +1,12 @@
-#include <opensc.h>
-#include <opensc-pkcs15.h>
-#include <openssl/pkcs7.h>
 #include <string.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
-
+#include <openssl/pkcs7.h>
 #include "opensc-support.h"
 #include "opensc-crypto.h"
 #include "signer.h"
 
-int test()
+int test(void)
 {
 	BIO *in;
 	PKCS7 *p7;
@@ -19,16 +16,17 @@ int test()
 	if (p7 == NULL) {
 		goto err;
 	}
-//	return prp7(p7);
+#if 0
+	return prp7(p7);
+#endif
 	return 0;
 err:
 	ERR_load_crypto_strings();
 	ERR_print_errors_fp(stderr);
 	return 1;
-
 }
 
-int main()
+int main(void)
 {
 	PluginInstance pl;
 	u8 *data;

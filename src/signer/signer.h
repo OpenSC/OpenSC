@@ -1,7 +1,9 @@
-
 #ifndef _SIGNER_H
 #define _SIGNER_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <opensc.h>
 #include <opensc-pkcs15.h>
 #include <X11/Intrinsic.h>

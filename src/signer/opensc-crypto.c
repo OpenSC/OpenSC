@@ -1,11 +1,11 @@
-
-#include <opensc-pkcs15.h>
-#include <opensc.h>
 #include <openssl/rsa.h>
 #include "opensc-crypto.h"
 #include "signer.h"
 
 #define DBG(x) { x; }
+
+extern int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
+				   struct sc_pkcs15_pin_info *pinfo);
 
 void
 sc_close(struct sc_priv_data *priv)
@@ -61,18 +61,24 @@ static int sc_private_decrypt(int flen, u_char *from, u_char *to, RSA *rsa,
 		sc_close(priv);
 		r = sc_init(priv);
 		if (r) {
-			//error("SmartCard init failed: %s", sc_strerror(r));
+#if 0
+			error("SmartCard init failed: %s", sc_strerror(r));
+#endif
 			goto err;
 		}
 	}
 	r = sc_pkcs15_find_prkey_by_id(priv->p15card, &priv->cert_id, &key);
 	if (r) {
-		//error("Unable to find private key from SmartCard: %s", sc_strerror(r));
+#if 0
+		error("Unable to find private key from SmartCard: %s", sc_strerror(r));
+#endif
 		goto err;
 	}
 	r = sc_pkcs15_find_pin_by_auth_id(priv->p15card, &key->com_attr.auth_id, &pin);
 	if (r) {
-//		error("Unable to find PIN object from SmartCard: %s", sc_strerror(r));
+#if 0
+		error("Unable to find PIN object from SmartCard: %s", sc_strerror(r));
+#endif
 		goto err;
 	}
 	r = ask_and_verify_pin_code(priv->p15card, pin);
@@ -83,7 +89,9 @@ static int sc_private_decrypt(int flen, u_char *from, u_char *to, RSA *rsa,
 	}
 	r = sc_pkcs15_decipher(priv->p15card, key, from, flen, to, flen);
 	if (r < 0) {
-//		error("sc_pkcs15_decipher() failed: %s", sc_strerror(r));
+#if 0
+		error("sc_pkcs15_decipher() failed: %s", sc_strerror(r));
+#endif
 		goto err;
 	}
 	return r;
@@ -95,7 +103,9 @@ err:
 static int
 sc_private_encrypt(int flen, u_char *from, u_char *to, RSA *rsa, int padding)
 {
-//	error("unsupported function sc_private_encrypt() called");
+#if 0
+	error("unsupported function sc_private_encrypt() called");
+#endif
 	return -1;
 }
 
@@ -111,8 +121,10 @@ sc_sign(int type, u_char *m, unsigned int m_len,
 	priv = (struct sc_priv_data *) RSA_get_app_data(rsa);
 	if (priv == NULL)
 		return -1;
-//	debug("sc_sign() called on cert %02X: type = %d, m_len = %d",
-//	      priv->cert_id.value[0], type, m_len);
+#if 0
+	debug("sc_sign() called on cert %02X: type = %d, m_len = %d",
+	      priv->cert_id.value[0], type, m_len);
+#endif
 	DBG(printf("sc_sign() called\n"));
 	if (priv->p15card == NULL) {
 		sc_close(priv);
@@ -188,7 +200,7 @@ static RSA_METHOD libsc_rsa =
 	NULL,
 };
 
-RSA_METHOD * sc_get_method()
+RSA_METHOD * sc_get_method(void)
 {
 	RSA_METHOD *def;
 

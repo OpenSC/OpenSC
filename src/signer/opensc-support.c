@@ -1,4 +1,3 @@
-
 #include "opensc-support.h"
 #include "opensc-crypto.h"
 #include <openssl/x509.h>
@@ -24,11 +23,15 @@ static int get_certificate(PluginInstance *inst,
         for (i = 0; i < inst->p15card->prkey_count; i++) {
                 struct sc_pkcs15_prkey_info *key = &inst->p15card->prkey_info[i];
 
-//                if (key->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION) {
+#if 0
+                if (key->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION) {
+#endif
                         /* Use the first available non-repudiation key */
                         cert_id = key->id;
                         break;
-//                }
+#if 0
+                }
+#endif
         }
         if (cert_id.len == 0)
                 return SC_ERROR_OBJECT_NOT_FOUND;
@@ -218,8 +221,10 @@ err:
 		BIO_free(in);
 	if (p7bio)
 		BIO_free(p7bio);
-/*	if (si)
-		PKCS7_SIGNER_INFO_free(si); */
+#if 0
+	if (si)
+		PKCS7_SIGNER_INFO_free(si);
+#endif
 	if (pkey)
 		EVP_PKEY_free(pkey);
 	if (x509)
