@@ -3,7 +3,7 @@
 XSLTPROC := @XSLTPROC@
 HTMLFILES := usbtoken.html
 
-MAINTAINERCLEANFILES = Makefile.in pkcs15-profile.5 $(HTMLFILES)
+MAINTAINERCLEANFILES = Makefile.in pkcs15-profile.5
 
 MANSRC  	= pkcs15-crypt.1 \
 	   	  pkcs15-init.1 \
