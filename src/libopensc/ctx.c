@@ -48,29 +48,29 @@ int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader)
 
 struct _sc_driver_entry {
 	char *name;
-	struct sc_reader_driver *(*func)(void);
+	void *func;
 	char *libpath;
 	struct sc_atr_table *atrs;
 	unsigned int natrs;
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
-	{ "emv", sc_get_emv_driver, NULL },
-	{ "etoken", sc_get_etoken_driver, NULL },
-	{ "flex", sc_get_cryptoflex_driver, NULL },
-	{ "cyberflex", sc_get_cyberflex_driver, NULL },
+	{ "emv", (void *) sc_get_emv_driver, NULL },
+	{ "etoken", (void *) sc_get_etoken_driver, NULL },
+	{ "flex", (void *) sc_get_cryptoflex_driver, NULL },
+	{ "cyberflex", (void *) sc_get_cyberflex_driver, NULL },
 #ifdef HAVE_OPENSSL
-	{ "gpk", sc_get_gpk_driver, NULL },
+	{ "gpk", (void *) sc_get_gpk_driver, NULL },
 #endif
-	{ "miocos", sc_get_miocos_driver, NULL },
-	{ "mcrd", sc_get_mcrd_driver, NULL },
-	{ "setcos", sc_get_setcos_driver, NULL },
-	{ "starcos", sc_get_starcos_driver, NULL },
-	{ "tcos", sc_get_tcos_driver, NULL },
-	{ "opengpg", sc_get_openpgp_driver, NULL },
+	{ "miocos", (void *) sc_get_miocos_driver, NULL },
+	{ "mcrd", (void *) sc_get_mcrd_driver, NULL },
+	{ "setcos", (void *) sc_get_setcos_driver, NULL },
+	{ "starcos", (void *) sc_get_starcos_driver, NULL },
+	{ "tcos", (void *) sc_get_tcos_driver, NULL },
+	{ "opengpg", (void *) sc_get_openpgp_driver, NULL },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
-	{ "default", sc_get_default_driver, NULL },
+	{ "default", (void *) sc_get_default_driver, NULL },
 	{ NULL, NULL, NULL }
 };
 
