@@ -36,8 +36,10 @@ char * opt_pubkey = NULL;
 char * opt_outfile = NULL;
 char * opt_newpin = NULL;
 char * opt_pin = NULL;
+char * opt_puk = NULL;
 
-int quiet = 0;
+static int	quiet = 0;
+static char *	pin_label = NULL;
 
 enum {
 	OPT_CHANGE_PIN = 0x100,
@@ -48,6 +50,8 @@ enum {
 	OPT_LIST_PUB,
 	OPT_READ_PUB,
 	OPT_PIN,
+	OPT_NEWPIN,
+	OPT_PUK,
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -69,6 +73,8 @@ const struct option options[] = {
 	{ "read-public-key",	required_argument, 0,	OPT_READ_PUB },
 	{ "reader",		required_argument, 0,	OPT_READER },
 	{ "pin",                required_argument, 0,   OPT_PIN },
+	{ "new-pin",		required_argument, 0,	OPT_NEWPIN },
+	{ "puk",		required_argument, 0,	OPT_PUK },
 	{ "output",		required_argument, 0,	'o' },
 	{ "quiet",		no_argument, 0,		'q' },
 	{ "debug",		no_argument, 0,		'd' },
@@ -91,7 +97,9 @@ const char *option_help[] = {
 	"Lists public keys",
 	"Reads public key with ID <arg>",
 	"Uses reader number <arg>",
-        "Specify PIN",
+	"Specify PIN",
+	"Specify New PIN (when changing or unblocking)",
+	"Specify Unblock PIN",
 	"Outputs to file <arg>",
 	"Quiet operation",
 	"Debug output -- may be supplied several times",
@@ -506,18 +514,14 @@ int read_public_key(void)
 
 
 
-u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
+sc_pkcs15_pin_info_t *
+get_pin_info(void)
 {
 	int r;
-	char buf[80];
-	char *pincode;
         struct sc_pkcs15_object *objs[32], *obj;
 	struct sc_pkcs15_pin_info *pinfo = NULL;
 	
-	if (pin_out != NULL)
-		pinfo = *pin_out;
-
-	if (pinfo == NULL && opt_auth_id == NULL) {
+	if (opt_auth_id == NULL) {
                 r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 		if (r < 0) {
 			fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
@@ -529,7 +533,7 @@ u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
 		}
                 obj = objs[0];
 		pinfo = (struct sc_pkcs15_pin_info *) obj->data;
-	} else if (pinfo == NULL) {
+	} else {
 		struct sc_pkcs15_id auth_id;
 		
 		sc_pkcs15_hex_string_to_id(opt_auth_id, &auth_id);
@@ -540,11 +544,17 @@ u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
 		}
 		pinfo = (struct sc_pkcs15_pin_info *) obj->data;
 	}
-	
-	if (pin_out != NULL)
-		*pin_out = pinfo;
 
-	sprintf(buf, "%s [%s]: ", prompt, obj->label);
+	pin_label = obj->label;
+	return pinfo;
+}
+
+u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info *pinfo)
+{
+	char buf[80];
+	char *pincode;
+	
+	sprintf(buf, "%s [%s]: ", prompt, pin_label);
 	while (1) {
 		pincode = getpass(buf);
 		if (strlen(pincode) == 0)
@@ -626,30 +636,34 @@ int unblock_pin(void)
 	u8 *pin, *puk;
 	int r;
 	
-	puk = get_pin("Enter PUK", &pinfo);
-	if (puk == NULL)
+	if (!(pinfo = get_pin_info()))
 		return 2;
 
-	if (opt_pin)
-		pin = (u8 *) opt_pin;
-	else 
-		while (1) {
+	if ((puk = opt_puk) == NULL) {
+		puk = get_pin("Enter PUK", pinfo);
+		if (puk == NULL)
+			return 2;
+	}
+
+	if ((pin = opt_pin) == NULL)
+		pin = opt_newpin;
+	while (pin == NULL) {
 		u8 *pin2;
 	
-		pin = get_pin("Enter new PIN", &pinfo);
+		pin = get_pin("Enter new PIN", pinfo);
 		if (pin == NULL || strlen((char *) pin) == 0)
 			return 2;
-		pin2 = get_pin("Enter new PIN again", &pinfo);
+		pin2 = get_pin("Enter new PIN again", pinfo);
 		if (pin2 == NULL || strlen((char *) pin2) == 0)
 			return 2;
-		if (strcmp((char *) pin, (char *) pin2) == 0) {
-			free(pin2);
-			break;
+		if (strcmp((char *) pin, (char *) pin2) != 0) {
+			printf("PIN codes do not match, try again.\n");
+			free(pin);
+			pin = NULL;
 		}
-		printf("PIN codes do not match, try again.\n");
-		free(pin);
 		free(pin2);
 	}
+
 	r = sc_pkcs15_unblock_pin(p15card, pinfo, puk, strlen((char *) puk),
 				 pin, strlen((char *) pin));
 	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
@@ -669,27 +683,29 @@ int change_pin(void)
 	struct sc_pkcs15_pin_info *pinfo = NULL;
 	u8 *pincode, *newpin;
 	int r;
-	
-	if (opt_pin) 
-		pincode = (u8 *) opt_pin;
-	else 
-		pincode = get_pin("Enter old PIN", &pinfo);
-	if (pincode == NULL)
+
+	if (!(pinfo = get_pin_info()))
 		return 2;
+
+	if ((pincode = opt_pin) == NULL) {
+		pincode = get_pin("Enter old PIN", pinfo);
+		if (pincode == NULL)
+			return 2;
+	}
+
 	if (strlen((char *) pincode) == 0) {
 		fprintf(stderr, "No PIN code supplied.\n");
 		return 2;
 	}
-	if (opt_newpin)
-		newpin = (u8 *) opt_newpin;
-	else 
-		while (1) {
+
+	newpin = opt_newpin;
+	while (newpin == NULL) {
 		u8 *newpin2;
 		
-		newpin = get_pin("Enter new PIN", &pinfo);
+		newpin = get_pin("Enter new PIN", pinfo);
 		if (newpin == NULL || strlen((char *) newpin) == 0)
 			return 2;
-		newpin2 = get_pin("Enter new PIN again", &pinfo);
+		newpin2 = get_pin("Enter new PIN again", pinfo);
 		if (newpin2 == NULL || strlen((char *) newpin2) == 0)
 			return 2;
 		if (strcmp((char *) newpin, (char *) newpin2) == 0) {
@@ -872,6 +888,12 @@ int main(int argc, char * const argv[])
 			break;
 		case OPT_PIN:
 			opt_pin = optarg;
+			break;
+		case OPT_NEWPIN:
+			opt_newpin = optarg;
+			break;
+		case OPT_PUK:
+			opt_puk = optarg;
 			break;
 		case 'o':
 			opt_outfile = optarg;
