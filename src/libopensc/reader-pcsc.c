@@ -79,6 +79,8 @@ struct pcsc_slot_data {
 	SCARD_READERSTATE_A readerState;
 };
 
+static int pcsc_detect_card_presence(struct sc_reader *reader, struct sc_slot_info *slot);
+
 static int pcsc_ret_to_error(long rv)
 {
 	switch (rv) {
@@ -183,13 +185,14 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 		case SCARD_W_RESET_CARD:
 			return SC_ERROR_CARD_RESET;
 		case SCARD_E_NOT_TRANSACTED:
-#if 0
-			FIXME
-			if (sc_detect_card(card->ctx, card->reader) != 1)
+			if (pcsc_detect_card_presence(reader, slot) &
+			    SC_SLOT_CARD_PRESENT == 0)
 				return SC_ERROR_CARD_REMOVED;
-#endif
 			return SC_ERROR_TRANSMIT_FAILED;
                 default:
+                	/* Windows' PC/SC returns 0x8010002f (??) if a card is removed */
+			if (pcsc_detect_card_presence(reader, slot) != 1)
+				return SC_ERROR_CARD_REMOVED;
                         PCSC_ERROR(reader->ctx, "SCardTransmit failed", rv);
 			return SC_ERROR_TRANSMIT_FAILED;
 		}
