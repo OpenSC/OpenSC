@@ -136,7 +136,7 @@ CK_RV card_detect_all(void)
 	for (i = 0; i < context->reader_count; i++)
 		card_detect(i);
 
-	return CKR_OK=;
+	return CKR_OK;
 }
 
 CK_RV card_removed(int reader)
