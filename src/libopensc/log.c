@@ -134,6 +134,7 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 	left -= r;
 
 	fprintf(outf, "%s%s%s", color_pfx, buf, color_sfx);
+	fflush(outf);
 }
 
 void sc_hex_dump(struct sc_context *ctx, const u8 *in, size_t count,
