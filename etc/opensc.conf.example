@@ -35,7 +35,7 @@ app default {
 	# internal) driver is supplied, a separate configuration
 	# configuration block has to be written for the driver.
 	# Default: internal
-	# NOTE: if "internal" keyword is used, must be the 
+	# NOTE: if "internal" keyword is used, must be the
 	# last entry in reader_drivers list
 	#
 	# reader_drivers = openct, pcsc, ctapi;
@@ -86,7 +86,7 @@ app default {
 		#
 		# EXPERIMENTAL: Enable CCID pinpad support
 		# implemented (at least) in the libccid driver.
-		#use_ccid_pin_cmd = true;
+		# use_ccid_pin_cmd = true;
 	}
 
 	# What card drivers to load at start-up
@@ -96,15 +96,15 @@ app default {
 	# internal) driver is supplied, a separate configuration
 	# configuration block has to be written for the driver.
 	# Default: internal
-	# NOTE: When "internal" keyword is used, must be last entry 
+	# NOTE: When "internal" keyword is used, must be last entry
 	#
 	# card_drivers = customcos, internal;
 
-	# Card driver configuration blocks. 
+	# Card driver configuration blocks.
 
 	# For all drivers, you can specify ATRs of cards that
 	# should be handled by this driver (in addition to the
-	# list of compiled-in ATRs). 
+	# list of compiled-in ATRs).
 	#
 	# The supported internal card driver names are
 	#  flex		Cryptoflex/Multiflex
@@ -122,7 +122,7 @@ app default {
 		# atr = 00:11:22;
 	}
 
-	# For card drivers loaded from an external shared library/DLL, 
+	# For card drivers loaded from an external shared library/DLL,
 	# you need to specify the path name of the module
 	#
 	# card_driver customcos {
@@ -139,7 +139,7 @@ app default {
 	#
 	# Default: autodetect
 	#
-	# force_card_driver = miocos;
+	# force_card_driver = customcos;
 
 	# Below are the framework specific configuration blocks.
 
@@ -148,42 +148,43 @@ app default {
 		# Whether to use the cache files in the user's
 		# home directory.
 		#
-		# At the moment you have to 'teach' the card to the
-		# system by:
-		# pkcs15-tool -L
+		# At the moment you have to 'teach' the card
+		# to the system by running command: pkcs15-tool -L
 		#
 		# WARNING: Caching shouldn't be used in setuid root
 		# applications.
 		# Default: false
 		#
 		use_caching = true;
-		# Enable pkcs15 emulation
+		# Enable pkcs15 emulation.
 		# Default: yes
 		enable_pkcs15_emulation = yes;
-		# Try pkcs15 emulation code first (before the normal
-		# pkcs15 processing).
+		# Prefer pkcs15 emulation code before
+		# the normal pkcs15 processing.
 		# Default: no
 		try_emulation_first = no;
-		# Enable builtin emulators
+		# Enable builtin emulators.
 		# Default: yes
 		enable_builtin_emulation = yes;
 		# list of the builtin pkcs15 emulators to test
-		# possible values: esteid, openpgp, netkey, netkey,
-		# starcert, infocamere, postecert
 		builtin_emulators = esteid, openpgp, netkey, netkey, starcert, infocamere, postecert;
 
-		# additional pkcs15 emulators (dynamic or builtin with
-		# a different atr etc.) 
-		# emulate foo {
+		# additional settings per driver
+		#
+		# For pkcs15 emulators loaded from an external shared library/DLL,
+		# you need to specify the path name of the module
+		#
+		# emulate custom {
+			# The location of the driver library
 			# module = builtin;
 			# atr = 11:22:33:44;
-		#}
+		# }
 	}
-	
+
 	# Estonian ID card and Micardo driver currently play together with T=0 only.
 	# In theory only the 'cold' ATR should be specified, as T=0 will be the preferred
 	# protocol once you boot it up with T=0, but be paranoid.
-	
+
 	# Generic format: card_atr <hex encoded ATR (case-sensitive!)>
 	# Only parameter currently understood is force_protocol
 	card_atr 3b:6e:00:ff:45:73:74:45:49:44:20:76:65:72:20:31:2e:30 {
@@ -269,7 +270,7 @@ app pkcs11-spy {
 		# variable is used. And if that one isn't defined: stderr
 		# is used.
 		#
-		#output = /tmp/pkcs11-spy.log;
+		# output = /tmp/pkcs11-spy.log;
 
 		# Which PKCS11 module to load.
 		#
@@ -277,6 +278,6 @@ app pkcs11-spy {
 		# variable is used. And if that one isn't defined,
 		# opensc-pkcs11.so is used.
 		#
-		#module = opensc-pkcs11.so;
+		# module = opensc-pkcs11.so;
 	}
 }

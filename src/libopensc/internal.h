@@ -40,11 +40,13 @@ extern "C" {
 #define SC_CTX_MAGIC			0x0A550335
 
 struct sc_atr_table {
-	char *atr;	/* The atr fields are required to
-			   be in aa:bb:cc hex format. */
-	char *atrmask;	/* The atrmask is logically AND'd with an
-			   card atr prior to comparison with the
-			   atr reference value above. */
+	/* The atr fields are required to
+	 * be in aa:bb:cc hex format. */
+	char *atr;
+	/* The atrmask is logically AND'd with an
+	 * card atr prior to comparison with the
+	 * atr reference value above. */
+	char *atrmask;
 	char *name;
 	int type;
 	unsigned long flags;

@@ -18,11 +18,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-/** 
+/**
  * @file opensc.h
  * @brief OpenSC library core header file
  */
- 
+
 #ifndef _OPENSC_H
 #define _OPENSC_H
 
@@ -92,7 +92,7 @@ extern "C" {
 #define SC_AC_OP_CRYPTO			7
 /* If you add more OPs here, make sure you increase
  * SC_MAX_AC_OPS in types.h */
- 
+
 /* Operations relating to access control (in case of EF) */
 #define SC_AC_OP_READ			0
 #define SC_AC_OP_UPDATE			1
@@ -107,10 +107,10 @@ extern "C" {
 #define SC_RECORD_CURRENT		0
 
 /* various maximum values */
-#define SC_MAX_CARD_DRIVERS		16
-#define SC_MAX_READER_DRIVERS		4
-#define SC_MAX_CARD_DRIVER_SNAME_SIZE	16
+#define SC_MAX_READER_DRIVERS		6
 #define SC_MAX_READERS			16
+#define SC_MAX_CARD_DRIVERS		32
+#define SC_MAX_CARD_DRIVER_SNAME_SIZE	16
 #define SC_MAX_SLOTS			4
 #define SC_MAX_CARD_APPS		8
 #define SC_MAX_APDU_BUFFER_SIZE		258
@@ -159,7 +159,7 @@ extern "C" {
 #define SC_ALGORITHM_SPECIFIC_FLAGS	0x0000FFFF
 
 #define SC_ALGORITHM_RSA_RAW		0x00000001
-/* If the card is willing to produce a cryptogram padded with the following 
+/* If the card is willing to produce a cryptogram padded with the following
  * methods, set these flags accordingly. */
 #define SC_ALGORITHM_RSA_PADS		0x0000000E
 #define SC_ALGORITHM_RSA_PAD_NONE	0x00000000
@@ -167,7 +167,7 @@ extern "C" {
 #define SC_ALGORITHM_RSA_PAD_ANSI	0x00000004
 #define SC_ALGORITHM_RSA_PAD_ISO9796	0x00000008
 
-/* If the card is willing to produce a cryptogram with the following 
+/* If the card is willing to produce a cryptogram with the following
  * hash values, set these flags accordingly. */
 #define SC_ALGORITHM_RSA_HASH_NONE	0x00000010
 #define SC_ALGORITHM_RSA_HASHES		0x000001E0
@@ -241,7 +241,7 @@ struct sc_app_info {
 	struct sc_path path;
 	u8 *ddo;
 	size_t ddo_len;
-	
+
 	const char *desc;	/* App description, if known */
 	int rec_nr;		/* -1, if EF(DIR) is transparent */
 };
@@ -278,7 +278,7 @@ struct sc_reader_driver {
 #define SC_SLOT_CAP_PIN_PAD	0x00000002
 
 struct sc_slot_info {
-	int id;	
+	int id;
 	unsigned long flags, capabilities;
 	unsigned int supported_protocols, active_protocol;
 	u8 atr[SC_MAX_ATR_SIZE];
@@ -399,7 +399,7 @@ struct sc_reader_operations {
 			 struct sc_pin_cmd_data *);
 
 	/* Wait for an event */
-	int (*wait_for_event)(struct sc_reader **readers, 
+	int (*wait_for_event)(struct sc_reader **readers,
 			      struct sc_slot_info **slots,
 			      size_t nslots,
 			      unsigned int event_mask,
@@ -425,18 +425,23 @@ void sc_mutex_free(struct sc_mutex *p);
 /* none yet */
 
 /*
- * Card capabilities 
+ * Card capabilities
  */
-/* SC_CARD_APDU_EXT: Card can handle large (> 256 bytes) buffers in
- * calls to read_binary, write_binary and update_binary; if not,
- * several successive calls to the corresponding function is made. */
+
+/* Card can handle large (> 256 bytes) buffers in calls to
+ * read_binary, write_binary and update_binary; if not,
+ * several successive calls to the corresponding function
+ * is made. */
 #define SC_CARD_CAP_APDU_EXT		0x00000001
-/* SC_CARD_CAP_EMV: Card can handle operations specified in the
+
+/* Card can handle operations specified in the
  * EMV 4.0 standard. */
 #define SC_CARD_CAP_EMV			0x00000002
-/* SC_CARD_CAP_RNG: Card has on-board random number source */
+
+/* Card has on-board random number source. */
 #define SC_CARD_CAP_RNG			0x00000004
-/* The card doesn't return any File Control Info */
+
+/* Card doesn't return any File Control Info. */
 #define SC_CARD_CAP_NO_FCI		0x00000008
 
 struct sc_card {
@@ -456,10 +461,10 @@ struct sc_card {
 	struct sc_app_info *app[SC_MAX_CARD_APPS];
 	int app_count;
 	struct sc_file *ef_dir;
-	
+
 	struct sc_algorithm_info *algorithms;
 	int algorithm_count;
-	
+
 	int lock_count;
 
 	struct sc_card_driver *driver;
@@ -552,7 +557,7 @@ struct sc_card_operations {
 	 *   restore_security_env. */
 	int (*decipher)(struct sc_card *card, const u8 * crgram,
 		        size_t crgram_len, u8 * out, size_t outlen);
-	
+
 	/* compute_signature:  Generates a digital signature on the card.  Similiar
 	 *   to the function decipher. */
 	int (*compute_signature)(struct sc_card *card, const u8 * data,
@@ -575,7 +580,7 @@ struct sc_card_operations {
 	 *   writes the corresponding file identifiers to <buf>.  Returns
 	 *   the number of bytes stored. */
 	int (*list_files)(struct sc_card *card, u8 *buf, size_t buflen);
-	
+
 	int (*check_sw)(struct sc_card *card, int sw1, int sw2);
 	int (*card_ctl)(struct sc_card *card, unsigned long request,
 				void *data);
@@ -615,13 +620,13 @@ struct sc_context {
 	FILE *debug_file, *error_file;
 	char *preferred_language;
 
-	const struct sc_reader_driver *reader_drivers[SC_MAX_READER_DRIVERS+1];
+	const struct sc_reader_driver *reader_drivers[SC_MAX_READER_DRIVERS];
 	void *reader_drv_data[SC_MAX_READER_DRIVERS];
-	
+
 	struct sc_reader *reader[SC_MAX_READERS];
 	int reader_count;
-	
-	struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS+1];
+
+	struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS];
 	struct sc_card_driver *forced_driver;
 
 	sc_mutex_t *mutex;
@@ -727,7 +732,7 @@ int sc_wait_for_event(struct sc_reader **readers, int *slots, size_t nslots,
  * @retval SC_SUCCESS on success
  */
 int sc_lock(struct sc_card *card);
-/** 
+/**
  * Unlocks a previously locked card. After the lock count drops to zero,
  * the card is again placed in shared mode, where other processes
  * may access or lock it.

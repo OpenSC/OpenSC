@@ -26,7 +26,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
-
 #include <opensc/scdl.h>
 
 extern int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *,
@@ -71,10 +70,9 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 	int			i, r = SC_ERROR_WRONG_CARD;
 
 	SC_FUNC_CALLED(ctx, 1);
-
 	memset(&opts, 0, sizeof(opts));
-
 	conf_block = NULL;
+
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 						"framework", "pkcs15");
@@ -96,6 +94,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 	} else {
 		/* we have a conf file => let's use it */
 		const scconf_list *list, *item;
+
 		/* find out if the internal drivers should be used */
 		i = scconf_get_bool(conf_block, "enable_builtin_emulation", 1);
 		if (i) {
@@ -115,10 +114,10 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 					}
 			}
 		}
+
 		/* search for 'emulate foo { ... }' entries in the conf file */
 		sc_debug(ctx, "searching for 'emulate foo { ... }' blocks\n");
 		blocks = scconf_find_blocks(ctx->conf, conf_block, "emulate", NULL);
-
 		for (i = 0; (blk = blocks[i]) != NULL; i++) {
 			const char *name = blk->name->data;
 			sc_debug(ctx, "trying %s\n", name);
@@ -187,28 +186,27 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	int		(*init_func)(sc_pkcs15_card_t *);
 	int		(*init_func_ex)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 	int		r;
-	const char	*module_name;
+	const char	*driver, *module_name;
 
+	driver = conf->name->data;
 	r = emu_detect_card(card, conf);
 	if (!r)
 		return SC_ERROR_WRONG_CARD;
 
 	init_func    = NULL;
 	init_func_ex = NULL;
+
+	memset(&opts, 0, sizeof(opts));
 	opts.blk     = conf;
 	opts.flags   = SC_PKCS15EMU_FLAGS_NO_CHECK;
 
 	module_name = scconf_get_str(conf, "module", builtin_name);
-
 	if (!strcmp(module_name, "builtin")) {
 		int	i;
 
 		/* This function is built into libopensc itself.
 		 * Look it up in the table of emulators */
-		if (!conf->name)
-			return SC_ERROR_INTERNAL;
-
-		module_name = conf->name->data;
+		module_name = driver;
 		for (i = 0; builtin_emulators[i].name; i++) {
 			if (!strcmp(builtin_emulators[i].name, module_name)) {
 				init_func_ex = builtin_emulators[i].handler;

@@ -26,7 +26,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <limits.h>
-
 #include <opensc/scdl.h>
 
 /* Default value for apdu_masquerade option */
@@ -45,61 +44,59 @@ int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader)
 	ctx->reader[ctx->reader_count] = reader;
 	ctx->reader_count++;
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 struct _sc_driver_entry {
 	char *name;
 	void *func;
-	char *libpath;
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
-	{ "etoken", (void *) sc_get_etoken_driver, NULL },
-	{ "flex", (void *) sc_get_cryptoflex_driver, NULL },
-	{ "cyberflex", (void *) sc_get_cyberflex_driver, NULL },
+	{ "etoken", (void *) sc_get_etoken_driver },
+	{ "flex", (void *) sc_get_cryptoflex_driver },
+	{ "cyberflex", (void *) sc_get_cyberflex_driver },
 #ifdef HAVE_OPENSSL
-	{ "gpk", (void *) sc_get_gpk_driver, NULL },
+	{ "gpk", (void *) sc_get_gpk_driver },
 #endif
-	{ "miocos", (void *) sc_get_miocos_driver, NULL },
-	{ "mcrd", (void *) sc_get_mcrd_driver, NULL },
-	{ "setcos", (void *) sc_get_setcos_driver, NULL },
-	{ "starcos", (void *) sc_get_starcos_driver, NULL },
-	{ "tcos", (void *) sc_get_tcos_driver, NULL },
-	{ "opengpg", (void *) sc_get_openpgp_driver, NULL },
-	{ "jcop", (void *) sc_get_jcop_driver, NULL },
+	{ "miocos", (void *) sc_get_miocos_driver },
+	{ "mcrd", (void *) sc_get_mcrd_driver },
+	{ "setcos", (void *) sc_get_setcos_driver },
+	{ "starcos", (void *) sc_get_starcos_driver },
+	{ "tcos", (void *) sc_get_tcos_driver },
+	{ "opengpg", (void *) sc_get_openpgp_driver },
+	{ "jcop", (void *) sc_get_jcop_driver },
 #ifdef HAVE_OPENSSL
-	{ "oberthur", (void *) sc_get_oberthur_driver, NULL },
+	{ "oberthur", (void *) sc_get_oberthur_driver },
 #endif
-	{ "belpic", (void *) sc_get_belpic_driver, NULL },
-	{ "emv", (void *) sc_get_emv_driver, NULL },
+	{ "belpic", (void *) sc_get_belpic_driver },
+	{ "emv", (void *) sc_get_emv_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
-	{ "default", (void *) sc_get_default_driver, NULL },
-	{ NULL, NULL, NULL }
+	{ "default", (void *) sc_get_default_driver },
+	{ NULL, NULL }
 };
 
 static const struct _sc_driver_entry internal_reader_drivers[] = {
 #if defined(HAVE_PCSC)
-	{ "pcsc", (void *) sc_get_pcsc_driver, NULL },
+	{ "pcsc", (void *) sc_get_pcsc_driver },
 #endif
-	{ "ctapi", (void *) sc_get_ctapi_driver, NULL },
+	{ "ctapi", (void *) sc_get_ctapi_driver },
 #ifndef _WIN32
 #ifdef HAVE_OPENCT
-	{ "openct", (void *) sc_get_openct_driver, NULL },
+	{ "openct", (void *) sc_get_openct_driver },
 #endif
 #endif
-	{ NULL, NULL, NULL }
+	{ NULL, NULL }
 };
 
 struct _sc_ctx_options {
-	struct _sc_driver_entry rdrv[16];
+	struct _sc_driver_entry rdrv[SC_MAX_READER_DRIVERS];
 	int rcount;
-	struct _sc_driver_entry cdrv[16];
+	struct _sc_driver_entry cdrv[SC_MAX_CARD_DRIVERS];
 	int ccount;
 	char *forced_card_driver;
 };
-
 
 static void del_drvs(struct _sc_ctx_options *opts, int type)
 {
@@ -115,8 +112,6 @@ static void del_drvs(struct _sc_ctx_options *opts, int type)
 	}
 	for (i = 0; i < *cp; i++) {
 		free(lst[i].name);
-		if (lst[i].libpath)
-			free(lst[i].libpath);
 	}
 	*cp = 0;
 }
@@ -124,16 +119,18 @@ static void del_drvs(struct _sc_ctx_options *opts, int type)
 static void add_drv(struct _sc_ctx_options *opts, int type, const char *name)
 {
 	struct _sc_driver_entry *lst;
-	int *cp, i;
+	int *cp, max, i;
 
 	if (type == 0) {
 		lst = opts->rdrv;
 		cp = &opts->rcount;
+		max = SC_MAX_READER_DRIVERS;
 	} else {
 		lst = opts->cdrv;
 		cp = &opts->ccount;
+		max = SC_MAX_CARD_DRIVERS;
 	}
-	if (*cp == 16) /* No space for more drivers... */
+	if (*cp == max) /* No space for more drivers... */
 		return;
 	for (i = 0; i < *cp; i++)
 		if (strcmp(name, lst[i].name) == 0)
@@ -179,8 +176,7 @@ static int load_parameters(struct sc_context *ctx, scconf_block *block,
 {
 	int err = 0;
 	const scconf_list *list;
-	const char *val;
-	const char *s_internal = "internal";
+	const char *val, *s_internal = "internal";
 
 	ctx->debug = scconf_get_int(block, "debug", ctx->debug);
 	val = scconf_get_str(block, "debug_file", NULL);
@@ -328,7 +324,9 @@ static const char *find_library(struct sc_context *ctx, const char *name, int ty
  * that returns a pointer to the function _sc_get_xxxx_driver()
  * used to initialize static modules
  * Also, an exported "char *sc_module_version" variable should exist in module
- * type=1 -> carddriver Type=0 -> readerdriver
+ *
+ * type == 0 -> reader driver
+ * type == 1 -> card driver
  */
 static void *load_dynamic_driver(struct sc_context *ctx, void **dll,
 	const char *name, int type)
@@ -407,9 +405,9 @@ static int load_reader_drivers(struct sc_context *ctx,
 		driver->ops->init(ctx, &ctx->reader_drv_data[i]);
 
 		ctx->reader_drivers[drv_count] = driver;
-                drv_count++;
+		drv_count++;
 	}
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int load_card_driver_options(struct sc_context *ctx,
@@ -439,8 +437,7 @@ static int load_card_driver_options(struct sc_context *ctx,
 			list = list->next;
 		}
 	}
-
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int load_card_drivers(struct sc_context *ctx,
@@ -479,9 +476,9 @@ static int load_card_drivers(struct sc_context *ctx,
 		ctx->card_drivers[drv_count]->natrs = 0;
 
 		load_card_driver_options(ctx, ctx->card_drivers[drv_count]);
-                drv_count++;
+		drv_count++;
 	}
-	return 0;
+	return SC_SUCCESS;
 }
 
 static void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
@@ -572,7 +569,7 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 		return SC_ERROR_NO_READERS_FOUND;
 	}
 	*ctx_out = ctx;
-	return 0;
+	return SC_SUCCESS;
 }
 
 int sc_release_context(struct sc_context *ctx)
@@ -616,7 +613,7 @@ int sc_release_context(struct sc_context *ctx)
 	free(ctx->app_name);
 	memset(ctx, 0, sizeof(*ctx));
 	free(ctx);
-	return 0;
+	return SC_SUCCESS;
 }
 
 int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
@@ -640,7 +637,7 @@ int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
 	sc_mutex_unlock(ctx->mutex);
 	if (match == 0)
 		return SC_ERROR_OBJECT_NOT_FOUND; /* FIXME: invent error */
-	return 0;
+	return SC_SUCCESS;
 }
 
 int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
@@ -668,7 +665,7 @@ int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
 		return SC_ERROR_INTERNAL;
 	if (snprintf(buf, bufsize, "%s/%s", homedir, cache_dir) < 0)
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	return 0;
+	return SC_SUCCESS;
 }
 
 int sc_make_cache_dir(struct sc_context *ctx)
@@ -701,7 +698,7 @@ int sc_make_cache_dir(struct sc_context *ctx)
 		if (mkdir(dirname, 0700) < 0)
 			goto failed;
 	}
-	return 0;
+	return SC_SUCCESS;
 
 	/* for lack of a better return code */
 failed:	sc_error(ctx, "failed to create cache directory\n");
