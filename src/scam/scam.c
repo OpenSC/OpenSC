@@ -36,11 +36,11 @@
 
 struct scam_framework_ops *scam_frameworks[] =
 {
+#ifdef HAVE_OPENSSL
+#ifdef HAVE_LDAP
 #ifdef HAVE_SCIDI
 	&scam_fw_sp,
 #endif
-#ifdef HAVE_OPENSSL
-#ifdef HAVE_LDAP
 	&scam_fw_p15_ldap,
 #endif
 	&scam_fw_p15_eid,
