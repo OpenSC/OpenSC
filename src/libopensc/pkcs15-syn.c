@@ -207,3 +207,178 @@ sc_pkcs15_bind_emulation(sc_pkcs15_card_t *p15card,
 	return r;
 }
 
+sc_pkcs15_df_t *
+sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card, int type)
+{
+	sc_pkcs15_df_t	*df;
+	sc_file_t	*file;
+	int		created = 0;
+
+	while (1) {
+		for (df = p15card->df_list; df; df = df->next) {
+			if (df->type == type) {
+				if (created)
+					df->enumerated = 1;
+				return df;
+			}
+		}
+
+		assert(created == 0);
+
+		file = sc_file_new();
+		sc_format_path("11001101", &file->path);
+		sc_pkcs15_add_df(p15card, type, &file->path, file);
+		created++;
+	}
+}
+
+int
+sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
+		const char *label, void *data,
+		const sc_pkcs15_id_t *auth_id)
+{
+	sc_pkcs15_object_t *obj;
+	int		df_type;
+
+	obj = (sc_pkcs15_object_t *) calloc(1, sizeof(*obj));
+
+	obj->type  = type;
+	obj->data  = data;
+                
+	if (label)
+		strncpy(obj->label, label, sizeof(obj->label)-1);
+
+	if (!(p15card->flags & SC_PKCS15_CARD_FLAG_READONLY))
+		obj->flags |= SC_PKCS15_CO_FLAG_MODIFIABLE;
+	if (auth_id)
+		obj->auth_id = *auth_id;
+
+	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
+	case SC_PKCS15_TYPE_AUTH:
+		obj->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
+		df_type = SC_PKCS15_AODF;
+		break;
+	case SC_PKCS15_TYPE_PRKEY:
+		obj->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
+		df_type = SC_PKCS15_PRKDF;
+		break;
+	case SC_PKCS15_TYPE_PUBKEY:
+		df_type = SC_PKCS15_PUKDF;
+		break;
+	case SC_PKCS15_TYPE_CERT:
+		df_type = SC_PKCS15_CDF;
+		break;
+	default:
+		sc_error(p15card->card->ctx,
+			"Unknown PKCS15 object type %d\n", type);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	obj->df = sc_pkcs15emu_get_df(p15card, df_type);
+	sc_pkcs15_add_object(p15card, obj);
+
+	return 0;
+}
+
+int
+sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
+                const sc_pkcs15_id_t *id, const char *label,
+                const sc_path_t *path, int ref, int type,
+                unsigned int min_length,
+                unsigned int max_length,
+                int flags, int tries_left, const char pad_char)
+{
+	sc_pkcs15_pin_info_t *info;
+                
+	info = (sc_pkcs15_pin_info_t *) calloc(1, sizeof(*info));
+	info->auth_id           = *id;
+	info->min_length        = min_length;
+	info->max_length        = max_length;
+	info->stored_length     = max_length;
+	info->type              = type;
+	info->reference         = ref;
+	info->flags             = flags;
+	info->tries_left        = tries_left;
+	info->magic             = SC_PKCS15_PIN_MAGIC;
+	info->pad_char          = pad_char;
+        
+	if (path)
+		info->path = *path;     
+	if (type == SC_PKCS15_PIN_TYPE_BCD)
+		info->stored_length /= 2;
+                
+	return sc_pkcs15emu_add_object(p15card,
+	                               SC_PKCS15_TYPE_AUTH_PIN,
+	                               label, info, NULL);
+}
+
+int
+sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
+		int type, int authority,
+		const sc_path_t *path,
+		const sc_pkcs15_id_t *id,
+                const char *label)
+{
+	/* const char *label = "Certificate"; */
+	sc_pkcs15_cert_info_t *info;
+	info = (sc_pkcs15_cert_info_t *) calloc(1, sizeof(*info));
+	info->id		= *id;
+	info->authority		= authority;
+	if (path)
+		info->path = *path;
+                
+	info->path = *path;
+
+	return sc_pkcs15emu_add_object(p15card, type, label, info, NULL);
+}
+
+int
+sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
+                const sc_pkcs15_id_t *id,
+                const char *label,
+                int type, unsigned int modulus_length, int usage,
+                const sc_path_t *path, int ref,
+                const sc_pkcs15_id_t *auth_id)
+{
+	sc_pkcs15_prkey_info_t *info;   
+        
+	info = (sc_pkcs15_prkey_info_t *) calloc(1, sizeof(*info));
+	info->id                = *id;
+	info->modulus_length    = modulus_length;
+	info->usage             = usage;
+	info->native            = 1;
+	info->access_flags      = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+                                | SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+                                | SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+                                | SC_PKCS15_PRKEY_ACCESS_LOCAL;
+	info->key_reference     = ref;
+ 
+	if (path)
+		info->path = *path;
+
+	return sc_pkcs15emu_add_object(p15card,
+	                               type, label, info, auth_id);
+}
+
+int
+sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
+		const sc_pkcs15_id_t *id,
+		const char *label, int type,
+		unsigned int modulus_length, int usage,
+		const sc_path_t *path, int ref,
+		const sc_pkcs15_id_t *auth_id)
+{
+	sc_pkcs15_pubkey_info_t *info;
+
+	info = (sc_pkcs15_pubkey_info_t *) calloc(1, sizeof(*info));
+	info->id		= *id;
+	info->modulus_length	= modulus_length;
+	info->usage		= usage;
+	info->access_flags	= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+	info->key_reference	= ref;
+
+	if (path)
+		info->path = *path;
+
+	return sc_pkcs15emu_add_object(p15card, type, label, info, auth_id);
+}
