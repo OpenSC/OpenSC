@@ -17,6 +17,9 @@ struct sc_pkcs11_module {
 #if defined(linux) || defined(_WIN32)
 	void *			_dl_handle;
 #endif
+#ifdef __APPLE__
+	struct mach_header * 	_dl_handle;    
+#endif
 };
 
 static int	sys_dlopen(sc_pkcs11_module_t *, const char *);
@@ -174,6 +177,47 @@ sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 	return GetProcAddress(mod->_dl_handle, name);
 }
 
-#endif // _WIN32
+#endif
+
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+
+/*
+ * Module loader for MacOSX 10
+ */
+int
+sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
+{
+	if (name == NULL)
+		name = "libopensc-pkcs11.dylib";
+	
+	mod->_dl_handle =  NSAddImage(name, NSADDIMAGE_OPTION_WITH_SEARCHING);
+	
+	return (mod->_dl_handle? 0 : -1);
+}
 
 
+int
+sys_dlclose(struct sc_pkcs11_module *mod)
+{
+	return CKR_OK;
+}
+
+void *
+sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
+{
+	NSSymbol symbol=NULL;
+	char u_name[202];
+	
+	if (strlen(name) > 200)
+		return NULL;
+	sprintf(u_name, "_%s", name);
+	
+	symbol = NSLookupSymbolInImage(mod->_dl_handle, u_name,
+		NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_NOW);
+	if (symbol==NULL)
+		return NULL;
+	
+	return NSAddressOfSymbol(symbol);
+}
+#endif
