@@ -38,7 +38,7 @@ ctbcs_init_apdu(sc_apdu_t *apdu, int cse, int ins, int p1, int p2)
 }
 
 #if 0
-int
+static int
 ctbcs_build_input_apdu(sc_apdu_t *apdu, int echo, const char *prompt,
 			u8 *rbuf, size_t rbuflen)
 {
@@ -58,7 +58,7 @@ ctbcs_build_input_apdu(sc_apdu_t *apdu, int echo, const char *prompt,
 	return 0;
 }
 
-int
+static int
 ctbcs_build_output_apdu(sc_apdu_t *apdu, const char *message)
 {
 	ctbcs_init_apdu(apdu,
@@ -169,7 +169,7 @@ ctbcs_pin_cmd(struct sc_reader *reader, sc_slot_info_t *slot,
 		r = ctbcs_build_modify_verification_apdu(&apdu, data);
 		break;
 	default:
-		sc_error(reader->ctx, "unknown pin command %d", data->cmd);
+		sc_error(reader->ctx, "Unknown PIN command %d", data->cmd);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 

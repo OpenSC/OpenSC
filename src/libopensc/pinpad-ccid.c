@@ -16,7 +16,7 @@
 #include <string.h>
 
 /* Build a pin verification CCID block + APDU */
-int ccid_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
+static int ccid_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
 {
 	size_t buflen, count = 0;
 	sc_apdu_t *apdu = data->apdu;
