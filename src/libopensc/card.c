@@ -1114,3 +1114,21 @@ int _sc_check_forced_protocol(sc_context_t *ctx, u8 *atr, size_t atr_len, unsign
 	}
 	return ok;
 }
+
+scconf_block *_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2)
+{
+	int i;
+	scconf_block *conf_block = NULL;
+	
+	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
+		scconf_block **blocks;
+		
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i], name1, name2);
+		conf_block = blocks[0];
+		free(blocks);
+		if (conf_block != NULL)
+			break;
+	}
+	return conf_block;
+}
+

@@ -87,6 +87,8 @@ struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
 int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		     unsigned int *tag_out, size_t *taglen);
 
+scconf_block *_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2);
+
 #ifdef __cplusplus
 }
 #endif
