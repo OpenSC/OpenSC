@@ -1168,21 +1168,6 @@ usage:
 	return -1;
 }
 
-int do_pgp_lsdo(int argc, char **argv)
-{
-	printf(
-	      "Data objects on card:\n"
-	      "   004F   Serial Number\n"
-	      "   005E   Login Data\n"
-	      "   0065   Cardholder Related Data\n"
-	      "   006E   Application Related Data\n"
-	      "   0073   Discretionary Data Objects\n"
-	      "   007A   Security Support Template\n"
-	      "   5F50   URL\n"
-		);
-	return 0;
-}
-
 int do_get_data(int argc, char **argv)
 {
 	unsigned char	buffer[256];
@@ -1234,7 +1219,7 @@ int do_quit(int argc, char **argv)
 	return 0;
 }
 
-struct command		default_cmds[] = {
+struct command		cmds[] = {
  { "ls",	do_ls,		"list all files in the current DF"	},
  { "cd",	do_cd,		"change to another DF"			},
  { "debug",	do_debug,	"set the debug level"			},
@@ -1247,6 +1232,8 @@ struct command		default_cmds[] = {
  { "unblock",	do_unblock,	"unblock a PIN"                         },
  { "put",	do_put,		"copy a local file to the card"		},
  { "get",	do_get,		"copy an EF to a local file"		},
+ { "get_do",	do_get_data,	"get a data object"			},
+ { "put_do",	do_put_data,	"put a data object"			},
  { "mkdir",	do_mkdir,	"create a DF"				},
  { "pksign",    do_pksign,      "create a public key signature"         },
  { "pkdecrypt", do_pkdecrypt,   "perform a public key decryption"       },
@@ -1255,22 +1242,6 @@ struct command		default_cmds[] = {
  { "quit",	do_quit,	"quit this program"			},
  { 0, 0, 0 }
 };
-
-struct command		pgp_cmds[] = {
- { "ls",	do_pgp_lsdo,	"show all DOs on the card"		},
- { "debug",	do_debug,	"set the debug level"			},
- { "cat",	do_get_data,	"print the contents of a DO"		},
- { "verify",	do_verify,	"present a PIN or key to the card"	},
- { "change",	do_change,	"change a PIN"                          },
- { "unblock",	do_unblock,	"unblock a PIN"                         },
- { "put",	do_put_data,	"copy a local file to the card"		},
- { "get",	do_get_data,	"copy a DO to a local file"		},
- { "random",	do_random,	"obtain N random bytes from card"	},
- { "quit",	do_quit,	"quit this program"			},
- { 0, 0, 0 }
-};
-
-struct command		*cmds = default_cmds;
 
 void usage()
 {
@@ -1403,21 +1374,12 @@ int main(int argc, char * const argv[])
 		goto end;
 	}
 
-	if (card->driver->short_name
-	 && !strcmp(card->driver->short_name, "openpgp")) {
-		sc_format_path("D276:0001:2401", &current_path);
-		current_path.type = SC_PATH_TYPE_DF_NAME;
-		cmds = pgp_cmds;
-	} else {
-		sc_format_path("3F00", &current_path);
-	}
-
+	sc_format_path("3F00", &current_path);
 	r = sc_select_file(card, &current_path, &current_file);
 	if (r) {
 		printf("unable to select MF: %s\n", sc_strerror(r));
 		return 1;
 	}
-
 	while (1) {
 		struct command *c;
 		int i;
