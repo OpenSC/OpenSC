@@ -865,6 +865,13 @@ struct sc_card_error {
 
 extern const char *sc_get_version(void);
 
+#define IMPLEMENT_DRIVER_VERSION(a) \
+	static const char *drv_version = (a); \
+	const char *sc_driver_version()\
+	{ \
+		return drv_version; \
+	}
+
 extern struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern struct sc_reader_driver *sc_get_ctapi_driver(void);
 extern struct sc_reader_driver *sc_get_openct_driver(void);

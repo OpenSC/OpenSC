@@ -194,3 +194,33 @@ failed:
 		sc_debug(card->ctx, "Failed to initialize TeleSec Netkey E4 emulation: %s\n", sc_strerror(r));
         return r;
 }
+
+static int netkey_detect_card(sc_pkcs15_card_t *p15card)
+{
+	int       r;
+	sc_path_t path;
+	sc_card_t *card = p15card->card;
+
+	/* check if we have the correct card OS */
+	if (strcmp(card->name, "TCOS"))
+		return SC_ERROR_WRONG_CARD;
+	/* check if we have a df01 DF           */
+	sc_format_path("3F00DF01", &path);
+	r = sc_select_file(card, &path, NULL);
+	if (r < 0)
+		return SC_ERROR_WRONG_CARD;
+	return SC_SUCCESS;
+}
+	
+int sc_pkcs15emu_netkey_init_ex(sc_pkcs15_card_t *p15card,
+				sc_pkcs15emu_opt_t *opts)
+{
+	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
+		return sc_pkcs15emu_netkey_init(p15card);
+	else {
+		int r = netkey_detect_card(p15card);
+		if (r)
+			return SC_ERROR_WRONG_CARD;
+		return sc_pkcs15emu_netkey_init(p15card);
+	}
+}

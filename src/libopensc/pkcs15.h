@@ -383,6 +383,7 @@ int sc_pkcs15_find_object_by_id(sc_pkcs15_card_t *, int,
 
 struct sc_pkcs15_card * sc_pkcs15_card_new(void);
 void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card);
+void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card);
 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,
@@ -601,7 +602,15 @@ typedef struct sc_pkcs15_search_key {
 int sc_pkcs15_search_objects(sc_pkcs15_card_t *, sc_pkcs15_search_key_t *,
 			sc_pkcs15_object_t **, size_t);
 
-extern int sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *, int);
+/* This structure is passed to the new sc_pkcs15emu_*_init functions */
+typedef struct sc_pkcs15emu_opt {
+	scconf_block *blk;
+	unsigned int flags;
+} sc_pkcs15emu_opt_t;
+
+#define SC_PKCS15EMU_FLAGS_NO_CHECK	0x00000001
+
+extern int sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *);
 
 sc_pkcs15_df_t *sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,
 			int type);

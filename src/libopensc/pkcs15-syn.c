@@ -2,6 +2,7 @@
  * pkcs15-syn.c: PKCS #15 emulation of non-pkcs15 cards
  *
  * Copyright (C) 2003  Olaf Kirch <okir@suse.de>
+ *               2004  Nils Larsch <nlarsch@betrusted.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,39 +27,47 @@
 #include <stdio.h>
 #include <assert.h>
 
-static int	sc_pkcs15_bind_emulation(sc_pkcs15_card_t *, const char *,
-				scconf_block *, int);
-
-extern int	sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *);
-extern int 	sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *);
-extern int 	sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *);
-extern int	sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *);
-extern int	sc_pkcs15emu_esteid_init(sc_pkcs15_card_t *);
+extern int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_infocamere_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_netkey_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
 
 static struct {
 	const char *		name;
-	int			(*handler)(sc_pkcs15_card_t *);
+	int			(*handler)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 } builtin_emulators[] = {
-      {	"openpgp",		sc_pkcs15emu_openpgp_init	},
-      { "infocamere",           sc_pkcs15emu_infocamere_init    },
-      { "starcert",             sc_pkcs15emu_starcert_init      },
-      { "netkey",		sc_pkcs15emu_netkey_init	},
-      { "esteid",		sc_pkcs15emu_esteid_init	},
+      {	"openpgp",		sc_pkcs15emu_openpgp_init_ex	},
+      { "infocamere",           sc_pkcs15emu_infocamere_init_ex	},
+      { "starcert",             sc_pkcs15emu_starcert_init_ex	},
+      { "netkey",		sc_pkcs15emu_netkey_init_ex	},
+      { "esteid",		sc_pkcs15emu_esteid_init_ex	},
       { NULL }
 };
 
+static int parse_emu_block(sc_pkcs15_card_t *, scconf_block *);
+
+static const char *builtin_name = "builtin";
+static const char *func_name    = "sc_pkcs15_init_func";
+static const char *exfunc_name  = "sc_pkcs15_init_func_ex";
+
 
 int
-sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, int check_atr)
+sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 {
 	sc_context_t		*ctx = p15card->card->ctx;
-	const scconf_list	*clist, *tmp;
 	scconf_block		*conf_block, **blocks, *blk;
-	int			i, r;
+	sc_pkcs15emu_opt_t	opts;
+	int			i, r = SC_ERROR_WRONG_CARD;
 
 	SC_FUNC_CALLED(ctx, 1);
 
-	assert(p15card);
+	memset(&opts, 0, sizeof(opts));
 
 	conf_block = NULL;
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
@@ -68,43 +77,60 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, int check_atr)
 			conf_block = blocks[0];
 		free(blocks);
 	}
-	if (!conf_block)
-		return SC_ERROR_WRONG_CARD;
 
-	/* Old-style: get the pkcs15_syn libs from the conf file */
-	clist = scconf_find_list(conf_block, "pkcs15_syn");
-	for (tmp = clist; tmp != NULL; tmp = tmp->next) {
-		const char *module = tmp->data;
-
-		if (module == NULL)
-			continue;
-		r = sc_pkcs15_bind_emulation(p15card, module, NULL, check_atr);
-		if (r != SC_ERROR_WRONG_CARD)
-			goto out;
-	}
-
-	/* New-style: get lib name, function name, ATR list */
-	blocks = scconf_find_blocks(ctx->conf, conf_block, "emulate", NULL);
-	for (i = 0; (blk = blocks[i]) != NULL; i++) {
-		const char *module;
-
-		module = scconf_get_str(blk, "module", NULL);
-		if (!module)
-			continue;
-
-		r = sc_pkcs15_bind_emulation(p15card, module, blk, check_atr);
-		if (r != SC_ERROR_WRONG_CARD) {
-			free(blocks);
-			goto out;
+	if (!conf_block) {
+		/* no conf file found => try the internal drivers  */
+		sc_debug(ctx, "no conf file, trying builtin emulators\n");
+		for (i = 0; builtin_emulators[i].name; i++) {
+			sc_debug(ctx, "trying %s\n", builtin_emulators[i].name);
+			r = builtin_emulators[i].handler(p15card, &opts);
+			if (r == SC_SUCCESS)
+				/* we got a hit */
+				goto out;
 		}
-	}
-	free(blocks);
+	} else {
+		/* we have a conf file => let's use it */
+		const scconf_list *list, *item;
+		/* find out if the internal drivers should be used */
+		i = scconf_get_bool(conf_block, "enable_builtin_emulation", 1);
+		if (i) {
+			/* get the list of the internal drivers */
+			sc_debug(ctx, "use builtin drivers\n");
+			list = scconf_find_list(conf_block, "builtin_emulators");
+			for (item = list; item; item = item->next) {
+				/* get through the list of builtin drivers */
+				const char *name = item->data;
 
+				sc_debug(ctx, "trying %s\n", name);
+				for (i = 0; builtin_emulators[i].name; i++)
+					if (!strcmp(builtin_emulators[i].name, name)) {
+						r = builtin_emulators[i].handler(p15card, &opts);
+						if (r == SC_SUCCESS)
+							goto out;
+					}
+			}
+		}
+		/* search for 'emulate foo { ... }' entries in the conf file */
+		sc_debug(ctx, "searching for 'emulate foo { ... }' blocks\n");
+		blocks = scconf_find_blocks(ctx->conf, conf_block, "emulate", NULL);
+
+		for (i = 0; (blk = blocks[i]) != NULL; i++) {
+			const char *name = blk->name->data;
+			sc_debug(ctx, "trying %s\n", name);
+			r = parse_emu_block(p15card, blk);
+			if (r == SC_SUCCESS) {
+				free(blocks);
+				goto out;
+			}
+		}
+		if (blocks)
+			free(blocks);
+	}
+		
 	/* Total failure */
 	return SC_ERROR_WRONG_CARD;
 
 out:	if (r == SC_SUCCESS) {
-		/* p15card->flags |= SC_PKCS15_CARD_FLAG_READONLY; */
 		p15card->magic  = 0x10203040;
 	} else if (r != SC_ERROR_WRONG_CARD) {
 		sc_error(ctx, "Failed to load card emulator: %s\n",
@@ -114,94 +140,119 @@ out:	if (r == SC_SUCCESS) {
 	return r;
 }
 
-int
-sc_pkcs15_bind_emulation(sc_pkcs15_card_t *p15card,
-				const char *module_name,
-				scconf_block *conf,
-				int check_atr)
+static int emu_detect_card(const sc_card_t *card, const scconf_block *blk)
+{
+	int   r = 1, match = 0;
+	const scconf_list *list, *item;
+	/* currently only ATR matching is supported (more to follow) */
+
+	/* check the ATR */
+	list = scconf_find_list(blk, "atr");
+	if (list) {
+		for (item = list; item; item = item->next) {
+			u8     atr[SC_MAX_ATR_SIZE];
+			size_t len = sizeof(atr);
+
+			if (!item->data)
+				/* skip empty data */
+				continue;
+			if (sc_hex_to_bin(item->data, atr, &len) != SC_SUCCESS)
+				/* ignore errors, try next atr */
+				continue;
+			if (len == card->atr_len && !memcmp(card->atr, atr, len)){
+				match = 1;
+				break;
+			}
+		}
+		if (match)
+			r = 1;
+		else
+			r = 0;
+	}
+
+	return r;
+}
+
+static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 {
 	sc_card_t	*card = p15card->card;
 	sc_context_t	*ctx = card->ctx;
-	const scconf_list *list, *item;
+	sc_pkcs15emu_opt_t opts;
 	void		*dll = NULL;
 	int		(*init_func)(sc_pkcs15_card_t *);
+	int		(*init_func_ex)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 	int		r;
+	const char	*module_name;
 
-	if (conf && (list = scconf_find_list(conf, "atr"))) {
-		int	match = 0;
-
-		if (!check_atr)
-			return SC_ERROR_WRONG_CARD;
-		for (item = list; item; item = item->next) {
-			u8	atr[SC_MAX_ATR_SIZE];
-			size_t	len = sizeof(atr);
-
-			if (!item->data)
-				continue;
-			if (sc_hex_to_bin(item->data, atr, &len))
-				continue;
-			if (len > card->atr_len
-			 || memcmp(card->atr, atr, len))
-				continue;
-			match = 1;
-			break;
-		}
-		if (!match)
-			return SC_ERROR_WRONG_CARD;
-	} else if (!check_atr) {
-		/* ATR checking required, but no ATR list to match against */
+	r = emu_detect_card(card, conf);
+	if (!r)
 		return SC_ERROR_WRONG_CARD;
-	}
 
-	init_func = NULL;
+	init_func    = NULL;
+	init_func_ex = NULL;
+	opts.blk     = conf;
+	opts.flags   = SC_PKCS15EMU_FLAGS_NO_CHECK;
+
+	module_name = scconf_get_str(conf, "module", builtin_name);
+
 	if (!strcmp(module_name, "builtin")) {
 		int	i;
 
 		/* This function is built into libopensc itself.
 		 * Look it up in the table of emulators */
-		if (conf == NULL || !conf->name)
+		if (!conf->name)
 			return SC_ERROR_INTERNAL;
 
 		module_name = conf->name->data;
 		for (i = 0; builtin_emulators[i].name; i++) {
 			if (!strcmp(builtin_emulators[i].name, module_name)) {
-				init_func = builtin_emulators[i].handler;
+				init_func_ex = builtin_emulators[i].handler;
 				break;
 			}
 		}
-		if (!init_func)
-			return SC_ERROR_WRONG_CARD;
 	} else {
-		const char *function_name = NULL;
+		const char *(*get_version)(void);
+		const char *name = NULL;
 		void	*address;
 
-		if (ctx->debug >= 4)
-			sc_debug(ctx, "Loading %s\n", module_name);
-
+		sc_debug(ctx, "Loading %s\n", module_name);
+		
 		/* try to open dynamic library */
 		r = sc_module_open(ctx, &dll, module_name);
 		if (r != SC_SUCCESS)
 			return r;
+		/* try to get version of the driver/api */
+		r = sc_module_get_address(ctx, dll, &address, "sc_driver_version");
+		if (r < 0)
+			get_version = NULL;
+		else
+			get_version = (const char *(*)())address;
+		if (!get_version || strcmp(get_version(), "0.9.3") < 0) {
+			/* no sc_driver_version function => assume old style
+			 * init function (note: this should later give an error
+			 */
+			/* get the init function name */
+			name = scconf_get_str(conf, "function", func_name);
 
-		/* get a handle to the pkcs15 init function 
-		 * XXX the init_func should not modify the contents of
-		 * sc_pkcs15_card_t unless the card is really the one
-		 * the driver is intended for -- Nils
-		 */
-		if (conf)
-			function_name = scconf_get_str(conf, "function", NULL);
-		if (function_name == NULL)
-			function_name = "sc_pkcs15_init_func";
+			r = sc_module_get_address(ctx, dll, &address, name);
+			if (r == SC_SUCCESS)
+				init_func = (int (*)(sc_pkcs15_card_t *)) address;
+		} else {
+			name = scconf_get_str(conf, "function", exfunc_name);
 
-		r = sc_module_get_address(ctx, dll, &address, function_name);
-		if (r != SC_SUCCESS)
-			return r;
-
-		/* try to initialize synthetic pkcs15 structures */
-		init_func = (int (*)(sc_pkcs15_card_t *)) address;
+			r = sc_module_get_address(ctx, dll, &address, name);
+			if (r == SC_SUCCESS)
+				init_func_ex = (int (*)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *)) address;
+		}
 	}
+	/* try to initialize the pkcs15 structures */
+	if (init_func_ex)
+		r = init_func_ex(p15card, &opts);
+	else if (init_func)
+		r = init_func(p15card);
+	else
+		r = SC_ERROR_WRONG_CARD;
 
-	r = init_func(p15card);
 	if (r >= 0) {
 		sc_debug(card->ctx, "%s succeeded, card bound\n",
 				module_name);
@@ -209,6 +260,8 @@ sc_pkcs15_bind_emulation(sc_pkcs15_card_t *p15card,
 	} else if (ctx->debug >= 4) {
 		sc_debug(card->ctx, "%s failed: %s\n",
 				module_name, sc_strerror(r));
+		/* clear pkcs15 card */
+		sc_pkcs15_card_clear(p15card);
 		if (dll)
 			sc_module_close(ctx, dll);
 	}

@@ -73,7 +73,7 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 	int		r;
 	size_t		len_chn, len_iccsn;
 
-	sc_format_path("2F02", &path);
+	sc_format_path("3F002F02", &path);
 
 	r = sc_select_file(card, &path, &file);
 	
@@ -262,9 +262,33 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 
 	return 0;
 
-failed: sc_error(card->ctx, "Failed to initialize Infocamere SPK2.3 emulation: %s\n",
-                        sc_strerror(r));
+failed: 
+	if (r != SC_ERROR_WRONG_CARD)
+		sc_error(card->ctx, "Failed to initialize Infocamere SPK2.3 emulation: %s\n", sc_strerror(r));
         return r;
 
 }
 
+static int infocamere_detect_card(sc_pkcs15_card_t *p15card)
+{
+	sc_card_t *card = p15card->card;
+
+	/* check if we have the correct card OS */
+	if (strcmp(card->name, "STARCOS SPK 2.3"))
+		return SC_ERROR_WRONG_CARD;
+	return SC_SUCCESS;
+}
+
+
+int sc_pkcs15emu_infocamere_init_ex(sc_pkcs15_card_t *p15card,
+				    sc_pkcs15emu_opt_t *opts)
+{
+	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
+		return sc_pkcs15emu_infocamere_init(p15card);
+	else {
+		int r = infocamere_detect_card(p15card);
+		if (r)
+			return SC_ERROR_WRONG_CARD;
+		return sc_pkcs15emu_infocamere_init(p15card);
+	}
+}

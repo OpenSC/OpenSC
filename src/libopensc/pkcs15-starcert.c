@@ -98,7 +98,7 @@ const prdata prkeys[] = {
 	{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
 };
 
-int get_cert_len(sc_card_t *card, sc_path_t *path)
+static int get_cert_len(sc_card_t *card, sc_path_t *path)
 {
 	int r;
 	u8  buf[8];
@@ -117,6 +117,32 @@ int get_cert_len(sc_card_t *card, sc_path_t *path)
 	return 1;
 } 
 
+static int starcert_detect_card(sc_pkcs15_card_t *p15card)
+{
+	int       r;
+	u8        buf[128];
+	sc_path_t path;
+	sc_card_t *card = p15card->card;
+
+	/* check if we have the correct card OS */
+	if (strcmp(card->name, "STARCOS SPK 2.3"))
+		return SC_ERROR_WRONG_CARD;
+	/* read EF_Info file */
+	sc_format_path("3F00FE13", &path);
+	card->ctx->suppress_errors++;
+	r = sc_select_file(card, &path, NULL);
+	card->ctx->suppress_errors--;
+	if (r != SC_SUCCESS)
+		return SC_ERROR_WRONG_CARD;
+	r = sc_read_binary(card, 0, buf, 64, 0);
+	if (r != 64)
+		return SC_ERROR_WRONG_CARD;
+	if (memcmp(buf + 24, STARCERT, strlen(STARCERT))) 
+		return SC_ERROR_WRONG_CARD;
+
+	return SC_SUCCESS;
+}
+
 int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 {
 	int    r, i;
@@ -126,21 +152,6 @@ int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 	struct sc_card *card = p15card->card;
 	struct sc_serial_number serial;
 
-	/* check if we have the correct card OS */
-	if (strcmp(card->name, "STARCOS SPK 2.3"))
-		return SC_ERROR_WRONG_CARD;
-	/* read EF_Info file */
-	sc_format_path("3F00FE13", &path);
-	card->ctx->suppress_errors++;
-	r = sc_select_file(card, &path, &file);
-	card->ctx->suppress_errors--;
-	if (r != SC_SUCCESS)
-		return SC_ERROR_WRONG_CARD;
-	r = sc_read_binary(card, 0, buf, 64, 0);
-	if (r != 64)
-		return SC_ERROR_WRONG_CARD;
-	if (memcmp(buf + 24, STARCERT, strlen(STARCERT))) 
-		return SC_ERROR_WRONG_CARD;
 	/* get serial number */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
 	r = sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
@@ -216,4 +227,18 @@ int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 	p15card->file_app = file;
 
 	return SC_SUCCESS;
+}
+
+int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *p15card,
+				  sc_pkcs15emu_opt_t *opts)
+{
+
+	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
+		return sc_pkcs15emu_starcert_init(p15card);
+	else {
+		int r = starcert_detect_card(p15card);
+		if (r)
+			return SC_ERROR_WRONG_CARD;
+		return sc_pkcs15emu_starcert_init(p15card);
+	}
 }

@@ -197,3 +197,40 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
     }
   return 0;
 }
+
+static const char *atr1 = "3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43";
+static const char *atr2 = "3B:6E:00:FF:45:73:74:45:49:44:20:76:65:72:20:31:2E:30";
+
+static int esteid_detect_card(sc_pkcs15_card_t *p15card)
+{
+	u8        buf[SC_MAX_ATR_SIZE];
+	size_t    len = sizeof(buf);
+	sc_card_t *card = p15card->card;
+
+	/* XXX: save type of the micardo card in the card structure */
+	if (sc_hex_to_bin(atr1, buf, &len))
+		return SC_ERROR_INTERNAL;
+	if (len == card->atr_len && !memcmp(card->atr, buf, len))
+		return SC_SUCCESS;
+	len = sizeof(buf);
+	if (sc_hex_to_bin(atr2, buf, &len))
+		return SC_ERROR_INTERNAL;
+	if (len == card->atr_len && !memcmp(card->atr, buf, len))
+		return SC_SUCCESS;
+
+	return SC_ERROR_WRONG_CARD;
+}
+
+int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *p15card,
+				sc_pkcs15emu_opt_t *opts)
+{
+
+	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
+		return sc_pkcs15emu_esteid_init(p15card);
+	else {
+		int r = esteid_detect_card(p15card);
+		if (r)
+			return SC_ERROR_WRONG_CARD;
+		return sc_pkcs15emu_esteid_init(p15card);
+	}
+}

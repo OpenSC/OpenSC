@@ -222,9 +222,9 @@ static int encode_ddo(struct sc_pkcs15_card *p15card, u8 **buf, size_t *buflen)
 }
 #endif
 
+#if 0
 int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 {
-#if 0
 	struct sc_path path;
 	struct sc_file file;
 	u8 *buf;
@@ -266,9 +266,9 @@ int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	r = sc_update_binary(card, 0, buf, bufsize, 0);
 	free(buf);
 	SC_TEST_RET(card->ctx, r, "Error updating EF(DIR)");
-#endif
 	return 0;
 }
+#endif
 
 static const struct sc_asn1_entry c_asn1_odf[] = {
 	{ "privateKeys",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, NULL },
@@ -420,70 +420,70 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 	free(p15card);
 }
 
-int sc_pkcs15_bind(struct sc_card *card,
-		   struct sc_pkcs15_card **p15card_out)
+void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
+{
+	p15card->version = 0;
+	p15card->flags   = 0;
+	while (p15card->obj_list)
+		sc_pkcs15_remove_object(p15card, p15card->obj_list);
+	p15card->obj_list = NULL;
+	while (p15card->df_list)
+		sc_pkcs15_remove_df(p15card, p15card->df_list);
+	p15card->df_list = NULL;
+	if (p15card->file_app) {
+		sc_file_free(p15card->file_app);
+		p15card->file_app = NULL;
+	}
+	if (p15card->file_tokeninfo) {
+		sc_file_free(p15card->file_tokeninfo);
+		p15card->file_tokeninfo = NULL;
+	}
+	if (p15card->file_odf) {
+		sc_file_free(p15card->file_odf);
+		p15card->file_odf = NULL;
+	}
+	if (p15card->label) {
+		free(p15card->label);
+		p15card->label = NULL;
+	}
+	if (p15card->serial_number) {
+		free(p15card->serial_number);
+		p15card->serial_number = NULL;
+	}
+	if (p15card->manufacturer_id) {
+		free(p15card->manufacturer_id);
+		p15card->manufacturer_id = NULL;
+	}
+	if (p15card->preferred_language) {
+		free(p15card->preferred_language);
+		p15card->preferred_language = NULL;
+	}
+}
+
+static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 {
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
-	int err;
+	int    err, ok = 0;
 	size_t len;
-	struct sc_pkcs15_card *p15card = NULL;
 	struct sc_path tmppath;
-	struct sc_context *ctx;
-	scconf_block *conf_block = NULL, **blocks;
-	int i;
+	struct sc_card    *card = p15card->card;
+	struct sc_context *ctx  = card->ctx;
 
-	assert(sc_card_valid(card) && p15card_out != NULL);
-	ctx = card->ctx;
-	SC_FUNC_CALLED(ctx, 1);
-	p15card = sc_pkcs15_card_new();
-	if (p15card == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	p15card->card = card;
-
-	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
-		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
-			"framework", "pkcs15");
-		if (blocks[0] != NULL)
-			conf_block = blocks[0];
-		free(blocks);
-	}
-	if (conf_block)
-		p15card->opts.use_cache = scconf_get_bool(conf_block, "use_caching", 0);
-
-	err = sc_lock(card);
-	if (err) {
-		sc_error(ctx, "sc_lock() failed: %s\n", sc_strerror(err));
-		sc_pkcs15_card_free(p15card);
-		SC_FUNC_RETURN(ctx, 1, err);
-	}
-
-	/* Check for non-pkcs15 cards that we emulate. We do this
-	 * twice - first, we check all emulators that list the ATRs
-	 * they match - the OpenPGP emulator is one of them.
-	 *
-	 * If we find no emulator at this stage, we do the normal
-	 * pkcs15 stuff - looking for EF(DIR), trying to locate the
-	 * application DF, parsing EF(TokenInfo) etc etc.
-	 *
-	 * If that fails, too, we check all other emulators as a last
-	 * resort.
-	 */
-	err = sc_pkcs15_bind_synthetic(p15card, 1);
-	if (err >= 0)
-		goto done;
+	if (ctx->debug > 4)
+		sc_debug(ctx, "trying normal pkcs15 processing\n");
 
 	/* Enumerate apps now */
 	if (card->app_count < 0) {
 		err = sc_enum_apps(card);
 		if (err < 0 && err != SC_ERROR_FILE_NOT_FOUND) {
 			sc_error(ctx, "unable to enumerate apps: %s\n", sc_strerror(err));
-			goto error;
+			goto end;
 		}
 	}
 	p15card->file_app = sc_file_new();
 	if (p15card->file_app == NULL) {
 		err = SC_ERROR_OUT_OF_MEMORY;
-		goto error;
+		goto end;
 	}
 	sc_format_path("3F005015", &p15card->file_app->path);
 	if (card->app_count > 0) {
@@ -502,12 +502,8 @@ int sc_pkcs15_bind(struct sc_card *card,
 	card->ctx->suppress_errors++;
 	err = sc_select_file(card, &p15card->file_app->path, NULL);
 	card->ctx->suppress_errors--;
-	if (err < 0) {
-		err = sc_pkcs15_bind_synthetic(p15card, 0);
-		if (err < 0)
-			goto error;
-		goto done;
-	}
+	if (err < 0)
+		goto end;
 
 	if (p15card->file_odf == NULL) {
 		tmppath = p15card->file_app->path;
@@ -519,7 +515,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	}
 	err = sc_select_file(card, &tmppath, &p15card->file_odf);
 	if (err) /* FIXME: finish writing error reporting stuff */
-		goto error;
+		goto end;
 
 	/* XXX: fix buffer overflow. Silently truncate ODF if it
 	 * is too large.  --okir */
@@ -527,16 +523,16 @@ int sc_pkcs15_bind(struct sc_card *card,
 		len = sizeof(buf);
 	err = sc_read_binary(card, 0, buf, len, 0);
 	if (err < 0)
-		goto error;
+		goto end;
 	if (err < 2) {
 		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
-		goto error;
+		goto end;
 	}
 	len = err;
 	if (parse_odf(buf, len, p15card)) {
 		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
 		sc_error(card->ctx, "Unable to parse ODF\n");
-		goto error;
+		goto end;
 	}
 
 	if (card->ctx->debug) {
@@ -561,19 +557,85 @@ int sc_pkcs15_bind(struct sc_card *card,
 	}
 	err = sc_select_file(card, &tmppath, &p15card->file_tokeninfo);
 	if (err)
-		goto error;
+		goto end;
 
 	if ((len = p15card->file_tokeninfo->size) > sizeof(buf))
 		len = sizeof(buf);
 	err = sc_read_binary(card, 0, buf, len, 0);
 	if (err < 0)
-		goto error;
+		goto end;
 	if (err <= 2) {
 		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
-		goto error;
+		goto end;
 	}
 	parse_tokeninfo(p15card, buf, err);
 
+	ok = 1;
+end:
+	if (!ok) {
+		sc_pkcs15_card_clear(p15card);
+		return err;
+	}
+
+	return SC_SUCCESS;
+}
+
+int sc_pkcs15_bind(struct sc_card *card,
+		   struct sc_pkcs15_card **p15card_out)
+{
+	struct sc_pkcs15_card *p15card = NULL;
+	struct sc_context *ctx;
+	scconf_block *conf_block = NULL, **blocks;
+	int    i, r, emu_first, enable_emu;
+
+	assert(sc_card_valid(card) && p15card_out != NULL);
+	ctx = card->ctx;
+	SC_FUNC_CALLED(ctx, 1);
+	p15card = sc_pkcs15_card_new();
+	if (p15card == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	p15card->card = card;
+
+	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+			"framework", "pkcs15");
+		if (blocks[0] != NULL)
+			conf_block = blocks[0];
+		free(blocks);
+	}
+	if (conf_block)
+		p15card->opts.use_cache = scconf_get_bool(conf_block, "use_caching", 0);
+
+	r = sc_lock(card);
+	if (r) {
+		sc_error(ctx, "sc_lock() failed: %s\n", sc_strerror(r));
+		sc_pkcs15_card_free(p15card);
+		SC_FUNC_RETURN(ctx, 1, r);
+	}
+
+	enable_emu = scconf_get_bool(conf_block, "enable_pkcs15_emulation", 1);
+	if (enable_emu) {
+		emu_first = scconf_get_bool(conf_block, "try_emulation_first", 0);
+		if (emu_first) {
+			r = sc_pkcs15_bind_synthetic(p15card);
+			if (r == SC_SUCCESS)
+				goto done;
+			r = sc_pkcs15_bind_internal(p15card);
+			if (r < 0)
+				goto error;
+		} else {
+			r = sc_pkcs15_bind_internal(p15card);
+			if (r == SC_SUCCESS)
+				goto done;
+			r = sc_pkcs15_bind_synthetic(p15card);
+			if (r < 0)
+				goto error;
+		}
+	} else {
+		r = sc_pkcs15_bind_internal(p15card);
+		if (r < 0)
+			goto error;
+	}
 done:
 	*p15card_out = p15card;
 	sc_unlock(card);
@@ -581,7 +643,7 @@ done:
 error:
 	sc_unlock(card);
 	sc_pkcs15_card_free(p15card);
-	SC_FUNC_RETURN(ctx, 1, err);
+	SC_FUNC_RETURN(ctx, 1, r);
 }
 
 int sc_pkcs15_detect(struct sc_card *card)

@@ -70,7 +70,7 @@ int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_a
 	if (address == NULL) {
 		if (ctx->debug)
 			/* TODO: scdl_error */
-			sc_debug(ctx, "sc_module_get_address: unknown error");
+			sc_debug(ctx, "sc_module_get_address: unable to get symbol %s\n", sym_name);
 		return SC_ERROR_UNKNOWN;
 	}
 	*sym_address = address;
