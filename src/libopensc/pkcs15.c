@@ -801,7 +801,7 @@ static int compare_obj_usage(sc_pkcs15_object_t *obj, unsigned int mask, unsigne
 	default:
 		return 0;
 	}
-	return !((usage ^ value) & mask);
+	return (usage & mask & value) != 0;
 }
 
 static int compare_obj_flags(sc_pkcs15_object_t *obj, unsigned int mask, unsigned int value)
