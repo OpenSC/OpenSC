@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+# Test pkcs15-init
+#
+# Run this from the regression test directory.
+
+. functions
+
+p15_init --no-so-pin
+p15_store_key test.p12 --format pkcs12 --passphrase "password" --insecure
+p15_validate
+p15_erase
+
