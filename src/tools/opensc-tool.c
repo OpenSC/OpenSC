@@ -1,5 +1,5 @@
 /*
- * sc-tool.c: Tool for accessing SmartCards with libopensc
+ * opensc-tool.c: Tool for accessing SmartCards with libopensc
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -97,7 +97,7 @@ struct sc_pkcs15_card *p15card = NULL;
 void print_usage_and_die(void)
 {
 	int i = 0;
-	printf("Usage: sc-tool [OPTIONS]\nOptions:\n");
+	printf("Usage: opensc-tool [OPTIONS]\nOptions:\n");
 
 	while (options[i].name) {
 		char buf[40], tmp[5];

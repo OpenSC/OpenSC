@@ -1,5 +1,5 @@
 /*
- * sc-crypt.c: Tool for cryptography operations with SmartCards
+ * opensc-crypt.c: Tool for cryptography operations with SmartCards
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -79,7 +79,7 @@ struct sc_pkcs15_card *p15card = NULL;
 void print_usage_and_die()
 {
 	int i = 0;
-	printf("Usage: sc-crypt [OPTIONS]\nOptions:\n");
+	printf("Usage: opensc-crypt [OPTIONS]\nOptions:\n");
 
 	while (options[i].name) {
 		char buf[40], tmp[5];
