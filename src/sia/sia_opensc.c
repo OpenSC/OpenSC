@@ -29,24 +29,24 @@
 #include "sia_support.h"
 #include "scam.h"
 
-static scam_context scamctx = {0,};
+static scam_context sctx = {0,};
 
 typedef struct _scam_msg_data {
 	sia_collect_func_t *collect;
 	SIAENTITY *entity;
 } scam_msg_data;
 
-static void printmsg(scam_context * scamctx, char *str)
+static void printmsg(scam_context * sctx, char *str)
 {
-	scam_msg_data *msg = scamctx->msg_data;
+	scam_msg_data *msg = (scam_msg_data *) sctx->msg_data;
 
 	if (msg->collect)
 		sia_warning(msg->collect, str);
 }
 
-static void logmsg(scam_context * scamctx, char *str)
+static void logmsg(scam_context * sctx, char *str)
 {
-	scam_msg_data *msg = scamctx->msg_data;
+	scam_msg_data *msg = (scam_msg_data *) sctx->msg_data;
 
 	opensc_sia_log(str);
 }
@@ -199,22 +199,22 @@ int siad_ses_authent(sia_collect_func_t * collect, SIAENTITY * entity,
 	const char *pinentry = NULL;
 	struct passwd *pwd = NULL;
 
-	memset(&scamctx, 0, sizeof(scam_context));
-	if (scamctx.auth_method) {
-		scamctx.method = scam_select_by_name(scamctx.auth_method);
-		free(scamctx.auth_method);
-		scamctx.auth_method = NULL;
+	memset(&sctx, 0, sizeof(scam_context));
+	if (sctx.auth_method) {
+		sctx.method = scam_select_by_name(sctx.auth_method);
+		free(sctx.auth_method);
+		sctx.auth_method = NULL;
 	}
-	if (scamctx.method < 0) {
+	if (sctx.method < 0) {
 		code = SIADFAIL;
 		goto authent_fail;
 	}
-	rv = scam_init(&scamctx, 0, NULL);
+	rv = scam_init(&sctx, 0, NULL);
 	if (rv != SCAM_SUCCESS) {
 		code = SIADFAIL;
 		goto authent_fail;
 	}
-	pinentry = scam_pinentry(&scamctx);
+	pinentry = scam_pinentry(&sctx);
 	code = siad_get_name_password(collect, entity, pinentry, &got_pass);
 	if (code != SIADSUCCESS) {
 		goto authent_fail;
@@ -230,7 +230,7 @@ int siad_ses_authent(sia_collect_func_t * collect, SIAENTITY * entity,
 		code = SIADFAIL;
 		goto authent_fail;
 	}
-	code = scam_auth(&scamctx, 0, NULL, entity->name, entity->password);
+	code = scam_auth(&sctx, 0, NULL, entity->name, entity->password);
 	if (code != SCAM_SUCCESS) {
 		log_message("siad_sis_authent: auth1 failure\n");
 		code = SIADFAIL;
@@ -251,12 +251,12 @@ int siad_ses_authent(sia_collect_func_t * collect, SIAENTITY * entity,
 	}
 	log_message("siad_ses_authent returning success.\n");
 	opensc_sia_log("siad_ses_authent returning success.\n");
-	scam_deinit(&scamctx);
+	scam_deinit(&sctx);
 	return SIADSUCCESS;
       authent_fail:
 	opensc_sia_log("siad_ses_authent fails, code=%d.\n", code);
 	log_message("siad_ses_authent fails, code=%d.\n", code);
-	scam_deinit(&scamctx);
+	scam_deinit(&sctx);
 	return code;
 }
 
@@ -280,22 +280,22 @@ int siad_ses_reauthent(sia_collect_func_t * collect, SIAENTITY * entity,
 	if (siastat == SIADSUCCESS)
 		return SIADSUCCESS;
 
-	memset(&scamctx, 0, sizeof(scam_context));
-	if (scamctx.auth_method) {
-		scamctx.method = scam_select_by_name(scamctx.auth_method);
-		free(scamctx.auth_method);
-		scamctx.auth_method = NULL;
+	memset(&sctx, 0, sizeof(scam_context));
+	if (sctx.auth_method) {
+		sctx.method = scam_select_by_name(sctx.auth_method);
+		free(sctx.auth_method);
+		sctx.auth_method = NULL;
 	}
-	if (scamctx.method < 0) {
+	if (sctx.method < 0) {
 		code = SIADFAIL;
 		goto reauthent_fail;
 	}
-	rv = scam_init(&scamctx, 0, NULL);
+	rv = scam_init(&sctx, 0, NULL);
 	if (rv != SCAM_SUCCESS) {
 		code = SIADFAIL;
 		goto reauthent_fail;
 	}
-	pinentry = scam_pinentry(&scamctx);
+	pinentry = scam_pinentry(&sctx);
 	code = siad_get_name_password(collect, entity, pinentry, &got_pass);
 	if (code != SIADSUCCESS) {
 		goto reauthent_fail;
@@ -305,7 +305,7 @@ int siad_ses_reauthent(sia_collect_func_t * collect, SIAENTITY * entity,
 		code = SIADFAIL;
 		goto reauthent_fail;
 	}
-	code = scam_auth(&scamctx, 0, NULL, entity->name, entity->password);
+	code = scam_auth(&sctx, 0, NULL, entity->name, entity->password);
 	if (code != SCAM_SUCCESS) {
 		log_message("siad_sis_reauthent: auth failure\n");
 		code = SIADFAIL;
@@ -326,12 +326,12 @@ int siad_ses_reauthent(sia_collect_func_t * collect, SIAENTITY * entity,
 	}
 	log_message("siad_ses_reauthent returning success.\n");
 	opensc_sia_log("siad_ses_reauthent returning success.\n");
-	scam_deinit(&scamctx);
+	scam_deinit(&sctx);
 	return SIADSUCCESS;
       reauthent_fail:
 	opensc_sia_log("siad_ses_reauthent fails, code=%d.\n", code);
 	log_message("siad_ses_reauthent fails, code=%d.\n", code);
-	scam_deinit(&scamctx);
+	scam_deinit(&sctx);
 	return code;
 }
 

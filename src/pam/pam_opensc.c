@@ -36,24 +36,24 @@
 #define PAM_SM_SESSION
 #define PAM_SM_PASSWORD
 
-static scam_context scamctx = {0,};
+static scam_context sctx = {0,};
 
 typedef struct _scam_msg_data {
 	pam_handle_t *pamh;
 	unsigned int *ctrl;
 } scam_msg_data;
 
-static void printmsg(scam_context * scamctx, char *str)
+static void printmsg(scam_context * sctx, char *str)
 {
-	scam_msg_data *msg = scamctx->msg_data;
+	scam_msg_data *msg = (scam_msg_data *) sctx->msg_data;
 
 	if (msg->pamh && msg->ctrl)
 		opensc_pam_msg(msg->pamh, *msg->ctrl, PAM_TEXT_INFO, str);
 }
 
-static void logmsg(scam_context * scamctx, char *str)
+static void logmsg(scam_context * sctx, char *str)
 {
-	scam_msg_data *msg = scamctx->msg_data;
+	scam_msg_data *msg = (scam_msg_data *) sctx->msg_data;
 
 	if (msg->pamh)
 		opensc_pam_log(LOG_NOTICE, msg->pamh, str);
@@ -94,25 +94,25 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		}
 	}
 	ctrl = _set_ctrl(pamh, flags, argc, (const char **) argv);
-	memset(&scamctx, 0, sizeof(scam_context));
-	scam_parse_parameters(&scamctx, argc, (const char **) argv);
-	scamctx.printmsg = printmsg;
-	scamctx.logmsg = logmsg;
-	scamctx.msg_data = &msg;
-	if (scamctx.auth_method) {
-		scamctx.method = scam_select_by_name(scamctx.auth_method);
-		free(scamctx.auth_method);
-		scamctx.auth_method = NULL;
+	memset(&sctx, 0, sizeof(scam_context));
+	scam_parse_parameters(&sctx, argc, (const char **) argv);
+	sctx.printmsg = printmsg;
+	sctx.logmsg = logmsg;
+	sctx.msg_data = &msg;
+	if (sctx.auth_method) {
+		sctx.method = scam_select_by_name(sctx.auth_method);
+		free(sctx.auth_method);
+		sctx.auth_method = NULL;
 	}
-	if (scamctx.method < 0) {
+	if (sctx.method < 0) {
 		return PAM_TRY_AGAIN;
 	}
-	rv = scam_init(&scamctx, argc, (const char **) argv);
+	rv = scam_init(&sctx, argc, (const char **) argv);
 	if (rv != SCAM_SUCCESS) {
-		scam_deinit(&scamctx);
+		scam_deinit(&sctx);
 		return PAM_TRY_AGAIN;
 	}
-	pinentry = scam_pinentry(&scamctx);
+	pinentry = scam_pinentry(&sctx);
 
 	/* Get the username */
 	rv = pam_get_user(pamh, &user, "login: ");
@@ -126,7 +126,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		if (!user || !isalnum((int) *user)) {
 			opensc_pam_log(LOG_ERR, pamh, "bad username [%s]\n", user);
 			rv = PAM_USER_UNKNOWN;
-			scam_deinit(&scamctx);
+			scam_deinit(&sctx);
 			return rv;
 		}
 		if (rv == PAM_SUCCESS && on(OPENSC_DEBUG, ctrl)) {
@@ -141,7 +141,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 			 */
 			rv = PAM_INCOMPLETE;
 		}
-		scam_deinit(&scamctx);
+		scam_deinit(&sctx);
 		return rv;
 	}
 	/* Check tty */
@@ -149,7 +149,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	/* Get the name of the service */
 	rv = pam_get_item(pamh, PAM_SERVICE, (PAM_CONST void **) &service);
 	if (rv != PAM_SUCCESS) {
-		scam_deinit(&scamctx);
+		scam_deinit(&sctx);
 		return rv;
 	}
 	/* get this user's authentication token */
@@ -166,18 +166,18 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 			rv = PAM_INCOMPLETE;
 		}
 		user = NULL;
-		scam_deinit(&scamctx);
+		scam_deinit(&sctx);
 		return rv;
 	}
 	if (!user) {
-		scam_deinit(&scamctx);
+		scam_deinit(&sctx);
 		return PAM_USER_UNKNOWN;
 	}
 	if (!tty) {
 		tty = "";
 	}
 	if (!service || !password) {
-		scam_deinit(&scamctx);
+		scam_deinit(&sctx);
 		return PAM_AUTH_ERR;
 	}
 #if 1
@@ -188,19 +188,19 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 
 		snprintf(buf, 256, "User %s (tty %s) tried remote login through service %s, permission denied.\n", user, tty, service);
 		opensc_pam_log(LOG_NOTICE, pamh, buf);
-		scam_deinit(&scamctx);
+		scam_deinit(&sctx);
 		return PAM_PERM_DENIED;
 	}
 #endif
 
-	rv = scam_qualify(&scamctx, (unsigned char *) password);
+	rv = scam_qualify(&sctx, (unsigned char *) password);
 	if (rv != SCAM_SUCCESS) {
 		pam_set_item(pamh, PAM_AUTHTOK, password);
-		scam_deinit(&scamctx);
+		scam_deinit(&sctx);
 		return PAM_TRY_AGAIN;
 	}
-	rv = scam_auth(&scamctx, argc, (const char **) argv, user, password);
-	scam_deinit(&scamctx);
+	rv = scam_auth(&sctx, argc, (const char **) argv, user, password);
+	scam_deinit(&sctx);
 	if (rv != SCAM_SUCCESS) {
 		opensc_pam_log(LOG_INFO, pamh, "Authentication failed for %s at %s.\n", user, tty);
 		return PAM_AUTH_ERR;
@@ -234,17 +234,17 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t * pamh, int flags, int argc,
 	scam_msg_data msg = {pamh, &ctrl};
 
 	ctrl = _set_ctrl(pamh, flags, argc, argv);
-	memset(&scamctx, 0, sizeof(scam_context));
-	scam_parse_parameters(&scamctx, argc, (const char **) argv);
-	scamctx.printmsg = printmsg;
-	scamctx.logmsg = logmsg;
-	scamctx.msg_data = &msg;
-	if (scamctx.auth_method) {
-		scamctx.method = scam_select_by_name(scamctx.auth_method);
-		free(scamctx.auth_method);
-		scamctx.auth_method = NULL;
+	memset(&sctx, 0, sizeof(scam_context));
+	scam_parse_parameters(&sctx, argc, (const char **) argv);
+	sctx.printmsg = printmsg;
+	sctx.logmsg = logmsg;
+	sctx.msg_data = &msg;
+	if (sctx.auth_method) {
+		sctx.method = scam_select_by_name(sctx.auth_method);
+		free(sctx.auth_method);
+		sctx.auth_method = NULL;
 	}
-	if (scamctx.method < 0) {
+	if (sctx.method < 0) {
 		return PAM_SESSION_ERR;
 	}
 	rv = pam_get_item(pamh, PAM_USER, (void *) &user);
@@ -259,7 +259,7 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t * pamh, int flags, int argc,
 		opensc_pam_log(LOG_CRIT, pamh, "open_session - error recovering service\n");
 		return PAM_SESSION_ERR;
 	}
-	rv = scam_open_session(&scamctx, argc, (const char **) argv, user);
+	rv = scam_open_session(&sctx, argc, (const char **) argv, user);
 	if (rv != SCAM_SUCCESS) {
 		opensc_pam_log(LOG_CRIT, pamh, "open_session - scam_open_session failed\n");
 		return PAM_SESSION_ERR;
@@ -277,17 +277,17 @@ PAM_EXTERN int pam_sm_close_session(pam_handle_t * pamh, int flags, int argc,
 	scam_msg_data msg = {pamh, &ctrl};
 
 	ctrl = _set_ctrl(pamh, flags, argc, argv);
-	memset(&scamctx, 0, sizeof(scam_context));
-	scam_parse_parameters(&scamctx, argc, (const char **) argv);
-	scamctx.printmsg = printmsg;
-	scamctx.logmsg = logmsg;
-	scamctx.msg_data = &msg;
-	if (scamctx.auth_method) {
-		scamctx.method = scam_select_by_name(scamctx.auth_method);
-		free(scamctx.auth_method);
-		scamctx.auth_method = NULL;
+	memset(&sctx, 0, sizeof(scam_context));
+	scam_parse_parameters(&sctx, argc, (const char **) argv);
+	sctx.printmsg = printmsg;
+	sctx.logmsg = logmsg;
+	sctx.msg_data = &msg;
+	if (sctx.auth_method) {
+		sctx.method = scam_select_by_name(sctx.auth_method);
+		free(sctx.auth_method);
+		sctx.auth_method = NULL;
 	}
-	if (scamctx.method < 0) {
+	if (sctx.method < 0) {
 		return PAM_SESSION_ERR;
 	}
 	rv = pam_get_item(pamh, PAM_USER, (void *) &user);
@@ -300,7 +300,7 @@ PAM_EXTERN int pam_sm_close_session(pam_handle_t * pamh, int flags, int argc,
 		opensc_pam_log(LOG_CRIT, pamh, "close_session - error recovering service\n");
 		return PAM_SESSION_ERR;
 	}
-	rv = scam_close_session(&scamctx, argc, (const char **) argv, user);
+	rv = scam_close_session(&sctx, argc, (const char **) argv, user);
 	if (rv != SCAM_SUCCESS) {
 		opensc_pam_log(LOG_CRIT, pamh, "open_session - scam_close_session failed\n");
 		return PAM_SESSION_ERR;

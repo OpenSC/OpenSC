@@ -37,17 +37,19 @@
 #include <opensc/scrandom.h>
 #include "scam.h"
 
-static struct sc_context *ctx = NULL;
-static struct sc_card *card = NULL;
-static struct sc_pkcs15_card *p15card = NULL;
-static int card_locked = 0;
-
-static struct sc_pkcs15_object *objs[32];
-static struct sc_pkcs15_cert_info *cinfo = NULL;
-static struct sc_pkcs15_object *prkey = NULL, *pin = NULL;
-
 static const char *eid_path = ".eid";
 static const char *auth_cert_file = "authorized_certificates";
+
+typedef struct _scam_method_data {
+	struct sc_context *ctx;
+	struct sc_card *card;
+	struct sc_pkcs15_card *p15card;
+	int card_locked;
+
+	struct sc_pkcs15_object *objs[32];
+	struct sc_pkcs15_cert_info *cinfo;
+	struct sc_pkcs15_object *prkey, *pin;
+} scam_method_data;
 
 const char *p15_eid_usage(void)
 {
@@ -60,17 +62,24 @@ const char *p15_eid_usage(void)
 	return &buf[0];
 }
 
-int p15_eid_init(scam_context * scamctx, int argc, const char **argv)
+int p15_eid_init(scam_context * sctx, int argc, const char **argv)
 {
+	scam_method_data *data = NULL;
 	char *reader_name = NULL;
 	int r, i, reader = 0;
 
-	if (ctx) {
+	if (sctx->method_data) {
 		return SCAM_FAILED;
 	}
-	r = sc_establish_context(&ctx, "scam");
+	sctx->method_data = (scam_method_data *) malloc(sizeof(scam_method_data));
+	if (!sctx->method_data) {
+		return SCAM_FAILED;
+	}
+	memset(sctx->method_data, 0, sizeof(scam_method_data));
+	data = (scam_method_data *) sctx->method_data;
+	r = sc_establish_context(&data->ctx, "scam");
 	if (r != SC_SUCCESS) {
-		scam_print_msg(scamctx, "sc_establish_context: %s\n", sc_strerror(r));
+		scam_print_msg(sctx, "sc_establish_context: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
 	for (i = 0; i < argc; i++) {
@@ -86,15 +95,15 @@ int p15_eid_init(scam_context * scamctx, int argc, const char **argv)
 		}
 	}
 	if (!reader_name) {
-		for (i = 0; i < ctx->reader_count; i++) {
-			printf("Reader #%d - %s%s\n", i + 1, ctx->reader[i]->name, reader == i ? " (*)" : "");
+		for (i = 0; i < data->ctx->reader_count; i++) {
+			printf("Reader #%d - %s%s\n", i + 1, data->ctx->reader[i]->name, reader == i ? " (*)" : "");
 		}
 	} else {
-		for (i = 0; i < ctx->reader_count; i++) {
-			if ((strlen(reader_name) < strlen(ctx->reader[i]->name))) {
-				if (!strncmp(reader_name, ctx->reader[i]->name, strlen(reader_name))) {
+		for (i = 0; i < data->ctx->reader_count; i++) {
+			if ((strlen(reader_name) < strlen(data->ctx->reader[i]->name))) {
+				if (!strncmp(reader_name, data->ctx->reader[i]->name, strlen(reader_name))) {
 					reader = i;
-					printf("Reader #%d - %s selected\n", i + 1, ctx->reader[reader]->name);
+					printf("Reader #%d - %s selected\n", i + 1, data->ctx->reader[reader]->name);
 					break;
 				}
 			}
@@ -102,57 +111,61 @@ int p15_eid_init(scam_context * scamctx, int argc, const char **argv)
 		free(reader_name);
 	}
 
-	if ((r = sc_connect_card(ctx->reader[reader], 0, &card)) != SC_SUCCESS) {
-		scam_print_msg(scamctx, "sc_connect_card: %s\n", sc_strerror(r));
+	if ((r = sc_connect_card(data->ctx->reader[reader], 0, &data->card)) != SC_SUCCESS) {
+		scam_print_msg(sctx, "sc_connect_card: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
-	sc_lock(card);
-	card_locked = 1;
+	sc_lock(data->card);
+	data->card_locked = 1;
 
-	r = sc_pkcs15_bind(card, &p15card);
+	r = sc_pkcs15_bind(data->card, &data->p15card);
 	if (r != SC_SUCCESS) {
-		scam_print_msg(scamctx, "sc_pkcs15_bind: %s\n", sc_strerror(r));
+		scam_print_msg(sctx, "sc_pkcs15_bind: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
-	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, 32);
+	r = sc_pkcs15_get_objects(data->p15card, SC_PKCS15_TYPE_CERT_X509, data->objs, 32);
 	if (r < 0) {
-		scam_print_msg(scamctx, "sc_pkcs15_get_objects: %s\n", sc_strerror(r));
+		scam_print_msg(sctx, "sc_pkcs15_get_objects: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
 	if (r == 0)		/* No certificates found */
 		return SCAM_FAILED;
 
 	/* FIXME: Add support for selecting certificate by ID */
-	cinfo = objs[0]->data;
+	data->cinfo = data->objs[0]->data;
 
-	r = sc_pkcs15_find_prkey_by_id(p15card, &cinfo->id, &prkey);
+	r = sc_pkcs15_find_prkey_by_id(data->p15card, &data->cinfo->id, &data->prkey);
 	if (r != SC_SUCCESS) {
-		scam_print_msg(scamctx, "sc_pkcs15_find_prkey_by_id: %s\n", sc_strerror(r));
+		scam_print_msg(sctx, "sc_pkcs15_find_prkey_by_id: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
-	r = sc_pkcs15_find_pin_by_auth_id(p15card, &prkey->auth_id, &pin);
+	r = sc_pkcs15_find_pin_by_auth_id(data->p15card, &data->prkey->auth_id, &data->pin);
 	if (r != SC_SUCCESS) {
-		scam_print_msg(scamctx, "sc_pkcs15_find_pin_by_auth_id: %s\n", sc_strerror(r));
+		scam_print_msg(sctx, "sc_pkcs15_find_pin_by_auth_id: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
 	return SCAM_SUCCESS;
 }
 
-const char *p15_eid_pinentry(scam_context * scamctx)
+const char *p15_eid_pinentry(scam_context * sctx)
 {
+	scam_method_data *data = (scam_method_data *) sctx->method_data;
 	struct sc_pkcs15_pin_info *pininfo = NULL;
 	static char buf[64];
 
-	if (!ctx || !pin) {
+	if (!sctx->method_data) {
 		return NULL;
 	}
-	pininfo = pin->data;
-	snprintf(buf, 64, "Enter PIN%d [%s]: ", pininfo->reference, pin->label);
+	pininfo = data->pin->data;
+	snprintf(buf, 64, "Enter PIN%d [%s]: ", pininfo->reference, data->pin->label);
 	return buf;
 }
 
-int p15_eid_qualify(scam_context * scamctx, unsigned char *password)
+int p15_eid_qualify(scam_context * sctx, unsigned char *password)
 {
+	if (!sctx->method_data) {
+		return SCAM_FAILED;
+	}
 	if (!password)
 		return SCAM_FAILED;
 	/* FIXME */
@@ -237,55 +250,57 @@ static int get_certificate(const char *user, X509 ** cert_out)
 	return err;
 }
 
-int p15_eid_auth(scam_context * scamctx, int argc, const char **argv,
+int p15_eid_auth(scam_context * sctx, int argc, const char **argv,
 		 const char *user, const char *password)
 {
+	scam_method_data *data = (scam_method_data *) sctx->method_data;
 	u8 random_data[20], chg[256], txt[256];
 	int r, err = SCAM_FAILED, chglen;
 	EVP_PKEY *pubkey = NULL;
 	X509 *cert = NULL;
 
-	if (!ctx)
+	if (!sctx->method_data) {
 		return SCAM_FAILED;
+	}
 	r = is_eid_dir_present(user);
 	if (r != SCAM_SUCCESS) {
-		scam_print_msg(scamctx, "No such user, user has no .eid directory or .eid unreadable.\n");
+		scam_print_msg(sctx, "No such user, user has no .eid directory or .eid unreadable.\n");
 		goto end;
 	}
 	r = get_certificate(user, &cert);
 	if (r != SCAM_SUCCESS) {
-		scam_print_msg(scamctx, "get_certificate failed.\n");
+		scam_print_msg(sctx, "get_certificate failed.\n");
 		goto end;
 	}
 	pubkey = X509_get_pubkey(cert);
 	if (!pubkey) {
-		scam_log_msg(scamctx, "Invalid public key. (user %s)\n", user);
+		scam_log_msg(sctx, "Invalid public key. (user %s)\n", user);
 		goto end;
 	}
 	chglen = RSA_size(pubkey->pkey.rsa);
 	if (chglen > sizeof(chg)) {
-		scam_print_msg(scamctx, "RSA key too big.\n");
+		scam_print_msg(sctx, "RSA key too big.\n");
 		goto end;
 	}
 	r = scrandom_get_data(random_data, sizeof(random_data));
 	if (r < 0) {
-		scam_log_msg(scamctx, "scrandom_get_data failed.\n");
+		scam_log_msg(sctx, "scrandom_get_data failed.\n");
 		goto end;
 	}
-	r = sc_pkcs15_verify_pin(p15card, pin->data, (const u8 *) password, strlen(password));
+	r = sc_pkcs15_verify_pin(data->p15card, data->pin->data, (const u8 *) password, strlen(password));
 	if (r != SC_SUCCESS) {
-		scam_print_msg(scamctx, "sc_pkcs15_verify_pin: %s\n", sc_strerror(r));
+		scam_print_msg(sctx, "sc_pkcs15_verify_pin: %s\n", sc_strerror(r));
 		goto end;
 	}
-	r = sc_pkcs15_compute_signature(p15card, prkey, SC_ALGORITHM_RSA_PAD_PKCS1,
+	r = sc_pkcs15_compute_signature(data->p15card, data->prkey, SC_ALGORITHM_RSA_PAD_PKCS1,
 					random_data, 20, chg, chglen);
 	if (r < 0) {
-		scam_print_msg(scamctx, "sc_pkcs15_compute_signature: %s\n", sc_strerror(r));
+		scam_print_msg(sctx, "sc_pkcs15_compute_signature: %s\n", sc_strerror(r));
 		goto end;
 	}
 	r = RSA_public_decrypt(chglen, chg, txt, pubkey->pkey.rsa, RSA_PKCS1_PADDING);
 	if (r < 0) {
-		scam_print_msg(scamctx, "Signature verification failed.\n");
+		scam_print_msg(sctx, "Signature verification failed.\n");
 		goto end;
 	}
 	if (r == sizeof(random_data) && !memcmp(txt, random_data, r)) {
@@ -299,24 +314,31 @@ int p15_eid_auth(scam_context * scamctx, int argc, const char **argv,
 	return err;
 }
 
-void p15_eid_deinit(scam_context * scamctx)
+void p15_eid_deinit(scam_context * sctx)
 {
-	if (card_locked) {
-		sc_unlock(card);
+	scam_method_data *data = (scam_method_data *) sctx->method_data;
+
+	if (!sctx->method_data) {
+		return;
 	}
-	card_locked = 0;
-	if (p15card) {
-		sc_pkcs15_unbind(p15card);
+	if (data->card_locked) {
+		sc_unlock(data->card);
 	}
-	p15card = NULL;
-	if (card) {
-		sc_disconnect_card(card, 0);
+	data->card_locked = 0;
+	if (data->p15card) {
+		sc_pkcs15_unbind(data->p15card);
 	}
-	card = NULL;
-	if (ctx) {
-		sc_release_context(ctx);
+	data->p15card = NULL;
+	if (data->card) {
+		sc_disconnect_card(data->card, 0);
 	}
-	ctx = NULL;
+	data->card = NULL;
+	if (data->ctx) {
+		sc_release_context(data->ctx);
+	}
+	data->ctx = NULL;
+	free(sctx->method_data);
+	sctx->method_data = NULL;
 }
 
 #ifdef ATR_SUPPORT

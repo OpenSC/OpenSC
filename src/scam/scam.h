@@ -26,10 +26,6 @@
 extern "C" {
 #endif
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #define SCAM_FAILED	1
 #define SCAM_SUCCESS	0
 
@@ -43,16 +39,14 @@ typedef struct _scam_context scam_context;
 struct _scam_context {
 	int method;
 	char *auth_method;
-	/* Print message to screen using handles defined above */
-	/* For generic errors and messages that the user might */
-	/* want to read. */
-	void (*printmsg) (scam_context * scamctx, char *str);
-	/* Log message to syslog, specific log file, ... */
-	/* For fatal errors and messages that the system */
-	/* administrator might want to read. */
-	void (*logmsg) (scam_context * scamctx, char *str);
+	/* Print message to screen, internally used by scam_print_msg */
+	void (*printmsg) (scam_context * sctx, char *str);
+	/* Log message to syslog, specific log file, etc */
+	/* Internally used by scam_log_msg */
+	void (*logmsg) (scam_context * sctx, char *str);
 	/* Used by printmsg/logmsg */
 	void *msg_data;
+	/* Private data for scam_framework_ops internals */
 	void *method_data;
 };
 
@@ -69,20 +63,20 @@ struct scam_framework_ops {
 	/* Return a string for help messages, list known parameters, etc. */
 	const char *(*usage) (void);
 	/* Establish a connection to the resource manager, etc. */
-	int (*init) (scam_context * scamctx, int argc, const char **argv);
+	int (*init) (scam_context * sctx, int argc, const char **argv);
 	/* Return a pin entry string for conversation functions */
-	const char *(*pinentry) (scam_context * scamctx);
+	const char *(*pinentry) (scam_context * sctx);
 	/* Qualify password - is the password actually a PIN or not */
 	/* Speeds up the authentication process with normal passwords */
-	int (*qualify) (scam_context * scamctx, unsigned char *password);
+	int (*qualify) (scam_context * sctx, unsigned char *password);
 	/* Authentication function */
-	int (*auth) (scam_context * scamctx, int argc, const char **argv, const char *user, const char *password);
+	int (*auth) (scam_context * sctx, int argc, const char **argv, const char *user, const char *password);
 	/* Close established connections, free memory, etc. */
-	void (*deinit) (scam_context * scamctx);
+	void (*deinit) (scam_context * sctx);
 	/* Open session after authentication */
-	int (*open_session) (scam_context * scamctx, int argc, const char **argv, const char *user);
+	int (*open_session) (scam_context * sctx, int argc, const char **argv, const char *user);
 	/* Close session */
-	int (*close_session) (scam_context * scamctx, int argc, const char **argv, const char *user);
+	int (*close_session) (scam_context * sctx, int argc, const char **argv, const char *user);
 };
 
 extern struct scam_framework_ops scam_fw_p15_eid;
@@ -91,7 +85,7 @@ extern struct scam_framework_ops *scam_frameworks[];
 
 extern int scam_enum_modules(void);
 
-extern void scam_parse_parameters(scam_context * scamctx, int argc, const char **argv);
+extern void scam_parse_parameters(scam_context * sctx, int argc, const char **argv);
 
 #ifdef ATR_SUPPORT
 extern const char *scam_get_atr(unsigned int readernum);
@@ -99,24 +93,24 @@ extern int scam_select_by_atr(const char *atr);
 #endif
 extern int scam_select_by_name(const char *method);
 
-extern void scam_print_msg(scam_context * scamctx, char *str,...);
-extern void scam_log_msg(scam_context * scamctx, char *str,...);
+extern void scam_print_msg(scam_context * sctx, char *str,...);
+extern void scam_log_msg(scam_context * sctx, char *str,...);
 
-extern const char *scam_name(scam_context * scamctx);
-extern const char *scam_usage(scam_context * scamctx);
-extern void scam_handles(scam_context * scamctx, void *ctx1, void *ctx2, void *ctx3);
-extern int scam_init(scam_context * scamctx, int argc, const char **argv);
-extern const char *scam_pinentry(scam_context * scamctx);
-extern int scam_qualify(scam_context * scamctx, unsigned char *password);
-extern int scam_auth(scam_context * scamctx, int argc, const char **argv, const char *user, const char *password);
-extern void scam_deinit(scam_context * scamctx);
-extern int scam_open_session(scam_context * scamctx, int argc, const char **argv, const char *user);
-extern int scam_close_session(scam_context * scamctx, int argc, const char **argv, const char *user);
+extern const char *scam_name(scam_context * sctx);
+extern const char *scam_usage(scam_context * sctx);
+extern void scam_handles(scam_context * sctx, void *ctx1, void *ctx2, void *ctx3);
+extern int scam_init(scam_context * sctx, int argc, const char **argv);
+extern const char *scam_pinentry(scam_context * sctx);
+extern int scam_qualify(scam_context * sctx, unsigned char *password);
+extern int scam_auth(scam_context * sctx, int argc, const char **argv, const char *user, const char *password);
+extern void scam_deinit(scam_context * sctx);
+extern int scam_open_session(scam_context * sctx, int argc, const char **argv, const char *user);
+extern int scam_close_session(scam_context * sctx, int argc, const char **argv, const char *user);
 
 #ifdef HAVE_SCIDI
 extern struct scam_framework_ops scam_fw_sp;
-extern int sp_open_session(scam_context * scamctx, int argc, const char **argv, const char *user);
-extern int sp_close_session(scam_context * scamctx, int argc, const char **argv, const char *user);
+extern int sp_open_session(scam_context * sctx, int argc, const char **argv, const char *user);
+extern int sp_close_session(scam_context * sctx, int argc, const char **argv, const char *user);
 #endif
 
 #ifdef __cplusplus

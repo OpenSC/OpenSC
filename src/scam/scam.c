@@ -56,22 +56,22 @@ int scam_enum_modules(void)
 	return -1;
 }
 
-void scam_parse_parameters(scam_context * scamctx, int argc, const char **argv)
+void scam_parse_parameters(scam_context * sctx, int argc, const char **argv)
 {
 	const char *auth_method = "auth_method=";
 
-	if (!scamctx)
+	if (!sctx)
 		return;
 	while (argc-- > 0) {
 		if (!strncmp(*argv, auth_method, strlen(auth_method))) {
 			const char *p = *argv + strlen(auth_method);
 			size_t len = strlen(p) + 1;
 
-			scamctx->auth_method = (char *) realloc(scamctx->auth_method, len);
-			if (!scamctx->auth_method)
+			sctx->auth_method = (char *) realloc(sctx->auth_method, len);
+			if (!sctx->auth_method)
 				break;
-			memset(scamctx->auth_method, 0, len);
-			strncpy(scamctx->auth_method, p, len - 1);
+			memset(sctx->auth_method, 0, len);
+			strncpy(sctx->auth_method, p, len - 1);
 		}
 		++argv;
 	}
@@ -198,7 +198,7 @@ int scam_select_by_name(const char *method)
 	return -1;
 }
 
-void scam_print_msg(scam_context * scamctx, char *str,...)
+void scam_print_msg(scam_context * sctx, char *str,...)
 {
 	va_list ap;
 	char buf[128];
@@ -207,11 +207,11 @@ void scam_print_msg(scam_context * scamctx, char *str,...)
 	memset(buf, 0, 128);
 	vsnprintf(buf, 128, str, ap);
 	va_end(ap);
-	if (scamctx && scamctx->printmsg)
-		scamctx->printmsg(scamctx, buf);
+	if (sctx && sctx->printmsg)
+		sctx->printmsg(sctx, buf);
 }
 
-void scam_log_msg(scam_context * scamctx, char *str,...)
+void scam_log_msg(scam_context * sctx, char *str,...)
 {
 	va_list ap;
 	char buf[1024];
@@ -220,113 +220,113 @@ void scam_log_msg(scam_context * scamctx, char *str,...)
 	memset(buf, 0, 1024);
 	vsnprintf(buf, 1024, str, ap);
 	va_end(ap);
-	if (scamctx && scamctx->logmsg)
-		scamctx->logmsg(scamctx, buf);
+	if (sctx && sctx->logmsg)
+		sctx->logmsg(sctx, buf);
 }
 
-const char *scam_name(scam_context * scamctx)
+const char *scam_name(scam_context * sctx)
 {
-	if (!scamctx)
+	if (!sctx)
 		return NULL;
-	if (scamctx->method > scam_enum_modules())
+	if (sctx->method > scam_enum_modules())
 		return NULL;
-	if (scam_frameworks[scamctx->method] && scam_frameworks[scamctx->method]->name) {
-		return scam_frameworks[scamctx->method]->name;
+	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->name) {
+		return scam_frameworks[sctx->method]->name;
 	}
 	return NULL;
 }
 
-const char *scam_usage(scam_context * scamctx)
+const char *scam_usage(scam_context * sctx)
 {
-	if (!scamctx)
+	if (!sctx)
 		return NULL;
-	if (scamctx->method > scam_enum_modules())
+	if (sctx->method > scam_enum_modules())
 		return NULL;
-	if (scam_frameworks[scamctx->method] && scam_frameworks[scamctx->method]->usage) {
-		return scam_frameworks[scamctx->method]->usage();
+	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->usage) {
+		return scam_frameworks[sctx->method]->usage();
 	}
 	return NULL;
 }
 
-int scam_init(scam_context * scamctx, int argc, const char **argv)
+int scam_init(scam_context * sctx, int argc, const char **argv)
 {
-	if (!scamctx)
+	if (!sctx)
 		return SCAM_FAILED;
-	if (scamctx->method > scam_enum_modules())
+	if (sctx->method > scam_enum_modules())
 		return SCAM_FAILED;
-	if (scam_frameworks[scamctx->method] && scam_frameworks[scamctx->method]->init) {
-		return scam_frameworks[scamctx->method]->init(scamctx, argc, argv);
+	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->init) {
+		return scam_frameworks[sctx->method]->init(sctx, argc, argv);
 	}
 	return SCAM_SUCCESS;
 }
 
-const char *scam_pinentry(scam_context * scamctx)
+const char *scam_pinentry(scam_context * sctx)
 {
-	if (!scamctx)
+	if (!sctx)
 		return NULL;
-	if (scamctx->method > scam_enum_modules())
+	if (sctx->method > scam_enum_modules())
 		return NULL;
-	if (scam_frameworks[scamctx->method] && scam_frameworks[scamctx->method]->pinentry) {
-		return scam_frameworks[scamctx->method]->pinentry(scamctx);
+	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->pinentry) {
+		return scam_frameworks[sctx->method]->pinentry(sctx);
 	}
 	return NULL;
 }
 
-int scam_qualify(scam_context * scamctx, unsigned char *password)
+int scam_qualify(scam_context * sctx, unsigned char *password)
 {
-	if (!scamctx)
+	if (!sctx)
 		return SCAM_FAILED;
-	if (scamctx->method > scam_enum_modules())
+	if (sctx->method > scam_enum_modules())
 		return SCAM_FAILED;
-	if (scam_frameworks[scamctx->method] && scam_frameworks[scamctx->method]->qualify) {
-		return scam_frameworks[scamctx->method]->qualify(scamctx, password);
+	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->qualify) {
+		return scam_frameworks[sctx->method]->qualify(sctx, password);
 	}
 	return SCAM_SUCCESS;
 }
 
-int scam_auth(scam_context * scamctx, int argc, const char **argv, const char *user, const char *password)
+int scam_auth(scam_context * sctx, int argc, const char **argv, const char *user, const char *password)
 {
-	if (!scamctx)
+	if (!sctx)
 		return SCAM_FAILED;
-	if (scamctx->method > scam_enum_modules())
+	if (sctx->method > scam_enum_modules())
 		return SCAM_FAILED;
-	if (scam_frameworks[scamctx->method] && scam_frameworks[scamctx->method]->auth) {
-		return scam_frameworks[scamctx->method]->auth(scamctx, argc, argv, user, password);
+	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->auth) {
+		return scam_frameworks[sctx->method]->auth(sctx, argc, argv, user, password);
 	}
 	return SCAM_FAILED;
 }
 
-void scam_deinit(scam_context * scamctx)
+void scam_deinit(scam_context * sctx)
 {
-	if (!scamctx)
+	if (!sctx)
 		return;
-	if (scamctx->method > scam_enum_modules())
+	if (sctx->method > scam_enum_modules())
 		return;
-	if (scam_frameworks[scamctx->method] && scam_frameworks[scamctx->method]->deinit) {
-		scam_frameworks[scamctx->method]->deinit(scamctx);
+	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->deinit) {
+		scam_frameworks[sctx->method]->deinit(sctx);
 	}
 }
 
-int scam_open_session(scam_context * scamctx, int argc, const char **argv, const char *user)
+int scam_open_session(scam_context * sctx, int argc, const char **argv, const char *user)
 {
-	if (!scamctx)
+	if (!sctx)
 		return SCAM_FAILED;
-	if (scamctx->method > scam_enum_modules())
+	if (sctx->method > scam_enum_modules())
 		return SCAM_FAILED;
-	if (scam_frameworks[scamctx->method] && scam_frameworks[scamctx->method]->open_session) {
-		return scam_frameworks[scamctx->method]->open_session(scamctx, argc, argv, user);
+	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->open_session) {
+		return scam_frameworks[sctx->method]->open_session(sctx, argc, argv, user);
 	}
 	return SCAM_SUCCESS;
 }
 
-int scam_close_session(scam_context * scamctx, int argc, const char **argv, const char *user)
+int scam_close_session(scam_context * sctx, int argc, const char **argv, const char *user)
 {
-	if (!scamctx)
+	if (!sctx)
 		return SCAM_FAILED;
-	if (scamctx->method > scam_enum_modules())
+	if (sctx->method > scam_enum_modules())
 		return SCAM_FAILED;
-	if (scam_frameworks[scamctx->method] && scam_frameworks[scamctx->method]->close_session) {
-		return scam_frameworks[scamctx->method]->close_session(scamctx, argc, argv, user);
+	if (scam_frameworks[sctx->method] && scam_frameworks[sctx->method]->close_session) {
+		return scam_frameworks[sctx->method]->close_session(sctx, argc, argv, user);
 	}
 	return SCAM_SUCCESS;
 }
