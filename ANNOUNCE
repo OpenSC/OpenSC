@@ -13,7 +13,7 @@ authentication, and digital signature.
 OpenSC can be used with the following applications and libraries:
 
  -	Netscape Communicator and Mozilla (through its PKCS#11 module),
- 	for secure email (SMIME) and SSL authentication
+ 	for secure email (S/MIME) and SSL authentication
  -	OpenSSH, for user authentication
  -	FreeSWAN, for authentication and key management
  -	OpenSSL, for key and certificate storage, key generation and
@@ -21,7 +21,7 @@ OpenSC can be used with the following applications and libraries:
  -	GNUpg 1.9 (experimental), for key storage
  -	Smart card login, through a PAM module
  -	Using the included utilities, to perform RSA decryption and
- 	digitial signing
+ 	digital signing
 
 OpenSC is capable of personalizing various types of smart cards, but
 also works with personalized cards such as the Finnish FINEID.
