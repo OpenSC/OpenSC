@@ -40,4 +40,4 @@ libtool.m4
 ltmain.sh
 missing
 mkinstalldirs
-stamp-h.in
+stamp-h*

@@ -36,7 +36,7 @@ int test()
 	}
 	sc_format_path("5110", &path);
 	ctx->debug = 3;
-	r = sc_select_file(card, &file, &path);
+	r = sc_select_file(card, &path, &file);
 	ctx->debug = 0;
 	if (r) {
 		fprintf(stderr, "sc_select_file failed: %s\n", sc_strerror(r));
@@ -97,7 +97,7 @@ int test2()
 	sc_format_path("3F00", &path);
 	
 	ctx->debug = 3;
-	r = sc_select_file(card, &file, &path);
+	r = sc_select_file(card, &path, &file);
 	if (r) {
 		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
 		return r;

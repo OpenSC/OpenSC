@@ -137,8 +137,8 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 }
 
 static int iso7816_select_file(struct sc_card *card,
-			       struct sc_file *file,
-			       const struct sc_path *in_path)
+			       const struct sc_path *in_path,
+			       struct sc_file *file)
 {
 	struct sc_context *ctx;
 	struct sc_apdu apdu;

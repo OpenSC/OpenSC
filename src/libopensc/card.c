@@ -520,8 +520,8 @@ int sc_read_binary(struct sc_card *card, unsigned int idx,
 }
 
 int sc_select_file(struct sc_card *card,
-		   struct sc_file *file,
-		   const struct sc_path *in_path)
+		   const struct sc_path *in_path,
+		   struct sc_file *file)
 {
 	int r;
 
@@ -541,7 +541,7 @@ int sc_select_file(struct sc_card *card,
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
         if (card->ops->select_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
-	r = card->ops->select_file(card, file, in_path);
+	r = card->ops->select_file(card, in_path, file);
         SC_FUNC_RETURN(card->ctx, 2, r);
 }
 

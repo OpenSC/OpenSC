@@ -262,7 +262,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	p15card->card = card;
 
 	sc_format_path("2F00", &tmppath);
-	err = sc_select_file(card, &p15card->file_dir, &tmppath);
+	err = sc_select_file(card, &tmppath, &p15card->file_dir);
 	if (err)
 		goto error;
 	err = sc_read_binary(card, 0, buf, p15card->file_dir.size);
@@ -287,7 +287,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 		} else
 			tmppath = p15card->file_odf.path;
 		
-		err = sc_select_file(card, &p15card->file_odf, &tmppath);
+		err = sc_select_file(card, &tmppath, &p15card->file_odf);
 		if (err)
 			goto error;
 		err = sc_read_binary(card, 0, buf, p15card->file_odf.size);
@@ -312,7 +312,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 		defaults->defaults_func(p15card, defaults->arg);
 		tmppath = p15card->file_tokeninfo.path;
 	}
-	err = sc_select_file(card, &p15card->file_tokeninfo, &tmppath);
+	err = sc_select_file(card, &tmppath, &p15card->file_tokeninfo);
 	if (err)
 		goto error;
 	err = sc_read_binary(card, 0, buf, p15card->file_tokeninfo.size);

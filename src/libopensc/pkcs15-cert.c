@@ -229,7 +229,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	r = find_cached_cert(p15card, info, &data, &len);
 	if (r) {
-		r = sc_select_file(p15card->card, &file, &info->path);
+		r = sc_select_file(p15card->card, &info->path, &file);
 		if (r)
 			return r;
 		data = malloc(file.size);
@@ -322,7 +322,7 @@ static int get_certs_from_file(struct sc_pkcs15_card *card,
 	u8 buf[2048];
 	const u8 *p = buf;
 
-	r = sc_select_file(card->card, file, &file->path);
+	r = sc_select_file(card->card, &file->path, file);
 	if (r)
 		return r;
 	if (file->size > sizeof(buf))
