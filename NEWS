@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-New in 0.9.5; 2005-xx-xx; Antti Tapaninen:
+New in 0.9.x; 2005-xx-xx; Antti Tapaninen:
 * New generic ATR/card matching code with
   atrmask support, used by all card drivers.
 * Much improved and unified ATR handling in
@@ -25,6 +25,22 @@ New in 0.9.5; 2005-xx-xx; Antti Tapaninen:
 * Spanish manual translation from opensc-ceres
   project merged.
 * Several memory leaks and other bugs fixed.
+
+New in 0.9.6; not yet released;
+* Makefile.am: require automake 1.5
+
+New in 0.9.5; 2005-01-11; Andreas Jellinghaus:
+* Big rewrite of the autoconf code for openssl. This fixes bugs on Mac OS X
+  and we hope it doesn't break any other system. Feedback is very welcome.
+* The flags object attribute changed to a bitfield.
+* Many small bugfixes, including memory leaks.
+* Changes to the etoken and gpk profiles to eleminate overlapping file ids.
+* pinpad code by Martin Paljak
+* add user_consent parameter to pkcs15emu add object/add prkey functions.
+* estid provide user_consent parameter.
+* add fflush to pkcs11-spy.c
+* set version in configure.in, src/pkcs11/pkcs11-global.c,
+  win32/version.rc  and src/include/winconfig.h
 
 New in 0.9.4; 2004-10-31; Andreas Jellinghaus:
 * Library version was broken in 0.9.3.
