@@ -10,7 +10,6 @@
 <!ENTITY scdetectcardpresence SYSTEM "sc_detect_card_presence.xml">
 <!ENTITY sccardvalid SYSTEM "sc_card_valid.xml">
 <!ENTITY scsetcarddriver SYSTEM "sc_set_card_driver.xml">
-<!ENTITY scwaitforevent SYSTEM "sc_wait_for_event.xml">
 ]>
 
 <chapter>
