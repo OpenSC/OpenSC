@@ -179,7 +179,7 @@ int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 		sc_format_asn1_entry(asn1_dsakey_attr + 0, &pubkey->path, NULL, 1);
 		break;
 	default:
-		error(ctx, "Unsupported public key type: %X\n", obj->type);
+		sc_error(ctx, "Unsupported public key type: %X\n", obj->type);
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_INTERNAL);
 		break;
 	}
@@ -333,7 +333,7 @@ sc_pkcs15_encode_pubkey(struct sc_context *ctx,
 		return sc_pkcs15_encode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_DSA)
 		return sc_pkcs15_encode_pubkey_dsa(ctx, &key->u.dsa, buf, len);
-	error(ctx, "Encoding of public key type %u not supported\n",
+	sc_error(ctx, "Encoding of public key type %u not supported\n",
 			key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -347,7 +347,7 @@ sc_pkcs15_decode_pubkey(struct sc_context *ctx,
 		return sc_pkcs15_decode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_DSA)
 		return sc_pkcs15_decode_pubkey_dsa(ctx, &key->u.dsa, buf, len);
-	error(ctx, "Decoding of public key type %u not supported\n",
+	sc_error(ctx, "Decoding of public key type %u not supported\n",
 			key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -377,14 +377,14 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 		algorithm = SC_ALGORITHM_DSA;
 		break;
 	default:
-		error(p15card->card->ctx, "Unsupported public key type.");
+		sc_error(p15card->card->ctx, "Unsupported public key type.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	info = (const struct sc_pkcs15_pubkey_info *) obj->data;
 
 	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
 	if (r < 0) {
-		error(p15card->card->ctx, "Failed to read public key file.");
+		sc_error(p15card->card->ctx, "Failed to read public key file.");
 		return r;
 	}
 

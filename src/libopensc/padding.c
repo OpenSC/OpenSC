@@ -217,7 +217,7 @@ int sc_pkcs1_encode(struct sc_context *ctx, unsigned long flags,
 		i = sc_pkcs1_add_digest_info_prefix(hash_algo, in, in_len,
 						    out, &tmp_len);
 		if (i != SC_SUCCESS) {
-			error(ctx, "Unable to add digest info 0x%x\n",
+			sc_error(ctx, "Unable to add digest info 0x%x\n",
 			      hash_algo);
 			return i;
 		}
@@ -236,7 +236,7 @@ int sc_pkcs1_encode(struct sc_context *ctx, unsigned long flags,
 					       mod_len);
 	default:
 		/* currently only pkcs1 padding is supported */
-		error(ctx, "Unsupported padding algorithm 0x%x\n", pad_algo);
+		sc_error(ctx, "Unsupported padding algorithm 0x%x\n", pad_algo);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 }

@@ -108,7 +108,7 @@ static struct df_info_s *get_df_info (struct sc_card *card)
         assert (!priv->is_ef);
 
         if (!priv->curpathlen) {
-		debug(ctx, "no current path to find the df_info\n");
+		sc_debug(ctx, "no current path to find the df_info\n");
                 return NULL;
         }
                 
@@ -121,7 +121,7 @@ static struct df_info_s *get_df_info (struct sc_card *card)
         /* Not found, create it. */
         dfi = (struct df_info_s *) calloc (1, sizeof *dfi);
         if (!dfi) {
-		debug(ctx, "out of core while allocating df_info\n");
+		sc_debug(ctx, "out of core while allocating df_info\n");
                 return NULL;
         }
         dfi->pathlen = priv->curpathlen;
@@ -272,12 +272,12 @@ static int load_special_files (struct sc_card *card)
                 dfi->rule_file = rule;
         }
 
-        debug(ctx, "new EF_Rule file loaded (%d records)\n", recno-1);
+        sc_debug(ctx, "new EF_Rule file loaded (%d records)\n", recno-1);
 
         /* Read the KeyD file. Note that we bypass our cache here. */
         r = select_part (card, 2, EF_KeyD, NULL);
         if (r == SC_ERROR_FILE_NOT_FOUND) {
-                debug(ctx, "no EF_KeyD file available\n");
+                sc_debug(ctx, "no EF_KeyD file available\n");
                 return 0; /* That is okay. */
         }
 	SC_TEST_RET(ctx, r, "selecting EF_KeyD failed");
@@ -309,7 +309,7 @@ static int load_special_files (struct sc_card *card)
                 dfi->keyd_file = keyd;
         }
 
-        debug(ctx, "new EF_KeyD file loaded (%d records)\n", recno-1);
+        sc_debug(ctx, "new EF_KeyD file loaded (%d records)\n", recno-1);
         /* fixme: Do we need to restore the current DF?  I guess it is
            not required, but we could try to do so by selecting 3fff?  */
         return 0;
@@ -336,7 +336,7 @@ static int get_se_num_from_keyd (struct sc_card *card, unsigned short fid,
 
         dfi = get_df_info (card);
         if (!dfi || !dfi->keyd_file) {
-                debug (ctx, "EF_keyD not loaded\n");
+                sc_debug (ctx, "EF_keyD not loaded\n");
                 return -1;
         }    
 
@@ -345,7 +345,7 @@ static int get_se_num_from_keyd (struct sc_card *card, unsigned short fid,
                 len = keyd->datalen;
 
                 sc_hex_dump (ctx, p,len, dbgbuf, sizeof dbgbuf);
-                debug (ctx, "keyd no %d:\n%s", keyd->recno, dbgbuf);
+                sc_debug (ctx, "keyd no %d:\n%s", keyd->recno, dbgbuf);
                 
                 tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
                 if (!tag || taglen != 4 ||
@@ -368,7 +368,7 @@ static int get_se_num_from_keyd (struct sc_card *card, unsigned short fid,
                         continue;
                 return *tag; /* found. */
 	}
-        debug (ctx, "EF_keyD for %04hx not found\n", fid);
+        sc_debug (ctx, "EF_keyD for %04hx not found\n", fid);
         return -1;
 }
 
@@ -387,7 +387,7 @@ static void process_arr(struct sc_card *card, struct sc_file *file,
 
         /* Currently we support only the short for. */
         if (buflen != 1) {
-                debug (ctx, "can't handle long ARRs\n");
+                sc_debug (ctx, "can't handle long ARRs\n");
                 return;
         }
 
@@ -396,13 +396,13 @@ static void process_arr(struct sc_card *card, struct sc_file *file,
              rule = rule->next)
                 ;
         if (!rule) {
-                debug (ctx, "referenced EF_rule record %d not found\n", *buf);
+                sc_debug (ctx, "referenced EF_rule record %d not found\n", *buf);
                 return;
         }
 
         if (ctx->debug) {
           sc_hex_dump (ctx, rule->data, rule->datalen, dbgbuf, sizeof dbgbuf);
-          debug (ctx, "rule for record %d:\n%s", *buf, dbgbuf);
+          sc_debug (ctx, "rule for record %d:\n%s", *buf, dbgbuf);
         }
 
         p = rule->data;
@@ -419,12 +419,12 @@ static void process_arr(struct sc_card *card, struct sc_file *file,
                         skip = 1;
                 }
                 else if (tag == 0x80) { /* AM byte. */
-                        debug (ctx,"  AM_DO: %02x\n", *p);
+                        sc_debug (ctx,"  AM_DO: %02x\n", *p);
                         skip = 0;
                 }
                 else if (tag >= 0x81 && tag <= 0x8f) {/* Cmd description */
                         sc_hex_dump (ctx, p, taglen, dbgbuf, sizeof dbgbuf);
-                        debug (ctx, "  AM_DO: cmd[%s%s%s%s] %s",
+                        sc_debug (ctx, "  AM_DO: cmd[%s%s%s%s] %s",
                                (tag & 8)? "C":"",
                                (tag & 4)? "I":"",
                                (tag & 2)? "1":"",
@@ -439,30 +439,30 @@ static void process_arr(struct sc_card *card, struct sc_file *file,
                         sc_hex_dump (ctx, p, taglen, dbgbuf, sizeof dbgbuf);
                         switch (tag) {
                         case 0x90: /* Always */
-                                debug (ctx,"     SC: always\n");
+                                sc_debug (ctx,"     SC: always\n");
                                 break;
                         case 0x97: /* Never */
-                                debug (ctx,"     SC: never\n");
+                                sc_debug (ctx,"     SC: never\n");
                                 break;
                         case 0xA4: /* Authentication, value is a CRT. */
-                                debug (ctx,"     SC: auth %s", dbgbuf);
+                                sc_debug (ctx,"     SC: auth %s", dbgbuf);
                                 break;
                                 
                         case 0xB4:
                         case 0xB6:
                         case 0xB8: /* Cmd or resp with SM, value is a CRT. */
-                                debug (ctx,"     SC: cmd/resp %s", dbgbuf);
+                                sc_debug (ctx,"     SC: cmd/resp %s", dbgbuf);
                                 break;
                                 
                         case 0x9E: /* Security Condition byte. */
-                                debug (ctx,"     SC: condition %s", dbgbuf);
+                                sc_debug (ctx,"     SC: condition %s", dbgbuf);
                                 break;
 
                         case 0xA0: /* OR template. */
-                                debug (ctx,"     SC: OR\n");
+                                sc_debug (ctx,"     SC: OR\n");
                                 break;
                         case 0xAF: /* AND template. */
-                                debug (ctx,"     SC: AND\n");
+                                sc_debug (ctx,"     SC: AND\n");
                                 break;
                         }
                 }
@@ -482,13 +482,13 @@ static void process_fcp(struct sc_card *card, struct sc_file *file,
         int bad_fde = 0;
 
 	if (ctx->debug >= 3)
-		debug(ctx, "processing FCI bytes\n");
+		sc_debug(ctx, "processing FCI bytes\n");
         /* File identifier. */
 	tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
 	if (tag != NULL && taglen == 2) {
 		file->id = (tag[0] << 8) | tag[1];
 		if (ctx->debug >= 3)
-			debug(ctx, "  file identifier: 0x%02X%02X\n", tag[0],
+			sc_debug(ctx, "  file identifier: 0x%02X%02X\n", tag[0],
 			       tag[1]);
 	}
         /* Number of data bytes in the file including structural information.*/
@@ -504,7 +504,7 @@ static void process_fcp(struct sc_card *card, struct sc_file *file,
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
 		if (ctx->debug >= 3)
-			debug(ctx, "  bytes in file: %d\n", bytes);
+			sc_debug(ctx, "  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
 	if (tag == NULL) {
@@ -512,7 +512,7 @@ static void process_fcp(struct sc_card *card, struct sc_file *file,
 		if (tag != NULL && taglen >= 2) {
 			int bytes = (tag[0] << 8) + tag[1];
 			if (ctx->debug >= 3)
-				debug(ctx, "  bytes in file: %d\n", bytes);
+				sc_debug(ctx, "  bytes in file: %d\n", bytes);
 			file->size = bytes;
 		}
 	}
@@ -527,7 +527,7 @@ static void process_fcp(struct sc_card *card, struct sc_file *file,
 
 			file->shareable = byte & 0x40 ? 1 : 0;
 			if (ctx->debug >= 3)
-				debug(ctx, "  shareable: %s\n",
+				sc_debug(ctx, "  shareable: %s\n",
 				       (byte & 0x40) ? "yes" : "no");
 			file->ef_structure = byte & 0x07;
 			switch ((byte >> 3) & 7) {
@@ -548,8 +548,8 @@ static void process_fcp(struct sc_card *card, struct sc_file *file,
 				break;
 			}
 			if (ctx->debug >= 3) {
-				debug(ctx, "  type: %s\n", type);
-				debug(ctx, "  EF structure: %d\n",
+				sc_debug(ctx, "  type: %s\n", type);
+				sc_debug(ctx, "  EF structure: %d\n",
 				       byte & 0x07);
 			}
 		}
@@ -573,7 +573,7 @@ static void process_fcp(struct sc_card *card, struct sc_file *file,
 		}
 		name[taglen] = 0;
 		if (ctx->debug >= 3)
-			debug(ctx, "  file name: %s\n", name);
+			sc_debug(ctx, "  file name: %s\n", name);
 	}
 
         /* Proprietary information. */
@@ -677,7 +677,7 @@ select_part (struct sc_card *card, u8 kind, unsigned short int fid,
 	int r, log_errs;
 
 	if (card->ctx->debug >=3)
-		debug(card->ctx, "select_part (0x%04X, kind=%u)\n",
+		sc_debug(card->ctx, "select_part (0x%04X, kind=%u)\n",
                       fid, kind);
         
         if (fid == MFID)
@@ -923,7 +923,7 @@ mcrd_select_file(struct sc_card *card, const struct sc_path *path,
 			linep += 2;
 		}
 		strcpy(linep, "\n");
-		debug(card->ctx, line);
+		sc_debug(card->ctx, line);
 
                 linep = line;
 		linep += sprintf(linep, "            ef=%d, curpath=",
@@ -933,7 +933,7 @@ mcrd_select_file(struct sc_card *card, const struct sc_path *path,
 			linep += 4;
 		}
 		strcpy(linep, "\n");
-		debug(card->ctx, line);
+		sc_debug(card->ctx, line);
         }
 
 	if (path->type == SC_PATH_TYPE_DF_NAME) {
@@ -973,7 +973,7 @@ mcrd_select_file(struct sc_card *card, const struct sc_path *path,
 			linep += 4;
 		}
 		strcpy(linep, "\n");
-		debug(card->ctx, line);
+		sc_debug(card->ctx, line);
         }
 
 

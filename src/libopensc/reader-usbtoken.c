@@ -196,14 +196,14 @@ int usbtoken_reader_unix_cmd(struct sc_reader *reader,
 	assert(myprivslot->fd >= 0);
 	rc = write(myprivslot->fd, &cmd, sizeof(cmd));
 	if (rc != sizeof(cmd)) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_unix_cmd write failed\n");
 		return SC_ERROR_READER;
 	}
 
 	rc = read(myprivslot->fd, &msg, sizeof(msg));
 	if (rc != 1 || msg != 0) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_unix_cmd read failed\n");
 		return SC_ERROR_READER;
 	}
@@ -222,7 +222,7 @@ int usbtoken_reader_connect(struct sc_reader *reader,
 
 	rc = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (rc < 0) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_connect: socket() failed\n");
 		return SC_ERROR_READER;
 	}
@@ -236,7 +236,7 @@ int usbtoken_reader_connect(struct sc_reader *reader,
 	if (rc < 0) {
 		close(myprivslot->fd);
 		myprivslot->fd = -1;
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_connect: connect(%s) failed\n",
 		      myprivslot->sa_un.sun_path);
 		return SC_ERROR_CARD_NOT_PRESENT;
@@ -244,14 +244,14 @@ int usbtoken_reader_connect(struct sc_reader *reader,
 
 	rc = read(myprivslot->fd, slot->atr, SC_MAX_ATR_SIZE);
 	if (rc == -1) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_connect: read failed on %s\n",
 		      myprivslot->sa_un.sun_path);
 		return SC_ERROR_READER;
 	}
 
 	if (rc == 0) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_connect: read on %s recieved no data\n",
 		      myprivslot->sa_un.sun_path);
 		return SC_ERROR_READER;
@@ -290,7 +290,7 @@ int usbtoken_reader_transmit(struct sc_reader *reader,
 
 	assert(myprivslot->fd >= 0);
 	if (sendsize > 1023) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_transmit sendsize %d too big\n",
 		      sendsize);
 		return SC_ERROR_READER;
@@ -300,32 +300,32 @@ int usbtoken_reader_transmit(struct sc_reader *reader,
 	memcpy(&buffer[1], sendbuf, sendsize);
 	rc = write(myprivslot->fd, buffer, sendsize + 1);
 	if (rc != sendsize + 1) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_transmit write failed\n");
 		return SC_ERROR_READER;
 	}
 
 	rc = read(myprivslot->fd, buffer, sizeof(buffer));
 	if (rc == -1) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_transmit read failed\n");
 		return SC_ERROR_READER;
 	}
 
 	if (rc == 0) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_transmit recved no data\n");
 		return SC_ERROR_READER;
 	}
 
 	if (buffer[0] != 3) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_transmit token failed\n");
 		return SC_ERROR_READER;
 	}
 
 	if (rc - 1 > *recvsize) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 		      "usbtoken_reader_transmit recved too much (%d > %d)\n",
 		      rc - 1, *recvsize);
 		return SC_ERROR_READER;

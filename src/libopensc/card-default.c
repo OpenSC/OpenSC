@@ -47,10 +47,10 @@ static int autodetect_class(struct sc_card *card)
 	int i, r;
 
 	if (card->ctx->debug >= 2)
-		debug(card->ctx, "autodetecting CLA byte\n");
+		sc_debug(card->ctx, "autodetecting CLA byte\n");
 	for (i = 0; i < class_count; i++) {
 		if (card->ctx->debug >= 2)
-			debug(card->ctx, "trying with 0x%02X\n", classes[i]);
+			sc_debug(card->ctx, "trying with 0x%02X\n", classes[i]);
 		apdu.cla = classes[i];
 		apdu.cse = SC_APDU_CASE_2_SHORT;
 		apdu.ins = 0xC0;
@@ -69,7 +69,7 @@ static int autodetect_class(struct sc_card *card)
 		if (apdu.sw1 == 0x61)
 			break;
 		if (card->ctx->debug >= 2)
-			debug(card->ctx, "got strange SWs: 0x%02X 0x%02X\n",
+			sc_debug(card->ctx, "got strange SWs: 0x%02X 0x%02X\n",
 			      apdu.sw1, apdu.sw2);
 		break;
 	}
@@ -77,22 +77,22 @@ static int autodetect_class(struct sc_card *card)
 		return -1;
 	card->cla = classes[i];
 	if (card->ctx->debug >= 2)
-		debug(card->ctx, "detected CLA byte as 0x%02X\n", card->cla);
+		sc_debug(card->ctx, "detected CLA byte as 0x%02X\n", card->cla);
 	if (apdu.resplen < 2) {
 		if (card->ctx->debug >= 2)
-			debug(card->ctx, "SELECT FILE returned %d bytes\n",
+			sc_debug(card->ctx, "SELECT FILE returned %d bytes\n",
 			      apdu.resplen);
 		return 0;
 	}
 	if (rbuf[0] == 0x6F) {
 		if (card->ctx->debug >= 2)
-			debug(card->ctx, "SELECT FILE seems to behave according to ISO 7816-4\n");
+			sc_debug(card->ctx, "SELECT FILE seems to behave according to ISO 7816-4\n");
 		return 0;
 	}
 	if (rbuf[0] == 0x00 && rbuf[1] == 0x00) {
 		struct sc_card_driver *drv;
 		if (card->ctx->debug >= 2)
-			debug(card->ctx, "SELECT FILE seems to return Schlumberger 'flex stuff\n");
+			sc_debug(card->ctx, "SELECT FILE seems to return Schlumberger 'flex stuff\n");
 		drv = sc_get_flex_driver();
 		card->ops->select_file = drv->ops->select_file;
 		return 0;
@@ -108,7 +108,7 @@ static int default_init(struct sc_card *card)
 	card->drv_data = NULL;
 	r = autodetect_class(card);
 	if (r) {
-		error(card->ctx, "unable to determine the right class byte\n");
+		sc_error(card->ctx, "unable to determine the right class byte\n");
 		return SC_ERROR_INVALID_CARD;
 	}
 

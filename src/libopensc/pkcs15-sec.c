@@ -75,13 +75,13 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_EXTRACTABLE_KEY;
 
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP))) {
-		error(ctx, "This key cannot be used for decryption\n");
+		sc_error(ctx, "This key cannot be used for decryption\n");
 		return SC_ERROR_NOT_ALLOWED;
 	}
 
 	alg_info = _sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
 	if (alg_info == NULL) {
-		error(ctx, "Card does not support RSA with key length %d\n", prkey->modulus_length);
+		sc_error(ctx, "Card does not support RSA with key length %d\n", prkey->modulus_length);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	senv.algorithm = SC_ALGORITHM_RSA;
@@ -94,11 +94,11 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
                         senv.algorithm_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	} else if ((flags & SC_ALGORITHM_RSA_PAD_ANSI) ||
 		   (flags & SC_ALGORITHM_RSA_PAD_ISO9796)) {
-		error(ctx, "Only PKCS #1 padding method supported\n");
+		sc_error(ctx, "Only PKCS #1 padding method supported\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	} else {
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
-			error(ctx, "Card requires RSA padding\n");
+			sc_error(ctx, "Card requires RSA padding\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		senv.algorithm_flags |= SC_ALGORITHM_RSA_RAW;
@@ -162,13 +162,13 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER|
 	                      SC_PKCS15_PRKEY_USAGE_NONREPUDIATION))) {
-		error(ctx, "This key cannot be used for signing\n");
+		sc_error(ctx, "This key cannot be used for signing\n");
 		return SC_ERROR_NOT_ALLOWED;
 	}
 
 	alg_info = _sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
 	if (alg_info == NULL) {
-		error(ctx, "Card does not support RSA with key length %d\n", prkey->modulus_length);
+		sc_error(ctx, "Card does not support RSA with key length %d\n", prkey->modulus_length);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	senv.algorithm = SC_ALGORITHM_RSA;
@@ -217,11 +217,11 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
                         senv.algorithm_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	} else if ((flags & SC_ALGORITHM_RSA_PAD_ANSI) ||
 		   (flags & SC_ALGORITHM_RSA_PAD_ISO9796)) {
-		error(ctx, "Only PKCS #1 padding method supported\n");
+		sc_error(ctx, "Only PKCS #1 padding method supported\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	} else {
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
-			error(ctx, "Card requires RSA padding\n");
+			sc_error(ctx, "Card requires RSA padding\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		senv.algorithm_flags |= SC_ALGORITHM_RSA_RAW;

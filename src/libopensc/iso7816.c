@@ -85,22 +85,22 @@ int iso7816_check_sw(struct sc_card *card, int sw1, int sw2)
 	
 	/* Handle special cases here */
 	if (sw1 == 0x6C) {
-		error(card->ctx, "Wrong length; correct length is %d\n", sw2);
+		sc_error(card->ctx, "Wrong length; correct length is %d\n", sw2);
 		return SC_ERROR_WRONG_LENGTH;
 	}
 	if (sw1 == 0x90)
 		return SC_NO_ERROR;
         if (sw1 == 0x63 && (sw2 & ~0x0f) == 0xc0 ) {
-             error(card->ctx, "Verification failed (remaining tries: %d)\n",
+             sc_error(card->ctx, "Verification failed (remaining tries: %d)\n",
                    (sw2 & 0x0f));
              return SC_ERROR_PIN_CODE_INCORRECT;
         }
 	for (i = 0; i < err_count; i++)
 		if (iso7816_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			error(card->ctx, "%s\n", iso7816_errors[i].errorstr);
+			sc_error(card->ctx, "%s\n", iso7816_errors[i].errorstr);
 			return iso7816_errors[i].errorno;
 		}
-	error(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+	sc_error(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -161,7 +161,7 @@ static int iso7816_write_record(struct sc_card *card, unsigned int rec_nr,
 	int r;
 
 	if (count > 256) {
-		error(card->ctx, "Trying to send too many bytes\n");
+		sc_error(card->ctx, "Trying to send too many bytes\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD2, rec_nr, 0);
@@ -188,7 +188,7 @@ static int iso7816_append_record(struct sc_card *card,
 	int r;
 
 	if (count > 256) {
-		error(card->ctx, "Trying to send too many bytes\n");
+		sc_error(card->ctx, "Trying to send too many bytes\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE2, 0, 0);
@@ -213,7 +213,7 @@ static int iso7816_update_record(struct sc_card *card, unsigned int rec_nr,
 	int r;
 
 	if (count > 256) {
-		error(card->ctx, "Trying to send too many bytes\n");
+		sc_error(card->ctx, "Trying to send too many bytes\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDC, rec_nr, 0);
@@ -282,19 +282,19 @@ int iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 	const u8 *tag = NULL, *p = buf;
 
 	if (ctx->debug >= 3)
-		debug(ctx, "processing FCI bytes\n");
+		sc_debug(ctx, "processing FCI bytes\n");
 	tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
 	if (tag != NULL && taglen == 2) {
 		file->id = (tag[0] << 8) | tag[1];
 		if (ctx->debug >= 3)
-			debug(ctx, "  file identifier: 0x%02X%02X\n", tag[0],
+			sc_debug(ctx, "  file identifier: 0x%02X%02X\n", tag[0],
 			       tag[1]);
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x81, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
 		if (ctx->debug >= 3)
-			debug(ctx, "  bytes in file: %d\n", bytes);
+			sc_debug(ctx, "  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
 	if (tag == NULL) {
@@ -302,7 +302,7 @@ int iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 		if (tag != NULL && taglen >= 2) {
 			int bytes = (tag[0] << 8) + tag[1];
 			if (ctx->debug >= 3)
-				debug(ctx, "  bytes in file: %d\n", bytes);
+				sc_debug(ctx, "  bytes in file: %d\n", bytes);
 			file->size = bytes;
 		}
 	}
@@ -314,7 +314,7 @@ int iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 
 			file->shareable = byte & 0x40 ? 1 : 0;
 			if (ctx->debug >= 3)
-				debug(ctx, "  shareable: %s\n",
+				sc_debug(ctx, "  shareable: %s\n",
 				       (byte & 0x40) ? "yes" : "no");
 			file->ef_structure = byte & 0x07;
 			switch ((byte >> 3) & 7) {
@@ -335,8 +335,8 @@ int iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 				break;
 			}
 			if (ctx->debug >= 3) {
-				debug(ctx, "  type: %s\n", type);
-				debug(ctx, "  EF structure: %d\n",
+				sc_debug(ctx, "  type: %s\n", type);
+				sc_debug(ctx, "  EF structure: %d\n",
 				       byte & 0x07);
 			}
 		}
@@ -358,7 +358,7 @@ int iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 		}
 		name[taglen] = 0;
 		if (ctx->debug >= 3)
-			debug(ctx, "File name: %s\n", name);
+			sc_debug(ctx, "File name: %s\n", name);
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x85, &taglen);
 	if (tag != NULL && taglen) {
@@ -600,7 +600,7 @@ static int iso7816_delete_file(struct sc_card *card, const struct sc_path *path)
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
-		error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		sc_error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sbuf[0] = path->value[0];
@@ -884,7 +884,7 @@ static int iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 		/* Call the reader driver to collect
 		 * the PIN and pass on the APDU to the card */
 		if (data->pin1.offset == 0) {
-			error(card->ctx,
+			sc_error(card->ctx,
 				"Card driver didn't set PIN offset");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -896,7 +896,7 @@ static int iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 					data);
 			/* sw1/sw2 filled in by reader driver */
 		} else {
-			error(card->ctx,
+			sc_error(card->ctx,
 				"Card reader driver does not support "
 				"PIN entry through reader key pad");
 			r = SC_ERROR_NOT_SUPPORTED;

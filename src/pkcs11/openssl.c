@@ -152,7 +152,7 @@ sc_pkcs11_openssl_add_gen_rand(struct sc_pkcs11_session *session,
 		return CKR_OK;
 
 	if (scrandom_get_data(seed, 20) == -1) {
-		error(context, "scrandom_get_data() failed\n");
+		sc_error(context, "scrandom_get_data() failed\n");
 		return CKR_FUNCTION_FAILED;
 	}
 	RAND_seed(seed, 20);
@@ -160,7 +160,7 @@ sc_pkcs11_openssl_add_gen_rand(struct sc_pkcs11_session *session,
 	if (rng_seeded == 0) {
 		r = sc_get_challenge(session->slot->card->card, seed, 20);
 		if (r != 0) {
-			error(context, "sc_get_challenge() returned %d\n", r);
+			sc_error(context, "sc_get_challenge() returned %d\n", r);
 			return sc_to_cryptoki_error(r, session->slot->card->reader);
 		}
 		rng_seeded = 1;
@@ -198,7 +198,7 @@ sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 		rsa = RSA_generate_key(keybits, 0x10001, NULL, err);
 		BIO_free(err);
 		if (rsa == NULL) {
-			debug(context, "RSA_generate_key() failed\n");
+			sc_debug(context, "RSA_generate_key() failed\n");
 			return CKR_FUNCTION_FAILED;
 		}
 
@@ -209,7 +209,7 @@ sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 		 || !do_convert_bignum(&sc_priv->d, rsa->d)
 		 || !do_convert_bignum(&sc_priv->p, rsa->p)
 		 || !do_convert_bignum(&sc_priv->q, rsa->q)) {
-		 	debug(context, "do_convert_bignum() failed\n");
+		 	sc_debug(context, "do_convert_bignum() failed\n");
 		 	RSA_free(rsa);
 			return CKR_FUNCTION_FAILED;
 		}
@@ -221,7 +221,7 @@ sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 
 		if (!do_convert_bignum(&sc_pub->modulus, rsa->n)
 		 || !do_convert_bignum(&sc_pub->exponent, rsa->e)) {
-		 	debug(context, "do_convert_bignum() failed\n");
+		 	sc_debug(context, "do_convert_bignum() failed\n");
 		 	RSA_free(rsa);
 			return CKR_FUNCTION_FAILED;
 		}
@@ -265,7 +265,7 @@ CK_RV sc_pkcs11_verify_data(unsigned char *pubkey, int pubkey_len,
 		else if (res == 0)
 			return CKR_SIGNATURE_INVALID;
 		else {
-			debug(context, "EVP_VerifyFinal() returned %d\n", res);
+			sc_debug(context, "EVP_VerifyFinal() returned %d\n", res);
 			return CKR_GENERAL_ERROR;
 		}
 	}
@@ -300,7 +300,7 @@ CK_RV sc_pkcs11_verify_data(unsigned char *pubkey, int pubkey_len,
 		RSA_free(rsa);
 		if(rsa_outlen <= 0) {
 			free(rsa_out);
-			debug(context, "RSA_public_decrypt() returned %d\n", rsa_outlen);
+			sc_debug(context, "RSA_public_decrypt() returned %d\n", rsa_outlen);
 			return CKR_GENERAL_ERROR;
 		}
 

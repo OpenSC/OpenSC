@@ -35,7 +35,7 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	int i, rc, rv;
 
 	if (context != NULL) {
-		error(context, "C_Initialize(): Cryptoki already initialized\n");
+		sc_error(context, "C_Initialize(): Cryptoki already initialized\n");
                 return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 	rc = sc_establish_context(&context, "opensc-pkcs11");
@@ -60,7 +60,7 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	rv = sc_pkcs11_init_lock((CK_C_INITIALIZE_ARGS_PTR) pReserved);
 
 out:	if (context != NULL)
-		debug(context, "C_Initialize: result = %d\n", rv);
+		sc_debug(context, "C_Initialize: result = %d\n", rv);
 	return rv;
 }
 
@@ -78,7 +78,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 		goto out;
 	}
 
-	debug(context, "Shutting down Cryptoki\n");
+	sc_debug(context, "Shutting down Cryptoki\n");
 	for (i=0; i<context->reader_count; i++)
                 card_removed(i);
 
@@ -104,7 +104,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 		goto out;
 	}
 
-	debug(context, "Cryptoki info query\n");
+	sc_debug(context, "Cryptoki info query\n");
 
 	memset(pInfo, 0, sizeof(CK_INFO));
 	pInfo->cryptokiVersion.major = 2;
@@ -149,7 +149,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		goto out;
 	}
 
-	debug(context, "Getting slot listing\n");
+	sc_debug(context, "Getting slot listing\n");
 	card_detect_all();
 
 	numMatches = 0;
@@ -161,14 +161,14 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	}
 
 	if (pSlotList == NULL_PTR) {
-		debug(context, "was only a size inquiry (%d)\n", numMatches);
+		sc_debug(context, "was only a size inquiry (%d)\n", numMatches);
 		*pulCount = numMatches;
                 rv = CKR_OK;
 		goto out;
 	}
 
 	if (*pulCount < numMatches) {
-		debug(context, "buffer was too small (needed %d)\n", numMatches);
+		sc_debug(context, "buffer was too small (needed %d)\n", numMatches);
 		*pulCount = numMatches;
                 rv = CKR_BUFFER_TOO_SMALL;
 		goto out;
@@ -178,7 +178,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	*pulCount = numMatches;
 	rv = CKR_OK;
 
-	debug(context, "returned %d slots\n", numMatches);
+	sc_debug(context, "returned %d slots\n", numMatches);
 
 out:	sc_pkcs11_unlock();
         return rv;
@@ -199,7 +199,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 		goto out;
 	}
 
-	debug(context, "Getting info about slot %d\n", slotID);
+	sc_debug(context, "Getting info about slot %d\n", slotID);
 
 	rv = slot_get_slot(slotID, &slot);
 	if (rv == CKR_OK){
@@ -235,7 +235,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 		goto out;
 	}
 
-	debug(context, "Getting info about token in slot %d\n", slotID);
+	sc_debug(context, "Getting info about token in slot %d\n", slotID);
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv == CKR_OK)
@@ -372,7 +372,7 @@ again:
 		return rv;
 
 	if (r != SC_SUCCESS) {
-		error(context, "sc_wait_for_event() returned %d\n",  r);
+		sc_error(context, "sc_wait_for_event() returned %d\n",  r);
 		rv = sc_to_cryptoki_error(r, -1);
 		goto out;
 	}

@@ -268,7 +268,7 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 		file->type = SC_FILE_TYPE_DF;
 		break;
 	default:
-		error(ctx, "invalid file type: 0x%02X\n", *p);
+		sc_error(ctx, "invalid file type: 0x%02X\n", *p);
                 return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
         p += 2;
@@ -394,7 +394,7 @@ static int get_flex_ac_keys(struct sc_card *card, struct sc_file *file)
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
 		return 0;
-	debug(card->ctx, "AC Keys: %02X %02X %02X\n", rbuf[0], rbuf[1], rbuf[2]);
+	sc_debug(card->ctx, "AC Keys: %02X %02X %02X\n", rbuf[0], rbuf[1], rbuf[2]);
 #endif
 	return 0;
 }
@@ -428,7 +428,7 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 	if (apdu.resplen < 14)
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	if (apdu.resp[0] == 0x6F) {
-		error(card->ctx, "unsupported: card returned FCI\n");
+		sc_error(card->ctx, "unsupported: card returned FCI\n");
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED; /* FIXME */
 	}
 	file = sc_file_new();
@@ -521,7 +521,7 @@ static int flex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 		if (r)
 			return r;
 		if (apdu.resplen != 4) {
-			error(card->ctx, "expected 4 bytes, got %d.\n", apdu.resplen);
+			sc_error(card->ctx, "expected 4 bytes, got %d.\n", apdu.resplen);
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 		memcpy(buf, rbuf + 2, 2);
@@ -540,7 +540,7 @@ static int flex_delete_file(struct sc_card *card, const struct sc_path *path)
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
-		error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		sc_error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sbuf[0] = path->value[0];
@@ -625,7 +625,7 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 			p[6] = 0x06;
 			break;
 		default:
-			error(card->ctx, "Invalid EF structure\n");
+			sc_error(card->ctx, "Invalid EF structure\n");
 			return -1;
 		}
 	p[7] = 0xFF;	/* allow Decrease and Increase */
@@ -682,7 +682,7 @@ static int flex_create_file(struct sc_card *card, struct sc_file *file)
 	
 	r = encode_file_structure(card, file, sbuf, &sendlen);
 	if (r) {
-		error(card->ctx, "File structure encoding failed.\n");
+		sc_error(card->ctx, "File structure encoding failed.\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (file->type != SC_FILE_TYPE_DF && file->ef_structure != SC_FILE_EF_TRANSPARENT)
@@ -718,33 +718,33 @@ static int flex_set_security_env(struct sc_card *card,
 
 	if (env->operation != SC_SEC_OPERATION_SIGN &&
 	    env->operation != SC_SEC_OPERATION_DECIPHER) {
-		error(card->ctx, "Invalid crypto operation supplied.\n");
+		sc_error(card->ctx, "Invalid crypto operation supplied.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (env->algorithm != SC_ALGORITHM_RSA) {
-		error(card->ctx, "Invalid crypto algorithm supplied.\n");
+		sc_error(card->ctx, "Invalid crypto algorithm supplied.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if ((env->algorithm_flags & SC_ALGORITHM_RSA_PADS) ||
 	    (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES)) {
-	    	error(card->ctx, "Card supports only raw RSA.\n");
+	    	sc_error(card->ctx, "Card supports only raw RSA.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
 		if (env->key_ref_len != 1 ||
 		    (env->key_ref[0] != 0 && env->key_ref[0] != 1)) {
-			error(card->ctx, "Invalid key reference supplied.\n");
+			sc_error(card->ctx, "Invalid key reference supplied.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		prv->rsa_key_ref = env->key_ref[0];
 	}
 	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
-		error(card->ctx, "Algorithm reference not supported.\n");
+		sc_error(card->ctx, "Algorithm reference not supported.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT)
 		if (memcmp(env->file_ref.value, "\x00\x12", 2) != 0) {
-			error(card->ctx, "File reference is not 0012.\n");
+			sc_error(card->ctx, "File reference is not 0012.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 	return 0;
@@ -765,11 +765,11 @@ static int flex_compute_signature(struct sc_card *card, const u8 *data,
 	size_t i;
 	
 	if (data_len != 64 && data_len != 96 && data_len != 128  && data_len != 256) {
-		error(card->ctx, "Illegal input length: %d\n", data_len);
+		sc_error(card->ctx, "Illegal input length: %d\n", data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (outlen < data_len) {
-		error(card->ctx, "Output buffer too small.\n");
+		sc_error(card->ctx, "Output buffer too small.\n");
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, 0x00, prv->rsa_key_ref);
@@ -859,7 +859,7 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 	case 1024:	p2 = 0x80; break;
 	case 2048:	p2 = 0x00; break;
 	default:
-		error(card->ctx, "Illegal key length: %d\n", data->key_bits);
+		sc_error(card->ctx, "Illegal key length: %d\n", data->key_bits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 

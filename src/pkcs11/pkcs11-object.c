@@ -204,7 +204,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
-	debug(context, "C_FindObjectsInit(slot = %d)\n", session->slot->id);
+	sc_debug(context, "C_FindObjectsInit(slot = %d)\n", session->slot->id);
         dump_template("C_FindObjectsInit()", pTemplate, ulCount);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_FIND,
@@ -232,7 +232,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 			if (object->ops->get_attribute(session, object, &private_attribute) != CKR_OK)
 				continue;
 			if (is_private) {
-				debug(context, "Object %d/%d: Private object and not logged in.\n",
+				sc_debug(context, "Object %d/%d: Private object and not logged in.\n",
                                       slot->id,
 				      item->handle);
 				continue;
@@ -246,7 +246,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 					&pTemplate[j]);
 			if (rv == 0) {
 				if (context->debug >= 4) {
-					debug(context, "Object %d/%d: Attribute 0x%x does NOT match.\n",
+					sc_debug(context, "Object %d/%d: Attribute 0x%x does NOT match.\n",
 					      slot->id,
 					      item->handle, pTemplate[j].type);
 				}
@@ -255,18 +255,18 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 			}
 
 			if (context->debug >= 4) {
-				debug(context, "Object %d/%d: Attribute 0x%x matches.\n",
+				sc_debug(context, "Object %d/%d: Attribute 0x%x matches.\n",
 				      slot->id,
 				      item->handle, pTemplate[j].type);
 			}
 		}
 
 		if (match) {
-			debug(context, "Object %d/%d matches\n",
+			sc_debug(context, "Object %d/%d matches\n",
 			      slot->id, item->handle);
 			/* Avoid buffer overflow --okir */
 			if (operation->num_handles >= SC_PKCS11_FIND_MAX_HANDLES) {
-				debug(context, "Too many matching objects\n");
+				sc_debug(context, "Too many matching objects\n");
 				break;
 			}
 			operation->handles[operation->num_handles++] = item->handle;
@@ -274,7 +274,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	}
 	rv = CKR_OK;
 
-	debug(context, "%d matching objects\n", operation->num_handles);
+	sc_debug(context, "%d matching objects\n", operation->num_handles);
 
 out:	sc_pkcs11_unlock();
         return rv;
@@ -357,7 +357,7 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_init(session, pMechanism);
-        debug(context, "C_DigestInit returns %d\n", rv);
+        sc_debug(context, "C_DigestInit returns %d\n", rv);
 
 	sc_pkcs11_unlock();
         return rv;
@@ -384,7 +384,7 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,     /* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
-out:	debug(context, "C_Digest returns %d\n", rv);
+out:	sc_debug(context, "C_Digest returns %d\n", rv);
 	sc_pkcs11_unlock();
 
         return rv;
@@ -405,7 +405,7 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_update(session, pPart, ulPartLen);
 
-        debug(context, "C_DigestUpdate returns %d\n", rv);
+        sc_debug(context, "C_DigestUpdate returns %d\n", rv);
 	sc_pkcs11_unlock();
         return rv;
 }
@@ -431,7 +431,7 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,     /* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
-        debug(context, "C_DigestFinal returns %d\n", rv);
+        sc_debug(context, "C_DigestFinal returns %d\n", rv);
 	sc_pkcs11_unlock();
         return rv;
 }
@@ -478,7 +478,7 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
-out:	debug(context, "Sign initialization returns %d\n", rv);
+out:	sc_debug(context, "Sign initialization returns %d\n", rv);
 	sc_pkcs11_unlock();
 
         return rv;
@@ -520,7 +520,7 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 
-out:	debug(context, "Signing result was %d\n", rv);
+out:	sc_debug(context, "Signing result was %d\n", rv);
 	sc_pkcs11_unlock();
         return rv;
 
@@ -541,7 +541,7 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_sign_update(session, pPart, ulPartLen);
 
-	debug(context, "C_SignUpdate returns %d\n", rv);
+	sc_debug(context, "C_SignUpdate returns %d\n", rv);
 	sc_pkcs11_unlock();
         return rv;
 }
@@ -577,7 +577,7 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,        /* the session's handle */
 		rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 	}
 
-out:	debug(context, "C_SignFinal returns %d\n", rv);
+out:	sc_debug(context, "C_SignFinal returns %d\n", rv);
 	sc_pkcs11_unlock();
 
         return rv;
@@ -625,11 +625,11 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 
 	/* XXX: need to tell the signature algorithm that we want
 	 * to recover the signature */
-        debug(context, "SignRecover operation initialized\n");
+        sc_debug(context, "SignRecover operation initialized\n");
 
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
-out:	debug(context, "Sign initialization returns %d\n", rv);
+out:	sc_debug(context, "Sign initialization returns %d\n", rv);
 	sc_pkcs11_unlock();
         return rv;
 }
@@ -835,7 +835,7 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE    hSession,          /* the session's handl
 				pTemplate, ulAttributeCount,
 				(void **) &result);
 
-	debug(context, "Unwrapping result was %d\n", rv);
+	sc_debug(context, "Unwrapping result was %d\n", rv);
 
 	if (rv == CKR_OK)
 		rv = pool_insert(&session->slot->object_pool, result, phKey);
@@ -954,7 +954,7 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 
 	rv = sc_pkcs11_verif_init(session, pMechanism, object, key_type);
 
-out:	debug(context, "Verify initialization returns %d\n", rv);
+out:	sc_debug(context, "Verify initialization returns %d\n", rv);
 	sc_pkcs11_unlock();
 
         return rv;
@@ -985,7 +985,7 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,       /* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_verif_final(session, pSignature, ulSignatureLen);
 
-out:	debug(context, "Verify result was %d\n", rv);
+out:	sc_debug(context, "Verify result was %d\n", rv);
 	sc_pkcs11_unlock();
         return rv;
 #endif
@@ -1009,7 +1009,7 @@ CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_verif_update(session, pPart, ulPartLen);
 
-	debug(context, "C_VerifyUpdate returns %d\n", rv);
+	sc_debug(context, "C_VerifyUpdate returns %d\n", rv);
 	sc_pkcs11_unlock();
         return rv;
 #endif
@@ -1035,7 +1035,7 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,       /* the session's handle */
 
 	rv = sc_pkcs11_verif_final(session, pSignature, ulSignatureLen);
 
-out:	debug(context, "C_VerifyFinal returns %d\n", rv);
+out:	sc_debug(context, "C_VerifyFinal returns %d\n", rv);
 	sc_pkcs11_unlock();
 
         return rv;

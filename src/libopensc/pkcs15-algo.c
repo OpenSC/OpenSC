@@ -333,7 +333,7 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx,
 	/* Set the oid if not yet given */
 	if (id->obj_id.value[0] <= 0) {
 		if (alg_info == NULL) {
-			error(ctx, "Cannot encode unknown algorithm %u.\n",
+			sc_error(ctx, "Cannot encode unknown algorithm %u.\n",
 					id->algorithm);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}

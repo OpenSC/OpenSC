@@ -281,7 +281,7 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 	const u8 *tag = NULL, *p = buf;
   
 	if (ctx->debug >= 3)
-		debug(ctx, "processing FCI bytes\n");
+		sc_debug(ctx, "processing FCI bytes\n");
 
 	/* defaults */
 	file->type = SC_FILE_TYPE_WORKING_EF;
@@ -295,7 +295,7 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 	{
 		int bytes = (tag[0] << 8) + tag[1];
 		if (ctx->debug >= 3)
-			debug(ctx, "  bytes in file: %d\n", bytes);
+			sc_debug(ctx, "  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
 
@@ -351,8 +351,8 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 
 		if (ctx->debug >= 3) 
 		{
-	 		debug(ctx, "  type: %s\n", type);
-			debug(ctx, "  EF structure: %s\n", structure);
+	 		sc_debug(ctx, "  type: %s\n", type);
+			sc_debug(ctx, "  EF structure: %s\n", structure);
 		}
 	}
 	file->magic = SC_FILE_MAGIC;
@@ -545,7 +545,7 @@ static int starcos_select_file(struct sc_card *card,
 			p_buf += 2;
 		}
 		p_buf[0] = 0x00;
-		debug(card->ctx, "current path (%s, %s): %s (len: %u)\n",
+		sc_debug(card->ctx, "current path (%s, %s): %s (len: %u)\n",
 			(card->cache.current_path.type==SC_PATH_TYPE_DF_NAME?"aid":"path"),
 			(card->cache_valid?"valid":"invalid"),
 			buf, card->cache.current_path.len);
@@ -570,7 +570,7 @@ static int starcos_select_file(struct sc_card *card,
 		    && memcmp(card->cache.current_path.value, pathbuf, pathlen) == 0 )
 		{
 			if (card->ctx->debug >= 4)
-				debug(card->ctx, "cache hit\n");
+				sc_debug(card->ctx, "cache hit\n");
 			SC_FUNC_RETURN(card->ctx, 2, SC_SUCCESS);
 		}
 		else
@@ -642,7 +642,7 @@ static int starcos_select_file(struct sc_card *card,
 				/* done: we are already in the
 				 * requested directory */
 				if ( card->ctx->debug >= 4 )
-					debug(card->ctx, "cache hit\n");
+					sc_debug(card->ctx, "cache hit\n");
 				/* TODO: Should SELECT DF be called again ? 
 				 *       (Calling SELECT DF resets the status 
 				 *       of the current DF).
@@ -816,14 +816,14 @@ static int starcos_delete_file(struct sc_card *card, const struct sc_path *path)
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2)
 	{
-		error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		sc_error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sbuf[0] = path->value[0];
 	sbuf[1] = path->value[1];
 	if (sbuf[0] != 0x3f || sbuf[1] != 0x00)
 	{
-		error(card->ctx, "Only the MF can be deleted\n");
+		sc_error(card->ctx, "Only the MF can be deleted\n");
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -1181,13 +1181,13 @@ static int starcos_check_sw(struct sc_card *card, int sw1, int sw2)
 	int i;
 
 	if (card->ctx->debug >= 3)
-		debug(card->ctx, "sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
+		sc_debug(card->ctx, "sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
   
 	if (sw1 == 0x90)
 		return SC_NO_ERROR;
 	if (sw1 == 0x63 && (sw2 & ~0x0f) == 0xc0 )
 	{
-		error(card->ctx, "Verification failed (remaining tries: %d)\n",
+		sc_error(card->ctx, "Verification failed (remaining tries: %d)\n",
 		(sw2 & 0x0f));
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
@@ -1196,7 +1196,7 @@ static int starcos_check_sw(struct sc_card *card, int sw1, int sw2)
 	for (i = 0; i < err_count; i++)
 		if (starcos_errors[i].SWs == ((sw1 << 8) | sw2))
 		{
-			error(card->ctx, "%s\n", starcos_errors[i].errorstr);
+			sc_error(card->ctx, "%s\n", starcos_errors[i].errorstr);
 			return starcos_errors[i].errorno;
 		}
   

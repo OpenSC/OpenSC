@@ -38,17 +38,15 @@ extern "C" {
 #define __FUNCTION__ NULL
 #endif
 
-/* XXX: Add sc_ prefix? */
-
 #if defined(__GNUC__)
 
-#define error(ctx, format, args...)	sc_do_log(ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, format , ## args)
-#define debug(ctx, format, args...)	sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, format , ## args)
+#define sc_error(ctx, format, args...)	sc_do_log(ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, format , ## args)
+#define sc_debug(ctx, format, args...)	sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, format , ## args)
 
 #else
 
-void error(struct sc_context *ctx, const char *format, ...);
-void debug(struct sc_context *ctx, const char *format, ...);
+void sc_error(struct sc_context *ctx, const char *format, ...);
+void sc_debug(struct sc_context *ctx, const char *format, ...);
 
 #endif
 

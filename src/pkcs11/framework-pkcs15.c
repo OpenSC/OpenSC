@@ -137,7 +137,7 @@ static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
 	p11card->fw_data = fw_data;
 
 	rc = sc_pkcs15_bind(p11card->card, &fw_data->p15_card);
-	debug(context, "Binding to PKCS#15, rc=%d\n", rc);
+	sc_debug(context, "Binding to PKCS#15, rc=%d\n", rc);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
 	return register_mechanisms(p11card);
@@ -322,7 +322,7 @@ pkcs15_create_pkcs11_objects(struct pkcs15_fw_data *fw_data,
         rv = count = sc_pkcs15_get_objects(fw_data->p15_card, p15_type, p15_object, MAX_OBJECTS);
 
 	if (rv >= 0) {
-		debug(context, "Found %d %s%s\n", count,
+		sc_debug(context, "Found %d %s%s\n", count,
 				name, (count == 1)? "" : "s");
 	}
 
@@ -514,7 +514,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 		slot->token_info.ulMinPinLen = 4;
 	}
 
-	debug(context, "Initialized token '%s'\n", tmp);
+	sc_debug(context, "Initialized token '%s'\n", tmp);
 }
 
 static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
@@ -554,7 +554,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 					SC_PKCS15_MAX_PINS);
 	if (rv < 0)
                 return sc_to_cryptoki_error(rv, reader);
-	debug(context, "Found %d authentication objects\n", rv);
+	sc_debug(context, "Found %d authentication objects\n", rv);
 	auth_count = rv;
 
         rv = pkcs15_create_pkcs11_objects(fw_data,
@@ -603,7 +603,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 						  &obj->p15_object->auth_id))
 				continue;
 
-			debug(context, "Adding private key %d to PIN %d\n", j, i);
+			sc_debug(context, "Adding private key %d to PIN %d\n", j, i);
 			pkcs15_add_object(slot, obj, NULL);
 		}
 	}
@@ -616,7 +616,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		struct pkcs15_any_object *obj = fw_data->objects[j];
 
 		if (!(obj->base.flags & SC_PKCS11_OBJECT_SEEN)) {
-                        debug(context, "Object %d was not seen previously\n", j);
+                        sc_debug(context, "Object %d was not seen previously\n", j);
 			if (!slot) {
 				rv = pkcs15_create_slot(p11card, NULL, &slot);
 				if (rv != CKR_OK)
@@ -636,7 +636,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		}
 	}
 
-	debug(context, "All tokens created\n");
+	sc_debug(context, "All tokens created\n");
 	return CKR_OK;
 }
 
@@ -704,7 +704,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 		return sc_to_cryptoki_error(rc, p11card->reader);
 
 	rc = sc_pkcs15_verify_pin(card, pin, pPin, ulPinLen);
-        debug(context, "PIN verification returned %d\n", rc);
+        sc_debug(context, "PIN verification returned %d\n", rc);
 	
 	if (rc >= 0)
 		cache_pin(fw_token, userType, pPin, ulPinLen);
@@ -755,7 +755,7 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 
 	rc = sc_pkcs15_change_pin(fw_data->p15_card, pin, pOldPin, ulOldLen,
 				pNewPin, ulNewLen);
-        debug(context, "PIN verification returned %d\n", rc);
+        sc_debug(context, "PIN verification returned %d\n", rc);
 
 	if (rc >= 0)
 		cache_pin(fw_token, CKU_USER, pNewPin, ulNewLen);
@@ -1132,7 +1132,7 @@ get_X509_usage_privk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x
 		if (typ == CKA_DERIVE && *val)
 			*x509_usage |= 16;
 		if (typ == CKA_VERIFY || typ == CKA_WRAP || typ == CKA_ENCRYPT) {
-			debug(context, "get_X509_usage_privk(): invalid typ = 0x%0x\n", typ);
+			sc_debug(context, "get_X509_usage_privk(): invalid typ = 0x%0x\n", typ);
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
 	}
@@ -1157,7 +1157,7 @@ get_X509_usage_pubk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x5
 		if (typ == CKA_DERIVE && *val)
 			*x509_usage |= 16;
 		if (typ == CKA_SIGN || typ == CKA_UNWRAP || typ == CKA_DECRYPT) {
-			debug(context, "get_X509_usage_pubk(): invalid typ = 0x%0x\n", typ);
+			sc_debug(context, "get_X509_usage_pubk(): invalid typ = 0x%0x\n", typ);
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
 	}
@@ -1190,7 +1190,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	char		priv_label[SC_PKCS15_MAX_LABEL_SIZE];
 	int rc, rv = CKR_OK;
 
-	debug(context, "Keypair generation, mech = 0x%0x\n", pMechanism->mechanism);
+	sc_debug(context, "Keypair generation, mech = 0x%0x\n", pMechanism->mechanism);
 
 	if (pMechanism->mechanism != CKM_RSA_PKCS_KEY_PAIR_GEN)
 		return CKR_MECHANISM_INVALID;
@@ -1267,13 +1267,13 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 		id = ((struct sc_pkcs15_prkey_info *) priv_key_obj->data)->id;
 		rc = sc_pkcs15_find_pubkey_by_id(fw_data->p15_card, &id, &pub_key_obj);
 		if (rc != 0) {
-			debug(context, "sc_pkcs15_find_pubkey_by_id returned %d\n", rc);
+			sc_debug(context, "sc_pkcs15_find_pubkey_by_id returned %d\n", rc);
 			rv = sc_to_cryptoki_error(rc, p11card->reader);
 			goto kpgen_done;
 		}
 	}
 	else if (rc != SC_ERROR_NOT_SUPPORTED) {
-		debug(context, "sc_pkcs15init_generate_key returned %d\n", rc);
+		sc_debug(context, "sc_pkcs15init_generate_key returned %d\n", rc);
 		rv = sc_to_cryptoki_error(rc, p11card->reader);
 		goto kpgen_done;
 	}
@@ -1281,16 +1281,16 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 		/* 3.b Try key pair generation in software, if allowed */
 		
 		if (!sc_pkcs11_conf.soft_keygen_allowed) {
-			debug(context, "On card keypair gen not supported, software keypair gen not allowed");
+			sc_debug(context, "On card keypair gen not supported, software keypair gen not allowed");
 			rv = CKR_FUNCTION_FAILED;
 			goto kpgen_done;
 		}
 
-		debug(context, "Doing key pair generation in software\n");
+		sc_debug(context, "Doing key pair generation in software\n");
 		rv = sc_pkcs11_gen_keypair_soft(keytype, keybits,
 			&priv_args.key, &pub_args.key);
 		if (rv != CKR_OK) {
-			debug(context, "sc_pkcs11_gen_keypair_soft failed: 0x%0x\n", rv);
+			sc_debug(context, "sc_pkcs11_gen_keypair_soft failed: 0x%0x\n", rv);
 			goto kpgen_done;
 		}
 
@@ -1301,7 +1301,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 			rc = sc_pkcs15init_store_public_key(p15card, profile,
 				&pub_args, &pub_key_obj);
 		if (rc < 0) {
-			debug(context, "private/public keys not stored: %d\n", rc);
+			sc_debug(context, "private/public keys not stored: %d\n", rc);
 			rv = sc_to_cryptoki_error(rc, p11card->reader);
 			goto kpgen_done;
 		}
@@ -1313,7 +1313,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	if (rc == 0)
 		__pkcs15_create_pubkey_object(fw_data, pub_key_obj, &pub_any_obj);
 	if (rc != 0) {
-		debug(context, "__pkcs15_create_pr/pubkey_object returned %d\n", rc);
+		sc_debug(context, "__pkcs15_create_pr/pubkey_object returned %d\n", rc);
 		rv = sc_to_cryptoki_error(rc, p11card->reader);
 		goto kpgen_done;
 	}
@@ -1666,7 +1666,7 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 	struct pkcs15_slot_data *data = slot_data(ses->slot->fw_data);
 	int rv, flags = 0;
 
-	debug(context, "Initiating signing operation, mechanism 0x%x.\n",
+	sc_debug(context, "Initiating signing operation, mechanism 0x%x.\n",
 				pMechanism->mechanism);
 
 	/* If this key requires user consent for every N operations,
@@ -1742,7 +1742,7 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
                 return CKR_MECHANISM_INVALID;
 	}
 
-        debug(context, "Selected flags %X. Now computing signature for %d bytes. %d bytes reserved.\n", flags, ulDataLen, *pulDataLen);
+        sc_debug(context, "Selected flags %X. Now computing signature for %d bytes. %d bytes reserved.\n", flags, ulDataLen, *pulDataLen);
 	rv = sc_pkcs15_compute_signature(fw_data->p15_card,
 					 prkey->prv_p15obj,
 					 flags,
@@ -1768,7 +1768,7 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 		sc_unlock(ses->slot->card->card);
 	}
 
-        debug(context, "Sign complete. Result %d.\n", rv);
+        sc_debug(context, "Sign complete. Result %d.\n", rv);
 
 	if (rv > 0) {
                 *pulDataLen = rv;
@@ -1791,7 +1791,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 	u8	unwrapped_key[256];
 	int	rv;
 
-	debug(context, "Initiating key unwrap.\n");
+	sc_debug(context, "Initiating key unwrap.\n");
 
 	/* See which of the alternative keys supports unwrap */
 	prkey = (struct pkcs15_prkey_object *) obj;
@@ -1830,7 +1830,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 		sc_unlock(ses->slot->card->card);
 	}
 
-	debug(context, "Key unwrap complete. Result %d.\n", rv);
+	sc_debug(context, "Key unwrap complete. Result %d.\n", rv);
 
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, ses->slot->card->reader);
@@ -2130,7 +2130,7 @@ revalidate_pin(struct pkcs15_slot_data *data, struct sc_pkcs11_session *ses)
 	int rv;
 	u8 value[MAX_CACHE_PIN];
 
-	debug(context, "revalidate_pin called\n");
+	sc_debug(context, "revalidate_pin called\n");
 	if (!sc_pkcs11_conf.cache_pins &&
 	    !(ses->slot->token_info.flags & CKF_PROTECTED_AUTHENTICATION_PATH))
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
@@ -2144,7 +2144,7 @@ revalidate_pin(struct pkcs15_slot_data *data, struct sc_pkcs11_session *ses)
 	}
 
 	if (rv != CKR_OK)
-		debug(context, "Re-login failed: 0x%0x (%d)\n", rv, rv);
+		sc_debug(context, "Re-login failed: 0x%0x (%d)\n", rv, rv);
 
 	return rv;
 }
@@ -2256,7 +2256,7 @@ lock_card(struct pkcs15_fw_data *fw_data)
 	int	rc;
 
 	if ((rc = sc_lock(fw_data->p15_card->card)) < 0)
-		debug(context, "Failed to lock card (%d)\n", rc);
+		sc_debug(context, "Failed to lock card (%d)\n", rc);
 	else
 		fw_data->locked++;
 

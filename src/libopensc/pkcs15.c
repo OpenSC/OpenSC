@@ -109,7 +109,7 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 	
 	r = sc_asn1_decode(card->card->ctx, asn1_tokeninfo, buf, buflen, NULL, NULL);
 	if (r) {
-		error(card->card->ctx,
+		sc_error(card->card->ctx,
 			"ASN.1 parsing of EF(TokenInfo) failed: %s\n",
 			sc_strerror(r));
 		goto err;
@@ -186,7 +186,7 @@ int sc_pkcs15_encode_tokeninfo(struct sc_context *ctx,
 
 	r = sc_asn1_encode(ctx, asn1_tokeninfo, buf, buflen);
 	if (r) {
-		error(ctx, "sc_asn1_encode() failed: %s\n", sc_strerror(r));
+		sc_error(ctx, "sc_asn1_encode() failed: %s\n", sc_strerror(r));
 		return r;
 	}
 	return 0;
@@ -212,7 +212,7 @@ static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t bufl
 
 	r = sc_asn1_decode(p15card->card->ctx, asn1_ddo, buf, buflen, NULL, NULL);
 	if (r) {
-		error(p15card->card->ctx, "DDO parsing failed: %s\n",
+		sc_error(p15card->card->ctx, "DDO parsing failed: %s\n",
 		      sc_strerror(r));
 		return r;
 	}
@@ -255,7 +255,7 @@ static int encode_ddo(struct sc_pkcs15_card *p15card, u8 **buf, size_t *buflen)
 
 	r = sc_asn1_encode(ctx, asn1_dir, buf, buflen);
 	if (r) {
-		error(ctx, "sc_asn1_encode() failed: %s\n",
+		sc_error(ctx, "sc_asn1_encode() failed: %s\n",
 		      sc_strerror(r));
 		return r;
 	}
@@ -384,7 +384,7 @@ int sc_pkcs15_encode_odf(struct sc_context *ctx,
 		df = df->next;
 	};
 	if (df_count == 0) {
-		error(ctx, "No DF's found.\n");
+		sc_error(ctx, "No DF's found.\n");
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 	asn1_odf = (struct sc_asn1_entry *) malloc(sizeof(struct sc_asn1_entry) * (df_count + 1));
@@ -406,7 +406,7 @@ int sc_pkcs15_encode_odf(struct sc_context *ctx,
 				break;
 			}
 		if (type == -1) {
-			error(ctx, "Unsupported DF type.\n");
+			sc_error(ctx, "Unsupported DF type.\n");
 			continue;
 		}
 		asn1_odf[c] = c_asn1_odf[type];
@@ -492,7 +492,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 
 	err = sc_lock(card);
 	if (err) {
-		error(ctx, "sc_lock() failed: %s\n", sc_strerror(err));
+		sc_error(ctx, "sc_lock() failed: %s\n", sc_strerror(err));
 		sc_pkcs15_card_free(p15card);
 		SC_FUNC_RETURN(ctx, 1, err);
 	}
@@ -500,7 +500,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	if (card->app_count < 0) {
 		err = sc_enum_apps(card);
 		if (err < 0 && err != SC_ERROR_FILE_NOT_FOUND) {
-			error(ctx, "unable to enumerate apps: %s\n", sc_strerror(err));
+			sc_error(ctx, "unable to enumerate apps: %s\n", sc_strerror(err));
 			goto error;
 		}
 	}
@@ -560,7 +560,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	len = err;
 	if (parse_odf(buf, len, p15card)) {
 		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
-		error(card->ctx, "Unable to parse ODF\n");
+		sc_error(card->ctx, "Unable to parse ODF\n");
 		goto error;
 	}
 	if (p15card->file_tokeninfo == NULL) {
@@ -628,7 +628,7 @@ int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *p15card)
 		int  (*init_func)(sc_pkcs15_card_t *);
 
 		if (ctx->debug >= 4) {
-			debug(ctx, "Loading: %s\n", tmp->data);
+			sc_debug(ctx, "Loading: %s\n", tmp->data);
 		}
 		/* try to open dynamic library */
 		r = sc_module_open(ctx, &handle, tmp->data);
@@ -659,7 +659,7 @@ int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *p15card)
 		else if (tmp_r == SC_ERROR_WRONG_CARD) {
 			/* wrong init_func => try next one (if existing) */
 			if (ctx->debug >= 4) {
-				debug(ctx, "init_func failed => trying next one\n");
+				sc_debug(ctx, "init_func failed => trying next one\n");
 			}
 			continue;
 		}
@@ -1056,7 +1056,7 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 		break;
 	}
 	if (func == NULL) {
-		error(ctx, "unknown DF type: %d\n", df->type);
+		sc_error(ctx, "unknown DF type: %d\n", df->type);
 		*buf_out = NULL;
 		*bufsize_out = 0;
 		return 0;
@@ -1112,7 +1112,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		break;
 	}
 	if (func == NULL) {
-		error(ctx, "unknown DF type: %d\n", df->type);
+		sc_error(ctx, "unknown DF type: %d\n", df->type);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (df->file != NULL)

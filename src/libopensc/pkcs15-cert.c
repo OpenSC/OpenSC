@@ -81,7 +81,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	obj = sc_asn1_verify_tag(ctx, buf, buflen, ASN1_SEQUENCE | SC_ASN1_CONS,
 				 &objlen);
 	if (obj == NULL) {
-		error(ctx, "X.509 certificate not found\n");
+		sc_error(ctx, "X.509 certificate not found\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	cert->data_len = objlen + (obj - buf);

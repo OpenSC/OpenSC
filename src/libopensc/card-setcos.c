@@ -255,11 +255,11 @@ static int setcos_set_security_env(struct sc_card *card,
 		tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
 		tmp.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 		if (tmp.algorithm != SC_ALGORITHM_RSA) {
-			error(card->ctx, "Only RSA algorithm supported.\n");
+			sc_error(card->ctx, "Only RSA algorithm supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		if (priv->type != SETEC_PKI) {
-			error(card->ctx, "Card does not support RSA.\n");
+			sc_error(card->ctx, "Card does not support RSA.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		tmp.algorithm_ref = 0x00;

@@ -96,10 +96,10 @@ static int emv_match_card(struct sc_card *card)
 		if (tx2[i] != -1)
 			linep += sprintf(linep, "T%c2 = 0x%02X ", 'A' + i, tx2[i]);
 	if (card->ctx->debug >= 4) {
-		debug(card->ctx, "ATR parse: %s\n", line);
+		sc_debug(card->ctx, "ATR parse: %s\n", line);
 		if (hbcount) {
 			sc_hex_dump(card->ctx, hist_bytes, hbcount, line, sizeof(line));
-			debug(card->ctx, "historic bytes:\n%s", line);
+			sc_debug(card->ctx, "historic bytes:\n%s", line);
 		}
 	}
 	if ((t0 & 0xF0) != 0x60)

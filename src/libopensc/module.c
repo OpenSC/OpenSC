@@ -40,7 +40,7 @@ int sc_module_open(struct sc_context *ctx, void **mod_handle, const char *filena
 
 	if ((error = dlerror()) != NULL) {
 		if (ctx->debug)
-			debug(ctx, "sc_module_open: %s\n", error);
+			sc_debug(ctx, "sc_module_open: %s\n", error);
 		return SC_ERROR_UNKNOWN;
 	}
 	*mod_handle = handle;
@@ -60,7 +60,7 @@ int sc_module_close(struct sc_context *ctx, void *mod_handle)
 
 	if ((error = dlerror()) != NULL) {
 		if (ctx->debug)
-			debug(ctx, "sc_module_close: %s\n", error);
+			sc_debug(ctx, "sc_module_close: %s\n", error);
 		return SC_ERROR_UNKNOWN;
 	}
 	return SC_SUCCESS;
@@ -89,7 +89,7 @@ int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_a
 
 	if ((error = dlerror()) != NULL) {
 		if (ctx->debug)
-			debug(ctx, "sc_module_get_address: %s\n", error);
+			sc_debug(ctx, "sc_module_get_address: %s\n", error);
 		return SC_ERROR_UNKNOWN;
 	}
 	*sym_address = address;
@@ -113,7 +113,7 @@ int sc_module_open(struct sc_context *ctx, void **mod_handle, const char *filena
 	if (handle == NULL) {
 		if (ctx->debug)
 			/* TODO: GetLastError */
-			debug(ctx, "sc_module_open: unknown error");
+			sc_debug(ctx, "sc_module_open: unknown error");
 		return SC_ERROR_UNKNOWN;
 	}
 	*mod_handle = handle;
@@ -148,7 +148,7 @@ int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_a
 	if (address == NULL) {
 		if (ctx->debug)
 			/* TODO: GetLastError */
-			debug(ctx, "sc_module_get_address: unknown error");
+			sc_debug(ctx, "sc_module_get_address: unknown error");
 		return SC_ERROR_UNKNOWN;
 	}
 	*sym_address = address;

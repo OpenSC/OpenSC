@@ -214,7 +214,7 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 		}
                 break;
 	default:
-		error(ctx, "Invalid private key type: %X\n", obj->type);
+		sc_error(ctx, "Invalid private key type: %X\n", obj->type);
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_INTERNAL);
 		break;
 	}
@@ -277,7 +277,7 @@ sc_pkcs15_encode_prkey(struct sc_context *ctx,
 {
 	if (key->algorithm == SC_ALGORITHM_DSA)
 		return sc_pkcs15_encode_prkey_dsa(ctx, &key->u.dsa, buf, len);
-	error(ctx, "Cannot encode private key type %u.\n",
+	sc_error(ctx, "Cannot encode private key type %u.\n",
 			key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -289,7 +289,7 @@ sc_pkcs15_decode_prkey(struct sc_context *ctx,
 {
 	if (key->algorithm == SC_ALGORITHM_DSA)
 		return sc_pkcs15_decode_prkey_dsa(ctx, &key->u.dsa, buf, len);
-	error(ctx, "Cannot decode private key type %u.\n",
+	sc_error(ctx, "Cannot decode private key type %u.\n",
 			key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -317,12 +317,12 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 		key.algorithm = SC_ALGORITHM_DSA;
 		break;
 	default:
-		error(ctx, "Unsupported object type.\n");
+		sc_error(ctx, "Unsupported object type.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	info = (struct sc_pkcs15_prkey_info *) obj->data;
 	if (info->native) {
-		error(ctx, "Private key is native, will not read.");
+		sc_error(ctx, "Private key is native, will not read.");
 		return SC_ERROR_NOT_ALLOWED;
 	}
 
@@ -332,7 +332,7 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 
 	r = sc_pkcs15_read_file(p15card, &path, &data, &len, NULL);
 	if (r < 0) {
-		error(ctx, "Unable to read private key file.\n");
+		sc_error(ctx, "Unable to read private key file.\n");
 		return r;
 	}
 
@@ -350,7 +350,7 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 				data, len,
 				&clear, &clear_len);
 		if (r < 0)  {
-			error(ctx, "Failed to unwrap privat key.");
+			sc_error(ctx, "Failed to unwrap privat key.");
 			goto fail;
 		}
 		free(data);
@@ -360,7 +360,7 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 
 	r = sc_pkcs15_decode_prkey(ctx, &key, data, len);
 	if (r < 0) {
-		error(ctx, "Unable to decode private key");
+		sc_error(ctx, "Unable to decode private key");
 		goto fail;
 	}
 

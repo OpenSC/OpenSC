@@ -80,7 +80,7 @@ CK_RV card_detect(int reader)
 
         rv = CKR_OK;
 
-	debug(context, "%d: Detecting SmartCard\n", reader);
+	sc_debug(context, "%d: Detecting SmartCard\n", reader);
 	for (i = card->max_slots; i--; ) {
 		struct sc_pkcs11_slot *slot;
 
@@ -94,19 +94,19 @@ CK_RV card_detect(int reader)
 	/* Check if someone inserted a card */
 again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 	if (rc < 0) {
-		debug(context, "Card detection failed for reader %d: %s\n",
+		sc_debug(context, "Card detection failed for reader %d: %s\n",
 				reader, sc_strerror(rc));
 		return sc_to_cryptoki_error(rc, reader);
 	}
 	if (rc == 0) {
-		debug(context, "%d: Card absent\n", reader);
+		sc_debug(context, "%d: Card absent\n", reader);
 		card_removed(reader); /* Release all resources */
 		return CKR_TOKEN_NOT_PRESENT;
 	}
 
 	/* If the card was changed, disconnect the current one */
 	if (rc & SC_SLOT_CARD_CHANGED) {
-		debug(context, "%d: Card changed\n", reader);
+		sc_debug(context, "%d: Card changed\n", reader);
 		/* The following should never happen - but if it
 		 * does we'll be stuck in an endless loop.
 		 * So better be fussy. */
@@ -118,7 +118,7 @@ again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 
 	/* Detect the card if it's not known already */
 	if (card->card == NULL) {
-		debug(context, "%d: Connecting to SmartCard\n", reader);
+		sc_debug(context, "%d: Connecting to SmartCard\n", reader);
 		rc = sc_connect_card(context->reader[reader], 0, &card->card);
 		if (rc != SC_SUCCESS)
 			return sc_to_cryptoki_error(rc, reader);
@@ -126,7 +126,7 @@ again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 
 	/* Detect the framework */
 	if (card->framework == NULL) {
-		debug(context, "%d: Detecting Framework\n", reader);
+		sc_debug(context, "%d: Detecting Framework\n", reader);
 
 		for (i = 0; frameworks[i]; i++) {
 			if (frameworks[i]->bind == NULL)
@@ -140,7 +140,7 @@ again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 			return CKR_TOKEN_NOT_RECOGNIZED;
 
 		/* Initialize framework */
-		debug(context, "%d: Detected framework %d. Creating tokens.\n", reader, i);
+		sc_debug(context, "%d: Detected framework %d. Creating tokens.\n", reader, i);
 		rv = frameworks[i]->create_tokens(card);
 		if (rv != CKR_OK)
                         return rv;
@@ -148,7 +148,7 @@ again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 		card->framework = frameworks[i];
 	}
 
-	debug(context, "%d: Detection ended\n", reader);
+	sc_debug(context, "%d: Detection ended\n", reader);
 	return rv;
 }
 
@@ -180,7 +180,7 @@ CK_RV card_removed(int reader)
 	int i;
         struct sc_pkcs11_card *card;
 
-	debug(context, "%d: SmartCard removed\n", reader);
+	sc_debug(context, "%d: SmartCard removed\n", reader);
 
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++) {
 		if (virtual_slots[i].card &&
@@ -227,7 +227,7 @@ CK_RV slot_allocate(struct sc_pkcs11_slot **slot, struct sc_pkcs11_card *card)
 
 	for (i = first; i < last; i++) {
 		if (!virtual_slots[i].card) {
-			debug(context, "Allocated slot %d\n", i);
+			sc_debug(context, "Allocated slot %d\n", i);
 
                         virtual_slots[i].card = card;
                         virtual_slots[i].events = SC_EVENT_CARD_INSERTED;

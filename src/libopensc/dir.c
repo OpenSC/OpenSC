@@ -97,12 +97,12 @@ static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen,
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
 	if (r) {
-		error(card->ctx, "EF(DIR) parsing failed: %s\n",
+		sc_error(card->ctx, "EF(DIR) parsing failed: %s\n",
 		      sc_strerror(r));
 		return r;
 	}
 	if (aid_len > SC_MAX_AID_SIZE) {
-		error(card->ctx, "AID is too long.\n");
+		sc_error(card->ctx, "AID is too long.\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	app = (struct sc_app_info *) malloc(sizeof(struct sc_app_info));
@@ -117,7 +117,7 @@ static int parse_dir_record(struct sc_card *card, u8 ** buf, size_t *buflen,
 		app->label = NULL;
 	if (asn1_dirrecord[2].flags & SC_ASN1_PRESENT) {
 		if (path_len > SC_MAX_PATH_SIZE) {
-			error(card->ctx, "Application path is too long.\n");
+			sc_error(card->ctx, "Application path is too long.\n");
 			return SC_ERROR_INVALID_ASN1_OBJECT;
 		}
 		memcpy(app->path.value, path, path_len);
@@ -168,7 +168,7 @@ int sc_enum_apps(struct sc_card *card)
 	if (r)
 		return r;
 	if (card->ef_dir->type != SC_FILE_TYPE_WORKING_EF) {
-		error(card->ctx, "EF(DIR) is not a working EF.\n");
+		sc_error(card->ctx, "EF(DIR) is not a working EF.\n");
 		sc_file_free(card->ef_dir);
 		card->ef_dir = NULL;
 		return SC_ERROR_INVALID_CARD;
@@ -193,7 +193,7 @@ int sc_enum_apps(struct sc_card *card)
 		bufsize = r;
 		while (bufsize > 0) {
 			if (card->app_count == SC_MAX_CARD_APPS) {
-				error(card->ctx, "Too many applications on card");
+				sc_error(card->ctx, "Too many applications on card");
 				break;
 			}
 			r = parse_dir_record(card, &p, &bufsize, -1);
@@ -214,7 +214,7 @@ int sc_enum_apps(struct sc_card *card)
 				break;
 			SC_TEST_RET(card->ctx, r, "read_record() failed");
 			if (card->app_count == SC_MAX_CARD_APPS) {
-				error(card->ctx, "Too many applications on card");
+				sc_error(card->ctx, "Too many applications on card");
 				break;
 			}
 			rec_size = r;
@@ -276,7 +276,7 @@ static int encode_dir_record(struct sc_context *ctx, const struct sc_app_info *a
 				     (void *) &app->ddo_len, 1);
 	r = sc_asn1_encode(ctx, asn1_dir, buf, buflen);
 	if (r) {
-		error(ctx, "sc_asn1_encode() failed: %s\n",
+		sc_error(ctx, "sc_asn1_encode() failed: %s\n",
 		      sc_strerror(r));
 		return r;
 	}

@@ -239,21 +239,21 @@ openct_reader_connect(struct sc_reader *reader,
 		ct_reader_disconnect(data->h);
 
 	if (!(data->h = ct_reader_connect(data->num))) {
-		error(reader->ctx, "ct_reader_connect socket failed\n");
+		sc_error(reader->ctx, "ct_reader_connect socket failed\n");
 		return SC_ERROR_CARD_NOT_PRESENT;
 	}
 
 	rc = ct_card_request(data->h, slot->id, 0, NULL,
 				slot->atr, sizeof(slot->atr));
 	if (rc < 0) {
-		error(reader->ctx,
+		sc_error(reader->ctx,
 				"openct_reader_connect read failed: %s\n",
 				ct_strerror(rc));
 		return SC_ERROR_CARD_NOT_PRESENT;
 	}
 
 	if (rc == 0) {
-		error(reader->ctx, "openct_reader_connect recved no data\n");
+		sc_error(reader->ctx, "openct_reader_connect recved no data\n");
 		return SC_ERROR_READER;
 	}
 

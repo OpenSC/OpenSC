@@ -34,51 +34,51 @@ int sc_check_sw(struct sc_card *card, int sw1, int sw2)
 static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 {
 	if (apdu->le > 256) {
-		error(ctx, "Value of Le too big (maximum 256 bytes)\n");
+		sc_error(ctx, "Value of Le too big (maximum 256 bytes)\n");
 		SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if (apdu->lc > 255) {
-		error(ctx, "Value of Lc too big (maximum 255 bytes)\n");
+		sc_error(ctx, "Value of Lc too big (maximum 255 bytes)\n");
 		SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	switch (apdu->cse) {
 	case SC_APDU_CASE_1:
 		if (apdu->datalen > 0) {
-			error(ctx, "Case 1 APDU with data supplied\n");
+			sc_error(ctx, "Case 1 APDU with data supplied\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		break;
 	case SC_APDU_CASE_2_SHORT:
 		if (apdu->datalen > 0) {
-			error(ctx, "Case 2 APDU with data supplied\n");
+			sc_error(ctx, "Case 2 APDU with data supplied\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (apdu->le == 0) {
-			error(ctx, "Case 2 APDU with no response expected\n");
+			sc_error(ctx, "Case 2 APDU with no response expected\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (apdu->resplen < apdu->le) {
-			error(ctx, "Response buffer size < Le\n");
+			sc_error(ctx, "Response buffer size < Le\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		break;
 	case SC_APDU_CASE_3_SHORT:
 		if (apdu->datalen == 0 || apdu->data == NULL) {
-			error(ctx, "Case 3 APDU with no data supplied\n");
+			sc_error(ctx, "Case 3 APDU with no data supplied\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		break;
 	case SC_APDU_CASE_4_SHORT:
 		if (apdu->datalen == 0 || apdu->data == NULL) {
-			error(ctx, "Case 4 APDU with no data supplied\n");
+			sc_error(ctx, "Case 4 APDU with no data supplied\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (apdu->le == 0) {
-			error(ctx, "Case 4 APDU with no response expected\n");
+			sc_error(ctx, "Case 4 APDU with no response expected\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (apdu->resplen < apdu->le) {
-			error(ctx, "Le > response buffer size\n");
+			sc_error(ctx, "Le > response buffer size\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		break;
@@ -146,7 +146,7 @@ static int sc_transceive(struct sc_card *card, struct sc_apdu *apdu)
 		buf[0] = 0;
 		if (!apdu->sensitive || card->ctx->debug >= 6)
 			sc_hex_dump(card->ctx, sbuf, sendsize, buf, sizeof(buf));
-		debug(card->ctx, "Sending %d bytes (resp. %d bytes%s):\n%s",
+		sc_debug(card->ctx, "Sending %d bytes (resp. %d bytes%s):\n%s",
 			sendsize, recvsize,
 			apdu->sensitive ? ", sensitive" : "", buf);
 	}
@@ -200,7 +200,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 			sc_hex_dump(card->ctx, apdu->resp, apdu->resplen,
 				    buf, sizeof(buf));
 		}
-		debug(card->ctx, "Received %d bytes (SW1=%02X SW2=%02X)\n%s",
+		sc_debug(card->ctx, "Received %d bytes (SW1=%02X SW2=%02X)\n%s",
 		      apdu->resplen, apdu->sw1, apdu->sw2, buf);
 	}
 	if (apdu->sw1 == 0x6C && apdu->resplen == 0) {
@@ -340,7 +340,7 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 		if (card->ops->init != NULL) {
 			r = card->ops->init(card);
 			if (r) {
-				error(ctx, "driver '%s' init() failed: %s\n", card->driver->name,
+				sc_error(ctx, "driver '%s' init() failed: %s\n", card->driver->name,
 				      sc_strerror(r));
 				goto err;
 			}
@@ -350,18 +350,18 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 		const struct sc_card_operations *ops = drv->ops;
 		
 		if (ctx->debug >= 3)
-			debug(ctx, "trying driver: %s\n", drv->name);
+			sc_debug(ctx, "trying driver: %s\n", drv->name);
 		if (ops == NULL || ops->match_card == NULL)
 			continue;
 		if (ops->match_card(card) != 1)
 			continue;
 		if (ctx->debug >= 3)
-			debug(ctx, "matched: %s\n", drv->name);
+			sc_debug(ctx, "matched: %s\n", drv->name);
 		memcpy(card->ops, ops, sizeof(struct sc_card_operations));
 		card->driver = drv;
 		r = ops->init(card);
 		if (r) {
-			error(ctx, "driver '%s' init() failed: %s\n", drv->name,
+			sc_error(ctx, "driver '%s' init() failed: %s\n", drv->name,
 			      sc_strerror(r));
 			if (r == SC_ERROR_INVALID_CARD) {
 				card->driver = NULL;
@@ -372,7 +372,7 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 		break;
 	}
 	if (card->driver == NULL) {
-		error(ctx, "unable to find driver for inserted card\n");
+		sc_error(ctx, "unable to find driver for inserted card\n");
 		r = SC_ERROR_INVALID_CARD;
 		goto err;
 	}
@@ -397,13 +397,13 @@ int sc_disconnect_card(struct sc_card *card, int action)
 	if (card->ops->finish) {
 		int r = card->ops->finish(card);
 		if (r)
-			error(card->ctx, "card driver finish() failed: %s\n",
+			sc_error(card->ctx, "card driver finish() failed: %s\n",
 			      sc_strerror(r)); 
 	}
 	if (card->reader->ops->disconnect) {
 		int r = card->reader->ops->disconnect(card->reader, card->slot, action);
 		if (r)
-			error(card->ctx, "disconnect() failed: %s\n",
+			sc_error(card->ctx, "disconnect() failed: %s\n",
 			      sc_strerror(r));
 	}
 	sc_card_free(card);
@@ -500,7 +500,7 @@ int sc_read_binary(struct sc_card *card, unsigned int idx,
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
 	if (card->ctx->debug >= 2)
-		debug(card->ctx, "sc_read_binary: %d bytes at index %d\n", count, idx);
+		sc_debug(card->ctx, "sc_read_binary: %d bytes at index %d\n", count, idx);
 	if (count == 0)
 		return 0;
 	if (card->ops->read_binary == NULL)
@@ -541,7 +541,7 @@ int sc_write_binary(struct sc_card *card, unsigned int idx,
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
 	if (card->ctx->debug >= 2)
-		debug(card->ctx, "sc_write_binary: %d bytes at index %d\n", count, idx);
+		sc_debug(card->ctx, "sc_write_binary: %d bytes at index %d\n", count, idx);
 	if (count == 0)
 		return 0;
 	if (card->ops->write_binary == NULL)
@@ -582,7 +582,7 @@ int sc_update_binary(struct sc_card *card, unsigned int idx,
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
 	if (card->ctx->debug >= 2)
-		debug(card->ctx, "sc_update_binary: %d bytes at index %d\n", count, idx);
+		sc_debug(card->ctx, "sc_update_binary: %d bytes at index %d\n", count, idx);
 	if (count == 0)
 		return 0;
 	if (card->ops->update_binary == NULL)
@@ -647,7 +647,7 @@ int sc_select_file(struct sc_card *card,
 			linep += 2;
 		}
 		strcpy(linep, "\n");
-		debug(card->ctx, line);
+		sc_debug(card->ctx, line);
 	}
         if (card->ops->select_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
@@ -741,7 +741,7 @@ sc_card_ctl(struct sc_card *card, unsigned long cmd, void *args)
 
 	/* suppress "not supported" error messages */
 	if (r == SC_ERROR_NOT_SUPPORTED) {
-		debug(card->ctx, "card_ctl(%lu) not supported\n", cmd);
+		sc_debug(card->ctx, "card_ctl(%lu) not supported\n", cmd);
 		return r;
 	}
         SC_FUNC_RETURN(card->ctx, 2, r);

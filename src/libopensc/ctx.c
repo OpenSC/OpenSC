@@ -248,7 +248,7 @@ static int load_reader_drivers(struct sc_context *ctx,
 		if (func == NULL) {
 			/* External driver */
 			/* FIXME: Load shared library */
-			error(ctx, "Unable to load '%s'. External drivers not supported yet.\n",
+			sc_error(ctx, "Unable to load '%s'. External drivers not supported yet.\n",
 			      ent->name);
 			continue;
 		}
@@ -285,7 +285,7 @@ static int load_card_driver_options(struct sc_context *ctx,
 			r = sc_hex_to_bin(list->data,
 					atr_buf, &atr_len);
 			if (r < 0) {
-				error(ctx,
+				sc_error(ctx,
 				      "Unable to parse ATR '%s'.\n",
 				      list->data);
 				continue;
@@ -320,7 +320,7 @@ static int load_card_drivers(struct sc_context *ctx,
 		if (func == NULL) {
 			/* External driver */
 			/* FIXME: Load shared library */
-			error(ctx, "Unable to load '%s'. External drivers not supported yet.\n",
+			sc_error(ctx, "Unable to load '%s'. External drivers not supported yet.\n",
 			      ent->name);
 			continue;
 		}
@@ -394,7 +394,7 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 	ctx->app_name = app_name ? strdup(app_name) : strdup(default_app);
 	process_config_file(ctx, &opts);
 	ctx->mutex = sc_mutex_new();
-	debug(ctx, "===================================\n"); /* first thing in the log */
+	sc_debug(ctx, "===================================\n"); /* first thing in the log */
 	load_reader_drivers(ctx, &opts);
 	load_card_drivers(ctx, &opts);
 	if (opts.forced_card_driver) {
@@ -525,6 +525,6 @@ int sc_make_cache_dir(struct sc_context *ctx)
 	return 0;
 
 	/* for lack of a better return code */
-failed:	error(ctx, "failed to create cache directory\n");
+failed:	sc_error(ctx, "failed to create cache directory\n");
 	return SC_ERROR_INTERNAL;
 }

@@ -268,23 +268,23 @@ gpk_check_sw(struct sc_card *card, u8 sw1, u8 sw2)
 	unsigned short int	sw = (sw1 << 8) | sw2;
 
 	if ((sw & 0xFFF0) == 0x63C0) {
-		error(card->ctx, "wrong PIN, %u tries left\n", sw&0xf);
+		sc_error(card->ctx, "wrong PIN, %u tries left\n", sw&0xf);
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
 
 	switch (sw) {
 	case 0x6400:
-		error(card->ctx, "wrong crypto context\n");
+		sc_error(card->ctx, "wrong crypto context\n");
 		return SC_ERROR_OBJECT_NOT_VALID; /* XXX ??? */
 
 	/* The following are handled by iso7816_check_sw
 	 * but all return SC_ERROR_UNKNOWN_DATA_RECEIVED
 	 * XXX: fix in the iso driver? */
 	case 0x6983:
-		error(card->ctx, "PIN is blocked\n");
+		sc_error(card->ctx, "PIN is blocked\n");
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	case 0x6581:
-		error(card->ctx, "out of space on card or file\n");
+		sc_error(card->ctx, "out of space on card or file\n");
 		return SC_ERROR_OUT_OF_MEMORY;
 	case 0x6981:
 		return SC_ERROR_FILE_NOT_FOUND;
@@ -603,7 +603,7 @@ gpk_select_id(struct sc_card *card, u8 kind, unsigned short int fid,
 	int		r, log_errs;
 
 	if (card->ctx->debug)
-		debug(card->ctx, "gpk_select_id(0x%04X, kind=%u)\n", fid, kind);
+		sc_debug(card->ctx, "gpk_select_id(0x%04X, kind=%u)\n", fid, kind);
 
 	fbuf[0] = fid >> 8;
 	fbuf[1] = fid & 0xff;
@@ -756,7 +756,7 @@ gpk_read_binary(struct sc_card *card, unsigned int offset,
 	struct gpk_private_data *priv = DRVDATA(card);
 
 	if (offset & priv->offset_mask) {
-		error(card->ctx, "Invalid file offset (not a multiple of %d)",
+		sc_error(card->ctx, "Invalid file offset (not a multiple of %d)",
 				priv->offset_mask + 1);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -771,7 +771,7 @@ gpk_write_binary(struct sc_card *card, unsigned int offset,
 	struct gpk_private_data *priv = DRVDATA(card);
 
 	if (offset & priv->offset_mask) {
-		error(card->ctx, "Invalid file offset (not a multiple of %d)",
+		sc_error(card->ctx, "Invalid file offset (not a multiple of %d)",
 				priv->offset_mask + 1);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -786,7 +786,7 @@ gpk_update_binary(struct sc_card *card, unsigned int offset,
 	struct gpk_private_data *priv = DRVDATA(card);
 
 	if (offset & priv->offset_mask) {
-		error(card->ctx, "Invalid file offset (not a multiple of %d)",
+		sc_error(card->ctx, "Invalid file offset (not a multiple of %d)",
 				priv->offset_mask + 1);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -857,7 +857,7 @@ gpk_verify_crycks(struct sc_card *card, struct sc_apdu *apdu, u8 *crycks)
 	if (apdu->resplen < 3
 	 || memcmp(apdu->resp + apdu->resplen - 3, crycks, 3)) {
 		if (card->ctx->debug)
-			debug(card->ctx, "Invalid secure messaging reply\n");
+			sc_debug(card->ctx, "Invalid secure messaging reply\n");
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 	apdu->resplen -= 3;
@@ -880,7 +880,7 @@ gpk_create_file(struct sc_card *card, struct sc_file *file)
 	int		r;
 
 	if (card->ctx->debug)
-		debug(card->ctx, "gpk_create_file(0x%04X)\n", file->id);
+		sc_debug(card->ctx, "gpk_create_file(0x%04X)\n", file->id);
 
 	/* Prepare APDU */
 	memset(&apdu, 0, sizeof(apdu));
@@ -1069,7 +1069,7 @@ gpk_set_security_env(struct sc_card *card,
 	if (env->flags & SC_SEC_ENV_ALG_PRESENT)
 		algorithm = env->algorithm;
 	if (algorithm != SC_ALGORITHM_RSA) {
-		error(card->ctx, "Algorithm not supported.\n");
+		sc_error(card->ctx, "Algorithm not supported.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	priv->sec_algorithm = algorithm;
@@ -1077,7 +1077,7 @@ gpk_set_security_env(struct sc_card *card,
 	/* If there's a key reference, it must be 0 */
 	if ((env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
 	 && (env->key_ref_len != 1 || env->key_ref[0] != 0)) {
-		error(card->ctx, "Unknown key referenced.\n");
+		sc_error(card->ctx, "Unknown key referenced.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -1090,7 +1090,7 @@ gpk_set_security_env(struct sc_card *card,
 	else if (env->flags & SC_ALGORITHM_RSA_PAD_ISO9796)
 		priv->sec_padding = 2;
 	else {
-		error(card->ctx, "Padding algorithm not supported.\n");
+		sc_error(card->ctx, "Padding algorithm not supported.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -1113,7 +1113,7 @@ gpk_set_security_env(struct sc_card *card,
 			context = GPK_SIGN_RSA_MD5;
 			priv->sec_hash_len = 16;
 		} else {
-			error(card->ctx, "Unsupported signature algorithm");
+			sc_error(card->ctx, "Unsupported signature algorithm");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		break;
@@ -1121,20 +1121,20 @@ gpk_set_security_env(struct sc_card *card,
 		context = GPK_UNWRAP_RSA;
 		break;
 	default:
-		error(card->ctx, "Crypto operation not supported.\n");
+		sc_error(card->ctx, "Crypto operation not supported.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	/* Get the file ID */
 	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
 		if (env->file_ref.len != 2) {
-			error(card->ctx, "File reference: invalid length.\n");
+			sc_error(card->ctx, "File reference: invalid length.\n");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		file_id = (env->file_ref.value[0] << 8)
 			| env->file_ref.value[1];
 	} else {
-		error(card->ctx, "File reference missing.\n");
+		sc_error(card->ctx, "File reference missing.\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -1148,11 +1148,11 @@ gpk_set_security_env(struct sc_card *card,
 			SC_RECORD_BY_REC_NR);
 	SC_TEST_RET(card->ctx, r, "Failed to read PK sysrec");
 	if (r != 7 || sysrec[0] != 0) {
-		error(card->ctx, "First record of file is not the sysrec");
+		sc_error(card->ctx, "First record of file is not the sysrec");
 		return SC_ERROR_OBJECT_NOT_VALID;
 	}
 	if (sysrec[5] != 0x00) {
-		error(card->ctx, "Public key is not an RSA key");
+		sc_error(card->ctx, "Public key is not an RSA key");
 		return SC_ERROR_OBJECT_NOT_VALID;
 	}
 	switch (sysrec[1]) {
@@ -1160,7 +1160,7 @@ gpk_set_security_env(struct sc_card *card,
 	case 0x10: priv->sec_mod_len =  768 / 8; break;
 	case 0x11: priv->sec_mod_len = 1024 / 8; break;
 	default:
-		error(card->ctx, "Unsupported modulus length");
+		sc_error(card->ctx, "Unsupported modulus length");
 		return SC_ERROR_OBJECT_NOT_VALID;
 	}
 
@@ -1292,7 +1292,7 @@ gpk_compute_signature(struct sc_card *card, const u8 *data,
 	int		r;
 
 	if (data_len > priv->sec_mod_len) {
-		error(card->ctx,
+		sc_error(card->ctx,
 			"Data length (%u) does not match key modulus %u.\n",
 			data_len, priv->sec_mod_len);
 		return SC_ERROR_INTERNAL;
@@ -1353,7 +1353,7 @@ gpk_decipher(struct sc_card *card, const u8 *in, size_t inlen,
 	int		r;
 
 	if (inlen != priv->sec_mod_len) {
-		error(card->ctx,
+		sc_error(card->ctx,
 			"Data length (%u) does not match key modulus %u.\n",
 			inlen, priv->sec_mod_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1454,7 +1454,7 @@ gpk_lock(struct sc_card *card, struct sc_cardctl_gpk_lock *args)
 	int		r;
 
 	if (card->ctx->debug)
-		debug(card->ctx, "gpk_lock(0x%04X, %u)\n",
+		sc_debug(card->ctx, "gpk_lock(0x%04X, %u)\n",
 				file->id, args->operation);
 
 	memset(data, 0, sizeof(data));
@@ -1512,7 +1512,7 @@ gpk_pkfile_init(struct sc_card *card, struct sc_cardctl_gpk_pkinit *args)
 	int		r;
 
 	if (card->ctx->debug)
-		debug(card->ctx, "gpk_pkfile_init(%u)\n", args->privlen);
+		sc_debug(card->ctx, "gpk_pkfile_init(%u)\n", args->privlen);
 
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse = SC_APDU_CASE_1;
@@ -1542,7 +1542,7 @@ gpk_pkfile_load(struct sc_card *card, struct sc_cardctl_gpk_pkload *args)
 	u8		temp[256];
 	int		r;
 
-	debug(card->ctx, "gpk_pkfile_load(fid=%04x, len=%d, datalen=%d)\n",
+	sc_debug(card->ctx, "gpk_pkfile_load(fid=%04x, len=%d, datalen=%d)\n",
 			args->file->id, args->len, args->datalen);
 
 #if 0
@@ -1551,7 +1551,7 @@ gpk_pkfile_load(struct sc_card *card, struct sc_cardctl_gpk_pkload *args)
 
 		sc_hex_dump(card->ctx, args->data, args->datalen,
 				buf, sizeof(buf));
-		debug(card->ctx, "Sending %d bytes (cleartext):\n%s",
+		sc_debug(card->ctx, "Sending %d bytes (cleartext):\n%s",
 				args->datalen, buf);
 	}
 #endif
@@ -1567,7 +1567,7 @@ gpk_pkfile_load(struct sc_card *card, struct sc_cardctl_gpk_pkload *args)
 	/* encrypt the private key material */
 	assert(args->datalen <= sizeof(temp));
 	if (!priv->key_set) {
-		error(card->ctx, "No secure messaging key set!\n");
+		sc_error(card->ctx, "No secure messaging key set!\n");
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 	DES_set_key_unchecked((des_cblock *) priv->key, &k1);

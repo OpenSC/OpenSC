@@ -167,7 +167,7 @@ ctbcs_pin_cmd(struct sc_reader *reader, sc_slot_info_t *slot,
 		r = ctbcs_build_modify_verification_apdu(&apdu, data);
 		break;
 	default:
-		error(reader->ctx, "unknown pin command %d", data->cmd);
+		sc_error(reader->ctx, "unknown pin command %d", data->cmd);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 

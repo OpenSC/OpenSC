@@ -49,11 +49,11 @@
 #define SCARD_SCOPE_GLOBAL SCARD_SCOPE_USER
 
 /* Error printing */
-#define PCSC_ERROR(ctx, desc, rv) error(ctx, desc ": %lx\n", rv);
+#define PCSC_ERROR(ctx, desc, rv) sc_error(ctx, desc ": %lx\n", rv);
 
 #else
 
-#define PCSC_ERROR(ctx, desc, rv) error(ctx, desc ": %s\n", pcsc_stringify_error(rv));
+#define PCSC_ERROR(ctx, desc, rv) sc_error(ctx, desc ": %s\n", pcsc_stringify_error(rv));
 
 #endif
 
@@ -162,7 +162,7 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 			lc = 256;
 		if (sendsize == lc + 6) {
 			/* Le is present, cut it out */
-			debug(reader->ctx, "Cutting out Le byte from Case 4 APDU\n");
+			sc_debug(reader->ctx, "Cutting out Le byte from Case 4 APDU\n");
 			sendsize--;
 		}
 	}

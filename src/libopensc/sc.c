@@ -440,12 +440,12 @@ int _sc_parse_atr(struct sc_context *ctx, struct sc_slot_info *slot)
 	slot->atr_info.hist_bytes = NULL;
 
 	if (atr_len == 0) {
-		error(ctx, "empty ATR - card not present?\n");
+		sc_error(ctx, "empty ATR - card not present?\n");
 		return SC_ERROR_INTERNAL;
 	}
 
 	if (p[0] != 0x3B && p[0] != 0x3F) {
-		error(ctx, "invalid sync byte in ATR: 0x%02X\n", p[0]);
+		sc_error(ctx, "invalid sync byte in ATR: 0x%02X\n", p[0]);
 		return SC_ERROR_INTERNAL;
 	}
 	n_hist = p[1] & 0x0F;

@@ -174,13 +174,13 @@ static int etoken_check_sw(struct sc_card *card, int sw1, int sw2)
 	for (i = 0; i < err_count; i++) {
 		if (etoken_errors[i].SWs == ((sw1 << 8) | sw2)) {
 			if ( etoken_errors[i].errorstr ) 
-				error(card->ctx, "%s\n",
+				sc_error(card->ctx, "%s\n",
 				 	etoken_errors[i].errorstr);
 			return etoken_errors[i].errorno;
 		}
 	}
 
-        error(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+        sc_error(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -285,22 +285,22 @@ get_next_part:
 	SC_TEST_RET(card->ctx, r, "DIRECTORY command returned error");
 
 	if (apdu.resplen > 256) {
-		error(card->ctx, "directory listing > 256 bytes, cutting");
+		sc_error(card->ctx, "directory listing > 256 bytes, cutting");
 		r = 256;
 	}
 	for (i=0; i < apdu.resplen;) {
 		/* is there a file informatin block (0x6f) ? */
 		if (rbuf[i] != 0x6f) {
-			error(card->ctx, "directory listing not parseable");
+			sc_error(card->ctx, "directory listing not parseable");
 			break;
 		}
 		if (i+1 > apdu.resplen) {
-			error(card->ctx, "directory listing short");
+			sc_error(card->ctx, "directory listing short");
 			break;
 		}
 		len = rbuf[i+1];
 		if (i + 1 + len > apdu.resplen) {
-			error(card->ctx, "directory listing short");
+			sc_error(card->ctx, "directory listing short");
 			break;
 		}
 		fid = etoken_extract_fid(&rbuf[i+2], len);
@@ -437,7 +437,7 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 				"%02X", file->path.value[n]);
 		}
 
-		debug(card->ctx, "etoken_create_file(%s)\n", pbuf);
+		sc_debug(card->ctx, "etoken_create_file(%s)\n", pbuf);
 	}
 
 	if (file->type_attr_len == 0) {
@@ -498,7 +498,7 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 				byte = acl_to_byte(
 				    sc_file_get_acl_entry(file, idx[i]));
                         if (byte < 0) {
-                                error(card->ctx, "Invalid ACL\n");
+                                sc_error(card->ctx, "Invalid ACL\n");
                                 r = SC_ERROR_INVALID_ARGUMENTS;
 				goto out;
                         }
@@ -561,7 +561,7 @@ etoken_set_security_env(struct sc_card *card,
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
 	 || env->key_ref_len != 1) {
-		error(card->ctx, "No or invalid key reference\n");
+		sc_error(card->ctx, "No or invalid key reference\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	key_id = env->key_ref[0];
@@ -659,12 +659,12 @@ etoken_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
 	 * only way I see) -- Nils
 	 */
 	if (ctx->debug >= 3)
-		debug(ctx, "trying RSA_PURE_SIG (padded DigestInfo)\n");
+		sc_debug(ctx, "trying RSA_PURE_SIG (padded DigestInfo)\n");
 	r = do_compute_signature(card, data, datalen, out, outlen);
 	if (r >= SC_SUCCESS)
 		SC_FUNC_RETURN(ctx, 4, r);
 	if (ctx->debug >= 3)
-		debug(ctx, "trying RSA_SIG (just the DigestInfo)\n");
+		sc_debug(ctx, "trying RSA_SIG (just the DigestInfo)\n");
 	/* remove padding: first try pkcs1 bt01 padding */
 	r = sc_pkcs1_strip_01_padding(data, datalen, buf, &tmp_len);
 	if (r != SC_SUCCESS) {
@@ -678,7 +678,7 @@ etoken_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
 	if (r >= SC_SUCCESS)	
 		SC_FUNC_RETURN(ctx, 4, r);
 	if (ctx->debug >= 3)
-		debug(ctx, "trying to sign raw hash value\n");
+		sc_debug(ctx, "trying to sign raw hash value\n");
 	r = sc_pkcs1_strip_digest_info_prefix(NULL,buf,tmp_len,buf,&buf_len);
 	if (r != SC_SUCCESS)
 		SC_FUNC_RETURN(ctx, 4, r);
@@ -715,7 +715,7 @@ etoken_lifecycle_get(struct sc_card *card, int *mode)
 	} else if (rbuf[0] == 16) {
 		*mode = SC_CARDCTRL_LIFECYCLE_USER;
 	} else {
-		error(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
+		sc_error(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
 		return SC_ERROR_INTERNAL;
 	}
 
@@ -822,7 +822,7 @@ etoken_generate_key(struct sc_card *card,
 
 	if (args->random_len) {
 		/* XXX FIXME: do a GIVE_RANDOM command with this data */
-		error(card->ctx,
+		sc_error(card->ctx,
 			"initialization of card's random pool "
 			"not yet implemented\n");
 		return SC_ERROR_INTERNAL;

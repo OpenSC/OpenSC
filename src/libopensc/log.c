@@ -39,7 +39,7 @@
 #endif
 
 #ifndef __GNUC__
-void error(struct sc_context *ctx, const char *format, ...)
+void sc_error(struct sc_context *ctx, const char *format, ...)
 {
 	va_list ap;
 
@@ -48,7 +48,7 @@ void error(struct sc_context *ctx, const char *format, ...)
 	va_end(ap);
 }
 
-void debug(struct sc_context *ctx, const char *format, ...)
+void sc_debug(struct sc_context *ctx, const char *format, ...)
 {
 	va_list ap;
 

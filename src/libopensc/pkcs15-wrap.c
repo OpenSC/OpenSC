@@ -78,7 +78,7 @@ sc_pkcs15_derive_key(struct sc_context *ctx,
 
 	/* XXX: We might also encounter PBES2 here */
 	if (der_alg->algorithm != SC_ALGORITHM_PBKDF2) {
-		error(ctx, "Unsupported key derivation algorithm.\n");
+		sc_error(ctx, "Unsupported key derivation algorithm.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -92,18 +92,18 @@ sc_pkcs15_derive_key(struct sc_context *ctx,
 		iv = (u8 *) enc_alg->params;
 		break;
 	default:
-		error(ctx, "Unsupported key encryption algorithm.\n");
+		sc_error(ctx, "Unsupported key encryption algorithm.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	key_len = EVP_CIPHER_key_length(cipher);
 
 	info = (struct sc_pbkdf2_params *) der_alg->params;
 	if (info->key_length && info->key_length != key_len) {
-		error(ctx, "Incompatible key length.\n");
+		sc_error(ctx, "Incompatible key length.\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (key_len > sizeof(key)) {
-		error(ctx, "Huge key length (%u).\n", key_len);
+		sc_error(ctx, "Huge key length (%u).\n", key_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -111,7 +111,7 @@ sc_pkcs15_derive_key(struct sc_context *ctx,
 			info->salt, info->salt_len,
 			info->iterations, key_len, key);
 	if (r == 0) {
-		error(ctx, "Key derivation failed.\n");
+		sc_error(ctx, "Key derivation failed.\n");
 		return SC_ERROR_INTERNAL; /* for lack of something better */
 	}
 
@@ -215,7 +215,7 @@ sc_pkcs15_unwrap_data(struct sc_context *ctx,
 	memset(&envdata, 0, sizeof(envdata));
 	r = sc_pkcs15_decode_enveloped_data(ctx, &envdata, in, in_len);
 	if (r < 0) {
-		error(ctx, "Failed to decode EnvelopedData.\n");
+		sc_error(ctx, "Failed to decode EnvelopedData.\n");
 		return r;
 	}
 

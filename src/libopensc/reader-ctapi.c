@@ -80,7 +80,7 @@ static int refresh_slot_attributes(struct sc_reader *reader,
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
 	if (rv || rbuf[lr-2] != 0x90) {
-		error(reader->ctx, "Error getting status of terminal: %d\n", rv);
+		sc_error(reader->ctx, "Error getting status of terminal: %d\n", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	if (rbuf[0] == CTBCS_DATA_STATUS_CARD_CONNECT)
@@ -105,7 +105,7 @@ static int ctapi_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, sendsize, (u8 *) sendbuf, &lr, recvbuf);
 	if (rv != 0) {
-		error(reader->ctx, "Error transmitting APDU: %d\n", rv);
+		sc_error(reader->ctx, "Error transmitting APDU: %d\n", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	*recvsize = lr;
@@ -142,7 +142,7 @@ static int ctapi_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
 	if (rv || rbuf[lr-2] != 0x90) {
-		error(reader->ctx, "Error activating card: %d\n", rv);
+		sc_error(reader->ctx, "Error activating card: %d\n", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	if (lr < 2)
@@ -169,7 +169,7 @@ static int ctapi_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 
 		rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 9, cmd, &lr, rbuf);
 		if (rv) {
-			error(reader->ctx, "Error negotiating PPS: %d\n", rv);
+			sc_error(reader->ctx, "Error negotiating PPS: %d\n", rv);
 			return SC_ERROR_TRANSMIT_FAILED;
 		}
 	}
@@ -239,14 +239,14 @@ static int ctapi_load_module(struct sc_context *ctx,
 	
 	list = scconf_find_list(conf, "ports");
 	if (list == NULL) {
-		error(ctx, "No ports configured.\n");
+		sc_error(ctx, "No ports configured.\n");
 		return -1;
 	}
 
 	val = conf->name->data;
 	r = sc_module_open(ctx, &dlh, val);
 	if (r != SC_SUCCESS) {
-		error(ctx, "Unable to open shared library '%s'\n", val);
+		sc_error(ctx, "Unable to open shared library '%s'\n", val);
 		return -1;
 	}
 	r = sc_module_get_address(ctx, dlh, (void **) &funcs.CT_init, "CT_init");
@@ -268,12 +268,12 @@ static int ctapi_load_module(struct sc_context *ctx,
 		struct sc_slot_info *slot;
 		
 		if (sscanf(list->data, "%d", &port) != 1) {
-			error(ctx, "Port '%s' is not a number.\n", list->data);
+			sc_error(ctx, "Port '%s' is not a number.\n", list->data);
 			continue;
 		}
 		rv = funcs.CT_init(mod->ctn_count, port);
 		if (rv) {
-			error(ctx, "CT_init() failed with %d\n", rv);
+			sc_error(ctx, "CT_init() failed with %d\n", rv);
 			continue;
 		}
 		reader = (struct sc_reader *) malloc(sizeof(struct sc_reader));
@@ -307,7 +307,7 @@ static int ctapi_load_module(struct sc_context *ctx,
 	}
 	return 0;
 symerr:
-	error(ctx, "Unable to resolve CT-API symbols.\n");
+	sc_error(ctx, "Unable to resolve CT-API symbols.\n");
 	sc_module_close(ctx, dlh);
 	return -1;
 }
