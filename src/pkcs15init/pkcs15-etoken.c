@@ -107,112 +107,17 @@ tlv_len(struct tlv *tlv)
 	return tlv->next - tlv->base;
 }
 
-#if 0
-static int
-etoken_set_ac(struct sc_file *file, int op, struct sc_acl_entry *acl)
-{
-	/* XXX TBD */
-	return 0;
-}
-#endif
-
-/*
- * Try to delete a file (and, in the DF case, its contents).
- * Note that this will not work if a pkcs#15 file's ERASE AC
- * references a pin other than the SO pin.
- */
-static int
-etoken_rm_rf(struct sc_profile *profile, struct sc_card *card,
-		struct sc_file *df)
-{
-	u8		buffer[1024], *fidp, *end;
-	struct sc_path	path;
-	struct sc_file	*file;
-	int		r = 0;
-
-	if (df->type == SC_FILE_TYPE_DF) {
-		r = sc_list_files(card, buffer, sizeof(buffer));
-		if (r < 0)
-			return r;
-
-		path = df->path;
-		path.len += 2;
-
-		end = buffer + r;
-		for (fidp = buffer; r >= 0 && fidp < end; fidp += 2) {
-			memcpy(path.value + path.len - 2, fidp, 2);
-			r = sc_select_file(card, &path, &file);
-			if (r >= 0) {
-				r = etoken_rm_rf(profile, card, file);
-				sc_file_free(file);
-			}
-		}
-
-		if (r < 0)
-			return r;
-	}
-
-	/* Select the parent DF */
-	path = df->path;
-	path.len -= 2;
-	r = sc_select_file(card, &path, NULL);
-	if (r < 0)
-		return r;
-
-	r = sc_pkcs15init_authenticate(profile, card, df, SC_AC_OP_ERASE);
-	if (r < 0)
-		return r;
-
-	memset(&path, 0, sizeof(path));
-	path.type = SC_PATH_TYPE_FILE_ID;
-	path.value[0] = df->id >> 8;
-	path.value[1] = df->id & 0xFF;
-	path.len = 2;
-	return sc_delete_file(card, &path);
-}
-
 /*
  * Try to delete pkcs15 structure
- * file (and, in the DF case, its contents).
  * This is not quite the same as erasing the whole token, but
  * it's close enough to be useful.
  */
 static int
 etoken_erase(struct sc_profile *profile, struct sc_card *card)
 {
-	struct sc_pkcs15_pin_info sopin, temp;
-	struct sc_file	*df = profile->df_info->file, *dir;
-	int		r;
-
-	/* Frob: need to tell the upper layers about the SO PIN id */
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
-	temp = sopin;
-	temp.reference = ETOKEN_PIN_ID(0);
-	sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN, &temp);
-
-	r = sc_select_file(card, &df->path, &df);
-	if (r < 0) {
-		if (r == SC_ERROR_FILE_NOT_FOUND)
-			r = 0;
-		goto out;
-	}
-
-	r = etoken_rm_rf(profile, card, df);
-	sc_file_free(df);
-
-	/* Delete EF(DIR) as well. This may not be very nice
-	 * against other applications that use this file, but
-	 * extremely useful for testing :) */
-	if (r >= 0 && sc_profile_get_file(profile, "DIR", &dir) >= 0) {
-		r = etoken_rm_rf(profile, card, dir);
-		sc_file_free(dir);
-	}
-
-	/* Unfrob the SO pin reference, and return */
-out:	sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
-	return r;
+	return sc_pkcs15init_erase_card_recursively(card, profile,
+				ETOKEN_PIN_ID(0));
 }
-
 
 /*
  * Initialize pin file
@@ -717,7 +622,7 @@ etoken_generate_key(struct sc_profile *profile, struct sc_card *card,
 	info->path = profile->df_info->file->path;
 
 out:	if (delete_it) {
-		etoken_rm_rf(profile, card, temp);
+		sc_pkcs15init_rmdir(card, profile, temp);
 	}
 	sc_file_free(temp);
 	if (r < 0) {

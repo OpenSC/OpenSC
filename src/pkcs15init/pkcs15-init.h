@@ -195,6 +195,12 @@ extern int	sc_pkcs15init_get_label(struct sc_profile *, const char **);
 extern void	sc_pkcs15init_set_pin_data(struct sc_profile *, int,
 				const void *, size_t);
 
+/* Erasing the card structure via rm -rf */
+extern int	sc_pkcs15init_erase_card_recursively(struct sc_card *,
+				struct sc_profile *, int so_ref);
+extern int	sc_pkcs15init_rmdir(struct sc_card *, struct sc_profile *,
+				struct sc_file *df);
+
 #ifdef  __cplusplus
 }
 #endif

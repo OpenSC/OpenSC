@@ -171,9 +171,6 @@ sc_pkcs15init_unbind(struct sc_profile *profile)
 
 /*
  * Erase the card
- * TBD: if the card does not support an erase command, use
- * Dir Next and the authentication information from the
- * profile to get everything back into the original state.
  */
 int
 sc_pkcs15init_erase_card(struct sc_card *card, struct sc_profile *profile)
@@ -182,6 +179,135 @@ sc_pkcs15init_erase_card(struct sc_card *card, struct sc_profile *profile)
 		return SC_ERROR_NOT_SUPPORTED;
 	return profile->ops->erase_card(profile, card);
 }
+
+int
+sc_pkcs15init_erase_card_recursively(struct sc_card *card, 
+		struct sc_profile *profile,
+		int so_pin_ref)
+{
+	struct sc_pkcs15_pin_info sopin, temp;
+	struct sc_file	*df = profile->df_info->file, *dir;
+	int		r;
+
+	/* Frob: need to tell the upper layers about the SO PIN id */
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
+	temp = sopin;
+	temp.reference = so_pin_ref;
+	sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN, &temp);
+
+	/* Delete EF(DIR). This may not be very nice
+	 * against other applications that use this file, but
+	 * extremely useful for testing :)
+	 * Note we need to delete if before the DF because we create
+	 * it *after* the DF. Some cards (e.g. the cryptoflex) want
+	 * us to delete file in reverse order of creation.
+	 * */
+	if (sc_profile_get_file(profile, "DIR", &dir) >= 0) {
+		r = sc_pkcs15init_rmdir(card, profile, dir);
+		sc_file_free(dir);
+		if (r < 0 && r != SC_ERROR_FILE_NOT_FOUND)
+			goto out;
+	}
+
+	card->ctx->log_errors = 0;
+	r = sc_select_file(card, &df->path, &df);
+	card->ctx->log_errors = 1;
+	if (r >= 0) {
+		r = sc_pkcs15init_rmdir(card, profile, df);
+		sc_file_free(df);
+	}
+	if (r == SC_ERROR_FILE_NOT_FOUND)
+		r = 0;
+
+	/* Unfrob the SO pin reference, and return */
+out:	sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
+	return r;
+}
+
+/*
+ * Try to delete a file (and, in the DF case, its contents).
+ * Note that this will not work if a pkcs#15 file's ERASE AC
+ * references a pin other than the SO pin.
+ */
+int
+sc_pkcs15init_rmdir(struct sc_card *card, struct sc_profile *profile,
+		struct sc_file *df)
+{
+	u8		buffer[1024];
+	struct sc_path	path;
+	struct sc_file	*file, *parent;
+	int		r = 0, nfids;
+
+#if 0
+	if (card->ctx->debug) {
+		int	n;
+		printf("%s(", __FUNCTION__);
+		path = df->path;
+		for (n = 0; n < path.len; n++)
+			printf("%02x", path.value[n]);
+		printf(")\n");
+	}
+#endif
+
+	if (df->type == SC_FILE_TYPE_DF) {
+		r = sc_pkcs15init_authenticate(profile, card, df,
+				SC_AC_OP_LIST_FILES);
+		if (r < 0)
+			return r;
+		card->ctx->log_errors = 0;
+		r = sc_list_files(card, buffer, sizeof(buffer));
+		card->ctx->log_errors = 1;
+		if (r < 0)
+			return r;
+
+		path = df->path;
+		path.len += 2;
+
+		nfids = r / 2;
+		while (r >= 0 && nfids--) {
+			path.value[path.len-2] = buffer[2*nfids];
+			path.value[path.len-1] = buffer[2*nfids+1];
+			r = sc_select_file(card, &path, &file);
+			if (r < 0) {
+				if (r == SC_ERROR_FILE_NOT_FOUND)
+					continue;
+				break;
+			}
+			r = sc_pkcs15init_rmdir(card, profile, file);
+			sc_file_free(file);
+		}
+
+		if (r < 0)
+			return r;
+	}
+
+	/* Select the parent DF */
+	path = df->path;
+	path.len -= 2;
+	r = sc_select_file(card, &path, &parent);
+	if (r < 0)
+		return r;
+
+	r = sc_pkcs15init_authenticate(profile, card, parent, SC_AC_OP_DELETE);
+	sc_file_free(parent);
+	if (r < 0)
+		return r;
+	r = sc_pkcs15init_authenticate(profile, card, df, SC_AC_OP_ERASE);
+	if (r < 0)
+		return r;
+
+	memset(&path, 0, sizeof(path));
+	path.type = SC_PATH_TYPE_FILE_ID;
+	path.value[0] = df->id >> 8;
+	path.value[1] = df->id & 0xFF;
+	path.len = 2;
+
+	card->ctx->log_errors = 0;
+	r = sc_delete_file(card, &path);
+	card->ctx->log_errors = 1;
+	return r;
+}
+
 
 /*
  * Initialize the PKCS#15 application
