@@ -254,6 +254,7 @@ void sc_format_path(const char *str, struct sc_path *path)
 	}
 	path->len = len;
 	path->type = type;
+	path->index = 0;
 	return;
 }
 
@@ -291,7 +292,8 @@ const char *sc_strerror(int error)
 		"Too many objects",
 		"Card is invalid or cannot be handled",
 		"Wrong length",
-		"Record not found"
+		"Record not found",
+		"Internal error"
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);
 

@@ -136,11 +136,11 @@ struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_common_obj_attr com_attr;
 
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
-	int usage, access_flags, native;
-	int key_reference;
-
-	struct sc_path file_id;
+	unsigned int usage, access_flags;
+	int native, key_reference;
 	int modulus_length;
+
+	struct sc_path path;
 };
 
 struct sc_pkcs15_object {
@@ -221,15 +221,15 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card);
 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_prkey_info *prkey,
-		       const u8 *in, int inlen, u8 *out, int outlen);
+		       const u8 *in, size_t inlen, u8 *out, size_t outlen);
 
-#define SC_PKCS15_HASH_NONE	0
-#define SC_PKCS15_HASH_SHA1	1
+#define SC_PKCS15_HASH_SHA1		0x0001
+#define SC_PKCS15_PAD_PKCS1_V1_5	0x10000
 
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_prkey_info *prkey,
-				int hash, const u8 *in, int inlen, u8 *out,
-				int outlen);
+				unsigned int flags, const u8 *in, size_t inlen,
+				u8 *out, size_t outlen);
 
 void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
 

@@ -227,18 +227,12 @@ int verify_authenticity(struct sc_pkcs15_card *p15card,
 	r = get_random(random_data, sizeof(random_data));
 	if (r != PAM_SUCCESS)
 		return -1;
-#if 0
-	DBG(printf("Encrypting...\n"));
-	r = RSA_public_encrypt(117, random_data, chg, pubkey->pkey.rsa, RSA_PKCS1_PADDING);
-	if (r != 128)
-		goto end;
-#endif
- 	chglen = RSA_size(rsa);
- 	if (chglen > sizeof(chg)) {
+	chglen = RSA_size(rsa);
+	if (chglen > sizeof(chg)) {
  		DBG(printf("Too large RSA key. Bailing out.\n"));
  		return -1;
  	}
- 	r = sc_pkcs15_compute_signature(p15card, prkey, SC_PKCS15_HASH_SHA1,
+ 	r = sc_pkcs15_compute_signature(p15card, prkey, SC_PKCS15_PAD_PKCS1_V1_5,
  					random_data, 20, chg, chglen);
  	if (r < 0) {
  		DBG(printf("Compute signature failed: %s\n", sc_strerror(r)));

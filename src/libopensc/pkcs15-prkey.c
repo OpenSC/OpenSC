@@ -36,9 +36,9 @@ void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey)
 	printf("\tAccessFlags : %X\n", prkey->access_flags);
 	printf("\tModLength   : %d\n", prkey->modulus_length);
 	printf("\tKey ref     : %d\n", prkey->key_reference);
-	printf("\tFile ID     : ");
-	for (i = 0; i < prkey->file_id.len; i++)
-		printf("%02X", prkey->file_id.value[i]);
+	printf("\tPath        : ");
+	for (i = 0; i < prkey->path.len; i++)
+		printf("%02X", prkey->path.value[i]);
 	printf("\n");
 	printf("\tAuth ID     : ");
 	sc_pkcs15_print_id(&prkey->com_attr.auth_id);
@@ -103,7 +103,7 @@ static int parse_rsa_prkey_info(struct sc_context *ctx,
 
 	sc_format_asn1_entry(asn1_type_attr + 0, asn1_rsakey_attr, NULL, 0);
 
-	sc_format_asn1_entry(asn1_rsakey_attr + 0, &prkey->file_id, NULL, 0);
+	sc_format_asn1_entry(asn1_rsakey_attr + 0, &prkey->path, NULL, 0);
 	sc_format_asn1_entry(asn1_rsakey_attr + 1, &prkey->modulus_length, NULL, 0);
 
 	sc_format_asn1_entry(asn1_com_key_attr + 0, &prkey->id, NULL, 0);
@@ -145,7 +145,7 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 
 	sc_format_asn1_entry(asn1_type_attr + 0, asn1_rsakey_attr, NULL, 1);
 
-	sc_format_asn1_entry(asn1_rsakey_attr + 0, &prkey->file_id, NULL, 1);
+	sc_format_asn1_entry(asn1_rsakey_attr + 0, &prkey->path, NULL, 1);
 	sc_format_asn1_entry(asn1_rsakey_attr + 1, &prkey->modulus_length, NULL, 1);
 
 	sc_format_asn1_entry(asn1_com_key_attr + 0, &prkey->id, NULL, 1);

@@ -460,6 +460,7 @@ static int _sc_lock_int(struct sc_card *card)
 		error(card->ctx, "SCardBeginTransaction failed: %s\n", pcsc_stringify_error(rv));
 		return _sc_pcscret_to_error(rv);
 	}
+	card->cache_valid = 1;
 	return 0;
 }
 
@@ -488,6 +489,8 @@ static int _sc_unlock_int(struct sc_card *card)
 		error(card->ctx, "SCardEndTransaction failed: %s\n", pcsc_stringify_error(rv));
 		return -1;
 	}
+	card->cache_valid = 0;
+	memset(&card->cache, 0, sizeof(card->cache));
 	return 0;
 }
 

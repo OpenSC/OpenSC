@@ -32,9 +32,10 @@ int opt_reader = 0, quiet = 0;
 int opt_debug = 0;
 char * opt_pincode = NULL, * opt_key_id = NULL;
 char * opt_input = NULL, * opt_output = NULL;
-int opt_hash_type = SC_PKCS15_HASH_NONE;
+int opt_crypt_flags = 0;
 
 #define OPT_SHA1	0x101
+#define OPT_PKCS1	0x102
 
 const struct option options[] = {
 	{ "sign",		0, 0,		's' },
@@ -44,6 +45,7 @@ const struct option options[] = {
 	{ "input",		1, 0,		'i' },
 	{ "output",		1, 0,		'o' },
 	{ "sha-1",		0, 0,		OPT_SHA1 },
+	{ "pkcs1",		0, 0,		OPT_PKCS1 },
 	{ "quiet",		0, 0,		'q' },
 	{ "debug",		0, 0,		'd' },
 	{ "pin",		1, 0,		'p' },
@@ -58,6 +60,7 @@ const char *option_help[] = {
 	"Selects the input file to use",
 	"Outputs to file <arg>",
 	"Input file is a SHA-1 hash",
+	"Use PKCS #1 v1.5 padding",
 	"Quiet operation",
 	"Debug output -- may be supplied several times",
 	"Uses password (PIN) <arg>",
@@ -146,7 +149,7 @@ int sign(struct sc_pkcs15_prkey_info *key)
 	if (c < 0)
 		return 2;
 	len = sizeof(out);
-	r = sc_pkcs15_compute_signature(p15card, key, opt_hash_type,
+	r = sc_pkcs15_compute_signature(p15card, key, opt_crypt_flags,
 					buf, c, out, len);
 	if (r < 0) {
 		fprintf(stderr, "Compute signature failed: %s\n", sc_strerror(r));
@@ -220,7 +223,10 @@ int main(int argc, char * const argv[])
 			opt_output = optarg;
 			break;
 		case OPT_SHA1:
-			opt_hash_type = SC_PKCS15_HASH_SHA1;
+			opt_crypt_flags |= SC_PKCS15_HASH_SHA1;
+			break;
+		case OPT_PKCS1:
+			opt_crypt_flags |= SC_PKCS15_PAD_PKCS1_V1_5;
 			break;
 		case 'q':
 			quiet++;

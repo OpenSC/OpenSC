@@ -51,9 +51,9 @@ void debug(struct sc_context *ctx, const char *format, ...);
 	}\
 	return _ret; }
 #define SC_TEST_RET(ctx, r, text) {\
-	int _ret = r;\
+	int _ret = (r);\
 	if (_ret < 0) {\
-		error(ctx, text": %s\n", sc_strerror(_ret));\
+		error((ctx), "%s: %s\n", (text), sc_strerror(_ret));\
 		return _ret;\
 	}\
 }

@@ -77,6 +77,7 @@ extern "C" {
 #define SC_ERROR_INVALID_CARD			-1029
 #define SC_ERROR_WRONG_LENGTH			-1030
 #define SC_ERROR_RECORD_NOT_FOUND		-1031
+#define SC_ERROR_INTERNAL			-1032
 
 /* Different APDU cases */
 #define SC_APDU_CASE_NONE		0
@@ -114,6 +115,13 @@ extern "C" {
 #define SC_AC_TERM			0x00000004 /* Terminal auth. */
 #define SC_AC_PRO			0x00000008 /* Secure Messaging */
 #define SC_AC_AUT			0x00000010 /* Key auth. */
+
+#define SC_AC_KEY_NUM_0			0x00000000
+#define SC_AC_KEY_NUM_1			0x10000000
+#define SC_AC_KEY_NUM_2			0x20000000
+#define SC_AC_KEY_NUM_3			0x30000000
+#define SC_AC_KEY_NUM_MASK		0xF0000000
+
 #define SC_AC_NEVER		        0xFFFFFFFE
 #define SC_AC_UNKNOWN			0xFFFFFFFF
 
@@ -196,17 +204,33 @@ struct sc_file {
 #define SC_SEC_OPERATION_SIGN		1
 
 /* sc_security_env flags */
-#define SC_SEC_ENV_ALG_REF_PRESENT	0x01
-#define SC_SEC_ENV_FILE_REF_PRESENT	0x02
-#define SC_SEC_ENV_KEY_REF_PRESENT	0x04
+#define SC_SEC_ENV_ALG_REF_PRESENT	0x0001
+#define SC_SEC_ENV_FILE_REF_PRESENT	0x0002
+#define SC_SEC_ENV_KEY_REF_PRESENT	0x0004
+/* FIXME: the flag below is misleading */
+#define SC_SEC_ENV_KEY_REF_ASYMMETRIC	0x0008
+#define SC_SEC_ENV_ALG_PRESENT		0x0010
+
+#define SC_ALGORITHM_RSA		0
+#define SC_ALGORITHM_DSA		1
+#define SC_ALGORITHM_EC			2
+
+#define SC_ALGORITHM_RSA_PKCS1_PAD	0x01
+#define SC_ALGORITHM_RSA_HASH_SHA1	0x02
 
 struct sc_security_env {
-	int algorithm_ref;
-	struct sc_path key_file_id;
-	int operation;
-	int key_ref;
-	
 	int flags;
+	int operation;
+	unsigned int algorithm, algorithm_flags;
+	
+	unsigned int algorithm_ref;
+	struct sc_path file_ref;
+	u8 key_ref[8];
+	size_t key_ref_len;
+};
+
+struct sc_card_cache {
+	struct sc_path current_path;
 };
 
 /*
@@ -242,9 +266,13 @@ struct sc_card {
 	const struct sc_card_driver *driver;
 	struct sc_card_operations *ops;
 	void *ops_data;
-	
+
+	struct sc_card_cache cache;
+	int cache_valid;
+
 	unsigned int magic;
 };
+
 
 struct sc_card_operations {
 	/* Called in sc_connect_card().  Must return 1, if the current

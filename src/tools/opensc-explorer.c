@@ -24,13 +24,23 @@
 #include <stdlib.h>
 #include "util.h"
 
-struct sc_context *ctx = NULL;
-struct sc_card *card = NULL;
+int opt_reader = 0;
+const char *opt_driver = NULL;
+
 struct sc_file current_file;
 struct sc_path current_path;
+struct sc_context *ctx = NULL;
+struct sc_card *card = NULL;
 
-const struct option options[] = { { NULL } };
-const char *option_help[] = { NULL };
+const struct option options[] = {
+	{ "reader",		1, 0, 'r' },
+	{ "card-driver",	1, 0, 'd' },
+	{ 0, 0, 0, 0 }
+};
+const char *option_help[] = {
+	"Uses reader number <arg> [0]",
+	"Forces the use of driver <arg> [auto-detect]"
+};
 
 #define CMD_LS		0
 #define CMD_CD		1
@@ -505,7 +515,7 @@ int do_verify(const char *arg, const char *arg2)
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 			if (tries_left >= 0) 
-				printf("Incorrect code, %d tries left", tries_left);
+				printf("Incorrect code, %d tries left.\n", tries_left);
 			else
 				printf("Incorrect code.\n");
 		}
@@ -706,24 +716,65 @@ void usage()
 		printf("  %s\n", cmds[i]);
 }
 
-int main(int argc, const char *argv[])
+int main(int argc, char * const argv[])
 {
-	int r;
+	int r, c, long_optind = 0, err = 0;
 	char line[80], cmd[80], arg[80], arg2[80];
 
 	printf("OpenSC Explorer version %s\n", sc_version);
 
+	while (1) {
+		c = getopt_long(argc, argv, "r:c:", options, &long_optind);
+		if (c == -1)
+			break;
+		if (c == '?')
+			print_usage_and_die("opensc-explorer");
+		switch (c) {
+		case 'r':
+			opt_reader = atoi(optarg);
+			break;
+		case 'c':
+			opt_driver = optarg;
+			break;
+		}
+	}
 	r = sc_establish_context(&ctx);
 	if (r) {
-		printf("est ctx failed: %s\n", sc_strerror(r));
+		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	r = sc_connect_card(ctx, 0, &card);
+	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
+		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
+		err = 1;
+		goto end;
+	}
+	if (sc_detect_card(ctx, opt_reader) != 1) {
+		fprintf(stderr, "Card not present.\n");
+		err = 3;
+		goto end;
+	}
+	if (opt_driver != NULL) {
+		err = sc_set_card_driver(ctx, opt_driver);
+		if (err) {
+			fprintf(stderr, "Driver '%s' not found!\n", opt_driver);
+			err = 1;
+			goto end;
+		}
+	}
+	fprintf(stderr, "Connecting to card in reader %s...\n", ctx->readers[opt_reader]);
+	r = sc_connect_card(ctx, opt_reader, &card);
 	if (r) {
-		printf("connect card failed: %s\n", sc_strerror(r));
-		return 1;
+		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
+		err = 1;
+		goto end;
 	}
-        sc_lock(card);
+	printf("Using card driver: %s\n", card->driver->name);
+	r = sc_lock(card);
+	if (r) {
+		fprintf(stderr, "Unable to lock card: %s\n", sc_strerror(r));
+		err = 1;
+		goto end;
+	}
 
         sc_format_path("3F00", &current_path);
         r = sc_select_file(card, &current_path, &current_file);
@@ -761,7 +812,8 @@ int main(int argc, const char *argv[])
 		}
                 handle_cmd(r, arg, arg2);
 	}
-	die(0);
+end:
+	die(err);
 	
 	return 0; /* not reached */
 }

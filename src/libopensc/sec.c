@@ -65,36 +65,13 @@ int sc_compute_signature(struct sc_card *card,
 			 u8 * out, size_t outlen)
 {
 	int r;
-	struct sc_apdu apdu;
-	u8 rbuf[MAX_BUFFER_SIZE];
-	u8 sbuf[MAX_BUFFER_SIZE];
 
-	assert(card != NULL && data != NULL && out != NULL);
+	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
-	if (datalen > 255)
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
-
-	/* INS: 0x2A  PERFORM SECURITY OPERATION
-	 * P1:  0x9E  Resp: Digital Signature
-	 * P2:  0x9A  Cmd: Input for Digital Signature */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x9E,
-		       0x9A);
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf); /* FIXME */
-
-	memcpy(sbuf, data, datalen);
-	apdu.data = sbuf;
-	apdu.lc = datalen;
-	apdu.datalen = datalen;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
-
-		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, 2, len);
-	}
-	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	if (card->ops->compute_signature == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->compute_signature(card, data, datalen, out, outlen);
+        SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_set_security_env(struct sc_card *card,

@@ -565,19 +565,23 @@ static int iso7816_set_security_env(struct sc_card *card,
 	p = sbuf;
 	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
 		*p++ = 0x80;	/* algorithm reference */
-		*p++ = env->algorithm_ref >> 8;
+		*p++ = 0x01;
 		*p++ = env->algorithm_ref & 0xFF;
 	}
 	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
 		*p++ = 0x81;
-		*p++ = env->key_file_id.len;
-		memcpy(p, env->key_file_id.value, env->key_file_id.len);
-		p += env->key_file_id.len;
+		*p++ = env->file_ref.len;
+		memcpy(p, env->file_ref.value, env->file_ref.len);
+		p += env->file_ref.len;
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
-		*p++ = 0x84;
-		*p++ = env->key_ref >> 8;
-		*p++ = env->key_ref & 0xFF;
+		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
+			*p++ = 0x83;
+		else
+			*p++ = 0x84;
+		*p++ = env->key_ref_len;
+		memcpy(p, env->key_ref, env->key_ref_len);
+		p += env->key_ref_len;
 	}
 	r = p - sbuf;
 	apdu.lc = r;
@@ -630,6 +634,43 @@ static int iso7816_restore_security_env(struct sc_card *card, int se_num)
 	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
 }
 
+static int iso7816_compute_signature(struct sc_card *card,
+				     const u8 * data, size_t datalen,
+				     u8 * out, size_t outlen)
+{
+	int r;
+	struct sc_apdu apdu;
+	u8 rbuf[MAX_BUFFER_SIZE];
+	u8 sbuf[MAX_BUFFER_SIZE];
+
+	assert(card != NULL && data != NULL && out != NULL);
+	if (datalen > 255)
+		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+
+	/* INS: 0x2A  PERFORM SECURITY OPERATION
+	 * P1:  0x9E  Resp: Digital Signature
+	 * P2:  0x9A  Cmd: Input for Digital Signature */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x9E,
+		       0x9A);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf); /* FIXME */
+
+	memcpy(sbuf, data, datalen);
+	apdu.data = sbuf;
+	apdu.lc = datalen;
+	apdu.datalen = datalen;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+
+		memcpy(out, apdu.resp, len);
+		SC_FUNC_RETURN(card->ctx, 4, len);
+	}
+	SC_FUNC_RETURN(card->ctx, 4, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+}
+
+
 static struct sc_card_operations iso_ops = {
 	NULL,
 };
@@ -663,6 +704,7 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.verify	      = iso7816_verify;
 		iso_ops.set_security_env	= iso7816_set_security_env;
 		iso_ops.restore_security_env	= iso7816_restore_security_env;
+		iso_ops.compute_signature	= iso7816_compute_signature;
 	}
 	return &iso_driver;
 }

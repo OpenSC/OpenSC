@@ -41,6 +41,7 @@ int opt_apdu_count = 0;
 int quiet = 0;
 
 const struct option options[] = {
+	{ "atr",		0, 0,		'a' },
 	{ "list-readers",	0, 0, 		'l' },
 	{ "list-drivers",	0, 0,		'D' },
 	{ "list-files",		0, 0,		'f' },
@@ -53,6 +54,7 @@ const struct option options[] = {
 };
 
 const char *option_help[] = {
+	"Prints the ATR bytes of the card",
 	"Lists all configured readers",
 	"Lists all installed card drivers",
 	"Recursively lists files stored on card",
@@ -316,11 +318,12 @@ int main(int argc, char * const argv[])
 	int do_list_drivers = 0;
 	int do_list_files = 0;
 	int do_send_apdu = 0;
+	int do_print_atr = 0;
 	int action_count = 0;
 	const char *opt_driver = NULL;
 		
 	while (1) {
-		c = getopt_long(argc, argv, "lfr:qds:Dc:", options, &long_optind);
+		c = getopt_long(argc, argv, "lfr:qds:Dc:a", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -344,6 +347,10 @@ int main(int argc, char * const argv[])
 			if (opt_apdu_count == 0)
 				action_count++;
 			opt_apdu_count++;
+			break;
+		case 'a':
+			do_print_atr = 1;
+			action_count++;
 			break;
 		case 'r':
 			opt_reader = atoi(optarg);
@@ -415,7 +422,11 @@ int main(int argc, char * const argv[])
 		err = 1;
 		goto end;
 	}
-	
+	if (do_print_atr) {
+		printf("Card ATR:\n");
+		hex_dump_asc(stdout, card->atr, card->atr_len, -1);
+		action_count--;
+	}
 	if (do_send_apdu) {
 		if ((err = send_apdu()))
 			goto end;

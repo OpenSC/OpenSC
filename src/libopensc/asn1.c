@@ -27,7 +27,6 @@
 #include <assert.h>
 #include <stdlib.h>
 
-
 static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 		       const u8 *in, size_t len, const u8 **newp, size_t *len_left,
 		       int choice, int depth);
@@ -1082,7 +1081,8 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 		return r;
 	}
 	r = asn1_write_element(ctx, entry->tag, buf, buflen, obj, objlen);
-	free(buf);
+	if (buf)
+		free(buf);
 	if (r) {
 		error(ctx, "error writing ASN.1 tag and length: %s\n", sc_strerror(r));
 		return r;

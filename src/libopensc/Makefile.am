@@ -3,14 +3,12 @@
 INCLUDES = @CFLAGS_PCSC@
 
 lib_LTLIBRARIES		= libopensc.la
-libopensc_la_SOURCES	= asn1.c base64.c defaults.c \
-			  sec.c log.c sc.c card.c iso7816.c \
+libopensc_la_SOURCES	= asn1.c base64.c sec.c log.c sc.c card.c iso7816.c \
 			  pkcs15.c pkcs15-cert.c pkcs15-pin.c \
-			  pkcs15-prkey.c pkcs15-defaults.c \
-			  pkcs15-sec.c \
+			  pkcs15-prkey.c pkcs15-sec.c \
 			  card-setec.c card-flex.c \
 			  card-emv.c card-default.c
-libopensc_la_LDFLAGS	= -version-info 0:4:0
+libopensc_la_LDFLAGS	= -version-info 0:5:0
 libopensc_la_LIBADD	= @LIBPCSC@
 
 include_HEADERS		= opensc.h opensc-pkcs15.h opensc-emv.h

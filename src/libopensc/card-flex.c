@@ -326,18 +326,36 @@ static int acl_to_ac(unsigned int acl)
 		/* 9 */ SC_AC_CHV2 | SC_AC_AUT, SC_AC_UNKNOWN, SC_AC_UNKNOWN,
 		/* c */	SC_AC_UNKNOWN, SC_AC_UNKNOWN, SC_AC_UNKNOWN,
 		/* f */ SC_AC_NEVER };
-	
+	if (acl == SC_AC_NEVER)
+		return 0x0f;
+	else if (acl == SC_AC_UNKNOWN)
+		return -1;
+	acl &= ~SC_AC_KEY_NUM_MASK;
 	for (i = 0; i < sizeof(acl_table)/sizeof(acl_table[0]); i++)
 		if (acl == acl_table[i])
 			return i;
 	return -1;
 }
 
+static int acl_to_keynum(unsigned int acl)
+{
+	if (!(acl & SC_AC_AUT))
+		return 0;
+	switch (acl & SC_AC_KEY_NUM_MASK) {
+	case SC_AC_KEY_NUM_0:
+		return 1;
+	case SC_AC_KEY_NUM_1:
+		return 0;
+	}
+	return 0;
+}
+
 static int encode_file_structure(struct sc_card *card, const struct sc_file *file,
 				 u8 *buf, size_t *buflen)
 {
 	u8 *p = buf;
-	int r, r2;
+	int r, i;
+	int ops[6];
 
 	p[0] = 0xFF;
 	p[1] = 0xFF;
@@ -366,28 +384,29 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 			return -1;
 		}
 	p[7] = 0xFF;	/* allow Decrease and Increase */
+	for (i = 0; i < 6; i++)
+		ops[i] = -1;
 	if (file->type == SC_FILE_TYPE_DF) {
-		r = acl_to_ac(file->acl[SC_AC_OP_LIST_FILES]);
-		SC_TEST_RET(card->ctx, r, "Invalid ACL value");
-		p[8] = (r & 0x0F) << 8;
-		r = acl_to_ac(file->acl[SC_AC_OP_DELETE]);
-		SC_TEST_RET(card->ctx, r, "Invalid ACL value");
-		r2 = acl_to_ac(file->acl[SC_AC_OP_CREATE]);
-		SC_TEST_RET(card->ctx, r2, "Invalid ACL value");
-		p[9] = ((r & 0x0F) << 8) | (r2 & 0x0F);
-		p[10] = 0;
+		ops[0] = SC_AC_OP_LIST_FILES;
+		ops[2] = SC_AC_OP_DELETE;
+		ops[3] = SC_AC_OP_CREATE;
 	} else {
-		r = acl_to_ac(file->acl[SC_AC_OP_READ]);
+		ops[0] = SC_AC_OP_READ;
+		ops[1] = SC_AC_OP_UPDATE;
+		ops[4] = SC_AC_OP_REHABILITATE;
+		ops[5] = SC_AC_OP_INVALIDATE;
+	}
+	p[8] = p[9] = p[10] = 0;
+	p[13] = p[14] = p[15] = 0; /* Key numbers */
+	for (i = 0; i < 6; i++) {
+		if (ops[i] == -1)
+			continue;
+		r = acl_to_ac(file->acl[ops[i]]);
 		SC_TEST_RET(card->ctx, r, "Invalid ACL value");
-		r2 = acl_to_ac(file->acl[SC_AC_OP_UPDATE]);
-		SC_TEST_RET(card->ctx, r2, "Invalid ACL value");
-		p[8] = ((r & 0x0F) << 8) | (r2 & 0x0F);
-		p[9] = 0; /* FIXME */
-		r = acl_to_ac(file->acl[SC_AC_OP_INVALIDATE]);
-		SC_TEST_RET(card->ctx, r, "Invalid ACL value");
-		r2 = acl_to_ac(file->acl[SC_AC_OP_REHABILITATE]);
-		SC_TEST_RET(card->ctx, r2, "Invalid ACL value");
-		p[10] = ((r & 0x0F) << 8) | (r2 & 0x0F);
+		/* Do some magic to get the nibbles right */
+		p[8 + i/2] |= (r & 0x0F) << (((i+1) % 2) * 4);
+		r = acl_to_keynum(file->acl[ops[i]]);
+		p[13 + i/2] |= (r & 0x0F) << (((i+1) % 2) * 4);
 	}
 	p[11] = (file->status & SC_FILE_STATUS_INVALIDATED) ? 0x00 : 0x01;
 	if (file->type != SC_FILE_TYPE_DF &&
@@ -396,7 +415,6 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 		p[12] = 0x04;
 	else
 		p[12] = 0x03;
-	p[13] = p[14] = p[15] = 0;	/* FIXME */
 	if (p[12] == 0x04) {
 		p[16] = file->record_length;
 		*buflen = 17;
@@ -444,24 +462,61 @@ static int flex_set_security_env(struct sc_card *card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
-		if (env->key_ref != 1 && env->key_ref != 2) {
+		if (env->key_ref_len != 1 ||
+		    (env->key_ref[0] != 0 && env->key_ref[0] != 1)) {
 			error(card->ctx, "Invalid key reference supplied.\n");
 			return SC_ERROR_NOT_SUPPORTED;
-		}	
-		prv->rsa_key_ref = env->key_ref;
+		}
+		prv->rsa_key_ref = env->key_ref[0];
 	}
-	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT)
+	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
+		error(card->ctx, "Algorithm reference not supported.\n");
 		return SC_ERROR_NOT_SUPPORTED;
+	}
 	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT)
-		if (memcmp(env->key_file_id.value, "\x00\x12", 2) != 0)
+		if (memcmp(env->file_ref.value, "\x00\x12", 2) != 0) {
+			error(card->ctx, "File reference is not 0012.\n");
 			return SC_ERROR_NOT_SUPPORTED;
-	
+		}
 	return 0;
 }
 
 static int flex_restore_security_env(struct sc_card *card, int se_num)
 {
 	return 0;
+}
+
+static int flex_compute_signature(struct sc_card *card, const u8 *data,
+				  size_t data_len, u8 * out, size_t outlen)
+{
+	struct flex_private_data *prv = (struct flex_private_data *) card->ops_data;
+	struct sc_apdu apdu;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int i, r;
+	
+	if (data_len != 64 && data_len != 96 && data_len != 128) {
+		error(card->ctx, "Illegal input length: %d\n", data_len);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	if (outlen < data_len) {
+		error(card->ctx, "Output buffer too small.\n");
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, 0x00, prv->rsa_key_ref);
+	apdu.lc = data_len;
+	apdu.datalen = data_len;
+	for (i = 0; i < data_len; i++)
+		sbuf[i] = data[data_len-1-i];
+	apdu.data = sbuf;
+	apdu.resplen = outlen > sizeof(sbuf) ? sizeof(sbuf) : outlen;
+	apdu.resp = sbuf;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+	for (i = 0; i < apdu.resplen; i++)
+		out[i] = sbuf[apdu.resplen-1-i];
+	return apdu.resplen;
 }
 
 static const struct sc_card_driver * sc_get_driver(void)
@@ -478,6 +533,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 	flex_ops.create_file = flex_create_file;
 	flex_ops.set_security_env = flex_set_security_env;
 	flex_ops.restore_security_env = flex_restore_security_env;
+	flex_ops.compute_signature = flex_compute_signature;
 
         return &flex_drv;
 }

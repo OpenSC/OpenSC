@@ -19,10 +19,13 @@
  */
 
 #include "sc-internal.h"
+#include "sc-log.h"
 
 static const char *setec_atrs[] = {
 	/* the current FINEID card has this ATR: */
 	"3B:9F:94:40:1E:00:67:11:43:46:49:53:45:10:52:66:FF:81:90:00",
+	/* this is from a Nokia branded SC */
+	"3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00",
 	NULL
 };
 
@@ -71,7 +74,7 @@ static int setec_init(struct sc_card *card)
 	return 0;
 }
 
-static int (*iso_create_file)(struct sc_card *card, struct sc_file *file) = NULL;
+static const struct sc_card_operations *iso_ops = NULL;
 
 static int setec_create_file(struct sc_card *card, struct sc_file *file)
 {
@@ -80,7 +83,32 @@ static int setec_create_file(struct sc_card *card, struct sc_file *file)
 	tmp = *file;
 	memcpy(tmp.prop_attr, "\x03\x00\x00", 3);
 	tmp.prop_attr_len = 3;
-	return iso_create_file(card, &tmp);
+	return iso_ops->create_file(card, &tmp);
+}
+
+static int setec_set_security_env(struct sc_card *card,
+				  const struct sc_security_env *env,
+				  int se_num)
+{
+	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
+		struct sc_security_env tmp;
+
+		tmp = *env;
+                tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
+		tmp.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
+		if (tmp.algorithm != SC_ALGORITHM_RSA) {
+			error(card->ctx, "Only RSA algorithm supported.\n");
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+                tmp.algorithm_ref = 0x00;
+		if (tmp.algorithm_flags & SC_ALGORITHM_RSA_PKCS1_PAD)
+			tmp.algorithm_ref = 0x02;
+		if (tmp.algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
+                        tmp.algorithm_ref |= 0x10;
+                return iso_ops->set_security_env(card, &tmp, se_num);
+
+	}
+        return iso_ops->set_security_env(card, env, se_num);
 }
 
 static const struct sc_card_driver * sc_get_driver(void)
@@ -91,9 +119,10 @@ static const struct sc_card_driver * sc_get_driver(void)
 	setec_ops.match_card = setec_match_card;
 	setec_ops.init = setec_init;
         setec_ops.finish = setec_finish;
-	if (iso_create_file == NULL)
-		iso_create_file = iso_drv->ops->create_file;
+	if (iso_ops == NULL)
+                iso_ops = iso_drv->ops;
 	setec_ops.create_file = setec_create_file;
+	setec_ops.set_security_env = setec_set_security_env;
 	
         return &setec_drv;
 }

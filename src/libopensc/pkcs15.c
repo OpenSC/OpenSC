@@ -304,7 +304,7 @@ int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	for (i = 0; i < SC_MAX_AC_OPS; i++)
 		file.acl[i] = SC_AC_NONE;
 #if 0
-	file.acl[SC_AC_OP_UPDATE] = SC_AC_AUT;
+	file.acl[SC_AC_OP_UPDATE] = SC_AC_CHV2;
 	file.acl[SC_AC_OP_WRITE] = SC_AC_NEVER;
 	file.acl[SC_AC_OP_INVALIDATE] = SC_AC_NEVER;
 	file.acl[SC_AC_OP_REHABILITATE] = SC_AC_NEVER;
@@ -314,18 +314,21 @@ int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	file.ef_structure = SC_FILE_EF_TRANSPARENT;
 	file.id = 0x2F00;
 	file.status = SC_FILE_STATUS_ACTIVATED;
-	r = sc_create_file(card, &file);
-	if (r) {
-		sc_perror(card->ctx, r, "Error creating EF(DIR)");
-		free(buf);
-		return r;
-	}
 	sc_format_path("3F002F00", &path);
 	r = sc_select_file(card, &path, NULL);
-	if (r) {
-		sc_perror(card->ctx, r, "Error selecting EF(DIR)");
-		free(buf);
-		return r;
+	if (r != 0) {
+		r = sc_create_file(card, &file);
+		if (r) {
+			sc_perror(card->ctx, r, "Error creating EF(DIR)");
+			free(buf);
+			return r;
+		}
+		r = sc_select_file(card, &path, NULL);
+		if (r) {
+			sc_perror(card->ctx, r, "Error selecting EF(DIR)");
+			free(buf);
+			return r;
+		}
 	}
 	r = sc_update_binary(card, 0, buf, bufsize, 0);
 	free(buf);
@@ -695,6 +698,7 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 		}
 		buf = realloc(buf, bufsize + tmpsize);
 		memcpy(buf + bufsize, tmp, tmpsize);
+		free(tmp);
 		bufsize += tmpsize;
 		obj = obj->next;
 	}
@@ -716,6 +720,11 @@ static int create_file(struct sc_card *card, struct sc_file *file)
 	}
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
+	r = sc_select_file(card, &path, NULL);
+	if (r == 0) {
+		sc_unlock(card);
+		return 0;	/* File already exists */
+	}
 	path.len -= 2;
 	r = sc_select_file(card, &path, NULL);
 	if (r) {
@@ -802,7 +811,7 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	memcpy(p15card->file_app.name, "\xA0\x00\x00\x00cPKCS-15", 12);
 	p15card->file_app.namelen = 12;
 	r = sc_pkcs15_create_dir(p15card, card);
-	SC_TEST_RET(card->ctx, r, "Error creating EF(DIR)\n");
+	SC_TEST_RET(card->ctx, r, "Error creating EF(DIR)");
 	printf("Creating app DF\n");
 	r = create_app_df(p15card, card);
 	if (r) {
@@ -861,7 +870,6 @@ int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
 			}
 		}
 	}
-			
 err:
 	if (tokinf_buf)
 		free(tokinf_buf);
