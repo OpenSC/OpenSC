@@ -53,8 +53,19 @@ static const struct sc_asn1_entry c_asn1_prk_rsa_attr[] = {
 	{ NULL }
 };
 
+static const struct sc_asn1_entry c_asn1_dsakey_i_p_attr[] = {
+	{ "path",	SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ NULL }
+};
+
+static const struct sc_asn1_entry c_asn1_dsakey_value_attr[] = {
+	{ "path",	SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ "pathProtected",SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, },
+	{ NULL }
+};
+
 static const struct sc_asn1_entry c_asn1_dsakey_attr[] = {
-	{ "value",	   SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ "value",	SC_ASN1_CHOICE, 0, 0, NULL },
 	{ NULL }
 };
 
@@ -80,7 +91,9 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	int af_len = sizeof(info.access_flags);
 	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[1];
 	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_prk_rsa_attr[2];
-	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_prk_dsa_attr[2];
+	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_prk_dsa_attr[2],
+			asn1_dsakey_i_p_attr[2],
+			asn1_dsakey_value_attr[3];
 	struct sc_asn1_entry asn1_prkey[3];
 	struct sc_asn1_pkcs15_object rsa_prkey_obj = { obj, asn1_com_key_attr,
 						       asn1_com_prkey_attr, asn1_prk_rsa_attr };
@@ -93,6 +106,9 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
         sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
         sc_copy_asn1_entry(c_asn1_prk_dsa_attr, asn1_prk_dsa_attr);
         sc_copy_asn1_entry(c_asn1_dsakey_attr, asn1_dsakey_attr);
+	sc_copy_asn1_entry(c_asn1_dsakey_value_attr, asn1_dsakey_value_attr);
+	sc_copy_asn1_entry(c_asn1_dsakey_i_p_attr,
+					asn1_dsakey_i_p_attr);
 
         sc_copy_asn1_entry(c_asn1_com_prkey_attr, asn1_com_prkey_attr);
         sc_copy_asn1_entry(c_asn1_com_key_attr, asn1_com_key_attr);
@@ -105,6 +121,11 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 
 	sc_format_asn1_entry(asn1_rsakey_attr + 0, &info.path, NULL, 0);
 	sc_format_asn1_entry(asn1_rsakey_attr + 1, &info.modulus_length, NULL, 0);
+
+	sc_format_asn1_entry(asn1_dsakey_attr + 0, asn1_dsakey_value_attr, NULL, 0);
+	sc_format_asn1_entry(asn1_dsakey_value_attr + 0, &info.path, NULL, 0);
+	sc_format_asn1_entry(asn1_dsakey_value_attr + 1, asn1_dsakey_i_p_attr, NULL, 0);
+	sc_format_asn1_entry(asn1_dsakey_i_p_attr + 0, &info.path, NULL, 0);
 
 	sc_format_asn1_entry(asn1_dsakey_attr + 0, &info.path, NULL, 0);
 
@@ -125,9 +146,12 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	SC_TEST_RET(ctx, r, "ASN.1 decoding failed");
 	if (asn1_prkey[0].flags & SC_ASN1_PRESENT)
 		obj->type = SC_PKCS15_TYPE_PRKEY_RSA;
-	else if (asn1_prkey[1].flags & SC_ASN1_PRESENT)
+	else if (asn1_prkey[1].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PRKEY_DSA;
-	else
+		/* If the value was indirect-protected, mark the path */
+		if (asn1_dsakey_i_p_attr[0].flags & SC_ASN1_PRESENT)
+			info.path.type = SC_PATH_TYPE_PATH_PROT;
+	} else
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_INTERNAL);
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
@@ -143,7 +167,9 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 {
 	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[1];
 	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_prk_rsa_attr[2];
-	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_prk_dsa_attr[2];
+	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_prk_dsa_attr[2],
+			asn1_dsakey_value_attr[3],
+			asn1_dsakey_i_p_attr[2];
 	struct sc_asn1_entry asn1_prkey[3];
 	struct sc_asn1_pkcs15_object rsa_prkey_obj = { (struct sc_pkcs15_object *) obj, asn1_com_key_attr,
 						       asn1_com_prkey_attr, asn1_prk_rsa_attr };
@@ -160,6 +186,8 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
         sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
         sc_copy_asn1_entry(c_asn1_prk_dsa_attr, asn1_prk_dsa_attr);
         sc_copy_asn1_entry(c_asn1_dsakey_attr, asn1_dsakey_attr);
+	sc_copy_asn1_entry(c_asn1_dsakey_value_attr, asn1_dsakey_value_attr);
+	sc_copy_asn1_entry(c_asn1_dsakey_i_p_attr, asn1_dsakey_i_p_attr);
 
         sc_copy_asn1_entry(c_asn1_com_prkey_attr, asn1_com_prkey_attr);
         sc_copy_asn1_entry(c_asn1_com_key_attr, asn1_com_key_attr);
@@ -174,7 +202,18 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 	case SC_PKCS15_TYPE_PRKEY_DSA:
 		sc_format_asn1_entry(asn1_prkey + 1, &dsa_prkey_obj, NULL, 1);
 		sc_format_asn1_entry(asn1_prk_dsa_attr + 0, asn1_dsakey_attr, NULL, 1);
-		sc_format_asn1_entry(asn1_dsakey_attr + 0, &prkey->modulus_length, NULL, 1);
+		sc_format_asn1_entry(asn1_dsakey_attr + 0, asn1_dsakey_value_attr, 0, 1);
+		if (prkey->path.type != SC_PATH_TYPE_PATH_PROT) {
+			/* indirect: just add the path */
+			sc_format_asn1_entry(asn1_dsakey_value_attr + 0,
+					&prkey->path, NULL, 1);
+		} else {
+			/* indirect-protected */
+			sc_format_asn1_entry(asn1_dsakey_value_attr + 1,
+					asn1_dsakey_i_p_attr, NULL, 1);
+			sc_format_asn1_entry(asn1_dsakey_i_p_attr + 0,
+					&prkey->path, NULL, 1);
+		}
                 break;
 	default:
 		error(ctx, "Invalid private key type: %X\n", obj->type);
@@ -194,5 +233,145 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 		sc_format_asn1_entry(asn1_com_key_attr + 4, &prkey->key_reference, NULL, 1);
 	r = sc_asn1_encode(ctx, asn1_prkey, buf, buflen);
 
+	return r;
+}
+
+/*
+ * Store private keys on the card, encrypted
+ */
+static const struct sc_asn1_entry	c_asn1_dsa_prkey_obj[] = {
+	{ "privateKey", SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC },
+	{ NULL }
+};
+
+int
+sc_pkcs15_encode_prkey_dsa(struct sc_context *ctx,
+		struct sc_pkcs15_prkey_dsa *key,
+		u8 **buf, size_t *buflen)
+{
+	struct sc_asn1_entry	asn1_dsa_prkey_obj[2];
+
+	sc_copy_asn1_entry(c_asn1_dsa_prkey_obj, asn1_dsa_prkey_obj);
+	sc_format_asn1_entry(asn1_dsa_prkey_obj + 0,
+			key->priv.data, &key->priv.len, 1);
+
+	return sc_asn1_encode(ctx, asn1_dsa_prkey_obj, buf, buflen);
+}
+
+int
+sc_pkcs15_decode_prkey_dsa(struct sc_context *ctx,
+		struct sc_pkcs15_prkey_dsa *key,
+		const u8 *buf, size_t buflen)
+{
+	struct sc_asn1_entry	asn1_dsa_prkey_obj[2];
+
+	sc_copy_asn1_entry(c_asn1_dsa_prkey_obj, asn1_dsa_prkey_obj);
+	sc_format_asn1_entry(asn1_dsa_prkey_obj + 0,
+			&key->priv.data, &key->priv.len, 0);
+
+	return sc_asn1_decode(ctx, asn1_dsa_prkey_obj, buf, buflen, NULL, NULL);
+}
+
+int
+sc_pkcs15_encode_prkey(struct sc_context *ctx,
+		struct sc_pkcs15_prkey *key,
+		u8 **buf, size_t *len)
+{
+	if (key->algorithm == SC_ALGORITHM_DSA)
+		return sc_pkcs15_encode_prkey_dsa(ctx, &key->u.dsa, buf, len);
+	error(ctx, "Cannot encode private key type %u.\n",
+			key->algorithm);
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
+int
+sc_pkcs15_decode_prkey(struct sc_context *ctx,
+		struct sc_pkcs15_prkey *key,
+		const u8 *buf, size_t len)
+{
+	if (key->algorithm == SC_ALGORITHM_DSA)
+		return sc_pkcs15_decode_prkey_dsa(ctx, &key->u.dsa, buf, len);
+	error(ctx, "Cannot decode private key type %u.\n",
+			key->algorithm);
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
+int
+sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *obj,
+		const char *passphrase,
+		struct sc_pkcs15_prkey **out)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_prkey_info *info;
+	struct sc_pkcs15_prkey key;
+	u8 *data = NULL;
+	size_t len;
+	int r;
+
+	memset(&key, 0, sizeof(key));
+	switch (obj->type) {
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+		key.algorithm = SC_ALGORITHM_RSA;
+		break;
+	case SC_PKCS15_TYPE_PRKEY_DSA:
+		key.algorithm = SC_ALGORITHM_DSA;
+		break;
+	default:
+		error(ctx, "Unsupported object type.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	info = (struct sc_pkcs15_prkey_info *) obj->data;
+	if (info->native) {
+		error(ctx, "Private key is native, will not read.");
+		return SC_ERROR_NOT_ALLOWED;
+	}
+
+	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
+	if (r < 0) {
+		error(ctx, "Unable to read private key file.\n");
+		return r;
+	}
+
+	/* Is this a protected file? */
+	if (info->path.type == SC_PATH_TYPE_PATH_PROT) {
+		u8 *clear;
+		size_t clear_len;
+
+		if (passphrase == NULL) {
+			r = SC_ERROR_PASSPHRASE_REQUIRED;
+			goto fail;
+		}
+		r = sc_pkcs15_unwrap_data(ctx,
+				passphrase,
+				data, len,
+				&clear, &clear_len);
+		if (r < 0)  {
+			error(ctx, "Failed to unwrap privat key.");
+			goto fail;
+		}
+		free(data);
+		data = clear;
+		len = clear_len;
+	}
+
+	r = sc_pkcs15_decode_prkey(ctx, &key, data, len);
+	if (r < 0) {
+		error(ctx, "Unable to decode private key");
+		goto fail;
+	}
+
+	*out = malloc(sizeof(key));
+	if (*out == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto fail;
+	}
+
+	**out = key;
+	free(data);
+	return 0;
+
+fail:	if (data)
+		free(data);
 	return r;
 }
