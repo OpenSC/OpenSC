@@ -38,7 +38,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	struct sc_algorithm_id pk_alg, sig_alg;
 	sc_pkcs15_der_t pk = { NULL, 0 };
 	struct sc_asn1_entry asn1_version[] = {
-		{ "version",		SC_ASN1_INTEGER,   ASN1_INTEGER, 0, &cert->version },
+		{ "version",		SC_ASN1_INTEGER,   ASN1_INTEGER, SC_ASN1_OPTIONAL, &cert->version },
 		{ NULL }
 	};
 	struct sc_asn1_entry asn1_pkinfo[] = {
@@ -79,6 +79,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	size_t objlen;
 	
 	memset(cert, 0, sizeof(*cert));
+	cert->version = 1; /* defaults to 1 if version field not present */
 	obj = sc_asn1_verify_tag(ctx, buf, buflen, ASN1_SEQUENCE | SC_ASN1_CONS,
 				 &objlen);
 	if (obj == NULL) {
