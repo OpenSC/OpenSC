@@ -100,7 +100,7 @@ int sc_decipher(struct sc_card *card,
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
-	apdu.resplen = 2; /* FIXME */
+	apdu.resplen = sizeof(rbuf); /* FIXME */
 
 	sbuf[0] = 0; /* padding indicator byte */ ;
 	memcpy(sbuf + 1, crgram, crgram_len);
@@ -135,7 +135,7 @@ int sc_compute_signature(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x9E,
 		       0x9A);
 	apdu.resp = rbuf;
-	apdu.resplen = 2; /* FIXME */
+	apdu.resplen = sizeof(rbuf); /* FIXME */
 
 	memcpy(sbuf, data, datalen);
 	apdu.data = sbuf;
