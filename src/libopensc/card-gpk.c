@@ -547,7 +547,7 @@ gpk_select(struct sc_card *card, u8 kind,
 {
 	struct gpk_private_data *priv = DRVDATA(card);
 	struct sc_apdu	apdu;
-	u8		resbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8		resbuf[256];
 	int		r;
 
 	/* If we're about to select a DF, invalidate secure messaging keys */
@@ -559,15 +559,20 @@ gpk_select(struct sc_card *card, u8 kind,
 	/* do the apdu thing */
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cla = 0x00;
-	apdu.cse = SC_APDU_CASE_4_SHORT;
+	apdu.cse = SC_APDU_CASE_3_SHORT;
 	apdu.ins = 0xA4;
 	apdu.p1 = kind;
 	apdu.p2 = 0;
 	apdu.data = buf;
 	apdu.datalen = buflen;
 	apdu.lc = apdu.datalen;
-	apdu.resp = resbuf;
-	apdu.resplen = file? sizeof(resbuf) : 0;
+
+	if (file) {
+		apdu.cse = SC_APDU_CASE_4_SHORT;
+		apdu.resp = resbuf;
+		apdu.resplen = sizeof(resbuf);
+		apdu.le = sizeof(resbuf);
+	}
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
