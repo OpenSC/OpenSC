@@ -38,7 +38,8 @@ char * opt_input = NULL, * opt_output = NULL;
 int opt_crypt_flags = 0;
 
 #define OPT_SHA1	0x101
-#define OPT_PKCS1	0x102
+#define OPT_MD5		0x102
+#define OPT_PKCS1	0x103
 
 const struct option options[] = {
 	{ "sign",		0, 0,		's' },
@@ -48,6 +49,7 @@ const struct option options[] = {
 	{ "input",		1, 0,		'i' },
 	{ "output",		1, 0,		'o' },
 	{ "sha-1",		0, 0,		OPT_SHA1 },
+	{ "md5",		0, 0,		OPT_MD5 },
 	{ "pkcs1",		0, 0,		OPT_PKCS1 },
 	{ "quiet",		0, 0,		'q' },
 	{ "debug",		0, 0,		'd' },
@@ -63,6 +65,7 @@ const char *option_help[] = {
 	"Selects the input file to use",
 	"Outputs to file <arg>",
 	"Input file is a SHA-1 hash",
+	"Input file is a MD5 hash",
 	"Use PKCS #1 v1.5 padding",
 	"Quiet operation",
 	"Debug output -- may be supplied several times",
@@ -233,6 +236,9 @@ int main(int argc, char * const argv[])
 			break;
 		case OPT_SHA1:
 			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+			break;
+		case OPT_MD5:
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
 			break;
 		case OPT_PKCS1:
 			opt_crypt_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
