@@ -356,8 +356,15 @@ sc_profile_locate(const char *name)
 	static char	path[1024];
 	char            profile_dir[PATH_MAX];
 
-	/* Name with suffix tagged onto it? */
-	snprintf(path, sizeof(path), "%s.%s", name, SC_PKCS15_PROFILE_SUFFIX);
+	/* append ".profile" unless already in the name */
+	if (strstr(name, SC_PKCS15_PROFILE_SUFFIX)) {
+		snprintf(path, sizeof(path), "%s", name);
+	} else {
+		snprintf(path, sizeof(path), "%s.%s", name,
+				SC_PKCS15_PROFILE_SUFFIX);
+	}
+		
+	/* Unchanged name? */
 	if (access(path, R_OK) == 0)
 		return path;
 
@@ -378,14 +385,15 @@ sc_profile_locate(const char *name)
 #endif
 
 	/* Try directory */
-	snprintf(path, sizeof(path), "%s/%s",
+	/* append ".profile" unless already in the name */
+	if (strstr(name, SC_PKCS15_PROFILE_SUFFIX)) {
+		snprintf(path, sizeof(path), "%s/%s",
 			profile_dir, name);
-	if (access(path, R_OK) == 0)
-		return path;
-
-	snprintf(path, sizeof(path), "%s/%s.%s",
+	} else {
+		snprintf(path, sizeof(path), "%s/%s.%s",
 			profile_dir, name,
 			SC_PKCS15_PROFILE_SUFFIX);
+	}
 	if (access(path, R_OK) == 0)
 		return path;
 
