@@ -524,6 +524,7 @@ do_store_private_key(struct sc_profile *profile)
 	 */
 	for (i = 0; i < ncerts; i++) {
 		struct sc_pkcs15init_certargs cargs;
+		char	namebuf[SC_PKCS15_MAX_LABEL_SIZE-1];
 
 		memset(&cargs, 0, sizeof(cargs));
 		/* Just the first certificate gets the same ID
@@ -533,6 +534,9 @@ do_store_private_key(struct sc_profile *profile)
 			cargs.id = args.id;
 		else
 			cargs.authority = 1;
+
+		cargs.label = X509_NAME_oneline(cert[i]->cert_info->subject,
+					namebuf, sizeof(namebuf));
 
 		cargs.x509_usage = cert[i]->ex_kusage;
 		r = do_convert_cert(&cargs.der_encoded, cert[i]);
