@@ -141,6 +141,7 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 	 || (r = sc_profile_load(profile, driver)) < 0
 	 || (r = sc_profile_finish(profile)) < 0)
 		sc_profile_free(profile);
+	*result = profile;
 
 	return r;
 }
@@ -837,8 +838,16 @@ do_verify_pin(struct sc_profile *pro, struct sc_card *card,
 			sc_profile_set_secret(pro, SC_AC_SYMBOLIC, pin_id,
 					pinbuf, pinsize);
 	}
-
 	if (r >= 0) {
+		if (type == SC_AC_CHV) {
+			int left = pro->pin_maxlen - pinsize;
+
+			if (left > 0) {
+				memset(pinbuf + pinsize, pro->pin_pad_char,
+				       left);
+				pinsize = pro->pin_maxlen;
+			}
+		}
 		r = sc_verify(card, type, reference, pinbuf, pinsize, NULL);
 		if (r) {
 			p15init_error("Failed to verify %s (ref=0x%x)",
