@@ -67,7 +67,7 @@
  * but is not anymore. The typical ``watch me walk over the edge
  * of that cliff there'' thing.
  */
-static void *		the_handler = NULL;
+static void *handle = NULL;
 
 /*
  * Create a new context
@@ -105,12 +105,12 @@ PKCS11_CTX_load(PKCS11_CTX *ctx, const char *name)
 		PKCS11err(PKCS11_F_PKCS11_CTX_LOAD, PKCS11_MODULE_LOADED_ERROR);
 		return -1;
 	}
-	the_handler=C_LoadModule(name, &priv->method );
-	if (!the_handler) {
+	handle=C_LoadModule(name, &priv->method );
+	if (!handle) {
 		PKCS11err(PKCS11_F_PKCS11_CTX_LOAD, PKCS11_LOAD_MODULE_ERROR);
 		return -1;
 	}
-/*
+#if 0
 	priv->method = PKCS11_NEW(PKCS11_method);
 	base = (caddr_t) (priv->method);
 	for (sym = pkcs11_symbols; sym->name; sym++) {
@@ -120,7 +120,7 @@ PKCS11_CTX_load(PKCS11_CTX *ctx, const char *name)
 			return -1;
 		}
 	}
-*/
+#endif
 
 	/* Tell the PKCS11 to initialize itself */
 	rv = priv->method->C_Initialize(NULL);
@@ -152,7 +152,7 @@ PKCS11_CTX_unload(PKCS11_CTX *ctx)
 	priv->method->C_Finalize(NULL);
 
 	/* Unload the module */
-	C_UnloadModule(the_handler);
+	C_UnloadModule(handle);
 }
 
 /*

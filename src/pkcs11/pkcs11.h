@@ -49,11 +49,8 @@ extern "C" {
 #define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11.so";
 #endif
 
-typedef struct sc_pkcs11_module sc_pkcs11_module_t;
-
-extern sc_pkcs11_module_t *C_LoadModule(const char *name,
-				CK_FUNCTION_LIST_PTR_PTR);
-extern CK_RV C_UnloadModule(sc_pkcs11_module_t *);
+extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
+extern CK_RV C_UnloadModule(void *module);
 
 #ifdef __cplusplus
 }

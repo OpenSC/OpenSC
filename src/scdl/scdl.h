@@ -17,11 +17,9 @@
 extern "C" {
 #endif
 
-typedef void scdl_context_t;
-
-extern scdl_context_t *scdl_open(const char *name);
-extern int scdl_close(scdl_context_t *mod);
-extern void *scdl_get_address(scdl_context_t *mod, const char *symbol);
+extern void *scdl_open(const char *name);
+extern int scdl_close(void *module);
+extern void *scdl_get_address(void *module, const char *symbol);
 
 #ifdef __cplusplus
 }

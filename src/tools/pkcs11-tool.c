@@ -120,7 +120,7 @@ static CK_BYTE		opt_object_id[100], new_object_id[100];
 static int		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
 
-static sc_pkcs11_module_t *module = NULL;
+static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
 static CK_SLOT_ID_PTR p11_slots = NULL;
 static CK_ULONG p11_num_slots = 0;

@@ -18,6 +18,7 @@
 #ifdef __APPLE__
 #include <Carbon/Carbon.h>
 #endif
+#include "scdl.h"
 
 #define SCDL_MAGIC		0xbeefd00d
 
@@ -207,7 +208,7 @@ mac_get_address(scdl_context_t *mod, const char *symbol)
 }
 #endif
 
-scdl_context_t *
+void *
 scdl_open(const char *name)
 {
 	scdl_context_t *mod;
@@ -237,12 +238,13 @@ scdl_open(const char *name)
 		free(mod);
 		return NULL;
 	}
-	return mod;
+	return (void *) mod;
 }
 
 int
-scdl_close(scdl_context_t *mod)
+scdl_close(void *module)
 {
+	scdl_context_t *mod = (scdl_context_t *) module;
 	int rv;
 
 	if (!mod || mod->magic != SCDL_MAGIC)
@@ -269,8 +271,10 @@ scdl_close(scdl_context_t *mod)
 }
 
 void *
-scdl_get_address(scdl_context_t *mod, const char *symbol)
+scdl_get_address(void *module, const char *symbol)
 {
+	scdl_context_t *mod = (scdl_context_t *) module;
+
 	if (!mod || mod->magic != SCDL_MAGIC)
 		return NULL;
 #if defined(_WIN32)

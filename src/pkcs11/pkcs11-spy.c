@@ -38,7 +38,7 @@ CK_FUNCTION_LIST_PTR pkcs11_spy = NULL;
 /* Real Module Function List */
 CK_FUNCTION_LIST_PTR po = NULL;
 /* Dynamic Module Handle */
-static sc_pkcs11_module_t *modhandle = NULL;
+static void *modhandle = NULL;
 /* Spy module output */
 FILE *spy_output = NULL;
 
