@@ -76,6 +76,9 @@ static int	sc_pkcs15init_store_private_key(struct sc_pkcs15_card *,
 static int	sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 			struct sc_profile *profile,
 			struct sc_pkcs15init_keyargs *keyargs);
+static int	sc_pkcs15init_update_dir(struct sc_card *card,
+			struct sc_profile *profile,
+			struct sc_app_info *app);
 static int	sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
 static int	sc_pkcs15init_update_odf(struct sc_pkcs15_card *,
@@ -484,9 +487,16 @@ int
 sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile)
 {
 	struct sc_pkcs15_card *p15card = profile->p15_card;
+	struct sc_app_info *app;
 	int	r;
 
 	p15card->card = card;
+
+	if (card->app_count >= SC_MAX_CARD_APPS) {
+		fprintf(stderr,
+			"Too many applications on this card.\n");
+		return 1;
+	}
 
 	/* Get all necessary PINs from user */
 	if (do_read_pins(profile))
@@ -505,14 +515,15 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile)
 	 * all sorts of assumptions about DF and EF names, and
 	 * doesn't work if secure messaging is required for the
 	 * MF (which is the case with the GPK) */
-#ifdef notyet
-	/* Create the file (what size?) */
-	r = ...
-	/* Update DIR */
-	r = sc_update_dir(p15card);
-#else
-	r = 0;
-#endif
+	app = (struct sc_app_info *) calloc(1, sizeof(*app));
+	app->path = p15card->file_app->path;
+	if (p15card->file_app->namelen <= SC_MAX_AID_SIZE) {
+		app->aid_len = p15card->file_app->namelen;
+		memcpy(app->aid, p15card->file_app->name, app->aid_len);
+	}
+	/* XXX: encode the DDO? */
+
+	r = sc_pkcs15init_update_dir(card, profile, app);
 	if (r >= 0)
 		r = sc_pkcs15init_update_tokeninfo(p15card, profile);
 	if (r >= 0)
@@ -936,6 +947,38 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 }
 
 static int
+sc_pkcs15init_update_dir(struct sc_card *card,
+		struct sc_profile *profile,
+		struct sc_app_info *app)
+{
+	int	r, retry = 1;
+
+	do {
+		struct file_info *info;
+		struct sc_path	path;
+
+		card->ctx->log_errors = 0;
+		r = sc_enum_apps(card);
+		card->ctx->log_errors = 1;
+
+		if (r != SC_ERROR_FILE_NOT_FOUND)
+			break;
+
+		sc_format_path("3F002F00", &path);
+		info = sc_profile_find_file_by_path(profile, &path);
+		if (info == NULL)
+			return r;
+		r = sc_pkcs15init_update_file(profile, info->file, NULL, 0);
+	} while (retry--);
+
+	if (r >= 0) {
+		card->app[card->app_count++] = app;
+		r = sc_update_dir(card, NULL);
+	}
+	return r;
+}
+
+static int
 sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile)
 {
@@ -1244,7 +1287,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 
 	/* Present authentication info needed */
 	r = sc_pkcs15init_authenticate(profile, file, SC_AC_OP_UPDATE);
-	if (r >= 0)
+	if (r >= 0 && datalen)
 		r = sc_update_binary(card, 0, data, datalen, 0);
 
 	return r;
