@@ -420,13 +420,17 @@ LIBS="$saved_LIBS"
 
 if test "x$SSL_MSG" = "xyes" ; then
   AC_DEFINE(HAVE_OPENSSL, 1, [Have OpenSSL libraries])
+else
+  LIBCRYPTO=""
+  LIBCRYPTOA=""
 fi
 AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
 AM_CONDITIONAL(HAVE_ENGINE, test "x$ENGINE_MSG" = "xyes")
 
 AC_SUBST(OPENSSL_LDFLAGS)
 OPENSSL_LDFLAGS=""
-for openssl_ldflag in "-Wl,-Bsymbolic" "-G -Wl,-Bsymbolic" "-shared -G -Wl,-Bsymbolic" "-Wl,-all_load"; do
+if test "x$ENGINE_MSG" = "xyes" ; then
+  for openssl_ldflag in "-Wl,-Bsymbolic" "-G -Wl,-Bsymbolic" "-shared -G -Wl,-Bsymbolic" "-Wl,-all_load"; do
 	AC_MSG_CHECKING([whether we can use $openssl_ldflag])
 	saved_CFLAGS=$CFLAGS
 	CFLAGS="$CFLAGS $openssl_ldflag"
@@ -437,7 +441,8 @@ for openssl_ldflag in "-Wl,-Bsymbolic" "-G -Wl,-Bsymbolic" "-shared -G -Wl,-Bsym
 		OPENSSL_LDFLAGS="$openssl_ldflag"
 		break;
 	fi
-done
+  done
+fi
 
 AC_ARG_WITH(pam-dir,
 	[  --with-pam-dir=PATH     Specify path for PAM installation libraries],
@@ -913,7 +918,9 @@ AC_DEFINE_UNQUOTED(OPENSC_CONF_PATH, "$opensc_conf_path", [default config file f
 AC_SUBST(LIBSCCONF)
 LIBSCCONF="\${top_builddir}/src/scconf/libscconf.la"
 AC_SUBST(LIBSCLDAP)
-LIBSCLDAP="\${top_builddir}/src/scldap/libscldap.la"
+if test "x$LDAP_MSG" = "xyes" ; then
+  LIBSCLDAP="\${top_builddir}/src/scldap/libscldap.la"
+fi
 AC_SUBST(LIBOPENSC)
 LIBOPENSC="\${top_builddir}/src/libopensc/libopensc.la"
 
