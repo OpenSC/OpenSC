@@ -697,6 +697,12 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 			break;
 		case 36:flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1; /* SSL hash */
 			break;
+		case 20:
+			flags |= SC_ALGORITHM_RSA_HASH_SHA1;	/* SHA1 */
+			break;
+		case 16:
+			flags |= SC_ALGORITHM_RSA_HASH_MD5;	/* MD5 */
+			break;
 		default:
 			flags |= SC_ALGORITHM_RSA_HASH_NONE;
 		}
