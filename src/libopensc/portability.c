@@ -21,9 +21,9 @@
 #include "internal.h"
 #include <assert.h>
 #include <stdlib.h>
-#ifndef _WIN32
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
-#else
+#endif
 #include <sys/timeb.h>
 #endif
 
@@ -60,7 +60,6 @@ sc_mutex_free(sc_mutex_t *p)
 	free(p);
 }
 #elif defined(_WIN32)
-#include <windows.h>
 
 sc_mutex_t *
 sc_mutex_new(void)

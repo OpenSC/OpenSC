@@ -317,7 +317,6 @@ int scrandom_get_data(unsigned char *buf, unsigned int len)
  */
 
 #include "scrandom.h"
-#include <windows.h>
 #include <wincrypt.h>
 
 int scrandom_get_data(unsigned char *buf, unsigned int len)

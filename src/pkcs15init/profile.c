@@ -37,9 +37,6 @@
 #include <opensc/scconf.h>
 #include "pkcs15-init.h"
 #include "profile.h"
-#ifdef _WIN32
-#include <windows.h>
-#endif
 
 #define DEF_PRKEY_RSA_ACCESS	0x1D
 #define DEF_PRKEY_DSA_ACCESS	0x12

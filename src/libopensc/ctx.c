@@ -26,9 +26,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <limits.h>
-#ifdef _WIN32
-#include <windows.h>
-#endif
 
 int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader)
 {

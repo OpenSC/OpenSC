@@ -1,6 +1,9 @@
 #ifndef _OPENSC_WINCONFIG_H
 #define _OPENSC_WINCONFIG_H
 
+#include <windows.h>
+#include <sys/timeb.h>
+
 #ifndef strcasecmp
 #define strcasecmp stricmp
 #endif
