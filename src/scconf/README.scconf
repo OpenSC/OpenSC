@@ -1,0 +1,329 @@
+A short introduction to scconf as an API and a file format
+==========================================================
+written by Jamie Honan <jhonan@optusnet.com.au>
+
+The scconf system is a small system library for handling
+scconf files. Why should anyone care about scconf format?
+It is a handy format for short pieces of structured data.
+
+Handy because:
+  - it is readable, which makes support easy
+  - it is easy to parse and write
+  - it is extensible, you can add fields without breaking things
+
+It isn't
+  - XML, so it doesn't need xml parsing
+  - suitable for large amounts of data, like a database or text files
+
+It doesn't have
+  - anything else but data. No locking, no threads etc.
+
+It has heirarchical data blocks, it has lists. 
+
+Similar, but different:
+  - .ini files. scconf is block structured, has lists and arrays
+  - xml. xml is more complete, but requires a lot of overhead
+  - sexp. sexp resembles lisp with it's use of parenthesis. sexp
+    has modes for binary. scconf really doesn't have binary
+  - yaml. yaml is larger
+
+What does it look like?
+=======================
+
+Like this:
+
+transport_stream {
+        id = 0x0009;
+        original_network_id = 0x1000;
+        sat_tuning_info {
+                frequency = 12278000;
+                symbol_rate = 30000000;
+                polarization = 0;
+        }
+        service {
+                id = 0x0064;
+                pmt_pid = 0x0101;
+                type = 144;
+                name = "aGuide";
+                provider_name = "A";
+        }
+        service {
+                id = 0x238D;
+                pmt_pid = 0x0623;
+                type = 144;
+                name = "aCar";
+                provider_name = "A";
+        }
+}
+
+Why doesn't it have X, why don't you use XML?
+=============================================
+
+Maybe it should. Maybe XML is the answer. Maybe a database
+is more appropriate. It's all a trade-off. You choose.
+
+
+API
+===
+
+There are four useful structures. scconf_block, scconf_list,
+scconf_item, and a scconf_context.
+
+A context is similar to a file, except in memory. Within
+a context there is a root block. Within each block
+there are one or more items. Items can be sub-blocks, lists, or
+comments. Every item can have a name, or key.
+
+A list can have one or more values; boolean, integer or string.
+
+A context contains a root block, which contains one or more blocks.
+
+A block is :
+
+key [[,] name [[,] name ... ] ] {
+	block_contents
+}
+
+block_contents is one or more block_items
+
+block_items is one of
+
+  # comment string \n
+or
+  key [[,] name [[,] name ... ] ] = value [[,] value ... ]];
+or
+  block
+
+Initialising and file handling
+==============================
+
+Allocate scconf_context
+The filename can be NULL. The file is not read at this point,
+but in the function scconf_parse.
+
+scconf_context *scconf_new(const char *filename);
+
+
+Free scconf_context
+
+void scconf_free(scconf_context * config);
+
+
+Parse configuration
+Returns 1 = ok, 0 = error, -1 = error opening config file
+
+int scconf_parse(scconf_context * config);
+
+
+ Write config to a file
+ If the filename is NULL, use the config->filename
+ Returns 0 = ok, else = errno
+
+int scconf_write(scconf_context * config, const char *filename);
+
+
+Finding items and blocks
+========================
+
+ Find a block by key
+ If the block is NULL, the root block is used
+
+const scconf_block *scconf_find_block(const scconf_context * config,
+	const scconf_block * block, const char *item_name);
+
+This finds a block in the given context. This function doesn't descend
+the heirarchy, it only finds blocks in the top level of either
+the context (the root block) or of the block given in the block
+paramter (if not NULL).
+
+The block pointer returned points to data held by the context, hence
+the const qualifier.
+
+
+ Find blocks by key and possibly name
+ If the block is NULL, the root block is used
+ The key can be used to specify what the blocks first name should be
+
+scconf_block **scconf_find_blocks(const scconf_context * config,
+	const scconf_block * block, const char *item_name, const char *key);
+
+This function is similar to scconf_find_block above, except that an array
+of pointers to matched blocks is returned. Each pointer points
+to data held by the context. The last entry in the returned table
+is the null pointer.
+
+The table should be freed after use, but the individual pointers to blocks
+point to data held by the context.
+
+The key values for blocks is matched. If name is not NULL, the block
+name must also match.
+
+
+ Get a list of values for option
+
+const scconf_list *scconf_find_list(const scconf_block * block, const char *option);
+
+Find an item that has a value (i.e. is not a block nor a comment), and
+return the values for that item as a list.
+
+The list is held in memory owned by the context.
+
+
+ Return the first string of the option
+ If no option found, return def
+
+const char *scconf_get_str(const scconf_block * block, const char *option, const char *def);
+
+This is similar to scconf_find_list, but instead of returning the whole
+list, just return the first value, as a string. If this is not possible,
+return the default value.
+
+Again the value returned is either a pointer the default value or to
+memory held by the context.
+
+
+ Return the first value of the option as integer
+ If no option found, return def
+
+int scconf_get_int(const scconf_block * block, const char *option, int def);
+
+This is similar to scconf_get_str, but an integer value is returned.
+
+
+ Return the first value of the option as boolean
+ If no option found, return def
+
+int scconf_get_bool(const scconf_block * block, const char *option, int def);
+
+This completes the types that can be returned by a find.
+
+
+For parsing blocks and items
+============================
+
+A table of scconf_entry values is used, terminated by a NULL name value.
+
+This table is passed to the routine scconf_parse_entries. This
+function walks the current context or block, and adds the data
+to the scconf_entry table entries.
+Sub-blocks can be walked, using SCCONF_BLOCK, and callbacks can be issued
+using SCCONF_CALLBACK.
+
+This is a handy method for accessing scconf data from within a program.
+
+typedef struct _scconf_entry {
+	const char *name;
+			 * Look for blocks with this key, or check if this
+			 * block has an item with this key. Run the block
+			 * or blocks found against the rest of this entry
+			 * Stop after the first one, unless 
+			 * SCCONF_ALL_BLOCKS is set in flags 
+	unsigned int type;
+			 * SCCONF_CALLBACK
+			 * 	parm contains a function ptr of type
+			 *      int (*callback)(scconf_context* context,
+			 *      	scconf_block* block,
+			 *      	scconf_entry* entry,
+			 *      	int depth);
+			 *      run the callback with the block found
+			 * 
+			 * SCCONF_BLOCK
+			 *      param contains a pointer to another entry table
+			 *      use the found block against every entry
+			 *	in the pointed entry table
+			 *
+			 * SCCONF_LIST
+			 * SCCONF_BOOLEAN
+		  	 * SCCONF_INTEGER
+			 * SCCONF_STRING
+			 *      find the entry with the key given in name in
+			 *      the found block. Return the value found
+			 *      to parm as follows:
+			 *    SCCONF_INTEGER:
+			 *		if parm not NULL, then
+			 *		points to integer location to put
+			 *		the value
+			 *    SCCONF_BOOLEAN:
+			 *		if parm not NULL, then
+			 *		points to integer location to put
+			 *		the value
+			 *    SCCONF_STRING:
+			 *		if parm not NULL, then
+			 *		  if flag bit SCCONF_ALLOC not set
+			 *		     then parm points to a buffer
+			 *		  else
+			 *		     parm points to a pointer where
+			 *		     the pointer to an allocated
+			 *		     buffer should be stored.
+			 *		     if arg is not NULL, points
+			 *		     to a location where the buffer
+			 *		     length (size_t) is to be stored
+			 *    SCCONF_LIST:
+			 *		if parm not NULL, then
+			 *		  if flag bit SCCONF_ALLOC not set
+			 *		     then parm points to a location
+			 *		     where a pointer to the list
+			 *		     can be stored
+			 *		  else
+			 *		     then parm points to a location
+			 *		     where a pointer to a copy of list
+			 *		     can be stored
+			 *
+			 * 
+	unsigned int flags;
+			 * SCCONF_PRESENT
+			 *       This bit is or'ed in when found
+			 * SCCONF_MANDATORY
+			 *       If not found, this is a fault
+			 * SCCONF_ALLOC
+			 *       C.f. type above
+			 * SCCONF_ALL_BLOCKS
+			 *       C.f. name above
+			 * SCCONF_VERBOSE
+			 *       For debugging
+	void *parm;
+	void *arg;
+} scconf_entry;
+
+
+For adding blocks and items
+===========================
+
+A table of scconf_entry values is used, terminated by a NULL name value.
+
+This table is passed to the routine scconf_write_entries. This
+function adds the scconf_entry table entries to the current block.
+Sub-blocks can be added, and callbacks can be issued.
+
+This is a handy method for adding scconf data from within a program.
+
+typedef struct _scconf_entry {
+	const char *name;		
+			 * key value for blocks and items * 
+	unsigned int type;
+			 * SCCONF_CALLBACK
+			 * 	parm contains a function ptr of type
+			 *      int (*callback)(scconf_context* context,
+			 *      	scconf_block* block,
+			 *      	scconf_entry* entry,
+			 *      	int depth);
+			 * 
+			 * SCCONF_BLOCK
+			 *      param contains a pointer to another entry table
+			 *      the entry table is added as a block to the
+			 *      current block, with name as the key, and
+			 *      arg is a list of names 
+			 *
+			 * SCCONF_LIST
+			 * SCCONF_BOOLEAN
+		  	 * SCCONF_INTEGER
+			 * SCCONF_STRING
+			 *      these add key=value pairs to the current
+			 *      block. The value is in parm.
+			 * 
+	unsigned int flags;
+			 * SCCONF_PRESENT
+			 *       This bit is or'ed in when item added
+	void *parm;
+	void *arg;
+} scconf_entry;
