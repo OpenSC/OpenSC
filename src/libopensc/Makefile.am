@@ -33,8 +33,8 @@ libopensc_la_LIBADD = @LIBSCCONF@ ../scdl/libscdl.la @LIBDL@ @LIBCRYPTO@ @OPENCT
 
 include_HEADERS = \
 	opensc.h pkcs15.h emv.h \
-	errors.h types.h \
-	cardctl.h asn1.h log.h
+	cardctl.h asn1.h log.h ui.h \
+	errors.h types.h
 
 noinst_HEADERS = ctbcs.h internal.h
 
