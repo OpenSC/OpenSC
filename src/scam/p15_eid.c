@@ -394,13 +394,8 @@ struct scam_framework_ops scam_fw_p15_eid =
 	p15_eid_qualify,	/* qualify */
 	p15_eid_auth,		/* auth */
 	p15_eid_deinit,		/* deinit */
-#if defined(HAVE_OPENSSL) && defined(HAVE_LDAP) && defined(HAVE_SCIDI)
-	sp_open_session,	/* open_session */
-	sp_close_session	/* close_session */
-#else
 	NULL,			/* open_session */
 	NULL			/* close_session */
-#endif
 };
 
 #endif

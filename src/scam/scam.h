@@ -92,12 +92,6 @@ extern void scam_deinit(scam_context * sctx);
 extern int scam_open_session(scam_context * sctx, int argc, const char **argv, const char *user);
 extern int scam_close_session(scam_context * sctx, int argc, const char **argv, const char *user);
 
-#ifdef HAVE_SCIDI
-extern struct scam_framework_ops scam_fw_sp;
-extern int sp_open_session(scam_context * sctx, int argc, const char **argv, const char *user);
-extern int sp_close_session(scam_context * sctx, int argc, const char **argv, const char *user);
-#endif
-
 #ifdef __cplusplus
 }
 #endif

@@ -1141,8 +1141,6 @@ LIBSCLDAP="\${top_builddir}/src/scldap/libscldap.la"
 AC_SUBST(LIBSCRANDOM)
 LIBSCRANDOM="\${top_builddir}/src/scrandom/libscrandom.la"
 
-AM_CONDITIONAL(HAVE_SCIDI, test "foo" = "bar")
-
 scldap_etc_path=`eval echo ${sysconfdir}` ; scldap_etc_path=`eval echo ${scldap_etc_path}`
 AC_DEFINE_UNQUOTED(SCLDAP_ETC_PATH, "$scldap_etc_path", [etc path for libscldap])
 scldap_conf_path=`eval echo ${scldap_etc_path}/scldap.conf`

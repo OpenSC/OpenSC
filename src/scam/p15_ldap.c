@@ -296,13 +296,8 @@ struct scam_framework_ops scam_fw_p15_ldap =
 	p15_ldap_qualify,	/* qualify */
 	p15_ldap_auth,		/* auth */
 	p15_ldap_deinit,	/* deinit */
-#if defined(HAVE_OPENSSL) && defined(HAVE_LDAP) && defined(HAVE_SCIDI)
-	sp_open_session,	/* open_session */
-	sp_close_session	/* close_session */
-#else
 	NULL,			/* open_session */
 	NULL			/* close_session */
-#endif
 };
 
 #endif
