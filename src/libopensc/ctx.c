@@ -337,12 +337,13 @@ void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 	int i, r, count = 0;
 	scconf_block **blocks;
 	char *conf_path = OPENSC_CONF_PATH;
-	
+#ifdef _WIN32
+	char temp_path[PATH_MAX];
+#endif
+
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
 	if (!strncmp(conf_path, "%windir%", 8)) {
-		static char temp_path[PATH_MAX];
-
 		GetWindowsDirectory(temp_path, sizeof(temp_path));
 		strcat(temp_path, conf_path + 8);
 		conf_path = temp_path;
@@ -468,6 +469,9 @@ int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
 {
 	char *homedir;
 	const char *cache_dir;
+#ifdef _WIN32
+	char temp_path[PATH_MAX];
+#endif
 
 #ifndef _WIN32
 	cache_dir = ".eid/cache";
@@ -475,6 +479,12 @@ int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
 #else
 	cache_dir = "eid-cache";
 	homedir = getenv("USERPROFILE");
+	/* If USERPROFILE isn't defined, assume it's a single-user OS
+	 * and put the cache dir in the Windows dir (usually C:\\WINDOWS) */
+	if (homedir == NULL || homedir[0] == '\0') {
+		GetWindowsDirectory(temp_path, sizeof(temp_path));
+		homedir = temp_path;
+	}
 #endif
 	if (homedir == NULL)
 		return SC_ERROR_INTERNAL;
