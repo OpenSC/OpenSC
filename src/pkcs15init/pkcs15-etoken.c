@@ -70,10 +70,14 @@ static void	error(struct sc_profile *, const char *, ...);
 #define ETOKEN_SE_ID(idx)	(0x40 + (idx))
 #define ETOKEN_AC_NEVER		0xFF
 
-#define ETOKEN_ALGO_RSA_SIG_SHA1	0xCC
+#define ETOKEN_ALGO_RSA			0x08
+#define ETOKEN_ALGO_RSA_PURE		0x0C
 #define ETOKEN_ALGO_RSA_SIG		0x88
 #define ETOKEN_ALGO_RSA_PURE_SIG	0x8C
-#define ETOKEN_ALGO_RSA			ETOKEN_ALGO_RSA_PURE_SIG
+#define ETOKEN_ALGO_RSA_SIG_SHA1	0xC8
+#define ETOKEN_ALGO_RSA_PURE_SIG_SHA1	0xCC
+#define ETOKEN_SIGN_RSA			ETOKEN_ALGO_RSA_PURE_SIG
+#define ETOKEN_DECIPHER_RSA		ETOKEN_ALGO_RSA_PURE
 #define ETOKEN_ALGO_PIN			0x87
 
 static inline void
@@ -324,12 +328,38 @@ etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
 }
 
 /*
+ * Determine the key algorithm based on the intended usage
+ * Note that CardOS/M4 does not support keys that can be used
+ * for signing _and_ decipherment
+ */
+#define USAGE_ANY_SIGN		(SC_PKCS15_PRKEY_USAGE_SIGN)
+#define USAGE_ANY_DECIPHER	(SC_PKCS15_PRKEY_USAGE_DECRYPT|\
+				 SC_PKCS15_PRKEY_USAGE_UNWRAP)
+
+static int
+etoken_key_algorithm(unsigned int usage, int *algop)
+{
+	int	sign = 0, decipher = 0;
+
+	if (usage & USAGE_ANY_SIGN) {
+		*algop = ETOKEN_SIGN_RSA;
+		sign++;
+	}
+	if (usage & USAGE_ANY_DECIPHER) {
+		*algop = ETOKEN_DECIPHER_RSA;
+		decipher++;
+	}
+	return (sign && decipher)? -1 : 0;
+}
+
+/*
  * Create a private key object
  */
 #define ETOKEN_KEY_OPTIONS	0x02
 #define ETOKEN_KEY_FLAGS	0x00
 static int
 etoken_store_key_component(struct sc_card *card,
+		int algorithm,
 		unsigned int key_id, unsigned int pin_id,
 		unsigned int num,
 		const u8 *data, size_t len,
@@ -352,7 +382,7 @@ etoken_store_key_component(struct sc_card *card,
 	tlv_next(&tlv, 0x85);
 	tlv_add(&tlv, ETOKEN_KEY_OPTIONS|(last? 0x00 : 0x20));
 	tlv_add(&tlv, ETOKEN_KEY_FLAGS);
-	tlv_add(&tlv, ETOKEN_ALGO_RSA);
+	tlv_add(&tlv, algorithm);
 	tlv_add(&tlv, 0x00);
 	tlv_add(&tlv, 0xFF);	/* use count */
 	tlv_add(&tlv, 0xFF);	/* DEK (whatever this is) */
@@ -392,7 +422,8 @@ etoken_store_key_component(struct sc_card *card,
 
 static int
 etoken_store_key(struct sc_profile *profile, struct sc_card *card,
-		unsigned int key_id, struct sc_pkcs15_prkey_rsa *key)
+		int algorithm, unsigned int key_id,
+		struct sc_pkcs15_prkey_rsa *key)
 {
 	struct sc_pkcs15_pin_info pin_info;
 	int		r, pin_id;
@@ -401,12 +432,12 @@ etoken_store_key(struct sc_profile *profile, struct sc_card *card,
 	if ((pin_id = pin_info.reference) < 0)
 		pin_id = 0;
 
-	r = etoken_store_key_component(card, key_id, pin_id,
-			0, key->modulus.data, key->modulus.len, 0);
+	r = etoken_store_key_component(card, algorithm, key_id, pin_id, 0,
+			key->modulus.data, key->modulus.len, 0);
 	if (r < 0)
 		return r;
-	r = etoken_store_key_component(card, key_id, pin_id,
-			1, key->d.data, key->d.len, 1);
+	r = etoken_store_key_component(card, algorithm, key_id, pin_id, 1,
+			key->d.data, key->d.len, 1);
 
 	return r;
 }
@@ -420,15 +451,21 @@ etoken_new_key(struct sc_profile *profile, struct sc_card *card,
 		struct sc_pkcs15_prkey_info *info)
 {
 	struct sc_pkcs15_prkey_rsa *rsa;
-	int		key_id, r;
+	int		algorithm, key_id, r;
 
 	if (key->algorithm != SC_ALGORITHM_RSA) {
 		error(profile, "eToken supports RSA keys only.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
+	if (etoken_key_algorithm(info->usage, &algorithm) < 0) {
+		error(profile, "eToken does not support keys "
+			       "that can both sign _and_ decrypt.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
 	rsa = &key->u.rsa;
 	key_id = ETOKEN_KEY_ID(index);
-	r = etoken_store_key(profile, card, key_id, rsa);
+	r = etoken_store_key(profile, card, algorithm, key_id, rsa);
 	if (r >= 0) {
 		info->path = profile->df_info->file->path;
 		info->key_reference = key_id;
@@ -553,13 +590,19 @@ etoken_generate_key(struct sc_profile *profile, struct sc_card *card,
 	struct sc_file	*temp;
 	u8		abignum[RSAKEY_MAX_SIZE];
 	u8		randbuf[64], key_id;
-	int		r, delete_it = 0;
+	int		algorithm, r, delete_it = 0;
 
 	keybits &= ~7UL;
 	if (keybits > RSAKEY_MAX_BITS) {
 		error(profile, "Unable to generate key, max size is %d\n",
 				RSAKEY_MAX_BITS);
 		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	if (etoken_key_algorithm(info->usage, &algorithm) < 0) {
+		error(profile, "eToken does not support keys "
+			       "that can both sign _and_ decrypt.");
+		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (sc_profile_get_file(profile, "tempfile", &temp) < 0) {
@@ -582,7 +625,7 @@ etoken_generate_key(struct sc_profile *profile, struct sc_card *card,
 	key_obj.modulus.len = keybits >> 3;
 	key_obj.d.data = abignum;
 	key_obj.d.len = keybits >> 3;
-	r = etoken_store_key(profile, card, key_id, &key_obj);
+	r = etoken_store_key(profile, card, algorithm, key_id, &key_obj);
 	if (r < 0)
 		goto out;
 
