@@ -39,7 +39,7 @@
 
 const char *app_name = "pkcs15-crypt";
 
-int opt_reader = 0, quiet = 0;
+int opt_reader = -1, quiet = 0, opt_wait = 0;
 int opt_debug = 0;
 char * opt_pincode = NULL, * opt_key_id = NULL;
 char * opt_input = NULL, * opt_output = NULL;
@@ -62,6 +62,7 @@ const struct option options[] = {
 	{ "quiet",		0, 0,		'q' },
 	{ "debug",		0, 0,		'd' },
 	{ "pin",		1, 0,		'p' },
+	{ "wait",		0, 0,		'w' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -399,7 +400,7 @@ int main(int argc, char * const argv[])
 	char *pincode;
 		
 	while (1) {
-		c = getopt_long(argc, argv, "sck:r:i:o:qp:d", options, &long_optind);
+		c = getopt_long(argc, argv, "sck:r:i:o:qp:dw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -444,6 +445,9 @@ int main(int argc, char * const argv[])
 		case 'p':
 			opt_pincode = optarg;
 			break;
+		case 'w':
+			opt_wait = 1;
+			break;
 		}
 	}
 	if (action_count == 0)
@@ -455,23 +459,10 @@ int main(int argc, char * const argv[])
 	}
 	if (opt_debug)
 		ctx->debug = opt_debug;
-	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
-		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
-		err = 1;
+
+	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, quiet);
+	if (err)
 		goto end;
-	}
-	if (sc_detect_card_presence(ctx->reader[opt_reader], 0) != 1) {
-		fprintf(stderr, "Card not present.\n");
-		return 3;
-	}
-	if (!quiet)
-		fprintf(stderr, "Connecting to card in reader %s...\n", ctx->reader[opt_reader]->name);
-	r = sc_connect_card(ctx->reader[opt_reader], 0, &card);
-	if (r) {
-		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
-		err = 1;
-		goto end;
-	}
 
 #if 1
 	r = sc_lock(card);

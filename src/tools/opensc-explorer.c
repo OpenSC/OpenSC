@@ -36,7 +36,7 @@
 
 const char *app_name = "opensc-explorer";
 
-int opt_reader = 0, opt_debug = 0;
+int opt_reader = -1, opt_debug = 0, opt_wait = 0;
 const char *opt_driver = NULL;
 
 struct sc_file *current_file = NULL;
@@ -47,6 +47,7 @@ struct sc_card *card = NULL;
 const struct option options[] = {
 	{ "reader",		1, 0, 'r' },
 	{ "card-driver",	1, 0, 'c' },
+	{ "wait",		1, 0, 'w' },
 	{ "debug",		0, 0, 'd' },
 	{ 0, 0, 0, 0 }
 };
@@ -1238,7 +1239,7 @@ int main(int argc, char * const argv[])
 	printf("OpenSC Explorer version %s\n", sc_get_version());
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:c:d", options, &long_optind);
+		c = getopt_long(argc, argv, "r:c:dw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1253,6 +1254,9 @@ int main(int argc, char * const argv[])
 		case 'd':
 			opt_debug++;
 			break;
+		case 'w':
+			opt_wait = 1;
+			break;
 		}
 	}
 
@@ -1263,16 +1267,7 @@ int main(int argc, char * const argv[])
 	}
 	if (opt_debug)
 		ctx->debug = opt_debug;
-	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
-		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
-		err = 1;
-		goto end;
-	}
-	if (sc_detect_card_presence(ctx->reader[opt_reader], 0) != 1) {
-		fprintf(stderr, "Card not present.\n");
-		err = 3;
-		goto end;
-	}
+
 	if (opt_driver != NULL) {
 		err = sc_set_card_driver(ctx, opt_driver);
 		if (err) {
@@ -1281,13 +1276,11 @@ int main(int argc, char * const argv[])
 			goto end;
 		}
 	}
-	fprintf(stderr, "Connecting to card in reader %s...\n", ctx->reader[opt_reader]->name);
-	r = sc_connect_card(ctx->reader[opt_reader], 0, &card);
-	if (r) {
-		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
-		err = 1;
+
+	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, 0);
+	if (err)
 		goto end;
-	}
+
 	printf("Using card driver: %s\n", card->driver->name);
 	r = sc_lock(card);
 	if (r) {

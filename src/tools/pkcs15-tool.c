@@ -26,7 +26,7 @@
 
 const char *app_name = "pkcs15-tool";
 
-int opt_reader = 0, opt_debug = 0;
+int opt_reader = -1, opt_debug = 0, opt_wait = 0;
 int opt_no_cache = 0;
 char * opt_pin_id;
 char * opt_cert = NULL;
@@ -66,6 +66,7 @@ const struct option options[] = {
 	{ "debug",		0, 0,		'd' },
 	{ "no-cache",		0, 0,		OPT_NO_CACHE },
 	{ "pin-id",		1, 0,		'p' },
+	{ "wait",		0, 0,		'w' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -757,7 +758,7 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:cko:qdp:LR:C", options, &long_optind);
+		c = getopt_long(argc, argv, "r:cko:qdp:LR:Cw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -824,6 +825,9 @@ int main(int argc, char * const argv[])
 		case OPT_NO_CACHE:
 			opt_no_cache++;
 			break;
+		case 'w':
+			opt_wait = 1;
+			break;
 		}
 	}
 	if (action_count == 0)
@@ -835,29 +839,11 @@ int main(int argc, char * const argv[])
 	}
 	if (opt_debug)
 		ctx->debug = opt_debug;
-	if (ctx->reader_count == 0) {
-		fprintf(stderr, "No readers configured.\n");
-		err = 1;
+
+	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, quiet);
+	if (err)
 		goto end;
-	}
-	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
-		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
-		err = 1;
-		goto end;
-	}
-	if (sc_detect_card_presence(ctx->reader[opt_reader], 0) != 1) {
-		fprintf(stderr, "Card not present.\n");
-		err = 3;
-		goto end;
-	}
-	if (!quiet)
-		fprintf(stderr, "Connecting to card in reader %s...\n", ctx->reader[opt_reader]->name);
-	r = sc_connect_card(ctx->reader[opt_reader], 0, &card);
-	if (r) {
-		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
-		err = 1;
-		goto end;
-	}
+
 	printf("Using card driver: %s\n", card->driver->name);
 	r = sc_lock(card);
 	if (r) {
