@@ -115,14 +115,12 @@ int sc_test_init(int *argc, char *argv[])
 		printf("Connecting to card failed: %s\n", sc_strerror(i));
 		return i;
 	}
-	printf("connected.\nATR = ");
-	for (i = 0; i < card->atr_len; i++) {
-		if (i)
-			printf(":");
-		printf("%02X", (u8) card->atr[i]);
+	printf("connected.\n");
+	{
+		char tmp[SC_MAX_ATR_SIZE*3];
+		sc_bin_to_hex(card->atr, card->atr_len, tmp, sizeof(tmp) - 1, ':');
+		printf("ATR = %s\n",tmp);
 	}
-	printf("\n");
-	fflush(stdout);
 
 	if (opt_driver != NULL) {
 		rc = sc_set_card_driver(ctx, opt_driver);
