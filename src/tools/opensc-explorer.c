@@ -376,7 +376,7 @@ int do_info(const char *arg)
 	return 0;
 }
 
-int create_file(const struct sc_file *file)
+int create_file(struct sc_file *file)
 {
 	int r;
 	
