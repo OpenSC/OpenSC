@@ -95,7 +95,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 			}
 		}
 	}
-	ctrl = _set_ctrl(pamh, flags, argc, (const char **) argv);
+	ctrl = opensc_pam_set_ctrl(pamh, flags, argc, (const char **) argv);
 	memset(&sctx, 0, sizeof(scam_context));
 	scam_parse_parameters(&sctx, argc, (const char **) argv);
 	sctx.printmsg = printmsg;
@@ -155,7 +155,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		return rv;
 	}
 	/* get this user's authentication token */
-	rv = _read_password(pamh, ctrl, NULL, (PAM_CONST char *) (pinentry ? pinentry : DEFAULT_PINENTRY), NULL, _PAM_AUTHTOK, &password);
+	rv = opensc_pam_read_password(pamh, ctrl, NULL, (PAM_CONST char *) (pinentry ? pinentry : DEFAULT_PINENTRY), NULL, _PAM_AUTHTOK, &password);
 	if (rv != PAM_SUCCESS) {
 		if (rv != PAM_CONV_AGAIN) {
 			opensc_pam_log(LOG_CRIT, pamh, "auth could not identify password for [%s]\n", user);
@@ -235,7 +235,7 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t * pamh, int flags, int argc,
 	int rv = 0;
 	scam_msg_data msg = {pamh, &ctrl};
 
-	ctrl = _set_ctrl(pamh, flags, argc, argv);
+	ctrl = opensc_pam_set_ctrl(pamh, flags, argc, argv);
 	memset(&sctx, 0, sizeof(scam_context));
 	scam_parse_parameters(&sctx, argc, (const char **) argv);
 	sctx.printmsg = printmsg;
@@ -266,7 +266,7 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t * pamh, int flags, int argc,
 		opensc_pam_log(LOG_CRIT, pamh, "open_session - scam_open_session failed\n");
 		return PAM_SESSION_ERR;
 	}
-	opensc_pam_log(LOG_INFO, pamh, "session opened for user %s by %s(uid=%d)\n", user, _get_login() == NULL ? "" : _get_login(), getuid());
+	opensc_pam_log(LOG_INFO, pamh, "session opened for user %s by %s(uid=%d)\n", user, opensc_pam_get_login() == NULL ? "" : opensc_pam_get_login(), getuid());
 	return PAM_SUCCESS;
 }
 
@@ -278,7 +278,7 @@ PAM_EXTERN int pam_sm_close_session(pam_handle_t * pamh, int flags, int argc,
 	int rv = 0;
 	scam_msg_data msg = {pamh, &ctrl};
 
-	ctrl = _set_ctrl(pamh, flags, argc, argv);
+	ctrl = opensc_pam_set_ctrl(pamh, flags, argc, argv);
 	memset(&sctx, 0, sizeof(scam_context));
 	scam_parse_parameters(&sctx, argc, (const char **) argv);
 	sctx.printmsg = printmsg;

@@ -70,7 +70,7 @@ void opensc_pam_log(int err, pam_handle_t * pamh, const char *format,...)
 }
 
 /* this is a front-end for module-application conversations */
-int converse(pam_handle_t * pamh, int ctrl, int nargs
+static int converse(pam_handle_t * pamh, int ctrl, int nargs
 	     ,struct pam_message **message
 	     ,struct pam_response **response)
 {
@@ -78,11 +78,13 @@ int converse(pam_handle_t * pamh, int ctrl, int nargs
 	struct pam_conv *conv;
 
 	retval = pam_get_item(pamh, PAM_CONV, (PAM_CONST void **) &conv);
+	if (!conv && retval == PAM_SUCCESS) {
+		/* XXX: I have no idea why this happens in some cases */
+		retval = PAM_SYSTEM_ERR;
+	}
 	if (retval == PAM_SUCCESS) {
-
 		retval = conv->conv(nargs, (PAM_CONST struct pam_message **) message
 				    ,response, conv->appdata_ptr);
-
 		if (retval != PAM_SUCCESS && on(OPENSC_DEBUG, ctrl)) {
 			opensc_pam_log(LOG_DEBUG, pamh, "conversation failure [%s]"
 				       ,pam_strerror(pamh, retval));
@@ -129,7 +131,6 @@ int opensc_pam_msg(pam_handle_t * pamh, unsigned int ctrl
 	return retval;
 }
 
-#if 0
 static void print_ctrl(unsigned int ctrl)
 {
 	unsigned int i;
@@ -142,12 +143,11 @@ static void print_ctrl(unsigned int ctrl)
 		}
 	}
 }
-#endif
 
 /*
  * set the control flags for the OPENSC module.
  */
-int _set_ctrl(pam_handle_t * pamh, int flags, int argc, const char **argv)
+int opensc_pam_set_ctrl(pam_handle_t * pamh, int flags, int argc, const char **argv)
 {
 	unsigned int ctrl;
 
@@ -196,10 +196,10 @@ int _set_ctrl(pam_handle_t * pamh, int flags, int argc, const char **argv)
 	if (on(OPENSC_AUDIT, ctrl)) {
 		set(OPENSC_DEBUG, ctrl);
 	}
+	if (on(OPENSC_DEBUG, ctrl)) {
+		print_ctrl(ctrl);
+	}
 	/* return the set of flags */
-#if 0
-	print_ctrl(ctrl);
-#endif
 	return ctrl;
 }
 
@@ -215,7 +215,7 @@ static void _cleanup(pam_handle_t * pamh, void *x, int error_status)
 /*
  * obtain a password from the user
  */
-int _read_password(pam_handle_t * pamh
+int opensc_pam_read_password(pam_handle_t * pamh
 		   ,unsigned int ctrl
 		   ,PAM_CONST char *comment
 		   ,PAM_CONST char *prompt1
@@ -361,7 +361,7 @@ int _read_password(pam_handle_t * pamh
  * Because getlogin() is braindead and sometimes it just
  * doesn't work, we reimplement it here.
  */
-char *_get_login(void)
+char *opensc_pam_get_login(void)
 {
   char *user = NULL;
 #ifdef HAVE_SETUTENT

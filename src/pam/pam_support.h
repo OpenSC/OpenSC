@@ -5,6 +5,8 @@
  *  Antti Tapaninen <aet@cc.hut.fi>
  *  Anna Erika Suortti <asuortti@cc.hut.fi>
  *
+ * Taken and modified from the pam_unix source
+ *
  * This program is free software; you can redistribute it and/or modify  
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -89,11 +91,6 @@ do {                                              \
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* Taken and modified from pam_unix */
-
-extern void opensc_pam_log(int err, pam_handle_t * pamh, const char *format,...);
-extern int converse(pam_handle_t * pamh, int ctrl, int nargs, struct pam_message **message, struct pam_response **response);
 
 /*
  * here is the string to inform the user that the new passwords they
@@ -192,16 +189,17 @@ static const OPENSC_Ctrls opensc_args[OPENSC_CTRLS_] =
 	_pam_drop(xx);		\
 }
 
+extern void opensc_pam_log(int err, pam_handle_t * pamh, const char *format,...);
 extern int opensc_pam_msg(pam_handle_t * pamh, unsigned int ctrl, int type, PAM_CONST char *text);
-extern int _set_ctrl(pam_handle_t * pamh, int flags, int argc, const char **argv);
-extern int _read_password(pam_handle_t * pamh
+extern int opensc_pam_set_ctrl(pam_handle_t * pamh, int flags, int argc, const char **argv);
+extern int opensc_pam_read_password(pam_handle_t * pamh
 			  ,unsigned int ctrl
 			  ,PAM_CONST char *comment
 			  ,PAM_CONST char *prompt1
 			  ,PAM_CONST char *prompt2
 			  ,PAM_CONST char *data_name
 			  ,PAM_CONST char **pass);
-extern char *_get_login(void);
+extern char *opensc_pam_get_login(void);
 
 #define _PAM_AUTHTOK "-OPENSC-PASS"
 
