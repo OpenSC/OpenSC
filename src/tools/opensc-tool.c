@@ -80,7 +80,7 @@ const char *option_help[] = {
 struct sc_context *ctx = NULL;
 struct sc_card *card = NULL;
 
-int list_readers(void)
+static int list_readers(void)
 {
 	int i;
 	
@@ -97,7 +97,7 @@ int list_readers(void)
 	return 0;
 }
 
-int list_reader_drivers(void)
+static int list_reader_drivers(void)
 {
 	int i;
 	
@@ -113,7 +113,7 @@ int list_reader_drivers(void)
 	return 0;
 }
 
-int list_drivers(void)
+static int list_drivers(void)
 {
 	int i;
 	
@@ -129,7 +129,8 @@ int list_drivers(void)
 	return 0;
 }
 
-int print_file(struct sc_card *card, const struct sc_file *file, const struct sc_path *path, int depth)
+static int print_file(struct sc_card *in_card, const struct sc_file *file,
+	const struct sc_path *path, int depth)
 {
 	int r;
 	const char *tmps;
@@ -143,7 +144,7 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 	
 	for (r = 0; r < depth; r++)
 		printf("  ");
-	for (r = 0; r < path->len; r++) {
+	for (r = 0; r < (int)path->len; r++) {
 		printf("%02X", path->value[r]);
 		if (r && (r & 1) == 1)
 			printf(" ");
@@ -179,10 +180,10 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 	for (r = 0; r < depth; r++)
 		printf("  ");
 	if (file->type == SC_FILE_TYPE_DF)
-		for (r = 0; r < sizeof(ac_ops_df)/sizeof(ac_ops_df[0]); r++)
+		for (r = 0; r < (int) (sizeof(ac_ops_df)/sizeof(ac_ops_df[0])); r++)
 			printf("%s[%s] ", ac_ops_df[r], acl_to_str(sc_file_get_acl_entry(file, r)));
 	else
-		for (r = 0; r < sizeof(ac_ops_ef)/sizeof(ac_ops_ef[0]); r++)
+		for (r = 0; r < (int) (sizeof(ac_ops_ef)/sizeof(ac_ops_ef[0])); r++)
 			printf("%s[%s] ", ac_ops_ef[r], acl_to_str(sc_file_get_acl_entry(file, r)));
 
 	if (file->sec_attr_len) {
@@ -215,7 +216,7 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 			return 1;
 		}
 
-		r = sc_read_binary(card, 0, buf, file->size, 0);
+		r = sc_read_binary(in_card, 0, buf, file->size, 0);
 		if (r > 0)
 			hex_dump_asc(stdout, buf, r, 0);
 		free(buf);
@@ -225,7 +226,7 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 
 		for (i=0; i < file->record_count; i++) {
 			printf("Record %d\n", i);
-			r = sc_read_record(card, i, buf, 256, 0);
+			r = sc_read_record(in_card, i, buf, 256, 0);
 			if (r > 0)
 				hex_dump_asc(stdout, buf, r, 0);
 		}
@@ -233,7 +234,7 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 	return 0;
 }
 
-int enum_dir(struct sc_path path, int depth)
+static int enum_dir(struct sc_path path, int depth)
 {
 	struct sc_file *file;
 	int r, file_type;
@@ -270,7 +271,7 @@ int enum_dir(struct sc_path path, int depth)
 	return 0;
 }	
 
-int list_files(void)
+static int list_files(void)
 {
 	struct sc_path path;
 	int r;
@@ -280,7 +281,7 @@ int list_files(void)
 	return r;
 }
 
-int send_apdu(void)
+static int send_apdu(void)
 {
 	struct sc_apdu apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE],
@@ -354,12 +355,12 @@ int send_apdu(void)
 	return 0;
 }
 
-void print_serial(sc_card_t *card)
+static void print_serial(sc_card_t *in_card)
 {
 	int r;
 	struct sc_serial_number serial;
 
-	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
+	r = sc_card_ctl(in_card, SC_CARDCTL_GET_SERIALNR, &serial);
 	if (r)
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GET_SERIALNR, *) failed\n");
 	else
