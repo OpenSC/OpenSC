@@ -2729,7 +2729,7 @@ sc_pkcs15init_read_info(sc_card_t *card, sc_profile_t *profile)
 		len = file->size;
 		sc_file_free(file);
 		r = SC_ERROR_OUT_OF_MEMORY;
-		if ((mem = (u8 *) malloc(file->size)) != NULL) {
+		if ((mem = (u8 *) malloc(len)) != NULL) {
 			r = sc_read_binary(card, 0, mem, len, 0);
 		}
 	} else {
