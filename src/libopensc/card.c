@@ -187,7 +187,13 @@ static int sc_transceive(struct sc_card *card, struct sc_apdu *apdu)
 		break;
 	}
 	sendsize = data - sbuf;
+#if 0
 	recvsize = apdu->resplen + 2;	/* space for the SW's */
+#else
+	/* workaround for a broken cashmouse driver, should be harmless
+	 * for other drivers -- Nils */
+	recvsize = sizeof(rbuf);
+#endif
 	if (card->ctx->debug >= 5) {
 		char buf[2048];
 
