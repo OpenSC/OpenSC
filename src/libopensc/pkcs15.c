@@ -27,36 +27,6 @@
 #include <assert.h>
 
 
-static int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *);
-
-void sc_pkcs15_print_card(const struct sc_pkcs15_card *card)
-{
-	const char *flags[] = {
-		"Read-only",
-		"Login required",
-		"PRN generation",
-		"EID compliant"
-	};
-	int i;
-
-	assert(card != NULL);
-	printf("PKCS#15 Card [%s]:\n", card->label);
-	printf("\tVersion        : %d\n", card->version);
-	printf("\tSerial number  : %s\n", card->serial_number);
-	printf("\tManufacturer ID: %s\n", card->manufacturer_id);
-	printf("\tFlags          : ");
-	for (i = 0; i < 4; i++) {
-		int count = 0;
-		if ((card->flags >> i) & 1) {
-			if (count)
-				printf(", ");
-			printf("%s", flags[i]);
-			count++;
-		}
-	}
-	printf("\n");
-}
-
 static const struct sc_asn1_entry c_asn1_toki[] = {
 	{ "version",        SC_ASN1_INTEGER,      ASN1_INTEGER, 0, NULL },
 	{ "serialNumber",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL },
@@ -445,6 +415,8 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 		free(p15card->serial_number);
 	if (p15card->manufacturer_id)
 		free(p15card->manufacturer_id);
+	if (p15card->preferred_language)
+		free(p15card->preferred_language);
 	free(p15card);
 }
 
@@ -484,7 +456,23 @@ int sc_pkcs15_bind(struct sc_card *card,
 		sc_pkcs15_card_free(p15card);
 		SC_FUNC_RETURN(ctx, 1, err);
 	}
-	
+
+	/* Check for non-pkcs15 cards that we emulate. We do this
+	 * twice - first, we check all emulators that list the ATRs
+	 * they match - the OpenPGP emulator is one of them.
+	 *
+	 * If we find no emulator at this stage, we do the normal
+	 * pkcs15 stuff - looking for EF(DIR), trying to locate the
+	 * application DF, parsing EF(TokenInfo) etc etc.
+	 *
+	 * If that fails, too, we check all other emulators as a last
+	 * resort.
+	 */
+	err = sc_pkcs15_bind_synthetic(p15card, 1);
+	if (err >= 0)
+		goto done;
+
+	/* Enumerate apps now */
 	if (card->app_count < 0) {
 		err = sc_enum_apps(card);
 		if (err < 0 && err != SC_ERROR_FILE_NOT_FOUND) {
@@ -515,7 +503,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	err = sc_select_file(card, &p15card->file_app->path, NULL);
 	card->ctx->suppress_errors--;
 	if (err < 0) {
-		err = sc_pkcs15_bind_synthetic(p15card);
+		err = sc_pkcs15_bind_synthetic(p15card, 0);
 		if (err < 0)
 			goto error;
 		goto done;
@@ -583,80 +571,6 @@ error:
 	SC_FUNC_RETURN(ctx, 1, err);
 }
 
-int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *p15card)
-{
-	int ret = SC_ERROR_INTERNAL, i;
-	struct sc_context *ctx = p15card->card->ctx;
-	const scconf_list *clist, *tmp;
-	scconf_block *conf_block = NULL, **blocks;
-
-	SC_FUNC_CALLED(ctx, 1);
-
-	assert(p15card);
-
-	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
-		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
-			"framework", "pkcs15");
-		if (blocks[0] != NULL)
-			conf_block = blocks[0];
-		free(blocks);
-	}
-	if (!conf_block)
-		return SC_ERROR_INTERNAL;
-	/* get the pkcs15_syn libs from the conf file */
-	clist = scconf_find_list(conf_block, "pkcs15_syn");
-	if (!clist)
-		return SC_ERROR_INTERNAL;
-
-	/* iterate trough the list given in the config file */
-	for (tmp = clist; tmp != NULL; tmp = tmp->next) {
-		int  r, tmp_r;
-		void *handle = NULL, *func_handle;
-		int  (*init_func)(sc_pkcs15_card_t *);
-
-		if (ctx->debug >= 4) {
-			sc_debug(ctx, "Loading: %s\n", tmp->data);
-		}
-		/* try to open dynamic library */
-		r = sc_module_open(ctx, &handle, tmp->data);
-		if (r != SC_SUCCESS)
-			/* ignore error, try next one */
-			continue;
-		/* get a handle to the pkcs15 init function 
-		 * XXX the init_func should not modify the contents of
-		 * sc_pkcs15_card_t unless the card is really the one
-		 * the driver is intended for -- Nils
-		 */
-		r = sc_module_get_address(ctx, handle, &func_handle, 
-			"sc_pkcs15_init_func");
-		init_func = (int (*)(sc_pkcs15_card_t *))func_handle;
-		if (r != SC_SUCCESS || !init_func)
-			return r;
-		/* try to initialize synthetic pkcs15 structures */
-		tmp_r = init_func(p15card);
-		r = sc_module_close(ctx, handle);
-		if (r != SC_SUCCESS)
-			return r;
-		if (tmp_r == SC_SUCCESS) {
-			p15card->flags |= SC_PKCS15_CARD_FLAG_READONLY;
-			p15card->magic  = 0x10203040;
-			ret = SC_SUCCESS;
-			break;
-		}
-		else if (tmp_r == SC_ERROR_WRONG_CARD) {
-			/* wrong init_func => try next one (if existing) */
-			if (ctx->debug >= 4) {
-				sc_debug(ctx, "init_func failed => trying next one\n");
-			}
-			continue;
-		}
-		/* some internal/card error occured => exit */
-		return tmp_r;
-	}
-
-	return ret;
-}
-
 int sc_pkcs15_detect(struct sc_card *card)
 {
 	int r;
@@ -673,6 +587,8 @@ int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 {
 	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	if (p15card->dll_handle)
+		sc_module_close(p15card->card->ctx, p15card->dll_handle);
 	sc_pkcs15_card_free(p15card);
 	return 0;
 }

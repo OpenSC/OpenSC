@@ -353,6 +353,9 @@ typedef struct sc_pkcs15_card {
 	} opts;
 
 	unsigned int magic;
+
+	void *dll_handle;		/* shared lib for emulated cards */
+	char *preferred_language;
 } sc_pkcs15_card_t;
 
 #define SC_PKCS15_CARD_FLAG_READONLY		0x01
@@ -382,8 +385,6 @@ int sc_pkcs15_find_object_by_id(sc_pkcs15_card_t *, int,
 
 struct sc_pkcs15_card * sc_pkcs15_card_new(void);
 void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card);
-
-void sc_pkcs15_print_card(const struct sc_pkcs15_card *card);
 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,
@@ -599,6 +600,8 @@ typedef struct sc_pkcs15_search_key {
 
 int sc_pkcs15_search_objects(sc_pkcs15_card_t *, sc_pkcs15_search_key_t *,
 			sc_pkcs15_object_t **, size_t);
+
+extern int sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *, int);
 
 #ifdef  __cplusplus
 }
