@@ -16,3 +16,5 @@ gmon.out
 core
 Makefile
 Makefile.in
+opensc-crypt
+opensc-tool

@@ -16,3 +16,9 @@ gmon.out
 core
 Makefile
 Makefile.in
+base64
+hst-test
+lottery
+p15dump
+pintest
+prngtest

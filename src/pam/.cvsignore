@@ -16,3 +16,4 @@ gmon.out
 core
 Makefile
 Makefile.in
+pam_pkcs15-test
