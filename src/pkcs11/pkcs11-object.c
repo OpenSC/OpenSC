@@ -917,9 +917,11 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 #ifndef HAVE_OPENSSL
 	return CKR_FUNCTION_NOT_SUPPORTED;
 #else
+#if 0
         CK_BBOOL can_verify;
-	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE verify_attribute = { CKA_VERIFY, &can_verify, sizeof(can_verify) };
+#endif
+	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;

@@ -569,7 +569,6 @@ static int iso7816_create_file(struct sc_card *card, struct sc_file *file)
 static int iso7816_get_response(struct sc_card *card, sc_apdu_t *orig_apdu, size_t count)
 {
 	struct sc_apdu apdu;
-	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);

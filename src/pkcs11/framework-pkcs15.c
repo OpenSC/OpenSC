@@ -1188,7 +1188,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	CK_ULONG	keybits;
 	char		pub_label[SC_PKCS15_MAX_LABEL_SIZE];
 	char		priv_label[SC_PKCS15_MAX_LABEL_SIZE];
-	int j, rc, rv = CKR_OK;
+	int rc, rv = CKR_OK;
 
 	debug(context, "Keypair generation, mech = 0x%0x\n", pMechanism->mechanism);
 

@@ -934,10 +934,7 @@ void
 set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
 	CK_OBJECT_HANDLE obj;
-	CK_ATTRIBUTE templ[] = {CKA_ID, new_object_id, new_object_id_len};
-#if 0
-	CK_ATTRIBUTE templ2[] = {CKA_LABEL, "new_label", 9};
-#endif
+	CK_ATTRIBUTE templ[] = {{CKA_ID, new_object_id, new_object_id_len}};
 	CK_RV rv;
 
 	if (!find_object(session, opt_object_class, &obj, opt_object_id, opt_object_id_len, 0)) {
@@ -1783,7 +1780,6 @@ sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,	CK_OBJECT_HANDLE priv_ke
 	CK_OBJECT_HANDLE pub_key, int one_test)
 {
 	CK_RV rv;
-	int count;
 	CK_MECHANISM_TYPE mech_types[] = {
 		CKM_RSA_X_509,
 		CKM_RSA_PKCS,
@@ -1809,7 +1805,8 @@ sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,	CK_OBJECT_HANDLE priv_ke
 		456
 	};
 	unsigned char signat[512];
-	int j, signat_len, errors = 0;
+	CK_ULONG signat_len;
+	int j, errors = 0;
 
 	for (j = 0, mech_type = mech_types; *mech_type != 0xffffff; mech_type++, j++) {
 		CK_MECHANISM mech = {*mech_type, NULL, 0};
@@ -1886,9 +1883,9 @@ test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 
 	for (i = 0; find_object(sess, CKO_PRIVATE_KEY, &priv_key, NULL, 0, i); i++) {
 		char *label, *id;
-		int id_len, err;
+		CK_ULONG id_len;
 		
-		printf("  testing key %ld", i);
+		printf("  testing key %d", i);
 		if ((label = getLABEL(sess, priv_key, NULL)) != NULL) {
 			printf(" (%s)", label);
 			free(label);
@@ -2219,8 +2216,6 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		{CKA_LABEL, label, label_len},
 		{CKA_SUBJECT, "This won't be used in our lib", 29}
 	};
-	unsigned char		cert[5000];
-	int			cert_len;
 	FILE			*f;
 
 	get_mechanisms(slot, &mech_type, &num_mechs);
@@ -2275,7 +2270,7 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	rv = p11->C_Sign(session, data, data_len, NULL, &sig_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Sign", rv);
-	printf("sig_len = %d\n", sig_len);
+	printf("sig_len = %ld\n", sig_len);
 	sig_len = 20;
 	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
 	if (rv != CKR_BUFFER_TOO_SMALL) {
