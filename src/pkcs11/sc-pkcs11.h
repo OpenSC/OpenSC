@@ -51,7 +51,7 @@ extern "C" {
 #endif
 
 #define SC_PKCS11_MAX_VIRTUAL_SLOTS	8
-#define SC_PKCS11_MAX_READERS           2
+#define SC_PKCS11_MAX_READERS           SC_MAX_READERS
 
 struct sc_pkcs11_session;
 struct sc_pkcs11_slot;
