@@ -28,7 +28,7 @@ libopensc_la_SOURCES = \
 	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 	card-etoken.c card-tcos.c card-emv.c card-default.c \
 	card-mcrd.c card-starcos.c card-openpgp.c card-jcop.c\
-	card-oberthur.c card-oberthur.h \
+	card-oberthur.c \
 	\
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
 	pkcs15-netkey.c pkcs15-esteid.c pkcs15-postecert.c
@@ -40,7 +40,7 @@ include_HEADERS = \
 	cardctl.h asn1.h log.h ui.h \
 	errors.h types.h
 
-noinst_HEADERS = ctbcs.h internal.h esteid.h
+noinst_HEADERS = ctbcs.h internal.h esteid.h card-oberthur.h
 
 pkgconfigdir = @libdir@/pkgconfig
 pkgconfig_DATA = libopensc.pc libpkcs15init.pc \

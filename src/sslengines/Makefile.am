@@ -20,7 +20,6 @@ OPENSSL_CFLAGS = \
 engine_opensc_la_SOURCES = hw_opensc.c engine_opensc.c engine_opensc.h
 engine_opensc_la_CFLAGS = $(OPENSSL_CFLAGS)
 engine_opensc_la_LIBADD = @ENGINE_LINK@ @LIBOPENSC@
-
 engine_opensc_la_LDFLAGS = @OPENSSL_LDFLAGS@ -module -avoid-version
 
 engine_pkcs11_la_SOURCES = \
