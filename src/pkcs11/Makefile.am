@@ -9,7 +9,7 @@ INCLUDES = @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBOPENSC@
 
 SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
-	framework-pkcs15.c
+	secretkey.c framework-pkcs15.c
 INC = sc-pkcs11.h
 
 lib_LTLIBRARIES = opensc-pkcs11.la

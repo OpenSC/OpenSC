@@ -469,10 +469,16 @@ CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 		break;
         /*
 	case CKA_SUBJECT:
-	case CKA_ISSUER:
-	case CKA_SERIAL_NUMBER:
 	break;
 	*/
+	case CKA_SERIAL_NUMBER:
+		 check_attribute_buffer(attr, cert->certificate->serial_len);
+		 memcpy(attr->pValue, cert->certificate->serial, cert->certificate->serial_len);
+		 break;
+	case CKA_ISSUER:
+		 check_attribute_buffer(attr, cert->certificate->issuer_len);
+		 memcpy(attr->pValue, cert->certificate->issuer, cert->certificate->issuer_len);
+		 break;
 	default:
                 return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
@@ -518,6 +524,8 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_NEVER_EXTRACTABLE:
 	case CKA_SIGN:
 	case CKA_PRIVATE:
+	case CKA_UNWRAP: /* XXX should make an attempt to find out whether
+			    the card supports unwrap */
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
                 break;
@@ -525,7 +533,6 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_DERIVE:
 	case CKA_DECRYPT:
 	case CKA_SIGN_RECOVER:
-	case CKA_UNWRAP:
 	case CKA_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = FALSE;
@@ -625,13 +632,47 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
         return sc_to_cryptoki_error(rv, ses->slot->card->reader);
 }
 
+static CK_RV
+pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
+		CK_MECHANISM_PTR pMechanism,
+		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulAttributeCount,
+		void **result)
+{
+	struct pkcs15_prkey_object *prkey;
+	struct sc_pkcs15_card *p15card;
+	u8	unwrapped_key[256];
+	int	rv;
+
+	debug(context, "Initiating key unwrap.\n");
+
+	if (pMechanism->mechanism != CKM_RSA_PKCS)
+		return CKR_MECHANISM_INVALID;
+
+	p15card = (struct sc_pkcs15_card*) ses->slot->card->fw_data;
+	prkey = (struct pkcs15_prkey_object *) obj;
+	rv = sc_pkcs15_decipher(p15card, prkey->prkey_object,
+				 pData, ulDataLen,
+				 unwrapped_key, sizeof(unwrapped_key));
+	debug(context, "Key unwrap complete. Result %d.\n", rv);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+	return sc_pkcs11_create_secret_key(ses,
+			unwrapped_key, rv,
+			pTemplate, ulAttributeCount,
+			(struct sc_pkcs11_object **) result);
+}
+
+
 struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	NULL,
 	NULL,
 	pkcs15_prkey_get_attribute,
 	NULL,
 	NULL,
-        pkcs15_prkey_sign
+        pkcs15_prkey_sign,
+	pkcs15_prkey_unwrap
 };
 
 /*

@@ -130,6 +130,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	if (rv != CKR_OK)
 		return rv;
 
+	debug(context, "C_FindObjectsInit(slot = %d)\n", session->slot->id);
         dump_template("C_FindObjectsInit()", pTemplate, ulCount);
 
 	rv = session_start_operation(session,
@@ -543,7 +544,34 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE    hSession,          /* the session's handl
 		  CK_ULONG             ulAttributeCount,  /* # of attributes in template */
 		  CK_OBJECT_HANDLE_PTR phKey)             /* gets handle of recovered key */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	int rv;
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_object *object, *result;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = pool_find(&session->slot->object_pool, hUnwrappingKey,
+				(void**) &object);
+	if (rv != CKR_OK)
+		return rv;
+
+	if (object->ops->sign == NULL_PTR)
+                return CKR_KEY_TYPE_INCONSISTENT;
+
+	rv = object->ops->unwrap_key(session, object, pMechanism,
+				pWrappedKey, ulWrappedKeyLen,
+				pTemplate, ulAttributeCount,
+				(void **) &result);
+
+	debug(context, "Unwrapping result was %d\n", rv);
+
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = pool_insert(&session->slot->object_pool, result, phKey);
+	return rv;
 }
 
 CK_RV C_DeriveKey(CK_SESSION_HANDLE    hSession,          /* the session's handle */

@@ -65,6 +65,11 @@ struct sc_pkcs11_object_ops {
 
 	/* Cryptographic methods */
 	CK_RV (*sign)(struct sc_pkcs11_session *, void *, CK_MECHANISM_PTR pMechanism, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulDataLen);
+	CK_RV (*unwrap_key)(struct sc_pkcs11_session *, void *,
+			CK_MECHANISM_PTR,
+			CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+			CK_ATTRIBUTE_PTR, CK_ULONG,
+			void **);
         /* Others to be added when implemented */
 };
 
@@ -201,5 +206,11 @@ CK_RV pool_find_and_delete(struct sc_pkcs11_pool *, CK_ULONG, void **);
 CK_RV session_start_operation(struct sc_pkcs11_session *, int, int, struct sc_pkcs11_operation **);
 CK_RV session_check_operation(struct sc_pkcs11_session *, int);
 CK_RV session_stop_operation(struct sc_pkcs11_session *);
+
+/* Generic secret key stuff */
+CK_RV sc_pkcs11_create_secret_key(struct sc_pkcs11_session *,
+			const u8 *, size_t,
+			CK_ATTRIBUTE_PTR, CK_ULONG,
+			struct sc_pkcs11_object **);
 
 #endif
