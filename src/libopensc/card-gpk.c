@@ -49,8 +49,8 @@ struct gpk_private_data {
 	unsigned short int	ac[3];
 
 	/* is non-zero if we should use secure messaging */
-	u8	key_set   : 1;
-	u8	key_local : 1,
+	unsigned	key_set   : 1;
+	unsigned	key_local : 1,
 			key_sfi   : 5;
 	u8	key[16];
 };
@@ -820,7 +820,9 @@ sc_get_driver()
 		gpk_ops.finish		= gpk_finish;
 		gpk_ops.select_file	= gpk_select_file;
 		/* The GPK4000 doesn't have a read directory command. */
-		//gpk_ops.list_files	= gpk_list_files;
+#if 0
+		gpk_ops.list_files	= gpk_list_files;
+#endif
 		gpk_ops.verify		= gpk_verify;
 		gpk_ops.create_file	= gpk_create_file;
 	}
