@@ -184,6 +184,11 @@ struct sc_pkcs11_slot {
 	CK_SLOT_INFO slot_info;
 	/* Token specific information (information about card) */
         CK_TOKEN_INFO token_info;
+
+	/* Reader to which card is allocated (same as card->reader
+	 * if there's a card present) */
+	int reader;
+
         /* The card associated with this slot */
 	struct sc_pkcs11_card *card;
 	/* Card events SC_EVENT_CARD_{INSERTED,REMOVED} */
@@ -293,6 +298,7 @@ void dump_template(const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCoun
 CK_RV card_initialize(int reader);
 CK_RV card_detect_all(void);
 CK_RV __card_detect_all(int);
+CK_RV card_detect(int reader);
 CK_RV card_removed(int reader);
 CK_RV slot_initialize(int id, struct sc_pkcs11_slot *);
 CK_RV slot_get_slot(int id, struct sc_pkcs11_slot **);

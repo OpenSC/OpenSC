@@ -73,7 +73,7 @@ CK_RV card_initialize(int reader)
         return CKR_OK;
 }
 
-static CK_RV card_detect(int reader)
+CK_RV card_detect(int reader)
 {
 	struct sc_pkcs11_card *card = &card_table[reader];
         int rc, rv, i, retry = 1;
@@ -87,6 +87,7 @@ static CK_RV card_detect(int reader)
 		slot = virtual_slots + card->first_slot + i;
 		strcpy_bp(slot->slot_info.slotDescription,
 				context->reader[reader]->name, 64);
+		slot->reader = reader;
 	}
 
 
