@@ -1,3 +1,10 @@
+opensc (0.8.1-cvs-20040122-1) unstable; urgency=low
+
+  * included pkcs11-spy.so
+  * reverted libraries to standalone.
+
+ -- Andreas Jellinghaus <aj@dungeon.inka.de>  Thu, 22 Jan 2004 19:10:44 +0100
+
 opensc (0.8.1-cvs-20040115-1) unstable; urgency=low
 
   * libscconf, pkcs15init, libscam, libscldap no longer standalone.
