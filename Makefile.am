@@ -2,7 +2,7 @@
 
 SUBDIRS = . aclocal docs etc macos src win32
 
-EXTRA_DIST = ANNOUNCE CodingStyle bootstrap Makefile.mak depcomp
+EXTRA_DIST = ANNOUNCE CodingStyle QUICKSTART README bootstrap Makefile.mak depcomp
 
 MAINTAINERCLEANFILES = \
 	Makefile.in config.h.in configure \
