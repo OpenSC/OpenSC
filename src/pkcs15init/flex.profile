@@ -18,6 +18,7 @@ cardinfo {
 # here; that is done dynamically.
 PIN user-pin {
     attempts	= 3;
+    flags	= 0x32; # local, initialized, needs-padding
 }
 PIN user-puk {
     attempts	= 10;
@@ -63,6 +64,14 @@ filesystem {
 	    }
 	    EF template-public-key-2 {
 		file-id		= 5202;
+		ACL		= *=AUT1, READ=NONE;
+	    }
+	    EF template-certificate-1 {
+		file-id		= 5501;
+		ACL		= *=AUT1, READ=NONE;
+	    }
+	    EF template-certificate-2 {
+		file-id		= 5502;
 		ACL		= *=AUT1, READ=NONE;
 	    }
 	}

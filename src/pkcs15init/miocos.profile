@@ -41,6 +41,10 @@ filesystem {
 		file-id		= 5501;
 		ACL		= *=NEVER, READ=NONE, UPDATE=$PIN;
 	    }
+	    EF template-certificate {
+		file-id		= 4301;
+		ACL		= *=NEVER, READ=NONE, UPDATE=$PIN;
+	    }
 	}
     }
 }
