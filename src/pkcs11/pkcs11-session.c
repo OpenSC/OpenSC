@@ -78,12 +78,12 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) /* the session's handle */
 
 CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) /* the token's slot */
 {
-	struct sc_pkcs11_pool_item *item;
+	struct sc_pkcs11_pool_item *item, *next;
         struct sc_pkcs11_session *session;
 
-	for (item = session_pool.head; item != NULL; ) {
+	for (item = session_pool.head; item != NULL; item = next) {
 		session = (struct sc_pkcs11_session*) item->item;
-                item = item->next;
+                next = item->next;
 
 		if (session->slot->id == slotID) {
                         C_CloseSession(item->handle);

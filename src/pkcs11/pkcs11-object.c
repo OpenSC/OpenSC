@@ -76,7 +76,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 		debug(context, "Object %d, Attribute 0x%x\n", hObject, pTemplate[i].type);
 		rv = object->ops->get_attribute(session, object, &pTemplate[i]);
 		if (rv != CKR_OK)
-                        return rv;
+                        pTemplate[i].ulValueLen = -1;
 	}
 
         return CKR_OK;
@@ -152,8 +152,12 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 		if (session->slot->login_user != CKU_USER) {
 			if (object->ops->get_attribute(session, object, &private_attribute) != CKR_OK)
 				continue;
-			if (is_private)
-                                continue;
+			if (is_private) {
+				debug(context, "Object %d/%d: Private object and not logged in.\n",
+                                      session->slot->id,
+				      item->handle);
+				continue;
+			}
 		}
 
 		/* Try to match every attribute */
@@ -168,18 +172,21 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 			    temp_attribute.ulValueLen != pTemplate[j].ulValueLen ||
 			    memcmp(temp_attribute.pValue, pTemplate[j].pValue, temp_attribute.ulValueLen) != 0) {
 
-			    	debug(context, "Object %d: Attribute 0x%x does NOT match.\n",
+			    	debug(context, "Object %d/%d: Attribute 0x%x does NOT match.\n",
+                                      session->slot->id,
 				      item->handle, pTemplate[j].type);
 				match = 0;
                                 break;
 			}
 
-			debug(context, "Object %d: Attribute 0x%x matches.\n",
+			debug(context, "Object %d/%d: Attribute 0x%x matches.\n",
+			      session->slot->id,
                               item->handle, pTemplate[j].type);
 		}
 
 		if (match) {
-			debug(context, "Object %d matches\n", item->handle);
+			debug(context, "Object %d/%d matches\n",
+			      session->slot->id, item->handle);
 			operation->handles[operation->num_handles++] = item->handle;
 		}
 	}

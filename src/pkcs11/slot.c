@@ -108,7 +108,7 @@ CK_RV card_removed(int reader)
 	}
 
 	card = &card_table[reader];
-	card->framework->unbind(card->fw_data);
+	card->framework->unbind(card);
 	card->framework = NULL;
 	card->fw_data = NULL;
 
@@ -186,8 +186,10 @@ CK_RV slot_token_removed(int id)
         C_CloseAllSessions(id);
 
 	/* Object pool */
-	while (pool_find_and_delete(&slot->object_pool, 0, (void**) &object) == CKR_OK)
-                object->ops->release(object);
+	while (pool_find_and_delete(&slot->object_pool, 0, (void**) &object) == CKR_OK) {
+                if (object->ops->release)
+			object->ops->release(object);
+	}
 
 	/* Release framework stuff */
 	if (slot->card != NULL && slot->fw_data != NULL) {

@@ -37,6 +37,7 @@
 
 extern struct sc_pkcs11_object_ops pkcs15_cert_ops;
 extern struct sc_pkcs11_object_ops pkcs15_prkey_ops;
+extern struct sc_pkcs11_object_ops pkcs15_pubkey_ops;
 
 struct pkcs15_cert_object {
 	struct sc_pkcs11_object object;
@@ -50,6 +51,11 @@ struct pkcs15_prkey_object {
         struct pkcs15_cert_object *cert_object;
 };
 
+struct pkcs15_pubkey_object {
+	struct sc_pkcs11_object object;
+	struct sc_pkcs15_rsa_pubkey *rsakey;
+	struct sc_pkcs15_cert_info *cert;
+};
 
 /* PKCS#15 Framework */
 
@@ -92,13 +98,21 @@ static struct pkcs15_cert_object *pkcs15_add_cert_object(struct sc_pkcs11_slot *
 				   struct sc_pkcs15_cert_info *cert)
 {
 	struct pkcs15_cert_object *object;
+        struct pkcs15_pubkey_object *obj2;
 
+        /* Certificate object */
         object = (struct pkcs15_cert_object*) malloc(sizeof(struct pkcs15_cert_object));
 	object->object.ops = &pkcs15_cert_ops;
 	object->cert_info = cert;
 	sc_pkcs15_read_certificate(card, cert, &object->cert);
-
 	pool_insert(&slot->object_pool, object, NULL);
+
+        /* Corresponding public key */
+        obj2 = (struct pkcs15_pubkey_object*) malloc(sizeof(struct pkcs15_pubkey_object));
+	obj2->object.ops = &pkcs15_pubkey_ops;
+	obj2->rsakey = &object->cert->key;
+        obj2->cert = cert;
+	pool_insert(&slot->object_pool, obj2, NULL);
 
 	/* Mark as seen */
 	cert->com_attr.flags |= SC_PKCS15_CO_FLAG_OBJECT_SEEN;
@@ -368,8 +382,13 @@ CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
                 *(CK_CERTIFICATE_TYPE*)attr->pValue = CKC_X_509;
 		break;
 	case CKA_ID:
-		check_attribute_buffer(attr, cert->cert_info->id.len);
-		memcpy(attr->pValue, cert->cert_info->id.value, cert->cert_info->id.len);
+		if (cert->cert_info->authority) {
+			check_attribute_buffer(attr, 1);
+			*(unsigned char*)attr->pValue = 0;
+		} else {
+			check_attribute_buffer(attr, cert->cert_info->id.len);
+			memcpy(attr->pValue, cert->cert_info->id.value, cert->cert_info->id.len);
+                }
                 break;
 	case CKA_TRUSTED:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
@@ -418,12 +437,12 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_OBJECT_CLASS*)attr->pValue = CKO_PRIVATE_KEY;
                 break;
 	case CKA_TOKEN:
-	case CKA_PRIVATE:
 	case CKA_LOCAL:
 	case CKA_SENSITIVE:
 	case CKA_ALWAYS_SENSITIVE:
 	case CKA_NEVER_EXTRACTABLE:
 	case CKA_SIGN:
+	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
                 break;
@@ -524,4 +543,80 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	NULL,
         pkcs15_prkey_sign
 };
+
+/*
+ * PKCS#15 RSA Public Key Object
+ */
+
+CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
+				void *object,
+				CK_ATTRIBUTE_PTR attr)
+{
+	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
+
+	switch (attr->type) {
+	case CKA_CLASS:
+		check_attribute_buffer(attr, sizeof(CK_OBJECT_CLASS));
+		*(CK_OBJECT_CLASS*)attr->pValue = CKO_PUBLIC_KEY;
+                break;
+	case CKA_TOKEN:
+	case CKA_LOCAL:
+	case CKA_SENSITIVE:
+	case CKA_ALWAYS_SENSITIVE:
+	case CKA_NEVER_EXTRACTABLE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = TRUE;
+                break;
+	case CKA_PRIVATE:
+	case CKA_MODIFIABLE:
+	case CKA_ENCRYPT:
+	case CKA_VERIFY:
+	case CKA_VERIFY_RECOVER:
+	case CKA_WRAP:
+	case CKA_DERIVE:
+	case CKA_EXTRACTABLE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = FALSE;
+                break;
+	case CKA_LABEL:
+		check_attribute_buffer(attr, strlen(pubkey->cert->com_attr.label));
+                memcpy(attr->pValue, pubkey->cert->com_attr.label, strlen(pubkey->cert->com_attr.label));
+		break;
+	case CKA_KEY_TYPE:
+		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
+                *(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
+                break;
+	case CKA_ID:
+		check_attribute_buffer(attr, pubkey->cert->id.len);
+		memcpy(attr->pValue, pubkey->cert->id.value, pubkey->cert->id.len);
+                break;
+	case CKA_KEY_GEN_MECHANISM:
+		check_attribute_buffer(attr, sizeof(CK_MECHANISM_TYPE));
+                *(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
+		break;
+	case CKA_MODULUS:
+		check_attribute_buffer(attr, pubkey->rsakey->modulus_len);
+		memcpy(attr->pValue,
+		       pubkey->rsakey->modulus,
+		       pubkey->rsakey->modulus_len);
+		break;
+	case CKA_MODULUS_BITS:
+	case CKA_PUBLIC_EXPONENT:
+                //break;
+	default:
+                return CKR_ATTRIBUTE_TYPE_INVALID;
+	}
+
+        return CKR_OK;
+}
+
+struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
+	NULL,
+	NULL,
+	pkcs15_pubkey_get_attribute,
+	NULL,
+	NULL,
+        NULL
+};
+
 

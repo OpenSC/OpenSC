@@ -16,3 +16,12 @@ lib_LTLIBRARIES = opensc-pkcs11.la
 
 opensc_pkcs11_la_SOURCES = $(SRC) $(INC)
 opensc_pkcs11_la_LDFLAGS = -module -avoid-version
+
+jar-dir:
+	if test ! -d jar-dir ; then mkdir jar-dir ; fi
+
+pkcs11-jar: jar-dir
+	cp .libs/*.so jar-dir
+	cp opensc_pkcs11_install.js jar-dir
+	signtool -Z"opensc-pkcs11.jar" -i"opensc_pkcs11_install.js" \
+		 -k"testcert" jar-dir
