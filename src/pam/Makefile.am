@@ -2,22 +2,29 @@
 
 libdir = ${prefix}/lib/security
 
-INCLUDES = @CFLAGS_OPENSC@
-LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBPAM@ @LIBCRYPTO@ @LIBOPENSC@
+INCLUDES = @CFLAGS_PCSC@ @CFLAGS_SSP@ @CFLAGS_OPENSC@ -I../scam
 
-SRC = pam_pkcs15.c
-INC = 
+if HAVE_LDAP
+LDAP_LTLIBS = @LIBSCLDAP@
+else
+LDAP_LTLIBS = 
+endif
+
+LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBSCRANDOM@ $(LDAP_LTLIBS) @LIBCRYPTO@ @LIBSSP@ @LIBOPENSC@ @LIBPAM@
+
+AUTHSRC = ../scam/scam.c ../scam/scam.h ../scam/sp.c ../scam/p15_eid.c ../scam/p15_ldap.c
+SRC = $(AUTHSRC) pam_opensc.c pam_support.c pam_support.h
 
 if HAVE_PAM_AND_SSL
-lib_LTLIBRARIES = pam_pkcs15.la
-noinst_PROGRAMS = pam_pkcs15-test
+lib_LTLIBRARIES = pam_opensc.la
+noinst_PROGRAMS = pam_opensc-test
 else
 lib_LTLIBRARIES = 
 noinst_PROGRAMS = 
 endif
 
-pam_pkcs15_la_SOURCES = $(SRC) $(INC)
-pam_pkcs15_la_LDFLAGS = -module -avoid-version
+pam_opensc_la_SOURCES = $(SRC)
+pam_opensc_la_LDFLAGS = -module -avoid-version
 
-pam_pkcs15_test_SOURCES = $(SRC) $(INC)
-pam_pkcs15_test_CFLAGS = -DTEST
+pam_opensc_test_SOURCES = $(SRC) misc_conv.c
+pam_opensc_test_CFLAGS = -DPAMTEST

@@ -14,6 +14,5 @@
 *.la
 gmon.out
 core
-pam_opensc-test
 Makefile
 Makefile.in

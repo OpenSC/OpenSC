@@ -14,6 +14,7 @@
 *.la
 gmon.out
 core
-pam_opensc-test
+test-conf
 Makefile
 Makefile.in
+lex-parse.c
