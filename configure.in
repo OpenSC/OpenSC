@@ -541,7 +541,7 @@ if test "x$pcsc_path" = "xno"; then
 	PCSC_MSG="no"
 fi
 if test "x$pcsc_path" != "xno" -a "x$PCSC_MSG" != "xyes"; then
-	PKG_CHECK_MODULES(PCSC, libpcscslite, [
+	PKG_CHECK_MODULES(PCSC, libpcsclite, [
 		PCSC_MSG="yes"
 		AC_MSG_RESULT($PCSC_MSG)
 		],[ 
