@@ -841,8 +841,8 @@ AM_CONDITIONAL(HAVE_PCSCLITE, test "x$ac_cv_lib_pcsclite_SCardEstablishContext" 
 
 dnl --enable-usbtoken option.
 AC_ARG_ENABLE(usbtoken, AC_HELP_STRING(
-[--enable-usbtoken],	[enable the usbtoken reader backed. [default=yes]]),
-	, enable_usbtoken=yes)
+[--enable-usbtoken],	[enable the usbtoken reader backed. [default=no]]),
+	, enable_usbtoken=no)
 if test "x$enable_usbtoken" = "xyes"; then
 	AC_DEFINE(HAVE_USBTOKEN, 1, [Enable usbtoken support])
 	USBTOKEN_MSG=yes
