@@ -345,7 +345,7 @@ void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 #ifdef _WIN32
 	if (!strncmp(conf_path, "%windir%", 8)) {
 		GetWindowsDirectory(temp_path, sizeof(temp_path));
-		strcat(temp_path, conf_path + 8);
+		strncat(temp_path, conf_path + 8, sizeof(temp_path) - strlen(temp_path));
 		conf_path = temp_path;
 	}
 #endif
