@@ -1003,7 +1003,7 @@ gpk_select_key(struct sc_card *card, int key_sfi, const u8 *buf, size_t buflen)
 {
 	struct gpk_private_data *priv = DRVDATA(card);
 	struct sc_apdu	apdu;
-	u8		random[8], resp[258];
+	u8		rnd[8], resp[258];
 	int		r;
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -1012,15 +1012,15 @@ gpk_select_key(struct sc_card *card, int key_sfi, const u8 *buf, size_t buflen)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* now do the SelFk */
-	RAND_pseudo_bytes(random, sizeof(random));
+	RAND_pseudo_bytes(rnd, sizeof(rnd));
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cla = 0x80;
 	apdu.cse = SC_APDU_CASE_4_SHORT;
 	apdu.ins = 0x28;
 	apdu.p1  = 0;
 	apdu.p2  = key_sfi;
-	apdu.data = random;
-	apdu.datalen = sizeof(random);
+	apdu.data = rnd;
+	apdu.datalen = sizeof(rnd);
 	apdu.lc = apdu.datalen;
 	apdu.resp = resp;
 	apdu.resplen = sizeof(resp);
@@ -1035,7 +1035,7 @@ gpk_select_key(struct sc_card *card, int key_sfi, const u8 *buf, size_t buflen)
 	if (apdu.resplen != 12) {
 		r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	} else
-	if ((r = gpk_set_filekey(buf, random, resp, priv->key)) == 0) {
+	if ((r = gpk_set_filekey(buf, rnd, resp, priv->key)) == 0) {
 		priv->key_set = 1;
 		priv->key_reference = key_sfi;
 	}
@@ -1734,6 +1734,43 @@ gpk_get_info(struct sc_card *card, u8 p1, u8 p2, u8 *buf, size_t buflen)
 	return r;
 }
 
+static int gpk_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
+{
+	int r;
+	u8  rbuf[10];
+	struct sc_apdu apdu;
+	struct gpk_private_data *priv = DRVDATA(card);
+
+	if (priv->variant != GPK16000)
+		return SC_ERROR_NOT_SUPPORTED;
+
+	if (!serial)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	/* see if we have cached serial number */
+	if (card->serialnr.len) {
+		memcpy(serial, &card->serialnr, sizeof(*serial));
+		return SC_SUCCESS;
+	}
+	/* get serial number via Get CSN */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xb8, 0x00, 0x00);
+	apdu.cla |= 0x80;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le   = 8;
+	apdu.lc   = 0;
+	apdu.datalen = 0;
+        r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+		return SC_ERROR_INTERNAL;
+	/* cache serial number */
+	memcpy(card->serialnr.value, apdu.resp, apdu.resplen);
+	card->serialnr.len = apdu.resplen;
+	/* copy and return serial number */
+	memcpy(serial, &card->serialnr, sizeof(*serial));
+	return SC_SUCCESS;
+}
+
 /*
  * Dispatch card_ctl calls
  */
@@ -1763,6 +1800,8 @@ gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_GPK_GENERATE_KEY:
 		return gpk_generate_key(card,
 				(struct sc_cardctl_gpk_genkey *) ptr);
+	case SC_CARDCTL_GET_SERIALNR:
+		return gpk_get_serialnr(card, (sc_serial_number_t *) ptr);
 	}
 
 
