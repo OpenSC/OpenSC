@@ -914,6 +914,12 @@ static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	int r;
 	int old_cla = -1;
 
+	/* Fix pin data */
+	data->pin1.encoding   = SC_PIN_ENCODING_ASCII;
+	data->pin1.max_length = 8;
+	data->pin2.encoding   = SC_PIN_ENCODING_ASCII;
+	data->pin2.max_length = 8;
+
 	if (data->cmd == SC_PIN_CMD_VERIFY) {
 		r = flex_build_verify_apdu(card, &apdu, data);
 		if (r < 0)
