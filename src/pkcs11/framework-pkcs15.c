@@ -2143,7 +2143,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	/* Register generic mechanisms */
 	sc_pkcs11_register_generic_mechanisms(p11card);
 
-	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP | CKF_GENERATE_KEY_PAIR;
+	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP;
 	mech_info.ulMinKeySize = ~0;
 	mech_info.ulMaxKeySize = 0;
 
@@ -2208,6 +2208,15 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		if (flags & SC_ALGORITHM_RSA_HASH_MD5_SHA1)
 			sc_pkcs11_register_sign_and_hash_mechanism(p11card,
 					CKM_XXX_RSA_PKCS, CKM_XXX, mt);
+#endif
+
+#ifdef HAVE_OPENSSL
+		mech_info.flags = CKF_GENERATE_KEY_PAIR;
+		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_KEY_PAIR_GEN,
+					&mech_info, CKK_RSA, NULL);
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
 #endif
 	}
 
