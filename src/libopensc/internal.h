@@ -40,6 +40,7 @@ extern "C" {
 
 struct sc_atr_table {
 	const char *atr;
+	const char *atrmask;
 	const char *name;
 	int id;
 	unsigned long flags;

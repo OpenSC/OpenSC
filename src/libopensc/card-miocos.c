@@ -28,9 +28,9 @@
 
 static struct sc_atr_table miocos_atrs[] = {
 	/* Test card with 32 kB memory */
-	{ "3B:9D:94:40:23:00:68:10:11:4D:69:6F:43:4F:53:00:90:00", NULL, TYPE_PKI },
+	{ "3B:9D:94:40:23:00:68:10:11:4D:69:6F:43:4F:53:00:90:00", NULL, NULL, TYPE_PKI },
 	/* Test card with 64 kB memory */
-	{ "3B:9D:94:40:23:00:68:20:01:4D:69:6F:43:4F:53:00:90:00", NULL, TYPE_PKI },
+	{ "3B:9D:94:40:23:00:68:20:01:4D:69:6F:43:4F:53:00:90:00", NULL, NULL, TYPE_PKI },
 	{ NULL }
 };
 

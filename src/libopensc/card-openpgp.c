@@ -26,7 +26,7 @@
 #include <ctype.h>
 
 static struct sc_atr_table pgp_atrs[] = {
-	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1" },
+	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL },
 	{ NULL }
 };
 

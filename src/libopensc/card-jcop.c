@@ -24,10 +24,10 @@
 #include <stdlib.h>
 
 static struct sc_atr_table jcop_atrs[] = {
-	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:33:31:06" },
+	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:33:31:06", NULL },
 #if 0
 	/* Requires secure messaging */
-	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:32:31:06" },
+	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:32:31:06", NULL },
 #endif
 	{ NULL }
 };

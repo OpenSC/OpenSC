@@ -138,16 +138,16 @@ static size_t next_idx = -1;
 
 static struct sc_atr_table belpic_atrs[] = {
 	/* Applet V1.1 */
-	{ "3B:98:13:40:0A:A5:03:01:01:01:AD:13:11", NULL, TYPE_BELPIC_EID },
+	{ "3B:98:13:40:0A:A5:03:01:01:01:AD:13:11", NULL, NULL, TYPE_BELPIC_EID },
 	/* Applet V1.0 with new EMV-compatible ATR */
-	{ "3B:98:94:40:0A:A5:03:01:01:01:AD:13:10", NULL, TYPE_BELPIC_EID },
+	{ "3B:98:94:40:0A:A5:03:01:01:01:AD:13:10", NULL, NULL, TYPE_BELPIC_EID },
 	/* Applet beta 5 + V1.0 */
-	{ "3B:98:94:40:FF:A5:03:01:01:01:AD:13:10", NULL, TYPE_BELPIC_EID },
+	{ "3B:98:94:40:FF:A5:03:01:01:01:AD:13:10", NULL, NULL, TYPE_BELPIC_EID },
 #if 0
 	/* Applet beta 3 + 4 */
-	{ "3B:98:11:40:FF:A5:03:01:01:01:AD:13:04", NULL, TYPE_BELPIC_EID },
+	{ "3B:98:11:40:FF:A5:03:01:01:01:AD:13:04", NULL, NULL, TYPE_BELPIC_EID },
 	/* Applet beta 2 */
-	{ "3B:68:00:00:29:05:01:02:01:AD:13:03", NULL, TYPE_BELPIC_EID },
+	{ "3B:68:00:00:29:05:01:02:01:AD:13:03", NULL, NULL, TYPE_BELPIC_EID },
 #endif
 	{ NULL }
 };
