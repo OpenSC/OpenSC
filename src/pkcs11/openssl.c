@@ -264,8 +264,10 @@ CK_RV sc_pkcs11_verify_data(unsigned char *pubkey, int pubkey_len,
 			return CKR_OK;
 		else if (res == 0)
 			return CKR_SIGNATURE_INVALID;
-		else if (res != 1)
+		else {
+			debug(context, "EVP_VerifyFinal() returned %d\n", res);
 			return CKR_GENERAL_ERROR;
+		}
 	}
 	else {
 		RSA *rsa;
@@ -298,6 +300,7 @@ CK_RV sc_pkcs11_verify_data(unsigned char *pubkey, int pubkey_len,
 		RSA_free(rsa);
 		if(rsa_outlen <= 0) {
 			free(rsa_out);
+			debug(context, "RSA_public_decrypt() returned %d\n", rsa_outlen);
 			return CKR_GENERAL_ERROR;
 		}
 
