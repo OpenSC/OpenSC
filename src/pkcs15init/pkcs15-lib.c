@@ -1094,10 +1094,14 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 
 		r = sc_pkcs15init_store_public_key(p15card, profile,
 				&pubkey_args, &pub_object);
+		sc_pkcs15_free_object(pub_object);
 	}
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+	else
+		sc_pkcs15_free_object(object);
+		
 	sc_pkcs15_erase_pubkey(&pubkey_args.key);
 
 	return r;
@@ -1219,6 +1223,8 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+	else
+		sc_pkcs15_free_object(object);
 
 	return r;
 }
@@ -1346,8 +1352,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 
 	/* If we reuse an existing object, update it */
 	if (*res_obj) {
-		free(key_info); key_info = NULL;
-		free(object); object = *res_obj;
+		sc_pkcs15_free_pubkey_info(key_info);
+		key_info = NULL;
+		sc_pkcs15_free_object(object);
+		object = *res_obj;
 
 		strncpy(object->label, label, sizeof(object->label));
 	} else {
@@ -1379,6 +1387,8 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+	else
+		sc_pkcs15_free_object(object);
 
 	if (der_encoded.value)
 		free(der_encoded.value);
@@ -1461,6 +1471,8 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+	else
+		sc_pkcs15_free_object(object);
 
 	return r;
 }
@@ -1541,6 +1553,8 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+	else
+		sc_pkcs15_free_object(object);
 
 	return r;
 }
