@@ -44,7 +44,7 @@ CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
 		goto out;
 	}
 
-	if (flags & ~(CKF_SERIAL_SESSION | CKF_RW_SESSION) != 0) {
+	if (flags & ~(CKF_SERIAL_SESSION | CKF_RW_SESSION)) {
 		rv = CKR_ARGUMENTS_BAD;
 		goto out;
 	}
