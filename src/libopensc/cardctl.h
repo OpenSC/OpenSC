@@ -57,11 +57,11 @@ enum {
 	SC_CARDCTL_MIOCOS_BASE = _CTL_PREFIX('M', 'I', 'O'),
 	SC_CARDCTL_MIOCOS_CREATE_AC,
 
-        /*
-         * TCOS specific calls
-         */
-        SC_CARDCTL_TCOS_BASE = _CTL_PREFIX('T','C','S'),
-        SC_CARDCTL_TCOS_SETPERM,
+	/*
+	 * TCOS specific calls
+	 */
+	SC_CARDCTL_TCOS_BASE = _CTL_PREFIX('T','C','S'),
+	SC_CARDCTL_TCOS_SETPERM,
 
 	/*
 	 * eToken specific calls

@@ -5,8 +5,6 @@
  * CCID compatible pinpad readers.
  * Currently known to work only with libccid under unices via SCardControl().
  *
- * Tested with: SPR532 with firmware 5.04, ccid-0.9.2mp1, EstEID, opensc-0.9.4mp3 (CVS)
- *
  * (C) 2004 Martin Paljak <martin@paljak.pri.ee>
  */
 #include "internal.h"
@@ -44,7 +42,7 @@ static int ccid_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cm
 	buf[count++] = 0x00;	/* bmPINLengthFormat */
 
 	if (!data->pin1.min_length || !data->pin1.max_length)
-		return SC_ERROR_INVALID_PIN_LENGTH;
+		return SC_ERROR_INVALID_ARGUMENTS;
 	buf[count++] = data->pin1.max_length;	/* wPINMaxExtraDigit: max */	
 	buf[count++] = data->pin1.min_length;	/* wPINMaxExtraDigit: min */
 
@@ -93,7 +91,7 @@ ccid_pin_cmd(struct sc_reader *reader, sc_slot_info_t * slot,
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	size_t rcount = sizeof(rbuf), scount = 0;
 	int r;
-	unsigned long code;
+	unsigned long code = 0;
 	sc_apdu_t *apdu;
 
 	SC_FUNC_CALLED(reader->ctx, 3);

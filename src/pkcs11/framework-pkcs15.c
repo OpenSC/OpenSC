@@ -1665,7 +1665,7 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_CLASS:
 		check_attribute_buffer(attr, sizeof(CK_OBJECT_CLASS));
 		*(CK_OBJECT_CLASS*)attr->pValue = CKO_PRIVATE_KEY;
-                break;
+		break;
 	case CKA_TOKEN:
 	case CKA_LOCAL:
 	case CKA_SENSITIVE:
@@ -1674,28 +1674,28 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
-                break;
+		break;
 	case CKA_MODIFIABLE:
 	case CKA_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = FALSE;
-                break;
+		break;
 	case CKA_LABEL:
 		len = strlen(prkey->prv_p15obj->label);
 		check_attribute_buffer(attr, len);
-                memcpy(attr->pValue, prkey->prv_p15obj->label, len);
+		memcpy(attr->pValue, prkey->prv_p15obj->label, len);
 		break;
 	case CKA_KEY_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
-                *(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
-                break;
+		*(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
+		break;
 	case CKA_ID:
 		check_attribute_buffer(attr, prkey->prv_info->id.len);
 		memcpy(attr->pValue, prkey->prv_info->id.value, prkey->prv_info->id.len);
-                break;
+		break;
 	case CKA_KEY_GEN_MECHANISM:
 		check_attribute_buffer(attr, sizeof(CK_MECHANISM_TYPE));
-                *(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
+		*(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
 	case CKA_ENCRYPT:
 	case CKA_DECRYPT:
