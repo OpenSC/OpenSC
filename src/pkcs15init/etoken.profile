@@ -28,19 +28,19 @@ filesystem {
 		type		= internal-ef;
     	        file-id		= 4B01;	# This is the base FileID
 		size		= 266;  # 266 is enough for 1024-bit keys
-    	        ACL		= *=NEVER, UPDATE=$PIN;
+    	        ACL		= *=NEVER, UPDATE=$PIN, ERASE=$PIN;
             }
 	    EF template-public-key {
 		file-id		= 5501;
-		ACL		= *=NEVER, READ=NONE, UPDATE=$PIN;
+		ACL		= *=NEVER, READ=NONE, UPDATE=$PIN, ERASE=$PIN;
 	    }
 	    EF template-certificate {
 		file-id		= 4301;
-		ACL		= *=NEVER, READ=NONE, UPDATE=$PIN;
+		ACL		= *=NEVER, READ=NONE, UPDATE=$PIN, ERASE=$PIN;
 	    }
             EF template-extractable-key {
     	        file-id		= 7000;
-    	        ACL		= *=NEVER, READ=$PIN, UPDATE=$PIN;
+    	        ACL		= *=NEVER, READ=$PIN, UPDATE=$PIN, ERASE=$PIN;
             }
 	    EF tempfile {
 	        file-id		= 7EAD;

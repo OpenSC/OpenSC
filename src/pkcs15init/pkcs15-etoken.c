@@ -70,10 +70,11 @@ static void	error(struct sc_profile *, const char *, ...);
 #define ETOKEN_SE_ID(idx)	(0x40 + (idx))
 #define ETOKEN_AC_NEVER		0xFF
 
-#define ETOKEN_ALGO_RSA_SIG_SHA1 0xCC
-#define ETOKEN_ALGO_RSA_SIG	0x88
-#define ETOKEN_ALGO_RSA		ETOKEN_ALGO_RSA_SIG
-#define ETOKEN_ALGO_PIN		0x87
+#define ETOKEN_ALGO_RSA_SIG_SHA1	0xCC
+#define ETOKEN_ALGO_RSA_SIG		0x88
+#define ETOKEN_ALGO_RSA_PURE_SIG	0x8C
+#define ETOKEN_ALGO_RSA			ETOKEN_ALGO_RSA_PURE_SIG
+#define ETOKEN_ALGO_PIN			0x87
 
 static inline void
 tlv_init(struct tlv *tlv, u8 *base, size_t size)
@@ -457,7 +458,14 @@ etoken_store_key_component(struct sc_card *card,
 	tlv_next(&tlv, 0x86);
 	tlv_add(&tlv, pin_id);	/* AC USE */
 	tlv_add(&tlv, pin_id);	/* AC CHANGE */
-	tlv_add(&tlv, pin_id);	/* AC GENKEY? */
+	tlv_add(&tlv, pin_id);	/* UNKNOWN */
+	/* The next 4 AC bytes are sent by the eToken run-time
+	 * as well, but aren't documented anywhere.
+	 * Key generation won't work without them, however. */
+	tlv_add(&tlv, 0);
+	tlv_add(&tlv, 0);
+	tlv_add(&tlv, 0);
+	tlv_add(&tlv, 0);
 
 	/* SM bytes */
 	tlv_next(&tlv, 0x8B);
@@ -470,6 +478,7 @@ etoken_store_key_component(struct sc_card *card,
 	tlv_add(&tlv, 0);
 	while (len--)
 		tlv_add(&tlv, *data++);
+		//tlv_add(&tlv, data[len]);
 
 	args.data = buffer;
 	args.len = tlv_len(&tlv);
@@ -601,17 +610,45 @@ etoken_new_file(struct sc_profile *profile, struct sc_card *card,
 	return 0;
 }
 
+/*
+ * Extract a key component from the public key file populated by
+ * GENERATE KEY PAIR
+ */
+static int
+etoken_extract_pubkey(struct sc_card *card, int nr, u8 tag,
+			sc_pkcs15_bignum_t *bn)
+{
+	u8	buf[256];
+	int	r, count;
+
+	r = sc_read_record(card, nr, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+	if (r < 0)
+		return r;
+	count = r - 4;
+	if (count <= 0 || buf[0] != tag || buf[1] != count + 2
+	 || buf[2] != count + 1 || buf[3] != 0)
+		return SC_ERROR_INTERNAL;
+	bn->len = count;
+	bn->data = malloc(count);
+	memcpy(bn->data, buf + 4, count);
+	return 0;
+}
+
+/*
+ * Key generation
+ */
 static int
 etoken_generate_key(struct sc_profile *profile, struct sc_card *card,
 		unsigned int index, unsigned int keybits,
-		sc_pkcs15_pubkey_t *pubkey)
+		sc_pkcs15_pubkey_t *pubkey,
+		struct sc_pkcs15_prkey_info *info)
 {
 	struct sc_pkcs15_prkey_rsa key_obj;
 	struct sc_cardctl_etoken_genkey_info args;
 	struct sc_file	*temp;
 	u8		abignum[RSAKEY_MAX_SIZE];
 	u8		randbuf[64], key_id;
-	int		r;
+	int		r, delete_it = 0;
 
 	keybits &= ~7UL;
 	if (keybits > RSAKEY_MAX_BITS) {
@@ -625,8 +662,11 @@ etoken_generate_key(struct sc_profile *profile, struct sc_card *card,
 				"for key generation.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
+	memset(pubkey, 0, sizeof(*pubkey));
+
 	if ((r = sc_pkcs15init_create_file(profile, card, temp)) < 0)
 		goto out;
+	delete_it = 1;
 
 	key_id = ETOKEN_KEY_ID(index);
 
@@ -663,9 +703,29 @@ etoken_generate_key(struct sc_profile *profile, struct sc_card *card,
 	if (r < 0)
 		goto out;
 
-	/* XXX: extract public key from file and delete it */
+	/* extract public key from file and delete it */
+	if ((r = sc_select_file(card, &temp->path, NULL)) < 0)
+		goto out;
+	r = etoken_extract_pubkey(card, 1, 0x10, &pubkey->u.rsa.modulus);
+	if (r < 0)
+		goto out;
+	r = etoken_extract_pubkey(card, 2, 0x11, &pubkey->u.rsa.exponent);
+	if (r < 0)
+		goto out;
+	pubkey->algorithm = SC_ALGORITHM_RSA;
+	info->key_reference = key_id;
+	info->path = profile->df_info->file->path;
 
-out:	sc_file_free(temp);
+out:	if (delete_it) {
+		etoken_rm_rf(profile, card, temp);
+	}
+	sc_file_free(temp);
+	if (r < 0) {
+		if (pubkey->u.rsa.modulus.data)
+			free (pubkey->u.rsa.modulus.data);
+		if (pubkey->u.rsa.exponent.data)
+			free (pubkey->u.rsa.exponent.data);
+	}
 	return r;
 }
 

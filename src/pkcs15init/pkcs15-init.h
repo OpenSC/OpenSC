@@ -60,7 +60,8 @@ struct sc_pkcs15init_operations {
 	 */
 	int	(*generate_key)(struct sc_profile *, struct sc_card *,
 			unsigned int index, unsigned int keybits,
-			sc_pkcs15_pubkey_t *pubkey_res);
+			sc_pkcs15_pubkey_t *pubkey_res,
+			struct sc_pkcs15_prkey_info *);
 
 };
 
