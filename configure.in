@@ -532,6 +532,41 @@ int main(void)
 			], []
 		)
 
+
+		if test ! -z "$found_crypto" ; then
+			# we found openssl, lets see if it 
+			# has an engine
+			AC_TRY_RUN(
+			[
+#include <string.h>
+#include <openssl/opensslv.h>
+#include <openssl/engine.h>
+#include <openssl/rand.h>
+int main(void)
+{
+	char a[2048];
+	ENGINE *e;
+
+	if (OPENSSL_VERSION_NUMBER < 0x0090701fL)
+	{
+		printf("openssl too old, please update to 0.9.7 or newer");
+		return 1;
+	}
+
+	e = ENGINE_NEW();
+	if (!e) return 1;
+	memset(a, 0, sizeof(a));
+	RAND_add(a, sizeof(a), sizeof(a));
+	return(RAND_status() <= 0);
+}
+			],
+			[
+				found_engine=1
+				break;
+			], []
+		)
+		fi
+
 		if test ! -z "$found_crypto" ; then
 			break;
 		fi
@@ -580,6 +615,13 @@ if test "x$SSL_MSG" = "xyes" ; then
   AC_DEFINE(HAVE_OPENSSL, 1, [Have OpenSSL libraries])
 fi
 AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
+AM_CONDITIONAL(HAVE_ENGINE, test ! -z "$found_engine")
+
+ENGINE_MESG="no"
+if test !  -z "$found_engine"
+then
+	ENGINE_MESG="yes"
+fi
 
 AC_ARG_WITH(pam-dir,
 	[  --with-pam-dir=PATH  Specify path for PAM installation libraries],
@@ -1146,6 +1188,7 @@ echo "Libraries:           ${LIBS}"
 echo ""
 echo "Random number collection: ${RAND_MSG}"
 echo "OpenSSL support:          ${SSL_MSG}"
+echo "        with engine:      ${ENGINE_MSG}"
 echo "PC/SC support:            ${PCSC_MSG}"
 echo "USBToken support:         ${USBTOKEN_MSG}"
 echo "OpenCT support:           ${OPENCT_MSG}"
@@ -1155,6 +1198,12 @@ echo "PAM support:              ${PAM_MSG}"
 echo "SIA support:              ${SIA_MSG}"
 
 echo ""
+
+if test "x$ENGINE_MSG" = "xno" and "x$SSL_MSG" = "xyes"
+then
+	echo "OpenSSL was found. But to use the engine you will need"
+	echo "version 0.9.7a or later."
+fi
 
 if test ! -z "$BUILTIN_RNG" ; then
   echo "WARNING: you are using the builtin random number service."
