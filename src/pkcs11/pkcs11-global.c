@@ -18,6 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <stdlib.h>
 #include "sc-pkcs11.h"
 
 #include <sc-log.h>
@@ -31,6 +32,9 @@ CK_FUNCTION_LIST pkcs11_function_list;
 
 CK_RV C_Initialize(CK_VOID_PTR pReserved)
 {
+#ifdef DEBUG
+	const char *envarg;
+#endif
 	int i, rc;
 
 	if (context != NULL) {
@@ -41,8 +45,17 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	if (rc != 0)
 		return CKR_DEVICE_ERROR;
 #ifdef DEBUG
-        context->debug_file = stdout;
-        context->error_file = stderr;
+	/* We need to send the debug log to a file because of
+	 * netscape's stupid stderr capturing */
+	if ((envarg = getenv("PKCS11_DEBUG")) != NULL
+	 && (context->debug_file = fopen(envarg, "w")) != NULL) {
+		context->error_file = context->debug_file;
+	} else {
+		context->debug_file = stdout;
+		context->error_file = stderr;
+	}
+	if ((envarg = getenv("PKCS11_DEBUG_LEVEL")) != NULL)
+		context->debug = atoi(envarg);
 #else
 	context->debug_file = NULL;
 	context->error_file = NULL;
