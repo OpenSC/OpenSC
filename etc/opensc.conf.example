@@ -53,12 +53,25 @@ app default {
 	}
 
 	reader_driver pcsc {
-		# Whether to convert Case 4 APDUs to Case 3
+		# Whether to transform some APDU's from one case to another
+		# Possible values:
+		#            none:   Don't transform any APDU's
+		#        case4as3:   For T=0, send a case 4 APDU as case 3,
+		#                    (no Lc byte) the card will send back
+		# 		     a 61xx SW, and we will follow up with a
+		#                    GetResponse command
+		#                    The SCM SCR111, Sun SCF, and e-gate readers
+		#                    seem to require this.
+		#        case1as2:   For T=0, send a case 1 APDU as case 2.
+		#                    (append an Le byte of 0)
+		#                    The Sun SCF and e-gate readers seem to
+		#                    require this
+		# case1as2_always:   for any T=0/1, send a case 1 APDU as
+		#		     case 2.
+		#                    The Sun SCF reader may require this
+		# Default: none
 		#
-		# At least SCM SCR111 reader seems to require this.
-		# Default: false
-		#
-		apdu_fix = false;
+		apdu_masquerade = none;
 	}
 
 	# What card drivers to load at start-up
