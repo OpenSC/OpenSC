@@ -23,15 +23,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#ifndef _WIN32
-#include "rsaref/unix.h"
-#include "rsaref/pkcs11.h"
-#else
-#include "rsaref/win32.h"
-#pragma pack(push, cryptoki, 1)
-#include "rsaref/pkcs11.h"
-#pragma pack(pop, cryptoki)
-#endif
+#include "pkcs11.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "pkcs11-display.h"
-#include <opensc/pkcs11.h>
 
 #define __PASTE(x,y)      x##y
 
@@ -34,9 +33,13 @@ CK_RV __PASTE(spy_,name)
 
 #include "rsaref/pkcs11f.h"
 
+/* Spy Module Function List */
 CK_FUNCTION_LIST_PTR pkcs11_spy = NULL;
+/* Real Module Function List */
 CK_FUNCTION_LIST_PTR po = NULL;
+/* Dynamic Module Handle */
 static sc_pkcs11_module_t *modhandle = NULL;
+/* Spy module output */
 FILE *spy_output = NULL;
 
 #undef CK_NEED_ARG_LIST
@@ -44,32 +47,35 @@ FILE *spy_output = NULL;
 #define CK_PKCS11_FUNCTION_INFO(name) \
     pkcs11_spy->name = &__PASTE(spy_,name);
 
-int init_spy()
+CK_RV C_GetFunctionList
+(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
 {
-  char *file;
-  pkcs11_spy = (CK_FUNCTION_LIST_PTR)
-    malloc(sizeof(CK_FUNCTION_LIST));
-  if(pkcs11_spy) {
+  char *mspec = NULL, *file = NULL;
+
+  /* Allocates and initializes the pkcs11_spy structure */
+  pkcs11_spy =
+    (CK_FUNCTION_LIST_PTR) malloc(sizeof(CK_FUNCTION_LIST));
+  if (pkcs11_spy) {
 #include "rsaref/pkcs11f.h"
+  } else {
+    goto error;
   }
+  
   file = getenv("PKCS11SPY_OUTPUT");
-  if(file) {
+  if (file) {
     spy_output = fopen(file, "a");
   } else {
     spy_output = stderr;
   }
-  modhandle = C_LoadModule(NULL, &po);
-  return 0;
-}
 
-CK_RV C_GetFunctionList
-(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
-{
-  init_spy();
-  if(pkcs11_spy) {
+  mspec = getenv("PKCS11SPY");
+  modhandle = C_LoadModule(mspec, &po);
+  
+  if (modhandle && po) {
     *ppFunctionList = pkcs11_spy;
     return CKR_OK;
   }
+ error:
   return CKR_HOST_MEMORY;
 }
 
@@ -85,14 +91,6 @@ CK_RV retne(CK_RV rv)
 	  lookup_enum ( RV_T, rv ));
   return rv;
 }
-
-/* You can't do #ifndef __FUNCTION__ */
-#if !defined(__GNUC__) && !defined(__IBMC__)
-#define ENTER() enter("FIXME")
-#else
-#define ENTER() enter(__FUNCTION__ + 4)
-#endif
-#define RETURN() return retne(rv)
 
 void spy_dump_string_in(char *name, CK_VOID_PTR data, CK_ULONG size)
 {
@@ -150,36 +148,39 @@ void spy_attribute_list_out(char *name, CK_ATTRIBUTE_PTR pTemplate,
 CK_RV spy_C_Initialize(CK_VOID_PTR pInitArgs)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_Initialize");
   rv = po->C_Initialize(pInitArgs);
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_Finalize(CK_VOID_PTR pReserved)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_Finalize");
   rv = po->C_Finalize(pReserved);
-  RETURN();
+  /* After Finalize do not use the module again */
+  C_UnloadModule(modhandle);
+  po = NULL;
+  return retne(rv);
 }
 
 CK_RV spy_C_GetInfo(CK_INFO_PTR pInfo)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GetInfo");
   rv = po->C_GetInfo(pInfo);
   if(rv == CKR_OK) {
     print_ck_info(spy_output, pInfo);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GetFunctionList");
   rv = po->C_GetFunctionList(ppFunctionList);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -188,7 +189,7 @@ CK_RV spy_C_GetSlotList(CK_BBOOL tokenPresent,
 			CK_ULONG_PTR pulCount)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GetSlotList");
   spy_dump_ulong_in("tokenPresent", tokenPresent);
   rv = po->C_GetSlotList(tokenPresent, pSlotList, pulCount);
   if(rv == CKR_OK) {
@@ -196,35 +197,35 @@ CK_RV spy_C_GetSlotList(CK_BBOOL tokenPresent,
     print_slot_list(spy_output, pSlotList, *pulCount);
     spy_dump_ulong_out("*pulCount", *pulCount);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_GetSlotInfo(CK_SLOT_ID slotID,
 			CK_SLOT_INFO_PTR pInfo)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GetSlotInfo");
   spy_dump_ulong_in("slotID", slotID);
   rv = po->C_GetSlotInfo(slotID, pInfo);
   if(rv == CKR_OK) {
     spy_dump_desc_out("pInfo");
     print_slot_info(spy_output, pInfo);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_GetTokenInfo(CK_SLOT_ID slotID,
 			 CK_TOKEN_INFO_PTR pInfo)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GetTokenInfo");
   spy_dump_ulong_in("slotID", slotID);
   rv = po->C_GetTokenInfo(slotID, pInfo);
   if(rv == CKR_OK) {
     spy_dump_desc_out("pInfo");
     print_token_info(spy_output, pInfo);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_GetMechanismList(CK_SLOT_ID  slotID,
@@ -232,14 +233,14 @@ CK_RV spy_C_GetMechanismList(CK_SLOT_ID  slotID,
 			     CK_ULONG_PTR  pulCount)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GetMechanismList");
   spy_dump_ulong_in("slotID", slotID);
   rv = po->C_GetMechanismList(slotID, pMechanismList, pulCount);
   if(rv == CKR_OK) {
     spy_dump_array_out("pMechanismList", *pulCount);
     print_mech_list(spy_output, pMechanismList, *pulCount);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_GetMechanismInfo(CK_SLOT_ID  slotID,
@@ -248,7 +249,7 @@ CK_RV spy_C_GetMechanismInfo(CK_SLOT_ID  slotID,
 {
   CK_RV rv;
   const char *name = lookup_enum(MEC_T, type);
-  ENTER();
+  enter("C_GetMechanismInfo");
   spy_dump_ulong_in("slotID", slotID);
   if (name) {
     fprintf(spy_output, "%30s \n", name);
@@ -260,7 +261,7 @@ CK_RV spy_C_GetMechanismInfo(CK_SLOT_ID  slotID,
     spy_dump_desc_out("pInfo");
     print_mech_info(spy_output, type, pInfo);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_InitToken (CK_SLOT_ID slotID,
@@ -269,12 +270,12 @@ CK_RV spy_C_InitToken (CK_SLOT_ID slotID,
 		       CK_UTF8CHAR_PTR pLabel)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_InitToken");
   spy_dump_ulong_in("slotID", slotID);
   spy_dump_string_in("pPin[ulPinLen]", pPin, ulPinLen);
   spy_dump_string_in("pLabel[32]", pLabel, 32);
   rv = po->C_InitToken (slotID, pPin, ulPinLen, pLabel);
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_InitPIN(CK_SESSION_HANDLE hSession,
@@ -282,11 +283,11 @@ CK_RV spy_C_InitPIN(CK_SESSION_HANDLE hSession,
 		    CK_ULONG  ulPinLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_InitPIN");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pPin[ulPinLen]", pPin, ulPinLen);
   rv = po->C_InitPIN(hSession, pPin, ulPinLen);
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_SetPIN(CK_SESSION_HANDLE hSession,
@@ -296,13 +297,13 @@ CK_RV spy_C_SetPIN(CK_SESSION_HANDLE hSession,
 		   CK_ULONG  ulNewLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_SetPIN");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pOldPin[ulOldLen]", pOldPin, ulOldLen);
   spy_dump_string_in("pNewPin[ulNewLen]", pNewPin, ulNewLen);
   rv = po->C_SetPIN(hSession, pOldPin, ulOldLen,
 		    pNewPin, ulNewLen);
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_OpenSession(CK_SLOT_ID  slotID,
@@ -312,7 +313,7 @@ CK_RV spy_C_OpenSession(CK_SLOT_ID  slotID,
 			CK_SESSION_HANDLE_PTR phSession)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_OpenSession");
   spy_dump_ulong_in("slotID", slotID);
   spy_dump_ulong_in("flags", flags);
   fprintf(spy_output, "pApplication=%p\n", pApplication);
@@ -320,27 +321,27 @@ CK_RV spy_C_OpenSession(CK_SLOT_ID  slotID,
   rv = po->C_OpenSession(slotID, flags, pApplication,
 			 Notify, phSession);
   spy_dump_ulong_out("*phSession", *phSession);
-  RETURN();
+  return retne(rv);
 }
 
 
 CK_RV spy_C_CloseSession(CK_SESSION_HANDLE hSession)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_CloseSession");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_CloseSession(hSession);
-  RETURN();
+  return retne(rv);
 }
 
 
 CK_RV spy_C_CloseAllSessions(CK_SLOT_ID slotID)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_CloseAllSessions");
   spy_dump_ulong_in("slotID", slotID);
   rv = po->C_CloseAllSessions(slotID);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -348,14 +349,14 @@ CK_RV spy_C_GetSessionInfo(CK_SESSION_HANDLE hSession,
 			   CK_SESSION_INFO_PTR pInfo)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GetSessionInfo");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_GetSessionInfo(hSession, pInfo);
   if(rv == CKR_OK) {
     spy_dump_desc_out("pInfo");
     print_session_info(spy_output, pInfo);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -364,14 +365,15 @@ CK_RV spy_C_GetOperationState(CK_SESSION_HANDLE hSession,
 			      CK_ULONG_PTR pulOperationStateLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GetOperationState");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_GetOperationState(hSession, pOperationState,
 			       pulOperationStateLen);
   if (rv == CKR_OK) {
-    spy_dump_string_out("pOperationState[*pulOperationStateLen]", pOperationState, *pulOperationStateLen);
+    spy_dump_string_out("pOperationState[*pulOperationStateLen]",
+			pOperationState, *pulOperationStateLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -382,16 +384,17 @@ CK_RV spy_C_SetOperationState(CK_SESSION_HANDLE hSession,
 			      CK_OBJECT_HANDLE hAuthenticationKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("SetOperationState");
   spy_dump_ulong_in("hSession", hSession);
-  spy_dump_string_in("pOperationState[ulOperationStateLen]", pOperationState, ulOperationStateLen);
+  spy_dump_string_in("pOperationState[ulOperationStateLen]",
+		     pOperationState, ulOperationStateLen);
   spy_dump_ulong_in("hEncryptionKey", hEncryptionKey);
   spy_dump_ulong_in("hAuthenticationKey", hAuthenticationKey);
   rv = po->C_SetOperationState(hSession, pOperationState,
 			       ulOperationStateLen,
 			       hEncryptionKey,
 			       hAuthenticationKey);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -401,21 +404,22 @@ CK_RV spy_C_Login(CK_SESSION_HANDLE hSession,
 		  CK_ULONG  ulPinLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_Login");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "[in] userType = %s\n", lookup_enum(USR_T, userType));
+  fprintf(spy_output, "[in] userType = %s\n",
+	  lookup_enum(USR_T, userType));
   spy_dump_string_in("pPin[ulPinLen]", pPin, ulPinLen);
   rv = po->C_Login(hSession, userType, pPin, ulPinLen);
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_Logout(CK_SESSION_HANDLE hSession)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_Logout");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_Logout(hSession);
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_CreateObject(CK_SESSION_HANDLE hSession,
@@ -424,14 +428,14 @@ CK_RV spy_C_CreateObject(CK_SESSION_HANDLE hSession,
 			 CK_OBJECT_HANDLE_PTR phObject)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_CreateObject");
   spy_dump_ulong_in("hSession", hSession);
   spy_attribute_list_in("pTemplate", pTemplate, ulCount);
   rv = po->C_CreateObject(hSession, pTemplate, ulCount, phObject);
   if (rv == CKR_OK) {
     spy_dump_ulong_out("*phObject", *phObject);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_CopyObject(CK_SESSION_HANDLE hSession,
@@ -441,7 +445,7 @@ CK_RV spy_C_CopyObject(CK_SESSION_HANDLE hSession,
 		       CK_OBJECT_HANDLE_PTR phNewObject)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_CopyObject");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_ulong_in("hObject", hObject);
   spy_attribute_list_in("pTemplate", pTemplate, ulCount);
@@ -449,7 +453,7 @@ CK_RV spy_C_CopyObject(CK_SESSION_HANDLE hSession,
   if (rv == CKR_OK) {
     spy_dump_ulong_out("*phNewObject", *phNewObject);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -457,11 +461,11 @@ CK_RV spy_C_DestroyObject(CK_SESSION_HANDLE hSession,
 			  CK_OBJECT_HANDLE hObject)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DestroyObject");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_ulong_in("hObject", hObject);
   rv = po->C_DestroyObject(hSession, hObject);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -470,14 +474,14 @@ CK_RV spy_C_GetObjectSize(CK_SESSION_HANDLE hSession,
 			  CK_ULONG_PTR pulSize)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GetObjectSize");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_ulong_in("hObject", hObject);
   rv = po->C_GetObjectSize(hSession, hObject, pulSize);
   if (rv == CKR_OK) {
     spy_dump_ulong_out("*pulSize", *pulSize);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -487,14 +491,14 @@ CK_RV spy_C_GetAttributeValue(CK_SESSION_HANDLE hSession,
 			      CK_ULONG  ulCount)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GetAttributeValue");
   spy_dump_ulong_in("hSession", hSession);
   spy_attribute_req_in("pTemplate", pTemplate, ulCount);
   rv = po->C_GetAttributeValue(hSession, hObject, pTemplate, ulCount);
   if (rv == CKR_OK) {
     spy_attribute_list_out("pTemplate", pTemplate, ulCount);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -504,12 +508,12 @@ CK_RV spy_C_SetAttributeValue(CK_SESSION_HANDLE hSession,
 			      CK_ULONG  ulCount)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_SetAttributeValue");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_ulong_in("hObject", hObject);
   spy_attribute_list_in("pTemplate", pTemplate, ulCount);
   rv = po->C_SetAttributeValue(hSession, hObject, pTemplate, ulCount);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -518,11 +522,11 @@ CK_RV spy_C_FindObjectsInit(CK_SESSION_HANDLE hSession,
 			    CK_ULONG  ulCount)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_FindObjectsInit");
   spy_dump_ulong_in("hSession", hSession);
   spy_attribute_list_in("pTemplate", pTemplate, ulCount);
   rv = po->C_FindObjectsInit(hSession, pTemplate, ulCount);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -532,7 +536,7 @@ CK_RV spy_C_FindObjects(CK_SESSION_HANDLE hSession,
 			CK_ULONG_PTR  pulObjectCount)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_FindObjects");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_ulong_in("ulMaxObjectCount", ulMaxObjectCount);
   rv = po->C_FindObjects(hSession, phObject, ulMaxObjectCount,
@@ -544,17 +548,17 @@ CK_RV spy_C_FindObjects(CK_SESSION_HANDLE hSession,
       fprintf(spy_output, "Object %ld Matches\n", phObject[i]);
     }
   }
-  RETURN();
+  return retne(rv);
 }
 
 
 CK_RV spy_C_FindObjectsFinal(CK_SESSION_HANDLE hSession)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_FindObjectsFinal");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_FindObjectsFinal(hSession);
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_EncryptInit(CK_SESSION_HANDLE hSession,
@@ -562,12 +566,13 @@ CK_RV spy_C_EncryptInit(CK_SESSION_HANDLE hSession,
 			CK_OBJECT_HANDLE hKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_EncryptInit");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
   spy_dump_ulong_in("hKey", hKey);
   rv = po->C_EncryptInit(hSession, pMechanism, hKey);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -578,7 +583,7 @@ CK_RV spy_C_Encrypt(CK_SESSION_HANDLE hSession,
 		    CK_ULONG_PTR pulEncryptedDataLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_Encrypt");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pData[ulDataLen]", pData, ulDataLen);
   rv = po->C_Encrypt(hSession, pData, ulDataLen,
@@ -587,7 +592,7 @@ CK_RV spy_C_Encrypt(CK_SESSION_HANDLE hSession,
     spy_dump_string_out("pEncryptedData[*pulEncryptedDataLen]",
 			pEncryptedData, *pulEncryptedDataLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -598,7 +603,7 @@ CK_RV spy_C_EncryptUpdate(CK_SESSION_HANDLE hSession,
 			  CK_ULONG_PTR pulEncryptedPartLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_EncryptUpdate");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pPart[ulPartLen]", pPart, ulPartLen);
   rv = po->C_EncryptUpdate(hSession, pPart, ulPartLen, pEncryptedPart,
@@ -607,7 +612,7 @@ CK_RV spy_C_EncryptUpdate(CK_SESSION_HANDLE hSession,
     spy_dump_string_out("pEncryptedPart[*pulEncryptedPartLen]",
 			pEncryptedPart, *pulEncryptedPartLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_EncryptFinal(CK_SESSION_HANDLE hSession,
@@ -615,7 +620,7 @@ CK_RV spy_C_EncryptFinal(CK_SESSION_HANDLE hSession,
 			 CK_ULONG_PTR pulLastEncryptedPartLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_EncryptFinal");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_EncryptFinal(hSession, pLastEncryptedPart,
 			  pulLastEncryptedPartLen);
@@ -623,7 +628,7 @@ CK_RV spy_C_EncryptFinal(CK_SESSION_HANDLE hSession,
     spy_dump_string_out("pLastEncryptedPart[*pulLastEncryptedPartLen]",
 			pLastEncryptedPart, *pulLastEncryptedPartLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -632,12 +637,13 @@ CK_RV spy_C_DecryptInit(CK_SESSION_HANDLE hSession,
 			CK_OBJECT_HANDLE hKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DecryptInit");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
   spy_dump_ulong_in("hKey", hKey);
   rv = po->C_DecryptInit(hSession, pMechanism, hKey);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -648,7 +654,7 @@ CK_RV spy_C_Decrypt(CK_SESSION_HANDLE hSession,
 		    CK_ULONG_PTR pulDataLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_Decrypt");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pEncryptedData[ulEncryptedDataLen]",
 		      pEncryptedData, ulEncryptedDataLen);
@@ -657,7 +663,7 @@ CK_RV spy_C_Decrypt(CK_SESSION_HANDLE hSession,
   if (rv == CKR_OK) {
     spy_dump_string_out("pData[*pulDataLen]", pData, *pulDataLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -668,7 +674,7 @@ CK_RV spy_C_DecryptUpdate(CK_SESSION_HANDLE hSession,
 			  CK_ULONG_PTR pulPartLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DecryptUpdate");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pEncryptedPart[ulEncryptedPartLen]",
 		      pEncryptedPart, ulEncryptedPartLen);
@@ -677,7 +683,7 @@ CK_RV spy_C_DecryptUpdate(CK_SESSION_HANDLE hSession,
   if (rv == CKR_OK) {
     spy_dump_string_out("pPart[*pulPartLen]", pPart, *pulPartLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -686,25 +692,26 @@ CK_RV spy_C_DecryptFinal(CK_SESSION_HANDLE hSession,
 			 CK_ULONG_PTR pulLastPartLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DecryptFinal");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_DecryptFinal(hSession, pLastPart, pulLastPartLen);
   if (rv == CKR_OK) {
     spy_dump_string_out("pLastPart[*pulLastPartLen]",
 			pLastPart, *pulLastPartLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_DigestInit(CK_SESSION_HANDLE hSession,
 		       CK_MECHANISM_PTR pMechanism)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DigestInit");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
   rv = po->C_DigestInit(hSession, pMechanism);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -715,7 +722,7 @@ CK_RV spy_C_Digest(CK_SESSION_HANDLE hSession,
 		   CK_ULONG_PTR pulDigestLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_Digest");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pData[ulDataLen]", pData, ulDataLen);
   rv = po->C_Digest(hSession, pData, ulDataLen, pDigest, pulDigestLen);
@@ -723,7 +730,7 @@ CK_RV spy_C_Digest(CK_SESSION_HANDLE hSession,
     spy_dump_string_out("pDigest[*pulDigestLen]",
 			pDigest, *pulDigestLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -732,11 +739,11 @@ CK_RV spy_C_DigestUpdate(CK_SESSION_HANDLE hSession,
 			 CK_ULONG  ulPartLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DigestUpdate");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pPart[ulPartLen]", pPart, ulPartLen);
   rv = po->C_DigestUpdate(hSession, pPart, ulPartLen);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -744,11 +751,11 @@ CK_RV spy_C_DigestKey(CK_SESSION_HANDLE hSession,
 		      CK_OBJECT_HANDLE hKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DigestKey");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_ulong_in("hKey", hKey);
   rv = po->C_DigestKey(hSession, hKey);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -757,14 +764,14 @@ CK_RV spy_C_DigestFinal(CK_SESSION_HANDLE hSession,
 			CK_ULONG_PTR pulDigestLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DigestFinal");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_DigestFinal(hSession, pDigest, pulDigestLen);
   if (rv == CKR_OK) {
     spy_dump_string_out("pDigest[*pulDigestLen]",
 			pDigest, *pulDigestLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_SignInit(CK_SESSION_HANDLE hSession,
@@ -772,12 +779,13 @@ CK_RV spy_C_SignInit(CK_SESSION_HANDLE hSession,
 		     CK_OBJECT_HANDLE hKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_SignInit");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
   spy_dump_ulong_in("hKey", hKey);
   rv = po->C_SignInit(hSession, pMechanism, hKey);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -788,7 +796,7 @@ CK_RV spy_C_Sign(CK_SESSION_HANDLE hSession,
 		 CK_ULONG_PTR pulSignatureLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_Sign");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pData[ulDataLen]", pData, ulDataLen);
   rv = po->C_Sign(hSession, pData, ulDataLen, pSignature, pulSignatureLen);
@@ -796,7 +804,7 @@ CK_RV spy_C_Sign(CK_SESSION_HANDLE hSession,
     spy_dump_string_out("pSignature[*pulSignatureLen]",
 			pSignature, *pulSignatureLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -805,11 +813,11 @@ CK_RV spy_C_SignUpdate(CK_SESSION_HANDLE hSession,
 		       CK_ULONG  ulPartLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_SignUpdate");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pPart[ulPartLen]", pPart, ulPartLen);
   rv = po->C_SignUpdate(hSession, pPart, ulPartLen);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -818,14 +826,14 @@ CK_RV spy_C_SignFinal(CK_SESSION_HANDLE hSession,
 		      CK_ULONG_PTR pulSignatureLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_SignFinal");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_SignFinal(hSession, pSignature, pulSignatureLen);
   if (rv == CKR_OK) {
     spy_dump_string_out("pSignature[*pulSignatureLen]",
 			pSignature, *pulSignatureLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -834,12 +842,13 @@ CK_RV spy_C_SignRecoverInit(CK_SESSION_HANDLE hSession,
 			    CK_OBJECT_HANDLE hKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_SignRecoverInit");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
   spy_dump_ulong_in("hKey", hKey);
   rv = po->C_SignRecoverInit(hSession, pMechanism, hKey);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -850,7 +859,7 @@ CK_RV spy_C_SignRecover(CK_SESSION_HANDLE hSession,
 			CK_ULONG_PTR pulSignatureLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_SignRecover");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pData[ulDataLen]", pData, ulDataLen);
   rv = po->C_SignRecover(hSession, pData, ulDataLen,
@@ -859,7 +868,7 @@ CK_RV spy_C_SignRecover(CK_SESSION_HANDLE hSession,
     spy_dump_string_out("pSignature[*pulSignatureLen]",
 			pSignature, *pulSignatureLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_VerifyInit(CK_SESSION_HANDLE hSession,
@@ -867,12 +876,13 @@ CK_RV spy_C_VerifyInit(CK_SESSION_HANDLE hSession,
 		       CK_OBJECT_HANDLE hKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_VerifyInit");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
   spy_dump_ulong_in("hKey", hKey);
   rv = po->C_VerifyInit(hSession, pMechanism, hKey);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -883,13 +893,13 @@ CK_RV spy_C_Verify(CK_SESSION_HANDLE hSession,
 		   CK_ULONG  ulSignatureLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_Verify");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pData[ulDataLen]", pData, ulDataLen);
   spy_dump_string_in("pSignature[ulSignatureLen]",
 		     pSignature, ulSignatureLen);
   rv = po->C_Verify(hSession, pData, ulDataLen, pSignature, ulSignatureLen);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -898,11 +908,11 @@ CK_RV spy_C_VerifyUpdate(CK_SESSION_HANDLE hSession,
 			 CK_ULONG  ulPartLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_VerifyUpdate");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pPart[ulPartLen]", pPart, ulPartLen);
   rv = po->C_VerifyUpdate(hSession, pPart, ulPartLen);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -911,12 +921,12 @@ CK_RV spy_C_VerifyFinal(CK_SESSION_HANDLE hSession,
 			CK_ULONG  ulSignatureLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_VerifyFinal");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pSignature[ulSignatureLen]",
 		     pSignature, ulSignatureLen);
   rv = po->C_VerifyFinal(hSession, pSignature, ulSignatureLen);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -925,12 +935,13 @@ CK_RV spy_C_VerifyRecoverInit(CK_SESSION_HANDLE hSession,
 			      CK_OBJECT_HANDLE hKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_VerifyRecoverInit");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
   spy_dump_ulong_in("hKey", hKey);
   rv = po->C_VerifyRecoverInit(hSession, pMechanism, hKey);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -941,7 +952,7 @@ CK_RV spy_C_VerifyRecover(CK_SESSION_HANDLE hSession,
 			  CK_ULONG_PTR pulDataLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_VerifyRecover");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pSignature[ulSignatureLen]",
 		     pSignature, ulSignatureLen);
@@ -950,7 +961,7 @@ CK_RV spy_C_VerifyRecover(CK_SESSION_HANDLE hSession,
   if (rv == CKR_OK) {
     spy_dump_string_out("pData[*pulDataLen]", pData, *pulDataLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
@@ -960,7 +971,7 @@ CK_RV spy_C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
 				CK_ULONG_PTR pulEncryptedPartLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DigestEncryptUpdate");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pPart[ulPartLen]", pPart, ulPartLen);
   rv = po->C_DigestEncryptUpdate(hSession, pPart, ulPartLen,
@@ -969,7 +980,7 @@ CK_RV spy_C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
     spy_dump_string_out("pEncryptedPart[*pulEncryptedPartLen]",
 			pEncryptedPart, *pulEncryptedPartLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -980,7 +991,7 @@ CK_RV spy_C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
 				CK_ULONG_PTR pulPartLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DecryptDigestUpdate");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pEncryptedPart[ulEncryptedPartLen]",
 		      pEncryptedPart, ulEncryptedPartLen);
@@ -990,7 +1001,7 @@ CK_RV spy_C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
   if (rv == CKR_OK) {
     spy_dump_string_out("pPart[*pulPartLen]", pPart, *pulPartLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -1001,7 +1012,7 @@ CK_RV spy_C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
 			      CK_ULONG_PTR pulEncryptedPartLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_SignEncryptUpdate");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pPart[ulPartLen]", pPart, ulPartLen);
   rv = po->C_SignEncryptUpdate(hSession, pPart, ulPartLen,
@@ -1010,7 +1021,7 @@ CK_RV spy_C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
     spy_dump_string_out("pEncryptedPart[*pulEncryptedPartLen]",
 			pEncryptedPart, *pulEncryptedPartLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -1021,7 +1032,7 @@ CK_RV spy_C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
 				CK_ULONG_PTR pulPartLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DecryptVerifyUpdate");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pEncryptedPart[ulEncryptedPartLen]",
 		      pEncryptedPart, ulEncryptedPartLen);
@@ -1031,7 +1042,7 @@ CK_RV spy_C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
   if (rv == CKR_OK) {
     spy_dump_string_out("pPart[*pulPartLen]", pPart, *pulPartLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_GenerateKey(CK_SESSION_HANDLE hSession,
@@ -1041,16 +1052,17 @@ CK_RV spy_C_GenerateKey(CK_SESSION_HANDLE hSession,
 			CK_OBJECT_HANDLE_PTR phKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GenerateKey");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
   spy_attribute_list_in("pTemplate", pTemplate, ulCount);
   rv = po->C_GenerateKey(hSession, pMechanism, pTemplate,
 			 ulCount, phKey);
   if (rv == CKR_OK) {
     spy_dump_ulong_out("hKey", *phKey);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
@@ -1063,11 +1075,14 @@ CK_RV spy_C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
 			    CK_OBJECT_HANDLE_PTR phPrivateKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GenerateKeyPair");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
-  spy_attribute_list_in("pPublicKeyTemplate", pPublicKeyTemplate, ulPublicKeyAttributeCount);
-  spy_attribute_list_in("pPrivateKeyTemplate", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
+  spy_attribute_list_in("pPublicKeyTemplate",
+			pPublicKeyTemplate, ulPublicKeyAttributeCount);
+  spy_attribute_list_in("pPrivateKeyTemplate",
+			pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
   rv = po->C_GenerateKeyPair(hSession, pMechanism, pPublicKeyTemplate,
 			     ulPublicKeyAttributeCount, pPrivateKeyTemplate,
 			     ulPrivateKeyAttributeCount, phPublicKey,
@@ -1076,7 +1091,7 @@ CK_RV spy_C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
     spy_dump_ulong_out("hPublicKey", *phPublicKey);
     spy_dump_ulong_out("hPrivateKey", *phPrivateKey);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -1088,9 +1103,10 @@ CK_RV spy_C_WrapKey(CK_SESSION_HANDLE hSession,
 		    CK_ULONG_PTR pulWrappedKeyLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_WrapKey");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
   spy_dump_ulong_in("hWrappingKey", hWrappingKey);
   spy_dump_ulong_in("hKey", hKey);
   rv = po->C_WrapKey(hSession, pMechanism, hWrappingKey,
@@ -1099,7 +1115,7 @@ CK_RV spy_C_WrapKey(CK_SESSION_HANDLE hSession,
     spy_dump_string_out("pWrappedKey[*pulWrappedKeyLen]",
 			pWrappedKey, *pulWrappedKeyLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_UnwrapKey(CK_SESSION_HANDLE hSession,
@@ -1112,9 +1128,10 @@ CK_RV spy_C_UnwrapKey(CK_SESSION_HANDLE hSession,
 		      CK_OBJECT_HANDLE_PTR phKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_UnwrapKey");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
   spy_dump_ulong_in("hUnwrappingKey", hUnwrappingKey);
   spy_dump_string_in("pWrappedKey[ulWrappedKeyLen]",
 		      pWrappedKey, ulWrappedKeyLen);
@@ -1125,7 +1142,7 @@ CK_RV spy_C_UnwrapKey(CK_SESSION_HANDLE hSession,
   if (rv == CKR_OK) {
     spy_dump_ulong_out("hKey", *phKey);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_DeriveKey(CK_SESSION_HANDLE hSession,
@@ -1136,9 +1153,10 @@ CK_RV spy_C_DeriveKey(CK_SESSION_HANDLE hSession,
 		      CK_OBJECT_HANDLE_PTR phKey)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_DeriveKey");
   spy_dump_ulong_in("hSession", hSession);
-  fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+  fprintf(spy_output, "pMechanism->type=%s\n",
+	  lookup_enum(MEC_T, pMechanism->mechanism));
   spy_dump_ulong_in("hBaseKey", hBaseKey);
   spy_attribute_list_in("pTemplate", pTemplate, ulAttributeCount);
   rv = po->C_DeriveKey(hSession, pMechanism, hBaseKey,
@@ -1146,7 +1164,7 @@ CK_RV spy_C_DeriveKey(CK_SESSION_HANDLE hSession,
   if (rv == CKR_OK) {
     spy_dump_ulong_out("hKey", *phKey);
   }
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_SeedRandom(CK_SESSION_HANDLE hSession,
@@ -1154,11 +1172,11 @@ CK_RV spy_C_SeedRandom(CK_SESSION_HANDLE hSession,
 		       CK_ULONG  ulSeedLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_SeedRandom");
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_string_in("pSeed[ulSeedLen]", pSeed, ulSeedLen);
   rv = po->C_SeedRandom(hSession, pSeed, ulSeedLen);
-  RETURN();
+  return retne(rv);
 }
 
 
@@ -1167,33 +1185,33 @@ CK_RV spy_C_GenerateRandom(CK_SESSION_HANDLE hSession,
 			   CK_ULONG  ulRandomLen)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GenerateRandom");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_GenerateRandom(hSession, RandomData, ulRandomLen);
   if (rv == CKR_OK) {
     spy_dump_string_out("RandomData[ulRandomLen]",
 			RandomData, ulRandomLen);
   }
-  RETURN();
+  return retne(rv);
 }
 
 
 CK_RV spy_C_GetFunctionStatus(CK_SESSION_HANDLE hSession)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_GetFunctionStatus");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_GetFunctionStatus(hSession);
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_CancelFunction(CK_SESSION_HANDLE hSession)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_CancelFunction");
   spy_dump_ulong_in("hSession", hSession);
   rv = po->C_CancelFunction(hSession);
-  RETURN();
+  return retne(rv);
 }
 
 CK_RV spy_C_WaitForSlotEvent(CK_FLAGS flags,
@@ -1201,7 +1219,7 @@ CK_RV spy_C_WaitForSlotEvent(CK_FLAGS flags,
 			     CK_VOID_PTR pRserved)
 {
   CK_RV rv;
-  ENTER();
+  enter("C_WaitForSlotEvent");
   rv = po->C_WaitForSlotEvent(flags, pSlot, pRserved);
-  RETURN();
+  return retne(rv);
 }
