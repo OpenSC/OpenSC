@@ -78,7 +78,7 @@ struct sc_pkcs15_pin_info {
 
 	unsigned int magic;
 };
-typedef struct sc_pkcs15_pin_info sc_pkcs15_pin_info;
+typedef struct sc_pkcs15_pin_info sc_pkcs15_pin_info_t;
 
 #define SC_PKCS15_ALGO_OP_COMPUTE_CHECKSUM	0x01
 #define SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE	0x02
@@ -251,7 +251,7 @@ struct sc_pkcs15_prkey_info {
 
 	struct sc_path path;
 };
-typedef struct sc_pkcs15_prkey_info sc_pkcs15_prkey_info;
+typedef struct sc_pkcs15_prkey_info sc_pkcs15_prkey_info_t;
 
 struct sc_pkcs15_pubkey_info {
 	struct sc_pkcs15_id id;	/* correlates to private key id */
@@ -261,7 +261,7 @@ struct sc_pkcs15_pubkey_info {
 
 	struct sc_path path;
 };
-typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info;
+typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info_t;
 
 #define SC_PKCS15_TYPE_CLASS_MASK		0xF00
 
