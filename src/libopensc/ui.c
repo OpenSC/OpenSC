@@ -192,6 +192,9 @@ sc_ui_get_func(sc_context_t *ctx, const char *name, void **ret)
 		}
 	}
 
+	if (sc_ui_lib_handle == NULL)
+		return 0;
+
 	return sc_module_get_address(ctx, sc_ui_lib_handle, ret, name);
 }
 
