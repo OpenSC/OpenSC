@@ -1,5 +1,9 @@
 ## Makefile.am -- Process this file with automake to produce Makefile.in
 
+SUBDIRS = . npinclude
+
+EXTRA_DIST = testprog.c
+
 INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@ @CFLAGS_ASSUAN@
 
 plugindir = $(PLUGINDIR)
