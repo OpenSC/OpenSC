@@ -51,7 +51,8 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 	if (rv == CKR_OK)
 		return (void *) mod;
 
-failed:	C_UnloadModule((void *) mod);
+failed:
+	C_UnloadModule((void *) mod);
 	return NULL;
 }
 
