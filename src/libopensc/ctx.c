@@ -27,6 +27,9 @@
 #include <errno.h>
 #include <sys/stat.h> /* for mkdir */
 #include <limits.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader)
 {
@@ -325,9 +328,19 @@ void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 {
 	int i, r, count = 0;
 	scconf_block **blocks;
+	char *conf_path = OPENSC_CONF_PATH;
 	
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
-	ctx->conf = scconf_new(OPENSC_CONF_PATH);
+#ifdef _WIN32
+	if (!strncmp(conf_path, "%windir%", 8)) {
+		static char temp_path[PATH_MAX];
+
+		GetWindowsDirectory(opensc_conf_path, sizeof(temp_path));
+		strcat(opensc_conf_path, conf_path + 8);
+		conf_path = temp_path;
+	}
+#endif
+	ctx->conf = scconf_new(conf_path);
 	if (ctx->conf == NULL)
 		return;
 	r = scconf_parse(ctx->conf);

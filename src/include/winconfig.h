@@ -40,7 +40,10 @@
 #define HAVE_IO_H
 #define HAVE_GETPASS
 
-#define OPENSC_CONF_PATH "C:\\WINNT\\opensc.conf"
+/* %windir% is replaced by the path of the Windows directory,
+ * this is C:\WINNT or C:\WINDOWS on most systems.
+ */
+#define OPENSC_CONF_PATH "%windir%\\opensc.conf"
 
 #define PATH_MAX _MAX_PATH
 
