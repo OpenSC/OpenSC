@@ -154,7 +154,7 @@ static int scconf_lex_engine(scconf_parser * parser, BUFHAN * bp)
 		case EOF:
 			break;
 		default:
-			buf_eat_till(bp, (char) this_char, ";, \t\n");
+			buf_eat_till(bp, (char) this_char, ";,{}= \t\n");
 			scconf_parse_token(parser, TOKEN_TYPE_STRING, bp->buf);
 			buf_zero(bp);
 			continue;
