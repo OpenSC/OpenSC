@@ -11,9 +11,6 @@ SRC = sia_opensc.c sia_support.c sia_support.h
 if HAVE_SIA
 lib_LTLIBRARIES = libsia_opensc.la
 noinst_PROGRAMS = test-sia
-else
-lib_LTLIBRARIES = 
-noinst_PROGRAMS = 
 endif
 
 libsia_opensc_la_SOURCES = $(SRC)

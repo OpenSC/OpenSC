@@ -4,8 +4,6 @@ include_HEADERS = scrandom.h
 
 if HAVE_SSL
 SSL_LTLIB = @LIBCRYPTO@
-else
-SSL_LTLIB = 
 endif
 
 lib_LTLIBRARIES = libscrandom.la

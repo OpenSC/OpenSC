@@ -47,26 +47,26 @@ struct _sc_driver_entry {
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
-	{ "setcos", sc_get_setcos_driver },
-	{ "miocos", sc_get_miocos_driver },
-	{ "flex", sc_get_flex_driver },
-	{ "tcos", sc_get_tcos_driver },
-	{ "emv", sc_get_emv_driver },
+	{ "setcos", (void *) sc_get_setcos_driver, NULL },
+	{ "miocos", (void *) sc_get_miocos_driver, NULL },
+	{ "flex", (void *) sc_get_flex_driver, NULL },
+	{ "tcos", (void *) sc_get_tcos_driver, NULL },
+	{ "emv", (void *) sc_get_emv_driver, NULL },
 #ifdef HAVE_OPENSSL
-	{ "gpk", sc_get_gpk_driver },
+	{ "gpk", (void *) sc_get_gpk_driver, NULL },
 #endif
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
-	{ "default", sc_get_default_driver },
-	{ NULL }
+	{ "default", (void *) sc_get_default_driver, NULL },
+	{ NULL, NULL, NULL }
 };
 
 static const struct _sc_driver_entry internal_reader_drivers[] = {
 #ifdef HAVE_LIBPCSCLITE
-	{ "pcsc", sc_get_pcsc_driver },
+	{ "pcsc", (void *) sc_get_pcsc_driver, NULL },
 #endif
-	{ "ctapi", sc_get_ctapi_driver },
-	{ NULL }
+	{ "ctapi", (void *) sc_get_ctapi_driver, NULL },
+	{ NULL, NULL, NULL }
 };
 
 struct _sc_ctx_options {
@@ -219,7 +219,7 @@ static int load_reader_drivers(struct sc_context *ctx,
 		ent = &opts->rdrv[i];
 		for (j = 0; internal_reader_drivers[j].name != NULL; j++)
 			if (strcmp(ent->name, internal_reader_drivers[j].name) == 0) {
-				func = internal_reader_drivers[j].func;
+				func = (const struct sc_reader_driver * (*)(void)) internal_reader_drivers[j].func;
 				break;
 			}
 		if (func == NULL) {
@@ -252,7 +252,7 @@ static int load_card_drivers(struct sc_context *ctx,
 		ent = &opts->cdrv[i];
 		for (j = 0; internal_card_drivers[j].name != NULL; j++)
 			if (strcmp(ent->name, internal_card_drivers[j].name) == 0) {
-				func = internal_card_drivers[j].func;
+				func = (const struct sc_card_driver * (*)(void)) internal_card_drivers[j].func;
 				break;
 			}
 		if (func == NULL) {

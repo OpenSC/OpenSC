@@ -7,10 +7,9 @@ EXTRA_DIST = testprog.c
 INCLUDES = @CFLAGS_OPENSC@ @CFLAGS_ASSUAN@
 
 plugindir = $(PLUGINDIR)
+
 if HAVE_SSL
 plugin_LTLIBRARIES = opensc-signer.la
-else
-plugin_LTLIBRARIES = 
 endif
 
 opensc_signer_la_LDFLAGS = -module -avoid-version

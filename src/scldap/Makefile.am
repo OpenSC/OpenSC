@@ -5,9 +5,6 @@ include_HEADERS = scldap.h
 if HAVE_LDAP
 LDAP_LTLIB = libscldap.la
 LDAP_PROGRAM = test-ldap
-else
-LDAP_LTLIB = 
-LDAP_PROGRAM = 
 endif
 
 lib_LTLIBRARIES = $(LDAP_LTLIB)

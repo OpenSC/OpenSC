@@ -24,7 +24,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dlfcn.h>
 
 #define GET_SLOT_PTR(s, i) (&(s)->slot[(i)])
 #define GET_PRIV_DATA(r) ((struct ctapi_private_data *) (r)->drv_data)
@@ -57,6 +56,7 @@ struct ctapi_private_data {
 };
 
 struct ctapi_slot_data {
+	void *filler;
 };
 
 static int refresh_slot_attributes(struct sc_reader *reader,
@@ -243,21 +243,21 @@ static int ctapi_load_module(struct sc_context *ctx,
 	}
 
 	val = conf->name->data;
-	dlh = dlopen(val, RTLD_LAZY);
-	if (dlh == NULL) {
+	r = sc_module_open(ctx, &dlh, val);
+	if (r != SC_SUCCESS) {
 		error(ctx, "Unable to open shared library '%s'\n", val);
 		return -1;
 	}
-	func = dlsym(dlh, "CT_init");
-	if (func == NULL)
+	r = sc_module_get_address(ctx, dlh, &func, "CT_init");
+	if (r != SC_SUCCESS)
 		goto symerr;
 	funcs.CT_init = func;
-	func = dlsym(dlh, "CT_close");
-	if (func == NULL)
+	r = sc_module_get_address(ctx, dlh, &func, "CT_close");
+	if (r != SC_SUCCESS)
 		goto symerr;
 	funcs.CT_close = func;
-	func = dlsym(dlh, "CT_data");
-	if (func == NULL)
+	r = sc_module_get_address(ctx, dlh, &func, "CT_data");
+	if (r != SC_SUCCESS)
 		goto symerr;
 	funcs.CT_data = func;
 	mod = add_module(gpriv, val, dlh);
@@ -310,7 +310,7 @@ static int ctapi_load_module(struct sc_context *ctx,
 	return 0;
 symerr:
 	error(ctx, "Unable to resolve CT-API symbols.\n");
-	dlclose(dlh);
+	sc_module_close(ctx, &dlh);
 	return -1;
 }
 
