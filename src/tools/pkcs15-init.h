@@ -33,6 +33,7 @@ struct sc_pkcs15init_keyargs {
 	unsigned int		keybits;
 
 	EVP_PKEY *		pkey;
+	X509 *			cert;
 };
 
 struct sc_pkcs15init_certargs {

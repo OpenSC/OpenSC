@@ -40,6 +40,7 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <openssl/pkcs12.h>
 #include "opensc-pkcs15.h"
 #include "util.h"
 #include "profile.h"
@@ -72,8 +73,8 @@ static int	sc_pkcs15init_new_public_key(struct sc_profile *profile,
 			struct sc_pkcs15init_keyargs *keyargs,
 			struct sc_key_template *out);
 static int	sc_pkcs15init_new_cert(struct sc_profile *profile,
-			unsigned int type,
-			struct sc_pkcs15init_certargs *certargs,
+			unsigned int type, const char *name,
+			struct sc_pkcs15_id *id, const char *label,
 			struct sc_cert_template *out);
 
 static int	sc_pkcs15init_store_private_key(struct sc_pkcs15_card *,
@@ -99,7 +100,8 @@ static int	do_select_parent(struct sc_profile *, struct sc_file *,
 static int	do_read_pins(struct sc_profile *);
 static int	set_pins_from_args(struct sc_profile *);
 
-static int	do_read_private_key(const char *, const char *, EVP_PKEY **);
+static int	do_read_private_key(const char *, const char *,
+				EVP_PKEY **, X509 **);
 static int	do_read_public_key(const char *, const char *, EVP_PKEY **);
 static int	do_write_public_key(const char *, const char *, EVP_PKEY *);
 static int	do_read_certificate(const char *, const char *, X509 **);
@@ -356,7 +358,7 @@ do_store_private_key(struct sc_profile *profile)
 	if (opt_objectlabel)
 		args.label = opt_objectlabel;
 
-	r = do_read_private_key(opt_infile, opt_format, &args.pkey);
+	r = do_read_private_key(opt_infile, opt_format, &args.pkey, &args.cert);
 	if (r < 0)
 		return -1;
 
@@ -364,13 +366,24 @@ do_store_private_key(struct sc_profile *profile)
 	if (r < 0)
 		goto failed;
 
-	/* Always store public key as well.
-	 * XXX allow caller to turn this off? */
-	r = sc_pkcs15init_store_public_key(p15card, profile, &args);
-	if (r < 0)
-		goto failed;
+	/* If there's a certificate as well (e.g. when reading the
+	 * private key from a PKCS #12 file) store it, too.
+	 * Otherwise store the public key.
+	 */
+	if (args.cert) {
+		struct sc_pkcs15init_certargs cargs;
 
-	return 0;
+		memset(&cargs, 0, sizeof(cargs));
+		cargs.id = args.id;
+		cargs.cert = args.cert;
+		r = sc_pkcs15init_store_certificate(p15card, profile,
+				&cargs);
+	} else {
+		r = sc_pkcs15init_store_public_key(p15card, profile, &args);
+	}
+
+	if (r >= 0)
+		return 0;
 
 failed:	error("Failed to store private key: %s\n", sc_strerror(r));
 	return -1;
@@ -708,45 +721,156 @@ sc_pkcs15init_setup_key(struct sc_pkcs15_card *p15card,
 	return r;
 }
 
+/*
+ * Map X509 keyUsage extension bits to PKCS#15 keyUsage bits
+ */
+static unsigned int	x509_to_pkcs15_private_key_usage[16] = {
+	SC_PKCS15_PRKEY_USAGE_SIGN
+	| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,	/* digitalSignature */
+	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,	/* NonRepudiation */
+	SC_PKCS15_PRKEY_USAGE_UNWRAP,		/* keyEncipherment */
+	SC_PKCS15_PRKEY_USAGE_DECRYPT,		/* dataEncipherment */
+	SC_PKCS15_PRKEY_USAGE_DERIVE,		/* keyAgreement */
+	SC_PKCS15_PRKEY_USAGE_SIGN
+	| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,	/* keyCertSign */
+	SC_PKCS15_PRKEY_USAGE_SIGN
+	| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,	/* cRLSign */
+};
+static unsigned int	x509_to_pkcs15_public_key_usage[16] = {
+	SC_PKCS15_PRKEY_USAGE_VERIFY
+	| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,	/* digitalSignature */
+	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,	/* NonRepudiation */
+	SC_PKCS15_PRKEY_USAGE_WRAP,		/* keyEncipherment */
+	SC_PKCS15_PRKEY_USAGE_ENCRYPT,		/* dataEncipherment */
+	SC_PKCS15_PRKEY_USAGE_DERIVE,		/* keyAgreement */
+	SC_PKCS15_PRKEY_USAGE_VERIFY
+	| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,	/* keyCertSign */
+	SC_PKCS15_PRKEY_USAGE_VERIFY
+	| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,	/* cRLSign */
+};
+
+static int
+sc_pkcs15init_new_key(struct sc_profile *profile, unsigned int type,
+		const char *name, struct sc_pkcs15_id *id,
+		const char *label,
+		unsigned long x509KeyUsage,
+		struct sc_key_template *out)
+{
+	struct sc_key_template *list, *t;
+	struct sc_pkcs15_id *tid;
+	unsigned int	*tusage, *bits, n, pkcsKeyUsage;
+	int		r, is_private;
+
+	if ((type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY) {
+		list = profile->prkey_list;
+		is_private = 1;
+	} else {
+		list = profile->pubkey_list;
+		is_private = 0;
+	}
+
+	/* If we have a certificate, map the key usage */
+	bits = is_private? x509_to_pkcs15_private_key_usage
+			 : x509_to_pkcs15_public_key_usage;
+	for (n = pkcsKeyUsage = 0; n < 16; n++) {
+		if (x509KeyUsage & (1 << n))
+			pkcsKeyUsage |= bits[n];
+	}
+
+	/* First, see if there's a template with a matching
+	 * name. If there is no matching template, fail.
+	 * */
+	if (name) {
+		for (t = list; t; t = t->next) {
+			if (!strcasecmp(t->ident, name))
+				goto found;
+		}
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	}
+
+	/* See if there is a key template with a matching ID */
+	for (t = list; t; t = t->next) {
+		tid = is_private? &t->pkcs15.priv.id : &t->pkcs15.pub.id;
+		if (sc_pkcs15_compare_id(tid, id))
+			goto found;
+	}
+
+	/* See if there is a key template with a matching key usage */
+	for (t = list; t; t = t->next) {
+		tusage = is_private? &t->pkcs15.priv.usage
+				   : &t->pkcs15.pub.usage;
+		if (pkcsKeyUsage == *tusage)
+			goto found;
+	}
+
+	/* Nope. Just use whatever key template was defined first */
+	t = list;
+
+found:	*out = *t;
+
+	/* Set the label */
+	if (label)
+		strcpy(out->pkcs15_obj.label, label);
+	if (!out->pkcs15_obj.label[0])
+		sprintf(out->pkcs15_obj.label, "%s Key",
+				is_private? "Private" : "Public");
+
+	tid = is_private? &out->pkcs15.priv.id : &out->pkcs15.pub.id;
+	if (id->len) {
+		/* Override ID with the ID specified by caller */
+		*tid = *id;
+	} else if (!tid->len) {
+		/* error("No keyUsage defined for key %s", out->ident); */
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	/* If we have a keyUsage, set it */
+	tusage = is_private? &out->pkcs15.priv.usage : &out->pkcs15.pub.usage;
+	if (pkcsKeyUsage) {
+		*tusage = pkcsKeyUsage;
+	} else if (*tusage == 0) {
+		/* error("No keyUsage defined for key %s", out->ident); */
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	/* Now allocate a file */
+	n = sc_pkcs15_get_objects(p15card, type, NULL, 0);
+	r = profile->ops->allocate_file(profile,
+			p15card->card, type, n,
+			&out->file);
+	if (r < 0) {
+		/* error("Unable to allocate key file"); */
+		return r;
+	}
+	if (is_private) {
+		out->pkcs15.priv.path = out->file->path;
+	} else {
+		out->pkcs15.pub.path = out->file->path;
+	}
+	out->pkcs15_obj.data = &out->pkcs15;
+	out->pkcs15_obj.type = type;
+
+	return 0;
+}
+
 int
 sc_pkcs15init_new_private_key(struct sc_profile *profile,
 		unsigned int type,
 		struct sc_pkcs15init_keyargs *keyargs,
 		struct sc_key_template *out)
 {
-	struct sc_key_template *template;
-	struct sc_pkcs15_object *obj;
-	int		index, r;
+	int	r;
 
-	index = sc_pkcs15_get_objects(p15card, type, NULL, 0);
-
-	if (keyargs->template_name)
-		template = sc_profile_find_private_key(profile,
-			       	keyargs->template_name);
-	else
-		template = profile->prkey_list;
-	if (template == NULL)
-		return SC_ERROR_OBJECT_NOT_FOUND;
-
-	*out = *template;
-
-	if (keyargs->label)
-		strcpy(out->pkcs15_obj.label, keyargs->label);
-	else if (!out->pkcs15_obj.label[0])
-		strcpy(out->pkcs15_obj.label, "Private Key");
-
-	if (keyargs->id.len)
-		out->pkcs15.priv.id = keyargs->id;
-	else {
-		struct sc_pkcs15_id	*ip = &out->pkcs15.priv.id;
-
-		if (!ip->len)
-			sc_pkcs15_format_id("45", ip);
-		ip->value[ip->len-1] += index;
-	}
+	r = sc_pkcs15init_new_key(profile, type, 
+			keyargs->template_name, &keyargs->id,
+			keyargs->label,
+			keyargs->cert? keyargs->cert->ex_kusage : 0,
+			out);
 
 	/* Find the PIN used to protect this key */
 	if (out->pkcs15_obj.auth_id.len) {
+		struct sc_pkcs15_object *obj;
+
 		r = sc_pkcs15_find_pin_by_auth_id(p15card,
 				&out->pkcs15_obj.auth_id, &obj);
 		if (r < 0) {
@@ -760,28 +884,6 @@ sc_pkcs15init_new_private_key(struct sc_profile *profile,
 	} else {
 		/* XXX flag this as error/warning? */
 	}
-
-	/* Sanity checks */
-	if (!out->pkcs15.priv.id.len) {
-		/* error("No ID set for private key object"); */
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	if (!out->pkcs15.priv.usage) {
-		/* error("No keyUsage defined for private key"); */
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	/* Now allocate a file */
-	r = profile->ops->allocate_file(profile,
-			p15card->card, type, index,
-			&out->file);
-	if (r < 0) {
-		/* error("Unable to allocate private key file"); */
-		return r;
-	}
-	out->pkcs15.priv.path = out->file->path;
-	out->pkcs15_obj.data = &out->pkcs15;
-	out->pkcs15_obj.type = type;
 
 	r = sc_pkcs15_add_object(p15card, &p15card->df[SC_PKCS15_PRKDF],
 		       	0, &out->pkcs15_obj);
@@ -804,57 +906,13 @@ sc_pkcs15init_new_public_key(struct sc_profile *profile,
 		struct sc_pkcs15init_keyargs *keyargs,
 		struct sc_key_template *out)
 {
-	struct sc_key_template *template;
-	int		index, r;
+	int		r;
 
-	index = sc_pkcs15_get_objects(p15card, type, NULL, 0);
-
-	if (keyargs->template_name)
-		template = sc_profile_find_public_key(profile,
-			       	keyargs->template_name);
-	else
-		template = profile->pubkey_list;
-	if (template == NULL)
-		return SC_ERROR_OBJECT_NOT_FOUND;
-
-	*out = *template;
-
-	if (keyargs->label)
-		strcpy(out->pkcs15_obj.label, keyargs->label);
-	else if (!out->pkcs15_obj.label[0])
-		strcpy(out->pkcs15_obj.label, "Public Key");
-
-	if (keyargs->id.len)
-		out->pkcs15.pub.id = keyargs->id;
-	else {
-		struct sc_pkcs15_id	*ip = &out->pkcs15.pub.id;
-
-		if (!ip->len)
-			sc_pkcs15_format_id("45", ip);
-		ip->value[ip->len-1] += index;
-	}
-
-	/* Sanity checks */
-	if (!out->pkcs15.pub.id.len) {
-		/* error("No ID set for public key object"); */
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	if (!out->pkcs15.pub.usage) {
-		/* error("No keyUsage defined for public key"); */
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	/* Now allocate a file */
-	r = profile->ops->allocate_file(profile,
-			p15card->card, type, index,
-			&out->file);
-	if (r < 0) {
-		/* error("Unable to allocate public key file"); */
-		return r;
-	}
-	out->pkcs15.pub.path = out->file->path;
-	out->pkcs15_obj.data = &out->pkcs15;
-	out->pkcs15_obj.type = type;
+	r = sc_pkcs15init_new_key(profile, type, 
+			keyargs->template_name, &keyargs->id,
+			keyargs->label,
+			keyargs->cert? keyargs->cert->ex_kusage : 0,
+			out);
 
 	r = sc_pkcs15_add_object(p15card, &p15card->df[SC_PKCS15_PUKDF],
 		       	0, &out->pkcs15_obj);
@@ -895,7 +953,9 @@ sc_pkcs15init_setup_cert(struct sc_pkcs15_card *p15card,
 		 */
 		r = sc_pkcs15init_new_cert(profile,
 				SC_PKCS15_TYPE_CERT_X509,
-				certargs, out);
+				certargs->template_name,
+				&certargs->id, certargs->label,
+				out);
 	}
 
 	return r;
@@ -905,42 +965,45 @@ sc_pkcs15init_setup_cert(struct sc_pkcs15_card *p15card,
 int
 sc_pkcs15init_new_cert(struct sc_profile *profile,
 		unsigned int type,
-		struct sc_pkcs15init_certargs *certargs,
+		const char *name, struct sc_pkcs15_id *id,
+		const char *label,
 		struct sc_cert_template *out)
 {
-	struct sc_cert_template *template;
+	struct sc_cert_template *t = NULL;
 	int		index, r;
 
 	index = sc_pkcs15_get_objects(p15card, type, NULL, 0);
 
-	if (certargs->template_name)
-		template = sc_profile_find_cert(profile,
-			       	certargs->template_name);
-	else
-		template = profile->cert_list;
-	if (template == NULL)
+	/* First, try to find a cert template with the given name.
+	 * Fail if a name was given, but no match found */
+	if (name) {
+		for (t = profile->cert_list; t; t = t->next) {
+			if (!strcasecmp(t->ident, name))
+				goto found;
+		}
 		return SC_ERROR_OBJECT_NOT_FOUND;
-
-	out->file = template->file;
-
-	if (certargs->label)
-		strcpy(out->pkcs15_obj.label, certargs->label);
-	else if (!out->pkcs15_obj.label[0])
-		strcpy(out->pkcs15_obj.label, "Certificate");
-
-	if (certargs->id.len)
-		out->pkcs15.id = certargs->id;
-	else {
-		struct sc_pkcs15_id	*ip = &out->pkcs15.id;
-
-		if (!ip->len)
-			sc_pkcs15_format_id("45", ip);
-		ip->value[ip->len-1] += index;
 	}
 
-	/* Sanity checks */
-	if (!out->pkcs15.id.len) {
-		/* error("No ID set for certificate object"); */
+	/* See if there is a key template with a matching ID */
+	for (t = profile->cert_list; t; t = t->next) {
+		if (sc_pkcs15_compare_id(&t->pkcs15.id, id))
+			goto found;
+	}
+
+	/* Bummer. Just use the first template defined */
+	t = profile->cert_list;
+
+found:	*out = *t;
+
+	if (label)
+		strcpy(out->pkcs15_obj.label, label);
+	if (!out->pkcs15_obj.label[0])
+		strcpy(out->pkcs15_obj.label, "Certificate");
+
+	if (id->len) {
+		out->pkcs15.id = *id;
+	} else if (!out->pkcs15.id.len) {
+		/* error("No ID defined for certificate"); */
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -964,9 +1027,10 @@ sc_pkcs15init_new_cert(struct sc_profile *profile,
 	}
 
 	/* Return the ID we selected, for reference */
-	certargs->id = out->pkcs15.id;
+	*id = out->pkcs15.id;
 	return 0;
 }
+
 /*
  * Find a key given its ID
  */
@@ -1479,7 +1543,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 }
 
 /*
- * Read a PEM encoded key
+ * Read a private key
  */
 static EVP_PKEY *
 do_read_pem_private_key(const char *filename, const char *passphrase)
@@ -1497,14 +1561,40 @@ do_read_pem_private_key(const char *filename, const char *passphrase)
 	return pk;
 }
 
+static EVP_PKEY *
+do_read_pkcs12_private_key(const char *filename, const char *passphrase,
+		X509 **xp)
+{
+	BIO		*bio;
+	PKCS12		*p12;
+	EVP_PKEY	*pk = NULL;
+
+	bio = BIO_new(BIO_s_file());
+	if (BIO_read_filename(bio, filename) < 0)
+		fatal("Unable to open %s: %m", filename);
+	p12 = d2i_PKCS12_bio(bio, NULL);
+	BIO_free(bio);
+	if (p12)
+		PKCS12_parse(p12, passphrase, &pk, xp, NULL);
+	PKCS12_free(p12);
+	if (pk == NULL) 
+		ossl_print_errors();
+	return pk;
+}
+
 static int
-do_read_private_key(const char *filename, const char *format, EVP_PKEY **pk)
+do_read_private_key(const char *filename, const char *format,
+			EVP_PKEY **pk, X509 **xp)
 {
 	char	*passphrase = NULL;
 
+	*xp = NULL;
 	while (1) {
 		if (!format || !strcasecmp(format, "pem")) {
 			*pk = do_read_pem_private_key(filename, passphrase);
+		} else if (!strcasecmp(format, "pkcs12")) {
+			*pk = do_read_pkcs12_private_key(filename,
+					passphrase, xp);
 		} else {
 			error("Error when reading private key. "
 			      "Key file format \"%s\" not supported.\n",
@@ -1827,7 +1917,7 @@ ossl_print_errors()
 	}
 
 	while ((err = ERR_get_error()) != 0)
-		fprintf(stderr, "%s", ERR_error_string(err, NULL));
+		fprintf(stderr, "%s\n", ERR_error_string(err, NULL));
 }
 
 static void
