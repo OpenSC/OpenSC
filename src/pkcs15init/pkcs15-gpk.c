@@ -684,7 +684,8 @@ gpk_pkfile_update_private(struct sc_profile *profile,
 	 * command. Any key will do...
 	 * The GPK _is_ weird. */
 	keysize = sizeof(keybuf);
-	r = sc_profile_get_secret(profile, SC_AC_PRO, 1, keybuf, &keysize);
+	r = sc_pkcs15init_get_secret(profile, card,
+				SC_AC_PRO, 1, keybuf, &keysize);
 	if (r < 0) {
 		error(profile, "No secure messaging key defined by profile");
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
