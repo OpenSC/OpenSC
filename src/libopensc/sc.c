@@ -251,6 +251,13 @@ int sc_file_add_acl_entry(sc_file_t *file, unsigned int operation,
 			file->acl[operation] = NULL;
 	}
 
+	/* If the entry is already present (e.g. due to the mapping)
+	 * of the card's AC with OpenSC's), don't add it again. */
+	for (p = file->acl[operation]; p != NULL; p = p->next) {
+		if ((p->method == method) && (p->key_ref == key_ref))
+			return 0;
+	}
+
 	_new = (sc_acl_entry_t *) malloc(sizeof(sc_acl_entry_t));
 	if (_new == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
