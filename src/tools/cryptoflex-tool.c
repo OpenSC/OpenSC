@@ -1128,7 +1128,7 @@ int create_pkcs15()
 	pin.magic = SC_PKCS15_PIN_MAGIC;
 	strcpy(pin.com_attr.label, "Authentication PIN");
 	sc_pkcs15_format_id("01", &pin.auth_id);
-	sc_format_path("3F00", &pin.path);
+	sc_format_path("3F005015", &pin.path);
 	pin.reference = 1;
 	pin.min_length = 4;
 	pin.stored_length = 8;
