@@ -287,30 +287,44 @@ static int encode_dir_record(struct sc_context *ctx, const struct sc_app_info *a
 
 static int update_transparent(struct sc_card *card, struct sc_file *file)
 {
-	u8 *rec, *buf = NULL;
+	u8 *rec, *buf = NULL, *tmp;
 	size_t rec_size, buf_size = 0;
 	int i, r;
 
 	for (i = 0; i < card->app_count; i++) {
 		r = encode_dir_record(card->ctx, card->app[i], &rec, &rec_size);
 		if (r) {
-			free(buf);
+			if (rec)
+				free(rec);
+			if (buf)
+				free(buf);
 			return r;
 		}
-		buf = (u8 *) realloc(buf, buf_size + rec_size);
-		if (buf == NULL) {
-			free(rec);
+		tmp = (u8 *) realloc(buf, buf_size + rec_size);
+		if (!tmp) {
+			if (rec)
+				free(rec);
+			if (buf)
+				free(buf);
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
+		buf = tmp;
 		memcpy(buf + buf_size, rec, rec_size);
 		buf_size += rec_size;
+		free(rec);
 	}
 	if (file->size > buf_size) {
-		buf = (u8 *) realloc(buf, file->size);
+		tmp = (u8 *) realloc(buf, file->size);
+		if (!tmp) {
+			free(buf);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+		buf = tmp;
 		memset(buf + buf_size, 0, file->size - buf_size);
 		buf_size = file->size;
 	}
 	r = sc_update_binary(card, 0, buf, buf_size, 0);
+	free(buf);
 	SC_TEST_RET(card->ctx, r, "Unable to update EF(DIR)");
 	
 	return 0;
