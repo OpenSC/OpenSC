@@ -247,10 +247,13 @@ int enum_dir(struct sc_path path, int depth)
 		int i;
 
 		r = sc_list_files(card, files, sizeof(files));
-		if (r <= 0) {
+		if (r < 0) {
 			fprintf(stderr, "sc_list_files() failed: %s\n", sc_strerror(r));
 			return 1;
 		}
+		if (r == 0) {
+			printf("Empty directory\n");
+		} else
 		for (i = 0; i < r/2; i++) {
 			struct sc_path tmppath;
 
