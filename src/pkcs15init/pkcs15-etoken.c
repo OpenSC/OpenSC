@@ -776,18 +776,15 @@ error(struct sc_profile *profile, const char *fmt, ...)
 }
 
 struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations = {
-	etoken_erase,
-	etoken_create_dir,
-	NULL,	/*create_domain */
-	etoken_select_pin_reference,
-	etoken_create_pin,
-	etoken_select_key_reference,
-	etoken_create_key,
-	etoken_store_key,
-	etoken_generate_key,
-	NULL,	/* init_app */
-	NULL,	/* new_pin */
-	NULL, 	/* new_key */
-	NULL,	/* miocos_new_file */
-	NULL	/* old_generate_key*/
+	.erase_card		= etoken_erase,
+	.create_dir		= etoken_create_dir,
+	.select_pin_reference	= etoken_select_pin_reference,
+	.create_pin		= etoken_create_pin,
+	.select_key_reference	= etoken_select_key_reference,
+	.create_key		= etoken_create_key,
+	.store_key		= etoken_store_key,
+	//.new_pin		= etoken_new_pin,
+	//.new_key		= etoken_new_key,
+	.generate_key		= etoken_generate_key
+	//.new_file		= etoken_new_file,
 };
