@@ -136,8 +136,13 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	    ses->state != CKS_RW_PUBLIC_SESSION)
                 return CKR_USER_ALREADY_LOGGED_IN;
 
+#if 1
 	LOG("Master PIN code verification starts.\n");
         rc = sc_pkcs15_verify_pin(card, &card->pin_info[0], pPin, ulPinLen);
+#else
+	LOG("MASTER PIN VERIFICATION SKIPPED!\n");
+        rc = 0;
+#endif
 	switch (rc) {
 	case 0:
                 LOG("Master PIN code verified succesfully.\n");

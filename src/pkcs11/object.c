@@ -13,7 +13,7 @@ static void dump_template(char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCou
 		unsigned char *value = (unsigned char*) pTemplate[i].pValue;
 
 		if (pTemplate[i].pValue) {
-			if (pTemplate[i].ulValueLen < 16) {
+			if (pTemplate[i].ulValueLen < 32) {
 				for (j = 0; j < pTemplate[i].ulValueLen; j++)
 					sprintf(&foo[j*2], "%02X", value[j]);
 
@@ -37,6 +37,8 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		     CK_OBJECT_HANDLE_PTR phObject) /* receives new object's handle. */
 {
         LOG("C_CreateObject(%d, 0x%x, %d, 0x%d)\n", hSession, pTemplate, ulCount, phObject);
+	dump_template("C_CreateObject", pTemplate, ulCount);
+
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -76,7 +78,6 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
         int i, j;
 
         LOG("C_GetAttributeValue(%d, %d, 0x%x, %d)\n", hSession, hObject, pTemplate, ulCount);
-	dump_template("C_GetAttributeValue", pTemplate, ulCount);
 
 	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
 		return CKR_SESSION_HANDLE_INVALID;
@@ -86,9 +87,6 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
                 return CKR_OBJECT_HANDLE_INVALID;
 
 	object = slt->object[hObject];
-
-	LOG("C_GetAttributeValue: Slot %d, Object: 0x%x,  Attributes: %d\n",
-	    session[hSession]->slot, object, object->num_attributes);
 
 	for (i = 0; i < ulCount; i++) {
 		// For each request attribute
@@ -127,6 +125,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 		}
 
 		// 5. Otherwise set length to minus one
+		LOG("C_GetAttributeValue: Attribute 0x%x ignored\n", pTemplate[i].type);
 		pTemplate[i].ulValueLen = -1;
 	}
 
@@ -217,6 +216,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,          /* the session's han
 
         ses->search.position += to_return;
 
+	LOG("C_FindObjects: returning %d matching objects\n", to_return);
         return CKR_OK;
 }
 

@@ -178,8 +178,8 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
                          CK_ULONG_PTR pulCount)
 {
 	static const CK_MECHANISM_TYPE mechanism_list[] = {
-		CKM_RSA_PKCS,
-		CKM_RSA_X_509
+		//CKM_RSA_PKCS,
+		//CKM_RSA_X_509
 	};
         const int numMechanisms = sizeof(mechanism_list) / sizeof(mechanism_list[0]);
 
