@@ -58,12 +58,12 @@ const struct {
     { NULL }
 };
 
-int etoken_finish(struct sc_card *card)
+static int etoken_finish(struct sc_card *card)
 {
 	return 0;
 }
 
-int etoken_identify_card(struct sc_card *card)
+static int etoken_identify_card(struct sc_card *card)
 {
 	int i;
 
@@ -82,12 +82,12 @@ int etoken_identify_card(struct sc_card *card)
 	return 0;
 }
 
-int etoken_match_card(struct sc_card *card)
+static int etoken_match_card(struct sc_card *card)
 {
 	return etoken_identify_card(card) != 0;
 }
 
-int etoken_init(struct sc_card *card)
+static int etoken_init(struct sc_card *card)
 {
 	unsigned long	flags;
 
@@ -186,7 +186,7 @@ static int etoken_check_sw(struct sc_card *card, int sw1, int sw2)
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
-u8 etoken_extract_offset(u8 *buf, int buflen) {
+static u8 etoken_extract_offset(u8 *buf, int buflen) {
 	int i;
 	int mode;
 	u8 tag,len;
@@ -220,7 +220,7 @@ u8 etoken_extract_offset(u8 *buf, int buflen) {
 	return 0;
 }
 
-u8* etoken_extract_fid(u8 *buf, int buflen) {
+static u8* etoken_extract_fid(u8 *buf, int buflen) {
 	int i;
 	int mode;
 	u8 tag,len;
@@ -256,7 +256,7 @@ u8* etoken_extract_fid(u8 *buf, int buflen) {
 	return NULL;
 }
 
-int etoken_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+static int etoken_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 {
 	struct sc_apdu apdu;
 	u8 rbuf[256];
