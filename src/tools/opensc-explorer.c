@@ -681,19 +681,19 @@ int do_change(int argc, char **argv)
                      i < sizeof(oldpin) && *s && *s != '"'; i++) 
 			oldpin[i] = *s++;
 		oldpinlen = i;
-                argc--;
-                argv++;
 	} else if (sc_hex_to_bin(argv[0], oldpin, &oldpinlen) != 0) {
 		printf("Invalid key value.\n");
 		goto usage;
 	}
+        argc--;
+        argv++;
 
 	if (argv[0][0] == '"') {
 		for (s = argv[0] + 1, i = 0;
                      i < sizeof(newpin) && *s && *s != '"'; i++) 
 			newpin[i] = *s++;
 		newpinlen = i;
-	} else if (sc_hex_to_bin(argv[2], newpin, &newpinlen) != 0) {
+	} else if (sc_hex_to_bin(argv[0], newpin, &newpinlen) != 0) {
 		printf("Invalid key value.\n");
 		goto usage;
 	}
@@ -763,7 +763,7 @@ int do_unblock(int argc, char **argv)
                      i < sizeof(newpin) && *s && *s != '"'; i++) 
 			newpin[i] = *s++;
 		newpinlen = i;
-	} else if (sc_hex_to_bin(argv[2], newpin, &newpinlen) != 0) {
+	} else if (sc_hex_to_bin(argv[0], newpin, &newpinlen) != 0) {
 		printf("Invalid key value.\n");
 		goto usage;
 	}
