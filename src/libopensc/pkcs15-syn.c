@@ -237,7 +237,7 @@ sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card, int type)
 int
 sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 		const char *label, void *data,
-		const sc_pkcs15_id_t *auth_id)
+		const sc_pkcs15_id_t *auth_id, int obj_flags)
 {
 	sc_pkcs15_object_t *obj;
 	int		df_type;
@@ -250,18 +250,15 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 	if (label)
 		strncpy(obj->label, label, sizeof(obj->label)-1);
 
-	if (!(p15card->flags & SC_PKCS15_CARD_FLAG_READONLY))
-		obj->flags |= SC_PKCS15_CO_FLAG_MODIFIABLE;
+	obj->flags = obj_flags;
 	if (auth_id)
 		obj->auth_id = *auth_id;
 
 	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_AUTH:
-		obj->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 		df_type = SC_PKCS15_AODF;
 		break;
 	case SC_PKCS15_TYPE_PRKEY:
-		obj->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 		df_type = SC_PKCS15_PRKDF;
 		break;
 	case SC_PKCS15_TYPE_PUBKEY:
@@ -288,7 +285,7 @@ sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
                 const sc_path_t *path, int ref, int type,
                 unsigned int min_length,
                 unsigned int max_length,
-                int flags, int tries_left, const char pad_char)
+                int flags, int tries_left, const char pad_char, int obj_flags)
 {
 	sc_pkcs15_pin_info_t *info;
                 
@@ -311,7 +308,7 @@ sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
                 
 	return sc_pkcs15emu_add_object(p15card,
 	                               SC_PKCS15_TYPE_AUTH_PIN,
-	                               label, info, NULL);
+	                               label, info, NULL, obj_flags);
 }
 
 int
@@ -319,7 +316,7 @@ sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
 		int type, int authority,
 		const sc_path_t *path,
 		const sc_pkcs15_id_t *id,
-                const char *label)
+                const char *label, int obj_flags)
 {
 	/* const char *label = "Certificate"; */
 	sc_pkcs15_cert_info_t *info;
@@ -331,7 +328,8 @@ sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
                 
 	info->path = *path;
 
-	return sc_pkcs15emu_add_object(p15card, type, label, info, NULL);
+	return sc_pkcs15emu_add_object(p15card, type, label, info, NULL,
+					obj_flags);
 }
 
 int
@@ -340,7 +338,7 @@ sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
                 const char *label,
                 int type, unsigned int modulus_length, int usage,
                 const sc_path_t *path, int ref,
-                const sc_pkcs15_id_t *auth_id)
+                const sc_pkcs15_id_t *auth_id, int obj_flags)
 {
 	sc_pkcs15_prkey_info_t *info;   
         
@@ -359,7 +357,7 @@ sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
 		info->path = *path;
 
 	return sc_pkcs15emu_add_object(p15card,
-	                               type, label, info, auth_id);
+	                               type, label, info, auth_id, obj_flags);
 }
 
 int
@@ -368,7 +366,7 @@ sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
 		const char *label, int type,
 		unsigned int modulus_length, int usage,
 		const sc_path_t *path, int ref,
-		const sc_pkcs15_id_t *auth_id)
+		const sc_pkcs15_id_t *auth_id, int obj_flags)
 {
 	sc_pkcs15_pubkey_info_t *info;
 
@@ -382,5 +380,6 @@ sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
 	if (path)
 		info->path = *path;
 
-	return sc_pkcs15emu_add_object(p15card, type, label, info, auth_id);
+	return sc_pkcs15emu_add_object(p15card, type, label, info, auth_id,
+					obj_flags);
 }

@@ -141,7 +141,9 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15emu_add_pin(p15card, &auth_id,
 				pgp_pin_name[i], &path, i+1,
 				SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-				0, buffer[1+i], flags, buffer[4+i], 0);
+				0, buffer[1+i], flags, buffer[4+i], 0,
+				SC_PKCS15_CO_FLAG_MODIFIABLE | 
+				SC_PKCS15_CO_FLAG_PRIVATE);
 	}
 
 	for (i = 0; i < 3; i++) {
@@ -165,7 +167,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				SC_PKCS15_TYPE_PRKEY_RSA,
 				1024, prkey_usage[i],
 				NULL, i,
-				&auth_id);
+				&auth_id, SC_PKCS15_CO_FLAG_PRIVATE |
+				SC_PKCS15_CO_FLAG_MODIFIABLE);
 	}
 
 	for (i = 0; i < 3; i++) {
@@ -188,7 +191,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				pgp_key_name[i],
 				SC_PKCS15_TYPE_PUBKEY_RSA,
 				1024, pubkey_usage[i],
-				&path, 0, &auth_id);
+				&path, 0, &auth_id, SC_PKCS15_CO_FLAG_MODIFIABLE);
 	}
 
 	return 0;
