@@ -564,6 +564,7 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 	process_config_file(ctx, &opts);
 	ctx->mutex = sc_mutex_new();
 	sc_debug(ctx, "===================================\n"); /* first thing in the log */
+	sc_debug(ctx, "opensc version: %s\n", sc_get_version());
 	load_reader_drivers(ctx, &opts);
 	load_card_drivers(ctx, &opts);
 	if (opts.forced_card_driver) {
