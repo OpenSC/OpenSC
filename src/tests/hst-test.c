@@ -75,7 +75,7 @@ int test2()
 	struct sc_path path;
 	struct sc_file file;
 	u8 buf[32];
-	u8 output[1024];
+	char output[1024];
 	int i;
 	
 	sc_format_path("1234", &path);

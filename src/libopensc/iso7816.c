@@ -386,7 +386,8 @@ static int construct_fci(const struct sc_file *file, u8 *out, size_t *outlen)
 
 static int iso7816_create_file(struct sc_card *card, const struct sc_file *file)
 {
-	int r, len;
+	int r;
+	size_t len;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_apdu apdu;
 

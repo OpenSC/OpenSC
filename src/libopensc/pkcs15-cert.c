@@ -374,7 +374,7 @@ int sc_pkcs15_create_cdf(struct sc_pkcs15_card *p15card,
 	size_t bufsize = 0, tmpsize;
 	int i = 0, r;
 	const struct sc_pkcs15_cert_info *cert;
-	u8 str[10240];
+	char str[10240];
 	
 	for (i = 0; (cert = certs[i]) != NULL; i++) {
 		r = encode_x509_cert_info(p15card->card->ctx,

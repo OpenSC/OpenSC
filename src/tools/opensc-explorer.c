@@ -37,7 +37,7 @@ const char *cmds[] = {
 };
 const int nr_cmds = sizeof(cmds)/sizeof(cmds[0]);
 
-int die(int ret)
+void die(int ret)
 {
 	if (card) {
 		sc_unlock(card);
@@ -222,9 +222,9 @@ int do_cat(const char *arg)
 			printf("Usage: cat [file_id]\n");
 			return -1;
 		}
-		strcpy(buf, "I");
-	        strcat(buf, arg);
-		sc_format_path(buf, &path);
+		strcpy((char *) buf, "I");
+	        strcat((char *) buf, arg);
+		sc_format_path((char *) buf, &path);
 		if (path.len != 2) {
 			printf("Usage: cat [file_id]\n");
 			return -1;
