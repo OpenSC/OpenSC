@@ -16,7 +16,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 #include <opensc/opensc.h>
 #include <opensc/scdl.h>
 #include <opensc/log.h>

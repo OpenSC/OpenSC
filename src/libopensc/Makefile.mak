@@ -5,7 +5,8 @@ TARGET                  = opensc.dll
 
 HEADERS			= opensc.h pkcs15.h emv.h \
 			  errors.h types.h \
-			  cardctl.h asn1.h log.h
+			  cardctl.h asn1.h log.h \
+			  ui.h
 
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
 
@@ -25,12 +26,14 @@ OBJECTS			= \
 	card-etoken.obj card-tcos.obj card-emv.obj card-default.obj \
 	card-mcrd.obj card-starcos.obj \
 	\
+	ui.obj \
+	\
 	$(TOPDIR)\win32\version.res
 
 all: install-headers $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-$(TARGET): $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib
+$(TARGET): $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib ..\common\common.lib
 	perl $(TOPDIR)\win32\makedef.pl $*.def $* $(OBJECTS)
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib winscard.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib ..\common\common.lib winscard.lib
