@@ -39,7 +39,6 @@ char * opt_pin = NULL;
 char * opt_puk = NULL;
 
 static int	quiet = 0;
-static char *	pin_label = NULL;
 
 enum {
 	OPT_CHANGE_PIN = 0x100,
@@ -56,8 +55,9 @@ enum {
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
 
-static int pem_encode(struct sc_context *, int,
-		sc_pkcs15_der_t *, sc_pkcs15_der_t *);
+static int	authenticate(sc_pkcs15_object_t *obj);
+static int	pem_encode(struct sc_context *, int,
+			sc_pkcs15_der_t *, sc_pkcs15_der_t *);
 
 const struct option options[] = {
 	{ "learn-card",		no_argument, 0, 	'L' },
@@ -124,9 +124,7 @@ void print_cert_info(const struct sc_pkcs15_object *obj)
 	for (i = 0; i < cert->path.len; i++)
 		printf("%02X", cert->path.value[i]);
 	printf("\n");
-	printf("\tID       : ");
-	sc_pkcs15_print_id(&cert->id);
-	printf("\n");
+	printf("\tID       : %s\n", sc_pkcs15_print_id(&cert->id));
 }
 
 
@@ -362,12 +360,8 @@ void print_prkey_info(const struct sc_pkcs15_object *obj)
 	for (i = 0; i < prkey->path.len; i++)
 		printf("%02X", prkey->path.value[i]);
 	printf("\n");
-	printf("\tAuth ID     : ");
-	sc_pkcs15_print_id(&obj->auth_id);
-	printf("\n");
-	printf("\tID          : ");
-	sc_pkcs15_print_id(&prkey->id);
-	printf("\n");
+	printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&obj->auth_id));
+	printf("\tID          : %s\n", sc_pkcs15_print_id(&prkey->id));
 }
 
 
@@ -427,12 +421,8 @@ void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	for (i = 0; i < pubkey->path.len; i++)
 		printf("%02X", pubkey->path.value[i]);
 	printf("\n");
-	printf("\tAuth ID     : ");
-	sc_pkcs15_print_id(&obj->auth_id);
-	printf("\n");
-	printf("\tID          : ");
-	sc_pkcs15_print_id(&pubkey->id);
-	printf("\n");
+	printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&obj->auth_id));
+	printf("\tID          : %s\n", sc_pkcs15_print_id(&pubkey->id));
 }
 
 int list_public_keys(void)
@@ -470,7 +460,9 @@ int read_public_key(void)
 	if (r >= 0) {
 		if (!quiet)
 			printf("Reading public key with ID '%s'\n", opt_pubkey);
-		r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
+		r = authenticate(obj);
+		if (r >= 0)
+			r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
 	} else if (r == SC_ERROR_OBJECT_NOT_FOUND) {
 		/* No pubkey - try if there's a certificate */
 		r = sc_pkcs15_find_cert_by_id(p15card, &id, &obj);
@@ -513,13 +505,11 @@ int read_public_key(void)
 }
 
 
-
-sc_pkcs15_pin_info_t *
+static sc_pkcs15_object_t *
 get_pin_info(void)
 {
+        sc_pkcs15_object_t *objs[32], *obj;
 	int r;
-        struct sc_pkcs15_object *objs[32], *obj;
-	struct sc_pkcs15_pin_info *pinfo = NULL;
 	
 	if (opt_auth_id == NULL) {
                 r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
@@ -532,7 +522,6 @@ get_pin_info(void)
 			return NULL;
 		}
                 obj = objs[0];
-		pinfo = (struct sc_pkcs15_pin_info *) obj->data;
 	} else {
 		struct sc_pkcs15_id auth_id;
 		
@@ -542,19 +531,18 @@ get_pin_info(void)
 			fprintf(stderr, "Unable to find PIN code: %s\n", sc_strerror(r));
 			return NULL;
 		}
-		pinfo = (struct sc_pkcs15_pin_info *) obj->data;
 	}
 
-	pin_label = obj->label;
-	return pinfo;
+	return obj;
 }
 
-u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info *pinfo)
+u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 {
+	sc_pkcs15_pin_info_t *pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
 	char buf[80];
 	char *pincode;
 	
-	sprintf(buf, "%s [%s]: ", prompt, pin_label);
+	sprintf(buf, "%s [%s]: ", prompt, pin_obj->label);
 	while (1) {
 		pincode = getpass(buf);
 		if (strlen(pincode) == 0)
@@ -569,6 +557,27 @@ u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info *pinfo)
 		}
 		return (u8 *) strdup(pincode);
 	}
+}
+
+int
+authenticate(sc_pkcs15_object_t *obj)
+{
+	sc_pkcs15_pin_info_t	*pin_info;
+	sc_pkcs15_object_t	*pin_obj;
+	u8			*pin;
+	int			r;
+
+	if (obj->auth_id.len == 0)
+		return 0;
+	r = sc_pkcs15_find_pin_by_auth_id(p15card, &obj->auth_id, &pin_obj);
+	if (r)
+		return r;
+
+	pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	pin = get_pin("Please enter PIN", pin_obj);
+
+	return sc_pkcs15_verify_pin(p15card, pin_info,
+			pin, pin? strlen(pin) : 0);
 }
 
 void print_pin_info(const struct sc_pkcs15_object *obj)
@@ -594,9 +603,7 @@ void print_pin_info(const struct sc_pkcs15_object *obj)
 	}
 	printf("PIN [%s]\n", obj->label);
 	printf("\tCom. Flags: 0x%X\n", obj->flags);
-	printf("\tAuth ID   : ");
-	sc_pkcs15_print_id(&pin->auth_id);
-	printf("\n");
+	printf("\tAuth ID   : %s\n", sc_pkcs15_print_id(&pin->auth_id));
 	printf("\tFlags     : [0x%02X]", pin->flags);
 	for (i = 0; i < pf_count; i++)
 		if (pin->flags & (1 << i)) {
@@ -633,14 +640,16 @@ int list_pins(void)
 int unblock_pin(void)
 {
 	struct sc_pkcs15_pin_info *pinfo = NULL;
+	sc_pkcs15_object_t *pin_obj;
 	u8 *pin, *puk;
 	int r;
 	
-	if (!(pinfo = get_pin_info()))
+	if (!(pin_obj = get_pin_info()))
 		return 2;
+	pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
 
 	if ((puk = opt_puk) == NULL) {
-		puk = get_pin("Enter PUK", pinfo);
+		puk = get_pin("Enter PUK", pin_obj);
 		if (puk == NULL)
 			return 2;
 	}
@@ -650,10 +659,10 @@ int unblock_pin(void)
 	while (pin == NULL) {
 		u8 *pin2;
 	
-		pin = get_pin("Enter new PIN", pinfo);
+		pin = get_pin("Enter new PIN", pin_obj);
 		if (pin == NULL || strlen((char *) pin) == 0)
 			return 2;
-		pin2 = get_pin("Enter new PIN again", pinfo);
+		pin2 = get_pin("Enter new PIN again", pin_obj);
 		if (pin2 == NULL || strlen((char *) pin2) == 0)
 			return 2;
 		if (strcmp((char *) pin, (char *) pin2) != 0) {
@@ -680,15 +689,17 @@ int unblock_pin(void)
 
 int change_pin(void)
 {
-	struct sc_pkcs15_pin_info *pinfo = NULL;
+	sc_pkcs15_object_t *pin_obj;
+	sc_pkcs15_pin_info_t *pinfo = NULL;
 	u8 *pincode, *newpin;
 	int r;
 
-	if (!(pinfo = get_pin_info()))
+	if (!(pin_obj = get_pin_info()))
 		return 2;
+	pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
 
 	if ((pincode = opt_pin) == NULL) {
-		pincode = get_pin("Enter old PIN", pinfo);
+		pincode = get_pin("Enter old PIN", pin_obj);
 		if (pincode == NULL)
 			return 2;
 	}
@@ -702,10 +713,10 @@ int change_pin(void)
 	while (newpin == NULL) {
 		u8 *newpin2;
 		
-		newpin = get_pin("Enter new PIN", pinfo);
+		newpin = get_pin("Enter new PIN", pin_obj);
 		if (newpin == NULL || strlen((char *) newpin) == 0)
 			return 2;
-		newpin2 = get_pin("Enter new PIN again", pinfo);
+		newpin2 = get_pin("Enter new PIN again", pin_obj);
 		if (newpin2 == NULL || strlen((char *) newpin2) == 0)
 			return 2;
 		if (strcmp((char *) newpin, (char *) newpin2) == 0) {
