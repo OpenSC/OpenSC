@@ -256,7 +256,7 @@ cryptoflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 	sc_context_t *ctx = card->ctx;
 	const u8 *p = buf + 2;
 	u8 b1, b2;
-        int left, is_mf = 0;
+	int left, is_mf = 0;
 	
 	if (buflen < 14)
 		return -1;
@@ -290,9 +290,9 @@ cryptoflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 		break;
 	default:
 		sc_error(ctx, "invalid file type: 0x%02X\n", *p);
-                return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
-        p += 2;
+	p += 2;
 	if (file->type == SC_FILE_TYPE_DF) {
 		add_acl_entry(card, file, SC_AC_OP_LIST_FILES, (u8)(p[0] >> 4));
 		add_acl_entry(card, file, SC_AC_OP_DELETE, (u8)(p[1] >> 4));
@@ -323,8 +323,8 @@ cryptoflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 	if (*p++)
 		file->status = SC_FILE_STATUS_ACTIVATED;
 	else
-                file->status = SC_FILE_STATUS_INVALIDATED;
-        left = *p++;
+		file->status = SC_FILE_STATUS_INVALIDATED;
+	left = *p++;
 
 	return cryptoflex_get_ac_keys(card, file);
 }
@@ -361,21 +361,19 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 		sc_error(ctx, "invalid file type: 0x%02X\n", *p);
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
-  
+
 	if (is_mf) {
 		sc_file_add_acl_entry(file, SC_AC_OP_LIST_FILES, SC_AC_AUT, 0);
 		sc_file_add_acl_entry(file, SC_AC_OP_DELETE, SC_AC_AUT, 0);
 		sc_file_add_acl_entry(file, SC_AC_OP_CREATE, SC_AC_AUT, 0);
 	} else {
 		p += 2;
-    
 		if (file->type == SC_FILE_TYPE_DF) {
 			add_acl_entry(card, file, SC_AC_OP_LIST_FILES, (u8)(p[0] >> 4));
 			add_acl_entry(card, file, SC_AC_OP_DELETE, (u8)(p[1] >> 4));
 			add_acl_entry(card, file, SC_AC_OP_CREATE, (u8)(p[1] & 0x0F));
 		} else { /* EF */
 			add_acl_entry(card, file, SC_AC_OP_READ, (u8)(p[0] >> 4));
-      
 		}
 	}
 	if (file->type != SC_FILE_TYPE_DF) {
@@ -411,7 +409,7 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 			break;
 		default:
 			sc_error(ctx, "invalid file type: 0x%02X\n", *p);
-			return SC_ERROR_UNKNOWN_DATA_RECEIVED;          
+			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 		switch (file->ef_structure) {
 		case SC_FILE_EF_TRANSPARENT:
@@ -511,8 +509,8 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 {
 	int r;
 	struct sc_apdu apdu;
-        u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-        struct sc_file *file;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	struct sc_file *file;
 
 	if (card->ctx->debug >= 4) {
 		char	string[32];
@@ -540,7 +538,7 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 
 	if (file_out == NULL)
-                return 0;
+		return 0;
 
 	if (apdu.resplen < 14)
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
@@ -555,12 +553,12 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 	/* We abuse process_fci here even though it's not the real FCI. */
 	r = card->ops->process_fci(card, file, apdu.resp, apdu.resplen);
 	if (r) {
-                sc_file_free(file);
+		sc_file_free(file);
 		return r;
 	}
 
 	*file_out = file;
-        return 0;
+	return 0;
 }
 
 static int flex_select_file(struct sc_card *card, const struct sc_path *path,
@@ -601,14 +599,14 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 				pathlen -= 2;
 			}
 		}
-                break;
+		break;
 	case SC_PATH_TYPE_DF_NAME:
 		p1 = 0x04;
 		break;
 	case SC_PATH_TYPE_FILE_ID:
 		if (pathlen != 2)
 			return SC_ERROR_INVALID_ARGUMENTS;
-                break;
+		break;
 	}
 	r = select_file_id(card, pathptr, pathlen, p1, file_out);
 	if (locked)
@@ -743,7 +741,7 @@ static int acl_to_keynum_nibble(const struct sc_acl_entry *e)
 	if (e == NULL || e->key_ref == SC_AC_KEY_REF_NONE)
 		return 0;
 
-        return e->key_ref & 0x0F;
+	return e->key_ref & 0x0F;
 }
 
 static int
@@ -812,7 +810,7 @@ cryptoflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 	p[11] = (file->status & SC_FILE_STATUS_INVALIDATED) ? 0x00 : 0x01;
 	if (file->type != SC_FILE_TYPE_DF &&
 	    (file->ef_structure == SC_FILE_EF_LINEAR_FIXED ||
-	     file->ef_structure == SC_FILE_EF_CYCLIC))
+	    file->ef_structure == SC_FILE_EF_CYCLIC))
 		p[12] = 0x04;
 	else
 		p[12] = 0x03;
@@ -845,11 +843,11 @@ cyberflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 		break;
 	}
 
-	sc_debug(card->ctx, "Creating %02x:%02x, size %d %02x:%02x\n", 
-		 file->id >> 8,  
-		 file->id & 0xFF, 
-		 size, 
-		 size >> 8,  
+	sc_debug(card->ctx, "Creating %02x:%02x, size %d %02x:%02x\n",
+		 file->id >> 8,
+		 file->id & 0xFF,
+		 size,
+		 size >> 8,
 		 size & 0xFF);
 
 	p[0] = size >> 8;
@@ -943,7 +941,7 @@ static int flex_create_file(struct sc_card *card, struct sc_file *file)
 
 static int flex_set_security_env(struct sc_card *card,
 				 const struct sc_security_env *env,
-				 int se_num)   
+				 int se_num)
 {
 	struct flex_private_data *prv = (struct flex_private_data *) card->drv_data;
 
@@ -1231,13 +1229,13 @@ static int flex_build_verify_apdu(struct sc_card *card, struct sc_apdu *apdu,
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
-        }
+	}
 	/* Copy the PIN, with padding */
 	if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, 1)) < 0)
 		return r;
 	len = r;
 
-        sc_format_apdu(card, apdu, SC_APDU_CASE_3_SHORT, ins, 0, data->pin_reference);
+	sc_format_apdu(card, apdu, SC_APDU_CASE_3_SHORT, ins, 0, data->pin_reference);
 	apdu->cla = cla;
 	apdu->data = sbuf;
 	apdu->datalen = len;
@@ -1285,7 +1283,7 @@ static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	 * the 63C0xx convention, hence we don't pass the
 	 * tries_left pointer. */
 	r = iso_ops->pin_cmd(card, data, NULL);
-	if (old_cla != -1) 
+	if (old_cla != -1)
 		card->cla = old_cla;
 	return r;
 }
@@ -1316,7 +1314,7 @@ struct sc_card_driver * sc_get_cryptoflex_driver(void)
 	cryptoflex_ops = *iso_ops;
 	cryptoflex_ops.match_card = cryptoflex_match_card;
 	cryptoflex_ops.init = flex_init;
-        cryptoflex_ops.finish = flex_finish;
+	cryptoflex_ops.finish = flex_finish;
 	cryptoflex_ops.process_fci = cryptoflex_process_file_attrs;
 	cryptoflex_ops.construct_fci = cryptoflex_construct_file_attrs;
 	cryptoflex_ops.select_file = flex_select_file;
@@ -1330,7 +1328,7 @@ struct sc_card_driver * sc_get_cryptoflex_driver(void)
 	cryptoflex_ops.decipher = flex_decipher;
 	cryptoflex_ops.pin_cmd = flex_pin_cmd;
 	cryptoflex_ops.logout = flex_logout;
-        return &cryptoflex_drv;
+	return &cryptoflex_drv;
 }
 
 struct sc_card_driver * sc_get_cyberflex_driver(void)
@@ -1341,7 +1339,7 @@ struct sc_card_driver * sc_get_cyberflex_driver(void)
 	cyberflex_ops = *iso_ops;
 	cyberflex_ops.match_card = cyberflex_match_card;
 	cyberflex_ops.init = flex_init;
-        cyberflex_ops.finish = flex_finish;
+	cyberflex_ops.finish = flex_finish;
 	cyberflex_ops.process_fci = cyberflex_process_file_attrs;
 	cyberflex_ops.construct_fci = cyberflex_construct_file_attrs;
 	cyberflex_ops.select_file = flex_select_file;
@@ -1355,5 +1353,5 @@ struct sc_card_driver * sc_get_cyberflex_driver(void)
 	cyberflex_ops.decipher = flex_decipher;
 	cyberflex_ops.pin_cmd = flex_pin_cmd;
 	cyberflex_ops.logout = flex_logout;
-        return &cyberflex_drv;
+	return &cyberflex_drv;
 }
