@@ -415,6 +415,7 @@ static CK_RV pkcs15_get_mechanism_list(struct sc_pkcs11_card *p11card,
                 return CKR_BUFFER_TOO_SMALL;
 	}
         memcpy(pMechanismList, &mechanism_list, sizeof(mechanism_list));
+	*pulCount = numMechanisms;
 
         return CKR_OK;
 }
