@@ -210,6 +210,8 @@ const char *sc_strerror(int error)
 		"Slot not found",
 		"Slot already connected",
 		"Authentication method blocked",
+		"Syntax error",
+		"Inconsistent or incomplete pkcs15 profile",
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);
 
