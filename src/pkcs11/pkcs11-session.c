@@ -76,21 +76,17 @@ out:	sc_pkcs11_unlock();
         return rv;
 }
 
-CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) /* the session's handle */
+/* Internal version of C_CloseSession that gets called with
+ * the global lock held */
+CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
 {
 	struct sc_pkcs11_slot *slot;
         struct sc_pkcs11_session *session;
 	int rv;
 
-	rv = sc_pkcs11_lock();
-	if (rv != CKR_OK)
-		return rv;
-
 	rv = pool_find_and_delete(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-                goto out;
-
-	sc_debug(context, "C_CloseSession(slot %d)\n", session->slot->id);
+                return rv;
 
 	/* If we're the last session using this slot, make sure
 	 * we log out */
@@ -102,9 +98,7 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) /* the session's handle */
 	}
 
 	free(session);
-
-out:	sc_pkcs11_unlock();
-        return rv;
+	return CKR_OK;
 }
 
 /* Internal version of C_CloseAllSessions that gets called with
@@ -114,17 +108,29 @@ CK_RV sc_pkcs11_close_all_sessions(CK_SLOT_ID slotID)
 	struct sc_pkcs11_pool_item *item, *next;
         struct sc_pkcs11_session *session;
 
-	sc_debug(context, "C_CloseAllSessions().\n");
+	sc_debug(context, "C_CloseAllSessions(slot %d).\n", (int) slotID);
 	for (item = session_pool.head; item != NULL; item = next) {
 		session = (struct sc_pkcs11_session*) item->item;
                 next = item->next;
 
-		if (session->slot->id == slotID) {
-                        C_CloseSession(item->handle);
-		}
+		if (session->slot->id == slotID)
+                        sc_pkcs11_close_session(item->handle);
 	}
 
         return CKR_OK;
+}
+
+CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) /* the session's handle */
+{
+	int rv;
+
+	sc_debug(context, "C_CloseSession(%lx)\n", (long) hSession);
+
+	rv = sc_pkcs11_lock();
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_close_session(hSession);
+	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) /* the token's slot */
