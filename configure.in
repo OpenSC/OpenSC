@@ -1042,6 +1042,7 @@ src/Makefile
 src/common/Makefile
 src/include/Makefile
 src/include/opensc/Makefile
+src/assuan/Makefile
 src/libopensc/Makefile
 src/libopensc/opensc-config
 src/openssh/Makefile
@@ -1058,6 +1059,7 @@ src/signer/Makefile
 src/signer/npinclude/Makefile
 src/tests/Makefile
 src/tools/Makefile
+src/openscd/Makefile
 ])
 
 if test ! -z "$RANDOM_POOL" ; then
