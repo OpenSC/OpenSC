@@ -548,13 +548,15 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Found %s!\n", p15card->label);
 
 	if (do_decipher) {
-		if ((err = get_key(SC_PKCS15_PRKEY_USAGE_DECRYPT, &key)) < 0
+		if ((err = get_key(SC_PKCS15_PRKEY_USAGE_DECRYPT, &key))
 		 || (err = decipher(key)))
 			goto end;
 		action_count--;
 	}
 	if (do_sign) {
-		if ((err = get_key(SC_PKCS15_PRKEY_USAGE_SIGN, &key)) < 0
+		if ((err = get_key(SC_PKCS15_PRKEY_USAGE_SIGN|
+				   SC_PKCS15_PRKEY_USAGE_SIGNRECOVER|
+				   SC_PKCS15_PRKEY_USAGE_NONREPUDIATION, &key))
 		 || (err = sign(key)))
 			goto end;
 		action_count--;
