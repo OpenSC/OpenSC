@@ -165,16 +165,23 @@ int sc_enum_apps(struct sc_card *card)
 	if (file_size == 0)
 		return 0;
 	if (ef_structure == SC_FILE_EF_TRANSPARENT) {
-		u8 buf[1024], *p = buf;
+		u8 *buf = NULL, *p;
 		size_t bufsize;
 		
-		if (file_size > sizeof(buf))
-			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_INTERNAL);
+		buf = (u8 *) malloc(file_size);
+		if (buf == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
+		p = buf;
 		r = sc_read_binary(card, 0, buf, file_size, 0);
-		SC_TEST_RET(card->ctx, r, "read_binary() failed");
+		if (r < 0) {
+			free(buf);
+			SC_TEST_RET(card->ctx, r, "read_binary() failed");
+		}
 		bufsize = file_size;
 		while (bufsize > 0) {
 			if (card->app_count == SC_MAX_CARD_APPS) {
+				free(buf);
+				buf = NULL;
 				error(card->ctx, "Too many applications on card");
 				break;
 			}
@@ -182,6 +189,8 @@ int sc_enum_apps(struct sc_card *card)
 			if (r)
 				break;
 		}
+		if (buf)
+			free(buf);
 
 	} else {	/* record structure */
 		u8 buf[256], *p;
