@@ -152,6 +152,7 @@ gpk_init(struct sc_card *card)
 {
 	struct gpk_private_data *priv;
 	struct atrinfo	*ai;
+	unsigned int	exponent, flags;
 
 	if (!(ai = gpk_identify(card)))
 		return SC_ERROR_INVALID_CARD;
@@ -162,6 +163,15 @@ gpk_init(struct sc_card *card)
 	priv->variant = ai->variant;
 	priv->offset_shift = 2;
 	card->cla = 0;
+
+	/* Set up algorithm info. GPK 16000 will do any RSA
+	 * exponent, earlier ones are restricted to 0x10001 */
+	flags = SC_ALGORITHM_RSA_HASH_MD5
+		| SC_ALGORITHM_RSA_PAD_PKCS1;
+	exponent = (ai->variant / 1000 < 16)? 0x10001 : 0;
+	_sc_card_add_rsa_alg(card,  512, 0, exponent);
+	_sc_card_add_rsa_alg(card,  768, 0, exponent);
+	_sc_card_add_rsa_alg(card, 1024, 0, exponent);
 
 	return 0;
 }
