@@ -95,7 +95,9 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 	
 	r = sc_asn1_decode(card->card->ctx, asn1_tokeninfo, buf, buflen, NULL, NULL);
 	if (r) {
-		error(card->card->ctx, "ASN.1 parsing failed: %s\n", sc_strerror(r));
+		error(card->card->ctx,
+			"ASN.1 parsing of EF(TokenInfo) failed: %s\n",
+			sc_strerror(r));
 		goto err;
 	}
 	card->version += 1;

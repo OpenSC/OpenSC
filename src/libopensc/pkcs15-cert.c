@@ -87,7 +87,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	}
 	cert->data_len = objlen + (obj - buf);
 	r = sc_asn1_decode(ctx, asn1_cert, obj, objlen, NULL, NULL);
-	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
+	SC_TEST_RET(ctx, r, "ASN.1 parsing of certificate failed");
 
 	cert->version++;
 

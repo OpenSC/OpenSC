@@ -238,7 +238,7 @@ sc_pkcs15_decode_pubkey_rsa(struct sc_context *ctx,
 				&key->exponent.data, &key->exponent.len, 0);
 
 	r = sc_asn1_decode(ctx, asn1_public_key, buf, buflen, NULL, NULL);
-	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
+	SC_TEST_RET(ctx, r, "ASN.1 parsing of public key failed");
 
 	return 0;
 }
