@@ -3,49 +3,70 @@
 # This profile is loaded before any card specific profile.
 #
 
-# This is the DIR file
-EF PKCS15-DIR
-	Path		3F002F00
-	Size		128
-	ACL		*=NONE
+cardinfo {
+    label		= "OpenSC Card";
+    manufacturer	= "OpenSC Project";
+    min-pin-length	= 4;
+    # max length should be overridden in the per-card profile
+    max-pin-length	= 8;
+}
 
-# This is the application DF
-DF PKCS15-AppDF
-	Path		3F005015
-	AID		A0:00:00:00:63:50:4B:43:53:2D:31:35
-	ACL		*=NONE
+filesystem {
+    DF MF {
+        path	= 3F00;
+        type	= DF;
+	ACL	= CREATE=PRO1;
 
-EF PKCS15-ODF
-	Parent		PKCS15-AppDF
-	FileID		5031
-	Size		128
-	ACL		*=NONE
+	# This is the DIR file
+	EF PKCS15-DIR {
+	    type	= EF;
+	    file-id	= 2F00;
+	    size	= 128;
+	    acl		= *=NONE;
+	}
 
-EF PKCS15-TokenInfo
-	Parent		PKCS15-AppDF
-	FileID		5032
-	ACL		*=NONE
+	# Here comes the application DF
+	DF PKCS15-AppDF {
+	    type	= DF;
+	    file-id	= 5015;
+	    aid		= A0:00:00:00:63:50:4B:43:53:2D:31:35;
+	    acl		= *=NONE;
+	    size	= 5000;
 
-EF PKCS15-AODF
-	Parent		PKCS15-AppDF
-	FileID		4401
-	Size		128
-	ACL		*=NEVER READ=NONE UPDATE=$SOPIN
+	    EF PKCS15-ODF {
+	        file-id		= 5031;
+		size		= 128;
+		ACL		= *=NONE;
+	    }
 
-EF PKCS15-PrKDF
-	Parent		PKCS15-AppDF
-	FileID		4402
-	Size		128
-	ACL		*=NEVER READ=NONE UPDATE=$SOPIN
+	    EF PKCS15-TokenInfo {
+		file-id		= 5032;
+		ACL		= *=NONE;
+	    }
 
-EF PKCS15-PuKDF
-	Parent		PKCS15-AppDF
-	FileID		4403
-	Size		128
-	ACL		*=NEVER READ=NONE UPDATE=$SOPIN
+	    EF PKCS15-AODF {
+	        file-id		= 4401;
+		size		= 128;
+		ACL		= *=NEVER, READ=NONE, UPDATE=$SOPIN;
+	    }
 
-EF PKCS15-CDF
-	Parent		PKCS15-AppDF
-	FileID		4404
-	Size		128
-	ACL		*=NEVER READ=NONE UPDATE=$SOPIN
+	    EF PKCS15-PrKDF {
+	        file-id		= 4402;
+		size		= 128;
+		acl		= *=NEVER, READ=NONE, UPDATE=$SOPIN;
+	    }
+
+	    EF PKCS15-PuKDF {
+	        file-id		= 4403;
+		size		= 128;
+		acl		= *=NEVER, READ=NONE, UPDATE=$SOPIN;
+	    }
+
+	    EF PKCS15-CDF {
+	        file-id		= 4404;
+		size		= 128;
+		acl		= *=NEVER, READ=NONE, UPDATE=$SOPIN;
+	    }
+	}
+    }
+}
