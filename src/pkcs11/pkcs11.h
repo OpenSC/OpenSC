@@ -21,10 +21,6 @@
 #ifndef OPENSC_PKCS11_H
 #define OPENSC_PKCS11_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #ifndef _WIN32
 #include <opensc/rsaref/unix.h>
 #include <opensc/rsaref/pkcs11.h>
