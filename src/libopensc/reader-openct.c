@@ -290,8 +290,6 @@ openct_reader_transmit(struct sc_reader *reader,
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
-
 	/* Hotplug check */
 	if ((rc = openct_reader_reconnect(reader, slot)) < 0)
 		return rc;
