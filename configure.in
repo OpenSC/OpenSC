@@ -11,14 +11,14 @@ AM_CONFIG_HEADER(config.h)
 AC_CONFIG_SRCDIR(src/libopensc/sc.c)
 
 AC_CANONICAL_HOST
-case $host in
-  darwin* | rhapsody*)
+case "$host" in
+  *darwin* | *rhapsody*)
   AC_DEFINE(OS_MACOSX,1,[MacOS X])
   ;;
-  beos*)
+  *beos*)
   AC_DEFINE(OS_BEOS,1,[BeOS])
   ;;
-  cygwin* | mingw* | pw32*)
+  *cygwin* | *mingw* | *pw32*)
   AC_DEFINE(OS_CYGWIN32,1,[Cywin32 and friends])
   ;;
   *irix*)
@@ -248,8 +248,6 @@ dnl C Compiler features
 AC_C_INLINE
 if test "$GCC" = "yes"; then
 	CFLAGS="-Wall $CFLAGS"
-# Disabled until lex-parse.l doesn't give us a warning
-# -Werror
 fi
 
 dnl OS specific options
@@ -266,6 +264,21 @@ esac
 
 AC_SUBST(LIBDL)
 AC_CHECK_LIB(dl, dlopen, [LIBDL="$LIBDL -ldl" ac_cv_func_dlopen_ldl=yes], ac_cv_func_dlopen_ldl=no)
+
+AC_SUBST(OPENSSL_LDFLAGS)
+OPENSSL_LDFLAGS=""
+for openssl_ldflag in "-Wl,-Bsymbolic" "-G -Wl,-Bsymbolic" "-shared -G -Wl,-Bsymbolic"; do
+	AC_MSG_CHECKING([whether we can use $openssl_ldflag])
+	saved_CFLAGS=$CFLAGS
+	CFLAGS="$CFLAGS $openssl_ldflag"
+	AC_TRY_LINK(,[return 1],ac_cv_use_openssl_flag="yes",ac_cv_use_openssl_flag="no")
+	CFLAGS=$saved_CFLAGS
+	AC_MSG_RESULT($ac_cv_use_openssl_flag)
+	if test "$ac_cv_use_openssl_flag" = "yes"; then
+		OPENSSL_LDFLAGS="$openssl_ldflag"
+		break;
+	fi
+done
 
 AC_CHECK_HEADERS([readline/readline.h])
 AC_SUBST(LIBREADLINE)
@@ -793,8 +806,8 @@ pcsc_path=/usr
 AC_SUBST(CFLAGS_PCSC)
 AC_SUBST(LIBPCSC)
 
-case $host in
-  *darwin*)
+case "$host" in
+  *darwin* | *rhapsody*)
 	PCSC_MSG=yes
 	CFLAGS_PCSC=""
 	LIBPCSC="-Wl,-framework,PCSC"
