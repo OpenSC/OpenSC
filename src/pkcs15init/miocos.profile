@@ -22,15 +22,7 @@ PIN user-puk {
 # main profile.
 filesystem {
     DF MF {
-	ACL	= *=NONE;
-
         DF PKCS15-AppDF {
-            EF pinfile {
-		type		= internal-ef;
-    	        file-id		= 5001;
-    	        size		= 20;
-    	        ACL		= *=NEVER;
-            }
             EF template-private-key {
 		type		= internal-ef;
     	        file-id		= 4B01;	# This is the base FileID
