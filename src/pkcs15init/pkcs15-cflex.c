@@ -512,6 +512,12 @@ cflex_create_pin_file(sc_profile_t *profile, sc_card_t *card,
 	ndummies = cflex_create_dummy_chvs(profile, card,
 				file, SC_AC_OP_UPDATE,
 				dummies);
+	if (ndummies < 0) {
+		sc_error(card->ctx,
+			"Unable to create dummy CHV file: %s",
+			sc_strerror(ndummies));
+		return ndummies;
+	}
 
 	r = sc_pkcs15init_update_file(profile, card, file, buffer, 23);
 	if (r >= 0)
