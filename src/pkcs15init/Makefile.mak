@@ -6,8 +6,8 @@ HEADERS = pkcs15-init.h
 HEADERSDIR = $(TOPDIR)\src\include\opensc
 
 OBJECTS = profile.obj pkcs15-lib.obj \
-          pkcs15-miocos.obj pkcs15-gpk.obj pkcs15-cflex.obj
-pkcs15-etoken.obj
+          pkcs15-miocos.obj pkcs15-gpk.obj pkcs15-cflex.obj \
+          pkcs15-etoken.obj
 
 all: install-headers $(TARGET)
 

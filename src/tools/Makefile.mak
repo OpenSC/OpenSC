@@ -15,4 +15,4 @@ all: util.obj $(TARGETS)
 	cl $(COPTS) /c $<
         link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj util.obj \
         ..\common\common.lib ..\scconf\scconf.lib ..\libopensc\opensc.lib \
-        ..\pkcs15init\pkcs15init.lib libeay32.lib
+        ..\pkcs15init\pkcs15init.lib

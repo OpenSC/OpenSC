@@ -13,6 +13,6 @@ all: print.obj sc-test.obj $(TARGETS)
 
 .c.exe:
 	cl $(COPTS) /c $<
-        link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj sc-test.obj print.obj
-..\common\common.lib ..\libopensc\opensc.lib
+        link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj sc-test.obj print.obj \
+        ..\common\common.lib ..\libopensc\opensc.lib
 
