@@ -186,10 +186,13 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	card = p15card->card;
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-	r = sc_select_file(card, &pin->path, NULL);
-	if (r) {
-		sc_unlock(card);
-		return r;
+	/* the path in the pin object is optional */
+	if (pin->path.len > 0) {
+		r = sc_select_file(card, &pin->path, NULL);
+		if (r) {
+			sc_unlock(card);
+			return r;
+		}
 	}
 
 	/* Initialize arguments */
@@ -254,10 +257,13 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	card = p15card->card;
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-	r = sc_select_file(card, &pin->path, NULL);
-	if (r) {
-		sc_unlock(card);
-		return r;
+	/* the path in the pin object is optional */
+	if (pin->path.len > 0) {
+		r = sc_select_file(card, &pin->path, NULL);
+		if (r) {
+			sc_unlock(card);
+			return r;
+		}
 	}
 
 	/* set pin_cmd data */
@@ -317,10 +323,13 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	card = p15card->card;
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-	r = sc_select_file(card, &pin->path, NULL);
-	if (r) {
-		sc_unlock(card);
-		return r;
+	/* the path in the pin object is optional */
+	if (pin->path.len > 0) {
+		r = sc_select_file(card, &pin->path, NULL);
+		if (r) {
+			sc_unlock(card);
+			return r;
+		}
 	}
 
 	/* set pin_cmd data */
