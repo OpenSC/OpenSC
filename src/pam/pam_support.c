@@ -53,6 +53,7 @@ void opensc_pam_log(int err, pam_handle_t * pamh, const char *format,...)
 	}
 
 	openlog(logname, LOG_CONS | LOG_PID, LOG_AUTH);
+	va_start(args, format);
 #ifdef HAVE_VSYSLOG
 	vsyslog(err, format, args);
 #else
@@ -60,12 +61,11 @@ void opensc_pam_log(int err, pam_handle_t * pamh, const char *format,...)
 		char	buf[256];
 
 		memset(buf, 0, sizeof(buf));
-		va_start(args, format);
 		vsnprintf(buf, sizeof(buf), format, args);
-		va_end(args);
 		syslog(err, "%s", buf);
 	}
 #endif
+	va_end(args);
 	closelog();
 }
 
