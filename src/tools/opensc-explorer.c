@@ -442,7 +442,7 @@ int do_info(int argc, char **argv)
                 };
 		const char *ops[] = {
 			"READ", "UPDATE", "WRITE", "ERASE", "REHABILITATE",
-			"INVALIDATE"
+			"INVALIDATE", "LIST_FILES", "CRYPTO",
 		};
 		printf("%-15s%s\n", "EF structure:", structs[file->ef_structure]);
 		for (i = 0; i < sizeof(ops)/sizeof(ops[0]); i++) {
