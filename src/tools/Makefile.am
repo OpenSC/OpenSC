@@ -4,11 +4,11 @@ INCLUDES = @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
 if HAVE_SSL
-bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-crypt pkcs15-tool \
-	       cryptoflex-tool pkcs15-init
-else
-bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-crypt pkcs15-tool
+PROGRAMS_SSL = cryptoflex-tool pkcs15-init
 endif
+
+bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-crypt pkcs15-tool \
+	       $(PROGRAMS_SSL)
 
 opensc_tool_SOURCES = opensc-tool.c util.c
 opensc_tool_LDADD = @GETOPTSRC@

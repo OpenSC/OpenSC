@@ -2,6 +2,10 @@
 
 EXTRA_DIST = opensc-config.in
 
+if HAVE_SSL
+SSL_LIB = @LIBCRYPTO@
+endif
+
 if HAVE_PCSCLITE
 PCSC_SRC = reader-pcsc.c
 PCSC_FLAGS = @CFLAGS_PCSC@
@@ -20,12 +24,7 @@ libopensc_la_SOURCES	= asn1.c base64.c sec.c log.c sc.c card.c iso7816.c \
 			  card-setec.c card-flex.c card-gpk.c \
 			  card-tcos.c card-emv.c card-default.c
 libopensc_la_LDFLAGS	= -version-info 0:6:0
-
-if HAVE_SSL
-libopensc_la_LIBADD	= $(PCSC_LIB) @LIBCRYPTO@
-else
-libopensc_la_LIBADD	= $(PCSC_LIB)
-endif
+libopensc_la_LIBADD	= $(PCSC_LIB) $(SSL_LIB)
 
 include_HEADERS		= opensc.h opensc-pkcs15.h opensc-emv.h \
 		   	  cardctl.h
