@@ -15,7 +15,6 @@ filesystem {
     DF MF {
         path	= 3F00;
         type	= DF;
-	ACL	= CREATE=PRO1;
 
 	# This is the DIR file
 	EF PKCS15-DIR {

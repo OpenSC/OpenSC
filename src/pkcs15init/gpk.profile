@@ -37,6 +37,8 @@ PIN so-puk {
 # main profile.
 filesystem {
     DF MF {
+	ACL	= CREATE=PRO1;
+
 	EF sopinfile {
 	    file-id		= 0000;
 	    structure		= 0x21;
