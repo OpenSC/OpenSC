@@ -46,7 +46,7 @@ struct sc_card *card = NULL;
 
 const struct option options[] = {
 	{ "reader",		1, 0, 'r' },
-	{ "card-driver",	1, 0, 'D' },
+	{ "card-driver",	1, 0, 'c' },
 	{ "debug",		0, 0, 'd' },
 	{ 0, 0, 0, 0 }
 };
