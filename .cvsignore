@@ -42,3 +42,4 @@ ltmain.sh
 missing
 mkinstalldirs
 stamp-h*
+so_locations
