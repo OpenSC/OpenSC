@@ -110,78 +110,6 @@ AC_ARG_WITH(libs,
 	]
 )
 
-dnl Checks for programs.
-AC_PROG_CPP
-AC_PROG_INSTALL
-AC_PROG_LN_S
-AC_PROG_MAKE_SET
-AM_PROG_LEX
-AC_PATH_PROG(TEST_MINUS_S_SH, bash)
-AC_PATH_PROG(TEST_MINUS_S_SH, ksh)
-AC_PATH_PROG(TEST_MINUS_S_SH, sh)
-
-dnl Special check for pthread support.
-ACX_PTHREAD(
-[
- AC_DEFINE(HAVE_PTHREAD,1,
-  [Define if you have POSIX threads libraries and header files.])
-], [
- AC_MSG_ERROR([POSIX thread support required])
-])
-LIBS="$PTHREAD_LIBS $LIBS"
-CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
-CC="$PTHREAD_CC"
-
-dnl Add libtool support.
-AM_PROG_LIBTOOL
-dnl Automatically update the libtool script if it becomes out-of-date.
-#AC_SUBST(LIBTOOL_DEPS)
-
-dnl Checks for header files.
-AC_HEADER_STDC
-AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h sys/time.h unistd.h libgen.h utmp.h getopt.h dlfcn.h security/pam_appl.h security/_pam_macros.h readline/readline.h])
-
-dnl Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
-AC_TYPE_UID_T
-AC_TYPE_SIZE_T
-AC_HEADER_TIME
-
-AC_SUBST(GETOPTSRC)
-AC_CHECK_FUNC(getopt_long, AC_DEFINE(HAVE_GETOPT_LONG, 1, [Define if you have the `getopt_long' function.]),
-              [GETOPTSRC="$GETOPTSRC \$(top_srcdir)/src/common/getopt.c \$(top_srcdir)/src/common/getopt1.c"
-               CPPFLAGS="-I\$(top_srcdir)/src/common $CPPFLAGS"
-               AC_DEFINE(HAVE_GETOPT_H, 1, [Define if you have the <getopt.h> header file.])])
-
-dnl Checks for library functions.
-AC_FUNC_ERROR_AT_LINE
-AC_FUNC_MALLOC
-AC_FUNC_MEMCMP
-AC_FUNC_STAT
-AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([getpass gettimeofday memset mkdir strdup strerror setutent])
-
-dnl C Compiler features
-AC_C_INLINE
-if test "$GCC" = "yes"; then
-	CFLAGS="-Wall $CFLAGS"
-# Disabled until lex-parse.l doesn't give us a warning
-# -Werror
-fi
-
-dnl OS specific options
-case "$host_os" in
-  hpux*)
-    CFLAGS="$CFLAGS -D_XOPEN_SOURCE_EXTENDED"
-    ;;
-  osf*)
-    CFLAGS="$CFLAGS -D_POSIX_PII_SOCKET"
-    ;;
-  *)
-    ;;
-esac
-
 AC_ARG_WITH(common-dir,
 	[  --with-common-dir=PATH  Specify path for common installation libraries],
 	[
@@ -261,9 +189,82 @@ if (test ! -z "$ac_cv_commondir" && test "x$ac_cv_commondir" != "x(system)") ; t
 	fi
 fi
 
+dnl Checks for programs.
+AC_PROG_CPP
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+AM_PROG_LEX
+AC_PATH_PROG(TEST_MINUS_S_SH, bash)
+AC_PATH_PROG(TEST_MINUS_S_SH, ksh)
+AC_PATH_PROG(TEST_MINUS_S_SH, sh)
+
+dnl Special check for pthread support.
+ACX_PTHREAD(
+[
+ AC_DEFINE(HAVE_PTHREAD,1,
+  [Define if you have POSIX threads libraries and header files.])
+], [
+ AC_MSG_ERROR([POSIX thread support required])
+])
+LIBS="$PTHREAD_LIBS $LIBS"
+CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+CC="$PTHREAD_CC"
+
+dnl Add libtool support.
+AM_PROG_LIBTOOL
+dnl Automatically update the libtool script if it becomes out-of-date.
+#AC_SUBST(LIBTOOL_DEPS)
+
+dnl Checks for header files.
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h sys/time.h unistd.h libgen.h utmp.h getopt.h dlfcn.h security/pam_appl.h security/_pam_macros.h])
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_TYPE_UID_T
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+
+AC_SUBST(GETOPTSRC)
+AC_CHECK_FUNC(getopt_long, AC_DEFINE(HAVE_GETOPT_LONG, 1, [Define if you have the `getopt_long' function.]),
+              [GETOPTSRC="$GETOPTSRC \$(top_srcdir)/src/common/getopt.c \$(top_srcdir)/src/common/getopt1.c"
+               CPPFLAGS="-I\$(top_srcdir)/src/common $CPPFLAGS"
+               AC_DEFINE(HAVE_GETOPT_H, 1, [Define if you have the <getopt.h> header file.])])
+
+dnl Checks for library functions.
+AC_FUNC_ERROR_AT_LINE
+AC_FUNC_MALLOC
+AC_FUNC_MEMCMP
+AC_FUNC_STAT
+AC_FUNC_VPRINTF
+AC_CHECK_FUNCS([getpass gettimeofday memset mkdir strdup strerror setutent])
+
+dnl C Compiler features
+AC_C_INLINE
+if test "$GCC" = "yes"; then
+	CFLAGS="-Wall $CFLAGS"
+# Disabled until lex-parse.l doesn't give us a warning
+# -Werror
+fi
+
+dnl OS specific options
+case "$host_os" in
+  hpux*)
+    CFLAGS="$CFLAGS -D_XOPEN_SOURCE_EXTENDED"
+    ;;
+  osf*)
+    CFLAGS="$CFLAGS -D_POSIX_PII_SOCKET"
+    ;;
+  *)
+    ;;
+esac
+
 AC_SUBST(LIBDL)
 AC_CHECK_LIB(dl, dlopen, [LIBDL="$LIBDL -ldl" ac_cv_func_dlopen_ldl=yes], ac_cv_func_dlopen_ldl=no)
 
+AC_CHECK_HEADERS([readline/readline.h])
 AC_SUBST(LIBREADLINE)
 saved_LIBS="$LIBS"
 # libreadline will also need libtermcap on some OSes
