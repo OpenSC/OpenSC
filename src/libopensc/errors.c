@@ -70,6 +70,7 @@ const char *sc_strerror(int error)
 		"Command too long",
 		"Buffer too small",
 		"Invalid PIN length",
+		"Invalid data",
 	};
 	const int arg_base = -SC_ERROR_INVALID_ARGUMENTS;
 	const char *int_errors[] = {

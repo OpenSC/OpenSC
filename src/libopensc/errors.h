@@ -71,6 +71,7 @@ extern "C" {
 #define SC_ERROR_CMD_TOO_LONG			-1302
 #define SC_ERROR_BUFFER_TOO_SMALL		-1303
 #define SC_ERROR_INVALID_PIN_LENGTH		-1304
+#define SC_ERROR_INVALID_DATA			-1305
 
 /* Resulting from OpenSC internal operation */
 #define SC_ERROR_INTERNAL			-1400

@@ -68,6 +68,8 @@ CK_RV sc_to_cryptoki_error(int rc, int reader)
 		return CKR_PIN_INVALID;
 	case SC_ERROR_INVALID_ARGUMENTS:
 		return CKR_ARGUMENTS_BAD;
+	case SC_ERROR_INVALID_DATA:
+		return CKR_DATA_INVALID;
 	}
 	sc_debug(context, "opensc error: %s (%d)\n", sc_strerror(rc), rc);
 	return CKR_GENERAL_ERROR;
