@@ -1113,7 +1113,17 @@ if (test x$enable_debug = xyes); then
 fi
 
 dnl Check for SGML processor
+AC_ARG_WITH(docbook,
+[  --without-docbook       do no generate html manual (needs docbook)],
+	with_docbook=$withval)
 AC_CHECK_PROG(XSLTPROC, xsltproc, xsltproc)
+if test "x$XSLTPROC" = "x"; then
+	if test "x$with_docbook" = "xyes"; then
+		AC_MSG_ERROR([Docbook support requested, but cannot find xsltproc])
+	fi
+	with_docbook=no
+fi
+AM_CONDITIONAL(HAVE_DOCBOOK, test "x$with_docbook" != "xno")
 
 CPPFLAGS="-I\${top_builddir}/src/include $CPPFLAGS"
 
