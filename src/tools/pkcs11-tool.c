@@ -61,6 +61,7 @@ const struct option options[] = {
 	{ "type", 		1, 0, 		'y' },
 	{ "id", 		1, 0, 		'd' },
 	{ "label", 		1, 0, 		'a' },
+	{ "set-id",		1, 0, 		'e' },
 	{ "slot",		1, 0,		OPT_SLOT },
 	{ "slot-label",		1, 0,		OPT_SLOT_LABEL },
 	{ "input-file",		1, 0,		'i' },
@@ -87,7 +88,7 @@ const char *option_help[] = {
 	"Change your (user) PIN",
 	"Key pair generation",
 	"Write an object (key, cert) to the card",
-	"Specify the type of object (e.g. cert)",
+	"Specify the type of object (e.g. cert, privkey, pubkey)",
 	"Specify the id of the object",
 	"Specify the label of the object",
 	"Specify number of the slot to use",
@@ -110,9 +111,10 @@ static CK_SLOT_ID	opt_slot = NO_SLOT;
 static const char *	opt_slot_label = NULL;
 static CK_MECHANISM_TYPE opt_mechanism = NO_MECHANISM;
 static const char *	opt_file_to_write = NULL;
-static const char *	opt_object_type = NULL;
-static CK_BYTE		opt_object_id[100];
-static int		opt_object_id_len = 0;
+static const char *	opt_object_class_str = NULL;
+static CK_OBJECT_CLASS	opt_object_class = -1;
+static CK_BYTE		opt_object_id[100], new_object_id[100];
+static int		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
 
 static sc_pkcs11_module_t *module = NULL;
@@ -144,6 +146,7 @@ static void		sign_data(CK_SLOT_ID,
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		gen_keypair(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void 		write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
+static void 		set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
@@ -185,6 +188,7 @@ main(int argc, char * const argv[])
 	int do_hash = 0;
 	int do_gen_keypair = 0;
 	int do_write_object = 0;
+	int do_set_id = 0;
 	int do_test = 0;
 	int need_session = 0;
 	int opt_login = 0;
@@ -193,7 +197,7 @@ main(int argc, char * const argv[])
 	CK_RV rv;
 
 	while (1) {
-               c = getopt_long(argc, argv, "ILMOa:d:hi:klm:o:p:scqty:w:",
+               c = getopt_long(argc, argv, "ILMOa:d:e:hi:klm:o:p:scqty:w:",
 					options, &long_optind);
 		if (c == -1)
 			break;
@@ -231,15 +235,35 @@ main(int argc, char * const argv[])
 			opt_file_to_write = optarg;
 			action_count++;
 			break;
+		case 'e':
+			need_session |= NEED_SESSION_RW;
+			do_set_id = 1;
+			new_object_id_len = sizeof(new_object_id);
+			if (!hex_to_bin(optarg, new_object_id, &new_object_id_len)) {
+				printf("Invalid ID \"%s\"\n", optarg);
+				print_usage_and_die();
+			}
+			action_count++;
+			break;
 		case 'y':
-			opt_object_type = optarg;
+			opt_object_class_str = optarg;
+			if (strcmp(optarg, "cert") == 0)
+				opt_object_class = CKO_CERTIFICATE;
+			else if (strcmp(optarg, "privkey") == 0)
+				opt_object_class = CKO_PRIVATE_KEY;
+			else if (strcmp(optarg, "pubkey") == 0)
+				opt_object_class = CKO_PUBLIC_KEY;
+			else {
+				printf("Unsupported object type \"%s\"\n", optarg);
+				print_usage_and_die();
+			}
 			break;
 		case 'd':
 			opt_object_id_len = sizeof(opt_object_id);
 			if (!hex_to_bin(optarg, opt_object_id, &opt_object_id_len)) {
 				printf("Invalid ID \"%s\"\n", optarg);
 				print_usage_and_die();
-			}	
+			}
 			break;
 		case 'a':
 			opt_object_label = optarg;
@@ -428,9 +452,17 @@ skip_login:
 		gen_keypair(opt_slot, session);
 
 	if (do_write_object) {
-		if (opt_object_type == NULL)
-			fatal("You should specify the -y option with -w\n");
+		if (opt_object_class_str == NULL)
+			fatal("You should specify the object type with the -y option\n");
 		write_object(opt_slot, session);
+	}
+
+	if (do_set_id) {
+		if (opt_object_class_str == NULL)
+			fatal("You should specify the object type with the -y option\n");
+		if (opt_object_id_len == 0)
+			fatal("You should specify the current ID with the -d option\n");
+		set_id_attr(opt_slot, session);
 	}
 
 	if (do_test)
@@ -561,9 +593,11 @@ list_mechs(CK_SLOT_ID slot)
 				printf(", verify");
 			if (info.flags & CKF_UNWRAP)
 				printf(", unwrap");
-			if (info.flags & CKF_HW)
-				printf(", hw");
-			info.flags &= ~(CKF_DIGEST|CKF_SIGN|CKF_VERIFY|CKF_HW|CKF_UNWRAP);
+			if (info.flags & CKF_UNWRAP)
+				printf(", unwrap");
+			if (info.flags & CKF_GENERATE_KEY_PAIR)
+				printf(", keypairgen");
+			info.flags &= ~(CKF_DIGEST|CKF_SIGN|CKF_VERIFY|CKF_HW|CKF_UNWRAP|CKF_GENERATE_KEY_PAIR);
 			if (info.flags)
 				printf(", other flags=0x%x", (unsigned int) info.flags);
 		}
@@ -824,7 +858,7 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		fatal("Couldn't read from file \"%s\"\n", opt_file_to_write);
 	fclose(f);
 
-	if (strcmp("cert", opt_object_type) == 0) {
+	if (opt_object_class == CKO_CERTIFICATE) {
 		CK_OBJECT_CLASS clazz = CKO_CERTIFICATE;
 		CK_CERTIFICATE_TYPE cert_type = CKC_X_509;
 
@@ -846,7 +880,7 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		}
 	}
 	else
-		fatal("Unknown/unsupported object type \"%s\"\n", opt_object_type);
+		fatal("Writing of a \"%s\" type not (yet) supported\n", opt_object_class_str);
 
 	if (n_cert_attr) {
 		rv = p11->C_CreateObject(session, cert_templ, n_cert_attr, &cert_obj);
@@ -874,6 +908,27 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		printf("Generated private key:\n");
 		show_object(session, privkey_obj);
 	}
+}
+
+void
+set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	CK_OBJECT_HANDLE obj;
+	CK_ATTRIBUTE templ[] = {CKA_ID, new_object_id, new_object_id_len};
+	//CK_ATTRIBUTE templ2[] = {CKA_LABEL, "new_label", 9};
+	CK_RV rv;
+
+	if (!find_object(session, opt_object_class, &obj, opt_object_id, opt_object_id_len, 0)) {
+		printf("set_id(): coudn't find the object\n");
+		return;
+	}
+
+	rv = p11->C_SetAttributeValue(session, obj, templ, 1);
+	if (rv != CKR_OK)
+		p11_fatal("C_SetAttributeValue", rv);
+
+	printf("Result:");
+	show_object(session, obj);
 }
 
 CK_SLOT_ID
