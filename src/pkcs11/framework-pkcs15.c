@@ -453,7 +453,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 		}
 		slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 	} else
-		sprintf(tmp, "public");
+		sprintf(tmp, card->label);
 	strcpy_bp(slot->token_info.label, tmp, 32);
 
 	if (pin_info && pin_info->magic == SC_PKCS15_PIN_MAGIC) {
@@ -582,6 +582,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		if (!sc_pkcs11_conf.hide_empty_tokens) {
 			slot->slot_info.flags |= CKF_TOKEN_PRESENT;
 			pkcs15_init_token_info(fw_data->p15_card, &slot->token_info);
+			strcpy_bp(slot->token_info.label, fw_data->p15_card->label, 32);
 			slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
 		}
 	}
