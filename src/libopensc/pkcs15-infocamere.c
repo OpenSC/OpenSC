@@ -55,11 +55,7 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 {
 
 
-   const int     prkey_usage [2] = {
-                                SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,  
-                                SC_PKCS15_PRKEY_USAGE_DECRYPT
-                        };
-
+   const int     prkey_usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 
    const int      authprkey_usage =      SC_PKCS15_PRKEY_USAGE_SIGN
                                         | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
@@ -322,7 +318,7 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
                 sc_pkcs15emu_add_prkey(p15card, &id,
                                 nonrepPRKEY,
                                 SC_PKCS15_TYPE_PRKEY_RSA, 
-                                1024, prkey_usage[ef_gdo[len_iccsn+6]-2],
+                                1024, prkey_usage,
                                 &path, infocamere_idprkey_nrepud_obj[ef_gdo[len_iccsn+6]-2],
                                 &auth_id, SC_PKCS15_CO_FLAG_PRIVATE);
 
