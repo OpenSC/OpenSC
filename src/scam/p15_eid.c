@@ -94,6 +94,8 @@ void p15_eid_printmsg(char *str,...)
 	if (p15_eid_pamh && p15_eid_ctrl)
 		opensc_pam_msg(p15_eid_pamh, *p15_eid_ctrl, PAM_TEXT_INFO, buf);
 #elif defined(SIA_SCAM)
+	if (p15_eid_collect)
+		sia_warning(p15_eid_collect, buf);
 #endif
 }
 

@@ -32,18 +32,6 @@
 static int scam_method = 0;
 static char *auth_method = NULL;
 
-/* Print the reason we failed to authenticate. */
-static void siad_authent_print_reason(sia_collect_func_t * collect, char *reason)
-{
-	char err_msg[128];
-
-	if (collect) {
-		(void) sprintf(err_msg, "Unable to authenticate to sia_opensc because %s",
-			       reason);
-		sia_warning(collect, err_msg);
-	}
-}
-
 /* siad_init - Once per reboot processing goes here. */
 int siad_init(void)
 {
@@ -99,10 +87,12 @@ int siad_get_groups(struct sia_context *context, const char *username,
  * SIADFAIL | SIADSTOP - calling routine should return.
  */
 int siad_get_name_password(sia_collect_func_t * collect, SIAENTITY * entity,
+			   const char *pinentry,
 			   int *got_pass)
 {
 	int need_name = 0, need_pass = 0, code = SIADFAIL;
 	struct prompt_t prompts[2];
+	const char *str = pinentry ? pinentry : DEFAULT_PINENTRY;
 	int n_prompts = 0;
 
 	*got_pass = 0;
@@ -141,7 +131,7 @@ int siad_get_name_password(sia_collect_func_t * collect, SIAENTITY * entity,
 			n_prompts++;
 		}
 		if (need_pass) {
-			prompts[n_prompts].prompt = (unsigned char *) "Password:";
+			prompts[n_prompts].prompt = (unsigned char *) str;
 			prompts[n_prompts].result = (unsigned char *) entity->password;
 			prompts[n_prompts].min_result_length = 0;
 			prompts[n_prompts].max_result_length = SIAMXPASSWORD;
@@ -186,14 +176,34 @@ int siad_ses_authent(sia_collect_func_t * collect, SIAENTITY * entity,
 		     int siastat, int pkgind)
 {
 	int got_pass = 0;
-	int code = 0;
-	char *reason = NULL;	/* returned by authenticate. */
+	int code = 0, rv;
+	const char *pinentry = NULL;
 	struct passwd *pwd = NULL;
 
-	code = siad_get_name_password(collect, entity, &got_pass);
-	if (code != SIADSUCCESS)
-		return code;
-
+#if 0
+	ctrl = _set_ctrl(pamh, flags, &auth_method, argc, (const char **) argv);
+#endif
+	scam_method = 0;
+	if (auth_method) {
+		scam_method = scam_select_by_name(auth_method);
+		free(auth_method);
+		auth_method = NULL;
+	}
+	if (scam_method < 0) {
+		code = SIADFAIL;
+		goto authent_fail;
+	}
+	scam_handles(scam_method, (void *) collect, entity, NULL);
+	rv = scam_init(scam_method, 0, NULL);
+	if (rv != SCAM_SUCCESS) {
+		code = SIADFAIL;
+		goto authent_fail;
+	}
+	pinentry = scam_pinentry(scam_method);
+	code = siad_get_name_password(collect, entity, pinentry, &got_pass);
+	if (code != SIADSUCCESS) {
+		goto authent_fail;
+	}
 	pwd = getpwnam(entity->name);
 	if (!pwd) {
 		/* Only authenticate if user is in /etc/passwd. */
@@ -205,12 +215,9 @@ int siad_ses_authent(sia_collect_func_t * collect, SIAENTITY * entity,
 		code = SIADFAIL;
 		goto authent_fail;
 	}
-	scam_handles(scam_method, collect, entity, NULL);
 	code = scam_auth(scam_method, 0, NULL, entity->name, entity->password);
 	if (code != SCAM_SUCCESS) {
-		log_message("siad_sis_authent: auth1 failure: %s\n", reason);
-	}
-	if (code) {
+		log_message("siad_sis_authent: auth1 failure\n");
 		code = SIADFAIL;
 		goto authent_fail;
 	}
@@ -229,10 +236,12 @@ int siad_ses_authent(sia_collect_func_t * collect, SIAENTITY * entity,
 	}
 	log_message("siad_ses_authent returning success.\n");
 	opensc_sia_log("siad_ses_authent returning success.\n");
+	scam_deinit(scam_method);
 	return SIADSUCCESS;
       authent_fail:
 	opensc_sia_log("siad_ses_authent fails, code=%d.\n", code);
 	log_message("siad_ses_authent fails, code=%d.\n", code);
+	scam_deinit(scam_method);
 	return code;
 }
 
@@ -249,28 +258,45 @@ int siad_ses_reauthent(sia_collect_func_t * collect, SIAENTITY * entity,
 		       int siastat, int pkgind)
 {
 	int got_pass = 0;
-	int code = 0;
-	char *reason = NULL;	/* returned by authenticate. */
+	int code = 0, rv;
+	const char *pinentry = NULL;
 	struct passwd *pwd = NULL;
 
 	if (siastat == SIADSUCCESS)
 		return SIADSUCCESS;
 
-	code = siad_get_name_password(collect, entity, &got_pass);
-	if (code != SIADSUCCESS)
-		return code;
-
+#if 0
+	ctrl = _set_ctrl(pamh, flags, &auth_method, argc, (const char **) argv);
+#endif
+	scam_method = 0;
+	if (auth_method) {
+		scam_method = scam_select_by_name(auth_method);
+		free(auth_method);
+		auth_method = NULL;
+	}
+	if (scam_method < 0) {
+		code = SIADFAIL;
+		goto reauthent_fail;
+	}
+	scam_handles(scam_method, (void *) collect, entity, NULL);
+	rv = scam_init(scam_method, 0, NULL);
+	if (rv != SCAM_SUCCESS) {
+		code = SIADFAIL;
+		goto reauthent_fail;
+	}
+	pinentry = scam_pinentry(scam_method);
+	code = siad_get_name_password(collect, entity, pinentry, &got_pass);
+	if (code != SIADSUCCESS) {
+		goto reauthent_fail;
+	}
 	pwd = getpwnam(entity->name);
 	if (!pwd) {
 		code = SIADFAIL;
 		goto reauthent_fail;
 	}
-	scam_handles(scam_method, collect, entity, NULL);
 	code = scam_auth(scam_method, 0, NULL, entity->name, entity->password);
 	if (code != SCAM_SUCCESS) {
-		log_message("siad_sis_reauthent: auth failure: %s\n", reason);
-	}
-	if (code) {
+		log_message("siad_sis_reauthent: auth failure\n");
 		code = SIADFAIL;
 		goto reauthent_fail;
 	}
@@ -289,10 +315,12 @@ int siad_ses_reauthent(sia_collect_func_t * collect, SIAENTITY * entity,
 	}
 	log_message("siad_ses_reauthent returning success.\n");
 	opensc_sia_log("siad_ses_reauthent returning success.\n");
+	scam_deinit(scam_method);
 	return SIADSUCCESS;
       reauthent_fail:
 	opensc_sia_log("siad_ses_reauthent fails, code=%d.\n", code);
 	log_message("siad_ses_reauthent fails, code=%d.\n", code);
+	scam_deinit(scam_method);
 	return code;
 }
 

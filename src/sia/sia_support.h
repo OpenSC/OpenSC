@@ -29,6 +29,8 @@
 extern "C" {
 #endif
 
+#define DEFAULT_PINENTRY "Enter PIN1: "
+
 extern void opensc_sia_log(char *format,...);
 
 #ifdef __cplusplus

@@ -94,6 +94,8 @@ void p15_ldap_printmsg(char *str,...)
 	if (p15_ldap_pamh && p15_ldap_ctrl)
 		opensc_pam_msg(p15_ldap_pamh, *p15_ldap_ctrl, PAM_TEXT_INFO, buf);
 #elif defined(SIA_SCAM)
+	if (p15_ldap_collect)
+		sia_warning(p15_ldap_collect, buf);
 #endif
 }
 
