@@ -451,6 +451,7 @@ static int encode_bit_string(const u8 * inbuf, size_t bits_left, u8 **outbuf,
 				return SC_ERROR_NOT_SUPPORTED; /* FIXME */
 		}
 		bits_left -= bits_to_go;
+		out++, in++;
 	}
 	out = *outbuf;
 	out[0] = skipped;
