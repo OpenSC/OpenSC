@@ -59,7 +59,6 @@
 #include <opensc/scdl.h>
 
 #define OPENSC_INFO_FILEPATH		"3F0050154946"
-#define OPENSC_INFO_PATH		"\x49\x46"
 #define OPENSC_INFO_FILEID		0x4946
 #define OPENSC_INFO_TAG_PROFILE		0x01
 #define OPENSC_INFO_TAG_OPTION		0x02
