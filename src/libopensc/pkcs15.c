@@ -737,14 +737,14 @@ int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *p15card,
 			      const struct sc_pkcs15_id *id,
 			      struct sc_pkcs15_object **out)
 {
-	return find_by_id(p15card, SC_PKCS15_TYPE_CERT_X509, id, out);
+	return find_by_id(p15card, SC_PKCS15_TYPE_CERT, id, out);
 }
 
 int sc_pkcs15_find_prkey_by_id(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_id *id,
 			       struct sc_pkcs15_object **out)
 {
-	return find_by_id(p15card, SC_PKCS15_TYPE_PRKEY_RSA, id, out);
+	return find_by_id(p15card, SC_PKCS15_TYPE_PRKEY, id, out);
 }
 
 int sc_pkcs15_find_pubkey_by_id(struct sc_pkcs15_card *p15card,
@@ -761,8 +761,7 @@ int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *p15card,
 	return find_by_id(p15card, SC_PKCS15_TYPE_AUTH_PIN, id, out);
 }
 
-static int
-compare_flags(struct sc_pkcs15_object *obj, void *arg)
+static int compare_flags(struct sc_pkcs15_object *obj, void *arg)
 {
 	struct sc_pkcs15_pin_info *pin;
 	unsigned int	*match = (unsigned int *) arg;
@@ -864,158 +863,6 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 	*bufsize_out = bufsize;
 	
 	return 0;	
-}
-
-static int create_file(struct sc_card *card, struct sc_file *file)
-{
-	struct sc_path path;
-	int r, i;
-	
-	path = file->path;
-	if (path.len < 2) {
-		error(card->ctx, "file path too small\n");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	r = sc_lock(card);
-	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-	i = card->ctx->log_errors;
-	card->ctx->log_errors = 0;
-	r = sc_select_file(card, &path, NULL);
-	card->ctx->log_errors = 1;
-	if (r == 0) {
-		sc_unlock(card);
-		return 0;	/* File already exists */
-	}
-	path.len -= 2;
-	r = sc_select_file(card, &path, NULL);
-	if (r) {
-		sc_perror(card->ctx, r, "Unable to select parent DF");
-		sc_unlock(card);
-		return r;
-	}
-	file->id = (path.value[path.len] << 8) | (path.value[path.len+1] & 0xFF);
-	r = sc_create_file(card, file);
-	if (r) {
-		sc_perror(card->ctx, r, "sc_create_file()");
-		sc_unlock(card);
-		return r;
-	}
-	r = sc_select_file(card, &file->path, NULL);
-	sc_unlock(card);
-	SC_TEST_RET(card->ctx, r, "Unable to select created file");
-
-	return r;
-}
-
-static int create_and_update_file(struct sc_pkcs15_card *p15card,
-				  struct sc_card *card,
-				  struct sc_file *inf, const u8 *buf,
-				  size_t bufsize)
-{
-	struct sc_file *file;
-	int r;
-
-	sc_file_dup(&file, inf);
-	file->type = SC_FILE_TYPE_WORKING_EF;
-	file->ef_structure = SC_FILE_EF_TRANSPARENT;
-	file->size = inf->size + bufsize;
-	r = sc_lock(card);
-	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-	r = create_file(card, file);
-	sc_file_free(file);
-	if (r) {
-		sc_unlock(card);
-		return r;
-	}
-	r = sc_update_binary(card, 0, buf, bufsize, 0);
-	sc_unlock(card);
-	if (r < 0) {
-		sc_perror(card->ctx, r, "sc_update_binary() failed");
-		return r;
-	}
-	if (r != bufsize) {
-		error(card->ctx, "tried to write %d bytes, only wrote %d bytes",
-		      bufsize, r);
-		return -1;
-	}
-	return 0;
-}
-
-int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card)
-{
-	int r, i;
-	u8 *tokinf_buf = NULL, *odf_buf = NULL;
-	size_t tokinf_size, odf_size;
-
-	if (p15card->file_app == NULL || p15card->file_odf == NULL ||
-	    p15card->file_tokeninfo == NULL) {
-		error(card->ctx, "Not all of the necessary files have been supplied\n");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	if (card->ctx->debug)
-		debug(card->ctx, "creating EF(DIR)\n");
-	r = sc_pkcs15_create_dir(p15card, card);
-	SC_TEST_RET(card->ctx, r, "Error creating EF(DIR)");
-	r = sc_pkcs15_encode_tokeninfo(card->ctx, p15card, &tokinf_buf, &tokinf_size);
-	if (r) {
-		sc_perror(card->ctx, r, "Error encoding EF(TokenInfo)");
-		goto err;
-	}
-	if (card->ctx->debug)
-		debug(card->ctx, "creating EF(TokenInfo)\n");
-	r = create_and_update_file(p15card, card, p15card->file_tokeninfo, tokinf_buf, tokinf_size);
-	if (r) {
-		sc_perror(card->ctx, r, "Error creating EF(TokenInfo)");
-		goto err;
-	}
-	free(tokinf_buf);
-	tokinf_buf = NULL;
-	
-	if (card->ctx->debug)
-		debug(card->ctx, "creating EF(ODF)\n");
-	r = sc_pkcs15_encode_odf(card->ctx, p15card, &odf_buf, &odf_size);
-	if (r) {
-		sc_perror(card->ctx, r, "Error encoding EF(ODF)");
-		goto err;
-	}
-	r = create_and_update_file(p15card, card, p15card->file_odf, odf_buf, odf_size);
-	if (r) {
-		sc_perror(card->ctx, r, "Error creating EF(ODF)");
-		goto err;
-	}
-	free(odf_buf);
-	odf_buf = NULL;
-
-	for (i = 0; i < SC_PKCS15_DF_TYPE_COUNT; i++) {
-		struct sc_pkcs15_df *df = &p15card->df[i];
-		int file_no;
-		u8 *buf;
-		size_t bufsize;
-		
-		if (df->count == 0)
-			continue;
-		for (file_no = 0; file_no < df->count; file_no++) {
-			r = sc_pkcs15_encode_df(card->ctx, df, file_no, &buf, &bufsize);
-			if (r) {
-				sc_perror(card->ctx, r, "Error encoding EF(xDF)");
-				goto err;
-			}
-			if (card->ctx->debug)
-				debug(card->ctx, "creating DF %d of type %d\n", file_no, i);
-			r = create_and_update_file(p15card, card, df->file[file_no], buf, bufsize);
-			free(buf);
-			if (r) {
-				sc_perror(card->ctx, r, "Error creating EF(TokenInfo)");
-				goto err;
-			}
-		}
-	}
-err:
-	if (tokinf_buf)
-		free(tokinf_buf);
-	if (odf_buf)
-		free(odf_buf);
-	return r;
 }
 
 int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
