@@ -16,5 +16,6 @@ gmon.out
 core
 Makefile
 Makefile.in
+pkcs15-profile.5
 html
 latex
