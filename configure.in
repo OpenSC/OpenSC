@@ -238,7 +238,7 @@ saved_LIBS="$LIBS"
 saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
 AC_SUBST(LIBCRYPTO)
-AC_SUBST(LIBCRYPTOA)
+AC_SUBST(ENGINE_LINK)
 AC_CACHE_CHECK([for OpenSSL directory], ac_cv_openssldir, [
 	for ssldir in $tryssldir $trycommondir /usr /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl ; do
 		# Skip empty variables
@@ -287,7 +287,74 @@ int main(void)
 			], []
 		)
 
-		if test "x$SSL_MSG" = "xyes" ; then
+		if test "x$SSL_MSG" != "xyes" 
+		then
+			continue
+		fi
+
+		# latest openssl version with engine
+		# properly integrated?
+		AC_TRY_RUN(
+		[
+#include <stdlib.h>
+#include <string.h>
+#include <openssl/opensslv.h>
+
+int main(void)
+{
+
+	if(OPENSSL_VERSION_NUMBER >= 0x0090704fL) {
+		exit(0);
+	} else { 
+		exit(1);
+	}
+}
+		],
+		[
+			GOOD_OPENSSL=yes
+		],
+		[
+			GOOD_OPENSSL=no
+		]
+		)
+
+		if test "x$GOOD_OPENSSL" == "xyes" 
+		then
+			# engine has to be there and working
+			LIBS="$saved_LIBS $LIBCRYPTO"
+			AC_TRY_RUN(
+			[
+#include <string.h>
+#include <openssl/opensslv.h>
+#include <openssl/engine.h>
+#include <openssl/rand.h>
+int main(void)
+{
+	char a[2048];
+	ENGINE *e;
+
+	e = ENGINE_new();
+	ENGINE_load_dynamic();
+	if (!e) return 1;
+	memset(a, 0, sizeof(a));
+	RAND_add(a, sizeof(a), sizeof(a));
+	return(RAND_status() <= 0);
+}
+				],
+				[
+					ENGINE_MSG=yes
+					ENGINE_LINK="$LIBCRYPTO"
+				], [
+					# should never happen,
+					# every 0.9.7* version has engine
+					# support integrated, it can't
+					# be missing.
+  AC_MSG_ERROR([OpenSSL support broken: openssl >= 0.9.7d without engine detected.])
+				])
+				break;
+		else
+			# openssl found, but version less than 0.9.7d
+			
 			# openssl with engine support?
 			LIBCRYPTOA="$ssldir/lib/libcrypto.a $LIBDL"
 			LIBS="$saved_LIBS $LIBCRYPTOA"
@@ -312,16 +379,12 @@ int main(void)
 			],
 			[
 				ENGINE_MSG=yes
+				ENGINE_LINK="$LIBCRYPTOA"
 			], []
 		)
+		break;
 		fi
 
-		if test "x$SSL_MSG" = "xyes" ; then
-			break;
-		fi
-		CPPFLAGS="$saved_CPPFLAGS"
-		LDFLAGS="$saved_LDFLAGS"
-		LIBS="$saved_LIBS"
 	done
 
 	if test "x$SSL_MSG" = "xyes" ; then
@@ -330,6 +393,8 @@ int main(void)
 		ac_cv_openssldir="no"
 	fi
 ], [SSL_MSG=yes])
+CPPFLAGS="$saved_CPPFLAGS"
+LDFLAGS="$saved_LDFLAGS"
 LIBS="$saved_LIBS"
 
 if test "x$SSL_MSG" = "xyes" ; then
@@ -337,6 +402,7 @@ if test "x$SSL_MSG" = "xyes" ; then
 else
   LIBCRYPTO=""
   LIBCRYPTOA=""
+  ENGINE_LINK=""
 fi
 AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
 AM_CONDITIONAL(HAVE_ENGINE, test "x$ENGINE_MSG" = "xyes")

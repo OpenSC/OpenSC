@@ -19,7 +19,8 @@ OPENSSL_CFLAGS = \
 
 engine_opensc_la_SOURCES = hw_opensc.c engine_opensc.c engine_opensc.h
 engine_opensc_la_CFLAGS = $(OPENSSL_CFLAGS)
-engine_opensc_la_LIBADD = @LIBCRYPTOA@ @LIBOPENSC@
+engine_opensc_la_LIBADD = @ENGINE_LINK@ @LIBOPENSC@
+
 engine_opensc_la_LDFLAGS = @OPENSSL_LDFLAGS@ -module -avoid-version
 
 engine_pkcs11_la_SOURCES = \
@@ -28,7 +29,7 @@ engine_pkcs11_la_SOURCES = \
 	p11_load.c p11_misc.c p11_rsa.c p11_slot.c \
 	pkcs11-internal.h
 engine_pkcs11_la_CFLAGS = $(OPENSSL_CFLAGS)
-engine_pkcs11_la_LIBADD = @LIBCRYPTOA@ ../pkcs11/libpkcs11.la
+engine_pkcs11_la_LIBADD = @ENGINE_LINK@ ../pkcs11/libpkcs11.la
 engine_pkcs11_la_LDFLAGS = @OPENSSL_LDFLAGS@ -module -avoid-version
 
 install-exec-local: install-libLTLIBRARIES
