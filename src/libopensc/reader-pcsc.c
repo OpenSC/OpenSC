@@ -383,10 +383,12 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	DWORD active_proto, protocol = SCARD_PROTOCOL_ANY;
 	SCARDHANDLE card_handle;
 	LONG rv;
+	unsigned char attr[1];
+	DWORD attrlen;  
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	scconf_block *conf_block = NULL;
-	int r, i;
+	int r, i, try_ccid_pin_cmd;
 
 	r = refresh_slot_attributes(reader, slot);
 	if (r)
@@ -394,7 +396,8 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	if (!(slot->flags & SC_SLOT_CARD_PRESENT))
 		return SC_ERROR_CARD_NOT_PRESENT;
 
-	/* force a protocol, addon by -mp */	
+	/* force a protocol */
+	/* XXX: Why it's at reader driver level, and not shared by others? */
 	for (i = 0; reader->ctx->conf_blocks[i] != NULL; i++) {
 		scconf_block **blocks;
 		char name[3 * SC_MAX_ATR_SIZE];
@@ -428,6 +431,19 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 		}
 	}
 
+	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+					    "reader_driver", "pcsc");
+		conf_block = blocks[0];
+		free(blocks);
+		if (conf_block != NULL)
+			break;
+	}
+	try_ccid_pin_cmd = 0;
+	if (conf_block != NULL) {
+		try_ccid_pin_cmd = scconf_get_bool(conf_block, "use_ccid_pin_cmd", 0);
+	}
+
 	rv = SCardConnect(priv->pcsc_ctx, priv->reader_name,
 		SCARD_SHARE_SHARED, protocol, &card_handle, &active_proto);
 	if (rv != 0) {
@@ -437,17 +453,13 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	slot->active_protocol = pcsc_proto_to_opensc(active_proto);
 	pslot->pcsc_card = card_handle;
 
-#ifdef MP_CCID_PINPAD
-	/* check for PINPAD support, addon by -mp */
-	{
-		unsigned char attribute[1];
-		DWORD attribute_length;  
+	/* check for pinpad support */
+	if (try_ccid_pin_cmd) {
 		sc_debug(reader->ctx, "Testing for CCID pinpad support ... ");
-		/* See if this reader supports pinpad... */
-		attribute_length = 1;
-		rv = SCardGetAttrib(pslot->pcsc_card, IOCTL_SMARTCARD_VENDOR_VERIFY_PIN, attribute, &attribute_length);
+		attrlen = sizeof(attr);
+		rv = SCardGetAttrib(pslot->pcsc_card, IOCTL_SMARTCARD_VENDOR_VERIFY_PIN, attr, &attrlen);
 		if (rv == SCARD_S_SUCCESS) {
-			if (attribute[0] != 0) {
+			if (attr[0] != 0) {
 				sc_debug(reader->ctx, "Reader supports CCID pinpad");
 				slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
 			}
@@ -455,7 +467,6 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 			PCSC_ERROR(reader->ctx, "SCardGetAttrib failed", rv)
 		}
 	}
-#endif
 	return 0;
 }
 
@@ -630,11 +641,11 @@ static int pcsc_finish(struct sc_context *ctx, void *prv_data)
 static int
 pcsc_pin_cmd(struct sc_reader *reader, sc_slot_info_t * slot, struct sc_pin_cmd_data *data)
 {
-#ifdef MP_CCID_PINPAD
-	return ccid_pin_cmd(reader, slot, data);
-#else
-	return ctbcs_pin_cmd(reader, slot, data);
-#endif
+	if (slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
+		return ccid_pin_cmd(reader, slot, data);
+	} else {
+		return ctbcs_pin_cmd(reader, slot, data);
+	}
 }
 
 struct sc_reader_driver * sc_get_pcsc_driver(void)

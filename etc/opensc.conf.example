@@ -83,6 +83,10 @@ app default {
 		#
 		max_send_size = 252;
 		max_recv_size = 252;
+		#
+		# EXPERIMENTAL: Enable CCID pinpad support
+		# implemented (at least) in the libccid driver.
+		#use_ccid_pin_cmd = true;
 	}
 
 	# What card drivers to load at start-up
