@@ -1114,7 +1114,7 @@ EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObje
 	unsigned char  *id;
 	CK_ULONG        idLen;
 	CK_OBJECT_HANDLE pubkeyObject;
-	unsigned char  *pubkey;
+	unsigned char  *pubkey, *pubkey_sav;
 	CK_ULONG        pubkeyLen;
 	RSA	       *rsa;
 	EVP_PKEY       *pkey;
@@ -1139,8 +1139,9 @@ EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObje
 		return NULL;
 	}
 
+	pubkey_sav = pubkey; /* The function below may change pubkey */
 	rsa = d2i_RSAPublicKey(NULL, &pubkey, pubkeyLen);
-	free(pubkey);
+	free(pubkey_sav);
 
 	if (rsa == NULL) {
 		printf(" couldn't parse pubkey, no verification done\n");
@@ -1560,7 +1561,7 @@ test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
 	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
-		printf("Signatures: not logged in, skipping signature tests\n");
+		printf("Key unwrap: not logged in, skipping key unwrap tests\n");
 		return errors;
 	}
 
