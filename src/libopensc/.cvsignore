@@ -17,3 +17,4 @@ gmon.out
 core
 Makefile
 Makefile.in
+opensc-config
