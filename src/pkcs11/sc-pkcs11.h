@@ -50,7 +50,7 @@
 extern "C" {
 #endif
 
-#define SC_PKCS11_MAX_VIRTUAL_SLOTS	4
+#define SC_PKCS11_MAX_VIRTUAL_SLOTS	8
 #define SC_PKCS11_MAX_READERS           2
 
 struct sc_pkcs11_session;
@@ -78,6 +78,9 @@ struct sc_pkcs11_pool {
         struct sc_pkcs11_pool_item *tail;
 };
 
+struct sc_pkcs11_config {
+	unsigned int num_slots;
+};
 
 /*
  * PKCS#11 Object abstraction layer
@@ -159,6 +162,10 @@ struct sc_pkcs11_card {
 	struct sc_card *card;
         struct sc_pkcs11_framework_ops *framework;
 	void *fw_data;
+
+	/* Number of slots owned by this card object */
+	unsigned int num_slots;
+	unsigned int max_slots;
 
 	/* List of supported mechanisms */
 	struct sc_pkcs11_mechanism_type **mechanisms;
@@ -261,6 +268,7 @@ extern struct sc_context *context;
 extern struct sc_pkcs11_pool session_pool;
 extern struct sc_pkcs11_slot virtual_slots[SC_PKCS11_MAX_VIRTUAL_SLOTS];
 extern struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
+extern struct sc_pkcs11_config sc_pkcs11_conf;
 
 /* Framework definitions */
 extern struct sc_pkcs11_framework_ops framework_pkcs15;
@@ -340,6 +348,9 @@ void sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *);
 CK_RV sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *,
 				CK_MECHANISM_TYPE, CK_MECHANISM_TYPE,
 				sc_pkcs11_mechanism_type_t *);
+
+/* Load configuration defaults */
+void load_pkcs11_parameters(struct sc_pkcs11_config *, struct sc_context *);
 
 #ifdef __cplusplus
 }

@@ -141,3 +141,19 @@ app scam {
 		use_caching = false;
 	}
 }
+
+# Parameters for the OpenSC PKCS11 module
+app opensc-pkcs11 {
+	pkcs11 {
+		# Maxmimum number of slots per smart card.
+		# If the card has fewer keys than defined here,
+		# the remaining number of slots will be empty.
+		# Setting this value to 0 will cause the pkcs11
+		# module to allocate just as many slots as needed.
+		#
+		# Note that there is currently a compile time
+		# maximum on the overall number of slots
+		# the pkcs11 module is able to handle.
+		num_slots = 4;
+	}
+}

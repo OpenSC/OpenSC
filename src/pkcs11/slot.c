@@ -78,6 +78,13 @@ CK_RV card_detect(int reader)
 		debug(context, "%d: Detecting Framework\n", reader);
 
 		card = &card_table[reader];
+
+		if (sc_pkcs11_conf.num_slots == 0)
+			card->max_slots = SC_PKCS11_MAX_VIRTUAL_SLOTS;
+		else
+			card->max_slots = sc_pkcs11_conf.num_slots;
+		card->num_slots = 0;
+
 		for (i = 0; frameworks[i]; i++) {
 			if (frameworks[i]->bind == NULL)
 				continue;
@@ -142,6 +149,10 @@ CK_RV slot_initialize(int id, struct sc_pkcs11_slot *slot)
 CK_RV slot_allocate(struct sc_pkcs11_slot **slot, struct sc_pkcs11_card *card)
 {
         int i;
+
+	if (card->num_slots >= card->max_slots)
+		return CKR_FUNCTION_FAILED;
+
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++) {
 		if (!(virtual_slots[i].slot_info.flags & CKF_TOKEN_PRESENT)) {
 			debug(context, "Allocated slot %d\n", i);
@@ -149,7 +160,8 @@ CK_RV slot_allocate(struct sc_pkcs11_slot **slot, struct sc_pkcs11_card *card)
                         virtual_slots[i].slot_info.flags |= CKF_TOKEN_PRESENT;
                         virtual_slots[i].card = card;
 			*slot = &virtual_slots[i];
-                        return CKR_OK;
+			card->num_slots++;
+			return CKR_OK;
 		}
 	}
         return CKR_FUNCTION_FAILED;

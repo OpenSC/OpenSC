@@ -26,6 +26,7 @@ struct sc_context *context = NULL;
 struct sc_pkcs11_pool session_pool;
 struct sc_pkcs11_slot virtual_slots[SC_PKCS11_MAX_VIRTUAL_SLOTS];
 struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
+struct sc_pkcs11_config sc_pkcs11_conf;
 
 extern CK_FUNCTION_LIST pkcs11_function_list;
 
@@ -40,6 +41,9 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	rc = sc_establish_context(&context, "opensc-pkcs11");
 	if (rc != 0)
 		return CKR_DEVICE_ERROR;
+
+	/* Load configuration */
+	load_pkcs11_parameters(&sc_pkcs11_conf, context);
 
         pool_initialize(&session_pool, POOL_TYPE_SESSION);
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++)

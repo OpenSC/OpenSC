@@ -389,9 +389,11 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	}
 
 	/* Create read/write slots */
-	while (slot_allocate(&slot, p11card) == CKR_OK) {
-		pkcs15_init_token_info(card, &slot->token_info);
-		slot->token_info.flags = CKF_TOKEN_INITIALIZED;
+	if (sc_pkcs11_conf.num_slots != 0) {
+		while (slot_allocate(&slot, p11card) == CKR_OK) {
+			pkcs15_init_token_info(card, &slot->token_info);
+			slot->token_info.flags = CKF_TOKEN_INITIALIZED;
+		}
 	}
 
 	debug(context, "All tokens created\n");

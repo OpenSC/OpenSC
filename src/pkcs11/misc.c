@@ -297,3 +297,25 @@ CK_RV attr_find_var(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 	return attr_extract(pTemplate, ptr, sizep);
 }
 
+void load_pkcs11_parameters(struct sc_pkcs11_config *conf, struct sc_context *ctx)
+{
+	scconf_block *conf_block = NULL, **blocks;
+	int i;
+	
+	/* Set defaults */
+	conf->num_slots = SC_PKCS11_MAX_VIRTUAL_SLOTS;
+
+	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+				"pkcs11", NULL);
+		conf_block = blocks[0];
+		free(blocks);
+		if (conf_block != NULL)
+			break;
+	}
+
+	if (!conf_block)
+		return;
+
+	conf->num_slots = scconf_get_int(conf_block, "num_slots", conf->num_slots);
+}
