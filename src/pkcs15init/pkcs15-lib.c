@@ -191,6 +191,8 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		app->aid_len = p15card->file_app->namelen;
 		memcpy(app->aid, p15card->file_app->name, app->aid_len);
 	}
+	if (args->serial)
+		sc_pkcs15init_set_serial(profile, args->serial);
 	if (args->label)
 		app->label = strdup(args->label);
 	else if (p15card->label)
@@ -1149,6 +1151,16 @@ int
 sc_pkcs15init_get_serial(struct sc_profile *profile, const char **res)
 {
 	*res = profile->p15_card->serial_number;
+	return 0;
+}
+
+int
+sc_pkcs15init_set_serial(struct sc_profile *profile, const char *serial)
+{
+	if (profile->p15_card->serial_number)
+		free(profile->p15_card->serial_number);
+	profile->p15_card->serial_number = strdup(serial);
+
 	return 0;
 }
 

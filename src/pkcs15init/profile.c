@@ -908,6 +908,17 @@ do_pin_maxlength(struct state *cur, int argc, char **argv)
 	return 0;
 }
 
+static int
+do_pin_flags(struct state *cur, int argc, char **argv)
+{
+	unsigned int	flags;
+
+	if (get_uint(cur, argv[0], &flags))
+		return 1;
+	cur->pin->pin.flags = flags;
+	return 0;
+}
+
 
 /*
  * Key section
@@ -973,7 +984,7 @@ static struct command	pi_commands[] = {
  { "auth-id",		1,	1,	do_pin_authid	},
  { "max-length",	1,	1,	do_pin_maxlength},
  { "min-length",	1,	1,	do_pin_minlength},
-
+ { "flags",		1,	1,	do_pin_flags	},
  { NULL, 0, 0, NULL }
 };
 

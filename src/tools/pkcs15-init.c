@@ -87,6 +87,7 @@ enum {
 	OPT_PUK1 = 0x10001,
 	OPT_PIN2 = 0x10002,
 	OPT_PUK2 = 0x10003,
+	OPT_SERIAL=0x10004,
 };
 
 const struct option	options[] = {
@@ -97,6 +98,7 @@ const struct option	options[] = {
 	{ "puk",		required_argument, 0,	OPT_PUK1 },
 	{ "so-pin",		required_argument, 0,	OPT_PIN2 },
 	{ "so-puk",		required_argument, 0,	OPT_PUK2 },
+	{ "serial",		required_argument, 0,	OPT_SERIAL },
 	{ "auth-id",		required_argument, 0,	'a' },
 	{ "id",			required_argument, 0,	'i' },
 	{ "label",		required_argument, 0,	'l' },
@@ -121,6 +123,7 @@ const char *		option_help[] = {
 	"Specify unblock PIN",
 	"Specify security officer (SO) PIN",
 	"Specify unblock PIN for SO PIN",
+	"Specify the serial number of the card",
 	"Specify ID of PIN to use/create",
 	"Specify ID of key/certificate",
 	"Specify label of PIN/key",
@@ -171,6 +174,7 @@ static char *			opt_authid = 0;
 static char *			opt_objectid = 0;
 static char *			opt_objectlabel = 0;
 static char *			opt_pins[4];
+static char *			opt_serial = 0;
 static char *			opt_passphrase = 0;
 static char *			opt_newkey = 0;
 static char *			opt_outkey = 0;
@@ -337,6 +341,8 @@ do_init_app(struct sc_profile *profile)
 	args.so_puk = (const u8 *) opt_pins[OPT_PUK2 & 3];
 	if (args.so_puk)
 		args.so_puk_len = strlen((char *) args.so_puk);
+	args.serial = (const char *) opt_serial;
+	
 	return sc_pkcs15init_add_app(card, profile, &args);
 }
 
@@ -897,6 +903,9 @@ handle_option(int c)
 	case OPT_PIN1: case OPT_PUK1:
 	case OPT_PIN2: case OPT_PUK2:
 		opt_pins[c & 3] = optarg;
+		break;
+	case OPT_SERIAL:
+		opt_serial = optarg;
 		break;
 	case OPT_PASSPHRASE:
 		opt_passphrase = optarg;
