@@ -27,7 +27,7 @@ OpenSC is capable of personalizing various types of smart cards, but
 also works with personalized cards such as the Finnish FINEID.
 
 OpenSC can currently be used on Linux, Windows and MacOS X. It supports
-PC/SC, CTAPI and OpenCT to talk to card terminals.
+PC/SC, CT-API and OpenCT to talk to card terminals.
 
 
 

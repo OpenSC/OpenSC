@@ -58,7 +58,7 @@ static int		openct_error(struct sc_reader *, int);
 static struct sc_reader_operations openct_ops;
 
 static struct sc_reader_driver openct_reader_driver = {
-	"OpenCT Reader",
+	"OpenCT reader",
 	"openct",
 	&openct_ops
 };

@@ -41,7 +41,6 @@ config.status: configure
 		--infodir=\$${prefix}/share/info \
 		--with-pam --with-pam-dir=/usr/lib/security/ \
 		--with-ldap-lib=auto \
-		--with-pcsc \
 		--disable-rpath
 
 

@@ -1054,7 +1054,7 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, 0x00, prv->rsa_key_ref);
 
-	/* This works around a problem with some PCSC IFD handlers that don't grok
+	/* This works around a problem with some PC/SC IFD drivers that don't grok
 	 * lc=00 (Chaskiel M Grundman <cg2v@andrew.cmu.edu>) */
 	if (data_len == 256) {
 		apdu.cla=0x10;

@@ -703,10 +703,10 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 	    ulPinLen > pin->max_length)
 		return CKR_ARGUMENTS_BAD;
 
-	/* By default, we make the pcsc daemon keep other processes
-	 * from accessing the card while we're logged in. Otherwise
-	 * an attacker could perform some crypto operation after
-	 * we've authenticated with the card */
+	/* By default, we make the reader resource manager keep other
+	 * processes from accessing the card while we're logged in.
+	 * Otherwise an attacker could perform some crypto operation
+	 * after we've authenticated with the card */
 	if (sc_pkcs11_conf.lock_login && (rc = lock_card(fw_data)) < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
 

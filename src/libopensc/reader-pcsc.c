@@ -1,5 +1,5 @@
 /*
- * reader-pcsc.c: Reader driver for PC/SC Lite
+ * reader-pcsc.c: Reader driver for PC/SC interface
  *
  * Copyright (C) 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -507,7 +507,7 @@ static int pcsc_release(struct sc_reader *reader)
 static struct sc_reader_operations pcsc_ops;
 
 static const struct sc_reader_driver pcsc_drv = {
-	"PC/SC Lite Resource Manager",
+	"PC/SC reader",
 	"pcsc",
 	&pcsc_ops
 };

@@ -32,11 +32,11 @@ the application's job (Note that the OpenSC PKCS11 module provides
 MT locking facilities, as that's part of the standard).
 .SH NOTES
 Whether locking is effective depends a lot on the middleware
-used to talk to the card reader. CTAPI based drivers for instance
+used to talk to the card reader. CT\-API based drivers for instance
 perform no interprocess locking at all.
 .PP
-The only middleware implementation currently used by OpenSC that
-does perform this type of locking is PCSC.
+The only middleware implementations currently supported by OpenSC that
+do perform this type of locking are PC/SC and OpenCT.
 .SH RETURN VALUE
 If an error occurred, a negative error code is returned, as described
 in \fbsc_error\fP(3). Otherwise, the function will return 0.
