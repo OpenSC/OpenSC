@@ -23,7 +23,9 @@ OBJECTS			= \
 	\
 	card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
 	card-etoken.obj card-tcos.obj card-emv.obj card-default.obj \
-	card-mcrd.obj card-starcos.obj
+	card-mcrd.obj card-starcos.obj \
+	\
+	$(TOPDIR)\win32\version.res
 
 all: install-headers $(TARGET)
 
@@ -31,4 +33,4 @@ all: install-headers $(TARGET)
 
 $(TARGET): $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib
 	perl $(TOPDIR)\win32\makedef.pl $*.def $* $(OBJECTS)
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib winscard.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib winscard.lib  libeay32.lib gdi32.lib

@@ -12,7 +12,7 @@ TARGET3			= opensc-spy.dll
 
 OBJECTS			= pkcs11-global.obj pkcs11-session.obj pkcs11-object.obj misc.obj slot.obj \
 			  secretkey.obj framework-pkcs15.obj framework-pkcs15init.obj mechanism.obj \
-			  openssl.obj debug.obj
+			  openssl.obj debug.obj $(TOPDIR)\win32\version.res
 OBJECTS2		= libpkcs11.obj
 OBJECTS3		= pkcs11-spy.obj pkcs11-display.obj libpkcs11.obj
 
@@ -21,10 +21,10 @@ all: install-headers install-headers-dir $(TARGET) $(TARGET2) $(TARGET3)
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
 $(TARGET): $(OBJECTS)
-	link $(LINKFLAGS) /dll /out:$(TARGET) $(OBJECTS) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\scrandom\scrandom.lib ..\pkcs15init\pkcs15init.lib winscard.lib
+	link $(LINKFLAGS) /dll /out:$(TARGET) $(OBJECTS) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\scrandom\scrandom.lib ..\pkcs15init\pkcs15init.lib winscard.lib libeay32.lib gdi32.lib
 
 $(TARGET2): $(OBJECTS2)
 	lib /nologo /machine:ix86 /out:$(TARGET2) $(OBJECTS2) ..\scdl\scdl.lib
 
 $(TARGET3): $(OBJECTS3)
-	link $(LINKFLAGS) /dll /out:$(TARGET3) $(OBJECTS3) ..\scdl\scdl.lib
+	link $(LINKFLAGS) /dll /out:$(TARGET3) $(OBJECTS3) ..\scdl\scdl.lib libeay32.lib gdi32.lib
