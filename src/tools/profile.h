@@ -17,7 +17,7 @@ struct auth_info {
 	unsigned int		id;		/* CHV1, KEY0, ... */
 	unsigned int		ref;
 	size_t			key_len;
-	u_int8_t		key[32];
+	u8		key[32];
 };
 
 struct file_info {

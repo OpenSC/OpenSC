@@ -855,7 +855,7 @@ do_prkey_reference(int argc, char **argv)
 {
 	struct sc_pkcs15_prkey_info *ki = &parser.cur_prkey->pkcs15;
 
-	return get_uint(argv[0], &ki->key_reference);
+	return get_uint(argv[0], (unsigned int *) &ki->key_reference);
 }
 
 static struct command	commands[] = {

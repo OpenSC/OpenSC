@@ -235,7 +235,7 @@ match_path(struct sc_card *card, unsigned short int **pathptr, size_t *pathlen,
 }
 
 static void
-ac_to_acl(u_int16_t ac, struct sc_file *file, unsigned int op)
+ac_to_acl(unsigned short int ac, struct sc_file *file, unsigned int op)
 {
 	unsigned int	npins, pin;
 
@@ -828,7 +828,7 @@ static int
 gpk_verify_pin(struct sc_card *card, int ref,
 	const u8 *pin, size_t pinlen, int *tries_left)
 {
-	u_int8_t	buffer[8];
+	u8	buffer[8];
 	struct sc_apdu	apdu;
 	int		r;
 
@@ -896,7 +896,7 @@ gpk_erase_card(struct sc_card *card)
 {
 	struct gpk_private_data *priv = OPSDATA(card);
 	struct sc_apdu	apdu;
-	u_int8_t	offset;
+	u8	offset;
 	int		r;
 
 	SC_FUNC_CALLED(card->ctx, 1);

@@ -82,7 +82,7 @@ void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t buflen)
 	u8 label[128];
 	int label_len = sizeof(label);
 	int flags_len = sizeof(card->flags);
-	struct sc_asn1_entry asn1_toki[9], asn1_tokeninfo[2];
+	struct sc_asn1_entry asn1_toki[9], asn1_tokeninfo[3];
 
 	sc_copy_asn1_entry(c_asn1_toki, asn1_toki);
 	sc_copy_asn1_entry(c_asn1_tokeninfo, asn1_tokeninfo);
@@ -521,7 +521,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	}
 	if (p15card->file_odf == NULL) {
 		tmppath = p15card->file_app->path;
-		sc_append_path_id(&tmppath, "\x50\x31", 2);
+		sc_append_path_id(&tmppath, (const u8 *) "\x50\x31", 2);
 	} else {
 		tmppath = p15card->file_odf->path;
 		sc_file_free(p15card->file_odf);
@@ -544,7 +544,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	}
 	if (p15card->file_tokeninfo == NULL) {
 		tmppath = p15card->file_app->path;
-		sc_append_path_id(&tmppath, "\x50\x32", 2);
+		sc_append_path_id(&tmppath, (const u8 *) "\x50\x32", 2);
 	} else {
 		tmppath = p15card->file_tokeninfo->path;
 		sc_file_free(p15card->file_tokeninfo);

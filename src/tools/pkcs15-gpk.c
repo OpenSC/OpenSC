@@ -44,8 +44,8 @@ gpk_lock(struct sc_card *card, struct sc_file *file, unsigned int op)
 static int
 gpk_update_pins(struct sc_card *card, struct pin_info *info)
 {
-	u_int8_t	buffer[GPK_MAX_PINS * 8], *blk;
-	u_int8_t	temp[16];
+	u8	buffer[GPK_MAX_PINS * 8], *blk;
+	u8	temp[16];
 	unsigned int	npins, i, j, tries, cks;
 	int		r;
 
@@ -68,7 +68,7 @@ gpk_update_pins(struct sc_card *card, struct pin_info *info)
 			blk[2] = 0x8 | (i + 1);
 
 		memset(temp, 0, sizeof(temp));
-		strncpy(temp, info->secret[i], 8);
+		strncpy((char *) temp, info->secret[i], 8);
 		blk[4] = (temp[0] << 4) | (temp[1] & 0xF);
 		blk[5] = (temp[2] << 4) | (temp[3] & 0xF);
 		blk[6] = (temp[4] << 4) | (temp[5] & 0xF);
@@ -236,7 +236,9 @@ gpk_init_app(struct sc_profile *profile, struct sc_card *card)
  */
 struct pkcomp {
 	unsigned char	tag;
-//	BIGNUM *	bn;
+#if 0
+	BIGNUM *	bn;
+#endif
 	u8 *		data;
 	unsigned int	size;
 };

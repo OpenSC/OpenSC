@@ -178,7 +178,7 @@ main(int argc, char **argv)
 	/* Read the PKCS15 structure from the card */
 	r = sc_pkcs15_bind(card, &p15card);
 	if (r) {
-		fprintf(stderr, "PKCS#15 initialization failed: %m\n");
+		fprintf(stderr, "PKCS#15 initialization failed: %s\n", sc_strerror(r));
 		goto done;
 	}
 	if (!opt_quiet)
@@ -675,7 +675,7 @@ do_verify_pin(struct sc_profile *pro, unsigned int type, unsigned int reference)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 
-	return sc_verify(card, SC_AC_CHV, reference, pin, strlen(pin), NULL);
+	return sc_verify(card, SC_AC_CHV, reference, (const u8 *) pin, strlen(pin), NULL);
 }
 
 int
