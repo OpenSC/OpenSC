@@ -1,6 +1,6 @@
 ## Makefile.am -- Process this file with automake to produce Makefile.in
 
-SUBDIRS = . aclocal src
+SUBDIRS = . aclocal src docs
 
 EXTRA_DIST = CodingStyle README.Cryptoflex bootstrap
 
