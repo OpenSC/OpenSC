@@ -157,8 +157,7 @@ static int flex_init(struct sc_card *card)
 	return 0;
 }
 
-static void add_acl_entry(struct sc_file *file, unsigned int op,
-			  u8 nibble, int is_mf)
+static void add_acl_entry(struct sc_file *file, unsigned int op, u8 nibble)
 {
 	switch (nibble) {
 	case 0:
@@ -247,18 +246,18 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 	}
         p += 2;
 	if (file->type == SC_FILE_TYPE_DF) {
-		add_acl_entry(file, SC_AC_OP_LIST_FILES, (u8)(p[0] >> 4), is_mf);
-		add_acl_entry(file, SC_AC_OP_DELETE, (u8)(p[1] >> 4), is_mf);
-		add_acl_entry(file, SC_AC_OP_CREATE, (u8)(p[1] & 0x0F), is_mf);
+		add_acl_entry(file, SC_AC_OP_LIST_FILES, (u8)(p[0] >> 4));
+		add_acl_entry(file, SC_AC_OP_DELETE, (u8)(p[1] >> 4));
+		add_acl_entry(file, SC_AC_OP_CREATE, (u8)(p[1] & 0x0F));
 	} else { /* EF */
-		add_acl_entry(file, SC_AC_OP_READ, (u8)(p[0] >> 4), 0);
+		add_acl_entry(file, SC_AC_OP_READ, (u8)(p[0] >> 4));
 		switch (file->ef_structure) {
 		case SC_FILE_EF_TRANSPARENT:
-			add_acl_entry(file, SC_AC_OP_UPDATE, (u8)(p[0] & 0x0F), 0);
+			add_acl_entry(file, SC_AC_OP_UPDATE, (u8)(p[0] & 0x0F));
 			break;
 		case SC_FILE_EF_LINEAR_FIXED:
 		case SC_FILE_EF_LINEAR_VARIABLE:
-			add_acl_entry(file, SC_AC_OP_UPDATE, (u8)(p[0] & 0x0F), 0);
+			add_acl_entry(file, SC_AC_OP_UPDATE, (u8)(p[0] & 0x0F));
 			break;
 		case SC_FILE_EF_CYCLIC:
 #if 0
@@ -268,8 +267,10 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 			break;
 		}
 	}
-	add_acl_entry(file, SC_AC_OP_REHABILITATE, (u8)(p[2] >> 4), is_mf);
-	add_acl_entry(file, SC_AC_OP_INVALIDATE, (u8)(p[2] & 0x0F), is_mf);
+	if (file->type != SC_FILE_TYPE_DF || is_mf) {
+		add_acl_entry(file, SC_AC_OP_REHABILITATE, (u8)(p[2] >> 4));
+		add_acl_entry(file, SC_AC_OP_INVALIDATE, (u8)(p[2] & 0x0F));
+	}
 	p += 3;
 	if (*p++)
 		file->status = SC_FILE_STATUS_ACTIVATED;
