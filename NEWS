@@ -6,6 +6,8 @@ New in 0.8.0; 2003-04-xx; Juha Yrjölä:
 * New reader driver: OpenCT (Olaf's framework)
 * USBtoken by Andreas Jellinghaus integrated
 * Compiles (and actually works!) also on Win32
+* Improved support for MacOS X, off-the-box using
+  autoconf.
 * PKCS #11 stuff improved massively
 * Added an engine driver for OpenSSL
 * New manpages
