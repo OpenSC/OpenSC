@@ -397,6 +397,8 @@ static int starcos_select_file(struct sc_card *card,
 	if ( !card || !in_path )
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 
+	SC_FUNC_CALLED(card->ctx, 1);
+
 	if (card->ctx->debug >= 4)
 	{
 		char buf[128], *p_buf = buf;
