@@ -172,6 +172,10 @@ static int flex_init(sc_card_t *card)
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	}
 
+	/* SCardTransmit failed: 8010002f
+	 * this can be solved with a small delay. */
+	msleep(100);
+
 	/* State that we have an RNG */
 	card->caps |= SC_CARD_CAP_RNG;
 
