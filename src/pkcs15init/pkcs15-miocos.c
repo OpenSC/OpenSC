@@ -200,9 +200,18 @@ miocos_new_key(struct sc_profile *profile, struct sc_card *card,
 }
 
 struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations = {
-	NULL,
-	.init_app = miocos_init_app,
-	.new_pin  = miocos_new_pin,
-	.new_key  = miocos_new_key,
-	.new_file = miocos_new_file,
+	NULL,	/* erase_card */
+	NULL,	/* create_dir */
+	NULL,	/* create_domain */
+	NULL,	/* select_pin_reference */
+	NULL,	/* create_pin */
+	NULL,	/* select_key_reference */
+	NULL,	/* create_key */
+	NULL,	/* store_key */
+	NULL,	/* generate_key */
+	miocos_init_app,
+	miocos_new_pin,
+	miocos_new_key,
+	miocos_new_file,
+	NULL /* old_generate_key*/
 };

@@ -120,8 +120,10 @@ extern struct sc_pkcs15init_operations	sc_pkcs15init_cflex_operations;
 extern struct sc_pkcs15init_operations	sc_pkcs15init_etoken_operations;
 
 static struct sc_pkcs15init_callbacks callbacks = {
-	.error = default_error_handler,
-	.debug = default_debug_handler
+	default_error_handler,
+	default_debug_handler,
+	NULL,
+	NULL
 };
 
 #define p15init_error	callbacks.error

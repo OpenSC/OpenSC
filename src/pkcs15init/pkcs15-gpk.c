@@ -1118,12 +1118,18 @@ debug(struct sc_profile *profile, const char *fmt, ...)
 }
 
 struct sc_pkcs15init_operations sc_pkcs15init_gpk_operations = {
-	.erase_card 		= gpk_erase_card,
-	.create_dir 		= gpk_create_dir,
-	.select_pin_reference 	= gpk_select_pin_reference,
-	.create_pin 		= gpk_create_pin,
-	.create_key		= gpk_create_key,
-	.store_key		= gpk_store_key,
-//	.new_key    		= gpk_new_key,
-//	.new_file   		= gpk_new_file,
+	gpk_erase_card,
+	gpk_create_dir,	/* create_dir */
+	NULL,	/* create_domain */
+	gpk_select_pin_reference,
+	gpk_create_pin,
+	NULL,	/* select_key_reference */
+	gpk_create_key,
+	gpk_store_key,
+	NULL,	/* generate_key */
+	NULL,	/* init_app */
+	NULL,	/*new_pin */
+	NULL,	/* new_key */
+	NULL,	/* new_file*/
+	NULL	/* old_generate_key*/
 };

@@ -766,13 +766,18 @@ cflex_encode_public_key(struct sc_pkcs15_prkey_rsa *rsa,
 }
 
 struct sc_pkcs15init_operations sc_pkcs15init_cflex_operations = {
-	.erase_card	= cflex_erase_card,
-	.create_dir	= cflex_create_dir,
-	.create_domain	= cflex_create_domain,
-	.select_pin_reference = cflex_select_pin_reference,
-	.create_pin	= cflex_create_pin,
-	.create_key	= cflex_create_key,
-	.generate_key	= cflex_generate_key,
-	.store_key	= cflex_store_key,
-
+	cflex_erase_card,
+	cflex_create_dir,
+	cflex_create_domain,
+	cflex_select_pin_reference,
+	cflex_create_pin,
+	NULL,	/* select_key_reference */
+	cflex_create_key,
+	cflex_store_key,
+	cflex_generate_key,
+	NULL,	/* init_app */
+	NULL,	/* new_pin */
+	NULL, 	/* new_key */
+	NULL,	/* miocos_new_file */
+	NULL	/* old_generate_key*/
 };
