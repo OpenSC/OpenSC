@@ -213,11 +213,11 @@ void sc_format_path(const char *str, struct sc_path *path)
 	int type = SC_PATH_TYPE_PATH;
 	u8 *p = path->value;
 
-	if (*p == 'i' || *p == 'I') {
+	if (*str == 'i' || *str == 'I') {
 		type = SC_PATH_TYPE_FILE_ID;
-		p++;
+		str++;
 	}
-	while (str) {
+	while (*str) {
 		int byte;
 		
 		if (sscanf(str, "%02X", &byte) != 1)

@@ -272,6 +272,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	err = sc_select_file(card, &tmppath, &p15card->file_dir);
 	if (err) {
 		error(ctx, "Error selecting EF(DIR): %s\n", sc_strerror(err));
+		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
 		goto error;
 	}
 	err = sc_read_binary(card, 0, buf, p15card->file_dir.size, 0);

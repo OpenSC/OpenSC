@@ -133,10 +133,6 @@ int slot_connect(int id)
 		struct sc_pkcs15_cert *cert;
 		struct sc_pkcs15_cert_info *cinfo = &p15card->cert_info[c];
 
-#if 0
-		if (cinfo->authority)
-			continue;
-#endif
 		LOG("Reading '%s' certificate.\n", cinfo->com_attr.label);
 		r = sc_pkcs15_read_certificate(p15card, cinfo, &cert);
 		if (r)
@@ -144,12 +140,14 @@ int slot_connect(int id)
 		LOG("Adding '%s' certificate object (id %X).\n",
 		    cinfo->com_attr.label, cinfo->id);
 		slot_add_certificate_object(id, c, cinfo, cert);
+		
 		for (i = 0; i < p15card->prkey_count; i++) {
 			struct sc_pkcs15_prkey_info *pinfo = &p15card->prkey_info[i];
 			if (sc_pkcs15_compare_id(&cinfo->id, &pinfo->id)) {
 				LOG("Adding '%s' private key object (id %X).\n", 
-				    pinfo->com_attr.label, pinfo->id);
-				slot_add_private_key_object(id, i, pinfo, cert);
+				    pinfo->com_attr.label, pinfo->id.value[0]);
+				if (slot_add_private_key_object(id, i, pinfo, cert))
+					LOG("Private key addition failed.\n");
 			}
 		}
 		sc_pkcs15_free_certificate(cert);
@@ -163,8 +161,10 @@ int slot_disconnect(int id)
         LOG("Disconnecting from slot %d\n", id);
         slot[id].flags = 0;
 	if (slot[id].p15card != NULL) {
+		struct sc_card *card = slot[id].p15card->card;
+		
 		sc_pkcs15_unbind(slot[id].p15card);
-		sc_disconnect_card(slot[id].p15card->card);
+		sc_disconnect_card(card);
 		slot[id].p15card = NULL;
 	}
 

@@ -165,7 +165,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 {
 	int r;
-	
+
         LOG("C_GetTokenInfo(%d, 0x%x)\n", slotID, pInfo);
 	if (slotID < 0 || slotID >= ctx->reader_count)
                 return CKR_SLOT_ID_INVALID;
@@ -181,7 +181,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	pInfo->label[31] = 0;
 	strncpy((char *) pInfo->manufacturerID, slot[slotID].p15card->manufacturer_id, 32);
 	pInfo->manufacturerID[31] = 0;
-	strcpy((char *) pInfo->model, "PKCS#15 SC");
+	strcpy((char *) pInfo->model, "PKCS #15 SC");
 	strncpy((char *) pInfo->serialNumber, slot[slotID].p15card->serial_number, 16);
 	pInfo->serialNumber[15] = 0;
 
@@ -210,7 +210,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	pInfo->hardwareVersion.minor = 0;
 	pInfo->firmwareVersion.major = 1;
 	pInfo->firmwareVersion.minor = 0;
-	
+
         return CKR_OK;
 }
 
@@ -248,7 +248,7 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
 			 CK_MECHANISM_INFO_PTR pInfo)
 {
 	LOG("C_GetMechanismInfo(%d, %d, 0x%x)\n", slotID, type, pInfo);
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_InitToken(CK_SLOT_ID slotID,
@@ -256,6 +256,6 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 		  CK_ULONG ulPinLen,
 		  CK_CHAR_PTR pLabel)
 {
-        LOG("C_InitToken(%d, '%s', %d, '%s')\n", slotID, pPin, ulPinLen, pLabel);
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	LOG("C_InitToken(%d, '%s', %d, '%s')\n", slotID, pPin, ulPinLen, pLabel);
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }

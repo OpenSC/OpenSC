@@ -245,7 +245,7 @@ struct sc_card_operations {
 
 	/* select_file: Does the equivalent of SELECT FILE command specified
 	 *   in ISO7816-4. Stores information about the selected file to
-	 *   <file>, if not NULL. */	
+	 *   <file>, if not NULL. */
 	int (*select_file)(struct sc_card *card, const struct sc_path *path,
 			   struct sc_file *file_out);
 	int (*get_response)(struct sc_card *card, u8 * buf, size_t count);
@@ -340,6 +340,7 @@ int sc_lock(struct sc_card *card);
 int sc_unlock(struct sc_card *card);
 
 /* ISO 7816-4 related functions */
+
 int sc_select_file(struct sc_card *card, const struct sc_path *path,
 		   struct sc_file *file);
 int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,

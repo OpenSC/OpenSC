@@ -144,8 +144,6 @@ static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 				sc_format_path("I3F00", &tmppath);
 				r = mflex_select_file(card, &tmppath, NULL);
 				SC_TEST_RET(card->ctx, r, "Unable to select Master File (MF)");
-				pathptr += 2;
-				pathlen -= 2;
 			}
 			while (pathlen > 2) {
 				memcpy(tmppath.value, pathptr, 2);
