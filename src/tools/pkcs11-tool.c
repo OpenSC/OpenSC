@@ -42,7 +42,8 @@ const struct option options[] = {
 	{ "list-mechanisms",	0, 0,		'M' },
 	{ "list-objects",	0, 0,		'O' },
 
-	{ "sign",		1, 0,		's' },
+	{ "sign",		0, 0,		's' },
+	{ "hash",		0, 0,		'h' },
 	{ "mechanism",		1, 0,		'm' },
 
 	{ "login",		0, 0,		'l' },
@@ -61,6 +62,7 @@ const char *option_help[] = {
 	"List mechanisms supported by the token",
 
 	"Sign some data",
+	"Hash some data",
 	"Specify mechanism (use -M for a list of supported mechanisms)",
 
 	"Log into the token first",
@@ -104,6 +106,7 @@ static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE, int);
 static void		sign_data(CK_SLOT_ID,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int		find_first(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR, const char *);
 static CK_MECHANISM_TYPE find_mechanism(CK_SLOT_ID, CK_FLAGS);
@@ -117,6 +120,7 @@ static const char *	p11_utf8_to_local(CK_UTF8CHAR *, size_t);
 static const char *	p11_flag_names(struct flag_info *, CK_FLAGS);
 static const char *	p11_mechanism_to_name(CK_MECHANISM_TYPE);
 static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
+static const char *	CKR2Str(CK_ULONG res);
 
 int
 main(int argc, char * const argv[])
@@ -129,13 +133,14 @@ main(int argc, char * const argv[])
 	int do_list_mechs = 0;
 	int do_list_objects = 0;
 	int do_sign = 0;
+	int do_hash = 0;
 	int need_session = 0;
 	int opt_login = 0;
 	int action_count = 0;
 	CK_RV rv;
 
 	while (1) {
-		c = getopt_long(argc, argv, "ILMOi:lm:o:sv",
+		c = getopt_long(argc, argv, "ILMOhi:lm:o:sv",
 					options, &long_optind);
 		if (c == -1)
 			break;
@@ -173,6 +178,11 @@ main(int argc, char * const argv[])
 		case 's':
 			need_session |= NEED_SESSION_RW;
 			do_sign = 1;
+			action_count++;
+			break;
+		case 'h':
+			need_session |= NEED_SESSION_RO;
+			do_hash = 1;
 			action_count++;
 			break;
 		case 'v':
@@ -275,6 +285,8 @@ main(int argc, char * const argv[])
 		list_objects(session);
 	if (do_sign)
 		sign_data(opt_slot, session, object);
+	if (do_hash)
+		hash_data(opt_slot, session);
 
 end:
 	if (session)
@@ -481,6 +493,61 @@ sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		fatal("failed to open %s: %m", opt_output);
 
 	r = write(fd, buffer, sig_len);
+	if (r < 0)
+		fatal("Failed to write to %s: %m", opt_output);
+	if (fd != 1)
+		close(fd);
+}
+
+void
+hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	unsigned char	buffer[12];
+	CK_MECHANISM	mech;
+	CK_RV		rv;
+	CK_ULONG	hash_len;
+	int		fd, r;
+
+	if (opt_mechanism == NO_MECHANISM) {
+		opt_mechanism = find_mechanism(slot, CKF_DIGEST);
+		printf("Using digest algorithm %s\n",
+				p11_mechanism_to_name(opt_mechanism));
+	}
+
+	memset(&mech, 0, sizeof(mech));
+	mech.mechanism = opt_mechanism;
+
+	rv = p11->C_DigestInit(session, &mech);
+	if (rv != CKR_OK)
+		p11_fatal("C_DigestInit", rv);
+
+	if (opt_input == NULL)
+		fd = 0;
+	else if ((fd = open(opt_input, O_RDONLY)) < 0)
+		fatal("Cannot open %s: %m", opt_input);
+
+	while ((r = read(fd, buffer, sizeof(buffer))) > 0) {
+		rv = p11->C_DigestUpdate(session, buffer, r);
+		if (rv != CKR_OK)
+			p11_fatal("C_DigestUpdate", rv);
+	}
+	if (rv < 0)
+		fatal("failed to read from %s: %m",
+				opt_input? opt_input : "<stdin>");
+	if (fd != 0)
+		close(fd);
+
+	hash_len = sizeof(buffer);
+	rv = p11->C_DigestFinal(session, buffer, &hash_len);
+	if (rv != CKR_OK)
+		p11_fatal("C_DigestFinal", rv);
+
+	if (opt_output == NULL)
+		fd = 1;
+	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY, 0666)) < 0)
+		fatal("failed to open %s: %m", opt_output);
+
+	r = write(fd, buffer, hash_len);
 	if (r < 0)
 		fatal("Failed to write to %s: %m", opt_output);
 	if (fd != 1)
@@ -756,7 +823,8 @@ p11_utf8_to_local(CK_UTF8CHAR *string, size_t len)
 void
 p11_fatal(const char *func, CK_RV rv)
 {
-	fatal("PKCS11 function %s failed: rv = %d (0x%x)\n", func, rv, rv);
+	fatal("PKCS11 function %s failed: rv = %s (0x%0x)\n",
+		func, CKR2Str(rv), rv);
 }
 
 static struct mech_info	p11_mechanisms[] = {
@@ -963,4 +1031,182 @@ p11_name_to_mechanism(const char *name)
 	}
 	fatal("Unknown PKCS11 mechanism \"%s\"\n", name);
 	return NO_MECHANISM; /* gcc food */
+}
+
+static const char *
+CKR2Str(CK_ULONG res)
+{
+	switch (res) {
+	case CKR_OK:
+		return "CKR_OK";
+	case CKR_CANCEL:
+		return "CKR_CANCEL";
+	case CKR_HOST_MEMORY:
+		return "CKR_HOST_MEMORY";
+	case CKR_SLOT_ID_INVALID:
+		return "CKR_SLOT_ID_INVALID";
+	case CKR_GENERAL_ERROR:
+		return "CKR_GENERAL_ERROR";
+	case CKR_FUNCTION_FAILED:
+		return "CKR_FUNCTION_FAILED";
+	case CKR_ARGUMENTS_BAD:
+		return "CKR_ARGUMENTS_BAD";
+	case CKR_NO_EVENT:
+		return "CKR_NO_EVENT";
+	case CKR_NEED_TO_CREATE_THREADS:
+		return "CKR_NEED_TO_CREATE_THREADS";
+	case CKR_CANT_LOCK:
+		return "CKR_CANT_LOCK";
+	case CKR_ATTRIBUTE_READ_ONLY:
+		return "CKR_ATTRIBUTE_READ_ONLY";
+	case CKR_ATTRIBUTE_SENSITIVE:
+		return "CKR_ATTRIBUTE_SENSITIVE";
+	case CKR_ATTRIBUTE_TYPE_INVALID:
+		return "CKR_ATTRIBUTE_TYPE_INVALID";
+	case CKR_ATTRIBUTE_VALUE_INVALID:
+		return "CKR_ATTRIBUTE_VALUE_INVALID";
+	case CKR_DATA_INVALID:
+		return "CKR_DATA_INVALID";
+	case CKR_DATA_LEN_RANGE:
+		return "CKR_DATA_LEN_RANGE";
+	case CKR_DEVICE_ERROR:
+		return "CKR_DEVICE_ERROR";
+	case CKR_DEVICE_MEMORY:
+		return "CKR_DEVICE_MEMORY";
+	case CKR_DEVICE_REMOVED:
+		return "CKR_DEVICE_REMOVED";
+	case CKR_ENCRYPTED_DATA_INVALID:
+		return "CKR_ENCRYPTED_DATA_INVALID";
+	case CKR_ENCRYPTED_DATA_LEN_RANGE:
+		return "CKR_ENCRYPTED_DATA_LEN_RANGE";
+	case CKR_FUNCTION_CANCELED:
+		return "CKR_FUNCTION_CANCELED";
+	case CKR_FUNCTION_NOT_PARALLEL:
+		return "CKR_FUNCTION_NOT_PARALLEL";
+	case CKR_FUNCTION_NOT_SUPPORTED:
+		return "CKR_FUNCTION_NOT_SUPPORTED";
+	case CKR_KEY_HANDLE_INVALID:
+		return "CKR_KEY_HANDLE_INVALID";
+	case CKR_KEY_SIZE_RANGE:
+		return "CKR_KEY_SIZE_RANGE";
+	case CKR_KEY_TYPE_INCONSISTENT:
+		return "CKR_KEY_TYPE_INCONSISTENT";
+	case CKR_KEY_NOT_NEEDED:
+		return "CKR_KEY_NOT_NEEDED";
+	case CKR_KEY_CHANGED:
+		return "CKR_KEY_CHANGED";
+	case CKR_KEY_NEEDED:
+		return "CKR_KEY_NEEDED";
+	case CKR_KEY_INDIGESTIBLE:
+		return "CKR_KEY_INDIGESTIBLE";
+	case CKR_KEY_FUNCTION_NOT_PERMITTED:
+		return "CKR_KEY_FUNCTION_NOT_PERMITTED";
+	case CKR_KEY_NOT_WRAPPABLE:
+		return "CKR_KEY_NOT_WRAPPABLE";
+	case CKR_KEY_UNEXTRACTABLE:
+		return "CKR_KEY_UNEXTRACTABLE";
+	case CKR_MECHANISM_INVALID:
+		return "CKR_MECHANISM_INVALID";
+	case CKR_MECHANISM_PARAM_INVALID:
+		return "CKR_MECHANISM_PARAM_INVALID";
+	case CKR_OBJECT_HANDLE_INVALID:
+		return "CKR_OBJECT_HANDLE_INVALID";
+	case CKR_OPERATION_ACTIVE:
+		return "CKR_OPERATION_ACTIVE";
+	case CKR_OPERATION_NOT_INITIALIZED:
+		return "CKR_OPERATION_NOT_INITIALIZED";
+	case CKR_PIN_INCORRECT:
+		return "CKR_PIN_INCORRECT";
+	case CKR_PIN_INVALID:
+		return "CKR_PIN_INVALID";
+	case CKR_PIN_LEN_RANGE:
+		return "CKR_PIN_LEN_RANGE";
+	case CKR_PIN_EXPIRED:
+		return "CKR_PIN_EXPIRED";
+	case CKR_PIN_LOCKED:
+		return "CKR_PIN_LOCKED";
+	case CKR_SESSION_CLOSED:
+		return "CKR_SESSION_CLOSED";
+	case CKR_SESSION_COUNT:
+		return "CKR_SESSION_COUNT";
+	case CKR_SESSION_HANDLE_INVALID:
+		return "CKR_SESSION_HANDLE_INVALID";
+	case CKR_SESSION_PARALLEL_NOT_SUPPORTED:
+		return "CKR_SESSION_PARALLEL_NOT_SUPPORTED";
+	case CKR_SESSION_READ_ONLY:
+		return "CKR_SESSION_READ_ONLY";
+	case CKR_SESSION_EXISTS:
+		return "CKR_SESSION_EXISTS";
+	case CKR_SESSION_READ_ONLY_EXISTS:
+		return "CKR_SESSION_READ_ONLY_EXISTS";
+	case CKR_SESSION_READ_WRITE_SO_EXISTS:
+		return "CKR_SESSION_READ_WRITE_SO_EXISTS";
+	case CKR_SIGNATURE_INVALID:
+		return "CKR_SIGNATURE_INVALID";
+	case CKR_SIGNATURE_LEN_RANGE:
+		return "CKR_SIGNATURE_LEN_RANGE";
+	case CKR_TEMPLATE_INCOMPLETE:
+		return "CKR_TEMPLATE_INCOMPLETE";
+	case CKR_TEMPLATE_INCONSISTENT:
+		return "CKR_TEMPLATE_INCONSISTENT";
+	case CKR_TOKEN_NOT_PRESENT:
+		return "CKR_TOKEN_NOT_PRESENT";
+	case CKR_TOKEN_NOT_RECOGNIZED:
+		return "CKR_TOKEN_NOT_RECOGNIZED";
+	case CKR_TOKEN_WRITE_PROTECTED:
+		return "CKR_TOKEN_WRITE_PROTECTED";
+	case CKR_UNWRAPPING_KEY_HANDLE_INVALID:
+		return "CKR_UNWRAPPING_KEY_HANDLE_INVALID";
+	case CKR_UNWRAPPING_KEY_SIZE_RANGE:
+		return "CKR_UNWRAPPING_KEY_SIZE_RANGE";
+	case CKR_UNWRAPPING_KEY_TYPE_INCONSISTENT:
+		return "CKR_UNWRAPPING_KEY_TYPE_INCONSISTENT";
+	case CKR_USER_ALREADY_LOGGED_IN:
+		return "CKR_USER_ALREADY_LOGGED_IN";
+	case CKR_USER_NOT_LOGGED_IN:
+		return "CKR_USER_NOT_LOGGED_IN";
+	case CKR_USER_PIN_NOT_INITIALIZED:
+		return "CKR_USER_PIN_NOT_INITIALIZED";
+	case CKR_USER_TYPE_INVALID:
+		return "CKR_USER_TYPE_INVALID";
+	case CKR_USER_ANOTHER_ALREADY_LOGGED_IN:
+		return "CKR_USER_ANOTHER_ALREADY_LOGGED_IN";
+	case CKR_USER_TOO_MANY_TYPES:
+		return "CKR_USER_TOO_MANY_TYPES";
+	case CKR_WRAPPED_KEY_INVALID:
+		return "CKR_WRAPPED_KEY_INVALID";
+	case CKR_WRAPPED_KEY_LEN_RANGE:
+		return "CKR_WRAPPED_KEY_LEN_RANGE";
+	case CKR_WRAPPING_KEY_HANDLE_INVALID:
+		return "CKR_WRAPPING_KEY_HANDLE_INVALID";
+	case CKR_WRAPPING_KEY_SIZE_RANGE:
+		return "CKR_WRAPPING_KEY_SIZE_RANGE";
+	case CKR_WRAPPING_KEY_TYPE_INCONSISTENT:
+		return "CKR_WRAPPING_KEY_TYPE_INCONSISTENT";
+	case CKR_RANDOM_SEED_NOT_SUPPORTED:
+		return "CKR_RANDOM_SEED_NOT_SUPPORTED";
+	case CKR_RANDOM_NO_RNG:
+		return "CKR_RANDOM_NO_RNG";
+	case CKR_DOMAIN_PARAMS_INVALID:
+		return "CKR_DOMAIN_PARAMS_INVALID";
+	case CKR_BUFFER_TOO_SMALL:
+		return "CKR_BUFFER_TOO_SMALL";
+	case CKR_SAVED_STATE_INVALID:
+		return "CKR_SAVED_STATE_INVALID";
+	case CKR_INFORMATION_SENSITIVE:
+		return "CKR_INFORMATION_SENSITIVE";
+	case CKR_STATE_UNSAVEABLE:
+		return "CKR_STATE_UNSAVEABLE";
+	case CKR_CRYPTOKI_NOT_INITIALIZED:
+		return "CKR_CRYPTOKI_NOT_INITIALIZED";
+	case CKR_CRYPTOKI_ALREADY_INITIALIZED:
+		return "CKR_CRYPTOKI_ALREADY_INITIALIZED";
+	case CKR_MUTEX_BAD:
+		return "CKR_MUTEX_BAD";
+	case CKR_MUTEX_NOT_LOCKED:
+		return "CKR_MUTEX_NOT_LOCKED";
+	case CKR_VENDOR_DEFINED:
+		return "CKR_VENDOR_DEFINED";
+	}
+	return "unknown PKCS11 error";
 }
