@@ -8,7 +8,7 @@ EXTRA_DIST = Makefile.mak opensc_pkcs11_install.js
 
 SUBDIRS = . rsaref
 
-INCLUDES = @CFLAGS_OPENSC@ -I../pkcs15init
+INCLUDES = @CPPFLAGS@ -I${top_srcdir}/src/pkcs15init
 
 SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
 	mechanism.c openssl.c secretkey.c framework-pkcs15.c \

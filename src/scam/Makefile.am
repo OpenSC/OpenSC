@@ -2,8 +2,6 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-INCLUDES = @CFLAGS_OPENSC@
-
 lib_LTLIBRARIES = libscam.la
 
 if HAVE_LDAP

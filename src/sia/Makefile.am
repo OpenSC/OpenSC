@@ -4,7 +4,7 @@ libdir = @libdir@/security
 
 MAINTAINERCLEANFILES = Makefile.in
 
-INCLUDES = -I${top_srcdir}/src/scam
+INCLUDES = @CPPFLAGS@ -I${top_srcdir}/src/scam
 
 LDFLAGS = @LDFLAGS@ @LIBDL@ ${top_builddir}/src/scam/libscam.la
 

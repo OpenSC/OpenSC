@@ -17,7 +17,7 @@ OPENSSL_CFLAGS = \
 	-DSHA1_ASM -DMD5_ASM -DRMD160_ASM
 
 engine_opensc_la_SOURCES = hw_opensc.c engine_opensc.c engine_opensc.h
-engine_opensc_la_CFLAGS = $(OPENSSL_CFLAGS) @CFLAGS_OPENSC@
+engine_opensc_la_CFLAGS = $(OPENSSL_CFLAGS)
 engine_opensc_la_LIBADD = @LIBCRYPTOA@ @LIBOPENSC@
 engine_opensc_la_LDFLAGS = -Wl,-Bsymbolic -module -avoid-version
 
@@ -26,6 +26,6 @@ engine_pkcs11_la_SOURCES = \
 	p11_attr.c p11_cert.c p11_err.c p11_key.c \
 	p11_load.c p11_misc.c p11_rsa.c p11_slot.c \
 	pkcs11-internal.h libpkcs11.h
-engine_pkcs11_la_CFLAGS = $(OPENSSL_CFLAGS) @CFLAGS_OPENSC@
+engine_pkcs11_la_CFLAGS = $(OPENSSL_CFLAGS)
 engine_pkcs11_la_LIBADD = @LIBCRYPTOA@ ../pkcs11/libpkcs11.la
 engine_pkcs11_la_LDFLAGS = -Wl,-Bsymbolic -module -avoid-version

@@ -4,7 +4,7 @@ includedir = ${prefix}/include/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
-INCLUDES = @CFLAGS_OPENSC@ -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
+CFLAGS = @CFLAGS@ -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
 PROFILES = \
