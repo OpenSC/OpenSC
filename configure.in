@@ -294,6 +294,7 @@ int main(void)
 
 		# latest openssl version with engine
 		# properly integrated?
+		AC_MSG_CHECKING([for openssl version])
 		AC_TRY_RUN(
 		[
 #include <stdlib.h>
@@ -311,9 +312,11 @@ int main(void)
 }
 		],
 		[
+			AC_MSG_RESULT("good, 0.9.7d or later")
 			GOOD_OPENSSL=yes
 		],
 		[
+			AC_MSG_RESULT("not so good, 0.9.7d or later woudl be better")
 			GOOD_OPENSSL=no
 		]
 		)

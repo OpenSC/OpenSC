@@ -1,0 +1,51 @@
+Quick start guide to using the pam module
+=========================================
+
+The pam module supports two different flavors:
+a) "eid" - store the certificate for a user in that
+   users home directory in a file called ".eid/authorized_certificates"
+b) "ldap" - store the certificate for a user in a central ldap
+   repository
+
+This guide only deals with flavor a). If you want to add documentation
+on using pam with ldap, please send a patch to the opensc-devel mailing
+list.
+
+First initialize the token, create a user with a pin, create a key
+and create a certificate, all as documented in the QUICKSTART file.
+
+
+The first thing is to copy the opensc pam module to the right location.
+Pam modules are searched for in the directory /lib/security/.
+$ cp /usr/lib/security/pam_opensc.so /lib/security/pam_opensc.so
+
+Now change one service to use this pam module by default. Keep at least
+one xterm and/or virtual console open as root, so you can undo any
+configuration change, in case it does not work.
+
+Edit for example /etc/pam.d/login and replace
+auth       required   pam_unix.so nullok
+with
+auth       required   pam_opensc.so
+
+If you want to use opensc first, and fall back on normal password based
+authentication, you could use these two lines:
+auth       sufficient pam_opensc.so
+auth       required   pam_unix.so nullok
+
+Note the first line is marked as "sufficient", so successful smart card
+authentication will let a user in. If both lines read "required", a user
+would have to use a smart card with the right key and certificate on it,
+enter the right pin *AND* have the right passwort for the normal login
+procedure.
+
+Now every user needs to create a directory ".eid" in his or her home
+directory and put the certificate in a file called "authorized_certificates".
+To do this, enter the command
+$ pkcs15-tool -r 45 -o ~/.eid/authorized_certificates
+
+Now try to login using the smart card. Remember to first insert your
+smart card into the reader, then enter your username, and then the
+pin on your key.
+
+

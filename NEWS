@@ -1,5 +1,23 @@
 NEWS for OpenSC -- History of user visible changes
 
+New in 0.9.2; 2004-07-24; Andreas Jellinghaus:
+* This is an beta test version. Please be careful.
+  Do not use in production environments.
+* Fix sslengine, link those dynamicaly with libcrypto
+  for openssl 0.9.7d and later.
+* fixed small bug in pkcs11-tool
+* link pkcs11-toll and pkcs15-crypt with -lcrypto
+* New driver for estonian ID card.
+* bumped version number to opensc 0.9.2
+* New card supported: Oberthur AuthentIC v5
+* eid pam module now checks permissions, and supports several
+  certificates in ~/.eid/authorized_certificates
+  Thanks to Fritz Elfert <fritz.elfert@millenux.com>
+* Upgrade library version to 0.9, since incompatible changes
+  are very likely somewhere.
+* Merged several pkcs15 profiles into one with different
+  options.
+
 New in 0.8.1; 2003-09-30; Olaf Kirch:
 * Upgrade libopensc versioning, hasn't been
   accidently upgraded since 0.6.0 release
