@@ -38,6 +38,7 @@ const char *sc_strerror(int error)
 		"Input operation canelled (keypad)",
 		"The two PINs did not match (keypad)",
 		"Message too long (keypad)",
+		"Timeout while waiting for event (card reader)",
 	};
 	const int rdr_base = -SC_ERROR_READER;
 	const char *card_errors[] = {

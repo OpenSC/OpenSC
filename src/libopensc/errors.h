@@ -41,6 +41,7 @@ extern "C" {
 #define SC_ERROR_KEYPAD_CANCELLED		-1109
 #define SC_ERROR_KEYPAD_PIN_MISMATCH		-1110
 #define SC_ERROR_KEYPAD_MSG_TOO_LONG		-1111
+#define SC_ERROR_EVENT_TIMEOUT			-1112
 
 /* Resulting from a card command or related to the card*/
 #define SC_ERROR_CARD_CMD_FAILED		-1200
