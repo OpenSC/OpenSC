@@ -284,6 +284,7 @@ sc_profile_finish(struct sc_profile *profile)
 	if (!(profile->df_info = sc_profile_find_file(profile, "PKCS15-AppDF")))
 		goto whine;
 	profile->p15_card->file_app = profile->df_info->file;
+	profile->df_info->dont_free = 1;
 
 	for (pi = profile->pin_list; pi; pi = pi->next) {
 		if (!(name = pi->file_name))
@@ -312,7 +313,8 @@ sc_profile_free(struct sc_profile *profile)
 
 	while ((fi = profile->ef_list) != NULL) {
 		profile->ef_list = fi->next;
-		sc_file_free(fi->file);
+		if (fi->dont_free == 0)
+			sc_file_free(fi->file);
 		free(fi->ident);
 		free(fi);
 	}
@@ -323,10 +325,15 @@ sc_profile_free(struct sc_profile *profile)
 	}
 
 	while ((pi = profile->pin_list) != NULL) {
+		if (pi->file_name)
+			free(pi->file_name);
 		profile->pin_list = pi->next;
 		free(pi);
 	}
 
+	if (profile->p15_card)
+		sc_pkcs15_card_free(profile->p15_card);
+	memset(profile, 0, sizeof(*profile));
 	free(profile);
 }
 
@@ -598,7 +605,7 @@ new_file(struct state *cur, const char *name, unsigned int type)
 	struct sc_profile *profile = cur->profile;
 	struct file_info *info;
 	struct sc_file	*file;
-	unsigned int	df_type = 0;
+	unsigned int	df_type = 0, dont_free = 0;
 
 	if ((info = sc_profile_find_file(profile, name)) != NULL)
 		return info;
@@ -612,8 +619,10 @@ new_file(struct state *cur, const char *name, unsigned int type)
 		file = init_file(type);
 	} else if (!strcasecmp(name+7, "TokenInfo")) {
 		file = profile->p15_card->file_tokeninfo;
+		dont_free = 1;
 	} else if (!strcasecmp(name+7, "ODF")) {
 		file = profile->p15_card->file_odf;
+		dont_free = 1;
 	} else if (!strcasecmp(name+7, "AppDF")) {
 		file = init_file(SC_FILE_TYPE_DF);
 	} else {
@@ -632,6 +641,7 @@ new_file(struct state *cur, const char *name, unsigned int type)
 
 	info->parent = cur->file;
 	info->file = file;
+	info->dont_free = dont_free;
 
 	info->next = profile->ef_list;
 	profile->ef_list = info;
