@@ -164,6 +164,7 @@ etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
 
 	/* Set the profile's SOPIN reference */
 	params.reference = info->id;
+	params.path = profile->df_info->file->path;
 	sc_profile_set_pin_info(profile, info->profile_id, &params);
 
 	tlv_init(&tlv, buffer, sizeof(buffer));
