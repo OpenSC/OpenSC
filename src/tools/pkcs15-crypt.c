@@ -166,7 +166,6 @@ int extract_key(struct sc_pkcs15_object *obj, EVP_PKEY **pk)
 
 		if (pass)
 			return SC_ERROR_INTERNAL;
-		pass = "lalla"; continue;
 		pass = getpass("Please enter pass phrase "
 				"to unlock secret key: ");
 		if (!pass || !*pass)
