@@ -1,0 +1,18 @@
+
+
+Very brief instructions
+
+To init card:
+
+Erase card and create pkcs15 dir
+	./pkcs15-init -EC
+
+Store a PIN on the card, using ID 01
+	./pkcs15-init -P  --auth-id 01 --pin aaaa --puk bbbb --label "My PIN"
+
+Generate a 512 bit RSA key and store on card, protected by the above PIN
+	./pkcs15-init -G rsa/512 --auth-id 01
+
+Or, store a pkcs12 key/certificate pair
+	./pkcs15-init --auth-id 01 -f pkcs12 -S mycert.p12
+
