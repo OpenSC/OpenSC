@@ -29,12 +29,13 @@
 
 /* Search key when looking for objects */
 struct sc_pkcs15_search_key {
-	const struct sc_pkcs15_id *	id;
-	unsigned int			usage_mask, usage_value;
-	unsigned int			flags_mask, flags_value;
+	const sc_pkcs15_id_t *	id;
+	const sc_path_t *	path;
+	unsigned int		usage_mask, usage_value;
+	unsigned int		flags_mask, flags_value;
 
-	unsigned int			match_reference : 1;
-	int				reference;
+	unsigned int		match_reference : 1;
+	int			reference;
 };
 
 static int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *);
@@ -827,10 +828,44 @@ static int compare_obj_reference(sc_pkcs15_object_t *obj, int value)
 	case SC_PKCS15_TYPE_AUTH_PIN:
 		reference = ((struct sc_pkcs15_pin_info *) data)->reference;
 		break;
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+	case SC_PKCS15_TYPE_PRKEY_DSA:
+		reference = ((struct sc_pkcs15_prkey_info *) data)->key_reference;
+		break;
 	default:
 		return 0;
 	}
 	return reference == value;
+}
+
+static int compare_obj_path(sc_pkcs15_object_t *obj, const sc_path_t *path)
+{
+	void *data = obj->data;
+	int r;
+	
+	switch (obj->type) {
+	case SC_PKCS15_TYPE_CERT_X509:
+		r = sc_compare_path(&((struct sc_pkcs15_cert_info *) data)->path, path);
+		break;
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+	case SC_PKCS15_TYPE_PRKEY_DSA:
+		r = sc_compare_path(&((struct sc_pkcs15_prkey_info *) data)->path, path);
+		break;
+	case SC_PKCS15_TYPE_PUBKEY_RSA:
+	case SC_PKCS15_TYPE_PUBKEY_DSA:
+		r = sc_compare_path(&((struct sc_pkcs15_pubkey_info *) data)->path, path);
+		break;
+	case SC_PKCS15_TYPE_AUTH_PIN:
+		r = sc_compare_path(&((struct sc_pkcs15_pin_info *) data)->path, path);
+		break;
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		r = sc_compare_path(&((struct sc_pkcs15_data_info *) data)->path, path);
+		break;
+	default:
+		r = -1;
+		break;
+	}
+	return r == 0;
 }
 
 static int compare_obj_key(struct sc_pkcs15_object *obj, void *arg)
@@ -844,6 +879,8 @@ static int compare_obj_key(struct sc_pkcs15_object *obj, void *arg)
 	if (sk->flags_mask && !compare_obj_flags(obj, sk->flags_mask, sk->flags_value))
 		return 0;
 	if (sk->match_reference && !compare_obj_reference(obj, sk->reference))
+		return 0;
+	if (sk->path && !compare_obj_path(obj, sk->path))
 		return 0;
 	return 1;
 }
@@ -932,6 +969,21 @@ int sc_pkcs15_find_prkey_by_id_usage(struct sc_pkcs15_card *p15card,
 	memset(&sk, 0, sizeof(sk));
 	sk.usage_mask = sk.usage_value = usage;
 	sk.id = id;
+
+	return find_by_key(p15card, SC_PKCS15_TYPE_PRKEY, &sk, out);
+}
+
+int sc_pkcs15_find_prkey_by_reference(sc_pkcs15_card_t *p15card,
+				const sc_path_t *path,
+				int reference,
+				struct sc_pkcs15_object **out)
+{
+	struct sc_pkcs15_search_key sk;
+
+	memset(&sk, 0, sizeof(sk));
+	sk.match_reference = 1;
+	sk.reference = reference;
+	sk.path = path;
 
 	return find_by_key(p15card, SC_PKCS15_TYPE_PRKEY, &sk, out);
 }

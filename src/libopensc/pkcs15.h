@@ -447,6 +447,9 @@ int sc_pkcs15_find_prkey_by_id_usage(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_id *id,
 			       unsigned int usage,
 			       struct sc_pkcs15_object **out);
+int sc_pkcs15_find_prkey_by_reference(sc_pkcs15_card_t *,
+			       const sc_path_t *, int,
+			       sc_pkcs15_object_t **);
 int sc_pkcs15_find_pubkey_by_id(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_id *id,
 			       struct sc_pkcs15_object **out);
