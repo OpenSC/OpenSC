@@ -791,7 +791,7 @@ static int iso7816_build_pin_apdu(struct sc_card *card,
 		struct sc_pin_cmd_data *data)
 {
 	static u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r, len, pad = 0, ins, p1 = 0;
+	int r, len = 0, pad = 0, use_pin_pad = 0, ins, p1 = 0;
 	
 	switch (data->pin_type) {
 	case SC_AC_CHV:
@@ -802,37 +802,52 @@ static int iso7816_build_pin_apdu(struct sc_card *card,
 
 	if (data->flags & SC_PIN_CMD_NEED_PADDING)
 		pad = 1;
+	if (data->flags & SC_PIN_CMD_USE_PINPAD)
+		use_pin_pad = 1;
 
-	data->pin1.offset = 0;
-	if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
-		return r;
-	len = r;
+	data->pin1.offset = 5;
 
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
 		ins = 0x20;
+		if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
+			return r;
+		len = r;
 		break;
 	case SC_PIN_CMD_CHANGE:
-		data->pin1.offset = len;
+		ins = 0x24;
+		if (data->pin1.len != 0 || use_pin_pad) {
+			if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
+				return r;
+			len += r;
+		} else {
+			/* implicit test */
+			p1 = 1;
+		}
+
+		data->pin2.offset = data->pin1.offset + len;
 		if ((r = sc_build_pin(sbuf+len, sizeof(sbuf)-len, &data->pin2, pad)) < 0)
 			return r;
 		len += r;
-
-		ins = 0x24;
-		if (data->pin1.len == 0)
-			p1 = 1;
 		break;
 	case SC_PIN_CMD_UNBLOCK:
-		data->pin1.offset = len;
-		if ((r = sc_build_pin(sbuf+len, sizeof(sbuf)-len, &data->pin2, pad)) < 0)
-			return r;
-		len += r;
-
 		ins = 0x2C;
-		if (data->pin1.len == 0)
-			p1 |= 2;
-		if (data->pin2.len == 0)
-			p1 |= 1;
+		if (data->pin1.len != 0 || use_pin_pad) {
+			if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
+				return r;
+			len += r;
+		} else {
+			p1 |= 0x02;
+		}
+
+		if (data->pin2.len != 0 || use_pin_pad) {
+			data->pin2.offset = data->pin1.offset + len;
+			if ((r = sc_build_pin(sbuf+len, sizeof(sbuf)-len, &data->pin2, pad)) < 0)
+				return r;
+			len += r;
+		} else {
+			p1 |= 0x01;
+		}
 		break;
 	default:
 		return SC_ERROR_NOT_SUPPORTED;

@@ -675,18 +675,19 @@ int do_change(int argc, char **argv)
         if (argc == 1) {
                 /* set without verification */
                 oldpinlen = 0;
-        }
-	else if (argv[0][0] == '"') {
-		for (s = argv[0] + 1, i = 0;
-                     i < sizeof(oldpin) && *s && *s != '"'; i++) 
-			oldpin[i] = *s++;
-		oldpinlen = i;
-	} else if (sc_hex_to_bin(argv[0], oldpin, &oldpinlen) != 0) {
-		printf("Invalid key value.\n");
-		goto usage;
+        } else {
+		if (argv[0][0] == '"') {
+			for (s = argv[0] + 1, i = 0;
+			     i < sizeof(oldpin) && *s && *s != '"'; i++) 
+				oldpin[i] = *s++;
+			oldpinlen = i;
+		} else if (sc_hex_to_bin(argv[0], oldpin, &oldpinlen) != 0) {
+			printf("Invalid key value.\n");
+			goto usage;
+		}
+		argc--;
+		argv++;
 	}
-        argc--;
-        argv++;
 
 	if (argv[0][0] == '"') {
 		for (s = argv[0] + 1, i = 0;
@@ -745,18 +746,19 @@ int do_unblock(int argc, char **argv)
         if (argc == 1) {
                 /* set without verification */
                 puklen = 0;
-        }
-	else if (argv[0][0] == '"') {
-		for (s = argv[0] + 1, i = 0;
-                     i < sizeof(puk) && *s && *s != '"'; i++) 
-			puk[i] = *s++;
-		puklen = i;
-	} else if (sc_hex_to_bin(argv[0], puk, &puklen) != 0) {
-		printf("Invalid key value.\n");
-		goto usage;
+        } else {
+		if (argv[0][0] == '"') {
+			for (s = argv[0] + 1, i = 0;
+			     i < sizeof(puk) && *s && *s != '"'; i++) 
+				puk[i] = *s++;
+			puklen = i;
+		} else if (sc_hex_to_bin(argv[0], puk, &puklen) != 0) {
+			printf("Invalid key value.\n");
+			goto usage;
+		}
+		argc--;
+		argv++;
 	}
-	argc--;
-	argv++;
 
 	if (argv[0][0] == '"') {
 		for (s = argv[0] + 1, i = 0;
