@@ -909,32 +909,53 @@ struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
 int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out)
 {
 	struct sc_context *ctx = card->ctx;
-	char atr[3 * SC_MAX_ATR_SIZE];
-	size_t atr_len;
+	char card_atr[3 * SC_MAX_ATR_SIZE];
+	size_t card_atr_len;
 	unsigned int i = 0;
 
 	if (table == NULL || card == NULL)
 		return -1;
 
-	i = sc_bin_to_hex(card->atr, card->atr_len, atr, sizeof(atr), ':');
-	if (i != 0)
-		return -1;
-	atr_len = strlen(atr);
+	sc_bin_to_hex(card->atr, card->atr_len, card_atr, sizeof(card_atr), ':');
+	card_atr_len = strlen(card_atr);
 
 	if (ctx->debug >= 4)
-		sc_debug(ctx, "current ATR: %s\n", atr);
+		sc_debug(ctx, "ATR     : %s\n", card_atr);
 
 	for (i = 0; table[i].atr != NULL; i++) {
 		const char *tatr = table[i].atr;
-		size_t tlen = strlen(tatr);
+		const char *matr = table[i].atrmask;
+		size_t tatr_len = strlen(tatr);
 
 		if (ctx->debug >= 4)
-			sc_debug(ctx, "trying ATR: %s\n", tatr);
+			sc_debug(ctx, "ATR try : %s\n", tatr);
 
-		if (tlen != atr_len)
+		if (tatr_len != card_atr_len)
 			continue;
-		if (strncasecmp(tatr, atr, tlen) != 0)
-			continue;
+		if (matr != NULL) {
+			u8 mbin[SC_MAX_ATR_SIZE], tbin[SC_MAX_ATR_SIZE];
+			size_t mbin_len, tbin_len, s, matr_len;
+
+			if (ctx->debug >= 4)
+				sc_debug(ctx, "ATR mask: %s\n", matr);
+
+			matr_len = strlen(matr);
+			if (tatr_len != matr_len)
+				continue;
+			mbin_len = sizeof(mbin);
+			sc_hex_to_bin(matr, mbin, &mbin_len);
+			if (mbin_len != card->atr_len)
+				continue;
+			for (s = 0; s < mbin_len; s++)
+				mbin[s] = (card->atr[s] & mbin[s]);
+			tbin_len = sizeof(tbin);
+			sc_hex_to_bin(tatr, tbin, &tbin_len);
+			if (memcmp(tbin, mbin, tbin_len) != 0)
+				continue;
+		} else {
+			if (strncasecmp(tatr, card_atr, tatr_len) != 0)
+				continue;
+		}
 		if (id_out != NULL)
 			*id_out = table[i].id;
 		return i;
@@ -942,8 +963,8 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out)
 	return -1;
 }
 
-/* XXX: wtf? I don't see any memory freeing code. -aet */
-int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src)
+/* XXX: temporary, will be rewritten soon */
+int _sc_add_atr(struct sc_card_driver *driver, struct sc_atr_table *src)
 {
 	struct sc_atr_table *map, *dst;
 
@@ -957,6 +978,13 @@ int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc
 	dst->atr = strdup(src->atr);
 	if (!dst->atr)
 		return SC_ERROR_OUT_OF_MEMORY;
+	if (src->atrmask) {
+		dst->atrmask = strdup(src->atrmask);
+		if (!dst->atrmask)
+			return SC_ERROR_OUT_OF_MEMORY;
+	} else {
+		dst->atrmask = NULL;
+	}
 	if (src->name) {
 		dst->name = strdup(src->name);
 		if (!dst->name)
@@ -966,7 +994,5 @@ int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc
 	}
 	dst->id = src->id;
 	dst->flags = src->flags;
-	if (ctx->debug >= 4)
-		sc_debug(ctx, "added ATR: %s\n", src->atr);
 	return 0;
 }
