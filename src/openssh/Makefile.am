@@ -1,8 +1,7 @@
 # Process this file with automake to create Makefile.in
 
-INCLUDES = -I../libopensc
-LDFLAGS = @LDFLAGS@ @LIBCRYPTO@ \
-	../libopensc/libopensc.la
+INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@
+LDFLAGS = @LDFLAGS@ @LIBCRYPTO@ @LIBOPENSC@
 
 EXTRA_DIST = openssh-3.0.2p1-patch.diff
 

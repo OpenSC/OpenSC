@@ -1,5 +1,7 @@
 ## Makefile.am -- Process this file with automake to produce Makefile.in
 
+INCLUDES = @CFLAGS_PCSC@
+
 lib_LTLIBRARIES		= libopensc.la
 libopensc_la_SOURCES	= sc-asn1.c sc-base64.c sc-defaults.c \
 			  sc-sec.c sc-log.c sc.c sc-card.c sc-iso7816.c \

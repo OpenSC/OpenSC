@@ -1,8 +1,7 @@
 # Process this file with automake to create Makefile.in
 
-INCLUDES = -I../libopensc
-LDFLAGS = @LDFLAGS@ \
-	../libopensc/libopensc.la
+INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@
+LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
 bin_PROGRAMS = opensc-crypt opensc-tool
 
