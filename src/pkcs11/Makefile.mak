@@ -26,5 +26,5 @@ $(TARGET): $(OBJECTS)
 $(TARGET2): $(OBJECTS2)
 	lib /nologo /machine:ix86 /out:$(TARGET2) $(OBJECTS2) ..\scdl\scdl.lib
 
-$(TARGET3): $(OBJECTS)
+$(TARGET3): $(OBJECTS3)
 	link $(LINKFLAGS) /dll /out:$(TARGET3) $(OBJECTS3) ..\scdl\scdl.lib
