@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <refentry id="scchecksw">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_check_sw</refentrytitle>
 		<manvolnum>3</manvolnum>
