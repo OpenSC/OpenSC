@@ -121,6 +121,7 @@ extern "C" {
 #define SC_AC_PRO			0x00000004 /* Secure Messaging */
 #define SC_AC_AUT			0x00000008 /* Key auth. */
 
+#define SC_AC_SYMBOLIC			0x00000010 /* internal use only */
 #define SC_AC_UNKNOWN			0xFFFFFFFE
 #define SC_AC_NEVER			0xFFFFFFFF
 
