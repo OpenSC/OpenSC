@@ -678,7 +678,7 @@ void sc_format_path(const char *path_in, struct sc_path *path_out);
 int sc_append_path(struct sc_path *dest, const struct sc_path *src);
 int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
-int sc_bin_to_hex(const u8 *, size_t, char *, size_t);
+int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
 
 int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize);
 

@@ -174,7 +174,7 @@ static int cmd_get_objects(ASSUAN_CONTEXT actx, char *line)
 		if (line == NULL)
 			return ASSUAN_Out_Of_Core;
 		sc_bin_to_hex(objs[i]->der.value, objs[i]->der.len,
-			      line, objs[i]->der.len * 2 + 2);
+			      line, objs[i]->der.len * 2 + 2, 0);
 		strcat(line, "\n");
 		r = assuan_send_data(actx, line, strlen(line));
 		free(line);
