@@ -116,6 +116,7 @@ static void		list_slots(void);
 static void		show_token(CK_SLOT_ID);
 static void		list_mechs(CK_SLOT_ID);
 static void		list_objects(CK_SESSION_HANDLE);
+static int		change_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE, int);
 static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
