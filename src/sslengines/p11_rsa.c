@@ -128,16 +128,41 @@ static int
 pkcs11_rsa_decrypt(int flen, const unsigned char *from, unsigned char *to,
 		   RSA * rsa, int padding)
 {
+	CK_RV rv;
 	PKCS11_KEY *key = (PKCS11_KEY *) RSA_get_app_data(rsa);
-
-	if (padding != RSA_PKCS1_PADDING)
+	PKCS11_KEY_private *priv;
+	PKCS11_SLOT *slot;
+	PKCS11_CTX *ctx;
+	CK_SESSION_HANDLE session;
+	CK_MECHANISM mechanism;
+	CK_ULONG size;
+	
+	if (padding != RSA_PKCS1_PADDING) {
+		printf("pkcs11 engine: only RSA_PKCS1_PADDING allowed so far\n");
 		return -1;
+	}
 	if (key == NULL)
 		return -1;
 
 	/* PKCS11 calls go here */
-	PKCS11err(PKCS11_F_PKCS11_RSA_DECRYPT, PKCS11_NOT_SUPPORTED);
-	return -1;
+	
+	ctx = KEY2CTX(key);
+	priv = PRIVKEY(key);
+	slot = TOKEN2SLOT(priv->parent);
+	session = PRIVSLOT(slot)->session;
+	memset(&mechanism, 0, sizeof(mechanism));
+	mechanism.mechanism = CKM_RSA_PKCS;
+	
+	if( (rv = CRYPTOKI_call(ctx, C_DecryptInit(session, &mechanism, priv->object))) == 0) {
+		rv = CRYPTOKI_call(ctx, C_Decrypt
+				   (session, (CK_BYTE *) from, (CK_ULONG)flen,
+		    		    (CK_BYTE_PTR)to, &size));
+	}
+	
+	if (rv) {
+		PKCS11err(PKCS11_F_PKCS11_RSA_DECRYPT, pkcs11_map_err(rv));
+	}
+	return (rv) ? 0 : size;
 }
 
 static int
