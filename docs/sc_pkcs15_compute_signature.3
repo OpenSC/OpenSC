@@ -49,11 +49,14 @@ by ORing
 with one of the following values:
 .BR SC_ALGORITHM_RSA_HASH_MD5 ,
 .BR SC_ALGORITHM_RSA_HASH_SHA1 ,
-.BR SC_ALGORITHM_RSA_HASH_RIPEMD160 ", or
-.BR SC_ALGORITHM_RSA_HASH_MD5_SHA1 .
+.BR SC_ALGORITHM_RSA_HASH_RIPEMD160 ,
+.BR SC_ALGORITHM_RSA_HASH_MD5_SHA1 , or
+.BR SC_ALGORITHM_RSA_HASH_NONE .
 .IP
 In any of these cases, the length of the input data must match
-the digest length of the hash algorithm.
+the digest length of the hash algorithm. In the first 3 cases,
+the respective digestinfo is prepended to the input data (the
+hash), in the last 2 cases, no digestinfo is prepended.
 .TP
 .B SC_ALGORITHM_RSA_PAD_ANSI
 requests that the card should use ANSI padding when signing the
