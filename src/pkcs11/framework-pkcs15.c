@@ -501,13 +501,13 @@ CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, cert->certificate->data_len);
 		memcpy(attr->pValue, cert->certificate->data, cert->certificate->data_len);
 		break;
-        /*
-	case CKA_SUBJECT:
-	break;
-	*/
 	case CKA_SERIAL_NUMBER:
 		 check_attribute_buffer(attr, cert->certificate->serial_len);
 		 memcpy(attr->pValue, cert->certificate->serial, cert->certificate->serial_len);
+		 break;
+	case CKA_SUBJECT:
+		 check_attribute_buffer(attr, cert->certificate->subject_len);
+		 memcpy(attr->pValue, cert->certificate->subject, cert->certificate->subject_len);
 		 break;
 	case CKA_ISSUER:
 		 check_attribute_buffer(attr, cert->certificate->issuer_len);
