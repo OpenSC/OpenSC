@@ -799,6 +799,18 @@ int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
         SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
+int sc_delete_record(struct sc_card *card, unsigned int rec_nr)
+{
+	int r;
+
+	assert(card != NULL);
+	SC_FUNC_CALLED(card->ctx, 2);
+	if (card->ops->delete_record == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->delete_record(card, rec_nr);
+	SC_FUNC_RETURN(card->ctx, 2, r);
+}
+
 inline int sc_card_valid(const struct sc_card *card) {
 #ifndef NDEBUG
 	assert(card != NULL);

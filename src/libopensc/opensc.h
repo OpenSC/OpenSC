@@ -578,6 +578,11 @@ struct sc_card_operations {
 
 	int (*get_data)(sc_card_t *, unsigned int, u8 *, size_t);
 	int (*put_data)(sc_card_t *, unsigned int, const u8 *, size_t);
+
+	/* FIXME
+	 * Any of ISO-7816s contains this function?
+	 */
+	int (*delete_record)(sc_card_t *card, unsigned int rec_nr);
 };
 
 struct sc_card_driver {
@@ -757,6 +762,7 @@ int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
 		     unsigned long flags);
 int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
 		     size_t count, unsigned long flags);
+int sc_delete_record(struct sc_card *card, unsigned int rec_nr);
 
 /* get/put data functions */
 int sc_get_data(sc_card_t *, unsigned int, u8 *, size_t);
