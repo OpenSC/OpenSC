@@ -287,8 +287,6 @@ static struct secret		opt_secrets[MAX_SECRETS];
 static unsigned int		opt_secret_count;
 
 static struct sc_pkcs15init_callbacks callbacks = {
-	error,			/* error() */
-	p15init_debug,		/* debug() */
 	get_pin_callback,	/* get_pin() */
 	get_key_callback,	/* get_key() */
 };
@@ -450,7 +448,7 @@ do_assert_pristine(struct sc_card *card)
 	sc_path_t	path;
 	int		r, res = 0;
 
-	card->ctx->log_errors = 0;
+	card->ctx->suppress_errors++;
 	sc_format_path("2F00", &path);
 	if ((r = sc_select_file(card, &path, NULL)) >= 0
 	 || r != SC_ERROR_FILE_NOT_FOUND)
@@ -459,7 +457,7 @@ do_assert_pristine(struct sc_card *card)
 	if ((r = sc_select_file(card, &path, NULL)) >= 0
 	 || r != SC_ERROR_FILE_NOT_FOUND)
 		res = -1;
-	card->ctx->log_errors = 1;
+	card->ctx->suppress_errors--;
 
 	if (res < 0) {
 		fprintf(stderr,
