@@ -137,7 +137,7 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 		}
 	}
 	if (dwRecvLength < 2)
-		return SC_ERROR_ILLEGAL_RESPONSE;
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	*recvsize = dwRecvLength;
 	
 	return 0;

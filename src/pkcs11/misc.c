@@ -50,7 +50,6 @@ CK_RV sc_to_cryptoki_error(int rc, int reader)
 	case SC_ERROR_CARD_NOT_PRESENT:
 		card_removed(reader);
 		return CKR_TOKEN_NOT_PRESENT;
-	case SC_ERROR_UNKNOWN_SMARTCARD:
 	case SC_ERROR_INVALID_CARD:
 		return CKR_TOKEN_NOT_RECOGNIZED;
 	}

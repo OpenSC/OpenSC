@@ -27,48 +27,48 @@
 #include <string.h>
 
 const static struct sc_card_error iso7816_errors[] = {
-	{ 0x6200, SC_ERROR_UNKNOWN_REPLY,	"State of non-volatile memory unchanged" },
-	{ 0x6281, SC_ERROR_UNKNOWN_REPLY,	"Part of returned data may be corrupted" },
-	{ 0x6282, SC_ERROR_UNKNOWN_REPLY,	"End of file/record reached before reading Le bytes" },
-	{ 0x6283, SC_ERROR_UNKNOWN_REPLY,	"Selected file invalidated" },
-	{ 0x6284, SC_ERROR_UNKNOWN_REPLY,	"FCI not formatted according to 5.1.5" },
+	{ 0x6200, SC_ERROR_MEMORY_FAILURE,	"State of non-volatile memory unchanged" },
+	{ 0x6281, SC_ERROR_MEMORY_FAILURE,	"Part of returned data may be corrupted" },
+	{ 0x6282, SC_ERROR_CARD_CMD_FAILED,	"End of file/record reached before reading Le bytes" },
+	{ 0x6283, SC_ERROR_CARD_CMD_FAILED,	"Selected file invalidated" },
+	{ 0x6284, SC_ERROR_CARD_CMD_FAILED,	"FCI not formatted according to ISO 7816-4" },
 
-	{ 0x6300, SC_ERROR_UNKNOWN_REPLY,	"State of non-volatile memory changed" },
-	{ 0x6381, SC_ERROR_UNKNOWN_REPLY,	"File filled up by last write" },
+	{ 0x6300, SC_ERROR_MEMORY_FAILURE,	"State of non-volatile memory changed" },
+	{ 0x6381, SC_ERROR_CARD_CMD_FAILED,	"File filled up by last write" },
 
-	{ 0x6581, SC_ERROR_UNKNOWN_REPLY,	"Memory failure" },
+	{ 0x6581, SC_ERROR_MEMORY_FAILURE,	"Memory failure" },
 
 	{ 0x6700, SC_ERROR_WRONG_LENGTH,	"Wrong length" },
 
-	{ 0x6800, SC_ERROR_UNKNOWN_REPLY,	"Functions in CLA not supported" },
-	{ 0x6881, SC_ERROR_UNKNOWN_REPLY,	"Logical channel not supported" },
-	{ 0x6882, SC_ERROR_UNKNOWN_REPLY,	"Secure messaging not supported" },
+	{ 0x6800, SC_ERROR_NO_CARD_SUPPORT,	"Functions in CLA not supported" },
+	{ 0x6881, SC_ERROR_NO_CARD_SUPPORT,	"Logical channel not supported" },
+	{ 0x6882, SC_ERROR_NO_CARD_SUPPORT,	"Secure messaging not supported" },
 
-	{ 0x6900, SC_ERROR_UNKNOWN_REPLY,	"Command not allowed" },
-	{ 0x6981, SC_ERROR_UNKNOWN_REPLY,	"Command incompatible with file structure" },
+	{ 0x6900, SC_ERROR_NOT_ALLOWED,		"Command not allowed" },
+	{ 0x6981, SC_ERROR_CARD_CMD_FAILED,	"Command incompatible with file structure" },
 	{ 0x6982, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, "Security status not satisfied" },
 	{ 0x6983, SC_ERROR_AUTH_METHOD_BLOCKED,	"Authentication method blocked" },
-	{ 0x6984, SC_ERROR_UNKNOWN_REPLY,	"Referenced data invalidated" },
-	{ 0x6985, SC_ERROR_UNKNOWN_REPLY,	"Conditions of use not satisfied" },
-	{ 0x6986, SC_ERROR_UNKNOWN_REPLY,	"Command not allowed (no current EF)" },
-	{ 0x6987, SC_ERROR_UNKNOWN_REPLY,	"Expected SM data objects missing" },
-	{ 0x6988, SC_ERROR_UNKNOWN_REPLY,	"SM data objects incorrect" },
+	{ 0x6984, SC_ERROR_CARD_CMD_FAILED,	"Referenced data invalidated" },
+	{ 0x6985, SC_ERROR_NOT_ALLOWED,		"Conditions of use not satisfied" },
+	{ 0x6986, SC_ERROR_NOT_ALLOWED,		"Command not allowed (no current EF)" },
+	{ 0x6987, SC_ERROR_INCORRECT_PARAMETERS,"Expected SM data objects missing" },
+	{ 0x6988, SC_ERROR_INCORRECT_PARAMETERS,"SM data objects incorrect" },
 
-	{ 0x6A00, SC_ERROR_UNKNOWN_REPLY,	"Wrong parameter(s) P1-P2" },
-	{ 0x6A80, SC_ERROR_UNKNOWN_REPLY,	"Incorrect parameters in the data field" },
+	{ 0x6A00, SC_ERROR_INCORRECT_PARAMETERS,"Wrong parameter(s) P1-P2" },
+	{ 0x6A80, SC_ERROR_INCORRECT_PARAMETERS,"Incorrect parameters in the data field" },
 	{ 0x6A81, SC_ERROR_NOT_SUPPORTED,	"Function not supported" },
 	{ 0x6A82, SC_ERROR_FILE_NOT_FOUND,	"File not found" },
 	{ 0x6A83, SC_ERROR_RECORD_NOT_FOUND,	"Record not found" },
-	{ 0x6A84, SC_ERROR_UNKNOWN_REPLY,	"Not enough memory space in the file" },
-	{ 0x6A85, SC_ERROR_INVALID_ARGUMENTS,	"Lc inconsistent with TLV structure" },
-	{ 0x6A86, SC_ERROR_INVALID_ARGUMENTS,	"Incorrect parameters P1-P2" },
-	{ 0x6A87, SC_ERROR_INVALID_ARGUMENTS,	"Lc inconsistent with P1-P2" },
-	{ 0x6A88, SC_ERROR_UNKNOWN_REPLY,	"Referenced data not found" },
+	{ 0x6A84, SC_ERROR_CARD_CMD_FAILED,	"Not enough memory space in the file" },
+	{ 0x6A85, SC_ERROR_INCORRECT_PARAMETERS,"Lc inconsistent with TLV structure" },
+	{ 0x6A86, SC_ERROR_INCORRECT_PARAMETERS,"Incorrect parameters P1-P2" },
+	{ 0x6A87, SC_ERROR_INCORRECT_PARAMETERS,"Lc inconsistent with P1-P2" },
+	{ 0x6A88, SC_ERROR_CARD_CMD_FAILED,	"Referenced data not found" },
 
-	{ 0x6B00, SC_ERROR_UNKNOWN_REPLY,	"Wrong parameter(s) P1-P2" },
-	{ 0x6D00, SC_ERROR_NOT_SUPPORTED,	"Instruction code not supported or invalid" },
+	{ 0x6B00, SC_ERROR_INCORRECT_PARAMETERS,"Wrong parameter(s) P1-P2" },
+	{ 0x6D00, SC_ERROR_INS_NOT_SUPPORTED,	"Instruction code not supported or invalid" },
 	{ 0x6E00, SC_ERROR_CLASS_NOT_SUPPORTED,	"Class not supported" },
-	{ 0x6F00, SC_ERROR_UNKNOWN_REPLY,	"No precise diagnosis" }
+	{ 0x6F00, SC_ERROR_CARD_CMD_FAILED,	"No precise diagnosis" }
 };
 
 static int iso7816_check_sw(struct sc_card *card, int sw1, int sw2)
@@ -89,7 +89,7 @@ static int iso7816_check_sw(struct sc_card *card, int sw1, int sw2)
 			return iso7816_errors[i].errorno;
 		}
 	error(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
-	return SC_ERROR_UNKNOWN_REPLY;
+	return SC_ERROR_CARD_CMD_FAILED;
 }
 
 static int iso7816_read_binary(struct sc_card *card,
@@ -447,9 +447,9 @@ static int iso7816_select_file(struct sc_card *card,
 		*file_out = file;
 		break;
 	case 0x00:	/* proprietary coding */
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_UNKNOWN_REPLY);
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	default:
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_UNKNOWN_REPLY);
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	}
 	return 0;
 }
@@ -589,6 +589,7 @@ static int iso7816_verify(struct sc_card *card, unsigned int type, int ref,
 	apdu.datalen = pinlen;
 	apdu.data = sbuf;
 	apdu.resplen = 0;
+	apdu.sensitive = 1;
 	
 	r = sc_transmit_apdu(card, &apdu);
 	memset(sbuf, 0, pinlen);
@@ -722,6 +723,7 @@ static int iso7816_compute_signature(struct sc_card *card,
 	apdu.data = sbuf;
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
+	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
@@ -733,9 +735,9 @@ static int iso7816_compute_signature(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static int
-iso7816_decipher(struct sc_card *card,
-		const u8 * crgram, size_t crgram_len, u8 * out, size_t outlen)
+static int iso7816_decipher(struct sc_card *card,
+			    const u8 * crgram, size_t crgram_len,
+			    u8 * out, size_t outlen)
 {
 	int r;
 	struct sc_apdu apdu;
@@ -753,7 +755,8 @@ iso7816_decipher(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf); /* FIXME */
-
+	apdu.sensitive = 1;
+	
 	sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
 	memcpy(sbuf + 1, crgram, crgram_len);
 	apdu.data = sbuf;
@@ -796,6 +799,7 @@ static int iso7816_change_reference_data(struct sc_card *card, unsigned int type
 	apdu.datalen = len;
 	apdu.data = sbuf;
 	apdu.resplen = 0;
+	apdu.sensitive = 1;
 	
 	r = sc_transmit_apdu(card, &apdu);
 	memset(sbuf, 0, len);
@@ -842,6 +846,7 @@ static int iso7816_reset_retry_counter(struct sc_card *card, unsigned int type, 
 	apdu.datalen = len;
 	apdu.data = sbuf;
 	apdu.resplen = 0;
+	apdu.sensitive = 1;
 
 	r = sc_transmit_apdu(card, &apdu);
 	memset(sbuf, 0, len);

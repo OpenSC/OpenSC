@@ -217,7 +217,7 @@ gpk_check_sw(struct sc_card *card, u8 sw1, u8 sw2)
 		return SC_ERROR_OBJECT_NOT_VALID; /* XXX ??? */
 
 	/* The following are handled by iso7816_check_sw
-	 * but all return SC_ERROR_UNKNOWN_REPLY
+	 * but all return SC_ERROR_UNKNOWN_DATA_RECEIVED
 	 * XXX: fix in the iso driver? */
 	case 0x6983:
 		error(card->ctx, "PIN is blocked\n");
@@ -744,7 +744,7 @@ gpk_verify_crycks(struct sc_card *card, struct sc_apdu *apdu, u8 *crycks)
 	 || memcmp(apdu->resp + apdu->resplen - 3, crycks, 3)) {
 		if (card->ctx->debug)
 			debug(card->ctx, "Invalid secure messaging reply\n");
-		return SC_ERROR_UNKNOWN_REPLY;
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 	apdu->resplen -= 3;
 	return 0;
@@ -905,14 +905,15 @@ gpk_select_key(struct sc_card *card, int key_sfi, const u8 *buf, size_t buflen)
 	apdu.resp = resp;
 	apdu.resplen = sizeof(resp);
 	apdu.le = 12;
-
+	apdu.sensitive = 1;
+	
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 
 	if (apdu.resplen != 12) {
-		r = SC_ERROR_UNKNOWN_REPLY;
+		r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	} else
 	if ((r = gpk_set_filekey(buf, random, resp, priv->key)) == 0) {
 		priv->key_set = 1;
@@ -956,6 +957,7 @@ gpk_verify_pin(struct sc_card *card, int ref,
 	apdu.lc  = 8;
 	apdu.datalen = 8;
 	apdu.data = buffer;
+	apdu.sensitive = 1;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -1023,6 +1025,7 @@ gpk_set_secret_code(struct sc_card *card, unsigned int mode,
 	apdu.lc  = 8;
 	apdu.data= data;
 	apdu.datalen = 8;
+	apdu.sensitive = 1;
 
 	memset(data, 0, sizeof(data));
 	for (n = 0; n < 8 && n < puklen; n += 2)
@@ -1396,6 +1399,7 @@ gpk_decipher(struct sc_card *card, const u8 *in, size_t inlen,
 	apdu.datalen = inlen;
 	apdu.resp= buffer;
 	apdu.resplen = sizeof(buffer);
+	apdu.sensitive = 1;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");

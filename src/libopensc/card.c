@@ -142,27 +142,35 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 	recvsize = apdu->resplen + 2;	/* space for the SW's */
 	if (card->ctx->debug >= 5) {
 		char buf[2048];
-		
-		sc_hex_dump(card->ctx, sbuf, sendsize, buf, sizeof(buf));
-		debug(card->ctx, "Sending %d bytes (resp. %d bytes):\n%s",
-			sendsize, recvsize, buf);
+
+		buf[0] = 0;
+		if (!apdu->sensitive || card->ctx->debug >= 6)
+			sc_hex_dump(card->ctx, sbuf, sendsize, buf, sizeof(buf));
+		debug(card->ctx, "Sending %d bytes (resp. %d bytes%s):\n%s",
+			sendsize, recvsize,
+			apdu->sensitive ? ", sensitive" : "", buf);
 	}
 	r = card->reader->ops->transmit(card->reader, card->slot, sbuf,
 					sendsize, rbuf, &recvsize);
-	memset(sbuf, 0, sendsize);
+	if (apdu->sensitive)
+		memset(sbuf, 0, sendsize);
 	SC_TEST_RET(card->ctx, r, "Unable to transmit");
 
 	assert(recvsize >= 2);
 	apdu->sw1 = (unsigned int) rbuf[recvsize-2];
 	apdu->sw2 = (unsigned int) rbuf[recvsize-1];
+	if (apdu->sensitive)
+		rbuf[recvsize-2] = rbuf[recvsize-1] = 0;
 	recvsize -= 2;
 	if (recvsize > apdu->resplen)
-		recvsize = apdu->resplen;
+		data_bytes = apdu->resplen;
 	else
-		apdu->resplen = recvsize;
-	if (recvsize > 0)
+		data_bytes = apdu->resplen = recvsize;
+	if (recvsize > 0) {
 		memcpy(apdu->resp, rbuf, recvsize);
-
+		if (apdu->sensitive)
+			memset(rbuf, 0, recvsize);
+	}
 	return 0;
 }
 

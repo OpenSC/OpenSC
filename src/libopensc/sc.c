@@ -170,61 +170,6 @@ int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen)
 	return 0;
 }
 
-const char *sc_strerror(int error)
-{
-	const char *errors[] = {
-		"Unknown error",
-		"Command too short",
-		"Command too long",
-		"Not supported",
-		"Transmit failed",
-		"File not found",
-		"Invalid arguments",
-		"PKCS#15 compatible SmartCard not found",
-		"Required parameter not found on SmartCard",
-		"Out of memory",
-		"No readers found",
-		"Object not valid",
-		"Unknown response",
-		"PIN code incorrect",
-		"Security status not satisfied",
-		"Error connecting to Resource Manager",
-		"Invalid ASN.1 object",
-		"Buffer too small",
-		"Card not present",
-		"Error with Resource Manager",
-		"Card removed",
-		"Invalid PIN length",
-		"Unknown SmartCard",
-		"Unknown reply from SmartCard",
-		"Requested object not found",
-		"Card reset",
-		"Required ASN.1 object not found",
-		"Premature end of ASN.1 stream",
-		"Too many objects",
-		"Card is invalid or cannot be handled",
-		"Wrong length",
-		"Record not found",
-		"Internal error",
-		"Invalid CLA byte in APDU",
-		"Slot not found",
-		"Slot already connected",
-		"Authentication method blocked",
-		"Syntax error",
-		"Inconsistent or incomplete pkcs15 profile",
-		"File already exists",
-	};
-	int nr_errors = sizeof(errors) / sizeof(errors[0]);
-
-	error -= SC_ERROR_MIN;
-	if (error < 0)
-		error = -error;
-
-	if (error >= nr_errors)
-		return errors[0];
-	return errors[error];
-}
-
 int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
                           unsigned int method, unsigned long key_ref)
 {

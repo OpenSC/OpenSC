@@ -179,7 +179,7 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 		break;
 	default:
 		error(ctx, "invalid file type: 0x%02X\n", *p);
-                return SC_ERROR_UNKNOWN_REPLY;
+                return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
         p += 2;
 	if (file->type == SC_FILE_TYPE_DF) {
@@ -334,10 +334,10 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
                 return 0;
 
 	if (apdu.resplen < 14)
-		return SC_ERROR_UNKNOWN_REPLY;
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	if (apdu.resp[0] == 0x6F) {
 		error(card->ctx, "unsupported: card returned FCI\n");
-		return SC_ERROR_UNKNOWN_REPLY; /* FIXME */
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED; /* FIXME */
 	}
 	file = sc_file_new();
 	if (file == NULL)
@@ -430,7 +430,7 @@ static int flex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 			return r;
 		if (apdu.resplen != 4) {
 			error(card->ctx, "expected 4 bytes, got %d.\n", apdu.resplen);
-			return SC_ERROR_ILLEGAL_RESPONSE;
+			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 		memcpy(buf, rbuf + 2, 2);
 		buf += 2;
@@ -686,6 +686,7 @@ static int flex_compute_signature(struct sc_card *card, const u8 *data,
 	apdu.data = sbuf;
 	apdu.resplen = outlen > sizeof(sbuf) ? sizeof(sbuf) : outlen;
 	apdu.resp = sbuf;
+	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -724,6 +725,7 @@ static int flex_verify(struct sc_card *card, unsigned int type, int ref,
         apdu.datalen = buflen;
         apdu.data = sbuf;
 	apdu.resplen = 0;
+	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	memset(sbuf, 0, buflen);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");

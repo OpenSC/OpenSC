@@ -82,6 +82,9 @@ typedef struct sc_apdu {
 	u8 *resp;		/* R-APDU data buffer */
 	size_t resplen;		/* in: size of R-APDU buffer,
 				 * out: length of data returned in R-APDU */
+	u8 sensitive;		/* Set if the either the command or
+				 * the response contains secrets,
+				 * e.g. a PIN. */
 
 	unsigned int sw1, sw2;	/* Status words returned in R-APDU */
 } sc_apdu_t;
