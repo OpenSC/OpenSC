@@ -844,6 +844,9 @@ use_default_key:
 	printf("Please enter key in hexadecimal notation "
 	       "(e.g. 00:11:22:aa:bb:cc)%s\n",
 	       def_key_size? ",\n or press return to accept default" : "");
+	printf("To use the default transport keys without being prompted,\n"
+	       "specify the --use-default-transport-keys option on the\n"
+	       "command line (or -T for short).\n");
 
 	while (1) {
 		char	buffer[256];
