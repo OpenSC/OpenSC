@@ -287,8 +287,6 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 			sc_unlock(card);
 			SC_FUNC_RETURN(card->ctx, 2, r);
 		}
-		else
-			return 0;
 	}
 	sc_unlock(card);
 	return 0;
