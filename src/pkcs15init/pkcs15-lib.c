@@ -237,9 +237,10 @@ static void *load_dynamic_driver(struct sc_context *ctx, void **dll,
 		sc_error(ctx, "Module %s: cannot load %s library\n",name,libname);
 		return NULL;
 	}
+
 	/* verify correctness of module */
-	modinit    = scdl_get_address(handler, "sc_module_init");
-	modversion = scdl_get_address(handler, "sc_driver_version");
+	modinit    = (void *(*)(const char *)) scdl_get_address(handler, "sc_module_init");
+	modversion = (const char *(*)(void)) scdl_get_address(handler, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
 		sc_error(ctx, "dynamic library '%s' is not a OpenSC module\n",libname);
 		scdl_close(handler);
@@ -283,14 +284,14 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 
 	for (i = 0; profile_operations[i].name; i++) {
 		if (!strcasecmp(driver, profile_operations[i].name)) {
-			func = (struct sc_pkcs15init_operations * (*)(void)) profile_operations[i].func;
+			func = (struct sc_pkcs15init_operations *(*)(void)) profile_operations[i].func;
 			break;
 		}
 	}
 	if (!func) {
 		/* no builtin support for this driver => look if there's a
 		 * dynamic module for this card */
-		func = load_dynamic_driver(card->ctx, &profile->dll, driver);
+		func = (struct sc_pkcs15init_operations *(*)(void)) load_dynamic_driver(card->ctx, &profile->dll, driver);
 	}
 	if (func) {
 		profile->ops = func();

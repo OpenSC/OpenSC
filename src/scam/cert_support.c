@@ -388,7 +388,7 @@ static char *printDN(X509_NAME *name)
 		BIO_free(bp);
 		return NULL;
 	}
-	ret = malloc((r + 1) * sizeof(char));
+	ret = (char *) malloc((r + 1) * sizeof(char));
 	if (!ret) {
 		BIO_free(bp);
 		return NULL;

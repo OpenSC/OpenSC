@@ -1028,7 +1028,7 @@ static int starcos_gen_key(struct sc_card *card, sc_starcos_gen_key_data *data)
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 
-	data->modulus = malloc(len);
+	data->modulus = (u8 *) malloc(len);
 	if (!data->modulus)
 		return SC_ERROR_OUT_OF_MEMORY;
 	p = data->modulus;

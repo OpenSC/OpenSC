@@ -203,7 +203,7 @@ pkcs11_rsa_sign(int type, const unsigned char *m, unsigned int m_len,
 		}
 	} else {
 		ASN1_TYPE parameter = { V_ASN1_NULL, { NULL } };
-		ASN1_STRING digest = { m_len, V_ASN1_OCTET_STRING, (void*)m };
+		ASN1_STRING digest = { m_len, V_ASN1_OCTET_STRING, (unsigned char *)m };
 		X509_ALGOR algor = { NULL, &parameter };
 		X509_SIG digest_info = { &algor, &digest };
 		int size;
@@ -214,7 +214,7 @@ pkcs11_rsa_sign(int type, const unsigned char *m, unsigned int m_len,
 		   (size = i2d_X509_SIG(&digest_info, NULL)) &&
 		   /* Check that size is compatible with PKCS#11 padding */
 		   (size + RSA_PKCS1_PADDING <= rsa_size) &&
-		   (encoded = malloc(rsa_size))) {
+		   (encoded = (unsigned char *) malloc(rsa_size))) {
 			unsigned char *tmp = encoded;
 			/* Actually do the encoding */
 			i2d_X509_SIG(&digest_info,&tmp);

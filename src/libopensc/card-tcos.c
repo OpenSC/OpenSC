@@ -81,7 +81,7 @@ static int tcos_init(struct sc_card *card)
 {
         unsigned long flags;
 
-	tcos_data *data = malloc(sizeof(tcos_data));
+	tcos_data *data = (tcos_data *) malloc(sizeof(tcos_data));
 	if (!data)
 		return SC_ERROR_OUT_OF_MEMORY;
 

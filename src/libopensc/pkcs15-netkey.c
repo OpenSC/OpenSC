@@ -89,7 +89,7 @@ sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
 	sc_card_t      *card = p15card->card;
 	sc_context_t   *ctx = p15card->card->ctx;
 	sc_path_t       path;
-	unsigned char   serial[30];
+	char   serial[30];
 	int             i, r;
 	sc_serial_number_t serialnr;
 

@@ -2455,6 +2455,7 @@ test_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 #ifndef HAVE_OPENSSL
 		printf("No OpenSSL support, unable to validate decryption\n");
+		n = 0;
 #else
 		for (n = 0; n < num_mechs; n++) {
 			errors += encrypt_decrypt(slot, sess,

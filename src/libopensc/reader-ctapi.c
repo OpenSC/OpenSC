@@ -250,13 +250,18 @@ static int ctapi_load_module(struct sc_context *ctx,
 		return -1;
 	}
 
-	funcs.CT_init  = scdl_get_address(dlh, "CT_init");
+	funcs.CT_init  = (char (*)(unsigned short, unsigned short))
+		scdl_get_address(dlh, "CT_init");
 	if (!funcs.CT_init)
 		goto symerr;
-	funcs.CT_close = scdl_get_address(dlh, "CT_close");
+	funcs.CT_close = (char (*)(unsigned short))
+		scdl_get_address(dlh, "CT_close");
 	if (!funcs.CT_close)
 		goto symerr;
-	funcs.CT_data  = scdl_get_address(dlh, "CT_data");
+	funcs.CT_data  = (char (*)(unsigned short, unsigned char *,
+		 unsigned char *, unsigned short,
+		 unsigned char *, unsigned short *,
+		 unsigned char *)) scdl_get_address(dlh, "CT_data");
 	if (!funcs.CT_close)
 		goto symerr;
 

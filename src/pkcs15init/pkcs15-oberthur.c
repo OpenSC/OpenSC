@@ -264,7 +264,7 @@ static int cosm_create_reference_data(struct sc_profile *profile, struct sc_card
 		int ii, jj;
 		unsigned char *ptr = (unsigned char *)puk;
 		
-		puk_buff = malloc(0x100);
+		puk_buff = (unsigned char *) malloc(0x100);
 		if (!puk_buff)
 			goto done;
 
@@ -432,7 +432,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		unsigned int type, unsigned int num, struct sc_file **out)
 {
 	struct sc_file	*file;
-	char *template = NULL, *desc = NULL;
+	char *_template = NULL, *desc = NULL;
 	unsigned int structure = 0xFFFFFFFF;
 
 	sc_debug(card->ctx, "type %X; num %i\n",type, num);
@@ -441,33 +441,33 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		case SC_PKCS15_TYPE_PRKEY_RSA:
 		case COSM_TYPE_PRKEY_RSA:
 			desc = "RSA private key";
-			template = "template-private-key";
+			_template = "template-private-key";
 			structure = SC_CARDCTL_OBERTHUR_KEY_RSA_CRT;
 			break;
 		case SC_PKCS15_TYPE_PUBKEY_RSA:
 		case COSM_TYPE_PUBKEY_RSA:
 			desc = "RSA public key";
-			template = "template-public-key";
+			_template = "template-public-key";
 			structure = SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC;
 			break;
 		case SC_PKCS15_TYPE_PUBKEY_DSA:
 			desc = "DSA public key";
-			template = "template-public-key";
+			_template = "template-public-key";
 			break;
 		case SC_PKCS15_TYPE_PRKEY:
 			desc = "extractable private key";
-			template = "template-extractable-key";
+			_template = "template-extractable-key";
 			break;
 		case SC_PKCS15_TYPE_CERT:
 			desc = "certificate";
-			template = "template-certificate";
+			_template = "template-certificate";
 			break;
 		case SC_PKCS15_TYPE_DATA_OBJECT:
 			desc = "data object";
-			template = "template-public-data";
+			_template = "template-public-data";
 			break;
 		}
-		if (template)
+		if (_template)
 			break;
 		/* If this is a specific type such as
 		 * SC_PKCS15_TYPE_CERT_FOOBAR, fall back to
@@ -481,10 +481,10 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		type &= SC_PKCS15_TYPE_CLASS_MASK;
 	}
 
-	sc_debug(card->ctx, "template %s; num %i\n",template, num);
-	if (sc_profile_get_file(profile, template, &file) < 0) {
+	sc_debug(card->ctx, "template %s; num %i\n",_template, num);
+	if (sc_profile_get_file(profile, _template, &file) < 0) {
 		sc_error(card->ctx, "Profile doesn't define %s template '%s'\n",
-				desc, template);
+				desc, _template);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
     
@@ -562,7 +562,7 @@ cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
 	args.exponent = 0x10001;
 	args.key_bits = keybits;
 	args.pubkey_len = keybits/8;
-	args.pubkey = malloc(keybits/8);
+	args.pubkey = (unsigned char *) malloc(keybits/8);
 	if (!args.pubkey)   {
 		rv = SC_ERROR_OUT_OF_MEMORY;
 		goto failed;
@@ -638,7 +638,7 @@ cosm_new_key(struct sc_profile *profile, struct sc_card *card,
 	rsa = &key->u.rsa;
 	
 	prvfile->size = rsa->modulus.len << 3;
-	buff = malloc(rsa->modulus.len);
+	buff = (u8 *) malloc(rsa->modulus.len);
 	if (!buff)   {
 		sc_error(card->ctx, "Memory allocation error.");
 		return SC_ERROR_OUT_OF_MEMORY;

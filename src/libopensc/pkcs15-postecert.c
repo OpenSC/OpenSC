@@ -109,7 +109,7 @@ sc_pkcs15emu_postecert_init(sc_pkcs15_card_t *p15card)
 
 	count = (certlen[0] << 8) + certlen[1];
 
-        certi = malloc(count);
+        certi = (unsigned char *) malloc(count);
  
                if (!certi)
                         return SC_ERROR_OUT_OF_MEMORY;
@@ -235,7 +235,7 @@ sc_pkcs15emu_postecert_init(sc_pkcs15_card_t *p15card)
 	sc_select_file(card, &path, NULL);
 	{
                 struct sc_card_operations *new_ops;
-                new_ops = calloc(1, sizeof(*new_ops));
+                new_ops = (struct sc_card_operations *) calloc(1, sizeof(*new_ops));
                 if (!new_ops)
                         return SC_ERROR_OUT_OF_MEMORY;
                 /* copy normal cardos card ops */

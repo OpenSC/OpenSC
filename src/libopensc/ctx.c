@@ -369,9 +369,10 @@ static void *load_dynamic_driver(struct sc_context *ctx, void **dll,
 		sc_error(ctx, "Module %s: cannot load %s library\n",name,libname);
 		return NULL;
 	}
+
 	/* verify correctness of module */
-	modinit    = scdl_get_address(handler, "sc_module_init");
-	modversion = scdl_get_address(handler, "sc_driver_version");
+	modinit    = (void *(*)(const char *)) scdl_get_address(handler, "sc_module_init");
+	modversion = (const char *(*)(void)) scdl_get_address(handler, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
 		sc_error(ctx, "dynamic library '%s' is not a OpenSC module\n",libname);
 		scdl_close(handler);
@@ -401,19 +402,19 @@ static int load_reader_drivers(struct sc_context *ctx,
 
 	for (i = 0; i < opts->rcount; i++) {
 		struct sc_reader_driver *driver;
-		struct sc_reader_driver * (*func)(void) = NULL;
+		struct sc_reader_driver *(*func)(void) = NULL;
 		int  j;
 		void *dll = NULL;
 
 		ent = &opts->rdrv[i];
 		for (j = 0; internal_reader_drivers[j].name != NULL; j++)
 			if (strcmp(ent->name, internal_reader_drivers[j].name) == 0) {
-				func = (struct sc_reader_driver * (*)(void)) internal_reader_drivers[j].func;
+				func = (struct sc_reader_driver *(*)(void)) internal_reader_drivers[j].func;
 				break;
 			}
 		/* if not initialized assume external module */
 		if (func == NULL)
-			func = load_dynamic_driver(ctx, &dll, ent->name, 0);
+			func = (struct sc_reader_driver *(*)(void)) load_dynamic_driver(ctx, &dll, ent->name, 0);
 		/* if still null, assume driver not found */
 		if (func == NULL) {
 			sc_error(ctx, "Unable to load '%s'.\n", ent->name);
@@ -479,19 +480,19 @@ static int load_card_drivers(struct sc_context *ctx,
 	for (drv_count = 0; ctx->card_drivers[drv_count] != NULL; drv_count++);
 
 	for (i = 0; i < opts->ccount; i++) {
-		struct sc_card_driver * (* func)(void) = NULL;
+		struct sc_card_driver *(*func)(void) = NULL;
 		void *dll = NULL;
 		int  j;
 
 		ent = &opts->cdrv[i];
 		for (j = 0; internal_card_drivers[j].name != NULL; j++)
 			if (strcmp(ent->name, internal_card_drivers[j].name) == 0) {
-				func = (struct sc_card_driver * (*)(void)) internal_card_drivers[j].func;
+				func = (struct sc_card_driver *(*)(void)) internal_card_drivers[j].func;
 				break;
 			}
 		/* if not initialized assume external module */
 		if (func == NULL)
-			func = load_dynamic_driver(ctx, &dll, ent->name, 1);
+			func = (struct sc_card_driver *(*)(void)) load_dynamic_driver(ctx, &dll, ent->name, 1);
 		/* if still null, assume driver not found */
 		if (func == NULL) {
 			sc_error(ctx, "Unable to load '%s'.\n", ent->name);

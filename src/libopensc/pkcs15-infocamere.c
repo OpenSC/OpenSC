@@ -53,14 +53,11 @@ set_string(char **strp, const char *value)
 int
 sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 {
-
-
-   const int     prkey_usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
-
-   const int      authprkey_usage =      SC_PKCS15_PRKEY_USAGE_SIGN
+	const int	prkey_usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
+	const int	authprkey_usage = SC_PKCS15_PRKEY_USAGE_SIGN
                                         | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
-					| SC_PKCS15_PRKEY_USAGE_ENCRYPT         
-					| SC_PKCS15_PRKEY_USAGE_DECRYPT  ;
+					| SC_PKCS15_PRKEY_USAGE_ENCRYPT
+					| SC_PKCS15_PRKEY_USAGE_DECRYPT;
 
 	sc_card_t	*card = p15card->card;
 	sc_path_t	path;
@@ -68,7 +65,7 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 	sc_pkcs15_id_t	id, auth_id;
 	unsigned char   buffer[256];
 	unsigned char   ef_gdo[256];
-	unsigned char   serial[256];
+	char   serial[256];
 	unsigned char	certlen[2];
 	int 		authority, change_sign = 0;
 
@@ -329,7 +326,7 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 
 	if (change_sign) {
 		struct sc_card_operations *new_ops;
-		new_ops = calloc(1, sizeof(*new_ops));
+		new_ops = (struct sc_card_operations *) calloc(1, sizeof(*new_ops));
 		if (!new_ops)
 			return SC_ERROR_OUT_OF_MEMORY;
 		/* copy normal cardos card ops */

@@ -75,7 +75,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		      SC_RECORD_BY_REC_NR);
   SC_TEST_RET (card->ctx, r, "read document number failed");
   buff[r] = '\0';
-  set_string (&p15card->serial_number, buff);
+  set_string (&p15card->serial_number, (const char *) buff);
 
   p15card->flags =
     SC_PKCS15_CARD_FLAG_PRN_GENERATION |
