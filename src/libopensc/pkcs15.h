@@ -246,6 +246,8 @@ struct sc_pkcs15_prkey_info {
 	unsigned int usage, access_flags;
 	int native, key_reference;
 	size_t modulus_length;
+	u8     *subject;
+	size_t subject_len;
 
 	struct sc_path path;
 };
@@ -256,6 +258,8 @@ struct sc_pkcs15_pubkey_info {
 	unsigned int usage, access_flags;
 	int native, key_reference;
 	size_t modulus_length;
+	u8     *subject;
+	size_t subject_len;
 
 	struct sc_path path;
 };

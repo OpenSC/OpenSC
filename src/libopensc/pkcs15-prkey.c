@@ -414,5 +414,7 @@ sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
 
 void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key)
 {
+	if (key->subject)
+		free(key->subject);
 	free(key);
 }
