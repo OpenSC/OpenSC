@@ -601,9 +601,12 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	if (conf_block != NULL) {
 		const scconf_list *list;
 
-		gpriv->apdu_masquerade = 0;
+		if (scconf_get_bool(conf_block, "apdu_fix", 0))
+			gpriv->apdu_masquerade |= MASQUERADE_4AS3;
 
 		list = scconf_find_list(conf_block, "apdu_masquerade");
+		if (list)
+			gpriv->apdu_masquerade = 0;
 		for (; list; list = list->next) {
 			if (!strcmp(list->data, "case4as3")) {
 				gpriv->apdu_masquerade |= MASQUERADE_4AS3;
