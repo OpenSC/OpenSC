@@ -256,7 +256,7 @@ cflex_create_key(sc_profile_t *profile, sc_card_t *card, sc_pkcs15_object_t *obj
 	 || (r = sc_pkcs15init_create_file(profile, card, pukf)) < 0)
 		goto out;
 
-	key_info->key_reference = 1;
+	key_info->key_reference = 0;
 
 out:	if (prkf)
 		sc_file_free(prkf);
@@ -337,7 +337,7 @@ cflex_store_key(sc_profile_t *profile, sc_card_t *card,
 	sc_file_t	*prkf, *pukf;
 	unsigned char	keybuf[1024];
 	size_t		size;
-	int		r;
+	int		r, key_num;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_error(card->ctx, "Cryptoflex supports only RSA keys.");
@@ -349,13 +349,15 @@ cflex_store_key(sc_profile_t *profile, sc_card_t *card,
 	if (r < 0)
 		return r;
 
+	key_num = key_info->key_reference + 1;
+
 	size = sizeof(keybuf);
-	if ((r = cflex_encode_private_key(&key->u.rsa, keybuf, &size, 1)) < 0
+	if ((r = cflex_encode_private_key(&key->u.rsa, keybuf, &size, key_num)) < 0
 	 || (r = sc_pkcs15init_update_file(profile, card, prkf, keybuf, size)) < 0)
 		goto out;
 
 	size = sizeof(keybuf);
-	if ((r = cflex_encode_public_key(&key->u.rsa, keybuf, &size, 1)) < 0
+	if ((r = cflex_encode_public_key(&key->u.rsa, keybuf, &size, key_num)) < 0
 	 || (r = sc_pkcs15init_update_file(profile, card, pukf, keybuf, size)) < 0)
 		goto out;
 
