@@ -1157,7 +1157,7 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen)
 	size_t filesize = determine_filesize(name);
 	int c;
 
-	*out = malloc(filesize);
+	*out = (u8 *) malloc(filesize);
 	if (*out == NULL) {
 		return SC_ERROR_OUT_OF_MEMORY;
 	}

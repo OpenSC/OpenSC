@@ -74,7 +74,7 @@ sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *op)
 	if (!op || !(mt = op->type) || !(md = (EVP_MD *) mt->mech_data))
 		return CKR_ARGUMENTS_BAD;
 
-	if (!(md_ctx = calloc(1, sizeof(*md_ctx))))
+	if (!(md_ctx = (EVP_MD_CTX *) calloc(1, sizeof(*md_ctx))))
 		return CKR_HOST_MEMORY;
 	EVP_DigestInit(md_ctx, md);
 	op->priv_data = md_ctx;

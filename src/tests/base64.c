@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Too long input file.\n");
 		return 1;
 	}
-	len = sc_base64_decode(buf, outbuf, sizeof(outbuf));
+	len = sc_base64_decode((const char *) buf, outbuf, sizeof(outbuf));
 	if (len < 0) {
 		fprintf(stderr, "Base64 decoding failed: %s\n", sc_strerror(len));	
 		return 1;

@@ -300,7 +300,7 @@ main(int argc, char * const argv[])
 			pin = opt_pin;
 		if (!pin || !*pin)
 			return 1;
-		rv = p11->C_Login(session, CKU_USER, pin, strlen(pin));
+		rv = p11->C_Login(session, CKU_USER, (CK_UTF8CHAR *) pin, strlen(pin));
 		if (rv != CKR_OK)
 			p11_fatal("C_Login", rv);
 	}
@@ -804,12 +804,12 @@ test_digest(CK_SLOT_ID slot)
 		CKM_MD5,
 		CKM_SHA_1,
 		CKM_RIPEMD160,
-		-1
+		0xffffff
 	};
 	unsigned char  *digests[] = {
-		"\x7a\x08\xb0\x7e\x84\x64\x17\x03\xe5\xf2\xc8\x36\xaa\x59\xa1\x70",
-		"\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
-		"\xda\x79\xa5\x8f\xb8\x83\x3d\x61\xf6\x32\x16\x17\xe3\xfd\xf0\x56\x26\x5f\xb7\xcd"
+		(unsigned char *) "\x7a\x08\xb0\x7e\x84\x64\x17\x03\xe5\xf2\xc8\x36\xaa\x59\xa1\x70",
+		(unsigned char *) "\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
+		(unsigned char *) "\xda\x79\xa5\x8f\xb8\x83\x3d\x61\xf6\x32\x16\x17\xe3\xfd\xf0\x56\x26\x5f\xb7\xcd"
 	};
 	CK_ULONG        digestLens[] = {
 		16,
@@ -891,9 +891,9 @@ test_digest(CK_SLOT_ID slot)
 			data[10 * i + j] = (unsigned char) (0x30 + j);
 
 
-	i = -1;
+	i = 0xffffff;
 	while (1) {
-		if (mechTypes[++i] == -1)
+		if (mechTypes[++i] == 0xffffff)
 			break;
 
 		ck_mech.mechanism = mechTypes[i];
@@ -992,7 +992,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		CKM_SHA1_RSA_PKCS,
 		CKM_MD5_RSA_PKCS,
 		CKM_RIPEMD160_RSA_PKCS,
-		-1
+		0xffffff
 	};
 	unsigned char  *datas[] = {
 		/* PCKS1_wrap(SHA1_encode(SHA-1(verifyData))),
@@ -1001,7 +1001,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		NULL,
 
 		/* SHA1_encode(SHA-1(verifyData)) */
-		"\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
+		(unsigned char *) "\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
 
 		verifyData,
 		verifyData,
@@ -1153,9 +1153,9 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	datas[0] = data;
 	dataLens[0] = dataLen;
 
-	i = -1;
+	i = 0xffffff;
 	while (1) {
-		if (mechTypes[++i] == -1)
+		if (mechTypes[++i] == 0xffffff)
 			break;
 
 		ck_mech.mechanism = mechTypes[i];

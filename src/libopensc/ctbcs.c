@@ -49,7 +49,7 @@ ctbcs_build_input_apdu(sc_apdu_t *apdu, int echo, const char *prompt,
 
 	if (prompt && *prompt) {
 		apdu->cse = SC_APDU_CASE_4_SHORT;
-		apdu->data = prompt;
+		apdu->data = (u8 *) prompt;
 		apdu->lc = apdu->datalen = strlen(prompt);
 	}
 

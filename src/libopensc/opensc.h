@@ -304,6 +304,21 @@ struct sc_reader {
 #define SC_PIN_ENCODING_ASCII	0
 #define SC_PIN_ENCODING_BCD	1
 
+struct sc_pin_cmd_pin {
+	const char *prompt;	/* Prompt to display */
+
+	const u8 *data;		/* PIN, if given by the appliction */
+	int len;		/* set to -1 to get pin from pin pad */
+
+	size_t min_length;	/* min/max length of PIN */
+	size_t max_length;
+	int encoding;		/* ASCII-numeric, BCD, etc */
+	size_t pad_length;	/* filled in by the card driver */
+	u8 pad_char;
+	size_t offset;		/* offset relative to the APDU's
+				 * argument buffer, where the
+				 * PIN should go */
+};
 
 struct sc_pin_cmd_data {
 	unsigned int cmd;
@@ -312,21 +327,7 @@ struct sc_pin_cmd_data {
 	unsigned int pin_type;		/* usually SC_AC_CHV */
 	int pin_reference;
 
-	struct sc_pin_cmd_pin {
-		const char *prompt;	/* Prompt to display */
-
-		const u8 *data;		/* PIN, if given by the appliction */
-		int len;		/* set to -1 to get pin from pin pad */
-
-		size_t min_length;	/* min/max length of PIN */
-		size_t max_length;
-		int encoding;		/* ASCII-numeric, BCD, etc */
-		size_t pad_length;	/* filled in by the card driver */
-		u8 pad_char;
-		size_t offset;		/* offset relative to the APDU's
-					 * argument buffer, where the
-					 * PIN should go */
-	} pin1, pin2;
+	struct sc_pin_cmd_pin pin1, pin2;
 
 	struct sc_apdu *apdu;		/* APDU of the PIN command */
 };

@@ -128,7 +128,7 @@ static int flex_init(struct sc_card *card)
 {
 	struct flex_private_data *data;
 
-	if (!(data = malloc(sizeof(struct flex_private_data))))
+	if (!(data = (struct flex_private_data *) malloc(sizeof(struct flex_private_data))))
 		return SC_ERROR_OUT_OF_MEMORY;
 	data->card_type = flex_identify_card(card);
 

@@ -961,7 +961,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		}
 		obj_len = p - oldp;
 
-		obj->der.value = malloc(obj_len);
+		obj->der.value = (u8 *) malloc(obj_len);
 		if (obj->der.value == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto ret;

@@ -47,7 +47,7 @@ asn1_decode_data_object(struct sc_context *ctx, u8 **dataobj, size_t *datalen,
         int      r;
         int	data_len;
 
-        data=malloc(buflen+64);
+        data = (u8 *) malloc(buflen+64);
 	if (data == NULL) {
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
@@ -59,7 +59,7 @@ asn1_decode_data_object(struct sc_context *ctx, u8 **dataobj, size_t *datalen,
         	free(data);
                 return r;
         }
-        *dataobj = malloc(*datalen);   
+        *dataobj = (u8 *) malloc(*datalen);   
         memcpy(*dataobj, data, *datalen);
         free(data);
         return 0;
