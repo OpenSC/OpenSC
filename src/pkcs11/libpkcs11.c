@@ -5,6 +5,9 @@
  * Copyright (C) 2002  Olaf Kirch <okir@lst.de>
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include "pkcs11.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,7 +20,7 @@
 
 struct sc_pkcs11_module {
 	unsigned int		_magic;
-#if defined(linux) || defined(_WIN32)
+#if defined(HAVE_DLFCN_H) || defined(_WIN32)
 	void *			_dl_handle;
 #endif
 #ifdef __APPLE__
@@ -78,7 +81,7 @@ C_UnloadModule(sc_pkcs11_module_t *mod)
 	return CKR_OK;
 }
 
-#ifdef linux
+#ifdef HAVE_DLFCN_H
 #include <dlfcn.h>
 
 /*
@@ -187,7 +190,7 @@ sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 #include <mach-o/dyld.h>
 
 /*
- * Module loader for MacOSX 10
+ * Module loader for MacOS X
  */
 int
 sys_dlopen(struct sc_pkcs11_module *mod, const char *name)

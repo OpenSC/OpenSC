@@ -915,7 +915,9 @@ set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
 	CK_OBJECT_HANDLE obj;
 	CK_ATTRIBUTE templ[] = {CKA_ID, new_object_id, new_object_id_len};
-	//CK_ATTRIBUTE templ2[] = {CKA_LABEL, "new_label", 9};
+#if 0
+	CK_ATTRIBUTE templ2[] = {CKA_LABEL, "new_label", 9};
+#endif
 	CK_RV rv;
 
 	if (!find_object(session, opt_object_class, &obj, opt_object_id, opt_object_id_len, 0)) {
@@ -2109,7 +2111,6 @@ p11_perror(const char *msg, CK_RV rv)
 
 int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 {
-	int err = 0;
 	size_t left, count = 0;
 
 	if (in == NULL || *in == '\0') {
@@ -2153,7 +2154,6 @@ int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 		c++;
 	}
 
-out:
 	*outlen = count;
 	return 1;
 }

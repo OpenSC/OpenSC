@@ -3,12 +3,12 @@ dnl Process this file with autoconf to produce a configure script.
 
 # Require autoconf 2.52
 AC_PREREQ(2.52)
-AC_INIT(opensc, 0.8.0-rc2)
-AC_CONFIG_SRCDIR(src/libopensc/sc.c)
-AC_CONFIG_AUX_DIR(tools)
 
-AM_INIT_AUTOMAKE([foreign])
+AC_INIT(COPYING)
+AM_INIT_AUTOMAKE(opensc, 0.8.0-rc2)
 AM_CONFIG_HEADER(config.h)
+
+AC_CONFIG_SRCDIR(src/libopensc/sc.c)
 
 AC_CANONICAL_HOST
 case $host in
@@ -1194,7 +1194,6 @@ src/tests/Makefile
 src/tests/regression/Makefile
 src/tools/Makefile
 src/usbtoken/Makefile
-tools/Makefile
 win32/Makefile
 ])
 

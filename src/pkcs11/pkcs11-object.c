@@ -937,11 +937,13 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
-	//rv = object->ops->get_attribute(session, object, &verify_attribute);
-        //if (rv != CKR_OK || !can_verify) {
-        //        rv = CKR_KEY_TYPE_INCONSISTENT;
-	//	goto out;
-	//}
+#if 0
+	rv = object->ops->get_attribute(session, object, &verify_attribute);
+        if (rv != CKR_OK || !can_verify) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+#endif
 	rv = object->ops->get_attribute(session, object, &key_type_attr);
         if (rv != CKR_OK) {
                 rv = CKR_KEY_TYPE_INCONSISTENT;

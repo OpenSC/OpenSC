@@ -19,11 +19,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _WIN32
-
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+
+#ifndef _WIN32
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -310,14 +310,15 @@ int scrandom_get_data(unsigned char *buf, unsigned int len)
 #undef BLOCK_SIZE
 }
 
-#else // #ifndef _WIN32
+#else
 
-// Since the above is very *nix specific, we use Window's CryptoAPI
-// random generation instead.
+/* Since the above is very *nix specific, we use Window's CryptoAPI
+ * random generation instead.
+ */
 
 #include "scrandom.h"
-#include "windows.h"
-#include "wincrypt.h"
+#include <windows.h>
+#include <wincrypt.h>
 
 int scrandom_get_data(unsigned char *buf, unsigned int len)
 {
@@ -334,4 +335,4 @@ int scrandom_get_data(unsigned char *buf, unsigned int len)
 	return 0;
 }
 
-#endif // #ifndef _WIN32
+#endif

@@ -5,6 +5,7 @@
  * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
  */
 
+#include <string.h>
 #include "sc-pkcs11.h"
 #include "opensc/scrandom.h"
 
