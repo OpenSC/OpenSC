@@ -110,36 +110,16 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 {
 	int r;
 	struct sc_pkcs15_cert *cert;
-	struct sc_file *file = NULL;
 	u8 *data = NULL;
 	size_t len;
 	
 	assert(p15card != NULL && info != NULL && cert_out != NULL);
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
-	r = sc_pkcs15_read_cached_file(p15card, &info->path, &data, &len);
-	if (r) {
-		r = sc_lock(p15card->card);
-		SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
-		r = sc_select_file(p15card->card, &info->path, &file);
-		if (r) {
-			sc_unlock(p15card->card);
-			return r;
-		}
-		len = file->size;
-		sc_file_free(file);
-		data = (u8 *) malloc(len);
-		if (data == NULL) {
-			sc_unlock(p15card->card);
-			return SC_ERROR_OUT_OF_MEMORY;
-		}
-		r = sc_read_binary(p15card->card, 0, data, len, 0);
-		if (r < 0) {
-			sc_unlock(p15card->card);
-			free(data);
-			return r;
-		}
-		sc_unlock(p15card->card);
-	}
+
+	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
+	if (r)
+		return r;
+
 	cert = (struct sc_pkcs15_cert *) malloc(sizeof(struct sc_pkcs15_cert));
 	if (cert == NULL) {
 		free(data);
