@@ -63,7 +63,7 @@ struct gpk_private_data {
 	unsigned int	key_reference;
 	u8		key[16];
 };
-#define OPSDATA(card)	((struct gpk_private_data *) ((card)->ops_data))
+#define DRVDATA(card)	((struct gpk_private_data *) ((card)->drv_data))
 
 /*
  * ATRs of GPK4000 cards courtesy of libscez
@@ -86,7 +86,6 @@ static struct atrinfo {
  */
 static struct sc_card_operations	gpk_ops;
 static const struct sc_card_driver gpk_drv = {
-	NULL,
 	"Gemplus GPK 4000 driver",
 	"gpk",
 	&gpk_ops
@@ -129,8 +128,8 @@ gpk_init(struct sc_card *card)
 
 	if (!(ai = gpk_identify(card)))
 		return SC_ERROR_INVALID_CARD;
-	card->ops_data = priv = malloc(sizeof(*priv));
-	if (card->ops_data == NULL)
+	card->drv_data = priv = malloc(sizeof(*priv));
+	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(priv, 0, sizeof(*priv));
 	priv->variant = ai->variant;
@@ -145,9 +144,9 @@ gpk_init(struct sc_card *card)
 static int
 gpk_finish(struct sc_card *card)
 {
-	if (card->ops_data)
-		free(card->ops_data);
-	card->ops_data = NULL;
+	if (card->drv_data)
+		free(card->drv_data);
+	card->drv_data = NULL;
 	return 0;
 }
 
@@ -378,7 +377,7 @@ gpk_select(struct sc_card *card, u8 kind,
 		const u8 *buf, size_t buflen,
 		struct sc_file **file)
 {
-	struct gpk_private_data *priv = OPSDATA(card);
+	struct gpk_private_data *priv = DRVDATA(card);
 	struct sc_apdu	apdu;
 	u8		resbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int		r;
@@ -582,7 +581,7 @@ static int
 gpk_compute_crycks(struct sc_card *card, struct sc_apdu *apdu,
 			u8 *crycks1)
 {
-	struct gpk_private_data *priv = OPSDATA(card);
+	struct gpk_private_data *priv = DRVDATA(card);
 	des_key_schedule k1, k2;
 	u8		in[8], out[8], block[64];
 	unsigned int	len = 0, i, j;
@@ -654,7 +653,7 @@ gpk_verify_crycks(struct sc_card *card, struct sc_apdu *apdu, u8 *crycks)
 static int
 gpk_create_file(struct sc_card *card, struct sc_file *file)
 {
-	struct gpk_private_data *priv = OPSDATA(card);
+	struct gpk_private_data *priv = DRVDATA(card);
 	struct sc_apdu	apdu;
 	u8		data[28+3], crycks[3], resp[3];
 	size_t		datalen, namelen;
@@ -776,7 +775,7 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 static int
 gpk_select_key(struct sc_card *card, int key_sfi, const u8 *buf, size_t buflen)
 {
-	struct gpk_private_data *priv = OPSDATA(card);
+	struct gpk_private_data *priv = DRVDATA(card);
 	struct sc_apdu	apdu;
 	u8		random[8], resp[258];
 	int		r;
@@ -894,7 +893,7 @@ gpk_verify(struct sc_card *card, unsigned int type, int ref,
 static int
 gpk_erase_card(struct sc_card *card)
 {
-	struct gpk_private_data *priv = OPSDATA(card);
+	struct gpk_private_data *priv = DRVDATA(card);
 	struct sc_apdu	apdu;
 	u8	offset;
 	int		r;
@@ -946,7 +945,7 @@ gpk_erase_card(struct sc_card *card)
 static int
 gpk_lock(struct sc_card *card, struct sc_cardctl_gpk_lock *args)
 {
-	struct gpk_private_data *priv = OPSDATA(card);
+	struct gpk_private_data *priv = DRVDATA(card);
 	struct sc_file	*file = args->file;
 	struct sc_apdu	apdu;
 	u8		data[8], crycks[3], resp[3];
@@ -1031,7 +1030,7 @@ gpk_pkfile_init(struct sc_card *card, struct sc_cardctl_gpk_pkinit *args)
 static int
 gpk_pkfile_load(struct sc_card *card, struct sc_cardctl_gpk_pkload *args)
 {
-	struct gpk_private_data *priv = OPSDATA(card);
+	struct gpk_private_data *priv = DRVDATA(card);
 	des_key_schedule k1, k2;
 	struct sc_apdu	apdu;
 	unsigned int	n;

@@ -695,7 +695,7 @@ static int iso7816_restore_security_env(struct sc_card *card, int se_num)
 {
 	struct sc_apdu apdu;
 	int r;
-	u8 rbuf[MAX_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	
 	assert(card != NULL);
 
@@ -713,8 +713,8 @@ static int iso7816_compute_signature(struct sc_card *card,
 {
 	int r;
 	struct sc_apdu apdu;
-	u8 rbuf[MAX_BUFFER_SIZE];
-	u8 sbuf[MAX_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	assert(card != NULL && data != NULL && out != NULL);
 	if (datalen > 255)
@@ -786,10 +786,10 @@ static int iso7816_reset_retry_counter(struct sc_card *card, unsigned int type, 
 				       size_t newlen)
 {
 	struct sc_apdu apdu;
-	u8 sbuf[MAX_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r, p1 = 0, len = puklen + newlen;
 
-	if (len >= MAX_BUFFER_SIZE)
+	if (len >= SC_MAX_APDU_BUFFER_SIZE)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	switch (type) {
 	case SC_AC_CHV:
@@ -827,7 +827,6 @@ static struct sc_card_operations iso_ops = {
 };
 
 static const struct sc_card_driver iso_driver = {
-	NULL,
 	"ISO 7816 reference driver",
 	"iso7816",
 	&iso_ops

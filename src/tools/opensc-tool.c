@@ -77,8 +77,10 @@ int list_readers(void)
 		return 0;
 	}
 	printf("Configured readers:\n");
+	printf("Nr.    Driver     Name\n");
 	for (i = 0; i < ctx->reader_count; i++) {
-		printf("  %d - %s\n", i, ctx->readers[i]);
+		printf("%-7d%-11s%s\n", i, ctx->reader[i]->driver->short_name,
+		       ctx->reader[i]->name);
 	}
 	return 0;
 }
@@ -150,10 +152,10 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 		printf("  ");
 	if (file->type == SC_FILE_TYPE_DF)
 		for (r = 0; r < sizeof(ac_ops_df)/sizeof(ac_ops_df[0]); r++)
-			printf("%s[%s] ", ac_ops_df[r], acl_to_str(file->acl[r]));
+			printf("%s[%s] ", ac_ops_df[r], acl_to_str(sc_file_get_acl_entry(file, r)));
 	else
 		for (r = 0; r < sizeof(ac_ops_ef)/sizeof(ac_ops_ef[0]); r++)
-			printf("%s[%s] ", ac_ops_ef[r], acl_to_str(file->acl[r]));
+			printf("%s[%s] ", ac_ops_ef[r], acl_to_str(sc_file_get_acl_entry(file, r)));
 
 	if (file->sec_attr_len) {
 		printf("sec: ");
@@ -194,7 +196,7 @@ int enum_dir(struct sc_path path, int depth)
 {
 	struct sc_file *file;
 	int r, file_type;
-	u8 files[MAX_BUFFER_SIZE];
+	u8 files[SC_MAX_APDU_BUFFER_SIZE];
 
 	r = sc_select_file(card, &path, &file);
 	if (r) {
@@ -237,8 +239,8 @@ int list_files(void)
 int send_apdu(void)
 {
 	struct sc_apdu apdu;
-	u8 buf[MAX_BUFFER_SIZE], sbuf[MAX_BUFFER_SIZE],
-	   rbuf[MAX_BUFFER_SIZE], *p;
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE],
+	   rbuf[SC_MAX_APDU_BUFFER_SIZE], *p;
 	size_t len, len0, r;
 	int c;
 
@@ -398,7 +400,7 @@ int main(int argc, char * const argv[])
 		err = 1;
 		goto end;
 	}
-	if (sc_detect_card(ctx, opt_reader) != 1) {
+	if (sc_detect_card_presence(ctx->reader[opt_reader], 0) != 1) {
 		fprintf(stderr, "Card not present.\n");
 		err = 3;
 		goto end;
@@ -412,8 +414,8 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (!quiet)
-		fprintf(stderr, "Connecting to card in reader %s...\n", ctx->readers[opt_reader]);
-	r = sc_connect_card(ctx, opt_reader, &card);
+		fprintf(stderr, "Connecting to card in reader %s...\n", ctx->reader[opt_reader]->name);
+	r = sc_connect_card(ctx->reader[opt_reader], 0, &card);
 	if (r) {
 		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
 		err = 1;
@@ -445,7 +447,7 @@ int main(int argc, char * const argv[])
 end:
 	if (card) {
 		sc_unlock(card);
-		sc_disconnect_card(card);
+		sc_disconnect_card(card, 0);
 	}
 	if (ctx)
 		sc_destroy_context(ctx);

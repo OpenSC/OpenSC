@@ -33,12 +33,7 @@
 /* Internal use only */
 int sc_check_sw(struct sc_card *card, int sw1, int sw2);
 size_t sc_count_bit_string_size(const void * buf, size_t bufsize);
-
-/* Default timeout value for SCardGetStatusChange */
-#ifndef SC_CUSTOM_STATUS_TIMEOUT
-#define SC_STATUS_TIMEOUT 0
-#else
-#define SC_STATUS_TIMEOUT SC_CUSTOM_STATUS_TIMEOUT
-#endif
+int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader);
+struct sc_slot_info * _sc_get_slot_info(struct sc_reader *reader, int slot_id);
 
 #endif

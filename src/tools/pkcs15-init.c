@@ -196,7 +196,7 @@ main(int argc, char **argv)
 
 done:	if (card) {
 		sc_unlock(card);
-		sc_disconnect_card(card);
+		sc_disconnect_card(card, 0);
 	}
 	sc_destroy_context(ctx);
 	return r? 1 : 0;
@@ -235,16 +235,16 @@ connect(int reader)
 			ctx->reader_count == 1? "" : "s");
 		return 0;
 	}
-	if (sc_detect_card(ctx, reader) != 1) {
+	if (sc_detect_card_presence(ctx->reader[reader], 0) != 1) {
 		error("Card not present.\n");
 		return 0;
 	}
 	if (!opt_quiet) {
 		printf("Connecting to card in reader %s...\n",
-		       	ctx->readers[reader]);
+		       	ctx->reader[reader]->name);
 	}
 
-	r = sc_connect_card(ctx, reader, &card);
+	r = sc_connect_card(ctx->reader[reader], 0, &card);
 	if (r) {
 		error("Failed to connect to card: %s\n", sc_strerror(r));
 		return 0;

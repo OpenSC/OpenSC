@@ -475,7 +475,7 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 int sc_pkcs15_bind(struct sc_card *card,
 		   struct sc_pkcs15_card **p15card_out)
 {
-	unsigned char buf[MAX_BUFFER_SIZE];
+	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
 	int err, len;
 	struct sc_pkcs15_card *p15card = NULL;
 	struct sc_path tmppath;

@@ -23,7 +23,6 @@
 
 static struct sc_card_operations default_ops;
 static const struct sc_card_driver default_drv = {
-	NULL,
 	"Default driver for unknown cards",
 	"default",
 	&default_ops
@@ -101,7 +100,7 @@ static int default_init(struct sc_card *card)
 {
 	int r;
 	
-	card->ops_data = NULL;
+	card->drv_data = NULL;
 	r = autodetect_class(card);
 	if (r) {
 		error(card->ctx, "unable to determine the right class byte\n");

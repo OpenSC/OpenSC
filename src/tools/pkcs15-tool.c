@@ -460,13 +460,13 @@ int main(int argc, char * const argv[])
 		err = 1;
 		goto end;
 	}
-	if (sc_detect_card(ctx, opt_reader) != 1) {
+	if (sc_detect_card_presence(ctx->reader[opt_reader], 0) != 1) {
 		fprintf(stderr, "Card not present.\n");
 		return 3;
 	}
 	if (!quiet)
-		fprintf(stderr, "Connecting to card in reader %s...\n", ctx->readers[opt_reader]);
-	r = sc_connect_card(ctx, opt_reader, &card);
+		fprintf(stderr, "Connecting to card in reader %s...\n", ctx->reader[opt_reader]->name);
+	r = sc_connect_card(ctx->reader[opt_reader], 0, &card);
 	if (r) {
 		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
 		err = 1;
@@ -526,7 +526,7 @@ end:
 		sc_pkcs15_unbind(p15card);
 	if (card) {
 		sc_unlock(card);
-		sc_disconnect_card(card);
+		sc_disconnect_card(card, 0);
 	}
 	if (ctx)
 		sc_destroy_context(ctx);

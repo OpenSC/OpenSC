@@ -33,7 +33,6 @@ static const char *setec_atrs[] = {
 
 static struct sc_card_operations setec_ops;
 static const struct sc_card_driver setec_drv = {
-	NULL,
 	"Setec smartcards",
 	"setec",
 	&setec_ops
@@ -70,7 +69,7 @@ static int setec_match_card(struct sc_card *card)
 
 static int setec_init(struct sc_card *card)
 {
-	card->ops_data = NULL;
+	card->drv_data = NULL;
 	card->cla = 0x00;
 
 	return 0;

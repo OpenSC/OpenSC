@@ -23,7 +23,6 @@
 
 static struct sc_card_operations emv_ops;
 static const struct sc_card_driver emv_drv = {
-	NULL,
 	"EMV compatible cards",
 	"emv",
 	&emv_ops
@@ -117,7 +116,7 @@ static int emv_match_card(struct sc_card *card)
 
 static int emv_init(struct sc_card *card)
 {
-	card->ops_data = NULL;
+	card->drv_data = NULL;
 	card->cla = 0x00;
 
 	return 0;

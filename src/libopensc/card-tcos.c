@@ -28,7 +28,6 @@ static const char *tcos_atrs[] = {
 
 static struct sc_card_operations tcos_ops;
 static const struct sc_card_driver tcos_drv = {
-	NULL,
 	"TCOS 2.0 cards",
 	"tcos",
 	&tcos_ops
@@ -65,7 +64,7 @@ static int tcos_match_card(struct sc_card *card)
 
 static int tcos_init(struct sc_card *card)
 {
-	card->ops_data = NULL;
+	card->drv_data = NULL;
 	card->cla = 0x00;
 
 	return 0;

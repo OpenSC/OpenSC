@@ -67,34 +67,42 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 	return err;
 }
 
-int sc_detect_card(struct sc_context *ctx, int reader)
+int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader)
 {
-	LONG ret;
-	SCARD_READERSTATE_A rgReaderStates[SC_MAX_READERS];
-
-	assert(ctx != NULL);
-	SC_FUNC_CALLED(ctx, 1);
-	if (reader >= ctx->reader_count || reader < 0)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	rgReaderStates[0].szReader = ctx->readers[reader];
-	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
-	rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
-	ret = SCardGetStatusChange(ctx->pcsc_ctx, SC_STATUS_TIMEOUT, rgReaderStates, 1);
-	if (ret != 0) {
-		error(ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(ret));
-		SC_FUNC_RETURN(ctx, 1, -1);	/* FIXME */
-	}
-	if (rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT) {
-		if (ctx->debug >= 1)
-			debug(ctx, "card present\n");
-		return 1;
-	}
-	if (ctx->debug >= 1)
-		debug(ctx, "card absent\n");
+	assert(reader != NULL);
+	reader->ctx = ctx;
+	if (ctx->reader_count == SC_MAX_READERS)
+		return SC_ERROR_TOO_MANY_OBJECTS;
+	ctx->reader[ctx->reader_count] = reader;
+	ctx->reader_count++;
+	
 	return 0;
 }
 
+struct sc_slot_info * _sc_get_slot_info(struct sc_reader *reader, int slot_id)
+{
+	assert(reader != NULL);
+	if (slot_id > reader->slot_count)
+		return NULL;
+	return &reader->slot[slot_id];
+}
+
+int sc_detect_card_presence(struct sc_reader *reader, int slot_id)
+{
+	int r;
+	struct sc_slot_info *slot = _sc_get_slot_info(reader, slot_id);
+	
+	if (slot == NULL)
+		SC_FUNC_RETURN(reader->ctx, 0, SC_ERROR_SLOT_NOT_FOUND);
+	SC_FUNC_CALLED(reader->ctx, 1);
+	if (reader->ops->detect_card_presence == NULL)
+		SC_FUNC_RETURN(reader->ctx, 0, SC_ERROR_NOT_SUPPORTED);
+	
+	r = reader->ops->detect_card_presence(reader, slot);
+	SC_FUNC_RETURN(reader->ctx, 1, r);
+}
+
+#if 0
 int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout)
 {
 	LONG ret;
@@ -132,14 +140,11 @@ int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout)
 	}
 	SC_FUNC_RETURN(ctx, 1, 0);
 }
+#endif
 
 int sc_establish_context(struct sc_context **ctx_out)
 {
 	struct sc_context *ctx;
-	LONG rv;
-	DWORD reader_buf_size;
-	char *reader_buf, *p;
-	LPCSTR mszGroups = NULL;
 	int i;
 
 	assert(ctx_out != NULL);
@@ -148,32 +153,21 @@ int sc_establish_context(struct sc_context **ctx_out)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(ctx, 0, sizeof(struct sc_context));
 	ctx->log_errors = 1;
-	rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL, "localhost", NULL,
-				   &ctx->pcsc_ctx);
-	if (rv != SCARD_S_SUCCESS) {
-		free(ctx);
-		return SC_ERROR_CONNECTING_TO_RES_MGR;
-	}
-	SCardListReaders(ctx->pcsc_ctx, NULL, NULL,
-			 (LPDWORD) &reader_buf_size);
-	if (reader_buf_size < 2) {
-		free(ctx);
-		return SC_ERROR_NO_READERS_FOUND;
-	}
-	reader_buf = (char *) malloc(sizeof(char) * reader_buf_size);
-	SCardListReaders(ctx->pcsc_ctx, mszGroups, reader_buf,
-			 (LPDWORD) &reader_buf_size);
-	p = reader_buf;
-	ctx->reader_count = 0;
-	do {
-		ctx->readers[ctx->reader_count] = strdup(p);
-		ctx->reader_count++;
-		while (*p++ != 0);
-		if (ctx->reader_count == SC_MAX_READERS)
-			break;
-	} while (p < (reader_buf + reader_buf_size - 1));
-	free(reader_buf);
+
 	pthread_mutex_init(&ctx->mutex, NULL);
+
+	for (i = 0; i < SC_MAX_READER_DRIVERS+1; i++)
+		ctx->reader_drivers[i] = NULL;
+	i = 0;
+#if 1
+	ctx->reader_drivers[i++] = sc_get_pcsc_driver();
+#endif
+	i = 0;
+	while (ctx->reader_drivers[i] != NULL) {
+		ctx->reader_drivers[i]->ops->init(ctx, &ctx->reader_drv_data[i]);
+		i++;
+	}
+
 	ctx->forced_driver = NULL;
 	for (i = 0; i < SC_MAX_CARD_DRIVERS+1; i++)
 		ctx->card_drivers[i] = NULL;
@@ -208,11 +202,21 @@ int sc_destroy_context(struct sc_context *ctx)
 
 	assert(ctx != NULL);
 	SC_FUNC_CALLED(ctx, 1);
-	for (i = 0; i < ctx->reader_count; i++)
-		free(ctx->readers[i]);
+	for (i = 0; i < ctx->reader_count; i++) {
+		struct sc_reader *rdr = ctx->reader[i];
+		
+		if (rdr->ops->release != NULL)
+			rdr->ops->release(rdr);
+		free(rdr->name);
+		free(rdr);
+	}
+	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
+		const struct sc_reader_driver *drv = ctx->reader_drivers[i];
+		
+		if (drv->ops->finish != NULL)
+			drv->ops->finish(ctx->reader_drv_data[i]);
+	}
 	ctx->debug_file = ctx->error_file = NULL;
-	SCardReleaseContext(ctx->pcsc_ctx);
-	ctx->pcsc_ctx = 0;
 	free(ctx);
 	return 0;
 }
@@ -335,6 +339,8 @@ const char *sc_strerror(int error)
 		"Record not found",
 		"Internal error",
 		"Invalid CLA byte in APDU",
+		"Slot not found",
+		"Slot already connected",
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);
 

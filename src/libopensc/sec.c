@@ -29,8 +29,8 @@ int sc_decipher(struct sc_card *card,
 {
 	int r;
 	struct sc_apdu apdu;
-	u8 rbuf[MAX_BUFFER_SIZE];
-	u8 sbuf[MAX_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	assert(card != NULL && crgram != NULL && out != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);

@@ -35,7 +35,6 @@ struct flex_private_data {
 
 static struct sc_card_operations flex_ops;
 static const struct sc_card_driver flex_drv = {
-	NULL,
 	"Schlumberger Multiflex/Cryptoflex",
 	"slb",
 	&flex_ops
@@ -43,7 +42,7 @@ static const struct sc_card_driver flex_drv = {
 
 static int flex_finish(struct sc_card *card)
 {
-	free(card->ops_data);
+	free(card->drv_data);
 	return 0;
 }
 
@@ -73,8 +72,8 @@ static int flex_match_card(struct sc_card *card)
 
 static int flex_init(struct sc_card *card)
 {
-	card->ops_data = malloc(sizeof(struct flex_private_data));;
-	if (card->ops_data == NULL)
+	card->drv_data = malloc(sizeof(struct flex_private_data));;
+	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->cla = 0xC0;
 
@@ -580,7 +579,7 @@ static int flex_set_security_env(struct sc_card *card,
 				 const struct sc_security_env *env,
 				 int se_num)   
 {
-	struct flex_private_data *prv = (struct flex_private_data *) card->ops_data;
+	struct flex_private_data *prv = (struct flex_private_data *) card->drv_data;
 
 	if (env->operation != SC_SEC_OPERATION_SIGN) {
 		error(card->ctx, "Invalid crypto operation supplied.\n");
@@ -614,7 +613,7 @@ static int flex_restore_security_env(struct sc_card *card, int se_num)
 static int flex_compute_signature(struct sc_card *card, const u8 *data,
 				  size_t data_len, u8 * out, size_t outlen)
 {
-	struct flex_private_data *prv = (struct flex_private_data *) card->ops_data;
+	struct flex_private_data *prv = (struct flex_private_data *) card->drv_data;
 	struct sc_apdu apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int i, r;

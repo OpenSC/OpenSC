@@ -30,20 +30,6 @@ int sc_check_sw(struct sc_card *card, int sw1, int sw2)
 	return card->ops->check_sw(card, sw1, sw2);
 }
 
-static int _sc_pcscret_to_error(long rv)
-{
-	switch (rv) {
-	case SCARD_W_REMOVED_CARD:
-		return SC_ERROR_CARD_REMOVED;
-	case SCARD_W_RESET_CARD:
-		return SC_ERROR_CARD_RESET;
-	case SCARD_E_NOT_TRANSACTED:
-		return SC_ERROR_TRANSMIT_FAILED;
-	default:
-		return SC_ERROR_UNKNOWN;
-	}
-}
-
 static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 {
 	if (apdu->le > 256) {
@@ -103,43 +89,18 @@ static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 	return 0;
 }
 
-static unsigned int pcsc_proto_to_opensc(DWORD proto)
-{
-	switch (proto) {
-	case SCARD_PROTOCOL_T0:
-		return SC_PROTO_T0;
-	case SCARD_PROTOCOL_T1:
-		return SC_PROTO_T1;
-	case SCARD_PROTOCOL_RAW:
-		return SC_PROTO_RAW;
-	default:
-		return 0;
-	}
-}
-
-static DWORD opensc_proto_to_pcsc(unsigned int proto)
-{
-	switch (proto) {
-	case SC_PROTO_T0:
-		return SCARD_PROTOCOL_T0;
-	case SC_PROTO_T1:
-		return SCARD_PROTOCOL_T1;
-	case SC_PROTO_RAW:
-		return SCARD_PROTOCOL_RAW;
-	default:
-		return 0;
-	}
-}
-
 static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 {
-	SCARD_IO_REQUEST sSendPci, sRecvPci;
-	BYTE s[SC_MAX_APDU_BUFFER_SIZE], r[SC_MAX_APDU_BUFFER_SIZE];
-	DWORD dwSendLength, dwRecvLength;
-	LONG rv;
-	u8 *data = s;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	size_t sendsize, recvsize;
+	u8 *data = sbuf;
 	size_t data_bytes = apdu->lc;
+	int r;
 
+	if (card->reader->ops->transmit == NULL)
+		return SC_ERROR_NOT_SUPPORTED;
+	assert(card->reader->ops->transmit != NULL);
 	if (data_bytes == 0)
 		data_bytes = 256;
 	*data++ = apdu->cla;
@@ -176,51 +137,30 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 			*data++ = (u8) apdu->le;
 		break;
 	}
-
-	sSendPci.dwProtocol = opensc_proto_to_pcsc(card->protocol);
-	sSendPci.cbPciLength = 0;
-	sRecvPci.dwProtocol = opensc_proto_to_pcsc(card->protocol);
-	sRecvPci.cbPciLength = 0;
-
-	dwSendLength = data - s;
-	dwRecvLength = apdu->resplen + 2;
-	if (dwRecvLength > 255)		/* FIXME: PC/SC Lite quirk */
-		dwRecvLength = 255;
+	sendsize = data - sbuf;
+	recvsize = apdu->resplen + 2;	/* space for the SW's */
 	if (card->ctx->debug >= 5) {
 		char buf[2048];
 		
-		sc_hex_dump(card->ctx, s, (size_t) dwSendLength, buf, sizeof(buf));
+		sc_hex_dump(card->ctx, sbuf, sendsize, buf, sizeof(buf));
 		debug(card->ctx, "Sending %d bytes (resp. %d bytes):\n%s",
-			dwSendLength, dwRecvLength, buf);
+			sendsize, recvsize, buf);
 	}
-	rv = SCardTransmit(card->pcsc_card, &sSendPci, s, dwSendLength,
-			   &sRecvPci, r, &dwRecvLength);
-	if (rv != SCARD_S_SUCCESS) {
-		switch (rv) {
-		case SCARD_W_REMOVED_CARD:
-			return SC_ERROR_CARD_REMOVED;
-		case SCARD_W_RESET_CARD:
-			return SC_ERROR_CARD_RESET;
-		case SCARD_E_NOT_TRANSACTED:
-			if (sc_detect_card(card->ctx, card->reader) != 1)
-				return SC_ERROR_CARD_REMOVED;
-			return SC_ERROR_TRANSMIT_FAILED;
-		default:
-			error(card->ctx, "SCardTransmit failed: %s\n", pcsc_stringify_error(rv));
-			return SC_ERROR_TRANSMIT_FAILED;
-		}
-	}
-	if (dwRecvLength < 2)
-		return SC_ERROR_ILLEGAL_RESPONSE;
-	apdu->sw1 = (unsigned int) r[dwRecvLength-2];
-	apdu->sw2 = (unsigned int) r[dwRecvLength-1];
-	dwRecvLength -= 2;
-	if ((size_t) dwRecvLength > apdu->resplen)
-		dwRecvLength = (DWORD) apdu->resplen;
+	r = card->reader->ops->transmit(card->reader, card->slot, sbuf,
+					sendsize, rbuf, &recvsize);
+	memset(sbuf, 0, sendsize);
+	SC_TEST_RET(card->ctx, r, "Unable to transmit");
+
+	assert(recvsize >= 2);
+	apdu->sw1 = (unsigned int) rbuf[recvsize-2];
+	apdu->sw2 = (unsigned int) rbuf[recvsize-1];
+	recvsize -= 2;
+	if (recvsize > apdu->resplen)
+		recvsize = apdu->resplen;
 	else
-		apdu->resplen = (size_t) dwRecvLength;
-	if (dwRecvLength > 0)
-		memcpy(apdu->resp, r, (size_t) dwRecvLength);
+		apdu->resplen = recvsize;
+	if (recvsize > 0)
+		memcpy(apdu->resp, rbuf, recvsize);
 
 	return 0;
 }
@@ -264,7 +204,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	}
 	if (apdu->sw1 == 0x61 && apdu->resplen == 0) {
 		struct sc_apdu rspapdu;
-		BYTE rsp[SC_MAX_APDU_BUFFER_SIZE];
+		u8 rsp[SC_MAX_APDU_BUFFER_SIZE];
 
 		if (orig_resplen == 0) {
 			apdu->sw1 = 0x90;	/* FIXME: should we do this? */
@@ -361,58 +301,36 @@ static void sc_card_free(struct sc_card *card)
 	free(card);
 }
 
-int sc_connect_card(struct sc_context *ctx,
-		    int reader, struct sc_card **card_out)
+int sc_connect_card(struct sc_reader *reader, int slot_id,
+		    struct sc_card **card_out)
 {
 	struct sc_card *card;
-	DWORD active_proto;
-	SCARDHANDLE card_handle;
-	SCARD_READERSTATE_A rgReaderStates[SC_MAX_READERS];
-	LONG rv;
-	int i, r = 0;
+	struct sc_context *ctx = reader->ctx;
+	struct sc_slot_info *slot = _sc_get_slot_info(reader, slot_id);
+	int i, r = 0, connected = 0;
 
 	assert(card_out != NULL);
 	SC_FUNC_CALLED(ctx, 1);
-	if (reader >= ctx->reader_count || reader < 0)
-		SC_FUNC_RETURN(ctx, 1, SC_ERROR_OBJECT_NOT_FOUND);
-	
-	rgReaderStates[0].szReader = ctx->readers[reader];
-	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
-	rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
-	rv = SCardGetStatusChange(ctx->pcsc_ctx, SC_STATUS_TIMEOUT, rgReaderStates, 1);
-	if (rv != 0) {
-		error(ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(rv));
-		SC_FUNC_RETURN(ctx, 1, SC_ERROR_RESOURCE_MANAGER);	/* FIXME */
-	}
-	if (!(rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT))
-		SC_FUNC_RETURN(ctx, 1, SC_ERROR_CARD_NOT_PRESENT);
+	if (reader->ops->connect == NULL)
+		SC_FUNC_RETURN(ctx, 0, SC_ERROR_NOT_SUPPORTED);
+	if (slot == NULL)
+		SC_FUNC_RETURN(ctx, 0, SC_ERROR_SLOT_NOT_FOUND);
 
 	card = sc_card_new();
 	if (card == NULL)
 		SC_FUNC_RETURN(ctx, 1, SC_ERROR_OUT_OF_MEMORY);
-	rv = SCardConnect(ctx->pcsc_ctx, ctx->readers[reader],
-			  SCARD_SHARE_SHARED, SCARD_PROTOCOL_ANY,
-			  &card_handle, &active_proto);
-	if (rv != 0) {
-		error(ctx, "SCardConnect failed: %s\n", pcsc_stringify_error(rv));
-		r = -1;		/* FIXME: invent a real error value */
+	r = reader->ops->connect(reader, slot);
+	if (r)
 		goto err;
-	}
-	card->protocol = pcsc_proto_to_opensc(active_proto);
-	if (card->protocol == 0) {
-		error(ctx, "Unknown protocol (%X) selected.\n", active_proto);
-		r = SC_ERROR_RESOURCE_MANAGER;
-		goto err;
-	}
+	connected = 1;
+
 	card->reader = reader;
+	card->slot = slot;
 	card->ctx = ctx;
-	card->pcsc_card = card_handle;
-	i = rgReaderStates[0].cbAtr;
-	if (i >= SC_MAX_ATR_SIZE)
-		i = SC_MAX_ATR_SIZE;
-	memcpy(card->atr, rgReaderStates[0].rgbAtr, i);
-	card->atr_len = i;
-	
+
+	memcpy(card->atr, slot->atr, slot->atr_len);
+	card->atr_len = slot->atr_len;
+
 	if (ctx->forced_driver != NULL) {
 		card->driver = ctx->forced_driver;
 		memcpy(card->ops, card->driver->ops, sizeof(struct sc_card_operations));
@@ -425,7 +343,7 @@ int sc_connect_card(struct sc_context *ctx,
 			}
 		}
 	} else for (i = 0; ctx->card_drivers[i] != NULL; i++) {
-                const struct sc_card_driver *drv = ctx->card_drivers[i];
+		const struct sc_card_driver *drv = ctx->card_drivers[i];
 		const struct sc_card_operations *ops = drv->ops;
 		int r;
 		
@@ -466,7 +384,7 @@ err:
 	SC_FUNC_RETURN(ctx, 1, r);
 }
 
-int sc_disconnect_card(struct sc_card *card)
+int sc_disconnect_card(struct sc_card *card, int action)
 {
 	struct sc_context *ctx;
 	assert(sc_card_valid(card));
@@ -476,28 +394,17 @@ int sc_disconnect_card(struct sc_card *card)
 	if (card->ops->finish) {
 		int r = card->ops->finish(card);
 		if (r)
-			error(card->ctx, "driver finish() failed: %s\n",
+			error(card->ctx, "card driver finish() failed: %s\n",
+			      sc_strerror(r)); 
+	}
+	if (card->reader->ops->disconnect) {
+		int r = card->reader->ops->disconnect(card->reader, card->slot, action);
+		if (r)
+			error(card->ctx, "disconnect() failed: %s\n",
 			      sc_strerror(r));
 	}
-	SCardDisconnect(card->pcsc_card, SCARD_LEAVE_CARD);
 	sc_card_free(card);
 	SC_FUNC_RETURN(ctx, 1, 0);
-}
-
-/* internal lock function -- should make sure that the card is exclusively
- * in our use */
-static int _sc_lock_int(struct sc_card *card)
-{
-	long rv;
-
-	rv = SCardBeginTransaction(card->pcsc_card);
-	
-	if (rv != SCARD_S_SUCCESS) {
-		error(card->ctx, "SCardBeginTransaction failed: %s\n", pcsc_stringify_error(rv));
-		return _sc_pcscret_to_error(rv);
-	}
-	card->cache_valid = 1;
-	return 0;
 }
 
 int sc_lock(struct sc_card *card)
@@ -507,27 +414,16 @@ int sc_lock(struct sc_card *card)
 	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
 	pthread_mutex_lock(&card->mutex);
-	if (card->lock_count == 0)
-		r = _sc_lock_int(card);
+	if (card->lock_count == 0) {
+		if (card->reader->ops->lock != NULL)
+			r = card->reader->ops->lock(card->reader, card->slot);
+		if (r == 0)
+			card->cache_valid = 1;
+	}
 	if (r == 0)
 		card->lock_count++;
 	pthread_mutex_unlock(&card->mutex);
 	SC_FUNC_RETURN(card->ctx, 2, r);
-}
-
-/* internal unlock function */
-static int _sc_unlock_int(struct sc_card *card)
-{
-	long rv;
-	
-	rv = SCardEndTransaction(card->pcsc_card, SCARD_LEAVE_CARD);
-	if (rv != SCARD_S_SUCCESS) {
-		error(card->ctx, "SCardEndTransaction failed: %s\n", pcsc_stringify_error(rv));
-		return -1;
-	}
-	card->cache_valid = 0;
-	memset(&card->cache, 0, sizeof(card->cache));
-	return 0;
 }
 
 int sc_unlock(struct sc_card *card)
@@ -539,8 +435,12 @@ int sc_unlock(struct sc_card *card)
 	pthread_mutex_lock(&card->mutex);
 	card->lock_count--;
 	assert(card->lock_count >= 0);
-	if (card->lock_count == 0)
-		r = _sc_unlock_int(card);
+	if (card->lock_count == 0) {
+		if (card->reader->ops->unlock != NULL)
+			r = card->reader->ops->unlock(card->reader, card->slot);
+		card->cache_valid = 0;
+		memset(&card->cache, 0, sizeof(card->cache));
+	}
 	pthread_mutex_unlock(&card->mutex);
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
