@@ -31,6 +31,10 @@ filesystem {
         DF PKCS15-AppDF {
 	    size		= 2048;
 
+	    # Prevent unauthorized updates of basic security
+	    # objects via PUT DATA OCI.
+	    ACL			= UPDATE=NEVER;
+
 	    # Bump the size of the EF(PrKDF) - with split
 	    # keys, we may need a little more room.
 	    EF PKCS15-PrKDF {
