@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	printf("found.\n");
-	sc_pkcs15_print_card(p15card);
+	sc_test_print_card(p15card);
 
 	dump_objects("PIN codes", SC_PKCS15_TYPE_AUTH_PIN);
 	dump_objects("Private keys", SC_PKCS15_TYPE_PRKEY);
