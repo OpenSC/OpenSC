@@ -351,6 +351,14 @@ struct sc_pin_cmd_data {
 	struct sc_apdu *apdu;		/* APDU of the PIN command */
 };
 
+/* structure for the card serial number (normally the ICCSN) */
+#define SC_MAX_SERIALNR		32
+
+typedef struct sc_serial_number {
+	u8 value[SC_MAX_SERIALNR];
+	size_t len;
+} sc_serial_number_t;
+
 #define SC_DISCONNECT			0
 #define SC_DISCONNECT_AND_RESET		1
 #define SC_DISCONNECT_AND_UNPOWER	2
@@ -459,6 +467,8 @@ struct sc_card {
 
 	struct sc_card_cache cache;
 	int cache_valid;
+
+	sc_serial_number_t serialnr;
 
 	sc_mutex_t *mutex;
 

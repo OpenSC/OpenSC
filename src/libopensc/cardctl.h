@@ -32,6 +32,7 @@ enum {
 	SC_CARDCTL_GET_DEFAULT_KEY,
 	SC_CARDCTL_LIFECYCLE_GET,
 	SC_CARDCTL_LIFECYCLE_SET,
+	SC_CARDCTL_GET_SERIALNR,
 
 	/*
 	 * GPK specific calls
@@ -72,10 +73,9 @@ enum {
 	SC_CARDCTL_ETOKEN_GENERATE_KEY,
 
 	/*
-	 * Starcos specific calls
+	 * Starcos SPK 2.3 specific calls
 	 */
 	SC_CARDCTL_STARCOS_BASE = _CTL_PREFIX('S', 'T', 'A'),
-	/* some Starcos SPK 2.3 specific commands */
 	SC_CARDCTL_STARCOS_CREATE_FILE,
 	SC_CARDCTL_STARCOS_CREATE_END,
 	SC_CARDCTL_STARCOS_WRITE_KEY,

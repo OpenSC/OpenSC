@@ -39,11 +39,12 @@ static struct sc_card_operations *iso_ops = NULL;
 static struct sc_card_driver starcos_drv = {
 	"driver for STARCOS SPK 2.3 cards",
 	"starcos",
-	&starcos_ops
+	&starcos_ops,
+	NULL, 0
 };
 
 
-const static struct sc_card_error starcos_errors[] = 
+static const struct sc_card_error starcos_errors[] = 
 {
 	{ 0x6600, SC_ERROR_INCORRECT_PARAMETERS, "Error setting the security env"},
 	{ 0x66F0, SC_ERROR_INCORRECT_PARAMETERS, "No space left for padding"},
@@ -545,8 +546,6 @@ static int starcos_select_file(struct sc_card *card,
 	}
 	else
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
-  
-	SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INTERNAL);
 }
 
 #define STARCOS_AC_ALWAYS	0x9f
@@ -584,7 +583,7 @@ static int starcos_process_acl(struct sc_card *card, struct sc_file *file,
 {
 	int    r;
 	u8     tmp, *p;
-	const static u8 def_key[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
+	static const u8 def_key[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
 
 	if (file->type == SC_FILE_TYPE_DF && file->id == 0x3f00) {
 		p    = data->data.mf.header;
@@ -1341,6 +1340,39 @@ static int starcos_check_sw(struct sc_card *card, int sw1, int sw2)
 	return iso_ops->check_sw(card, sw1, sw2);
 }
 
+static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
+{
+	int r;
+	u8  rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	struct sc_apdu apdu;
+
+	if (!serial)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	/* see if we have cached serial number */
+	if (card->serialnr.len) {
+		memcpy(serial, &card->serialnr, sizeof(*serial));
+		return SC_SUCCESS;
+	}
+	/* get serial number via GET CARD DATA */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xf6, 0x00, 0x00);
+	apdu.cla |= 0x80;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le   = 256;
+	apdu.lc   = 0;
+	apdu.datalen = 0;
+        r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+		return SC_ERROR_INTERNAL;
+	/* cache serial number */
+	memcpy(card->serialnr.value, apdu.resp, apdu.resplen);
+	card->serialnr.len = apdu.resplen;
+	/* copy and return serial number */
+	memcpy(serial, &card->serialnr, sizeof(*serial));
+	return SC_SUCCESS;
+}
+
 static int starcos_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
 	sc_starcos_create_data *tmp;
@@ -1365,10 +1397,11 @@ static int starcos_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		return starcos_gen_key(card, (sc_starcos_gen_key_data *)ptr);
 	case SC_CARDCTL_ERASE_CARD:
 		return starcos_erase_card(card);
+	case SC_CARDCTL_GET_SERIALNR:
+		return starcos_get_serialnr(card, (sc_serial_number_t *)ptr);
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-	return SC_ERROR_NOT_SUPPORTED;
 }
 
 static int starcos_logout(struct sc_card *card)
@@ -1380,7 +1413,7 @@ static int starcos_logout(struct sc_card *card)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C);
 	apdu.le = 0;
 	apdu.lc = 2;
-	apdu.data    = (u8*)mf_buf;
+	apdu.data    = mf_buf;
 	apdu.datalen = 2;
 	apdu.resplen = 0;
 	

@@ -20,6 +20,7 @@
 
 #include "internal.h"
 #include "pkcs15.h"
+#include "cardctl.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -62,7 +63,7 @@ const pindata pins[] = {
 	  8, 8, SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_LOCAL, 
 	  3, 0x00, 
 	  SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
-	{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0}
+	{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
 typedef struct prdata_st {
@@ -119,11 +120,11 @@ int get_cert_len(sc_card_t *card, sc_path_t *path)
 int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 {
 	int    r, i;
-	struct sc_apdu apdu;
-	u8     rbuf[SC_MAX_APDU_BUFFER_SIZE], buf[256];
+	u8     buf[256];
 	struct sc_path path;
 	struct sc_file *file = NULL;
 	struct sc_card *card = p15card->card;
+	struct sc_serial_number serial;
 
 	/* check if we have the correct card OS */
 	if (strcmp(card->name, "StarCOS"))
@@ -140,21 +141,9 @@ int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 		return SC_ERROR_WRONG_CARD;
 	if (memcmp(buf + 24, STARCERT, strlen(STARCERT))) 
 		return SC_ERROR_WRONG_CARD;
-	/* use Starcos command GET CARD DATA to determine the
-	 * serial number of the card.
-	 */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xf6, 0x00, 0x00);
-	apdu.cla |= 0x80;
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.le   = 256;
-	apdu.lc   = 0;
-	apdu.datalen = 0;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
-		return SC_ERROR_INTERNAL;
-	r = sc_bin_to_hex(apdu.resp, apdu.resplen, buf, sizeof(buf), 0);
+	/* get serial number */
+	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
+	r = sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
 	if (r != SC_SUCCESS)
 		return SC_ERROR_INTERNAL;
 	if (p15card->serial_number)

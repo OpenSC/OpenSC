@@ -864,6 +864,33 @@ etoken_generate_key(struct sc_card *card,
 	return r;
 }
 
+static int etoken_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
+{
+	int r;
+	struct sc_apdu apdu;
+	u8  rbuf[SC_MAX_APDU_BUFFER_SIZE];
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x81);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le   = 256;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r,  "APDU transmit failed");
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+		return SC_ERROR_INTERNAL;
+	if (apdu.resplen != 32) {
+		sc_debug(card->ctx, "unexpected response to GET DATA serial"
+				" number\n");
+		return SC_ERROR_INTERNAL;
+	}
+	/* cache serial number */
+	memcpy(card->serialnr.value, &rbuf[10], 6);
+	card->serialnr.len = 6;
+	/* copy and return serial number */
+	memcpy(serial, &card->serialnr, sizeof(*serial));
+	return SC_SUCCESS;
+}
+
 static int
 etoken_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
@@ -885,6 +912,8 @@ etoken_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		return etoken_lifecycle_get(card, (int *) ptr);
 	case SC_CARDCTL_LIFECYCLE_SET:
 		return etoken_lifecycle_set(card, (int *) ptr);
+	case SC_CARDCTL_GET_SERIALNR:
+		return etoken_get_serialnr(card, (sc_serial_number_t *)ptr);
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }
