@@ -360,7 +360,7 @@ sc_profile_free(struct sc_profile *profile)
 	while ((ti = profile->template_list) != NULL) {
 		profile->template_list = ti->next;
 		if (ti->data)
-			free(ti->data);
+			sc_profile_free(ti->data);
 		if (ti->name)
 			free(ti->name);
 		free(ti);
