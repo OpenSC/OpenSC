@@ -7,8 +7,8 @@
 #include <string.h>
 #include <opensc.h>
 #include <opensc-pkcs15.h>
+#include <sc-log.h>
 #include "sc-test.h"
-#include "../libopensc/sc-log.h"
 
 struct sc_pkcs15_card *p15card;
 

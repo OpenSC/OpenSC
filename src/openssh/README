@@ -12,7 +12,7 @@ Steps for your OpenSSH pleasure:
 - Compile and install
 
 - Extract a public key from your SmartCard in OpenSSH format
-    (e.g. with 'sc-ssh -c <certificate ID> -k -o <file>')
+    (e.g. with 'opensc-ssh -c <certificate ID> -k -o <file>')
 - Transfer the public key to desired server
 - Run OpenSSH with 'ssh -I <reader num>[:<certificate ID>] <host>'
     (e.g. '-I 0:45' uses first available reader and certificate with

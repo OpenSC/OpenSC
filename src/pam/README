@@ -8,9 +8,8 @@ Steps required to make the PAM module work:
 	auth	sufficient	/lib/security/pam_pkcs15.so
 4. Copy your PEM encoded certificate to a file in your home directory
    called '.eid/authorized_certificates'.
-   NOTE: You can use the 'sc-tool -r <ID> -o ~/.eid/authorized_certificates'
-	 command to get the PEM encoded certificate. Find the ID by saying
-         'sc-tool -c'. FINEID card owners should use 45 for the ID.
+   NOTE:
+    You can use the 'pkcs15-tool -r <ID> -o ~/.eid/authorized_certificates'
+    command to get the PEM encoded certificate. Find the ID by saying
+    'pkcs15-tool -c'. FINEID card owners should use 45 for the ID.
 5. Try to login with your card in the reader.
-   If it doesn't work, remove -DNDEBUG from the CFLAGS line in Makefile,
-   recompile and try again.
