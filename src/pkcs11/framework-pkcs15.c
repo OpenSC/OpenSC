@@ -691,8 +691,13 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 		 * NULL ourselves. This way, you can supply an empty (if
 		 * possible) or fake PIN if an application asks a PIN).
 		 */
-		pPin = NULL;
-		ulPinLen = 0;
+		/* But we want to be able to specify a PIN on the command
+		 * line (e.g. for the test scripts). So we don't do anything
+		 * here - this gives the user the choice of entering
+		 * an empty pin (which makes us use the pin pad) or
+		 * a valid pin (which is processed normally). --okir */
+		if (ulPinLen == 0)
+			pPin = NULL;
 	} else
 	if (ulPinLen < pin->min_length ||
 	    ulPinLen > pin->max_length)
@@ -1202,7 +1207,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	CK_ULONG	keybits;
 	char		pub_label[SC_PKCS15_MAX_LABEL_SIZE];
 	char		priv_label[SC_PKCS15_MAX_LABEL_SIZE];
-	int rc, rv = CKR_OK;
+	int		rc, rv = CKR_OK;
 
 	sc_debug(context, "Keypair generation, mech = 0x%0x\n", pMechanism->mechanism);
 

@@ -594,40 +594,53 @@ int do_verify(int argc, char **argv)
 		{ "PRO",	SC_AC_PRO	},
 		{ NULL, -1 }
 	};
-	int i, type = -1, ref, r, tries_left = -1;
+	int i, r, tries_left = -1;
 	u8 buf[30];
         const char *s;
 	size_t buflen = sizeof(buf);
-	
+	struct sc_pin_cmd_data data;
+
 	if (argc < 1 || argc > 2)
                 goto usage;
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_VERIFY;
+
+	data.pin_type = -1;
 	for (i = 0; typeNames[i].name; i++) {
 		if (strncasecmp(argv[0], typeNames[i].name, 3) == 0) {
-			type = typeNames[i].type;
+			data.pin_type = typeNames[i].type;
 			break;
 		}
         }
-	if (type == -1) {
+	if (data.pin_type == -1) {
 		printf("Invalid type.\n");
 		goto usage;
 	}
-	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
+	if (sscanf(argv[0] + 3, "%d", &data.pin_reference) != 1) {
 		printf("Invalid key reference.\n");
 		goto usage;
 	}
+
         if (argc < 2) {
-                /* just return the retry counter */
-                buflen = 0;
-        }
-	if (argv[1][0] == '"') {
+		if (!(card->reader->slot[0].capabilities & SC_SLOT_CAP_PIN_PAD)) {
+			printf("Card reader or driver doesn't support PIN PAD\n");
+			return -1;
+		}
+		printf("Please enter PIN on the reader's pin pad.\n");
+		data.pin1.prompt = "Please enter PIN";
+                data.flags |= SC_PIN_CMD_USE_PINPAD;
+        } else if (argv[1][0] == '"') {
 		for (s=argv[1]+1, i=0; i < sizeof(buf) && *s && *s != '"';i++) 
 			buf[i] = *s++;
-		buflen = i;
+		data.pin1.data = buf;
+		data.pin1.len = i;
 	} else if (sc_hex_to_bin(argv[1], buf, &buflen) != 0) {
 		printf("Invalid key value.\n");
 		goto usage;
 	}
-	r = sc_verify(card, type, ref, buf, buflen, &tries_left);
+	r = sc_pin_cmd(card, &data, &tries_left);
+
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 			if (tries_left >= 0) 
@@ -646,6 +659,7 @@ usage:
 	for (i = 0; typeNames[i].name; i++)
 		printf("\t%s\n", typeNames[i].name);
 	printf("Example: verify CHV2 31:32:33:34:00:00:00:00\n");
+	printf("If key is omitted, card reader's keypad will be used to collect PIN.\n");
 	return -1;
 }
 
