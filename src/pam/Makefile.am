@@ -9,7 +9,7 @@ LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBPAM@ @LIBCRYPTO@ \
 SRC = pam_pkcs15.c
 INC = 
 
-if COMPILE_PAM
+if HAVE_PAM
 lib_LTLIBRARIES = libpam_pkcs15.la
 noinst_PROGRAMS = pam_pkcs15-test
 else
@@ -23,7 +23,7 @@ libpam_pkcs15_la_LDFLAGS = -module
 pam_pkcs15_test_SOURCES = $(SRC) $(INC)
 pam_pkcs15_test_CFLAGS = -DTEST
 
-if COMPILE_PAM
+if HAVE_PAM
 
 install-exec-local: install-libLTLIBRARIES
 	@$(NORMAL_INSTALL)
