@@ -205,8 +205,7 @@ static int esteid_detect_card(sc_pkcs15_card_t *p15card)
 	/* check if we have the correct card OS */
 	if (strcmp(card->name, "MICARDO 2.1"))
 		return SC_ERROR_WRONG_CARD;
-	/* Assume type == 1 is just for EstEID cards */
-	if (card->type == 1)
+	if (card->type == SC_CARD_TYPE_MCRD_ESTEID)
 		return SC_SUCCESS;
 	return SC_ERROR_WRONG_CARD;
 }

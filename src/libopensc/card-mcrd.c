@@ -30,13 +30,10 @@
 #include <ctype.h>
 #include "esteid.h"
 
-#define TYPE_GENERIC	0
-#define TYPE_ESTEID	1
-
 static struct sc_atr_table mcrd_atrs[] = {
-	{ "3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", NULL, "German BMI", TYPE_GENERIC },
-	{ "3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43", NULL, "EstEID (cold)", TYPE_ESTEID },
-	{ "3B:6E:00:FF:45:73:74:45:49:44:20:76:65:72:20:31:2E:30", NULL, "EstEID (warm)", TYPE_ESTEID },
+	{ "3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", NULL, "German BMI", SC_CARD_TYPE_MCRD_GENERIC },
+	{ "3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43", NULL, "EstEID (cold)", SC_CARD_TYPE_MCRD_ESTEID },
+	{ "3B:6E:00:FF:45:73:74:45:49:44:20:76:65:72:20:31:2E:30", NULL, "EstEID (warm)", SC_CARD_TYPE_MCRD_ESTEID },
 	{ NULL }
 };
 
@@ -278,7 +275,7 @@ static int mcrd_init(struct sc_card *card)
 
 	priv->curpath[0] = MFID;
 	priv->curpathlen = 1;
-	if (card->type != TYPE_ESTEID)
+	if (card->type != SC_CARD_TYPE_MCRD_ESTEID)
 		load_special_files (card);
 	return 0;
 }
@@ -1074,7 +1071,7 @@ static int mcrd_set_security_env(struct sc_card *card,
 	SC_FUNC_CALLED(card->ctx, 2);
 	
 	/* special environment handling for esteid, stolen from openpgp */
-	if (card->type == TYPE_ESTEID) {
+	if (card->type == SC_CARD_TYPE_MCRD_ESTEID) {
 		/* some sanity checks */
 		if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
 			if (env->algorithm != SC_ALGORITHM_RSA)

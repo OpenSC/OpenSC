@@ -31,6 +31,7 @@
 #endif
 #include <opensc/opensc.h>
 #include <opensc/cardctl.h>
+#include <opensc/cards.h>
 #include <opensc/log.h>
 #include "pkcs15-init.h"
 #include "profile.h"
@@ -611,10 +612,10 @@ gpk_pkfile_init_public(sc_profile_t *profile, sc_card_t *card, sc_file_t *file,
 	sc_file_t	*tmp = NULL;
 	u8		sysrec[7], buffer[256];
 	unsigned int	n, npins;
-	int		r, gpkclass;
+	int		r, card_type;
 
 	/* Find out what sort of GPK we're using */
-	if ((r = sc_card_ctl(card, SC_CARDCTL_GPK_VARIANT, &gpkclass)) < 0)
+	if ((r = sc_card_ctl(card, SC_CARDCTL_GPK_VARIANT, &card_type)) < 0)
 		return r;
 
 	/* Set up the system record */
@@ -680,7 +681,7 @@ gpk_pkfile_init_public(sc_profile_t *profile, sc_card_t *card, sc_file_t *file,
 
 	/* compute checksum - yet another slightly different
 	 * checksum algorithm courtesy of Gemplus */
-	if (gpkclass >= 8000) {
+	if (card_type >= SC_CARD_TYPE_GPK_GPK8000) {
 		/* This is according to the gpk reference manual */
 		sysrec[6] = 0xA5;
 	} else {

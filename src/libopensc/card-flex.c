@@ -23,59 +23,53 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TYPE_CRYPTOFLEX		0x0100
-#define TYPE_MULTIFLEX		0x0200
-#define TYPE_CYBERFLEX		0x0300
-
 #define FLAG_KEYGEN		0x0001
 #define FLAG_FULL_DES		0x0002	/* whatever that means */
 
-#define TYPE_MASK		0xFF00
-
-#define IS_CYBERFLEX(card)	((card->type & TYPE_MASK) == TYPE_CYBERFLEX)
+#define IS_CYBERFLEX(card)	(card->type == SC_CARD_TYPE_FLEX_CYBER)
 
 static struct sc_atr_table flex_atrs[] = {
 	/* Cryptoflex */
 	/* 8k */
-	{ "3B:95:15:40:FF:68:01:02:02:04", NULL, "Cryptoflex 8K", TYPE_CRYPTOFLEX },
+	{ "3B:95:15:40:FF:68:01:02:02:04", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
 	/* 8k */
-	{ "3B:85:40:20:68:01:01:05:01", NULL, "Cryptoflex 8K", TYPE_CRYPTOFLEX },
+	{ "3B:85:40:20:68:01:01:05:01", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
 	/* 16k */
-	{ "3B:95:94:40:FF:63:01:01:02:01", NULL, "Cryptoflex 16K", TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+	{ "3B:95:94:40:FF:63:01:01:02:01", NULL, "Cryptoflex 16K", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
 	/* 32K v4 */
-	{ "3B:95:18:40:FF:64:02:01:01:02", NULL, "Cryptoflex 32K v4", TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+	{ "3B:95:18:40:FF:64:02:01:01:02", NULL, "Cryptoflex 32K v4", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
 	/* 32K e-gate */
-	{ "3B:95:18:40:FF:62:01:02:01:04", NULL, "Cryptoflex 32K e-gate", TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+	{ "3B:95:18:40:FF:62:01:02:01:04", NULL, "Cryptoflex 32K e-gate", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
 	/* 32K e-gate v4 */
-	{ "3B:95:18:40:FF:62:04:01:01:05", NULL, "Cryptoflex 32K e-gate v4", TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+	{ "3B:95:18:40:FF:62:04:01:01:05", NULL, "Cryptoflex 32K e-gate v4", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
 
-	{ "3B:E2:00:00:40:20:49:06", NULL, "Cryptoflex", TYPE_CRYPTOFLEX },
+	{ "3B:E2:00:00:40:20:49:06", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
 	/* + full DES option */
-	{ "3B:E2:00:00:40:20:49:05", NULL, "Cryptoflex", TYPE_CRYPTOFLEX|FLAG_FULL_DES },
+	{ "3B:E2:00:00:40:20:49:05", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_FULL_DES },
 	/* + Key Generation */
-	{ "3B:E2:00:00:40:20:49:07", NULL, "Cryptoflex", TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+	{ "3B:E2:00:00:40:20:49:07", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
 	/* + Key Generation */
-	{ "3B:85:40:20:68:01:01:03:05", NULL, "Cryptoflex", TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+	{ "3B:85:40:20:68:01:01:03:05", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN },
 
 	/* Multiflex */
 	/* 3K */
-	{ "3B:02:14:50", NULL, "Multiflex 3K", TYPE_MULTIFLEX },
+	{ "3B:02:14:50", NULL, "Multiflex 3K", SC_CARD_TYPE_FLEX_MULTI, 0 },
 	/* 4K */
-	{ "3B:19:14:55:90:01:02:01:00:05:04:B0", NULL, "Multiflex 4K", TYPE_MULTIFLEX },
+	{ "3B:19:14:55:90:01:02:01:00:05:04:B0", NULL, "Multiflex 4K", SC_CARD_TYPE_FLEX_MULTI, 0 },
 	/* 8K */
-	{ "3B:32:15:00:06:80", NULL, "Multiflex 8K", TYPE_MULTIFLEX },
+	{ "3B:32:15:00:06:80", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0 },
 	/* 8K + full DES option */
-	{ "3B:32:15:00:06:95", NULL, "Multiflex 8K", TYPE_MULTIFLEX },
+	{ "3B:32:15:00:06:95", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, FLAG_FULL_DES },
 	/* 8K */
-	{ "3B:19:14:59:01:01:0F:01:00:05:08:B0", NULL, "Multiflex 8K", TYPE_MULTIFLEX },
+	{ "3B:19:14:59:01:01:0F:01:00:05:08:B0", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0 },
 	/* 8K */
-	{ "3B:19:14:55:90:01:01:01:00:05:08:B0", NULL, "Multiflex 8K", TYPE_MULTIFLEX },
+	{ "3B:19:14:55:90:01:01:01:00:05:08:B0", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0 },
 
 	/* Cyberflex Access */
 	/* Crypto */
-	{ "3B:16:94:81:10:06:01:81:3F", NULL, "Cyberflex Access", TYPE_CYBERFLEX },
+	{ "3B:16:94:81:10:06:01:81:3F", NULL, "Cyberflex Access", SC_CARD_TYPE_FLEX_CYBER, 0 },
 	/* Aug. Crypto */
-	{ "3B:16:94:81:10:06:01:81:2F", NULL, "Cyberflex Access", TYPE_CYBERFLEX },
+	{ "3B:16:94:81:10:06:01:81:2F", NULL, "Cyberflex Access", SC_CARD_TYPE_FLEX_CYBER, 0 },
 	{ NULL }
 };
 
@@ -117,11 +111,12 @@ static int cryptoflex_match_card(struct sc_card *card)
 	i = _sc_match_atr(card, flex_atrs, NULL);
 	if (i < 0)
 		return 0;
-	switch (flex_atrs[i].id & TYPE_MASK) {
-	case TYPE_CRYPTOFLEX:
-	case TYPE_MULTIFLEX:
+	switch (flex_atrs[i].type) {
+	case SC_CARD_TYPE_FLEX_CRYPTO:
+	case SC_CARD_TYPE_FLEX_MULTI:
 		card->name = flex_atrs[i].name;
-		card->type = flex_atrs[i].id;
+		card->type = flex_atrs[i].type;
+		card->flags = flex_atrs[i].flags;
 		return 1;
 	}
 	return 0;
@@ -134,10 +129,11 @@ static int cyberflex_match_card(struct sc_card *card)
 	i = _sc_match_atr(card, flex_atrs, NULL);
 	if (i < 0)
 		return 0;
-	switch (flex_atrs[i].id & TYPE_MASK) {
-	case TYPE_CYBERFLEX:
+	switch (flex_atrs[i].type) {
+	case SC_CARD_TYPE_FLEX_CYBER:
 		card->name = flex_atrs[i].name;
-		card->type = flex_atrs[i].id;
+		card->type = flex_atrs[i].type;
+		card->flags = flex_atrs[i].flags;
 		return 1;
 	}
 	return 0;
@@ -155,8 +151,8 @@ static int flex_init(struct sc_card *card)
 	data->aak_key_ref = 1;
 
 	/* Override Cryptoflex defaults for specific card types */
-	switch (card->type & TYPE_MASK) {
-	case TYPE_CYBERFLEX:
+	switch (card->type) {
+	case SC_CARD_TYPE_FLEX_CYBER:
 		card->cla = 0x00;
 		data->aak_key_ref = 0;
 		break;
@@ -168,7 +164,7 @@ static int flex_init(struct sc_card *card)
 		
 		flags = SC_ALGORITHM_RSA_RAW;
 		flags |= SC_ALGORITHM_RSA_HASH_NONE;
-		if (card->type & FLAG_KEYGEN)
+		if (card->flags & FLAG_KEYGEN)
 			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 
 		_sc_card_add_rsa_alg(card, 512, flags, 0);
@@ -1105,11 +1101,11 @@ static int flex_get_default_key(struct sc_card *card,
 		return SC_ERROR_NO_DEFAULT_KEY;
 
 	/* These seem to be the default AAKs used by Schlumberger */
-	switch (card->type & TYPE_MASK) {
-	case TYPE_CRYPTOFLEX:
+	switch (card->type) {
+	case SC_CARD_TYPE_FLEX_CRYPTO:
 		key = "2c:15:e5:26:e9:3e:8a:19";
 		break;
-	case TYPE_CYBERFLEX:
+	case SC_CARD_TYPE_FLEX_CYBER:
 		key = "ad:9f:61:fe:fa:20:ce:63";
 		break;
 	default:

@@ -24,13 +24,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TYPE_PKI	1
-
 static struct sc_atr_table miocos_atrs[] = {
 	/* Test card with 32 kB memory */
-	{ "3B:9D:94:40:23:00:68:10:11:4D:69:6F:43:4F:53:00:90:00", NULL, NULL, TYPE_PKI },
+	{ "3B:9D:94:40:23:00:68:10:11:4D:69:6F:43:4F:53:00:90:00", NULL, NULL, SC_CARD_TYPE_MIOCOS_GENERIC },
 	/* Test card with 64 kB memory */
-	{ "3B:9D:94:40:23:00:68:20:01:4D:69:6F:43:4F:53:00:90:00", NULL, NULL, TYPE_PKI },
+	{ "3B:9D:94:40:23:00:68:20:01:4D:69:6F:43:4F:53:00:90:00", NULL, NULL, SC_CARD_TYPE_MIOCOS_GENERIC },
 	{ NULL }
 };
 
@@ -60,7 +58,8 @@ static int miocos_init(struct sc_card *card)
 {
 	card->name = "MioCOS";
 	card->cla = 0x00;
-	if (card->type == TYPE_PKI) {
+
+	if (1) {
 		unsigned long flags;
 		
 		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;

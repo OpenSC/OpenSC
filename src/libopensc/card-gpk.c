@@ -35,18 +35,6 @@
 #define DES_ecb3_encrypt(a,b,c,d,e,f) des_ecb3_encrypt(a,b,*c,*d,*e,f)
 #endif
 
-/* Gemplus card variants */
-enum {
-	GPK4000_su256 = 4000,
-	GPK4000_s,
-	GPK4000_sp,
-	GPK4000_sdo,
-	GPK8000 = 8000,
-	GPK8000_8K,
-	GPK8000_16K,
-	GPK16000 = 16000
-};
-
 #define GPK_SEL_MF		0x00
 #define GPK_SEL_DF		0x01
 #define GPK_SEL_EF		0x02
@@ -102,13 +90,13 @@ static int	gpk_get_info(struct sc_card *, u8, u8, u8 *, size_t);
  * ATRs of GPK4000 cards courtesy of libscez
  */
 static struct sc_atr_table gpk_atrs[] = {
-	{ "3B:27:00:80:65:A2:04:01:01:37", NULL, "GPK 4K", GPK4000_s },
-	{ "3B:27:00:80:65:A2:05:01:01:37", NULL, "GPK 4K", GPK4000_sp },
-	{ "3B:27:00:80:65:A2:0C:01:01:37", NULL, "GPK 4K", GPK4000_su256 },
-	{ "3B:A7:00:40:14:80:65:A2:14:01:01:37", NULL, "GPK 4K", GPK4000_sdo },
-	{ "3B:A7:00:40:18:80:65:A2:08:01:01:52", NULL, "GPK 8K", GPK8000_8K },
-	{ "3B:A7:00:40:18:80:65:A2:09:01:01:52", NULL, "GPK 8K", GPK8000_16K },
-	{ "3B:A7:00:40:18:80:65:A2:09:01:02:52", NULL, "GPK 16K", GPK16000 },
+	{ "3B:27:00:80:65:A2:04:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_s },
+	{ "3B:27:00:80:65:A2:05:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_sp },
+	{ "3B:27:00:80:65:A2:0C:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_su256 },
+	{ "3B:A7:00:40:14:80:65:A2:14:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_sdo },
+	{ "3B:A7:00:40:18:80:65:A2:08:01:01:52", NULL, "GPK 8K", SC_CARD_TYPE_GPK_GPK8000_8K },
+	{ "3B:A7:00:40:18:80:65:A2:09:01:01:52", NULL, "GPK 8K", SC_CARD_TYPE_GPK_GPK8000_16K },
+	{ "3B:A7:00:40:18:80:65:A2:09:01:02:52", NULL, "GPK 16K", SC_CARD_TYPE_GPK_GPK16000 },
 	{ NULL }
 };
 
@@ -146,11 +134,11 @@ gpk_match_card(struct sc_card *card)
 			&& (hist_bytes[1] == 0x65)
 			&& (hist_bytes[2] == 0xa2)) {	/* FMN */
 			if (hist_bytes[3] == 0x08) {	/* PRN? */
-				card->type = GPK8000;
+				card->type = SC_CARD_TYPE_GPK_GPK8000;
 				return 1;
 			}
 			if (hist_bytes[3] == 0x09) {	/* PRN? */
-				card->type = GPK16000;
+				card->type = SC_CARD_TYPE_GPK_GPK16000;
 				return 1;
 			}
 		}
@@ -188,8 +176,8 @@ gpk_init(struct sc_card *card)
 		| SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_ANSI
 		| SC_ALGORITHM_RSA_PAD_ISO9796;
-	exponent = (card->type < 16000)? 0x10001 : 0;
-	kg = (card->type >= 8000)? SC_ALGORITHM_ONBOARD_KEY_GEN : 0;
+	exponent = (card->type < SC_CARD_TYPE_GPK_GPK16000) ? 0x10001 : 0;
+	kg = (card->type >= SC_CARD_TYPE_GPK_GPK8000) ? SC_ALGORITHM_ONBOARD_KEY_GEN : 0;
 	_sc_card_add_rsa_alg(card,  512, flags|kg, exponent);
 	_sc_card_add_rsa_alg(card,  768, flags, exponent);
 	_sc_card_add_rsa_alg(card, 1024, flags|kg, exponent);
@@ -1385,19 +1373,19 @@ gpk_erase_card(struct sc_card *card)
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	switch (card->type) {
-	case GPK4000_su256:
-	case GPK4000_sdo:
+	case SC_CARD_TYPE_GPK_GPK4000_su256:
+	case SC_CARD_TYPE_GPK_GPK4000_sdo:
 		offset = 0x6B;  /* courtesy gemplus hotline */
 		break;
 
-	case GPK4000_s:
+	case SC_CARD_TYPE_GPK_GPK4000_s:
 		offset = 7;
 		break;
 
-	case GPK8000:
-	case GPK8000_8K:
-	case GPK8000_16K:
-	case GPK16000:
+	case SC_CARD_TYPE_GPK_GPK8000:
+	case SC_CARD_TYPE_GPK_GPK8000_8K:
+	case SC_CARD_TYPE_GPK_GPK8000_16K:
+	case SC_CARD_TYPE_GPK_GPK16000:
 		offset = 0;
 		break;
 
@@ -1718,7 +1706,7 @@ static int gpk_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	u8  rbuf[10];
 	struct sc_apdu apdu;
 
-	if (card->type != GPK16000)
+	if (card->type != SC_CARD_TYPE_GPK_GPK16000)
 		return SC_ERROR_NOT_SUPPORTED;
 
 	if (!serial)

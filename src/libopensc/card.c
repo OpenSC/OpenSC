@@ -906,7 +906,7 @@ struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
 	return NULL;
 }
 
-int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out)
+int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *type_out)
 {
 	struct sc_context *ctx = card->ctx;
 	char card_atr[3 * SC_MAX_ATR_SIZE];
@@ -956,8 +956,8 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out)
 			if (strncasecmp(tatr, card_atr, tatr_len) != 0)
 				continue;
 		}
-		if (id_out != NULL)
-			*id_out = table[i].id;
+		if (type_out != NULL)
+			*type_out = table[i].type;
 		return i;
 	}
 	return -1;
@@ -992,7 +992,7 @@ int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc
 	} else {
 		dst->name = NULL;
 	}
-	dst->id = src->id;
+	dst->type = src->type;
 	dst->flags = src->flags;
 	return 0;
 }

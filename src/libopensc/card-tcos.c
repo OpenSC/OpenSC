@@ -29,11 +29,11 @@
 
 static struct sc_atr_table tcos_atrs[] = {
 	/* SLE44 */
-	{ "3B:BA:13:00:81:31:86:5D:00:64:05:0A:02:01:31:80:90:00:8B", NULL },
+	{ "3B:BA:13:00:81:31:86:5D:00:64:05:0A:02:01:31:80:90:00:8B", NULL, NULL, SC_CARD_TYPE_TCOS_GENERIC },
 	/* SLE66S */
-	{ "3B:BA:14:00:81:31:86:5D:00:64:05:14:02:02:31:80:90:00:91", NULL },
+	{ "3B:BA:14:00:81:31:86:5D:00:64:05:14:02:02:31:80:90:00:91", NULL, NULL, SC_CARD_TYPE_TCOS_GENERIC },
 	/* SLE66P */
-	{ "3B:BA:96:00:81:31:86:5D:00:64:05:60:02:03:31:80:90:00:66", NULL },
+	{ "3B:BA:96:00:81:31:86:5D:00:64:05:60:02:03:31:80:90:00:66", NULL, NULL, SC_CARD_TYPE_TCOS_GENERIC },
 	{ NULL }
 };
 
@@ -60,7 +60,7 @@ static int tcos_match_card(struct sc_card *card)
 {
 	int i;
 
-	i = _sc_match_atr(card, tcos_atrs, NULL);
+	i = _sc_match_atr(card, tcos_atrs, &card->type);
 	if (i < 0)
 		return 0;
 	return 1;

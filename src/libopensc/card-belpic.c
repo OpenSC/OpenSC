@@ -119,8 +119,6 @@ static long t1, t2, tot_read = 0, tot_dur = 0, dur;
 
 #define BELPIC_VERSION			"1.4"
 
-#define TYPE_BELPIC_EID			1
-
 /* Most of the #defines here are also present in the pkcs15 files, but
  * because this driver has no access to them, it's hardcoded here. If
  * other Belpic cards with other 'settings' appear, we'll have to move
@@ -138,16 +136,16 @@ static size_t next_idx = -1;
 
 static struct sc_atr_table belpic_atrs[] = {
 	/* Applet V1.1 */
-	{ "3B:98:13:40:0A:A5:03:01:01:01:AD:13:11", NULL, NULL, TYPE_BELPIC_EID },
+	{ "3B:98:13:40:0A:A5:03:01:01:01:AD:13:11", NULL, NULL, SC_CARD_TYPE_BELPIC_EID },
 	/* Applet V1.0 with new EMV-compatible ATR */
-	{ "3B:98:94:40:0A:A5:03:01:01:01:AD:13:10", NULL, NULL, TYPE_BELPIC_EID },
+	{ "3B:98:94:40:0A:A5:03:01:01:01:AD:13:10", NULL, NULL, SC_CARD_TYPE_BELPIC_EID },
 	/* Applet beta 5 + V1.0 */
-	{ "3B:98:94:40:FF:A5:03:01:01:01:AD:13:10", NULL, NULL, TYPE_BELPIC_EID },
+	{ "3B:98:94:40:FF:A5:03:01:01:01:AD:13:10", NULL, NULL, SC_CARD_TYPE_BELPIC_EID },
 #if 0
 	/* Applet beta 3 + 4 */
-	{ "3B:98:11:40:FF:A5:03:01:01:01:AD:13:04", NULL, NULL, TYPE_BELPIC_EID },
+	{ "3B:98:11:40:FF:A5:03:01:01:01:AD:13:04", NULL, NULL, SC_CARD_TYPE_BELPIC_EID },
 	/* Applet beta 2 */
-	{ "3B:68:00:00:29:05:01:02:01:AD:13:03", NULL, NULL, TYPE_BELPIC_EID },
+	{ "3B:68:00:00:29:05:01:02:01:AD:13:03", NULL, NULL, SC_CARD_TYPE_BELPIC_EID },
 #endif
 	{ NULL }
 };
@@ -994,14 +992,14 @@ static int belpic_init(struct sc_card *card)
 	sc_debug(card->ctx, "\n");
 
 	if (card->type < 0)
-		card->type = TYPE_BELPIC_EID;	/* Unknown card: assume it's the Belpic Card */
+		card->type = SC_CARD_TYPE_BELPIC_EID;	/* Unknown card: assume it's the Belpic Card */
 
 	priv = (struct belpic_priv_data *) calloc(1, sizeof(struct belpic_priv_data));
 	if (priv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->drv_data = priv;
 	card->cla = 0x00;
-	if (card->type == TYPE_BELPIC_EID) {
+	if (card->type == SC_CARD_TYPE_BELPIC_EID) {
 		_sc_card_add_rsa_alg(card, 1024,
 				     SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
 	}

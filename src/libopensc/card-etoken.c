@@ -42,15 +42,15 @@ static struct sc_card_driver etoken_drv = {
 
 static struct sc_atr_table etoken_atrs[] = {
 	/* 4.0 */
-	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL },
+	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
 	/* 4.01 */
-	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL },
+	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
 	/* 4.01a */
-	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL },
+	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
 	/* Italian eID card */
-	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL },
-	/* Italian eID card from Infocamere */
-	{ "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", NULL },
+	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_ETOKEN_INFOCAMERE },
+	{ "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", NULL, NULL, SC_CARD_TYPE_ETOKEN_INFOCAMERE },
+	/* XXX: Are both of these two 'infocamere' compliant? */
 	{ NULL }
 };
 
@@ -63,7 +63,7 @@ static int etoken_match_card(struct sc_card *card)
 {
 	int i;
 
-	i = _sc_match_atr(card, etoken_atrs, NULL);
+	i = _sc_match_atr(card, etoken_atrs, &card->type);
 	if (i < 0)
 		return 0;
 	return 1;

@@ -31,7 +31,6 @@
 #include <ctype.h>
 #include <openssl/des.h>
 #include <openssl/opensslv.h>
-#include "card-oberthur.h"
 
 /* keep OpenSSL 0.9.6 users happy ;-) */
 #if OPENSSL_VERSION_NUMBER < 0x00907000L
@@ -43,16 +42,49 @@
 
 static struct sc_atr_table oberthur_atrs[] = {
 #if 0
-	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:04:00:82:90:00", NULL, "Oberthur 32k", ATR_OBERTHUR_32K },
-	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:05:00:82:90:00", NULL, "Oberthur 32k BIO", ATR_OBERTHUR_32K_BIO },
+	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:04:00:82:90:00", NULL, "Oberthur 32k", SC_CARD_TYPE_OBERTHUR_32K },
+	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:05:00:82:90:00", NULL, "Oberthur 32k BIO", SC_CARD_TYPE_OBERTHUR_32K_BIO },
 #endif
-	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL, "Oberthur 64k v4/2.1.1", ATR_OBERTHUR_64K },
-	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", NULL, "Oberthur 64k v4/2.1.1", ATR_OBERTHUR_64K },
-	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL, "Oberthur 64k v5", ATR_OBERTHUR_64K },
-	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", NULL, "Oberthur 64k v5/2.2.0", ATR_OBERTHUR_64K },
+	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL, "Oberthur 64k v4/2.1.1", SC_CARD_TYPE_OBERTHUR_64K },
+	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", NULL, "Oberthur 64k v4/2.1.1", SC_CARD_TYPE_OBERTHUR_64K },
+	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL, "Oberthur 64k v5", SC_CARD_TYPE_OBERTHUR_64K },
+	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", NULL, "Oberthur 64k v5/2.2.0", SC_CARD_TYPE_OBERTHUR_64K },
 	{ NULL }
 };
 
+struct NTLV {
+	const char *name;
+	unsigned int tag;
+	size_t len;
+	const unsigned char *value;
+};
+typedef struct NTLV NTLV_t;
+
+struct auth_application_id {
+	unsigned int tag;
+	u8 value[SC_MAX_AID_SIZE];
+	int len;
+};
+typedef struct auth_application_id auth_application_id_t;
+
+struct auth_senv {
+	unsigned int algorithm;
+	int key_file_id;
+	size_t key_size;
+};
+typedef struct auth_senv auth_senv_t;
+
+struct auth_private_data {
+	struct sc_pin_cmd_pin pin_info;
+	long int sn;
+	auth_application_id_t aid;
+	auth_senv_t senv;
+};
+typedef struct auth_private_data auth_private_data_t;
+
+#define AID_OBERTHUR_V2		0x201
+#define AID_OBERTHUR_V4		0x401
+#define AID_OBERTHUR_V5		0x501
 
 static NTLV_t oberthur_aids[] = {
 #if 0
@@ -69,6 +101,14 @@ static NTLV_t oberthur_aids[] = {
 	{ NULL, 0, 0, NULL }
 }; 
 
+#define AUTH_PIN		1
+#define AUTH_PUK		2
+
+#define SC_OBERTHUR_MAX_ATTR_SIZE	8
+
+#define PUBKEY_512_ASN1_SIZE	0x4A
+#define PUBKEY_1024_ASN1_SIZE	0x8C
+#define PUBKEY_2048_ASN1_SIZE	0x10E
 
 static unsigned char rsa_der[PUBKEY_2048_ASN1_SIZE];
 static int rsa_der_len = 0;
@@ -81,7 +121,6 @@ static struct sc_card_driver auth_drv = {
 	"oberthur",
 	&auth_ops
 };
-
 
 static int auth_get_pin_reference (struct sc_card *card,
 		int type, int reference, int cmd, int *out_ref);
@@ -171,7 +210,7 @@ auth_match_card(struct sc_card *card)
 {
 	int i;
 
-	i = _sc_match_atr(card, oberthur_atrs, NULL);
+	i = _sc_match_atr(card, oberthur_atrs, &card->type);
 	if (i < 0)
 		return 0;
 	return 1;

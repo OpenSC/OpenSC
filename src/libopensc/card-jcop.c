@@ -24,10 +24,10 @@
 #include <stdlib.h>
 
 static struct sc_atr_table jcop_atrs[] = {
-	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:33:31:06", NULL },
+	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:33:31:06", NULL, NULL, SC_CARD_TYPE_JCOP_GENERIC },
 #if 0
 	/* Requires secure messaging */
-	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:32:31:06", NULL },
+	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:32:31:06", NULL, NULL, SC_CARD_TYPE_JCOP_GENERIC },
 #endif
 	{ NULL }
 };
@@ -77,7 +77,7 @@ static int jcop_match_card(struct sc_card *card)
 {
 	int i;
 
-	i = _sc_match_atr(card, jcop_atrs, NULL);
+	i = _sc_match_atr(card, jcop_atrs, &card->type);
 	if (i < 0)
 		return 0;
 	return 1;

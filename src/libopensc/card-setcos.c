@@ -23,28 +23,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TYPE_GENERIC	0
-#define TYPE_PKI	1
-#define TYPE_FINEID	2
-
 static struct sc_atr_table setcos_atrs[] = {
 	/* some Nokia branded SC */
-	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, TYPE_GENERIC },
+	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_GENERIC },
 	/* RSA SecurID 3100 */
-	{ "3B:9F:94:40:1E:00:67:16:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, TYPE_PKI },
+	{ "3B:9F:94:40:1E:00:67:16:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_PKI },
 
 	/* FINEID 1016 (SetCOS 4.3.1B3/PKCS#15, VRK) */
-	{ "3b:9f:94:40:1e:00:67:00:43:46:49:53:45:10:52:66:ff:81:90:00", "ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff", NULL, TYPE_FINEID },
+	{ "3b:9f:94:40:1e:00:67:00:43:46:49:53:45:10:52:66:ff:81:90:00", "ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID },
 	/* FINEID 2032 (EIDApplet/7816-15, VRK test) */
-	{ "3b:6b:00:ff:80:62:00:a2:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff", NULL, TYPE_FINEID },
+	{ "3b:6b:00:ff:80:62:00:a2:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID },
 	/* FINEID 2132 (EIDApplet/7816-15, OPK/EMV test) */
-	{ "3b:64:00:ff:80:62:00:a2", "ff:ff:00:ff:ff:ff:00:ff", NULL, TYPE_FINEID },
+	{ "3b:64:00:ff:80:62:00:a2", "ff:ff:00:ff:ff:ff:00:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID },
 	/* FINEID 2064 (EIDApplet/7816-15, VRK) */
-	{ "3b:7b:00:00:00:80:62:00:51:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:ff:f0:ff:ff:ff:ff:ff:ff:ff:ff", NULL, TYPE_FINEID },
+	{ "3b:7b:00:00:00:80:62:00:51:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:ff:f0:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID },
 	/* FINEID 2164 (EIDApplet/7816-15, OPK/EMV) */
-	{ "3b:64:00:00:80:62:00:51", "ff:ff:ff:ff:ff:ff:f0:ff", NULL, TYPE_FINEID },
+	{ "3b:64:00:00:80:62:00:51", "ff:ff:ff:ff:ff:ff:f0:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID },
 	/* FINEID 2264 (EIDApplet/7816-15, OPK/EMV/AVANT) */
-	{ "3b:6e:00:00:00:62:00:00:57:41:56:41:4e:54:10:81:90:00", NULL, NULL, TYPE_FINEID },
+	{ "3b:6e:00:00:00:62:00:00:57:41:56:41:4e:54:10:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_FINEID },
 	{ NULL }
 };
 
@@ -87,11 +83,11 @@ static int setcos_match_card(struct sc_card *card)
 	if (i < 0) {
 		/* Unknown card, but has the FinEID application for sure */
 		if (match_hist_bytes(card, "FinEID", 0)) {
-			card->type = TYPE_FINEID;
+			card->type = SC_CARD_TYPE_SETCOS_FINEID;
 			return 1;
 		}
 		if (match_hist_bytes(card, "FISE", 0)) {
-			card->type = TYPE_GENERIC;
+			card->type = SC_CARD_TYPE_SETCOS_GENERIC;
 			return 1;
 		}
 		return 0;
@@ -120,19 +116,19 @@ static int setcos_init(struct sc_card *card)
 
 	/* Handle unknown or forced cards */
 	if (card->type < 0) {
-#if 1
+#if 0
 		/* Hmm. For now, assume it's a bank card with FinEID application */
 		if (match_hist_bytes(card, "AVANT", 0)) {
-			card->type = TYPE_FINEID;
+			card->type = SC_CARD_TYPE_SETCOS_FINEID;
 		} else
 #endif
-			card->type = TYPE_GENERIC;
+			card->type = SC_CARD_TYPE_SETCOS_GENERIC;
 	}
-	if (card->type == TYPE_FINEID) {
+	if (card->type == SC_CARD_TYPE_SETCOS_FINEID) {
 		card->cla = 0x00;
 		select_fineid_app(card);
 	}
-	if (card->type == TYPE_PKI || card->type == TYPE_FINEID) {
+	if (card->type == SC_CARD_TYPE_SETCOS_PKI || card->type == SC_CARD_TYPE_SETCOS_FINEID) {
 		unsigned long flags;
 		
 		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
@@ -302,7 +298,8 @@ static int setcos_set_security_env(struct sc_card *card,
 			sc_error(card->ctx, "Only RSA algorithm supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-		if (card->type != TYPE_PKI) {
+		if (!(card->type == SC_CARD_TYPE_SETCOS_PKI ||
+		      card->type == SC_CARD_TYPE_SETCOS_FINEID)) {
 			sc_error(card->ctx, "Card does not support RSA.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
