@@ -151,7 +151,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
         struct pkcs11_slot *slt;
         int i, j, k;
 
-	LOG("C_FindObjectsInit(%d, %d, 0x%x, %d)\n", hSession, pTemplate, ulCount);
+	LOG("C_FindObjectsInit(%d, 0x%p, %d)\n", hSession, pTemplate, ulCount);
 	dump_template("C_FindObjectsInit", pTemplate, ulCount);
 
 	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)

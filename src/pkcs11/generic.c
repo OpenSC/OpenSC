@@ -117,6 +117,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
                 LOG("Detected card in slot %d\n", slotID);
 		pInfo->flags |= CKF_TOKEN_PRESENT;
 	} else {
+		LOG("No card in slot %d\n", slotID);
                 slot_disconnect(slotID);
 	}
 	pInfo->hardwareVersion.major = 1;
