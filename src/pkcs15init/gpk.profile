@@ -13,24 +13,11 @@ cardinfo {
     }
 }
 
-# Define reasonable limits for PINs and PUK
-# Note that we do not set a file path or reference
-# here; that is done dynamically.
-PIN user-pin {
-    attempts	= 3;
-}
-PIN user-puk {
-    attempts	= 7;
-}
+# Define reference for SO PIN
 PIN so-pin {
-    attempts	= 2;
-    min-length	= 6;
+    file	= pinfile;
+    reference	= 0x08;
 }
-PIN so-puk {
-    attempts	= 4;
-    min-length	= 6;
-}
-
 
 # Additional filesystem info.
 # This is added to the file system info specified in the
@@ -38,14 +25,6 @@ PIN so-puk {
 filesystem {
     DF MF {
 	ACL	= CREATE=PRO1;
-
-	EF sopinfile {
-	    file-id		= 0000;
-	    structure		= 0x21;
-	    record-length	= 8;
-	    size		= 16;
-	    ACL			= *=NEVER;
-	}
 
         DF PKCS15-AppDF {
             # The PIN file.
@@ -93,10 +72,3 @@ filesystem {
 	}
     }
 }
-
-# Define an SO pin
-# This PIN is not used yet.
-#PIN sopin {
-#    file	= sopinfile;
-#    reference	= 0;
-#}
