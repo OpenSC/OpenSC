@@ -139,6 +139,7 @@ static int	lock_card(struct pkcs15_fw_data *);
 static int	unlock_card(struct pkcs15_fw_data *);
 static void	add_pins_to_keycache(struct sc_pkcs11_card *p11card,
 				struct sc_pkcs11_slot *slot);
+static int	reselect_app_df(sc_pkcs15_card_t *p15card);
 
 /* PKCS#15 Framework */
 
@@ -1800,6 +1801,18 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 		return CKR_MECHANISM_INVALID;
 	}
 
+	rv = sc_lock(ses->slot->card->card);
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+
+	if (!sc_pkcs11_conf.lock_login) {
+		rv = reselect_app_df(fw_data->p15_card);
+		if (rv < 0) {
+			sc_unlock(ses->slot->card->card);
+			return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+		}
+	}
+
 	sc_debug(context, "Selected flags %X. Now computing signature for %d bytes. %d bytes reserved.\n", flags, ulDataLen, *pulDataLen);
 	rv = sc_pkcs15_compute_signature(fw_data->p15_card,
 					 prkey->prv_p15obj,
@@ -1811,20 +1824,14 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 
 	/* Do we have to try a re-login and then try to sign again? */
 	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
-		/* Ensure that revalidate_pin() doesn't do a final sc_unlock()
-		   that would clear the card's current_path */
-		rv = sc_lock(ses->slot->card->card);
-		if (rv < 0)
-			return sc_to_cryptoki_error(rv, ses->slot->card->reader);
-
 		rv = revalidate_pin(data, ses);
 		if (rv == 0)
 			rv = sc_pkcs15_compute_signature(fw_data->p15_card,
 				prkey->prv_p15obj, flags, pData, ulDataLen,
 				pSignature, *pulDataLen);
-
-		sc_unlock(ses->slot->card->card);
 	}
+
+	sc_unlock(ses->slot->card->card);
 
 	sc_debug(context, "Sign complete. Result %d.\n", rv);
 
@@ -1872,6 +1879,18 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 		return CKR_MECHANISM_INVALID;		
 	}
 
+	rv = sc_lock(ses->slot->card->card);
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+
+	if (!sc_pkcs11_conf.lock_login) {
+		rv = reselect_app_df(fw_data->p15_card);
+		if (rv < 0) {
+			sc_unlock(ses->slot->card->card);
+			return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+		}
+	}
+
 	rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj,
 				 flags,
 				 pEncryptedData, ulEncryptedDataLen,
@@ -1879,21 +1898,14 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 
 	/* Do we have to try a re-login and then try to decrypt again? */
 	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
-		/* Ensure that revalidate_pin() doesn't do a final sc_unlock()
-		   that would clear the card's current_path */
-		rv = sc_lock(ses->slot->card->card);
-		if (rv < 0)
-			return sc_to_cryptoki_error(rv, ses->slot->card->reader);
-
 		rv = revalidate_pin(data, ses);
 		if (rv == 0)
 			rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj,
 						flags,
 						pEncryptedData, ulEncryptedDataLen,
 						decrypted, sizeof(decrypted));
-
-		sc_unlock(ses->slot->card->card);
 	}
+	sc_unlock(ses->slot->card->card);
 
 	sc_debug(context, "Key unwrap/decryption complete. Result %d.\n", rv);
 
@@ -2555,4 +2567,18 @@ add_pins_to_keycache(struct sc_pkcs11_card *p11card,
 		}
 	}
 #endif
+}
+
+static int reselect_app_df(sc_pkcs15_card_t *p15card)
+{
+	int r = SC_SUCCESS;
+
+	if (p15card->file_app != NULL) {
+		/* if the application df (of the pkcs15 application) is
+		 * specified select it */
+		sc_path_t *tpath = &p15card->file_app->path;
+		sc_debug(p15card->card->ctx, "reselect application df\n");
+		r = sc_select_file(p15card->card, tpath, NULL);
+	}
+	return r;
 }
