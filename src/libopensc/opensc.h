@@ -801,7 +801,6 @@ extern struct sc_card_driver *sc_get_tcos_driver(void);
 extern struct sc_card_driver *sc_get_default_driver(void);
 extern struct sc_card_driver *sc_get_etoken_driver(void);
 extern struct sc_card_driver *sc_get_mcrd_driver(void);
-extern struct sc_card_driver *sc_get_belpic_driver(void);
 
 #ifdef  __cplusplus
 }
