@@ -76,7 +76,7 @@ static int pkcs1_add_padding(const u8 *in, size_t inlen, u8 *out, size_t outlen)
 {
 	int i;
 	
-	if (inlen > outlen - 11)
+	if (inlen + 11 > outlen)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	*out++ = 0x00;
 	*out++ = 0x01;
