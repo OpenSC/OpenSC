@@ -189,14 +189,13 @@ ret:
 
 static struct {
 	const char *name;
-	int cmd_id;
 	int (*handler)(ASSUAN_CONTEXT, char *line);
 } ctable[] = {
-	{ "LISTR",	0, cmd_list_readers },
-	{ "LISTC",      0, cmd_list_cards },
-	{ "GET_OBJ",    0, cmd_get_objects },
-	{ "",		ASSUAN_CMD_INPUT, NULL },
-	{ "",		ASSUAN_CMD_OUTPUT, NULL },
+	{ "LISTR",	cmd_list_readers },
+	{ "LISTC",      cmd_list_cards },
+	{ "GET_OBJ",    cmd_get_objects },
+	{ "INPUT",      NULL },
+	{ "OUTPUT",     NULL },
 	{ NULL }
 };
 
@@ -205,11 +204,7 @@ static int register_commands(ASSUAN_CONTEXT assuan_ctx)
 	int i, j, r;
 	
 	for (i = j = 0; ctable[i].name != NULL; i++) {
-		int cmd_id = ctable[i].cmd_id;
-
-		if (cmd_id == 0)
-                        cmd_id = ASSUAN_CMD_USER + j++;
-		r = assuan_register_command(assuan_ctx, cmd_id,
+		r = assuan_register_command(assuan_ctx, 
 					    ctable[i].name, ctable[i].handler);
 		if (r)
 			return r;
