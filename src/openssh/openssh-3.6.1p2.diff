@@ -1,0 +1,75 @@
+diff -udrNP openssh-3.6.1p2.orig/Makefile.in openssh-3.6.1p2/Makefile.in
+--- openssh-3.6.1p2.orig/Makefile.in	2003-04-29 11:12:08.000000000 +0200
++++ openssh-3.6.1p2/Makefile.in	2003-06-15 21:18:57.000000000 +0200
+@@ -67,7 +67,7 @@
+ 	key.o dispatch.o kex.o mac.o uuencode.o misc.o \
+ 	rijndael.o ssh-dss.o ssh-rsa.o dh.o kexdh.o kexgex.o \
+ 	kexdhc.o kexgexc.o scard.o msg.o progressmeter.o \
+-	entropy.o
++	entropy.o scard-opensc.o
+ 
+ SSHOBJS= ssh.o readconf.o clientloop.o sshtty.o \
+ 	sshconnect.o sshconnect1.o sshconnect2.o
+diff -udrNP openssh-3.6.1p2.orig/scard-opensc.c openssh-3.6.1p2/scard-opensc.c
+--- openssh-3.6.1p2.orig/scard-opensc.c	2002-04-23 14:48:46.000000000 +0200
++++ openssh-3.6.1p2/scard-opensc.c	2003-06-15 21:37:11.000000000 +0200
+@@ -89,6 +89,12 @@
+ 	r = sc_establish_context(&ctx, "openssh");
+ 	if (r)
+ 		goto err;
++	if (sc_reader_id >= ctx->reader_count) {
++		r=SC_ERROR_NO_READERS_FOUND;
++		error("Illegal reader number. Only %d reader(s) configured.\n",
++			ctx->reader_count);
++		goto err;
++	}
+ 	r = sc_connect_card(ctx->reader[sc_reader_id], 0, &card);
+ 	if (r)
+ 		goto err;
+@@ -133,7 +139,19 @@
+ 	key = key_obj->data;
+ 	r = sc_pkcs15_find_pin_by_auth_id(p15card, &key_obj->auth_id,
+ 					  &pin_obj);
+-	if (r) {
++	if (r == SC_ERROR_OBJECT_NOT_FOUND)
++	{
++		/* no pin required */
++		r = sc_lock(card);
++		if (r) {
++			error("Unable to lock smartcard: %s", sc_strerror(r));
++			goto err;
++		}
++		*key_obj_out = key_obj;
++		return 0;
++	}
++	else if (r) {
++		/* some other OpenSC internal error */
+ 		error("Unable to find PIN object from SmartCard: %s",
+ 		      sc_strerror(r));
+ 		goto err;
+@@ -173,7 +191,8 @@
+ 	r = sc_prkey_op_init(rsa, &key_obj);
+ 	if (r)
+ 		return -1;
+-	r = sc_pkcs15_decipher(p15card, key_obj, 0, from, flen, to, flen);
++	r = sc_pkcs15_decipher(p15card, key_obj, SC_ALGORITHM_RSA_PAD_PKCS1,
++				from, flen, to, flen);
+ 	sc_unlock(card);
+ 	if (r < 0) {
+ 		error("sc_pkcs15_decipher() failed: %s", sc_strerror(r));
+@@ -423,9 +442,14 @@
+ 		}
+ 		key_count = r;
+ 	}
+-	/* FIXME: only keep entries with a corresponding private key */
+ 	keys = xmalloc(sizeof(Key *) * (key_count*2+1));
+ 	for (i = 0; i < key_count; i++) {
++		sc_pkcs15_object_t *tmp_obj = NULL;
++		cert_id = ((sc_pkcs15_cert_info_t *)(certs[i]->data))->id;
++		if (sc_pkcs15_find_prkey_by_id(p15card, &cert_id, &tmp_obj))
++			/* skip the public key (certificate) if no
++			 * corresponding private key is present */
++			continue;
+ 		k = key_new(KEY_RSA);
+ 		if (k == NULL)
+ 			break;
