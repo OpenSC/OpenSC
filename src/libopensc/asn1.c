@@ -63,6 +63,8 @@ static int read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 	*buf = NULL;
 	if (*p == 0)
 		return 0;
+	if (*p == 0xFF) /* FIXME */
+		return 0;
 	cla = (*p & ASN1_TAG_CLASS) | (*p & ASN1_TAG_CONSTRUCTED);
 	tag = *p & ASN1_TAG_PRIMITIVE;
 	if (tag == ASN1_TAG_PRIMITIVE) {	/* 0x1F */
@@ -965,7 +967,7 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 		else
 			return 0;
 	}
-	if (p[0] == 0 && p[1] == 0)
+	if ((p[0] == 0 && p[1] == 0) || (p[0] == 0xFF && p[1] == 0xFF))
 		return SC_ERROR_ASN1_END_OF_CONTENTS;
 	for (idx = 0; asn1[idx].name != NULL; idx++) {
 		entry = &asn1[idx];
