@@ -33,6 +33,8 @@
 
 #define DIM(v) (sizeof(v)/sizeof((v)[0]))
 
+const char *app_name = "opensc-explorer";
+
 int opt_reader = 0, opt_debug = 0;
 const char *opt_driver = NULL;
 
@@ -81,7 +83,7 @@ void die(int ret)
 		sc_disconnect_card(card, 0);
 	}
 	if (ctx)
-		sc_destroy_context(ctx);
+		sc_release_context(ctx);
 	exit(ret);
 }
 
@@ -1154,7 +1156,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die("opensc-explorer");
+			print_usage_and_die();
 		switch (c) {
 		case 'r':
 			opt_reader = atoi(optarg);
@@ -1168,7 +1170,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	r = sc_establish_context(&ctx);
+	r = sc_establish_context(&ctx, app_name);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;

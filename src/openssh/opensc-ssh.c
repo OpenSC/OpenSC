@@ -281,7 +281,7 @@ int main(int argc, char *const argv[])
 	}
 	if (action_count == 0)
 		print_usage_and_die();
-	r = sc_establish_context(&ctx);
+	r = sc_establish_context(&ctx, "opensc-ssh");
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
@@ -329,6 +329,6 @@ end:
 		sc_disconnect_card(card, 0);
 	}
 	if (ctx)
-		sc_destroy_context(ctx);
+		sc_release_context(ctx);
 	return err;
 }

@@ -12,7 +12,7 @@ PCSC_FLAGS = @CFLAGS_PCSC@
 PCSC_LIB = @LIBPCSC@
 endif
 
-INCLUDES = $(PCSC_FLAGS)
+INCLUDES = $(PCSC_FLAGS) -I../scconf
 
 bin_SCRIPTS = opensc-config
 
@@ -24,7 +24,7 @@ libopensc_la_SOURCES	= asn1.c base64.c sec.c log.c sc.c card.c iso7816.c \
 			  card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 			  card-tcos.c card-emv.c card-default.c
 libopensc_la_LDFLAGS	= -version-info 0:6:0
-libopensc_la_LIBADD	= $(PCSC_LIB) $(SSL_LIB)
+libopensc_la_LIBADD	= $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF)
 
 include_HEADERS		= opensc.h opensc-pkcs15.h opensc-emv.h \
 		   	  cardctl.h

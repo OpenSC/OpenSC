@@ -70,16 +70,16 @@ const char *scam_get_atr(unsigned int readernum)
 		return NULL;
 	}
 	if (readernum >= ctx->reader_count || readernum < 0) {
-		sc_destroy_context(ctx);
+		sc_release_context(ctx);
 		return NULL;
 	}
 	if (sc_detect_card_presence(ctx->reader[readernum], 0) != 1) {
-		sc_destroy_context(ctx);
+		sc_release_context(ctx);
 		return NULL;
 	}
 	r = sc_connect_card(ctx->reader[readernum], 0, &card);
 	if (r) {
-		sc_destroy_context(ctx);
+		sc_release_context(ctx);
 		return NULL;
 	}
 	for (i = 0; i < card->atr_len; i++) {
@@ -103,7 +103,7 @@ const char *scam_get_atr(unsigned int readernum)
 	}
 	atr[c] = 0;
 	sc_disconnect_card(card, 0);
-	sc_destroy_context(ctx);
+	sc_release_context(ctx);
 	return &atr[0];
 }
 

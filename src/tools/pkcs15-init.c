@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <assert.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
@@ -45,6 +46,8 @@
 #include "util.h"
 #include "profile.h"
 #include "pkcs15-init.h"
+
+const char *app_name = "pkcs15-init";
 
 /* Handle encoding of PKCS15 on the card */
 typedef int	(*pkcs15_encoder)(struct sc_context *,
@@ -278,7 +281,7 @@ done:	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card, 0);
 	}
-	sc_destroy_context(ctx);
+	sc_release_context(ctx);
 	return r? 1 : 0;
 }
 
@@ -303,7 +306,7 @@ connect(int reader)
 {
 	int	r;
 
-	r = sc_establish_context(&ctx);
+	r = sc_establish_context(&ctx, app_name);
 	if (r) {
 		error("Failed to establish context: %s\n", sc_strerror(r));
 		return 0;

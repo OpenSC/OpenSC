@@ -16,7 +16,7 @@ int sc_test_init(int *argc, char *argv[])
 	int i, c;
 
 	printf("Using libopensc version %s.\n", sc_version);
-	i = sc_establish_context(&ctx);
+	i = sc_establish_context(&ctx, "tests");
 	if (i < 0) {
 		printf("sc_establish_context() failed (%d)\n", i);
 		return i;
@@ -70,5 +70,5 @@ int sc_test_init(int *argc, char *argv[])
 void sc_test_cleanup(void)
 {
 	sc_disconnect_card(card, 0);
-	sc_destroy_context(ctx);
+	sc_release_context(ctx);
 }

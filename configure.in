@@ -935,6 +935,10 @@ AM_CONDITIONAL(HAVE_SCIDI, test "foo" = "bar")
 
 scldap_etc_path=`eval echo ${sysconfdir}` ; scldap_etc_path=`eval echo ${scldap_etc_path}`
 AC_DEFINE_UNQUOTED(SCLDAP_ETC_PATH_CUSTOM, "$scldap_etc_path", [etc path for scldap])
+opensc_etc_path=`eval echo ${sysconfdir}` ; opensc_etc_path=`eval echo ${opensc_etc_path}`
+AC_DEFINE_UNQUOTED(OPENSC_ETC_PATH, "$opensc_etc_path", [etc path for libopensc])
+opensc_conf_path=`eval echo ${opensc_etc_path}/opensc.conf`
+AC_DEFINE_UNQUOTED(OPENSC_CONF_PATH, "$opensc_conf_path", [default config file for libopensc])
 
 AC_SUBST(CFLAGS_OPENSC)
 CFLAGS_OPENSC="-I\${top_srcdir}/src/libopensc"

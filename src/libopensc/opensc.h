@@ -26,11 +26,13 @@
 #ifndef _OPENSC_H
 #define _OPENSC_H
 
-#include <pthread.h>
-#ifndef NDEBUG
-#include <assert.h>
-#endif
 #include <stdio.h>
+
+#ifdef HAVE_PTHREAD
+#include <pthread.h>
+#endif
+
+#include <scconf.h>
 
 #ifdef  __cplusplus
 extern "C" {
@@ -192,6 +194,7 @@ struct sc_acl_entry {
 
 	struct sc_acl_entry *next;
 };
+typedef struct sc_acl_entry sc_acl_entry_t;
 
 struct sc_file {
 	struct sc_path path;
@@ -213,6 +216,7 @@ struct sc_file {
 	size_t prop_attr_len;
 	unsigned int magic;
 };
+typedef struct sc_file sc_file_t;
 
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
@@ -263,6 +267,7 @@ struct sc_security_env {
 	u8 key_ref[8];
 	size_t key_ref_len;
 };
+typedef struct sc_security_env sc_security_env_t;
 
 struct sc_algorithm_id {
 	unsigned int algorithm;
@@ -280,6 +285,7 @@ struct sc_algorithm_info {
 		} _rsa;
 	} u;
 };
+typedef struct sc_algorithm_info sc_algorithm_info_t;
 
 struct sc_app_info {
 	u8 aid[SC_MAX_AID_SIZE];
@@ -292,11 +298,11 @@ struct sc_app_info {
 	const char *desc;	/* App description, if known */
 	int rec_nr;		/* -1, if EF(DIR) is transparent */
 };
+typedef struct sc_app_info sc_app_info_t;
 
 struct sc_card_cache {
 	struct sc_path current_path;
 };
-
 
 #define SC_PROTO_T0		0x00000001
 #define SC_PROTO_T1		0x00000002
@@ -320,6 +326,7 @@ struct sc_slot_info {
 	
 	void *drv_data;
 };
+typedef struct sc_slot_info sc_slot_info_t;
 
 struct sc_event_listener {
 	unsigned int event_mask;
@@ -404,7 +411,6 @@ struct sc_card {
 	struct sc_algorithm_info *algorithms;
 	int algorithm_count;
 	
-	pthread_mutex_t mutex;
 	int lock_count;
 
 	const struct sc_card_driver *driver;
@@ -414,8 +420,12 @@ struct sc_card {
 	struct sc_card_cache cache;
 	int cache_valid;
 
+#ifdef HAVE_PTHREAD
+	pthread_mutex_t mutex;
+#endif
 	unsigned int magic;
 };
+typedef struct sc_card sc_card_t;
 
 struct sc_card_operations {
 	/* Called in sc_connect_card().  Must return 1, if the current
@@ -522,6 +532,8 @@ struct sc_card_driver {
 };
 
 struct sc_context {
+	scconf_context *conf;
+	char *app_name;
 	int debug;
 
 	FILE *debug_file, *error_file;
@@ -535,8 +547,13 @@ struct sc_context {
 	
 	const struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS+1];
 	const struct sc_card_driver *forced_driver;
+
+#ifdef HAVE_PTHREAD
 	pthread_mutex_t mutex;
+#endif
+	unsigned int magic;
 };
+typedef struct sc_context sc_context_t;
 
 struct sc_apdu {
 	int cse;		/* APDU case */
@@ -550,6 +567,7 @@ struct sc_apdu {
 
 	unsigned int sw1, sw2;	/* Status words returned in R-APDU */
 };
+typedef struct sc_apdu sc_apdu_t;
 
 /* Base64 encoding/decoding functions */
 int sc_base64_encode(const u8 *in, size_t inlen, u8 *out, size_t outlen,
@@ -564,13 +582,16 @@ void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu, int cse, int ins
 /**
  * Establishes an OpenSC context
  * @param ctx A pointer to a pointer that will receive the allocated context
+ * @param app_name A string that identifies the application, used primarily
+ *	in finding application-specific configuration data. Can be NULL.
  */
-int sc_establish_context(struct sc_context **ctx);
+int sc_establish_context(struct sc_context **ctx, const char *app_name);
+
 /**
- * Destroys an established OpenSC context
- * @param ctx A pointer to the context structure to be destroyed
+ * Releases an established OpenSC context
+ * @param ctx A pointer to the context structure to be released
  */
-int sc_destroy_context(struct sc_context *ctx);
+int sc_release_context(struct sc_context *ctx);
 /**
  * Forces the use of a specified card driver
  * @param ctx OpenSC context

@@ -26,9 +26,11 @@
 #endif
 
 #include "opensc.h"
+#include <assert.h>
 
 #define SC_FILE_MAGIC			0x14426950
 #define SC_CARD_MAGIC			0x27182818
+#define SC_CTX_MAGIC			0x0A550335
 
 struct sc_atr_table {
 	const u8 *atr;

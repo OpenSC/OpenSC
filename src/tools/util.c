@@ -63,10 +63,10 @@ void hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)
 	}
 }
 
-void print_usage_and_die(const char *pgmname)
+void print_usage_and_die()
 {
 	int i = 0;
-	printf("Usage: %s [OPTIONS]\nOptions:\n", pgmname);
+	printf("Usage: %s [OPTIONS]\nOptions:\n", app_name);
 
 	while (options[i].name) {
 		char buf[40], tmp[5];

@@ -31,6 +31,8 @@
 #include <opensc.h>
 #include <opensc-pkcs15.h>
 
+const char *app_name = "pkcs15-crypt";
+
 int opt_reader = 0, quiet = 0;
 int opt_debug = 0;
 char * opt_pincode = NULL, * opt_key_id = NULL;
@@ -256,7 +258,7 @@ int main(int argc, char * const argv[])
 	}
 	if (action_count == 0)
 		print_usage_and_die("pkcs15-crypt");
-	r = sc_establish_context(&ctx);
+	r = sc_establish_context(&ctx, app_name);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
@@ -362,6 +364,6 @@ end:
 		sc_disconnect_card(card, 0);
 	}
 	if (ctx)
-		sc_destroy_context(ctx);
+		sc_release_context(ctx);
 	return err;
 }

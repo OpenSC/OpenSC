@@ -38,6 +38,8 @@
 #define OPT_PIN_ID	0x103
 #define OPT_NO_CACHE	0x104
 
+const char *app_name = "opensc-tool";
+
 int opt_reader = 0, opt_no_cache = 0, opt_debug = 0;
 char * opt_apdus[8];
 int opt_apdu_count = 0;
@@ -356,7 +358,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die("opensc-tool");
+			print_usage_and_die();
 		switch (c) {
 		case 'l':
 			do_list_readers = 1;
@@ -400,8 +402,8 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die("opensc-tool");
-	r = sc_establish_context(&ctx);
+		print_usage_and_die();
+	r = sc_establish_context(&ctx, app_name);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
@@ -481,6 +483,6 @@ end:
 		sc_disconnect_card(card, 0);
 	}
 	if (ctx)
-		sc_destroy_context(ctx);
+		sc_release_context(ctx);
 	return err;
 }

@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <assert.h>
 #include "util.h"
 #include "profile.h"
 

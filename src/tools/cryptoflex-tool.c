@@ -29,6 +29,8 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
+const char *app_name = "cryptoflex-tool";
+
 int opt_reader = 0, opt_debug = 0;
 int opt_key_num = 1, opt_pin_num = -1;
 int quiet = 0;
@@ -1162,8 +1164,8 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die("cryptoflex-tool");
-	r = sc_establish_context(&ctx);
+		print_usage_and_die();
+	r = sc_establish_context(&ctx, app_name);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
@@ -1236,6 +1238,6 @@ end:
 		sc_disconnect_card(card, 0);
 	}
 	if (ctx)
-		sc_destroy_context(ctx);
+		sc_release_context(ctx);
 	return err;
 }

@@ -122,7 +122,7 @@ int p15_eid_init(int argc, const char **argv)
 	if (ctx) {
 		return SCAM_FAILED;
 	}
-	r = sc_establish_context(&ctx);
+	r = sc_establish_context(&ctx, "scam");
 	if (r != SC_SUCCESS) {
 		scam_fw_p15_eid.printmsg("sc_establish_context: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
@@ -372,7 +372,7 @@ void p15_eid_deinit(void)
 	}
 	card = NULL;
 	if (ctx) {
-		sc_destroy_context(ctx);
+		sc_release_context(ctx);
 	}
 	ctx = NULL;
 }

@@ -142,20 +142,60 @@ int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout)
 }
 #endif
 
-int sc_establish_context(struct sc_context **ctx_out)
+static void set_defaults(struct sc_context *ctx)
+{
+	ctx->debug = 0;
+	if (ctx->debug_file)
+		fclose(ctx->debug_file);
+	ctx->debug_file = NULL;
+	ctx->log_errors = 1;
+	ctx->error_file = stderr;
+}
+
+static int load_parameters(struct sc_context *ctx, scconf_block *block)
+{
+	const char *val;
+
+	val = scconf_find_value_first(block, "debuglevel");
+	sscanf(val, "%d", &ctx->debug);
+	val = scconf_find_value_first(block, "debugfile");
+	if (ctx->debug_file)
+		fclose(ctx->debug_file);
+	if (strcmp(val, "stdout") == 0)
+		ctx->debug_file = fopen(val, "a");
+	val = scconf_find_value_first(block, "errorfile");
+	if (ctx->error_file)
+		fclose(ctx->error_file);
+	if (strcmp(val, "stderr") != 0)
+		ctx->error_file = fopen(val, "a");
+
+	return 0;
+}
+
+int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 {
 	struct sc_context *ctx;
-	int i;
+	int i, r;
 
 	assert(ctx_out != NULL);
 	ctx = malloc(sizeof(struct sc_context));
 	if (ctx == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(ctx, 0, sizeof(struct sc_context));
-	ctx->log_errors = 1;
-
+	set_defaults(ctx);
+	ctx->app_name = strdup(app_name);
+	ctx->conf = scconf_init(OPENSC_CONF_PATH);
+	if (ctx->conf != NULL) {
+		r = scconf_parse(ctx->conf);
+		if (scconf_parse(ctx->conf) < 1) {
+			scconf_deinit(ctx->conf);
+			ctx->conf = NULL;
+		} else
+			load_parameters(ctx, ctx->conf->root);
+	}
+#ifdef HAVE_PTHREAD
 	pthread_mutex_init(&ctx->mutex, NULL);
-
+#endif
 	for (i = 0; i < SC_MAX_READER_DRIVERS+1; i++)
 		ctx->reader_drivers[i] = NULL;
 	i = 0;
@@ -199,7 +239,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 	return 0;
 }
 
-int sc_destroy_context(struct sc_context *ctx)
+int sc_release_context(struct sc_context *ctx)
 {
 	int i;
 
@@ -220,6 +260,9 @@ int sc_destroy_context(struct sc_context *ctx)
 			drv->ops->finish(ctx->reader_drv_data[i]);
 	}
 	ctx->debug_file = ctx->error_file = NULL;
+	if (ctx->conf)
+		scconf_deinit(ctx->conf);
+	free(ctx->app_name);
 	free(ctx);
 	return 0;
 }
@@ -228,7 +271,9 @@ int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
 {
 	int i = 0, match = 0;
 	
+#ifdef HAVE_PTHREAD
 	pthread_mutex_lock(&ctx->mutex);
+#endif
 	if (short_name == NULL) {
 		ctx->forced_driver = NULL;
 		match = 1;
@@ -242,7 +287,9 @@ int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
 		}
 		i++;
 	}
+#ifdef HAVE_PTHREAD
 	pthread_mutex_unlock(&ctx->mutex);
+#endif
 	if (match == 0)
 		return SC_ERROR_OBJECT_NOT_FOUND; /* FIXME: invent error */
 	return 0;

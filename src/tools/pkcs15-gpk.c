@@ -23,6 +23,7 @@
 #endif
 #include <sys/types.h>
 #include <string.h>
+#include <assert.h>
 #include <openssl/bn.h>
 #include "opensc.h"
 #include "cardctl.h"

@@ -80,7 +80,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	for (i=0; i<context->reader_count; i++)
                 card_removed(i);
 
-	sc_destroy_context(context);
+	sc_release_context(context);
         return CKR_OK;
 }
 

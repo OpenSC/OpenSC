@@ -1,0 +1,11 @@
+# Configuration file for OpenSC
+# Example configuration file
+
+opensc defaults {
+	debuglevel = 0
+#	debugfile = /tmp/opensc-debug.log
+#	errorfile = /tmp/opensc-errors.log
+}
+
+opensc pam_pkcs15 {
+}
