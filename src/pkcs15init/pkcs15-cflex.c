@@ -29,13 +29,69 @@
 #include "profile.h"
 
 static void	invert_buf(u8 *dest, const u8 *src, size_t c);
+static int cflex_update_pin(struct sc_profile *profile, struct sc_card *card,
+			    sc_file_t *file,
+			    const u8 *pin, size_t pin_len, int pin_tries,
+			    const u8 *puk, size_t puk_len, int puk_tries);
+
+static int cflex_delete_file(struct sc_card *card, struct sc_profile *profile,
+                struct sc_file *df)
+{
+        struct sc_path  path;
+        struct sc_file  *parent;
+        int             r = 0;
+        /* Select the parent DF */
+        path = df->path;
+        path.len -= 2;
+        r = sc_select_file(card, &path, &parent);
+        if (r < 0)
+                return r;
+
+        r = sc_pkcs15init_authenticate(profile, card, parent, SC_AC_OP_DELETE);
+        sc_file_free(parent);
+        if (r < 0)
+                return r;
+
+	/* cryptoflex has no ERASE AC */
+        memset(&path, 0, sizeof(path));
+        path.type = SC_PATH_TYPE_FILE_ID;
+        path.value[0] = df->id >> 8;
+        path.value[1] = df->id & 0xFF;
+        path.len = 2;
+
+        card->ctx->log_errors = 0;
+        r = sc_delete_file(card, &path);
+        card->ctx->log_errors = 1;
+        return r;
+}
 
 /*
- * Erase the card via rm -rf
+ * Erase the card via rm
  */
 static int cflex_erase_card(struct sc_profile *profile, struct sc_card *card)
 {
-	return sc_pkcs15init_erase_card_recursively(card, profile, -1);
+        struct sc_file  *df = profile->df_info->file, *dir;
+        int             r;
+
+	/* Delete EF(DIR). This may not be very nice
+         * against other applications that use this file, but
+         * extremely useful for testing :)
+         * Note we need to delete if before the DF because we create
+         * it *after* the DF. 
+         * */
+        if (sc_profile_get_file(profile, "DIR", &dir) >= 0) {
+                r = cflex_delete_file(card, profile, dir);
+                sc_file_free(dir);
+                if (r < 0 && r != SC_ERROR_FILE_NOT_FOUND)
+                        goto out;
+        }
+	r=cflex_delete_file(card, profile, df);
+        /* Unfrob the SO pin reference, and return */
+out:    sc_profile_forget_secrets(profile, SC_AC_CHV, -1);
+        sc_free_apps(card);
+        if (r == SC_ERROR_FILE_NOT_FOUND)
+                r=0;
+        return r;
 }
 
 /*
@@ -44,17 +100,64 @@ static int cflex_erase_card(struct sc_profile *profile, struct sc_card *card)
 static int cflex_init_app(struct sc_profile *profile, struct sc_card *card,
 		const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
-	if (pin && pin_len) {
-		profile->cbs->error("Cryptoflex card driver doesn't "
-				"support SO PIN\n");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
+     sc_file_t *pinfile, *keyfile;
+     struct sc_pkcs15_pin_info sopin,tmpinfo;
+     int pin_tries, puk_tries;
+     int r;
+     char extkey_contents[15];
+     
+     if (pin && pin_len) {
+	  
+	  if (sc_profile_get_file(profile, "sopinfile", &pinfile) < 0) {
+	       profile->cbs->error("Profile doesn't define \"sopinfile\"");
+	       return SC_ERROR_NOT_SUPPORTED;
+	  }
+	  if (sc_profile_get_file(profile, "extkey", &keyfile) < 0) { 
+	       profile->cbs->error("Profile doesn't define \"extkey\"");
+	       return SC_ERROR_NOT_SUPPORTED;
+	  }
+	  if (pin_len > 8)
+	       pin_len = 8;
+	  if (puk_len > 8)
+	       puk_len = 8;
+	  sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
+	  sopin.reference=0x2; /* XXX where did this come from? */
+	  memcpy(&sopin.path, &profile->df_info->file->path, sizeof(sc_path_t));
+	  sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
+     }
+     /* Create the application DF */
+     if (sc_pkcs15init_create_file(profile, card, profile->df_info->file))
+	  return 1;
 
-	/* Create the application DF */
-	if (sc_pkcs15init_create_file(profile, card, profile->df_info->file))
-		return 1;
-
-	return 0;
+     if (pin && pin_len) {
+	  pin_tries = sopin.tries_left;
+	  sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &tmpinfo);
+	  puk_tries = tmpinfo.tries_left;
+	  r = cflex_update_pin(profile, card, pinfile, pin, pin_len, pin_tries,
+			       puk, puk_len, puk_tries);
+	  if (r) {
+	       profile->cbs->error("update_pin failed for SOPIN\n");
+	       return r;
+	  }
+	  memset(&extkey_contents, 0, sizeof(extkey_contents));
+	  extkey_contents[0]=0; /* RFU */
+	  extkey_contents[1]=1; /* skip AUT0 */
+	  extkey_contents[2]=8; /* AUT1 length; single DES */
+	  extkey_contents[3]=0; /* single DES */
+	  extkey_contents[12]=1; /* # allowed verification attempts */
+	  extkey_contents[13]=255; /* block key */
+	  extkey_contents[14]=0;  /* no more keys */
+	  r=sc_pkcs15init_update_file(profile, card, keyfile, 
+				      extkey_contents, 15);
+	  if (r != 15) {
+	       profile->cbs->error("update_file failed for extkey file\n");
+	       return r;
+	  }
+	  
+     }
+     
+     
+     return 0;
 }
 
 /*

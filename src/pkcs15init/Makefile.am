@@ -20,7 +20,7 @@ libpkcs15init_la_SOURCES = \
 include_HEADERS = pkcs15-init.h
 noinst_HEADERS = profile.h
 pkgdata_DATA = etoken.profile \
-	       flex.profile \
+	       flex.profile flex_so.profile \
 	       gpk.profile \
 	       miocos.profile \
 	       pkcs15.profile
