@@ -29,7 +29,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
-#include "cardctl.h"
+#include <opensc/cardctl.h>
 #include "util.h"
 
 #define DIM(v) (sizeof(v)/sizeof((v)[0]))
