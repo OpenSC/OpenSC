@@ -92,7 +92,7 @@ extern const char *scldap_show_arguments(void);
 extern int scldap_add_entry(scldap_context * ctx, const char *entry);
 
 /* Return entry index number
- *
+ */
 extern int scldap_get_entry(scldap_context * ctx, const char *entry);
 
 /* Set entry as the current active entry
