@@ -43,7 +43,7 @@
 
 /* Decide whether to use pkcs11 for initialization support */
 #ifdef HAVE_OPENSSL
-# define USE_PKCS15_INIT
+#define USE_PKCS15_INIT
 #endif
 
 #ifdef __cplusplus
@@ -279,6 +279,7 @@ extern struct sc_pkcs11_pool session_pool;
 extern struct sc_pkcs11_slot virtual_slots[SC_PKCS11_MAX_VIRTUAL_SLOTS];
 extern struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
 extern struct sc_pkcs11_config sc_pkcs11_conf;
+extern unsigned int first_free_slot;
 
 /* Framework definitions */
 extern struct sc_pkcs11_framework_ops framework_pkcs15;

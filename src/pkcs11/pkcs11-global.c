@@ -45,6 +45,7 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	/* Load configuration */
 	load_pkcs11_parameters(&sc_pkcs11_conf, context);
 
+	first_free_slot = 0;
         pool_initialize(&session_pool, POOL_TYPE_SESSION);
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++)
                 slot_initialize(i, &virtual_slots[i]);

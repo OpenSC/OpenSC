@@ -31,7 +31,7 @@ static struct sc_pkcs11_framework_ops *frameworks[] = {
 	NULL
 };
 
-static unsigned int first_free_slot = 0;
+unsigned int first_free_slot = 0;
 
 static void init_slot_info(CK_SLOT_INFO_PTR pInfo)
 {
