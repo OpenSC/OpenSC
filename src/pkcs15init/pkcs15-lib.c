@@ -58,7 +58,8 @@ typedef int	(*pkcs15_encoder)(struct sc_context *,
 			struct sc_pkcs15_card *, u8 **, size_t *);
 
 static int	sc_pkcs15init_generate_key_soft(struct sc_pkcs15_card *,
-			struct sc_profile *, struct sc_pkcs15init_keyargs *);
+			struct sc_profile *, struct sc_pkcs15init_keyargs *,
+			struct sc_pkcs15_object **);
 
 static int	sc_pkcs15init_store_data(struct sc_pkcs15_card *,
 			struct sc_profile *, unsigned int, void *,
@@ -352,19 +353,22 @@ aodf_add_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 int
 sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs)
+		struct sc_pkcs15init_keyargs *keyargs,
+		struct sc_pkcs15_object **res_obj)
 {
 	if (keyargs->onboard_keygen)
 		return SC_ERROR_NOT_SUPPORTED;
 
 	/* Fall back to software generated keys */
-	return sc_pkcs15init_generate_key_soft(p15card, profile, keyargs);
+	return sc_pkcs15init_generate_key_soft(p15card, profile,
+		       	keyargs, res_obj);
 }
 
 static int
 sc_pkcs15init_generate_key_soft(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs)
+		struct sc_pkcs15init_keyargs *keyargs,
+		struct sc_pkcs15_object **res_obj)
 {
 	int	r;
 
@@ -405,7 +409,7 @@ sc_pkcs15init_generate_key_soft(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = sc_pkcs15init_store_private_key(p15card, profile, keyargs);
+	r = sc_pkcs15init_store_private_key(p15card, profile, keyargs, res_obj);
 	if (r < 0)
 		return r;
 
@@ -418,7 +422,8 @@ sc_pkcs15init_generate_key_soft(struct sc_pkcs15_card *p15card,
 int
 sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs)
+		struct sc_pkcs15init_keyargs *keyargs,
+		struct sc_pkcs15_object **res_obj)
 {
 	struct sc_pkcs15_pin_info *pin_info = NULL;
 	struct sc_pkcs15_object *object;
@@ -500,7 +505,11 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 		return r;
 
 	/* Now update the PrKDF */
-	return sc_pkcs15init_update_df(p15card, profile, SC_PKCS15_PRKDF);
+	r = sc_pkcs15init_update_df(p15card, profile, SC_PKCS15_PRKDF);
+	if (r >= 0 && res_obj)
+		*res_obj = object;
+
+	return r;
 }
 
 /*
@@ -509,7 +518,8 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 int
 sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs)
+		struct sc_pkcs15init_keyargs *keyargs,
+		struct sc_pkcs15_object **res_obj)
 {
 	struct sc_pkcs15_object *object;
 	struct sc_pkcs15_pubkey_info *key_info;
@@ -543,7 +553,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	key_info = calloc(1, sizeof(*key_info));
 	key_info->id = keyargs->id;
 	key_info->usage = usage;
-	key_info->modulus_length = EVP_PKEY_size(keyargs->pkey);
+	key_info->modulus_length = 8 * EVP_PKEY_size(keyargs->pkey);
 
 	object = calloc(1, sizeof(*object));
 	object->type = type;
@@ -562,6 +572,8 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 			&p15card->df[SC_PKCS15_PUKDF], 0, object);
 	if (r >= 0)
 		r = sc_pkcs15init_update_df(p15card, profile, SC_PKCS15_PUKDF);
+	if (r >= 0 && res_obj)
+		*res_obj = object;
 
 	return r;
 }
@@ -572,7 +584,8 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 int
 sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		struct sc_pkcs15init_certargs *args)
+		struct sc_pkcs15init_certargs *args,
+		struct sc_pkcs15_object **res_obj)
 {
 	struct sc_pkcs15_cert_info *cert_info;
 	struct sc_pkcs15_object *object;
@@ -629,6 +642,8 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 			&p15card->df[SC_PKCS15_CDF], 0, object);
 	if (r >= 0)
 		r = sc_pkcs15init_update_df(p15card, profile, SC_PKCS15_CDF);
+	if (r >= 0 && res_obj)
+		*res_obj = object;
 
 	return r;
 }
@@ -882,6 +897,16 @@ sc_pkcs15init_update_df(struct sc_pkcs15_card *p15card,
 	return r;
 }
 
+void
+sc_pkcs15init_set_pin_data(struct sc_profile *profile, int pin_id,
+				const void *value, size_t len)
+{
+	sc_profile_set_secret(profile, SC_AC_SYMBOLIC, pin_id, value, len);
+}
+
+/*
+ * PIN verification
+ */
 static int
 do_verify_pin(struct sc_profile *pro, struct sc_card *card,
 		unsigned int type, unsigned int reference)

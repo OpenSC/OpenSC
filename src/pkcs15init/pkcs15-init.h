@@ -132,16 +132,20 @@ extern int	sc_pkcs15init_store_pin(struct sc_pkcs15_card *,
 				struct sc_pkcs15init_pinargs *);
 extern int	sc_pkcs15init_generate_key(struct sc_pkcs15_card *,
 				struct sc_profile *,
-				struct sc_pkcs15init_keyargs *);
+				struct sc_pkcs15init_keyargs *,
+				struct sc_pkcs15_object **);
 extern int	sc_pkcs15init_store_private_key(struct sc_pkcs15_card *,
 				struct sc_profile *,
-				struct sc_pkcs15init_keyargs *);
+				struct sc_pkcs15init_keyargs *,
+				struct sc_pkcs15_object **);
 extern int	sc_pkcs15init_store_public_key(struct sc_pkcs15_card *,
 				struct sc_profile *,
-				struct sc_pkcs15init_keyargs *);
+				struct sc_pkcs15init_keyargs *,
+				struct sc_pkcs15_object **);
 extern int	sc_pkcs15init_store_certificate(struct sc_pkcs15_card *,
 				struct sc_profile *,
-				struct sc_pkcs15init_certargs *);
+				struct sc_pkcs15init_certargs *,
+				struct sc_pkcs15_object **);
 
 extern int	sc_pkcs15init_create_file(struct sc_profile *,
 				struct sc_card *, struct sc_file *);
@@ -163,5 +167,8 @@ extern int	sc_pkcs15init_get_manufacturer(struct sc_profile *,
 extern int	sc_pkcs15init_get_serial(struct sc_profile *, const char **);
 extern int	sc_pkcs15init_set_serial(struct sc_profile *, const char *);
 extern int	sc_pkcs15init_get_label(struct sc_profile *, const char **);
+
+extern void	sc_pkcs15init_set_pin_data(struct sc_profile *, int,
+				const void *, size_t);
 
 #endif /* PKCS15_INIT_H */
