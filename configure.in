@@ -81,40 +81,6 @@ case "$host" in
 	;;
 esac
 
-dnl Allow user to specify flags
-AC_ARG_WITH(cflags,
-	[  --with-cflags           Specify additional flags to pass to compiler],
-	[
-		if test "x$withval" != "xno" ; then
-			CFLAGS="$CFLAGS $withval"
-		fi
-	]
-)
-AC_ARG_WITH(cppflags,
-	[  --with-cppflags         Specify additional flags to pass to preprocessor] ,
-	[
-		if test "x$withval" != "xno"; then
-			CPPFLAGS="$CPPFLAGS $withval"
-		fi
-	]
-)
-AC_ARG_WITH(ldflags,
-	[  --with-ldflags          Specify additional flags to pass to linker],
-	[
-		if test "x$withval" != "xno" ; then
-			LDFLAGS="$LDFLAGS $withval"
-		fi
-	]
-)
-AC_ARG_WITH(libs,
-	[  --with-libs             Specify additional libraries to link with],
-	[
-		if test "x$withval" != "xno" ; then
-			LIBS="$LIBS $withval"
-		fi
-	]
-)
-
 AC_ARG_WITH(common-dir,
 	[  --with-common-dir=PATH  Specify path for common installation libraries],
 	[
@@ -163,36 +129,8 @@ AC_CACHE_CHECK([for common directory], ac_cv_commondir, [
 	if test -z "$commondir" ; then
 		commondir="(system)"
 	fi
-
 	ac_cv_commondir=$commondir
 ])
-
-if (test ! -z "$ac_cv_commondir" && test "x$ac_cv_commondir" != "x(system)") ; then
-	dnl Need to recover commondir - test above runs in subshell
-	commondir=$ac_cv_commondir
-	if test ! -z "$commondir" -a "x$commondir" != "x/usr"; then
-		# Try to use $commondir/lib if it exists, otherwise
-		# $commondir
-		if test -d "$commondir/lib" ; then
-			LDFLAGS="-L$commondir/lib $saved_LDFLAGS"
-			if test ! -z "$need_dash_r" ; then
-				LDFLAGS="-R$commondir/lib $LDFLAGS"
-			fi
-		else
-			LDFLAGS="-L$commondir $saved_LDFLAGS"
-			if test ! -z "$need_dash_r" ; then
-				LDFLAGS="-R$commondir $LDFLAGS"
-			fi
-		fi
-		# Try to use $commondir/include if it exists, otherwise
-		# $commondir
-		if test -d "$commondir/include" ; then
-			CPPFLAGS="-I$commondir/include $saved_CPPFLAGS"
-		else
-			CPPFLAGS="-I$commondir $saved_CPPFLAGS"
-		fi
-	fi
-fi
 
 dnl Checks for programs.
 AC_PROG_CPP
@@ -448,36 +386,8 @@ AC_CACHE_CHECK([for flex directory], ac_cv_flexdir, [
 	if test -z "$flexdir" ; then
 		flexdir="(system)"
 	fi
-
 	ac_cv_flexdir=$flexdir
 ])
-
-if (test ! -z "$ac_cv_flexdir" && test "x$ac_cv_flexdir" != "x(system)") ; then
-	dnl Need to recover flexdir - test above runs in subshell
-	flexdir=$ac_cv_flexdir
-	if test ! -z "$flexdir" -a "x$flexdir" != "x/usr"; then
-		# Try to use $flexdir/lib if it exists, otherwise
-		# $flexdir
-		if test -d "$flexdir/lib" ; then
-			LDFLAGS="-L$flexdir/lib $saved_LDFLAGS"
-			if test ! -z "$need_dash_r" ; then
-				LDFLAGS="-R$flexdir/lib $LDFLAGS"
-			fi
-		else
-			LDFLAGS="-L$flexdir $saved_LDFLAGS"
-			if test ! -z "$need_dash_r" ; then
-				LDFLAGS="-R$flexdir $LDFLAGS"
-			fi
-		fi
-		# Try to use $flexdir/include if it exists, otherwise
-		# $flexdir
-		if test -d "$flexdir/include" ; then
-			CPPFLAGS="-I$flexdir/include $saved_CPPFLAGS"
-		else
-			CPPFLAGS="-I$flexdir $saved_CPPFLAGS"
-		fi
-	fi
-fi
 
 dnl The big mess with OpenSSL
 AC_ARG_WITH(ssl-dir,
@@ -600,28 +510,6 @@ int main(void)
 
 	if test "x$SSL_MSG" = "xyes" ; then
 		ac_cv_openssldir="$ssldir"
-		if test ! -z "$ssldir" -a "x$ssldir" != "x/usr"; then
-			# Try to use $ssldir/lib if it exists, otherwise
-			# $ssldir
-			if test -d "$ssldir/lib" ; then
-				LDFLAGS="-L$ssldir/lib $saved_LDFLAGS"
-				if test ! -z "$need_dash_r" ; then
-					LDFLAGS="-R$ssldir/lib $LDFLAGS"
-				fi
-			else
-				LDFLAGS="-L$ssldir $saved_LDFLAGS"
-				if test ! -z "$need_dash_r" ; then
-					LDFLAGS="-R$ssldir $LDFLAGS"
-				fi
-			fi
-			# Try to use $ssldir/include if it exists, otherwise
-			# $ssldir
-			if test -d "$ssldir/include" ; then
-				CPPFLAGS="-I$ssldir/include $saved_CPPFLAGS"
-			else
-				CPPFLAGS="-I$ssldir $saved_CPPFLAGS"
-			fi
-		fi
 	else
 		ac_cv_openssldir="no"
 	fi
@@ -682,36 +570,8 @@ AC_CACHE_CHECK([for pam directory], ac_cv_pamdir, [
 	if test -z "$pamdir" ; then
 		pamdir="(system)"
 	fi
-
 	ac_cv_pamdir=$pamdir
 ])
-
-if (test ! -z "$ac_cv_pamdir" && test "x$ac_cv_pamdir" != "x(system)") ; then
-	dnl Need to recover pamdir - test above runs in subshell
-	pamdir=$ac_cv_pamdir
-	if test ! -z "$pamdir" -a "x$pamdir" != "x/usr"; then
-		# Try to use $pamdir/lib if it exists, otherwise
-		# $pamdir
-		if test -d "$pamdir/lib" ; then
-			LDFLAGS="-L$pamdir/lib $saved_LDFLAGS"
-			if test ! -z "$need_dash_r" ; then
-				LDFLAGS="-R$pamdir/lib $LDFLAGS"
-			fi
-		else
-			LDFLAGS="-L$pamdir $saved_LDFLAGS"
-			if test ! -z "$need_dash_r" ; then
-				LDFLAGS="-R$pamdir $LDFLAGS"
-			fi
-		fi
-		# Try to use $pamdir/include if it exists, otherwise
-		# $pamdir
-		if test -d "$pamdir/include" ; then
-			CPPFLAGS="-I$pamdir/include $saved_CPPFLAGS"
-		else
-			CPPFLAGS="-I$pamdir $saved_CPPFLAGS"
-		fi
-	fi
-fi
 
 dnl Check for PAM libs
 PAM_MSG="no"
