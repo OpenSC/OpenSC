@@ -238,7 +238,7 @@ enum {
 
 	ACTION_MAX
 };
-static char *			action_names[] = {
+static const char *action_names[] = {
 	"do nothing",
 	"verify that card is pristine",
 	"erase card",
@@ -276,7 +276,7 @@ static int			opt_reader = -1,
 				opt_use_defkeys = 0,
 				opt_split_key = 0,
 				opt_wait = 0;
-static char *			opt_profile = "pkcs15";
+static const char *		opt_profile = "pkcs15";
 static char *			opt_card_profile = NULL;
 static char *			opt_infile = 0;
 static char *			opt_format = 0;
@@ -458,7 +458,7 @@ open_reader_and_card(int reader)
  * Make sure there's no pkcs15 structure on the card
  */
 static int
-do_assert_pristine(struct sc_card *card)
+do_assert_pristine(struct sc_card *in_card)
 {
 	sc_path_t	path;
 	int		r, res=0;
@@ -467,25 +467,25 @@ do_assert_pristine(struct sc_card *card)
 	 * on starcos card NOT ALLOWED is also ok, as the MF does
 	 * not exist. */
 
-	card->ctx->suppress_errors++;
+	in_card->ctx->suppress_errors++;
 
 	sc_format_path("2F00", &path);
-	r = sc_select_file(card, &path, NULL);
+	r = sc_select_file(in_card, &path, NULL);
 
 	if (r != SC_ERROR_FILE_NOT_FOUND)
 		if (r != SC_ERROR_NOT_ALLOWED ||
-		 	strcmp(card->name, "STARCOS SPK 2.3") != 0)
+		 	strcmp(in_card->name, "STARCOS SPK 2.3") != 0)
 		res = -1;
 
 	sc_format_path("5015", &path);
-	r = sc_select_file(card, &path, NULL);
+	r = sc_select_file(in_card, &path, NULL);
 
 	if (r != SC_ERROR_FILE_NOT_FOUND)
 		if (r != SC_ERROR_NOT_ALLOWED ||
-		 	strcmp(card->name, "STARCOS SPK 2.3") != 0)
+		 	strcmp(in_card->name, "STARCOS SPK 2.3") != 0)
 		res = -1;
 
-	card->ctx->suppress_errors--;
+	in_card->ctx->suppress_errors--;
 
 	if (res < 0) {
 		fprintf(stderr,
@@ -502,18 +502,18 @@ do_assert_pristine(struct sc_card *card)
  * Erase card
  */
 static int
-do_erase(struct sc_card *card, struct sc_profile *profile)
+do_erase(struct sc_card *in_card, struct sc_profile *profile)
 {
 	int	r;
 	ignore_cmdline_pins++;
-	r = sc_pkcs15init_erase_card(card, profile);
+	r = sc_pkcs15init_erase_card(in_card, profile);
 	ignore_cmdline_pins--;
 	return r;
 }
 
-static int do_finalize_card(sc_card_t *card, struct sc_profile *profile)
+static int do_finalize_card(sc_card_t *in_card, struct sc_profile *profile)
 {
-	return sc_pkcs15init_finalize_card(card, profile);
+	return sc_pkcs15init_finalize_card(in_card, profile);
 }
 
 /*
@@ -576,10 +576,10 @@ do_init_app(struct sc_profile *profile)
 	}
 	args.so_pin = (const u8 *) opt_pins[2];
 	if (args.so_pin)
-		args.so_pin_len = strlen((char *) args.so_pin);
+		args.so_pin_len = strlen(args.so_pin);
 	args.so_puk = (const u8 *) opt_pins[3];
 	if (args.so_puk)
-		args.so_puk_len = strlen((char *) args.so_puk);
+		args.so_puk_len = strlen(args.so_puk);
 	args.serial = (const char *) opt_serial;
 	args.label = opt_label;
 
@@ -1033,7 +1033,7 @@ init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 /*
  * Intern secrets given on the command line (mostly for testing)
  */
-void
+static void
 parse_secret(struct secret *secret, const char *arg)
 {
 	char		*copy, *str, *value;
@@ -1143,7 +1143,8 @@ get_pin_callback(struct sc_profile *profile,
 		u8 *pinbuf, size_t *pinsize)
 {
 	char	namebuf[64];
-	char	*name = NULL, *secret = NULL;
+	char	*secret = NULL;
+	const char *name;
 	size_t	len = 0;
 	int	allocated = 0;
 
@@ -1426,7 +1427,7 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 		certs[ncerts++] = user_cert;
 
 	/* Extract CA certificates, if any */
-	for(i = 0; cacerts && ncerts < max_certs && i < sk_X509_num(cacerts); i++)
+	for(i = 0; cacerts && ncerts < (int)max_certs && i < sk_X509_num(cacerts); i++)
 		certs[ncerts++] = sk_X509_value(cacerts, i);
 
 	/* bump reference counts for certificates */
