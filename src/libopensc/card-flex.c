@@ -1205,6 +1205,44 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 	return 0;
 }
 
+/* read the card serial number from the EF_gdo system file */
+static int flex_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
+{
+	int       r;
+	u8        buf[16];
+	size_t    len;
+	sc_path_t tpath;
+	sc_file_t *tfile = NULL;
+
+	if (!serial)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	/* see if we have cached serial number */
+	if (card->serialnr.len) {
+		memcpy(serial, &card->serialnr, sizeof(*serial));
+		return SC_SUCCESS;
+	}
+	/* read EF_ICCSN */
+	sc_format_path("3F000002", &tpath);
+	r = sc_select_file(card, &tpath, &tfile);
+	if (r < 0)
+		return r;
+	len = tfile->size;
+	sc_file_free(tfile);
+	if (len != 8) {
+		sc_debug(card->ctx, "unexpected file length of EF_ICCSN (%lu)\n", len);
+		return SC_ERROR_INTERNAL;
+	}
+	r = sc_read_binary(card, 0, buf, len, 0);
+	if (r < 0)
+		return r;
+	card->serialnr.len = len;	
+	memcpy(card->serialnr.value, buf, len);
+
+	memcpy(serial, &card->serialnr, sizeof(*serial));
+
+	return SC_SUCCESS;
+}
+
 static int flex_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
 	switch (cmd) {
@@ -1214,6 +1252,8 @@ static int flex_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_CRYPTOFLEX_GENERATE_KEY:
 		return flex_generate_key(card,
 				(struct sc_cardctl_cryptoflex_genkey_info *) ptr);
+	case SC_CARDCTL_GET_SERIALNR:
+		return flex_get_serialnr(card, (sc_serial_number_t *) ptr);
 	}
 
 	return SC_ERROR_NOT_SUPPORTED;
