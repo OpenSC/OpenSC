@@ -61,6 +61,16 @@ struct prkey_info {
 	struct sc_pkcs15_prkey_info pkcs15;
 };
 
+struct pubkey_info {
+	char *			ident;
+	struct pubkey_info *	next;
+	struct file_info *	file;
+	unsigned int		index;	/* translates to file offset */
+
+	struct sc_pkcs15_object	pkcs15_obj;
+	struct sc_pkcs15_pubkey_info pkcs15;
+};
+
 struct sc_profile {
 	char *			driver;
 
@@ -70,10 +80,12 @@ struct sc_profile {
 	struct pin_info *	pin_list;
 	struct auth_info *	auth_list;
 	struct prkey_info *	prkey_list;
+	struct pubkey_info *	pubkey_list;
 
 	unsigned int		pin_maxlen;
 	unsigned int		pin_minlen;
 	unsigned int		pin_pad_char;
+	unsigned int		pin_encoding;
 	unsigned int		rsa_access_flags;
 	unsigned int		dsa_access_flags;
 
@@ -92,6 +104,7 @@ struct file_info *sc_profile_find_file(struct sc_profile *, const char *);
 struct file_info *sc_profile_file_info(struct sc_profile *, struct sc_file *);
 struct pin_info *sc_profile_find_pin(struct sc_profile *, const char *);
 struct prkey_info *sc_profile_find_prkey(struct sc_profile *, const char *);
+struct pubkey_info *sc_profile_find_pubkey(struct sc_profile *, const char *);
 struct auth_info *sc_profile_find_key(struct sc_profile *,
 			       unsigned int, unsigned int);
 

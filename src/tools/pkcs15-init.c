@@ -56,6 +56,10 @@ static int	pkcs15_generate_key(struct sc_profile *);
 static int	pkcs15_generate_key_soft(struct sc_profile *,
 			unsigned int, unsigned int);
 static int	pkcs15_store_key(struct sc_profile *, EVP_PKEY *);
+static int	pkcs15_store_private_key(struct sc_profile *, EVP_PKEY *,
+			struct sc_pkcs15_id *);
+static int	pkcs15_store_public_key(struct sc_profile *, EVP_PKEY *,
+			struct sc_pkcs15_id *);
 static int	pkcs15_write(struct sc_profile *,
 			const char *name, pkcs15_encoder, int);
 static int	pkcs15_write_df(struct sc_profile *,
@@ -160,6 +164,10 @@ main(int argc, char **argv)
 		print_usage_and_die("pkcs15-init");
 	if (opt_action == ACTION_NONE) {
 		fprintf(stderr, "No action specified.\n");
+		print_usage_and_die("pkcs15-init");
+	}
+	if (!opt_profile) {
+		fprintf(stderr, "No profile specified.\n");
 		print_usage_and_die("pkcs15-init");
 	}
 
@@ -437,6 +445,17 @@ static int
 pkcs15_store_key(struct sc_profile *profile, EVP_PKEY *pkey)
 {
 	struct sc_pkcs15_id id;
+
+	if (pkcs15_store_private_key(profile, pkey, &id) < 0)
+		return -1;
+	/* XXX store public key */
+	return pkcs15_store_public_key(profile, pkey, &id);
+}
+
+static int
+pkcs15_store_private_key(struct sc_profile *profile, EVP_PKEY *pkey,
+		struct sc_pkcs15_id *id)
+{
 	struct sc_pkcs15_df *df;
 	struct prkey_info *pinfo;
 	unsigned int	j;
@@ -444,12 +463,15 @@ pkcs15_store_key(struct sc_profile *profile, EVP_PKEY *pkey)
 
 	if (opt_objectid == NULL)
 		fatal("No key ID specified; please use --id");
-	sc_pkcs15_format_id(opt_objectid, &id);
+
+	/* XXX: support special ID "new" to assign a new ID and
+	 * create PK file info from template */
 
 	/* Find the private key file matching the given ID */
+	sc_pkcs15_format_id(opt_objectid, id);
 	for (pinfo = profile->prkey_list; pinfo; pinfo = pinfo->next) {
 		if (!strcasecmp(pinfo->ident, opt_objectid)
-		 || sc_pkcs15_compare_id(&id, &pinfo->pkcs15.id) == 1)
+		 || sc_pkcs15_compare_id(id, &pinfo->pkcs15.id) == 1)
 			break;
 	}
 	if (pinfo == NULL) {
@@ -491,7 +513,62 @@ pkcs15_store_key(struct sc_profile *profile, EVP_PKEY *pkey)
 	for (j = 0; r >= 0 && j < df->count; j++)
 		r = pkcs15_write_df(profile, df, j);
 	
-	printf("Successfully stored private key\n");
+	if (r >= 0)
+		printf("Successfully stored private key\n");
+	return r;
+}
+
+static int
+pkcs15_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey,
+		struct sc_pkcs15_id *id)
+{
+	struct pubkey_info *pinfo;
+	struct sc_pkcs15_df *df;
+	unsigned char	*data, *p;
+	size_t		size;
+	RSA		*rsa;
+	int		r, j;
+
+	/* Find the private key file matching the given ID */
+	for (pinfo = profile->pubkey_list; pinfo; pinfo = pinfo->next) {
+		if (!strcasecmp(pinfo->ident, opt_objectid)
+		 || sc_pkcs15_compare_id(id, &pinfo->pkcs15.id) == 1)
+			break;
+	}
+	if (pinfo == NULL) {
+		error("Unable to find public key file\n");
+		return -1;
+	}
+
+#ifdef notyet
+	if (pkey == NULL)
+		do_read_public_key(opt_keyfile, opt_format, &pkey);
+#endif
+
+	r = SC_ERROR_NOT_SUPPORTED;
+	switch (pkey->type) {
+	case EVP_PKEY_RSA:
+		rsa = EVP_PKEY_get1_RSA(pkey);
+		size = i2d_RSAPublicKey(rsa, NULL);
+		data = p = malloc(size);
+		i2d_RSAPublicKey(rsa, &p);
+		break;
+	}
+	if (r < 0) {
+		error("Failed to store public key: %s", sc_strerror(r));
+		return r;
+	}
+
+	r = do_create_and_update_file(profile, pinfo->file->file, data, size);
+	free(data);
+
+	/* Now update the PrKDF */
+	df = &profile->p15_card->df[SC_PKCS15_PUKDF];
+	for (j = 0; r >= 0 && j < df->count; j++)
+		r = pkcs15_write_df(profile, df, j);
+	
+	if (r >= 0)
+		printf("Successfully stored public key\n");
 	return r;
 }
 
