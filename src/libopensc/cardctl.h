@@ -85,6 +85,13 @@ enum {
 	SC_CARDCTL_JCOP_LOCK,
 	SC_CARDCTL_JCOP_GENERATE_KEY,
 
+	/*
+	 * Oberthur specific calls
+	 */
+	SC_CARDCTL_OBERTHUR_BASE = _CTL_PREFIX('O', 'B', 'R'),
+	SC_CARDCTL_OBERTHUR_UPDATE_KEY,
+	SC_CARDCTL_OBERTHUR_GENERATE_KEY,
+	SC_CARDCTL_OBERTHUR_CREATE_PIN,
 };
 
 enum {
@@ -234,6 +241,44 @@ struct sc_cardctl_jcop_genkey  {
      unsigned int	pubkey_len;
 };
      
+/*
+ * Oberthur ex_data stuff
+ */
+enum SC_CARDCTL_OBERTHUR_KEY_TYPE {
+	SC_CARDCTL_OBERTHUR_KEY_DES = 0x80,
+	
+	SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC = 0xA1,
+	SC_CARDCTL_OBERTHUR_KEY_RSA_SFM,
+	SC_CARDCTL_OBERTHUR_KEY_RSA_CRT,
+	SC_CARDCTL_OBERTHUR_KEY_DSA_PUBLIC,
+	SC_CARDCTL_OBERTHUR_KEY_DSA_PRIVATE,
+};
+
+struct sc_cardctl_oberthur_genkey_info {
+	unsigned int    id_prv, id_pub;
+	unsigned int    key_bits;
+	unsigned long   exponent;
+	unsigned char * pubkey;
+	unsigned int    pubkey_len;
+};
+	  
+struct sc_cardctl_oberthur_updatekey_info {
+	enum SC_CARDCTL_OBERTHUR_KEY_TYPE  type;
+	unsigned int    component;
+	unsigned char 	*data;
+	unsigned int    len;
+};
+
+struct sc_cardctl_oberthur_createpin_info {
+	unsigned int type;
+	unsigned int ref;
+	unsigned char *pin;
+	unsigned int pin_len;
+	unsigned int pin_tries;
+	unsigned char *puk;
+	unsigned int puk_len;
+	unsigned int puk_tries;
+};
 	  
 #ifdef  __cplusplus
 }

@@ -69,6 +69,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "tcos", (void *) sc_get_tcos_driver, NULL },
 	{ "opengpg", (void *) sc_get_openpgp_driver, NULL },
 	{ "jcop", (void *) sc_get_jcop_driver, NULL },
+#ifdef HAVE_OPENSSL
+	{ "oberthur", (void *) sc_get_oberthur_driver, NULL },
+#endif
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default", (void *) sc_get_default_driver, NULL },

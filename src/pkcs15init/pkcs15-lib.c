@@ -89,6 +89,9 @@ static int	sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
 static int	sc_pkcs15init_update_odf(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
+static int  sc_pkcs15init_update_any_df(sc_pkcs15_card_t *p15card,
+			sc_profile_t *profile, 
+			sc_pkcs15_df_t *df, int is_new);
 static sc_pkcs15_object_t *sc_pkcs15init_new_object(int type, const char *label,
 	       		sc_pkcs15_id_t *auth_id, void *data);
 static int	sc_pkcs15init_add_object(struct sc_pkcs15_card *,
@@ -138,6 +141,7 @@ static struct profile_operations {
 	{ "etoken", (void *) sc_pkcs15init_get_etoken_ops },
 	{ "jcop", (void *) sc_pkcs15init_get_jcop_ops },
 	{ "starcos", (void *) sc_pkcs15init_get_starcos_ops },
+	{ "oberthur", (void *) sc_pkcs15init_get_oberthur_ops },
 	{ NULL, NULL },
 };
 
@@ -453,6 +457,9 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	int			r;
 
 	p15spec->card = card;
+
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &puk_info);
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &puk_info);
 
 	/* Perform card-specific initialization */
 	if (profile->ops->init_card
@@ -922,7 +929,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 		 keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
 		return SC_ERROR_NOT_SUPPORTED;
 
-	if (profile->ops->generate_key == NULL)
+	if (profile->ops->generate_key == NULL && profile->ops->old_generate_key == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 
 	/* Set the USER PIN reference from args */
@@ -1347,6 +1354,7 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	return r;
 }
 
+
 /*
  * Store a data object
  */
@@ -1407,6 +1415,7 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 {
 	struct sc_file	*file = NULL;
 	int		r;
+	unsigned int index = -1;
 
 	/* Set the SO PIN reference from card */
 	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
@@ -1424,7 +1433,6 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 		if (r < 0)
 			return r;
 	} else {
-		unsigned int	index;
 
 		/* Get the number of objects of this type already on this card */
 		index = sc_pkcs15_get_objects(p15card,
@@ -1445,6 +1453,7 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 	}
 	r = sc_pkcs15init_update_file(profile, p15card->card,
 			file, data->value, data->len);
+	
 	*path = file->path;
 
 done:	if (file)
@@ -2114,12 +2123,6 @@ sc_pkcs15init_remove_object(sc_pkcs15_card_t *p15card,
 	if ((df = obj->df) == NULL)
 		return 0;
 
-#ifdef notyet
-	if (profile->ops->ext_remove_data
-	 && (r = profile->ops->ext_remove_data(profile, card, obj)))
-		return r;
-#endif
-
 	/* Unlink the object and update the DF */
 	sc_pkcs15_remove_object(p15card, obj);
 	if ((r = sc_pkcs15init_update_any_df(p15card, profile, df, 0)) < 0)
@@ -2261,7 +2264,7 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 	const char	*ident, *label = NULL;
 	int		pin_id = -1;
 	size_t		defsize = 0;
-	u8		defbuf[32];
+	u8		defbuf[0x100];
 	int		r;
 
 	path = file? &file->path : NULL;
@@ -2398,7 +2401,7 @@ do_verify_pin(struct sc_profile *pro, struct sc_card *card, sc_file_t *file,
 		unsigned int type, unsigned int reference)
 {
 	size_t		pinsize;
-	u8		pinbuf[32];
+	u8		pinbuf[0x100];
 
 	pinsize = sizeof(pinbuf);
 	return do_get_and_verify_secret(pro, card, file, type, reference,

@@ -539,6 +539,7 @@ struct sc_card_operations {
 	 *   restore_security_env. */
 	int (*decipher)(struct sc_card *card, const u8 * crgram,
 		        size_t crgram_len, u8 * out, size_t outlen);
+	
 	/* compute_signature:  Generates a digital signature on the card.  Similiar
 	 *   to the function decipher. */
 	int (*compute_signature)(struct sc_card *card, const u8 * data,
@@ -579,9 +580,6 @@ struct sc_card_operations {
 	int (*get_data)(sc_card_t *, unsigned int, u8 *, size_t);
 	int (*put_data)(sc_card_t *, unsigned int, const u8 *, size_t);
 
-	/* FIXME
-	 * Any of ISO-7816s contains this function?
-	 */
 	int (*delete_record)(sc_card_t *card, unsigned int rec_nr);
 };
 
@@ -874,6 +872,7 @@ extern struct sc_card_driver *sc_get_starcos_driver(void);
 extern struct sc_card_driver *sc_get_tcos_driver(void);
 extern struct sc_card_driver *sc_get_openpgp_driver(void);
 extern struct sc_card_driver *sc_get_jcop_driver(void);
+extern struct sc_card_driver *sc_get_oberthur_driver(void);
 
 #ifdef  __cplusplus
 }
