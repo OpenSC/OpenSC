@@ -584,7 +584,10 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 	flags = SC_ALGORITHM_RSA_PAD_PKCS1;
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
-		flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1; /* SSL hash */
+		if (ulDataLen == 36)
+			flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1; /* SSL hash */
+		else
+			flags |= SC_ALGORITHM_RSA_HASH_NONE;
 		break;
 	case CKM_SHA1_RSA_PKCS:
 		flags |= SC_ALGORITHM_RSA_HASH_SHA1;
