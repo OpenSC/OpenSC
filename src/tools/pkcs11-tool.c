@@ -38,7 +38,7 @@
 #define NO_MECHANISM	((CK_MECHANISM_TYPE) -1)
 
 enum {
-	OPT_MODULE,
+	OPT_MODULE = 0x100,
 	OPT_SLOT,
 };
 

@@ -33,12 +33,6 @@
 #include <opensc/opensc.h>
 #include "util.h"
 
-#define OPT_CHANGE_PIN	0x100
-#define OPT_LIST_PINS	0x101
-#define OPT_READER	0x102
-#define OPT_PIN_ID	0x103
-#define OPT_NO_CACHE	0x104
-
 const char *app_name = "opensc-tool";
 
 int opt_reader = -1, opt_no_cache = 0, opt_debug = 0, opt_wait = 0;

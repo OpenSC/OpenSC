@@ -37,13 +37,15 @@ char * opt_newpin = NULL;
 
 int quiet = 0;
 
-#define OPT_CHANGE_PIN	0x100
-#define OPT_LIST_PINS	0x101
-#define OPT_READER	0x102
-#define OPT_PIN_ID	0x103
-#define OPT_NO_CACHE	0x104
-#define OPT_LIST_PUB	0x105
-#define OPT_READ_PUB	0x106
+enum {
+	OPT_CHANGE_PIN = 0x100,
+	OPT_LIST_PINS,
+	OPT_READER,
+	OPT_PIN_ID,
+	OPT_NO_CACHE,
+	OPT_LIST_PUB,
+	OPT_READ_PUB,
+};
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
 

@@ -45,9 +45,11 @@ char * opt_pincode = NULL, * opt_key_id = NULL;
 char * opt_input = NULL, * opt_output = NULL;
 int opt_crypt_flags = 0;
 
-#define OPT_SHA1	0x101
-#define OPT_MD5		0x102
-#define OPT_PKCS1	0x103
+enum {
+	OPT_SHA1 = 	0x100,
+	OPT_MD5,
+	OPT_PKCS1,
+};
 
 const struct option options[] = {
 	{ "sign",		0, 0,		's' },
