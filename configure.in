@@ -354,6 +354,16 @@ if test "x$LIBRESOLV" = "x"; then
   LIBS="$t_oldLibs"
 fi
 
+if test "x$LIBRESOLV" = "x"; then
+  # glibc 2.2.4 and libresolv is difficult
+  #  -	gethostbyname won't require lresolv because all
+  #	queries are made through the nsswitch
+  #  -	checking for the variable _res will not require
+  #	lresolv because _res is defined somewhere
+  AC_CHECK_LIB(resolv, res_query, [LIBRESOLV=-lresolv])
+  LIBS="$t_oldLibs"
+fi
+
 # See about the routines that possibly exist at the libraries..
 LIBS="$t_oldLibs $LIBSOCKET"
 AC_CHECK_FUNCS(socket socketpair)
