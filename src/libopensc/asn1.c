@@ -1268,20 +1268,24 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 
 	/* Treatment of OPTIONAL elements:
 	 *  -	if the encoding has 0 length, and the element is OPTIONAL,
-	 *	we don't write anything
+	 *	we don't write anything (unless it's an ASN1 NULL and the
+	 *      SC_ASN1_PRESENT flag is set).
 	 *  -	if the encoding has 0 length, but the element is non-OPTIONAL,
-	 *	constructed, we write a empty element (e.g. a SEQUENCE of length 0).
+	 *	constructed, we write a empty element (e.g. a SEQUENCE of
+	 *      length 0). In case of an ASN1 NULL just write the tag and
+	 *      length (i.e. 0x05,0x00).
 	 *  -	any other empty objects are considered bogus
 	 */
 no_object:
-	if ((entry->flags & SC_ASN1_OPTIONAL) && buflen == 0) {
+	if (!buflen && entry->flags & SC_ASN1_OPTIONAL &&
+	    !(entry->flags & SC_ASN1_PRESENT)) {
 		/* This happens when we try to encode e.g. the
 		 * subClassAttributes, which may be empty */
 		*obj = NULL;
 		*objlen = 0;
 		r = 0;
-	} else
-	if (buflen != 0 || (entry->tag & SC_ASN1_CONS)) {
+	} else if (buflen || entry->type == SC_ASN1_NULL ||
+	           entry->tag & SC_ASN1_CONS) {
 		r = asn1_write_element(ctx, entry->tag,
 					buf, buflen, obj, objlen);
 		if (r)
@@ -1317,6 +1321,10 @@ static int asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,
 				free(buf);
 			return r;
 		}
+		/* in case of an empty (optional) element continue with
+		 * the next asn1 element */
+		if (!objsize)
+			continue;
 		tmp = (u8 *) realloc(buf, total + objsize);
 		if (!tmp) {
 			if (obj)
