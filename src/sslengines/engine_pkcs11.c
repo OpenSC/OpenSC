@@ -170,6 +170,8 @@ out:
 	return 1;
 }
 
+#define MAX_VALUE_LEN	200
+
 EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 	UI_METHOD *ui_method, void *callback_data, int private) {
 
@@ -179,36 +181,70 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 	PKCS11_CERT	*certs;
 	EVP_PKEY	*pk;
 	unsigned int	count, n, m;
-	unsigned char	key_id[100];
-	const char	*s_key_id;
+	unsigned char	key_id[MAX_VALUE_LEN / 2];
+	char		*s_key_id = NULL, buf[MAX_VALUE_LEN];
 	int		key_id_len = sizeof(key_id);
 	int		slot_nr = -1;
-
 	char		flags[64];
 	int		logged_in = 0;
  
 	/* if(pin) {free(pin); pin=NULL;} // keep cached key? */
 
-	/* Format of s_slot_key_id: [S<slotNr>-]keyID or NULL,
+	/* Parse s_slot_key_id: [slot:<slotNr>][;][id:<keyID>] or NULL,
 	   with slotNr in decimal (0 = first slot, ...), and keyID in hex.
-	   E.g. "S0-45" or "46" */
-	s_key_id = s_slot_key_id;
- 	if (s_slot_key_id != NULL &&
- 	    (s_slot_key_id[0] == 's' || s_slot_key_id[0] == 'S')) {
- 		for (n = 1; s_slot_key_id[n] != '\0' && n < 8; n++) {
- 			if (s_slot_key_id[n] == '-') {
- 				char tmp[8];
- 				s_key_id += (n + 1);
- 				memcpy(tmp, s_slot_key_id + 1, n - 1);
- 				tmp[n - 1] = '\0';
- 				printf("tmp=%s\n", tmp);
- 				slot_nr = atoi(tmp);
- 			}
- 		}
- 	}			
+	   E.g. "slot=1" or "id=46" or "slot=1;id=46 */
+	while (s_slot_key_id != NULL && *s_slot_key_id != '\0') {
+		char *p_sep1, *p_sep2;
+		char val[MAX_VALUE_LEN];
+		int val_len;;
 
-	if (!hex_to_bin(s_key_id, key_id, &key_id_len))
-		fail("Invalid key ID\n");
+		p_sep1 = strchr(s_slot_key_id, '_');
+		if (p_sep1 == NULL) {
+			printf("No \'_\' found in \"-key\" option \"%s\"\n", s_slot_key_id);
+			printf("Format: [slot_<slotNr>][-][id_<keyID>]\n");
+			printf("  with slotNr = 0, 1, ... and keyID = a hex string\n");
+			return NULL;
+		}
+
+		p_sep2 = strchr(p_sep1, '-');
+		if (p_sep2 == NULL)
+			p_sep2 = p_sep1 + strlen(p_sep1);
+
+		/* val = the string between the = and the ; (or '\0') */
+		val_len = p_sep2 - p_sep1 - 1;
+		if (val_len >= MAX_VALUE_LEN || val_len == 0)
+			fail("Too long or empty value after the \'-\' sign\n");
+		memcpy(val, p_sep1 + 1, val_len);
+		val[val_len] = '\0';
+
+		if (strnicmp(s_slot_key_id, "slot", p_sep1 - s_slot_key_id) == 0) {
+			if (val_len >= 3) {
+				printf("Slot number \"%s\" should be a small integer\n", val);
+				return NULL;
+			}
+			slot_nr = atoi(val);
+			if (slot_nr == 0 && val[0] != '0') {
+				printf("Slot number \"%s\" should be an integer\n", val);
+				return NULL;
+			}
+		}
+		else if (strnicmp(s_slot_key_id, "id", p_sep1 - s_slot_key_id) == 0) {
+			if (!hex_to_bin(val, key_id, &key_id_len)) {
+				printf("Key id \"%s\" should be a hex string\n", val);
+				return NULL;
+			}
+			strcpy(buf, val);
+			s_key_id = buf;
+		}
+		else {
+			memcpy(val, s_slot_key_id, p_sep1 - s_slot_key_id);
+			val[p_sep1 - s_slot_key_id] = '\0';
+			printf("Now allowed in -key: \"%s\"\n", val);
+			return NULL;
+		}
+
+		s_slot_key_id = (*p_sep2 == '\0' ? p_sep2 : p_sep2 + 1);
+	}
 
 	if (PKCS11_enumerate_slots(ctx, &slot_list, &count) < 0)
 		fail("failed to enumerate slots\n");

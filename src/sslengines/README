@@ -13,8 +13,8 @@ Usage:
   (for Windows, use "engine_pkcs11" instead of "engine_pkcs11.so")
 - at the prompt, enter:    req -engine pkcs11 -new -key <key> -keyform engine -out req.pem -text
 
-In the last line, <key> has the format [S<slotNumber>-]keyID, in which
-  - the optional slotNumber indicates which pkcs11 slot to take (starting from 0, which is also the default)
+In the last line, <key> has the format [slot_<slotNr>][-][id_<keyID>], in which
+  - the optional slotNr indicates which pkcs11 slot to take (starting from 0, which is also the default)
   - keyID is the key ID in hex notation
-Examples:  45     -> private key with ID = 0x45 in the first 'suited' slot
-           S2-46  -> private key with ID = 0x46 in the third slot
+Examples:  id_45     -> private key with ID = 0x45 in the first 'suited' slot
+           slot_2-id_46  -> private key with ID = 0x46 in the third slot
