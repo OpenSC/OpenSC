@@ -72,6 +72,7 @@ struct gpk_private_data {
 	 * 4 bytes. This can be customized however. We
 	 * should really query for this during gpk_init */
 	unsigned int	offset_shift;
+	unsigned int	offset_mask;
 
 	/* access control bits of file most recently selected */
 	unsigned short int	ac[3];
@@ -161,7 +162,12 @@ gpk_init(struct sc_card *card)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(priv, 0, sizeof(*priv));
 	priv->variant = ai->variant;
+	/* read/write/update binary expect offset to be the
+	 * number of 32 bit words.
+	 * offset_shift is the shift value.
+	 * offset_mask is the corresponding mask. */
 	priv->offset_shift = 2;
+	priv->offset_mask = 3;
 	card->cla = 0;
 
 	/* Set up algorithm info. GPK 16000 will do any RSA
@@ -636,6 +642,11 @@ gpk_read_binary(struct sc_card *card, unsigned int offset,
 {
 	struct gpk_private_data *priv = DRVDATA(card);
 
+	if (offset & priv->offset_mask) {
+		error(card->ctx, "Invalid file offset (not a multiple of %d)",
+				priv->offset_mask + 1);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	return iso_ops->read_binary(card, offset >> priv->offset_shift,
 			buf, count, flags);
 }
@@ -646,6 +657,11 @@ gpk_write_binary(struct sc_card *card, unsigned int offset,
 {
 	struct gpk_private_data *priv = DRVDATA(card);
 
+	if (offset & priv->offset_mask) {
+		error(card->ctx, "Invalid file offset (not a multiple of %d)",
+				priv->offset_mask + 1);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	return iso_ops->write_binary(card, offset >> priv->offset_shift,
 			buf, count, flags);
 }
@@ -656,6 +672,11 @@ gpk_update_binary(struct sc_card *card, unsigned int offset,
 {
 	struct gpk_private_data *priv = DRVDATA(card);
 
+	if (offset & priv->offset_mask) {
+		error(card->ctx, "Invalid file offset (not a multiple of %d)",
+				priv->offset_mask + 1);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	return iso_ops->update_binary(card, offset >> priv->offset_shift,
 			buf, count, flags);
 }
