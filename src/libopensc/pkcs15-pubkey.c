@@ -206,16 +206,16 @@ static struct sc_asn1_entry c_asn1_public_key[2] = {
 };
 
 static struct sc_asn1_entry c_asn1_rsa_pub_coefficients[3] = {
-	{ "modulus",  SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
-	{ "exponent", SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
+	{ "modulus",  SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, },
+	{ "exponent", SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, },
 	{ NULL }
 };
 
 static struct sc_asn1_entry c_asn1_dsa_pub_coefficients[5] = {
-	{ "publicKey",SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
-	{ "paramP",   SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
-	{ "paramQ",   SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
-	{ "paramG",   SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
+	{ "publicKey",SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, },
+	{ "paramP",   SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, },
+	{ "paramQ",   SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, },
+	{ "paramG",   SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, },
 	{ NULL },
 };
 

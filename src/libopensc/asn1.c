@@ -864,6 +864,15 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
 		if (parm != NULL) {
 			int c;
 			assert(len != NULL);
+
+			/* Strip off padding zero */
+			if ((entry->flags & SC_ASN1_UNSIGNED)
+			 && obj[0] == 0x00 && objlen > 1) {
+				objlen--;
+				obj++;
+			}
+
+			/* Allocate buffer if needed */
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
 				*buf = (u8 *) malloc(objlen);
@@ -1107,13 +1116,20 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 	case SC_ASN1_OCTET_STRING:
 	case SC_ASN1_UTF8STRING:
 		assert(len != NULL);
-		buf = (u8 *) malloc(*len);
+		buf = (u8 *) malloc(*len + 1);
 		if (buf == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			break;
 		}
-		buflen = *len;
-		memcpy(buf, parm, buflen);
+		buflen = 0;
+		/* If the integer is supposed to be unsigned, insert
+		 * a padding byte if the MSB is one */
+		if ((entry->flags & SC_ASN1_UNSIGNED)
+		 && (((u8 *) parm)[0] & 0x80)) {
+			buf[buflen++] = 0x00;
+		}
+		memcpy(buf + buflen, parm, *len);
+		buflen += *len;
 		break;
 	case SC_ASN1_OBJECT:
 		if (parm != NULL)
@@ -1165,6 +1181,8 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 	} else if (entry->flags & SC_ASN1_OPTIONAL) {
 		/* This happens when we try to encode e.g. the
 		 * subClassAttributes, which may be empty */
+		*obj = NULL;
+		*objlen = 0;
 		r = 0;
 	} else {
 		error(ctx, "cannot encode empty non-optional ASN.1 object");
