@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
@@ -32,6 +33,10 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#if !defined(RANDOM_POOL) && !defined(PRNGD_PORT) && !defined(PRNGD_SOCKET)
+#define USE_SRANDOM
+#include <time.h>
+#endif
 #include "scrandom.h"
 
 #if defined(PRNGD_SOCKET) || defined(PRNGD_PORT)
@@ -72,7 +77,7 @@ static mysig_t mysignal(int sig, mysig_t act)
 }
 #endif
 
-#if defined(RANDOM_POOL) || defined(PRNGD_PORT) || defined(PRNGD_SOCKET)
+#if !defined(USE_SRANDOM)
 
 static ssize_t atomicio(ssize_t(*f) (int fd, void *_s, size_t n), int fd, void *_s, size_t n)
 {
@@ -110,12 +115,12 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 	fd = open(RANDOM_POOL, O_RDONLY);
 	if (fd == -1) {
 		fprintf(stderr, "Couldn't open random pool \"%s\": %s\n",
-			    RANDOM_POOL, strerror(errno));
+			RANDOM_POOL, strerror(errno));
 		return 0;
 	}
 	if (atomicio(read, fd, buf, len) != len) {
 		fprintf(stderr, "Couldn't read from random pool \"%s\": %s\n",
-			    RANDOM_POOL, strerror(errno));
+			RANDOM_POOL, strerror(errno));
 		close(fd);
 		return 0;
 	}
@@ -127,8 +132,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 	mysig_t old_sigpipe;
 	char msg[2];
 
-	memset(&addr, '\0', sizeof(addr));
-	/* Sanity checks */
+	memset(&addr, 0, sizeof(addr));
 	if (sizeof(PRNGD_SOCKET) > sizeof(addr.sun_path)) {
 		fprintf(stderr, "Random pool path is too long");
 		return 0;
@@ -151,7 +155,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 	}
 	if (connect(fd, (struct sockaddr *) &addr, addr_len) == -1) {
 		fprintf(stderr, "Couldn't connect to PRNGD socket \"%s\": %s\n",
-			    addr.sun_path, strerror(errno));
+			addr.sun_path, strerror(errno));
 		goto done;
 	}
 	/* Send blocking read request to PRNGD */
@@ -165,7 +169,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 			goto reopen;
 		}
 		fprintf(stderr, "Couldn't write to PRNGD socket: %s\n",
-			    strerror(errno));
+			strerror(errno));
 		goto done;
 	}
 	if (atomicio(read, fd, buf, len) != len) {
@@ -175,7 +179,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 			goto reopen;
 		}
 		fprintf(stderr, "Couldn't read from PRNGD socket: %s\n",
-			    strerror(errno));
+			strerror(errno));
 		goto done;
 	}
 	rval = 1;
@@ -191,7 +195,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 	mysig_t old_sigpipe;
 	char msg[2];
 
-	memset(&addr, '\0', sizeof(addr));
+	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	addr.sin_port = htons(PRNGD_PORT);
@@ -207,7 +211,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 	}
 	if (connect(fd, (struct sockaddr *) &addr, addr_len) == -1) {
 		fprintf(stderr, "Couldn't connect to PRNGD port %d: %s\n",
-			    PRNGD_PORT, strerror(errno));
+			PRNGD_PORT, strerror(errno));
 		goto done;
 	}
 	/* Send blocking read request to PRNGD */
@@ -221,7 +225,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 			goto reopen;
 		}
 		fprintf(stderr, "Couldn't write to PRNGD socket: %s\n",
-			    strerror(errno));
+			strerror(errno));
 		goto done;
 	}
 	if (atomicio(read, fd, buf, len) != len) {
@@ -231,7 +235,7 @@ static int scrandom_get_bytes(unsigned char *buf, int len)
 			goto reopen;
 		}
 		fprintf(stderr, "Couldn't read from PRNGD socket: %s\n",
-			    strerror(errno));
+			strerror(errno));
 		goto done;
 	}
 	rval = 1;
@@ -253,16 +257,14 @@ int scrandom_get_data(unsigned char *buf, unsigned int len)
 {
 #define BLOCK_SIZE 255
 	int rv = -1;
-#if defined(RANDOM_POOL) || defined(PRNGD_PORT) || defined(PRNGD_SOCKET)
+#if !defined(USE_SRANDOM)
 	unsigned int div, mod, i, bytes;
 	unsigned char *p;
-#else
-	long holdrand = (long) len - 42;
 #endif
 	if (!buf || !len) {
 		return -1;
 	}
-#if defined(RANDOM_POOL) || defined(PRNGD_PORT) || defined(PRNGD_SOCKET)
+#if !defined(USE_SRANDOM)
 	div = len / BLOCK_SIZE;
 	mod = len % BLOCK_SIZE;
 	p = buf;
@@ -287,12 +289,14 @@ int scrandom_get_data(unsigned char *buf, unsigned int len)
 		}
 	}
 #else
-	/* Well, this is only for testing/development purposes anyway */
+	/* Well, this is only for testing/porting purposes anyway */
 	/* FIXME: We could add something like Mersenne Twister -
 	   pseudorandom number generator, although that won't either
 	   fit into cryptography purposes. So why bother? */
+
+	srandom((len + (unsigned int) time(NULL)));
 	for (rv = 0; rv < len; rv++) {
-		buf[rv] = (unsigned char) (((holdrand = holdrand * 214013L + 2531011L) >> 16) & 0x7fff);
+		buf[rv] = (unsigned char) random();
 	}
 	rv = len;
 #endif
