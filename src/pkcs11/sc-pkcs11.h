@@ -32,12 +32,12 @@
 #include <opensc/log.h>
 
 #ifndef _WIN32
-#include "rsaref/unix.h"
-#include "rsaref/pkcs11.h"
+#include <opensc/rsaref/unix.h>
+#include <opensc/rsaref/pkcs11.h>
 #else
-#include "rsaref/win32.h"
+#include <opensc/rsaref/win32.h>
 #pragma pack(push, cryptoki, 1)
-#include "rsaref/pkcs11.h"
+#include <opensc/rsaref/pkcs11.h>
 #pragma pack(pop, cryptoki)
 #endif
 
