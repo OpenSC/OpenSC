@@ -225,6 +225,20 @@ int sc_enum_apps(struct sc_card *card)
 	return card->app_count;
 }
 
+void sc_free_apps(struct sc_card *card)
+{
+	int	i;
+
+	for (i = 0; i < card->app_count; i++) {
+		if (card->app[i]->label)
+			free(card->app[i]->label);
+		if (card->app[i]->ddo)
+			free(card->app[i]->ddo);
+		free(card->app[i]);
+	}
+	card->app_count = -1;
+}
+
 const struct sc_app_info * sc_find_app_by_aid(struct sc_card *card,
 					      const u8 *aid, size_t aid_len)
 {

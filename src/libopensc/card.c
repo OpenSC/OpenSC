@@ -301,16 +301,8 @@ static struct sc_card * sc_card_new()
 
 static void sc_card_free(struct sc_card *card)
 {
-	int i;
-	
 	assert(sc_card_valid(card));
-	for (i = 0; i < card->app_count; i++) {
-		if (card->app[i]->label)
-			free(card->app[i]->label);
-		if (card->app[i]->ddo)
-			free(card->app[i]->ddo);
-		free(card->app[i]);
-	}
+	sc_free_apps(card);
 	if (card->ef_dir != NULL)
 		sc_file_free(card->ef_dir);
 	free(card->ops);
