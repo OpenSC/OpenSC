@@ -1080,7 +1080,6 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 		CK_OBJECT_HANDLE_PTR phObject)
 {
 	struct sc_profile *profile = NULL;
-	struct pkcs15_slot_data *data;
 	CK_OBJECT_CLASS	_class;
 	int		rv, rc;
 
@@ -1184,7 +1183,6 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	struct sc_profile *profile = NULL;
 	struct sc_pkcs15_pin_info *pin;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
-	struct pkcs15_slot_data *p15_data = slot_data(slot->fw_data);
 	struct sc_pkcs15_card *p15card = fw_data->p15_card;
 	struct sc_pkcs15init_keygen_args keygen_args;
 	struct sc_pkcs15init_pubkeyargs pub_args;
@@ -1371,7 +1369,6 @@ CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
        struct sc_profile *profile = NULL;
        struct sc_pkcs11_card *p11card = session->slot->card;
        struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
-       struct pkcs15_slot_data *p15_data = slot_data(session->slot->fw_data);
        struct sc_pkcs15_id id;
        int rc = 0;
        CK_RV rv = CKR_OK;

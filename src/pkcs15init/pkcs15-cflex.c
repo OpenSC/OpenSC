@@ -128,7 +128,8 @@ cryptoflex_init_card(sc_profile_t *profile, sc_card_t *card)
 {
 	sc_path_t	path;
 	sc_file_t	*file;
-	u8		buf[32], serial[128];
+	u8		buf[32];
+	char		serial[128];
 	size_t		len;
 	int		r;
 

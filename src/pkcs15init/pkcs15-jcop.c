@@ -304,7 +304,7 @@ jcop_generate_key(sc_profile_t *profile, sc_card_t *card,
      args.exponent = 0x10001;
      sc_append_file_id(&args.pub_file_ref, temppubfile->id);
      sc_append_file_id(&args.pri_file_ref, keyfile->id);
-     keybuf=malloc(keybits / 8);
+     keybuf=(unsigned char *) malloc(keybits / 8);
      if (!keybuf) {
 	  r=SC_ERROR_OUT_OF_MEMORY;
 	  goto out;
