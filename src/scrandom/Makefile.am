@@ -4,6 +4,8 @@ includedir = ${prefix}/include/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
+EXTRA_DIST = Makefile.mak
+
 include_HEADERS = scrandom.h
 
 if HAVE_SSL

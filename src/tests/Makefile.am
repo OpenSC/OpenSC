@@ -2,6 +2,10 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
+EXTRA_DIST = Makefile.mak regression/README regression/crypt0001 \
+	     regression/crypt0002 regression/crypt0003 regression/crypt0004 \
+	     regression/functions
+
 INCLUDES = @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 

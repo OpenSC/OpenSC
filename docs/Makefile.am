@@ -26,7 +26,7 @@ man_MANS	= pkcs15-crypt.1 \
 		  sc_release_context.3 \
 		  sc_select_file.3
 EXTRA_DIST	= $(man_MANS) pkcs15-profile.5.in pkcs-15v1_1.asn \
-	     	  usbtoken.xml usbtoken.html
+	     	  usbtoken.xml usbtoken.html doxygen.conf
 
 STYLESHEET=/usr/share/sgml/docbook/stylesheet/xsl/nwalsh/xhtml/docbook.xsl
 

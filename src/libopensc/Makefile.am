@@ -5,7 +5,7 @@ includedir = ${prefix}/include/opensc
 MAINTAINERCLEANFILES = Makefile.in
 
 EXTRA_DIST = Makefile.mak libopensc.pc.in \
-	     reader-pcsc.c reader-openct.c reader-usbtoken.c
+	     reader-pcsc.c reader-openct.c reader-usbtoken.c emv.c
 
 if HAVE_SSL
 SSL_LIB = @LIBCRYPTO@

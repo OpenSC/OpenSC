@@ -4,6 +4,8 @@ libdir = @libdir@/pkcs11
 
 MAINTAINERCLEANFILES = Makefile.in
 
+EXTRA_DIST = Makefile.mak opensc_pkcs11_install.js
+
 SUBDIRS = . rsaref
 
 INCLUDES = @CFLAGS_OPENSC@ -I../pkcs15init

@@ -7,8 +7,9 @@
 #include <assert.h>
 #include <errno.h>
 #include <signal.h>
+#include <unistd.h>
 
-#include <assuan.h>
+#include "../assuan/assuan.h"
 #include "../libopensc/opensc.h"
 #include "../libopensc/pkcs15.h"
 #include <stdarg.h>

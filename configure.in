@@ -5,7 +5,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.52)
 
 AC_INIT(src/libopensc/sc.c)
-AM_INIT_AUTOMAKE(opensc, CVS)
+AM_INIT_AUTOMAKE(opensc, 0.8.0-rc1)
 AM_CONFIG_HEADER(config.h)
 
 AC_CANONICAL_HOST
@@ -1150,6 +1150,7 @@ src/sslengine/Makefile
 src/tests/Makefile
 src/tools/Makefile
 src/usbtoken/Makefile
+win32/Makefile
 ])
 
 if test ! -z "$RANDOM_POOL" ; then
