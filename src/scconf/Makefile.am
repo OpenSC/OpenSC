@@ -16,4 +16,5 @@ libscconf_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@O
 noinst_PROGRAMS = test-conf
 
 test_conf_SOURCES = test-conf.c
-test_conf_LDFLAGS = @LDFLAGS@ libscconf.la
+test_conf_LDFLAGS = @LDFLAGS@
+test_conf_LDADD = libscconf.la

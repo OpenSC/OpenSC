@@ -16,4 +16,5 @@ libscldap_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@O
 libscldap_la_LIBADD = @LIBSCCONF@ @LIBLDAP@
 
 test_ldap_SOURCES = test-ldap.c
-test_ldap_LDFLAGS = @LDFLAGS@ libscldap.la
+test_ldap_LDFLAGS = @LDFLAGS@
+test_ldap_LDADD = libscldap.la
