@@ -76,6 +76,8 @@ static int	gpk_encode_dsa_key(struct sc_profile *,
 static int	gpk_store_pk(struct sc_profile *, struct sc_card *,
 			struct sc_file *, struct pkdata *);
 static void	error(struct sc_profile *, const char *, ...);
+static void	debug(struct sc_profile *, const char *, ...);
+
 
 /*
  * Erase the card
@@ -489,7 +491,11 @@ gpk_pkfile_init_public(struct sc_profile *profile,
 	const struct sc_acl_entry *acl;
 	u8		sysrec[7], buffer[256];
 	unsigned int	n, npins;
-	int		r;
+	int		r, gpkclass;
+
+	/* Find out what sort of GPK we're using */
+	if ((r = sc_card_ctl(card, SC_CARDCTL_GPK_VARIANT, &gpkclass)) < 0)
+		return r;
 
 	/* Set up the system record */
 	memset(sysrec, 0, sizeof(sysrec));
@@ -530,10 +536,14 @@ gpk_pkfile_init_public(struct sc_profile *profile,
 
 	/* compute checksum - yet another slightly different
 	 * checksum algorithm courtesy of Gemplus */
-	/* XXX: This is different from what the GPK reference
-	 * manual says which tells you to start with 0xA5 -- but
-	 * maybe that's just for the GPK8000 */
-	for (sysrec[6] = 0xFF, n = 0; n < 6; n++)
+	if (gpkclass >= 8000) {
+		/* This is according to the gpk reference manual */
+		sysrec[6] = 0xA5;
+	} else {
+		/* And this is what you have to use for the GPK4000 */
+		sysrec[6] = 0xFF;
+	}
+	for (n = 0; n < 6; n++)
 		sysrec[6] ^= sysrec[n];
 
 	card->ctx->log_errors = 0;
@@ -564,7 +574,7 @@ gpk_pkfile_update_public(struct sc_profile *profile,
 	int		r = 0, found;
 
 	if (card->ctx->debug > 1)
-		printf("Updating public key elements\n");
+		debug(profile, "Updating public key elements\n");
 
 	/* If we've been given a key with public parts, write them now */
 	for (n = 2; n < 256; n++) {
@@ -602,7 +612,7 @@ gpk_pkfile_update_public(struct sc_profile *profile,
 		}
 
 		if (!found && card->ctx->debug)
-			printf("GPK unknown PK tag %u\n", tag);
+			debug(profile, "GPK unknown PK tag %u\n", tag);
 	}
 
 	/* Write all remaining elements */
@@ -621,8 +631,6 @@ gpk_pkfile_init_private(struct sc_card *card,
 {
 	struct sc_cardctl_gpk_pkinit args;
 
-	if (card->ctx->debug > 1)
-		printf("Initializing private key portion of file\n");
 	args.file = file;
 	args.privlen = privlen;
 	return sc_card_ctl(card, SC_CARDCTL_GPK_PKINIT, &args);
@@ -653,7 +661,7 @@ gpk_pkfile_update_private(struct sc_profile *profile,
 	int		r = 0;
 
 	if (card->ctx->debug > 1)
-		printf("Updating private key elements\n");
+		debug(profile, "Updating private key elements\n");
 
 	/* We must set a secure messaging key before each Load Private Key
 	 * command. Any key will do...
@@ -687,7 +695,7 @@ gpk_pkfile_update_private(struct sc_profile *profile,
 		while (nb & 7)
 			data[nb++] = 0;
 
-		r = gpk_pkfile_load_private(card, file, data, size, nb);
+		r = gpk_pkfile_load_private(card, file, data, size-1, nb);
 		if (r < 0)
 			break;
 		pe++;
@@ -893,14 +901,11 @@ gpk_store_pk(struct sc_profile *profile, struct sc_card *card,
 	gpk_compute_privlen(&p->_private);
 
 	if (card->ctx->debug)
-		printf("Storing pk: %u bits, pub %u bytes, priv %u bytes\n",
-				p->bits, p->bytes, p->_private.size);
+		debug(profile,
+			"Storing pk: %u bits, pub %u bytes, priv %u bytes\n",
+			p->bits, p->_public.size, p->_private.size);
 
-	/* Strange, strange, strange... when I create the public part with
-	 * the exact size of 8 + PK elements, the card refuses to store
-	 * the last record even though there's enough room in the file.
-	 * XXX: Check why */
-	file->size = p->_public.size + 8 + p->_private.size + 8;
+	file->size = p->_public.size + p->_private.size;
 	r = gpk_pkfile_create(profile, card, file);
 	if (r < 0)
 		return r;
@@ -955,8 +960,22 @@ error(struct sc_profile *profile, const char *fmt, ...)
 	va_start(ap, fmt);
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
-	if (profile->cbs)
+	if (profile->cbs && profile->cbs->error)
 		profile->cbs->error("%s", buffer);
+}
+
+static void
+debug(struct sc_profile *profile, const char *fmt, ...)
+{
+	char	buffer[256];
+	va_list	ap;
+
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
+	if (profile->cbs && profile->cbs->debug)
+		profile->cbs->debug("%s", buffer);
+	printf("%s", buffer); /* XXX */
 }
 
 struct sc_pkcs15init_operations sc_pkcs15init_gpk_operations = {
