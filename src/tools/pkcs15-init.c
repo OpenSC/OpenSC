@@ -147,6 +147,7 @@ const char *		option_help[] = {
 	"Specify key file format (default PEM)",
 	"Specify passphrase for unlocking secret key",
 	"Store an X.509 certificate",
+	"Mark certificate as a CA certificate",
 
 	"Private key stored as an extractable key",
 	"Insecure mode: do not require PIN/passphrase for private key",
@@ -589,7 +590,7 @@ init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 	if (opt_authid) {
 		sc_pkcs15_format_id(opt_authid, &args->auth_id);
 	} else if (!opt_unprotected) {
-		error("no PIN given for key - either use --unprotected or \n"
+		error("no PIN given for key - either use --insecure or \n"
 		      "specify a PIN using --auth-id");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -600,7 +601,7 @@ init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 		} else {
 			if (!opt_unprotected) {
 				error("no pass phrase given for key - "
-				      "either use --unprotected or\n"
+				      "either use --insecure or\n"
 				      "specify a pass phrase using "
 				      "--passphrase");
 				return SC_ERROR_PASSPHRASE_REQUIRED;
