@@ -1081,6 +1081,12 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
 
+	rc = sc_lock(p11card->card);
+	if (rc < 0) {
+		sc_pkcs15init_unbind(profile);
+		return sc_to_cryptoki_error(rc, p11card->reader);
+	}
+
 	/* Add the PINs the user presented so far. Some initialization
 	 * routines need to present these PINs again because some
 	 * card operations may clobber the authentication state
@@ -1110,6 +1116,7 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	}
 
+	sc_unlock(p11card->card);
 	sc_pkcs15init_unbind(profile);
 	return rv;
 }
@@ -1201,6 +1208,12 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 
 	memset(&priv_args, 0, sizeof(priv_args));
 	memset(&pub_args, 0, sizeof(pub_args));
+
+	rc = sc_lock(p11card->card);
+	if (rc < 0) {
+		sc_pkcs15init_unbind(profile);
+		return sc_to_cryptoki_error(rc, p11card->reader);
+	}
 
 	/* 1. Convert the pkcs11 attributes to pkcs15init args */
 
@@ -1321,6 +1334,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	pkcs15_add_object(slot, pub_any_obj, phPubKey);
 
 kpgen_done:
+	sc_unlock(p11card->card);
 	sc_pkcs15init_unbind(profile);
 
 	return rv;
@@ -1365,6 +1379,12 @@ CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
        if (rc < 0)
                return sc_to_cryptoki_error(rc, p11card->reader);
 
+	rc = sc_lock(p11card->card);
+	if (rc < 0) {
+		sc_pkcs15init_unbind(profile);
+		return sc_to_cryptoki_error(rc, p11card->reader);
+	}
+
        /* 2. Add the PINs the user presented so far. Some initialization
         * routines need to present these PINs again because some
         * card operations may clobber the authentication state
@@ -1404,6 +1424,7 @@ CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
        rv = sc_to_cryptoki_error(rc, p11card->reader);
 
 set_attr_done:
+	sc_unlock(p11card->card);
        sc_pkcs15init_unbind(profile);
 
        return rv;
