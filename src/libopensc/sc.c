@@ -173,7 +173,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 		ctx->card_drivers[i] = NULL;
 	i = 0;
 #if 1
-	ctx->card_drivers[i++] = sc_get_setec_driver();
+	ctx->card_drivers[i++] = sc_get_setcos_driver();
 #endif
 #if 1
 	ctx->card_drivers[i++] = sc_get_miocos_driver();

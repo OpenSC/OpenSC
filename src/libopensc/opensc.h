@@ -695,7 +695,7 @@ extern const struct sc_reader_driver *sc_get_pcsc_driver(void);
 
 extern const struct sc_card_driver *sc_get_iso7816_driver(void);
 extern const struct sc_card_driver *sc_get_emv_driver(void);
-extern const struct sc_card_driver *sc_get_setec_driver(void);
+extern const struct sc_card_driver *sc_get_setcos_driver(void);
 extern const struct sc_card_driver *sc_get_miocos_driver(void);
 extern const struct sc_card_driver *sc_get_flex_driver(void);
 extern const struct sc_card_driver *sc_get_gpk_driver(void);

@@ -1,5 +1,5 @@
 /*
- * card-setec.c: Support for TCOS 2.0 cards
+ * card-tcos.c: Support for TCOS 2.0 cards
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
