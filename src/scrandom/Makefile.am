@@ -12,9 +12,9 @@ if HAVE_SSL
 SSL_LIB = @LIBCRYPTO@
 endif
 
-lib_LIBRARIES = libscrandom.a
+lib_LTLIBRARIES = libscrandom.la
 
-libscrandom_a_SOURCES = scrandom.c scrandom.h
+libscrandom_la_SOURCES = scrandom.c scrandom.h
 
 noinst_PROGRAMS = test-random
 
