@@ -495,10 +495,10 @@ saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
 AC_SUBST(LIBCRYPTO)
 AC_SUBST(LIBCRYPTOA)
-if test "x$tryssldir" != "x" ; then
+if test "x$tryssldir" == "x" ; then
 	tryssldir="/usr"
 fi
-if test "x$trycommondir" != "x" ; then
+if test "x$trycommondir" == "x" ; then
 	trycommondir="/usr"
 fi
 AC_CACHE_CHECK([for OpenSSL directory], ac_cv_openssldir, [
