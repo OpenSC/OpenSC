@@ -539,18 +539,6 @@ static int etoken_read_binary(struct sc_card *card,
 }
 
 /*
- * The 0x80 thing tells the card it's okay to search parent
- * directories as well for the referenced object.
- * Unfortunately, it doesn't seem to work without this flag :-/
- */
-static int
-etoken_verify(struct sc_card *card, unsigned int type, int ref,
-		const u8 *pin, size_t pin_len, int *tries_left)
-{
-	return iso_ops->verify(card, type, ref|0x80, pin, pin_len, tries_left);
-}
-
-/*
  * Restore the indicated SE
  */
 static int
@@ -789,6 +777,25 @@ etoken_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
+/*
+ * The 0x80 thing tells the card it's okay to search parent
+ * directories as well for the referenced object.
+ * Unfortunately, it doesn't seem to work without this flag :-/
+ */
+static int
+etoken_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+		 int *tries_left)
+{
+	data->flags |= SC_PIN_CMD_NEED_PADDING;
+	data->pin_reference |= 0x80;
+	/* FIXME: the following values depend on what pin length was
+	 * used when creating the BS objects */
+	data->pin1.max_length = 8;
+	data->pin2.max_length = 8;
+	return iso_ops->pin_cmd(card, data, tries_left);
+}
+
+
 /* eToken R2 supports WRITE_BINARY, PRO Tokens support UPDATE_BINARY */
 
 static const struct sc_card_driver * sc_get_driver(void)
@@ -803,7 +810,6 @@ static const struct sc_card_driver * sc_get_driver(void)
 	etoken_ops.create_file = etoken_create_file;
 	etoken_ops.update_binary = etoken_update_binary;
 	etoken_ops.read_binary = etoken_read_binary;
-	etoken_ops.verify = etoken_verify;
 	etoken_ops.set_security_env = etoken_set_security_env;
 	etoken_ops.restore_security_env = etoken_restore_security_env;
 	etoken_ops.compute_signature = etoken_compute_signature;
@@ -811,6 +817,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 	etoken_ops.list_files = etoken_list_files;
 	etoken_ops.check_sw = etoken_check_sw;
 	etoken_ops.card_ctl = etoken_card_ctl;
+	etoken_ops.pin_cmd = etoken_pin_cmd;
 
 	return &etoken_drv;
 }

@@ -586,40 +586,6 @@ static int iso7816_delete_file(struct sc_card *card, const struct sc_path *path)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-static int iso7816_verify(struct sc_card *card, unsigned int type, int ref,
-			  const u8 *pin, size_t pinlen, int *tries_left)
-{
-	struct sc_apdu apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r;
-	
-	if (pinlen >= SC_MAX_APDU_BUFFER_SIZE)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	switch (type) {
-	case SC_AC_CHV:
-		break;
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, ref);
-	memcpy(sbuf, pin, pinlen);
-	apdu.lc = pinlen;
-	apdu.datalen = pinlen;
-	apdu.data = sbuf;
-	apdu.resplen = 0;
-	apdu.sensitive = 1;
-	
-	r = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, pinlen);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 == 0x63) {
-		if ((apdu.sw2 & 0xF0) == 0xC0 && tries_left != NULL)
-			*tries_left = apdu.sw2 & 0x0F;
-		return SC_ERROR_PIN_CODE_INCORRECT;
-	}
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
-}
-
 static int iso7816_set_security_env(struct sc_card *card,
 				    const struct sc_security_env *env,
 				    int se_num)
@@ -793,85 +759,126 @@ static int iso7816_decipher(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static int iso7816_change_reference_data(struct sc_card *card, unsigned int type,
-					 int ref, const u8 *old, size_t oldlen,
-					 const u8 *_new, size_t newlen,
-					 int *tries_left)
+static int iso7816_build_pin_apdu(struct sc_card *card,
+		struct sc_apdu *apdu,
+		struct sc_pin_cmd_data *data)
 {
-	struct sc_apdu apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r, p1 = 0, len = oldlen + newlen;
-
-	if (len >= SC_MAX_APDU_BUFFER_SIZE)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-	switch (type) {
+	static u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int r, len, pad = 0, ins, p1 = 0;
+	
+	switch (data->pin_type) {
 	case SC_AC_CHV:
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-	if (oldlen == 0)
-		p1 = 1;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, p1, ref);
-	memcpy(sbuf, old, oldlen);
-	memcpy(sbuf + oldlen, _new, newlen);
-	apdu.lc = len;
-	apdu.datalen = len;
-	apdu.data = sbuf;
-	apdu.resplen = 0;
-	apdu.sensitive = 1;
-	
-	r = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, len);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
-		if (tries_left != NULL)
-			*tries_left = apdu.sw2 & 0x0F;
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_PIN_CODE_INCORRECT);
+
+	if (data->flags & SC_PIN_CMD_NEED_PADDING)
+		pad = 1;
+
+	data->pin1.offset = 0;
+	if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
+		return r;
+	len = r;
+
+	switch (data->cmd) {
+	case SC_PIN_CMD_VERIFY:
+		ins = 0x20;
+		break;
+	case SC_PIN_CMD_CHANGE:
+		data->pin1.offset = len;
+		if ((r = sc_build_pin(sbuf+len, sizeof(sbuf)-len, &data->pin2, pad)) < 0)
+			return r;
+		len += r;
+
+		ins = 0x24;
+		if (data->pin1.len == 0)
+			p1 = 1;
+		break;
+	case SC_PIN_CMD_UNBLOCK:
+		data->pin1.offset = len;
+		if ((r = sc_build_pin(sbuf+len, sizeof(sbuf)-len, &data->pin2, pad)) < 0)
+			return r;
+		len += r;
+
+		ins = 0x2C;
+		if (data->pin1.len == 0)
+			p1 |= 2;
+		if (data->pin2.len == 0)
+			p1 |= 1;
+		break;
+	default:
+		return SC_ERROR_NOT_SUPPORTED;
 	}
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	sc_format_apdu(card, apdu, SC_APDU_CASE_3_SHORT,
+				ins, p1, data->pin_reference);
+
+	apdu->lc = len;
+	apdu->datalen = len;
+	apdu->data = sbuf;
+	apdu->resplen = 0;
+	apdu->sensitive = 1;
+
+	return 0;
 }
 
-static int iso7816_reset_retry_counter(struct sc_card *card, unsigned int type, int ref,
-				       const u8 *puk, size_t puklen, const u8 *_new,
-				       size_t newlen)
+static int iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+			   int *tries_left)
 {
-	struct sc_apdu apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r, p1 = 0, len = puklen + newlen;
+	struct sc_apdu local_apdu, *apdu;
+	int r;
 
-	if (len >= SC_MAX_APDU_BUFFER_SIZE)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-	switch (type) {
-	case SC_AC_CHV:
-		break;
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
+	if (tries_left)
+		*tries_left = -1;
+
+	/* See if we've been called from another card driver, which is
+	 * passing an APDU to us (this allows to write card drivers
+	 * whose PIN functions behave "mostly like ISO" except in some
+	 * special circumstances.
+	 */
+	if (data->apdu == NULL) {
+		r = iso7816_build_pin_apdu(card, &local_apdu, data);
+		if (r < 0)
+			return r;
+		data->apdu = &local_apdu;
 	}
-	if (puklen == 0) {
-		if (newlen == 0)
-			p1 = 3;
-		else
-			p1 = 2;
+	apdu = data->apdu;
+
+	if (!(data->flags & SC_PIN_CMD_USE_PINPAD)) {
+		/* Transmit the APDU to the card */
+		r = sc_transmit_apdu(card, apdu);
+
+		/* Clear the buffer - it may contain pins */
+		memset((void *) apdu->data, 0, apdu->datalen);
 	} else {
-		if (newlen == 0)
-			p1 = 1;
-		else
-			p1 = 0;
+		/* Call the reader driver to collect
+		 * the PIN and pass on the APDU to the card */
+		if (card->reader
+		 && card->reader->ops
+		 && card->reader->ops->enter_pin) {
+			r = card->reader->ops->enter_pin(card->reader,
+					card->slot,
+					data);
+		} else {
+			error(card->ctx,
+				"Card reader driver does not support "
+				"PIN entry through reader key pad");
+			r = SC_ERROR_NOT_SUPPORTED;
+		}
 	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, p1, ref);
-	memcpy(sbuf, puk, puklen);
-	memcpy(sbuf + puklen, _new, newlen);
-	apdu.lc = len;
-	apdu.datalen = len;
-	apdu.data = sbuf;
-	apdu.resplen = 0;
-	apdu.sensitive = 1;
 
-	r = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, len);
+	/* Don't pass references to local variables up to the caller. */
+	if (data->apdu == &local_apdu)
+		data->apdu = NULL;
+
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (apdu->sw1 == 0x63) {
+		if ((apdu->sw2 & 0xF0) == 0xC0 && tries_left != NULL)
+			*tries_left = apdu->sw2 & 0x0F;
+		return SC_ERROR_PIN_CODE_INCORRECT;
+	}
+	return sc_check_sw(card, apdu->sw1, apdu->sw2);
 }
 
 static struct sc_card_operations iso_ops = {
@@ -905,14 +912,12 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.get_challenge = iso7816_get_challenge;
 		iso_ops.create_file   = iso7816_create_file;
 		iso_ops.delete_file   = iso7816_delete_file;
-		iso_ops.verify	      = iso7816_verify;
 		iso_ops.set_security_env	= iso7816_set_security_env;
 		iso_ops.restore_security_env	= iso7816_restore_security_env;
 		iso_ops.compute_signature	= iso7816_compute_signature;
 		iso_ops.decipher		= iso7816_decipher;
-		iso_ops.reset_retry_counter     = iso7816_reset_retry_counter;
-                iso_ops.change_reference_data   = iso7816_change_reference_data;
 		iso_ops.check_sw      = iso7816_check_sw;
+		iso_ops.pin_cmd	      = iso7816_pin_cmd;
 	}
 	return &iso_driver;
 }

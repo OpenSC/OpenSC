@@ -1026,158 +1026,6 @@ gpk_select_key(struct sc_card *card, int key_sfi, const u8 *buf, size_t buflen)
 }
 
 /*
- * Verify a PIN
- * XXX Checking for a PIN from the global EFsc is quite hairy,
- * because we can do this only when the MF is selected.
- * So, simply don't do this :-)
- */
-static int
-gpk_verify_pin(struct sc_card *card, int ref,
-	const u8 *pin, size_t pinlen, int *tries_left)
-{
-	u8		buffer[8];
-	struct sc_apdu	apdu;
-	int		r;
-
-	SC_FUNC_CALLED(card->ctx, 1);
-
-	if (pinlen > 8)
-		return SC_ERROR_INVALID_PIN_LENGTH;
-
-	/* Copy PIN, 0-padded */
-	memset(buffer, 0, sizeof(buffer));
-	memcpy(buffer, pin, pinlen);
-
-	/* XXX deal with secure messaging here */
-	memset(&apdu, 0, sizeof(apdu));
-	apdu.cse = SC_APDU_CASE_3_SHORT;
-	apdu.cla = 0x00;
-	apdu.ins = 0x20;
-	apdu.p1  = 0x00;
-	apdu.p2  = ref & 7;
-	apdu.lc  = 8;
-	apdu.datalen = 8;
-	apdu.data = buffer;
-	apdu.sensitive = 1;
-
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-
-	/* Special case: extract tries_left */
-	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
-		if (tries_left)
-			*tries_left = apdu.sw2 & 0xF;
-		return SC_ERROR_PIN_CODE_INCORRECT;
-	}
-
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
-
-	return r;
-}
-
-/*
- * Verify key (for external auth/secure messaging) or PIN
- * presented by the user
- */
-static int
-gpk_verify(struct sc_card *card, unsigned int type, int ref,
-	const u8 *buf, size_t buflen, int *tries_left)
-{
-	if (tries_left)
-		*tries_left = -1;
-	switch (type) {
-	case SC_AC_PRO:
-		return gpk_select_key(card, ref, buf, buflen);
-	case SC_AC_CHV:
-		return gpk_verify_pin(card, ref, buf, buflen, tries_left);
-	}
-	return SC_ERROR_INVALID_ARGUMENTS;
-}
-
-/*
- * Change secret code. This is used by reset_retry_counter and
- * change_reference_data
- */
-static int
-gpk_set_secret_code(struct sc_card *card, unsigned int mode,
-		unsigned int type, int ref,
-		const u8 *puk, size_t puklen,
-		const u8 *pin, size_t pinlen,
-		int *tries_left)
-{
-	struct sc_apdu	apdu;
-	u8		data[8];
-	unsigned int	n;
-	int		r;
-
-	if (card->ctx->debug)
-		debug(card->ctx, "gpk_set_secret_code(mode=%d, ref=%d)\n",
-				mode, ref);
-	if (type != SC_AC_CHV || !puk || !puklen)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	memset(&apdu, 0, sizeof(apdu));
-	apdu.cse = SC_APDU_CASE_3_SHORT;
-	apdu.cla = 0x80;
-	apdu.ins = 0x24;
-	apdu.p1  = mode;
-	apdu.p2  = ref & 7;
-	apdu.lc  = 8;
-	apdu.data= data;
-	apdu.datalen = 8;
-	apdu.sensitive = 1;
-
-	memset(data, 0, sizeof(data));
-	for (n = 0; n < 8 && n < puklen; n += 2)
-		data[n >> 1] = (puk[n] << 4) | (puk[n+1] & 0xf);
-	for (n = 0; n < 8 && n < pinlen; n += 2)
-		data[4 + (n >> 1)] = (pin[n] << 4) | (pin[n+1] & 0xf);
-
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-
-	/* Special case: extract tries_left */
-	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
-		if (tries_left)
-			*tries_left = apdu.sw2 & 0xF;
-		return SC_ERROR_PIN_CODE_INCORRECT;
-	}
-
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
-
-	return r;
-}
-
-/*
- * Unblock the CHV
- */
-static int
-gpk_reset_retry_counter(struct sc_card *card,
-		unsigned int type, int ref,
-		const u8 *puk, size_t puklen,
-		const u8 *pin, size_t pinlen)
-{
-	return gpk_set_secret_code(card, 0x01, type, ref,
-			puk, puklen, pin, pinlen, NULL);
-}
-
-/*
- * Change the PIN
- */
-static int
-gpk_change_reference_data(struct sc_card *card,
-		unsigned int type, int ref,
-		const u8 *puk, size_t puklen,
-		const u8 *pin, size_t pinlen,
-		int *tries_left)
-{
-	return gpk_set_secret_code(card, 0x00, type, ref,
-			puk, puklen, pin, pinlen, tries_left);
-}
-
-/*
  * Select a security environment (Set Crypto Context in GPK docs).
  * When we get here, the PK file has already been selected.
  *
@@ -1831,6 +1679,82 @@ gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
+static int
+gpk_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
+{
+	static u8	sbuf[8];
+	int		r, ins, p1;
+
+	if (data->pin_type != SC_AC_CHV)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	/* XXX deal with secure messaging here */
+	memset(apdu, 0, sizeof(*apdu));
+	switch (data->cmd) {
+	case SC_PIN_CMD_VERIFY:
+		/* Copy PIN to buffer and pad */
+		r = sc_build_pin(sbuf, 8, &data->pin1, 1);
+		if (r < 0)
+			return r;
+
+		ins = 0x20;
+		p1  = 0x00;
+		break;
+	case SC_PIN_CMD_CHANGE:
+	case SC_PIN_CMD_UNBLOCK:
+		/* Copy PINs to buffer, BCD-encoded, and pad */
+		data->pin1.encoding = SC_PIN_ENCODING_BCD;
+		data->pin1.max_length = 8;
+		data->pin2.encoding = SC_PIN_ENCODING_BCD;
+		data->pin2.max_length = 8;
+		data->pin2.offset = 4;
+		if ((r = sc_build_pin(sbuf, 4, &data->pin1, 1)) < 0
+		 || (r = sc_build_pin(sbuf + 4, 4, &data->pin2, 1)) < 0)
+			return r;
+
+		ins = 0x24;
+		p1  = (data->cmd == SC_PIN_CMD_CHANGE)? 0x00 : 0x01;
+		break;
+	default:
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	apdu->cse	= SC_APDU_CASE_3_SHORT;
+	apdu->cla	= 0x00;
+	apdu->ins	= ins;
+	apdu->p1	= p1;
+	apdu->p2	= data->pin_reference & 7;
+	apdu->lc	= 8;
+	apdu->datalen	= 8;
+	apdu->data	= sbuf;
+	apdu->sensitive	= 1;
+
+	return 0;
+}
+
+static int
+gpk_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+{
+	struct sc_apdu apdu;
+	int r;
+
+	/* Special case - External Authenticate */
+	if (data->cmd == SC_PIN_CMD_VERIFY
+	 && data->pin_type == SC_AC_PRO)
+		return gpk_select_key(card,
+				data->pin_reference,
+				data->pin1.data,
+				data->pin1.len);
+
+	r = gpk_build_pin_apdu(card, &apdu, data);
+	if (r < 0)
+		return r;
+
+	data->apdu = &apdu;
+
+	return iso_ops->pin_cmd(card, data, tries_left);
+}
+
 /*
  * Initialize the driver struct
  */
@@ -1851,7 +1775,6 @@ sc_get_driver()
 		gpk_ops.read_binary	= gpk_read_binary;
 		gpk_ops.write_binary	= gpk_write_binary;
 		gpk_ops.update_binary	= gpk_update_binary;
-		gpk_ops.verify		= gpk_verify;
 		gpk_ops.create_file	= gpk_create_file;
 		/* gpk_ops.check_sw	= gpk_check_sw; */
 		gpk_ops.card_ctl	= gpk_card_ctl;
@@ -1859,8 +1782,7 @@ sc_get_driver()
 		gpk_ops.restore_security_env= gpk_restore_security_env;
 		gpk_ops.compute_signature= gpk_compute_signature;
 		gpk_ops.decipher	= gpk_decipher;
-		gpk_ops.reset_retry_counter = gpk_reset_retry_counter;
-		gpk_ops.change_reference_data = gpk_change_reference_data;
+		gpk_ops.pin_cmd		= gpk_pin_cmd;
 	}
 	return &gpk_drv;
 }

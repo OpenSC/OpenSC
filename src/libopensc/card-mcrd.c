@@ -1155,7 +1155,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 	mcrd_ops.select_file = mcrd_select_file;
         mcrd_ops.set_security_env = mcrd_set_security_env;
         mcrd_ops.compute_signature = mcrd_compute_signature;
-	
+
         return &mcrd_drv;
 }
 

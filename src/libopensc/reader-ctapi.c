@@ -91,14 +91,15 @@ static int refresh_slot_attributes(struct sc_reader *reader,
 
 static int ctapi_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 			 const u8 *sendbuf, size_t sendsize,
-			 u8 *recvbuf, size_t *recvsize)
+			 u8 *recvbuf, size_t *recvsize,
+			 int control)
 {
 	struct ctapi_private_data *priv = GET_PRIV_DATA(reader);
 	u8 dad, sad;
 	unsigned short lr;
 	char rv;
 	
-	dad = 0;
+	dad = control? 1 : 0;
 	sad = 2;
 	lr = *recvsize;
 	
@@ -375,6 +376,7 @@ const struct sc_reader_driver * sc_get_ctapi_driver()
 	ctapi_ops.release = ctapi_release;
 	ctapi_ops.connect = ctapi_connect;
 	ctapi_ops.disconnect = ctapi_disconnect;
+	ctapi_ops.enter_pin = ctbcs_pin_cmd;
 	
 	return &ctapi_drv;
 }

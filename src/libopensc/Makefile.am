@@ -26,7 +26,7 @@ libopensc_la_SOURCES	= sc.c ctx.c module.c asn1.c log.c base64.c \
 			  pkcs15.c pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \
 			  pkcs15-prkey.c pkcs15-pubkey.c pkcs15-sec.c \
 			  pkcs15-wrap.c pkcs15-algo.c \
-			  pkcs15-cache.c $(PCSC_SRC) reader-ctapi.c \
+			  pkcs15-cache.c $(PCSC_SRC) reader-ctapi.c ctbcs.c \
 			  card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 			  card-etoken.c card-tcos.c card-emv.c card-default.c \
 			  card-mcrd.c

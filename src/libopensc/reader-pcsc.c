@@ -20,6 +20,8 @@
 
 #include "internal.h"
 #include "log.h"
+#include "opensc.h"
+#include "ctbcs.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -112,7 +114,8 @@ static DWORD opensc_proto_to_pcsc(unsigned int proto)
 
 static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 			 const u8 *sendbuf, size_t sendsize,
-			 u8 *recvbuf, size_t *recvsize)
+			 u8 *recvbuf, size_t *recvsize,
+			 int control)
 {
 	SCARD_IO_REQUEST sSendPci, sRecvPci;
 	DWORD dwSendLength, dwRecvLength;
@@ -151,8 +154,13 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
         if (dwRecvLength > 255)
 		dwRecvLength = 255;
 
-        rv = SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
-                           &sRecvPci, recvbuf, &dwRecvLength);
+	if (!control) {
+		rv = SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
+				   &sRecvPci, recvbuf, &dwRecvLength);
+	} else {
+		rv = SCardControl(card, sendbuf, dwSendLength,
+				  recvbuf, &dwRecvLength);
+	}
 
 	if (rv != SCARD_S_SUCCESS) {
 		switch (rv) {
@@ -422,6 +430,7 @@ const struct sc_reader_driver * sc_get_pcsc_driver()
 	pcsc_ops.release = pcsc_release;
 	pcsc_ops.connect = pcsc_connect;
 	pcsc_ops.disconnect = pcsc_disconnect;
+	pcsc_ops.enter_pin = ctbcs_pin_cmd;
 	
 	return &pcsc_drv;
 }

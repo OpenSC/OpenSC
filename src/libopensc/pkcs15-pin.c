@@ -146,20 +146,34 @@ int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 	return r;
 }
 
+/*
+ * Verify a PIN.
+ *
+ * If the code given to us has zero length, this means we
+ * should ask the card reader to obtain the PIN from the
+ * reader's PIN pad
+ */
 int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_pin_info *pin,
 			 const u8 *pincode, size_t pinlen)
 {
 	int r;
 	struct sc_card *card;
-	u8 pinbuf[SC_MAX_PIN_SIZE];
-        size_t len;
+	struct sc_pin_cmd_data args;
 
 	assert(p15card != NULL);
 	if (pin->magic != SC_PKCS15_PIN_MAGIC)
 		return SC_ERROR_OBJECT_NOT_VALID;
-	if (pinlen > pin->stored_length || pinlen < pin->min_length)
+
+	/* prevent buffer overflow from hostile card */
+	if (pin->stored_length > SC_MAX_PIN_SIZE)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+
+	/* If application gave us a PIN, make sure it's within
+	 * the valid range */
+	if (pinlen && (pinlen > pin->stored_length || pinlen < pin->min_length))
 		return SC_ERROR_INVALID_PIN_LENGTH;
+
 	card = p15card->card;
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
@@ -168,14 +182,35 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 		sc_unlock(card);
 		return r;
 	}
-	memset(pinbuf, pin->pad_char, pin->stored_length);
-	memcpy(pinbuf, pincode, pinlen);
-        len = pin->stored_length;
-        if (!(pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING))
-                len = pinlen;
-	r = sc_verify(card, SC_AC_CHV, pin->reference,
-		      pinbuf, len, &pin->tries_left);
-	memset(pinbuf, 0, pinlen);
+
+	/* Initialize arguments */
+	memset(&args, 0, sizeof(args));
+	args.cmd = SC_PIN_CMD_VERIFY;
+	args.pin_type = SC_AC_CHV;
+	args.pin_reference = pin->reference;
+	args.pin1.min_length = pin->min_length;
+	args.pin1.max_length = pin->stored_length;
+	args.pin1.pad_char = pin->pad_char;
+
+	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
+		args.flags |= SC_PIN_CMD_NEED_PADDING;
+
+	if (pinlen != 0) {
+		/* Good old-fashioned PIN verification */
+		args.pin1.data = pincode;
+		args.pin1.len = pinlen;
+	} else {
+		/* Use the reader's PIN PAD */
+		/* XXX need some sort of internationalization here */
+		args.flags |= SC_PIN_CMD_USE_PINPAD;
+		if (pin->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+			args.pin1.prompt = "Please enter SO PIN";
+		else
+			args.pin1.prompt = "Please enter PIN";
+	}
+
+	r = sc_pin_cmd(card, &args, &pin->tries_left);
+
 	sc_unlock(card);
 	if (r)
 		return r;
@@ -183,6 +218,11 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
+/*
+ * Change a PIN.
+ * FIXME: Edit this to use the new sc_pin_cmd call just as
+ * above.
+ */
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_pin_info *pin,
 			 const u8 *oldpin, size_t oldpinlen,

@@ -70,7 +70,7 @@ static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 		break;
 	case SC_APDU_CASE_4_SHORT:
 		if (apdu->datalen == 0 || apdu->data == NULL) {
-			error(ctx, "Case 3 APDU with no data supplied\n");
+			error(ctx, "Case 4 APDU with no data supplied\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (apdu->le == 0) {
@@ -151,7 +151,8 @@ static int sc_transceive(struct sc_card *card, struct sc_apdu *apdu)
 			apdu->sensitive ? ", sensitive" : "", buf);
 	}
 	r = card->reader->ops->transmit(card->reader, card->slot, sbuf,
-					sendsize, rbuf, &recvsize);
+					sendsize, rbuf, &recvsize,
+					apdu->control);
 	if (apdu->sensitive)
 		memset(sbuf, 0, sendsize);
 	SC_TEST_RET(card->ctx, r, "Unable to transmit");

@@ -84,6 +84,7 @@ struct flex_private_data {
 };
 
 static struct sc_card_operations flex_ops;
+static struct sc_card_operations *iso_ops;
 static const struct sc_card_driver flex_drv = {
 	"Schlumberger Multiflex/Cryptoflex",
 	"flex",
@@ -752,44 +753,6 @@ static int flex_compute_signature(struct sc_card *card, const u8 *data,
 	return apdu.resplen;
 }
 
-static int flex_verify(struct sc_card *card, unsigned int type, int ref,
-		       const u8 *buf, size_t buflen, int *tries_left)
-{
-        struct sc_apdu apdu;
-        u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-        int r;
-        int cla, ins;
-
-	if (buflen >= SC_MAX_APDU_BUFFER_SIZE)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	switch (type) {
-	case SC_AC_CHV:
-		cla = 0xC0;
-		ins = 0x20;
-		break;
-	case SC_AC_AUT:
-		cla = 0xF0;
-		ins = 0x2A;
-		break;
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
-        }
-        sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, ins, 0, ref);
-        memcpy(sbuf, buf, buflen);
-	apdu.cla = cla;
-        apdu.lc = buflen;
-        apdu.datalen = buflen;
-        apdu.data = sbuf;
-	apdu.resplen = 0;
-	apdu.sensitive = 1;
-	r = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, buflen);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-        if (apdu.sw1 == 0x63)
-		return SC_ERROR_PIN_CODE_INCORRECT;   
-        return sc_check_sw(card, apdu.sw1, apdu.sw2);
-}              
-
 /* Return the default AAK for this type of card */
 static int flex_get_default_key(struct sc_card *card,
 				struct sc_cardctl_default_key *data)
@@ -829,11 +792,69 @@ static int flex_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
+static int flex_build_verify_apdu(struct sc_card *card, struct sc_apdu *apdu,
+				  struct sc_pin_cmd_data *data)
+{
+        static u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+        int r, len;
+        int cla, ins;
+
+	switch (data->pin_type) {
+	case SC_AC_CHV:
+		cla = 0xC0;
+		ins = 0x20;
+		break;
+	case SC_AC_AUT:
+		/* AUT keys cannot be entered through terminal */
+		if (data->flags & SC_PIN_CMD_USE_PINPAD)
+			return SC_ERROR_INVALID_ARGUMENTS;
+		cla = 0xF0;
+		ins = 0x2A;
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+        }
+	/* Copy the PIN, with padding */
+	if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, 1)) < 0)
+		return r;
+	len = r;
+
+        sc_format_apdu(card, apdu, SC_APDU_CASE_3_SHORT, ins, 0, data->pin_reference);
+	apdu->cla = cla;
+	apdu->data = sbuf;
+	apdu->datalen = len;
+	apdu->lc = len;
+	apdu->sensitive = 1;
+
+	return 0;
+}
+
+static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+			int *tries_left)
+{
+	sc_apdu_t apdu;
+	int r;
+
+	if (data->cmd == SC_PIN_CMD_VERIFY) {
+		r = flex_build_verify_apdu(card, &apdu, data);
+		if (r < 0)
+			return r;
+		data->apdu = &apdu;
+	}
+
+	/* According to the Cryptoflex documentation, the card
+	 * does not return the number of attempts left using
+	 * the 63C0xx convention, hence we don't pass the
+	 * tries_left pointer. */
+	return iso_ops->pin_cmd(card, data, NULL);
+}
+
 static const struct sc_card_driver * sc_get_driver(void)
 {
-	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	if (iso_ops == NULL)
+		iso_ops = sc_get_iso7816_driver()->ops;
 
-	flex_ops = *iso_drv->ops;
+	flex_ops = *iso_ops;
 	flex_ops.match_card = flex_match_card;
 	flex_ops.init = flex_init;
         flex_ops.finish = flex_finish;
@@ -841,11 +862,11 @@ static const struct sc_card_driver * sc_get_driver(void)
 	flex_ops.list_files = flex_list_files;
 	flex_ops.delete_file = flex_delete_file;
 	flex_ops.create_file = flex_create_file;
-	flex_ops.verify = flex_verify;
 	flex_ops.card_ctl = flex_card_ctl;
 	flex_ops.set_security_env = flex_set_security_env;
 	flex_ops.restore_security_env = flex_restore_security_env;
 	flex_ops.compute_signature = flex_compute_signature;
+	flex_ops.pin_cmd = flex_pin_cmd;
         return &flex_drv;
 }
 

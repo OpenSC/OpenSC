@@ -42,6 +42,14 @@
 #define CTBCS_INS_STATUS		0x13	/* Get reader status */
 #define CTBCS_INS_EJECT			0x15	/* Eject ICC */
 
+/*
+ * Additional CT-BCS commands
+ */
+#define CTBCS_INS_INPUT			0x16	/* Input from pin pad */
+#define CTBCS_INS_OUTPUT		0x17	/* Output to pad pad display */
+#define CTBCS_INS_PERFORM_VERIFICATION	0x18	/* Verify PIN from pin pad */
+#define CTBCS_INS_MODIFY_VERIFICATION	0x19	/* Perform a change/unblock PIN op */
+
 /* 
  * P1 parameter: functional units 
  */
@@ -83,6 +91,26 @@
  */
 #define CTBCS_P2_STATUS_MANUFACTURER	0x46	/* Return manufacturer DO */
 #define CTBCS_P2_STATUS_ICC		0x80	/* Return ICC DO */
+
+/*
+ * P2 parameter for Input
+ */
+#define CTBCS_P2_INPUT_ECHO		0x01	/* Echo input on display */
+#define CTBCS_P2_INPUT_ASTERISKS	0x02	/* Echo input as asterisks */
+
+/*
+ * Tags for paramaters to input, output et al.
+ */
+#define CTBCS_TAG_PROMPT		0x50
+#define CTBCS_TAG_VERIFY_CMD		0x52
+#define CTBCS_TAG_TIMEOUT		0x80
+
+/*
+ * PIN command control flags
+ */
+#define CTBCS_PIN_CONTROL_LEN_SHIFT	4
+#define CTBCS_PIN_CONTROL_LEN_MASK	0x0F
+#define CTBCS_PIN_CONTROL_ENCODE_ASCII	0x01
 
 /*
  * General return codes
@@ -146,6 +174,12 @@
 #define CTBCS_DATA_STATUS_NOCARD	0x00	/* No card present */
 #define CTBCS_DATA_STATUS_CARD		0x01	/* Card present */
 #define CTBCS_DATA_STATUS_CARD_CONNECT	0x05	/* Card present */
+
+/*
+ * Functions for building CTBCS commands
+ */
+int ctbcs_pin_cmd(struct sc_reader *, sc_slot_info_t *, struct sc_pin_cmd_data *);
+
 
 #endif /* _CTBCS_ */
 

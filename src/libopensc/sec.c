@@ -82,14 +82,16 @@ int sc_restore_security_env(struct sc_card *card, int se_num)
 int sc_verify(struct sc_card *card, unsigned int type, int ref, 
 	      const u8 *pin, size_t pinlen, int *tries_left)
 {
-	int r;
+	struct sc_pin_cmd_data data;
 
-	assert(card != NULL);
-	SC_FUNC_CALLED(card->ctx, 2);
-        if (card->ops->verify == NULL)
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
-	r = card->ops->verify(card, type, ref, pin, pinlen, tries_left);
-        SC_FUNC_RETURN(card->ctx, 2, r);
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_VERIFY;
+	data.pin_type = type;
+	data.pin_reference = ref;
+	data.pin1.data = pin;
+	data.pin1.len = pinlen;
+
+	return sc_pin_cmd(card, &data, tries_left);
 }
 
 int sc_change_reference_data(struct sc_card *card, unsigned int type,
@@ -97,28 +99,148 @@ int sc_change_reference_data(struct sc_card *card, unsigned int type,
 			     const u8 *newref, size_t newlen,
 			     int *tries_left)
 {
-	int r;
+	struct sc_pin_cmd_data data;
 
-	assert(card != NULL);
-	SC_FUNC_CALLED(card->ctx, 1);
-	if (card->ops->change_reference_data == NULL)
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
-	r = card->ops->change_reference_data(card, type, ref, old, oldlen,
-					     newref, newlen, tries_left);
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_CHANGE;
+	data.pin_type = type;
+	data.pin_reference = ref;
+	data.pin1.data = old;
+	data.pin1.len = oldlen;
+	data.pin2.data = newref;
+	data.pin2.len = newlen;
+
+	return sc_pin_cmd(card, &data, tries_left);
 }
 
 int sc_reset_retry_counter(struct sc_card *card, unsigned int type, int ref,
 			   const u8 *puk, size_t puklen, const u8 *newref,
 			   size_t newlen)
 {
+	struct sc_pin_cmd_data data;
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_UNBLOCK;
+	data.pin_type = type;
+	data.pin_reference = ref;
+	data.pin1.data = puk;
+	data.pin1.len = puklen;
+	data.pin2.data = newref;
+	data.pin2.len = newlen;
+
+	return sc_pin_cmd(card, &data, NULL);
+}
+
+/*
+ * This is the new style pin command, which takes care of all PIN
+ * operations.
+ * If a PIN was given by the application, the card driver should
+ * send this PIN to the card. If no PIN was given, the driver should
+ * ask the reader to obtain the pin(s) via the pin pad
+ */
+int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+		int *tries_left)
+{
 	int r;
 
 	assert(card != NULL);
-	SC_FUNC_CALLED(card->ctx, 1);
-	if (card->ops->reset_retry_counter == NULL)
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
-	r = card->ops->reset_retry_counter(card, type, ref, puk, puklen,
-					   newref, newlen);
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_CALLED(card->ctx, 2);
+	if (card->ops->pin_cmd) {
+		r = card->ops->pin_cmd(card, data, tries_left);
+	} else if (!(data->flags & SC_PIN_CMD_USE_PINPAD)) {
+		/* Card driver doesn't support new style pin_cmd, fall
+		 * back to old interface */
+
+		r = SC_ERROR_NOT_SUPPORTED;
+		switch (data->cmd) {
+		case SC_PIN_CMD_VERIFY:
+			if (card->ops->verify != NULL)
+				r = card->ops->verify(card,
+					data->pin_type,
+					data->pin_reference,
+					data->pin1.data,
+					data->pin1.len,
+					tries_left);
+			break;
+		case SC_PIN_CMD_CHANGE:
+			if (card->ops->change_reference_data != NULL)
+				r = card->ops->change_reference_data(card,
+					data->pin_type,
+					data->pin_reference,
+					data->pin1.data,
+					data->pin1.len,
+					data->pin2.data,
+					data->pin2.len,
+					tries_left);
+			break;
+		case SC_PIN_CMD_UNBLOCK:
+			if (card->ops->reset_retry_counter != NULL)
+				r = card->ops->reset_retry_counter(card,
+					data->pin_type,
+					data->pin_reference,
+					data->pin1.data,
+					data->pin1.len,
+					data->pin2.data,
+					data->pin2.len);
+			break;
+		}
+		if (r == SC_ERROR_NOT_SUPPORTED)
+			error(card->ctx, "unsupported PIN operation (%d)",
+					data->cmd);
+	} else {
+		error(card->ctx, "Use of pin pad not supported by card driver");
+		r = SC_ERROR_NOT_SUPPORTED;
+	}
+        SC_FUNC_RETURN(card->ctx, 2, r);
+}
+
+/*
+ * This function will copy a PIN, convert and pad it as required
+ */
+int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
+{
+	size_t i = 0, j, pad_length = 0;
+	size_t pin_len = pin->len;
+
+	/* XXX: Should we silently truncate PINs that are too long? */
+	if (pin->max_length && pin_len > pin->max_length)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	/* PIN given by application, encode if required */
+	if (pin->encoding == SC_PIN_ENCODING_ASCII) {
+		if (pin_len > buflen)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		memcpy(buf, pin->data, pin_len);
+		i = pin_len;
+	} else if (pin->encoding == SC_PIN_ENCODING_BCD) {
+		if (pin_len > 2 * buflen)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		for (i = j = 0; j < pin_len; j++) {
+			buf[i] <<= 4;
+			buf[i] |= pin->data[j] & 0xf;
+			if (j & 1)
+				i++;
+		}
+		if (j & 1) {
+			buf[i] <<= 4;
+			buf[i] |= pin->pad_char & 0xf;
+			i++;
+		}
+	}
+
+	/* Pad to maximum PIN length if requested */
+	if (pad) {
+		pad_length = pin->max_length;
+		if (pin->encoding == SC_PIN_ENCODING_BCD)
+			pad_length >>= 1;
+	}
+
+	if (pad_length > buflen)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+
+	if (pad_length && i < pad_length) {
+		memset(buf + i, pin->pad_char, pad_length - i);
+		i = pad_length;
+	}
+	return i;
 }

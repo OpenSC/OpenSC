@@ -34,6 +34,10 @@ const char *sc_strerror(int error)
 		"Card removed",
 		"Card reset",
 		"Transmit failed",
+		"Timed out while waiting for input (keypad)",
+		"Input operation canelled (keypad)",
+		"The two PINs did not match (keypad)",
+		"Message too long (keypad)",
 	};
 	const int rdr_base = -SC_ERROR_READER;
 	const char *card_errors[] = {

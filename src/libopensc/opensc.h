@@ -250,7 +250,11 @@ struct sc_reader_driver {
 	struct sc_reader_operations *ops;
 };
 
+/* slot flags */
 #define SC_SLOT_CARD_PRESENT	0x00000001
+/* slot capabilities */
+#define SC_SLOT_CAP_DISPLAY	0x00000001
+#define SC_SLOT_CAP_PIN_PAD	0x00000002
 
 struct sc_slot_info {
 	int id;	
@@ -286,6 +290,47 @@ struct sc_reader {
 	int slot_count;
 };
 
+/* This will be the new interface for handling PIN commands.
+ * It is supposed to support pin pads (with or without display)
+ * attached to the reader.
+ */
+#define SC_PIN_CMD_VERIFY	0
+#define SC_PIN_CMD_CHANGE	1
+#define SC_PIN_CMD_UNBLOCK	2
+
+#define SC_PIN_CMD_USE_PINPAD	0x0001
+#define SC_PIN_CMD_NEED_PADDING	0x0002
+
+#define SC_PIN_ENCODING_ASCII	0
+#define SC_PIN_ENCODING_BCD	1
+
+
+struct sc_pin_cmd_data {
+	unsigned int cmd;
+	unsigned int flags;
+
+	unsigned int pin_type;		/* usually SC_AC_CHV */
+	int pin_reference;
+
+	struct sc_pin_cmd_pin {
+		const char *prompt;	/* Prompt to display */
+
+		const u8 *data;		/* PIN, if given by the appliction */
+		int len;		/* set to -1 to get pin from pin pad */
+
+		size_t min_length;	/* min/max length of PIN */
+		size_t max_length;
+		int encoding;		/* ASCII-numeric, BCD, etc */
+		size_t pad_length;	/* filled in by the card driver */
+		u8 pad_char;
+		size_t offset;		/* offset relative to the APDU's
+					 * argument buffer, where the
+					 * PIN should go */
+	} pin1, pin2;
+
+	struct sc_apdu *apdu;		/* APDU of the PIN command */
+};
+
 #define SC_DISCONNECT			0
 #define SC_DISCONNECT_AND_RESET		1
 #define SC_DISCONNECT_AND_UNPOWER	2
@@ -310,13 +355,20 @@ struct sc_reader_operations {
 			  int action);
 	int (*transmit)(struct sc_reader *reader, struct sc_slot_info *slot,
 			const u8 *sendbuf, size_t sendsize,
-			u8 *recvbuf, size_t *recvsize);
+			u8 *recvbuf, size_t *recvsize,
+			int control);
 	int (*lock)(struct sc_reader *reader, struct sc_slot_info *slot);
 	int (*unlock)(struct sc_reader *reader, struct sc_slot_info *slot);
 	int (*set_protocol)(struct sc_reader *reader, struct sc_slot_info *slot,
 			    unsigned int proto);
 	int (*add_callback)(struct sc_reader *reader, struct sc_slot_info *slot,
 			    const struct sc_event_listener *, void *arg);
+
+	/* Pin pad functions */
+	int (*display_message)(struct sc_reader *, struct sc_slot_info *,
+			       const char *);
+	int (*enter_pin)(struct sc_reader *, struct sc_slot_info *,
+			 struct sc_pin_cmd_data *);
 };
 
 
@@ -465,6 +517,12 @@ struct sc_card_operations {
 	int (*check_sw)(struct sc_card *card, int sw1, int sw2);
 	int (*card_ctl)(struct sc_card *card, unsigned long request,
 				void *data);
+
+	/* pin_cmd: verify/change/unblock command; optionally using the
+	 * card's pin pad if supported.
+	 */
+	int (*pin_cmd)(struct sc_card *, struct sc_pin_cmd_data *,
+				int *tries_left);
 };
 
 struct sc_card_driver {
@@ -642,6 +700,7 @@ int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 size_t data_len, u8 * out, size_t outlen);
 int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *buf,
 	      size_t buflen, int *tries_left);
+int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *, int *tries_left);
 int sc_change_reference_data(struct sc_card *card, unsigned int type,
 			     int ref, const u8 *old, size_t oldlen,
 			     const u8 *newref, size_t newlen,
@@ -649,6 +708,7 @@ int sc_change_reference_data(struct sc_card *card, unsigned int type,
 int sc_reset_retry_counter(struct sc_card *card, unsigned int type,
 			   int ref, const u8 *puk, size_t puklen,
 			   const u8 *newref, size_t newlen);
+int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad);
 
 /* ISO 7816-9 */
 int sc_create_file(struct sc_card *card, struct sc_file *file);
