@@ -57,6 +57,10 @@ struct pkdata {
 /*
  * Local functions
  */
+static int	gpk_new_pin(struct sc_profile *profile, struct sc_card *card,
+			struct sc_pkcs15_pin_info *info, unsigned int index,
+			const u8 *pin, size_t pin_len,
+			const u8 *puk, size_t puk_len);
 static int	gpk_new_file(struct sc_profile *, struct sc_card *,
 			unsigned int, unsigned int,
 			struct sc_file **);
@@ -128,19 +132,23 @@ static int
 gpk_init_pinfile(struct sc_profile *profile, struct sc_card *card,
 		struct sc_file *file)
 {
-	struct sc_pkcs15_pin_info pin_info;
+	struct sc_pkcs15_pin_info sopin_info, pin_info;
 	const struct sc_acl_entry *acl;
 	unsigned char	buffer[GPK_MAX_PINS * 8], *blk;
 	struct sc_file	*pinfile;
-	unsigned int	pin_attempts, puk_attempts;
+	unsigned int	so_attempts[2], user_attempts[2];
 	unsigned int	npins, i, j, cks;
 	int		r;
 
 	/* Set defaults */
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin_info);
+	so_attempts[0] = sopin_info.tries_left;
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &pin_info);
+	so_attempts[1] = pin_info.tries_left;
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &pin_info);
-	pin_attempts = pin_info.tries_left;
+	user_attempts[0] = pin_info.tries_left;
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &pin_info);
-	puk_attempts = pin_info.tries_left;
+	user_attempts[1] = pin_info.tries_left;
 
 	sc_file_dup(&pinfile, file);
 
@@ -165,16 +173,19 @@ gpk_init_pinfile(struct sc_profile *profile, struct sc_card *card,
 	npins = pinfile->size / 8;
 	memset(buffer, 0, sizeof(buffer));
 	for (i = 0, blk = buffer; i < npins; blk += 8, i += 1) {
-		if ((i % 1) == 0) {
+		/* Determine the number of PIN/PUK presentation
+		 * attempts. If the profile defines a SO PIN,
+		 * it will be stored in the first PIN/PUK pair.
+		 */
+		blk[0] = user_attempts[i & 1];
+		if (i < 2 && so_attempts[0])
+			blk[0] = so_attempts[i & 1];
+		if ((i & 1) == 0) {
 			/* This is a PIN. If there's room in the file,
 			 * the next will be a PUK so take note of the
-			 * unlonk code */
-			blk[0] = pin_attempts;
+			 * unlock code */
 			if (i + 1 < npins)
 				blk[2] = 0x8 | (i + 1);
-		} else {
-			/* This is the PUK */
-			blk[0] = puk_attempts;
 		}
 
 		/* Compute the CKS */
@@ -199,19 +210,14 @@ gpk_init_app(struct sc_profile *profile, struct sc_card *card,
 		const unsigned char *pin, size_t pin_len,
 		const unsigned char *puk, size_t puk_len)
 {
+	struct sc_pkcs15_pin_info sopin_info;
 	struct sc_file	*pinfile;
 	int		r;
-
-	/* SO pin not supported yet */
-	if (pin && pin_len) {
-		error(profile, "GPK doesn't support an SO PIN yet");
-		/* return SC_ERROR_NOT_SUPPORTED; */
-	}
 
 	/* Profile must define a "pinfile" */
 	if (sc_profile_get_file(profile, "pinfile", &pinfile) < 0) {
 		error(profile, "Profile doesn't define a \"pinfile\"");
-		/* return SC_ERROR_NOT_SUPPORTED; */
+		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	/* Create the application DF */
@@ -220,6 +226,12 @@ gpk_init_app(struct sc_profile *profile, struct sc_card *card,
 	/* Create the PIN file */
 	if (r >= 0)
 		r = gpk_init_pinfile(profile, card, pinfile);
+
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin_info);
+	if (r >= 0 && sopin_info.reference != -1)
+		r = gpk_new_pin(profile, card, &sopin_info, 0,
+				pin, pin_len,
+				puk, puk_len);
 
 	sc_file_free(pinfile);
 	return r;
