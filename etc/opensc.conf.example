@@ -155,10 +155,26 @@ app default {
 		# Default: false
 		#
 		use_caching = true;
-		# Use the following dynamic libraries for a read-only
-		# PKCS#15 emulation of non pkcs15 cards.
-		#
-		# pkcs15_syn = p15_starcert.so;
+		# Enable pkcs15 emulation
+		# Default: yes
+		enable_pkcs15_emulation = yes;
+		# Try pkcs15 emulation code first (before the normal
+		# pkcs15 processing).
+		# Default: no
+		try_emulation_first = no;
+		# Enable builtin emulators
+		# Default: yes
+		enable_builtin_emulation = yes;
+		# list of the builtin pkcs15 emulators to test
+		# possible values: esteid, openpgp, netkey, netkey, starcert, infocamere
+		builtin_emulators = esteid, openpgp, netkey, netkey, starcert, infocamere;
+
+		# additional pkcs15 emulators (dynamic or builtin with
+		# a different atr etc.) 
+		# emulate foo {
+			# module = builtin;
+			# atr = 11:22:33:44;
+		#}
 	}
 }
 
