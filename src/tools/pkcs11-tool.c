@@ -346,15 +346,18 @@ main(int argc, char * const argv[])
 
 		/* Identify which pin to enter */
 
-		if (info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)
+		if (info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) {
 			pin = NULL;
-		else {
+		} else
+		if (info.flags & CKF_LOGIN_REQUIRED) {
 			if (opt_pin == NULL)
 				pin = getpass("Please enter PIN: ");
 			else
 				pin = opt_pin;
 			if (!pin || !*pin)
 				return 1;
+		} else {
+			goto skip_login;
 		}
 		rv = p11->C_Login(session, CKU_USER, (CK_UTF8CHAR *) pin,
 			pin == NULL ? 0 : strlen(pin));
@@ -362,6 +365,7 @@ main(int argc, char * const argv[])
 			p11_fatal("C_Login", rv);
 	}
 
+skip_login:
 	if (do_sign) {
 		if (!find_object(session, CKO_PRIVATE_KEY, &object, NULL, 0, 0))
 			fatal("Private key not found");
