@@ -396,9 +396,15 @@ int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
 int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
 {
 	char *homedir;
-	const char *cache_dir = ".eid/cache";
+	const char *cache_dir;
 
+#ifndef _WIN32
+	cache_dir = ".eid/cache";
 	homedir = getenv("HOME");
+#else
+	cache_dir = "eid-cache";
+	homedir = getenv("USERPROFILE");
+#endif
 	if (homedir == NULL)
 		return SC_ERROR_INTERNAL;
 	if (snprintf(buf, bufsize, "%s/%s", homedir, cache_dir) < 0)
