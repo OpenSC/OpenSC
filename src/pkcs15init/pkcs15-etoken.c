@@ -396,7 +396,6 @@ etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
 	struct tlv	tlv;
 	unsigned int	attempts, minlen, maxlen;
 
-printf("etoken_store_pin(ref=%d, puk=%d\n", pin_info->reference, puk_id);
 	/* We need to do padding because pkcs15-lib.c does it.
 	 * Would be nice to have a flag in the profile that says
 	 * "no padding required". */
