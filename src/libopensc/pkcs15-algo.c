@@ -250,7 +250,7 @@ sc_asn1_get_algorithm_info(const struct sc_algorithm_id *id)
 	struct sc_asn1_pkcs15_algorithm_info *aip;
 
 	aip = algorithm_table;
-	if (id->algorithm < 0) {
+	if ((int) id->algorithm < 0) {
 		while (aip->id >= 0) {
 			const int	*oid1, *oid2;
 			int		m;
@@ -265,6 +265,7 @@ sc_asn1_get_algorithm_info(const struct sc_algorithm_id *id)
 				/* We have a match */
 				return aip;
 			}
+			aip++;
 		}
 	} else {
 		while (aip->id >= 0) {
@@ -301,6 +302,7 @@ sc_asn1_decode_algorithm_id(struct sc_context *ctx, const u8 *in,
 
 	/* See if we understand the algorithm, and if we do, check
 	 * whether we know how to decode any additional parameters */
+	id->algorithm = -1;
 	if ((alg_info = sc_asn1_get_algorithm_info(id)) != NULL) {
 		id->algorithm = alg_info->id;
 		if (alg_info->decode) {
