@@ -146,8 +146,10 @@ void print_usage_and_die(void)
 		const char *arg_str;
 		
 		/* Skip "hidden" options */
-		if (option_help[i] == NULL)
+		if (option_help[i] == NULL) {
+			i++;
 			continue;
+		}
 
 		if (options[i].val > 0 && options[i].val < 128)
 			sprintf(tmp, ", -%c", options[i].val);
