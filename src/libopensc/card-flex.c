@@ -46,6 +46,8 @@ static struct {
 	TYPE_CRYPTOFLEX },
       { "3B:95:18:40:FF:64:02:01:01:02",       /* 32K v4 */
 	TYPE_CRYPTOFLEX|FLAG_KEYGEN },
+      {	"3B:95:18:40:FF:62:01:02:01:04",       /* 32K e-gate */
+	TYPE_CRYPTOFLEX },
       {	"3B:95:18:40:FF:62:04:01:01:05",       /* 32K e-gate v4 */
 	TYPE_CRYPTOFLEX },
       {	"3B:E2:00:00:40:20:49:06",
@@ -732,7 +734,7 @@ static int flex_compute_signature(struct sc_card *card, const u8 *data,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int i, r;
 	
-	if (data_len != 64 && data_len != 96 && data_len != 128) {
+	if (data_len != 64 && data_len != 96 && data_len != 128  && data_len != 256) {
 		error(card->ctx, "Illegal input length: %d\n", data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -741,6 +743,24 @@ static int flex_compute_signature(struct sc_card *card, const u8 *data,
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, 0x00, prv->rsa_key_ref);
+
+	/* This works around a problem with some PCSC IFD handlers that don't grok
+	 * lc=00 (Chaskiel M Grundman <cg2v@andrew.cmu.edu>) */
+	if (data_len == 256) {
+		apdu.cla=0x10;
+		apdu.lc=1;
+		apdu.datalen=1;
+		apdu.data = sbuf;
+		sbuf[0]=data[data_len-1];
+		r = sc_transmit_apdu(card, &apdu);
+		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		SC_TEST_RET(card->ctx, r, "Card returned error");
+		data_len--;
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, 0x00, prv->rsa_key_ref);
+		apdu.cla=0x0;
+	}
+
 	apdu.lc = data_len;
 	apdu.datalen = data_len;
 	for (i = 0; i < data_len; i++)
