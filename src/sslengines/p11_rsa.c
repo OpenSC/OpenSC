@@ -159,37 +159,66 @@ pkcs11_rsa_sign(int type, const unsigned char *m, unsigned int m_len,
 	PKCS11_CTX *ctx;
 	CK_SESSION_HANDLE session;
 	CK_MECHANISM mechanism;
-	CK_ULONG sigsize;
-	int rv;
+	int rv, ssl = ((type == NID_md5_sha1) ? 1 : 0);
+	int rsa_size = RSA_size(rsa);
+	CK_ULONG sigsize = rsa_size;
+	unsigned char *encoded = NULL;
 
 	if (key == NULL)
-		return -1;
+		return 0;
 	ctx = KEY2CTX(key);
 	priv = PRIVKEY(key);
 	slot = TOKEN2SLOT(priv->parent);
 	session = PRIVSLOT(slot)->session;
 
+	if (ssl) {
+		if((m_len != 36) /* SHA1 + MD5 */ ||
+		   ((m_len + RSA_PKCS1_PADDING) > rsa_size)) {
+			return(0); /* the size is wrong */
+		}
+	} else {
+		ASN1_TYPE parameter = { V_ASN1_NULL, { NULL } };
+		ASN1_STRING digest = { m_len, V_ASN1_OCTET_STRING, (void*)m };
+		X509_ALGOR algor = { NULL, &parameter };
+		X509_SIG digest_info = { &algor, &digest };
+		int size;
+		/* Fetch the OID of the algorithm used */
+		if((algor.algorithm = OBJ_nid2obj(type)) && 
+		   (algor.algorithm->length) &&
+		   /* Get the size of the encoded DigestInfo */
+		   (size = i2d_X509_SIG(&digest_info, NULL)) &&
+		   /* Check that size is compatible with PKCS#11 padding */
+		   (size + RSA_PKCS1_PADDING <= rsa_size) &&
+		   (encoded = malloc(rsa_size))) {
+			unsigned char *tmp = encoded;
+			/* Actually do the encoding */
+			i2d_X509_SIG(&digest_info,&tmp);
+			m = encoded;
+			m_len = size;
+		} else {
+			return(0);
+		}
+	}
+
 	memset(&mechanism, 0, sizeof(mechanism));
 	mechanism.mechanism = CKM_RSA_PKCS;
-
-	rv = CRYPTOKI_call(ctx, C_SignInit(session, &mechanism, priv->object));
-	if (rv)
-		goto fail;
 
 	/* API is somewhat fishy here. *siglen is 0 on entry (cleared
 	 * by OpenSSL). The library assumes that the memory passed
 	 * by the caller is always big enough */
-	sigsize = BN_num_bytes(rsa->n);
-	rv = CRYPTOKI_call(ctx,
-			   C_Sign(session, (CK_BYTE *) m, m_len, sigret, &sigsize));
-	if (rv)
-		goto fail;
-
+	if((rv = CRYPTOKI_call(ctx, C_SignInit
+			       (session, &mechanism, priv->object))) == 0) {
+		rv = CRYPTOKI_call(ctx, C_Sign
+				   (session, (CK_BYTE *) m, m_len,
+				    sigret, &sigsize));
+	}
 	*siglen = sigsize;
-	return 1;
+	free(encoded);
 
-      fail:PKCS11err(PKCS11_F_PKCS11_RSA_SIGN, pkcs11_map_err(rv));
-	return 0;
+	if (rv) {
+		PKCS11err(PKCS11_F_PKCS11_RSA_SIGN, pkcs11_map_err(rv));
+	}
+	return (rv) ? 0 : 1;
 }
 
 /* Lousy hack alert. If RSA_verify detects that the key has the
