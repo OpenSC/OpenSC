@@ -57,7 +57,7 @@ typedef int	(*pkcs15_encoder)(struct sc_context *,
 			struct sc_pkcs15_card *, u8 **, size_t *);
 
 /* Local functions */
-static int	connect(int);
+static int	open_reader_and_card(int);
 static int	do_init_app(struct sc_profile *);
 static int	do_store_pin(struct sc_profile *);
 static int	do_generate_key(struct sc_profile *, const char *);
@@ -271,7 +271,7 @@ main(int argc, char **argv)
 	}
 
 	/* Connect to the card */
-	if (!connect(opt_reader))
+	if (!open_reader_and_card(opt_reader))
 		return 1;
 
 	sc_pkcs15init_set_callbacks(&callbacks);
@@ -334,7 +334,7 @@ done:	if (r < 0) {
 }
 
 static int
-connect(int reader)
+open_reader_and_card(int reader)
 {
 	int	r;
 
