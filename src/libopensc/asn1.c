@@ -1040,7 +1040,10 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 		 * to complain about */
 		if (asn1->name == NULL)
 			return 0;
-		return SC_ERROR_ASN1_END_OF_CONTENTS;
+		sc_error(ctx, "End of ASN.1 stream, "
+			      "non-optional field %s not found\n",
+			      asn1->name);
+		return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 	}
 	if (p[0] == 0 || p[0] == 0xFF)
 		return SC_ERROR_ASN1_END_OF_CONTENTS;
