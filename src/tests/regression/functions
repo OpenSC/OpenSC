@@ -246,9 +246,8 @@ function p15_store_key {
 function p15_validate {
 
 	msg "Validating card using pkcs11-tool"
-	yes x |
 	run_display_output $p11tool -t --pin 0000 \
-		--slot-label "OpenSC Test Card" $*
+		--slot-label "OpenSC Test Card" $* < /dev/null
 	success
 }
 
