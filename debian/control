@@ -1,22 +1,24 @@
 Source: opensc
 Priority: optional
 Maintainer: Joe Phillips <joe.phillips@innovationsw.com>
-Build-Depends: debhelper (>> 3.0.0), libssl-dev, libpcsclite-dev, libpam-dev, libldap-dev, libsasl-dev, flex
+Build-Depends: debhelper (>> 3.0.0), libssl-dev, libpcsclite-dev, libpam-dev, libldap-dev, libsasl-dev, flex, openct-dev, autotools-dev
 Standards-Version: 3.5.2
+Section: utils
 
 Package: opensc
 Section: utils
 Architecture: any
 Depends: ${shlibs:Depends}
-Description: SmartCard utilities with support for PKCS#15 compatible cards
- This package includes utilities for manipulating
- PKCS#15 compatible smart cards and similar security tokens
- with the libopensc libraries.
+Description: SmartCard utilities for PKCS#15 compatible cards
+ This package includes utilities for using PKCS#15 compatible
+ smart cards and similar security tokens.
  .
  These utilities allow the user to initialize, personalize and
- otherwise manipulate PKCS#15 cards with PINs and cryptographic 
+ otherwise use PKCS#15 cards with PINs and cryptographic 
  keys.  Users can sign and decrypt data with private keys 
  residing on-card.
+ .
+ This package also includes the documentation for opensc.
  .
  Supported cards include Gemplus GPK, Schlumberger Cryptoflex,
  Finnish FINEID, Swedish eID, MioCOS and TCOS cards.
@@ -33,11 +35,16 @@ Package: libopensc0
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}
-Description: SmartCard libraries with support for PKCS#15 compatible smart cards
- This package contains the libopensc libraries from OpenSC.org.
+Description: SmartCard libraries for PKCS#15 compatible smart cards
+ This package contains libraries to use crypto smart cards.
  These libraries allow programs to access data, such as
  cryptographic keys, on various PKCS#15 compatible smart cards
  and similar security tokens.
+ .
+ This package includes a PKCS#11 Module for Mozilla and other
+ PKCS#11 aware application, as well as dynamic engines for OpenSSL.
+ .
+ See the opensc package for tools and documentation.
  .
  Supported cards include Gemplus GPK, Schlumberger Cryptoflex,
  Finnish FINEID, Swedish eID, MioCOS and TCOS cards.
@@ -50,10 +57,10 @@ Recommends: opensc
 Description: Pluggable Authentication Module for using PKCS#15 Smart Cards
  This package allows an administrator to configure a host to
  cryptographically authenticate users via PKCS#15 smart cards.
- User public keys can be stored in LDAP or in user home directories.
- User private keys are PIN-protected on issued smartcards.
+ User certificates can be stored in LDAP or in user home directories,
+ to login the smart card with the private key is required.
  .
  This module supports any security token supported by the libopensc libraries.
  .
- Card initialization can be performed by utilities in the opensc package.
+ See the opensc package for tools and documentation.
 

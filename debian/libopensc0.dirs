@@ -1,4 +1,5 @@
-usr/lib
+lib/security
 usr/lib/pkcs11
-etc/opensc
+usr/lib/opensc
 usr/share/opensc
+usr/share/doc/libopensc0/examples

@@ -5,14 +5,17 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-# This is the debhelper compatibility version to use.
-export DH_COMPAT=3
-
 # These are used for cross-compiling and for saving the configure script
 # from having to guess our platform (since we know it already)
 DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
+# FOR AUTOCONF 2.52 AND NEWER ONLY
+ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
+  confflags += --build $(DEB_HOST_GNU_TYPE)
+else
+  confflags += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
+endif
 
 ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -g
@@ -21,26 +24,17 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	INSTALL_PROGRAM += -s
 endif
 
-# shared library versions, option 1
-#version=2.0.5
-#major=2
-# option 2, assuming the library is created as src/.libs/libfoo.so.2.0.5 or so
-version=`ls src/.libs/lib*.so.* | \
- awk '{if (match($$0,/[0-9]+\.[0-9]+\.[0-9]+$$/)) print substr($$0,RSTART)}'`
-major=`ls src/.libs/lib*.so.* | \
- awk '{if (match($$0,/\.so\.[0-9]+$$/)) print substr($$0,RSTART+4)}'`
-
 config.status: configure
 	dh_testdir
 	# Add here commands to configure the package.
-	./configure --host=$(DEB_HOST_GNU_TYPE) \
-		--build=$(DEB_BUILD_GNU_TYPE) \
+	./configure $(confflags) \
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--mandir=\$${prefix}/share/man \
 		--infodir=\$${prefix}/share/info \
-		--with-pam --with-pam-dir=/usr/lib/security/ \
+		--with-pam \
 		--with-ldap-lib=auto \
+		--with-pcsc \
 		--disable-rpath
 
 
@@ -64,7 +58,6 @@ clean:
 	  cp -f /usr/share/misc/config.sub config.sub
 	-test -r /usr/share/misc/config.guess && \
 	  cp -f /usr/share/misc/config.guess config.guess
-
 	dh_clean
 
 install: build
@@ -76,39 +69,14 @@ install: build
 	# Add here commands to install the package into debian/tmp
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 
-	# deal with config files
-	install -d $(CURDIR)/debian/tmp/etc/opensc
-	mv $(CURDIR)/debian/tmp/usr/share/opensc/*.profile $(CURDIR)/debian/tmp/etc/opensc
-	ln -s /etc/opensc/flex.profile $(CURDIR)/debian/tmp/usr/share/opensc/flex.profile
-	ln -s /etc/opensc/gpk.profile $(CURDIR)/debian/tmp/usr/share/opensc/gpk.profile
-	ln -s /etc/opensc/miocos.profile $(CURDIR)/debian/tmp/usr/share/opensc/miocos.profile
-	ln -s /etc/opensc/pkcs15.profile $(CURDIR)/debian/tmp/usr/share/opensc/pkcs15.profile
+	# move PAM library
+	install -d $(CURDIR)/debian/tmp/lib
+	mv $(CURDIR)/debian/tmp/usr/lib/security $(CURDIR)/debian/tmp/lib/
 
-	# PAM libraries
-#	install -d $(CURDIR)/debian/tmp/lib/security
-#	mv $(CURDIR)/debian/tmp/usr/lib/security/pam_opensc.so \
-#		$(CURDIR)/debian/tmp/lib/security/
-
-	# man pages
-#	install -d $(CURDIR)/debian/tmp/usr/share/man/man7/ \
-#		$(CURDIR)/debian/tmp/usr/share/man/man1/
-#	install $(CURDIR)/debian/opensc.7 \
-#		$(CURDIR)/debian/tmp/usr/share/man/man7/
-#	install $(CURDIR)/debian/pkcs15-tool.1 \
-#		$(CURDIR)/debian/tmp/usr/share/man/man1/
-#	install $(CURDIR)/debian/cryptoflex-tool.1 \
-#		$(CURDIR)/debian/tmp/usr/share/man/man1/
-#	install $(CURDIR)/debian/opensc-explorer.1 \
-#		$(CURDIR)/debian/tmp/usr/share/man/man1/
-#	install $(CURDIR)/debian/opensc-tool.1 \
-#		$(CURDIR)/debian/tmp/usr/share/man/man1/
-#	install $(CURDIR)/debian/opensc-config.1 \
-#		$(CURDIR)/debian/tmp/usr/share/man/man1/
-
-	# control files
-#	install -D $(CURDIR)/debian/shlibs.libopensc0 \
-#		$(CURDIR)/debian/libopensc0/DEBIAN/shlibs
-	
+	mv debian/tmp/usr/share/opensc/opensc.conf.example \
+		debian/libopensc0/usr/share/doc/libopensc0/examples/opensc.conf
+	mv debian/tmp/usr/share/opensc/scldap.conf.example \
+		debian/libopensc0/usr/share/doc/libopensc0/examples/scldap.conf
 
 # Build architecture-independent files here.
 binary-indep: build install

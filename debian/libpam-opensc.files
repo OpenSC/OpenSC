@@ -1,1 +1,1 @@
-usr/lib/security/*.so
+lib/security/pam_opensc.so

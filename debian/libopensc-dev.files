@@ -1,17 +1,10 @@
 usr/include/*
 usr/lib/lib*.a
 usr/lib/lib*.la
-usr/lib/libopensc.so
-usr/lib/libpkcs15init.so
-usr/lib/libscconf.so
-usr/lib/libscldap.so
 usr/bin/opensc-config
-usr/share/man/man1/opensc-config.1
 usr/lib/pkcs11/libpkcs11.a
-usr/lib/pkcs11/libpkcs11.so
 usr/lib/pkcs11/opensc-pkcs11.la
 usr/lib/pkcs11/pkcs11-spy.la
 usr/lib/pkcs11/libpkcs11.la
 usr/lib/pkcs11/opensc-pkcs11.a
 usr/lib/pkcs11/pkcs11-spy.a
-usr/lib/pkcs11/pkcs11-spy.so

@@ -1,0 +1,11 @@
+debian/tmp/usr/share/man/man1/cardos-info.1
+debian/tmp/usr/share/man/man1/cryptoflex-tool.1
+debian/tmp/usr/share/man/man1/opensc-explorer.1
+debian/tmp/usr/share/man/man1/opensc-tool.1
+debian/tmp/usr/share/man/man1/pkcs11-tool.1
+debian/tmp/usr/share/man/man1/pkcs15-crypt.1
+debian/tmp/usr/share/man/man1/pkcs15-init.1
+debian/tmp/usr/share/man/man1/pkcs15-tool.1
+debian/tmp/usr/share/man/man5/pkcs15-profile.5
+debian/tmp/usr/share/man/man7/opensc.7
+debian/tmp/usr/share/man/man7/pkcs15.7

@@ -1,0 +1,1 @@
+shlibs:Depends=libc6 (>= 2.3.2.ds1-4), libldap2 (>= 2.1.17-1), libpcsclite0 (>= 1.2.0-stable-1), libssl0.9.7, openct

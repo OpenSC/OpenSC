@@ -1,0 +1,15 @@
+debian/tmp/usr/share/man/man1/opensc-config.1
+debian/tmp/usr/share/man/man3/sc_connect_card.3
+debian/tmp/usr/share/man/man3/sc_detect_card_presence.3
+debian/tmp/usr/share/man/man3/sc_disconnect_card.3
+debian/tmp/usr/share/man/man3/sc_establish_context.3
+debian/tmp/usr/share/man/man3/sc_file.3
+debian/tmp/usr/share/man/man3/sc_file_free.3
+debian/tmp/usr/share/man/man3/sc_file_new.3
+debian/tmp/usr/share/man/man3/sc_list_files.3
+debian/tmp/usr/share/man/man3/sc_lock.3
+debian/tmp/usr/share/man/man3/sc_pkcs15_compute_signature.3
+debian/tmp/usr/share/man/man3/sc_read_binary.3
+debian/tmp/usr/share/man/man3/sc_read_record.3
+debian/tmp/usr/share/man/man3/sc_release_context.3
+debian/tmp/usr/share/man/man3/sc_select_file.3

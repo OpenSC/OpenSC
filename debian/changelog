@@ -1,3 +1,39 @@
+opensc (0.8.1-cvs-20040108-1) unstable; urgency=low
+
+  * cvs snapshot.
+  * added *.so files.
+  * new version numbers (ugh, quite long)
+
+ -- Andreas Jellinghaus <aj@dungeon.inka.de>  Thu,  8 Jan 2004 11:08:11 +0100
+
+opensc (0.8.1-0.3) unstable; urgency=low
+
+  * added ldconfig to postinst/rm, removed *.so from /usr/lib
+
+ -- Andreas Jellinghaus <aj@dungeon.inka.de>  Mon, 29 Dec 2003 13:10:04 +0100
+
+opensc (0.8.1-0.2) unstable; urgency=low
+
+  * removed /etc/opensc 
+  * added openssl engines
+  * added libscam.so 
+  * fixed pam directory
+
+ -- Andreas Jellinghaus <aj@dungeon.inka.de>  Mon,  8 Dec 2003 17:22:09 +0100
+
+opensc (0.8.1-0.1) unstable; urgency=low
+
+  * added unix.h and win32.h to /usr/include/opensc/rsaref
+  * (needed by opensc/pkcs11.h)
+
+ -- Andreas Jellinghaus <aj@dungeon.inka.de>  Mon,  8 Dec 2003 17:22:09 +0100
+
+opensc (0.8.1-0) unstable; urgency=low
+
+  * experimental, unofficial version
+
+ -- Andreas Jellinghaus <aj@dungeon.inka.de>  Mon,  8 Dec 2003 17:22:09 +0100
+
 opensc (0.8.1-1) unstable; urgency=low
 
   * new upstream

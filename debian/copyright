@@ -3,18 +3,54 @@ Thu, 15 Aug 2002 16:49:44 -0400.
 
 It was downloaded from http://www.opensc.org/
 
-Upstream Author(s): 
-OpenSC developers <opensc-devel@opensc.org>
-Juha Yrjölä <juha.yrjola@iki.fi>
-Antti Tapaninen <aet@cc.hut.fi>
-Timo Teräs <timo.teras@iki.fi>
-Olaf Kirch <okir@caldera.de>
+Upstream Authors: 
+   Here is a list of all Authors and Contributors of OpenSC in
+   alphabetical order:
+     * Robert Bihlmeyer < robbe@orcus.priv.at >
+     * Stef Hoeben < Hoeben.S@Zetes.com >      
+     * Andreas Jellinghaus < aj@dungeon.inka.de >
+     * Olaf Kirch < okir@suse.de >
+     * Nils Larsch < larsch@trustcenter.de >
+     * Ville Skyttä                         
+     * Kevin Stefanik < kstef@mtppi.org >
+     * Antti Tapaninen < aet@cc.hut.fi > 
+     * Timo Teräs < timo.teras@iki.fi > 
+     * Juha Yrjölä < juha.yrjola@iki.fi >
+     * Jörn Zukowski < zukowski@trustcenter.de >
+        
+Thanks
+                             
+   The following people provided inspiration, moral support and/or
+   valuable information during the development of OpenSC:
+     * Antti Partanen < antti.partanen@vrk.intermin.fi > 
+     * David Corcoran < corcoran@linuxnet.com >         
+        
+   OpenSC did neither invent the wheel nor write all code from scratch.
+   We could reuse some code from other projects mostly to interface with
+   these projects. Thanks to the original authors:
+     * Matthias Brüstle
+     * Markus Friedl
+     * Geoff Thrope < geoff@geoffthorpe.net >
 
 
-Copyright (C) 2001, 2002 Juha Yrj, Timo Teras, Antti Tapaninen, Olaf Kirch
+Copyright (C) 2001-2004 OpenSC Developers <opensc-devel@opensc.org>
 
-You are free to distribute this software under the terms of
-the GNU Lesser General Public License.
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
 On Debian systems, the complete text of the GNU Lesser General Public
-License can be found in the file `/usr/share/common-licenses/LGPL'.
+License can be found in the file `/usr/share/common-licenses/LGPL-2.1'.
 
+Notice:
+
+OpenSC is usualy linked with OpenSSL. Beware that GPL is incompatible
+with OpenSSL unless the Author of the GPL'ed program adds a special
+exception. Using OpenSC in a GPL'ed applications also requires that
+exception, or a version of OpenSC compiled without OpenSSL support.
