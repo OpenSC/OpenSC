@@ -285,10 +285,12 @@ int sign(struct sc_pkcs15_object *obj)
 		fprintf(stderr, "No input file specified.\n");
 		return 2;
 	}
+#if 0
 	if (opt_output == NULL) {
 		fprintf(stderr, "No output file specified.\n");
 		return 2;
 	}
+#endif
 	c = read_input(buf, sizeof(buf));
 	if (c < 0)
 		return 2;
