@@ -534,13 +534,6 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &puk_info);
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &puk_info);
 
-	/* Perform card-specific initialization */
-	if (profile->ops->init_card
-	 && (r = profile->ops->init_card(profile, card)) < 0) {
-		sc_profile_free(profile);
-		return r;
-	}
-
 	if (card->app_count >= SC_MAX_CARD_APPS) {
 		sc_error(card->ctx, "Too many applications on this card.");
 		return SC_ERROR_TOO_MANY_OBJECTS;
@@ -591,6 +584,13 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 		pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN, 
 						pin_label, NULL,
 					       	&pin_info);
+	}
+
+	/* Perform card-specific initialization */
+	if (profile->ops->init_card
+	 && (r = profile->ops->init_card(profile, card)) < 0) {
+		sc_profile_free(profile);
+		return r;
 	}
 
 	/* Create the application DF and store the PINs */
