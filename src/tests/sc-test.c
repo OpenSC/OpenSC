@@ -54,7 +54,7 @@ int sc_test_init(int *argc, char *argv[])
 		return i;
 	}
 	printf("connected. ATR = ");
-	sc_hex_dump(card->atr, card->atr_len);
+	sc_hex_dump(ctx, card->atr, card->atr_len);
 	fflush(stdout);
 
 	return 0;

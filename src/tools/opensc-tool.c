@@ -388,7 +388,7 @@ int enum_dir(struct sc_path path, int depth)
 		if (file.type == 0 && 0) {
 			r = sc_read_binary(card, 0, buf, file.size);
 			if (r > 0)
-				sc_hex_dump(buf, r);
+				sc_hex_dump(ctx, buf, r);
 		}
 		if (file.sec_attr_len) {
 			printf("sec: ");
@@ -398,7 +398,7 @@ int enum_dir(struct sc_path path, int depth)
 			 * 4 MSB's of the octet mean:			 
 			 *  0 = ALW, 1 = PIN1, 2 = PIN2, 4 = SYS,
 			 * 15 = NEV */
-			sc_hex_dump(file.sec_attr, file.sec_attr_len);
+			sc_hex_dump(ctx, file.sec_attr, file.sec_attr_len);
 		} else {
 			printf("\n");
 		}
@@ -655,6 +655,7 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
+	ctx->use_std_output = 1;
 	if (do_list_readers) {
 		if ((err = list_readers()))
 			goto end;
