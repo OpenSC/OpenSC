@@ -107,6 +107,7 @@ struct sc_profile {
 	unsigned int		rsa_access_flags;
 	unsigned int		dsa_access_flags;
 	unsigned int		protect_certificates;
+	unsigned int		keep_public_key;
 
 	struct {
 		unsigned int	direct_certificates;

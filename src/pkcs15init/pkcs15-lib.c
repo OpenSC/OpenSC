@@ -95,6 +95,8 @@ static int	sc_pkcs15init_add_object(struct sc_pkcs15_card *,
 			struct sc_profile *profile,
 			unsigned int df_type,
 			struct sc_pkcs15_object *);
+static int	sc_pkcs15init_remove_object(sc_pkcs15_card_t *,
+			sc_profile_t *, sc_pkcs15_object_t *);
 static int	sc_pkcs15init_map_usage(unsigned long, int);
 static int	set_so_pin_from_card(struct sc_pkcs15_card *,
 			struct sc_profile *);
@@ -1315,6 +1317,17 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 				&args->der_encoded, &cert_info->path);
 	}
 
+	/* Remove the corresponding public key object, if it exists. */
+	if (r >= 0 && !profile->keep_public_key) {
+		sc_pkcs15_object_t *puk = NULL;
+
+		r = sc_pkcs15_find_pubkey_by_id(p15card, &cert_info->id, &puk);
+		if (r == 0)
+			r = sc_pkcs15init_remove_object(p15card, profile, puk);
+		else if (r == SC_ERROR_OBJECT_NOT_FOUND)
+			r = 0;
+	}
+
 	/* Now update the CDF */
 	if (r >= 0)
 		r = sc_pkcs15init_add_object(p15card, profile,
@@ -1929,6 +1942,70 @@ sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card,
 }
 
 /*
+ * Update any PKCS15 DF file (except ODF and DIR)
+ */
+static int
+sc_pkcs15init_update_any_df(sc_pkcs15_card_t *p15card, 
+		sc_profile_t *profile,
+		sc_pkcs15_df_t *df,
+		int is_new)
+{
+	struct sc_card	*card = p15card->card;
+	sc_file_t	*file = df->file, *pfile = NULL;
+	u8		*buf = NULL;
+	size_t		bufsize;
+	int		update_odf = is_new, r = 0;
+
+	if (!sc_profile_get_file_by_path(profile, &df->path, &pfile))
+		file = pfile;
+
+	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
+	if (r >= 0) {
+		r = sc_pkcs15init_update_file(profile, card,
+				file, buf, bufsize);
+
+#if 0
+		/* If the DF is empty, delete it and remove
+		 * the corresponding entry from the ODF
+		 *
+		 * XXX Before enabling this we should make this a
+		 * profile option, because not all cards allow
+		 * arbitrary removal of files.
+		 */
+		if (bufsize == 0) {
+			sc_pkcs15_remove_df(p15card, df);
+			sc_file_free(card, df->path);
+			update_odf = 1;
+		} else
+#endif
+
+		/* For better performance and robustness, we want
+		 * to note which portion of the file actually
+		 * contains valid data.
+		 *
+		 * This is particularly useful if we store certificates
+		 * directly in the CDF - we may want to make the CDF
+		 * fairly big, without having to read the entire file
+		 * every time we parse the CDF.
+		 */
+		if (profile->pkcs15.encode_df_length) {
+			df->path.count = bufsize;
+			df->path.index = 0;
+			update_odf = 1;
+		}
+		free(buf);
+	}
+	if (pfile)
+		sc_file_free(pfile);
+
+	/* Now update the ODF if we have to */
+	if (r >= 0 && update_odf)
+		r = sc_pkcs15init_update_odf(p15card, profile);
+
+	return r;
+}
+
+/*
  * Add an object to one of the pkcs15 directory files.
  */
 static int
@@ -1939,15 +2016,15 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 {
 	struct sc_pkcs15_df *df;
 	struct sc_card	*card = p15card->card;
-	struct sc_file	*file = NULL, *pfile;
-	u8		*buf = NULL;
-	size_t		bufsize;
-	int		update_odf = 0, r = 0;
+	struct sc_file	*file = NULL;
+	int		is_new = 0, r = 0;
 
 	sc_debug(card->ctx, "called, DF %u obj %p\n", df_type, object);
 
 	df = find_df_by_type(p15card, df_type);
-	if (df == NULL) {
+	if (df != NULL) {
+		file = df->file;
+	} else {
 		file = profile->df[df_type];
 		if (file == NULL) {
 			sc_error(card->ctx,
@@ -1958,7 +2035,7 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 		sc_pkcs15_add_df(p15card, df_type, &file->path, file);
 		df = find_df_by_type(p15card, df_type);
 		assert(df != NULL);
-		update_odf = 1;
+		is_new = 1;
 
 		/* Mark the df as enumerated, so libopensc doesn't try
 		 * to load the file at a most inconvenient moment */
@@ -1977,6 +2054,8 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 		assert(object->df == df);
 	}
 
+	return sc_pkcs15init_update_any_df(p15card, profile, df, is_new);
+#if 0
 	if (!sc_profile_get_file_by_path(profile, &df->path, &pfile))
 		file = pfile;
 
@@ -1988,7 +2067,7 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 		 * to note which portion of the file actually
 		 * contains valid data.
 		 *
-		 * This is paticularly useful if we store certificates
+		 * This is particularly useful if we store certificates
 		 * directly in the CDF - we may want to make the CDF
 		 * fairly big, without having to read the entire file
 		 * every time we parse the CDF.
@@ -2006,6 +2085,42 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 	/* Now update the ODF if we have to */
 	if (r >= 0 && update_odf)
 		r = sc_pkcs15init_update_odf(p15card, profile);
+
+	return r;
+#endif
+}
+
+static int
+sc_pkcs15init_remove_object(sc_pkcs15_card_t *p15card,
+		sc_profile_t *profile, sc_pkcs15_object_t *obj)
+{
+	sc_card_t	*card = p15card->card;
+	struct sc_pkcs15_df *df;
+	sc_path_t	path;
+	int		r = 0;
+			
+	path = ((struct sc_pkcs15_pubkey_info *)obj->data)->path;
+
+	/* Get the DF we're part of. If there's no DF, fine, we haven't
+	 * been added yet. */
+	if ((df = obj->df) == NULL)
+		return 0;
+
+#ifdef notyet
+	if (profile->ops->ext_remove_data
+	 && (r = profile->ops->ext_remove_data(profile, card, obj)))
+		return r;
+#endif
+
+	/* Unlink the object and update the DF */
+	sc_pkcs15_remove_object(p15card, obj);
+	if ((r = sc_pkcs15init_update_any_df(p15card, profile, df, 0)) < 0)
+		return r;
+
+	/* XXX Dangerous - the object indicated by path may be the
+	 * application DF. This isn't true for the Oberthur, but
+	 * it may be for others. */
+	r = sc_delete_file(card, &path);
 
 	return r;
 }
@@ -2506,8 +2621,14 @@ sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 		r = sc_update_binary(card, 0, (const u8 *) data, datalen, 0);
 
 	if (info->size > datalen) {
-		/* XXX zero out the rest of the file - we may have shrunk
+		/* zero out the rest of the file - we may have shrunk
 		 * the file contents */
+		size_t	pad_len = info->size - datalen;
+
+		data = calloc(1, pad_len);
+		r = sc_update_binary(card, datalen,
+				(const u8 *) data, pad_len, 0);
+		free(data);
 	}
 
 	sc_file_free(info);
