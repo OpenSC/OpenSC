@@ -85,6 +85,7 @@ const char *sc_strerror(int error)
 		"The key is extractable",
 		"Decryption failed",
 		"Wrong padding",
+		"Wrong card",
 	};
 	const int int_base = -SC_ERROR_INTERNAL;
 	const char *p15i_errors[] = {

@@ -85,6 +85,7 @@ extern "C" {
 #define SC_ERROR_EXTRACTABLE_KEY		-1410
 #define SC_ERROR_DECRYPT_FAILED			-1411
 #define SC_ERROR_WRONG_PADDING			-1412
+#define SC_ERROR_WRONG_CARD			-1413
 
 /* Relating to PKCS #15 init stuff */
 #define SC_ERROR_PKCS15INIT			-1500

@@ -40,7 +40,7 @@ int sc_module_open(struct sc_context *ctx, void **mod_handle, const char *filena
 
 	if ((error = dlerror()) != NULL) {
 		if (ctx->debug)
-			debug(ctx, "sc_module_open: %s", error);
+			debug(ctx, "sc_module_open: %s\n", error);
 		return SC_ERROR_UNKNOWN;
 	}
 	*mod_handle = handle;
@@ -60,7 +60,7 @@ int sc_module_close(struct sc_context *ctx, void *mod_handle)
 
 	if ((error = dlerror()) != NULL) {
 		if (ctx->debug)
-			debug(ctx, "sc_module_close: %s", error);
+			debug(ctx, "sc_module_close: %s\n", error);
 		return SC_ERROR_UNKNOWN;
 	}
 	return SC_SUCCESS;
@@ -89,7 +89,66 @@ int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_a
 
 	if ((error = dlerror()) != NULL) {
 		if (ctx->debug)
-			debug(ctx, "sc_module_get_address: %s", error);
+			debug(ctx, "sc_module_get_address: %s\n", error);
+		return SC_ERROR_UNKNOWN;
+	}
+	*sym_address = address;
+	return SC_SUCCESS;
+}
+
+#elif defined(_WIN32)
+#include <windows.h>
+
+int sc_module_open(struct sc_context *ctx, void **mod_handle, const char *filename)
+{
+	void *handle;
+
+	assert(ctx != NULL);
+
+	if (!filename)
+		return SC_ERROR_UNKNOWN;
+
+	handle = LoadLibrary(filename);
+
+	if (handle == NULL) {
+		if (ctx->debug)
+			/* TODO: GetLastError */
+			debug(ctx, "sc_module_open: unknown error");
+		return SC_ERROR_UNKNOWN;
+	}
+	*mod_handle = handle;
+	return SC_SUCCESS;
+}
+
+int sc_module_close(struct sc_context *ctx, void *mod_handle)
+{
+	assert(ctx != NULL);
+
+	if (!mod_handle)
+		return SC_ERROR_UNKNOWN;
+
+	FreeLibrary(mod_handle);
+	/* TODO: GetLastError */
+
+	return SC_SUCCESS;
+}
+
+int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_address, const char *sym_name)
+{
+	void *address;
+
+	assert(ctx != NULL);
+
+	if (!mod_handle || !sym_name)
+		return SC_ERROR_UNKNOWN;
+
+
+	address = GetProcAddress(mod_handle, sym_name);
+
+	if (address == NULL) {
+		if (ctx->debug)
+			/* TODO: GetLastError */
+			debug(ctx, "sc_module_get_address: unknown error");
 		return SC_ERROR_UNKNOWN;
 	}
 	*sym_address = address;

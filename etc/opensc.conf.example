@@ -132,6 +132,10 @@ app default {
 		# Default: false
 		#
 		use_caching = true;
+		# Use the following dynamic libraries for a read-only
+		# PKCS#15 emulation of non pkcs15 cards.
+		#
+		# pkcs15_syn = p15_starcert.so;
 	}
 }
 
