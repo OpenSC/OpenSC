@@ -502,7 +502,7 @@ int do_create(int argc, char **argv)
 	struct sc_path path;
 	struct sc_file *file;
 	unsigned int size;
-	int r;
+	int r, op;
 
         if (argc != 2)
                 goto usage;
@@ -517,6 +517,8 @@ int do_create(int argc, char **argv)
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	file->size = (size_t) size;
 	file->status = SC_FILE_STATUS_ACTIVATED;
+	for (op = 0; op < SC_MAX_AC_OPS; op++)
+		sc_file_add_acl_entry(file, op, SC_AC_NONE, 0);
 	
 	r = create_file(file);
 	sc_file_free(file);
@@ -531,7 +533,7 @@ int do_mkdir(int argc, char **argv)
 	struct sc_path path;
 	struct sc_file *file;
 	unsigned int size;
-	int r;
+	int r, op;
 
         if (argc != 2)
                 goto usage;
@@ -544,6 +546,8 @@ int do_mkdir(int argc, char **argv)
 	file->type = SC_FILE_TYPE_DF;
 	file->size = size;
 	file->status = SC_FILE_STATUS_ACTIVATED;
+	for (op = 0; op < SC_MAX_AC_OPS; op++)
+		sc_file_add_acl_entry(file, op, SC_AC_NONE, 0);
 
 	r = create_file(file);
 	sc_file_free(file);
@@ -578,8 +582,15 @@ usage:
 
 int do_verify(int argc, char **argv)
 {
-	const char *types[] = {
-		"CHV", "KEY", "PRO"
+	struct {
+		const char *	name;
+		int		type;
+	} typeNames[] = {
+		{ "CHV",	SC_AC_CHV	},
+		{ "KEY",	SC_AC_AUT	},
+		{ "AUT",	SC_AC_AUT	},
+		{ "PRO",	SC_AC_PRO	},
+		{ NULL, -1 }
 	};
 	int i, type = -1, ref, r, tries_left = -1;
 	u8 buf[30];
@@ -588,9 +599,9 @@ int do_verify(int argc, char **argv)
 	
 	if (argc < 1 || argc > 2)
                 goto usage;
-	for (i = 0; i < 3; i++) {
-		if (strncasecmp(argv[0], types[i], 3) == 0) {
-			type = i;
+	for (i = 0; typeNames[i].name; i++) {
+		if (strncasecmp(argv[0], typeNames[i].name, 3) == 0) {
+			type = typeNames[i].type;
 			break;
 		}
         }
@@ -614,17 +625,6 @@ int do_verify(int argc, char **argv)
 		printf("Invalid key value.\n");
 		goto usage;
 	}
-	switch (type) {
-	case 0:
-		type = SC_AC_CHV;
-		break;
-	case 1:
-		type = SC_AC_AUT;
-		break;
-	case 2:
-		type = SC_AC_PRO;
-		break;
-	}
 	r = sc_verify(card, type, ref, buf, buflen, &tries_left);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
@@ -641,8 +641,8 @@ int do_verify(int argc, char **argv)
 usage:
 	printf("Usage: verify <key type><key ref> [<key in hex>]\n");
 	printf("Possible values of <key type>:\n");
-	for (i = 0; i < sizeof(types)/sizeof(types[0]); i++)
-		printf("\t%s\n", types[i]);
+	for (i = 0; typeNames[i].name; i++)
+		printf("\t%s\n", typeNames[i].name);
 	printf("Example: verify CHV2 31:32:33:34:00:00:00:00\n");
 	return -1;
 }
