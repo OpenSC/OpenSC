@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Certificate read failed with %d\n", i);
     return 1;
   }
-  i = sc_pkcs15_read_pin_object(&card, 0);
+  i = sc_pkcs15_read_pin_object(&card, 1, NULL);
   if (i) {
     fprintf(stderr, "PIN object read failed with %d\n", i);
     return 1;
