@@ -130,9 +130,9 @@ via openct. In theory both should work fine, but if you have
 some problems, please test this.
 
 $ opensc-tool --reader 1 --atr
-3B E2 00 FF C1 10 31 FE 55 C8 02 9C ;.....1.U...
+3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c
 
-OpenCT can give you the atr as well.
+OpenCT can give you the ATR as well.
 
 $ opensc-explorer
 
