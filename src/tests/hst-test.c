@@ -13,13 +13,13 @@ struct sc_context *ctx = NULL;
 struct sc_card *card = NULL;
 struct sc_pkcs15_card *p15_card = NULL;
 
-#define DO_PRKEY_ENUM		0
-#define	DO_PIN_ENUM		0
-#define DO_PIN_VERIFY		0
+#define DO_PRKEY_ENUM		1
+#define	DO_PIN_ENUM		1
+#define DO_PIN_VERIFY		1
 #define DO_DECIPHER		0
-#define DO_SIGN			0
-#define DO_CERT_ENUM		1
-#define DO_CERT_READ		1
+#define DO_SIGN			1
+#define DO_CERT_ENUM		0
+#define DO_CERT_READ		0
 
 int enum_private_keys()
 {
@@ -128,7 +128,7 @@ int main(int argc, char **argv) {
 		return 1;
 #endif
 #if DO_PIN_VERIFY
-	if (ask_and_verify(&p15_card->pin_info[0]))
+	if (ask_and_verify_pin(&p15_card->pin_info[0]))
 		return 1;
 #endif
 #if DO_DECIPHER
@@ -165,11 +165,11 @@ int main(int argc, char **argv) {
 #endif
 #if DO_SIGN
   senv.signature = 1;
-  senv.algorithm_ref = 0x12;
+  senv.algorithm_ref = 0x02;
   senv.key_ref = 0;
   senv.key_file_id = p15_card->prkey_info[0].file_id;
   senv.app_df_path = p15_card->file_app.path;
-  i = sc_set_security_env(p15_card->card, 1, &senv);
+  i = sc_set_security_env(p15_card->card, &senv);
   if (i) {
     fprintf(stderr, "Security environment set failed: %s\n", sc_strerror(i));
     return 1;
