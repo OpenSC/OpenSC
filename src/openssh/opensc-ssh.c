@@ -43,7 +43,7 @@ struct sc_pkcs15_card *p15card = NULL;
 void print_usage_and_die(void)
 {
 	int i = 0;
-	printf("Usage: sc-ssh [OPTIONS]\nOptions:\n");
+	printf("Usage: opensc-ssh [OPTIONS]\nOptions:\n");
 
 	while (options[i].name) {
 		char buf[40], tmp[5];
