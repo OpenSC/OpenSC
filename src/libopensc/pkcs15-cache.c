@@ -96,7 +96,7 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 	} else
 		if (count > *bufsize)
 			return SC_ERROR_BUFFER_TOO_SMALL;
-	f = fopen(fname, "r");
+	f = fopen(fname, "rb");
 	if (f == NULL) {
 		if (data)
 			free(data);
@@ -131,7 +131,7 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 	r = generate_cache_filename(p15card, path, fname, sizeof(fname));
 	if (r != 0)
 		return r;
-	f = fopen(fname, "w");
+	f = fopen(fname, "wb");
 	if (f == NULL)
 		return 0;
 	c = fwrite(buf, 1, bufsize, f);
