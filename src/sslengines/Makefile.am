@@ -2,11 +2,11 @@ libdir  = @libdir@/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
-EXTRA_DIST = engine_opensc.c engine_opensc.h hw_opensc.c \
-	     engine_pkcs11.c engine_pkcs11.h hw_pkcs11.c \
-	     p11_attr.c p11_cert.c p11_err.c p11_key.c p11_load.c p11_misc.c \
- 	     p11_rsa.c p11_slot.c pkcs11-internal.h \
-	     test_engine.s 
+EXTRA_DIST = engine_opensc.c engine_opensc.h engine_pkcs11.c \
+	     engine_pkcs11.h hw_opensc.c hw_pkcs11.c libpkcs11.h \
+	     p11_attr.c p11_cert.c p11_err.c p11_key.c p11_load.c \
+	     p11_misc.c p11_rsa.c p11_slot.c pkcs11-internal.h \
+             test_engine.s
 
 if HAVE_ENGINE
 lib_LTLIBRARIES=engine_opensc.la engine_pkcs11.la
