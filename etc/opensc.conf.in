@@ -30,8 +30,8 @@ app default {
 
 	# PKCS#15 initialization / personalization
 	# profiles directory for pkcs15-init.
-	#
-	# profile_dir = /usr/share/opensc;
+	
+	profile_dir = PKGDATADIR;
 
 	# What reader drivers to load at start-up
 	#
