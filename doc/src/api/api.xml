@@ -11,6 +11,7 @@
 	<xi:include href="init/chapter.xml"/>
 	<xi:include href="card/chapter.xml"/>
 	<xi:include href="file/chapter.xml"/>
+	<xi:include href="apps/chapter.xml"/>
 	<xi:include href="asn1/chapter.xml"/>
 	<xi:include href="util/chapter.xml"/>
 	<xi:include href="types/chapter.xml"/>

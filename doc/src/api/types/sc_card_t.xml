@@ -18,12 +18,13 @@
 &includes;
 
 #define SC_MAX_ATR_SIZE			33
+#define SC_MAX_CARD_APPS         8
 
 typedef struct sc_card {
 	struct sc_context *ctx;
 	struct sc_reader *reader;
 	struct sc_slot_info *slot;
-
+	struct sc_app_info *app[SC_MAX_CARD_APPS];
 	unsigned char atr[SC_MAX_ATR_SIZE];
 } sc_card_t;
 
