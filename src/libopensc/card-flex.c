@@ -604,6 +604,44 @@ static int flex_compute_signature(struct sc_card *card, const u8 *data,
 	return apdu.resplen;
 }
 
+static int flex_verify(struct sc_card *card, unsigned int type, int ref,
+		       const u8 *buf, size_t buflen, int *tries_left)
+{
+        struct sc_apdu apdu;
+        u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+        int r;
+        int cla, ins;
+
+	if (buflen >= SC_MAX_APDU_BUFFER_SIZE)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	switch (type) {
+	case SC_AC_CHV1:
+	case SC_AC_CHV2:
+		cla = 0xC0;
+		ins = 0x20;
+		break;
+	case SC_AC_AUT:
+		cla = 0xF0;
+		ins = 0x2A;
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+        }
+        sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, ins, 0, ref);
+        memcpy(sbuf, buf, buflen);
+	apdu.cla = cla;
+        apdu.lc = buflen;
+        apdu.datalen = buflen;
+        apdu.data = sbuf;
+	apdu.resplen = 0;
+	r = sc_transmit_apdu(card, &apdu);
+	memset(sbuf, 0, buflen);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+        if (apdu.sw1 == 0x63)
+		return SC_ERROR_PIN_CODE_INCORRECT;   
+        return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+}              
+
 static const struct sc_card_driver * sc_get_driver(void)
 {
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -616,10 +654,10 @@ static const struct sc_card_driver * sc_get_driver(void)
 	flex_ops.list_files = flex_list_files;
 	flex_ops.delete_file = flex_delete_file;
 	flex_ops.create_file = flex_create_file;
+	flex_ops.verify = flex_verify;
 	flex_ops.set_security_env = flex_set_security_env;
 	flex_ops.restore_security_env = flex_restore_security_env;
 	flex_ops.compute_signature = flex_compute_signature;
-
         return &flex_drv;
 }
 
