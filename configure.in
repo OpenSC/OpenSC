@@ -970,17 +970,17 @@ AC_ARG_WITH(plugin-dir,
 )
 AC_SUBST(PLUGINDIR)
 
-# Check for pin entry-program used by OpenSC-Signer
+# Check for PIN entry program used by OpenSC Signer
 PIN_ENTRY="/usr/local/bin/gpinentry"
 AC_ARG_WITH(pin-entry,
-	[  --with-pin-entry=FILE   Run FILE as pin entry for OpenSC-Signer],
+	[  --with-pin-entry=PROG   Run PROG as PIN-entry for OpenSC Signer],
 	[
 		if test ! -z "$withval" -a "x$withval" != "xno" ; then
 			PIN_ENTRY="$withval"
 		fi
 	]
 )
-AC_DEFINE_UNQUOTED(PIN_ENTRY, "$PIN_ENTRY", [Pin entry program for OpenSC-Signer])
+AC_DEFINE_UNQUOTED(PIN_ENTRY, "$PIN_ENTRY", [PIN-entry program for OpenSC Signer])
 
 if test "x$prefix" = xNONE; then
   prefix=$ac_default_prefix
