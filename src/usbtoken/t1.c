@@ -2,7 +2,13 @@
  * This is probably the first full free/open source T=1 implementation.
  * Copyright Matthias Bruestle 1999-2002
  * For licensing, see the file LICENCE
+ *
+ * Copyright 2003 Andreas Jellinghaus <aj@dungeon.inka.de>
+ * Copyright 2003 Kevin Stefanik <kstef@mtppi.org>
  */
+
+#include <string.h>
+#include <syslog.h>
 
 #include "usbtoken.h"
 
@@ -11,18 +17,41 @@
 
 #define T1_MAX_BLKLEN	3+256+2+2
 
-/* S-Block parameter */
+/* direction */
+#define T1_TO_CARD		0x00
+#define T1_FROM_CARD		0x01
 
+#define PCB(x) (x[1])
+static inline int is_t1_iblock(uint8_t pcb) {	return (pcb & 0x80) == 0x00; }
+static inline int is_t1_rblock(uint8_t pcb) {	return (pcb & 0xC0) == 0x80; }
+static inline int is_t1_sblock(uint8_t pcb) {	return (pcb & 0xC0) == 0xC0; }
+
+static inline int is_t1_other_error(uint8_t pcb) {return (pcb & 0xef) == 0x82;}
+
+/* we send resync requests and get a response */
+static inline int is_t1_resync_req(uint8_t pcb) { return pcb == 0xc0; }
+static inline int is_t1_resync_res(uint8_t pcb) { return pcb == 0xe0; }
+
+/* the card can request these */
+static inline int is_t1_ifs_req(uint8_t pcb) { return pcb == 0xc1; }
+static inline int is_t1_abort_req(uint8_t pcb) { return pcb == 0xc2; }
+static inline int is_t1_wtx_req(uint8_t pcb) { return pcb == 0xc3; }
+
+#define T1_PCB_IBLOCK		0x00
+#define T1_PCB_RBLOCK		0x80
+#define T1_PCB_SBLOCK		0xC0
+#define T1_PCB_MASK		0xC0
+
+/* S-Block parameter */
 #define	T1_S_RESYNCH		0x00
 #define	T1_S_IFS		0x01
 #define	T1_S_ABORT		0x02
 #define	T1_S_WTX		0x03
 
 #define	T1_S_REQUEST		0x00
-#define	T1_S_RESPONSE	0x01
+#define	T1_S_RESPONSE		0x20
 
 /* R-Block parameter */
-
 #define	T1_R_OK			0x00
 #define	T1_R_EDC_ERROR		0x01
 #define	T1_R_OTHER_ERROR		0x02
@@ -73,9 +102,9 @@ static unsigned short crctab[256] = {
 
 /* Returns LRC of data */
 
-__u8 calculate_lrc(const __u8 * data, int datalen)
+uint8_t calculate_lrc(const uint8_t * data, int datalen)
 {
-	__u8 lrc = 0x00;
+	uint8_t lrc = 0x00;
 	int i;
 
 	for (i = 0; i < datalen; i++)
@@ -86,7 +115,7 @@ __u8 calculate_lrc(const __u8 * data, int datalen)
 
 /* Calculates CRC of data */
 
-void calculate_crc(const __u8 * data, int datalen, __u8 * crc)
+void calculate_crc(const uint8_t * data, int datalen, uint8_t * crc)
 {
 	int i;
 	unsigned short tmpcrc = 0xFFFF;
@@ -102,7 +131,7 @@ void calculate_crc(const __u8 * data, int datalen, __u8 * crc)
 
 /* Appends RC */
 
-int append_rc(__u8 * data, int *datalen)
+int append_rc(uint8_t * data, int *datalen)
 {
 	if (usbtoken.rc == T1_CHECKSUM_LRC) {
 		data[*datalen] = calculate_lrc(data, *datalen);
@@ -119,10 +148,10 @@ int append_rc(__u8 * data, int *datalen)
 
 /* Checks RC. */
 
-int check_rc(const __u8 * data, int datalen)
+int check_rc(const uint8_t * data, int datalen)
 {
-	__u8 rc[2];
-	__u8 cmp[2];
+	uint8_t rc[2];
+	uint8_t cmp[2];
 
 	if (usbtoken.rc == T1_CHECKSUM_LRC) {
 		/* Check LEN. */
@@ -146,46 +175,35 @@ int check_rc(const __u8 * data, int datalen)
 
 /* Builds S-Block */
 
-int build_neg_block(int type, int dir, int param, __u8 * block, int *len)
+int build_neg_block(int type, int dir, int param, uint8_t * block,
+		    int *len)
 {
 	block[0] = usbtoken.nad;
 
 	switch (type) {
 	case T1_S_RESYNCH:
-		if (dir == T1_S_REQUEST)
-			block[1] = 0xC0;
-		else
-			block[1] = 0xE0;
+		block[1] = T1_PCB_SBLOCK | dir | T1_S_RESYNCH;
 		block[2] = 0x00;
 		*len = 3;
 		break;
 
 	case T1_S_IFS:
-		if (dir == T1_S_REQUEST)
-			block[1] = 0xC1;
-		else
-			block[1] = 0xE1;
+		block[1] = T1_PCB_SBLOCK | dir | T1_S_IFS;
 		block[2] = 0x01;
-		block[3] = (__u8) param;
+		block[3] = (uint8_t) param;
 		*len = 4;
 		break;
 
 	case T1_S_ABORT:
-		if (dir == T1_S_REQUEST)
-			block[1] = 0xC2;
-		else
-			block[1] = 0xE2;
+		block[1] = T1_PCB_SBLOCK | dir | T1_S_ABORT;
 		block[2] = 0x00;
 		*len = 3;
 		break;
 
 	case T1_S_WTX:
-		if (dir == T1_S_REQUEST)
-			block[1] = 0xC3;
-		else
-			block[1] = 0xE3;
+		block[1] = T1_PCB_SBLOCK | dir | T1_S_WTX;
 		block[2] = 0x01;
-		block[3] = (__u8) param;
+		block[3] = (uint8_t) param;
 		*len = 4;
 		break;
 
@@ -198,7 +216,7 @@ int build_neg_block(int type, int dir, int param, __u8 * block, int *len)
 
 /* Builds R-Block */
 
-int build_retry_block(int type, __u8 * block, int *len)
+int build_retry_block(int type, uint8_t * block, int *len)
 {
 	block[0] = usbtoken.nad;
 	block[2] = 0x00;
@@ -235,8 +253,8 @@ int build_retry_block(int type, __u8 * block, int *len)
 
 /* Builds I-Block */
 
-int build_data_block(int more, const __u8 * data, int datalen,
-		     __u8 * block, int *blocklen)
+int build_data_block(int more, const uint8_t * data, int datalen,
+		     uint8_t * block, int *blocklen)
 {
 	block[0] = usbtoken.nad;
 
@@ -248,7 +266,7 @@ int build_data_block(int more, const __u8 * data, int datalen,
 
 	if (datalen > usbtoken.ifsc)
 		return USBTOKEN_ERROR;
-	block[2] = (__u8) datalen;
+	block[2] = (uint8_t) datalen;
 
 	memcpy(block + 3, data, datalen);
 
@@ -258,46 +276,50 @@ int build_data_block(int more, const __u8 * data, int datalen,
 
 /* Returns N(R) or N(S) from R/I-Block. */
 
-int get_sequence(const __u8 * block)
+int get_sequence(const uint8_t * block)
 {
-	if ((block[1] & 0xC0) == 0x80) {
+	if (is_t1_rblock(PCB(block))) {
 		return (block[1] & 0x10) ? 0x01 : 0x00;
 	}
 
-	if ((block[1] & 0x80) == 0x00) {
+	if (is_t1_iblock(PCB(block))) {
 		return (block[1] & 0x40) ? 0x01 : 0x00;
 	}
 
 	return 0;
 }
 
-int t1_process(__u8 * apdu_cmd, int apdu_cmdlen,
-	       __u8 * apdu_rsp, int *apdu_rsplen)
+int t1_process(uint8_t * apdu_cmd, int apdu_cmdlen,
+	       uint8_t * apdu_rsp, int *apdu_rsplen)
 {
-	int sendptr = 0;	/* Points to begining of unsent data. */
+	int sendptr;	/* Points to begining of unsent data. */
 	int sendlen;
 
-	__u8 block[T1_MAX_BLKLEN];
-	__u8 rblock[T1_MAX_BLKLEN];
+	uint8_t block[T1_MAX_BLKLEN];
+	uint8_t rblock[T1_MAX_BLKLEN];
 	int blocklen;
 	int rblocklen;
 
-	__u8 rsp[256 + 3];
-	__u8 rsplen = 0;
+	uint8_t rsp[256 + 3];
+	uint8_t rsplen;
 
-	int more = 1;		/* More data to send. */
-	int lastiicc = 0;	/* It's ICCs turn to send I-Blocks. */
+	int more;		/* More data to send. */
+	int direction;	/* It's ICCs turn to send I-Blocks. */
 
 	int rc;
-	int timeouts = 0;
 	int errcntr = 0;
 	int rerrcntr = 0;
 
+start:
 	*apdu_rsplen = 0;
+	direction = T1_TO_CARD;
+	rsplen = 0;
+	sendptr = 0;
+	sendlen = apdu_cmdlen;
 
-	sendlen = apdu_cmdlen - sendptr;
 	if (sendlen > usbtoken.ifsc) {
 		sendlen = usbtoken.ifsc;
+		more = 1;
 	} else {
 		more = 0;
 	}
@@ -315,6 +337,17 @@ int t1_process(__u8 * apdu_cmd, int apdu_cmdlen,
 		/* communication error ? abort. */
 		if (rc != USBTOKEN_OK) {
 			goto cleanup;
+		}
+
+		if (is_t1_other_error(PCB(rblock))) {
+			/* other error, request resync */
+			rc = build_neg_block(T1_S_RESYNCH, T1_S_REQUEST,
+					     rblock[3], block,
+					     &blocklen);
+			if (rc) {
+				goto cleanup;
+			}
+			continue;
 		}
 
 		/* length or rc error ? try three times. */
@@ -338,7 +371,7 @@ int t1_process(__u8 * apdu_cmd, int apdu_cmdlen,
 		errcntr = 0;
 
 		/* shall we resend the last block ? try thee times. */
-		if ((rblock[1] & 0xC0) == 0x80) {
+		if (is_t1_rblock(PCB(rblock))) {
 			rerrcntr++;
 
 			if (rerrcntr > 3) {
@@ -346,7 +379,7 @@ int t1_process(__u8 * apdu_cmd, int apdu_cmdlen,
 				goto cleanup;
 			}
 
-			if (lastiicc) {
+			if (direction == T1_FROM_CARD) {
 				/* Card is sending I-Blocks, so send R-Block. */
 				rc = build_retry_block(T1_R_OK,
 						       block, &blocklen);
@@ -404,14 +437,14 @@ int t1_process(__u8 * apdu_cmd, int apdu_cmdlen,
 		rerrcntr = 0;
 
 		/* I-Block */
-		if ((rblock[1] & 0x80) == 0x00) {
+		if (is_t1_iblock(PCB(rblock))) {
 
-			if (!lastiicc) {
+			if (direction == T1_TO_CARD) {
 				/* Change N(S) to new value. */
 				usbtoken.ns ^= 1;
 			}
 
-			lastiicc = 1;
+			direction = T1_FROM_CARD;
 
 			if (get_sequence(rblock) != usbtoken.nr) {
 				/* Card is sending wrong I-Block, so send R-Block. */
@@ -463,8 +496,24 @@ int t1_process(__u8 * apdu_cmd, int apdu_cmdlen,
 			goto cleanup;
 		}
 
-		/* the card want's to set a different ifsc. */
-		if (rblock[1] == 0xC1) {
+		if (is_t1_resync_res(PCB(rblock))) {
+			/* resync: start from scratch */
+			goto start;
+		}
+
+		if (is_t1_wtx_req(PCB(rblock))) {
+			/* request waiting time extension */
+			rc = build_neg_block(T1_S_WTX,
+					     T1_S_RESPONSE, rblock[3],
+					     block, &blocklen);
+			if (rc) {
+				goto cleanup;
+			}
+			continue;
+		}
+
+		if (is_t1_ifs_req(PCB(rblock))) {
+			/* the card want's to set a different ifsc. */
 			/* acknowledge */
 			rc = build_neg_block(T1_S_IFS,
 					     T1_S_RESPONSE, rblock[3],
@@ -477,11 +526,15 @@ int t1_process(__u8 * apdu_cmd, int apdu_cmdlen,
 			continue;
 		}
 
-		/* S-Block ABORT Request */
-		if (rblock[1] == 0xC2) {
+		if (is_t1_abort_req(PCB(rblock))) {
+			/* S-Block ABORT Request */
 			rc = USBTOKEN_ERROR;
 			goto cleanup;
 		}
+
+		syslog(LOG_ERR, "t1 fatal: unknown pcb %d",PCB(rblock));
+		rc = USBTOKEN_ERROR;
+		goto cleanup;
 	}
 
       cleanup:

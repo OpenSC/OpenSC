@@ -1,12 +1,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -118,7 +118,7 @@ int socket_hangup()
 	return USBTOKEN_OK;
 }
 
-int unix_write(__u8 msg, int size)
+int unix_write(uint8_t msg, int size)
 {
 	int rc;
 
@@ -133,7 +133,7 @@ int unix_write(__u8 msg, int size)
 
 int socket_xmit()
 {
-	__u8 buf_read[1024];
+	uint8_t buf_read[1024];
 	int rc, len_read;
 
 	rc = read(usbtoken.connfd, buf_read, sizeof(buf_read));
@@ -145,7 +145,7 @@ int socket_xmit()
 	len_read = rc;
 
 	if (buf_read[0] == MSG_TRANSMIT) {
-		__u8 buf_write[1024];
+		uint8_t buf_write[1024];
 		int len_write;
 		len_write = sizeof(buf_write) - 1;
 

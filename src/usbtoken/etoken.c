@@ -1,12 +1,13 @@
-#include <asm/types.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <syslog.h>
 
 #include "usbtoken.h"
 
 int etoken_init();
-int etoken_transmit(__u8 * buf_send, int len_send,
-		    __u8 * buf_recv, int *len_recv);
+int etoken_transmit(uint8_t * buf_send, int len_send,
+		    uint8_t * buf_recv, int *len_recv);
 
 const struct token_drv etoken_drv = {
 	.init = etoken_init,
@@ -16,7 +17,7 @@ const struct token_drv etoken_drv = {
 	.name = "Aladdin eToken PRO",
 };
 
-char *etoken_products[] = { "529/50c/100", "529/512/100", 0 };
+char *etoken_products[] = { "529/50c/100", "529/512/100", "529/514/100", 0 };
 
 int etoken_test(char *product)
 {
@@ -36,8 +37,8 @@ int etoken_test(char *product)
 int etoken_init()
 {
 	int rc, len;
-	__u8 buffer[1024];
-	__u8 cookie[] = { 0x00, 0x00, 0x01, 0x00, 0x88, 0x13 };
+	uint8_t buffer[1024];
+	uint8_t cookie[] = { 0x00, 0x00, 0x01, 0x00, 0x88, 0x13 };
 
 	/* request atr */
 	rc = usb_control_xmit(0x40, 0x01, 0x0000, 0x0000, 0x0000, buffer);
@@ -93,8 +94,8 @@ int etoken_init()
 }
 
 
-int etoken_transmit(__u8 * buf_send, int len_send,
-		    __u8 * buf_recv, int *len_recv)
+int etoken_transmit(uint8_t * buf_send, int len_send,
+		    uint8_t * buf_recv, int *len_recv)
 {
 	int rc;
 

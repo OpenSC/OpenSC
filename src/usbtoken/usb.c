@@ -1,7 +1,7 @@
-#include <asm/types.h>
 #include <errno.h>
 #include <linux/usbdevice_fs.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <syslog.h>
 #include <sys/ioctl.h>
@@ -9,12 +9,13 @@
 #include "usbtoken.h"
 
 #ifdef USB_DEBUG
-void debug_hexdump(char *msg, __u8 * buf, int size)
+void debug_hexdump(char *msg, uint8_t * buf, int size)
 {
 	char line[1024];
 	const char hex[16] =
 	    { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b',
-   'c', 'd', 'e', 'f' };
+		'c', 'd', 'e', 'f'
+	};
 	int n, i, max;
 
 	i = max = 0;
@@ -39,7 +40,7 @@ void debug_hexdump(char *msg, __u8 * buf, int size)
 #endif				/* USB_DEBUG */
 
 int usb_control_xmit(int type, int req, int value, int index, int size,
-		     __u8 * buf)
+		     uint8_t * buf)
 {
 	struct usbdevfs_ctrltransfer ctrl;
 	int rc;

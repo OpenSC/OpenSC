@@ -82,7 +82,7 @@ int usbtoken_reader_init(struct sc_context *ctx, void **priv_data) {
 	struct sc_reader *myreader;
 	struct usbtoken_privslot *myprivslot;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, 4);
 	for (i=0; i< READERS; i++) {
 		myreader = malloc(sizeof(struct sc_reader));
 		bzero(myreader,sizeof(struct sc_reader));
@@ -114,7 +114,7 @@ int usbtoken_reader_finish(struct sc_context *ctx, void *priv_data) {
 	/* Called when the driver is being unloaded.  finish() has to
 	 * deallocate the private data and any resources. */
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, 4);
 	return SC_NO_ERROR;
 }
 
@@ -124,7 +124,7 @@ int usbtoken_reader_release(struct sc_reader *reader) {
 	 * freed by OpenSC. */
 	struct usbtoken_privslot *myprivslot;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, 4);
 	myprivslot = reader->slot[0].drv_data;
 	if (myprivslot) {
 		close (myprivslot->fd);
@@ -140,7 +140,7 @@ int usbtoken_reader_detect_card_presence(struct sc_reader *reader,
 	struct stat statbuf;
 	int rc;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, 4);
 	myprivslot = slot->drv_data;
 
 	rc = stat(myprivslot->sa_un.sun_path, &statbuf);
@@ -160,7 +160,7 @@ int usbtoken_reader_unix_cmd(struct sc_reader *reader,
 	u8 msg;
 	int rc;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, 4);
 	myprivslot = slot->drv_data;
 	
 	rc = write(myprivslot->fd, &cmd, sizeof(cmd));
@@ -183,7 +183,7 @@ int usbtoken_reader_connect(struct sc_reader *reader,
 	struct usbtoken_privslot *myprivslot;
 	int rc,len;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, 4);
 	myprivslot = slot->drv_data;
 
 	rc = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -224,7 +224,7 @@ int usbtoken_reader_disconnect(struct sc_reader *reader,
 			struct sc_slot_info *slot, int action) {
 	struct usbtoken_privslot *myprivslot;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, 4);
 	myprivslot = slot->drv_data;
 	close (myprivslot->fd);
 
@@ -238,7 +238,7 @@ int usbtoken_reader_transmit(struct sc_reader *reader,
 	u8 buffer[1024];
 	int rc;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, 4);
 	myprivslot = slot->drv_data;
 
 	if (sendsize > 1023) {
@@ -283,12 +283,12 @@ int usbtoken_reader_transmit(struct sc_reader *reader,
 
 int usbtoken_reader_lock(struct sc_reader *reader,
 			struct sc_slot_info *slot) {
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, 4);
 	return usbtoken_reader_unix_cmd(reader, slot, 4);
 }
 
 int usbtoken_reader_unlock(struct sc_reader *reader,
 			struct sc_slot_info *slot) {
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, 4);
 	return usbtoken_reader_unix_cmd(reader, slot, 5);
 }

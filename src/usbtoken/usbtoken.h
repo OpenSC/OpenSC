@@ -1,7 +1,7 @@
 #ifndef _USBTOKEN_H
 #define _USBTOKEN_H
 
-#include <asm/types.h>
+#include <stdint.h>
 
 #define SYSLOG_NAME "usbtoken"
 #define PIDFILE "/var/run/usbtoken%d.pid"
@@ -14,7 +14,7 @@
 
 struct token_drv {
 	int (*init) ();
-	int (*transmit) (__u8 * send, int send_len, __u8 * recv,
+	int (*transmit) (uint8_t * send, int send_len, uint8_t * recv,
 			 int *recv_len);
 	int max_ifsc;
 	int timeout;
@@ -34,7 +34,7 @@ struct token {
 	int nad;		/* nad byte */
 	int nr;			/* next r block (0|1) */
 	int ns;			/* next s block (0|1) */
-	__u8 *atr;
+	uint8_t *atr;
 	int atrlen;
 };
 
@@ -48,7 +48,7 @@ int ikey3k_test(char *product);
 /* atr.c */
 int parse_atr();
 int increase_ifsc();
-int is_atr_complete(__u8 *buffer, int lr);
+int is_atr_complete(uint8_t * buffer, int lr);
 
 /* pid.c */
 void pid_exit();
@@ -61,13 +61,13 @@ int socket_hangup();
 int socket_xmit();
 
 /* t1.c */
-int t1_process(__u8 * apdu_cmd, int apdu_cmdlen,
-	       __u8 * apdu_rsp, int *apdu_rsplen);
+int t1_process(uint8_t * apdu_cmd, int apdu_cmdlen,
+	       uint8_t * apdu_rsp, int *apdu_rsplen);
 
 /* usb.c */
-void debug_hexdump(char *msg, __u8 * buf, int size);
+void debug_hexdump(char *msg, uint8_t * buf, int size);
 int usb_control_xmit(int type, int req, int value, int index,
-		     int size, __u8 * buf);
+		     int size, uint8_t * buf);
 int usb_reset();
 
 #endif

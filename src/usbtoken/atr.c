@@ -1,17 +1,20 @@
-#include <asm/types.h>
+#include <stdint.h>
 #include <syslog.h>
 
 #include "usbtoken.h"
 
-int is_atr_complete(__u8 *buffer, int lr)
+int is_atr_complete(uint8_t* buffer, int lr)
 {
 	int hc, i, td, rc;
 
 	/* TS, T0 and checksum are always required */
-	if (lr < 3) return USBTOKEN_INCOMPLETE;
+	if (lr < 3)
+		return USBTOKEN_INCOMPLETE;
 
 	if (buffer[0] != 0x3b) {
-		syslog(LOG_ERR, "is_atr_complete fatal: atr not direct convention, TS %d", buffer[0]);
+		syslog(LOG_ERR,
+		       "is_atr_complete fatal: atr not direct convention, TS %d",
+		       buffer[0]);
 		return USBTOKEN_ERROR;
 	}
 
@@ -22,11 +25,14 @@ int is_atr_complete(__u8 *buffer, int lr)
 	td = buffer[1] >> 4;
 
 	while (td) {
-		if (td & 0x01) i++;	/* TAn */
-		if (td & 0x02) i++;	/* TBn */
-		if (td & 0x04) i++;	/* TCn */
+		if (td & 0x01)
+			i++;	/* TAn */
+		if (td & 0x02)
+			i++;	/* TBn */
+		if (td & 0x04)
+			i++;	/* TCn */
 		if (td & 0x08) {	/* TDn */
-			if (lr < i) 
+			if (lr < i)
 				return USBTOKEN_INCOMPLETE;
 			td = buffer[i] >> 4;
 			i++;
@@ -35,11 +41,11 @@ int is_atr_complete(__u8 *buffer, int lr)
 		}
 	}
 
-	if (lr < i + hc + 1) 
+	if (lr < i + hc + 1)
 		return USBTOKEN_INCOMPLETE;
 
-	lr = i+hc+1;
-	
+	lr = i + hc + 1;
+
 	rc = 0;
 	for (i = 1; i < lr; i++) {
 		rc ^= buffer[i];
@@ -206,9 +212,9 @@ int parse_atr()
 
 int increase_ifsc()
 {
-	__u8 buf_send[256];
-	__u8 buf_recv[256];
-	__u8 max_ifsc;
+	uint8_t buf_send[256];
+	uint8_t buf_recv[256];
+	uint8_t max_ifsc;
 	int len_recv, rc;
 	int i;
 

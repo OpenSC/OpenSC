@@ -1,12 +1,13 @@
-#include <asm/types.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <syslog.h>
 
 #include "usbtoken.h"
 
 int ikey2k_init();
-int ikey2k_transmit(__u8 * buf_send, int len_send,
-		    __u8 * buf_recv, int *len_recv);
+int ikey2k_transmit(uint8_t * buf_send, int len_send,
+		    uint8_t * buf_recv, int *len_recv);
 
 const struct token_drv ikey2k_drv = {
 	.init = ikey2k_init,
@@ -35,13 +36,13 @@ int ikey2k_test(char *product)
 
 int ikey2k_init()
 {
-	__u8 buffer[1024];
+	uint8_t buffer[1024];
 
-	__u8 expect5[] = { 0x0d, 0x63, 0x00, 0x05, 0x2d, 0x2d, 0xc0,
+	uint8_t expect5[] = { 0x0d, 0x63, 0x00, 0x05, 0x2d, 0x2d, 0xc0,
 		0x80, 0x80, 0x60, 0x80, 0x01, 0x19
 	};
 #ifdef MANUAL_IFSC
-	__u8 expect17[] =
+	uint8_t expect17[] =
 	    { 0x00, 0xe1, 0x01, 0xb4, 0x54, 0x40, 0x98, 0xc1 };
 #endif				/* MANUAL_IFSC */
 
@@ -147,8 +148,8 @@ int ikey2k_init()
 	return USBTOKEN_OK;
 }
 
-int ikey2k_transmit(__u8 * buf_send, int len_send,
-		    __u8 * buf_recv, int *len_recv)
+int ikey2k_transmit(uint8_t * buf_send, int len_send,
+		    uint8_t * buf_recv, int *len_recv)
 {
 	int rc;
 	int value, index;

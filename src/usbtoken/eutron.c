@@ -1,12 +1,14 @@
-#include <asm/types.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <syslog.h>
+#include <time.h>
 
 #include "usbtoken.h"
 
 int eutron_init();
-int eutron_transmit(__u8 * buf_send, int len_send,
-		    __u8 * buf_recv, int *len_recv);
+int eutron_transmit(uint8_t * buf_send, int len_send,
+		    uint8_t * buf_recv, int *len_recv);
 
 const struct token_drv eutron_drv = {
 	.init = eutron_init,
@@ -35,49 +37,53 @@ int eutron_test(char *product)
 
 int eutron_init()
 {
-	int rc,lr,c;
-	__u8 buffer[1024];
-	__u8 cookie[] = { 0xff, 0x11, 0x98, 0x76 };
+	int rc, lr, c;
+	uint8_t buffer[1024];
+	uint8_t cookie[] = { 0xff, 0x11, 0x98, 0x76 };
 
-	rc = usb_control_xmit(0x41, 0xa3, 0x0000, 0x0000,  0x0000, buffer);
-	rc = usb_control_xmit(0x41, 0xa1, 0x0000, 0x0000,  0x0000, buffer);
-	rc = usb_control_xmit(0x41, 0xa2, 0x0000, 0x0000,  0x0000, buffer);
-	rc = usb_control_xmit(0x41, 0xa0, 0x0000, 0x0000,  0x0000, buffer);
-	rc = usb_control_xmit(0x41, 0x09, 0x0000, 0x0000,  0x0000, buffer);
+	rc = usb_control_xmit(0x41, 0xa3, 0x0000, 0x0000, 0x0000, buffer);
+	rc = usb_control_xmit(0x41, 0xa1, 0x0000, 0x0000, 0x0000, buffer);
+	rc = usb_control_xmit(0x41, 0xa2, 0x0000, 0x0000, 0x0000, buffer);
+	rc = usb_control_xmit(0x41, 0xa0, 0x0000, 0x0000, 0x0000, buffer);
+	rc = usb_control_xmit(0x41, 0x09, 0x0000, 0x0000, 0x0000, buffer);
 
 	lr = 0;
 	while (1) {
 		rc = usb_control_xmit(0xc1, 0x02, 0x0000, 0x0000, 0x0100,
-				&buffer[lr]);
-		if (rc == -1 ) {
-			syslog(LOG_ERR, "eutron fatal: receive answer rc %d",
-					rc);
+				      &buffer[lr]);
+		if (rc == -1) {
+			syslog(LOG_ERR,
+			       "eutron fatal: receive answer rc %d", rc);
 			return USBTOKEN_ERROR;
 		}
-		lr+=rc;
-		rc =is_atr_complete(buffer,lr);
-		if (rc == USBTOKEN_OK) break;
-		if (rc != USBTOKEN_INCOMPLETE) return rc;
+		lr += rc;
+		rc = is_atr_complete(buffer, lr);
+		if (rc == USBTOKEN_OK)
+			break;
+		if (rc != USBTOKEN_INCOMPLETE)
+			return rc;
 	}
 	/* copy atr */
 	usbtoken.atr = malloc(lr);
 	memcpy(usbtoken.atr, buffer, lr);
 	usbtoken.atrlen = lr;
 
-	rc = usb_control_xmit(0x41, 0x01, 0x0000, 0x0000, 
-			sizeof(cookie), cookie);
+	rc = usb_control_xmit(0x41, 0x01, 0x0000, 0x0000,
+			      sizeof(cookie), cookie);
 
-	c=0; lr = 0;
+	c = 0;
+	lr = 0;
 	while (1) {
 		rc = usb_control_xmit(0xc1, 0x02, 0x0000, 0x0000, 0x0100,
-				&buffer[lr]);
-		if (rc == -1 ) {
-			syslog(LOG_ERR, "eutron fatal: receive answer rc %d",
-					rc);
+				      &buffer[lr]);
+		if (rc == -1) {
+			syslog(LOG_ERR,
+			       "eutron fatal: receive answer rc %d", rc);
 			return USBTOKEN_ERROR;
 		}
-		lr+=rc;
-		if (lr >= 4) break;
+		lr += rc;
+		if (lr >= 4)
+			break;
 		c++;
 		if (c > 20) {
 			syslog(LOG_ERR, "eutron fatal: looping forever");
@@ -92,12 +98,13 @@ int eutron_init()
 }
 
 
-int eutron_transmit(__u8 * buf_send, int len_send,
-		    __u8 * buf_recv, int *len_recv)
+int eutron_transmit(uint8_t * buf_send, int len_send,
+		    uint8_t * buf_recv, int *len_recv)
 {
-	int rc,lr,c;
+	int rc, lr, c;
 
-	rc = usb_control_xmit(0x42, 0x01, 0x0000, 0x0000, len_send, buf_send);
+	rc = usb_control_xmit(0x42, 0x01, 0x0000, 0x0000, len_send,
+			      buf_send);
 	if (rc != len_send) {
 		syslog(LOG_ERR, "eutron fatal: received %d != %d", rc,
 		       len_send);
@@ -108,20 +115,31 @@ int eutron_transmit(__u8 * buf_send, int len_send,
 	c = 0;
 	while (1) {
 		rc = usb_control_xmit(0xc1, 0x02, 0x0000, 0x0000, 0x0100,
-				&buf_recv[lr]);
-		if (rc == -1 ) {
-			syslog(LOG_ERR, "eutron fatal: receive answer rc %d",
-					rc);
+				      &buf_recv[lr]);
+		syslog(LOG_DEBUG, "rc %d, lr %d, len %d",
+		       rc, lr, buf_recv[2]);
+		if (rc == -1) {
+			syslog(LOG_ERR,
+			       "eutron fatal: receive answer rc %d", rc);
 			return USBTOKEN_ERROR;
 		}
-		lr+=rc;
+		lr += rc;
 		if (lr >= 4 && lr >= buf_recv[2] + 4)
 			break;
+
+
 		c++;
-		if (c > 20) {
-			syslog(LOG_ERR, "eutron fatal: looping forever");
+		if (c > 10000) {
+			syslog(LOG_ERR,
+			       "eutron fatal: timeout after 100s");
 			return USBTOKEN_ERROR;
+		} else {
+			struct timespec x;
+			x.tv_sec = 0;
+			x.tv_nsec = 50000000;
+			nanosleep(&x, NULL);
 		}
+
 	}
 
 	*len_recv = lr;
