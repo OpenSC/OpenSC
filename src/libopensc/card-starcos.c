@@ -556,15 +556,18 @@ static u8 process_acl_entry(struct sc_file *in, unsigned int method, u8 def)
 	const struct sc_acl_entry *entry = sc_file_get_acl_entry(in, method);
 	if (!entry)
 		return def;
-	else if (entry->method & SC_AC_NEVER)
-		return STARCOS_AC_NEVER;
 	else if (entry->method & SC_AC_CHV) {
 		unsigned int key_ref = entry->key_ref;
 		if (key_ref == SC_AC_KEY_REF_NONE)
 			return def;
+		else if ((key_ref & 0x0f) == 1)
+			/* SOPIN */
+			return (key_ref & 0x80 ? 0x10 : 0x00) | 0x01;
 		else
-			return (key_ref & 0x10) | STARCOS_PINID2STATE(key_ref);
-	} else
+			return (key_ref & 0x80 ? 0x10 : 0x00) | STARCOS_PINID2STATE(key_ref);
+	} else if (entry->method & SC_AC_NEVER)
+		return STARCOS_AC_NEVER;
+	else
 		return def;
 }
 
