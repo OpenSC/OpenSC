@@ -179,8 +179,11 @@ extern "C" {
 /* A 64-bit uint, used in sc_current_time() */
 #ifndef _WIN32
 typedef unsigned long long sc_timestamp_t;
+#define msleep(t)	usleep((t) * 1000)
 #else
 typedef unsigned __int64 sc_timestamp_t;
+#define msleep(t)	Sleep(t)
+#define sleep(t)	Sleep((t) * 1000)
 #endif
 
 /* Event masks for sc_wait_for_event() */
@@ -440,6 +443,7 @@ struct sc_card {
 	struct sc_slot_info *slot;
 
 	unsigned long caps, flags;
+	unsigned int wait_resend_apdu;	/* Delay (msec) before responding to an SW12 = 6CXX */
 	int cla;
 	u8 atr[SC_MAX_ATR_SIZE];
 	size_t atr_len;

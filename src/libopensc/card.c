@@ -260,6 +260,9 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	if (apdu->sw1 == 0x6C && apdu->resplen == 0) {
 		apdu->resplen = orig_resplen;
 		apdu->le = apdu->sw2;
+		/* Fix for cards (e.g. belpic) that need a delay on fast readers */
+		if (card->wait_resend_apdu != 0)
+			msleep(card->wait_resend_apdu);
 		r = sc_transceive(card, apdu);
 		if (r != 0) {
 			sc_unlock(card);

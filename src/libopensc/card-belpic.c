@@ -1008,6 +1008,11 @@ static int belpic_init(struct sc_card *card)
 				     SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
 	}
 
+	/* V1 applets have a problem: if the card sends a 6C XX (only XX bytes available),
+	 * and we resend the command too soon (i.e. the reader is too fast), the card
+	 * doesn't respond. So we build in a delay. */
+	card->wait_resend_apdu = 40;
+
 	/* State that we have an RNG */
 	card->caps |= SC_CARD_CAP_RNG;
 

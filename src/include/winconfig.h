@@ -54,8 +54,6 @@
 
 #define PATH_MAX _MAX_PATH
 
-#define sleep(t) Sleep((t) * 1000)
-
 #ifndef VERSION
 #define VERSION "0.9.4"
 #endif
