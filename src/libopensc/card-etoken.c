@@ -643,6 +643,79 @@ etoken_compute_signature(struct sc_card *card,
 
 
 static int
+etoken_lifecycle_get(struct sc_card *card, int *mode)
+{
+	struct sc_apdu	apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int		r;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 01, 0x83);
+	apdu.cla = 0x00;
+	apdu.le = 256;
+	apdu.resplen = sizeof(rbuf);
+	apdu.resp = rbuf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	if (apdu.resplen < 1) {
+		SC_TEST_RET(card->ctx, r, "Lifecycle byte not in response");
+	}
+
+	if (rbuf[0] == 32) {
+		*mode = SC_CARDCTRL_LIFECYCLE_ADMIN;
+	} else if (rbuf[0] == 16) {
+		*mode = SC_CARDCTRL_LIFECYCLE_USER;
+	} else {
+		error(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
+		return SC_ERROR_INTERNAL;
+	}
+
+	SC_FUNC_RETURN(card->ctx, 1, SC_SUCCESS);
+}
+
+static int
+etoken_lifecycle_set(struct sc_card *card, int *mode)
+{
+	struct sc_apdu	apdu;
+	int		r;
+
+	int current;
+	int target;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	target = *mode;
+
+	r = etoken_lifecycle_get(card, &current);
+	
+	if (r != SC_SUCCESS)
+		return r;
+
+	if (current == target)
+		return SC_SUCCESS;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x10, 0, 0);
+	apdu.cla = 0x80;
+	apdu.le = 0;
+	apdu.resplen = 0;
+	apdu.resp = NULL;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	SC_FUNC_RETURN(card->ctx, 1, r);
+}
+
+static int
 etoken_put_data_oci(struct sc_card *card,
 			struct sc_cardctl_etoken_obj_info *args)
 {
@@ -756,6 +829,10 @@ etoken_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_ETOKEN_GENERATE_KEY:
 		return etoken_generate_key(card,
 			(struct sc_cardctl_etoken_genkey_info *) ptr);
+	case SC_CARDCTL_LIFECYCLE_GET:
+		return etoken_lifecycle_get(card, ptr);
+	case SC_CARDCTL_LIFECYCLE_SET:
+		return etoken_lifecycle_set(card, ptr);
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }

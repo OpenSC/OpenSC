@@ -44,9 +44,11 @@
 #include <openssl/dsa.h>
 #include <openssl/bn.h>
 #include <openssl/pkcs12.h>
+#include <opensc/cardctl.h>
 #include <opensc/pkcs15.h>
 #include <opensc/pkcs15-init.h>
 #include "util.h"
+
 
 #undef GET_KEY_ECHO_OFF
 
@@ -369,6 +371,15 @@ do_init_app(struct sc_profile *profile)
 	struct sc_pkcs15init_initargs args;
 	struct sc_pkcs15_pin_info info;
 	int	r = 0;
+	int	lc;
+
+	if (r < 0)
+		return r;
+
+	lc = SC_CARDCTRL_LIFECYCLE_ADMIN;
+	r = sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &lc);
+	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
+		return r;
 
 	if (opt_erase)
 		r = sc_pkcs15init_erase_card(card, profile);
