@@ -81,6 +81,7 @@ extern "C" {
 #define SC_ERROR_CLASS_NOT_SUPPORTED		-1033
 #define SC_ERROR_SLOT_NOT_FOUND			-1034
 #define SC_ERROR_SLOT_ALREADY_CONNECTED		-1035
+#define SC_ERROR_AUTH_METHOD_BLOCKED		-1036
 
 /* Different APDU cases */
 #define SC_APDU_CASE_NONE		0
@@ -237,6 +238,7 @@ struct sc_file {
 #define SC_ALGORITHM_RSA_RAW		0x00000001
 /* If the card is willing to produce a cryptogram padded with the following 
  * methods, set these flags accordingly. */
+#define SC_ALGORITHM_RSA_PADS		0x0000000E
 #define SC_ALGORITHM_RSA_PAD_PKCS1	0x00000002
 #define SC_ALGORITHM_RSA_PAD_ANSI	0x00000004
 #define SC_ALGORITHM_RSA_PAD_ISO9796	0x00000008
@@ -244,6 +246,7 @@ struct sc_file {
 /* If the card is willing to produce a cryptogram with the following 
  * hash values, set these flags accordingly. */
 #define SC_ALGORITHM_RSA_HASH_NONE	0x00000010
+#define SC_ALGORITHM_RSA_HASHES		0x000000E0
 #define SC_ALGORITHM_RSA_HASH_SHA1	0x00000020
 #define SC_ALGORITHM_RSA_HASH_MD5	0x00000040
 #define SC_ALGORITHM_RSA_HASH_MD5_SHA1	0x00000080

@@ -178,7 +178,10 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 	default:
                 return SC_ERROR_INVALID_ARGUMENTS;
 	}
-	for (i = 0; i < 8; i++) {
+	if (file->sec_attr_len == 4) {
+		memcpy(p, file->sec_attr, 4);
+		p += 4;
+	} else for (i = 0; i < 8; i++) {
 		u8 nibble;
 
 		if (ops[i] == -1)

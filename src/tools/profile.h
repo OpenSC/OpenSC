@@ -31,6 +31,7 @@ struct file_info {
 	char *			ident;
 	struct file_info *	next;
 	struct sc_file *	file;
+	struct file_info *	parent;
 
 	/* PKCS15 book-keeping info */
 	/*

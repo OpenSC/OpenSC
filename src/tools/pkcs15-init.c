@@ -558,6 +558,8 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile)
 		app->aid_len = p15card->file_app->namelen;
 		memcpy(app->aid, p15card->file_app->name, app->aid_len);
 	}
+	if (p15card->label)
+		app->label = strdup(p15card->label);
 	/* XXX: encode the DDO? */
 
 	r = sc_pkcs15init_update_dir(card, profile, app);
@@ -574,7 +576,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile)
 			return 1;
 	}
 
-	printf("Successfully created PKCS15 meta structure\n");
+	printf("Successfully created PKCS #15 meta structure\n");
 	return 0;
 }
 
@@ -1184,7 +1186,7 @@ sc_pkcs15init_update_df(struct sc_pkcs15_card *p15card,
 		unsigned int df_type)
 {
 	struct sc_pkcs15_df *df;
-	struct sc_file	*file;
+	struct sc_file	*file = NULL;
 	u8		*buf = NULL;
 	size_t		bufsize;
 	unsigned int	j;
@@ -1204,11 +1206,16 @@ sc_pkcs15init_update_df(struct sc_pkcs15_card *p15card,
 	}
 
 	for (j = 0; r >= 0 && j < df->count; j++) {
+		struct file_info *info;
+		
+		file = df->file[j];
+		info = sc_profile_find_file_by_path(profile, &file->path);
+		if (info != NULL)
+			file = info->file;
 		r = sc_pkcs15_encode_df(card->ctx, df, j, &buf, &bufsize);
 		if (r >= 0) {
 			r = sc_pkcs15init_update_file(profile,
-					df->file[j],
-				       	buf, bufsize);
+					file, buf, bufsize);
 			free(buf);
 		}
 	}
@@ -1281,10 +1288,10 @@ read_one_pin(struct pin_info *info, unsigned int n)
 static int
 do_read_pins(struct sc_profile *pro)
 {
-	static char	*types[2] = { "CHV1", "CHV2" };
+	static char	*types[3] = { "CHV1", "CHV2", "CHV3" };
 	int		n, r;
 
-	for (n = 0; n < 2; n++) {
+	for (n = 0; n < 3; n++) {
 		struct pin_info	*info;
 		struct sc_file	*file;
 		int		i, npins = 2;
@@ -1296,7 +1303,7 @@ do_read_pins(struct sc_profile *pro)
 		file = info->file->file;
 		ctx->log_errors = 0;
 		if (!sc_select_file(card, &file->path, NULL)) {
-			printf("PIN file for %s already exists.", info->ident);
+			printf("PIN file for %s already exists.\n", info->ident);
 			npins = 1;
 		}
 		ctx->log_errors = 1;
@@ -1322,6 +1329,7 @@ do_verify_pin(struct sc_profile *pro, unsigned int type, unsigned int reference)
 	struct pin_info	*info;
 	char		*pin;
 	int		r;
+	u8		pinbuf[32];
 
 	ident = "authentication data";
 	if (type == SC_AC_CHV)
@@ -1357,8 +1365,13 @@ do_verify_pin(struct sc_profile *pro, unsigned int type, unsigned int reference)
 		return r;
 
 	pin = info->secret[0];
+	assert(pro->pin_maxlen < sizeof(pinbuf));
+	memset(pinbuf, pro->pin_pad_char, pro->pin_maxlen);
+	/* FIXME: shouldn't assume that encoding is ascii-numeric */
+	strncpy(pinbuf, pin, strlen(pin));
+	
 	return sc_verify(card, SC_AC_CHV, reference,
-				(u8 *) pin, strlen(pin), NULL);
+				pinbuf, pro->pin_maxlen, NULL);
 
 no_secret:
 	/* No secret found that we could present.
@@ -1390,6 +1403,7 @@ do_select_parent(struct sc_profile *pro, struct sc_file *file,
 		struct sc_file **parent)
 {
 	struct sc_path	path;
+	struct file_info *info = NULL;
 	int		r;
 
 	/* Get the parent's path */
@@ -1399,18 +1413,22 @@ do_select_parent(struct sc_profile *pro, struct sc_file *file,
 	if (path.len == 0)
 		sc_format_path("3F00", &path);
 
-	/* Select the parent DF. */
-	r = sc_select_file(card, &path, parent);
-
+	info = sc_profile_find_file_by_path(pro, &path);
+	ctx->log_errors = 0;
+	if (info != NULL) {
+		sc_file_dup(parent, info->file);
+		r = sc_select_file(card, &path, NULL);
+	} else {
+		/* Select the parent DF. */
+		r = sc_select_file(card, &path, parent);
+	}
+	ctx->log_errors = 1;
 	/* If DF doesn't exist, create it (unless it's the MF,
 	 * but then something's badly broken anyway :-) */
 	if (r == SC_ERROR_FILE_NOT_FOUND && path.len != 2) {
-		struct file_info *info;
-
-		info = sc_profile_find_file_by_path(pro, &path);
 		if (info != NULL
 		 && (r = sc_pkcs15init_create_file(pro, info->file)) == 0)
-			r = sc_select_file(card, &path, parent);
+			r = sc_select_file(card, &path, NULL);
 	}
 	return r;
 }
@@ -1439,7 +1457,9 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 {
 	int		r;
 
-	if ((r = sc_select_file(card, &file->path, &file)) < 0) {
+	ctx->log_errors = 0;
+	if ((r = sc_select_file(card, &file->path, NULL)) < 0) {
+		ctx->log_errors = 1;
 		/* Create file if it doesn't exist */
 		if (file->size < datalen)
 			file->size = datalen;
@@ -1448,6 +1468,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 		 || (r = sc_select_file(card, &file->path, NULL)) < 0)
 			return r;
 	}
+	ctx->log_errors = 1;
 
 	/* Present authentication info needed */
 	r = sc_pkcs15init_authenticate(profile, file, SC_AC_OP_UPDATE);

@@ -94,6 +94,7 @@ static struct map		fileOpNames[] = {
 	{ "UPDATE",	SC_AC_OP_UPDATE	},
 	{ "WRITE",	SC_AC_OP_WRITE	},
 	{ "ERASE",	SC_AC_OP_ERASE	},
+	{ "CRYPTO",	SC_AC_OP_CRYPTO },
 	{ 0, 0 }
 };
 static struct map		efTypeNames[] = {
@@ -372,6 +373,9 @@ sc_profile_finish(struct sc_profile *pro)
 			res = 1;
 		}
 		pi->pkcs15.path = pi->file->file->path;
+		/* Use only the parent DF path. */
+		if (pi->pkcs15.path.len > 2)
+			pi->pkcs15.path.len -= 2;
 	}
 
 	/* Loop over all files and fix up their security references */
@@ -565,6 +569,18 @@ do_mf(int argc, char **argv)
 	return 0;
 }
 
+static void
+find_parent(struct file_info *fi)
+{
+	struct sc_path path = fi->file->path;
+	
+	fi->parent = NULL;
+	if (path.len > 2) {
+		path.len -= 2;
+		fi->parent = sc_profile_find_file_by_path(parser.profile, &path);
+	}
+}
+
 static int
 do_df(int argc, char **argv)
 {
@@ -582,6 +598,7 @@ do_df(int argc, char **argv)
 		cur_file->next = parser.profile->ef_list;
 		parser.profile->ef_list = cur_file;
 	}
+	find_parent(cur_file);
 	cur_parent = NULL;
 	return 0;
 }
@@ -635,6 +652,7 @@ do_ef(int argc, char **argv)
 
 	info->next = parser.profile->ef_list;
 	parser.profile->ef_list = info;
+	find_parent(info);
 
 out:	cur_file = info;
 	cur_parent = NULL;

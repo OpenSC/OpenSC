@@ -76,7 +76,19 @@ static int flex_init(struct sc_card *card)
 	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->cla = 0xC0;
+	/* FIXME: Card type detection */
+	if (1) {
+		unsigned long flags;
+		
+		flags = SC_ALGORITHM_RSA_RAW;
+		flags |= SC_ALGORITHM_RSA_HASH_NONE;
 
+		_sc_card_add_rsa_alg(card, 512, flags, 0);
+		_sc_card_add_rsa_alg(card, 768, flags, 0);
+		_sc_card_add_rsa_alg(card, 1024, flags, 0);
+		_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	}
+	
 	return 0;
 }
 
@@ -97,10 +109,8 @@ static void add_acl_entry(struct sc_file *file, unsigned int op,
 		sc_file_add_acl_entry(file, op, SC_AC_PRO, SC_AC_KEY_REF_NONE);
 		break;
 	case 4:
-		if (is_mf)
-			sc_file_add_acl_entry(file, op, SC_AC_AUT, 1);
-		else
-			sc_file_add_acl_entry(file, op, SC_AC_AUT, SC_AC_KEY_REF_NONE);
+		/* Assume the key is the AAK */
+		sc_file_add_acl_entry(file, op, SC_AC_AUT, 1);
 		break;
 	case 6:
 		sc_file_add_acl_entry(file, op, SC_AC_CHV, 1);
@@ -112,11 +122,13 @@ static void add_acl_entry(struct sc_file *file, unsigned int op,
 		break;
 	case 8:
 		sc_file_add_acl_entry(file, op, SC_AC_CHV, 1);
-		sc_file_add_acl_entry(file, op, SC_AC_AUT, SC_AC_KEY_REF_NONE);
+		/* Assume the key is the AAK */
+		sc_file_add_acl_entry(file, op, SC_AC_AUT, 1);
 		break;
 	case 9:
 		sc_file_add_acl_entry(file, op, SC_AC_CHV, 2);
-		sc_file_add_acl_entry(file, op, SC_AC_AUT, SC_AC_KEY_REF_NONE);
+		/* Assume the key is the AAK */
+		sc_file_add_acl_entry(file, op, SC_AC_AUT, 1);
 		break;
 	case 15:
 		sc_file_add_acl_entry(file, op, SC_AC_NEVER, SC_AC_KEY_REF_NONE);
@@ -613,6 +625,15 @@ static int flex_set_security_env(struct sc_card *card,
 
 	if (env->operation != SC_SEC_OPERATION_SIGN) {
 		error(card->ctx, "Invalid crypto operation supplied.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	if (env->algorithm != SC_ALGORITHM_RSA) {
+		error(card->ctx, "Invalid crypto algorithm supplied.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	if ((env->algorithm_flags & SC_ALGORITHM_RSA_PADS) ||
+	    (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES)) {
+	    	error(card->ctx, "Card supports only raw RSA.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {

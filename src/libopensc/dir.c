@@ -139,7 +139,7 @@ int sc_enum_apps(struct sc_card *card)
 	struct sc_path path;
 	int ef_structure;
 	size_t file_size;
-	int r;
+	int r, log_errors;
 
 	if (card->app_count < 0)
 		card->app_count = 0;
@@ -148,7 +148,10 @@ int sc_enum_apps(struct sc_card *card)
 		sc_file_free(card->ef_dir);
 		card->ef_dir = NULL;
 	}
+	log_errors = card->ctx->log_errors;
+	card->ctx->log_errors = 0;
 	r = sc_select_file(card, &path, &card->ef_dir);
+	card->ctx->log_errors = log_errors;
 	if (r)
 		return r;
 	if (card->ef_dir->type != SC_FILE_TYPE_WORKING_EF) {

@@ -344,6 +344,7 @@ const char *sc_strerror(int error)
 		"Invalid CLA byte in APDU",
 		"Slot not found",
 		"Slot already connected",
+		"Authentication method blocked",
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);
 
