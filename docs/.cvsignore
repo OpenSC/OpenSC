@@ -19,3 +19,4 @@ Makefile.in
 pkcs15-profile.5
 html
 latex
+usbtoken.html
