@@ -1,5 +1,12 @@
 NEWS for OpenSC -- History of user visible changes
 
+New in 0.6.0; 2002-03-13; Juha Yrjölä:
+* Many, many new features -- too many to list here
+* New cards supported: Gemplus GPK family, TCOS 2.0, MioCOS
+* Implemented a card reader abstraction layer
+* PKCS #15 generation rewritten by Olaf Kirch. So far generation
+  is supported only on GPK and Cryptoflex.
+
 New in 0.5.0; 2002-01-24; Juha Yrjölä:
 * PKCS #15 generation support
 * PKCS #11 module almost completely rewritten

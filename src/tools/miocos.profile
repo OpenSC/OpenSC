@@ -4,54 +4,84 @@
 CardInfo
 	Label		"OpenSC Card"
 	Manufacturer	"OpenSC Project"
-	MinPinLength	4
+	MinPinLength	1
 	MaxPinLength	8
 	PinEncoding	ascii-numeric
+	PinPadChar	0x00
 	PrKeyAccessFlags RSA 0x1D
-	PrKeyAccessFlags DSA 0x12
 
-	# This is the secure messaging key required for
-	# creating files in the MF
-	# Key		PRO 0x0001 "=TEST KEYTEST KEY"
-
-# Note: many commands use the short file ID (i.e. the lower 5 bits
-# of the FID) so you must be careful when picking FIDs for the
-# public key and PIN files.
-
-# Currently we do not support PIN files that can be updated
-# by CHV2. Far too messy.
-EF pinfile
-	FileID		0000
-	Structure	0x21	# GPK specific
-	RecordLength	8
-	Size		32
-	ACL		*=NEVER
-
-# Private key files.
-# GPK private key files will never let you read the private key
-# part, so it's okay to set READ=NONE. What's more, we need
-# read access so we're able to update the file.
-EF template-private-key
-	FileID		0006	# This is the base FileID
-	Structure	0x2C	# GPK specific
-	ACL		*=NEVER READ=NONE UPDATE=CHV2 WRITE=CHV2
-
-EF template-public-key
-	FileID		8000
+EF pinfile-chv1
+	Path		3F000000
 	Structure	transparent
+	Size		20
 	ACL		*=NONE
 
-# CVH1. 7 attempts for the PIN, and 3 for the PUK
-# Reference 0x8 means "PIN0 in the local EFsc" in GPK parlance
-PIN CHV1
-	File		pinfile
-	Reference	0x8
-	Attempts	7 3
+EF pinfile-chv2
+	Parent		PKCS15-AppDF
+	FileID		5002
+	Size		23
+	ACL		*=NONE
 
-# CVH2. 7 attempts for the PIN, and 3 for the PUK
-# Reference 0xA means "PIN2 in the local EFsc" in GPK parlance
+EF template-private-key-1
+	Parent		PKCS15-AppDF
+	FileID		4B01
+	Size		330
+	ACL		*=NONE CRYPTO=CHV1
+
+EF template-private-key-2
+	Parent		PKCS15-AppDF
+	FileID		4B02
+	Size		330
+	ACL		*=NONE CRYPTO=CHV2
+
+EF template-public-key-1
+	Parent		PKCS15-AppDF
+	FileID		5201
+	Structure	transparent
+	ACL		*=NONE READ=NONE
+
+EF template-public-key-2
+	Parent		PKCS15-AppDF
+	FileID		5202
+	Structure	transparent
+	ACL		*=NONE READ=NONE
+
+EF PKCS15-DIR
+	ACL		*=NEVER READ=NONE UPDATE=CHV1
+
+EF PKCS15-ODF
+	ACL		*=NEVER READ=NONE UPDATE=CHV1
+
+EF PKCS15-AODF
+	ACL		*=NEVER READ=NONE UPDATE=CHV1
+
+EF PKCS15-PrKDF
+	ACL		*=NEVER READ=NONE UPDATE=CHV1
+
+EF PKCS15-PuKDF
+	ACL		*=NEVER READ=NONE UPDATE=CHV1
+
+EF PKCS15-CDF
+	ACL		*=NEVER READ=NONE UPDATE=CHV1
+
+# CHV1. 3 attempts for the PIN, and 10 for the PUK
+PIN CHV1
+	File		pinfile-chv1
+	Reference	0x01
+	Attempts	3 10
+
+# CHV2. 3 attempts for the PIN, and 10 for the PUK
 PIN CHV2
-	File		pinfile
-	Reference	0xA
-	Attempts	7 3
-	Offset		16
+	File		pinfile-chv2
+	Reference	0x02
+	Attempts	3 10
+
+PrivateKey AuthKey
+	Reference	0x01
+	Index		1
+	File		template-private-key-1
+
+PrivateKey SignKey
+	Reference	0x02
+	Index		1
+	File		template-private-key-2

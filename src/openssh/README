@@ -1,14 +1,10 @@
-
-Steps for your OpenSSH pleasure:
+teps for your OpenSSH pleasure:
 
 - Download, compile and install openssl (http://www.openssl.org)
 - Download OpenSSH 3.0.2p1 (http://www.openssh.com)
 - Apply 'openssh-3.0.2p1-patch.diff' from this directory
 - Run autoconf and autoheader
 - Run configure with the argument '--with-opensc'
-- Change the hardcoded PIN to the one set on your card... =)
-  The line to modify can be found in file scard-libsc.c.
-  (This will be fixed in the future)
 - Compile and install
 
 - Extract a public key from your SmartCard in OpenSSH format
@@ -21,7 +17,9 @@ Steps for your OpenSSH pleasure:
 With luck you should be authenticated and ready to go. If it won't work,
 try enabling debug information with the '-d' switch.
 
-NOTE: ssh-agent should also work.
+NOTE: PIN code is not asked by ssh when connecting. If you haven't 
+authenticated for the private key when connecting with PIN code, 
+verify the PIN with e.g. pkcs15-crypt tool. 
 
 --
-Juha Yrjölä <juha.yrjola@iki.fi>
+Markku Degerholm <mdegerho@cc.hut.fi>

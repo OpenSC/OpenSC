@@ -28,15 +28,73 @@
 #include "pkcs15-init.h"
 #include "util.h"
 
+static int miocos_update_pin(struct sc_card *card, struct pin_info *info)
+{
+	u8		buffer[20], *p = buffer;
+	int		r;
+	size_t		len;
+
+	if (!info->attempt[1]) {
+		error("PUK code needed.");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	info->attempt[0] &= 0x0f;
+	*p++ = (info->attempt[0] << 8) | info->attempt[0];
+	*p++ = 0xFF;
+	memset(p, info->pkcs15.pad_char, 8);
+	strncpy((char *) p, info->secret[0], 8);
+	p += 8;
+	info->attempt[1] &= 0x0f;
+	*p++ = (info->attempt[1] << 8) | info->attempt[1];
+	*p++ = 0xFF;
+	strncpy((char *) p, info->secret[1], 8);
+	p += 8;
+	len = 20;
+
+	r = sc_update_binary(card, 0, buffer, len, 0);
+	if (r < 0)
+		return r;
+	return 0;
+}
+
+static int miocos_store_pin(struct sc_profile *profile, struct sc_card *card,
+			   struct pin_info *info)
+{
+	struct sc_file	*pinfile;
+	int		r;
+
+	sc_file_dup(&pinfile, info->file->file);
+
+	card->ctx->log_errors = 0;
+	r = sc_select_file(card, &pinfile->path, NULL);
+	card->ctx->log_errors = 1;
+	pinfile->type = SC_FILE_TYPE_INTERNAL_EF;
+	pinfile->ef_structure = 0;
+	if (r == SC_ERROR_FILE_NOT_FOUND) {
+		/* Now create the file */
+		if ((r = sc_pkcs15init_create_file(profile, pinfile)) < 0)
+			goto out;
+		/* The PIN EF is automatically selected */
+	} else if (r < 0)
+		goto out;
+
+	/* If messing with the PIN file requires any sort of
+	 * authentication, send it to the card now */
+	if ((r = sc_pkcs15init_authenticate(profile, pinfile, SC_AC_OP_UPDATE)) < 0)
+		goto out;
+
+	r = miocos_update_pin(card, info);
+
+out:	sc_file_free(pinfile);
+	return r;
+}
+
 /*
  * Initialize the Application DF and store the PINs
- *
  */
 static int miocos_init_app(struct sc_profile *profile, struct sc_card *card)
 {
-#if 0
 	struct pin_info	*pin1, *pin2;
-	int		lockit = 0;
 
 	pin1 = sc_profile_find_pin(profile, "CHV1");
 	pin2 = sc_profile_find_pin(profile, "CHV2");
@@ -44,36 +102,17 @@ static int miocos_init_app(struct sc_profile *profile, struct sc_card *card)
 		fprintf(stderr, "No CHV1 defined\n");
 		return 1;
 	}
-
-	/* XXX TODO:
-	 * if the CHV2 pin file is required to create files
-	 * in the application DF, create that file first */
-
 	/* Create the application DF */
-	if (do_create_file(profile, profile->df_info.file))
+	if (sc_pkcs15init_create_file(profile, profile->df_info.file))
 		return 1;
 
-	/* Store CHV2 */
-	lockit = 0;
 	if (pin2) {
-		if (gpk_store_pin(profile, card, pin2, &lockit))
+		if (miocos_store_pin(profile, card, pin2))
 			return 1;
-		/* If both PINs reside in the same file, don't lock
-		 * it yet. */
-		if (pin1->file != pin2->file && lockit) {
-			if (gpk_lock_pinfile(profile, card, pin2->file->file))
-				return 1;
-			lockit = 0;
-		}
 	}
+	if (miocos_store_pin(profile, card, pin1))
+		return 1;
 
-	/* Store CHV1 */
-	if (gpk_store_pin(profile, card, pin1, &lockit))
-		return 1;
-	
-	if (lockit && gpk_lock_pinfile(profile, card, pin2->file->file))
-		return 1;
-#endif
 	return 0;
 }
 
