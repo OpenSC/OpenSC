@@ -383,8 +383,6 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	DWORD active_proto, protocol = SCARD_PROTOCOL_ANY;
 	SCARDHANDLE card_handle;
 	LONG rv;
-	unsigned char attr[1];
-	DWORD attrlen;  
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	scconf_block **blocks, *conf_block = NULL;
@@ -452,8 +450,13 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	slot->active_protocol = pcsc_proto_to_opensc(active_proto);
 	pslot->pcsc_card = card_handle;
 
+	/* Assume that any other PC/SC implementation has SCardGetAttrib */
+#ifndef HAVE_PCSC_OLD
 	/* check for pinpad support */
 	if (try_ccid_pin_cmd) {
+		unsigned char attr[1];
+		DWORD attrlen;  
+
 		sc_debug(reader->ctx, "Testing for CCID pinpad support ... ");
 		attrlen = sizeof(attr);
 		rv = SCardGetAttrib(pslot->pcsc_card, IOCTL_SMARTCARD_VENDOR_VERIFY_PIN, attr, &attrlen);
@@ -466,6 +469,7 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 			PCSC_ERROR(reader->ctx, "SCardGetAttrib failed", rv)
 		}
 	}
+#endif
 	return 0;
 }
 
@@ -640,6 +644,7 @@ static int pcsc_finish(struct sc_context *ctx, void *prv_data)
 static int
 pcsc_pin_cmd(struct sc_reader *reader, sc_slot_info_t * slot, struct sc_pin_cmd_data *data)
 {
+	/* XXX: temporary */
 	if (slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
 		return ccid_pin_cmd(reader, slot, data);
 	} else {
