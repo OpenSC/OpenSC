@@ -74,8 +74,8 @@ static const struct sc_asn1_entry c_asn1_prk_dsa_attr[] = {
 };
 
 static const struct sc_asn1_entry c_asn1_prkey[] = {
-	{ "privateRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
-	{ "privateDSAKey", SC_ASN1_PKCS15_OBJECT,  2 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL },
+	{ "privateRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
+	{ "privateDSAKey", SC_ASN1_PKCS15_OBJECT,  2 | SC_ASN1_CTX | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
 	{ NULL }
 };		
 
@@ -142,15 +142,17 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
 	SC_TEST_RET(ctx, r, "ASN.1 decoding failed");
-	if (asn1_prkey[0].flags & SC_ASN1_PRESENT)
+	if (asn1_prkey[0].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PRKEY_RSA;
-	else if (asn1_prkey[1].flags & SC_ASN1_PRESENT) {
+	} else if (asn1_prkey[1].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PRKEY_DSA;
 		/* If the value was indirect-protected, mark the path */
 		if (asn1_dsakey_i_p_attr[0].flags & SC_ASN1_PRESENT)
 			info.path.type = SC_PATH_TYPE_PATH_PROT;
-	} else
-		SC_FUNC_RETURN(ctx, 0, SC_ERROR_INTERNAL);
+	} else {
+		sc_error(ctx, "Neither RSA or DSA key in PrKDF entry.\n");
+		SC_FUNC_RETURN(ctx, 0, SC_ERROR_INVALID_ASN1_OBJECT);
+	}
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
