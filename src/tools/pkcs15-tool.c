@@ -593,7 +593,11 @@ int learn_card(void)
 	r = stat(dir, &stbuf);
 	if (r) {
 		printf("No '%s' directory found, creating...\n", dir);
+#ifndef _WIN32
 		r = mkdir(dir, 0700);
+else
+		r = _mkdir(dir, 0700);
+#endif
 		if (r) {
 			perror("Directory creation failed");
 			return 1;
