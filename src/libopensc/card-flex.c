@@ -43,7 +43,7 @@ static struct {
       {	"3B:85:40:20:68:01:01:05:01",          /* 8k */
 	TYPE_CRYPTOFLEX },
       {	"3B:95:94:40:FF:63:01:01:02:01",       /* 16k */
-	TYPE_CRYPTOFLEX },
+	TYPE_CRYPTOFLEX|FLAG_KEYGEN },
       { "3B:95:18:40:FF:64:02:01:01:02",       /* 32K v4 */
 	TYPE_CRYPTOFLEX|FLAG_KEYGEN },
       {	"3B:95:18:40:FF:62:01:02:01:04",       /* 32K e-gate */
@@ -818,12 +818,53 @@ static int flex_get_default_key(struct sc_card *card,
 	return sc_hex_to_bin(key, data->key_data, &data->len);
 }
 
+/* Generate key on-card */
+static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genkey_info *data)
+{
+	struct sc_apdu apdu;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int r, p2;
+	
+	switch (data->key_bits) {
+	case  512:	p2 = 0x40; break;
+	case  768:	p2 = 0x60; break;
+	case 1024:	p2 = 0x80; break;
+	case 2048:	p2 = 0x00; break;
+	default:
+		error(card->ctx, "Illegal key length: %d\n", data->key_bits);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x46, 0x01, p2);
+	apdu.cla = 0xF0;
+	apdu.data = sbuf;
+	apdu.datalen = 4;
+	apdu.lc = 4;
+
+	/* Little endian representation of exponent */
+	sbuf[0] = data->exponent;
+	sbuf[1] = data->exponent >> 8;
+	sbuf[2] = data->exponent >> 16;
+	sbuf[3] = data->exponent >> 24;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	data->pubkey_len = apdu.resplen;
+	return 0;
+}
+
 static int flex_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
 	switch (cmd) {
 	case SC_CARDCTL_GET_DEFAULT_KEY:
 		return flex_get_default_key(card,
 				(struct sc_cardctl_default_key *) ptr);
+	case SC_CARDCTL_CRYPTOFLEX_GENERATE_KEY:
+		return flex_generate_key(card,
+				(struct sc_cardctl_cryptoflex_genkey_info *) ptr);
 	}
 
 	return SC_ERROR_NOT_SUPPORTED;

@@ -24,8 +24,11 @@
 #include <string.h>
 #include <sys/types.h>
 #include <opensc/opensc.h>
+#include <opensc/cardctl.h>
 #include "pkcs15-init.h"
 #include "profile.h"
+
+static void	invert_buf(u8 *dest, const u8 *src, size_t c);
 
 /*
  * Erase the card via rm -rf
@@ -188,6 +191,105 @@ cflex_new_file(struct sc_profile *profile, struct sc_card *card,
 
 	*out = file;
 	return 0;
+}
+
+/*
+ * Get the EF-pubkey corresponding to the EF-prkey
+ */
+int
+cflex_pubkey_file(struct sc_file **ret, struct sc_file *prkf, unsigned int size)
+{
+	struct sc_file	*pukf;
+
+	sc_file_dup(&pukf, prkf);
+	sc_file_clear_acl_entries(pukf, SC_AC_OP_READ);
+	sc_file_add_acl_entry(pukf, SC_AC_OP_READ, SC_AC_NONE, SC_AC_KEY_REF_NONE);
+	pukf->path.len -= 2;
+	sc_append_path_id(&pukf->path, (const u8 *) "\x10\x12", 2);
+	pukf->id = 0x1012;
+	pukf->size = size;
+
+	*ret = pukf;
+	return 0;
+}
+
+/*
+ * RSA key generation
+ */
+static int
+cflex_generate_key(struct sc_profile *profile, struct sc_card *card,
+		unsigned int index, unsigned int keybits,
+		sc_pkcs15_pubkey_t *pubkey,
+		struct sc_pkcs15_prkey_info *info)
+{
+	struct sc_cardctl_cryptoflex_genkey_info args;
+	struct sc_file	*prkf = NULL, *pukf = NULL;
+	unsigned char	raw_pubkey[256];
+	unsigned char	pinbuf[8];
+	size_t		pinlen;
+	int		r, delete_pukf = 0;
+
+	if ((r = cflex_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, index, &prkf)) < 0) 
+	 	goto failed;
+
+	switch (keybits) {
+	case  512: prkf->size = 166; break;
+	case  768: prkf->size = 246; break;
+	case 1024: prkf->size = 326; break;
+	case 2048: prkf->size = 646; break;
+	default:
+		profile->cbs->error("Unsupported key size %u\n", keybits);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	if ((r = cflex_pubkey_file(&pukf, prkf, prkf->size + 3)) < 0)
+		goto failed;
+
+	/* Get the CHV1 PIN */
+	pinlen = sizeof(pinbuf);
+	memset(pinbuf, 0, sizeof(pinbuf));
+	if ((r = sc_pkcs15init_get_secret(profile, card, SC_AC_CHV, 1, pinbuf, &pinlen)) < 0)
+		goto failed;
+
+	if ((r = sc_pkcs15init_create_file(profile, card, prkf)) < 0
+	 || (r = sc_pkcs15init_create_file(profile, card, pukf)) < 0)
+		goto failed;
+	delete_pukf = 1;
+
+	/* Present the PIN */
+	if ((r = sc_select_file(card, &pukf->path, NULL))
+	 || (r = sc_verify(card, SC_AC_CHV, 1, pinbuf, sizeof(pinbuf), NULL)) < 0)
+		goto failed;
+
+	memset(&args, 0, sizeof(args));
+	args.exponent = 0x10001;
+	args.key_bits = keybits;
+	r = sc_card_ctl(card, SC_CARDCTL_CRYPTOFLEX_GENERATE_KEY, &args);
+	if (r < 0)
+		goto failed;
+
+	/* extract public key */
+	pubkey->algorithm = SC_ALGORITHM_RSA;
+	pubkey->u.rsa.modulus.len   = keybits / 8;
+	pubkey->u.rsa.modulus.data  = malloc(keybits / 8);
+	pubkey->u.rsa.exponent.len  = 3;
+	pubkey->u.rsa.exponent.data = malloc(3);
+	memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);
+	if ((r = sc_select_file(card, &pukf->path, NULL)) < 0
+	 || (r = sc_read_binary(card, 4, raw_pubkey, pubkey->u.rsa.modulus.len, 0)) < 0)
+		goto failed;
+	invert_buf(pubkey->u.rsa.modulus.data, raw_pubkey, pubkey->u.rsa.modulus.len);
+
+	info->key_reference = 1;
+	info->path = prkf->path;
+
+failed:	if (delete_pukf)
+		sc_pkcs15init_rmdir(card, profile, pukf);
+	if (r < 0)
+		sc_pkcs15init_rmdir(card, profile, prkf);
+	sc_file_free(pukf);
+	sc_file_free(prkf);
+	return r;
 }
 
 static void invert_buf(u8 *dest, const u8 *src, size_t c)
@@ -372,13 +474,10 @@ cflex_new_key(struct sc_profile *profile, struct sc_card *card,
 		goto err;
 	info->path = keyfile->path;
 	info->modulus_length = rsa->modulus.len << 3;
-	sc_file_dup(&tmpfile, keyfile);
-	sc_file_clear_acl_entries(tmpfile, SC_AC_OP_READ);
-	sc_file_add_acl_entry(tmpfile, SC_AC_OP_READ, SC_AC_NONE, SC_AC_KEY_REF_NONE);
-	tmpfile->path.len -= 2;
-	sc_append_path_id(&tmpfile->path, (const u8 *) "\x10\x12", 2);
-	tmpfile->id = 0x1012;
-	tmpfile->size = pubsize;
+
+	if ((r = cflex_pubkey_file(&tmpfile, keyfile, pubsize)) < 0)
+		goto err;
+
 	printf("Updating RSA public key...\n");
 	r = sc_pkcs15init_update_file(profile, card, tmpfile, pub, pubsize);
 err:
@@ -393,4 +492,5 @@ struct sc_pkcs15init_operations sc_pkcs15init_cflex_operations = {
 	cflex_new_pin,
 	cflex_new_key,
 	cflex_new_file,
+	cflex_generate_key,
 };

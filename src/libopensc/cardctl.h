@@ -47,6 +47,7 @@ enum {
 	 * Cryptoflex specific calls
 	 */
 	SC_CARDCTL_CRYPTOFLEX_BASE = _CTL_PREFIX('C', 'F', 'X'),
+	SC_CARDCTL_CRYPTOFLEX_GENERATE_KEY,
 
 	/*
 	 * MioCOS specific calls
@@ -149,6 +150,16 @@ struct sc_cardctl_etoken_genkey_info {
 	unsigned int	key_id;
 	unsigned int	key_bits;
 	unsigned short	fid;
+};
+
+/*
+ * Cryptoflex info
+ */
+struct sc_cardctl_cryptoflex_genkey_info {
+	unsigned int	key_bits;
+	unsigned long	exponent;
+	unsigned char *	pubkey;
+	unsigned int	pubkey_len;
 };
 
 #ifdef  __cplusplus
