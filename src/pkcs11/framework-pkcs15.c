@@ -35,9 +35,9 @@ struct pkcs15_slot_data {
 		unsigned int	len;
 	}			pin[2];
 };
-#define slot_data(p)		((struct pkcs15_slot_data *) p)
+#define slot_data(p)		((struct pkcs15_slot_data *) (p))
 #define slot_data_auth(p)	(slot_data(p)->auth_obj)
-#define slot_data_pin_info(p)	(slot_data_auth(p)? \
+#define slot_data_pin_info(p)	(((p) && slot_data_auth(p))? \
 		(struct sc_pkcs15_pin_info *) slot_data_auth(p)->data : NULL)
 
 #define check_attribute_buffer(attr,size)	\
@@ -1809,7 +1809,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 	struct pkcs15_prkey_object *prkey;
 	struct pkcs15_slot_data *data = slot_data(ses->slot->fw_data);
 	u8	decrypted[256];
-	int	buff_too_small, rv;
+	int	buff_too_small, rv, flags = 0;
 
 	sc_debug(context, "Initiating unwrap/decryption.\n");
 
@@ -1823,11 +1823,20 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 	if (prkey == NULL)
 		return CKR_KEY_FUNCTION_NOT_PERMITTED;
 
-	if (pMechanism->mechanism != CKM_RSA_PKCS)
-		return CKR_MECHANISM_INVALID;
+	/* Select the proper padding mechanism */
+	switch (pMechanism->mechanism) {
+	case CKM_RSA_PKCS:
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1; 
+		break;
+	case CKM_RSA_X_509:
+		flags |= SC_ALGORITHM_RSA_RAW;
+		break;
+	default:
+		return CKR_MECHANISM_INVALID;		
+	}
 
 	rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj,
-				 SC_ALGORITHM_RSA_PAD_PKCS1,
+				 flags,
 				 pEncryptedData, ulEncryptedDataLen,
 				 decrypted, sizeof(decrypted));
 
@@ -1842,7 +1851,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 		rv = revalidate_pin(data, ses);
 		if (rv == 0)
 			rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj,
-						SC_ALGORITHM_RSA_PAD_PKCS1,
+						flags,
 						pEncryptedData, ulEncryptedDataLen,
 						decrypted, sizeof(decrypted));
 
