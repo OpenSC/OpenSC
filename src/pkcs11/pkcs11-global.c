@@ -22,6 +22,7 @@
 #include "sc-pkcs11.h"
 
 #include <sc-log.h>
+#include <string.h>
 
 struct sc_context *context = NULL;
 struct sc_pkcs11_pool session_pool;

@@ -22,6 +22,7 @@
 #include <malloc.h>
 #include "sc-pkcs11.h"
 #include <sc-log.h>
+#include <string.h>
 
 #define DUMP_TEMPLATE_MAX	32
 

@@ -20,6 +20,7 @@
 
 #include "sc-internal.h"
 #include "sc-log.h"
+#include <string.h>
 
 static const char *tcos_atrs[] = {
 	"3B:BA:96:00:81:31:86:5D:00:64:05:60:02:03:31:80:90:00:66",

@@ -23,6 +23,7 @@
 #include <malloc.h>
 #include "sc-pkcs11.h"
 #include <sc-log.h>
+#include <string.h>
 
 CK_RV C_OpenSession(CK_SLOT_ID            slotID,        /* the slot's ID */
 		    CK_FLAGS              flags,         /* defined in CK_SESSION_INFO */

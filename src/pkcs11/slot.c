@@ -20,6 +20,7 @@
 
 #include "sc-pkcs11.h"
 #include <sc-log.h>
+#include <string.h>
 
 static struct sc_pkcs11_framework_ops *frameworks[] = {
         &framework_pkcs15,

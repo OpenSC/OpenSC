@@ -23,6 +23,7 @@
 #include "sc-asn1.h"
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 int sc_check_sw(struct sc_card *card, int sw1, int sw2)
 {

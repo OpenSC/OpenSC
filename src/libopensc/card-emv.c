@@ -20,6 +20,7 @@
 
 #include "sc-internal.h"
 #include "sc-log.h"
+#include <string.h>
 
 static struct sc_card_operations emv_ops;
 static const struct sc_card_driver emv_drv = {

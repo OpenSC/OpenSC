@@ -14,6 +14,7 @@
 
 #include <opensc.h>
 #include <opensc-pkcs15.h>
+#include <string.h>
 
 int quiet = 0;
 char *opt_outfile = NULL;

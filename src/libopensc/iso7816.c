@@ -24,6 +24,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <string.h>
 
 const static struct sc_card_error iso7816_errors[] = {
 	{ 0x6200, SC_ERROR_UNKNOWN_REPLY,	"State of non-volatile memory unchanged" },

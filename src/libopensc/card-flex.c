@@ -21,6 +21,7 @@
 #include "sc-internal.h"
 #include "sc-log.h"
 #include <stdlib.h>
+#include <string.h>
 
 static const char *flex_atrs[] = {
 	"3B:95:94:40:FF:63:01:01:02:01", /* Cryptoflex 16k */
