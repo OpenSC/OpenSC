@@ -3,7 +3,7 @@ libdir  = @libdir@/opensc
 MAINTAINERCLEANFILES = Makefile.in
 
 EXTRA_DIST = Makefile.mak engine_pkcs11.def $(engine_pkcs11_la_SOURCES) \
-	     $(engine_opensc_la_SOURCES) test_engine.s
+	     $(engine_opensc_la_SOURCES) test_engine.sh
 
 if HAVE_ENGINE
 lib_LTLIBRARIES=engine_opensc.la engine_pkcs11.la
