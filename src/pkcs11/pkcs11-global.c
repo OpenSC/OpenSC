@@ -72,8 +72,10 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pReserved != NULL)
-		return CKR_ARGUMENTS_BAD;
+	if (pReserved != NULL) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	debug(context, "Shutting down Cryptoki\n");
 	for (i=0; i<context->reader_count; i++)
@@ -81,7 +83,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 
 	sc_release_context(context);
 	context = NULL;
-	sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	sc_pkcs11_free_lock();
 
         return CKR_OK;
@@ -199,8 +201,10 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	rv = slot_get_slot(slotID, &slot);
 	if (rv == CKR_OK)
 		rv = card_detect(slot->reader);
-	if (rv == CKR_TOKEN_NOT_PRESENT)
-		return CKR_OK;
+	if (rv == CKR_TOKEN_NOT_PRESENT) {
+		rv = CKR_OK;
+		goto out;
+	}
 
 	if (rv == CKR_OK)
 		memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
@@ -302,8 +306,10 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 		}
 	}
 
-	if (slot->card->framework->init_token == NULL)
-		return CKR_FUNCTION_NOT_SUPPORTED;
+	if (slot->card->framework->init_token == NULL) {
+		rv = CKR_FUNCTION_NOT_SUPPORTED;
+		goto out;
+	}
 	rv = slot->card->framework->init_token(slot->card,
 				 slot->fw_data, pPin, ulPinLen, pLabel);
 
