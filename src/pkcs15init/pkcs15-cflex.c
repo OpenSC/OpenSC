@@ -225,7 +225,7 @@ cflex_generate_key(struct sc_profile *profile, struct sc_card *card,
 	struct sc_cardctl_cryptoflex_genkey_info args;
 	struct sc_file	*prkf = NULL, *pukf = NULL;
 	unsigned char	raw_pubkey[256];
-	unsigned char	pinbuf[8];
+	unsigned char	pinbuf[12];
 	size_t		pinlen;
 	int		r, delete_pukf = 0;
 
@@ -258,7 +258,7 @@ cflex_generate_key(struct sc_profile *profile, struct sc_card *card,
 
 	/* Present the PIN */
 	if ((r = sc_select_file(card, &pukf->path, NULL))
-	 || (r = sc_verify(card, SC_AC_CHV, 1, pinbuf, sizeof(pinbuf), NULL)) < 0)
+	 || (r = sc_verify(card, SC_AC_CHV, 1, pinbuf, pinlen, NULL)) < 0)
 		goto failed;
 
 	memset(&args, 0, sizeof(args));
