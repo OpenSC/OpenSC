@@ -37,6 +37,9 @@ const char * acl_to_str(const struct sc_acl_entry *e);
 void warn(const char *fmt, ...);
 void error(const char *fmt, ...);
 void fatal(const char *fmt, ...);
+/* All singing all dancing card connect routine */
+int connect_card(struct sc_context *, struct sc_card **,
+		int reader_id, int slot_id, int wait, int quiet);
 
 #ifdef  __cplusplus
 }

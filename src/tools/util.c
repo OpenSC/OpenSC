@@ -7,6 +7,79 @@
 #include <ctype.h>
 #include "util.h"
 
+int connect_card(struct sc_context *ctx, struct sc_card **cardp,
+		 int reader_id, int slot_id, int wait, int quiet)
+{
+	struct sc_reader *reader;
+	int r;
+
+	if (wait) {
+		struct sc_reader *readers[16];
+		int slots[16];
+		int i, j, k, found;
+		unsigned int event;
+
+		for (i = k = 0; i < ctx->reader_count; i++) {
+			if (reader_id >= 0 && reader_id != i)
+				continue;
+			reader = ctx->reader[i];
+			for (j = 0; j < reader->slot_count; j++, k++) {
+				readers[k] = reader;
+				slots[k] = j;
+			}
+		}
+
+		printf("Waiting for card to be inserted...\n");
+		r = sc_wait_for_event(readers, slots, k,
+				SC_EVENT_CARD_INSERTED,
+				&found, &event, -1);
+		if (r < 0) {
+			fprintf(stderr,
+				"Error while waiting for card: %s\n",
+				sc_strerror(r));
+			return 3;
+		}
+
+		reader = readers[found];
+		slot_id = slots[found];
+	} else {
+		if (reader_id < 0)
+			reader_id = 0;
+		if (ctx->reader_count) {
+			fprintf(stderr,
+				"No smart card readers configured.\n");
+			return 1;
+		}
+		if (reader_id >= ctx->reader_count) {
+			fprintf(stderr,
+				"Illegal reader number. "
+				"Only %d reader(s) configured.\n",
+				ctx->reader_count);
+			return 1;
+		}
+
+		reader = ctx->reader[reader_id];
+		slot_id = 0;
+		if (sc_detect_card_presence(reader, 0) != 1) {
+			fprintf(stderr, "Card not present.\n");
+			return 3;
+		}
+	}
+
+	if (!quiet) {
+		fprintf(stderr, "Connecting to card in reader %s...\n",
+			reader->name);
+	}
+	if ((r = sc_connect_card(reader, slot_id, cardp)) < 0) {
+		fprintf(stderr,
+			"Failed to connect to card: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+
+	return 0;
+}
+
 void print_binary(FILE *f, const u8 *buf, int count)
 {
 	int i;
