@@ -226,7 +226,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 			args->so_pin, args->so_pin_len,
 			args->so_puk, args->so_puk_len);
 	if (r < 0)
-		return 1;
+		return r;
 
 	/* Store the PKCS15 information on the card
 	 * We cannot use sc_pkcs15_create() because it makes
