@@ -327,7 +327,7 @@ static int get_certs_from_file(struct sc_pkcs15_card *card,
 			       struct sc_file *file)
 {
 	int r, taglen, left;
-	u8 buf[MAX_BUFFER_SIZE];
+	u8 buf[2048];
 	const u8 *tag, *p;
 
 	r = sc_select_file(card->card, file, &file->path,
