@@ -68,6 +68,11 @@ enum {
 struct gpk_private_data {
 	int		variant;
 
+	/* The GPK usually do file offsets in multiples of
+	 * 4 bytes. This can be customized however. We
+	 * should really query for this during gpk_init */
+	unsigned int	offset_shift;
+
 	/* access control bits of file most recently selected */
 	unsigned short int	ac[3];
 
@@ -106,9 +111,9 @@ static struct atrinfo {
 /*
  * Driver and card ops structures
  */
-static struct sc_card_operations	gpk_ops;
+static struct sc_card_operations	gpk_ops, *iso_ops;
 static const struct sc_card_driver gpk_drv = {
-	"Gemplus GPK 4000 driver",
+	"Gemplus GPK driver",
 	"gpk",
 	&gpk_ops
 };
@@ -155,6 +160,7 @@ gpk_init(struct sc_card *card)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(priv, 0, sizeof(*priv));
 	priv->variant = ai->variant;
+	priv->offset_shift = 2;
 	card->cla = 0;
 
 	return 0;
@@ -605,6 +611,40 @@ done:
 	if (locked)
 		sc_unlock(card);
 	return r;
+}
+
+/*
+ * GPK versions of {read,write,update}_binary functions.
+ * Required because by default the GPKs do word offsets
+ */
+static int
+gpk_read_binary(struct sc_card *card, unsigned int offset,
+		u8 *buf, size_t count, unsigned long flags)
+{
+	struct gpk_private_data *priv = DRVDATA(card);
+
+	return iso_ops->read_binary(card, offset >> priv->offset_shift,
+			buf, count, flags);
+}
+
+static int
+gpk_write_binary(struct sc_card *card, unsigned int offset,
+		const u8 *buf, size_t count, unsigned long flags)
+{
+	struct gpk_private_data *priv = DRVDATA(card);
+
+	return iso_ops->write_binary(card, offset >> priv->offset_shift,
+			buf, count, flags);
+}
+
+static int
+gpk_update_binary(struct sc_card *card, unsigned int offset,
+		const u8 *buf, size_t count, unsigned long flags)
+{
+	struct gpk_private_data *priv = DRVDATA(card);
+
+	return iso_ops->update_binary(card, offset >> priv->offset_shift,
+			buf, count, flags);
 }
 
 /*
@@ -1571,14 +1611,18 @@ sc_get_driver()
 {
 	if (gpk_ops.match_card == NULL) {
 		const struct sc_card_driver *iso_drv;
-			
+
 		iso_drv = sc_get_iso7816_driver();
-		gpk_ops = *iso_drv->ops;
+		iso_ops = iso_drv->ops;
+		gpk_ops = *iso_ops;
 
 		gpk_ops.match_card	= gpk_match;
 		gpk_ops.init		= gpk_init;
 		gpk_ops.finish		= gpk_finish;
 		gpk_ops.select_file	= gpk_select_file;
+		gpk_ops.read_binary	= gpk_read_binary;
+		gpk_ops.write_binary	= gpk_write_binary;
+		gpk_ops.update_binary	= gpk_update_binary;
 		gpk_ops.verify		= gpk_verify;
 		gpk_ops.create_file	= gpk_create_file;
 		/* gpk_ops.check_sw	= gpk_check_sw; */
