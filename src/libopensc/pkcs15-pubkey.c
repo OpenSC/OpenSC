@@ -173,7 +173,7 @@ static struct sc_asn1_entry c_asn1_dsa_pub_coefficients[5] = {
 };
 
 int
-sc_pkcs15_parse_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key)
+sc_pkcs15_decode_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key)
 {
 	struct sc_asn1_entry asn1_public_key[2];
 	struct sc_asn1_entry asn1_rsa_coeff[3];
@@ -215,6 +215,35 @@ sc_pkcs15_encode_pubkey_rsa(struct sc_context *ctx,
 
 	r = sc_asn1_encode(ctx, asn1_public_key, buf, buflen);
 	SC_TEST_RET(ctx, r, "ASN.1 encoding failed");
+
+	return 0;
+}
+
+int
+sc_pkcs15_decode_pubkey_dsa(struct sc_context *ctx,
+		struct sc_pkcs15_pubkey_dsa *key,
+		const u8 *buf, size_t buflen)
+{
+	struct sc_asn1_entry asn1_public_key[2];
+	struct sc_asn1_entry asn1_dsa_pub_coeff[3];
+	int r;
+	
+	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
+	sc_copy_asn1_entry(c_asn1_dsa_pub_coefficients, asn1_dsa_pub_coeff);
+
+	sc_format_asn1_entry(asn1_public_key + 0, asn1_dsa_pub_coeff, NULL, 1);
+	sc_format_asn1_entry(asn1_dsa_pub_coeff + 0,
+				&key->pub.data, &key->pub.len, 0);
+	sc_format_asn1_entry(asn1_dsa_pub_coeff + 1,
+				&key->g.data, &key->g.len, 0);
+	sc_format_asn1_entry(asn1_dsa_pub_coeff + 2,
+				&key->p.data, &key->p.len, 0);
+	sc_format_asn1_entry(asn1_dsa_pub_coeff + 3,
+				&key->q.data, &key->q.len, 0);
+
+	r = sc_asn1_decode(ctx, asn1_public_key, buf, buflen,
+				NULL, NULL);
+	SC_TEST_RET(ctx, r, "ASN.1 decoding failed");
 
 	return 0;
 }
@@ -272,7 +301,6 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 			const struct sc_pkcs15_pubkey_info *info,
 			struct sc_pkcs15_pubkey_rsa **out)
 {
-	struct sc_file *file;
 	struct sc_pkcs15_pubkey_rsa *pubkey;
 	u8	*data;
 	size_t	len;
@@ -280,31 +308,13 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 
 	assert(p15card != NULL && info != NULL && out != NULL);
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
-	r = sc_pkcs15_read_cached_file(p15card, &info->path, &data, &len);
-	if (r) {
-		r = sc_lock(p15card->card);
-		SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
-		r = sc_select_file(p15card->card, &info->path, &file);
-		if (r) {
-			sc_unlock(p15card->card);
-			return r;
-		}
-		len = file->size;
-		sc_file_free(file);
-		data = malloc(len);
-		if (data == NULL) {
-			sc_unlock(p15card->card);
-			return SC_ERROR_OUT_OF_MEMORY;
-		}
-		r = sc_read_binary(p15card->card, 0, data, len, 0);
-		if (r < 0) {
-			sc_unlock(p15card->card);
-			free(data);
-			return r;
-		}
-		len = len;
-		sc_unlock(p15card->card);
+
+	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
+	if (r < 0) {
+		error(p15card->card->ctx, "Failed to read public key file.");
+		return r;
 	}
+
 	pubkey = malloc(sizeof(struct sc_pkcs15_pubkey_rsa));
 	if (pubkey == NULL) {
 		free(data);
@@ -313,7 +323,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 	memset(pubkey, 0, sizeof(struct sc_pkcs15_pubkey_rsa));
 	pubkey->data.value = data;
 	pubkey->data.len = len;
-	if (sc_pkcs15_parse_pubkey_rsa(p15card->card->ctx, pubkey)) {
+	if (sc_pkcs15_decode_pubkey_rsa(p15card->card->ctx, pubkey)) {
 		free(data);
 		free(pubkey);
 		return SC_ERROR_INVALID_ASN1_OBJECT;
