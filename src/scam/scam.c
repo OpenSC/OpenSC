@@ -28,21 +28,16 @@
 #include <string.h>
 #include <ctype.h>
 #include "scam.h"
-#ifdef ATR_SUPPORT
-#include <opensc/opensc.h>
-#endif
 
 #define DIM(v)		(sizeof(v)/(sizeof((v)[0])))
 
 struct scam_framework_ops *scam_frameworks[] =
 {
 #ifdef HAVE_OPENSSL
+	&scam_fw_p15_eid,
 #ifdef HAVE_LDAP
-#if 0	/* Disabled until it works */
 	&scam_fw_p15_ldap,
 #endif
-#endif
-	&scam_fw_p15_eid,
 #endif
 	NULL
 };
@@ -74,95 +69,6 @@ void scam_parse_parameters(scam_context * sctx, int argc, const char **argv)
 		++argv;
 	}
 }
-
-#ifdef ATR_SUPPORT
-const char *scam_get_atr(unsigned int readernum)
-{
-#define SCAM_MAX_ATR_LEN (SC_MAX_ATR_SIZE * 3)
-	static char atr[SCAM_MAX_ATR_LEN];
-	struct sc_context *ctx = NULL;
-	struct sc_card *card = NULL;
-	int r, i, c = 0;
-
-	memset(atr, 0, SCAM_MAX_ATR_LEN);
-	r = sc_establish_context(&ctx, "scam");
-	if (r) {
-		return NULL;
-	}
-	if (readernum >= ctx->reader_count || readernum < 0) {
-		sc_release_context(ctx);
-		return NULL;
-	}
-	if (sc_detect_card_presence(ctx->reader[readernum], 0) <= 0) {
-		sc_release_context(ctx);
-		return NULL;
-	}
-	r = sc_connect_card(ctx->reader[readernum], 0, &card);
-	if (r) {
-		sc_release_context(ctx);
-		return NULL;
-	}
-	for (i = 0; i < card->atr_len; i++) {
-		unsigned char un = card->atr[i] >> 4;
-		unsigned char ln = card->atr[i] - un * 0x10;
-
-		if (un < 10) {
-			atr[c] = '0' + un;
-		} else {
-			atr[c] = 'a' + (un - 10);
-		}
-		c++;
-		if (ln < 10) {
-			atr[c] = '0' + ln;
-		} else {
-			atr[c] = 'a' + (ln - 10);
-		}
-		c++;
-		atr[c] = ':';
-		c++;
-	}
-	atr[c] = 0;
-	sc_disconnect_card(card, 0);
-	sc_release_context(ctx);
-	return &atr[0];
-}
-
-/* Strip of colons from ATR strings and compare them */
-
-static int compareatr(const char *a1, const char *a2)
-{
-	char *atr1 = NULL, *atr2 = NULL;
-	int i, ret = -1;
-
-	if (!a1 || !a2)
-		return -1;
-	atr1 = malloc(strlen(a1) + 1);
-	atr2 = malloc(strlen(a2) + 1);
-	if (!atr1 || !atr2) {
-		if (atr1)
-			free(atr1);
-		if (atr2)
-			free(atr2);
-		return -1;
-	}
-	memset(atr1, 0, strlen(a1) + 1);
-	memset(atr2, 0, strlen(a2) + 1);
-	for (i = 0; i < strlen(a1); i++) {
-		if (a1[i] != ':') {
-			atr1[i] = tolower(a1[i]);
-		}
-	}
-	for (i = 0; i < strlen(a2); i++) {
-		if (a2[i] != ':') {
-			atr2[i] = tolower(a2[i]);
-		}
-	}
-	ret = strcmp(atr1, atr2);
-	free(atr1);
-	free(atr2);
-	return ret;
-}
-#endif
 
 int scam_select_by_name(const char *method)
 {
