@@ -92,9 +92,9 @@ const char *option_help[] = {
 	"Specify the type of object (e.g. cert, privkey, pubkey)",
 	"Specify the id of the object",
 	"Specify the label of the object",
+	"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
 	"Specify number of the slot to use",
 	"Specify label of the slot to use",
-	"Set the CKA_ID of an object, >args>= the (new) CKA_ID",
 	"Specify the input file",
 	"Specify the output file",
 	"Specify the module to load",
@@ -119,6 +119,7 @@ static CK_OBJECT_CLASS	opt_object_class = -1;
 static CK_BYTE		opt_object_id[100], new_object_id[100];
 static size_t		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
+static char *		opt_pin = NULL;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -140,6 +141,7 @@ static void		list_slots(void);
 static void		show_token(CK_SLOT_ID);
 static void		list_mechs(CK_SLOT_ID);
 static void		list_objects(CK_SESSION_HANDLE);
+static int		login(CK_SESSION_HANDLE);
 static int		change_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE, int);
@@ -183,7 +185,6 @@ main(int argc, char * const argv[])
 {
 	CK_SESSION_HANDLE session = CK_INVALID_HANDLE;
 	CK_OBJECT_HANDLE object = CK_INVALID_HANDLE;
-	char *opt_pin = NULL;
 	int err = 0, c, long_optind = 0;
 	int do_show_info = 0;
 	int do_list_slots = 0;
@@ -418,34 +419,11 @@ main(int argc, char * const argv[])
 		return change_pin(opt_slot, session);
 
 	if (opt_login || opt_pin) {
-		char		*pin = NULL;
-		CK_TOKEN_INFO	info;
-
-		get_token_info(opt_slot, &info);
-
-		/* Identify which pin to enter */
-
-		if (info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) {
-			if (opt_pin)
-				pin = opt_pin;
-		} else
-		if (info.flags & CKF_LOGIN_REQUIRED) {
-			if (opt_pin == NULL)
-				pin = getpass("Please enter PIN: ");
-			else
-				pin = opt_pin;
-			if (!pin || !*pin)
-				return 1;
-		} else {
-			goto skip_login;
-		}
-		rv = p11->C_Login(session, CKU_USER, (CK_UTF8CHAR *) pin,
-			pin == NULL ? 0 : strlen(pin));
-		if (rv != CKR_OK)
-			p11_fatal("C_Login", rv);
+		int r = login(session);
+		if (r != 0)
+			return r;
 	}
 
-skip_login:
 	if (do_sign) {
 		if (!find_object(session, CKO_PRIVATE_KEY, &object, NULL, 0, 0))
 			fatal("Private key not found");
@@ -495,7 +473,6 @@ end:
 
 	return err;
 }
-
 void
 show_cryptoki_info(void)
 {
@@ -584,6 +561,8 @@ show_token(CK_SLOT_ID slot)
 				sizeof(info.model)));
 	printf("  token flags:   %s\n",
 			p11_token_info_flags(info.flags));
+	printf("  serial num  :  %s\n", p11_utf8_to_local(info.serialNumber,
+			sizeof(info.serialNumber)));
 }
 
 void
@@ -646,6 +625,38 @@ list_objects(CK_SESSION_HANDLE sess)
 		show_object(sess, object);
 	}
 	p11->C_FindObjectsFinal(sess);
+}
+
+static int login(CK_SESSION_HANDLE session)
+ {
+	char		*pin = NULL;
+	CK_TOKEN_INFO	info;
+	CK_RV		rv;
+
+	get_token_info(opt_slot, &info);
+
+	/* Identify which pin to enter */
+
+	if (info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) {
+		if (opt_pin)
+			pin = opt_pin;
+	} else
+	if (info.flags & CKF_LOGIN_REQUIRED) {
+		if (opt_pin == NULL)
+			pin = getpass("Please enter PIN: ");
+		else
+			pin = opt_pin;
+		if (!pin || !*pin)
+			return 1;
+	} else {
+		return 0;
+	}
+	rv = p11->C_Login(session, CKU_USER, (CK_UTF8CHAR *) pin,
+		pin == NULL ? 0 : strlen(pin));
+	if (rv != CKR_OK)
+		p11_fatal("C_Login", rv);
+
+	return 0;
 }
 
 int
@@ -2340,6 +2351,8 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	};
 	FILE			*f;
 
+	printf("\n*** We allready opened a session and logged in ***\n");
+
 	get_mechanisms(slot, &mech_type, &num_mechs);
 	for (i = 0; i < num_mechs; i++) {
 		if (mech_type[i] == CKM_RSA_PKCS_KEY_PAIR_GEN)
@@ -2415,8 +2428,9 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (rv != CKR_OK)
 		p11_fatal("C_Verify", rv);
 
-	printf("\n*** Signing the certificate request ***\n");
 	/* Sign the certificate request */
+
+	printf("\n*** Signing the certificate request ***\n");
 
 	data = md5_and_digestinfo;
 	data_len = 20;
@@ -2427,13 +2441,45 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (rv != CKR_OK)
 		p11_fatal("C_Sign", rv);
 
-	printf("\n*** In real life, the cert req should be sent to the CA ***\n");
-
 	printf("\n*** Changing the CKA_LABEL, CKA_ID and CKA_SUBJECT of the public key ***\n");
 
 	rv = p11->C_SetAttributeValue(session, pub_key, attribs, 3);
 	if (rv != CKR_OK)
 		p11_fatal("C_SetAttributeValue", rv);
+
+	printf("\n*** Logging off and releasing pkcs11 lib ***\n");
+
+	rv = p11->C_CloseAllSessions(slot);
+	if (rv != CKR_OK)
+		p11_fatal("CloseAllSessions", rv);
+
+	rv = p11->C_Finalize(NULL);
+	if (rv != CKR_OK)
+		p11_fatal("Finalize", rv);
+
+	C_UnloadModule(module);
+
+	/* Now we assume the user turns of her PC and comes back tomorrow to see
+	 * if here cert is allready made and to install it (as is done next) */
+
+	printf("\n*** In real life, the cert req should now be sent to the CA ***\n");
+
+	printf("\n*** Loading the pkcs11 lib, opening a session and logging in ***\n");
+
+	module = C_LoadModule(opt_module, &p11);
+	if (module == NULL)
+		fatal("Failed to load pkcs11 module");
+
+	rv = p11->C_Initialize(NULL);
+	if (rv != CKR_OK)
+		p11_fatal("C_Initialize", rv);
+
+	rv = p11->C_OpenSession(opt_slot, CKF_SERIAL_SESSION| CKF_RW_SESSION,
+			NULL, NULL, &session);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+
+	login(session);
 
 	printf("\n*** Put a cert on the card (NOTE: doesn't correspond with the key!) ***\n");
 
