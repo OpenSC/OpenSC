@@ -287,7 +287,8 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	if (!prkey->native)
 		return SC_ERROR_EXTRACTABLE_KEY;
 
-	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER))) {
+	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER|
+	                      SC_PKCS15_PRKEY_USAGE_NONREPUDIATION))) {
 		error(ctx, "This key cannot be used for signing\n");
 		return SC_ERROR_NOT_ALLOWED;
 	}
