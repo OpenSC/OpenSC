@@ -71,11 +71,41 @@ app default {
 	#
 	# card_drivers = internal, customcos;
 
+	# Card driver configuration blocks. For card drivers loaded
+	# from an external shared library/DLL, you need to specify
+	# the path name of the module, and the name of the constructor
+	# function.
+	# WARNING: this is not implemented yet.
+	#
+	# For all drivers, you can specify ATRs of cards that
+	# should be handled by this driver (in addition to the
+	# list of compiled-in ATRs). To do so, specify
+	#
+	# card_driver foo {
+	#	atr = 00:11:22:33:44;
+	#	atr = 55:66:77:88:99:aa:bb;
+	# }
+	#
+	# The card driver names are
+	#  flex		Cryptoflex/Multiflex
+	#  setcos	Setec
+	#  etoken	Aladdin eToken
+	#  gpk		GPK 4K/8K/16K
+	#  mcrd		MICARDO 2
+	#  miocos	MioCOS 1.1
+	#  tcos		TCOS 2.0
+	#  emv		EMV compatible cards
+
 	# card_driver customcos {
 		# The location of the driver library
 		#
 		# module = /usr/lib/opensc/drivers/card_customcos.so
 	# }
+
+	# GPK card driver
+	card_driver gpk {
+		# atr = 00:11:22;
+	}
 
 	# Force using specific card driver
 	#
