@@ -48,7 +48,7 @@ static const struct app_entry * find_app_entry(const u8 * aid, size_t aid_len)
 	return NULL;
 }
 
-const struct sc_app_info * find_pkcs15_app(struct sc_card *card)
+const struct sc_app_info * sc_find_pkcs15_app(struct sc_card *card)
 {
 	const struct sc_app_info *app = NULL;
 	unsigned int i;
