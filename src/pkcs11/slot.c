@@ -295,11 +295,12 @@ CK_RV slot_token_removed(int id)
 		slot->card->num_slots--;
 	}
 
-	/* Zap everything else except for the slot_info
-	 * (it contains the reader name, for instance) */
+	/* Zap everything else. Restore the slot_info afterwards (it contains the reader
+	 * name, for instance) but clear its flags */
 	saved_slot_info = slot->slot_info;
 	memset(slot, 0, sizeof(*slot));
 	slot->slot_info = saved_slot_info;
+	slot->slot_info.flags = 0;
 	slot->login_user = -1;
 
 	if (token_was_present)
