@@ -65,7 +65,7 @@ const char *scam_get_atr(unsigned int readernum)
 	int r, i, c = 0;
 
 	memset(atr, 0, SCAM_MAX_ATR_LEN);
-	r = sc_establish_context(&ctx);
+	r = sc_establish_context(&ctx, "scam");
 	if (r) {
 		return NULL;
 	}

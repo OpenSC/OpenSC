@@ -12,7 +12,7 @@ PCSC_FLAGS = @CFLAGS_PCSC@
 PCSC_LIB = @LIBPCSC@
 endif
 
-INCLUDES = $(PCSC_FLAGS) -I../scconf
+INCLUDES = $(PCSC_FLAGS)
 
 bin_SCRIPTS = opensc-config
 

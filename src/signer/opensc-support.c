@@ -59,7 +59,7 @@ static int init_pkcs15(PluginInstance *inst)
 {
         int r;
         
-        r = sc_establish_context(&inst->ctx);
+        r = sc_establish_context(&inst->ctx, "opensc-signer");
         if (r)
                 return r;
         inst->reader_id = 0;
@@ -84,7 +84,7 @@ static void close_pkcs15(PluginInstance *inst)
                 inst->card = NULL;
         }
         if (inst->ctx) {
-                sc_destroy_context(inst->ctx);
+                sc_release_context(inst->ctx);
                 inst->ctx = NULL;
         }
 }

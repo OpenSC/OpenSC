@@ -109,7 +109,7 @@ int main(int argc, char **argv)
 			}
 		}
 	}
-	lctx = scldap_parse_parameters(SCLDAP_CONFIG);
+	lctx = scldap_parse_parameters(SCLDAP_CONF_PATH);
 	if (!lctx) {
 		return 1;
 	}

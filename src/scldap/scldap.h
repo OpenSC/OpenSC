@@ -28,14 +28,6 @@ extern "C" {
 
 #include <scconf.h>
 
-#ifndef SCLDAP_ETC_PATH_CUSTOM
-#define SCLDAP_ETC_PATH               "/etc"
-#else
-#define SCLDAP_ETC_PATH               SCLDAP_ETC_PATH_CUSTOM
-#endif
-
-#define SCLDAP_CONFIG                 SCLDAP_ETC_PATH "/scldap.conf"
-
 /* Hard limit, tables are allocated dynamically */
 #define SCLDAP_MAX_ENTRIES            16
 #define SCLDAP_MAX_ATTRIBUTES         32

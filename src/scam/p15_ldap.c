@@ -193,7 +193,7 @@ int p15_ldap_init(int argc, const char **argv)
 		scam_fw_p15_ldap.printmsg("sc_pkcs15_find_pin_by_auth_id: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
-	lctx = scldap_parse_parameters(SCLDAP_CONFIG);
+	lctx = scldap_parse_parameters(SCLDAP_CONF_PATH);
 	if (!lctx) {
 		return SCAM_FAILED;
 	}

@@ -18,7 +18,7 @@ sc_close(struct sc_priv_data *priv)
 		priv->card = NULL;
 	}
 	if (priv->ctx) {
-		sc_destroy_context(priv->ctx);
+		sc_release_context(priv->ctx);
 		priv->ctx = NULL;
 	}
 }
@@ -28,7 +28,7 @@ sc_init(struct sc_priv_data *priv)
 {
 	int r;
 
-	r = sc_establish_context(&priv->ctx);
+	r = sc_establish_context(&priv->ctx, "opensc-signer");
 	if (r)
 		goto err;
 	r = sc_connect_card(priv->ctx->reader[priv->reader_id], 0, &priv->card);

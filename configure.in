@@ -924,6 +924,8 @@ if (test x$enable_debug = xyes); then
 	AC_DEFINE(DEBUG, 1, [Enable debug messages.])
 fi
 
+CPPFLAGS="-I\${top_srcdir}/src/libopensc -I\${top_srcdir}/src/scconf $CPPFLAGS"
+
 AC_SUBST(LIBSCCONF)
 LIBSCCONF="\${top_srcdir}/src/scconf/libscconf.la"
 AC_SUBST(LIBSCLDAP)
@@ -934,7 +936,10 @@ LIBSCRANDOM="\${top_srcdir}/src/scrandom/libscrandom.la"
 AM_CONDITIONAL(HAVE_SCIDI, test "foo" = "bar")
 
 scldap_etc_path=`eval echo ${sysconfdir}` ; scldap_etc_path=`eval echo ${scldap_etc_path}`
-AC_DEFINE_UNQUOTED(SCLDAP_ETC_PATH_CUSTOM, "$scldap_etc_path", [etc path for scldap])
+AC_DEFINE_UNQUOTED(SCLDAP_ETC_PATH, "$scldap_etc_path", [etc path for libscldap])
+scldap_conf_path=`eval echo ${scldap_etc_path}/scldap.conf`
+AC_DEFINE_UNQUOTED(SCLDAP_CONF_PATH, "$scldap_conf_path", [default config file for libscldap])
+
 opensc_etc_path=`eval echo ${sysconfdir}` ; opensc_etc_path=`eval echo ${opensc_etc_path}`
 AC_DEFINE_UNQUOTED(OPENSC_ETC_PATH, "$opensc_etc_path", [etc path for libopensc])
 opensc_conf_path=`eval echo ${opensc_etc_path}/opensc.conf`
@@ -956,6 +961,7 @@ AC_OUTPUT([
 Makefile
 aclocal/Makefile
 docs/Makefile
+etc/Makefile
 src/Makefile
 src/common/Makefile
 src/libopensc/Makefile
@@ -967,7 +973,6 @@ src/pkcs11/rsaref/Makefile
 src/scam/Makefile
 src/scconf/Makefile
 src/scldap/Makefile
-src/scldap/etc/Makefile
 src/scrandom/Makefile
 src/sia/Makefile
 src/tests/Makefile
