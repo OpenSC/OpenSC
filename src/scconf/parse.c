@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifndef _WIN32
+#ifdef HAVE_STRINGS_H
 #include <strings.h>
 #endif
 #include "scconf.h"
@@ -34,6 +34,19 @@
 #define STATE_NAME	0x01
 #define STATE_VALUE	0x02
 #define STATE_SET	0x10
+
+static scconf_item *scconf_get_last_item(scconf_block *root)
+{
+	scconf_block *block = root;
+	scconf_item *item;
+
+	for (item = root->items; item; item = item->next) {
+		if (!item->next) {
+			return item;
+		}
+	}
+	return block->items;
+}
 
 static void scconf_parse_error(scconf_parser * parser, const char *error)
 {
@@ -71,11 +84,10 @@ static scconf_item *scconf_item_find(scconf_parser * parser, const char *key)
 			return item;
 		}
 	}
-
 	return item;
 }
 
-static scconf_item *scconf_item_add(scconf_parser * parser, int type)
+static scconf_item *scconf_item_add_internal(scconf_parser * parser, int type)
 {
 	scconf_item *item;
 
@@ -110,12 +122,49 @@ static scconf_item *scconf_item_add(scconf_parser * parser, int type)
 	return item;
 }
 
-static void scconf_block_add(scconf_parser * parser)
+scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scconf_item * item, int type, const char *key, const void *data)
+{
+	scconf_parser parser;
+	scconf_block *dst = NULL;
+
+	memset(&parser, 0, sizeof(scconf_parser));
+
+	parser.config = config ? config : NULL;
+	parser.key = key ? strdup(key) : NULL;
+	parser.block = block ? block : config->root;
+	parser.name = NULL;
+	parser.last_item = scconf_get_last_item(parser.block);
+	parser.current_item = item;
+
+	if (type == SCCONF_ITEM_TYPE_BLOCK) {
+		scconf_block_copy((const scconf_block *) data, &dst);
+		scconf_list_copy(dst->name, &parser.name);
+	}
+	scconf_item_add_internal(&parser, type);
+	if (data) {
+		switch (parser.current_item->type) {
+		case SCCONF_ITEM_TYPE_COMMENT:
+			parser.current_item->value.comment = strdup((char *) data);
+			break;
+		case SCCONF_ITEM_TYPE_BLOCK:
+			dst->parent = parser.block;
+			parser.current_item->value.block = dst;
+			scconf_list_destroy(parser.name);
+			break;
+		case SCCONF_ITEM_TYPE_VALUE:
+			scconf_list_copy((const scconf_list *) data, &parser.current_item->value.list);
+			break;
+		}
+	}
+	return parser.current_item;
+}
+
+static void scconf_block_add_internal(scconf_parser * parser)
 {
 	scconf_block *block;
 	scconf_item *item;
 
-	item = scconf_item_add(parser, SCCONF_ITEM_TYPE_BLOCK);
+	item = scconf_item_add_internal(parser, SCCONF_ITEM_TYPE_BLOCK);
 
 	block = (scconf_block *) malloc(sizeof(scconf_block));
 	if (!block) {
@@ -133,6 +182,23 @@ static void scconf_block_add(scconf_parser * parser)
 
 	parser->block = block;
 	parser->last_item = NULL;
+}
+
+scconf_block *scconf_block_add(scconf_context * config, scconf_block * block, const char *key, const scconf_list *name)
+{
+	scconf_parser parser;
+
+	memset(&parser, 0, sizeof(scconf_parser));
+
+	parser.config = config ? config : NULL;
+	parser.key = key ? strdup(key) : NULL;
+	parser.block = block ? block : config->root;
+	scconf_list_copy(name, &parser.name);
+	parser.last_item = scconf_get_last_item(parser.block);
+	parser.current_item = parser.block->items;
+
+	scconf_block_add_internal(&parser);
+	return parser.block;
 }
 
 static void scconf_parse_parent(scconf_parser * parser)
@@ -178,7 +244,7 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 		}
 		/* fall through - treat empty lines as comments */
 	case TOKEN_TYPE_COMMENT:
-		item = scconf_item_add(parser, SCCONF_ITEM_TYPE_COMMENT);
+		item = scconf_item_add_internal(parser, SCCONF_ITEM_TYPE_COMMENT);
 		item->value.comment = token ? strdup(token) : NULL;
 		break;
 	case TOKEN_TYPE_STRING:
@@ -237,7 +303,7 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 				scconf_parse_error_not_expect(parser, "{");
 				break;
 			}
-			scconf_block_add(parser);
+			scconf_block_add_internal(parser);
 			scconf_parse_reset_state(parser);
 			break;
 		case '}':
@@ -271,7 +337,7 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 				scconf_parse_error_not_expect(parser, "=");
 				break;
 			}
-			scconf_item_add(parser, SCCONF_ITEM_TYPE_VALUE);
+			scconf_item_add_internal(parser, SCCONF_ITEM_TYPE_VALUE);
 			parser->state = STATE_VALUE;
 			break;
 		case ';':

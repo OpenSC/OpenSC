@@ -28,6 +28,8 @@
 #include <errno.h>
 #include "scconf.h"
 
+#define ADD_TEST
+
 static int ldap_cb(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
 {
 	scconf_entry ldap_entry[] =
@@ -79,6 +81,11 @@ static int card_cb(scconf_context * config, const scconf_block * block, scconf_e
 
 int main(int argc, char **argv)
 {
+#ifdef ADD_TEST
+	scconf_block *foo_block = NULL;
+	scconf_list *foo_list = NULL;
+	scconf_item *foo_item = NULL;
+#endif
 	scconf_context *conf = NULL;
 	scconf_entry entry[] =
 	{
@@ -112,6 +119,27 @@ int main(int argc, char **argv)
 		scconf_free(conf);
 		return 1;
 	}
+
+#ifdef ADD_TEST
+	scconf_list_add(&foo_list, "value1");
+	scconf_list_add(&foo_list, "value2");
+
+	foo_block = (scconf_block *) scconf_find_block(conf, NULL, "foo");
+	foo_block = scconf_block_add(conf, foo_block, "block1", foo_list);
+	foo_block = scconf_block_add(conf, foo_block, "block2", foo_list);
+
+	scconf_list_add(&foo_list, "value3");
+
+	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, "key", "# comment1");
+	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_VALUE, "list1", foo_list);
+	foo_block = NULL;
+	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_BLOCK, "block3", (void *) scconf_find_block(conf, NULL, "foo"));
+	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_VALUE, "list2", foo_list);
+	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, "key", "# comment2");
+
+	scconf_list_destroy(foo_list);
+#endif
+
 	if ((r = scconf_write(conf, out)) != 0) {
 		printf("scconf_write: %s\n", strerror(r));
 	} else {

@@ -113,7 +113,7 @@ static char *scconf_list_get_string(scconf_list * list)
 	return buffer;
 }
 
-static void scconf_write_items(scconf_writer * writer, scconf_block * block)
+static void scconf_write_items(scconf_writer * writer, const scconf_block * block)
 {
 	scconf_block *subblock;
 	scconf_item *item;
@@ -127,6 +127,11 @@ static void scconf_write_items(scconf_writer * writer, scconf_block * block)
 			break;
 		case SCCONF_ITEM_TYPE_BLOCK:
 			subblock = item->value.block;
+
+			if (!subblock) {
+				fprintf(stderr, "scconf_write_items: Skipping invalid block!\n");
+				continue;
+			}
 
 			/* header */
 			name = scconf_list_get_string(subblock->name);

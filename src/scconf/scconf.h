@@ -59,9 +59,9 @@ typedef struct _scconf_list {
 	char *data;
 } scconf_list;
 
-#define SCCONF_ITEM_TYPE_COMMENT	0	/* key = NULL, data = char *comment */
-#define SCCONF_ITEM_TYPE_BLOCK		1	/* key = class, data = scconf_block */
-#define SCCONF_ITEM_TYPE_VALUE		2	/* key = key, value = scconf_list */
+#define SCCONF_ITEM_TYPE_COMMENT	0	/* key = NULL, comment */
+#define SCCONF_ITEM_TYPE_BLOCK		1	/* key = key, block */
+#define SCCONF_ITEM_TYPE_VALUE		2	/* key = key, list */
 
 typedef struct _scconf_item {
 	struct _scconf_item *next;
@@ -100,6 +100,10 @@ extern void scconf_free(scconf_context * config);
  */
 extern int scconf_parse(scconf_context * config);
 
+/* Parse entries
+ */
+int scconf_parse_entries(scconf_context * config, const scconf_block * block, scconf_entry * entry);
+
 /* Write config to a file
  * If the filename is NULL, use the config->filename
  * Returns 0 = ok, else = errno
@@ -109,13 +113,13 @@ extern int scconf_write(scconf_context * config, const char *filename);
 /* Find a block by the item_name
  * If the block is NULL, the root block is used
  */
-extern const scconf_block *scconf_find_block(scconf_context * config, const scconf_block * block, const char *item_name);
+extern const scconf_block *scconf_find_block(const scconf_context * config, const scconf_block * block, const char *item_name);
 
 /* Find blocks by the item_name
  * If the block is NULL, the root block is used
  * The key can be used to specify what the blocks first name should be
  */
-extern scconf_block **scconf_find_blocks(scconf_context * config, const scconf_block * block, const char *item_name, const char *key);
+extern scconf_block **scconf_find_blocks(const scconf_context * config, const scconf_block * block, const char *item_name, const char *key);
 
 /* Get a list of values for option
  */
@@ -136,13 +140,39 @@ extern int scconf_get_int(const scconf_block * block, const char *option, int de
  */
 extern int scconf_get_bool(const scconf_block * block, const char *option, int def);
 
-/* Free block structure
+/* Add block structure
+ * If the block is NULL, the root block is used
+ */
+extern scconf_block *scconf_block_add(scconf_context * config, scconf_block * block, const char *key, const scconf_list *name);
+
+/* Copy block structure (recursive)
+ */
+extern scconf_block *scconf_block_copy(const scconf_block * src, scconf_block ** dst);
+
+/* Free block structure (recursive)
  */
 extern void scconf_block_destroy(scconf_block * block);
+
+/* Add item to block structure
+ * If the block is NULL, the root block is used
+ */
+extern scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scconf_item * item, int type, const char *key, const void *data);
+
+/* Copy item structure (recursive)
+ */
+extern scconf_item *scconf_item_copy(const scconf_item * src, scconf_item ** dst);
+
+/* Free item structure (recursive)
+ */
+extern void scconf_item_destroy(scconf_item * item);
 
 /* Add a new value to the list
  */
 extern scconf_list *scconf_list_add(scconf_list ** list, const char *value);
+
+/* Copy list structure
+ */
+extern scconf_list *scconf_list_copy(const scconf_list * src, scconf_list ** dst);
 
 /* Free list structure
  */
@@ -161,10 +191,6 @@ extern int scconf_list_strings_length(const scconf_list * list);
  * The filler can be NULL
  */
 extern char *scconf_list_strdup(const scconf_list * list, const char *filler);
-
-/* Parse entries
- */
-int scconf_parse_entries(scconf_context * config, const scconf_block * block, scconf_entry * entry);
 
 #ifdef __cplusplus
 }

@@ -25,10 +25,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifndef _WIN32
+#ifdef HAVE_STRINGS_H
 #include <strings.h>
-#else
-#define strcasecmp stricmp
 #endif
 #include <ctype.h>
 #include "scconf.h"
@@ -67,7 +65,7 @@ void scconf_free(scconf_context * config)
 	config = NULL;
 }
 
-const scconf_block *scconf_find_block(scconf_context * config, const scconf_block * block, const char *item_name)
+const scconf_block *scconf_find_block(const scconf_context * config, const scconf_block * block, const char *item_name)
 {
 	scconf_item *item;
 
@@ -86,7 +84,7 @@ const scconf_block *scconf_find_block(scconf_context * config, const scconf_bloc
 	return NULL;
 }
 
-scconf_block **scconf_find_blocks(scconf_context * config, const scconf_block * block, const char *item_name, const char *key)
+scconf_block **scconf_find_blocks(const scconf_context * config, const scconf_block * block, const char *item_name, const char *key)
 {
 	scconf_block **blocks = NULL;
 	int alloc_size, size;
@@ -162,44 +160,106 @@ int scconf_get_bool(const scconf_block * block, const char *option, int def)
 	return toupper((int) *list->data) == 'T' || toupper((int) *list->data) == 'Y';
 }
 
-void scconf_block_destroy(scconf_block * block);
+scconf_item *scconf_item_copy(const scconf_item * src, scconf_item ** dst)
+{
+	scconf_item *ptr, *_dst = NULL, *next = NULL;
 
-static void scconf_items_destroy(scconf_item * items)
+	next = (scconf_item *) malloc(sizeof(scconf_item));
+	if (!next) {
+		return NULL;
+	}
+	memset(next, 0, sizeof(scconf_item));
+	ptr = next;
+	_dst = next;
+	while (src) {
+		if (!next) {
+			next = (scconf_item *) malloc(sizeof(scconf_item));
+			if (!next) {
+				scconf_item_destroy(ptr);
+				return NULL;
+			}
+			memset(next, 0, sizeof(scconf_item));
+			_dst->next = next;
+		}
+		next->type = src->type;
+		switch (src->type) {
+		case SCCONF_ITEM_TYPE_COMMENT:
+			next->value.comment = src->value.comment ? strdup(src->value.comment) : NULL;
+			break;
+		case SCCONF_ITEM_TYPE_BLOCK:
+			scconf_block_copy(src->value.block, &next->value.block);
+			break;
+		case SCCONF_ITEM_TYPE_VALUE:
+			scconf_list_copy(src->value.list, &next->value.list);
+			break;
+		}
+		next->key = src->key ? strdup(src->key) : NULL;
+		_dst = next;
+		next = NULL;
+		src = src->next;
+	}
+	*dst = ptr;
+	return ptr;
+}
+
+void scconf_item_destroy(scconf_item * item)
 {
 	scconf_item *next;
 
-	while (items) {
-		next = items->next;
+	while (item) {
+		next = item->next;
 
-		switch (items->type) {
+		switch (item->type) {
 		case SCCONF_ITEM_TYPE_COMMENT:
-			if (items->value.comment) {
-				free(items->value.comment);
+			if (item->value.comment) {
+				free(item->value.comment);
 			}
-			items->value.comment = NULL;
+			item->value.comment = NULL;
 			break;
 		case SCCONF_ITEM_TYPE_BLOCK:
-			scconf_block_destroy(items->value.block);
+			scconf_block_destroy(item->value.block);
 			break;
 		case SCCONF_ITEM_TYPE_VALUE:
-			scconf_list_destroy(items->value.list);
+			scconf_list_destroy(item->value.list);
 			break;
 		}
 
-		if (items->key) {
-			free(items->key);
+		if (item->key) {
+			free(item->key);
 		}
-		items->key = NULL;
-		free(items);
-		items = next;
+		item->key = NULL;
+		free(item);
+		item = next;
 	}
+}
+
+scconf_block *scconf_block_copy(const scconf_block * src, scconf_block ** dst)
+{
+	if (src) {
+		scconf_block *_dst = NULL;
+
+		_dst = (scconf_block *) malloc(sizeof(scconf_block));
+		if (!_dst) {
+			return NULL;
+		}
+		memset(_dst, 0, sizeof(scconf_block));
+		if (src->name) {
+			scconf_list_copy(src->name, &_dst->name);
+		}
+		if (src->items) {
+			scconf_item_copy(src->items, &_dst->items);
+		}
+		*dst = _dst;
+		return _dst;
+	}
+	return NULL;
 }
 
 void scconf_block_destroy(scconf_block * block)
 {
 	if (block) {
 		scconf_list_destroy(block->name);
-		scconf_items_destroy(block->items);
+		scconf_item_destroy(block->items);
 		free(block);
 	}
 }
@@ -222,6 +282,18 @@ scconf_list *scconf_list_add(scconf_list ** list, const char *value)
 		*tmp = rec;
 	}
 	return rec;
+}
+
+scconf_list *scconf_list_copy(const scconf_list * src, scconf_list ** dst)
+{
+	scconf_list *next;
+
+	while (src) {
+		next = src->next;
+		scconf_list_add(dst, src->data);
+		src = next;
+	}
+	return *dst;
 }
 
 void scconf_list_destroy(scconf_list * list)
