@@ -177,7 +177,7 @@ gpk_init(struct sc_card *card)
 		| SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_ANSI
 		| SC_ALGORITHM_RSA_PAD_ISO9796;
-	exponent = (ai->variant / 1000 < 16)? 0x10001 : -1;
+	exponent = (ai->variant / 1000 < 16)? 0x10001 : 0;
 	kg = (ai->variant >= 8000)? SC_ALGORITHM_ONBOARD_KEY_GEN : 0;
 	_sc_card_add_rsa_alg(card,  512, flags|kg, exponent);
 	_sc_card_add_rsa_alg(card,  768, flags, exponent);
