@@ -12,6 +12,7 @@ MAINTAINERCLEANFILES = Makefile.in \
 	opensc.h \
 	errors.h \
 	types.h \
+	pkcs11.h \
 	pkcs15.h \
 	pkcs15-init.h \
 	scconf.h \

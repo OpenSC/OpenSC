@@ -1,6 +1,6 @@
 # Process this file with automake to create Makefile.in
 
-MAINTAINERCLEANFILES = Makefile.in Makefile.mak
+MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES = @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
