@@ -482,9 +482,14 @@ int main(int argc, char * const argv[])
 		goto end;
 
 	if (do_print_atr) {
-		if (verbose)
-			printf("Card ATR: ");
-		hex_dump_asc(stdout, card->atr, card->atr_len, -1);
+		if (verbose) {
+			printf("Card ATR:\n");
+			hex_dump_asc(stdout, card->atr, card->atr_len, -1);		
+		} else {
+			char tmp[SC_MAX_ATR_SIZE*3];
+			sc_bin_to_hex(card->atr, card->atr_len, tmp, sizeof(tmp) - 1, ':');
+			fprintf(stdout,"%s\n",tmp);
+		}
 		action_count--;
 	}
 	if (do_print_serial) {
