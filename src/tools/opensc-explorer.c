@@ -718,6 +718,71 @@ usage:
 	return -1;
 }
 
+int do_unblock(int argc, char **argv)
+{
+	int i, ref, r;
+	u8 puk[30];
+	u8 newpin[30];
+        const char *s;
+	size_t puklen = sizeof(puk);
+	size_t newpinlen = sizeof(newpin);
+	
+        if (argc < 2 || argc > 3)
+		goto usage;
+        if (strncasecmp(argv[0], "CHV", 3)) {
+		printf("Invalid type.\n");
+		goto usage;
+	}
+	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
+		printf("Invalid key reference.\n");
+		goto usage;
+	}
+        argc--;
+        argv++;
+
+        if (argc == 1) {
+                /* set without verification */
+                puklen = 0;
+        }
+	else if (argv[0][0] == '"') {
+		for (s = argv[0] + 1, i = 0;
+                     i < sizeof(puk) && *s && *s != '"'; i++) 
+			puk[i] = *s++;
+		puklen = i;
+                argc--;
+                argv++;
+	} else if (sc_hex_to_bin(argv[0], puk, &puklen) != 0) {
+		printf("Invalid key value.\n");
+		goto usage;
+	}
+
+	if (argv[0][0] == '"') {
+		for (s = argv[0] + 1, i = 0;
+                     i < sizeof(newpin) && *s && *s != '"'; i++) 
+			newpin[i] = *s++;
+		newpinlen = i;
+	} else if (sc_hex_to_bin(argv[2], newpin, &newpinlen) != 0) {
+		printf("Invalid key value.\n");
+		goto usage;
+	}
+
+	r = sc_reset_retry_counter (card, SC_AC_CHV, ref,
+                                      puk, puklen,
+                                      newpin, newpinlen);
+	if (r) {
+		if (r == SC_ERROR_PIN_CODE_INCORRECT)
+			printf("Incorrect code.\n");
+		printf("Unable to unblock PIN code: %s\n", sc_strerror(r));
+		return -1;
+	}
+	printf("PIN unblocked.\n");
+	return 0;
+usage:
+	printf("Usage: unblock CHV<pin ref> [<puk>] <new pin>\n");
+	printf("Example: unblock CHV2 00:00:00:00:00:00 \"foobar\"\n");
+	return -1;
+}
+
 int do_get(int argc, char **argv)
 {
 	u8 buf[256];
@@ -1081,6 +1146,7 @@ struct command		cmds[] = {
  { "delete",	do_delete,	"remove an EF/DF"			},
  { "verify",	do_verify,	"present a PIN or key to the card"	},
  { "change",	do_change,	"change a PIN"                          },
+ { "unblock",	do_unblock,	"unblock a PIN"                         },
  { "put",	do_put,		"copy a local file to the card"		},
  { "get",	do_get,		"copy an EF to a local file"		},
  { "mkdir",	do_mkdir,	"create a DF"				},
