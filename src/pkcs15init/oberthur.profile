@@ -39,7 +39,7 @@ PIN so-pin {
     min-length  = 4;
     flags   = 0xB2;
 	reference = 2
-	default-value = "31:32:33:34:35:36:37:38";
+#	default-value = "31:32:33:34:35:36:37:38";
 }
 
 # CHV3 used for Oberthur's specifique access condition "PIN or SOPIN"
