@@ -94,7 +94,13 @@ static struct map		fileOpNames[] = {
 	{ "CRYPTO",	SC_AC_OP_CRYPTO },
 	{ 0, 0 }
 };
-static struct map		efTypeNames[] = {
+static struct map		fileTypeNames[] = {
+	{ "EF",		SC_FILE_TYPE_WORKING_EF		},
+	{ "INTERNAL-EF",SC_FILE_TYPE_INTERNAL_EF	},
+	{ "DF",		SC_FILE_TYPE_DF			},
+	{ 0, 0 }
+};
+static struct map		fileStructureNames[] = {
 	{ "TRANSPARENT",	SC_FILE_EF_TRANSPARENT	},
 	{ "LINEAR-FIXED",	SC_FILE_EF_LINEAR_FIXED	},
 	{ "LINEAR-FIXED-TLV",	SC_FILE_EF_LINEAR_FIXED_TLV	},
@@ -134,6 +140,19 @@ static struct map		pinIdNames[] = {
 	{ "so-pin",		SC_PKCS15INIT_SO_PIN	},
 	{ "so-puk",		SC_PKCS15INIT_SO_PUK	},
 	{ 0, 0 }
+};
+static struct {
+	const char *		name;
+	struct map *		addr;
+} mapNames[] = {
+	{ "file ACL",		aclNames	},
+	{ "file operation",	fileOpNames	},
+	{ "file type",		fileTypeNames	},
+	{ "file structure",	fileStructureNames},
+	{ "PKCS#15 file name",	pkcs15DfNames	},
+	{ "pin encoding",	pinTypeNames	},
+	{ "pin name",		pinIdNames	},
+	{ NULL, NULL }
 };
 
 typedef struct pin_info pin_info;
@@ -564,19 +583,11 @@ new_file(struct state *cur, const char *name, unsigned int type)
 static int
 do_file_type(struct state *cur, int argc, char **argv)
 {
-	const char	*type = argv[0];
-	struct sc_file	*file = cur->file->file;
+	unsigned int	type;
 
-	if (!strcasecmp(type, "ef"))
-		file->type = SC_FILE_TYPE_WORKING_EF;
-	else if (!strcasecmp(type, "internal-ef"))
-		file->type = SC_FILE_TYPE_INTERNAL_EF;
-	else if (!strcasecmp(type, "df"))
-		file->type = SC_FILE_TYPE_DF;
-	else {
-		parse_error(cur, "Invalid file type \"%s\"\n", type);
+	if (map_str2int(cur, argv[0], &type, fileTypeNames))
 		return 1;
-	}
+	cur->file->file->type = type;
 	return 0;
 }
 
@@ -637,7 +648,7 @@ do_structure(struct state *cur, int argc, char **argv)
 {
 	unsigned int	ef_structure;
 
-	if (map_str2int(cur, argv[0], &ef_structure, efTypeNames))
+	if (map_str2int(cur, argv[0], &ef_structure, fileStructureNames))
 		return 1;
 	cur->file->file->ef_structure = ef_structure;
 	return 0;
@@ -1186,15 +1197,28 @@ static int
 map_str2int(struct state *cur, const char *value,
 		unsigned int *vp, struct map *map)
 {
+	unsigned int	n;
+	const char	*what;
+
 	if (isdigit((int) *value))
 		return get_uint(cur, value, vp);
-	for (; map->name; map++) {
-		if (!strcasecmp(value, map->name)) {
-			*vp = map->val;
+	for (n = 0; map[n].name; n++) {
+		if (!strcasecmp(value, map[n].name)) {
+			*vp = map[n].val;
 			return 0;
 		}
 	}
-	parse_error(cur, "invalid argument \"%s\"\n", value);
+
+	/* Try to print a meaningful error message */
+	what = "argument";
+	for (n = 0; mapNames[n].name; n++) {
+		if (mapNames[n].addr == map) {
+			what = mapNames[n].name;
+			break;
+		}
+	}
+
+	parse_error(cur, "invalid %s \"%s\"\n", what, value);
 	return 1;
 }
 
@@ -1210,14 +1234,17 @@ setstr(char **strp, const char *value)
 static void
 parse_error(struct state *cur, const char *fmt, ...)
 {
-	char	buffer[1024];
+	char	buffer[1024], *sp;
 	va_list	ap;
 
 	va_start(ap, fmt);
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 
+	if ((sp = strchr(buffer, '\n')) != NULL)
+		*sp = '\0';
+
 	if (cur->profile->cbs)
-		cur->profile->cbs->error("%s: %s\n",
+		cur->profile->cbs->error("%s: %s",
 			cur->filename, buffer);
 }
