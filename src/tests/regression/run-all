@@ -19,18 +19,19 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$scripts" ]; then
-	scripts=`ls init* crypt*`
+	scripts=`ls init* crypt* pin*`
 fi
 
 for script in $scripts; do
 	echo -n "${script}... "
+	mkdir -p test-data
 	if ./$script $options >out/$script 2>&1; then
 		echo "success"
 	else
 		mkdir -p failed
 		failed="failed/$script"
-		rm -rf $failed
 		mv test-data $failed
+		cp out/$script $failed/test.log
 		echo "fail (test data moved to $failed)"
 		if $abort_if_fail; then
 			echo Aborting.

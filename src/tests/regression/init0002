@@ -6,11 +6,11 @@
 
 . functions
 
-skip_if_card Cryptoflex Cyberflex Multiflex
+# skip_if_card Cryptoflex Cyberflex Multiflex
 
 p15_init --so-pin 999999 --so-puk 88888888
 p15_set_pin -a 27 --so-pin 999999 
-p15_gen_key rsa/1024 -a 27 --so-pin 999999  --key-usage sign,decrypt
+p15_gen_key rsa/1024 -a 27 --so-pin 999999 --split-key --key-usage sign,decrypt
 p15_validate
 p15_erase --secret @27=0000
 

@@ -8,7 +8,7 @@
 
 p15_init --no-so-pin
 p15_set_pin -a 01
-p15_store_key test.p12 --format pkcs12 --passphrase "password" -a 01
+p15_store_key test.p12 --format pkcs12 --passphrase "password" -a 01 --split-key
 p15_validate
 p15_erase --secret @01=0000
 

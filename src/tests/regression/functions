@@ -13,6 +13,7 @@ if [ -z "$__p15init__" ]; then
 	p15crypt=$p15base/tools/pkcs15-crypt
 	p15tool=$p15base/tools/pkcs15-tool
 	p15init=$p15base/tools/pkcs15-init
+	p15dump=$p15base/tests/p15dump
 	p11tool=$p15base/tools/pkcs11-tool
 	p15log=$p15temp/test.log
 
@@ -50,6 +51,7 @@ if [ -z "$__p15init__" ]; then
 		p15crypt="$p15crypt --reader $P15_READER"
 		p15tool="$p15tool --reader $P15_READER"
 		p15init="$p15init --reader $P15_READER"
+		p15dump="$p15dump --reader $P15_READER"
 		osctool="$osctool --reader $P15_READER"
 	fi
 
@@ -244,6 +246,28 @@ function p15_set_pin {
 
 }
 
+function p15_change_pin {
+
+	msg "Changing user PIN ($*)"
+	run_display_output $p15tool \
+		--change-pin \
+		--pin 0000 \
+		--new-pin 2222 \
+		"$@"
+	success
+}
+
+function p15_unblock_pin {
+
+	msg "Changing user PIN ($*)"
+	run_display_output $p15tool \
+		--unblock-pin \
+		--puk 111111 \
+		--new-pin 2222 \
+		"$@"
+	success
+}
+
 function p15_gen_key {
 
 	type=$1
@@ -295,6 +319,8 @@ function p15_crypt {
 
 function p15_validate {
 
+	msg "Card contents according to p15dump"
+	run_display_output $p15dump < /dev/null
 	msg "Validating card using pkcs11-tool"
 	run_display_output $p11tool -t --pin 0000 \
 		--slot-label "OpenSC Test Card" $* < /dev/null

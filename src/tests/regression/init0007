@@ -9,8 +9,8 @@
 p15_init --no-so-pin
 p15_set_pin -a 01
 p15_set_pin -a 02 --label "User Signature PIN"
-p15_gen_key rsa/512 -a 01 --key-usage sign,decrypt
-p15_gen_key rsa/512 -a 02 --key-usage nonRepudiation \
+p15_gen_key rsa/512 -a 01 --split-key --key-usage sign,decrypt
+p15_gen_key rsa/512 -a 02 --split-key --key-usage nonRepudiation \
 		--id feeb \
 		--label "Non-Repudiation Key"
 p15_validate

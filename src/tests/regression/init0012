@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+# Test pkcs15-init
+#
+# Run this from the regression test directory.
+
+. functions
+
+p15_init --profile pkcs15+onepin --so-pin 999999 --so-puk 111111
+p15_gen_key rsa/1024 -a FF --split-key --key-usage sign,decrypt --pin 999999
+p15_validate --pin 999999
+p15_erase
+
