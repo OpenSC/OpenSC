@@ -193,7 +193,8 @@ static int			opt_debug = 0,
 				opt_extractable = 0,
 				opt_unprotected = 0,
 				opt_authority = 0,
-				opt_softkeygen = 0;
+				opt_softkeygen = 0,
+				opt_noprompts = 0;
 static char *			opt_profile = "pkcs15";
 static char *			opt_infile = 0;
 static char *			opt_format = 0;
@@ -354,6 +355,7 @@ static int
 do_init_app(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_initargs args;
+	struct sc_pkcs15_pin_info info;
 	int	r = 0;
 
 	if (opt_erase)
@@ -362,15 +364,34 @@ do_init_app(struct sc_profile *profile)
 		return r;
 
 	memset(&args, 0, sizeof(args));
-	args.so_pin = (const u8 *) opt_pins[OPT_PIN2 & 3];
+	if (!opt_pins[2] && !opt_noprompts) {
+		sc_pkcs15init_get_pin_info(profile,
+				SC_PKCS15INIT_SO_PIN, &info);
+		if (!read_one_pin(profile, "New security officer (SO) PIN",
+				&info, READ_PIN_RETYPE|READ_PIN_OPTIONAL,
+				&opt_pins[2]))
+			goto failed;
+	}
+	if (opt_pins[2] && !opt_pins[3] && !opt_noprompts) {
+		sc_pkcs15init_get_pin_info(profile,
+				SC_PKCS15INIT_SO_PUK, &info);
+		if (!read_one_pin(profile, "Unlock code for new SO PIN",
+				&info, READ_PIN_RETYPE|READ_PIN_OPTIONAL,
+				&opt_pins[3]))
+			goto failed;
+	}
+	args.so_pin = (const u8 *) opt_pins[2];
 	if (args.so_pin)
 		args.so_pin_len = strlen((char *) args.so_pin);
-	args.so_puk = (const u8 *) opt_pins[OPT_PUK2 & 3];
+	args.so_puk = (const u8 *) opt_pins[3];
 	if (args.so_puk)
 		args.so_puk_len = strlen((char *) args.so_puk);
 	args.serial = (const char *) opt_serial;
 	
 	return sc_pkcs15init_add_app(card, profile, &args);
+
+failed:	
+	return SC_ERROR_PKCS15INIT;
 }
 
 /*
@@ -401,7 +422,7 @@ do_store_pin(struct sc_profile *profile)
 	}
 	if (opt_pins[1] == NULL) {
 		sc_pkcs15init_get_pin_info(profile,
-				SC_PKCS15INIT_SO_PIN, &info);
+				SC_PKCS15INIT_USER_PUK, &info);
 		if (!read_one_pin(profile,
 			       	"Unlock code for new user PIN", &info,
 			       	READ_PIN_RETYPE|READ_PIN_OPTIONAL,
@@ -638,12 +659,17 @@ read_one_pin(struct sc_profile *profile, const char *name,
 	size_t	len;
        	int	retries = 5;
 
-	printf("%s required.\n", name);
+	printf("%s required", name);
+	if (flags & READ_PIN_OPTIONAL)
+		printf(" (press return for no PIN)");
+	printf(".\n");
+
+	*out = NULL;
 	while (retries--) {
 		pin = getpass("Please enter PIN: ");
 		len = strlen(pin);
 		if (len == 0 && (flags & READ_PIN_OPTIONAL))
-			return 0;
+			break;
 
 		if (info && len < info->min_length) {
 			error("Password too short (%u characters min)",
