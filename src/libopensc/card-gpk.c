@@ -1556,6 +1556,7 @@ gpk_pkfile_load(struct sc_card *card, struct sc_cardctl_gpk_pkload *args)
 	}
 #endif
 
+	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse = SC_APDU_CASE_3_SHORT;
 	apdu.cla = 0x80;
 	apdu.ins = 0x18;
