@@ -1,7 +1,3 @@
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 #ifndef _OPENSC_WINCONFIG_H
 #define _OPENSC_WINCONFIG_H
 

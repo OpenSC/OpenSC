@@ -54,6 +54,9 @@
 #include "profile.h"
 #include "pkcs15-init.h"
 #include <opensc/cardctl.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 /* Default ID for new key/pin */
 #define DEFAULT_ID		0x45
