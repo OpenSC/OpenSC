@@ -901,7 +901,7 @@ test_digest(CK_SLOT_ID slot)
 		ck_mech.mechanism = mechTypes[i];
 
 		rv = p11->C_DigestInit(session, &ck_mech);
-		if (rv == CKR_FUNCTION_NOT_SUPPORTED)
+		if (rv == CKR_MECHANISM_INVALID)
 			continue;	/* mechanism not implemented, don't test */
 		if (rv != CKR_OK)
 			p11_fatal("C_DigestInit", rv);
@@ -1163,11 +1163,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	datas[0] = data;
 	dataLens[0] = dataLen;
 
-	i = 0xffffff;
-	while (1) {
-		if (mechTypes[++i] == 0xffffff)
-			break;
-
+	for (i = 0; mechTypes[i] != 0xffffff; i++) {
 		ck_mech.mechanism = mechTypes[i];
 
 		rv = p11->C_SignInit(session, &ck_mech, privKeyObject);
