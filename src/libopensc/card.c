@@ -167,7 +167,7 @@ static int sc_transceive(struct sc_card *card, struct sc_apdu *apdu)
 	else
 		data_bytes = apdu->resplen = recvsize;
 	if (recvsize > 0) {
-		memcpy(apdu->resp, rbuf, recvsize);
+		memcpy(apdu->resp, rbuf, data_bytes);
 		if (apdu->sensitive)
 			memset(rbuf, 0, recvsize);
 	}
