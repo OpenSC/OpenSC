@@ -212,7 +212,15 @@ int main(int argc, char **argv)
 		} 
 		buff[r] = '\0';
 		if (exec_program) {
-			setenv(esteid_data[i].env_name, buff, 1);
+			char * cp;
+			cp = malloc(strlen(esteid_data[i].env_name) + 
+			strlen(buff) + 2);
+			if (cp) { 
+				strcpy(cp,esteid_data[i].env_name);
+				strcat(cp,"=");
+				strcat(cp,buff);
+				putenv(cp);
+			}
 		} else {
 			printf("%s: %s\n", esteid_data[i].name, buff);
 		}
