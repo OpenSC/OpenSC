@@ -60,6 +60,7 @@ typedef int	(*pkcs15_encoder)(struct sc_context *,
 
 /* Local functions */
 static int	open_reader_and_card(int);
+static int	do_erase(struct sc_card *, struct sc_profile *);
 static int	do_init_app(struct sc_profile *);
 static int	do_store_pin(struct sc_profile *);
 static int	do_generate_key(struct sc_profile *, const char *);
@@ -187,6 +188,7 @@ const char *		option_help[] = {
 	"Insecure mode: do not require PIN/passphrase for private key",
 	"Use software key generation, even if the card supports on-board key generation",
 	"Always ask for transport keys etc, even if the driver thinks it knows the key",
+	"Do not prompt the user, except for PINs",
 
 	"Specify the profile to use",
 	"Read additional command line options from file",
@@ -196,6 +198,7 @@ const char *		option_help[] = {
 
 enum {
 	ACTION_NONE = 0,
+	ACTION_ERASE,
 	ACTION_INIT,
 	ACTION_STORE_PIN,
 	ACTION_GENERATE_KEY,
@@ -206,6 +209,7 @@ enum {
 };
 static char *			action_names[] = {
 	"do nothing",
+	"erase card",
 	"create PKCS #15 meta structure",
 	"store PIN",
 	"generate key",
@@ -219,14 +223,17 @@ static char *			action_names[] = {
 #define READ_PIN_OPTIONAL	0x01
 #define READ_PIN_RETYPE		0x02
 
+#define MAX_CERTS		4
+#define MAX_ACTIONS		16
+
 static struct sc_context *	ctx = NULL;
 static struct sc_card *		card = NULL;
 static struct sc_pkcs15_card *	p15card = NULL;
+static unsigned int		opt_actions[MAX_ACTIONS];
+static unsigned int		opt_action_count;
 static int			opt_reader = -1,
 				opt_debug = 0,
 				opt_quiet = 0,
-				opt_action = 0,
-				opt_erase = 0,
 				opt_extractable = 0,
 				opt_unprotected = 0,
 				opt_authority = 0,
@@ -248,6 +255,7 @@ static char *			opt_passphrase = 0;
 static char *			opt_newkey = 0;
 static char *			opt_outkey = 0;
 static unsigned int		opt_x509_usage = 0;
+static int			ignore_cmdline_pins = 0;
 
 static struct sc_pkcs15init_callbacks callbacks = {
 	error,			/* error() */
@@ -256,12 +264,11 @@ static struct sc_pkcs15init_callbacks callbacks = {
 	get_key_callback,	/* get_key() */
 };
 
-#define MAX_CERTS		4
-
 int
 main(int argc, char **argv)
 {
 	struct sc_profile	*profile;
+	unsigned int		n;
 	int			r = 0;
 
 	/* OpenSSL magic */
@@ -276,7 +283,7 @@ main(int argc, char **argv)
 
 	if (optind != argc)
 		print_usage_and_die();
-	if (opt_action == ACTION_NONE) {
+	if (opt_action_count == 0) {
 		fprintf(stderr, "No action specified.\n");
 		print_usage_and_die();
 	}
@@ -295,49 +302,66 @@ main(int argc, char **argv)
 	if ((r = sc_pkcs15init_bind(card, opt_profile, &profile)) < 0)
 		return 1;
 
-	if (opt_action == ACTION_INIT) {
-		r = do_init_app(profile);
-		goto done;
-	}
+	for (n = 0; n < opt_action_count; n++) {
+		unsigned int	action = opt_actions[n];
 
-	if (opt_erase)
-		fatal("Option --erase can be used only with --create-pkcs15\n");
+		if (action != ACTION_ERASE
+		 && action != ACTION_INIT
+		 && p15card == NULL) {
+			/* Read the PKCS15 structure from the card */
+			r = sc_pkcs15_bind(card, &p15card);
+			if (r) {
+				fprintf(stderr,
+					"PKCS#15 initialization failed: %s\n",
+					sc_strerror(r));
+				break;
+			}
 
-	/* Read the PKCS15 structure from the card */
-	r = sc_pkcs15_bind(card, &p15card);
-	if (r) {
-		fprintf(stderr, "PKCS#15 initialization failed: %s\n",
-				sc_strerror(r));
-		goto done;
-	}
-	if (!opt_quiet)
-		printf("Found %s\n", p15card->label);
+			/* XXX: should compare card to profile here to make
+			 * sure we're not messing things up */
 
-	/* XXX: should compare card to profile here to make sure
-	 * we're not messing things up */
+			if (!opt_quiet)
+				printf("Found %s\n", p15card->label);
+		}
 
-	if (opt_action == ACTION_STORE_PIN)
-		r = do_store_pin(profile);
-	else if (opt_action == ACTION_STORE_PRIVKEY)
-		r = do_store_private_key(profile);
-	else if (opt_action == ACTION_STORE_PUBKEY)
-		r = do_store_public_key(profile, NULL);
-	else if (opt_action == ACTION_STORE_CERT)
-		r = do_store_certificate(profile);
-	else if (opt_action == ACTION_STORE_DATA)
-		r = do_store_data_object(profile);
-	else if (opt_action == ACTION_GENERATE_KEY)
-		r = do_generate_key(profile, opt_newkey);
-	else
-		fatal("Action not yet implemented\n");
+		switch (action) {
+		case ACTION_ERASE:
+			r = do_erase(card, profile);
+			break;
+		case ACTION_INIT:
+			r = do_init_app(profile);
+			break;
+		case ACTION_STORE_PIN:
+			r = do_store_pin(profile);
+			break;
+		case ACTION_STORE_PRIVKEY:
+			r = do_store_private_key(profile);
+			break;
+		case ACTION_STORE_PUBKEY:
+			r = do_store_public_key(profile, NULL);
+			break;
+		case ACTION_STORE_CERT:
+			r = do_store_certificate(profile);
+			break;
+		case ACTION_STORE_DATA:
+			r = do_store_data_object(profile);
+			break;
+		case ACTION_GENERATE_KEY:
+			r = do_generate_key(profile, opt_newkey);
+			break;
+		default:
+			fatal("Action not yet implemented\n");
+		}
 
-done:	if (r < 0) {
-		fprintf(stderr, "Failed to %s: %s\n",
-				action_names[opt_action],
-				sc_strerror(r));
-	} else if (!opt_quiet) {
-		printf("Was able to %s successfully.\n",
-				action_names[opt_action]);
+		if (r < 0) {
+			fprintf(stderr, "Failed to %s: %s\n",
+				action_names[action], sc_strerror(r));
+			break;
+		}
+		if (!opt_quiet) {
+			printf("Was able to %s successfully.\n",
+					action_names[action]);
+		}
 	}
 
 	if (card) {
@@ -376,6 +400,19 @@ open_reader_and_card(int reader)
 }
 
 /*
+ * Erase card
+ */
+static int
+do_erase(struct sc_card *card, struct sc_profile *profile)
+{
+	int	r;
+	ignore_cmdline_pins++;
+	r = sc_pkcs15init_erase_card(card, profile);
+	ignore_cmdline_pins--;
+	return r;
+}
+
+/*
  * Initialize pkcs15 application
  */
 static int
@@ -383,11 +420,6 @@ do_init_app(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_initargs args;
 	struct sc_pkcs15_pin_info info;
-	int	r = 0;
-
-	if (opt_erase
-	 && (r = sc_pkcs15init_erase_card(card, profile)) < 0)
-		return r;
 
 	memset(&args, 0, sizeof(args));
 	if (!opt_pins[2] && !opt_no_prompt && !opt_no_sopin) {
@@ -877,7 +909,7 @@ get_pin_callback(struct sc_profile *profile,
 		name = namebuf;
 	}
 
-	if (secret == NULL
+	if ((secret == NULL || ignore_cmdline_pins)
 	 && !read_one_pin(profile, name, NULL, 0, &secret))
 		return SC_ERROR_INTERNAL;
 	len = strlen(secret);
@@ -1500,28 +1532,34 @@ handle_option(int c)
 		opt_authid = optarg;
 		break;
 	case 'C':
-		opt_action = ACTION_INIT;
+		if (opt_action_count
+		 && opt_actions[opt_action_count-1] != ACTION_ERASE)
+			fatal("--create-pkcs15 option must be first, "
+			      "or follow --erase\n");
+		opt_actions[opt_action_count++] = ACTION_INIT;
 		break;
 	case 'E':
-		opt_erase++;
+		if (opt_action_count)
+			fatal("Option --erase must be first option\n");
+		opt_actions[opt_action_count++] = ACTION_ERASE;
 		break;
 	case 'G':
-		opt_action = ACTION_GENERATE_KEY;
+		opt_actions[opt_action_count++] = ACTION_GENERATE_KEY;
 		opt_newkey = optarg;
 		break;
 	case 'S':
-		opt_action = ACTION_STORE_PRIVKEY;
+		opt_actions[opt_action_count++] = ACTION_STORE_PRIVKEY;
 		opt_infile = optarg;
 		break;
 	case 'P':
-		opt_action = ACTION_STORE_PIN;
+		opt_actions[opt_action_count++] = ACTION_STORE_PIN;
 		break;
 	case 'X':
-		opt_action = ACTION_STORE_CERT;
+		opt_actions[opt_action_count++] = ACTION_STORE_CERT;
 		opt_infile = optarg;
 		break;
 	case 'W':
-		opt_action = ACTION_STORE_DATA;
+		opt_actions[opt_action_count++] = ACTION_STORE_DATA;
 		opt_infile = optarg;
 		break;
 	case 'd':
@@ -1565,7 +1603,7 @@ handle_option(int c)
 		opt_passphrase = optarg;
 		break;
 	case OPT_PUBKEY:
-		opt_action = ACTION_STORE_PUBKEY;
+		opt_actions[opt_action_count++] = ACTION_STORE_PUBKEY;
 		opt_infile = optarg;
 		break;
 	case OPT_UNPROTECTED:
