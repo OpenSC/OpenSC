@@ -3,7 +3,7 @@ Authors of OpenSC:
 Juha Yrjölä <juha.yrjola@iki.fi>
 Antti Tapaninen <aet@cc.hut.fi>
 Timo Teräs <timo.teras@iki.fi>
-Olaf Kirch <okir@caldera.de>
+Olaf Kirch <okir@suse.de>
 
 Contributors:
 Stef Hoeben <Hoeben.S@Zetes.com> (pkcs11, libopensc, win32 port)
