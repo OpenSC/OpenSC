@@ -450,10 +450,16 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 	    ulPinLen > pin->stored_length)
 		return CKR_PIN_LEN_RANGE;
 
-	rc = sc_lock(card->card);
-	if (rc < 0) {
-		 debug(context, "Failed to lock card (%d)\n", rc);
-		 return sc_to_cryptoki_error(rc, p11card->reader);
+	/* By default, we make the pcsc daemon keep other processes
+	 * from accessing the card while we're logged in. Otherwise
+	 * an attacker could perform some crypto operation after
+	 * we've authenticated with the card */
+	if (sc_pkcs11_conf.lock_login) {
+		rc = sc_lock(card->card);
+		if (rc < 0) {
+			 debug(context, "Failed to lock card (%d)\n", rc);
+			 return sc_to_cryptoki_error(rc, p11card->reader);
+		}
 	}
 
 	rc = sc_pkcs15_verify_pin(card, pin, pPin, ulPinLen);
@@ -468,12 +474,13 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
 {
 	struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
-	int rc;
+	int rc = 0;
 
 	cache_pin(fw_token, CKU_SO, NULL, 0);
 	cache_pin(fw_token, CKU_USER, NULL, 0);
 
-	rc = sc_unlock(card->card);
+	if (sc_pkcs11_conf.lock_login)
+		rc = sc_unlock(card->card);
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 

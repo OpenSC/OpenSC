@@ -153,7 +153,7 @@ app opensc-pkcs11 {
 		# maximum on the overall number of slots
 		# the pkcs11 module is able to handle.
 		num_slots = 4;
-		#
+
 		# Normally, the pkcs11 module will create
 		# the full number of slots defined above by
 		# num_slots. If there are fewer pins/keys on
@@ -161,8 +161,22 @@ app opensc-pkcs11 {
 		# (and you will be able to create new objects
 		# within them).
 		#
-		# Set this option to false to hide these empty
+		# Set this option to true to hide these empty
 		# slots.
 		hide_empty_slots = false;
+
+		# By default, the OpenSC PKCS#11 module will
+		# try to lock this card once you have authenticated
+		# to the card via C_Login. This is done so that no
+		# other user can connect to the card and perform
+		# crypto operations (which may be possible because
+		# you have already authenticated with the card).
+		#
+		# However, this also means that no other application
+		# that _you_ run can use the card until your application
+		# has done a C_Logout or C_Finalize. In the case of
+		# Netscape or Mozilla, this does not happen until
+		# you exit the browser.
+		lock_login = true;
 	}
 }

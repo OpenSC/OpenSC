@@ -81,6 +81,7 @@ struct sc_pkcs11_pool {
 struct sc_pkcs11_config {
 	unsigned int num_slots;
 	unsigned char hide_empty_slots;
+	unsigned char lock_login;
 };
 
 /*
