@@ -8,6 +8,8 @@ MAINTAINERCLEANFILES = Makefile.in \
 	emv.h \
 	log.h \
 	opensc.h \
+	errors.h \
+	types.h \
 	pkcs15.h \
 	pkcs15-init.h \
 	scconf.h \
@@ -21,6 +23,8 @@ all-local:
 	@$(LN_S) ../../libopensc/emv.h emv.h
 	@$(LN_S) ../../libopensc/log.h log.h
 	@$(LN_S) ../../libopensc/opensc.h opensc.h
+	@$(LN_S) ../../libopensc/errors.h errors.h
+	@$(LN_S) ../../libopensc/types.h types.h
 	@$(LN_S) ../../libopensc/pkcs15.h pkcs15.h
 	@$(LN_S) ../../pkcs15init/pkcs15-init.h pkcs15-init.h
 	@$(LN_S) ../../scconf/scconf.h scconf.h

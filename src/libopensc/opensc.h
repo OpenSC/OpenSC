@@ -33,6 +33,8 @@
 #endif
 
 #include <opensc/scconf.h>
+#include <opensc/errors.h>
+#include <opensc/types.h>
 
 #ifdef  __cplusplus
 extern "C" {
@@ -42,51 +44,6 @@ extern "C" {
 #undef inline
 #define inline
 #endif
-
-#define SC_SUCCESS				0
-#define SC_NO_ERROR				0
-
-#define SC_ERROR_MIN				-1000
-#define SC_ERROR_UNKNOWN			-1000
-#define SC_ERROR_CMD_TOO_SHORT			-1001
-#define SC_ERROR_CMD_TOO_LONG			-1002
-#define SC_ERROR_NOT_SUPPORTED			-1003
-#define SC_ERROR_TRANSMIT_FAILED		-1004
-#define SC_ERROR_FILE_NOT_FOUND			-1005
-#define SC_ERROR_INVALID_ARGUMENTS		-1006
-#define SC_ERROR_PKCS15_APP_NOT_FOUND		-1007
-#define SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND	-1008
-#define SC_ERROR_OUT_OF_MEMORY			-1009
-#define SC_ERROR_NO_READERS_FOUND		-1010
-#define SC_ERROR_OBJECT_NOT_VALID		-1011
-#define SC_ERROR_ILLEGAL_RESPONSE		-1012
-#define SC_ERROR_PIN_CODE_INCORRECT		-1013
-#define SC_ERROR_SECURITY_STATUS_NOT_SATISFIED	-1014
-#define SC_ERROR_CONNECTING_TO_RES_MGR		-1015
-#define SC_ERROR_INVALID_ASN1_OBJECT		-1016
-#define SC_ERROR_BUFFER_TOO_SMALL		-1017
-#define SC_ERROR_CARD_NOT_PRESENT		-1018
-#define SC_ERROR_RESOURCE_MANAGER		-1019
-#define SC_ERROR_CARD_REMOVED			-1020
-#define SC_ERROR_INVALID_PIN_LENGTH		-1021
-#define SC_ERROR_UNKNOWN_SMARTCARD		-1022
-#define SC_ERROR_UNKNOWN_REPLY			-1023
-#define SC_ERROR_OBJECT_NOT_FOUND		-1024
-#define SC_ERROR_CARD_RESET			-1025
-#define SC_ERROR_ASN1_OBJECT_NOT_FOUND		-1026
-#define SC_ERROR_ASN1_END_OF_CONTENTS		-1027
-#define SC_ERROR_TOO_MANY_OBJECTS		-1028
-#define SC_ERROR_INVALID_CARD			-1029
-#define SC_ERROR_WRONG_LENGTH			-1030
-#define SC_ERROR_RECORD_NOT_FOUND		-1031
-#define SC_ERROR_INTERNAL			-1032
-#define SC_ERROR_CLASS_NOT_SUPPORTED		-1033
-#define SC_ERROR_SLOT_NOT_FOUND			-1034
-#define SC_ERROR_SLOT_ALREADY_CONNECTED		-1035
-#define SC_ERROR_AUTH_METHOD_BLOCKED		-1036
-#define SC_ERROR_SYNTAX_ERROR			-1037
-#define SC_ERROR_INCONSISTENT_PROFILE		-1038
-#define SC_ERROR_FILE_ALREADY_EXISTS		-1039
 
 /* Different APDU cases */
 #define SC_APDU_CASE_NONE		0
@@ -137,15 +94,15 @@ extern "C" {
 #define SC_AC_OP_INVALIDATE		5
 #define SC_AC_OP_LIST_FILES		6
 #define SC_AC_OP_CRYPTO			7
-
+/* If you add more OPs here, make sure you increase
+ * SC_MAX_AC_OPS in types.h */
+ 
 /* Operations relating to access control (in case of EF) */
 #define SC_AC_OP_READ			0
 #define SC_AC_OP_UPDATE			1
 #define SC_AC_OP_WRITE			2
 #define SC_AC_OP_ERASE			3
 /* rehab and invalidate are the same as in DF case */
-
-#define SC_MAX_AC_OPS			8
 
 /* sc_*_record() flags */
 #define SC_RECORD_EF_ID_MASK		0x0001F
@@ -161,64 +118,14 @@ extern "C" {
 #define SC_MAX_SLOTS			4
 #define SC_MAX_CARD_APPS		4
 #define SC_MAX_APDU_BUFFER_SIZE		258
-#define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PIN_SIZE			16
 #define SC_MAX_ATR_SIZE			33
-#define SC_MAX_OBJECT_ID_OCTETS		16
 #define SC_MAX_AID_SIZE			16
 /* Beware: the following needs to be a mutiple of 4
  * or else sc_update_binary will not work on GPK */
 #define SC_APDU_CHOP_SIZE		248
 
-typedef unsigned char u8;
-
-struct sc_object_id {
-	int value[SC_MAX_OBJECT_ID_OCTETS];
-};
-
-#define SC_PATH_TYPE_FILE_ID	0
-#define SC_PATH_TYPE_DF_NAME	1
-#define SC_PATH_TYPE_PATH	2
-
-struct sc_path {
-	u8 value[SC_MAX_PATH_SIZE];
-	size_t len;
-	int index;
-
-	int type;
-};
-
 #define SC_AC_KEY_REF_NONE	0xFFFFFFFF
-
-struct sc_acl_entry {
-	unsigned int method;
-	unsigned int key_ref;
-
-	struct sc_acl_entry *next;
-};
-typedef struct sc_acl_entry sc_acl_entry_t;
-
-struct sc_file {
-	struct sc_path path;
-	u8 name[16];	/* DF name */
-	size_t namelen; /* length of DF name */
-
-	int type, shareable, ef_structure;
-	size_t size;	/* Size of file (in bytes) */
-	int id;		/* Short file id (2 bytes) */
-	int status;	/* Status flags */
-	struct sc_acl_entry *acl[SC_MAX_AC_OPS]; /* Access Control List */
-
-	int record_length; /* In case of fixed-length or cyclic EF */
-	int record_count;  /* Valid, if not transparent EF or DF */
-
-	u8 *sec_attr;
-	size_t sec_attr_len;
-	u8 *prop_attr;
-	size_t prop_attr_len;
-	unsigned int magic;
-};
-typedef struct sc_file sc_file_t;
 
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
@@ -263,7 +170,7 @@ struct sc_security_env {
 	unsigned long flags;
 	int operation;
 	unsigned int algorithm, algorithm_flags;
-	
+
 	unsigned int algorithm_ref;
 	struct sc_path file_ref;
 	u8 key_ref[8];
@@ -564,20 +471,6 @@ struct sc_context {
 	unsigned int magic;
 };
 typedef struct sc_context sc_context_t;
-
-struct sc_apdu {
-	int cse;		/* APDU case */
-	u8 cla, ins, p1, p2;	/* CLA, INS, P1 and P2 bytes */
-	size_t lc, le;		/* Lc and Le bytes */
-	const u8 *data;		/* C-APDU data */
-	size_t datalen;		/* length of data in C-APDU */
-	u8 *resp;		/* R-APDU data buffer */
-	size_t resplen;		/* in: size of R-APDU buffer,
-				 * out: length of data returned in R-APDU */
-
-	unsigned int sw1, sw2;	/* Status words returned in R-APDU */
-};
-typedef struct sc_apdu sc_apdu_t;
 
 /* Base64 encoding/decoding functions */
 int sc_base64_encode(const u8 *in, size_t inlen, u8 *out, size_t outlen,
