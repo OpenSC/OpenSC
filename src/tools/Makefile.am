@@ -29,5 +29,7 @@ cryptoflex_tool_SOURCES = cryptoflex-tool.c util.c
 cryptoflex_tool_LDADD = @GETOPTSRC@ @LIBCRYPTO@
 pkcs15_init_SOURCES = pkcs15-init.c util.c
 pkcs15_init_LDADD = @GETOPTSRC@ @LIBCRYPTO@ ../pkcs15init/libpkcs15init.la
+cardos_info_SOURCES = cardos-info.c util.c
+cardos_info_LDADD = @GETOPTSRC@
 
 noinst_HEADERS = util.h
