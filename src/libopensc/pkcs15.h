@@ -281,6 +281,13 @@ typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info_t;
 #define SC_PKCS15_TYPE_AUTH			0x600
 #define SC_PKCS15_TYPE_AUTH_PIN			0x601
 
+#define SC_PKCS15_TYPE_TO_CLASS(t)		(1 << ((t) >> 8))
+#define SC_PKCS15_SEARCH_CLASS_PRKEY		0x0002
+#define SC_PKCS15_SEARCH_CLASS_PUBKEY		0x0004
+#define SC_PKCS15_SEARCH_CLASS_CERT		0x0010
+#define SC_PKCS15_SEARCH_CLASS_DATA		0x0020
+#define SC_PKCS15_SEARCH_CLASS_AUTH		0x0040
+
 struct sc_pkcs15_object {
 	int type;
 	/* CommonObjectAttributes */
@@ -321,6 +328,7 @@ struct sc_pkcs15_df {
 
 	struct sc_pkcs15_df *next, *prev;
 };
+typedef struct sc_pkcs15_df sc_pkcs15_df_t;
 
 #define SC_PKCS15_CARD_MAGIC		0x10203040
 
@@ -368,6 +376,9 @@ int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *card, int type,
 			       int (* func)(struct sc_pkcs15_object *, void *),
 			       void *func_arg,
 			       struct sc_pkcs15_object **ret, int ret_count);
+int sc_pkcs15_find_object_by_id(sc_pkcs15_card_t *, int,
+				const sc_pkcs15_id_t *,
+				sc_pkcs15_object_t **);
 
 struct sc_pkcs15_card * sc_pkcs15_card_new(void);
 void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card);
@@ -570,6 +581,24 @@ int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
 void sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
 void sc_pkcs15_format_id(const char *id_in, struct sc_pkcs15_id *id_out);
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
+
+/* New object search API.
+ * More complex, but also more powerful.
+ */
+typedef struct sc_pkcs15_search_key {
+	unsigned int		class_mask;
+	unsigned int		type;
+	const sc_pkcs15_id_t *	id;
+	const sc_path_t *	path;
+	unsigned int		usage_mask, usage_value;
+	unsigned int		flags_mask, flags_value;
+
+	unsigned int		match_reference : 1;
+	int			reference;
+} sc_pkcs15_search_key_t;
+
+int sc_pkcs15_search_objects(sc_pkcs15_card_t *, sc_pkcs15_search_key_t *,
+			sc_pkcs15_object_t **, size_t);
 
 #ifdef  __cplusplus
 }

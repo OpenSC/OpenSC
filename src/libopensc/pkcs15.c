@@ -27,17 +27,6 @@
 #include <assert.h>
 
 
-/* Search key when looking for objects */
-struct sc_pkcs15_search_key {
-	const sc_pkcs15_id_t *	id;
-	const sc_path_t *	path;
-	unsigned int		usage_mask, usage_value;
-	unsigned int		flags_mask, flags_value;
-
-	unsigned int		match_reference : 1;
-	int			reference;
-};
-
 static int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *);
 
 void sc_pkcs15_print_card(const struct sc_pkcs15_card *card)
@@ -688,60 +677,71 @@ int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 	return 0;
 }
 
-int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, int type,
-			       int (* func)(struct sc_pkcs15_object *, void *),
-                               void *func_arg,
-			       struct sc_pkcs15_object **ret, int ret_size)
+static int
+__sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
+			unsigned int class_mask, int type,
+			int (*func)(sc_pkcs15_object_t *, void *),
+                        void *func_arg,
+			sc_pkcs15_object_t **ret, size_t ret_size)
 {
-	const int prkey_df[] = { SC_PKCS15_PRKDF, -1 };
-	const int pubkey_df[] = { SC_PKCS15_PUKDF, SC_PKCS15_PUKDF_TRUSTED, -1 };
-	const int cert_df[] = { SC_PKCS15_CDF, SC_PKCS15_CDF_TRUSTED, SC_PKCS15_CDF_USEFUL, -1 };
-	const int data_df[] = { SC_PKCS15_DODF, -1 };
-	const int auth_df[] = { SC_PKCS15_AODF, -1 };
-	const int *dfs;
 	sc_pkcs15_object_t *obj;
-	int match_count = 0, i, r = 0;
-	
-	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
-	case SC_PKCS15_TYPE_PRKEY:
-		dfs = prkey_df;
-		break;
-	case SC_PKCS15_TYPE_PUBKEY:
-		dfs = pubkey_df;
-		break;
-	case SC_PKCS15_TYPE_CERT:
-		dfs = cert_df;
-		break;
-	case SC_PKCS15_TYPE_DATA_OBJECT:
-		dfs = data_df;
-		break;
-	case SC_PKCS15_TYPE_AUTH:
-		dfs = auth_df;
-		break;
-	default:
+	sc_pkcs15_df_t	*df;
+	unsigned int	df_mask = 0;
+	size_t		match_count = 0;
+	int		r = 0;
+
+	if (type)
+		class_mask |= SC_PKCS15_TYPE_TO_CLASS(type);
+
+	/* Make sure the class mask we have makes sense */
+	if (class_mask == 0
+	 || (class_mask & ~(SC_PKCS15_SEARCH_CLASS_PRKEY |
+			    SC_PKCS15_SEARCH_CLASS_PUBKEY |
+			    SC_PKCS15_SEARCH_CLASS_CERT |
+			    SC_PKCS15_SEARCH_CLASS_DATA |
+			    SC_PKCS15_SEARCH_CLASS_AUTH))) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-	for (i = 0; dfs[i] != -1; i++) {
-		struct sc_pkcs15_df *df = p15card->df_list;
 
-		for (df = p15card->df_list; df != NULL; df = df->next) {
-			if (df->type != dfs[i])
-				continue;
-			if (df->enumerated)
-				continue;
-			/* Enumerate the DF's, so p15card->obj_list is
-			 * populated. */
-			r = sc_pkcs15_parse_df(p15card, df);
-			if (r < 0)
-				break;
-			SC_TEST_RET(p15card->card->ctx, r, "DF parsing failed");
-			df->enumerated = 1;
-		}
+	if (class_mask & SC_PKCS15_SEARCH_CLASS_PRKEY)
+		df_mask |= (1 << SC_PKCS15_PRKDF);
+	if (class_mask & SC_PKCS15_SEARCH_CLASS_PUBKEY)
+		df_mask |= (1 << SC_PKCS15_PUKDF)
+			 | (1 << SC_PKCS15_PUKDF_TRUSTED);
+	if (class_mask & SC_PKCS15_SEARCH_CLASS_CERT)
+		df_mask |= (1 << SC_PKCS15_CDF)
+			 | (1 << SC_PKCS15_CDF_TRUSTED)
+			 | (1 << SC_PKCS15_CDF_USEFUL);
+	if (class_mask & SC_PKCS15_SEARCH_CLASS_DATA)
+		df_mask |= (1 << SC_PKCS15_DODF);
+	if (class_mask & SC_PKCS15_SEARCH_CLASS_AUTH)
+		df_mask |= (1 << SC_PKCS15_AODF);
+
+	/* Make sure all the DFs we want to search have been
+	 * enumerated. */
+	for (df = p15card->df_list; df != NULL; df = df->next) {
+		if (!(df_mask & (1 << df->type)))
+			continue;
+		if (df->enumerated)
+			continue;
+		/* Enumerate the DF's, so p15card->obj_list is
+		 * populated. */
+		r = sc_pkcs15_parse_df(p15card, df);
+		SC_TEST_RET(p15card->card->ctx, r, "DF parsing failed");
+		df->enumerated = 1;
 	}
+
+	/* And now loop over all objects */
 	for (obj = p15card->obj_list; obj != NULL; obj = obj->next) {
-		if (obj->type != type
+		/* Check object type */
+		if (!(class_mask & SC_PKCS15_TYPE_TO_CLASS(obj->type)))
+			continue;
+		if (type != 0
+		 && obj->type != type
 		 && (obj->type & SC_PKCS15_TYPE_CLASS_MASK) != type)
 			continue;
+
+		/* Potential candidate, apply search function */
 		if (func != NULL && func(obj, func_arg) <= 0)
 			continue;
 		/* Okay, we have a match. */
@@ -893,44 +893,71 @@ static int find_by_key(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
-static int find_by_id(struct sc_pkcs15_card *p15card,
-		      int type, const struct sc_pkcs15_id *id,
-		      struct sc_pkcs15_object **out)
+int
+sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card, sc_pkcs15_search_key_t *sk,
+			sc_pkcs15_object_t **ret, size_t ret_size)
 {
-	struct sc_pkcs15_search_key sk;
+	return __sc_pkcs15_search_objects(p15card,
+			sk->class_mask, sk->type,
+			compare_obj_key, sk,
+			ret, ret_size);
+}
+
+int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, int type,
+			       int (* func)(struct sc_pkcs15_object *, void *),
+                               void *func_arg,
+			       struct sc_pkcs15_object **ret, int ret_size)
+{
+	return __sc_pkcs15_search_objects(p15card, 0, type,
+			func, func_arg, ret, ret_size);
+}
+
+int sc_pkcs15_find_object_by_id(sc_pkcs15_card_t *p15card,
+				int type, const sc_pkcs15_id_t *id,
+				sc_pkcs15_object_t **out)
+{
+	sc_pkcs15_search_key_t sk;
+	int	r;
 
 	memset(&sk, 0, sizeof(sk));
 	sk.id = id;
 
-	return find_by_key(p15card, type, &sk, out);
+	r = __sc_pkcs15_search_objects(p15card, 0, type,
+				compare_obj_key, &sk,
+				out, 1);
+	if (r < 0)
+		return r;
+	if (r == 0)
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	return 0;
 }
 
 int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *p15card,
 			      const struct sc_pkcs15_id *id,
 			      struct sc_pkcs15_object **out)
 {
-	return find_by_id(p15card, SC_PKCS15_TYPE_CERT, id, out);
+	return sc_pkcs15_find_object_by_id(p15card, SC_PKCS15_TYPE_CERT, id, out);
 }
 
 int sc_pkcs15_find_prkey_by_id(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_id *id,
 			       struct sc_pkcs15_object **out)
 {
-	return find_by_id(p15card, SC_PKCS15_TYPE_PRKEY, id, out);
+	return sc_pkcs15_find_object_by_id(p15card, SC_PKCS15_TYPE_PRKEY, id, out);
 }
 
 int sc_pkcs15_find_pubkey_by_id(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_id *id,
 				struct sc_pkcs15_object **out)
 {
-	return find_by_id(p15card, SC_PKCS15_TYPE_PUBKEY, id, out);
+	return sc_pkcs15_find_object_by_id(p15card, SC_PKCS15_TYPE_PUBKEY, id, out);
 }
 
 int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *p15card,
 			     const struct sc_pkcs15_id *id,
 			     struct sc_pkcs15_object **out)
 {
-	return find_by_id(p15card, SC_PKCS15_TYPE_AUTH_PIN, id, out);
+	return sc_pkcs15_find_object_by_id(p15card, SC_PKCS15_TYPE_AUTH_PIN, id, out);
 }
 
 int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *p15card,
@@ -951,7 +978,7 @@ int sc_pkcs15_find_data_object_by_id(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_id *id,
 				struct sc_pkcs15_object **out)
 {
-	return find_by_id(p15card, SC_PKCS15_TYPE_DATA_OBJECT, id, out);
+	return sc_pkcs15_find_object_by_id(p15card, SC_PKCS15_TYPE_DATA_OBJECT, id, out);
 }
 
 int sc_pkcs15_find_prkey_by_id_usage(struct sc_pkcs15_card *p15card,
@@ -1185,8 +1212,10 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		r = func(p15card, obj, &p, &bufsize);
 		if (r) {
 			free(obj);
-			if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
+			if (r == SC_ERROR_ASN1_END_OF_CONTENTS) {
+				r = 0;
 				break;
+			}
 			sc_perror(ctx, r, "Error decoding DF entry");
 			goto ret;
 		}
