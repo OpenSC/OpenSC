@@ -320,6 +320,15 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 #endif
 	r = sc_set_security_env(p15card->card, &senv, 0);
 	SC_TEST_RET(ctx, r, "sc_set_security_env() failed");
+
+	/* XXX: Should we adjust outlen to match the size of
+	 * the signature we expect? CardOS for instance will
+	 * barf if the LE value doesn't match the size of the
+	 * signature exactly.
+	 *
+	 * Right now we work around this by assuming that eToken keys
+	 * always have algorithm RSA_PURE_SIG so the input buffer
+	 * is padded and has the same length as the signature. --okir */
 	r = sc_compute_signature(p15card->card, in, inlen, out, outlen);
 	if (pad_flags)
                 memset(buf, 0, inlen);
