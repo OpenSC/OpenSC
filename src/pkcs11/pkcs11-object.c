@@ -187,6 +187,11 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 		if (match) {
 			debug(context, "Object %d/%d matches\n",
 			      session->slot->id, item->handle);
+			/* Avoid buffer overflow --okir */
+			if (operation->num_handles >= SC_PKCS11_FIND_MAX_HANDLES) {
+				debug(context, "Too many matching objects\n");
+				break;
+			}
 			operation->handles[operation->num_handles++] = item->handle;
 		}
 	}

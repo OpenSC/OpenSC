@@ -143,10 +143,12 @@ struct sc_pkcs11_sign_operation {
         CK_MECHANISM mechanism;
 };
 
+#define SC_PKCS11_FIND_MAX_HANDLES	32
+
 struct sc_pkcs11_find_operation {
 	struct sc_pkcs11_operation operation;
         int num_handles, current_handle;
-        CK_OBJECT_HANDLE handles[32];
+        CK_OBJECT_HANDLE handles[SC_PKCS11_FIND_MAX_HANDLES];
 };
 
 /*
