@@ -890,6 +890,7 @@ if (test x$enable_ldap = xyes); then
     saved_LIBS="$LIBS"
     LIBS="$LIBS $LIBLDAP"
     AC_CHECK_LIB(ldap, ldap_search, LIBLDAP="-lldap $LIBLDAP" found_ldap_lib=yes)
+    AC_CHECK_LIB(ldap, ldap_start_tls_s, LIBLDAP="-lssl $LIBLDAP" need_ssl_lib=yes)
     LIBS="$saved_LIBS"
   fi
   if test -z "$found_ldap_lib" -a \( $with_ldap_lib = auto -o $with_ldap_lib = netscape5 \); then
