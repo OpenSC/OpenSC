@@ -1040,6 +1040,8 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			free(data);
 			return r;
 		}
+		/* sc_read_binary may return less than requested */
+		len = r;
 		sc_unlock(p15card->card);
 	}
 	*buf = data;
