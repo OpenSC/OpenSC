@@ -21,13 +21,12 @@
 #endif
 #include <stdlib.h>
 #include <stdio.h>
+#include <opensc/opensc.h>
 #include "pkcs11-display.h"
-#include "opensc/opensc.h"
-#include "opensc/scconf.h"
 
 #define __PASTE(x,y)      x##y
 
-/*  Declare all spy_* Cryptoki function */
+/* Declare all spy_* Cryptoki function */
 
 #define CK_NEED_ARG_LIST  1
 #define CK_PKCS11_FUNCTION_INFO(name) CK_RV name
@@ -48,35 +47,13 @@ FILE *spy_output = NULL;
 #define CK_PKCS11_FUNCTION_INFO(name) \
     pkcs11_spy->name = name;
 
-/* Returns false if the pkcs11-spy block in the conf file was found */
-int get_conf(struct sc_context **ctx, scconf_block **conf_block)
-{
-  int r, i;
-  scconf_block **blocks;
-
-  r = sc_establish_context(ctx, "pkcs11-spy");
-  if (r != 0)
-    return 1;
-
-  for (i = 0; (*ctx)->conf_blocks[i] != NULL; i++) {
-    blocks = scconf_find_blocks((*ctx)->conf, (*ctx)->conf_blocks[i],
-      "init", NULL);
-    *conf_block = blocks[0];
-    free(blocks);
-    if (*conf_block != NULL)
-      break;
-  }
-
-  return (*conf_block == NULL);
-}
-
 /* Inits the spy. If successfull, po != NULL */
-CK_RV init_spy()
+CK_RV init_spy(void)
 {
-  const char *mspec = NULL, *file = NULL;
+  const char *mspec = NULL, *file = NULL, *env = NULL;
+  scconf_block *conf_block = NULL, **blocks;
   struct sc_context *ctx = NULL;
-  scconf_block *conf_block = NULL;
-  int rv = CKR_OK, no_conf_block_found = 0;
+  int rv = CKR_OK, r, i;
 
   /* Allocates and initializes the pkcs11_spy structure */
   pkcs11_spy =
@@ -87,13 +64,29 @@ CK_RV init_spy()
     return CKR_HOST_MEMORY;
   }
 
-  file = getenv("PKCS11SPY_OUTPUT");
-  if (file == NULL && !no_conf_block_found) {
-    if (conf_block == NULL)
-      no_conf_block_found = get_conf(&ctx, &conf_block);
-    if (conf_block != NULL)
-      file = scconf_get_str(conf_block, "output", NULL);
+  r = sc_establish_context(&ctx, "pkcs11-spy");
+  if (r != 0) {
+    free(pkcs11_spy);
+    return CKR_HOST_MEMORY;
   }
+
+  for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
+    blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+      "spy", NULL);
+    conf_block = blocks[0];
+    free(blocks);
+    if (conf_block != NULL)
+      break;
+  }
+
+  /* If conf_block is NULL, just return the default value
+   *
+   * Don't use getenv() as the last parameter for scconf_get_str(),
+   * as we want to be able to override configuration file via
+   * environment variables
+   */
+  env = getenv("PKCS11SPY_OUTPUT");
+  file = env ? env : scconf_get_str(conf_block, "output", NULL);
   if (file) {
     spy_output = fopen(file, "a");
   }
@@ -102,26 +95,17 @@ CK_RV init_spy()
   }
   fprintf(spy_output, "\n\n*************** OpenSC PKCS#11 spy *****************\n");
 
-  mspec = getenv("PKCS11SPY");
-  if (mspec == NULL && !no_conf_block_found) {
-    if (conf_block == NULL)
-      no_conf_block_found = get_conf(&ctx, &conf_block);
-    if (conf_block != NULL)
-      mspec = scconf_get_str(conf_block, "module", NULL);
-  }
+  env = getenv("PKCS11SPY");
+  mspec = env ? env : scconf_get_str(conf_block, "module", NULL);
   modhandle = C_LoadModule(mspec, &po);
   if (modhandle && po) {
     fprintf(spy_output, "Loaded: \"%s\"\n", mspec == NULL ? "default module" : mspec);
-  }
-  else {
+  } else {
   	po = NULL;
   	free(pkcs11_spy);
   	rv = CKR_GENERAL_ERROR;
   }
-
-  if (ctx != NULL)
-    sc_release_context(ctx);
-
+  sc_release_context(ctx);
   return rv;
 }
 
