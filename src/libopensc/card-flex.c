@@ -32,6 +32,8 @@
 
 #define TYPE_MASK		0xFF00
 
+#define IS_CYBERFLEX(card)	((DRV_DATA(card)->card_type & TYPE_MASK) == TYPE_CYBERFLEX)
+
 /* We may want to change sc_atr_table to hold the string representation
  * of the ATR instead */
 static struct {
@@ -103,16 +105,29 @@ static struct {
 };
 
 struct flex_private_data {
-	int card_type;
-	int rsa_key_ref;
+	int	card_type;
+	int	rsa_key_ref;
+
+	/* Support card variations without having to
+	 * do the if (DRV_DATA(card)->card_type ...) thing
+	 * all the time */
+	u8	aak_key_ref;
 };
 
-static struct sc_card_operations flex_ops;
+#define DRV_DATA(card)	((struct flex_private_data *) (card)->drv_data)
+
+static struct sc_card_operations cryptoflex_ops;
+static struct sc_card_operations cyberflex_ops;
 static struct sc_card_operations *iso_ops;
-static struct sc_card_driver flex_drv = {
+static struct sc_card_driver cryptoflex_drv = {
 	"Schlumberger Multiflex/Cryptoflex",
 	"flex",
-	&flex_ops
+	&cryptoflex_ops
+};
+static struct sc_card_driver cyberflex_drv = {
+	"Schlumberger Cyberflex",
+	"cyberflex",
+	&cyberflex_ops
 };
 
 static int flex_finish(struct sc_card *card)
@@ -141,12 +156,31 @@ static int flex_identify_card(struct sc_card *card)
 	return i;
 }
 
-static int flex_match_card(struct sc_card *card)
+static int cryptoflex_match_card(struct sc_card *card)
 {
 	int	idx;
 
 	idx = flex_identify_card(card);
-	return flex_atrs[idx].type != TYPE_UNKNOWN;
+
+	switch (flex_atrs[idx].type & TYPE_MASK) {
+	case TYPE_CRYPTOFLEX:
+	case TYPE_MULTIFLEX:
+		return 1;
+	}
+	return 0;
+}
+
+static int cyberflex_match_card(struct sc_card *card)
+{
+	int	idx;
+
+	idx = flex_identify_card(card);
+
+	switch (flex_atrs[idx].type & TYPE_MASK) {
+	case TYPE_CYBERFLEX:
+		return 1;
+	}
+	return 0;
 }
 
 static int flex_init(struct sc_card *card)
@@ -154,14 +188,25 @@ static int flex_init(struct sc_card *card)
 	struct flex_private_data *data;
 	int idx;
 
-	if (!(data = (struct flex_private_data *) malloc(sizeof(struct flex_private_data))))
+	if (!(data = (struct flex_private_data *) malloc(sizeof(*data))))
 		return SC_ERROR_OUT_OF_MEMORY;
+
 	idx = flex_identify_card(card);
 	data->card_type = flex_atrs[idx].type;
+	data->aak_key_ref = 1;
 
 	card->name = flex_atrs[idx].name;
 	card->drv_data = data;
 	card->cla = 0xC0;
+
+	/* Override Cryptoflex defaults for specific card types */
+	switch (data->card_type & TYPE_MASK) {
+	case TYPE_CYBERFLEX:
+		card->cla = 0x00;
+		data->aak_key_ref = 0;
+		break;
+	}
+
 	/* FIXME: Card type detection */
 	if (1) {
 		unsigned long flags;
@@ -183,8 +228,11 @@ static int flex_init(struct sc_card *card)
 	return 0;
 }
 
-static void add_acl_entry(struct sc_file *file, unsigned int op, u8 nibble)
+static void
+add_acl_entry(sc_card_t *card, sc_file_t *file, unsigned int op, u8 nibble)
 {
+	struct flex_private_data *prv = DRV_DATA(card);
+
 	switch (nibble) {
 	case 0:
 		sc_file_add_acl_entry(file, op, SC_AC_NONE, SC_AC_KEY_REF_NONE);
@@ -200,7 +248,7 @@ static void add_acl_entry(struct sc_file *file, unsigned int op, u8 nibble)
 		break;
 	case 4:
 		/* Assume the key is the AAK */
-		sc_file_add_acl_entry(file, op, SC_AC_AUT, 1);
+		sc_file_add_acl_entry(file, op, SC_AC_AUT, prv->aak_key_ref);
 		break;
 	case 6:
 		sc_file_add_acl_entry(file, op, SC_AC_CHV, 1);
@@ -213,12 +261,12 @@ static void add_acl_entry(struct sc_file *file, unsigned int op, u8 nibble)
 	case 8:
 		sc_file_add_acl_entry(file, op, SC_AC_CHV, 1);
 		/* Assume the key is the AAK */
-		sc_file_add_acl_entry(file, op, SC_AC_AUT, 1);
+		sc_file_add_acl_entry(file, op, SC_AC_AUT, prv->aak_key_ref);
 		break;
 	case 9:
 		sc_file_add_acl_entry(file, op, SC_AC_CHV, 2);
 		/* Assume the key is the AAK */
-		sc_file_add_acl_entry(file, op, SC_AC_AUT, 1);
+		sc_file_add_acl_entry(file, op, SC_AC_AUT, prv->aak_key_ref);
 		break;
 	case 15:
 		sc_file_add_acl_entry(file, op, SC_AC_NEVER, SC_AC_KEY_REF_NONE);
@@ -229,9 +277,33 @@ static void add_acl_entry(struct sc_file *file, unsigned int op, u8 nibble)
 	}
 }
 
-static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen,
-			       struct sc_file *file)
+static int
+cryptoflex_get_ac_keys(struct sc_card *card, struct sc_file *file)
 {
+#if 0
+	struct sc_apdu apdu;
+	u8 rbuf[3];
+	int r;
+	
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC4, 0x00, 0x00);
+	apdu.cla = 0xF0 /* 0x00 for Cyberflex */;
+	apdu.le = 3;
+	apdu.resplen = 3;
+	apdu.resp = rbuf;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
+		return 0;
+	sc_debug(card->ctx, "AC Keys: %02X %02X %02X\n", rbuf[0], rbuf[1], rbuf[2]);
+#endif
+	return 0;
+}
+
+static int
+cryptoflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
+			const u8 *buf, size_t buflen)
+{
+	sc_context_t *ctx = card->ctx;
 	const u8 *p = buf + 2;
 	u8 b1, b2;
         int left, is_mf = 0;
@@ -272,18 +344,18 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 	}
         p += 2;
 	if (file->type == SC_FILE_TYPE_DF) {
-		add_acl_entry(file, SC_AC_OP_LIST_FILES, (u8)(p[0] >> 4));
-		add_acl_entry(file, SC_AC_OP_DELETE, (u8)(p[1] >> 4));
-		add_acl_entry(file, SC_AC_OP_CREATE, (u8)(p[1] & 0x0F));
+		add_acl_entry(card, file, SC_AC_OP_LIST_FILES, (u8)(p[0] >> 4));
+		add_acl_entry(card, file, SC_AC_OP_DELETE, (u8)(p[1] >> 4));
+		add_acl_entry(card, file, SC_AC_OP_CREATE, (u8)(p[1] & 0x0F));
 	} else { /* EF */
-		add_acl_entry(file, SC_AC_OP_READ, (u8)(p[0] >> 4));
+		add_acl_entry(card, file, SC_AC_OP_READ, (u8)(p[0] >> 4));
 		switch (file->ef_structure) {
 		case SC_FILE_EF_TRANSPARENT:
-			add_acl_entry(file, SC_AC_OP_UPDATE, (u8)(p[0] & 0x0F));
+			add_acl_entry(card, file, SC_AC_OP_UPDATE, (u8)(p[0] & 0x0F));
 			break;
 		case SC_FILE_EF_LINEAR_FIXED:
 		case SC_FILE_EF_LINEAR_VARIABLE:
-			add_acl_entry(file, SC_AC_OP_UPDATE, (u8)(p[0] & 0x0F));
+			add_acl_entry(card, file, SC_AC_OP_UPDATE, (u8)(p[0] & 0x0F));
 			break;
 		case SC_FILE_EF_CYCLIC:
 #if 0
@@ -294,8 +366,8 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 		}
 	}
 	if (file->type != SC_FILE_TYPE_DF || is_mf) {
-		add_acl_entry(file, SC_AC_OP_REHABILITATE, (u8)(p[2] >> 4));
-		add_acl_entry(file, SC_AC_OP_INVALIDATE, (u8)(p[2] & 0x0F));
+		add_acl_entry(card, file, SC_AC_OP_REHABILITATE, (u8)(p[2] >> 4));
+		add_acl_entry(card, file, SC_AC_OP_INVALIDATE, (u8)(p[2] & 0x0F));
 	}
 	p += 3;
 	if (*p++)
@@ -303,9 +375,108 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 	else
                 file->status = SC_FILE_STATUS_INVALIDATED;
         left = *p++;
-	/* FIXME: CODEME */
-	file->magic = SC_FILE_MAGIC;
 
+	return cryptoflex_get_ac_keys(card, file);
+}
+
+static int
+cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
+			const u8 *buf, size_t buflen)
+{
+	sc_context_t *ctx = card->ctx;
+	const u8 *p = buf + 2;
+	const u8 *pos;
+	u8 b1, b2;
+	int left, is_mf = 0;
+
+	if (buflen < 14)
+		return -1;
+	b1 = *p++;
+	b2 = *p++;
+	file->size = (b1 << 8) + b2;
+	b1 = *p++;
+	b2 = *p++;
+	file->id = (b1 << 8) + b2;
+	switch (*p) {
+	case 0x01:
+		is_mf = 1;
+		break;
+	case 0x02:
+		file->type = SC_FILE_TYPE_DF;
+		break;
+	case 0x04:
+		file->type = SC_FILE_TYPE_WORKING_EF;
+		break;
+	default:
+		sc_error(ctx, "invalid file type: 0x%02X\n", *p);
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+	}
+  
+	if (is_mf) {
+		sc_file_add_acl_entry(file, SC_AC_OP_LIST_FILES, SC_AC_AUT, 0);
+		sc_file_add_acl_entry(file, SC_AC_OP_DELETE, SC_AC_AUT, 0);
+		sc_file_add_acl_entry(file, SC_AC_OP_CREATE, SC_AC_AUT, 0);
+	} else {
+		p += 2;
+    
+		if (file->type == SC_FILE_TYPE_DF) {
+			add_acl_entry(card, file, SC_AC_OP_LIST_FILES, (u8)(p[0] >> 4));
+			add_acl_entry(card, file, SC_AC_OP_DELETE, (u8)(p[1] >> 4));
+			add_acl_entry(card, file, SC_AC_OP_CREATE, (u8)(p[1] & 0x0F));
+		} else { /* EF */
+			add_acl_entry(card, file, SC_AC_OP_READ, (u8)(p[0] >> 4));
+      
+		}
+	}
+	if (file->type != SC_FILE_TYPE_DF) {
+		add_acl_entry(card, file, SC_AC_OP_REHABILITATE, (u8)(p[2] >> 4));
+		add_acl_entry(card, file, SC_AC_OP_INVALIDATE, (u8)(p[2] & 0x0F));
+	}
+	pos = p;
+	p += 3;
+	if (*p++)
+		file->status = SC_FILE_STATUS_ACTIVATED;
+	else
+		file->status = SC_FILE_STATUS_INVALIDATED;
+	left = *p++;
+	if (0 == is_mf) {
+		*p++;
+		switch (*p) {
+		case  0x00:
+			file->ef_structure = SC_FILE_EF_TRANSPARENT;
+			break;
+		case  0x01:
+			file->ef_structure = SC_FILE_EF_LINEAR_FIXED;
+			break;
+		case  0x02:
+			file->ef_structure = SC_FILE_EF_LINEAR_VARIABLE;
+			break;
+		case  0x03:
+			file->ef_structure = SC_FILE_EF_CYCLIC;
+			break;
+		case  0x04:
+			// file->ef_structure = SC_FILE_EF_PROGRAM;
+			break;
+		default:
+			sc_error(ctx, "invalid file type: 0x%02X\n", *p);
+			return SC_ERROR_UNKNOWN_DATA_RECEIVED;          
+		}
+		switch (file->ef_structure) {
+		case SC_FILE_EF_TRANSPARENT:
+			add_acl_entry(card, file, SC_AC_OP_UPDATE, (u8)(pos[0] & 0x0F));
+			break;
+		case SC_FILE_EF_LINEAR_FIXED:
+		case SC_FILE_EF_LINEAR_VARIABLE:
+			add_acl_entry(card, file, SC_AC_OP_UPDATE, (u8)(pos[0] & 0x0F));
+			break;
+		case SC_FILE_EF_CYCLIC:
+#if 0
+			/* FIXME */
+			file->acl[SC_AC_OP_DECREASE] = ac_to_acl(pos[0] & 0x0F);
+#endif
+			break;
+		}
+	}
 	return 0;
 }
 
@@ -382,27 +553,6 @@ void cache_path(struct sc_card *card, const struct sc_path *path, int result)
 	}
 }
 
-static int get_flex_ac_keys(struct sc_card *card, struct sc_file *file)
-{
-#if 0
-	struct sc_apdu apdu;
-	u8 rbuf[3];
-	int r;
-	
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC4, 0x00, 0x00);
-	apdu.cla = 0xF0;
-	apdu.le = 3;
-	apdu.resplen = 3;
-	apdu.resp = rbuf;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
-		return 0;
-	sc_debug(card->ctx, "AC Keys: %02X %02X %02X\n", rbuf[0], rbuf[1], rbuf[2]);
-#endif
-	return 0;
-}
-
 static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 			  u8 p1, struct sc_file **file_out)
 {
@@ -448,12 +598,13 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 	file = sc_file_new();
 	if (file == NULL)
 		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
-	r = parse_flex_sf_reply(card->ctx, apdu.resp, apdu.resplen, file);
+
+	/* We abuse process_fci here even though it's not the real FCI. */
+	r = card->ops->process_fci(card, file, apdu.resp, apdu.resplen);
 	if (r) {
                 sc_file_free(file);
 		return r;
 	}
-	r = get_flex_ac_keys(card, file);
 
 	*file_out = file;
         return 0;
@@ -514,7 +665,7 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 	return r;
 }
 
-static int flex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+static int cryptoflex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 {
 	struct sc_apdu apdu;
 	u8 rbuf[4];
@@ -547,24 +698,57 @@ static int flex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	return count;
 }
 
+/*
+ * The Cyberflex LIST FILES command is slightly different...
+ */
+static int cyberflex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+{
+	struct sc_apdu apdu;
+	u8 rbuf[6];
+	int r;
+	size_t count = 0, p2 = 0;
+	
+	while (buflen > 2) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA8, 0, ++p2);
+		apdu.le = 6;
+		apdu.resplen = 6;
+		apdu.resp = rbuf;
+		r = sc_transmit_apdu(card, &apdu);
+		if (r)
+			return r;
+		if (apdu.sw1 == 0x6A && apdu.sw2 == 0x83)
+			break;
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		if (r)
+			return r;
+		if (apdu.resplen != 6) {
+			sc_error(card->ctx, "expected 6 bytes, got %d.\n", apdu.resplen);
+			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+		}
+		memcpy(buf, rbuf + 4, 2);
+		buf += 2;
+		count += 2;
+		buflen -= 2;
+	}
+	return count;
+}
+
 static int flex_delete_file(struct sc_card *card, const struct sc_path *path)
 {
-	int r;
-	u8 sbuf[2];
 	struct sc_apdu apdu;
+	int r;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
 		sc_error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	sbuf[0] = path->value[0];
-	sbuf[1] = path->value[1];
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
-	apdu.cla = 0xF0;	/* Override CLA byte */
+	if (!IS_CYBERFLEX(card))
+		apdu.cla = 0xF0;	/* Override CLA byte */
+	apdu.data = path->value;
 	apdu.lc = 2;
 	apdu.datalen = 2;
-	apdu.data = sbuf;
 	
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -610,7 +794,8 @@ static int acl_to_keynum_nibble(const struct sc_acl_entry *e)
         return e->key_ref & 0x0F;
 }
 
-static int encode_file_structure(struct sc_card *card, const struct sc_file *file,
+static int
+cryptoflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 				 u8 *buf, size_t *buflen)
 {
 	u8 *p = buf;
@@ -688,6 +873,81 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 	return 0;
 }
 
+static int
+cyberflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
+				 u8 *buf, size_t *buflen)
+{
+	u8 *p = buf;
+	int i;
+	size_t size = file->size;
+	int ops[6];
+
+	/* cyberflex wants input parameters length added */
+	switch (file->type) {
+	case SC_FILE_TYPE_DF:
+		size += 24;
+		break;
+	case SC_FILE_TYPE_WORKING_EF:
+	default:
+		size += 16;
+		break;
+	}
+
+	sc_debug(card->ctx, "Creating %02x:%02x, size %d %02x:%02x\n", 
+		 file->id >> 8,  
+		 file->id & 0xFF, 
+		 size, 
+		 size >> 8,  
+		 size & 0xFF);
+
+	p[0] = size >> 8;
+	p[1] = size & 0xFF;
+	p[2] = file->id >> 8;
+	p[3] = file->id & 0xFF;
+	if (file->type == SC_FILE_TYPE_DF)
+		p[4] = 0x20;
+	else
+		switch (file->ef_structure) {
+		case SC_FILE_EF_TRANSPARENT:
+			p[4] = 0x02;
+			break;
+		case SC_FILE_EF_LINEAR_FIXED:
+			p[4] = 0x0C;
+			break;
+		case SC_FILE_EF_LINEAR_VARIABLE:
+			p[4] = 0x19;
+			break;
+		case SC_FILE_EF_CYCLIC:
+			p[4] = 0x1D;
+			break;
+		default:
+			sc_error(card->ctx, "Invalid EF structure\n");
+			return -1;
+		}
+	p[5] = 0x01;	/* status?? */
+	for (i = 0; i < 6; i++)
+		ops[i] = -1;
+	if (file->type == SC_FILE_TYPE_DF) {
+		ops[0] = SC_AC_OP_LIST_FILES;
+		ops[2] = SC_AC_OP_DELETE;
+		ops[3] = SC_AC_OP_CREATE;
+	} else {
+		ops[0] = SC_AC_OP_READ;
+		ops[1] = SC_AC_OP_UPDATE;
+		ops[2] = SC_AC_OP_READ;
+		ops[3] = SC_AC_OP_UPDATE;
+		ops[4] = SC_AC_OP_REHABILITATE;
+		ops[5] = SC_AC_OP_INVALIDATE;
+	}
+	p[6] = p[7] = 0;
+	
+	*buflen = 16;
+
+	p[8] = p[9] = p[11] = 0xFF;
+	p[10] = p[12] = p[13] = p[14] = p[15] = 0x00;
+	return 0;
+}
+
 static int flex_create_file(struct sc_card *card, struct sc_file *file)
 {
 	u8 sbuf[18];
@@ -695,7 +955,10 @@ static int flex_create_file(struct sc_card *card, struct sc_file *file)
 	int r, rec_nr;
 	struct sc_apdu apdu;
 	
-	r = encode_file_structure(card, file, sbuf, &sendlen);
+	/* Build the file attrs. These are not the real FCI bytes
+	 * in the standard sense, but its a convenient way of
+	 * abstracting the Cryptoflex/Cyberflex differences */
+	r = card->ops->construct_fci(card, file, sbuf, &sendlen);
 	if (r) {
 		sc_error(card->ctx, "File structure encoding failed.\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -705,7 +968,8 @@ static int flex_create_file(struct sc_card *card, struct sc_file *file)
 	else
 		rec_nr = 0;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, rec_nr);
-	apdu.cla = 0xF0;
+	if (!IS_CYBERFLEX(card))
+		apdu.cla = 0xF0;
 	apdu.data = sbuf;
 	apdu.datalen = sendlen;
 	apdu.lc = sendlen;
@@ -770,8 +1034,9 @@ static int flex_restore_security_env(struct sc_card *card, int se_num)
 	return 0;
 }
 
-static int flex_compute_signature(struct sc_card *card, const u8 *data,
-				  size_t data_len, u8 * out, size_t outlen)
+static int
+cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
+				size_t data_len, u8 * out, size_t outlen)
 {
 	struct flex_private_data *prv = (struct flex_private_data *) card->drv_data;
 	struct sc_apdu apdu;
@@ -823,28 +1088,64 @@ static int flex_compute_signature(struct sc_card *card, const u8 *data,
 	return apdu.resplen;
 }
 
+static int
+cyberflex_compute_signature(sc_card_t *card, const u8 *data,
+		size_t data_len, u8 * out, size_t outlen)
+{
+	struct flex_private_data *prv = DRV_DATA(card);
+	struct sc_apdu apdu;
+	u8 alg_id, key_id;
+	int r;
+	
+	switch (data_len) {
+	case 64:  alg_id = 0xC4; break;
+	case 96:  alg_id = 0xC6; break;
+	case 128: alg_id = 0xC6; break;
+	default:
+		sc_error(card->ctx, "Illegal input length: %d\n", data_len);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	key_id = prv->rsa_key_ref + 1; /* Why? */
+
+	if (outlen < data_len) {
+		sc_error(card->ctx, "Output buffer too small.\n");
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, alg_id, key_id);
+
+	apdu.lc = data_len;
+	apdu.datalen = data_len;
+	apdu.data = data;
+	apdu.resplen = outlen;
+	apdu.resp = out;
+	apdu.sensitive = 1;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+	return apdu.resplen;
+}
+
 static int flex_decipher(struct sc_card *card,
 			    const u8 * crgram, size_t crgram_len,
 			    u8 * out, size_t outlen)
 {
 	/* There seems to be no Decipher command, but an RSA signature
 	 * is the same operation as an RSA decryption.
-	 * Off course, the (PKCS#1) padding is different, but at least
+	 * Of course, the (PKCS#1) padding is different, but at least
 	 * a Cryptoflex 32K e-gate doesn't seem to check this. */
-	return flex_compute_signature(card, crgram, crgram_len, out, outlen);
+	return card->ops->compute_signature(card, crgram, crgram_len, out, outlen);
 }
 
 /* Return the default AAK for this type of card */
 static int flex_get_default_key(struct sc_card *card,
 				struct sc_cardctl_default_key *data)
 {
-	struct flex_private_data *prv;
+	struct flex_private_data *prv = DRV_DATA(card);
 	const char *key;
 
-	if (data->method != SC_AC_AUT || data->key_ref != 1)
+	if (data->method != SC_AC_AUT || data->key_ref != prv->aak_key_ref)
 		return SC_ERROR_NO_DEFAULT_KEY;
-
-	prv = (struct flex_private_data *) card->drv_data;
 
 	/* These seem to be the default AAKs used by Schlumberger */
 	switch (prv->card_type & TYPE_MASK) {
@@ -918,20 +1219,21 @@ static int flex_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 static int flex_build_verify_apdu(struct sc_card *card, struct sc_apdu *apdu,
 				  struct sc_pin_cmd_data *data)
 {
-        static u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-        int r, len;
-        int cla, ins;
+	static u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int r, len;
+	int cla = card->cla, ins;
 
 	switch (data->pin_type) {
 	case SC_AC_CHV:
-		cla = 0xC0;
 		ins = 0x20;
 		break;
 	case SC_AC_AUT:
 		/* AUT keys cannot be entered through terminal */
 		if (data->flags & SC_PIN_CMD_USE_PINPAD)
 			return SC_ERROR_INVALID_ARGUMENTS;
-		cla = 0xF0;
+		/* Override CLA byte */
+		if (!IS_CYBERFLEX(card))
+			cla = 0xF0;
 		ins = 0x2A;
 		break;
 	default:
@@ -982,7 +1284,8 @@ static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 		if (data->pin_type != SC_AC_CHV)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		old_cla = card->cla;
-		card->cla = 0xF0;
+		if (!IS_CYBERFLEX(card))
+			card->cla = 0xF0;
 	}
 
 	/* According to the Cryptoflex documentation, the card
@@ -1013,32 +1316,52 @@ static int flex_logout(struct sc_card *card)
 }
 
 
-static struct sc_card_driver * sc_get_driver(void)
+struct sc_card_driver * sc_get_cryptoflex_driver(void)
 {
 	if (iso_ops == NULL)
 		iso_ops = sc_get_iso7816_driver()->ops;
 
-	flex_ops = *iso_ops;
-	flex_ops.match_card = flex_match_card;
-	flex_ops.init = flex_init;
-        flex_ops.finish = flex_finish;
-	flex_ops.select_file = flex_select_file;
-	flex_ops.list_files = flex_list_files;
-	flex_ops.delete_file = flex_delete_file;
-	flex_ops.create_file = flex_create_file;
-	flex_ops.card_ctl = flex_card_ctl;
-	flex_ops.set_security_env = flex_set_security_env;
-	flex_ops.restore_security_env = flex_restore_security_env;
-	flex_ops.compute_signature = flex_compute_signature;
-	flex_ops.decipher = flex_decipher;
-	flex_ops.pin_cmd = flex_pin_cmd;
-	flex_ops.logout = flex_logout;
-        return &flex_drv;
+	cryptoflex_ops = *iso_ops;
+	cryptoflex_ops.match_card = cryptoflex_match_card;
+	cryptoflex_ops.init = flex_init;
+        cryptoflex_ops.finish = flex_finish;
+	cryptoflex_ops.process_fci = cryptoflex_process_file_attrs;
+	cryptoflex_ops.construct_fci = cryptoflex_construct_file_attrs;
+	cryptoflex_ops.select_file = flex_select_file;
+	cryptoflex_ops.list_files = cryptoflex_list_files;
+	cryptoflex_ops.delete_file = flex_delete_file;
+	cryptoflex_ops.create_file = flex_create_file;
+	cryptoflex_ops.card_ctl = flex_card_ctl;
+	cryptoflex_ops.set_security_env = flex_set_security_env;
+	cryptoflex_ops.restore_security_env = flex_restore_security_env;
+	cryptoflex_ops.compute_signature = cryptoflex_compute_signature;
+	cryptoflex_ops.decipher = flex_decipher;
+	cryptoflex_ops.pin_cmd = flex_pin_cmd;
+	cryptoflex_ops.logout = flex_logout;
+        return &cryptoflex_drv;
 }
 
-#if 1
-struct sc_card_driver * sc_get_flex_driver(void)
+struct sc_card_driver * sc_get_cyberflex_driver(void)
 {
-	return sc_get_driver();
+	if (iso_ops == NULL)
+		iso_ops = sc_get_iso7816_driver()->ops;
+
+	cyberflex_ops = *iso_ops;
+	cyberflex_ops.match_card = cyberflex_match_card;
+	cyberflex_ops.init = flex_init;
+        cyberflex_ops.finish = flex_finish;
+	cyberflex_ops.process_fci = cyberflex_process_file_attrs;
+	cyberflex_ops.construct_fci = cyberflex_construct_file_attrs;
+	cyberflex_ops.select_file = flex_select_file;
+	cyberflex_ops.list_files = cyberflex_list_files;
+	cyberflex_ops.delete_file = flex_delete_file;
+	cyberflex_ops.create_file = flex_create_file;
+	cyberflex_ops.card_ctl = flex_card_ctl;
+	cyberflex_ops.set_security_env = flex_set_security_env;
+	cyberflex_ops.restore_security_env = flex_restore_security_env;
+	cyberflex_ops.compute_signature = cyberflex_compute_signature;
+	cyberflex_ops.decipher = flex_decipher;
+	cyberflex_ops.pin_cmd = flex_pin_cmd;
+	cyberflex_ops.logout = flex_logout;
+        return &cyberflex_drv;
 }
-#endif

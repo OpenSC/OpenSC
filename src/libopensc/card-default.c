@@ -92,7 +92,7 @@ static int autodetect_class(struct sc_card *card)
 		struct sc_card_driver *drv;
 		if (card->ctx->debug >= 2)
 			sc_debug(card->ctx, "SELECT FILE seems to return Schlumberger 'flex stuff\n");
-		drv = sc_get_flex_driver();
+		drv = sc_get_cryptoflex_driver();
 		card->ops->select_file = drv->ops->select_file;
 		return 0;
 	}

@@ -50,7 +50,8 @@ struct _sc_driver_entry {
 static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "emv", (void *) sc_get_emv_driver, NULL },
 	{ "etoken", (void *) sc_get_etoken_driver, NULL },
-	{ "flex", (void *) sc_get_flex_driver, NULL },
+	{ "flex", (void *) sc_get_cryptoflex_driver, NULL },
+	{ "cyberflex", (void *) sc_get_cyberflex_driver, NULL },
 #ifdef HAVE_OPENSSL
 	{ "gpk", (void *) sc_get_gpk_driver, NULL },
 #endif
