@@ -16,3 +16,7 @@ Generate a 512 bit RSA key and store on card, protected by the above PIN
 Or, store a pkcs12 key/certificate pair
 	./pkcs15-init --auth-id 01 -f pkcs12 -S mycert.p12
 
+	Note that the pkcs12 file must use just one password - if you
+	use different passwords for integrity and confidentiality,
+	OpenSC will fail to import the keys.
+
