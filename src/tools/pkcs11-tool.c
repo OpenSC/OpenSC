@@ -70,6 +70,7 @@ const struct option options[] = {
 	{ "quiet",		0, 0,		'q' },
 
 	{ "test",		0, 0,		't' },
+	{ "moz-cert",		1, 0,		'z' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -93,12 +94,14 @@ const char *option_help[] = {
 	"Specify the label of the object",
 	"Specify number of the slot to use",
 	"Specify label of the slot to use",
+	"Set the CKA_ID of an object, >args>= the (new) CKA_ID",
 	"Specify the input file",
 	"Specify the output file",
 	"Specify the module to load",
 	"Quiet operation",
 
-       "Test (best used with the --login or --pin option)",
+	"Test (best used with the --login or --pin option)",
+	"Test Mozilla-like keypair gen and cert req, <arg>=certfile"
 };
 
 const char *		app_name = "pkcs11-tool"; /* for utils.c */
@@ -144,8 +147,9 @@ static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		sign_data(CK_SLOT_ID,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
-static void		gen_keypair(CK_SLOT_ID, CK_SESSION_HANDLE);
-static void 		write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
+static int		gen_keypair(CK_SLOT_ID, CK_SESSION_HANDLE,
+				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *);
+static int 		write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static void 		set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
@@ -167,6 +171,7 @@ static void		p11_perror(const char *, CK_RV);
 static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static int		hex_to_bin(const char *in, CK_BYTE *out, size_t *outlen);
+static void		test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 
 /* win32 needs this in open(2) */
 #ifndef O_BINARY
@@ -190,6 +195,7 @@ main(int argc, char * const argv[])
 	int do_write_object = 0;
 	int do_set_id = 0;
 	int do_test = 0;
+	int do_test_kpgen_certwrite = 0;
 	int need_session = 0;
 	int opt_login = 0;
 	int do_change_pin = 0;
@@ -197,7 +203,7 @@ main(int argc, char * const argv[])
 	CK_RV rv;
 
 	while (1) {
-               c = getopt_long(argc, argv, "ILMOa:d:e:hi:klm:o:p:scqty:w:",
+               c = getopt_long(argc, argv, "ILMOa:d:e:hi:klm:o:p:scqty:w:z:",
 					options, &long_optind);
 		if (c == -1)
 			break;
@@ -298,6 +304,11 @@ main(int argc, char * const argv[])
 			break;
 		case 't':
 			do_test = 1;
+			action_count++;
+			break;
+		case 'z':
+			do_test_kpgen_certwrite = 1;
+			opt_file_to_write = optarg;
 			action_count++;
 			break;
 		case 'q':
@@ -448,8 +459,10 @@ skip_login:
 	if (do_hash)
 		hash_data(opt_slot, session);
 
-	if (do_gen_keypair)
-		gen_keypair(opt_slot, session);
+	if (do_gen_keypair) {
+		CK_OBJECT_HANDLE hPublicKey, hPrivateKey;
+		gen_keypair(opt_slot, session, &hPublicKey, &hPrivateKey);
+	}
 
 	if (do_write_object) {
 		if (opt_object_class_str == NULL)
@@ -467,6 +480,9 @@ skip_login:
 
 	if (do_test)
 		p11_test(opt_slot, session);
+
+	if (do_test_kpgen_certwrite)
+		test_kpgen_certwrite(opt_slot, session);
 
 end:
 	if (session)
@@ -776,10 +792,10 @@ hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 #define FILL_ATTR(attr, typ, val, len) {(attr).type=(typ); (attr).pValue=(val); (attr).ulValueLen=len;}
 
-void
-gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+int
+gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+	CK_OBJECT_HANDLE *hPublicKey, CK_OBJECT_HANDLE *hPrivateKey)
 {
-	CK_OBJECT_HANDLE hPublicKey, hPrivateKey;
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_KEY_PAIR_GEN, NULL_PTR, 0};
 	CK_ULONG modulusBits = 768;
 	CK_BYTE publicExponent[] = { 3 };
@@ -828,17 +844,19 @@ gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	rv = p11->C_GenerateKeyPair(session, &mechanism,
 		publicKeyTemplate, n_pubkey_attr,
 		privateKeyTemplate, n_privkey_attr,
-		&hPublicKey, &hPrivateKey);
+		hPublicKey, hPrivateKey);
 	if (rv != CKR_OK)
 		p11_fatal("C_GenerateKeyPair", rv);
 
 	printf("Key pair generated:\n");
-	show_object(session, hPrivateKey);
-	show_object(session, hPublicKey);
+	show_object(session, *hPrivateKey);
+	show_object(session, *hPublicKey);
+
+	return 1;
 }
 
 /* Currently only for certificates (-type cert) */
-void
+int
 write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
 	CK_BBOOL true = TRUE;
@@ -908,6 +926,8 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		printf("Generated private key:\n");
 		show_object(session, privkey_obj);
 	}
+
+	return 1;
 }
 
 void
@@ -2171,6 +2191,138 @@ p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		printf("%d errors\n", errors);
 
 	return errors;
+}
+
+/* Does about the same as Mozilla does when you go to an on-line CA
+ * for obtaining a certificate: key pair generation, signing the
+ * cert request + some other tests, writing certs and changing
+ * some attributes.
+ */
+static void
+test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	CK_MECHANISM		mech = {CKM_RSA_PKCS, NULL_PTR, 0};
+	CK_MECHANISM_TYPE	*mech_type = NULL;
+	CK_OBJECT_HANDLE	pub_key, priv_key;
+	CK_ULONG		i, num_mechs = 0;
+	CK_RV			rv;
+	CK_BYTE			buf[20], *tmp;
+	CK_BYTE			md5_and_digestinfo[34] = "\x30\x20\x30\x0c\x06\x08\x2a\x86\x48\x86\xf7\x0d\x02\x05\x05\x00\x04\x10";
+	CK_BYTE			*data, sig[512];
+	CK_ULONG		data_len, sig_len;
+	CK_BYTE			*id = "abcdefghijklmnopqrst";
+	CK_ULONG		id_len = 20;
+	CK_BYTE			*label = "Just a label";
+	CK_ULONG		label_len = 12;
+	CK_ATTRIBUTE		attribs[3] = {
+		{CKA_ID, id, id_len},
+		{CKA_LABEL, label, label_len},
+		{CKA_SUBJECT, "This won't be used in our lib", 29}
+	};
+	unsigned char		cert[5000];
+	int			cert_len;
+	FILE			*f;
+
+	get_mechanisms(slot, &mech_type, &num_mechs);
+	for (i = 0; i < num_mechs; i++) {
+		if (mech_type[i] == CKM_RSA_PKCS_KEY_PAIR_GEN)
+			break;
+	}
+	if (i == num_mechs) {
+		printf("ERR: no \"CKM_RSA_PKCS_KEY_PAIR_GEN\" found in the mechanism list\n");
+		return;
+	}
+
+	f = fopen(opt_file_to_write, "rb");
+	if (f == NULL)
+		fatal("Couldn't open file \"%s\"\n", opt_file_to_write);
+	fclose(f);
+
+	/* Get for a not-yet-existing ID */
+	while(find_object(session, CKO_PRIVATE_KEY, &priv_key, id, id_len, 0))
+		id[0]++;
+	
+
+	printf("\n*** Generating a 1024 bit RSA key pair ***\n");
+
+	if (!gen_keypair(slot, session, &pub_key, &priv_key))
+		return;
+
+	tmp = getID(session, priv_key, &opt_object_id_len);
+	if (opt_object_id == NULL || opt_object_id_len == 0) {
+		printf("ERR: newly generated private key has no (or an empty) CKA_ID\n");
+		return;
+	}
+	memcpy(opt_object_id, tmp, opt_object_id_len);
+
+	printf("\n*** Changing the CKA_ID of private and public key into one of 20 bytes ***\n");
+
+	rv = p11->C_SetAttributeValue(session, priv_key, attribs, 1);
+	if (rv != CKR_OK)
+		p11_fatal("C_SetAttributeValue(priv_key)", rv);
+
+	rv = p11->C_SetAttributeValue(session, pub_key, attribs, 1);
+	if (rv != CKR_OK)
+		p11_fatal("C_SetAttributeValue(pub_key)", rv);
+
+	printf("\n*** Do a signature and verify it (presumably to test the keys) ***\n");
+
+	data = buf;
+	data_len = 20;
+	rv = p11->C_SignInit(session, &mech, priv_key);
+	if (rv != CKR_OK)
+		p11_fatal("C_SignInit", rv);
+	rv = p11->C_Sign(session, data, data_len, NULL, &sig_len);
+	if (rv != CKR_OK)
+		p11_fatal("C_Sign", rv);
+	printf("sig_len = %d\n", sig_len);
+	sig_len = 20;
+	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
+	if (rv != CKR_BUFFER_TOO_SMALL) {
+		printf("ERR: C_Sign() didn't return CKR_BUFFER_TO_SMALL but %s\n", CKR2Str(rv));
+		return;
+	}
+	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
+	if (rv != CKR_OK)
+		p11_fatal("C_Sign", rv);
+
+	rv = p11->C_VerifyInit(session, &mech, pub_key);
+	if (rv != CKR_OK)
+		p11_fatal("C_VerifyInit", rv);
+	rv = p11->C_Verify(session, data, data_len, sig, sig_len);
+	if (rv != CKR_OK)
+		p11_fatal("C_Verify", rv);
+
+	printf("\n*** Signing the certificate request ***\n");
+	/* Sign the certificate request */
+
+	data = md5_and_digestinfo;
+	data_len = 20;
+	rv = p11->C_SignInit(session, &mech, priv_key);
+	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
+	if (rv != CKR_OK)
+		p11_fatal("C_SignInit", rv);
+	if (rv != CKR_OK)
+		p11_fatal("C_Sign", rv);
+
+	printf("\n*** In real life, the cert req should be sent to the CA ***\n");
+
+	printf("\n*** Changing the CKA_LABEL, CKA_ID and CKA_SUBJECT of the public key ***\n");
+
+	rv = p11->C_SetAttributeValue(session, pub_key, attribs, 3);
+	if (rv != CKR_OK)
+		p11_fatal("C_SetAttributeValue", rv);
+
+	printf("\n*** Put a cert on the card (NOTE: doesn't correspond with the key!) ***\n");
+
+	opt_object_class = CKO_CERTIFICATE;
+	memcpy(opt_object_id, id, id_len);
+	opt_object_id_len = id_len;
+	opt_object_label = label;
+	if (!write_object(slot, session))
+		return;
+
+	printf("\n==> OK, successfull! Should work with Mozilla\n");	
 }
 
 const char *
