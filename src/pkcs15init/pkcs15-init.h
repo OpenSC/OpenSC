@@ -88,6 +88,21 @@ struct sc_pkcs15init_operations {
 			sc_pkcs15_pubkey_t *);
 
 	/*
+	 * Encode private/public key
+	 * These are used mostly by the Cryptoflex/Cyberflex drivers.
+	 */
+	int	(*encode_private_key)(sc_profile_t *, sc_card_t *,
+			struct sc_pkcs15_prkey_rsa *,
+			u8 *buf, size_t *bufsize, int key_ref);
+	int	(*encode_public_key)(sc_profile_t *, sc_card_t *,
+			struct sc_pkcs15_prkey_rsa *,
+			u8 *buf, size_t *bufsize, int key_ref);
+
+	/*
+	 * Old-style API
+	 */
+
+	/*
 	 * Initialize application, and optionally set a SO pin
 	 */
 	int	(*init_app)(struct sc_profile *, struct sc_card *,
@@ -321,7 +336,8 @@ extern int	sc_pkcs15_create_pin_domain(sc_profile_t *, sc_card_t *,
 
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_miocos_ops(void);
-extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cflex_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cryptoflex_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cyberflex_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_etoken_ops(void);
 
 #ifdef  __cplusplus

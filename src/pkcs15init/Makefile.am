@@ -8,6 +8,7 @@ CFLAGS = @CFLAGS@ -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
 PROFILES = \
+	cyberflex.profile \
 	flex.profile \
 	gpk.profile \
 	miocos.profile \

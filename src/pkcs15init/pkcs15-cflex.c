@@ -46,10 +46,6 @@ static int	cflex_create_empty_pin_file(sc_profile_t *, sc_card_t *,
 			sc_path_t *, int, sc_file_t **);
 static int	cflex_get_keyfiles(sc_profile_t *, sc_card_t *,
 			const sc_path_t *, sc_file_t **, sc_file_t **);
-static int	cflex_encode_private_key(struct sc_pkcs15_prkey_rsa *,
-			u8 *, size_t *, int);
-static int	cflex_encode_public_key(struct sc_pkcs15_prkey_rsa *,
-			u8 *, size_t *, int);
 
 static int
 cflex_delete_file(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
@@ -338,7 +334,7 @@ cflex_store_key(sc_profile_t *profile, sc_card_t *card,
 	sc_file_t	*prkf, *pukf;
 	unsigned char	keybuf[1024];
 	size_t		size;
-	int		r, key_num;
+	int		r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_error(card->ctx, "Cryptoflex supports only RSA keys.");
@@ -350,17 +346,27 @@ cflex_store_key(sc_profile_t *profile, sc_card_t *card,
 	if (r < 0)
 		return r;
 
-	key_num = key_info->key_reference + 1;
-
+	/* Write the private key */
 	size = sizeof(keybuf);
-	if ((r = cflex_encode_private_key(&key->u.rsa, keybuf, &size, key_num)) < 0
-	 || (r = sc_pkcs15init_update_file(profile, card, prkf, keybuf, size)) < 0)
+	r = profile->ops->encode_private_key(profile, card,
+				&key->u.rsa, keybuf, &size,
+				key_info->key_reference);
+	if (r < 0)
 		goto out;
 
-	size = sizeof(keybuf);
-	if ((r = cflex_encode_public_key(&key->u.rsa, keybuf, &size, key_num)) < 0
-	 || (r = sc_pkcs15init_update_file(profile, card, pukf, keybuf, size)) < 0)
+	r = sc_pkcs15init_update_file(profile, card, prkf, keybuf, size);
+	if (r < 0)
 		goto out;
+
+	/* Write the public key */
+	size = sizeof(keybuf);
+	r = profile->ops->encode_public_key(profile, card,
+				&key->u.rsa, keybuf, &size,
+				key_info->key_reference);
+	if (r < 0)
+		goto out;
+
+	r = sc_pkcs15init_update_file(profile, card, pukf, keybuf, size);
 
 out:	sc_file_free(prkf);
 	sc_file_free(pukf);
@@ -611,11 +617,29 @@ bn2cf(sc_pkcs15_bignum_t *num, u8 *buf, size_t bufsize)
 }
 
 static int
-cflex_encode_private_key(struct sc_pkcs15_prkey_rsa *rsa,
-			u8 *key, size_t *keysize, int key_num)
+bn2cft(sc_pkcs15_bignum_t *num, u8 tag, u8 *buf, size_t bufsize)
 {
-        size_t base;
-        int r;
+	size_t	len = num->len;
+
+	if (len + 3 > bufsize)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	memset(buf, 0, bufsize);
+	buf[0] = tag;
+	buf[1] = len + 1;
+	memcpy(buf + 2, num->data, len);
+	return 0;
+}
+
+/*
+ * Cryptoflex key encoding
+ */
+static int
+cryptoflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
+			struct sc_pkcs15_prkey_rsa *rsa,
+			u8 *key, size_t *keysize, int key_ref)
+{
+        size_t base = rsa->modulus.len / 2, key_blob_size;
+        int r, key_num = key_ref + 1;
         
         switch (rsa->modulus.len) {
 	case  512 / 8:
@@ -627,13 +651,13 @@ cflex_encode_private_key(struct sc_pkcs15_prkey_rsa *rsa,
 		return SC_ERROR_INVALID_ARGUMENTS;
         }
 
-	base = rsa->modulus.len / 2;
-	if (*keysize < (5 * base + 6))
+	key_blob_size = 5 * base + 3;
+	if (*keysize < key_blob_size + 3)
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	*keysize = 5 * base + 6;
+	*keysize = key_blob_size + 3;
 
-        *key++ = (5 * base + 3) >> 8;
-        *key++ = (5 * base + 3) & 0xFF;
+        *key++ = key_blob_size >> 8;
+        *key++ = key_blob_size & 0xFF;
         *key++ = key_num;
 
 	if ((r = bn2cf(&rsa->p,    key + 0 * base, base)) < 0
@@ -652,11 +676,12 @@ cflex_encode_private_key(struct sc_pkcs15_prkey_rsa *rsa,
 }
 
 static int
-cflex_encode_public_key(struct sc_pkcs15_prkey_rsa *rsa,
-			u8 *key, size_t *keysize, int key_num)
+cryptoflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
+			struct sc_pkcs15_prkey_rsa *rsa,
+			u8 *key, size_t *keysize, int key_ref)
 {
         size_t base;
-        int r;
+        int r, key_num = key_ref + 1;
         
         switch (rsa->modulus.len) {
 	case  512 / 8:
@@ -694,18 +719,139 @@ cflex_encode_public_key(struct sc_pkcs15_prkey_rsa *rsa,
         return 0;
 }
 
-static struct sc_pkcs15init_operations sc_pkcs15init_cflex_operations;
-
-struct sc_pkcs15init_operations *sc_pkcs15init_get_cflex_ops(void)
+/*
+ * Cyberflex key encoding
+ */
+static int
+cyberflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
+			struct sc_pkcs15_prkey_rsa *rsa,
+			u8 *key, size_t *keysize, int key_ref)
 {
-	sc_pkcs15init_cflex_operations.erase_card = cflex_erase_card;
-	sc_pkcs15init_cflex_operations.create_dir = cflex_create_dir;
-	sc_pkcs15init_cflex_operations.create_domain = cflex_create_domain;
-	sc_pkcs15init_cflex_operations.select_pin_reference = cflex_select_pin_reference;
-	sc_pkcs15init_cflex_operations.create_pin = cflex_create_pin;
-	sc_pkcs15init_cflex_operations.create_key = cflex_create_key;
-	sc_pkcs15init_cflex_operations.generate_key = cflex_generate_key;
-	sc_pkcs15init_cflex_operations.store_key = cflex_store_key;
+        size_t base = rsa->modulus.len / 2, key_blob_size, bnlen;
+        int r, key_num = key_ref + 1, alg_id;
+        
+        switch (rsa->modulus.len) {
+	case  512 / 8: alg_id = 0xC4; break;
+	case  768 / 8: alg_id = 0xC6; break;
+	case 1024 / 8: alg_id = 0xC8; break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+        }
 
-	return &sc_pkcs15init_cflex_operations;
+	key_blob_size = 12 + 5 * (base + 3) + 4;
+	if (*keysize < key_blob_size)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	*keysize = key_blob_size;
+
+	memset(key, 0, *keysize);
+        *key++ = key_blob_size >> 8;
+        *key++ = key_blob_size & 0xFF;
+        *key++ = key_num;
+        *key++ = alg_id;
+
+	/* key blob header:
+	 * "C2:06:C1:08:13:00:00:05"
+	 */
+	memcpy(key, "\xc2\x06\xc1\x08\x12\x00\x00\x05", 8);
+	key += 8;
+
+	/* Each bignum is encoded with a 2 byte header and a
+	 * NULL pad byte */
+	bnlen = base + 3;
+
+	if ((r = bn2cft(&rsa->p,    0xC2, key + 0 * bnlen, bnlen)) < 0
+	 || (r = bn2cft(&rsa->q,    0xC2, key + 1 * bnlen, bnlen)) < 0
+	 || (r = bn2cft(&rsa->iqmp, 0xC2, key + 2 * bnlen, bnlen)) < 0
+	 || (r = bn2cft(&rsa->dmp1, 0xC2, key + 3 * bnlen, bnlen)) < 0
+	 || (r = bn2cft(&rsa->dmq1, 0xC2, key + 4 * bnlen, bnlen)) < 0)
+		return r;
+
+        key += 5 * bnlen;
+	*key++ = 0;
+	*key++ = 0;
+	*key++ = 0;
+	
+        return 0;
+}
+
+static int
+cyberflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
+			struct sc_pkcs15_prkey_rsa *rsa,
+			u8 *key, size_t *keysize, int key_ref)
+{
+	size_t base = rsa->modulus.len, key_blob_size, bnlen;
+        int r, key_num = key_ref + 1, alg_id;
+        
+        switch (rsa->modulus.len) {
+	case  512 / 8: alg_id = 0xC5; break;
+	case  768 / 8: alg_id = 0xC7; break;
+	case 1024 / 8: alg_id = 0xC9; break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+        }
+
+	key_blob_size = 12 + base + 3 + 7;
+	if (*keysize < key_blob_size)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	*keysize = key_blob_size;
+        
+	memset(key, 0, *keysize);
+        *key++ = key_blob_size >> 8;
+        *key++ = key_blob_size & 0xFF;
+        *key++ = key_num;
+	*key++ = alg_id;
+
+	/* Key blob header */
+	memcpy(key, "\xC1\x06\xC0\x08\x13\x00\x00\x05", 8);
+	key += 8;
+
+	bnlen = rsa->modulus.len + 3;
+	if ((r = bn2cft(&rsa->modulus, 0xC0, key, bnlen)) < 0
+	 || (r = bn2cft(&rsa->exponent, 0xC0, key + bnlen, 3 + 4)) < 0)
+	 	return r;
+
+        return 0;
+}
+
+static struct sc_pkcs15init_operations sc_pkcs15init_cryptoflex_operations;
+static struct sc_pkcs15init_operations sc_pkcs15init_cyberflex_operations;
+
+struct sc_pkcs15init_operations *
+sc_pkcs15init_get_cryptoflex_ops(void)
+{
+	struct sc_pkcs15init_operations *ops;
+	
+	ops = &sc_pkcs15init_cryptoflex_operations;
+	ops->erase_card = cflex_erase_card;
+	ops->create_dir = cflex_create_dir;
+	ops->create_domain = cflex_create_domain;
+	ops->select_pin_reference = cflex_select_pin_reference;
+	ops->create_pin = cflex_create_pin;
+	ops->create_key = cflex_create_key;
+	ops->generate_key = cflex_generate_key;
+	ops->store_key = cflex_store_key;
+	ops->encode_private_key = cryptoflex_encode_private_key;
+	ops->encode_public_key = cryptoflex_encode_public_key;
+
+	return ops;
+}
+
+struct sc_pkcs15init_operations *
+sc_pkcs15init_get_cyberflex_ops(void)
+{
+	struct sc_pkcs15init_operations *ops;
+	
+	ops = &sc_pkcs15init_cyberflex_operations;
+	ops->erase_card = cflex_erase_card;
+	ops->create_dir = cflex_create_dir;
+	ops->create_domain = cflex_create_domain;
+	ops->select_pin_reference = cflex_select_pin_reference;
+	ops->create_pin = cflex_create_pin;
+	ops->create_key = cflex_create_key;
+	ops->generate_key = cflex_generate_key;
+	ops->store_key = cflex_store_key;
+	ops->encode_private_key = cyberflex_encode_private_key;
+	ops->encode_public_key = cyberflex_encode_public_key;
+
+	return ops;
 }
