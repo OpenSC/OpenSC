@@ -169,8 +169,9 @@ app default {
 		# Default: yes
 		enable_builtin_emulation = yes;
 		# list of the builtin pkcs15 emulators to test
-		# possible values: esteid, openpgp, netkey, netkey, starcert, infocamere
-		builtin_emulators = esteid, openpgp, netkey, netkey, starcert, infocamere;
+		# possible values: esteid, openpgp, netkey, netkey,
+		# starcert, infocamere, postecert
+		builtin_emulators = esteid, openpgp, netkey, netkey, starcert, infocamere, postecert;
 
 		# additional pkcs15 emulators (dynamic or builtin with
 		# a different atr etc.) 
