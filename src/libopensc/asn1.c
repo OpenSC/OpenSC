@@ -772,7 +772,7 @@ static int asn1_encode_path(struct sc_context *ctx, const struct sc_path *path,
 
 static const struct sc_asn1_entry c_asn1_com_obj_attr[6] = {
 	{ "label", SC_ASN1_UTF8STRING, ASN1_UTF8STRING, SC_ASN1_OPTIONAL, NULL },
-	{ "flags", SC_ASN1_BIT_STRING, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, NULL },
+	{ "flags", SC_ASN1_BIT_FIELD, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, NULL },
 	{ "authId", SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, NULL },
 	{ "userConsent", SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
 	{ "accessControlRules", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
