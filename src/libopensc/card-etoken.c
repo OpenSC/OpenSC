@@ -93,15 +93,8 @@ int etoken_init(struct sc_card *card)
 
 	/* Set up algorithm info. */
 	flags = SC_ALGORITHM_NEED_USAGE
-#if 0
-		| SC_ALGORITHM_RSA_HASH_MD5
-		| SC_ALGORITHM_RSA_HASH_SHA1
-		| SC_ALGORITHM_RSA_HASH_MD5_SHA1
-		| SC_ALGORITHM_RSA_PAD_PKCS1
-#endif
-#if 1
+		| SC_ALGORITHM_RSA_RAW
 		| SC_ALGORITHM_ONBOARD_KEY_GEN
-#endif
 		;
 	_sc_card_add_rsa_alg(card,  512, flags, 0);
 	_sc_card_add_rsa_alg(card,  768, flags, 0);
