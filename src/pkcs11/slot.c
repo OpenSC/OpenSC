@@ -271,6 +271,7 @@ CK_RV slot_token_removed(int id)
 	int rv, token_was_present;
         struct sc_pkcs11_slot *slot;
         struct sc_pkcs11_object *object;
+	CK_SLOT_INFO saved_slot_info;
 
 	rv = slot_get_slot(id, &slot);
 	if (rv != CKR_OK)
@@ -294,9 +295,11 @@ CK_RV slot_token_removed(int id)
 		slot->card->num_slots--;
 	}
 
-        /* Zap everything else */
+	/* Zap everything else except for the slot_info
+	 * (it contains the reader name, for instance) */
+	saved_slot_info = slot->slot_info;
 	memset(slot, 0, sizeof(*slot));
-        init_slot_info(&slot->slot_info);
+	slot->slot_info = saved_slot_info;
 	slot->login_user = -1;
 
 	if (token_was_present)
