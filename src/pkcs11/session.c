@@ -83,6 +83,8 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	pInfo->state = ses->state;
         pInfo->flags = ses->flags;
         pInfo->ulDeviceError = 0;
+	LOG("C_GetSessionInfo() ret: slotID = %d, state %ld, flags 0x%X\n",
+	    pInfo->slotID, pInfo->state, pInfo->flags);
 
         return CKR_OK;
 }

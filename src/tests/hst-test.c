@@ -14,10 +14,10 @@ struct sc_card *card = NULL;
 struct sc_pkcs15_card *p15_card = NULL;
 
 #define DO_PRKEY_ENUM		1
-#define	DO_PIN_ENUM		1
-#define DO_PIN_VERIFY		1
-#define DO_DECIPHER		1
-#define DO_SIGN			1
+#define	DO_PIN_ENUM		0
+#define DO_PIN_VERIFY		0
+#define DO_DECIPHER		0
+#define DO_SIGN			0
 #define DO_CERT_ENUM		1
 #define DO_CERT_READ		1
 
@@ -88,8 +88,11 @@ int main(int argc, char **argv)
 	u8 buf[256], buf2[256];
 	struct sc_security_env senv;
 	FILE *file;
+	struct sc_object_id oid;
 
 	int i, c;
+
+	sc_asn1_decode_object_id("\x2a\x86\x48\x86\xf7\x0d", 6, &oid);
 
 	i = sc_establish_context(&ctx);
 	if (i < 0) {
@@ -228,7 +231,7 @@ int main(int argc, char **argv)
 #if DO_CERT_READ
 	for (i = 0; i < p15_card->cert_count; i++) {
 		char fname[16];
-		u8 *certbuf;
+		struct sc_pkcs15_cert *cert;
 
 		sc_pkcs15_print_cert_info(&p15_card->cert_info[i]);
 
@@ -239,17 +242,16 @@ int main(int argc, char **argv)
 		if (file != NULL) {
 			c = sc_pkcs15_read_certificate(p15_card,
 						       &p15_card->cert_info[i],
-						       &certbuf);
-			if (c < 0) {
+						       &cert);
+			if (c) {
 				fprintf(stderr,
 					"Certificate read failed.\n");
 				return 1;
 			}
-			sc_asn1_print_tags(certbuf, c);
 			printf("Dumping certificate to file '%s' (%d bytes)\n",
-			       fname, c);
-			fwrite(certbuf, c, 1, file);
-			free(certbuf);
+			       fname, cert->data_len);
+			fwrite(cert->data, cert->data_len, 1, file);
+			sc_pkcs15_free_certificate(cert);
 			fclose(file);
 		}
 	}

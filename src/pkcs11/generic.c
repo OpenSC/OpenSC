@@ -122,6 +122,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	}
 	pInfo->hardwareVersion.major = 1;
 	pInfo->firmwareVersion.major = 1;
+	LOG("C_GetSlotInfo() ret: flags %X\n", pInfo->flags);
 
 	return CKR_OK;
 }
@@ -149,8 +150,9 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	strncpy(pInfo->serialNumber, slot[slotID].p15card->serial_number, 16);
 	pInfo->serialNumber[15] = 0;
 
-	pInfo->flags = CKF_LOGIN_REQUIRED | CKF_USER_PIN_INITIALIZED;
-	pInfo->ulMaxSessionCount = 1;	/* opened in exclusive mode */
+	pInfo->flags = CKF_USER_PIN_INITIALIZED | CKF_LOGIN_REQUIRED;
+//	pInfo->ulMaxSessionCount = 1;	/* opened in exclusive mode */
+	pInfo->ulMaxSessionCount = 0; /* FIXME */
 	pInfo->ulSessionCount = 0;
 	pInfo->ulMaxRwSessionCount = 1;
 	pInfo->ulRwSessionCount = 0;
@@ -179,8 +181,9 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
                          CK_ULONG_PTR pulCount)
 {
 	static const CK_MECHANISM_TYPE mechanism_list[] = {
-		//CKM_RSA_PKCS,
-		//CKM_RSA_X_509
+		CKM_RSA_PKCS,
+		CKM_RSA_X_509,
+		CKM_SHA1_RSA_PKCS,
 	};
         const int numMechanisms = sizeof(mechanism_list) / sizeof(mechanism_list[0]);
 
@@ -218,5 +221,3 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
         LOG("C_InitToken(%d, '%s', %d, '%s')\n", slotID, pPin, ulPinLen, pLabel);
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
-
-
