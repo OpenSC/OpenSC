@@ -769,6 +769,8 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE    hSession,                    /* the
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+        dump_template("C_CreateObject(), PrivKey attrs", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+        dump_template("C_CreateObject(), PubKey attrs", pPublicKeyTemplate, ulPublicKeyAttributeCount);
 
         rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
