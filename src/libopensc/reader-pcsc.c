@@ -478,11 +478,11 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 				   &pcsc_ctx);
 	if (rv != SCARD_S_SUCCESS)
 		return pcsc_ret_to_error(rv);
-	SCardListReaders(pcsc_ctx, NULL, NULL,
+	rv = SCardListReaders(pcsc_ctx, NULL, NULL,
 			 (LPDWORD) &reader_buf_size);
-	if (reader_buf_size < 2) {
+	if (rv != SCARD_S_SUCCESS || reader_buf_size < 2) {
 		SCardReleaseContext(pcsc_ctx);
-		return 0;	/* No readers configured */
+		return pcsc_ret_to_error(rv);	/* No readers configured */
 	}
 	gpriv = (struct pcsc_global_private_data *) malloc(sizeof(struct pcsc_global_private_data));
 	if (gpriv == NULL) {
@@ -493,8 +493,21 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	*reader_data = gpriv;
 	
 	reader_buf = (char *) malloc(sizeof(char) * reader_buf_size);
-	SCardListReaders(pcsc_ctx, mszGroups, reader_buf,
-			 (LPDWORD) &reader_buf_size);
+	if (!reader_buf) {
+		free(gpriv);
+		*reader_data = NULL;
+		SCardReleaseContext(pcsc_ctx);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+	rv = SCardListReaders(pcsc_ctx, mszGroups, reader_buf,
+				(LPDWORD) &reader_buf_size);
+	if (rv != SCARD_S_SUCCESS) {
+		free(reader_buf);
+		free(gpriv);
+		*reader_data = NULL;
+		SCardReleaseContext(pcsc_ctx);
+		return pcsc_ret_to_error(rv);
+	}
 	p = reader_buf;
 	do {
 		struct sc_reader *reader = (struct sc_reader *) malloc(sizeof(struct sc_reader));
