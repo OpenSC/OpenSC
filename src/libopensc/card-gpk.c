@@ -1694,6 +1694,8 @@ gpk_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, struct sc_pin_cmd_data *dat
 
 	/* XXX deal with secure messaging here */
 	memset(apdu, 0, sizeof(*apdu));
+	apdu->cse	= SC_APDU_CASE_3_SHORT;
+
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
 		/* Copy PIN to buffer and pad */
@@ -1701,8 +1703,9 @@ gpk_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, struct sc_pin_cmd_data *dat
 		if (r < 0)
 			return r;
 
-		ins = 0x20;
-		p1  = 0x00;
+		apdu->cla = 0x00;
+		apdu->ins = 0x20;
+		apdu->p1  = 0x00;
 		break;
 	case SC_PIN_CMD_CHANGE:
 	case SC_PIN_CMD_UNBLOCK:
@@ -1716,17 +1719,14 @@ gpk_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, struct sc_pin_cmd_data *dat
 		 || (r = sc_build_pin(sbuf + 4, 4, &data->pin2, 1)) < 0)
 			return r;
 
-		ins = 0x24;
-		p1  = (data->cmd == SC_PIN_CMD_CHANGE)? 0x00 : 0x01;
+		apdu->cla = 0x80;
+		apdu->ins = 0x24;
+		apdu->p1  = (data->cmd == SC_PIN_CMD_CHANGE)? 0x00 : 0x01;
 		break;
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	apdu->cse	= SC_APDU_CASE_3_SHORT;
-	apdu->cla	= 0x00;
-	apdu->ins	= ins;
-	apdu->p1	= p1;
 	apdu->p2	= data->pin_reference & 7;
 	apdu->lc	= 8;
 	apdu->datalen	= 8;
