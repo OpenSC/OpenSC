@@ -36,7 +36,7 @@ int opt_pin_attempts = 10;
 int opt_puk_attempts = 10;
 
 const char *opt_appdf = NULL, *opt_prkeyf = NULL, *opt_pubkeyf = NULL;
-unsigned char *pincode = NULL;
+u8 *pincode = NULL;
 
 const struct option options[] = {
 	{ "create-pkcs15",	0, 0,		'C' },
@@ -82,8 +82,7 @@ struct sc_card *card = NULL;
 
 char *getpin(const char *prompt)
 {
-	u8 *buf;
-	char pass[20];
+	char *buf, pass[20];
 	int i;
 	
 	printf("%s", prompt);
@@ -103,7 +102,7 @@ char *getpin(const char *prompt)
 		return NULL;
 	}
 	memset(buf, 0, 8);
-	strncpy((char *) buf, pass, 8);
+	strncpy(buf, pass, 8);
 	memset(pass, 0, strlen(pass));
 	return buf;
 }
@@ -115,8 +114,8 @@ int verify_pin(int pin)
 	
 	if (pincode == NULL) {
 		sprintf(prompt, "Please enter CHV%d: ", pin);
-		pincode = getpin(prompt);
-		if (pincode == NULL || strlen(pincode) == 0)
+		pincode = (u8 *) getpin(prompt);
+		if (pincode == NULL || strlen((char *) pincode) == 0)
 			return -1;
 	}
 	if (pin == 1)
@@ -1037,7 +1036,7 @@ int create_pin_file(const struct sc_path *inpath, int chv, const char *key_id)
 		fprintf(stderr, "Unable to select created PIN file: %s\n", sc_strerror(r));
 		return r;
 	}
-	r = sc_update_binary(card, 0, buf, len, 0);
+	r = sc_update_binary(card, 0, (const u8 *) buf, len, 0);
 	if (r < 0) {
 		fprintf(stderr, "Unable to update created PIN file: %s\n", sc_strerror(r));
 		return r;

@@ -298,7 +298,7 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 			r = sc_lock(card);
 			SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 			if (!magic_done && memcmp(pathptr, "\x3F\x00", 2) != 0) {
-				r = select_file_id(card, "\x3F\x00", 2, 0, NULL);
+				r = select_file_id(card, (const u8 *) "\x3F\x00", 2, 0, NULL);
 				if (r)
 					sc_unlock(card);
 				SC_TEST_RET(card->ctx, r, "Unable to select Master File (MF)");
