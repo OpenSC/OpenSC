@@ -1,6 +1,5 @@
 dnl -*- mode: m4; -*-
 dnl Process this file with autoconf to produce a configure script.
-dnl $Id$
 
 # Require autoconf 2.52
 AC_PREREQ(2.52)
@@ -141,7 +140,7 @@ dnl Automatically update the libtool script if it becomes out-of-date.
 dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h sys/time.h unistd.h syslog.h utmp.h getopt.h security/pam_appl.h security/_pam_macros.h readline/readline.h])
+AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h sys/time.h unistd.h libgen.h utmp.h getopt.h security/pam_appl.h security/_pam_macros.h readline/readline.h])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -453,62 +452,6 @@ if (test ! -z "$ac_cv_flexdir" && test "x$ac_cv_flexdir" != "x(system)") ; then
 	fi
 fi
 
-AC_SUBST(CFLAGS_PCSC)
-AC_SUBST(LIBPCSC)
-LIBPCSC="-lpcsclite"
-found_pcsclite=no
-saved_LIBS="$LIBS"
-saved_LDFLAGS="$LDFLAGS"
-saved_CPPFLAGS="$CPPFLAGS"
-LIBS="$LIBPCSC $saved_LIBS"
-AC_ARG_WITH(pcsclite,
-	[  --with-pcsclite=PATH    use PC/SC Lite in PATH],
-	[
-	AC_MSG_CHECKING([for SCardEstablishContext])
-	for pcscdir in /pcsc ""; do
-		LDFLAGS="$saved_LDFLAGS"
-
-		if test -d "$withval/lib$pcscdir"; then
-			if test -n "${need_dash_r}"; then
-				LDFLAGS="-L${withval}/lib${pcscdir}/ -R${withval}/lib${pcscdir}/ ${LDFLAGS}"
-			else
-				LDFLAGS="-L${withval}/lib${pcscdir} ${LDFLAGS}"
-			fi
-		else
-			if test -n "${need_dash_r}"; then
-				LDFLAGS="-L${withval}${pcscdir} -R${withval}${pcscdir} ${LDFLAGS}"
-			else
-				LDFLAGS="-L${withval}${pcscdir} ${LDFLAGS}"
-			fi
-		fi
-		if test -d "$withval/include"; then
-			CFLAGS_PCSC="-I${withval}/include${pcscdir} ${CFLAGS_PCSC}"
-		else
-			CFLAGS_PCSC="-I${withval}${pcscdir} ${CFLAGS_PCSC}"
-		fi
-		CPPFLAGS="$CFLAGS_PCSC $saved_CPPFLAGS"
-		AC_TRY_LINK([#include <stdlib.h>
-#include <winscard.h>],[SCardEstablishContext(0, NULL, NULL, NULL);], ac_cv_lib_pcsclite_SCardEstablishContext=yes)
-		CPPFLAGS="$saved_CPPFLAGS"
-		if test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes"; then
-			AC_DEFINE(HAVE_LIBPCSCLITE)
-			found_pcsclite=yes
-			break;
-		fi
-	done
-	if test "x$found_pcsclite" != "xyes" ; then
-		AC_MSG_RESULT(no)
-	else
-		AC_MSG_RESULT(yes)
-	fi
-	]
-)
-if test "x$found_pcsclite" != "xyes" ; then
-	AC_CHECK_LIB(pcsclite, SCardEstablishContext, , AC_MSG_ERROR([*** PC/SC Lite missing - please install first]))
-fi
-LIBS="$saved_LIBS"
-AM_CONDITIONAL(HAVE_PCSCLITE, test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes")
-
 dnl The big search for OpenSSL
 AC_ARG_WITH(ssl-dir,
 	[  --with-ssl-dir=PATH     Specify path to OpenSSL installation],
@@ -784,6 +727,62 @@ fi
 
 AM_CONDITIONAL(HAVE_SIA, test "x$SIA_MSG" = "xyes")
 
+AC_SUBST(CFLAGS_PCSC)
+AC_SUBST(LIBPCSC)
+LIBPCSC="-lpcsclite"
+found_pcsclite=no
+saved_LIBS="$LIBS"
+saved_LDFLAGS="$LDFLAGS"
+saved_CPPFLAGS="$CPPFLAGS"
+LIBS="$LIBPCSC $saved_LIBS"
+AC_ARG_WITH(pcsclite,
+	[  --with-pcsclite=PATH    use PC/SC Lite in PATH],
+	[
+	AC_MSG_CHECKING([for SCardEstablishContext])
+	for pcscdir in /pcsc ""; do
+		LDFLAGS="$saved_LDFLAGS"
+
+		if test -d "$withval/lib$pcscdir"; then
+			if test -n "${need_dash_r}"; then
+				LDFLAGS="-L${withval}/lib${pcscdir}/ -R${withval}/lib${pcscdir}/ ${LDFLAGS}"
+			else
+				LDFLAGS="-L${withval}/lib${pcscdir} ${LDFLAGS}"
+			fi
+		else
+			if test -n "${need_dash_r}"; then
+				LDFLAGS="-L${withval}${pcscdir} -R${withval}${pcscdir} ${LDFLAGS}"
+			else
+				LDFLAGS="-L${withval}${pcscdir} ${LDFLAGS}"
+			fi
+		fi
+		if test -d "$withval/include"; then
+			CFLAGS_PCSC="-I${withval}/include${pcscdir} ${CFLAGS_PCSC}"
+		else
+			CFLAGS_PCSC="-I${withval}${pcscdir} ${CFLAGS_PCSC}"
+		fi
+		CPPFLAGS="$CFLAGS_PCSC $saved_CPPFLAGS"
+		AC_TRY_LINK([#include <stdlib.h>
+#include <winscard.h>],[SCardEstablishContext(0, NULL, NULL, NULL);], ac_cv_lib_pcsclite_SCardEstablishContext=yes)
+		CPPFLAGS="$saved_CPPFLAGS"
+		if test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes"; then
+			AC_DEFINE(HAVE_LIBPCSCLITE)
+			found_pcsclite=yes
+			break;
+		fi
+	done
+	if test "x$found_pcsclite" != "xyes" ; then
+		AC_MSG_RESULT(no)
+	else
+		AC_MSG_RESULT(yes)
+	fi
+	]
+)
+if test "x$found_pcsclite" != "xyes" ; then
+	AC_CHECK_LIB(pcsclite, SCardEstablishContext, , AC_MSG_ERROR([*** PC/SC Lite missing - please install first]))
+fi
+LIBS="$saved_LIBS"
+AM_CONDITIONAL(HAVE_PCSCLITE, test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes")
+
 # Check for user-specified random device, otherwise check /dev/urandom
 AC_ARG_WITH(random,
 	[  --with-random=FILE      read entropy from FILE (default=/dev/urandom)],
@@ -913,16 +912,16 @@ fi
 AM_CONDITIONAL(HAVE_LDAP, test "x$LDAP_MSG" = "xyes")
 ### END LDAP SPECIFIC OPTIONS
 
+if test "x$prefix" = xNONE; then
+  prefix=$ac_default_prefix
+fi
+
 dnl Enable/disable debugging messages.
 AC_ARG_ENABLE(debug,
 [  --enable-debug          enable debug messages. [default=no]],
 	, enable_debug=no)
 if (test x$enable_debug = xyes); then
 	AC_DEFINE(DEBUG, 1, [Enable debug messages.])
-fi
-
-if test "x$prefix" = xNONE; then
-  prefix=$ac_default_prefix
 fi
 
 AC_SUBST(LIBSCCONF)
