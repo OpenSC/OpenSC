@@ -75,10 +75,11 @@ enum {
 	 * Starcos specific calls
 	 */
 	SC_CARDCTL_STARCOS_BASE = _CTL_PREFIX('S', 'T', 'A'),
-	SC_CARDCTL_STARCOS_SET_EX_DATA,
-	SC_CARDCTL_STARCOS_GET_EX_DATA,
-	SC_CARDCTL_STARCOS_FREE_EX_DATA,
-	SC_CARDCTL_STARCOS_FREE_ALL_EX_DATA,
+	/* some Starcos SPK 2.3 specific commands */
+	SC_CARDCTL_STARCOS_CREATE_FILE,
+	SC_CARDCTL_STARCOS_CREATE_END,
+	SC_CARDCTL_STARCOS_WRITE_KEY,
+	SC_CARDCTL_STARCOS_GENERATE_KEY,
 
 	SC_CARDCTL_JCOP_BASE = _CTL_PREFIX('J', 'C', 'P'),
 	SC_CARDCTL_JCOP_LOCK,
@@ -187,29 +188,42 @@ struct sc_cardctl_cryptoflex_genkey_info {
 };
 
 /*
- * Starcos ex_data stuff
+ * Starcos stuff
  */
-typedef struct sc_starcos_ex_data {
-	struct sc_starcos_ex_data *next;
-	unsigned long              key;
-	void                      *data;
-	void (*free_func)(void *);
-} sc_starcos_ex_data_t;
+#define	SC_STARCOS_MF_DATA	0x01
+#define SC_STARCOS_DF_DATA	0x02
+#define SC_STARCOS_EF_DATA	0x04
 
-#define SC_STARCOS_PRV_DATA	0x0001	/* for internal use only  */
-#define SC_STARCOS_KEY_ATTR	0x0002	/* set the key attributes */
-#define SC_STARCOS_PIN_ATTR	0x0004	/* set PIN attribute      */
+typedef struct sc_starcos_create_data_st {
+	unsigned int type;
+	union {
+		struct {
+			u8 header[19];	/* see starcos manual */
+		} mf;
+		struct {
+			u8 header[25];	/* see starcos manual */
+			u8 size[2];
+		} df;
+		struct {
+			u8 header[16];	/* see starcos manual */
+		} ef;
+	} data;
+} sc_starcos_create_data;
 
-#define SC_STARCOS_EX_KEY(c,v) (((v) << 16) | (c))
+typedef struct sc_starcos_write_key_data_st {
+	u8	mode;		/* 1 = Update, 0 = Install */
+	u8	kid;		/* key id                  */
+	u8	key_header[12];	/* see starcos manual      */
+	const u8 *key;
+	size_t	key_len;
+} sc_starcos_wkey_data;
 
-struct sc_cardctl_starcos_key_attr_st {
-	unsigned long flag;	/* key attributes, e.g. SC_SEC_OPERATION_SIGN
-				 * or SC_SEC_OPERATION_AUTHENTICATE */
-};
-
-struct sc_cardctl_starcos_pin_attr_st {
-	int	verify_once;
-};
+typedef struct sc_starcos_gen_key_data_st {
+	u8	key_id;
+	size_t	key_length;
+	u8	*modulus;
+} sc_starcos_gen_key_data;
+	
 
 
 struct sc_cardctl_jcop_genkey  {
