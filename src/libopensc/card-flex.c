@@ -41,6 +41,9 @@ static struct {
 	const char *		name;
 } flex_atrs[] = {
       /* Cryptoflex */
+      {	"3B:95:15:40:FF:68:01:02:02:04",       /* 8k */
+	TYPE_CRYPTOFLEX,
+	"Cryptoflex 8K" },
       {	"3B:85:40:20:68:01:01:05:01",          /* 8k */
 	TYPE_CRYPTOFLEX,
 	"Cryptoflex 8K" },
