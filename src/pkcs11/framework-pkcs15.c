@@ -1356,7 +1356,8 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 	/* See which of the alternative keys supports signing */
 	while (prkey
 	 && !(prkey->prv_info->usage
-	     & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER))) 
+	     & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER|
+	     	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION))) 
 		prkey = prkey->prv_next;
 
 	if (prkey == NULL)
