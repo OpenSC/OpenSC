@@ -1330,7 +1330,7 @@ show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
 	int	*app_oid;
 	char		*label;
-	CK_ULONG    size;
+	CK_ULONG    size = 0;
 	
 	printf("Data object %u\n", (unsigned int) obj);
 	printf("  label:          ");
@@ -2608,7 +2608,7 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_BYTE			*data, sig[512];
 	CK_ULONG		data_len, sig_len;
 	CK_BYTE			*id = (CK_BYTE *) "abcdefghijklmnopqrst";
-	CK_ULONG		id_len = 20, mod_len;
+	CK_ULONG		id_len = 20, mod_len = 0;
 	CK_BYTE			*label = (CK_BYTE *) "Just a label";
 	CK_ULONG		label_len = 12;
 	CK_ATTRIBUTE		attribs[3] = {

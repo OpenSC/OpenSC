@@ -855,7 +855,7 @@ static int
 do_store_certificate(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_certargs args;
-	X509	*cert;
+	X509	*cert = NULL;
 	int	r;
 
 	memset(&args, 0, sizeof(args));
