@@ -1024,7 +1024,11 @@ do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
 
 		key->algorithm = SC_ALGORITHM_DSA;
 		do_convert_bignum(&dst->pub, src->pub_key);
+		do_convert_bignum(&dst->p, src->p);
+		do_convert_bignum(&dst->q, src->q);
+		do_convert_bignum(&dst->g, src->g);
 		DSA_free(src);
+		break;
 		}
 	default:
 		fatal("Unsupported key algorithm\n");
