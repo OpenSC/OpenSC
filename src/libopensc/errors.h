@@ -83,6 +83,7 @@ extern "C" {
 #define SC_ERROR_INCONSISTENT_PROFILE		-1502
 #define SC_ERROR_INCOMPATIBLE_KEY		-1503
 #define SC_ERROR_NO_DEFAULT_KEY			-1504
+#define SC_ERROR_ID_NOT_UNIQUE			-1505
 
 /* Errors that do not fit the categories above */
 #define SC_ERROR_UNKNOWN			-1900

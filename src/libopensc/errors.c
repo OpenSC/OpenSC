@@ -79,6 +79,9 @@ const char *sc_strerror(int error)
 		"Generic PKCS #15 initialization error",
 		"Syntax error",
 		"Inconsistent or incomplete pkcs15 profile",
+		"Key length/algorithm not supported by card",
+		"No default (transport) key available",
+		"The PKCS#15 Key/certificate ID specified is not unique",
 	};
 	const int p15i_base = -SC_ERROR_PKCS15INIT;
 	const char *misc_errors[] = {
