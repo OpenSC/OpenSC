@@ -163,7 +163,12 @@ sc_pkcs11_md_init(struct sc_pkcs11_session *session,
 
 	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
 
-	return mt->md_init(operation);
+	rv = mt->md_init(operation);
+
+	if (rv != CKR_OK)
+		session_stop_operation(session, SC_PKCS11_OPERATION_DIGEST);
+
+	return rv;
 }
 
 CK_RV
@@ -175,9 +180,15 @@ sc_pkcs11_md_update(struct sc_pkcs11_session *session,
 
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_DIGEST, &op);
 	if (rv != CKR_OK)
-		return rv;
+		goto done;
 
-	return op->type->md_update(op, pData, ulDataLen);
+	rv = op->type->md_update(op, pData, ulDataLen);
+
+done:
+	if (rv != CKR_OK)
+		session_stop_operation(session, SC_PKCS11_OPERATION_DIGEST);
+
+	return rv;
 }
 
 CK_RV
@@ -237,7 +248,12 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session,
 		return rv;
 
 	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
-	return mt->sign_init(operation, key);
+	rv = mt->sign_init(operation, key);
+
+	if (rv != CKR_OK)
+		session_stop_operation(session, SC_PKCS11_OPERATION_SIGN);
+
+	return rv;
 }
 
 CK_RV
@@ -251,10 +267,18 @@ sc_pkcs11_sign_update(struct sc_pkcs11_session *session,
 	if (rv != CKR_OK)
 		return rv;
 
-	if (op->type->sign_update == NULL)
-		return CKR_KEY_TYPE_INCONSISTENT;
+	if (op->type->sign_update == NULL) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto done;
+	}
 
-	return op->type->sign_update(op, pData, ulDataLen);
+	rv = op->type->sign_update(op, pData, ulDataLen);
+
+done:
+	if (rv != CKR_OK)
+		session_stop_operation(session, SC_PKCS11_OPERATION_SIGN);
+
+	return rv;
 }
 
 CK_RV
@@ -269,13 +293,17 @@ sc_pkcs11_sign_final(struct sc_pkcs11_session *session,
 		return rv;
 
 	/* Bail out for signature mechanisms that don't do hashing */
-	if (op->type->sign_final == NULL)
-		return CKR_KEY_TYPE_INCONSISTENT;
+	if (op->type->sign_final == NULL) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto done;
+	}
 
 	rv = op->type->sign_final(op, pSignature, pulSignatureLen);
 
+done:
 	if (rv != CKR_BUFFER_TOO_SMALL && pSignature != NULL)
 		session_stop_operation(session, SC_PKCS11_OPERATION_SIGN);
+
 	return rv;
 }
 
@@ -290,10 +318,18 @@ sc_pkcs11_sign_size(struct sc_pkcs11_session *session, CK_ULONG_PTR pLength)
 		return rv;
 
 	/* Bail out for signature mechanisms that don't do hashing */
-	if (op->type->sign_size == NULL)
-		return CKR_KEY_TYPE_INCONSISTENT;
+	if (op->type->sign_size == NULL) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto done;
+	}
 
-	return op->type->sign_size(op, pLength);
+	rv = op->type->sign_size(op, pLength);
+
+done:
+	if (rv != CKR_OK)
+		session_stop_operation(session, SC_PKCS11_OPERATION_SIGN);
+
+	return rv;
 }
 
 /*
@@ -448,7 +484,13 @@ sc_pkcs11_verif_init(struct sc_pkcs11_session *session,
 		return rv;
 
 	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
-	return mt->verif_init(operation, key);
+	rv = mt->verif_init(operation, key);
+
+	if (rv != CKR_OK)
+		session_stop_operation(session, SC_PKCS11_OPERATION_VERIFY);
+
+	return rv;
+
 }
 
 CK_RV
@@ -462,10 +504,18 @@ sc_pkcs11_verif_update(struct sc_pkcs11_session *session,
 	if (rv != CKR_OK)
 		return rv;
 
-	if (op->type->verif_update == NULL)
-		return CKR_KEY_TYPE_INCONSISTENT;
+	if (op->type->verif_update == NULL) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto done;
+	}
 
-	return op->type->verif_update(op, pData, ulDataLen);
+	rv = op->type->verif_update(op, pData, ulDataLen);
+
+done:
+	if (rv != CKR_OK)
+		session_stop_operation(session, SC_PKCS11_OPERATION_VERIFY);
+
+	return rv;
 }
 
 CK_RV
@@ -479,11 +529,14 @@ sc_pkcs11_verif_final(struct sc_pkcs11_session *session,
 	if (rv != CKR_OK)
 		return rv;
 
-	if (op->type->verif_final == NULL)
-		return CKR_KEY_TYPE_INCONSISTENT;
+	if (op->type->verif_final == NULL) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto done;
+	}
 
 	rv = op->type->verif_final(op, pSignature, ulSignatureLen);
 
+done:
 	session_stop_operation(session, SC_PKCS11_OPERATION_VERIFY);
 	return rv;
 }
