@@ -39,7 +39,7 @@
 
 const char *app_name = "pkcs15-crypt";
 
-int opt_reader = -1, verbose = 0, opt_wait = 0;
+int opt_reader = -1, verbose = 0, opt_wait = 0, opt_raw = 0;
 char * opt_pincode = NULL, * opt_key_id = NULL;
 char * opt_input = NULL, * opt_output = NULL;
 int opt_crypt_flags = 0;
@@ -57,6 +57,7 @@ const struct option options[] = {
 	{ "reader",		1, 0,		'r' },
 	{ "input",		1, 0,		'i' },
 	{ "output",		1, 0,		'o' },
+	{ "raw",		0, 0,		'R' },
 	{ "sha-1",		0, 0,		OPT_SHA1 },
 	{ "md5",		0, 0,		OPT_MD5 },
 	{ "pkcs1",		0, 0,		OPT_PKCS1 },
@@ -73,6 +74,7 @@ const char *option_help[] = {
 	"Uses reader number <arg>",
 	"Selects the input file to use",
 	"Outputs to file <arg>",
+	"Outputs raw 8 bit data",
 	"Input file is a SHA-1 hash",
 	"Input file is a MD5 hash",
 	"Use PKCS #1 v1.5 padding",
@@ -127,7 +129,7 @@ int read_input(u8 *buf, int buflen)
 int write_output(const u8 *buf, int len)
 {
 	FILE *outf;
-	int output_binary = 1;
+	int output_binary = (opt_output == NULL && opt_raw == 0 ? 0 : 1);
 	
 	if (opt_output != NULL) {
 		outf = fopen(opt_output, "wb");
@@ -137,7 +139,6 @@ int write_output(const u8 *buf, int len)
 		}
 	} else {
 		outf = stdout;
-		output_binary = 0;
 	}
 	if (output_binary == 0)
 		print_binary(outf, buf, len);
@@ -459,7 +460,7 @@ int main(int argc, char * const argv[])
         struct sc_pkcs15_object *key;
 		
 	while (1) {
-		c = getopt_long(argc, argv, "sck:r:i:o:p:vw", options, &long_optind);
+		c = getopt_long(argc, argv, "sck:r:i:o:Rp:vw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -485,6 +486,9 @@ int main(int argc, char * const argv[])
 			break;
 		case 'o':
 			opt_output = optarg;
+			break;
+		case 'R':
+			opt_raw = 1;
 			break;
 		case OPT_SHA1:
 			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;

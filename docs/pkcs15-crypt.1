@@ -27,7 +27,10 @@ in the file specified by the
 option. If this option is not given, the signature
 is printed on standard output, displaying non-printable
 characters using their hex notation
-.BR \e\exNN .
+.BR \e\exNN
+(see also
+.B \-\-raw).
+.
 .TP
 .B \-\-pkcs1
 By default, \*(nm assumes that input data has been padded to
@@ -38,7 +41,7 @@ the modulus length). When giving the
 option, however, \*(nm will perform the required padding
 using the algorithm outlined in the PKCS #1 standard version 1.5.
 .TP
-.B \-\-sha1
+.B \-\-sha\-1
 This option tells \(*nm that the input file is the result
 of an SHA1 hash operation, rather than an MD5 hash. Again,
 the data must be in binary representation.
@@ -51,6 +54,11 @@ the file specified by the
 .B \-\-output
 option. If this option is not given, the decrypted data is
 printed to standard output, displaying non-printable
+characters using their hex notation
+.BR \e\exNN
+(see also
+.B \-\-raw).
+.
 .TP
 .BR \-\-key " id, " \-k " id"
 Selects the ID of the key to use.
@@ -65,6 +73,9 @@ Specifies the input file to use.
 .BR \-\-output " file, " \-o " file"
 Any output will be sent to the specified file.
 .TP
+.BR \-\-raw ", "\-R
+Outputs raw 8 bit data.
+.TP 
 .BR \-\-pin " pincode, " \-p " pincode"
 When the cryptographic operation requires a PIN to access
 the key, \*(nm will prompt the user for the PIN on the terminal.
