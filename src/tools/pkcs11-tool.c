@@ -2270,7 +2270,6 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	rv = p11->C_Sign(session, data, data_len, NULL, &sig_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Sign", rv);
-	printf("sig_len = %ld\n", sig_len);
 	sig_len = 20;
 	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
 	if (rv != CKR_BUFFER_TOO_SMALL) {
