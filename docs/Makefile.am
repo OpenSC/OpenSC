@@ -38,6 +38,7 @@ STYLESHEET=opensc.xsl
 %.html: %.xml
 if HAVE_DOCBOOK
 	$(XSLTPROC) -o $@ $(STYLESHEET) $<
+	tidy -im -utf8 -xml $@ || true
 else
 	@echo "Docbook support disabled, not building $@" >&2
 endif
