@@ -91,11 +91,11 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
   /* add certificates */
   for (i = 0; i < 2; i++)
     {
-      static char *esteid_cert_names[2] = {
+      static const char *esteid_cert_names[2] = {
 	"Autentimissertifikaat",
 	"Allkirjasertifikaat"
       };
-      static char *esteid_cert_paths[2] = {
+      static char const *esteid_cert_paths[2] = {
 	"3f00eeeeaace",
 	"3f00eeeeddce"
       };
@@ -124,25 +124,25 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
   for (i = 0; i < 3; i++)
     {
       char tries_left;
-      static char *esteid_pin_names[3] = {
+      static const char *esteid_pin_names[3] = {
 	"PIN1 - Autentiseerimine",
 	"PIN2 - Allkirjastamine",
 	"PUK"
       };
 
-      static int esteid_pin_min[3] = {
+      static const int esteid_pin_min[3] = {
 	4,
 	5,
 	8
       };
 
-      static int esteid_pin_ref[3] = {
+      static const int esteid_pin_ref[3] = {
 	1,
 	2,
 	0
       };
 
-      static int esteid_pin_flags[3] = {
+      static const int esteid_pin_flags[3] = {
 	0,
 	0,
 	SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN
@@ -178,7 +178,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 
 	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
       };
-      static char *prkey_name[2] = {
+      static const char *prkey_name[2] = {
 	"Autentiseerimise v\365ti",
 	"Allkirjastamise v\365ti"
       };
