@@ -25,6 +25,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <stdlib.h>
 
 static const char *tcos_atrs[] = {
 	"3B:BA:13:00:81:31:86:5D:00:64:05:0A:02:01:31:80:90:00:8B", /* SLE44 */
@@ -42,9 +43,13 @@ static struct sc_card_driver tcos_drv = {
 
 static const struct sc_card_operations *iso_ops = NULL;
 
+typedef struct tcos_data_st {
+	unsigned int pad_flags;
+} tcos_data;
 
 static int tcos_finish(struct sc_card *card)
 {
+	free(card->drv_data);
 	return 0;
 }
 
@@ -76,8 +81,12 @@ static int tcos_init(struct sc_card *card)
 {
         unsigned long flags;
 
+	tcos_data *data = malloc(sizeof(tcos_data));
+	if (!data)
+		return SC_ERROR_OUT_OF_MEMORY;
+
 	card->name = "TCOS";
-	card->drv_data = NULL;
+	card->drv_data = (void *)data;
 	card->cla = 0x00;
 
         flags = SC_ALGORITHM_RSA_RAW;
@@ -623,6 +632,8 @@ static int tcos_set_security_env(struct sc_card *card,
 	case SC_SEC_OPERATION_DECIPHER:
 		apdu.p1 = 0xC1;
 		apdu.p2 = 0xB8;
+		/* save padding flags */
+		((tcos_data *)card->drv_data)->pad_flags = env->algorithm_flags;
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -683,6 +694,61 @@ static int tcos_restore_security_env(struct sc_card *card, int se_num)
 	return 0;
 }
 
+/**
+ * TCOS decipher command (same as iso7816_decipher besides setting
+ * the padding byte).
+ */
+static int tcos_decipher(struct sc_card *card,
+			    const u8 * crgram, size_t crgram_len,
+			    u8 * out, size_t outlen)
+{
+	int r;
+	struct sc_apdu apdu;
+	tcos_data *xdata;
+	u8 pad_byte;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+
+	assert(card != NULL && crgram != NULL && out != NULL);
+	SC_FUNC_CALLED(card->ctx, 2);
+	if (crgram_len > 255)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
+
+	/* INS: 0x2A  PERFORM SECURITY OPERATION
+	 * P1:  0x80  Resp: Plain value
+	 * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = crgram_len;
+	apdu.sensitive = 1;
+	
+	xdata = (tcos_data *)card->drv_data;
+	if (xdata->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		pad_byte = 0x81;	/* pkcs1 padding */
+	else
+		pad_byte = 0x02;	/* no padding */
+	/* Note: the 'ISO' padding (0x80, 0x00, 0x00 ...) supported
+	 * by TCOS cards is ignored here as OpenSC doesn't support it
+	 * -- Nils 
+	 */
+		
+	sbuf[0] = pad_byte;
+	memcpy(sbuf + 1, crgram, crgram_len);
+	apdu.data = sbuf;
+	apdu.lc = crgram_len + 1;
+	apdu.datalen = crgram_len + 1;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+
+		memcpy(out, apdu.resp, len);
+		SC_FUNC_RETURN(card->ctx, 2, len);
+	}
+	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+}
+
 
 /* Issue the SET PERMANENT command.  With ENABLE_NULLPIN set the
    NullPIN method will be activated, otherwise the permanent operation
@@ -731,6 +797,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	tcos_ops.list_files  = tcos_list_files;
         tcos_ops.delete_file = tcos_delete_file;
         tcos_ops.set_security_env	= tcos_set_security_env;
+	tcos_ops.decipher    = tcos_decipher;
         tcos_ops.restore_security_env	= tcos_restore_security_env;
         tcos_ops.card_ctl    = tcos_card_ctl;
 	
