@@ -464,7 +464,7 @@ sc_profile_get_pin_id(struct sc_profile *profile,
 	struct pin_info	*pi;
 
 	for (pi = profile->pin_list; pi; pi = pi->next) {
-		if (pi->pin.reference == reference) {
+		if (pi->pin.reference == (int)reference) {
 			*id = pi->id;
 			return 0;
 		}
@@ -549,7 +549,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	sc_card_t	*card = profile->card;
 	sc_profile_t	*tmpl;
 	sc_template_t	*info;
-	unsigned int	index;
+	unsigned int	idx;
 	struct file_info *fi, *base_file, *match = NULL;
 
 	for (info = profile->template_list; info; info = info->next) {
@@ -560,10 +560,10 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		return SC_ERROR_TEMPLATE_NOT_FOUND;
 
 	tmpl = info->data;
-	index = id->value[id->len-1];
+	idx = id->value[id->len-1];
 	for (fi = profile->ef_list; fi; fi = fi->next) {
 		if (fi->base_template == tmpl
-		 && fi->inst_index == index
+		 && fi->inst_index == idx
 		 && sc_compare_path(&fi->inst_path, base_path)
 		 && !strcmp(fi->ident, file_name)) {
 			sc_file_dup(ret, fi->file);
@@ -595,13 +595,13 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		fi->instance = NULL;
 		if ((parent = fi->parent) == NULL) {
 			parent = base_file;
-			skew = index;
+			skew = idx;
 		}
 		parent = parent->instance;
 
 		instance = sc_profile_instantiate_file(profile, fi, parent, skew);
 		instance->base_template = tmpl;
-		instance->inst_index = index;
+		instance->inst_index = idx;
 		instance->inst_path = *base_path;
 
 		if (!strcmp(instance->ident, file_name))
@@ -793,7 +793,7 @@ new_key(struct sc_profile *profile, unsigned int type, unsigned int ref)
 	return ai;
 }
 
-int
+static int
 do_key_value(struct state *cur, int argc, char **argv)
 {
 	struct auth_info *ai = cur->key;
@@ -890,14 +890,14 @@ process_tmpl(struct state *cur, struct block *info,
  * This is crucial; the profile instantiation code relies on it
  */
 void
-append_file(sc_profile_t *profile, struct file_info *new_file)
+append_file(sc_profile_t *profile, struct file_info *nfile)
 {
 	struct file_info	**list, *fi;
 
 	list = &profile->ef_list;
 	while ((fi = *list) != NULL)
 		list = &fi->next;
-	*list = new_file;
+	*list = nfile;
 }
 
 /*
@@ -974,7 +974,7 @@ new_file(struct state *cur, const char *name, unsigned int type)
 		profile->df[df_type] = file;
 	}
 	assert(file);
-	if (file->type != type) {
+	if (file->type != (int)type) {
 		parse_error(cur, "inconsistent file type (should be %s)",
 			(file->type == SC_FILE_TYPE_DF)? "DF" : "EF");
 		return NULL;
@@ -1195,7 +1195,7 @@ new_pin(struct sc_profile *profile, unsigned int id)
 	 */
 	pi = (struct pin_info *) calloc(1, sizeof(*pi));
 	pi->id = id;
-	pi->pin.type = -1;
+	pi->pin.type = (unsigned int)-1;
 	pi->pin.flags = 0x32;
 	pi->pin.max_length = 0;
 	pi->pin.min_length = 0;
@@ -1214,7 +1214,7 @@ set_pin_defaults(struct sc_profile *profile, struct pin_info *pi)
 {
 	struct sc_pkcs15_pin_info *info = &pi->pin;
 
-	if (info->type < 0)
+	if (info->type == (unsigned int) -1)
 		info->type = profile->pin_encoding;
 	if (info->max_length == 0)
 		info->max_length = profile->pin_maxlen;
@@ -1702,9 +1702,9 @@ get_authid(struct state *cur, const char *value,
 static int
 get_uint(struct state *cur, const char *value, unsigned int *vp)
 {
-	const char	*ep;
+	char	*ep;
 
-	*vp = strtoul(value, (char **) &ep, 0);
+	*vp = strtoul(value, &ep, 0);
 	if (*ep != '\0') {
 		parse_error(cur, 
 			"invalid integer argument \"%s\"\n", value);
@@ -1799,7 +1799,7 @@ expr_fail(struct num_exp_ctx *ctx)
 static void
 expr_put(struct num_exp_ctx *ctx, char c)
 {
-	if (ctx->j >= sizeof(ctx->word))
+	if (ctx->j >= (int)sizeof(ctx->word))
 		expr_fail(ctx);
 	ctx->word[ctx->j++] = c;
 }

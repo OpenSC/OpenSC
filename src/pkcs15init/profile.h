@@ -120,7 +120,7 @@ struct sc_profile {
 	sc_pkcs15_card_t *	p15_data; /* as found on card */
 };
 
-struct sc_profile *sc_profile_new();
+struct sc_profile *sc_profile_new(void);
 int		sc_profile_load(struct sc_profile *, const char *);
 int		sc_profile_finish(struct sc_profile *);
 void		sc_profile_free(struct sc_profile *);

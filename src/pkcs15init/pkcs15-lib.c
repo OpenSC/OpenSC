@@ -132,7 +132,7 @@ static int	sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *,
 			sc_pkcs15_object_t *pin_obj);
 
 static struct profile_operations {
-	char *name;
+	const char *name;
 	void *func;
 } profile_operations[] = {
 	{ "gpk", (void *) sc_pkcs15init_get_gpk_ops },
@@ -307,8 +307,8 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 	profile->name = strdup(name);
 	if (strchr(profile->name, '+') != NULL) {
 		char	*s;
-		int	i = 0;
 
+		i = 0;
 		(void) strtok(profile->name, "+");
 		while ((s = strtok(NULL, "+")) != NULL) {
 			if (i < SC_PKCS15INIT_MAX_OPTIONS-1)
@@ -696,7 +696,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 	sc_card_t		*card = p15card->card;
 	sc_pkcs15_object_t	*pin_obj;
 	sc_pkcs15_pin_info_t	*pin_info;
-	int			r, index;
+	int			r, idx;
 
 	/* No auth_id given: select one */
 	if (args->auth_id.len == 0) {
@@ -745,10 +745,10 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
 	} else {
 		/* Get the number of PINs we already have */
-		index = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH,
+		idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH,
 					NULL, 0);
 
-		r = profile->ops->new_pin(profile, card, pin_info, index,
+		r = profile->ops->new_pin(profile, card, pin_info, idx,
 				args->pin, args->pin_len,
 				args->puk, args->puk_len);
 	}
@@ -1069,10 +1069,10 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 		if (r < 0)
 			return r;
 	} else {
-		int index;
+		int idx;
 
-		index = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
-		r = profile->ops->old_generate_key(profile, p15card->card, index, keybits,
+		idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
+		r = profile->ops->old_generate_key(profile, p15card->card, idx, keybits,
 				&pubkey_args.key, key_info);
 	}
 
@@ -1110,7 +1110,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_prkey_info *key_info;
 	sc_card_t	*card = p15card->card;
 	sc_pkcs15_prkey_t key;
-	int		keybits, index, r = 0;
+	int		keybits, idx, r = 0;
 
 	/* Create a copy of the key first */
 	key = keyargs->key;
@@ -1153,7 +1153,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 
 	/* Get the number of private keys already on this card */
-	index = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
+	idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
 	if (!(keyargs->flags & SC_PKCS15INIT_EXTRACTABLE)) {
 		if (profile->ops->create_key) {
 			/* New API */
@@ -1166,7 +1166,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 				return r;
 		} else {
 			r = profile->ops->new_key(profile, p15card->card,
-					&key, index, key_info);
+					&key, idx, key_info);
 			if (r < 0)
 				return r;
 		}
@@ -1538,7 +1538,7 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 {
 	struct sc_file	*file = NULL;
 	int		r;
-	unsigned int index = -1;
+	unsigned int idx = -1;
 
 	/* Set the SO PIN reference from card */
 	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
@@ -1558,13 +1558,13 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 	} else {
 
 		/* Get the number of objects of this type already on this card */
-		index = sc_pkcs15_get_objects(p15card,
+		idx = sc_pkcs15_get_objects(p15card,
 				object->type & SC_PKCS15_TYPE_CLASS_MASK,
 				NULL, 0);
 
 		/* Allocate data file */
 		r = profile->ops->new_file(profile, p15card->card,
-				object->type, index, &file);
+				object->type, idx, &file);
 		if (r < 0) {
 			sc_error(p15card->card->ctx, "Unable to allocate file");
 			goto done;
@@ -1745,7 +1745,7 @@ sc_pkcs15init_requires_restrictive_usage(struct sc_pkcs15_card *p15card,
  * Check RSA key for consistency, and compute missing
  * CRT elements
  */
-int
+static int
 prkey_fixup_rsa(sc_pkcs15_card_t *p15card, struct sc_pkcs15_prkey_rsa *key)
 {
 	if (!key->modulus.len || !key->exponent.len
@@ -2885,7 +2885,7 @@ sc_pkcs15init_fixup_acls(struct sc_profile *profile, struct sc_file *file,
 
 			/* If we weren't given a replacement ACL,
 			 * leave the original ACL untouched */
-			if (acl == NULL || acl->key_ref == -1) {
+			if (acl == NULL || acl->key_ref == (unsigned int)-1) {
 				sc_error(card->ctx,
 					"ACL references %s, which is not defined",
 					what);

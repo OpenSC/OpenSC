@@ -583,10 +583,11 @@ static size_t starcos_ipf_get_lastpos(u8 *ipf, size_t ipf_len)
 	if (!num_keys)
 		return 1;
 	while (num_keys--) {
+		size_t offset = p - ipf;	/* note: p > ipf */
 		/* get offset to the next key header */
 		tmp = 12 + (p[1] << 8) + p[2];
-		if (p + tmp - ipf > ipf_len)
-			return SC_ERROR_INTERNAL; /* FIXME */
+		if (tmp + offset > ipf_len)
+			return SC_ERROR_INTERNAL;
 		p += tmp;
 	}
 
@@ -667,7 +668,7 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* read the complete IPF */
 	r = sc_read_binary(card, 0, buf, len, 0);
-	if (r < 0 || r != len)
+	if (r < 0 || r != (int)len)
 		return r;
 	/* get/fix number of keys */
 	num_keys = buf[0];

@@ -262,7 +262,7 @@ static int cosm_create_reference_data(struct sc_profile *profile, struct sc_card
 
 	if (puk)   {
 		int ii, jj;
-		unsigned char *ptr = (unsigned char *)puk;
+		const unsigned char *ptr = puk;
 		
 		puk_buff = (unsigned char *) malloc(0x100);
 		if (!puk_buff)
@@ -272,7 +272,7 @@ static int cosm_create_reference_data(struct sc_profile *profile, struct sc_card
 		if (profile_puk.max_length > 0x100)
 			return SC_ERROR_INCONSISTENT_PROFILE;
 		memset(puk_buff, profile_puk.pad_char, 0x100);
-		for (ii=0; ii<8 && (ptr-puk) < puk_len && (*ptr); ii++)   {
+		for (ii=0; ii<8 && (size_t)(ptr-puk) < puk_len && (*ptr); ii++)   {
 			jj = 0;
 			while (isalnum(*ptr) && jj<16)   {
 				*(puk_buff + ii*0x10 + jj++) = *ptr;
@@ -288,10 +288,10 @@ static int cosm_create_reference_data(struct sc_profile *profile, struct sc_card
 	sc_debug(card->ctx, "pinfo->reference %i; tries %i\n", 
 			pinfo->reference, profile_pin.tries_left);
 
-    sc_debug(card->ctx, "sc_card_ctl %s\n","SC_CARDCTL_OBERTHUR_CREATE_PIN");
+	sc_debug(card->ctx, "sc_card_ctl %s\n","SC_CARDCTL_OBERTHUR_CREATE_PIN");
 	args.type = SC_AC_CHV;
 	args.ref = pinfo->reference;
-	args.pin = (u8 *)pin;
+	args.pin = pin;
 	args.pin_len = pin_len;
 	args.pin_tries = profile_pin.tries_left;
 	args.puk = puk_buff;
@@ -432,7 +432,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		unsigned int type, unsigned int num, struct sc_file **out)
 {
 	struct sc_file	*file;
-	char *_template = NULL, *desc = NULL;
+	const char *_template = NULL, *desc = NULL;
 	unsigned int structure = 0xFFFFFFFF;
 
 	sc_debug(card->ctx, "type %X; num %i\n",type, num);
@@ -506,7 +506,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
  */
 static int
 cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
-		unsigned int index, unsigned int keybits,
+		unsigned int idx, unsigned int keybits,
 		sc_pkcs15_pubkey_t *pubkey,
 		struct sc_pkcs15_prkey_info *info)
 {
@@ -515,14 +515,14 @@ cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
 	sc_path_t path;
 	int	 rv;
 
-	sc_debug(card->ctx, "index %i; nn %i\n",index,keybits);
+	sc_debug(card->ctx, "index %i; nn %i\n",idx,keybits);
 	if (keybits < 512 || keybits > 2048 || (keybits%0x20))   {
 		sc_error(card->ctx, "Unsupported key size %u\n", keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	
 	/* Get private key file from profile. */
-	if ((rv = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, index, 
+	if ((rv = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, idx, 
 					&prkf)) < 0)
 	 	goto failed;
 	sc_debug(card->ctx, "prv ef type %i\n",prkf->ef_structure);
@@ -611,7 +611,7 @@ failed:
  */
 static int
 cosm_new_key(struct sc_profile *profile, struct sc_card *card,
-		struct sc_pkcs15_prkey *key, unsigned int index,
+		struct sc_pkcs15_prkey *key, unsigned int idx,
 		struct sc_pkcs15_prkey_info *info)
 {
 	struct sc_file *prvfile = NULL, *pubfile = NULL;
@@ -620,14 +620,14 @@ cosm_new_key(struct sc_profile *profile, struct sc_card *card,
 	u8 *buff;
 	int rv, ii;
 
-	sc_debug(card->ctx, " index %i\n", index);
+	sc_debug(card->ctx, " index %i\n", idx);
 	if (key->algorithm != SC_ALGORITHM_RSA) {
 		sc_error(card->ctx, "For a while supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	/* Create and populate the private part. */
-	rv = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, index,
+	rv = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, idx,
 					&prvfile);
 	if (rv < 0)
 		return SC_ERROR_SYNTAX_ERROR;

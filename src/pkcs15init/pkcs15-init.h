@@ -134,7 +134,7 @@ struct sc_pkcs15init_operations {
 	 * pin file index.
 	 */
 	int	(*new_pin)(struct sc_profile *, struct sc_card *,
-			struct sc_pkcs15_pin_info *, unsigned int index,
+			struct sc_pkcs15_pin_info *, unsigned int idx,
 			const u8 *pin, size_t pin_len,
 			const u8 *puk, size_t puk_len);
 
@@ -142,7 +142,7 @@ struct sc_pkcs15init_operations {
 	 * Store a key on the card
 	 */
 	int	(*new_key)(struct sc_profile *, struct sc_card *,
-			struct sc_pkcs15_prkey *key, unsigned int index,
+			struct sc_pkcs15_prkey *key, unsigned int idx,
 			struct sc_pkcs15_prkey_info *);
 
 	/*
@@ -155,7 +155,7 @@ struct sc_pkcs15init_operations {
 	 * Generate a new key pair
 	 */
 	int	(*old_generate_key)(struct sc_profile *, struct sc_card *,
-			unsigned int index, unsigned int keybits,
+			unsigned int idx, unsigned int keybits,
 			sc_pkcs15_pubkey_t *pubkey_res,
 			struct sc_pkcs15_prkey_info *);
 
@@ -340,6 +340,8 @@ extern int	sc_pkcs15init_get_label(struct sc_profile *, const char **);
 
 extern void	sc_pkcs15init_set_secret(struct sc_profile *,
 				int, int, u8 *, size_t);
+extern int	sc_pkcs15init_set_pin_data(struct sc_profile *, int,
+				const u8 *, size_t);
 extern int	sc_pkcs15init_verify_key(struct sc_profile *, struct sc_card *,
 				sc_file_t *,  unsigned int, unsigned int);
 

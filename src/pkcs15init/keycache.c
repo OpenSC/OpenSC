@@ -203,7 +203,7 @@ int
 sc_keycache_put_pin(const sc_path_t *path, int ref, const u8 *pin)
 {
 	return sc_keycache_put_key(path, SC_AC_CHV, ref, pin,
-					pin? strlen((char *) pin) : 0);
+					pin? strlen((const char *) pin) : 0);
 }
 
 /*
