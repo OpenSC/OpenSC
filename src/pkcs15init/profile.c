@@ -276,7 +276,27 @@ whine:	if (profile->cbs)
 void
 sc_profile_free(struct sc_profile *profile)
 {
-	/* XXX Needs to be done. Huge memory leak */
+	struct file_info *fi;
+	struct auth_info *ai;
+	struct pin_info *pi;
+
+	while ((fi = profile->ef_list) != NULL) {
+		profile->ef_list = fi->next;
+		sc_file_free(fi->file);
+		free(fi->ident);
+		free(fi);
+	}
+
+	while ((ai = profile->auth_list) != NULL) {
+		profile->auth_list = ai->next;
+		free(ai);
+	}
+
+	while ((pi = profile->pin_list) != NULL) {
+		profile->pin_list = pi->next;
+		free(pi);
+	}
+
 	free(profile);
 }
 
