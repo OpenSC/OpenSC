@@ -337,15 +337,18 @@ do_store_private_key(struct sc_profile *profile)
 		args.label = opt_objectlabel;
 
 	r = do_read_private_key(opt_keyfile, opt_format, &args.pkey);
-	if (r)
-		return r;
+	if (r < 0)
+		return -1;
 
 	r = sc_pkcs15init_store_private_key(p15card, profile, &args);
-	if (r)
-		return r;
+	if (r < 0)
+		goto failed;
 
 	/* XXX: store public key as well */
 	return 0;
+
+failed:	error("Failed to store private key: %s\n", sc_strerror(r));
+	return -1;
 }
 
 /*
@@ -355,6 +358,7 @@ static int
 do_store_public_key(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_keyargs args;
+	int		r;
 
 	memset(&args, 0, sizeof(args));
 	if (opt_objectid)
@@ -364,11 +368,18 @@ do_store_public_key(struct sc_profile *profile)
 
 #ifdef notyet
 	r = do_read_public_key(opt_keyfile, opt_format, &args.pkey);
-	if (r)
+	if (r < 0)
 		return r;
 #endif
 
-	return sc_pkcs15init_store_public_key(p15card, profile, &args);
+	r = sc_pkcs15init_store_public_key(p15card, profile, &args);
+	if (r < 0)
+		goto failed;
+
+	return 0;
+
+failed:	error("Failed to store public key: %s\n", sc_strerror(r));
+	return -1;
 }
 
 /*
@@ -428,9 +439,8 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 			printf("Writing public key to %s\n", opt_outkey);
 		r = do_write_public_key(opt_outkey, opt_format, keyargs.pkey);
 	}
-	if (r)
-		goto sc_failed;
-	return 0;
+	if (r >= 0)
+		return 0;
 
 sc_failed:
 	reason = sc_strerror(r);
