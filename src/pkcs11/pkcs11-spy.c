@@ -535,6 +535,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,
   CK_RV rv;
   enter("C_GetAttributeValue");
   spy_dump_ulong_in("hSession", hSession);
+  spy_dump_ulong_in("hObject", hObject);
   spy_attribute_req_in("pTemplate", pTemplate, ulCount);
   rv = po->C_GetAttributeValue(hSession, hObject, pTemplate, ulCount);
   if (rv == CKR_OK) {
