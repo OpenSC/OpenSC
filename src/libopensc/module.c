@@ -30,34 +30,34 @@
 int sc_module_open(struct sc_context *ctx, void **mod_handle, const char *filename)
 {
 	const char *error;
+	void *handle;
 
 	assert(ctx != NULL);
 
 	if (!filename)
 		return SC_ERROR_UNKNOWN;
 
-	*mod_handle = NULL;
-	*mod_handle = dlopen(filename, RTLD_LAZY);
+	handle = dlopen(filename, RTLD_LAZY);
 
 	if ((error = dlerror()) != NULL) {
 		if (ctx->debug)
 			debug(ctx, "sc_module_open: %s", error);
 		return SC_ERROR_UNKNOWN;
 	}
+	*mod_handle = handle;
 	return SC_SUCCESS;
 }
 
-int sc_module_close(struct sc_context *ctx, void **mod_handle)
+int sc_module_close(struct sc_context *ctx, void *mod_handle)
 {
 	const char *error;
 
 	assert(ctx != NULL);
 
-	if (!*mod_handle)
+	if (!mod_handle)
 		return SC_ERROR_UNKNOWN;
 
-	dlclose(*mod_handle);
-	*mod_handle = NULL;
+	dlclose(mod_handle);
 
 	if ((error = dlerror()) != NULL) {
 		if (ctx->debug)
@@ -71,6 +71,7 @@ int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_a
 {
 	const char *error;
 	char name[256];
+	void *address;
 
 	assert(ctx != NULL);
 
@@ -81,17 +82,17 @@ int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_a
 	name[0] = '_';
 	strncpy(&name[1], sym_name, sizeof(name) - 1);
 
-	*sym_address = NULL;
-	*sym_address = dlsym(mod_handle, name);
+	address = dlsym(mod_handle, name);
 
 	/* Failed? Try again without the leading underscore */
-	if (*sym_address == NULL)
-		*sym_address = dlsym(mod_handle, sym_name);
+	if (address == NULL)
+		address = dlsym(mod_handle, sym_name);
 
 	if ((error = dlerror()) != NULL) {
 		if (ctx->debug)
 			debug(ctx, "sc_module_get_address: %s", error);
 		return SC_ERROR_UNKNOWN;
 	}
+	*sym_address = address;
 	return SC_SUCCESS;
 }

@@ -309,7 +309,7 @@ static int ctapi_load_module(struct sc_context *ctx,
 	return 0;
 symerr:
 	error(ctx, "Unable to resolve CT-API symbols.\n");
-	sc_module_close(ctx, &dlh);
+	sc_module_close(ctx, dlh);
 	return -1;
 }
 
@@ -354,7 +354,7 @@ static int ctapi_finish(struct sc_context *ctx, void *prv_data)
 			struct ctapi_module *mod = &priv->modules[i];
 			
 			free(mod->name);
-			sc_module_close(ctx, &mod->dlhandle);
+			sc_module_close(ctx, mod->dlhandle);
 		}
 		if (priv->module_count)
 			free(priv->modules);
