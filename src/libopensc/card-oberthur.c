@@ -48,40 +48,41 @@
 #endif
 
 static NTLV_t oberthur_atrs[] = {
-	/* not jet supported
-	 * { "Oberthur 32k", ATR_OBERTHUR_32K, 20,
-	 * "\x3B\x7F\x18\x00\x00\x00\x31\xC0\x73\x9E\x01\x0B\x64\x52\xD9\x04\x00\x82\x90\x00"
-	 * },
-	 * { "Oberthur 32k BIO", ATR_OBERTHUR_32K_BIO, 20,
-	 *  "\x3B\x7F\x18\x00\x00\x00\x31\xC0\x73\x9E\x01\x0B\x64\x52\xD9\x05\x00\x82\x90\x00"
-	 * }, */
+#if 0
+	{ "Oberthur 32k", ATR_OBERTHUR_32K, 20,
+	  (unsigned char *) "\x3B\x7F\x18\x00\x00\x00\x31\xC0\x73\x9E\x01\x0B\x64\x52\xD9\x04\x00\x82\x90\x00"
+	},
+	{ "Oberthur 32k BIO", ATR_OBERTHUR_32K_BIO, 20,
+	  (unsigned char *) "\x3B\x7F\x18\x00\x00\x00\x31\xC0\x73\x9E\x01\x0B\x64\x52\xD9\x05\x00\x82\x90\x00"
+	},
+#endif
 	{ "Oberthur 64k v4/2.1.1", ATR_OBERTHUR_64K, 18,
-	  "\x3B\x7D\x18\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x01\x00\x82\x90\x00"
+	  (unsigned char *) "\x3B\x7D\x18\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x01\x00\x82\x90\x00"
 	},
 	{ "Oberthur 64k v4/2.1.1", ATR_OBERTHUR_64K, 18,
-	  "\x3B\x7D\x18\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x02\x00\x82\x90\x00"
+	  (unsigned char *) "\x3B\x7D\x18\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x02\x00\x82\x90\x00"
 	},
 	{ "Oberthur 64k v5", ATR_OBERTHUR_64K, 18,
-	  "\x3B\x7D\x11\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x01\x00\x82\x90\x00"
+	  (unsigned char *) "\x3B\x7D\x11\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x01\x00\x82\x90\x00"
 	},
 	{ "Oberthur 64k v5/2.2.0", ATR_OBERTHUR_64K, 18,
-	  "\x3B\x7D\x11\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x02\x00\x82\x90\x00"
+	  (unsigned char *) "\x3B\x7D\x11\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x02\x00\x82\x90\x00"
 	},
 	{ NULL, 0, 0, NULL	}
 };
 
 
 static NTLV_t oberthur_aids[] = {
-/*
+#if 0
 	{ "AuthentIC v2", AID_OBERTHUR_V2, 14,
-	  "\xA0\x00\x00\x00\x77\x58\x35\x30\x39\x23\x56\x32\x2E\x30"
+	  (unsigned char *) "\xA0\x00\x00\x00\x77\x58\x35\x30\x39\x23\x56\x32\x2E\x30"
 	},
 	{ "AuthentIC v4", AID_OBERTHUR_V4, 16,
-	  "\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x20\x03\xF1\x00\x00\x00\x02"
+	  (unsigned char *) "\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x20\x03\xF1\x00\x00\x00\x02"
 	},
-*/
+#endif
 	{ "AuthentIC v5", AID_OBERTHUR_V5, 16,
-	  "\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x00\x00\xF1\x00\x00\x00\x02"
+	  (unsigned char *) "\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x00\x00\xF1\x00\x00\x00\x02"
 	},
 	{ NULL, 0, 0, NULL }
 }; 
@@ -124,7 +125,7 @@ auth_select_aid(struct sc_card *card)
 {
 	struct sc_apdu apdu;
 	unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
-	struct auth_private_data *data =  card->drv_data;
+	struct auth_private_data *data =  (struct auth_private_data *) card->drv_data;
 	int rv, ii;
 	unsigned char cm[7] = {0xA0,0x00,0x00,0x00,0x03,0x00,0x00};
 
@@ -254,7 +255,7 @@ static void
 add_acl_entry(struct sc_card *card, struct sc_file *file, unsigned int op, 
 		u8 acl_byte)
 {
-	struct auth_private_data *data =  card->drv_data;
+	struct auth_private_data *data = (struct auth_private_data *) card->drv_data;
 
 	switch (data->aid.tag)   {
 	case AID_OBERTHUR_V5 :
@@ -546,7 +547,7 @@ select_parent(struct sc_card *card, struct sc_file **file_out)
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_file *file;
 	struct sc_path *cache_path = &card->cache.current_path;	
-	struct auth_private_data *prv =  card->drv_data;
+	struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
 
 	last_selected_file.magic = 0;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA4, 0x03, 0);
@@ -637,7 +638,7 @@ select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_file *file;
-	struct auth_private_data *prv =  card->drv_data;
+	struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
 
 	last_selected_file.magic = 0;
 	if (buflen==2 && memcmp(buf,"\x3F\x00",2)==0)   {
@@ -887,7 +888,7 @@ auth_delete_file(struct sc_card *card, const struct sc_path *path)
 static int 
 acl_to_ac_byte(struct sc_card *card, const struct sc_acl_entry *e)
 {
-	struct auth_private_data *data =  card->drv_data;
+	struct auth_private_data *data = (struct auth_private_data *) card->drv_data;
 	
 	if (e == NULL)
 		return -1;
@@ -1109,7 +1110,7 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 	int rv, rec_nr;
 	struct sc_apdu apdu;
 	struct sc_path path;
-	struct auth_private_data *prv =  card->drv_data;
+	struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
 
 	sc_debug(card->ctx, " create path=%s\n", sc_print_path(&file->path));
 	sc_debug(card->ctx,"id %04X; size %i; type %i; ef %i\n",
@@ -1190,7 +1191,7 @@ auth_set_security_env(struct sc_card *card,
 	u8 des_sbuf[17] = {0x80, 0x01, 0x01, 0x81, 0x02, 0xFF, 0xFF,
 					   0x87, 0x08, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
 					   0xFF, 0xFF, 0xFF};
-	struct auth_private_data *prv =  card->drv_data;
+	struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
 	int rv;
 
 	sc_debug(card->ctx, "op %i\n", env->operation);
@@ -1329,7 +1330,7 @@ auth_compute_signature(struct sc_card *card,
 		memcpy(sbuf, in, ilen);
 		apdu.le = senv->key_size/8;
 	
-		apdu.resp = malloc(senv->key_size/8+8);
+		apdu.resp = (u8 *) malloc(senv->key_size/8+8);
 		if (apdu.resp==NULL)   
 			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 		apdu.resplen = senv->key_size/8;
@@ -1379,7 +1380,7 @@ auth_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 				u8 * out, size_t outlen)
 {
 	auth_senv_t *senv = &((struct auth_private_data *) card->drv_data)->senv;
-	struct auth_private_data *prv =  card->drv_data;
+	struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
 	struct sc_apdu apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int rv;
@@ -1393,7 +1394,7 @@ auth_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
 	apdu.data = sbuf;
-	apdu.resp = malloc(SC_MAX_APDU_BUFFER_SIZE);
+	apdu.resp = (u8 *) malloc(SC_MAX_APDU_BUFFER_SIZE);
 	if (!apdu.resp)
 		return SC_ERROR_OUT_OF_MEMORY;
 	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
@@ -1537,7 +1538,7 @@ auth_generate_key(sc_card_t *card, struct sc_cardctl_oberthur_genkey_info *data)
 	}
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x46, 0x00, 0x00);
-	if (!(apdu.resp = malloc(data->key_bits/8+8)))   {
+	if (!(apdu.resp = (u8 *) malloc(data->key_bits/8+8)))   {
 		sc_error(card->ctx, "Cannot allocate memory\n");
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
@@ -1551,8 +1552,8 @@ auth_generate_key(sc_card_t *card, struct sc_cardctl_oberthur_genkey_info *data)
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, rv, "Card returned error");
-	if (apdu.resplen == 0)   {
-		struct auth_private_data *prv =  card->drv_data;
+	if (apdu.resplen == 0) {
+		struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
 
 		rv = auth_read_component(card, SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC,
 				prv->aid.tag == AID_OBERTHUR_V5 ? 1 : 2, 
@@ -1584,7 +1585,7 @@ auth_update_component(sc_card_t *card, struct sc_cardctl_oberthur_updatekey_info
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE + 0x10];
 	u8 ins, p1, p2;
 	int rv, len;
-	struct auth_private_data *prv =  card->drv_data;
+	struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
 	
 	sc_debug(card->ctx, ": nn %i; len %i\n", args->component, args->len);
 	if (args->len > sizeof(sbuf) || args->len > 0x100)
@@ -1726,7 +1727,7 @@ auth_read_component(sc_card_t *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type,
 {
 	int rv;
 	struct sc_apdu apdu;
-	struct auth_private_data *prv =  card->drv_data;
+	struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
 	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
 
 	sc_debug(card->ctx, ": num %i, outlen %i, type %i\n", num, outlen, type);
@@ -1777,7 +1778,7 @@ auth_read_component(sc_card_t *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type,
 static int auth_get_pin_reference (struct sc_card *card, 
 	 int type, int reference, int cmd, int *out_ref)
 {
-	struct auth_private_data *prv =  card->drv_data;
+	struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
 
 	if (!card || !out_ref)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1814,7 +1815,7 @@ static void
 auth_init_pin_info(struct sc_card *card, struct sc_pin_cmd_pin *pin, 
 		unsigned int type)
 {
-	struct auth_private_data *data =  card->drv_data;
+	struct auth_private_data *data = (struct auth_private_data *) card->drv_data;
 	
 	pin->offset	 = 0;
 	pin->pad_char   = 0xFF;
@@ -1911,7 +1912,7 @@ auth_verify(struct sc_card *card, unsigned int type,
 static int 
 auth_change_reference_data (struct sc_card *card, unsigned int type,
 		int ref, const u8 *old, size_t oldlen,
-		const u8 *new, size_t newlen, int *tries_left)
+		const u8 *_new, size_t newlen, int *tries_left)
 {
 	sc_apdu_t apdu;
 	int rv, pin_ref;
@@ -1930,7 +1931,7 @@ auth_change_reference_data (struct sc_card *card, unsigned int type,
 	
 	memset(sbuf, pinfo.pad_char, pinfo.pad_length * 2);
 	memcpy(sbuf, old, oldlen);
-	memcpy(sbuf + pinfo.pad_length, new, newlen);
+	memcpy(sbuf + pinfo.pad_length, _new, newlen);
 		
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0, pin_ref);
 	apdu.data = sbuf;
@@ -2006,7 +2007,7 @@ auth_create_reference_data (struct sc_card *card,
 	int rv, pin_ref, len;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_pin_cmd_pin pin_info, puk_info;
-	struct auth_private_data *prv =  card->drv_data;
+	struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
 	
 	if (args->pin_tries < 1 || !args->pin || !args->pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -2066,8 +2067,8 @@ auth_logout(struct sc_card *card)
 {
 	sc_apdu_t apdu;
 	int rv, pin_ref;
-	struct auth_private_data *data =  card->drv_data;
-	int reset_flag = data->aid.tag == AID_OBERTHUR_V5 ? 0x20 : 0x00;
+	struct auth_private_data *data = (struct auth_private_data *) card->drv_data;
+	int reset_flag = (data->aid.tag == AID_OBERTHUR_V5) ? 0x20 : 0x00;
 	
 	rv = auth_get_pin_reference (card, SC_AC_CHV, 1, SC_PIN_CMD_UNBLOCK, &pin_ref);
 	if (rv)
@@ -2204,7 +2205,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 		u8 *buf, size_t count, unsigned long flags)
 {
 	int rv;
-	struct auth_private_data *data =  card->drv_data;
+	struct auth_private_data *data = (struct auth_private_data *) card->drv_data;
 	
 	sc_debug(card->ctx,"; offset %i; size %i; flags 0x%lX\n", offset, count, flags);
 	sc_debug(card->ctx,"; last selected : magic %X; ef %X\n", 
@@ -2232,7 +2233,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 		for (jj=0; jj<rv && *(resp+jj)==0; jj++)
 			;
 
-		bn[0].data = malloc(rv - jj);
+		bn[0].data = (u8 *) malloc(rv - jj);
 		bn[0].len = rv - jj;
 		memcpy(bn[0].data, resp + jj, rv - jj);
 		
@@ -2241,7 +2242,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 				resp, resp_len);
 		if (rv <= 0)
 			return rv;
-		bn[1].data = malloc(rv);
+		bn[1].data = (u8 *) malloc(rv);
 		bn[1].len = rv;
 		memcpy(bn[1].data, resp, rv);
 
