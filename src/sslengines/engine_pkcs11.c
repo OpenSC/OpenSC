@@ -65,7 +65,8 @@ char *get_pin(UI_METHOD * ui_method, char *sc_pin, int maxlen)
 	UI *ui;
 
 	ui = UI_new();
-	UI_set_method(ui, ui_method);
+	if (ui_method != NULL)
+	    UI_set_method(ui, ui_method);
 	if (!UI_add_input_string(ui, "SmartCard PIN: ", 0, sc_pin, 1, maxlen)) {
 		fprintf(stderr, "UI_add_input_string failed\n");
 		UI_free(ui);
@@ -73,6 +74,7 @@ char *get_pin(UI_METHOD * ui_method, char *sc_pin, int maxlen)
 	}
 	if (UI_process(ui)) {
 		fprintf(stderr, "UI_process failed\n");
+		UI_free(ui);
 		return NULL;
 	}
 	UI_free(ui);
