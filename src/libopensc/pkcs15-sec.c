@@ -37,7 +37,9 @@ static int select_key_file(struct sc_pkcs15_card *p15card,
 
 	if (prkey->path.len < 2)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (prkey->path.len == 2) {
+    /* For pkcs15-emulated cards, the file_app may be NULL,
+       in that case we allways assume an absolute path */
+	if (prkey->path.len == 2 && p15card->file_app != NULL) {
 		/* Path is relative to app. DF */
 		path = p15card->file_app->path;
 		file_id = prkey->path;
