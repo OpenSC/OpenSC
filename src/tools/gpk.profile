@@ -21,6 +21,7 @@ CardInfo
 # Currently we do not support PIN files that can be updated
 # by CHV2. Far too messy.
 EF pinfile
+	Parent		PKCS15-AppDF
 	FileID		0000
 	Structure	0x21	# GPK specific
 	RecordLength	8
@@ -32,11 +33,13 @@ EF pinfile
 # part, so it's okay to set READ=NONE. What's more, we need
 # read access so we're able to update the file.
 EF template-private-key
+	Parent		PKCS15-AppDF
 	FileID		0006	# This is the base FileID
 	Structure	0x2C	# GPK specific
-	ACL		*=NEVER READ=NONE UPDATE=CHV2 WRITE=CHV2
+	ACL		*=NEVER READ=NONE UPDATE=CHV1 WRITE=CHV1
 
 EF template-public-key
+	Parent		PKCS15-AppDF
 	FileID		8000
 	Structure	transparent
 	ACL		*=NONE

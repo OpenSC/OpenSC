@@ -62,9 +62,6 @@ struct pin_info {
 struct sc_key_template {
 	char *			ident;
 	struct sc_key_template *next;
-#if 0
-	struct file_info *	file;
-#endif
 	struct sc_file *	file;
 	unsigned int		index;	/* translates to file offset */
 	struct sc_acl_entry *	key_acl;/* PINs for key usage */
@@ -109,7 +106,8 @@ int		sc_profile_load(struct sc_profile *, const char *);
 int		sc_profile_finish(struct sc_profile *);
 int		sc_profile_build_pkcs15(struct sc_profile *);
 struct file_info *sc_profile_find_file(struct sc_profile *, const char *);
-struct file_info *sc_profile_file_info(struct sc_profile *, struct sc_file *);
+struct file_info *sc_profile_find_file_by_path(struct sc_profile *,
+			const struct sc_path *);
 struct pin_info *sc_profile_find_pin(struct sc_profile *, const char *);
 struct sc_key_template *sc_profile_find_private_key(struct sc_profile *,
 				const char *);

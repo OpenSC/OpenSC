@@ -1178,6 +1178,7 @@ do_select_parent(struct sc_profile *pro, struct sc_file *file,
 		struct sc_file **parent)
 {
 	struct sc_path	path;
+	int		r;
 
 	/* Get the parent's path */
 	path = file->path;
@@ -1187,7 +1188,19 @@ do_select_parent(struct sc_profile *pro, struct sc_file *file,
 		sc_format_path("3F00", &path);
 
 	/* Select the parent DF. */
-	return sc_select_file(card, &path, parent);
+	r = sc_select_file(card, &path, parent);
+
+	/* If DF doesn't exist, create it (unless it's the MF,
+	 * but then something's badly broken anyway :-) */
+	if (r == SC_ERROR_FILE_NOT_FOUND && path.len != 2) {
+		struct file_info *info;
+
+		info = sc_profile_find_file_by_path(pro, &path);
+		if (info != NULL
+		 && (r = sc_pkcs15init_create_file(pro, info->file)) == 0)
+			r = sc_select_file(card, &path, parent);
+	}
+	return r;
 }
 
 int

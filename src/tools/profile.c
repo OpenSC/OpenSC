@@ -55,6 +55,7 @@ static struct parser_info {
 }	parser;
 
 static struct file_info *	cur_file;
+static struct sc_file *		cur_parent;
 static struct pin_info *	cur_pin;
 static struct sc_key_template *	cur_key;
 
@@ -198,7 +199,7 @@ sc_profile_init(struct sc_profile *pro)
 	p15card->file_app = file = init_file(SC_FILE_TYPE_DF);
 	file->size = 5000;
 	pro->df_info.file = file;
-	pro->df_info.ident = "Application DF";
+	pro->df_info.ident = "PKCS15-AppDF";
 
 	/* Set up EF(TokenInfo) and EF(ODF) */
 	p15card->file_tokeninfo = init_file(SC_FILE_TYPE_WORKING_EF);
@@ -558,15 +559,25 @@ do_mf(int argc, char **argv)
 	parser.section = PARSE_FILE;
 	cur_file = &parser.profile->mf_info;
 	cur_file->ident = strdup("MF");
+	cur_parent = NULL;
 	return 0;
 }
 
 static int
 do_df(int argc, char **argv)
 {
+	const char	*ident;
+
 	parser.section = PARSE_FILE;
-	cur_file = &parser.profile->df_info;
-	cur_file->ident = strdup("App DF");
+	ident = argc? argv[0] : "PKCS15-AppDF";
+	if (!strcasecmp(ident, "PKCS15-AppDF")) {
+		cur_file = &parser.profile->df_info;
+	} else {
+		cur_file = (struct file_info *) calloc(1, sizeof(*cur_file));
+		cur_file->ident = strdup(ident);
+		cur_file->file = init_file(SC_FILE_TYPE_DF);
+	}
+	cur_parent = NULL;
 	return 0;
 }
 
@@ -621,6 +632,7 @@ do_ef(int argc, char **argv)
 	parser.profile->ef_list = info;
 
 out:	cur_file = info;
+	cur_parent = NULL;
 	return 0;
 }
 
@@ -643,11 +655,35 @@ do_path(int argc, char **argv)
 }
 
 static int
-do_fileid(int argc, char **argv)
+do_parent(int argc, char **argv)
 {
 	struct sc_profile *profile = parser.profile;
-	struct sc_file	*file = cur_file->file,
-			*df = profile->df_info.file;
+	struct file_info *info;
+	struct sc_file	*df;
+	const char	*name;
+
+	name = argv[0];
+	if (!strcasecmp(name, "PKCS15-AppDF")) {
+		df = profile->df_info.file;
+	} else {
+		if ((info = sc_profile_find_file(profile, name)) == NULL) {
+			parse_error("Unknown parent DF \"%s\"\n", name);
+			return 1;
+		}
+		df = info->file;
+	}
+	if (df->type != SC_FILE_TYPE_DF) {
+		parse_error("File \"%s\" is not a DF\n", name);
+		return 1;
+	}
+	cur_parent = df;
+	return 0;
+}
+
+static int
+do_fileid(int argc, char **argv)
+{
+	struct sc_file	*df, *file = cur_file->file;
 	struct sc_path	temp, *path = &file->path;
 
 	/* sc_format_path doesn't return an error indication
@@ -657,8 +693,14 @@ do_fileid(int argc, char **argv)
 		parse_error("Invalid file ID length\n");
 		return 1;
 	}
+
+	/* Get the DF. Must be specified using the "Parent" keyword. */
+	if ((df = cur_parent) == NULL) {
+		parse_error("Profile uses FileID, but didn't specify Parent\n");
+		return 1;
+	}
 	if (df->path.len == 0) {
-		parse_error("No path set for Application DF\n");
+		parse_error("No path set for Parent DF\n");
 		return 1;
 	}
 	if (df->path.len + 2 > sizeof(df->path)) {
@@ -1148,9 +1190,10 @@ static struct command	commands[] = {
  { "Manufacturer",	PARSE_CARDINFO,	1,	1,	do_card_manufacturer},
  { "PrKeyAccessFlags",	PARSE_CARDINFO,	2,	-1,	do_default_access_flags },
  { "MF",		-1,		0,	0,	do_mf		},
- { "DF",		-1,		0,	0,	do_df		},
+ { "DF",		-1,		0,	1,	do_df		},
  { "EF",		-1,		1,	1,	do_ef		},
  { "Path",		PARSE_FILE,	1,	1,	do_path		},
+ { "Parent",		PARSE_FILE,	1,	1,	do_parent	},
  { "FileID",		PARSE_FILE,	1,	1,	do_fileid	},
  { "Structure",		PARSE_FILE,	1,	1,	do_structure	},
  { "Size",		PARSE_FILE,	1,	1,	do_size		},
@@ -1244,12 +1287,15 @@ sc_profile_find_file(struct sc_profile *pro, const char *name)
 }
 
 struct file_info *
-sc_profile_file_info(struct sc_profile *pro, struct sc_file *file)
+sc_profile_find_file_by_path(struct sc_profile *pro, const struct sc_path *path)
 {
-	struct file_info	*fi;
+	struct file_info *fi;
+	struct sc_file	*fp;
 
 	for (fi = pro->ef_list; fi; fi = fi->next) {
-		if (fi->file == file) 
+		fp = fi->file;
+		if (fp->path.len == path->len
+		 && !memcmp(fp->path.value, path->value, path->len))
 			return fi;
 	}
 	return NULL;
