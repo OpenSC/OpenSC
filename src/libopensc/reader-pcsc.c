@@ -513,14 +513,12 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	int r;
 	struct pcsc_global_private_data *gpriv;
 
-        rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL,
-                                   NULL,
-                                   NULL,
-				   &pcsc_ctx);
+	rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL,
+                              NULL, NULL, &pcsc_ctx);
 	if (rv != SCARD_S_SUCCESS)
 		return pcsc_ret_to_error(rv);
 	rv = SCardListReaders(pcsc_ctx, NULL, NULL,
-			 (LPDWORD) &reader_buf_size);
+	                      (LPDWORD) &reader_buf_size);
 	if (rv != SCARD_S_SUCCESS || reader_buf_size < 2) {
 		SCardReleaseContext(pcsc_ctx);
 		return pcsc_ret_to_error(rv);	/* No readers configured */
@@ -541,7 +539,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	rv = SCardListReaders(pcsc_ctx, mszGroups, reader_buf,
-				(LPDWORD) &reader_buf_size);
+	                      (LPDWORD) &reader_buf_size);
 	if (rv != SCARD_S_SUCCESS) {
 		free(reader_buf);
 		free(gpriv);

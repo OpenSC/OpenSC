@@ -55,18 +55,18 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 				struct sc_pkcs15_object *obj,
 				const u8 ** buf, size_t *buflen)
 {
-        struct sc_context *ctx = p15card->card->ctx;
-        struct sc_pkcs15_pin_info info;
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_pin_info info;
 	int r;
 	size_t flags_len = sizeof(info.flags);
-        size_t padchar_len = 1;
+	size_t padchar_len = 1;
 	struct sc_asn1_entry asn1_com_ao_attr[2], asn1_pin_attr[10], asn1_type_pin_attr[2];
 	struct sc_asn1_entry asn1_pin[2];
 	struct sc_asn1_pkcs15_object pin_obj = { obj, asn1_com_ao_attr, NULL, asn1_type_pin_attr };
-        sc_copy_asn1_entry(c_asn1_pin, asn1_pin);
-        sc_copy_asn1_entry(c_asn1_type_pin_attr, asn1_type_pin_attr);
-        sc_copy_asn1_entry(c_asn1_pin_attr, asn1_pin_attr);
-        sc_copy_asn1_entry(c_asn1_com_ao_attr, asn1_com_ao_attr);
+	sc_copy_asn1_entry(c_asn1_pin, asn1_pin);
+	sc_copy_asn1_entry(c_asn1_type_pin_attr, asn1_type_pin_attr);
+	sc_copy_asn1_entry(c_asn1_pin_attr, asn1_pin_attr);
+	sc_copy_asn1_entry(c_asn1_com_ao_attr, asn1_com_ao_attr);
 
 	sc_format_asn1_entry(asn1_pin + 0, &pin_obj, NULL, 0);
 
@@ -79,13 +79,13 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 	sc_format_asn1_entry(asn1_pin_attr + 4, &info.max_length, NULL, 0);
 	sc_format_asn1_entry(asn1_pin_attr + 5, &info.reference, NULL, 0);
 	sc_format_asn1_entry(asn1_pin_attr + 6, &info.pad_char, &padchar_len, 0);
-        /* We don't support lastPinChange yet. */
+	/* We don't support lastPinChange yet. */
 	sc_format_asn1_entry(asn1_pin_attr + 8, &info.path, NULL, 0);
 
 	sc_format_asn1_entry(asn1_com_ao_attr + 0, &info.auth_id, NULL, 0);
 
-        /* Fill in defaults */
-        memset(&info, 0, sizeof(info));
+	/* Fill in defaults */
+	memset(&info, 0, sizeof(info));
 	info.reference = 0;
 	info.tries_left = -1;
 
@@ -121,11 +121,10 @@ int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 	struct sc_pkcs15_pin_info *pin =
                 (struct sc_pkcs15_pin_info *) obj->data;
 	struct sc_asn1_pkcs15_object pin_obj = { (struct sc_pkcs15_object *) obj,
-						 asn1_com_ao_attr, NULL,
-				   		 asn1_type_pin_attr };
+						 asn1_com_ao_attr, NULL, asn1_type_pin_attr };
 	int r;
 	size_t flags_len;
-        size_t padchar_len = 1;
+	size_t padchar_len = 1;
 
 	sc_copy_asn1_entry(c_asn1_pin, asn1_pin);
         sc_copy_asn1_entry(c_asn1_type_pin_attr, asn1_type_pin_attr);
@@ -141,7 +140,7 @@ int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 	sc_format_asn1_entry(asn1_pin_attr + 1, &pin->type, NULL, 1);
 	sc_format_asn1_entry(asn1_pin_attr + 2, &pin->min_length, NULL, 1);
 	sc_format_asn1_entry(asn1_pin_attr + 3, &pin->stored_length, NULL, 1);
-        if (pin->reference >= 0)
+	if (pin->reference >= 0)
 		sc_format_asn1_entry(asn1_pin_attr + 5, &pin->reference, NULL, 1);
 	/* FIXME: check if pad_char present */
 	sc_format_asn1_entry(asn1_pin_attr + 6, &pin->pad_char, &padchar_len, 1);
@@ -149,7 +148,7 @@ int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 
 	sc_format_asn1_entry(asn1_com_ao_attr + 0, &pin->auth_id, NULL, 1);
 
-        assert(pin->magic == SC_PKCS15_PIN_MAGIC);
+	assert(pin->magic == SC_PKCS15_PIN_MAGIC);
 	r = sc_asn1_encode(ctx, asn1_pin, buf, buflen);
 
 	return r;

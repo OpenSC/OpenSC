@@ -66,7 +66,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	struct sc_algorithm_info *alg_info;
 	struct sc_security_env senv;
 	struct sc_context *ctx = p15card->card->ctx;
-        const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	unsigned long pad_flags = 0;
 
 	SC_FUNC_CALLED(ctx, 1);
@@ -92,7 +92,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1))
 			pad_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 		else
-                        senv.algorithm_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+			senv.algorithm_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	} else if ((flags & SC_ALGORITHM_RSA_PAD_ANSI) ||
 		   (flags & SC_ALGORITHM_RSA_PAD_ISO9796)) {
 		sc_error(ctx, "Only PKCS #1 padding method supported\n");
@@ -139,7 +139,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	/* Strip any padding */
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		r = sc_pkcs1_strip_02_padding(out, (size_t)r, out, (size_t *) &r);
-                SC_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
+			SC_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
 	}
 
 	return r;
@@ -154,7 +154,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	struct sc_security_env senv;
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_algorithm_info *alg_info;
-        const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	u8 buf[512], *tmpin, *tmpout, *help;
 	size_t tmpoutlen;
 	unsigned long pad_flags = 0;
@@ -208,35 +208,35 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		flags |= algo;
 	}
 
-        senv.algorithm_flags = 0;
+	senv.algorithm_flags = 0;
 	if (flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 		if (inlen != 20)
 			SC_FUNC_RETURN(ctx, 0, SC_ERROR_WRONG_LENGTH);
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_HASH_SHA1))
 			pad_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
 		else
-                        senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+			senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
 	} else if (flags & SC_ALGORITHM_RSA_HASH_MD5) {
 		if (inlen != 16)
 			SC_FUNC_RETURN(ctx, 0, SC_ERROR_WRONG_LENGTH);
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_HASH_MD5))
 			pad_flags |= SC_ALGORITHM_RSA_HASH_MD5;
 		else
-                        senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_MD5;
+			senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_MD5;
 	} else if (flags & SC_ALGORITHM_RSA_HASH_RIPEMD160) {
 		if (inlen != 20)
 			SC_FUNC_RETURN(ctx, 0, SC_ERROR_WRONG_LENGTH);
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_HASH_RIPEMD160))
 			pad_flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
 		else
-                        senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
+			senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
 	} else if (flags & SC_ALGORITHM_RSA_HASH_MD5_SHA1) {
 		if (inlen != 36)
 			SC_FUNC_RETURN(ctx, 0, SC_ERROR_WRONG_LENGTH);
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_HASH_MD5_SHA1))
 			pad_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 		else
-                        senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+			senv.algorithm_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 	} else if (flags & SC_ALGORITHM_RSA_HASH_NONE ||
 		   (flags & SC_ALGORITHM_RSA_HASHES) == 0) {
 		pad_flags |= SC_ALGORITHM_RSA_HASH_NONE;
@@ -246,7 +246,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1))
 			pad_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 		else
-                        senv.algorithm_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+			senv.algorithm_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	} else if ((flags & SC_ALGORITHM_RSA_PAD_ANSI) ||
 		   (flags & SC_ALGORITHM_RSA_PAD_ISO9796)) {
 		sc_error(ctx, "Only PKCS #1 padding method supported\n");
@@ -274,11 +274,11 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 
 	if (pad_flags) {
-                tmpoutlen = sizeof(buf);
+		tmpoutlen = sizeof(buf);
 		r = sc_pkcs1_encode(ctx, pad_flags, tmpin, inlen, tmpout, &tmpoutlen,
-			            prkey->modulus_length/8);
-                SC_TEST_RET(ctx, r, "Unable to add padding");
-                help = tmpin;
+		                    prkey->modulus_length/8);
+		SC_TEST_RET(ctx, r, "Unable to add padding");
+		help = tmpin;
 		tmpin = tmpout;
 		tmpout = help;
 		inlen = tmpoutlen;
@@ -319,7 +319,8 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 *
 	 * Right now we work around this by assuming that eToken keys
 	 * always have algorithm RSA_PURE_SIG so the input buffer
-	 * is padded and has the same length as the signature. --okir */
+	 * is padded and has the same length as the signature. --okir 
+	 */
 	if (tmpin == out) {
 		memcpy(tmpout, tmpin, inlen);
 		tmpin = tmpout;
