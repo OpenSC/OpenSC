@@ -279,7 +279,46 @@ end:
 
 static void add_acl_entry(struct sc_file *file, int op, u8 byte)
 {
-	/* XXX todo: */
+	unsigned int method, key_ref = SC_AC_KEY_REF_NONE;
+
+	switch (byte) {
+	case 0x00:
+		method = SC_AC_NONE;
+		break;
+	case 0xFF:
+		method = SC_AC_NEVER;
+		break;
+	default:
+		if (byte > 0x7F) {
+			method = SC_AC_UNKNOWN;
+		} else {
+			method = SC_AC_CHV;
+			key_ref = byte;
+		}
+		break;
+	}
+	sc_file_add_acl_entry(file, op, method, key_ref);
+}
+
+static int acl_to_byte(const struct sc_acl_entry *e)
+{
+	if (e != NULL) {
+		switch (e->method) {
+		case SC_AC_NONE:
+			return 0x00;
+		case SC_AC_NEVER:
+			return 0xFF;
+		case SC_AC_CHV:
+		case SC_AC_TERM:
+		case SC_AC_AUT:
+			if (e->key_ref == SC_AC_KEY_REF_NONE)
+				return -1;
+			if (e->key_ref < 0x00 || e->key_ref > 0x7F)
+				return -1;
+			return e->key_ref;
+		}
+	}
+        return 0x00;
 }
 
 static const int df_acl[9] = {
@@ -314,13 +353,12 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 	int i;
 	const int *idx;
 
-	if (len < 9)
-		return;
-
 	idx = (file->type == SC_FILE_TYPE_DF) ?  df_acl : ef_acl;
+
+	/* acl defaults to 0xFF if unspecified */
 	for (i = 0; i < 9; i++)
 		if (idx[i] != -1)
-			add_acl_entry(file, idx[i], buf[i]);
+			add_acl_entry(file, idx[i], (i < len) ? buf[i] : 0xFF);
 }
 
 static int etoken_select_file(struct sc_card *card,
@@ -339,10 +377,9 @@ static int etoken_select_file(struct sc_card *card,
 
 static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 {
-	int r;
-	const u8 acl[] = {
-	    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-	u8 type[3], status[3];
+	int r, i, byte;
+	const int *idx;
+	u8 acl[9], type[3], status[3];
 
 	if (file->type_attr_len == 0) {
 		type[0] = 0x00;
@@ -358,14 +395,16 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 		default:
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-		switch (file->ef_structure) {
-		case SC_FILE_EF_LINEAR_FIXED_TLV:
-		case SC_FILE_EF_LINEAR_VARIABLE:
-		case SC_FILE_EF_CYCLIC_TLV:
-			return SC_ERROR_NOT_SUPPORTED;
-		default:
-			type[0] |= file->ef_structure & 7;
-			break;
+		if (file->type != SC_FILE_TYPE_DF) {
+			switch (file->ef_structure) {
+			case SC_FILE_EF_LINEAR_FIXED_TLV:
+			case SC_FILE_EF_LINEAR_VARIABLE:
+			case SC_FILE_EF_CYCLIC_TLV:
+				return SC_ERROR_NOT_SUPPORTED;
+			default:
+				type[0] |= file->ef_structure & 7;
+				break;
+			}
 		}
 		type[1] = type[2] = 0x00; /* not used, but required */
 		r = sc_file_set_type_attr(file, type, sizeof(type));
@@ -385,6 +424,19 @@ static int etoken_create_file(struct sc_card *card, struct sc_file *file)
 			return r;
 	}
 	if (file->sec_attr_len == 0) {
+		idx = (file->type == SC_FILE_TYPE_DF) ?  df_acl : ef_acl;
+		for (i = 0; i < 9; i++) {
+			if (idx[i] < 0)
+				byte = 0x00;
+			else
+				byte = acl_to_byte(
+				    sc_file_get_acl_entry(file, idx[i]));
+                        if (byte < 0) {
+                                error(card->ctx, "Invalid ACL\n");
+                                return SC_ERROR_INVALID_ARGUMENTS;
+                        }
+			acl[i] = byte;
+		}
 		r = sc_file_set_sec_attr(file, acl, sizeof(acl));
 		if (r)
 			return r;
