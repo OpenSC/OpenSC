@@ -715,4 +715,4 @@ sc_pkcs15init_get_oberthur_ops(void)
 	ops->old_generate_key = cosm_old_generate_key;
 
 	return ops;
-};
+}
