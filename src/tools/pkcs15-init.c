@@ -15,6 +15,9 @@
  * Copyright (C) 2002, Olaf Kirch <okir@lst.de>
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdio.h>
 #include <ctype.h>
 #include <stdarg.h>

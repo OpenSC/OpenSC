@@ -314,6 +314,14 @@ AM_CONDITIONAL(HAVE_PCSCLITE, test "x$ac_cv_lib_pcsclite_SCardEstablishContext" 
 AC_SUBST(LIBDL)
 AC_CHECK_LIB(dl, dlopen, [LIBDL="$LIBDL -ldl" ac_cv_func_dlopen_ldl=yes], ac_cv_func_dlopen_ldl=no)
 
+AC_SUBST(LIBREADLINE)
+AC_CHECK_LIB(readline, readline, [LIBREADLINE="$LIBREADLINE -lreadline" ac_cv_func_readline_lreadline=yes], ac_cv_func_readline_lreadline=no)
+
+saved_LIBS="$LIBS"
+LIBS="$LIBS $LIBREADLINE"
+AC_CHECK_FUNCS(readline)
+LIBS="$saved_LIBS"
+
 dnl The big search for OpenSSL
 AC_ARG_WITH(ssl-dir,
 	[  --with-ssl-dir=PATH     Specify path to OpenSSL installation],

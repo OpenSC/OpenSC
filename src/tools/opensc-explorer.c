@@ -18,17 +18,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include <opensc.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-#undef USE_READLINE
-
-#ifdef USE_READLINE
+#include <opensc.h>
+#ifdef HAVE_READLINE
 #include <readline/readline.h>
 #endif
-
 #include "util.h"
 
 int opt_reader = 0, opt_debug = 0;
@@ -804,7 +803,7 @@ static int parse_line(char *in, char **argv)
 	return argc;
 }
 
-#ifndef USE_READLINE
+#ifndef HAVE_READLINE
 char * readline(const char *prompt)
 {
 	static char buf[128];

@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
-
 #include "util.h"
 
 void print_binary(FILE *f, const u8 *buf, int count)
