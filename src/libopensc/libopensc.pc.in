@@ -7,5 +7,5 @@ Name: libopensc
 Description: libopensc
 Version: @VERSION@
 Libs: -L${libdir} -lopensc
-Cflags: -I${includedir}/opensc
+Cflags: -I${includedir}
 
