@@ -1,1 +1,0 @@
-shlibs:Depends=libc6 (>= 2.3.2.ds1-4), libopensc0, libpcsclite0 (>= 1.2.0-stable-1), libreadline4 (>= 4.3-1), libssl0.9.7, openct

@@ -1,4 +1,0 @@
-usr/lib/lib*.so*
-etc/opensc/*.profile
-usr/share/opensc/*.profile
-usr/lib/pkcs11/*.so*

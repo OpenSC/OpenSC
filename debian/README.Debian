@@ -1,8 +1,0 @@
-opensc for Debian
------------------
-
-This is the initial build of the opensc Debian package.
-General documentation is in the opensc package, development
-specific documentation is in the libopensc-dev package.
-
- -- Joe Phillips <joe.phillips@innovationsw.com>, Thu, 15 Aug 2002 16:49:44 -0400
