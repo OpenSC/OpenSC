@@ -67,7 +67,7 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 	}
 	r = sc_pkcs15_find_prkey_by_id_usage(priv->p15card,
 				&priv->cert_id,
-				SC_PKCS15_PRKEY_USAGE_DECRYPT
+				SC_PKCS15_PRKEY_USAGE_DECRYPT,
 				&key);
 	if (r) {
 #if 0
