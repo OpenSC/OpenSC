@@ -31,13 +31,14 @@
 
 /* Gemplus card variants */
 enum {
-	GPK4000_su256,
+	GPK4000_su256 = 4000,
 	GPK4000_s,
 	GPK4000_sp,
 	GPK4000_sdo,
-	GPK8000,
+	GPK8000 = 8000,
 	GPK8000_8K,
 	GPK8000_16K,
+	GPK16000 = 16000,
 };
 
 #define GPK_SEL_MF		0x00
@@ -82,6 +83,9 @@ struct gpk_private_data {
 	unsigned int	sec_padding;
 };
 #define DRVDATA(card)	((struct gpk_private_data *) ((card)->drv_data))
+
+static struct sc_pk_info *gpk_add_algorithm(struct sc_cardctl_pk_algorithms *,
+	       			unsigned int, unsigned int);
 
 /*
  * ATRs of GPK4000 cards courtesy of libscez
@@ -1305,6 +1309,99 @@ gpk_erase_card(struct sc_card *card)
 }
 
 /*
+ * Get list of supported public key algorithms and sizes
+ */
+static int
+gpk_get_pk_algorithms(struct sc_card *card,
+		struct sc_cardctl_pk_algorithms *res)
+{
+	struct gpk_private_data *priv = DRVDATA(card);
+	struct sc_apdu	apdu;
+	struct sc_path	path;
+	unsigned int	gpkclass;
+	u8		cardinfo[13], max_session_key;
+	int		r;
+
+	memset(res, 0, sizeof(*res));
+
+	gpk_add_algorithm(res, SC_ALGORITHM_RSA, 512);
+	gpk_add_algorithm(res, SC_ALGORITHM_RSA, 768);
+	gpk_add_algorithm(res, SC_ALGORITHM_RSA, 1024);
+
+	gpkclass = (priv->variant / 1000) * 1000;
+
+	/* GPK8000 and GPK16000 support on-board key generation
+	 * for 512 and 1024 bit keys */
+	if (gpkclass >= 8000) {
+		res->algorithms[0].pk_onboard_generation = 1;
+		res->algorithms[2].pk_onboard_generation = 1;
+	}
+
+	/* Cards prior to the GPK16000 do not allow RSA exponents
+	 * other that 0x10001 */
+	if (gpkclass < 16000) {
+		res->algorithms[0].pk_rsa_exponent = 0x10001;
+		res->algorithms[1].pk_rsa_exponent = 0x10001;
+		res->algorithms[1].pk_rsa_exponent = 0x10001;
+	}
+
+	/* GPK cards limit the amount of data they're willing
+	 * to RSA decrypt. This data is stored in EFMaxSessionKey */
+	sc_format_path("01000001", &path);
+	if ((r = sc_select_file(card, &path, NULL)) < 0
+	 || (r = sc_read_binary(card, 0, &max_session_key, 1, 0)) < 0)
+		return r;
+	res->algorithms[0].pk_rsa_unwrap = max_session_key;
+	res->algorithms[1].pk_rsa_unwrap = max_session_key;
+	res->algorithms[2].pk_rsa_unwrap = max_session_key;
+
+	/* Do a Get Info call to find out whether DSA is
+	 * supported. */
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_2_SHORT;
+	apdu.cla = 0x80;
+	apdu.ins = 0xC0;
+	apdu.p1  = 0x02;
+	apdu.p2  = 0xA4;
+	apdu.le  = sizeof(cardinfo);
+	apdu.resp= cardinfo;
+	apdu.resplen = sizeof(cardinfo);
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	if (cardinfo[11] & 0x10) {
+		/* We have DSA support */
+		gpk_add_algorithm(res, SC_ALGORITHM_DSA, 512);
+		gpk_add_algorithm(res, SC_ALGORITHM_DSA, 1024);
+	}
+
+	return 0;
+}
+
+/*
+ * This should really be made available to all card drivers,
+ * and added to sc-internal.h
+ */
+static struct sc_pk_info *
+gpk_add_algorithm(struct sc_cardctl_pk_algorithms *res,
+		unsigned int algo, unsigned int keysize)
+{
+	struct sc_pk_info	*p;
+
+	res->algorithms = realloc(res->algorithms,
+		       	(res->count + 1) * sizeof(*p));
+	p = res->algorithms + res->count++;
+
+	memset(p, 0, sizeof(*p));
+	p->pk_algorithm = algo;
+	p->pk_keylength = keysize;
+	return p;
+}
+
+/*
  * Lock a file Access Condition.
  *
  * File must be selected, and we assume that any authentication
@@ -1450,6 +1547,9 @@ gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	switch (cmd) {
 	case SC_CARDCTL_ERASE_CARD:
 		return gpk_erase_card(card);
+	case SC_CARDCTL_GET_PK_ALGORITHMS:
+		return gpk_get_pk_algorithms(card,
+				(struct sc_cardctl_pk_algorithms *) ptr);
 	case SC_CARDCTL_GPK_LOCK:
 		return gpk_lock(card, (struct sc_cardctl_gpk_lock *) ptr);
 	case SC_CARDCTL_GPK_PKINIT:
