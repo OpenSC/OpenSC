@@ -1,0 +1,88 @@
+.PU
+.ds nm \fBpkcs15-crypt\fR
+.TH pkcs15-crypt 1 "" "" OpenSC
+.SH NAME
+pkcs15-crypt \- perform crypto operations using pkcs15 smart card
+.SH SYNOPSIS
+\*(nm
+.RI [ " OPTIONS " ]
+.SH DESCRIPTION
+The \*(nm utility can be used from the command line to perform
+cryptographic operations such as computing digital signatures or
+decrypting data, using keys stored on a PKCS#15 compliant smart
+card.
+.SH OPTIONS
+.TP
+.BR \-\-sign ", " \-s
+Perform digital signature operation on the data read from a
+file specified using the
+.B \-\-input
+option. By default, the contents of the file are assumed to
+be the result of an MD5 hash operation. Note that \*(nm
+expects the data in binary representation, not ASCII.
+.IP
+The digitial signature is stored, in binary representation,
+in the file specified by the
+.B \-\-output
+option. If this option is not given, the signature
+is printed on standard output, displaying non-printable
+characters using their hex notation
+.BR \e\exNN .
+.TP
+.B \-\-pkcs1
+By default, \*(nm assumes that input data has been padded to
+the correct length (i.e. when computing an RSA signature using
+a 1024 bit key, the input must be padded to 128 bytes to match
+the modulus length). When giving the
+.B \-\-pkcs1
+option, however, \*(nm will perform the required padding
+using the algorithm outlined in the PCKS#1 v1.5 standard.
+.TP
+.B \-\-sha1
+This option tells \(*nm that the input file is the result
+of an SHA1 hash operation, rather than an MD5 hash. Again,
+the data must be in binary representation.
+.TP
+.BR \-\-decipher ", "\-c
+Decrypt the contents of the file specified by the
+.B \-\-input
+option. The result of the decryption operation is written to
+the file specified by the
+.B \-\-output
+option. If this option is not given, the decrypted data is
+printed to standard output, displaying non-printable
+.TP
+.BR \-\-key " id, " \-k " id"
+Selects the ID of the key to use.
+.TP
+.BR \-\-reader " N, " \-r " N"
+Selects the N-th smart card reader configured by the system.
+If unspecified, \*(nm will use the first reader found.
+.TP
+.BR \-\-input " file, " \-i " file"
+Specifies the input file to use.
+.TP
+.BR \-\-output " file, " \-o " file"
+Any output will be sent to the specified file.
+.TP
+.BR \-\-pin " pincode, " \-p " pincode"
+When the cryptographic operation requires a PIN to access
+the key, \*(nm will prompt the user for the PIN on the terminal.
+Using this option allows you to specify the PIN on the command
+line.
+.IP
+Note that on most operating systems, the command line of
+a process can be displayed by any user using the
+.BR ps (1)
+command. It is therefore a security risk to specify
+secret information such as PINs on the command line.
+.TP
+.BR \-\-quiet ", " \-q
+Operate quietly.
+.TP
+.BR \-\-debug ", " \-d
+Print debugging information. By specifying this option
+several times, you can increase the verbosity level.
+.SH AUTHORS
+\*(nm was written by Juha Yrjölä <juha.yrjola@iki.fi>.
+This manpage was contributed by Olaf Kirch <okir@lst.de>.
