@@ -12,7 +12,6 @@ int main(int argc, char **argv) {
   struct sc_context *ctx = NULL;
   struct sc_card *card = NULL;
   struct sc_pkcs15_card *p15_card = NULL;
-  struct sc_pkcs15_pin_info pin;
   char buf[16], buf2[16];
   u8 *certbuf;
   
@@ -62,6 +61,7 @@ int main(int argc, char **argv) {
 
   return 0;
 #endif
+#if 0
   i = sc_pkcs15_enum_certificates(p15_card);
   if (i < 0) {
     fprintf(stderr, "Certificate enumeration failed with %s\n", sc_strerror(i));
@@ -77,37 +77,40 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	printf("Certificate size is %d bytes\n", c);
+	sc_asn1_print_tags(certbuf, c);
 	free(certbuf);
   }  
   return 0;
-
+#endif
   printf("Searching for PIN codes...\n");
 
-  c = 0;
-  while (sc_pkcs15_read_pin_info(p15_card, ++c, &pin) == 0) {
-  	sc_pkcs15_print_pin_info(&pin);
-  }
-  c--;
-  if (c == 0) {
-  	printf("No PIN codes found!\n");
+  i = sc_pkcs15_enum_pins(p15_card);
+  if (i < 0) {
+  	fprintf(stderr, "Error enumerating PIN codes: %s\n", sc_strerror(i));
   	return 1;
   }
-
-  i = sc_sec_ask_pin_code(&p15_card->pins[0], buf, sizeof(buf), "Please enter PIN code");
+  if (i == 0)
+  	fprintf(stderr, "No PIN codes found!\n");
+  for (c = 0; c < i; c++) {
+	sc_pkcs15_print_pin_info(&p15_card->pin_info[c]);
+  }
+  i = sc_sec_ask_pin_code(&p15_card->pin_info[0], buf, sizeof(buf), "Please enter PIN code");
   if (i) {
     fprintf(stderr, "\nFailed to ask PIN code from user\n");
     return 1;
   }
-  i = sc_sec_ask_pin_code(&p15_card->pins[0], buf2, sizeof(buf2), "Please enter _new_ PIN code");
+#if 0
+  i = sc_sec_ask_pin_code(&p15_card->pin_info[0], buf2, sizeof(buf2), "Please enter _new_ PIN code");
   if (i) {
     fprintf(stderr, "\nFailed to ask PIN code from user\n");
     return 1;
   }
-  i = sc_pkcs15_change_pin(p15_card, &p15_card->pins[0], buf, strlen(buf), buf2, strlen(buf2));
-//  i = sc_pkcs15_verify_pin(p15_card, &p15_card->pins[0], buf, strlen(buf));
+  i = sc_pkcs15_change_pin(p15_card, &p15_card->pin_info[0], buf, strlen(buf), buf2, strlen(buf2));
+#endif
+  i = sc_pkcs15_verify_pin(p15_card, &p15_card->pin_info[0], buf, strlen(buf));
   if (i) {
     if (i == SC_ERROR_PIN_CODE_INCORRECT)
-    	fprintf(stderr, "Incorrect PIN code (%d tries left)\n", p15_card->pins[0].tries_left);
+    	fprintf(stderr, "Incorrect PIN code (%d tries left)\n", p15_card->pin_info[0].tries_left);
     else
 	fprintf(stderr, "PIN verifying failed: %s\n", sc_strerror(i));
     return 1;

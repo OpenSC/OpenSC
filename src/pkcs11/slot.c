@@ -80,8 +80,8 @@ int slot_connect(int id)
 		sc_disconnect_card(card);
 		return CKR_TOKEN_NOT_RECOGNIZED;
 	}
-
-	while (sc_pkcs15_read_pin_info(slot[id].p15card, ++c, &pin) == 0);
+	c = sc_pkcs15_enum_pins(slot[id].p15card);
+	// FIXME: c < 0 ==> error
 	LOG("Found total of %d PIN codes.\n", c);
 	slot[id].flags = SLOT_CONNECTED;
 

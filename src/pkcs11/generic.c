@@ -153,9 +153,9 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	pInfo->ulSessionCount = 0;
 	pInfo->ulMaxRwSessionCount = 1;
 	pInfo->ulRwSessionCount = 0;
-	if (slot[slotID].p15card->pins[0].magic == SC_PKCS15_PIN_MAGIC) {
-		pInfo->ulMaxPinLen = slot[slotID].p15card->pins[0].stored_length;
-		pInfo->ulMinPinLen = slot[slotID].p15card->pins[0].min_length;
+	if (slot[slotID].p15card->pin_info[0].magic == SC_PKCS15_PIN_MAGIC) {
+		pInfo->ulMaxPinLen = slot[slotID].p15card->pin_info[0].stored_length;
+		pInfo->ulMinPinLen = slot[slotID].p15card->pin_info[0].min_length;
 	} else {
 		/* choose reasonable defaults */
 		pInfo->ulMaxPinLen = 8;
