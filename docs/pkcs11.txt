@@ -1,0 +1,79 @@
+The OpenSC PKCS11 implementation
+
+1) What is PKCS11
+
+PKCS11 is a standard API for accessing cryptographic tokens
+such as smart cards, Hardware Security Modules, ...
+It contains functions like C_GetSlotList(), C_OpenSession(),
+C_FindObjects(), C_Login(), C_Decrypt(), ...
+
+Some core concepts of pkcs11 are:
+- slot: the place in which a smart card can be put. Usually this
+  corresponds with a card reader (but: see below, Virtual slots).
+- token: the thing that is put in a slot. Usually this corresponds
+  with a smart card (but: see below, virtual slots).
+- object: a key, a certificate, some data, ... Is either a token
+  object (if it resides on the card) or a session object (if it
+  doesn't reside on the card, e.g. a certificate given to the
+  pkcs11 library to do a verification).
+- session: before you can do anything with a token, you have to
+  open a session on it.
+- operation: a signature, decryption, digest, ... operation, that
+  can consist of multiple function calls. Example: C_SignInit(),
+  C_SignUpdate(), C_SignFinal(); here the first function starts
+  the operation, the third one ends it. Only one operation can be
+  done in the same session, but multiple sessions can be opened
+  on the same token.
+
+2) Virtual slots
+
+Per token, only 2 PINs can be given: the SO (Security Officer) PIN
+and the user PIN. However, smart cards can have 2 or more user
+PINs.
+A way to this solve problem is to have multiple 'virtual' slots,
+as explained in appendix D of the pkcs11 standard. So per physical
+reader, you have a number of virtual slots. If you insert a card
+in the reader, a token will appear in all the virtual slots,
+and each token will contain 1 PIN along with the private keys
+it protects and certificates corresponding to those private keys.
+
+Because OpenSC supports multiple cards, it is not known in advance
+how many PINs a smart card will have. Therefore, a default number
+of 4 virtual slots is used. You can change this default in the
+pkcs11 section of opensc.conf: num_slots.
+
+Opensc implements the following behaviour: for each PIN, its
+private keys and corresponding certs, there is 1 virtual slot
+allocated. If there are any objects left, they are put in the
+next free virtual slot. And if there are some virtual slots left,
+an 'empty' token is 'put' in them; on this empty token a PIN and
+data can then be put. If you find this too confusing, you
+can hide empty tokens with the hide_empty_tokens option in
+the config file.
+
+Example:
+Take a card with 2 PINs. Each PIN protects a private key and
+each private key has a corresponding cert chain. And then there
+are 3 other roots certs that have nothing to do with the other
+data.
+Now if num_slots = 4, hide_empty_tokens = false; and if you put
+the card your second card reader, you'll get the following:
+- token in slot 4: PIN 1, key 1, cert chain 1
+- token in slot 5: PIN 2, key 2, cert chain 2
+- token in slot 6: the 3 other root certs
+- token in slot 7: no data
+If hide_empty_tokens would have been true, slot 7 wouldn't show
+a token.
+
+Note: if in the example the 2 cert chain would have common
+certificates, those certificates would appear in the tokens
+in slots 4 and 5. (Which would cause a problem if those
+certs were deleted, this hasn't been solved yet in OpenSC).
+
+Another good-to-know: the number of virtual slots has been
+hard-coded (it is 8 at the moment). So if num_slots = 4,
+only the first 2 readers will be visible. Or if you'd put
+num_slots to 3, the first 2 readers will have 3 virtual
+slots and the third reader will have 2.
+
+
