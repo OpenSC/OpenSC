@@ -1065,7 +1065,9 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_MODULUS:
 		return get_modulus(key, attr);
 	case CKA_MODULUS_BITS:
-		return get_modulus_bits(key, attr);
+		check_attribute_buffer(attr, sizeof(CK_ULONG));
+		*(CK_ULONG *) attr->pValue = prkey->prkey_info->modulus_length;
+		return CKR_OK;
 	case CKA_PUBLIC_EXPONENT:
 		return get_public_exponent(key, attr);
 	case CKA_PRIVATE_EXPONENT:
