@@ -28,7 +28,8 @@ libopensc_la_SOURCES	= sc.c ctx.c module.c asn1.c log.c base64.c \
 			  pkcs15-wrap.c pkcs15-algo.c \
 			  pkcs15-cache.c $(PCSC_SRC) reader-ctapi.c \
 			  card-setcos.c card-miocos.c card-flex.c card-gpk.c \
-			  card-etoken.c card-tcos.c card-emv.c card-default.c 
+			  card-etoken.c card-tcos.c card-emv.c card-default.c \
+			  card-mcrd.c
 
 libopensc_la_LDFLAGS	= -version-info 0:6:0
 libopensc_la_LIBADD	= @LIBDL@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF)
