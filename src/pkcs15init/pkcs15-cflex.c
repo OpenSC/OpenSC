@@ -135,6 +135,14 @@ cflex_new_file(struct sc_profile *profile, struct sc_card *card,
 			desc = "RSA public key";
 			tag = "public-key";
 			break;
+		case SC_PKCS15_TYPE_PUBKEY_DSA:
+			desc = "DSA public key";
+			tag = "public-key";
+			break;
+		case SC_PKCS15_TYPE_PRKEY:
+			desc = "extractable private key";
+			tag = "extractable-key";
+			break;
 		case SC_PKCS15_TYPE_CERT:
 			desc = "certificate";
 			tag = "certificate";
@@ -151,7 +159,7 @@ cflex_new_file(struct sc_profile *profile, struct sc_card *card,
 		 * the generic class (SC_PKCS15_TYPE_CERT)
 		 */
 		if (!(type & ~SC_PKCS15_TYPE_CLASS_MASK)) {
-			profile->cbs->error("File type not supported by card driver");
+			profile->cbs->error("File type %X not supported by card driver", type);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		type &= SC_PKCS15_TYPE_CLASS_MASK;

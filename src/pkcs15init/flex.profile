@@ -44,6 +44,10 @@ filesystem {
 		    file-id		= 0012;
 		    ACL			= *=NEVER, CRYPTO=CHV1, UPDATE=AUT1;
 		}
+                EF template-extractable-key-1 {
+    	            file-id		= 7000;
+    	            ACL			= *=NEVER, READ=$PIN, UPDATE=AUT1;
+                }
             }
 	    DF keydir-2 {
 		file-id		= 4B02;
@@ -57,6 +61,10 @@ filesystem {
 		    file-id		= 0012;
 		    ACL			= *=NEVER, CRYPTO=CHV1, UPDATE=AUT1;
 		}
+                EF template-extractable-key-2 {
+    	            file-id		= 7000;
+    	            ACL			= *=NEVER, READ=$PIN, UPDATE=AUT1;
+                }
             }
 	    EF template-public-key-1 {
 		file-id		= 5201;
