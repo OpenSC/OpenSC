@@ -136,7 +136,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 	return SC_ERROR_WRONG_CARD;
 
 out:	if (r == SC_SUCCESS) {
-		p15card->magic  = 0x10203040;
+		p15card->magic  = SC_PKCS15_CARD_MAGIC;
 	} else if (r != SC_ERROR_WRONG_CARD) {
 		sc_error(ctx, "Failed to load card emulator: %s\n",
 				sc_strerror(r));

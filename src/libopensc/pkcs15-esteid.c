@@ -80,7 +80,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	                 | SC_PKCS15_CARD_FLAG_EID_COMPLIANT
 	                 | SC_PKCS15_CARD_FLAG_READONLY;
 
-	/* EstEEID uses 1024b RSA */
+	/* EstEID uses 1024b RSA */
 	card->algorithm_count = 0;
 	flags = SC_ALGORITHM_RSA_PAD_PKCS1;
 	_sc_card_add_rsa_alg (card, 1024, flags, 0);

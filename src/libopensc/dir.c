@@ -190,7 +190,7 @@ int sc_enum_apps(struct sc_card *card)
 		r = sc_read_binary(card, 0, buf, file_size, 0);
 		if (r < 0) {
 			free(buf);
-			SC_TEST_RET(card->ctx, r, "read_binary() failed");
+			SC_TEST_RET(card->ctx, r, "sc_read_binary() failed");
 		}
 		bufsize = r;
 		while (bufsize > 0) {
