@@ -85,7 +85,7 @@ static int sc_private_decrypt(int flen, u_char *from, u_char *to, RSA *rsa,
 			goto err;
 		goto err;
 	}
-	r = sc_pkcs15_decipher(priv->p15card, (const struct sc_pkcs15_object *) key->data, from, flen, to, flen);
+	r = sc_pkcs15_decipher(priv->p15card, (const struct sc_pkcs15_object *) key->data, 0, from, flen, to, flen);
 	if (r < 0) {
 #if 0
 		error("sc_pkcs15_decipher() failed: %s", sc_strerror(r));
