@@ -81,6 +81,10 @@ const char *sc_strerror(int error)
 		"Object not found",
 		"Requested object not found",
 		"Not supported",
+		"Passphrase required",
+		"The key is extractable",
+		"Decryption failed",
+		"Wrong padding",
 	};
 	const int int_base = -SC_ERROR_INTERNAL;
 	const char *p15i_errors[] = {
