@@ -165,7 +165,7 @@ int write_ssh_key(struct sc_pkcs15_cert_info *cinfo, RSA *rsa)
 			return 2;
 		}
 	}
-	fprintf(outf, "ssh-rsa %s libsc-cert-%02X\n", p, cinfo->id.value[0]);
+	fprintf(outf, "ssh-rsa %s opensc-cert-%02X\n", p, cinfo->id.value[0]);
 	free(p),
 	free(buf);
 	return 0;

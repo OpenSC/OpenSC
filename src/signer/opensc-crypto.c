@@ -185,7 +185,7 @@ sc_finish(RSA *rsa)
 	return 1;
 }
 
-static RSA_METHOD libsc_rsa =
+static RSA_METHOD opensc_rsa =
 {
 	"OpenSC",
 	NULL,
@@ -205,24 +205,22 @@ RSA_METHOD * sc_get_method(void)
 	RSA_METHOD *def;
 
 	def = RSA_get_default_method();
-
         orig_finish             = def->finish;
 
 	/* overload */
-	libsc_rsa.rsa_priv_enc	= sc_private_encrypt;
-	libsc_rsa.rsa_priv_dec	= sc_private_decrypt;
-	libsc_rsa.rsa_sign	= sc_sign;
-        libsc_rsa.finish        = sc_finish;
+	opensc_rsa.rsa_priv_enc	= sc_private_encrypt;
+	opensc_rsa.rsa_priv_dec	= sc_private_decrypt;
+	opensc_rsa.rsa_sign	= sc_sign;
+        opensc_rsa.finish	= sc_finish;
 
 	/* just use the OpenSSL version */
-	libsc_rsa.rsa_pub_enc   = def->rsa_pub_enc;
-	libsc_rsa.rsa_pub_dec   = def->rsa_pub_dec;
-	libsc_rsa.rsa_mod_exp	= def->rsa_mod_exp;
-	libsc_rsa.bn_mod_exp	= def->bn_mod_exp;
-	libsc_rsa.init		= def->init;
-	libsc_rsa.flags		= def->flags | RSA_FLAG_SIGN_VER;
-	libsc_rsa.app_data	= def->app_data;
-	libsc_rsa.rsa_verify	= def->rsa_verify;
-
-	return &libsc_rsa;
+	opensc_rsa.rsa_pub_enc	= def->rsa_pub_enc;
+	opensc_rsa.rsa_pub_dec	= def->rsa_pub_dec;
+	opensc_rsa.rsa_mod_exp	= def->rsa_mod_exp;
+	opensc_rsa.bn_mod_exp	= def->bn_mod_exp;
+	opensc_rsa.init		= def->init;
+	opensc_rsa.flags	= def->flags | RSA_FLAG_SIGN_VER;
+	opensc_rsa.app_data	= def->app_data;
+	opensc_rsa.rsa_verify	= def->rsa_verify;
+	return &opensc_rsa;
 }
