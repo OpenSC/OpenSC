@@ -256,6 +256,50 @@ if (test ! -z "$ac_cv_commondir" && test "x$ac_cv_commondir" != "x(system)") ; t
 	fi
 fi
 
+AC_SUBST(CFLAGS_PCSC)
+AC_SUBST(LIBPCSC)
+LIBPCSC="-lpcsclite"
+found_pcsclite=no
+saved_LIBS="$LIBS"
+saved_LDFLAGS="$LDFLAGS"
+saved_CPPFLAGS="$CPPFLAGS"
+AC_ARG_WITH(pcsclite,
+	[  --with-pcsclite=PATH    use PC/SC Lite in PATH],
+	[
+	for pcscdir in /pcsc ""; do
+		CPPFLAGS="$saved_CPPFLAGS"
+		LDFLAGS="$saved_LDFLAGS"
+		LIBS="$saved_LIBS"
+
+		if test -d "$withval/lib$pcscdir"; then
+			if test -n "${need_dash_r}"; then
+				LDFLAGS="-L${withval}/lib${pcscdir}/ -R${withval}/lib${pcscdir}/ ${LDFLAGS}"
+			else
+				LDFLAGS="-L${withval}/lib${pcscdir} ${LDFLAGS}"
+			fi
+		else
+			if test -n "${need_dash_r}"; then
+				LDFLAGS="-L${withval}${pcscdir} -R${withval}${pcscdir} ${LDFLAGS}"
+			else
+				LDFLAGS="-L${withval}${pcscdir} ${LDFLAGS}"
+			fi
+		fi
+		if test -d "$withval/include"; then
+			CFLAGS_PCSC="-I${withval}/include${pcscdir} ${CFLAGS_PCSC}"
+		else
+			CFLAGS_PCSC="-I${withval}${pcscdir} ${CFLAGS_PCSC}"
+		fi
+		AC_CHECK_LIB(pcsclite, SCardEstablishContext, found_pcsclite=yes, found_pcsclite=no)
+		if test "x$found_pcsclite" = "xyes" ; then
+			break;
+		fi
+	done
+	]
+)
+if test "x$found_pcsclite" != "xyes" ; then
+	AC_CHECK_LIB(pcsclite, SCardEstablishContext, , AC_MSG_ERROR([*** PC/SC Lite missing - please install first]))
+fi
+LIBS="$saved_LIBS"
 AM_CONDITIONAL(HAVE_PCSCLITE, test "x$found_pcsclite" = "xyes")
 
 AC_SUBST(LIBDL)
