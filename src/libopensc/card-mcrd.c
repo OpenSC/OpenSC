@@ -48,7 +48,8 @@ struct sc_card_atrs {
 
 static struct sc_card_atrs mcrd_atrs[] = {
 	{"3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", TYPE_ANY, "German BMI"},
-	{"3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43", TYPE_ESTEID, "EstEID"},
+	{"3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43", TYPE_ESTEID, "EstEID (cold)"},
+	{"3B:6E:00:FF:45:73:74:45:49:44:20:76:65:72:20:31:2E:30", TYPE_ESTEID, "EstEID (warm)"},
 	{NULL, TYPE_UNKNOWN, NULL}
 };
 
