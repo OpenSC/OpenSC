@@ -404,6 +404,8 @@ typedef struct sc_mutex sc_mutex_t;
 /* SC_CARD_CAP_EMV: Card can handle operations specified in the
  * EMV 4.0 standard. */
 #define SC_CARD_CAP_EMV			0x00000002
+/* SC_CARD_CAP_RNG: Card has on-board random number source */
+#define SC_CARD_CAP_RNG			0x00000004
 
 struct sc_card {
 	struct sc_context *ctx;

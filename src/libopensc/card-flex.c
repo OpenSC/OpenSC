@@ -148,7 +148,10 @@ static int flex_init(struct sc_card *card)
 		_sc_card_add_rsa_alg(card, 1024, flags, 0);
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	}
-	
+
+	/* State that we have an RNG */
+	card->caps |= SC_CARD_CAP_RNG;
+
 	return 0;
 }
 
