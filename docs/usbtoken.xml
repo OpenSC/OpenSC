@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="iso8859-1" ?>
+<article ns="http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+	<articleinfo>
+		<author>
+			<firstname>Andreas</firstname>
+			<surname>Jellinghaus</surname>
+		</author>
+		<title>Driver for USB Crypto Token</title>
+	</articleinfo>
+
+	<toc></toc>
+
+	<section>
+		<title>About usbtoken</title>
+
+		<para>
+			This project implements a way for OpenSC to access
+			usb crypto tokens such as:
+		</para>
+		<orderedlist>
+			<listitem>Aladdin eToken PRO</listitem>
+			<listitem>Rainbow iKey 2032</listitem>
+			<listitem>Rainbow iKey 3000</listitem>
+			<listitem>Entron CryptoIdentity</listitem>
+		</orderedlist>
+
+		<para>
+			This project is the successor of the etoken
+			project which created an PC/SC ifdhandler for the
+			Aladdin eToken PRO. Interfacing directly with
+			OpenSC is much easier than using one of the
+			old but well known interfaces like CT-API or PC/SC.
+		</para>
+	</section>
+
+	<section>
+		<title>Status</title>
+
+		<para>
+			At the moment the Aladdin eToken PRO works for
+			me, support for the other tokens is still under
+			development.
+		</para>
+
+		<para>
+			If you have an Aladdin eToken PRO, you might want
+			to try the old etoken driver on <ulink
+				url="http://etoken.sourceforge.net"/>.
+		</para>
+	</section>
+
+	<section>
+		<title>Requirements</title>
+
+		<para>
+			Currently the usbtoken only works with linux
+			(kernel 2.4.* series and kernel 2.5.* series
+			were tested), but ports to other operating
+			systems should be possible. If you want to
+			port usbtoken, please contact: Andreas Jellinghaus
+			<email>aj@dungeon.inka.de</email>
+		</para>
+
+		<para>
+			You need a kernel compiled with CONFIG_HOTPLUG
+			and CONFIG_USB_DEVICEFS, and the usb device filesystem
+			must be mounted to <filename>/proc/bus/usb</filename>.
+			And of course kernel support for your usb hub.
+		</para>
+
+		<para>
+			I guess any linux distribution with kernel 2.4
+			will be allright and require no changes.
+		</para>
+
+		<para>
+			Users of other operating systems, please see
+			the porting section.
+		</para>
+	</section>
+
+	<section>
+		<title>Installation without hotplug utils</title>
+
+		<para>
+			<command>ls /sbin/hotplug</command>
+		</para>
+
+		<para>
+			If there is no such file, the installation
+			is very easy: 
+			<screen>
+ln -s /path/to/opensc/sbin/usbtoken /sbin/hotplug
+mkdir /var/run/usbtoken
+chmod 755 /var/run/usbtoken
+			</screen>
+		</para>
+
+		<para>
+			Now attach some usb token. The kernel will start
+			<filename>/sbin/hotplug</filename>, and you can
+			see some usbtoken running as daemon: you will find
+			a pid file in <filename>/var/run</filename>
+			and a socket in <filename>/var/run/usbtoken/</filename>.
+		</para>
+
+	</section>
+
+	<section>
+		<title>Installation with hotplut utils</title>
+
+		<para>
+			First the general instructions, then the debian
+			specific instructions. As usual debian does
+			everything a bit different. That doesn't mean
+			it is necessarily better or worse.
+		</para>
+
+		<para>
+			Edit <filename>/etc/hotplug/usb.usermap</filename>
+			and add these lines:
+			<screen>
+usbtoken 0x0003 0x0529 0x050c 0x0000 0x0001 0xff 0x00 0x00 0xff 0x00 0x00 0x00000000
+usbtoken 0x0003 0x0529 0x0514 0x0000 0x0001 0xff 0x00 0x00 0xff 0x00 0x00 0x00000000
+usbtoken 0x0003 0x04b9 0x1202 0x0000 0x0001 0xff 0x00 0x00 0xff 0x00 0x00 0x00000000
+usbtoken 0x0003 0x04b9 0x1300 0x0000 0x0001 0xff 0x00 0x00 0xff 0x00 0x00 0x00000000
+usbtoken 0x0003 0x073d 0x0005 0x0020 0x0001 0xff 0x00 0x00 0xff 0x00 0x00 0x00000000
+			</screen>
+		</para>
+
+		<para>
+			Create the directory
+			<filename>/etc/hotplug/usb</filename> and add a symlink
+			to usbtoken. Also create the directory
+			<filename>/var/run/usbtoken</filename> and set
+			permissions to 0755 (everyone can access that
+			directory):
+			<screen>
+ln -s /path/to/opensc/sbin/usbtoken /etc/hotplug/usb/
+mkdir /var/run/usbtoken
+chmod 0755 /var/run/usbtoken
+			</screen>
+		</para>
+	</section>
+
+	<section>
+		<title>Security</title>
+
+		<para>
+			By default everyone can use the usbtokens. If you want
+			to limit this to a certain user:
+			<screen>
+chown user /var/run/usbtoken/
+chmod 0700 /var/run/usbtoken/
+			</screen>
+			Or if you want to limit this to a certain group:
+			<screen>
+chgrp group /var/run/usbtoken/
+chmod 0750 /var/run/usbtoken/
+			</screen>
+		</para>
+	</section>
+
+	<section>
+		<title>Debugging</title>
+
+		<para>
+			TODO: send me problem reports and I will add
+			advice here.
+		</para>
+
+		<para>
+			For development I use a special crafted 
+			<filename>/sbin/hotplug</filename> shell script
+			that creates another script
+			<filename>/root/sim</filename> whis I invoke in
+			an xterm. That script spawns gdb so I can
+			debug the whole process. In gdb I usualy
+			set a breakpoint, and run the command with
+			<command>r usb</command>. My hotplug script:
+			<screen>
+#!/bin/sh
+
+if [ -n "$PRODUCT" ]
+then
+	if [ "$ACTION" = "add" ]
+	then
+		export > /root/sim
+		echo "echo $*" >> /root/sim
+		echo gdb /home/aj/opensc/sbin/usbtoken >> /root/sim
+	fi
+fi
+
+exit 0
+			</screen>
+		</para>
+	</section>
+
+	<section>
+		<title>Porting</title>
+
+		<para>
+			To port usbtoken mainly <filename>usb.c</filename>
+			needs some changes. The core sequence for linux
+			is:
+			<screen><![CDATA[
+
+#include <linux/usbdevice_fs.h>
+
+...
+
+struct usbdevfs_ctrltransfer ctrl;
+int rc;
+
+ctrl.requesttype = type;
+ctrl.request = req;
+ctrl.value = value;
+ctrl.index = index;
+ctrl.length = size;
+ctrl.data = buf;
+ctrl.timeout = 10000;
+rc = ioctl(usbtoken.usbfd, USBDEVFS_CONTROL, &ctrl);
+
+		]]></screen>
+			rc now has the error (-1/errno/strerror) or the
+			number of bytes read/written on success.
+			Change it to suit your OS, or let me know
+			how to do it, and usb should work.
+		</para>
+
+		<para>
+			Usbtoken also needs an usb device filesystem
+			or some device it can open and use with I/O controls.
+			That should be available with every OS.
+		</para>
+
+		<para>
+			Finaly usbtoken depends to be called by some
+			hotplug mechanism. Under linux the kernel
+			executes <filename>/sbin/hotplug</filename>
+			everytime a device is added (or removed, but
+			I don't use that). If your OS has no such
+			service, you can write a daemon that
+			somehow finds out when a device is added
+			and start usbtoken with the required environment
+			settings.
+		</para>
+
+		<para>
+			Windows? Ugh. I have no idea about windows,
+			what we can do, how it works, etc. Volunteers
+			welcome.
+		</para>
+	</section>
+</article>

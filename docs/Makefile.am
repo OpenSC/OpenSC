@@ -1,6 +1,6 @@
 # Process this file with automake to create Makefile.in
 
-MAINTAINERCLEANFILES = Makefile.in pkcs15-profile.5
+MAINTAINERCLEANFILES = Makefile.in pkcs15-profile.5 usbtoken.html
 
 man_MANS	= pkcs15-crypt.1 \
 	   	  pkcs15-init.1 \
@@ -12,4 +12,10 @@ man_MANS	= pkcs15-crypt.1 \
 	   	  pkcs15-profile.5 \
 		  opensc.7 \
 		  pkcs15.7
-EXTRA_DIST	= $(man_MANS) pkcs15-profile.5.in pkcs-15v1_1.asn
+EXTRA_DIST	= $(man_MANS) pkcs15-profile.5.in pkcs-15v1_1.asn \
+	     	  usbtoken.xml usbtoken.html
+
+STYLESHEET=/usr/share/sgml/docbook/stylesheet/xsl/nwalsh/xhtml/docbook.xsl
+
+%.html: %.xml
+	xsltproc -o $@ $(STYLESHEET) $< 
