@@ -434,6 +434,26 @@ static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
+static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
+			  void *fw_token,
+			  CK_CHAR_PTR pOldPin, CK_ULONG ulOldLen,
+			  CK_CHAR_PTR pNewPin, CK_ULONG ulNewLen)
+{
+	int rc;
+	struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
+        struct sc_pkcs15_object *auth_object = (struct sc_pkcs15_object*) fw_token;
+	struct sc_pkcs15_pin_info *pin = (struct sc_pkcs15_pin_info*) auth_object->data;
+
+	if (ulNewLen < pin->min_length ||
+	    ulNewLen > pin->stored_length)
+		return CKR_PIN_LEN_RANGE;
+
+	rc = sc_pkcs15_change_pin(card, pin, pOldPin, ulOldLen,
+				pNewPin, ulNewLen);
+        debug(context, "PIN verification returned %d\n", rc);
+	return sc_to_cryptoki_error(rc, p11card->reader);
+}
+
 struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_bind,
 	pkcs15_unbind,
@@ -442,7 +462,8 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_get_mechanism_list,
 	pkcs15_get_mechanism_info,
 	pkcs15_login,
-        pkcs15_logout
+        pkcs15_logout,
+	pkcs15_change_pin
 };
 
 

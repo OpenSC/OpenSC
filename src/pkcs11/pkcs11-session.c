@@ -201,6 +201,9 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) /* the session's handle */
 
 	slot = session->slot;
 
+	if (slot->login_user < 0)
+		return CKR_OK;
+
 	slot->login_user = -1;
         return slot->card->framework->logout(slot->card, slot->fw_data);
 }
@@ -218,38 +221,22 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	       CK_CHAR_PTR pNewPin,
 	       CK_ULONG ulNewLen)
 {
-#if 0
-	struct pkcs11_session *ses;
-        struct sc_pkcs15_card *card;
-	int rc;
+        int rv;
+	struct sc_pkcs11_session *session;
+        struct sc_pkcs11_slot *slot;
 
-	LOG("C_SetPIN(%d, '%s', %d, '%s', %d)\n", hSession, pOldPin, ulOldLen, pNewPin, ulNewLen);
-	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
-		return CKR_SESSION_HANDLE_INVALID;
+        rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
 
+	debug(context, "Changing PIN (session %d)\n", hSession);
 #if 0
 	if (!(ses->flags & CKF_RW_SESSION))
 		return CKR_SESSION_READ_ONLY;
 #endif
-	ses = session[hSession];
-	card = slot[ses->slot].p15card;
 
-	LOG("Master PIN code update starts.\n");
-        rc = sc_pkcs15_change_pin(card, &card->pin_info[0], pOldPin, ulOldLen, pNewPin, ulNewLen);
-	switch (rc) {
-	case 0:
-		LOG("Master PIN code CHANGED succesfully.\n");
-                break;
-	case SC_ERROR_PIN_CODE_INCORRECT:
-                LOG("Master PIN code INVALID!\n");
-		return CKR_PIN_INCORRECT;
-	default:
-                LOG("Device error!? rc=%d\n", rc);
-                return CKR_DEVICE_ERROR;
-	}
-
-	return CKR_OK;
-#endif
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	slot = session->slot;
+        return slot->card->framework->change_pin(slot->card, slot->fw_data,
+			pOldPin, ulOldLen,
+			pNewPin, ulNewLen);
 }
-

@@ -101,6 +101,9 @@ struct sc_pkcs11_framework_ops {
 	/* Login and logout */
 	CK_RV (*login)(struct sc_pkcs11_card *, void *, CK_CHAR_PTR, CK_ULONG);
         CK_RV (*logout)(struct sc_pkcs11_card *, void *);
+	CK_RV (*change_pin)(struct sc_pkcs11_card *, void *,
+				CK_CHAR_PTR, CK_ULONG,
+				CK_CHAR_PTR, CK_ULONG);
 
 	/*
 	 * In future: functions to create new objects
