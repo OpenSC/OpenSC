@@ -62,7 +62,9 @@ struct pin_info {
 struct sc_key_template {
 	char *			ident;
 	struct sc_key_template *next;
-	//struct file_info *	file;
+#if 0
+	struct file_info *	file;
+#endif
 	struct sc_file *	file;
 	unsigned int		index;	/* translates to file offset */
 	struct sc_acl_entry *	key_acl;/* PINs for key usage */

@@ -3,6 +3,8 @@
 INCLUDES = @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
+EXTRA_DIST = gpk.profile miocos-rw.profile pkcs15.profile
+
 if HAVE_SSL
 PROGRAMS_SSL = cryptoflex-tool pkcs15-init
 endif
@@ -23,4 +25,4 @@ cryptoflex_tool_LDADD = @GETOPTSRC@ @LIBCRYPTO@
 pkcs15_init_SOURCES = pkcs15-init.c profile.c util.c \
 		      pkcs15-gpk.c pkcs15-miocos.c
 pkcs15_init_LDADD = @GETOPTSRC@ @LIBCRYPTO@
-noinst_HEADERS = util.h profile.h
+noinst_HEADERS = util.h profile.h pkcs15-init.h
