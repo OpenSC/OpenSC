@@ -393,7 +393,7 @@ static const char *p15_ldap_atrs[] =
 
 struct scam_framework_ops scam_fw_p15_ldap =
 {
-	"opensc-pkcs15-ldap",	/* name */
+	"pkcs15-ldap",		/* name */
 #ifdef ATR_SUPPORT
 	p15_ldap_atrs,		/* atrs */
 #endif

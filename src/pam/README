@@ -22,7 +22,7 @@ The following options are recognized:
 Generic options:
  -h		Show help
 
-auth_method[opensc-pkcs15-ldap]:
+auth_method[pkcs15-ldap]:
  -r <reader>	Reader name
 LDAP specific options:
  -L ldap.conf	Configuration file to load
@@ -38,7 +38,7 @@ LDAP specific options:
    -a attribute(s)
    -f filter
 
-auth_method[opensc-pkcs15-eid]:
+auth_method[pkcs15-eid]:
  -r <reader>	Reader name
 
 # Copy your PEM encoded certificate to a file in your home directory

@@ -452,7 +452,7 @@ static const char *p15_eid_atrs[] =
 
 struct scam_framework_ops scam_fw_p15_eid =
 {
-	"opensc-pkcs15-eid",	/* name */
+	"pkcs15-eid",		/* name */
 #ifdef ATR_SUPPORT
 	p15_eid_atrs,		/* atrs */
 #endif
