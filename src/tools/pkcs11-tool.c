@@ -1778,13 +1778,19 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	ck_mech.mechanism = mechTypes[i];
 	j = 1;  /* j-th signature key */
 	while (find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j++) != 0) {
+		CK_ULONG	modLenBits;
 
-		printf("  testing key %d ", (int) (j-1));
-		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
-			printf("(%s) ", label);
+		label = getLABEL(sess, privKeyObject, NULL);
+		modLenBits = getMODULUS_BITS(sess, privKeyObject);
+		modLenBytes = (modLenBits + 7) / 8;
+
+		printf("  testing key %d (%u bits%s%s) with 1 signature mechanism\n",
+				(int) (j-1),
+				(int) modLenBits,
+				label? ", label=" : "",
+				label? label : "");
+		if (label)
 			free(label);
-		}
-		printf("with 1 signature mechanism\n");
 
 		errors += sign_verify_openssl(slot, sess, &ck_mech, privKeyObject,
 			datas[i], dataLens[i], verifyData, sizeof(verifyData),
