@@ -387,7 +387,7 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	DWORD attrlen;  
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
-	scconf_block *conf_block = NULL;
+	scconf_block **blocks, *conf_block = NULL;
 	int r, i, try_ccid_pin_cmd;
 
 	r = refresh_slot_attributes(reader, slot);
@@ -399,7 +399,6 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	/* force a protocol */
 	/* XXX: Why it's at reader driver level, and not shared by others? */
 	for (i = 0; reader->ctx->conf_blocks[i] != NULL; i++) {
-		scconf_block **blocks;
 		char name[3 * SC_MAX_ATR_SIZE];
 		
 		r = sc_bin_to_hex(slot->atr, slot->atr_len, name, sizeof(name), ':');
@@ -431,8 +430,8 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 		}
 	}
 
-	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
-		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+	for (i = 0; reader->ctx->conf_blocks[i] != NULL; i++) {
+		blocks = scconf_find_blocks(reader->ctx->conf, reader->ctx->conf_blocks[i],
 					    "reader_driver", "pcsc");
 		conf_block = blocks[0];
 		free(blocks);
