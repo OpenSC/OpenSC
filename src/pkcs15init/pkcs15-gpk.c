@@ -978,9 +978,9 @@ debug(struct sc_profile *profile, const char *fmt, ...)
 }
 
 struct sc_pkcs15init_operations sc_pkcs15init_gpk_operations = {
-	.erase_card	= gpk_erase_card,
-	.init_app	= gpk_init_app,
-	.new_pin	= gpk_new_pin,
-	.new_key	= gpk_new_key,
-	.new_file	= gpk_new_file,
+	gpk_erase_card,
+	gpk_init_app,
+	gpk_new_pin,
+	gpk_new_key,
+	gpk_new_file,
 };
