@@ -21,8 +21,8 @@
 #ifndef _SC_ASN1_H
 #define _SC_ASN1_H
 
-#include "opensc.h"
-#include "pkcs15.h"
+#include <opensc/opensc.h>
+#include <opensc/pkcs15.h>
 
 struct sc_asn1_entry {
 	const char *name;

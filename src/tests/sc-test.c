@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "opensc.h"
+#include <opensc/opensc.h>
 
 struct sc_context *ctx;
 struct sc_card *card;

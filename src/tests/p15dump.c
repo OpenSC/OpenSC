@@ -6,8 +6,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <opensc.h>
-#include <pkcs15.h>
+#include <opensc/opensc.h>
+#include <opensc/pkcs15.h>
 #include "sc-test.h"
 
 struct sc_pkcs15_card *p15card;

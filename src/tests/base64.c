@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <opensc.h>
-#include <asn1.h>
+#include <opensc/opensc.h>
+#include <opensc/asn1.h>
 
 int main(int argc, char *argv[])
 {

@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <sys/types.h>
-#include <scldap.h>
+#include "scldap.h"
 
 static void hex_dump_asc(FILE * f, const unsigned char *in, size_t count, int addr)
 {

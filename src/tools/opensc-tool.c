@@ -21,16 +21,15 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <stdio.h>
-#include <errno.h>
 #include <string.h>
-#include <opensc.h>
-#include <sys/stat.h>
+#include <errno.h>
 #include <ctype.h>
+#include <sys/stat.h>
+#include <opensc/opensc.h>
+#include "util.h"
 
 #define OPT_CHANGE_PIN	0x100
 #define OPT_LIST_PINS	0x101

@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-#include <scconf.h>
+#include <opensc/scconf.h>
 
 /* Hard limit, tables are allocated dynamically */
 #define SCLDAP_MAX_ENTRIES            16

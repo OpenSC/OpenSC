@@ -4,17 +4,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
 #endif
-
 #include <openssl/x509.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
-
-#include <opensc.h>
-#include <pkcs15.h>
-#include <string.h>
+#include <opensc/opensc.h>
+#include <opensc/pkcs15.h>
 
 int quiet = 0;
 char *opt_outfile = NULL;

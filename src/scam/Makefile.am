@@ -2,7 +2,7 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@ -I../scrandom -I../scldap
+INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@
 
 if HAVE_PAM
 PAM = libpamscam.la

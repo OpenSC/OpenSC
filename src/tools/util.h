@@ -12,9 +12,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <errno.h>
-#include <opensc.h>
+#include <sys/stat.h>
+#include <opensc/opensc.h>
 
 extern const struct option options[];
 extern const char *option_help[];

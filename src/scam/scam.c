@@ -27,7 +27,7 @@
 #include <ctype.h>
 #include "scam.h"
 #ifdef ATR_SUPPORT
-#include <opensc.h>
+#include <opensc/opensc.h>
 #endif
 
 struct scam_framework_ops *scam_frameworks[] =

@@ -29,12 +29,12 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <sys/stat.h>
-#include <scrandom.h>
-#include <scldap.h>
-#include <opensc.h>
-#include <pkcs15.h>
 #include <openssl/x509.h>
 #include <openssl/rsa.h>
+#include <opensc/opensc.h>
+#include <opensc/pkcs15.h>
+#include <opensc/scldap.h>
+#include <opensc/scrandom.h>
 #include "scam.h"
 
 #if defined(PAM_SCAM)

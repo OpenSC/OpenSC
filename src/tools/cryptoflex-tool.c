@@ -21,13 +21,13 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#include "util.h"
-#include <pkcs15.h>
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
+#include <opensc/pkcs15.h>
+#include "util.h"
 
 const char *app_name = "cryptoflex-tool";
 

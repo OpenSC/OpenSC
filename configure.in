@@ -994,7 +994,7 @@ if (test x$enable_debug = xyes); then
 	AC_DEFINE(DEBUG, 1, [Enable debug messages.])
 fi
 
-CPPFLAGS="-I\${top_srcdir}/src/libopensc -I\${top_srcdir}/src/scconf $CPPFLAGS"
+CPPFLAGS="-I\${top_srcdir}/src/include $CPPFLAGS"
 
 AC_SUBST(LIBSCCONF)
 LIBSCCONF="\${top_srcdir}/src/scconf/libscconf.la"
@@ -1016,7 +1016,7 @@ opensc_conf_path=`eval echo ${opensc_etc_path}/opensc.conf`
 AC_DEFINE_UNQUOTED(OPENSC_CONF_PATH, "$opensc_conf_path", [default config file for libopensc])
 
 AC_SUBST(CFLAGS_OPENSC)
-CFLAGS_OPENSC="-I\${top_srcdir}/src/libopensc"
+CFLAGS_OPENSC=""
 AC_SUBST(LIBOPENSC)
 LIBOPENSC="\${top_srcdir}/src/libopensc/libopensc.la"
 
@@ -1034,6 +1034,8 @@ docs/Makefile
 etc/Makefile
 src/Makefile
 src/common/Makefile
+src/include/Makefile
+src/include/opensc/Makefile
 src/libopensc/Makefile
 src/libopensc/opensc-config
 src/openssh/Makefile

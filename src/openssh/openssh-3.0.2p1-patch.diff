@@ -128,8 +128,8 @@ diff -u --unidirectional-new-file openssh-3.0.2p1-orig/scard-opensc.c openssh-3.
 +#include <openssl/rsa.h>
 +#include <openssl/x509.h>
 +
-+#include <opensc.h>
-+#include <pkcs15.h>
++#include <opensc/opensc.h>
++#include <opensc/pkcs15.h>
 +
 +#include "key.h"
 +#include "log.h"

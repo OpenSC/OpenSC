@@ -7,9 +7,9 @@
 #ifndef PKCS15_INIT_H
 #define PKCS15_INIT_H
 
-#include <pkcs15.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
+#include <opensc/pkcs15.h>
 
 struct sc_profile; /* opaque type */
 

@@ -32,7 +32,7 @@
 #include <pthread.h>
 #endif
 
-#include <scconf.h>
+#include <opensc/scconf.h>
 
 #ifdef  __cplusplus
 extern "C" {

@@ -4,9 +4,9 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#include <opensc.h>
-#include <pkcs15.h>
 #include <X11/Intrinsic.h>
+#include <opensc/opensc.h>
+#include <opensc/pkcs15.h>
 
 typedef struct _PluginInstance
 {

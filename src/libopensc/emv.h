@@ -21,7 +21,7 @@
 #ifndef _OPENSC_EMV_H
 #define _OPENSC_EMV_H
 
-#include "opensc.h"
+#include <opensc/opensc.h>
 
 #ifdef  __cplusplus
 extern "C" {

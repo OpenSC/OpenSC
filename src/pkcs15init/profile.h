@@ -9,7 +9,7 @@
 
 #include <openssl/rsa.h>
 #include <openssl/dsa.h>
-#include "pkcs15.h"
+#include <opensc/pkcs15.h>
 
 #ifndef SC_PKCS15_PROFILE_DIRECTORY
 #define SC_PKCS15_PROFILE_DIRECTORY	"/usr/lib/opensc/profiles"
@@ -89,9 +89,11 @@ struct sc_profile {
 
 	struct pin_info *	pin_list;
 	struct auth_info *	auth_list;
-//	struct sc_key_template *prkey_list;
-//	struct sc_key_template *pubkey_list;
-//	struct sc_cert_template *cert_list;
+#if 0
+	struct sc_key_template *prkey_list;
+	struct sc_key_template *pubkey_list;
+	struct sc_cert_template *cert_list;
+#endif
 
 	unsigned int		pin_maxlen;
 	unsigned int		pin_minlen;

@@ -26,8 +26,8 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <openssl/bn.h>
-#include "opensc.h"
-#include "cardctl.h"
+#include <opensc/opensc.h>
+#include <opensc/cardctl.h>
 #include "pkcs15-init.h"
 #include "profile.h"
 

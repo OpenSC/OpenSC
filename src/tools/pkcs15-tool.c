@@ -21,8 +21,8 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <opensc/pkcs15.h>
 #include "util.h"
-#include <pkcs15.h>
 
 const char *app_name = "pkcs15-tool";
 

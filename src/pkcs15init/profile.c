@@ -27,9 +27,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
+#include <opensc/scconf.h>
 #include "pkcs15-init.h"
 #include "profile.h"
-#include <scconf.h>
 
 #define DEF_PRKEY_RSA_ACCESS	0x1D
 #define DEF_PRKEY_DSA_ACCESS	0x12

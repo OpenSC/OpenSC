@@ -21,8 +21,8 @@
 #ifndef _SC_LOG_H
 #define _SC_LOG_H
 
-#include "opensc.h"
 #include <stdarg.h>
+#include <opensc/opensc.h>
 
 #define SC_LOG_TYPE_ERROR	0
 #define SC_LOG_TYPE_VERBOSE	1

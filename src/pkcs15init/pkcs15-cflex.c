@@ -21,10 +21,10 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#include <sys/types.h>
 #include <string.h>
+#include <sys/types.h>
 #include <openssl/bn.h>
-#include "opensc.h"
+#include <opensc/opensc.h>
 #include "pkcs15-init.h"
 #include "profile.h"
 

@@ -24,9 +24,9 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#include <opensc.h>
-#include <pkcs15.h>
-#include <log.h>
+#include <opensc/opensc.h>
+#include <opensc/pkcs15.h>
+#include <opensc/log.h>
 #include "rsaref/pkcs11.h"
 
 #define SC_PKCS11_MAX_VIRTUAL_SLOTS	4

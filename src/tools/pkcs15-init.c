@@ -42,9 +42,9 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/pkcs12.h>
-#include "pkcs15.h"
+#include <opensc/pkcs15.h>
+#include <opensc/pkcs15-init.h>
 #include "util.h"
-#include "pkcs15-init.h"
 
 const char *app_name = "pkcs15-init";
 

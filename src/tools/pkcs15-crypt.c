@@ -21,15 +21,15 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <opensc.h>
-#include <pkcs15.h>
+#include <opensc/opensc.h>
+#include <opensc/pkcs15.h>
+#include "util.h"
 
 const char *app_name = "pkcs15-crypt";
 
