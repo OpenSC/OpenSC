@@ -66,7 +66,10 @@ CK_RV sc_to_cryptoki_error(int rc, int reader)
 		return CKR_USER_NOT_LOGGED_IN;
 	case SC_ERROR_KEYPAD_PIN_MISMATCH:
 		return CKR_PIN_INVALID;
+	case SC_ERROR_INVALID_ARGUMENTS:
+		return CKR_ARGUMENTS_BAD;
 	}
+	debug(context, "opensc error: %s (%d)\n", sc_strerror(rc), rc);
 	return CKR_GENERAL_ERROR;
 }
 
