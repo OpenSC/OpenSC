@@ -1,5 +1,5 @@
 /*
- * opensc-emv.h: OpenSC EMV header file
+ * emv.h: OpenSC EMV header file
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  *

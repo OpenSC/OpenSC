@@ -1,5 +1,5 @@
 /*
- * log: Logging functions header file
+ * log.h: Logging functions header file
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  *
