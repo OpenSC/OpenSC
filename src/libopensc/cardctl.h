@@ -101,6 +101,15 @@ enum {
 	SC_CARDCTL_OBERTHUR_UPDATE_KEY,
 	SC_CARDCTL_OBERTHUR_GENERATE_KEY,
 	SC_CARDCTL_OBERTHUR_CREATE_PIN,
+
+	/*
+	 * Setcos specific calls
+	 */
+	SC_CARDCTL_SETCOS_BASE = _CTL_PREFIX('S', 'E', 'T'),
+	SC_CARDCTL_SETCOS_PUTDATA,
+	SC_CARDCTL_SETCOS_GETDATA,
+	SC_CARDCTL_SETCOS_GENERATE_STORE_KEY,
+	SC_CARDCTL_SETCOS_ACTIVATE_FILE,
 };
 
 enum {
@@ -285,6 +294,31 @@ struct sc_cardctl_oberthur_createpin_info {
 	const unsigned char *puk;
 	unsigned int puk_len;
 	unsigned int puk_tries;
+};
+
+/*
+ * Setcos stuff
+ */
+struct sc_cardctl_setcos_data_obj {
+	int     P1;
+	int     P2;
+	u8 *    Data;
+	size_t  DataLen;
+	int     LengthMax;
+};
+
+#define OP_TYPE_GENERATE	0
+#define OP_TYPE_STORE		1
+
+struct sc_cardctl_setcos_gen_store_key_info {
+	int             op_type;
+	unsigned int    mod_len;     /* in bits */
+	unsigned int    pubexp_len;  /* in bits */
+	unsigned char  *pubexp;
+	unsigned int    primep_len;  /* in bits */
+	unsigned char  *primep;
+	unsigned int    primeq_len;  /* in bits */
+	unsigned char  *primeq;
 };
 
 #ifdef __cplusplus
