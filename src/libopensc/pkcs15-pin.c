@@ -65,7 +65,7 @@ static int parse_pin_info(struct sc_context *ctx,
 
 	memset(pin, 0, sizeof(*pin));
 
-	r = sc_asn1_parse(ctx, asn1_pin, *buf, *buflen, buf, buflen);
+	r = sc_asn1_decode(ctx, asn1_pin, *buf, *buflen, buf, buflen);
         if (r == 0)
 		pin->magic = SC_PKCS15_PIN_MAGIC;
 

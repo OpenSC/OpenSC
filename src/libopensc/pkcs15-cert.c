@@ -48,7 +48,7 @@ static int parse_rsa_pubkey(struct sc_context *ctx, struct sc_pkcs15_rsa_pubkey 
 		error(ctx, "RSA public key not found\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
-	r = sc_asn1_parse(ctx, asn1_rsa_pubkey, obj, objlen, NULL, NULL);
+	r = sc_asn1_decode(ctx, asn1_rsa_pubkey, obj, objlen, NULL, NULL);
 	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
 
 	return 0;
@@ -69,7 +69,7 @@ static int parse_algorithm_id(struct sc_context *ctx, void *arg, const u8 *obj,
 	};
 	int r;
 	
-	r = sc_asn1_parse(ctx, asn1_alg_id, obj, objlen, NULL, NULL);
+	r = sc_asn1_decode(ctx, asn1_alg_id, obj, objlen, NULL, NULL);
 	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
 	
 	return 0;
@@ -117,7 +117,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	cert->data_len = objlen + (obj - buf);
-	r = sc_asn1_parse(ctx, asn1_cert, obj, objlen, NULL, NULL);
+	r = sc_asn1_decode(ctx, asn1_cert, obj, objlen, NULL, NULL);
 	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
 
 	cert->version++;
@@ -311,7 +311,7 @@ static int parse_x509_cert_info(struct sc_context *ctx,
 		{ NULL }
 	};
 
-	r = sc_asn1_parse(ctx, asn1_cert, *buf, *buflen, buf, buflen);
+	r = sc_asn1_decode(ctx, asn1_cert, *buf, *buflen, buf, buflen);
 
 	return r;
 }

@@ -81,7 +81,7 @@ void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t buflen)
 		error(card->card->ctx, "invalid EF(TokenInfo)\n");
 		goto err;
 	}
-	r = sc_asn1_parse(card->card->ctx, asn1_tokeninfo, buf, buflen, NULL, NULL);
+	r = sc_asn1_decode(card->card->ctx, asn1_tokeninfo, buf, buflen, NULL, NULL);
 	if (r) {
 		error(card->card->ctx, "ASN.1 parsing failed: %s\n", sc_strerror(r));
 		goto err;
@@ -139,7 +139,7 @@ static int parse_dir(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 		error(card->card->ctx, "No [APPLICATION 1] tag in EF(DIR)\n");
 		return -1;
 	}
-	r = sc_asn1_parse(card->card->ctx, asn1_dir, buf, buflen, NULL, NULL);
+	r = sc_asn1_decode(card->card->ctx, asn1_dir, buf, buflen, NULL, NULL);
 	if (r) {
 		error(card->card->ctx, "EF(DIR) parsing failed: %s\n",
 		      sc_strerror(r));
@@ -180,7 +180,7 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 	};
 	
 	while (left > 0) {
-		r = sc_asn1_parse_choice(card->card->ctx, asn1_odf, p, left, &p, &left);
+		r = sc_asn1_decode_choice(card->card->ctx, asn1_odf, p, left, &p, &left);
 		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 			break;
 		if (r < 0)

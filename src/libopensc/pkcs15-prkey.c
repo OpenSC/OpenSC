@@ -87,7 +87,7 @@ static int parse_rsa_prkey_info(struct sc_context *ctx,
 	prkey->key_reference = -1;
 	prkey->native = 1;
 
-	r = sc_asn1_parse(ctx, asn1_prkey, *buf, *buflen, buf, buflen);
+	r = sc_asn1_decode(ctx, asn1_prkey, *buf, *buflen, buf, buflen);
 
 	return r;
 }

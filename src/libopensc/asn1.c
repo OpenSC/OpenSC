@@ -721,3 +721,37 @@ int sc_asn1_parse_choice(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 {
 	return asn1_parse(ctx, asn1, in, len, newp, len_left, 1, 0);
 }
+
+int sc_asn1_encode(struct sc_context *ctx, const struct sc_asn1_struct *asn1,
+		   u8 *buf, size_t bufleft, size_t *objsize_out)
+{
+#if 0
+	int r, idx = 0;
+	const u8 *p = buf;
+	const struct sc_asn1_struct *entry = asn1;
+	size_t total = 0, objsize;
+
+	if (ctx->debug >= 3)
+		debug(ctx, "called, depth %d\n", depth);
+	if (left < 2)
+		return SC_ERROR_ASN1_END_OF_CONTENTS;
+	for (idx = 0; asn1[idx].name != NULL; idx++) {
+		entry = &asn1[idx];
+
+		if (!(entry->flags & SC_ASN1_PRESENT))
+			continue;
+		r = asn1_encode_entry(ctx, entry, p, bufleft, &objsize);
+		if (r)
+			return r;
+		total += objsize;
+		p += objsize;
+		assert(bufleft >= objsize);
+		bufleft -= objsize;
+	}
+	if (objsize_out != NULL)
+		*objsize_out = total;
+	SC_FUNC_RETURN(ctx, 3, 0);
+#else
+	return SC_ERROR_NOT_SUPPORTED;
+#endif
+}

@@ -42,10 +42,12 @@ struct sc_pkcs15_object {
 
 /* DER tag and length parsing */
 
-int sc_asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
-		  const u8 *in, size_t len, const u8 **newp, size_t *left);
-int sc_asn1_parse_choice(struct sc_context *ctx, struct sc_asn1_struct *asn1,
-		  const u8 *in, size_t len, const u8 **newp, size_t *left);
+int sc_asn1_decode(struct sc_context *ctx, struct sc_asn1_struct *asn1,
+		   const u8 *in, size_t len, const u8 **newp, size_t *left);
+int sc_asn1_decode_choice(struct sc_context *ctx, struct sc_asn1_struct *asn1,
+		   const u8 *in, size_t len, const u8 **newp, size_t *left);
+int sc_asn1_encode(struct sc_context *ctx, const struct sc_asn1_struct *asn1,
+		   u8 *buf, size_t bufsize, size_t *obj_size);
 
 const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 			   size_t buflen, unsigned int tag, size_t *taglen);

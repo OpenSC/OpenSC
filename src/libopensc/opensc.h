@@ -182,6 +182,7 @@ struct sc_file {
 #define SC_SEC_OPERATION_DECIPHER	0
 #define SC_SEC_OPERATION_SIGN		1
 
+
 struct sc_security_env {
 	int algorithm_ref;
 	struct sc_path key_file_id;
@@ -189,12 +190,31 @@ struct sc_security_env {
 	int key_ref;
 };
 
+/*
+ * Card capabilities 
+ */
+
+/* SC_CARD_APDU_EXT: Card can handle large (> 256 bytes) buffers in
+ * calls to read_binary, write_binary and update_binary; if not,
+ * several successive calls to the corresponding function is made. */
+#define SC_CARD_CAP_APDU_EXT		0x00000001
+
+/* SC_CARD_CAP_EMV: Card can handle operations specified in the
+ * EMV 4.0 standard. */
+#define SC_CARD_CAP_EMV			0x00000002
+
+/*
+ * Card flags
+ */
+/* none yet */
+
 struct sc_card {
-	int cla;
 	struct sc_context *ctx;
 
 	SCARDHANDLE pcsc_card;
 	int reader;
+	unsigned long caps, flags;
+	int cla;
 	u8 atr[SC_MAX_ATR_SIZE];
 	size_t atr_len;
 	
@@ -232,14 +252,6 @@ struct sc_card_operations {
 			     const u8 * buf, size_t count, unsigned long flags);
 	int (*erase_binary)(struct sc_card *card, unsigned int idx,
 			    size_t count, unsigned long flags);
-	/* These may be left NULL.  If not present, multiple calls
-	 * to read_binary et al. will be made. */
-	int (*read_binary_large)(struct sc_card *card, unsigned int idx,
-				 u8 * buf, size_t count, unsigned long flags);
-	int (*write_binary_large)(struct sc_card *card, unsigned int idx,
-				  const u8 * buf, size_t count, unsigned long flags);
-	int (*update_binary_large)(struct sc_card *card, unsigned int idx,
-				   const u8 * buf, size_t count, unsigned long flags);
 	int (*read_record)(struct sc_card *card, unsigned int rec_nr,
 			   u8 * buf, size_t count, unsigned long flags);
 
@@ -251,7 +263,13 @@ struct sc_card_operations {
 	int (*get_response)(struct sc_card *card, u8 * buf, size_t count);
 	int (*get_challenge)(struct sc_card *card, u8 * buf, size_t count);
 
-	/* ISO 7816-8 */
+	/*
+	 * ISO 7816-8 functions
+	 */
+
+	/* verify:  Verifies reference data identified by <ref_qualifier>.
+	 *   If <tries_left> is not NULL, number of verify tries left is
+	 *   saved in case of verification failure.
 	int (*verify)(struct sc_card *card, int ref_qualifier,
 		      const u8 *data, size_t data_len, int *tries_left);
 
@@ -266,8 +284,13 @@ struct sc_card_operations {
 	 *   card. If se_num <= 0, the environment will not be stored. */
 	int (*set_security_env)(struct sc_card *card,
 			        const struct sc_security_env *env, int se_num);
+	/* decipher:  Engages the deciphering operation.  Card will use the
+	 *   security environment set in a call to set_security_env or
+	 *   restore_security_env. */
 	int (*decipher)(struct sc_card *card, const u8 * crgram,
 		        size_t crgram_len, u8 * out, size_t outlen);
+	/* compute_signature:  Generates a digital signature on the card.  Similiar
+	 *    to the function decipher. */
 	int (*compute_signature)(struct sc_card *card, const u8 * data,
 				 size_t data_len, u8 * out, size_t outlen);
 	int (*change_reference_data)(struct sc_card *card, int ref_qualifier,
@@ -293,7 +316,8 @@ struct sc_context {
 	int debug;
 
 	int use_std_output, use_cache;
-	const  struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS+1];
+	const struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS+1];
+	pthread_mutex_t mutex;
 };
 
 struct sc_apdu {
@@ -373,7 +397,7 @@ inline int sc_file_valid(const struct sc_file *file);
 void sc_format_path(const char *path_in, struct sc_path *path_out);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 
-/* Possibly only on Setec cards */
+/* Possibly only valid on Setec cards */
 int sc_list_files(struct sc_card *card, u8 * buf, int buflen);
 
 const char *sc_strerror(int error);

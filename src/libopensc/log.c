@@ -66,8 +66,10 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 	const char *terms[] = { "linux", "xterm", "Eterm" };
 	int term_count = sizeof(terms)/sizeof(terms[0]);
 	int left, r;
+	struct timeval tv;
 
 	assert(ctx != NULL);
+	gettimeofday(&tv, NULL);
 	if (ctx->use_std_output) {
 		switch (type) {
 		case SC_LOG_TYPE_ERROR:
@@ -115,11 +117,6 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 			case SC_LOG_TYPE_ERROR:
 				color_pfx = "\33[01;31m";
 				break;
-#if 0
-			case SC_LOG_TYPE_NORMAL:
-				color_pfx = "\33[01;33m";
-				break;
-#endif
 			case SC_LOG_TYPE_DEBUG:
 				color_pfx = "\33[00;32m";
 				break;

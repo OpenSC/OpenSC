@@ -616,10 +616,10 @@ int send_apdu(void)
 	struct sc_apdu apdu;
 	u8 buf[MAX_BUFFER_SIZE], sbuf[MAX_BUFFER_SIZE],
 	   rbuf[MAX_BUFFER_SIZE], *p = buf;
-	size_t len = sizeof(buf), len0, r;
+	size_t len, len0 = sizeof(buf), r;
 	
 	sc_hex_to_bin(opt_apdu, buf, &len0);
-	if (len < 4) {
+	if (len0 < 4) {
 		fprintf(stderr, "APDU too short (must be at least 4 bytes).\n");
 		return 2;
 	}
@@ -639,12 +639,12 @@ int send_apdu(void)
 		memcpy(sbuf, p, apdu.lc);
 		apdu.data = sbuf;
 		apdu.datalen = apdu.lc;
-		len -= apdu.lc;
-		if (len < 0) {
+		if (len < apdu.lc) {
 			fprintf(stderr, "APDU too short (need %d bytes).\n",
-				-len);
+				apdu.lc-len);
 			return 2;
 		}
+		len -= apdu.lc;
 		if (len) {
 			apdu.le = *p++;
 			len--;

@@ -583,15 +583,10 @@ int sc_read_binary(struct sc_card *card, unsigned int idx,
 	assert(card != NULL && card->ops != NULL && buf != NULL);
 	if (card->ctx->debug >= 2)
 		debug(card->ctx, "sc_read_binary: %d bytes at index %d\n", count, idx);
-	if (count > RB_BUF_SIZE) {
+	if (count > RB_BUF_SIZE && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
 		int bytes_read = 0;
 		unsigned char *p = buf;
 
-		if (card->ops->read_binary_large != NULL) {
-			r = card->ops->read_binary_large(card, idx, buf, count, flags);
-			SC_FUNC_RETURN(card->ctx, 2, r);
-		}
-                /* no read_binary_large support... */
 		r = sc_lock(card);
 		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 		while (count > 0) {
@@ -617,6 +612,7 @@ int sc_read_binary(struct sc_card *card, unsigned int idx,
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->read_binary(card, idx, buf, count, flags);
         SC_FUNC_RETURN(card->ctx, 2, r);
+#undef RB_BUF_SIZE
 }
 
 int sc_select_file(struct sc_card *card,

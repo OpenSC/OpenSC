@@ -172,6 +172,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 			break;
 	} while (p < (reader_buf + reader_buf_size - 1));
 	free(reader_buf);
+	pthread_mutex_init(&ctx->mutex, NULL);
 	for (i = 0; i < SC_MAX_CARD_DRIVERS+1; i++)
 		ctx->card_drivers[i] = NULL;
 	i = 0;
