@@ -91,6 +91,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 		CKR_ATTRIBUTE_SENSITIVE,
 		-1
 	};
+	char	object_name[64];
         int i, j, rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
@@ -108,13 +109,17 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 	if (rv != CKR_OK)
 		goto out;
 
+	/* Debug printf */
+	snprintf(object_name, sizeof(object_name), "Object %d", hObject);
+
 	res_type = 0;
 	for (i = 0; i < ulCount; i++) {
-		debug(context, "Object %d, Attribute 0x%x\n", hObject, pTemplate[i].type);
 		res = object->ops->get_attribute(session,
 					object, &pTemplate[i]);
 		if (res != CKR_OK)
                         pTemplate[i].ulValueLen = (CK_ULONG) -1;
+
+		dump_template(object_name, &pTemplate[i], 1);
 
 		/* the pkcs11 spec has complicated rules on
 		 * what errors take precedence:
@@ -151,6 +156,8 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+
+        dump_template("C_SetAttributeValue", pTemplate, ulCount);
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -229,16 +236,20 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 			rv = object->ops->cmp_attribute(session, object,
 					&pTemplate[j]);
 			if (rv == 0) {
-			    	debug(context, "Object %d/%d: Attribute 0x%x does NOT match.\n",
-                                      session->slot->id,
-				      item->handle, pTemplate[j].type);
+				if (context->debug >= 4) {
+					debug(context, "Object %d/%d: Attribute 0x%x does NOT match.\n",
+					      session->slot->id,
+					      item->handle, pTemplate[j].type);
+				}
 				match = 0;
                                 break;
 			}
 
-			debug(context, "Object %d/%d: Attribute 0x%x matches.\n",
-			      session->slot->id,
-                              item->handle, pTemplate[j].type);
+			if (context->debug >= 4) {
+				debug(context, "Object %d/%d: Attribute 0x%x matches.\n",
+				      session->slot->id,
+				      item->handle, pTemplate[j].type);
+			}
 		}
 
 		if (match) {

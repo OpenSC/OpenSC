@@ -70,35 +70,6 @@ CK_RV sc_to_cryptoki_error(int rc, int reader)
 	return CKR_GENERAL_ERROR;
 }
 
-void dump_template(const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
-{
-	int i, j, count;
-
-	for (i = 0; i < ulCount; i++) {
-		char foo[4 * DUMP_TEMPLATE_MAX + 1] = "", *p;
-		unsigned char *value = (unsigned char*) pTemplate[i].pValue;
-
-		if (pTemplate[i].pValue) {
-			count = pTemplate[i].ulValueLen;
-			if (count > DUMP_TEMPLATE_MAX)
-				count = DUMP_TEMPLATE_MAX;
-			for (j = 0, p = foo; j < count; j++) {
-				p += sprintf(p, "%02X", value[j]);
-			}
-
-			debug(context,
-				"%s: Attribute 0x%x = %s%s (length=%d)\n",
-				info, pTemplate[i].type, foo,
-				(count < pTemplate[i].ulValueLen)? "..." : "",
-				pTemplate[i].ulValueLen);
-		} else {
-			debug(context, "%s: Attribute 0x%x, length inquiry\n",
-			    info, pTemplate[i].type);
-		}
-	}
-
-}
-
 /* Pool */
 CK_RV pool_initialize(struct sc_pkcs11_pool *pool, int type)
 {

@@ -13,7 +13,8 @@ AM_LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBOPENSC@ ../pkcs15init/libpkcs15init.la \
 
 SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
         mechanism.c openssl.c \
-	secretkey.c framework-pkcs15.c framework-pkcs15init.c
+	secretkey.c framework-pkcs15.c framework-pkcs15init.c \
+	debug.c
 INC = sc-pkcs11.h
 
 lib_LTLIBRARIES = opensc-pkcs11.la libpkcs11.la

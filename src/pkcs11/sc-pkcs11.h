@@ -295,7 +295,11 @@ extern struct sc_pkcs11_framework_ops framework_pkcs15init;
 
 void strcpy_bp(u8 *dst, const char *src, int dstsize);
 CK_RV sc_to_cryptoki_error(int rc, int reader);
-void dump_template(const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
+void sc_pkcs11_print_attrs(const char *file, unsigned int line, const char *function,
+		const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
+#define dump_template(info, pTemplate, ulCount) \
+		sc_pkcs11_print_attrs(__FILE__, __LINE__, __FUNCTION__, \
+				info, pTemplate, ulCount)
 
 /* Slot and card handling functions */
 CK_RV card_initialize(int reader);
