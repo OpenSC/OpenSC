@@ -66,25 +66,25 @@ filesystem {
 	    EF PKCS15-AODF {
 	        file-id		= 4401;
 		size		= 128;
-		ACL		= *=NEVER, READ=NONE, UPDATE=$SOPIN;
+		ACL		= *=$SOPIN, READ=NONE;
 	    }
 
 	    EF PKCS15-PrKDF {
 	        file-id		= 4402;
 		size		= 128;
-		acl		= *=NEVER, READ=NONE, UPDATE=$SOPIN;
+		acl		= *=$SOPIN, READ=NONE;
 	    }
 
 	    EF PKCS15-PuKDF {
 	        file-id		= 4403;
 		size		= 128;
-		acl		= *=NEVER, READ=NONE, UPDATE=$SOPIN;
+		acl		= *=$SOPIN, READ=NONE;
 	    }
 
 	    EF PKCS15-CDF {
 	        file-id		= 4404;
 		size		= 128;
-		acl		= *=NEVER, READ=NONE, UPDATE=$SOPIN;
+		acl		= *=$SOPIN, READ=NONE;
 	    }
 	}
     }

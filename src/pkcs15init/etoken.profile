@@ -24,11 +24,6 @@ filesystem {
     DF MF {
         DF PKCS15-AppDF {
 	    size		= 2048;
-	    # For the time being, in order to ease debugging.
-	    EF PKCS15-AODF {
-		ACL             = *=NEVER, READ=NONE,
-				  WRITE=$SOPIN, UPDATE=$SOPIN, ERASE=$SOPIN;
-	    }
             EF template-private-key {
 		type		= internal-ef;
     	        file-id		= 4B01;	# This is the base FileID

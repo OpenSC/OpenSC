@@ -84,7 +84,7 @@ static int	do_select_parent(struct sc_profile *, struct sc_card *,
 static int	aodf_add_pin(struct sc_pkcs15_card *, struct sc_profile *,
 			const struct sc_pkcs15_pin_info *, const char *);
 static int	check_key_compatibility(struct sc_pkcs15_card *,
-			struct sc_pkcs15_prkey *, unsigned int);
+			struct sc_pkcs15_prkey *, unsigned int, unsigned int);
 static int	fixup_rsa_key(struct sc_pkcs15_prkey_rsa *);
 static int	fixup_dsa_key(struct sc_pkcs15_prkey_dsa *);
 static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *, int);
@@ -377,7 +377,8 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	int		r, index;
 
 	/* For now, we support just RSA key pair generation */
-	if (keyargs->key.algorithm != SC_ALGORITHM_RSA)
+	if (!check_key_compatibility(p15card, &keyargs->key,
+		 keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
 		return SC_ERROR_NOT_SUPPORTED;
 
 	if (profile->ops->generate_key == NULL)
@@ -470,7 +471,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 		label = "Private Key";
 
 	/* Now check whether the card is able to handle this key */
-	if (!check_key_compatibility(p15card, &key, keybits)) {
+	if (!check_key_compatibility(p15card, &key, keybits, 0)) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key non-natively. */
 		if (!keyargs->extractable) {
@@ -804,7 +805,8 @@ sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
 static int
 check_key_compatibility(struct sc_pkcs15_card *p15card,
 			struct sc_pkcs15_prkey *key,
-			unsigned int key_length)
+			unsigned int key_length,
+			unsigned int flags)
 {
 	struct sc_algorithm_info *info;
 	unsigned int count;
@@ -813,7 +815,8 @@ check_key_compatibility(struct sc_pkcs15_card *p15card,
 	for (info = p15card->card->algorithms; count--; info++) {
 		/* XXX: check for equality, or <= ? */
 		if (info->algorithm != key->algorithm
-		 || info->key_length != key_length)
+		 || info->key_length != key_length
+		 || (info->flags & flags) != flags)
 			continue;
 		if (key->algorithm == SC_ALGORITHM_RSA
 		 && info->u._rsa.exponent != 0) {

@@ -298,7 +298,7 @@ etoken_store_pin(struct sc_profile *profile, struct sc_card *card,
 	/* DEK: not documented, no idea what it means */
 	tlv_add(&tlv, 0x00);
 
-	/* ARA counted: not documented, no idea what it means */
+	/* ARA counter: not documented, no idea what it means */
 	tlv_add(&tlv, 0x00);
 
 	tlv_add(&tlv, minlen);		/* minlen */
@@ -408,8 +408,8 @@ etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
 /*
  * Create a private key object
  */
-#define ETOKEN_KEY_OPTIONS	0x82
-#define ETOKEN_KEY_FLAGS	0x40
+#define ETOKEN_KEY_OPTIONS	0x82	/* "EnableBit" == b7? */
+#define ETOKEN_KEY_FLAGS	0x40	/* "GenerateBit" == b6? */
 static int
 etoken_store_key_component(struct sc_card *card,
 		unsigned int key_id, unsigned int pin_id,
@@ -444,10 +444,11 @@ etoken_store_key_component(struct sc_card *card,
 	tlv_next(&tlv, 0x86);
 	tlv_add(&tlv, pin_id);	/* AC USE */
 	tlv_add(&tlv, pin_id);	/* AC CHANGE */
-	tlv_add(&tlv, 0x00);	/* AC GENKEY? */
+	tlv_add(&tlv, pin_id);	/* AC GENKEY? */
 
-	/* modulus */
+	/* key component */
 	tlv_next(&tlv, 0x8f);
+	tlv_add(&tlv, 0);
 	while (len--)
 		tlv_add(&tlv, *data++);
 
@@ -458,13 +459,16 @@ etoken_store_key_component(struct sc_card *card,
 
 static int
 etoken_store_key(struct sc_profile *profile, struct sc_card *card,
-		unsigned int key_id, unsigned int pin_id,
-		struct rsakey *key)
+		unsigned int key_id, struct sc_pkcs15_prkey_rsa *key)
 {
-	int		r;
+	struct sc_pkcs15_pin_info pin_info;
+	int		r, pin_id;
+
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &pin_info);
+	pin_id = pin_info.reference;
 
 	r = etoken_store_key_component(card, key_id, pin_id,
-			0, key->n.data, key->n.len, 0);
+			0, key->modulus.data, key->modulus.len, 0);
 	if (r < 0)
 		return r;
 	r = etoken_store_key_component(card, key_id, pin_id,
@@ -480,7 +484,17 @@ etoken_new_key(struct sc_profile *profile, struct sc_card *card,
 		struct sc_pkcs15_prkey *key, unsigned int index,
 		struct sc_pkcs15_prkey_info *info)
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	struct sc_pkcs15_prkey_rsa *rsa;
+	int		r;
+
+	if (key->algorithm != SC_ALGORITHM_RSA) {
+		error(profile, "eToken supports RSA keys only.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	rsa = &key->u.rsa;
+	r = etoken_store_key(profile, card,
+			ETOKEN_KEY_ID(index), rsa);
+	return r;
 }
 
 /*
@@ -566,10 +580,10 @@ etoken_generate_key(struct sc_profile *profile, struct sc_card *card,
 		unsigned int index, unsigned int keybits,
 		sc_pkcs15_pubkey_t *pubkey)
 {
+	struct sc_pkcs15_prkey_rsa key_obj;
 	struct sc_cardctl_etoken_genkey_info args;
 	struct sc_file	*temp;
-	struct rsakey	key_obj;
-	u8		randbuf[64], key_id, pin_id;
+	u8		randbuf[64], key_id;
 	int		r;
 
 	keybits &= ~7UL;
@@ -588,13 +602,12 @@ etoken_generate_key(struct sc_profile *profile, struct sc_card *card,
 		goto out;
 
 	key_id = ETOKEN_KEY_ID(index);
-	pin_id = 0x00; /* XXX extract user pin id */
 
 	/* Create a key object, initializing components to 0xff */
 	memset(&key_obj, 0xff, sizeof(key_obj));
-	key_obj.n.len = keybits >> 3;
+	key_obj.modulus.len = keybits >> 3;
 	key_obj.d.len = keybits >> 3;
-	r = etoken_store_key(profile, card, key_id, pin_id, &key_obj);
+	r = etoken_store_key(profile, card, key_id, &key_obj);
 	if (r < 0)
 		goto out;
 
