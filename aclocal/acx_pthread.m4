@@ -1,64 +1,15 @@
-dnl @synopsis ACX_PTHREAD([ACTION-IF-FOUND[, ACTION-IF-NOT-FOUND]])
+dnl Available from the GNU Autoconf Macro Archive at:
+dnl http://www.gnu.org/software/ac-archive/htmldoc/acx_pthread.html
 dnl
-dnl This macro figures out how to build C programs using POSIX
-dnl threads.  It sets the PTHREAD_LIBS output variable to the threads
-dnl library and linker flags, and the PTHREAD_CFLAGS output variable
-dnl to any special C compiler flags that are needed.  (The user can also
-dnl force certain compiler flags/libs to be tested by setting these
-dnl environment variables.)
-dnl
-dnl Also sets PTHREAD_CC to any special C compiler that is needed for
-dnl multi-threaded programs (defaults to the value of CC otherwise).
-dnl (This is necessary on AIX to use the special cc_r compiler alias.)
-dnl
-dnl If you are only building threads programs, you may wish to
-dnl use these variables in your default LIBS, CFLAGS, and CC:
-dnl
-dnl        LIBS="$PTHREAD_LIBS $LIBS"
-dnl        CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
-dnl        CC="$PTHREAD_CC"
-dnl
-dnl In addition, if the PTHREAD_CREATE_JOINABLE thread-attribute
-dnl constant has a nonstandard name, defines PTHREAD_CREATE_JOINABLE
-dnl to that name (e.g. PTHREAD_CREATE_UNDETACHED on AIX).
-dnl
-dnl ACTION-IF-FOUND is a list of shell commands to run if a threads
-dnl library is found, and ACTION-IF-NOT-FOUND is a list of commands
-dnl to run it if it is not found.  If ACTION-IF-FOUND is not specified,
-dnl the default action will define HAVE_PTHREAD.
-dnl
-dnl Please let the authors know if this macro fails on any platform,
-dnl or if you have any other suggestions or comments.  This macro was
-dnl based on work by SGJ on autoconf scripts for FFTW (www.fftw.org)
-dnl (with help from M. Frigo), as well as ac_pthread and hb_pthread
-dnl macros posted by AFC to the autoconf macro repository.  We are also
-dnl grateful for the helpful feedback of numerous users.
-dnl
-dnl @author Steven G. Johnson <stevenj@alum.mit.edu> and Alejandro Forero Cuervo <bachue@bachue.com>
-
 AC_DEFUN([ACX_PTHREAD], [
 AC_REQUIRE([AC_CANONICAL_HOST])
+AC_LANG_SAVE
+AC_LANG_C
 acx_pthread_ok=no
 
-# First, check if the POSIX threads header, pthread.h, is available.
-# If it isn't, don't bother looking for the threads libraries.
-
-# Latest Tru64's require that you always use -pthread,
-# just assume pthread.h exists
-
-case "${host_cpu}-${host_os}" in
- alpha*-osf*) acx_pthread_check_header=no ;;
- *) acx_pthread_check_header=yes ;;
-esac
-
-if test "x$acx_pthread_check_header" = xyes; then
-  AC_CHECK_HEADER(pthread.h, , acx_pthread_ok=noheader)
-fi
-
-# We must check for the threads library under a number of different
-# names; the ordering is very important because some systems
-# (e.g. DEC) have both -lpthread and -lpthreads, where one of the
-# libraries is broken (non-POSIX).
+# We used to check for pthread.h first, but this fails if pthread.h
+# requires special compiler flags (e.g. on True64 or Sequent).
+# It gets checked for in the link test anyway.
 
 # First of all, check if the user has set any of the PTHREAD_LIBS,
 # etcetera environment variables, and if threads linking works using
@@ -79,11 +30,16 @@ if test x"$PTHREAD_LIBS$PTHREAD_CFLAGS" != x; then
         CFLAGS="$save_CFLAGS"
 fi
 
+# We must check for the threads library under a number of different
+# names; the ordering is very important because some systems
+# (e.g. DEC) have both -lpthread and -lpthreads, where one of the
+# libraries is broken (non-POSIX).
+
 # Create a list of thread flags to try.  Items starting with a "-" are
 # C compiler flags, and other items are library names, except for "none"
 # which indicates that we try without any flags at all.
 
-acx_pthread_flags="pthreads none -Kthread -kthread lthread pthread -pthread -pthreads -mthreads --thread-safe -mt"
+acx_pthread_flags="pthreads none -Kthread -kthread lthread -pthread -pthreads -mthreads pthread --thread-safe -mt"
 
 # The ordering *is* (sometimes) important.  Some notes on the
 # individual items follow:
@@ -94,13 +50,13 @@ acx_pthread_flags="pthreads none -Kthread -kthread lthread pthread -pthread -pth
 # -Kthread: Sequent (threads in libc, but -Kthread needed for pthread.h)
 # -kthread: FreeBSD kernel threads (preferred to -pthread since SMP-able)
 # lthread: LinuxThreads port on FreeBSD (also preferred to -pthread)
-# pthread: Linux, etcetera
 # -pthread: Linux/gcc (kernel threads), BSD/gcc (userland threads)
 # -pthreads: Solaris/gcc
 # -mthreads: Mingw32/gcc, Lynx/gcc
 # -mt: Sun Workshop C (may only link SunOS threads [-lthread], but it
 #      doesn't hurt to check since this sometimes defines pthreads too;
 #      also defines -D_REENTRANT)
+# pthread: Linux, etcetera
 # --thread-safe: KAI C++
 
 case "${host_cpu}-${host_os}" in
@@ -202,7 +158,7 @@ if test "x$acx_pthread_ok" = xyes; then
         flag=no
         case "${host_cpu}-${host_os}" in
                 *-aix* | *-freebsd*)     flag="-D_THREAD_SAFE";;
-                *solaris* | alpha*-osf*) flag="-D_REENTRANT";;
+                *solaris* | *-osf* | *-hpux*) flag="-D_REENTRANT";;
         esac
         AC_MSG_RESULT(${flag})
         if test "x$flag" != xno; then
@@ -213,11 +169,7 @@ if test "x$acx_pthread_ok" = xyes; then
         CFLAGS="$save_CFLAGS"
 
         # More AIX lossage: must compile with cc_r
-	if test "$GCC" != "yes"; then
-                AC_CHECK_PROG(PTHREAD_CC, cc_r, cc_r, ${CC})
-	else
-                PTHREAD_CC="$CC"
-	fi
+        AC_CHECK_PROG(PTHREAD_CC, cc_r, cc_r, ${CC})
 else
         PTHREAD_CC="$CC"
 fi
@@ -234,5 +186,5 @@ else
         acx_pthread_ok=no
         $2
 fi
-
+AC_LANG_RESTORE
 ])dnl ACX_PTHREAD
