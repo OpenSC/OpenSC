@@ -59,7 +59,8 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 
 	rv = sc_pkcs11_init_lock((CK_C_INITIALIZE_ARGS_PTR) pReserved);
 
-out:	debug(context, "C_Initialize: result = %d\n", rv);
+out:	if (context != NULL)
+		debug(context, "C_Initialize: result = %d\n", rv);
 	return rv;
 }
 
