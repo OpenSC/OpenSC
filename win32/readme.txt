@@ -20,10 +20,9 @@ mechanism)
 
 - In src/pkcs11/Makefile.mak
   - Add libeay32.lib to the "link" line
-  - Add openssl.obj to the "OBJECTS" line
 
 - In src/pkcs15init/Makefile.mak
   - Add libeay32.lib to the "lib" line
 
-- In Make.rules.mak
+- In win32/Make.rules.mak
   - Add /DHAVE_OPENSSL to the "COPTS" line
