@@ -366,7 +366,7 @@ static int acl_to_byte(const struct sc_acl_entry *e)
 
 static const int df_acl[9] = {
 	-1,			/* LCYCLE (life cycle change) */
-	-1,			/* UPDATE Objects */
+	SC_AC_OP_UPDATE,	/* UPDATE Objects */
 	-1,			/* APPEND Objects */
 
 	SC_AC_OP_INVALIDATE,	/* DF */
