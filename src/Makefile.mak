@@ -1,5 +1,5 @@
 
-SUBDIRS = include common scconf libopensc tools
+SUBDIRS = include common scconf libopensc tools pkcs11
 
 all::
 
