@@ -162,6 +162,8 @@ sc_pkcs15_bind_emulation(sc_pkcs15_card_t *p15card,
 				break;
 			}
 		}
+		if (!init_func)
+			return SC_ERROR_WRONG_CARD;
 	} else {
 		const char *function_name = NULL;
 		void	*address;
