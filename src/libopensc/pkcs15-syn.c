@@ -245,7 +245,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 			name = scconf_get_str(conf, "function", exfunc_name);
 
 			address = scdl_get_address(dll, name);
-			if (r == SC_SUCCESS)
+			if (address)
 				init_func_ex = (int (*)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *)) address;
 		}
 	}
