@@ -1,0 +1,27 @@
+README for libopensc, the library component of the OpenSC project
+
+
+Introduction
+============
+
+libopensc is the core part of the OpenSC project.
+
+
+Building and Installing libopensc
+=================================
+
+See the INSTALL file for this.
+
+
+Troubleshooting
+===============
+
+A mailing-list will be set up for support and discussion about the
+OpenSC project. Meanwhile, contact the authors directly. (See the AUTHORS
+file for email addresses)
+
+
+Resources
+=========
+
+See the OpenSC web site at http://www.hut.fi/~jyrjola/sc/.

@@ -18,6 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "config.h"
 #include "opensc.h"
 #include "sc-asn1.h"
 #include <stdio.h>
@@ -26,8 +27,8 @@
 #include <assert.h>
 #include <ctype.h>
 
-#ifdef OPENSC_VERSION
-const char *sc_version = OPENSC_VERSION;
+#ifdef VERSION
+const char *sc_version = VERSION;
 #else
 #warning FIXME: version info
 const char *sc_version = "(undef)";

@@ -1,0 +1,5 @@
+NEWS for libopensc -- History of user visible changes
+
+New in 0.3.2; 2001-11-27; Juha Yrjölä:
+* Converted to Autotools.
+

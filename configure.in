@@ -2,7 +2,7 @@
 AC_INIT(libopensc)
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_SRCDIR(src/sc.c)
-AM_CONFIG_HEADER(src/config.h:src/config.h.in)
+AM_CONFIG_HEADER(config.h:config.h.in)
 AM_INIT_AUTOMAKE(libopensc, 0.3.2)
 
 
@@ -11,8 +11,31 @@ AC_PROG_CC
 AC_PROG_LIBTOOL
 
 # Checks for libraries.
-AC_CHECK_LIB(pcsclite, SCardEstablishContext)
-AC_CHECK_LIB(pthread, pthread_mutex_lock)
+AC_CHECK_LIB(pthread, pthread_mutex_lock, , AC_MSG_ERROR([*** libpthread not found]))
+AC_ARG_WITH(pcsclite,
+	[  --with-pcsclite=PATH    use PC/SC Lite in PATH],
+	[
+		if test -d "$withval/lib"; then
+			if test -n "${need_dash_r}"; then
+				LDFLAGS="-L${withval}/lib -R${withval}/lib ${LDFLAGS}"
+			else
+				LDFLAGS="-L${withval}/lib ${LDFLAGS}"
+			fi
+		else
+			if test -n "${need_dash_r}"; then
+				LDFLAGS="-L${withval} -R${withval} ${LDFLAGS}"
+			else
+				LDFLAGS="-L${withval} ${LDFLAGS}"
+			fi
+		fi
+		if test -d "$withval/include"; then
+			CPPFLAGS="-I${withval}/include ${CPPFLAGS}"
+		else
+			CPPFLAGS="-I${withval} ${CPPFLAGS}"
+		fi
+	]
+)
+AC_CHECK_LIB(pcsclite, SCardEstablishContext, , AC_MSG_ERROR([*** PC/SC Lite missing - please install first]))
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -28,4 +51,7 @@ AC_FUNC_MEMCMP
 AC_CHECK_FUNCS(memset strdup)
 
 #AC_CONFIG_FILES(Makefile)
+
+AC_SUBST(ac_aux_dir)
+
 AC_OUTPUT(Makefile src/Makefile)
