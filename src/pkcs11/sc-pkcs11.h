@@ -24,6 +24,9 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include HAVE_MALLOC_H
+#include <malloc.h>
+#endif
 #include <opensc/opensc.h>
 #include <opensc/pkcs15.h>
 #include <opensc/log.h>

@@ -23,6 +23,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wintypes.h>
 #include <winscard.h>
 
 /* Default timeout value for SCardGetStatusChange

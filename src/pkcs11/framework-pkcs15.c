@@ -19,7 +19,6 @@
  */
 
 #include <stdlib.h>
-#include <malloc.h>
 #include <string.h>
 #include "sc-pkcs11.h"
 #include "opensc/pkcs15-init.h"
