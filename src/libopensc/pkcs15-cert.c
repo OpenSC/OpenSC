@@ -250,7 +250,7 @@ void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert)
 	int i;
 	printf("X.509 Certificate [%s]\n", cert->com_attr.label);
 	printf("\tFlags    : %d\n", cert->com_attr.flags);
-	printf("\tTrustable: %s\n", cert->authority ? "yes" : "no");
+	printf("\tAuthority: %s\n", cert->authority ? "yes" : "no");
 	printf("\tPath     : ");
 	for (i = 0; i < cert->path.len; i++)
 		printf("%02X", cert->path.value[i]);

@@ -60,7 +60,7 @@ int sc_set_security_env(struct sc_card *card,
 	r = sc_transmit_apdu(card, &apdu);
 	if (r)
 		return r;
-	return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }
 
 int sc_restore_security_env(struct sc_card *card, int num)
@@ -74,7 +74,7 @@ int sc_restore_security_env(struct sc_card *card, int num)
 	r = sc_transmit_apdu(card, &apdu);
 	if (r)
 		return r;
-	return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }
 
 int sc_decipher(struct sc_card *card,
@@ -110,7 +110,7 @@ int sc_decipher(struct sc_card *card,
 	if (sc_debug)
 		fprintf(stderr, "sc_decipher(): SW1=%02X, SW2=%02X\n",
 			apdu.sw1, apdu.sw2);
-	return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }
 
 int sc_compute_signature(struct sc_card *card,
@@ -147,7 +147,7 @@ int sc_compute_signature(struct sc_card *card,
 	if (sc_debug)
 		fprintf(stderr, "sc_compute_signature(): SW1=%02X, SW2=%02X\n",
 			apdu.sw1, apdu.sw2);
-	return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }
 
 int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
@@ -175,7 +175,7 @@ int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
 			*tries_left = apdu.sw2 & 0x0F;
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
-	return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }
 
 int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
@@ -201,7 +201,7 @@ int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
 	memset(sbuf, 0, len);
 	if (r)
 		return r;
-	return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }
 
 int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
@@ -236,5 +236,5 @@ int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
 	memset(sbuf, 0, len);
 	if (r)
 		return r;
-	return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }

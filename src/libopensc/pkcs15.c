@@ -215,6 +215,30 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 	return 0;
 }
 
+static const struct sc_pkcs15_defaults * find_defaults(u8 *dir, int dirlen)
+{
+	int i = 0;
+	const struct sc_pkcs15_defaults *match = NULL;
+
+	while (sc_card_table[i].atr != NULL) {
+		u8 defdir[128];
+		int len = sizeof(defdir);
+		const struct sc_pkcs15_defaults *def = &sc_pkcs15_card_table[i];
+		const char *dirp = def->ef_dir_dump;
+		i++;
+
+		if (dirp == NULL)
+			break;
+		if (sc_hex_to_bin(dirp, defdir, &len))
+			continue;
+		if (memcmp(dir, defdir, len) != 0)
+			continue;
+		match = def;
+		break;
+	}
+	return match;
+}
+
 int sc_pkcs15_init(struct sc_card *card,
 		   struct sc_pkcs15_card **p15card_out)
 {
@@ -222,6 +246,7 @@ int sc_pkcs15_init(struct sc_card *card,
 	int err, len;
 	struct sc_pkcs15_card *p15card = NULL;
 	struct sc_path tmppath;
+	const struct sc_pkcs15_defaults *defaults = NULL;
 
 	assert(card != NULL && p15card_out != NULL);
 	p15card = malloc(sizeof(struct sc_pkcs15_card));
@@ -229,28 +254,6 @@ int sc_pkcs15_init(struct sc_card *card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(p15card, 0, sizeof(struct sc_pkcs15_card));
 	p15card->card = card;
-	
-	if (card->defaults != NULL && card->defaults->pkcs15_defaults_func == NULL)
-		return SC_ERROR_NOT_SUPPORTED;
-	if (card->defaults != NULL) {
-		card->defaults->pkcs15_defaults_func(p15card);
-		err = sc_select_file(card, &p15card->file_tokeninfo,
-				     &p15card->file_tokeninfo.path,
-				     SC_SELECT_FILE_BY_PATH);
-		if (err)
-			goto error;
-		err = sc_read_binary(card, 0, buf, p15card->file_tokeninfo.size);
-		if (err < 0)
-			goto error;
-		if (err <= 2) {
-			err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
-			goto error;
-		}
-		parse_tokeninfo(p15card, buf, err);
-
-		*p15card_out = p15card;
-		return 0;
-	}
 
 	memcpy(tmppath.value, "\x2F\x00", 2);
 	tmppath.len = 2;
@@ -270,32 +273,34 @@ int sc_pkcs15_init(struct sc_card *card,
 		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
 		goto error;
 	}
-	memcpy(&tmppath, &p15card->file_app.path, sizeof(struct sc_path));
-	err = sc_select_file(card, &p15card->file_app, &p15card->file_app.path,
-			     SC_SELECT_FILE_BY_PATH);
-	if (err)
-		goto error;
-	memcpy(tmppath.value + tmppath.len, "\x50\x31", 2);
-	tmppath.len += 2;
-	err = sc_select_file(card, &p15card->file_odf, &tmppath,
-			     SC_SELECT_FILE_BY_PATH);
-	if (err)
-		goto error;
-	err = sc_read_binary(card, 0, buf, p15card->file_odf.size);
-	if (err < 0)
-		goto error;
-	if (err < 2) {
-		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
-		goto error;
+	defaults = find_defaults(buf, err);
+	if (defaults == NULL) {
+		memcpy(&tmppath, &p15card->file_app.path, sizeof(struct sc_path));
+		memcpy(tmppath.value + tmppath.len, "\x50\x31", 2);
+		tmppath.len += 2;
+		err = sc_select_file(card, &p15card->file_odf, &tmppath,
+				     SC_SELECT_FILE_BY_PATH);
+		if (err)
+			goto error;
+		err = sc_read_binary(card, 0, buf, p15card->file_odf.size);
+		if (err < 0)
+			goto error;
+		if (err < 2) {
+			err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
+			goto error;
+		}
+		len = err;
+		if (parse_odf(buf, len, p15card)) {
+			err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
+			goto error;
+		}
+		tmppath.len -= 2;
+		memcpy(tmppath.value + tmppath.len, "\x50\x32", 2);
+		tmppath.len += 2;
+	} else {
+		defaults->defaults_func(p15card, defaults->arg);
+		tmppath = p15card->file_tokeninfo.path;
 	}
-	len = err;
-	if (parse_odf(buf, len, p15card)) {
-		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
-		goto error;
-	}
-	tmppath.len -= 2;
-	memcpy(tmppath.value + tmppath.len, "\x50\x32", 2);
-	tmppath.len += 2;
 	err = sc_select_file(card, &p15card->file_tokeninfo, &tmppath,
 			     SC_SELECT_FILE_BY_PATH);
 	if (err)

@@ -98,16 +98,16 @@ struct sc_pkcs15_cert_info {
 	struct sc_path path;
 };
 
-#define SC_PCKS15_PRKEY_USAGE_ENCRYPT		0x01
-#define SC_PCKS15_PRKEY_USAGE_DECRYPT		0x02
-#define SC_PCKS15_PRKEY_USAGE_SIGN		0x04
-#define SC_PCKS15_PRKEY_USAGE_SIGNRECOVER	0x08
-#define SC_PCKS15_PRKEY_USAGE_WRAP		0x10
-#define SC_PCKS15_PRKEY_USAGE_UNWRAP		0x20
-#define SC_PCKS15_PRKEY_USAGE_VERIFY		0x40
-#define SC_PCKS15_PRKEY_USAGE_VERIFYRECOVER	0x80
-#define SC_PCKS15_PRKEY_USAGE_DERIVE		0x100
-#define SC_PCKS15_PRKEY_USAGE_NONREPUDIATION	0x200
+#define SC_PKCS15_PRKEY_USAGE_ENCRYPT		0x01
+#define SC_PKCS15_PRKEY_USAGE_DECRYPT		0x02
+#define SC_PKCS15_PRKEY_USAGE_SIGN		0x04
+#define SC_PKCS15_PRKEY_USAGE_SIGNRECOVER	0x08
+#define SC_PKCS15_PRKEY_USAGE_WRAP		0x10
+#define SC_PKCS15_PRKEY_USAGE_UNWRAP		0x20
+#define SC_PKCS15_PRKEY_USAGE_VERIFY		0x40
+#define SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER	0x80
+#define SC_PKCS15_PRKEY_USAGE_DERIVE		0x100
+#define SC_PKCS15_PRKEY_USAGE_NONREPUDIATION	0x200
 
 #define SC_PKCS15_PRKEY_ACCESS_SENSITIVE	0x01
 #define SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE	0x02
@@ -154,6 +154,12 @@ struct sc_pkcs15_card {
 #define SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED	0x02
 #define SC_PKCS15_CARD_FLAG_PRN_GENERATION	0x04
 #define SC_PKCS15_CARD_FLAG_EID_COMPLIANT	0x08
+
+struct sc_pkcs15_defaults {
+	const char *ef_dir_dump;
+	int (*defaults_func)(struct sc_pkcs15_card *, int arg);
+	int arg;
+};
 
 int sc_pkcs15_init(struct sc_card *card,
 		   struct sc_pkcs15_card **pkcs15_card);
@@ -209,5 +215,7 @@ int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
 
 int sc_pkcs15_parse_common_object_attr(struct sc_pkcs15_common_obj_attr *attr,
 				       const u8 * buf, int buflen);
+
+extern const struct sc_pkcs15_defaults sc_pkcs15_card_table[];
 
 #endif

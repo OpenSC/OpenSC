@@ -29,7 +29,7 @@
 const char *sc_version = OPENSC_VERSION;
 int sc_debug = 1;
 
-int _sc_sw_to_errorcode(int sw1, int sw2)
+int sc_sw_to_errorcode(int sw1, int sw2)
 {
 	switch (sw1) {
 	case 0x69:
@@ -439,10 +439,10 @@ int sc_select_file(struct sc_card *card,
 	if (apdu.no_response) {
 		if (apdu.sw1 == 0x61)
 			return 0;
-		return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+		return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 	}
 
-	r = _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	r = sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 	if (r)
 		return r;
 
@@ -498,7 +498,7 @@ int sc_read_binary(struct sc_card *card,
 	if (r)
 		return r;
 	if (apdu.resplen == 0)
-		return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+		return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 	memcpy(buf, recvbuf, apdu.resplen);
 
 	return apdu.resplen;
@@ -631,32 +631,22 @@ int sc_destroy_context(struct sc_context *ctx)
 	return 0;
 }
 
-const struct sc_defaults * find_defaults(const u8 *atr, int atrlen)
+static const struct sc_defaults * find_defaults(const u8 *atr, int atrlen)
 {
 	int i = 0;
 	const struct sc_defaults *match = NULL;
 
 	while (sc_card_table[i].atr != NULL) {
-		unsigned int byte;
-		u8 defatr[SC_MAX_ATR_SIZE], *p = defatr;
-		int len = 0;
+		u8 defatr[SC_MAX_ATR_SIZE];
+		int len = sizeof(defatr);
 		const struct sc_defaults *def = &sc_card_table[i];
 		const char *atrp = def->atr;
 		i++;
 
 		if (atrp == NULL)
 			break;
-		if (strlen(atrp)/3 > SC_MAX_ATR_SIZE)
+		if (sc_hex_to_bin(atrp, defatr, &len))
 			continue;
-		while (*atrp) {
-			if (sscanf(atrp, "%02X", (unsigned int *) &byte) != 1)
-				break;
-			*p++ = byte;
-			atrp += 2;
-			len++;
-			if (*atrp++ != ':')
-				break;
-		}
 		if (len != atrlen)
 			continue;
 		if (memcmp(atr, defatr, len) != 0)
@@ -676,6 +666,7 @@ int sc_connect_card(struct sc_context *ctx,
 	SCARD_READERSTATE_A rgReaderStates[SC_MAX_READERS];
 	LONG rv;
 	int i;
+	const struct sc_defaults *defaults;
 
 	assert(card_out != NULL);
 	if (reader >= ctx->reader_count || reader < 0)
@@ -709,9 +700,9 @@ int sc_connect_card(struct sc_context *ctx,
 	memcpy(card->atr, rgReaderStates[0].rgbAtr, i);
 	card->atr_len = i;
 
-	card->defaults = find_defaults(card->atr, card->atr_len);
-	if (card->defaults != NULL && card->defaults->defaults_func != NULL) {
-		card->defaults->defaults_func(card);
+	defaults = find_defaults(card->atr, card->atr_len);
+	if (defaults != NULL && defaults->defaults_func != NULL) {
+		defaults->defaults_func(card);
 	} else {
 		card->class = 0;	/* FIXME */
 	}
@@ -822,7 +813,7 @@ int sc_get_random(struct sc_card *card, u8 *rnd, int len)
 		if (r)
 			return r;
 		if (apdu.resplen != 8)
-			return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+			return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 		memcpy(rnd, apdu.resp, n);
 		len -= n;
 		rnd += n;
@@ -843,7 +834,7 @@ int sc_list_files(struct sc_card *card, u8 *buf, int buflen)
 	if (r)
 		return r;
 	if (apdu.resplen == 0)
-		return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+		return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 	return apdu.resplen;
 }
 
@@ -903,7 +894,7 @@ int sc_create_file(struct sc_card *card, const struct sc_file *file)
 	r = sc_transmit_apdu(card, &apdu);
 	if (r)
 		return r;
-	return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }
 
 int sc_delete_file(struct sc_card *card, int file_id)
@@ -927,7 +918,7 @@ int sc_delete_file(struct sc_card *card, int file_id)
 		return r;
 	if (apdu.resplen != 2)
 		return -1;
-	return _sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
 }
 
 int sc_file_valid(const struct sc_file *file)

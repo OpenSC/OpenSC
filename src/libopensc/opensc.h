@@ -130,7 +130,6 @@ struct sc_card {
 	char atr[SC_MAX_ATR_SIZE];
 	int atr_len;
 	
-	const struct sc_defaults *defaults;
 	pthread_mutex_t mutex;
 };
 
@@ -231,7 +230,7 @@ int sc_file_valid(const struct sc_file *file);
 void sc_hex_dump(const u8 *buf, int len);
 void sc_print_binary(FILE *f, const u8 *buf, int len);
 int sc_hex_to_bin(const char *in, u8 *out, int *outlen);
-int _sc_sw_to_errorcode(int sw1, int sw2);
+int sc_sw_to_errorcode(int sw1, int sw2);
 
 extern int sc_debug;
 extern const char *sc_version;
