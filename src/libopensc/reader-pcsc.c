@@ -25,10 +25,12 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <winscard.h>
 #include <time.h>
 #ifdef __APPLE__
-#include <wintypes.h>
+#include <PCSC/wintypes.h>
+#include <PCSC/winscard.h>
+#else
+#include <winscard.h>
 #endif
 
 /* Default timeout value for SCardGetStatusChange

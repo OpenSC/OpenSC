@@ -76,6 +76,9 @@ case "$host" in
 		blibpath="/usr/lib:/lib:/usr/local/lib"
 	fi
 	;;
+*-*-darwin*)
+	LIBS="$LIBS -lobjc"
+	;;
 esac
 
 dnl Allow user to specify flags
@@ -789,6 +792,15 @@ PCSC_MSG=no
 pcsc_path=/usr
 AC_SUBST(CFLAGS_PCSC)
 AC_SUBST(LIBPCSC)
+
+case $host in
+  *darwin*)
+	PCSC_MSG=yes
+	CFLAGS_PCSC=""
+	LIBPCSC="-Wl,-framework,PCSC"
+	;;
+esac
+
 saved_LIBS="$LIBS"
 saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
@@ -796,7 +808,7 @@ AC_ARG_WITH(pcsclite,
 	[  --with-pcsclite=PATH    use PC/SC Lite in PATH],
 	[pcsc_path=$withval])
 
-if test "$pcsc_path" != "no"; then
+if test "$pcsc_path" != "no" -a "x$PCSC_MSG" != "xyes"; then
 	AC_MSG_CHECKING(for PC/SC-Lite support)
 	for pcscdir in /pcsc ""; do
 		CPPFLAGS="$saved_CPPFLAGS"
@@ -828,7 +840,6 @@ if test "$pcsc_path" != "no"; then
 		AC_TRY_LINK([#include <stdlib.h>
 #include <winscard.h>],[SCardEstablishContext(0, NULL, NULL, NULL);], ac_cv_lib_pcsclite_SCardEstablishContext=yes)
 		if test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes"; then
-			AC_DEFINE(HAVE_PCSCLITE, 1, [Have PC/SC Lite])
 			PCSC_MSG=yes
 			break;
 		fi
@@ -844,7 +855,10 @@ if test "$pcsc_path" != "no"; then
 		LIBS="$saved_LIBS"
 	fi
 fi
-AM_CONDITIONAL(HAVE_PCSCLITE, test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes")
+AM_CONDITIONAL(HAVE_PCSCLITE, test "x$PCSC_MSG" = "xyes")
+if test "x$PCSC_MSG" = "xyes"; then
+	AC_DEFINE(HAVE_PCSCLITE, 1, [Have PC/SC Lite])
+fi
 
 dnl --enable-usbtoken option.
 AC_ARG_ENABLE(usbtoken, AC_HELP_STRING(
