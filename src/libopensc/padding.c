@@ -210,7 +210,7 @@ int sc_pkcs1_encode(struct sc_context *ctx, unsigned long flags,
 	const u8    *tmp = in;
 	unsigned int hash_algo, pad_algo;
 
-	hash_algo = flags & SC_ALGORITHM_RSA_HASHES;
+	hash_algo = flags & (SC_ALGORITHM_RSA_HASHES | SC_ALGORITHM_RSA_HASH_NONE);
 	pad_algo  = flags & SC_ALGORITHM_RSA_PADS;
 
 	if (hash_algo != SC_ALGORITHM_RSA_HASH_NONE) {
