@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
   struct sc_context *ctx = NULL;
   struct sc_card *card = NULL;
   struct sc_pkcs15_card *p15_card = NULL;
-  struct sc_pkcs15_pin_object pin;
+  struct sc_pkcs15_pin_info pin;
   char buf[16], buf2[16];
   
   int i,c ;
@@ -51,20 +51,22 @@ int main(int argc, char **argv) {
     return 1;
   }
   sc_pkcs15_print_card(p15_card);
-  return 0;
-  i = sc_pkcs15_read_certificate(p15_card, 0);
-  if (i) {
-    fprintf(stderr, "Certificate read failed with %d\n", i);
+  i = sc_pkcs15_enum_certificates(p15_card);
+  if (i < 0) {
+    fprintf(stderr, "Certificate enumeration failed with %s\n", sc_strerror(i));
     return 1;
   }
-
+  printf("%d certificates found.\n", i);
+  for (i = 0; i < p15_card->cert_count; i++)
+  	sc_pkcs15_print_cert_info(&p15_card->cert_info[i]);
+  
   return 0;
 
   printf("Searching for PIN codes...\n");
 
   c = 0;
-  while (sc_pkcs15_read_pin_object(p15_card, ++c, &pin) == 0) {
-  	sc_pkcs15_print_pin_object(&pin);
+  while (sc_pkcs15_read_pin_info(p15_card, ++c, &pin) == 0) {
+  	sc_pkcs15_print_pin_info(&pin);
   }
   c--;
   if (c == 0) {

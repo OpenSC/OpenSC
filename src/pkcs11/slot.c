@@ -64,7 +64,7 @@ static CK_ATTRIBUTE certificate[] = {
 int slot_connect(int id)
 {
 	struct sc_card *card;
-	struct sc_pkcs15_pin_object pin;
+	struct sc_pkcs15_pin_info pin;
 	int r, c = 0;
 
 	r = sc_connect_card(ctx, id, &card);
@@ -81,7 +81,7 @@ int slot_connect(int id)
 		return CKR_TOKEN_NOT_RECOGNIZED;
 	}
 
-	while (sc_pkcs15_read_pin_object(slot[id].p15card, ++c, &pin) == 0);
+	while (sc_pkcs15_read_pin_info(slot[id].p15card, ++c, &pin) == 0);
 	LOG("Found total of %d PIN codes.\n", c);
 	slot[id].flags = SLOT_CONNECTED;
 
