@@ -1394,6 +1394,13 @@ auth_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 			rv = SC_ERROR_INVALID_ARGUMENTS;
 			goto done;
 		}
+		else if (outlen < senv->key_size/8)   {
+			sc_error(card->ctx, "dechipher result length (%i) "
+					"should be at least key_size/8 (%i) bytes\n",
+					outlen, senv->key_size/8);
+			rv = SC_ERROR_INVALID_ARGUMENTS;
+			goto done;
+		}
 				
 		if (senv->key_size==2048)   {
 			int nn;
@@ -1406,7 +1413,7 @@ auth_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 			memcpy(sbuf, crgram, nn);
 			apdu.lc = nn;
 			apdu.datalen = nn;
-			apdu.le = outlen;
+			apdu.le = senv->key_size/8;
 			
 			rv = sc_transmit_apdu(card, &apdu);
 			SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
@@ -1438,7 +1445,7 @@ auth_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 	memcpy(sbuf, crgram, crgram_len);
 	apdu.lc = crgram_len;
 	apdu.datalen = crgram_len;
-	apdu.le = outlen;
+	apdu.le = senv->key_size/8;
 	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
 	
 	rv = sc_transmit_apdu(card, &apdu);
@@ -1446,7 +1453,7 @@ auth_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, rv, "Card returned error");
 	
-	if (apdu.resplen > outlen)   {
+	if (apdu.resplen > senv->key_size/8)   {
 		sc_error(card->ctx, "invalide response length %i\n", apdu.resplen);
 		rv = SC_ERROR_CARD_CMD_FAILED;
 		goto done;
