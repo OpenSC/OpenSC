@@ -19,7 +19,6 @@
  */
 
 #include "internal.h"
-#include "log.h"
 #include "ctbcs.h"
 #include <assert.h>
 #include <stdlib.h>

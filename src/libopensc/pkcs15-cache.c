@@ -20,7 +20,6 @@
 
 #include "internal.h"
 #include "pkcs15.h"
-#include "log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include "opensc.h"
+#include "log.h"
 #include <assert.h>
 
 #define SC_FILE_MAGIC			0x14426950

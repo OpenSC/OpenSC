@@ -19,8 +19,7 @@
  */
 
 #include "internal.h"
-#include "log.h"
-#include "opensc.h"
+#ifdef HAVE_PCSCLITE
 #include "ctbcs.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -608,3 +607,5 @@ const struct sc_reader_driver * sc_get_pcsc_driver()
 	
 	return &pcsc_drv;
 }
+
+#endif	/* HAVE_PCSCLITE */

@@ -19,7 +19,6 @@
  */
 
 #include "internal.h"
-#include "log.h"
 #include <string.h>
 
 static struct sc_card_operations emv_ops;

@@ -20,7 +20,6 @@
  */
 
 #include "internal.h"
-#include "log.h"
 #include "asn1.h"
 #include "cardctl.h"
 #include <string.h>

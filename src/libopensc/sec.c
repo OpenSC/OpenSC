@@ -19,7 +19,6 @@
  */
 
 #include "internal.h"
-#include "log.h"
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif

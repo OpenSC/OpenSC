@@ -21,10 +21,7 @@
  */
 
 #include "internal.h"
-#include "errors.h"
-#include "opensc.h"
 #include "cardctl.h"
-#include "log.h"
 #include <ctype.h>
 #include <string.h>
 

@@ -21,7 +21,6 @@
 #include "internal.h"
 #include "pkcs15.h"
 #include "asn1.h"
-#include "log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

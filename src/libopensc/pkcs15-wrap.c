@@ -18,10 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "opensc.h"
 #include "internal.h"
 #include "pkcs15.h"
-#include "log.h"
 #ifdef HAVE_OPENSSL
 #include <openssl/evp.h>
 #include <openssl/rand.h>

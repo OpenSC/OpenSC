@@ -4,6 +4,8 @@
  * Copyright (C) 2002  Andreas Jellinghaus <aj@dungeon.inka.de>
  */
 
+#include "internal.h"
+#ifdef HAVE_USBTOKEN
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,11 +15,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
-
-#include "opensc.h"
-#include "internal.h"
-#include "log.h"
+#endif
 
 /* we will create that many usbtoken readers */
 #define READERS 5
@@ -350,3 +350,5 @@ int usbtoken_reader_unlock(struct sc_reader *reader,
 	SC_FUNC_CALLED(reader->ctx, 4);
 	return usbtoken_reader_unix_cmd(reader, slot, 5);
 }
+
+#endif	/* HAVE_USBTOKEN */

@@ -4,6 +4,8 @@
  * Copyright (C) 2003  Olaf Kirch <okir@suse.de>
  */
 
+#include "internal.h"
+#ifdef HAVE_OPENCT
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,15 +14,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
-
+#endif
 #include <openct/openct.h>
 #include <openct/logging.h>
 #include <openct/error.h>
-
-#include "opensc.h"
-#include "internal.h"
-#include "log.h"
 
 /* If you set PREALLOCATE to a non-zero value, this backend
  * will allocate that many reader slots. This will allow hot-
@@ -445,3 +444,5 @@ openct_error(struct sc_reader *reader, int code)
 	}
 	return SC_ERROR_READER;
 }
+
+#endif	/* HAVE_OPENCT */

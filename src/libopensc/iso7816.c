@@ -20,8 +20,6 @@
 
 #include "internal.h"
 #include "asn1.h"
-#include "log.h"
-
 #include <assert.h>
 #include <ctype.h>
 #include <string.h>

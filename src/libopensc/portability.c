@@ -19,7 +19,6 @@
  */
 
 #include "internal.h"
-#include "opensc.h"
 #include <assert.h>
 #include <stdlib.h>
 #ifndef _WIN32

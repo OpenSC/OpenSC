@@ -20,7 +20,6 @@
  */
 
 #include "internal.h"
-#include "log.h"
 #include <stdarg.h>
 #include <stdlib.h>
 #include <assert.h>

@@ -39,6 +39,7 @@
 #define HAVE_GETOPT_H
 #define HAVE_IO_H
 #define HAVE_GETPASS
+#define HAVE_PCSCLITE
 
 /* %windir% is replaced by the path of the Windows directory,
  * this is C:\WINNT or C:\WINDOWS on most systems.

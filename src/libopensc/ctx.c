@@ -19,7 +19,6 @@
  */
 
 #include "internal.h"
-#include "log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,11 +69,11 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 };
 
 static const struct _sc_driver_entry internal_reader_drivers[] = {
-#if defined(HAVE_PCSCLITE) || defined(_WIN32)
+#if defined(HAVE_PCSCLITE)
 	{ "pcsc", (void *) sc_get_pcsc_driver, NULL },
 #endif
 #ifndef _WIN32
-        { "ctapi", (void *) sc_get_ctapi_driver, NULL },
+	{ "ctapi", (void *) sc_get_ctapi_driver, NULL },
 #ifdef HAVE_OPENCT
 	{ "openct", (void *) sc_get_openct_driver, NULL },
 #endif
