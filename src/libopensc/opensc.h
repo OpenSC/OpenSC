@@ -553,6 +553,8 @@ struct sc_card_operations {
 	int (*check_sw)(struct sc_card *card, int sw1, int sw2);
 	int (*card_ctl)(struct sc_card *card, unsigned long request,
 				void *data);
+	int (*process_fci)(struct sc_card *card, struct sc_file *file,
+			const u8 *buf, size_t buflen);
 
 	/* pin_cmd: verify/change/unblock command; optionally using the
 	 * card's pin pad if supported.

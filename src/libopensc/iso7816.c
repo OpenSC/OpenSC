@@ -274,9 +274,10 @@ static int iso7816_update_binary(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 3, count);
 }
 
-static void process_fci(struct sc_context *ctx, struct sc_file *file,
+int iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 		       const u8 *buf, size_t buflen)
 {
+	struct sc_context *ctx = card->ctx;
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p = buf;
 
@@ -373,6 +374,8 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 		sc_file_set_sec_attr(file, tag, taglen); 
 	}
 	file->magic = SC_FILE_MAGIC;
+
+	return 0;
 }
 
 static int iso7816_select_file(struct sc_card *card,
@@ -448,8 +451,10 @@ static int iso7816_select_file(struct sc_card *card,
 		if (file == NULL)
 			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 		file->path = *in_path;
+		if (card->ops->process_fci == NULL)
+			SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 		if (apdu.resp[1] <= apdu.resplen)
-			process_fci(card->ctx, file, apdu.resp+2, apdu.resp[1]);
+			card->ops->process_fci(card, file, apdu.resp+2, apdu.resp[1]);
 		*file_out = file;
 		break;
 	case 0x00:	/* proprietary coding */
@@ -967,6 +972,7 @@ struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.check_sw      = iso7816_check_sw;
 		iso_ops.pin_cmd	      = iso7816_pin_cmd;
 		iso_ops.logout        = iso7816_logout;
+		iso_ops.process_fci   = iso7816_process_fci;
 	}
 	return &iso_driver;
 }
