@@ -404,51 +404,6 @@ static CK_RV pkcs15_release_token(struct sc_pkcs11_card *p11card, void *fw_token
         return CKR_OK;
 }
 
-static CK_RV pkcs15_get_mechanism_list(struct sc_pkcs11_card *p11card,
-				       void *fw_token,
-				       CK_MECHANISM_TYPE_PTR pMechanismList,
-				       CK_ULONG_PTR pulCount)
-{
-	static const CK_MECHANISM_TYPE mechanism_list[] = {
-		CKM_RSA_PKCS,
-		CKM_RSA_X_509,
-	};
-        const int numMechanisms = sizeof(mechanism_list) / sizeof(mechanism_list[0]);
-
-	if (pMechanismList == NULL_PTR) {
-		*pulCount = numMechanisms;
-                return CKR_OK;
-	}
-
-	if (*pulCount < numMechanisms) {
-		*pulCount = numMechanisms;
-                return CKR_BUFFER_TOO_SMALL;
-	}
-        memcpy(pMechanismList, &mechanism_list, sizeof(mechanism_list));
-	*pulCount = numMechanisms;
-
-        return CKR_OK;
-}
-
-static CK_RV pkcs15_get_mechanism_info(struct sc_pkcs11_card *p11card,
-				       void *fw_token,
-				       CK_MECHANISM_TYPE type,
-				       CK_MECHANISM_INFO_PTR pInfo)
-{
-	switch (type) {
-	case CKM_RSA_PKCS:
-	case CKM_RSA_X_509:
-		/* FIXME: we should consult the card on what it supports */
-                pInfo->flags = CKF_HW | CKF_SIGN | CKF_UNWRAP;
-		pInfo->ulMinKeySize = 512;
-                pInfo->ulMaxKeySize = 2048;
-		break;
-	default:
-		return CKR_MECHANISM_INVALID;
-	}
-        return CKR_OK;
-}
-
 static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 			  void *fw_token,
 			  CK_USER_TYPE userType,
@@ -902,8 +857,6 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_unbind,
 	pkcs15_create_tokens,
 	pkcs15_release_token,
-	pkcs15_get_mechanism_list,
-	pkcs15_get_mechanism_info,
 	pkcs15_login,
         pkcs15_logout,
 	pkcs15_change_pin,
@@ -1136,14 +1089,15 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
 	int rv, flags = 0;
 
-	debug(context, "Initiating signing operation.\n");
+	debug(context, "Initiating signing operation, mechanism 0x%x.\n",
+				pMechanism->mechanism);
 
-	flags = SC_ALGORITHM_RSA_PAD_PKCS1;
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
 		/* Um. We need to guess what netscape is trying to
 		 * sign here. We're lucky that all these things have
 		 * different sizes. */
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1;
 		switch (ulDataLen) {
 		case 34:flags |= SC_ALGORITHM_RSA_HASH_MD5;  /* MD5 + header */
 			pData += 18; ulDataLen -= 18;
@@ -1163,10 +1117,18 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 			flags |= SC_ALGORITHM_RSA_HASH_NONE;
 		}
 		break;
+	case CKM_MD5_RSA_PKCS:
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_MD5;
+		break;
+	case CKM_SHA1_RSA_PKCS:
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA1;
+		break;
+	case CKM_RIPEMD160_RSA_PKCS:
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_RIPEMD160;
+		break;
 	case CKM_RSA_X_509:
 		flags = SC_ALGORITHM_RSA_RAW;
 		break;
-	/* CKM_SHA1_RSA_PKCS et al are handled at the mechanism layer */
 	default:
                 return CKR_MECHANISM_INVALID;
 	}
@@ -1583,6 +1545,13 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
+
+		/* If the card supports RAW, it should be all means
+		 * have registered everything else, too. If it didn't
+		 * we help it a little
+		 */
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1
+			|SC_ALGORITHM_RSA_HASHES;
 	}
 
 	/* Check for PKCS1 */

@@ -125,10 +125,6 @@ struct sc_pkcs11_framework_ops {
 	CK_RV (*create_tokens)(struct sc_pkcs11_card *);
         CK_RV (*release_token)(struct sc_pkcs11_card *, void *);
 
-	/* Methods to ask about supported object ops */
-	CK_RV (*get_mechanism_list)(struct sc_pkcs11_card *, void *, CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount);
-        CK_RV (*get_mechanism_info)(struct sc_pkcs11_card *, void *, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo);
-
 	/* Login and logout */
 	CK_RV (*login)(struct sc_pkcs11_card *, void *,
 				CK_USER_TYPE, CK_CHAR_PTR, CK_ULONG);

@@ -63,10 +63,9 @@ sc_pkcs11_find_mechanism(struct sc_pkcs11_card *p11card, CK_MECHANISM_TYPE mech,
 
 /*
  * Query mechanisms.
- * We do this by looping over all registered mechanisms and
- * checked whether it's supported by the current token.
- *
- * XXX: We may want to cache this list on a per slot/token basis
+ * All of this is greatly simplified by having the framework
+ * register all supported mechanisms at initialization
+ * time.
  */
 CK_RV
 sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *p11card,
@@ -86,7 +85,7 @@ sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *p11card,
 	}
 
 	rv = CKR_OK;
-	if (count > *pulCount)
+	if (pList && count > *pulCount)
 		rv = CKR_BUFFER_TOO_SMALL;
 	*pulCount = count;
 	return rv;
@@ -334,7 +333,6 @@ static CK_RV
 sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 			CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
-	CK_MECHANISM mechanism;
 	struct signature_data *data;
 	struct sc_pkcs11_object *key;
 	int rv;
@@ -353,16 +351,9 @@ sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 		data->buffer_len = len;
 	}
 
-	/* The mechanism we pass to the framework's sign operation
-	 * contains the parameters we got from the caller, plus
-	 * the mechanism type of the underlying signature operation */
-	mechanism = operation->mechanism;
-	if (data->info)
-		mechanism.mechanism = data->info->sign_mech;
-
 	key = data->key;
 	return key->ops->sign(operation->session,
-				key, &mechanism,
+				key, &operation->mechanism,
 				data->buffer, data->buffer_len,
 				pSignature, pulSignatureLen);
 }
