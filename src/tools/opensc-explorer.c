@@ -631,8 +631,8 @@ int do_verify(int argc, char **argv)
 				printf("Incorrect code, %d tries left.\n", tries_left);
 			else
 				printf("Incorrect code.\n");
-		}
-		printf("Unable to verify PIN code: %s\n", sc_strerror(r));
+		} else
+			printf("Unable to verify PIN code: %s\n", sc_strerror(r));
 		return -1;
 	}
 	printf("Code correct.\n");
