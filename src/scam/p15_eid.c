@@ -208,7 +208,7 @@ int p15_eid_qualify(scam_context * sctx, unsigned char *password)
 	return SCAM_SUCCESS;
 }
 
-static int format_eid_dir_path(const char *user, char **buf)
+static int format_eid_dir_path(const char *user, char **buf, uid_t *uid)
 {
 	struct passwd *pwent = getpwnam(user);
 	char *dir = NULL;
@@ -222,6 +222,8 @@ static int format_eid_dir_path(const char *user, char **buf)
 	strcat(dir, "/");
 	strcat(dir, eid_path);
 	*buf = dir;
+	if (uid)
+		*uid = pwent->pw_uid;
 	return SCAM_SUCCESS;
 }
 
@@ -230,27 +232,30 @@ static int is_eid_dir_present(const char *user)
 	char *eid_dir = NULL;
 	struct stat stbuf;
 	int r;
+	uid_t uid;
 
-	r = format_eid_dir_path(user, &eid_dir);
+	r = format_eid_dir_path(user, &eid_dir, &uid);
 	if (r != SCAM_SUCCESS)
 		return r;
-	r = stat(eid_dir, &stbuf);
-	/* FIXME: Check if owned by myself and if group/world-writable */
+	r = lstat(eid_dir, &stbuf);
+	/* Check if it is a real directory (no symlinks allowd),
+	   owned by myself and if group/world-writable */
 	free(eid_dir);
-	if (r)
-		return SCAM_FAILED;	/* User has no .eid, or .eid unreadable */
+	if (r || !S_ISDIR(stbuf.st_mode) || (stbuf.st_uid != uid) ||
+	    (stbuf.st_mode&(S_IWGRP|S_IWOTH)))
+		return SCAM_FAILED;	/* lstat() or security checks failed */
 	return SCAM_SUCCESS;
 }
 
-static int get_certificate(const char *user, X509 ** cert_out)
+static int get_certificate(const char *user, int idx, X509 ** cert_out)
 {
 	char *dir = NULL, *cert_path = NULL;
-	int r;
+	int i, r;
 	BIO *in = NULL;
 	X509 *cert = NULL;
 	int err = SCAM_FAILED;
 
-	r = format_eid_dir_path(user, &dir);
+	r = format_eid_dir_path(user, &dir, NULL);
 	if (r != SCAM_SUCCESS)
 		return r;
 	cert_path = (char *) malloc(strlen(dir) + strlen(auth_cert_file) + 2);
@@ -267,9 +272,13 @@ static int get_certificate(const char *user, X509 ** cert_out)
 	if (BIO_read_filename(in, cert_path) <= 0) {
 		goto end;
 	}
+	for (i = 0; i < idx; i++) {
+		if (cert)
+			X509_free(cert);
 	cert = PEM_read_bio_X509_AUX(in, NULL, NULL, NULL);
 	if (!cert)
 		goto end;
+	}
 	*cert_out = cert;
 	err = SCAM_SUCCESS;
       end:
@@ -282,12 +291,18 @@ static int get_certificate(const char *user, X509 ** cert_out)
 	return err;
 }
 
+#define MSGTYPE_NONE  0
+#define MSGTYPE_PRINT 1
+#define MSGTYPE_LOG   2
+
 int p15_eid_auth(scam_context * sctx, int argc, const char **argv,
 		 const char *user, const char *password)
 {
 	scam_method_data *data = (scam_method_data *) sctx->method_data;
 	u8 random_data[20], chg[256];
-	int r, err = SCAM_FAILED, chglen;
+	char last_msg[256];
+	int r, err = SCAM_FAILED, chglen, certidx;
+	int last_msgtype;
 	EVP_PKEY *pubkey = NULL;
 	X509 *cert = NULL;
 
@@ -296,34 +311,67 @@ int p15_eid_auth(scam_context * sctx, int argc, const char **argv,
 	}
 	r = is_eid_dir_present(user);
 	if (r != SCAM_SUCCESS) {
-		scam_print_msg(sctx, "No such user, user has no .eid directory or .eid unreadable.\n");
-		goto end;
+		scam_print_msg(sctx, "No such user, .eid dir unreadable, nonexistent or unsafe.\n");
+		return SCAM_FAILED;
 	}
-	r = get_certificate(user, &cert);
+
+	/* Loop over all certificates in the user's certificate file */
+	last_msgtype = MSGTYPE_NONE;
+	certidx = 0;
+	while (1) {
+		certidx++;
+		if (pubkey)
+			EVP_PKEY_free(pubkey);
+		if (cert)
+			X509_free(cert);
+		cert = NULL;
+		pubkey = NULL;
+		r = get_certificate(user, certidx, &cert);
 	if (r != SCAM_SUCCESS) {
-		scam_print_msg(sctx, "get_certificate failed.\n");
-		goto end;
+			if (certidx == 1) {
+				last_msgtype = MSGTYPE_PRINT;
+				snprintf(last_msg, sizeof(last_msg),
+					"get_certificate failed.\n");
+			}
+			switch (last_msgtype) {
+				case MSGTYPE_PRINT:
+					scam_print_msg(sctx, last_msg);
+				case MSGTYPE_LOG:
+					scam_log_msg(sctx, last_msg);
+					break;
+			}
+			break;
 	}
 	pubkey = X509_get_pubkey(cert);
 	if (!pubkey || pubkey->type != EVP_PKEY_RSA) {
-		scam_log_msg(sctx, "Invalid public key. (user %s)\n", user);
-		goto end;
+			last_msgtype = MSGTYPE_LOG;
+			snprintf(last_msg, sizeof(last_msg),
+				"Invalid public key. (user %s)\n", user);
+			continue;
 	}
 	chglen = RSA_size(pubkey->pkey.rsa);
 	if (chglen > sizeof(chg)) {
-		scam_print_msg(sctx, "RSA key too big.\n");
-		goto end;
+			last_msgtype = MSGTYPE_PRINT;
+			snprintf(last_msg, sizeof(last_msg),
+				"RSA key too big.\n");
+			continue;
 	}
 	r = scrandom_get_data(random_data, sizeof(random_data));
 	if (r < 0) {
-		scam_log_msg(sctx, "scrandom_get_data failed.\n");
-		goto end;
+			last_msgtype = MSGTYPE_LOG;
+			snprintf(last_msg, sizeof(last_msg),
+				"scrandom_get_data failed.\n");
+			continue;
 	}
 	RAND_seed(random_data, sizeof(random_data));
-	r = sc_pkcs15_verify_pin(data->p15card, (struct sc_pkcs15_pin_info *) data->pin->data, (const u8 *) password, strlen(password));
+		r = sc_pkcs15_verify_pin(data->p15card,
+			(struct sc_pkcs15_pin_info *) data->pin->data,
+			(const u8 *) password, strlen(password));
 	if (r != SC_SUCCESS) {
-		scam_print_msg(sctx, "sc_pkcs15_verify_pin: %s\n", sc_strerror(r));
-		goto end;
+			last_msgtype = MSGTYPE_PRINT;
+			snprintf(last_msg, sizeof(last_msg),
+				"sc_pkcs15_verify_pin: %s\n", sc_strerror(r));
+			continue;
 	}
 
 	/* We currently assume that all cards are capable of signing
@@ -340,23 +388,34 @@ int p15_eid_auth(scam_context * sctx, int argc, const char **argv,
 					| SC_ALGORITHM_RSA_HASH_SHA1,
 					random_data, 20, chg, chglen);
 	if (r < 0) {
-		scam_print_msg(sctx, "sc_pkcs15_compute_signature: %s\n", sc_strerror(r));
-		goto end;
+			last_msgtype = MSGTYPE_PRINT;
+			snprintf(last_msg, sizeof(last_msg),
+				"sc_pkcs15_compute_signature: %s\n",
+				sc_strerror(r));
+			continue;
 	}
 
-	r = RSA_verify(NID_sha1, random_data, 20, chg, chglen, pubkey->pkey.rsa);
+		r = RSA_verify(NID_sha1, random_data, 20, chg, chglen,
+			pubkey->pkey.rsa);
 	if (r != 1) {
-		scam_print_msg(sctx, "Signature verification failed.\n");
-		goto end;
+			last_msgtype = MSGTYPE_PRINT;
+			snprintf(last_msg, sizeof(last_msg),
+				"Signature verification failed.\n");
+			continue;
 	}
 	err = SCAM_SUCCESS;
-      end:
+		break;
+	}
+
 	if (pubkey)
 		EVP_PKEY_free(pubkey);
 	if (cert)
 		X509_free(cert);
 	return err;
 }
+#undef MSGTYPE_NONE
+#undef MSGTYPE_PRINT
+#undef MSGTYPE_LOG
 
 void p15_eid_deinit(scam_context * sctx)
 {
