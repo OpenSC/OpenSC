@@ -534,13 +534,16 @@ int main(void)
 			], []
 		)
 
-
 		if test -n "$found_crypto" ; then
 			# we found openssl, lets see if it 
 			# has an engine
 			CPPFLAGS="$saved_CPPFLAGS"
 			LDFLAGS="$saved_LDFLAGS"
-			if test -d "$ssldir/lib" ; then
+			if test -z "$ssldir" ; then
+				# we don't know where the library actually
+				# is; let linker take care of finding it
+				LIBCRYPTOA="-lcrypto -ldl"
+			elif test -d "$ssldir/lib" ; then
 				LIBCRYPTOA="$ssldir/lib/libcrypto.a -ldl"
 			else
 				LIBCRYPTOA="$ssldir/libcrypto.a -ldl"
