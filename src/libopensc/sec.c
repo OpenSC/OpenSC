@@ -81,7 +81,7 @@ int sc_restore_security_env(struct sc_card *card, int num)
 }
 
 int sc_decipher(struct sc_card *card,
-		const u8 * crgram, int crgram_len, u8 * out, int outlen)
+		const u8 * crgram, size_t crgram_len, u8 * out, size_t outlen)
 {
 	int r;
 	struct sc_apdu apdu;
@@ -114,8 +114,8 @@ int sc_decipher(struct sc_card *card,
 }
 
 int sc_compute_signature(struct sc_card *card,
-			 const u8 * data,
-			 int datalen, u8 * out, int outlen)
+			 const u8 * data, size_t datalen,
+			 u8 * out, size_t outlen)
 {
 	int r;
 	struct sc_apdu apdu;
@@ -147,7 +147,7 @@ int sc_compute_signature(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
-int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
+int sc_verify(struct sc_card *card, int ref, const u8 *pin, size_t pinlen,
 	      int *tries_left)
 {
 	struct sc_apdu apdu;
@@ -176,7 +176,7 @@ int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
 }
 
 int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
-			     int oldlen, const u8 *new, int newlen,
+			     size_t oldlen, const u8 *new, size_t newlen,
 			     int *tries_left)
 {
 	struct sc_apdu apdu;
@@ -208,7 +208,7 @@ int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
 }
 
 int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
-			   int puklen, const u8 *new, int newlen)
+			   size_t puklen, const u8 *new, size_t newlen)
 {
 	struct sc_apdu apdu;
 	u8 sbuf[MAX_BUFFER_SIZE];

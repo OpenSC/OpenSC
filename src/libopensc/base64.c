@@ -93,7 +93,7 @@ static int from_base64(const char *in, unsigned int *out, int *skip)
 	return c * 6 / 8;
 }
 
-int sc_base64_encode(const u8 *in, int len, u8 *out, int outlen, int linelength)
+int sc_base64_encode(const u8 *in, size_t len, u8 *out, size_t outlen, size_t linelength)
 {
 	unsigned int i, chars = 0;
 	int c;
@@ -145,7 +145,7 @@ int sc_base64_encode(const u8 *in, int len, u8 *out, int outlen, int linelength)
 	return 0;
 }
 
-int sc_base64_decode(const char *in, u8 *out, int outlen)
+int sc_base64_decode(const char *in, u8 *out, size_t outlen)
 {
 	int len = 0, r, i, skip;
 	

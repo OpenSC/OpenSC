@@ -113,21 +113,22 @@ struct sc_object_id {
 
 struct sc_path {
 	u8 value[SC_MAX_PATH_SIZE];
-	int len;
+	size_t len;
 	int index;
 };
 
 struct sc_file {
 	struct sc_path path;
 	u8 name[16];
-	int namelen;
+	size_t namelen;
 
 	int type, shareable, ef_structure;
-	int size, id;
+	size_t size;
+	int id;
 	u8 sec_attr[SC_MAX_SEC_ATTR_SIZE];
-	int sec_attr_len;
+	size_t sec_attr_len;
 	u8 prop_attr[SC_MAX_SEC_ATTR_SIZE];
-	int prop_attr_len;
+	size_t prop_attr_len;
 	unsigned int magic;
 };
 
@@ -194,7 +195,7 @@ struct sc_card {
 	SCARDHANDLE pcsc_card;
 	int reader;
 	u8 atr[SC_MAX_ATR_SIZE];
-	int atr_len;
+	size_t atr_len;
 	
 	pthread_mutex_t mutex;
 	struct sc_card_operations *ops;
@@ -213,14 +214,14 @@ struct sc_context {
 struct sc_apdu {
 	int cse;		/* APDU case */
 	u8 cla, ins, p1, p2;
-	int lc, le;
+	size_t lc, le;
 	const u8 *data;		/* C-APDU */
-	int datalen;		/* length of C-APDU */
+	size_t datalen;		/* length of C-APDU */
 	u8 *resp;		/* R-APDU */
-	int resplen;		/* length of R-APDU */
+	size_t resplen;		/* length of R-APDU */
 	int no_response;	/* No response required */
 
-	int sw1, sw2;
+	unsigned int sw1, sw2;
 };
 
 
@@ -231,14 +232,14 @@ struct sc_defaults {
 };
 
 /* Base64 encoding/decoding functions */
-int sc_base64_encode(const u8 *in, int inlen, u8 *out, int outlen,
-		     int linelength);
-int sc_base64_decode(const char *in, u8 *out, int outlen);
+int sc_base64_encode(const u8 *in, size_t inlen, u8 *out, size_t outlen,
+		     size_t linelength);
+int sc_base64_decode(const char *in, u8 *out, size_t outlen);
 
 /* APDU handling functions */
 int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
-int sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu, u8 cse, u8 ins,
-		   u8 p1, u8 p2);
+void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu, int cse, int ins,
+		    int p1, int p2);
 
 int sc_establish_context(struct sc_context **ctx);
 int sc_destroy_context(struct sc_context *ctx);
@@ -263,24 +264,24 @@ int sc_unlock(struct sc_card *card);
 /* ISO 7816-4 related functions */
 int sc_select_file(struct sc_card *card, struct sc_file *file,
 		   const struct sc_path *path, int pathtype);
-int sc_read_binary(struct sc_card *card, int idx, u8 * buf, int count);
-int sc_get_random(struct sc_card *card, u8 * rndout, int len);
+int sc_read_binary(struct sc_card *card, int idx, u8 * buf, size_t count);
+int sc_get_random(struct sc_card *card, u8 * rndout, size_t len);
 
 /* ISO 7816-8 related functions */
 int sc_restore_security_env(struct sc_card *card, int se_num);
 int sc_set_security_env(struct sc_card *card,
 			const struct sc_security_env *env);
-int sc_decipher(struct sc_card *card, const u8 * crgram, int crgram_len,
-		u8 * out, int outlen);
+int sc_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
+		u8 * out, size_t outlen);
 int sc_compute_signature(struct sc_card *card, const u8 * data,
-			 int data_len, u8 * out, int outlen);
-int sc_verify(struct sc_card *card, int ref, const u8 *buf, int buflen,
+			 size_t data_len, u8 * out, size_t outlen);
+int sc_verify(struct sc_card *card, int ref, const u8 *buf, size_t buflen,
 	      int *tries_left);
 int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
-			     int oldlen, const u8 *newref, int newlen,
+			     size_t oldlen, const u8 *newref, size_t newlen,
 			     int *tries_left);
 int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
-			   int puklen, const u8 *newref, int newlen);
+			   size_t puklen, const u8 *newref, size_t newlen);
 
 /* ISO 7816-9 */
 int sc_create_file(struct sc_card *card, const struct sc_file *file);
@@ -294,7 +295,7 @@ const char *sc_strerror(int error);
 /* Internal use only */
 int sc_file_valid(const struct sc_file *file);
 void sc_print_binary(FILE *f, const u8 *buf, int len);
-int sc_hex_to_bin(const char *in, u8 *out, int *outlen);
+int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2);
 
 extern const char *sc_version;

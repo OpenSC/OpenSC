@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
 #include "opensc.h"
 #include "sc-log.h"
 #include "sc-asn1.h"
@@ -43,7 +45,9 @@ int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2)
 		case 0x82:
 			return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 		default:
+			break;
 		}
+		break;
 	case 0x6A:
 		switch (sw2) {
 		case 0x81:
@@ -55,7 +59,9 @@ int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2)
 		case 0x87:
 			return SC_ERROR_INVALID_ARGUMENTS;
 		default:
+			break;
 		}
+		break;
 	case 0x6D:
 		return SC_ERROR_NOT_SUPPORTED;
 	case 0x6E:
@@ -81,17 +87,18 @@ void sc_print_binary(FILE *f, const u8 *buf, int count)
 			format = "%c";
 		fprintf(f, format, c);
 	}
-	fflush(f);
+	(void) fflush(f);
 }
 
-int sc_hex_to_bin(const char *in, u8 *out, int *outlen)
+int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 {
-	int c = 0, err = 0, left;
+	int err = 0;
+	size_t left, c = 0;
 
 	assert(in != NULL && out != NULL && outlen != NULL);
         left = *outlen;
 
-	while (*in) {
+	while (*in != (char) 0) {
 		int byte;
 
 		if (sscanf(in, "%02X", &byte) != 1) {
@@ -105,7 +112,7 @@ int sc_hex_to_bin(const char *in, u8 *out, int *outlen)
                         err = SC_ERROR_BUFFER_TOO_SMALL;
 			break;
 		}
-		*out++ = byte;
+		*out++ = (u8) byte;
 		left--;
 		c++;
 	}
@@ -117,11 +124,11 @@ int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 {
 	switch (apdu->cse) {
 	case SC_APDU_CASE_1:
-		if (apdu->datalen)
+		if (apdu->datalen > 0)
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_APDU_CASE_2_SHORT:
-		if (apdu->datalen)
+		if (apdu->datalen > 0)
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		if (apdu->resplen < apdu->le)
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
@@ -151,7 +158,7 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 	DWORD dwSendLength, dwRecvLength;
 	LONG rv;
 	u8 *data = s;
-	int data_bytes = apdu->lc;
+	size_t data_bytes = apdu->lc;
 
 	if (data_bytes == 0)
 		data_bytes = 256;
@@ -163,27 +170,27 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 	case SC_APDU_CASE_1:
 		break;
 	case SC_APDU_CASE_2_SHORT:
-		*data++ = apdu->le;
+		*data++ = (u8) apdu->le;
 		break;
 	case SC_APDU_CASE_2_EXT:
-		*data++ = 0;
-		*data++ = apdu->le >> 8;
-		*data++ = apdu->le & 0xFF;
+		*data++ = (u8) 0;
+		*data++ = (u8) (apdu->le >> 8);
+		*data++ = (u8) (apdu->le & 0xFF);
 		break;
 	case SC_APDU_CASE_3_SHORT:
-		*data++ = apdu->lc;
+		*data++ = (u8) apdu->lc;
 		if (apdu->datalen != data_bytes)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		memcpy(data, apdu->data, data_bytes);
 		data += data_bytes;
 		break;
 	case SC_APDU_CASE_4_SHORT:
-		*data++ = apdu->lc;
+		*data++ = (u8) apdu->lc;
 		if (apdu->datalen != data_bytes)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		memcpy(data, apdu->data, data_bytes);
 		data += data_bytes;
-		*data++ = apdu->le;
+		*data++ = (u8) apdu->le;
 		break;
 	}
 
@@ -199,7 +206,7 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 	if (card->ctx->debug >= 5) {
 		char buf[2048];
 		
-		sc_hex_dump(card->ctx, s, dwSendLength, buf, sizeof(buf));
+		sc_hex_dump(card->ctx, s, (size_t) dwSendLength, buf, sizeof(buf));
 		debug(card->ctx, "Sending %d bytes (resp. %d bytes):\n%s",
 			dwSendLength, dwRecvLength, buf);
 	}
@@ -222,15 +229,15 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 	}
 	if (dwRecvLength < 2)
 		return SC_ERROR_ILLEGAL_RESPONSE;
-	apdu->sw1 = r[dwRecvLength-2];
-	apdu->sw2 = r[dwRecvLength-1];
+	apdu->sw1 = (unsigned int) r[dwRecvLength-2];
+	apdu->sw2 = (unsigned int) r[dwRecvLength-1];
 	dwRecvLength -= 2;
-	if (dwRecvLength > apdu->resplen)
-		dwRecvLength = apdu->resplen;
+	if ((size_t) dwRecvLength > apdu->resplen)
+		dwRecvLength = (DWORD) apdu->resplen;
 	else
-		apdu->resplen = dwRecvLength;
-	if (dwRecvLength)
-		memcpy(apdu->resp, r, dwRecvLength);
+		apdu->resplen = (size_t) dwRecvLength;
+	if (dwRecvLength > 0)
+		memcpy(apdu->resp, r, (size_t) dwRecvLength);
 
 	return 0;
 }
@@ -247,8 +254,8 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	if (card->ctx->debug >= 5) {
 		char buf[2048];
 
-		buf[0] = 0;
-		if (apdu->resplen) {
+		buf[0] = '\0';
+		if (apdu->resplen > 0) {
 			sc_hex_dump(card->ctx, apdu->resp, apdu->resplen,
 				    buf, sizeof(buf));
 		}
@@ -259,16 +266,16 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 		struct sc_apdu rspapdu;
 		BYTE rsp[SC_MAX_APDU_BUFFER_SIZE];
 
-		if (apdu->no_response)
+		if (apdu->no_response != 0)
 			return 0;
 
 		sc_format_apdu(card, &rspapdu, SC_APDU_CASE_2_SHORT,
 			       0xC0, 0, 0);
-		rspapdu.le = apdu->sw2;
+		rspapdu.le = (size_t) apdu->sw2;
 		rspapdu.resp = rsp;
-		rspapdu.resplen = apdu->sw2;
+		rspapdu.resplen = (size_t) apdu->sw2;
 		r = sc_transceive_t0(card, &rspapdu);
-		if (r) {
+		if (r != 0) {
 			error(card->ctx, "error while getting response: %s\n",
 			      sc_strerror(r));
 			return r;
@@ -293,20 +300,19 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	return 0;
 }
 
-int sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
-		   unsigned char cse, unsigned char ins,
-		   unsigned char p1, unsigned char p2)
+void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
+		   int cse, int ins, int p1, int p2)
 {
 	assert(card != NULL && apdu != NULL);
 	memset(apdu, 0, sizeof(*apdu));
-	apdu->cla = card->cla;
+	apdu->cla = (u8) card->cla;
 	apdu->cse = cse;
-	apdu->ins = ins;
-	apdu->p1 = p1;
-	apdu->p2 = p2;
+	apdu->ins = (u8) ins;
+	apdu->p1 = (u8) p1;
+	apdu->p2 = (u8) p2;
 	apdu->no_response = 0;
 	
-	return 0;
+	return;
 }
 
 int sc_detect_card(struct sc_context *ctx, int reader)

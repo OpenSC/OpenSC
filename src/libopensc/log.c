@@ -130,8 +130,8 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 	}
 }
 
-void sc_hex_dump(struct sc_context *ctx, const u8 *in, int count,
-		 char *buf, int len)
+void sc_hex_dump(struct sc_context *ctx, const u8 *in, size_t count,
+		 char *buf, size_t len)
 {
 	u8 *p = buf;
 	int lines = 0;
