@@ -127,7 +127,6 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	sc_format_asn1_entry(asn1_dsakey_value_attr + 1, asn1_dsakey_i_p_attr, NULL, 0);
 	sc_format_asn1_entry(asn1_dsakey_i_p_attr + 0, &info.path, NULL, 0);
 
-	sc_format_asn1_entry(asn1_dsakey_attr + 0, &info.path, NULL, 0);
 
 	sc_format_asn1_entry(asn1_com_key_attr + 0, &info.id, NULL, 0);
 	sc_format_asn1_entry(asn1_com_key_attr + 1, &info.usage, &usage_len, 0);
@@ -201,8 +200,7 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 		break;
 	case SC_PKCS15_TYPE_PRKEY_DSA:
 		sc_format_asn1_entry(asn1_prkey + 1, &dsa_prkey_obj, NULL, 1);
-		sc_format_asn1_entry(asn1_prk_dsa_attr + 0, asn1_dsakey_attr, NULL, 1);
-		sc_format_asn1_entry(asn1_dsakey_attr + 0, asn1_dsakey_value_attr, 0, 1);
+		sc_format_asn1_entry(asn1_prk_dsa_attr + 0, asn1_dsakey_value_attr, 0, 1);
 		if (prkey->path.type != SC_PATH_TYPE_PATH_PROT) {
 			/* indirect: just add the path */
 			sc_format_asn1_entry(asn1_dsakey_value_attr + 0,
