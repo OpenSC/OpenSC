@@ -1644,20 +1644,40 @@ int
 gpk_get_info(struct sc_card *card, u8 p1, u8 p2, u8 *buf, size_t buflen)
 {
 	struct sc_apdu	apdu;
-	int	r;
+	int	r, retry = 0;
 
-	memset(&apdu, 0, sizeof(apdu));
-	apdu.cse = SC_APDU_CASE_2_SHORT;
-	apdu.cla = 0x80;
-	apdu.ins = 0xC0;
-	apdu.p1  = p1;
-	apdu.p2  = p2;
-	apdu.le  = buflen;
-	apdu.resp = buf;
-	apdu.resplen = buflen;
+	/* We may have to retry the get info command. It
+	 * returns 6B00 if a previous command returned a 61xx response,
+	 * but the host failed to collect the results.
+	 *
+	 * Note the additional sc_lock/sc_unlock pair, which
+	 * is required to prevent sc_transmit_apdu from 
+	 * calling logout(), which in turn does a SELECT MF
+	 * without collecting the response :)
+	 */
+	r = sc_lock(card);
+	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	do {
+		memset(&apdu, 0, sizeof(apdu));
+		apdu.cse = SC_APDU_CASE_2_SHORT;
+		apdu.cla = 0x80;
+		apdu.ins = 0xC0;
+		apdu.p1  = p1;
+		apdu.p2  = p2;
+		apdu.le  = buflen;
+		apdu.resp = buf;
+		apdu.resplen = buflen;
+
+		if ((r = sc_transmit_apdu(card, &apdu)) < 0) {
+			sc_error(card->ctx, "APDU transmit failed: %s",
+					sc_strerror(r));
+			sc_unlock(card);
+			return r;
+		}
+	} while (apdu.sw1 == 0x6B && apdu.sw2 == 0x00 && retry++ < 1);
+	sc_unlock(card);
+
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 
