@@ -275,3 +275,43 @@ change_pin:
 	sc_unlock(card);
 	return r;
 }
+
+/*
+ * Unblock a PIN.
+ */
+int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
+			 struct sc_pkcs15_pin_info *pin,
+			 const u8 *puk, size_t puklen,
+			 const u8 *newpin, size_t newpinlen)
+{
+	int r;
+	struct sc_card *card;
+
+	assert(p15card != NULL);
+	if (pin->magic != SC_PKCS15_PIN_MAGIC)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	/* pin change with pin pad reader not yet supported */
+	if ((p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) &&
+		(newpin == NULL || newpinlen == 0))
+			return SC_ERROR_NOT_SUPPORTED;
+
+	if (newpinlen > pin->max_length)
+		return SC_ERROR_INVALID_PIN_LENGTH;
+	if (newpinlen < pin->min_length)
+		return SC_ERROR_INVALID_PIN_LENGTH;
+
+	card = p15card->card;
+	r = sc_lock(card);
+	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
+	r = sc_select_file(card, &pin->path, NULL);
+	if (r) {
+		sc_unlock(card);
+		return r;
+	}
+unblock_pin:
+        r = sc_reset_retry_counter (card, SC_AC_CHV, pin->reference,
+				puk, puklen, newpin, newpinlen);
+	sc_unlock(card);
+	return r;
+}

@@ -29,7 +29,7 @@ const char *app_name = "pkcs15-tool";
 
 int opt_reader = -1, opt_debug = 0, opt_wait = 0;
 int opt_no_cache = 0;
-char * opt_pin_id;
+char * opt_auth_id;
 char * opt_cert = NULL;
 char * opt_pubkey = NULL;
 char * opt_outfile = NULL;
@@ -59,6 +59,7 @@ const struct option options[] = {
 	{ "read-data-object",	1, 0, 		'R' },
 	{ "list-data-objects",	0, 0,		'C' },
 	{ "list-pins",		0, 0,		OPT_LIST_PINS },
+	{ "unblock-pin",	0, 0,		'u' },
 	{ "change-pin",		0, 0,		OPT_CHANGE_PIN },
 	{ "list-keys",          0, 0,           'k' },
 	{ "list-public-keys",	0, 0,		OPT_LIST_PUB },
@@ -68,7 +69,7 @@ const struct option options[] = {
 	{ "quiet",		0, 0,		'q' },
 	{ "debug",		0, 0,		'd' },
 	{ "no-cache",		0, 0,		OPT_NO_CACHE },
-	{ "pin-id",		1, 0,		'p' },
+	{ "auth-id",		1, 0,		'a' },
 	{ "wait",		0, 0,		'w' },
 	{ 0, 0, 0, 0 }
 };
@@ -80,6 +81,7 @@ const char *option_help[] = {
 	"Reads data object with ID <arg>",
 	"Lists data objects",
 	"Lists PIN codes",
+	"Unblock PIN code",
 	"Changes the PIN code",
 	"Lists private keys",
 	"Lists public keys",
@@ -511,7 +513,7 @@ u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
 	if (pin_out != NULL)
 		pinfo = *pin_out;
 
-	if (pinfo == NULL && opt_pin_id == NULL) {
+	if (pinfo == NULL && opt_auth_id == NULL) {
                 r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 		if (r < 0) {
 			fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
@@ -524,10 +526,10 @@ u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
                 obj = objs[0];
 		pinfo = (struct sc_pkcs15_pin_info *) obj->data;
 	} else if (pinfo == NULL) {
-		struct sc_pkcs15_id pin_id;
+		struct sc_pkcs15_id auth_id;
 		
-		sc_pkcs15_hex_string_to_id(opt_pin_id, &pin_id);
-		r = sc_pkcs15_find_pin_by_auth_id(p15card, &pin_id, &obj);
+		sc_pkcs15_hex_string_to_id(opt_auth_id, &auth_id);
+		r = sc_pkcs15_find_pin_by_auth_id(p15card, &auth_id, &obj);
 		if (r) {
 			fprintf(stderr, "Unable to find PIN code: %s\n", sc_strerror(r));
 			return NULL;
@@ -611,6 +613,46 @@ int list_pins(void)
 		print_pin_info(objs[i]);
 		printf("\n");
 	}
+	return 0;
+}
+
+int unblock_pin(void)
+{
+	struct sc_pkcs15_pin_info *pinfo = NULL;
+	u8 *pin, *puk;
+	int r;
+	
+	puk = get_pin("Enter PUK", &pinfo);
+	if (puk == NULL)
+		return 2;
+	while (1) {
+		u8 *pin2;
+
+		pin = get_pin("Enter new PIN", &pinfo);
+		if (pin == NULL || strlen((char *) pin) == 0)
+			return 2;
+		pin2 = get_pin("Enter new PIN again", &pinfo);
+		if (pin2 == NULL || strlen((char *) pin2) == 0)
+			return 2;
+		if (strcmp((char *) pin, (char *) pin2) == 0) {
+			free(pin2);
+			break;
+		}
+		printf("PIN codes do not match, try again.\n");
+		free(pin);
+		free(pin2);
+	}
+	r = sc_pkcs15_unblock_pin(p15card, pinfo, puk, strlen((char *) puk),
+				 pin, strlen((char *) pin));
+	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
+		fprintf(stderr, "PUK code incorrect; tries left: %d\n", pinfo->tries_left);
+		return 3;
+	} else if (r) {
+		fprintf(stderr, "PIN unblocking failed: %s\n", sc_strerror(r));
+		return 2;
+	}
+	if (!quiet)
+		printf("PIN successfully unblocked.\n");
 	return 0;
 }
 
@@ -753,11 +795,12 @@ int main(int argc, char * const argv[])
 	int do_list_pubkeys = 0;
 	int do_read_pubkey = 0;
 	int do_change_pin = 0;
+	int do_unblock_pin = 0;
 	int do_learn_card = 0;
 	int action_count = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:cko:qdp:LR:Cw", options, &long_optind);
+		c = getopt_long(argc, argv, "r:cuko:qda:LR:Cw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -783,6 +826,10 @@ int main(int argc, char * const argv[])
 			break;
 		case OPT_CHANGE_PIN:
 			do_change_pin = 1;
+			action_count++;
+			break;
+		case 'u':
+			do_unblock_pin = 1;
 			action_count++;
 			break;
 		case OPT_LIST_PINS:
@@ -818,8 +865,8 @@ int main(int argc, char * const argv[])
 		case 'd':
 			opt_debug++;
 			break;
-		case 'p':
-			opt_pin_id = optarg;
+		case 'a':
+			opt_auth_id = optarg;
 			break;
 		case OPT_NO_CACHE:
 			opt_no_cache++;
@@ -909,6 +956,11 @@ int main(int argc, char * const argv[])
 	}
 	if (do_change_pin) {
 		if ((err = change_pin()))
+			goto end;
+		action_count--;
+	}
+	if (do_unblock_pin) {
+		if ((err = unblock_pin()))
 			goto end;
 		action_count--;
 	}

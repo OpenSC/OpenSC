@@ -454,6 +454,10 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_pin_info *pin,
 			 const u8 *oldpincode, size_t oldpinlen,
 			 const u8 *newpincode, size_t newpinlen);
+int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *card,
+			 struct sc_pkcs15_pin_info *pin,
+			 const u8 *puk, size_t puklen,
+			 const u8 *newpin, size_t newpinlen);
 int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
 				  const struct sc_pkcs15_id *id,
 				  struct sc_pkcs15_object **out);
