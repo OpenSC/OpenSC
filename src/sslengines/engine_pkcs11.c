@@ -65,9 +65,9 @@ char *get_pin(UI_METHOD * ui_method, char *sc_pin, int maxlen)
 	UI *ui;
 
 	ui = UI_new();
-	if (ui_method != NULL)
-	    UI_set_method(ui, ui_method);
-	if (!UI_add_input_string(ui, "SmartCard PIN: ", 0, sc_pin, 1, maxlen)) {
+	if (ui_method)
+		UI_set_method(ui, ui_method);
+	if (!UI_add_input_string(ui, "PKCS#11 token PIN: ", 0, sc_pin, 1, maxlen)) {
 		fprintf(stderr, "UI_add_input_string failed\n");
 		UI_free(ui);
 		return NULL;
@@ -148,7 +148,7 @@ static int hex_to_bin(const char *in, unsigned char *out, size_t * outlen)
 		if (*in == ':')
 			in++;
 		if (left <= 0) {
-			fprintf(stderr,"hex_to_bin(): hex string too long");
+			fprintf(stderr,"hex_to_bin(): hex string too long\n");
 			*outlen = 0;
 			return 0;
 		}
@@ -329,7 +329,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 		if (logged_in || !tok->loginRequired)
 			break;
 		if (pin == NULL) {
-			pin = (char *) malloc(12);
+			pin = (char *) calloc(12, sizeof(char));
 			get_pin(ui_method, pin, 12);
 		}
 		if (PKCS11_login(slot, 0, pin)) {
@@ -337,7 +337,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 				free(pin);
 				pin = NULL;
 			}
-			fail("Card login failed\n");
+			fail("Login failed\n");
 		}
 		logged_in++;
 	}

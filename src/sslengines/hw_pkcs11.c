@@ -183,11 +183,11 @@ static int bind_helper(ENGINE * e)
 static int bind_fn(ENGINE * e, const char *id)
 {
 	if (id && (strcmp(id, PKCS11_ENGINE_ID) != 0)) {
-		fprintf(stderr, "bad engine id");
+		fprintf(stderr, "bad engine id\n");
 		return 0;
 	}
 	if (!bind_helper(e)) {
-		fprintf(stderr, "bind failed");
+		fprintf(stderr, "bind failed\n");
 		return 0;
 	}
 	return 1;

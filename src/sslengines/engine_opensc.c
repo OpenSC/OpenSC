@@ -66,24 +66,20 @@ int opensc_init(void)
 	int r = 0;
 
 	if (verbose)
-		fprintf(stderr, "initializing engine");
-
+		fprintf(stderr, "initializing engine\n");
 	r = sc_establish_context(&ctx, "openssl");
 	if (r)
 		goto err;
-
 	r = sc_connect_card(ctx->reader[sc_reader_id], 0, &card);
 	if (r)
 		goto err;
 	r = sc_pkcs15_bind(card, &p15card);
 	if (r)
 		goto err;
-	return 1;
-err:
-	/* need to do engine stuff? */
-	fprintf(stderr, "error: %d", r);
-	opensc_finish();
 	return 0;
+err:
+	opensc_finish();
+	return r;
 }
 
 int opensc_rsa_finish(RSA * rsa)
@@ -130,7 +126,7 @@ int sc_prkey_op_init(const RSA * rsa, struct sc_pkcs15_object **key_obj_out,
 
 	key_id = (struct sc_pkcs15_id *) RSA_get_app_data(rsa);
 	if (key_id == NULL) {
-		fprintf(stderr, "key not loaded yet");
+		fprintf(stderr, "key not loaded yet\n");
 		return -1;
 	}
 
@@ -138,20 +134,20 @@ int sc_prkey_op_init(const RSA * rsa, struct sc_pkcs15_object **key_obj_out,
 		opensc_finish();
 		r = opensc_init();
 		if (r) {
-			fprintf(stderr, "SmartCard init failed: %s", sc_strerror(r));
+			fprintf(stderr, "SmartCard init failed: %s\n", sc_strerror(r));
 			goto err;
 		}
 	}
 	r = sc_pkcs15_find_prkey_by_id_usage(p15card, key_id, usage, &key_obj);
 	if (r) {
-		fprintf(stderr, "Unable to find private key from SmartCard: %s",
+		fprintf(stderr, "Unable to find private key from SmartCard: %s\n",
 			sc_strerror(r));
 		goto err;
 	}
 	key = (struct sc_pkcs15_prkey_info *) key_obj->data;
 	r = sc_pkcs15_find_pin_by_auth_id(p15card, &key_obj->auth_id, &pin_obj);
 	if (r) {
-		fprintf(stderr, "Unable to find PIN object from SmartCard: %s",
+		fprintf(stderr, "Unable to find PIN object from SmartCard: %s\n",
 			sc_strerror(r));
 		goto err;
 	}
@@ -159,7 +155,7 @@ int sc_prkey_op_init(const RSA * rsa, struct sc_pkcs15_object **key_obj_out,
 
 	r = sc_lock(card);
 	if (r) {
-		fprintf(stderr, "Unable to lock smartcard: %s", sc_strerror(r));
+		fprintf(stderr, "Unable to lock smartcard: %s\n", sc_strerror(r));
 		goto err;
 	}
 	if (sc_pin != NULL) {
@@ -167,14 +163,14 @@ int sc_prkey_op_init(const RSA * rsa, struct sc_pkcs15_object **key_obj_out,
 					 strlen(sc_pin));
 		if (r) {
 			sc_unlock(card);
-			fprintf(stderr, "PIN code verification failed: %s",
+			fprintf(stderr, "PIN code verification failed: %s\n",
 				sc_strerror(r));
 			/* forget the pin if verification fails */
 			unset_pin();
 			goto err;
 		}
 	} else {
-		fprintf(stderr, "Warning: PIN not verified");
+		fprintf(stderr, "Warning: PIN not verified\n");
 	}
 	*key_obj_out = key_obj;
 	return 0;
@@ -204,14 +200,14 @@ EVP_PKEY *opensc_load_public_key(ENGINE * e, const char *s_key_id,
 	r = sc_pkcs15_find_pubkey_by_id(p15card, id, &obj);
 	if (r >= 0) {
 		if (verbose)
-			printf("Reading public key with ID '%s'\n", s_key_id);
+			fprintf(stderr, "Reading public key with ID '%s'\n", s_key_id);
 		r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
 	} else if (r == SC_ERROR_OBJECT_NOT_FOUND) {
 		/* No pubkey - try if there's a certificate */
 		r = sc_pkcs15_find_cert_by_id(p15card, id, &obj);
 		if (r >= 0) {
 			if (verbose)
-				printf("Reading certificate with ID '%s'\n",
+				fprintf(stderr, "Reading certificate with ID '%s'\n",
 				       s_key_id);
 			r = sc_pkcs15_read_certificate(p15card,
 						       (sc_pkcs15_cert_info_t *)
@@ -283,13 +279,13 @@ char *get_pin(UI_METHOD * ui_method, char *sc_pin, int maxlen)
 	ui = UI_new();
 	if (ui_method)
 		UI_set_method(ui, ui_method);
-	if (!UI_add_input_string(ui, "SmartCard Password: ", 0, sc_pin, 1, maxlen)) {
-		fprintf(stderr, "UI_add_input_string failed");
+	if (!UI_add_input_string(ui, "SmartCard PIN: ", 0, sc_pin, 1, maxlen)) {
+		fprintf(stderr, "UI_add_input_string failed\n");
 		UI_free(ui);
 		return NULL;
 	}
 	if (UI_process(ui)) {
-		fprintf(stderr, "UI_process failed");
+		fprintf(stderr, "UI_process failed\n");
 		UI_free(ui);
 		return NULL;
 	}
@@ -303,20 +299,20 @@ EVP_PKEY *opensc_load_private_key(ENGINE * e, const char *s_key_id,
 	EVP_PKEY *key_out;
 
 	if (verbose)
-		fprintf(stderr, "Loading private key!");
+		fprintf(stderr, "Loading private key!\n");
 	key_out = opensc_load_public_key(e, s_key_id, ui_method, callback_data);
 	if (!key_out) {
-		fprintf(stderr, "Failed to load public key");
+		fprintf(stderr, "Failed to load public key\n");
 		return NULL;
 	}
 	if (!sc_pin) {
-		sc_pin = (char *) malloc(12);
+		sc_pin = (char *) calloc(12, sizeof(char));
 		if (!sc_pin) {
 			EVP_PKEY_free(key_out);
 			return NULL;
 		}
 		if (!get_pin(ui_method, sc_pin, 12)) {
-			fprintf(stderr, "Failed to get pin");
+			fprintf(stderr, "Failed to get pin\n");
 			unset_pin();
 			EVP_PKEY_free(key_out);
 			return NULL;
@@ -348,7 +344,7 @@ sc_private_decrypt(int flen, const unsigned char * from, unsigned char * to,
 	r = sc_pkcs15_decipher(p15card, key_obj, flags, from, flen, to, flen);
 	sc_unlock(card);
 	if (r < 0) {
-		fprintf(stderr, "sc_pkcs15_decipher() failed: %s", sc_strerror(r));
+		fprintf(stderr, "sc_pkcs15_decipher() failed: %s\n", sc_strerror(r));
 		goto err;
 	}
 	return r;
@@ -380,7 +376,7 @@ sc_sign(int type, const unsigned char * m, unsigned int m_len,
 					m, m_len, sigret, RSA_size(rsa));
 	sc_unlock(card);
 	if (r < 0) {
-		fprintf(stderr, "sc_pkcs15_compute_signature() failed: %s",
+		fprintf(stderr, "sc_pkcs15_compute_signature() failed: %s\n",
 			sc_strerror(r));
 		goto err;
 	}
@@ -394,6 +390,6 @@ int
 sc_private_encrypt(int flen, const unsigned char * from, unsigned char * to,
 		   RSA * rsa, int padding)
 {
-	fprintf(stderr, "Private key encryption not supported");
+	fprintf(stderr, "Private key encryption not supported\n");
 	return -1;
 }

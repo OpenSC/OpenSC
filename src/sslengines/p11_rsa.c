@@ -138,7 +138,7 @@ pkcs11_rsa_decrypt(int flen, const unsigned char *from, unsigned char *to,
 	CK_ULONG size;
 	
 	if (padding != RSA_PKCS1_PADDING) {
-		printf("pkcs11 engine: only RSA_PKCS1_PADDING allowed so far\n");
+		fprintf(stderr, "pkcs11 engine: only RSA_PKCS1_PADDING allowed so far\n");
 		return -1;
 	}
 	if (key == NULL)
