@@ -51,6 +51,13 @@
 
 #endif
 
+/* Default value for apdu_fix option */
+#ifndef _WIN32
+# define DEF_APDU_FIX	0
+#else
+# define DEF_APDU_FIX	1
+#endif
+
 #define GET_SLOT_PTR(s, i) (&(s)->slot[(i)])
 #define GET_PRIV_DATA(r) ((struct pcsc_private_data *) (r)->drv_data)
 #define GET_SLOT_DATA(r) ((struct pcsc_slot_data *) (r)->drv_data)
@@ -405,7 +412,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	}
 	if (conf_block == NULL)
 		return 0;
-	apdu_fix = scconf_get_bool(conf_block, "apdu_fix", 0);
+	apdu_fix = scconf_get_bool(conf_block, "apdu_fix", DEF_APDU_FIX);
 	if (apdu_fix)
 		gpriv->apdu_fix = apdu_fix;
 	
