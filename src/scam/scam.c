@@ -41,7 +41,9 @@ struct scam_framework_ops *scam_frameworks[] =
 #ifdef HAVE_SCIDI
 	&scam_fw_sp,
 #endif
+#if 0	/* Disabled until it works */
 	&scam_fw_p15_ldap,
+#endif
 #endif
 	&scam_fw_p15_eid,
 #endif
