@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <refentry id="scconnectcard">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_connect_card</refentrytitle>
 		<manvolnum>3</manvolnum>
@@ -14,7 +16,7 @@
 		<title>Synopsis</title>
 		<para>
 		<programlisting>
-&includes;
+#include &lt;opensc.h&gt;
 
 int sc_connect_card(sc_reader_t *reader, int slot, <link linkend="sccardt">sc_card_t</link> **card);
 		</programlisting>
@@ -38,6 +40,11 @@ int sc_connect_card(sc_reader_t *reader, int slot, <link linkend="sccardt">sc_ca
 			location pointer to by the <emphasis>card</emphasis> parameter. The card handle should be
 			released with <link linkend="scdisconnectcard">sc_disconnect_card</link> when no longer in use.
 		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Return value</title>
+		<para>Returns 0 if successful, or a negative value in case of error.</para>
 	</refsect1>
 
 </refentry>

@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <refentry id="scestablishcontext">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_establish_context</refentrytitle>
 		<manvolnum>3</manvolnum>
@@ -14,7 +16,7 @@
 		<title>Synopsis</title>
 		<para>
 		<programlisting>
-&includes;
+#include &lt;opensc.h&gt;
 
 int sc_establish_context(sc_context_t **ctx,
                          const char *appname);
@@ -73,6 +75,11 @@ typedef struct sc_reader {
 		<para>In this structure, <emphasis>name</emphasis> contains a printable name of the reader, and
 			<emphasis>slot_count</emphasis> has the number of slots supported by this device.
 		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Return value</title>
+		<para>Returns 0 if successful, or a negative value in case of error.</para>
 	</refsect1>
 
 </refentry>

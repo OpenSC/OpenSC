@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <refentry id="scsetcarddriver">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_set_card_driver</refentrytitle>
 		<manvolnum>3</manvolnum>
@@ -14,7 +16,7 @@
 		<title>Synopsis</title>
 		<para>
 		<programlisting>
-&includes;
+#include &lt;opensc.h&gt;
 
 int sc_set_card_driver(struct sc_context *ctx, const char *short_name);
 		</programlisting>

@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <refentry id="screleasecontext">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_release_context</refentrytitle>
 		<manvolnum>3</manvolnum>
@@ -14,7 +16,7 @@
 		<title>Synopsis</title>
 		<para>
 		<programlisting>
-&includes;
+#include &lt;opensc.h&gt;
 
 int sc_release_context(sc_context_t *ctx);
 		</programlisting>
@@ -29,9 +31,11 @@ int sc_release_context(sc_context_t *ctx);
 			to <link linkend="scestablishcontext">sc_establish_context()</link>. No further calls to OpenSC
 			using this context are possible after this.
 		</para>
+	</refsect1>
 
-		<para>
-		</para>
+	<refsect1>
+		<title>Return value</title>
+		<para>This function always return 0, indicating success.</para>
 	</refsect1>
 
 </refentry>

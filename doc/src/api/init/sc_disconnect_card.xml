@@ -1,4 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <refentry id="scdisconnectcard">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_disconnect_card</refentrytitle>
 		<manvolnum>3</manvolnum>
@@ -14,7 +16,7 @@
 		<title>Synopsis</title>
 		<para>
 		<programlisting>
-&includes;
+#include &lt;opensc.h&gt;
 
 int sc_disconnect_card(<link linkend="sccardt">sc_card_t</link> *card, int action);
 		</programlisting>
@@ -36,5 +38,10 @@ int sc_disconnect_card(<link linkend="sccardt">sc_card_t</link> *card, int actio
 			The card is not reset nor powered down after the operation.
 		</para>
 	</refsect1>
-	
+
+	<refsect1>
+		<title>Return value</title>
+		<para>Returns 0 if successful, or a negative value in case of error.</para>
+	</refsect1>
+
 </refentry>
