@@ -1,3 +1,9 @@
+opensc (0.8.1-cvs-20040108-2) unstable; urgency=low
+
+  * added libopensc0.files, remove libopensc0.conffiles (typo fix)
+
+ -- Andreas Jellinghaus <aj@dungeon.inka.de>  Thu,  8 Jan 2004 15:04:19 +0100
+
 opensc (0.8.1-cvs-20040108-1) unstable; urgency=low
 
   * cvs snapshot.
