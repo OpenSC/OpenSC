@@ -1,5 +1,6 @@
 /*
  * PKCS15 emulation layer for OpenPGP card.
+ * To see how this works, run p15dump on your OpenPGP card.
  *
  * Copyright (C) 2003, Olaf Kirch <okir@suse.de>
  *
@@ -25,6 +26,22 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+
+static char *	pgp_pin_name[3] = {
+				"Signature PIN",
+				"Encryption PIN",
+				"Admin PIN"
+			};
+static char *	pgp_key_name[3] = {
+				"Signature key",
+				"Encryption key",
+				"Authentication key"
+			};
+static char *	pgp_pubkey_path[3] = {
+				"B600",
+				"B800",
+				"A400"
+			};
 
 /*
  * Much of this code probably needs to be shared between
@@ -55,9 +72,10 @@ sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card, int type)
 	}
 }
 
-static sc_pkcs15_object_t *
+static int
 sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
-		const char *label, void *data)
+		const char *label, void *data,
+		const sc_pkcs15_id_t *auth_id)
 {
 	sc_pkcs15_object_t *obj;
 	int		df_type;
@@ -89,18 +107,18 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 	default:
 		sc_error(p15card->card->ctx,
 			"Unknown PKCS15 object type %d\n", type);
-		return NULL;
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	obj->df = sc_pkcs15emu_get_df(p15card, df_type);
 	sc_pkcs15_add_object(p15card, obj);
 
-	return obj;
+	return 0;
 }
 
 static int
 sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
-		unsigned int id, const char *label,
+		const sc_pkcs15_id_t *id, const char *label,
 		const sc_path_t *path, int ref, int type,
 		unsigned int min_length,
 		unsigned int max_length,
@@ -109,8 +127,7 @@ sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_pin_info_t *info;
 
 	info = (sc_pkcs15_pin_info_t *) calloc(1, sizeof(*info));
-	info->auth_id.value[0]	= id;
-	info->auth_id.len	= 1;
+	info->auth_id		= *id;
 	info->min_length	= min_length;
 	info->max_length	= max_length;
 	info->stored_length	= max_length;
@@ -118,15 +135,65 @@ sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
 	info->reference		= ref;
 	info->flags		= flags;
 	info->tries_left	= tries_left;
+	info->magic		= SC_PKCS15_PIN_MAGIC;
 
 	if (path)
 		info->path = *path;
 	if (type == SC_PKCS15_PIN_TYPE_BCD)
 		info->stored_length /= 2;
 
-	sc_pkcs15emu_add_object(p15card, SC_PKCS15_TYPE_AUTH_PIN, label, info);
+	return sc_pkcs15emu_add_object(p15card,
+				SC_PKCS15_TYPE_AUTH_PIN,
+				label, info, NULL);
+}
 
-	return 0;
+static int
+sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
+		const sc_pkcs15_id_t *id,
+		const char *label,
+		int type, unsigned int modulus_length, int usage,
+		const sc_path_t *path, int ref,
+		sc_pkcs15_id_t *auth_id)
+{
+	sc_pkcs15_prkey_info_t *info;
+
+	info = (sc_pkcs15_prkey_info_t *) calloc(1, sizeof(*info));
+	info->id		= *id;
+	info->modulus_length	= modulus_length;
+	info->usage		= usage;
+	info->native		= 1;
+	info->access_flags	= SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+				| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+				| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+				| SC_PKCS15_PRKEY_ACCESS_LOCAL;
+	info->key_reference	= ref;
+
+	if (path)
+		info->path = *path;
+
+	return sc_pkcs15emu_add_object(p15card,
+				type, label, info, auth_id);
+}
+
+static int
+sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
+		const sc_pkcs15_id_t *id,
+		const char *label, int type,
+		unsigned int modulus_length, int usage,
+		const sc_path_t *path)
+{
+	sc_pkcs15_pubkey_info_t *info;
+
+	info = (sc_pkcs15_pubkey_info_t *) calloc(1, sizeof(*info));
+	info->id		= *id;
+	info->modulus_length	= modulus_length;
+	info->usage		= usage;
+	info->access_flags	= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+
+	if (path)
+		info->path = *path;
+
+	return sc_pkcs15emu_add_object(p15card, type, label, info, NULL);
 }
 
 static void
@@ -142,74 +209,19 @@ set_string(char **strp, const char *value)
  * code does.
  */
 static int
-get_tlv(sc_context_t *ctx, unsigned int match_tag,
-		const u8 *in, size_t in_len, 
-		u8 *out, size_t out_len)
+read_file(sc_card_t *card, const char *path_name, void *buf, size_t len)
 {
-	const u8	*end = in + in_len;
+	sc_path_t	path;
+	sc_file_t	*file;
 	int		r;
 
-	while (in < end) {
-		unsigned int	tag, len;
-		int		composite = 0;
-		unsigned char	c;
+	sc_format_path(path_name, &path);
+	if ((r = sc_select_file(card, &path, &file)) < 0)
+		return r;
 
-		c = *in++;
-		if (c == 0x00 || c == 0xFF)
-			continue;
-
-		tag = c;
-		if (tag & 0x20)
-			composite = 1;
-		while ((c & 0x1f) == 0x1f) {
-			if (in >= end)
-				goto eoc;
-			c = *in++;
-			tag = (tag << 8) | c;
-		}
-
-		if (in >= end)
-			goto eoc;
-		c = *in++;
-		if (c < 0x80) {
-			len = c;
-		} else {
-			len = 0;
-			c &= 0x7F;
-			while (c--) {
-				if (in >= end)
-					goto eoc;
-				len = (len << 8) | *in++;
-			}
-		}
-
-		/* Don't search past end of content */
-		if (in + len > end)
-			goto eoc;
-
-		if (tag == match_tag) {
-			if (len > out_len)
-				len = out_len;
-			memcpy(out, in, len);
-			return len;
-		}
-
-		/* Recurse into composite object.
-		 * No need for recursion check, as we check the buffer
-		 * length and each recursion consumes at least 2 bytes */
-		if (composite) {
-			r = get_tlv(ctx, match_tag, in, len, out, out_len);
-			if (r != SC_ERROR_OBJECT_NOT_FOUND)
-				return r;
-		}
-
-		in += len;
-	}
-
-	return SC_ERROR_OBJECT_NOT_FOUND;
-
-eoc:	sc_error(ctx, "Unexpected end of contentsn");
-	return SC_ERROR_OBJECT_NOT_VALID;
+	if (file->size < len)
+		len = file->size;
+	return sc_read_binary(card, 0, buf, len, 0);
 }
 
 int
@@ -217,27 +229,15 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 {
 	sc_card_t	*card = p15card->card;
 	sc_context_t	*ctx = card->ctx;
-	sc_path_t	path;
-	sc_file_t	*file;
 	char		string[256];
-	u8		buffer[256], value[256];
+	u8		buffer[256];
 	size_t		length;
 	int		r, i;
-
-	/* Select OpenPGP application.
-	 * We must specify a file, because the card expects a
-	 * case 4 APDU and barfs if it's case 2.
-	 */
-	sc_format_path("D276:0001:2401", &path);
-	path.type = SC_PATH_TYPE_DF_NAME;
-	if ((r = sc_select_file(card, &path, &file)) < 0)
-		goto failed;
-	sc_file_free(file);
 
 	set_string(&p15card->label, "OpenPGP Card");
 	set_string(&p15card->manufacturer_id, "OpenPGP project");
 
-	if ((r = sc_get_data(card, 0x004f, buffer, sizeof(buffer))) < 0)
+	if ((r = read_file(card, "004f", buffer, sizeof(buffer))) < 0)
 		goto failed;
 	sc_bin_to_hex(buffer, r, string, sizeof(string), 0);
 	set_string(&p15card->serial_number, string);
@@ -247,19 +247,12 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			 SC_PKCS15_CARD_FLAG_PRN_GENERATION |
 			 SC_PKCS15_CARD_FLAG_EID_COMPLIANT;
 
-	/* Get Card Holder Related Data (0065) */
-	if ((r = sc_get_data(card, 0x0065, buffer, sizeof(buffer))) < 0)
-		goto failed;
-	length = r;
-
 	/* Extract preferred language */
-	r = get_tlv(ctx, 0x5F2D, buffer, length, string, sizeof(string)-1);
-	if (r > 0) {
-		string[r] = '\0';
-		set_string(&p15card->preferred_language, string);
-	} else if (r != SC_ERROR_OBJECT_NOT_FOUND) {
+	r = read_file(card, "00655f2d", string, sizeof(string)-1);
+	if (r < 0)
 		goto failed;
-	}
+	string[r] = '\0';
+	set_string(&p15card->preferred_language, string);
 
 	/* Get Application Related Data (006E) */
 	if ((r = sc_get_data(card, 0x006E, buffer, sizeof(buffer))) < 0)
@@ -273,8 +266,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	 *  01-03:	max length of pins 1-3
 	 *  04-07:	tries left for pins 1-3
 	 */
-	r = get_tlv(ctx, 0x00c4, buffer, length, value, sizeof(value));
-	if (r < 0)
+	if ((r = read_file(card, "006E007300C4", buffer, sizeof(buffer))) < 0)
 		goto failed;
 	if (r != 7) {
 		sc_error(ctx,
@@ -284,11 +276,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	}
 
 	for (i = 0; i < 3; i++) {
-		static char	*pin_name[3] = {
-					"User PIN",
-					"User PIN 2",
-					"Admin PIN"
-				};
+		sc_pkcs15_id_t	auth_id;
 		int		flags;
 
 		flags =	SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
@@ -298,9 +286,58 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			flags |= SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED |
 				 SC_PKCS15_PIN_FLAG_SO_PIN;
 		}
-		sc_pkcs15emu_add_pin(p15card, i+1, pin_name[i], NULL, i+1,
-			SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-			0, value[1+i], flags, value[4+i]);
+
+		auth_id.value[0] = i + 1;
+		auth_id.len = 1;
+		sc_pkcs15emu_add_pin(p15card, &auth_id,
+				pgp_pin_name[i], NULL, i+1,
+				SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
+				0, buffer[1+i], flags, buffer[4+i]);
+	}
+
+	for (i = 0; i < 3; i++) {
+		static int	prkey_pin[3] = { 1, 2, 2 };
+		static int	prkey_usage[3] = {
+					SC_PKCS15_PRKEY_USAGE_SIGN
+					| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
+					| SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,
+					SC_PKCS15_PRKEY_USAGE_DECRYPT
+					| SC_PKCS15_PRKEY_USAGE_UNWRAP,
+					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
+				};
+		sc_pkcs15_id_t	id, auth_id;
+
+		id.value[0] = i + 1;
+		id.len = 1;
+		auth_id.value[0] = prkey_pin[i];
+		auth_id.len = 1;
+		sc_pkcs15emu_add_prkey(p15card, &id,
+				pgp_key_name[i],
+				SC_PKCS15_TYPE_PRKEY_RSA,
+				1024, prkey_usage[i],
+				NULL, 0,
+				&auth_id);
+	}
+
+	for (i = 0; i < 3; i++) {
+		static int	pubkey_usage[3] = {
+					SC_PKCS15_PRKEY_USAGE_VERIFY
+					| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,
+					SC_PKCS15_PRKEY_USAGE_ENCRYPT
+					| SC_PKCS15_PRKEY_USAGE_WRAP,
+					SC_PKCS15_PRKEY_USAGE_VERIFY
+				};
+		sc_pkcs15_id_t	id;
+		sc_path_t	path;
+
+		id.value[0] = i + 1;
+		id.len = 1;
+		sc_format_path(pgp_pubkey_path[i], &path);
+		sc_pkcs15emu_add_pubkey(p15card, &id,
+				pgp_key_name[i],
+				SC_PKCS15_TYPE_PUBKEY_RSA,
+				1024, pubkey_usage[i],
+				&path);
 	}
 
 	return 0;
