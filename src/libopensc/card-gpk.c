@@ -1692,7 +1692,7 @@ static int
 gpk_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
 {
 	static u8	sbuf[8];
-	int		r, ins, p1;
+	int		r;
 
 	if (data->pin_type != SC_AC_CHV)
 		return SC_ERROR_INVALID_ARGUMENTS;
