@@ -252,6 +252,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 			operation->handles[operation->num_handles++] = item->handle;
 		}
 	}
+	rv = CKR_OK;
 
 	debug(context, "%d matching objects\n", operation->num_handles);
 
