@@ -73,9 +73,10 @@ struct gpk_private_data {
 	 * should really query for this during gpk_init */
 	unsigned int	offset_shift;
 	unsigned int	offset_mask;
+	unsigned int	locked : 1;
 
 	/* access control bits of file most recently selected */
-	unsigned short int	ac[3];
+	unsigned short int ac[3];
 
 	/* is non-zero if we should use secure messaging */
 	unsigned	key_set   : 1;
@@ -90,6 +91,7 @@ struct gpk_private_data {
 };
 #define DRVDATA(card)	((struct gpk_private_data *) ((card)->drv_data))
 
+static int	gpk_get_info(struct sc_card *, u8, u8, u8 *, size_t);
 
 /*
  * ATRs of GPK4000 cards courtesy of libscez
@@ -175,6 +177,7 @@ gpk_init(struct sc_card *card)
 {
 	struct gpk_private_data *priv;
 	unsigned long	exponent, flags, kg;
+	unsigned char info[13];
 	int variant;
 
 	if (!(variant = gpk_identify(card)))
@@ -204,6 +207,22 @@ gpk_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card,  512, flags|kg, exponent);
 	_sc_card_add_rsa_alg(card,  768, flags, exponent);
 	_sc_card_add_rsa_alg(card, 1024, flags|kg, exponent);
+
+	/* Inspect the LOCK byte */
+	if (gpk_get_info(card, 0x02, 0xA4, info, sizeof(info)) >= 0) {
+		if (info[12] & 0x40) {
+			priv->offset_shift = 0;
+			priv->offset_mask = 0;
+		}
+		if (info[12] & 0x10) {
+			/* DSA supported - add algo information.
+			 * It's highly unlikely we'll ever see this.
+			 */
+		}
+		if (info[12] & 0x08) {
+			priv->locked = 1;
+		}
+	}
 
 	return 0;
 }
@@ -1734,6 +1753,33 @@ gpk_max_session_key(struct sc_card *card)
 #endif
 
 /*
+ * GetInfo call
+ */
+int
+gpk_get_info(struct sc_card *card, u8 p1, u8 p2, u8 *buf, size_t buflen)
+{
+	struct sc_apdu	apdu;
+	int	r;
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_2_SHORT;
+	apdu.cla = 0x80;
+	apdu.ins = 0xC0;
+	apdu.p1  = p1;
+	apdu.p2  = p2;
+	apdu.le  = buflen;
+	apdu.resp = buf;
+	apdu.resplen = buflen;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	return r;
+}
+
+/*
  * Dispatch card_ctl calls
  */
 static int
@@ -1753,6 +1799,9 @@ gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_GPK_PKLOAD:
 		return gpk_pkfile_load(card,
 			       (struct sc_cardctl_gpk_pkload *) ptr);
+	case SC_CARDCTL_GPK_IS_LOCKED:
+		*(int *) ptr = DRVDATA(card)->locked;
+		return 0;
 	}
 	error(card->ctx, "card_ctl command %u not supported\n", cmd);
 	return SC_ERROR_NOT_SUPPORTED;

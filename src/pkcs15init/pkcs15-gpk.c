@@ -85,6 +85,15 @@ static void	debug(struct sc_profile *, const char *, ...);
 static int
 gpk_erase_card(struct sc_profile *pro, struct sc_card *card)
 {
+	int	locked;
+
+	if (sc_card_ctl(card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0
+	 && locked) {
+		error(pro,
+			"This card is already personalized, unable to "
+			"create PKCS#15 structure.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
 	return sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
 }
 
@@ -217,7 +226,15 @@ gpk_init_app(struct sc_profile *profile, struct sc_card *card,
 {
 	struct sc_pkcs15_pin_info sopin_info;
 	struct sc_file	*pinfile;
-	int		r;
+	int		r, locked;
+
+	if (sc_card_ctl(card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0
+	 && locked) {
+		error(profile,
+			"This card is already personalized, unable to "
+			"create PKCS#15 structure.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
 
 	/* Profile must define a "pinfile" */
 	if (sc_profile_get_file(profile, "pinfile", &pinfile) < 0) {

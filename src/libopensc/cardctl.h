@@ -36,6 +36,7 @@ enum {
 	SC_CARDCTL_GPK_LOCK,
 	SC_CARDCTL_GPK_PKINIT,
 	SC_CARDCTL_GPK_PKLOAD,
+	SC_CARDCTL_GPK_IS_LOCKED,
 
 	/*
 	 * Cryptoflex specific calls
