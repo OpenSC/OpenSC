@@ -113,68 +113,33 @@ int sc_verify(struct sc_card *card, unsigned int type, int ref,
         SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
-			     size_t oldlen, const u8 *new, size_t newlen,
+int sc_change_reference_data(struct sc_card *card, unsigned int type,
+			     int ref, const u8 *old, size_t oldlen,
+			     const u8 *newref, size_t newlen,
 			     int *tries_left)
 {
-	struct sc_apdu apdu;
-	u8 sbuf[MAX_BUFFER_SIZE];
-	int r, p1 = 0, len = oldlen + newlen;
+	int r;
 
+	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 1);
-	if (len >= MAX_BUFFER_SIZE)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-	if (oldlen == 0)
-		p1 = 1;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, p1, ref);
-	memcpy(sbuf, old, oldlen);
-	memcpy(sbuf + oldlen, new, newlen);
-	apdu.lc = len;
-	apdu.datalen = len;
-	apdu.data = sbuf;
-	apdu.resplen = 0;
-	
-	r = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, len);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
-		if (tries_left != NULL)
-			*tries_left = apdu.sw2 & 0x0F;
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_PIN_CODE_INCORRECT);
-	}
-	SC_FUNC_RETURN(card->ctx, 1, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	if (card->ops->change_reference_data == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->change_reference_data(card, type, ref, old, oldlen,
+					     newref, newlen, tries_left);
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
-int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
-			   size_t puklen, const u8 *new, size_t newlen)
+int sc_reset_retry_counter(struct sc_card *card, unsigned int type, int ref,
+			   const u8 *puk, size_t puklen, const u8 *newref,
+			   size_t newlen)
 {
-	struct sc_apdu apdu;
-	u8 sbuf[MAX_BUFFER_SIZE];
-	int r, p1 = 0, len = puklen + newlen;
+	int r;
 
-	if (len >= MAX_BUFFER_SIZE)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-	if (puklen == 0) {
-		if (newlen == 0)
-			p1 = 3;
-		else
-			p1 = 2;
-	} else {
-		if (newlen == 0)
-			p1 = 1;
-		else
-			p1 = 0;
-	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, p1, ref);
-	memcpy(sbuf, puk, puklen);
-	memcpy(sbuf + puklen, new, newlen);
-	apdu.lc = len;
-	apdu.datalen = len;
-	apdu.data = sbuf;
-	apdu.resplen = 0;
-	
-	r = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, len);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	SC_FUNC_RETURN(card->ctx, 1, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	assert(card != NULL);
+	SC_FUNC_CALLED(card->ctx, 1);
+	if (card->ops->reset_retry_counter == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->reset_retry_counter(card, type, ref, puk, puklen,
+					   newref, newlen);
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }

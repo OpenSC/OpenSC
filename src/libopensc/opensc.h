@@ -347,11 +347,13 @@ struct sc_card_operations {
 	 *   to the function decipher. */
 	int (*compute_signature)(struct sc_card *card, const u8 * data,
 				 size_t data_len, u8 * out, size_t outlen);
-	int (*change_reference_data)(struct sc_card *card, int ref_qualifier,
+	int (*change_reference_data)(struct sc_card *card, unsigned int type,
+				     int ref_qualifier,
 				     const u8 *old, size_t oldlen,
 				     const u8 *newref, size_t newlen,
 				     int *tries_left);
-	int (*reset_retry_counter)(struct sc_card *card, int ref_qualifier,
+	int (*reset_retry_counter)(struct sc_card *card, unsigned int type,
+				   int ref_qualifier,
 				   const u8 *puk, size_t puklen,
 				   const u8 *newref, size_t newlen);
 	/*
@@ -517,11 +519,13 @@ int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 size_t data_len, u8 * out, size_t outlen);
 int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *buf,
 	      size_t buflen, int *tries_left);
-int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
-			     size_t oldlen, const u8 *newref, size_t newlen,
+int sc_change_reference_data(struct sc_card *card, unsigned int type,
+			     int ref, const u8 *old, size_t oldlen,
+			     const u8 *newref, size_t newlen,
 			     int *tries_left);
-int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
-			   size_t puklen, const u8 *newref, size_t newlen);
+int sc_reset_retry_counter(struct sc_card *card, unsigned int type,
+			   int ref, const u8 *puk, size_t puklen,
+			   const u8 *newref, size_t newlen);
 
 /* ISO 7816-9 */
 int sc_create_file(struct sc_card *card, struct sc_file *file);
@@ -545,6 +549,7 @@ extern const struct sc_card_driver *sc_get_iso7816_driver(void);
 extern const struct sc_card_driver *sc_get_emv_driver(void);
 extern const struct sc_card_driver *sc_get_setec_driver(void);
 extern const struct sc_card_driver *sc_get_flex_driver(void);
+extern const struct sc_card_driver *sc_get_gpk_driver(void);
 extern const struct sc_card_driver *sc_get_default_driver(void);
 
 #ifdef  __cplusplus

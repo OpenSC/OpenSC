@@ -57,7 +57,7 @@ static int iso7816_read_record(struct sc_card *card,
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB2, rec_nr, 0);
-	apdu.p2 = (rec_nr & SC_READ_RECORD_EF_ID_MASK) << 3;
+	apdu.p2 = (flags & SC_READ_RECORD_EF_ID_MASK) << 3;
 	if (flags & SC_READ_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
 	
@@ -663,6 +663,86 @@ static int iso7816_compute_signature(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 4, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
+static int iso7816_change_reference_data(struct sc_card *card, unsigned int type,
+					 int ref, const u8 *old, size_t oldlen,
+					 const u8 *new, size_t newlen,
+					 int *tries_left)
+{
+	struct sc_apdu apdu;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int r, p1 = 0, len = oldlen + newlen;
+
+	if (len >= SC_MAX_APDU_BUFFER_SIZE)
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+	switch (type) {
+	case SC_AC_CHV1:
+	case SC_AC_CHV2:
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	if (oldlen == 0)
+		p1 = 1;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, p1, ref);
+	memcpy(sbuf, old, oldlen);
+	memcpy(sbuf + oldlen, new, newlen);
+	apdu.lc = len;
+	apdu.datalen = len;
+	apdu.data = sbuf;
+	apdu.resplen = 0;
+	
+	r = sc_transmit_apdu(card, &apdu);
+	memset(sbuf, 0, len);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
+		if (tries_left != NULL)
+			*tries_left = apdu.sw2 & 0x0F;
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_PIN_CODE_INCORRECT);
+	}
+	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+}
+
+static int iso7816_reset_retry_counter(struct sc_card *card, unsigned int type, int ref,
+				       const u8 *puk, size_t puklen, const u8 *new,
+				       size_t newlen)
+{
+	struct sc_apdu apdu;
+	u8 sbuf[MAX_BUFFER_SIZE];
+	int r, p1 = 0, len = puklen + newlen;
+
+	if (len >= MAX_BUFFER_SIZE)
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+	switch (type) {
+	case SC_AC_CHV1:
+	case SC_AC_CHV2:
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	if (puklen == 0) {
+		if (newlen == 0)
+			p1 = 3;
+		else
+			p1 = 2;
+	} else {
+		if (newlen == 0)
+			p1 = 1;
+		else
+			p1 = 0;
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, p1, ref);
+	memcpy(sbuf, puk, puklen);
+	memcpy(sbuf + puklen, new, newlen);
+	apdu.lc = len;
+	apdu.datalen = len;
+	apdu.data = sbuf;
+	apdu.resplen = 0;
+
+	r = sc_transmit_apdu(card, &apdu);
+	memset(sbuf, 0, len);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+}
 
 static struct sc_card_operations iso_ops = {
 	NULL,
@@ -698,6 +778,8 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.set_security_env	= iso7816_set_security_env;
 		iso_ops.restore_security_env	= iso7816_restore_security_env;
 		iso_ops.compute_signature	= iso7816_compute_signature;
+		iso_ops.reset_retry_counter     = iso7816_reset_retry_counter;
+                iso_ops.change_reference_data   = iso7816_change_reference_data;
 	}
 	return &iso_driver;
 }

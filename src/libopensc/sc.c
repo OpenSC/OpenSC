@@ -183,10 +183,10 @@ int sc_establish_context(struct sc_context **ctx_out)
 	ctx->card_drivers[i++] = sc_get_flex_driver();
 #endif
 #if 1
-	ctx->card_drivers[i++] = sc_get_iso7816_driver();
-#endif
-#if 1
 	ctx->card_drivers[i++] = sc_get_emv_driver();
+#endif
+#if 1 && defined(HAVE_OPENSSL)
+	ctx->card_drivers[i++] = sc_get_gpk_driver();
 #endif
 #if 1
 	/* this should be last in line */

@@ -288,7 +288,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	memset(pinbuf, pin->pad_char, pin->stored_length * 2);
 	memcpy(pinbuf, oldpin, oldpinlen);
 	memcpy(pinbuf + pin->stored_length, newpin, newpinlen);
-	r = sc_change_reference_data(card, pin->auth_id.value[0], pinbuf,
+	r = sc_change_reference_data(card, SC_AC_CHV1, pin->auth_id.value[0], pinbuf,
 				     pin->stored_length, pinbuf+pin->stored_length,
 				     pin->stored_length, &pin->tries_left);
 	memset(pinbuf, 0, pin->stored_length * 2);

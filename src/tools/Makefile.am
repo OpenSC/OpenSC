@@ -13,6 +13,7 @@ endif
 opensc_tool_SOURCES = opensc-tool.c util.c
 opensc_tool_LDADD = @GETOPTSRC@
 opensc_explorer_SOURCES = opensc-explorer.c util.c
+## FIXME: conditionally add -lreadline
 opensc_explorer_LDADD = @GETOPTSRC@
 pkcs15_tool_SOURCES = pkcs15-tool.c util.c
 pkcs15_tool_LDADD = @GETOPTSRC@

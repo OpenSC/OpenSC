@@ -22,6 +22,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#undef USE_READLINE
+
+#ifdef USE_READLINE
+#include <readline/readline.h>
+#endif
+
 #include "util.h"
 
 int opt_reader = 0;
@@ -171,6 +178,7 @@ int do_ls()
 			check_ret(r, SC_AC_OP_SELECT, "unable to select file", &current_file);
 			return -1;
 		}
+		file.id = (cur[0] << 8) | cur[1];
                 cur += 2;
 		count -= 2;
                 print_file(&file);
@@ -229,12 +237,56 @@ int do_cd(const char *arg)
 	return 0;
 }
 
-int do_cat(const char *arg)
+int read_and_print_binary_file(struct sc_file *file)
+{
+	unsigned int idx = 0;
+	u8 buf[128];
+	size_t count;
+	int r;
+	
+	count = file->size;
+	while (count) {
+		int c = count > sizeof(buf) ? sizeof(buf) : count;
+
+		r = sc_read_binary(card, idx, buf, c, 0);
+		if (r < 0) {
+			check_ret(r, SC_AC_OP_READ, "read failed", file);
+			return -1;
+		}
+		if (r != c) {
+			printf("expecting %d, got only %d bytes.\n", c, r);
+			return -1;
+		}
+		hex_dump_asc(stdout, buf, c, idx);
+		idx += c;
+		count -= c;
+	}
+	return 0;
+}
+
+int read_and_print_record_file(struct sc_file *file)
 {
 	u8 buf[256];
+	int rec, r;
+
+	for (rec = 0; ; rec++) {
+		r = sc_read_record(card, rec, buf, sizeof(buf), SC_READ_RECORD_BY_REC_NR);
+		if (r == SC_ERROR_RECORD_NOT_FOUND)
+			return 0;
+		if (r < 0) {
+			check_ret(r, SC_AC_OP_READ, "read failed", file);
+			return -1;
+		}
+		printf("Record %d:\n", rec);
+		hex_dump_asc(stdout, buf, r, 0);
+	}
+
+	return 0;
+}
+
+int do_cat(const char *arg)
+{
 	int r, error = 0;
-	size_t count = 0;
-        unsigned int idx = 0;
 	struct sc_path path;
         struct sc_file file;
 	int not_current = 1;
@@ -254,26 +306,10 @@ int do_cat(const char *arg)
 			return -1;
 		}
 	}
-	count = file.size;
-	while (count) {
-		int c = count > sizeof(buf) ? sizeof(buf) : count;
-
-		r = sc_read_binary(card, idx, buf, c, 0);
-		if (r < 0) {
-			check_ret(r, SC_AC_OP_READ, "read failed", &file);
-			error = 1;
-                        goto err;
-		}
-		if (r != c) {
-			printf("expecting %d, got only %d bytes.\n", c, r);
-			error = 1;
-                        goto err;
-		}
-		hex_dump_asc(stdout, buf, c, idx);
-		idx += c;
-		count -= c;
-	}
-err:
+	if (file.ef_structure == SC_FILE_EF_TRANSPARENT)
+		read_and_print_binary_file(&file);
+	else
+		read_and_print_record_file(&file);
 	if (not_current) {
 		r = sc_select_file(card, &current_path, NULL);
 		if (r) {
@@ -478,7 +514,7 @@ usage:
 int do_verify(const char *arg, const char *arg2)
 {
 	const char *types[] = {
-		"CHV", "KEY"
+		"CHV", "KEY", "PRO"
 	};
 	int i, type = -1, ref, r, tries_left = -1;
 	u8 buf[30];
@@ -486,7 +522,7 @@ int do_verify(const char *arg, const char *arg2)
 	
 	if (strlen(arg) == 0 || strlen(arg2) == 0)
 		goto usage;
-	for (i = 0; i < 2; i++)
+	for (i = 0; i < 3; i++)
 		if (strncasecmp(arg, types[i], 3) == 0) {
 			type = i;
 			break;
@@ -499,6 +535,11 @@ int do_verify(const char *arg, const char *arg2)
 		printf("Invalid key reference.\n");
 		goto usage;
 	}
+	if (arg2[0] == '"') {
+		for (++arg2, i = 0; i < sizeof(buf) && arg2[i] != '"'; i++) 
+			buf[i] = arg2[i];
+		buflen = i;
+	} else
 	if (sc_hex_to_bin(arg2, buf, &buflen) != 0) {
 		printf("Invalid key value.\n");
 		goto usage;
@@ -509,6 +550,9 @@ int do_verify(const char *arg, const char *arg2)
 		break;
 	case 1:
 		type = SC_AC_AUT;
+		break;
+	case 2:
+		type = SC_AC_PRO;
 		break;
 	}
 	r = sc_verify(card, type, ref, buf, buflen, &tries_left);
@@ -721,10 +765,52 @@ void usage()
 		printf("  %s\n", cmds[i]);
 }
 
+static int parse_line(char *in, char **argv)
+{
+	int	argc;
+
+	for (argc = 0; argc < 3; argc++) {
+		in += strspn(in, " \t\n");
+		if (*in == '\0')
+			return argc;
+ 		if (*in == '"') {
+			/* Parse quoted string */
+			argv[argc] = in++;
+			in += strcspn(in, "\"");
+			if (*in++ != '"')
+				return 0;
+		} else {
+			/* White space delimited word */
+ 			argv[argc] = in;
+			in += strcspn(in, " \t\n");
+		}
+		if (*in != '\0')
+			*in++ = '\0';
+ 	}
+	return argc;
+}
+
+#ifndef USE_READLINE
+char * readline(const char *prompt)
+{
+	static char buf[128];
+
+	printf("%s", prompt);
+	fflush(stdout);
+	if (fgets(buf, sizeof(buf), stdin) == NULL)
+		return NULL;
+	if (strlen(buf) == 0)
+		return NULL;
+	if (buf[strlen(buf)-1] == '\n')
+		buf[strlen(buf)-1] = '\0';
+        return buf;
+}
+#endif
+
 int main(int argc, char * const argv[])
 {
 	int r, c, long_optind = 0, err = 0;
-	char line[80], cmd[80], arg[80], arg2[80];
+	char *line, *cargv[3];
 
 	printf("OpenSC Explorer version %s\n", sc_version);
 
@@ -789,33 +875,29 @@ int main(int argc, char * const argv[])
 	}
 	while (1) {
 		int i;
+		char prompt[40];
 
-		printf("OpenSC [");
+		sprintf(prompt, "OpenSC [");
 		for (i = 0; i < current_path.len; i++) {
                         if ((i & 1) == 0 && i)
-				printf("/");
-			printf("%02X", current_path.value[i]);
+				sprintf(prompt+strlen(prompt), "/");
+			sprintf(prompt+strlen(prompt), "%02X", current_path.value[i]);
 		}
-                printf("]> ");
-		fflush(stdout);
-                fflush(stdin);
-		if (fgets(line, sizeof(line), stdin) == NULL)
-			break;
-		if (strlen(line) == 0)
-			break;
-		r = sscanf(line, "%s %s %s", cmd, arg, arg2);
+                sprintf(prompt+strlen(prompt), "]> ");
+		line = readline(prompt);
+                if (line == NULL)
+                	break;
+                r = parse_line(line, cargv);
 		if (r < 1)
 			continue;
-		if (r < 3)
-			arg2[0] = 0;
-		if (r < 2)
-			arg[0] = 0;
-		r = ambiguous_match(cmds, nr_cmds, cmd);
+		while (r < 3)
+			cargv[r++] = "";
+		r = ambiguous_match(cmds, nr_cmds, cargv[0]);
 		if (r < 0) {
 			usage();
                         continue;
 		}
-                handle_cmd(r, arg, arg2);
+                handle_cmd(r, cargv[1], cargv[2]);
 	}
 end:
 	die(err);
