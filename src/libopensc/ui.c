@@ -20,8 +20,6 @@
 #ifdef HAVE_LOCALE_H
 #include <locale.h>
 #endif
-#include <opensc/pkcs15.h>
-#include "internal.h"
 
 /*
  * We keep a global shared library handle here.
