@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "opensc.h"
+#include "sc-internal.h"
 #include "opensc-pkcs15.h"
 #include "sc-asn1.h"
 #include "sc-log.h"
@@ -147,10 +147,16 @@ int sc_pkcs15_enum_pins(struct sc_pkcs15_card *p15card)
 			return i;	/* Already enumerated */
 	}
 	p15card->pin_count = 0;
+	r = sc_lock(p15card->card);
+	SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
 	for (i = 0; i < p15card->aodf_count; i++) {
 		r = get_pins_from_file(p15card, &p15card->file_aodf[i]);
-		SC_TEST_RET(ctx, r, "Failed to read PINs from AODF");
+		if (r != 0)
+			break;
 	}
+	sc_unlock(p15card->card);
+	if (r != 0)
+		return r;
 	return p15card->pin_count;
 }
 
@@ -169,15 +175,19 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	if (pinlen > pin->stored_length || pinlen < pin->min_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
 	card = p15card->card;
+	r = sc_lock(card);
+	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 	r = sc_select_file(card, &pin->path, &file);
-	if (r)
+	if (r) {
+		sc_unlock(card);
 		return r;
-
+	}
 	memset(pinbuf, pin->pad_char, pin->stored_length);
 	memcpy(pinbuf, pincode, pinlen);
 	r = sc_verify(card, pin->auth_id.value[0],
 		      pinbuf, pin->stored_length, &pin->tries_left);
 	memset(pinbuf, 0, pinlen);
+	sc_unlock(card);
 	if (r)
 		return r;
 
@@ -203,10 +213,13 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	if ((oldpinlen < pin->min_length) || (newpinlen < pin->min_length))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	card = p15card->card;
+	r = sc_lock(card);
+	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 	r = sc_select_file(card, &pin->path, &file);
-	if (r)
+	if (r) {
+		sc_unlock(card);
 		return r;
-
+	}
 	memset(pinbuf, pin->pad_char, pin->stored_length * 2);
 	memcpy(pinbuf, oldpin, oldpinlen);
 	memcpy(pinbuf + pin->stored_length, newpin, newpinlen);
@@ -214,6 +227,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 				     pin->stored_length, pinbuf+pin->stored_length,
 				     pin->stored_length, &pin->tries_left);
 	memset(pinbuf, 0, pin->stored_length * 2);
+	sc_unlock(card);
 	return r;
 }
 

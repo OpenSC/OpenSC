@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "opensc.h"
+#include "sc-internal.h"
 #include "sc-asn1.h"
 #include "sc-log.h"
 
@@ -178,7 +178,7 @@ static int iso7816_select_file(struct sc_card *card,
 	default:
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	apdu.p2 = 0;		/* record */
+	apdu.p2 = 0;		/* first record */
 	apdu.lc = pathlen;
 	apdu.data = path;
 	apdu.datalen = pathlen;

@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "opensc.h"
+#include "sc-internal.h"
 #include "opensc-pkcs15.h"
 #include "sc-log.h"
 #include "sc-asn1.h"
@@ -229,14 +229,21 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	r = find_cached_cert(p15card, info, &data, &len);
 	if (r) {
+		r = sc_lock(p15card->card);
+		SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
 		r = sc_select_file(p15card->card, &info->path, &file);
-		if (r)
+		if (r) {
+			sc_unlock(p15card->card);
 			return r;
+		}
 		data = malloc(file.size);
-		if (data == NULL)
+		if (data == NULL) {
+			sc_unlock(p15card->card);
 			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		r = sc_read_binary(p15card->card, 0, data, file.size);
 		if (r < 0) {
+			sc_unlock(p15card->card);
 			free(data);
 			return r;
 		}
@@ -244,6 +251,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 #ifdef CACHE_CERTS
 		store_cert_to_cache(p15card, info, data, len);
 #endif
+		sc_unlock(p15card->card);
 	}
 	cert = malloc(sizeof(struct sc_pkcs15_cert));
 	if (cert == NULL) {
@@ -351,16 +359,21 @@ static int get_certs_from_file(struct sc_pkcs15_card *card,
 
 int sc_pkcs15_enum_certificates(struct sc_pkcs15_card *card)
 {
-	int r, i;
+	int r = 0, i;
 	assert(card != NULL);
 
 	if (card->cert_count)
 		return card->cert_count;	/* already enumerated */
+	r = sc_lock(card->card);
+	SC_TEST_RET(card->card->ctx, r, "sc_lock() failed");
 	for (i = 0; i < card->cdf_count; i++) {
 		r = get_certs_from_file(card, &card->file_cdf[i]);
 		if (r != 0)
-			return r;
+			break;
 	}
+	sc_unlock(card->card);
+	if (r != 0)
+		return r;
 	return card->cert_count;
 }
 

@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "opensc.h"
+#include "sc-internal.h"
 #include "opensc-pkcs15.h"
 #include "sc-log.h"
 #include <assert.h>
@@ -37,12 +37,12 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	
 	senv.algorithm_ref = 0x02;
 	senv.key_file_id = prkey->file_id;
-	senv.operation = 0;
+	senv.operation = SC_SEC_OPERATION_DECIPHER;
 	senv.key_ref = prkey->key_reference;
 	
 	SC_FUNC_CALLED(ctx, 1);
 	r = sc_select_file(p15card->card, &p15card->file_app.path,
-			   &p15card->file_app);
+			   NULL);
 	SC_TEST_RET(ctx, r, "sc_select_file() failed");
 #if 0
 	/* FIXME! */
@@ -75,12 +75,12 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		break;
 	}
 	senv.key_file_id = prkey->file_id;
-	senv.operation = 1;
+	senv.operation = SC_SEC_OPERATION_SIGN;
 	senv.key_ref = prkey->key_reference;
 	
 	SC_FUNC_CALLED(ctx, 1);
 	r = sc_select_file(p15card->card, &p15card->file_app.path,
-			   &p15card->file_app);
+			   NULL);
 	SC_TEST_RET(ctx, r, "sc_select_file() failed");
 #if 0
 	/* FIXME! */

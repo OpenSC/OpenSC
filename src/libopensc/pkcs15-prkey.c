@@ -18,9 +18,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "opensc.h"
+#include "sc-internal.h"
 #include "opensc-pkcs15.h"
 #include "sc-asn1.h"
+#include "sc-log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -133,11 +134,16 @@ int sc_pkcs15_enum_private_keys(struct sc_pkcs15_card *card)
 
 	if (card->prkey_count)
 		return card->prkey_count;	/* already enumerated */
+	r = sc_lock(card->card);
+	SC_TEST_RET(card->card->ctx, r, "sc_lock() failed");
 	for (i = 0; i < 1; i++) {
 		r = get_prkeys_from_file(card, &card->file_prkdf);
 		if (r != 0)
-			return r;
+			break;
 	}
+	sc_unlock(card->card);
+	if (r != 0)
+		return r;
 	return card->prkey_count;
 }
 

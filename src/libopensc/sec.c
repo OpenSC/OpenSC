@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "opensc.h"
+#include "sc-internal.h"
 #include "sc-log.h"
 #include <unistd.h>
 #include <stdio.h>
@@ -35,12 +35,17 @@ int sc_set_security_env(struct sc_card *card,
 	assert(card != NULL && env != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
-	if (env->operation == 1) {
-		apdu.p1 = 0x81;
-		apdu.p2 = 0xB6;
-	} else {
+	switch (env->operation) {
+	case SC_SEC_OPERATION_DECIPHER:
 		apdu.p1 = 0x41;
 		apdu.p2 = 0xB8;
+		break;
+	case SC_SEC_OPERATION_SIGN:
+		apdu.p1 = 0x81;
+		apdu.p2 = 0xB6;
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	apdu.le = 0;
 	p = sbuf;

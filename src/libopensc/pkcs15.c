@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "opensc.h"
+#include "sc-internal.h"
 #include "opensc-pkcs15.h"
 #include "sc-asn1.h"
 #include "sc-log.h"
@@ -252,9 +252,11 @@ int sc_pkcs15_bind(struct sc_card *card,
 	struct sc_pkcs15_card *p15card = NULL;
 	struct sc_path tmppath;
 	const struct sc_pkcs15_defaults *defaults = NULL;
+	struct sc_context *ctx;
 
-	assert(card != NULL && p15card_out != NULL);
-	SC_FUNC_CALLED(card->ctx, 1);
+	assert(sc_card_valid(card) && p15card_out != NULL);
+	ctx = card->ctx;
+	SC_FUNC_CALLED(ctx, 1);
 	p15card = malloc(sizeof(struct sc_pkcs15_card));
 	if (p15card == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -262,19 +264,30 @@ int sc_pkcs15_bind(struct sc_card *card,
 	p15card->card = card;
 
 	sc_format_path("2F00", &tmppath);
+	err = sc_lock(card);
+	if (err) {
+		error(ctx, "sc_lock() failed: %s\n", sc_strerror(err));
+		goto error;
+	}
 	err = sc_select_file(card, &tmppath, &p15card->file_dir);
-	if (err)
+	if (err) {
+		error(ctx, "Error selecting EF(DIR): %s\n", sc_strerror(err));
 		goto error;
+	}
 	err = sc_read_binary(card, 0, buf, p15card->file_dir.size);
-	if (err < 0)
+	if (err < 0) {
+		error(ctx, "Error reading EF(DIR): %s\n", sc_strerror(err));
 		goto error;
+	}
 	if (err <= 2) {
 		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
+		error(ctx, "Error reading EF(DIR): too few bytes read\n");
 		goto error;
 	}
 	len = err;
 	if (parse_dir(buf, len, p15card)) {
 		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
+		error(ctx, "Error parsing EF(DIR)\n");
 		goto error;
 	}
 	if (p15card->use_cache)
@@ -288,7 +301,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 			tmppath = p15card->file_odf.path;
 		
 		err = sc_select_file(card, &tmppath, &p15card->file_odf);
-		if (err)
+		if (err) /* FIXME: finish writing error stuff */
 			goto error;
 		err = sc_read_binary(card, 0, buf, p15card->file_odf.size);
 		if (err < 0)
@@ -327,10 +340,12 @@ int sc_pkcs15_bind(struct sc_card *card,
 	p15card->use_cache = card->ctx->use_cache;
 
 	*p15card_out = p15card;
+	sc_unlock(card);
 	return 0;
 error:
 	free(p15card);
-	return err;
+	sc_unlock(card);
+	SC_FUNC_RETURN(ctx, 1, err);
 }
 
 int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)

@@ -23,6 +23,9 @@
 
 #include <pthread.h>
 #include <winscard.h>
+#ifndef NDEBUG
+#include <assert.h>
+#endif
 #include <stdio.h>
 
 #ifdef  __cplusplus
@@ -70,31 +73,18 @@ extern "C" {
 #define SC_APDU_CASE_3_EXT              6
 #define SC_APDU_CASE_4_EXT              7
 
-#define SC_ISO7816_4_SELECT_FILE	0xA4
-#define SC_ISO7816_4_GET_RESPONSE	0xC0
-#define SC_ISO7616_4_READ_BINARY	0xB0
-#define SC_ISO7616_4_VERIFY		0x20
-#define SC_ISO7616_4_UPDATE_BINARY	0xD6
-#define SC_ISO7616_4_ERASE_BINARY	0x0E
-
-#define SC_SELECT_FILE_RECORD_FIRST	0x00
-#define SC_SELECT_FILE_RECORD_LAST	0x01
-#define SC_SELECT_FILE_RECORD_NEXT	0x02
-#define SC_SELECT_FILE_RECORD_PREVIOUS	0x03
-
-#define SC_SELECT_FILE_BY_FILE_ID	0x00
-#define SC_SELECT_FILE_BY_DF_NAME	0x01
-#define SC_SELECT_FILE_BY_PATH		0x02
-
-#define SC_FILE_MAGIC			0x10203040
-
-#define SC_FILE_TYPE_DF			0x03
+#define SC_FILE_TYPE_DF			0x02
 #define SC_FILE_TYPE_INTERNAL_EF	0x01
 #define SC_FILE_TYPE_WORKING_EF		0x00
 
 #define SC_FILE_EF_TRANSPARENT		0x01
 #define SC_FILE_EF_LINEAR_FIXED		0x02
 #define SC_FILE_EF_LINEAR_FIXED_TLV	0x03
+#define SC_FILE_EF_LINEAR_VARIABLE	0x04
+#define SC_FILE_EF_CYCLIC		0x06
+
+#define SC_FILE_STATUS_ACTIVATED	0x00
+#define SC_FILE_STATUS_INVALIDATED	0x01
 
 #define SC_MAX_CARD_DRIVERS		16
 #define SC_MAX_READERS			4
@@ -132,10 +122,10 @@ struct sc_file {
 
 	int type, shareable, ef_structure;
 	size_t size;
-	int id;
+	int id, status;
 	u8 sec_attr[SC_MAX_SEC_ATTR_SIZE];
 	size_t sec_attr_len;
-	u8 prop_attr[SC_MAX_SEC_ATTR_SIZE];
+	u8 prop_attr[SC_MAX_PROP_ATTR_SIZE];
 	size_t prop_attr_len;
 	unsigned int magic;
 };
@@ -146,7 +136,6 @@ struct sc_file {
 struct sc_security_env {
 	int algorithm_ref;
 	struct sc_path key_file_id;
-	/* operation=1 ==> digital signing, signature=0 ==> decipher */
 	int operation;
 	int key_ref;
 };
@@ -161,8 +150,11 @@ struct sc_card {
 	size_t atr_len;
 	
 	pthread_mutex_t mutex;
+	int lock_count;
 	const struct sc_card_operations *ops;
 	void *ops_data;
+	
+	unsigned int magic;
 };
 
 struct sc_card_operations {
@@ -250,7 +242,7 @@ struct sc_context {
 	int debug;
 
 	int use_std_output, use_cache;
-	const  struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS];
+	const  struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS+1];
 };
 
 struct sc_apdu {
@@ -295,7 +287,6 @@ int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout);
 int sc_lock(struct sc_card *card);
 int sc_unlock(struct sc_card *card);
 
-
 /* ISO 7816-4 related functions */
 int sc_select_file(struct sc_card *card, const struct sc_path *path,
 		   struct sc_file *file);
@@ -327,17 +318,12 @@ int sc_list_files(struct sc_card *card, u8 * buf, int buflen);
 
 const char *sc_strerror(int error);
 
-/* Internal use only */
-int sc_file_valid(const struct sc_file *file);
-void sc_print_binary(FILE *f, const u8 *buf, int len);
-int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
-int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2);
-void sc_format_path(const char *path_in, struct sc_path *path_out);
-
 extern const char *sc_version;
 
 extern const struct sc_card_driver *sc_get_iso7816_driver(void);
 extern const struct sc_card_driver *sc_get_setec_driver(void);
+extern const struct sc_card_driver *sc_get_mflex_driver(void);
+extern const struct sc_card_driver *sc_get_default_driver(void);
 
 #ifdef  __cplusplus
 }

@@ -16,4 +16,4 @@ INC = sc-pkcs11.h
 lib_LTLIBRARIES = libopensc-pkcs11.la
 
 libopensc_pkcs11_la_SOURCES = $(SRC) $(INC)
-libopensc_pkcs11_la_LDFLAGS = -module
+libopensc_pkcs11_la_LDFLAGS = -module -version-info 1:0:0

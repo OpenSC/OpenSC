@@ -27,6 +27,7 @@
 #include <opensc.h>
 #include <opensc-pkcs15.h>
 #include <sys/stat.h>
+#include <ctype.h>
 
 #define OPT_CHANGE_PIN	0x100
 #define OPT_LIST_PINS	0x101
@@ -44,6 +45,7 @@ int quiet = 0;
 
 const struct option options[] = {
 	{ "list-readers",	0, 0, 		'l' },
+	{ "list-drivers",	0, 0,		'D' },
 	{ "list-files",		0, 0,		'f' },
 	{ "learn-card",		0, 0, 		'L' },
 	{ "send-apdu",		1, 0,		's' },
@@ -63,6 +65,7 @@ const struct option options[] = {
 
 const char *option_help[] = {
 	"Lists all configured readers",
+	"Lists all installed card drivers",
 	"Recursively lists files stored on card",
 	"Stores card info to cache [P15]",
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
@@ -126,9 +129,28 @@ int list_readers()
 {
 	int i;
 	
+	if (ctx->reader_count == 0) {
+		printf("No readers configured!\n");
+		return 0;
+	}
 	printf("Configured readers:\n");
 	for (i = 0; i < ctx->reader_count; i++) {
 		printf("\t%d - %s\n", i, ctx->readers[i]);
+	}
+	return 0;
+}
+
+int list_drivers()
+{
+	int i;
+	
+	if (ctx->card_drivers[0] == NULL) {
+		printf("No card drivers installed!\n");
+		return 0;
+	}
+	printf("Configured card drivers:\n");
+	for (i = 0; ctx->card_drivers[i] != NULL; i++) {
+		printf("\t%s\n", ctx->card_drivers[i]->name);
 	}
 	return 0;
 }
@@ -359,7 +381,7 @@ int enum_dir(struct sc_path path, int depth)
 	u8 buf[2048];
 	const char *tmps;
 
-	r = sc_select_file(card, &file, &path);
+	r = sc_select_file(card, &path, &file);
 	if (r) {
 		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
 		return 1;
@@ -528,18 +550,44 @@ int learn_card()
 	return 0;
 }
 
+void hex_dump_asc(const u8 *in, size_t count)
+{
+	int lines = 0;
+
+ 	while (count) {
+		char ascbuf[17];
+		int i;
+
+		for (i = 0; i < count && i < 16; i++) {
+			printf("%02X ", *in);
+			if (isprint(*in))
+				ascbuf[i] = *in;
+			else
+				ascbuf[i] = '.';
+			in++;
+		}
+		count -= i;
+		ascbuf[i] = 0;
+		for (; i < 16 && lines; i++)
+			printf("   ");
+		printf("%s\n", ascbuf);
+		lines++;
+	}
+}
+
 int send_apdu()
 {
 	struct sc_apdu apdu;
 	u8 buf[MAX_BUFFER_SIZE], sbuf[MAX_BUFFER_SIZE],
 	   rbuf[MAX_BUFFER_SIZE], *p = buf;
-	int len = sizeof(buf), r;
+	int len = sizeof(buf), len0, r;
 	
-	sc_hex_to_bin(opt_apdu, buf, &len);
+	sc_hex_to_bin(opt_apdu, buf, &len0);
 	if (len < 4) {
 		fprintf(stderr, "APDU too short (must be at least 4 bytes).\n");
 		return 2;
 	}
+	len = len0;
 	apdu.cla = *p++;
 	apdu.ins = *p++;
 	apdu.p1 = *p++;
@@ -548,6 +596,7 @@ int send_apdu()
 	apdu.resplen = sizeof(rbuf);
 	apdu.data = NULL;
 	apdu.datalen = 0;
+	apdu.no_response = 0;
 	len -= 4;
 	if (len > 1) {
 		apdu.lc = *p++;
@@ -577,15 +626,21 @@ int send_apdu()
 		apdu.cse = SC_APDU_CASE_2_SHORT;
 	} else
 		apdu.cse = SC_APDU_CASE_1;
-	
-	ctx->debug = 5;
+	printf("Sending: ");
+	for (r = 0; r < len0; r++)
+		printf("%02X ", buf[r]);
+	printf("\n");
+//	ctx->debug = 5;
 	r = sc_transmit_apdu(card, &apdu);
-	ctx->debug = opt_debug;
+//	ctx->debug = opt_debug;
 	if (r) {
 		fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	
+	printf("Received (SW1=0x%02X, SW2=0x%02X)%s\n", apdu.sw1, apdu.sw2,
+	       apdu.resplen ? ":" : "");
+	if (apdu.resplen)
+		hex_dump_asc(apdu.resp, apdu.resplen);
 	return 0;
 }
 
@@ -593,6 +648,7 @@ int main(int argc, char * const argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	int do_list_readers = 0;
+	int do_list_drivers = 0;
 	int do_read_cert = 0;
 	int do_list_certs = 0;
 	int do_list_pins = 0;
@@ -604,7 +660,7 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
 		
 	while (1) {
-		c = getopt_long(argc, argv, "lfr:kco:qdp:s:L", options, &long_optind);
+		c = getopt_long(argc, argv, "lfr:kco:qdp:s:LD", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -617,6 +673,10 @@ int main(int argc, char * const argv[])
 			break;
 		case 'l':
 			do_list_readers = 1;
+			action_count++;
+			break;
+		case 'D':
+			do_list_drivers = 1;
 			action_count++;
 			break;
 		case 'f':
@@ -684,6 +744,11 @@ int main(int argc, char * const argv[])
 			goto end;
 		action_count--;
 	}
+	if (do_list_drivers) {
+		if ((err = list_drivers()))
+			goto end;
+		action_count--;
+	}
 	if (action_count <= 0)
 		goto end;
 	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
@@ -704,7 +769,12 @@ int main(int argc, char * const argv[])
 		goto end;
 	}
 
-	sc_lock(card);
+	r = sc_lock(card);
+	if (r) {
+		fprintf(stderr, "Unable to lock card: %s\n", sc_strerror(r));
+		err = 1;
+		goto end;
+	}
 	
 	if (do_send_apdu) {
 		if ((err = send_apdu()))

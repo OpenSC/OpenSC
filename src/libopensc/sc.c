@@ -21,7 +21,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-#include "opensc.h"
+#include "sc-internal.h"
 #include "sc-log.h"
 #include "sc-asn1.h"
 #include <stdio.h>
@@ -187,14 +187,21 @@ int sc_establish_context(struct sc_context **ctx_out)
 			break;
 	} while (p < (reader_buf + reader_buf_size - 1));
 	free(reader_buf);
-	for (i = 0; i < SC_MAX_CARD_DRIVERS; i++)
+	for (i = 0; i < SC_MAX_CARD_DRIVERS+1; i++)
 		ctx->card_drivers[i] = NULL;
 	i = 0;
+#if 1
+	ctx->card_drivers[i++] = sc_get_setec_driver();
+#endif
+#if 1
+	ctx->card_drivers[i++] = sc_get_mflex_driver();
+#endif
 #if 1
 	ctx->card_drivers[i++] = sc_get_iso7816_driver();
 #endif
 #if 1
-	ctx->card_drivers[i++] = sc_get_setec_driver();
+	/* this should be last in line */
+	ctx->card_drivers[i++] = sc_get_default_driver();
 #endif
 
 	*ctx_out = ctx;
@@ -216,8 +223,13 @@ int sc_destroy_context(struct sc_context *ctx)
 void sc_format_path(const char *str, struct sc_path *path)
 {
 	int len = 0;
+	int type = SC_PATH_TYPE_PATH;
 	u8 *p = path->value;
 
+	if (*p == 'i' || *p == 'I') {
+		type = SC_PATH_TYPE_FILE_ID;
+		p++;
+	}
 	while (str) {
 		int byte;
 		
@@ -228,7 +240,7 @@ void sc_format_path(const char *str, struct sc_path *path)
 		str += 2;
 	}
 	path->len = len;
-	path->type = SC_PATH_TYPE_PATH;
+	path->type = type;
 	return;
 }
 
@@ -274,4 +286,11 @@ const char *sc_strerror(int error)
 	if (error >= nr_errors)
 		return errors[0];
 	return errors[error];
+}
+
+inline int sc_file_valid(const struct sc_file *file) {
+#ifndef NDEBUG
+	assert(file != NULL);
+#endif
+	return file->magic == SC_FILE_MAGIC;
 }

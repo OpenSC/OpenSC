@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "opensc.h"
+#include "sc-internal.h"
 #include "sc-log.h"
 #include "sc-asn1.h"
 #include <assert.h>
@@ -60,6 +60,21 @@ int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2)
 	error(card->ctx, "Unknown SW's: SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_UNKNOWN_REPLY;
 }
+
+static int _sc_pcscret_to_error(long rv)
+{
+	switch (rv) {
+	case SCARD_W_REMOVED_CARD:
+		return SC_ERROR_CARD_REMOVED;
+	case SCARD_W_RESET_CARD:
+		return SC_ERROR_CARD_RESET;
+	case SCARD_E_NOT_TRANSACTED:
+		return SC_ERROR_TRANSMIT_FAILED;
+	default:
+		return SC_ERROR_UNKNOWN;
+	}
+}
+
 
 static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 {
@@ -190,8 +205,13 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	SC_FUNC_CALLED(card->ctx, 4);
 	r = sc_check_apdu(card->ctx, apdu);
 	SC_TEST_RET(card->ctx, r, "APDU sanity check failed");
+	r = sc_lock(card);
+	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 	r = sc_transceive_t0(card, apdu);
-	SC_TEST_RET(card->ctx, r, "transceive_t0() failed");
+	if (r != 0) {
+		sc_unlock(card);
+		SC_TEST_RET(card->ctx, r, "transceive_t0() failed");
+	}
 	if (card->ctx->debug >= 5) {
 		char buf[2048];
 
@@ -207,9 +227,13 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 		struct sc_apdu rspapdu;
 		BYTE rsp[SC_MAX_APDU_BUFFER_SIZE];
 
-		if (apdu->no_response != 0)
+		if (apdu->no_response != 0) {
+			apdu->sw1 = 0x90;
+			apdu->sw2 = 0;
+			sc_unlock(card);
 			return 0;
-
+		}
+		
 		sc_format_apdu(card, &rspapdu, SC_APDU_CASE_2_SHORT,
 			       0xC0, 0, 0);
 		rspapdu.le = (size_t) apdu->sw2;
@@ -219,6 +243,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 		if (r != 0) {
 			error(card->ctx, "error while getting response: %s\n",
 			      sc_strerror(r));
+			sc_unlock(card);
 			return r;
 		}
 		if (card->ctx->debug >= 5) {
@@ -238,6 +263,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 		apdu->sw1 = rspapdu.sw1;
 		apdu->sw2 = rspapdu.sw2;
 	}
+	sc_unlock(card);
 	return 0;
 }
 
@@ -296,6 +322,7 @@ int sc_connect_card(struct sc_context *ctx,
 	card->reader = reader;
 	card->ctx = ctx;
 	card->pcsc_card = card_handle;
+	card->lock_count = 0;
 	i = rgReaderStates[0].cbAtr;
 	if (i >= SC_MAX_ATR_SIZE)
 		i = SC_MAX_ATR_SIZE;
@@ -305,15 +332,27 @@ int sc_connect_card(struct sc_context *ctx,
 	for (i = 0; ctx->card_drivers[i] != NULL; i++) {
                 const struct sc_card_driver *drv = ctx->card_drivers[i];
 		const struct sc_card_operations *ops = drv->ops;
+		int r;
+		
 		if (ctx->debug >= 3)
 			debug(ctx, "trying driver: %s\n", drv->name);
 		if (ops == NULL || ops->match_card == NULL)
 			continue;
-		if (ops->match_card(card) == 1) {
-			if (ctx->debug >= 3)
-				debug(ctx, "matched\n");
-			card->ops = ops;
+		if (ops->match_card(card) != 1)
+			continue;
+		if (ctx->debug >= 3)
+			debug(ctx, "matched: %s\n", drv->name);
+		card->ops = ops;
+		r = card->ops->init(card);
+		if (r) {
+			error(ctx, "driver '%s' init() failed: %s\n", drv->name,
+			      sc_strerror(r));
+			if (r == SC_ERROR_INVALID_CARD)
+				continue;
+			free(card);
+			return r;
 		}
+		break;
 	}
 	if (card->ops == NULL) {
 		error(ctx, "unable to find driver for inserted card\n");
@@ -321,6 +360,7 @@ int sc_connect_card(struct sc_context *ctx,
 		return SC_ERROR_INVALID_CARD;
 	}
 	pthread_mutex_init(&card->mutex, NULL);
+	card->magic = SC_CARD_MAGIC;
 	*card_out = card;
 
 	SC_FUNC_RETURN(ctx, 1, 0);
@@ -328,15 +368,25 @@ int sc_connect_card(struct sc_context *ctx,
 
 int sc_disconnect_card(struct sc_card *card)
 {
-	struct sc_context *ctx = card->ctx;
-	assert(card != NULL);
+	struct sc_context *ctx;
+	assert(sc_card_valid(card));
+	ctx = card->ctx;
 	SC_FUNC_CALLED(ctx, 1);
+	assert(card->lock_count == 0);
+	if (card->ops->finish) {
+		int r = card->ops->finish(card);
+		if (r)
+			error(card->ctx, "driver finish() failed: %s\n",
+			      sc_strerror(r));
+	}
 	SCardDisconnect(card->pcsc_card, SCARD_LEAVE_CARD);
 	pthread_mutex_destroy(&card->mutex);
 	free(card);
 	SC_FUNC_RETURN(ctx, 1, 0);
 }
 
+/* internal lock function -- should make sure that the card is exclusively
+ * in our use */
 static int _sc_lock_int(struct sc_card *card)
 {
 	long rv;
@@ -345,18 +395,27 @@ static int _sc_lock_int(struct sc_card *card)
 	
 	if (rv != SCARD_S_SUCCESS) {
 		error(card->ctx, "SCardBeginTransaction failed: %s\n", pcsc_stringify_error(rv));
-		return -1;
+		return _sc_pcscret_to_error(rv);
 	}
 	return 0;
 }
 
 int sc_lock(struct sc_card *card)
 {
+	int r = 0;
+	
+	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
 	pthread_mutex_lock(&card->mutex);
-	SC_FUNC_RETURN(card->ctx, 2, _sc_lock_int(card));
+	if (card->lock_count == 0)
+		r = _sc_lock_int(card);
+	if (r == 0)
+		card->lock_count++;
+	pthread_mutex_unlock(&card->mutex);
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
+/* internal unlock function */
 static int _sc_unlock_int(struct sc_card *card)
 {
 	long rv;
@@ -371,9 +430,17 @@ static int _sc_unlock_int(struct sc_card *card)
 
 int sc_unlock(struct sc_card *card)
 {
+	int r = 0;
+
+	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
+	pthread_mutex_lock(&card->mutex);
+	card->lock_count--;
+	assert(card->lock_count >= 0);
+	if (card->lock_count == 0)
+		r = _sc_unlock_int(card);
 	pthread_mutex_unlock(&card->mutex);
-	SC_FUNC_RETURN(card->ctx, 2, _sc_unlock_int(card));
+	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_list_files(struct sc_card *card, u8 *buf, int buflen)
@@ -475,13 +542,6 @@ int sc_delete_file(struct sc_card *card, int file_id)
 	SC_FUNC_RETURN(card->ctx, 1, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
-int sc_file_valid(const struct sc_file *file)
-{
-	assert(file != NULL);
-	
-	return file->magic == SC_FILE_MAGIC;
-}
-
 int sc_read_binary(struct sc_card *card, unsigned int idx,
 		   unsigned char *buf, size_t count)
 {
@@ -500,17 +560,25 @@ int sc_read_binary(struct sc_card *card, unsigned int idx,
 			SC_FUNC_RETURN(card->ctx, 2, r);
 		}
                 /* no read_binary_large support... */
+		r = sc_lock(card);
+		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 		while (count > 0) {
 			int n = count > RB_BUF_SIZE ? RB_BUF_SIZE : count;
 			r = sc_read_binary(card, idx, p, n);
-			SC_TEST_RET(card->ctx, r, "sc_read_binary() failed");
+			if (r < 0) {
+				sc_unlock(card);
+				SC_TEST_RET(card->ctx, r, "sc_read_binary() failed");
+			}
 			p += r;
 			idx += r;
 			bytes_read += r;
 			count -= r;
-			if (r == 0)
+			if (r == 0) {
+				sc_unlock(card);
 				SC_FUNC_RETURN(card->ctx, 2, bytes_read);
+			}
 		}
+		sc_unlock(card);
 		SC_FUNC_RETURN(card->ctx, 2, bytes_read);
 	}
 	if (card->ops->read_binary == NULL)
@@ -528,7 +596,7 @@ int sc_select_file(struct sc_card *card,
 	assert(card != NULL && in_path != NULL);
 	if (card->ctx->debug >= 2) {
 		char line[128], *linep = line;
-		
+
 		linep += sprintf(linep, "called with type %d, path ", in_path->type);
 		for (r = 0; r < in_path->len; r++) {
 			sprintf(linep, "%02X", in_path->value[r]);
@@ -555,4 +623,11 @@ int sc_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->get_challenge(card, rnd, len);
         SC_FUNC_RETURN(card->ctx, 2, r);
+}
+
+inline int sc_card_valid(const struct sc_card *card) {
+#ifndef NDEBUG
+	assert(card != NULL);
+#endif
+	return card->magic == SC_CARD_MAGIC;
 }

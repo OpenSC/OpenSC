@@ -292,7 +292,15 @@ int main(int argc, char * const argv[])
 		goto end;
 	}
 
-	sc_lock(card);
+#if 0
+	r = sc_lock(card);
+	if (r) {
+		fprintf(stderr, "Unable to lock card: %s\n", sc_strerror(r));
+		err = 1;
+		goto end;
+	}
+#endif
+
 	if (!quiet)
 		fprintf(stderr, "Trying to find a PKCS#15 compatible card...\n");
 	r = sc_pkcs15_bind(card, &p15card);
@@ -358,7 +366,9 @@ end:
 	if (p15card)
 		sc_pkcs15_unbind(p15card);
 	if (card) {
+#if 0
 		sc_unlock(card);
+#endif
 		sc_disconnect_card(card);
 	}
 	if (ctx)
