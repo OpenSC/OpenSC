@@ -1455,7 +1455,7 @@ EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObje
 }
 #endif
 
-int sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+int sign_verify_openssl(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_MECHANISM *ck_mech, CK_OBJECT_HANDLE privKeyObject,
 		unsigned char *data, CK_ULONG dataLen,
 		unsigned char *verifyData, CK_ULONG verifyDataLen,
@@ -1596,7 +1596,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return errors;
 	}
 
-	printf("Signatures (currently only RSA signatures)");
+	printf("Signatures (currently only RSA signatures)\n");
 	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
 		printf("  testing key %ld ", j);
 		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
@@ -1729,7 +1729,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	printf("  testing signature mechanisms:\n");
 	for (i = 0; mechTypes[i] != 0xffffff; i++) {
 		ck_mech.mechanism = mechTypes[i];
-		errors += sign_verify(slot, sess, &ck_mech, privKeyObject,
+		errors += sign_verify_openssl(slot, sess, &ck_mech, privKeyObject,
 			datas[i], dataLens[i], verifyData, sizeof(verifyData),
 			modLenBytes, i);
 	}
@@ -1750,10 +1750,145 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		}
 		printf("with 1 signature mechanism\n");
 
-		errors += sign_verify(slot, sess, &ck_mech, privKeyObject,
+		errors += sign_verify_openssl(slot, sess, &ck_mech, privKeyObject,
 			datas[i], dataLens[i], verifyData, sizeof(verifyData),
 			modLenBytes, i);
 	}
+
+	return errors;
+}
+
+static int
+sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,	CK_OBJECT_HANDLE priv_key, int key_len,
+	CK_OBJECT_HANDLE pub_key, int one_test)
+{
+	CK_RV rv;
+	int count;
+	CK_MECHANISM_TYPE mech_types[] = {
+		CKM_RSA_X_509,
+		CKM_RSA_PKCS,
+		CKM_SHA1_RSA_PKCS,
+		CKM_MD5_RSA_PKCS,
+		CKM_RIPEMD160_RSA_PKCS,
+		0xffffff
+	};
+	CK_MECHANISM_TYPE *mech_type;
+	unsigned char buf[512] = {0};
+	unsigned char *datas[] = {
+		buf,
+		"\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
+		buf,
+		buf,
+		buf
+	};	
+	int data_lens[] = {
+		key_len,
+		35,
+		234,
+		345,
+		456
+	};
+	unsigned char signat[512];
+	int j, signat_len, errors = 0;
+
+	for (j = 0, mech_type = mech_types; *mech_type != 0xffffff; mech_type++, j++) {
+		CK_MECHANISM mech = {*mech_type, NULL, 0};
+
+		rv = p11->C_SignInit(session, &mech, priv_key);
+		if (rv == CKR_MECHANISM_INVALID)
+			break;
+		if (rv != CKR_OK) {
+			printf("  ERR: C_SignInit() returned %s (0x%0x)\n", CKR2Str(rv), (int) rv);
+			return ++errors;
+		}
+
+		printf("    %s: ", p11_mechanism_to_name(*mech_type));
+
+		signat_len = sizeof(signat);
+		rv = p11->C_Sign(session, datas[j], data_lens[j], signat, &signat_len);
+		if (rv != CKR_OK) {
+			printf("  ERR: C_Sign() returned %s (0x%0x)\n", CKR2Str(rv), (int) rv);
+			return ++errors;
+		}
+
+		rv = p11->C_VerifyInit(session, &mech, pub_key);
+		if (rv != CKR_OK) {
+			printf("  ERR: C_VerifyInit() returned %s (0x%0x)\n", CKR2Str(rv), (int) rv);
+			return ++errors;
+		}
+		rv = p11->C_Verify(session, datas[j], data_lens[j], signat, signat_len);
+		if (rv == CKR_SIGNATURE_INVALID) {
+			printf("  ERR: verification failed");
+			errors++;
+		}	
+		if (rv != CKR_OK) {
+			printf("  ERR: C_Verify() returned %s (0x%0x)\n", CKR2Str(rv), (int) rv);
+			return ++errors;
+		}
+		else
+			printf("OK\n");
+
+		if (one_test)
+			return errors;
+	}
+
+	return errors;
+}
+
+static int
+test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
+{
+	int key_len, i, errors = 0;
+	CK_OBJECT_HANDLE priv_key, pub_key;
+	CK_MECHANISM_TYPE first_mech_type;
+
+	first_mech_type = find_mechanism(slot, CKF_VERIFY, 0);
+	if (first_mech_type == NO_MECHANISM) {
+		printf("Verify: not implemented\n");
+		return errors;
+	}
+
+	printf("Verify (currently only for RSA):\n");
+
+	for (i = 0; find_object(sess, CKO_PRIVATE_KEY, &priv_key, NULL, 0, i); i++) {
+		char *label, *id;
+		int id_len, err;
+		
+		printf("  testing key %ld", i);
+		if ((label = getLABEL(sess, priv_key, NULL)) != NULL) {
+			printf(" (%s)", label);
+			free(label);
+		}
+		if (i != 0)
+			printf(" with 1 mechanism");
+		printf("\n");
+
+		if (!getSIGN(sess, priv_key)) {
+			printf(" -- can't be used to sign/verify, skipping\n");
+			continue;
+		}
+		if ((id = getID(sess, priv_key, &id_len)) != NULL) {
+			int r;
+
+			r = find_object(sess, CKO_PUBLIC_KEY, &pub_key, id, id_len, 0);
+			free(id);
+			if (r == 0) {
+				printf(" -- can't find corresponding public key, skipping\n");
+				continue;
+			}
+		}
+		else {
+			printf(" -- can't get the ID for looking up the public key, skipping\n");
+			continue;
+		}
+
+		key_len = (getMODULUS_BITS(sess, priv_key) + 7) / 8;
+
+		errors += sign_verify(slot, sess, priv_key, key_len, pub_key, i != 0);
+	}
+
+	if (i == 0)
+		printf("  No private key found for testing\n");
 
 	return errors;
 }
@@ -2007,6 +2142,8 @@ p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	errors += test_digest(slot);
 
 	errors += test_signature(slot, session);
+
+	errors += test_verify(slot, session);
 
 	errors += test_unwrap(slot, session);
 
