@@ -161,7 +161,11 @@ void print_usage_and_die(void)
 			break;
 		}
 		sprintf(buf, "--%s%s%s", options[i].name, tmp, arg_str);
-		printf("  %-30s%s\n", buf, option_help[i]);
+		if (strlen(buf) > 29) {
+			printf("  %s\n", buf);
+			buf[0] = '\0';
+		}
+		printf("  %-29s %s\n", buf, option_help[i]);
 		i++;
 	}
 	exit(2);
