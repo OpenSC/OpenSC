@@ -129,27 +129,35 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 	struct sc_file file;
 	char *data = NULL;
 	struct sc_pkcs15_cert *cert;
-	char fname[50];
+	char fname[150];
 	u8 buf[2048];
+
 	FILE *crtf = NULL;
 	int cert_found = 0;
-	
+	char *homedir;
 
 	assert(p15card != NULL && info != NULL && cert_out != NULL);
 
+#if 1
 	/* FIXME: Remove this kludge */
-	sprintf(fname, "/tmp/fineid-%02X.crt", info->id.value[0]);
+	homedir = getenv("HOME");
+	if (homedir == NULL)
+		goto no_cert;
+	sprintf(fname, "%s/.eid/%s_%02X.crt", homedir, p15card->label, info->id.value[0]);
 	crtf = fopen(fname, "r");
-	if (crtf != NULL) {
-		r = fread(buf, 1, sizeof(buf), crtf);
-		if (r > 0) {
-			data = malloc(r);
-			memcpy(data, buf, r);
-			len = r;
-			cert_found = 1;
-		}
-		fclose(crtf);
+	if (crtf == NULL)
+		goto no_cert;
+	
+	r = fread(buf, 1, sizeof(buf), crtf);
+	if (r > 0) {
+		data = malloc(r);
+		memcpy(data, buf, r);
+		len = r;
+		cert_found = 1;
 	}
+	fclose(crtf);
+no_cert:
+#endif
 	if (!cert_found) {
 		r = sc_select_file(p15card->card, &file, &info->path,
 				   SC_SELECT_FILE_BY_PATH);
@@ -165,11 +173,13 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 		}
 		len = r;
 		/* FIXME: kludge! */
+#if 1
 		crtf = fopen(fname, "w");
 		if (crtf != NULL) {
 			fwrite(data, len, 1, crtf);
 			fclose(crtf);
 		}
+#endif
 	}
 	cert = malloc(sizeof(struct sc_pkcs15_cert));
 	if (cert == NULL) {

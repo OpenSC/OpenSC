@@ -174,9 +174,19 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 	rv = SCardTransmit(card->pcsc_card, &sSendPci, s, dwSendLength,
 			   &sRecvPci, r, &dwRecvLength);
 	if (rv != SCARD_S_SUCCESS) {
-		fprintf(stderr, "SCardTransmit failed with 0x%08x\n",
-			(int) rv);
-		return SC_ERROR_TRANSMIT_FAILED;
+		switch (rv) {
+		case SCARD_W_REMOVED_CARD:
+			return SC_ERROR_CARD_REMOVED;
+		case SCARD_E_NOT_TRANSACTED:
+			if (sc_detect_card(card->context, card->reader) != 1)
+				return SC_ERROR_CARD_REMOVED;
+			return SC_ERROR_TRANSMIT_FAILED;
+		default:
+			if (sc_debug) {
+				fprintf(stderr, "SCardTransmit returned 0x%08lX.\n", rv);
+				return SC_ERROR_TRANSMIT_FAILED;
+			}
+		}
 	}
 	apdu->resplen = dwRecvLength;
 	memcpy(apdu->resp, r, dwRecvLength);
@@ -530,7 +540,6 @@ int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout)
 	return 0;
 }
 
-
 int sc_establish_context(struct sc_context **ctx_out)
 {
 	struct sc_context *ctx;
@@ -658,6 +667,8 @@ int sc_connect_card(struct sc_context *ctx,
 		free(card);
 		return -1;	/* FIXME */
 	}
+	card->reader = reader;
+	card->context = ctx;
 	card->pcsc_card = card_handle;
 	i = rgReaderStates[0].cbAtr;
 	if (i >= SC_MAX_ATR_SIZE)
@@ -671,7 +682,6 @@ int sc_connect_card(struct sc_context *ctx,
 	} else {
 		card->class = 0;	/* FIXME */
 	}
-	card->reader = ctx->readers[reader];
 	*card_out = card;
 
 	return 0;
@@ -703,8 +713,12 @@ const char *sc_strerror(int error)
 		"PIN code incorrect",
 		"Security status not satisfied",
 		"Error connecting to Resource Manager",
+		"Invalid ASN.1 object",
 		"Buffer too small",
-
+		"Card not present",
+		"Error with Resource Manager",
+		"Card removed",
+		"Invalid PIN length"
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);
 

@@ -305,7 +305,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	DBG(printf("Verifying PIN code...\n"));
 	r = sc_pkcs15_verify_pin(p15card, &p15card->pin_info[0], password, strlen(password));
 	if (r) {
-		printf("PIN code verification failed: %s\n", sc_strerror(r));
+		DBG(printf("PIN code verification failed: %s\n", sc_strerror(r)));
+		if (r == SC_ERROR_CARD_REMOVED)
+			printf("SmartCard removed.\n");
 		goto end;
 	}
 	DBG(printf("Awright! PIN code correct!\n"));

@@ -1,0 +1,14 @@
+
+Steps required to make the PAM module work:
+
+1. Compile and link the pam_pkcs15.so shared library.
+2. Copy pam_pkcs.so to /lib/security.
+3. Edit /etc/pam.d/login file. Add the following line before the
+   pam_unix.so (on Debian) or pam_pwdb.so (on Red Hat) entry:
+	auth	sufficient	/lib/security/pam_pkcs15.so
+4. Copy your PEM encoded certificate to a file in your home directory
+   called '.eid/authorized_certificates'.
+   NOTE: You can use the 'certtest' program to get the PEM encoded
+         certificate.
+5. Try to login with your card in the reader.
+

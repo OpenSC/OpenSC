@@ -99,5 +99,6 @@ int main(int argc, char *argv[])
 		printf("\n");
 		sc_asn1_print_tags(cert->data, cert->data_len);
 	}
+	sc_test_cleanup();
 	return 0;
 }

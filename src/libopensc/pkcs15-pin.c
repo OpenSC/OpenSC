@@ -171,7 +171,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	if (pin->magic != SC_PKCS15_PIN_MAGIC)
 		return SC_ERROR_OBJECT_NOT_VALID;
 	if (pinlen > pin->stored_length || pinlen < pin->min_length)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		return SC_ERROR_INVALID_PIN_LENGTH;
 	card = p15card->card;
 	r = sc_select_file(card, &file, &pin->path,
 			   SC_SELECT_FILE_BY_PATH);

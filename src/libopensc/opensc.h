@@ -44,6 +44,8 @@
 #define SC_ERROR_BUFFER_TOO_SMALL		-1017
 #define SC_ERROR_CARD_NOT_PRESENT		-1018
 #define SC_ERROR_RESOURCE_MANAGER		-1019
+#define SC_ERROR_CARD_REMOVED			-1020
+#define SC_ERROR_INVALID_PIN_LENGTH		-1021
 
 #define SC_APDU_CASE_NONE		0
 #define SC_APDU_CASE_1                  1
@@ -117,8 +119,9 @@ struct sc_file {
 struct sc_card {
 	int class;
 	struct sc_context *context;
+
 	SCARDHANDLE pcsc_card;
-	const char *reader;
+	int reader;
 	char atr[SC_MAX_ATR_SIZE];
 	int atr_len;
 	
@@ -170,8 +173,15 @@ int sc_destroy_context(struct sc_context *ctx);
 int sc_connect_card(struct sc_context *ctx,
 		    int reader, struct sc_card **card);
 int sc_disconnect_card(struct sc_card *card);
+
+/* Checks if a card is present on the supplied reader
+ * Returns: 1 if card present, 0 if card absent and < 0 in case of an error */
 int sc_detect_card(struct sc_context *ctx, int reader);
-/* timeout of -1 means forever, reader of -1 means all readers */
+
+/* Waits for card insertion on the supplied reader
+ * timeout of -1 means forever, reader of -1 means all readers
+ * Returns: 1 if a card was found, 0 if timeout occured
+ *          and < 0 in case of an error */
 int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout);
 
 int sc_lock(struct sc_card *card);
