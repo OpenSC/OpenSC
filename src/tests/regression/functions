@@ -12,6 +12,7 @@ if [ -z "$__p15init__" ]; then
 	p15crypt=$p15base/tools/pkcs15-crypt
 	p15tool=$p15base/tools/pkcs15-tool
 	p15init=$p15base/tools/pkcs15-init
+	p11tool=$p15base/tools/pkcs11-tool
 	p15log=$p15temp/test.log
 
 	for bin in $p15tool $p15crypt $p15init; do
@@ -21,7 +22,13 @@ if [ -z "$__p15init__" ]; then
 	done
 
 	mkdir -p $p15temp
-	trap "rm -rf $p15temp" 0 1 2 13 15
+	trap atexit 0 1 2 13 15
+
+	if test "$P15_READER"; then
+		p15crypt="$p15crypt --reader $P15_READER"
+		p15tool="$p15tool --reader $P15_READER"
+		p15init="$p15init --reader $P15_READER"
+	fi
 
 	# Redirect output to log file, but keep copies of
 	# stdout/stderr descriptors on fd 3 and 4
@@ -31,6 +38,16 @@ fi
 # Clobber log file
 cp /dev/null $p15log
 
+function atexit {
+
+	test "$p15temp" && rm -rf $p15temp
+
+	msg <<-EOF
+	:::
+	::: Test set completed successfully
+	:::
+EOF
+}
 
 function msg {
 
@@ -42,7 +59,23 @@ function msg {
 	fi
 }
 
+function yesno {
+
+	while true; do
+		echo -n "$* [y/n]" >&3
+		read -n 1 ans
+		echo >&3
+
+		case $ans in
+		[yY])	return 0;;
+		[nN])	return 1;;
+		esac
+		echo "*** Answer must be y or n"
+	done
+}
+
 function fail {
+
 	(
 		echo "*** $*"
 		echo "---"
@@ -51,15 +84,31 @@ function fail {
 	exit 1
 }
 
+function error {
+
+	echo "*** $*" >&4
+}
+
+function fatal {
+
+	echo "*** $*" >&4
+	exit 1;
+}
+
 function success {
 
 	msg "SUCCESS"
 }
 
+function run_display_output {
+
+	run_check_status "$@" >&3 2>&4
+}
+
 function run_check_status {
 
 	echo ":::::: run_check_status $*"
-	eval "$@" || fail "Command failed (status code $?): $*"
+	"$@" || fail "Command failed (status code $?): $*"
 }
 
 function run_check_output {

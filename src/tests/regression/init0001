@@ -1,0 +1,95 @@
+#!/bin/bash
+#
+# Test pkcs15-init
+#
+# Run this from the regression test directory.
+
+. functions
+
+ask_key_question=true
+while [ $# -ne 0 ]; do
+	case $1 in
+	--use-default-transport-key)
+		p15init="$p15init $1"
+		ask_key_question=false;;
+	*)	fatal "Unexpected option $1";;
+	esac
+	shift
+done
+
+msg <<EOF
+:::
+::: Testing pkcs15-init
+:::
+::: Warning - this test assumes that the transport keys
+::: guessed by OpenSC (e.g. for the GPK, and the Cryptoflex)
+::: are correct. If OpenSC guesses wrong, you may find the
+::: card locked forever.
+:::
+EOF
+
+msg <<EOF
+:::
+::: The following test will erase your card, if possible,
+::: and create a new pkcs15 structure on it.
+:::
+EOF
+
+if ! yesno "Erase and re-initialize card?"; then
+	msg "Aborting test"
+	exit 0
+fi
+
+run_display_output $p15init -EC --no-so-pin \
+		--label "OpenSC Test Card" \
+		--serial DEADBEEF >&3 >&4
+success
+
+if $ask_key_question; then
+	msg <<-EOF
+	:::
+	::: If the above command asked you for a transport key
+	::: (this should happen e.g. with Gemplus GPK cards and
+	::: Schlumberger Cryptoflex cards), and the default key
+	::: presented to you was correct, I can invoke pkcs15-init
+	::: with the --use-default-transport-key option, which will
+	::: make it use the default key, and skip this question.
+	:::
+EOF
+
+	if yesno "Should I always use the default transport key?"; then
+		p15init="$p15init --use-default-transport-key"
+	fi
+fi
+
+msg <<EOF
+:::
+::: Setting user PIN and PUK
+:::
+EOF
+run_display_output $p15init -Pa 01 \
+	--label "Test User PIN" \
+	--pin "0000" --puk "111111"
+success
+
+msg <<EOF
+:::
+::: Generating key
+:::
+EOF
+run_display_output $p15init -G rsa/1024 -a 01 \
+	--key-usage sign,decrypt \
+	--pin 0000 \
+	--id 45 \
+	--label "Test User Key"
+success
+
+msg <<EOF
+:::
+::: Using pkcs11-tool to validate card
+:::
+EOF
+yes x |
+run_display_output $p11tool --pin 0000 -t
+success
+
