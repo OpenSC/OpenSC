@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 #include "scconf.h"
 
 #define INDENT_CHAR	'\t'
