@@ -194,8 +194,11 @@ EVP_PKEY *opensc_load_public_key(ENGINE * e, const char *s_key_id,
 	if (verbose)
 		fprintf(stderr, "Loading public key!\n");
 	id = (struct sc_pkcs15_id *) malloc(sizeof(struct sc_pkcs15_id));
-	id->len = SC_PKCS15_MAX_ID_SIZE;
-	sc_pkcs15_hex_string_to_id(s_key_id, id);
+	if (sc_pkcs15_hex_string_to_id(s_key_id, id) < 0) {
+		fprintf(stderr, "failed convert hex pkcs15 id\n");
+		free(id);
+		return NULL;
+	}
 
 	r = sc_pkcs15_find_pubkey_by_id(p15card, id, &obj);
 	if (r >= 0) {
@@ -219,11 +222,13 @@ EVP_PKEY *opensc_load_public_key(ENGINE * e, const char *s_key_id,
 
 	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
 		fprintf(stderr, "Public key with ID '%s' not found.\n", s_key_id);
+		free(id);
 		return NULL;
 	}
 	if (r < 0) {
 		fprintf(stderr, "Public key enumeration failed: %s\n",
 			sc_strerror(r));
+		free(id);
 		return NULL;
 	}
 
@@ -279,6 +284,10 @@ EVP_PKEY *opensc_load_private_key(ENGINE * e, const char *s_key_id,
 		sc_pin = NULL;
 	}
 	key_out = opensc_load_public_key(e, s_key_id, ui_method, callback_data);
+	if (!key_out) {
+		fprintf(stderr, "Failed to load public key");
+		return NULL;
+	}
 	sc_pin = (char *) malloc(12);
 	get_pin(ui_method, sc_pin, 12);	/* do this here, when storing sc_pin in RSA */
 	if (!key_out) {
