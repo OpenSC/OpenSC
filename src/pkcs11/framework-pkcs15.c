@@ -1257,6 +1257,7 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) object;
 	struct sc_pkcs15_pubkey *key = NULL;
+	unsigned int usage;
 	size_t len;
 
 	if (prkey->prv_cert && prkey->prv_cert->cert_data)
@@ -1309,7 +1310,10 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_VERIFY:
 	case CKA_VERIFY_RECOVER:
 	case CKA_DERIVE:
-		return get_usage_bit(prkey->prv_info->usage, attr);
+		/* Combine the usage bits of all split keys */
+		for (usage = 0; prkey; prkey = prkey->prv_next)
+			usage |= prkey->prv_info->usage;
+		return get_usage_bit(usage, attr);
 	case CKA_MODULUS:
 		return get_modulus(key, attr);
 	case CKA_MODULUS_BITS:
@@ -1348,6 +1352,15 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 
 	debug(context, "Initiating signing operation, mechanism 0x%x.\n",
 				pMechanism->mechanism);
+
+	/* See which of the alternative keys supports signing */
+	while (prkey
+	 && !(prkey->prv_info->usage
+	     & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER))) 
+		prkey = prkey->prv_next;
+
+	if (prkey == NULL)
+		return CKR_KEY_FUNCTION_NOT_PERMITTED;
 
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
@@ -1425,6 +1438,16 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 	int	rv;
 
 	debug(context, "Initiating key unwrap.\n");
+
+	/* See which of the alternative keys supports unwrap */
+	while (prkey
+	 && !(prkey->prv_info->usage
+	     & (SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP)))
+		prkey = prkey->prv_next;
+
+	if (prkey == NULL)
+		return CKR_KEY_FUNCTION_NOT_PERMITTED;
+
 
 	if (pMechanism->mechanism != CKM_RSA_PKCS)
 		return CKR_MECHANISM_INVALID;
