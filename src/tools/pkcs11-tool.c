@@ -26,10 +26,6 @@
 #include <opensc/pkcs11.h>
 #include "util.h"
 
-#ifdef _WIN32
-char *getpass(const char *prompt); /* in src/common/getpass.c */
-#endif
-
 #define NEED_SESSION_RO	0x01
 #define NEED_SESSION_RW	0x02
 #define NO_SLOT		((CK_SLOT_ID) -1)

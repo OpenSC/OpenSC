@@ -48,10 +48,6 @@
 #include <opensc/pkcs15-init.h>
 #include "util.h"
 
-#ifdef _WIN32
-char *getpass(const char *prompt); /* in src/common/getpass.c */
-#endif
-
 #undef GET_KEY_ECHO_OFF
 
 const char *app_name = "pkcs15-init";

@@ -24,10 +24,6 @@
 #include <opensc/pkcs15.h>
 #include "util.h"
 
-#ifdef _WIN32
-char *getpass(const char *prompt); /* in src/common/getpass.c */
-#endif
-
 const char *app_name = "pkcs15-tool";
 
 int opt_reader = 0, opt_debug = 0;
@@ -709,11 +705,7 @@ int learn_card(void)
 	r = stat(dir, &stbuf);
 	if (r) {
 		printf("No '%s' directory found, creating...\n", dir);
-#ifndef _WIN32
 		r = mkdir(dir, 0700);
-#else
-		r = _mkdir(dir, 0700);
-#endif
 		if (r) {
 			perror("Directory creation failed");
 			return 1;

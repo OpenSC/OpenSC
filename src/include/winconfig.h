@@ -21,9 +21,28 @@
 #define isatty _isatty
 #endif
 
+#ifndef mkdir
+#define mkdir _mkdir
+#endif
+
+#ifndef access
+#define access _access
+#endif
+
+#ifndef R_OK
+#define R_OK  4		/* test whether readable.  */
+#define W_OK  2		/* test whether writable.  */
+#define X_OK  1		/* test whether execubale. */
+#define F_OK  0		/* test whether exist.  */
+#endif
+
 #define HAVE_GETOPT_H
 #define HAVE_IO_H
+#define HAVE_GETPASS
 
 #define OPENSC_CONF_PATH "C:\\WINNT\\opensc.conf"
+
+/* src/common/getpass.c */
+extern char *getpass(const char *prompt);
 
 #endif
