@@ -95,6 +95,9 @@ static int	get_modulus_bits(struct sc_pkcs15_pubkey *,
 					CK_ATTRIBUTE_PTR);
 static int	asn1_sequence_wrapper(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 static void	cache_pin(void *, int, const void *, size_t);
+#ifdef HAVE_OPENSSL
+static void	hash_sha1(const void *, size_t, unsigned char *);
+#endif
 
 /* PKCS#15 Framework */
 
@@ -407,7 +410,9 @@ static CK_RV pkcs15_get_mechanism_list(struct sc_pkcs11_card *p11card,
 {
 	static const CK_MECHANISM_TYPE mechanism_list[] = {
 		CKM_RSA_PKCS,
-                CKM_SHA1_RSA_PKCS
+#ifdef HAVE_OPENSSL
+                CKM_SHA1_RSA_PKCS,
+#endif
 	};
         const int numMechanisms = sizeof(mechanism_list) / sizeof(mechanism_list[0]);
 
@@ -1126,6 +1131,9 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
 	int rv, flags = 0;
+#ifdef HAVE_OPENSSL
+	unsigned char digest[20];
+#endif
 
 	debug(context, "Initiating signing operation.\n");
 
@@ -1154,9 +1162,15 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 			flags |= SC_ALGORITHM_RSA_HASH_NONE;
 		}
 		break;
+#ifdef HAVE_OPENSSL
 	case CKM_SHA1_RSA_PKCS:
+
 		flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+		hash_sha1(pData, ulDataLen, digest);
+		pData = digest;
+		ulDataLen = 20;
 		break;
+#endif
 	default:
                 return CKR_MECHANISM_INVALID;
 	}
@@ -1472,3 +1486,17 @@ cache_pin(void *p, int user, const void *pin, size_t len)
 		data->pin[user].len = len;
 	}
 }
+
+#ifdef HAVE_OPENSSL
+#include <openssl/sha.h>
+
+static void
+hash_sha1(const void *data, size_t size, unsigned char *digest)
+{
+	SHA_CTX	ctx;
+
+	SHA1_Init(&ctx);
+	SHA1_Update(&ctx, data, size);
+	SHA1_Final(digest, &ctx);
+}
+#endif
