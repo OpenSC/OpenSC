@@ -2877,7 +2877,7 @@ set_info_string(char **strp, const u8 *p, size_t len)
 {
 	char	*s;
 
-	if (!(s = (char *) malloc(len)))
+	if (!(s = (char *) malloc(len+1)))
 		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(s, p, len);
 	s[len] = '\0';
