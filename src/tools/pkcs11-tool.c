@@ -160,8 +160,8 @@ static CK_MECHANISM_TYPE find_mechanism(CK_SLOT_ID, CK_FLAGS,
 			 	int stop_if_not_found);
 static CK_SLOT_ID	find_slot_by_label(const char *);
 static void		get_token_info(CK_SLOT_ID, CK_TOKEN_INFO_PTR);
-static void		get_mechanisms(CK_SLOT_ID,
-				CK_MECHANISM_TYPE_PTR *, CK_ULONG_PTR);
+static CK_ULONG		get_mechanisms(CK_SLOT_ID,
+				CK_MECHANISM_TYPE_PTR *, CK_FLAGS);
 static void		p11_fatal(const char *, CK_RV);
 static const char *	p11_slot_info_flags(CK_FLAGS);
 static const char *	p11_token_info_flags(CK_FLAGS);
@@ -572,7 +572,7 @@ list_mechs(CK_SLOT_ID slot)
 	CK_ULONG		n, num_mechs = 0;
 	CK_RV			rv;
 
-	get_mechanisms(slot, &mechs, &num_mechs);
+	num_mechs = get_mechanisms(slot, &mechs, -1);
 
 	printf("Supported mechanisms:\n");
 	for (n = 0; n < num_mechs; n++) {
@@ -1039,25 +1039,17 @@ CK_MECHANISM_TYPE
 find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags, int stop_if_not_found)
 {
 	CK_MECHANISM_TYPE *mechs = NULL, result;
-	CK_MECHANISM_INFO info;
-	CK_ULONG	n, count = 0;
-	CK_RV		rv;
+	CK_ULONG	count = 0;
 
-	get_mechanisms(slot, &mechs, &count);
-
-	result = NO_MECHANISM;
-	for (n = 0; n < count; n++) {
-		rv = p11->C_GetMechanismInfo(slot, mechs[n], &info);
-		if (rv != CKR_OK)
-			continue;
-		if ((info.flags & flags) == flags) {
-			result = mechs[n];
-			break;
-		}
+	count = get_mechanisms(slot, &mechs, flags);
+	if (count == 0) {
+		if (stop_if_not_found)
+			fatal("No appropriate mechanism found");
+		result = NO_MECHANISM;
+	} else {
+		result = mechs[0];
+		free(mechs);
 	}
-	if (stop_if_not_found && result == NO_MECHANISM)
-		fatal("No appropriate mechanism found");
-	free(mechs);
 
 	return result;
 }
@@ -1262,21 +1254,38 @@ get_token_info(CK_SLOT_ID slot, CK_TOKEN_INFO_PTR info)
 		p11_fatal("C_GetTokenInfo", rv);
 }
 
-void
+CK_ULONG
 get_mechanisms(CK_SLOT_ID slot,
 		CK_MECHANISM_TYPE_PTR *pList,
-		CK_ULONG_PTR pulCount)
+		CK_FLAGS flags)
 {
-	CK_RV	rv;
+	CK_ULONG	m, n, ulCount;
+	CK_RV		rv;
 
-	rv = p11->C_GetMechanismList(slot, *pList, pulCount);
-	*pList = (CK_MECHANISM_TYPE *) calloc(*pulCount, sizeof(*pList));
+	rv = p11->C_GetMechanismList(slot, *pList, &ulCount);
+	*pList = (CK_MECHANISM_TYPE *) calloc(ulCount, sizeof(*pList));
 	if (*pList == NULL)
 		fatal("calloc failed: %m");
 
-	rv = p11->C_GetMechanismList(slot, *pList, pulCount);
+	rv = p11->C_GetMechanismList(slot, *pList, &ulCount);
 	if (rv != CKR_OK)
 		p11_fatal("C_GetMechanismList", rv);
+
+	if (flags != -1) {
+		CK_MECHANISM_TYPE *mechs = *pList;
+		CK_MECHANISM_INFO info;
+
+		for (m = n = 0; n < ulCount; n++) {
+			rv = p11->C_GetMechanismInfo(slot, mechs[n], &info);
+			if (rv != CKR_OK)
+				continue;
+			if ((info.flags & flags) == flags)
+				mechs[m++] = mechs[n];
+		}
+		ulCount = m;
+	}
+
+	return ulCount;
 }
 
 static int
@@ -1995,8 +2004,10 @@ wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			&cipherKeyObject);
 
 	/* mechanism not implemented, don't test */
-	if (rv == CKR_MECHANISM_INVALID)
+	if (rv == CKR_MECHANISM_INVALID) {
+		printf("Wrap mechanism not supported, skipped\n");
 		return 0;
+	}
 	if (rv != CKR_OK) {
 		p11_perror("C_UnwrapKey", rv);
 		return 1;
@@ -2005,11 +2016,11 @@ wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	/* Try to decrypt */
 	key = getVALUE(session, cipherKeyObject, (unsigned long *) &key_len);
 	if (key == NULL) {
-		printf("  Could not get unwrapped key\n");
+		printf("Could not get unwrapped key\n");
 		return 1;
 	}
 	if (key_len != EVP_CIPHER_key_length(algo)) {
-		printf("  Key length mismatch (%d != %d)\n",
+		printf("Key length mismatch (%d != %d)\n",
 				key_len, EVP_CIPHER_key_length(algo));
 		return 1;
 	}
@@ -2026,7 +2037,7 @@ wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	if (cleartext_len != 11
 	 || memcmp(cleartext, "hello world", 11)) {
-		printf("  resulting cleartext doesn't match input\n");
+		printf("resulting cleartext doesn't match input\n");
 		return 1;
 	}
 
@@ -2097,7 +2108,9 @@ test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 #ifdef HAVE_OPENSSL
 static int
-encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject)
+encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+		CK_MECHANISM_TYPE mech_type,
+		CK_OBJECT_HANDLE privKeyObject)
 {
 	EVP_PKEY       *pkey;
 	unsigned char	orig_data[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', '\0'};
@@ -2106,27 +2119,28 @@ encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE pri
 	CK_ULONG	encrypted_len, data_len;
 	CK_RV           rv;
 
+	printf("    %s: ", p11_mechanism_to_name(mech_type));
+
 	pkey = get_public_key(session, privKeyObject);
-	if (pkey == NULL) {
-		printf("    Encryption of test data failed, returning\n");
+	if (pkey == NULL)
 		return 0;
-	}
+
 	if (EVP_PKEY_size(pkey) > sizeof(encrypted)) {
-		printf("    \"encrypted\" buf in pkcs11-tool too small\n");
+		printf("Ciphertext buffer too small\n");
 		EVP_PKEY_free(pkey);
 		return 0;
 	}
 	encrypted_len = EVP_PKEY_encrypt(encrypted, orig_data, sizeof(orig_data), pkey);
 	EVP_PKEY_free(pkey);
 	if (encrypted_len <= 0) {
-		printf("    Encryption failed, returning\n");
+		printf("Encryption failed, returning\n");
 		return 0;
 	}
 
-	mech.mechanism = CKM_RSA_PKCS;
+	mech.mechanism = mech_type;
 	rv = p11->C_DecryptInit(session, &mech, privKeyObject);
 	if (rv == CKR_MECHANISM_INVALID) {
-		printf("    Mechanism CKM_RSA_PKCS not supported\n");
+		printf("Mechanism not supported\n");
 		return 0;
 	}
 	if (rv != CKR_OK)
@@ -2138,11 +2152,17 @@ encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE pri
 		p11_fatal("C_Decrypt", rv);
 
 	if (data_len != sizeof(orig_data) || memcmp(orig_data, data, data_len)) {
-		printf("  resulting cleartext doesn't match input\n");
+		CK_ULONG n;
+
+		printf("resulting cleartext doesn't match input\n");
+		printf("    Decrypt:");
+		for (n = 0; n < data_len; n++)
+			printf(" %02x", data[n]);
+		printf("\n");
 		return 1;
 	}
 
-	printf("    CKM_RSA_PKCS: OK\n");
+	printf("OK\n");
 	return 0;
 }
 #endif
@@ -2158,9 +2178,9 @@ test_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_RV           rv;
 	CK_OBJECT_HANDLE privKeyObject;
 	CK_SESSION_HANDLE sess;
-	CK_MECHANISM_TYPE firstMechType;
+	CK_MECHANISM_TYPE *mechs = NULL;
 	CK_SESSION_INFO sessionInfo;
-	CK_ULONG        j;
+	CK_ULONG        j, n, num_mechs = 0;
 	char 		*label;
 
 	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION, NULL, NULL, &sess);
@@ -2175,8 +2195,8 @@ test_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return errors;
 	}
 
-	firstMechType = find_mechanism(slot, CKF_DECRYPT | CKF_HW, 0);
-	if (firstMechType == NO_MECHANISM) {
+	num_mechs = get_mechanisms(slot, &mechs, CKF_DECRYPT);
+	if (num_mechs == 0) {
 		printf("Decrypt: not implemented\n");
 		return errors;
 	}
@@ -2188,7 +2208,7 @@ test_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			printf("(%s) ", label);
 			free(label);
 		}
-		if (!getUNWRAP(sess, privKeyObject)) {
+		if (!getDECRYPT(sess, privKeyObject)) {
 			printf(" -- can't be used to decrypt, skipping\n");
 			continue;
 		}
@@ -2197,10 +2217,14 @@ test_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 #ifndef HAVE_OPENSSL
 		printf("No OpenSSL support, unable to validate decryption\n");
 #else
-		errors += encrypt_decrypt(slot, sess, privKeyObject);
+		for (n = 0; n < num_mechs; n++) {
+			errors += encrypt_decrypt(slot, sess,
+						mechs[n], privKeyObject);
+		}
 #endif
 	}
 
+	free(mechs);
 	return errors;
 }
 
@@ -2359,7 +2383,7 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	printf("\n*** We allready opened a session and logged in ***\n");
 
-	get_mechanisms(slot, &mech_type, &num_mechs);
+	num_mechs = get_mechanisms(slot, &mech_type, -1);
 	for (i = 0; i < num_mechs; i++) {
 		if (mech_type[i] == CKM_RSA_PKCS_KEY_PAIR_GEN)
 			break;
