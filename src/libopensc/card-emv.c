@@ -1,5 +1,5 @@
 /*
- * sc-emv.c: Functions specified by the EMV standard
+ * sc-card-emv.c: Functions specified by the EMV standard
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

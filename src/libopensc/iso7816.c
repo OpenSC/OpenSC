@@ -307,19 +307,24 @@ static int iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 }
 
 static struct sc_card_operations iso_ops = {
-	read_binary: NULL
+	NULL,
 };
-
 static const struct sc_card_driver iso_driver = {
 	NULL,
 	"ISO 7816-x reference driver",
 	&iso_ops
 };
 
+static int no_match(struct sc_card *card)
+{
+	return 0;
+}
+
 const struct sc_card_driver * sc_get_iso7816_driver(void)
 {
-	if (iso_ops.read_binary == NULL) {
+	if (iso_ops.match_card == NULL) {
 		memset(&iso_ops, 0, sizeof(iso_ops));
+		iso_ops.match_card = no_match;
 		iso_ops.read_binary = iso7816_read_binary;
 		iso_ops.read_record = iso7816_read_record;
 		iso_ops.select_file = iso7816_select_file;
