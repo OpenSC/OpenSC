@@ -751,12 +751,12 @@ int do_unblock(int argc, char **argv)
                      i < sizeof(puk) && *s && *s != '"'; i++) 
 			puk[i] = *s++;
 		puklen = i;
-                argc--;
-                argv++;
 	} else if (sc_hex_to_bin(argv[0], puk, &puklen) != 0) {
 		printf("Invalid key value.\n");
 		goto usage;
 	}
+	argc--;
+	argv++;
 
 	if (argv[0][0] == '"') {
 		for (s = argv[0] + 1, i = 0;
