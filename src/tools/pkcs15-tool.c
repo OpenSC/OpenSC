@@ -43,7 +43,7 @@ int quiet = 0;
 #define OPT_READ_PUB	0x106
 
 #define PEM_RSA_KEY_PREFIX \
-	"\x30\x11\x30\x0D\x06\x09" \
+	"\x30\x12\x30\x0D\x06\x09" \
 	"\x2A\x86\x48\x86\xF7\x0D\x01\x01\x01" \
 	"\x05\x00\x03\x00\x00"
 #define PEM_RSA_KEY_PREFIX_SIZE 20
@@ -353,7 +353,7 @@ int read_public_key(void)
 		}
 		memcpy(buffer, PEM_RSA_KEY_PREFIX, PEM_RSA_KEY_PREFIX_SIZE);
 		buffer[1] += key->data_len;
-		buffer[PEM_RSA_KEY_PREFIX_SIZE-2] = key->data_len;
+		buffer[PEM_RSA_KEY_PREFIX_SIZE-2] = key->data_len + 1;
 		memcpy(buffer + PEM_RSA_KEY_PREFIX_SIZE,
 				key->data, key->data_len);
 		r = print_pem_object("PUBLIC KEY", buffer,
