@@ -859,19 +859,28 @@ static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 {
 	sc_apdu_t apdu;
 	int r;
+	int old_cla = -1;
 
 	if (data->cmd == SC_PIN_CMD_VERIFY) {
 		r = flex_build_verify_apdu(card, &apdu, data);
 		if (r < 0)
 			return r;
 		data->apdu = &apdu;
+	} else if (data->cmd == SC_PIN_CMD_CHANGE) {
+		if (data->pin_type != SC_AC_CHV)
+			return SC_ERROR_INVALID_ARGUMENTS;
+		old_cla = card->cla;
+		card->cla = 0xF0;
 	}
 
 	/* According to the Cryptoflex documentation, the card
 	 * does not return the number of attempts left using
 	 * the 63C0xx convention, hence we don't pass the
 	 * tries_left pointer. */
-	return iso_ops->pin_cmd(card, data, NULL);
+	r = iso_ops->pin_cmd(card, data, NULL);
+	if (old_cla != -1) 
+		card->cla = old_cla;
+	return r;
 }
 
 static struct sc_card_driver * sc_get_driver(void)
