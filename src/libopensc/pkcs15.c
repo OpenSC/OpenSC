@@ -498,7 +498,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	if (card->app_count > 0) {
 		const struct sc_app_info *info;
 		
-		info = sc_find_pkcs15_app(card);
+		info = find_pkcs15_app(card);
 		if (info != NULL) {
 			if (info->path.len)
 				p15card->file_app->path = info->path;
