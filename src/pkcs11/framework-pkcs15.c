@@ -1655,8 +1655,8 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	unsigned int usage;
 	size_t len;
 
-	if (prkey->prv_cert && prkey->prv_cert->cert_data)
-		key = &prkey->prv_cert->cert_data->key;
+	if (prkey->prv_cert && prkey->prv_cert->cert_pubkey)
+		key = prkey->prv_cert->cert_pubkey->pub_data;
 	else if (prkey->prv_pubkey)
 		key = prkey->prv_pubkey->pub_data;
 
@@ -1711,6 +1711,9 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		return get_usage_bit(usage, attr);
 	case CKA_MODULUS:
 		return get_modulus(key, attr);
+	/* XXX: this should be removed sometimes as a private key has no
+	 * CKA_MODULUS_BITS attribute, but unfortunately other parts depend
+	 * on this -- Nils */
 	case CKA_MODULUS_BITS:
 		check_attribute_buffer(attr, sizeof(CK_ULONG));
 		*(CK_ULONG *) attr->pValue = prkey->prv_info->modulus_length;
