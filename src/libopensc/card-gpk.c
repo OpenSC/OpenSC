@@ -1704,9 +1704,18 @@ gpk_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, struct sc_pin_cmd_data *dat
 	memset(apdu, 0, sizeof(*apdu));
 	apdu->cse	= SC_APDU_CASE_3_SHORT;
 
+	data->flags |= SC_PIN_CMD_NEED_PADDING;
+	data->pin1.encoding = SC_PIN_ENCODING_BCD;
+	data->pin1.pad_length = 8;
+	data->pin1.pad_char = 0x00;
+	data->pin2.encoding = SC_PIN_ENCODING_BCD;
+	data->pin2.pad_length = 8;
+	data->pin2.pad_char = 0x00;
+
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
 		/* Copy PIN to buffer and pad */
+		data->pin1.offset = 5;
 		r = sc_build_pin(sbuf, 8, &data->pin1, 1);
 		if (r < 0)
 			return r;
@@ -1718,11 +1727,7 @@ gpk_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, struct sc_pin_cmd_data *dat
 	case SC_PIN_CMD_CHANGE:
 	case SC_PIN_CMD_UNBLOCK:
 		/* Copy PINs to buffer, BCD-encoded, and pad */
-		data->pin1.encoding = SC_PIN_ENCODING_BCD;
-		data->pin1.max_length = 8;
-		data->pin2.encoding = SC_PIN_ENCODING_BCD;
-		data->pin2.max_length = 8;
-		data->pin2.offset = 4;
+		data->pin2.offset = 5 + 4;
 		if ((r = sc_build_pin(sbuf, 4, &data->pin1, 1)) < 0
 		 || (r = sc_build_pin(sbuf + 4, 4, &data->pin2, 1)) < 0)
 			return r;

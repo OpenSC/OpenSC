@@ -374,7 +374,7 @@ const struct sc_reader_driver * sc_get_ctapi_driver()
 	ctapi_ops.release = ctapi_release;
 	ctapi_ops.connect = ctapi_connect;
 	ctapi_ops.disconnect = ctapi_disconnect;
-	ctapi_ops.enter_pin = ctbcs_pin_cmd;
+	ctapi_ops.perform_verify = ctbcs_pin_cmd;
 	
 	return &ctapi_drv;
 }

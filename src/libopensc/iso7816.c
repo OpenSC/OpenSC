@@ -848,14 +848,18 @@ static int iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	} else {
 		/* Call the reader driver to collect
 		 * the PIN and pass on the APDU to the card */
+		if (data->pin1.offset == 0) {
+			error(card->ctx,
+				"Card driver didn't set PIN offset");
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
 		if (card->reader
 		 && card->reader->ops
-		 && card->reader->ops->enter_pin) {
-			r = card->reader->ops->enter_pin(card->reader,
+		 && card->reader->ops->perform_verify) {
+			r = card->reader->ops->perform_verify(card->reader,
 					card->slot,
 					data);
-			apdu->sw1 = 0x90;
-			apdu->sw2 = 0x00;
+			/* sw1/sw2 filled in by reader driver */
 		} else {
 			error(card->ctx,
 				"Card reader driver does not support "

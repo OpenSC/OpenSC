@@ -47,6 +47,9 @@ static int openct_reader_transmit(struct sc_reader *reader,
 			struct sc_slot_info *slot,
 			const u8 *sendbuf, size_t sendsize,
 			u8 *recvbuf, size_t *recvsize, int control);
+static int openct_reader_perform_verify(struct sc_reader *reader,
+			struct sc_slot_info *slot,
+			struct sc_pin_cmd_data *info);
 static int openct_reader_lock(struct sc_reader *reader,
 			struct sc_slot_info *slot);
 static int openct_reader_unlock(struct sc_reader *reader,
@@ -62,6 +65,7 @@ static struct sc_reader_operations openct_reader_operations = {
 	.connect		= openct_reader_connect,
 	.disconnect		= openct_reader_disconnect,
 	.transmit		= openct_reader_transmit,
+	.perform_verify		= openct_reader_perform_verify,
 	.lock			= openct_reader_lock,
 	.unlock			= openct_reader_unlock,
 };
@@ -153,6 +157,10 @@ openct_add_reader(struct sc_context *ctx, unsigned int num, ct_info_t *info)
 	for (i = 0; i < SC_MAX_SLOTS; i++) {
 		reader->slot[i].drv_data = calloc(1, sizeof(struct slot_data));
 		reader->slot[i].id = i;
+		if (data->info.ct_display)
+			reader->slot[i].capabilities |= SC_SLOT_CAP_DISPLAY;
+		if (data->info.ct_keypad)
+			reader->slot[i].capabilities |= SC_SLOT_CAP_PIN_PAD;
 	}
 
 	return 0;
@@ -311,12 +319,75 @@ openct_reader_transmit(struct sc_reader *reader,
 }
 
 int
+openct_reader_perform_verify(struct sc_reader *reader,
+		struct sc_slot_info *slot,
+		struct sc_pin_cmd_data *info)
+{
+	struct driver_data *data = (struct driver_data *) reader->drv_data;
+	unsigned int pin_length = 0, pin_encoding;
+	size_t j = 0;
+	u8 buf[254];
+	int rc;
+
+	/* Hotplug check */
+	if ((rc = openct_reader_reconnect(reader, slot)) < 0)
+		return rc;
+
+	if (info->apdu == NULL) {
+		// complain
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	buf[j++] = info->apdu->cla;
+	buf[j++] = info->apdu->ins;
+	buf[j++] = info->apdu->p1;
+	buf[j++] = info->apdu->p2;
+
+	if (info->apdu->lc) {
+		size_t len = info->apdu->lc;
+
+		if (j + 1 + len > sizeof(buf))
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		buf[j++] = len;
+		memcpy(buf+j, info->apdu->data, len);
+		j += len;
+	}
+
+	if (info->pin1.min_length == info->pin1.max_length)
+		pin_length = info->pin1.min_length;
+
+	if (info->pin1.encoding == SC_PIN_ENCODING_ASCII)
+		pin_encoding = IFD_PIN_ENCODING_ASCII;
+	else if (info->pin1.encoding == SC_PIN_ENCODING_BCD)
+		pin_encoding = IFD_PIN_ENCODING_BCD;
+	else
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	rc = ct_card_verify(data->h, slot->id,
+			0, /* no timeout?! */
+			info->pin1.prompt,
+			pin_encoding,
+			pin_length,
+			info->pin1.offset,
+			buf, j,
+			buf, sizeof(buf));
+	if (rc < 0)
+		return openct_error(reader, rc);
+	if (rc != 2)
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+	info->apdu->sw1 = buf[0];
+	info->apdu->sw2 = buf[1];
+	return 0;
+}
+
+
+int
 openct_reader_lock(struct sc_reader *reader,
 			struct sc_slot_info *slot)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	struct slot_data *slot_data = (struct slot_data *) slot->drv_data;
-	int rc, retry = 1;
+	int rc;
 
 	SC_FUNC_CALLED(reader->ctx, 1);
 
@@ -366,5 +437,11 @@ openct_error(struct sc_reader *reader, int code)
 		return code;
 
 	/* Fixme: translate error code */
+	switch (code) {
+	case IFD_ERROR_USER_TIMEOUT:
+		return SC_ERROR_KEYPAD_TIMEOUT;
+	case IFD_ERROR_USER_ABORT:
+		return SC_ERROR_KEYPAD_CANCELLED;
+	}
 	return SC_ERROR_READER;
 }

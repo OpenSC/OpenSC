@@ -380,7 +380,7 @@ struct sc_reader_operations {
 	/* Pin pad functions */
 	int (*display_message)(struct sc_reader *, struct sc_slot_info *,
 			       const char *);
-	int (*enter_pin)(struct sc_reader *, struct sc_slot_info *,
+	int (*perform_verify)(struct sc_reader *, struct sc_slot_info *,
 			 struct sc_pin_cmd_data *);
 
 	/* Wait for an event */

@@ -601,7 +601,7 @@ const struct sc_reader_driver * sc_get_pcsc_driver()
 	pcsc_ops.release = pcsc_release;
 	pcsc_ops.connect = pcsc_connect;
 	pcsc_ops.disconnect = pcsc_disconnect;
-	pcsc_ops.enter_pin = ctbcs_pin_cmd;
+	pcsc_ops.perform_verify = ctbcs_pin_cmd;
 	pcsc_ops.wait_for_event = pcsc_wait_for_event;
 	
 	return &pcsc_drv;

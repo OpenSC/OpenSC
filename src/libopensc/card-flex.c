@@ -932,6 +932,15 @@ static int flex_build_verify_apdu(struct sc_card *card, struct sc_apdu *apdu,
 	return 0;
 }
 
+static void flex_init_pin_info(struct sc_pin_cmd_pin *pin, unsigned int num)
+{
+	pin->encoding   = SC_PIN_ENCODING_ASCII;
+	pin->max_length = 8;
+	pin->pad_length = 8;
+	pin->pad_char   = 0;
+	pin->offset     = 5 + num * 8;
+}
+
 static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 			int *tries_left)
 {
@@ -940,10 +949,9 @@ static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	int old_cla = -1;
 
 	/* Fix pin data */
-	data->pin1.encoding   = SC_PIN_ENCODING_ASCII;
-	data->pin1.max_length = 8;
-	data->pin2.encoding   = SC_PIN_ENCODING_ASCII;
-	data->pin2.max_length = 8;
+	data->flags |= SC_PIN_CMD_NEED_PADDING;
+	flex_init_pin_info(&data->pin1, 0);
+	flex_init_pin_info(&data->pin2, 1);
 
 	if (data->cmd == SC_PIN_CMD_VERIFY) {
 		r = flex_build_verify_apdu(card, &apdu, data);
