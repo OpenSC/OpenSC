@@ -369,8 +369,8 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
 	const char *opt_driver = NULL;
 		
-	setlinebuf(stderr);
-	setlinebuf(stdout);
+	setbuf(stderr, NULL);
+	setbuf(stdout, NULL);
 
 	while (1) {
 		c = getopt_long(argc, argv, "nlfr:qds:DRc:aw", options, &long_optind);
