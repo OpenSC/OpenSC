@@ -292,7 +292,7 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 	}
 
 	time(&now);
-	end_time = now + timeout;
+	end_time = now + (timeout + 999) / 1000;
 
 	/* Wait for a status change and return if it's a card insert/removal
 	 */
@@ -330,10 +330,13 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 			delta = 3600;
 		}
 
-		ret = SCardGetStatusChange(pcsc_ctx, delta,
+		ret = SCardGetStatusChange(pcsc_ctx, 1000 * delta,
 				rgReaderStates, nslots);
-	       	if (ret == SCARD_E_TIMEOUT)
+	       	if (ret == SCARD_E_TIMEOUT) {
+			if (timeout < 0)
+				continue;
 		       	return SC_ERROR_EVENT_TIMEOUT;
+		}
 	       	if (ret != 0) {
 		       	PCSC_ERROR(ctx, "SCardGetStatusChange(2) failed", ret);
 		       	return pcsc_ret_to_error(ret);
