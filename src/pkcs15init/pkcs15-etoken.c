@@ -50,15 +50,18 @@ static int	etoken_new_file(struct sc_profile *, struct sc_card *,
 			struct sc_file **);
 static void	error(struct sc_profile *, const char *, ...);
 
-/* We should make these object IDs configurable via the profile */
-#define ETOKEN_SO_PIN_ID	0x01
-#define ETOKEN_SO_PUK_ID	0x02
-#define ETOKEN_PIN_ID		0x03
-#define ETOKEN_PUK_ID		0x04
+/* Object IDs for PIN objects.
+ * SO PIN = 0x01, SO PUK = 0x02
+ * each user pin is 2*N+1, each corresponding PUK is 2*N+2
+ */
+#define ETOKEN_PIN_ID(idx)	(((idx) << 1) + 0x01)
+#define ETOKEN_PUK_ID(idx)	(((idx) << 1) + 0x02)
+#define ETOKEN_MAX_PINS		0x10
 #define ETOKEN_AC_NEVER		0xFF
 
 #define ETOKEN_ALGO_PIN		0x87
 
+#if 0
 struct etoken_pin_info {
 	int		profile_id;
 	u8		id;
@@ -85,6 +88,7 @@ static struct etoken_pin_info	etoken_user_puk = {
 	ETOKEN_SO_PIN_ID
 };
 static u8	etoken_default_pin[8];
+#endif
 
 static inline void
 tlv_init(struct tlv *tlv, u8 *base, size_t size)
@@ -129,21 +133,16 @@ etoken_set_ac(struct sc_file *file, int op, struct sc_acl_entry *acl)
  */
 static int
 etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
-		struct etoken_pin_info *info,
-		const u8 *pin, size_t pin_len,
-		int allow_unblock)
+		int pin_type, unsigned int pin_id, unsigned int puk_id,
+		const u8 *pin, size_t pin_len)
 {
 	struct sc_pkcs15_pin_info params;
 	struct sc_cardctl_etoken_pin_info args;
 	unsigned char	buffer[256];
 	unsigned char	pinpadded[16];
 	struct tlv	tlv;
-	unsigned int	pin_id, puk_id, attempts, minlen, maxlen;
+	unsigned int	attempts, minlen, maxlen;
 
-	if (!pin_len) {
-		pin = etoken_default_pin;
-		pin_len = sizeof(etoken_default_pin);
-	}
 	/* We need to do padding because pkcs15-lib.c does it.
 	 * Would be nice to have a flag in the profile that says
 	 * "no padding required". */
@@ -155,17 +154,14 @@ etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
 		pinpadded[pin_len++] = profile->pin_pad_char;
 	pin = pinpadded;
 
-	sc_profile_get_pin_info(profile, info->profile_id, &params);
+	sc_profile_get_pin_info(profile, pin_type, &params);
 	attempts = params.tries_left;
 	minlen = params.min_length;
 
-	pin_id = info->id;
-	puk_id = allow_unblock? info->unblock : ETOKEN_AC_NEVER;
-
 	/* Set the profile's SOPIN reference */
-	params.reference = info->id;
+	params.reference = pin_id;
 	params.path = profile->df_info->file->path;
-	sc_profile_set_pin_info(profile, info->profile_id, &params);
+	sc_profile_set_pin_info(profile, pin_type, &params);
 
 	tlv_init(&tlv, buffer, sizeof(buffer));
 
@@ -222,7 +218,7 @@ etoken_init_app(struct sc_profile *profile, struct sc_card *card,
 		const unsigned char *puk, size_t puk_len)
 {
 	struct sc_file	*df = profile->df_info->file;
-	int		r, unblock = 0;
+	int		r;
 
 	/* Create the application DF */
 	r = sc_pkcs15init_create_file(profile, card, df);
@@ -234,26 +230,22 @@ etoken_init_app(struct sc_profile *profile, struct sc_card *card,
 	 * First, the SO pin and PUK. Don't create objects for
 	 * these if none specified. */
 	if (pin && pin_len) {
-		if (r >= 0 && puk && puk_len)
-			r = etoken_new_pin(profile, card,
-				&etoken_so_puk, puk, puk_len, unblock++);
-		if (r >= 0)
-			r = etoken_new_pin(profile, card,
-				&etoken_so_pin, pin, pin_len, unblock++);
-	}
-	/* Create objects for user PIN and PUK. */
-	if (r >= 0)
-		r = etoken_new_pin(profile, card,
-				&etoken_user_pin, 0, 0, unblock++);
-	if (r >= 0)
-		r = etoken_new_pin(profile, card,
-				&etoken_user_puk, 0, 0, unblock);
+		u8	puk_id = ETOKEN_AC_NEVER;
 
-#if 0
-	r = sc_verify(card, SC_AC_CHV, 0x04,
-			etoken_default_pin, sizeof(etoken_default_pin),
-			NULL);
-#endif
+		if (r >= 0 && puk && puk_len) {
+			puk_id = ETOKEN_PUK_ID(0);
+			r = etoken_new_pin(profile, card,
+					SC_PKCS15INIT_SO_PUK,
+					puk_id, ETOKEN_AC_NEVER,
+					puk, puk_len);
+		}
+		if (r >= 0) {
+			r = etoken_new_pin(profile, card,
+					SC_PKCS15INIT_SO_PIN,
+					ETOKEN_PIN_ID(0), puk_id,
+					pin, pin_len);
+		}
+	}
 
 	return r;
 }
@@ -267,49 +259,39 @@ etoken_put_pin(struct sc_profile *profile, struct sc_card *card,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
 {
-	return SC_ERROR_NOT_SUPPORTED;
-#if 0
-	unsigned char	nulpin[8];
+	struct sc_file	*df = profile->df_info->file;
+	unsigned int	puk_id = ETOKEN_AC_NEVER, pin_id;
 	int		r;
 
-	/* Profile must define a "pinfile" */
-	if (sc_profile_get_path(profile, "pinfile", &info->path) < 0) {
-		error(profile, "Profile doesn't define a \"pinfile\"");
+	if (!pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	if (info->path.len > 2)
-		info->path.len -= 2;
 
-	r = sc_select_file(card, &info->path, NULL);
+	r = sc_select_file(card, &df->path, NULL);
 	if (r < 0)
 		return r;
 
-	index <<= 2;
-	if (index >= GPK_MAX_PINS)
+	if (index >= ETOKEN_MAX_PINS)
 		return SC_ERROR_TOO_MANY_OBJECTS;
-	if (puk == NULL || puk_len == 0) {
-		puk = pin;
-		puk_len = pin_len;
+
+	if (puk && puk_len) {
+		puk_id = ETOKEN_PUK_ID(index);
+		r = etoken_new_pin(profile, card,
+				SC_PKCS15INIT_USER_PUK,
+				puk_id, ETOKEN_AC_NEVER,
+				puk, puk_len);
 	}
 
-	/* Current PIN is 00:00:00:00:00:00:00:00 */
-	memset(nulpin, 0, sizeof(nulpin));
-	r = sc_change_reference_data(card, SC_AC_CHV,
-			0x8 | index,
-			nulpin, sizeof(nulpin),
-			pin, pin_len, NULL);
-	if (r < 0)
-		return r;
+	if (r >= 0) {
+		pin_id = ETOKEN_PIN_ID(index);
+		r = etoken_new_pin(profile, card,
+				SC_PKCS15INIT_USER_PIN,
+				pin_id, puk_id,
+				pin, pin_len);
+		info->reference = pin_id;
+		info->path = df->path;
+	}
 
-	/* Current PUK is 00:00:00:00:00:00:00:00 */
-	r = sc_change_reference_data(card, SC_AC_CHV,
-			0x8 | (index + 1),
-			nulpin, sizeof(nulpin),
-			puk, puk_len, NULL);
-
-	info->reference = 0x8 | index;
 	return r;
-#endif
 }
 
 /*
