@@ -216,7 +216,7 @@ static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
         struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) p11card->fw_data;
 	struct sc_pkcs15_pin_info *pin_info = NULL;
 	struct sc_pkcs11_slot *slot;
-	char tmp[33];
+	char tmp[64];
 	int rv;
 
 	if (*out)
@@ -236,11 +236,10 @@ static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
 
 		snprintf(tmp, sizeof(tmp), "%s (%s)",
 				card->label, auth->label);
-		strcpy_bp(slot->token_info.label, tmp, 32);
 		slot->token_info.flags |= CKF_LOGIN_REQUIRED;
-	} else {
-		strcpy_bp(slot->token_info.label, "public", 32);
-	}
+	} else
+		sprintf(tmp, "public");
+	strcpy_bp(slot->token_info.label, tmp, 32);
 
 	if (pin_info && pin_info->magic == SC_PKCS15_PIN_MAGIC) {
 		slot->token_info.ulMaxPinLen = pin_info->stored_length;
@@ -251,7 +250,7 @@ static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
 		slot->token_info.ulMinPinLen = 4;
 	}
 
-	debug(context, "Initialized token '%s'\n", slot->token_info.label);
+	debug(context, "Initialized token '%s'\n", tmp);
 	*out = slot;
 	return CKR_OK;
 }
