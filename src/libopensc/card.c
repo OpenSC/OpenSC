@@ -633,6 +633,9 @@ int sc_select_file(struct sc_card *card,
         if (card->ops->select_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->select_file(card, in_path, file);
+	/* Remember file path */
+	if (r == 0 && file && *file)
+		(*file)->path = *in_path;
         SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
