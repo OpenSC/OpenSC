@@ -228,10 +228,14 @@ gpk_init_app(struct sc_profile *profile, struct sc_card *card,
 		r = gpk_init_pinfile(profile, card, pinfile);
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin_info);
-	if (r >= 0 && sopin_info.reference != -1)
+	if (r >= 0 && pin_len) {
 		r = gpk_new_pin(profile, card, &sopin_info, 0,
 				pin, pin_len,
 				puk, puk_len);
+		if (r >= 0)
+			sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN,
+					&sopin_info);
+	}
 
 	sc_file_free(pinfile);
 	return r;
