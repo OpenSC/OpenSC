@@ -13,13 +13,13 @@ if HAVE_SSL
 SSL_LIB = @LIBCRYPTO@
 endif
 # Temporary
-# if HAVE_SCIDI
-# SCIDI_LIB = @LIBSSP@
-# SCIDI_SRC = ../../../scam/sp.c
-# SCIDI_INC = @CFLAGS_SSP@
-# endif
+if HAVE_SCIDI
+SCIDI_LIB = @LIBSSP@
+SCIDI_SRC = ../../../scam/sp.c
+SCIDI_INC = @CFLAGS_SSP@
+endif
 
-AM_LDFLAGS = @LIBOPENSC@ @LIBSCRANDOM@ $(LDAP_LIB) $(SSL_LIB) $(SCIDI_LIB)
+LDFLAGS = @LIBOPENSC@ @LIBSCRANDOM@ $(LDAP_LIB) $(SSL_LIB) $(SCIDI_LIB)
 EXTRAINC = $(SCIDI_INC)
 
 SRC = scam.c scam.h p15_eid.c p15_ldap.c $(SCIDI_SRC)

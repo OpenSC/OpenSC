@@ -3,7 +3,7 @@
 MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES = @CFLAGS_OPENSC@
-AM_LDFLAGS = @LDFLAGS@ @LIBOPENSC@
+LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
 noinst_PROGRAMS = base64 lottery p15dump pintest prngtest
 
