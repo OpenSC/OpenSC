@@ -47,7 +47,7 @@ acx_pthread_ok=no
 # just assume pthread.h exists
 
 case "${host_cpu}-${host_os}" in
- alpha*-osf*) acx_pthread_check_header=no; acx_pthread_ok=yes ;;
+ alpha*-osf*) acx_pthread_check_header=no ;;
  *) acx_pthread_check_header=yes ;;
 esac
 
