@@ -1042,7 +1042,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		obj = malloc(sizeof(struct sc_pkcs15_object));
 		if (obj == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
-		memset(obj, 0, sizeof(sizeof(struct sc_pkcs15_object)));
+		memset(obj, 0, sizeof(struct sc_pkcs15_object));
 		r = func(p15card, obj, &p, &bufsize);
 		if (r) {
 			free(obj);
