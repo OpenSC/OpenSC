@@ -18,10 +18,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_OPENSSL
-#define USE_PKCS15_INIT
-#endif
-
 #include <string.h>
 #include "sc-pkcs11.h"
 

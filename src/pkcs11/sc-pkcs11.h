@@ -41,6 +41,11 @@
 #pragma pack(pop, cryptoki)
 #endif
 
+/* Decide whether to use pkcs11 for initialization support */
+#ifdef HAVE_OPENSSL
+# define USE_PKCS15_INIT
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
