@@ -29,17 +29,17 @@
 
 int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
-static char *	pgp_pin_name[3] = {
+static const char *	pgp_pin_name[3] = {
 				"Signature PIN",
 				"Encryption PIN",
 				"Admin PIN"
 			};
-static char *	pgp_key_name[3] = {
+static const char *	pgp_key_name[3] = {
 				"Signature key",
 				"Encryption key",
 				"Authentication key"
 			};
-static char *	pgp_pubkey_path[3] = {
+static const char *	pgp_pubkey_path[3] = {
 				"B601",
 				"B801",
 				"A401"
