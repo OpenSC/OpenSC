@@ -72,9 +72,17 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 			  CK_ATTRIBUTE_PTR  pTemplate,  /* specifies attributes, gets values */
 			  CK_ULONG          ulCount)    /* attributes in template */
 {
-        int i, rv;
+	static int precedence[] = {
+		CKR_OK,
+		CKR_BUFFER_TOO_SMALL,
+		CKR_ATTRIBUTE_TYPE_INVALID,
+		CKR_ATTRIBUTE_SENSITIVE,
+		-1
+	};
+        int i, j, rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
+	int	res, res_type;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -84,14 +92,34 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 	if (rv != CKR_OK)
 		return rv;
 
+	res_type = 0;
 	for (i = 0; i < ulCount; i++) {
 		debug(context, "Object %d, Attribute 0x%x\n", hObject, pTemplate[i].type);
-		rv = object->ops->get_attribute(session, object, &pTemplate[i]);
-		if (rv != CKR_OK)
+		res = object->ops->get_attribute(session,
+					object, &pTemplate[i]);
+		if (res != CKR_OK)
                         pTemplate[i].ulValueLen = (CK_ULONG) -1;
+
+		/* the pkcs11 spec has complicated rules on
+		 * what errors take precedence:
+		 * 	CKR_ATTRIBUTE_SENSITIVE
+		 * 	CKR_ATTRIBUTE_INVALID
+		 * 	CKR_BUFFER_TOO_SMALL
+		 * It does not exactly specify how other errors
+		 * should be handled - we give them highest
+		 * precedence
+		 */
+		for (j = 0; precedence[j] != -1; j++) {
+			if (precedence[j] == res)
+				break;
+		}
+		if (j > res_type) {
+			res_type = j;
+			rv = res;
+		}
 	}
 
-        return CKR_OK;
+        return rv;
 }
 
 CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle */
