@@ -261,7 +261,7 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 		/* If we aren't sure if the card state changed, check if 
 		 * the card handle is still valid. If the card changed, 
 		 * the handle will be invalid. */
-
+		slot->flags &= ~SC_SLOT_CARD_CHANGED;
 		if (maybe_changed && (old_flags & SC_SLOT_CARD_PRESENT)) {
 			DWORD readers_len = 0, state, prot, atr_len = 32;
 			unsigned char atr[32];
@@ -269,8 +269,6 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 				&state,	&prot, atr, &atr_len);
 			if (rv == SCARD_W_REMOVED_CARD)
 				slot->flags |= SC_SLOT_CARD_CHANGED;
-			else
-				slot->flags &= ~SC_SLOT_CARD_CHANGED;
 		}
 	} else {
 		slot->flags &= ~(SC_SLOT_CARD_PRESENT|SC_SLOT_CARD_CHANGED);
