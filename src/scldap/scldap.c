@@ -828,11 +828,13 @@ int scldap_search(scldap_context * ctx, const char *entry,
 	} else if (!searchpattern && ctx->entry[entrynum].filter) {
 		pattern = strdup(ctx->entry[entrynum].filter);
 	}
+#if 0
 	/* Note: pattern *can* be empty but NOT NULL! Therefore, this is illegal. */
 	if (!pattern) {
 		ldap_unbind(ld);
 		return -1;
 	}
+#endif
 #if 0
 	if (pattern)
 		fprintf(stderr, "pattern: %s\n", pattern);
