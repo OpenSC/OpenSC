@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <winscard.h>
+#include <time.h>
 
 /* Default timeout value for SCardGetStatusChange
  * Needs to be increased for some broken PC/SC
