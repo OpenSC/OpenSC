@@ -212,8 +212,14 @@ struct sc_pkcs15_data {
 typedef struct sc_pkcs15_data sc_pkcs15_data_t;
 
 struct sc_pkcs15_data_info {
-	struct sc_pkcs15_id id;	/* correlates to data object id */
-	/* identifiers [2] SEQUENCE OF CredentialIdentifier{{KeyIdentifiers}} */
+	/* FIXME: there is no pkcs15 ID in DataType */
+	struct sc_pkcs15_id id;
+
+	/* Identify the application:
+	 * either or both may be set */
+	char app_label[SC_PKCS15_MAX_LABEL_SIZE];
+	struct sc_object_id app_oid;
+
 	struct sc_path path;
 };
 typedef struct sc_pkcs15_data_info sc_pkcs15_data_info_t;

@@ -106,32 +106,19 @@ int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
-static const struct sc_asn1_entry c_asn1_cred_ident[] = {
-	{ "idType",	SC_ASN1_INTEGER,      ASN1_INTEGER, 0, NULL },
-	{ "idValue",	SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL },
+static const struct sc_asn1_entry c_asn1_data[] = {
+	{ "data", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS },
 	{ NULL }
 };
 static const struct sc_asn1_entry c_asn1_com_data_attr[] = {
-	{ "dataID",         SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, NULL },
+	{ "appName", SC_ASN1_UTF8STRING, ASN1_UTF8STRING, SC_ASN1_OPTIONAL },
+	{ "appOID", SC_ASN1_OBJECT, ASN1_OBJECT, SC_ASN1_OPTIONAL },
 	{ NULL }
 };
 static const struct sc_asn1_entry c_asn1_type_data_attr[] = {
-	{ "dataType", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
+	{ "path", SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS },
 	{ NULL }
 };
-static const struct sc_asn1_entry c_asn1_data[] = {
-	{ "data", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
-	{ NULL }
-};
-static const struct sc_asn1_entry c_asn1_x509_data_attr[] = {
-	{ "dataValue",	SC_ASN1_PATH,	   ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
-	{ NULL }
-};
-
-static const struct sc_asn1_entry     c_asn1_datalen_object[] = {
-	{ "dataLen", SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0 },
-	{ NULL }
-	};
 
 int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 			       struct sc_pkcs15_object *obj,
@@ -139,28 +126,21 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 {
         struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_data_info info;
-	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_data_attr[4],
-				asn1_x509_data_attr[2], asn1_type_data_attr[2],
-				asn1_data[2],asn1_datalen[2];
+	struct sc_asn1_entry	asn1_com_data_attr[3],
+				asn1_type_data_attr[2],
+				asn1_data[2];
 	struct sc_asn1_pkcs15_object data_obj = { obj, asn1_com_data_attr, NULL,
 					     asn1_type_data_attr };
-	u8 id_value[128];
-	int id_type;
-	size_t id_value_len = sizeof(id_value);
+	size_t label_len = sizeof(info.app_label);
 	int r;
-	sc_copy_asn1_entry(c_asn1_cred_ident, asn1_cred_ident);
+
 	sc_copy_asn1_entry(c_asn1_com_data_attr, asn1_com_data_attr);
-	sc_copy_asn1_entry(c_asn1_x509_data_attr, asn1_x509_data_attr);
-	sc_copy_asn1_entry(c_asn1_datalen_object , asn1_datalen);
 	sc_copy_asn1_entry(c_asn1_type_data_attr, asn1_type_data_attr);
 	sc_copy_asn1_entry(c_asn1_data, asn1_data);
 	
-	sc_format_asn1_entry(asn1_cred_ident + 0, &id_type, NULL, 0);
-	sc_format_asn1_entry(asn1_cred_ident + 1, &id_value, &id_value_len, 0);
-	sc_format_asn1_entry(asn1_com_data_attr + 0, &info.id, NULL, 0);
-	sc_format_asn1_entry(asn1_com_data_attr + 1, asn1_cred_ident, NULL, 0);
-	sc_format_asn1_entry(asn1_x509_data_attr + 0, &info.path, NULL, 0);
-	sc_format_asn1_entry(asn1_type_data_attr + 0, asn1_x509_data_attr, NULL, 0);
+	sc_format_asn1_entry(asn1_com_data_attr + 0, &info.app_label, &label_len, 0);
+	sc_format_asn1_entry(asn1_com_data_attr + 1, &info.app_oid, NULL, 0);
+	sc_format_asn1_entry(asn1_type_data_attr + 0, &info.path, NULL, 0);
 	sc_format_asn1_entry(asn1_data + 0, &data_obj, NULL, 0);
 
         /* Fill in defaults */
@@ -183,28 +163,34 @@ int sc_pkcs15_encode_dodf_entry(struct sc_context *ctx,
 			       const struct sc_pkcs15_object *obj,
 			       u8 **buf, size_t *bufsize)
 {
-	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_data_attr[4],
-				asn1_x509_data_attr[2], asn1_type_data_attr[2],
-				asn1_data[2],asn1_datalen[2];
-	struct sc_pkcs15_data_info *infop =
-		(struct sc_pkcs15_data_info *) obj->data;
+	struct sc_asn1_entry	asn1_com_data_attr[4],
+				asn1_type_data_attr[2],
+				asn1_data[2];
+	struct sc_pkcs15_data_info *info;
 	struct sc_asn1_pkcs15_object data_obj = { (struct sc_pkcs15_object *) obj,
 							asn1_com_data_attr, NULL,
 							asn1_type_data_attr };
-	int r;
-	sc_copy_asn1_entry(c_asn1_cred_ident, asn1_cred_ident);
+	size_t label_len;
+
+	info = (struct sc_pkcs15_data_info *) obj->data;
+	label_len = strlen(info->app_label);
+
 	sc_copy_asn1_entry(c_asn1_com_data_attr, asn1_com_data_attr);
-	sc_copy_asn1_entry(c_asn1_x509_data_attr, asn1_x509_data_attr);
-	sc_copy_asn1_entry(c_asn1_datalen_object, asn1_datalen);
 	sc_copy_asn1_entry(c_asn1_type_data_attr, asn1_type_data_attr);
 	sc_copy_asn1_entry(c_asn1_data, asn1_data);
-	sc_format_asn1_entry(asn1_com_data_attr + 0, (void *) &infop->id, NULL, 1);
-	sc_format_asn1_entry(asn1_x509_data_attr + 0, (void *) &infop->path, NULL, 1);
-	sc_format_asn1_entry(asn1_type_data_attr + 0, (void *) asn1_x509_data_attr, NULL, 1);
-	sc_format_asn1_entry(asn1_data + 0, (void *) &data_obj, NULL, 1);
+	
+	if (label_len) {
+		sc_format_asn1_entry(asn1_com_data_attr + 0,
+				&info->app_label, &label_len, 1);
+	}
+	if (info->app_oid.value[0] != -1) {
+		sc_format_asn1_entry(asn1_com_data_attr + 1,
+				&info->app_oid, NULL, 1);
+	}
+	sc_format_asn1_entry(asn1_type_data_attr + 0, &info->path, NULL, 1);
+	sc_format_asn1_entry(asn1_data + 0, &data_obj, NULL, 1);
 
-	r = sc_asn1_encode(ctx, asn1_data, buf, bufsize);
-	return r;
+	return sc_asn1_encode(ctx, asn1_data, buf, bufsize);
 }
 
 void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object)
