@@ -436,6 +436,8 @@ void sc_mutex_free(struct sc_mutex *p);
 #define SC_CARD_CAP_EMV			0x00000002
 /* SC_CARD_CAP_RNG: Card has on-board random number source */
 #define SC_CARD_CAP_RNG			0x00000004
+/* The card doesn't return any File Control Info */
+#define SC_CARD_CAP_NO_FCI		0x00000008
 
 struct sc_card {
 	struct sc_context *ctx;

@@ -259,7 +259,7 @@ int do_cd(int argc, char **argv)
 		check_ret(r, SC_AC_OP_SELECT, "unable to select DF", current_file);
 		return -1;
 	}
-	if (file->type != SC_FILE_TYPE_DF) {
+	if ((file->type != SC_FILE_TYPE_DF) && !(card->caps & SC_CARD_CAP_NO_FCI)) {
 		printf("Error: file is not a DF.\n");
 		sc_file_free(file);
 		r = sc_select_file(card, &current_path, NULL);
@@ -295,13 +295,15 @@ int read_and_print_binary_file(struct sc_file *file)
 			check_ret(r, SC_AC_OP_READ, "read failed", file);
 			return -1;
 		}
-		if (r != c) {
+		if ((r != c) && !(card->caps & SC_CARD_CAP_NO_FCI)) {
 			printf("expecting %d, got only %d bytes.\n", c, r);
 			return -1;
 		}
-		hex_dump_asc(stdout, buf, c, idx);
-		idx += c;
-		count -= c;
+		if ((r == 0) && (card->caps & SC_CARD_CAP_NO_FCI))
+			break;
+		hex_dump_asc(stdout, buf, r, idx);
+		idx += r;
+		count -= r;
 	}
 	return 0;
 }
@@ -859,14 +861,16 @@ int do_get(int argc, char **argv)
 			error = 1;
 			goto err;
 		}
-		if (r != c) {
+		if ((r != c) && !(card->caps & SC_CARD_CAP_NO_FCI)) {
 			printf("expecting %d, got only %d bytes.\n", c, r);
 			error = 1;
 			goto err;
 		}
-		fwrite(buf, c, 1, outf);
-		idx += c;
-		count -= c;
+		if ((r == 0) && (card->caps & SC_CARD_CAP_NO_FCI))
+			break;
+		fwrite(buf, r, 1, outf);
+		idx += r;
+		count -= r;
 	}
 	printf("Total of %d bytes read from %s and saved to %s.\n",
 	       idx, argv[0], filename);
