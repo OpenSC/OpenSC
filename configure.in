@@ -478,8 +478,9 @@ saved_LIBS="$LIBS"
 saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
 AC_SUBST(LIBCRYPTO)
+AC_SUBST(LIBCRYPTOA)
 AC_CACHE_CHECK([for OpenSSL directory], ac_cv_openssldir, [
-	for ssldir in $tryssldir "" /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl ; do
+	for ssldir in $tryssldir /usr /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl ; do
 		# Skip directories if they don't exist
 		if test ! -z "$ssldir" -a ! -d "$ssldir" ; then
 			continue;
@@ -528,14 +529,21 @@ int main(void)
 			],
 			[
 				found_crypto=1
-				break;
 			], []
 		)
 
 
-		if test ! -z "$found_crypto" ; then
+		if test -n "$found_crypto" ; then
 			# we found openssl, lets see if it 
 			# has an engine
+			CPPFLAGS="$saved_CPPFLAGS"
+			LDFLAGS="$saved_LDFLAGS"
+			if test -d "$ssldir/lib" ; then
+				LIBCRYPTOA="$ssldir/lib/libcrypto.a -ldl"
+			else
+				LIBCRYPTOA="$ssldir/libcrypto.a -ldl"
+			fi
+			LIBS="$saved_LIBS $LIBCRYPTOA"
 			AC_TRY_RUN(
 			[
 #include <string.h>
@@ -547,13 +555,8 @@ int main(void)
 	char a[2048];
 	ENGINE *e;
 
-	if (OPENSSL_VERSION_NUMBER < 0x0090701fL)
-	{
-		printf("openssl too old, please update to 0.9.7 or newer");
-		return 1;
-	}
-
-	e = ENGINE_NEW();
+	e = ENGINE_new();
+	ENGINE_load_dynamic();
 	if (!e) return 1;
 	memset(a, 0, sizeof(a));
 	RAND_add(a, sizeof(a), sizeof(a));
@@ -562,12 +565,11 @@ int main(void)
 			],
 			[
 				found_engine=1
-				break;
 			], []
 		)
 		fi
 
-		if test ! -z "$found_crypto" ; then
+		if test -n "$found_crypto" ; then
 			break;
 		fi
 	done
@@ -615,10 +617,10 @@ if test "x$SSL_MSG" = "xyes" ; then
   AC_DEFINE(HAVE_OPENSSL, 1, [Have OpenSSL libraries])
 fi
 AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
-AM_CONDITIONAL(HAVE_ENGINE, test ! -z "$found_engine")
+AM_CONDITIONAL(HAVE_ENGINE, test -n "$found_engine")
 
 ENGINE_MSG="no"
-if test !  -z "$found_engine"
+if test -n "$found_engine"
 then
 	ENGINE_MSG="yes"
 fi

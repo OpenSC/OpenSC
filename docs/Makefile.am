@@ -2,14 +2,13 @@
 
 MAINTAINERCLEANFILES = Makefile.in pkcs15-profile.5 usbtoken.html
 
-man_MANS	= pkcs15-crypt.1 \
+MANSRC  	= pkcs15-crypt.1 \
 	   	  pkcs15-init.1 \
 		  cryptoflex-tool.1 \
 		  opensc-config.1 \
 		  opensc-explorer.1 \
 		  opensc-tool.1 \
 		  pkcs15-tool.1 \
-	   	  pkcs15-profile.5 \
 		  opensc.7 \
 		  pkcs15.7 \
 		  sc_connect_card.3 \
@@ -25,7 +24,8 @@ man_MANS	= pkcs15-crypt.1 \
 		  sc_read_record.3 \
 		  sc_release_context.3 \
 		  sc_select_file.3
-EXTRA_DIST	= $(man_MANS) pkcs15-profile.5.in pkcs-15v1_1.asn \
+man_MANS	= $(MANSRC) pkcs15-profile.5
+EXTRA_DIST	= $(MANSRC) pkcs15-profile.5.in pkcs-15v1_1.asn \
 	     	  usbtoken.xml usbtoken.html doxygen.conf
 
 STYLESHEET=/usr/share/sgml/docbook/stylesheet/xsl/nwalsh/xhtml/docbook.xsl

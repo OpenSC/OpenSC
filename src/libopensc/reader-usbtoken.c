@@ -94,6 +94,7 @@ int usbtoken_reader_init(struct sc_context *ctx, void **priv_data) {
 		bzero(myprivslot,sizeof(struct usbtoken_privslot));
 		myreader->slot[0].drv_data=myprivslot;
 	
+		myprivslot->fd = -1;
 		myprivslot->sa_un.sun_family=AF_UNIX;
 		snprintf(myprivslot->sa_un.sun_path,
 			sizeof(myprivslot->sa_un.sun_path), SRVSOCKET, i);
@@ -127,7 +128,8 @@ int usbtoken_reader_release(struct sc_reader *reader) {
 	SC_FUNC_CALLED(reader->ctx, 4);
 	myprivslot = reader->slot[0].drv_data;
 	if (myprivslot) {
-		close (myprivslot->fd);
+		if (myprivslot->fd >= 0)
+			close (myprivslot->fd);
 		free(myprivslot);
 	}
 	
@@ -162,7 +164,8 @@ int usbtoken_reader_unix_cmd(struct sc_reader *reader,
 
 	SC_FUNC_CALLED(reader->ctx, 4);
 	myprivslot = slot->drv_data;
-	
+
+	assert(myprivslot->fd >= 0);
 	rc = write(myprivslot->fd, &cmd, sizeof(cmd));
 	if (rc != sizeof(cmd)) {
 		error(reader->ctx, "usbtoken_reader_unix_cmd write failed\n");
@@ -200,7 +203,7 @@ int usbtoken_reader_connect(struct sc_reader *reader,
 
 	if (rc < 0) {
 		close(myprivslot->fd);
-		myprivslot->fd=0;
+		myprivslot->fd=-1;
 		error(reader->ctx, "usbtoken_reader_connect connect failed\n");
 		return SC_ERROR_CARD_NOT_PRESENT;
 	} 
@@ -226,7 +229,10 @@ int usbtoken_reader_disconnect(struct sc_reader *reader,
 
 	SC_FUNC_CALLED(reader->ctx, 4);
 	myprivslot = slot->drv_data;
-	close (myprivslot->fd);
+	if (myprivslot->fd >= 0) {
+		close (myprivslot->fd);
+		myprivslot->fd = -1;
+	}
 
 	return SC_NO_ERROR;
 }
@@ -241,6 +247,7 @@ int usbtoken_reader_transmit(struct sc_reader *reader,
 	SC_FUNC_CALLED(reader->ctx, 4);
 	myprivslot = slot->drv_data;
 
+	assert(myprivslot->fd >= 0);
 	if (sendsize > 1023) {
 		error(reader->ctx, "usbtoken_reader_transmit sendsize %d too big\n", sendsize);
 		return SC_ERROR_READER;

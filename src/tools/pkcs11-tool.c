@@ -59,7 +59,7 @@ const struct option options[] = {
 	{ "input-file",		1, 0,		'i' },
 	{ "output-file",	1, 0,		'o' },
 	{ "module",		1, 0,		OPT_MODULE },
-	{ "verbose",		0, 0,		'v' },
+	{ "quiet",		0, 0,		'q' },
 
 	{ "test",		0, 0,		't' },
 	{ 0, 0, 0, 0 }
@@ -82,14 +82,14 @@ const char *option_help[] = {
 	"Specify the input file",
 	"Specify the output file",
 	"Specify the module to load",
-	"Verbose output",
+	"Quiet operation",
 
        "Test (best used with the --login or --pin option)",
 };
 
 const char *		app_name = "pkcs11-tool"; /* for utils.c */
 
-static int		opt_verbose = 0;
+static int		opt_quiet = 0;
 static const char *	opt_input = NULL;
 static const char *	opt_output = NULL;
 static const char *	opt_module = NULL;
@@ -168,7 +168,7 @@ main(int argc, char * const argv[])
 	CK_RV rv;
 
 	while (1) {
-               c = getopt_long(argc, argv, "ILMOhi:lm:o:p:scvt",
+               c = getopt_long(argc, argv, "ILMOhi:lm:o:p:scqt",
 					options, &long_optind);
 		if (c == -1)
 			break;
@@ -227,8 +227,8 @@ main(int argc, char * const argv[])
 			do_test = 1;
 			action_count++;
 			break;
-		case 'v':
-			opt_verbose++;
+		case 'q':
+			opt_quiet++;
 			break;
 		case OPT_SLOT:
 			opt_slot = (CK_SLOT_ID) atoi(optarg);
@@ -406,13 +406,13 @@ list_slots(void)
 			printf("(GetSlotInfo failed, error %u)\n", (unsigned int) rv);
 			continue;
 		}
-		if (!opt_verbose && !(info.flags & CKF_TOKEN_PRESENT)) {
+		if (opt_quiet && !(info.flags & CKF_TOKEN_PRESENT)) {
 			printf("(empty)\n");
 			continue;
 		}
 		printf("%s\n", p11_utf8_to_local(info.slotDescription,
 					sizeof(info.slotDescription)));
-		if (opt_verbose) {
+		if (!opt_quiet) {
 			printf("  manufacturer:  %s\n", p11_utf8_to_local(info.manufacturerID,
 						sizeof(info.manufacturerID)));
 			printf("  hardware ver:  %u.%u\n",
@@ -435,7 +435,7 @@ show_token(CK_SLOT_ID slot)
 
 	get_token_info(slot, &info);
 
-	if (!(info.flags & CKF_TOKEN_INITIALIZED) && !opt_verbose) {
+	if (!(info.flags & CKF_TOKEN_INITIALIZED) && opt_quiet) {
 		printf("  token state:   uninitialized\n");
 		return;
 	}
@@ -1453,7 +1453,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 static int
 wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
-	    EVP_CIPHER *algo, CK_OBJECT_HANDLE privKeyObject)
+	    const EVP_CIPHER *algo, CK_OBJECT_HANDLE privKeyObject)
 {
 #ifndef HAVE_OPENSSL
 	printf("No OpenSSL support, unable to validate C_Unwrap\n");

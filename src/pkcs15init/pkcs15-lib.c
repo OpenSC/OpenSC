@@ -41,6 +41,7 @@
 #endif
 #include <assert.h>
 #ifdef HAVE_OPENSSL
+#include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>

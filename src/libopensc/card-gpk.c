@@ -33,6 +33,8 @@
 # define des_cleanse(k)	OPENSSL_cleanse(k.ks, sizeof(k.ks))
 #else
 # define des_cleanse(k)	memset(&k, 0, sizeof(k))
+# define DES_set_key_unchecked(a,b) des_set_key_unchecked(a,*b)
+# define DES_ecb3_encrypt(a,b,c,d,e,f) des_ecb3_encrypt(a,b,*c,*d,*e,f)
 #endif
 
 /* Gemplus card variants */
@@ -804,8 +806,8 @@ gpk_compute_crycks(struct sc_card *card, struct sc_apdu *apdu,
 	unsigned int	len = 0, i, j;
 
 	/* Set the key schedule */
-	des_set_key_unchecked((des_cblock *) priv->key, k1);
-	des_set_key_unchecked((des_cblock *) (priv->key+8), k2);
+	DES_set_key_unchecked((des_cblock *) priv->key, &k1);
+	DES_set_key_unchecked((des_cblock *) (priv->key+8), &k2);
 
 	/* Fill block with 0x00 and then with the data. */
 	memset(block, 0x00, sizeof(block));
@@ -825,9 +827,9 @@ gpk_compute_crycks(struct sc_card *card, struct sc_apdu *apdu,
 	for (j = 0; j < len; ) {
 		for (i = 0; i < 8; i++, j++)
 			in[i] ^= block[j];
-		des_ecb3_encrypt((des_cblock *)in,
+		DES_ecb3_encrypt((des_cblock *)in,
 				 (des_cblock *)out,
-				 k1, k2, k1, DES_ENCRYPT);
+				 &k1, &k2, &k1, DES_ENCRYPT);
 		memcpy(in, out, 8);
 	}
 
@@ -960,23 +962,23 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	des_cblock		out;
 	int			r = 0;
 
-	des_set_key_unchecked((des_cblock *) key, k1);
-	des_set_key_unchecked((des_cblock *) (key+8), k2);
+	DES_set_key_unchecked((des_cblock *) key, &k1);
+	DES_set_key_unchecked((des_cblock *) (key+8), &k2);
 
-	des_ecb3_encrypt((des_cblock *)(r_rn+4), (des_cblock *) kats,
-			k1, k2, k1, DES_ENCRYPT);
-	des_ecb3_encrypt((des_cblock *)(r_rn+4), (des_cblock *) (kats+8),
-			k2, k1, k2, DES_ENCRYPT);
+	DES_ecb3_encrypt((des_cblock *)(r_rn+4), (des_cblock *) kats,
+			&k1, &k2, &k1, DES_ENCRYPT);
+	DES_ecb3_encrypt((des_cblock *)(r_rn+4), (des_cblock *) (kats+8),
+			&k2, &k1, &k2, DES_ENCRYPT);
 
 	/* Verify Cryptogram presented by the card terminal
 	 * XXX: what is the appropriate error code to return
 	 * here? INVALID_ARGS doesn't seem quite right
 	 */
-	des_set_key_unchecked((des_cblock *) kats, k1);
-	des_set_key_unchecked((des_cblock *) (kats+8), k2);
+	DES_set_key_unchecked((des_cblock *) kats, &k1);
+	DES_set_key_unchecked((des_cblock *) (kats+8), &k2);
 
-	des_ecb3_encrypt((des_cblock *) challenge, &out,
-			k1, k2, k1, DES_ENCRYPT );
+	DES_ecb3_encrypt((des_cblock *) challenge, &out,
+			&k1, &k2, &k1, DES_ENCRYPT );
 	if (memcmp(r_rn, out+4, 4) != 0)
 		r = SC_ERROR_INVALID_ARGUMENTS;
 
@@ -1567,8 +1569,8 @@ gpk_pkfile_load(struct sc_card *card, struct sc_cardctl_gpk_pkload *args)
 		error(card->ctx, "No secure messaging key set!\n");
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
-	des_set_key_unchecked((des_cblock *) priv->key, k1);
-	des_set_key_unchecked((des_cblock *) (priv->key+8), k2);
+	DES_set_key_unchecked((des_cblock *) priv->key, &k1);
+	DES_set_key_unchecked((des_cblock *) (priv->key+8), &k2);
 	for (n = 0; n < args->datalen; n += 8) {
 		des_ecb2_encrypt((des_cblock *) (args->data + n),
 				 (des_cblock *) (temp + n),

@@ -1,6 +1,7 @@
 ## Makefile.am -- Process this file with automake to produce Makefile.in
 
 plugindir = $(PLUGINDIR)
+openscdir = @libdir@/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -12,7 +13,7 @@ INCLUDES = @CFLAGS_OPENSC@ @CFLAGS_ASSUAN@
 
 if HAVE_SSL
 if HAVE_ASSUAN
-plugin_LTLIBRARIES = opensc-signer.la
+opensc_LTLIBRARIES = opensc-signer.la
 endif
 endif
 
@@ -26,5 +27,5 @@ noinst_HEADERS		 = opensc-crypto.h opensc-support.h \
 			   npinclude/jritypes.h npinclude/npapi.h \
 			   npinclude/npupp.h npinclude/npunix.c
 
-install-exec-local: install-pluginLTLIBRARIES
-	-rm -f $(DESTDIR)$(plugindir)/opensc-signer.a $(DESTDIR)$(plugindir)/opensc-signer.la
+install-exec-local: install-openscLTLIBRARIES
+	-$(LN_S) -f $(openscdir)/opensc-signer.so $(DESTDIR)$(plugindir)/

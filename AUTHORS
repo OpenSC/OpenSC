@@ -8,6 +8,7 @@ Olaf Kirch <okir@suse.de>
 Contributors:
 Stef Hoeben <Hoeben.S@Zetes.com> (pkcs11, libopensc, win32 port)
 Andreas Jellinghaus <aj@dungeon.inka.de> (usbtoken, tools, auto{conf,make})
+Robert Bihlmeyer <r.bihlmeyer@internet-security.at> (bug fixes)
 
 Contributors to usbtoken:
 Matthias Brüstle 

@@ -286,7 +286,7 @@ int p15_eid_auth(scam_context * sctx, int argc, const char **argv,
 		 const char *user, const char *password)
 {
 	scam_method_data *data = (scam_method_data *) sctx->method_data;
-	u8 random_data[20], chg[256], txt[256];
+	u8 random_data[20], chg[256];
 	int r, err = SCAM_FAILED, chglen;
 	EVP_PKEY *pubkey = NULL;
 	X509 *cert = NULL;
