@@ -83,11 +83,6 @@ app default {
 		#
 		max_send_size = 252;
 		max_recv_size = 252;
-		# Sometimes T=0 vs T=1 isses are easy to track down, if card supports both
-		# protocols, and one method works and another not. Force the connection to
-		# use a specific protocol. Possible value: t0, t1, raw.
-		# force_protocol = t0;
-		# 
 	}
 
 	# What card drivers to load at start-up
@@ -179,6 +174,19 @@ app default {
 			# module = builtin;
 			# atr = 11:22:33:44;
 		#}
+	}
+	
+	# Estonian ID card and Micardo driver currently play together with T=0 only.
+	# In theory only the 'cold' ATR should be specified, as T=0 will be the preferred
+	# protocol once you boot it up with T=0, but be paranoid.
+	
+	# Generic format: card_atr <hex encoded ATR (case-sensitive!)>
+	# Only parameter currently understood is force_protocol
+	card_atr 3b:6e:00:ff:45:73:74:45:49:44:20:76:65:72:20:31:2e:30 {
+		force_protocol = t0;
+	}
+	card_atr 3b:fe:94:00:ff:80:b1:fa:45:1f:03:45:73:74:45:49:44:20:76:65:72:20:31:2e:30:43 {
+		force_protocol = t0;
 	}
 }
 

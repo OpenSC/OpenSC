@@ -379,12 +379,13 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 
 static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 {
-	DWORD active_proto, protocol;
+	DWORD active_proto, protocol = SCARD_PROTOCOL_ANY;
 	SCARDHANDLE card_handle;
 	LONG rv;
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
-	int r;
+	scconf_block *conf_block = NULL;
+	int r, i;
 
 	r = refresh_slot_attributes(reader, slot);
 	if (r)
@@ -393,11 +394,39 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 		return SC_ERROR_CARD_NOT_PRESENT;
 
 	/* force a protocol, addon by -mp */	
-	if (reader->driver->forced_protocol) {
-		protocol = opensc_proto_to_pcsc(reader->driver->forced_protocol);
-	} else
-		protocol = SCARD_PROTOCOL_ANY;
+	for (i = 0; reader->ctx->conf_blocks[i] != NULL; i++) {
+		scconf_block **blocks;
+		char name[3 * SC_MAX_ATR_SIZE];
 		
+		r = sc_bin_to_hex(slot->atr, slot->atr_len, name, sizeof(name), ':');
+		assert(r == 0);
+		sc_debug(reader->ctx, "Looking for a card_atr %s", name);
+		blocks = scconf_find_blocks(reader->ctx->conf, reader->ctx->conf_blocks[i],
+		                            "card_atr", name);
+		conf_block = blocks[0];
+		free(blocks);
+		if (conf_block != NULL)
+			break;
+	}
+
+	if (conf_block != NULL) {
+		const char *forcestr;
+		
+		sc_debug(reader->ctx, "Found card_atr with current atr");
+		forcestr = scconf_get_str(conf_block, "force_protocol", NULL);
+			if (forcestr) {
+			sc_debug(reader->ctx,"Protocol force in action: %s", forcestr);
+			if (!strcmp(forcestr,"t0"))
+				protocol = SCARD_PROTOCOL_T0;
+			else if (!strcmp(forcestr,"t1"))
+				protocol = SCARD_PROTOCOL_T1;
+			else if (!strcmp(forcestr,"raw"))
+				protocol = SCARD_PROTOCOL_RAW;
+			else
+				sc_error(reader->ctx,"Unknown force_protocol: %s (Ignored)", forcestr);
+		}
+	}
+
 	rv = SCardConnect(priv->pcsc_ctx, priv->reader_name,
 		SCARD_SHARE_SHARED, protocol, &card_handle, &active_proto);
 	if (rv != 0) {
