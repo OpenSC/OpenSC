@@ -40,7 +40,11 @@ PKCS11_CTX	*ctx;
 char* pin;
 int quiet=1;
 
-char *module = "opensc-pkcs11.so";
+#ifndef _WIN32
+const char *module = "opensc-pkcs11.so";
+#else
+const char *module = "opensc-pkcs11";  /* no need to add .dll */
+#endif
 
 int set_module(const char *modulename) {
 	module=modulename;
@@ -61,7 +65,7 @@ char* get_pin(UI_METHOD* ui_method, char* sc_pin, int maxlen) {
 
 }
 
-int pkcs11_finish() {
+int pkcs11_finish(ENGINE *engine) {
 	
 	if (ctx) {
 		PKCS11_CTX_free(ctx);
@@ -70,15 +74,17 @@ int pkcs11_finish() {
 	return 1;
 }
 
-int pkcs11_init() {
+int pkcs11_init(ENGINE *engine) {
 	int r=0;
 	
 	if(!quiet)
 		fprintf(stderr,"initializing engine");
 
 	ctx = PKCS11_CTX_new();
-	if (PKCS11_CTX_load(ctx, module) < 0)
-		fail("unable to load module");
+	if (PKCS11_CTX_load(ctx, module) < 0) {
+		fprintf(stderr, "unable to load module");
+		return 0;
+	}
 
 	return 1;
 }
@@ -87,7 +93,7 @@ int
 pkcs11_rsa_finish(RSA* rsa) {
 	
 	if(pin) {free(pin);}
-	// need to free RSA_ex_data?
+	/* need to free RSA_ex_data? */
 	return 1;
 
 }
@@ -106,7 +112,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_key_id,
 	char		flags[64];
 	int		logged_in = 0;
  
-//	if(pin) {free(pin); pin=NULL;} // keep cached key?
+	/* if(pin) {free(pin); pin=NULL;} // keep cached key? */
 
 	if (PKCS11_enumerate_slots(ctx, &slot_list, &count) < 0)
 		fail("failed to enumerate slots");
@@ -215,8 +221,8 @@ again:
 	if(private) {
 		pk = PKCS11_get_private_key(&keys[0]);
 	} else {
-//		pk = PKCS11_get_public_key(&keys[0]);
-		// need a get_public_key?
+		/*pk = PKCS11_get_public_key(&keys[0]);
+		need a get_public_key? */
 		pk = PKCS11_get_private_key(&keys[0]);
 	}
 

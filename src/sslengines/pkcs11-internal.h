@@ -79,8 +79,13 @@ extern "C" {
 			returnType (*name)
 
 
-
+#ifndef _WIN32
 #include "opensc/rsaref/pkcs11.h"
+#else
+#pragma pack(push, cryptoki, 1)
+#include "opensc/rsaref/pkcs11.h"
+#pragma pack(pop, cryptoki)
+#endif
 
 
 /* get some structures for local code to handle pkcs11 data readily */

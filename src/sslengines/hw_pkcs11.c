@@ -59,7 +59,7 @@
  *
  */
 
-//#include "cryptlib.h"
+/*#include "cryptlib.h"*/
 
 #include <stdio.h>
 #include <string.h>
@@ -110,7 +110,7 @@ static int pkcs11_engine_destroy(ENGINE *e)
 
 static int pkcs11_engine_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f)())
 	{
-	//int initialised = ((pkcs11_dso == NULL) ? 0 : 1);
+	/*int initialised = ((pkcs11_dso == NULL) ? 0 : 1);*/
 	switch(cmd)
 		{
 	case CMD_MODULE_PATH:

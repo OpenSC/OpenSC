@@ -1,0 +1,4 @@
+LIBRARY engine_pkcs11
+EXPORTS
+    v_check
+    bind_engine

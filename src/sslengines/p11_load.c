@@ -73,7 +73,7 @@
  */
 #undef DLCLOSE_OKAY
 #ifndef DLCLOSE_OKAY
-//static const char *	the_module = NULL;
+/*static const char *	the_module = NULL;*/
 static void *		the_handler = NULL;
 #endif
 /*

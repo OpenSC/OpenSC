@@ -34,9 +34,9 @@
 
 int set_module(const char *modulename) ;
 
-int pkcs11_finish();
+int pkcs11_finish(ENGINE *engine);
 
-int pkcs11_init();
+int pkcs11_init(ENGINE *engine);
 
 int pkcs11_rsa_finish(RSA* rsa);
 

@@ -122,7 +122,7 @@ pkcs11_get_rsa_public(PKCS11_KEY *key, EVP_PKEY *pk)
 }
 
 static int
-pkcs11_rsa_decrypt(int flen, const u_char *from, u_char *to,
+pkcs11_rsa_decrypt(int flen, const unsigned char *from, unsigned char *to,
 			RSA *rsa, int padding)
 {
 	PKCS11_KEY	*key = (PKCS11_KEY *) RSA_get_app_data(rsa);
@@ -138,7 +138,7 @@ pkcs11_rsa_decrypt(int flen, const u_char *from, u_char *to,
 }
 
 static int
-pkcs11_rsa_encrypt(int flen, const u_char *from, u_char *to,
+pkcs11_rsa_encrypt(int flen, const unsigned char *from, unsigned char *to,
 			RSA *rsa, int padding)
 {
 	/* PKCS11 calls go here */
@@ -147,7 +147,7 @@ pkcs11_rsa_encrypt(int flen, const u_char *from, u_char *to,
 }
 
 static int
-pkcs11_rsa_sign(int type, const u_char *m, unsigned int m_len,
+pkcs11_rsa_sign(int type, const unsigned char *m, unsigned int m_len,
 	unsigned char *sigret, unsigned int *siglen, const RSA *rsa)
 {
 	PKCS11_KEY	*key = (PKCS11_KEY *) RSA_get_app_data(rsa);
@@ -195,8 +195,8 @@ fail:	PKCS11err(PKCS11_F_PKCS11_RSA_SIGN, pkcs11_map_err(rv));
  * calling RSA_verify once more.
  */
 static int
-pkcs11_rsa_verify(int type, const u_char *m, unsigned int m_len,
-	unsigned char *signature, unsigned int siglen, const RSA *rsa)
+pkcs11_rsa_verify(int type, const unsigned char *m, unsigned int m_len,
+	unsigned char *signature, unsigned int siglen, RSA *rsa)
 {
 	int	res;
 
