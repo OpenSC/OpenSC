@@ -25,7 +25,7 @@ opensc_pkcs11_la_LIBADD = @LIBDL@ @LIBOPENSC@ \
 	../pkcs15init/libpkcs15init.la ../scrandom/libscrandom.la
 
 libpkcs11_la_SOURCES = libpkcs11.c
-libpkcs11_la_LDFLAGS = -version-info 0:6:0
+libpkcs11_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
 libpkcs11_la_LIBADD = @LIBDL@ @LIBOPENSC@ \
 	../pkcs15init/libpkcs15init.la ../scrandom/libscrandom.la
 

@@ -43,8 +43,7 @@ libopensc_la_SOURCES = \
 	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 	card-etoken.c card-tcos.c card-emv.c card-default.c \
 	card-mcrd.c card-starcos.c
-
-libopensc_la_LDFLAGS = -version-info 0:6:0
+libopensc_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
 libopensc_la_LIBADD = @LIBDL@ @OPENCT_LIBS@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF)
 
 include_HEADERS = \

@@ -10,6 +10,19 @@ AM_CONFIG_HEADER(config.h)
 
 AC_CONFIG_SRCDIR(src/libopensc/sc.c)
 
+# LT Version numbers, remember to change them just *before* a release.
+#   (Code changed:                      REVISION++)
+#   (Interfaces added/removed/changed:  CURRENT++, REVISION=0)
+#   (Interfaces added:                  AGE++)
+#   (Interfaces removed:                AGE=0)
+OPENSC_LT_CURRENT=0
+OPENSC_LT_REVISION=8
+OPENSC_LT_AGE=0
+
+AC_SUBST(OPENSC_LT_CURRENT)
+AC_SUBST(OPENSC_LT_REVISION)
+AC_SUBST(OPENSC_LT_AGE)
+
 AC_CANONICAL_HOST
 case "$host" in
   *darwin* | *rhapsody*)
