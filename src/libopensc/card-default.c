@@ -58,8 +58,8 @@ static int autodetect_class(struct sc_card *card)
 		apdu.datalen = 0;
 		apdu.lc = 0;
 		apdu.le = 256;
-                apdu.resp = rbuf;
-                apdu.resplen = sizeof(rbuf);
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x6E)
@@ -121,9 +121,9 @@ static const struct sc_card_driver * sc_get_driver(void)
 	default_ops = *iso_drv->ops;
 	default_ops.match_card = default_match_card;
 	default_ops.init = default_init;
-        default_ops.finish = default_finish;
+	default_ops.finish = default_finish;
 
-        return &default_drv;
+	return &default_drv;
 }
 
 #if 1

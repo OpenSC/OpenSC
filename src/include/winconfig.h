@@ -21,6 +21,8 @@
 #define isatty _isatty
 #endif
 
+#define HAVE_IO_H
+
 #define OPENSC_CONF_PATH "C:\\WINNT\\opensc.conf"
 
 #endif

@@ -12,10 +12,11 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <getopt.h>
-#ifndef _WIN32
-#include <unistd.h>
+#ifdef HAVE_STRINGS_H
 #include <strings.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
 #endif
 #include <sys/stat.h>
 #include <opensc/opensc.h>

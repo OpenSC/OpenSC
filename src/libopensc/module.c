@@ -25,9 +25,6 @@
 #include <assert.h>
 #ifdef HAVE_DLFCN_H
 #include <dlfcn.h>
-#endif
-
-#ifndef _WIN32
 
 int sc_module_open(struct sc_context *ctx, void **mod_handle, const char *filename)
 {
@@ -101,5 +98,19 @@ int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_a
 
 #else
 
-#endif
+int sc_module_open(struct sc_context *ctx, void **mod_handle, const char *filename)
+{
+	return SC_ERROR_UNKNOWN;
+}
 
+int sc_module_close(struct sc_context *ctx, void *mod_handle)
+{
+	return SC_ERROR_UNKNOWN;
+}
+
+int sc_module_get_address(struct sc_context *ctx, void *mod_handle, void **sym_address, const char *sym_name)
+{
+	return SC_ERROR_UNKNOWN;
+}
+
+#endif

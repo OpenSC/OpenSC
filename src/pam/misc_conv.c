@@ -14,7 +14,9 @@
 #include <sys/types.h>
 #include <termios.h>
 #include <time.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 
 #include <security/pam_appl.h>
 #include "pam_support.h"

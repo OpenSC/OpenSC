@@ -21,12 +21,12 @@
 #include "internal.h"
 #include "pkcs15.h"
 #include "log.h"
-#ifndef _WIN32
-#include <unistd.h>
-#endif
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 #include <sys/stat.h>
 #include <assert.h>
 

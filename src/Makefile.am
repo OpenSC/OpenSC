@@ -6,4 +6,3 @@ EXTRA_DIST = Makefile.mak
 
 # Order IS important
 SUBDIRS = common include scconf scldap scrandom libopensc pkcs15init tests tools openssh scam pam sia signer pkcs11
-

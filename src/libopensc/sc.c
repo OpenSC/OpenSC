@@ -26,7 +26,6 @@
 #include <string.h>
 #include <assert.h>
 
-#undef sc_version
 #ifdef VERSION
 const char *sc_version = VERSION;
 #else

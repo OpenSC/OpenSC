@@ -1,5 +1,5 @@
 /*
- * opensc-pkcs11.h: OpenSC project's PKCS#11 implementation header
+ * sc-pkcs11.h: OpenSC project's PKCS#11 implementation header
  *
  * Copyright (C) 2002  Timo Teräs <timo.teras@iki.fi>
  *
@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef __opensc_pkcs11_h__
-#define __opensc_pkcs11_h__
+#ifndef __sc_pkcs11_h__
+#define __sc_pkcs11_h__
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>

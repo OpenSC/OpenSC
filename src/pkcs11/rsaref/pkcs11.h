@@ -204,7 +204,9 @@ extern "C" {
  * #endif
  */
 
-/* #include "unix.h" */
+#if 0
+#include "unix.h"
+#endif
 
 /* All the various Cryptoki types and #define'd values are in the
  * file pkcs11t.h. */

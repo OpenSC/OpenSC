@@ -23,7 +23,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-/* #include <wintypes.h> */
 #include <winscard.h>
 
 /* Default timeout value for SCardGetStatusChange
@@ -331,11 +330,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	scconf_block **blocks = NULL, *conf_block = NULL;
 
         rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL,
-#ifndef _WIN32
-                                   "localhost",
-#else
                                    NULL,
-#endif
                                    NULL,
 				   &pcsc_ctx);
 	if (rv != SCARD_S_SUCCESS)

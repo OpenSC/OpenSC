@@ -27,10 +27,13 @@
 #include <assert.h>
 #include <ctype.h>
 #include <string.h>
-#ifndef _WIN32
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
-#else
+#endif
+#ifdef HAVE_IO_H
 #include <io.h>
 #endif
 
