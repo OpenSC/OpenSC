@@ -5,6 +5,7 @@
 
 #include "pkcs11/pkcs11.h"
 #include "../sc.h"
+#include "../sc-pkcs15.h"
 
 #define PKCS11_MAX_SLOTS        4
 #define PKCS11_MAX_SESSIONS     8
@@ -12,6 +13,7 @@
 
 // Object information
 struct pkcs11_object {
+        int object_type, token_id;
         int num_attributes;
 	CK_ATTRIBUTE_PTR attribute;
 };
@@ -20,6 +22,11 @@ struct pkcs11_object {
 struct pkcs11_search_context {
         int num_matches, position;
         CK_OBJECT_HANDLE handles[PKCS11_MAX_OBJECTS];
+};
+// Signing information
+struct pkcs11_sign_context {
+	int private_key_id;
+        int algorithm_ref;
 };
 
 // Per session information; "context"
@@ -31,6 +38,7 @@ struct pkcs11_session {
 	CK_VOID_PTR notify_parameter;
 
 	struct pkcs11_search_context search;
+        struct pkcs11_sign_context sign;
         //...
 };
 

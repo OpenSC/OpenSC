@@ -1,4 +1,23 @@
+#include <stdio.h>
+#include <ctype.h>
+
 #include "sc-pkcs11.h"
+
+static void hex_dump(const unsigned char *buf, int count)
+{
+	int i;
+	for (i = 0; i < count; i++) {
+                unsigned char c = buf[i];
+		int printch = 0;
+		if (!isalnum(c) && !ispunct(c) && !isspace(c))
+			printch = 0;
+                if (printch)
+			LOG("%02X%c ", c, c);
+		else
+                        LOG("%02X  ", c);
+	}
+	LOG("\n");
+}
 
 CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 		   CK_MECHANISM_PTR  pMechanism) /* the digesting mechanism */
@@ -44,8 +63,41 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		 CK_MECHANISM_PTR  pMechanism,  /* the signature mechanism */
 		 CK_OBJECT_HANDLE  hKey)        /* handle of the signature key */
 {
-        LOG("C_SignInit\n");
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	struct pkcs11_slot *slt;
+	struct pkcs11_session *ses;
+	struct pkcs11_object *object;
+
+	LOG("C_SignInit(%d, {%d, 0x%x, %d}, %d)\n",
+	    hSession,
+            pMechanism->mechanism, pMechanism->pParameter, pMechanism->ulParameterLen,
+	    hKey);
+
+	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+		return CKR_SESSION_HANDLE_INVALID;
+        ses = session[hSession];
+	slt = &slot[ses->slot];
+	if (hKey < 1 || hKey > slt->num_objects)
+                return CKR_OBJECT_HANDLE_INVALID;
+	object = slt->object[hKey];
+
+	if (object->object_type != CKO_PRIVATE_KEY)
+                return CKR_OBJECT_HANDLE_INVALID;
+
+	switch (pMechanism->mechanism) {
+	case CKM_RSA_PKCS:
+		// Signing according to PKCS#1 standard
+                LOG("CKM_RSA_PKCS mechanism requested\n");
+		ses->sign.algorithm_ref = 0x02;
+		break;
+	default:
+		LOG("Requested mechanism #d not supported\n", pMechanism->mechanism);
+                break;
+	}
+
+	LOG("Token id is %d\n", object->token_id);
+        ses->sign.private_key_id = object->token_id;
+
+	return CKR_OK;
 }
 
 CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
@@ -54,15 +106,57 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 	     CK_BYTE_PTR       pSignature,      /* receives the signature */
 	     CK_ULONG_PTR      pulSignatureLen) /* receives byte count of signature */
 {
-        LOG("C_Sign\n");
-        return CKR_FUNCTION_NOT_SUPPORTED;
+	char signature[1024];
+        struct sc_pkcs15_card *p15card;
+	struct sc_security_env senv;
+	struct pkcs11_session *ses;
+        int i, c;
+
+	LOG("C_Sign(%d, 0x%x, %d, 0x%x, 0x%x)\n",
+	    hSession, pData, ulDataLen, pSignature, pulSignatureLen);
+        hex_dump(pData, ulDataLen);
+
+	if (hSession < 1 || hSession > PKCS11_MAX_SESSIONS || session[hSession] == NULL)
+		return CKR_SESSION_HANDLE_INVALID;
+        ses = session[hSession];
+	p15card = slot[ses->slot].p15card;
+
+	senv.signature = 1;
+	senv.algorithm_ref = ses->sign.algorithm_ref; //0x02;
+	senv.key_ref = 0;
+	senv.key_file_id = p15card->prkey_info[ses->sign.private_key_id].file_id;
+	senv.app_df_path = p15card->file_app.path;
+	i = sc_set_security_env(p15card->card, &senv);
+	if (i) {
+		LOG("Security environment set failed: %s\n", sc_strerror(i));
+		return CKR_DEVICE_ERROR;
+	}
+
+	c = sc_compute_signature(p15card->card, pData, ulDataLen, signature, sizeof(signature));
+	if (c < 0) {
+		LOG("Compute signature failed: (%d) %s\n", c, sc_strerror(c));
+                return CKR_DEVICE_ERROR;
+	}
+
+	if (*pulSignatureLen < c) {
+                LOG("Buffer too small, %d < %d\n", *pulSignatureLen, c);
+		return CKR_BUFFER_TOO_SMALL;
+	}
+
+        LOG("Got signature, %d bytes (buffer was %d)\n", c, *pulSignatureLen);
+        hex_dump(signature, c);
+	memcpy(pSignature, signature, c);
+        *pulSignatureLen = c;
+
+	return CKR_OK;
 }
 
 CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		   CK_BYTE_PTR       pPart,     /* the data (digest) to be signed */
 		   CK_ULONG          ulPartLen) /* count of bytes to be signed */
 {
-        LOG("C_SignUpdate\n");
+	LOG("C_SignUpdate(%d, 0x%x, %d)\n",
+	    hSession, pPart, ulPartLen);
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -70,7 +164,8 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,        /* the session's handle */
 		  CK_BYTE_PTR       pSignature,      /* receives the signature */
 		  CK_ULONG_PTR      pulSignatureLen) /* receives byte count of signature */
 {
-        LOG("C_SignFinal\n");
+	LOG("C_SignFinal(%d, 0x%x, %d)\n",
+	    hSession, pSignature, pulSignatureLen);
         return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
