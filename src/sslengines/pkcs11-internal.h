@@ -87,108 +87,97 @@ ERR_PUT_error(ERR_LIB_PKCS11,(f),(r),__FILE__,__LINE__)
  *
  *  -	no support for any operations that alter the card,
  *  	i.e. readonly-login
- *
- * Rather than include the complete PKCS#11 type definition
- * header file here, I'm defining my own bunch of types,
- * leaving out those that are not needed.
- * I also hope that they will be more in line with OpenSSL
- * coding style.
  */
 
 /* PKCS11 key object (public or private) */
 typedef struct PKCS11_key_st {
-	char *		label;
-	unsigned char *	id;
-	int		id_len;
-	unsigned char	isPrivate;	/* private key present? */
-	unsigned char	needLogin;	/* login to read private key? */
-	EVP_PKEY *	evp_key;	/* initially NULL, need to call PKCS11_load_key */
-	void *		_private;
+	char *label;
+	unsigned char *id;
+	int id_len;
+	unsigned char isPrivate;	/* private key present? */
+	unsigned char needLogin;	/* login to read private key? */
+	EVP_PKEY *evp_key;		/* initially NULL, need to call PKCS11_load_key */
+	void *_private;
 } PKCS11_KEY;
 
 /* PKCS11 certificate object */
 typedef struct PKCS11_cert_st {
-	char *		label;
-	unsigned char *	id;
-	int		id_len;
-	X509 *		x509;
-	void *		_private;
+	char *label;
+	unsigned char *id;
+	int id_len;
+	X509 *x509;
+	void *_private;
 } PKCS11_CERT;
 
 /* PKCS11 token, e.g. smart card or USB key */
 typedef struct PKCS11_token_st {
-	char *		label;
-	char *		manufacturer;
-	char *		model;
-	unsigned char	initialized;
-	unsigned char	loginRequired;
-	unsigned char	userPinSet;
-	unsigned char	readOnly;
-	void *		_private;
+	char *label;
+	char *manufacturer;
+	char *model;
+	unsigned char initialized;
+	unsigned char loginRequired;
+	unsigned char userPinSet;
+	unsigned char readOnly;
+	void *_private;
 } PKCS11_TOKEN;
 
 /* PKCS11 slot, e.g. card reader */
 typedef struct PKCS11_slot_st {
-	char *		manufacturer;
-	char *		description;
-	unsigned char	removable;
-	PKCS11_TOKEN *	token;		/* NULL if no token present */
-	void *		_private;
+	char *manufacturer;
+	char *description;
+	unsigned char removable;
+	PKCS11_TOKEN *token;	/* NULL if no token present */
+	void *_private;
 } PKCS11_SLOT;
 
 typedef struct PKCS11_ctx_st {
-	char *		manufacturer;
-	char *		description;
-	void *		_private;
+	char *manufacturer;
+	char *description;
+	void *_private;
 } PKCS11_CTX;
 
-extern PKCS11_CTX *     PKCS11_CTX_new(void);
-extern int              PKCS11_CTX_load(PKCS11_CTX *, const char *ident);
-extern void             PKCS11_CTX_unload(PKCS11_CTX *);
-extern void             PKCS11_CTX_free(PKCS11_CTX *);
+extern PKCS11_CTX *PKCS11_CTX_new(void);
+extern int PKCS11_CTX_load(PKCS11_CTX *, const char *ident);
+extern void PKCS11_CTX_unload(PKCS11_CTX *);
+extern void PKCS11_CTX_free(PKCS11_CTX *);
 
 /* Get a list of all slots */
-extern int		PKCS11_enumerate_slots(PKCS11_CTX *, PKCS11_SLOT **, unsigned int *);
+extern int PKCS11_enumerate_slots(PKCS11_CTX *, PKCS11_SLOT **, unsigned int *);
 
 /* Find the first slot with a token */
-extern PKCS11_SLOT *	PKCS11_find_token(PKCS11_CTX *);
+extern PKCS11_SLOT *PKCS11_find_token(PKCS11_CTX *);
 
 /* Authenticate to the card */
-extern int		PKCS11_login(PKCS11_SLOT *, int so, char *pin);
-extern int		PKCS11_logout(PKCS11_SLOT *);
+extern int PKCS11_login(PKCS11_SLOT *, int so, char *pin);
+extern int PKCS11_logout(PKCS11_SLOT *);
 
 /* Get a list of all keys associated with this token */
-extern int		PKCS11_enumerate_keys(PKCS11_TOKEN *,
-				PKCS11_KEY **, unsigned int *);
+extern int PKCS11_enumerate_keys(PKCS11_TOKEN *, PKCS11_KEY **, unsigned int *);
 
 /* Get the key type (as EVP_PKEY_XXX) */
-extern int		PKCS11_get_key_type(PKCS11_KEY *);
+extern int PKCS11_get_key_type(PKCS11_KEY *);
 
 /* Get the enveloped private key */
-extern EVP_PKEY *	PKCS11_get_private_key(PKCS11_KEY *);
+extern EVP_PKEY *PKCS11_get_private_key(PKCS11_KEY *);
 
 /* Find the corresponding certificate (if any) */
-extern PKCS11_CERT *	PKCS11_find_certificate(PKCS11_KEY *);
+extern PKCS11_CERT *PKCS11_find_certificate(PKCS11_KEY *);
 
 /* Get a list of all certificates associated with this token */
-extern int		PKCS11_enumerate_certs(PKCS11_TOKEN *,
-				PKCS11_CERT **, unsigned int *);
+extern int PKCS11_enumerate_certs(PKCS11_TOKEN *, PKCS11_CERT **, unsigned int *);
 
 /* Initialize a token */
-extern int		PKCS11_init_token(PKCS11_TOKEN *,
-				char *pin, char *label);
+extern int PKCS11_init_token(PKCS11_TOKEN *, char *pin, char *label);
 
 /* Initialize the user PIN on a token */
-extern int		PKCS11_init_pin(PKCS11_TOKEN *, char *pin);
+extern int PKCS11_init_pin(PKCS11_TOKEN *, char *pin);
 
 /* Store various objects on the token */
-extern int		PKCS11_generate_key(PKCS11_TOKEN *, int,
-				unsigned int, char *);
-extern int		PKCS11_store_private_key(PKCS11_TOKEN *,
-				EVP_PKEY *, char *);
+extern int PKCS11_generate_key(PKCS11_TOKEN *, int, unsigned int, char *);
+extern int PKCS11_store_private_key(PKCS11_TOKEN *, EVP_PKEY *, char *);
 
 /* Load PKCS11 error strings */
-extern void		ERR_load_PKCS11_strings(void);
+extern void ERR_load_PKCS11_strings(void);
 
 /*
  * Function and reason codes
@@ -228,49 +217,48 @@ extern void		ERR_load_PKCS11_strings(void);
  * PKCS11_CTX: context for a PKCS11 implementation
  */
 typedef struct pkcs11_ctx_private {
-	char *			name;
-	void *			libinfo;
-	CK_FUNCTION_LIST_PTR 	method;
+	char *name;
+	void *libinfo;
+	CK_FUNCTION_LIST_PTR method;
 
-	CK_SESSION_HANDLE	session;
-	int			nslots;
-	PKCS11_SLOT *		slots;
+	CK_SESSION_HANDLE session;
+	int nslots;
+	PKCS11_SLOT *slots;
 } PKCS11_CTX_private;
 #define PRIVCTX(ctx)		((PKCS11_CTX_private *) (ctx->_private))
 
 typedef struct pkcs11_slot_private {
-	PKCS11_CTX *		parent;
-	unsigned char		haveSession,
-				loggedIn;
-	CK_SLOT_ID		id;
-	CK_SESSION_HANDLE	session;
+	PKCS11_CTX *parent;
+	unsigned char haveSession, loggedIn;
+	CK_SLOT_ID id;
+	CK_SESSION_HANDLE session;
 } PKCS11_SLOT_private;
 #define PRIVSLOT(slot)		((PKCS11_SLOT_private *) (slot->_private))
 #define SLOT2CTX(slot)		(PRIVSLOT(slot)->parent)
 
 typedef struct pkcs11_token_private {
-	PKCS11_SLOT *		parent;
-	int			nkeys, nprkeys;
-	PKCS11_KEY *		keys;
-	int			ncerts;
-	PKCS11_CERT *		certs;
+	PKCS11_SLOT *parent;
+	int nkeys, nprkeys;
+	PKCS11_KEY *keys;
+	int ncerts;
+	PKCS11_CERT *certs;
 } PKCS11_TOKEN_private;
 #define PRIVTOKEN(token)	((PKCS11_TOKEN_private *) (token->_private))
 #define TOKEN2SLOT(token)	(PRIVTOKEN(token)->parent)
 #define TOKEN2CTX(token)	SLOT2CTX(TOKEN2SLOT(token))
 
 typedef struct pkcs11_key_ops {
-	int			type; /* EVP_PKEY_xxx */
-	int			(*get_public)(PKCS11_KEY *, EVP_PKEY *);
-	int			(*get_private)(PKCS11_KEY *, EVP_PKEY *);
+	int type;		/* EVP_PKEY_xxx */
+	int (*get_public) (PKCS11_KEY *, EVP_PKEY *);
+	int (*get_private) (PKCS11_KEY *, EVP_PKEY *);
 } PKCS11_KEY_ops;
 
 typedef struct pkcs11_key_private {
-	PKCS11_TOKEN *		parent;
-	CK_OBJECT_HANDLE	object;
-	unsigned char		id[32];
-	size_t			id_len;
-	PKCS11_KEY_ops *	ops;
+	PKCS11_TOKEN *parent;
+	CK_OBJECT_HANDLE object;
+	unsigned char id[32];
+	size_t id_len;
+	PKCS11_KEY_ops *ops;
 } PKCS11_KEY_private;
 #define PRIVKEY(key)		((PKCS11_KEY_private *) key->_private)
 #define KEY2SLOT(key)		TOKEN2SLOT(KEY2TOKEN(key))
@@ -278,10 +266,10 @@ typedef struct pkcs11_key_private {
 #define KEY2CTX(key)		TOKEN2CTX(KEY2TOKEN(key))
 
 typedef struct pkcs11_cert_private {
-	PKCS11_TOKEN *		parent;
-	CK_OBJECT_HANDLE	object;
-	unsigned char		id[32];
-	size_t			id_len;
+	PKCS11_TOKEN *parent;
+	CK_OBJECT_HANDLE object;
+	unsigned char id[32];
+	size_t id_len;
 } PKCS11_CERT_private;
 #define PRIVCERT(cert)		((PKCS11_CERT_private *) cert->_private)
 
@@ -311,35 +299,34 @@ typedef struct pkcs11_cert_private {
 #define PKCS11_DUP(s) \
 	pkcs11_strdup((char *) s, sizeof(s))
 
-extern int	PKCS11_open_session(PKCS11_SLOT *, int);
-extern void	pkcs11_destroy_all_slots(PKCS11_CTX *);
-extern void	pkcs11_destroy_slot(PKCS11_CTX *, PKCS11_SLOT *);
-extern void	pkcs11_destroy_keys(PKCS11_TOKEN *);
-extern void	pkcs11_destroy_certs(PKCS11_TOKEN *);
-extern void *	pkcs11_malloc(size_t);
-extern char *	pkcs11_strdup(char *, size_t);
+extern int PKCS11_open_session(PKCS11_SLOT *, int);
+extern void pkcs11_destroy_all_slots(PKCS11_CTX *);
+extern void pkcs11_destroy_slot(PKCS11_CTX *, PKCS11_SLOT *);
+extern void pkcs11_destroy_keys(PKCS11_TOKEN *);
+extern void pkcs11_destroy_certs(PKCS11_TOKEN *);
+extern void *pkcs11_malloc(size_t);
+extern char *pkcs11_strdup(char *, size_t);
 
-extern int	pkcs11_getattr(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
-			unsigned int, void *, size_t);
-extern int	pkcs11_getattr_s(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
-			unsigned int, void *, size_t);
-extern int	pkcs11_getattr_var(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
-			unsigned int, void *, size_t *);
-extern int	pkcs11_getattr_bn(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
-			unsigned int, BIGNUM **);
+extern int pkcs11_getattr(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
+			  unsigned int, void *, size_t);
+extern int pkcs11_getattr_s(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
+			    unsigned int, void *, size_t);
+extern int pkcs11_getattr_var(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
+			      unsigned int, void *, size_t *);
+extern int pkcs11_getattr_bn(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
+			     unsigned int, BIGNUM **);
 
-typedef int	(*pkcs11_i2d_fn)(void *, unsigned char **);
-extern void	pkcs11_addattr(CK_ATTRIBUTE_PTR, int, const void *, size_t);
-extern void	pkcs11_addattr_int(CK_ATTRIBUTE_PTR, int, unsigned long);
-extern void	pkcs11_addattr_s(CK_ATTRIBUTE_PTR, int, const char *);
-extern void	pkcs11_addattr_bn(CK_ATTRIBUTE_PTR, int, const BIGNUM *);
-extern void	pkcs11_addattr_obj(CK_ATTRIBUTE_PTR, int,
-			pkcs11_i2d_fn, void *);
-extern void	pkcs11_zap_attrs(CK_ATTRIBUTE_PTR, unsigned int);
+typedef int (*pkcs11_i2d_fn) (void *, unsigned char **);
+extern void pkcs11_addattr(CK_ATTRIBUTE_PTR, int, const void *, size_t);
+extern void pkcs11_addattr_int(CK_ATTRIBUTE_PTR, int, unsigned long);
+extern void pkcs11_addattr_s(CK_ATTRIBUTE_PTR, int, const char *);
+extern void pkcs11_addattr_bn(CK_ATTRIBUTE_PTR, int, const BIGNUM *);
+extern void pkcs11_addattr_obj(CK_ATTRIBUTE_PTR, int, pkcs11_i2d_fn, void *);
+extern void pkcs11_zap_attrs(CK_ATTRIBUTE_PTR, unsigned int);
 
-extern void *	memdup(const void *, size_t);
+extern void *memdup(const void *, size_t);
 
-extern PKCS11_KEY_ops	pkcs11_rsa_ops;
+extern PKCS11_KEY_ops pkcs11_rsa_ops;
 
 #ifdef  __cplusplus
 }

@@ -59,10 +59,9 @@
 #include <string.h>
 #include <openssl/crypto.h>
 
-void *
-pkcs11_malloc(size_t size)
+void *pkcs11_malloc(size_t size)
 {
-	void	*p = OPENSSL_malloc(size);
+	void *p = OPENSSL_malloc(size);
 	memset(p, 0, size);
 	return p;
 }
@@ -71,14 +70,13 @@ pkcs11_malloc(size_t size)
  * so when strduping them we must make sure
  * we stop at the end of the buffer, and while we're
  * at it it's nice to remove the padding */
-char *
-pkcs11_strdup(char *mem, size_t size)
+char *pkcs11_strdup(char *mem, size_t size)
 {
-	char	*res;
+	char *res;
 
-	while (size && mem[size-1] == ' ')
+	while (size && mem[size - 1] == ' ')
 		size--;
-	res = (char *) OPENSSL_malloc(size+1);
+	res = (char *) OPENSSL_malloc(size + 1);
 	memcpy(res, mem, size);
 	res[size] = '\0';
 	return res;
@@ -87,10 +85,9 @@ pkcs11_strdup(char *mem, size_t size)
 /*
  * Dup memory
  */
-void *
-memdup(const void *src, size_t size)
+void *memdup(const void *src, size_t size)
 {
-	void	*dst;
+	void *dst;
 
 	dst = malloc(size);
 	memcpy(dst, src, size);

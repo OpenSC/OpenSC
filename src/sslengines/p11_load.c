@@ -63,17 +63,16 @@ static void *handle = NULL;
 /*
  * Create a new context
  */
-PKCS11_CTX *
-PKCS11_CTX_new(void)
+PKCS11_CTX *PKCS11_CTX_new(void)
 {
 	PKCS11_CTX_private *priv;
-	PKCS11_CTX	*ctx;
+	PKCS11_CTX *ctx;
 
 	/* Load error strings */
 	ERR_load_PKCS11_strings();
 
 	priv = PKCS11_NEW(PKCS11_CTX_private);
-	ctx  = PKCS11_NEW(PKCS11_CTX);
+	ctx = PKCS11_NEW(PKCS11_CTX);
 	ctx->_private = priv;
 
 	/* Mark list of slots as "need to fetch from card" */
@@ -85,18 +84,17 @@ PKCS11_CTX_new(void)
 /*
  * Load the shared library, and initialize it.
  */
-int
-PKCS11_CTX_load(PKCS11_CTX *ctx, const char *name)
+int PKCS11_CTX_load(PKCS11_CTX * ctx, const char *name)
 {
 	PKCS11_CTX_private *priv = PRIVCTX(ctx);
-	CK_INFO		ck_info;
-	int		rv;
+	CK_INFO ck_info;
+	int rv;
 
 	if (priv->libinfo != NULL) {
 		PKCS11err(PKCS11_F_PKCS11_CTX_LOAD, PKCS11_MODULE_LOADED_ERROR);
 		return -1;
 	}
-	handle=C_LoadModule(name, &priv->method );
+	handle = C_LoadModule(name, &priv->method);
 	if (!handle) {
 		PKCS11err(PKCS11_F_PKCS11_CTX_LOAD, PKCS11_LOAD_MODULE_ERROR);
 		return -1;
@@ -119,11 +117,10 @@ PKCS11_CTX_load(PKCS11_CTX *ctx, const char *name)
 /*
  * Unload the shared library
  */
-void
-PKCS11_CTX_unload(PKCS11_CTX *ctx)
+void PKCS11_CTX_unload(PKCS11_CTX * ctx)
 {
 	PKCS11_CTX_private *priv;
-	priv= PRIVCTX(ctx);
+	priv = PRIVCTX(ctx);
 
 	/* Free any slot info we have allocated */
 	pkcs11_destroy_all_slots(ctx);
@@ -138,10 +135,9 @@ PKCS11_CTX_unload(PKCS11_CTX *ctx)
 /*
  * Free a context
  */
-void
-PKCS11_CTX_free(PKCS11_CTX *ctx)
+void PKCS11_CTX_free(PKCS11_CTX * ctx)
 {
-	PKCS11_CTX_unload(ctx); /* Make sure */
+	PKCS11_CTX_unload(ctx);	/* Make sure */
 	OPENSSL_free(ctx->manufacturer);
 	OPENSSL_free(ctx->description);
 	OPENSSL_free(ctx->_private);

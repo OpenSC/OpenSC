@@ -35,19 +35,19 @@
 
 int set_module(const char *modulename);
 
-int pkcs11_finish(ENGINE *engine);
+int pkcs11_finish(ENGINE * engine);
 
-int pkcs11_init(ENGINE *engine);
+int pkcs11_init(ENGINE * engine);
 
-int pkcs11_rsa_finish(RSA* rsa);
+int pkcs11_rsa_finish(RSA * rsa);
 
-EVP_PKEY *pkcs11_load_public_key(ENGINE *e, const char *s_key_id,
-	UI_METHOD *ui_method, void *callback_data);
+EVP_PKEY *pkcs11_load_public_key(ENGINE * e, const char *s_key_id,
+				 UI_METHOD * ui_method, void *callback_data);
 
-EVP_PKEY *pkcs11_load_private_key(ENGINE *e, const char *s_key_id,
-	UI_METHOD *ui_method, void *callback_data);
+EVP_PKEY *pkcs11_load_private_key(ENGINE * e, const char *s_key_id,
+				  UI_METHOD * ui_method, void *callback_data);
 
 /* defined in p11_rsa.c */
-RSA_METHOD * pkcs11_get_rsa_method(void);
+RSA_METHOD *pkcs11_get_rsa_method(void);
 
 #endif
