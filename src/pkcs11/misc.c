@@ -63,6 +63,8 @@ CK_RV sc_to_cryptoki_error(int rc, int reader)
 		return CKR_DEVICE_REMOVED;
 	case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
 		return CKR_USER_NOT_LOGGED_IN;
+	case SC_ERROR_KEYPAD_PIN_MISMATCH:
+		return CKR_PIN_INVALID;
 	}
 	return CKR_GENERAL_ERROR;
 }
