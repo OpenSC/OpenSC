@@ -8,7 +8,6 @@
 #include "sc-test.h"
 #include "opensc.h"
 #include "opensc-pkcs15.h"
-#include "sc-asn1.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -97,7 +96,6 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 		printf("\n");
-		sc_asn1_print_tags(cert->data, cert->data_len);
 	}
 	sc_test_cleanup();
 	return 0;

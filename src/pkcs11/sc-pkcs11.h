@@ -24,8 +24,8 @@
 #include <winscard.h>
 
 #include "pkcs11/pkcs11.h"
-#include <sc.h>
-#include <sc-pkcs15.h>
+#include <opensc.h>
+#include <opensc-pkcs15.h>
 
 #define PKCS11_MAX_SLOTS        4
 #define PKCS11_MAX_SESSIONS     8
