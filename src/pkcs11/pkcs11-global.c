@@ -140,7 +140,8 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		    CK_ULONG_PTR   pulCount)      /* receives the number of slots */
 {
 	CK_SLOT_ID found[SC_PKCS11_MAX_VIRTUAL_SLOTS];
-	int numMatches, i;
+	int      i;
+	CK_ULONG numMatches;
 	sc_pkcs11_slot_t *slot;
 	CK_RV rv;
 

@@ -1245,7 +1245,8 @@ get_X509_usage_pubk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x5
 }
 
 /* FIXME: check for the public exponent in public key template and use this value */
-CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *slot,
+static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
+			struct sc_pkcs11_slot *slot,
 			CK_MECHANISM_PTR pMechanism,
 			CK_ATTRIBUTE_PTR pPubTpl, CK_ULONG ulPubCnt,
 			CK_ATTRIBUTE_PTR pPrivTpl, CK_ULONG ulPrivCnt,
@@ -1430,7 +1431,7 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 #endif
 };
 
-CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
+static CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
                                struct sc_pkcs15_object *p15_object,
                                CK_ATTRIBUTE_PTR attr)
 {
@@ -1494,7 +1495,7 @@ set_attr_done:
  * PKCS#15 Certificate Object
  */
 
-void pkcs15_cert_release(void *obj)
+static void pkcs15_cert_release(void *obj)
 {
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object *) obj;
 	struct sc_pkcs15_cert      *cert_data = cert->cert_data;
@@ -1503,7 +1504,7 @@ void pkcs15_cert_release(void *obj)
 		sc_pkcs15_free_certificate(cert_data);
 }
 
-CK_RV pkcs15_cert_set_attribute(struct sc_pkcs11_session *session,
+static CK_RV pkcs15_cert_set_attribute(struct sc_pkcs11_session *session,
                                void *object,
                                CK_ATTRIBUTE_PTR attr)
 {
@@ -1511,7 +1512,7 @@ CK_RV pkcs15_cert_set_attribute(struct sc_pkcs11_session *session,
        return pkcs15_set_attrib(session, cert->base.p15_object, attr);
 }
 
-CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
+static CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 				void *object,
 				CK_ATTRIBUTE_PTR attr)
 {
@@ -1633,12 +1634,12 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 /*
  * PKCS#15 Private Key Object
  */
-void pkcs15_prkey_release(void *object)
+static void pkcs15_prkey_release(void *object)
 {
 	__pkcs15_release_object((struct pkcs15_any_object *) object);
 }
 
-CK_RV pkcs15_prkey_set_attribute(struct sc_pkcs11_session *session,
+static CK_RV pkcs15_prkey_set_attribute(struct sc_pkcs11_session *session,
                                void *object,
                                CK_ATTRIBUTE_PTR attr)
 {
@@ -1646,7 +1647,7 @@ CK_RV pkcs15_prkey_set_attribute(struct sc_pkcs11_session *session,
        return pkcs15_set_attrib(session, prkey->base.p15_object, attr);
 }
 
-CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
+static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 				void *object,
 				CK_ATTRIBUTE_PTR attr)
 {
@@ -1739,7 +1740,7 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
         return CKR_OK;
 }
 
-CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
+static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 			CK_MECHANISM_PTR pMechanism, CK_BYTE_PTR pData,
 			CK_ULONG ulDataLen, CK_BYTE_PTR pSignature,
 			CK_ULONG_PTR pulDataLen)
@@ -1900,7 +1901,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, ses->slot->card->reader);
 
-	buff_too_small = (*pulDataLen < rv);
+	buff_too_small = (*pulDataLen < (CK_ULONG)rv);
 	*pulDataLen = rv;
 	if (pData == NULL_PTR)
 		return CKR_OK;
@@ -1948,7 +1949,7 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 /*
  * PKCS#15 RSA Public Key Object
  */
-void pkcs15_pubkey_release(void *object)
+static void pkcs15_pubkey_release(void *object)
 {
 	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
 	struct sc_pkcs15_pubkey *key_data = pubkey->pub_data;
@@ -1957,7 +1958,7 @@ void pkcs15_pubkey_release(void *object)
 		sc_pkcs15_free_pubkey(key_data);
 }
 
-CK_RV pkcs15_pubkey_set_attribute(struct sc_pkcs11_session *session,
+static CK_RV pkcs15_pubkey_set_attribute(struct sc_pkcs11_session *session,
                                void *object,
                                CK_ATTRIBUTE_PTR attr)
 {
@@ -1965,7 +1966,7 @@ CK_RV pkcs15_pubkey_set_attribute(struct sc_pkcs11_session *session,
        return pkcs15_set_attrib(session, pubkey->base.p15_object, attr);
 }
 
-CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
+static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 				void *object,
 				CK_ATTRIBUTE_PTR attr)
 {
@@ -2077,12 +2078,12 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 
 /* PKCS#15 Data Object*/
 
-void pkcs15_dobj_release(void *object)
+static void pkcs15_dobj_release(void *object)
 {
 	__pkcs15_release_object((struct pkcs15_any_object *) object);
 }
 
-CK_RV pkcs15_dobj_set_attribute(struct sc_pkcs11_session *session,
+static CK_RV pkcs15_dobj_set_attribute(struct sc_pkcs11_session *session,
 		void *object, CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_data_object *dobj = (struct pkcs15_data_object*) object;
@@ -2091,7 +2092,7 @@ CK_RV pkcs15_dobj_set_attribute(struct sc_pkcs11_session *session,
 }
 
 
-int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
+static int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 		struct pkcs15_data_object *dobj,
 		struct sc_pkcs15_data **out_data)   
 {
@@ -2128,7 +2129,7 @@ done:
 
 
 
-CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
+static CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 				void *object,
 				CK_ATTRIBUTE_PTR attr)
 {
@@ -2172,7 +2173,7 @@ CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 #endif
 	case CKA_OBJECT_ID:
 		{
-			int len = sizeof(dobj->info->app_oid);
+			len = sizeof(dobj->info->app_oid);
 			
 			check_attribute_buffer(attr, len);
 			memcpy(attr->pValue, dobj->info->app_oid.value, len);
