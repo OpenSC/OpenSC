@@ -178,5 +178,17 @@ app opensc-pkcs11 {
 		# Netscape or Mozilla, this does not happen until
 		# you exit the browser.
 		lock_login = true;
+
+		# Normally, the pkcs11 module will not cache PINs
+		# presented via C_Login. However, some cards
+		# may not work properly with OpenSC; for instance
+		# when you have two keys on your card that get
+		# stored in two different directories.
+		#
+		# In this case, you can turn on PIN caching by setting
+		# cache_pins = true
+		#
+		# Default: false
+		cache_pins = false;
 	}
 }

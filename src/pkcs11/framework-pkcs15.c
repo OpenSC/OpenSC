@@ -1508,7 +1508,7 @@ cache_pin(void *p, int user, const void *pin, size_t len)
 {
 	struct pkcs15_slot_data *data = (struct pkcs15_slot_data *) p;
 
-	if (user != 0 && user != 1)
+	if ((user != 0 && user != 1) || !sc_pkcs11_conf.cache_pins)
 		return;
 	memset(data->pin + user, 0, sizeof(data->pin[user]));
 	if (len && len <= MAX_CACHE_PIN) {
