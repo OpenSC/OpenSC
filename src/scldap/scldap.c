@@ -173,7 +173,7 @@ scldap_context *scldap_parse_parameters(const char *filename)
 			scldap_free_parameters(ctx);
 			return NULL;
 		}
-		if (scconf_parse(ctx->conf) < 1) {
+		if (scconf_parse(ctx->conf, NULL) < 1) {
 			scldap_free_parameters(ctx);
 			return NULL;
 		}

@@ -28,6 +28,7 @@
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
 #endif
+#include <errno.h>
 #include "scconf.h"
 #include "internal.h"
 
@@ -361,32 +362,61 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 	parser->last_token_type = token_type;
 }
 
-int scconf_parse(scconf_context * config)
+int scconf_parse(scconf_context * config, char **emesg)
 {
+	static char buffer[256];
 	scconf_parser p;
+	int r = 1;
 
 	memset(&p, 0, sizeof(p));
 	p.config = config;
 	p.block = config->root;
 	p.line = 1;
 
+	if (emesg)
+		*emesg = NULL;
 	if (!scconf_lex_parse(&p, config->filename)) {
-		return -1;
+		snprintf(buffer, sizeof(buffer),
+				"Unable to open \"%s\": %s",
+				config->filename, strerror(errno));
+		r = -1;
+	} else if (p.error) {
+		strncpy(buffer, p.emesg, sizeof(buffer)-1);
+		r = 0;
+	} else {
+		r = 1;
 	}
-	return p.error ? 0 : 1;
+
+	if (r <= 0 && emesg)
+		*emesg = buffer;
+	return r;
 }
 
-int scconf_parse_string(scconf_context * config, const char *string)
+int scconf_parse_string(scconf_context * config, const char *string, char **emesg)
 {
+	static char buffer[256];
 	scconf_parser p;
+	int r;
 
 	memset(&p, 0, sizeof(p));
 	p.config = config;
 	p.block = config->root;
 	p.line = 1;
 
+	if (emesg)
+		*emesg = NULL;
 	if (!scconf_lex_parse_string(&p, string)) {
-		return -1;
+		snprintf(buffer, sizeof(buffer),
+				"Failed to parse configuration string");
+		r = -1;
+	} else if (p.error) {
+		strncpy(buffer, p.emesg, sizeof(buffer)-1);
+		r = 0;
+	} else {
+		r = 1;
 	}
-	return p.error ? 0 : 1;
+
+	if (r <= 0 && emesg)
+		*emesg = buffer;
+	return r;
 }

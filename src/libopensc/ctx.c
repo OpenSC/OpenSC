@@ -333,7 +333,7 @@ void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 {
 	int i, r, count = 0;
 	scconf_block **blocks;
-	char *conf_path = OPENSC_CONF_PATH;
+	char *conf_path = OPENSC_CONF_PATH, *errmsg;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
 #endif
@@ -349,12 +349,20 @@ void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 	ctx->conf = scconf_new(conf_path);
 	if (ctx->conf == NULL)
 		return;
-	r = scconf_parse(ctx->conf);
+	r = scconf_parse(ctx->conf, &errmsg);
 #ifdef OPENSC_CONFIG_STRING
-	if (r < 1)
+	/* Parse the string if config file didn't exist */
+	if (r < 0)
 		r = scconf_parse_string(ctx->conf, OPENSC_CONFIG_STRING);
 #endif
 	if (r < 1) {
+		/* A negative return value means the config file isn't
+		 * there, which is not an error. Nevertheless log this
+		 * fact. */
+		if (r < 0)
+			sc_debug(ctx, "scconf_parse failed: %s", errmsg);
+		else
+			sc_error(ctx, "scconf_parse failed: %s", errmsg);
 		scconf_free(ctx->conf);
 		ctx->conf = NULL;
 		return;
