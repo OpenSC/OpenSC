@@ -18,11 +18,12 @@ NPP_GetValue(void *inst, NPPVariable variable, void *value)
 	printf("NPP_GetValue()\n");
 	switch (variable) {
 		case NPPVpluginNameString:
-			*((char **)value) = (char *) "Template plugin";
+			*((char **)value) = (char *) "OpenSC Signer plugin";
 			break;
 		case NPPVpluginDescriptionString:
 			*((char **)value) = (char *) "This plugins handles"
-					    " nothing. This is only a template.";
+					    " web signatures using OpenSC"
+					    " smartcard library.";
 			break;
 		default:
 			err = NPERR_GENERIC_ERROR;
