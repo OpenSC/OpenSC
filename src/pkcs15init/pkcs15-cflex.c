@@ -75,7 +75,7 @@ static int cflex_delete_file(struct sc_card *card, struct sc_profile *profile,
  */
 static int cflex_erase_card(struct sc_profile *profile, struct sc_card *card)
 {
-	struct sc_file  *df = profile->df_info->file, *dir, *userpinfile;
+	struct sc_file  *df = profile->df_info->file, *dir;
 	int             r;
 
 	/* Delete EF(DIR). This may not be very nice
