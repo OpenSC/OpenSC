@@ -40,12 +40,12 @@ extern "C" {
 #define SC_CTX_MAGIC			0x0A550335
 
 struct sc_atr_table {
-	const char *atr;	/* The atr fields are required to
-				   be in aa:bb:cc hex format. */
-	const char *atrmask;	/* The atrmask is logically AND'd with an
-				   card atr prior to comparison with the
-				   atr reference value above. */
-	const char *name;
+	char *atr;	/* The atr fields are required to
+			   be in aa:bb:cc hex format. */
+	char *atrmask;	/* The atrmask is logically AND'd with an
+			   card atr prior to comparison with the
+			   atr reference value above. */
+	char *name;
 	int type;
 	unsigned long flags;
 };
@@ -60,6 +60,7 @@ struct sc_slot_info * _sc_get_slot_info(struct sc_reader *reader, int slot_id);
 
 /* Add an ATR to the card driver's struct sc_atr_table */
 int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src);
+int _sc_free_atr(struct sc_context *ctx, struct sc_card_driver *driver);
 
 /* Returns an index number if a match was found, -1 otherwise. table has to
  * be null terminated. */

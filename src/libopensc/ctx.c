@@ -52,8 +52,6 @@ struct _sc_driver_entry {
 	char *name;
 	void *func;
 	char *libpath;
-	struct sc_atr_table *atrs;
-	unsigned int natrs;
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
@@ -477,6 +475,9 @@ static int load_card_drivers(struct sc_context *ctx,
 		ctx->card_drivers[drv_count] = func();
 		ctx->card_drivers[drv_count]->dll = dll;
 
+		ctx->card_drivers[drv_count]->atr_map = NULL;
+		ctx->card_drivers[drv_count]->natrs = 0;
+
 		load_card_driver_options(ctx, ctx->card_drivers[drv_count]);
                 drv_count++;
 	}
@@ -600,6 +601,8 @@ int sc_release_context(struct sc_context *ctx)
 		struct sc_card_driver *drv = ctx->card_drivers[i];
 		if (drv->dll)
 			scdl_close(drv->dll);
+		if (drv->atr_map)
+			_sc_free_atr(ctx, drv);
 	}
 	if (ctx->debug_file && ctx->debug_file != stdout)
 		fclose(ctx->debug_file);

@@ -359,7 +359,7 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 	struct sc_context *ctx = reader->ctx;
 	struct sc_slot_info *slot = _sc_get_slot_info(reader, slot_id);
 	struct sc_card_driver *driver;
-	int i, r = 0, connected = 0;
+	int i, r = 0, idx;
 
 	assert(card_out != NULL);
 	SC_FUNC_CALLED(ctx, 1);
@@ -374,7 +374,6 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 	r = reader->ops->connect(reader, slot);
 	if (r)
 		goto err;
-	connected = 1;
 
 	card->reader = reader;
 	card->slot = slot;
@@ -391,10 +390,29 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 
 	/* See if the ATR matches any ATR specified in the config file */
 	if ((driver = ctx->forced_driver) == NULL) {
+		if (ctx->debug >= 3)
+			sc_debug(ctx, "matching configured ATRs\n");
 		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 			driver = ctx->card_drivers[i];
-			if (_sc_match_atr(card, driver->atr_map, NULL) >= 0)
+
+			if (driver->atr_map == NULL) {
+				driver = NULL;
+				continue;
+			}
+			if (ctx->debug >= 3)
+				sc_debug(ctx, "trying driver: %s\n", driver->short_name);
+			idx = _sc_match_atr(card, driver->atr_map, NULL);
+			if (idx >= 0) {
+				struct sc_atr_table *src = &driver->atr_map[idx];
+
+				if (ctx->debug >= 3)
+					sc_debug(ctx, "matched: %s\n", driver->name);
+				/* It's up to card driver to notice these correctly */
+				card->name = src->name;
+				card->type = src->type;
+				card->flags = src->flags;
 				break;
+			}
 			driver = NULL;
 		}
 	}
@@ -412,31 +430,35 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 				goto err;
 			}
 		}
-	} else for (i = 0; ctx->card_drivers[i] != NULL; i++) {
-		struct sc_card_driver *drv = ctx->card_drivers[i];
-		const struct sc_card_operations *ops = drv->ops;
+	} else {
+		if (ctx->debug >= 3)
+			sc_debug(ctx, "matching built-in ATRs\n");
+		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
+			struct sc_card_driver *drv = ctx->card_drivers[i];
+			const struct sc_card_operations *ops = drv->ops;
 
-		if (ctx->debug >= 3)
-			sc_debug(ctx, "trying driver: %s\n", drv->name);
-		if (ops == NULL || ops->match_card == NULL)
-			continue;
-		if (ops->match_card(card) != 1)
-			continue;
-		if (ctx->debug >= 3)
-			sc_debug(ctx, "matched: %s\n", drv->name);
-		memcpy(card->ops, ops, sizeof(struct sc_card_operations));
-		card->driver = drv;
-		r = ops->init(card);
-		if (r) {
-			sc_error(ctx, "driver '%s' init() failed: %s\n", drv->name,
-			      sc_strerror(r));
-			if (r == SC_ERROR_INVALID_CARD) {
-				card->driver = NULL;
+			if (ctx->debug >= 3)
+				sc_debug(ctx, "trying driver: %s\n", drv->short_name);
+			if (ops == NULL || ops->match_card == NULL)
 				continue;
+			if (ops->match_card(card) != 1)
+				continue;
+			if (ctx->debug >= 3)
+				sc_debug(ctx, "matched: %s\n", drv->name);
+			memcpy(card->ops, ops, sizeof(struct sc_card_operations));
+			card->driver = drv;
+			r = ops->init(card);
+			if (r) {
+				sc_error(ctx, "driver '%s' init() failed: %s\n", drv->name,
+				      sc_strerror(r));
+				if (r == SC_ERROR_INVALID_CARD) {
+					card->driver = NULL;
+					continue;
+				}
+				goto err;
 			}
-			goto err;
+			break;
 		}
-		break;
 	}
 	if (card->driver == NULL) {
 		sc_error(ctx, "unable to find driver for inserted card\n");
@@ -447,6 +469,7 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 		card->name = card->driver->name;
 	*card_out = card;
 
+	sc_debug(ctx, "card info: %s, %i, 0x%X\n", card->name, card->type, card->flags);
 	SC_FUNC_RETURN(ctx, 1, 0);
 err:
 	if (card != NULL)
@@ -963,7 +986,6 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *type_ou
 	return -1;
 }
 
-/* XXX: temporary, will be rewritten soon */
 int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src)
 {
 	struct sc_atr_table *map, *dst;
@@ -994,5 +1016,28 @@ int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc
 	}
 	dst->type = src->type;
 	dst->flags = src->flags;
-	return 0;
+	return SC_SUCCESS;
+}
+
+int _sc_free_atr(struct sc_context *ctx, struct sc_card_driver *driver)
+{
+	unsigned int i;
+
+	for (i = 0; i < driver->natrs; i++) {
+		struct sc_atr_table *src = &driver->atr_map[i];
+
+		if (src->atr)
+			free(src->atr);
+		if (src->atrmask)
+			free(src->atrmask);
+		if (src->name)
+			free(src->name);
+		src = NULL;
+	}
+	if (driver->atr_map)
+		free(driver->atr_map);
+	driver->atr_map = NULL;
+	driver->natrs = 0;
+
+	return SC_SUCCESS;
 }
