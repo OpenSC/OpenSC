@@ -24,7 +24,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#include HAVE_MALLOC_H
+#ifdef HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 #include <opensc/opensc.h>
