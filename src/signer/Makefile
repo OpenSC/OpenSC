@@ -6,8 +6,8 @@ OPTIMIZER= -g
 CFLAGS=-Wall $(OPTIMIZER) $(PLUGIN_DEFINES)
 LDFLAGS=-lopensc -lcrypto
 
-SRC= signer.c stubs.c opensc-crypto.c opensc-support.c
-OBJ= signer.o stubs.o opensc-crypto.o opensc-support.o
+SRC= signer.c stubs.c opensc-crypto.c opensc-support.c dialog.cpp
+OBJ= signer.o stubs.o opensc-crypto.o opensc-support.o dialog.o
 
 SHAREDTARGET=signer.so
 

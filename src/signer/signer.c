@@ -199,6 +199,11 @@ NPError
 NPP_SetWindow(NPP instance, NPWindow* window)
 {
 	PluginInstance* This;
+	Display *dpy;
+	NPSetWindowCallbackStruct *ws;
+	Window win;
+	int r;
+	
 	printf("NPP_SetWindow()\n");
 
 	if (instance == NULL)
@@ -208,7 +213,11 @@ NPP_SetWindow(NPP instance, NPWindow* window)
 		return NPERR_NO_ERROR;
 
 	This = (PluginInstance*) instance->pdata;
-
+	ws = (NPSetWindowCallbackStruct *) window->ws_info;
+	dpy = ws->display;
+	win = (Window) window->window;
+	r = ask_pin_code(This, dpy, win);
+	
 	/*
 	 * PLUGIN DEVELOPERS:
 	 *	Before setting window to point to the
@@ -217,6 +226,7 @@ NPP_SetWindow(NPP instance, NPWindow* window)
 	 *	size changes, etc.
 	 */
 
+	
 	return NPERR_NO_ERROR;
 }
 

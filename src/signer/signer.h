@@ -4,6 +4,7 @@
 
 #include <opensc.h>
 #include <opensc-pkcs15.h>
+#include <X11/Intrinsic.h>
 
 typedef struct _PluginInstance
 {
@@ -13,5 +14,15 @@ typedef struct _PluginInstance
     struct sc_card *card;
     struct sc_pkcs15_card *p15card;
 } PluginInstance;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int ask_pin_code(PluginInstance *inst, Display *dpy, Window win);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
