@@ -143,6 +143,7 @@ struct sc_pkcs15init_pubkeyargs {
 struct sc_pkcs15init_dataargs {
 	struct sc_pkcs15_id	id;
 	const char *		label;
+	struct sc_pkcs15_id	auth_id;
 
 	sc_pkcs15_der_t		der_encoded;
 };
