@@ -885,6 +885,9 @@ AM_CONDITIONAL(HAVE_DOCBOOK, test "x$with_docbook" = "xyes")
 if test "x$prefix" = xNONE; then
   prefix=$ac_default_prefix
 fi
+if test "x$exec_prefix" = xNONE; then
+  exec_prefix=$prefix
+fi
 
 dnl Enable/disable debugging messages.
 AC_ARG_ENABLE(debug,
