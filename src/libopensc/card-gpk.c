@@ -21,6 +21,7 @@
 #include "sc-internal.h"
 #include "sc-log.h"
 #include "cardctl.h"
+#include "opensc-pkcs15.h"
 
 #ifdef HAVE_OPENSSL
 #include <stdlib.h>
@@ -39,15 +40,26 @@ enum {
 	GPK8000_16K,
 };
 
-#define GPK_SEL_MF	0x00
-#define GPK_SEL_DF	0x01
-#define GPK_SEL_EF	0x02
-#define GPK_SEL_AID	0x04
-#define GPK_FID_MF	0x3F00
+#define GPK_SEL_MF		0x00
+#define GPK_SEL_DF		0x01
+#define GPK_SEL_EF		0x02
+#define GPK_SEL_AID		0x04
+#define GPK_FID_MF		0x3F00
 
-#define GPK_FTYPE_SC	0x21
+#define GPK_FTYPE_SC		0x21
 
-#define GPK_MAX_PINS	8
+#define GPK_SIGN_RSA_MD5	0x11
+#define GPK_SIGN_RSA_SHA	0x12
+#define GPK_SIGN_RSA_SSL	0x18
+#define GPK_VERIFY_RSA_MD5	0x21
+#define GPK_VERIFY_RSA_SHA	0x22
+#define GPK_AUTH_RSA_MD5	0x31
+#define GPK_AUTH_RSA_SHA	0x32
+#define GPK_AUTH_RSA_SSL	0x38
+#define GPK_UNWRAP_RSA		0x77
+
+#define GPK_MAX_PINS		8
+#define GPK_HASH_CHUNK		62
 
 /*
  * GPK4000 private data
@@ -62,6 +74,12 @@ struct gpk_private_data {
 	unsigned	key_set   : 1;
 	unsigned int	key_reference;
 	u8		key[16];
+
+	/* crypto related data from set_security_env */
+	unsigned int	sec_algorithm;
+	unsigned int	sec_hash_len;
+	unsigned int	sec_mod_len;
+	unsigned int	sec_padding;
 };
 #define DRVDATA(card)	((struct gpk_private_data *) ((card)->drv_data))
 
@@ -86,6 +104,7 @@ static struct atrinfo {
  */
 static struct sc_card_operations	gpk_ops;
 static const struct sc_card_driver gpk_drv = {
+	NULL,
 	"Gemplus GPK 4000 driver",
 	"gpk",
 	&gpk_ops
@@ -210,23 +229,34 @@ match_path(struct sc_card *card, unsigned short int **pathptr, size_t *pathlen,
 	if (curlen < 1 || len < 1)
 		return 0;
 
-	/* Skip the MF if present */
-	if (ptr[0] != GPK_FID_MF) {
-		curptr++;
-		curlen--;
-	}
+	/* Make sure path starts with MF.
+	 * Note the cached path should always begin with MF. */
+	if (ptr[0] != GPK_FID_MF || curptr[0] != GPK_FID_MF)
+		return 0;
 
+	/* You cannot select the parent with the GPK */
 	if (len < curlen)
 		return 0;
 
-	for (i = 0; i < curlen; i++) {
+	for (i = 1; i < curlen; i++) {
 		if (ptr[i] != curptr[i])
-			return 0;
+			break;
 	}
 
-	/* Exact match? */
-	if (len == curlen && need_info)
+	/* In the case of an exact match:
+	 * If the callers needs info on the file to be selected,
+	 * make sure we at least select the file itself.
+	 * If the DF matches the current DF, just return the
+	 * FID */
+	if (i == len && need_info) {
+		if (i > 1) {
+			*pathptr = ptr + len - 1;
+			*pathlen = len - 1;
+			return 1;
+		}
+		/* bummer */
 		return 0;
+	}
 
 	*pathptr = ptr + i;
 	*pathlen = len - i;
@@ -433,7 +463,7 @@ gpk_select_id(struct sc_card *card, u8 kind, unsigned short int fid,
 	int		r, log_errs;
 
 	if (card->ctx->debug)
-		debug(card->ctx, "gpk_select_id(0x%04X)\n", fid);
+		debug(card->ctx, "gpk_select_id(0x%04X, kind=%u)\n", fid, kind);
 
 	fbuf[0] = fid >> 8;
 	fbuf[1] = fid & 0xff;
@@ -827,7 +857,7 @@ static int
 gpk_verify_pin(struct sc_card *card, int ref,
 	const u8 *pin, size_t pinlen, int *tries_left)
 {
-	u8	buffer[8];
+	u8		buffer[8];
 	struct sc_apdu	apdu;
 	int		r;
 
@@ -886,6 +916,266 @@ gpk_verify(struct sc_card *card, unsigned int type, int ref,
 	return SC_ERROR_INVALID_ARGUMENTS;
 }
 
+/*
+ * Select a security environment (Set Crypto Context in GPK docs).
+ * When we get here, the PK file has already been selected.
+ *
+ * Issue: the GPK distinguishes between "signing" and
+ * "card internal authentication". I don't know whether this
+ * makes any difference in practice...
+ *
+ * Issue: it seems that sc_compute_signature() does not hash
+ * the data for the caller. So what is the purpose of HASH_SHA
+ * and other flags?
+ */
+static int
+gpk_set_security_env(struct sc_card *card,
+		const struct sc_security_env *env,
+		int se_num)
+{
+	struct gpk_private_data *priv = DRVDATA(card);
+	struct sc_apdu	apdu;
+	unsigned int	context, algorithm;
+	unsigned int	file_id;
+	u8		sysrec[7];
+	int		r;
+
+	/* According to several sources from GemPlus, they don't
+	 * have off the shelf cards that do DSA. So I won't bother
+	 * with implementing this stuff here. */
+	algorithm = SC_ALGORITHM_RSA;
+	if (env->flags & SC_SEC_ENV_ALG_PRESENT)
+		algorithm = env->algorithm;
+	if (algorithm != SC_ALGORITHM_RSA) {
+		error(card->ctx, "Algorithm not supported.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	priv->sec_algorithm = algorithm;
+
+	/* If there's a key reference, it must be 0 */
+	if ((env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
+	 && (env->key_ref_len != 1 || env->key_ref[0] != 0)) {
+		error(card->ctx, "Unknown key referenced.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	/* Right now, the OpenSC flags do not support any padding
+	 * other than PKCS#1. */
+	priv->sec_padding = 0;
+
+	switch (env->operation) {
+	case SC_SEC_OPERATION_SIGN:
+		/* Again, the following may not make any difference
+		 * because we don't do any hashing on-card. But
+		 * what the hell, we have all those nice macros,
+		 * so why not use them :) 
+		 */
+		if (env->algorithm_flags & SC_PKCS15_HASH_SHA1) {
+			context = GPK_AUTH_RSA_SHA;
+			priv->sec_hash_len = 20;
+		} else {
+			context = GPK_AUTH_RSA_MD5;
+			priv->sec_hash_len = 16;
+		}
+		break;
+	case SC_SEC_OPERATION_DECIPHER:
+		context = GPK_UNWRAP_RSA;
+		break;
+	default:
+		error(card->ctx, "Crypto operation not supported.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	/* Get the file ID */
+	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
+		if (env->file_ref.len != 2) {
+			error(card->ctx, "File reference: invalid length.\n");
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
+		file_id = (env->file_ref.value[0] << 8)
+			| env->file_ref.value[1];
+	} else {
+		error(card->ctx, "File reference missing.\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	/* Read the sys record of the PK file to find out the key length */
+	r = sc_read_record(card, 1, sysrec, sizeof(sysrec),
+			SC_RECORD_BY_REC_NR);
+	SC_TEST_RET(card->ctx, r, "Failed to read PK sysrec");
+	if (r != 7 || sysrec[0] != 0) {
+		error(card->ctx, "First record of file is not the sysrec");
+		return SC_ERROR_OBJECT_NOT_VALID;
+	}
+	if (sysrec[5] != 0x00) {
+		error(card->ctx, "Public key is not an RSA key");
+		return SC_ERROR_OBJECT_NOT_VALID;
+	}
+	switch (sysrec[1]) {
+	case 0x00: priv->sec_mod_len =  512 / 8; break;
+	case 0x10: priv->sec_mod_len =  768 / 8; break;
+	case 0x11: priv->sec_mod_len = 1024 / 8; break;
+	default:
+		error(card->ctx, "Unsupported modulus length");
+		return SC_ERROR_OBJECT_NOT_VALID;
+	}
+
+	/* Now do SelectCryptoContext */
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_1;
+	apdu.cla = 0x80;
+	apdu.ins = 0xA6;
+	apdu.p1  = file_id & 0x1f;
+	apdu.p2  = context;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	return r;
+}
+
+/*
+ * Restore security environment
+ * Not sure what this is supposed to do.
+ */
+static int
+gpk_restore_security_env(struct sc_card *card, int se_num)
+{
+	return 0;
+}
+
+/*
+ * Use the card's on-board hashing functions to hash some data
+ */
+#ifdef dontuse
+static int
+gpk_hash(struct sc_card *card, const u8 *data, size_t datalen)
+{
+	struct sc_apdu	apdu;
+	unsigned int	count, chain, len;
+	int		r;
+
+	chain = 0x01;
+	for (count = 0; count < datalen; count += len) {
+		unsigned char	buffer[GPK_HASH_CHUNK+2];
+
+		if ((len = datalen - count) > GPK_HASH_CHUNK)
+			len = GPK_HASH_CHUNK;
+		else
+			chain |= 0x10;
+		buffer[0] = 0x55;
+		buffer[1] = len;
+		memcpy(buffer+2, data + count, len);
+
+		memset(&apdu, 0, sizeof(apdu));
+		apdu.cse = SC_APDU_CASE_3_SHORT;
+		apdu.cla = 0x80;
+		apdu.ins = 0xDa;
+		apdu.p1  = chain;
+		apdu.p2  = len;
+		apdu.lc  = len + 2;
+		apdu.data= buffer;
+		apdu.datalen = len + 2;
+
+		r = sc_transmit_apdu(card, &apdu);
+		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		SC_TEST_RET(card->ctx, r, "Card returned error");
+		chain = 0;
+	}
+
+	return 0;
+}
+#endif
+
+/*
+ * Send the hashed data to the card.
+ */
+static int
+gpk_init_hashed(struct sc_card *card, const u8 *digest, unsigned int len)
+{
+	struct sc_apdu	apdu;
+	int		r;
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_3_SHORT;
+	apdu.cla = 0x80;
+	apdu.ins = 0xEA;
+	apdu.lc  = len;
+	apdu.data= digest;
+	apdu.datalen = len;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	return r;
+}
+
+/*
+ * Compute a signature.
+ * Note we hash everything manually and send it to the card.
+ */
+static int
+gpk_compute_signature(struct sc_card *card, const u8 *data,
+		size_t data_len, u8 * out, size_t outlen)
+{
+	struct gpk_private_data *priv = DRVDATA(card);
+	struct sc_apdu	apdu;
+	u8		cardsig[1024/8];
+	unsigned int	n, len;
+	int		r;
+
+	if (data_len != priv->sec_mod_len) {
+		error(card->ctx,
+			"Data length (%u) does not match key modulus %u.",
+			data_len, priv->sec_mod_len);
+		return SC_ERROR_INTERNAL;
+	}
+
+	/* We're in a pinch here. The GPK insists on doing the
+	 * padding itself, but the upper layers of OpenSC insist on
+	 * doing the padding for us.  So strip away the pkcs#1 padding
+	 * first. */
+	if (data_len < priv->sec_hash_len + 11)
+		return SC_ERROR_INTERNAL;
+	r = gpk_init_hashed(card, data + data_len - priv->sec_hash_len,
+			priv->sec_hash_len);
+	SC_TEST_RET(card->ctx, r, "Failed to send hash to card");
+
+	/* Now sign the hash.
+	 * The GPK has Internal Authenticate and PK_Sign. I am not
+	 * sure what the difference between the two is. */
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_2_SHORT;
+	apdu.cla = 0x80;
+	apdu.ins = 0x88;
+	apdu.p1  = priv->sec_padding;
+	apdu.p2  = priv->sec_mod_len;
+	apdu.resp= cardsig;
+	apdu.resplen = sizeof(cardsig);
+	apdu.le  = priv->sec_mod_len;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	/* The GPK returns the signature as little endian numbers.
+	 * Need to revert these */
+	len = priv->sec_mod_len;
+	if (len > outlen) {
+		error(card->ctx, "Signature buffer too small");
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+
+	for (n = 0; n < len; n++)
+		out[n] = cardsig[len-1-n];
+	return len;
+}
 
 /*
  * Erase card
@@ -895,7 +1185,7 @@ gpk_erase_card(struct sc_card *card)
 {
 	struct gpk_private_data *priv = DRVDATA(card);
 	struct sc_apdu	apdu;
-	u8	offset;
+	u8		offset;
 	int		r;
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -1113,6 +1403,9 @@ sc_get_driver()
 		gpk_ops.create_file	= gpk_create_file;
 		/* gpk_ops.check_sw	= gpk_check_sw; */
 		gpk_ops.card_ctl	= gpk_card_ctl;
+		gpk_ops.set_security_env= gpk_set_security_env;
+		gpk_ops.restore_security_env= gpk_restore_security_env;
+		gpk_ops.compute_signature= gpk_compute_signature;
 	}
 	return &gpk_drv;
 }
