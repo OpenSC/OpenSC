@@ -110,7 +110,8 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 		goto out;
 
 	/* Debug printf */
-	snprintf(object_name, sizeof(object_name), "Object %d", hObject);
+	snprintf(object_name, sizeof(object_name), "Object %lu",
+			(unsigned long) hObject);
 
 	res_type = 0;
 	for (i = 0; i < ulCount; i++) {
