@@ -23,5 +23,5 @@ Makefile
 Makefile.in
 core
 gmon.out
-libopensc.pc
+*.pc
 opensc-config
