@@ -42,6 +42,8 @@
 
 #define OPENSC_CONF_PATH "C:\\WINNT\\opensc.conf"
 
+#define PATH_MAX _MAX_PATH
+
 /* src/common/getpass.c */
 extern char *getpass(const char *prompt);
 
