@@ -17,7 +17,7 @@ const struct token_drv etoken_drv = {
 	.name = "Aladdin eToken PRO",
 };
 
-char *etoken_products[] = { "529/50c/100", "529/512/100", "529/514/100", 0 };
+char *etoken_products[] = { "529/50c/100", "529/514/100", 0 };
 
 int etoken_test(char *product)
 {

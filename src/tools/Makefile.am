@@ -12,7 +12,7 @@ PROGRAMS_SSL = cryptoflex-tool pkcs15-init
 endif
 
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
-	       pkcs11-tool \
+	       pkcs11-tool cardos-info \
 	       $(PROGRAMS_SSL)
 
 opensc_tool_SOURCES = opensc-tool.c util.c

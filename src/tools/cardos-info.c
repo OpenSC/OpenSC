@@ -40,11 +40,11 @@ int opt_reader = -1, opt_debug = 0, opt_wait = 0;
 int quiet = 0;
 
 const struct option options[] = {
-	{"reader", 1, 0, 'r'},
+	{"reader",	1, 0, 'r'},
 	{"card-driver", 1, 0, 'c'},
-	{"quiet", 0, 0, 'q'},
-	{"wait", 0, 0, 'w'},
-	{"debug", 0, 0, 'd'},
+	{"quiet",	0, 0, 'q'},
+	{"wait",	0, 0, 'w'},
+	{"debug",	0, 0, 'd'},
 	{0, 0, 0, 0}
 };
 

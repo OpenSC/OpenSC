@@ -4,7 +4,8 @@ includedir = ${prefix}/include/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
-EXTRA_DIST = Makefile.mak libopensc.pc.in reader-pcsc.c
+EXTRA_DIST = Makefile.mak libopensc.pc.in \
+	     reader-pcsc.c reader-openct.c reader-usbtoken.c
 
 if HAVE_SSL
 SSL_LIB = @LIBCRYPTO@
@@ -42,7 +43,7 @@ libopensc_la_SOURCES	= sc.c ctx.c module.c asn1.c log.c base64.c \
 			  card-mcrd.c
 
 libopensc_la_LDFLAGS	= -version-info 0:6:0
-libopensc_la_LIBADD	= @LIBDL@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF) -lopenct
+libopensc_la_LIBADD	= @LIBDL@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF) @LIBOPENCT@
 
 include_HEADERS		= opensc.h pkcs15.h emv.h \
 			  errors.h types.h \

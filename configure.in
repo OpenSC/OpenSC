@@ -807,6 +807,7 @@ fi
 AM_CONDITIONAL(HAVE_USBTOKEN, test "x$USBTOKEN_MSG" = "xyes")
 
 dnl --with-openct option
+AC_SUBST(LIBOPENCT)
 OPENCT_MSG=no
 AC_ARG_WITH(openct, AC_HELP_STRING(
 [--with-openct=PATH],	[enable the OpenCT reader backend]))
@@ -827,10 +828,12 @@ if test "x$with_openct" != "xno"; then
 	[
 		AC_DEFINE(HAVE_OPENCT, 1, [Have OpenCT libraries and header files])
 		OPENCT_MSG=yes
+		LIBOPENCT="-lopenct"
 	],[
 		CPPFLAGS="$saved_CPPFLAGS"
 		LDFLAGS="$saved_LDFLAGS"
 		LIBS="$saved_LIBS"
+		LIBOPENCT=""
 	])
 	AC_MSG_RESULT($OPENCT_MSG)
 fi

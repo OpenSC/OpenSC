@@ -184,6 +184,15 @@
 	</section>
 
 	<section>
+		<title>Compiling OpenSC with USBtoken support</title>
+
+		<para>
+			Call configure with --enable-usbtoken and it
+			compile ok. No special libraries or stuff needed.
+		</para>
+	</section>
+
+	<section>
 		<title>Installation without hotplug utils</title>
 
 		<para>
