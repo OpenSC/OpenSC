@@ -1049,7 +1049,7 @@ static int asn1_decode(struct sc_context *ctx, struct sc_asn1_entry *asn1,
 			      asn1->name);
 		return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 	}
-	if (p[0] == 0 || p[0] == 0xFF)
+	if (p[0] == 0 || p[0] == 0xFF || len == 0)
 		return SC_ERROR_ASN1_END_OF_CONTENTS;
 
 	for (idx = 0; asn1[idx].name != NULL; idx++) {
