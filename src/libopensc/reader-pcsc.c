@@ -510,9 +510,8 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	char *reader_buf, *p;
 	const char *mszGroups = NULL;
 	SCARDCONTEXT pcsc_ctx;
-	int r, i;
+	int r;
 	struct pcsc_global_private_data *gpriv;
-	scconf_block **blocks = NULL, *conf_block = NULL;
 
         rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL,
                                    NULL,
@@ -594,15 +593,6 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		while (*p++ != 0);
 	} while (p < (reader_buf + reader_buf_size - 1));
 	free(reader_buf);
-	
-	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
-		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
-					    "reader_driver", "pcsc");
-		conf_block = blocks[0];
-		free(blocks);
-		if (conf_block != NULL)
-			break;
-	}
 
 	return 0;
 }
