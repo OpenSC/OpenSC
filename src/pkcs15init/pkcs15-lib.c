@@ -580,7 +580,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 {
 	sc_card_t		*card = p15card->card;
 	sc_pkcs15_object_t	*pin_obj;
-	sc_pkcs15_pin_info_t	pin_info;
+	sc_pkcs15_pin_info_t	*pin_info;
 	int			r, index;
 
 	/* No auth_id given: select one */
@@ -614,11 +614,12 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &pin_info);
-	pin_info.auth_id = args->auth_id;
-
 	pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN,
-				args->label, NULL, &pin_info);
+				args->label, NULL, NULL);
+	pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, pin_info);
+	pin_info->auth_id = args->auth_id;
 
 	/* Set the SO PIN reference from card */
 	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
@@ -632,15 +633,15 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 		index = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH,
 					NULL, 0);
 
-		r = profile->ops->new_pin(profile, card, &pin_info, index,
+		r = profile->ops->new_pin(profile, card, pin_info, index,
 				args->pin, args->pin_len,
 				args->puk, args->puk_len);
 	}
 
 	/* Fix up any ACLs referring to the user pin */
 	if (r >= 0) {
-		sc_keycache_set_pin_name(&pin_info.path,
-				pin_info.reference,
+		sc_keycache_set_pin_name(&pin_info->path,
+				pin_info->reference,
 				SC_PKCS15INIT_USER_PIN);
 	}
 
