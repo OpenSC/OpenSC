@@ -28,6 +28,7 @@ int opt_reader = 0, opt_debug = 0;
 int opt_no_cache = 0;
 char * opt_pin_id;
 char * opt_cert = NULL;
+char * opt_pubkey = NULL;
 char * opt_outfile = NULL;
 char * opt_newpin = NULL;
 
@@ -38,6 +39,14 @@ int quiet = 0;
 #define OPT_READER	0x102
 #define OPT_PIN_ID	0x103
 #define OPT_NO_CACHE	0x104
+#define OPT_LIST_PUB	0x105
+#define OPT_READ_PUB	0x106
+
+#define PEM_RSA_KEY_PREFIX \
+	"\x30\x11\x30\x0D\x06\x09" \
+	"\x2A\x86\x48\x86\xF7\x0D\x01\x01\x01" \
+	"\x05\x00\x03\x00\x00"
+#define PEM_RSA_KEY_PREFIX_SIZE 20
 
 const struct option options[] = {
 	{ "learn-card",		0, 0, 		'L' },
@@ -46,6 +55,8 @@ const struct option options[] = {
 	{ "list-pins",		0, 0,		OPT_LIST_PINS },
 	{ "change-pin",		0, 0,		OPT_CHANGE_PIN },
 	{ "list-keys",          0, 0,           'k' },
+	{ "list-public-keys",	0, 0,		OPT_LIST_PUB },
+	{ "read-public-key",	1, 0,		OPT_READ_PUB },
 	{ "reader",		1, 0,		OPT_READER },
 	{ "output",		1, 0,		'o' },
 	{ "quiet",		0, 0,		'q' },
@@ -62,6 +73,8 @@ const char *option_help[] = {
 	"Lists PIN codes",
 	"Changes the PIN code",
 	"Lists private keys",
+	"Lists public keys",
+	"Reads public key with ID <arg>",
 	"Uses reader number <arg>",
 	"Outputs to file <arg>",
 	"Quiet operation",
@@ -111,14 +124,14 @@ int list_certificates(void)
 	return 0;
 }
 
-int print_pem_certificate(struct sc_pkcs15_cert *cert)
+int
+print_pem_object(const char *kind, const u8*data, size_t data_len)
 {
 	int r;
 	u8 buf[2048];
 	FILE *outf;
 	
-	r = sc_base64_encode(cert->data, cert->data_len, buf,
-			     sizeof(buf), 64);
+	r = sc_base64_encode(data, data_len, buf, sizeof(buf), 64);
 	if (r) {
 		fprintf(stderr, "Base64 encoding failed: %s\n", sc_strerror(r));
 		return 1;
@@ -132,8 +145,11 @@ int print_pem_certificate(struct sc_pkcs15_cert *cert)
 		}
 	} else
 		outf = stdout;
-	fprintf(outf, "-----BEGIN CERTIFICATE-----\n%s-----END CERTIFICATE-----\n",
-		buf);
+	fprintf(outf,
+		"-----BEGIN %s-----\n"
+		"%s"
+		"-----END %s-----\n",
+		kind, buf, kind);
 	if (outf != stdout)
 		fclose(outf);
 	return 0;
@@ -168,7 +184,7 @@ int read_certificate(void)
 			fprintf(stderr, "Certificate read failed: %s\n", sc_strerror(r));
 			return 1;
 		}
-		r = print_pem_certificate(cert);
+		r = print_pem_object("CERTIFICATE", cert->data, cert->data_len);
 		sc_pkcs15_free_certificate(cert);
 		return r;
 	}
@@ -284,6 +300,71 @@ void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	printf("\tID          : ");
 	sc_pkcs15_print_id(&pubkey->id);
 	printf("\n");
+}
+
+int list_public_keys(void)
+{
+	int r, i;
+        struct sc_pkcs15_object *objs[32];
+	
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY_RSA, objs, 32);
+	if (r < 0) {
+		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+	if (!quiet)
+		printf("Card has %d public key(s).\n\n", r);
+	for (i = 0; i < r; i++) {
+		print_pubkey_info(objs[i]);
+		printf("\n");
+	}
+	return 0;
+}
+
+int read_public_key(void)
+{
+	int r, i, count;
+	struct sc_pkcs15_id id;
+	struct sc_pkcs15_object *objs[32];
+
+	id.len = SC_PKCS15_MAX_ID_SIZE;
+	sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
+
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY_RSA, objs, 32);
+	if (r < 0) {
+		fprintf(stderr, "Public key enumeration failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+	count = r;
+	for (i = 0; i < count; i++) {
+		struct sc_pkcs15_pubkey_info *info = objs[i]->data;
+		struct sc_pkcs15_pubkey_rsa *key;
+		u8 buffer[512];
+
+		if (sc_pkcs15_compare_id(&id, &info->id) != 1)
+			continue;
+			
+		if (!quiet)
+			printf("Reading public key with ID '%s'\n", opt_pubkey);
+		r = sc_pkcs15_read_pubkey(p15card, info, &key);
+		if (r) {
+			fprintf(stderr, "Public key read failed: %s\n", sc_strerror(r));
+			return 1;
+		}
+		memcpy(buffer, PEM_RSA_KEY_PREFIX, PEM_RSA_KEY_PREFIX_SIZE);
+		buffer[1] += key->data_len;
+		buffer[PEM_RSA_KEY_PREFIX_SIZE-2] = key->data_len;
+		memcpy(buffer + PEM_RSA_KEY_PREFIX_SIZE,
+				key->data, key->data_len);
+		r = print_pem_object("PUBLIC KEY", buffer,
+				PEM_RSA_KEY_PREFIX_SIZE + key->data_len);
+		/* XXX TBD
+		sc_pkcs15_free_pubkey(key);
+		 */
+		return r;
+	}
+	fprintf(stderr, "Public key with ID '%s' not found.\n", opt_pubkey);
+	return 2;
 }
 
 
@@ -548,6 +629,8 @@ int main(int argc, char * const argv[])
 	int do_list_certs = 0;
 	int do_list_pins = 0;
 	int do_list_prkeys = 0;
+	int do_list_pubkeys = 0;
+	int do_read_pubkey = 0;
 	int do_change_pin = 0;
 	int do_learn_card = 0;
 	int action_count = 0;
@@ -578,6 +661,15 @@ int main(int argc, char * const argv[])
 			break;
 		case 'k':
 			do_list_prkeys = 1;
+			action_count++;
+			break;
+		case OPT_LIST_PUB:
+			do_list_pubkeys = 1;
+			action_count++;
+			break;
+		case OPT_READ_PUB:
+			opt_pubkey = optarg;
+			do_read_pubkey = 1;
 			action_count++;
 			break;
 		case 'L':
@@ -673,6 +765,16 @@ int main(int argc, char * const argv[])
 	}
 	if (do_list_prkeys) {
 		if ((err = list_private_keys()))
+			goto end;
+		action_count--;
+	}
+	if (do_list_pubkeys) {
+		if ((err = list_public_keys()))
+			goto end;
+		action_count--;
+	}
+	if (do_read_pubkey) {
+		if ((err = read_public_key()))
 			goto end;
 		action_count--;
 	}
