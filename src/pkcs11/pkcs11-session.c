@@ -156,6 +156,11 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	if (rv != CKR_OK)
 		return rv;
 
+	if (pInfo == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
+
         rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		goto out;
