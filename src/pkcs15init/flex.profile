@@ -28,7 +28,7 @@ filesystem {
 	DF PKCS15-AppDF {
 	    DF keydir-1 {
 		file-id		= 4B01;
-		size		= 750;	# Sufficient for a 1024-bit key
+		size		= 1370;	# Sufficient for a 2048-bit key
 		EF pinfile-1 {
     	            file-id		= 0000;
     	            size		= 23;
@@ -45,7 +45,7 @@ filesystem {
             }
 	    DF keydir-2 {
 		file-id		= 4B02;
-		size		= 750;	# Sufficient for a 1024-bit key
+		size		= 1370;	# Sufficient for a 2048-bit key
 		EF pinfile-2 {
     	            file-id		= 0000;
     	            size		= 23;

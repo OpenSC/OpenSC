@@ -206,7 +206,7 @@ static int bn2cf(sc_pkcs15_bignum_t *num, u8 *buf)
 
 static int cflex_encode_private_key(struct sc_pkcs15_prkey_rsa *rsa, u8 *key, size_t *keysize, int key_num)
 {
-        u8 buf[512], *p = buf;
+        u8 buf[5 * 128 + 6], *p = buf;
 	u8 bnbuf[256];
         int base = 0; 
         int r;
@@ -283,7 +283,7 @@ static int cflex_encode_private_key(struct sc_pkcs15_prkey_rsa *rsa, u8 *key, si
 
 static int cflex_encode_public_key(struct sc_pkcs15_prkey_rsa *rsa, u8 *key, size_t *keysize, int key_num)
 {
-        u8 buf[512], *p = buf;
+        u8 buf[5 * 128 + 10], *p = buf;
         u8 bnbuf[256];
         int base = 0; 
         int r;
