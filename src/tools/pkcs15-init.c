@@ -1164,7 +1164,7 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 
 	size = i2d_X509(args->cert, NULL);
 	data = p = malloc(size);
-	i2d_X509(args->cert, NULL);
+	i2d_X509(args->cert, &p);
 
 	r = sc_pkcs15init_update_file(profile, info.file, data, size);
 	free(data);
@@ -1569,13 +1569,19 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 	PKCS12		*p12;
 	EVP_PKEY	*pk = NULL;
 
+	*xp = NULL;
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) < 0)
 		fatal("Unable to open %s: %m", filename);
 	p12 = d2i_PKCS12_bio(bio, NULL);
 	BIO_free(bio);
-	if (p12)
+	if (p12) {
 		PKCS12_parse(p12, passphrase, &pk, xp, NULL);
+		if (pk)
+			CRYPTO_add(&pk->references, 1, CRYPTO_LOCK_EVP_PKEY);
+		if (*xp)
+			CRYPTO_add(&(*xp)->references, 1, CRYPTO_LOCK_X509);
+	}
 	PKCS12_free(p12);
 	if (pk == NULL) 
 		ossl_print_errors();
