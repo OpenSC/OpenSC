@@ -40,6 +40,7 @@
 enum {
 	OPT_MODULE = 0x100,
 	OPT_SLOT,
+	OPT_SLOT_LABEL,
 };
 
 const struct option options[] = {
@@ -56,6 +57,7 @@ const struct option options[] = {
 	{ "pin",		1, 0,		'p' },
 	{ "change-pin",		0, 0,		'c' },
 	{ "slot",		1, 0,		OPT_SLOT },
+	{ "slot-label",		1, 0,		OPT_SLOT_LABEL },
 	{ "input-file",		1, 0,		'i' },
 	{ "output-file",	1, 0,		'o' },
 	{ "module",		1, 0,		OPT_MODULE },
@@ -78,7 +80,8 @@ const char *option_help[] = {
 	"Log into the token first (not needed when using --pin)",
 	"Supply PIN on the command line (if used in scripts: careful!)",
 	"Change your (user) PIN",
-	"Specify the slot to use",
+	"Specify number of the slot to use",
+	"Specify label of the slot to use",
 	"Specify the input file",
 	"Specify the output file",
 	"Specify the module to load",
@@ -94,6 +97,7 @@ static const char *	opt_input = NULL;
 static const char *	opt_output = NULL;
 static const char *	opt_module = NULL;
 static CK_SLOT_ID	opt_slot = NO_SLOT;
+static const char *	opt_slot_label = NULL;
 static CK_MECHANISM_TYPE opt_mechanism = NO_MECHANISM;
 
 static sc_pkcs11_module_t *module = NULL;
@@ -128,6 +132,7 @@ static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				const unsigned char *, size_t id_len, int obj_index);
 static CK_MECHANISM_TYPE find_mechanism(CK_SLOT_ID, CK_FLAGS,
 			 	int stop_if_not_found);
+static CK_SLOT_ID	find_slot_by_label(const char *);
 static void		get_token_info(CK_SLOT_ID, CK_TOKEN_INFO_PTR);
 static void		get_mechanisms(CK_SLOT_ID,
 				CK_MECHANISM_TYPE_PTR *, CK_ULONG_PTR);
@@ -233,6 +238,9 @@ main(int argc, char * const argv[])
 		case OPT_SLOT:
 			opt_slot = (CK_SLOT_ID) atoi(optarg);
 			break;
+		case OPT_SLOT_LABEL:
+			opt_slot_label = optarg;
+			break;
 		case OPT_MODULE:
 			opt_module = optarg;
 			break;
@@ -275,6 +283,25 @@ main(int argc, char * const argv[])
 		fprintf(stderr, "No slots...\n");
 		err = 1;
 		goto end;
+	}
+
+	if (opt_slot_label) {
+		CK_SLOT_ID slot;
+
+		slot = find_slot_by_label(opt_slot_label);
+		if (slot == NO_SLOT) {
+			fprintf(stderr,
+				"No slot named \"%s\"\n", opt_slot_label);
+			err = 1;
+			goto end;
+		}
+		if (opt_slot != NO_SLOT && opt_slot != slot) {
+			fprintf(stderr,
+				"Conflicting slots specified\n");
+			err = 1;
+			goto end;
+		}
+		opt_slot = slot;
 	}
 
 	if (opt_slot == NO_SLOT)
@@ -654,6 +681,31 @@ hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		fatal("Failed to write to %s: %m", opt_output);
 	if (fd != 1)
 		close(fd);
+}
+
+CK_SLOT_ID
+find_slot_by_label(const char *label)
+{
+	CK_TOKEN_INFO	info;
+	CK_ULONG	n, len;
+	CK_RV		rv;
+
+	if (!p11_num_slots)
+		return NO_SLOT;
+
+	len = strlen(label);
+	for (n = 0; n < p11_num_slots; n++) {
+		const char	*token_label;
+
+		rv = p11->C_GetTokenInfo(n, &info);
+		if (rv != CKR_OK)
+			continue;
+		token_label = p11_utf8_to_local(info.label, sizeof(info.label));
+		if (!strncmp(label, token_label, len))
+			return n;
+	}
+
+	return NO_SLOT;
 }
 
 int
