@@ -216,6 +216,10 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 	}
 
 	ret = SCardGetStatusChange(priv->pcsc_ctx, SC_STATUS_TIMEOUT, &pslot->readerState, 1);
+	if (ret == SCARD_E_TIMEOUT) { /* timeout: nothing changed */
+		slot->flags &= ~SCARD_STATE_CHANGED;
+		return 0;
+	}
 	if (ret != 0) {
 		PCSC_ERROR(reader->ctx, "SCardGetStatusChange failed", ret);
 		return pcsc_ret_to_error(ret);
@@ -228,7 +232,13 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 		if (slot->atr_len > SC_MAX_ATR_SIZE)
 			slot->atr_len = SC_MAX_ATR_SIZE;
 		memcpy(slot->atr, pslot->readerState.rgbAtr, slot->atr_len);
-
+/* The following doesn't work on Win32 because there are other events,
+ * so this code will set the SC_SLOT_CARD_CHANGED most of the time,
+ * resulting in a complete re-read of the card.
+ * Moreover, it seems card exchanges aren't detected this way (it's possible
+ * add a check for different ATR, but if the ATRs are the same, it won't work.
+ */
+#ifndef _WIN32
 		/* If there was a card in the slot previously, and the
 		 * PCSC driver reports a state change, we assume the
 		 * user removed the old card and inserted a new one in the
@@ -236,6 +246,7 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 		if ((pslot->readerState.dwEventState & SCARD_STATE_CHANGED)
 		 && (old_flags & SC_SLOT_CARD_PRESENT))
 			slot->flags |= SC_SLOT_CARD_CHANGED;
+#endif
 	} else {
 		slot->flags &= ~(SC_SLOT_CARD_PRESENT|SC_SLOT_CARD_CHANGED);
 	}
@@ -318,12 +329,15 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 		 * match any of the events we're polling for */
 		*event = 0;
 	       	for (i = 0; i < nslots; i++) {
-			unsigned long state;
+			unsigned long state, prev_state;
 
+			prev_state = rgReaderStates[i].dwCurrentState;
 			state = rgReaderStates[i].dwEventState;
-			if (state & on_bits & SCARD_STATE_PRESENT)
+			if ((state & on_bits & SCARD_STATE_PRESENT) &&
+			    (prev_state & SCARD_STATE_EMPTY))
 				*event |= SC_EVENT_CARD_INSERTED;
-			if (~state & off_bits & SCARD_STATE_PRESENT)
+			if ((~state & off_bits & SCARD_STATE_PRESENT) &&
+			    (prev_state & SCARD_STATE_PRESENT))
 				*event |= SC_EVENT_CARD_REMOVED;
 			if (*event) {
 				*reader = i;
