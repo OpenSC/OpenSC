@@ -1451,14 +1451,11 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	return errors;
 }
 
+#ifdef HAVE_OPENSSL
 static int
 wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	    const EVP_CIPHER *algo, CK_OBJECT_HANDLE privKeyObject)
 {
-#ifndef HAVE_OPENSSL
-	printf("No OpenSSL support, unable to validate C_Unwrap\n");
-	return 0;
-#else
 	CK_OBJECT_HANDLE cipherKeyObject;
 	CK_RV           rv;
 	EVP_PKEY       *pkey;
@@ -1534,8 +1531,8 @@ wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	printf("OK\n");
 	return 0;
-#endif
 }
+#endif
 
 
 /*
@@ -1580,10 +1577,14 @@ test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		}
 		printf("\n");
 
+#ifndef HAVE_OPENSSL
+		printf("No OpenSSL support, unable to validate C_Unwrap\n");
+#else
 		errors += wrap_unwrap(slot, sess, EVP_des_cbc(), privKeyObject);
 		errors += wrap_unwrap(slot, sess, EVP_des_ede3_cbc(), privKeyObject);
 		errors += wrap_unwrap(slot, sess, EVP_bf_cbc(), privKeyObject);
 		errors += wrap_unwrap(slot, sess, EVP_cast5_cfb(), privKeyObject);
+#endif
 	}
 
 	return errors;
