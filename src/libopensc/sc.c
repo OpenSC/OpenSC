@@ -334,7 +334,7 @@ struct sc_file * sc_file_new()
 
 void sc_file_free(struct sc_file *file)
 {
-	int i;
+	unsigned int i;
 	assert(sc_file_valid(file));
 	file->magic = 0;
 	for (i = 0; i < SC_MAX_AC_OPS; i++)
@@ -352,7 +352,7 @@ void sc_file_dup(struct sc_file **dest, const struct sc_file *src)
 {
 	struct sc_file *newf;
 	const struct sc_acl_entry *e;
-	int op;
+	unsigned int op;
 	
 	assert(sc_file_valid(src));
 	*dest = NULL;
