@@ -60,6 +60,7 @@ typedef int	(*pkcs15_encoder)(struct sc_context *,
 
 /* Local functions */
 static int	open_reader_and_card(int);
+static int	do_assert_pristine(struct sc_card *);
 static int	do_erase(struct sc_card *, struct sc_profile *);
 static int	do_init_app(struct sc_profile *);
 static int	do_store_pin(struct sc_profile *);
@@ -107,6 +108,7 @@ enum {
 	OPT_AUTHORITY,
 	OPT_SOFT_KEYGEN,
 	OPT_SPLIT_KEY,
+	OPT_ASSERT_PRISTINE,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -155,6 +157,10 @@ const struct option	options[] = {
 	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
 	{ "wait",		no_argument, 0,		'w' },
 	{ "debug",		no_argument, 0,		'd' },
+	{ "quiet",		no_argument, 0,		'q' },
+
+	/* Hidden options for testing */
+	{ "assert-pristine",	no_argument, 0,		OPT_ASSERT_PRISTINE },
 	{ 0, 0, 0, 0 }
 };
 const char *		option_help[] = {
@@ -194,10 +200,14 @@ const char *		option_help[] = {
 	"Read additional command line options from file",
 	"Wait for card insertion",
 	"Enable debugging output",
+	"Be less verbose",
+
+	NULL,
 };
 
 enum {
 	ACTION_NONE = 0,
+	ACTION_ASSERT_PRISTINE,
 	ACTION_ERASE,
 	ACTION_INIT,
 	ACTION_STORE_PIN,
@@ -205,10 +215,13 @@ enum {
 	ACTION_STORE_PRIVKEY,
 	ACTION_STORE_PUBKEY,
 	ACTION_STORE_CERT,
-	ACTION_STORE_DATA
+	ACTION_STORE_DATA,
+
+	ACTION_MAX
 };
 static char *			action_names[] = {
 	"do nothing",
+	"verify that card is pristine",
 	"erase card",
 	"create PKCS #15 meta structure",
 	"store PIN",
@@ -224,13 +237,11 @@ static char *			action_names[] = {
 #define READ_PIN_RETYPE		0x02
 
 #define MAX_CERTS		4
-#define MAX_ACTIONS		16
 
 static struct sc_context *	ctx = NULL;
 static struct sc_card *		card = NULL;
 static struct sc_pkcs15_card *	p15card = NULL;
-static unsigned int		opt_actions[MAX_ACTIONS];
-static unsigned int		opt_action_count;
+static unsigned int		opt_actions;
 static int			opt_reader = -1,
 				opt_debug = 0,
 				opt_quiet = 0,
@@ -283,7 +294,7 @@ main(int argc, char **argv)
 
 	if (optind != argc)
 		print_usage_and_die();
-	if (opt_action_count == 0) {
+	if (opt_actions == 0) {
 		fprintf(stderr, "No action specified.\n");
 		print_usage_and_die();
 	}
@@ -302,11 +313,15 @@ main(int argc, char **argv)
 	if ((r = sc_pkcs15init_bind(card, opt_profile, &profile)) < 0)
 		return 1;
 
-	for (n = 0; n < opt_action_count; n++) {
-		unsigned int	action = opt_actions[n];
+	for (n = 0; n < ACTION_MAX; n++) {
+		unsigned int	action = n;
+
+		if (!(opt_actions & (1 << action)))
+			continue;
 
 		if (action != ACTION_ERASE
 		 && action != ACTION_INIT
+		 && action != ACTION_ASSERT_PRISTINE
 		 && p15card == NULL) {
 			/* Read the PKCS15 structure from the card */
 			r = sc_pkcs15_bind(card, &p15card);
@@ -324,7 +339,15 @@ main(int argc, char **argv)
 				printf("Found %s\n", p15card->label);
 		}
 
+		if (!opt_quiet && action != ACTION_ASSERT_PRISTINE)
+			printf("About to %s.\n", action_names[action]);
+
 		switch (action) {
+		case ACTION_ASSERT_PRISTINE:
+			/* skip printing error message */
+			if ((r = do_assert_pristine(card)) < 0)
+				goto out;
+			continue;
 		case ACTION_ERASE:
 			r = do_erase(card, profile);
 			break;
@@ -358,12 +381,9 @@ main(int argc, char **argv)
 				action_names[action], sc_strerror(r));
 			break;
 		}
-		if (!opt_quiet) {
-			printf("Was able to %s successfully.\n",
-					action_names[action]);
-		}
 	}
 
+out:
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card, 0);
@@ -390,13 +410,45 @@ open_reader_and_card(int reader)
 	if (connect_card(ctx, &card, reader, 0, opt_wait, opt_quiet))
 		return 0;
 
-	printf("Using card driver: %s\n", card->driver->name);
+	if (!opt_quiet)
+		printf("Using card driver: %s\n", card->driver->name);
 	r = sc_lock(card);
 	if (r) {
 		error("Unable to lock card: %s\n", sc_strerror(r));
 		return 0;
 	}
 	return 1;
+}
+
+/*
+ * Make sure there's no pkcs15 structure on the card
+ */
+static int
+do_assert_pristine(struct sc_card *card)
+{
+	sc_path_t	path;
+	int		r, res = 0;
+
+	card->ctx->log_errors = 0;
+	sc_format_path("2F00", &path);
+	if ((r = sc_select_file(card, &path, NULL)) >= 0
+	 || r != SC_ERROR_FILE_NOT_FOUND)
+		res = -1;
+	sc_format_path("5015", &path);
+	if ((r = sc_select_file(card, &path, NULL)) >= 0
+	 || r != SC_ERROR_FILE_NOT_FOUND)
+		res = -1;
+	card->ctx->log_errors = 1;
+
+	if (res < 0) {
+		fprintf(stderr,
+			"Card not pristine; detected (possibly incomplete) "
+			"PKCS#15 structure\n");
+	} else if (!opt_quiet) {
+		printf("Pristine card.\n");
+	}
+
+	return res;
 }
 
 /*
@@ -1525,41 +1577,37 @@ parse_x509_usage(const char *list, unsigned int *res)
  * Handle one option
  */
 static void
-handle_option(int c)
+handle_option(const struct option *opt)
 {
-	switch (c) {
+	unsigned int	this_action = ACTION_NONE;
+
+	switch (opt->val) {
 	case 'a':
 		opt_authid = optarg;
 		break;
 	case 'C':
-		if (opt_action_count
-		 && opt_actions[opt_action_count-1] != ACTION_ERASE)
-			fatal("--create-pkcs15 option must be first, "
-			      "or follow --erase\n");
-		opt_actions[opt_action_count++] = ACTION_INIT;
+		this_action = ACTION_INIT;
 		break;
 	case 'E':
-		if (opt_action_count)
-			fatal("Option --erase must be first option\n");
-		opt_actions[opt_action_count++] = ACTION_ERASE;
+		this_action = ACTION_ERASE;
 		break;
 	case 'G':
-		opt_actions[opt_action_count++] = ACTION_GENERATE_KEY;
+		this_action = ACTION_GENERATE_KEY;
 		opt_newkey = optarg;
 		break;
 	case 'S':
-		opt_actions[opt_action_count++] = ACTION_STORE_PRIVKEY;
+		this_action = ACTION_STORE_PRIVKEY;
 		opt_infile = optarg;
 		break;
 	case 'P':
-		opt_actions[opt_action_count++] = ACTION_STORE_PIN;
+		this_action = ACTION_STORE_PIN;
 		break;
 	case 'X':
-		opt_actions[opt_action_count++] = ACTION_STORE_CERT;
+		this_action = ACTION_STORE_CERT;
 		opt_infile = optarg;
 		break;
 	case 'W':
-		opt_actions[opt_action_count++] = ACTION_STORE_DATA;
+		this_action = ACTION_STORE_DATA;
 		opt_infile = optarg;
 		break;
 	case 'd':
@@ -1580,6 +1628,9 @@ handle_option(int c)
 	case 'p':
 		opt_profile = optarg;
 		break;
+	case 'q':
+		opt_quiet = 1;
+		break;
 	case 'r':
 		opt_reader = atoi(optarg);
 		break;
@@ -1594,7 +1645,7 @@ handle_option(int c)
 		break;
 	case OPT_PIN1: case OPT_PUK1:
 	case OPT_PIN2: case OPT_PUK2:
-		opt_pins[c & 3] = optarg;
+		opt_pins[opt->val & 3] = optarg;
 		break;
 	case OPT_SERIAL:
 		opt_serial = optarg;
@@ -1603,7 +1654,7 @@ handle_option(int c)
 		opt_passphrase = optarg;
 		break;
 	case OPT_PUBKEY:
-		opt_actions[opt_action_count++] = ACTION_STORE_PUBKEY;
+		this_action = ACTION_STORE_PUBKEY;
 		opt_infile = optarg;
 		break;
 	case OPT_UNPROTECTED:
@@ -1630,9 +1681,24 @@ handle_option(int c)
 	case OPT_NO_PROMPT:
 		opt_no_prompt = 1;
 		break;
+	case OPT_ASSERT_PRISTINE:
+		this_action = ACTION_ASSERT_PRISTINE;
+		break;
 	default:
 		print_usage_and_die();
 	}
+
+	if ((opt_actions & (1 << this_action)) && opt->has_arg != no_argument) {
+		fprintf(stderr, "Error: you cannot specify option");
+		if (opt->name)
+			fprintf(stderr, " --%s", opt->name);
+		if (isprint(opt->val))
+			fprintf(stderr, " -%c", opt->val);
+		fprintf(stderr, " more than once.\n");
+		print_usage_and_die();
+	}
+	if (this_action)
+		opt_actions |= (1 << this_action);
 
 	if ((opt_pins[OPT_PIN2&3] || opt_pins[OPT_PUK2&3]) && opt_no_sopin) {
 		fprintf(stderr, "Error: "
@@ -1671,8 +1737,19 @@ parse_commandline(int argc, char **argv)
 	}
 	sp[0] = 0;
 
-	while ((c = getopt_long(argc, argv, shortopts, options, &i)) != -1)
-		handle_option(c);
+	while ((c = getopt_long(argc, argv, shortopts, options, &i)) != -1) {
+		/* The optindex seems to be off with some glibc
+		 * getopt implementations */
+		for (o = options; o->name; o++) {
+			if (o->val == c) {
+				handle_option(o);
+				goto next;
+			}
+		}
+		fatal("Internal error in options handling, option %u\n", c);
+
+next: ;
+	}
 }
 
 /*
@@ -1716,7 +1793,7 @@ read_options_file(const char *filename)
 				error("Option %s: missing argument\n", name);
 				print_usage_and_die();
 			}
-			handle_option(o->val);
+			handle_option(o);
 			name = strtok(NULL, " \t");
 		}
 	}
