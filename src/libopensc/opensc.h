@@ -178,9 +178,9 @@ extern "C" {
 
 /* A 64-bit uint, used in sc_current_time() */
 #ifndef _WIN32
-typedef unsigned long long sysdep_timestamp_t;
+typedef unsigned long long sc_timestamp_t;
 #else
-typedef unsigned __int64 sysdep_timestamp_t;
+typedef unsigned __int64 sc_timestamp_t;
 #endif
 
 /* Event masks for sc_wait_for_event() */
@@ -603,7 +603,7 @@ int sc_base64_encode(const u8 *in, size_t inlen, u8 *out, size_t outlen,
 int sc_base64_decode(const char *in, u8 *out, size_t outlen);
 
 /* Returns the current time in milliseconds */
-sysdep_timestamp_t sc_current_time();
+sc_timestamp_t sc_current_time(void);
 
 /* APDU handling functions */
 int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);

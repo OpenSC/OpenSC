@@ -187,7 +187,7 @@ out:	sc_pkcs11_unlock();
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot;
-	sysdep_timestamp_t now;
+	sc_timestamp_t now;
         CK_RV rv;
 
 	rv = sc_pkcs11_lock();

@@ -119,11 +119,11 @@ sc_mutex_free(sc_mutex_t *p)
 #endif
 
 #ifndef _WIN32
-sysdep_timestamp_t sc_current_time()
+sc_timestamp_t sc_current_time(void)
 {
 	struct timeval tv;
 	struct timezone tz;
-	sysdep_timestamp_t curr;
+	sc_timestamp_t curr;
 
 	if (gettimeofday(&tv, &tz) != 0)
 		return 0;
@@ -135,10 +135,10 @@ sysdep_timestamp_t sc_current_time()
 	return curr;
 }
 #else
-sysdep_timestamp_t sc_current_time()
+sc_timestamp_t sc_current_time(void)
 {
 	struct _timeb time_buf;
-	sysdep_timestamp_t curr;
+	sc_timestamp_t curr;
 
 	_ftime(&time_buf);
 

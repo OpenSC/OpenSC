@@ -178,7 +178,7 @@ struct sc_pkcs11_card {
 	struct sc_card *card;
         struct sc_pkcs11_framework_ops *framework;
 	void *fw_data;
-	sysdep_timestamp_t slot_state_expires;
+	sc_timestamp_t slot_state_expires;
 
 	/* Number of slots owned by this card object */
 	unsigned int num_slots;
