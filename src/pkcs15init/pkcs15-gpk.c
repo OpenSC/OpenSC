@@ -128,6 +128,7 @@ static int
 gpk_init_pinfile(struct sc_profile *profile, struct sc_card *card,
 		struct sc_file *file)
 {
+	struct sc_pkcs15_pin_info pin_info;
 	const struct sc_acl_entry *acl;
 	unsigned char	buffer[GPK_MAX_PINS * 8], *blk;
 	struct sc_file	*pinfile;
@@ -136,10 +137,10 @@ gpk_init_pinfile(struct sc_profile *profile, struct sc_card *card,
 	int		r;
 
 	/* Set defaults */
-	if ((pin_attempts = profile->pin_attempts) == 0)
-		pin_attempts = 7;
-	if ((puk_attempts = profile->puk_attempts) == 0)
-		puk_attempts = 3;
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &pin_info);
+	pin_attempts = pin_info.tries_left;
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &pin_info);
+	puk_attempts = pin_info.tries_left;
 
 	sc_file_dup(&pinfile, file);
 
@@ -214,7 +215,7 @@ gpk_init_app(struct sc_profile *profile, struct sc_card *card,
 	}
 
 	/* Create the application DF */
-	r = sc_pkcs15init_create_file(profile, card, profile->df_info.file);
+	r = sc_pkcs15init_create_file(profile, card, profile->df_info->file);
 
 	/* Create the PIN file */
 	if (r >= 0)
@@ -395,7 +396,7 @@ gpk_new_file(struct sc_profile *profile, struct sc_card *card,
 	file->id += num;
 
 	p = &file->path;
-	*p = profile->df_info.file->path;
+	*p = profile->df_info->file->path;
 	p->value[p->len++] = file->id >> 8;
 	p->value[p->len++] = file->id;
 

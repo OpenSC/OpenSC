@@ -82,16 +82,16 @@ struct sc_profile {
 	struct sc_pkcs15init_operations *ops;
 	struct sc_pkcs15init_callbacks *cbs;
 
-	struct file_info	mf_info;
-	struct file_info	df_info;
+	struct file_info *	mf_info;
+	struct file_info *	df_info;
 	struct file_info *	ef_list;
 	struct sc_file *	df[SC_PKCS15_DF_TYPE_COUNT];
 
 	struct pin_info *	pin_list;
 	struct auth_info *	auth_list;
-	struct sc_key_template *prkey_list;
-	struct sc_key_template *pubkey_list;
-	struct sc_cert_template *cert_list;
+//	struct sc_key_template *prkey_list;
+//	struct sc_key_template *pubkey_list;
+//	struct sc_cert_template *cert_list;
 
 	unsigned int		pin_maxlen;
 	unsigned int		pin_minlen;

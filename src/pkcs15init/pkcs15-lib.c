@@ -134,7 +134,8 @@ sc_pkcs15init_bind(struct sc_profile *profile,
 	}
 
 	if ((r = sc_profile_load(profile, name)) < 0
-	 || (r = sc_profile_load(profile, driver)) < 0)
+	 || (r = sc_profile_load(profile, driver)) < 0
+	 || (r = sc_profile_finish(profile)) < 0)
 		return r;
 
 	return 0;
