@@ -1,0 +1,23 @@
+.screen {
+	background-color: #dddddd;
+  	cellspacing:"1";
+	cellpadding:"1";
+}
+
+.prompt {
+	background-color: #dddddd;
+}
+
+.command {
+	background-color: #dddddd;
+}
+
+.title {
+}
+
+.toc {
+}
+
+.book {
+	width: 630pt
+}

@@ -1,7 +1,8 @@
 # Process this file with automake to create Makefile.in
 
 XSLTPROC := @XSLTPROC@
-HTMLFILES := usbtoken.html
+HTMLFILES := usbtoken.html opensc.html opensc.css
+XMLFILES := usbtoken.xml opensc.xml opensc.xsl
 
 MAINTAINERCLEANFILES = Makefile.in pkcs15-profile.5
 
@@ -30,9 +31,9 @@ MANSRC  	= pkcs15-crypt.1 \
 man_MANS	= $(MANSRC) pkcs15-profile.5
 noinst_DATA	= $(HTMLFILES)
 EXTRA_DIST	= $(MANSRC) pkcs15-profile.5.in pkcs-15v1_1.asn \
-	     	  usbtoken.xml $(HTMLFILES) doxygen.conf pkcs11.txt
+	     	  $(XMLFILES) $(HTMLFILES) doxygen.conf pkcs11.txt
 
-STYLESHEET=/usr/share/sgml/docbook/stylesheet/xsl/nwalsh/xhtml/docbook.xsl
+STYLESHEET=opensc.xsl
 
 %.html: %.xml
 if HAVE_DOCBOOK
