@@ -64,7 +64,7 @@ static u8 get_so_ac(const sc_file_t *file, unsigned int op,
 		return STARCOS_AC_ALWAYS;
 	else if (acl->method == SC_AC_NEVER)
 		return STARCOS_AC_NEVER;
-	else if (acl->method == SC_AC_SYMBOLIC && acl->key_ref == SC_PKCS15INIT_SO_PIN) {
+	else if (acl->method == SC_AC_SYMBOLIC) {
 		if (is_global)
 			return STARCOS_SOPIN_GAC;
 		else
@@ -118,7 +118,7 @@ static int starcos_init_card(sc_profile_t *profile, sc_card_t *card)
 	/* AC CREATE EF   */
 	*p++ = get_so_ac(mf_file, SC_AC_OP_CREATE, &sopin, STARCOS_AC_ALWAYS, 1);
 	/* AC CREATE KEY  */
-	*p++ = get_so_ac(isf_file, SC_AC_OP_WRITE, &sopin, STARCOS_AC_ALWAYS, 1); 
+	*p++ = get_so_ac(isf_file, SC_AC_OP_WRITE, &sopin, STARCOS_AC_NEVER,  1); 
 	/* AC CREATE DF   */
 	*p++ = get_so_ac(mf_file, SC_AC_OP_CREATE, &sopin, STARCOS_AC_ALWAYS, 1);
 	/* AC REGISTER DF */
@@ -252,6 +252,17 @@ static int starcos_create_dir(sc_profile_t *profile, sc_card_t *card,
 	return SC_SUCCESS;
 }
 
+static int have_onepin(sc_profile_t *profile)
+{
+	sc_pkcs15_pin_info_t sopin;
+
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
+	if (!(sopin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+		return 1;
+	else
+		return 0;
+}
+
 /* range of possible key ids for pins (note: the key id of the puk
  * is the key id of the pin plus one)
  */
@@ -262,11 +273,9 @@ static int starcos_create_dir(sc_profile_t *profile, sc_card_t *card,
 static int starcos_pin_reference(sc_profile_t *profile, sc_card_t *card,
 	sc_pkcs15_pin_info_t *pin_info)
 {
-	sc_pkcs15_pin_info_t sopin_info;
 	int	             tmp = pin_info->reference;
 
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin_info);
-	if (!(sopin_info.flags & SC_PKCS15_PIN_FLAG_SO_PIN)) {
+	if (have_onepin(profile)) {
 		/* we have the onepin profile */
 		pin_info->reference = STARCOS_SOPIN_GID;
 		return SC_SUCCESS;
@@ -327,7 +336,7 @@ static int starcos_pin_reference(sc_profile_t *profile, sc_card_t *card,
  * 
  * Nils 
  */
-#define STARCOS_PINID2STATE(a)	(0x0f - ((0x0f & (a)) >> 1))
+#define STARCOS_PINID2STATE(a)	(((a) == STARCOS_SOPIN_GID) ? STARCOS_SOPIN_STATE : (0x0f - ((0x0f & (a)) >> 1)))
 
 static int starcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 	sc_file_t *df, sc_pkcs15_object_t *pin_obj,
@@ -358,7 +367,7 @@ static int starcos_create_pin(sc_profile_t *profile, sc_card_t *card,
                 return r;
 	acl_entry = sc_file_get_acl_entry(tfile, SC_AC_OP_WRITE);
 	if (acl_entry->method != SC_AC_NONE) {
-		if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+		if ((pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) || have_onepin(profile))
 			need_finalize = 1;
 		else
 			r = sc_pkcs15init_authenticate(profile, card, tfile, SC_AC_OP_WRITE);

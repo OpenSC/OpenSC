@@ -2,23 +2,39 @@
 # pkcs15 profile for starcos spk 2.3
 #
 cardinfo {
-    max-pin-length	= 8;
-    pin-encoding	= ascii-numeric;
-    pin-pad-char	= 0x00;
+	max-pin-length	= 8;
+	pin-encoding	= ascii-numeric;
+	pin-pad-char	= 0x00;
+}
+
+option default {
+	macros {
+		so-pin-flags	= initialized, needs-padding, soPin;
+		isf_acl		= WRITE=$SOPIN;
+		df_acl		= *=$SOPIN;
+	}
+}
+
+option onepin {
+	macros {
+		so-pin-flags    = initialized, needs-padding;
+		isf_acl		= WRITE=$PIN;
+		df_acl		= *=$PIN;
+	}
 }
 
 PIN so-pin {
 	reference	= 1;
-	flags		= initialized, needs-padding, soPin;
+	flags		= $so-pin-flags;
 }
 PIN so-puk {
-    reference = 1;
+	reference	= 1;
 }
 PIN user-pin {
-    attempts	= 3;
+	attempts	= 3;
 }
 PIN user-puk {
-    attempts	= 10;
+	attempts	= 10;
 }
 
 # Additional filesystem info.
@@ -26,13 +42,13 @@ PIN user-puk {
 # main profile.
 filesystem {
     DF MF {
-	ACL	= *=$SOPIN;
+	ACL	= $df_acl;
 	size	= 768;
 
 	# INTERNAL SECRET KEY file of the MF
 	EF mf_isf {
 		size	= 256;
-		ACL	= WRITE=$SOPIN;
+		ACL	= $isf_acl;
 	}
 
 	EF mf_ipf {
@@ -41,7 +57,7 @@ filesystem {
 	}
 
         DF PKCS15-AppDF {
-		ACL	= *=$SOPIN;
+		ACL	= $df_acl;
 		size	= 16000;
 
 		# INTERNAL SECRET KEY file of the application DF
@@ -53,7 +69,7 @@ filesystem {
 		EF p15_isf {
 			path		= 3f005015;
 			size		= 2560;
-			ACL		= WRITE=$SOPIN;
+			ACL		= $isf_acl;
 		}
 
 		EF p15_ipf {

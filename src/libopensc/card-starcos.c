@@ -550,7 +550,8 @@ static int starcos_select_file(struct sc_card *card,
 
 #define STARCOS_AC_ALWAYS	0x9f
 #define STARCOS_AC_NEVER	0x5f
-#define STARCOS_PINID2STATE(a)	(0x0f - (((0x0f & (a)) + 1) >> 1))
+#define STARCOS_PINID2STATE(a)	((((a) & 0x0f) == 0x01) ? ((a) & 0x0f) : (0x0f - ((0x0f & (a)) >> 1)))
+
 static u8 process_acl_entry(struct sc_file *in, unsigned int method, u8 def)
 {
 	const struct sc_acl_entry *entry = sc_file_get_acl_entry(in, method);

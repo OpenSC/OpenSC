@@ -490,9 +490,14 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 			if (r < 0)
 				return r;
 
-			sc_keycache_set_pin_name(&pin_info.path,
+			if (pin_info.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+				sc_keycache_set_pin_name(&pin_info.path,
 					pin_info.reference,
 					SC_PKCS15INIT_SO_PIN);
+			else
+				sc_keycache_set_pin_name(&pin_info.path,
+					pin_info.reference,
+					SC_PKCS15INIT_USER_PIN);
 		}
 
 		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &puk_info);
@@ -536,8 +541,16 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	if (r < 0)
 		return r;
 
-	/* Put the new SO pin in the key cache */
-	sc_keycache_put_key(&df->path,
+	/* Put the new SO pin in the key cache (note: in case
+	 * of the "onepin" profile store it as a normal pin) */
+	if (args->so_pin_len && !(pin_info.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+		sc_keycache_put_key(&df->path,
+			SC_AC_SYMBOLIC,
+			SC_PKCS15INIT_USER_PIN,
+			args->so_pin,
+			args->so_pin_len);
+	else
+		sc_keycache_put_key(&df->path,
 			SC_AC_SYMBOLIC,
 			SC_PKCS15INIT_SO_PIN,
 			args->so_pin,
