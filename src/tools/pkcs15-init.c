@@ -74,6 +74,7 @@ static int	do_convert_private_key(struct sc_pkcs15_prkey *, EVP_PKEY *);
 static int	do_convert_public_key(struct sc_pkcs15_pubkey *, EVP_PKEY *);
 static int	do_convert_cert(sc_pkcs15_der_t *, X509 *);
 static int	is_cacert_already_present(struct sc_pkcs15init_certargs *);
+static int	do_finalize_card(struct sc_card *, struct sc_profile *);
 
 static int	do_read_data_object(const char *name, u8 **out, size_t *outlen);
 static int	do_store_data_object(struct sc_profile *profile);
@@ -151,6 +152,7 @@ const struct option	options[] = {
 	{ "authority",		no_argument,	   0,	OPT_AUTHORITY },
 	{ "key-usage",		required_argument, 0,	'u' },
 	{ "split-key",		no_argument,	   0,	OPT_SPLIT_KEY },
+	{ "finalize",		no_argument,       0,   'F' },
 
 	{ "extractable",	no_argument, 0,		OPT_EXTRACTABLE },
 	{ "insecure",		no_argument, 0,		OPT_UNPROTECTED },
@@ -200,6 +202,7 @@ const char *		option_help[] = {
 	"Mark certificate as a CA certificate",
 	"Specify X.509 key usage (use \"--key-usage help\" for more information)",
 	"Automatically create two keys with same ID and different usage (sign vs decipher)",
+	"Finish initialization phase of the smartcard",
 
 	"Private key stored as an extractable key",
 	"Insecure mode: do not require PIN/passphrase for private key",
@@ -230,6 +233,7 @@ enum {
 	ACTION_STORE_PUBKEY,
 	ACTION_STORE_CERT,
 	ACTION_STORE_DATA,
+	ACTION_FINALIZE_CARD,
 
 	ACTION_MAX
 };
@@ -243,7 +247,8 @@ static char *			action_names[] = {
 	"store private key",
 	"store public key",
 	"store certificate",
-	"store data object"
+	"store data object",
+	"finalizing card"
 };
 
 #define MAX_CERTS		4
@@ -398,6 +403,9 @@ main(int argc, char **argv)
 		case ACTION_GENERATE_KEY:
 			r = do_generate_key(profile, opt_newkey);
 			break;
+		case ACTION_FINALIZE_CARD:
+			r = do_finalize_card(card, profile);
+			break;
 		default:
 			fatal("Action not yet implemented\n");
 		}
@@ -481,6 +489,11 @@ do_erase(struct sc_card *card, struct sc_profile *profile)
 	r = sc_pkcs15init_erase_card(card, profile);
 	ignore_cmdline_pins--;
 	return r;
+}
+
+static int do_finalize_card(sc_card_t *card, struct sc_profile *profile)
+{
+	return sc_pkcs15init_finalize_card(card, profile);
 }
 
 /*
@@ -1891,6 +1904,9 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_PUBKEY_LABEL:
 		opt_pubkey_label = optarg;
+		break;
+	case 'F':
+		this_action = ACTION_FINALIZE_CARD;
 		break;
 	case OPT_CERT_LABEL:
 		opt_cert_label = optarg;
