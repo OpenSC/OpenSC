@@ -137,6 +137,11 @@ static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
 static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 
+/* win32 needs this in open(2) */
+#ifndef O_BINARY
+# define O_BINARY 0
+#endif
+
 int
 main(int argc, char * const argv[])
 {
@@ -503,7 +508,7 @@ sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 
 	if (opt_input == NULL)
 		fd = 0;
-	else if ((fd = open(opt_input, O_RDONLY)) < 0)
+	else if ((fd = open(opt_input, O_RDONLY|O_BINARY)) < 0)
 		fatal("Cannot open %s: %m", opt_input);
 
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0) {
@@ -537,7 +542,7 @@ sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 void
 hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
-	unsigned char	buffer[12];
+	unsigned char	buffer[64];
 	CK_MECHANISM	mech;
 	CK_RV		rv;
 	CK_ULONG	hash_len;
@@ -1037,8 +1042,16 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			NULL, 0)) {
 		printf("Signatures: no private key found in this slot (supplied your PIN?)\n");
 		return errors;
-	} else
-		printf("Signatures (currently only RSA signatures):\n");
+	} else {
+		char *label;
+
+		printf("Signatures (currently only RSA signatures)");
+		if ((label = getLABEL(session, privKeyObject, NULL)) != NULL) {
+			printf(", key = %s", label);
+			free(label);
+		}
+		printf(" :\n");
+	}
 
 	data[0] = 0;
 	modLenBytes = (getMODULUS_BITS(session, privKeyObject) + 7) / 8;
@@ -1247,7 +1260,7 @@ test_random(CK_SESSION_HANDLE session)
 	printf("C_SeedRandom() and C_GenerateRandom():\n");
 
 	rv = p11->C_SeedRandom(session, seed1, 10);
-	if (rv == CKR_RANDOM_NO_RNG) {
+	if (rv == CKR_RANDOM_NO_RNG || rv == CKR_FUNCTION_NOT_SUPPORTED) {
 		printf("  not implemented\n");
 		return 0;
 	}
