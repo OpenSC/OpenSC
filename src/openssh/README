@@ -8,8 +8,8 @@ Steps for your OpenSSH pleasure:
 - Run autoconf and autoheader
 - Read openssh/README.smartcard, compile and install
 
-- Extract a public key from your SmartCard in OpenSSH format
-    (e.g. with 'opensc-ssh -c <certificate ID> -k -o <file>')
+- Download a public key from your SmartCard in OpenSSH format
+    (e.g. 'ssh-keygen -D <reader num>[:<certificate ID>] > <file>')
 - Transfer the public key to desired server
 - Run OpenSSH with 'ssh -I <reader num>[:<certificate ID>] <host>'
     (e.g. '-I 0:45' uses first available reader and certificate with
@@ -20,7 +20,8 @@ try enabling debug information with the '-d' switch.
 
 NOTE: PIN code is not asked by ssh when connecting. If you haven't
 authenticated for the private key when connecting with PIN code,
-verify the PIN with e.g. pkcs15-crypt tool.
+you must verify the PIN code. (e.g. 'pkcs15-crypt -c -k <certificate ID>'
+or if you use ssh-agent, try 'ssh-add -s <reader num>')
 
 --
-Markku Degerholm <mdegerho@cc.hut.fi>
+Antti Tapaninen <aet@cc.hut.fi>
