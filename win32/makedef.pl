@@ -21,7 +21,7 @@ while(<DUMP>)
 	split;
 	$_ = $_[0];
 
-	if(!/^\?\?_G/ && !/^\?\?_E/)
+	if(!/^\?\?_G/ && !/^\?\?_E/ && !/DllMain/)
         {
             # Stupid windows linker needs to have
             # preceding underscore for ANSI C programs
