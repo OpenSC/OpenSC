@@ -12,4 +12,4 @@ MAINTAINERCLEANFILES = \
 
 DEPCLEANFILES = config.log configure
 
-AUTOMAKE_OPTIONS = foreign
+AUTOMAKE_OPTIONS = foreign 1.5
