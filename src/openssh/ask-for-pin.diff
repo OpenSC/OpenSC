@@ -1,0 +1,131 @@
+Index: scard-opensc.c
+===================================================================
+RCS file: /cvs/openssh/scard-opensc.c,v
+retrieving revision 1.12
+diff -u -r1.12 scard-opensc.c
+--- scard-opensc.c	25 Aug 2003 00:58:26 -0000	1.12
++++ scard-opensc.c	27 Aug 2003 11:42:02 -0000
+@@ -38,6 +38,8 @@
+ #include "readpass.h"
+ #include "scard.h"
+ 
++int ask_for_pin=0;
++
+ #if OPENSSL_VERSION_NUMBER < 0x00907000L && defined(CRYPTO_LOCK_ENGINE)
+ #define USE_ENGINE
+ #define RSA_get_default_method RSA_get_default_openssl_method
+@@ -119,6 +121,7 @@
+ 	struct sc_pkcs15_prkey_info *key;
+ 	struct sc_pkcs15_object *pin_obj;
+ 	struct sc_pkcs15_pin_info *pin;
++	char *passphrase = NULL;
+ 
+ 	priv = (struct sc_priv_data *) RSA_get_app_data(rsa);
+ 	if (priv == NULL)
+@@ -156,24 +159,47 @@
+ 		goto err;
+ 	}
+ 	pin = pin_obj->data;
++
++	if (sc_pin)
++		passphrase = sc_pin;
++	else if (ask_for_pin) {
++		/* we need a pin but don't have one => ask for the pin */
++		char prompt[64];
++
++		snprintf(prompt, sizeof(prompt), "Enter PIN for %s: ",
++			key_obj->label ? key_obj->label : "smartcard key");
++		passphrase = read_passphrase(prompt, 0);
++		if (!passphrase || !strcmp(passphrase, ""))
++			goto err;
++	} else 
++		/* no pin => error */
++		goto err;
++
+ 	r = sc_lock(card);
+ 	if (r) {
+ 		error("Unable to lock smartcard: %s", sc_strerror(r));
+ 		goto err;
+ 	}
+-	if (sc_pin != NULL) {
+-		r = sc_pkcs15_verify_pin(p15card, pin, sc_pin,
+-					 strlen(sc_pin));
+-		if (r) {
+-			sc_unlock(card);
+-			error("PIN code verification failed: %s",
+-			      sc_strerror(r));
+-			goto err;
+-		}
++	r = sc_pkcs15_verify_pin(p15card, pin, passphrase,
++				 strlen(passphrase));
++	if (r) {
++		sc_unlock(card);
++		error("PIN code verification failed: %s",
++		      sc_strerror(r));
++		goto err;
+ 	}
++
+ 	*key_obj_out = key_obj;
++	if (!sc_pin) {
++		memset(passphrase, 0, strlen(passphrase));
++		xfree(passphrase);
++	}
+ 	return 0;
+ err:
++	if (!sc_pin && passphrase) {
++		memset(passphrase, 0, strlen(passphrase));
++		xfree(passphrase);
++	}
+ 	sc_close();
+ 	return -1;
+ }
+Index: scard.c
+===================================================================
+RCS file: /cvs/openssh/scard.c,v
+retrieving revision 1.27
+diff -u -r1.27 scard.c
+--- scard.c	18 Jun 2003 10:28:40 -0000	1.27
++++ scard.c	27 Aug 2003 11:42:02 -0000
+@@ -35,6 +35,9 @@
+ #include "readpass.h"
+ #include "scard.h"
+ 
++/* currently unused */
++int ask_for_pin = 0;
++
+ #if OPENSSL_VERSION_NUMBER < 0x00907000L
+ #define USE_ENGINE
+ #define RSA_get_default_method RSA_get_default_openssl_method
+Index: scard.h
+===================================================================
+RCS file: /cvs/openssh/scard.h,v
+retrieving revision 1.10
+diff -u -r1.10 scard.h
+--- scard.h	18 Jun 2003 10:28:40 -0000	1.10
++++ scard.h	27 Aug 2003 11:42:02 -0000
+@@ -33,6 +33,8 @@
+ #define SCARD_ERROR_NOCARD	-2
+ #define SCARD_ERROR_APPLET	-3
+ 
++extern int ask_for_pin;
++
+ Key	**sc_get_keys(const char *, const char *);
+ void	 sc_close(void);
+ int	 sc_put_key(Key *, const char *);
+Index: ssh.c
+===================================================================
+RCS file: /cvs/openssh/ssh.c,v
+retrieving revision 1.180
+diff -u -r1.180 ssh.c
+--- ssh.c	21 Aug 2003 23:34:41 -0000	1.180
++++ ssh.c	27 Aug 2003 11:42:02 -0000
+@@ -1155,6 +1155,9 @@
+ #ifdef SMARTCARD
+ 	Key **keys;
+ 
++	if (!options.batch_mode)
++		ask_for_pin = 1;
++
+ 	if (options.smartcard_device != NULL &&
+ 	    options.num_identity_files < SSH_MAX_IDENTITY_FILES &&
+ 	    (keys = sc_get_keys(options.smartcard_device, NULL)) != NULL ) {

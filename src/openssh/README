@@ -1,0 +1,7 @@
+ask-for-pin.diff
+	SSH can't ask for the pin of a smart card in version 3.8.1p1.
+	Fixing this is a major task and requires some kind of redesign
+	in openssh as far as we understand, so please have patience.
+
+	Meanwhile this patch can add the desired functionality, but
+	it is a crude hack, not meant to be added to openssh releases.
