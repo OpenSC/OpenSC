@@ -120,9 +120,9 @@ static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		sign_data(CK_SLOT_ID,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
-static int		find_first(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
+static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
-				const unsigned char *, size_t id_len);
+				const unsigned char *, size_t id_len, int obj_index);
 static CK_MECHANISM_TYPE find_mechanism(CK_SLOT_ID, CK_FLAGS,
 			 	int stop_if_not_found);
 static void		get_token_info(CK_SLOT_ID, CK_TOKEN_INFO_PTR);
@@ -312,7 +312,7 @@ main(int argc, char * const argv[])
 	}
 
 	if (do_sign) {
-		if (!find_first(session, CKO_PRIVATE_KEY, &object, NULL, 0))
+		if (!find_object(session, CKO_PRIVATE_KEY, &object, NULL, 0, 0))
 			fatal("Private key not found");
 	}
 
@@ -596,14 +596,15 @@ hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 }
 
 int
-find_first(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
+find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 		CK_OBJECT_HANDLE_PTR ret,
-		const unsigned char *id, size_t id_len)
+		const unsigned char *id, size_t id_len, int obj_index)
 {
 	CK_ATTRIBUTE attrs[2];
 	unsigned int nattrs = 0;
 	CK_ULONG count;
 	CK_RV rv;
+	int i;
 
 	attrs[0].type = CKA_CLASS;
 	attrs[0].pValue = &cls;
@@ -620,10 +621,18 @@ find_first(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 	if (rv != CKR_OK)
 		p11_fatal("C_FindObjectsInit", rv);
 
+	for (i = 0; i < obj_index; i++) {
+		rv = p11->C_FindObjects(sess, ret, 1, &count);
+		if (rv != CKR_OK)
+			p11_fatal("C_FindObjects", rv);
+		if (count == 0)
+			goto done;
+	}
 	rv = p11->C_FindObjects(sess, ret, 1, &count);
 	if (rv != CKR_OK)
 		p11_fatal("C_FindObjects", rv);
 
+done:
 	p11->C_FindObjectsFinal(sess);
 
 	return count;
@@ -1004,34 +1013,133 @@ test_digest(CK_SLOT_ID slot)
 	return errors;
 }
 
-static int
-test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+int sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+		CK_MECHANISM *ck_mech, CK_OBJECT_HANDLE privKeyObject,
+		unsigned char *data, CK_ULONG dataLen,
+		unsigned char *verifyData, CK_ULONG verifyDataLen,
+		int modLenBytes, int evp_md_index)
 {
-	int             errors = 0;
+	int 		errors = 0;
 	CK_RV           rv;
-	CK_OBJECT_HANDLE privKeyObject;
-	CK_OBJECT_HANDLE certObject;
-	CK_MECHANISM    ck_mech = { CKM_MD5, NULL, 0 };
-	CK_MECHANISM_TYPE firstMechType;
-	CK_SESSION_INFO sessionInfo;
 	unsigned char  *id;
 	CK_ULONG        idLen;
+	CK_OBJECT_HANDLE certObject;
 	unsigned char  *cert;
 	CK_ULONG        certLen;
-	CK_ULONG        i, j;
-	unsigned char   data[200];
-	unsigned char   verifyData[100];
-	CK_ULONG        modLenBytes;
-	CK_ULONG        dataLen;
-	unsigned char   sig1[1024], sig2[1024];
-	CK_ULONG        sigLen1, sigLen2;
+	unsigned char   sig1[1024];
+	CK_ULONG        sigLen1;
 
 #ifdef HAVE_OPENSSL
 	int             err;
 	X509           *x509;
 	EVP_PKEY       *pkey;
 	EVP_MD_CTX      md_ctx;
+
+	const EVP_MD         *evp_mds[] = {
+		EVP_sha1(),
+		EVP_sha1(),
+		EVP_sha1(),
+		EVP_md5(),
+		EVP_ripemd160(),
+	};
 #endif
+
+	rv = p11->C_SignInit(session, ck_mech, privKeyObject);
+	/* mechanism not implemented, don't test */
+	if (rv == CKR_MECHANISM_INVALID)
+		return errors;
+	if (rv != CKR_OK)
+		p11_fatal("C_SignInit", rv);
+
+	printf("    %s: ", p11_mechanism_to_name(ck_mech->mechanism));
+
+	sigLen1 = sizeof(sig1);
+	rv = p11->C_Sign(session, data, dataLen, sig1,
+		&sigLen1);
+	if (rv != CKR_OK)
+		p11_fatal("C_Sign", rv);
+
+	if (sigLen1 != modLenBytes) {
+		errors++;
+		printf("  ERR: wrong signature length: %ld instead of %ld\n", sigLen1, modLenBytes);
+	}
+#ifndef HAVE_OPENSSL
+	printf("unable to verify signature (compile with HAVE_OPENSSL)\n");
+#else
+	id = NULL;
+	id = getID(session, privKeyObject, &idLen);
+	if (id == NULL) {
+		printf("private key has no ID, can't lookup the corresponding cert for verification\n");
+		return errors;
+	}
+
+	if (!find_object(session, CKO_CERTIFICATE, &certObject, id,
+			idLen, 0)) {
+		free(id);
+		printf("coudn't find the corresponding cert for verification\n");
+		return errors;
+	}
+	free(id);
+
+	cert = NULL;
+	cert = getVALUE(session, certObject, &certLen);
+	if (cert == NULL) {
+		printf("couldn't get the cert VALUE attribute, no verification done\n");
+		return errors;
+	}
+
+	x509 = d2i_X509(NULL, &cert, certLen);
+	if (x509 == NULL) {
+		free(cert);
+		printf(" couldn't parse cert, no verification done\n");
+		/* ERR_print_errors_fp(stderr); */
+		return errors;
+	}
+
+	pkey = X509_get_pubkey(x509);
+	if (pkey == NULL) {
+		free(cert);
+		printf(" couldn't get public key from the cert, no verification done\n");
+		/* ERR_print_errors_fp(stderr); */
+		return errors;
+	}
+
+	EVP_VerifyInit(&md_ctx, evp_mds[evp_md_index]);
+	EVP_VerifyUpdate(&md_ctx, verifyData, verifyDataLen);
+	err = EVP_VerifyFinal(&md_ctx, sig1, sigLen1, pkey);
+	if (err == 0) {
+		printf("ERR: verification failed\n");
+		errors++;
+	} else if (err != 1) {
+		printf("openssl error during verification: 0x%0x (%d)\n", err, err);
+		/* ERR_print_errors_fp(stderr); */
+	} else
+		printf("OK\n");
+
+	/* free(cert); */
+#endif
+
+	return errors;
+}
+
+
+static int
+test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	int             errors = 0;
+	CK_RV           rv;
+	CK_OBJECT_HANDLE privKeyObject;
+	CK_MECHANISM    ck_mech = { CKM_MD5, NULL, 0 };
+	CK_MECHANISM_TYPE firstMechType;
+	CK_SESSION_INFO sessionInfo;
+	CK_ULONG        i, j;
+	unsigned char   data[200];
+	CK_ULONG        modLenBytes;
+	CK_ULONG        dataLen;
+	unsigned char   sig1[1024], sig2[1024];
+	CK_ULONG        sigLen1, sigLen2;
+	unsigned char   verifyData[100];
+	char 		*label;
 
 	CK_MECHANISM_TYPE mechTypes[] = {
 		CKM_RSA_X_509,
@@ -1061,15 +1169,6 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		sizeof(verifyData),
 		sizeof(verifyData),
 	};
-#ifdef HAVE_OPENSSL
-	const EVP_MD         *evp_mds[] = {
-		EVP_sha1(),
-		EVP_sha1(),
-		EVP_sha1(),
-		EVP_md5(),
-		EVP_ripemd160(),
-	};
-#endif
 
 	rv = p11->C_GetSessionInfo(session, &sessionInfo);
 	if (rv == CKR_SESSION_HANDLE_INVALID) {
@@ -1083,13 +1182,11 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (firstMechType == NO_MECHANISM) {
 		printf("Signatures: not implemented\n");
 		return errors;
-	} else if (!find_first(session, CKO_PRIVATE_KEY, &privKeyObject,
-			NULL, 0)) {
+	} else if (!find_object(session, CKO_PRIVATE_KEY, &privKeyObject,
+			NULL, 0, 0)) {
 		printf("Signatures: no private key found in this slot (supplied your PIN?)\n");
 		return errors;
 	} else {
-		char *label;
-
 		printf("Signatures (currently only RSA signatures)");
 		if ((label = getLABEL(session, privKeyObject, NULL)) != NULL) {
 			printf(", key = %s", label);
@@ -1209,83 +1306,33 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	datas[0] = data;
 	dataLens[0] = dataLen;
 
+	printf("  testing signature mechanisms:\n");
 	for (i = 0; mechTypes[i] != 0xffffff; i++) {
 		ck_mech.mechanism = mechTypes[i];
+		errors += sign_verify(slot, session, &ck_mech, privKeyObject,
+			datas[i], dataLens[i], verifyData, sizeof(verifyData),
+			modLenBytes, i);
+	}
 
-		rv = p11->C_SignInit(session, &ck_mech, privKeyObject);
-		/* mechanism not implemented, don't test */
-		if (rv == CKR_MECHANISM_INVALID)
-			continue;
-		if (rv != CKR_OK)
-			p11_fatal("C_SignInit", rv);
+	/* 4rd test: the other signature keys */
 
-		printf("  %s: ", p11_mechanism_to_name(mechTypes[i]));
+	for (i = 0; mechTypes[i] != 0xffffff; i++)
+		if (i == firstMechType)
+			break;
+	ck_mech.mechanism = mechTypes[i];
+	j = 1;  /* j-th signature key */
+	while (find_object(session, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j++) != 0) {
 
-		sigLen1 = sizeof(sig1);
-		rv = p11->C_Sign(session, datas[i], dataLens[i], sig1,
-			&sigLen1);
-		if (rv != CKR_OK)
-			p11_fatal("C_Sign", rv);
-
-		if (sigLen1 != modLenBytes) {
-			errors++;
-			printf("  ERR: wrong signature length: %ld instead of %ld\n", sigLen1, modLenBytes);
+		printf("  testing key %d ", j-1);
+		if ((label = getLABEL(session, privKeyObject, NULL)) != NULL) {
+			printf("(%s) ", label);
+			free(label);
 		}
-#ifndef HAVE_OPENSSL
-		printf("unable to verify signature (compile with HAVE_OPENSSL)\n");
-#else
-		id = NULL;
-		id = getID(session, privKeyObject, &idLen);
-		if (id == NULL) {
-			printf("private key has no ID, can't lookup the corresponding cert for verification\n");
-			continue;
-		}
+		printf("with 1 signature mechanism\n");
 
-		if (!find_first(session, CKO_CERTIFICATE, &certObject, id,
-				idLen)) {
-			free(id);
-			printf("coudn't find the corresponding cert for verification\n");
-			continue;
-		}
-		free(id);
-
-		cert = NULL;
-		cert = getVALUE(session, certObject, &certLen);
-		if (cert == NULL) {
-			printf("couldn't get the cert VALUE attribute, no verification done\n");
-			continue;
-		}
-
-		x509 = d2i_X509(NULL, &cert, certLen);
-		if (x509 == NULL) {
-			free(cert);
-			printf(" couldn't parse cert, no verification done\n");
-			/* ERR_print_errors_fp(stderr); */
-			continue;
-		}
-
-		pkey = X509_get_pubkey(x509);
-		if (pkey == NULL) {
-			free(cert);
-			printf(" couldn't get public key from the cert, no verification done\n");
-			/* ERR_print_errors_fp(stderr); */
-			continue;
-		}
-
-		EVP_VerifyInit(&md_ctx, evp_mds[i]);
-		EVP_VerifyUpdate(&md_ctx, verifyData, sizeof(verifyData));
-		err = EVP_VerifyFinal(&md_ctx, sig1, sigLen1, pkey);
-		if (err == 0) {
-			printf("ERR: verification failed\n");
-			errors++;
-		} else if (err != 1) {
-			printf("openssl error during verification: 0x%0x (%d)\n", err, err);
-			/* ERR_print_errors_fp(stderr); */
-		} else
-			printf("OK\n");
-
-		/* free(cert); */
-#endif
+		errors += sign_verify(slot, session, &ck_mech, privKeyObject,
+			datas[i], dataLens[i], verifyData, sizeof(verifyData),
+			modLenBytes, i);
 	}
 
 	return errors;
