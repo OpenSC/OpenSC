@@ -67,7 +67,7 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 			       const struct sc_path *path,
 			       u8 **buf, size_t *bufsize)
 {
-	char fname[160];
+	char fname[PATH_MAX];
 	int r;
 	FILE *f;
 	size_t count, offset, got;
@@ -86,8 +86,7 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 	} else {
 		count = path->count;
 		offset = path->index;
-		if (offset >= (size_t)stbuf.st_size
-		 || offset + count >= (size_t)stbuf.st_size)
+		if (offset + count > (size_t)stbuf.st_size)
 			return SC_ERROR_FILE_NOT_FOUND; /* cache file bad? */
 	}
 	if (*buf == NULL) {
