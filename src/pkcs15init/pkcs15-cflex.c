@@ -271,9 +271,9 @@ cflex_generate_key(struct sc_profile *profile, struct sc_card *card,
 	/* extract public key */
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 	pubkey->u.rsa.modulus.len   = keybits / 8;
-	pubkey->u.rsa.modulus.data  = malloc(keybits / 8);
+	pubkey->u.rsa.modulus.data  = (u8 *) malloc(keybits / 8);
 	pubkey->u.rsa.exponent.len  = 3;
-	pubkey->u.rsa.exponent.data = malloc(3);
+	pubkey->u.rsa.exponent.data = (u8 *) malloc(3);
 	memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);
 	if ((r = sc_select_file(card, &pukf->path, NULL)) < 0
 	 || (r = sc_read_binary(card, 3, raw_pubkey, pubkey->u.rsa.modulus.len, 0)) < 0)
