@@ -1647,7 +1647,7 @@ CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_SUBJECT:
 	case CKA_START_DATE:
 	case CKA_END_DATE:
-	attr->ulValueLen = 0;
+		attr->ulValueLen = 0;
 		return CKR_OK;
 	default:
                 return CKR_ATTRIBUTE_TYPE_INVALID;
