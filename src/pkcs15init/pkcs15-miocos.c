@@ -25,114 +25,216 @@
 #include <string.h>
 #include <openssl/bn.h>
 #include "opensc.h"
+#include "cardctl.h"
 #include "pkcs15-init.h"
-#include "util.h"
+#include "profile.h"
 
-static int miocos_update_pin(struct sc_card *card, struct pin_info *info)
+/*
+ * Initialize the Application DF
+ */
+static int miocos_init_app(struct sc_profile *profile, struct sc_card *card,
+		const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
-	u8		buffer[20], *p = buffer;
-	int		r;
-	size_t		len;
+	/* Create the application DF */
+	if (sc_pkcs15init_create_file(profile, card, profile->df_info->file))
+		return 1;
 
-	if (!info->puk.tries_left) {
-		error("PUK code needed.");
+	return 0;
+}
+
+/*
+ * Store a PIN
+ */
+static int
+miocos_new_pin(struct sc_profile *profile, struct sc_card *card,
+		struct sc_pkcs15_pin_info *info, unsigned int index,
+		const u8 *pin, size_t pin_len,
+		const u8 *puk, size_t puk_len)
+{
+	char template[18];
+	sc_file_t *pinfile;
+	struct sc_pkcs15_pin_info tmpinfo;
+	struct sc_cardctl_miocos_ac_info ac_info;
+	int r;
+	
+	sprintf(template, "pinfile-chv%d", index + 1);
+	/* Profile must define a "pinfile" for each PIN */
+	if (sc_profile_get_file(profile, template, &pinfile) < 0) {
+		profile->cbs->error("Profile doesn't define \"%s\"", template);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-	info->pin.tries_left &= 0x0f;
-	*p++ = (info->pin.tries_left << 8) | info->pin.tries_left;
-	*p++ = 0xFF;
-	memset(p, info->pin.pad_char, 8);
-	strncpy((char *) p, info->secret[0], 8);
-	p += 8;
-	info->puk.tries_left &= 0x0f;
-	*p++ = (info->puk.tries_left << 8) | info->puk.tries_left;
-	*p++ = 0xFF;
-	strncpy((char *) p, info->secret[1], 8);
-	p += 8;
-	len = 20;
-
-	r = sc_update_binary(card, 0, buffer, len, 0);
-	if (r < 0)
+	info->path = pinfile->path;
+	if (info->path.len > 2)
+		info->path.len -= 2;
+	r = sc_pkcs15init_create_file(profile, card, pinfile);
+	sc_file_free(pinfile);
+	if (r)
+		return r;
+	memset(&ac_info, 0, sizeof(ac_info));
+	info->reference = index + 1;
+	ac_info.ref = index + 1;
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
+	ac_info.max_tries = tmpinfo.tries_left;
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &tmpinfo);
+	ac_info.max_unblock_tries = tmpinfo.tries_left;
+	if (pin_len > 8)
+		pin_len = 8;
+	memcpy(ac_info.key_value, pin, pin_len);
+	if (puk_len > 8)
+		puk_len = 8;
+	strncpy(ac_info.unblock_value, puk, puk_len);
+	r = sc_card_ctl(card, SC_CARDCTL_MIOCOS_CREATE_AC, &ac_info);
+	if (r)
 		return r;
 	return 0;
 }
 
-static int miocos_store_pin(struct sc_profile *profile, struct sc_card *card,
-			   struct pin_info *info)
+/*
+ * Allocate a file
+ */
+static int
+miocos_new_file(struct sc_profile *profile, struct sc_card *card,
+		unsigned int type, unsigned int num,
+		struct sc_file **out)
 {
-	struct sc_file	*pinfile;
-	int		r;
+	struct sc_file	*file;
+	struct sc_path	*p;
+	char		name[64], *tag, *desc;
 
-	sc_file_dup(&pinfile, info->file->file);
+	desc = tag = NULL;
+	while (1) {
+		switch (type) {
+		case SC_PKCS15_TYPE_PRKEY_RSA:
+			desc = "RSA private key";
+			tag = "private-key";
+			break;
+		case SC_PKCS15_TYPE_PUBKEY_RSA:
+			desc = "RSA public key";
+			tag = "public-key";
+			break;
+		case SC_PKCS15_TYPE_CERT:
+			desc = "certificate";
+			tag = "certificate";
+			break;
+		case SC_PKCS15_TYPE_DATA_OBJECT:
+			desc = "data object";
+			tag = "data";
+			break;
+		}
+		if (tag)
+			break;
+		/* If this is a specific type such as
+		 * SC_PKCS15_TYPE_CERT_FOOBAR, fall back to
+		 * the generic class (SC_PKCS15_TYPE_CERT)
+		 */
+		if (!(type & ~SC_PKCS15_TYPE_CLASS_MASK)) {
+			profile->cbs->error("File type not supported by card driver");
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
+		type &= SC_PKCS15_TYPE_CLASS_MASK;
+	}
 
-	card->ctx->log_errors = 0;
-	r = sc_select_file(card, &pinfile->path, NULL);
-	card->ctx->log_errors = 1;
-	pinfile->type = SC_FILE_TYPE_INTERNAL_EF;
-	pinfile->ef_structure = 0;
-	if (r == SC_ERROR_FILE_NOT_FOUND) {
-		/* Now create the file */
-		r = sc_pkcs15init_create_file(profile, card, pinfile);
-		if (r < 0)
-			goto out;
-		/* The PIN EF is automatically selected */
-	} else if (r < 0)
-		goto out;
+	snprintf(name, sizeof(name), "template-%s", tag);
+	if (sc_profile_get_file(profile, name, &file) < 0) {
+		profile->cbs->error("Profile doesn't define %s template (%s)\n",
+				desc, name);
+		return SC_ERROR_NOT_SUPPORTED;
+	}
 
-	/* If messing with the PIN file requires any sort of
-	 * authentication, send it to the card now */
-	r = sc_pkcs15init_authenticate(profile, card, pinfile, SC_AC_OP_UPDATE);
-	if (r < 0)
-		goto out;
+	/* Now construct file from template */
+	file->id += num;
 
-	r = miocos_update_pin(card, info);
+	p = &file->path;
+	*p = profile->df_info->file->path;
+	p->value[p->len++] = file->id >> 8;
+	p->value[p->len++] = file->id;
 
-out:	sc_file_free(pinfile);
+	*out = file;
+	return 0;
+}
+
+static int bn2bin(const BIGNUM *num, u8 *buf)
+{
+	int r;
+
+	r = BN_bn2bin(num, buf);
+        if (r <= 0)
+                return r;
+        return 0;
+}
+
+static int
+miocos_update_private_key(struct sc_profile *profile, struct sc_card *card,
+		RSA *rsa)
+{
+	int r;
+	u8 modulus[128];
+	u8 priv_exp[128];
+	u8 buf[266];
+	
+	if (bn2bin(rsa->d, priv_exp) != 0) {
+		profile->cbs->error("Unable to convert private exponent.");
+		return -1;
+	}
+	if (bn2bin(rsa->n, modulus) != 0) {
+		profile->cbs->error("Unable to convert modulus.");
+		return -1;
+	}
+	memcpy(buf, "\x30\x82\x01\x06\x80\x81\x80", 7);
+	memcpy(buf + 7, modulus, 128);
+	memcpy(buf + 7 + 128, "\x82\x81\x80", 3);
+	memcpy(buf + 10 + 128, priv_exp, 128);
+	r = sc_update_binary(card, 0, buf, sizeof(buf), 0);
+
 	return r;
 }
 
 /*
- * Initialize the Application DF and store the PINs
+ * Store a private key
  */
-static int miocos_init_app(struct sc_profile *profile, struct sc_card *card)
+static int
+miocos_new_key(struct sc_profile *profile, struct sc_card *card,
+		EVP_PKEY *key, unsigned int index,
+		struct sc_pkcs15_prkey_info *info)
 {
-	struct pin_info	*pin1, *pin2;
-
-	pin1 = sc_profile_find_pin(profile, "CHV1");
-	pin2 = sc_profile_find_pin(profile, "CHV2");
-	if (pin1 == NULL) {
-		fprintf(stderr, "No CHV1 defined\n");
-		return 1;
+	sc_file_t *keyfile;
+	RSA *rsa;
+	int r;
+	
+	if (key->type != EVP_PKEY_RSA) {
+		profile->cbs->error("MioCOS supports only 1024-bit RSA keys.");
+		return SC_ERROR_NOT_SUPPORTED;
 	}
-	/* Create the application DF */
-	if (sc_pkcs15init_create_file(profile, card, profile->df_info.file))
-		return 1;
-
-	if (pin2) {
-		if (miocos_store_pin(profile, card, pin2))
-			return 1;
+	rsa = EVP_PKEY_get1_RSA(key);
+	if (RSA_size(rsa) != 128) {
+		RSA_free(rsa);
+		profile->cbs->error("MioCOS supports only 1024-bit RSA keys.");
+		return SC_ERROR_NOT_SUPPORTED;
 	}
-	if (miocos_store_pin(profile, card, pin1))
-		return 1;
+	r = miocos_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, index,
+			    &keyfile);
+	if (r < 0) {
+		RSA_free(rsa);
+		return r;
+	}
+	info->modulus_length = 1024;
+	info->path = keyfile->path;
+	r = sc_pkcs15init_create_file(profile, card, keyfile);
+	sc_file_free(keyfile);
+	if (r < 0) {
+		RSA_free(rsa);
+		return r;
+	}
+	r = miocos_update_private_key(profile, card, rsa);
+	RSA_free(rsa);
 
-	return 0;
+	return r;
 }
 
-/*
- * Store a RSA key on the card
- */
-static int miocos_store_rsa_key(struct sc_profile *profile,
-				struct sc_card *card,
-				struct sc_key_template *info,
-			       	RSA *rsa)
-{
-	return 0;
-}
-
-void bind_miocos_operations(struct pkcs15_init_operations *ops)
-{
-	ops->erase_card = NULL;
-	ops->init_app = miocos_init_app;
-	ops->store_rsa = miocos_store_rsa_key;
-	ops->store_dsa = NULL;
-}
+struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations = {
+	NULL,
+	miocos_init_app,
+	miocos_new_pin,
+	miocos_new_key,
+	miocos_new_file,
+};

@@ -87,8 +87,8 @@ static int	do_select_parent(struct sc_profile *, struct sc_card *,
 
 /* Card specific functions */
 extern struct sc_pkcs15init_operations	sc_pkcs15init_gpk_operations;
-#if 0
 extern struct sc_pkcs15init_operations	sc_pkcs15init_miocos_operations;
+#if 0
 extern struct sc_pkcs15init_operations	sc_pkcs15init_cflex_operations;
 #endif
 
@@ -122,9 +122,9 @@ sc_pkcs15init_bind(struct sc_profile *profile,
 	profile->cbs = callbacks;
 	if (!strcasecmp(driver, "GPK"))
 		profile->ops = &sc_pkcs15init_gpk_operations;
-#if 0
 	else if (!strcasecmp(driver, "MioCOS"))
 		profile->ops = &sc_pkcs15init_miocos_operations;
+#if 0
 	else if (!strcasecmp(driver, "flex"))
 		profile->ops = &sc_pkcs15init_cflex_operations;
 #endif
