@@ -310,7 +310,7 @@ static int starcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 		tkey.key_header[4] = 0x01;
 	else
 		tkey.key_header[4] = STARCOS_PINID2STATE(pin_id);
-	tkey.key_header[5]  = 0x11;
+	tkey.key_header[5]  = STARCOS_AC_ALWAYS;
 	tkey.key_header[6]  = ((0x0f & tmp) << 4) | (0x0f & tmp);
 	tkey.key_header[7]  = 0x00;
 	tkey.key_header[8]  = 0x00;
@@ -323,7 +323,7 @@ static int starcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 	akd |= 0x08;
 	tkey.key_header[9]  = akd;	/* AKD: standard + every char != 0 +
 					 * pin min length */
-	tkey.key_header[10] = 0x03;	/* allow re-write  */
+	tkey.key_header[10] = 0x00;	/* never allow WRITE KEY    */
 	tkey.key_header[11] = 0x81;	/* key attribute: akd + pin */
 	/* create/write PIN */
 	r = sc_card_ctl(card, SC_CARDCTL_STARCOS_WRITE_KEY, &tkey);
@@ -348,14 +348,14 @@ static int starcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 		tkey.key_header[0]  = tkey.kid;
 		tkey.key_header[1]  = 0;
 		tkey.key_header[2]  = 8;
-		tkey.key_header[3]  = is_local ? 0x9f : 0x8f;
+		tkey.key_header[3]  = STARCOS_AC_ALWAYS;
 		tkey.key_header[4]  = ((pin_id & 0x1f) << 3) | 0x05;
 		tkey.key_header[5]  = 0x01;
 		tkey.key_header[6]  = ((0x0f & tmp) << 4) | (0x0f & tmp);
 		tkey.key_header[7]  = 0x0;
 		tkey.key_header[8]  = 0x0;
 		tkey.key_header[9]  = 0x0;
-		tkey.key_header[10] = 0x13;
+		tkey.key_header[10] = 0x00;
 		tkey.key_header[11] = 0x02;
 		/* create/write PUK */
 		r = sc_card_ctl(card, SC_CARDCTL_STARCOS_WRITE_KEY, &tkey);
