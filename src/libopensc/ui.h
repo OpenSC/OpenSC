@@ -8,6 +8,7 @@
 #define _SC_UI_H
 
 #include <opensc/opensc.h>
+#include <opensc/pkcs15.h>
 
 #ifdef __cplusplus
 extern "C" {
