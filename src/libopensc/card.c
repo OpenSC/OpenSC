@@ -291,6 +291,7 @@ static struct sc_card * sc_card_new()
 		free(card);
 		return NULL;
 	}
+	card->chopsize = SC_APDU_CHOP_SIZE;
 	card->app_count = -1;
         card->magic = SC_CARD_MAGIC;
 	card->mutex = sc_mutex_new();
@@ -525,14 +526,14 @@ int sc_read_binary(struct sc_card *card, unsigned int idx,
 		return 0;
 	if (card->ops->read_binary == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
-	if (count > SC_APDU_CHOP_SIZE && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
+	if (count > card->chopsize && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
 		int bytes_read = 0;
 		unsigned char *p = buf;
 
 		r = sc_lock(card);
 		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 		while (count > 0) {
-			int n = count > SC_APDU_CHOP_SIZE ? SC_APDU_CHOP_SIZE : count;
+			int n = count > card->chopsize ? card->chopsize : count;
 			r = sc_read_binary(card, idx, p, n, flags);
 			if (r < 0) {
 				sc_unlock(card);
@@ -566,14 +567,14 @@ int sc_write_binary(struct sc_card *card, unsigned int idx,
 		return 0;
 	if (card->ops->write_binary == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
-	if (count > SC_APDU_CHOP_SIZE && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
+	if (count > card->chopsize && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
 		int bytes_written = 0;
 		const u8 *p = buf;
 
 		r = sc_lock(card);
 		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 		while (count > 0) {
-			int n = count > SC_APDU_CHOP_SIZE ? SC_APDU_CHOP_SIZE : count;
+			int n = count > card->chopsize ? card->chopsize : count;
 			r = sc_write_binary(card, idx, p, n, flags);
 			if (r < 0) {
 				sc_unlock(card);
@@ -607,14 +608,14 @@ int sc_update_binary(struct sc_card *card, unsigned int idx,
 		return 0;
 	if (card->ops->update_binary == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
-	if (count > SC_APDU_CHOP_SIZE && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
+	if (count > card->chopsize && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
 		int bytes_written = 0;
 		const u8 *p = buf;
 
 		r = sc_lock(card);
 		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 		while (count > 0) {
-			int n = count > SC_APDU_CHOP_SIZE ? SC_APDU_CHOP_SIZE : count;
+			int n = count > card->chopsize ? card->chopsize : count;
 			r = sc_update_binary(card, idx, p, n, flags);
 			if (r < 0) {
 				sc_unlock(card);

@@ -239,7 +239,7 @@ static int iso7816_write_binary(struct sc_card *card,
 	struct sc_apdu apdu;
 	int r;
 
-	if (count > SC_APDU_CHOP_SIZE) {
+	if (count > card->chopsize) {
 		error(card->ctx, "Too large buffer supplied\n");
 		return SC_ERROR_CMD_TOO_LONG;
 	}
@@ -263,7 +263,7 @@ static int iso7816_update_binary(struct sc_card *card,
 	struct sc_apdu apdu;
 	int r;
 
-	if (count > SC_APDU_CHOP_SIZE) {
+	if (count > card->chopsize) {
 		error(card->ctx, "Too large buffer supplied\n");
 		return SC_ERROR_CMD_TOO_LONG;
 	}

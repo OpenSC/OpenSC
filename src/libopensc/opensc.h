@@ -426,6 +426,7 @@ struct sc_card {
 	int cla;
 	u8 atr[SC_MAX_ATR_SIZE];
 	size_t atr_len;
+	int chopsize;
 
 	struct sc_app_info *app[SC_MAX_CARD_APPS];
 	int app_count;
