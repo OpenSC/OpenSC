@@ -4,8 +4,8 @@ RM = rm -f
 
 SUBDIRS = rsaref
 
-MAINTAINERCLEANFILES = Makefile.in \
-	asn1.h \
+MAINTAINERCLEANFILES = Makefile.in 
+DISTCLEANFILES= asn1.h \
 	cardctl.h \
 	emv.h \
 	log.h \
