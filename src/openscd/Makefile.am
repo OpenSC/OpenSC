@@ -5,7 +5,7 @@ MAINTAINERCLEANFILES = Makefile.in
 INCLUDES = @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
-bin_PROGRAMS = openscd
+noinst_PROGRAMS = openscd
 
 openscd_SOURCES = openscd.c commands.c mkdtemp.c
 openscd_LDADD = @GETOPTSRC@ ../assuan/libassuan.a ../scrandom/libscrandom.a
