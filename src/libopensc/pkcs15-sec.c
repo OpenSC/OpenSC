@@ -359,6 +359,18 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		senv.algorithm_flags |= SC_ALGORITHM_RSA_RAW;
+
+		/* Add zero-padding if input shorter than modulus */
+		if (inlen < prkey->modulus_length/8) {
+			unsigned int	modulus_len = prkey->modulus_length/8;
+
+			if (modulus_len > sizeof(buf))
+				return SC_ERROR_BUFFER_TOO_SMALL;
+			memset(buf, 0, sizeof(buf));
+			memcpy(buf + modulus_len - inlen, in, inlen);
+			inlen = modulus_len;
+			in = buf;
+		}
 	}
 	if (pad_flags) {
                 buflen = sizeof(buf);
