@@ -58,14 +58,39 @@ void do_log(struct sc_context *ctx, int facility, const char *file,
 	va_end(ap);
 }
 
+int use_color(struct sc_context *ctx, FILE *outf)
+{
+	static char *term = NULL;
+	static const char *terms[] = { "linux", "xterm", "Eterm" };
+	int term_count = sizeof(terms)/sizeof(terms[0]);
+	int do_color = 0;
+	int i;
+
+	if (!ctx->use_std_output)
+		return 0;
+	if (term == NULL) {
+		term = getenv("TERM");
+		if (term == NULL)
+			return 0;
+	}
+	do_color = 0;
+	for (i = 0; i < term_count; i++)
+		if (strcmp(terms[i], term) == 0) {
+			do_color = 1;
+			break;
+		}
+	if (!do_color)
+		return 0;
+	if (!isatty(fileno(outf)))
+		return 0;
+	return do_color;
+}
+
 void do_log2(struct sc_context *ctx, int type, const char *file,
 	     int line, const char *func, const char *format, va_list args)
 {
 	FILE *outf = NULL;
 	char buf[1024], *p;
-	static char *term = NULL;
-	const char *terms[] = { "linux", "xterm", "Eterm" };
-	int term_count = sizeof(terms)/sizeof(terms[0]);
 	int left, r;
 	struct timeval tv;
 
@@ -96,23 +121,7 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 		return;
 	if (ctx->use_std_output) {
 		const char *color_pfx = "", *color_sfx = "";
-		int do_color = 0;
-		int i;
-		if (term == NULL)
-			term = getenv("TERM");
-		if (term != NULL)
-			do_color = 1;
-		if (do_color) {
-			do_color = 0;
-			for (i = 0; i < term_count; i++)
-				if (strcmp(terms[i], term) == 0) {
-					do_color = 1;
-					break;
-				}
-		}
-		if (do_color && !isatty(fileno(outf)))
-			do_color = 0;
-		if (do_color) {
+		if (use_color(ctx, outf)) {
 			color_sfx = "\33[0m";
 			switch (type) {
 			case SC_LOG_TYPE_ERROR:

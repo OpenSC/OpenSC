@@ -277,11 +277,17 @@ static int iso7816_select_file(struct sc_card *card,
 		memcpy(&file->path.value, path, pathlen);
 		file->path.len = pathlen;
 	}
+#if 0
 	if (file == NULL || sc_file_valid(file))
+#endif
+	if (file == NULL)
 		apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (file == NULL || sc_file_valid(file)) {
+#if 0
+	if (file == NULL || sc_file_valid(file))
+#endif
+	if (file == NULL) {
 		if (apdu.sw1 == 0x61)
 			SC_FUNC_RETURN(card->ctx, 2, 0);
 		SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
@@ -421,6 +427,22 @@ static int iso7816_delete_file(struct sc_card *card, const struct sc_path *path)
 	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
 }
 
+static int iso7816_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+{
+	struct sc_apdu apdu;
+	int r;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
+	apdu.resp = buf;
+	apdu.resplen = buflen;
+	apdu.le = 0;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.resplen == 0)
+		return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	return apdu.resplen;
+}
+
 static struct sc_card_operations iso_ops = {
 	NULL,
 };
@@ -449,6 +471,7 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.get_challenge = iso7816_get_challenge;
 		iso_ops.create_file   = iso7816_create_file;
                 iso_ops.delete_file   = iso7816_delete_file;
+                iso_ops.list_files    = iso7816_list_files;
 	}
 	return &iso_driver;
 }

@@ -165,9 +165,10 @@ static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 {
 	int r, i;
 	struct sc_apdu apdu;
-        u8 rbuf[MAX_BUFFER_SIZE];
+        u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	const u8 *pathptr = path->value;
 	size_t pathlen = path->len;
+	int locked = 0;
 
 	SC_FUNC_CALLED(card->ctx, 3);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0, 0);
@@ -182,15 +183,22 @@ static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 		if (pathlen != 2 || memcmp(pathptr, "\x3F\x00", 2) != 0) {
 			struct sc_path tmppath;
 
+			locked = 1;
+			r = sc_lock(card);
+			SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 			if (memcmp(pathptr, "\x3F\x00", 2) != 0) {
 				sc_format_path("I3F00", &tmppath);
 				r = mflex_select_file(card, &tmppath, NULL);
+				if (r)
+					sc_unlock(card);
 				SC_TEST_RET(card->ctx, r, "Unable to select Master File (MF)");
 			}
 			while (pathlen > 2) {
 				memcpy(tmppath.value, pathptr, 2);
 				tmppath.len = 2;
 				r = mflex_select_file(card, &tmppath, NULL);
+				if (r)
+					sc_unlock(card);
 				SC_TEST_RET(card->ctx, r, "Unable to select DF");
 				pathptr += 2;
 				pathlen -= 2;
@@ -211,13 +219,21 @@ static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 
 	/* No need to get file information, if file is NULL or already
          * valid. */
+#if 0
 	if (file == NULL || sc_file_valid(file))
+#endif
+	if (file == NULL)
                 apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
+	if (locked)
+		sc_unlock(card);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
+#if 0
 	if (file == NULL || sc_file_valid(file))
+#endif
+	if (file == NULL)
                 return 0;
 
 	if (apdu.resplen < 14)
@@ -235,6 +251,39 @@ static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 	return parse_flex_sf_reply(card->ctx, apdu.resp, apdu.resplen, file);
 }
 
+static int mflex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+{
+	struct sc_apdu apdu;
+	u8 rbuf[4];
+	int r;
+	size_t count = 0;
+	
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA8, 0, 0);
+	apdu.cla = 0xF0;
+	apdu.le = 4;
+	apdu.resplen = 4;
+	apdu.resp = rbuf;
+	while (buflen > 2) {
+		r = sc_transmit_apdu(card, &apdu);
+		if (r)
+			return r;
+		if (apdu.sw1 == 0x6A && apdu.sw2 == 0x82)
+			break;
+		r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+		if (r)
+			return r;
+		if (apdu.resplen != 4) {
+			error(card->ctx, "expected 4 bytes, got %d.\n", apdu.resplen);
+			return SC_ERROR_ILLEGAL_RESPONSE;
+		}
+		memcpy(buf, rbuf + 2, 2);
+		buf += 2;
+		count += 2;
+		buflen -= 2;
+	}
+	return count;
+}
+
 static const struct sc_card_driver * sc_get_driver(void)
 {
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -244,6 +293,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 	mflex_ops.init = mflex_init;
         mflex_ops.finish = mflex_finish;
 	mflex_ops.select_file = mflex_select_file;
+	mflex_ops.list_files = mflex_list_files;
 
         return &mflex_drv;
 }

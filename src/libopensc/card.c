@@ -506,21 +506,16 @@ int sc_unlock(struct sc_card *card)
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-int sc_list_files(struct sc_card *card, u8 *buf, int buflen)
+int sc_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 {
-	struct sc_apdu apdu;
 	int r;
 
-	SC_FUNC_CALLED(card->ctx, 2);	
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
-	apdu.resp = buf;
-	apdu.resplen = buflen;
-	apdu.le = 0;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.resplen == 0)
-		return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
-	return apdu.resplen;
+	assert(card != NULL);
+	SC_FUNC_CALLED(card->ctx, 1);
+        if (card->ops->list_files == NULL)
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->list_files(card, buf, buflen);
+        SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 int sc_create_file(struct sc_card *card, const struct sc_file *file)

@@ -23,7 +23,8 @@ extern const char *option_help[];
 
 void print_binary(FILE *f, const u8 *buf, int count);
 void hex_dump(FILE *f, const u8 *in, int len);
-void hex_dump_asc(FILE *f, const u8 *in, size_t count);
+void hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr);
 void print_usage_and_die(const char *pgmname);
+const char * acl_to_str(unsigned int acl);
 
 #endif

@@ -293,7 +293,7 @@ struct sc_card_operations {
 	int (*decipher)(struct sc_card *card, const u8 * crgram,
 		        size_t crgram_len, u8 * out, size_t outlen);
 	/* compute_signature:  Generates a digital signature on the card.  Similiar
-	 *    to the function decipher. */
+	 *   to the function decipher. */
 	int (*compute_signature)(struct sc_card *card, const u8 * data,
 				 size_t data_len, u8 * out, size_t outlen);
 	int (*change_reference_data)(struct sc_card *card, int ref_qualifier,
@@ -308,6 +308,10 @@ struct sc_card_operations {
 	 */
 	int (*create_file)(struct sc_card *card, const struct sc_file *file);
 	int (*delete_file)(struct sc_card *card, const struct sc_path *path);
+	/* list_files:  Enumerates all the files in the current DF, and
+	 *   writes the corresponding file identifiers to <buf>.  Returns
+	 *   the number of bytes stored. */
+	int (*list_files)(struct sc_card *card, u8 *buf, size_t buflen);
 };
 
 struct sc_card_driver {
@@ -411,7 +415,7 @@ void sc_format_path(const char *path_in, struct sc_path *path_out);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 
 /* Possibly only valid on Setec cards */
-int sc_list_files(struct sc_card *card, u8 * buf, int buflen);
+int sc_list_files(struct sc_card *card, u8 * buf, size_t buflen);
 
 const char *sc_strerror(int error);
 

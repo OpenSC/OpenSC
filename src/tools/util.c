@@ -31,14 +31,18 @@ void hex_dump(FILE *f, const u8 *in, int len)
 		fprintf(f, "%02X ", in[i]);
 }
 
-void hex_dump_asc(FILE *f, const u8 *in, size_t count)
+void hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)
 {
 	int lines = 0;
 
  	while (count) {
 		char ascbuf[17];
 		int i;
-
+		
+		if (addr >= 0) {
+			fprintf(f, "%08X: ", addr);
+			addr += 16;
+		}
 		for (i = 0; i < count && i < 16; i++) {
 			fprintf(f, "%02X ", *in);
 			if (isprint(*in))
@@ -87,3 +91,28 @@ void print_usage_and_die(const char *pgmname)
 	exit(2);
 }
 
+const char * acl_to_str(unsigned int acl)
+{
+	static char line[80];
+	
+	if (acl == SC_AC_UNKNOWN)
+		return "UNKN";
+	if (acl == SC_AC_NEVER)
+		return "NEVR";
+	if (acl == SC_AC_NONE)
+		return "NONE";
+	line[0] = 0;
+	if (acl & SC_AC_CHV1)
+		strcat(line, "CHV1 ");
+	if (acl & SC_AC_CHV2)
+		strcat(line, "CHV2 ");
+	if (acl & SC_AC_TERM)
+		strcat(line, "TERM ");
+	if (acl & SC_AC_PRO)
+		strcat(line, "PROT ");
+	if (acl & SC_AC_AUT)
+		strcat(line, "AUTH ");
+		
+	line[strlen(line)-1] = 0; /* get rid of trailing space */
+	return line;
+}

@@ -97,32 +97,6 @@ int list_drivers(void)
 	return 0;
 }
 
-const char * print_acl(unsigned int acl)
-{
-	static char line[80];
-	
-	if (acl == SC_AC_UNKNOWN)
-		return "UNKN";
-	if (acl == SC_AC_NEVER)
-		return "NEVR";
-	if (acl == SC_AC_NONE)
-		return "NONE";
-	line[0] = 0;
-	if (acl & SC_AC_CHV1)
-		strcat(line, "CHV1 ");
-	if (acl & SC_AC_CHV2)
-		strcat(line, "CHV2 ");
-	if (acl & SC_AC_TERM)
-		strcat(line, "TERM ");
-	if (acl & SC_AC_PRO)
-		strcat(line, "PROT ");
-	if (acl & SC_AC_AUT)
-		strcat(line, "AUTH ");
-		
-	line[strlen(line)-1] = 0; /* get rid of trailing space */
-	return line;
-}
-
 int print_file(struct sc_card *card, const struct sc_file *file, const struct sc_path *path, int depth)
 {
 	int r;
@@ -174,10 +148,10 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 		printf("  ");
 	if (file->type == SC_FILE_TYPE_DF)
 		for (r = 0; r < sizeof(ac_ops_df)/sizeof(ac_ops_df[0]); r++)
-			printf("%s[%s] ", ac_ops_df[r], print_acl(file->acl[r]));
+			printf("%s[%s] ", ac_ops_df[r], acl_to_str(file->acl[r]));
 	else
 		for (r = 0; r < sizeof(ac_ops_ef)/sizeof(ac_ops_ef[0]); r++)
-			printf("%s[%s] ", ac_ops_ef[r], print_acl(file->acl[r]));
+			printf("%s[%s] ", ac_ops_ef[r], acl_to_str(file->acl[r]));
 
 	if (file->sec_attr_len) {
 		printf("sec: ");
@@ -197,17 +171,17 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 		hex_dump(stdout, file->prop_attr, file->prop_attr_len);
 	}
 	printf("\n\n");
-#if 0
+#if 1
 	if (file->type != SC_FILE_TYPE_DF) {
 		u8 buf[2048];
 		if (file->ef_structure == SC_FILE_EF_TRANSPARENT) {
 			r = sc_read_binary(card, 0, buf, file->size, 0);
 			if (r > 0)
-				hex_dump_asc(stdout, buf, r);
+				hex_dump_asc(stdout, buf, r, 0);
 		} else {
 			r = sc_read_record(card, 0, buf, file->size, 0);
 			if (r > 0)
-				hex_dump_asc(stdout, buf, r);
+				hex_dump_asc(stdout, buf, r, 0);
 		}
 	}
 #endif
@@ -220,6 +194,7 @@ int enum_dir(struct sc_path path, int depth)
 	int r;
 	u8 files[MAX_BUFFER_SIZE];
 
+	file.magic = 0;  /* make sure the file is invalid */
 	r = sc_select_file(card, &path, &file);
 	if (r) {
 		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
@@ -329,7 +304,7 @@ int send_apdu(void)
 		printf("Received (SW1=0x%02X, SW2=0x%02X)%s\n", apdu.sw1, apdu.sw2,
 		       apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen);
+			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 	}
 	return 0;
 }
