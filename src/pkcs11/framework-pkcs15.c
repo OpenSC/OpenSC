@@ -1195,7 +1195,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct pkcs15_slot_data *p15_data = slot_data(slot->fw_data);
 	struct sc_pkcs15_card *p15card = fw_data->p15_card;
-	struct sc_pkcs15init_prkeyargs	priv_args;
+	struct sc_pkcs15init_keygen_args keygen_args;
 	struct sc_pkcs15init_pubkeyargs pub_args;
 	struct sc_pkcs15_object	 *priv_key_obj;
 	struct sc_pkcs15_object	 *pub_key_obj;
@@ -1218,7 +1218,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
 
-	memset(&priv_args, 0, sizeof(priv_args));
+	memset(&keygen_args, 0, sizeof(keygen_args));
 	memset(&pub_args, 0, sizeof(pub_args));
 
 	rc = sc_lock(p11card->card);
@@ -1230,7 +1230,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	/* 1. Convert the pkcs11 attributes to pkcs15init args */
 
 	if ((pin = slot_data_pin_info(slot->fw_data)) != NULL)
-		priv_args.auth_id = pub_args.auth_id = pin->auth_id;
+		keygen_args.prkey_args.auth_id = pub_args.auth_id = pin->auth_id;
 
 	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt, CKA_KEY_TYPE,
 		&keytype, NULL);
@@ -1238,7 +1238,8 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 		rv = CKR_ATTRIBUTE_VALUE_INVALID;
 		goto kpgen_done;
 	}
-	priv_args.key.algorithm = pub_args.key.algorithm = SC_ALGORITHM_RSA;
+	keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_RSA;
+	pub_args.key.algorithm               = SC_ALGORITHM_RSA;
 
 	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt,	CKA_MODULUS_BITS,
 		&keybits, NULL);
@@ -1250,13 +1251,13 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt,	CKA_ID,
 		&id.value, &id.len);
 	if (rv == CKR_OK)
-		priv_args.id = pub_args.id = id;
+		keygen_args.prkey_args.id = pub_args.id = id;
 
 	len = sizeof(priv_label) - 1;
 	rv = attr_find(pPrivTpl, ulPrivCnt, CKA_LABEL, priv_label, &len);
 	if (rv == CKR_OK) {
 		priv_label[len] = '\0';
-		priv_args.label = priv_label;
+		keygen_args.prkey_args.label = priv_label;
 	}
 	len = sizeof(pub_label) - 1;
 	rv = attr_find(pPubTpl, ulPubCnt, CKA_LABEL, pub_label, &len);
@@ -1265,12 +1266,14 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 		pub_args.label = pub_label;
 	}
 
-	rv = get_X509_usage_privk(pPrivTpl, ulPrivCnt, &priv_args.x509_usage);
+	rv = get_X509_usage_privk(pPrivTpl, ulPrivCnt,
+	    	&keygen_args.prkey_args.x509_usage);
 	if (rv == CKR_OK)
-		rv = get_X509_usage_pubk(pPubTpl, ulPubCnt, &priv_args.x509_usage);
+		rv = get_X509_usage_pubk(pPubTpl, ulPubCnt,
+			&keygen_args.prkey_args.x509_usage);
 	if (rv != CKR_OK)
 		goto kpgen_done;
-	pub_args.x509_usage = priv_args.x509_usage;
+	pub_args.x509_usage = keygen_args.prkey_args.x509_usage;
 
 	/* 2. Add the PINs the user presented so far. Some initialization
 	 * routines need to present these PINs again because some
@@ -1299,7 +1302,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 	/* 3.a Try on-card key pair generation */
 
 	rc = sc_pkcs15init_generate_key(fw_data->p15_card, profile,
-		&priv_args, keybits, &priv_key_obj);
+		&keygen_args, keybits, &priv_key_obj);
 	if (rc >= 0) {
 		id = ((struct sc_pkcs15_prkey_info *) priv_key_obj->data)->id;
 		rc = sc_pkcs15_find_pubkey_by_id(fw_data->p15_card, &id, &pub_key_obj);
@@ -1325,7 +1328,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 
 		sc_debug(context, "Doing key pair generation in software\n");
 		rv = sc_pkcs11_gen_keypair_soft(keytype, keybits,
-			&priv_args.key, &pub_args.key);
+			&keygen_args.prkey_args.key, &pub_args.key);
 		if (rv != CKR_OK) {
 			sc_debug(context, "sc_pkcs11_gen_keypair_soft failed: 0x%0x\n", rv);
 			goto kpgen_done;
@@ -1333,7 +1336,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 
 		/* Write the new public and private keys to the pkcs15 files */
 		rc = sc_pkcs15init_store_private_key(p15card, profile,
-			&priv_args, &priv_key_obj);
+			&keygen_args.prkey_args, &priv_key_obj);
 		if (rc >= 0)
 			rc = sc_pkcs15init_store_public_key(p15card, profile,
 				&pub_args, &pub_key_obj);

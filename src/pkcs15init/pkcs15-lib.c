@@ -890,7 +890,7 @@ sc_pkcs15init_init_prkdf(sc_pkcs15_card_t *p15card,
 int
 sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		struct sc_pkcs15init_prkeyargs *keyargs,
+		struct sc_pkcs15init_keygen_args *keygen_args,
 		unsigned int keybits,
 		struct sc_pkcs15_object **res_obj)
 {
@@ -900,8 +900,8 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	int		r;
 
 	/* For now, we support just RSA key pair generation */
-	if (!check_key_compatibility(p15card, &keyargs->key,
-		 keyargs->x509_usage,
+	if (!check_key_compatibility(p15card, &keygen_args->prkey_args.key,
+		 keygen_args->prkey_args.x509_usage,
 		 keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
 		return SC_ERROR_NOT_SUPPORTED;
 
@@ -909,7 +909,8 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_NOT_SUPPORTED;
 
 	/* Set the USER PIN reference from args */
-	r = set_user_pin_from_authid(p15card, profile, &keyargs->auth_id);
+	r = set_user_pin_from_authid(p15card, profile,
+	    	&keygen_args->prkey_args.auth_id);
 	if (r < 0)
 		return r;
 
@@ -918,8 +919,8 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 		return r;
 
 	/* Set up the PrKDF object */
-	r = sc_pkcs15init_init_prkdf(p15card, profile,
-				keyargs, &keyargs->key, keybits, &object);
+	r = sc_pkcs15init_init_prkdf(p15card, profile, &keygen_args->prkey_args,
+		&keygen_args->prkey_args.key, keybits, &object);
 	if (r < 0)
 		return r;
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
@@ -927,13 +928,13 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	/* Set up the PuKDF info. The public key will be filled in
 	 * by the card driver's generate_key function called below */
 	memset(&pubkey_args, 0, sizeof(pubkey_args));
-	pubkey_args.id = keyargs->id;
+	pubkey_args.id = keygen_args->prkey_args.id;
 #if 0
-	pubkey_args.auth_id = keyargs->auth_id;
+	pubkey_args.auth_id = keygen_args->prkey_args.auth_id;
 #endif
-	pubkey_args.label = keyargs->label;
-	pubkey_args.usage = keyargs->usage;
-	pubkey_args.x509_usage = keyargs->x509_usage;
+	pubkey_args.label = keygen_args->pubkey_label;
+	pubkey_args.usage = keygen_args->prkey_args.usage;
+	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
 
 	/* Generate the private key on card */
 	if (profile->ops->create_key) {

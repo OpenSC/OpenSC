@@ -866,21 +866,21 @@ do_store_data_object(struct sc_profile *profile)
 static int
 do_generate_key(struct sc_profile *profile, const char *spec)
 {
-	struct sc_pkcs15init_prkeyargs args;
+	struct sc_pkcs15init_keygen_args keygen_args;
 	unsigned int	evp_algo, keybits = 1024;
 	EVP_PKEY	*pkey;
 	int		r, split_key = 0;
 
-	if ((r = init_keyargs(&args)) < 0)
+	if ((r = init_keyargs(&keygen_args.prkey_args)) < 0)
 		return r;
 
 	/* Parse the key spec given on the command line */
 	if (!strncasecmp(spec, "rsa", 3)) {
-		args.key.algorithm = SC_ALGORITHM_RSA;
+		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_RSA;
 		evp_algo = EVP_PKEY_RSA;
 		spec += 3;
 	} else if (!strncasecmp(spec, "dsa", 3)) {
-		args.key.algorithm = SC_ALGORITHM_DSA;
+		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_DSA;
 		evp_algo = EVP_PKEY_DSA;
 		spec += 3;
 	} else {
@@ -902,15 +902,16 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 
 	/* If the card doesn't support keys that can both sign _and_
 	 * decipher, make sure the user specified --split-key */
-	if (sc_pkcs15init_requires_restrictive_usage(p15card, &args, keybits)) {
+	if (sc_pkcs15init_requires_restrictive_usage(p15card,
+		 &keygen_args.prkey_args, keybits)) {
 		if (!opt_split_key)
 			split_key_error();
 		split_key = 1;
 	}
 
 	if (!opt_softkeygen && !split_key) {
-		r = sc_pkcs15init_generate_key(p15card, profile,
-				&args, keybits, NULL);
+		r = sc_pkcs15init_generate_key(p15card, profile, &keygen_args,
+			keybits, NULL);
 		if (r >= 0 || r != SC_ERROR_NOT_SUPPORTED)
 			return r;
 		if (!opt_quiet)
@@ -921,15 +922,15 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 
 	/* Generate the key ourselves */
 	if ((r = do_generate_key_soft(evp_algo, keybits, &pkey)) < 0
-	 || (r = do_convert_private_key(&args.key, pkey) ) < 0)
+	 || (r = do_convert_private_key(&keygen_args.prkey_args.key, pkey) ) < 0)
 		goto out;
 
 	if (split_key) {
 		sc_pkcs15init_store_split_key(p15card,
-				profile, &args, NULL, NULL);
+				profile, &keygen_args.prkey_args, NULL, NULL);
 	} else {
 		r = sc_pkcs15init_store_private_key(p15card,
-				profile, &args, NULL);
+				profile, &keygen_args.prkey_args, NULL);
 	}
 
 	/* Store public key portion on card */

@@ -204,6 +204,12 @@ struct sc_pkcs15init_prkeyargs {
 	/* support for non-native keys */
 	char *			passphrase;
 };
+
+struct sc_pkcs15init_keygen_args {
+	struct sc_pkcs15init_prkeyargs prkey_args;
+	const char *                   pubkey_label;
+};
+
 #define SC_PKCS15INIT_EXTRACTABLE	0x0001
 #define SC_PKCS15INIT_NO_PASSPHRASE	0x0002
 #define SC_PKCS15INIT_SPLIT_KEY		0x0004
@@ -257,7 +263,7 @@ extern int	sc_pkcs15init_store_pin(struct sc_pkcs15_card *,
 				struct sc_pkcs15init_pinargs *);
 extern int	sc_pkcs15init_generate_key(struct sc_pkcs15_card *,
 				struct sc_profile *,
-				struct sc_pkcs15init_prkeyargs *,
+				struct sc_pkcs15init_keygen_args *,
 				unsigned int keybits,
 				struct sc_pkcs15_object **);
 extern int	sc_pkcs15init_store_private_key(struct sc_pkcs15_card *,
