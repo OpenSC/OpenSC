@@ -59,8 +59,10 @@ int scconf_lex_parse(scconf_parser *p, const char *filename)
 		return 0;
 
 	yylex();
+#if 0
 	yy_delete_buffer(yy_current_buffer);
 	yy_current_buffer = NULL;
+#endif
 	fclose(yyin);
 	return 1;
 }
