@@ -21,7 +21,7 @@
 #ifndef _SC_PKCS15_H
 #define _SC_PKCS15_H
 
-#include "sc.h"
+#include "opensc.h"
 
 #define SC_PKCS15_PIN_MAGIC		0x31415926
 #define SC_PKCS15_MAX_PINS		2
