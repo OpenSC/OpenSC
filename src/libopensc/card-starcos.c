@@ -233,7 +233,7 @@ static int starcos_init(struct sc_card *card)
 		return SC_ERROR_INTERNAL;
 
 	/* we need read_binary&friends with max 128 bytes per read */
-	card->chopsize=0x80;
+	card->max_le = 0x80;
 
 	return 0;
 }
