@@ -6,8 +6,8 @@
  */
 
 #include "sc-test.h"
-#include "sc.h"
-#include "sc-pkcs15.h"
+#include "opensc.h"
+#include "opensc-pkcs15.h"
 #include "sc-asn1.h"
 #include <stdio.h>
 #include <stdlib.h>

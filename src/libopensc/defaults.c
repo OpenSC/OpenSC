@@ -1,6 +1,6 @@
 
-#include "sc.h"
-#include "sc-pkcs15.h"
+#include "opensc.h"
+#include "opensc-pkcs15.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

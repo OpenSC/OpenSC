@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "sc.h"
+#include "opensc.h"
 #include "sc-asn1.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,7 +26,7 @@
 #include <assert.h>
 #include <ctype.h>
 
-const char *sc_version = LIBSC_VERSION;
+const char *sc_version = OPENSC_VERSION;
 int sc_debug = 1;
 
 int _sc_sw_to_errorcode(int sw1, int sw2)

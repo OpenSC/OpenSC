@@ -24,8 +24,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <sc.h>
-#include <sc-pkcs15.h>
+#include <opensc.h>
+#include <opensc-pkcs15.h>
 
 #define OPT_CHANGE_PIN	0x100
 #define OPT_LIST_PINS	0x101

@@ -25,7 +25,7 @@
 #include <winscard.h>
 
 #include "sc-pkcs11.h"
-#include <sc.h>
+#include <opensc.h>
 
 struct sc_context *ctx = NULL;
 struct pkcs11_slot slot[PKCS11_MAX_SLOTS];
@@ -36,7 +36,7 @@ void LOG(char *format, ...)
 	va_list valist;
 	FILE *out;
 
-	out = fopen("/tmp/libsc-pkcs11.log", "a");
+	out = fopen("/tmp/libopensc-pkcs11.log", "a");
 	if (out != NULL) {
                 va_start(valist, format);
 		vfprintf(out, format, valist);

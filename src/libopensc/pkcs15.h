@@ -1,5 +1,5 @@
 /*
- * sc-pkcs15.h: PKCS#15 header file
+ * opensc-pkcs15.h: OpenSC PKCS#15 header file
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

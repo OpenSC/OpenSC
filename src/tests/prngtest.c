@@ -6,7 +6,7 @@
  */
 
 #include "sc-test.h"
-#include "sc.h"
+#include "opensc.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +51,9 @@ int main(int argc, char *argv[])
 			       (foo - foo2)/100);
 			printf("Frequencies:\n");
 			for (i = 0; i < 256; i++) {
-				printf("%02X: %5d ", i, freq[i]);
+				if (i && (i & 0x07) == 0)
+					printf("\n");
+				printf("%02X: %3d ", i, freq[i]);
 			}
 			printf("\n");
 			c = 0;

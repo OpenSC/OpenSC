@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "sc.h"
-#include "sc-pkcs15.h"
+#include "opensc.h"
+#include "opensc-pkcs15.h"
 #include "sc-asn1.h"
 #include <assert.h>
 #include <string.h>

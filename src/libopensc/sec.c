@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "sc.h"
+#include "opensc.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <assert.h>

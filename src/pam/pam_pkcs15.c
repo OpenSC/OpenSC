@@ -16,8 +16,8 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 
-#include <sc.h>
-#include <sc-pkcs15.h>
+#include <opensc.h>
+#include <opensc-pkcs15.h>
 
 #ifndef NDEBUG
 #define DBG(x) { if (pamdebug) { x; } }
@@ -283,6 +283,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	}
 	DBG(printf("Verifying PIN code...\n"));
 	r = sc_pkcs15_verify_pin(p15card, pinfo, password, strlen(password));
+	memset(password, 0, strlen(password));
 	if (r) {
 		DBG(printf("PIN code verification failed: %s\n", sc_strerror(r)));
 		if (r == SC_ERROR_CARD_REMOVED)

@@ -4,7 +4,7 @@
  */
 
 #include "sc-test.h"
-#include "sc.h"
+#include "opensc.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>

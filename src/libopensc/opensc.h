@@ -1,5 +1,5 @@
 /*
- * sc.h: SmartCard library header file
+ * opensc.h: OpenSC library header file
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

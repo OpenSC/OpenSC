@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "sc.h"
+#include "opensc.h"
 
 struct sc_context *ctx;
 struct sc_card *card;

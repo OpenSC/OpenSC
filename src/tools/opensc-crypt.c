@@ -24,8 +24,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <sc.h>
-#include <sc-pkcs15.h>
+#include <opensc.h>
+#include <opensc-pkcs15.h>
 
 int opt_reader = 0, opt_pin = 0, quiet = 0;
 char * opt_pincode = NULL, * opt_key_id = NULL;
