@@ -366,6 +366,30 @@ int scconf_list_strings_length(const scconf_list * list)
 	return len;
 }
 
+const char **scconf_list_toarray(const scconf_list * list)
+{
+	const scconf_list * lp = list;
+	const char **tp;
+	int len = 0;
+
+	while (lp) {
+		len++;
+		lp = lp->next;
+	}
+	tp = (const char **)malloc(sizeof(char *) * (len + 1));
+	if (!tp)
+		return tp;
+	lp = list;
+	len = 0;
+	while (lp) {
+		tp[len] = lp->data;
+		len++;
+		lp = lp->next;
+	}
+	tp[len] = NULL;
+	return tp;
+}
+
 char *scconf_list_strdup(const scconf_list * list, const char *filler)
 {
 	char *buf = NULL;

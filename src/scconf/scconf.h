@@ -213,6 +213,13 @@ extern int scconf_list_strings_length(const scconf_list * list);
  */
 extern char *scconf_list_strdup(const scconf_list * list, const char *filler);
 
+/* Returns an allocated array of const char *pointers to
+ * list elements.
+ * Last pointer is NULL
+ * Array must be freed, but pointers to strings belong to scconf_list
+ */
+extern const char **scconf_list_toarray(const scconf_list * list);
+
 #ifdef __cplusplus
 }
 #endif
