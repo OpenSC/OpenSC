@@ -27,7 +27,7 @@ engine_pkcs11_la_SOURCES = \
 	hw_pkcs11.c engine_pkcs11.c engine_pkcs11.h \
 	p11_attr.c p11_cert.c p11_err.c p11_key.c \
 	p11_load.c p11_misc.c p11_rsa.c p11_slot.c \
-	pkcs11-internal.h libpkcs11.h
+	pkcs11-internal.h
 engine_pkcs11_la_CFLAGS = $(OPENSSL_CFLAGS)
 engine_pkcs11_la_LIBADD = @LIBCRYPTOA@ ../pkcs11/libpkcs11.la
 engine_pkcs11_la_LDFLAGS = $(OPENSSL_LDFLAGS) -module -avoid-version

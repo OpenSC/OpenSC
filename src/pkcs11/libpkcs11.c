@@ -16,16 +16,6 @@
 
 #define MAGIC			0xd00bed00
 
-#if defined(_WIN32)
-#define DEFAULT_MODULE_NAME	"opensc-pkcs11";
-#elif defined(HAVE_DLFCN_H) && defined(__APPLE__)
-#define DEFAULT_MODULE_NAME	"opensc-pkcs11.so";
-#elif defined(__APPLE__)
-#define DEFAULT_MODULE_NAME	"opensc-pkcs11.bundle";
-#else
-#define DEFAULT_MODULE_NAME	"opensc-pkcs11.so";
-#endif
-
 struct sc_pkcs11_module {
 	unsigned int _magic;
 	scdl_context_t *handle;
@@ -46,7 +36,7 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 	mod->_magic = MAGIC;
 
 	if (mspec == NULL)
-		mspec = DEFAULT_MODULE_NAME;
+		mspec = PKCS11_DEFAULT_MODULE_NAME;
 	mod->handle = scdl_open(mspec);
 	if (mod->handle == NULL)
 		goto failed;

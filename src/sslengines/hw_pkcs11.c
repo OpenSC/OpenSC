@@ -1,7 +1,7 @@
 /* crypto/engine/hw_pkcs11.c */
 /* Written by Geoff Thorpe (geoff@geoffthorpe.net) for the OpenSSL
  * project 2000.
- * Copied/modified by Kevin Stefanik (kstef@mtppi.org) for the OpenSC 
+ * Copied/modified by Kevin Stefanik (kstef@mtppi.org) for the OpenSC
  * project 2003.
  */
 /* ====================================================================
@@ -13,7 +13,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -59,19 +59,15 @@
  *
  */
 
-/*#include "cryptlib.h"*/
-
+#include "pkcs11-internal.h"
 #include <stdio.h>
 #include <string.h>
 #include <openssl/engine.h>
-#ifndef ENGINE_CMD_BASE 
+#ifndef ENGINE_CMD_BASE
 #error did not get engine.h
 #endif
-
-
 #include <openssl/crypto.h>
 #include <openssl/dso.h>
-
 #include "engine_pkcs11.h"
 
 #define PKCS11_ENGINE_ID "pkcs11"
@@ -79,7 +75,6 @@
 
 #define CMD_SO_PATH		ENGINE_CMD_BASE
 #define CMD_MODULE_PATH 	(ENGINE_CMD_BASE+1)
-
 
 static int pkcs11_engine_destroy(ENGINE *e);
 static int pkcs11_engine_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f)());
@@ -99,8 +94,6 @@ static const ENGINE_CMD_DEFN pkcs11_cmd_defns[] = {
 		ENGINE_CMD_FLAG_STRING},
 	{0, NULL, NULL, 0}
 	};
-
-
 
 /* Destructor */
 static int pkcs11_engine_destroy(ENGINE *e)
@@ -124,21 +117,18 @@ static int pkcs11_engine_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f)())
 /* set up default rsa_meth_st with overloaded rsa functions */
 /* the actual implementation needs to be in another object */
 
-static int (*orig_finish)(RSA* rsa) ;
+static int (*orig_finish)(RSA* rsa);
 
 static int
 pkcs11_engine_rsa_finish(RSA* rsa) {
 
- 	pkcs11_rsa_finish(rsa);	
-	
+ 	pkcs11_rsa_finish(rsa);
+
 	if (orig_finish)
 		orig_finish(rsa);
 	return 1;
 
 }
-
-
-
 
 /* This internal function is used by ENGINE_pkcs11() and possibly by the
  * "dynamic" ENGINE support too */
@@ -183,7 +173,5 @@ static int bind_fn(ENGINE *e, const char *id)
 	return 1;
 	}
 
-
 IMPLEMENT_DYNAMIC_CHECK_FN()
 IMPLEMENT_DYNAMIC_BIND_FN(bind_fn)
-

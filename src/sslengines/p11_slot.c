@@ -9,7 +9,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -55,9 +55,9 @@
  *
  */
 
+#include "pkcs11-internal.h"
 #include <string.h>
 #include <openssl/buffer.h>
-#include "pkcs11-internal.h"
 
 static int	pkcs11_init_slot(PKCS11_CTX *, PKCS11_SLOT *, CK_SLOT_ID);
 static int	pkcs11_check_token(PKCS11_CTX *, PKCS11_SLOT *);
@@ -82,7 +82,7 @@ PKCS11_enumerate_slots(PKCS11_CTX *ctx,
 		rv = priv->method->C_GetSlotList(FALSE, slotid, &nslots);
 		CRYPTOKI_checkerr(PKCS11_F_PKCS11_ENUM_SLOTS, rv);
 
-		slots = (PKCS11_SLOT *) pkcs11_malloc(nslots 
+		slots = (PKCS11_SLOT *) pkcs11_malloc(nslots
 					* sizeof(PKCS11_SLOT));
 		for (n = 0; n < nslots; n++) {
 			if (pkcs11_init_slot(ctx, &slots[n], slotid[n])) {

@@ -7,14 +7,13 @@
  * Copyright (C) 2002, Olaf Kirch <okir@lst.de>
  */
 
+#include "pkcs11-internal.h"
 #include <assert.h>
 #include <string.h>
-#include "pkcs11-internal.h"
 
 static int	pkcs11_getattr_int(PKCS11_CTX *, CK_SESSION_HANDLE,
 	       		CK_OBJECT_HANDLE, CK_ATTRIBUTE_TYPE,
 		       	void *, size_t *);
-
 
 /*
  * Query pkcs11 attributes
@@ -25,7 +24,7 @@ pkcs11_getattr_int(PKCS11_CTX *ctx, CK_SESSION_HANDLE session,
 {
 	CK_ATTRIBUTE	templ;
 	int		rv;
-	
+
 	templ.type = type;
 	templ.pValue = value;
 	templ.ulValueLen = *size;

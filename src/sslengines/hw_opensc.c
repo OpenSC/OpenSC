@@ -1,7 +1,7 @@
 /* crypto/engine/hw_opensc.c */
 /* Written by Geoff Thorpe (geoff@geoffthorpe.net) for the OpenSSL
  * project 2000.
- * Copied/modified by Kevin Stefanik (kstef@mtppi.org) for the OpenSC 
+ * Copied/modified by Kevin Stefanik (kstef@mtppi.org) for the OpenSC
  * project 2003.
  */
 /* ====================================================================
@@ -13,7 +13,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -59,28 +59,25 @@
  *
  */
 
-/*#include "cryptlib.h"*/
-
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <openssl/engine.h>
-#ifndef ENGINE_CMD_BASE 
+#ifndef ENGINE_CMD_BASE
 #error did not get engine.h
 #endif
-
 #include <openssl/crypto.h>
 #include <openssl/dso.h>
-
-#include "opensc/opensc.h"
-#include "opensc/pkcs15.h"
-
+#include <opensc/opensc.h>
+#include <opensc/pkcs15.h>
 #include "engine_opensc.h"
 
 #define OPENSC_ENGINE_ID "opensc"
 #define OPENSC_ENGINE_NAME "opensc engine"
 
 #define CMD_SO_PATH		ENGINE_CMD_BASE
-
 
 static int opensc_engine_destroy(ENGINE *e);
 static int opensc_engine_init(ENGINE *e);
@@ -104,8 +101,7 @@ static int opensc_engine_finish(ENGINE *e) {
 	return opensc_finish();
 }
 
-
-static int 
+static int
 opensc_engine_init(ENGINE *e)
 {
 	return opensc_init();
@@ -130,19 +126,18 @@ static int opensc_engine_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f)())
 /* set up default rsa_meth_st with overloaded rsa functions */
 /* the actual implementation needs to be in another object */
 
-static int (*orig_finish)(RSA* rsa) ;
+static int (*orig_finish)(RSA* rsa);
 
 static int
 opensc_engine_rsa_finish(RSA* rsa) {
 
- 	opensc_rsa_finish(rsa);	
-	
+ 	opensc_rsa_finish(rsa);
+
 	if (orig_finish)
 		orig_finish(rsa);
 	return 1;
 
 }
-
 
 static RSA_METHOD * sc_get_rsa_method(void)
 {
@@ -167,7 +162,6 @@ static RSA_METHOD * sc_get_rsa_method(void)
 	smart_rsa.flags|=RSA_FLAG_SIGN_VER;
 	return &smart_rsa;
 }
-
 
 /* This internal function is used by ENGINE_opensc() and possibly by the
  * "dynamic" ENGINE support too */
@@ -212,7 +206,5 @@ static int bind_fn(ENGINE *e, const char *id)
 	return 1;
 	}
 
-
 IMPLEMENT_DYNAMIC_CHECK_FN()
 IMPLEMENT_DYNAMIC_BIND_FN(bind_fn)
-

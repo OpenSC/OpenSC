@@ -9,7 +9,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -60,11 +60,10 @@
  * PKCS11 token
  */
 
+#include "pkcs11-internal.h"
 #include <string.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
-
-#include "pkcs11-internal.h"
 
 static int	pkcs11_get_rsa_public(PKCS11_KEY *, EVP_PKEY *);
 static int	pkcs11_get_rsa_private(PKCS11_KEY *, EVP_PKEY *);
@@ -74,7 +73,6 @@ RSA_METHOD * pkcs11_get_rsa_method();
 	pkcs11_getattr(KEY2TOKEN(key), PRIVKEY(key)->object, t, p, s)
 #define key_getattr_bn(k, t, bn) \
 	pkcs11_getattr_bn(KEY2TOKEN(key), PRIVKEY(key)->object, t, bn)
-
 
 /*
  * Get RSA key material
@@ -128,7 +126,7 @@ pkcs11_rsa_decrypt(int flen, const unsigned char *from, unsigned char *to,
 	PKCS11_KEY	*key = (PKCS11_KEY *) RSA_get_app_data(rsa);
 
 	if (padding != RSA_PKCS1_PADDING)
-		return -1;	
+		return -1;
 	if (key == NULL)
 		return -1;
 

@@ -2,7 +2,7 @@
  * Copyright (c) 2002 Juha Yrjölä.  All rights reserved.
  * Copyright (c) 2001 Markus Friedl.
  * Copyright (c) 2003 Kevin Stefanik
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -24,15 +24,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-
 #include <stdio.h>
 #include <string.h>
 #include <openssl/crypto.h>
 #include <openssl/objects.h>
 #include <openssl/engine.h>
 
-int set_module(const char *modulename) ;
+int set_module(const char *modulename);
 
 int pkcs11_finish(ENGINE *engine);
 
@@ -40,12 +38,11 @@ int pkcs11_init(ENGINE *engine);
 
 int pkcs11_rsa_finish(RSA* rsa);
 
-
 EVP_PKEY *pkcs11_load_public_key(ENGINE *e, const char *s_key_id,
 	UI_METHOD *ui_method, void *callback_data);
 
 EVP_PKEY *pkcs11_load_private_key(ENGINE *e, const char *s_key_id,
-	UI_METHOD *ui_method, void *callback_data) ;
+	UI_METHOD *ui_method, void *callback_data);
 
 /* defined in p11_rsa.c */
 RSA_METHOD * pkcs11_get_rsa_method();

@@ -9,7 +9,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -58,35 +58,18 @@
 #ifndef HEADER_PKCS11_INTERNAL_H
 #define HEADER_PKCS11_INTERNAL_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/x509.h>
+#include <opensc/pkcs11.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* PKCS11 specific weirdo macros */
-#define CK_PTR		*
-#define NULL_PTR	0
-#define CK_DEFINE_FUNCTION(returnType, name) \
-			returnType name
-#define CK_DECLARE_FUNCTION(returnType, name) \
-			returnType name
-#define CK_DECLARE_FUNCTION_POINTER(returnType, name) \
-			returnType (*name)
-#define CK_CALLBACK_FUNCTION(returnType, name) \
-			returnType (*name)
-
-
-#ifndef _WIN32
-#include "opensc/rsaref/pkcs11.h"
-#else
-#pragma pack(push, cryptoki, 1)
-#include "opensc/rsaref/pkcs11.h"
-#pragma pack(pop, cryptoki)
-#endif
-
 
 /* get some structures for local code to handle pkcs11 data readily */
 /* Use the first free lib ID available */
@@ -302,8 +285,6 @@ typedef struct pkcs11_cert_private {
 } PKCS11_CERT_private;
 #define PRIVCERT(cert)		((PKCS11_CERT_private *) cert->_private)
 
-
-
 /*
  * Mapping Cryptoki error codes to those used internally
  * by this code.
@@ -364,4 +345,3 @@ extern PKCS11_KEY_ops	pkcs11_rsa_ops;
 }
 #endif
 #endif
-

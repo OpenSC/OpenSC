@@ -3,7 +3,7 @@
  * Copyright (c) 2001 Markus Friedl.
  * Copyright (c) 2002 Olaf Kirch
  * Copyright (c) 2003 Kevin Stefanik
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -25,14 +25,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-
+#include "pkcs11-internal.h"
 #include <stdio.h>
 #include <string.h>
-#include <config.h>
 #include <openssl/crypto.h>
 #include <openssl/objects.h>
-#include "pkcs11-internal.h"
 #include "engine_pkcs11.h"
 
 #define fail(msg) { fprintf(stderr,msg); return NULL;}
@@ -41,11 +38,7 @@ PKCS11_CTX	*ctx;
 char* pin;
 int quiet=1;
 
-#ifndef _WIN32
-const char *module = "opensc-pkcs11.so";
-#else
-const char *module = "opensc-pkcs11";  /* no need to add .dll */
-#endif
+const char *module = PKCS11_DEFAULT_MODULE_NAME;
 
 int set_module(const char *modulename) {
 	module=modulename;
@@ -57,7 +50,7 @@ char* get_pin(UI_METHOD* ui_method, char* sc_pin, int maxlen) {
 	ui=UI_new();
 	UI_set_method(ui,ui_method);
 	if(!UI_add_input_string(ui, "SmartCard PIN: ", 0, sc_pin, 1, maxlen)) {
-			fprintf(stderr, "UI_add_input_string failed\n"); 
+			fprintf(stderr, "UI_add_input_string failed\n");
 			UI_free(ui); return NULL; }
 	if(!UI_process(ui)) {
 			fprintf(stderr, "UI_process failed\n"); return NULL;}
@@ -67,7 +60,7 @@ char* get_pin(UI_METHOD* ui_method, char* sc_pin, int maxlen) {
 }
 
 int pkcs11_finish(ENGINE *engine) {
-	
+
 	if (ctx) {
 		PKCS11_CTX_free(ctx);
 	}
@@ -90,32 +83,11 @@ int pkcs11_init(ENGINE *engine) {
 
 int
 pkcs11_rsa_finish(RSA* rsa) {
-	
+
 	if(pin) {free(pin);}
 	/* need to free RSA_ex_data? */
 	return 1;
 
-}
-
-static int hex2byte(const char *hex)
-{
-	int b = 0;
-	if (hex[0]>='0' && hex[0]<='9')
-		b = hex[0] - '0';
-	else if (hex[0]>='a'&&hex[0]<='f')
-		b = hex[0] - 'a' + 10;
-	else if (hex[0]>='A'&&hex[0]<='F')
-		b = hex[0] - 'A' + 10;
-	else
-		return -1;
-	b *= 16;
-	if (hex[1]>='0' && hex[1]<='9')
-		return b + hex[1] - '0';
-	else if (hex[1]>='a'&&hex[1]<='f')
-		return b + hex[1] - 'a' + 10;
-	else if (hex[1]>='A'&&hex[1]<='F')
-		return b + hex[1] - 'A' + 10;
-	return -1;
 }
 
 static int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
@@ -184,7 +156,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 	int		slot_nr = -1;
 	char		flags[64];
 	int		logged_in = 0;
- 
+
 	/* if(pin) {free(pin); pin=NULL;} // keep cached key? */
 
 	/* Parse s_slot_key_id: [slot:<slotNr>][;][id:<keyID>] or NULL,
@@ -287,7 +259,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 	tok = slot->token;
 
 	if (!tok->initialized) {
-		printf("Found uninitialized token; \n"); 
+		printf("Found uninitialized token; \n");
 		return NULL;
 	}
 
@@ -327,7 +299,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 			break;
 		if (pin == NULL) {
 			pin=malloc(12);
-			get_pin(ui_method,pin,12); 
+			get_pin(ui_method,pin,12);
 		}
 		if (PKCS11_login(slot, 0, pin))
 			fail("Card login failed\n");

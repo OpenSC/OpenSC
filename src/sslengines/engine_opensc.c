@@ -2,7 +2,7 @@
  * Copyright (c) 2002 Juha Yrjölä.  All rights reserved.
  * Copyright (c) 2001 Markus Friedl.
  * Copyright (c) 2003 Kevin Stefanik
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -24,16 +24,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <openssl/crypto.h>
 #include <openssl/objects.h>
-#include "opensc/opensc.h"
-#include "opensc/pkcs15.h"
+#include <opensc/opensc.h>
+#include <opensc/pkcs15.h>
 #include "engine_opensc.h"
-
 
 /* static state info one card/reader at a time */
 static int quiet=1;
@@ -61,15 +61,14 @@ int opensc_finish(void) {
 
 int opensc_init(void) {
 	int r=0;
-	
+
 	if(!quiet)
 		fprintf(stderr,"initializing engine");
 
 	r = sc_establish_context(&ctx, "openssl");
 	if (r)
 		goto err;
-	
-	
+
 	r = sc_connect_card(ctx->reader[sc_reader_id], 0, &card);
 	if (r)
 		goto err;
@@ -185,7 +184,6 @@ EVP_PKEY *opensc_load_public_key(ENGINE *e, const char *s_key_id,
 	id->len = SC_PKCS15_MAX_ID_SIZE;
 	sc_pkcs15_hex_string_to_id(s_key_id, id);
 
-
 	r = sc_pkcs15_find_pubkey_by_id(p15card, id, &obj);
 	if (r >= 0) {
 		if (!quiet)
@@ -216,7 +214,7 @@ EVP_PKEY *opensc_load_public_key(ENGINE *e, const char *s_key_id,
 
 	/* now, set EVP_PKEY data from pubkey object */
 	key_out=EVP_PKEY_new();
-	if(!key_out) 
+	if(!key_out)
 		{fprintf(stderr, "failed to create new EVP_PKEY\n"); return NULL;};
 	EVP_PKEY_assign_RSA(key_out,RSA_new_method(e));
 #if 0
@@ -238,7 +236,7 @@ char* get_pin(UI_METHOD* ui_method, char* sc_pin, int maxlen) {
 	ui=UI_new();
 	UI_set_method(ui,ui_method);
 	if(!UI_add_input_string(ui, "SmartCard Password: ", 0, sc_pin, 1, maxlen)) {
-			fprintf(stderr, "UI_add_input_string failed"); 
+			fprintf(stderr, "UI_add_input_string failed");
 			UI_free(ui); return NULL; }
 	if(!UI_process(ui)) {
 			fprintf(stderr, "UI_process failed"); return NULL;}
@@ -251,10 +249,10 @@ EVP_PKEY *opensc_load_private_key(ENGINE *e, const char *s_key_id,
 	UI_METHOD *ui_method, void *callback_data) {
 	EVP_PKEY*  key_out;
 	if(!quiet)
-		 fprintf(stderr,"Loading private key!");	
- 
+		 fprintf(stderr,"Loading private key!");
+
 	if(sc_pin) {free(sc_pin); sc_pin=NULL;}
- 	key_out=opensc_load_public_key(e, s_key_id, ui_method, callback_data); 
+ 	key_out=opensc_load_public_key(e, s_key_id, ui_method, callback_data);
 	sc_pin=malloc(12);
 	get_pin(ui_method,sc_pin,12); /* do this here, when storing sc_pin in RSA */
 #if 0
@@ -276,14 +274,14 @@ sc_private_decrypt(int flen, const u_char *from, u_char *to, RSA *rsa,
 	int r;
 
 	if (padding != RSA_PKCS1_PADDING)
-		return -1;	
+		return -1;
 	r = sc_prkey_op_init(rsa, &key_obj);
 	if (r)
 		return -1;
 	r = sc_pkcs15_decipher(p15card, key_obj, 0, from, flen, to, flen);
 	sc_unlock(card);
 	if (r < 0) {
-		fprintf(stderr,"sc_pkcs15_decipher() failed: %s", sc_strerror(r)); 
+		fprintf(stderr,"sc_pkcs15_decipher() failed: %s", sc_strerror(r));
 		goto err;
 	}
 	return r;
@@ -298,7 +296,6 @@ sc_sign(int type, const u_char *m, unsigned int m_len,
 	struct sc_pkcs15_object *key_obj;
 	int r;
 	unsigned long flags = 0;
-	
 
 	if(!quiet)
 		fprintf(stderr,"signing with type %d\n", type);
@@ -307,7 +304,7 @@ sc_sign(int type, const u_char *m, unsigned int m_len,
 		return -1;
 	/* FIXME: length of sigret correct? */
 	/* FIXME: check 'type' and modify flags accordingly */
-	flags |= SC_ALGORITHM_RSA_PAD_PKCS1 ;
+	flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	if(type==NID_sha1) flags|=SC_ALGORITHM_RSA_HASH_SHA1;
 	if(type==NID_md5) flags|=SC_ALGORITHM_RSA_HASH_MD5;	/* SC_ALGORITHM_RSA_HASH_SHA1 */
 	r = sc_pkcs15_compute_signature(p15card, key_obj, flags,
@@ -315,7 +312,7 @@ sc_sign(int type, const u_char *m, unsigned int m_len,
 	sc_unlock(card);
 	if (r < 0) {
 		fprintf(stderr,"sc_pkcs15_compute_signature() failed: %s",
-		      sc_strerror(r)); 
+		      sc_strerror(r));
 		goto err;
 	}
 	*siglen = r;
@@ -331,7 +328,3 @@ sc_private_encrypt(int flen, const u_char *from, u_char *to, RSA *rsa,
 	fprintf(stderr,"Private key encryption not supported");
 	return -1;
 }
-
-
-
-

@@ -21,6 +21,10 @@
 #ifndef OPENSC_PKCS11_H
 #define OPENSC_PKCS11_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #ifndef _WIN32
 #include <opensc/rsaref/unix.h>
 #include <opensc/rsaref/pkcs11.h>
@@ -33,6 +37,16 @@
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#if defined(_WIN32)
+#define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11";
+#elif defined(HAVE_DLFCN_H) && defined(__APPLE__)
+#define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11.so";
+#elif defined(__APPLE__)
+#define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11.bundle";
+#else
+#define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11.so";
 #endif
 
 typedef struct sc_pkcs11_module sc_pkcs11_module_t;

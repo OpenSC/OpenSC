@@ -9,7 +9,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -55,13 +55,9 @@
  *
  */
 
-#include <string.h>
 #include "pkcs11-internal.h"
-#include "libpkcs11.h"
+#include <string.h>
 
-#ifndef PKCS11_MODULE_DIR
-#define PKCS11_MODULE_DIR "/usr/lib/pkcs11"
-#endif
 /* I don't think the comment below applies...?  _KLS */
 /* Currently, when we dlclose the pkcs11 module, this will
  * also unload all sorts of other libraries, e.g. the pcsc-lite
@@ -71,11 +67,8 @@
  * but is not anymore. The typical ``watch me walk over the edge
  * of that cliff there'' thing.
  */
-#undef DLCLOSE_OKAY
-#ifndef DLCLOSE_OKAY
-/*static const char *	the_module = NULL;*/
 static void *		the_handler = NULL;
-#endif
+
 /*
  * Create a new context
  */
@@ -174,5 +167,3 @@ PKCS11_CTX_free(PKCS11_CTX *ctx)
 	OPENSSL_free(ctx->_private);
 	OPENSSL_free(ctx);
 }
-
-

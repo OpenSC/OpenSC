@@ -9,7 +9,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -55,8 +55,8 @@
  *
  */
 
-#include <string.h>
 #include "pkcs11-internal.h"
+#include <string.h>
 
 static int	pkcs11_find_keys(PKCS11_TOKEN *, unsigned int);
 static int	pkcs11_next_key(PKCS11_CTX *ctx, PKCS11_TOKEN *token,
