@@ -25,8 +25,8 @@
 #include <config.h>
 #endif
 #include <opensc.h>
-#include <opensc-pkcs15.h>
-#include <sc-log.h>
+#include <pkcs15.h>
+#include <log.h>
 #include "rsaref/pkcs11.h"
 
 #define SC_PKCS11_MAX_VIRTUAL_SLOTS	4

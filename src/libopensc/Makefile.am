@@ -32,6 +32,6 @@ libopensc_la_SOURCES	= sc.c ctx.c module.c asn1.c log.c base64.c \
 libopensc_la_LDFLAGS	= -version-info 0:6:0
 libopensc_la_LIBADD	= @LIBDL@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF)
 
-include_HEADERS		= opensc.h opensc-pkcs15.h opensc-emv.h \
-		   	  cardctl.h sc-asn1.h sc-log.h
-noinst_HEADERS		= ctbcs.h sc-internal.h
+include_HEADERS		= opensc.h pkcs15.h emv.h \
+		   	  cardctl.h asn1.h log.h
+noinst_HEADERS		= ctbcs.h internal.h

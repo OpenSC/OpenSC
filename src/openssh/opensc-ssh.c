@@ -13,7 +13,7 @@
 #include <openssl/rsa.h>
 
 #include <opensc.h>
-#include <opensc-pkcs15.h>
+#include <pkcs15.h>
 #include <string.h>
 
 int quiet = 0;

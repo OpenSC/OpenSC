@@ -73,9 +73,9 @@ diff -u --unidirectional-new-file openssh-3.0.2p1-orig/configure.ac openssh-3.0.
 +					blibpath="$blibpath:${withval}"
 +				fi
 +			fi
-+			AC_CHECK_HEADERS(opensc-pkcs15.h)
++			AC_CHECK_HEADERS(pkcs15.h)
 +			if test "$ac_cv_header_opensc_pkcs15_h" != yes; then
-+				AC_MSG_ERROR(Can't find opensc-pkcs15.h)
++				AC_MSG_ERROR(Can't find pkcs15.h)
 +			fi
 +			AC_CHECK_LIB(opensc, sc_pkcs15_bind)
 +			if test "$ac_cv_lib_opensc_sc_pkcs15_bind" != yes; then
@@ -129,7 +129,7 @@ diff -u --unidirectional-new-file openssh-3.0.2p1-orig/scard-opensc.c openssh-3.
 +#include <openssl/x509.h>
 +
 +#include <opensc.h>
-+#include <opensc-pkcs15.h>
++#include <pkcs15.h>
 +
 +#include "key.h"
 +#include "log.h"

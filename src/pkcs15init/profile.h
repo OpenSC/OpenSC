@@ -9,7 +9,7 @@
 
 #include <openssl/rsa.h>
 #include <openssl/dsa.h>
-#include "opensc-pkcs15.h"
+#include "pkcs15.h"
 
 #ifndef SC_PKCS15_PROFILE_DIRECTORY
 #define SC_PKCS15_PROFILE_DIRECTORY	"/usr/lib/opensc/profiles"

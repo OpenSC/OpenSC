@@ -1,5 +1,5 @@
 /*
- * sc-log: Logging functions header file
+ * log: Logging functions header file
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

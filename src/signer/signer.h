@@ -5,7 +5,7 @@
 #include <config.h>
 #endif
 #include <opensc.h>
-#include <opensc-pkcs15.h>
+#include <pkcs15.h>
 #include <X11/Intrinsic.h>
 
 typedef struct _PluginInstance

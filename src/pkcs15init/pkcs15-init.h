@@ -7,7 +7,7 @@
 #ifndef PKCS15_INIT_H
 #define PKCS15_INIT_H
 
-#include <opensc-pkcs15.h>
+#include <pkcs15.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 

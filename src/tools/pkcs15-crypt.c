@@ -29,7 +29,7 @@
 #include <errno.h>
 #include <string.h>
 #include <opensc.h>
-#include <opensc-pkcs15.h>
+#include <pkcs15.h>
 
 const char *app_name = "pkcs15-crypt";
 

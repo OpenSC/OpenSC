@@ -18,9 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "sc-internal.h"
-#include "sc-asn1.h"
-#include "sc-log.h"
+#include "internal.h"
+#include "asn1.h"
+#include "log.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>

@@ -1,5 +1,5 @@
 /*
- * sc-asn1.h: ASN.1 header file
+ * asn1.h: ASN.1 header file
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -22,7 +22,7 @@
 #define _SC_ASN1_H
 
 #include "opensc.h"
-#include "opensc-pkcs15.h"
+#include "pkcs15.h"
 
 struct sc_asn1_entry {
 	const char *name;

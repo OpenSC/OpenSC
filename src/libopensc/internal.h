@@ -1,5 +1,5 @@
 /*
- * sc-internal.h: Internal definitions for libopensc
+ * internal.h: Internal definitions for libopensc
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

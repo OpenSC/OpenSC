@@ -22,7 +22,7 @@
 #include <config.h>
 #endif
 #include "util.h"
-#include <opensc-pkcs15.h>
+#include <pkcs15.h>
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>

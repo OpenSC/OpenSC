@@ -32,7 +32,7 @@
 #include <scrandom.h>
 #include <scldap.h>
 #include <opensc.h>
-#include <opensc-pkcs15.h>
+#include <pkcs15.h>
 #include <openssl/x509.h>
 #include <openssl/rsa.h>
 #include "scam.h"

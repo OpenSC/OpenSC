@@ -1,7 +1,7 @@
 #ifndef _OPENSC_CRYPTO_H
 #define _OPENSC_CRYPTO_H
 
-#include <opensc-pkcs15.h>
+#include <pkcs15.h>
 #include <openssl/rsa.h>
 
 struct sc_priv_data

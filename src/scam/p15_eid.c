@@ -31,7 +31,7 @@
 #include <sys/stat.h>
 #include <scrandom.h>
 #include <opensc.h>
-#include <opensc-pkcs15.h>
+#include <pkcs15.h>
 #include <openssl/x509.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>

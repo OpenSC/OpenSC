@@ -22,7 +22,7 @@
 #include <config.h>
 #endif
 #include "util.h"
-#include <opensc-pkcs15.h>
+#include <pkcs15.h>
 
 const char *app_name = "pkcs15-tool";
 
