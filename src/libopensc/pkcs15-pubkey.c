@@ -173,7 +173,9 @@ static struct sc_asn1_entry c_asn1_dsa_pub_coefficients[5] = {
 };
 
 int
-sc_pkcs15_decode_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key)
+sc_pkcs15_decode_pubkey_rsa(struct sc_context *ctx,
+			struct sc_pkcs15_pubkey_rsa *key,
+			const u8 *buf, size_t buflen)
 {
 	struct sc_asn1_entry asn1_public_key[2];
 	struct sc_asn1_entry asn1_rsa_coeff[3];
@@ -188,8 +190,7 @@ sc_pkcs15_decode_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa 
 	sc_format_asn1_entry(asn1_rsa_coeff + 1,
 				&key->exponent.data, &key->exponent.len, 0);
 
-	r = sc_asn1_decode(ctx, asn1_public_key,
-			key->data.value, key->data.len, NULL, NULL);
+	r = sc_asn1_decode(ctx, asn1_public_key, buf, buflen, NULL, NULL);
 	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
 
 	return 0;
@@ -290,24 +291,49 @@ sc_pkcs15_encode_pubkey(struct sc_context *ctx,
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
+int
+sc_pkcs15_decode_pubkey(struct sc_context *ctx,
+		struct sc_pkcs15_pubkey *key,
+		const u8 *buf, size_t len)
+{
+	if (key->algorithm == SC_ALGORITHM_RSA)
+		return sc_pkcs15_decode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
+	if (key->algorithm == SC_ALGORITHM_DSA)
+		return sc_pkcs15_decode_pubkey_dsa(ctx, &key->u.dsa, buf, len);
+	error(ctx, "Decoding of public key type %u not supported\n",
+			key->algorithm);
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
 /*
  * Read public key.
- * XXX: we should change this function to take an additional
- * algorithm parameter, and a sc_pkcs15_pubkey rather than
- * a sc_pkcs15_pubkey_rsa
  */
 int
 sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
-			const struct sc_pkcs15_pubkey_info *info,
-			struct sc_pkcs15_pubkey_rsa **out)
+			const struct sc_pkcs15_object *obj,
+			struct sc_pkcs15_pubkey **out)
 {
-	struct sc_pkcs15_pubkey_rsa *pubkey;
+	const struct sc_pkcs15_pubkey_info *info;
+	struct sc_pkcs15_pubkey *pubkey;
 	u8	*data;
 	size_t	len;
-	int	r;
+	int	algorithm, r;
 
-	assert(p15card != NULL && info != NULL && out != NULL);
+	assert(p15card != NULL && obj != NULL && out != NULL);
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
+
+	switch (obj->type) {
+	case SC_PKCS15_TYPE_PUBKEY_RSA:
+		algorithm = SC_ALGORITHM_RSA;
+		break;
+	case SC_PKCS15_TYPE_PUBKEY_DSA:
+		algorithm = SC_ALGORITHM_DSA;
+		break;
+	default:
+		error(p15card->card->ctx, "Unsupported public key type.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	info = (const struct sc_pkcs15_pubkey_info *) obj->data;
 
 	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
 	if (r < 0) {
@@ -315,15 +341,16 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 		return r;
 	}
 
-	pubkey = malloc(sizeof(struct sc_pkcs15_pubkey_rsa));
+	pubkey = malloc(sizeof(struct sc_pkcs15_pubkey));
 	if (pubkey == NULL) {
 		free(data);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-	memset(pubkey, 0, sizeof(struct sc_pkcs15_pubkey_rsa));
+	memset(pubkey, 0, sizeof(struct sc_pkcs15_pubkey));
+	pubkey->algorithm = algorithm;
 	pubkey->data.value = data;
 	pubkey->data.len = len;
-	if (sc_pkcs15_decode_pubkey_rsa(p15card->card->ctx, pubkey)) {
+	if (sc_pkcs15_decode_pubkey(p15card->card->ctx, pubkey, data, len)) {
 		free(data);
 		free(pubkey);
 		return SC_ERROR_INVALID_ASN1_OBJECT;
@@ -332,10 +359,26 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
-void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey_rsa *key)
+void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 {
 	assert(key != NULL);
-	free(key->modulus.data);
+	switch (key->algorithm) {
+	case SC_ALGORITHM_RSA:
+		free(key->u.rsa.modulus.data);
+		break;
+	case SC_ALGORITHM_DSA:
+		free(key->u.dsa.pub.data);
+		free(key->u.dsa.g.data);
+		free(key->u.dsa.p.data);
+		free(key->u.dsa.q.data);
+		break;
+	}
 	free(key->data.value);
+	memset(key, 0, sizeof(*key));
+}
+
+void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *key)
+{
+	sc_pkcs15_erase_pubkey(key);
 	free(key);
 }
