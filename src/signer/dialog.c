@@ -3,22 +3,6 @@
 #include <assuan.h>
 #include <stdarg.h>
 
-
-int log_get_fd()
-{
-	return 5;
-}
-
-void
-log_error( const char *fmt, ... )
-{
-    va_list arg_ptr ;
-
-    va_start( arg_ptr, fmt ) ;
-    vfprintf(stderr, fmt, arg_ptr );
-    va_end(arg_ptr);
-}
-
 struct entry_parm_s {
   int lines;
   size_t size;
