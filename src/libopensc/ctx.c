@@ -18,7 +18,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "config.h"
 #include "internal.h"
 #include "log.h"
 #include <stdio.h>
@@ -26,7 +25,7 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
-#include <sys/stat.h> /* for mkdir */
+#include <sys/stat.h>
 #include <limits.h>
 #ifdef _WIN32
 #include <windows.h>
