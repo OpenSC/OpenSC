@@ -56,6 +56,7 @@
 #include "pkcs15-init.h"
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
+#include <opensc/scdl.h>
 
 #define OPENSC_INFO_FILEPATH		"3F0050154946"
 #define OPENSC_INFO_PATH		"\x49\x46"
@@ -192,6 +193,71 @@ get_profile_from_config(struct sc_card *card, char *buffer, size_t size)
 	return 0;
 }
 
+
+static const char *find_library(sc_context_t *ctx, const char *name)
+{
+	int          i;
+	const char   *libname = NULL;
+	scconf_block *blk, **blocks;
+
+	for (i = 0; ctx->conf_blocks[i]; i++) {
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+			"framework", "pkcs15");
+                blk = blocks[0];
+                free(blocks);
+                if (blk == NULL)
+                        continue;
+		blocks = scconf_find_blocks(ctx->conf, blk, "pkcs15init", name);
+		blk = blocks[0];
+                free(blocks);
+                if (blk == NULL)
+                        continue;
+                libname = scconf_get_str(blk, "module", NULL);
+                break;
+        }
+	if (!libname) {
+		sc_debug(ctx, "unable to locate pkcs15init driver for '%s'\n", name);
+	}
+	return libname;
+}
+
+static void *load_dynamic_driver(struct sc_context *ctx, void **dll,
+	const char *name)
+{
+	const char *version, *libname;
+	void *handler;
+	void *(*modinit)(const char *)  = NULL;
+	const char *(*modversion)(void) = NULL;
+
+	libname = find_library(ctx, name);
+	if (!libname)
+		return NULL;
+	handler = scdl_open(libname);
+	if (handler == NULL) {
+		sc_error(ctx, "Module %s: cannot load %s library\n",name,libname);
+		return NULL;
+	}
+	/* verify correctness of module */
+	modinit    = scdl_get_address(handler, "sc_module_init");
+	modversion = scdl_get_address(handler, "sc_driver_version");
+	if (modinit == NULL || modversion == NULL) {
+		sc_error(ctx, "dynamic library '%s' is not a OpenSC module\n",libname);
+		scdl_close(handler);
+		return NULL;
+	}
+	/* verify module version */
+	version = modversion();
+	if (version == NULL || strncmp(version, "0.9.", strlen("0.9.")) > 0) {
+		sc_error(ctx,"dynamic library '%s': invalid module version\n",libname);
+		scdl_close(handler);
+		return NULL;
+	}
+	*dll = handler;
+	sc_debug(ctx, "successfully loaded pkcs15init driver '%s'\n", name);
+
+	return modinit(name);
+}
+
 /*
  * Set up profile
  */
@@ -220,6 +286,11 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 			func = (struct sc_pkcs15init_operations * (*)(void)) profile_operations[i].func;
 			break;
 		}
+	}
+	if (!func) {
+		/* no builtin support for this driver => look if there's a
+		 * dynamic module for this card */
+		func = load_dynamic_driver(card->ctx, &profile->dll, driver);
 	}
 	if (func) {
 		profile->ops = func();
@@ -270,6 +341,8 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 void
 sc_pkcs15init_unbind(struct sc_profile *profile)
 {
+	if (profile->dll)
+		scdl_close(profile->dll);
 	sc_profile_free(profile);
 }
 

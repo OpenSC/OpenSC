@@ -86,6 +86,7 @@ struct sc_profile {
 	char *			driver;
 	struct sc_pkcs15init_operations *ops;
 	struct sc_pkcs15init_callbacks *cbs;
+	void *			dll;	/* handle for dynamic modules */
 
 	struct file_info *	mf_info;
 	struct file_info *	df_info;
