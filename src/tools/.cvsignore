@@ -20,4 +20,5 @@ cryptoflex-tool
 opensc-explorer
 opensc-tool
 pkcs15-crypt
+pkcs15-init
 pkcs15-tool
