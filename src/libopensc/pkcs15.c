@@ -71,9 +71,10 @@ void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, int buflen)
 		{ "label",	    SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL },
 		{ "tokenflags",	    SC_ASN1_BIT_STRING,   ASN1_BIT_STRING, 0, &card->flags, &flags_len },
 		{ "seInfo",	    SC_ASN1_SEQUENCE,	  SC_ASN1_CONS | ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL },
-		{ "recordInfo",	    SC_ASN1_SEQUENCE,     SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL },
-		{ "supportedAlgorithms", SC_ASN1_SEQUENCE,SC_ASN1_CTX | 2, SC_ASN1_OPTIONAL, NULL },
-		{ NULL } };
+		{ "recordInfo",	    SC_ASN1_STRUCT,       SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL },
+		{ "supportedAlgorithms", SC_ASN1_STRUCT,  SC_ASN1_CONS | SC_ASN1_CTX | 2, SC_ASN1_OPTIONAL, NULL },
+		{ NULL }
+	};
 
 	buf = sc_asn1_verify_tag(buf, buflen, 0x30, &buflen);	/* SEQUENCE */
 	if (buf == NULL) {
@@ -163,13 +164,15 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 	struct sc_path path;
 	struct sc_asn1_struct asn1_obj_or_path[] = {
 		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path },
-		{ NULL } };
+		{ NULL }
+	};
 	struct sc_asn1_struct asn1_odf[] = {
 		{ "privateKeys",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, asn1_obj_or_path },
 		{ "certificates",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 4 | SC_ASN1_CONS, 0, asn1_obj_or_path },
 		{ "trustedCertificates", SC_ASN1_STRUCT, SC_ASN1_CTX | 5 | SC_ASN1_CONS, 0, asn1_obj_or_path },
 		{ "dataObjects",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 7 | SC_ASN1_CONS, 0, asn1_obj_or_path },
 		{ "authObjects",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 8 | SC_ASN1_CONS, 0, asn1_obj_or_path },
+		{ NULL }
 	};
 	
 	while (left > 0) {

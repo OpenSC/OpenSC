@@ -22,6 +22,7 @@
 #define _SC_ASN1_H
 
 #include "opensc.h"
+#include "opensc-pkcs15.h"
 
 struct sc_asn1_struct {
 	const char *name;
@@ -30,6 +31,13 @@ struct sc_asn1_struct {
 	unsigned int flags;
 	void *parm;
 	int *len;
+};
+
+struct sc_pkcs15_object {
+	struct sc_pkcs15_common_obj_attr *com_attr;
+	struct sc_asn1_struct *asn1_class_attr;
+	struct sc_asn1_struct *asn1_subclass_attr;
+	struct sc_asn1_struct *asn1_type_attr;
 };
 
 /* DER tag and length parsing */
@@ -75,26 +83,28 @@ int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 #define SC_ASN1_PRESENT			0x00000001
 #define SC_ASN1_OPTIONAL		0x00000002
 
-#define SC_ASN1_BOOLEAN                  1
-#define SC_ASN1_INTEGER                  2
-#define SC_ASN1_BIT_STRING               3
-#define SC_ASN1_OCTET_STRING             4
-#define SC_ASN1_NULL                     5
-#define SC_ASN1_OBJECT                   6
-#define SC_ASN1_ENUMERATED               10
-#define SC_ASN1_UTF8STRING               12
-#define SC_ASN1_SEQUENCE                 16
-#define SC_ASN1_SET                      17
-#define SC_ASN1_PRINTABLESTRING          19
-#define SC_ASN1_UTCTIME                  23
-#define SC_ASN1_GENERALIZEDTIME          24
+#define SC_ASN1_BOOLEAN                 1
+#define SC_ASN1_INTEGER                 2
+#define SC_ASN1_BIT_STRING              3
+#define SC_ASN1_OCTET_STRING            4
+#define SC_ASN1_NULL                    5
+#define SC_ASN1_OBJECT                  6
+#define SC_ASN1_ENUMERATED              10
+#define SC_ASN1_UTF8STRING              12
+#define SC_ASN1_SEQUENCE                16
+#define SC_ASN1_SET                     17
+#define SC_ASN1_PRINTABLESTRING         19
+#define SC_ASN1_UTCTIME                 23
+#define SC_ASN1_GENERALIZEDTIME         24
 
 /* internal structures */
-#define SC_ASN1_STRUCT			 128
-#define SC_ASN1_CHOICE			 129
+#define SC_ASN1_STRUCT			128
+#define SC_ASN1_CHOICE			129
 
-/* PKCS#15 structures */
-#define SC_ASN1_PATH			 256
+/* 'complex' structures */
+#define SC_ASN1_PATH			256
+#define SC_ASN1_PKCS15_ID		257
+#define SC_ASN1_PKCS15_OBJECT		258
 
 #define ASN1_TAG_CLASS			0xC0
 #define ASN1_TAG_UNIVERSAL		0x00

@@ -34,7 +34,6 @@ const char *sc_version = VERSION;
 #warning FIXME: version info
 const char *sc_version = "(undef)";
 #endif
-int sc_debug = 0;
 
 int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2)
 {
@@ -197,7 +196,7 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 	dwRecvLength = apdu->resplen + 2;
 	if (dwRecvLength > 255)		/* FIXME: PC/SC Lite quirk */
 		dwRecvLength = 255;
-	if (sc_debug > 3) {
+	if (card->ctx->debug > 3) {
 		char buf[2048];
 		
 		sc_hex_dump(card->ctx, s, dwSendLength, buf, sizeof(buf));
@@ -245,7 +244,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	SC_TEST_RET(card->ctx, r, "APDU sanity check failed");
 	r = sc_transceive_t0(card, apdu);
 	SC_TEST_RET(card->ctx, r, "transceive_t0() failed");
-	if (sc_debug > 3) {
+	if (card->ctx->debug > 3) {
 		char buf[2048];
 
 		buf[0] = 0;
@@ -274,7 +273,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 			      sc_strerror(r));
 			return r;
 		}
-		if (sc_debug > 3) {
+		if (card->ctx->debug > 3) {
 			char buf[2048];
 			buf[0] = 0;
 			if (rspapdu.resplen) {
@@ -292,224 +291,6 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 		apdu->sw2 = rspapdu.sw2;
 	}
 	return 0;
-}
-
-static void process_fci(struct sc_context *ctx, struct sc_file *file,
-			const u8 *buf, int buflen)
-{
-	int taglen, len = buflen;
-	const u8 *tag = NULL, *p = buf;
-
-	if (sc_debug > 2)
-		debug(ctx, "processing FCI bytes\n");
-	tag = sc_asn1_find_tag(p, len, 0x83, &taglen);
-	if (tag != NULL && taglen == 2) {
-		file->id = (tag[0] << 8) | tag[1];
-		if (sc_debug > 2)
-			debug(ctx, "  file identifier: 0x%02X%02X\n", tag[0],
-			       tag[1]);
-	}
-	tag = sc_asn1_find_tag(p, len, 0x81, &taglen);
-	if (tag != NULL && taglen >= 2) {
-		int bytes = (tag[0] << 8) + tag[1];
-		if (sc_debug > 2)
-			debug(ctx, "  bytes in file: %d\n", bytes);
-		file->size = bytes;
-	}
-	tag = sc_asn1_find_tag(p, len, 0x82, &taglen);
-	if (tag != NULL) {
-		if (taglen > 0) {
-			unsigned char byte = tag[0];
-			const char *type;
-
-			file->shareable = byte & 0x40 ? 1 : 0;
-			if (sc_debug > 2)
-				debug(ctx, "  shareable: %s\n",
-				       (byte & 0x40) ? "yes" : "no");
-			file->type = (byte >> 3) & 7;
-			file->ef_structure = byte & 0x07;
-			if (sc_debug > 2) {
-				switch ((byte >> 3) & 7) {
-				case 0:
-					type = "working EF";
-					break;
-				case 1:
-					type = "internal EF";
-					break;
-				case 7:
-					type = "DF";
-					break;
-				default:
-					type = "unknown";
-					break;
-				}
-				debug(ctx, "  type: %s\n", type);
-				debug(ctx, "  EF structure: %d\n",
-				       byte & 0x07);
-			}
-		}
-	}
-	tag = sc_asn1_find_tag(p, len, 0x84, &taglen);
-	if (tag != NULL && taglen > 0 && taglen <= 16) {
-		char name[17];
-		int i;
-
-		memcpy(file->name, tag, taglen);
-		file->namelen = taglen;
-
-		for (i = 0; i < taglen; i++) {
-			if (isalnum(tag[i]) || ispunct(tag[i])
-			    || isspace(tag[i]))
-				name[i] = tag[i];
-			else
-				name[i] = '?';
-		}
-		name[taglen] = 0;
-		if (sc_debug > 2)
-			debug(ctx, "File name: %s\n", name);
-	}
-	tag = sc_asn1_find_tag(p, len, 0x85, &taglen);
-	if (tag != NULL && taglen && taglen <= SC_MAX_PROP_ATTR_SIZE) {
-		memcpy(file->prop_attr, tag, taglen);
-		file->prop_attr_len = taglen;
-	} else
-		file->prop_attr_len = 0;
-	tag = sc_asn1_find_tag(p, len, 0x86, &taglen);
-	if (tag != NULL && taglen && taglen <= SC_MAX_SEC_ATTR_SIZE) {
-		memcpy(file->sec_attr, tag, taglen);
-		file->sec_attr_len = taglen;
-	} else
-		file->sec_attr_len = 0;
-	file->magic = SC_FILE_MAGIC;
-}
-
-int sc_select_file(struct sc_card *card,
-		   struct sc_file *file,
-		   const struct sc_path *in_path, int pathtype)
-{
-	struct sc_context *ctx;
-	struct sc_apdu apdu;
-	char buf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen;
-
-	assert(card != NULL && in_path != NULL);
-	SC_FUNC_CALLED(card->ctx);
-	ctx = card->ctx;
-
-	if (in_path->len > SC_MAX_PATH_SIZE)
-		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	if (in_path->len == 0)
-		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	memcpy(path, in_path->value, in_path->len);
-	pathlen = in_path->len;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0, 0);
-	apdu.resp = buf;
-	apdu.resplen = sizeof(buf);
-	
-	switch (pathtype) {
-	case SC_SELECT_FILE_BY_FILE_ID:
-		apdu.p1 = 0;
-		break;
-	case SC_SELECT_FILE_BY_DF_NAME:
-		apdu.p1 = 4;
-		break;
-	case SC_SELECT_FILE_BY_PATH:
-		apdu.p1 = 8;
-		if (pathlen >= 2 && memcmp(path, "\x3F\x00", 2) == 0) {
-			if (pathlen == 2) {	/* only 3F00 supplied */
-				apdu.p1 = 0;
-				break;
-			}
-			path += 2;
-			pathlen -= 2;
-		}
-		break;
-	default:
-		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
-	apdu.p2 = 0;		/* record */
-	apdu.lc = pathlen;
-	apdu.data = path;
-	apdu.datalen = pathlen;
-
-	if (file != NULL) {
-		memset(file, 0, sizeof(*file));
-		memcpy(&file->path.value, path, pathlen);
-		file->path.len = pathlen;
-	}
-	if (file == NULL || sc_file_valid(file))
-		apdu.no_response = 1;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	
-	if (apdu.no_response) {
-		if (apdu.sw1 == 0x61)
-			SC_FUNC_RETURN(card->ctx, 0);
-		SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
-	}
-
-	r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
-	if (r)
-		SC_FUNC_RETURN(card->ctx, r);
-
-	switch (apdu.resp[0]) {
-	case 0x6F:
-		if (file != NULL && apdu.resp[1] <= apdu.resplen)
-			process_fci(card->ctx, file, apdu.resp+2, apdu.resp[1]);
-		break;
-	case 0x00:	/* proprietary coding */
-		SC_FUNC_RETURN(card->ctx, 0);
-	default:
-		SC_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_RESPONSE);
-	}
-	SC_FUNC_RETURN(card->ctx, 0);
-}
-
-int sc_read_binary(struct sc_card *card,
-		   int idx, unsigned char *buf, int count)
-{
-#define RB_BUF_SIZE 250
-	struct sc_apdu apdu;
-	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r;
-
-	assert(card != NULL && buf != NULL);
-	if (sc_debug > 2)
-		debug(card->ctx, "sc_read_binary: %d bytes at index %d\n", count, idx);
-	if (count == 0)
-		SC_FUNC_RETURN(card->ctx, 0);
-	if (count > RB_BUF_SIZE) {
-		int bytes_read = 0;
-		unsigned char *p = buf;
-
-		while (count > 0) {
-			int n = count > RB_BUF_SIZE ? RB_BUF_SIZE : count;
-			r = sc_read_binary(card, idx, p, n);
-			SC_TEST_RET(card->ctx, r, "READ BINARY failed");
-			p += r;
-			idx += r;
-			bytes_read += r;
-			count -= r;
-			if (r == 0)
-				SC_FUNC_RETURN(card->ctx, bytes_read);
-		}
-		SC_FUNC_RETURN(card->ctx, bytes_read);
-	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0,
-		       (idx >> 8) & 0x7F, idx & 0xFF);
-	apdu.le = count;
-	apdu.resplen = count;
-	apdu.resp = recvbuf;
-
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.resplen == 0)
-		SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
-	memcpy(buf, recvbuf, apdu.resplen);
-
-	SC_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
 int sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
@@ -602,6 +383,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 		return SC_ERROR_OUT_OF_MEMORY;
 	ctx->use_std_output = 0;
 	ctx->use_cache = 1;
+	ctx->debug = 0;
 	rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL, "localhost", NULL,
 				   &ctx->pcsc_ctx);
 	if (rv != SCARD_S_SUCCESS)
@@ -763,7 +545,7 @@ const char *sc_strerror(int error)
 		"Unknown SmartCard",
 		"Unknown reply from SmartCard",
 		"Requested object not found",
-		"Card reset"
+		"Card reset",
 		"Required ASN.1 object not found",
 		"Premature end of ASN.1 stream",
 		"Too many objects",
@@ -814,33 +596,6 @@ int sc_unlock(struct sc_card *card)
 {
 	pthread_mutex_unlock(&card->mutex);
 	return _sc_unlock_int(card);
-}
-
-int sc_get_random(struct sc_card *card, u8 *rnd, int len)
-{
-	int r;
-	struct sc_apdu apdu;
-	u8 buf[10];
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
-		       0x84, 0x00, 0x00);
-	apdu.le = 8;
-	apdu.resp = buf;
-	apdu.resplen = 8;	/* include SW's */
-
-	while (len > 0) {
-		int n = len > 8 ? 8 : len;
-		
-		r = sc_transmit_apdu(card, &apdu);
-		if (r)
-			return r;
-		if (apdu.resplen != 8)
-			return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
-		memcpy(rnd, apdu.resp, n);
-		len -= n;
-		rnd += n;
-	}	
-	return 0;
 }
 
 int sc_list_files(struct sc_card *card, u8 *buf, int buflen)

@@ -27,6 +27,11 @@
 #include <assert.h>
 #include <stdlib.h>
 
+
+static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
+		      const u8 *in, int len, const u8 **newp, int *len_left,
+		      int choice, int depth);
+
 const char *tag2str(int tag)
 {
 	const static char *tags[] = {
@@ -52,6 +57,8 @@ static int read_tag(const u8 ** buf,
 	int left = buflen;
 	int cla, tag, len, i;
 
+	if (left < 2)
+		goto error;
 	*buf = NULL;
 	if (*p == 0)
 		return 0;
@@ -288,7 +295,7 @@ const u8 *sc_asn1_skip_tag(const u8 ** buf, int *buflen, int tag_in, int *taglen
 	return p;
 }
 
-static const u8 *sc_asn1_skip_tag2(const u8 ** buf, int *buflen, unsigned int tag_in, int *taglen_out)
+static const u8 *sc_asn1_skip_tag2(struct sc_context *ctx, const u8 ** buf, int *buflen, unsigned int tag_in, int *taglen_out)
 {
 	const u8 *p = *buf;
 	int len = *buflen, cla, tag, taglen;
@@ -323,7 +330,8 @@ static const u8 *sc_asn1_skip_tag2(const u8 ** buf, int *buflen, unsigned int ta
 		return NULL;
 	len -= (p - *buf);	/* header size */
 	if (taglen > len) {
-		fprintf(stderr, "skip_tag(): too long tag\n");
+		error(ctx, "too long ASN.1 object (size %d while only %d available)\n",
+		      taglen, len);
 		return NULL;
 	}
 	*buflen -= (p - *buf) + taglen;
@@ -469,8 +477,8 @@ int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen,
 	return 0;
 }
 
-int sc_asn1_parse_path(struct sc_context *ctx, const u8 *in, int len,
-		       struct sc_path *path)
+static int asn1_parse_path(struct sc_context *ctx, const u8 *in, int len,
+			      struct sc_path *path, int depth)
 {
 	int idx, r;
 	struct sc_asn1_struct asn1_path[] = {
@@ -479,24 +487,73 @@ int sc_asn1_parse_path(struct sc_context *ctx, const u8 *in, int len,
 		{ NULL }
 	};
 	path->len = SC_MAX_PATH_SIZE;
-	r = sc_asn1_parse(ctx, asn1_path, in, len, NULL, NULL);
+	r = asn1_parse(ctx, asn1_path, in, len, NULL, NULL, 0, depth + 1);
 	if (r)
 		return r;
 	
 	return 0;
 }
 
+static int asn1_parse_p15_object(struct sc_context *ctx, const u8 *in, int len,
+				    struct sc_pkcs15_object *obj, int depth)
+{
+	int r;
+	struct sc_pkcs15_common_obj_attr *com_attr = obj->com_attr;
+	int flags_len = sizeof(com_attr->flags);
+	int label_len = sizeof(com_attr->label);
+	struct sc_asn1_struct asn1_com_obj_attr[] = {
+		{ "label", SC_ASN1_UTF8STRING, ASN1_UTF8STRING, SC_ASN1_OPTIONAL, com_attr->label, &label_len },
+		{ "flags", SC_ASN1_BIT_STRING, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, &com_attr->flags, &flags_len },
+		{ "authId", SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, &com_attr->auth_id },
+		{ "userConsent", SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, &com_attr->user_consent },
+		{ "accessControlRules", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_p15_obj[] = {
+		{ "commonObjectAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_com_obj_attr },
+		{ "classAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, obj->asn1_class_attr },
+		{ "subClassAttributes", SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, obj->asn1_subclass_attr },
+		{ "typeAttributes", SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, 0, obj->asn1_type_attr },
+		{ NULL }
+	};
+	r = asn1_parse(ctx, asn1_p15_obj, in, len, NULL, NULL, 0, depth + 1);
+	return r;
+}
+
 static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entry,
-			     const u8 *obj, int objlen)
+			     const u8 *obj, int objlen, int depth)
 {
 	void *parm = entry->parm;
 	int *len = entry->len;
 	int r = 0;
 
+	if (ctx->debug > 2) {
+		u8 line[128], *linep = line;
+		int i;
+		
+		line[0] = 0;
+		for (i = 0; i < depth; i++) {
+			strcpy(linep, "  ");
+			linep += 2;
+		}
+		sprintf(linep, "decoding '%s'\n", entry->name);
+		debug(ctx, line);
+	}
+		
 	switch (entry->type) {
 	case SC_ASN1_STRUCT:
-		assert(parm != NULL);
-		r = sc_asn1_parse(ctx, (struct sc_asn1_struct *) parm, obj, objlen, NULL, NULL);
+		if (parm != NULL)
+			r = asn1_parse(ctx, (struct sc_asn1_struct *) parm, obj,
+				       objlen, NULL, NULL, 0, depth + 1);
+		break;
+	case SC_ASN1_BOOLEAN:
+		if (parm != NULL) {
+			if (objlen != 1) {
+				error(ctx, "invalid ASN.1 object length: %d\n", objlen);
+				r = SC_ERROR_INVALID_ASN1_OBJECT;
+			} else
+				*((u8 *) parm) = obj[0] ? 1 : 0;
+		}
 		break;
 	case SC_ASN1_INTEGER:
 		if (parm != NULL)
@@ -512,9 +569,11 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entr
 		}
 		break;
 	case SC_ASN1_OCTET_STRING:
-		if (parm != NULL && len != NULL) {
-			int c = objlen > *len ? *len : objlen;
-			
+		if (parm != NULL) {
+			int c;
+			assert(len != NULL);
+			c = objlen > *len ? *len : objlen;
+
 			memcpy(parm, obj, c);
 			*len = c;
 		}
@@ -524,92 +583,104 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entr
 			r = sc_asn1_decode_object_id(obj, objlen, (struct sc_object_id *) parm);
 		break;
 	case SC_ASN1_UTF8STRING:
-		if (parm != NULL && len != NULL)
+		if (parm != NULL) {
+			assert(len != NULL);
 			r = sc_asn1_decode_utf8string(obj, objlen, parm, len);
+		}
 		break;
 	case SC_ASN1_PATH:
 		if (entry->parm != NULL)
-			r = sc_asn1_parse_path(ctx, obj, objlen, (struct sc_path *) entry->parm);
+			r = asn1_parse_path(ctx, obj, objlen, (struct sc_path *) parm, depth);
+		break;
+	case SC_ASN1_PKCS15_ID:
+		if (entry->parm != NULL) {
+			struct sc_pkcs15_id *id = parm;
+			int c = objlen > sizeof(id->value) ? sizeof(id->value) : objlen;
+			
+			memcpy(id->value, obj, c);
+			id->len = c;
+		}
+		break;
+	case SC_ASN1_PKCS15_OBJECT:
+		if (entry->parm != NULL)
+			r = asn1_parse_p15_object(ctx, obj, objlen, (struct sc_pkcs15_object *) parm, depth);
 		break;
 	default:
 		error(ctx, "invalid ASN.1 type: %d\n", entry->type);
 		assert(0);
 	}
 	if (r) {
-		error(ctx, "decoding of ASN.1 object failed: %s\n", entry->name);
+		error(ctx, "decoding of ASN.1 object '%s' failed: %s\n", entry->name,
+		      sc_strerror(r));
 		return r;
 	}
 	entry->flags |= SC_ASN1_PRESENT;
 	return 0;
 }
 
-int sc_asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
-		  const u8 *in, int len, const u8 **newp, int *len_left)
+static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
+		      const u8 *in, int len, const u8 **newp, int *len_left,
+		      int choice, int depth)
 {
-	int r;
+	int r, idx = 0;
 	const u8 *p = in, *obj;
 	struct sc_asn1_struct *entry = asn1;
 	int left = len, objlen;
 
-	SC_FUNC_CALLED(ctx);
-	while (entry->name != NULL) {
+	if (ctx->debug > 2)
+		debug(ctx, "called, depth %d%s\n", depth, choice ? ", choice" : "");
+	if (left < 2)
+		SC_FUNC_RETURN(ctx, SC_ERROR_ASN1_END_OF_CONTENTS);
+	if (p[0] == 0 && p[1] == 0)
+		SC_FUNC_RETURN(ctx, SC_ERROR_ASN1_END_OF_CONTENTS);
+	for (idx = 0; asn1[idx].name != NULL; idx++) {
+		entry = &asn1[idx];
 		r = 0;
-		obj = sc_asn1_skip_tag2(&p, &left, entry->tag, &objlen);
+		obj = sc_asn1_skip_tag2(ctx, &p, &left, entry->tag, &objlen);
 		if (obj == NULL) {
-			if (entry->flags & SC_ASN1_OPTIONAL) {
-				entry++;
+			if (choice)
 				continue;
+			if (entry->flags & SC_ASN1_OPTIONAL)
+				continue;
+			error(ctx, "mandatory ASN.1 object '%s' not found\n", entry->name);
+			if (ctx->debug && left) {
+				u8 line[128], *linep = line;
+				int i;
+
+				line[0] = 0;
+				for (i = 0; i < 10 && i < left; i++) {
+					sprintf(linep, "%02X ", p[i]);
+					linep += 3;
+				}
+				debug(ctx, "next tag: %s\n", line);
 			}
-			error(ctx, "mandatory ASN.1 object not found: %s\n", entry->name);
-			return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
+			SC_FUNC_RETURN(ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
 		}
-		r = asn1_decode_entry(ctx, entry, obj, objlen);
+		r = asn1_decode_entry(ctx, entry, obj, objlen, depth);
 		if (r)
 			return r;
-		entry++;
+		if (choice)
+			break;
  	}
+ 	if (choice && asn1[idx].name == NULL) /* No match */
+		SC_FUNC_RETURN(ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
  	if (newp != NULL)
- 		*newp = p;
+		*newp = p;
  	if (len_left != NULL)
- 		*len_left = left;
- 	return 0;
+		*len_left = left;
+	if (choice)
+		SC_FUNC_RETURN(ctx, idx);
+	SC_FUNC_RETURN(ctx, 0);
+}
+
+int sc_asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
+		  const u8 *in, int len, const u8 **newp, int *len_left)
+{
+	return asn1_parse(ctx, asn1, in, len, newp, len_left, 0, 0);
 }
 
 int sc_asn1_parse_choice(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 			 const u8 *in, int len, const u8 **newp, int *len_left)
 {
-	int r, idx = 0;
-	const u8 *p = in, *obj;
-	struct sc_asn1_struct *entry;
-	int left = len, objlen;
-
-	SC_FUNC_CALLED(ctx);
-	entry = asn1;
-	while (entry->name) {
-		entry->flags &= ~SC_ASN1_PRESENT;
-		entry++;
-	}
-	if (left < 2)
-		return SC_ERROR_ASN1_END_OF_CONTENTS;
-	if (p[0] == 0 && p[1] == 0)
-		return SC_ERROR_ASN1_END_OF_CONTENTS;
-	entry = asn1;
-	while (entry->name) {
-		r = 0;
-		obj = sc_asn1_skip_tag2(&p, &left, entry->tag, &objlen);
-		if (obj == NULL) {
-			idx++;
-			entry++;
-			continue;
-		}
-		r = asn1_decode_entry(ctx, entry, obj, objlen);
-		if (r)
-			return r;
-		if (newp != NULL)
-			*newp = p;
-		if (len_left != NULL)
- 			*len_left = left;
-		return idx;
-	}
-	return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
+	return asn1_parse(ctx, asn1, in, len, newp, len_left, 1, 0);
 }

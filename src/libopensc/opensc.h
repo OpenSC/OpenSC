@@ -137,7 +137,7 @@ struct sc_card {
 
 	SCARDHANDLE pcsc_card;
 	int reader;
-	char atr[SC_MAX_ATR_SIZE];
+	u8 atr[SC_MAX_ATR_SIZE];
 	int atr_len;
 	
 	pthread_mutex_t mutex;
@@ -147,6 +147,8 @@ struct sc_context {
 	SCARDCONTEXT pcsc_ctx;
 	char *readers[SC_MAX_READERS];
 	int reader_count;
+
+	int debug;
 
 	int use_std_output, use_cache;
 };
@@ -245,7 +247,6 @@ void sc_print_binary(FILE *f, const u8 *buf, int len);
 int sc_hex_to_bin(const char *in, u8 *out, int *outlen);
 int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2);
 
-extern int sc_debug;
 extern const char *sc_version;
 
 extern const struct sc_defaults sc_card_table[];

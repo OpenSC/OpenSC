@@ -20,7 +20,9 @@
 
 #include "sc-log.h"
 #include <stdarg.h>
+#include <stdlib.h>
 #include <assert.h>
+#include <unistd.h>
 #include <ctype.h>
 #include <string.h>
 
@@ -64,16 +66,19 @@ void do_log(struct sc_context *ctx, int facility, const char *file,
 	va_end(ap);
 }
 
-void do_log2(struct sc_context *ctx, int facility, const char *file,
+void do_log2(struct sc_context *ctx, int type, const char *file,
 	     int line, const char *func, const char *format, va_list args)
 {
 	FILE *outf = NULL;
 	char buf[1024], *p;
+	static char *term = NULL;
+	const char *terms[] = { "linux", "xterm", "Eterm" };
+	int term_count = sizeof(terms)/sizeof(terms[0]);
 	int left, r;
 
 	assert(ctx != NULL);
 	if (ctx->use_std_output) {
-		switch (facility) {
+		switch (type) {
 		case SC_LOG_ERROR:
 			outf = stderr;
 			break;
@@ -97,7 +102,39 @@ void do_log2(struct sc_context *ctx, int facility, const char *file,
 	if (vsnprintf(p, left, format, args) < 0)
 		return;
 	if (ctx->use_std_output) {
-		fputs(buf, outf);
+		const char *color_pfx = "", *color_sfx = "";
+		int do_color = 0;
+		int i;
+		if (term == NULL)
+			term = getenv("TERM");
+		if (term != NULL)
+			do_color = 1;
+		if (do_color) {
+			do_color = 0;
+			for (i = 0; i < term_count; i++)
+				if (strcmp(terms[i], term) == 0) {
+					do_color = 1;
+					break;
+				}
+		}
+		if (do_color && !isatty(fileno(outf)))
+			do_color = 0;
+		if (do_color) {
+			color_sfx = "\e[0m";
+			switch (type) {
+			case SC_LOG_ERROR:
+				color_pfx = "\e[01;31m";
+				break;
+			case SC_LOG_NORMAL:
+				color_pfx = "\e[01;33m";
+				break;
+			case SC_LOG_DEBUG:
+			case SC_LOG_DEBUG2:
+				color_pfx = "\e[00;32m";
+				break;
+			}
+		}
+		fprintf(outf, "%s%s%s", color_pfx, buf, color_sfx);
 		fflush(outf);
 	}
 }
@@ -135,5 +172,6 @@ void sc_hex_dump(struct sc_context *ctx, const u8 *in, int count,
 		p += strlen(p);
 		sprintf(p, "\n");
 		p++;
+		lines++;
 	}
 }

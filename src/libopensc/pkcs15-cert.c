@@ -260,52 +260,43 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
-static int parse_x509_cert_info(struct sc_pkcs15_cert_info *cert,
-				const u8 * buf, int buflen)
+static int parse_x509_cert_info(struct sc_context *ctx,
+				struct sc_pkcs15_cert_info *cert,
+				const u8 ** buf, int *buflen)
 {
-	const u8 *tag, *p;
-	int taglen, left;
+	u8 id_value[128];
+	int id_type, id_value_len = sizeof(id_value);
+	int r;
+	
+	struct sc_asn1_struct asn1_cred_ident[] = {
+		{ "idType",	SC_ASN1_INTEGER,      ASN1_INTEGER, 0, &id_type },
+		{ "idValue",	SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, &id_value, &id_value_len },
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_com_cert_attr[] = {
+		{ "iD",         SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, &cert->id, NULL },
+		{ "authority",  SC_ASN1_BOOLEAN,   ASN1_BOOLEAN, SC_ASN1_OPTIONAL, &cert->authority, NULL },
+		{ "identifier", SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_cred_ident },
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_x509_cert_attr[] = {
+		{ "value",	SC_ASN1_PATH,	   ASN1_SEQUENCE | SC_ASN1_CONS, 0, &cert->path },
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_type_cert_attr[] = {
+		{ "x509CertificateAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_x509_cert_attr },
+		{ NULL }
+	};
+	struct sc_pkcs15_object cert_obj = { &cert->com_attr, asn1_com_cert_attr, NULL,
+					     asn1_type_cert_attr };
+	struct sc_asn1_struct asn1_cert[] = {
+		{ "x509Certificate", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &cert_obj,  },
+		{ NULL }
+	};
 
-	tag = sc_asn1_skip_tag(&buf, &buflen, 0x30, &taglen);	/* SEQUENCE */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	sc_pkcs15_parse_common_object_attr(&cert->com_attr, tag, taglen);
-	p = sc_asn1_skip_tag(&buf, &buflen, 0x30, &left);	/* SEQUENCE */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
+	r = sc_asn1_parse(ctx, asn1_cert, *buf, *buflen, buf, buflen);
 
-	tag = sc_asn1_skip_tag(&p, &left, 0x04, &taglen);	/* OCTET STRING */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	memcpy(cert->id.value, tag, taglen);
-	cert->id.len = taglen;
-
-	tag = sc_asn1_find_tag(p, left, 0x01, &taglen);	/* BOOLEAN */
-	if (tag != NULL && taglen > 0) {
-		if (tag[0])
-			cert->authority = 1;
-		else
-			cert->authority = 0;
-	} else
-		cert->authority = 0;
-
-	/* FIXME */
-	tag = sc_asn1_find_tag(buf, buflen, 0xA1, &taglen);
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	tag = sc_asn1_verify_tag(tag, taglen, 0x30, &taglen);	/* SEQUENCE 1 */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	tag = sc_asn1_verify_tag(tag, taglen, 0x30, &taglen);	/* SEQUENCE 2 */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	tag = sc_asn1_verify_tag(tag, taglen, 0x04, &taglen);	/* OCTET STRING */
-	if (tag == NULL)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	memcpy(cert->path.value, tag, taglen);
-	cert->path.len = taglen;
-
-	return 0;
+	return r;
 }
 
 void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert)
@@ -326,9 +317,9 @@ void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert)
 static int get_certs_from_file(struct sc_pkcs15_card *card,
 			       struct sc_file *file)
 {
-	int r, taglen, left;
+	int r, bytes_left;
 	u8 buf[2048];
-	const u8 *tag, *p;
+	const u8 *p = buf;
 
 	r = sc_select_file(card->card, file, &file->path,
 			   SC_SELECT_FILE_BY_PATH);
@@ -339,18 +330,20 @@ static int get_certs_from_file(struct sc_pkcs15_card *card,
 	r = sc_read_binary(card->card, 0, buf, file->size);
 	if (r < 0)
 		return r;
-
-	left = r;
-	p = buf;
-	while ((tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen)) != NULL) {
+	bytes_left = r;
+	do {
 		if (card->cert_count >= SC_PKCS15_MAX_CERTS)
 			return SC_ERROR_TOO_MANY_OBJECTS;
-		r = parse_x509_cert_info(&card->cert_info[card->cert_count],
-					 tag, taglen);
+		r = parse_x509_cert_info(card->card->ctx,
+					 &card->cert_info[card->cert_count],
+					 &p, &bytes_left);
+		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
+			break;
 		if (r)
 			return r;
 		card->cert_count++;
-	}
+	} while (bytes_left);
+
 	return 0;
 }
 

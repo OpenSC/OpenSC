@@ -45,15 +45,14 @@ void debug2(struct sc_context *ctx, const char *format, ...);
 #endif
 
 #define SC_FUNC_CALLED(ctx) {\
-	if (sc_debug > 2)\
+	if ((ctx)->debug > 2)\
 		 debug(ctx, "called\n"); }
 #define SC_FUNC_RETURN(ctx, r) {\
 	int _ret = r;\
-	if (sc_debug > 2) {\
-		if (_ret < 0)\
-			debug(ctx, "returning with: %s\n", sc_strerror(_ret));\
-		else\
-			debug(ctx, "returning with: %d\n", _ret);\
+	if (_ret < 0) {\
+		error(ctx, "returning with: %s\n", sc_strerror(_ret));\
+	} else if ((ctx)->debug > 2) {\
+		debug(ctx, "returning with: %d\n", _ret);\
 	}\
 	return _ret; }
 #define SC_TEST_RET(ctx, r, text) {\
