@@ -12,7 +12,7 @@
 
 int main(int argc, char *argv[])
 {
-	int i, c;
+	int i, c, r;
 	int freq[39];
 	struct timeval tv1, tv2;
 	u8 buf[14];
@@ -30,7 +30,10 @@ int main(int argc, char *argv[])
 		}
 		if (c == 0)
 			gettimeofday(&tv1, NULL);
-		if (sc_get_random(card, buf, 14) == 0) {
+		sc_lock(card);
+		r = sc_get_random(card, buf, 14);
+		sc_unlock(card);
+		if (r == 0) {
 			int i, jaljella = 39;
 			
 			printf("Lottorivi: ");
@@ -47,6 +50,10 @@ int main(int argc, char *argv[])
 				printf("%3d ", num);
 			}
 			printf("\n");
+		} else {
+			fprintf(stderr, "get_random() failed: %s\n", sc_strerror(r));
+			sc_test_cleanup();
+			return 1;
 		}
 		c++;
 		if (c == 50) {
@@ -63,5 +70,6 @@ int main(int argc, char *argv[])
 			c = 0;
 		}
 	}
-
+	sc_test_cleanup();
+	return 0;
 }

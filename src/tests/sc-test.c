@@ -16,6 +16,7 @@ int sc_test_init(int *argc, char *argv[])
 {
 	int i, c;
 
+	printf("Using libsc version %s.\n", sc_version);
 	i = sc_establish_context(&ctx);
 	if (i < 0) {
 		printf("sc_establish_context() failed (%d)\n", i);
@@ -30,6 +31,7 @@ int sc_test_init(int *argc, char *argv[])
 		printf("Please insert a smart card.");
 		fflush(stdout);
 		i = sc_wait_for_card(ctx, -1, -1);
+		printf("\n");
 		if (i < 0)
 			return i;
 		if (i != 1)
@@ -37,11 +39,11 @@ int sc_test_init(int *argc, char *argv[])
 		c = -1;
 		for (i = 0; i < ctx->reader_count; i++) {
 			if (sc_detect_card(ctx, i) == 1) {
+				printf("Card detected in reader '%s'\n", ctx->readers[i]);
 				c = i;
 				break;
 			}
 		}
-		printf("\n");
 	} else
 		c = 0;
 	printf("Connecting... ");

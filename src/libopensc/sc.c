@@ -23,6 +23,8 @@
 #include <assert.h>
 #include <ctype.h>
 
+const char *sc_version = LIBSC_VERSION;
+
 int sc_debug = 0;
 
 static int convert_sw_to_errorcode(u8 * sw)
@@ -503,7 +505,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 	DWORD reader_buf_size;
 	char *reader_buf, *p;
 	LPCSTR mszGroups;
-	int i, reader_count;
+	int reader_count;
 
 	assert(ctx_out != NULL);
 	ctx = malloc(sizeof(struct sc_context));
@@ -536,8 +538,6 @@ int sc_establish_context(struct sc_context **ctx_out)
 			break;
 	} while (p < (reader_buf + reader_buf_size - 1));
 	free(reader_buf);
-	for (i = 0; i < ctx->reader_count; i++)
-		printf("Found reader #%d - %s\n", i + 1, ctx->readers[i]);
 
 	*ctx_out = ctx;
 	return 0;
@@ -580,6 +580,7 @@ int sc_connect_card(struct sc_context *ctx,
 	card->pcsc_card = card_handle;
 	*card_out = card;
 	card->class = 0;	/* FIXME */
+	card->reader = ctx->readers[reader];
 
 	return 0;
 }
@@ -587,7 +588,7 @@ int sc_connect_card(struct sc_context *ctx,
 int sc_disconnect_card(struct sc_card *card)
 {
 	assert(card != NULL);
-	SCardDisconnect(card->pcsc_card, SCARD_UNPOWER_CARD);
+	SCardDisconnect(card->pcsc_card, SCARD_LEAVE_CARD);
 	return 0;
 }
 

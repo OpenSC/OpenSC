@@ -103,6 +103,7 @@ struct sc_card {
 	int class;
 	struct sc_context *context;
 	SCARDHANDLE pcsc_card;
+	const char *reader;
 };
 
 struct sc_context {
@@ -130,7 +131,9 @@ struct sc_security_env {
 	int key_ref;
 };
 
-/* ASN.1 parsing functions */
+/* ASN.1 functions */
+
+/* DER tag and length parsing */
 const u8 *sc_asn1_find_tag(const u8 * buf, int buflen, int tag, int *taglen);
 const u8 *sc_asn1_verify_tag(const u8 * buf, int buflen, int tag, int *taglen);
 const u8 *sc_asn1_skip_tag(const u8 ** buf, int *buflen, int tag, int *taglen);
@@ -145,7 +148,7 @@ int sc_asn1_decode_bit_string(const u8 * inbuf,
 			      int inlen, void *outbuf, int outlen);
 /* non-inverting version */
 int sc_asn1_decode_bit_string_ni(const u8 * inbuf,
-			      int inlen, void *outbuf, int outlen);
+				 int inlen, void *outbuf, int outlen);
 int sc_asn1_decode_integer(const u8 * inbuf, int inlen, int *out);
 int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 			     struct sc_object_id *id);
@@ -172,11 +175,14 @@ int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout);
 int sc_lock(struct sc_card *card);
 int sc_unlock(struct sc_card *card);
 
+/* ISO 7816-4 related functions */
 int sc_select_file(struct sc_card *card,
 		   struct sc_file *file,
 		   const struct sc_path *path, int pathtype);
 int sc_read_binary(struct sc_card *card, int idx, u8 * buf, int count);
+int sc_get_random(struct sc_card *card, u8 * rndout, int len);
 
+/* ISO 7816-9 (?) related functions */
 int sc_restore_security_env(struct sc_card *card, int se_num);
 int sc_set_security_env(struct sc_card *card,
 			const struct sc_security_env *env);
@@ -185,10 +191,11 @@ int sc_decipher(struct sc_card *card,
 int sc_compute_signature(struct sc_card *card,
 			 const u8 * data,
 			 int data_len, u8 * out, int outlen);
-int sc_get_random(struct sc_card *card, u8 * rndout, int len);
 
 const char *sc_strerror(int error);
 
 int sc_debug;
+
+const char *sc_version;
 
 #endif

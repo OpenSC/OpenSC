@@ -40,7 +40,9 @@ int ask_and_verify_pin(struct sc_pkcs15_pin_info *pin)
 	i = sc_sec_ask_pin_code(pin, buf, sizeof(buf),
 				"Please enter PIN code");
 	if (i == 0) {
+		sc_lock(card);
 		i = sc_pkcs15_verify_pin(p15card, pin, buf, strlen(buf));
+		sc_unlock(card);
 		if (i) {
 			if (i == SC_ERROR_PIN_CODE_INCORRECT)
 				fprintf(stderr,
@@ -68,18 +70,23 @@ int main(int argc, char *argv[])
 		return 1;
 	printf("Looking for a PKCS#15 compatible Smart Card... ");
 	fflush(stdout);
+	sc_lock(card);
 	i = sc_pkcs15_init(card, &p15card);
+	sc_unlock(card);
 	if (i) {
 		fprintf(stderr, "failed: %s\n", sc_strerror(i));
 		return 1;
 	}
 	printf("found.\n");
 	printf("Enumerating PIN codes...\n");
+	sc_lock(card);
 	i = enum_pins();
+	sc_unlock(card);
 	if (i)
 		return 1;
 	for (c = 0; c < p15card->pin_count; c++) {
 		ask_and_verify_pin(&p15card->pin_info[c]);
 	}
+	sc_test_cleanup();
 	return 0;
 }
