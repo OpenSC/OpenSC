@@ -436,7 +436,7 @@ int do_info(int argc, char **argv)
                 const char *structs[] = {
                         "Unknown", "Transparent", "Linear fixed",
 			"Linear fixed, SIMPLE-TLV", "Linear variable",
-			"Cyclic", "Cyclic, SIMPLE-TLV",
+			"Linear variable TLV", "Cyclic, SIMPLE-TLV",
                 };
 		const char *ops[] = {
 			"READ", "UPDATE", "WRITE", "ERASE", "REHABILITATE",
