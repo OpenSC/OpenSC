@@ -341,20 +341,9 @@ void p15_eid_deinit(scam_context * sctx)
 	sctx->method_data = NULL;
 }
 
-#ifdef ATR_SUPPORT
-static const char *p15_eid_atrs[] =
-{
-	"3B:9F:94:40:1E:00:67:11:43:46:49:53:45:10:52:66:FF:81:90:00",
-	NULL
-};
-#endif
-
 struct scam_framework_ops scam_fw_p15_eid =
 {
 	"pkcs15-eid",		/* name */
-#ifdef ATR_SUPPORT
-	p15_eid_atrs,		/* atrs */
-#endif
 	p15_eid_usage,		/* usage */
 	p15_eid_init,		/* init */
 	p15_eid_pinentry,	/* pinentry */

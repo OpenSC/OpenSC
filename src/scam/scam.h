@@ -56,10 +56,6 @@ struct _scam_context {
 struct scam_framework_ops {
 	/* Framework name */
 	const char *name;
-#ifdef ATR_SUPPORT
-	/* Supported cards (by ATRs) */
-	const char **atrs;
-#endif
 	/* Return a string for help messages, list known parameters, etc. */
 	const char *(*usage) (void);
 	/* Establish a connection to the resource manager, etc. */
