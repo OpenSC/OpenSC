@@ -1,6 +1,7 @@
 .PU
 .ds nm \fBpkcs15-init\fP
 .TH pkcs15-profile 5 "" "" OpenSC
+.SH NAME
 pkcs15-profile \- format of profiles for \*(nm
 .SH DESCRIPTION
 The \*(nm(1) utility for PKCS #15 smart card personalization
