@@ -14,6 +14,7 @@ PROFILES = \
 	gpk.profile \
 	miocos.profile \
 	etoken.profile \
+	pkcs15-small.profile \
 	pkcs15.profile
 
 EXTRA_DIST = $(PROFILES) Makefile.mak
