@@ -732,7 +732,7 @@ int learn_card(void)
 	}
 	for (df = p15card->df_list; df != NULL; df = df->next)
 		read_and_cache_file(&df->path);
-	printf("Caching %d certificate(s)...\n", r);
+	printf("Caching %d certificate(s)...\n", cert_count);
 	for (i = 0; i < cert_count; i++) {
 		struct sc_pkcs15_cert_info *cinfo = (struct sc_pkcs15_cert_info *) certs[i]->data;
 		
