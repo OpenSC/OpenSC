@@ -56,15 +56,19 @@ static int convert_sw_to_errorcode(u8 * sw)
 void sc_hex_dump(const u8 *buf, int count)
 {
 	int i;
+	int printch = 0;
+	
 	for (i = 0; i < count; i++) {
 		unsigned char c = buf[i];
-		int printch = 0;
-		if (!isalnum(c) && !ispunct(c) && !isspace(c))
-			printch = 0;
-		if (printch)
-			printf("%02X%c ", c, c);
-		else
-			printf("%02X  ", c);
+		const char *format;
+		if (printch) {
+			if (!isalnum(c) && !ispunct(c) && !isspace(c))
+				format = "\\x%02X";
+			else
+				format = "%c";
+		} else
+			format = "%02X";
+		printf(format, c);
 	}
 	printf("\n");
 	fflush(stdout);
@@ -459,11 +463,11 @@ int sc_detect_card(struct sc_context *ctx, int reader)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	rgReaderStates[0].szReader = ctx->readers[reader];
-	rgReaderStates[0].dwCurrentState = SCARD_STATE_EMPTY;
+	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
 	ret = SCardGetStatusChange(ctx->pcsc_ctx, 0, rgReaderStates, 1);
 	if (ret != 0)
 		return -1;	/* FIXME */
-	if (rgReaderStates[0].dwEventState & SCARD_STATE_CHANGED)
+	if (rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT)
 		return 1;
 	return 0;
 }
@@ -566,11 +570,21 @@ int sc_connect_card(struct sc_context *ctx,
 	struct sc_card *card;
 	DWORD active_proto;
 	SCARDHANDLE card_handle;
+	SCARD_READERSTATE_A rgReaderStates[SC_MAX_READERS];
 	LONG rv;
+	int i;
 
 	assert(card_out != NULL);
 	if (reader >= ctx->reader_count || reader < 0)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	
+	rgReaderStates[0].szReader = ctx->readers[reader];
+	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
+	rv = SCardGetStatusChange(ctx->pcsc_ctx, 0, rgReaderStates, 1);
+	if (rv != 0)
+		return SC_ERROR_RESOURCE_MANAGER;	/* FIXME */
+	if (!(rgReaderStates[0].dwEventState & SCARD_STATE_PRESENT))
+		return SC_ERROR_CARD_NOT_PRESENT;
 
 	card = malloc(sizeof(struct sc_card));
 	if (card == NULL)
@@ -584,9 +598,14 @@ int sc_connect_card(struct sc_context *ctx,
 		return -1;	/* FIXME */
 	}
 	card->pcsc_card = card_handle;
-	*card_out = card;
+	i = rgReaderStates[0].cbAtr;
+	if (i >= SC_MAX_ATR_SIZE)
+		i = SC_MAX_ATR_SIZE;
+	memcpy(card->atr, rgReaderStates[0].rgbAtr, i);
+	card->atr_len = i;
 	card->class = 0;	/* FIXME */
 	card->reader = ctx->readers[reader];
+	*card_out = card;
 
 	return 0;
 }
@@ -785,13 +804,13 @@ int sc_get_random(struct sc_card *card, u8 *rnd, int len)
 {
 	int r;
 	struct sc_apdu apdu;
-	u8 buf[8];
+	u8 buf[10];
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
 		       0x84, 0x00, 0x00);
 	apdu.le = 8;
 	apdu.resp = buf;
-	apdu.resplen = 8;
+	apdu.resplen = 10;	/* include SW's */
 
 	while (len > 0) {
 		int n = len > 8 ? 8 : len;
@@ -799,7 +818,7 @@ int sc_get_random(struct sc_card *card, u8 *rnd, int len)
 		r = sc_transmit_apdu(card, &apdu);
 		if (r)
 			return r;
-		if (apdu.resplen != 8) {
+		if (apdu.resplen != 10) {
 			if (apdu.resplen == 2)
 				return convert_sw_to_errorcode(apdu.resp);
 			return SC_ERROR_UNKNOWN;

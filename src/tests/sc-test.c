@@ -53,7 +53,8 @@ int sc_test_init(int *argc, char *argv[])
 		printf("Connecting to card failed\n");
 		return i;
 	}
-	printf("connected.\n");
+	printf("connected. ATR = ");
+	sc_hex_dump(card->atr, card->atr_len);
 	fflush(stdout);
 
 	return 0;

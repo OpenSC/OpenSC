@@ -42,6 +42,8 @@
 #define SC_ERROR_CONNECTING_TO_RES_MGR		-1015
 #define SC_ERROR_INVALID_ASN1_OBJECT		-1016
 #define SC_ERROR_BUFFER_TOO_SMALL		-1017
+#define SC_ERROR_CARD_NOT_PRESENT		-1018
+#define SC_ERROR_RESOURCE_MANAGER		-1019
 
 #define SC_APDU_CASE_NONE		0
 #define SC_APDU_CASE_1                  1
@@ -77,6 +79,7 @@
 #define SC_MAX_READERS			4
 #define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PIN_SIZE			16
+#define SC_MAX_ATR_SIZE			33
 
 #define SC_ASN1_MAX_OBJECT_ID_OCTETS  16
 
@@ -106,6 +109,8 @@ struct sc_card {
 	struct sc_context *context;
 	SCARDHANDLE pcsc_card;
 	const char *reader;
+	char atr[SC_MAX_ATR_SIZE];
+	int atr_len;
 };
 
 struct sc_context {
