@@ -94,7 +94,7 @@ struct sc_file {
 	u8 name[16];
 	int namelen;
 
-	int type;
+	int type, shareable, ef_structure;
 	int size, id;
 	unsigned int magic;
 };
@@ -153,15 +153,14 @@ int sc_asn1_decode_integer(const u8 * inbuf, int inlen, int *out);
 int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 			     struct sc_object_id *id);
 
-/* Base64 converter functions */
-int sc_base64_convert_to(const u8 *in, int inlen, u8 *out, int outlen,
-			 int linelength);
+/* Base64 encoding/decoding functions */
+int sc_base64_encode(const u8 *in, int inlen, u8 *out, int outlen,
+		     int linelength);
 
-/* internal functions */
-int sc_check_apdu(const struct sc_apdu *apdu);
+/* APDU handling functions */
 int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
-int sc_format_apdu(struct sc_card *card,
-		   struct sc_apdu *apdu, u8 cse, u8 ins, u8 p1, u8 p2);
+int sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu, u8 cse, u8 ins,
+		   u8 p1, u8 p2);
 
 int sc_establish_context(struct sc_context **ctx);
 int sc_destroy_context(struct sc_context *ctx);
@@ -176,8 +175,7 @@ int sc_lock(struct sc_card *card);
 int sc_unlock(struct sc_card *card);
 
 /* ISO 7816-4 related functions */
-int sc_select_file(struct sc_card *card,
-		   struct sc_file *file,
+int sc_select_file(struct sc_card *card, struct sc_file *file,
 		   const struct sc_path *path, int pathtype);
 int sc_read_binary(struct sc_card *card, int idx, u8 * buf, int count);
 int sc_get_random(struct sc_card *card, u8 * rndout, int len);
@@ -186,15 +184,16 @@ int sc_get_random(struct sc_card *card, u8 * rndout, int len);
 int sc_restore_security_env(struct sc_card *card, int se_num);
 int sc_set_security_env(struct sc_card *card,
 			const struct sc_security_env *env);
-int sc_decipher(struct sc_card *card,
-		const u8 * crgram, int crgram_len, u8 * out, int outlen);
-int sc_compute_signature(struct sc_card *card,
-			 const u8 * data,
+int sc_decipher(struct sc_card *card, const u8 * crgram, int crgram_len,
+		u8 * out, int outlen);
+int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 int data_len, u8 * out, int outlen);
 
 const char *sc_strerror(int error);
 
 int sc_debug;
+
+void sc_hex_dump(const u8 *buf, int len);
 
 const char *sc_version;
 

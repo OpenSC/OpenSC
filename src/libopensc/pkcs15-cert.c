@@ -108,10 +108,13 @@ static int parse_cert(const u8 *buf, int buflen, struct sc_pkcs15_cert *cert)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	r >>= 3;
+	key->data = tmpbuf;
+	key->data_len = taglen-1;
 	r = parse_rsa_pubkey(tmpbuf, r, key);
-	free(tmpbuf);
-	if (r)
+	if (r) {
+		free(tmpbuf);
 		return SC_ERROR_INVALID_ASN1_OBJECT;
+	}
 	return 0;
 }
 
@@ -177,7 +180,6 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	cert->data = data;
-//	cert->data_len = len;
 	*cert_out = cert;
 	return 0;
 }
@@ -299,6 +301,8 @@ int sc_pkcs15_enum_certificates(struct sc_pkcs15_card *card)
 void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 {
 	assert(cert != NULL);
+
+	free(cert->key.data);
 	free(cert->data);
 	free(cert);
 }

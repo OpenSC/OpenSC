@@ -59,11 +59,11 @@ static void to_base64(unsigned int i, u8 *out, int fillers)
 	}
 }
 
-int sc_base64_convert_to(const u8 *in, int len, u8 *out, int outlen, int linelength)
+int sc_base64_encode(const u8 *in, int len, u8 *out, int outlen, int linelength)
 {
-	unsigned int i, chars = 0, c;
+	unsigned int i, chars = 0;
+	int c;
 
-#warning sc_base64_convert_to() does not work
 	linelength -= linelength & 0x03;
 	if (linelength < 0)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -87,11 +87,8 @@ int sc_base64_convert_to(const u8 *in, int len, u8 *out, int outlen, int linelen
 		}
 	}
 	i = c = 0;
-	c = (3-len) << 3;
-	while (c) {
-		i |= *in++ << c;
-		c -= 8;
-	}
+	while (c < len)
+		i |= *in++ << ((2 - c++) << 3);
 	if (len) {
 		if (outlen < 4)
 			return SC_ERROR_BUFFER_TOO_SMALL;

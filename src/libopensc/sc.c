@@ -50,7 +50,7 @@ static int convert_sw_to_errorcode(u8 * sw)
 	return SC_ERROR_UNKNOWN;
 }
 
-static void sc_hex_dump(const unsigned char *buf, int count)
+void sc_hex_dump(const u8 *buf, int count)
 {
 	int i;
 	for (i = 0; i < count; i++) {
@@ -233,25 +233,28 @@ static void sc_process_fci(struct sc_file *file,
 		if (taglen > 0) {
 			unsigned char byte = tag[0];
 			const char *type;
+
+			file->shareable = byte & 0x40 ? 1 : 0;
 			if (sc_debug)
 				printf("\tShareable: %s\n",
 				       (byte & 0x40) ? "yes" : "no");
-			switch ((byte >> 3) & 7) {
-			case 0:
-				type = "working EF";
-				break;
-			case 1:
-				type = "internal EF";
-				break;
-			case 7:
-				type = "DF";
-				break;
-			default:
-				type = "unknown";
-				break;
-			}
 			file->type = (byte >> 3) & 7;
+			file->ef_structure = byte & 0x07;
 			if (sc_debug) {
+				switch ((byte >> 3) & 7) {
+				case 0:
+					type = "working EF";
+					break;
+				case 1:
+					type = "internal EF";
+					break;
+				case 7:
+					type = "DF";
+					break;
+				default:
+					type = "unknown";
+					break;
+				}
 				printf("\tType: %s\n", type);
 				printf("\tEF structure: %d\n",
 				       byte & 0x07);
@@ -413,7 +416,7 @@ int sc_read_binary(struct sc_card *card,
 	if (r)
 		return r;
 	if (apdu.resplen == 2) {
-
+		return convert_sw_to_errorcode(apdu.resp);
 	}
 	if (apdu.resplen == count + 2)
 		apdu.resplen = count;

@@ -73,6 +73,9 @@ struct sc_pkcs15_rsa_pubkey {
 	u8 *modulus;
 	int modulus_len;
 	unsigned int exponent;
+	
+	u8 *data;	/* DER encoded raw key */
+	int data_len;
 };
 
 struct sc_pkcs15_cert {

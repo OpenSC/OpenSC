@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 			printf("Time per one: %lld ms\n", (foo - foo2)/50);
 			printf("Frequencies:\n");
 			for (i = 0; i < 39; i++) {
-				printf("%3d: %5d", i+1, freq[i]);
+				printf("%3d: %-5d", i+1, freq[i]);
 			}
 			printf("\n");
 			c = 0;
