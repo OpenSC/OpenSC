@@ -74,9 +74,8 @@ cp /dev/null $p15log
 
 function atexit {
 
-	test "$p15temp" && rm -rf $p15temp
-
 	if ! $test_failed; then
+		test "$p15temp" && rm -rf $p15temp
 		msg <<-EOF
 		:::
 		::: ${__green}Test set completed successfully${__black}
@@ -184,7 +183,7 @@ function p15_init {
 	::: Testing pkcs15-init
 	:::
 	::: The PINs used by this test script (if applicable) are
-	:::   Test SO PIN	abcdef
+	:::   Test SO PIN	999999
 	:::   Test User PIN	0000
 	:::
 EOF
@@ -226,10 +225,23 @@ function p15_gen_key {
 
 	msg "Generating key ($*)"
 	run_display_output $p15init -G $type \
-		--split-key \
 		--pin 0000 \
 		--id 45 \
 		--label "Test User Key" \
+		"$@"
+	success
+}
+
+function p15_exp_key {
+
+	keyfile=$1
+	shift
+
+	msg "Generating key ($*)"
+	run_display_output $p15tool \
+		--pin 0000 \
+		--read-public-key 45 \
+		--output $p15temp/$keyfile \
 		"$@"
 	success
 }
@@ -241,7 +253,6 @@ function p15_store_key {
 
 	msg "Storing private key $keyfile ($*)"
 	run_display_output $p15init -S $keyfile \
-		--split-key \
 		--pin 0000 \
 		--id 45 \
 		--label "Test User Key" \

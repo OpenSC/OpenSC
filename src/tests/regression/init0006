@@ -9,12 +9,13 @@
 k=$p15temp/private.pem
 
 p15_init --no-so-pin
+p15_set_pin -a 01
 
 msg "Generating key with OpenSSL"
 run_check_status openssl genrsa -out $k -f4 1024
 success
 
-p15_store_key $k --insecure
+p15_store_key $k -a 01
 p15_validate
 p15_erase
 
