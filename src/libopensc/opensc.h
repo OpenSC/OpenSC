@@ -43,6 +43,7 @@ extern "C" {
 #endif
 
 #define SC_SUCCESS				0
+#define SC_NO_ERROR				0
 
 #define SC_ERROR_MIN				-1000
 #define SC_ERROR_UNKNOWN			-1000
@@ -78,6 +79,7 @@ extern "C" {
 #define SC_ERROR_WRONG_LENGTH			-1030
 #define SC_ERROR_RECORD_NOT_FOUND		-1031
 #define SC_ERROR_INTERNAL			-1032
+#define SC_ERROR_CLASS_NOT_SUPPORTED		-1033
 
 /* Different APDU cases */
 #define SC_APDU_CASE_NONE		0
@@ -157,7 +159,7 @@ extern "C" {
 #define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PIN_SIZE			16
 #define SC_MAX_ATR_SIZE			33
-#define SC_MAX_SEC_ATTR_SIZE		16
+#define SC_MAX_SEC_ATTR_SIZE		20
 #define SC_MAX_PROP_ATTR_SIZE		16
 #define SC_MAX_OBJECT_ID_OCTETS		16
 #define SC_APDU_CHOP_SIZE		250
@@ -366,6 +368,8 @@ struct sc_card_operations {
 	 *   writes the corresponding file identifiers to <buf>.  Returns
 	 *   the number of bytes stored. */
 	int (*list_files)(struct sc_card *card, u8 *buf, size_t buflen);
+	
+	int (*check_sw)(struct sc_card *card, int sw1, int sw2);
 };
 
 struct sc_card_driver {

@@ -142,7 +142,7 @@ static int tcos_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 		apdu.le = 256;
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-		r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (r == SC_ERROR_FILE_NOT_FOUND)
 			continue;
 		SC_TEST_RET(card->ctx, r, "Card returned error");

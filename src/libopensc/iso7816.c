@@ -25,6 +25,78 @@
 #include <assert.h>
 #include <ctype.h>
 
+struct sc_card_error {
+	int SWs;
+	int errorno;
+	const char *errorstr;
+};
+
+const static struct sc_card_error iso7816_errors[] = {
+	{ 0x6200, SC_ERROR_UNKNOWN_REPLY,	"State of non-volatile memory unchanged" },
+	{ 0x6281, SC_ERROR_UNKNOWN_REPLY,	"Part of returned data may be corrupted" },
+	{ 0x6282, SC_ERROR_UNKNOWN_REPLY,	"End of file/record reached before reading Le bytes" },
+	{ 0x6283, SC_ERROR_UNKNOWN_REPLY,	"Selected file invalidated" },
+	{ 0x6284, SC_ERROR_UNKNOWN_REPLY,	"FCI not formatted according to 5.1.5" },
+
+	{ 0x6300, SC_ERROR_UNKNOWN_REPLY,	"State of non-volatile memory changed" },
+	{ 0x6381, SC_ERROR_UNKNOWN_REPLY,	"File filled up by last write" },
+
+	{ 0x6581, SC_ERROR_UNKNOWN_REPLY,	"Memory failure" },
+
+	{ 0x6700, SC_ERROR_WRONG_LENGTH,	"Wrong length" },
+
+	{ 0x6800, SC_ERROR_UNKNOWN_REPLY,	"Functions in CLA not supported" },
+	{ 0x6881, SC_ERROR_UNKNOWN_REPLY,	"Logical channel not supported" },
+	{ 0x6882, SC_ERROR_UNKNOWN_REPLY,	"Secure messaging not supported" },
+
+	{ 0x6900, SC_ERROR_UNKNOWN_REPLY,	"Command not allowed" },
+	{ 0x6981, SC_ERROR_UNKNOWN_REPLY,	"Command incompatible with file structure" },
+	{ 0x6982, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, "Security status not satisfied" },
+	{ 0x6983, SC_ERROR_UNKNOWN_REPLY,	"Authentication method blocked" },
+	{ 0x6984, SC_ERROR_UNKNOWN_REPLY,	"Referenced data invalidated" },
+	{ 0x6985, SC_ERROR_UNKNOWN_REPLY,	"Conditions of use not satisfied" },
+	{ 0x6986, SC_ERROR_UNKNOWN_REPLY,	"Command not allowed (no current EF)" },
+	{ 0x6987, SC_ERROR_UNKNOWN_REPLY,	"Expected SM data objects missing" },
+	{ 0x6988, SC_ERROR_UNKNOWN_REPLY,	"SM data objects incorrect" },
+
+	{ 0x6A00, SC_ERROR_UNKNOWN_REPLY,	"Wrong parameter(s) P1-P2" },
+	{ 0x6A80, SC_ERROR_UNKNOWN_REPLY,	"Incorrect parameters in the data field" },
+	{ 0x6A81, SC_ERROR_NOT_SUPPORTED,	"Function not supported" },
+	{ 0x6A82, SC_ERROR_FILE_NOT_FOUND,	"File not found" },
+	{ 0x6A83, SC_ERROR_RECORD_NOT_FOUND,	"Record not found" },
+	{ 0x6A84, SC_ERROR_UNKNOWN_REPLY,	"Not enough memory space in the file" },
+	{ 0x6A85, SC_ERROR_INVALID_ARGUMENTS,	"Lc inconsistent with TLV structure" },
+	{ 0x6A86, SC_ERROR_INVALID_ARGUMENTS,	"Incorrect parameters P1-P2" },
+	{ 0x6A87, SC_ERROR_INVALID_ARGUMENTS,	"Lc inconsistent with P1-P2" },
+	{ 0x6A88, SC_ERROR_UNKNOWN_REPLY,	"Referenced data not found" },
+
+	{ 0x6B00, SC_ERROR_UNKNOWN_REPLY,	"Wrong parameter(s) P1-P2" },
+	{ 0x6D00, SC_ERROR_NOT_SUPPORTED,	"Instruction code not supported or invalid" },
+	{ 0x6E00, SC_ERROR_CLASS_NOT_SUPPORTED,	"Class not supported" },
+	{ 0x6F00, SC_ERROR_UNKNOWN_REPLY,	"No precise diagnosis" }
+};
+
+static int iso7816_check_sw(struct sc_card *card, int sw1, int sw2)
+{
+	const int err_count = sizeof(iso7816_errors)/sizeof(iso7816_errors[0]);
+	int i;
+	
+	/* Handle special cases here */
+	if (sw1 == 0x6C) {
+		error(card->ctx, "Wrong length; correct length is %d\n", sw2);
+		return SC_ERROR_WRONG_LENGTH;
+	}
+	if (sw1 == 0x90)
+		return SC_NO_ERROR;
+	for (i = 0; i < err_count; i++)
+		if (iso7816_errors[i].SWs == ((sw1 << 8) | sw2)) {
+			error(card->ctx, "%s\n", iso7816_errors[i].errorstr);
+			return iso7816_errors[i].errorno;
+		}
+	error(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+	return SC_ERROR_UNKNOWN_REPLY;
+}
+
 static int iso7816_read_binary(struct sc_card *card,
 			       unsigned int idx, u8 *buf, size_t count,
 			       unsigned long flags)
@@ -42,7 +114,7 @@ static int iso7816_read_binary(struct sc_card *card,
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
-		SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+		SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	memcpy(buf, recvbuf, apdu.resplen);
 
 	SC_FUNC_RETURN(card->ctx, 3, apdu.resplen);
@@ -68,7 +140,7 @@ static int iso7816_read_record(struct sc_card *card,
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
-		SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+		SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	memcpy(buf, recvbuf, apdu.resplen);
 
 	SC_FUNC_RETURN(card->ctx, 3, apdu.resplen);
@@ -93,7 +165,7 @@ static int iso7816_write_binary(struct sc_card *card,
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2),
+	SC_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),
 		    "Card returned error");
 	SC_FUNC_RETURN(card->ctx, 3, count);
 }
@@ -117,7 +189,7 @@ static int iso7816_update_binary(struct sc_card *card,
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2),
+	SC_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),
 		    "Card returned error");
 	SC_FUNC_RETURN(card->ctx, 3, count);
 }
@@ -284,10 +356,10 @@ static int iso7816_select_file(struct sc_card *card,
 	if (file == NULL) {
 		if (apdu.sw1 == 0x61)
 			SC_FUNC_RETURN(card->ctx, 2, 0);
-		SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+		SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	}
 
-	r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r)
 		SC_FUNC_RETURN(card->ctx, 2, r);
 
@@ -322,7 +394,7 @@ static int iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.resplen != 8)
-			return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+			return sc_check_sw(card, apdu.sw1, apdu.sw2);
 		memcpy(rnd, apdu.resp, n);
 		len -= n;
 		rnd += n;
@@ -432,7 +504,7 @@ static int iso7816_create_file(struct sc_card *card, struct sc_file *file)
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
 static int iso7816_delete_file(struct sc_card *card, const struct sc_path *path)
@@ -455,7 +527,7 @@ static int iso7816_delete_file(struct sc_card *card, const struct sc_path *path)
 	
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
 static int iso7816_list_files(struct sc_card *card, u8 *buf, size_t buflen)
@@ -470,7 +542,7 @@ static int iso7816_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
-		return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	return apdu.resplen;
 }
 
@@ -505,7 +577,7 @@ static int iso7816_verify(struct sc_card *card, unsigned int type, int ref,
 			*tries_left = apdu.sw2 & 0x0F;
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
-	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
 static int iso7816_set_security_env(struct sc_card *card,
@@ -569,7 +641,7 @@ static int iso7816_set_security_env(struct sc_card *card,
 			sc_perror(card->ctx, r, "APDU transmit failed");
 			goto err;
 		}
-		r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (r) {
 			sc_perror(card->ctx, r, "Card returned error");
 			goto err;
@@ -581,7 +653,7 @@ static int iso7816_set_security_env(struct sc_card *card,
 	r = sc_transmit_apdu(card, &apdu);
 	sc_unlock(card);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 err:
 	if (locked)
 		sc_unlock(card);
@@ -601,7 +673,7 @@ static int iso7816_restore_security_env(struct sc_card *card, int se_num)
 	apdu.resp = rbuf;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
 static int iso7816_compute_signature(struct sc_card *card,
@@ -637,7 +709,7 @@ static int iso7816_compute_signature(struct sc_card *card,
 		memcpy(out, apdu.resp, len);
 		SC_FUNC_RETURN(card->ctx, 4, len);
 	}
-	SC_FUNC_RETURN(card->ctx, 4, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 static int iso7816_change_reference_data(struct sc_card *card, unsigned int type,
@@ -676,7 +748,7 @@ static int iso7816_change_reference_data(struct sc_card *card, unsigned int type
 			*tries_left = apdu.sw2 & 0x0F;
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_PIN_CODE_INCORRECT);
 	}
-	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
 static int iso7816_reset_retry_counter(struct sc_card *card, unsigned int type, int ref,
@@ -718,7 +790,7 @@ static int iso7816_reset_retry_counter(struct sc_card *card, unsigned int type, 
 	r = sc_transmit_apdu(card, &apdu);
 	memset(sbuf, 0, len);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
 static struct sc_card_operations iso_ops = {
@@ -757,6 +829,7 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.compute_signature	= iso7816_compute_signature;
 		iso_ops.reset_retry_counter     = iso7816_reset_retry_counter;
                 iso_ops.change_reference_data   = iso7816_change_reference_data;
+		iso_ops.check_sw      = iso7816_check_sw;
 	}
 	return &iso_driver;
 }

@@ -144,7 +144,7 @@ gpk_finish(struct sc_card *card)
 
 /*
  * Error code handling for the GPK4000.
- * sc_sw_to_errorcode doesn't seem to handle all of the
+ * sc_check_sw doesn't seem to handle all of the
  * status words the GPK is capable of returning
  */
 static int
@@ -171,7 +171,7 @@ gpk_sw_to_errorcode(struct sc_card *card, u8 sw1, u8 sw2)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	return sc_sw_to_errorcode(card, sw1, sw2);
+	return sc_check_sw(card, sw1, sw2);
 }
 
 /*

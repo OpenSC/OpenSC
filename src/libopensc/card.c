@@ -24,52 +24,10 @@
 #include <assert.h>
 #include <stdlib.h>
 
-int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2)
+int sc_check_sw(struct sc_card *card, int sw1, int sw2)
 {
-	if (sw1 != 0x90 || sw2 != 0)
-		error(card->ctx, "card returned SW1=%02X, SW2=%02X\n", sw1, sw2);
-	switch (sw1) {
-	case 0x67:
-		if (sw2 == 0)
-			return SC_ERROR_WRONG_LENGTH;
-		break;
-	case 0x69:
-		switch (sw2) {
-		case 0x82:
-			return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
-		default:
-			break;
-		}
-		break;
-	case 0x6A:
-		switch (sw2) {
-		case 0x81:
-			return SC_ERROR_NOT_SUPPORTED;
-		case 0x82:
-			return SC_ERROR_FILE_NOT_FOUND;
-		case 0x83:
-			return SC_ERROR_RECORD_NOT_FOUND;
-		case 0x85:
-		case 0x86:
-		case 0x87:
-			return SC_ERROR_INVALID_ARGUMENTS;
-		default:
-			break;
-		}
-		break;
-	case 0x6C:
-		error(card->ctx, "incorrect length, right length is %d\n",
-		      sw2);
-		return SC_ERROR_WRONG_LENGTH;
-	case 0x6D:
-		return SC_ERROR_NOT_SUPPORTED;
-	case 0x6E:
-		return SC_ERROR_UNKNOWN_SMARTCARD;
-	case 0x90:
-		if (sw2 == 0)
-			return 0;
-	}
-	return SC_ERROR_UNKNOWN_REPLY;
+	assert(card->ops->check_sw != NULL);
+	return card->ops->check_sw(card, sw1, sw2);
 }
 
 static int _sc_pcscret_to_error(long rv)

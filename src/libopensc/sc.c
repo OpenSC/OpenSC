@@ -328,7 +328,8 @@ const char *sc_strerror(int error)
 		"Card is invalid or cannot be handled",
 		"Wrong length",
 		"Record not found",
-		"Internal error"
+		"Internal error",
+		"Invalid CLA byte in APDU",
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);
 

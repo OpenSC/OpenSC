@@ -256,7 +256,7 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
                 apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 
 	if (file == NULL)
@@ -349,7 +349,7 @@ static int flex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 			return r;
 		if (apdu.sw1 == 0x6A && apdu.sw2 == 0x82)
 			break;
-		r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (r)
 			return r;
 		if (apdu.resplen != 4) {
@@ -385,7 +385,7 @@ static int flex_delete_file(struct sc_card *card, const struct sc_path *path)
 	
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
 static int acl_to_ac(unsigned int acl)
@@ -524,7 +524,7 @@ static int flex_create_file(struct sc_card *card, struct sc_file *file)
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 	if (card->cache_valid) {
 		u8 file_id[2];
@@ -598,7 +598,7 @@ static int flex_compute_signature(struct sc_card *card, const u8 *data,
 	apdu.resp = sbuf;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
 	for (i = 0; i < apdu.resplen; i++)
 		out[i] = sbuf[apdu.resplen-1-i];
@@ -640,7 +640,7 @@ static int flex_verify(struct sc_card *card, unsigned int type, int ref,
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
         if (apdu.sw1 == 0x63)
 		return SC_ERROR_PIN_CODE_INCORRECT;   
-        return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+        return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }              
 
 static const struct sc_card_driver * sc_get_driver(void)

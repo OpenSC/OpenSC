@@ -31,7 +31,7 @@
 #define SC_CARD_MAGIC			0x27182818
 
 /* Internal use only */
-int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2);
+int sc_check_sw(struct sc_card *card, int sw1, int sw2);
 size_t sc_count_bit_string_size(const void * buf, size_t bufsize);
 
 /* Default timeout value for SCardGetStatusChange */
