@@ -119,8 +119,7 @@ tlv_len(struct tlv *tlv)
 static int
 etoken_erase(struct sc_profile *profile, struct sc_card *card)
 {
-	return sc_pkcs15init_erase_card_recursively(card, profile,
-				ETOKEN_PIN_ID(0));
+	return sc_pkcs15init_erase_card_recursively(card, profile, -1);
 }
 
 /*
@@ -153,7 +152,7 @@ etoken_store_pin(struct sc_profile *profile, struct sc_card *card,
 	attempts = params.tries_left;
 	minlen = params.min_length;
 
-	/* Set the profile's SOPIN reference */
+	/* Set the profile's PIN reference */
 	params.reference = pin_id;
 	params.path = profile->df_info->file->path;
 	sc_profile_set_pin_info(profile, pin_type, &params);
