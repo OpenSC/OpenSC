@@ -169,6 +169,7 @@ struct sc_defaults {
 /* Base64 encoding/decoding functions */
 int sc_base64_encode(const u8 *in, int inlen, u8 *out, int outlen,
 		     int linelength);
+int sc_base64_decode(const char *in, u8 *out, int outlen);
 
 /* APDU handling functions */
 int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
