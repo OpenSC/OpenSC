@@ -257,7 +257,12 @@ static const struct sc_asn1_entry	c_asn1_enveloped_data_attr[] = {
 static const struct sc_asn1_entry	c_asn1_content_attr[] = {
 	{ "contentType",SC_ASN1_OBJECT, ASN1_OBJECT, 0 },
 	{ "contentEncrAlg", SC_ASN1_ALGORITHM_ID, SC_ASN1_CONS|ASN1_SEQUENCE, 0 },
-	{ "encrContent",SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 , SC_ASN1_OPTIONAL|SC_ASN1_ALLOC },
+	{ "encrContent",SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL },
+	{ NULL }
+};
+
+static const struct sc_asn1_entry	c_asn1_encr_content[] = {
+	{ "data",	SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, SC_ASN1_ALLOC },
 	{ NULL }
 };
 
@@ -288,6 +293,7 @@ sc_pkcs15_decode_enveloped_data(struct sc_context *ctx,
 {
 	struct sc_asn1_entry	asn1_enveloped_data_attr[5],
 				asn1_content_attr[4],
+				asn1_encr_content[2],
 				asn1_recipients_attr[2],
 				asn1_kekri_attr[5],
 				asn1_kek_attr[4];
@@ -296,6 +302,7 @@ sc_pkcs15_decode_enveloped_data(struct sc_context *ctx,
 
 	sc_copy_asn1_entry(c_asn1_enveloped_data_attr, asn1_enveloped_data_attr);
 	sc_copy_asn1_entry(c_asn1_content_attr, asn1_content_attr);
+	sc_copy_asn1_entry(c_asn1_encr_content, asn1_encr_content);
 	sc_copy_asn1_entry(c_asn1_recipients_attr, asn1_recipients_attr);
 	sc_copy_asn1_entry(c_asn1_kekri_attr, asn1_kekri_attr);
 	sc_copy_asn1_entry(c_asn1_kek_attr, asn1_kek_attr);
@@ -307,6 +314,8 @@ sc_pkcs15_decode_enveloped_data(struct sc_context *ctx,
 
 	sc_format_asn1_entry(asn1_content_attr + 1, &data.ce_alg, NULL, 0);
 	sc_format_asn1_entry(asn1_content_attr + 2,
+			asn1_encr_content, NULL, 0);
+	sc_format_asn1_entry(asn1_encr_content + 0,
 			&data.content, &data.content_len, 0);
 
 	sc_format_asn1_entry(asn1_recipients_attr + 0,
@@ -335,9 +344,10 @@ sc_pkcs15_encode_enveloped_data(struct sc_context *ctx,
 				struct sc_pkcs15_enveloped_data *data,
 				u8 **buf, size_t *buflen)
 {
-	static struct sc_object_id oid_id_data = {{ 1, 2, 840, 113549, 1, 7, 2, -1 }};
+	static struct sc_object_id oid_id_data = {{ 1, 2, 840, 113549, 1, 7, 1, -1 }};
 	struct sc_asn1_entry	asn1_enveloped_data_attr[5],
 				asn1_content_attr[4],
+				asn1_encr_content[2],
 				asn1_recipients_attr[2],
 				asn1_kekri_attr[5],
 				asn1_kek_attr[4];
@@ -345,6 +355,7 @@ sc_pkcs15_encode_enveloped_data(struct sc_context *ctx,
 
 	sc_copy_asn1_entry(c_asn1_enveloped_data_attr, asn1_enveloped_data_attr);
 	sc_copy_asn1_entry(c_asn1_content_attr, asn1_content_attr);
+	sc_copy_asn1_entry(c_asn1_encr_content, asn1_encr_content);
 	sc_copy_asn1_entry(c_asn1_recipients_attr, asn1_recipients_attr);
 	sc_copy_asn1_entry(c_asn1_kekri_attr, asn1_kekri_attr);
 	sc_copy_asn1_entry(c_asn1_kek_attr, asn1_kek_attr);
@@ -359,6 +370,8 @@ sc_pkcs15_encode_enveloped_data(struct sc_context *ctx,
 	sc_format_asn1_entry(asn1_content_attr + 0, &oid_id_data, NULL, 1);
 	sc_format_asn1_entry(asn1_content_attr + 1, &data->ce_alg, NULL, 1);
 	sc_format_asn1_entry(asn1_content_attr + 2,
+			asn1_encr_content, NULL, 1);
+	sc_format_asn1_entry(asn1_encr_content + 0,
 			data->content, &data->content_len, 1);
 
 	sc_format_asn1_entry(asn1_recipients_attr + 0,
