@@ -205,6 +205,8 @@ static file_info *	new_file(struct state *, const char *,
 				unsigned int);
 static auth_info *	new_key(struct sc_profile *,
 				unsigned int, unsigned int);
+static void		set_pin_defaults(struct sc_profile *,
+				struct pin_info *);
 
 static struct sc_file *
 init_file(unsigned int type)
@@ -293,6 +295,7 @@ sc_profile_finish(struct sc_profile *profile)
 	profile->df_info->dont_free = 1;
 
 	for (pi = profile->pin_list; pi; pi = pi->next) {
+		set_pin_defaults(profile, pi);
 		if (!(name = pi->file_name))
 			continue;
 		if (!(fi = sc_profile_find_file(profile, name))) {
@@ -856,23 +859,47 @@ new_pin(struct sc_profile *profile, unsigned int id)
 			return pi;
 	}
 
+	/* Create pin info object. Most values are
+	 * set to their defaults in set_pin_defaults later
+	 * We can't do this here because these pin info objects
+	 * are usually created before we've read the card specific
+	 * profile
+	 */
 	pi = (struct pin_info *) calloc(1, sizeof(*pi));
 	pi->id = id;
-	pi->pin.type = profile->pin_encoding;
+	pi->pin.type = -1;
 	pi->pin.flags = 0x32;
-	pi->pin.max_length = profile->pin_maxlen;
-	pi->pin.min_length = profile->pin_minlen;
-	pi->pin.stored_length = profile->pin_maxlen;
-	pi->pin.pad_char = profile->pin_pad_char;
+	pi->pin.max_length = 0;
+	pi->pin.min_length = 0;
+	pi->pin.stored_length = 0;
+	pi->pin.pad_char = 0xA5;
 	pi->pin.magic = SC_PKCS15_PIN_MAGIC;
 	pi->pin.reference = -1;
 	pi->pin.tries_left = 3;
-	/* BCD encoded PIN takes half the space */
-	if (pi->pin.type == SC_PKCS15_PIN_TYPE_BCD)
-		pi->pin.stored_length = (pi->pin.stored_length + 1) / 2;
 
 	*tail = pi;
 	return pi;
+}
+
+void
+set_pin_defaults(struct sc_profile *profile, struct pin_info *pi)
+{
+	struct sc_pkcs15_pin_info *info = &pi->pin;
+
+	if (info->type < 0)
+		info->type = profile->pin_encoding;
+	if (info->max_length == 0)
+		info->max_length = profile->pin_maxlen;
+	if (info->min_length == 0)
+		info->min_length = profile->pin_minlen;
+	if (info->stored_length == 0) {
+		info->stored_length = profile->pin_maxlen;
+		/* BCD encoded PIN takes half the space */
+		if (info->type == SC_PKCS15_PIN_TYPE_BCD)
+			info->stored_length = (info->stored_length + 1) / 2;
+	}
+	if (info->pad_char == 0xA5)
+		info->pad_char = profile->pin_pad_char;
 }
 
 static int
