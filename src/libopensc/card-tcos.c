@@ -710,7 +710,6 @@ static int tcos_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_TCOS_SETPERM:
 		return tcos_setperm(card, !!ptr);
 	}
-	sc_error(card->ctx, "card_ctl command %u not supported\n", cmd);
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
