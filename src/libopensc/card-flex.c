@@ -397,7 +397,7 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 	return 0;
 }
 
-static int flex_create_file(struct sc_card *card, const struct sc_file *file)
+static int flex_create_file(struct sc_card *card, struct sc_file *file)
 {
 	u8 sbuf[18];
 	size_t sendlen;

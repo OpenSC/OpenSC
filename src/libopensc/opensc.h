@@ -323,7 +323,7 @@ struct sc_card_operations {
 	/*
 	 * ISO 7816-9 functions
 	 */
-	int (*create_file)(struct sc_card *card, const struct sc_file *file);
+	int (*create_file)(struct sc_card *card, struct sc_file *file);
 	int (*delete_file)(struct sc_card *card, const struct sc_path *path);
 	/* list_files:  Enumerates all the files in the current DF, and
 	 *   writes the corresponding file identifiers to <buf>.  Returns
@@ -489,7 +489,7 @@ int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
 			   size_t puklen, const u8 *newref, size_t newlen);
 
 /* ISO 7816-9 */
-int sc_create_file(struct sc_card *card, const struct sc_file *file);
+int sc_create_file(struct sc_card *card, struct sc_file *file);
 int sc_delete_file(struct sc_card *card, const struct sc_path *path);
 
 inline int sc_file_valid(const struct sc_file *file);

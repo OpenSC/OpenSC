@@ -518,7 +518,7 @@ int sc_list_files(struct sc_card *card, u8 *buf, size_t buflen)
         SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
-int sc_create_file(struct sc_card *card, const struct sc_file *file)
+int sc_create_file(struct sc_card *card, struct sc_file *file)
 {
 	int r;
 

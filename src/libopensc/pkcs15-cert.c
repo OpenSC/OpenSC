@@ -1,5 +1,5 @@
 /*
- * pkcs15-cert.c: PKCS#15 certificate functions
+ * pkcs15-cert.c: PKCS #15 certificate functions
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -403,8 +403,7 @@ static int get_certs_from_file(struct sc_pkcs15_card *p15card,
 		return r;
 	bytes_left = r;
 	do {
-		struct sc_pkcs15_cert_info info, *infop;
-		struct sc_pkcs15_object *objp;
+		struct sc_pkcs15_cert_info info;
 
 		memset(&info, 0, sizeof(info));
 		r = parse_x509_cert_info(p15card->card->ctx,
@@ -413,23 +412,11 @@ static int get_certs_from_file(struct sc_pkcs15_card *p15card,
 			break;
 		if (r)
 			return r;
-		infop = malloc(sizeof(info));
-		if (infop == NULL)
-			return SC_ERROR_OUT_OF_MEMORY;
-		memcpy(infop, &info, sizeof(info));
-		objp = malloc(sizeof(struct sc_pkcs15_object));
-		if (objp == NULL) {
-			free(infop);
-			return SC_ERROR_OUT_OF_MEMORY;
-		}
-		objp->type = SC_PKCS15_TYPE_CERT_X509;
-		objp->data = infop;
-		r = sc_pkcs15_add_object(p15card->card->ctx, df, file_nr, objp);
-		if (r) {
-			free(infop);
-			free(objp);
+		r = sc_pkcs15_add_object(p15card->card->ctx, df, file_nr,
+					 SC_PKCS15_TYPE_CERT_X509,
+					 &info, sizeof(info));
+		if (r)
 			return r;
-		}
                 if (p15card->cert_count >= SC_PKCS15_MAX_PRKEYS)
 			break;
 		p15card->cert_info[p15card->cert_count] = info;

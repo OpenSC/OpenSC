@@ -1,5 +1,5 @@
 /*
- * pkcs15-prkey.c: PKCS#15 private key functions
+ * pkcs15-prkey.c: PKCS #15 private key functions
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

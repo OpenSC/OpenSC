@@ -37,11 +37,14 @@ int sc_decipher(struct sc_card *card,
 	if (crgram_len > 255)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 
+	/* INS: 0x2A  PERFORM SECURITY OPERATION
+	 * P1:  0x80  Resp: Plain value
+	 * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf); /* FIXME */
 
-	sbuf[0] = 0; /* padding indicator byte */ ;
+	sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
 	memcpy(sbuf + 1, crgram, crgram_len);
 	apdu.data = sbuf;
 	apdu.lc = crgram_len + 1;
@@ -71,6 +74,9 @@ int sc_compute_signature(struct sc_card *card,
 	if (datalen > 255)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 
+	/* INS: 0x2A  PERFORM SECURITY OPERATION
+	 * P1:  0x9E  Resp: Digital Signature
+	 * P2:  0x9A  Cmd: Input for Digital Signature */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x9E,
 		       0x9A);
 	apdu.resp = rbuf;

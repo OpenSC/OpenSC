@@ -444,7 +444,7 @@ static int construct_fci(const struct sc_file *file, u8 *out, size_t *outlen)
 	return 0;
 }
 
-static int iso7816_create_file(struct sc_card *card, const struct sc_file *file)
+static int iso7816_create_file(struct sc_card *card, struct sc_file *file)
 {
 	int r;
 	size_t len;

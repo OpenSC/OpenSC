@@ -71,9 +71,9 @@ static int setec_init(struct sc_card *card)
 	return 0;
 }
 
-static int (*iso_create_file)(struct sc_card *card, const struct sc_file *file) = NULL;
+static int (*iso_create_file)(struct sc_card *card, struct sc_file *file) = NULL;
 
-static int setec_create_file(struct sc_card *card, const struct sc_file *file)
+static int setec_create_file(struct sc_card *card, struct sc_file *file)
 {
 	struct sc_file tmp;
 	

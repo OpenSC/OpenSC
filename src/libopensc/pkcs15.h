@@ -248,6 +248,7 @@ int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
 int sc_pkcs15_create_cdf(struct sc_pkcs15_card *card,
 			 struct sc_file *file,
 			 const struct sc_pkcs15_cert_info **certs);
+int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card);
 
 void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey);
 int sc_pkcs15_enum_private_keys(struct sc_pkcs15_card *card);
@@ -280,7 +281,8 @@ int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
 void sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
 int sc_pkcs15_add_object(struct sc_context *ctx, struct sc_pkcs15_df *df,
-			 int file_nr, struct sc_pkcs15_object *new_obj);
+			 int file_nr, int obj_type, const void *data,
+			 size_t data_size);
 extern const struct sc_pkcs15_defaults sc_pkcs15_card_table[];
 
 #ifdef  __cplusplus
