@@ -399,6 +399,10 @@ openct_reader_unlock(struct sc_reader *reader,
 
 	SC_FUNC_CALLED(reader->ctx, 1);
 
+	/* Not connected */
+	if (data->h == NULL)
+		return 0;
+
 	rc = ct_card_unlock(data->h, slot->id, slot_data->excl_lock);
 
 	/* We couldn't care less */
