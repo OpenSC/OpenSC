@@ -21,7 +21,7 @@
 #ifndef _PKCS15INIT_KEYCACHE_H
 #define _PKCS15INIT_KEYCACHE_H
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -37,7 +37,7 @@ extern int	sc_keycache_get_key(const sc_path_t *, int, int, unsigned char *, siz
 extern const u8 *sc_keycache_get_pin(const sc_path_t *, int);
 extern void	sc_keycache_forget_key(const sc_path_t *, int, int);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

@@ -23,7 +23,7 @@
 
 #include <opensc/opensc.h>
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -34,7 +34,7 @@ struct sc_emv_card {
 int sc_emv_bind(struct sc_card *card, struct sc_emv_card **emv_card);
 int sc_emv_unbind(struct sc_emv_card *emv_card);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

@@ -7,7 +7,7 @@
 #ifndef PKCS15_INIT_H
 #define PKCS15_INIT_H
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -369,7 +369,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_jcop_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_starcos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_oberthur_ops(void);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

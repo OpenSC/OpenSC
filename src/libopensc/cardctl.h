@@ -17,7 +17,7 @@
 
 #include <opensc/types.h>
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -280,7 +280,7 @@ struct sc_cardctl_oberthur_createpin_info {
 	unsigned int puk_tries;
 };
 	  
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

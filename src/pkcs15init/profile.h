@@ -7,7 +7,7 @@
 #ifndef _OPENSC_PROFILE_H
 #define _OPENSC_PROFILE_H
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -144,7 +144,7 @@ int		sc_profile_instantiate_template(struct sc_profile *,
 int		sc_profile_add_file(struct sc_profile *,
 			const char *, sc_file_t *);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

@@ -328,7 +328,7 @@ extern void *memdup(const void *, size_t);
 
 extern PKCS11_KEY_ops pkcs11_rsa_ops;
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 #endif

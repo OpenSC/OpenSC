@@ -28,7 +28,7 @@
 
 #include <stdio.h>
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -117,7 +117,7 @@ extern "C" {
 #define SC_MAX_PIN_SIZE			256 /* OpenPGP card has 254 max */
 #define SC_MAX_ATR_SIZE			33
 #define SC_MAX_AID_SIZE			16
-/* Beware: the following needs to be a mutiple of 4
+/* Beware: the following needs to be a multiple of 4
  * or else sc_update_binary will not work on GPK */
 #define SC_APDU_CHOP_SIZE		248
 
@@ -895,7 +895,7 @@ extern struct sc_card_driver *sc_get_jcop_driver(void);
 extern struct sc_card_driver *sc_get_oberthur_driver(void);
 extern struct sc_card_driver *sc_get_belpic_driver(void);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

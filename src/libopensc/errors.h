@@ -21,7 +21,7 @@
 #ifndef _OPENSC_ERRORS_H
 #define _OPENSC_ERRORS_H
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -109,7 +109,7 @@ extern "C" {
 
 const char *sc_strerror(int sc_errno);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

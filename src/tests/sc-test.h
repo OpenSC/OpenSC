@@ -1,7 +1,7 @@
 #ifndef _SC_TEST_H
 #define _SC_TEST_H
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -15,7 +15,7 @@ void sc_test_cleanup();
 void sc_test_print_card(const struct sc_pkcs15_card *);
 void sc_test_print_object(const struct sc_pkcs15_object *);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

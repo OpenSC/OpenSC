@@ -21,7 +21,7 @@
 #include <sys/stat.h>
 #include <opensc/opensc.h>
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -42,7 +42,7 @@ int connect_card(struct sc_context *, struct sc_card **,
 		int reader_id, int slot_id, int wait, int verbose);
 int parse_application_id(struct sc_object_id *oid, char *oid_str);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

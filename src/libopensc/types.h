@@ -21,7 +21,7 @@
 #ifndef _OPENSC_TYPES_H
 #define _OPENSC_TYPES_H
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -105,7 +105,7 @@ typedef struct sc_apdu {
 	unsigned int sw1, sw2;	/* Status words returned in R-APDU */
 } sc_apdu_t;
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

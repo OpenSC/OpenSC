@@ -25,7 +25,7 @@
 #include <config.h>
 #endif
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -68,7 +68,7 @@ struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
 int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		     unsigned int *tag_out, size_t *taglen);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

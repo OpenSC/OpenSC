@@ -21,7 +21,7 @@
 #ifndef _OPENSC_ASN1_H
 #define _OPENSC_ASN1_H
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -192,7 +192,7 @@ void sc_asn1_clear_algorithm_id(struct sc_algorithm_id *);
 #define ASN1_UNIVERSALSTRING          28
 #define ASN1_BMPSTRING                30
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

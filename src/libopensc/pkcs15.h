@@ -21,7 +21,7 @@
 #ifndef _OPENSC_PKCS15_H
 #define _OPENSC_PKCS15_H
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -649,7 +649,7 @@ int sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
 			int type, unsigned int modulus_length, int usage,
 			const sc_path_t *path, int ref,
 			const sc_pkcs15_id_t *auth_id, int obj_flags);
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 
