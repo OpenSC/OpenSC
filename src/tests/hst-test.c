@@ -1,4 +1,3 @@
-
 /* Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  * All rights reserved.
  */
@@ -42,7 +41,7 @@ int test()
 		fprintf(stderr, "sc_select_file failed: %s\n", sc_strerror(r));
 		goto err;
 	}
-	r = sc_pkcs15_verify_pin(p15card, &p15card->pin_info[0], "\x31\x32\x33\x34", 4);
+	r = sc_pkcs15_verify_pin(p15card, &p15card->pin_info[0], (const u8 *) "\x31\x32\x33\x34", 4);
 	if (r) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
 		goto err;
@@ -135,7 +134,7 @@ int test3()
 		return -1;
 	len = fread(buf, 1, sizeof(buf), inf);
 
-	r = sc_pkcs15_verify_pin(p15card, pin, "\x31\x32\x33\x34", 4);
+	r = sc_pkcs15_verify_pin(p15card, pin, (const u8 *) "\x31\x32\x33\x34", 4);
 	if (r) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
 		return -1;

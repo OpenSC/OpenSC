@@ -239,7 +239,7 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	card = slot[ses->slot].p15card;
 
 	LOG("Master PIN code update starts.\n");
-        rc = sc_pkcs15_change_pin(card, &card->pin_info[0], (char *) pOldPin, ulOldLen, (char *) pNewPin, ulNewLen);
+        rc = sc_pkcs15_change_pin(card, &card->pin_info[0], pOldPin, ulOldLen, pNewPin, ulNewLen);
 	switch (rc) {
 	case 0:
 		LOG("Master PIN code CHANGED succesfully.\n");

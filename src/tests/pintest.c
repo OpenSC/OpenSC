@@ -37,25 +37,25 @@ int ask_and_verify_pin(struct sc_pkcs15_pin_info *pin)
 {
 	int i = 0;
         char prompt[80];
-        char *pass;
+        u8 *pass;
 
 	while (1) {
 		sprintf(prompt, "Please enter PIN code [%s]: ", pin->com_attr.label);
-                pass = getpass(prompt);
+                pass = (u8 *) getpass(prompt);
 
-		if (strlen(pass) == 0) {
+		if (strlen((char *) pass) == 0) {
 			printf("Not verifying PIN code.\n");
 			return -1;
 		}
-		if (strlen(pass) < pin->min_length)
+		if (strlen((char *) pass) < pin->min_length)
 			break;
-		if (strlen(pass) > pin->stored_length)
+		if (strlen((char *) pass) > pin->stored_length)
 			break;
 		break;
 	}
 
        	sc_lock(card);
-       	i = sc_pkcs15_verify_pin(p15card, pin, pass, strlen(pass));
+       	i = sc_pkcs15_verify_pin(p15card, pin, pass, strlen((char *) pass));
        	sc_unlock(card);
        	if (i) {
        		if (i == SC_ERROR_PIN_CODE_INCORRECT)

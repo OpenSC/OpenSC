@@ -1,8 +1,8 @@
 # Process this file with automake to create Makefile.in
 
-INCLUDES = -I$(top_srcdir)/src/libopensc
+INCLUDES = -I../libopensc
 LDFLAGS = @LDFLAGS@ \
-	$(top_srcdir)/src/libopensc/libopensc.la
+	../libopensc/libopensc.la
 
 bin_PROGRAMS = opensc-crypt opensc-tool
 

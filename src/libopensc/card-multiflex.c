@@ -44,7 +44,7 @@ static int mflex_match_card(struct sc_card *card)
 
 	for (i = 0; mflex_atrs[i] != NULL; i++) {
 		u8 defatr[SC_MAX_ATR_SIZE];
-		int len = sizeof(defatr);
+		size_t len = sizeof(defatr);
 		const char *atrp = mflex_atrs[i];
 
 		if (sc_hex_to_bin(atrp, defatr, &len))
@@ -74,10 +74,15 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 			       struct sc_file *file)
 {
 	const u8 *p = buf + 2;
+	u8 b1, b2;
         int left;
 
-	file->size = (*p++ << 8) + *p++;
-	file->id = (*p++ << 8) + *p++;
+	b1 = *p++;
+	b2 = *p++;
+	file->size = (b1 << 8) + b2;
+	b1 = *p++;
+	b2 = *p++;
+	file->id = (b1) + b2;
 	switch (*p) {
 	case 0x01:
 		file->type = SC_FILE_TYPE_WORKING_EF;
@@ -119,7 +124,7 @@ static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 	int r, i;
 	struct sc_apdu apdu;
         u8 rbuf[MAX_BUFFER_SIZE];
-	u8 *pathptr = path->value;
+	const u8 *pathptr = path->value;
 	size_t pathlen = path->len;
 
 	SC_FUNC_CALLED(card->ctx, 3);

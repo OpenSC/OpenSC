@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _LIBOPENSC_H
-#define _LIBOPENSC_H
+#ifndef _SC_INTERNAL_H
+#define _SC_INTERNAL_H
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>

@@ -1,9 +1,8 @@
 # Process this file with automake to create Makefile.in
 
-INCLUDES = -I$(top_srcdir)/src/libopensc
-CFLAGS = @CFLAGS@ -Werror
+INCLUDES = -I../libopensc
 LDFLAGS = @LDFLAGS@ \
-	$(top_srcdir)/src/libopensc/libopensc.la
+	../libopensc/libopensc.la
 
 noinst_PROGRAMS = base64 hst-test lottery p15dump \
 		  pintest prngtest

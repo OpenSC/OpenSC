@@ -2,9 +2,9 @@
 
 libdir = ${prefix}/lib/security
 
-INCLUDES = -I$(top_srcdir)/src/libopensc
+INCLUDES = -I../libopensc
 LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBPAM@ @LIBCRYPTO@ \
-	$(top_srcdir)/src/libopensc/libopensc.la
+	../libopensc/libopensc.la
 
 SRC = pam_pkcs15.c
 INC = 

@@ -147,8 +147,9 @@ int sc_base64_encode(const u8 *in, size_t len, u8 *out, size_t outlen, size_t li
 
 int sc_base64_decode(const char *in, u8 *out, size_t outlen)
 {
-	int len = 0, r, i, skip;
-	
+	int len = 0, r, skip;
+	unsigned int i;
+
 	while ((r = from_base64(in, &i, &skip)) > 0) {
 		int finished = 0, s = 16;
 

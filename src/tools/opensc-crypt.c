@@ -18,9 +18,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include <unistd.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#ifdef HAVE_GETOPT_H
 #include <getopt.h>
+#endif
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -120,7 +126,7 @@ char * get_pin(struct sc_pkcs15_pin_info *pinfo)
 	}
 }
 
-int read_input(char *buf, int buflen)
+int read_input(u8 *buf, int buflen)
 {
 	FILE *inf;
 	int c;

@@ -6,7 +6,7 @@ int main(int argc, char *argv[])
 {
 	int len;
 	FILE *inf;
-	char buf[8192];
+	u8 buf[8192];
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: base64 <file>\n");

@@ -251,8 +251,7 @@ void sc_asn1_print_tags(const u8 * buf, int buflen)
 const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 			   size_t buflen, unsigned int tag_in, size_t *taglen_in)
 {
-	size_t left = buflen, taglen;
-	unsigned int cla, tag;
+	int left = buflen, taglen, cla, tag;
 	const u8 *p = buf;
 
 	*taglen_in = 0;
@@ -277,8 +276,7 @@ const u8 *sc_asn1_skip_tag(struct sc_context *ctx, const u8 ** buf, size_t *bufl
 			   unsigned int tag_in, size_t *taglen_out)
 {
 	const u8 *p = *buf;
-	size_t len = *buflen, taglen;
-	unsigned int cla, tag;
+	int len = *buflen, taglen, cla, tag;
 
 	if (read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != 1)
 		return NULL;
@@ -464,7 +462,7 @@ static int asn1_parse_path(struct sc_context *ctx, const u8 *in, int len,
 {
 	int idx, r;
 	struct sc_asn1_struct asn1_path[] = {
-		{ "path",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, &path->value, &path->len },
+		{ "path",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, &path->value, (int *) &path->len },
 		{ "index",  SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, &idx },
 		{ NULL }
 	};
@@ -504,12 +502,12 @@ static int asn1_parse_p15_object(struct sc_context *ctx, const u8 *in, int len,
 }
 
 static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entry,
-			     const u8 *obj, size_t objlen, int depth)
+			     const u8 *obj, int objlen, int depth)
 {
 	void *parm = entry->parm;
 	int (*callback_func)(struct sc_context *ctx, void *arg, const u8 *obj,
-			     size_t objlen, int depth) =
-		(int (*)(struct sc_context *, void *, const u8 *, size_t, int)) parm;
+			     int objlen, int depth) =
+		(int (*)(struct sc_context *, void *, const u8 *, int, int)) parm;
 	int *len = (int *) entry->arg;
 	int r = 0;
 
@@ -519,11 +517,11 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entr
 		
 		line[0] = 0;
 		for (i = 0; i < depth; i++) {
-			strcpy(linep, "  ");
+			strcpy((char *) linep, "  ");
 			linep += 2;
 		}
-		sprintf(linep, "decoding '%s'\n", entry->name);
-		debug(ctx, line);
+		sprintf((char *) linep, "decoding '%s'\n", entry->name);
+		debug(ctx, (char *) line);
 	}
 		
 	switch (entry->type) {
@@ -649,7 +647,7 @@ static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 	int r, idx = 0;
 	const u8 *p = in, *obj;
 	struct sc_asn1_struct *entry = asn1;
-	int left = len, objlen;
+	size_t left = len, objlen;
 
 	if (ctx->debug >= 3)
 		debug(ctx, "called, depth %d%s\n", depth, choice ? ", choice" : "");
@@ -677,7 +675,7 @@ static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 
 				line[0] = 0;
 				for (i = 0; i < 10 && i < left; i++) {
-					sprintf(linep, "%02X ", p[i]);
+					sprintf((char *) linep, "%02X ", p[i]);
 					linep += 3;
 				}
 				debug(ctx, "next tag: %s\n", line);

@@ -203,7 +203,7 @@ static int iso7816_select_file(struct sc_card *card,
 {
 	struct sc_context *ctx;
 	struct sc_apdu apdu;
-	char buf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int r, pathlen;
 

@@ -87,7 +87,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 		{ NULL }
 	};
 	struct sc_asn1_struct asn1_pkinfo[] = {
-		{ "algorithm",		SC_ASN1_CALLBACK,      ASN1_SEQUENCE | SC_ASN1_CONS, 0, parse_algorithm_id, &pk_alg },
+		{ "algorithm",		SC_ASN1_CALLBACK,      ASN1_SEQUENCE | SC_ASN1_CONS, 0, (void *) parse_algorithm_id, &pk_alg },
 		{ "subjectPublicKey",	SC_ASN1_BIT_STRING_NI, ASN1_BIT_STRING, SC_ASN1_ALLOC, &pk, &pklen },
 		{ NULL }
 	};
@@ -103,7 +103,7 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 	};
 	struct sc_asn1_struct asn1_cert[] = {
 		{ "tbsCertificate",	SC_ASN1_STRUCT,    ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_tbscert },
-		{ "signatureAlgorithm",	SC_ASN1_CALLBACK,  ASN1_SEQUENCE | SC_ASN1_CONS, 0, parse_algorithm_id, &sig_alg },
+		{ "signatureAlgorithm",	SC_ASN1_CALLBACK,  ASN1_SEQUENCE | SC_ASN1_CONS, 0, (void *) parse_algorithm_id, &sig_alg },
 		{ "signatureValue",	SC_ASN1_BIT_STRING,ASN1_BIT_STRING, 0, NULL, 0 },
 		{ NULL }
 	};
@@ -139,7 +139,7 @@ static int generate_cert_filename(struct sc_pkcs15_card *p15card,
 				  char *fname, int len)
 {
 	char *homedir;
-	u8 cert_id[SC_PKCS15_MAX_ID_SIZE*2+1];
+	char cert_id[SC_PKCS15_MAX_ID_SIZE*2+1];
 	int i, r;
 
 	homedir = getenv("HOME");
@@ -166,7 +166,7 @@ static int find_cached_cert(struct sc_pkcs15_card *p15card,
 {
 	int r;
 	u8 *data;
-	u8 fname[1024];
+	char fname[1024];
 	FILE *crtf; 
 	struct stat stbuf;
 
@@ -204,7 +204,7 @@ static int store_cert_to_cache(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_cert_info *info,
 			       u8 *data, int len)
 {
-	u8 fname[1024];
+	char fname[1024];
 	FILE *crtf;
 	int r;
 	

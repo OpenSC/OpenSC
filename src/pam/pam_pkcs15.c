@@ -1,4 +1,6 @@
-
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,7 +12,48 @@
 
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
+#ifdef HAVE_SECURITY__PAM_MACROS_H
 #include <security/_pam_macros.h>
+#else
+#define x_strdup(s) ((s) ? strdup(s):NULL)
+#define _pam_overwrite(x)        \
+do {                             \
+     register char *__xx__;      \
+     if ((__xx__=(x)))           \
+          while (*__xx__)        \
+               *__xx__++ = '\0'; \
+} while (0)
+#define _pam_drop(X) \
+do {                 \
+    if (X) {         \
+        free(X);     \
+        X=NULL;      \
+    }                \
+} while (0)
+#define _pam_drop_reply(/* struct pam_response * */ reply, /* int */ replies) \
+do {                                              \
+    int reply_i;                                  \
+                                                  \
+    for (reply_i=0; reply_i<replies; ++reply_i) { \
+	if (reply[reply_i].resp) {                \
+	    _pam_overwrite(reply[reply_i].resp);  \
+	    free(reply[reply_i].resp);            \
+	}                                         \
+    }                                             \
+    if (reply)                                    \
+	free(reply);                              \
+} while (0)
+#endif
+
+#ifndef PAM_EXTERN
+#define PAM_EXTERN
+#endif
+
+#ifdef PAM_SUN_CODEBASE
+#define PAM_CONST
+#else
+#define PAM_CONST const
+#endif
 
 #include <openssl/x509.h>
 #include <openssl/rsa.h>
@@ -34,7 +77,6 @@ static const char *eid_path = ".eid";
 static const char *auth_cert_file = "authorized_certificates";
 
 static int pamdebug = 1;
-
 
 static int format_eid_dir_path(const char *user, char **buf)
 {
@@ -152,11 +194,11 @@ static int get_password(pam_handle_t * pamh, char **password, const char *pinnam
 		sprintf(buf, "Enter PIN [%s]: ", tmp);
 		
 		DBG(printf("failed; Trying to get CONV object...\n"));
-		r = pam_get_item(pamh, PAM_CONV, (const void **) &conv);
+		r = pam_get_item(pamh, PAM_CONV, (PAM_CONST void **) &conv);
 		if (r != PAM_SUCCESS)
 			return r;
 		DBG(printf("Conversing...\n"));
-		r = conv->conv(1, pin_msg, &resp, conv->appdata_ptr);
+		r = conv->conv(1, (PAM_CONST struct pam_message **) pin_msg, &resp, conv->appdata_ptr);
 		if (r != PAM_SUCCESS)
 			return r;
 		if (resp) {
@@ -185,11 +227,12 @@ int verify_authenticity(struct sc_pkcs15_card *p15card,
 	r = get_random(random_data, sizeof(random_data));
 	if (r != PAM_SUCCESS)
 		return -1;
-/*	DBG(printf("Encrypting...\n"));
+#if 0
+	DBG(printf("Encrypting...\n"));
 	r = RSA_public_encrypt(117, random_data, chg, pubkey->pkey.rsa, RSA_PKCS1_PADDING);
 	if (r != 128)
 		goto end;
- */
+#endif
  	chglen = RSA_size(rsa);
  	if (chglen > sizeof(chg)) {
  		DBG(printf("Too large RSA key. Bailing out.\n"));
@@ -224,7 +267,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 #endif
 {
 	int r, i, err = PAM_AUTH_ERR, locked = 0;
-	const char *user;
+	PAM_CONST char *user = NULL;
 	char *password = NULL;
 	X509 *cert = NULL;
 	EVP_PKEY *pubkey = NULL;
@@ -318,7 +361,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		goto end;
 	}
 	DBG(printf("Verifying PIN code...\n"));
-	r = sc_pkcs15_verify_pin(p15card, pinfo, password, strlen(password));
+	r = sc_pkcs15_verify_pin(p15card, pinfo, (const u8 *) password, strlen(password));
 	memset(password, 0, strlen(password));
 	if (r) {
 		DBG(printf("PIN code verification failed: %s\n", sc_strerror(r)));
@@ -329,12 +372,13 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 	DBG(printf("Awright! PIN code correct!\n"));
 	/* FIXME: clear password? */
 	DBG(printf("Deciphering...\n"));
-/*	r = sc_pkcs15_decipher(p15card, prkinfo, chg, sizeof(chg), plain_text, sizeof(plain_text));
+#if 0
+	r = sc_pkcs15_decipher(p15card, prkinfo, chg, sizeof(chg), plain_text, sizeof(plain_text));
 	if (r <= 0) {
 		DBG(printf("Decipher failed: %s\n", sc_strerror(r)));
 		goto end;
 	}
- */
+#endif
  	if (verify_authenticity(p15card, prkinfo, pubkey->pkey.rsa) != 1)
  		goto end;
 	DBG(printf("You're in!\n"));	

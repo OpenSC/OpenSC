@@ -1,5 +1,5 @@
 /*
- * sc-tool.c: Tool for accessing SmartCards with libsc
+ * sc-tool.c: Tool for accessing SmartCards with libopensc
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -18,9 +18,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include <unistd.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#ifdef HAVE_GETOPT_H
 #include <getopt.h>
+#endif
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -88,7 +94,7 @@ struct sc_context *ctx = NULL;
 struct sc_card *card = NULL;
 struct sc_pkcs15_card *p15card = NULL;
 
-void print_usage_and_die()
+void print_usage_and_die(void)
 {
 	int i = 0;
 	printf("Usage: sc-tool [OPTIONS]\nOptions:\n");
@@ -119,7 +125,7 @@ void print_usage_and_die()
 	exit(2);
 }
 
-int list_readers()
+int list_readers(void)
 {
 	int i;
 	
@@ -134,7 +140,7 @@ int list_readers()
 	return 0;
 }
 
-int list_drivers()
+int list_drivers(void)
 {
 	int i;
 	
@@ -149,7 +155,7 @@ int list_drivers()
 	return 0;
 }
 
-int list_certificates()
+int list_certificates(void)
 {
 	int r, i;
 	
@@ -196,7 +202,7 @@ int print_pem_certificate(struct sc_pkcs15_cert *cert)
 	return 0;
 }
 
-int read_certificate()
+int read_certificate(void)
 {
 	int r, i;
 	struct sc_pkcs15_id id;
@@ -232,7 +238,7 @@ int read_certificate()
 	return 2;
 }
 
-int list_private_keys()
+int list_private_keys(void)
 {
 	int r, i;
 	
@@ -251,7 +257,7 @@ int list_private_keys()
 	return 0;
 }
 
-char * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
+u8 * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
 {
 	int r;
 	char buf[80];
@@ -299,11 +305,11 @@ char * get_pin(const char *prompt, struct sc_pkcs15_pin_info **pin_out)
 			printf("PIN code too long, try again.\n");
 			continue;
 		}
-		return strdup(pincode);
+		return (u8 *) strdup(pincode);
 	}
 }
 
-int list_pins()
+int list_pins(void)
 {
 	int r, i;
 
@@ -322,30 +328,29 @@ int list_pins()
 	return 0;
 }
 
-int change_pin()
+int change_pin(void)
 {
-	char *pincode;
-	char *newpin;
 	struct sc_pkcs15_pin_info *pinfo = NULL;
+	u8 *pincode, *newpin;
 	int r;
 	
 	pincode = get_pin("Enter old PIN", &pinfo);
 	if (pincode == NULL)
 		return 2;
-	if (strlen(pincode) == 0) {
+	if (strlen((char *) pincode) == 0) {
 		fprintf(stderr, "No PIN code supplied.\n");
 		return 2;
 	}
 	while (1) {
-		char *newpin2;
-		
+		u8 *newpin2;
+
 		newpin = get_pin("Enter new PIN", &pinfo);
-		if (newpin == NULL || strlen(newpin) == 0)
+		if (newpin == NULL || strlen((char *) newpin) == 0)
 			return 2;
 		newpin2 = get_pin("Enter new PIN again", &pinfo);
-		if (newpin2 == NULL || strlen(newpin2) == 0)
+		if (newpin2 == NULL || strlen((char *) newpin2) == 0)
 			return 2;
-		if (strcmp(newpin, newpin2) == 0) {
+		if (strcmp((char *) newpin, (char *) newpin2) == 0) {
 			free(newpin2);
 			break;
 		}
@@ -353,8 +358,8 @@ int change_pin()
 		free(newpin);
 		free(newpin2);
 	}
-	r = sc_pkcs15_change_pin(p15card, pinfo, pincode, strlen(pincode),
-				 newpin, strlen(newpin));
+	r = sc_pkcs15_change_pin(p15card, pinfo, pincode, strlen((char *) pincode),
+				 newpin, strlen((char *) newpin));
 	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 		fprintf(stderr, "PIN code incorrect; tries left: %d\n", pinfo->tries_left);
 		return 3;
@@ -513,7 +518,7 @@ int enum_dir(struct sc_path path, int depth)
 	return 0;
 }	
 
-int list_files()
+int list_files(void)
 {
 	struct sc_path path;
 	int r;
@@ -528,7 +533,7 @@ static int generate_cert_filename(struct sc_pkcs15_card *p15card,
 				  char *fname, int len)
 {
 	char *homedir;
-	u8 cert_id[SC_PKCS15_MAX_ID_SIZE*2+1];
+	char cert_id[SC_PKCS15_MAX_ID_SIZE*2+1];
 	int i, r;
 
 	homedir = getenv("HOME");
@@ -549,7 +554,7 @@ static int generate_cert_filename(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
-int learn_card()
+int learn_card(void)
 {
 	struct stat stbuf;
 	char fname[512], *home;
@@ -606,12 +611,12 @@ int learn_card()
 	return 0;
 }
 
-int send_apdu()
+int send_apdu(void)
 {
 	struct sc_apdu apdu;
 	u8 buf[MAX_BUFFER_SIZE], sbuf[MAX_BUFFER_SIZE],
 	   rbuf[MAX_BUFFER_SIZE], *p = buf;
-	int len = sizeof(buf), len0, r;
+	size_t len = sizeof(buf), len0, r;
 	
 	sc_hex_to_bin(opt_apdu, buf, &len0);
 	if (len < 4) {

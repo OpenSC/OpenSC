@@ -166,7 +166,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	int r;
 	struct sc_file file;
 	struct sc_card *card;
-	char pinbuf[SC_MAX_PIN_SIZE];
+	u8 pinbuf[SC_MAX_PIN_SIZE];
 
 	assert(p15card != NULL);
 	if (pin->magic != SC_PKCS15_PIN_MAGIC)

@@ -32,6 +32,11 @@
 extern "C" {
 #endif
 
+#ifndef __GNUC__
+#undef inline
+#define inline
+#endif
+
 #define SC_ERROR_MIN				-1000
 #define SC_ERROR_UNKNOWN			-1000
 #define SC_ERROR_CMD_TOO_SHORT			-1001

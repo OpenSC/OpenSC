@@ -44,7 +44,7 @@ static int setec_match_card(struct sc_card *card)
 
 	for (i = 0; setec_atrs[i] != NULL; i++) {
 		u8 defatr[SC_MAX_ATR_SIZE];
-		int len = sizeof(defatr);
+		size_t len = sizeof(defatr);
 		const char *atrp = setec_atrs[i];
 
 		if (sc_hex_to_bin(atrp, defatr, &len))

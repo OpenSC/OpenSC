@@ -55,7 +55,7 @@ void sc_pkcs15_print_card(const struct sc_pkcs15_card *card)
 	printf("\n");
 }
 
-void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, int buflen)
+void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t buflen)
 {
 	int i, r;
 	u8 serial[128];
@@ -97,7 +97,7 @@ void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, int buflen)
 	}
 	if (card->manufacturer_id == NULL) {
 		if (asn1_tokeninfo[2].flags & SC_ASN1_PRESENT)
-			card->manufacturer_id = strdup(mnfid);
+			card->manufacturer_id = strdup((char *) mnfid);
 		else
 			card->manufacturer_id = strdup("(unknown)");
 	}
@@ -110,9 +110,9 @@ err:
 	return;
 }
 
-static int parse_dir(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
+static int parse_dir(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 {
-	const u8 *aidref = "\xA0\x00\x00\x00\x63PKCS-15";
+	const u8 *aidref = (const u8 *) "\xA0\x00\x00\x00\x63PKCS-15";
 	const int aidref_len = 12;
 	int r;
 	u8 aid[128], label[128], path[128];
@@ -150,7 +150,7 @@ static int parse_dir(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 		return -1;
 	}
 	if (asn1_dir[1].flags & SC_ASN1_PRESENT)
-		card->label = strdup(label);
+		card->label = strdup((char *) label);
 	else
 		card->label = strdup("(unknown)");
 	memcpy(card->file_app.path.value, path, path_len);

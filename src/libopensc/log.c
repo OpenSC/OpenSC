@@ -32,7 +32,7 @@ void error(struct sc_context *ctx, const char *format, ...)
 	va_list ap;
 
 	va_start(ap, format);
-	do_log2(ctx, SC_LOG_TYPE_ERROR, "", format, ap);
+	do_log2(ctx, SC_LOG_TYPE_ERROR, NULL, 0, "", format, ap);
 	va_end(ap);
 }
 
@@ -41,7 +41,7 @@ void debug(struct sc_context *ctx, const char *format, ...)
 	va_list ap;
 
 	va_start(ap, format);
-	do_log2(ctx, SC_LOG_TYPE_DEBUG, "", format, ap);
+	do_log2(ctx, SC_LOG_TYPE_DEBUG, NULL, 0, "", format, ap);
 	va_end(ap);
 }
 
@@ -110,18 +110,18 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 		if (do_color && !isatty(fileno(outf)))
 			do_color = 0;
 		if (do_color) {
-			color_sfx = "\e[0m";
+			color_sfx = "\\e[0m";
 			switch (type) {
 			case SC_LOG_TYPE_ERROR:
-				color_pfx = "\e[01;31m";
+				color_pfx = "\\e[01;31m";
 				break;
 #if 0
 			case SC_LOG_TYPE_NORMAL:
-				color_pfx = "\e[01;33m";
+				color_pfx = "\\e[01;33m";
 				break;
 #endif
 			case SC_LOG_TYPE_DEBUG:
-				color_pfx = "\e[00;32m";
+				color_pfx = "\\e[00;32m";
 				break;
 			}
 		}
@@ -133,7 +133,7 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 void sc_hex_dump(struct sc_context *ctx, const u8 *in, size_t count,
 		 char *buf, size_t len)
 {
-	u8 *p = buf;
+	char *p = buf;
 	int lines = 0;
 
 	assert(buf != NULL && in != NULL);

@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _SC_PKCS15_H
-#define _SC_PKCS15_H
+#ifndef _OPENSC_PKCS15_H
+#define _OPENSC_PKCS15_H
 
 #include "opensc.h"
 
@@ -42,7 +42,7 @@ extern "C" {
 
 struct sc_pkcs15_id {
 	u8 value[SC_PKCS15_MAX_ID_SIZE];
-	int len;
+	size_t len;
 };
 
 struct sc_pkcs15_common_obj_attr {

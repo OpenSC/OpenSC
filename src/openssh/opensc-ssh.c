@@ -1,8 +1,12 @@
-
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#ifdef HAVE_GETOPT_H
 #include <getopt.h>
+#endif
 
 #include <openssl/x509.h>
 #include <openssl/evp.h>
@@ -37,7 +41,7 @@ struct sc_context *ctx = NULL;
 struct sc_card *card = NULL;
 struct sc_pkcs15_card *p15card = NULL;
 
-void print_usage_and_die()
+void print_usage_and_die(void)
 {
 	int i = 0;
 	printf("Usage: sc-ssh [OPTIONS]\nOptions:\n");
@@ -127,7 +131,7 @@ int write_ssh_key(struct sc_pkcs15_cert_info *cinfo, RSA *rsa)
 	
 	if (buf == NULL)
 		return 1;
-	put_string("ssh-rsa", 7, p, left, &skip);
+	put_string((u8 *) "ssh-rsa", 7, p, left, &skip);
 	left -= skip;
 	p += skip;
 	num = bignum_to_buf(rsa->e, &len, &skip);
@@ -168,7 +172,7 @@ int write_ssh_key(struct sc_pkcs15_cert_info *cinfo, RSA *rsa)
 	return 0;
 }
 
-int extract_key()
+int extract_key(void)
 {
 	int r, i;
 	struct sc_pkcs15_id id;
@@ -180,7 +184,7 @@ int extract_key()
 	EVP_PKEY *pubkey;
 	
 	if (opt_cert) {
-		if (strlen(opt_cert)/2 >= SC_PKCS15_MAX_ID_SIZE) {
+		if (((strlen(opt_cert)/2) >= SC_PKCS15_MAX_ID_SIZE)) {
 			fprintf(stderr, "Certificate id too long.\n");
 			return 2;
 		}

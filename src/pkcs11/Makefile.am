@@ -4,10 +4,10 @@ SUBDIRS = . pkcs11
 
 libdir = ${prefix}/lib/pkcs11
 
-INCLUDES = -I$(top_srcdir)/src/libopensc
+INCLUDES = -I../libopensc
 
 LDFLAGS = @LDFLAGS@ @LIBDL@ \
-	$(top_srcdir)/src/libopensc/libopensc.la
+	../libopensc/libopensc.la
 
 SRC = function_table.c generic.c session.c object.c \
 	endecrypt.c digestsign.c verify.c misc.c slot.c

@@ -137,21 +137,21 @@ static int fineid_pkcs15_defaults(struct sc_pkcs15_card *arg,
 	pin->magic = SC_PKCS15_PIN_MAGIC;
 
 	card->cert_count = 3;
-	format_cert_struct(&card->cert_info[0], "todentamis- ja salausvarmenne", "\x45", 1, 0, "50154331");
-	format_cert_struct(&card->cert_info[1], "allekirjoitusvarmenne", "\x46", 1, 0, "50154332");
+	format_cert_struct(&card->cert_info[0], "todentamis- ja salausvarmenne", (const u8 *) "\x45", 1, 0, "50154331");
+	format_cert_struct(&card->cert_info[1], "allekirjoitusvarmenne", (const u8 *) "\x46", 1, 0, "50154332");
 	switch (type) {
 	case 1:
-		format_cert_struct(&card->cert_info[2], "FINSIGN CA for Citizen", "\x47", 1, 1, "50154333");
+		format_cert_struct(&card->cert_info[2], "FINSIGN CA for Citizen", (const u8 *) "\x47", 1, 1, "50154333");
 		break;
 	case 2:
-		format_cert_struct(&card->cert_info[2], "Test CA for S4-2", "\x47", 1, 1, "50154333");
+		format_cert_struct(&card->cert_info[2], "Test CA for S4-2", (const u8 *) "\x47", 1, 1, "50154333");
 		break;
 	}
 
 	card->prkey_count = 2;
-	format_prkey_struct(&card->prkey_info[0], "todentamis- ja salausavain", "\x45", 1, "\x01", 1,
+	format_prkey_struct(&card->prkey_info[0], "todentamis- ja salausavain", (const u8 *) "\x45", 1, (const u8 *) "\x01", 1,
 			    0x26, 0x1d, 1024, "4B01");
-	format_prkey_struct(&card->prkey_info[1], "allekirjoitusavain", "\x46", 1, "\x02", 1,
+	format_prkey_struct(&card->prkey_info[1], "allekirjoitusavain", (const u8 *) "\x46", 1, (const u8 *) "\x02", 1,
 			    0x200, 0x1d, 1024, "4B02");
 
 	return 0;
