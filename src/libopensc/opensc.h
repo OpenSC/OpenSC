@@ -221,11 +221,11 @@ struct sc_pbes2_params {
 struct sc_algorithm_info {
 	unsigned int algorithm;
 	unsigned int key_length;
-	unsigned long flags;
+	unsigned int flags;
 
 	union {
 		struct sc_rsa_info {
-			long exponent;
+			unsigned long exponent;
 		} _rsa;
 	} u;
 };

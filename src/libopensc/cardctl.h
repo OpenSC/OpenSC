@@ -272,10 +272,10 @@ struct sc_cardctl_oberthur_updatekey_info {
 struct sc_cardctl_oberthur_createpin_info {
 	unsigned int type;
 	unsigned int ref;
-	unsigned char *pin;
+	const unsigned char *pin;
 	unsigned int pin_len;
 	unsigned int pin_tries;
-	unsigned char *puk;
+	const unsigned char *puk;
 	unsigned int puk_len;
 	unsigned int puk_tries;
 };

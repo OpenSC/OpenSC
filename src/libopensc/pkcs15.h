@@ -157,7 +157,7 @@ struct sc_pkcs15_pubkey {
 typedef struct sc_pkcs15_pubkey sc_pkcs15_pubkey_t;
 
 struct sc_pkcs15_prkey {
-	int algorithm;
+	unsigned int algorithm;
 	union {
 		struct sc_pkcs15_prkey_rsa rsa;
 		struct sc_pkcs15_prkey_dsa dsa;
