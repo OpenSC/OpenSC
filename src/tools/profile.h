@@ -43,6 +43,7 @@ struct pin_info {
 	unsigned int		file_offset;
 	unsigned int		attempt[2];
 
+	struct sc_pkcs15_object	pkcs15_obj;
 	struct sc_pkcs15_pin_info pkcs15;
 
 	/* These are set while initializing the card */
@@ -53,10 +54,10 @@ struct prkey_info {
 	char *			ident;
 	struct prkey_info *	next;
 	struct file_info *	file;
-	unsigned int		type;
 	unsigned int		index;	/* translates to file offset */
 	struct sc_acl_entry *	key_acl;/* PINs for key usage */
 
+	struct sc_pkcs15_object	pkcs15_obj;
 	struct sc_pkcs15_prkey_info pkcs15;
 };
 
@@ -73,6 +74,8 @@ struct sc_profile {
 	unsigned int		pin_maxlen;
 	unsigned int		pin_minlen;
 	unsigned int		pin_pad_char;
+	unsigned int		rsa_access_flags;
+	unsigned int		dsa_access_flags;
 
 	/* PKCS15 information */
 	struct sc_pkcs15_card *	p15_card;
