@@ -234,6 +234,7 @@ int p15_ldap_auth(int argc, const char **argv,
 	int r, err = SCAM_FAILED, chglen;
 	EVP_PKEY *pubkey = NULL;
 	X509 *cert = NULL;
+	unsigned char *ptr = NULL;
 
 	if (!lctx || !ctx)
 		return SCAM_FAILED;
@@ -243,7 +244,8 @@ int p15_ldap_auth(int argc, const char **argv,
 		goto end;
 	}
 	cert = X509_new();
-	if (!d2i_X509(&cert, &p15cert->data, p15cert->data_len)) {
+	ptr = p15cert->data;
+	if (!d2i_X509(&cert, &ptr, p15cert->data_len)) {
 		scam_fw_p15_ldap.logmsg("Invalid certificate. (user %s)\n", user);
 		goto end;
 	}
@@ -281,7 +283,7 @@ int p15_ldap_auth(int argc, const char **argv,
 	if (r == sizeof(random_data) && !memcmp(txt, random_data, r)) {
 		err = SCAM_SUCCESS;
 	}
-      end:
+end:
 	if (pubkey)
 		EVP_PKEY_free(pubkey);
 	if (cert)

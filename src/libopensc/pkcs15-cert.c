@@ -143,7 +143,6 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 			free(data);
 			return r;
 		}
-		len = len;
 		sc_unlock(p15card->card);
 	}
 	cert = malloc(sizeof(struct sc_pkcs15_cert));

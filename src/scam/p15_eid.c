@@ -284,7 +284,7 @@ static int get_certificate(const char *user, X509 ** cert_out)
 		goto end;
 	*cert_out = cert;
 	err = SCAM_SUCCESS;
-      end:
+end:
 	if (in)
 		BIO_free(in);
 	if (dir)
@@ -297,7 +297,6 @@ static int get_certificate(const char *user, X509 ** cert_out)
 int p15_eid_auth(int argc, const char **argv,
 		 const char *user, const char *password)
 {
-	struct sc_pkcs15_cert *p15cert = NULL;
 	u8 random_data[20], chg[256], txt[256];
 	int r, err = SCAM_FAILED, chglen;
 	EVP_PKEY *pubkey = NULL;
@@ -349,13 +348,11 @@ int p15_eid_auth(int argc, const char **argv,
 	if (r == sizeof(random_data) && !memcmp(txt, random_data, r)) {
 		err = SCAM_SUCCESS;
 	}
-      end:
+end:
 	if (pubkey)
 		EVP_PKEY_free(pubkey);
 	if (cert)
 		X509_free(cert);
-	if (p15cert)
-		sc_pkcs15_free_certificate(p15cert);
 	return err;
 }
 
