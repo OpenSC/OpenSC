@@ -30,14 +30,15 @@ int pid_init()
 		int fd;
 
 		snprintf(buffer, sizeof(buffer), PIDFILE, i);
-		fd = creat(buffer, 0644);
+		fd = open(buffer, O_CREAT|O_EXCL|O_WRONLY, 0644);
 
 		if (fd == -1) {
 			continue;
 		}
 
 		pidfile = strdup(buffer);
-		write(fd, buffer, sprintf(buffer, "%d\n", getpid()));
+		snprintf(buffer, sizeof(buffer), "%d\n", getpid());
+		write(fd, buffer, strlen(buffer));
 		close(fd);
 
 		usbtoken.slot = i;
