@@ -201,7 +201,7 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 	}
 
 	ret = SCardGetStatusChange(priv->pcsc_ctx, SC_STATUS_TIMEOUT, &pslot->readerState, 1);
-	if (ret == SCARD_E_TIMEOUT) { /* timeout: nothing changed */
+	if (ret == (LONG)SCARD_E_TIMEOUT) { /* timeout: nothing changed */
 		slot->flags &= ~SCARD_STATE_CHANGED;
 		return 0;
 	}
@@ -242,9 +242,9 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 		if (maybe_changed && (old_flags & SC_SLOT_CARD_PRESENT)) {
 			DWORD readers_len = 0, state, prot, atr_len = 32;
 			unsigned char atr[32];
-			int rv = SCardStatus(pslot->pcsc_card, NULL, &readers_len,
+			LONG rv = SCardStatus(pslot->pcsc_card, NULL, &readers_len,
 				&state,	&prot, atr, &atr_len);
-			if (rv == SCARD_W_REMOVED_CARD)
+			if (rv == (LONG)SCARD_W_REMOVED_CARD)
 				slot->flags |= SC_SLOT_CARD_CHANGED;
 		}
 	} else {
@@ -279,7 +279,7 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 	SCARD_READERSTATE_A rgReaderStates[SC_MAX_READERS];
 	unsigned long on_bits, off_bits;
 	time_t end_time, now, delta;
-	int i;
+	size_t i;
 
 	/* Prevent buffer overflow */
 	if (nslots >= SC_MAX_READERS)
@@ -364,7 +364,7 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 
 		ret = SCardGetStatusChange(pcsc_ctx, 1000 * delta,
 				rgReaderStates, nslots);
-	       	if (ret == SCARD_E_TIMEOUT) {
+	       	if (ret == (LONG)SCARD_E_TIMEOUT) {
 			if (timeout < 0)
 				continue;
 		       	return SC_ERROR_EVENT_TIMEOUT;
