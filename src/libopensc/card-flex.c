@@ -24,6 +24,7 @@
 
 static const char *flex_atrs[] = {
 	"3B:95:94:40:FF:63:01:01:02:01", /* Cryptoflex 16k */
+	"3B:85:40:20:68:01:01:05:01",    /* Cryptoflex 8k */
 	"3B:19:14:55:90:01:02:02:00:05:04:B0",
 	NULL
 };

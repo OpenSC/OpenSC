@@ -1,6 +1,10 @@
 ## Makefile.am -- Process this file with automake to produce Makefile.in
 
+EXTRA_DIST = opensc-config.in
+
 INCLUDES = @CFLAGS_PCSC@
+
+bin_SCRIPTS = opensc-config
 
 lib_LTLIBRARIES		= libopensc.la
 libopensc_la_SOURCES	= asn1.c base64.c sec.c log.c sc.c card.c iso7816.c \

@@ -492,12 +492,22 @@ CFLAGS_OPENSC="-I\${top_srcdir}/src/libopensc"
 AC_SUBST(LIBOPENSC)
 LIBOPENSC="\${top_srcdir}/src/libopensc/libopensc.la"
 
+
+# Pass information about installed OpenSC requirements, so that
+# a proper opensc-config file will be build.
+OPENSC_LIBS="-L${libdir} -lopensc"
+OPENSC_CFLAGS=""
+AC_SUBST(OPENSC_LIBS)
+AC_SUBST(OPENSC_CFLAGS)
+
+
 AC_OUTPUT([
 Makefile
 aclocal/Makefile
 src/Makefile
 src/common/Makefile
 src/libopensc/Makefile
+src/libopensc/opensc-config
 src/openssh/Makefile
 src/pam/Makefile
 src/pkcs11/Makefile
