@@ -9,7 +9,7 @@ libopensc_la_SOURCES	= sc-asn1.c sc-base64.c sc-defaults.c \
 			  sc-card-setec.c sc-card-multiflex.c \
 			  sc-card-emv.c sc-card-default.c
 libopensc_la_LDFLAGS	= -version-info 0:4:0
-libopensc_la_LIBADD	= @LIBPCSCLITE@
+libopensc_la_LIBADD	= @LIBPCSC@
 libopensc_la_CFLAGS     = $(AM_CFLAGS) -Werror
 
 include_HEADERS		= opensc.h opensc-pkcs15.h
