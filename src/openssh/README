@@ -14,11 +14,5 @@ Steps for your OpenSSH pleasure:
 
 With luck you should be authenticated and ready to go. If it won't work,
 try enabling debug information with the '-d' switch.
-
-NOTE: PIN code is not asked by ssh when connecting. If you haven't
-authenticated for the private key when connecting with PIN code,
-you must verify the PIN code. (e.g. 'pkcs15-crypt -c -k <certificate ID>'
-or if you use ssh-agent, try 'ssh-add -s <reader num>')
-
 --
 Antti Tapaninen <aet@cc.hut.fi>

@@ -12,7 +12,7 @@ diff -udrNP openssh-3.6.1p2.orig/Makefile.in openssh-3.6.1p2/Makefile.in
  	sshconnect.o sshconnect1.o sshconnect2.o
 diff -udrNP openssh-3.6.1p2.orig/scard-opensc.c openssh-3.6.1p2/scard-opensc.c
 --- openssh-3.6.1p2.orig/scard-opensc.c	2002-04-23 14:48:46.000000000 +0200
-+++ openssh-3.6.1p2/scard-opensc.c	2003-06-15 21:37:11.000000000 +0200
++++ openssh-3.6.1p2/scard-opensc.c	2003-06-16 11:35:13.000000000 +0200
 @@ -89,6 +89,12 @@
  	r = sc_establish_context(&ctx, "openssh");
  	if (r)
@@ -26,7 +26,7 @@ diff -udrNP openssh-3.6.1p2.orig/scard-opensc.c openssh-3.6.1p2/scard-opensc.c
  	r = sc_connect_card(ctx->reader[sc_reader_id], 0, &card);
  	if (r)
  		goto err;
-@@ -133,7 +139,19 @@
+@@ -133,12 +139,54 @@
  	key = key_obj->data;
  	r = sc_pkcs15_find_pin_by_auth_id(p15card, &key_obj->auth_id,
  					  &pin_obj);
@@ -47,7 +47,42 @@ diff -udrNP openssh-3.6.1p2.orig/scard-opensc.c openssh-3.6.1p2/scard-opensc.c
  		error("Unable to find PIN object from SmartCard: %s",
  		      sc_strerror(r));
  		goto err;
-@@ -173,7 +191,8 @@
+ 	}
+ 	pin = pin_obj->data;
++
++	if ((pin->auth_id.len > 0) && (! sc_pin)) {
++		/* we need a pin, we don't have one. let's ask. */
++		char *passphrase;
++		passphrase = read_passphrase("Enter passphrase for key:", 0);
++		if (! passphrase)
++			goto err;
++		if (strcmp(passphrase, "") == 0) 
++			goto err;
++		r = sc_lock(card);
++		if (r) {
++			error("Unable to lock smartcard: %s",
++					sc_strerror(r));
++			memset(passphrase, 0, strlen(passphrase));
++			xfree(passphrase);
++			goto err;
++		}
++		r = sc_pkcs15_verify_pin(p15card, pin, 
++			passphrase, strlen(passphrase));
++		memset(passphrase, 0, strlen(passphrase));
++		xfree(passphrase);
++		if (r) {
++			sc_unlock(card);
++			error("PIN code verification failed: %s",
++					sc_strerror(r));
++			goto err;
++		}
++		*key_obj_out = key_obj;
++		return 0;
++	}
+ 	r = sc_lock(card);
+ 	if (r) {
+ 		error("Unable to lock smartcard: %s", sc_strerror(r));
+@@ -173,7 +221,8 @@
  	r = sc_prkey_op_init(rsa, &key_obj);
  	if (r)
  		return -1;
@@ -57,7 +92,7 @@ diff -udrNP openssh-3.6.1p2.orig/scard-opensc.c openssh-3.6.1p2/scard-opensc.c
  	sc_unlock(card);
  	if (r < 0) {
  		error("sc_pkcs15_decipher() failed: %s", sc_strerror(r));
-@@ -423,9 +442,14 @@
+@@ -423,9 +472,14 @@
  		}
  		key_count = r;
  	}
