@@ -33,7 +33,7 @@ static struct sc_atr_table pgp_atrs[] = {
 static struct sc_card_operations *iso_ops;
 static struct sc_card_operations pgp_ops;
 static struct sc_card_driver pgp_drv = {
-	"OpenPGP Card",
+	"OpenPGP card",
 	"openpgp",
 	&pgp_ops
 };
