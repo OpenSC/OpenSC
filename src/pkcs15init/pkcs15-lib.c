@@ -902,7 +902,9 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	 * by the card driver's generate_key function called below */
 	memset(&pubkey_args, 0, sizeof(pubkey_args));
 	pubkey_args.id = keyargs->id;
+#if 0
 	pubkey_args.auth_id = keyargs->auth_id;
+#endif
 	pubkey_args.label = keyargs->label;
 	pubkey_args.usage = keyargs->usage;
 	pubkey_args.x509_usage = keyargs->x509_usage;
