@@ -393,7 +393,7 @@ int main(int argc, char * const argv[])
 		goto end;
 	}
 	if (opt_driver != NULL) {
-		err = sc_set_default_card_driver(ctx, opt_driver);
+		err = sc_set_card_driver(ctx, opt_driver);
 		if (err) {
 			fprintf(stderr, "Driver '%s' not found!\n", opt_driver);
 			err = 1;

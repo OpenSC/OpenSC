@@ -1,5 +1,5 @@
 /*
- * sc-pkcs15-prkey.c: PKCS#15 private key functions
+ * pkcs15-prkey.c: PKCS#15 private key functions
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -55,7 +55,7 @@ static int parse_rsa_prkey_info(struct sc_context *ctx,
 	int r;
 	int usage_len = sizeof(prkey->usage);
 	int af_len = sizeof(prkey->access_flags);
-	struct sc_asn1_struct asn1_com_key_attr[] = {
+	struct sc_asn1_entry asn1_com_key_attr[] = {
 		{ "iD",		 SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, &prkey->id, NULL },
 		{ "usage",	 SC_ASN1_BIT_STRING, ASN1_BIT_STRING, 0, &prkey->usage, &usage_len },
 		{ "native",	 SC_ASN1_BOOLEAN, ASN1_BOOLEAN, SC_ASN1_OPTIONAL, &prkey->native },
@@ -63,23 +63,23 @@ static int parse_rsa_prkey_info(struct sc_context *ctx,
 		{ "keyReference",SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, &prkey->key_reference },
 		{ NULL }
 	};
-	struct sc_asn1_struct asn1_com_prkey_attr[] = {
+	struct sc_asn1_entry asn1_com_prkey_attr[] = {
 		{ NULL }
 	};
-	struct sc_asn1_struct asn1_rsakey_attr[] = {
+	struct sc_asn1_entry asn1_rsakey_attr[] = {
 		{ "value",	   SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &prkey->file_id },
 		{ "modulusLength", SC_ASN1_INTEGER, ASN1_INTEGER, 0, &prkey->modulus_length },
 		{ "keyInfo",	   SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
 		{ NULL }
 	};
-	struct sc_asn1_struct asn1_type_attr[] = {
+	struct sc_asn1_entry asn1_type_attr[] = {
 		{ "publicRSAKeyAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_rsakey_attr },
 		{ NULL }
 	};
 
 	struct sc_pkcs15_object prkey_obj = { &prkey->com_attr, asn1_com_key_attr,
 					      asn1_com_prkey_attr, asn1_type_attr };
-	struct sc_asn1_struct asn1_prkey[] = {
+	struct sc_asn1_entry asn1_prkey[] = {
 		{ "privateRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &prkey_obj },
 		{ NULL }
 	};		

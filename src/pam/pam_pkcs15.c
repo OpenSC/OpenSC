@@ -280,7 +280,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 		printf("%s\n", argv[i]);
 
 #ifdef TEST
-	user = "root";
+	user = "jey";
 #else
 	r = pam_get_user(pamh, &user, NULL);
 	if (r != PAM_SUCCESS)

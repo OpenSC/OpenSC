@@ -45,7 +45,7 @@ extern "C" {
 #define SC_ERROR_TRANSMIT_FAILED		-1004
 #define SC_ERROR_FILE_NOT_FOUND			-1005
 #define SC_ERROR_INVALID_ARGUMENTS		-1006
-#define SC_ERROR_PKCS15_CARD_NOT_FOUND		-1007
+#define SC_ERROR_PKCS15_APP_NOT_FOUND		-1007
 #define SC_ERROR_REQUIRED_PARAMETER_NOT_FOUND	-1008
 #define SC_ERROR_OUT_OF_MEMORY			-1009
 #define SC_ERROR_NO_READERS_FOUND		-1010
@@ -330,7 +330,7 @@ struct sc_context {
 
 	int use_std_output, use_cache;
 	const struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS+1];
-	const struct sc_card_driver *default_driver;
+	const struct sc_card_driver *forced_driver;
 	pthread_mutex_t mutex;
 };
 
@@ -359,7 +359,7 @@ void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu, int cse, int ins
 
 int sc_establish_context(struct sc_context **ctx);
 int sc_destroy_context(struct sc_context *ctx);
-int sc_set_default_card_driver(struct sc_context *ctx, const char *short_name);
+int sc_set_card_driver(struct sc_context *ctx, const char *short_name);
 int sc_connect_card(struct sc_context *ctx,
 		    int reader, struct sc_card **card);
 int sc_disconnect_card(struct sc_card *card);
@@ -424,7 +424,7 @@ extern const char *sc_version;
 extern const struct sc_card_driver *sc_get_iso7816_driver(void);
 extern const struct sc_card_driver *sc_get_emv_driver(void);
 extern const struct sc_card_driver *sc_get_setec_driver(void);
-extern const struct sc_card_driver *sc_get_mflex_driver(void);
+extern const struct sc_card_driver *sc_get_flex_driver(void);
 extern const struct sc_card_driver *sc_get_default_driver(void);
 
 #ifdef  __cplusplus

@@ -186,6 +186,15 @@ int do_cd(const char *arg)
 		check_ret(r, SC_AC_OP_SELECT, "unable to select DF", &current_file);
 		return -1;
 	}
+	if (file.type != SC_FILE_TYPE_DF) {
+		printf("Error: file is not a DF.\n");
+		r = sc_select_file(card, &current_path, NULL);
+		if (r) {
+			printf("unable to select parent file: %s\n", sc_strerror(r));
+			die(1);
+		}
+		return -1;
+	}
 	memcpy(current_path.value + current_path.len, path.value, path.len);
         current_path.len += path.len;
         current_file = file;

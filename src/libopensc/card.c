@@ -374,8 +374,8 @@ int sc_connect_card(struct sc_context *ctx,
 	memcpy(card->atr, rgReaderStates[0].rgbAtr, i);
 	card->atr_len = i;
 	
-	if (ctx->default_driver != NULL) {
-		card->driver = ctx->default_driver;
+	if (ctx->forced_driver != NULL) {
+		card->driver = ctx->forced_driver;
 		memcpy(card->ops, card->driver->ops, sizeof(struct sc_card_operations));
 		if (card->ops->init != NULL) {
 			r = card->ops->init(card);

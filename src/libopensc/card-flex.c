@@ -1,5 +1,5 @@
 /*
- * card-multiflex.c: Support for Multiflex cards by Schlumberger
+ * card-flex.c: Support for Schlumberger cards
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -21,33 +21,33 @@
 #include "sc-internal.h"
 #include "sc-log.h"
 
-static const char *mflex_atrs[] = {
+static const char *flex_atrs[] = {
 	"3B:95:94:40:FF:63:01:01:02:01", /* CryptoFlex 16k */
 	"3B:19:14:55:90:01:02:02:00:05:04:B0",
 	NULL
 };
 
-static struct sc_card_operations mflex_ops;
-static const struct sc_card_driver mflex_drv = {
+static struct sc_card_operations flex_ops;
+static const struct sc_card_driver flex_drv = {
 	NULL,
-	"Multiflex/Schlumberger",
-	"mflex",
-	&mflex_ops
+	"Schlumberger Multiflex/CryptoFlex",
+	"slb",
+	&flex_ops
 };
 
-static int mflex_finish(struct sc_card *card)
+static int flex_finish(struct sc_card *card)
 {
 	return 0;
 }
 
-static int mflex_match_card(struct sc_card *card)
+static int flex_match_card(struct sc_card *card)
 {
 	int i, match = -1;
 
-	for (i = 0; mflex_atrs[i] != NULL; i++) {
+	for (i = 0; flex_atrs[i] != NULL; i++) {
 		u8 defatr[SC_MAX_ATR_SIZE];
 		size_t len = sizeof(defatr);
-		const char *atrp = mflex_atrs[i];
+		const char *atrp = flex_atrs[i];
 
 		if (sc_hex_to_bin(atrp, defatr, &len))
 			continue;
@@ -64,7 +64,7 @@ static int mflex_match_card(struct sc_card *card)
 	return 1;
 }
 
-static int mflex_init(struct sc_card *card)
+static int flex_init(struct sc_card *card)
 {
 	card->ops_data = NULL;
 	card->cla = 0xC0;
@@ -160,7 +160,7 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 	return 0;
 }
 
-static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
+static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 			     struct sc_file *file)
 {
 	int r, i;
@@ -188,7 +188,7 @@ static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 			SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 			if (memcmp(pathptr, "\x3F\x00", 2) != 0) {
 				sc_format_path("I3F00", &tmppath);
-				r = mflex_select_file(card, &tmppath, NULL);
+				r = flex_select_file(card, &tmppath, NULL);
 				if (r)
 					sc_unlock(card);
 				SC_TEST_RET(card->ctx, r, "Unable to select Master File (MF)");
@@ -196,7 +196,7 @@ static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 			while (pathlen > 2) {
 				memcpy(tmppath.value, pathptr, 2);
 				tmppath.len = 2;
-				r = mflex_select_file(card, &tmppath, NULL);
+				r = flex_select_file(card, &tmppath, NULL);
 				if (r)
 					sc_unlock(card);
 				SC_TEST_RET(card->ctx, r, "Unable to select DF");
@@ -251,7 +251,7 @@ static int mflex_select_file(struct sc_card *card, const struct sc_path *path,
 	return parse_flex_sf_reply(card->ctx, apdu.resp, apdu.resplen, file);
 }
 
-static int mflex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+static int flex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 {
 	struct sc_apdu apdu;
 	u8 rbuf[4];
@@ -288,18 +288,18 @@ static const struct sc_card_driver * sc_get_driver(void)
 {
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
-	mflex_ops = *iso_drv->ops;
-	mflex_ops.match_card = mflex_match_card;
-	mflex_ops.init = mflex_init;
-        mflex_ops.finish = mflex_finish;
-	mflex_ops.select_file = mflex_select_file;
-	mflex_ops.list_files = mflex_list_files;
+	flex_ops = *iso_drv->ops;
+	flex_ops.match_card = flex_match_card;
+	flex_ops.init = flex_init;
+        flex_ops.finish = flex_finish;
+	flex_ops.select_file = flex_select_file;
+	flex_ops.list_files = flex_list_files;
 
-        return &mflex_drv;
+        return &flex_drv;
 }
 
 #if 1
-const struct sc_card_driver * sc_get_mflex_driver(void)
+const struct sc_card_driver * sc_get_flex_driver(void)
 {
 	return sc_get_driver();
 }

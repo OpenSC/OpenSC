@@ -1,5 +1,5 @@
 /*
- * sc-pkcs15-pin.c: PKCS#15 PIN functions
+ * pkcs15-pin.c: PKCS#15 PIN functions
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -32,13 +32,13 @@ static int parse_pin_info(struct sc_context *ctx,
 			  const u8 ** buf, size_t *buflen)
 {
 	int r;
-	struct sc_asn1_struct asn1_com_ao_attr[] = {
+	struct sc_asn1_entry asn1_com_ao_attr[] = {
 		{ "authId",       SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, &pin->auth_id },
 		{ NULL }
 	};
 	int flags_len = sizeof(pin->flags);
         int padchar_len = 1;
-	struct sc_asn1_struct asn1_pin_attr[] = {
+	struct sc_asn1_entry asn1_pin_attr[] = {
 		{ "pinFlags",	  SC_ASN1_BIT_STRING, ASN1_BIT_STRING, 0, &pin->flags, &flags_len},
 		{ "pinType",      SC_ASN1_ENUMERATED, ASN1_ENUMERATED, 0, &pin->type },
 		{ "minLength",    SC_ASN1_INTEGER, ASN1_INTEGER, 0, &pin->min_length },
@@ -50,13 +50,13 @@ static int parse_pin_info(struct sc_context *ctx,
 		{ "path",         SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, &pin->path },
 		{ NULL }
 	};
-	struct sc_asn1_struct asn1_type_pin_attr[] = {
+	struct sc_asn1_entry asn1_type_pin_attr[] = {
 		{ "pinAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, asn1_pin_attr},
 		{ NULL }
 	};
 	struct sc_pkcs15_object pin_obj = { &pin->com_attr, asn1_com_ao_attr, NULL,
 					    asn1_type_pin_attr };
-	struct sc_asn1_struct asn1_pin[] = {
+	struct sc_asn1_entry asn1_pin[] = {
 		{ "pin", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, &pin_obj },
 		{ NULL }
 	};

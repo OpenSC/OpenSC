@@ -1,5 +1,5 @@
 /*
- * sc-pkcs15.c: PKCS#15 general functions
+ * pkcs15.c: PKCS#15 general functions
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -64,7 +64,7 @@ void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t buflen)
 	int mnfid_len = sizeof(mnfid);
 	int flags_len = sizeof(card->flags);
 
-	struct sc_asn1_struct asn1_tokeninfo[] = {
+	struct sc_asn1_entry asn1_tokeninfo[] = {
 		{ "version",        SC_ASN1_INTEGER,      ASN1_INTEGER, 0, &card->version },
 		{ "serialNumber",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, serial, &serial_len },
 		{ "manufacturerID", SC_ASN1_UTF8STRING,   ASN1_UTF8STRING, SC_ASN1_OPTIONAL, mnfid, &mnfid_len },
@@ -119,14 +119,14 @@ static int parse_dir(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 	int aid_len = sizeof(aid), label_len = sizeof(label),
 	    path_len = sizeof(path);
 	
-	struct sc_asn1_struct asn1_ddo[] = {
+	struct sc_asn1_entry asn1_ddo[] = {
 		{ "oid",	 SC_ASN1_OBJECT, ASN1_OBJECT, 0, NULL },
 		{ "odfPath",	   SC_ASN1_PATH, SC_ASN1_CONS | ASN1_SEQUENCE, SC_ASN1_OPTIONAL, &card->file_odf.path },
 		{ "tokenInfoPath", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, &card->file_tokeninfo.path },
 		{ "unusedPath",    SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL },
 		{ NULL }
 	};
-	struct sc_asn1_struct asn1_dir[] = {
+	struct sc_asn1_entry asn1_dir[] = {
 		{ "aid",   SC_ASN1_OCTET_STRING, SC_ASN1_APP | 15, 0, aid, &aid_len },
 		{ "label", SC_ASN1_UTF8STRING,   SC_ASN1_APP | 16, SC_ASN1_OPTIONAL, label, &label_len },
 		{ "path",  SC_ASN1_OCTET_STRING, SC_ASN1_APP | 17, 0, path, &path_len },
@@ -168,11 +168,11 @@ static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 	size_t left = buflen;
 	int r;
 	struct sc_path path;
-	struct sc_asn1_struct asn1_obj_or_path[] = {
+	struct sc_asn1_entry asn1_obj_or_path[] = {
 		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path },
 		{ NULL }
 	};
-	struct sc_asn1_struct asn1_odf[] = {
+	struct sc_asn1_entry asn1_odf[] = {
 		{ "privateKeys",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, asn1_obj_or_path },
 		{ "certificates",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 4 | SC_ASN1_CONS, 0, asn1_obj_or_path },
 		{ "trustedCertificates", SC_ASN1_STRUCT, SC_ASN1_CTX | 5 | SC_ASN1_CONS, 0, asn1_obj_or_path },
@@ -254,7 +254,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	err = sc_select_file(card, &tmppath, &p15card->file_dir);
 	if (err) {
 		error(ctx, "Error selecting EF(DIR): %s\n", sc_strerror(err));
-		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
+		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
 		goto error;
 	}
 	err = sc_read_binary(card, 0, buf, p15card->file_dir.size, 0);
@@ -263,13 +263,13 @@ int sc_pkcs15_bind(struct sc_card *card,
 		goto error;
 	}
 	if (err <= 2) {
-		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
+		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
 		error(ctx, "Error reading EF(DIR): too few bytes read\n");
 		goto error;
 	}
 	len = err;
 	if (parse_dir(buf, len, p15card)) {
-		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
+		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
 		error(ctx, "Error parsing EF(DIR)\n");
 		goto error;
 	}
@@ -290,12 +290,12 @@ int sc_pkcs15_bind(struct sc_card *card,
 		if (err < 0)
 			goto error;
 		if (err < 2) {
-			err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
+			err = SC_ERROR_PKCS15_APP_NOT_FOUND;
 			goto error;
 		}
 		len = err;
 		if (parse_odf(buf, len, p15card)) {
-			err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
+			err = SC_ERROR_PKCS15_APP_NOT_FOUND;
 			goto error;
 		}
 		if (p15card->file_tokeninfo.path.len == 0) {
@@ -315,7 +315,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	if (err < 0)
 		goto error;
 	if (err <= 2) {
-		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
+		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
 		goto error;
 	}
 	parse_tokeninfo(p15card, buf, err);

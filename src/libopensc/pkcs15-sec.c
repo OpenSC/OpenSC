@@ -1,5 +1,5 @@
 /*
- * sc-pkcs15-sec.c: PKCS#15 cryptography functions
+ * pkcs15-sec.c: PKCS#15 cryptography functions
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

@@ -176,10 +176,14 @@ struct sc_pkcs15_defaults {
 	int arg;
 };
 
-/* Binds a card object to a PKCS#15 card object and initializes
- * a new PKCS#15 card object */
+/* sc_pkcs15_bind:  Binds a card object to a PKCS #15 card object
+ * and initializes a new PKCS#15 card object.  Will return
+ * SC_ERROR_PKCS15_APP_NOT_FOUND, if the card hasn't got a
+ * valid PKCS #15 file structure. */
 int sc_pkcs15_bind(struct sc_card *card,
 		   struct sc_pkcs15_card **pkcs15_card);
+/* sc_pkcs_unbind:  Releases a PKCS #15 card object, and frees any
+ * memory allocations done on the card object. */
 int sc_pkcs15_unbind(struct sc_pkcs15_card *card);
 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
@@ -205,6 +209,12 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert);
 int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
 			      const struct sc_pkcs15_id *id,
 			      struct sc_pkcs15_cert_info **out);
+/* sc_pkcs15_create_cdf:  Creates a new certificate DF on a card pointed
+ * by <card>.  Information about the file, such as the file ID, is read
+ * from <file>.  <certs> has to be NULL-terminated. */
+int sc_pkcs15_create_cdf(struct sc_pkcs15_card *card,
+			 struct sc_file *file,
+			 const struct sc_pkcs15_cert_info **certs);
 
 void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey);
 int sc_pkcs15_enum_private_keys(struct sc_pkcs15_card *card);

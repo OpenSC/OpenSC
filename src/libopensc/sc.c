@@ -172,6 +172,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 	} while (p < (reader_buf + reader_buf_size - 1));
 	free(reader_buf);
 	pthread_mutex_init(&ctx->mutex, NULL);
+	ctx->forced_driver = NULL;
 	for (i = 0; i < SC_MAX_CARD_DRIVERS+1; i++)
 		ctx->card_drivers[i] = NULL;
 	i = 0;
@@ -179,7 +180,7 @@ int sc_establish_context(struct sc_context **ctx_out)
 	ctx->card_drivers[i++] = sc_get_setec_driver();
 #endif
 #if 1
-	ctx->card_drivers[i++] = sc_get_mflex_driver();
+	ctx->card_drivers[i++] = sc_get_flex_driver();
 #endif
 #if 1
 	ctx->card_drivers[i++] = sc_get_iso7816_driver();
@@ -208,19 +209,19 @@ int sc_destroy_context(struct sc_context *ctx)
 	return 0;
 }
 
-int sc_set_default_card_driver(struct sc_context *ctx, const char *short_name)
+int sc_set_card_driver(struct sc_context *ctx, const char *short_name)
 {
 	int i = 0, match = 0;
 	
 	pthread_mutex_lock(&ctx->mutex);
 	if (short_name == NULL) {
-		ctx->default_driver = NULL;
+		ctx->forced_driver = NULL;
 		match = 1;
 	} else while (ctx->card_drivers[i] != NULL && i < SC_MAX_CARD_DRIVERS) {
 		const struct sc_card_driver *drv = ctx->card_drivers[i];
 
 		if (strcmp(short_name, drv->short_name) == 0) {
-			ctx->default_driver = drv;
+			ctx->forced_driver = drv;
 			match = 1;
 			break;
 		}

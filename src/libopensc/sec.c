@@ -1,5 +1,5 @@
 /*
- * sc-sec.c: Cryptography and security (ISO7816-8) functions
+ * sec.c: Cryptography and security (ISO7816-8) functions
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
