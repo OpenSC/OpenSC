@@ -78,6 +78,7 @@ static int	do_store_data_object(struct sc_profile *profile);
 extern int	asn1_encode_data_object(struct sc_context *ctx, u8 *dataobj,size_t datalen,
                                 u8 **buf, size_t *buflen, int depth);
 
+static void	set_secrets(struct sc_profile *);
 static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
 static int	read_one_pin(struct sc_profile *, const char *,
 			const struct sc_pkcs15_pin_info *, int, char **);
@@ -109,6 +110,7 @@ enum {
 	OPT_SOFT_KEYGEN,
 	OPT_SPLIT_KEY,
 	OPT_ASSERT_PRISTINE,
+	OPT_SECRET,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -158,9 +160,11 @@ const struct option	options[] = {
 	{ "wait",		no_argument, 0,		'w' },
 	{ "debug",		no_argument, 0,		'd' },
 	{ "quiet",		no_argument, 0,		'q' },
+	{ "help",		no_argument, 0,		'h' },
 
 	/* Hidden options for testing */
 	{ "assert-pristine",	no_argument, 0,		OPT_ASSERT_PRISTINE },
+	{ "secret",		required_argument, 0,	OPT_SECRET },
 	{ 0, 0, 0, 0 }
 };
 const char *		option_help[] = {
@@ -201,7 +205,9 @@ const char *		option_help[] = {
 	"Wait for card insertion",
 	"Enable debugging output",
 	"Be less verbose",
+	"Display this message",
 
+	NULL,
 	NULL,
 };
 
@@ -237,6 +243,14 @@ static char *			action_names[] = {
 #define READ_PIN_RETYPE		0x02
 
 #define MAX_CERTS		4
+#define MAX_SECRETS		16
+struct secret {
+	int			type;
+	int			reference;
+	sc_pkcs15_id_t		id;
+	unsigned char		key[64];
+	size_t			len;
+};
 
 static struct sc_context *	ctx = NULL;
 static struct sc_card *		card = NULL;
@@ -267,6 +281,8 @@ static char *			opt_newkey = 0;
 static char *			opt_outkey = 0;
 static unsigned int		opt_x509_usage = 0;
 static int			ignore_cmdline_pins = 0;
+static struct secret		opt_secrets[MAX_SECRETS];
+static unsigned int		opt_secret_count;
 
 static struct sc_pkcs15init_callbacks callbacks = {
 	error,			/* error() */
@@ -312,6 +328,8 @@ main(int argc, char **argv)
 	/* Bind the card-specific operations and load the profile */
 	if ((r = sc_pkcs15init_bind(card, opt_profile, &profile)) < 0)
 		return 1;
+
+	set_secrets(profile);
 
 	for (n = 0; n < ACTION_MAX; n++) {
 		unsigned int	action = n;
@@ -867,6 +885,73 @@ init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 }
 
 /*
+ * Intern secrets given on the command line (mostly for testing)
+ */
+void
+parse_secret(struct secret *secret, const char *arg)
+{
+	char		*copy, *str, *value;
+	size_t		len;
+
+	str = copy = strdup(arg);
+	if (!(value = strchr(str, '=')))
+		goto parse_err;
+	*value++ = '\0';
+
+	if (*str == '@') {
+		sc_pkcs15_format_id(str+1, &secret->id);
+		secret->type = SC_AC_CHV;
+		secret->reference = -1;
+	} else {
+		if (strncasecmp(str, "chv", 3))
+			secret->type = SC_AC_CHV;
+		else if (strncasecmp(str, "aut", 3))
+			secret->type = SC_AC_AUT;
+		else if (strncasecmp(str, "pro", 3))
+			secret->type = SC_AC_PRO;
+		else
+			goto parse_err;
+		str += 3;
+		if (!isdigit(str[3]))
+			goto parse_err;
+		secret->reference = strtoul(str, &str, 10);
+		if (*str != '\0')
+			goto parse_err;
+	}
+	if ((len = strlen(value)) < 3 || value[2] != ':') {
+		memcpy(secret->key, value, len);
+	} else {
+		len = sizeof(secret->key);
+		if (sc_hex_to_bin(value, secret->key, &len) < 0)
+			goto parse_err;
+	}
+	secret->len = len;
+	free(copy);
+	return;
+
+parse_err:
+	fatal("Cannot parse secret \"%s\"\n", arg);
+}
+
+void
+set_secrets(struct sc_profile *profile)
+{
+	unsigned int	n;
+
+	for (n = 0; n < opt_secret_count; n++) {
+		struct secret	*secret = &opt_secrets[n];
+
+		if (secret->reference < 0)
+			continue;
+		sc_pkcs15init_set_secret(profile,
+				secret->type,
+				secret->reference,
+				secret->key,
+				secret->len);
+	}
+}
+
+/*
  * Callbacks from the pkcs15init to retrieve PINs
  */
 static int
@@ -935,40 +1020,65 @@ get_pin_callback(struct sc_profile *profile,
 {
 	char	namebuf[64];
 	char	*name = NULL, *secret = NULL;
-	size_t	len;
+	size_t	len = 0;
+	int	allocated = 0;
 
-	switch (id) {
-	case SC_PKCS15INIT_USER_PIN:
-		name = "User PIN";
-		secret = opt_pins[OPT_PIN1 & 3]; break;
-	case SC_PKCS15INIT_USER_PUK:
-		name = "User PIN unlock key";
-		secret = opt_pins[OPT_PUK1 & 3]; break;
-	case SC_PKCS15INIT_SO_PIN:
-		name = "Security officer PIN";
-		secret = opt_pins[OPT_PIN2 & 3]; break;
-	case SC_PKCS15INIT_SO_PUK:
-		name = "Security officer PIN unlock key";
-		secret = opt_pins[OPT_PUK2 & 3]; break;
-	default:
-		if (label) {
-			snprintf(namebuf, sizeof(namebuf), "PIN [%s]", label);
-		} else {
-			snprintf(namebuf, sizeof(namebuf),
-				"Unspecified PIN [reference %u]",
-				info->reference);
+	if (label) {
+		snprintf(namebuf, sizeof(namebuf), "PIN [%s]", label);
+	} else {
+		snprintf(namebuf, sizeof(namebuf),
+			"Unspecified PIN [reference %u]",
+			info->reference);
+	}
+	name = namebuf;
+
+	if (!ignore_cmdline_pins) {
+		switch (id) {
+		case SC_PKCS15INIT_USER_PIN:
+			name = "User PIN";
+			secret = opt_pins[OPT_PIN1 & 3]; break;
+		case SC_PKCS15INIT_USER_PUK:
+			name = "User PIN unlock key";
+			secret = opt_pins[OPT_PUK1 & 3]; break;
+		case SC_PKCS15INIT_SO_PIN:
+			name = "Security officer PIN";
+			secret = opt_pins[OPT_PIN2 & 3]; break;
+		case SC_PKCS15INIT_SO_PUK:
+			name = "Security officer PIN unlock key";
+			secret = opt_pins[OPT_PUK2 & 3]; break;
 		}
-		name = namebuf;
+		if (secret)
+			len = strlen(secret);
 	}
 
-	if ((secret == NULL || ignore_cmdline_pins)
-	 && !read_one_pin(profile, name, NULL, 0, &secret))
-		return SC_ERROR_INTERNAL;
-	len = strlen(secret);
-	if (len + 1 > *pinsize)
+	/* See if we were given --secret @ID=.... */
+	if (!secret) {
+		unsigned int	n;
+
+		for (n = 0; n < opt_secret_count; n++) {
+			struct secret	*s = &opt_secrets[n];
+
+			if (sc_pkcs15_compare_id(&info->auth_id, &s->id)) {
+				secret = s->key;
+				len = s->len;
+				break;
+			}
+		}
+	}
+
+	if (!secret) {
+		if (!read_one_pin(profile, name, NULL, 0, &secret))
+			return SC_ERROR_INTERNAL;
+		len = strlen(secret);
+		allocated = 1;
+	}
+
+	if (len > *pinsize)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	memcpy(pinbuf, secret, len + 1);
 	*pinsize = len;
+	if (allocated)
+		free(secret);
 	return 0;
 }
 
@@ -1616,6 +1726,8 @@ handle_option(const struct option *opt)
 	case 'f':
 		opt_format = optarg;
 		break;
+	case 'h':
+		print_usage_and_die();
 	case 'i':
 		opt_objectid = optarg;
 		break;
@@ -1683,6 +1795,10 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_ASSERT_PRISTINE:
 		this_action = ACTION_ASSERT_PRISTINE;
+		break;
+	case OPT_SECRET:
+		parse_secret(&opt_secrets[opt_secret_count], optarg);
+		opt_secret_count++;
 		break;
 	default:
 		print_usage_and_die();
