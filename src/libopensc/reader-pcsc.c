@@ -144,7 +144,7 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	DWORD dwSendLength, dwRecvLength;
 	LONG rv;
 	SCARDHANDLE card;
-	char masqueraded_apdu[5];
+	u8 masqueraded_apdu[5];
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	struct pcsc_private_data *prv = GET_PRIV_DATA(reader);
 	int protocol = slot->active_protocol;
