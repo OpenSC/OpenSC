@@ -579,7 +579,7 @@ AC_SUBST(CFLAGS_PCSC)
 AC_SUBST(LIBPCSC)
 
 case "$host" in
-  *darwin* | *rhapsody*)
+*-*-darwin*)
 	PCSC_MSG=yes
 	CFLAGS_PCSC=""
 	LIBPCSC="-Wl,-framework,PCSC"
@@ -592,8 +592,10 @@ saved_CPPFLAGS="$CPPFLAGS"
 AC_ARG_WITH(pcsclite,
 	[  --with-pcsclite=PATH    use PC/SC Lite in PATH],
 	[pcsc_path=$withval])
-
-if test "$pcsc_path" != "no" -a "x$PCSC_MSG" != "xyes"; then
+if test "x$pcsc_path" = "xno"; then
+	PCSC_MSG="no"
+fi
+if test "x$pcsc_path" != "xno" -a "x$PCSC_MSG" != "xyes"; then
 	AC_MSG_CHECKING(for PC/SC-Lite support)
 	for pcscdir in /pcsc ""; do
 		CPPFLAGS="$saved_CPPFLAGS"
@@ -643,6 +645,9 @@ fi
 AM_CONDITIONAL(HAVE_PCSCLITE, test "x$PCSC_MSG" = "xyes")
 if test "x$PCSC_MSG" = "xyes"; then
 	AC_DEFINE(HAVE_PCSCLITE, 1, [Have PC/SC Lite])
+else
+	LIBPCSC=""
+	CFLAGS_PCSC=""
 fi
 
 dnl --enable-usbtoken option.
