@@ -362,7 +362,7 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 	parser->last_token_type = token_type;
 }
 
-int scconf_parse(scconf_context * config, char **emesg)
+int scconf_parse(scconf_context * config)
 {
 	static char buffer[256];
 	scconf_parser p;
@@ -373,8 +373,6 @@ int scconf_parse(scconf_context * config, char **emesg)
 	p.block = config->root;
 	p.line = 1;
 
-	if (emesg)
-		*emesg = NULL;
 	if (!scconf_lex_parse(&p, config->filename)) {
 		snprintf(buffer, sizeof(buffer),
 				"Unable to open \"%s\": %s",
@@ -387,12 +385,12 @@ int scconf_parse(scconf_context * config, char **emesg)
 		r = 1;
 	}
 
-	if (r <= 0 && emesg)
-		*emesg = buffer;
+	if (r <= 0)
+		config->errmsg = buffer;
 	return r;
 }
 
-int scconf_parse_string(scconf_context * config, const char *string, char **emesg)
+int scconf_parse_string(scconf_context * config, const char *string)
 {
 	static char buffer[256];
 	scconf_parser p;
@@ -403,8 +401,6 @@ int scconf_parse_string(scconf_context * config, const char *string, char **emes
 	p.block = config->root;
 	p.line = 1;
 
-	if (emesg)
-		*emesg = NULL;
 	if (!scconf_lex_parse_string(&p, string)) {
 		snprintf(buffer, sizeof(buffer),
 				"Failed to parse configuration string");
@@ -416,7 +412,7 @@ int scconf_parse_string(scconf_context * config, const char *string, char **emes
 		r = 1;
 	}
 
-	if (r <= 0 && emesg)
-		*emesg = buffer;
+	if (r <= 0)
+		config->errmsg = buffer;
 	return r;
 }

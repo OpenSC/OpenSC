@@ -279,17 +279,16 @@ int
 sc_profile_load(struct sc_profile *profile, const char *filename)
 {
 	scconf_context	*conf;
-	char		*errmsg;
 	int		res = 0;
 
 	if (!(filename = sc_profile_locate(filename)))
 		return SC_ERROR_FILE_NOT_FOUND;
 	conf = scconf_new(filename);
-	res = scconf_parse(conf, &errmsg);
+	res = scconf_parse(conf);
 	if (res < 0)
 		return SC_ERROR_FILE_NOT_FOUND;
 	if (res == 0) {
-		/* FIXME - we may want to display errmsg here. */
+		/* FIXME - we may want to display conf->errmsg here. */
 		return SC_ERROR_SYNTAX_ERROR;
 	}
 

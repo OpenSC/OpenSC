@@ -121,7 +121,6 @@ int main(int argc, char **argv)
 		{NULL}
 	};
 	char *in = NULL, *out = NULL;
-	char *errmsg;
 	int r;
 
 	if (argc != 3) {
@@ -136,8 +135,8 @@ int main(int argc, char **argv)
 		printf("scconf_new failed\n");
 		return 1;
 	}
-	if (scconf_parse(conf, &errmsg) < 1) {
-		printf("scconf_parse failed: %s\n", errmsg);
+	if (scconf_parse(conf) < 1) {
+		printf("scconf_parse failed: %s\n", conf->errmsg);
 		scconf_free(conf);
 		return 1;
 	}

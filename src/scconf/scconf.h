@@ -84,6 +84,7 @@ typedef struct {
 	char *filename;
 	int debug;
 	scconf_block *root;
+	char *errmsg;
 } scconf_context;
 
 /* Allocate scconf_context
@@ -98,12 +99,12 @@ extern void scconf_free(scconf_context * config);
 /* Parse configuration
  * Returns 1 = ok, 0 = error, -1 = error opening config file
  */
-extern int scconf_parse(scconf_context * config, char **errmsg);
+extern int scconf_parse(scconf_context * config);
 
 /* Parse a static configuration string
  * Returns 1 = ok, 0 = error
  */
-extern int scconf_parse_string(scconf_context * config, const char *string, char **errmsg);
+extern int scconf_parse_string(scconf_context * config, const char *string);
 
 /* Parse entries
  */
