@@ -42,7 +42,7 @@ filesystem {
                 # part, so it's okay to set READ=NONE. What's more, we may need
                 # read access so we're able to check the key size/type.
                 EF private-key {
-    	            file-id	= 3000;	# This is the base FileID
+    	            file-id	= 3010;	# This is the base FileID
     	            structure	= 0x2C;	# GPK specific
     	            ACL		= *=NEVER,
 				    READ=NONE,
@@ -54,7 +54,7 @@ filesystem {
 	        # Extractable private keys are stored in transparent EFs.
 	        # Encryption of the content is performed by libopensc.
                 EF extractable-key {
-    	            file-id	= 3001;
+    	            file-id	= 3100;
     	            structure	= transparent;
     	            ACL		= *=NEVER,
 					READ=$PIN,
@@ -64,7 +64,7 @@ filesystem {
 
 	        # data objects are stored in transparent EFs.
                 EF data {
-    	            file-id	= 3002;
+    	            file-id	= 3200;
     	            structure	= transparent;
     	            ACL		= *=NEVER,
 					READ=NONE,
@@ -73,14 +73,14 @@ filesystem {
                 }
 
                 EF public-key {
-    	            file-id	= 3003;
+    	            file-id	= 3300;
     	            structure	= transparent;
     	            ACL		= *=NONE;
                 }
 
                 # Certificate template
                 EF certificate {
-    	            file-id	= 3004;
+    	            file-id	= 3400;
     	            structure	= transparent;
     	            ACL		= *=NONE;
                 }
