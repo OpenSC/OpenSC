@@ -564,7 +564,10 @@ int sc_pkcs15_bind(struct sc_card *card,
 	err = sc_select_file(card, &tmppath, &p15card->file_tokeninfo);
 	if (err)
 		goto error;
-	err = sc_read_binary(card, 0, buf, p15card->file_tokeninfo->size, 0);
+
+	if ((len = p15card->file_tokeninfo->size) > sizeof(buf))
+		len = sizeof(buf);
+	err = sc_read_binary(card, 0, buf, len, 0);
 	if (err < 0)
 		goto error;
 	if (err <= 2) {
