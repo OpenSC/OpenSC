@@ -493,7 +493,7 @@ struct sc_card_operations {
 	 *   <file>, if not NULL. */
 	int (*select_file)(struct sc_card *card, const struct sc_path *path,
 			   struct sc_file **file_out);
-	int (*get_response)(struct sc_card *card, u8 * buf, size_t count);
+	int (*get_response)(struct sc_card *card, sc_apdu_t *orig_apdu, size_t count);
 	int (*get_challenge)(struct sc_card *card, u8 * buf, size_t count);
 
 	/*

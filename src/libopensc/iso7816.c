@@ -557,6 +557,33 @@ static int iso7816_create_file(struct sc_card *card, struct sc_file *file)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
+static int iso7816_get_response(struct sc_card *card, sc_apdu_t *orig_apdu, size_t count)
+{
+	struct sc_apdu apdu;
+	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int r;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);
+	apdu.le = count;
+	apdu.resplen = count;
+	apdu.resp = orig_apdu->resp;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.resplen == 0)
+		SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+
+	if (apdu.resplen != count) {
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_WRONG_LENGTH);
+	}
+
+	orig_apdu->resplen = apdu.resplen;
+	orig_apdu->sw1 = 0x90;
+	orig_apdu->sw2 = 0x00;
+
+	SC_FUNC_RETURN(card->ctx, 3, apdu.resplen);
+}
+
 static int iso7816_delete_file(struct sc_card *card, const struct sc_path *path)
 {
 	int r;
@@ -931,6 +958,7 @@ struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.select_file   = iso7816_select_file;
 		iso_ops.get_challenge = iso7816_get_challenge;
 		iso_ops.create_file   = iso7816_create_file;
+		iso_ops.get_response   = iso7816_get_response;
 		iso_ops.delete_file   = iso7816_delete_file;
 		iso_ops.set_security_env	= iso7816_set_security_env;
 		iso_ops.restore_security_env	= iso7816_restore_security_env;

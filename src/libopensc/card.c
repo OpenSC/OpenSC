@@ -213,9 +213,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 		}
 	}
 	if (apdu->sw1 == 0x61 && apdu->resplen == 0) {
-		struct sc_apdu rspapdu;
 		unsigned int le;
-		u8 rsp[SC_MAX_APDU_BUFFER_SIZE];
 
 		if (orig_resplen == 0) {
 			apdu->sw1 = 0x90;	/* FIXME: should we do this? */
@@ -226,39 +224,13 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 
 		le = apdu->sw2? (size_t) apdu->sw2 : 256;
 
-		sc_format_apdu(card, &rspapdu, SC_APDU_CASE_2_SHORT,
-			       0xC0, 0, 0);
-		rspapdu.le = le;
-		rspapdu.resp = rsp;
-		rspapdu.resplen = le;
-		r = sc_transceive(card, &rspapdu);
-		if (r != 0) {
-			error(card->ctx, "error while getting response: %s\n",
-			      sc_strerror(r));
+		if (card->ops->get_response == NULL) {
 			sc_unlock(card);
-			return r;
+			SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 		}
-		if (card->ctx->debug >= 5) {
-			char buf[2048];
-			buf[0] = 0;
-			if (rspapdu.resplen) {
-				sc_hex_dump(card->ctx, rspapdu.resp,
-					    rspapdu.resplen,
-					    buf, sizeof(buf));
-			}
-			debug(card->ctx, "Response %d bytes (SW1=%02X SW2=%02X)\n%s",
-			      rspapdu.resplen, rspapdu.sw1, rspapdu.sw2, buf);
-		}
-		if (rspapdu.resplen) {
-			size_t c = rspapdu.resplen;
-			
-			if (c > orig_resplen)
-				c = orig_resplen;
-			memcpy(apdu->resp, rspapdu.resp, c);
-			apdu->resplen = c;
-		}
-		apdu->sw1 = rspapdu.sw1;
-		apdu->sw2 = rspapdu.sw2;
+		r = card->ops->get_response(card, apdu, le);
+		sc_unlock(card);
+		return r;
 	}
 	sc_unlock(card);
 	return 0;
