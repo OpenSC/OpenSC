@@ -35,10 +35,10 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	struct sc_security_env senv;
 	struct sc_context *ctx = p15card->card->ctx;
 	
-	senv.algorithm_ref = 0x02;
+	senv.algorithm_ref = 0x0102;
 	senv.key_file_id = prkey->file_id;
 	senv.operation = SC_SEC_OPERATION_DECIPHER;
-	senv.key_ref = prkey->key_reference;
+	senv.key_ref = 0x0100 | prkey->key_reference;
 	
 	SC_FUNC_CALLED(ctx, 1);
 	r = sc_select_file(p15card->card, &p15card->file_app.path,
@@ -65,7 +65,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	struct sc_security_env senv;
 	struct sc_context *ctx = p15card->card->ctx;
 	
-	senv.algorithm_ref = 0x02;
+	senv.algorithm_ref = 0x0102;
 	switch (hash) {
 	case SC_PKCS15_HASH_SHA1:
 		senv.algorithm_ref |= 0x10;
@@ -76,7 +76,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 	senv.key_file_id = prkey->file_id;
 	senv.operation = SC_SEC_OPERATION_SIGN;
-	senv.key_ref = prkey->key_reference;
+	senv.key_ref = 0x0100 | prkey->key_reference;
 	
 	SC_FUNC_CALLED(ctx, 1);
 	r = sc_select_file(p15card->card, &p15card->file_app.path,

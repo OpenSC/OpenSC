@@ -44,21 +44,28 @@ int sc_set_security_env(struct sc_card *card,
 		apdu.p1 = 0x81;
 		apdu.p2 = 0xB6;
 		break;
+	
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	apdu.le = 0;
 	p = sbuf;
-	*p++ = 0x80;		/* algorithm reference */
-	*p++ = 1;
-	*p++ = env->algorithm_ref;
-	*p++ = 0x81;
-	*p++ = env->key_file_id.len;
-	memcpy(p, env->key_file_id.value, env->key_file_id.len);
-	p += env->key_file_id.len;
-	*p++ = 0x84;
-	*p++ = 1;
-	*p++ = env->key_ref;
+	if (env->algorithm_ref >= 0) {
+		*p++ = 0x80;		/* algorithm reference */
+		*p++ = env->algorithm_ref >> 8;
+		*p++ = env->algorithm_ref & 0xFF;
+	}
+	if (env->key_file_id.len >= 0) {
+		*p++ = 0x81;
+		*p++ = env->key_file_id.len;
+		memcpy(p, env->key_file_id.value, env->key_file_id.len);
+		p += env->key_file_id.len;
+	}
+	if (env->key_ref >= 0) {
+		*p++ = 0x84;
+		*p++ = env->key_ref >> 8;
+		*p++ = env->key_ref & 0xFF;
+	}
 	r = p - sbuf;
 	apdu.lc = r;
 	apdu.datalen = r;
