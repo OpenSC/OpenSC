@@ -76,14 +76,14 @@ static int ldap_cb(scconf_context * config, const scconf_block * block, scconf_e
 	scldap_param_entry *lentry = (scldap_param_entry *) &ctx->entry[ctx->entries];
 	scconf_entry centry[] =
 	{
-		{"ldaphost", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->ldaphost, NULL},
-		{"ldapport", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->ldapport, NULL},
-		{"scope", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->scope, NULL},
-		{"binddn", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->binddn, NULL},
-		{"passwd", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->passwd, NULL},
-		{"base", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->base, NULL},
-		{"attributes", SCCONF_CALLBACK, SCCONF_OPTIONAL, (void *) attrs_cb, lentry},
-		{"filter", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_ALLOC, &lentry->filter, NULL},
+		{"ldaphost", SCCONF_STRING, SCCONF_ALLOC, &lentry->ldaphost, NULL},
+		{"ldapport", SCCONF_INTEGER, SCCONF_ALLOC, &lentry->ldapport, NULL},
+		{"scope", SCCONF_INTEGER, SCCONF_ALLOC, &lentry->scope, NULL},
+		{"binddn", SCCONF_STRING, SCCONF_ALLOC, &lentry->binddn, NULL},
+		{"passwd", SCCONF_STRING, SCCONF_ALLOC, &lentry->passwd, NULL},
+		{"base", SCCONF_STRING, SCCONF_ALLOC, &lentry->base, NULL},
+		{"attributes", SCCONF_CALLBACK, 0, (void *) attrs_cb, lentry},
+		{"filter", SCCONF_STRING, SCCONF_ALLOC, &lentry->filter, NULL},
 		{NULL}
 	};
 	char *ldapsuffix = NULL;
@@ -92,13 +92,18 @@ static int ldap_cb(scconf_context * config, const scconf_block * block, scconf_e
 	if (ctx->entries >= SCLDAP_MAX_ENTRIES)
 		return 0;	/* Hard limit reached, just return OK */
 	ldapsuffix = scconf_list_strdup(block->name, " ");
+	if (!ldapsuffix) {
+		return 1;
+	}
 	if (cardprefix) {
 		len = strlen(cardprefix) + 1;
 	}
 	len += strlen(ldapsuffix) + 1;
 	lentry->entry = malloc(len);
-	if (!lentry->entry)
+	if (!lentry->entry) {
+		free(ldapsuffix);
 		return 1;
+	}
 	memset(lentry->entry, 0, len);
 	snprintf(lentry->entry, len, "%s%s%s", cardprefix ? cardprefix : "", cardprefix ? " " : "", ldapsuffix);
 	free(ldapsuffix);
@@ -119,7 +124,7 @@ static int card_cb(scconf_context * config, const scconf_block * block, scconf_e
 	cb_data *trans = (cb_data *) entry->arg;
 	scconf_entry card_entry[] =
 	{
-		{"ldap", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_ALL_BLOCKS, (void *) ldap_cb, trans},
+		{"ldap", SCCONF_CALLBACK, SCCONF_ALL_BLOCKS, (void *) ldap_cb, trans},
 		{NULL}
 	};
 
@@ -154,8 +159,8 @@ scldap_context *scldap_parse_parameters(const char *filename)
 		cb_data trans = {ctx, NULL};
 		scconf_entry entry[] =
 		{
-			{"ldap", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_ALL_BLOCKS, (void *) ldap_cb, &trans},
-			{"card", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_ALL_BLOCKS, (void *) card_cb, &trans},
+			{"ldap", SCCONF_CALLBACK, SCCONF_ALL_BLOCKS, (void *) ldap_cb, &trans},
+			{"card", SCCONF_CALLBACK, SCCONF_ALL_BLOCKS, (void *) card_cb, &trans},
 			{NULL}
 		};
 		ctx->conf = scconf_new(filename);

@@ -38,7 +38,7 @@ typedef struct _scconf_entry {
 
 /* Entry flags */
 #define SCCONF_PRESENT		0x00000001
-#define SCCONF_OPTIONAL		0x00000002
+#define SCCONF_MANDATORY	0x00000002
 #define SCCONF_ALLOC		0x00000004
 #define SCCONF_ALL_BLOCKS	0x00000008
 #define SCCONF_VERBOSE		0x00000010	/* For debugging purposes only */

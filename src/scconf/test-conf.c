@@ -32,14 +32,14 @@ static int ldap_cb(scconf_context * config, const scconf_block * block, scconf_e
 {
 	scconf_entry ldap_entry[] =
 	{
-		{"ldaphost", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-		{"ldapport", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-		{"scope", SCCONF_INTEGER, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-		{"binddn", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-		{"passwd", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-		{"base", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-		{"attributes", SCCONF_LIST, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
-		{"filter", SCCONF_STRING, SCCONF_OPTIONAL | SCCONF_VERBOSE, NULL, NULL},
+		{"ldaphost", SCCONF_STRING, SCCONF_VERBOSE, NULL, NULL},
+		{"ldapport", SCCONF_INTEGER, SCCONF_VERBOSE, NULL, NULL},
+		{"scope", SCCONF_INTEGER, SCCONF_VERBOSE, NULL, NULL},
+		{"binddn", SCCONF_STRING, SCCONF_VERBOSE, NULL, NULL},
+		{"passwd", SCCONF_STRING, SCCONF_VERBOSE, NULL, NULL},
+		{"base", SCCONF_STRING, SCCONF_VERBOSE, NULL, NULL},
+		{"attributes", SCCONF_LIST, SCCONF_VERBOSE, NULL, NULL},
+		{"filter", SCCONF_STRING, SCCONF_VERBOSE, NULL, NULL},
 		{NULL}
 	};
 	char *cardprefix = (char *) entry->arg;
@@ -61,7 +61,7 @@ static int card_cb(scconf_context * config, const scconf_block * block, scconf_e
 	char *str = scconf_list_strdup(block->name, " ");
 	scconf_entry card_entry[] =
 	{
-		{"ldap", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_VERBOSE | SCCONF_ALL_BLOCKS, (void *) ldap_cb, str},
+		{"ldap", SCCONF_CALLBACK, SCCONF_VERBOSE | SCCONF_ALL_BLOCKS, (void *) ldap_cb, str},
 		{NULL}
 	};
 
@@ -82,8 +82,8 @@ int main(int argc, char **argv)
 	scconf_context *conf = NULL;
 	scconf_entry entry[] =
 	{
-		{"ldap", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_VERBOSE | SCCONF_ALL_BLOCKS, (void *) ldap_cb},
-		{"card", SCCONF_CALLBACK, SCCONF_OPTIONAL | SCCONF_VERBOSE | SCCONF_ALL_BLOCKS, (void *) card_cb},
+		{"ldap", SCCONF_CALLBACK, SCCONF_VERBOSE | SCCONF_ALL_BLOCKS, (void *) ldap_cb},
+		{"card", SCCONF_CALLBACK, SCCONF_VERBOSE | SCCONF_ALL_BLOCKS, (void *) card_cb},
 		{NULL}
 	};
 	char *in = NULL, *out = NULL;

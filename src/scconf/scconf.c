@@ -445,7 +445,7 @@ static int parse_entries(scconf_context * config, const scconf_block * block, sc
 		r = 0;
 		blocks = getblocks(config, block, e);
 		if (!blocks) {
-			if (e->flags & SCCONF_OPTIONAL) {
+			if (!(e->flags & SCCONF_MANDATORY)) {
 				if (config->debug)
 					fprintf(stderr, "optional configuration entry '%s' not present\n",
 						e->name);
