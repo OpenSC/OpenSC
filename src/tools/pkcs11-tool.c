@@ -53,14 +53,14 @@ const struct option options[] = {
 	{ "mechanism",		1, 0,		'm' },
 
 	{ "login",		0, 0,		'l' },
-       { "pin",                1, 0,           'p' },
+	{ "pin",		1, 0,		'p' },
 	{ "slot",		1, 0,		OPT_SLOT },
 	{ "input-file",		1, 0,		'i' },
 	{ "output-file",	1, 0,		'o' },
 	{ "module",		1, 0,		OPT_MODULE },
 	{ "verbose",		0, 0,		'v' },
 
-       { "test",               0, 0,           't' },
+	{ "test",		0, 0,		't' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -135,6 +135,7 @@ static const char *	p11_utf8_to_local(CK_UTF8CHAR *, size_t);
 static const char *	p11_flag_names(struct flag_info *, CK_FLAGS);
 static const char *	p11_mechanism_to_name(CK_MECHANISM_TYPE);
 static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
+static void		p11_perror(const char *, CK_RV);
 static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 
@@ -1061,7 +1062,9 @@ int sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	if (sigLen1 != modLenBytes) {
 		errors++;
-		printf("  ERR: wrong signature length: %ld instead of %ld\n", sigLen1, modLenBytes);
+		printf("  ERR: wrong signature length: %u instead of %u\n",
+				(unsigned int) sigLen1,
+				(unsigned int) modLenBytes);
 	}
 #ifndef HAVE_OPENSSL
 	printf("unable to verify signature (compile with HAVE_OPENSSL)\n");
@@ -1323,7 +1326,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	j = 1;  /* j-th signature key */
 	while (find_object(session, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j++) != 0) {
 
-		printf("  testing key %d ", j-1);
+		printf("  testing key %d ", (int) (j-1));
 		if ((label = getLABEL(session, privKeyObject, NULL)) != NULL) {
 			printf("(%s) ", label);
 			free(label);
@@ -1362,31 +1365,31 @@ test_random(CK_SLOT_ID slot)
 	if (rv == CKR_RANDOM_SEED_NOT_SUPPORTED)
 		printf("  seeding (C_SeedRandom) not supported\n");
 	else if (rv != CKR_OK) {
-		printf("  ERR: C_SeedRandom returned %s (0x%0x)\n", CKR2Str(rv), rv);
+		p11_perror("C_SeedRandom", rv);
 		return 1;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf1, 10);
 	if (rv != CKR_OK) {
-		printf("  ERR: C_GenerateRandom returned %s (0x%0x)\n", CKR2Str(rv), rv);
+		p11_perror("C_GenerateRandom", rv);
 		return 1;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf1, 100);
 	if (rv != CKR_OK) {
-		printf("  ERR: C_GenerateRandom returned %s (0x%0x)\n", CKR2Str(rv), rv);
+		p11_perror("C_GenerateRandom", rv);
 		return 1;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf1, 0);
 	if (rv != CKR_OK) {
-		printf("  ERR: C_GenerateRandom(,,0) returned %s (0x%0x)\n", CKR2Str(rv), rv);
+		p11_perror("C_GenerateRandom(,,0)", rv);
 		return 1;
 	}
 
 	rv = p11->C_GenerateRandom(session, NULL, 100);
 	if (rv != CKR_OK) {
-		printf("  ERR: C_GenerateRandom(,NULL,) returned %s (0x%0x)\n", CKR2Str(rv), rv);
+		p11_perror("C_GenerateRandom(,NULL,)", rv);
 		return 1;
 	}
 
@@ -1401,16 +1404,33 @@ test_random(CK_SLOT_ID slot)
 }
 
 static int
-test_card_detection(void)
+test_card_detection(int wait_for_event)
 {
 	char buffer[256];
+	CK_SLOT_ID slot_id;
+	CK_RV rv;
+
+	printf("Testing card detection%s\n",
+		wait_for_event? " using C_WaitForSlotEvent" : "");
 
 	while (1) {
-		printf("Please press return or x to exit: ");
+		printf("Please press return to continue, x to exit: ");
 		fflush(stdout);
 		if (fgets(buffer, sizeof(buffer), stdin) == NULL
 		|| buffer[0] == 'x')
 			break;
+		
+		if (wait_for_event) {
+			printf("Calling C_WaitForSlotEvent: ");
+			fflush(stdout);
+			rv = p11->C_WaitForSlotEvent(0, &slot_id, NULL);
+			if (rv != CKR_OK) {
+				printf("failed.\n");
+				p11_perror("C_WaitForSlotEvent", rv);
+				return 1;
+			}
+			printf("event on slot %u\n", (unsigned int) slot_id);
+		}
 		list_slots();
 	}
 
@@ -1428,7 +1448,9 @@ p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	errors += test_signature(slot, session);
 
-	errors += test_card_detection();
+	errors += test_card_detection(0);
+
+	errors += test_card_detection(1);
 
 	if (errors == 0)
 		printf("No errors\n");
@@ -1514,7 +1536,15 @@ void
 p11_fatal(const char *func, CK_RV rv)
 {
 	fatal("PKCS11 function %s failed: rv = %s (0x%0x)\n",
-		func, CKR2Str(rv), rv);
+		func, CKR2Str(rv), (unsigned int) rv);
+}
+
+void
+p11_perror(const char *msg, CK_RV rv)
+{
+	fprintf(stderr,
+		"  ERR: %s failed: %s (0x%0x)\n",
+		msg, CKR2Str(rv), (unsigned int) rv);
 }
 
 static struct mech_info	p11_mechanisms[] = {
