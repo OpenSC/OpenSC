@@ -1,5 +1,5 @@
 /*
- * pkcs15-syn.c: PKCS #15 emaulation of non-pkcs15 cards
+ * pkcs15-syn.c: PKCS #15 emulation of non-pkcs15 cards
  *
  * Copyright (C) 2003  Olaf Kirch <okir@suse.de>
  *
