@@ -603,7 +603,7 @@ gpk_select_id(struct sc_card *card, u8 kind, unsigned short int fid,
 {
 	struct sc_path	*cp = &card->cache.current_path;
 	u8		fbuf[2];
-	int		r, log_errs;
+	int		r;
 
 	if (card->ctx->debug)
 		sc_debug(card->ctx, "gpk_select_id(0x%04X, kind=%u)\n", fid, kind);
@@ -611,10 +611,9 @@ gpk_select_id(struct sc_card *card, u8 kind, unsigned short int fid,
 	fbuf[0] = fid >> 8;
 	fbuf[1] = fid & 0xff;
 
-	log_errs = card->ctx->log_errors;
-	card->ctx->log_errors = 0;
+	card->ctx->suppress_errors++;
 	r = gpk_select(card, kind, fbuf, 2, file);
-	card->ctx->log_errors = log_errs;
+	card->ctx->suppress_errors--;
 
 	/* Fix up the path cache.
 	 * NB we never cache the ID of an EF, just the DF path */

@@ -99,7 +99,7 @@ void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, 
 	assert(ctx != NULL);
 	switch (type) {
 	case SC_LOG_TYPE_ERROR:
-		if (ctx->log_errors == 0)
+		if (ctx->suppress_errors)
 			return;
 		outf = ctx->error_file;
 		break;
@@ -109,7 +109,7 @@ void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, 
 		outf = ctx->debug_file;
 		break;
 	}
-	if (outf == NULL)
+	if (!ctx->log_error_func && outf == NULL)
 		return;
 	if (use_color(ctx, outf)) {
 		color_sfx = "\33[0m";
@@ -137,8 +137,12 @@ void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, 
 	p += r;
 	left -= r;
 
-	fprintf(outf, "%s%s%s", color_pfx, buf, color_sfx);
-	fflush(outf);
+	if (ctx->log_error_func) {
+		ctx->log_error_func(ctx, buf);
+	} else {
+		fprintf(outf, "%s%s%s", color_pfx, buf, color_sfx);
+		fflush(outf);
+	}
 }
 
 void sc_hex_dump(struct sc_context *ctx, const u8 * in, size_t count, char *buf, size_t len)

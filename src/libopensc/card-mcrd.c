@@ -671,7 +671,7 @@ select_part (struct sc_card *card, u8 kind, unsigned short int fid,
              struct sc_file **file)
 {
 	u8 fbuf[2];
-	int r, log_errs;
+	int r;
 
 	if (card->ctx->debug >=3)
 		sc_debug(card->ctx, "select_part (0x%04X, kind=%u)\n",
@@ -682,10 +682,9 @@ select_part (struct sc_card *card, u8 kind, unsigned short int fid,
 
 	fbuf[0] = fid >> 8;
 	fbuf[1] = fid & 0xff;
-	log_errs = card->ctx->log_errors;
-	card->ctx->log_errors = 0;
+	card->ctx->suppress_errors++;
 	r = do_select (card, kind, fbuf, 2, file);
-	card->ctx->log_errors = log_errs;
+	card->ctx->suppress_errors--;
 
 	return r;
 }

@@ -84,6 +84,7 @@ static int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 	case SC_APDU_CASE_2_EXT:
 	case SC_APDU_CASE_3_EXT:
 	case SC_APDU_CASE_4_EXT:
+		sc_error(ctx, "Invalid APDU case %d\n", apdu->cse);
 		SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	return 0;

@@ -154,7 +154,7 @@ static void set_defaults(struct sc_context *ctx, struct _sc_ctx_options *opts)
 	if (ctx->debug_file && ctx->debug_file != stdout)
 		fclose(ctx->debug_file);
 	ctx->debug_file = stdout;
-	ctx->log_errors = 1;
+	ctx->suppress_errors = 0;
 	if (ctx->error_file && ctx->error_file != stderr)
 		fclose(ctx->error_file);
 	ctx->error_file = stderr;

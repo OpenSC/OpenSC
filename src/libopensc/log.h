@@ -62,7 +62,7 @@ void sc_hex_dump(struct sc_context *ctx, const u8 * buf, size_t len, char *out, 
 
 #define SC_FUNC_RETURN(ctx, level, r) { \
 	int _ret = r; \
-	if (_ret < 0 && ctx->log_errors) { \
+	if (_ret < 0 && !ctx->suppress_errors) { \
 		sc_do_log(ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, "returning with: %s\n", sc_strerror(_ret)); \
 	} else if (ctx->debug >= level) { \
 		sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "returning with: %d\n", _ret); \

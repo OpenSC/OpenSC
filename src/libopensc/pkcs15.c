@@ -287,10 +287,9 @@ int sc_pkcs15_create_dir(struct sc_pkcs15_card *p15card, struct sc_card *card)
 	file.id = 0x2F00;
 	file.status = SC_FILE_STATUS_ACTIVATED;
 	sc_format_path("3F002F00", &path);
-	i = card->ctx->log_errors;
-	card->ctx->log_errors = 0;
+	card->ctx->suppress_errors++;
 	r = sc_select_file(card, &path, NULL);
-	card->ctx->log_errors = i;
+	card->ctx->suppress_errors--;
 	if (r != 0) {
 		r = sc_create_file(card, &file);
 		if (r) {
@@ -523,10 +522,9 @@ int sc_pkcs15_bind(struct sc_card *card,
 	}
 
 	/* Check if pkcs15 directory exists */
-	i = ctx->log_errors;
-	ctx->log_errors = 0;
+	card->ctx->suppress_errors++;
 	err = sc_select_file(card, &p15card->file_app->path, NULL);
-	ctx->log_errors = 1;
+	card->ctx->suppress_errors--;
 	if (err < 0) {
 		err = sc_pkcs15_bind_synthetic(p15card);
 		if (err < 0)
