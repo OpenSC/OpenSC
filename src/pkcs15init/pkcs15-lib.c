@@ -1505,7 +1505,8 @@ __check_key_compatibility(struct sc_pkcs15_card *p15card,
 		 || (info->flags & flags) != flags)
 			continue;
 		if (key->algorithm == SC_ALGORITHM_RSA
-		 && info->u._rsa.exponent != 0) {
+		 && info->u._rsa.exponent != 0
+		 && key->u.rsa.exponent.len != 0) {
 			sc_pkcs15_bignum_t *e = &key->u.rsa.exponent;
 			unsigned long	exponent = 0;
 			unsigned int	n;
@@ -2385,8 +2386,8 @@ sc_pkcs15init_authenticate(struct sc_profile *pro, struct sc_card *card,
 	const struct sc_acl_entry *acl;
 	int		r = 0;
 
-	sc_debug(card->ctx, "sc_pkcs15init_authenticate(%s)\n",
-				sc_print_path(&file->path));
+	sc_debug(card->ctx, "path=%s, op=%u\n",
+				sc_print_path(&file->path), op);
 
 	acl = sc_file_get_acl_entry(file, op);
 	for (; r == 0 && acl; acl = acl->next) {

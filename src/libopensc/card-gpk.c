@@ -1532,6 +1532,48 @@ gpk_pkfile_init(struct sc_card *card, struct sc_cardctl_gpk_pkinit *args)
 }
 
 /*
+ * Initialize the private portion of a public key file
+ */
+static int
+gpk_generate_key(struct sc_card *card, struct sc_cardctl_gpk_genkey *args)
+{
+	struct sc_apdu	apdu;
+	int		r;
+	u8		buffer[256];
+
+	if (card->ctx->debug)
+		sc_debug(card->ctx, "gpk_generate_key(%u)\n", args->privlen);
+	if (args->privlen != 512 && args->privlen != 1024) {
+		sc_error(card->ctx,
+			"Key generation not supported for key length %d",
+			args->privlen);
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_2_SHORT;
+	apdu.cla = 0x80;
+	apdu.ins = 0xD2;
+	apdu.p1  = 0x80 | (args->fid & 0x1F);
+	apdu.p2  = (args->privlen == 1024) ? 0x11 : 0;
+	apdu.le  = 256;
+	apdu.resp = buffer;
+	apdu.resplen = 256;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "Card returned error");
+
+	/* Reverse the data we got back */
+	r = reverse(args->pubkey, args->pubkey_len, buffer, apdu.resplen);
+	SC_TEST_RET(card->ctx, r, "Failed to reverse buffer");
+
+	args->pubkey_len = r;
+	return r;
+}
+
+/*
  * Store a privat key component
  */
 static int
@@ -1710,7 +1752,12 @@ gpk_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_GPK_IS_LOCKED:
 		*(int *) ptr = DRVDATA(card)->locked;
 		return 0;
+	case SC_CARDCTL_GPK_GENERATE_KEY:
+		return gpk_generate_key(card,
+				(struct sc_cardctl_gpk_genkey *) ptr);
 	}
+
+
 	return SC_ERROR_NOT_SUPPORTED;
 }
 

@@ -26,11 +26,14 @@
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include <opensc/opensc.h>
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
 #include "pkcs15-init.h"
 #include "profile.h"
+
+#define PK_INIT_IMMEDIATELY
 
 #define GPK_MAX_PINS		8
 #define GPK_PIN_SCOPE		8
@@ -72,6 +75,10 @@ static int	gpk_encode_dsa_key(sc_profile_t *, sc_card_t *,
 static int	gpk_store_pk(struct sc_profile *, struct sc_card *,
 			struct sc_file *, struct pkdata *);
 static int	gpk_init_pinfile(sc_profile_t *, sc_card_t *, sc_file_t *);
+static int	gpk_pkfile_init_public(sc_profile_t *, sc_card_t *,
+			sc_file_t *, unsigned int, unsigned int, unsigned int);
+static int	gpk_pkfile_init_private(sc_card_t *, sc_file_t *, unsigned int);
+static int	gpk_read_rsa_key(sc_card_t *, struct sc_pkcs15_pubkey_rsa *);
 
 
 /*
@@ -363,7 +370,7 @@ gpk_create_key(sc_profile_t *profile, sc_card_t *card, sc_pkcs15_object_t *obj)
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 	struct sc_file	*keyfile = NULL;
 	size_t		bytes, mod_len, exp_len, prv_len, pub_len;
-	int		r;
+	int		r, algo;
 
 	/* The caller is supposed to have chosen a key file path for us */
 	if (key_info->path.len == 0 || key_info->modulus_length == 0)
@@ -395,12 +402,34 @@ gpk_create_key(sc_profile_t *profile, sc_card_t *card, sc_pkcs15_object_t *obj)
 	}
 	keyfile->size = pub_len + prv_len;
 
-	/* Fix up PIN references in file ACL */
-	r = sc_pkcs15init_fixup_file(profile, keyfile);
+	switch (obj->type) {
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+		algo = SC_ALGORITHM_RSA; break;
+	case SC_PKCS15_TYPE_PRKEY_DSA:
+		algo = SC_ALGORITHM_DSA; break;
+	default:
+		sc_error(card->ctx, "Unsupported public key algorithm");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
 
-	if (r >= 0)
-		r = gpk_pkfile_create(profile, card, keyfile);
+	/* Fix up PIN references in file ACL and create the PK file */
+	if ((r = sc_pkcs15init_fixup_file(profile, keyfile)) < 0
+	 || (r = gpk_pkfile_create(profile, card, keyfile)) < 0)
+		goto done;
 
+#ifdef PK_INIT_IMMEDIATELY
+	/* Initialize the public key header */
+	r = gpk_pkfile_init_public(profile, card, keyfile, algo,
+			key_info->modulus_length,
+			key_info->usage);
+	if (r < 0)
+		goto done;
+
+	/* Create the private key portion */
+	r = gpk_pkfile_init_private(card, keyfile, prv_len);
+#endif
+
+done:
 	if (keyfile)
 		sc_file_free(keyfile);
 	return r;
@@ -447,6 +476,65 @@ gpk_store_key(sc_profile_t *profile, sc_card_t *card,
 	if (keyfile)
 		sc_file_free(keyfile);
 	return r;
+}
+
+/*
+ * On-board key generation.
+ */
+static int
+gpk_generate_key(sc_profile_t *profile, sc_card_t *card,
+                        sc_pkcs15_object_t *obj,
+                        sc_pkcs15_pubkey_t *pubkey)
+{
+	struct sc_cardctl_gpk_genkey args;
+	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	unsigned int    keybits;
+	sc_file_t	*keyfile;
+	int             r, n;
+
+	sc_debug(card->ctx, "path=%s, %d bits\n",
+			sc_print_path(&key_info->path),
+			key_info->modulus_length);
+	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
+		sc_error(card->ctx, "GPK supports generating only RSA keys.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	/* The caller is supposed to have chosen a key file path for us */
+	if (key_info->path.len == 0 || key_info->modulus_length == 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	keybits = key_info->modulus_length;
+
+	if ((r = sc_select_file(card, &key_info->path, &keyfile)) < 0)
+		return r;
+
+#ifndef PK_INIT_IMMEDIATELY
+	r = gpk_pkfile_init_public(profile, card, keyfile, SC_ALGORITHM_RSA,
+			keybits, key_info->usage);
+	if (r < 0)
+		return r;
+
+	if ((r = gpk_pkfile_init_private(card, keyfile, 5 * ((3 + keybits / 16 + 7) & ~7UL))) < 0)
+		return r;
+#endif
+
+	memset(&args, 0, sizeof(args));
+	/*args.exponent = 0x10001;*/
+	n = key_info->path.len;
+	args.fid = (key_info->path.value[n-2] << 8) | key_info->path.value[n-1];
+	args.privlen = keybits;
+
+	r = sc_card_ctl(card, SC_CARDCTL_GPK_GENERATE_KEY, &args);
+	if (r < 0)
+		return r;
+
+	/* This is fairly weird. The GENERATE RSA KEY command returns
+	 * immediately, but obviously it needs more time to complete.
+	 * This is why we sleep here. */
+	sleep(20);
+
+	pubkey->algorithm = SC_ALGORITHM_RSA;
+	return gpk_read_rsa_key(card, &pubkey->u.rsa);
 }
 
 /*
@@ -951,10 +1039,12 @@ gpk_store_pk(struct sc_profile *profile, struct sc_card *card,
 		return SC_ERROR_FILE_TOO_SMALL;
 
 	/* Put the system record */
+#ifndef PK_INIT_IMMEDIATELY
 	r = gpk_pkfile_init_public(profile, card, file, p->algo,
 		       	p->bits, p->usage);
 	if (r < 0)
 		return r;
+#endif
 
 	/* Put the public key elements */
 	r = gpk_pkfile_update_public(profile, card, &p->_public);
@@ -962,14 +1052,49 @@ gpk_store_pk(struct sc_profile *profile, struct sc_card *card,
 		return r;
 
 	/* Create the private key part */
+#ifndef PK_INIT_IMMEDIATELY
 	r = gpk_pkfile_init_private(card, file, p->_private.size);
 	if (r < 0)
 		return r;
+#endif
 
 	/* Now store the private key elements */
 	r = gpk_pkfile_update_private(profile, card, file, &p->_private);
 
 	return r;
+}
+
+static int
+gpk_read_rsa_key(sc_card_t *card, struct sc_pkcs15_pubkey_rsa *rsa)
+{
+	int	n, r;
+
+	/* Read modulus and exponent */
+	for (n = 2; ; n++) {
+		sc_pkcs15_bignum_t *bn;
+		u8		buffer[256];
+		size_t		m;
+
+		card->ctx->suppress_errors++;
+		r = sc_read_record(card, n, buffer, sizeof(buffer),
+				SC_RECORD_BY_REC_NR);
+		card->ctx->suppress_errors--;
+		if (r < 1)
+			break;
+
+		if (buffer[0] == 0x01)
+			bn = &rsa->modulus;
+		else if  (buffer[0] == 0x07)
+			bn = &rsa->exponent;
+		else
+			continue;
+		bn->len  = r - 1;
+		bn->data = (u8 *) malloc(bn->len);
+		for (m = 0; m < bn->len; m++)
+			bn->data[m] = buffer[bn->len - m];
+	}
+
+	return 0;
 }
 
 static struct sc_pkcs15init_operations sc_pkcs15init_gpk_operations;
@@ -981,6 +1106,7 @@ struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void)
 	sc_pkcs15init_gpk_operations.select_pin_reference = gpk_select_pin_reference;
 	sc_pkcs15init_gpk_operations.create_pin = gpk_create_pin;
 	sc_pkcs15init_gpk_operations.create_key = gpk_create_key;
+	sc_pkcs15init_gpk_operations.generate_key = gpk_generate_key;
 	sc_pkcs15init_gpk_operations.store_key = gpk_store_key;
 
 	return &sc_pkcs15init_gpk_operations;

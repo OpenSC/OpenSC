@@ -42,6 +42,7 @@ enum {
 	SC_CARDCTL_GPK_PKINIT,
 	SC_CARDCTL_GPK_PKLOAD,
 	SC_CARDCTL_GPK_IS_LOCKED,
+	SC_CARDCTL_GPK_GENERATE_KEY,
 
 	/*
 	 * Cryptoflex specific calls
@@ -125,6 +126,13 @@ struct sc_cardctl_gpk_pkload {
 	u8 *			data;
 	unsigned int		len;
 	unsigned int		datalen;
+};
+
+struct sc_cardctl_gpk_genkey {
+	unsigned int		fid;
+	unsigned int		privlen;
+	unsigned char *		pubkey;
+	unsigned int		pubkey_len;
 };
 
 enum {
