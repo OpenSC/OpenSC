@@ -719,7 +719,7 @@ etoken_lifecycle_get(struct sc_card *card, int *mode)
 		*mode = SC_CARDCTRL_LIFECYCLE_OTHER;
 		break;
 	default:
-		error(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
+		sc_error(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
 		r = SC_ERROR_INTERNAL;
 	}
 
