@@ -29,8 +29,9 @@ Profiles currently reside in
 This section should contain information about the profile
 syntax. Will add this soonishly.
 .SH SEE ALSO
+.BR pkcs15 (7) ,
 .BR pkcs15-init (1) ,
 .BR pkcs15-crypt (1) ,
-.BR opensc (3) .
+.BR opensc (7) .
 .SH AUTHORS
 \*(nm was written by Olaf Kirch <okir@lst.de>.

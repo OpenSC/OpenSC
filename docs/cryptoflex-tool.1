@@ -1,0 +1,73 @@
+.PU
+.ds nm \fBcryptoflex-tool\fR
+.TH cryptoflex-tool 1 "September 3, 2002" "" OpenSC
+.SH NAME
+cryptoflex-tool \- utility for manipulating Schlumberger Cryptoflex data structures
+.SH SYNOPSIS
+\*(nm
+.RI [OPTIONS]
+.SH DESCRIPTION
+\*(nm is used to manipulate PKCS
+data structures on Schlumberger Cryptoflex smart cards.
+Users can create, list and read PINs and keys
+stored on the smart card.  User PIN authentication is
+performed for those operations that require it.
+.SH OPTIONS
+.TP
+.BR \-\-verify\-pin ", " \-v
+Verifies CHV1 before issuing commands
+.TP
+.BR \-\-list\-keys ", " \-l
+Lists all keys stored in a public key file
+.TP
+.BR "\-\-create\-key\-files " \fIarg\fP ", \-c " \fIarg\fP
+Creates new RSA key files for \fIarg\fP keys
+.TP
+.BR "\-\-create\-pin\-files " \fIid\fP ", \-P " \fIid\fP
+Creates new PIN file for CHV\fIid\fP
+.TP
+.BR "\-\-generate\-key, \-g"
+Generate a new RSA key pair
+.TP
+.BR "\-\-read\-key "
+Reads a public key from the card, allowing the user to
+extract and store or use the public key
+.TP
+.BR "\-\-key\-num " \fInum\fP ", \-k " \fInum\fP
+Specifies the key number to operate on.  The default is key number 1.
+.TP
+.BR "\-\-app\-df " \fInum\fP ", \-a " \fInum\fP
+Specifies the DF to operate in
+.TP
+.BR "\-\-prkey\-file " \fIid\fP ", \-p " \fIid\fP
+Specifies the private key file id, \fIid\fP, to use
+.TP
+.BR "\-\-pubkey\-file " \fIid\fP ", \-u " \fIid\fP
+Specifies the public key file id, \fIid\fP, to use
+.TP
+.BR "\-\-exponent " \fIexp\fP ", \-e " \fIexp\fP
+Specifies the RSA exponent, \fIexp\fP, to use in key generation.  
+The default value is 3.
+.TP
+.BR "\-\-modulus\-length " \fIlength\fP ", \-m " \fIlength\fP
+Specifies the modulus \fIlength\fP to use in key generation.  The default
+value is 1024.
+.TP
+.BR "\-\-reader " \fInum\fP ", -r " \fInum\fP
+Forces \*(nm to use reader number \fInum\fP for operations.  The default
+is to use reader number 0, the first reader in the system.
+.TP
+.BR \-\-quiet ", " \-q
+Perform operations quietly.  This causes \*(nm to be less 'chatty'
+about the status of the operation.
+.TP
+.BR \-\-debug ", " \-d
+Print debug output.  This option may be supplied many times each
+increasing the verbosity of debug messages.
+.SH SEE ALSO
+.BR opensc (7),
+.BR pkcs15-tool (1)
+.SH AUTHORS
+\*(nm was written by Juha Yrjölä <juha.yrjola@iki.fi>.
+This manpage was contributed by Joe Phillips <joe.phillips@innovationsw.com>
+for the Debian GNU/Linux system (but may be used by others).
