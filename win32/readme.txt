@@ -1,4 +1,6 @@
-How to compile src\tools\pkcs15-init.c:
+How to add openssl for extended functionality
+(e.g. hash mechanisms, the pkcs15-init tool, more signature
+mechanism)
 
 - download and compile the openssl sources from
   http://www.openssl.org/source/
@@ -13,4 +15,15 @@ How to compile src\tools\pkcs15-init.c:
   - uncomment pkcs15-init.exe in the "TARGETS" line
   - Add libeay32.lib to the "link" line
 
+- In src/libopensc/Makefile.mak
+  - Add libeay32.lib to the "link" line
 
+- In src/pkcs11/Makefile.mak
+  - Add libeay32.lib to the "link" line
+  - Add openssl.obj to the "OBJECTS" line
+
+- In src/pkcs15init/Makefile.mak
+  - Add libeay32.lib to the "lib" line
+
+- In Make.rules.mak
+  - Add /DHAVE_OPENSSL to the "COPTS" line

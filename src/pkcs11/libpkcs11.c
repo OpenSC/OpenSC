@@ -143,6 +143,9 @@ sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 int
 sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
 {
+	if (name == NULL)
+		name = "opensc-pkcs11";
+
 	mod->_dl_handle = LoadLibrary(name);
 
 	return (mod->_dl_handle? 0 : GetLastError());
