@@ -59,9 +59,7 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 		sc_close(priv);
 		r = sc_init(priv);
 		if (r) {
-#if 0
-			sc_error("SmartCard init failed: %s", sc_strerror(r));
-#endif
+			DBG(printf("SmartCard init failed: %s", sc_strerror(r)));
 			goto err;
 		}
 	}
@@ -70,16 +68,12 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 				SC_PKCS15_PRKEY_USAGE_DECRYPT,
 				&key);
 	if (r) {
-#if 0
-		sc_error("Unable to find private key from SmartCard: %s", sc_strerror(r));
-#endif
+		DBG(printf("Unable to find private key from SmartCard: %s", sc_strerror(r)));
 		goto err;
 	}
 	r = sc_pkcs15_find_pin_by_auth_id(priv->p15card, &key->auth_id, &pin);
 	if (r) {
-#if 0
-		sc_error("Unable to find PIN object from SmartCard: %s", sc_strerror(r));
-#endif
+		DBG(printf("Unable to find PIN object from SmartCard: %s", sc_strerror(r)));
 		goto err;
 	}
 	r = ask_and_verify_pin_code(priv->p15card, pin);
@@ -90,9 +84,7 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 	}
 	r = sc_pkcs15_decipher(priv->p15card, (const struct sc_pkcs15_object *) key->data, 0, from, flen, to, flen);
 	if (r < 0) {
-#if 0
-		sc_error("sc_pkcs15_decipher() failed: %s", sc_strerror(r));
-#endif
+		DBG(printf("sc_pkcs15_decipher() failed: %s", sc_strerror(r)));
 		goto err;
 	}
 	return r;
@@ -104,9 +96,7 @@ err:
 static int
 sc_private_encrypt(int flen, const unsigned char *from, unsigned char *to, RSA *rsa, int padding)
 {
-#if 0
-	sc_error("unsupported function sc_private_encrypt() called");
-#endif
+	DBG(printf("unsupported function sc_private_encrypt() called"));
 	return -1;
 }
 
@@ -121,11 +111,8 @@ sc_sign(int type, const unsigned char *m, unsigned int m_len,
 	priv = (struct sc_priv_data *) RSA_get_app_data(rsa);
 	if (priv == NULL)
 		return -1;
-#if 0
-	sc_debug("sc_sign() called on cert %02X: type = %d, m_len = %d",
-	      priv->cert_id.value[0], type, m_len);
-#endif
-	DBG(printf("sc_sign() called\n"));
+	DBG(printf("sc_sign() called on cert %02X: type = %d, m_len = %d",
+	      priv->cert_id.value[0], type, m_len));
 	if (priv->p15card == NULL) {
 		sc_close(priv);
 		r = sc_init(priv);
