@@ -33,7 +33,7 @@ filesystem {
 		type		= internal-ef;
     	        file-id		= 4B01;	# This is the base FileID
 		size		= 266;  # 266 is enough for 1024-bit keys
-    	        ACL		= *=NEVER, CRYPTO=$PIN, UPDATE=$PIN;
+    	        ACL		= *=NEVER, UPDATE=$PIN;
             }
 	    EF template-public-key {
 		file-id		= 5501;
@@ -47,6 +47,12 @@ filesystem {
     	        file-id		= 7000;
     	        ACL		= *=NEVER, READ=$PIN, UPDATE=$PIN;
             }
+	    EF tempfile {
+	        file-id		= 7EAD;
+		structure	= linear-variable-tlv;
+		ACL		= *=NONE;
+		size		= 512;
+	    }
 	}
     }
 }

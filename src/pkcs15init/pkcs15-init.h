@@ -54,6 +54,14 @@ struct sc_pkcs15init_operations {
 	 */
 	int	(*new_file)(struct sc_profile *, struct sc_card *,
 			unsigned int, unsigned int, struct sc_file **out);
+
+	/*
+	 * Generate a new key pair
+	 */
+	int	(*generate_key)(struct sc_profile *, struct sc_card *,
+			unsigned int index, unsigned int keybits,
+			sc_pkcs15_pubkey_t *pubkey_res);
+
 };
 
 /* Do not change these or reorder these */

@@ -371,8 +371,39 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 		unsigned int keybits,
 		struct sc_pkcs15_object **res_obj)
 {
-	/* Currently, we do not support on-board key generation */
-	return SC_ERROR_NOT_SUPPORTED;
+	struct sc_pkcs15init_pubkeyargs pubkey_args;
+	int		r, index;
+
+	/* For now, we support just RSA key pair generation */
+	if (keyargs->key.algorithm != SC_ALGORITHM_RSA)
+		return SC_ERROR_NOT_SUPPORTED;
+
+	if (profile->ops->generate_key == NULL)
+		return SC_ERROR_NOT_SUPPORTED;
+
+	if (keyargs->auth_id.len != 0) {
+		struct sc_pkcs15_pin_info *pin_info;
+		struct sc_pkcs15_object	*objp;
+
+		r = sc_pkcs15_find_pin_by_auth_id(p15card,
+				&keyargs->auth_id, &objp);
+		if (r < 0)
+			return r;
+		pin_info = (struct sc_pkcs15_pin_info *) objp->data;
+		sc_profile_set_pin_info(profile,
+				SC_PKCS15INIT_USER_PIN, pin_info);
+	}
+
+	memset(&pubkey_args, 0, sizeof(pubkey_args));
+
+	index = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
+	r = profile->ops->generate_key(profile, p15card->card, index, keybits,
+			&pubkey_args.key);
+	if (r < 0)
+		return r;
+
+	/* XXX: add PrKDF entrye and write public key */
+	return SC_ERROR_INTERNAL;
 }
 
 
