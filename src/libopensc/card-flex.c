@@ -343,10 +343,15 @@ static int check_path(struct sc_card *card, const u8 **pathptr, size_t *pathlen,
 	return 0;
 }
 
-void cache_path(struct sc_card *card, const struct sc_path *path)
+void cache_path(struct sc_card *card, const struct sc_path *path, int result)
 {
 	struct sc_path *curpath = &card->cache.current_path;
 	
+	if (result < 0) {
+		curpath->len = 0;
+		return;
+	}
+
 	switch (path->type) {
 	case SC_PATH_TYPE_FILE_ID:
 		if (path->value[0] == 0x3F && path->value[1] == 0x00)
@@ -406,6 +411,13 @@ static int select_file_id(struct sc_card *card, const u8 *buf, size_t buflen,
 	struct sc_apdu apdu;
         u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
         struct sc_file *file;
+
+	if (card->ctx->debug >= 4) {
+		char	string[32];
+
+		sc_bin_to_hex(buf, buflen, string, sizeof(string), 0);
+		sc_debug(card->ctx, "called, p1=%u, path=%s\n", p1, string);
+	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, p1, 0);
 	apdu.resp = rbuf;
@@ -493,10 +505,9 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 	r = select_file_id(card, pathptr, pathlen, p1, file_out);
 	if (locked)
 		sc_unlock(card);
-	if (r)
-		return r;
-	cache_path(card, path);
-	return 0;
+	cache_path(card, path, r);
+	SC_FUNC_RETURN(card->ctx, 3, r);
+	return r;
 }
 
 static int flex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
