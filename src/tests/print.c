@@ -244,6 +244,9 @@ void sc_test_print_object(const struct sc_pkcs15_object *obj)
 		sc_pkcs15_print_id(&obj->auth_id);
 		printf("\n");
 	}
+	if (obj->user_consent)
+		printf("\tUser consent: %u\n", obj->user_consent);
+
 	if (printer)
 		printer(obj);
 }
