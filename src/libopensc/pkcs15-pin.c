@@ -235,11 +235,18 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	assert(p15card != NULL);
 	if (pin->magic != SC_PKCS15_PIN_MAGIC)
 		return SC_ERROR_OBJECT_NOT_VALID;
+
+	/* pin change with pin pad reader not yet supported */
+	if ((p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) &&
+		(oldpin == NULL || newpin == NULL || oldpinlen == 0 || newpinlen == 0))
+			return SC_ERROR_NOT_SUPPORTED;
+
 	if ((oldpinlen > pin->stored_length)
 	    || (newpinlen > pin->stored_length))
-		return SC_ERROR_INVALID_ARGUMENTS;
+		return SC_ERROR_INVALID_PIN_LENGTH;
 	if ((oldpinlen < pin->min_length) || (newpinlen < pin->min_length))
-		return SC_ERROR_INVALID_ARGUMENTS;
+		return SC_ERROR_INVALID_PIN_LENGTH;
+
 	card = p15card->card;
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
