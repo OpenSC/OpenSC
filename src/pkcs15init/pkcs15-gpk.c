@@ -950,25 +950,6 @@ gpk_store_pk(struct sc_profile *profile, struct sc_card *card,
 	return r;
 }
 
-#ifdef notdef
-static int
-gpk_bin2bn(const unsigned char *src, unsigned int len, BIGNUM **bn)
-{
-	unsigned char	num[1024];
-	unsigned int	n;
-
-	if (len > sizeof(num)) {
-		error(profile, "number too big (%u bits)?", len * 8);
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	for (n = 0; n < len; n++)
-		num[n] = src[len-1-n];
-
-	*bn = BN_bin2bn(num, len, *bn);
-	return 0;
-}
-#endif
-
 static void
 error(struct sc_profile *profile, const char *fmt, ...)
 {

@@ -204,32 +204,6 @@ static int bn2cf(sc_pkcs15_bignum_t *num, u8 *buf)
 	return num->len;
 }
 
-#if 0
-static int gen_d(RSA *rsa)
-{
-        BN_CTX *ctx, *ctx2;
-        BIGNUM *r0, *r1, *r2;
-        
-        ctx = BN_CTX_new();
-        ctx2 = BN_CTX_new();
-        BN_CTX_start(ctx);  
-        r0 = BN_CTX_get(ctx);
-        r1 = BN_CTX_get(ctx);
-        r2 = BN_CTX_get(ctx);
-        BN_sub(r1, rsa->p, BN_value_one());
-        BN_sub(r2, rsa->q, BN_value_one());
-        BN_mul(r0, r1, r2, ctx);
-        if ((rsa->d = BN_mod_inverse(NULL, rsa->e, r0, ctx2)) == NULL) {
-                fprintf(stderr, "BN_mod_inverse() failed.\n");
-                return -1;
-        }
-        BN_CTX_end(ctx);
-        BN_CTX_free(ctx);
-        BN_CTX_free(ctx2);
-        return 0;
-}
-#endif
-
 static int cflex_encode_private_key(struct sc_pkcs15_prkey_rsa *rsa, u8 *key, size_t *keysize, int key_num)
 {
         u8 buf[512], *p = buf;
