@@ -22,7 +22,6 @@ enum {
 	 */
 	SC_CARDCTL_GENERIC_BASE = 0x00000000,
 	SC_CARDCTL_ERASE_CARD,
-	SC_CARDCTL_GET_PK_ALGORITHMS,
 
 	/*
 	 * GPK specific calls
@@ -55,16 +54,6 @@ struct sc_pk_info {
 };
 #define pk_rsa_exponent	u._rsa.exponent
 #define pk_rsa_unwrap	u._rsa.unwrap
-
-/*
- * Get list of supported algorithm/key sizes.
- * This is not really an argument to the cardctl, but
- * a return struct.
- */
-struct sc_cardctl_pk_algorithms {
-	unsigned int		count;
-	struct sc_pk_info	*algorithms;
-};
 
 /*
  * GPK lock file.
