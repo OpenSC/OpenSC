@@ -338,7 +338,8 @@ static int miocos_get_acl(struct sc_card *card, struct sc_file *file)
 	u8 rbuf[256];
 	const u8 *seq = rbuf;
 	size_t left;
-	int acl_types[16], r, i;
+	int acl_types[16], r;
+	unsigned int i;
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x01);
 	apdu.resp = rbuf;
