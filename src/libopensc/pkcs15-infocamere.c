@@ -26,8 +26,8 @@
 #include <string.h>
 #include <stdio.h>
 
-int (*set_security_env)(sc_card_t *,  const struct sc_security_env *, int);
-int (*compute_signature)(sc_card_t *, const u8 *, size_t, u8 *, size_t);
+static int (*set_security_env)(sc_card_t *,  const struct sc_security_env *, int);
+static int (*compute_signature)(sc_card_t *, const u8 *, size_t, u8 *, size_t);
 
 static int set_sec_env(sc_card_t *card, const struct sc_security_env *env, int se_num)
 {
