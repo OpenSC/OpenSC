@@ -13,6 +13,20 @@
  * on the card. These should be implemented in pkcs-<cardname>.c
  *
  * Copyright (C) 2002, Olaf Kirch <okir@lst.de>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #ifdef HAVE_CONFIG_H
@@ -79,6 +93,7 @@ const struct option	options[] = {
 	{ "store-key",		required_argument, 0,	'S' },
 	{ "key-format",		required_argument, 0,	'f' },
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
+
 	{ "profile",		required_argument, 0,	'p' },
 	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
 	{ "debug",		no_argument, 0,		'd' },
@@ -96,7 +111,8 @@ const char *		option_help[] = {
 	"Output public portion of generated key to file",
 	"Store private key",
 	"Specify key file format (default PEM)",
-	"Specicy passphrase for unlocking secret key",
+	"Specify passphrase for unlocking secret key",
+
 	"Specify the profile to use",
 	"Read additional command line options from file",
 	"Enable debugging output",
@@ -155,6 +171,10 @@ main(int argc, char **argv)
 	 || sc_profile_finish(&profile))
 		return 1;
 
+	/* Assemble the PKCS15 structure */
+	if (sc_profile_build_pkcs15(&profile))
+		return 1;
+
 	/* Associate all PINs given on the command line with the
 	 * CHVs used by the profile */
 	do_set_pins(&profile);
@@ -180,7 +200,8 @@ main(int argc, char **argv)
 	/* Read the PKCS15 structure from the card */
 	r = sc_pkcs15_bind(card, &p15card);
 	if (r) {
-		fprintf(stderr, "PKCS#15 initialization failed: %s\n", sc_strerror(r));
+		fprintf(stderr, "PKCS#15 initialization failed: %s\n",
+				sc_strerror(r));
 		goto done;
 	}
 	if (!opt_quiet)
@@ -265,10 +286,6 @@ static int
 pkcs15_init(struct sc_profile *pro)
 {
 	int	i, j, r;
-
-	/* Assemble the PKCS15 structure */
-	if (sc_profile_build_pkcs15(pro))
-		return 1;
 
 	/* Get all necessary PINs from user */
 	if (do_read_pins(pro))
@@ -418,7 +435,9 @@ static int
 pkcs15_store_key(struct sc_profile *profile, EVP_PKEY *pkey)
 {
 	struct sc_pkcs15_id id;
+	struct sc_pkcs15_df *df;
 	struct prkey_info *pinfo;
+	unsigned int	j;
 	int		r;
 
 	if (opt_objectid == NULL)
@@ -443,23 +462,34 @@ pkcs15_store_key(struct sc_profile *profile, EVP_PKEY *pkey)
 	r = SC_ERROR_NOT_SUPPORTED;
 	switch (pkey->type) {
 	case EVP_PKEY_RSA:
-		if (ops.store_rsa)
-			r = ops.store_rsa(profile, card, pinfo,
-					EVP_PKEY_get1_RSA(pkey));
+		if (ops.store_rsa) {
+			RSA	*rsa = EVP_PKEY_get1_RSA(pkey);
+
+			r = ops.store_rsa(profile, card, pinfo, rsa);
+			pinfo->pkcs15.modulus_length = RSA_size(rsa) * 8;
+		}
 		break;
 	case EVP_PKEY_DSA:
-		if (ops.store_dsa)
-			r = ops.store_dsa(profile, card, pinfo,
-					EVP_PKEY_get1_DSA(pkey));
+		if (ops.store_dsa) {
+			DSA	*dsa = EVP_PKEY_get1_DSA(pkey);
+
+			r = ops.store_dsa(profile, card, pinfo, dsa);
+			pinfo->pkcs15.modulus_length = DSA_size(dsa) * 8;
+		}
 		break;
 	}
 	if (r < 0) {
 		error("Failed to store private key: %s",
 				sc_strerror(r));
-	} else {
-		printf("Successfully stored private key\n");
+		return r;
 	}
 
+	/* Now update the PrKDF */
+	df = &profile->p15_card->df[SC_PKCS15_PRKDF];
+	for (j = 0; r >= 0 && j < df->count; j++)
+		r = pkcs15_write_df(profile, df, j);
+	
+	printf("Successfully stored private key\n");
 	return r;
 }
 
@@ -677,7 +707,8 @@ do_verify_pin(struct sc_profile *pro, unsigned int type, unsigned int reference)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 
-	return sc_verify(card, SC_AC_CHV, reference, (const u8 *) pin, strlen(pin), NULL);
+	return sc_verify(card, SC_AC_CHV, reference,
+				(u8 *) pin, strlen(pin), NULL);
 }
 
 int

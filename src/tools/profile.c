@@ -2,6 +2,20 @@
  * Initialize Cards according to PKCS#15
  *
  * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #ifdef HAVE_CONFIG_H
@@ -375,7 +389,7 @@ sc_profile_build_pkcs15(struct sc_profile *pro)
 			sizeof(struct sc_path));
 		res = add_object(p15card, SC_PKCS15_PRKDF,
 				ki->file->pkcs15.fileno, ki->type,
-				&ki->pkcs15, sizeof(pi->pkcs15));
+				&ki->pkcs15, sizeof(ki->pkcs15));
 	}
 
 	return res;
@@ -784,6 +798,11 @@ do_prkey(int argc, char **argv)
 	ki->ident = strdup(argv[0]);
 	ki->type  = SC_PKCS15_TYPE_PRKEY_RSA;
 	ki->pkcs15.access_flags = 0x1D;
+	/* We initialize the modulus length at 1024 to make sure
+	 * the PrKDF is big enough.
+	 * This value will be overwritten later when the keys are
+	 * loaded into the card. */
+	ki->pkcs15.modulus_length = 1024;
 
 	for (tail = &pro->prkey_list; *tail; tail = &(*tail)->next)
 		;
@@ -1136,8 +1155,19 @@ add_object(struct sc_pkcs15_card *p15card, int df_type,
 
 	obj = calloc(1, sizeof(*obj));
 	obj->type = type;
+
+	/* Note: we assume that objects allocated by sc_profile will
+	 * be around as long as the profile is around, so there's
+	 * no need to copy them here. What's more, this allows us
+	 * to update an object (say, the modulus_length of a prkey
+	 * object) and simply rewrite the file, without having to
+	 * mess with this object list. */
+#if 0
 	obj->data = malloc(datalen);
 	memcpy(obj->data, data, datalen);
+#else
+	obj->data = data;
+#endif
 	return sc_pkcs15_add_object(p15card, &p15card->df[df_type],
 			file_nr, obj);
 }
