@@ -91,18 +91,29 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
         return CKR_OK;
 }
 
+void strcpy_bp(char *dst, const char *src, int dstsize)
+{
+	int c = strlen(src) > dstsize ? dstsize : strlen(src);
+	
+	memcpy(dst, src, c);
+	dstsize -= c;
+	memset(dst + c, ' ', dstsize);
+}
+
 CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 {
 	LOG("C_GetInfo(0x%x)\n", pInfo);
         memset(pInfo, 0, sizeof(CK_INFO));
 	pInfo->cryptokiVersion.major = 2;
 	pInfo->cryptokiVersion.minor = 11;
-	strcpy((char *) pInfo->manufacturerID, "Timo Teras & Juha Yrjola");
-	strcpy((char *) pInfo->libraryDescription, "PC/SC PKCS#15 SmartCard reader");
+	strcpy_bp((char *) pInfo->manufacturerID, "OpenSC Project",
+		  sizeof(pInfo->manufacturerID));
+	strcpy_bp((char *) pInfo->libraryDescription, "PKCS#15 SmartCard reader",
+		  sizeof(pInfo->libraryDescription);
 	pInfo->libraryVersion.major = 0;
 	pInfo->libraryVersion.minor = 1;
         return CKR_OK;
-}
+}	
 
 CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
 {
@@ -143,10 +154,10 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	if (slotID < 0 || slotID >= ctx->reader_count)
                 return CKR_SLOT_ID_INVALID;
 
-	memset(pInfo, 0, sizeof(CK_SLOT_INFO));
-	strncpy((char *) pInfo->slotDescription, ctx->readers[slotID],
+	strcpy_bp((char *) pInfo->slotDescription, ctx->readers[slotID],
 		sizeof(pInfo->slotDescription));
-	strcpy((char *) pInfo->manufacturerID, "PC/SC interface");
+	strcpy_bp((char *) pInfo->manufacturerID, "PC/SC interface",
+		sizeof(pInfo->manufacturerID));
 	pInfo->flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 	if (sc_detect_card(ctx, slotID) == 1) {
                 LOG("Detected card in slot %d\n", slotID);
@@ -156,7 +167,10 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
                 slot_disconnect(slotID);
 	}
 	pInfo->hardwareVersion.major = 1;
+	pInfo->hardwareVersion.minor = 1;
 	pInfo->firmwareVersion.major = 1;
+	pInfo->firmwareVersion.minor = 1;
+	
 	LOG("C_GetSlotInfo() ret: flags %X\n", pInfo->flags);
 
 	return CKR_OK;
@@ -177,23 +191,17 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
                 if (r)
 			return r;
 	}
-	strncpy((char *) pInfo->label, slot[slotID].p15card->label, 32);
-	pInfo->label[31] = 0;
-	strncpy((char *) pInfo->manufacturerID, slot[slotID].p15card->manufacturer_id, 32);
-	pInfo->manufacturerID[31] = 0;
-	strcpy((char *) pInfo->model, "PKCS #15 SC");
-	strncpy((char *) pInfo->serialNumber, slot[slotID].p15card->serial_number, 16);
-	pInfo->serialNumber[15] = 0;
+	strcpy_bp((char *) pInfo->label, slot[slotID].p15card->label, 32);
+	strcpy_bp((char *) pInfo->manufacturerID, slot[slotID].p15card->manufacturer_id, 32);
+	strcpy_bp((char *) pInfo->model, "PKCS#15 SC", sizeof(pInfo->model));
+	strcpy_bp((char *) pInfo->serialNumber, slot[slotID].p15card->serial_number, 16);
 
-	pInfo->flags = CKF_USER_PIN_INITIALIZED | CKF_LOGIN_REQUIRED;
-#if 0
-	pInfo->ulMaxSessionCount = 1;	/* opened in exclusive mode */
-#else
-	pInfo->ulMaxSessionCount = 0; /* FIXME */
-#endif
-	pInfo->ulSessionCount = 0;
-	pInfo->ulMaxRwSessionCount = 1;
-	pInfo->ulRwSessionCount = 0;
+	pInfo->flags = CKF_RNG | CKF_USER_PIN_INITIALIZED | CKF_LOGIN_REQUIRED;
+	pInfo->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
+	pInfo->ulSessionCount = 0; /* FIXME */
+	pInfo->ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
+	pInfo->ulRwSessionCount = 0; /* FIXME */
+
 	if (slot[slotID].p15card->pin_info[0].magic == SC_PKCS15_PIN_MAGIC) {
 		pInfo->ulMaxPinLen = slot[slotID].p15card->pin_info[0].stored_length;
 		pInfo->ulMinPinLen = slot[slotID].p15card->pin_info[0].min_length;
@@ -202,10 +210,10 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 		pInfo->ulMaxPinLen = 8;
 		pInfo->ulMinPinLen = 4;
 	}
-	pInfo->ulTotalPublicMemory = 0;
-	pInfo->ulFreePublicMemory = 0;
-	pInfo->ulTotalPrivateMemory = 0;
-	pInfo->ulFreePrivateMemory = 0;
+	pInfo->ulTotalPublicMemory = CK_UNAVAILABLE_INFORMATION;
+	pInfo->ulFreePublicMemory = CK_UNAVAILABLE_INFORMATION;
+	pInfo->ulTotalPrivateMemory = CK_UNAVAILABLE_INFORMATION;
+	pInfo->ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
 	pInfo->hardwareVersion.major = 1;
 	pInfo->hardwareVersion.minor = 0;
 	pInfo->firmwareVersion.major = 1;
