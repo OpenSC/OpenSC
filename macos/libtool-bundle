@@ -22,7 +22,17 @@ error_msg ()
   echo 1>&2 "libtool-bundle: $@"
 }
 
-[ $# -le 1 -o $# -ge 4 ] && error_msg "Usage: $0 [Mach-O bundle file] [destination directory] <bundle name>" && exit 1
+usage ()
+{
+  error_msg "Usage: $0 [-e extra XML data] [Mach-O bundle file] [destination directory] <bundle name>"
+  exit 1
+}
+
+case $1 in
+  -e) shift; if [ "$1" ]; then extradata=$1; shift; else usage; fi; ;;
+esac
+
+[ $# -le 1 -o $# -ge 4 ] && usage
 
 sofile=$1
 [ ! -f $sofile ] && error_msg "Not a file or file not found: $sofile" && exit 1
@@ -81,6 +91,10 @@ create_info_plist ()
   echo "	<string>$creator</string>"
   echo "	<key>CFBundleVersion</key>"
   echo "	<string>0.0.1d1</string>"
+  if [ "$extradata" ]; then
+    echo ""
+    [ -f "$extradata" ]; cat $extradata
+  fi
   echo "</dict>"
   echo "</plist>"
 }
