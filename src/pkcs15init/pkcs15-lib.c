@@ -343,16 +343,8 @@ sc_pkcs15init_rmdir(struct sc_card *card, struct sc_profile *profile,
 	struct sc_file	*file, *parent;
 	int		r = 0, nfids;
 
-#if 0
-	if (card->ctx->debug) {
-		int	n;
-		printf("%s(", __FUNCTION__);
-		path = df->path;
-		for (n = 0; n < path.len; n++)
-			printf("%02x", path.value[n]);
-		printf(")\n");
-	}
-#endif
+	p15init_debug(1, "sc_pkcs15init_rmdir(%s)", sc_print_path(&df->path));
+
 	if (df == NULL)
 		return SC_ERROR_INTERNAL;
 	if (df->type == SC_FILE_TYPE_DF) {

@@ -489,60 +489,6 @@ etoken_create_sec_env(struct sc_profile *profile, struct sc_card *card,
 	return sc_card_ctl(card, SC_CARDCTL_ETOKEN_PUT_DATA_SECI, &args);
 }
 
-#if 0
-/*
- * Initialize the Application DF and pin file
- */
-static int
-etoken_init_app(struct sc_profile *profile, struct sc_card *card,
-		struct sc_pkcs15_pin_info *pin_info,
-		const unsigned char *pin, size_t pin_len,
-		const unsigned char *puk, size_t puk_len)
-{
-	struct sc_file	*df = profile->df_info->file;
-	int		r;
-
-	/* Create the application DF */
-	r = sc_pkcs15init_create_file(profile, card, df);
-
-	if (r >= 0)
-		r = sc_select_file(card, &df->path, NULL);
-
-	/* Create the PIN objects.
-	 * First, the SO pin and PUK. Don't create objects for
-	 * these if none specified. */
-	if (pin && pin_len) {
-		u8	puk_id = ETOKEN_AC_NEVER;
-
-		if (r >= 0 && puk && puk_len) {
-			struct sc_pkcs15_pin_info puk_info;
-
-			sc_profile_get_pin_info(profile,
-					SC_PKCS15INIT_SO_PUK, &puk_info);
-
-			puk_id = puk_info.reference;
-			r = etoken_store_pin(profile, card,
-					&puk_info, ETOKEN_AC_NEVER,
-					puk, puk_len);
-		}
-		if (r >= 0) {
-			pin_info->path = df->path;
-			r = etoken_store_pin(profile, card,
-					pin_info, puk_id,
-					pin, pin_len);
-		}
-	}
-
-	/* Create a default security environment for this DF.
-	 * This SE autometically becomes the current SE when the
-	 * DF is selected. */
-	if (r >= 0)
-		r = etoken_create_sec_env(profile, card, 0x01, 0x00);
-
-	return r;
-}
-#endif
-
 /*
  * Determine the key algorithm based on the intended usage
  * Note that CardOS/M4 does not support keys that can be used
@@ -657,86 +603,6 @@ etoken_put_key(struct sc_profile *profile, struct sc_card *card,
 	return r;
 }
 
-#if 0
-/*
- * Allocate a file
- */
-static int
-etoken_new_file(struct sc_profile *profile, struct sc_card *card,
-		unsigned int type, unsigned int num,
-		struct sc_file **out)
-{
-	struct sc_file	*file;
-	struct sc_path	*p;
-	char		name[64], *tag, *desc;
-
-	desc = tag = NULL;
-	while (1) {
-		switch (type) {
-		case SC_PKCS15_TYPE_PRKEY_RSA:
-			desc = "RSA private key";
-			tag = "private-key";
-			break;
-		case SC_PKCS15_TYPE_PUBKEY_RSA:
-			desc = "RSA public key";
-			tag = "public-key";
-			break;
-#ifdef SC_PKCS15_TYPE_PRKEY_DSA
-		case SC_PKCS15_TYPE_PRKEY_DSA:
-			desc = "DSA private key";
-			tag = "private-key";
-			break;
-		case SC_PKCS15_TYPE_PUBKEY_DSA:
-			desc = "DSA public key";
-			tag = "public-key";
-			break;
-#endif
-		case SC_PKCS15_TYPE_PRKEY:
-			desc = "extractable private key";
-			tag = "extractable-key";
-			break;
-		case SC_PKCS15_TYPE_CERT:
-			desc = "certificate";
-			tag = "certificate";
-			break;
-		case SC_PKCS15_TYPE_DATA_OBJECT:
-			desc = "data object";
-			tag = "data";
-			break;
-		}
-		if (tag)
-			break;
-		/* If this is a specific type such as
-		 * SC_PKCS15_TYPE_CERT_FOOBAR, fall back to
-		 * the generic class (SC_PKCS15_TYPE_CERT)
-		 */
-		if (!(type & ~SC_PKCS15_TYPE_CLASS_MASK)) {
-			error(profile, "File type not supported by card driver");
-			return SC_ERROR_INVALID_ARGUMENTS;
-		}
-		type &= SC_PKCS15_TYPE_CLASS_MASK;
-	}
-
-	snprintf(name, sizeof(name), "template-%s", tag);
-	if (sc_profile_get_file(profile, name, &file) < 0) {
-		error(profile, "Profile doesn't define %s template (%s)\n",
-				desc, name);
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	/* Now construct file from template */
-	file->id += num;
-
-	p = &file->path;
-	*p = profile->df_info->file->path;
-	p->value[p->len++] = file->id >> 8;
-	p->value[p->len++] = file->id;
-
-	*out = file;
-	return 0;
-}
-#endif
-
 /*
  * Extract a key component from the public key file populated by
  * GENERATE KEY PAIR
@@ -776,7 +642,8 @@ error(struct sc_profile *profile, const char *fmt, ...)
 
 static struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations;
 
-struct sc_pkcs15init_operations *sc_pkcs15init_get_etoken_ops(void)
+struct sc_pkcs15init_operations *
+sc_pkcs15init_get_etoken_ops(void)
 {
 	sc_pkcs15init_etoken_operations.erase_card = etoken_erase;
 	sc_pkcs15init_etoken_operations.create_dir = etoken_create_dir;
