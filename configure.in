@@ -501,7 +501,7 @@ src/libopensc/Makefile
 src/openssh/Makefile
 src/pam/Makefile
 src/pkcs11/Makefile
-src/pkcs11/pkcs11/Makefile
+src/pkcs11/rsaref/Makefile
 src/tests/Makefile
 src/tools/Makefile
 ])
