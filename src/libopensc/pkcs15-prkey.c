@@ -76,7 +76,7 @@ static const struct sc_asn1_entry c_asn1_prk_dsa_attr[] = {
 
 static const struct sc_asn1_entry c_asn1_prkey[] = {
 	{ "privateRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
-	{ "privateDSAKey", SC_ASN1_PKCS15_OBJECT,  2 | SC_ASN1_CONS, 0, NULL },
+	{ "privateDSAKey", SC_ASN1_PKCS15_OBJECT,  2 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL },
 	{ NULL }
 };		
 

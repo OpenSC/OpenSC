@@ -65,7 +65,7 @@ static const struct sc_asn1_entry c_asn1_dsa_type_attr[] = {
 
 static const struct sc_asn1_entry c_asn1_pubkey[] = {
 	{ "publicRSAKey", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
-	{ "publicDSAKey", SC_ASN1_PKCS15_OBJECT, 2 | SC_ASN1_CONS, 0, NULL },
+	{ "publicDSAKey", SC_ASN1_PKCS15_OBJECT, 2 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL },
 	{ NULL }
 };		
 
