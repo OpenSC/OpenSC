@@ -477,6 +477,13 @@ if (test x$enable_debug = xyes); then
 	AC_DEFINE(DEBUG, 1, [Enable debug messages.])
 fi
 
+AC_SUBST(CFLAGS_PCSC)
+CFLAGS_PCSC=""
+AC_SUBST(CFLAGS_OPENSC)
+CFLAGS_OPENSC="-I\${top_srcdir}/src/libopensc"
+AC_SUBST(LIBOPENSC)
+LIBOPENSC="\${top_srcdir}/src/libopensc/libopensc.la"
+
 AC_OUTPUT([
 Makefile
 aclocal/Makefile
