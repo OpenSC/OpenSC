@@ -297,6 +297,7 @@ struct sc_reader {
 	struct sc_slot_info slot[SC_MAX_SLOTS];
 	int slot_count;
 };
+typedef struct sc_reader sc_reader_t;
 
 /* This will be the new interface for handling PIN commands.
  * It is supposed to support pin pads (with or without display)
