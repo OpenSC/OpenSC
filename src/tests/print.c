@@ -41,7 +41,21 @@ static void print_pin(const struct sc_pkcs15_object *obj)
 	printf("\tLength      : min_len:%d, max_len:%d, stored_len:%d\n", pin->min_length, pin->max_length, pin->stored_length);
 	printf("\tPad char    : 0x%02X\n", pin->pad_char);
 	printf("\tReference   : %d\n", pin->reference);
-	printf("\tType        : %d\n", pin->type);
+	printf("\tEncoding    : ");
+	switch (pin->type) {
+	case SC_PKCS15_PIN_TYPE_BCD:
+		printf("BCD\n"); break;
+	case SC_PKCS15_PIN_TYPE_ASCII_NUMERIC:
+		printf("ASCII-numeric\n"); break;
+	case SC_PKCS15_PIN_TYPE_UTF8:
+		printf("UTF8\n"); break;
+	case SC_PKCS15_PIN_TYPE_HALFNIBBLE_BCD:
+		printf("half-nibble BCD\n"); break;
+	case SC_PKCS15_PIN_TYPE_ISO9564_1:
+		printf("ISO 9564-1\n"); break;
+	default:
+		printf("[encoding %d]\n", pin->type);
+	}
 	printf("\tPath        : ");
 	for (i = 0; i < pin->path.len; i++) {
 		printf("%02X", pin->path.value[i]);
