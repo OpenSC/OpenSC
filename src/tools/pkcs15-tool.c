@@ -358,9 +358,7 @@ int read_public_key(void)
 				key->data, key->data_len);
 		r = print_pem_object("PUBLIC KEY", buffer,
 				PEM_RSA_KEY_PREFIX_SIZE + key->data_len);
-		/* XXX TBD
 		sc_pkcs15_free_pubkey(key);
-		 */
 		return r;
 	}
 	fprintf(stderr, "Public key with ID '%s' not found.\n", opt_pubkey);
