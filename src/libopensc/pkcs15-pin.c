@@ -113,7 +113,7 @@ int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 						 asn1_com_ao_attr, NULL,
 				   		 asn1_type_pin_attr };
 	int r;
-	int flags_len = sizeof(pin->flags);
+	int flags_len;
         int padchar_len = 1;
 
 	sc_copy_asn1_entry(c_asn1_pin, asn1_pin);
@@ -125,6 +125,7 @@ int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
 
 	sc_format_asn1_entry(asn1_type_pin_attr + 0, asn1_pin_attr, NULL, 1);
 
+	flags_len = _sc_count_bit_string_size(&pin->flags, sizeof(pin->flags));
 	sc_format_asn1_entry(asn1_pin_attr + 0, &pin->flags, &flags_len, 1);
 	sc_format_asn1_entry(asn1_pin_attr + 1, &pin->type, NULL, 1);
 	sc_format_asn1_entry(asn1_pin_attr + 2, &pin->min_length, NULL, 1);
