@@ -25,6 +25,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 #include <assert.h>
 #include <stdlib.h>

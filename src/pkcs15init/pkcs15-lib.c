@@ -36,6 +36,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
+#include <strings.h>
 #include <assert.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>

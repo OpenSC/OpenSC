@@ -70,9 +70,9 @@ static int from_base64(const char *in, unsigned int *out, int *skip)
 		u8 b;
 		int k = *in;
 		
-		if (*in < 0)
+		if (k < 0)
 			return -1;
-		if (*in == 0 && c == 0)
+		if (k == 0 && c == 0)
 			return 0;
 		b = bin_table[k];
 		if (b == 0xC0) /* '=' */

@@ -27,6 +27,10 @@
 #define NP_VERSION_MINOR 9
 
 
+#if defined(_AIX)
+#define _INT16
+#define _INT32
+#endif
 
 /*----------------------------------------------------------------------*/
 /*                   Definition of Basic Types                          */
