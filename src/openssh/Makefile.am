@@ -13,3 +13,4 @@ bin_PROGRAMS =
 endif
 
 opensc_ssh_SOURCES = opensc-ssh.c
+opensc_ssh_LDADD = @GETOPTSRC@

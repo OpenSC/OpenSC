@@ -136,6 +136,11 @@ AM_PROG_LIBTOOL
 dnl Automatically update the libtool script if it becomes out-of-date.
 #AC_SUBST(LIBTOOL_DEPS)
 
+AC_SUBST(GETOPTSRC)
+AC_CHECK_FUNC(getopt_long, AC_DEFINE(HAVE_GETOPT_LONG),
+              [GETOPTSRC="$GETOPTSRC \$(top_srcdir)/src/common/getopt.c \$(top_srcdir)/src/common/getopt1.c"
+               CPPFLAGS="-I\$(top_srcdir)/src/common $CPPFLAGS"])
+
 dnl Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h sys/time.h unistd.h syslog.h getopt.h security/pam_appl.h security/_pam_macros.h])
@@ -151,7 +156,7 @@ AC_FUNC_MALLOC
 AC_FUNC_MEMCMP
 AC_FUNC_STAT
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([getpass gettimeofday memset mkdir strdup strerror])
+AC_CHECK_FUNCS([getopt_long getpass gettimeofday memset mkdir strdup strerror])
 
 dnl C Compiler features
 AC_C_INLINE
@@ -475,6 +480,7 @@ AC_OUTPUT([
 Makefile
 aclocal/Makefile
 src/Makefile
+src/common/Makefile
 src/libopensc/Makefile
 src/openssh/Makefile
 src/pam/Makefile
