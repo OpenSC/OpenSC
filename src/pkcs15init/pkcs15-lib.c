@@ -143,6 +143,8 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 		sc_profile_free(profile);
 	*result = profile;
 
+	if (r == 0)
+		*result = profile;
 	return r;
 }
 
@@ -189,7 +191,9 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		app->aid_len = p15card->file_app->namelen;
 		memcpy(app->aid, p15card->file_app->name, app->aid_len);
 	}
-	if (p15card->label)
+	if (args->label)
+		app->label = strdup(args->label);
+	else if (p15card->label)
 		app->label = strdup(p15card->label);
 	/* XXX: encode the DDO? */
 
@@ -1110,6 +1114,27 @@ sc_pkcs15init_get_pin_info(struct sc_profile *profile,
 	return 0;
 }
 
+int
+sc_pkcs15init_get_manufacturer(struct sc_profile *profile, const char **res)
+{
+	*res = profile->p15_card->manufacturer_id;
+	return 0;
+}
+
+int
+sc_pkcs15init_get_serial(struct sc_profile *profile, const char **res)
+{
+	*res = profile->p15_card->serial_number;
+	return 0;
+}
+
+int
+sc_pkcs15init_get_label(struct sc_profile *profile, const char **res)
+{
+	*res = profile->p15_card->label;
+	return 0;
+}
+
 void
 default_error_handler(const char *fmt, ...)
 {
@@ -1117,6 +1142,7 @@ default_error_handler(const char *fmt, ...)
 
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
+	fputs("\n", stderr);
 	va_end(ap);
 }
 

@@ -81,6 +81,7 @@ struct sc_pkcs15init_initargs {
 	size_t			so_pin_len;
 	const u8 *		so_puk;
 	size_t			so_puk_len;
+	const char *		label;
 };
 
 struct sc_pkcs15init_pinargs {
@@ -155,5 +156,9 @@ extern int	sc_pkcs15init_fixup_acls(struct sc_profile *,
 				struct sc_acl_entry *);
 extern int	sc_pkcs15init_get_pin_info(struct sc_profile *, unsigned int,
 				struct sc_pkcs15_pin_info *);
+extern int	sc_pkcs15init_get_manufacturer(struct sc_profile *,
+				const char **);
+extern int	sc_pkcs15init_get_serial(struct sc_profile *, const char **);
+extern int	sc_pkcs15init_get_label(struct sc_profile *, const char **);
 
 #endif /* PKCS15_INIT_H */
