@@ -40,7 +40,11 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	rc = sc_establish_context(&context);
 	if (rc != 0)
 		return CKR_DEVICE_ERROR;
+#ifdef DEBUG
         context->use_std_output = 1;
+#else
+        context->use_std_output = 0;
+#endif
 
         pool_initialize(&session_pool);
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++)

@@ -33,8 +33,3 @@ Notes
 
 Netscape seems to show more information about the security module
 than mozilla. Otherwise all stuff is untested.	
-
-Please note that the library currently writes debug log to
-/tmp/opensc-pkcs11.log.
-
-
