@@ -1,11 +1,8 @@
 Steps for your OpenSSH pleasure:
 
 - Download, compile and install OpenSSL (http://www.openssl.org)
-- Download the current version of OpenSSH/portable from CVS:
- - export CVSROOT=openssh@anoncvs.be.openbsd.org:/cvs
- - export CVS_RSH=ssh
- - cvs get openssh
-- Run autoconf and autoheader
+- Download the current version of OpenSSH/portable
+  from http://www.openssh.com/portable.html
 - Read openssh/README.smartcard, compile and install
 
 - Download a public key from your SmartCard in OpenSSH format
