@@ -71,6 +71,7 @@ const char *option_help[] = {
 	"Specify the slot to use",
 	"Specify the input file",
 	"Specify the output file",
+	"Specify the module to load",
 	"Verbose output",
 };
 
