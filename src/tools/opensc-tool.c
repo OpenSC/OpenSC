@@ -10,6 +10,7 @@
 
 #define OPT_CHANGE_PIN	0x100
 #define OPT_LIST_PINS	0x101
+#define OPT_READER	0x102
 
 int opt_reader = 0, opt_pin = 0;
 char * opt_cert = NULL;
@@ -25,7 +26,7 @@ const struct option options[] = {
 	{ "list-certificates",	0, 0,		'c' },
 	{ "list-pins",		0, 0,		OPT_LIST_PINS },
 	{ "change-pin",		2, 0,		OPT_CHANGE_PIN },
-	{ "reader",		1, &opt_reader, 0   },
+	{ "reader",		1, 0,		OPT_READER },
 	{ "output",		1, 0,		'o' },
 	{ "quiet",		0, 0,		'q' },
 	{ "pin",		1, 0,		'p' },
@@ -384,6 +385,9 @@ int main(int argc, char * const argv[])
 		case OPT_LIST_PINS:
 			do_list_pins = 1;
 			action_count++;
+			break;
+		case OPT_READER:
+			opt_reader = atoi(optarg);
 			break;
 		case 'o':
 			opt_outfile = optarg;
