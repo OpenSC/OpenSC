@@ -63,6 +63,7 @@ extern "C" {
 #define SC_ERROR_UNKNOWN_DATA_RECEIVED		-1213
 #define SC_ERROR_PIN_CODE_INCORRECT		-1214
 #define SC_ERROR_FILE_ALREADY_EXISTS		-1215
+#define SC_ERROR_DATA_OBJECT_NOT_FOUND		-1216
 
 /* Returned by OpenSC library when called with invalid arguments */
 #define SC_ERROR_INVALID_ARGUMENTS		-1300
