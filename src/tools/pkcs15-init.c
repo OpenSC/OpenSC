@@ -1432,7 +1432,7 @@ do_verify_pin(struct sc_profile *pro, unsigned int type, unsigned int reference)
 	assert(pro->pin_maxlen < sizeof(pinbuf));
 	memset(pinbuf, pro->pin_pad_char, pro->pin_maxlen);
 	/* FIXME: shouldn't assume that encoding is ascii-numeric */
-	strncpy(pinbuf, pin, strlen(pin));
+	strncpy((char *) pinbuf, pin, strlen(pin));
 	
 	return sc_verify(card, SC_AC_CHV, reference,
 				pinbuf, pro->pin_maxlen, NULL);

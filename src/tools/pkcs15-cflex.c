@@ -404,7 +404,7 @@ static int cflex_store_rsa_key(struct sc_profile *profile, struct sc_card *card,
 	sc_file_clear_acl_entries(tmpfile, SC_AC_OP_READ);
 	sc_file_add_acl_entry(tmpfile, SC_AC_OP_READ, SC_AC_NONE, SC_AC_KEY_REF_NONE);
 	tmpfile->path.len -= 2;
-	sc_append_path_id(&tmpfile->path, "\x10\x12", 2);
+	sc_append_path_id(&tmpfile->path, (const u8 *) "\x10\x12", 2);
 	tmpfile->id = 0x1012;
 	tmpfile->size = pubsize;
 	printf("Updating RSA public key...\n");
