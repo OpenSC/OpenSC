@@ -196,8 +196,8 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_pin_info *pin,
-			 char *oldpin,
-			 int oldpinlen, char *newpin, int newpinlen)
+			 const char *oldpin, int oldpinlen,
+			 const char *newpin, int newpinlen)
 {
 	int r;
 	struct sc_file file;

@@ -220,8 +220,8 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *card,
 			 const u8 *pincode, int pinlen);
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_pin_info *pin,
-			 char *oldpincode,
-			 int oldpinlen, char *newpincode, int newpinlen);
+			 const char *oldpincode, int oldpinlen,
+			 const char *newpincode, int newpinlen);
 int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
 				  const struct sc_pkcs15_id *id,
 				  struct sc_pkcs15_pin_info **out);
