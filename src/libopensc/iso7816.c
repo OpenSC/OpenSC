@@ -98,6 +98,30 @@ static int iso7816_write_binary(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 3, count);
 }
 
+static int iso7816_update_binary(struct sc_card *card,
+				 unsigned int idx, const u8 *buf,
+				size_t count, unsigned long flags)
+{
+	struct sc_apdu apdu;
+	int r;
+
+	if (count > SC_APDU_CHOP_SIZE) {
+		error(card->ctx, "Too large buffer supplied\n");
+		return SC_ERROR_CMD_TOO_LONG;
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6,
+		       (idx >> 8) & 0x7F, idx & 0xFF);
+	apdu.lc = count;
+	apdu.datalen = count;
+	apdu.data = buf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2),
+		    "Card returned error");
+	SC_FUNC_RETURN(card->ctx, 3, count);
+}
+
 static unsigned int byte_to_acl(u8 byte)
 {
 	switch (byte >> 4) {
@@ -538,6 +562,7 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.read_binary   = iso7816_read_binary;
 		iso_ops.read_record   = iso7816_read_record;
 		iso_ops.write_binary  = iso7816_write_binary;
+		iso_ops.update_binary = iso7816_update_binary;
 		iso_ops.select_file   = iso7816_select_file;
 		iso_ops.get_challenge = iso7816_get_challenge;
 		iso_ops.create_file   = iso7816_create_file;

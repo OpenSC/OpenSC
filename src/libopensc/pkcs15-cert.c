@@ -389,7 +389,7 @@ int sc_pkcs15_create_cdf(struct sc_pkcs15_card *p15card,
 		bufsize += tmpsize;
 	}
 	sc_hex_dump(p15card->card->ctx, buf, bufsize, str, sizeof(str));
-	printf("\n%s\n", str);
+	printf("CDF:\n%s\n", str);
 	return 0;	
 }
 
@@ -445,15 +445,26 @@ static int get_certs_from_file(struct sc_pkcs15_card *card,
 
 int sc_pkcs15_enum_certificates(struct sc_pkcs15_card *card)
 {
-	int r = 0, i;
+	int r = 0, i, j, type;
+	const int df_types[] = {
+		SC_PKCS15_CDF, SC_PKCS15_CDF_TRUSTED, SC_PKCS15_CDF_USEFUL
+	};
+	const int nr_types = sizeof(df_types)/sizeof(df_types[0]);
+				
 	assert(card != NULL);
 
 	if (card->cert_count)
 		return card->cert_count;	/* already enumerated */
 	r = sc_lock(card->card);
 	SC_TEST_RET(card->card->ctx, r, "sc_lock() failed");
-	for (i = 0; i < card->cdf_count; i++) {
-		r = get_certs_from_file(card, &card->file_cdf[i]);
+	for (j = 0; j < nr_types; j++) {
+		type = df_types[j];
+		
+		for (i = 0; i < card->df[type].count; i++) {
+			r = get_certs_from_file(card, card->df[type].file[i]);
+			if (r != 0)
+				break;
+		}
 		if (r != 0)
 			break;
 	}

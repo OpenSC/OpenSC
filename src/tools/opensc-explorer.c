@@ -42,10 +42,7 @@ const char *option_help[] = { NULL };
 
 const char *cmds[] = {
 	"ls", "cd", "debug", "cat", "info", "create", "delete",
-	"verify"
-};
-const char *cmdusage[] = {
-	"", "", "", "", "", "", "", "<key type> <key ref>"
+	"verify", "put", "get"
 };
 
 const int nr_cmds = sizeof(cmds)/sizeof(cmds[0]);
@@ -85,6 +82,22 @@ void check_ret(int r, int op, const char *err, const struct sc_file *file)
 	fprintf(stderr, "%s: %s\n", err, sc_strerror(r));
 	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
 		fprintf(stderr, "ACL for operation: %s\n", acl_to_str(file->acl[op]));
+}
+
+int arg_to_path(const char *arg, struct sc_path *path)
+{
+	char buf[6];
+	
+	if (strlen(arg) != 4) {
+		printf("Wrong ID length.\n");
+		return -1;
+	}
+	strcpy(buf, "I");
+        strcat(buf, arg);
+	sc_format_path(buf, path);
+	if (path->len != 2)
+		return -1;
+	return 0;	
 }
 
 void print_file(const struct sc_file *file)
@@ -164,7 +177,6 @@ int do_cd(const char *arg)
 {
 	struct sc_path path;
         struct sc_file file;
-	char buf[6];
 	int r;
 
 	if (strcmp(arg, "..") == 0) {
@@ -182,15 +194,7 @@ int do_cd(const char *arg)
 		current_path = path;
 		return 0;
 	}
-
-	if (strlen(arg) != 4) {
-		printf("Usage: cd <file_id>\n");
-		return -1;
-	}
-	strcpy(buf, "I");
-        strcat(buf, arg);
-	sc_format_path(buf, &path);
-	if (path.len != 2) {
+	if (arg_to_path(arg, &path) != 0) {
 		printf("Usage: cd <file_id>\n");
 		return -1;
 	}
@@ -215,7 +219,6 @@ int do_cd(const char *arg)
 	return 0;
 }
 
-
 int do_cat(const char *arg)
 {
 	u8 buf[256];
@@ -231,14 +234,7 @@ int do_cat(const char *arg)
 		file = current_file;
 		not_current = 0;
 	} else {
-		if (strlen(arg) != 4) {
-			printf("Usage: cat [file_id]\n");
-			return -1;
-		}
-		strcpy((char *) buf, "I");
-	        strcat((char *) buf, arg);
-		sc_format_path((char *) buf, &path);
-		if (path.len != 2) {
+		if (arg_to_path(arg, &path) != 0) {
 			printf("Usage: cat [file_id]\n");
 			return -1;
 		}
@@ -291,17 +287,9 @@ int do_info(const char *arg)
 		file = current_file;
 		not_current = 0;
 	} else {
-		char buf[6];
 		struct sc_path tmppath;
 		
-		if (strlen(arg) != 4) {
-			printf("Usage: info [file_id]\n");
-			return -1;
-		}
-		strcpy(buf, "I");
-	        strcat(buf, arg);
-		sc_format_path(buf, &tmppath);
-		if (tmppath.len != 2) {
+		if (arg_to_path(arg, &tmppath) != 0) {
 			printf("Usage: info [file_id]\n");
 			return -1;
 		}
@@ -359,8 +347,24 @@ int do_info(const char *arg)
 			"Linear fixed, SIMPLE-TLV", "Linear variable",
 			"Cyclic", "Cyclic, SIMPLE-TLV",
                 };
+		const char *ops[] = {
+			"READ", "UPDATE", "WRITE", "ERASE", "REHABILITATE",
+			"INVALIDATE"
+		};
 		printf("%-15s%s\n", "EF structure:", structs[file.ef_structure]);
+		for (i = 0; i < sizeof(ops)/sizeof(ops[0]); i++) {
+			char buf[80];
+			
+			sprintf(buf, "ACL for %s:", ops[i]);
+			printf("%-25s%s\n", buf, acl_to_str(file.acl[i]));
+		}
 	}	
+	if (file.prop_attr_len) {
+		printf("%-25s", "Proprietary attributes:");
+		for (i = 0; i < file.prop_attr_len; i++)
+			printf("%02X ", file.prop_attr[i]);
+		printf("\n");
+	}
 	printf("\n");
 	if (not_current) {
 		r = sc_select_file(card, &current_path, NULL);
@@ -374,18 +378,12 @@ int do_info(const char *arg)
 
 int do_create(const char *arg, const char *arg2)
 {
-	char buf[6];
 	struct sc_path path;
 	struct sc_file file;
 	size_t size;
 	int i, r;
 
-	if (strlen(arg) != 4)
-		goto usage;
-	strcpy(buf, "I");
-	strcat(buf, arg);
-	sc_format_path(buf, &path);
-	if (path.len != 2)
+	if (arg_to_path(arg, &path) != 0)
 		goto usage;
 	if (sscanf(arg2, "%d", &size) != 1)
 		goto usage;
@@ -396,11 +394,19 @@ int do_create(const char *arg, const char *arg2)
 	for (i = 0; i < SC_MAX_AC_OPS; i++)
 		file.acl[i] = SC_AC_NONE;
 	file.size = size;
+	file.status = SC_FILE_STATUS_ACTIVATED;
 	
 	r = sc_create_file(card, &file);
 	if (r) {
 		check_ret(r, SC_AC_OP_CREATE, "CREATE FILE failed", &current_file);
 		return -1;
+	}
+	/* Make sure we're back in the parent directory, because on some cards
+	 * CREATE FILE also selects the newly created file. */
+	r = sc_select_file(card, &current_path, NULL);
+	if (r) {
+		printf("unable to select parent file: %s\n", sc_strerror(r));
+		die(1);
 	}
 	return 0;
 usage:
@@ -410,16 +416,10 @@ usage:
 
 int do_delete(const char *arg)
 {
-	char buf[6];
 	struct sc_path path;
 	int r;
 
-	if (strlen(arg) != 4)
-		goto usage;
-	strcpy(buf, "I");
-	strcat(buf, arg);
-	sc_format_path(buf, &path);
-	if (path.len != 2)
+	if (arg_to_path(arg, &path) != 0)
 		goto usage;
 	r = sc_delete_file(card, &path);
 	if (r) {
@@ -490,6 +490,139 @@ usage:
 	return -1;
 }
 
+int do_get(const char *arg, const char *arg2)
+{
+	u8 buf[256];
+	int r, error = 0;
+	size_t count = 0;
+        unsigned int idx = 0;
+	struct sc_path path;
+        struct sc_file file;
+	const char *filename;
+	FILE *outf = NULL;
+	
+	if (arg_to_path(arg, &path) != 0)
+		goto usage;
+	if (strlen(arg2))
+		filename = arg2;
+	else {
+		sprintf(buf, "%02X%02X", path.value[0], path.value[1]);
+		filename = buf;
+	}
+	outf = fopen(filename, "w");
+	if (outf == NULL) {
+		perror(filename);
+		return -1;
+	}
+	r = sc_select_file(card, &path, &file);
+	if (r) {
+		check_ret(r, SC_AC_OP_SELECT, "unable to select file", &current_file);
+		return -1;
+	}
+	count = file.size;
+	while (count) {
+		int c = count > sizeof(buf) ? sizeof(buf) : count;
+
+		r = sc_read_binary(card, idx, buf, c, 0);
+		if (r < 0) {
+			check_ret(r, SC_AC_OP_READ, "read failed", &file);
+			error = 1;
+                        goto err;
+		}
+		if (r != c) {
+			printf("expecting %d, got only %d bytes.\n", c, r);
+			error = 1;
+                        goto err;
+		}
+		fwrite(buf, c, 1, outf);
+		idx += c;
+		count -= c;
+	}
+	printf("Total of %d bytes read.\n", idx);
+err:
+	r = sc_select_file(card, &current_path, NULL);
+	if (r) {
+		printf("unable to select parent file: %s\n", sc_strerror(r));
+		die(1);
+	}
+	if (outf)
+		fclose(outf);
+        return -error;
+usage:
+	printf("Usage: get <file id> [output file]\n");
+	return -1;
+}
+
+int do_put(const char *arg, const char *arg2)
+{
+	u8 buf[256];
+	int r, error = 0;
+	size_t count = 0;
+        unsigned int idx = 0;
+	struct sc_path path;
+        struct sc_file file;
+	const char *filename;
+	FILE *outf = NULL;
+	
+	if (arg_to_path(arg, &path) != 0)
+		goto usage;
+	if (strlen(arg2))
+		filename = arg2;
+	else {
+		sprintf(buf, "%02X%02X", path.value[0], path.value[1]);
+		filename = buf;
+	}
+	outf = fopen(filename, "r");
+	if (outf == NULL) {
+		perror(filename);
+		return -1;
+	}
+	r = sc_select_file(card, &path, &file);
+	if (r) {
+		check_ret(r, SC_AC_OP_SELECT, "unable to select file", &current_file);
+		return -1;
+	}
+	count = file.size;
+	while (count) {
+		int c = count > sizeof(buf) ? sizeof(buf) : count;
+
+		r = fread(buf, 1, c, outf);
+		if (r < 0) {
+			perror("fread");
+			error = 1;
+			goto err;
+		}
+		if (r != c)
+			count = c = r;
+		r = sc_update_binary(card, idx, buf, c, 0);
+		if (r < 0) {
+			check_ret(r, SC_AC_OP_READ, "update failed", &file);
+			error = 1;
+                        goto err;
+		}
+		if (r != c) {
+			printf("expecting %d, wrote only %d bytes.\n", c, r);
+			error = 1;
+                        goto err;
+		}
+		idx += c;
+		count -= c;
+	}
+	printf("Total of %d bytes written.\n", idx);
+err:
+	r = sc_select_file(card, &current_path, NULL);
+	if (r) {
+		printf("unable to select parent file: %s\n", sc_strerror(r));
+		die(1);
+	}
+	if (outf)
+		fclose(outf);
+        return -error;
+usage:
+	printf("Usage: put <file id> [output file]\n");
+	return -1;
+}
+
 int handle_cmd(int cmd, const char *arg, const char *arg2)
 {
         int i;
@@ -519,6 +652,10 @@ int handle_cmd(int cmd, const char *arg, const char *arg2)
         	return do_delete(arg);
         case 7:
         	return do_verify(arg, arg2);
+        case 8:
+        	return do_put(arg, arg2);
+        case 9:
+        	return do_get(arg, arg2);
         default:
         	printf("Don't know how to handle command.\n");
 	}

@@ -130,17 +130,24 @@ static int get_prkeys_from_file(struct sc_pkcs15_card *card,
 
 int sc_pkcs15_enum_private_keys(struct sc_pkcs15_card *card)
 {
-	int r, i;
-	assert(card != NULL);
+	int r, i, j;
+	struct sc_context *ctx = card->card->ctx;
+	const int df_types[] = {
+		SC_PKCS15_PRKDF
+	};
+	const int nr_types = sizeof(df_types)/sizeof(df_types[0]);
 
+	assert(card != NULL);
+	SC_FUNC_CALLED(ctx, 1);
 	if (card->prkey_count)
 		return card->prkey_count;	/* already enumerated */
 	r = sc_lock(card->card);
 	SC_TEST_RET(card->card->ctx, r, "sc_lock() failed");
-	for (i = 0; i < 1; i++) {
-		r = get_prkeys_from_file(card, &card->file_prkdf);
-		if (r != 0)
-			break;
+	for (j = 0; r == 0 && j < nr_types; j++) {
+		int type = df_types[j];
+		
+		for (i = 0; r == 0 && i < card->df[type].count; i++)
+			r = get_prkeys_from_file(card, card->df[type].file[i]);
 	}
 	sc_unlock(card->card);
 	if (r != 0)

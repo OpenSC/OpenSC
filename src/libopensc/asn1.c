@@ -116,6 +116,24 @@ void sc_copy_asn1_entry(const struct sc_asn1_entry *src,
 	dest->name = NULL;
 }
 
+size_t sc_count_bit_string_size(const void * buf, size_t bufsize)
+{
+        const u8 *p = (const u8 *) buf + bufsize - 1;
+        u8 c;
+        size_t skip = 0;
+        int i;
+        
+        while (p >= (const u8 *) buf && *p == 0) {
+                skip += 8;
+                p--;
+        }
+        if (p < (const u8 *) buf)
+                return 0;
+        c = *p;
+        for (i = 0; (c >> (7-i)) == 0; i++);
+        return bufsize * 8 - (skip + i);
+}
+
 static void sc_asn1_print_octet_string(const u8 * buf, size_t buflen)
 {
 	int i;
@@ -403,10 +421,41 @@ int sc_asn1_decode_bit_string_ni(const u8 * inbuf, size_t inlen,
 	return decode_bit_string(inbuf, inlen, outbuf, outlen, 0);
 }
 
-static int encode_bit_string(const u8 * inbuf, size_t inlen, u8 **outbuf,
+static int encode_bit_string(const u8 * inbuf, size_t bits_left, u8 **outbuf,
 			     size_t *outlen, int invert)
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	const u8 *in = inbuf;
+	u8 *out;
+	size_t bytes;
+	int skipped = 0;
+	
+	bytes = (bits_left + 7)/8 + 1;
+	*outbuf = out = malloc(bytes);
+	if (out == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	*outlen = bytes;
+	out += 1;
+	while (bits_left) {
+		int i, bits_to_go = 8;
+		
+		*out = 0;
+		if (bits_left < 8) {
+			bits_to_go = bits_left;
+			skipped = 8 - bits_left;
+		}
+		if (invert) {
+			for (i = 0; i < bits_to_go; i++)
+				*out |= ((*in >> i) & 1) << (7 - i);
+		} else {
+			*out = *in;
+			if (bits_left < 8)
+				return SC_ERROR_NOT_SUPPORTED; /* FIXME */
+		}
+		bits_left -= bits_to_go;
+	}
+	out = *outbuf;
+	out[0] = skipped;
+	return 0;
 }
 
 int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
@@ -425,18 +474,25 @@ int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
 
 static int asn1_encode_integer(int in, u8 ** obj, size_t * objsize)
 {
-	int i = sizeof(in) * 8;
-	u8 *p;
+	int i = sizeof(in) * 8, skip = 1;
+	u8 *p, b;
 
 	*obj = p = malloc(sizeof(in));
 	if (*obj == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	*objsize = sizeof(in);
 	do {
 		i -= 8;
-		*p++ = (in >> i) & 0xFF;
+		b = in >> i;
+		if (b == 0 && skip)
+			continue;
+		skip = 0;
+		*p++ = b;
 	} while (i > 0);
-
+	*objsize = p - *obj;
+	if (*objsize == 0) {
+		*objsize = 1;
+		(*obj)[0] = 0;
+	}
 	return 0;
 }
 
@@ -679,15 +735,17 @@ static int asn1_encode_p15_object(struct sc_context *ctx, const struct sc_pkcs15
 	int r;
 	const struct sc_pkcs15_common_obj_attr *com_attr = obj->com_attr;
 	struct sc_asn1_entry asn1_c_attr[6], asn1_p15_obj[5];
-	size_t flags_len = sizeof(com_attr->flags);
+	size_t flags_len;
 	size_t label_len = strlen(com_attr->label);
 
 	sc_copy_asn1_entry(c_asn1_com_obj_attr, asn1_c_attr);
 	sc_copy_asn1_entry(c_asn1_p15_obj, asn1_p15_obj);
 	if (label_len != 0)
 		sc_format_asn1_entry(asn1_c_attr + 0, (void *) com_attr->label, &label_len, 1);
-	if (com_attr->flags)
+	if (com_attr->flags) {
+		flags_len = sc_count_bit_string_size(&com_attr->flags, sizeof(com_attr->flags));
 		sc_format_asn1_entry(asn1_c_attr + 1, (void *) &com_attr->flags, &flags_len, 1);
+	}
 	if (com_attr->auth_id.len)
 		sc_format_asn1_entry(asn1_c_attr + 2, (void *) &com_attr->auth_id, NULL, 1);
 	if (com_attr->user_consent)
@@ -964,7 +1022,7 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 	case SC_ASN1_BIT_STRING_NI:
 	case SC_ASN1_BIT_STRING:
 		assert(len != NULL);
-		if (entry->type == SC_ASN1_BIT_STRING_NI)
+		if (entry->type == SC_ASN1_BIT_STRING)
 			r = encode_bit_string((const u8 *) parm, *len, &buf, &buflen, 1);
 		else
 			r = encode_bit_string((const u8 *) parm, *len, &buf, &buflen, 0);
@@ -980,8 +1038,8 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 		buflen = *len;
 		memcpy(buf, parm, buflen);
 		break;
-#if 0	
- 	case SC_ASN1_OBJECT:
+#if 0
+	case SC_ASN1_OBJECT:
 		if (parm != NULL)
 			r = sc_asn1_decode_object_id(obj, objlen, (struct sc_object_id *) parm);
 		break;
@@ -1027,7 +1085,6 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 	}
 	return 0;
 }
-
 
 static int asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,
 		      u8 **ptr, size_t *size, int depth)

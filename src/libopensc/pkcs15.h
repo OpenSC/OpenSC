@@ -34,16 +34,15 @@ extern "C" {
 #define SC_PKCS15_MAX_PRKEYS		2
 #define SC_PKCS15_MAX_LABEL_SIZE	32
 #define SC_PKCS15_MAX_ID_SIZE		16
-#define SC_PKCS15_MAX_CDFS		4	/* Certificate Directory
-						 * Files */
-#define SC_PKCS15_MAX_AODFS		4	/* Authentication Object 
-						 * Directory Files */
+#define SC_PKCS15_MAX_DFS		4
 #define SC_PKCS15_MAX_CERTS		4	/* Total certificates */
 
 struct sc_pkcs15_id {
 	u8 value[SC_PKCS15_MAX_ID_SIZE];
 	size_t len;
 };
+
+#define SC_PKCS15_CO_FLAG_OBJECT_SEEN	0x80000000 /* for PKCS #11 module */
 
 struct sc_pkcs15_common_obj_attr {
 	char label[SC_PKCS15_MAX_LABEL_SIZE];	/* zero terminated */
@@ -137,14 +136,33 @@ struct sc_pkcs15_prkey_info {
 	int modulus_length;
 };
 
+#define SC_PKCS15_PRKDF		0
+#define SC_PKCS15_PUKDF		1
+#define SC_PKCS15_PUKDF_TRUSTED	2
+#define SC_PKCS15_SKDF		3
+#define SC_PKCS15_CDF		4
+#define SC_PKCS15_CDF_TRUSTED	5
+#define SC_PKCS15_CDF_USEFUL	6
+#define SC_PKCS15_DODF		7
+#define SC_PKCS15_AODF		8
+#define SC_PKCS15_DF_TYPE_COUNT	9
+
+
+struct sc_pkcs15_df {
+	struct sc_file *file[SC_PKCS15_MAX_DFS];
+	int count, record_length;
+};
+
 struct sc_pkcs15_card {
 	struct sc_card *card;
 	char *label;
 	/* fields from TokenInfo: */
 	int version;
 	char *serial_number, *manufacturer_id;
-	int flags;
+	unsigned long flags;
 	struct sc_pkcs15_algorithm_info alg_info[1];
+	/* FIXME: this could be done better with some C pre-processor
+	 * magic */
 	struct sc_pkcs15_cert_info cert_info[SC_PKCS15_MAX_CERTS];
 	int cert_count;
 	struct sc_pkcs15_prkey_info prkey_info[SC_PKCS15_MAX_PRKEYS];
@@ -152,15 +170,10 @@ struct sc_pkcs15_card {
 	struct sc_pkcs15_pin_info pin_info[SC_PKCS15_MAX_PINS];
 	int pin_count;
 
+	/* FIXME: Move file_dir somewhere else, perhaps to sc_card */
 	struct sc_file file_dir, file_app;
-	/* in app DF */
 	struct sc_file file_tokeninfo, file_odf;
-	struct sc_file file_prkdf;
-	struct sc_file file_cdf[SC_PKCS15_MAX_CDFS];
-	int cdf_count;
-	struct sc_file file_aodf[SC_PKCS15_MAX_AODFS];
-	int aodf_count;
-	struct sc_file file_dodf;
+	struct sc_pkcs15_df df[SC_PKCS15_DF_TYPE_COUNT];
 
 	int use_cache;
 };

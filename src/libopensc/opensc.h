@@ -182,6 +182,9 @@ struct sc_file {
 	int status;	/* Status flags */
 	unsigned int acl[SC_MAX_AC_OPS]; /* Access Control List */
 
+	int record_length; /* In case of fixed-length or cyclic EF */
+	int record_count;  /* Valid, if not transparent EF or DF */
+
 	u8 sec_attr[SC_MAX_SEC_ATTR_SIZE];
 	size_t sec_attr_len;
 	u8 prop_attr[SC_MAX_PROP_ATTR_SIZE];
@@ -458,6 +461,8 @@ int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
 		   size_t count, unsigned long flags);
 int sc_write_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
 		    size_t count, unsigned long flags);
+int sc_update_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
+		     size_t count, unsigned long flags);
 int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 * buf,
 		   size_t count, unsigned long flags);
 int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);

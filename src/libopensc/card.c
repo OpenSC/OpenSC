@@ -620,6 +620,45 @@ int sc_write_binary(struct sc_card *card, unsigned int idx,
         SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
+int sc_update_binary(struct sc_card *card, unsigned int idx,
+		     const u8 *buf, size_t count, unsigned long flags)
+{
+	int r;
+
+	assert(card != NULL && card->ops != NULL && buf != NULL);
+	if (card->ctx->debug >= 2)
+		debug(card->ctx, "sc_update_binary: %d bytes at index %d\n", count, idx);
+	if (card->ops->update_binary == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	if (count > SC_APDU_CHOP_SIZE && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
+		int bytes_written = 0;
+		const u8 *p = buf;
+
+		r = sc_lock(card);
+		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
+		while (count > 0) {
+			int n = count > SC_APDU_CHOP_SIZE ? SC_APDU_CHOP_SIZE : count;
+			r = sc_update_binary(card, idx, p, n, flags);
+			if (r < 0) {
+				sc_unlock(card);
+				SC_TEST_RET(card->ctx, r, "sc_read_binary() failed");
+			}
+			p += r;
+			idx += r;
+			bytes_written += r;
+			count -= r;
+			if (r == 0) {
+				sc_unlock(card);
+				SC_FUNC_RETURN(card->ctx, 2, bytes_written);
+			}
+		}
+		sc_unlock(card);
+		SC_FUNC_RETURN(card->ctx, 2, bytes_written);
+	}
+	r = card->ops->update_binary(card, idx, buf, count, flags);
+        SC_FUNC_RETURN(card->ctx, 2, r);
+}
+
 int sc_select_file(struct sc_card *card,
 		   const struct sc_path *in_path,
 		   struct sc_file *file)

@@ -1,5 +1,5 @@
 /*
- * pkcs15-pin.c: PKCS#15 PIN functions
+ * pkcs15-pin.c: PKCS #15 PIN functions
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -133,8 +133,12 @@ static int get_pins_from_file(struct sc_pkcs15_card *card,
 
 int sc_pkcs15_enum_pins(struct sc_pkcs15_card *p15card)
 {
-	int r, i;
+	int r, i, j;
 	struct sc_context *ctx = p15card->card->ctx;
+	const int df_types[] = {
+		SC_PKCS15_AODF
+	};
+	const int nr_types = sizeof(df_types)/sizeof(df_types[0]);
 
 	assert(p15card != NULL);
 	SC_FUNC_CALLED(ctx, 1);
@@ -149,10 +153,11 @@ int sc_pkcs15_enum_pins(struct sc_pkcs15_card *p15card)
 	p15card->pin_count = 0;
 	r = sc_lock(p15card->card);
 	SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
-	for (i = 0; i < p15card->aodf_count; i++) {
-		r = get_pins_from_file(p15card, &p15card->file_aodf[i]);
-		if (r != 0)
-			break;
+	for (j = 0; r == 0 && j < nr_types; j++) {
+		int type = df_types[j];
+		
+		for (i = 0; r == 0 && i < p15card->df[type].count; i++)
+			r = get_pins_from_file(p15card, p15card->df[type].file[i]);
 	}
 	sc_unlock(p15card->card);
 	if (r != 0)

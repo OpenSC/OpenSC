@@ -96,7 +96,7 @@ const char * acl_to_str(unsigned int acl)
 	static char line[80];
 	
 	if (acl == SC_AC_UNKNOWN)
-		return "UNKN";
+		return "N/A";
 	if (acl == SC_AC_NEVER)
 		return "NEVR";
 	if (acl == SC_AC_NONE)

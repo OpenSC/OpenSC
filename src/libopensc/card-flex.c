@@ -22,7 +22,7 @@
 #include "sc-log.h"
 
 static const char *flex_atrs[] = {
-	"3B:95:94:40:FF:63:01:01:02:01", /* CryptoFlex 16k */
+	"3B:95:94:40:FF:63:01:01:02:01", /* Cryptoflex 16k */
 	"3B:19:14:55:90:01:02:02:00:05:04:B0",
 	NULL
 };
@@ -30,7 +30,7 @@ static const char *flex_atrs[] = {
 static struct sc_card_operations flex_ops;
 static const struct sc_card_driver flex_drv = {
 	NULL,
-	"Schlumberger Multiflex/CryptoFlex",
+	"Schlumberger Multiflex/Cryptoflex",
 	"slb",
 	&flex_ops
 };
@@ -240,7 +240,7 @@ static int flex_select_file(struct sc_card *card, const struct sc_path *path,
 		return SC_ERROR_UNKNOWN_REPLY;
 
 	if (apdu.resp[0] == 0x6F) {
-		error(card->ctx, "unsupported: Multiflex returned FCI\n");
+		error(card->ctx, "unsupported: card returned FCI\n");
 		return SC_ERROR_UNKNOWN_REPLY; /* FIXME */
 	}
 
@@ -284,6 +284,146 @@ static int flex_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	return count;
 }
 
+static int flex_delete_file(struct sc_card *card, const struct sc_path *path)
+{
+	int r;
+	u8 sbuf[2];
+	struct sc_apdu apdu;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
+		error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	sbuf[0] = path->value[0];
+	sbuf[1] = path->value[1];
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
+	apdu.cla = 0xF0;	/* Override CLA byte */
+	apdu.lc = 2;
+	apdu.datalen = 2;
+	apdu.data = sbuf;
+	
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+}
+
+static int acl_to_ac(unsigned int acl)
+{
+	int i;
+	unsigned int acl_table[16] = {
+		/* 0 */ SC_AC_NONE, SC_AC_CHV1, SC_AC_CHV2, SC_AC_PRO,
+		/* 4 */ SC_AC_AUT, SC_AC_UNKNOWN, SC_AC_CHV1 | SC_AC_PRO,
+		/* 7 */ SC_AC_CHV2 | SC_AC_PRO, SC_AC_CHV1 | SC_AC_AUT,
+		/* 9 */ SC_AC_CHV2 | SC_AC_AUT, SC_AC_UNKNOWN, SC_AC_UNKNOWN,
+		/* c */	SC_AC_UNKNOWN, SC_AC_UNKNOWN, SC_AC_UNKNOWN,
+		/* f */ SC_AC_NEVER };
+	
+	for (i = 0; i < sizeof(acl_table)/sizeof(acl_table[0]); i++)
+		if (acl == acl_table[i])
+			return i;
+	return -1;
+}
+
+static int encode_file_structure(struct sc_card *card, const struct sc_file *file,
+				 u8 *buf, size_t *buflen)
+{
+	u8 *p = buf;
+	int r, r2;
+
+	p[0] = 0xFF;
+	p[1] = 0xFF;
+	p[2] = file->size >> 8;
+	p[3] = file->size & 0xFF;
+	p[4] = file->id >> 8;
+	p[5] = file->id & 0xFF;
+	if (file->type == SC_FILE_TYPE_DF)
+		p[6] = 0x38;
+	else
+		switch (file->ef_structure) {
+		case SC_FILE_EF_TRANSPARENT:
+			p[6] = 0x01;
+			break;
+		case SC_FILE_EF_LINEAR_FIXED:
+			p[6] = 0x02;
+			break;
+		case SC_FILE_EF_LINEAR_VARIABLE:
+			p[6] = 0x04;
+			break;
+		case SC_FILE_EF_CYCLIC:
+			p[6] = 0x06;
+			break;
+		default:
+			return -1;
+		}
+	p[7] = 0xFF;	/* allow Decrease and Increase */
+	if (file->type == SC_FILE_TYPE_DF) {
+		r = acl_to_ac(file->acl[SC_AC_OP_LIST_FILES]);
+		SC_TEST_RET(card->ctx, r, "Invalid ACL value");
+		p[8] = (r & 0x0F) << 8;
+		r = acl_to_ac(file->acl[SC_AC_OP_DELETE]);
+		SC_TEST_RET(card->ctx, r, "Invalid ACL value");
+		r2 = acl_to_ac(file->acl[SC_AC_OP_CREATE]);
+		SC_TEST_RET(card->ctx, r2, "Invalid ACL value");
+		p[9] = ((r & 0x0F) << 8) | (r2 & 0x0F);
+		p[10] = 0;
+	} else {
+		r = acl_to_ac(file->acl[SC_AC_OP_READ]);
+		SC_TEST_RET(card->ctx, r, "Invalid ACL value");
+		r2 = acl_to_ac(file->acl[SC_AC_OP_UPDATE]);
+		SC_TEST_RET(card->ctx, r2, "Invalid ACL value");
+		p[8] = ((r & 0x0F) << 8) | (r2 & 0x0F);
+		p[9] = 0; /* FIXME */
+		r = acl_to_ac(file->acl[SC_AC_OP_INVALIDATE]);
+		SC_TEST_RET(card->ctx, r, "Invalid ACL value");
+		r2 = acl_to_ac(file->acl[SC_AC_OP_REHABILITATE]);
+		SC_TEST_RET(card->ctx, r2, "Invalid ACL value");
+		p[10] = ((r & 0x0F) << 8) | (r2 & 0x0F);
+	}
+	p[11] = (file->status & SC_FILE_STATUS_INVALIDATED) ? 0x00 : 0x01;
+	if (file->type != SC_FILE_TYPE_DF &&
+	    (file->ef_structure == SC_FILE_EF_LINEAR_FIXED ||
+	     file->ef_structure == SC_FILE_EF_CYCLIC))
+		p[12] = 0x04;
+	else
+		p[12] = 0x03;
+	p[13] = p[14] = p[15] = 0;	/* FIXME */
+	if (p[12] == 0x04) {
+		p[16] = file->record_length;
+		*buflen = 17;
+	} else
+		*buflen = 16;
+
+	return 0;
+}
+
+static int flex_create_file(struct sc_card *card, const struct sc_file *file)
+{
+	u8 sbuf[18];
+	size_t sendlen;
+	int r, rec_nr;
+	struct sc_apdu apdu;
+	
+	r = encode_file_structure(card, file, sbuf, &sendlen);
+	if (r) {
+		error(card->ctx, "File structure encoding failed.\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	if (file->type != SC_FILE_TYPE_DF && file->ef_structure != SC_FILE_EF_TRANSPARENT)
+		rec_nr = file->record_count;
+	else
+		rec_nr = 0;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, rec_nr);
+	apdu.cla = 0xF0;
+	apdu.data = sbuf;
+	apdu.datalen = sendlen;
+	apdu.lc = sendlen;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2);
+}
+
 static const struct sc_card_driver * sc_get_driver(void)
 {
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -294,6 +434,8 @@ static const struct sc_card_driver * sc_get_driver(void)
         flex_ops.finish = flex_finish;
 	flex_ops.select_file = flex_select_file;
 	flex_ops.list_files = flex_list_files;
+	flex_ops.delete_file = flex_delete_file;
+	flex_ops.create_file = flex_create_file;
 
         return &flex_drv;
 }
