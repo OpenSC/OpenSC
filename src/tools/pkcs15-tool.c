@@ -652,7 +652,8 @@ void print_pin_info(const struct sc_pkcs15_object *obj)
 	printf("\tReference : %d\n", pin->reference);
 	printf("\tType      : %d\n", pin->type);
 	printf("\tPath      : %s\n", path);
-	printf("\tTries left: %d\n", pin->tries_left);
+	if (pin->tries_left >= 0)
+		printf("\tTries left: %d\n", pin->tries_left);
 }
 
 int list_pins(void)
