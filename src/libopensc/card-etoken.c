@@ -900,8 +900,10 @@ etoken_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	data->pin_reference |= 0x80;
 	/* FIXME: the following values depend on what pin length was
 	 * used when creating the BS objects */
-	data->pin1.max_length = 8;
-	data->pin2.max_length = 8;
+	if (data->pin1.max_length == 0)
+		data->pin1.max_length = 8;
+	if (data->pin2.max_length == 0)
+		data->pin2.max_length = 8;
 	return iso_ops->pin_cmd(card, data, tries_left);
 }
 
