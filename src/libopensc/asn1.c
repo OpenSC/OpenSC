@@ -1155,14 +1155,24 @@ static int asn1_encode_entry(struct sc_context *ctx, const struct sc_asn1_entry 
 			free(buf);
 		return r;
 	}
-	r = asn1_write_element(ctx, entry->tag, buf, buflen, obj, objlen);
+
+	if (buflen != 0) {
+		r = asn1_write_element(ctx, entry->tag,
+					buf, buflen, obj, objlen);
+		if (r)
+			error(ctx, "error writing ASN.1 tag and length: %s\n",
+					sc_strerror(r));
+	} else if (entry->flags & SC_ASN1_OPTIONAL) {
+		/* This happens when we try to encode e.g. the
+		 * subClassAttributes, which may be empty */
+		r = 0;
+	} else {
+		error(ctx, "cannot encode empty non-optional ASN.1 object");
+		r = SC_ERROR_INVALID_ASN1_OBJECT;
+	}
 	if (buf)
 		free(buf);
-	if (r) {
-		error(ctx, "error writing ASN.1 tag and length: %s\n", sc_strerror(r));
-		return r;
-	}
-	return 0;
+	return r;
 }
 
 static int asn1_encode(struct sc_context *ctx, const struct sc_asn1_entry *asn1,
