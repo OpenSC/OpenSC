@@ -36,6 +36,7 @@ char *getpass(const char *prompt); /* in src/common/getpass.c */
 #define NO_MECHANISM	((CK_MECHANISM_TYPE) -1)
 
 enum {
+	OPT_MODULE,
 	OPT_SLOT,
 };
 
@@ -52,6 +53,7 @@ const struct option options[] = {
 	{ "slot",		1, 0,		OPT_SLOT },
 	{ "input-file",		1, 0,		'i' },
 	{ "output-file",	1, 0,		'o' },
+	{ "module",		1, 0,		OPT_MODULE },
 	{ "verbose",		0, 0,		'v' },
 	{ 0, 0, 0, 0 }
 };
@@ -77,6 +79,7 @@ const char *		app_name = "pkcs11-tool"; /* for utils.c */
 static int		opt_verbose = 0;
 static const char *	opt_input = NULL;
 static const char *	opt_output = NULL;
+static const char *	opt_module = NULL;
 static CK_SLOT_ID	opt_slot = NO_SLOT;
 static CK_MECHANISM_TYPE opt_mechanism = NO_MECHANISM;
 
@@ -181,6 +184,9 @@ main(int argc, char * const argv[])
 		case OPT_SLOT:
 			opt_slot = (CK_SLOT_ID) atoi(optarg);
 			break;
+		case OPT_MODULE:
+			opt_module = optarg;
+			break;
 		default:
 			print_usage_and_die();
 		}
@@ -188,7 +194,7 @@ main(int argc, char * const argv[])
 	if (action_count == 0)
 		print_usage_and_die();
 
-	module = C_LoadModule(NULL, &p11);
+	module = C_LoadModule(opt_module, &p11);
 	if (module == NULL)
 		fatal("Failed to load pkcs11 module");
 
@@ -764,8 +770,8 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_MD2_RSA_PKCS,	"MD2-RSA-PKCS" },
       { CKM_MD5_RSA_PKCS,	"MD5-RSA-PKCS",		"rsa-md5" },
       { CKM_SHA1_RSA_PKCS,	"SHA1-RSA-PKCS",	"rsa-sha1" },
-      { CKM_RIPEMD128_RSA_PKCS,	"RIPEMD128-RSA-PKCS",	"rsa-ripemd160" },
-      { CKM_RIPEMD160_RSA_PKCS,	"RIPEMD160-RSA-PKCS" },
+      { CKM_RIPEMD128_RSA_PKCS,	"RIPEMD128-RSA-PKCS" },
+      { CKM_RIPEMD160_RSA_PKCS,	"RIPEMD160-RSA-PKCS",	"rsa-ripemd160" },
       { CKM_RSA_PKCS_OAEP,	"RSA-PKCS-OAEP" },
       { CKM_RSA_X9_31_KEY_PAIR_GEN,"RSA-X9-31-KEY-PAIR-GEN" },
       { CKM_RSA_X9_31,		"RSA-X9-31" },
