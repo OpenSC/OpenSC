@@ -36,6 +36,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
+#include <limits.h>
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
 #endif
@@ -134,7 +135,7 @@ static int get_profile_from_config(struct sc_card *card, char *card_prof_name)
 	struct sc_context *ctx = card->ctx;
 	const char *tmp;
 	scconf_block **blocks, *blk;
-	int i, r;
+	int i;
 
 	for (i = 0; ctx->conf_blocks[i]; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],

@@ -25,6 +25,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
+#include <limits.h>
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
 #endif
@@ -353,7 +354,7 @@ static const char *
 sc_profile_locate(const char *name)
 {
 	static char	path[1024];
-	char            profile_dir[MAX_PATH];
+	char            profile_dir[PATH_MAX];
 
 	/* Name with suffix tagged onto it? */
 	snprintf(path, sizeof(path), "%s.%s", name, SC_PKCS15_PROFILE_SUFFIX);
