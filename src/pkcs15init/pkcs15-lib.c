@@ -2832,6 +2832,11 @@ sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile)
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	file->id = OPENSC_INFO_FILEID;
 
+	/* XXX Maybe we should move the file to the AppDF
+	 * and protect updates using the SO PIN */
+	for (n = 0; n < SC_MAX_AC_OPS; n++)
+		sc_file_add_acl_entry(file, n, SC_AC_NONE, 0);
+
 	p = buffer;
 	end = buffer + sizeof(buffer);
 
