@@ -278,7 +278,7 @@ CK_RV slot_token_removed(int id)
 	token_was_present = (slot->slot_info.flags & CKF_TOKEN_PRESENT);
 
         /* Terminate active sessions */
-        C_CloseAllSessions(id);
+        sc_pkcs11_close_all_sessions(id);
 
 	/* Object pool */
 	while (pool_find_and_delete(&slot->object_pool, 0, (void**) &object) == CKR_OK) {

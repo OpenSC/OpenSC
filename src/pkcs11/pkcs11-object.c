@@ -37,18 +37,22 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	struct sc_pkcs11_card *card;
         int rv;
 
+	sc_pkcs11_lock();
         dump_template("C_CreateObject()", pTemplate, ulCount);
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	card = session->slot->card;
 	if (card->framework->create_object == NULL)
-		return CKR_FUNCTION_NOT_SUPPORTED;
-
-	return card->framework->create_object(card, session->slot,
+		rv = CKR_FUNCTION_NOT_SUPPORTED;
+	else
+		rv = card->framework->create_object(card, session->slot,
 			pTemplate, ulCount, phObject);
+
+out:	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_CopyObject(CK_SESSION_HANDLE    hSession,    /* the session's handle */
@@ -90,13 +94,15 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 	struct sc_pkcs11_object *object;
 	int	res, res_type;
 
+	sc_pkcs11_lock();
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	rv = pool_find(&session->slot->object_pool, hObject, (void**) &object);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	res_type = 0;
 	for (i = 0; i < ulCount; i++) {
@@ -125,6 +131,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 		}
 	}
 
+out:	sc_pkcs11_unlock();
         return rv;
 }
 
@@ -137,24 +144,28 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
 
+	sc_pkcs11_lock();
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	rv = pool_find(&session->slot->object_pool, hObject, (void**) &object);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	if (object->ops->set_attribute == NULL)
-                return CKR_FUNCTION_NOT_SUPPORTED;
-
-	for (i = 0; i < ulCount; i++) {
-		rv = object->ops->set_attribute(session, object, &pTemplate[i]);
-		if (rv != CKR_OK)
-                        return rv;
+                rv = CKR_FUNCTION_NOT_SUPPORTED;
+	else {
+		for (i = 0; i < ulCount; i++) {
+			rv = object->ops->set_attribute(session, object, &pTemplate[i]);
+			if (rv != CKR_OK)
+				break;
+		}
 	}
 
-        return CKR_OK;
+out:	sc_pkcs11_unlock();
+        return rv;
 }
 
 CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
@@ -170,9 +181,11 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	struct sc_pkcs11_find_operation *operation;
         struct sc_pkcs11_pool_item *item;
 
+	sc_pkcs11_lock();
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	debug(context, "C_FindObjectsInit(slot = %d)\n", session->slot->id);
         dump_template("C_FindObjectsInit()", pTemplate, ulCount);
@@ -180,9 +193,8 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_FIND,
                                      &find_mechanism,
 				     (struct sc_pkcs11_operation**) &operation);
-
 	if (rv != CKR_OK)
-                return rv;
+                goto out;
 
         operation->current_handle = 0;
 	operation->num_handles = 0;
@@ -234,7 +246,9 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	}
 
 	debug(context, "%d matching objects\n", operation->num_handles);
-        return CKR_OK;
+
+out:	sc_pkcs11_unlock();
+        return rv;
 }
 
 CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,          /* the session's handle */
@@ -246,14 +260,16 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,          /* the session's han
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_find_operation *operation;
 
+	sc_pkcs11_lock();
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_FIND,
 				(sc_pkcs11_operation_t **) &operation);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	to_return = operation->num_handles - operation->current_handle;
 	if (to_return > ulMaxObjectCount)
@@ -267,7 +283,8 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,          /* the session's han
 
         operation->current_handle += to_return;
 
-        return CKR_OK;
+out:	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) /* the session's handle */
@@ -275,16 +292,18 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) /* the session's handle */
         int rv;
 	struct sc_pkcs11_session *session;
 
+	sc_pkcs11_lock();
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_FIND, NULL);
-	if (rv != CKR_OK)
-		return rv;
+	if (rv == CKR_OK)
+		session_stop_operation(session, SC_PKCS11_OPERATION_FIND);
 
-        session_stop_operation(session, SC_PKCS11_OPERATION_FIND);
-        return CKR_OK;
+out:	sc_pkcs11_unlock();
+	return rv;
 }
 
 /*
@@ -298,13 +317,14 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
         int rv;
 	struct sc_pkcs11_session *session;
 
+	sc_pkcs11_lock();
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
-	if (rv != CKR_OK)
-		return rv;
-
-	rv = sc_pkcs11_md_init(session, pMechanism);
-
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_md_init(session, pMechanism);
         debug(context, "C_DigestInit returns %d\n", rv);
+
+	sc_pkcs11_unlock();
         return rv;
 }
 
@@ -317,15 +337,19 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,     /* the session's handle */
         int rv;
 	struct sc_pkcs11_session *session;
 
+	sc_pkcs11_lock();
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	rv = sc_pkcs11_md_update(session, pData, ulDataLen);
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
-        debug(context, "C_Digest returns %d\n", rv);
+out:	debug(context, "C_Digest returns %d\n", rv);
+	sc_pkcs11_unlock();
+
         return rv;
 }
 
@@ -336,13 +360,14 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
         int rv;
 	struct sc_pkcs11_session *session;
 
-	rv = pool_find(&session_pool, hSession, (void**) &session);
-	if (rv != CKR_OK)
-		return rv;
+	sc_pkcs11_lock();
 
-	rv = sc_pkcs11_md_update(session, pPart, ulPartLen);
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_md_update(session, pPart, ulPartLen);
 
         debug(context, "C_DigestUpdate returns %d\n", rv);
+	sc_pkcs11_unlock();
         return rv;
 }
 
@@ -359,13 +384,14 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,     /* the session's handle */
         int rv;
 	struct sc_pkcs11_session *session;
 
-	rv = pool_find(&session_pool, hSession, (void**) &session);
-	if (rv != CKR_OK)
-		return rv;
+	sc_pkcs11_lock();
 
-	rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
         debug(context, "C_DigestFinal returns %d\n", rv);
+	sc_pkcs11_unlock();
         return rv;
 }
 
@@ -377,34 +403,42 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE sign_attribute = { CKA_SIGN, &can_sign, sizeof(can_sign) };
 	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
-
-        int rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
+        int rv;
+
+	sc_pkcs11_lock();
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	rv = pool_find(&session->slot->object_pool, hKey, (void**) &object);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
-	if (object->ops->sign == NULL_PTR)
-                return CKR_KEY_TYPE_INCONSISTENT;
+	if (object->ops->sign == NULL_PTR) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
 
 	rv = object->ops->get_attribute(session, object, &sign_attribute);
-        if (rv != CKR_OK || !can_sign)
-                return CKR_KEY_TYPE_INCONSISTENT;
+        if (rv != CKR_OK || !can_sign) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
 	rv = object->ops->get_attribute(session, object, &key_type_attr);
-        if (rv != CKR_OK)
-                return CKR_KEY_TYPE_INCONSISTENT;
+        if (rv != CKR_OK) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
 
         debug(context, "Sign operation initialized\n");
-
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
-        debug(context, "Sign initialization returns %d\n", rv);
+out:	debug(context, "Sign initialization returns %d\n", rv);
+	sc_pkcs11_unlock();
+
         return rv;
 }
 
@@ -418,9 +452,11 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 	struct sc_pkcs11_session *session;
 	CK_ULONG length;
 
+	sc_pkcs11_lock();
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	/* According to the pkcs11 specs, we must not do any calls that
 	 * change our crypto state if the caller is just asking for the
@@ -428,18 +464,20 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 	 * CKR_BUFFER_TOO_SMALL. Thus we cannot do the sign_update call
 	 * below. */
 	if ((rv = sc_pkcs11_sign_size(session, &length)) != CKR_OK)
-		return rv;
+		goto out;
 
 	if (pSignature == NULL || length > *pulSignatureLen) {
 		*pulSignatureLen = length;
-		return pSignature? CKR_BUFFER_TOO_SMALL : CKR_OK;
+		rv = pSignature? CKR_BUFFER_TOO_SMALL : CKR_OK;
+		goto out;
 	}
 
 	rv = sc_pkcs11_sign_update(session, pData, ulDataLen);
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 
-	debug(context, "Signing result was %d\n", rv);
+out:	debug(context, "Signing result was %d\n", rv);
+	sc_pkcs11_unlock();
         return rv;
 
 }
@@ -448,15 +486,17 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		   CK_BYTE_PTR       pPart,     /* the data (digest) to be signed */
 		   CK_ULONG          ulPartLen) /* count of bytes to be signed */
 {
-        int rv;
 	struct sc_pkcs11_session *session;
+        int rv;
+
+	sc_pkcs11_lock();
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
-	if (rv != CKR_OK)
-		return rv;
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_sign_update(session, pPart, ulPartLen);
 
-	rv = sc_pkcs11_sign_update(session, pPart, ulPartLen);
 	debug(context, "C_SignUpdate returns %d\n", rv);
+	sc_pkcs11_unlock();
         return rv;
 }
 
@@ -464,13 +504,15 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,        /* the session's handle */
 		  CK_BYTE_PTR       pSignature,      /* receives the signature */
 		  CK_ULONG_PTR      pulSignatureLen) /* receives byte count of signature */
 {
-        int rv;
 	struct sc_pkcs11_session *session;
 	CK_ULONG length;
+        int rv;
+
+	sc_pkcs11_lock();
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	/* According to the pkcs11 specs, we must not do any calls that
 	 * change our crypto state if the caller is just asking for the
@@ -478,16 +520,18 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,        /* the session's handle */
 	 * CKR_BUFFER_TOO_SMALL.
 	 */
 	if ((rv = sc_pkcs11_sign_size(session, &length)) != CKR_OK)
-		return rv;
+		goto out;
 
 	if (pSignature == NULL || length > *pulSignatureLen) {
 		*pulSignatureLen = length;
-		return pSignature? CKR_BUFFER_TOO_SMALL : CKR_OK;
+		rv = pSignature? CKR_BUFFER_TOO_SMALL : CKR_OK;
+	} else {
+		rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 	}
 
+out:	debug(context, "C_SignFinal returns %d\n", rv);
+	sc_pkcs11_unlock();
 
-	rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
-	debug(context, "C_SignFinal returns %d\n", rv);
         return rv;
 }
 
@@ -499,28 +543,35 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE sign_attribute = { CKA_SIGN, &can_sign, sizeof(can_sign) };
 	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
-
-        int rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
+        int rv;
+
+	sc_pkcs11_lock();
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	rv = pool_find(&session->slot->object_pool, hKey, (void**) &object);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
-	if (object->ops->sign == NULL_PTR)
-                return CKR_KEY_TYPE_INCONSISTENT;
+	if (object->ops->sign == NULL_PTR) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
 
 	rv = object->ops->get_attribute(session, object, &sign_attribute);
-        if (rv != CKR_OK || !can_sign)
-                return CKR_KEY_TYPE_INCONSISTENT;
+        if (rv != CKR_OK || !can_sign) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
 	rv = object->ops->get_attribute(session, object, &key_type_attr);
-        if (rv != CKR_OK)
-                return CKR_KEY_TYPE_INCONSISTENT;
+        if (rv != CKR_OK) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
 
 	/* XXX: need to tell the signature algorithm that we want
 	 * to recover the signature */
@@ -528,7 +579,8 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
-        debug(context, "Sign initialization returns %d\n", rv);
+out:	debug(context, "Sign initialization returns %d\n", rv);
+	sc_pkcs11_unlock();
         return rv;
 }
 
@@ -681,21 +733,25 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE    hSession,          /* the session's handl
 		  CK_ULONG             ulAttributeCount,  /* # of attributes in template */
 		  CK_OBJECT_HANDLE_PTR phKey)             /* gets handle of recovered key */
 {
-	int rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object, *result;
+	int rv;
+
+	sc_pkcs11_lock();
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
 	rv = pool_find(&session->slot->object_pool, hUnwrappingKey,
 				(void**) &object);
 	if (rv != CKR_OK)
-		return rv;
+		goto out;
 
-	if (object->ops->sign == NULL_PTR)
-                return CKR_KEY_TYPE_INCONSISTENT;
+	if (object->ops->sign == NULL_PTR) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
 
 	rv = object->ops->unwrap_key(session, object, pMechanism,
 				pWrappedKey, ulWrappedKeyLen,
@@ -704,10 +760,10 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE    hSession,          /* the session's handl
 
 	debug(context, "Unwrapping result was %d\n", rv);
 
-	if (rv != CKR_OK)
-		return rv;
+	if (rv == CKR_OK)
+		rv = pool_insert(&session->slot->object_pool, result, phKey);
 
-	rv = pool_insert(&session->slot->object_pool, result, phKey);
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -729,11 +785,14 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	struct sc_pkcs11_session *session;
 	int rv;
 
-	rv = pool_find(&session_pool, hSession, (void**) &session);
-	if (rv != CKR_OK)
-		return rv;
+	sc_pkcs11_lock();
 
-	return sc_pkcs11_openssl_add_seed_rand(session, pSeed, ulSeedLen);
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_openssl_add_seed_rand(session, pSeed, ulSeedLen);
+
+	sc_pkcs11_unlock();
+	return rv;
 #else
 	return CKR_FUNCTION_NOT_SUPPORTED;
 #endif
@@ -747,11 +806,14 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	struct sc_pkcs11_session *session;
 	int rv;
 
-	rv = pool_find(&session_pool, hSession, (void**) &session);
-	if (rv != CKR_OK)
-		return rv;
+	sc_pkcs11_lock();
 
-	return sc_pkcs11_openssl_add_gen_rand(session, RandomData, ulRandomLen);
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_openssl_add_gen_rand(session, RandomData, ulRandomLen);
+
+	sc_pkcs11_unlock();
+	return rv;
 #else
 	return CKR_FUNCTION_NOT_SUPPORTED;
 #endif

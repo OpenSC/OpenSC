@@ -314,6 +314,7 @@ CK_RV session_start_operation(struct sc_pkcs11_session *,
 CK_RV session_get_operation(struct sc_pkcs11_session *, int,
 			struct sc_pkcs11_operation **);
 CK_RV session_stop_operation(struct sc_pkcs11_session *, int);
+CK_RV sc_pkcs11_close_all_sessions(CK_SLOT_ID);
 
 /* Generic secret key stuff */
 CK_RV sc_pkcs11_create_secret_key(struct sc_pkcs11_session *,
@@ -371,6 +372,12 @@ CK_RV sc_pkcs11_openssl_add_gen_rand(struct sc_pkcs11_session *, CK_BYTE_PTR, CK
 
 /* Load configuration defaults */
 void load_pkcs11_parameters(struct sc_pkcs11_config *, struct sc_context *);
+
+/* Locking primitives at the pkcs11 level */
+CK_RV sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR);
+void sc_pkcs11_lock(void);
+void sc_pkcs11_unlock(void);
+void sc_pkcs11_free_lock(void);
 
 #ifdef __cplusplus
 }
