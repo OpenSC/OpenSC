@@ -4,8 +4,6 @@ New in 0.8.0; 2003-08-15; Juha Yrjölä:
 * New and/or improved card drivers:
   Aladdin eToken, MICARDO 2 and STARCOS
 * New reader driver: OpenCT (Olaf's framework)
-* USBtoken by Andreas Jellinghaus integrated,
-  to be obsoleted by OpenCT in future releases.
 * Improved support for win32 and MacOS X.
 * PKCS #11 stuff improved massively
 * Added PKCS #11 and native OpenSC engine drivers
