@@ -203,8 +203,9 @@ openct_reader_detect_card_presence(struct sc_reader *reader,
 
 	SC_FUNC_CALLED(reader->ctx, 1);
 
+	slot->flags = 0;
 	if (!data->h && !(data->h = ct_reader_connect(data->num)))
-		return SC_ERROR_CARD_NOT_PRESENT;
+		return 0;
 
 	if ((rc = ct_card_status(data->h, slot->id, &status)) < 0)
 		return SC_ERROR_TRANSMIT_FAILED;
