@@ -72,6 +72,9 @@ typedef struct sc_file {
 	size_t sec_attr_len;
 	u8 *prop_attr;
 	size_t prop_attr_len;
+	u8 *type_attr;
+	size_t type_attr_len;
+
 	unsigned int magic;
 } sc_file_t;
 

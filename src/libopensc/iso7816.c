@@ -491,21 +491,27 @@ static int construct_fci(const struct sc_file *file, u8 *out, size_t *outlen)
 	buf[0] = (file->size >> 8) & 0xFF;
 	buf[1] = file->size & 0xFF;
 	sc_asn1_put_tag(0x81, buf, 2, p, 16, &p);
-	buf[0] = file->shareable ? 0x40 : 0;
-	switch (file->type) {
-	case SC_FILE_TYPE_WORKING_EF:
-		break;
-	case SC_FILE_TYPE_INTERNAL_EF:
-		buf[0] |= 0x08;
-		break;
-	case SC_FILE_TYPE_DF:
-		buf[0] |= 0x38;
-		break;
-	default:
-		return SC_ERROR_NOT_SUPPORTED;
+
+	if (file->type_attr_len) {
+		memcpy(buf, file->type_attr, file->type_attr_len);
+		sc_asn1_put_tag(0x82, buf, file->type_attr_len, p, 16, &p);
+	} else {
+		buf[0] = file->shareable ? 0x40 : 0;
+		switch (file->type) {
+		case SC_FILE_TYPE_WORKING_EF:
+			break;
+		case SC_FILE_TYPE_INTERNAL_EF:
+			buf[0] |= 0x08;
+			break;
+		case SC_FILE_TYPE_DF:
+			buf[0] |= 0x38;
+			break;
+		default:
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+		buf[0] |= file->ef_structure & 7;
+		sc_asn1_put_tag(0x82, buf, 1, p, 16, &p);
 	}
-	buf[0] |= file->ef_structure & 7;
-	sc_asn1_put_tag(0x82, buf, 1, p, 16, &p);
 	buf[0] = (file->id >> 8) & 0xFF;
 	buf[1] = file->id & 0xFF;
 	sc_asn1_put_tag(0x83, buf, 2, p, 16, &p);

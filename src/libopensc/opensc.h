@@ -668,6 +668,8 @@ int sc_file_set_sec_attr(struct sc_file *file, const u8 *sec_attr,
 			 size_t sec_attr_len);
 int sc_file_set_prop_attr(struct sc_file *file, const u8 *prop_attr,
 			  size_t prop_attr_len);
+int sc_file_set_type_attr(struct sc_file *file, const u8 *type_attr,
+			  size_t type_attr_len);
 
 void sc_format_path(const char *path_in, struct sc_path *path_out);
 int sc_append_path(struct sc_path *dest, const struct sc_path *src);

@@ -25,6 +25,8 @@
 
 #include <ctype.h>
 
+static const struct sc_card_operations *iso_ops = NULL;
+
 struct sc_card_operations etoken_ops;
 const struct sc_card_driver etoken_drv = {
 	"Aladdin eToken PRO",
@@ -221,6 +223,9 @@ int etoken_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	fids=0;
 	offset=0;
 
+	/* 0x16: DIRECTORY */
+	/* 0x02: list both DF and EF */
+
 get_next_part:
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x16, 0x02, offset);
 	apdu.cla = 0x80;
@@ -272,17 +277,149 @@ end:
 	return fids;
 }
 
+static void add_acl_entry(struct sc_file *file, int op, u8 byte)
+{
+	/* XXX todo: */
+}
+
+static const int df_acl[9] = {
+	-1,			/* LCYCLE (life cycle change) */
+	-1,			/* UPDATE Objects */
+	-1,			/* APPEND Objects */
+
+	SC_AC_OP_INVALIDATE,	/* DF */
+	SC_AC_OP_REHABILITATE,	/* DF */
+	SC_AC_OP_DELETE,	/* DF */
+
+	-1,			/* ADMIN DF */
+	SC_AC_OP_CREATE,	/* Files */
+	-1			/* Reserved */
+};
+static const int ef_acl[9] = {
+	SC_AC_OP_READ,		/* Data */
+	SC_AC_OP_UPDATE,	/* Data (write file content) */
+	SC_AC_OP_WRITE,		/* */
+
+	SC_AC_OP_INVALIDATE,	/* EF */
+	SC_AC_OP_REHABILITATE,	/* EF */
+	SC_AC_OP_ERASE,		/* (delete) EF */
+
+	-1,			/* ADMIN EF (modify meta information?) */
+	-1,			/* INC (-> cylic fixed files) */
+	-1			/* DEC */
+};
+
+static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
+{
+	int i;
+	const int *idx;
+
+	if (len < 9)
+		return;
+
+	idx = (file->type == SC_FILE_TYPE_DF) ?  df_acl : ef_acl;
+	for (i = 0; i < 9; i++)
+		if (idx[i] != -1)
+			add_acl_entry(file, idx[i], buf[i]);
+}
+
+static int etoken_select_file(struct sc_card *card,
+			      const struct sc_path *in_path,
+			      struct sc_file **file)
+{
+	int r;
+	
+	r = iso_ops->select_file(card, in_path, file);
+	if (r)
+		return r;
+	if (file != NULL)
+		parse_sec_attr((*file), (*file)->sec_attr, (*file)->sec_attr_len);
+	return 0;
+}
+
+static int etoken_create_file(struct sc_card *card, struct sc_file *file)
+{
+	int r;
+	const u8 acl[] = {
+	    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+	u8 type[3], status[3];
+
+	if (file->type_attr_len == 0) {
+		type[0] = 0x00;
+		switch (file->type) {
+		case SC_FILE_TYPE_WORKING_EF:
+			break;
+		case SC_FILE_TYPE_INTERNAL_EF:
+			type[0] = 0x08;
+			break;
+		case SC_FILE_TYPE_DF:
+			type[0] = 0x38;
+			break;
+		default:
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+		switch (file->ef_structure) {
+		case SC_FILE_EF_LINEAR_FIXED_TLV:
+		case SC_FILE_EF_LINEAR_VARIABLE:
+		case SC_FILE_EF_CYCLIC_TLV:
+			return SC_ERROR_NOT_SUPPORTED;
+		default:
+			type[0] |= file->ef_structure & 7;
+			break;
+		}
+		type[1] = type[2] = 0x00; /* not used, but required */
+		r = sc_file_set_type_attr(file, type, sizeof(type));
+		if (r)
+			return r;
+	}
+	if (file->prop_attr_len == 0) {
+		status[0] = 0x01;
+		if (file->type == SC_FILE_TYPE_DF) {
+			status[1] = 0;	/* bodys size of DF in bigendian */
+			status[2] = 0;
+		} else {
+			status[1] = status[2] = 0x00; /* not used */
+		}
+		r = sc_file_set_prop_attr(file, status, sizeof(status));
+		if (r)
+			return r;
+	}
+	if (file->sec_attr_len == 0) {
+		r = sc_file_set_sec_attr(file, acl, sizeof(acl));
+		if (r)
+			return r;
+	}
+	return iso_ops->create_file(card, file);
+}
+
+static int etoken_update_binary(struct sc_card *card,
+				unsigned int idx, const u8 *buf,
+				size_t count, unsigned long flags)
+{
+	/* hm, my card only works for small payloads */
+	if (count > 120)
+		count = 120;
+	return iso_ops->update_binary(card, idx, buf, count, flags);
+}
+
+/* eToken R2 supports WRITE_BINARY, PRO Tokens support UPDATE_BINARY */
+
 const struct sc_card_driver * sc_get_driver(void)
 {
-	etoken_ops = *sc_get_iso7816_driver()->ops;
+	if (iso_ops == NULL)
+		iso_ops = sc_get_iso7816_driver()->ops;
+	etoken_ops = *iso_ops;
 	etoken_ops.match_card = etoken_match_card;
 	etoken_ops.init = etoken_init;
-        etoken_ops.finish = etoken_finish;
+	etoken_ops.finish = etoken_finish;
+	etoken_ops.select_file = etoken_select_file;
+	etoken_ops.create_file = etoken_create_file;
+	etoken_ops.update_binary = etoken_update_binary;
 
-        etoken_ops.list_files = etoken_list_files;
+	etoken_ops.list_files = etoken_list_files;
 	etoken_ops.check_sw = etoken_check_sw;
 
-        return &etoken_drv;
+	return &etoken_drv;
 }
 
 #if 1
