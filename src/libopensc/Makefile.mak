@@ -7,6 +7,8 @@ HEADERS			= opensc.h pkcs15.h emv.h \
 			  errors.h types.h \
 			  cardctl.h asn1.h log.h
 
+HEADERSDIR		= $(TOPDIR)\src\include\opensc
+
 OBJECTS			= sc.obj ctx.obj module.obj asn1.obj log.obj base64.obj \
 			  errors.obj sec.obj card.obj iso7816.obj dir.obj \
 			  pkcs15.obj pkcs15-cert.obj pkcs15-pin.obj \
@@ -16,7 +18,7 @@ OBJECTS			= sc.obj ctx.obj module.obj asn1.obj log.obj base64.obj \
 			  card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
 			  card-etoken.obj card-tcos.obj card-emv.obj card-default.obj 
 
-all: $(TARGET) install-headers
+all: install-headers $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 

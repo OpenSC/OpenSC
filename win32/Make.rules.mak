@@ -4,7 +4,7 @@ LINKFLAGS = /DEBUG /NOLOGO /INCREMENTAL:NO /MACHINE:IX86
 
 install-headers:
 	@for %i in ( $(HEADERS) ) do \
-		@xcopy /d /q /y %i ..\include > nul
+		@xcopy /d /q /y %i $(HEADERSDIR) > nul
 
 .c.obj::
 	cl $(COPTS) /c $<
