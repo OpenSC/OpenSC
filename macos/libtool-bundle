@@ -1,0 +1,61 @@
+#!/bin/sh
+# A shell script to create MacOS X bundles
+# from files created by GNU libtool.
+# Incomplete, but works.
+#
+# $Id$
+# <aet@cc.hut.fi>
+#
+# TODO:
+# - Add -f and -v switches?
+# - Generate PkgInfo, Info.plist and version.plist
+#   to $bundleroot/Resources? Is this necessary?
+#
+
+verbose=0
+
+verbose_msg ()
+{
+  if [ $verbose -ne 0 ]; then
+    echo "libtool-bundle: $@"
+  fi
+}
+
+error_msg ()
+{
+  echo 1>&2 "libtool-bundle: $@"
+}
+
+[ $# -le 1 -o $# -ge 4 ] && error_msg "Usage: $0 [Mach-O bundle file] [destination directory] <bundle name>" && exit 1
+
+sofile=$1
+[ ! -f $sofile ] && error_msg "Not a file or file not found: $sofile" && exit 1
+case "$sofile" in
+*.so*)
+  # Assume it's ok
+  ;;
+*)
+  error_msg "Invalid bundle: $sofile"
+  exit 1
+  ;;
+esac
+
+destdir=$2
+[ ! -d $destdir -o ! -w $destdir ] && error_msg "Not a directory or no write access: $destdir" && exit 1
+
+bundlename="$sofile"
+[ $# -eq 3 ] && bundlename=$3
+bundlename=`echo $bundlename | sed -e "s@.*/@@" -e "s@\.so.*@@"`
+bundleroot="$destdir/${bundlename}.bundle"
+
+verbose_msg "sofile: $sofile"
+verbose_msg "destdir: $destdir"
+verbose_msg "bundlename: $bundlename"
+verbose_msg "bundleroot: $bundleroot"
+
+#[ -d "$bundleroot" ] && error_msg "$bundleroot already exists, exit." && exit 1
+
+mkdir -p "$bundleroot"/Contents/MacOS
+cp "$sofile" "$bundleroot"/Contents/MacOS/"$bundlename"
+
+echo "Installed $sofile as $bundleroot"

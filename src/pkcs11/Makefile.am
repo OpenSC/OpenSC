@@ -1,5 +1,6 @@
 # Process this file with automake to create Makefile.in
 
+bundledir = $(BUNDLEDIR)
 libdir = @libdir@/pkcs11
 
 MAINTAINERCLEANFILES = Makefile.in
@@ -41,3 +42,7 @@ pkcs11-jar: jar-dir
 
 install-exec-local: install-libLTLIBRARIES
 	-rm -f $(DESTDIR)$(libdir)/opensc-pkcs11.a $(DESTDIR)$(libdir)/opensc-pkcs11.la
+if HAVE_BUNDLES
+	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(libdir)/opensc-pkcs11.so \
+		$(DESTDIR)$(bundledir)/ "OpenSC PKCS#11"
+endif

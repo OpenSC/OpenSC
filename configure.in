@@ -84,6 +84,7 @@ case "$host" in
 	if test "$GCC" = "yes"; then
 		CFLAGS="$CFLAGS -no-cpp-precomp"
 	fi
+	with_bundles=yes
 	;;
 esac
 
@@ -355,7 +356,7 @@ AC_CACHE_CHECK([for flex directory], ac_cv_flexdir, [
 
 dnl The big mess with OpenSSL
 AC_ARG_WITH(openssl,
-	[  --with-openssl=PATH     use OpenSSL n PATH],
+	[  --with-openssl=PATH     use OpenSSL in PATH],
 	[tryssldir=$withval])
 
 SSL_MSG="no"
@@ -861,12 +862,21 @@ AM_CONDITIONAL(HAVE_ASSUAN, test "x$ASSUAN_MSG" = "xyes")
 
 PLUGINDIR="/usr/lib/mozilla/plugins"
 AC_ARG_WITH(plugin-dir,
-	[  --with-plugin-dir=PATH  install plugin to PATH [[/usr/lib/mozilla/plugins]]],
+	[  --with-plugin-dir=PATH  install Mozilla plugin to PATH [[/usr/lib/mozilla/plugins]]],
 	[
 		PLUGINDIR="$withval"
 	]
 )
 AC_SUBST(PLUGINDIR)
+
+BUNDLEDIR="${libdir}"
+AC_ARG_WITH(bundle-dir,
+	[  --with-bundle-dir=PATH  install MacOS X bundles to PATH [[EPREFIX/lib]]],
+	[
+		BUNDLEDIR="$withval"
+	]
+)
+AC_SUBST(BUNDLEDIR)
 
 # Check for PIN entry program used by OpenSC Signer
 PIN_ENTRY="/usr/local/bin/gpinentry"
@@ -903,7 +913,7 @@ if test "x$XSLTPROC" = "x"; then
 	fi
 	with_docbook=no
 fi
-AM_CONDITIONAL(HAVE_DOCBOOK, test "x$with_docbook" != "xno")
+AM_CONDITIONAL(HAVE_DOCBOOK, test "x$with_docbook" = "xyes")
 
 CPPFLAGS="-I\${top_builddir}/src/include $CPPFLAGS"
 
@@ -927,6 +937,8 @@ AC_DEFINE_UNQUOTED(OPENSC_CONF_PATH, "$opensc_conf_path", [default config file f
 AC_SUBST(LIBOPENSC)
 LIBOPENSC="\${top_builddir}/src/libopensc/libopensc.la"
 
+AM_CONDITIONAL(HAVE_BUNDLES, test "x$with_bundles" = "xyes")
+
 # Pass information about installed OpenSC requirements, so that
 # a proper opensc-config file will be build.
 OPENSC_LIBS="-L${libdir} -lopensc"
@@ -943,6 +955,7 @@ aclocal/Makefile
 docs/Makefile
 docs/pkcs15-profile.5
 etc/Makefile
+macos/Makefile
 src/Makefile
 src/common/Makefile
 src/include/Makefile
