@@ -162,34 +162,20 @@ static const OPENSC_Ctrls opensc_args[OPENSC_CTRLS_] =
 /* symbol                  token name          ctrl mask             ctrl     *
  * ----------------------- ------------------- --------------------- -------- */
 
-/* OPENSC__OLD_PASSWD */ 
- {NULL, _ALL_ON_, 01},
-/* OPENSC__VERIFY_PASSWD */ 
- {NULL, _ALL_ON_, 02},
-/* OPENSC__IAMROOT */ 
- {NULL, _ALL_ON_, 04},
-/* OPENSC_AUDIT */ 
- {"audit", _ALL_ON_, 010},
-/* OPENSC_USE_FIRST_PASS */ 
- {"use_first_pass", _ALL_ON_, 020},
-/* OPENSC_TRY_FIRST_PASS */ 
- {"try_first_pass", _ALL_ON_, 040},
-/* OPENSC_SET_PASS */ 
- {"set_pass", _ALL_ON_, 0100},
-/* OPENSC__PRELIM */ 
- {NULL, _ALL_ON_, 0200},
-/* OPENSC__UPDATE */ 
- {NULL, _ALL_ON_, 0400},
-/* OPENSC__NONULL */ 
- {NULL, _ALL_ON_, 01000},
-/* OPENSC__QUIET */ 
- {NULL, _ALL_ON_, 02000},
-/* OPENSC_USE_AUTHTOK */ 
- {"use_authtok", _ALL_ON_, 04000},
-/* OPENSC_DEBUG */ 
- {"debug", _ALL_ON_, 010000},
-/* OPENSC_AUTH_METHOD */ 
- {"auth_method=", _ALL_ON_, 020000}
+/* OPENSC__OLD_PASSWD */     {NULL,              _ALL_ON_,                   01},
+/* OPENSC__VERIFY_PASSWD */  {NULL,              _ALL_ON_,                   02},
+/* OPENSC__IAMROOT */        {NULL,              _ALL_ON_,                   04},
+/* OPENSC_AUDIT */           {"audit",           _ALL_ON_,                  010},
+/* OPENSC_USE_FIRST_PASS */  {"use_first_pass",  _ALL_ON_,                  020},
+/* OPENSC_TRY_FIRST_PASS */  {"try_first_pass",  _ALL_ON_,                  040},
+/* OPENSC_SET_PASS */        {"set_pass",        _ALL_ON_,                 0100},
+/* OPENSC__PRELIM */         {NULL,              _ALL_ON_,                 0200},
+/* OPENSC__UPDATE */         {NULL,              _ALL_ON_,                 0400},
+/* OPENSC__NONULL */         {NULL,              _ALL_ON_,                01000},
+/* OPENSC__QUIET */          {NULL,              _ALL_ON_,                02000},
+/* OPENSC_USE_AUTHTOK */     {"use_authtok",     _ALL_ON_,                04000},
+/* OPENSC_DEBUG */           {"debug",           _ALL_ON_,               010000},
+/* OPENSC_AUTH_METHOD */     {"auth_method=",    _ALL_ON_,               020000}
 };
 
 #define OPENSC_DEFAULTS  (opensc_args[OPENSC__NONULL].flag)
