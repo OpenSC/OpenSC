@@ -50,7 +50,7 @@ struct map {
 	unsigned int		val;
 };
 
-static struct map		aclnames[] = {
+static struct map		aclNames[] = {
 	{ "NONE",	SC_AC_NONE	},
 	{ "NEVER",	SC_AC_NEVER	},
 	{ "CHV",	SC_AC_CHV	},
@@ -60,13 +60,13 @@ static struct map		aclnames[] = {
 	{ "KEY",	SC_AC_AUT	},
 	{ 0, 0 }
 };
-static struct map		keytypenames[] = {
+static struct map		keyTypeNames[] = {
 	{ "PRO",	SC_AC_PRO	},
 	{ "AUT",	SC_AC_AUT	},
 	{ "CHV",	SC_AC_CHV	},
 	{ 0, 0 }
 };
-static struct map		opnames[] = {
+static struct map		fileOpNames[] = {
 	{ "SELECT",	SC_AC_OP_SELECT	},
 	{ "LOCK",	SC_AC_OP_LOCK	},
 	{ "DELETE",	SC_AC_OP_DELETE	},
@@ -80,7 +80,7 @@ static struct map		opnames[] = {
 	{ "ERASE",	SC_AC_OP_ERASE	},
 	{ 0, 0 }
 };
-static struct map		efnames[] = {
+static struct map		efTypeNames[] = {
 	{ "TRANSPARENT",	SC_FILE_EF_TRANSPARENT	},
 	{ "LINEAR-FIXED",	SC_FILE_EF_LINEAR_FIXED	},
 	{ "LINEAR-FIXED-TLV",	SC_FILE_EF_LINEAR_FIXED_TLV	},
@@ -90,7 +90,7 @@ static struct map		efnames[] = {
 	{ "CYCLIC-TLV",		SC_FILE_EF_CYCLIC_TLV	},
 	{ 0, 0 }
 };
-static struct map		pkcs15dfnames[] = {
+static struct map		pkcs15DfNames[] = {
 	{ "PRKDF",		SC_PKCS15_PRKDF		},
 	{ "PUKDF",		SC_PKCS15_PUKDF		},
 	{ "PUKDF-TRUSTED",	SC_PKCS15_PUKDF_TRUSTED	},
@@ -102,7 +102,7 @@ static struct map		pkcs15dfnames[] = {
 	{ "AODF",		SC_PKCS15_AODF		},
 	{ 0, 0 }
 };
-static struct map		pintypenames[] = {
+static struct map		pinTypeNames[] = {
 	{ "BCD",		0			},
 	{ "ascii-numeric",	1			},
 	{ "utf8",		2			},
@@ -110,11 +110,14 @@ static struct map		pintypenames[] = {
 	{ "iso9564-1",		4			},
 	{ 0, 0 }
 };
-static struct map		algorithmnames[] = {
+static struct map		algorithmNames[] = {
 	{ "RSA",		SC_PKCS15_TYPE_PRKEY_RSA },
+#ifdef SC_PKCS15_TYPE_PRKEY_DSA
+	{ "DSA",		SC_PKCS15_TYPE_PRKEY_DSA },
+#endif
 	{ 0, 0 }
 };
-static struct map		keyusagenames[] = {
+static struct map		keyUsageNames[] = {
 	{ "ENCRYPT",		SC_PKCS15_PRKEY_USAGE_ENCRYPT	},
 	{ "DECRYPT",		SC_PKCS15_PRKEY_USAGE_DECRYPT	},
 	{ "SIGN",		SC_PKCS15_PRKEY_USAGE_SIGN	},
@@ -127,6 +130,14 @@ static struct map		keyusagenames[] = {
 	{ "NONREPUDIATION",	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION},
 	{ 0, 0 }
 };
+static struct map		keyAccessFlags[] = {
+	{ "SENSITIVE",		0x01	},
+	{ "EXTRACT",		0x02	},
+	{ "ALWAYSSENSITIVE",	0x04	},
+	{ "NEVEREXTRACT",	0x08	},
+	{ "LOCAL",		0x10	},
+	{ 0, 0 }
+};
 
 static int	process(int, char **);
 static char *	next_word(char **p);
@@ -136,8 +147,6 @@ static int	map_str2int(const char *, unsigned int *, struct map *);
 static int	map_int2str(unsigned int, const char **, struct map *);
 static int	setstr(char **strp, const char *value);
 static void	parse_error(const char *, ...);
-static int	add_object(struct sc_pkcs15_card *, int, int, unsigned int,
-			void *, size_t);
 
 static struct sc_file *
 init_file(unsigned int type)
@@ -188,6 +197,10 @@ sc_profile_init(struct sc_profile *pro)
 		p15card->flags = SC_PKCS15_CARD_FLAG_EID_COMPLIANT;
 		p15card->version = 1;
 	}
+
+	/* Assume card does RSA natively, but no DSA */
+	pro->rsa_access_flags = 0x1D;
+	pro->dsa_access_flags = 0x12;
 }
 
 int
@@ -263,7 +276,7 @@ fix_acl(struct sc_profile *pro, struct sc_acl_entry *acl)
 			}
 		}
 		
-		if (map_int2str(acl->method, &name, keytypenames))
+		if (map_int2str(acl->method, &name, keyTypeNames))
 			fatal("ACL with bad or UNKNOWN condition");
 
 		fatal("ACL references %s%u, which is not defined",
@@ -321,7 +334,7 @@ sc_profile_finish(struct sc_profile *pro)
 			error("No File given for private key %s", pk->ident);
 			res = 1;
 		}
-		if (!pk->pkcs15.com_attr.auth_id.len) {
+		if (!pk->pkcs15_obj.auth_id.len) {
 			error("No auth_id set for private key %s", pk->ident);
 			res = 1;
 		}
@@ -337,7 +350,7 @@ sc_profile_finish(struct sc_profile *pro)
 		pk->pkcs15.path = pk->file->file->path;
 
 		/* Set up the key ACL */
-		id = &pk->pkcs15.com_attr.auth_id;
+		id = &pk->pkcs15_obj.auth_id;
 		for (pi = pro->pin_list; pi; pi = pi->next) {
 			if (sc_pkcs15_compare_id(&pi->pkcs15.auth_id, id) == 1)
 				break;
@@ -375,10 +388,10 @@ sc_profile_build_pkcs15(struct sc_profile *pro)
 
 	/* Loop over all PINs and make sure they're sane */
 	for (pi = pro->pin_list; pi && !res; pi = pi->next) {
-		res = add_object(p15card, SC_PKCS15_AODF,
+		res = sc_pkcs15_add_object(p15card,
+				&p15card->df[SC_PKCS15_AODF],
 				pi->file->pkcs15.fileno,
-				SC_PKCS15_TYPE_AUTH_PIN,
-				&pi->pkcs15, sizeof(pi->pkcs15));
+				&pi->pkcs15_obj);
 	}
 
 	/* Loop over all private keys and add them to the PrKDF */
@@ -387,9 +400,10 @@ sc_profile_build_pkcs15(struct sc_profile *pro)
 			fatal("No file for private key \"%s\"\n", ki->ident);
 		memcpy(&ki->pkcs15.path, &ki->file->file->path,
 			sizeof(struct sc_path));
-		res = add_object(p15card, SC_PKCS15_PRKDF,
-				ki->file->pkcs15.fileno, ki->type,
-				&ki->pkcs15, sizeof(ki->pkcs15));
+		res = sc_pkcs15_add_object(p15card,
+			       	&p15card->df[SC_PKCS15_PRKDF],
+				ki->file->pkcs15.fileno,
+			       	&ki->pkcs15_obj);
 	}
 
 	return res;
@@ -472,6 +486,30 @@ do_card_manufacturer(int argc, char **argv)
 }
 
 static int
+do_default_access_flags(int argc, char **argv)
+{
+	unsigned int	*flags, access;
+
+	if (!strcasecmp(argv[0], "RSA")) {
+		flags = &parser.profile->rsa_access_flags;
+	} else
+	if (!strcasecmp(argv[0], "DSA")) {
+		flags = &parser.profile->dsa_access_flags;
+	} else {
+		parse_error("Unknown alforithm \"%s\"", argv[0]);
+		return 1;
+	}
+	argc--, argv++;
+	*flags = 0;
+	while (argc--) {
+		if (map_str2int(argv[0], &access, keyAccessFlags))
+			return 1;
+		*flags |= access;
+	}
+	return 0;
+}
+
+static int
 do_mf(int argc, char **argv)
 {
 	parser.section = PARSE_FILE;
@@ -525,7 +563,7 @@ do_ef(int argc, char **argv)
 	} else {
 		struct sc_pkcs15_df *df;
 
-		if (map_str2int(name+7, &df_type, pkcs15dfnames))
+		if (map_str2int(name+7, &df_type, pkcs15DfNames))
 			return 1;
 
 		df = &pro->p15_card->df[df_type];
@@ -575,7 +613,7 @@ do_structure(int argc, char **argv)
 {
 	unsigned int	ef_structure;
 
-	if (map_str2int(argv[0], &ef_structure, efnames))
+	if (map_str2int(argv[0], &ef_structure, efTypeNames))
 		return 1;
 	parser.cur_file->file->ef_structure = ef_structure;
 	return 0;
@@ -659,7 +697,7 @@ do_acl(int argc, char **argv)
 		} else {
 			const struct sc_acl_entry *acl;
 
-			if (map_str2int(oper, &op, opnames))
+			if (map_str2int(oper, &op, fileOpNames))
 				goto bad;
 			acl = sc_file_get_acl_entry(file, op);
 			if (acl->method == SC_AC_NEVER
@@ -704,8 +742,11 @@ do_pin(int argc, char **argv)
 	pi->pkcs15.min_length = pro->pin_minlen;
 	pi->pkcs15.stored_length = pro->pin_maxlen;
 	pi->pkcs15.pad_char = pro->pin_pad_char;
-	pi->pkcs15.com_attr.flags = 0x03; /* XXX */
 	pi->pkcs15.magic = SC_PKCS15_PIN_MAGIC;
+
+	pi->pkcs15_obj.flags = 0x03; /* XXX */
+	pi->pkcs15_obj.type = SC_PKCS15_TYPE_AUTH_PIN;
+	pi->pkcs15_obj.data = &pi->pkcs15;
 
 	for (tail = &pro->pin_list; *tail; tail = &(*tail)->next)
 		;
@@ -754,7 +795,7 @@ do_pin_type(int argc, char **argv)
 {
 	unsigned int	type;
 
-	if (map_str2int(argv[0], &type, pintypenames))
+	if (map_str2int(argv[0], &type, pinTypeNames))
 		return 1;
 	parser.cur_pin->pkcs15.type = type;
 	return 0;
@@ -781,7 +822,7 @@ do_pin_authid(int argc, char **argv)
 static int
 do_pin_label(int argc, char **argv)
 {
-	strcpy(parser.cur_pin->pkcs15.com_attr.label, argv[0]);
+	strcpy(parser.cur_pin->pkcs15_obj.label, argv[0]);
 	return 0;
 }
 
@@ -796,13 +837,16 @@ do_prkey(int argc, char **argv)
 
 	ki = calloc(1, sizeof(*ki));
 	ki->ident = strdup(argv[0]);
-	ki->type  = SC_PKCS15_TYPE_PRKEY_RSA;
-	ki->pkcs15.access_flags = 0x1D;
+
 	/* We initialize the modulus length at 1024 to make sure
 	 * the PrKDF is big enough.
 	 * This value will be overwritten later when the keys are
 	 * loaded into the card. */
 	ki->pkcs15.modulus_length = 1024;
+	ki->pkcs15.access_flags = pro->rsa_access_flags;
+
+	ki->pkcs15_obj.type = SC_PKCS15_TYPE_PRKEY_RSA;
+	ki->pkcs15_obj.data = &ki->pkcs15;
 
 	for (tail = &pro->prkey_list; *tail; tail = &(*tail)->next)
 		;
@@ -836,13 +880,27 @@ do_prkey_index(int argc, char **argv)
 static int
 do_prkey_algorithm(int argc, char **argv)
 {
-	return map_str2int(argv[0], &parser.cur_prkey->type, algorithmnames);
+	struct prkey_info	*ki = parser.cur_prkey;
+
+	if (map_str2int(argv[0], &ki->pkcs15_obj.type, algorithmNames))
+		return 1;
+	switch (ki->pkcs15_obj.type) {
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+		ki->pkcs15.access_flags = parser.profile->rsa_access_flags;
+		break;
+#ifdef SC_PKCS15_TYPE_PRKEY_DSA
+	case SC_PKCS15_TYPE_PRKEY_DSA:
+		ki->pkcs15.access_flags = parser.profile->dsa_access_flags;
+		break;
+#endif
+	}
+	return 0;
 }
 
 static int
 do_prkey_label(int argc, char **argv)
 {
-	strcpy(parser.cur_prkey->pkcs15.com_attr.label, argv[0]);
+	strcpy(parser.cur_prkey->pkcs15_obj.label, argv[0]);
 	return 0;
 }
 
@@ -856,7 +914,7 @@ do_prkey_id(int argc, char **argv)
 static int
 do_prkey_authid(int argc, char **argv)
 {
-	sc_pkcs15_format_id(argv[0], &parser.cur_prkey->pkcs15.com_attr.auth_id);
+	sc_pkcs15_format_id(argv[0], &parser.cur_prkey->pkcs15_obj.auth_id);
 	return 0;
 }
 
@@ -865,9 +923,24 @@ do_prkey_usage(int argc, char **argv)
 {
 	struct sc_pkcs15_prkey_info *ki = &parser.cur_prkey->pkcs15;
 
-	if (map_str2int(argv[0], &ki->usage, keyusagenames)) {
+	if (map_str2int(argv[0], &ki->usage, keyUsageNames)) {
 		parse_error("Bad key usage \"%s\"", argv[0]);
 		return 1;
+	}
+	return 0;
+}
+
+static int
+do_prkey_access_flags(int argc, char **argv)
+{
+	struct sc_pkcs15_prkey_info *ki = &parser.cur_prkey->pkcs15;
+	unsigned int	access;
+
+	ki->access_flags = 0;
+	while (argc--) {
+		if (map_str2int(argv[0], &access, keyAccessFlags))
+			return 1;
+		ki->access_flags |= access;
 	}
 	return 0;
 }
@@ -888,6 +961,7 @@ static struct command	commands[] = {
  { "Key",		PARSE_CARDINFO,	3,	3,	do_key		},
  { "Label",		PARSE_CARDINFO,	1,	1,	do_card_label	},
  { "Manufacturer",	PARSE_CARDINFO,	1,	1,	do_card_manufacturer},
+ { "PrKeyAccessFlags",	PARSE_CARDINFO,	2,	-1,	do_default_access_flags },
  { "MF",		-1,		0,	0,	do_mf		},
  { "DF",		-1,		0,	0,	do_df		},
  { "EF",		-1,		1,	1,	do_ef		},
@@ -913,6 +987,7 @@ static struct command	commands[] = {
  { "ID",		PARSE_PRKEY,	1,	1,	do_prkey_id	},
  { "AuthID",		PARSE_PRKEY,	1,	1,	do_prkey_authid	},
  { "KeyUsage",		PARSE_PRKEY,	1,	1,	do_prkey_usage	},
+ { "AccessFlags",	PARSE_PRKEY,	1,	-1,	do_prkey_access_flags },
  { "Reference",		PARSE_PRKEY,	1,	1,	do_prkey_reference },
 #if 0
 #endif
@@ -1075,7 +1150,7 @@ get_authid(const char *value, unsigned int *type, unsigned int *num)
 	strncpy(temp, value, n);
 	temp[n] = '\0';
 
-	if (map_str2int(temp, type, aclnames))
+	if (map_str2int(temp, type, aclNames))
 		return 1;
 	if (value[n])
 		return get_uint(value + n, num);
@@ -1144,30 +1219,4 @@ parse_error(const char *fmt, ...)
 	fprintf(stderr, "%s:%d: ", parser.filename, parser.lineno);
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);
-}
-
-static int
-add_object(struct sc_pkcs15_card *p15card, int df_type,
-		int file_nr, unsigned int type,
-		void *data, size_t datalen)
-{
-	struct sc_pkcs15_object *obj;
-
-	obj = calloc(1, sizeof(*obj));
-	obj->type = type;
-
-	/* Note: we assume that objects allocated by sc_profile will
-	 * be around as long as the profile is around, so there's
-	 * no need to copy them here. What's more, this allows us
-	 * to update an object (say, the modulus_length of a prkey
-	 * object) and simply rewrite the file, without having to
-	 * mess with this object list. */
-#if 0
-	obj->data = malloc(datalen);
-	memcpy(obj->data, data, datalen);
-#else
-	obj->data = data;
-#endif
-	return sc_pkcs15_add_object(p15card, &p15card->df[df_type],
-			file_nr, obj);
 }
