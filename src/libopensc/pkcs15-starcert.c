@@ -61,7 +61,7 @@ typedef struct pdata_st {
 const pindata pins[] = {
 	{ "99", "DS pin", "3F00DF01", 0x99, SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
 	  8, 8, SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_LOCAL, 
-	  3, 0x00, 
+	  -1, 0x00, 
 	  SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
 	{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0}
 };

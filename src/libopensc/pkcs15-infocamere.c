@@ -241,7 +241,7 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15emu_add_pin(p15card, &id,
                                 nonrepPIN, &path, 0x99,
                                 SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-                                5, 8, flags, 3, 0,
+                                5, 8, flags, -1, 0,
 				SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE);
 
 

@@ -119,7 +119,7 @@ sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
 			p15card, &id, pinlist[i].label, &path, pinlist[i].pinref,
 			SC_PKCS15_PIN_TYPE_ASCII_NUMERIC, 6, 16,
         		SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED,
-			3, 0, 
+			-1, 0, 
 			SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE
 		);
 	}
