@@ -227,7 +227,8 @@ static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
 		return rv;
 
 	pkcs15_init_token_info(card, &slot->token_info);
-	slot->token_info.flags = CKF_USER_PIN_INITIALIZED;
+	slot->token_info.flags = CKF_USER_PIN_INITIALIZED
+				| CKF_WRITE_PROTECTED;
 	slot->fw_data = auth;
 
 	if (auth != NULL) {
@@ -250,7 +251,7 @@ static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
 		slot->token_info.ulMinPinLen = 4;
 	}
 
-	debug(context, "Initialized token '%s'\n", tmp);
+	debug(context, "Initialized token '%s'\n", slot->token_info.label);
 	*out = slot;
 	return CKR_OK;
 }
