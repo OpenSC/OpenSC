@@ -3,4 +3,4 @@
 MAINTAINERCLEANFILES = Makefile.in
 
 # Order IS important
-SUBDIRS = common scconf scldap scrandom libopensc tests tools openssh scam pam sia pkcs11
+SUBDIRS = common scconf scldap scrandom libopensc pkcs15init tests tools openssh scam pam sia pkcs11
