@@ -57,7 +57,7 @@ char *get_pin(UI_METHOD * ui_method, char *sc_pin, int maxlen)
 		UI_free(ui);
 		return NULL;
 	}
-	if (!UI_process(ui)) {
+	if (UI_process(ui)) {
 		fprintf(stderr, "UI_process failed\n");
 		return NULL;
 	}
