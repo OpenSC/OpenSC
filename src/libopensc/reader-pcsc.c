@@ -148,7 +148,8 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 	sRecvPci.dwProtocol = opensc_proto_to_pcsc(slot->active_protocol);
 	sRecvPci.cbPciLength = sizeof(sRecvPci);
 	
-	if (prv->gpriv->apdu_fix && sendsize >= 6) {
+	if (prv->gpriv->apdu_fix && sendsize >= 6
+	 && slot->active_protocol == SC_PROTO_T0) {
 		/* Check if the APDU in question is of Case 4 */
 		const u8 *p = sendbuf;
 		int lc;
