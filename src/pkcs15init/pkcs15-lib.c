@@ -1976,26 +1976,37 @@ int
 sc_pkcs15init_update_file(struct sc_profile *profile, struct sc_card *card,
 	       	struct sc_file *file, void *data, unsigned int datalen)
 {
+	struct sc_file	*info = NULL;
 	int		r;
 
 	card->ctx->log_errors = 0;
-	if ((r = sc_select_file(card, &file->path, NULL)) < 0) {
+	if ((r = sc_select_file(card, &file->path, &info)) < 0) {
 		card->ctx->log_errors = 1;
 		/* Create file if it doesn't exist */
 		if (file->size < datalen)
 			file->size = datalen;
 		if (r != SC_ERROR_FILE_NOT_FOUND
 		 || (r = sc_pkcs15init_create_file(profile, card, file)) < 0
-		 || (r = sc_select_file(card, &file->path, NULL)) < 0)
+		 || (r = sc_select_file(card, &file->path, &info)) < 0)
 			return r;
 	}
 	card->ctx->log_errors = 1;
+
+	if (info->size < datalen) {
+		char	buf[16];
+
+		sc_bin_to_hex(file->path.value, file->path.len, buf, sizeof(buf), "");
+		p15init_error("File %s too small - please increase size in profile", buf);
+		sc_file_free(info);
+		return SC_ERROR_TOO_MANY_OBJECTS;
+	}
 
 	/* Present authentication info needed */
 	r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_UPDATE);
 	if (r >= 0 && datalen)
 		r = sc_update_binary(card, 0, (const u8 *) data, datalen, 0);
 
+	sc_file_free(info);
 	return r;
 }
 
