@@ -53,6 +53,8 @@ int sc_test_init(int *argc, char *argv[])
 	}
 	printf("connected.\n");
 	fflush(stdout);
+
+	return 0;
 }
 
 void sc_test_cleanup()
