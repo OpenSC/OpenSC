@@ -172,6 +172,9 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 
         slot = session->slot;
 
+	if (!(slot->token_info.flags & CKF_USER_PIN_INITIALIZED))
+		return CKR_USER_PIN_NOT_INITIALIZED;
+
 	if (slot->login_user >= 0)
                 return CKR_USER_ALREADY_LOGGED_IN;
 
