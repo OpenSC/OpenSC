@@ -419,7 +419,7 @@ int main(void)
 		ac_cv_openssldir=$ssldir
 		SSL_MSG="yes"
 	fi
-])
+], [SSL_MSG=yes])
 
 if (test ! -z "$ac_cv_openssldir" && test "x$ac_cv_openssldir" != "x(system)") ; then
 	dnl Need to recover ssldir - test above runs in subshell
