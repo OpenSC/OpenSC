@@ -14,7 +14,7 @@
 
 struct sc_pkcs11_module {
 	unsigned int		_magic;
-#if defined(linux)
+#if defined(linux) || defined(_WIN32)
 	void *			_dl_handle;
 #endif
 };
@@ -133,3 +133,44 @@ sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 }
 
 #endif
+
+#ifdef _WIN32
+#include <windows.h>
+
+/*
+ * Module loader for the Windows platform.
+ */
+int
+sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
+{
+	mod->_dl_handle = LoadLibrary(name);
+
+	return (mod->_dl_handle? 0 : GetLastError());
+}
+
+int
+sys_dlclose(struct sc_pkcs11_module *mod)
+{
+	if (mod->_dl_handle) {
+		if (FreeLibrary(mod->_dl_handle)) {
+			mod->_dl_handle = NULL;
+			return 0;
+		}
+		else
+			return -1;
+	}
+
+	return 0;
+}
+
+void *
+sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
+{
+	if (!mod->_dl_handle)
+		return NULL;
+	return GetProcAddress(mod->_dl_handle, name);
+}
+
+#endif // _WIN32
+
+

@@ -566,7 +566,7 @@ get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, CK_ULONG_PTR pulCount) \
 	rv = p11->C_GetAttributeValue(sess, obj, &attr, 1); \
 	if (rv == CKR_OK) { \
 		if (!(attr.pValue = malloc(attr.ulValueLen))) \
-			fatal("out of memory in %s: %m", __FUNCTION__); \
+			fatal("out of memory in get" #ATTR ": %m"); \
 		rv = p11->C_GetAttributeValue(sess, obj, &attr, 1); \
 	} \
 	if (rv != CKR_OK) \
