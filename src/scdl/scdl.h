@@ -10,8 +10,8 @@
  *                     Stef Hoeben <stef.hoeben@zetes.com>
  */
 
-#ifndef _SC_RANDOM_H
-#define _SC_RANDOM_H
+#ifndef _SC_DL_H
+#define _SC_DL_H
 
 #ifdef __cplusplus
 extern "C" {
