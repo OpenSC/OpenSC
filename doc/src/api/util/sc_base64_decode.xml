@@ -1,4 +1,5 @@
 <refentry id="scbase64decode">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_base64_decode</refentrytitle>
 		<manvolnum>3</manvolnum>

@@ -1,4 +1,5 @@
 <refentry id="scdercopy">
+	<refentryinfo><title>OpenSC API Reference</title></refentryinfo>
 	<refmeta>
 		<refentrytitle>sc_der_copy</refentrytitle>
 		<manvolnum>3</manvolnum>
