@@ -80,6 +80,7 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
         /* fixme: we should also support max_length [wk] */
 	sc_format_asn1_entry(asn1_pin_attr + 5, &info.reference, NULL, 0);
 	sc_format_asn1_entry(asn1_pin_attr + 6, &info.pad_char, &padchar_len, 0);
+        /* We don't support lastPinChange yet. */
 	sc_format_asn1_entry(asn1_pin_attr + 8, &info.path, NULL, 0);
 
 	sc_format_asn1_entry(asn1_com_ao_attr + 0, &info.auth_id, NULL, 0);
@@ -153,6 +154,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	struct sc_card *card;
 	u8 pinbuf[SC_MAX_PIN_SIZE];
         size_t len;
+        int ref;
 
 	assert(p15card != NULL);
 	if (pin->magic != SC_PKCS15_PIN_MAGIC)
@@ -170,9 +172,12 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	memset(pinbuf, pin->pad_char, pin->stored_length);
 	memcpy(pinbuf, pincode, pinlen);
         len = pin->stored_length;
-        if ( !(pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING))
+        if (!(pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING))
                 len = pinlen;
-	r = sc_verify(card, SC_AC_CHV, pin->reference,
+        ref = pin->reference & 0x1f;
+        if ((pin->flags & SC_PKCS15_PIN_FLAG_LOCAL))
+		ref |= 0x80;
+	r = sc_verify(card, SC_AC_CHV, ref,
 		      pinbuf, len, &pin->tries_left);
 	memset(pinbuf, 0, pinlen);
 	sc_unlock(card);
