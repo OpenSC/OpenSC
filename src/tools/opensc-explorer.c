@@ -1103,7 +1103,7 @@ static int parse_line(char *in, char **argv, int maxargc)
 	return argc;
 }
 
-static char * my_readline(const char *prompt)
+static char * my_readline(char *prompt)
 {
 	static char buf[256];
         static int initialized;
