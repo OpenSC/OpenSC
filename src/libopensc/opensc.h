@@ -1,4 +1,4 @@
-/*
+	/*
  * opensc.h: OpenSC library header file
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
@@ -321,6 +321,7 @@ const char *sc_strerror(int error);
 extern const char *sc_version;
 
 extern const struct sc_card_driver *sc_get_iso7816_driver(void);
+extern const struct sc_card_driver *sc_get_emv_driver(void);
 extern const struct sc_card_driver *sc_get_setec_driver(void);
 extern const struct sc_card_driver *sc_get_mflex_driver(void);
 extern const struct sc_card_driver *sc_get_default_driver(void);

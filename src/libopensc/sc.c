@@ -200,6 +200,9 @@ int sc_establish_context(struct sc_context **ctx_out)
 	ctx->card_drivers[i++] = sc_get_iso7816_driver();
 #endif
 #if 1
+	ctx->card_drivers[i++] = sc_get_emv_driver();
+#endif
+#if 1
 	/* this should be last in line */
 	ctx->card_drivers[i++] = sc_get_default_driver();
 #endif

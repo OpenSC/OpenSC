@@ -401,13 +401,13 @@ int enum_dir(struct sc_path path, int depth)
 			printf("] ");
 		}
 		switch (file.type) {
-		case 0:
+		case SC_FILE_TYPE_WORKING_EF:
 			tmps = "wEF";
 			break;
-		case 1:
+		case SC_FILE_TYPE_INTERNAL_EF:
 			tmps = "iEF";
 			break;
-		case 7:
+		case SC_FILE_TYPE_DF:
 			tmps = "DF";
 			break;
 		default:
@@ -415,14 +415,9 @@ int enum_dir(struct sc_path path, int depth)
 			break;
 		}	
 		printf("type: %-3s ", tmps);
-		if (file.type != 7)
+		if (file.type != SC_FILE_TYPE_DF)
 			printf("ef structure: %d ", file.ef_structure);
 		printf("size: %d ", file.size);
-		if (file.type == 0 && 0) {
-			r = sc_read_binary(card, 0, buf, file.size);
-			if (r > 0)
-				hex_dump(buf, r);
-		}
 		if (file.sec_attr_len) {
 			printf("sec: ");
 			/* Octets are as follows:
@@ -434,10 +429,15 @@ int enum_dir(struct sc_path path, int depth)
 			hex_dump(file.sec_attr, file.sec_attr_len);
 		}
 		printf("\n");
+		if (file.type != SC_FILE_TYPE_DF && 1) {
+			r = sc_read_binary(card, 0, buf, file.size);
+			if (r > 0)
+				hex_dump_asc(buf, r);
+		}
 	} else {
 		printf("\n");
 	}
-	if (!sc_file_valid(&file) || file.type == 7) {
+	if (!sc_file_valid(&file) || file.type == SC_FILE_TYPE_DF) {
 		int i;
 
 		r = sc_list_files(card, files, sizeof(files));
