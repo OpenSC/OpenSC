@@ -19,5 +19,5 @@ engine_pkcs11_la_SOURCES = hw_pkcs11.c engine_pkcs11.c engine_pkcs11.h \
 			   p11_load.c p11_misc.c p11_rsa.c p11_slot.c \
 			   pkcs11-internal.h libpkcs11.h
 engine_pkcs11_la_CFLAGS = -DOPENSSL_THREADS -D_REENTRANT -DDSO_DLFCN -DHAVE_DLFCN_H -DOPENSSL_NO_KRB5 -DL_ENDIAN -DTERMIO -DENGINE_DYNAMIC_SUPPORT -DSHA1_ASM -DMD5_ASM -DRMD160_ASM @CFLAGS_OPENSC@
-engine_pkcs11_la_LIBADD = @LIBCRYPTOA@ ../pkcs11/.libs/libpkcs11.a 
+engine_pkcs11_la_LIBADD = @LIBCRYPTOA@ ../pkcs11/libpkcs11.la 
 engine_pkcs11_la_LDFLAGS = -Wl,-Bsymbolic -module -avoid-version 
