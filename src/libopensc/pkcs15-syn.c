@@ -32,6 +32,7 @@ static int	sc_pkcs15_bind_emulation(sc_pkcs15_card_t *, const char *,
 extern int	sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *);
 extern int 	sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *);
 extern int 	sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *);
+extern int	sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *);
 
 static struct {
 	const char *		name;
@@ -40,6 +41,7 @@ static struct {
       {	"openpgp",		sc_pkcs15emu_openpgp_init	},
       { "infocamere",           sc_pkcs15emu_infocamere_init    },
       { "starcert",             sc_pkcs15emu_starcert_init      },
+      { "netkey",		sc_pkcs15emu_netkey_init	},
       { NULL }
 };
 
