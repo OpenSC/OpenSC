@@ -569,6 +569,8 @@ do_file_type(struct state *cur, int argc, char **argv)
 
 	if (!strcasecmp(type, "ef"))
 		file->type = SC_FILE_TYPE_WORKING_EF;
+	else if (!strcasecmp(type, "internal-ef"))
+		file->type = SC_FILE_TYPE_INTERNAL_EF;
 	else if (!strcasecmp(type, "df"))
 		file->type = SC_FILE_TYPE_DF;
 	else {
