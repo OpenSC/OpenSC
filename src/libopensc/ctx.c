@@ -328,6 +328,10 @@ void process_config_file(struct sc_context *ctx, struct _sc_ctx_options *opts)
 	if (ctx->conf == NULL)
 		return;
 	r = scconf_parse(ctx->conf);
+#ifdef OPENSC_CONFIG_STRING
+	if (r < 1)
+		r = scconf_parse_string(ctx->conf, OPENSC_CONFIG_STRING);
+#endif
 	if (r < 1) {
 		scconf_free(ctx->conf);
 		ctx->conf = NULL;
