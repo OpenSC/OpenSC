@@ -207,6 +207,18 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
 		args.flags |= SC_PIN_CMD_NEED_PADDING;
 
+	switch (pin->type) {
+	case SC_PKCS15_PIN_TYPE_BCD:
+		args.pin1.encoding = SC_PIN_ENCODING_BCD;
+		break;
+	case SC_PKCS15_PIN_TYPE_ASCII_NUMERIC:
+		args.pin1.encoding = SC_PIN_ENCODING_ASCII;
+		break;
+	default:
+		/* assume/hope the card driver knows how to encode the pin */
+		args.pin1.encoding = 0;
+	}
+
 	if (pinlen != 0) {
 		/* Good old-fashioned PIN verification */
 		args.pin1.data = pincode;
@@ -285,6 +297,19 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
 		data.flags |= SC_PIN_CMD_NEED_PADDING;
 
+	/* XXX: we assume here that the pin encoding type is the same for
+	 * both pins */
+	switch (pin->type) {
+	case SC_PKCS15_PIN_TYPE_BCD:
+		data.pin1.encoding = SC_PIN_ENCODING_BCD;
+		data.pin2.encoding = SC_PIN_ENCODING_BCD;
+		break;
+	case SC_PKCS15_PIN_TYPE_ASCII_NUMERIC:
+		data.pin1.encoding = SC_PIN_ENCODING_ASCII;
+		data.pin2.encoding = SC_PIN_ENCODING_ASCII;
+		break;
+	}
+
 	r = sc_pin_cmd(card, &data, &pin->tries_left);
 
 	sc_unlock(card);
@@ -350,6 +375,19 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 
 	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
 		data.flags |= SC_PIN_CMD_NEED_PADDING;
+
+	/* XXX: we assume here that the pin encoding type is the same for
+	 * both pins */
+	switch (pin->type) {
+	case SC_PKCS15_PIN_TYPE_BCD:
+		data.pin1.encoding = SC_PIN_ENCODING_BCD;
+		data.pin2.encoding = SC_PIN_ENCODING_BCD;
+		break;
+	case SC_PKCS15_PIN_TYPE_ASCII_NUMERIC:
+		data.pin1.encoding = SC_PIN_ENCODING_ASCII;
+		data.pin2.encoding = SC_PIN_ENCODING_ASCII;
+		break;
+	}
 
 	r = sc_pin_cmd(card, &data, &pin->tries_left);
 
