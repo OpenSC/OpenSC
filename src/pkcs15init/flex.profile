@@ -26,7 +26,9 @@ filesystem {
 	ACL	= *=AUT1;
 
 	DF PKCS15-AppDF {
+	    ACL		= *=AUT1, FILES=NONE;
 	    DF keydir-1 {
+		ACL		= *=AUT1, FILES=NONE;
 		file-id		= 4B01;
 		size		= 1370;	# Sufficient for a 2048-bit key
 		EF pinfile-1 {
@@ -36,14 +38,15 @@ filesystem {
             	}
 		EF template-private-key-1 {
 		    file-id		= 0012;
-		    ACL			= *=NEVER, CRYPTO=CHV1, UPDATE=AUT1;
+		    ACL			= *=NEVER, CRYPTO=$PIN, UPDATE=AUT1;
 		}
                 EF template-extractable-key-1 {
     	            file-id		= 7000;
-    	            ACL			= *=NEVER, READ=$PIN, UPDATE=AUT1;
+    	            ACL			= *=NEVER, READ=CHV1, UPDATE=AUT1;
                 }
             }
 	    DF keydir-2 {
+		ACL		= *=AUT1, FILES=NONE;
 		file-id		= 4B02;
 		size		= 1370;	# Sufficient for a 2048-bit key
 		EF pinfile-2 {
