@@ -101,11 +101,12 @@ struct sc_pkcs15_pubkey_rsa {
 
 struct sc_pkcs15_cert {
 	int version;
-	unsigned long serial;
+	u8 *serial;
+	size_t serial_len;
 
 	struct sc_pkcs15_pubkey_rsa key;
 	u8 *data;	/* DER encoded raw cert */
-	int data_len;
+	size_t data_len;
 };
 
 struct sc_pkcs15_cert_info {
