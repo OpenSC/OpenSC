@@ -29,6 +29,22 @@
 #define GET_PRIV_DATA(r) ((struct ctapi_private_data *) (r)->drv_data)
 #define GET_SLOT_DATA(r) ((struct ctapi_slot_data *) (r)->drv_data)
 
+#ifdef _WIN32
+typedef char pascal CT_INIT_TYPE(unsigned short ctn, unsigned short Pn);
+typedef char pascal CT_CLOSE_TYPE(unsigned short ctn);
+typedef char pascal CT_DATA_TYPE(unsigned short ctn, unsigned char *dad, \
+			 unsigned char *sad, unsigned short lc, \
+			 unsigned char *cmd, unsigned short *lr, \
+			 unsigned char *rsp);
+#else
+typedef char CT_INIT_TYPE(unsigned short ctn, unsigned short Pn);
+typedef char CT_CLOSE_TYPE(unsigned short ctn);
+typedef char CT_DATA_TYPE(unsigned short ctn, unsigned char *dad, \
+			 unsigned char *sad, unsigned short lc, \
+			 unsigned char *cmd, unsigned short *lr, \
+			 unsigned char *rsp);
+#endif
+
 struct ctapi_module {
 	char *name;
 	void *dlhandle;
@@ -41,12 +57,9 @@ struct ctapi_global_private_data {
 };
 
 struct ctapi_functions {
-	char (* CT_init)(unsigned short ctn, unsigned short Pn);
-	char (* CT_close)(unsigned short ctn);
-	char (* CT_data)(unsigned short ctn, unsigned char *dad,
-			 unsigned char *sad, unsigned short lc,
-			 unsigned char *cmd, unsigned short *lr,
-			 unsigned char *rsp);
+	CT_INIT_TYPE *CT_init;
+	CT_CLOSE_TYPE *CT_close;
+	CT_DATA_TYPE *CT_data;
 };
 
 /* Reader specific private data */
@@ -250,18 +263,13 @@ static int ctapi_load_module(struct sc_context *ctx,
 		return -1;
 	}
 
-	funcs.CT_init  = (char (*)(unsigned short, unsigned short))
-		scdl_get_address(dlh, "CT_init");
+	funcs.CT_init  = (CT_INIT_TYPE *) scdl_get_address(dlh, "CT_init");
 	if (!funcs.CT_init)
 		goto symerr;
-	funcs.CT_close = (char (*)(unsigned short))
-		scdl_get_address(dlh, "CT_close");
+	funcs.CT_close = (CT_CLOSE_TYPE *) scdl_get_address(dlh, "CT_close");
 	if (!funcs.CT_close)
 		goto symerr;
-	funcs.CT_data  = (char (*)(unsigned short, unsigned char *,
-		 unsigned char *, unsigned short,
-		 unsigned char *, unsigned short *,
-		 unsigned char *)) scdl_get_address(dlh, "CT_data");
+	funcs.CT_data  = (CT_DATA_TYPE *) scdl_get_address(dlh, "CT_data");
 	if (!funcs.CT_data)
 		goto symerr;
 
