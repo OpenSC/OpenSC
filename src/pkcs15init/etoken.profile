@@ -24,6 +24,13 @@ filesystem {
     DF MF {
         DF PKCS15-AppDF {
 	    size		= 2048;
+
+	    # Bump the size of the EF(PrKDF) - with split
+	    # keys, we may need a little more room.
+	    EF PKCS15-PrKDF {
+		size		= 256;
+	    }
+
             EF template-private-key {
 		type		= internal-ef;
     	        file-id		= 4B01;	# This is the base FileID
