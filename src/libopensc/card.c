@@ -297,6 +297,8 @@ static void sc_card_free(struct sc_card *card)
 			free(card->app[i]->ddo);
 		free(card->app[i]);
 	}
+	if (card->ef_dir != NULL)
+		sc_file_free(card->ef_dir);
 	free(card->ops);
 	if (card->algorithms != NULL)
 		free(card->algorithms);

@@ -51,6 +51,7 @@ static const struct sc_card_driver setcos_drv = {
 
 static int setcos_finish(struct sc_card *card)
 {
+	free(DRVDATA(card));
 	return 0;
 }
 

@@ -108,13 +108,13 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 		strcat(card->serial_number, byte);
 	}
 	if (card->manufacturer_id == NULL) {
-		if (asn1_tokeninfo[2].flags & SC_ASN1_PRESENT)
+		if (asn1_toki[2].flags & SC_ASN1_PRESENT)
 			card->manufacturer_id = strdup((char *) mnfid);
 		else
 			card->manufacturer_id = strdup("(unknown)");
 	}
 	if (card->label == NULL) {
-		if (asn1_tokeninfo[3].flags & SC_ASN1_PRESENT)
+		if (asn1_toki[3].flags & SC_ASN1_PRESENT)
 			card->label = strdup((char *) label);
 		else
 			card->label = strdup("(unknown)");
