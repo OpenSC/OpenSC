@@ -180,10 +180,7 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
 	if (rv != CKR_OK)
 		return rv;
 
-	return slot->card->framework->get_mechanism_list(slot->card,
-							 slot->fw_data,
-							 pMechanismList,
-							 pulCount);
+	return sc_pkcs11_get_mechanism_list(slot->card, pMechanismList, pulCount);
 }
 
 CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
@@ -197,10 +194,7 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
 	if (rv != CKR_OK)
 		return rv;
 
-	return slot->card->framework->get_mechanism_info(slot->card,
-							 slot->fw_data,
-							 type,
-							 pInfo);
+	return sc_pkcs11_get_mechanism_info(slot->card, type, pInfo);
 }
 
 CK_RV C_InitToken(CK_SLOT_ID slotID,

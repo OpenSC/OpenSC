@@ -87,6 +87,7 @@ struct pkcs15_pubkey_object {
 	struct sc_pkcs15_pubkey *key;
 };
 
+static int	register_mechanisms(struct sc_pkcs11_card *p11card);
 static int	get_public_exponent(struct sc_pkcs15_pubkey *,
 					CK_ATTRIBUTE_PTR);
 static int	get_modulus(struct sc_pkcs15_pubkey *,
@@ -95,9 +96,6 @@ static int	get_modulus_bits(struct sc_pkcs15_pubkey *,
 					CK_ATTRIBUTE_PTR);
 static int	asn1_sequence_wrapper(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 static void	cache_pin(void *, int, const void *, size_t);
-#ifdef HAVE_OPENSSL
-static void	hash_sha1(const void *, size_t, unsigned char *);
-#endif
 
 /* PKCS#15 Framework */
 
@@ -106,7 +104,9 @@ static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
 	int rc = sc_pkcs15_bind(p11card->card,
 				(struct sc_pkcs15_card**) &p11card->fw_data);
 	debug(context, "Binding to PKCS#15, rc=%d\n", rc);
-        return sc_to_cryptoki_error(rc, p11card->reader);
+	if (rc < 0)
+		return sc_to_cryptoki_error(rc, p11card->reader);
+	return register_mechanisms(p11card);
 }
 
 static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
@@ -411,9 +411,6 @@ static CK_RV pkcs15_get_mechanism_list(struct sc_pkcs11_card *p11card,
 	static const CK_MECHANISM_TYPE mechanism_list[] = {
 		CKM_RSA_PKCS,
 		CKM_RSA_X_509,
-#ifdef HAVE_OPENSSL
-                CKM_SHA1_RSA_PKCS,
-#endif
 	};
         const int numMechanisms = sizeof(mechanism_list) / sizeof(mechanism_list[0]);
 
@@ -439,8 +436,9 @@ static CK_RV pkcs15_get_mechanism_info(struct sc_pkcs11_card *p11card,
 {
 	switch (type) {
 	case CKM_RSA_PKCS:
-	case CKM_SHA1_RSA_PKCS:
-                pInfo->flags = CKF_HW | CKF_SIGN;
+	case CKM_RSA_X_509:
+		/* FIXME: we should consult the card on what it supports */
+                pInfo->flags = CKF_HW | CKF_SIGN | CKF_UNWRAP;
 		pInfo->ulMinKeySize = 512;
                 pInfo->ulMaxKeySize = 2048;
 		break;
@@ -1132,9 +1130,6 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
 	int rv, flags = 0;
-#ifdef HAVE_OPENSSL
-	unsigned char digest[20];
-#endif
 
 	debug(context, "Initiating signing operation.\n");
 
@@ -1166,15 +1161,7 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 	case CKM_RSA_X_509:
 		flags = SC_ALGORITHM_RSA_RAW;
 		break;
-#ifdef HAVE_OPENSSL
-	case CKM_SHA1_RSA_PKCS:
-
-		flags |= SC_ALGORITHM_RSA_HASH_SHA1;
-		hash_sha1(pData, ulDataLen, digest);
-		pData = digest;
-		ulDataLen = 20;
-		break;
-#endif
+	/* CKM_SHA1_RSA_PKCS et al are handled at the mechanism layer */
 	default:
                 return CKR_MECHANISM_INVALID;
 	}
@@ -1491,16 +1478,30 @@ cache_pin(void *p, int user, const void *pin, size_t len)
 	}
 }
 
-#ifdef HAVE_OPENSSL
-#include <openssl/sha.h>
-
-static void
-hash_sha1(const void *data, size_t size, unsigned char *digest)
+/*
+ * Mechanism handling
+ * FIXME: We should consult the card's algorithm list to
+ * find out what operations it supports
+ */
+int
+register_mechanisms(struct sc_pkcs11_card *p11card)
 {
-	SHA_CTX	ctx;
+	CK_MECHANISM_INFO mech_info;
+	int rc;
 
-	SHA1_Init(&ctx);
-	SHA1_Update(&ctx, data, size);
-	SHA1_Final(digest, &ctx);
+	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP;
+	mech_info.ulMinKeySize = 512;
+	mech_info.ulMaxKeySize = 2048;
+	rc = sc_pkcs11_register_mechanism(p11card,
+			sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS, &mech_info, CKK_RSA, NULL));
+	if (rc != CKR_OK)
+		return rc;
+	rc = sc_pkcs11_register_mechanism(p11card,
+			sc_pkcs11_new_fw_mechanism(CKM_RSA_X_509, &mech_info, CKK_RSA, NULL));
+	if (rc != CKR_OK)
+		return rc;
+
+	/* Register generic mechanisms (e.g. digest mechanisms, software encryption/
+	 * decryption stuff, and hash+sign algorithms */
+	return sc_pkcs11_register_generic_mechanisms(p11card);
 }
-#endif

@@ -163,6 +163,10 @@ struct sc_pkcs11_card {
 	struct sc_card *card;
         struct sc_pkcs11_framework_ops *framework;
 	void *fw_data;
+
+	/* List of supported mechanisms */
+	struct sc_pkcs11_mechanism_type **mechanisms;
+	unsigned int nmechanisms;
 };
 
 struct sc_pkcs11_slot {
@@ -183,21 +187,57 @@ struct sc_pkcs11_slot {
 };
 
 
+/* Forward decl */
+typedef struct sc_pkcs11_operation sc_pkcs11_operation_t;
+
+enum {
+	SC_PKCS11_OPERATION_FIND = 0,
+	SC_PKCS11_OPERATION_SIGN,
+	SC_PKCS11_OPERATION_DIGEST,
+	SC_PKCS11_OPERATION_MAX
+};
+
+/* This describes a PKCS11 mechanism */
+struct sc_pkcs11_mechanism_type {
+	CK_MECHANISM_TYPE mech;		/* algorithm: md5, sha1, ... */
+	CK_MECHANISM_INFO mech_info;	/* mechanism info */
+	CK_MECHANISM_TYPE key_type;	/* for sign/decipher ops */
+	unsigned int	  obj_size;
+
+	/* General management */
+	void		  (*release)(sc_pkcs11_operation_t *);
+
+	/* Digest/sign Operations */
+	CK_RV		  (*md_init)(sc_pkcs11_operation_t *);
+	CK_RV		  (*md_update)(sc_pkcs11_operation_t *,
+					CK_BYTE_PTR, CK_ULONG);
+	CK_RV		  (*md_final)(sc_pkcs11_operation_t *,
+					CK_BYTE_PTR, CK_ULONG_PTR);
+
+	CK_RV		  (*sign_init)(sc_pkcs11_operation_t *,
+					struct sc_pkcs11_object *);
+	CK_RV		  (*sign_update)(sc_pkcs11_operation_t *,
+					CK_BYTE_PTR, CK_ULONG);
+	CK_RV		  (*sign_final)(sc_pkcs11_operation_t *,
+					CK_BYTE_PTR, CK_ULONG_PTR);
+
+	/* mechanism specific data */
+	void *		  mech_data;
+};
+typedef struct sc_pkcs11_mechanism_type sc_pkcs11_mechanism_type_t;
+
+/*
+ * Generic operation
+ */
 struct sc_pkcs11_operation {
-        int type;
+	sc_pkcs11_mechanism_type_t *type;
+	CK_MECHANISM	  mechanism;
+	struct sc_pkcs11_session *session;
+	void *		  priv_data;
 };
 
-#define SC_PKCS11_OPERATION_FIND        1
-#define SC_PKCS11_OPERATION_SIGN        2
-
-struct sc_pkcs11_sign_operation {
-        struct sc_pkcs11_operation operation;
-	struct sc_pkcs11_object *key;
-        CK_MECHANISM mechanism;
-};
-
+/* Find Operation */
 #define SC_PKCS11_FIND_MAX_HANDLES	32
-
 struct sc_pkcs11_find_operation {
 	struct sc_pkcs11_operation operation;
         int num_handles, current_handle;
@@ -215,9 +255,10 @@ struct sc_pkcs11_session {
 	/* Notifications */
 	CK_NOTIFY notify_callback;
         CK_VOID_PTR notify_data;
-	/* Active operation */
-	struct sc_pkcs11_operation *operation;
+	/* Active operations - one per type */
+	struct sc_pkcs11_operation *operation[SC_PKCS11_OPERATION_MAX];
 };
+typedef struct sc_pkcs11_session sc_pkcs11_session_t;
 
 /* Module variables */
 extern struct sc_context *context;
@@ -250,9 +291,12 @@ CK_RV pool_find(struct sc_pkcs11_pool *, CK_ULONG, void **);
 CK_RV pool_find_and_delete(struct sc_pkcs11_pool *, CK_ULONG, void **);
 
 /* Session manipulation */
-CK_RV session_start_operation(struct sc_pkcs11_session *, int, int, struct sc_pkcs11_operation **);
-CK_RV session_check_operation(struct sc_pkcs11_session *, int);
-CK_RV session_stop_operation(struct sc_pkcs11_session *);
+CK_RV session_start_operation(struct sc_pkcs11_session *, 
+			int, sc_pkcs11_mechanism_type_t *,
+			struct sc_pkcs11_operation **);
+CK_RV session_get_operation(struct sc_pkcs11_session *, int,
+			struct sc_pkcs11_operation **);
+CK_RV session_stop_operation(struct sc_pkcs11_session *, int);
 
 /* Generic secret key stuff */
 CK_RV sc_pkcs11_create_secret_key(struct sc_pkcs11_session *,
@@ -268,6 +312,35 @@ CK_RV attr_find(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
 CK_RV attr_find_ptr(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void **, size_t *);
 CK_RV attr_find_var(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
 CK_RV attr_extract(CK_ATTRIBUTE_PTR, void *, size_t *);
+
+/* Generic Mechanism functions */
+CK_RV sc_pkcs11_register_mechanism(struct sc_pkcs11_card *,
+				sc_pkcs11_mechanism_type_t *);
+CK_RV sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *,
+				CK_MECHANISM_TYPE_PTR, CK_ULONG_PTR);
+CK_RV sc_pkcs11_get_mechanism_info(struct sc_pkcs11_card *, CK_MECHANISM_TYPE,
+				CK_MECHANISM_INFO_PTR);
+CK_RV sc_pkcs11_md_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR);
+CK_RV sc_pkcs11_md_update(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
+CK_RV sc_pkcs11_md_final(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG_PTR);
+CK_RV sc_pkcs11_sign_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR,
+				struct sc_pkcs11_object *, CK_MECHANISM_TYPE);
+CK_RV sc_pkcs11_sign_update(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
+CK_RV sc_pkcs11_sign_final(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG_PTR);
+CK_RV sc_pkcs11_sign_hash(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG,
+				CK_BYTE_PTR, CK_ULONG_PTR);
+sc_pkcs11_mechanism_type_t *sc_pkcs11_find_mechanism(struct sc_pkcs11_card *,
+				CK_MECHANISM_TYPE, int);
+sc_pkcs11_mechanism_type_t *sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE,
+				CK_MECHANISM_INFO_PTR, CK_KEY_TYPE,
+				void *);
+sc_pkcs11_operation_t *sc_pkcs11_new_operation(sc_pkcs11_session_t *,
+				sc_pkcs11_mechanism_type_t *);
+void sc_pkcs11_release_operation(sc_pkcs11_operation_t **);
+CK_RV sc_pkcs11_register_generic_mechanisms(struct sc_pkcs11_card *);
+#ifdef HAVE_OPENSSL
+void sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *);
+#endif
 
 #ifdef __cplusplus
 }

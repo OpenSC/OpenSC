@@ -165,40 +165,58 @@ CK_RV pool_find_and_delete(struct sc_pkcs11_pool *pool, CK_ULONG handle, void **
 }
 
 /* Session manipulation */
-CK_RV session_start_operation(struct sc_pkcs11_session *session, int type,
-			      int size, struct sc_pkcs11_operation **operation)
+CK_RV session_start_operation(struct sc_pkcs11_session *session,
+			      int type,
+			      sc_pkcs11_mechanism_type_t *mech,
+			      struct sc_pkcs11_operation **operation)
 {
+	sc_pkcs11_operation_t *op;
+
 	if (context == NULL)
                 return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	if (session->operation != NULL)
+	if (type < 0 || type >= SC_PKCS11_OPERATION_MAX)
+		return CKR_ARGUMENTS_BAD;
+
+	if (session->operation[type] != NULL)
 		return CKR_OPERATION_ACTIVE;
 
-	session->operation = (struct sc_pkcs11_operation*) malloc(size);
-	session->operation->type = type;
-        *operation = session->operation;
+	if (!(op = sc_pkcs11_new_operation(session, mech)))
+		return CKR_HOST_MEMORY;
+
+	session->operation[type] = op;
+	if (operation)
+		*operation = op;
 
         return CKR_OK;
 }
 
-CK_RV session_check_operation(struct sc_pkcs11_session *session, int type)
+CK_RV session_get_operation(struct sc_pkcs11_session *session, int type,
+				sc_pkcs11_operation_t **operation)
 {
-	if (session->operation == NULL)
+	sc_pkcs11_operation_t *op;
+
+	if (type < 0 || type >= SC_PKCS11_OPERATION_MAX)
+		return CKR_ARGUMENTS_BAD;
+
+	if (!(op = session->operation[type]))
 		return CKR_OPERATION_NOT_INITIALIZED;
 
-	if (session->operation->type != type)
-		return CKR_OPERATION_NOT_INITIALIZED;
+	if (operation)
+		*operation = op;
 
         return CKR_OK;
 }
 
-CK_RV session_stop_operation(struct sc_pkcs11_session *session)
+CK_RV session_stop_operation(struct sc_pkcs11_session *session, int type)
 {
-	if (session->operation == NULL)
+	if (type < 0 || type >= SC_PKCS11_OPERATION_MAX)
+		return CKR_ARGUMENTS_BAD;
+
+	if (session->operation[type] == NULL)
 		return CKR_OPERATION_NOT_INITIALIZED;
 
-	free(session->operation);
-	session->operation = NULL;
+	sc_pkcs11_release_operation(&session->operation[type]);
         return CKR_OK;
 }
 

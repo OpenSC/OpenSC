@@ -22,6 +22,12 @@
 #include <string.h>
 #include "sc-pkcs11.h"
 
+/* Pseudo mechanism for the Find operation */
+static sc_pkcs11_mechanism_type_t	find_mechanism = {
+	0, { 0 }, 0, 
+	sizeof(struct sc_pkcs11_find_operation),
+};
+
 CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		     CK_ATTRIBUTE_PTR  pTemplate,   /* the object's template */
 		     CK_ULONG          ulCount,     /* attributes in template */
@@ -171,9 +177,8 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	debug(context, "C_FindObjectsInit(slot = %d)\n", session->slot->id);
         dump_template("C_FindObjectsInit()", pTemplate, ulCount);
 
-	rv = session_start_operation(session,
-                                     SC_PKCS11_OPERATION_FIND,
-				     sizeof(struct sc_pkcs11_find_operation),
+	rv = session_start_operation(session, SC_PKCS11_OPERATION_FIND,
+                                     &find_mechanism,
 				     (struct sc_pkcs11_operation**) &operation);
 
 	if (rv != CKR_OK)
@@ -245,11 +250,10 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,          /* the session's han
 	if (rv != CKR_OK)
 		return rv;
 
-	rv = session_check_operation(session, SC_PKCS11_OPERATION_FIND);
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_FIND,
+				(sc_pkcs11_operation_t **) &operation);
 	if (rv != CKR_OK)
 		return rv;
-
-        operation = (struct sc_pkcs11_find_operation*) session->operation;
 
 	to_return = operation->num_handles - operation->current_handle;
 	if (to_return > ulMaxObjectCount)
@@ -275,11 +279,11 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) /* the session's handle */
 	if (rv != CKR_OK)
 		return rv;
 
-	rv = session_check_operation(session, SC_PKCS11_OPERATION_FIND);
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_FIND, NULL);
 	if (rv != CKR_OK)
 		return rv;
 
-        session_stop_operation(session);
+        session_stop_operation(session, SC_PKCS11_OPERATION_FIND);
         return CKR_OK;
 }
 
@@ -291,7 +295,17 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) /* the session's handle */
 CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 		   CK_MECHANISM_PTR  pMechanism) /* the digesting mechanism */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+        int rv;
+	struct sc_pkcs11_session *session;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = sc_pkcs11_md_init(session, pMechanism);
+
+        debug(context, "C_DigestInit returns %d\n", rv);
+        return rv;
 }
 
 CK_RV C_Digest(CK_SESSION_HANDLE hSession,     /* the session's handle */
@@ -300,14 +314,36 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,     /* the session's handle */
 	       CK_BYTE_PTR       pDigest,      /* receives the message digest */
 	       CK_ULONG_PTR      pulDigestLen) /* receives byte length of digest */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+        int rv;
+	struct sc_pkcs11_session *session;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = sc_pkcs11_md_update(session, pData, ulDataLen);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
+
+        debug(context, "C_Digest returns %d\n", rv);
+        return rv;
 }
 
 CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		     CK_BYTE_PTR       pPart,     /* data to be digested */
 		     CK_ULONG          ulPartLen) /* bytes of data to be digested */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+        int rv;
+	struct sc_pkcs11_session *session;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = sc_pkcs11_md_update(session, pPart, ulPartLen);
+
+        debug(context, "C_DigestUpdate returns %d\n", rv);
+        return rv;
 }
 
 CK_RV C_DigestKey(CK_SESSION_HANDLE hSession,  /* the session's handle */
@@ -320,7 +356,17 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,     /* the session's handle */
 		    CK_BYTE_PTR       pDigest,      /* receives the message digest */
 		    CK_ULONG_PTR      pulDigestLen) /* receives byte count of digest */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+        int rv;
+	struct sc_pkcs11_session *session;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
+
+        debug(context, "C_DigestFinal returns %d\n", rv);
+        return rv;
 }
 
 CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
@@ -328,12 +374,13 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		 CK_OBJECT_HANDLE  hKey)        /* handle of the signature key */
 {
         CK_BBOOL can_sign;
+	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE sign_attribute = { CKA_SIGN, &can_sign, sizeof(can_sign) };
+	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
 
         int rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
-        struct sc_pkcs11_sign_operation *operation;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -349,22 +396,15 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	rv = object->ops->get_attribute(session, object, &sign_attribute);
         if (rv != CKR_OK || !can_sign)
                 return CKR_KEY_TYPE_INCONSISTENT;
+	rv = object->ops->get_attribute(session, object, &key_type_attr);
+        if (rv != CKR_OK)
+                return CKR_KEY_TYPE_INCONSISTENT;
 
         debug(context, "Sign operation initialized\n");
 
-	rv = session_start_operation(session,
-                                     SC_PKCS11_OPERATION_SIGN,
-				     sizeof(struct sc_pkcs11_sign_operation),
-				     (struct sc_pkcs11_operation**) &operation);
+	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
-	if (rv != CKR_OK)
-                return rv;
-
-	operation->key = object;
-	memcpy((void*) &operation->mechanism, (void*) pMechanism, sizeof(CK_MECHANISM));
-
-        debug(context, "Sign initialization succesful\n");
-
+        debug(context, "Sign initialization returns %d\n", rv);
         return rv;
 }
 
@@ -376,29 +416,16 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 {
         int rv;
 	struct sc_pkcs11_session *session;
-        struct sc_pkcs11_object *object;
-        struct sc_pkcs11_sign_operation *operation;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		return rv;
 
-        rv = session_check_operation(session, SC_PKCS11_OPERATION_SIGN);
-	if (rv != CKR_OK)
-                return rv;
-
-        operation = (struct sc_pkcs11_sign_operation *) session->operation;
-	object = operation->key;
-
-	rv = object->ops->sign(session, object, &operation->mechanism,
-			       pData, ulDataLen,
-			       pSignature, pulSignatureLen);
+	rv = sc_pkcs11_sign_update(session, pData, ulDataLen);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 
 	debug(context, "Signing result was %d\n", rv);
-
-        if (rv != CKR_BUFFER_TOO_SMALL && pSignature != NULL_PTR)
-		session_stop_operation(session);
-
         return rv;
 
 }
@@ -407,21 +434,73 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		   CK_BYTE_PTR       pPart,     /* the data (digest) to be signed */
 		   CK_ULONG          ulPartLen) /* count of bytes to be signed */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+        int rv;
+	struct sc_pkcs11_session *session;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = sc_pkcs11_sign_update(session, pPart, ulPartLen);
+	debug(context, "C_SignUpdate returns %d\n", rv);
+        return rv;
 }
 
 CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,        /* the session's handle */
 		  CK_BYTE_PTR       pSignature,      /* receives the signature */
 		  CK_ULONG_PTR      pulSignatureLen) /* receives byte count of signature */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+        int rv;
+	struct sc_pkcs11_session *session;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
+	debug(context, "C_SignFinal returns %d\n", rv);
+        return rv;
 }
 
 CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 			CK_MECHANISM_PTR  pMechanism, /* the signature mechanism */
 			CK_OBJECT_HANDLE  hKey)       /* handle of the signature key */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+        CK_BBOOL can_sign;
+	CK_KEY_TYPE key_type;
+	CK_ATTRIBUTE sign_attribute = { CKA_SIGN, &can_sign, sizeof(can_sign) };
+	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
+
+        int rv;
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_object *object;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = pool_find(&session->slot->object_pool, hKey, (void**) &object);
+	if (rv != CKR_OK)
+		return rv;
+
+	if (object->ops->sign == NULL_PTR)
+                return CKR_KEY_TYPE_INCONSISTENT;
+
+	rv = object->ops->get_attribute(session, object, &sign_attribute);
+        if (rv != CKR_OK || !can_sign)
+                return CKR_KEY_TYPE_INCONSISTENT;
+	rv = object->ops->get_attribute(session, object, &key_type_attr);
+        if (rv != CKR_OK)
+                return CKR_KEY_TYPE_INCONSISTENT;
+
+	/* XXX: need to tell the signature algorithm that we want
+	 * to recover the signature */
+        debug(context, "SignRecover operation initialized\n");
+
+	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
+
+        debug(context, "Sign initialization returns %d\n", rv);
+        return rv;
 }
 
 CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,        /* the session's handle */
