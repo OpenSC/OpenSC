@@ -31,10 +31,14 @@ extern "C" {
 
 #define SC_PKCS15_PIN_MAGIC		0x31415926
 #define SC_PKCS15_MAX_PINS		2
-#define SC_PKCS15_MAX_CERTS		3
 #define SC_PKCS15_MAX_PRKEYS		2
 #define SC_PKCS15_MAX_LABEL_SIZE	32
 #define SC_PKCS15_MAX_ID_SIZE		16
+#define SC_PKCS15_MAX_CDFS		4	/* Certificate Directory
+						 * Files */
+#define SC_PKCS15_MAX_AODFS		4	/* Authentication Object 
+						 * Directory Files */
+#define SC_PKCS15_MAX_CERTS		4	/* Total certificates */
 
 struct sc_pkcs15_id {
 	u8 value[SC_PKCS15_MAX_ID_SIZE];
@@ -147,12 +151,14 @@ struct sc_pkcs15_card {
 	struct sc_pkcs15_pin_info pin_info[SC_PKCS15_MAX_PINS];
 	int pin_count;
 
-	struct sc_file file_dir, file_ao1, file_app;
+	struct sc_file file_dir, file_app;
 	/* in app DF */
 	struct sc_file file_tokeninfo, file_odf;
 	struct sc_file file_prkdf;
-	struct sc_file file_aodf, file_ao2;
-	struct sc_file file_cdf1, file_cdf2, file_cdf3;
+	struct sc_file file_cdf[SC_PKCS15_MAX_CDFS];
+	int cdf_count;
+	struct sc_file file_aodf[SC_PKCS15_MAX_AODFS];
+	int aodf_count;
 	struct sc_file file_dodf;
 };
 

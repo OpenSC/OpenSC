@@ -329,25 +329,26 @@ static int get_certs_from_file(struct sc_pkcs15_card *card,
 	int r, taglen, left;
 	u8 buf[MAX_BUFFER_SIZE];
 	const u8 *tag, *p;
-	int count = 0;
 
 	r = sc_select_file(card->card, file, &file->path,
 			   SC_SELECT_FILE_BY_PATH);
 	if (r)
 		return r;
+	if (file->size > sizeof(buf))
+		return SC_ERROR_BUFFER_TOO_SMALL;
 	r = sc_read_binary(card->card, 0, buf, file->size);
 	if (r < 0)
 		return r;
 
 	left = r;
 	p = buf;
-	count = 0;
-	while (card->cert_count < SC_PKCS15_MAX_CERTS) {
-		tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen);	/* SEQUENCE */
-		if (tag == NULL)
-			break;
-		if (parse_x509_cert_info(&card->cert_info[card->cert_count], tag, taglen))
-			break;
+	while ((tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen)) != NULL) {
+		if (card->cert_count >= SC_PKCS15_MAX_CERTS)
+			return SC_ERROR_TOO_MANY_OBJECTS;
+		r = parse_x509_cert_info(&card->cert_info[card->cert_count],
+					 tag, taglen);
+		if (r)
+			return r;
 		card->cert_count++;
 	}
 	return 0;
@@ -355,24 +356,16 @@ static int get_certs_from_file(struct sc_pkcs15_card *card,
 
 int sc_pkcs15_enum_certificates(struct sc_pkcs15_card *card)
 {
-	int r;
+	int r, i;
 	assert(card != NULL);
 
 	if (card->cert_count)
 		return card->cert_count;	/* already enumerated */
-
-	card->cert_count = 0;
-	r = get_certs_from_file(card, &card->file_cdf1);
-	if (r != 0)
-		return r;
-	if (card->file_cdf2.path.len) {
-		r = get_certs_from_file(card, &card->file_cdf2);
+	for (i = 0; i < card->cdf_count; i++) {
+		r = get_certs_from_file(card, &card->file_cdf[i]);
 		if (r != 0)
 			return r;
 	}
-	r = get_certs_from_file(card, &card->file_cdf3);
-	if (r != 0)
-		return r;
 	return card->cert_count;
 }
 

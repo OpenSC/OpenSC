@@ -2,7 +2,7 @@
 AC_INIT(libopensc)
 AC_CONFIG_SRCDIR(src/sc.c)
 AM_CONFIG_HEADER(config.h:config.h.in)
-AM_INIT_AUTOMAKE(libopensc, 0.3.5)
+AM_INIT_AUTOMAKE(libopensc, 0.4.0)
 
 
 # Checks for programs.

@@ -114,33 +114,33 @@ int sc_hex_to_bin(const char *in, u8 *out, int *outlen)
 	return err;
 }
 
-int sc_check_apdu(const struct sc_apdu *apdu)
+int sc_check_apdu(struct sc_context *ctx, const struct sc_apdu *apdu)
 {
 	switch (apdu->cse) {
 	case SC_APDU_CASE_1:
 		if (apdu->datalen)
-			return SC_ERROR_INVALID_ARGUMENTS;
+			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_APDU_CASE_2_SHORT:
 		if (apdu->datalen)
-			return SC_ERROR_INVALID_ARGUMENTS;
+			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 		if (apdu->resplen < apdu->le)
-			return SC_ERROR_INVALID_ARGUMENTS;
+			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_APDU_CASE_3_SHORT:
 		if (apdu->datalen == 0 || apdu->data == NULL)
-			return SC_ERROR_INVALID_ARGUMENTS;
+			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_APDU_CASE_4_SHORT:
 		if (apdu->datalen == 0 || apdu->data == NULL)
-			return SC_ERROR_INVALID_ARGUMENTS;
+			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 		if (apdu->resplen < apdu->le)
-			return SC_ERROR_INVALID_ARGUMENTS;
+			SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_APDU_CASE_2_EXT:
 	case SC_APDU_CASE_3_EXT:
 	case SC_APDU_CASE_4_EXT:
-		return SC_ERROR_NOT_SUPPORTED;
+		SC_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	return 0;
 }
@@ -195,6 +195,8 @@ static int sc_transceive_t0(struct sc_card *card, struct sc_apdu *apdu)
 
 	dwSendLength = data - s;
 	dwRecvLength = apdu->resplen + 2;
+	if (dwRecvLength > 255)		/* FIXME: PC/SC Lite quirk */
+		dwRecvLength = 255;
 	if (sc_debug > 3) {
 		char buf[2048];
 		
@@ -239,7 +241,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 	int r;
 	
 	SC_FUNC_CALLED(card->ctx);
-	r = sc_check_apdu(apdu);
+	r = sc_check_apdu(card->ctx, apdu);
 	SC_TEST_RET(card->ctx, r, "APDU sanity check failed");
 	r = sc_transceive_t0(card, apdu);
 	SC_TEST_RET(card->ctx, r, "transceive_t0() failed");
@@ -396,7 +398,9 @@ int sc_select_file(struct sc_card *card,
 	ctx = card->ctx;
 
 	if (in_path->len > SC_MAX_PATH_SIZE)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (in_path->len == 0)
+		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 
@@ -760,6 +764,9 @@ const char *sc_strerror(int error)
 		"Unknown reply from SmartCard",
 		"Requested object not found",
 		"Card reset"
+		"Required ASN.1 object not found",
+		"Premature end of ASN.1 stream",
+		"Too many objects",
 	};
 	int nr_errors = sizeof(errors) / sizeof(errors[0]);
 

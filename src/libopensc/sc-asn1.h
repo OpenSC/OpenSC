@@ -21,7 +21,23 @@
 #ifndef _SC_ASN1_H
 #define _SC_ASN1_H
 
+#include "opensc.h"
+
+struct sc_asn1_struct {
+	const char *name;
+	unsigned int type;
+	unsigned int tag;
+	unsigned int flags;
+	void *parm;
+	int *len;
+};
+
 /* DER tag and length parsing */
+
+int sc_asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
+		  const u8 *in, int len, const u8 **newp, int *left);
+int sc_asn1_parse_choice(struct sc_context *ctx, struct sc_asn1_struct *asn1,
+		  const u8 *in, int len, const u8 **newp, int *left);
 
 const u8 *sc_asn1_find_tag(const u8 * buf, int buflen, int tag, int *taglen);
 const u8 *sc_asn1_verify_tag(const u8 * buf, int buflen, int tag, int *taglen);
@@ -47,6 +63,38 @@ int sc_asn1_decode_bit_string_ni(const u8 * inbuf, int inlen,
 int sc_asn1_decode_integer(const u8 * inbuf, int inlen, int *out);
 int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 			     struct sc_object_id *id);
+#define SC_ASN1_CLASS_MASK		0x30000000
+#define SC_ASN1_UNI			0x00000000 /* Universal */
+#define SC_ASN1_APP			0x10000000 /* Application */
+#define SC_ASN1_CTX			0x20000000 /* Context */
+#define SC_ASN1_PRV			0x30000000 /* Private */
+#define SC_ASN1_CONS			0x01000000
+
+#define SC_ASN1_TAG_MASK		0x00FFFFFF
+
+#define SC_ASN1_PRESENT			0x00000001
+#define SC_ASN1_OPTIONAL		0x00000002
+
+#define SC_ASN1_BOOLEAN                  1
+#define SC_ASN1_INTEGER                  2
+#define SC_ASN1_BIT_STRING               3
+#define SC_ASN1_OCTET_STRING             4
+#define SC_ASN1_NULL                     5
+#define SC_ASN1_OBJECT                   6
+#define SC_ASN1_ENUMERATED               10
+#define SC_ASN1_UTF8STRING               12
+#define SC_ASN1_SEQUENCE                 16
+#define SC_ASN1_SET                      17
+#define SC_ASN1_PRINTABLESTRING          19
+#define SC_ASN1_UTCTIME                  23
+#define SC_ASN1_GENERALIZEDTIME          24
+
+/* internal structures */
+#define SC_ASN1_STRUCT			 128
+#define SC_ASN1_CHOICE			 129
+
+/* PKCS#15 structures */
+#define SC_ASN1_PATH			 256
 
 #define ASN1_TAG_CLASS			0xC0
 #define ASN1_TAG_UNIVERSAL		0x00

@@ -21,6 +21,7 @@
 #include "opensc.h"
 #include "opensc-pkcs15.h"
 #include "sc-asn1.h"
+#include "sc-log.h"
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -119,15 +120,45 @@ void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin)
 	printf("\n");
 }
 
+static int get_pins_from_file(struct sc_pkcs15_card *p15card,
+			      struct sc_file *file)
+{
+	int r, taglen, left;
+	const u8 *p, *tag;
+	u8 buf[MAX_BUFFER_SIZE];
+
+	r = sc_select_file(p15card->card, file, &file->path,
+			   SC_SELECT_FILE_BY_PATH);
+	if (r)
+		return r;
+	if (file->size > sizeof(buf))
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	r = sc_read_binary(p15card->card, 0, buf, file->size);
+	if (r < 0)
+		return r;
+
+	left = r;
+	p = buf;
+	while ((tag = sc_asn1_skip_tag(&p, &left, 0x30, &taglen)) != NULL) {
+		if (p15card->pin_count >= SC_PKCS15_MAX_PINS)
+			return SC_ERROR_TOO_MANY_OBJECTS;
+		r = decode_pin_info(tag, taglen,
+				    &p15card->pin_info[p15card->pin_count]);
+		if (r)
+			return r;
+
+		p15card->pin_count++;
+	}
+	return 0;
+}
+
 int sc_pkcs15_enum_pins(struct sc_pkcs15_card *p15card)
 {
 	int r, i;
-	u8 buf[MAX_BUFFER_SIZE];
-	const u8 *tag, *p;
-	int taglen, buflen;
+	struct sc_context *ctx = p15card->card->ctx;
 
 	assert(p15card != NULL);
-
+	SC_FUNC_CALLED(ctx);
 	if (p15card->pin_count) {
 		for (i = 0; i < p15card->pin_count; i++) {
 			if (p15card->pin_info[i].magic != SC_PKCS15_PIN_MAGIC)
@@ -136,29 +167,9 @@ int sc_pkcs15_enum_pins(struct sc_pkcs15_card *p15card)
 		if (i == p15card->pin_count)
 			return i;	/* Already enumerated */
 	}
-	
-	r = sc_select_file(p15card->card, &p15card->file_aodf,
-			   &p15card->file_aodf.path,
-			   SC_SELECT_FILE_BY_PATH);
-	if (r)
-		return r;
-	r = sc_read_binary(p15card->card, 0, buf, p15card->file_aodf.size);
-	if (r < 0)
-		return r;
-	buflen = r;
-	p = buf;
-	i = 0;
-	p15card->pin_count = 0;
-	while ((tag = sc_asn1_skip_tag(&p, &buflen, 0x30, &taglen)) != NULL) {
-
-		r = decode_pin_info(tag, taglen,
-				    &p15card->pin_info[p15card->
-						       pin_count]);
-		if (r)
-			break;
-		p15card->pin_count++;
-		if (p15card->pin_count >= SC_PKCS15_MAX_PINS)
-			break;
+	for (i = 0; i < p15card->aodf_count; i++) {
+		r = get_pins_from_file(p15card, &p15card->file_aodf[i]);
+		SC_TEST_RET(ctx, r, "Failed to read PINs from AODF");
 	}
 	return p15card->pin_count;
 }

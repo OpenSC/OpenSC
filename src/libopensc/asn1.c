@@ -20,10 +20,12 @@
 
 #include "opensc.h"
 #include "sc-asn1.h"
+#include "sc-log.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <stdlib.h>
 
 const char *tag2str(int tag)
 {
@@ -286,6 +288,50 @@ const u8 *sc_asn1_skip_tag(const u8 ** buf, int *buflen, int tag_in, int *taglen
 	return p;
 }
 
+static const u8 *sc_asn1_skip_tag2(const u8 ** buf, int *buflen, unsigned int tag_in, int *taglen_out)
+{
+	const u8 *p = *buf;
+	int len = *buflen, cla, tag, taglen;
+
+	if (read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != 1)
+		return NULL;
+	switch (cla & 0xC0) {
+	case ASN1_TAG_UNIVERSAL:
+		if ((tag_in & SC_ASN1_CLASS_MASK) != SC_ASN1_UNI)
+			return NULL;
+		break;
+	case ASN1_TAG_APPLICATION:
+		if ((tag_in & SC_ASN1_CLASS_MASK) != SC_ASN1_APP)
+			return NULL;
+		break;
+	case ASN1_TAG_CONTEXT:
+		if ((tag_in & SC_ASN1_CLASS_MASK) != SC_ASN1_CTX)
+			return NULL;
+		break;
+	case ASN1_TAG_PRIVATE:
+		if ((tag_in & SC_ASN1_CLASS_MASK) != SC_ASN1_PRV)
+			return NULL;
+		break;
+	}
+	if (cla & ASN1_TAG_CONSTRUCTED) {
+		if ((tag_in & SC_ASN1_CONS) == 0)
+			return NULL;
+	} else
+		if (tag_in & SC_ASN1_CONS)
+			return NULL;
+	if ((tag_in & SC_ASN1_TAG_MASK) != tag)
+		return NULL;
+	len -= (p - *buf);	/* header size */
+	if (taglen > len) {
+		fprintf(stderr, "skip_tag(): too long tag\n");
+		return NULL;
+	}
+	*buflen -= (p - *buf) + taglen;
+	*buf = p + taglen;	/* point to next tag */
+	*taglen_out = taglen;
+	return p;
+}
+
 const u8 *sc_asn1_verify_tag(const u8 * buf, int buflen, int tag_in, int *taglen_out)
 {
 	return sc_asn1_skip_tag(&buf, &buflen, tag_in, taglen_out);
@@ -302,7 +348,7 @@ static int decode_bit_string(const u8 * inbuf, int inlen, void *outbuf,
 
 	in++;
 	if (outlen < octets_left)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		return SC_ERROR_BUFFER_TOO_SMALL;
 	while (octets_left) {
 		/* 1st octet of input:  ABCDEFGH, where A is the MSB */
 		/* 1st octet of output: HGFEDCBA, where A is the LSB */
@@ -326,7 +372,7 @@ static int decode_bit_string(const u8 * inbuf, int inlen, void *outbuf,
 		octets_left--;
 		count++;
 	}
-	return  (count * 8) - zero_bits;
+	return (count * 8) - zero_bits;
 }
 
 int sc_asn1_decode_bit_string(const u8 * inbuf,
@@ -390,6 +436,17 @@ int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 	return 0;
 }
 
+int sc_asn1_decode_utf8string(const u8 * inbuf, int inlen,
+			      u8 *out, int *outlen)
+{
+	if (inlen+1 > *outlen)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	*outlen = inlen+1;
+	memcpy(out, inbuf, inlen);
+	out[inlen] = 0;
+	return 0;
+}
+
 int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen, u8 **ptr)
 {
 	u8 *p = out;
@@ -410,4 +467,149 @@ int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen,
 	if (ptr != NULL)
 		*ptr = p;
 	return 0;
+}
+
+int sc_asn1_parse_path(struct sc_context *ctx, const u8 *in, int len,
+		       struct sc_path *path)
+{
+	int idx, r;
+	struct sc_asn1_struct asn1_path[] = {
+		{ "path",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, &path->value, &path->len },
+		{ "index",  SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, &idx },
+		{ NULL }
+	};
+	path->len = SC_MAX_PATH_SIZE;
+	r = sc_asn1_parse(ctx, asn1_path, in, len, NULL, NULL);
+	if (r)
+		return r;
+	
+	return 0;
+}
+
+static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entry,
+			     const u8 *obj, int objlen)
+{
+	void *parm = entry->parm;
+	int *len = entry->len;
+	int r = 0;
+
+	switch (entry->type) {
+	case SC_ASN1_STRUCT:
+		assert(parm != NULL);
+		r = sc_asn1_parse(ctx, (struct sc_asn1_struct *) parm, obj, objlen, NULL, NULL);
+		break;
+	case SC_ASN1_INTEGER:
+		if (parm != NULL)
+			r = sc_asn1_decode_integer(obj, objlen, (int *) entry->parm);
+		break;
+	case SC_ASN1_BIT_STRING:
+		if (parm != NULL && len != NULL) {
+			r = sc_asn1_decode_bit_string(obj, objlen, (u8 *) parm, *len);
+			if (r >= 0) {
+				*len = r;
+				r = 0;
+			}
+		}
+		break;
+	case SC_ASN1_OCTET_STRING:
+		if (parm != NULL && len != NULL) {
+			int c = objlen > *len ? *len : objlen;
+			
+			memcpy(parm, obj, c);
+			*len = c;
+		}
+		break;
+	case SC_ASN1_OBJECT:
+		if (parm != NULL)
+			r = sc_asn1_decode_object_id(obj, objlen, (struct sc_object_id *) parm);
+		break;
+	case SC_ASN1_UTF8STRING:
+		if (parm != NULL && len != NULL)
+			r = sc_asn1_decode_utf8string(obj, objlen, parm, len);
+		break;
+	case SC_ASN1_PATH:
+		if (entry->parm != NULL)
+			r = sc_asn1_parse_path(ctx, obj, objlen, (struct sc_path *) entry->parm);
+		break;
+	default:
+		error(ctx, "invalid ASN.1 type: %d\n", entry->type);
+		assert(0);
+	}
+	if (r) {
+		error(ctx, "decoding of ASN.1 object failed: %s\n", entry->name);
+		return r;
+	}
+	entry->flags |= SC_ASN1_PRESENT;
+	return 0;
+}
+
+int sc_asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
+		  const u8 *in, int len, const u8 **newp, int *len_left)
+{
+	int r;
+	const u8 *p = in, *obj;
+	struct sc_asn1_struct *entry = asn1;
+	int left = len, objlen;
+
+	SC_FUNC_CALLED(ctx);
+	while (entry->name != NULL) {
+		r = 0;
+		obj = sc_asn1_skip_tag2(&p, &left, entry->tag, &objlen);
+		if (obj == NULL) {
+			if (entry->flags & SC_ASN1_OPTIONAL) {
+				entry++;
+				continue;
+			}
+			error(ctx, "mandatory ASN.1 object not found: %s\n", entry->name);
+			return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
+		}
+		r = asn1_decode_entry(ctx, entry, obj, objlen);
+		if (r)
+			return r;
+		entry++;
+ 	}
+ 	if (newp != NULL)
+ 		*newp = p;
+ 	if (len_left != NULL)
+ 		*len_left = left;
+ 	return 0;
+}
+
+int sc_asn1_parse_choice(struct sc_context *ctx, struct sc_asn1_struct *asn1,
+			 const u8 *in, int len, const u8 **newp, int *len_left)
+{
+	int r, idx = 0;
+	const u8 *p = in, *obj;
+	struct sc_asn1_struct *entry;
+	int left = len, objlen;
+
+	SC_FUNC_CALLED(ctx);
+	entry = asn1;
+	while (entry->name) {
+		entry->flags &= ~SC_ASN1_PRESENT;
+		entry++;
+	}
+	if (left < 2)
+		return SC_ERROR_ASN1_END_OF_CONTENTS;
+	if (p[0] == 0 && p[1] == 0)
+		return SC_ERROR_ASN1_END_OF_CONTENTS;
+	entry = asn1;
+	while (entry->name) {
+		r = 0;
+		obj = sc_asn1_skip_tag2(&p, &left, entry->tag, &objlen);
+		if (obj == NULL) {
+			idx++;
+			entry++;
+			continue;
+		}
+		r = asn1_decode_entry(ctx, entry, obj, objlen);
+		if (r)
+			return r;
+		if (newp != NULL)
+			*newp = p;
+		if (len_left != NULL)
+ 			*len_left = left;
+		return idx;
+	}
+	return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 }

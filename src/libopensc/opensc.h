@@ -56,6 +56,9 @@ extern "C" {
 #define SC_ERROR_UNKNOWN_REPLY			-1023
 #define SC_ERROR_OBJECT_NOT_FOUND		-1024
 #define SC_ERROR_CARD_RESET			-1025
+#define SC_ERROR_ASN1_OBJECT_NOT_FOUND		-1026
+#define SC_ERROR_ASN1_END_OF_CONTENTS		-1027
+#define SC_ERROR_TOO_MANY_OBJECTS		-1028
 
 #define SC_APDU_CASE_NONE		0
 #define SC_APDU_CASE_1                  1
@@ -111,6 +114,7 @@ struct sc_object_id {
 struct sc_path {
 	u8 value[SC_MAX_PATH_SIZE];
 	int len;
+	int index;
 };
 
 struct sc_file {

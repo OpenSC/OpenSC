@@ -55,84 +55,51 @@ void sc_pkcs15_print_card(const struct sc_pkcs15_card *card)
 	printf("\n");
 }
 
-static int extract_path(const u8 * buf, int buflen, struct sc_path *path)
-{
-	const u8 *tag;
-	int taglen;
-
-	tag = sc_asn1_verify_tag(buf, buflen, 0x30, &taglen);
-	if (tag == NULL)
-		return -1;
-	tag = sc_asn1_verify_tag(tag, taglen, 0x04, &taglen);	/* OCTET STRING */
-	if (tag == NULL)
-		return -1;
-	memcpy(path->value, tag, taglen);
-	path->len = taglen;
-
-	return 0;
-}
-
 void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, int buflen)
 {
-	const u8 *tag, *p = buf;
-	int i, taglen, left = buflen;
+	int i, r;
+	u8 serial[128];
+	int serial_len = sizeof(serial);
+	u8 mnfid[128];
+	int mnfid_len = sizeof(mnfid);
+	int flags_len = sizeof(card->flags);
 
-	p = sc_asn1_verify_tag(buf, buflen, 0x30, &left);	/* SEQUENCE */
-	if (p == NULL)
+	struct sc_asn1_struct asn1_tokeninfo[] = {
+		{ "version",        SC_ASN1_INTEGER,      ASN1_INTEGER, 0, &card->version },
+		{ "serialNumber",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, serial, &serial_len },
+		{ "manufacturerID", SC_ASN1_UTF8STRING,   ASN1_UTF8STRING, SC_ASN1_OPTIONAL, mnfid, &mnfid_len },
+		{ "label",	    SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL },
+		{ "tokenflags",	    SC_ASN1_BIT_STRING,   ASN1_BIT_STRING, 0, &card->flags, &flags_len },
+		{ "seInfo",	    SC_ASN1_SEQUENCE,	  SC_ASN1_CONS | ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL },
+		{ "recordInfo",	    SC_ASN1_SEQUENCE,     SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL },
+		{ "supportedAlgorithms", SC_ASN1_SEQUENCE,SC_ASN1_CTX | 2, SC_ASN1_OPTIONAL, NULL },
+		{ NULL } };
+
+	buf = sc_asn1_verify_tag(buf, buflen, 0x30, &buflen);	/* SEQUENCE */
+	if (buf == NULL) {
+		error(card->card->ctx, "invalid EF(TokenInfo)\n");
 		goto err;
-	tag = sc_asn1_skip_tag(&p, &left, 0x02, &taglen);	/* INTEGER */
-	if (tag == NULL)
+	}
+	r = sc_asn1_parse(card->card->ctx, asn1_tokeninfo, buf, buflen, NULL, NULL);
+	if (r) {
+		error(card->card->ctx, "ASN.1 parsing failed: %s\n", sc_strerror(r));
 		goto err;
-	card->version = tag[0] + 1;
-	tag = sc_asn1_skip_tag(&p, &left, 0x04, &taglen);	/* OCTET STRING */
-	if (tag == NULL)
-		goto err;
-	card->serial_number = malloc(taglen * 2 + 1);
+	}
+	card->version += 1;
+	card->serial_number = malloc(serial_len * 2 + 1);
 	card->serial_number[0] = 0;
-	for (i = 0; i < taglen; i++) {
+	for (i = 0; i < serial_len; i++) {
 		char byte[3];
 
-		sprintf(byte, "%02X", tag[i]);
+		sprintf(byte, "%02X", serial[i]);
 		strcat(card->serial_number, byte);
 	}
-	tag = sc_asn1_skip_tag(&p, &left, 0x0C, &taglen);	/* UTF8 STRING */
-	if (tag == NULL)
-		goto err;
-	card->manufacturer_id = malloc(taglen + 1);
-	memcpy(card->manufacturer_id, tag, taglen);
-	card->manufacturer_id[taglen] = 0;
-	tag = sc_asn1_skip_tag(&p, &left, 0x80, &taglen);	/* Label */
-	if (tag != NULL) {	/* skip this tag */
-	}
-	tag = sc_asn1_skip_tag(&p, &left, 0x03, &taglen);	/* BIT STRING */
-	if (tag == NULL)
-		goto err;
-	sc_asn1_decode_bit_string(tag, taglen, &card->flags,
-				  sizeof(card->flags));
-	tag = sc_asn1_find_tag(p, left, 0xA2, &taglen);	/* supportedAlgo */
-	if (tag == NULL)
-		goto err;
-	p = sc_asn1_skip_tag(&tag, &taglen, 0x30, &left);	/* SEQUENCE */
-	if (p == NULL)
-		goto err;
-	tag = sc_asn1_skip_tag(&p, &left, 0x02, &taglen);	/* INTEGER */
-	if (tag == NULL)
-		goto err;
-	card->alg_info[0].reference = tag[0];
-	tag = sc_asn1_skip_tag(&p, &left, 0x02, &taglen);	/* INTEGER */
-	if (tag == NULL)
-		goto err;
-	card->alg_info[0].algorithm = tag[0];
-	tag = sc_asn1_find_tag(p, left, 0x03, &taglen); /* BIT STRING */ ;
-	if (tag == NULL)
-		goto err;
-	sc_asn1_decode_bit_string(tag, taglen,
-				  &card->alg_info[0].supported_operations,
-				  sizeof(card->alg_info[0].
-					 supported_operations));
-
+	if (asn1_tokeninfo[2].flags & SC_ASN1_PRESENT)
+		card->manufacturer_id = strdup(mnfid);
+	else
+		card->manufacturer_id = strdup("(unknown)");
 	return;
-      err:
+err:
 	if (card->serial_number == NULL)
 		card->serial_number = strdup("(unknown)");
 	if (card->manufacturer_id == NULL)
@@ -142,77 +109,101 @@ void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, int buflen)
 
 static int parse_dir(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 {
-	const u8 *tag;
-	int taglen;
-	const char *aid = "\xA0\x00\x00\x00\x63PKCS-15";
-	const int aidlen = 12;
+	const u8 *aidref = "\xA0\x00\x00\x00\x63PKCS-15";
+	const int aidref_len = 12;
+	int r;
+	u8 aid[128], label[128], path[128];
+	int aid_len = sizeof(aid), label_len = sizeof(label),
+	    path_len = sizeof(path);
+	
+	struct sc_asn1_struct asn1_ddo[] = {
+		{ "oid",	 SC_ASN1_OBJECT, ASN1_OBJECT, 0, NULL },
+		{ "odfPath",	   SC_ASN1_PATH, SC_ASN1_CONS | ASN1_SEQUENCE, SC_ASN1_OPTIONAL, &card->file_odf.path },
+		{ "tokenInfoPath", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, &card->file_tokeninfo.path },
+		{ "unusedPath",    SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL },
+		{ NULL }
+	};
+	struct sc_asn1_struct asn1_dir[] = {
+		{ "aid",   SC_ASN1_OCTET_STRING, SC_ASN1_APP | 15, 0, aid, &aid_len },
+		{ "label", SC_ASN1_UTF8STRING,   SC_ASN1_APP | 16, SC_ASN1_OPTIONAL, label, &label_len },
+		{ "path",  SC_ASN1_OCTET_STRING, SC_ASN1_APP | 17, 0, path, &path_len },
+		{ "ddo",   SC_ASN1_STRUCT,       SC_ASN1_APP | 19 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, asn1_ddo },
+		{ NULL }
+	};
 
 	buf = sc_asn1_verify_tag(buf, buflen, 0x61, &buflen);
-	if (buf == NULL)
+	if (buf == NULL) {
+		error(card->card->ctx, "No [APPLICATION 1] tag in EF(DIR)\n");
 		return -1;
-
-	tag = sc_asn1_skip_tag(&buf, &buflen, 0x4F, &taglen);
-	if (taglen != aidlen || memcmp(aid, tag, aidlen) != 0)
-		return -1;
-
-	tag = sc_asn1_skip_tag(&buf, &buflen, 0x50, &taglen);
-	if (taglen > 0) {
-		card->label = malloc(taglen + 1);
-		if (card->label != NULL) {
-			memcpy(card->label, tag, taglen);
-			card->label[taglen] = 0;
-		}
-	} else
-		card->label = strdup("(unknown)");
-	tag = sc_asn1_skip_tag(&buf, &buflen, 0x51, &taglen);
-	if (tag == NULL)
-		return -1;
-	memcpy(card->file_app.path.value, tag, taglen);
-	card->file_app.path.len = taglen;
-	tag = sc_asn1_skip_tag(&buf, &buflen, 0x73, &taglen);
-	if (taglen > 2) {
-		/* FIXME: process DDO */
 	}
+	r = sc_asn1_parse(card->card->ctx, asn1_dir, buf, buflen, NULL, NULL);
+	if (r) {
+		error(card->card->ctx, "EF(DIR) parsing failed: %s\n",
+		      sc_strerror(r));
+		return r;
+	}
+	if (aid_len != aidref_len || memcmp(aidref, aid, aid_len) != 0) {
+		error(card->card->ctx, "AID in EF(DIR) is invalid\n");
+		return -1;
+	}
+	if (asn1_dir[1].flags & SC_ASN1_PRESENT)
+		card->label = strdup(label);
+	else
+		card->label = strdup("(unknown)");
+	memcpy(card->file_app.path.value, path, path_len);
+	card->file_app.path.len = path_len;	
+	
 	return 0;
 }
 
 static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 {
-	const u8 *tag;
-	int taglen;
-
-	/* authObjects */
-	if ((tag = sc_asn1_find_tag(buf, buflen, 0xA8, &taglen)) == NULL)
-		return -1;
-	if (extract_path(tag, taglen, &card->file_aodf.path))
-		return -1;
-	/* CDF #1 -- Card holder certificates */
-	if ((tag = sc_asn1_find_tag(buf, buflen, 0xA4, &taglen)) == NULL)
-		return -1;
-	if (extract_path(tag, taglen, &card->file_cdf1.path))
-		return -1;
-	/* CDF #2 -- New certificates */
-	tag += taglen;
-	taglen += 2;
-	if ((tag = sc_asn1_verify_tag(tag, taglen, 0xA4, &taglen)) == NULL)
-		return -1;
-	if (extract_path(tag, taglen, &card->file_cdf2.path))
-		return -1;
-	/* CDF #3 -- Trusted CA certificates */
-	if ((tag = sc_asn1_find_tag(buf, buflen, 0xA5, &taglen)) == NULL)
-		return -1;
-	if (extract_path(tag, taglen, &card->file_cdf3.path))
-		return -1;
-	/* PrKDF */
-	if ((tag = sc_asn1_find_tag(buf, buflen, 0xA0, &taglen)) == NULL)
-		return -1;
-	if (extract_path(tag, taglen, &card->file_prkdf.path))
-		return -1;
-	/* DODF */
-	if ((tag = sc_asn1_find_tag(buf, buflen, 0xA7, &taglen)) == NULL)
-		return -1;
-	if (extract_path(tag, taglen, &card->file_dodf.path))
-		return -1;
+	const u8 *p = buf;
+	int r, left = buflen;
+	struct sc_path path;
+	struct sc_asn1_struct asn1_obj_or_path[] = {
+		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path },
+		{ NULL } };
+	struct sc_asn1_struct asn1_odf[] = {
+		{ "privateKeys",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, asn1_obj_or_path },
+		{ "certificates",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 4 | SC_ASN1_CONS, 0, asn1_obj_or_path },
+		{ "trustedCertificates", SC_ASN1_STRUCT, SC_ASN1_CTX | 5 | SC_ASN1_CONS, 0, asn1_obj_or_path },
+		{ "dataObjects",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 7 | SC_ASN1_CONS, 0, asn1_obj_or_path },
+		{ "authObjects",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 8 | SC_ASN1_CONS, 0, asn1_obj_or_path },
+	};
+	
+	while (left > 0) {
+		r = sc_asn1_parse_choice(card->card->ctx, asn1_odf, p, left, &p, &left);
+		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
+			break;
+		if (r < 0)
+			return r;
+		switch (r) {
+		case 0:
+			card->file_prkdf.path = path;
+			break;
+		case 1:
+		case 2:
+			if (card->cdf_count == SC_PKCS15_MAX_CDFS) {
+				error(card->card->ctx, "too many CDFs on card\n");
+				break;
+			}
+			card->file_cdf[card->cdf_count].path = path;
+			card->cdf_count++;
+			break;
+		case 3:
+			card->file_dodf.path = path;
+			break;
+		case 4:
+			if (card->aodf_count == SC_PKCS15_MAX_AODFS) {
+				error(card->card->ctx, "too many AODFs on card\n");
+				break;
+			}
+			card->file_aodf[card->aodf_count].path = path;
+			card->aodf_count++;
+			break;
+		}
+	}
 	return 0;
 }
 
@@ -274,11 +265,15 @@ int sc_pkcs15_init(struct sc_card *card,
 		err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
 		goto error;
 	}
-	defaults = find_defaults(buf, err);
+	if (p15card->card->ctx->use_cache)
+		defaults = find_defaults(buf, err);
 	if (defaults == NULL) {
-		memcpy(&tmppath, &p15card->file_app.path, sizeof(struct sc_path));
-		memcpy(tmppath.value + tmppath.len, "\x50\x31", 2);
-		tmppath.len += 2;
+		if (p15card->file_odf.path.len == 0) {
+			tmppath = p15card->file_app.path;
+			memcpy(tmppath.value + tmppath.len, "\x50\x31", 2);
+			tmppath.len += 2;
+		} else
+			tmppath = p15card->file_odf.path;
 		err = sc_select_file(card, &p15card->file_odf, &tmppath,
 				     SC_SELECT_FILE_BY_PATH);
 		if (err)
@@ -295,9 +290,12 @@ int sc_pkcs15_init(struct sc_card *card,
 			err = SC_ERROR_PKCS15_CARD_NOT_FOUND;
 			goto error;
 		}
-		tmppath.len -= 2;
-		memcpy(tmppath.value + tmppath.len, "\x50\x32", 2);
-		tmppath.len += 2;
+		if (p15card->file_tokeninfo.path.len == 0) {
+			tmppath.len -= 2;
+			memcpy(tmppath.value + tmppath.len, "\x50\x32", 2);
+			tmppath.len += 2;
+		} else
+			tmppath = p15card->file_tokeninfo.path;
 	} else {
 		defaults->defaults_func(p15card, defaults->arg);
 		tmppath = p15card->file_tokeninfo.path;
@@ -316,7 +314,7 @@ int sc_pkcs15_init(struct sc_card *card,
 	parse_tokeninfo(p15card, buf, err);
 	*p15card_out = p15card;
 	return 0;
-      error:
+error:
 	free(p15card);
 	return err;
 }
@@ -355,7 +353,6 @@ int sc_pkcs15_parse_common_object_attr(struct sc_pkcs15_common_obj_attr *attr,
 		attr->auth_id.len = 0;
 
 	/* FIXME: parse rest */
-	attr->auth_id.len = 0;
 	attr->user_consent = 0;
 
 	return 0;

@@ -99,11 +99,13 @@ static int fineid_pkcs15_defaults(struct sc_pkcs15_card *arg,
 	card->alg_info[0].supported_operations = 0xa2;
 	
 	format_file_struct(&card->file_app, "5015", 7); /* 7 = DF, 0 = EF */
-	format_file_struct(&card->file_aodf, "50154401", 0);
+	card->aodf_count = 1;
+	format_file_struct(&card->file_aodf[0], "50154401", 0);
 	format_file_struct(&card->file_prkdf, "50154402", 0);
-	format_file_struct(&card->file_cdf1, "50154403", 0);
-	format_file_struct(&card->file_cdf2, "50154404", 0);
-	format_file_struct(&card->file_cdf3, "50154405", 0);
+	card->cdf_count = 3;
+	format_file_struct(&card->file_cdf[0], "50154403", 0);
+	format_file_struct(&card->file_cdf[1], "50154404", 0);
+	format_file_struct(&card->file_cdf[2], "50154405", 0);
 	format_file_struct(&card->file_dodf, "50154406", 0);
 	format_file_struct(&card->file_odf, "50155031", 0);
 	format_file_struct(&card->file_tokeninfo, "50155032", 0);
