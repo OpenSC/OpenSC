@@ -22,7 +22,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#ifdef HAVE_LDAP
+#if defined(HAVE_OPENSSL) && defined(HAVE_LDAP)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

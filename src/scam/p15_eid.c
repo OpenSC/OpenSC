@@ -22,6 +22,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#if defined(HAVE_OPENSSL)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -468,3 +469,5 @@ struct scam_framework_ops scam_fw_p15_eid =
 	p15_eid_open_session,	/* open_session */
 	p15_eid_close_session	/* close_session */
 };
+
+#endif
