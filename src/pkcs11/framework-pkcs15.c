@@ -119,6 +119,8 @@ static CK_RV	get_modulus_bits(struct sc_pkcs15_pubkey *,
 static CK_RV	get_usage_bit(unsigned int usage, CK_ATTRIBUTE_PTR attr);
 static CK_RV	asn1_sequence_wrapper(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 static void	cache_pin(void *, int, const void *, size_t);
+static int	revalidate_pin(struct pkcs15_slot_data *data,
+				struct sc_pkcs11_session *ses);
 
 /* PKCS#15 Framework */
 
@@ -459,8 +461,10 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 	slot->token_info.flags |= CKF_USER_PIN_INITIALIZED
 				| CKF_TOKEN_INITIALIZED
 				| CKF_WRITE_PROTECTED;
-	if (card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD)
+	if (card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
 		slot->token_info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+		sc_pkcs11_conf.cache_pins = 0;
+	}
 	if (card->card->caps & SC_CARD_CAP_RNG)
 		slot->token_info.flags |= CKF_RNG;
 	slot->fw_data = fw_data = (struct pkcs15_slot_data *) calloc(1, sizeof(*fw_data));
@@ -1348,6 +1352,7 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) ses->slot->card->fw_data;
+	struct pkcs15_slot_data *data = slot_data(ses->slot->fw_data);
 	int rv, flags = 0;
 
 	debug(context, "Initiating signing operation, mechanism 0x%x.\n",
@@ -1416,6 +1421,24 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 					 ulDataLen,
 					 pSignature,
 					 *pulDataLen);
+
+	/* Do we have to try a re-login and then try to sign again? */
+	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		/* Ensure that revalidate_pin() doesn't do a final sc_unlock()
+		   that would clear the card's current_path */
+		rv = sc_lock(ses->slot->card->card);
+		if (rv < 0)
+			return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+
+		rv = revalidate_pin(data, ses);
+		if (rv == 0)
+			rv = sc_pkcs15_compute_signature(fw_data->p15_card,
+				prkey->prv_p15obj, flags, pData, ulDataLen,
+				pSignature, *pulDataLen);
+
+		sc_unlock(ses->slot->card->card);
+	}
+
         debug(context, "Sign complete. Result %d.\n", rv);
 
 	if (rv > 0) {
@@ -1435,6 +1458,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 {
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) ses->slot->card->fw_data;
 	struct pkcs15_prkey_object *prkey;
+	struct pkcs15_slot_data *data = slot_data(ses->slot->fw_data);
 	u8	unwrapped_key[256];
 	int	rv;
 
@@ -1458,6 +1482,25 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 				 SC_ALGORITHM_RSA_PAD_PKCS1,
 				 pData, ulDataLen,
 				 unwrapped_key, sizeof(unwrapped_key));
+
+	/* Do we have to try a re-login and then try to decrypt again? */
+	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		/* Ensure that revalidate_pin() doesn't do a final sc_unlock()
+		   that would clear the card's current_path */
+		rv = sc_lock(ses->slot->card->card);
+		if (rv < 0)
+			return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+
+		rv = revalidate_pin(data, ses);
+		if (rv == 0)
+			rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj,
+						SC_ALGORITHM_RSA_PAD_PKCS1,
+						pData, ulDataLen,
+						unwrapped_key, sizeof(unwrapped_key));
+
+		sc_unlock(ses->slot->card->card);
+	}
+
 	debug(context, "Key unwrap complete. Result %d.\n", rv);
 
 	if (rv < 0)
@@ -1742,6 +1785,30 @@ cache_pin(void *p, int user, const void *pin, size_t len)
 		memcpy(data->pin[user].value, pin, len);
 		data->pin[user].len = len;
 	}
+}
+
+static int
+revalidate_pin(struct pkcs15_slot_data *data, struct sc_pkcs11_session *ses)
+{
+	int rv;
+	u8 value[MAX_CACHE_PIN];
+
+	if (!sc_pkcs11_conf.cache_pins &&
+	    !(ses->slot->token_info.flags & CKF_PROTECTED_AUTHENTICATION_PATH))
+		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+
+	if (ses->slot->token_info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)
+		pkcs15_login(ses->slot->card, ses->slot->fw_data, CKU_USER, NULL, 0);
+	else {
+		memcpy(value, data->pin[CKU_USER].value, data->pin[CKU_USER].len);
+		rv = pkcs15_login(ses->slot->card, ses->slot->fw_data, CKU_USER,
+			value, data->pin[CKU_USER].len);
+	}
+
+	if (rv != CKR_OK)
+		debug(context, "Re-login failed: 0x%0x (%d)\n", rv, rv);
+
+	return rv;
 }
 
 /*
