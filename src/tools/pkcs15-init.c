@@ -76,7 +76,6 @@ const struct option	options[] = {
 	{ "store-key",		required_argument, 0,	'S' },
 	{ "key-format",		required_argument, 0,	'f' },
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
-
 	{ "profile",		required_argument, 0,	'p' },
 	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
 	{ "debug",		no_argument, 0,		'd' },
@@ -94,7 +93,7 @@ const char *		option_help[] = {
 	"Output public portion of generated key to file",
 	"Store private key",
 	"Specify key file format (default PEM)",
-
+	"Specicy passphrase for unlocking secret key",
 	"Specify the profile to use",
 	"Read additional command line options from file",
 	"Enable debugging output",
