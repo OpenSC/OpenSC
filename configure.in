@@ -294,6 +294,7 @@ AC_ARG_WITH(pcsclite,
 #include <winscard.h>],[SCardEstablishContext(0, NULL, NULL, NULL);], ac_cv_lib_pcsclite_SCardEstablishContext=yes)
 		CPPFLAGS="$saved_CPPFLAGS"
 		if test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes"; then
+			AC_DEFINE(HAVE_LIBPCSCLITE)
 			found_pcsclite=yes
 			break;
 		fi
