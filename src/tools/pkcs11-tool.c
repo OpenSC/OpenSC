@@ -54,6 +54,7 @@ const struct option options[] = {
 
 	{ "login",		0, 0,		'l' },
 	{ "pin",		1, 0,		'p' },
+	{ "change-pin",		0, 0,		'c' },
 	{ "slot",		1, 0,		OPT_SLOT },
 	{ "input-file",		1, 0,		'i' },
 	{ "output-file",	1, 0,		'o' },
@@ -76,6 +77,7 @@ const char *option_help[] = {
 
 	"Log into the token first (not needed when using --pin)",
 	"Supply PIN on the command line (if used in scripts: careful!)",
+	"Change your (user) PIN",
 	"Specify the slot to use",
 	"Specify the input file",
 	"Specify the output file",
@@ -160,11 +162,12 @@ main(int argc, char * const argv[])
 	int do_test = 0;
 	int need_session = 0;
 	int opt_login = 0;
+	int do_change_pin = 0;
 	int action_count = 0;
 	CK_RV rv;
 
 	while (1) {
-               c = getopt_long(argc, argv, "ILMOhi:lm:o:p:svt",
+               c = getopt_long(argc, argv, "ILMOhi:lm:o:p:scvt",
 					options, &long_optind);
 		if (c == -1)
 			break;
@@ -208,6 +211,11 @@ main(int argc, char * const argv[])
 			need_session |= NEED_SESSION_RW;
 			opt_login = 1;
 			opt_pin = optarg;
+			break;
+		case 'c':
+			do_change_pin = 1;
+			need_session |= CKF_SERIAL_SESSION; /* no need for a R/W session */
+			action_count++;
 			break;
 		case 's':
 			need_session |= NEED_SESSION_RW;
@@ -297,17 +305,31 @@ main(int argc, char * const argv[])
 			p11_fatal("C_OpenSession", rv);
 	}
 
+	if (do_change_pin)
+		/* To be sure we won't mix things up with the -l or -p options,
+		 * we safely stop here. */
+		return change_pin(opt_slot, session);
+
 	if (opt_login) {
 		char	*pin;
+		CK_TOKEN_INFO	info;
+
+		get_token_info(opt_slot, &info);
 
 		/* Identify which pin to enter */
-		if (opt_pin == NULL)
-			pin = getpass("Please enter PIN: ");
-		else
-			pin = opt_pin;
-		if (!pin || !*pin)
-			return 1;
-		rv = p11->C_Login(session, CKU_USER, (CK_UTF8CHAR *) pin, strlen(pin));
+
+		if (info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)
+			pin = NULL;
+		else {
+			if (opt_pin == NULL)
+				pin = getpass("Please enter PIN: ");
+			else
+				pin = opt_pin;
+			if (!pin || !*pin)
+				return 1;
+		}
+		rv = p11->C_Login(session, CKU_USER, (CK_UTF8CHAR *) pin,
+			pin == NULL ? 0 : strlen(pin));
 		if (rv != CKR_OK)
 			p11_fatal("C_Login", rv);
 	}
@@ -484,6 +506,42 @@ list_objects(CK_SESSION_HANDLE sess)
 		show_object(sess, object);
 	}
 	p11->C_FindObjectsFinal(sess);
+}
+
+int
+change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
+{
+	char old_buf[21], *old_pin = NULL;
+	char new_buf[21], *new_pin = NULL;
+	CK_TOKEN_INFO	info;
+	CK_RV rv;
+
+	get_token_info(slot, &info);
+
+	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
+		old_pin = getpass("Please enter the current PIN: ");
+		if (!old_pin || !*old_pin || strlen(old_pin) > 20)
+			return 1;
+		strcpy(old_buf, old_pin);
+		old_pin = old_buf;
+		new_pin = getpass("Please enter the new PIN: ");
+		if (!new_pin || !*new_pin || strlen(new_pin) > 20)
+			return 1;
+		strcpy(new_buf, new_pin);
+		new_pin = getpass("Please enter the new PIN again: ");
+		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
+			printf("  different new PINs, exiting\n");
+			return -1;
+		}
+	}
+
+	rv = p11->C_SetPIN(sess,
+		old_pin, old_pin == NULL ? 0 : strlen(old_pin),
+		new_pin, new_pin == NULL ? 0 : strlen(new_pin));
+	if (rv != CKR_OK)
+		p11_fatal("C_SetPIN", rv);
+
+	return 0;
 }
 
 void
