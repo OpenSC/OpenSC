@@ -64,6 +64,8 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 #define SC_PKCS15_PIN_TYPE_BCD				0
 #define SC_PKCS15_PIN_TYPE_ASCII_NUMERIC		1
 #define SC_PKCS15_PIN_TYPE_UTF8				2
+#define SC_PKCS15_PIN_TYPE_HALFNIBBLE_BCD		3
+#define SC_PKCS15_PIN_TYPE_ISO9564_1			4
 
 struct sc_pkcs15_pin_info {
 	struct sc_pkcs15_id auth_id;
