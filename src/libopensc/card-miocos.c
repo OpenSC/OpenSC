@@ -20,12 +20,16 @@
 
 #include "internal.h"
 #include "log.h"
+#include "asn1.h"
 #include "cardctl.h"
 #include <stdlib.h>
 #include <string.h>
 
 static struct sc_atr_table miocos_atrs[] = {
+	/* Test card with 32 kB memory */
 	{ (const u8 *) "\x3B\x9D\x94\x40\x23\x00\x68\x10\x11\x4D\x69\x6F\x43\x4F\x53\x00\x90\x00", 18 },
+	/* Test card with 64 kB memory */
+	{ (const u8 *) "\x3B\x9D\x94\x40\x23\x00\x68\x20\x01\x4D\x69\x6F\x43\x4F\x53\x00\x90\x00", 18 },
 	{ NULL }
 };
 
@@ -84,25 +88,19 @@ static int miocos_init(struct sc_card *card)
 
 static const struct sc_card_operations *iso_ops = NULL;
 
-static u8 acl_to_byte(const struct sc_acl_entry *e)
+static int acl_to_byte(const struct sc_acl_entry *e)
 {
 	switch (e->method) {
 	case SC_AC_NONE:
 		return 0x00;
 	case SC_AC_CHV:
-		switch (e->key_ref) {
-		case 1:
-			return 0x01;
-			break;
-		case 2:
-			return 0x02;
-			break;
-		default:
-			return 0x00;
-		}
-		break;
 	case SC_AC_TERM:
-		return 0x04;
+	case SC_AC_AUT:
+		if (e->key_ref == SC_AC_KEY_REF_NONE)
+			return -1;
+		if (e->key_ref < 1 || e->key_ref > 14)
+			return -1;
+		return e->key_ref;
 	case SC_AC_NEVER:
 		return 0x0F;
 	}
@@ -177,8 +175,14 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 
 		if (ops[i] == -1)
 			nibble = 0x00;
-		else
-			nibble = acl_to_byte(sc_file_get_acl_entry(file, ops[i]));
+		else {
+			int byte = acl_to_byte(sc_file_get_acl_entry(file, ops[i]));
+			if (byte < 0) {
+				error(card->ctx, "Invalid ACL\n");
+				return SC_ERROR_INVALID_ARGUMENTS;
+			}
+			nibble = byte;
+		}
 		if ((i & 1) == 0)
 			*p = nibble << 4;
 		else {
@@ -343,26 +347,16 @@ static void add_acl_entry(struct sc_file *file, int op, u8 byte)
 {
 	unsigned int method, key_ref = SC_AC_KEY_REF_NONE;
 
-	switch (byte >> 4) {
+	switch (byte) {
 	case 0:
 		method = SC_AC_NONE;
-		break;
-	case 1:
-		method = SC_AC_CHV;
-		key_ref = 1;
-		break;
-	case 2:
-		method = SC_AC_CHV;
-		key_ref = 2;
-		break;
-	case 4:
-		method = SC_AC_TERM;
 		break;
 	case 15:
 		method = SC_AC_NEVER;
 		break;
 	default:
-		method = SC_AC_UNKNOWN;
+		method = SC_AC_CHV;
+		key_ref = byte;
 		break;
 	}
 	sc_file_add_acl_entry(file, op, method, key_ref);
@@ -412,6 +406,65 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 	}
 }
 
+static int miocos_get_acl(struct sc_card *card, struct sc_file *file)
+{
+	struct sc_apdu apdu;
+	u8 rbuf[256];
+	const u8 *seq = rbuf;
+	size_t left;
+	int acl_types[16], r, i;
+	
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x01);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = sizeof(rbuf);
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.resplen == 0)
+		return sc_check_sw(card, apdu.sw1, apdu.sw2);
+	for (i = 0; i < 16; i++)
+		acl_types[i] = SC_AC_KEY_REF_NONE;
+	left = apdu.resplen;
+	seq = sc_asn1_skip_tag(card->ctx, &seq, &left,
+			       SC_ASN1_SEQUENCE | SC_ASN1_CONS, &left);
+	if (seq == NULL)
+		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+	SC_TEST_RET(card->ctx, r, "Unable to process reply");
+	for (i = 1; i < 15; i++) {
+		int j;
+		const u8 *tag;
+		size_t taglen;
+		
+		tag = sc_asn1_skip_tag(card->ctx, &seq, &left,
+				       SC_ASN1_CTX | i, &taglen);
+		if (tag == NULL || taglen == 0)
+			continue;
+		for (j = 0; j < SC_MAX_AC_OPS; j++) {
+			struct sc_acl_entry *e;
+			
+			e = (struct sc_acl_entry *) sc_file_get_acl_entry(file, j);
+			if (e == NULL)
+				continue;
+			if (e->method != SC_AC_CHV)
+				continue;
+			if (e->key_ref != i)
+				continue;
+			switch (tag[0]) {
+			case 0x01:
+				e->method = SC_AC_CHV;
+				break;
+			case 0x02:
+				e->method = SC_AC_AUT;
+				break;
+			default:
+				e->method = SC_AC_UNKNOWN;
+				break;
+			}
+		}
+	}
+	return 0;
+}
+
 static int miocos_select_file(struct sc_card *card,
 			       const struct sc_path *in_path,
 			       struct sc_file **file)
@@ -421,8 +474,11 @@ static int miocos_select_file(struct sc_card *card,
 	r = iso_ops->select_file(card, in_path, file);
 	if (r)
 		return r;
-	if (file != NULL)
+	if (file != NULL) {
 		parse_sec_attr(*file, (*file)->sec_attr, (*file)->sec_attr_len);
+		miocos_get_acl(card, *file);
+	}
+
 	return 0;
 }
 
