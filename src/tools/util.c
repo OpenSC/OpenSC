@@ -272,22 +272,31 @@ warn(const char *fmt, ...)
 }
 
 
-void parse_application_id(struct sc_object_id *oid, char *oid_str)
+int parse_application_id(struct sc_object_id *oid, char *oid_str)
 {
-	int ii;
-	char *nb;
+	int ii, ret = SC_ERROR_INVALID_ARGUMENTS;
+	char *p, *q;
 
 	if (!oid)
-		return;
-
+		return ret;
+	/* init oid */
 	for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS; ii++)
 		oid->value[ii] = -1;
 
-	nb = strtok(oid_str, ".");
-	for (ii=0; nb && ii < SC_MAX_OBJECT_ID_OCTETS; ii++)   {
-		oid->value[ii] = strtol(nb, NULL, 10);
-		nb = strtok(NULL, ".");
+	if (!(p = oid_str))
+		return ret;
+	
+	for (ii=0; ii < SC_MAX_OBJECT_ID_OCTETS; ii++)   {
+		oid->value[ii] = strtol(p, &q, 10);
+		if (!*q)
+			break;
+		if (!(q[0] == '.' && isdigit(q[1]))) {
+			return ret;
+		}
+		p = q + 1;
 	}
+
+	return SC_SUCCESS;
 }
 
 

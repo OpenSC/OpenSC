@@ -1378,16 +1378,43 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 {
 	struct sc_pkcs15_data_info *data_object_info;
 	struct sc_pkcs15_object *object;
+	struct sc_pkcs15_object *objs[32];
 	const char	*label;
-	int		r;
+	int		r, i;
+	unsigned int    tid = 0x01;
 
 	if ((label = args->label) == NULL)
 		label = "Data Object";
 
-	/* Select an ID if the user didn't specify one, otherwise
-	 * make sure it's unique */
-	if ((r = select_id(p15card, SC_PKCS15_TYPE_DATA_OBJECT, &args->id, NULL, NULL, NULL)) < 0)
-		return r;
+	if (!args->id.len) {
+		/* Select an ID if the user didn't specify one, otherwise
+		 * make sure it's unique (even though data objects doesn't
+		 * have a pkcs15 id we need one here to create a unique 
+		 * file id from the data file template */
+		r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, objs, 32);
+		if (r < 0)
+			return r;
+		for (i = 0; i < r; i++) {
+			u8 cid;
+			struct sc_pkcs15_data_info *cinfo;
+			cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
+			if (!cinfo->path.len)
+				continue;
+			cid = cinfo->path.value[cinfo->path.len - 1];
+			if (cid >= tid)
+				tid = cid + 1;
+		}
+		if (tid > 0xff)
+			/* too many data objects ... */
+			return SC_ERROR_TOO_MANY_OBJECTS;
+		args->id.len = 1;
+		args->id.value[0] = tid;
+	} else {
+		/* in case the user specifies an id it should be at most
+		 * one byte long */
+		if (args->id.len > 1)
+			return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	/* Set the USER PIN reference from args */
 	r = set_user_pin_from_authid(p15card, profile, &args->auth_id);
@@ -1396,7 +1423,6 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 
 	object = sc_pkcs15init_new_object(SC_PKCS15_TYPE_DATA_OBJECT, label, &args->auth_id, NULL);
 	data_object_info = (sc_pkcs15_data_info_t *) object->data;
-	data_object_info->id = args->id;
 	if (label != NULL) {
 		strncpy(data_object_info->app_label, label,
 			sizeof(data_object_info->app_label) - 1);

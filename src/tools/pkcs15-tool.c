@@ -87,7 +87,7 @@ const char *option_help[] = {
 	"Stores card info to cache",
 	"Reads certificate with ID <arg>",
 	"Lists certificates",
-	"Reads data object with label <arg>",
+	"Reads data object with applicationName or OID <arg>",
 	"Lists data objects",
 	"Lists PIN codes",
 	"Unblock PIN code",
@@ -274,25 +274,33 @@ int read_certificate(void)
 
 int read_data_object(void)
 {
-	int r, i, count;
-	struct sc_pkcs15_id id;
+	int    r, i, count, oid_len = 0;
 	struct sc_pkcs15_object *objs[32];
+	struct sc_object_id      oid;
 
-	id.len = SC_PKCS15_MAX_ID_SIZE;
-	sc_pkcs15_hex_string_to_id(opt_data, &id);
-	
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, objs, 32);
 	if (r < 0) {
 		fprintf(stderr, "Data object enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
 	count = r;
+
+	r = parse_application_id(&oid, opt_data);
+	if (r == SC_SUCCESS) {
+		while (oid.value[oid_len] >= 0) oid_len++;
+	}
+
 	for (i = 0; i < count; i++) {
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 		struct sc_pkcs15_data *data_object;
 
-		if (memcmp(opt_data, &cinfo->app_label, strlen(opt_data)) != 0)
-			continue;
+		if (oid_len) {
+			if (memcmp(oid.value, cinfo->app_oid.value, sizeof(int) * oid_len))
+				continue;
+		} else {
+			if (memcmp(opt_data, &cinfo->app_label, strlen(opt_data)))
+				continue;
+		}
 			
 		if (verbose)
 			printf("Reading data object with label '%s'\n", opt_data);
@@ -312,9 +320,7 @@ int read_data_object(void)
 int list_data_objects(void)
 {
 	int r, i, count;
-	struct sc_pkcs15_id id;
 	struct sc_pkcs15_object *objs[32];
-	id.len = SC_PKCS15_MAX_ID_SIZE;
 
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, objs, 32);
 	if (r < 0) {
@@ -341,6 +347,7 @@ int list_data_objects(void)
 			printf("\n");
 		} else
 			printf("NONE\n");
+		printf("Path :           %s\n", sc_print_path(&cinfo->path));
 		r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
 		if (r) {
 			fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
