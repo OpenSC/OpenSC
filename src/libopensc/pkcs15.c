@@ -551,6 +551,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	len = err;
 	if (parse_odf(buf, len, p15card)) {
 		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
+		error(card->ctx, "Unable to parse ODF\n");
 		goto error;
 	}
 	if (p15card->file_tokeninfo == NULL) {

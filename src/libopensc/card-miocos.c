@@ -20,6 +20,7 @@
 
 #include "sc-internal.h"
 #include "sc-log.h"
+#include "cardctl.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -134,6 +135,7 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 	switch (file->type) {
 	case SC_FILE_TYPE_DF:
 		*p++ = 0x20;
+		ops = df_ops;
 		break;
 	case SC_FILE_TYPE_WORKING_EF:
 		switch (file->ef_structure) {
@@ -150,9 +152,11 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 			error(card->ctx, "Invalid EF structure\n");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
+		ops = ef_ops;
 		break;
 	case SC_FILE_TYPE_INTERNAL_EF:
 		*p++ = 0x44;
+		ops = key_ops;
 		break;
 	default:
 		error(card->ctx, "Unknown file type\n");
@@ -164,19 +168,6 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 	} else {
 		*p++ = file->size >> 8;
 		*p++ = file->size & 0xFF;
-	}
-	switch (file->type) {
-	case SC_FILE_TYPE_WORKING_EF:
-		ops = ef_ops;
-		break;
-	case SC_FILE_TYPE_INTERNAL_EF:
-		ops = key_ops;
-		break;
-	case SC_FILE_TYPE_DF:
-		ops = df_ops;
-		break;
-	default:
-                return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (file->sec_attr_len == 4) {
 		memcpy(p, file->sec_attr, 4);
@@ -190,8 +181,10 @@ static int encode_file_structure(struct sc_card *card, const struct sc_file *fil
 			nibble = acl_to_byte(sc_file_get_acl_entry(file, ops[i]));
 		if ((i & 1) == 0)
 			*p = nibble << 4;
-		else
-			*p++ = nibble & 0x0F;
+		else {
+			*p |= nibble & 0x0F;
+			p++;
+		}
 	}
 	if (file->type == SC_FILE_TYPE_WORKING_EF &&
 	    file->ef_structure != SC_FILE_EF_TRANSPARENT)
@@ -385,6 +378,55 @@ static int miocos_delete_file(struct sc_card *card, const struct sc_path *path)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
+static int miocos_create_ac(sc_card_t *card,
+			    struct sc_cardctl_miocos_ac_info *ac)
+{
+	struct sc_apdu apdu;
+	u8 sbuf[20];
+	int miocos_type, r;
+	size_t sendsize;
+	
+	if (ac->max_tries > 15)
+		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_INVALID_ARGUMENTS);
+	switch (ac->type) {
+	case SC_CARDCTL_MIOCOS_AC_PIN:
+		if (ac->max_unblock_tries > 15)
+			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_INVALID_ARGUMENTS);
+		miocos_type = 0x01;
+		sbuf[0] = (ac->max_tries << 4) | ac->max_tries;
+		sbuf[1] = 0xFF; /* FIXME... */
+		memcpy(sbuf + 2, ac->key_value, 8);
+		sbuf[10] = (ac->max_unblock_tries << 4) | ac->max_unblock_tries;
+		sbuf[11] = 0xFF;
+		memcpy(sbuf + 12, ac->unblock_value, 8);
+		sendsize = 20;
+		break;
+	default:
+		error(card->ctx, "AC type %d not supported\n", ac->type);
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x1E, miocos_type,
+		       ac->ref);
+	apdu.lc = sendsize;
+	apdu.datalen = sendsize;
+	apdu.data = sbuf;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+}
+
+static int miocos_card_ctl(struct sc_card *card, unsigned long cmd,
+			   void *arg)
+{
+	switch (cmd) {
+	case SC_CARDCTL_MIOCOS_CREATE_AC:
+		return miocos_create_ac(card, (struct sc_cardctl_miocos_ac_info *) arg);
+	}
+	error(card->ctx, "card_ctl command 0x%X not supported\n", cmd);
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
+
 static const struct sc_card_driver * sc_get_driver(void)
 {
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -400,6 +442,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 	miocos_ops.select_file = miocos_select_file;
 	miocos_ops.list_files = miocos_list_files;
 	miocos_ops.delete_file = miocos_delete_file;
+	miocos_ops.card_ctl = miocos_card_ctl;
 	
         return &miocos_drv;
 }

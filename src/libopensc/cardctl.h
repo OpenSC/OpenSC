@@ -34,25 +34,14 @@ enum {
 	/*
 	 * Cryptoflex specific calls
 	 */
-	SC_CARDCTL_CRYPTOFLEX_BASE = _CTL_PREFIX('C', 'F', 'X')
-};
+	SC_CARDCTL_CRYPTOFLEX_BASE = _CTL_PREFIX('C', 'F', 'X'),
 
-/*
- * Per algorithm/key size info
- */
-struct sc_pk_info {
-	unsigned int	pk_algorithm;
-	unsigned int	pk_keylength;
-	unsigned char	pk_onboard_generation;
-	union {
-	    struct {
-		unsigned long	exponent;
-		unsigned int	unwrap;
-	    } _rsa;
-	} u;
+	/*
+	 * MioCOS specific calls
+	 */
+	SC_CARDCTL_MIOCOS_BASE = _CTL_PREFIX('M', 'I', 'O'),
+	SC_CARDCTL_MIOCOS_CREATE_AC,
 };
-#define pk_rsa_exponent	u._rsa.exponent
-#define pk_rsa_unwrap	u._rsa.unwrap
 
 /*
  * GPK lock file.
@@ -80,6 +69,26 @@ struct sc_cardctl_gpk_pkload {
 	u8 *			data;
 	unsigned int		len;
 	unsigned int		datalen;
+};
+
+enum {
+	SC_CARDCTL_MIOCOS_AC_PIN,
+	SC_CARDCTL_MIOCOS_AC_CHAL,
+	SC_CARDCTL_MIOCOS_AC_LOGICAL,
+	SC_CARDCTL_MIOCOS_AC_SMARTPIN,
+};
+
+/*
+ * MioCOS AC info
+ */
+struct sc_cardctl_miocos_ac_info {
+	int type;
+	int ref;
+	int max_tries;
+	int enable_ac;		/* only applicable to PINs */
+	u8 key_value[8];
+	int max_unblock_tries;	/* same here */
+	u8 unblock_value[8];	/* and here */
 };
 
 #endif /* _OPENSC_CARDCTL_H */
