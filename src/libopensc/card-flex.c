@@ -825,7 +825,6 @@ static int flex_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 				(struct sc_cardctl_default_key *) ptr);
 	}
 
-	error(card->ctx, "card_ctl command %u not supported\n", cmd);
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
