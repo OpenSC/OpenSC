@@ -63,8 +63,8 @@ const struct option options[] = {
 const char *option_help[] = {
 	"Prints the ATR bytes of the card",
 	"Lists all configured readers",
-	"Lists all installed reader drivers",
 	"Lists all installed card drivers",
+	"Lists all installed reader drivers",
 	"Recursively lists files stored on card",
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
 	"Uses reader number <arg> [0]",
