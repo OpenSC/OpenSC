@@ -20,7 +20,7 @@ OBJECTS			= \
 	\
 	emv.obj \
 	\
-	ctbcs.obj reader-ctapi.obj reader-pcsc.obj \
+	ctbcs.obj reader-ctapi.obj reader-pcsc.obj pinpad-ccid.obj \
 	\
 	card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
 	card-etoken.obj card-tcos.obj card-emv.obj card-default.obj \
