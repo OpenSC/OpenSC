@@ -81,7 +81,7 @@ const scconf_block *scconf_find_block(const scconf_context * config, const sccon
 			return item->value.block;
 		}
 	}
-	return NULL;
+	return block;
 }
 
 scconf_block **scconf_find_blocks(const scconf_context * config, const scconf_block * block, const char *item_name, const char *key)
