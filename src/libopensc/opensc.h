@@ -162,7 +162,9 @@ extern "C" {
 #define SC_MAX_PROP_ATTR_SIZE		16
 #define SC_MAX_OBJECT_ID_OCTETS		16
 #define SC_MAX_AID_SIZE			16
-#define SC_APDU_CHOP_SIZE		250
+/* Beware: the following needs to be a mutiple of 4
+ * or else sc_update_binary will not work on GPK */
+#define SC_APDU_CHOP_SIZE		248
 
 typedef unsigned char u8;
 
