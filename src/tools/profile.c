@@ -576,6 +576,9 @@ do_df(int argc, char **argv)
 		cur_file = (struct file_info *) calloc(1, sizeof(*cur_file));
 		cur_file->ident = strdup(ident);
 		cur_file->file = init_file(SC_FILE_TYPE_DF);
+
+		cur_file->next = parser.profile->ef_list;
+		parser.profile->ef_list = cur_file;
 	}
 	cur_parent = NULL;
 	return 0;
