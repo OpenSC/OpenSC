@@ -3,7 +3,7 @@
 includedir = @includedir@/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
-
+DISTCLEANFILES = lex-parse.c
 EXTRA_DIST = Makefile.mak lex-parse.l
 
 include_HEADERS = scconf.h
