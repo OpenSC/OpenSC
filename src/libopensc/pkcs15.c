@@ -505,6 +505,16 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 	/* Check if pkcs15 directory exists */
 	card->ctx->suppress_errors++;
 	err = sc_select_file(card, &p15card->file_app->path, NULL);
+#if 1
+	/* If the above test failed on cards without EF(DIR),
+	 * try to continue read ODF from 3F005031. -aet
+	 */
+	if ((err == SC_ERROR_FILE_NOT_FOUND) &&
+	    (card->app_count < 1)) {
+		sc_format_path("3F00", &p15card->file_app->path);
+		err = SC_NO_ERROR;
+	}
+#endif
 	card->ctx->suppress_errors--;
 	if (err < 0)
 		goto end;
