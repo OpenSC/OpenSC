@@ -208,6 +208,9 @@ int sc_destroy_context(struct sc_context *ctx)
 	SC_FUNC_CALLED(ctx, 1);
 	for (i = 0; i < ctx->reader_count; i++)
 		free(ctx->readers[i]);
+	ctx->debug_file = ctx->error_file = NULL;
+	SCardReleaseContext(ctx->pcsc_ctx);
+	ctx->pcsc_ctx = 0;
 	free(ctx);
 	return 0;
 }
