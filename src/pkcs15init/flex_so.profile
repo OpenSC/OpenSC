@@ -1,5 +1,6 @@
 #
-# PKCS15 r/w profile for Cryptoflex cards
+# PKCS15 r/w profile for Cryptoflex cards,
+# where the Security Officer (CHV2 pin) is in charge of the PKCS15 DF.
 #
 cardinfo {
     max-pin-length	= 8;
