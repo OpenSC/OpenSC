@@ -339,7 +339,6 @@ AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
 AM_CONDITIONAL(HAVE_ENGINE, test "x$ENGINE_MSG" = "xyes")
 
 AC_SUBST(OPENSSL_LDFLAGS)
-OPENSSL_LDFLAGS=""
 if test "x$ENGINE_MSG" = "xyes" ; then
   for openssl_ldflag in "-Wl,-Bsymbolic" "-G -Wl,-Bsymbolic" "-shared -G -Wl,-Bsymbolic" "-Wl,-all_load"; do
 	AC_MSG_CHECKING([whether we can use $openssl_ldflag])
