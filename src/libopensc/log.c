@@ -92,7 +92,7 @@ void sc_do_log(struct sc_context *ctx, int type, const char *file, int line, con
 void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args)
 {
 	FILE *outf = NULL;
-	char buf[1024], *p;
+	char buf[1536], *p;
 	int left, r;
 	const char *color_pfx = "", *color_sfx = "";
 
