@@ -50,6 +50,8 @@ asn1_decode_des_params(struct sc_context *ctx, void **paramp,
 	if (ivlen != 8)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	*paramp = malloc(8);
+	if (!*paramp)
+		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(*paramp, iv, 8);
 	return 0;
 }
@@ -101,6 +103,8 @@ asn1_decode_pbkdf2_params(struct sc_context *ctx, void **paramp,
 		return r;
 
 	*paramp = malloc(sizeof(info));
+	if (*paramp)
+		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(*paramp, &info, sizeof(info));
 	return 0;
 }
@@ -154,6 +158,8 @@ asn1_decode_pbes2_params(struct sc_context *ctx, void **paramp,
 	if (r < 0)
 		return r;
 	*paramp = malloc(sizeof(info));
+	if (!*paramp)
+		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(*paramp, &info, sizeof(info));
 	return 0;
 }

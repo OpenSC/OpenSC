@@ -631,6 +631,8 @@ static int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
 	}
 	*buflen = count = p - temp;
 	*buf = (u8 *) malloc(count);
+	if (!*buf)
+		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(*buf, temp, count);
 	return 0;
 }
@@ -1369,8 +1371,10 @@ sc_der_copy(sc_pkcs15_der_t *dst, const sc_pkcs15_der_t *src)
 {
 	memset(dst, 0, sizeof(*dst));
 	if (src->len) {
-		dst->len = src->len;
 		dst->value = (u8 *) malloc(src->len);
+		if (!dst->value)
+			return;
+		dst->len = src->len;
 		memcpy(dst->value, src->value, src->len);
 	}
 }

@@ -303,10 +303,9 @@ static struct sc_card * sc_card_new(void)
 {
 	struct sc_card *card;
 	
-	card = (struct sc_card *) malloc(sizeof(struct sc_card));
+	card = (struct sc_card *) calloc(1, sizeof(struct sc_card));
 	if (card == NULL)
 		return NULL;
-	memset(card, 0, sizeof(struct sc_card));
 	card->ops = (struct sc_card_operations *) malloc(sizeof(struct sc_card_operations));
 	if (card->ops == NULL) {
 		free(card);

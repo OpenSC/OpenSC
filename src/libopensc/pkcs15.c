@@ -76,6 +76,10 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 	}
 	card->version += 1;
 	card->serial_number = (char *) malloc(serial_len * 2 + 1);
+	if (!card->serial_number) {
+		sc_error(card->card->ctx, "Memory allocation failed\n");
+		goto err;
+	}
 	card->serial_number[0] = 0;
 	for (i = 0; i < serial_len; i++) {
 		char byte[3];
@@ -388,10 +392,9 @@ struct sc_pkcs15_card * sc_pkcs15_card_new()
 {
 	struct sc_pkcs15_card *p15card;
 	
-	p15card = (struct sc_pkcs15_card *) malloc(sizeof(struct sc_pkcs15_card));
+	p15card = (struct sc_pkcs15_card *) calloc(1, sizeof(struct sc_pkcs15_card));
 	if (p15card == NULL)
 		return NULL;
-	memset(p15card, 0, sizeof(struct sc_pkcs15_card));
 	p15card->magic = SC_PKCS15_CARD_MAGIC;
 	return p15card;
 }
@@ -1073,10 +1076,9 @@ int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 {
 	struct sc_pkcs15_df *p = p15card->df_list, *newdf;
 
-	newdf = (struct sc_pkcs15_df *) malloc(sizeof(struct sc_pkcs15_df));
+	newdf = (struct sc_pkcs15_df *) calloc(1, sizeof(struct sc_pkcs15_df));
 	if (newdf == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(newdf, 0, sizeof(struct sc_pkcs15_df));
 	newdf->path = *path;
 	newdf->type = type;
 	if (file != NULL)
@@ -1215,12 +1217,11 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		const u8 *oldp;
 		size_t obj_len;
 		
-		obj = (struct sc_pkcs15_object *) malloc(sizeof(struct sc_pkcs15_object));
+		obj = (struct sc_pkcs15_object *) calloc(1, sizeof(struct sc_pkcs15_object));
 		if (obj == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto ret;
 		}
-		memset(obj, 0, sizeof(struct sc_pkcs15_object));
 		oldp = p;
 		r = func(p15card, obj, &p, &bufsize);
 		if (r) {

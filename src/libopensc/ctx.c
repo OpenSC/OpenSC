@@ -551,13 +551,16 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 	struct _sc_ctx_options opts;
 
 	assert(ctx_out != NULL);
-	ctx = (struct sc_context *) malloc(sizeof(struct sc_context));
+	ctx = (struct sc_context *) calloc(1, sizeof(struct sc_context));
 	if (ctx == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(ctx, 0, sizeof(struct sc_context));
 	memset(&opts, 0, sizeof(opts));
 	set_defaults(ctx, &opts);
 	ctx->app_name = app_name ? strdup(app_name) : strdup(default_app);
+	if (ctx->app_name == NULL) {
+		sc_release_context(ctx);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
 	process_config_file(ctx, &opts);
 	ctx->mutex = sc_mutex_new();
 	sc_debug(ctx, "===================================\n"); /* first thing in the log */
