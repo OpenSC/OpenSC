@@ -1440,6 +1440,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 	debug(context, "Initiating key unwrap.\n");
 
 	/* See which of the alternative keys supports unwrap */
+	prkey = (struct pkcs15_prkey_object *) obj;
 	while (prkey
 	 && !(prkey->prv_info->usage
 	     & (SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP)))
@@ -1452,7 +1453,6 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 	if (pMechanism->mechanism != CKM_RSA_PKCS)
 		return CKR_MECHANISM_INVALID;
 
-	prkey = (struct pkcs15_prkey_object *) obj;
 	rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj,
 				 SC_ALGORITHM_RSA_PAD_PKCS1,
 				 pData, ulDataLen,
@@ -1572,6 +1572,16 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		return get_modulus_bits(pubkey->pub_data, attr);
 	case CKA_PUBLIC_EXPONENT:
 		return get_public_exponent(pubkey->pub_data, attr);
+	case CKA_VALUE:
+		if (pubkey->pub_data) {
+			check_attribute_buffer(attr, pubkey->pub_data->data.len);
+			memcpy(attr->pValue, pubkey->pub_data->data.value,
+					      pubkey->pub_data->data.len);
+		} else if (cert && cert->cert_data) {
+			check_attribute_buffer(attr, cert->cert_data->data_len);
+			memcpy(attr->pValue, cert->cert_data->data, cert->cert_data->data_len);
+		}
+		break;
 	default:
                 return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
