@@ -88,10 +88,6 @@ app default {
 		#
 		max_send_size = 252;
 		max_recv_size = 252;
-		#
-		# EXPERIMENTAL: Enable CCID pinpad support
-		# implemented (at least) in the libccid driver.
-		# use_ccid_pin_cmd = true;
 	}
 
 	# What card drivers to load at start-up
@@ -241,6 +237,10 @@ app default {
 		# Default: false
 		#
 		use_caching = true;
+		# If the given slot has pinpad capabilities, default to pinpad enabled
+		# operation and don't do pointless guessing
+		# Default: false
+		use_pinpad = false;
 		# Enable pkcs15 emulation.
 		# Default: yes
 		enable_pkcs15_emulation = yes;

@@ -352,6 +352,7 @@ typedef struct sc_pkcs15_card {
 
 	struct sc_pkcs15_card_opts {
 		int use_cache;
+		int use_pinpad;
 	} opts;
 
 	unsigned int magic;
