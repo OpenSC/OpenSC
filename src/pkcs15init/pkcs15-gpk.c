@@ -205,13 +205,13 @@ gpk_init_app(struct sc_profile *profile, struct sc_card *card,
 	/* SO pin not supported yet */
 	if (pin && pin_len) {
 		error(profile, "GPK doesn't support an SO PIN yet");
-		return SC_ERROR_NOT_SUPPORTED;
+		/* return SC_ERROR_NOT_SUPPORTED; */
 	}
 
 	/* Profile must define a "pinfile" */
 	if (sc_profile_get_file(profile, "pinfile", &pinfile) < 0) {
 		error(profile, "Profile doesn't define a \"pinfile\"");
-		return SC_ERROR_NOT_SUPPORTED;
+		/* return SC_ERROR_NOT_SUPPORTED; */
 	}
 
 	/* Create the application DF */
