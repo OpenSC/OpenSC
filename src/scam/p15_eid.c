@@ -37,16 +37,6 @@
 #include <opensc/scrandom.h>
 #include "scam.h"
 
-#if defined(PAM_SCAM)
-static pam_handle_t *p15_eid_pamh = NULL;
-static unsigned int *p15_eid_ctrl = NULL;
-#elif defined(SIA_SCAM)
-static sia_collect_func_t *p15_eid_collect = NULL;
-static SIAENTITY *p15_eid_entity = NULL;
-#endif
-
-extern struct scam_framework_ops scam_fw_p15_eid;
-
 static struct sc_context *ctx = NULL;
 static struct sc_card *card = NULL;
 static struct sc_pkcs15_card *p15card = NULL;
@@ -70,53 +60,7 @@ const char *p15_eid_usage(void)
 	return &buf[0];
 }
 
-void p15_eid_handles(void *ctx1, void *ctx2, void *ctx3)
-{
-#if defined(PAM_SCAM)
-	p15_eid_pamh = (pam_handle_t *) ctx1;
-	p15_eid_ctrl = (unsigned int *) ctx2;
-#elif defined(SIA_SCAM)
-	p15_eid_collect = (sia_collect_func_t *) ctx1;
-	p15_eid_entity = (SIAENTITY *) ctx2;
-#endif
-}
-
-void p15_eid_printmsg(char *str,...)
-{
-	va_list ap;
-	char buf[128];
-
-	va_start(ap, str);
-	memset(buf, 0, 128);
-	vsnprintf(buf, 128, str, ap);
-	va_end(ap);
-#if defined(PAM_SCAM)
-	if (p15_eid_pamh && p15_eid_ctrl)
-		opensc_pam_msg(p15_eid_pamh, *p15_eid_ctrl, PAM_TEXT_INFO, buf);
-#elif defined(SIA_SCAM)
-	if (p15_eid_collect)
-		sia_warning(p15_eid_collect, buf);
-#endif
-}
-
-void p15_eid_logmsg(char *str,...)
-{
-	va_list ap;
-	char buf[1024];
-
-	va_start(ap, str);
-	memset(buf, 0, 1024);
-	vsnprintf(buf, 1024, str, ap);
-	va_end(ap);
-#if defined(PAM_SCAM)
-	if (p15_eid_pamh)
-		opensc_pam_log(LOG_NOTICE, p15_eid_pamh, buf);
-#elif defined(SIA_SCAM)
-	opensc_sia_log(buf);
-#endif
-}
-
-int p15_eid_init(int argc, const char **argv)
+int p15_eid_init(scam_context * scamctx, int argc, const char **argv)
 {
 	char *reader_name = NULL;
 	int r, i, reader = 0;
@@ -126,10 +70,9 @@ int p15_eid_init(int argc, const char **argv)
 	}
 	r = sc_establish_context(&ctx, "scam");
 	if (r != SC_SUCCESS) {
-		scam_fw_p15_eid.printmsg("sc_establish_context: %s\n", sc_strerror(r));
+		scam_print_msg(scamctx, "sc_establish_context: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
-
 	for (i = 0; i < argc; i++) {
 		if (argv[i][0] == '-') {
 			char *optarg = (char *) argv[i + 1];
@@ -160,7 +103,7 @@ int p15_eid_init(int argc, const char **argv)
 	}
 
 	if ((r = sc_connect_card(ctx->reader[reader], 0, &card)) != SC_SUCCESS) {
-		scam_fw_p15_eid.printmsg("sc_connect_card: %s\n", sc_strerror(r));
+		scam_print_msg(scamctx, "sc_connect_card: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
 	sc_lock(card);
@@ -168,12 +111,12 @@ int p15_eid_init(int argc, const char **argv)
 
 	r = sc_pkcs15_bind(card, &p15card);
 	if (r != SC_SUCCESS) {
-		scam_fw_p15_eid.printmsg("sc_pkcs15_bind: %s\n", sc_strerror(r));
+		scam_print_msg(scamctx, "sc_pkcs15_bind: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, 32);
 	if (r < 0) {
-		scam_fw_p15_eid.printmsg("sc_pkcs15_get_objects: %s\n", sc_strerror(r));
+		scam_print_msg(scamctx, "sc_pkcs15_get_objects: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
 	if (r == 0)		/* No certificates found */
@@ -184,18 +127,18 @@ int p15_eid_init(int argc, const char **argv)
 
 	r = sc_pkcs15_find_prkey_by_id(p15card, &cinfo->id, &prkey);
 	if (r != SC_SUCCESS) {
-		scam_fw_p15_eid.printmsg("sc_pkcs15_find_prkey_by_id: %s\n", sc_strerror(r));
+		scam_print_msg(scamctx, "sc_pkcs15_find_prkey_by_id: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
 	r = sc_pkcs15_find_pin_by_auth_id(p15card, &prkey->auth_id, &pin);
 	if (r != SC_SUCCESS) {
-		scam_fw_p15_eid.printmsg("sc_pkcs15_find_pin_by_auth_id: %s\n", sc_strerror(r));
+		scam_print_msg(scamctx, "sc_pkcs15_find_pin_by_auth_id: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
 	return SCAM_SUCCESS;
 }
 
-const char *p15_eid_pinentry(void)
+const char *p15_eid_pinentry(scam_context * scamctx)
 {
 	struct sc_pkcs15_pin_info *pininfo = NULL;
 	static char buf[64];
@@ -208,7 +151,7 @@ const char *p15_eid_pinentry(void)
 	return buf;
 }
 
-int p15_eid_qualify(unsigned char *password)
+int p15_eid_qualify(scam_context * scamctx, unsigned char *password)
 {
 	if (!password)
 		return SCAM_FAILED;
@@ -284,7 +227,7 @@ static int get_certificate(const char *user, X509 ** cert_out)
 		goto end;
 	*cert_out = cert;
 	err = SCAM_SUCCESS;
-end:
+      end:
 	if (in)
 		BIO_free(in);
 	if (dir)
@@ -294,7 +237,7 @@ end:
 	return err;
 }
 
-int p15_eid_auth(int argc, const char **argv,
+int p15_eid_auth(scam_context * scamctx, int argc, const char **argv,
 		 const char *user, const char *password)
 {
 	u8 random_data[20], chg[256], txt[256];
@@ -306,49 +249,49 @@ int p15_eid_auth(int argc, const char **argv,
 		return SCAM_FAILED;
 	r = is_eid_dir_present(user);
 	if (r != SCAM_SUCCESS) {
-		scam_fw_p15_eid.printmsg("No such user, user has no .eid directory or .eid unreadable.\n");
+		scam_print_msg(scamctx, "No such user, user has no .eid directory or .eid unreadable.\n");
 		goto end;
 	}
 	r = get_certificate(user, &cert);
 	if (r != SCAM_SUCCESS) {
-		scam_fw_p15_eid.printmsg("get_certificate failed.\n");
+		scam_print_msg(scamctx, "get_certificate failed.\n");
 		goto end;
 	}
 	pubkey = X509_get_pubkey(cert);
 	if (!pubkey) {
-		scam_fw_p15_eid.logmsg("Invalid public key. (user %s)\n", user);
+		scam_log_msg(scamctx, "Invalid public key. (user %s)\n", user);
 		goto end;
 	}
 	chglen = RSA_size(pubkey->pkey.rsa);
 	if (chglen > sizeof(chg)) {
-		scam_fw_p15_eid.printmsg("RSA key too big.\n");
+		scam_print_msg(scamctx, "RSA key too big.\n");
 		goto end;
 	}
 	r = scrandom_get_data(random_data, sizeof(random_data));
 	if (r < 0) {
-		scam_fw_p15_eid.logmsg("scrandom_get_data failed.\n");
+		scam_log_msg(scamctx, "scrandom_get_data failed.\n");
 		goto end;
 	}
 	r = sc_pkcs15_verify_pin(p15card, pin->data, (const u8 *) password, strlen(password));
 	if (r != SC_SUCCESS) {
-		scam_fw_p15_eid.printmsg("sc_pkcs15_verify_pin: %s\n", sc_strerror(r));
+		scam_print_msg(scamctx, "sc_pkcs15_verify_pin: %s\n", sc_strerror(r));
 		goto end;
 	}
 	r = sc_pkcs15_compute_signature(p15card, prkey, SC_ALGORITHM_RSA_PAD_PKCS1,
 					random_data, 20, chg, chglen);
 	if (r < 0) {
-		scam_fw_p15_eid.printmsg("sc_pkcs15_compute_signature: %s\n", sc_strerror(r));
+		scam_print_msg(scamctx, "sc_pkcs15_compute_signature: %s\n", sc_strerror(r));
 		goto end;
 	}
 	r = RSA_public_decrypt(chglen, chg, txt, pubkey->pkey.rsa, RSA_PKCS1_PADDING);
 	if (r < 0) {
-		scam_fw_p15_eid.printmsg("Signature verification failed.\n");
+		scam_print_msg(scamctx, "Signature verification failed.\n");
 		goto end;
 	}
 	if (r == sizeof(random_data) && !memcmp(txt, random_data, r)) {
 		err = SCAM_SUCCESS;
 	}
-end:
+      end:
 	if (pubkey)
 		EVP_PKEY_free(pubkey);
 	if (cert)
@@ -356,7 +299,7 @@ end:
 	return err;
 }
 
-void p15_eid_deinit(void)
+void p15_eid_deinit(scam_context * scamctx)
 {
 	if (card_locked) {
 		sc_unlock(card);
@@ -391,9 +334,6 @@ struct scam_framework_ops scam_fw_p15_eid =
 	p15_eid_atrs,		/* atrs */
 #endif
 	p15_eid_usage,		/* usage */
-	p15_eid_handles,	/* handles */
-	p15_eid_printmsg,	/* printmsg */
-	p15_eid_logmsg,		/* logmsg */
 	p15_eid_init,		/* init */
 	p15_eid_pinentry,	/* pinentry */
 	p15_eid_qualify,	/* qualify */

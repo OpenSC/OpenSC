@@ -137,7 +137,7 @@ static void print_ctrl(unsigned int ctrl)
 /*
  * set the control flags for the OPENSC module.
  */
-int _set_ctrl(pam_handle_t * pamh, int flags, char **auth_method, int argc, const char **argv)
+int _set_ctrl(pam_handle_t * pamh, int flags, int argc, const char **argv)
 {
 	unsigned int ctrl;
 
@@ -178,16 +178,6 @@ int _set_ctrl(pam_handle_t * pamh, int flags, char **auth_method, int argc, cons
 		} else {
 			ctrl &= opensc_args[j].mask;	/* for turning things off */
 			ctrl |= opensc_args[j].flag;	/* for turning things on  */
-
-			if (!*auth_method && (j == OPENSC_AUTH_METHOD)) {
-				const char *p = *argv + strlen(opensc_args[j].token);
-				size_t len = strlen(p) + 1;
-				*auth_method = (char *) malloc(len);
-				if (!*auth_method)
-					break;
-				memset(*auth_method, 0, len);
-				strncpy(*auth_method, p, len - 1);
-			}
 		}
 		++argv;		/* step to next argument */
 	}

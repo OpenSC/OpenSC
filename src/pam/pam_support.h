@@ -153,9 +153,8 @@ typedef struct {
 #define OPENSC__QUIET              10	/* internal */
 #define OPENSC_USE_AUTHTOK         11	/* insist on reading PAM_AUTHTOK */
 #define OPENSC_DEBUG               12	/* send more info to syslog(3) */
-#define OPENSC_AUTH_METHOD         13	/* Authentication method */
 /* -------------- */
-#define OPENSC_CTRLS_              14	/* number of ctrl arguments defined */
+#define OPENSC_CTRLS_              13	/* number of ctrl arguments defined */
 
 static const OPENSC_Ctrls opensc_args[OPENSC_CTRLS_] =
 {
@@ -175,7 +174,6 @@ static const OPENSC_Ctrls opensc_args[OPENSC_CTRLS_] =
 /* OPENSC__QUIET */          {NULL,              _ALL_ON_,                02000},
 /* OPENSC_USE_AUTHTOK */     {"use_authtok",     _ALL_ON_,                04000},
 /* OPENSC_DEBUG */           {"debug",           _ALL_ON_,               010000},
-/* OPENSC_AUTH_METHOD */     {"auth_method=",    _ALL_ON_,               020000}
 };
 
 #define OPENSC_DEFAULTS  (opensc_args[OPENSC__NONULL].flag)
@@ -188,7 +186,7 @@ static const OPENSC_Ctrls opensc_args[OPENSC_CTRLS_] =
 }
 
 extern int opensc_pam_msg(pam_handle_t * pamh, unsigned int ctrl, int type, PAM_CONST char *text);
-extern int _set_ctrl(pam_handle_t * pamh, int flags, char **auth_method, int argc, const char **argv);
+extern int _set_ctrl(pam_handle_t * pamh, int flags, int argc, const char **argv);
 extern int _read_password(pam_handle_t * pamh
 			  ,unsigned int ctrl
 			  ,PAM_CONST char *comment

@@ -4,14 +4,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@
 
-if HAVE_PAM
-PAM = libpamscam.la
-endif
-if HAVE_SIA
-SIA = libsiascam.la
-endif
-
-lib_LTLIBRARIES = $(PAM) $(SIA)
+lib_LTLIBRARIES = libscam.la
 
 if HAVE_LDAP
 LDAP_LTLIBS = @LIBSCLDAP@
@@ -31,10 +24,6 @@ EXTRAINC = $(SCIDI_INC)
 
 SRC = scam.c scam.h p15_eid.c p15_ldap.c $(SCIDI_SRC)
 
-libpamscam_la_SOURCES = $(SRC)
-libpamscam_la_LDFLAGS = -module -avoid-version
-libpamscam_la_CFLAGS = -I../pam -DPAM_SCAM $(EXTRAINC)
-
-libsiascam_la_SOURCES = $(SRC)
-libsiascam_la_LDFLAGS = -module -avoid-version
-libsiascam_la_CFLAGS = -I../sia -DSIA_SCAM $(EXTRAINC)
+libscam_la_SOURCES = $(SRC)
+libscam_la_LDFLAGS = -module -avoid-version
+libscam_la_CFLAGS = $(EXTRAINC)
