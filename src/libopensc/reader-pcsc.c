@@ -158,8 +158,13 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 		rv = SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
 				   &sRecvPci, recvbuf, &dwRecvLength);
 	} else {
+#ifndef _WIN32
 		rv = SCardControl(card, sendbuf, dwSendLength,
 				  recvbuf, &dwRecvLength);
+#else
+		rv = SCardControl(card, 0, sendbuf, dwSendLength,
+				  recvbuf, dwRecvLength, &dwRecvLength);
+#endif
 	}
 
 	if (rv != SCARD_S_SUCCESS) {
