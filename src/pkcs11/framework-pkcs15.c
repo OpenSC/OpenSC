@@ -1343,6 +1343,68 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 #endif
 };
 
+CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
+                               struct sc_pkcs15_object *p15_object,
+                               CK_ATTRIBUTE_PTR attr)
+{
+#ifndef USE_PKCS15_INIT
+       return CKR_FUNCTION_NOT_SUPPORTED;
+#else
+       struct sc_profile *profile = NULL;
+       struct sc_pkcs11_card *p11card = session->slot->card;
+       struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+       struct pkcs15_slot_data *p15_data = slot_data(session->slot->fw_data);
+       struct sc_pkcs15_id id;
+       int rc = 0;
+       CK_RV rv = CKR_OK;
+
+       rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
+       if (rc < 0)
+               return sc_to_cryptoki_error(rc, p11card->reader);
+
+       /* 2. Add the PINs the user presented so far. Some initialization
+        * routines need to present these PINs again because some
+        * card operations may clobber the authentication state
+        * (the GPK for instance) */
+
+       if (p15_data->pin[CKU_SO].len)
+               sc_pkcs15init_set_pin_data(profile, SC_PKCS15INIT_SO_PIN,
+                       p15_data->pin[CKU_SO].value, p15_data->pin[CKU_SO].len);
+       if (p15_data->pin[CKU_USER].len)
+               sc_pkcs15init_set_pin_data(profile, SC_PKCS15INIT_USER_PIN,
+                       p15_data->pin[CKU_USER].value, p15_data->pin[CKU_USER].len);
+
+       switch(attr->type)
+       {
+       case CKA_LABEL:
+               rc = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object,
+                       P15_ATTR_TYPE_LABEL, attr->pValue, attr->ulValueLen);
+               break;
+       case CKA_ID:
+               if (attr->ulValueLen > SC_PKCS15_MAX_ID_SIZE) {
+                       rc = SC_ERROR_INVALID_ARGUMENTS;
+                       break;
+               }
+               memcpy(id.value, attr->pValue, attr->ulValueLen);
+               id.len = attr->ulValueLen;
+               rc = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object,
+                       P15_ATTR_TYPE_ID, &id, sizeof(id));
+               break;
+       default:
+               rv = CKR_ATTRIBUTE_READ_ONLY;
+               goto set_attr_done;
+       }
+
+       printf("rc = %d\n", rc);
+       rv = sc_to_cryptoki_error(rc, p11card->reader);
+
+set_attr_done:
+       sc_pkcs15init_unbind(profile);
+
+       return rv;
+#endif
+}
+
 /*
  * PKCS#15 Certificate Object
  */
@@ -1354,6 +1416,14 @@ void pkcs15_cert_release(void *obj)
 
 	if (__pkcs15_release_object((struct pkcs15_any_object *) obj) == 0)
 		sc_pkcs15_free_certificate(cert_data);
+}
+
+CK_RV pkcs15_cert_set_attribute(struct sc_pkcs11_session *session,
+                               void *object,
+                               CK_ATTRIBUTE_PTR attr)
+{
+       struct pkcs15_cert_object *cert = (struct pkcs15_cert_object*) object;
+       return pkcs15_set_attrib(session, cert->base.p15_object, attr);
 }
 
 CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
@@ -1467,7 +1537,7 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 
 struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	pkcs15_cert_release,
-        NULL,
+        pkcs15_cert_set_attribute,
 	pkcs15_cert_get_attribute,
 	pkcs15_cert_cmp_attribute,
 	NULL,
@@ -1481,6 +1551,14 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 void pkcs15_prkey_release(void *object)
 {
 	__pkcs15_release_object((struct pkcs15_any_object *) object);
+}
+
+CK_RV pkcs15_prkey_set_attribute(struct sc_pkcs11_session *session,
+                               void *object,
+                               CK_ATTRIBUTE_PTR attr)
+{
+       struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) object;
+       return pkcs15_set_attrib(session, prkey->base.p15_object, attr);
 }
 
 CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
@@ -1741,7 +1819,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 
 struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_prkey_release,
-	NULL,
+	pkcs15_prkey_set_attribute,
 	pkcs15_prkey_get_attribute,
 	sc_pkcs11_any_cmp_attribute,
 	NULL,
@@ -1760,6 +1838,14 @@ void pkcs15_pubkey_release(void *object)
 
 	if (__pkcs15_release_object((struct pkcs15_any_object *) object) == 0)
 		sc_pkcs15_free_pubkey(key_data);
+}
+
+CK_RV pkcs15_pubkey_set_attribute(struct sc_pkcs11_session *session,
+                               void *object,
+                               CK_ATTRIBUTE_PTR attr)
+{
+       struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
+       return pkcs15_set_attrib(session, pubkey->base.p15_object, attr);
 }
 
 CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
@@ -1863,7 +1949,7 @@ CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 
 struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	pkcs15_pubkey_release,
-	NULL,
+	pkcs15_pubkey_set_attribute,
 	pkcs15_pubkey_get_attribute,
 	sc_pkcs11_any_cmp_attribute,
 	NULL,
