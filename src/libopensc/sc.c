@@ -26,7 +26,12 @@
 #include <assert.h>
 #include <ctype.h>
 
+#ifdef OPENSC_VERSION
 const char *sc_version = OPENSC_VERSION;
+#else
+#warning FIXME: version info
+const char *sc_version = "(undef)";
+#endif
 int sc_debug = 1;
 
 int sc_sw_to_errorcode(int sw1, int sw2)

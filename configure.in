@@ -1,0 +1,31 @@
+# Process this file with autoconf to produce a configure script.
+AC_INIT(libopensc)
+AC_CONFIG_AUX_DIR(config)
+AC_CONFIG_SRCDIR(src/sc.c)
+AM_CONFIG_HEADER(src/config.h:src/config.h.in)
+AM_INIT_AUTOMAKE(libopensc, 0.3.2)
+
+
+# Checks for programs.
+AC_PROG_CC
+AC_PROG_LIBTOOL
+
+# Checks for libraries.
+AC_CHECK_LIB(pcsclite, SCardEstablishContext)
+AC_CHECK_LIB(pthread, pthread_mutex_lock)
+
+# Checks for header files.
+AC_HEADER_STDC
+AC_CHECK_HEADERS(stdlib.h string.h unistd.h assert.h strings.h)
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_TYPE_SIZE_T
+
+# Checks for library functions.
+AC_FUNC_MALLOC
+AC_FUNC_MEMCMP
+AC_CHECK_FUNCS(memset strdup)
+
+#AC_CONFIG_FILES(Makefile)
+AC_OUTPUT(Makefile src/Makefile)
