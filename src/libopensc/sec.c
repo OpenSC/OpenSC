@@ -19,6 +19,7 @@
  */
 
 #include "opensc.h"
+#include "sc-log.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <assert.h>
@@ -32,6 +33,7 @@ int sc_set_security_env(struct sc_card *card,
 	int r;
 
 	assert(card != NULL && env != NULL);
+	SC_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
 	if (env->signature) {
 		apdu.p1 = 0x81;
@@ -58,9 +60,8 @@ int sc_set_security_env(struct sc_card *card,
 	apdu.data = sbuf;
 	apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
-	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_restore_security_env(struct sc_card *card, int num)
@@ -69,12 +70,12 @@ int sc_restore_security_env(struct sc_card *card, int num)
 	int r;
 	
 	assert(card != NULL);
+	SC_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, num);
 	apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
-	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_decipher(struct sc_card *card,
@@ -86,8 +87,9 @@ int sc_decipher(struct sc_card *card,
 	u8 sbuf[MAX_BUFFER_SIZE];
 
 	assert(card != NULL && crgram != NULL && out != NULL);
+	SC_FUNC_CALLED(card->ctx);
 	if (crgram_len > 255)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
@@ -99,18 +101,14 @@ int sc_decipher(struct sc_card *card,
 	apdu.lc = crgram_len + 1;
 	apdu.datalen = crgram_len + 1;
 	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
-		return len;
+		SC_FUNC_RETURN(card->ctx, len);
 	}
-	if (sc_debug)
-		fprintf(stderr, "sc_decipher(): SW1=%02X, SW2=%02X\n",
-			apdu.sw1, apdu.sw2);
-	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_compute_signature(struct sc_card *card,
@@ -123,8 +121,9 @@ int sc_compute_signature(struct sc_card *card,
 	u8 sbuf[MAX_BUFFER_SIZE];
 
 	assert(card != NULL && data != NULL && out != NULL);
+	SC_FUNC_CALLED(card->ctx);
 	if (datalen > 255)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x9E,
 		       0x9A);
@@ -136,18 +135,14 @@ int sc_compute_signature(struct sc_card *card,
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
 	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return r;
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
-		return len;
+		SC_FUNC_RETURN(card->ctx, len);
 	}
-	if (sc_debug)
-		fprintf(stderr, "sc_compute_signature(): SW1=%02X, SW2=%02X\n",
-			apdu.sw1, apdu.sw2);
-	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
@@ -156,9 +151,10 @@ int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
 	struct sc_apdu apdu;
 	u8 sbuf[MAX_BUFFER_SIZE];
 	int r;
-
+	
+	SC_FUNC_CALLED(card->ctx);
 	if (pinlen >= MAX_BUFFER_SIZE)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, ref);
 	memcpy(sbuf, pin, pinlen);
 	apdu.lc = pinlen;
@@ -168,14 +164,13 @@ int sc_verify(struct sc_card *card, int ref, const u8 *pin, int pinlen,
 	
 	r = sc_transmit_apdu(card, &apdu);
 	memset(sbuf, 0, pinlen);
-	if (r)
-		return r;
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
 		if (tries_left != NULL)
 			*tries_left = apdu.sw2 & 0x0F;
-		return SC_ERROR_PIN_CODE_INCORRECT;
+		SC_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
-	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
@@ -186,8 +181,9 @@ int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
 	u8 sbuf[MAX_BUFFER_SIZE];
 	int r, p1 = 0, len = oldlen + newlen;
 
+	SC_FUNC_CALLED(card->ctx);
 	if (len >= MAX_BUFFER_SIZE)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (oldlen == 0)
 		p1 = 1;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, p1, ref);
@@ -200,14 +196,13 @@ int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
 	
 	r = sc_transmit_apdu(card, &apdu);
 	memset(sbuf, 0, len);
-	if (r)
-		return r;
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
 		if (tries_left != NULL)
 			*tries_left = apdu.sw2 & 0x0F;
-		return SC_ERROR_PIN_CODE_INCORRECT;
+		SC_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
-	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
 int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
@@ -218,7 +213,7 @@ int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
 	int r, p1 = 0, len = puklen + newlen;
 
 	if (len >= MAX_BUFFER_SIZE)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		SC_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (puklen == 0) {
 		if (newlen == 0)
 			p1 = 3;
@@ -240,7 +235,6 @@ int sc_reset_retry_counter(struct sc_card *card, int ref, const u8 *puk,
 	
 	r = sc_transmit_apdu(card, &apdu);
 	memset(sbuf, 0, len);
-	if (r)
-		return r;
-	return sc_sw_to_errorcode(apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_FUNC_RETURN(card->ctx, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }

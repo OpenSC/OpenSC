@@ -20,6 +20,7 @@
 
 #include "opensc.h"
 #include "opensc-pkcs15.h"
+#include "sc-log.h"
 #include "sc-asn1.h"
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +28,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <assert.h>
+
+#undef CACHE_CERTS
 
 static int parse_rsa_pubkey(const u8 *buf, int buflen, struct sc_pkcs15_rsa_pubkey *key)
 {
@@ -186,6 +189,7 @@ static int find_cached_cert(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
+#ifdef CACHE_CERTS
 static int store_cert_to_cache(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_cert_info *info,
 			       u8 *data, int len)
@@ -208,6 +212,7 @@ static int store_cert_to_cache(struct sc_pkcs15_card *p15card,
 	fclose(crtf);
 	return 0;
 }
+#endif
 
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_cert_info *info,
@@ -219,7 +224,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_cert *cert;
 
 	assert(p15card != NULL && info != NULL && cert_out != NULL);
-
+	SC_FUNC_CALLED(p15card->card->ctx);
 	r = find_cached_cert(p15card, info, &data, &len);
 	if (r) {
 		r = sc_select_file(p15card->card, &file, &info->path,
@@ -235,7 +240,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 			return r;
 		}
 		len = r;
-#if 0
+#ifdef CACHE_CERTS
 		store_cert_to_cache(p15card, info, data, len);
 #endif
 	}

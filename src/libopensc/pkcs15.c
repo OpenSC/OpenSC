@@ -21,6 +21,7 @@
 #include "opensc.h"
 #include "opensc-pkcs15.h"
 #include "sc-asn1.h"
+#include "sc-log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _SC_H
-#define _SC_H
+#ifndef _OPENSC_H
+#define _OPENSC_H
 
 #include <pthread.h>
 #include <winscard.h>
@@ -128,7 +128,7 @@ struct sc_file {
 
 struct sc_card {
 	int cla;
-	struct sc_context *context;
+	struct sc_context *ctx;
 
 	SCARDHANDLE pcsc_card;
 	int reader;
@@ -142,6 +142,8 @@ struct sc_context {
 	SCARDCONTEXT pcsc_ctx;
 	char *readers[SC_MAX_READERS];
 	int reader_count;
+
+	int use_std_output, use_cache;
 };
 
 struct sc_apdu {
@@ -234,10 +236,9 @@ const char *sc_strerror(int error);
 
 /* Internal use only */
 int sc_file_valid(const struct sc_file *file);
-void sc_hex_dump(const u8 *buf, int len);
 void sc_print_binary(FILE *f, const u8 *buf, int len);
 int sc_hex_to_bin(const char *in, u8 *out, int *outlen);
-int sc_sw_to_errorcode(int sw1, int sw2);
+int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2);
 
 extern int sc_debug;
 extern const char *sc_version;
@@ -247,6 +248,5 @@ extern const struct sc_defaults sc_card_table[];
 #ifdef  __cplusplus
 }
 #endif
-
 
 #endif
