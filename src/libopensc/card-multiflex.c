@@ -82,7 +82,7 @@ static int parse_flex_sf_reply(struct sc_context *ctx, const u8 *buf, int buflen
 	file->size = (b1 << 8) + b2;
 	b1 = *p++;
 	b2 = *p++;
-	file->id = (b1) + b2;
+	file->id = (b1 << 8) + b2;
 	switch (*p) {
 	case 0x01:
 		file->type = SC_FILE_TYPE_WORKING_EF;

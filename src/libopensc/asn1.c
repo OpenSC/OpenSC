@@ -29,7 +29,7 @@
 
 
 static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
-		      const u8 *in, int len, const u8 **newp, int *len_left,
+		      const u8 *in, size_t len, const u8 **newp, size_t *len_left,
 		      int choice, int depth);
 
 const char *tag2str(int tag)
@@ -50,12 +50,12 @@ const char *tag2str(int tag)
 	return tags[tag];
 }
 
-static int read_tag(const u8 ** buf,
-		    int buflen, int *cla_out, int *tag_out, int *taglen)
+static int read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
+		    unsigned int *tag_out, size_t *taglen)
 {
 	const u8 *p = *buf;
-	int left = buflen;
-	int cla, tag, len, i;
+	size_t left = buflen, len;
+	unsigned int cla, tag, i;
 
 	if (left < 2)
 		goto error;
@@ -73,7 +73,7 @@ static int read_tag(const u8 ** buf,
 		goto error;
 	len = *p & 0x7f;
 	if (*p++ & 0x80) {
-		int a = 0;
+		unsigned int a = 0;
 		if (len > 4) {
 			fprintf(stderr, "ASN.1 tag too long!\n");
 			goto error;
@@ -94,7 +94,7 @@ static int read_tag(const u8 ** buf,
 	return -1;
 }
 
-static void sc_asn1_print_octet_string(const u8 * buf, int buflen)
+static void sc_asn1_print_octet_string(const u8 * buf, size_t buflen)
 {
 	int i;
 
@@ -102,7 +102,7 @@ static void sc_asn1_print_octet_string(const u8 * buf, int buflen)
 		printf("%02X", buf[i]);
 }
 
-static void sc_asn1_print_utf8string(const u8 * buf, int buflen)
+static void sc_asn1_print_utf8string(const u8 * buf, size_t buflen)
 {
 	int i;
 
@@ -110,7 +110,7 @@ static void sc_asn1_print_utf8string(const u8 * buf, int buflen)
 		printf("%c", buf[i]);
 }
 
-static void sc_asn1_print_integer(const u8 * buf, int buflen)
+static void sc_asn1_print_integer(const u8 * buf, size_t buflen)
 {
 	long long a = 0;
 	int i;
@@ -126,7 +126,7 @@ static void sc_asn1_print_integer(const u8 * buf, int buflen)
 	printf("%lld", a);
 }
 
-static void sc_asn1_print_bit_string(const u8 * buf, int buflen)
+static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen)
 {
 	unsigned long long a = 0;
 	int i, r;
@@ -145,7 +145,7 @@ static void sc_asn1_print_bit_string(const u8 * buf, int buflen)
 	}
 }
 
-static void sc_asn1_print_object_id(const u8 * buf, int buflen)
+static void sc_asn1_print_object_id(const u8 * buf, size_t buflen)
 {
 	int i = 0;
 	struct sc_object_id oid;
@@ -168,10 +168,11 @@ static void sc_asn1_print_object_id(const u8 * buf, int buflen)
 	printf("%s", sbuf);
 }
 
-static void print_tags_recursive(const u8 * buf0,
-				 const u8 * buf, int buflen, int depth)
+static void print_tags_recursive(const u8 * buf0, const u8 * buf,
+				 size_t buflen, int depth)
 {
-	int i, r, bytesleft = buflen;
+	int i, r;
+	size_t bytesleft = buflen;
 	const char *classes[4] = {
 		"Univ", "Appl", "Cntx", "Priv"
 	};
@@ -242,7 +243,7 @@ static void print_tags_recursive(const u8 * buf0,
 	return;
 }
 
-void sc_asn1_print_tags(const u8 * buf, int buflen)
+void sc_asn1_print_tags(const u8 * buf, size_t buflen)
 {
 	printf("Printing tags for buffer of length %d\n", buflen);
 	print_tags_recursive(buf, buf, buflen, 0);
@@ -251,7 +252,8 @@ void sc_asn1_print_tags(const u8 * buf, int buflen)
 const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 			   size_t buflen, unsigned int tag_in, size_t *taglen_in)
 {
-	int left = buflen, taglen, cla, tag;
+	size_t left = buflen, taglen;
+	unsigned int cla, tag;
 	const u8 *p = buf;
 
 	*taglen_in = 0;
@@ -276,7 +278,8 @@ const u8 *sc_asn1_skip_tag(struct sc_context *ctx, const u8 ** buf, size_t *bufl
 			   unsigned int tag_in, size_t *taglen_out)
 {
 	const u8 *p = *buf;
-	int len = *buflen, taglen, cla, tag;
+	size_t len = *buflen, taglen;
+	unsigned int cla, tag;
 
 	if (read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != 1)
 		return NULL;
@@ -324,19 +327,21 @@ const u8 *sc_asn1_verify_tag(struct sc_context *ctx, const u8 * buf, size_t bufl
 	return sc_asn1_skip_tag(ctx, &buf, &buflen, tag_in, taglen_out);
 }
 
-static int decode_bit_string(const u8 * inbuf, int inlen, void *outbuf,
-			     int outlen, int invert)
+static int decode_bit_string(const u8 * inbuf, size_t inlen, void *outbuf,
+			     size_t outlen, int invert)
 {
 	const u8 *in = inbuf;
 	u8 *out = (u8 *) outbuf;
 	int zero_bits = *in & 0x07;
-	int octets_left = inlen - 1;
+	size_t octets_left = inlen - 1;
 	int i, count = 0;
 
 	memset(outbuf, 0, outlen);
 	in++;
 	if (outlen < octets_left)
 		return SC_ERROR_BUFFER_TOO_SMALL;
+	if (inlen < 1)
+		return SC_ERROR_INVALID_ASN1_OBJECT;
 	while (octets_left) {
 		/* 1st octet of input:  ABCDEFGH, where A is the MSB */
 		/* 1st octet of output: HGFEDCBA, where A is the LSB */
@@ -363,19 +368,19 @@ static int decode_bit_string(const u8 * inbuf, int inlen, void *outbuf,
 	return (count * 8) - zero_bits;
 }
 
-int sc_asn1_decode_bit_string(const u8 * inbuf,
-			      int inlen, void *outbuf, int outlen)
+int sc_asn1_decode_bit_string(const u8 * inbuf, size_t inlen,
+			      void *outbuf, size_t outlen)
 {
 	return decode_bit_string(inbuf, inlen, outbuf, outlen, 1);
 }
 
-int sc_asn1_decode_bit_string_ni(const u8 * inbuf,
-			      int inlen, void *outbuf, int outlen)
+int sc_asn1_decode_bit_string_ni(const u8 * inbuf, size_t inlen,
+				 void *outbuf, size_t outlen)
 {
 	return decode_bit_string(inbuf, inlen, outbuf, outlen, 0);
 }
 
-int sc_asn1_decode_integer(const u8 * inbuf, int inlen, int *out)
+int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
 {
 	int i, a = 0;
 
@@ -389,7 +394,7 @@ int sc_asn1_decode_integer(const u8 * inbuf, int inlen, int *out)
 	return 0;
 }
 
-int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
+int sc_asn1_decode_object_id(const u8 * inbuf, size_t inlen,
                              struct sc_object_id *id)
 {
 	int i, a;
@@ -424,8 +429,8 @@ int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
 	return 0;
 }
 
-int sc_asn1_decode_utf8string(const u8 * inbuf, int inlen,
-			      u8 *out, int *outlen)
+int sc_asn1_decode_utf8string(const u8 * inbuf, size_t inlen,
+			      u8 *out, size_t *outlen)
 {
 	if (inlen+1 > *outlen)
 		return SC_ERROR_BUFFER_TOO_SMALL;
@@ -457,12 +462,12 @@ int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen,
 	return 0;
 }
 
-static int asn1_parse_path(struct sc_context *ctx, const u8 *in, int len,
-			      struct sc_path *path, int depth)
+static int asn1_parse_path(struct sc_context *ctx, const u8 *in, size_t len,
+			   struct sc_path *path, int depth)
 {
 	int idx, r;
 	struct sc_asn1_struct asn1_path[] = {
-		{ "path",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, &path->value, (int *) &path->len },
+		{ "path",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, &path->value, &path->len },
 		{ "index",  SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, &idx },
 		{ NULL }
 	};
@@ -475,13 +480,14 @@ static int asn1_parse_path(struct sc_context *ctx, const u8 *in, int len,
 	return 0;
 }
 
-static int asn1_parse_p15_object(struct sc_context *ctx, const u8 *in, int len,
-				    struct sc_pkcs15_object *obj, int depth)
+static int asn1_parse_p15_object(struct sc_context *ctx, const u8 *in,
+				 size_t len, struct sc_pkcs15_object *obj,
+				 int depth)
 {
 	int r;
 	struct sc_pkcs15_common_obj_attr *com_attr = obj->com_attr;
-	int flags_len = sizeof(com_attr->flags);
-	int label_len = sizeof(com_attr->label);
+	size_t flags_len = sizeof(com_attr->flags);
+	size_t label_len = sizeof(com_attr->label);
 	struct sc_asn1_struct asn1_com_obj_attr[] = {
 		{ "label", SC_ASN1_UTF8STRING, ASN1_UTF8STRING, SC_ASN1_OPTIONAL, com_attr->label, &label_len },
 		{ "flags", SC_ASN1_BIT_STRING, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, &com_attr->flags, &flags_len },
@@ -502,13 +508,13 @@ static int asn1_parse_p15_object(struct sc_context *ctx, const u8 *in, int len,
 }
 
 static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entry,
-			     const u8 *obj, int objlen, int depth)
+			     const u8 *obj, size_t objlen, int depth)
 {
 	void *parm = entry->parm;
 	int (*callback_func)(struct sc_context *ctx, void *arg, const u8 *obj,
 			     int objlen, int depth) =
 		(int (*)(struct sc_context *, void *, const u8 *, int, int)) parm;
-	int *len = (int *) entry->arg;
+	size_t *len = (size_t *) entry->arg;
 	int r = 0;
 
 	if (ctx->debug >= 3) {
@@ -549,6 +555,10 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entr
 		if (parm != NULL) {
 			int invert = entry->type == SC_ASN1_BIT_STRING ? 1 : 0;
 			assert(len != NULL);
+			if (objlen < 1) {
+				r = SC_ERROR_INVALID_ASN1_OBJECT;
+				break;
+			}
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
 				*buf = malloc(objlen-1);
@@ -641,7 +651,7 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_struct *entr
 }
 
 static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
-		      const u8 *in, int len, const u8 **newp, int *len_left,
+		      const u8 *in, size_t len, const u8 **newp, size_t *len_left,
 		      int choice, int depth)
 {
 	int r, idx = 0;
@@ -700,13 +710,13 @@ static int asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
 }
 
 int sc_asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
-		  const u8 *in, int len, const u8 **newp, int *len_left)
+		  const u8 *in, size_t len, const u8 **newp, size_t *len_left)
 {
 	return asn1_parse(ctx, asn1, in, len, newp, len_left, 0, 0);
 }
 
 int sc_asn1_parse_choice(struct sc_context *ctx, struct sc_asn1_struct *asn1,
-			 const u8 *in, int len, const u8 **newp, int *len_left)
+			 const u8 *in, size_t len, const u8 **newp, size_t *len_left)
 {
 	return asn1_parse(ctx, asn1, in, len, newp, len_left, 1, 0);
 }

@@ -43,9 +43,9 @@ struct sc_pkcs15_object {
 /* DER tag and length parsing */
 
 int sc_asn1_parse(struct sc_context *ctx, struct sc_asn1_struct *asn1,
-		  const u8 *in, int len, const u8 **newp, int *left);
+		  const u8 *in, size_t len, const u8 **newp, size_t *left);
 int sc_asn1_parse_choice(struct sc_context *ctx, struct sc_asn1_struct *asn1,
-		  const u8 *in, int len, const u8 **newp, int *left);
+		  const u8 *in, size_t len, const u8 **newp, size_t *left);
 
 const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 			   size_t buflen, unsigned int tag, size_t *taglen);
@@ -61,19 +61,20 @@ const u8 *sc_asn1_skip_tag(struct sc_context *ctx, const u8 ** buf,
 int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen, u8 ** ptr);
 
 /* ASN.1 printing functions */
-void sc_asn1_print_tags(const u8 * buf, int buflen);
+void sc_asn1_print_tags(const u8 * buf, size_t buflen);
 
 /* ASN.1 object decoding functions */
-int sc_asn1_utf8string_to_ascii(const u8 * buf, int buflen,
-				u8 * outbuf, int outlen);
-int sc_asn1_decode_bit_string(const u8 * inbuf, int inlen,
-			      void *outbuf, int outlen);
+int sc_asn1_utf8string_to_ascii(const u8 * buf, size_t buflen,
+				u8 * outbuf, size_t outlen);
+int sc_asn1_decode_bit_string(const u8 * inbuf, size_t inlen,
+			      void *outbuf, size_t outlen);
 /* non-inverting version */
-int sc_asn1_decode_bit_string_ni(const u8 * inbuf, int inlen,
-				 void *outbuf, int outlen);
-int sc_asn1_decode_integer(const u8 * inbuf, int inlen, int *out);
-int sc_asn1_decode_object_id(const u8 * inbuf, int inlen,
+int sc_asn1_decode_bit_string_ni(const u8 * inbuf, size_t inlen,
+				 void *outbuf, size_t outlen);
+int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out);
+int sc_asn1_decode_object_id(const u8 * inbuf, size_t inlen,
 			     struct sc_object_id *id);
+
 #define SC_ASN1_CLASS_MASK		0x30000000
 #define SC_ASN1_UNI			0x00000000 /* Universal */
 #define SC_ASN1_APP			0x10000000 /* Application */
