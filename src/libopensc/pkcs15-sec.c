@@ -166,7 +166,7 @@ static int add_padding(struct sc_context *ctx, const u8 *in, size_t inlen, u8 *o
         size_t buflen;
 	const u8 *hdr_md5 =  (const u8 *) "\x30\x20\x30\x0c\x06\x08\x2a\x86\x48\x86\xf7\x0d\x02\x05\x05\x00\x04\x10";
         size_t hdr_md5_len = 18;
-	const u8 *hdr_sha1 = (const u8 *) "\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x10";
+	const u8 *hdr_sha1 = (const u8 *) "\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14";
         size_t hdr_sha1_len = 15;
 
 	if (flags & SC_ALGORITHM_RSA_HASH_SHA1) {
