@@ -214,7 +214,7 @@ static char *			opt_infile = 0;
 static char *			opt_format = 0;
 static char *			opt_authid = 0;
 static char *			opt_objectid = 0;
-static char *			opt_objectlabel = 0;
+static char *			opt_label = 0;
 static char *			opt_pins[4];
 static char *			opt_serial = 0;
 static char *			opt_passphrase = 0;
@@ -401,6 +401,7 @@ do_init_app(struct sc_profile *profile)
 	if (args.so_puk)
 		args.so_puk_len = strlen((char *) args.so_puk);
 	args.serial = (const char *) opt_serial;
+	args.label = opt_label;
 	
 	return sc_pkcs15init_add_app(card, profile, &args);
 
@@ -450,7 +451,7 @@ do_store_pin(struct sc_profile *profile)
 	args.pin_len = strlen(opt_pins[0]);
 	args.puk = (u8 *) opt_pins[1];
 	args.puk_len = opt_pins[1]? strlen(opt_pins[1]) : 0;
-	args.label = opt_objectlabel;
+	args.label = opt_label;
 
 	return sc_pkcs15init_store_pin(p15card, profile, &args);
 
@@ -529,8 +530,7 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 	memset(&args, 0, sizeof(args));
 	if (opt_objectid)
 		sc_pkcs15_format_id(opt_objectid, &args.id);
-	if (opt_objectlabel)
-		args.label = opt_objectlabel;
+	args.label = opt_label;
 
 	if (pkey == NULL)
 		r = do_read_public_key(opt_infile, opt_format, &pkey);
@@ -557,7 +557,7 @@ do_store_certificate(struct sc_profile *profile)
 
 	if (opt_objectid)
 		sc_pkcs15_format_id(opt_objectid, &args.id);
-	args.label = opt_objectlabel;
+	args.label = opt_label;
 	args.authority = opt_authority;
 
 	r = do_read_certificate(opt_infile, opt_format, &cert);
@@ -667,7 +667,7 @@ init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 			args->extractable |= SC_PKCS15INIT_NO_PASSPHRASE;
 		}
 	}
-	args->label = opt_objectlabel;
+	args->label = opt_label;
 	args->x509_usage = opt_x509_usage;
 	return 0;
 }
@@ -1322,7 +1322,7 @@ handle_option(int c)
 		opt_objectid = optarg;
 		break;
 	case 'l':
-		opt_objectlabel = optarg;
+		opt_label = optarg;
 		break;
 	case 'o':
 		opt_outkey = optarg;
