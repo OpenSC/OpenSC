@@ -17,7 +17,7 @@ case $host in
   AC_DEFINE(OS_BEOS,1,[BeOS])
   ;;
   cygwin* | mingw* | pw32*)
-  AC_DEFINE(OS_CYGWIN,1,[Cywin32 and friends])
+  AC_DEFINE(OS_CYGWIN32,1,[Cywin32 and friends])
   ;;
   *irix*)
   AC_DEFINE(OS_IRIX,1,[SGI IRIX])
@@ -29,7 +29,7 @@ case $host in
   AC_DEFINE(OS_SOLARIS,1,[Sun Solaris])
   ;;
   *osf*)
-  AC_DEFINE(OS_DUNIX,1,[Digital UNIX])
+  AC_DEFINE(OS_DIGITAL_UNIX,1,[Digital UNIX])
   ;;
   *aix*)
   AC_DEFINE(OS_AIX,1,[IBM AIX])
