@@ -42,9 +42,10 @@
 #define SC_STATUS_TIMEOUT SC_CUSTOM_STATUS_TIMEOUT
 #endif
 
-#ifdef _WIN32
 /* Some windows specific kludge */
+#undef SCARD_PROTOCOL_ANY
 #define SCARD_PROTOCOL_ANY (SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1)
+#ifdef _WIN32
 #define SCARD_SCOPE_GLOBAL SCARD_SCOPE_USER
 
 /* Error printing */
