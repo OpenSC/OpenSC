@@ -1122,18 +1122,36 @@ sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *session,
 		void *ptr, CK_ATTRIBUTE_PTR attr)
 {
 	struct sc_pkcs11_object *object;
-	u8		temp[1024];
+	u8		temp1[1024];
+	u8		*temp2 = NULL; /* dynamic allocation for large attributes */
 	CK_ATTRIBUTE	temp_attr;
-	int		rv;
+	int		rv, res;
 
 	object = (struct sc_pkcs11_object *) ptr;
 	temp_attr.type = attr->type;
-	temp_attr.pValue = temp;
-	temp_attr.ulValueLen = sizeof(temp);
+	temp_attr.pValue = NULL;
+	temp_attr.ulValueLen = 0;
 
+	/* Get the length of the attribute */
 	rv = object->ops->get_attribute(session, object, &temp_attr);
-	if (rv != CKR_OK)
+	if (rv != CKR_OK || temp_attr.ulValueLen != attr->ulValueLen)
 		return 0;
+
+	if (temp_attr.ulValueLen <= sizeof(temp1))
+		temp_attr.pValue = temp1;
+	else {
+		temp2 = (u8 *) malloc(temp_attr.ulValueLen);
+		if (temp2 == NULL)
+			return 0;
+		temp_attr.pValue = temp2;
+	}
+
+	/* Get the attribute */
+	rv = object->ops->get_attribute(session, object, &temp_attr);
+	if (rv != CKR_OK) {
+		res = 0;
+		goto done;
+	}
 
 #ifdef DEBUG
 	{
@@ -1144,6 +1162,12 @@ sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *session,
 		dump_template(foo, &temp_attr, 1);
 	}
 #endif
-	return temp_attr.ulValueLen == attr->ulValueLen
-	    && !memcmp(temp, attr->pValue, attr->ulValueLen);
+	res = temp_attr.ulValueLen == attr->ulValueLen
+	    && !memcmp(temp_attr.pValue, attr->pValue, attr->ulValueLen);
+
+done:
+	if (temp2 != NULL)
+		free(temp2);
+
+	return res;
 }
