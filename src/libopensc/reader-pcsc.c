@@ -444,7 +444,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	char *reader_buf, *p;
 	LPCSTR mszGroups = NULL;
 	SCARDCONTEXT pcsc_ctx;
-	int r, i, apdu_fix;
+	int r, i;
 	struct pcsc_global_private_data *gpriv;
 	scconf_block **blocks = NULL, *conf_block = NULL;
 
@@ -466,7 +466,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	gpriv->pcsc_ctx = pcsc_ctx;
-	gpriv->apdu_fix = 0;
+	gpriv->apdu_fix = DEF_APDU_FIX;
 	*reader_data = gpriv;
 	
 	reader_buf = (char *) malloc(sizeof(char) * reader_buf_size);
@@ -521,11 +521,9 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 		if (conf_block != NULL)
 			break;
 	}
-	if (conf_block == NULL)
-		return 0;
-	apdu_fix = scconf_get_bool(conf_block, "apdu_fix", DEF_APDU_FIX);
-	if (apdu_fix)
-		gpriv->apdu_fix = apdu_fix;
+
+	if (conf_block != NULL)
+		gpriv->apdu_fix = scconf_get_bool(conf_block, "apdu_fix", DEF_APDU_FIX);
 	
 	return 0;
 }
