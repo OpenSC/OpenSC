@@ -416,10 +416,24 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 {
         int rv;
 	struct sc_pkcs11_session *session;
+	CK_ULONG length;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		return rv;
+
+	/* According to the pkcs11 specs, we must not do any calls that
+	 * change our crypto state if the caller is just asking for the
+	 * signature buffer size, or if the result would be
+	 * CKR_BUFFER_TOO_SMALL. Thus we cannot do the sign_update call
+	 * below. */
+	if ((rv = sc_pkcs11_sign_size(session, &length)) != CKR_OK)
+		return rv;
+
+	if (pSignature == NULL || length > *pulSignatureLen) {
+		*pulSignatureLen = length;
+		return pSignature? CKR_BUFFER_TOO_SMALL : CKR_OK;
+	}
 
 	rv = sc_pkcs11_sign_update(session, pData, ulDataLen);
 	if (rv == CKR_OK)
@@ -452,10 +466,25 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,        /* the session's handle */
 {
         int rv;
 	struct sc_pkcs11_session *session;
+	CK_ULONG length;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		return rv;
+
+	/* According to the pkcs11 specs, we must not do any calls that
+	 * change our crypto state if the caller is just asking for the
+	 * signature buffer size, or if the result would be
+	 * CKR_BUFFER_TOO_SMALL.
+	 */
+	if ((rv = sc_pkcs11_sign_size(session, &length)) != CKR_OK)
+		return rv;
+
+	if (pSignature == NULL || length > *pulSignatureLen) {
+		*pulSignatureLen = length;
+		return pSignature? CKR_BUFFER_TOO_SMALL : CKR_OK;
+	}
+
 
 	rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 	debug(context, "C_SignFinal returns %d\n", rv);

@@ -187,9 +187,16 @@ sc_pkcs11_md_final(struct sc_pkcs11_session *session,
 	if (rv != CKR_OK)
 		return rv;
 
+	/* This is a request for the digest length */
+	if (pData == NULL)
+		*pulDataLen = 0;
+
 	rv = op->type->md_final(op, pData, pulDataLen);
-	if (rv != CKR_BUFFER_TOO_SMALL && pData != NULL)
-		session_stop_operation(session, SC_PKCS11_OPERATION_DIGEST);
+
+	if (rv == CKR_BUFFER_TOO_SMALL)
+		return pData == NULL ? CKR_OK : rv;
+
+	session_stop_operation(session, SC_PKCS11_OPERATION_DIGEST);
 	return rv;
 }
 
@@ -266,6 +273,23 @@ sc_pkcs11_sign_final(struct sc_pkcs11_session *session,
 	if (rv != CKR_BUFFER_TOO_SMALL && pSignature != NULL)
 		session_stop_operation(session, SC_PKCS11_OPERATION_SIGN);
 	return rv;
+}
+
+CK_RV
+sc_pkcs11_sign_size(struct sc_pkcs11_session *session, CK_ULONG_PTR pLength)
+{
+	sc_pkcs11_operation_t *op;
+	int rv;
+
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_SIGN, &op);
+	if (rv != CKR_OK)
+		return rv;
+
+	/* Bail out for signature mechanisms that don't do hashing */
+	if (op->type->sign_size == NULL)
+		return CKR_KEY_TYPE_INCONSISTENT;
+
+	return op->type->sign_size(op, pLength);
 }
 
 /*
@@ -358,6 +382,16 @@ sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 				pSignature, pulSignatureLen);
 }
 
+static CK_RV
+sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
+{
+	struct sc_pkcs11_object *key;
+	CK_ATTRIBUTE attr = { CKA_MODULUS_BITS, pLength, sizeof(*pLength) };
+
+	key = ((struct signature_data *) operation->priv_data)->key;
+	return key->ops->get_attribute(operation->session, key, &attr);
+}
+
 static void
 sc_pkcs11_signature_release(sc_pkcs11_operation_t *operation)
 {
@@ -396,6 +430,7 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 		mt->sign_init = sc_pkcs11_signature_init;
 		mt->sign_update = sc_pkcs11_signature_update;
 		mt->sign_final = sc_pkcs11_signature_final;
+		mt->sign_size = sc_pkcs11_signature_size;
 	}
 	if (pInfo->flags & CKF_UNWRAP) {
 		/* ... */

@@ -227,6 +227,8 @@ struct sc_pkcs11_mechanism_type {
 					CK_BYTE_PTR, CK_ULONG);
 	CK_RV		  (*sign_final)(sc_pkcs11_operation_t *,
 					CK_BYTE_PTR, CK_ULONG_PTR);
+	CK_RV		  (*sign_size)(sc_pkcs11_operation_t *,
+					CK_ULONG_PTR);
 
 	/* mechanism specific data */
 	void *		  mech_data;
@@ -335,6 +337,7 @@ CK_RV sc_pkcs11_sign_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR,
 				struct sc_pkcs11_object *, CK_MECHANISM_TYPE);
 CK_RV sc_pkcs11_sign_update(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
 CK_RV sc_pkcs11_sign_final(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG_PTR);
+CK_RV sc_pkcs11_sign_size(struct sc_pkcs11_session *, CK_ULONG_PTR);
 CK_RV sc_pkcs11_sign_hash(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG,
 				CK_BYTE_PTR, CK_ULONG_PTR);
 sc_pkcs11_mechanism_type_t *sc_pkcs11_find_mechanism(struct sc_pkcs11_card *,
