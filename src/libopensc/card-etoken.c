@@ -37,13 +37,13 @@
 static const struct sc_card_operations *iso_ops = NULL;
 
 struct sc_card_operations etoken_ops;
-struct sc_card_driver etoken_drv = {
+static struct sc_card_driver etoken_drv = {
 	"Siemens CardOS",
 	"etoken",
 	&etoken_ops
 };
 
-const struct {
+static const struct {
 	const char *	atr;
 	int		type;
 } etoken_atrs[] = {

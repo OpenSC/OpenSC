@@ -27,6 +27,8 @@
 #include <string.h>
 #include <stdio.h>
 
+int sc_pkcs15emu_netkey_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+
 static void
 set_string(char **strp, const char *value)
 {
@@ -35,7 +37,7 @@ set_string(char **strp, const char *value)
 	*strp = value? strdup(value) : NULL;
 }
 
-int
+static int
 sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
 	static struct {
 		int           id;

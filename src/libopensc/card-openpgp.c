@@ -78,7 +78,7 @@ static int		pgp_get_pubkey(sc_card_t *, unsigned int,
 static int		pgp_get_pubkey_pem(sc_card_t *, unsigned int,
 				u8 *, size_t);
 
-struct do_info		pgp_objects[] = {
+static struct do_info		pgp_objects[] = {
       {	0x004f,		0, 0,	sc_get_data,	sc_put_data	},
       {	0x005e,		1, 0,	sc_get_data,	sc_put_data	},
       {	0x0065,		1, 0,	sc_get_data,	sc_put_data	},

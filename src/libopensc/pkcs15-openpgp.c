@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <assert.h>
 
+int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+
 static char *	pgp_pin_name[3] = {
 				"Signature PIN",
 				"Encryption PIN",
@@ -71,7 +73,7 @@ read_file(sc_card_t *card, const char *path_name, void *buf, size_t len)
 	return sc_read_binary(card, 0, (u8 *) buf, len, 0);
 }
 
-int
+static int
 sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 {
 	sc_card_t	*card = p15card->card;

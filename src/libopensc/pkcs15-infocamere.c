@@ -26,6 +26,8 @@
 #include <string.h>
 #include <stdio.h>
 
+int sc_pkcs15emu_infocamere_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+
 static int (*set_security_env)(sc_card_t *,  const struct sc_security_env *, int);
 static int (*compute_signature)(sc_card_t *, const u8 *, size_t, u8 *, size_t);
 
@@ -50,7 +52,7 @@ set_string(char **strp, const char *value)
 	*strp = value? strdup(value) : NULL;
 }
 
-int
+static int
 sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 {
 	const int	prkey_usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;

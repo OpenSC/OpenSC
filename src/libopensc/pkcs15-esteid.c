@@ -31,6 +31,8 @@
 
 #include "esteid.h"
 
+int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+
 static void
 set_string (char **strp, const char *value)
 {
@@ -52,7 +54,7 @@ select_esteid_df (sc_card_t * card)
   return r;
 }
 
-int
+static int
 sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 {
   sc_card_t *card = p15card->card;
@@ -180,7 +182,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	"Autentiseerimise v\365ti",
 	"Allkirjastamise v\365ti"
       };
-      sc_pkcs15_id_t id, auth_id;
+      sc_pkcs15_id_t auth_id;
 
       id.value[0] = prkey_pin[i];
       id.len = 1;

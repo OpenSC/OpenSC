@@ -28,6 +28,8 @@
 #define MANU_ID		"Giesecke & Devrient GmbH"
 #define STARCERT	"StarCertV2201"
 
+int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+
 typedef struct cdata_st {
 	const char *label;
 	int	    authority;
@@ -35,14 +37,6 @@ typedef struct cdata_st {
 	const char *id;
 	int         obj_flags;
 } cdata;
-
-const cdata certs[] = {
-	{"DS certificate", 0, "3F00DF01C000","1", SC_PKCS15_CO_FLAG_MODIFIABLE},
-	{"CA certificate", 1, "3F00DF01C008","2", SC_PKCS15_CO_FLAG_MODIFIABLE},
-	{"KE certificate", 0, "3F00DF01C200","3", SC_PKCS15_CO_FLAG_MODIFIABLE},
-	{"AUT certificate",0, "3F00DF01C500","4", SC_PKCS15_CO_FLAG_MODIFIABLE},
-	{NULL, 0, NULL, 0, 0}
-};
 
 typedef struct pdata_st {
 	const char *id;
@@ -57,14 +51,6 @@ typedef struct pdata_st {
 	const char  pad_char;
 	int         obj_flags;
 } pindata; 
-
-const pindata pins[] = {
-	{ "99", "DS pin", "3F00DF01", 0x99, SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-	  8, 8, SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_LOCAL, 
-	  -1, 0x00, 
-	  SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
-	{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0}
-};
 
 typedef struct prdata_st {
 	const char *id;
@@ -87,16 +73,6 @@ typedef struct prdata_st {
 			SC_PKCS15_PRKEY_USAGE_WRAP    | \
 			SC_PKCS15_PRKEY_USAGE_UNWRAP  | \
 			SC_PKCS15_PRKEY_USAGE_SIGN
-
-const prdata prkeys[] = {
-	{ "1", "DS key", 1024, USAGE_NONREP, "3F00DF01",
-	  0x84, "99", SC_PKCS15_CO_FLAG_PRIVATE},
-	{ "3", "KE key", 1024, USAGE_KE, "3F00DF01",
-	  0x85, NULL, SC_PKCS15_CO_FLAG_PRIVATE},
-	{ "4", "AUT key", 1024, USAGE_AUT, "3F00DF01",
-	  0x82, NULL, SC_PKCS15_CO_FLAG_PRIVATE},
-	{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
-};
 
 static int get_cert_len(sc_card_t *card, sc_path_t *path)
 {
@@ -142,8 +118,39 @@ static int starcert_detect_card(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 }
 
-int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
+static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 {
+	const cdata certs[] = {
+		{"DS certificate", 0, "3F00DF01C000","1",
+			SC_PKCS15_CO_FLAG_MODIFIABLE},
+		{"CA certificate", 1, "3F00DF01C008","2",
+			SC_PKCS15_CO_FLAG_MODIFIABLE},
+		{"KE certificate", 0, "3F00DF01C200","3",
+			SC_PKCS15_CO_FLAG_MODIFIABLE},
+		{"AUT certificate",0, "3F00DF01C500","4",
+			SC_PKCS15_CO_FLAG_MODIFIABLE},
+		{NULL, 0, NULL, 0, 0}
+	};
+
+	const pindata pins[] = {
+		{ "99", "DS pin", "3F00DF01", 0x99,
+		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
+		  8, 8, SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
+		  SC_PKCS15_PIN_FLAG_LOCAL, -1, 0x00,
+		  SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
+		{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0}
+	};
+
+	const prdata prkeys[] = {
+		{ "1", "DS key", 1024, USAGE_NONREP, "3F00DF01",
+		  0x84, "99", SC_PKCS15_CO_FLAG_PRIVATE},
+		{ "3", "KE key", 1024, USAGE_KE, "3F00DF01",
+		  0x85, NULL, SC_PKCS15_CO_FLAG_PRIVATE},
+		{ "4", "AUT key", 1024, USAGE_AUT, "3F00DF01",
+		  0x82, NULL, SC_PKCS15_CO_FLAG_PRIVATE},
+		{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
+	};
+
 	int    r, i;
 	char   buf[256];
 	struct sc_path path;

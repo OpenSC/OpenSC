@@ -47,7 +47,7 @@
 #define DES_ecb_encrypt(a,b,c,d) 	des_ecb_encrypt(a,b,*c,d)
 #endif
 
-NTLV_t oberthur_atrs[] = {
+static NTLV_t oberthur_atrs[] = {
 	/* not jet supported
 	 * { "Oberthur 32k", ATR_OBERTHUR_32K, 20,
 	 * "\x3B\x7F\x18\x00\x00\x00\x31\xC0\x73\x9E\x01\x0B\x64\x52\xD9\x04\x00\x82\x90\x00"
@@ -71,7 +71,7 @@ NTLV_t oberthur_atrs[] = {
 };
 
 
-NTLV_t oberthur_aids[] = {
+static NTLV_t oberthur_aids[] = {
 /*
 	{ "AuthentIC v2", AID_OBERTHUR_V2, 14,
 	  "\xA0\x00\x00\x00\x77\x58\x35\x30\x39\x23\x56\x32\x2E\x30"
@@ -500,7 +500,7 @@ check_path(struct sc_card *card, const u8 **pathptr, size_t *pathlen,
 	return 0;
 }
 
-
+#if 0
 static void 
 auth_cache_path(struct sc_card *card, const struct sc_path *path)
 {
@@ -536,7 +536,7 @@ auth_cache_path(struct sc_card *card, const struct sc_path *path)
 		break;
 	}
 }
-
+#endif
 
 static int 
 select_parent(struct sc_card *card, struct sc_file **file_out)
