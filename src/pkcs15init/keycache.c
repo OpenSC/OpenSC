@@ -183,8 +183,11 @@ sc_keycache_put_key(const sc_path_t *path, int type, int ref,
 	if (len > MAX_SECRET)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
-	if (!(s = find_entry(path, type, ref, 0)))
+	if (!(s = find_entry(path, type, ref, 0))) {
 		s = new_entry(path, type, ref);
+		if (type == SC_AC_SYMBOLIC)
+			named_pin[ref] = s;
+	}
 
 	memset(s->value, 0, sizeof(s->value));
 	memcpy(s->value, secret, len);
