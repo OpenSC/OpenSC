@@ -4,7 +4,8 @@ AUX_DIST		= config.guess config.sub \
 			install-sh \
 			ltmain.sh \
 			missing \
-			mkinstalldirs
+			mkinstalldirs \
+			depcomp
 EXTRA_DIST		= bootstrap
 
 SUBDIRS			= src
