@@ -1104,6 +1104,7 @@ src/scrandom/Makefile
 src/sia/Makefile
 src/signer/Makefile
 src/signer/npinclude/Makefile
+src/sslengine/Makefile
 src/tests/Makefile
 src/tools/Makefile
 src/usbtoken/Makefile
