@@ -30,7 +30,16 @@
 #include <opensc/opensc.h>
 #include <opensc/pkcs15.h>
 #include <opensc/log.h>
+
+#ifndef _WIN32
+#include "rsaref/unix.h"
 #include "rsaref/pkcs11.h"
+#else
+#include "rsaref/win32.h"
+#pragma pack(push, cryptoki, 1)
+#include "rsaref/pkcs11.h"
+#pragma pack(pop, cryptoki)
+#endif
 
 #ifdef __cplusplus
 extern "C" {

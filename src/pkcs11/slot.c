@@ -18,15 +18,20 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_OPENSSL
+#define USE_PKCS15_INIT
+#endif
+
 #include <string.h>
 #include "sc-pkcs11.h"
 
 static struct sc_pkcs11_framework_ops *frameworks[] = {
         &framework_pkcs15,
-
+#ifdef USE_PKCS15_INIT
 	/* This should be the last framework, because it
 	 * will assume the card is blank and try to initialize it */
-	&framework_pkcs15init,
+        &framework_pkcs15init,
+#endif
 	NULL
 };
 

@@ -18,10 +18,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_OPENSSL
+#define USE_PKCS15_INIT
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include "sc-pkcs11.h"
+#ifdef USE_PKCS15_INIT
 #include "pkcs15-init.h"
+#endif
 
 /*
  * Deal with uninitialized cards

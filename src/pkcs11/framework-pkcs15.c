@@ -18,10 +18,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_OPENSSL
+#define USE_PKCS15_INIT
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include "sc-pkcs11.h"
+#ifdef USE_PKCS15_INIT
 #include "opensc/pkcs15-init.h"
+#endif
 
 #define MAX_CACHE_PIN		32
 struct pkcs15_slot_data {
@@ -531,6 +537,7 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
+#ifdef USE_PKCS15_INIT
 static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 			struct sc_pkcs11_slot *slot,
 			CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
@@ -880,6 +887,7 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 	sc_pkcs15init_unbind(profile);
 	return rv;
 }
+#endif
 
 struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_bind,
@@ -891,9 +899,14 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_login,
         pkcs15_logout,
 	pkcs15_change_pin,
-	NULL,			/* init_token */
+        NULL,			/* init_token */
+#ifdef USE_PKCS15_INIT
 	pkcs15_init_pin,
-	pkcs15_create_object
+        pkcs15_create_object
+#else
+        NULL,
+        NULL
+#endif
 };
 
 /*
