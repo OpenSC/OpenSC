@@ -270,3 +270,24 @@ warn(const char *fmt, ...)
 	fprintf(stderr, "\n");
 	va_end(ap);
 }
+
+
+void parse_application_id(struct sc_object_id *oid, char *oid_str)
+{
+	int ii;
+	char *nb;
+
+	if (!oid)
+		return;
+
+	for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS; ii++)
+		oid->value[ii] = -1;
+
+	nb = strtok(oid_str, ".");
+	for (ii=0; nb && ii < SC_MAX_OBJECT_ID_OCTETS; ii++)   {
+		oid->value[ii] = strtol(nb, NULL, 10);
+		nb = strtok(NULL, ".");
+	}
+}
+
+

@@ -106,9 +106,20 @@ struct pkcs15_pubkey_object {
 #define is_pubkey(obj)		(__p15_type(obj) == SC_PKCS15_TYPE_PUBKEY_RSA)
 #define is_cert(obj)		(__p15_type(obj) == SC_PKCS15_TYPE_CERT_X509)
 
+struct pkcs15_data_object {
+	struct pkcs15_any_object	base;
+
+	struct sc_pkcs15_data_info *info;
+    struct sc_pkcs15_data *value;
+};
+#define data_flags		base.base.flags
+#define data_p15obj		base.p15_object
+#define is_data(obj) (__p15_type(obj) == SC_PKCS15_TYPE_DATA_OBJECT)
+
 extern struct sc_pkcs11_object_ops pkcs15_cert_ops;
 extern struct sc_pkcs11_object_ops pkcs15_prkey_ops;
 extern struct sc_pkcs11_object_ops pkcs15_pubkey_ops;
+extern struct sc_pkcs11_object_ops pkcs15_dobj_ops;
 
 
 static int	__pkcs15_release_object(struct pkcs15_any_object *);
@@ -320,6 +331,28 @@ __pkcs15_create_prkey_object(struct pkcs15_fw_data *fw_data,
 
 	return 0;
 }
+
+static int
+__pkcs15_create_data_object(struct pkcs15_fw_data *fw_data,
+		    struct sc_pkcs15_object *object, struct pkcs15_any_object **data_object)
+{
+	struct pkcs15_data_object *dobj = NULL;
+	int rv;
+
+	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &dobj,
+			object, &pkcs15_dobj_ops,
+			sizeof(struct pkcs15_data_object));
+	if (rv >= 0)   {
+	    dobj->info = (struct sc_pkcs15_data_info *) object->data;
+	    dobj->value = NULL;
+	}
+	
+	if (data_object != NULL)
+		*data_object = (struct pkcs15_any_object *) dobj;
+	
+	return 0;
+}
+
 
 static int
 pkcs15_create_pkcs11_objects(struct pkcs15_fw_data *fw_data,
@@ -590,6 +623,13 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	if (rv < 0)
                 return sc_to_cryptoki_error(rv, reader);
 
+	rv = pkcs15_create_pkcs11_objects(fw_data,
+				SC_PKCS15_TYPE_DATA_OBJECT,
+				"data object",
+				__pkcs15_create_data_object);
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, reader);
+
 	/* Match up related keys and certificates */
 	pkcs15_bind_related_objects(fw_data);
 
@@ -610,13 +650,20 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		for (j=0; j < fw_data->num_objects; j++) {
 			struct pkcs15_any_object *obj = fw_data->objects[j];
 
-			if (!is_privkey(obj)
-			 || !sc_pkcs15_compare_id(&pin_info->auth_id,
+			if (__p15_type(obj) == -1)
+				continue;
+			else if (!sc_pkcs15_compare_id(&pin_info->auth_id,
 						  &obj->p15_object->auth_id))
 				continue;
 
+			if (is_privkey(obj))   {
 			sc_debug(context, "Adding private key %d to PIN %d\n", j, i);
 			pkcs15_add_object(slot, obj, NULL);
+		}
+			else if (is_data(obj))   {
+				sc_debug(context, "Adding data object %d to PIN %d\n", j, i);
+				pkcs15_add_object(slot, obj, NULL);
+			}
 		}
 	}
 
@@ -1329,7 +1376,7 @@ CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card, struct sc_pkcs11_slot *
 
 	rc = __pkcs15_create_prkey_object(fw_data, priv_key_obj, &priv_any_obj);
 	if (rc == 0)
-		__pkcs15_create_pubkey_object(fw_data, pub_key_obj, &pub_any_obj);
+		rc = __pkcs15_create_pubkey_object(fw_data, pub_key_obj, &pub_any_obj);
 	if (rc != 0) {
 		sc_debug(context, "__pkcs15_create_pr/pubkey_object returned %d\n", rc);
 		rv = sc_to_cryptoki_error(rc, p11card->reader);
@@ -2008,6 +2055,148 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
         NULL
 };
 
+
+/* PKCS#15 Data Object*/
+
+void pkcs15_dobj_release(void *object)
+{
+	__pkcs15_release_object((struct pkcs15_any_object *) object);
+}
+
+CK_RV pkcs15_dobj_set_attribute(struct sc_pkcs11_session *session,
+		void *object, CK_ATTRIBUTE_PTR attr)
+{
+	struct pkcs15_data_object *dobj = (struct pkcs15_data_object*) object;
+	
+	return pkcs15_set_attrib(session, dobj->base.p15_object, attr);
+}
+
+
+int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
+		struct pkcs15_data_object *dobj,
+		struct sc_pkcs15_data **out_data)   
+{
+	int rv;
+	struct pkcs15_fw_data *fw_data = 
+		(struct pkcs15_fw_data *) session->slot->card->fw_data;
+	struct pkcs15_slot_data *data = slot_data(session->slot->fw_data);
+	struct sc_card *card = session->slot->card->card;
+	int reader = session->slot->card->reader;
+
+	if (!out_data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	
+	rv = sc_lock(card);
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, reader);
+		
+	if (slot_data_pin_info(data))   {
+		rv = revalidate_pin(data, session);
+		if (rv < 0)
+			goto done;
+	}
+	
+	if ((rv = sc_pkcs15_read_data_object(fw_data->p15_card, dobj->info, out_data)) < 0)
+		goto done;
+
+done:
+	sc_unlock(card);
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, reader);
+
+	return rv;
+}
+
+
+
+CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
+				void *object,
+				CK_ATTRIBUTE_PTR attr)
+{
+	struct pkcs15_data_object *dobj = (struct pkcs15_data_object*) object;
+	size_t len;
+	
+	switch (attr->type) {
+	case CKA_CLASS:
+		check_attribute_buffer(attr, sizeof(CK_OBJECT_CLASS));
+		*(CK_OBJECT_CLASS*)attr->pValue = CKO_DATA;
+		break;
+	case CKA_TOKEN:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = TRUE;
+		break;
+	case CKA_PRIVATE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = 
+			(dobj->base.p15_object->flags & 0x01) != 0;
+		break;
+	case CKA_MODIFIABLE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = 
+			(dobj->base.p15_object->flags & 0x02) != 0;
+		break;
+	case CKA_LABEL:
+		len = strlen(dobj->base.p15_object->label);
+		check_attribute_buffer(attr, len);
+		memcpy(attr->pValue, dobj->base.p15_object->label, len);
+		break;
+	case CKA_APPLICATION:
+		len = strlen(dobj->info->app_label);
+		check_attribute_buffer(attr, len);
+		memcpy(attr->pValue, dobj->info->app_label, len);
+		break;
+#if 0
+	case CKA_ID:
+		check_attribute_buffer(attr, dobj->info->id.len);
+		memcpy(attr->pValue, dobj->info->id.value, dobj->info->id.len);
+        break;
+#endif
+	case CKA_OBJECT_ID:
+		{
+			int len = sizeof(dobj->info->app_oid);
+			
+			check_attribute_buffer(attr, len);
+			memcpy(attr->pValue, dobj->info->app_oid.value, len);
+		}
+        break;
+	case CKA_VALUE:
+		{
+			CK_RV rv;
+			struct sc_pkcs15_data *data = NULL;
+			
+			rv = pkcs15_dobj_get_value(session, dobj, &data);
+			if (rv!=CKR_OK)
+				return rv;
+			else if (!data)
+				return CKR_ATTRIBUTE_VALUE_INVALID;
+			
+			sc_debug(context, "data %p\n", data);
+			sc_debug(context, "data_len %i\n", data->data_len);
+			check_attribute_buffer(attr, data->data_len);
+			memcpy(attr->pValue, data->data, data->data_len);
+		}
+		break;
+	default:
+		return CKR_ATTRIBUTE_TYPE_INVALID;
+	}
+	
+	return CKR_OK;
+}
+
+struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
+	pkcs15_dobj_release,
+	pkcs15_dobj_set_attribute,
+	pkcs15_dobj_get_attribute,
+	sc_pkcs11_any_cmp_attribute,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+};
+
+
+
 /*
  * get_attribute helpers
  */
@@ -2218,14 +2407,15 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	num = card->algorithm_count;
 	alg_info = card->algorithms;
 	while (num--) {
-		if (alg_info->algorithm != SC_ALGORITHM_RSA)
-			continue;
+		if (alg_info->algorithm == SC_ALGORITHM_RSA)   {
 		if (alg_info->key_length < mech_info.ulMinKeySize)
 			mech_info.ulMinKeySize = alg_info->key_length;
 		if (alg_info->key_length > mech_info.ulMaxKeySize)
 			mech_info.ulMaxKeySize = alg_info->key_length;
 
 		flags |= alg_info->flags;
+		}
+		
 		alg_info++;
 	}
 

@@ -41,6 +41,7 @@ enum {
 	OPT_MODULE = 0x100,
 	OPT_SLOT,
 	OPT_SLOT_LABEL,
+	OPT_APPLICATION_ID,
 };
 
 const struct option options[] = {
@@ -58,6 +59,8 @@ const struct option options[] = {
 	{ "change-pin",		0, 0,		'c' },
 	{ "keypairgen", 	0, 0, 		'k' },
 	{ "write-object",	1, 0, 		'w' },
+	{ "read-object",	0, 0, 		'r' },
+	{ "application-id",	1, 0, 	OPT_APPLICATION_ID },
 	{ "type", 		1, 0, 		'y' },
 	{ "id", 		1, 0, 		'd' },
 	{ "label", 		1, 0, 		'a' },
@@ -88,6 +91,8 @@ const char *option_help[] = {
 	"Change your (user) PIN",
 	"Key pair generation",
 	"Write an object (key, cert) to the card",
+	"Get object's CKA_VALUE attribute (use with --type)",
+	"Specify the application id of the data object (use with --type data)",
 	"Specify the type of object (e.g. cert, privkey, pubkey)",
 	"Specify the id of the object",
 	"Specify the label of the object",
@@ -119,6 +124,7 @@ static CK_BYTE		opt_object_id[100], new_object_id[100];
 static size_t		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
 static char *		opt_pin = NULL;
+static char *	opt_application_id = NULL;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -145,12 +151,14 @@ static int		change_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE, int);
 static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void		show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj);
 static void		sign_data(CK_SLOT_ID,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int		gen_keypair(CK_SLOT_ID, CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *);
 static int 		write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
+static int 		read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static void 		set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
@@ -173,6 +181,10 @@ static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static int		hex_to_bin(const char *in, CK_BYTE *out, size_t *outlen);
 static void		test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
+static CK_RV find_object_with_attributes(
+		CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out,
+		CK_ATTRIBUTE *attrs, CK_ULONG attrsLen,
+		CK_ULONG obj_index);
 
 /* win32 needs this in open(2) */
 #ifndef O_BINARY
@@ -193,6 +205,7 @@ main(int argc, char * const argv[])
 	int do_hash = 0;
 	int do_gen_keypair = 0;
 	int do_write_object = 0;
+	int do_read_object = 0;
 	int do_set_id = 0;
 	int do_test = 0;
 	int do_test_kpgen_certwrite = 0;
@@ -203,7 +216,7 @@ main(int argc, char * const argv[])
 	CK_RV rv;
 
 	while (1) {
-               c = getopt_long(argc, argv, "ILMOa:d:e:hi:klm:o:p:scvty:w:z:",
+               c = getopt_long(argc, argv, "ILMOa:d:e:hi:klm:o:p:scvty:w:z:r",
 					options, &long_optind);
 		if (c == -1)
 			break;
@@ -241,6 +254,11 @@ main(int argc, char * const argv[])
 			opt_file_to_write = optarg;
 			action_count++;
 			break;
+		case 'r':
+			need_session |= NEED_SESSION_RO;
+			do_read_object = 1;
+			action_count++;
+			break;
 		case 'e':
 			need_session |= NEED_SESSION_RW;
 			do_set_id = 1;
@@ -259,6 +277,8 @@ main(int argc, char * const argv[])
 				opt_object_class = CKO_PRIVATE_KEY;
 			else if (strcmp(optarg, "pubkey") == 0)
 				opt_object_class = CKO_PUBLIC_KEY;
+			else if (strcmp(optarg, "data") == 0)
+				opt_object_class = CKO_DATA;
 			else {
 				printf("Unsupported object type \"%s\"\n", optarg);
 				print_usage_and_die();
@@ -322,6 +342,9 @@ main(int argc, char * const argv[])
 			break;
 		case OPT_MODULE:
 			opt_module = optarg;
+			break;
+		case OPT_APPLICATION_ID:
+			opt_application_id = optarg;
 			break;
 		default:
 			print_usage_and_die();
@@ -448,6 +471,15 @@ main(int argc, char * const argv[])
 		write_object(opt_slot, session);
 	}
 
+	if (do_read_object) {
+		if (opt_object_class_str == NULL)
+			fatal("You should specify type of the object to read");
+		if (opt_object_id_len == 0 && opt_object_label == NULL && 
+				opt_application_id == NULL)
+			 fatal("You should specify at least one of the "
+					 "object ID, object label or application ID\n");
+		read_object(opt_slot, session);
+	}
 	if (do_set_id) {
 		if (opt_object_class_str == NULL)
 			fatal("You should specify the object type with the -y option\n");
@@ -1041,6 +1073,43 @@ done:	if (count == 0)
 	return count;
 }
 
+CK_RV find_object_with_attributes(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out, 
+			CK_ATTRIBUTE *attrs, CK_ULONG attrsLen, 
+			CK_ULONG obj_index)
+{
+	CK_ULONG count, ii;
+	CK_OBJECT_HANDLE ret;
+	CK_RV rv;
+
+	if (!out || !attrs || !attrsLen)
+		return CKR_ARGUMENTS_BAD;
+	else 
+		*out = CK_INVALID_HANDLE;
+		
+	rv = p11->C_FindObjectsInit(session, attrs, attrsLen);
+	if (rv != CKR_OK)
+		return rv;
+
+	for (ii = 0; ii < obj_index; ii++) {
+		rv = p11->C_FindObjects(session, &ret, 1, &count);
+		if (rv != CKR_OK)
+			return rv;
+		else if (!count)
+			goto done;
+	}
+		
+	rv = p11->C_FindObjects(session, &ret, 1, &count);
+	if (rv != CKR_OK)
+		return rv;
+	else if (count)
+		*out = ret;
+
+done:	
+	p11->C_FindObjectsFinal(session);
+	return CKR_OK;
+}
+
+
 CK_MECHANISM_TYPE
 find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags, int stop_if_not_found)
 {
@@ -1120,7 +1189,9 @@ ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);
 ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);
 ATTR_METHOD(MODULUS_BITS, CK_ULONG);
 VARATTR_METHOD(LABEL, char);
+VARATTR_METHOD(APPLICATION, char);
 VARATTR_METHOD(ID, unsigned char);
+VARATTR_METHOD(OBJECT_ID, unsigned char);
 VARATTR_METHOD(MODULUS, unsigned char);
 VARATTR_METHOD(VALUE, unsigned char);
 
@@ -1138,6 +1209,9 @@ show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		break;
 	case CKO_CERTIFICATE:
 		show_cert(sess, obj);
+		break;
+	case CKO_DATA:
+		show_dobj(sess, obj);
 		break;
 	default:
 		printf("Object %u, type %u\n",
@@ -1251,6 +1325,59 @@ show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 }
 
 void
+show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
+{
+	int	*app_oid;
+	char		*label;
+	CK_ULONG    size;
+	
+	printf("Data object %u\n", (unsigned int) obj);
+	printf("  label:          ");
+	if ((label = getLABEL(sess, obj, NULL)) != NULL) {
+		printf("'%s'\n", label);
+		free(label);
+	}
+	else   {
+		printf("<empty>\n");
+	}
+
+	printf("  application:    ");
+	if ((label = getAPPLICATION(sess, obj, NULL)) != NULL) {
+		printf("'%s'\n", label);
+		free(label);
+	}
+	else   {
+		printf("<empty>\n");
+	}
+
+	printf("  app_id:         ");
+	app_oid = (int *)getOBJECT_ID(sess, obj, &size);
+	if (app_oid != NULL && size) {
+		unsigned int	n;
+
+		size /= sizeof(int);
+		printf("%i", app_oid[0]);
+		if (app_oid[0] >= 0)
+			for (n = 1; (n < size) && (app_oid[n] >= 0); n++)  
+				printf(".%i", app_oid[n]);
+
+		printf("\n");
+		free(app_oid);
+	}
+	else   {
+		printf("<empty>\n");
+	}
+
+	printf("  flags:          ");
+    if (getMODIFIABLE(sess, obj)) 
+		printf(" modifiable");
+    if (getPRIVATE(sess, obj)) 
+		printf(" private");
+	printf ("\n");
+			
+}
+
+void
 get_token_info(CK_SLOT_ID slot, CK_TOKEN_INFO_PTR info)
 {
 	CK_RV		rv;
@@ -1293,6 +1420,73 @@ get_mechanisms(CK_SLOT_ID slot,
 
 	return ulCount;
 }
+
+/*
+ * Read object CKA_VALUE attribute's value.
+ */
+int
+read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	CK_RV rv;
+	CK_ATTRIBUTE attrs[20];
+	CK_OBJECT_CLASS clazz = opt_object_class;
+	CK_OBJECT_HANDLE obj = CK_INVALID_HANDLE;
+	int nn_attrs = 0;
+	unsigned char *value = NULL;
+	CK_ULONG len;
+	FILE *out;
+	struct sc_object_id oid;
+	
+	if (opt_object_class_str != NULL)   {
+		FILL_ATTR(attrs[nn_attrs], CKA_CLASS, 
+				 &clazz, sizeof(clazz));
+		nn_attrs++;
+	}
+
+	if (opt_object_id_len != 0)  {
+		FILL_ATTR(attrs[nn_attrs], CKA_ID, 
+				opt_object_id, opt_object_id_len);
+		nn_attrs++;
+	}
+
+	if (opt_object_label != NULL)   {
+		FILL_ATTR(attrs[nn_attrs], CKA_LABEL, 
+				opt_object_label, strlen(opt_object_label));
+		nn_attrs++;
+	}
+
+	if (opt_application_id != NULL)   {
+		parse_application_id(&oid, opt_application_id);
+		FILL_ATTR(attrs[nn_attrs], CKA_OBJECT_ID,
+				(unsigned char *)oid.value, sizeof(oid.value));
+		nn_attrs++;
+	}
+
+	rv = find_object_with_attributes(session, &obj, attrs, nn_attrs, 0);
+	if (rv != CKR_OK)
+		p11_fatal("find_object_with_attributes()", rv);
+	else if (obj==CK_INVALID_HANDLE)  
+		fatal("object not found\n");
+
+	value = getVALUE(session, obj, &len);
+    if (value == NULL)
+		fatal("get CKA_VALUE failed\n");
+
+	if (opt_output)   {
+		out = fopen(opt_output, "wb");
+		if (out==NULL)
+			fatal("cannot open '%s'\n", opt_output);
+	}
+	else
+		out = stdout;
+		
+	if (fwrite(value, 1, len, out) != len)
+		fatal("cannot write to '%s'\n", opt_output);
+	if (opt_output)
+		fclose(out);
+	return 1;	
+}
+
 
 static int
 test_digest(CK_SLOT_ID slot)

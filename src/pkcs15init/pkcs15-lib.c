@@ -70,7 +70,7 @@
 #define DEFAULT_PRKEY_FLAGS		0x03
 #define DEFAULT_PUBKEY_FLAGS		0x02
 #define DEFAULT_CERT_FLAGS		0x02
-#define DEFAULT_DATA_FLAGS		0x03
+#define DEFAULT_DATA_FLAGS		0x02
 
 /* Handle encoding of PKCS15 on the card */
 typedef int	(*pkcs15_encoder)(struct sc_context *,
@@ -2496,13 +2496,16 @@ set_user_pin_from_authid(struct sc_pkcs15_card *p15card,
 	 * Possible fix: store all file info from the profile on the card
 	 */
 	if (pin->path.len != 0) {
-		sc_file_t	*df;
+		sc_file_t	*df = NULL;
 
 		r = sc_profile_get_file_by_path(profile, &pin->path, &df);
 		if (r == SC_ERROR_FILE_NOT_FOUND
 		 && (r = sc_select_file(p15card->card, &pin->path, &df)) == 0) {
 			sc_profile_add_file(profile, "pin-dir (auto)", df);
 		}
+
+		if (df)
+			sc_file_free(df);
 	}
 
 	return sc_keycache_set_pin_name(&pin->path,

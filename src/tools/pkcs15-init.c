@@ -114,6 +114,7 @@ enum {
 	OPT_SECRET,
 	OPT_PUBKEY_LABEL,
 	OPT_CERT_LABEL,
+	OPT_APPLICATION_ID,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -146,6 +147,7 @@ const struct option	options[] = {
 	{ "label",		required_argument, 0,	'l' },
 	{ "public-key-label",	required_argument, 0,	OPT_PUBKEY_LABEL },
 	{ "cert-label",		required_argument, 0,	OPT_CERT_LABEL },
+	{ "application-id",	required_argument, 0,	OPT_APPLICATION_ID },
 	{ "output-file",	required_argument, 0,	'o' },
 	{ "format",		required_argument, 0,	'f' },
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
@@ -195,6 +197,7 @@ const char *		option_help[] = {
 	"Specify label of PIN/key",
 	"Specify public key label (use with --generate-key)",
 	"Specify user cert label (use with --store-private-key)",
+	"Specify application id of data object (use with --store-data-object)",
 	"Output public portion of generated key to file",
 	"Specify key file format (default PEM)",
 	"Specify passphrase for unlocking secret key",
@@ -287,6 +290,7 @@ static char *			opt_serial = 0;
 static char *			opt_passphrase = 0;
 static char *			opt_newkey = 0;
 static char *			opt_outkey = 0;
+static char *			opt_application_id = 0;
 static unsigned int		opt_x509_usage = 0;
 static int			ignore_cmdline_pins = 0;
 static struct secret		opt_secrets[MAX_SECRETS];
@@ -872,6 +876,9 @@ do_store_data_object(struct sc_profile *profile)
 	if (opt_authid)
 		sc_pkcs15_format_id(opt_authid, &args.auth_id);
 	args.label = opt_label;
+	args.app_label = "pkcs15-init";
+
+	parse_application_id(&args.app_oid, opt_application_id);
 
 	r = do_read_data_object(opt_infile, &data, &datalen);
 	if (r >= 0) {
@@ -1912,6 +1919,9 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_SOFT_KEYGEN:
 		opt_softkeygen = 1;
+		break;
+	case OPT_APPLICATION_ID:
+		opt_application_id = optarg;
 		break;
 	case 'T':
 		opt_use_defkeys = 1;

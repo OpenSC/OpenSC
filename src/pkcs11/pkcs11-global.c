@@ -58,6 +58,10 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	__card_detect_all(0);
 
 	rv = sc_pkcs11_init_lock((CK_C_INITIALIZE_ARGS_PTR) pReserved);
+	if (rv != CKR_OK)   {
+		sc_release_context(context);
+		context = NULL;
+	}
 
 out:	if (context != NULL)
 		sc_debug(context, "C_Initialize: result = %d\n", rv);
