@@ -62,15 +62,16 @@ int main(int argc, char **argv) {
   for (i = 0; i < p15_card->prkey_count; i++) {
     sc_pkcs15_print_prkey_info(&p15_card->prkey_info[i]);
   }
-  return 0;
 #endif
-#if 0
+#if 1
   i = sc_pkcs15_enum_certificates(p15_card);
   if (i < 0) {
     fprintf(stderr, "Certificate enumeration failed with %s\n", sc_strerror(i));
     return 1;
   }
   printf("%d certificates found.\n", i);
+#endif
+#if 1
   for (i = 0; i < p15_card->cert_count; i++) {
   	sc_pkcs15_print_cert_info(&p15_card->cert_info[i]);
 	c = sc_pkcs15_read_certificate(p15_card, &p15_card->cert_info[i],
@@ -80,11 +81,11 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	printf("Certificate size is %d bytes\n", c);
-	sc_asn1_print_tags(certbuf, c);
+//	sc_asn1_print_tags(certbuf, c);
 	free(certbuf);
   }  
-  return 0;
 #endif
+#if 1
   printf("Searching for PIN codes...\n");
 
   i = sc_pkcs15_enum_pins(p15_card);
@@ -97,6 +98,8 @@ int main(int argc, char **argv) {
   for (c = 0; c < i; c++) {
 	sc_pkcs15_print_pin_info(&p15_card->pin_info[c]);
   }
+#endif
+#if 1
   i = sc_sec_ask_pin_code(&p15_card->pin_info[0], buf, sizeof(buf), "Please enter PIN code");
   if (i) {
     fprintf(stderr, "\nFailed to ask PIN code from user\n");
@@ -119,13 +122,11 @@ int main(int argc, char **argv) {
     return 1;
   }
   printf("PIN code correct.\n");
-  
+#endif  
   printf("Cleaning up...\n");
   i = sc_pkcs15_destroy(p15_card);
   sc_disconnect_card(card);
   sc_destroy_context(ctx);
-
-  return 0;
   
   return 0;
 }
