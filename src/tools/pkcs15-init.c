@@ -88,7 +88,7 @@ static int	get_key_callback(struct sc_profile *,
 
 static int	do_generate_key_soft(int, unsigned int, EVP_PKEY **);
 static int	do_read_private_key(const char *, const char *,
-				EVP_PKEY **, X509 **);
+				EVP_PKEY **, X509 **, unsigned int);
 static int	do_read_public_key(const char *, const char *, EVP_PKEY **);
 static int	do_read_certificate(const char *, const char *, X509 **);
 static void	parse_commandline(int argc, char **argv);
@@ -244,6 +244,8 @@ static struct sc_pkcs15init_callbacks callbacks = {
 	get_pin_callback,	/* get_pin() */
 	get_key_callback,	/* get_key() */
 };
+
+#define MAX_CERTS		4
 
 int
 main(int argc, char **argv)
@@ -477,50 +479,71 @@ do_store_private_key(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_prkeyargs args;
 	EVP_PKEY	*pkey = NULL;
-	X509		*cert = NULL;
-	int		r;
+	X509		*cert[MAX_CERTS];
+	int		r, i, ncerts;
 
 	if ((r = init_keyargs(&args)) < 0)
 		return r;
 
-	r = do_read_private_key(opt_infile, opt_format, &pkey, &cert);
+	r = do_read_private_key(opt_infile, opt_format, &pkey, cert, MAX_CERTS);
 	if (r < 0)
 		return r;
+	ncerts = r;
+
+	if (ncerts) {
+		char	namebuf[256];
+
+		printf("Importing %d certificates:\n", ncerts);
+		for (i = 0; i < ncerts; i++) {
+			printf("  %d: %s\n",
+				i, X509_NAME_oneline(cert[i]->cert_info->subject,
+					namebuf, sizeof(namebuf)));
+		}
+	}
 
 	if ((r = do_convert_private_key(&args.key, pkey)) < 0)
 		return r;
-	if (cert) {
+	if (ncerts) {
 		/* If the user requested a specific key usage on the
 		 * command line check if it includes _more_
 		 * usage bits than the one specified by the cert */
-		if (~cert->ex_kusage & opt_x509_usage) {
+		if (~cert[0]->ex_kusage & opt_x509_usage) {
 			fprintf(stderr,
 			    "Warning: requested key usage incompatible with "
 			    "key usage specified by X.509 certificate\n");
 		}
-		args.x509_usage = cert->ex_kusage;
+		args.x509_usage = cert[0]->ex_kusage;
 	}
 
 	r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
 	if (r < 0)
 		return r;
 
-	/* If there's a certificate as well (e.g. when reading the
-	 * private key from a PKCS #12 file) store it, too.
-	 * Otherwise store the public key.
+	/* If there are certificate as well (e.g. when reading the
+	 * private key from a PKCS #12 file) store them, too.
 	 */
-	if (cert) {
+	for (i = 0; i < ncerts; i++) {
 		struct sc_pkcs15init_certargs cargs;
 
 		memset(&cargs, 0, sizeof(cargs));
-		cargs.id = args.id;
-		cargs.x509_usage = cert->ex_kusage;
-		r = do_convert_cert(&cargs.der_encoded, cert);
+		/* Just the first certificate gets the same ID
+		 * as the private key. All others get
+		 * an ID of their own */
+		if (i == 0)
+			cargs.id = args.id;
+		else
+			cargs.authority = 1;
+
+		cargs.x509_usage = cert[i]->ex_kusage;
+		r = do_convert_cert(&cargs.der_encoded, cert[i]);
 		if (r >= 0)
 			r = sc_pkcs15init_store_certificate(p15card, profile,
 			       	&cargs, NULL);
 		free(cargs.der_encoded.value);
-	} else {
+	}
+	
+	/* No certificates - store the public key */
+	if (ncerts == 0) {
 		r = do_store_public_key(profile, pkey);
 	}
 
@@ -924,62 +947,89 @@ do_generate_key_soft(int algorithm, unsigned int bits, EVP_PKEY **res)
 /*
  * Read a private key
  */
-static EVP_PKEY *
-do_read_pem_private_key(const char *filename, const char *passphrase)
+static int
+do_read_pem_private_key(const char *filename, const char *passphrase,
+			EVP_PKEY **key)
 {
-	BIO		*bio;
-	EVP_PKEY	*pk;
+	BIO	*bio;
 
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) < 0)
 		fatal("Unable to open %s: %m", filename);
-	pk = PEM_read_bio_PrivateKey(bio, 0, 0, (char *) passphrase);
+	*key = PEM_read_bio_PrivateKey(bio, 0, 0, (char *) passphrase);
 	BIO_free(bio);
-	if (pk == NULL) 
+	if (*key == NULL) {
 		ossl_print_errors();
-	return pk;
+		return SC_ERROR_CANNOT_LOAD_KEY;
+	}
+	return 0;
 }
 
-static EVP_PKEY *
+static int
 do_read_pkcs12_private_key(const char *filename, const char *passphrase,
-		X509 **xp)
+			EVP_PKEY **key, X509 **certs, unsigned int max_certs)
 {
 	BIO		*bio;
 	PKCS12		*p12;
-	EVP_PKEY	*pk = NULL;
+	EVP_PKEY	*user_key = NULL;
+	X509		*user_cert = NULL;
+	STACK_OF(X509)	*cacerts = NULL;
+	int		i, ncerts = 0;
 
-	*xp = NULL;
+	*key = NULL;
+
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) < 0)
 		fatal("Unable to open %s: %m", filename);
 	p12 = d2i_PKCS12_bio(bio, NULL);
 	BIO_free(bio);
-	if (p12) {
-		PKCS12_parse(p12, passphrase, &pk, xp, NULL);
-		if (pk)
-			CRYPTO_add(&pk->references, 1, CRYPTO_LOCK_EVP_PKEY);
-		if (*xp)
-			CRYPTO_add(&(*xp)->references, 1, CRYPTO_LOCK_X509);
+
+	if (p12 == NULL
+	 || !PKCS12_parse(p12, passphrase, &user_key, &user_cert, &cacerts))
+		goto error;
+
+	if (!user_key) {
+		error("No key in pkcs12 file?!\n");
+		return SC_ERROR_CANNOT_LOAD_KEY;
 	}
-	PKCS12_free(p12);
-	if (pk == NULL) 
-		ossl_print_errors();
-	return pk;
+
+	CRYPTO_add(&user_key->references, 1, CRYPTO_LOCK_EVP_PKEY);
+	if (user_cert && max_certs)
+		certs[ncerts++] = user_cert;
+
+	/* Extract CA certificates, if any */
+	for(i = 0; cacerts && ncerts < max_certs && i < sk_X509_num(cacerts); i++)
+		certs[ncerts++] = sk_X509_value(cacerts, i);
+
+	/* bump reference counts for certificates */
+	for (i = 0; i < ncerts; i++) {
+		CRYPTO_add(&certs[i]->references, 1, CRYPTO_LOCK_X509);
+	}
+
+	if (cacerts)
+		sk_X509_free(cacerts);
+
+	*key = user_key;
+	return ncerts;
+
+error:	ossl_print_errors();
+	return SC_ERROR_CANNOT_LOAD_KEY;
 }
 
 static int
 do_read_private_key(const char *filename, const char *format,
-			EVP_PKEY **pk, X509 **xp)
+			EVP_PKEY **pk, X509 **certs, unsigned int max_certs)
 {
 	char	*passphrase = NULL;
+	int	r;
 
-	*xp = NULL;
 	while (1) {
 		if (!format || !strcasecmp(format, "pem")) {
-			*pk = do_read_pem_private_key(filename, passphrase);
+			r = do_read_pem_private_key(filename, passphrase, pk);
 		} else if (!strcasecmp(format, "pkcs12")) {
-			*pk = do_read_pkcs12_private_key(filename,
-					passphrase, xp);
+			r = do_read_pkcs12_private_key(filename,
+					passphrase,
+					pk, certs, max_certs);
 		} else {
 			error("Error when reading private key. "
 			      "Key file format \"%s\" not supported.\n",
@@ -987,7 +1037,7 @@ do_read_private_key(const char *filename, const char *format,
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 
-		if (*pk || passphrase)
+		if (r >= 0 || passphrase)
 			break;
 		if ((passphrase = opt_passphrase) != 0)
 			continue;
@@ -998,9 +1048,9 @@ do_read_private_key(const char *filename, const char *format,
 	}
 	if (passphrase)
 		memset(passphrase, 0, strlen(passphrase));
-	if (!*pk)
+	if (r < 0)
 		fatal("Unable to read private key from %s\n", filename);
-	return 0;
+	return r;
 }
 
 /*
