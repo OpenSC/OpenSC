@@ -386,12 +386,48 @@ acl_to_ac(struct sc_file *file, unsigned int op, u8 *ac)
 }
 
 static int
+gpk_parse_fci(struct sc_card *card,
+		const u8 *buf, size_t buflen,
+		struct sc_file *file)
+{
+	const u8	*end, *next;
+	unsigned int	tag, len;
+
+	end = buf + buflen;
+	for (; buf + 2 < end; buf = next) {
+		next = buf + 2 + buf[1];
+		if (next > end)
+			break;
+		tag = *buf++;
+		len = *buf++;
+		if (tag == 0x84) {
+			/* unknown purpose - usually the name, but
+			 * the content looks weird, such as
+			 * 84 0D A0 00 00 00 18 0F 00 00 01 63 00 01 04
+			 */
+		} else
+		if (tag == 0xC1 && len >= 2) {
+			/* Seems to be the file id, followed by something
+			 * C1 04 02 00 00 00 */
+			file->id = (buf[0] << 8) | buf[1];
+		} else
+		if (tag == 0xC2) {
+			/* unknown purpose
+			 * C2 01 01
+			 */
+		}
+	}
+
+	return 0;
+}
+
+static int
 gpk_parse_fileinfo(struct sc_card *card,
 		const u8 *buf, size_t buflen,
 		struct sc_file *file)
 {
 	const u8	*sp, *end, *next;
-	int		i;
+	int		i, rc;
 
 	memset(file, 0, sizeof(*file));
 	for (i = 0; i < SC_MAX_AC_OPS; i++)
@@ -450,6 +486,15 @@ gpk_parse_fileinfo(struct sc_card *card,
 					SC_AC_NEVER, SC_AC_KEY_REF_NONE);
 				break;
 			}
+		} else
+		if (sp[0] == 0x6f) {
+			/* oops - this is a directory with an IADF.
+			 * This happens with the personalized GemSafe cards
+			 * for instance. */
+			file->type = SC_FILE_TYPE_DF;
+			rc = gpk_parse_fci(card, sp + 2, sp[1], file);
+			if (rc < 0)
+				return rc;
 		}
 	}
 
