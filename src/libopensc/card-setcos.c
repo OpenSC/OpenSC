@@ -71,6 +71,18 @@ static int setec_init(struct sc_card *card)
 	return 0;
 }
 
+static int (*iso_create_file)(struct sc_card *card, const struct sc_file *file) = NULL;
+
+static int setec_create_file(struct sc_card *card, const struct sc_file *file)
+{
+	struct sc_file tmp;
+	
+	tmp = *file;
+	memcpy(tmp.prop_attr, "\x03\x00\x00", 3);
+	tmp.prop_attr_len = 3;
+	return iso_create_file(card, &tmp);
+}
+
 static const struct sc_card_driver * sc_get_driver(void)
 {
 	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -79,7 +91,10 @@ static const struct sc_card_driver * sc_get_driver(void)
 	setec_ops.match_card = setec_match_card;
 	setec_ops.init = setec_init;
         setec_ops.finish = setec_finish;
-
+	if (iso_create_file == NULL)
+		iso_create_file = iso_drv->ops->create_file;
+	setec_ops.create_file = setec_create_file;
+	
         return &setec_drv;
 }
 

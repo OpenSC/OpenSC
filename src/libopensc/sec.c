@@ -152,32 +152,17 @@ int sc_compute_signature(struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
 }
 
-int sc_verify(struct sc_card *card, int ref, const u8 *pin, size_t pinlen,
-	      int *tries_left)
+int sc_verify(struct sc_card *card, unsigned int type, int ref, 
+	      const u8 *pin, size_t pinlen, int *tries_left)
 {
-	struct sc_apdu apdu;
-	u8 sbuf[MAX_BUFFER_SIZE];
 	int r;
-	
+
+	assert(card != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
-	if (pinlen >= MAX_BUFFER_SIZE)
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, ref);
-	memcpy(sbuf, pin, pinlen);
-	apdu.lc = pinlen;
-	apdu.datalen = pinlen;
-	apdu.data = sbuf;
-	apdu.resplen = 0;
-	
-	r = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, pinlen);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) {
-		if (tries_left != NULL)
-			*tries_left = apdu.sw2 & 0x0F;
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_PIN_CODE_INCORRECT);
-	}
-	SC_FUNC_RETURN(card->ctx, 2, sc_sw_to_errorcode(card, apdu.sw1, apdu.sw2));
+        if (card->ops->verify == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->verify(card, type, ref, pin, pinlen, tries_left);
+        SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
 int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,

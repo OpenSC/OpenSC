@@ -184,7 +184,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	}
 	memset(pinbuf, pin->pad_char, pin->stored_length);
 	memcpy(pinbuf, pincode, pinlen);
-	r = sc_verify(card, pin->auth_id.value[0],
+	r = sc_verify(card, SC_AC_CHV1, pin->auth_id.value[0],
 		      pinbuf, pin->stored_length, &pin->tries_left);
 	memset(pinbuf, 0, pinlen);
 	sc_unlock(card);

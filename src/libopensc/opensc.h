@@ -18,6 +18,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+/** 
+ * @file opensc.h
+ * @brief OpenSC library core header file
+ */
+ 
 #ifndef _OPENSC_H
 #define _OPENSC_H
 
@@ -36,6 +41,8 @@ extern "C" {
 #undef inline
 #define inline
 #endif
+
+#define SC_SUCCESS				0
 
 #define SC_ERROR_MIN				-1000
 #define SC_ERROR_UNKNOWN			-1000
@@ -270,11 +277,13 @@ struct sc_card_operations {
 	 * ISO 7816-8 functions
 	 */
 
-	/* verify:  Verifies reference data identified by <ref_qualifier>.
-	 *   If <tries_left> is not NULL, number of verify tries left is
-	 *   saved in case of verification failure. */
-	int (*verify)(struct sc_card *card, int ref_qualifier,
-		      const u8 *data, size_t data_len, int *tries_left);
+	/* verify:  Verifies reference data of type <acl>, identified by
+	 *   <ref_qualifier>. If <tries_left> is not NULL, number of verifying
+	 *   tries left is saved in case of verification failure, if the
+	 *   information is available. */
+	int (*verify)(struct sc_card *card, unsigned int type,
+		      int ref_qualifier, const u8 *data, size_t data_len,
+		      int *tries_left);
 
 	/* restore_security_env:  Restores a previously saved security
 	 *   environment, and stores information about the environment to
@@ -357,31 +366,94 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
 void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu, int cse, int ins,
 		    int p1, int p2);
 
+/**
+ * Establishes an OpenSC context
+ * @param ctx A pointer to a pointer that will receive the allocated context
+ */
 int sc_establish_context(struct sc_context **ctx);
+/**
+ * Destroys an established OpenSC context
+ * @param ctx A pointer to the context structure to be destroyed
+ */
 int sc_destroy_context(struct sc_context *ctx);
+/**
+ * Forces the use of a specified card driver
+ * @param ctx OpenSC context
+ * @param short_name The short name of the driver to use (e.g. 'emv')
+ */
 int sc_set_card_driver(struct sc_context *ctx, const char *short_name);
+/**
+ * Connects to a card in a reader and auto-detects the card driver.
+ * The ATR (Answer to Reset) string of the card is also retrieved.
+ * @param ctx OpenSC context
+ * @param reader Reader number (this is prone to change)
+ * @param card The allocated card object will go here */
 int sc_connect_card(struct sc_context *ctx,
 		    int reader, struct sc_card **card);
+/**
+ * Disconnects from a card, and frees the card structure. Any locks
+ * made by the application must be released before calling this function.
+ * NOTE: The card is not reset nor powered down after the operation.
+ * @param card The card to disconnect
+ */
 int sc_disconnect_card(struct sc_card *card);
+/**
+ * Returns 1 if the magic value of the card object is correct. Mostly
+ * used internally by the library.
+ * @param card The card object to check
+ */
 inline int sc_card_valid(const struct sc_card *card);
 
-/* Checks if a card is present on the supplied reader
- * Returns: 1 if card present, 0 if card absent and < 0 in case of an error */
+/**
+ * Checks if a card is present in a reader
+ * @param ctx OpenSC context
+ * @param reader Reader number to use (this will change)
+ * @retval 1 if a card is present
+ * @retval 0 card absent
+ * @retval < 0 if an error occured
+ */
 int sc_detect_card(struct sc_context *ctx, int reader);
 
-/* Waits for card insertion on the supplied reader
- * timeout of -1 means forever, reader of -1 means all readers
- * Returns: 1 if a card was found, 0 if timeout occured
- *          and < 0 in case of an error */
+/**
+ * Waits for card insertion to a reader
+ * @param ctx OpenSC context
+ * @param reader Reader number; -1 implies to listen on all readers
+ * @param timeout Amount of millisecs to wait; -1 means forever
+ * @retval 1 if a card was inserted
+ * @retval 0 if operation timed out
+ * @retval < 0 if an error occured
+ */
 int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout);
 
+/**
+ * Locks the card against modification from other threads.
+ * After the initial call to sc_lock, the card is protected from
+ * access from other processes. The function may be called several times.
+ * @param card The card to lock
+ * @retval SC_SUCCESS on success
+ */
 int sc_lock(struct sc_card *card);
+/** 
+ * Unlocks a previously locked card. After the lock count drops to zero,
+ * the card is again placed in shared mode, where other processes
+ * may access or lock it.
+ * @param card The card to unlock
+ * @retval SC_SUCCESS on success
+ */
 int sc_unlock(struct sc_card *card);
 
 /* ISO 7816-4 related functions */
 
+/**
+ * Does the equivalent of ISO 7816-4 command SELECT FILE.
+ * @param card The card on which to issue the command
+ * @param path The path, file id or name of the desired file
+ * @param file If not NULL, will contain information about the selected file
+ * @retval SC_SUCCESS on success
+ */
 int sc_select_file(struct sc_card *card, const struct sc_path *path,
 		   struct sc_file *file);
+/* TODO: finish writing API docs */
 int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
 		   size_t count, unsigned long flags);
 int sc_write_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
@@ -398,8 +470,8 @@ int sc_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 		u8 * out, size_t outlen);
 int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 size_t data_len, u8 * out, size_t outlen);
-int sc_verify(struct sc_card *card, int ref, const u8 *buf, size_t buflen,
-	      int *tries_left);
+int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *buf,
+	      size_t buflen, int *tries_left);
 int sc_change_reference_data(struct sc_card *card, int ref, const u8 *old,
 			     size_t oldlen, const u8 *newref, size_t newlen,
 			     int *tries_left);

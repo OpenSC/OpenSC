@@ -308,7 +308,7 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 }
 
 void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
-		   int cse, int ins, int p1, int p2)
+		    int cse, int ins, int p1, int p2)
 {
 	assert(card != NULL && apdu != NULL);
 	memset(apdu, 0, sizeof(*apdu));
@@ -317,7 +317,7 @@ void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
 	apdu->ins = (u8) ins;
 	apdu->p1 = (u8) p1;
 	apdu->p2 = (u8) p2;
-	
+
 	return;
 }
 

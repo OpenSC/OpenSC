@@ -133,7 +133,7 @@ static int emv_select_file(struct sc_card *card, const struct sc_path *path,
 	r = ops->select_file(card, path, file);
 	if (file != NULL && path->len == 2 && memcmp(path->value, "\x3F\x00", 2) == 0)
 		file->type = SC_FILE_TYPE_DF;
-	if (file->namelen)
+	if (file != NULL && file->namelen)
 		file->type = SC_FILE_TYPE_DF;
 	return r;
 }

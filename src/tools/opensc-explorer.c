@@ -32,9 +32,22 @@ struct sc_path current_path;
 const struct option options[] = { { NULL } };
 const char *option_help[] = { NULL };
 
+#define CMD_LS		0
+#define CMD_CD		1
+#define CMD_DEBUG	2
+#define CMD_CAT		3
+#define CMD_INFO	4
+#define CMD_DELETE	5
+#define CMD_VERIFY	6
+
 const char *cmds[] = {
-	"ls", "cd", "debug", "cat", "info"
+	"ls", "cd", "debug", "cat", "info", "create", "delete",
+	"verify"
 };
+const char *cmdusage[] = {
+	"", "", "", "", "", "", "", "<key type> <key ref>"
+};
+
 const int nr_cmds = sizeof(cmds)/sizeof(cmds[0]);
 
 void die(int ret)
@@ -359,7 +372,125 @@ int do_info(const char *arg)
 	return 0;
 }
 
-int handle_cmd(int cmd, const char *arg)
+int do_create(const char *arg, const char *arg2)
+{
+	char buf[6];
+	struct sc_path path;
+	struct sc_file file;
+	size_t size;
+	int i, r;
+
+	if (strlen(arg) != 4)
+		goto usage;
+	strcpy(buf, "I");
+	strcat(buf, arg);
+	sc_format_path(buf, &path);
+	if (path.len != 2)
+		goto usage;
+	if (sscanf(arg2, "%d", &size) != 1)
+		goto usage;
+	memset(&file, 0, sizeof(file));
+	file.id = (path.value[0] << 8) | path.value[1];
+	file.type = SC_FILE_TYPE_WORKING_EF;
+	file.ef_structure = SC_FILE_EF_TRANSPARENT;
+	for (i = 0; i < SC_MAX_AC_OPS; i++)
+		file.acl[i] = SC_AC_NONE;
+	file.size = size;
+	
+	r = sc_create_file(card, &file);
+	if (r) {
+		check_ret(r, SC_AC_OP_CREATE, "CREATE FILE failed", &current_file);
+		return -1;
+	}
+	return 0;
+usage:
+	printf("Usage: create <file_id> <file_size>\n");
+	return -1;
+}
+
+int do_delete(const char *arg)
+{
+	char buf[6];
+	struct sc_path path;
+	int r;
+
+	if (strlen(arg) != 4)
+		goto usage;
+	strcpy(buf, "I");
+	strcat(buf, arg);
+	sc_format_path(buf, &path);
+	if (path.len != 2)
+		goto usage;
+	r = sc_delete_file(card, &path);
+	if (r) {
+		check_ret(r, SC_AC_OP_DELETE, "DELETE FILE failed", &current_file);
+		return -1;
+	}
+	return 0;
+usage:
+	printf("Usage: delete <file_id>\n");
+	return -1;
+}
+
+int do_verify(const char *arg, const char *arg2)
+{
+	const char *types[] = {
+		"CHV", "KEY"
+	};
+	int i, type = -1, ref, r, tries_left = -1;
+	u8 buf[30];
+	size_t buflen = sizeof(buf);
+	
+	if (strlen(arg) == 0 || strlen(arg2) == 0)
+		goto usage;
+	for (i = 0; i < 2; i++)
+		if (strncasecmp(arg, types[i], 3) == 0) {
+			type = i;
+			break;
+		}
+	if (type == -1) {
+		printf("Invalid type.\n");
+		goto usage;
+	}
+	if (sscanf(arg + 3, "%d", &ref) != 1) {
+		printf("Invalid key reference.\n");
+		goto usage;
+	}
+	if (sc_hex_to_bin(arg2, buf, &buflen) != 0) {
+		printf("Invalid key value.\n");
+		goto usage;
+	}
+	switch (type) {
+	case 0:
+		type = SC_AC_CHV1;
+		break;
+	case 1:
+		type = SC_AC_AUT;
+		break;
+	}
+	r = sc_verify(card, type, ref, buf, buflen, &tries_left);
+	if (r) {
+		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
+			if (tries_left >= 0) 
+				printf("Incorrect code, %d tries left", tries_left);
+			else
+				printf("Incorrect code.\n");
+		}
+		printf("Unable to verify PIN code: %s\n", sc_strerror(r));
+		return -1;
+	}
+	printf("Code correct.\n");
+	return 0;
+usage:
+	printf("Usage: verify <key type><key ref> <key in hex>\n");
+	printf("Possible values of <key type>:\n");
+	for (i = 0; i < sizeof(types)/sizeof(types[0]); i++)
+		printf("\t%s\n", types[i]);
+	printf("Example: verify CHV2 31:32:33:34:00:00:00:00\n");
+	return -1;
+}
+
+int handle_cmd(int cmd, const char *arg, const char *arg2)
 {
         int i;
 
@@ -382,6 +513,14 @@ int handle_cmd(int cmd, const char *arg)
                 return do_cat(arg);
         case 4:
         	return do_info(arg);
+        case 5:
+        	return do_create(arg, arg2);
+        case 6:
+        	return do_delete(arg);
+        case 7:
+        	return do_verify(arg, arg2);
+        default:
+        	printf("Don't know how to handle command.\n");
 	}
         return -1;
 }
@@ -398,7 +537,7 @@ void usage()
 int main(int argc, const char *argv[])
 {
 	int r;
-	char line[80], cmd[80], arg[80];
+	char line[80], cmd[80], arg[80], arg2[80];
 
 	printf("OpenSC Explorer version %s\n", sc_version);
 
@@ -436,17 +575,19 @@ int main(int argc, const char *argv[])
 			break;
 		if (strlen(line) == 0)
 			break;
-		r = sscanf(line, "%s %s", cmd, arg);
+		r = sscanf(line, "%s %s %s", cmd, arg, arg2);
 		if (r < 1)
 			continue;
-		if (r == 1)
+		if (r < 3)
+			arg2[0] = 0;
+		if (r < 2)
 			arg[0] = 0;
 		r = ambiguous_match(cmds, nr_cmds, cmd);
 		if (r < 0) {
 			usage();
                         continue;
 		}
-                handle_cmd(r, arg);
+                handle_cmd(r, arg, arg2);
 	}
 	die(0);
 	
