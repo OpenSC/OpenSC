@@ -499,7 +499,7 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 /* Possibly only valid on Setec cards */
 int sc_list_files(struct sc_card *card, u8 * buf, size_t buflen);
 
-const char *sc_strerror(int error);
+const char *sc_strerror(int sc_errno);
 
 extern const char *sc_version;
 
