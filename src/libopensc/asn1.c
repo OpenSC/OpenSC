@@ -51,8 +51,8 @@ const char *tag2str(int tag)
 	return tags[tag];
 }
 
-static int read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
-		    unsigned int *tag_out, size_t *taglen)
+int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
+		     unsigned int *tag_out, size_t *taglen)
 {
 	const u8 *p = *buf;
 	size_t left = buflen, len;
@@ -232,7 +232,7 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 		const u8 *tagp = p;
 		size_t len;
 
-		r = read_tag(&tagp, bytesleft, &cla, &tag, &len);
+		r = sc_asn1_read_tag(&tagp, bytesleft, &cla, &tag, &len);
 		if (r < 0) {
 			printf("Error in decoding.\n");
 			return;
@@ -309,7 +309,7 @@ const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 	*taglen_in = 0;
 	while (left >= 2) {
 		buf = p;
-		if (read_tag(&p, left, &cla, &tag, &taglen) != 1)
+		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != 1)
 			return NULL;
 		left -= (p - buf);
 		if ((tag | cla) == tag_in) {
@@ -331,7 +331,7 @@ const u8 *sc_asn1_skip_tag(struct sc_context *ctx, const u8 ** buf, size_t *bufl
 	size_t len = *buflen, taglen;
 	unsigned int cla, tag;
 
-	if (read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != 1)
+	if (sc_asn1_read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != 1)
 		return NULL;
 	switch (cla & 0xC0) {
 	case ASN1_TAG_UNIVERSAL:
@@ -852,6 +852,28 @@ static int asn1_decode_entry(struct sc_context *ctx, struct sc_asn1_entry *entry
 		}
 		break;
 	case SC_ASN1_OCTET_STRING:
+		if (parm != NULL) {
+			int c;
+			assert(len != NULL);
+			if (entry->flags & SC_ASN1_ALLOC) {
+				u8 **buf = (u8 **) parm;
+				*buf = (u8 *) malloc(objlen);
+				if (*buf == NULL) {
+					r = SC_ERROR_OUT_OF_MEMORY;
+					break;
+				}
+				c = *len = objlen;
+				parm = *buf;
+			} else
+				c = objlen > *len ? *len : objlen;
+
+			memcpy(parm, obj, c);
+			*len = c;
+		}
+		break;
+	case SC_ASN1_GENERALIZEDTIME:
+                /* FIXME: we should parse the string and convert it
+                   into a standard ISO time string. */
 		if (parm != NULL) {
 			int c;
 			assert(len != NULL);
