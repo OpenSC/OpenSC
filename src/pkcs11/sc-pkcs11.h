@@ -287,7 +287,7 @@ void dump_template(const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCoun
 
 /* Slot and card handling functions */
 CK_RV card_initialize(int reader);
-CK_RV card_detect(int reader);
+CK_RV card_detect_all(void);
 CK_RV card_removed(int reader);
 CK_RV slot_initialize(int id, struct sc_pkcs11_slot *);
 CK_RV slot_get_slot(int id, struct sc_pkcs11_slot **);

@@ -49,7 +49,7 @@ CK_RV card_initialize(int reader)
         return CKR_OK;
 }
 
-CK_RV card_detect(int reader)
+static CK_RV card_detect(int reader)
 {
 	struct sc_pkcs11_card *card;
         int rc, rv, i, retry = 1;
@@ -125,6 +125,16 @@ again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 
 	debug(context, "%d: Detection ended\n", reader);
 	return rv;
+}
+
+CK_RV card_detect_all(void)
+{
+	int i;
+
+	if (context == NULL_PTR)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
+	for (i = 0; i < context->reader_count; i++)
+		card_detect(i);
 }
 
 CK_RV card_removed(int reader)
