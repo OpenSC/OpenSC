@@ -49,8 +49,8 @@ const struct {
 	const char *	atr;
 	int		type;
 } etoken_atrs[] = {
-      {	"3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c",	ETOKEN_TYPE_PRO },
-      { "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03",	ETOKEN_TYPE_PRO },
+      {	"3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c",		ETOKEN_TYPE_PRO },
+      { "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15",	ETOKEN_TYPE_PRO },
 
       { NULL }
 };
