@@ -127,9 +127,6 @@ int p15_ldap_init(int argc, const char **argv)
 		scam_fw_p15_ldap.printmsg("sc_establish_context: %s\n", sc_strerror(r));
 		return SCAM_FAILED;
 	}
-	ctx->error_file = stderr;
-	ctx->debug_file = stdout;
-	ctx->debug = 0;
 
 	for (i = 0; i < argc; i++) {
 		if (argv[i][0] == '-') {

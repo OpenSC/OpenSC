@@ -311,10 +311,8 @@ connect(int reader)
 		error("Failed to establish context: %s\n", sc_strerror(r));
 		return 0;
 	}
-
-	ctx->error_file = stderr;
-	ctx->debug_file = stdout;
-	ctx->debug = opt_debug;
+	if (opt_debug)
+		ctx->debug = opt_debug;
 	if (reader >= ctx->reader_count || reader < 0) {
 		fprintf(stderr,
 			"Illegal reader number. Only %d reader%s configured.\n",

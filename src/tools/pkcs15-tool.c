@@ -703,9 +703,8 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	ctx->error_file = stderr;
-	ctx->debug_file = stdout;
-	ctx->debug = opt_debug;
+	if (opt_debug)
+		ctx->debug = opt_debug;
 	if (ctx->reader_count == 0) {
 		fprintf(stderr, "No readers configured.\n");
 		err = 1;

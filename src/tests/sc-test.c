@@ -21,8 +21,6 @@ int sc_test_init(int *argc, char *argv[])
 		printf("sc_establish_context() failed (%d)\n", i);
 		return i;
 	}
-	ctx->error_file = stderr;
-	ctx->debug_file = stdout;
 	i = sc_detect_card_presence(ctx->reader[0], 0);
 	printf("Card %s.\n", i == 1 ? "present" : "absent");
 	if (i < 0) {

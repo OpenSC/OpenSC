@@ -33,9 +33,6 @@ CK_FUNCTION_LIST pkcs11_function_list;
 
 CK_RV C_Initialize(CK_VOID_PTR pReserved)
 {
-#ifdef DEBUG
-	const char *envarg;
-#endif
 	int i, rc;
 
 	if (context != NULL) {
@@ -45,22 +42,6 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	rc = sc_establish_context(&context, "opensc-pkcs11");
 	if (rc != 0)
 		return CKR_DEVICE_ERROR;
-#ifdef DEBUG
-	/* We need to send the debug log to a file because of
-	 * netscape's stupid stderr capturing */
-	if ((envarg = getenv("PKCS11_DEBUG")) != NULL
-	 && (context->debug_file = fopen(envarg, "w")) != NULL) {
-		context->error_file = context->debug_file;
-	} else {
-		context->debug_file = stdout;
-		context->error_file = stderr;
-	}
-	if ((envarg = getenv("PKCS11_DEBUG_LEVEL")) != NULL)
-		context->debug = atoi(envarg);
-#else
-	context->debug_file = NULL;
-	context->error_file = NULL;
-#endif
 
         pool_initialize(&session_pool);
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++)
