@@ -52,7 +52,7 @@ if [ -z "$__p15init__" ]; then
 	fi
 
 	# Get terminal control sequences
-	if tty >/dev/null 2>&1; then
+	if false && tty >/dev/null 2>&1; then
 		__red=`tput setaf 1`
 		__green=`tput setaf 2`
 		__black=`tput setaf 0`
@@ -189,21 +189,11 @@ function p15_init {
 	:::
 EOF
 
-	msg <<-EOF
-	:::
-	::: The following test will erase your card, if possible,
-	::: and create a new pkcs15 structure on it.
-	:::
-EOF
-
-	if [ -z $opt_no_prompt ] &&
-	  ! yesno "Erase and re-initialize card?"; then
-		msg "Aborting test"
-		exit 0
-	fi
+	$p15init --assert-pristine -q ||
+		fail "This test requires a clean card, please erase existing pkcs15 structure"
 
 	msg "Initializing card ($*)"
-	run_display_output $p15init -EC \
+	run_display_output $p15init -C \
 			--label "OpenSC Test Card" \
 			--serial DEADBEEF \
 			$* >&3 >&4
