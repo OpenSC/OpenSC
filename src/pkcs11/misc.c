@@ -61,6 +61,8 @@ CK_RV sc_to_cryptoki_error(int rc, int reader)
 		return CKR_FUNCTION_CANCELED;
 	case SC_ERROR_CARD_REMOVED:
 		return CKR_DEVICE_REMOVED;
+	case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+		return CKR_USER_NOT_LOGGED_IN;
 	}
 	return CKR_GENERAL_ERROR;
 }
