@@ -32,4 +32,4 @@ libopensc_la_LIBADD	= @LIBDL@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF)
 
 include_HEADERS		= opensc.h opensc-pkcs15.h opensc-emv.h \
 		   	  cardctl.h
-noinst_HEADERS		= sc-asn1.h sc-log.h sc-internal.h
+noinst_HEADERS		= ctbcs.h sc-asn1.h sc-log.h sc-internal.h

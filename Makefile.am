@@ -2,7 +2,7 @@
 
 SUBDIRS = . aclocal docs etc src
 
-EXTRA_DIST = CodingStyle bootstrap
+EXTRA_DIST = CodingStyle README.signer bootstrap
 
 MAINTAINERCLEANFILES = Makefile.in aclocal.m4 acinclude.m4 \
 	config.guess config.h.in config.sub configure \
