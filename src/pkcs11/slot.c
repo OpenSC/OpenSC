@@ -134,7 +134,7 @@ CK_RV slot_initialize(int id, struct sc_pkcs11_slot *slot)
 	slot->id = id;
 	slot->login_user = -1;
         clear_slot_info(&slot->slot_info);
-	pool_initialize(&slot->object_pool);
+	pool_initialize(&slot->object_pool, POOL_TYPE_OBJECT);
 
         return CKR_OK;
 }

@@ -85,8 +85,9 @@ void dump_template(const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCoun
 }
 
 /* Pool */
-CK_RV pool_initialize(struct sc_pkcs11_pool *pool)
+CK_RV pool_initialize(struct sc_pkcs11_pool *pool, int type)
 {
+	pool->type = type;
 	pool->next_free_handle = 1;
 	pool->num_items = 0;
 	pool->head = pool->tail = NULL;
@@ -132,7 +133,8 @@ CK_RV pool_find(struct sc_pkcs11_pool *pool, CK_ULONG handle, void **item_ptr)
 		}
 	}
 
-        return CKR_FUNCTION_FAILED;
+	return (pool->type == POOL_TYPE_OBJECT)? CKR_OBJECT_HANDLE_INVALID
+					       : CKR_SESSION_HANDLE_INVALID;
 }
 
 CK_RV pool_find_and_delete(struct sc_pkcs11_pool *pool, CK_ULONG handle, void **item_ptr)
@@ -156,7 +158,8 @@ CK_RV pool_find_and_delete(struct sc_pkcs11_pool *pool, CK_ULONG handle, void **
 		}
 	}
 
-        return CKR_FUNCTION_FAILED;
+	return (pool->type == POOL_TYPE_OBJECT)? CKR_OBJECT_HANDLE_INVALID
+					       : CKR_SESSION_HANDLE_INVALID;
 }
 
 /* Session manipulation */

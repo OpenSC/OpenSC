@@ -41,7 +41,7 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 	if (rc != 0)
 		return CKR_DEVICE_ERROR;
 
-        pool_initialize(&session_pool);
+        pool_initialize(&session_pool, POOL_TYPE_SESSION);
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++)
                 slot_initialize(i, &virtual_slots[i]);
 	for (i=0; i<SC_PKCS11_MAX_READERS; i++)

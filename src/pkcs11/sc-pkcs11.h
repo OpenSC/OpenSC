@@ -65,7 +65,13 @@ struct sc_pkcs11_pool_item {
         struct sc_pkcs11_pool_item *prev;
 };
 
+enum {
+	POOL_TYPE_SESSION,
+	POOL_TYPE_OBJECT
+};
+
 struct sc_pkcs11_pool {
+	int type;
         int next_free_handle;
 	int num_items;
 	struct sc_pkcs11_pool_item *head;
@@ -238,7 +244,7 @@ CK_RV slot_token_removed(int id);
 CK_RV slot_allocate(struct sc_pkcs11_slot **, struct sc_pkcs11_card *);
 
 /* Pool */
-CK_RV pool_initialize(struct sc_pkcs11_pool *);
+CK_RV pool_initialize(struct sc_pkcs11_pool *, int);
 CK_RV pool_insert(struct sc_pkcs11_pool *, void *, CK_ULONG_PTR);
 CK_RV pool_find(struct sc_pkcs11_pool *, CK_ULONG, void **);
 CK_RV pool_find_and_delete(struct sc_pkcs11_pool *, CK_ULONG, void **);
