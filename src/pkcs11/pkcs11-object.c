@@ -28,8 +28,22 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		     CK_ULONG          ulCount,     /* attributes in template */
 		     CK_OBJECT_HANDLE_PTR phObject) /* receives new object's handle. */
 {
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_card *card;
+        int rv;
+
         dump_template("C_CreateObject()", pTemplate, ulCount);
-	return CKR_FUNCTION_NOT_SUPPORTED;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		return rv;
+
+	card = session->slot->card;
+	if (card->framework->create_object == NULL)
+		return CKR_FUNCTION_NOT_SUPPORTED;
+
+	return card->framework->create_object(card, session->slot,
+			pTemplate, ulCount, phObject);
 }
 
 CK_RV C_CopyObject(CK_SESSION_HANDLE    hSession,    /* the session's handle */

@@ -197,3 +197,79 @@ CK_RV session_stop_operation(struct sc_pkcs11_session *session)
 	session->operation = NULL;
         return CKR_OK;
 }
+
+CK_RV attr_extract(CK_ATTRIBUTE_PTR pAttr, void *ptr, size_t *sizep)
+{
+	unsigned int	size;
+
+	if (sizep) {
+		size = *sizep;
+		if (size < pAttr->ulValueLen)
+			return CKR_ATTRIBUTE_VALUE_INVALID;
+		*sizep = pAttr->ulValueLen;
+	} else {
+		switch (pAttr->type) {
+		case CKA_CLASS:
+			size = sizeof(CK_OBJECT_CLASS); break;
+		case CKA_KEY_TYPE:
+			size = sizeof(CK_KEY_TYPE); break;
+		default:
+			return CKR_FUNCTION_FAILED;
+		}
+		if (size != pAttr->ulValueLen)
+			return CKR_ATTRIBUTE_VALUE_INVALID;
+	}
+	memcpy(ptr, pAttr->pValue, pAttr->ulValueLen);
+	return CKR_OK;
+}
+
+CK_RV attr_find(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
+			CK_ULONG type, void *ptr, size_t *sizep)
+{
+	unsigned int	n;
+
+	for (n = 0; n < ulCount; n++, pTemplate++) {
+		if (pTemplate->type == type)
+			break;
+	}
+
+	if (n >= ulCount)
+		return CKR_TEMPLATE_INCOMPLETE;
+	return attr_extract(pTemplate, ptr, sizep);
+}
+
+CK_RV attr_find_ptr(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
+		CK_ULONG type, void **ptr, size_t *sizep)
+{
+	unsigned int	n;
+
+	for (n = 0; n < ulCount; n++, pTemplate++) {
+		if (pTemplate->type == type)
+			break;
+	}
+
+	if (n >= ulCount)
+		return CKR_TEMPLATE_INCOMPLETE;
+
+	if (sizep)
+		*sizep = pTemplate->ulValueLen;
+	*ptr = pTemplate->pValue;
+	return CKR_OK;
+}
+
+CK_RV attr_find_var(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
+		CK_ULONG type, void *ptr, size_t *sizep)
+{
+	unsigned int	n;
+
+	for (n = 0; n < ulCount; n++, pTemplate++) {
+		if (pTemplate->type == type)
+			break;
+	}
+
+	if (n >= ulCount)
+		return CKR_TEMPLATE_INCOMPLETE;
+
+	return attr_extract(pTemplate, ptr, sizep);
+}
+

@@ -120,6 +120,10 @@ struct sc_pkcs11_framework_ops {
 	CK_RV (*init_pin)(struct sc_pkcs11_card *,
 				struct sc_pkcs11_slot *,
 				CK_UTF8CHAR_PTR, CK_ULONG);
+	CK_RV (*create_object)(struct sc_pkcs11_card *,
+				struct sc_pkcs11_slot *,
+				CK_ATTRIBUTE_PTR, CK_ULONG,
+				CK_OBJECT_HANDLE_PTR);
 };
 
 
@@ -233,5 +237,11 @@ CK_RV sc_pkcs11_create_secret_key(struct sc_pkcs11_session *,
 /* Generic object handling */
 int sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *,
 			void *, CK_ATTRIBUTE_PTR);
+
+/* Get attributes from template (misc.c) */
+CK_RV attr_find(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
+CK_RV attr_find_ptr(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void **, size_t *);
+CK_RV attr_find_var(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
+CK_RV attr_extract(CK_ATTRIBUTE_PTR, void *, size_t *);
 
 #endif
