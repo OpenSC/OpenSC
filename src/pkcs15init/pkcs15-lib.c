@@ -54,7 +54,7 @@
 #include <opensc/cardctl.h>
 
 /* Default ID for new key/pin */
-#define DEFAULT_ID		"45"
+#define DEFAULT_ID		0x45
 #define DEFAULT_PRKEY_FLAGS	0x1d
 #define DEFAULT_PUBKEY_FLAGS	0x02
 #define DEFAULT_CERT_FLAGS	0x02
@@ -94,6 +94,7 @@ static int	check_key_compatibility(struct sc_pkcs15_card *,
 static int	prkey_fixup(sc_pkcs15_prkey_t *);
 static int	prkey_bits(sc_pkcs15_prkey_t *);
 static int	prkey_pkcs15_algo(sc_pkcs15_prkey_t *);
+static int	select_id(struct sc_pkcs15_card *, int, struct sc_pkcs15_id *);
 static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *, int);
 static void	default_error_handler(const char *fmt, ...);
 static void	default_debug_handler(const char *fmt, ...);
@@ -514,8 +515,11 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15init_prkeyargs *keyargs,
 	if (!keybits && (keybits = prkey_bits(key)) < 0)
 		return keybits;
 
-	if (keyargs->id.len == 0)
-		sc_pkcs15_format_id(DEFAULT_ID, &keyargs->id);
+	if (keyargs->id.len == 0) {
+		p15init_error("No key ID set for this key.");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
 	if ((usage = keyargs->usage) == 0) {
 		usage = SC_PKCS15_PRKEY_USAGE_SIGN;
 		if (keyargs->x509_usage)
@@ -574,6 +578,11 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 
 	/* Set the SO PIN reference from card */
 	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
+		return r;
+
+	/* Select a Key ID if the user didn't specify one, otherwise
+	 * make sure it's unique */
+	if ((r = select_id(p15card, SC_PKCS15_TYPE_PRKEY, &keyargs->id)) < 0)
 		return r;
 
 	/* Set up the PrKDF object */
@@ -657,6 +666,11 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 
 	/* Set the SO PIN reference from card */
 	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
+		return r;
+
+	/* Select a Key ID if the user didn't specify one, otherwise
+	 * make sure it's unique */
+	if ((r = select_id(p15card, SC_PKCS15_TYPE_PRKEY, &keyargs->id)) < 0)
 		return r;
 
 	/* Set up the PrKDF object */
@@ -756,8 +770,11 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	if (keyargs->id.len == 0)
-		sc_pkcs15_format_id(DEFAULT_ID, &keyargs->id);
+	/* Select a Key ID if the user didn't specify one, otherwise
+	 * make sure it's unique */
+	if ((r = select_id(p15card, SC_PKCS15_TYPE_PUBKEY, &keyargs->id)) < 0)
+		return r;
+
 	if ((usage = keyargs->usage) == 0) {
 		usage = SC_PKCS15_PRKEY_USAGE_SIGN;
 		if (keyargs->x509_usage)
@@ -818,8 +835,11 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 		usage = sc_pkcs15init_map_usage(args->x509_usage, 0);
 	if ((label = args->label) == NULL)
 		label = "Certificate";
-	if (args->id.len == 0)
-		sc_pkcs15_format_id(DEFAULT_ID, &args->id);
+
+	/* Select an ID if the user didn't specify one, otherwise
+	 * make sure it's unique */
+	if ((r = select_id(p15card, SC_PKCS15_TYPE_CERT, &args->id)) < 0)
+		return r;
 
 	if (args->id.len != 0) {
 		sc_pkcs15_object_t *objp;
@@ -1149,6 +1169,46 @@ find_df_by_type(struct sc_pkcs15_card *p15card, int type)
 	return df;
 }
 
+int
+select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
+{
+	unsigned int nid = DEFAULT_ID;
+	struct sc_pkcs15_object *dummy;
+	int r, user_provided;
+	int (*func)(struct sc_pkcs15_card *,
+			const struct sc_pkcs15_id *,
+			struct sc_pkcs15_object **);
+
+	switch (type) {
+	case SC_PKCS15_TYPE_PRKEY:
+		func = sc_pkcs15_find_prkey_by_id;
+		break;
+	case SC_PKCS15_TYPE_PUBKEY:
+		func = sc_pkcs15_find_pubkey_by_id;
+		break;
+	case SC_PKCS15_TYPE_CERT:
+		func = sc_pkcs15_find_cert_by_id;
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	user_provided = (id->len != 0);
+	while (nid < 255) {
+		if (!user_provided) {
+			id->value[0] = nid++;
+			id->len = 1;
+		}
+		r = func(p15card, id, &dummy);
+		if (r == SC_ERROR_OBJECT_NOT_FOUND)
+			return 0;
+		if (user_provided)
+			return SC_ERROR_ID_NOT_UNIQUE;
+	}
+	
+	return SC_ERROR_TOO_MANY_OBJECTS;
+}
+
 /*
  * Update EF(DIR)
  */
@@ -1285,15 +1345,18 @@ sc_pkcs15init_set_pin_data(struct sc_profile *profile, int pin_id,
 /*
  * PIN verification
  */
-static int
-do_verify_pin(struct sc_profile *pro, struct sc_card *card,
-		unsigned int type, unsigned int reference)
+int
+do_get_and_verify_secret(struct sc_profile *pro, struct sc_card *card,
+		int type, int reference,
+		u8 *pinbuf, size_t *pinsize,
+		int verify)
 {
 	struct sc_pkcs15_pin_info pin_info;
+	struct sc_cardctl_default_key data;
 	const char	*ident;
 	unsigned int	pin_id = (unsigned int) -1;
-	size_t		pinsize, defsize;
-	u8		pinbuf[32], defbuf[32];
+	size_t		defsize = 0;
+	u8		defbuf[32];
 	int		r;
 
 	ident = "authentication data";
@@ -1316,75 +1379,98 @@ do_verify_pin(struct sc_profile *pro, struct sc_card *card,
 		sc_profile_get_pin_info(pro, pin_id, &pin_info);
 		type = SC_AC_CHV;
 		reference = pin_info.reference;
+
+		/* If reference is -1, this means the card issuer
+		 * didn't set this PIN */
 		if (reference == -1)
-			goto no_secret;
+			return 0;
 	}
 
-	pinsize = sizeof(pinbuf);
-	memset(pinbuf, 0, sizeof(pinbuf));
-	defsize = 0;
+	/* Try to get the cached secret, e.g. CHV1 */
+	r = sc_profile_get_secret(pro, type, reference, pinbuf, pinsize);
+	if (r >= 0)
+		goto found;
 
-	r = sc_profile_get_secret(pro, type, reference, pinbuf, &pinsize);
-
-	if (r < 0 && pin_id != -1)
+	/* If this secret is linked to a symbolic PIN, e.g. SOPIN1,
+	 * see if we've cached it under that name */
+	if (pin_id != -1) {
 		r = sc_profile_get_secret(pro, SC_AC_SYMBOLIC, pin_id,
-				pinbuf, &pinsize);
-
-	/* Ask the card driver whether it knows a default key for this one */
-	if (r < 0) {
-		struct sc_cardctl_default_key data;
-
-		data.method = type;
-		data.key_ref = reference;
-		data.len = sizeof(defbuf);
-		data.key_data = defbuf;
-		if (sc_card_ctl(card, SC_CARDCTL_GET_DEFAULT_KEY, &data) >= 0)
-			defsize = data.len;
+				pinbuf, pinsize);
+		if (r >= 0)
+			goto found;
 	}
 
-	if (r < 0 && callbacks) {
+	/* Okay, nothing in our cache.
+	 * Ask the card driver whether it knows a default key for this one
+	 */
+	data.method = type;
+	data.key_ref = reference;
+	data.len = sizeof(defbuf);
+	data.key_data = defbuf;
+	if (sc_card_ctl(card, SC_CARDCTL_GET_DEFAULT_KEY, &data) >= 0)
+		defsize = data.len;
+
+	if (callbacks) {
 		if (pin_id != -1 && callbacks->get_pin) {
 			r = callbacks->get_pin(pro, pin_id, &pin_info,
-					pinbuf, &pinsize);
-			if (r >= 0)
-				sc_profile_set_secret(pro, SC_AC_SYMBOLIC, pin_id,
-						pinbuf, pinsize);
+					pinbuf, pinsize);
 		} else
 		if (pin_id == -1 && callbacks->get_key) {
 			r = callbacks->get_key(pro, type, reference,
 					defbuf, defsize,
-					pinbuf, &pinsize);
-			if (r >= 0)
-				sc_profile_set_secret(pro, type, reference,
-						pinbuf, pinsize);
+					pinbuf, pinsize);
 		}
 	}
 
-	if (r >= 0) {
-		if (type == SC_AC_CHV) {
-			int left = pro->pin_maxlen - pinsize;
+	if (r < 0)
+		return r;
 
-			if (left > 0) {
-				memset(pinbuf + pinsize, pro->pin_pad_char,
-				       left);
-				pinsize = pro->pin_maxlen;
-			}
+found:	/* We got something. Cache it */
+	sc_profile_set_secret(pro, type, reference, pinbuf, *pinsize);
+
+	/* If it's a PIN, pad it out */
+	if (type == SC_AC_CHV) {
+		int left = pro->pin_maxlen - *pinsize;
+
+		if (left > 0) {
+			memset(pinbuf + *pinsize, pro->pin_pad_char, left);
+			*pinsize = pro->pin_maxlen;
 		}
-		r = sc_verify(card, type, reference, pinbuf, pinsize, NULL);
-		if (r) {
-			p15init_error("Failed to verify %s (ref=0x%x)",
+		/* If it's associated with a symbolic PIN, store it under
+		 * the symbolic name as well */
+		if (pin_id != -1)
+			sc_profile_set_secret(pro, SC_AC_SYMBOLIC, pin_id,
+						pinbuf, *pinsize);
+	}
+
+	if (verify
+	 && (r = sc_verify(card, type, reference, pinbuf, *pinsize, 0)) < 0) {
+		p15init_error("Failed to verify %s (ref=0x%x)",
 				ident, reference);
-			return r;
-		}
-		return 0;
 	}
 
+	return r;
+}
 
-no_secret:
-	/* No secret found that we could present.
-	 * XXX: Should we flag an error here, or let the
-	 * operation proceed and then fail? */
-	return 0;
+static int
+do_verify_pin(struct sc_profile *pro, struct sc_card *card,
+		unsigned int type, unsigned int reference)
+{
+	size_t		pinsize;
+	u8		pinbuf[32];
+
+	pinsize = sizeof(pinbuf);
+	return do_get_and_verify_secret(pro, card, type, reference,
+			pinbuf, &pinsize, 1);
+}
+
+int
+sc_pkcs15init_get_secret(struct sc_profile *pro, struct sc_card *card,
+		int type, int reference,
+		u8 *pinbuf, size_t *pinsize)
+{
+	return do_get_and_verify_secret(pro, card, type, reference,
+			pinbuf, pinsize, 0);
 }
 
 /*
