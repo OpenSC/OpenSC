@@ -248,8 +248,6 @@ typedef struct sc_starcos_gen_key_data_st {
 	size_t	key_length;
 	u8	*modulus;
 } sc_starcos_gen_key_data;
-	
-
 
 struct sc_cardctl_jcop_genkey  {
      unsigned long exponent;
@@ -258,13 +256,13 @@ struct sc_cardctl_jcop_genkey  {
      unsigned char *	pubkey;
      unsigned int	pubkey_len;
 };
-     
+
 /*
  * Oberthur ex_data stuff
  */
 enum SC_CARDCTL_OBERTHUR_KEY_TYPE {
 	SC_CARDCTL_OBERTHUR_KEY_DES = 0x80,
-	
+
 	SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC = 0xA1,
 	SC_CARDCTL_OBERTHUR_KEY_RSA_SFM,
 	SC_CARDCTL_OBERTHUR_KEY_RSA_CRT,
@@ -279,7 +277,7 @@ struct sc_cardctl_oberthur_genkey_info {
 	unsigned char * pubkey;
 	unsigned int    pubkey_len;
 };
-	  
+
 struct sc_cardctl_oberthur_updatekey_info {
 	enum SC_CARDCTL_OBERTHUR_KEY_TYPE  type;
 	unsigned int    component;
@@ -297,10 +295,9 @@ struct sc_cardctl_oberthur_createpin_info {
 	unsigned int puk_len;
 	unsigned int puk_tries;
 };
-	  
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* _OPENSC_CARDCTL_H */
-

@@ -112,15 +112,16 @@ static int flex_finish(struct sc_card *card)
 
 static int cryptoflex_match_card(struct sc_card *card)
 {
-	int	idx;
+	int i;
 
-	idx = _sc_match_atr(card, flex_atrs, NULL);
-	if (idx < 0)
+	i = _sc_match_atr(card, flex_atrs, NULL);
+	if (i < 0)
 		return 0;
-	switch (flex_atrs[idx].id & TYPE_MASK) {
+	switch (flex_atrs[i].id & TYPE_MASK) {
 	case TYPE_CRYPTOFLEX:
 	case TYPE_MULTIFLEX:
-		card->type = idx;
+		card->name = flex_atrs[i].name;
+		card->type = flex_atrs[i].id;
 		return 1;
 	}
 	return 0;
@@ -128,14 +129,15 @@ static int cryptoflex_match_card(struct sc_card *card)
 
 static int cyberflex_match_card(struct sc_card *card)
 {
-	int	idx;
+	int i;
 
-	idx = _sc_match_atr(card, flex_atrs, NULL);
-	if (idx < 0)
+	i = _sc_match_atr(card, flex_atrs, NULL);
+	if (i < 0)
 		return 0;
-	switch (flex_atrs[idx].id & TYPE_MASK) {
+	switch (flex_atrs[i].id & TYPE_MASK) {
 	case TYPE_CYBERFLEX:
-		card->type = idx;
+		card->name = flex_atrs[i].name;
+		card->type = flex_atrs[i].id;
 		return 1;
 	}
 	return 0;
@@ -144,16 +146,10 @@ static int cyberflex_match_card(struct sc_card *card)
 static int flex_init(struct sc_card *card)
 {
 	struct flex_private_data *data;
-	int idx = card->type;
 
 	if (!(data = (struct flex_private_data *) malloc(sizeof(*data))))
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->drv_data = data;
-
-	if (idx >= 0) {
-		card->name = flex_atrs[idx].name;
-		card->type = flex_atrs[idx].id;
-	}
 
 	card->cla = 0xC0;
 	data->aak_key_ref = 1;
