@@ -189,6 +189,8 @@ CK_RV slot_allocate(struct sc_pkcs11_slot **slot, struct sc_pkcs11_card *card)
 
                         virtual_slots[i].card = card;
 			*slot = &virtual_slots[i];
+			strcpy_bp((*slot)->slot_info.slotDescription,
+				card->card->reader->name, 64);
 			card->num_slots++;
 			return CKR_OK;
 		}
