@@ -17,10 +17,13 @@
  * USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #ifdef HAVE_OPENSSL
 #include <openssl/x509.h>
 #endif
-#include "pkcs11_display.h"
+#include "pkcs11-display.h"
 
 void print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {

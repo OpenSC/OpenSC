@@ -23,16 +23,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#ifndef PKCS11_STATIC_LINKING
-#include <dlfcn.h>
-#endif
-
-#ifndef WIN32
-#include <unix.h>
+#ifndef _WIN32
+#include "rsaref/unix.h"
+#include "rsaref/pkcs11.h"
 #else
-#include <win32.h>
+#include "rsaref/win32.h"
+#pragma pack(push, cryptoki, 1)
+#include "rsaref/pkcs11.h"
+#pragma pack(pop, cryptoki)
 #endif
-#include <pkcs11.h>
 
 #ifdef __cplusplus
 extern "C" {
