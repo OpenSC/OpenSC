@@ -724,6 +724,7 @@ static int iso7816_compute_signature(struct sc_card *card,
 		       0x9A);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf); /* FIXME */
+	apdu.le = 256;
 
 	memcpy(sbuf, data, datalen);
 	apdu.data = sbuf;
