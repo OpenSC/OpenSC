@@ -163,7 +163,8 @@ static int parse_dir(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
 {
 	const u8 *p = buf;
-	int r, left = buflen;
+	size_t left = buflen;
+	int r;
 	struct sc_path path;
 	struct sc_asn1_struct asn1_obj_or_path[] = {
 		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path },

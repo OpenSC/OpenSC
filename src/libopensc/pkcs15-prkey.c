@@ -50,7 +50,7 @@ void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey)
 
 static int parse_rsa_prkey_info(struct sc_context *ctx,
 				struct sc_pkcs15_prkey_info *prkey,
-				const u8 **buf, int *buflen)
+				const u8 **buf, size_t *buflen)
 {
 	int r;
 	int usage_len = sizeof(prkey->usage);
@@ -95,7 +95,8 @@ static int parse_rsa_prkey_info(struct sc_context *ctx,
 static int get_prkeys_from_file(struct sc_pkcs15_card *card,
 				struct sc_file *file)
 {
-	int r, bytes_left;
+	int r;
+	size_t bytes_left;
 	u8 buf[2048];
 	const u8 *p = buf;
 

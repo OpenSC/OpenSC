@@ -179,8 +179,9 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 	const u8 *p = buf;
 
 	while (bytesleft >= 2) {
-		int cla, tag, len, hlen;
+		unsigned int cla, tag, hlen;
 		const u8 *tagp = p;
+		size_t len;
 
 		r = read_tag(&tagp, bytesleft, &cla, &tag, &len);
 		if (r < 0) {

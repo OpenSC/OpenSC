@@ -29,7 +29,7 @@
 
 static int parse_pin_info(struct sc_context *ctx,
 			  struct sc_pkcs15_pin_info *pin,
-			  const u8 ** buf, int *buflen)
+			  const u8 ** buf, size_t *buflen)
 {
 	int r;
 	struct sc_asn1_struct asn1_com_ao_attr[] = {
@@ -98,7 +98,8 @@ void sc_pkcs15_print_pin_info(const struct sc_pkcs15_pin_info *pin)
 static int get_pins_from_file(struct sc_pkcs15_card *card,
 			      struct sc_file *file)
 {
-	int r, bytes_left;
+	int r;
+	size_t bytes_left;
 	u8 buf[2048];
 	const u8 *p = buf;
 

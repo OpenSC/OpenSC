@@ -279,7 +279,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 
 static int parse_x509_cert_info(struct sc_context *ctx,
 				struct sc_pkcs15_cert_info *cert,
-				const u8 ** buf, int *buflen)
+				const u8 ** buf, size_t *buflen)
 {
 	u8 id_value[128];
 	int id_type, id_value_len = sizeof(id_value);
@@ -334,7 +334,8 @@ void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert)
 static int get_certs_from_file(struct sc_pkcs15_card *card,
 			       struct sc_file *file)
 {
-	int r, bytes_left;
+	int r;
+	size_t bytes_left;
 	u8 buf[2048];
 	const u8 *p = buf;
 
