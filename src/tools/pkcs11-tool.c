@@ -185,6 +185,7 @@ static CK_RV find_object_with_attributes(
 		CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out,
 		CK_ATTRIBUTE *attrs, CK_ULONG attrsLen,
 		CK_ULONG obj_index);
+static CK_ULONG		get_private_key_length(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE prkey);
 
 /* win32 needs this in open(2) */
 #ifndef O_BINARY
@@ -1231,7 +1232,10 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 	printf("%s Key Object", pub? "Public" : "Private");
 	switch (key_type) {
 	case CKK_RSA:
-		printf("; RSA %lu bits\n", getMODULUS_BITS(sess, obj));
+		if (pub)
+			printf("; RSA %lu bits\n", getMODULUS_BITS(sess, obj));
+		else
+			printf("; RSA %lu bits\n", get_private_key_length(sess, obj));
 		break;
 	default:
 		printf("; unknown key algorithm %lu\n", key_type);
@@ -1469,7 +1473,7 @@ read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		fatal("object not found\n");
 
 	value = getVALUE(session, obj, &len);
-    if (value == NULL)
+	if (value == NULL)
 		fatal("get CKA_VALUE failed\n");
 
 	if (opt_output)   {
@@ -1487,6 +1491,28 @@ read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	return 1;	
 }
 
+static CK_ULONG	get_private_key_length(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE prkey)
+{
+	unsigned char  *id;
+	CK_ULONG        idLen;
+	CK_OBJECT_HANDLE pubkey;
+
+	id = NULL;
+	id = getID(sess, prkey, &idLen);
+	if (id == NULL) {
+		printf("private key has no ID, can't lookup the corresponding pubkey\n");
+		return 0;
+	}
+
+	if (!find_object(sess, CKO_PUBLIC_KEY, &pubkey, id, idLen, 0)) {
+		free(id);
+		printf("coudn't find the corresponding pubkey\n");
+		return 0;
+	}
+	free(id);
+
+	return getMODULUS_BITS(sess, pubkey); 
+}
 
 static int
 test_digest(CK_SLOT_ID slot)
@@ -1860,7 +1886,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	data[0] = 0;
 	data[1] = 1;
-	modLenBytes = (getMODULUS_BITS(sess, privKeyObject) + 7) / 8;
+	modLenBytes = (get_private_key_length(sess, privKeyObject) + 7) / 8;
 
 	/* 1st test */
 
@@ -1990,7 +2016,7 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		CK_ULONG	modLenBits;
 
 		label = getLABEL(sess, privKeyObject, NULL);
-		modLenBits = getMODULUS_BITS(sess, privKeyObject);
+		modLenBits = get_private_key_length(sess, privKeyObject);
 		modLenBytes = (modLenBits + 7) / 8;
 
 		printf("  testing key %d (%u bits%s%s) with 1 signature mechanism\n",
@@ -2150,7 +2176,7 @@ test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 			continue;
 		}
 
-		key_len = (getMODULUS_BITS(sess, priv_key) + 7) / 8;
+		key_len = (get_private_key_length(sess, priv_key) + 7) / 8;
 
 		errors += sign_verify(slot, sess, priv_key, key_len, pub_key, i != 0);
 	}
