@@ -1,5 +1,11 @@
 NEWS for libopensc -- History of user visible changes
 
+New in 0.3.5; 2001-12-15; Juha Yrjölä:
+* Now compiles with C++
+* Added card reset detection
+* Fixed PIN code changing
+* Improved certificate caching
+
 New in 0.3.2; 2001-11-27; Juha Yrjölä:
 * Converted to Autotools.
 
