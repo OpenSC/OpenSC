@@ -161,10 +161,13 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	r = sc_lock(p15card->card);
 	SC_TEST_RET(ctx, r, "sc_lock() failed");
 
-	r = select_key_file(p15card, prkey, &senv);
-	if (r < 0) {
-		sc_unlock(p15card->card);
-		SC_TEST_RET(ctx, r, "Unable to select private key file");
+	if (prkey->path.len != 0)
+	{
+		r = select_key_file(p15card, prkey, &senv);
+		if (r < 0) {
+			sc_unlock(p15card->card);
+			SC_TEST_RET(ctx,r,"Unable to select private key file");
+		}
 	}
 
 	r = sc_set_security_env(p15card->card, &senv, 0);
@@ -375,10 +378,13 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	r = sc_lock(p15card->card);
 	SC_TEST_RET(ctx, r, "sc_lock() failed");
 
-	r = select_key_file(p15card, prkey, &senv);
-	if (r < 0) {
-		sc_unlock(p15card->card);
-		SC_TEST_RET(ctx, r, "Unable to select private key file");
+	if (prkey->path.len != 0)
+	{
+		r = select_key_file(p15card, prkey, &senv);
+		if (r < 0) {
+			sc_unlock(p15card->card);
+			SC_TEST_RET(ctx,r,"Unable to select private key file");
+		}
 	}
 
 	r = sc_set_security_env(p15card->card, &senv, 0);
