@@ -1,3 +1,4 @@
 # Process this file with automake to create Makefile.in
 
-SUBDIRS = common libopensc tests tools openssh pam pkcs11
+# Order IS important
+SUBDIRS = common scconf scldap scrandom libopensc tests tools openssh scam pam sia pkcs11

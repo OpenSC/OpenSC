@@ -29,8 +29,8 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <sys/stat.h>
-#include <scc/scrandom.h>
-#include <scc/scldap.h>
+#include <scrandom.h>
+#include <scldap.h>
 #include <opensc.h>
 #include <opensc-pkcs15.h>
 #include <openssl/x509.h>

@@ -1,5 +1,9 @@
 # Process this file with automake to create Makefile.in
 
+SUBDIRS = . etc
+
+INCLUDES = -I../scconf
+
 include_HEADERS = scldap.h
 
 if HAVE_LDAP
@@ -12,7 +16,7 @@ endif
 
 lib_LTLIBRARIES = $(LDAP_LTLIB)
 libscldap_la_SOURCES = scldap.c scldap.h
-libscldap_la_LIBADD = @LIBLDAP@ libscconf.la
+libscldap_la_LIBADD = @LIBLDAP@ @LIBSCCONF@
 
 noinst_PROGRAMS = $(LDAP_PROGRAM)
 

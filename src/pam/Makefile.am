@@ -2,7 +2,7 @@
 
 libdir = ${prefix}/lib/security
 
-INCLUDES = @CFLAGS_PCSC@ @CFLAGS_SSP@ @CFLAGS_OPENSC@ -I../scam
+INCLUDES = @CFLAGS_PCSC@ @CFLAGS_SSP@ @CFLAGS_OPENSC@ -I../scam -I../scconf -I../scrandom -I../scldap
 
 if HAVE_LDAP
 LDAP_LTLIBS = @LIBSCLDAP@
