@@ -28,6 +28,30 @@
 extern "C" {
 #endif
 
+typedef struct _scconf_entry {
+	const char *name;
+	unsigned int type;
+	unsigned int flags;
+	void *parm;
+	void *arg;
+} scconf_entry;
+
+/* Entry flags */
+#define SCCONF_PRESENT		0x00000001
+#define SCCONF_OPTIONAL		0x00000002
+#define SCCONF_ALLOC		0x00000004
+#define SCCONF_ALL_BLOCKS	0x00000008
+#define SCCONF_VERBOSE		0x00000010	/* For debugging purposes only */
+
+/* Entry types */
+#define SCCONF_CALLBACK		1
+#define SCCONF_BLOCK		2
+#define SCCONF_LIST		3
+
+#define SCCONF_BOOLEAN		11
+#define SCCONF_INTEGER		12
+#define SCCONF_STRING		13
+
 typedef struct _scconf_block scconf_block;
 
 typedef struct _scconf_list {
@@ -58,6 +82,7 @@ struct _scconf_block {
 
 typedef struct {
 	char *filename;
+	int debug;
 	scconf_block *root;
 } scconf_context;
 
@@ -81,12 +106,12 @@ extern int scconf_parse(scconf_context * config);
  */
 extern int scconf_write(scconf_context * config, const char *filename);
 
-/* Find a config by the item_name
+/* Find a block by the item_name
  * If the block is NULL, the root block is used
  */
 extern const scconf_block *scconf_find_block(scconf_context * config, const scconf_block * block, const char *item_name);
 
-/* Find a config by the item_name
+/* Find blocks by the item_name
  * If the block is NULL, the root block is used
  * The key can be used to specify what the blocks first name should be
  */
@@ -97,24 +122,31 @@ extern scconf_block **scconf_find_blocks(scconf_context * config, const scconf_b
 extern const scconf_list *scconf_find_list(const scconf_block * block, const char *option);
 
 /* Return the first string of the option
+ * If no option found, return def
  */
 extern const char *scconf_get_str(const scconf_block * block, const char *option, const char *def);
 
 /* Return the first value of the option as integer
+ * If no option found, return def
  */
 extern int scconf_get_int(const scconf_block * block, const char *option, int def);
 
 /* Return the first value of the option as boolean
+ * If no option found, return def
  */
 extern int scconf_get_bool(const scconf_block * block, const char *option, int def);
-
-/* Free list structure
- */
-extern void scconf_list_destroy(scconf_list * list);
 
 /* Free block structure
  */
 extern void scconf_block_destroy(scconf_block * block);
+
+/* Add a new value to the list
+ */
+extern scconf_list *scconf_list_add(scconf_list ** list, const char *value);
+
+/* Free list structure
+ */
+extern void scconf_list_destroy(scconf_list * list);
 
 /* Return the length of an list array
  */
@@ -126,8 +158,13 @@ extern int scconf_list_strings_length(const scconf_list * list);
 
 /* Return an allocated string that contains all
  * the strings in a list separated by the filler
+ * The filler can be NULL
  */
 extern char *scconf_list_strdup(const scconf_list * list, const char *filler);
+
+/* Parse entries
+ */
+int scconf_parse_entries(scconf_context * config, const scconf_block * block, scconf_entry * entry);
 
 #ifdef __cplusplus
 }

@@ -107,26 +107,6 @@ static scconf_item *scconf_item_add(scconf_parser * parser, int type)
 	return item;
 }
 
-static void scconf_parse_add_list(scconf_parser * parser, scconf_list ** list,
-				  const char *value)
-{
-	scconf_list *rec, **tmp;
-
-	rec = malloc(sizeof(scconf_list));
-	if (!rec) {
-		return;
-	}
-	memset(rec, 0, sizeof(scconf_list));
-	rec->data = value ? strdup(value) : NULL;
-
-	if (!*list) {
-		*list = rec;
-	} else {
-		for (tmp = list; *tmp; tmp = &(*tmp)->next);
-		*tmp = rec;
-	}
-}
-
 static void scconf_block_add(scconf_parser * parser)
 {
 	scconf_block *block;
@@ -143,7 +123,7 @@ static void scconf_block_add(scconf_parser * parser)
 	item->value.block = block;
 
 	if (!parser->name) {
-		scconf_parse_add_list(parser, &parser->name, "");
+		scconf_list_add(&parser->name, "");
 	}
 	block->name = parser->name;
 	parser->name = NULL;
@@ -231,12 +211,11 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 			} else if (parser->state == STATE_NAME) {
 				/* name */
 				parser->state |= STATE_SET;
-				scconf_parse_add_list(parser, &parser->name, stoken);
+				scconf_list_add(&parser->name, stoken);
 			} else if (parser->state == STATE_VALUE) {
 				/* value */
 				parser->state |= STATE_SET;
-				scconf_parse_add_list(parser,
-						      &parser->current_item->value.list,
+				scconf_list_add(&parser->current_item->value.list,
 						      stoken);
 			} else {
 				/* error */
