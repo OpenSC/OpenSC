@@ -449,7 +449,8 @@ $ ./configure --enable-usbtoken
 					If you want to use pkcs15-init.exe,
 					make sure the *.profile files in the
 					pkcs15-init\ dir are in the same
-					directory as pkcs15-init.exe.
+					directory as pkcs15-init.exe, or in
+					your Windows directory.
 				</step>
 			</procedure>
 		</section>
@@ -496,7 +497,7 @@ set path=%path%;....\out32dll
 				<step>
 					In src/pkcs11/Makefile.mak add
 					libeay32.lib (and gdi32.lib) to the
-					"link" line
+					"link" lines of TARGET and TARGET3.
 				</step>
 
 				<step>
@@ -619,7 +620,7 @@ set path=%path%;....\out32dll
 			<title>Windows</title>
 
 			<para>
-				At the moment only libopensc.dll and
+				At the moment only libopensc.dll, pkcs11-spy.dll
 				opensc-pkcs11.dll, and most executables in the
 				tools\ and tests\ dir have been ported.  They
 				are tested on Win98, WinNT, Win2000 and WinXP.
@@ -1112,7 +1113,7 @@ OpenSSL>
 				<ulink url="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-11/">PKCS #11</ulink> is a standard API for accessing cryptographic tokens
 				such as smart cards, Hardware Security Modules, ...
 				It contains functions like C_GetSlotList(), C_OpenSession(),
-				C_FindObjects(), C_Login(), C_Decrypt(), ...
+				C_FindObjects(), C_Login(), C_Sign(), C_GenerateKeyPair(), ...
 			</para>
 
 			<para>
@@ -1225,16 +1226,157 @@ OpenSSL>
 		</section>
 	</chapter>
 
+	<chapter id="security">
+		<title>Security</title>
+
+		<section id="sec_cmd_line">
+			<title>Command line arguments</title>
+
+			<para>
+				The OpenSC tools allow you to specify PINs and keys on the command line.
+				This is only suitable for testing or when you are the only user of the machine.
+				If there are multiple users, other users usually are able to run things like 'ps'
+				or 'top', and probably are able to see the arguments given to some process, too.
+				Also, the arguments probably get logged to some shell history file like ~/.bash_history.
+			</para>
+
+			<para>
+				The solution is to use a script or, in the case of the pkcs15-init tool to put PINS
+				and keys into a file and used through the --options-file options.
+			</para>
+
+		</section>
+
+		<section id="sec_card_access">
+			<title>Access to the card</title>
+
+			<para>
+				Some other problems if multiple users have access to the reader(s):
+				<itemizedlist>
+					<listitem>
+						If the user forgets a card to the reader while the session isn't locked, a malicious
+						other user could run PIN verify commands to the card and probably lock the PIN, or even
+						lock the card for good.
+					</listitem>
+					<listitem>
+						If a user is logged in to the card but the session isn't locked, a malicious user could
+						use the previliged functionality (e.g. doing a signature, writing data to the card).
+					</listitem>
+				</itemizedlist>
+			</para>
+
+			<para>
+				A solution is to add the user to a specific "scard" group after they've logged in through
+				xdm. pcsc-lite's pcscd runs as pseudouser/group scard/scard, and limit the access to the
+				server socket (pcscd.comm) as 770 scard:scard. This way, other possible users that may
+				have logged in through ssh won't have any access to the local card readers. Not a perfect
+				solution, but works for single-reader workstations well enough.
+			</para>
+
+			<para>
+				In case your application uses the pkcs11 library, that application will have, exclusive
+				access access to the card once you provided a PIN. This is the default setting. If you would
+				like multiple apps to use the pkcs11 library, you can set 'lock_login = false;' in the
+				opensc.conf file, but this leaves your card open to other user's applications as well.
+			</para>
+
+			<para>
+				Other tools/libs (signer, openssh, pam) don't provide unique access once you are logged in. 
+			</para>
+
+		</section>
+
+		<section id="sec_p15_init">
+			<title>Protection of cards made with the pkcs15-init tool</title>
+
+			<para>
+				Most cards have a default transport key that is used to create a pkcs15 directory on the card.
+				Within the pkcs15 directory, files and keys are protected by PINs so the transport key has
+				no power there.
+			</para>
+
+			<para>
+				This means that your keys and sensitive data are safe against others (who know the default
+				transport key), in the sense that they can't be read or used.
+			</para>
+
+			<para>
+				However,anyone knowing the transport key and who has access to your card can delete the
+				pkcs15 directory with all its keys, certs, data, ...
+			</para>
+
+			<para>
+				On itself, that may be a good thing if you lost your card, but there's another problem:
+				If your card contains trusted certificates, and an adversary steals your card, puts another
+				pkcs15 dir with other  certs on the card and puts it back without you knowing, you may not
+				find out until you put trust in those untrusted certs.
+				Bottomline: be very carefull when using the card as a tamper-resistant storage -- make
+				them PIN-protected for example. (Note: this if often not the case: the trusted certificates
+				are stored usually stored in the application using them.)
+			</para>
+
+		</section>
+
+		<section id="sec_files">
+			<title>Storing config, profile and pkcs15 cache files</title>
+
+			<para>
+				While the opensc.conf and xxx.profile files don't contain any sensitive information, it
+				is very important that they are not tampered with.
+			</para>
+
+			<para>
+				Some examples of what an adversary with write access to those files or an absent-minded
+				administrator could do:
+				<itemizedlist>
+					<listitem>
+						Set the debug level to 6, which means all sensitive info (like PINs) is logged
+					</listitem>
+					<listitem>
+						Change the access conditions in the profiles, so that a card that is initialised
+				  with pkcs15-init will be wide open for anyone to read/write/sign
+					</listitem>
+					<listitem>
+						Change trusted certs in the pkcs15 cache
+					</listitem>
+				</itemizedlist>
+			</para>
+
+			<para>
+				By default, the config and profile files can only be written by root/Adminstrator and
+				the cache files are in the user home dir, so this is OK. Note however, that if there
+				are profile files in the current dir, it will be those files that are used instead of
+				the ones that were installed in a system dir!
+			</para>
+
+		</section>
+
+		<section id="sec_root">
+			<title>Root access</title>
+
+			<para>
+				From the above, it follows that you can't protect your card, nor use your card to
+				protect something against someone with root access or who can change the config/profile
+				files, binaries or sniff/modify the communication with the card.
+			</para>
+
+		</section>
+
+	</chapter>
+
 	<chapter id="opensc.todo">
 		<title>What needs to be done</title>
 
-		<screen>
+		<section id="opensc.todo.general">
+			<title>In general</title>
+
+			<screen>
 * Debian packaging
 * GUI applications
 * Add support for EMV, GSM and Java cards (anyone?)
-		</screen>
+			</screen>
 
-		<screen>
+			<screen>
 * put generic PEM encoding/decoding functions into libopensc?
 * pkcs11: support decrypt for those cards that have it
 * pkcs11: make sure all PIN ops work through pkcs11
@@ -1247,7 +1389,9 @@ OpenSSL>
   (alternatively: set unblockDisabled flag for those PINs that have no PUK?)
 * pkcs15: fix sc_pkcs15_change_reference_data; add unblock function
 * pkcs11: make sure all PIN ops work through pkcs11
-		</screen>
+			</screen>
+
+		</section>
 
 		<section id="opensc.todo.windows">
 			<title>Windows</title>
@@ -1271,6 +1415,31 @@ OpenSSL>
 			discussion about the OpenSC project. Additional info is
 			available at the
 			<ulink url="http://www.opensc.org/">OpenSC web site</ulink>.
+		</para>
+		<para>
+			You could follow these steps to get a first idea about what
+			is going wrong:
+			<itemizedlist>
+				<listitem>
+					See if any readers can be found:
+					<prompt>opensc-tool -l</prompt>
+				</listitem>
+				<listitem>
+					See if your smart card can be found with
+					<prompt>opensc-tool -a</prompt> (this
+					should show the	ATR of the card).
+				</listitem>
+				<listitem>
+					See if your card is a pkcs15 card, and which
+					pkcs15 objects are on it:
+					<prompt>pkcs15-tool -C -c -k --list-public-keys</prompt>
+				</listitem>
+			</itemizedlist>
+		</para>
+		<para>
+			You can turn on debugging by setting "debug = 5;" in the
+			opensc.conf file and un-commenting the names of the debug
+			and error files.
 		</para>
 	</chapter>
 

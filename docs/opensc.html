@@ -245,6 +245,49 @@
           <dt>
             9. 
 
+            <a href="#security">
+              Security
+            </a>
+          </dt>
+
+          <dd>
+            <dl>
+              <dt>
+                <a href="#sec_cmd_line">
+                  Command line arguments
+                </a>
+              </dt>
+
+              <dt>
+                <a href="#sec_card_access">
+                  Access to the card
+                </a>
+              </dt>
+
+              <dt>
+                <a href="#sec_p15_init">
+                  Protection of cards made with the pkcs15-init
+                  tool
+                </a>
+              </dt>
+
+              <dt>
+                <a href="#sec_files">
+                  Storing config, profile and pkcs15 cache files
+                </a>
+              </dt>
+
+              <dt>
+                <a href="#sec_root">
+                  Root access
+                </a>
+              </dt>
+            </dl>
+          </dd>
+
+          <dt>
+            10. 
+
             <a href="#opensc.todo">
               What needs to be done
             </a>
@@ -252,6 +295,12 @@
 
           <dd>
             <dl>
+              <dt>
+                <a href="#opensc.todo.general">
+                  In general
+                </a>
+              </dt>
+
               <dt>
                 <a href="#opensc.todo.windows">
                   Windows
@@ -261,7 +310,7 @@
           </dd>
 
           <dt>
-            10. 
+            11. 
 
             <a href="#opensc.help">
               Troubleshooting
@@ -269,7 +318,7 @@
           </dt>
 
           <dt>
-            11. 
+            12. 
 
             <a href="#opensc.links">
               Resources
@@ -277,7 +326,7 @@
           </dt>
 
           <dt>
-            12. 
+            13. 
 
             <a href="#opensc.signer">
               Signer
@@ -295,7 +344,7 @@
           </dd>
 
           <dt>
-            13. 
+            14. 
 
             <a href="#opensc.docbook">
               A few hints on DocBook documents
@@ -850,7 +899,7 @@
             <tr>
               <td>
                 <pre class="screen">
-                  $ cd opensc-&lt;version>
+                  $ cd opensc-&lt;version&gt;
                   $ ./configure --with-pcsclite=/path/to/pcsclite
                                                   
                 </pre>
@@ -905,7 +954,7 @@
             <tr>
               <td>
                 <pre class="screen">
-                  $ cd opensc-&lt;version>
+                  $ cd opensc-&lt;version&gt;
                   $ ./configure --with-openct=/path/to/openct
                                                   
                 </pre>
@@ -943,7 +992,7 @@
             <tr>
               <td>
                 <pre class="screen">
-                  $ cd opensc-&lt;version>
+                  $ cd opensc-&lt;version&gt;
                   $ ./configure --enable-usbtoken
                                                   
                 </pre>
@@ -1078,7 +1127,8 @@
               <li>
                 If you want to use pkcs15-init.exe, make sure the
                 *.profile files in the pkcs15-init\ dir are in the
-                same directory as pkcs15-init.exe.
+                same directory as pkcs15-init.exe, or in your
+                Windows directory.
               </li>
             </ol>
           </div>
@@ -1147,7 +1197,8 @@
 
               <li>
                 In src/pkcs11/Makefile.mak add libeay32.lib (and
-                gdi32.lib) to the "link" line
+                gdi32.lib) to the "link" lines of TARGET and
+                TARGET3.
               </li>
 
               <li>
@@ -1357,10 +1408,10 @@
           </div>
 
           <p>
-            At the moment only libopensc.dll and opensc-pkcs11.dll,
-            and most executables in the tools\ and tests\ dir have
-            been ported. They are tested on Win98, WinNT, Win2000
-            and WinXP.
+            At the moment only libopensc.dll, pkcs11-spy.dll
+            opensc-pkcs11.dll, and most executables in the tools\
+            and tests\ dir have been ported. They are tested on
+            Win98, WinNT, Win2000 and WinXP.
           </p>
         </div>
 
@@ -2337,8 +2388,8 @@
             </a>is a standard API for accessing cryptographic
             tokens such as smart cards, Hardware Security Modules,
             ... It contains functions like C_GetSlotList(),
-            C_OpenSession(), C_FindObjects(), C_Login(),
-            C_Decrypt(), ...
+            C_OpenSession(), C_FindObjects(), C_Login(), C_Sign(),
+            C_GenerateKeyPair(), ...
           </p>
 
           <p>
@@ -2498,7 +2549,283 @@
           <div>
             <div>
               <h2 class="title">
-                <a id="opensc.todo"></a>Chapter&#160;9.&#160;What
+                <a id="security"></a>Chapter&#160;9.&#160;Security
+              </h2>
+            </div>
+          </div>
+
+          <div></div>
+        </div>
+
+        <div class="toc">
+          <p>
+            <b>
+              Table of Contents
+            </b>
+          </p>
+
+          <dl>
+            <dt>
+              <a href="#sec_cmd_line">
+                Command line arguments
+              </a>
+            </dt>
+
+            <dt>
+              <a href="#sec_card_access">
+                Access to the card
+              </a>
+            </dt>
+
+            <dt>
+              <a href="#sec_p15_init">
+                Protection of cards made with the pkcs15-init tool
+              </a>
+            </dt>
+
+            <dt>
+              <a href="#sec_files">
+                Storing config, profile and pkcs15 cache files
+              </a>
+            </dt>
+
+            <dt>
+              <a href="#sec_root">
+                Root access
+              </a>
+            </dt>
+          </dl>
+        </div>
+
+        <div class="section" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h2 class="title" style="clear: both">
+                  <a id="sec_cmd_line"></a>Command line arguments
+                </h2>
+              </div>
+            </div>
+
+            <div></div>
+          </div>
+
+          <p>
+            The OpenSC tools allow you to specify PINs and keys on
+            the command line. This is only suitable for testing or
+            when you are the only user of the machine. If there are
+            multiple users, other users usually are able to run
+            things like 'ps' or 'top', and probably are able to see
+            the arguments given to some process, too. Also, the
+            arguments probably get logged to some shell history
+            file like ~/.bash_history.
+          </p>
+
+          <p>
+            The solution is to use a script or, in the case of the
+            pkcs15-init tool to put PINS and keys into a file and
+            used through the --options-file options.
+          </p>
+        </div>
+
+        <div class="section" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h2 class="title" style="clear: both">
+                  <a id="sec_card_access"></a>Access to the card
+                </h2>
+              </div>
+            </div>
+
+            <div></div>
+          </div>
+
+          <p>
+            Some other problems if multiple users have access to
+            the reader(s):
+          </p>
+
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                If the user forgets a card to the reader while the
+                session isn't locked, a malicious other user could
+                run PIN verify commands to the card and probably
+                lock the PIN, or even lock the card for good.
+              </li>
+
+              <li>
+                If a user is logged in to the card but the session
+                isn't locked, a malicious user could use the
+                previliged functionality (e.g. doing a signature,
+                writing data to the card).
+              </li>
+            </ul>
+          </div>
+
+          <p></p>
+
+          <p>
+            A solution is to add the user to a specific "scard"
+            group after they've logged in through xdm. pcsc-lite's
+            pcscd runs as pseudouser/group scard/scard, and limit
+            the access to the server socket (pcscd.comm) as 770
+            scard:scard. This way, other possible users that may
+            have logged in through ssh won't have any access to the
+            local card readers. Not a perfect solution, but works
+            for single-reader workstations well enough.
+          </p>
+
+          <p>
+            In case your application uses the pkcs11 library, that
+            application will have, exclusive access access to the
+            card once you provided a PIN. This is the default
+            setting. If you would like multiple apps to use the
+            pkcs11 library, you can set 'lock_login = false;' in
+            the opensc.conf file, but this leaves your card open to
+            other user's applications as well.
+          </p>
+
+          <p>
+            Other tools/libs (signer, openssh, pam) don't provide
+            unique access once you are logged in.
+          </p>
+        </div>
+
+        <div class="section" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h2 class="title" style="clear: both">
+                  <a id="sec_p15_init"></a>Protection of cards made
+                  with the pkcs15-init tool
+                </h2>
+              </div>
+            </div>
+
+            <div></div>
+          </div>
+
+          <p>
+            Most cards have a default transport key that is used to
+            create a pkcs15 directory on the card. Within the
+            pkcs15 directory, files and keys are protected by PINs
+            so the transport key has no power there.
+          </p>
+
+          <p>
+            This means that your keys and sensitive data are safe
+            against others (who know the default transport key), in
+            the sense that they can't be read or used.
+          </p>
+
+          <p>
+            However,anyone knowing the transport key and who has
+            access to your card can delete the pkcs15 directory
+            with all its keys, certs, data, ...
+          </p>
+
+          <p>
+            On itself, that may be a good thing if you lost your
+            card, but there's another problem: If your card
+            contains trusted certificates, and an adversary steals
+            your card, puts another pkcs15 dir with other certs on
+            the card and puts it back without you knowing, you may
+            not find out until you put trust in those untrusted
+            certs. Bottomline: be very carefull when using the card
+            as a tamper-resistant storage -- make them
+            PIN-protected for example. (Note: this if often not the
+            case: the trusted certificates are stored usually
+            stored in the application using them.)
+          </p>
+        </div>
+
+        <div class="section" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h2 class="title" style="clear: both">
+                  <a id="sec_files"></a>Storing config, profile and
+                  pkcs15 cache files
+                </h2>
+              </div>
+            </div>
+
+            <div></div>
+          </div>
+
+          <p>
+            While the opensc.conf and xxx.profile files don't
+            contain any sensitive information, it is very important
+            that they are not tampered with.
+          </p>
+
+          <p>
+            Some examples of what an adversary with write access to
+            those files or an absent-minded administrator could do:
+          </p>
+
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                Set the debug level to 6, which means all sensitive
+                info (like PINs) is logged
+              </li>
+
+              <li>
+                Change the access conditions in the profiles, so
+                that a card that is initialised with pkcs15-init
+                will be wide open for anyone to read/write/sign
+              </li>
+
+              <li>
+                Change trusted certs in the pkcs15 cache
+              </li>
+            </ul>
+          </div>
+
+          <p></p>
+
+          <p>
+            By default, the config and profile files can only be
+            written by root/Adminstrator and the cache files are in
+            the user home dir, so this is OK. Note however, that if
+            there are profile files in the current dir, it will be
+            those files that are used instead of the ones that were
+            installed in a system dir!
+          </p>
+        </div>
+
+        <div class="section" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h2 class="title" style="clear: both">
+                  <a id="sec_root"></a>Root access
+                </h2>
+              </div>
+            </div>
+
+            <div></div>
+          </div>
+
+          <p>
+            From the above, it follows that you can't protect your
+            card, nor use your card to protect something against
+            someone with root access or who can change the
+            config/profile files, binaries or sniff/modify the
+            communication with the card.
+          </p>
+        </div>
+      </div>
+
+      <div class="chapter" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title">
+                <a id="opensc.todo"></a>Chapter&#160;10.&#160;What
                 needs to be done
               </h2>
             </div>
@@ -2516,6 +2843,12 @@
 
           <dl>
             <dt>
+              <a href="#opensc.todo.general">
+                In general
+              </a>
+            </dt>
+
+            <dt>
               <a href="#opensc.todo.windows">
                 Windows
               </a>
@@ -2523,47 +2856,64 @@
           </dl>
         </div>
 
-        <table border="0" bgcolor="#E0E0E0">
-          <tr>
-            <td>
-              <pre class="screen">
-                * Debian packaging
-                * GUI applications
-                * Add support for EMV, GSM and Java cards (anyone?)
-                                
-              </pre>
-            </td>
-          </tr>
-        </table>
+        <div class="section" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h2 class="title" style="clear: both">
+                  <a id="opensc.todo.general"></a>In general
+                </h2>
+              </div>
+            </div>
 
-        <table border="0" bgcolor="#E0E0E0">
-          <tr>
-            <td>
-              <pre class="screen">
-                * put generic PEM encoding/decoding functions into
-                libopensc?
-                * pkcs11: support decrypt for those cards that have
-                it
-                * pkcs11: make sure all PIN ops work through pkcs11
-                * pkcs11: unblock pins: check for unblock pins in
-                AODF
-                * all: support for RSA-PSS
-                * pkcs15-init: support SOPIN on Cryptoflex
-                * pkcs15-init: use max. possible usage by default
-                * pkcs15-init: during keygen, make sure the pubkey
-                usage is right
-                * pkcs15-init: when using an unblock PIN, write an
-                AODF entry for it
-                  (alternatively: set unblockDisabled flag for
-                those PINs that have no PUK?)
-                * pkcs15: fix sc_pkcs15_change_reference_data; add
-                unblock function
-                * pkcs11: make sure all PIN ops work through pkcs11
-                                
-              </pre>
-            </td>
-          </tr>
-        </table>
+            <div></div>
+          </div>
+
+          <table border="0" bgcolor="#E0E0E0">
+            <tr>
+              <td>
+                <pre class="screen">
+                  * Debian packaging
+                  * GUI applications
+                  * Add support for EMV, GSM and Java cards
+                  (anyone?)
+                                          
+                </pre>
+              </td>
+            </tr>
+          </table>
+
+          <table border="0" bgcolor="#E0E0E0">
+            <tr>
+              <td>
+                <pre class="screen">
+                  * put generic PEM encoding/decoding functions
+                  into libopensc?
+                  * pkcs11: support decrypt for those cards that
+                  have it
+                  * pkcs11: make sure all PIN ops work through
+                  pkcs11
+                  * pkcs11: unblock pins: check for unblock pins in
+                  AODF
+                  * all: support for RSA-PSS
+                  * pkcs15-init: support SOPIN on Cryptoflex
+                  * pkcs15-init: use max. possible usage by default
+                  * pkcs15-init: during keygen, make sure the
+                  pubkey usage is right
+                  * pkcs15-init: when using an unblock PIN, write
+                  an AODF entry for it
+                    (alternatively: set unblockDisabled flag for
+                  those PINs that have no PUK?)
+                  * pkcs15: fix sc_pkcs15_change_reference_data;
+                  add unblock function
+                  * pkcs11: make sure all PIN ops work through
+                  pkcs11
+                                          
+                </pre>
+              </td>
+            </tr>
+          </table>
+        </div>
 
         <div class="section" lang="en" xml:lang="en">
           <div class="titlepage">
@@ -2593,7 +2943,7 @@
             <div>
               <h2 class="title">
                 <a id="opensc.help">
-                </a>Chapter&#160;10.&#160;Troubleshooting
+                </a>Chapter&#160;11.&#160;Troubleshooting
               </h2>
             </div>
           </div>
@@ -2610,6 +2960,48 @@
             OpenSC web site
           </a>.
         </p>
+
+        <p>
+          You could follow these steps to get a first idea about
+          what is going wrong:
+        </p>
+
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              See if any readers can be found: 
+
+              <tt class="prompt">
+                opensc-tool -l
+              </tt>
+            </li>
+
+            <li>
+              See if your smart card can be found with 
+
+              <tt class="prompt">
+                opensc-tool -a
+              </tt>(this should show the ATR of the card).
+            </li>
+
+            <li>
+              See if your card is a pkcs15 card, and which pkcs15
+              objects are on it: 
+
+              <tt class="prompt">
+                pkcs15-tool -C -c -k --list-public-keys
+              </tt>
+            </li>
+          </ul>
+        </div>
+
+        <p></p>
+
+        <p>
+          You can turn on debugging by setting "debug = 5;" in the
+          opensc.conf file and un-commenting the names of the debug
+          and error files.
+        </p>
       </div>
 
       <div class="chapter" lang="en" xml:lang="en">
@@ -2618,7 +3010,7 @@
             <div>
               <h2 class="title">
                 <a id="opensc.links">
-                </a>Chapter&#160;11.&#160;Resources
+                </a>Chapter&#160;12.&#160;Resources
               </h2>
             </div>
           </div>
@@ -2649,7 +3041,7 @@
             <div>
               <h2 class="title">
                 <a id="opensc.signer">
-                </a>Chapter&#160;12.&#160;Signer
+                </a>Chapter&#160;13.&#160;Signer
               </h2>
             </div>
           </div>
@@ -2729,7 +3121,7 @@
           <div>
             <div>
               <h2 class="title">
-                <a id="opensc.docbook"></a>Chapter&#160;13.&#160;A
+                <a id="opensc.docbook"></a>Chapter&#160;14.&#160;A
                 few hints on DocBook documents
               </h2>
             </div>
