@@ -253,6 +253,8 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 	slot->token_info.flags |= CKF_USER_PIN_INITIALIZED
 				| CKF_TOKEN_INITIALIZED
 				| CKF_WRITE_PROTECTED;
+	if (card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD)
+		slot->token_info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 	slot->fw_data = fw_data = (struct pkcs15_slot_data *) calloc(1, sizeof(*fw_data));
 	fw_data->auth_obj = auth;
 
@@ -448,6 +450,16 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 	}
 	pin = (struct sc_pkcs15_pin_info *) auth_object->data;
 
+	if (p11card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
+		/* pPin should be NULL in case of a pin pad reader, but
+		 * some apps (e.g. older Netscapes) don't know about it.
+		 * So we don't require that pPin == NULL, but set it to
+		 * NULL ourselves. This way, you can supply an empty (if
+		 * possible) or fake PIN if an application asks a PIN).
+		 */
+		pPin = NULL;
+		ulPinLen = 0;
+	} else
 	if (ulPinLen < pin->min_length ||
 	    ulPinLen > pin->stored_length)
 		return CKR_PIN_LEN_RANGE;
@@ -498,6 +510,16 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 	if (!(pin = slot_data_pin_info(fw_token)))
 		return CKR_USER_PIN_NOT_INITIALIZED;
 
+	if (p11card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
+		/* pPin should be NULL in case of a pin pad reader, but
+		 * some apps (e.g. older Netscapes) don't know about it.
+		 * So we don't require that pPin == NULL, but set it to
+		 * NULL ourselves. This way, you can supply an empty (if
+		 * possible) or fake PIN if an application asks a PIN).
+		 */
+		pOldPin = pNewPin = NULL;
+		ulOldLen = ulNewLen = 0;
+	} else
 	if (ulNewLen < pin->min_length ||
 	    ulNewLen > pin->stored_length)
 		return CKR_PIN_LEN_RANGE;
