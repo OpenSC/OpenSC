@@ -850,37 +850,61 @@ else
 fi
 AM_CONDITIONAL(HAVE_USBTOKEN, test "x$USBTOKEN_MSG" = "xyes")
 
-dnl --with-openct option
-AC_SUBST(LIBOPENCT)
 OPENCT_MSG=no
-AC_ARG_WITH(openct, AC_HELP_STRING(
-[--with-openct=PATH],	[enable the OpenCT reader backend]))
-if test "x$with_openct" != "xno"; then
-	AC_MSG_CHECKING(for OpenCT support)
+openct_path=/usr
+AC_SUBST(OPENCT_CFLAGS)
+AC_SUBST(OPENCT_LDFLAGS)
+AC_SUBST(OPENCT_LIBS)
+found_openct=no
+AC_ARG_WITH(openct,
+	[  --with-openct=PATH    use OpenCT in PATH],
+	[openct_path=$withval
+	 with_openct=yes])
+
+if test "$openct_path" != "no"; then
 	saved_LIBS="$LIBS"
 	saved_LDFLAGS="$LDFLAGS"
-	saved_CPPFLAGS="$CPPFLAGS"
+	saved_CFLAGS="$CFLAGS"
 
-	if test "x$with_openct" != "x" -a -d "$with_openct"; then
-		LDFLAGS="$LDFLAGS -L$openct_path";
-		CPPFLAGS="$CPPFLAGS -I$openct_path";
+	AC_MSG_CHECKING(for OpenCT support)
+	LDFLAGS="$saved_LDFLAGS"
+	CPPFLAGS="$saved_CPPFLAGS"
+
+	OPENCT_CFLAGS="-I${openct_path}/include"
+	OPENCT_LIBS="-lopenct"
+	OPENCT_LDFLAGS=
+	if test -n "${need_dash_r}"; then
+		OPENCT_LDFLAGS="-R${openct_path}/lib"
 	fi
+	OPENCT_LDFLAGS="-L${openct_path}/lib $OPENCT_LDFLAGS"
 
-	LIBS="$LIBS -lopenct"
+	LIBS="$OPENCT_LIBS $saved_LIBS"
+	LDFLAGS="$OPENCT_LDFLAGS $saved_LDFLAGS"
+	CFLAGS="$OPENCT_CFLAGS $saved_CFLAGS"
+
 	AC_TRY_LINK([#include <openct/openct.h>],
 		    [ct_reader_connect(0);],
 	[
-		AC_DEFINE(HAVE_OPENCT, 1, [Have OpenCT libraries and header files])
+		AC_DEFINE(HAVE_OPENCT, 1,
+			  [Have OpenCT libraries and header files])
 		OPENCT_MSG=yes
 		LIBOPENCT="-lopenct"
 	],[
-		CPPFLAGS="$saved_CPPFLAGS"
-		LDFLAGS="$saved_LDFLAGS"
-		LIBS="$saved_LIBS"
-		LIBOPENCT=""
+		if test "x$with_openct" = "xyes"
+		then
+			AC_MSG_ERROR([OpenCT not found in $openct_path!])
+		fi
+	   	OPENCT_LDFLAGS=
+		OPENCT_LIBS=
+		OPENCT_CFLAGS=
 	])
 	AC_MSG_RESULT($OPENCT_MSG)
+
+	CFLAGS="$saved_CFLAGS"
+	LDFLAGS="$saved_LDFLAGS"
+	LIBS="$saved_LIBS"
 fi
+	
 AM_CONDITIONAL(HAVE_OPENCT, test "x$OPENCT_MSG" = "xyes")
 
 # Check for user-specified random device, otherwise check /dev/urandom

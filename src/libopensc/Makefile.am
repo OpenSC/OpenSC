@@ -25,7 +25,7 @@ if HAVE_OPENCT
 OPENCT_SRC = reader-openct.c
 endif
 
-INCLUDES = $(PCSC_FLAGS)
+INCLUDES = $(PCSC_FLAGS) @OPENCT_CFLAGS@
 
 bin_SCRIPTS = opensc-config
 
@@ -42,8 +42,8 @@ libopensc_la_SOURCES	= sc.c ctx.c module.c asn1.c log.c base64.c \
 			  card-etoken.c card-tcos.c card-emv.c card-default.c \
 			  card-mcrd.c card-starcos.c
 
-libopensc_la_LDFLAGS	= -version-info 0:6:0
-libopensc_la_LIBADD	= @LIBDL@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF) @LIBOPENCT@
+libopensc_la_LDFLAGS	= -version-info 0:6:0 @OPENCT_LDFLAGS@
+libopensc_la_LIBADD	= @LIBDL@ @OPENCT_LIBS@ $(PCSC_LIB) $(SSL_LIB) $(LIBSCCONF)
 
 include_HEADERS		= opensc.h pkcs15.h emv.h \
 			  errors.h types.h \
