@@ -76,13 +76,18 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 		DBG(printf("Unable to find PIN object from SmartCard: %s", sc_strerror(r)));
 		goto err;
 	}
+
+	r = sc_lock(priv->p15card->card);
+	if (r != SC_SUCCESS)
+		goto err;
+
 	r = ask_and_verify_pin_code(priv->p15card, pin);
 	if (r) {
-		if (r == -2) /* User cancelled */
-			goto err;
+		sc_unlock(priv->p15card->card);
 		goto err;
 	}
 	r = sc_pkcs15_decipher(priv->p15card, (const struct sc_pkcs15_object *) key->data, 0, from, flen, to, flen);
+	sc_unlock(priv->p15card->card);
 	if (r < 0) {
 		DBG(printf("sc_pkcs15_decipher() failed: %s", sc_strerror(r)));
 		goto err;
@@ -134,16 +139,21 @@ sc_sign(int type, const unsigned char *m, unsigned int m_len,
 		DBG(printf("Unable to find PIN object from SmartCard: %s", sc_strerror(r)));
 		goto err;
 	}
+
+	r = sc_lock(priv->p15card->card);
+	if (r != SC_SUCCESS)
+		goto err;
+
 	r = ask_and_verify_pin_code(priv->p15card, pin);
 	if (r) {
-		if (r == -2) /* User cancelled */
-			goto err;
+		sc_unlock(priv->p15card->card);
 		goto err;
 	}
 	DBG(printf("PIN code received successfully.\n"));
 	r = sc_pkcs15_compute_signature(priv->p15card, key,
 					SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_PAD_PKCS1,
 					m, m_len, sigret, RSA_size(rsa));
+	sc_unlock(priv->p15card->card);
 	if (r < 0) {
 		DBG(printf("sc_pkcs15_compute_signature() failed: %s", sc_strerror(r)));
 		goto err;
