@@ -262,7 +262,7 @@ static int ctapi_load_module(struct sc_context *ctx,
 		 unsigned char *, unsigned short,
 		 unsigned char *, unsigned short *,
 		 unsigned char *)) scdl_get_address(dlh, "CT_data");
-	if (!funcs.CT_close)
+	if (!funcs.CT_data)
 		goto symerr;
 
 	mod = add_module(gpriv, val, dlh);
