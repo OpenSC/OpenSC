@@ -74,7 +74,7 @@ struct pcsc_private_data {
 
 struct pcsc_slot_data {
 	SCARDHANDLE pcsc_card;
-	SCARD_READERSTATE_A readerState;
+	SCARD_READERSTATE_A reader_state;
 };
 
 static int pcsc_detect_card_presence(struct sc_reader *reader, struct sc_slot_info *slot);
@@ -193,15 +193,15 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	LONG ret;
 
-	if (pslot->readerState.szReader == NULL) {
-		pslot->readerState.szReader = priv->reader_name;
-		pslot->readerState.dwCurrentState = SCARD_STATE_UNAWARE;
-		pslot->readerState.dwEventState = SCARD_STATE_UNAWARE;
+	if (pslot->reader_state.szReader == NULL) {
+		pslot->reader_state.szReader = priv->reader_name;
+		pslot->reader_state.dwCurrentState = SCARD_STATE_UNAWARE;
+		pslot->reader_state.dwEventState = SCARD_STATE_UNAWARE;
 	} else {
-		pslot->readerState.dwCurrentState = pslot->readerState.dwEventState;
+		pslot->reader_state.dwCurrentState = pslot->reader_state.dwEventState;
 	}
 
-	ret = SCardGetStatusChange(priv->pcsc_ctx, SC_STATUS_TIMEOUT, &pslot->readerState, 1);
+	ret = SCardGetStatusChange(priv->pcsc_ctx, SC_STATUS_TIMEOUT, &pslot->reader_state, 1);
 	if (ret == (LONG)SCARD_E_TIMEOUT) { /* timeout: nothing changed */
 		slot->flags &= ~SCARD_STATE_CHANGED;
 		return 0;
@@ -210,34 +210,34 @@ static int refresh_slot_attributes(struct sc_reader *reader, struct sc_slot_info
 		PCSC_ERROR(reader->ctx, "SCardGetStatusChange failed", ret);
 		return pcsc_ret_to_error(ret);
 	}
-	if (pslot->readerState.dwEventState & SCARD_STATE_PRESENT) {
+	if (pslot->reader_state.dwEventState & SCARD_STATE_PRESENT) {
 		int old_flags = slot->flags;
 		int maybe_changed = 0;
 
 		slot->flags |= SC_SLOT_CARD_PRESENT;
-		slot->atr_len = pslot->readerState.cbAtr;
+		slot->atr_len = pslot->reader_state.cbAtr;
 		if (slot->atr_len > SC_MAX_ATR_SIZE)
 			slot->atr_len = SC_MAX_ATR_SIZE;
-		memcpy(slot->atr, pslot->readerState.rgbAtr, slot->atr_len);
+		memcpy(slot->atr, pslot->reader_state.rgbAtr, slot->atr_len);
 
 #ifndef _WIN32
 		/* On Linux, SCARD_STATE_CHANGED always means there was an
-		 * insert or removal. But we may miss events that way. */ 
-		if (pslot->readerState.dwEventState & SCARD_STATE_CHANGED) {
-			slot->flags |= SC_SLOT_CARD_CHANGED; 
-		} else { 
-			maybe_changed = 1; 
-		} 
+		 * insert or removal. But we may miss events that way. */
+		if (pslot->reader_state.dwEventState & SCARD_STATE_CHANGED) {
+			slot->flags |= SC_SLOT_CARD_CHANGED;
+		} else {
+			maybe_changed = 1;
+		}
 #else
-		/* On windows, SCARD_STATE_CHANGED is turned on by lots of 
-		 * other events, so it gives us a lot of false positives. 
-		 * But if it's off, there really no change */ 
-		if (pslot->readerState.dwEventState & SCARD_STATE_CHANGED) { 
-			maybe_changed = 1; 
-		} 
+		/* On windows, SCARD_STATE_CHANGED is turned on by lots of
+		 * other events, so it gives us a lot of false positives.
+		 * But if it's off, there really no change */
+		if (pslot->reader_state.dwEventState & SCARD_STATE_CHANGED) {
+			maybe_changed = 1;
+		}
 #endif
-		/* If we aren't sure if the card state changed, check if 
-		 * the card handle is still valid. If the card changed, 
+		/* If we aren't sure if the card state changed, check if
+		 * the card handle is still valid. If the card changed,
 		 * the handle will be invalid. */
 		slot->flags &= ~SC_SLOT_CARD_CHANGED;
 		if (maybe_changed && (old_flags & SC_SLOT_CARD_PRESENT)) {
@@ -426,7 +426,7 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 	/* check for pinpad support */
 	if (try_ccid_pin_cmd) {
 		unsigned char attr[1];
-		DWORD attrlen;  
+		DWORD attrlen;
 
 		sc_debug(reader->ctx, "Testing for CCID pinpad support ... ");
 		attrlen = sizeof(attr);
@@ -455,7 +455,7 @@ static int pcsc_disconnect(struct sc_reader *reader, struct sc_slot_info *slot,
 	slot->flags = 0;
 	return 0;
 }
-                                          
+
 static int pcsc_lock(struct sc_reader *reader, struct sc_slot_info *slot)
 {
 	long rv;
