@@ -79,13 +79,19 @@ struct sc_pkcs15init_callbacks {
 
 	/*
 	 * Get a PIN from the front-end. The first argument is
-	 * one if the SC_PKCS15INIT_XXX_PIN/PUK macros.
+	 * one of the SC_PKCS15INIT_XXX_PIN/PUK macros.
 	 */
 	int	(*get_pin)(struct sc_profile *, int,
 				const struct sc_pkcs15_pin_info *,
 				u8 *, size_t *);
+
+	/*
+	 * Get a transport/secure messaging key from the front-end.
+	 */
 	int	(*get_key)(struct sc_profile *,
-				const char *prompt, u8 *, size_t *);
+				int method, int reference,
+				const u8 *def_key, size_t def_size,
+				u8 *key_buf, size_t *key_size);
 };
 
 struct sc_pkcs15init_initargs {

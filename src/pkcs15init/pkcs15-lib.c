@@ -51,6 +51,7 @@
 #include <opensc/pkcs15.h>
 #include "profile.h"
 #include "pkcs15-init.h"
+#include <opensc/cardctl.h>
 
 /* Default ID for new key/pin */
 #define DEFAULT_ID		"45"
@@ -511,7 +512,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15init_prkeyargs *keyargs,
 	int		r = 0;
 
 	if (!keybits && (keybits = prkey_bits(key)) < 0)
-		return r;
+		return keybits;
 
 	if (keyargs->id.len == 0)
 		sc_pkcs15_format_id(DEFAULT_ID, &keyargs->id);
@@ -631,7 +632,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	if ((r = prkey_fixup(&key)) < 0)
 		return r;
 	if ((keybits = prkey_bits(&key)) < 0)
-		return r;
+		return keybits;
 
 	/* Now check whether the card is able to handle this key */
 	if (!check_key_compatibility(p15card, &key,
@@ -1291,8 +1292,8 @@ do_verify_pin(struct sc_profile *pro, struct sc_card *card,
 	struct sc_pkcs15_pin_info pin_info;
 	const char	*ident;
 	unsigned int	pin_id = (unsigned int) -1;
-	size_t		pinsize;
-	u8		pinbuf[32];
+	size_t		pinsize, defsize;
+	u8		pinbuf[32], defbuf[32];
 	int		r;
 
 	ident = "authentication data";
@@ -1321,19 +1322,44 @@ do_verify_pin(struct sc_profile *pro, struct sc_card *card,
 
 	pinsize = sizeof(pinbuf);
 	memset(pinbuf, 0, sizeof(pinbuf));
+	defsize = 0;
 
 	r = sc_profile_get_secret(pro, type, reference, pinbuf, &pinsize);
+
 	if (r < 0 && pin_id != -1)
 		r = sc_profile_get_secret(pro, SC_AC_SYMBOLIC, pin_id,
 				pinbuf, &pinsize);
 
-	if (r < 0 && pin_id != -1 && callbacks && callbacks->get_pin) {
-		r = callbacks->get_pin(pro, pin_id, &pin_info,
-				pinbuf, &pinsize);
-		if (r >= 0)
-			sc_profile_set_secret(pro, SC_AC_SYMBOLIC, pin_id,
-					pinbuf, pinsize);
+	/* Ask the card driver whether it knows a default key for this one */
+	if (r < 0) {
+		struct sc_cardctl_default_key data;
+
+		data.method = type;
+		data.key_ref = reference;
+		data.len = sizeof(defbuf);
+		data.key_data = defbuf;
+		if (sc_card_ctl(card, SC_CARDCTL_GET_DEFAULT_KEY, &data) >= 0)
+			defsize = data.len;
 	}
+
+	if (r < 0 && callbacks) {
+		if (pin_id != -1 && callbacks->get_pin) {
+			r = callbacks->get_pin(pro, pin_id, &pin_info,
+					pinbuf, &pinsize);
+			if (r >= 0)
+				sc_profile_set_secret(pro, SC_AC_SYMBOLIC, pin_id,
+						pinbuf, pinsize);
+		} else
+		if (pin_id == -1 && callbacks->get_key) {
+			r = callbacks->get_key(pro, type, reference,
+					defbuf, defsize,
+					pinbuf, &pinsize);
+			if (r >= 0)
+				sc_profile_set_secret(pro, type, reference,
+						pinbuf, pinsize);
+		}
+	}
+
 	if (r >= 0) {
 		if (type == SC_AC_CHV) {
 			int left = pro->pin_maxlen - pinsize;
