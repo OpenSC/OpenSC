@@ -377,10 +377,14 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	}
 	if (args->serial)
 		sc_pkcs15init_set_serial(profile, args->serial);
-	if (args->label)
-		app->label = strdup(args->label);
-	else if (p15card->label)
-		app->label = strdup(p15card->label);
+
+	if (args->label) {
+		if (p15card->label)
+			free(p15card->label);
+		p15card->label = strdup(args->label);
+	}
+	app->label = strdup(p15card->label);
+
 	/* XXX: encode the DDO? */
 
 	/* See if we've set an SO PIN */
