@@ -68,14 +68,27 @@ app default {
 		# module = /usr/lib/opensc/drivers/card_customcos.so
 	# }
 
+	# Force using specific card driver
+	#
+	# If this option is present, OpenSC will use the supplied
+	# driver with all inserted cards.
+	#
+	# Default: autodetect
+	#
+	# force_card_driver = miocos;
+
 	# Below are the framework specific configuration blocks.
 
 	# PKCS #15
 	framework pkcs15 {
 		# Whether to use the cache files in the user's
 		# home directory.
-
-		# WARNING: This shouldn't be used in setuid root
+		#
+		# At the moment you have to 'teach' the card to the
+		# system by:
+		# pkcs15-tool -L
+		#
+		# WARNING: Caching shouldn't be used in setuid root
 		# applications.
 		# Default: false
 		#

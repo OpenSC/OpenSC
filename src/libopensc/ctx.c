@@ -72,6 +72,7 @@ struct _sc_ctx_options {
 	int rcount;
 	struct _sc_driver_entry cdrv[16];
 	int ccount;
+	char *forced_card_driver;
 };
 
 
@@ -174,6 +175,12 @@ static int load_parameters(struct sc_context *ctx, scconf_block *block,
 			ctx->error_file = fopen(val, "a");
 		else
 			ctx->error_file = stderr;
+	}
+	val = scconf_get_str(block, "force_card_driver", NULL);
+	if (val) {
+		if (opts->forced_card_driver)
+			free(opts->forced_card_driver);
+		opts->forced_card_driver = strdup(val);
 	}
 	list = scconf_find_list(block, "reader_drivers");
 	if (list != NULL)
@@ -313,9 +320,12 @@ int sc_establish_context(struct sc_context **ctx_out, const char *app_name)
 #endif
 	load_reader_drivers(ctx, &opts);
 	load_card_drivers(ctx, &opts);
+	if (opts.forced_card_driver) {
+		sc_set_card_driver(ctx, opts.forced_card_driver);
+		free(opts.forced_card_driver);
+	}		
 	del_drvs(&opts, 0);
 	del_drvs(&opts, 1);
-
 	if (ctx->reader_count == 0) {
 		sc_release_context(ctx);
 		return SC_ERROR_NO_READERS_FOUND;
