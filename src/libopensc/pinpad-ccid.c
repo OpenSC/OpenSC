@@ -24,25 +24,47 @@ static int ccid_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cm
 	/* CCID PIN verification control message */
 	buf[count++] = SC_CCID_PIN_TIMEOUT;	/* bTimeOut */
 
+	/* bmFormatString */
 	tmp = 0x00;
-	if (data->pin1.encoding == SC_PIN_ENCODING_ASCII)
+	if (data->pin1.encoding == SC_PIN_ENCODING_ASCII) {	
 		tmp |= SC_CCID_PIN_ENCODING_ASCII;
-	else if (data->pin1.encoding == SC_PIN_ENCODING_BCD)
+		
+		/* if the effective pin length offset is specified, use it*/
+		if (data->pin1.length_offset > 3) {
+			tmp |= SC_CCID_PIN_UNITS_BYTES;	
+			tmp |= (data->pin1.length_offset - 5) << 3;
+		}
+	} else if (data->pin1.encoding == SC_PIN_ENCODING_BCD) {
 		tmp |= SC_CCID_PIN_ENCODING_BCD;
-	else
+		tmp |= SC_CCID_PIN_UNITS_BYTES;
+	} else if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
+		/* see comment about GLP pins in sec.c */
+		tmp |= SC_CCID_PIN_ENCODING_BCD;	
+		tmp |= 0x04 << 3;
+	} else
 		return SC_ERROR_NOT_SUPPORTED;
-	/* Only byte-aligend cards are cupported */	
-	tmp |= SC_CCID_PIN_UNITS_BYTES;
-	tmp |= (data->pin1.length_offset - 5) << 3;
+
 	buf[count++] = tmp;	/* bmFormatString */
 
-	/* Ignored */
-	buf[count++] = 0x00;	/* bmPINBlockString */
-	/* Ignored */
-	buf[count++] = 0x00;	/* bmPINLengthFormat */
+	/* bmPINBlockString */
+	tmp = 0x00;
+	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
+		/* GLP pin length is encoded in 4 bits and block size is always 8 bytes */
+		tmp |= 0x40 | 0x08;
+	}
+	buf[count++] = 0x00; /* bmPINBlockString */
+	
+	/* bmPINLengthFormat */
+	tmp = 0x00;
+	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
+		/* GLP pins expect the effective pin length from bit 4 */
+		tmp |= 0x04; 		
+	}
+	buf[count++] = tmp;	/* bmPINLengthFormat */
 
 	if (!data->pin1.min_length || !data->pin1.max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
 	buf[count++] = data->pin1.max_length;	/* wPINMaxExtraDigit: max */	
 	buf[count++] = data->pin1.min_length;	/* wPINMaxExtraDigit: min */
 
