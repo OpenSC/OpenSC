@@ -674,6 +674,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	 * by the card driver's generate_key function called below */
 	memset(&pubkey_args, 0, sizeof(pubkey_args));
 	pubkey_args.id = keyargs->id;
+	pubkey_args.auth_id = keyargs->auth_id;
 	pubkey_args.label = keyargs->label;
 	pubkey_args.usage = keyargs->usage;
 	pubkey_args.x509_usage = keyargs->x509_usage;
@@ -904,6 +905,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 
 	object = (struct sc_pkcs15_object *) calloc(1, sizeof(*object));
 	object->type = type;
+	object->auth_id = keyargs->auth_id;
 	object->data = key_info;
 	object->flags = DEFAULT_PUBKEY_FLAGS;
 	strncpy(object->label, label, sizeof(object->label));
