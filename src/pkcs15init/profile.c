@@ -1245,6 +1245,24 @@ sc_profile_get_secret(struct sc_profile *profile,
 }
 
 void
+sc_profile_forget_secrets(struct sc_profile *profile,
+		unsigned int type, int ref)
+{
+	struct auth_info *ai, **aip;
+
+	aip = &profile->auth_list;
+	while ((ai = *aip) != NULL) {
+		if (ai->type == type
+		 && (ref < 0 || ai->ref == (unsigned int) ref)) {
+			*aip = ai->next;
+			free(ai);
+		} else {
+			aip = &ai->next;
+		}
+	}
+}
+
+void
 sc_profile_set_so_pin(struct sc_profile *profile, const char *value)
 {
 	if (!value)

@@ -86,6 +86,8 @@ void		sc_profile_set_secret(struct sc_profile *,
 			unsigned int, unsigned int, const u8 *, size_t);
 int		sc_profile_get_secret(struct sc_profile *,
 			unsigned int, unsigned int, u8 *, size_t *);
+void		sc_profile_forget_secrets(struct sc_profile *,
+			unsigned int, int);
 void		sc_profile_get_pin_info(struct sc_profile *,
 			unsigned int, struct sc_pkcs15_pin_info *);
 int		sc_profile_get_pin_id(struct sc_profile *,

@@ -254,6 +254,8 @@ sc_pkcs15init_erase_card_recursively(struct sc_card *card,
 
 	/* Unfrob the SO pin reference, and return */
 out:	sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
+	sc_profile_forget_secrets(profile, SC_AC_CHV, -1);
+	sc_free_apps(card);
 	if (profile->p15_card != p15orig) {
 		sc_pkcs15_unbind(profile->p15_card);
 		profile->p15_card = p15orig;
