@@ -13,7 +13,7 @@ man_MANS	= pkcs15-crypt.1 \
 		  opensc.7 \
 		  pkcs15.7
 EXTRA_DIST	= $(man_MANS) pkcs15-profile.5.in pkcs-15v1_1.asn \
-	     	  usbtoken.xml usbtoken.html
+	     	  usbtoken.xml
 
 STYLESHEET=/usr/share/sgml/docbook/stylesheet/xsl/nwalsh/xhtml/docbook.xsl
 
