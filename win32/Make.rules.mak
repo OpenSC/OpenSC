@@ -1,4 +1,19 @@
-COPTS = /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /D_WIN32_WINNT=0x0400
+# If you want support for OpenSSL (needed for a.o. pkcs15-init tool and openssl engine):
+# - download and build OpenSSL
+# - uncomment the line starting with OPENSSL_DEF
+# - set the OPENSSL_INCL_DIR below to your openssl include directory, preceded by "/I"
+# - set the OPENSSL_LIB below to your openssl lib file
+# Note: these instructions obsolete the instructions in opensc.html
+
+#OPENSSL_DEF = /DHAVE_OPENSSL
+!IF "$(OPENSSL_DEF)" == "/DHAVE_OPENSSL"
+OPENSSL_INCL_DIR = /IC:\openssl\include
+OPENSSL_LIB = C:\openssl\out32dll\libeay32.lib
+OPENSSL_ENGINES_DIR = sslengines
+PKCS15_INIT = pkcs15-init.exe
+!ENDIF
+
+COPTS = /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include $(OPENSSL_INCL_DIR) /D_WIN32_WINNT=0x0400 $(OPENSSL_DEF)
 LINKFLAGS = /DEBUG /NOLOGO /INCREMENTAL:NO /MACHINE:IX86
 
 

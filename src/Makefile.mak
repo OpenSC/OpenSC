@@ -1,5 +1,8 @@
+TOPDIR = ..
 
-SUBDIRS = include common scconf scdl libopensc tests scrandom pkcs15init pkcs11 tools
+!INCLUDE $(TOPDIR)\win32\Make.rules.mak
+
+SUBDIRS = include common scconf scdl libopensc tests scrandom pkcs15init pkcs11 tools $(SSL_ENGINES_DIR)
 
 all::
 

@@ -38,4 +38,4 @@ all: install-headers $(TARGET)
 
 $(TARGET): $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib ..\common\common.lib
 	perl $(TOPDIR)\win32\makedef.pl $*.def $* $(OBJECTS)
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib ..\common\common.lib winscard.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) gdi32.lib
