@@ -21,6 +21,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <limits.h>
 #include <opensc/pkcs15.h>
 #include "util.h"
 
@@ -693,8 +694,7 @@ int read_and_cache_file(const struct sc_path *path)
 
 int learn_card(void)
 {
-	struct stat stbuf;
-	char dir[120];
+	char dir[PATH_MAX];
 	int r, i, cert_count;
         struct sc_pkcs15_object *certs[32];
 	struct sc_pkcs15_df *df;
@@ -704,15 +704,7 @@ int learn_card(void)
 		fprintf(stderr, "Unable to find cache directory: %s\n", sc_strerror(r));
 		return 1;
 	}
-	r = stat(dir, &stbuf);
-	if (r) {
-		printf("No '%s' directory found, creating...\n", dir);
-		r = mkdir(dir, 0700);
-		if (r) {
-			perror("Directory creation failed");
-			return 1;
-		}
-	}
+
 	printf("Using cache directory '%s'.\n", dir);
         r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, certs, 32);
 	if (r < 0) {
@@ -730,6 +722,9 @@ int learn_card(void)
 		fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
+
+	/* Cache all relevant DF files. The cache
+	 * directory is created automatically. */
 	for (df = p15card->df_list; df != NULL; df = df->next)
 		read_and_cache_file(&df->path);
 	printf("Caching %d certificate(s)...\n", cert_count);
