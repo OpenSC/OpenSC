@@ -742,7 +742,7 @@ do_select(struct sc_card *card, u8 kind,
 	apdu.datalen = buflen;
 	apdu.lc = apdu.datalen;
 	apdu.resp = resbuf;
-	apdu.resplen = *file ? sizeof(resbuf) : 0;
+	apdu.resplen = file ? sizeof(resbuf) : 0;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
