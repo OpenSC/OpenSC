@@ -36,13 +36,11 @@
 
 #define CHECK_CTX(ctx, val)			\
   if (!ctx) {					\
-    errno = ENODATA;				\
     return val;					\
   }
 
 #define CHECK_CTX_VOID(ctx)			\
   if (!ctx) {					\
-    errno = ENODATA;				\
     return;					\
   }
 
