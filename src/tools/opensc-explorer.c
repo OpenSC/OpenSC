@@ -689,13 +689,13 @@ int do_change(int argc, char **argv)
 		printf("Invalid key reference.\n");
 		goto usage;
 	}
-        argc--;
-        argv++;
+	argc--;
+	argv++;
 
-        if (argc == 1) {
-                /* set without verification */
-                oldpinlen = 0;
-        } else {
+	if (argc == 1) {
+		/* set without verification */
+		oldpinlen = 0;
+	} else {
 		if (argv[0][0] == '"') {
 			for (s = argv[0] + 1, i = 0;
 			     i < sizeof(oldpin) && *s && *s != '"'; i++) 

@@ -13,10 +13,10 @@ char *getpass(const char *prompt)
 	for (i = 0; i < sizeof(buf) - 1; i++) {
 		buf[i] = _getch();
 		if (buf[i] == '\r')
-                        break;
+			break;
 	}
 	buf[i] = 0;
 	fputs("\n", stderr);
-        return buf;
+	return buf;
 }
 
