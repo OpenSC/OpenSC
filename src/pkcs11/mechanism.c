@@ -17,7 +17,7 @@ struct hash_signature_info {
 	sc_pkcs11_mechanism_type_t *sign_type;
 };
 
-/* Also used for verification data */
+/* Also used for verification and decryption data */
 struct signature_data {
 	struct sc_pkcs11_object *key;
 	struct hash_signature_info *info;
@@ -639,6 +639,102 @@ done:
 #endif
 
 /*
+ * Initialize a decryption context. When we get here, we know
+ * the key object is capable of decrypting _something_
+ */sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
+                       CK_MECHANISM_PTR pMechanism,
+                       struct sc_pkcs11_object *key,
+                       CK_MECHANISM_TYPE key_type)
+{
+	struct sc_pkcs11_card *p11card;
+	sc_pkcs11_operation_t *operation;
+	sc_pkcs11_mechanism_type_t *mt;
+	int rv;
+
+	if (!session || !session->slot
+	 || !(p11card = session->slot->card))
+		return CKR_ARGUMENTS_BAD;
+
+	/* See if we support this mechanism type */
+	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_DECRYPT);
+	if (mt == NULL)
+		return CKR_MECHANISM_INVALID;
+
+	/* See if compatible with key type */
+	if (mt->key_type != key_type)
+		return CKR_KEY_TYPE_INCONSISTENT;
+
+	rv = session_start_operation(session, SC_PKCS11_OPERATION_DECRYPT, mt, &operation);
+	if (rv != CKR_OK)
+		return rv;
+
+	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
+	rv = mt->decrypt_init(operation, key);
+
+	if (rv != CKR_OK)
+		session_stop_operation(session, SC_PKCS11_OPERATION_DECRYPT);
+
+	return rv;
+}
+
+CK_RV
+sc_pkcs11_decr(struct sc_pkcs11_session *session,
+		     CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
+		     CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+{
+	sc_pkcs11_operation_t *op;
+	int rv;
+
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_DECRYPT, &op);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = op->type->decrypt(op, pEncryptedData, ulEncryptedDataLen,
+	                       pData, pulDataLen);
+
+done:
+	if (rv != CKR_BUFFER_TOO_SMALL && pData != NULL)
+		session_stop_operation(session, SC_PKCS11_OPERATION_DECRYPT);
+
+	return rv;
+}
+
+/*
+ * Initialize a signature operation
+ */
+static CK_RV
+sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
+                       struct sc_pkcs11_object *key)
+{
+	struct signature_data *data;
+
+	if (!(data = (struct signature_data *) calloc(1, sizeof(*data))))
+		return CKR_HOST_MEMORY;
+
+	data->key = key;
+
+	operation->priv_data = data;
+	return CKR_OK;
+}
+
+sc_pkcs11_decrypt(sc_pkcs11_operation_t *operation,
+		     CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
+		     CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+{
+	struct signature_data *data;
+	struct sc_pkcs11_object *key;
+	int rv;
+
+	data = (struct signature_data*) operation->priv_data;
+
+	key = data->key;
+	return key->ops->decrypt(operation->session,
+				key, &operation->mechanism,
+				pEncryptedData, ulEncryptedDataLen,
+				pData, pulDataLen);
+}
+
+/*
  * Create new mechanism type for a mechanism supported by
  * the card
  */
@@ -674,6 +770,10 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 	}
 	if (pInfo->flags & CKF_UNWRAP) {
 		/* ... */
+	}
+	if (pInfo->flags & CKF_DECRYPT) {
+		mt->decrypt_init = sc_pkcs11_decrypt_init;
+		mt->decrypt = sc_pkcs11_decrypt;
 	}
 
 	return mt;

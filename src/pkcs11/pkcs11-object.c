@@ -523,7 +523,6 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,        /* the session's handle */
 out:	sc_debug(context, "Signing result was %d\n", rv);
 	sc_pkcs11_unlock();
         return rv;
-
 }
 
 CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
@@ -679,7 +678,48 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		    CK_MECHANISM_PTR  pMechanism,  /* the decryption mechanism */
 		    CK_OBJECT_HANDLE  hKey)        /* handle of the decryption key */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+        CK_BBOOL can_decrypt;
+	CK_KEY_TYPE key_type;
+	CK_ATTRIBUTE decrypt_attribute = { CKA_DECRYPT, &can_decrypt, sizeof(can_decrypt) };
+	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_object *object;
+        int rv;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		goto out;
+
+	rv = pool_find(&session->slot->object_pool, hKey, (void**) &object);
+	if (rv != CKR_OK)
+		goto out;
+
+	if (object->ops->decrypt == NULL_PTR) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	rv = object->ops->get_attribute(session, object, &decrypt_attribute);
+        if (rv != CKR_OK || !can_decrypt) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+	rv = object->ops->get_attribute(session, object, &key_type_attr);
+        if (rv != CKR_OK) {
+                rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	rv = sc_pkcs11_decr_init(session, pMechanism, object, key_type);
+
+out:	sc_debug(context, "Decrypt initialization returns %d\n", rv);
+	sc_pkcs11_unlock();
+
+        return rv;
 }
 
 CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,           /* the session's handle */
@@ -688,7 +728,23 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,           /* the session's handle */
 		CK_BYTE_PTR       pData,              /* receives decrypted output */
 		CK_ULONG_PTR      pulDataLen)         /* receives decrypted byte count */
 {
-        return CKR_FUNCTION_NOT_SUPPORTED;
+        int rv;
+	struct sc_pkcs11_session *session;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		goto out;
+
+	rv = sc_pkcs11_decr(session, pEncryptedData, ulEncryptedDataLen,
+	                    pData, pulDataLen);
+
+out:	sc_debug(context, "Decryption result was %d\n", rv);
+	sc_pkcs11_unlock();
+        return rv;
 }
 
 CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,            /* the session's handle */

@@ -1800,21 +1800,20 @@ CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 }
 
 static CK_RV
-pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
+pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 		CK_MECHANISM_PTR pMechanism,
-		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
-		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulAttributeCount,
-		void **result)
+		CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
+		CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) ses->slot->card->fw_data;
 	struct pkcs15_prkey_object *prkey;
 	struct pkcs15_slot_data *data = slot_data(ses->slot->fw_data);
-	u8	unwrapped_key[256];
-	int	rv;
+	u8	decrypted[256];
+	int	buff_too_small, rv;
 
-	sc_debug(context, "Initiating key unwrap.\n");
+	sc_debug(context, "Initiating unwrap/decryption.\n");
 
-	/* See which of the alternative keys supports unwrap */
+	/* See which of the alternative keys supports unwrap/decrypt */
 	prkey = (struct pkcs15_prkey_object *) obj;
 	while (prkey
 	 && !(prkey->prv_info->usage
@@ -1824,14 +1823,13 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 	if (prkey == NULL)
 		return CKR_KEY_FUNCTION_NOT_PERMITTED;
 
-
 	if (pMechanism->mechanism != CKM_RSA_PKCS)
 		return CKR_MECHANISM_INVALID;
 
 	rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj,
 				 SC_ALGORITHM_RSA_PAD_PKCS1,
-				 pData, ulDataLen,
-				 unwrapped_key, sizeof(unwrapped_key));
+				 pEncryptedData, ulEncryptedDataLen,
+				 decrypted, sizeof(decrypted));
 
 	/* Do we have to try a re-login and then try to decrypt again? */
 	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
@@ -1845,18 +1843,45 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 		if (rv == 0)
 			rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj,
 						SC_ALGORITHM_RSA_PAD_PKCS1,
-						pData, ulDataLen,
-						unwrapped_key, sizeof(unwrapped_key));
+						pEncryptedData, ulEncryptedDataLen,
+						decrypted, sizeof(decrypted));
 
 		sc_unlock(ses->slot->card->card);
 	}
 
-	sc_debug(context, "Key unwrap complete. Result %d.\n", rv);
+	sc_debug(context, "Key unwrap/decryption complete. Result %d.\n", rv);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+
+	buff_too_small = (*pulDataLen < rv);
+	*pulDataLen = rv;
+	if (pData == NULL_PTR)
+		return CKR_OK;
+	if (buff_too_small)
+		return CKR_BUFFER_TOO_SMALL;
+	memcpy(pData, decrypted, *pulDataLen);
+
+	return CKR_OK;
+}
+
+static CK_RV
+pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
+		CK_MECHANISM_PTR pMechanism,
+		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulAttributeCount,
+		void **result)
+{
+	u8	unwrapped_key[256];
+	int	key_len = sizeof(unwrapped_key), rv;
+
+	rv = pkcs15_prkey_decrypt(ses, obj, pMechanism, pData, ulDataLen,
+	                          unwrapped_key, &key_len);
 
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, ses->slot->card->reader);
 	return sc_pkcs11_create_secret_key(ses,
-			unwrapped_key, rv,
+			unwrapped_key, key_len,
 			pTemplate, ulAttributeCount,
 			(struct sc_pkcs11_object **) result);
 }
@@ -1869,7 +1894,8 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	NULL,
 	NULL,
         pkcs15_prkey_sign,
-	pkcs15_prkey_unwrap
+	pkcs15_prkey_unwrap,
+	pkcs15_prkey_decrypt
 };
 
 /*
@@ -2188,7 +2214,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	/* Register generic mechanisms */
 	sc_pkcs11_register_generic_mechanisms(p11card);
 
-	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP;
+	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP | CKF_DECRYPT;
 #ifdef HAVE_OPENSSL
 	mech_info.flags |= CKF_VERIFY;
 #endif

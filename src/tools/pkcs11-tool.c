@@ -1955,7 +1955,7 @@ wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	EVP_SealInit(&seal_ctx, algo,
 			&key, &key_len,
 			iv, &pkey, 1);
-	
+
 	/* Encrypt something */
 	len = sizeof(ciphered);
 	EVP_SealUpdate(&seal_ctx, ciphered, &len, (const unsigned char *) "hello world", 11);
@@ -1964,6 +1964,8 @@ wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	len = sizeof(ciphered) - ciphered_len;
 	EVP_SealFinal(&seal_ctx, ciphered + ciphered_len, &len);
 	ciphered_len += len;
+
+	EVP_PKEY_free(pkey);
 
 	mech.mechanism = CKM_RSA_PKCS;
 	rv = p11->C_UnwrapKey(session, &mech, privKeyObject,
@@ -2066,6 +2068,116 @@ test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		errors += wrap_unwrap(slot, sess, EVP_des_ede3_cbc(), privKeyObject);
 		errors += wrap_unwrap(slot, sess, EVP_bf_cbc(), privKeyObject);
 		errors += wrap_unwrap(slot, sess, EVP_cast5_cfb(), privKeyObject);
+#endif
+	}
+
+	return errors;
+}
+
+#ifdef HAVE_OPENSSL
+static int
+encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject)
+{
+	EVP_PKEY       *pkey;
+	EVP_CIPHER_CTX	encrypt_ctx;
+	unsigned char	orig_data[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', '\0'};
+	unsigned char	encrypted[512], data[512];
+	CK_MECHANISM	mech;
+	int		encrypted_len, data_len, r;
+	CK_RV           rv;
+
+	pkey = get_public_key(session, privKeyObject);
+	if (pkey == NULL) {
+		printf("    Encryption of test data failed, returning\n");
+		return 0;
+	}
+	if (EVP_PKEY_size(pkey) > sizeof(encrypted)) {
+		printf("    \"encrypted\" buf in pkcs11-tool too small\n");
+		EVP_PKEY_free(pkey);
+		return 0;
+	}
+	encrypted_len = EVP_PKEY_encrypt(encrypted, orig_data, sizeof(orig_data), pkey);
+	EVP_PKEY_free(pkey);
+	if (encrypted_len <= 0) {
+		printf("    Encryption failed, returning\n");
+		return 0;
+	}
+
+	mech.mechanism = CKM_RSA_PKCS;
+	rv = p11->C_DecryptInit(session, &mech, privKeyObject);
+	if (rv == CKR_MECHANISM_INVALID) {
+		printf("    Mechanism CKM_RSA_PKCS not supported\n");
+		return 0;
+	}
+	if (rv != CKR_OK)
+		p11_fatal("C_DecryptInit", rv);
+
+	data_len = encrypted_len;
+	rv = p11->C_Decrypt(session, encrypted, encrypted_len, data, &data_len);
+	if (rv != CKR_OK)
+		p11_fatal("C_DecryptInit", rv);
+
+	if (data_len != sizeof(orig_data) || memcmp(orig_data, data, data_len)) {
+		printf("  resulting cleartext doesn't match input\n");
+		return 1;
+	}
+
+	printf("    CKM_RSA_PKCS: OK\n");
+	return 0;
+}
+#endif
+
+
+/*
+ * Test decryption functions
+ */
+static int
+test_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	int             errors = 0;
+	CK_RV           rv;
+	CK_OBJECT_HANDLE privKeyObject;
+	CK_SESSION_HANDLE sess;
+	CK_MECHANISM_TYPE firstMechType;
+	CK_SESSION_INFO sessionInfo;
+	CK_ULONG        j;
+	char 		*label;
+
+	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION, NULL, NULL, &sess);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+
+	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
+		printf("Decryption: not logged in, skipping decryption tests\n");
+		return errors;
+	}
+
+	firstMechType = find_mechanism(slot, CKF_DECRYPT | CKF_HW, 0);
+	if (firstMechType == NO_MECHANISM) {
+		printf("Decrypt: not implemented\n");
+		return errors;
+	}
+
+	printf("Decryption (RSA)\n");
+	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
+		printf("  testing key %ld ", j);
+		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
+			printf("(%s) ", label);
+			free(label);
+		}
+		if (!getUNWRAP(sess, privKeyObject)) {
+			printf(" -- can't be used to decrypt, skipping\n");
+			continue;
+		}
+		printf("\n");
+
+#ifndef HAVE_OPENSSL
+		printf("No OpenSSL support, unable to validate decryption\n");
+#else
+		errors += encrypt_decrypt(slot, sess, privKeyObject);
 #endif
 	}
 
@@ -2182,6 +2294,8 @@ p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	errors += test_verify(slot, session);
 
 	errors += test_unwrap(slot, session);
+
+	errors += test_decrypt(slot, session);
 
 	errors += test_card_detection(0);
 
