@@ -33,18 +33,31 @@ struct app_entry {
 
 static const struct app_entry apps[] = {
 	{ "\xA0\x00\x00\x00\x63PKCS-15", 12, "PKCS #15" },
+	{ "\xA0\x00\x00\x01\x77PKCS-15", 12, "Belgian eID" },
 };
 
 static const struct app_entry * find_app_entry(const u8 * aid, size_t aid_len)
 {
 	int i;
-	
+
 	for (i = 0; i < sizeof(apps)/sizeof(apps[0]); i++) {
 		if (apps[i].aid_len == aid_len &&
 		    memcmp(apps[i].aid, aid, aid_len) == 0)
 			return &apps[i];
 	}
 	return NULL;
+}
+
+const struct sc_app_info * find_pkcs15_app(struct sc_card *card)
+{
+	const struct sc_app_info *app = NULL;
+	unsigned int i;
+
+	i = sizeof(apps)/sizeof(apps[0]);
+	while (!app && i--)
+		app = sc_find_app_by_aid(card, apps[i].aid, apps[i].aid_len);
+
+	return app;
 }
 
 static const struct sc_asn1_entry c_asn1_dirrecord[] = {

@@ -186,9 +186,6 @@ static const struct sc_asn1_entry c_asn1_ddo[] = {
 	{ NULL }
 };
 
-static const u8 *pkcs15_aid = (const u8 *) "\xA0\x00\x00\x00\x63PKCS-15";
-static const size_t pkcs15_aid_len = 12;
-
 static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
 {
 	struct sc_asn1_entry asn1_ddo[5];
@@ -501,7 +498,7 @@ int sc_pkcs15_bind(struct sc_card *card,
 	if (card->app_count > 0) {
 		const struct sc_app_info *info;
 		
-		info = sc_find_app_by_aid(card, pkcs15_aid, pkcs15_aid_len);
+		info = sc_find_pkcs15_app(card);
 		if (info != NULL) {
 			if (info->path.len)
 				p15card->file_app->path = info->path;
