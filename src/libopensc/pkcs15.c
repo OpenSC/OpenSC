@@ -1188,16 +1188,15 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 	sc_debug(p15card->card->ctx, "called, path=%s, index=%u, count=%d\n",
 				sc_print_path(in_path), in_path->index, in_path->count);
 
-	if (in_path->type == SC_PATH_TYPE_FILE_ID)
-	{
+	if (in_path->type == SC_PATH_TYPE_FILE_ID) {
 		/* in case of a FID prepend the application DF */
 		memcpy(path, &p15card->file_app->path, sizeof(struct sc_path));
 		sc_append_path(path, in_path);
 		path->index = in_path->index;
 		path->count = in_path->count;
-	}
-	else
+	} else {
 		memcpy(path, in_path, sizeof(struct sc_path));
+	}
 	
 	if (p15card->opts.use_cache) {
 		r = sc_pkcs15_read_cached_file(p15card, path, &data, &len);
@@ -1206,10 +1205,9 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 		r = sc_lock(p15card->card);
 		SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
 		r = sc_select_file(p15card->card, path, &file);
-		if (r) {
-			sc_unlock(p15card->card);
-			return r;
-		}
+		if (r)
+			goto fail_unlock;
+
 		/* Handle the case where the ASN.1 Path object specified
 		 * index and length values */
 		if (path->count < 0) {
@@ -1221,32 +1219,39 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			/* Make sure we're within proper bounds */
 			if (offset >= file->size
 			 || offset + len >= file->size) {
-				sc_unlock(p15card->card);
-				return SC_ERROR_INVALID_ASN1_OBJECT;
+				r = SC_ERROR_INVALID_ASN1_OBJECT;
+				goto fail_unlock;
 			}
 		}
-		if (file_out != NULL)
-			*file_out = file;
-		else
-			sc_file_free(file);
 		data = (u8 *) malloc(len);
 		if (data == NULL) {
-			sc_unlock(p15card->card);
-			return SC_ERROR_OUT_OF_MEMORY;
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto fail_unlock;
 		}
 		r = sc_read_binary(p15card->card, offset, data, len, 0);
 		if (r < 0) {
-			sc_unlock(p15card->card);
 			free(data);
-			return r;
+			goto fail_unlock;
 		}
 		/* sc_read_binary may return less than requested */
 		len = r;
 		sc_unlock(p15card->card);
+
+		/* Return of release file */
+		if (file_out != NULL)
+			*file_out = file;
+		else
+			sc_file_free(file);
 	}
 	*buf = data;
 	*buflen = len;
 	return 0;
+
+fail_unlock:
+	if (file)
+		sc_file_free(file);
+	sc_unlock(p15card->card);
+	return r;
 }
 
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
