@@ -29,6 +29,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <config.h>
 #include <openssl/crypto.h>
 #include <openssl/objects.h>
 #include "pkcs11-internal.h"
@@ -217,7 +218,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 		memcpy(val, p_sep1 + 1, val_len);
 		val[val_len] = '\0';
 
-		if (strnicmp(s_slot_key_id, "slot", p_sep1 - s_slot_key_id) == 0) {
+		if (strncasecmp(s_slot_key_id, "slot", p_sep1 - s_slot_key_id) == 0) {
 			if (val_len >= 3) {
 				printf("Slot number \"%s\" should be a small integer\n", val);
 				return NULL;
@@ -228,7 +229,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE *e, const char *s_slot_key_id,
 				return NULL;
 			}
 		}
-		else if (strnicmp(s_slot_key_id, "id", p_sep1 - s_slot_key_id) == 0) {
+		else if (strncasecmp(s_slot_key_id, "id", p_sep1 - s_slot_key_id) == 0) {
 			if (!hex_to_bin(val, key_id, &key_id_len)) {
 				printf("Key id \"%s\" should be a hex string\n", val);
 				return NULL;
