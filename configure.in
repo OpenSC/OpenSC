@@ -388,13 +388,15 @@ int main(void)
 		fi
 	done
 
+#	if test -z "$found_crypto" ; then
+#		AC_MSG_ERROR([Could not find working OpenSSL library, please install or check config.log])
+#	fi
 	if test -n "$found_crypto" ; then
 		if test -z "$ssldir" ; then
 			ssldir="(system)"
 		fi
 		ac_cv_openssldir=$ssldir
 		SSL_MSG="yes"
-		AC_DEFINE(HAVE_OPENSSL, 1, [Have OpenSSL libraries])
 	fi
 ])
 
@@ -425,6 +427,9 @@ if (test ! -z "$ac_cv_openssldir" && test "x$ac_cv_openssldir" != "x(system)") ;
 	fi
 fi
 LIBS="$saved_LIBS"
+if test "x$SSL_MSG" = "xyes" ; then
+  AC_DEFINE(HAVE_OPENSSL, 1, [Have OpenSSL libraries])
+fi
 AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
 
 dnl Check for PAM libs
@@ -492,14 +497,12 @@ CFLAGS_OPENSC="-I\${top_srcdir}/src/libopensc"
 AC_SUBST(LIBOPENSC)
 LIBOPENSC="\${top_srcdir}/src/libopensc/libopensc.la"
 
-
 # Pass information about installed OpenSC requirements, so that
 # a proper opensc-config file will be build.
 OPENSC_LIBS="-L${libdir} -lopensc"
 OPENSC_CFLAGS=""
 AC_SUBST(OPENSC_LIBS)
 AC_SUBST(OPENSC_CFLAGS)
-
 
 AC_OUTPUT([
 Makefile

@@ -4,7 +4,7 @@ SUBDIRS = . rsaref
 
 libdir = ${prefix}/lib/pkcs11
 
-INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@
+INCLUDES = @CFLAGS_OPENSC@
 
 LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBOPENSC@
 

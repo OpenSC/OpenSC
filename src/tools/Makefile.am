@@ -1,6 +1,6 @@
 # Process this file with automake to create Makefile.in
 
-INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@
+INCLUDES = @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBOPENSC@
 
 if HAVE_SSL

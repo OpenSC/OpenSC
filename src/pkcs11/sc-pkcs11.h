@@ -21,17 +21,12 @@
 #ifndef __opensc_pkcs11_h__
 #define __opensc_pkcs11_h__
 
-#include <winscard.h>
-
 #include <opensc.h>
 #include <opensc-pkcs15.h>
-
 #include "rsaref/pkcs11.h"
-
 
 #define SC_PKCS11_MAX_VIRTUAL_SLOTS	4
 #define SC_PKCS11_MAX_READERS           2
-
 
 struct sc_pkcs11_session;
 struct sc_pkcs11_slot;
@@ -78,7 +73,6 @@ struct sc_pkcs11_object {
 };
 
 
-
 /*
  * PKCS#11 Smartcard Framework abstraction
  */
@@ -107,7 +101,6 @@ struct sc_pkcs11_framework_ops {
 	 * (ie. certificates, private keys)
          */
 };
-
 
 
 /*
@@ -171,8 +164,6 @@ struct sc_pkcs11_session {
 	struct sc_pkcs11_operation *operation;
 };
 
-
-
 /* Module variables */
 extern struct sc_context *context;
 extern struct sc_pkcs11_pool session_pool;
@@ -181,7 +172,6 @@ extern struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
 
 /* Framework definitions */
 extern struct sc_pkcs11_framework_ops framework_pkcs15;
-
 
 void strcpy_bp(u8 *dst, const char *src, int dstsize);
 CK_RV sc_to_cryptoki_error(int rc, int reader);
@@ -209,4 +199,3 @@ CK_RV session_check_operation(struct sc_pkcs11_session *, int);
 CK_RV session_stop_operation(struct sc_pkcs11_session *);
 
 #endif
-

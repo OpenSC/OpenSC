@@ -2,7 +2,7 @@
 
 libdir = ${prefix}/lib/security
 
-INCLUDES = @CFLAGS_PCSC@ @CFLAGS_OPENSC@
+INCLUDES = @CFLAGS_OPENSC@
 LDFLAGS = @LDFLAGS@ @LIBDL@ @LIBPAM@ @LIBCRYPTO@ @LIBOPENSC@
 
 SRC = pam_pkcs15.c
