@@ -631,7 +631,7 @@ int unblock_pin(void)
 		return 2;
 
 	if (opt_pin)
-		pin = opt_pin;
+		pin = (u8 *) opt_pin;
 	else 
 		while (1) {
 		u8 *pin2;
@@ -671,7 +671,7 @@ int change_pin(void)
 	int r;
 	
 	if (opt_pin) 
-		pincode=opt_pin;
+		pincode = (u8 *) opt_pin;
 	else 
 		pincode = get_pin("Enter old PIN", &pinfo);
 	if (pincode == NULL)
@@ -681,7 +681,7 @@ int change_pin(void)
 		return 2;
 	}
 	if (opt_newpin)
-		newpin = opt_newpin;
+		newpin = (u8 *) opt_newpin;
 	else 
 		while (1) {
 		u8 *newpin2;

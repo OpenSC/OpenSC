@@ -1064,7 +1064,7 @@ get_pin_callback(struct sc_profile *profile,
 			struct secret	*s = &opt_secrets[n];
 
 			if (sc_pkcs15_compare_id(&info->auth_id, &s->id)) {
-				secret = s->key;
+				secret = (char *) s->key;
 				len = s->len;
 				break;
 			}

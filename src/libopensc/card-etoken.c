@@ -877,9 +877,9 @@ etoken_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		return etoken_generate_key(card,
 			(struct sc_cardctl_etoken_genkey_info *) ptr);
 	case SC_CARDCTL_LIFECYCLE_GET:
-		return etoken_lifecycle_get(card, ptr);
+		return etoken_lifecycle_get(card, (int *) ptr);
 	case SC_CARDCTL_LIFECYCLE_SET:
-		return etoken_lifecycle_set(card, ptr);
+		return etoken_lifecycle_set(card, (int *) ptr);
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }

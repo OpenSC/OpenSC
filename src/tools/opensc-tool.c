@@ -204,7 +204,7 @@ int print_file(struct sc_card *card, const struct sc_file *file, const struct sc
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT) {
 		unsigned char *buf;
 		
-		if (!(buf = malloc(file->size))) {
+		if (!(buf = (unsigned char *) malloc(file->size))) {
 			fprintf(stderr, "out of memory");
 			return 1;
 		}

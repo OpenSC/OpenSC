@@ -93,7 +93,7 @@ static int append_ex_data(sc_card_t *card, sc_starcos_ex_data_t *in_dat)
 	sc_starcos_ex_data_t *tmp = (sc_starcos_ex_data_t *)card->drv_data,
 			     *new_dat;
 
-	new_dat = malloc(sizeof(*new_dat));
+	new_dat = (sc_starcos_ex_data_t *) malloc(sizeof(*new_dat));
 	if (!new_dat)
 		return SC_ERROR_INTERNAL;
 	new_dat->next = NULL;
@@ -215,7 +215,7 @@ static int starcos_init(struct sc_card *card)
 	starcos_sec_data_t  *sec_data;
 	sc_starcos_ex_data_t tmp_data;
 
-	sec_data = malloc(sizeof(starcos_sec_data_t));
+	sec_data = (starcos_sec_data_t *) malloc(sizeof(starcos_sec_data_t));
 	if (!sec_data)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(sec_data, 0, sizeof(starcos_sec_data_t));
@@ -865,7 +865,7 @@ static int starcos_set_security_env(struct sc_card *card,
 	algID = env->algorithm_ref & 0xFF;
 	ex_dat.key = SC_STARCOS_EX_KEY(SC_STARCOS_KEY_ATTR, keyID);
 	if (!get_ex_data(card, &ex_dat))
-		key_attr = ex_dat.data;
+		key_attr = (struct sc_cardctl_starcos_key_attr_st *) ex_dat.data;
 
 	if (env->operation == SC_SEC_OPERATION_SIGN && key_attr &&
 	    key_attr->flag == SC_SEC_OPERATION_AUTHENTICATE)
