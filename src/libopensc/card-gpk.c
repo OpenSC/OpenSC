@@ -152,7 +152,7 @@ gpk_init(struct sc_card *card)
 {
 	struct gpk_private_data *priv;
 	struct atrinfo	*ai;
-	unsigned int	exponent, flags;
+	unsigned long	exponent, flags;
 
 	if (!(ai = gpk_identify(card)))
 		return SC_ERROR_INVALID_CARD;
@@ -166,12 +166,14 @@ gpk_init(struct sc_card *card)
 
 	/* Set up algorithm info. GPK 16000 will do any RSA
 	 * exponent, earlier ones are restricted to 0x10001 */
-	flags = SC_ALGORITHM_RSA_HASH_MD5
-		| SC_ALGORITHM_RSA_PAD_PKCS1;
-	exponent = (ai->variant / 1000 < 16)? 0x10001 : 0;
-	_sc_card_add_rsa_alg(card,  512, 0, exponent);
-	_sc_card_add_rsa_alg(card,  768, 0, exponent);
-	_sc_card_add_rsa_alg(card, 1024, 0, exponent);
+	flags = SC_ALGORITHM_RSA_HASH_MD5 | SC_ALGORITHM_RSA_HASH_SHA1
+		| SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+	flags |= SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_ANSI
+		| SC_ALGORITHM_RSA_PAD_ISO9796;
+	exponent = (ai->variant / 1000 < 16)? 0x10001 : -1;
+	_sc_card_add_rsa_alg(card,  512, flags, exponent);
+	_sc_card_add_rsa_alg(card,  768, flags, exponent);
+	_sc_card_add_rsa_alg(card, 1024, flags, exponent);
 
 	return 0;
 }
@@ -1274,6 +1276,8 @@ gpk_compute_signature(struct sc_card *card, const u8 *data,
 	 * padding itself, but the upper layers of OpenSC insist on
 	 * doing the padding for us.  So strip away the pkcs#1 padding
 	 * first. */
+	/* XXX FIXME: There's no padding, if the card indicates that it's
+	 * able to do it itself. */
 	if (data_len < priv->sec_hash_len + 11)
 		return SC_ERROR_INTERNAL;
 	r = gpk_init_hashed(card, data + data_len - priv->sec_hash_len,

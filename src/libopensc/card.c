@@ -743,7 +743,7 @@ int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info 
 }
 
 int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
-			 unsigned long flags, long exponent)
+			 unsigned long flags, unsigned long exponent)
 {
 	struct sc_algorithm_info info;
 

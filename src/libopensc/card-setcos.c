@@ -84,7 +84,7 @@ static int setcos_init(struct sc_card *card)
 		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
 		flags |= SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1;
 
-		_sc_card_add_rsa_alg(card, 1024, flags, -1);
+		_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	}
 
 	return 0;

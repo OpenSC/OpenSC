@@ -235,9 +235,14 @@ struct sc_file {
 #define SC_ALGORITHM_SPECIFIC_FLAGS	0x0000FFFF
 
 #define SC_ALGORITHM_RSA_RAW		0x00000001
+/* If the card is willing to produce a cryptogram padded with the following 
+ * methods, set these flags accordingly. */
 #define SC_ALGORITHM_RSA_PAD_PKCS1	0x00000002
 #define SC_ALGORITHM_RSA_PAD_ANSI	0x00000004
 #define SC_ALGORITHM_RSA_PAD_ISO9796	0x00000008
+
+/* If the card is willing to produce a cryptogram with the following 
+ * hash values, set these flags accordingly. */
 #define SC_ALGORITHM_RSA_HASH_NONE	0x00000010
 #define SC_ALGORITHM_RSA_HASH_SHA1	0x00000020
 #define SC_ALGORITHM_RSA_HASH_MD5	0x00000040
@@ -267,7 +272,6 @@ struct sc_algorithm_info {
 	union {
 		struct sc_rsa_info {
 			long exponent;
-			int unwrap;
 		} _rsa;
 	} u;
 };
