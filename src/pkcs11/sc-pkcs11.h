@@ -127,6 +127,8 @@ struct sc_pkcs11_slot {
 	void *fw_data;
 	/* Object pools */
 	struct sc_pkcs11_pool object_pool;
+	/* Number of sessions using this slot */
+	unsigned int nsessions;
 };
 
 
