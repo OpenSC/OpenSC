@@ -14,14 +14,14 @@
 		<title>Introduction</title>
 
 		<para>
-			libopensc is a library for accessing SmartCard devices
+			libopensc is a library for accessing smart card devices
 			using PC/SC Lite middleware package.  It is also the
 			core library of the OpenSC project.  Basic
 			functionality (e.g. SELECT FILE, READ BINARY) should
-			work on any ISO 7816-4 compatible SmartCard. Encryption
-			and decryption using private keys on the SmartCard is
-			at the moment possible only with PKCS#15 compatible
-			cards, such as the FINEID (Finnish Electronic IDentity)
+			work on any ISO 7816-4 compatible smart card. Encryption
+			and decryption using private keys on the smart card is
+			at the moment possible only with PKCS #15 compatible
+			cards, such as the FINEID (Finnish electronic ID card)
 			card manufactured by Setec.  
 		</para>
 	</chapter>
@@ -53,6 +53,10 @@
 
 			<listitem>
 				Nils Larsch <email>larsch@trustcenter.de</email>
+			</listitem>
+
+			<listitem>
+				Ville Skyttä
 			</listitem>
 
 			<listitem>
@@ -150,8 +154,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 			OpenSC is a large toolkit. The main building
 			block is the opensc library. It has three layers
 			of code, each with several drivers in it.
-			Other libraries are the pkcs11 module,
-			a pam module, two engines for openssl.
+			Other libraries are the PKCS #11 module,
+			a PAM module, two engines for OpenSSL.
 			In addition there are several tools to test and
 			use these tools and libraries.
 		</para>
@@ -160,7 +164,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 			Purpose of this chapter is to give an overview
 			of the inner workings of the opensc library,
 			to give a short presentation what the other
-			libraries do, and finaly what the opensc toolchest
+			libraries do, and finally what the opensc toolchest
 			has to offer. Each tool has it's own man page,
 			each library it's own section in this document.
 		</para>
@@ -170,10 +174,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 			<para>
 				libopensc is the basic library used by
-				everthing else. It offer basic
+				everything else. It offer basic
 				functionality like talking to smart
 				cards, but also advances functions
-				like generating rsa keys on a smart card.
+				like generating RSA keys on a smart card.
 			</para>
 
 			<para>
@@ -202,7 +206,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 					In a perfect world all smart cards
 					would implement ISO 7816 standard,
 					and thus accept the same commands
-					and give the same answers. Unfortunatly
+					and give the same answers. Unfortunately
 					most cards have their own commands,
 					syntax and responses. The card modules
 					in libopensc implement these different
@@ -213,8 +217,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 				<varlistentry>
 				<term>pkcs15init</term>
 				<listitem>
-					Smart cards usualy have a file system.
-					To store or create keys or certiticates
+					Smart cards usually have a file system.
+					To store or create keys or certificates
 					on a smart card one needs to format
 					the card, create directories and objects
 					and set permissions in a secure way.
@@ -227,26 +231,26 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 				</varlistentry>
 
 				<varlistentry>
-				<term>pkcs15 framework</term>
+				<term>PKCS #15 framework</term>
 				<listitem>
 					<para>
-					PKCS#15 is the standard on how to
+					<ulink url="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-15/">PKCS #15</ulink> is the standard on how to
 					store certificates and keys on a
 					smart card or crypto token. But many
-					vendors have their own proprietory
+					vendors have their own proprietary
 					mechanism for storing these
 					informations, for example in different
 					directories. OpenSC implements
-					the PKCS#15 standard, but there is
+					the PKCS #15 standard, but there is
 					also an emulation module for a
 					slightly incompatible storage mechanism
 					in the works.</para>
 
 					<para>
 					It should be possible to implement a
-					completely differennt framework
-					for compatiblity with a non
-					pkcs#15 way of storing and accessing
+					completely different framework
+					for compatibility with a non
+					PKCS #15 way of storing and accessing
 					keys and certificates.</para>
 				</listitem>
 				</varlistentry>
@@ -257,42 +261,42 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 			<title>The reader layer</title>
 
 			<para>
-				PC/SC-Lite is well known as smart card
+				PC/SC Lite is well known as smart card
 				middleware. It interacts with drivers for
-				the smart card readers on the buttom,
+				the smart card readers on the bottom,
 				and with smart card applications on the top.
-				OpenSC can use PC/SC-Lite via the pcsc
+				OpenSC can use PC/SC Lite via the pcsc
 				reader module, but also supports a number
 				of alternatives.
 			</para>
 
 			<para>
-				PC/SC is a standard with interfaces betweens
+				PC/SC is a standard with interfaces between
 				applications, a resource manager and drivers
 				for smart card readers. This standard is
 				very popular on the Windows operating System.
-				The documents are available from the
+				The documents are available from
 				<ulink url="http://www.pcscworkgroup.com/" />.
 			</para>
 
 			<para>
-				PC/SC-Lite is an implementation of the
-				PC/SC standard for linux, Unix, Mac OS X
+				PC/SC Lite is an implementation of the
+				PC/SC standard for Linux, Unix, Mac OS X
 				and Windows by David Corcoran
 				<email>corcoran@linuxnet.com</email>. The
 				software is available with full source code and
 				available for free. To download the software,
 				please visit the website of the Movement
-				for the use of smart cards in a linux
+				for the use of smart cards in a Linux
 				environment (M.U.S.C.L.E.) at <ulink
 					url="http://www.linuxnet.com/" />.
 			</para>
 
 			<para>
-				To install OpenSC with support for PC/SC-Lite,
-				please install PC/SC-Lite first. Then configure
-				OpenSC to use PC/SC-Lite and specify the
-				location where PC/SC-Lite is installed like
+				To install OpenSC with support for PC/SC Lite,
+				please install PC/SC Lite first. Then configure
+				OpenSC to use PC/SC Lite and specify the
+				location where PC/SC Lite is installed like
 				this:
 				<screen>
 $ cd opensc-0.8.0
@@ -304,8 +308,8 @@ $ ./configure --with-pcsclite=/path/to/pcsclite
 				OpenCT is a new framework for accessing 
 				smart cards, card readers and card terminals.
 				It was written from scratch, already includes
-				all drivers, and is very lightwight. OpenCT
-				is available for linux, but if you want to
+				all drivers, and is very lightweight. OpenCT
+				is available for Linux, but if you want to
 				use it on other Unix or BSD operating systems,
 				please ask for help on the opensc-devel mailing
 				list.
@@ -313,10 +317,10 @@ $ ./configure --with-pcsclite=/path/to/pcsclite
 
 			<para>
 				OpenCT is open source software. As such
-				it is availble with full source code for
+				it is available with full source code for
 				free. OpenCT is a software companion
-				to OpenSC and the prefered way of accessing
-				smart cards under linux. OpenCT is available
+				to OpenSC and the preferred way of accessing
+				smart cards under Linux. OpenCT is available
 				from the OpenSC website <ulink
 					url="http://www.opensc.org/" /> and
 				questions go to the
@@ -333,16 +337,20 @@ $ ./configure --with-pcsclite=/path/to/pcsclite
 				Then configure OpenSC to use OpenCT and specify
 				the location where OpenCT is installed like
 				this:
+				<screen>
+$ cd opensc-0.8.0
+$ ./configure --with-openct=/path/to/openct
+				</screen>
 			</para>
 
 			<para>
 				Usbtoken is a small driver for usb crypto
 				devices only. It does not need any other helper
 				software and is included in OpenSC for
-				convinience. However Usbtoken is deprecated,
+				convenience. However Usbtoken is deprecated,
 				the new OpenCT software is now the recommended
 				way to access usb crypto tokens. Usbtoken
-				is no longer activly developed, but bugs are
+				is no longer actively developed, but bugs are
 				still fixed and help is provided on the
 				OpenSC mailing list at
 				<email>opensc-devel@opensc.org</email>.
@@ -370,9 +378,9 @@ $ ./configure --enable-usbtoken
 				multiuser multitasking applications.
 				However CT-API is still quite popular,
 				and many smart card readers have drivers
-				in CT-API format even for linux. It is
+				in CT-API format even for Linux. It is
 				recommended to use these drivers if 
-				the PC/SC-Lite middleware described above.
+				the PC/SC Lite middleware described above.
 			</para>
 
 			<para>
@@ -417,7 +425,7 @@ $ ./configure --enable-usbtoken
 
 			<para>
 				You need also perl and flex installed for the
-				compile process to complete succesfully.
+				compile process to complete successfully.
 			</para>
 
 			<para>
@@ -451,13 +459,13 @@ $ ./configure --enable-usbtoken
 
 			<para>
 				This adds extended functionality.  E.g. the
-				pkcs15-init tool, pkcs11 hash mechanisms and
-				more pkcs11 signature mechs.
+				pkcs15-init tool, PKCS #11 hash mechanisms and
+				more PKCS #11 signature mechanisms.
 			</para>
 
 			<procedure>
 				<step>
-					download and compile the openssl
+					Download and compile the OpenSSL
 					sources from <ulink url="http://www.openssl.org/source/" />
 				</step>
 				
@@ -619,7 +627,7 @@ set path=%path%;....\out32dll
 		</section>
 
 		<section id="opensc.status.pkcs11">
-			<title>PKCS#11 Module in Netscape and Mozilla</title>
+			<title>PKCS #11 Module in Netscape and Mozilla</title>
 
 			<para>
 				Netscape seems to show more information about
@@ -676,36 +684,36 @@ set path=%path%;....\out32dll
 				</step>
 	
 				<step>
-					Fill in module name: "OpenSC PKCS#11 Module"
+					Fill in module name: "OpenSC PKCS #11 Module"
 					and module file: /path/to/opensc/lib/pkcs11/opensc-pkcs11.so
 				</step>
 			</procedure>
 	
 			<para>
 				For proper operation, you also need to configure the
-				module: In the Crypthographic Modules dialog, select
+				module: In the Cryptographic Modules dialog, select
 				the OpenSC card, and click on the "Config" button to
 				the right. Select the "Enable this token" radio button,
 				and select the "Publicly readable Certs" button.  
 			</para>
 	
 			<para>
-				This will ensure that netscape uses the card when
-				trying to display encrypted messages in netscape
+				This will ensure that Netscape uses the card when
+				trying to display encrypted messages in Netscape
 				messenger.  Setting "Publicly readable Certs" will also
-				stop a pretty annoying habit of netscape which is to
+				stop a pretty annoying habit of Netscape which is to
 				ask for all PINs when browsing sites requiring client
 				authentication.
 			</para>
 	
 			<para>
 				You should _not_ select the "RSA" button. If this
-				option is selected, netscape will try to use the card
+				option is selected, Netscape will try to use the card
 				for all public key operations, and will fail horribly.
 			</para>
 	
 			<para>
-				FIXME: this is for which versions of netscape?
+				FIXME: this is for which versions of Netscape?
 			</para>
 		</section>
 
@@ -737,7 +745,7 @@ set path=%path%;....\out32dll
 				</step>
 	
 				<step>
-					Fill in module name: "OpenSC PKCS#11 Module"
+					Fill in module name: "OpenSC PKCS #11 Module"
 					and module file: /path/to/opensc/lib/pkcs11/opensc-pkcs11.so
 				</step>
 			</procedure>
@@ -748,7 +756,7 @@ set path=%path%;....\out32dll
 		
 			<para>
 				OpenSSL is a robust, full-featured toolkit
-				implementing the ssl protocols as well as
+				implementing the SSL protocols as well as
 				a general purpose cryptography library.
 				It features a so called engine interface
 				to combine the toolkit with the cryptographic
@@ -757,7 +765,7 @@ set path=%path%;....\out32dll
 	
 			<para>
 				OpenSC includes an engine for OpenSSL. This
-				allowes to use the OpenSSL library and command line
+				allows to use the OpenSSL library and command line
 				utilities in combination with smart card cryptography.
 			</para>
 	
@@ -796,13 +804,13 @@ OpenSSL>
 -			</para>
 
 			<para>
-				Actualy Opensc has even two engines for Openssl:
+				Actually OpenSC has even two engines for OpenSSL:
 				<filename>engine_opensc.so</filename> and
 				<filename>engine_pkcs11.so</filename>.
 			</para>
 	
 			<para>
-				The opensc engine does only work with Opensc.
+				The opensc engine does only work with OpenSC.
 				It will not work, if several applications
 				try to use the smart card at the same time
 				or one applications tries to use several
@@ -813,17 +821,18 @@ OpenSSL>
 			</para>
 	
 			<para>
-				The pkcs11 engine is very generic and flexible.
+				The PKCS #11 engine is very generic and flexible.
 				It will always work, even in complex situations
-				involiving several cards, keys, objects, certificates
+				involving several cards, keys, objects, certificates
 				or concurrent applications. Also it is fully based
-				on pkcs11 and that way it can use the Opensc
-				pkcs11 library (and does so per default), but
-				it will work with any other pkcs11 library, too.
+				on PKCS #11 and that way it can use the OpenSC
+				PKCS #11 library (and does so by default), but
+				it will work with any other PKCS #11 library,
+				too.
 			</para>
 	
 			<para>
-				To load the pkcs11 engine issue this command:
+				To load the PKCS #11 engine, issue this command:
 				<screen>
 aj@simulacron:~$ openssl
 OpenSSL> engine dynamic -pre SO_PATH:/home/aj/opensc/lib/opensc/engine_pkcs11.so -pre ID:pkcs11 -pre LIST_ADD:1 -pre LOAD -pre MODULE_PATH:/home/aj/opensc/lib/pkcs11/opensc-pkcs11.so
@@ -849,7 +858,7 @@ OpenSSL>
 				<replaceable>key</replaceable> has the format <![CDATA[[slot_<slotNr>][-][id_<keyID>]]]>, in which
 				<itemizedlist>
 					<listitem>
-						the optional slotNr indicates which pkcs11 slot to take
+						the optional slotNr indicates which PKCS #11 slot to take
 						(starting from 0, which is also the default)
 					</listitem>
 					<listitem>
@@ -868,7 +877,7 @@ OpenSSL>
 			</para>
 
 			<para>
-				For Windows, only the pkcs11 engine (not the opensc engine) has been ported;
+				For Windows, only the PKCS #11 engine (not the OpenSC engine) has been ported;
 				use "engine_pkcs11" instead of "engine_pkcs11.so".
 			</para>
 
@@ -928,8 +937,8 @@ OpenSSL>
 			<title>Pluggable Authentication Module</title>
 
 			<para>
-				Pluggable authantication modules or pam is
-				the default way under linux and other unix
+				Pluggable authentication modules (PAM) is
+				the default way under Linux and other Unix
 				operating systems to configure authentication.
 				OpenSC includes a module to allow smart card
 				based authentication: pam_opensc.
@@ -950,12 +959,12 @@ OpenSSL>
 
 					<varlistentry>
 						<term>use_first_pass</term>
-						<listitem>don't prompt the user for passwords, take them from PAM_ items insteat</listitem>
+						<listitem>don't prompt the user for passwords, take them from PAM_ items instead</listitem>
 					</varlistentry>
 
 					<varlistentry>
 						<term>try_first_pass</term>
-						<listitem>don't prompt the user for passwords unless PAM_(OLD)AUTHTOK in unsed</listitem>
+						<listitem>don't prompt the user for passwords unless PAM_(OLD)AUTHTOK in used</listitem>
 					</varlistentry>
 
 					<varlistentry>
@@ -965,7 +974,7 @@ OpenSSL>
 
 					<varlistentry>
 						<term>set_pass</term>
-						<listitem>set the PAM_ item swith the passwords used by this module</listitem>
+						<listitem>set the PAM_ item with the passwords used by this module</listitem>
 					</varlistentry>
 
 					<varlistentry>
@@ -1003,7 +1012,7 @@ OpenSSL>
 					method. Create a directory
 					<filename>.eid</filename> in your home
 					directory and copy your PEM encoded
-					certificat to the file
+					certificate to the file
 					<filename>.eid/authorized_certificates</filename>.
 				</para>
 
@@ -1019,11 +1028,11 @@ OpenSSL>
 			</section>
 
 			<section id="opensc.using.pam.ldap">
-				<title>ldap based authentication</title>
+				<title>LDAP based authentication</title>
 
 				<para>
 					Setting auth_method to pkcs15-ldap will
-					enable ldap based authenticaton.
+					enable LDAP based authentication.
 					These options are supported:
 				</para>
 
@@ -1045,32 +1054,32 @@ OpenSSL>
 
 					<varlistentry>
 						<term>-H hostname</term>
-						<listitem>hostname of ldap server</listitem>
+						<listitem>hostname of LDAP server</listitem>
 					</varlistentry>
 
 					<varlistentry>
 						<term>-P port</term>
-						<listitem>port or ldap server</listitem>
+						<listitem>port or LDAP server</listitem>
 					</varlistentry>
 
 					<varlistentry>
 						<term>-S scope</term>
-						<listitem>scope of ldap server</listitem>
+						<listitem>scope of LDAP server</listitem>
 					</varlistentry>
 
 					<varlistentry>
 						<term>-b binddn</term>
-						<listitem>binddn for ldap connection</listitem>
+						<listitem>binddn for LDAP connection</listitem>
 					</varlistentry>
 
 					<varlistentry>
 						<term>-p passwd</term>
-						<listitem>password for ldap bind</listitem>
+						<listitem>password for LDAP bind</listitem>
 					</varlistentry>
 
 					<varlistentry>
 						<term>-B base</term>
-						<listitem>base for ldap bind</listitem>
+						<listitem>base for LDAP bind</listitem>
 					</varlistentry>
 
 					<varlistentry>
@@ -1080,13 +1089,13 @@ OpenSSL>
 
 					<varlistentry>
 						<term>-f filter</term>
-						<listitem>filter in ldap search</listitem>
+						<listitem>filter in LDAP search</listitem>
 					</varlistentry>
 				</variablelist>
 
 				<para>
 					FIXME: provide an example
-					of ldap data structure, config
+					of LDAP data structure, config
 					file etc.
 				</para>
 			</section>
@@ -1094,20 +1103,20 @@ OpenSSL>
 	</chapter>
 
 	<chapter id="opensc.pkcs11">
-		<title>The OpenSC PKCS11 library</title>
+		<title>The OpenSC PKCS #11 library</title>
 
 		<section id="opensc.pkcs11.whatis">
-			<title>What is PKCS11</title>
+			<title>What is PKCS #11</title>
 
 			<para>
-				PKCS11 is a standard API for accessing cryptographic tokens
+				<ulink url="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-11/">PKCS #11</ulink> is a standard API for accessing cryptographic tokens
 				such as smart cards, Hardware Security Modules, ...
 				It contains functions like C_GetSlotList(), C_OpenSession(),
 				C_FindObjects(), C_Login(), C_Decrypt(), ...
 			</para>
 
 			<para>
-				Some core concepts of pkcs11 are:
+				Some core concepts of PKCS #11 are:
 				<itemizedlist>
 					<listitem>
 						slot: the place in which a smart card can be put. Usually this
@@ -1121,7 +1130,7 @@ OpenSSL>
 						object: a key, a certificate, some data, ... Is either a token
 						object (if it resides on the card) or a session object (if it
 						doesn't reside on the card, e.g. a certificate given to the
-						pkcs11 library to do a verification).
+						PKCS #11 library to do a verification).
 					</listitem>
 					<listitem>
 						session: before you can do anything with a token, you have to
@@ -1147,7 +1156,8 @@ OpenSSL>
 				and the user PIN. However, smart cards can have more than 1 user
 				PIN.
 				A way to this solve problem is to have multiple 'virtual' slots,
-				as explained in appendix D of the pkcs11 standard. So per physical
+				as explained in appendix D of the <ulink
+				url="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-11/">PKCS #11 standard</ulink>. So per physical
 				reader, you have a number of virtual slots. If you insert a card
 				in the reader, a token will appear in all the virtual slots,
 				and each token will contain 1 PIN along with the private keys
@@ -1162,7 +1172,7 @@ OpenSSL>
 			</para>
 
 			<para>
-				Opensc implements the following behaviour: for each PIN, its
+				OpenSC implements the following behaviour: for each PIN, its
 				private keys and corresponding certs, there is 1 virtual slot
 				allocated. If there are any objects left, they are put in the
 				next free virtual slot. And if there are some virtual slots left,
@@ -1249,7 +1259,8 @@ OpenSSL>
 				Other parts of OpenSC be should ported as well.
 				Also we should implement native Win32 APIs such
 				as CryptoAPI Provider, some login stuff and
-				ActiveX plugin for Explorer to do the signing.
+				ActiveX plugin for Internet Explorer to do the
+				signing.
 			</para>
 		</section>
 	</chapter>
@@ -1259,9 +1270,10 @@ OpenSSL>
 		<title>Troubleshooting</title>
 
 		<para>
-			A mailing-list has been set up for support and
+			A mailing list has been set up for support and
 			discussion about the OpenSC project. Additional info is
-			available at OpenSC web site.
+			available at the
+			<ulink url="http://www.opensc.org/">OpenSC web site</ulink>.
 		</para>
 	</chapter>
 
@@ -1285,11 +1297,11 @@ OpenSSL>
 		<para>
 			OpenSC Signer is a Netscape plugin that will generate
 			digital signatures using facilities on PKI-capable
-			smartcards.
+			smart cards.
 		</para>
 
 		<section id="opensc.signer.install">
-			<title>Building and Installing libopensc</title>
+			<title>Building and installing the OpenSC Signer</title>
 
 			<para>
 				You should specify your plugin directory with:
@@ -1316,10 +1328,10 @@ OpenSSL>
 	</chapter>
 
 	<chapter id="opensc.docbook">
-		<title>A few hints on docbook documents</title>
+		<title>A few hints on DocBook documents</title>
 
 		<para>
-			This document is maintained as docbook xml
+			This document is maintained as DocBook XML
 			document. Here are some hints and links for
 			newcomers.
 		</para>
@@ -1328,38 +1340,38 @@ OpenSSL>
 			This document is written in XML not SGML.
 			To convert it, use a XSL stylesheet, not
 			an DSSSL stylesheet. Ignore all tools and
-			webpages talking about SGML or DSSSL, those
-			talk about legecy technology no longer used
+			web pages talking about SGML or DSSSL, those
+			talk about legacy technology no longer used
 			and no longer up to date.
 		</para>
 
 		<para>
-			<ulink url="http://docbook.sf.net/">The Docbook
-				Project</ulink> at Sourceforge has the
-			XSL stylshet used to convert this XML document
+			<ulink url="http://docbook.sourceforge.net/">DocBook
+			Open Repository project</ulink> at SourceForge has the
+			XSL stylesheet used to convert this XML document
 			to other formats.
 		</para>
 
 		<para>
-			<ulink url="http://www.docbook.org/">Docbook, the
-				definite Guide (O'Reilly Book)</ulink> documents
-			Docbook, is very handy as reference and available
-			Online for free.
+			<ulink url="http://www.docbook.org/">DocBook: The
+			Definitive Guide (O'Reilly Book)</ulink> documents
+			DocBook, is very handy as reference and available
+			online for free.
 		</para>
 
 		<para>
-			<ulink url="http://www.sagehill.net/docbookxsl/">Online
-				Book on Docbook, XML and XSL</ulink> is a book
-			with a greate introduction on how to create a document,
+			<ulink url="http://www.sagehill.net/docbookxsl/">DocBook
+			XSL: The Complete Guide</ulink> is a book
+			with a great introduction on how to create a document,
 			how to convert it, where to get the software, tools
 			and everything. It you a fast road to editing this
 			document, look at this book.
 		</para>
 
 		<para>
-			THis document might be ugly. If you know html,
+			This document might be ugly. If you know html,
 			please help us to improve it. Some stuff can
-			be tuned in the xsl stylesheet (see <ulink url="http://docbook.sourceforge.net/release/xsl/current/doc/html/">Reference for the HTML stylesheet parameters</ulink>), but most stuff can be improved via CSS
+			be tuned in the XSL stylesheet (see <ulink url="http://docbook.sourceforge.net/release/xsl/current/doc/html/">Reference for the HTML stylesheet parameters</ulink>), but most stuff can be improved via CSS
 			styles. We need help on this ! 
 		</para>
 	</chapter>
