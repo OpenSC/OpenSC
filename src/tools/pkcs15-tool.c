@@ -34,6 +34,7 @@ char * opt_cert = NULL;
 char * opt_pubkey = NULL;
 char * opt_outfile = NULL;
 char * opt_newpin = NULL;
+char * opt_pin = NULL;
 
 int quiet = 0;
 
@@ -45,6 +46,7 @@ enum {
 	OPT_NO_CACHE,
 	OPT_LIST_PUB,
 	OPT_READ_PUB,
+	OPT_PIN,
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -53,24 +55,25 @@ static int pem_encode(struct sc_context *, int,
 		sc_pkcs15_der_t *, sc_pkcs15_der_t *);
 
 const struct option options[] = {
-	{ "learn-card",		0, 0, 		'L' },
-	{ "read-certificate",	1, 0, 		'r' },
-	{ "list-certificates",	0, 0,		'c' },
-	{ "read-data-object",	1, 0, 		'R' },
-	{ "list-data-objects",	0, 0,		'C' },
-	{ "list-pins",		0, 0,		OPT_LIST_PINS },
-	{ "unblock-pin",	0, 0,		'u' },
-	{ "change-pin",		0, 0,		OPT_CHANGE_PIN },
-	{ "list-keys",          0, 0,           'k' },
-	{ "list-public-keys",	0, 0,		OPT_LIST_PUB },
-	{ "read-public-key",	1, 0,		OPT_READ_PUB },
-	{ "reader",		1, 0,		OPT_READER },
-	{ "output",		1, 0,		'o' },
-	{ "quiet",		0, 0,		'q' },
-	{ "debug",		0, 0,		'd' },
-	{ "no-cache",		0, 0,		OPT_NO_CACHE },
-	{ "auth-id",		1, 0,		'a' },
-	{ "wait",		0, 0,		'w' },
+	{ "learn-card",		no_argument, 0, 		'L' },
+	{ "read-certificate",	required_argument, 0, 		'r' },
+	{ "list-certificates",	no_argument, 0,		'c' },
+	{ "read-data-object",	required_argument, 0, 		'R' },
+	{ "list-data-objects",	no_argument, 0,		'C' },
+	{ "list-pins",		no_argument, 0,		OPT_LIST_PINS },
+	{ "unblock-pin",	no_argument, 0,		'u' },
+	{ "change-pin",		no_argument, 0,		OPT_CHANGE_PIN },
+	{ "list-keys",          no_argument, 0,           'k' },
+	{ "list-public-keys",	no_argument, 0,		OPT_LIST_PUB },
+	{ "read-public-key",	required_argument, 0,		OPT_READ_PUB },
+	{ "reader",		required_argument, 0,		OPT_READER },
+	{ "pin",                required_argument, 0,   OPT_PIN },
+	{ "output",		required_argument, 0,		'o' },
+	{ "quiet",		no_argument, 0,		'q' },
+	{ "debug",		no_argument, 0,		'd' },
+	{ "no-cache",		no_argument, 0,		OPT_NO_CACHE },
+	{ "auth-id",		required_argument, 0,		'a' },
+	{ "wait",		no_argument, 0,		'w' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -87,6 +90,7 @@ const char *option_help[] = {
 	"Lists public keys",
 	"Reads public key with ID <arg>",
 	"Uses reader number <arg>",
+        "Specify PIN",
 	"Outputs to file <arg>",
 	"Quiet operation",
 	"Debug output -- may be supplied several times",
@@ -625,9 +629,13 @@ int unblock_pin(void)
 	puk = get_pin("Enter PUK", &pinfo);
 	if (puk == NULL)
 		return 2;
-	while (1) {
-		u8 *pin2;
 
+	if (opt_pin)
+		pin = opt_pin;
+	else 
+		while (1) {
+		u8 *pin2;
+	
 		pin = get_pin("Enter new PIN", &pinfo);
 		if (pin == NULL || strlen((char *) pin) == 0)
 			return 2;
@@ -662,16 +670,22 @@ int change_pin(void)
 	u8 *pincode, *newpin;
 	int r;
 	
-	pincode = get_pin("Enter old PIN", &pinfo);
+	if (opt_pin) 
+		pincode=opt_pin;
+	else 
+		pincode = get_pin("Enter old PIN", &pinfo);
 	if (pincode == NULL)
 		return 2;
 	if (strlen((char *) pincode) == 0) {
 		fprintf(stderr, "No PIN code supplied.\n");
 		return 2;
 	}
-	while (1) {
+	if (opt_newpin)
+		newpin = opt_newpin;
+	else 
+		while (1) {
 		u8 *newpin2;
-
+		
 		newpin = get_pin("Enter new PIN", &pinfo);
 		if (newpin == NULL || strlen((char *) newpin) == 0)
 			return 2;
@@ -855,6 +869,9 @@ int main(int argc, char * const argv[])
 			break;
 		case OPT_READER:
 			opt_reader = atoi(optarg);
+			break;
+		case OPT_PIN:
+			opt_pin = optarg;
 			break;
 		case 'o':
 			opt_outfile = optarg;
