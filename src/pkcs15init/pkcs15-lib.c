@@ -563,6 +563,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15init_prkeyargs *keyargs,
 		if (keyargs->x509_usage)
 			usage = sc_pkcs15init_map_usage(keyargs->x509_usage, 1);
 	}
+
 	if ((label = keyargs->label) == NULL)
 		label = "Private Key";
 
@@ -994,6 +995,11 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 	if ((r = select_id(p15card, SC_PKCS15_TYPE_DATA_OBJECT, &args->id)) < 0)
 		return r;
 
+	/* Set the USER PIN reference from args */
+	r = set_user_pin_from_authid(p15card, profile, &args->auth_id);
+	if (r < 0)
+		return r;
+
 #ifdef notused
 	if (args->id.len != 0) {
 		sc_pkcs15_object_t *objp;
@@ -1027,6 +1033,7 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 	object->type = SC_PKCS15_TYPE_DATA_OBJECT;
 	object->data = data_object_info;
 	object->flags = DEFAULT_DATA_FLAGS;
+	object->auth_id = args->auth_id;
 	strncpy(object->label, label, sizeof(object->label));
 	r = sc_pkcs15init_store_data(p15card, profile,
 			SC_PKCS15_TYPE_DATA_OBJECT, &args->der_encoded,

@@ -758,6 +758,8 @@ do_store_data_object(struct sc_profile *profile)
 
 	if (opt_objectid)
 		sc_pkcs15_format_id(opt_objectid, &args.id);
+	if (opt_authid)
+		sc_pkcs15_format_id(opt_authid, &args.auth_id);
 	args.label = opt_label;
 
 	r = do_read_data_object(opt_infile, &data, &datalen);
