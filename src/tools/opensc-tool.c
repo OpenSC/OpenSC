@@ -50,7 +50,7 @@ const char *option_help[] = {
 	"Uses reader number <arg>",
 	"Outputs to file <arg>",
 	"Quiet operation",
-	"Debug output -- may be supplied several timeso"
+	"Debug output -- may be supplied several times",
 	"Uses password (PIN) <arg>",
 	"The auth ID of the PIN to use [P15]",
 };
