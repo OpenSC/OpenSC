@@ -83,6 +83,7 @@ struct sc_pkcs15init_callbacks {
 	 */
 	int	(*get_pin)(struct sc_profile *, int,
 				const struct sc_pkcs15_pin_info *,
+				const char *label,
 				u8 *, size_t *);
 
 	/*
@@ -177,6 +178,11 @@ extern int	sc_pkcs15init_store_private_key(struct sc_pkcs15_card *,
 				struct sc_profile *,
 				struct sc_pkcs15init_prkeyargs *,
 				struct sc_pkcs15_object **);
+extern int	sc_pkcs15init_store_split_key(struct sc_pkcs15_card *,
+				struct sc_profile *,
+				struct sc_pkcs15init_prkeyargs *,
+				struct sc_pkcs15_object **,
+				struct sc_pkcs15_object **);
 extern int	sc_pkcs15init_store_public_key(struct sc_pkcs15_card *,
 				struct sc_profile *,
 				struct sc_pkcs15init_pubkeyargs *,
@@ -225,7 +231,8 @@ extern int	sc_pkcs15init_rmdir(struct sc_card *, struct sc_profile *,
 /* Helper function for CardOS */
 extern int	sc_pkcs15init_requires_restrictive_usage(
 				struct sc_pkcs15_card *,
-				struct sc_pkcs15init_prkeyargs *);
+				struct sc_pkcs15init_prkeyargs *,
+				unsigned int);
 
 #ifdef  __cplusplus
 }

@@ -206,15 +206,27 @@ sc_pkcs15init_erase_card_recursively(struct sc_card *card,
 		struct sc_profile *profile,
 		int so_pin_ref)
 {
+	struct sc_pkcs15_card *p15orig = profile->p15_card;
 	struct sc_pkcs15_pin_info sopin, temp;
 	struct sc_file	*df = profile->df_info->file, *dir;
 	int		r;
 
 	/* Frob: need to tell the upper layers about the SO PIN id */
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
-	temp = sopin;
-	temp.reference = so_pin_ref;
-	sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN, &temp);
+	if (so_pin_ref != -1) {
+		temp = sopin;
+		temp.reference = so_pin_ref;
+		sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN, &temp);
+	} else {
+		struct sc_pkcs15_card *p15card = NULL;
+
+		card->ctx->log_errors = 0;
+		if (sc_pkcs15_bind(card, &p15card) >= 0) {
+			set_so_pin_from_card(p15card, profile);
+			profile->p15_card = p15card;
+		}
+		card->ctx->log_errors = 1;
+	}
 
 	/* Delete EF(DIR). This may not be very nice
 	 * against other applications that use this file, but
@@ -242,6 +254,10 @@ sc_pkcs15init_erase_card_recursively(struct sc_card *card,
 
 	/* Unfrob the SO pin reference, and return */
 out:	sc_profile_set_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
+	if (profile->p15_card != p15orig) {
+		sc_pkcs15_unbind(profile->p15_card);
+		profile->p15_card = p15orig;
+	}
 	return r;
 }
 
@@ -760,6 +776,35 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	return r;
 }
 
+int
+sc_pkcs15init_store_split_key(struct sc_pkcs15_card *p15card,
+		struct sc_profile *profile,
+		struct sc_pkcs15init_prkeyargs *keyargs,
+		struct sc_pkcs15_object **prk1_obj,
+		struct sc_pkcs15_object **prk2_obj)
+{
+	unsigned int    usage = keyargs->x509_usage;
+	int		r;
+
+	/* keyEncipherment|dataEncipherment|keyAgreement */
+	keyargs->x509_usage = usage & 0x1C;
+	r = sc_pkcs15init_store_private_key(p15card, profile,
+				keyargs, prk1_obj);
+
+	if (r >= 0) {
+		/* digitalSignature|nonRepudiation|certSign|cRLSign */
+		keyargs->x509_usage = usage & 0x63;
+
+		/* Prevent pkcs15init from choking on duplicate ID */
+		keyargs->flags |= SC_PKCS15INIT_SPLIT_KEY;
+		r = sc_pkcs15init_store_private_key(p15card, profile,
+					keyargs, prk2_obj);
+	}
+
+	keyargs->x509_usage = usage;
+	return r;
+}
+
 /*
  * Store a public key
  */
@@ -1162,13 +1207,17 @@ check_key_compatibility(struct sc_pkcs15_card *p15card,
 
 int
 sc_pkcs15init_requires_restrictive_usage(struct sc_pkcs15_card *p15card,
-			struct sc_pkcs15init_prkeyargs *keyargs)
+			struct sc_pkcs15init_prkeyargs *keyargs,
+			unsigned int key_length)
 {
 	int	res;
 
+	if (key_length == 0)
+		key_length = prkey_bits(&keyargs->key);
+
 	res = __check_key_compatibility(p15card, &keyargs->key,
 			 keyargs->x509_usage,
-			 prkey_bits(&keyargs->key), 0);
+			 key_length, 0);
 	return res < 0;
 }
 
@@ -1479,7 +1528,7 @@ do_get_and_verify_secret(struct sc_profile *pro, struct sc_card *card,
 {
 	struct sc_pkcs15_pin_info pin_info;
 	struct sc_cardctl_default_key data;
-	const char	*ident;
+	const char	*ident, *label = NULL;
 	unsigned int	pin_id = (unsigned int) -1;
 	size_t		defsize = 0;
 	u8		defbuf[32];
@@ -1488,8 +1537,13 @@ do_get_and_verify_secret(struct sc_profile *pro, struct sc_card *card,
 	ident = "authentication data";
 	if (type == SC_AC_CHV) {
 		ident = "PIN";
+		memset(&pin_info, 0, sizeof(pin_info));
 		if (sc_profile_get_pin_id(pro, reference, &pin_id) >= 0)
 			sc_profile_get_pin_info(pro, pin_id, &pin_info);
+		else {
+			/* This is all info we have */
+			pin_info.reference = reference;
+		}
 	} else if (type == SC_AC_PRO) {
 		ident = "secure messaging key";
 	} else if (type == SC_AC_AUT) {
@@ -1526,25 +1580,44 @@ do_get_and_verify_secret(struct sc_profile *pro, struct sc_card *card,
 			goto found;
 	}
 
-	/* Okay, nothing in our cache.
-	 * Ask the card driver whether it knows a default key for this one
-	 */
-	data.method = type;
-	data.key_ref = reference;
-	data.len = sizeof(defbuf);
-	data.key_data = defbuf;
-	if (sc_card_ctl(card, SC_CARDCTL_GET_DEFAULT_KEY, &data) >= 0)
-		defsize = data.len;
+	if (type != SC_AC_CHV) {
+		/* Okay, nothing in our cache.
+		 * Ask the card driver whether it knows a default key
+		 * for this one.
+		 */
+		data.method = type;
+		data.key_ref = reference;
+		data.len = sizeof(defbuf);
+		data.key_data = defbuf;
+		if (sc_card_ctl(card, SC_CARDCTL_GET_DEFAULT_KEY, &data) >= 0)
+			defsize = data.len;
+	} else if (pro->p15_card) {
+		/* Get the label, if we have one */
+		struct sc_pkcs15_object *obj;
+		int r;
+
+		r = sc_pkcs15_find_pin_by_reference(pro->p15_card,
+					reference, &obj);
+		if (r >= 0 && obj->label[0])
+			label = obj->label;
+	}
 
 	if (callbacks) {
-		if (pin_id != -1 && callbacks->get_pin) {
-			r = callbacks->get_pin(pro, pin_id, &pin_info,
-					pinbuf, pinsize);
-		} else
-		if (pin_id == -1 && callbacks->get_key) {
-			r = callbacks->get_key(pro, type, reference,
-					defbuf, defsize,
-					pinbuf, pinsize);
+		switch (type) {
+		case SC_AC_CHV:
+			if (callbacks->get_pin) {
+				r = callbacks->get_pin(pro, pin_id,
+						&pin_info, label,
+						pinbuf, pinsize);
+			}
+			break;
+		default:
+			if (callbacks->get_key) {
+				r = callbacks->get_key(pro, type, reference,
+						defbuf, defsize,
+						pinbuf, pinsize);
+			}
+			break;
 		}
 	}
 
