@@ -762,9 +762,20 @@ int sc_reset_retry_counter(struct sc_card *card, unsigned int type,
 			   int ref, const u8 *puk, size_t puklen,
 			   const u8 *newref, size_t newlen);
 int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad);
-int sc_add_padding(struct sc_context *ctx, const u8 *in, size_t inlen, u8 *out,
-		   size_t *outlen, unsigned long flags, unsigned int mod_length);
-
+/* pkcs1 padding/encoding functions */
+int sc_pkcs1_add_01_padding(const u8 *in, size_t in_len, u8 *out,
+			    size_t *out_len, size_t mod_length);
+int sc_pkcs1_strip_01_padding(const u8 *in_dat, size_t in_len, u8 *out_dat,
+			      size_t *out_len);
+int sc_pkcs1_strip_02_padding(const u8 *data, size_t len, u8 *out_dat,
+			      size_t *out_len);
+int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm, const u8 *in_dat,
+		size_t in_len, u8 *out_dat, size_t *out_len);
+int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
+		const u8 *in_dat, size_t in_len, u8 *out_dat, size_t *out_len);
+int sc_pkcs1_encode(struct sc_context *ctx, unsigned long flags,
+	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_len);
+int sc_strip_zero_padding(const u8 *in,size_t in_len, u8 *out, size_t *out_len);
 /* ISO 7816-9 */
 int sc_create_file(struct sc_card *card, struct sc_file *file);
 int sc_delete_file(struct sc_card *card, const struct sc_path *path);

@@ -29,54 +29,6 @@
 #include <unistd.h>
 #endif
 
-/*
- * Prefixes for pkcs-v1 signatures
- */
-static const u8 hdr_md5[] = {
-	0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x02, 0x05, 0x05, 0x00, 0x04, 0x10
-};
-static const u8 hdr_sha1[] = {
-	0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05, 0x00, 0x04, 0x14
-};
-static const u8 hdr_ripemd160[] = {
-	0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x24, 0x03, 0x02, 0x01, 0x05, 0x00, 0x04, 0x14
-};
-
-#define DIGEST_INFO_COUNT 6
-static const struct digest_info_prefix {
-	unsigned int	algorithm;
-	const u8 *	hdr;
-	size_t		hdr_len;
-	size_t		hash_len;
-} digest_info_prefix[DIGEST_INFO_COUNT] = {
-      { SC_ALGORITHM_RSA_HASH_NONE,     NULL,           0,                      -1      },
-      {	SC_ALGORITHM_RSA_HASH_MD5,	hdr_md5,	sizeof(hdr_md5),	16	},
-      { SC_ALGORITHM_RSA_HASH_SHA1,	hdr_sha1,	sizeof(hdr_sha1),	20	},
-      { SC_ALGORITHM_RSA_HASH_RIPEMD160,hdr_ripemd160,	sizeof(hdr_ripemd160),	20	},
-      { SC_ALGORITHM_RSA_HASH_MD5_SHA1,	NULL,		0,			36	},
-      {	0,				NULL,		0,			-1	}
-};
-
-
-static int pkcs1_strip_padding(u8 *data, size_t len)
-{
-	unsigned int	n = 0;
-
-	if (data[0] != 0x00 && data[1] != 0x02)
-		return SC_ERROR_DECRYPT_FAILED;
-	/* Skip over padding bytes */
-	for (n = 2; n < len && data[n]; n++)
-		;
-	/* Must be at least 8 pad bytes */
-	if (n >= len || n < 10)
-		return SC_ERROR_DECRYPT_FAILED;
-	n++;
-
-	/* Now move decrypted contents to head of buffer */
-	memmove(data, data + n, len - n);
-	return len - n;
-}
-
 static int select_key_file(struct sc_pkcs15_card *p15card,
 			   const struct sc_pkcs15_prkey_info *prkey,
 			   struct sc_security_env *senv)
@@ -181,97 +133,11 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 
 	/* Strip any padding */
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
-		r = pkcs1_strip_padding(out, r);
+		r = sc_pkcs1_strip_02_padding(out, r, out, &r);
                 SC_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
 	}
 
 	return r;
-}
-
-/*
- * No padding required - card will add the padding itself
- */
-static int add_no_padding(const struct digest_info_prefix *pfx,
-		          const u8 *in, size_t inlen,
-			  u8 *out, size_t *outlen,
-			  size_t mod_length)
-{
-	size_t msglen = pfx->hdr_len + inlen;
-
-	if (msglen > mod_length)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (msglen > *outlen)
-		return SC_ERROR_BUFFER_TOO_SMALL;
-	memcpy(out, pfx->hdr, pfx->hdr_len);
-	memcpy(out + pfx->hdr_len, in, inlen);
-
-	*outlen = msglen;
-	return 0;
-}
-
-/*
- * Add pkcs1 padding
- */
-static int add_pkcs1_padding(const struct digest_info_prefix *pfx,
-			     const u8 *in, size_t inlen,
-			     u8 *out, size_t *outlen,
-			     size_t mod_length)
-{
-	size_t msglen = pfx->hdr_len + inlen;
-	int i;
-
-	if (*outlen < mod_length)
-		return SC_ERROR_BUFFER_TOO_SMALL;
-	if (msglen + 11 > mod_length)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	*out++ = 0x00;
-	*out++ = 0x01;
-	
-	i = mod_length - 3 - msglen;
-	memset(out, 0xFF, i);
-	out += i;
-	*out++ = 0x00;
-	memcpy(out, pfx->hdr, pfx->hdr_len);
-	memcpy(out + pfx->hdr_len, in, inlen);
-
-	*outlen = mod_length;
-	return 0;
-}
-
-/*
- * Add padding - we should probably move this to sec.c
- */
-int sc_add_padding(struct sc_context *ctx, const u8 *in, size_t inlen, u8 *out,
-		   size_t *outlen, unsigned long flags, unsigned int mod_length)
-{
-	const struct digest_info_prefix *pfx;
-	int j, pad_algo;
-	unsigned int hash_algo;
-
-	hash_algo = flags & SC_ALGORITHM_RSA_HASHES;
-	pad_algo  = flags & SC_ALGORITHM_RSA_PADS;
-
-	for (j = DIGEST_INFO_COUNT, pfx = digest_info_prefix; j-- >= 0; pfx++) {
-		if (pfx->algorithm == hash_algo)
-			break;
-	}
-	if (j < 0) {
-		error(ctx, "Unsupported digest algorithm 0x%x\n", hash_algo);
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	if (pfx->hash_len > 0 && inlen != pfx->hash_len)
-		return SC_ERROR_WRONG_LENGTH;
-
-	switch (pad_algo) {
-	case SC_ALGORITHM_RSA_PAD_NONE: /* padding done by card */
-		return add_no_padding(pfx, in, inlen, out, outlen, mod_length);
-	case SC_ALGORITHM_RSA_PAD_PKCS1:
-		return add_pkcs1_padding(pfx, in, inlen, out, outlen, mod_length);
-	default:
-		error(ctx, "Unsupported padding algorithm 0x%x\n", pad_algo);
-		return SC_ERROR_NOT_SUPPORTED;
-	}
 }
 
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
@@ -378,8 +244,8 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 	if (pad_flags) {
                 buflen = sizeof(buf);
-		r = sc_add_padding(ctx, in, inlen, buf, &buflen, pad_flags,
-			        prkey->modulus_length/8);
+		r = sc_pkcs1_encode(ctx, pad_flags, in, inlen, buf, &buflen,
+			            prkey->modulus_length/8);
                 SC_TEST_RET(ctx, r, "Unable to add padding");
 		in = buf;
 		inlen = buflen;

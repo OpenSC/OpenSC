@@ -1071,11 +1071,10 @@ static int starcos_compute_signature(struct sc_card *card,
 		/* create DigestInfo structure ? */
 		if (mse->fix_digestInfo)
 		{
+			unsigned int flags = mse->fix_digestInfo & SC_ALGORITHM_RSA_HASHES;
 			tmp_len = sizeof(sbuf);
-			r = sc_add_padding(card->ctx, data, datalen,
-					sbuf, &tmp_len,
-					mse->fix_digestInfo & SC_ALGORITHM_RSA_HASHES,
-					sizeof(sbuf));
+			r = sc_pkcs1_encode(card->ctx, flags, data, datalen,
+					sbuf, &tmp_len, sizeof(sbuf));
 			if (r < 0)
 				return r;
 		}
