@@ -595,34 +595,32 @@ etoken_set_security_env(struct sc_card *card,
 
 /*
  * Compute digital signature
- * Note we assume that the key algorithm used here is RSA_PURE_SIG
  */
+
+/* internal function to do the actual signature computation */
 static int
-etoken_compute_signature(struct sc_card *card,
-			     const u8 *data, size_t datalen,
-			     u8 *out, size_t outlen)
+do_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
+		     u8 *out, size_t outlen)
 {
 	int r;
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
-	assert(card != NULL && data != NULL && out != NULL);
-	if (datalen > 255)
-		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
-	if (outlen < datalen)
-		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_BUFFER_TOO_SMALL);
+	if (datalen > SC_MAX_APDU_BUFFER_SIZE ||
+	    outlen > SC_MAX_APDU_BUFFER_SIZE)
+		return SC_ERROR_INTERNAL;
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
 	 * P2:  0x9A  Cmd: Input for Digital Signature */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
-	apdu.resp = out;
-	apdu.le = datalen;
+	apdu.resp = rbuf;
+	apdu.le = outlen;
 	apdu.resplen = sizeof(rbuf);
 
 	memcpy(sbuf, data, datalen);
-	apdu.data = data;
+	apdu.data = sbuf;
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
 	apdu.sensitive = 1;
@@ -630,12 +628,62 @@ etoken_compute_signature(struct sc_card *card,
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		memcpy(out, rbuf, outlen);
 		SC_FUNC_RETURN(card->ctx, 4, apdu.resplen);
 	}
 	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
+static int
+etoken_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
+			 u8 *out, size_t outlen)
+{
+	int    r;
+	u8     buf[SC_MAX_APDU_BUFFER_SIZE];
+	size_t buf_len = sizeof(buf), tmp_len = buf_len;
+	struct sc_context *ctx;
 
+	assert(card != NULL && data != NULL && out != NULL);	
+	ctx = card->ctx;
+	SC_FUNC_CALLED(ctx, 1);
+
+	if (datalen > 255)
+		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+	if (outlen < datalen)
+		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_BUFFER_TOO_SMALL);
+	outlen = datalen;
+
+	/* XXX As we don't know what operations are allowed with a
+	 * certain key, let's try RSA_PURE etc. and see which operation
+	 * succeeds (this is not really beautiful, but currently the
+	 * only way I see) -- Nils
+	 */
+	if (ctx->debug >= 3)
+		debug(ctx, "trying RSA_PURE_SIG (padded DigestInfo)\n");
+	r = do_compute_signature(card, data, datalen, out, outlen);
+	if (r >= SC_SUCCESS)
+		SC_FUNC_RETURN(ctx, 4, r);
+	if (ctx->debug >= 3)
+		debug(ctx, "trying RSA_SIG (just the DigestInfo)\n");
+	/* remove padding: first try pkcs1 bt01 padding */
+	r = sc_pkcs1_strip_01_padding(data, datalen, buf, &tmp_len);
+	if (r != SC_SUCCESS) {
+		/* no pkcs1 bt01 padding => let's try zero padding */
+		tmp_len = buf_len;
+		r = sc_strip_zero_padding(data, datalen, buf, &tmp_len);
+		if (r != SC_SUCCESS)
+			SC_FUNC_RETURN(ctx, 4, r);
+	}
+	r = do_compute_signature(card, buf, tmp_len, out, outlen);
+	if (r >= SC_SUCCESS)	
+		SC_FUNC_RETURN(ctx, 4, r);
+	if (ctx->debug >= 3)
+		debug(ctx, "trying to sign raw hash value\n");
+	r = sc_pkcs1_strip_digest_info_prefix(NULL,buf,tmp_len,buf,&buf_len);
+	if (r != SC_SUCCESS)
+		SC_FUNC_RETURN(ctx, 4, r);
+	return do_compute_signature(card, buf, buf_len, out, outlen);
+}
 
 static int
 etoken_lifecycle_get(struct sc_card *card, int *mode)
