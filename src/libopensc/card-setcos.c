@@ -120,10 +120,8 @@ static u8 acl_to_byte(const struct sc_acl_entry *e)
 
 static int setcos_create_file(struct sc_card *card, struct sc_file *file)
 {
-	if (file->prop_attr_len == 0) {
-		memcpy(file->prop_attr, "\x03\x00\x00", 3);
-		file->prop_attr_len = 3;
-	}
+	if (file->prop_attr_len == 0)
+		sc_file_set_prop_attr(file, "\x03\x00\x00", 3);
 	if (file->sec_attr_len == 0) {
 		int idx[6], i;
 		u8 buf[6];
