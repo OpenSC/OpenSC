@@ -20,7 +20,8 @@ DISTCLEANFILES = \
 	scconf.h \
 	scdl.h \
 	scldap.h \
-	scrandom.h
+	scrandom.h \
+	ui.h
 
 all-local:
 	@$(RM) *.h
@@ -31,6 +32,7 @@ all-local:
 	@$(LN_S) ${top_srcdir}/src/libopensc/opensc.h opensc.h
 	@$(LN_S) ${top_srcdir}/src/libopensc/errors.h errors.h
 	@$(LN_S) ${top_srcdir}/src/libopensc/types.h types.h
+	@$(LN_S) ${top_srcdir}/src/libopensc/ui.h ui.h
 	@$(LN_S) ${top_srcdir}/src/libopensc/pkcs15.h pkcs15.h
 	@$(LN_S) ${top_srcdir}/src/pkcs15init/pkcs15-init.h pkcs15-init.h
 	@$(LN_S) ${top_srcdir}/src/pkcs15init/keycache.h keycache.h
