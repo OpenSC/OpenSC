@@ -113,6 +113,9 @@ struct sc_pkcs11_framework_ops {
 	 * In future: functions to create new objects
 	 * (ie. certificates, private keys)
          */
+	CK_RV (*initialize)(struct sc_pkcs11_card *, void *,
+				CK_UTF8CHAR_PTR, CK_ULONG,
+				CK_UTF8CHAR_PTR);
 };
 
 
@@ -189,6 +192,9 @@ extern struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
 
 /* Framework definitions */
 extern struct sc_pkcs11_framework_ops framework_pkcs15;
+#ifdef HAVE_OPENSSL
+extern struct sc_pkcs11_framework_ops framework_pkcs15init;
+#endif
 
 void strcpy_bp(u8 *dst, const char *src, int dstsize);
 CK_RV sc_to_cryptoki_error(int rc, int reader);
