@@ -61,7 +61,8 @@ static int	etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
 static int	etoken_create_sec_env(sc_profile_t *, sc_card_t *,
 			unsigned int, unsigned int);
 static int	etoken_put_key(struct sc_profile *, struct sc_card *,
-			int, unsigned int, struct sc_pkcs15_prkey_rsa *);
+			int, sc_pkcs15_prkey_info_t *,
+		       	struct sc_pkcs15_prkey_rsa *);
 static int	etoken_key_algorithm(unsigned int, int *);
 static int	etoken_extract_pubkey(sc_card_t *, int,
 			u8, sc_pkcs15_bignum_t *);
@@ -271,9 +272,7 @@ etoken_store_key(sc_profile_t *profile, sc_card_t *card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = etoken_put_key(profile, card, algorithm,
-				key_info->key_reference,
-				&key->u.rsa);
+	r = etoken_put_key(profile, card, algorithm, key_info, &key->u.rsa);
 
 	return r;
 }
@@ -331,8 +330,7 @@ etoken_generate_key(sc_profile_t *profile, sc_card_t *card,
 	key_obj.modulus.len = keybits >> 3;
 	key_obj.d.data = abignum;
 	key_obj.d.len = keybits >> 3;
-	r = etoken_put_key(profile, card, algorithm,
-			key_info->key_reference, &key_obj);
+	r = etoken_put_key(profile, card, algorithm, key_info, &key_obj);
 	if (r < 0)
 		goto out;
 
@@ -581,15 +579,15 @@ etoken_store_key_component(struct sc_card *card,
 }
 
 static int
-etoken_put_key(struct sc_profile *profile, struct sc_card *card,
-		int algorithm, unsigned int key_id,
+etoken_put_key(sc_profile_t *profile, sc_card_t *card,
+		int algorithm, sc_pkcs15_prkey_info_t *key_info,
 		struct sc_pkcs15_prkey_rsa *key)
 {
-	struct sc_pkcs15_pin_info pin_info;
-	int		r, pin_id;
+	int	r, key_id, pin_id;
 
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &pin_info);
-	if ((pin_id = pin_info.reference) < 0)
+	key_id = key_info->key_reference;
+	pin_id = sc_keycache_find_named_pin(&key_info->path, SC_PKCS15INIT_USER_PIN);
+	if (pin_id < 0)
 		pin_id = 0;
 
 	r = etoken_store_key_component(card, algorithm, key_id, pin_id, 0,
