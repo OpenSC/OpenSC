@@ -138,7 +138,7 @@ dnl Automatically update the libtool script if it becomes out-of-date.
 
 dnl Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h sys/time.h unistd.h syslog.h security/pam_appl.h security/_pam_macros.h])
+AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h string.h sys/time.h unistd.h syslog.h getopt.h security/pam_appl.h security/_pam_macros.h])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -156,7 +156,7 @@ AC_CHECK_FUNCS([getpass gettimeofday memset mkdir strdup strerror])
 dnl C Compiler features
 AC_C_INLINE
 if test "$GCC" = "yes"; then
-	CFLAGS="$CFLAGS -Wall"
+	CFLAGS="$CFLAGS -Wall -Werror"
 fi
 
 dnl OS specific options
@@ -182,9 +182,6 @@ AC_ARG_WITH(common-dir,
 
 saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
-if test "x$prefix" != "xNONE" ; then
-	trycommondir="$trycommondir $prefix"
-fi
 AC_CACHE_CHECK([for common directory], ac_cv_commondir, [
 	for commondir in $trycommondir "" /usr/local /usr/pkg /opt ; do
 		# Skip directories if they don't exist
@@ -253,8 +250,8 @@ if (test ! -z "$ac_cv_commondir" && test "x$ac_cv_commondir" != "x(system)") ; t
 	fi
 fi
 
-AC_SUBST(LIBPCSCLITE)
-LIBPCSCLITE="-lpcsclite"
+AC_SUBST(LIBPCSC)
+LIBPCSC="-lpcsclite"
 found_pcsclite=no
 saved_LIBS="$LIBS"
 saved_LDFLAGS="$LDFLAGS"
@@ -315,9 +312,6 @@ SSL_MSG="no"
 saved_LIBS="$LIBS"
 saved_LDFLAGS="$LDFLAGS"
 saved_CPPFLAGS="$CPPFLAGS"
-if test "x$prefix" != "xNONE" ; then
-	tryssldir="$tryssldir $prefix"
-fi
 AC_SUBST(LIBCRYPTO)
 AC_CACHE_CHECK([for OpenSSL directory], ac_cv_openssldir, [
 	for ssldir in $tryssldir "" /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl ; do
