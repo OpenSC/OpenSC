@@ -554,8 +554,20 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		app->aid_len = p15spec->file_app->namelen;
 		memcpy(app->aid, p15spec->file_app->name, app->aid_len);
 	}
+	/* set serial number if explicitly specified */
 	if (args->serial)
 		sc_pkcs15init_set_serial(profile, args->serial);
+	else {
+		/* otherwise try to get the serial number from the card */
+		sc_serial_number_t serialnr;
+		r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serialnr);
+		if (r == SC_SUCCESS) {
+			char hex_serial[SC_MAX_SERIALNR * 2 + 1];
+			sc_bin_to_hex(serialnr.value, serialnr.len,
+				hex_serial, sizeof(hex_serial), 0);
+			sc_pkcs15init_set_serial(profile, hex_serial);
+		}
+	}
 
 	if (args->label) {
 		if (p15spec->label)
