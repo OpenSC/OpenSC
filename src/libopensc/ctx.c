@@ -160,7 +160,7 @@ static int load_parameters(struct sc_context *ctx, scconf_block *block,
 	if (val) {
 		if (ctx->debug_file && ctx->debug_file != stdout)
 			fclose(ctx->debug_file);
-		if (strcmp(val, "stdout") == 0)
+		if (strcmp(val, "stdout") != 0)
 			ctx->debug_file = fopen(val, "a");
 		else
 			ctx->debug_file = stdout;
