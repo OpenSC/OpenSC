@@ -45,7 +45,7 @@
  */
 #define OPENSC_CONF_PATH "%windir%\\opensc.conf"
 
-#define SC_PKCS15_PROFILE_DIRECTORY "%windir%\\"
+#define SC_PKCS15_PROFILE_DIRECTORY "%windir%"
 
 #define PATH_MAX _MAX_PATH
 
