@@ -303,6 +303,7 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_prkey_info *info;
 	struct sc_pkcs15_prkey key;
+	struct sc_path path;
 	u8 *data = NULL;
 	size_t len;
 	int r;
@@ -325,7 +326,11 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_NOT_ALLOWED;
 	}
 
-	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
+	path = info->path;
+	if (path.type == SC_PATH_TYPE_PATH_PROT)
+		path.type = SC_PATH_TYPE_PATH;
+
+	r = sc_pkcs15_read_file(p15card, &path, &data, &len);
 	if (r < 0) {
 		error(ctx, "Unable to read private key file.\n");
 		return r;
@@ -372,4 +377,36 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 fail:	if (data)
 		free(data);
 	return r;
+}
+
+void
+sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
+{
+	assert(key != NULL);
+	switch (key->algorithm) {
+	case SC_ALGORITHM_RSA:
+		free(key->u.rsa.modulus.data);
+		free(key->u.rsa.exponent.data);
+		free(key->u.rsa.p.data);
+		free(key->u.rsa.q.data);
+		free(key->u.rsa.iqmp.data);
+		free(key->u.rsa.dmp1.data);
+		free(key->u.rsa.dmq1.data);
+		break;
+	case SC_ALGORITHM_DSA:
+		free(key->u.dsa.pub.data);
+		free(key->u.dsa.p.data);
+		free(key->u.dsa.q.data);
+		free(key->u.dsa.g.data);
+		free(key->u.dsa.priv.data);
+		break;
+	}
+	memset(key, 0, sizeof(key));
+}
+
+void
+sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
+{
+	sc_pkcs15_erase_prkey(key);
+	free(key);
 }
