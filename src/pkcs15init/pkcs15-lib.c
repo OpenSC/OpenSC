@@ -556,7 +556,9 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	if (r >= 0)
 		r = sc_pkcs15init_update_tokeninfo(p15spec, profile);
 
+	card->ctx->suppress_errors++;
 	sc_pkcs15init_write_info(card, profile);
+	card->ctx->suppress_errors--;
 	return r;
 }
 
@@ -2825,7 +2827,6 @@ sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile)
 	u8		buffer[512], *p, *end;
 	int		n, r;
 
-	card->ctx->suppress_errors++;
 	file = sc_file_new();
 	sc_format_path(OPENSC_INFO_PATH, &file->path);
 	file->type = SC_FILE_TYPE_WORKING_EF;
