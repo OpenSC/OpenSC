@@ -27,8 +27,11 @@
 #include <opensc.h>
 #ifdef HAVE_READLINE_READLINE_H
 #include <readline/readline.h>
+#include <readline/history.h>
 #endif
 #include "util.h"
+
+#define DIM(v) (sizeof(v)/sizeof((v)[0]))
 
 int opt_reader = 0, opt_debug = 0;
 const char *opt_driver = NULL;
@@ -50,9 +53,22 @@ const char *option_help[] = {
 	"Debug output -- maybe supplied several times",
 };
 
+
+#if 0 /* fixme: uncomment for use with pksign */
+static u8 oid_md5[18] = /* MD5 OID is 1.2.840.113549.2.5 */
+{ 0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86,0x48,
+  0x86, 0xf7, 0x0d, 0x02, 0x05, 0x05, 0x00, 0x04, 0x10 };
+static u8 oid_sha1[15] = /* SHA-1 OID 1.3.14.3.2.26 */
+{ 0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03,
+  0x02, 0x1a, 0x05, 0x00, 0x04, 0x14 };
+static u8 oid_rmd160[15] = /* RIPE MD-160 OID is 1.3.36.3.2.1 */
+{ 0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x24, 0x03,
+  0x02, 0x01, 0x05, 0x00, 0x04, 0x14 };
+#endif
+
 struct command {
 	const char *	name;
-	int		(*func)(const char *, const char *);
+	int		(*func)(int, char **);
 	const char *	help;
 };
 
@@ -162,11 +178,13 @@ void print_file(const struct sc_file *file)
 	return;
 }
 
-int do_ls(const char *dummy, const char *dummy2)
+int do_ls(int argc, char **argv)
 {
 	u8 buf[256], *cur = buf;
 	int r, count;
 
+        if (argc)
+                goto usage;
 	r = sc_list_files(card, buf, sizeof(buf));
 	if (r < 0) {
 		check_ret(r, SC_AC_OP_LIST_FILES, "unable to receive file listing", current_file);
@@ -197,15 +215,20 @@ int do_ls(const char *dummy, const char *dummy2)
 		}
 	}
         return 0;
+usage:
+	puts("Usage: ls");
+	return -1;
 }
 
-int do_cd(const char *arg, const char *dummy2)
+int do_cd(int argc, char **argv)
 {
 	struct sc_path path;
 	struct sc_file *file;
 	int r;
 
-	if (strcmp(arg, "..") == 0) {
+        if (argc != 1)
+                goto usage;
+	if (strcmp(argv[0], "..") == 0) {
 		if (current_path.len < 4) {
 			printf("unable to go up, already in MF.\n");
 			return -1;
@@ -222,10 +245,9 @@ int do_cd(const char *arg, const char *dummy2)
 		current_path = path;
 		return 0;
 	}
-	if (arg_to_path(arg, &path, 0) != 0) {
-		printf("Usage: cd <file_id>\n");
-		return -1;
-	}
+	if (arg_to_path(argv[0], &path, 0) != 0) 
+                goto usage;
+
 	r = sc_select_file(card, &path, &file);
 	if (r) {
 		check_ret(r, SC_AC_OP_SELECT, "unable to select DF", current_file);
@@ -246,6 +268,9 @@ int do_cd(const char *arg, const char *dummy2)
 	current_file = file;
 
 	return 0;
+usage:
+	puts("Usage: cd <file_id>");
+	return -1;
 }
 
 int read_and_print_binary_file(struct sc_file *file)
@@ -295,22 +320,23 @@ int read_and_print_record_file(struct sc_file *file)
 	return 0;
 }
 
-int do_cat(const char *arg, const char *dummy2)
+int do_cat(int argc, char **argv)
 {
 	int r, error = 0;
 	struct sc_path path;
         struct sc_file *file;
 	int not_current = 1;
 
-	if (strlen(arg) == 0) {
+        if (argc > 1)
+                goto usage;
+	if (!argc) {
 		path = current_path;
 		file = current_file;
 		not_current = 0;
 	} else {
-		if (arg_to_path(arg, &path, 0) != 0) {
-			printf("Usage: cat [file_id]\n");
-			return -1;
-		}
+		if (arg_to_path(argv[0], &path, 0) != 0) 
+                        goto usage;
+
 		r = sc_select_file(card, &path, &file);
 		if (r) {
 			check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
@@ -335,31 +361,35 @@ int do_cat(const char *arg, const char *dummy2)
 		}
 	}
         return -error;
+ usage:
+        puts("Usage: cat [file_id]");
+        return -1;
 }
 
-int do_info(const char *arg, const char *dummy2)
+int do_info(int argc, char **argv)
 {
 	struct sc_file *file;
 	struct sc_path path;
 	int r, i;
 	const char *st;
 	int not_current = 1;
-	
-	if (strlen(arg) == 0) {
+
+	if (!argc) {
 		path = current_path;
 		file = current_file;
 		not_current = 0;
-	} else {
-		if (arg_to_path(arg, &path, 0) != 0) {
-			printf("Usage: info [file_id]\n");
-			return -1;
-		}
+	} else if (argc == 1) {
+		if (arg_to_path(argv[0], &path, 0) != 0) 
+                        goto usage;
 		r = sc_select_file(card, &path, &file);
 		if (r) {
 			printf("unable to select file: %s\n", sc_strerror(r));
 			return -1;
 		}
 	}
+        else 
+                goto usage;
+
 	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
 	case SC_FILE_TYPE_INTERNAL_EF:
@@ -439,6 +469,10 @@ int do_info(const char *arg, const char *dummy2)
 		}
 	}
 	return 0;
+
+ usage:
+        puts("Usage: info [file_id]");
+        return -1;
 }
 
 int create_file(struct sc_file *file)
@@ -460,17 +494,19 @@ int create_file(struct sc_file *file)
 	return 0;
 }
 
-int do_create(const char *arg, const char *arg2)
+int do_create(int argc, char **argv)
 {
 	struct sc_path path;
 	struct sc_file *file;
 	unsigned int size;
-	int r, i;
+	int r;
 
-	if (arg_to_path(arg, &path, 1) != 0)
+        if (argc != 2)
+                goto usage;
+	if (arg_to_path(argv[0], &path, 1) != 0)
 		goto usage;
 	/* %z isn't supported everywhere */
-	if (sscanf(arg2, "%d", &size) != 1)
+	if (sscanf(argv[1], "%d", &size) != 1)
 		goto usage;
 	file = sc_file_new();
 	file->id = (path.value[0] << 8) | path.value[1];
@@ -478,27 +514,27 @@ int do_create(const char *arg, const char *arg2)
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	file->size = (size_t) size;
 	file->status = SC_FILE_STATUS_ACTIVATED;
-	for (i = 0; i < SC_MAX_AC_OPS; i++)
-		sc_file_add_acl_entry(file, i, SC_AC_NONE, SC_AC_KEY_REF_NONE);
-
+	
 	r = create_file(file);
 	sc_file_free(file);
 	return r;
-usage:
+ usage:
 	printf("Usage: create <file_id> <file_size>\n");
 	return -1;
 }
 
-int do_mkdir(const char *arg, const char *arg2)
+int do_mkdir(int argc, char **argv)
 {
 	struct sc_path path;
 	struct sc_file *file;
 	unsigned int size;
 	int r;
 
-	if (arg_to_path(arg, &path, 1) != 0)
+        if (argc != 2)
+                goto usage;
+	if (arg_to_path(argv[0], &path, 1) != 0)
 		goto usage;
-	if (sscanf(arg2, "%d", &size) != 1)
+	if (sscanf(argv[1], "%d", &size) != 1)
 		goto usage;
 	file = sc_file_new();
 	file->id = (path.value[0] << 8) | path.value[1];
@@ -509,17 +545,19 @@ int do_mkdir(const char *arg, const char *arg2)
 	r = create_file(file);
 	sc_file_free(file);
 	return r;
-usage:
+ usage:
 	printf("Usage: mkdir <file_id> <df_size>\n");
 	return -1;
 }
 
-int do_delete(const char *arg, const char *dummy2)
+int do_delete(int argc, char **argv)
 {
 	struct sc_path path;
 	int r;
 
-	if (arg_to_path(arg, &path, 1) != 0)
+        if (argc != 1)
+                goto usage;
+	if (arg_to_path(argv[0], &path, 1) != 0)
 		goto usage;
 	if (path.len != 2)
 		goto usage;
@@ -535,36 +573,41 @@ usage:
 	return -1;
 }
 
-int do_verify(const char *arg, const char *arg2)
+int do_verify(int argc, char **argv)
 {
 	const char *types[] = {
 		"CHV", "KEY", "PRO"
 	};
 	int i, type = -1, ref, r, tries_left = -1;
 	u8 buf[30];
+        const char *s;
 	size_t buflen = sizeof(buf);
 	
-	if (strlen(arg) == 0 || strlen(arg2) == 0)
-		goto usage;
-	for (i = 0; i < 3; i++)
-		if (strncasecmp(arg, types[i], 3) == 0) {
+	if (argc < 1 || argc > 2)
+                goto usage;
+	for (i = 0; i < 3; i++) {
+		if (strncasecmp(argv[0], types[i], 3) == 0) {
 			type = i;
 			break;
 		}
+        }
 	if (type == -1) {
 		printf("Invalid type.\n");
 		goto usage;
 	}
-	if (sscanf(arg + 3, "%d", &ref) != 1) {
+	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
 		printf("Invalid key reference.\n");
 		goto usage;
 	}
-	if (arg2[0] == '"') {
-		for (++arg2, i = 0; i < sizeof(buf) && arg2[i] != '"'; i++) 
-			buf[i] = arg2[i];
+        if (argc < 2) {
+                /* just return the retry counter */
+                buflen = 0;
+        }
+	if (argv[1][0] == '"') {
+		for (s=argv[1]+1, i=0; i < sizeof(buf) && *s && *s != '"';i++) 
+			buf[i] = *s++;
 		buflen = i;
-	} else
-	if (sc_hex_to_bin(arg2, buf, &buflen) != 0) {
+	} else if (sc_hex_to_bin(argv[1], buf, &buflen) != 0) {
 		printf("Invalid key value.\n");
 		goto usage;
 	}
@@ -593,7 +636,7 @@ int do_verify(const char *arg, const char *arg2)
 	printf("Code correct.\n");
 	return 0;
 usage:
-	printf("Usage: verify <key type><key ref> <key in hex>\n");
+	printf("Usage: verify <key type><key ref> [<key in hex>]\n");
 	printf("Possible values of <key type>:\n");
 	for (i = 0; i < sizeof(types)/sizeof(types[0]); i++)
 		printf("\t%s\n", types[i]);
@@ -601,7 +644,78 @@ usage:
 	return -1;
 }
 
-int do_get(const char *arg, const char *arg2)
+
+int do_change(int argc, char **argv)
+{
+	int i, ref, r, tries_left = -1;
+	u8 oldpin[30];
+	u8 newpin[30];
+        const char *s;
+	size_t oldpinlen = sizeof(oldpin);
+	size_t newpinlen = sizeof(newpin);
+	
+        if (argc < 2 || argc > 3)
+		goto usage;
+        if (strncasecmp(argv[0], "CHV", 3)) {
+		printf("Invalid type.\n");
+		goto usage;
+	}
+	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
+		printf("Invalid key reference.\n");
+		goto usage;
+	}
+        argc--;
+        argv++;
+
+        if (argc == 1) {
+                /* set without verification */
+                oldpinlen = 0;
+        }
+	else if (argv[0][0] == '"') {
+		for (s = argv[0] + 1, i = 0;
+                     i < sizeof(oldpin) && *s && *s != '"'; i++) 
+			oldpin[i] = *s++;
+		oldpinlen = i;
+                argc--;
+                argv++;
+	} else if (sc_hex_to_bin(argv[0], oldpin, &oldpinlen) != 0) {
+		printf("Invalid key value.\n");
+		goto usage;
+	}
+
+	if (argv[0][0] == '"') {
+		for (s = argv[0] + 1, i = 0;
+                     i < sizeof(newpin) && *s && *s != '"'; i++) 
+			newpin[i] = *s++;
+		newpinlen = i;
+	} else if (sc_hex_to_bin(argv[2], newpin, &newpinlen) != 0) {
+		printf("Invalid key value.\n");
+		goto usage;
+	}
+
+	r = sc_change_reference_data (card, SC_AC_CHV, ref,
+                                      oldpin, oldpinlen,
+                                      newpin, newpinlen,
+                                      &tries_left);
+	if (r) {
+		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
+			if (tries_left >= 0) 
+				printf("Incorrect code, %d tries left.\n", tries_left);
+			else
+				printf("Incorrect code.\n");
+		}
+		printf("Unable to change PIN code: %s\n", sc_strerror(r));
+		return -1;
+	}
+	printf("PIN changed.\n");
+	return 0;
+usage:
+	printf("Usage: change CHV<pin ref> [<old pin>] <new pin>\n");
+	printf("Example: change CHV2 00:00:00:00:00:00 \"foobar\"\n");
+	return -1;
+}
+
+int do_get(int argc, char **argv)
 {
 	u8 buf[256];
 	int r, error = 0;
@@ -612,10 +726,12 @@ int do_get(const char *arg, const char *arg2)
 	const char *filename;
 	FILE *outf = NULL;
 	
-	if (arg_to_path(arg, &path, 0) != 0)
+        if (argc < 1 || argc > 2)
+                goto usage;
+	if (arg_to_path(argv[0], &path, 0) != 0)
 		goto usage;
-	if (strlen(arg2))
-		filename = arg2;
+	if (argc == 2)
+		filename = argv[1];
 	else {
 		sprintf((char *) buf, "%02X%02X", path.value[0], path.value[1]);
 		filename = (char *) buf;
@@ -670,7 +786,7 @@ usage:
 	return -1;
 }
 
-int do_put(const char *arg, const char *arg2)
+int do_put(int argc, char **argv)
 {
 	u8 buf[256];
 	int r, error = 0;
@@ -681,10 +797,12 @@ int do_put(const char *arg, const char *arg2)
 	const char *filename;
 	FILE *outf = NULL;
 	
-	if (arg_to_path(arg, &path, 0) != 0)
+        if (argc < 1 || argc > 2)
+                goto usage;
+	if (arg_to_path(argv[0], &path, 0) != 0)
 		goto usage;
-	if (strlen(arg2))
-		filename = arg2;
+	if (argc == 2)
+		filename = argv[1];
 	else {
 		sprintf((char *) buf, "%02X%02X", path.value[0], path.value[1]);
 		filename = (char *) buf;
@@ -741,25 +859,192 @@ usage:
 	return -1;
 }
 
-int do_debug(const char *arg, const char *dummy2)
+int do_debug(int argc, char **argv)
 {
 	int	i;
 
-	if (sscanf(arg, "%d", &i) != 1)
-		return -1;
-	printf("Debug level set to %d\n", i);
-	ctx->debug = i;
-	if (i) {
-		ctx->error_file = stderr;
-		ctx->debug_file = stdout;
-	} else {
-		ctx->error_file = NULL;
-		ctx->debug_file = NULL;
-	}
-	return 0;
+        if (!argc)
+                printf("Current debug level is %d\n", ctx->debug);
+        else {
+                if (sscanf(argv[0], "%d", &i) != 1)
+                        return -1;
+                printf("Debug level set to %d\n", i);
+                ctx->debug = i;
+                if (i) {
+                        ctx->error_file = stderr;
+                        ctx->debug_file = stdout;
+                } else {
+                        ctx->error_file = NULL;
+                        ctx->debug_file = NULL;
+                }
+        }
+        return 0;
 }
 
-int do_quit(const char *dummy, const char *dummy2)
+
+
+static int do_pksign(int argc, char **argv)
+{
+        puts ("Not yet supported");
+        return -1;
+#if 0
+	int i, ref, r;
+	u8 indata[128];
+	size_t indatalen = sizeof indata;
+	u8 outdata[128];
+	size_t outdatalen = sizeof outdata;
+	struct sc_security_env senv;
+        const u8 *oid;
+        int oidlen;
+        const char *s;
+
+	if (argc < 2 || argc > 3)
+                goto usage;
+	if (sscanf (argv[0], "%d", &ref) != 1 || ref < 0 || ref > 255) {
+		printf("Invalid key reference.\n");
+		goto usage;
+	}
+
+	if (argv[1][0] == '"') {
+		for (s = argv[1]+1, i = 0;
+                     i < sizeof indata && *s && *s != '"'; i++) 
+			indata[i] = *s++;
+		indatalen = i;
+	} else if (sc_hex_to_bin(argv[1], indata, &indatalen)) {
+		printf("Invalid data value.\n");
+		goto usage;
+	}
+
+                
+        if (argc == 3) {
+                if (!strcasecmp(argv[2], "SHA1")) {
+                        oid = oid_sha1; oidlen = sizeof oid_sha1;
+                }
+                else if (!strcasecmp (argv[2], "MD5")) {
+                        oid = oid_md5; oidlen = sizeof oid_md5;
+                }
+                else if (!strcasecmp (argv[2], "RMD160")) {
+                        oid = oid_rmd160; oidlen = sizeof oid_rmd160;
+                }
+                else {
+                        goto usage;
+                }
+         }
+        else {
+                oid = ""; oidlen = 0;
+        }
+        
+        if (indatalen + oidlen > sizeof indata) {
+                printf("Data value to long.\n");
+                goto usage;
+        }
+        
+        memmove(indata + oidlen, indata, indatalen);
+        memcpy(indata, oid, oidlen);
+        indatalen += oidlen;
+
+        /* setup the security environment */
+        /* FIXME The values won't work for other cards.  They do work
+           for TCOS because there is no need for a security
+           environment there */
+        memset(&senv, 0, sizeof senv);
+	senv.operation = SC_SEC_OPERATION_SIGN;
+	senv.algorithm = SC_ALGORITHM_RSA;
+	senv.key_ref_len = 1;
+	senv.key_ref[0] = ref;
+ 	senv.flags = (SC_SEC_ENV_KEY_REF_PRESENT | SC_SEC_ENV_ALG_PRESENT);
+	r = sc_set_security_env(card, &senv, 0);
+	if (r) {
+		printf("Failed to set the security environment: %s\n",
+                       sc_strerror (r));
+		return -1;
+	}
+
+        /* Perform the actual sign. */ 
+	r = sc_compute_signature(card, indata, indatalen,
+                                 outdata, outdatalen);
+	if (r<0) {
+		printf("Signing failed: %s\n",  sc_strerror (r));
+		return -1;
+	}
+        hex_dump_asc(stdout, outdata, r, -1);
+        printf ("Done.\n");
+	return 0;
+usage:
+	printf ("Usage: pksign <key ref> <data> [MD5|SHA1|RMD160]\n");
+	return -1;
+#endif
+}
+
+
+static int do_pkdecrypt(int argc, char **argv)
+{
+        puts ("Not yet supported");
+        return -1;
+#if 0
+	int i, ref, r;
+	u8 indata[128];
+	size_t indatalen = sizeof indata;
+	u8 outdata[128];
+	size_t outdatalen = sizeof outdata;
+	struct sc_security_env senv;
+        const char *s;
+
+	if (argc != 2)
+		goto usage;
+	if (sscanf(argv[0], "%d", &ref) != 1 || ref < 0 || ref > 255) {
+		printf("Invalid key reference.\n");
+		goto usage;
+	}
+
+	if (argv[1][0] == '"') {
+		for (s=argv[1]+1, i = 0;
+                     i < sizeof indata && *s && *s != '"'; i++) 
+			indata[i] = *s++;
+		indatalen = i;
+	} else if (sc_hex_to_bin (argv[1], indata, &indatalen)) {
+		printf("Invalid data value.\n");
+		goto usage;
+	}
+
+        /* setup the security environment */
+        memset (&senv, 0, sizeof senv);
+	senv.operation = SC_SEC_OPERATION_DECIPHER;
+	senv.algorithm = SC_ALGORITHM_RSA;
+	senv.key_ref_len = 1;
+	senv.key_ref[0] = ref;
+ 	senv.flags = (SC_SEC_ENV_KEY_REF_PRESENT | SC_SEC_ENV_ALG_PRESENT);
+	r = sc_set_security_env(card, &senv, 0);
+	if (r) {
+		printf("Failed to set the security environment: %s\n",
+                       sc_strerror (r));
+		return -1;
+	}
+
+        /* perform the actual decryption */
+        /* FIXME: It is pretty useless to to this test padding :-; */
+        memmove(indata+(sizeof indata - indatalen), indata, indatalen);
+        memset(indata, 0, (sizeof indata - indatalen));
+        indatalen = sizeof indata;
+	r = sc_decipher(card, indata, indatalen, outdata, outdatalen);
+	if (r<0) {
+		printf("Decryption failed: %s\n",  sc_strerror (r));
+		return -1;
+	}
+        hex_dump_asc (stdout, outdata, r, -1);
+        printf("Done.\n");
+	return 0;
+usage:
+	printf("Usage: pkdecrypt <key ref> <data>\n");
+	return -1;
+#endif
+}
+
+
+
+
+
+int do_quit(int argc, char **argv)
 {
 	die(0);
 	return 0;
@@ -774,9 +1059,12 @@ struct command		cmds[] = {
  { "create",	do_create,	"create a new EF"			},
  { "delete",	do_delete,	"remove an EF/DF"			},
  { "verify",	do_verify,	"present a PIN or key to the card"	},
+ { "change",	do_change,	"change a PIN"                          },
  { "put",	do_put,		"copy a local file to the card"		},
  { "get",	do_get,		"copy an EF to a local file"		},
  { "mkdir",	do_mkdir,	"create a DF"				},
+ { "pksign",    do_pksign,      "create a public key signature"         },
+ { "pkdecrypt", do_pkdecrypt,   "perform a public key decryption"       },
  { "quit",	do_quit,	"quit this program"			},
  { 0, 0, 0 }
 };
@@ -790,11 +1078,11 @@ void usage()
 		printf("  %-10s %s\n", cmd->name, cmd->help);
 }
 
-static int parse_line(char *in, char **argv)
+static int parse_line(char *in, char **argv, int maxargc)
 {
 	int	argc;
 
-	for (argc = 0; argc < 3; argc++) {
+	for (argc = 0; argc < maxargc; argc++) {
 		in += strspn(in, " \t\n");
 		if (*in == '\0')
 			return argc;
@@ -815,12 +1103,34 @@ static int parse_line(char *in, char **argv)
 	return argc;
 }
 
-#if !defined(HAVE_READLINE)
-char * readline(const char *prompt)
+static char * my_readline(const char *prompt)
 {
-	static char buf[128];
+	static char buf[256];
+        static int initialized;
+        static int interactive;
+        char *line;
 
+        if (!initialized) {
+                initialized = 1;
+                interactive = isatty(fileno(stdin));
+#ifdef HAVE_READLINE
+                if (interactive)
+                        using_history ();
+#endif
+        }
+#ifdef HAVE_READLINE
+        if (interactive) {
+            line = readline(prompt);
+            if (line && strlen(line) > 2 )
+                    add_history(line);
+            return line;
+        }
+#endif
+        /* Either we don't have readline or we are not running
+           interactively */
+#ifndef HAVE_READLINE
 	printf("%s", prompt);
+#endif
 	fflush(stdout);
 	if (fgets(buf, sizeof(buf), stdin) == NULL)
 		return NULL;
@@ -830,12 +1140,13 @@ char * readline(const char *prompt)
 		buf[strlen(buf)-1] = '\0';
         return buf;
 }
-#endif
 
 int main(int argc, char * const argv[])
 {
 	int r, c, long_optind = 0, err = 0;
-	char *line, *cargv[3];
+	char *line;
+        int cargc;
+        char *cargv[20];
 
 	printf("OpenSC Explorer version %s\n", sc_version);
 
@@ -857,6 +1168,7 @@ int main(int argc, char * const argv[])
 			break;
 		}
 	}
+
 	r = sc_establish_context(&ctx);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
@@ -915,22 +1227,23 @@ int main(int argc, char * const argv[])
 		for (i = 0; i < current_path.len; i++) {
                         if ((i & 1) == 0 && i)
 				sprintf(prompt+strlen(prompt), "/");
-			sprintf(prompt+strlen(prompt), "%02X", current_path.value[i]);
+			sprintf(prompt+strlen(prompt), "%02X",
+                                current_path.value[i]);
 		}
                 sprintf(prompt+strlen(prompt), "]> ");
-		line = readline(prompt);
+		line = my_readline(prompt);
                 if (line == NULL)
                 	break;
-                r = parse_line(line, cargv);
-		if (r < 1)
+                cargc = parse_line(line, cargv, DIM(cargv));
+		if (cargc < 1)
 			continue;
-		while (r < 3)
-			cargv[r++] = "";
+		for (r=cargc; r < DIM(cargv); r++)
+			cargv[r] = "";
 		c = ambiguous_match(cmds, cargv[0]);
 		if (c == NULL) {
 			usage();
 		} else {
-			c->func(cargv[1], cargv[2]);
+                        c->func(cargc-1, cargv+1);
 		}
 	}
 end:
