@@ -202,6 +202,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	args.pin_reference = pin->reference;
 	args.pin1.min_length = pin->min_length;
 	args.pin1.max_length = pin->max_length;
+	args.pin1.pad_length = pin->stored_length;
 	args.pin1.pad_char = pin->pad_char;
 
 	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
@@ -288,11 +289,13 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	data.pin1.pad_char   = pin->pad_char;
 	data.pin1.min_length = pin->min_length;
 	data.pin1.max_length = pin->max_length;
+	data.pin1.pad_length = pin->stored_length;
 	data.pin2.data       = newpin;
 	data.pin2.len        = newpinlen;
 	data.pin2.pad_char   = pin->pad_char;
 	data.pin2.min_length = pin->min_length;
 	data.pin2.max_length = pin->max_length;
+	data.pin2.pad_length = pin->stored_length;
 
 	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
 		data.flags |= SC_PIN_CMD_NEED_PADDING;
@@ -325,6 +328,8 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	int r;
 	struct sc_card *card;
 	struct sc_pin_cmd_data data;
+	struct sc_pkcs15_object *pin_obj, *puk_obj;
+	struct sc_pkcs15_pin_info *puk_info = NULL;
 
 	assert(p15card != NULL);
 	if (pin->magic != SC_PKCS15_PIN_MAGIC)
@@ -344,6 +349,25 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_INVALID_PIN_LENGTH;
 
 	card = p15card->card;
+	/* get pin_info object of the puk (this is a little bit complicated
+	 * as we don't have the id of the puk (at least now))
+	 * note: for compatible reasons we give no error if no puk object 
+	 * is found */
+	/* first step:  get the pkcs15 object of the pin */
+	r = sc_pkcs15_find_pin_by_auth_id(p15card, &pin->auth_id, &pin_obj);
+	if (r >= 0 && pin_obj) {
+		/* second step: try to get the pkcs15 object of the puk */
+		r = sc_pkcs15_find_pin_by_auth_id(p15card, &pin_obj->auth_id, &puk_obj);
+		if (r >= 0 && puk_obj) {
+			/* third step:  get the pkcs15 info object of the puk */
+			puk_info = (struct sc_pkcs15_pin_info *)puk_obj->data;
+		}
+	}
+	if (!puk_info) {
+		sc_debug(card->ctx, "unable to get puk object use pin object instead\n");
+		puk_info = pin;
+	}
+
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 	/* the path in the pin object is optional */
@@ -365,24 +389,31 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	data.pin1.pad_char   = pin->pad_char;
 	data.pin1.min_length = pin->min_length;
 	data.pin1.max_length = pin->max_length;
+	data.pin1.pad_length = pin->stored_length;
 	data.pin2.data       = newpin;
 	data.pin2.len        = newpinlen;
-	data.pin2.pad_char   = pin->pad_char;
-	data.pin2.min_length = pin->min_length;
-	data.pin2.max_length = pin->max_length;
+	data.pin2.pad_char   = puk_info->pad_char;
+	data.pin2.min_length = puk_info->min_length;
+	data.pin2.max_length = puk_info->max_length;
+	data.pin2.pad_length = puk_info->stored_length;
 
 	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
 		data.flags |= SC_PIN_CMD_NEED_PADDING;
 
-	/* XXX: we assume here that the pin encoding type is the same for
-	 * both pins */
 	switch (pin->type) {
 	case SC_PKCS15_PIN_TYPE_BCD:
 		data.pin1.encoding = SC_PIN_ENCODING_BCD;
-		data.pin2.encoding = SC_PIN_ENCODING_BCD;
 		break;
 	case SC_PKCS15_PIN_TYPE_ASCII_NUMERIC:
 		data.pin1.encoding = SC_PIN_ENCODING_ASCII;
+		break;
+	}
+
+	switch (puk_info->type) {
+	case SC_PKCS15_PIN_TYPE_BCD:
+		data.pin2.encoding = SC_PIN_ENCODING_BCD;
+		break;
+	case SC_PKCS15_PIN_TYPE_ASCII_NUMERIC:
 		data.pin2.encoding = SC_PIN_ENCODING_ASCII;
 		break;
 	}

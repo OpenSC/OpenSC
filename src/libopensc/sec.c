@@ -217,8 +217,7 @@ int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
  */
 int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 {
-	size_t i = 0, j, pad_length = 0;
-	size_t pin_len = pin->len;
+	size_t i = 0, j, pin_len = pin->len;
 
 	if (pin->max_length && pin_len > pin->max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -261,21 +260,22 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 
 	/* Pad to maximum PIN length if requested */
 	if (pad || pin->encoding == SC_PIN_ENCODING_GLP) {
-		pad_length = pin->max_length;
+		size_t pad_length = pin->pad_length;
+		u8     pad_char   = pin->encoding == SC_PIN_ENCODING_GLP ? 0xFF : pin->pad_char;
+
 		if (pin->encoding == SC_PIN_ENCODING_BCD)
 			pad_length >>= 1;
 		if (pin->encoding == SC_PIN_ENCODING_GLP)
 			pad_length = 8;
+
+		if (pad_length > buflen)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+
+		if (pad_length && i < pad_length) {
+			memset(buf + i, pad_char, pad_length - i);
+			i = pad_length;
+		}
 	}
 
-	if (pad_length > buflen)
-		return SC_ERROR_BUFFER_TOO_SMALL;
-
-	if (pad_length && i < pad_length) {
-		memset(buf + i, 
-			pin->encoding == SC_PIN_ENCODING_GLP ? 0xFF : pin->pad_char,
-			pad_length - i);
-		i = pad_length;
-	}
 	return i;
 }
