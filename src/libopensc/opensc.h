@@ -147,6 +147,16 @@ extern "C" {
 #define SC_ALGORITHM_DES		64
 #define SC_ALGORITHM_3DES		65
 
+/* Hash algorithms */
+#define SC_ALGORITHM_MD5		128
+#define SC_ALGORITHM_SHA1		129
+
+/* Key derivation algorithms */
+#define SC_ALGORITHM_PBKDF2		192
+
+/* Key encryption algoprithms */
+#define SC_ALGORITHM_PBES2		256
+
 #define SC_ALGORITHM_ONBOARD_KEY_GEN	0x80000000
 #define SC_ALGORITHM_SPECIFIC_FLAGS	0x0000FFFF
 
@@ -181,6 +191,20 @@ typedef struct sc_security_env sc_security_env_t;
 struct sc_algorithm_id {
 	unsigned int algorithm;
 	struct sc_object_id obj_id;
+	void *params;
+};
+
+struct sc_pbkdf2_params {
+	u8 salt[16];
+	size_t salt_len;
+	int iterations;
+	int key_length;
+	struct sc_algorithm_id hash_alg;
+};
+
+struct sc_pbes2_params {
+	struct sc_algorithm_id derivation_alg;
+	struct sc_algorithm_id key_encr_alg;
 };
 
 struct sc_algorithm_info {
