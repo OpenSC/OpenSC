@@ -813,7 +813,7 @@ static int parse_line(char *in, char **argv)
 	return argc;
 }
 
-#if !defined(HAVE_READLINE_READLINE_H)
+#if !defined(HAVE_READLINE)
 char * readline(const char *prompt)
 {
 	static char buf[128];
