@@ -207,6 +207,14 @@ int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 
 /*
  * This function will copy a PIN, convert and pad it as required
+ *
+ * Note about the SC_PIN_ENCODING_GLP encoding:
+ * PIN buffers are allways 16 nibbles (8 bytes) and look like this:
+ *   0x2 + len + pin_in_BCD + paddingnibbles
+ * in which the paddingnibble = 0xF
+ * E.g. if PIN = 12345, then sbuf = {0x24, 0x12, 0x34, 0x5F, 0xFF, 0xFF, 0xFF, 0xFF}
+ * E.g. if PIN = 123456789012, then sbuf = {0x2C, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0xFF}
+ * Reference: Global Platform - Card Specification - version 2.0.1' - April 7, 2000
  */
 int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 {
@@ -217,13 +225,21 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 	if (pin->max_length && pin_len > pin->max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
+	if (pin->encoding == SC_PIN_ENCODING_GLP) {
+		if (pin_len > 12)
+			return SC_ERROR_INVALID_ARGUMENTS;
+		buf[0] = 0x20 | pin_len;
+		buf++;
+		buflen--;
+	}
+
 	/* PIN given by application, encode if required */
 	if (pin->encoding == SC_PIN_ENCODING_ASCII) {
 		if (pin_len > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		memcpy(buf, pin->data, pin_len);
 		i = pin_len;
-	} else if (pin->encoding == SC_PIN_ENCODING_BCD) {
+	} else if (pin->encoding == SC_PIN_ENCODING_BCD || pin->encoding == SC_PIN_ENCODING_GLP) {
 		if (pin_len > 2 * buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		for (i = j = 0; j < pin_len; j++) {
@@ -240,17 +256,21 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 	}
 
 	/* Pad to maximum PIN length if requested */
-	if (pad) {
+	if (pad || pin->encoding == SC_PIN_ENCODING_GLP) {
 		pad_length = pin->max_length;
 		if (pin->encoding == SC_PIN_ENCODING_BCD)
 			pad_length >>= 1;
+		if (pin->encoding == SC_PIN_ENCODING_GLP)
+			pad_length = 8;
 	}
 
 	if (pad_length > buflen)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	if (pad_length && i < pad_length) {
-		memset(buf + i, pin->pad_char, pad_length - i);
+		memset(buf + i, 
+			pin->encoding == SC_PIN_ENCODING_GLP ? 0xFF : pin->pad_char,
+			pad_length - i);
 		i = pad_length;
 	}
 	return i;

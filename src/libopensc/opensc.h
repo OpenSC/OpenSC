@@ -314,6 +314,7 @@ typedef struct sc_reader sc_reader_t;
 
 #define SC_PIN_ENCODING_ASCII	0
 #define SC_PIN_ENCODING_BCD	1
+#define SC_PIN_ENCODING_GLP	2 /* Global Platform - Card Specification – v 2.0.1 */
 
 struct sc_pin_cmd_pin {
 	const char *prompt;	/* Prompt to display */
