@@ -104,7 +104,6 @@ static struct atrinfo {
  */
 static struct sc_card_operations	gpk_ops;
 static const struct sc_card_driver gpk_drv = {
-	NULL,
 	"Gemplus GPK 4000 driver",
 	"gpk",
 	&gpk_ops
