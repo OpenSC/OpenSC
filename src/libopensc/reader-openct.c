@@ -16,6 +16,7 @@
 
 #include <openct/openct.h>
 #include <openct/logging.h>
+#include <openct/error.h>
 
 #include "opensc.h"
 #include "internal.h"
@@ -50,6 +51,7 @@ static int openct_reader_lock(struct sc_reader *reader,
 			struct sc_slot_info *slot);
 static int openct_reader_unlock(struct sc_reader *reader,
 			struct sc_slot_info *slot);
+static int		openct_error(struct sc_reader *, int);
 
 /* the operations struct, already initialized */
 static struct sc_reader_operations openct_reader_operations = {
@@ -215,33 +217,6 @@ openct_reader_detect_card_presence(struct sc_reader *reader,
 	return slot->flags;
 }
 
-#if 0
-int openct_reader_unix_cmd(struct sc_reader *reader, 
-			struct sc_slot_info *slot,
-			u8 cmd) {
-	struct openct_privslot *myprivslot;
-	u8 msg;
-	int rc;
-
-	SC_FUNC_CALLED(reader->ctx, 1);
-	myprivslot = slot->drv_data;
-	
-	rc = write(myprivslot->fd, &cmd, sizeof(cmd));
-	if (rc != sizeof(cmd)) {
-		error(reader->ctx, "openct_reader_unix_cmd write failed\n");
-		return SC_ERROR_READER;
-	}
-
-	rc = read(myprivslot->fd, &msg, sizeof(msg));
-	if (rc != 1 || msg != 0) {
-		error(reader->ctx, "openct_reader_unix_cmd read failed\n");
-		return SC_ERROR_READER;
-	}
-
-	return SC_NO_ERROR;
-}
-#endif
-
 static int
 openct_reader_connect(struct sc_reader *reader,
 			struct sc_slot_info *slot)
@@ -277,6 +252,21 @@ openct_reader_connect(struct sc_reader *reader,
 	return SC_NO_ERROR;
 }
 
+static int
+openct_reader_reconnect(struct sc_reader *reader,
+			struct sc_slot_info *slot)
+{
+	struct driver_data *data = (struct driver_data *) reader->drv_data;
+	int	rc;
+
+	if (data->h != NULL)
+		return 0;
+
+	if ((rc = openct_reader_connect(reader, slot)) < 0)
+		return SC_ERROR_READER_DETACHED;
+	return SC_ERROR_READER_REATTACHED;
+}
+
 int
 openct_reader_disconnect(struct sc_reader *reader,
 			struct sc_slot_info *slot, int action)
@@ -301,20 +291,24 @@ openct_reader_transmit(struct sc_reader *reader,
 
 	SC_FUNC_CALLED(reader->ctx, 1);
 
-	if (data->h == 0)
-		return SC_ERROR_CARD_NOT_PRESENT;
+	/* Hotplug check */
+	if ((rc = openct_reader_reconnect(reader, slot)) < 0)
+		return rc;
 
 	rc = ct_card_transact(data->h, slot->id,
 			sendbuf, sendsize,
 			recvbuf, *recvsize);
 
-	if (rc < 0) {
-		/* XXX - check error code */
-		return SC_ERROR_READER;
+	if (rc == IFD_ERROR_NOT_CONNECTED) {
+		ct_reader_disconnect(data->h);
+		data->h = NULL;
+		return SC_ERROR_READER_DETACHED;
 	}
 
-	*recvsize = rc;
-	return SC_NO_ERROR;
+	if (rc >= 0)
+		*recvsize = rc;
+
+	return openct_error(reader, rc);
 }
 
 int
@@ -323,15 +317,25 @@ openct_reader_lock(struct sc_reader *reader,
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	struct slot_data *slot_data = (struct slot_data *) slot->drv_data;
-	int rc;
+	int rc, retry = 1;
 
 	SC_FUNC_CALLED(reader->ctx, 1);
-	rc = ct_card_lock(data->h, slot->id, IFD_LOCK_EXCLUSIVE, &slot_data->excl_lock);
 
-	if (rc < 0)
-		return SC_ERROR_READER;
+	/* Hotplug check */
+	if ((rc = openct_reader_reconnect(reader, slot)) < 0)
+		return rc;
 
-	return 0;
+	rc = ct_card_lock(data->h, slot->id,
+				IFD_LOCK_EXCLUSIVE,
+				&slot_data->excl_lock);
+
+	if (rc == IFD_ERROR_NOT_CONNECTED) {
+		ct_reader_disconnect(data->h);
+		data->h = NULL;
+		return SC_ERROR_READER_DETACHED;
+	}
+
+	return openct_error(reader, rc);
 }
 
 int
@@ -343,10 +347,25 @@ openct_reader_unlock(struct sc_reader *reader,
 	int rc;
 
 	SC_FUNC_CALLED(reader->ctx, 1);
+
 	rc = ct_card_unlock(data->h, slot->id, slot_data->excl_lock);
 
-	if (rc < 0)
-		return SC_ERROR_READER;
+	/* We couldn't care less */
+	if (rc == IFD_ERROR_NOT_CONNECTED)
+		return 0;
 
-	return 0;
+	return openct_error(reader, rc);
+}
+
+/*
+ * Handle an error code returned by OpenCT
+ */
+int
+openct_error(struct sc_reader *reader, int code)
+{
+	if (code >= 0)
+		return code;
+
+	/* Fixme: translate error code */
+	return SC_ERROR_READER;
 }
