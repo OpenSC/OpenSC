@@ -27,6 +27,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <opensc/scconf.h>
 #include "pkcs15-init.h"
 #include "profile.h"

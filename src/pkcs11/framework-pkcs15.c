@@ -22,9 +22,7 @@
 #include <malloc.h>
 #include <string.h>
 #include "sc-pkcs11.h"
-#ifdef HAVE_OPENSSL
 #include "opensc/pkcs15-init.h"
-#endif
 
 #define MAX_CACHE_PIN		32
 struct pkcs15_slot_data {
@@ -534,7 +532,6 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
-#ifdef HAVE_OPENSSL
 static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 			struct sc_pkcs11_slot *slot,
 			CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
@@ -579,11 +576,11 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 		CK_OBJECT_HANDLE_PTR phObject)
 {
 	struct sc_pkcs15_card	*card;
-	struct sc_pkcs15init_keyargs args;
+	struct sc_pkcs15init_prkeyargs args;
 	struct sc_pkcs15_object	*key_obj;
 	struct sc_pkcs15_pin_info *pin;
 	CK_KEY_TYPE		key_type;
-	RSA			*rsa;
+	struct sc_pkcs15_prkey_rsa *rsa;
 	int			rc, rv;
 
 	memset(&args, 0, sizeof(args));
@@ -599,13 +596,13 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 		return rv;
 	if (key_type != CKK_RSA)
 		return CKR_FUNCTION_NOT_SUPPORTED; /* XXX correct code? */
-	args.pkey = EVP_PKEY_new();
-	EVP_PKEY_set1_RSA(args.pkey, rsa = RSA_new());
+	args.key.algorithm = SC_ALGORITHM_RSA;
+	rsa = &args.key.u.rsa;
 
 	rv = CKR_OK;
 	while (ulCount--) {
 		CK_ATTRIBUTE_PTR attr = pTemplate++;
-		BIGNUM	*bn = NULL;
+		sc_pkcs15_bignum_t *bn = NULL;
 
 		switch (attr->type) {
 		/* Skip attrs we already know or don't care for */
@@ -624,15 +621,15 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 				goto out;
 			break;
 		case CKA_MODULUS:
-			bn = rsa->n = BN_new(); break;
+			bn = &rsa->modulus; break;
 		case CKA_PUBLIC_EXPONENT:
-			bn = rsa->e = BN_new(); break;
+			bn = &rsa->exponent; break;
 		case CKA_PRIVATE_EXPONENT:
-			bn = rsa->d = BN_new(); break;
+			bn = &rsa->d; break;
 		case CKA_PRIME_1:
-			bn = rsa->p = BN_new(); break;
+			bn = &rsa->p; break;
 		case CKA_PRIME_2:
-			bn = rsa->q = BN_new(); break;
+			bn = &rsa->q; break;
 		default:
 			/* ignore unknown attrs, or flag error? */
 			continue;
@@ -641,47 +638,16 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 		if (bn) {
 			if (attr->ulValueLen > 1024)
 				return CKR_ATTRIBUTE_VALUE_INVALID;
-			BN_bin2bn((unsigned char *) attr->pValue,
-					attr->ulValueLen, bn);
+			bn->len = attr->ulValueLen;
+			bn->data = attr->pValue;
 		}
 	}
 
-	if (!rsa->n || !rsa->e || !rsa->d || !rsa->p || !rsa->q) {
+	if (!rsa->modulus.len || !rsa->exponent.len || !rsa->d.len
+	 || !rsa->p.len || !rsa->q.len) {
 		rv = CKR_TEMPLATE_INCOMPLETE;
 		goto out;
 	}
-
-	/* Generate additional parameters.
-	 * At least the GPK seems to need the full set of CRT
-	 * parameters; storing just the private exponent produces
-	 * invalid signatures.
-	 */
-	if (!rsa->dmp1 || !rsa->dmq1 || !rsa->iqmp) {
-		BIGNUM *aux = BN_new();
-		BN_CTX *ctx = BN_CTX_new();
-
-		if (!rsa->dmp1)
-			rsa->dmp1 = BN_new();
-		if (!rsa->dmq1)
-			rsa->dmq1 = BN_new();
-		if (!rsa->iqmp)
-			rsa->iqmp = BN_new();
-
-		aux = BN_new();
-		ctx = BN_CTX_new();
-
-		BN_sub(aux, rsa->q, BN_value_one());
-		BN_mod(rsa->dmq1, rsa->d, aux, ctx);
-
-		BN_sub(aux, rsa->p, BN_value_one());
-		BN_mod(rsa->dmp1, rsa->d, aux, ctx);
-
-		BN_mod_inverse(rsa->iqmp, rsa->q, rsa->p, ctx);
-
-		BN_clear_free(aux);
-		BN_CTX_free(ctx);
-	}
-
 
 	card  = (struct sc_pkcs15_card*) p11card->fw_data;
 	rc = sc_pkcs15init_store_private_key(card, profile, &args, &key_obj);
@@ -696,11 +662,7 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 
 	rv = CKR_OK;
 
-out:	if (args.pkey) {
-		EVP_PKEY_free(args.pkey);
-		RSA_free(rsa);
-	}
-	return rv;
+out:	return rv;
 }
 
 static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
@@ -710,11 +672,11 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 		CK_OBJECT_HANDLE_PTR phObject)
 {
 	struct sc_pkcs15_card	*card;
-	struct sc_pkcs15init_keyargs args;
+	struct sc_pkcs15init_pubkeyargs args;
 	struct sc_pkcs15_object	*key_obj;
 	struct sc_pkcs15_pin_info *pin;
 	CK_KEY_TYPE		key_type;
-	RSA			*rsa;
+	struct sc_pkcs15_pubkey_rsa *rsa;
 	int			rc, rv;
 
 	memset(&args, 0, sizeof(args));
@@ -730,13 +692,13 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 		return rv;
 	if (key_type != CKK_RSA)
 		return CKR_FUNCTION_NOT_SUPPORTED; /* XXX correct code? */
-	args.pkey = EVP_PKEY_new();
-	EVP_PKEY_set1_RSA(args.pkey, rsa = RSA_new());
+	args.key.algorithm = SC_ALGORITHM_RSA;
+	rsa = &args.key.u.rsa;
 
 	rv = CKR_OK;
 	while (ulCount--) {
 		CK_ATTRIBUTE_PTR attr = pTemplate++;
-		BIGNUM	*bn = NULL;
+		sc_pkcs15_bignum_t *bn = NULL;
 
 		switch (attr->type) {
 		/* Skip attrs we already know or don't care for */
@@ -755,9 +717,9 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 				goto out;
 			break;
 		case CKA_MODULUS:
-			bn = rsa->n = BN_new(); break;
+			bn = &rsa->modulus; break;
 		case CKA_PUBLIC_EXPONENT:
-			bn = rsa->e = BN_new(); break;
+			bn = &rsa->exponent; break;
 		default:
 			/* ignore unknown attrs, or flag error? */
 			continue;
@@ -766,12 +728,12 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 		if (bn) {
 			if (attr->ulValueLen > 1024)
 				return CKR_ATTRIBUTE_VALUE_INVALID;
-			BN_bin2bn((unsigned char *) attr->pValue,
-					attr->ulValueLen, bn);
+			bn->len = attr->ulValueLen;
+			bn->data = attr->pValue;
 		}
 	}
 
-	if (!rsa->n || !rsa->e) {
+	if (!rsa->modulus.len || !rsa->exponent.len) {
 		rv = CKR_TEMPLATE_INCOMPLETE;
 		goto out;
 	}
@@ -788,11 +750,7 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 
 	rv = CKR_OK;
 
-out:	if (args.pkey) {
-		EVP_PKEY_free(args.pkey);
-		RSA_free(rsa);
-	}
-	return rv;
+out:	return rv;
 }
 
 static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
@@ -806,8 +764,6 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 	struct sc_pkcs15_object	*key_obj;
 	CK_CERTIFICATE_TYPE	cert_type;
 	CK_BBOOL		bValue;
-	X509			*x509 = NULL;
-	unsigned char		*ptr;
 	int			rc, rv;
 
 	memset(&args, 0, sizeof(args));
@@ -845,16 +801,8 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 				goto out;
 			break;
 		case CKA_VALUE:
-			if (x509) {
-				rv = CKR_TEMPLATE_INCONSISTENT;
-				goto out;
-			}
-			ptr = attr->pValue;
-			x509 = d2i_X509(NULL, &ptr, attr->ulValueLen);
-			if (x509 == NULL) {
-				rv = CKR_ATTRIBUTE_VALUE_INVALID;
-				goto out;
-			}
+			args.der_encoded.len = attr->ulValueLen;
+			args.der_encoded.value = attr->pValue;
 			break;
 		default:
 			/* ignore unknown attrs, or flag error? */
@@ -862,7 +810,7 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 		}
 	}
 
-	if (!x509) {
+	if (args.der_encoded.len == 0) {
 		rv = CKR_TEMPLATE_INCOMPLETE;
 		goto out;
 	}
@@ -879,9 +827,7 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 
 	rv = CKR_OK;
 
-out:	if (x509)
-		X509_free(x509);
-	return rv;
+out:	return rv;
 }
 
 static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
@@ -935,7 +881,6 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 	sc_pkcs15init_unbind(profile);
 	return rv;
 }
-#endif
 
 struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_bind,
@@ -948,13 +893,8 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
         pkcs15_logout,
 	pkcs15_change_pin,
 	NULL,			/* init_token */
-#ifdef HAVE_OPENSSL
 	pkcs15_init_pin,
 	pkcs15_create_object
-#else
-	NULL,			/* init_pin */
-	NULL,			/* create_object */
-#endif
 };
 
 /*
@@ -1421,8 +1361,8 @@ get_modulus(struct sc_pkcs15_pubkey_rsa *key, CK_ATTRIBUTE_PTR attr)
 {
 	if (key == NULL)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
-	check_attribute_buffer(attr, key->modulus_len);
-	memcpy(attr->pValue, key->modulus, key->modulus_len);
+	check_attribute_buffer(attr, key->modulus.len);
+	memcpy(attr->pValue, key->modulus.data, key->modulus.len);
 	return CKR_OK;
 }
 
@@ -1433,9 +1373,9 @@ get_modulus_bits(struct sc_pkcs15_pubkey_rsa *key, CK_ATTRIBUTE_PTR attr)
 
 	if (key == NULL)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
-	bits = key->modulus_len * 8;
+	bits = key->modulus.len * 8;
 	for (mask = 0x80; mask; mask >>= 1, bits--) {
-		if (key->modulus[0] & mask)
+		if (key->modulus.data[0] & mask)
 			break;
 	}
 	check_attribute_buffer(attr, sizeof(bits));
@@ -1446,21 +1386,10 @@ get_modulus_bits(struct sc_pkcs15_pubkey_rsa *key, CK_ATTRIBUTE_PTR attr)
 static int
 get_public_exponent(struct sc_pkcs15_pubkey_rsa *key, CK_ATTRIBUTE_PTR attr)
 {
-	CK_ULONG	word;
-	unsigned int	j, n;
-	CK_BYTE		exponent[4];
-
 	if (key == NULL)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
-	word = key->exponent;
-	for (j = 0, n = 4; j < n; word <<= 8) {
-		if ((word & 0xFF000000) || j)
-			exponent[j++] = word >> 24;
-		else
-			n--;
-	}
-	check_attribute_buffer(attr, n);
-	memcpy(attr->pValue, exponent, n);
+	check_attribute_buffer(attr, key->exponent.len);
+	memcpy(attr->pValue, key->exponent.data, key->exponent.len);
 	return CKR_OK;
 }
 

@@ -57,16 +57,10 @@
 typedef int	(*pkcs15_encoder)(struct sc_context *,
 			struct sc_pkcs15_card *, u8 **, size_t *);
 
-static int	sc_pkcs15init_generate_key_soft(struct sc_pkcs15_card *,
-			struct sc_profile *, struct sc_pkcs15init_keyargs *,
-			struct sc_pkcs15_object **);
-
 static int	sc_pkcs15init_store_data(struct sc_pkcs15_card *,
-			struct sc_profile *, unsigned int, void *,
-			int (*)(void *, u8 **, size_t *),
-			struct sc_path *);
-static int	encode_pubkey(void *, u8 **, size_t *);
-static int	encode_cert(void *, u8 **, size_t *);
+			struct sc_profile *, unsigned int,
+			sc_pkcs15_der_t *, struct sc_path *);
+static size_t	sc_pkcs15init_keybits(sc_pkcs15_bignum_t *);
 
 static int	sc_pkcs15init_update_dir(struct sc_pkcs15_card *,
 			struct sc_profile *profile,
@@ -78,13 +72,15 @@ static int	sc_pkcs15init_update_odf(struct sc_pkcs15_card *,
 static int	sc_pkcs15init_update_df(struct sc_pkcs15_card *,
 			struct sc_profile *profile,
 			unsigned int df_type);
-static int	sc_pkcs15init_x509_key_usage(X509 *, int);
+static int	sc_pkcs15init_map_usage(unsigned long, int);
 static int	set_so_pin_from_card(struct sc_pkcs15_card *,
 			struct sc_profile *);
 static int	do_select_parent(struct sc_profile *, struct sc_card *,
 			struct sc_file *, struct sc_file **);
 static int	aodf_add_pin(struct sc_pkcs15_card *, struct sc_profile *,
 			const struct sc_pkcs15_pin_info *, const char *);
+static int	fixup_rsa_key(struct sc_pkcs15_prkey_rsa *);
+static int	fixup_dsa_key(struct sc_pkcs15_prkey_dsa *);
 static void	default_error_handler(const char *fmt, ...);
 static void	default_debug_handler(const char *fmt, ...);
 
@@ -290,6 +286,17 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 			p15init_error("No auth_id specified for new PIN");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
+	} else {
+		struct sc_pkcs15_object *dummy;
+
+		/* Make sure we don't get duplicate PIN IDs */
+		card->ctx->log_errors = 0;
+		r = sc_pkcs15_find_pin_by_auth_id(p15card,
+				&args->auth_id, &dummy);
+		if (r != SC_ERROR_OBJECT_NOT_FOUND) {
+			p15init_error("There already is a PIN with this ID.");
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
 	}
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &pin_info);
@@ -353,68 +360,14 @@ aodf_add_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 int
 sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs,
+		struct sc_pkcs15init_prkeyargs *keyargs,
+		unsigned int keybits,
 		struct sc_pkcs15_object **res_obj)
 {
-	if (keyargs->onboard_keygen)
-		return SC_ERROR_NOT_SUPPORTED;
-
-	/* Fall back to software generated keys */
-	return sc_pkcs15init_generate_key_soft(p15card, profile,
-		       	keyargs, res_obj);
+	/* Currently, we do not support on-board key generation */
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
-static int
-sc_pkcs15init_generate_key_soft(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs,
-		struct sc_pkcs15_object **res_obj)
-{
-	int	r;
-
-	keyargs->pkey = EVP_PKEY_new();
-	switch (keyargs->algorithm) {
-	case SC_ALGORITHM_RSA: {
-			RSA	*rsa;
-			BIO	*err;
-
-			err = BIO_new(BIO_s_mem());
-			rsa = RSA_generate_key(keyargs->keybits,
-					0x10001, NULL, err);
-			BIO_free(err);
-			if (rsa == 0) {
-				p15init_error("RSA key generation error");
-				return -1;
-			}
-			EVP_PKEY_assign_RSA(keyargs->pkey, rsa);
-			break;
-		}
-	case SC_ALGORITHM_DSA: {
-			DSA	*dsa;
-			int	r = 0;
-
-			dsa = DSA_generate_parameters(keyargs->keybits,
-					NULL, 0, NULL,
-					NULL, NULL, NULL);
-			if (dsa)
-				r = DSA_generate_key(dsa);
-			if (r == 0 || dsa == 0) {
-				p15init_error("DSA key generation error");
-				return -1;
-			}
-			EVP_PKEY_assign_DSA(keyargs->pkey, dsa);
-			break;
-		}
-	default:
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	r = sc_pkcs15init_store_private_key(p15card, profile, keyargs, res_obj);
-	if (r < 0)
-		return r;
-
-	return 0;
-}
 
 /*
  * Store private key
@@ -422,22 +375,32 @@ sc_pkcs15init_generate_key_soft(struct sc_pkcs15_card *p15card,
 int
 sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs,
+		struct sc_pkcs15init_prkeyargs *keyargs,
 		struct sc_pkcs15_object **res_obj)
 {
 	struct sc_pkcs15_pin_info *pin_info = NULL;
 	struct sc_pkcs15_object *object;
 	struct sc_pkcs15_prkey_info *key_info;
+	sc_pkcs15_prkey_t key;
 	const char	*label;
-	unsigned int	type, index, usage;
-	int		r;
+	unsigned int	keybits, type, index, usage;
+	int		r = 0;
 
-	switch (keyargs->algorithm) {
+	/* Create a copy of the key first */
+	key = keyargs->key;
+
+	switch (key.algorithm) {
 	case SC_ALGORITHM_RSA:
-		type = SC_PKCS15_TYPE_PRKEY_RSA; break;
+		keybits = sc_pkcs15init_keybits(&key.u.rsa.modulus);
+		type = SC_PKCS15_TYPE_PRKEY_RSA;
+		r = fixup_rsa_key(&key.u.rsa);
+		break;
 #ifdef SC_PKCS15_TYPE_PRKEY_DSA
 	case SC_ALGORITHM_DSA:
-		type = SC_PKCS15_TYPE_PRKEY_DSA; break;
+		keybits = sc_pkcs15init_keybits(&key.u.dsa.q);
+		type = SC_PKCS15_TYPE_PRKEY_DSA;
+		r = fixup_dsa_key(&key.u.dsa);
+		break;
 #endif
 	default:
 		p15init_error("Unsupported key algorithm.\n");
@@ -459,10 +422,9 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	if (keyargs->id.len == 0)
 		sc_pkcs15_format_id(DEFAULT_ID, &keyargs->id);
 	if ((usage = keyargs->usage) == 0) {
-		if (keyargs->cert)
-			usage = sc_pkcs15init_x509_key_usage(keyargs->cert, 1);
-		else
-			usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+		usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+		if (keyargs->x509_usage)
+			usage = sc_pkcs15init_map_usage(keyargs->x509_usage, 1);
 	}
 	if ((label = keyargs->label) == NULL)
 		label = "Private Key";
@@ -472,7 +434,8 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	key_info->usage = usage;
 	key_info->native = 1;
 	key_info->key_reference = 0;
-	/* modulus_length and path set by card driver */
+	key_info->modulus_length = keybits;
+	/* path set by card driver */
 
 	object = calloc(1, sizeof(*object));
 	object->type = type;
@@ -489,7 +452,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 		return r;
 
 	r = profile->ops->new_key(profile, p15card->card,
-			keyargs->pkey, index, key_info);
+			&key, index, key_info);
 	if (r == SC_ERROR_NOT_SUPPORTED) {
 		/* XXX: handle extractable keys here.
 		 * Store the private key, encrypted.
@@ -518,20 +481,27 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 int
 sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		struct sc_pkcs15init_keyargs *keyargs,
+		struct sc_pkcs15init_pubkeyargs *keyargs,
 		struct sc_pkcs15_object **res_obj)
 {
 	struct sc_pkcs15_object *object;
 	struct sc_pkcs15_pubkey_info *key_info;
+	sc_pkcs15_pubkey_t key;
+	sc_pkcs15_der_t	der_encoded;
 	const char	*label;
-	unsigned int	type, usage;
+	unsigned int	keybits, type, usage;
 	int		r;
 
-	switch (keyargs->algorithm) {
+	/* Create a copy of the key first */
+	key = keyargs->key;
+
+	switch (key.algorithm) {
 	case SC_ALGORITHM_RSA:
+		keybits = sc_pkcs15init_keybits(&key.u.rsa.modulus);
 		type = SC_PKCS15_TYPE_PUBKEY_RSA; break;
 #ifdef SC_PKCS15_TYPE_PUBKEY_DSA
 	case SC_ALGORITHM_DSA:
+		keybits = sc_pkcs15init_keybits(&key.u.dsa.q);
 		type = SC_PKCS15_TYPE_PUBKEY_DSA; break;
 #endif
 	default:
@@ -542,10 +512,9 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	if (keyargs->id.len == 0)
 		sc_pkcs15_format_id(DEFAULT_ID, &keyargs->id);
 	if ((usage = keyargs->usage) == 0) {
-		if (keyargs->cert)
-			usage = sc_pkcs15init_x509_key_usage(keyargs->cert, 0);
-		else
-			usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+		usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+		if (keyargs->x509_usage)
+			usage = sc_pkcs15init_map_usage(keyargs->x509_usage, 0);
 	}
 	if ((label = keyargs->label) == NULL)
 		label = "Public Key";
@@ -553,7 +522,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	key_info = calloc(1, sizeof(*key_info));
 	key_info->id = keyargs->id;
 	key_info->usage = usage;
-	key_info->modulus_length = 8 * EVP_PKEY_size(keyargs->pkey);
+	key_info->modulus_length = keybits;
 
 	object = calloc(1, sizeof(*object));
 	object->type = type;
@@ -561,10 +530,15 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	object->flags = DEFAULT_PUBKEY_FLAGS;
 	strncpy(object->label, label, sizeof(object->label));
 
+	/* DER encode public key components */
+	r = sc_pkcs15_encode_pubkey(p15card->card->ctx, &key,
+			&der_encoded.value, &der_encoded.len);
+	if (r < 0)
+		return r;
+
 	/* Now create key file and store key */
 	r = sc_pkcs15init_store_data(p15card, profile,
-			type, keyargs->pkey,
-			encode_pubkey, &key_info->path);
+			type, &der_encoded, &key_info->path);
 
 	/* Update the PuKDF */
 	if (r >= 0)
@@ -593,7 +567,9 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	const char	*label;
 	int		r;
 
-	usage = sc_pkcs15init_x509_key_usage(args->cert, 0);
+	usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+	if (args->x509_usage)
+		usage = sc_pkcs15init_map_usage(args->x509_usage, 0);
 	if ((label = args->label) == NULL)
 		label = "Certificate";
 	if (args->id.len == 0)
@@ -633,8 +609,8 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	strncpy(object->label, label, sizeof(object->label));
 
 	r = sc_pkcs15init_store_data(p15card, profile,
-			SC_PKCS15_TYPE_CERT_X509, args->cert,
-			encode_cert, &cert_info->path);
+			SC_PKCS15_TYPE_CERT_X509, &args->der_encoded,
+			&cert_info->path);
 
 	/* Now update the CDF */
 	if (r >= 0)
@@ -651,22 +627,14 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 static int
 sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		unsigned int type, void *ptr,
-		int (*encode)(void *, u8 **, size_t *),
+		unsigned int type, sc_pkcs15_der_t *data,
 		struct sc_path *path)
 {
 	struct sc_file	*file = NULL;
-	unsigned char	*data = NULL;
 	unsigned int	index;
-	size_t		size;
 	int		r;
 
-	/* Encode the object */
-	r = encode(ptr, &data, &size);
-	if (r < 0)
-		return r;
-
-	/* Get the number of private keys already on this card */
+	/* Get the number of objects of this type already on this card */
 	index = sc_pkcs15_get_objects(p15card,
 			type & SC_PKCS15_TYPE_CLASS_MASK, NULL, 0);
 
@@ -682,62 +650,13 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 	}
 
 	r = sc_pkcs15init_update_file(profile, p15card->card,
-			file, data, size);
+			file, data->value, data->len);
 	*path = file->path;
 
 done:	if (file)
 		sc_file_free(file);
-	if (data)
-		free(data);
 	return r;
 }
-
-/*
- * Encoder functions
- */
-static int
-encode_pubkey(void *ptr, u8 **data, size_t *sizep)
-{
-	EVP_PKEY *pk = (EVP_PKEY *) ptr;
-	RSA	*rsa;
-	DSA	*dsa;
-	u8	*p;
-
-	switch (pk->type) {
-	case EVP_PKEY_RSA:
-		rsa = EVP_PKEY_get1_RSA(pk);
-		*sizep = i2d_RSAPublicKey(rsa, NULL);
-		*data = p = malloc(*sizep);
-		i2d_RSAPublicKey(rsa, &p);
-		RSA_free(rsa);
-		break;
-	case EVP_PKEY_DSA:
-		dsa = EVP_PKEY_get1_DSA(pk);
-		*sizep = i2d_DSAPublicKey(dsa, NULL);
-		*data = p = malloc(*sizep);
-		i2d_DSAPublicKey(dsa, &p);
-		DSA_free(dsa);
-		break;
-	default:
-		p15init_error("Unsupported key algorithm.\n");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	return 0;
-}
-
-static int
-encode_cert(void *ptr, u8 **data, size_t *sizep)
-{
-	X509	*cert = (X509 *) ptr;
-	u8	*p;
-
-	*sizep = i2d_X509(cert, NULL);
-	*data = p = malloc(*sizep);
-	i2d_X509(cert, &p);
-	return 0;
-}
-
 
 /*
  * Map X509 keyUsage extension bits to PKCS#15 keyUsage bits
@@ -769,9 +688,8 @@ static unsigned int	x509_to_pkcs15_public_key_usage[16] = {
 };
 
 static int
-sc_pkcs15init_x509_key_usage(X509 *cert, int private)
+sc_pkcs15init_map_usage(unsigned long x509_usage, int private)
 {
-	unsigned int	x509_usage = cert->ex_kusage;
 	unsigned int	p15_usage, n, *bits;
 
 	bits = private? x509_to_pkcs15_private_key_usage
@@ -783,6 +701,101 @@ sc_pkcs15init_x509_key_usage(X509 *cert, int private)
 	return p15_usage;
 }
 
+/*
+ * Compute modulus length
+ */
+size_t
+sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
+{
+	unsigned int	mask, bits;
+
+	bits = bn->len << 3;
+	for (mask = 0x80; !(bn->data[0] & mask); mask >>= 1)
+		bits--;
+	return bits;
+}
+
+/*
+ * Check RSA key for consistency, and compute missing
+ * CRT elements
+ */
+int
+fixup_rsa_key(struct sc_pkcs15_prkey_rsa *key)
+{
+	if (!key->modulus.len || !key->exponent.len
+	 || !key->d.len || !key->p.len || !key->q.len) {
+		p15init_error("Missing private RSA coefficient");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+#ifdef HAVE_OPENSSL
+#define GETBN(dst, src, mem) \
+	do {	dst.len = BN_num_bytes(src); \
+		assert(dst.len <= sizeof(mem)); \
+		BN_bn2bin(src, dst.data = mem); \
+	} while (0)
+
+	/* Generate additional parameters.
+	 * At least the GPK seems to need the full set of CRT
+	 * parameters; storing just the private exponent produces
+	 * invalid signatures.
+	 * The cryptoflex does not seem to be able to do any sort
+	 * of RSA without the full set of CRT coefficients either
+	 */
+	if (!key->dmp1.len || !key->dmq1.len || !key->iqmp.len) {
+		static u8 dmp1[256], dmq1[256], iqmp[256];
+		RSA    *rsa;
+		BIGNUM *aux = BN_new();
+		BN_CTX *ctx = BN_CTX_new();
+
+		rsa = RSA_new();
+		rsa->n = BN_bin2bn(key->modulus.data, key->modulus.len, 0);
+		rsa->e = BN_bin2bn(key->exponent.data, key->exponent.len, 0);
+		rsa->d = BN_bin2bn(key->d.data, key->d.len, 0);
+		rsa->p = BN_bin2bn(key->p.data, key->p.len, 0);
+		rsa->q = BN_bin2bn(key->q.data, key->q.len, 0);
+		if (!rsa->dmp1)
+			rsa->dmp1 = BN_new();
+		if (!rsa->dmq1)
+			rsa->dmq1 = BN_new();
+		if (!rsa->iqmp)
+			rsa->iqmp = BN_new();
+
+		aux = BN_new();
+		ctx = BN_CTX_new();
+
+		BN_sub(aux, rsa->q, BN_value_one());
+		BN_mod(rsa->dmq1, rsa->d, aux, ctx);
+
+		BN_sub(aux, rsa->p, BN_value_one());
+		BN_mod(rsa->dmp1, rsa->d, aux, ctx);
+
+		BN_mod_inverse(rsa->iqmp, rsa->q, rsa->p, ctx);
+
+		BN_clear_free(aux);
+		BN_CTX_free(ctx);
+
+		/* Not thread safe, but much better than a memory leak */
+		GETBN(key->dmp1, rsa->dmp1, dmp1);
+		GETBN(key->dmq1, rsa->dmq1, dmq1);
+		GETBN(key->iqmp, rsa->iqmp, iqmp);
+		RSA_free(rsa);
+	}
+#undef GETBN
+#endif
+	return 0;
+}
+
+static int
+fixup_dsa_key(struct sc_pkcs15_prkey_dsa *key)
+{
+	/* for now */
+	return 0;
+}
+
+/*
+ * Update EF(DIR)
+ */
 static int
 sc_pkcs15init_update_dir(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,

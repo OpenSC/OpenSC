@@ -22,9 +22,7 @@
 #include <malloc.h>
 #include <string.h>
 #include "sc-pkcs11.h"
-#ifdef HAVE_OPENSSL
 #include "pkcs15-init.h"
-#endif
 
 /*
  * Deal with uninitialized cards

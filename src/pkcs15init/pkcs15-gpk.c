@@ -25,7 +25,6 @@
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
-#include <openssl/bn.h>
 #include <opensc/opensc.h>
 #include <opensc/cardctl.h>
 #include "pkcs15-init.h"
@@ -65,10 +64,10 @@ static int	gpk_new_file(struct sc_profile *, struct sc_card *,
 			unsigned int, unsigned int,
 			struct sc_file **);
 static int	gpk_encode_rsa_key(struct sc_profile *,
-			RSA *, struct pkdata *,
+			struct sc_pkcs15_prkey_rsa *, struct pkdata *,
 			struct sc_pkcs15_prkey_info *);
 static int	gpk_encode_dsa_key(struct sc_profile *,
-			DSA *, struct pkdata *,
+			struct sc_pkcs15_prkey_dsa *, struct pkdata *,
 			struct sc_pkcs15_prkey_info *);
 static int	gpk_store_pk(struct sc_profile *, struct sc_card *,
 			struct sc_file *, struct pkdata *);
@@ -297,38 +296,30 @@ gpk_new_pin(struct sc_profile *profile, struct sc_card *card,
  */
 static int
 gpk_new_key(struct sc_profile *profile, struct sc_card *card,
-		EVP_PKEY *key, unsigned int index,
+		struct sc_pkcs15_prkey *key, unsigned int index,
 		struct sc_pkcs15_prkey_info *info)
 {
 	struct sc_file	*keyfile;
 	struct pkdata	data;
 	int		r;
-	RSA		*rsa;
-	DSA		*dsa;
 
-	switch (key->type) {
-	case EVP_PKEY_RSA:
+	switch (key->algorithm) {
+	case SC_ALGORITHM_RSA:
 		r = gpk_new_file(profile, card, 
 				SC_PKCS15_TYPE_PRKEY_RSA, index,
 				&keyfile);
-		if (r >= 0) {
-			rsa = EVP_PKEY_get1_RSA(key);
-			r = gpk_encode_rsa_key(profile, rsa, &data, info);
-			info->modulus_length = 8 * RSA_size(rsa);
-			RSA_free(rsa);
-		}
+		if (r >= 0)
+			r = gpk_encode_rsa_key(profile, &key->u.rsa,
+					&data, info);
 		break;
 
-	case EVP_PKEY_DSA:
+	case SC_ALGORITHM_DSA:
 		r = gpk_new_file(profile, card, 
 				SC_PKCS15_TYPE_PRKEY_DSA, index,
 				&keyfile);
-		if (r >= 0) {
-			dsa = EVP_PKEY_get1_DSA(key);
-			r = gpk_encode_dsa_key(profile, dsa, &data, info);
-			info->modulus_length = 8 * DSA_size(dsa);
-			DSA_free(dsa);
-		}
+		if (r >= 0)
+			r = gpk_encode_dsa_key(profile, &key->u.dsa,
+					&data, info);
 		break;
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
@@ -723,35 +714,32 @@ gpk_compute_privlen(struct pkpart *part)
 
 /*
  * Convert BIGNUM to GPK representation, optionally zero padding to size.
- * Note OpenSSL stores BIGNUMs big endian while the GPK wants them
- * little endian
+ * Note that the bignum's we're given are big-endian, while the GPK
+ * wants them little-endian.
  */
 static void
-gpk_bn2bin(const BIGNUM *bn, unsigned char *dest, unsigned int size)
+gpk_bn2bin(unsigned char *dest, sc_pkcs15_bignum_t *bn, unsigned int size)
 {
-	u8		temp[256], *src;
-	unsigned int	n, len;
+	u8		*src;
+	unsigned int	n;
 
-	assert(BN_num_bytes(bn) <= sizeof(temp));
-	len = BN_bn2bin(bn, temp);
-
-	assert(len <= size);
-	for (n = 0, src = temp + len - 1; n < len; n++)
-		dest[n] = *src--;
-	for (; n < size; n++)
-		dest[n] = '\0';
+	assert(bn->len <= size);
+	memset(dest, 0, size);
+	for (n = bn->len, src = bn->data; n--; src++)
+		dest[n] = *src;
 }
 
 /*
  * Add a BIGNUM component, optionally padding out the number to size bytes
  */
 static void
-gpk_add_bignum(struct pkpart *part, unsigned int tag, BIGNUM *bn, size_t size)
+gpk_add_bignum(struct pkpart *part, unsigned int tag,
+		sc_pkcs15_bignum_t *bn, size_t size)
 {
 	struct pkcomp	*comp;
 	
 	if (size == 0)
-		size = BN_num_bytes(bn);
+		size = bn->len;
 
 	comp = &part->components[part->count++];
 	memset(comp, 0, sizeof(*comp));
@@ -763,24 +751,25 @@ gpk_add_bignum(struct pkpart *part, unsigned int tag, BIGNUM *bn, size_t size)
 	comp->data[0] = tag;
 
 	/* Add the BIGNUM */
-	gpk_bn2bin(bn, comp->data + 1, size);
+	gpk_bn2bin(comp->data + 1, bn, size);
 
 	/* printf("TAG 0x%02x, len=%u\n", tag, comp->size); */
 }
 
 int
 gpk_encode_rsa_key(struct sc_profile *profile,
-		RSA *rsa, struct pkdata *p,
+		struct sc_pkcs15_prkey_rsa *rsa, struct pkdata *p,
 		struct sc_pkcs15_prkey_info *info)
 {
-	if (!rsa->n || !rsa->e) {
+	if (!rsa->modulus.len || !rsa->exponent.len) {
 		error(profile, "incomplete RSA public key");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	/* Make sure the exponent is 0x10001 because that's
 	 * the only exponent supported by GPK4000 and GPK8000 */
-	if (!BN_is_word(rsa->e, RSA_F4)) {
+	if (rsa->exponent.len != 3
+	 || memcmp(rsa->exponent.data, "\001\000\001", 3)) {
 		error(profile, "unsupported RSA exponent");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -788,21 +777,21 @@ gpk_encode_rsa_key(struct sc_profile *profile,
 	memset(p, 0, sizeof(*p));
 	p->algo  = SC_ALGORITHM_RSA;
 	p->usage = info->usage;
-	p->bits  = BN_num_bits(rsa->n);
-	p->bytes = BN_num_bytes(rsa->n);
+	p->bytes = rsa->modulus.len;
+	p->bits  = p->bytes << 3;
 
 	/* Set up the list of public elements */
-	gpk_add_bignum(&p->public, 0x01, rsa->n, 0);
-	gpk_add_bignum(&p->public, 0x07, rsa->e, 0);
+	gpk_add_bignum(&p->public, 0x01, &rsa->modulus, 0);
+	gpk_add_bignum(&p->public, 0x07, &rsa->exponent, 0);
 
 	/* Set up the list of private elements */
-	if (!rsa->p || !rsa->q || !rsa->dmp1 || !rsa->dmq1 || !rsa->iqmp) {
+	if (!rsa->p.len || !rsa->q.len || !rsa->dmp1.len || !rsa->dmq1.len || !rsa->iqmp.len) {
 		/* No or incomplete CRT information */
-		if (!rsa->d) {
+		if (!rsa->d.len) {
 			error(profile, "incomplete RSA private key");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
-		gpk_add_bignum(&p->private, 0x04, rsa->d, 0);
+		gpk_add_bignum(&p->private, 0x04, &rsa->d, 0);
 	} else if (5 * (p->bytes / 2) < 256) {
 		/* All CRT elements are stored in one record */
 		struct pkcomp	*comp;
@@ -812,11 +801,11 @@ gpk_encode_rsa_key(struct sc_profile *profile,
 		crtbuf = malloc(5 * K + 1);
 
 		crtbuf[0] = 0x05;
-		gpk_bn2bin(rsa->p,    crtbuf + 1, K);
-		gpk_bn2bin(rsa->q,    crtbuf + 1 + 1 * K, K);
-		gpk_bn2bin(rsa->iqmp, crtbuf + 1 + 2 * K, K);
-		gpk_bn2bin(rsa->dmp1, crtbuf + 1 + 3 * K, K);
-		gpk_bn2bin(rsa->dmq1, crtbuf + 1 + 4 * K, K);
+		gpk_bn2bin(crtbuf + 1 + 0 * K, &rsa->p, K);
+		gpk_bn2bin(crtbuf + 1 + 1 * K, &rsa->q, K);
+		gpk_bn2bin(crtbuf + 1 + 2 * K, &rsa->iqmp, K);
+		gpk_bn2bin(crtbuf + 1 + 3 * K, &rsa->dmp1, K);
+		gpk_bn2bin(crtbuf + 1 + 4 * K, &rsa->dmq1, K);
 
 		comp = &p->private.components[p->private.count++];
 		comp->tag  = 0x05;
@@ -826,11 +815,11 @@ gpk_encode_rsa_key(struct sc_profile *profile,
 		/* CRT elements stored in individual records.
 		 * Make sure they're all fixed length even if they're
 		 * shorter */
-		gpk_add_bignum(&p->private, 0x51, rsa->p, p->bytes/2);
-		gpk_add_bignum(&p->private, 0x52, rsa->q, p->bytes/2);
-		gpk_add_bignum(&p->private, 0x53, rsa->iqmp, p->bytes/2);
-		gpk_add_bignum(&p->private, 0x54, rsa->dmp1, p->bytes/2);
-		gpk_add_bignum(&p->private, 0x55, rsa->dmq1, p->bytes/2);
+		gpk_add_bignum(&p->private, 0x51, &rsa->p, p->bytes/2);
+		gpk_add_bignum(&p->private, 0x52, &rsa->q, p->bytes/2);
+		gpk_add_bignum(&p->private, 0x53, &rsa->iqmp, p->bytes/2);
+		gpk_add_bignum(&p->private, 0x54, &rsa->dmp1, p->bytes/2);
+		gpk_add_bignum(&p->private, 0x55, &rsa->dmq1, p->bytes/2);
 	}
 
 	return 0;
@@ -844,10 +833,11 @@ gpk_encode_rsa_key(struct sc_profile *profile,
  */
 int
 gpk_encode_dsa_key(struct sc_profile *profile,
-		DSA *dsa, struct pkdata *p,
+		struct sc_pkcs15_prkey_dsa *dsa, struct pkdata *p,
 		struct sc_pkcs15_prkey_info *info)
 {
-	if (!dsa->p || !dsa->q || !dsa->g || !dsa->pub_key || !dsa->priv_key) {
+	if (!dsa->p.len || !dsa->q.len || !dsa->g.len
+	 || !dsa->pub.len || !dsa->priv.len) {
 		error(profile, "incomplete DSA public key");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -855,8 +845,8 @@ gpk_encode_dsa_key(struct sc_profile *profile,
 	memset(p, 0, sizeof(*p));
 	p->algo  = SC_ALGORITHM_RSA;
 	p->usage = info->usage;
-	p->bits  = BN_num_bits(dsa->p);
-	p->bytes = BN_num_bytes(dsa->p);
+	p->bytes = dsa->q.len;
+	p->bits  = dsa->q.len << 3;
 
 	/* Make sure the key is either 512 or 1024 bits */
 	if (p->bytes <= 64) {
@@ -871,13 +861,13 @@ gpk_encode_dsa_key(struct sc_profile *profile,
 	}
 
 	/* Set up the list of public elements */
-	gpk_add_bignum(&p->public, 0x09, dsa->p, 0);
-	gpk_add_bignum(&p->public, 0x0a, dsa->q, 0);
-	gpk_add_bignum(&p->public, 0x0b, dsa->g, 0);
-	gpk_add_bignum(&p->public, 0x0c, dsa->pub_key, 0);
+	gpk_add_bignum(&p->public, 0x09, &dsa->p, 0);
+	gpk_add_bignum(&p->public, 0x0a, &dsa->q, 0);
+	gpk_add_bignum(&p->public, 0x0b, &dsa->g, 0);
+	gpk_add_bignum(&p->public, 0x0c, &dsa->pub, 0);
 
 	/* Set up the list of private elements */
-	gpk_add_bignum(&p->private, 0x0d, dsa->priv_key, 0);
+	gpk_add_bignum(&p->private, 0x0d, &dsa->priv, 0);
 
 	return 0;
 }

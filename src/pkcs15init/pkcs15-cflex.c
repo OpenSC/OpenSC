@@ -23,7 +23,6 @@
 #endif
 #include <string.h>
 #include <sys/types.h>
-#include <openssl/bn.h>
 #include <opensc/opensc.h>
 #include "pkcs15-init.h"
 #include "profile.h"
@@ -177,17 +176,10 @@ static void invert_buf(u8 *dest, const u8 *src, size_t c)
                 dest[i] = src[c-1-i];
 }
 
-static int bn2cf(const BIGNUM *num, u8 *buf)
+static int bn2cf(sc_pkcs15_bignum_t *num, u8 *buf)
 {
-        u8 tmp[512];
-        int r;
-
-        r = BN_bn2bin(num, tmp);
-        if (r <= 0)
-                return r;
-        invert_buf(buf, tmp, r);
-      
-        return r;
+	invert_buf(buf, num->data, num->len);
+	return num->len;
 }
 
 #if 0
@@ -216,24 +208,24 @@ static int gen_d(RSA *rsa)
 }
 #endif
 
-static int cflex_encode_private_key(RSA *rsa, u8 *key, size_t *keysize, int key_num)
+static int cflex_encode_private_key(struct sc_pkcs15_prkey_rsa *rsa, u8 *key, size_t *keysize, int key_num)
 {
         u8 buf[512], *p = buf;
 	u8 bnbuf[256];
         int base = 0; 
         int r;
         
-        switch (BN_num_bits(rsa->n)) {
-        case 512:
+        switch (rsa->modulus.len) {
+        case 512 / 8:
                 base = 32;
                 break;
-        case 768:
+        case 768 / 8:
                 base = 48;
                 break;
-        case 1024:
+        case 1024 / 8:
                 base = 64;
                 break;
-        case 2048:
+        case 2048 / 8:
                 base = 128;
                 break;
         }
@@ -244,7 +236,7 @@ static int cflex_encode_private_key(RSA *rsa, u8 *key, size_t *keysize, int key_
         *p++ = (5 * base + 3) >> 8;
         *p++ = (5 * base + 3) & 0xFF;
         *p++ = key_num;
-        r = bn2cf(rsa->p, bnbuf);
+        r = bn2cf(&rsa->p, bnbuf);
         if (r != base) {
                 fprintf(stderr, "Invalid private key.\n");
                 return 2;
@@ -252,7 +244,7 @@ static int cflex_encode_private_key(RSA *rsa, u8 *key, size_t *keysize, int key_
         memcpy(p, bnbuf, base);
         p += base;
 
-        r = bn2cf(rsa->q, bnbuf);
+        r = bn2cf(&rsa->q, bnbuf);
         if (r != base) {
                 fprintf(stderr, "Invalid private key.\n");
                 return 2;
@@ -260,7 +252,7 @@ static int cflex_encode_private_key(RSA *rsa, u8 *key, size_t *keysize, int key_
         memcpy(p, bnbuf, base);
         p += base;
 
-        r = bn2cf(rsa->iqmp, bnbuf);
+        r = bn2cf(&rsa->iqmp, bnbuf);
         if (r != base) {
                 fprintf(stderr, "Invalid private key.\n");
                 return 2;
@@ -268,7 +260,7 @@ static int cflex_encode_private_key(RSA *rsa, u8 *key, size_t *keysize, int key_
         memcpy(p, bnbuf, base);
         p += base;
 
-        r = bn2cf(rsa->dmp1, bnbuf);
+        r = bn2cf(&rsa->dmp1, bnbuf);
         if (r != base) {
                 fprintf(stderr, "Invalid private key.\n");
                 return 2;
@@ -276,7 +268,7 @@ static int cflex_encode_private_key(RSA *rsa, u8 *key, size_t *keysize, int key_
         memcpy(p, bnbuf, base);
         p += base;
 
-        r = bn2cf(rsa->dmq1, bnbuf);
+        r = bn2cf(&rsa->dmq1, bnbuf);
         if (r != base) {
                 fprintf(stderr, "Invalid private key.\n");
                 return 2;
@@ -293,24 +285,24 @@ static int cflex_encode_private_key(RSA *rsa, u8 *key, size_t *keysize, int key_
         return 0;
 }
 
-static int cflex_encode_public_key(RSA *rsa, u8 *key, size_t *keysize, int key_num)
+static int cflex_encode_public_key(struct sc_pkcs15_prkey_rsa *rsa, u8 *key, size_t *keysize, int key_num)
 {
         u8 buf[512], *p = buf;
         u8 bnbuf[256];
         int base = 0; 
         int r;
         
-        switch (BN_num_bits(rsa->n)) {
-        case 512:
+        switch (rsa->modulus.len) {
+        case 512 / 8:
                 base = 32;
                 break;
-        case 768:
+        case 768 / 8:
                 base = 48;
                 break;
-        case 1024:
+        case 1024 / 8:
                 base = 64;
                 break;
-        case 2048:
+        case 2048 / 8:
                 base = 128;
                 break;
         }
@@ -321,7 +313,7 @@ static int cflex_encode_public_key(RSA *rsa, u8 *key, size_t *keysize, int key_n
         *p++ = (5 * base + 7) >> 8;
         *p++ = (5 * base + 7) & 0xFF;
         *p++ = key_num;
-        r = bn2cf(rsa->n, bnbuf);
+        r = bn2cf(&rsa->modulus, bnbuf);
         if (r != 2*base) {
                 fprintf(stderr, "Invalid public key.\n");
                 return 2;
@@ -335,8 +327,8 @@ static int cflex_encode_public_key(RSA *rsa, u8 *key, size_t *keysize, int key_n
 	memset(bnbuf, 0, 2*base);
         memcpy(p, bnbuf, 2*base);
         p += 2*base;
-        r = bn2cf(rsa->e, bnbuf);
-        memcpy(p, bnbuf, 4);
+	r = bn2cf(&rsa->exponent, bnbuf);
+	memcpy(p, bnbuf, 4);
         p += 4;
 	*p++ = 0;
 	*p++ = 0;
@@ -353,20 +345,20 @@ static int cflex_encode_public_key(RSA *rsa, u8 *key, size_t *keysize, int key_n
  */
 static int
 cflex_new_key(struct sc_profile *profile, struct sc_card *card,
-		EVP_PKEY *key, unsigned int index,
+		struct sc_pkcs15_prkey *key, unsigned int index,
 		struct sc_pkcs15_prkey_info *info)
 {
 	u8 prv[1024], pub[1024];
 	size_t prvsize, pubsize;
 	struct sc_file *keyfile = NULL, *tmpfile = NULL;
-	RSA *rsa = NULL;
+	struct sc_pkcs15_prkey_rsa *rsa = NULL;
         int r;
 
-	if (key->type != EVP_PKEY_RSA) {
+	if (key->algorithm != SC_ALGORITHM_RSA) {
 		profile->cbs->error("Cryptoflex supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-	rsa = EVP_PKEY_get1_RSA(key);
+	rsa = &key->u.rsa;
 	r = cflex_encode_private_key(rsa, prv, &prvsize, 1);
 	if (r)
 		goto err;
@@ -383,7 +375,7 @@ cflex_new_key(struct sc_profile *profile, struct sc_card *card,
 	if (r < 0)
 		goto err;
 	info->path = keyfile->path;
-	info->modulus_length = RSA_size(rsa)*8;
+	info->modulus_length = rsa->modulus.len << 3;
 	sc_file_dup(&tmpfile, keyfile);
 	sc_file_clear_acl_entries(tmpfile, SC_AC_OP_READ);
 	sc_file_add_acl_entry(tmpfile, SC_AC_OP_READ, SC_AC_NONE, SC_AC_KEY_REF_NONE);
@@ -394,8 +386,6 @@ cflex_new_key(struct sc_profile *profile, struct sc_card *card,
 	printf("Updating RSA public key...\n");
 	r = sc_pkcs15init_update_file(profile, card, tmpfile, pub, pubsize);
 err:
-	if (rsa)
-		RSA_free(rsa);
 	if (tmpfile)
 		sc_file_free(tmpfile);
 	return r;

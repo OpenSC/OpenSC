@@ -97,12 +97,12 @@ static int parse_x509_cert(struct sc_context *ctx, const u8 *buf, size_t buflen,
 
 	cert->version++;
 	pklen >>= 3;	/* convert number of bits to bytes */
-	key->data = pk;
-	key->data_len = pklen;
+	key->data.value = pk;
+	key->data.len = pklen;
 	/* FIXME: ignore the object id for now, and presume it's RSA */
 	r = sc_pkcs15_parse_pubkey_rsa(ctx, key);
 	if (r) {
-		free(key->data);
+		free(key->data.value);
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 
@@ -269,8 +269,8 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 {
 	assert(cert != NULL);
 
-	free(cert->key.data);
-	free(cert->key.modulus);
+	free(cert->key.data.value);
+	free(cert->key.modulus.data);
 	free(cert->subject);
 	free(cert->issuer);
 	free(cert->serial);

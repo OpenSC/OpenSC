@@ -92,14 +92,81 @@ struct sc_pkcs15_algorithm_info {
 	int algorithm, supported_operations;
 };
 
-struct sc_pkcs15_pubkey_rsa {
-	u8 *modulus;
-	int modulus_len;
-	unsigned int exponent;
-
-	u8 *data;	/* DER encoded raw key */
-	int data_len;
+/* A large integer, big endian notation */
+struct sc_pkcs15_bignum {
+	u8 *		data;
+	size_t		len;
 };
+typedef struct sc_pkcs15_bignum sc_pkcs15_bignum_t;
+
+struct sc_pkcs15_der {
+	u8 *		value;
+	size_t		len;
+};
+typedef struct sc_pkcs15_der sc_pkcs15_der_t;
+
+struct sc_pkcs15_pubkey_rsa {
+	sc_pkcs15_bignum_t modulus;
+	sc_pkcs15_bignum_t exponent;
+
+	/* DER encoded raw key */
+	sc_pkcs15_der_t data;
+};
+
+struct sc_pkcs15_prkey_rsa {
+	/* public components */
+	sc_pkcs15_bignum_t modulus;
+	sc_pkcs15_bignum_t exponent;
+
+	/* private components */
+	sc_pkcs15_bignum_t d;
+	sc_pkcs15_bignum_t p;
+	sc_pkcs15_bignum_t q;
+
+	/* optional CRT elements */
+	sc_pkcs15_bignum_t iqmp;
+	sc_pkcs15_bignum_t dmp1;
+	sc_pkcs15_bignum_t dmq1;
+};
+
+struct sc_pkcs15_pubkey_dsa {
+	sc_pkcs15_bignum_t pub;
+	sc_pkcs15_bignum_t p;
+	sc_pkcs15_bignum_t q;
+	sc_pkcs15_bignum_t g;
+
+	/* DER encoded raw key */
+	sc_pkcs15_der_t data;
+};
+
+struct sc_pkcs15_prkey_dsa {
+	/* public components */
+	sc_pkcs15_bignum_t pub;
+	sc_pkcs15_bignum_t p;
+	sc_pkcs15_bignum_t q;
+	sc_pkcs15_bignum_t g;
+
+	/* private key */
+	sc_pkcs15_bignum_t priv;
+};
+
+struct sc_pkcs15_pubkey {
+	int algorithm;
+	union {
+		struct sc_pkcs15_pubkey_rsa rsa;
+		struct sc_pkcs15_pubkey_dsa dsa;
+	} u;
+};
+typedef struct sc_pkcs15_pubkey sc_pkcs15_pubkey_t;
+
+struct sc_pkcs15_prkey {
+	int algorithm;
+	union {
+		struct sc_pkcs15_prkey_rsa rsa;
+		struct sc_pkcs15_prkey_dsa dsa;
+	} u;
+};
+typedef struct sc_pkcs15_prkey sc_pkcs15_prkey_t;
 
 struct sc_pkcs15_cert {
 	int version;
@@ -277,6 +344,10 @@ int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *card,
 			  struct sc_pkcs15_pubkey_rsa **out);
 int sc_pkcs15_parse_pubkey_rsa(struct sc_context *ctx,
 	       		   struct sc_pkcs15_pubkey_rsa *pubkey);
+int sc_pkcs15_encode_pubkey_rsa(struct sc_context *,
+			struct sc_pkcs15_pubkey_rsa *, u8 **, size_t *);
+int sc_pkcs15_encode_pubkey(struct sc_context *,
+			struct sc_pkcs15_pubkey *, u8 **, size_t *);
 void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey_rsa *pubkey);
 
 void sc_pkcs15_print_cert_info(const struct sc_pkcs15_cert_info *cert);

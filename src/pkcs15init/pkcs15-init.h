@@ -7,8 +7,6 @@
 #ifndef PKCS15_INIT_H
 #define PKCS15_INIT_H
 
-#include <openssl/evp.h>
-#include <openssl/x509.h>
 #include <opensc/pkcs15.h>
 
 struct sc_profile; /* opaque type */
@@ -44,7 +42,7 @@ struct sc_pkcs15init_operations {
 	 * Store a key on the card
 	 */
 	int	(*new_key)(struct sc_profile *, struct sc_card *,
-			EVP_PKEY *key, unsigned int index,
+			struct sc_pkcs15_prkey *key, unsigned int index,
 			struct sc_pkcs15_prkey_info *);
 
 	/*
@@ -94,28 +92,32 @@ struct sc_pkcs15init_pinargs {
 	size_t			puk_len;
 };
 
-struct sc_pkcs15init_keyargs {
+struct sc_pkcs15init_prkeyargs {
 	struct sc_pkcs15_id	id;
 	struct sc_pkcs15_id	auth_id;
 	const char *		label;
-	const char *		template_name;
 	unsigned long		usage;
+	unsigned long		x509_usage;
 
-	/* For key generation */
-	unsigned char		onboard_keygen;
-	unsigned int		algorithm;
-	unsigned int		keybits;
+	sc_pkcs15_prkey_t	key;
+};
 
-	EVP_PKEY *		pkey;
-	X509 *			cert;
+struct sc_pkcs15init_pubkeyargs {
+	struct sc_pkcs15_id	id;
+	struct sc_pkcs15_id	auth_id;
+	const char *		label;
+	unsigned long		usage;
+	unsigned long		x509_usage;
+
+	sc_pkcs15_pubkey_t	key;
 };
 
 struct sc_pkcs15init_certargs {
 	struct sc_pkcs15_id	id;
 	const char *		label;
-	const char *		template_name;
 
-	X509 *			cert;
+	unsigned long		x509_usage;
+	sc_pkcs15_der_t		der_encoded;
 };
 
 extern void	sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *);
@@ -132,15 +134,16 @@ extern int	sc_pkcs15init_store_pin(struct sc_pkcs15_card *,
 				struct sc_pkcs15init_pinargs *);
 extern int	sc_pkcs15init_generate_key(struct sc_pkcs15_card *,
 				struct sc_profile *,
-				struct sc_pkcs15init_keyargs *,
+				struct sc_pkcs15init_prkeyargs *,
+				unsigned int keybits,
 				struct sc_pkcs15_object **);
 extern int	sc_pkcs15init_store_private_key(struct sc_pkcs15_card *,
 				struct sc_profile *,
-				struct sc_pkcs15init_keyargs *,
+				struct sc_pkcs15init_prkeyargs *,
 				struct sc_pkcs15_object **);
 extern int	sc_pkcs15init_store_public_key(struct sc_pkcs15_card *,
 				struct sc_profile *,
-				struct sc_pkcs15init_keyargs *,
+				struct sc_pkcs15init_pubkeyargs *,
 				struct sc_pkcs15_object **);
 extern int	sc_pkcs15init_store_certificate(struct sc_pkcs15_card *,
 				struct sc_profile *,

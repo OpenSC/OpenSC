@@ -23,7 +23,6 @@
 #endif
 #include <string.h>
 #include <sys/types.h>
-#include <openssl/bn.h>
 #include <opensc/opensc.h>
 #include <opensc/cardctl.h>
 #include "pkcs15-init.h"
@@ -153,37 +152,17 @@ miocos_new_file(struct sc_profile *profile, struct sc_card *card,
 	return 0;
 }
 
-static int bn2bin(const BIGNUM *num, u8 *buf)
-{
-	int r;
-
-	r = BN_bn2bin(num, buf);
-        if (r <= 0)
-                return r;
-        return 0;
-}
-
 static int
 miocos_update_private_key(struct sc_profile *profile, struct sc_card *card,
-		RSA *rsa)
+		struct sc_pkcs15_prkey_rsa *rsa)
 {
 	int r;
-	u8 modulus[128];
-	u8 priv_exp[128];
 	u8 buf[266];
 	
-	if (bn2bin(rsa->d, priv_exp) != 0) {
-		profile->cbs->error("Unable to convert private exponent.");
-		return -1;
-	}
-	if (bn2bin(rsa->n, modulus) != 0) {
-		profile->cbs->error("Unable to convert modulus.");
-		return -1;
-	}
 	memcpy(buf, "\x30\x82\x01\x06\x80\x81\x80", 7);
-	memcpy(buf + 7, modulus, 128);
+	memcpy(buf + 7, rsa->modulus.data, 128);
 	memcpy(buf + 7 + 128, "\x82\x81\x80", 3);
-	memcpy(buf + 10 + 128, priv_exp, 128);
+	memcpy(buf + 10 + 128, rsa->d.data, 128);
 	r = sc_update_binary(card, 0, buf, sizeof(buf), 0);
 
 	return r;
@@ -194,39 +173,34 @@ miocos_update_private_key(struct sc_profile *profile, struct sc_card *card,
  */
 static int
 miocos_new_key(struct sc_profile *profile, struct sc_card *card,
-		EVP_PKEY *key, unsigned int index,
+		struct sc_pkcs15_prkey *key, unsigned int index,
 		struct sc_pkcs15_prkey_info *info)
 {
 	sc_file_t *keyfile;
-	RSA *rsa;
+	struct sc_pkcs15_prkey_rsa *rsa;
 	int r;
 	
-	if (key->type != EVP_PKEY_RSA) {
+	if (key->algorithm != SC_ALGORITHM_RSA) {
 		profile->cbs->error("MioCOS supports only 1024-bit RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-	rsa = EVP_PKEY_get1_RSA(key);
-	if (RSA_size(rsa) != 128) {
-		RSA_free(rsa);
+	rsa = &key->u.rsa;
+	if (rsa->modulus.len != 128) {
 		profile->cbs->error("MioCOS supports only 1024-bit RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	r = miocos_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, index,
 			    &keyfile);
-	if (r < 0) {
-		RSA_free(rsa);
+	if (r < 0)
 		return r;
-	}
+
 	info->modulus_length = 1024;
 	info->path = keyfile->path;
 	r = sc_pkcs15init_create_file(profile, card, keyfile);
 	sc_file_free(keyfile);
-	if (r < 0) {
-		RSA_free(rsa);
+	if (r < 0)
 		return r;
-	}
 	r = miocos_update_private_key(profile, card, rsa);
-	RSA_free(rsa);
 
 	return r;
 }

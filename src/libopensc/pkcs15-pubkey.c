@@ -153,30 +153,120 @@ int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 	return r;
 }
 
+static struct sc_asn1_entry c_asn1_public_key[2] = {
+	{ "publicKeyCoefficients", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, },
+	{ NULL }
+};
+
+static struct sc_asn1_entry c_asn1_rsa_pub_coefficients[3] = {
+	{ "modulus",  SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
+	{ "exponent", SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
+	{ NULL }
+};
+
+static struct sc_asn1_entry c_asn1_dsa_pub_coefficients[5] = {
+	{ "publicKey",SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
+	{ "paramP",   SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
+	{ "paramQ",   SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
+	{ "paramG",   SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, },
+	{ NULL },
+};
+
 int
 sc_pkcs15_parse_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key)
 {
-	struct sc_asn1_entry asn1_pubkey_rsa[] = {
-		{ "modulus",	    SC_ASN1_OCTET_STRING, ASN1_INTEGER, SC_ASN1_ALLOC, &key->modulus, &key->modulus_len },
-		{ "publicExponent", SC_ASN1_INTEGER, ASN1_INTEGER, 0, &key->exponent },
-		{ NULL }
-	};
-	const u8 *obj;
-	size_t objlen;
+	struct sc_asn1_entry asn1_public_key[2];
+	struct sc_asn1_entry asn1_rsa_coeff[3];
 	int r;
 	
-	obj = sc_asn1_verify_tag(ctx, key->data, key->data_len, ASN1_SEQUENCE | SC_ASN1_CONS,
-				 &objlen);
-	if (obj == NULL) {
-		error(ctx, "RSA public key not found\n");
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	}
-	r = sc_asn1_decode(ctx, asn1_pubkey_rsa, obj, objlen, NULL, NULL);
+	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
+	sc_format_asn1_entry(asn1_public_key + 0, asn1_rsa_coeff, NULL, 0);
+
+	sc_copy_asn1_entry(c_asn1_rsa_pub_coefficients, asn1_rsa_coeff);
+	sc_format_asn1_entry(asn1_rsa_coeff + 0,
+				&key->modulus.data, &key->modulus.len, 0);
+	sc_format_asn1_entry(asn1_rsa_coeff + 1,
+				&key->exponent.data, &key->exponent.len, 0);
+
+	r = sc_asn1_decode(ctx, asn1_public_key,
+			key->data.value, key->data.len, NULL, NULL);
 	SC_TEST_RET(ctx, r, "ASN.1 parsing failed");
 
 	return 0;
 }
 
+int
+sc_pkcs15_encode_pubkey_rsa(struct sc_context *ctx,
+		struct sc_pkcs15_pubkey_rsa *key,
+		u8 **buf, size_t *buflen)
+{
+	struct sc_asn1_entry asn1_public_key[2];
+	struct sc_asn1_entry asn1_rsa_pub_coeff[3];
+	int r;
+	
+	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
+	sc_format_asn1_entry(asn1_public_key + 0, asn1_rsa_pub_coeff, NULL, 1);
+
+	sc_copy_asn1_entry(c_asn1_rsa_pub_coefficients, asn1_rsa_pub_coeff);
+	sc_format_asn1_entry(asn1_rsa_pub_coeff + 0,
+				key->modulus.data, &key->modulus.len, 1);
+	sc_format_asn1_entry(asn1_rsa_pub_coeff + 1,
+				key->exponent.data, &key->exponent.len, 1);
+
+	r = sc_asn1_encode(ctx, asn1_public_key, buf, buflen);
+	SC_TEST_RET(ctx, r, "ASN.1 encoding failed");
+
+	return 0;
+}
+
+int
+sc_pkcs15_encode_pubkey_dsa(struct sc_context *ctx,
+		struct sc_pkcs15_pubkey_dsa *key,
+		u8 **buf, size_t *buflen)
+{
+	struct sc_asn1_entry asn1_public_key[2];
+	struct sc_asn1_entry asn1_dsa_pub_coeff[3];
+	int r;
+	
+	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
+	sc_copy_asn1_entry(c_asn1_dsa_pub_coefficients, asn1_dsa_pub_coeff);
+
+	sc_format_asn1_entry(asn1_public_key + 0, asn1_dsa_pub_coeff, NULL, 1);
+	sc_format_asn1_entry(asn1_dsa_pub_coeff + 0,
+				key->pub.data, &key->pub.len, 1);
+	sc_format_asn1_entry(asn1_dsa_pub_coeff + 1,
+				key->g.data, &key->g.len, 1);
+	sc_format_asn1_entry(asn1_dsa_pub_coeff + 2,
+				key->p.data, &key->p.len, 1);
+	sc_format_asn1_entry(asn1_dsa_pub_coeff + 3,
+				key->q.data, &key->q.len, 1);
+
+	r = sc_asn1_encode(ctx, asn1_public_key, buf, buflen);
+	SC_TEST_RET(ctx, r, "ASN.1 encoding failed");
+
+	return 0;
+}
+
+int
+sc_pkcs15_encode_pubkey(struct sc_context *ctx,
+		struct sc_pkcs15_pubkey *key,
+		u8 **buf, size_t *len)
+{
+	if (key->algorithm == SC_ALGORITHM_RSA)
+		return sc_pkcs15_encode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
+	if (key->algorithm == SC_ALGORITHM_DSA)
+		return sc_pkcs15_encode_pubkey_dsa(ctx, &key->u.dsa, buf, len);
+	error(ctx, "Encoding of public key type %u not supported\n",
+			key->algorithm);
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
+/*
+ * Read public key.
+ * XXX: we should change this function to take an additional
+ * algorithm parameter, and a sc_pkcs15_pubkey rather than
+ * a sc_pkcs15_pubkey_rsa
+ */
 int
 sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 			const struct sc_pkcs15_pubkey_info *info,
@@ -221,8 +311,8 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	memset(pubkey, 0, sizeof(struct sc_pkcs15_pubkey_rsa));
-	pubkey->data = data;
-	pubkey->data_len = len;
+	pubkey->data.value = data;
+	pubkey->data.len = len;
 	if (sc_pkcs15_parse_pubkey_rsa(p15card->card->ctx, pubkey)) {
 		free(data);
 		free(pubkey);
@@ -235,7 +325,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey_rsa *key)
 {
 	assert(key != NULL);
-	free(key->modulus);
-	free(key->data);
+	free(key->modulus.data);
+	free(key->data.value);
 	free(key);
 }

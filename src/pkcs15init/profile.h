@@ -7,8 +7,6 @@
 #ifndef _OPENSC_PROFILE_H
 #define _OPENSC_PROFILE_H
 
-#include <openssl/rsa.h>
-#include <openssl/dsa.h>
 #include <opensc/pkcs15.h>
 
 #ifndef SC_PKCS15_PROFILE_DIRECTORY

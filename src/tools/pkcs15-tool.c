@@ -354,12 +354,12 @@ int read_public_key(void)
 			return 1;
 		}
 		memcpy(buffer, PEM_RSA_KEY_PREFIX, PEM_RSA_KEY_PREFIX_SIZE);
-		buffer[1] += key->data_len;
-		buffer[PEM_RSA_KEY_PREFIX_SIZE-2] = key->data_len + 1;
+		buffer[1] += key->data.len;
+		buffer[PEM_RSA_KEY_PREFIX_SIZE-2] = key->data.len + 1;
 		memcpy(buffer + PEM_RSA_KEY_PREFIX_SIZE,
-				key->data, key->data_len);
+				key->data.value, key->data.len);
 		r = print_pem_object("PUBLIC KEY", buffer,
-				PEM_RSA_KEY_PREFIX_SIZE + key->data_len);
+				PEM_RSA_KEY_PREFIX_SIZE + key->data.len);
 		sc_pkcs15_free_pubkey(key);
 		return r;
 	}

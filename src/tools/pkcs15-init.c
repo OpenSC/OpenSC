@@ -41,6 +41,8 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <openssl/dsa.h>
+#include <openssl/bn.h>
 #include <openssl/pkcs12.h>
 #include <opensc/pkcs15.h>
 #include <opensc/pkcs15-init.h>
@@ -57,9 +59,12 @@ static int	connect(int);
 static int	do_init_app(struct sc_profile *);
 static int	do_store_pin(struct sc_profile *);
 static int	do_generate_key(struct sc_profile *, const char *);
-static int	do_store_private_key(struct sc_profile *profile);
-static int	do_store_public_key(struct sc_profile *profile);
-static int	do_store_certificate(struct sc_profile *profile);
+static int	do_store_private_key(struct sc_profile *);
+static int	do_store_public_key(struct sc_profile *, EVP_PKEY *);
+static int	do_store_certificate(struct sc_profile *);
+static int	do_convert_private_key(struct sc_pkcs15_prkey *, EVP_PKEY *);
+static int	do_convert_public_key(struct sc_pkcs15_pubkey *, EVP_PKEY *);
+static int	do_convert_cert(sc_pkcs15_der_t *, X509 *);
 
 
 static int	read_one_pin(struct sc_profile *, const char *,
@@ -68,10 +73,10 @@ static int	get_pin_callback(struct sc_profile *profile,
 			int id, const struct sc_pkcs15_pin_info *info,
 			u8 *pinbuf, size_t *pinsize);
 
+static int	do_generate_key_soft(int, unsigned int, EVP_PKEY **);
 static int	do_read_private_key(const char *, const char *,
 				EVP_PKEY **, X509 **);
 static int	do_read_public_key(const char *, const char *, EVP_PKEY **);
-static int	do_write_public_key(const char *, const char *, EVP_PKEY *);
 static int	do_read_certificate(const char *, const char *, X509 **);
 static void	parse_commandline(int argc, char **argv);
 static void	read_options_file(const char *);
@@ -250,7 +255,7 @@ main(int argc, char **argv)
 	else if (opt_action == ACTION_STORE_PRIVKEY)
 		r = do_store_private_key(profile);
 	else if (opt_action == ACTION_STORE_PUBKEY)
-		r = do_store_public_key(profile);
+		r = do_store_public_key(profile, NULL);
 	else if (opt_action == ACTION_STORE_CERT)
 		r = do_store_certificate(profile);
 	else if (opt_action == ACTION_GENERATE_KEY)
@@ -395,7 +400,9 @@ do_store_pin(struct sc_profile *profile)
 static int
 do_store_private_key(struct sc_profile *profile)
 {
-	struct sc_pkcs15init_keyargs args;
+	struct sc_pkcs15init_prkeyargs args;
+	EVP_PKEY	*pkey = NULL;
+	X509		*cert = NULL;
 	int		r;
 
 	memset(&args, 0, sizeof(args));
@@ -410,9 +417,14 @@ do_store_private_key(struct sc_profile *profile)
 	}
 	args.label = opt_objectlabel;
 
-	r = do_read_private_key(opt_infile, opt_format, &args.pkey, &args.cert);
+	r = do_read_private_key(opt_infile, opt_format, &pkey, &cert);
 	if (r < 0)
 		return r;
+
+	if ((r = do_convert_private_key(&args.key, pkey)) < 0)
+		return r;
+	if (cert)
+		args.x509_usage = cert->ex_kusage;
 
 	r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
 	if (r < 0)
@@ -422,17 +434,19 @@ do_store_private_key(struct sc_profile *profile)
 	 * private key from a PKCS #12 file) store it, too.
 	 * Otherwise store the public key.
 	 */
-	if (args.cert) {
+	if (cert) {
 		struct sc_pkcs15init_certargs cargs;
 
 		memset(&cargs, 0, sizeof(cargs));
 		cargs.id = args.id;
-		cargs.cert = args.cert;
-		r = sc_pkcs15init_store_certificate(p15card, profile,
+		cargs.x509_usage = cert->ex_kusage;
+		r = do_convert_cert(&cargs.der_encoded, cert);
+		if (r >= 0)
+			r = sc_pkcs15init_store_certificate(p15card, profile,
 			       	&cargs, NULL);
+		free(cargs.der_encoded.value);
 	} else {
-		r = sc_pkcs15init_store_public_key(p15card, profile,
-			       	&args, NULL);
+		r = do_store_public_key(profile, pkey);
 	}
 
 	return r;
@@ -442,10 +456,10 @@ do_store_private_key(struct sc_profile *profile)
  * Store a public key
  */
 static int
-do_store_public_key(struct sc_profile *profile)
+do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 {
-	struct sc_pkcs15init_keyargs args;
-	int		r;
+	struct sc_pkcs15init_pubkeyargs args;
+	int		r = 0;
 
 	memset(&args, 0, sizeof(args));
 	if (opt_objectid)
@@ -453,12 +467,15 @@ do_store_public_key(struct sc_profile *profile)
 	if (opt_objectlabel)
 		args.label = opt_objectlabel;
 
-	r = do_read_public_key(opt_infile, opt_format, &args.pkey);
+	if (pkey == NULL)
+		r = do_read_public_key(opt_infile, opt_format, &pkey);
+	if (r >= 0)
+		r = do_convert_public_key(&args.key, pkey);
 	if (r >= 0)
 		r = sc_pkcs15init_store_public_key(p15card, profile,
 					&args, NULL);
 
-	return -1;
+	return r;
 }
 
 /*
@@ -468,6 +485,7 @@ static int
 do_store_certificate(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_certargs args;
+	X509	*cert;
 	int	r;
 
 	memset(&args, 0, sizeof(args));
@@ -476,7 +494,9 @@ do_store_certificate(struct sc_profile *profile)
 		sc_pkcs15_format_id(opt_objectid, &args.id);
 	args.label = opt_objectlabel;
 
-	r = do_read_certificate(opt_infile, opt_format, &args.cert);
+	r = do_read_certificate(opt_infile, opt_format, &cert);
+	if (r >= 0)
+		r = do_convert_cert(&args.der_encoded, cert);
 	if (r >= 0)
 		r = sc_pkcs15init_store_certificate(p15card, profile,
 					&args, NULL);
@@ -490,16 +510,19 @@ do_store_certificate(struct sc_profile *profile)
 static int
 do_generate_key(struct sc_profile *profile, const char *spec)
 {
-	struct sc_pkcs15init_keyargs args;
+	struct sc_pkcs15init_prkeyargs args;
+	unsigned int	evp_algo, keybits = 1024;
 	int		r;
 
 	/* Parse the key spec given on the command line */
 	memset(&args, 0, sizeof(args));
 	if (!strncasecmp(spec, "rsa", 3)) {
-		args.algorithm = SC_ALGORITHM_RSA;
+		args.key.algorithm = SC_ALGORITHM_RSA;
+		evp_algo = EVP_PKEY_RSA;
 		spec += 3;
 	} else if (!strncasecmp(spec, "dsa", 3)) {
-		args.algorithm = SC_ALGORITHM_DSA;
+		args.key.algorithm = SC_ALGORITHM_DSA;
+		evp_algo = EVP_PKEY_DSA;
 		spec += 3;
 	} else {
 		error("Unknown algorithm \"%s\"", spec);
@@ -511,7 +534,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	if (*spec) {
 		char	*end;
 
-		args.keybits = strtoul(spec, &end, 10);
+		keybits = strtoul(spec, &end, 10);
 		if (*end) {
 			error("Invalid number of key bits \"%s\"", spec);
 			return SC_ERROR_INVALID_ARGUMENTS;
@@ -529,26 +552,35 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	}
 	args.label = opt_objectlabel;
 
-	while (1) {
-		r = sc_pkcs15init_generate_key(p15card, profile, &args, NULL);
-		if (r != SC_ERROR_NOT_SUPPORTED || !args.onboard_keygen)
-			break;
+	r = sc_pkcs15init_generate_key(p15card, profile, &args, keybits, NULL);
+	if (r < 0) {
+		EVP_PKEY	*pkey;
+
+		if (r != SC_ERROR_NOT_SUPPORTED)
+			return r;
 		if (!opt_quiet)
 			printf("Warning: card doesn't support on-board "
 			       "key generation; using software generation\n");
-		args.onboard_keygen = 0;
-	}
-	if (r < 0)
-		return r;
 
-	/* Store public key portion on card */
-	r = sc_pkcs15init_store_public_key(p15card, profile, &args, NULL);
+		/* Generate the key ourselves */
+		r = do_generate_key_soft(evp_algo, keybits, &pkey);
+		if (r >= 0) {
+			r = do_convert_private_key(&args.key, pkey);
+		}
 
-	if (r >= 0 && opt_outkey) {
-		if (!opt_quiet)
-			printf("Writing public key to %s\n", opt_outkey);
-		r = do_write_public_key(opt_outkey, opt_format, args.pkey);
+		if (r >= 0)
+			r = sc_pkcs15init_store_private_key(p15card, profile,
+					&args, NULL);
+
+		/* Store public key portion on card */
+		if (r >= 0)
+			r = do_store_public_key(profile, pkey);
+
+		EVP_PKEY_free(pkey);
+		if (r < 0)
+			return r;
 	}
+
 	return r;
 }
 
@@ -624,6 +656,46 @@ get_pin_callback(struct sc_profile *profile,
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	memcpy(pinbuf, secret, len + 1);
 	*pinsize = len;
+	return 0;
+}
+
+/*
+ * Generate a private key
+ */
+int
+do_generate_key_soft(int algorithm, unsigned int bits, EVP_PKEY **res)
+{
+	*res = EVP_PKEY_new();
+	switch (algorithm) {
+	case EVP_PKEY_RSA: {
+			RSA	*rsa;
+			BIO	*err;
+
+			err = BIO_new(BIO_s_mem());
+			rsa = RSA_generate_key(bits, 0x10001, NULL, err);
+			BIO_free(err);
+			if (rsa == 0)
+				fatal("RSA key generation error");
+			EVP_PKEY_assign_RSA(*res, rsa);
+			break;
+		}
+	case EVP_PKEY_DSA: {
+			DSA	*dsa;
+			int	r = 0;
+
+			dsa = DSA_generate_parameters(bits,
+					NULL, 0, NULL,
+					NULL, NULL, NULL);
+			if (dsa)
+				r = DSA_generate_key(dsa);
+			if (r == 0 || dsa == 0)
+				fatal("DSA key generation error");
+			EVP_PKEY_assign_DSA(*res, dsa);
+			break;
+		}
+	default:
+		fatal("Unable to generate key: unsupported algorithm");
+	}
 	return 0;
 }
 
@@ -762,6 +834,7 @@ do_read_public_key(const char *name, const char *format, EVP_PKEY **out)
 	return 0;
 }
 
+#if 0
 /*
  * Write a PEM encoded public key
  */
@@ -798,6 +871,7 @@ do_write_public_key(const char *filename, const char *format, EVP_PKEY *pk)
 	}
 	return r;
 }
+#endif
 
 /*
  * Read a certificate
@@ -849,6 +923,100 @@ do_read_certificate(const char *name, const char *format, X509 **out)
 
 	if (!*out)
 		fatal("Unable to read certificate from %s\n", name);
+	return 0;
+}
+
+static int
+do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
+{
+	if (src == 0)
+		return 0;
+	dst->len = BN_num_bytes(src);
+	dst->data = malloc(dst->len);
+	BN_bn2bin(src, dst->data);
+	return 1;
+}
+
+int
+do_convert_private_key(struct sc_pkcs15_prkey *key, EVP_PKEY *pk)
+{
+	switch (pk->type) {
+	case EVP_PKEY_RSA: {
+		struct sc_pkcs15_prkey_rsa *dst = &key->u.rsa;
+		RSA *src = EVP_PKEY_get1_RSA(pk);
+
+		key->algorithm = SC_ALGORITHM_RSA;
+		if (!do_convert_bignum(&dst->modulus, src->n)
+		 || !do_convert_bignum(&dst->exponent, src->e)
+		 || !do_convert_bignum(&dst->d, src->d)
+		 || !do_convert_bignum(&dst->p, src->p)
+		 || !do_convert_bignum(&dst->q, src->q))
+			fatal("Invalid/incomplete RSA key.\n");
+		if (src->iqmp && src->dmp1 && src->dmq1) {
+			do_convert_bignum(&dst->iqmp, src->iqmp);
+			do_convert_bignum(&dst->dmp1, src->dmp1);
+			do_convert_bignum(&dst->dmq1, src->dmq1);
+		}
+		RSA_free(src);
+		break;
+		}
+	case EVP_PKEY_DSA: {
+		struct sc_pkcs15_prkey_dsa *dst = &key->u.dsa;
+		DSA *src = EVP_PKEY_get1_DSA(pk);
+
+		key->algorithm = SC_ALGORITHM_DSA;
+		do_convert_bignum(&dst->pub, src->pub_key);
+		do_convert_bignum(&dst->p, src->p);
+		do_convert_bignum(&dst->q, src->q);
+		do_convert_bignum(&dst->g, src->g);
+		do_convert_bignum(&dst->priv, src->priv_key);
+		DSA_free(src);
+		}
+	default:
+		fatal("Unsupported key algorithm\n");
+	}
+
+	return 0;
+}
+
+int
+do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
+{
+	switch (pk->type) {
+	case EVP_PKEY_RSA: {
+		struct sc_pkcs15_pubkey_rsa *dst = &key->u.rsa;
+		RSA *src = EVP_PKEY_get1_RSA(pk);
+
+		key->algorithm = SC_ALGORITHM_RSA;
+		if (!do_convert_bignum(&dst->modulus, src->n)
+		 || !do_convert_bignum(&dst->exponent, src->e))
+			fatal("Invalid/incomplete RSA key.\n");
+		RSA_free(src);
+		break;
+		}
+	case EVP_PKEY_DSA: {
+		struct sc_pkcs15_pubkey_dsa *dst = &key->u.dsa;
+		DSA *src = EVP_PKEY_get1_DSA(pk);
+
+		key->algorithm = SC_ALGORITHM_DSA;
+		do_convert_bignum(&dst->pub, src->pub_key);
+		DSA_free(src);
+		}
+	default:
+		fatal("Unsupported key algorithm\n");
+	}
+
+	return 0;
+}
+
+int
+do_convert_cert(sc_pkcs15_der_t *der, X509 *cert)
+{
+	unsigned char	*p;
+
+	der->len = i2d_X509(cert, NULL);
+	der->value = p = malloc(der->len);
+	i2d_X509(cert, &p);
 	return 0;
 }
 
