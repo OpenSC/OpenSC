@@ -80,6 +80,10 @@ enum {
 	SC_CARDCTL_STARCOS_FREE_EX_DATA,
 	SC_CARDCTL_STARCOS_FREE_ALL_EX_DATA,
 
+	SC_CARDCTL_JCOP_BASE = _CTL_PREFIX('J', 'C', 'P'),
+	SC_CARDCTL_JCOP_LOCK,
+	SC_CARDCTL_JCOP_GENERATE_KEY,
+
 };
 
 enum {
@@ -207,6 +211,16 @@ struct sc_cardctl_starcos_pin_attr_st {
 	int	verify_once;
 };
 
+
+struct sc_cardctl_jcop_genkey  {
+     unsigned long exponent;
+     sc_path_t pub_file_ref;
+     sc_path_t pri_file_ref;
+     unsigned char *	pubkey;
+     unsigned int	pubkey_len;
+};
+     
+	  
 #ifdef  __cplusplus
 }
 #endif

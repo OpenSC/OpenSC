@@ -134,6 +134,7 @@ static struct profile_operations {
 	{ "flex", (void *) sc_pkcs15init_get_cryptoflex_ops },
 	{ "cyberflex", (void *) sc_pkcs15init_get_cyberflex_ops },
 	{ "etoken", (void *) sc_pkcs15init_get_etoken_ops },
+	{ "jcop", (void *) sc_pkcs15init_get_jcop_ops },
 	{ NULL, NULL },
 };
 

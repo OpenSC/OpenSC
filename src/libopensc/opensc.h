@@ -867,6 +867,7 @@ extern struct sc_card_driver *sc_get_setcos_driver(void);
 extern struct sc_card_driver *sc_get_starcos_driver(void);
 extern struct sc_card_driver *sc_get_tcos_driver(void);
 extern struct sc_card_driver *sc_get_openpgp_driver(void);
+extern struct sc_card_driver *sc_get_jcop_driver(void);
 
 #ifdef  __cplusplus
 }

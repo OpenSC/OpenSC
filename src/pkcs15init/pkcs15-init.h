@@ -352,6 +352,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_miocos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cryptoflex_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cyberflex_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_etoken_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_jcop_ops(void);
 
 #ifdef  __cplusplus
 }
