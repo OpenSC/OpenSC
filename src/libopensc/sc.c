@@ -106,7 +106,7 @@ int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
 struct sc_slot_info * _sc_get_slot_info(struct sc_reader *reader, int slot_id)
 {
 	assert(reader != NULL);
-	if (slot_id > reader->slot_count)
+	if (slot_id < 0 || slot_id > reader->slot_count)
 		return NULL;
 	return &reader->slot[slot_id];
 }
