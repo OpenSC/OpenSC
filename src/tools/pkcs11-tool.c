@@ -57,6 +57,8 @@ const struct option options[] = {
 	{ "pin",		1, 0,		'p' },
 	{ "change-pin",		0, 0,		'c' },
 	{ "keypairgen", 	0, 0, 		'k' },
+	{ "write-object",	1, 0, 		'w' },
+	{ "type", 		1, 0, 		'y' },
 	{ "slot",		1, 0,		OPT_SLOT },
 	{ "slot-label",		1, 0,		OPT_SLOT_LABEL },
 	{ "input-file",		1, 0,		'i' },
@@ -82,6 +84,8 @@ const char *option_help[] = {
 	"Supply PIN on the command line (if used in scripts: careful!)",
 	"Change your (user) PIN",
 	"Key pair generation",
+	"Write an object (key, cert) to the card",
+	"Specify the type of object (cert)",
 	"Specify number of the slot to use",
 	"Specify label of the slot to use",
 	"Specify the input file",
@@ -101,6 +105,8 @@ static const char *	opt_module = NULL;
 static CK_SLOT_ID	opt_slot = NO_SLOT;
 static const char *	opt_slot_label = NULL;
 static CK_MECHANISM_TYPE opt_mechanism = NO_MECHANISM;
+static const char *	opt_file_to_write = NULL;
+static const char *	opt_object_type = NULL;
 
 static sc_pkcs11_module_t *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -130,6 +136,7 @@ static void		sign_data(CK_SLOT_ID,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		gen_keypair(CK_SLOT_ID, CK_SESSION_HANDLE);
+static void 		write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
@@ -169,6 +176,7 @@ main(int argc, char * const argv[])
 	int do_sign = 0;
 	int do_hash = 0;
 	int do_gen_keypair = 0;
+	int do_write_object = 0;
 	int do_test = 0;
 	int need_session = 0;
 	int opt_login = 0;
@@ -177,7 +185,7 @@ main(int argc, char * const argv[])
 	CK_RV rv;
 
 	while (1) {
-               c = getopt_long(argc, argv, "ILMOghi:lm:o:p:scqt",
+               c = getopt_long(argc, argv, "ILMOhi:klm:o:p:scqty:w:",
 					options, &long_optind);
 		if (c == -1)
 			break;
@@ -204,10 +212,19 @@ main(int argc, char * const argv[])
 			do_hash = 1;
 			action_count++;
 			break;
-		case 'g':
+		case 'k':
 			need_session |= NEED_SESSION_RW;
 			do_gen_keypair = 1;
 			action_count++;
+			break;
+		case 'w':
+			need_session |= NEED_SESSION_RW;
+			do_write_object = 1;
+			opt_file_to_write = optarg;
+			action_count++;
+			break;
+		case 'y':
+			opt_object_type = optarg;
 			break;
 		case 'i':
 			opt_input = optarg;
@@ -391,6 +408,12 @@ skip_login:
 
 	if (do_gen_keypair)
 		gen_keypair(opt_slot, session);
+
+	if (do_write_object) {
+		if (opt_object_type == NULL)
+			fatal("You should specify the -y option with -w\n");
+		write_object(opt_slot, session);
+	}
 
 	if (do_test)
 		p11_test(opt_slot, session);
@@ -702,7 +725,6 @@ hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 void
 gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
-	CK_SESSION_HANDLE hSession;
 	CK_OBJECT_HANDLE hPublicKey, hPrivateKey;
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_KEY_PAIR_GEN, NULL_PTR, 0};
 	CK_ULONG modulusBits = 768;
@@ -734,6 +756,70 @@ gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	printf("Key pair generated:\n");
 	show_object(session, hPrivateKey);
 	show_object(session, hPublicKey);
+}
+
+#define FILL_ATTR(attr, typ, val, len) (attr).type=(typ); (attr).pValue=(val); (attr).ulValueLen=len;
+
+/* Currently only for certificate (-type cert) */
+void
+write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	CK_BBOOL true = TRUE;
+	unsigned char contents[5000];
+	int contents_len;
+	FILE *f;
+	CK_OBJECT_HANDLE cert_obj, pubkey_obj, privkey_obj;
+	CK_ATTRIBUTE cert_templ[10], pubkey_templ[10], privkey_templ[10];
+	int n_cert_attr = 0, n_pubkey_attr = 0, n_privkey_attr = 0;
+	CK_RV rv;
+
+	f = fopen(opt_file_to_write, "rb");
+	if (f == NULL)
+		fatal("Couldn't open file \"%s\"\n", opt_file_to_write);
+	contents_len = fread(contents, 1, sizeof(contents), f);
+	if (contents_len < 0)
+		fatal("Couldn't read from file \"%s\"\n", opt_file_to_write);
+	fclose(f);
+
+	if (strcmp("cert", opt_object_type) == 0) {
+		CK_OBJECT_CLASS clazz = CKO_CERTIFICATE;
+		CK_CERTIFICATE_TYPE cert_type = CKC_X_509;
+
+		FILL_ATTR(cert_templ[0], CKA_TOKEN, &true, sizeof(true));
+		FILL_ATTR(cert_templ[1], CKA_VALUE, contents, contents_len);
+		FILL_ATTR(cert_templ[2], CKA_CLASS, &clazz, sizeof(clazz));
+		FILL_ATTR(cert_templ[3], CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type));
+		n_cert_attr = 4;
+	}
+	else
+		fatal("Unknown/unsupported object type \"%s\"\n", opt_object_type);
+
+	if (n_cert_attr) {
+		rv = p11->C_CreateObject(session, cert_templ, n_cert_attr, &cert_obj);
+		if (rv != CKR_OK)
+			p11_fatal("C_CreateObject", rv);
+		
+		printf("Generated certificate:\n");
+		show_object(session, cert_obj);
+	}
+
+	if (n_pubkey_attr) {
+		rv = p11->C_CreateObject(session, pubkey_templ, n_pubkey_attr, &pubkey_obj);
+		if (rv != CKR_OK)
+			p11_fatal("C_CreateObject", rv);
+		
+		printf("Generated public key:\n");
+		show_object(session, pubkey_obj);
+	}
+
+	if (n_privkey_attr) {
+		rv = p11->C_CreateObject(session, privkey_templ, n_privkey_attr, &privkey_obj);
+		if (rv != CKR_OK)
+			p11_fatal("C_CreateObject", rv);
+		
+		printf("Generated private key:\n");
+		show_object(session, privkey_obj);
+	}
 }
 
 CK_SLOT_ID
