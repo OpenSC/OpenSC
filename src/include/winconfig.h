@@ -1,6 +1,7 @@
 #ifndef _OPENSC_WINCONFIG_H
 #define _OPENSC_WINCONFIG_H
 
+#include <stdio.h>
 #include <windows.h>
 #include <sys/timeb.h>
 
