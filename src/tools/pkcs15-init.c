@@ -355,6 +355,8 @@ main(int argc, char **argv)
 
 			if (!opt_quiet)
 				printf("Found %s\n", p15card->label);
+
+			sc_pkcs15init_set_p15card(profile, p15card);
 		}
 
 		if (!opt_quiet && action != ACTION_ASSERT_PRISTINE)
