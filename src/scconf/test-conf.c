@@ -30,7 +30,7 @@
 
 #define ADD_TEST
 
-static int ldap_cb(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
+static int ldap_cb(const scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
 {
 	scconf_entry ldap_entry[] =
 	{
@@ -58,7 +58,7 @@ static int ldap_cb(scconf_context * config, const scconf_block * block, scconf_e
 	return 0;		/* 0 for ok, 1 for error */
 }
 
-static int card_cb(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
+static int card_cb(const scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
 {
 	char *str = scconf_list_strdup(block->name, " ");
 	scconf_entry card_entry[] =
@@ -79,12 +79,39 @@ static int card_cb(scconf_context * config, const scconf_block * block, scconf_e
 	return 0;		/* 0 for ok, 1 for error */
 }
 
+static int write_cb(scconf_context * config, scconf_block * block, scconf_entry * entry, int depth)
+{
+	scconf_put_str(block, entry->name, "inside write_cb();");
+	scconf_item_add(config, block, NULL, SCCONF_ITEM_TYPE_COMMENT, NULL, "# commentN");
+	return 0;		/* 0 for ok, 1 for error */
+}
+
+int write_entries(scconf_context *conf, scconf_list *list)
+{
+	scconf_entry subblock[] =
+	{
+		{"stringIT", SCCONF_STRING, SCCONF_VERBOSE, (void *) "sexy"},
+		{"callback_str", SCCONF_CALLBACK, SCCONF_VERBOSE, (void *) write_cb},
+		{NULL}
+	};
+	scconf_entry wentry[] =
+	{
+		{"string", SCCONF_STRING, SCCONF_VERBOSE, (void *) "value1"},
+		{"integer", SCCONF_INTEGER, SCCONF_VERBOSE, (void *) 42},
+		{"sucks", SCCONF_BOOLEAN, SCCONF_VERBOSE, (void *) 1},
+		{"listN", SCCONF_LIST, SCCONF_VERBOSE, (void *) list},
+		{"blockN", SCCONF_BLOCK, SCCONF_VERBOSE, (void *) subblock, (void *) list},
+		{NULL}
+	};
+	return scconf_write_entries(conf, NULL, wentry);
+}
+
 int main(int argc, char **argv)
 {
 #ifdef ADD_TEST
 	scconf_block *foo_block = NULL;
-	scconf_list *foo_list = NULL;
 	scconf_item *foo_item = NULL;
+	scconf_list *foo_list = NULL;
 #endif
 	scconf_context *conf = NULL;
 	scconf_entry entry[] =
@@ -130,12 +157,18 @@ int main(int argc, char **argv)
 
 	scconf_list_add(&foo_list, "value3");
 
-	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, "key", "# comment1");
+	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, NULL, "# comment1");
 	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_VALUE, "list1", foo_list);
 	foo_block = NULL;
 	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_BLOCK, "block3", (void *) scconf_find_block(conf, NULL, "foo"));
 	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_VALUE, "list2", foo_list);
-	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, "key", "# comment2");
+	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, NULL, "# comment2");
+
+	if (write_entries(conf, foo_list) != 0) {
+		printf("scconf_write_entries failed\n");
+		scconf_free(conf);
+		return 1;
+	}
 
 	scconf_list_destroy(foo_list);
 #endif

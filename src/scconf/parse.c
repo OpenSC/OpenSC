@@ -127,8 +127,12 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 	scconf_parser parser;
 	scconf_block *dst = NULL;
 
-	memset(&parser, 0, sizeof(scconf_parser));
+	if (!config && !block)
+		return NULL;
+	if (!data)
+		return NULL;
 
+	memset(&parser, 0, sizeof(scconf_parser));
 	parser.config = config ? config : NULL;
 	parser.key = key ? strdup(key) : NULL;
 	parser.block = block ? block : config->root;
@@ -141,20 +145,18 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 		scconf_list_copy(dst->name, &parser.name);
 	}
 	scconf_item_add_internal(&parser, type);
-	if (data) {
-		switch (parser.current_item->type) {
-		case SCCONF_ITEM_TYPE_COMMENT:
-			parser.current_item->value.comment = strdup((char *) data);
-			break;
-		case SCCONF_ITEM_TYPE_BLOCK:
-			dst->parent = parser.block;
-			parser.current_item->value.block = dst;
-			scconf_list_destroy(parser.name);
-			break;
-		case SCCONF_ITEM_TYPE_VALUE:
-			scconf_list_copy((const scconf_list *) data, &parser.current_item->value.list);
-			break;
-		}
+	switch (parser.current_item->type) {
+	case SCCONF_ITEM_TYPE_COMMENT:
+		parser.current_item->value.comment = strdup((char *) data);
+		break;
+	case SCCONF_ITEM_TYPE_BLOCK:
+		dst->parent = parser.block;
+		parser.current_item->value.block = dst;
+		scconf_list_destroy(parser.name);
+		break;
+	case SCCONF_ITEM_TYPE_VALUE:
+		scconf_list_copy((const scconf_list *) data, &parser.current_item->value.list);
+		break;
 	}
 	return parser.current_item;
 }
@@ -189,7 +191,6 @@ scconf_block *scconf_block_add(scconf_context * config, scconf_block * block, co
 	scconf_parser parser;
 
 	memset(&parser, 0, sizeof(scconf_parser));
-
 	parser.config = config ? config : NULL;
 	parser.key = key ? strdup(key) : NULL;
 	parser.block = block ? block : config->root;

@@ -102,13 +102,17 @@ extern int scconf_parse(scconf_context * config);
 
 /* Parse entries
  */
-int scconf_parse_entries(scconf_context * config, const scconf_block * block, scconf_entry * entry);
+extern int scconf_parse_entries(const scconf_context * config, const scconf_block * block, scconf_entry * entry);
 
 /* Write config to a file
  * If the filename is NULL, use the config->filename
  * Returns 0 = ok, else = errno
  */
 extern int scconf_write(scconf_context * config, const char *filename);
+
+/* Write configuration entries to block
+ */
+extern int scconf_write_entries(scconf_context * config, scconf_block * block, scconf_entry * entry);
 
 /* Find a block by the item_name
  * If the block is NULL, the root block is used
@@ -139,6 +143,18 @@ extern int scconf_get_int(const scconf_block * block, const char *option, int de
  * If no option found, return def
  */
 extern int scconf_get_bool(const scconf_block * block, const char *option, int def);
+
+/* Write value to a block as a string
+ */
+extern const char *scconf_put_str(scconf_block * block, const char *option, const char *value);
+
+/* Write value to a block as an integer
+ */
+extern int scconf_put_int(scconf_block * block, const char *option, int value);
+
+/* Write value to a block as a boolean
+ */
+extern int scconf_put_bool(scconf_block * block, const char *option, int value);
 
 /* Add block structure
  * If the block is NULL, the root block is used

@@ -81,7 +81,7 @@ const scconf_block *scconf_find_block(const scconf_context * config, const sccon
 			return item->value.block;
 		}
 	}
-	return block;
+	return NULL;
 }
 
 scconf_block **scconf_find_blocks(const scconf_context * config, const scconf_block * block, const char *item_name, const char *key)
@@ -158,6 +158,40 @@ int scconf_get_bool(const scconf_block * block, const char *option, int def)
 		return def;
 	}
 	return toupper((int) *list->data) == 'T' || toupper((int) *list->data) == 'Y';
+}
+
+const char *scconf_put_str(scconf_block * block, const char *option, const char *value)
+{
+	scconf_list *list = NULL;
+	scconf_item *item;
+
+	scconf_list_add(&list, value);
+	item = scconf_item_add(NULL, block, NULL, SCCONF_ITEM_TYPE_VALUE, option, list);
+	scconf_list_destroy(list);
+	return value;
+}
+
+int scconf_put_int(scconf_block * block, const char *option, int value)
+{
+	const char *ret;
+	char *str;
+
+	str = (char *) malloc(64);
+	if (!str) {
+		return value;
+	}
+	snprintf(str, 64, "%i", value);
+	ret = scconf_put_str(block, option, str);
+	free(str);
+	return value;
+}
+
+int scconf_put_bool(scconf_block * block, const char *option, int value)
+{
+	const char *ret;
+
+	ret = scconf_put_str(block, option, !value ? "false" : "true");
+	return value;
 }
 
 scconf_item *scconf_item_copy(const scconf_item * src, scconf_item ** dst)
@@ -361,14 +395,42 @@ char *scconf_list_strdup(const scconf_list * list, const char *filler)
 	return buf;
 }
 
-static int parse_entries(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth);
+static scconf_block **getblocks(const scconf_context * config, const scconf_block * block, scconf_entry * entry)
+{
+	scconf_block **blocks = NULL;
 
-static int parse_type(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
+	blocks = scconf_find_blocks(config, block, entry->name, NULL);
+	if (blocks) {
+		if (blocks[0] != NULL) {
+			if (config->debug) {
+				fprintf(stderr, "block found (%s)\n", entry->name);
+			}
+			return blocks;
+		}
+		free(blocks);
+		blocks = NULL;
+	}
+	if (scconf_find_list(block, entry->name) != NULL) {
+		if (config->debug) {
+			fprintf(stderr, "list found (%s)\n", entry->name);
+		}
+		blocks = (scconf_block **) realloc(blocks, sizeof(scconf_block *) * 2);
+		if (!blocks)
+			return NULL;
+		blocks[0] = (scconf_block *) block;
+		blocks[1] = NULL;
+	}
+	return blocks;
+}
+
+static int parse_entries(const scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth);
+
+static int parse_type(const scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
 {
 	void *parm = entry->parm;
-	int (*callback_func) (scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth) =
-	(int (*)(scconf_context *, const scconf_block *, scconf_entry *, int)) parm;
 	size_t *len = (size_t *) entry->arg;
+	int (*callback_func) (const scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth) =
+	(int (*)(const scconf_context *, const scconf_block *, scconf_entry *, int)) parm;
 	int r = 0;
 
 	if (config->debug) {
@@ -429,7 +491,7 @@ static int parse_type(scconf_context * config, const scconf_block * block, sccon
 		break;
 	case SCCONF_INTEGER:
 		{
-			int val = scconf_get_int(block, entry->name, 42);
+			int val = scconf_get_int(block, entry->name, 0);
 
 			if (parm) {
 				*((int *) parm) = val;
@@ -480,35 +542,7 @@ static int parse_type(scconf_context * config, const scconf_block * block, sccon
 	return 0;
 }
 
-static scconf_block **getblocks(scconf_context * config, const scconf_block * block, scconf_entry * entry)
-{
-	scconf_block **blocks = NULL;
-
-	blocks = scconf_find_blocks(config, block, entry->name, NULL);
-	if (blocks) {
-		if (blocks[0] != NULL) {
-			if (config->debug) {
-				fprintf(stderr, "block found (%s)\n", entry->name);
-			}
-			return blocks;
-		}
-		free(blocks);
-		blocks = NULL;
-	}
-	if (scconf_find_list(block, entry->name) != NULL) {
-		if (config->debug) {
-			fprintf(stderr, "list found (%s)\n", entry->name);
-		}
-		blocks = (scconf_block **) realloc(blocks, sizeof(scconf_block *) * 2);
-		if (!blocks)
-			return NULL;
-		blocks[0] = (scconf_block *) block;
-		blocks[1] = NULL;
-	}
-	return blocks;
-}
-
-static int parse_entries(scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
+static int parse_entries(const scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
 {
 	int r, i, idx;
 	scconf_entry *e;
@@ -545,11 +579,120 @@ static int parse_entries(scconf_context * config, const scconf_block * block, sc
 	return 0;
 }
 
-int scconf_parse_entries(scconf_context * config, const scconf_block * block, scconf_entry * entry)
+int scconf_parse_entries(const scconf_context * config, const scconf_block * block, scconf_entry * entry)
 {
 	if (!entry)
 		return 1;
 	if (!block)
 		block = config->root;
 	return parse_entries(config, block, entry, 0);
+}
+
+static int write_entries(scconf_context * config, scconf_block * block, scconf_entry * entry, int depth);
+
+static int write_type(scconf_context * config, scconf_block * block, scconf_entry * entry, int depth)
+{
+	void *parm = entry->parm;
+	void *arg = entry->arg;
+	int (*callback_func) (scconf_context * config, scconf_block * block, scconf_entry * entry, int depth) =
+	(int (*)(scconf_context *, scconf_block *, scconf_entry *, int)) parm;
+	int r = 0;
+
+	if (config->debug) {
+		fprintf(stderr, "encoding '%s'\n", entry->name);
+	}
+	switch (entry->type) {
+	case SCCONF_CALLBACK:
+		if (parm) {
+			r = callback_func(config, block, entry, depth);
+		}
+		break;
+	case SCCONF_BLOCK:
+		if (parm) {
+			scconf_block *subblock;
+			const scconf_list *name = (const scconf_list *) arg;
+
+			subblock = scconf_block_add(config, block, entry->name, name);
+			r = write_entries(config, subblock, (scconf_entry *) parm, depth + 1);
+		}
+		break;
+	case SCCONF_LIST:
+		if (parm) {
+			const scconf_list *val = (const scconf_list *) parm;
+
+			scconf_item_add(config, block, NULL, SCCONF_ITEM_TYPE_VALUE, entry->name, val);
+			if (entry->flags & SCCONF_VERBOSE) {
+				char *buf = scconf_list_strdup(val, ", ");
+				printf("%s = %s\n", entry->name, buf);
+				free(buf);
+			}
+		}
+		break;
+	case SCCONF_BOOLEAN:
+		if (parm) {
+			const int val = parm ? (int) parm : 0;
+
+			scconf_put_bool(block, entry->name, val);
+			if (entry->flags & SCCONF_VERBOSE) {
+				printf("%s = %s\n", entry->name, val == 0 ? "false" : "true");
+			}
+		}
+		break;
+	case SCCONF_INTEGER:
+		if (parm) {
+			const int val = parm ? (int) parm : 0;
+
+			scconf_put_int(block, entry->name, val);
+			if (entry->flags & SCCONF_VERBOSE) {
+				printf("%s = %i\n", entry->name, val);
+			}
+		}
+		break;
+	case SCCONF_STRING:
+		if (parm) {
+			const char *val = parm ? (const char *) parm : "";
+
+			scconf_put_str(block, entry->name, val);
+			if (entry->flags & SCCONF_VERBOSE) {
+				printf("%s = %s\n", entry->name, val);
+			}
+		}
+		break;
+	default:
+		fprintf(stderr, "invalid configuration type: %d\n", entry->type);
+	}
+	if (r) {
+		fprintf(stderr, "encoding of configuration entry '%s' failed.\n", entry->name);
+		return r;
+	}
+	entry->flags |= SCCONF_PRESENT;
+	return 0;
+}
+
+static int write_entries(scconf_context * config, scconf_block * block, scconf_entry * entry, int depth)
+{
+	int r, idx;
+	scconf_entry *e;
+
+	if (config->debug) {
+		fprintf(stderr, "write_entries called, depth %d\n", depth);
+	}
+	for (idx = 0; entry[idx].name; idx++) {
+		e = &entry[idx];
+		r = 0;
+		r = write_type(config, block, e, depth);
+		if (r) {
+			return r;
+		}
+	}
+	return 0;
+}
+
+int scconf_write_entries(scconf_context * config, scconf_block * block, scconf_entry * entry)
+{
+	if (!entry)
+		return 1;
+	if (!block)
+		block = config->root;
+	return write_entries(config, block, entry, 0);
 }
