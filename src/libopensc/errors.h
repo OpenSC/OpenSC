@@ -92,6 +92,7 @@ extern "C" {
 #define SC_ERROR_INCOMPATIBLE_KEY		-1503
 #define SC_ERROR_NO_DEFAULT_KEY			-1504
 #define SC_ERROR_ID_NOT_UNIQUE			-1505
+#define SC_ERROR_CANNOT_LOAD_KEY		-1006
 
 /* Errors that do not fit the categories above */
 #define SC_ERROR_UNKNOWN			-1900

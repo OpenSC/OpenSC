@@ -90,6 +90,7 @@ const char *sc_strerror(int error)
 		"Key length/algorithm not supported by card",
 		"No default (transport) key available",
 		"The PKCS#15 Key/certificate ID specified is not unique",
+		"Unable to load key and certificate(s) from file",
 	};
 	const int p15i_base = -SC_ERROR_PKCS15INIT;
 	const char *misc_errors[] = {
