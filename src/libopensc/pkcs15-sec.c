@@ -37,6 +37,11 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	struct sc_path path, file_id;
         const struct sc_pkcs15_prkey_info *prkey = obj->data;
 
+	/* If the key is extractable, the caller should extract the
+	 * key and do the crypto himself */
+	if (!prkey->native)
+		return SC_ERROR_EXTRACTABLE_KEY;
+
 	if (prkey->path.len < 2)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (prkey->path.len == 2) {
@@ -158,6 +163,11 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	size_t buflen;
 	struct sc_path path, file_id;
 	unsigned long pad_flags = 0;
+
+	/* If the key is extractable, the caller should extract the
+	 * key and do the crypto himself */
+	if (!prkey->native)
+		return SC_ERROR_EXTRACTABLE_KEY;
 
 	if (prkey->path.len < 2)
 		return SC_ERROR_INVALID_ARGUMENTS;
