@@ -139,12 +139,6 @@ filesystem {
 	    acl		= *=NONE;
 	    size	= 5000;
 
-	    EF OPENSC-Info {
-		file-id		= 01FF;
-		size		= 0;
-		ACL		= $unprotected;
-	    }
-
 	    EF PKCS15-ODF {
 	        file-id		= 5031;
 		size		= $odf-size;
