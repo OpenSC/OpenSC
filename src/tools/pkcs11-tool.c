@@ -1112,6 +1112,7 @@ ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);
 ATTR_METHOD(MODULUS_BITS, CK_ULONG);
 VARATTR_METHOD(LABEL, char);
 VARATTR_METHOD(ID, unsigned char);
+VARATTR_METHOD(MODULUS, unsigned char);
 VARATTR_METHOD(VALUE, unsigned char);
 
 void
@@ -2324,12 +2325,12 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_OBJECT_HANDLE	pub_key, priv_key;
 	CK_ULONG		i, num_mechs = 0;
 	CK_RV			rv;
-	CK_BYTE			buf[20], *tmp;
+	CK_BYTE			buf[20], *tmp, *mod;
 	CK_BYTE			md5_and_digestinfo[34] = "\x30\x20\x30\x0c\x06\x08\x2a\x86\x48\x86\xf7\x0d\x02\x05\x05\x00\x04\x10";
 	CK_BYTE			*data, sig[512];
 	CK_ULONG		data_len, sig_len;
 	CK_BYTE			*id = (CK_BYTE *) "abcdefghijklmnopqrst";
-	CK_ULONG		id_len = 20;
+	CK_ULONG		id_len = 20, mod_len;
 	CK_BYTE			*label = (CK_BYTE *) "Just a label";
 	CK_ULONG		label_len = 12;
 	CK_ATTRIBUTE		attribs[3] = {
@@ -2358,7 +2359,6 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	while(find_object(session, CKO_PRIVATE_KEY, &priv_key, id, id_len, 0))
 		id[0]++;
 	
-
 	printf("\n*** Generating a 1024 bit RSA key pair ***\n");
 
 	if (!gen_keypair(slot, session, &pub_key, &priv_key))
@@ -2370,6 +2370,13 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return;
 	}
 	memcpy(opt_object_id, tmp, opt_object_id_len);
+
+	/* This is done in NSS */
+	mod = getMODULUS(session, priv_key, &mod_len);
+	if (mod_len < 5 || mod_len > 10000) { /* should be resonable limits */
+		printf("ERR: GetAttribute(privkey, CKA_MODULUS) doesn't seem to work\n");
+		return;
+	}
 
 	printf("\n*** Changing the CKA_ID of private and public key into one of 20 bytes ***\n");
 
