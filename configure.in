@@ -923,6 +923,7 @@ AM_CONDITIONAL(HAVE_LDAP, test "x$LDAP_MSG" = "xyes")
 ### END LDAP SPECIFIC OPTIONS
 
 ### BEGIN ASSUAN SPECIFIC OPTIONS
+ASSUAN_MSG="no"
 AC_SUBST(CFLAGS_ASSUAN)
 AC_SUBST(LIBASSUAN)
 LIBASSUAN="-lassuan"
@@ -950,12 +951,14 @@ AC_ARG_WITH(assuan,
 	]
 )
 
-AC_CHECK_LIB(assuan, assuan_pipe_connect, , AC_MSG_ERROR([*** Assuan libraries not found - please install first]))
-
-saved_CPPFLAGS="$CPPFLAGS"
-CPPFLAGS="$CFLAGS_ASSUAN $CPPFLAGS"
-AC_CHECK_HEADER(assuan.h, , AC_MSG_ERROR([*** Assuan headers not found - please install first]))
-CPPFLAGS="$saved_CPPFLAGS"
+AC_CHECK_LIB(assuan, assuan_pipe_connect, ASSUAN_MSG="yes", ASSUAN_MSG="no")
+if test "x$ASSUAN_MSG" != "xno" ; then
+  saved_CPPFLAGS="$CPPFLAGS"
+  CPPFLAGS="$CFLAGS_ASSUAN $CPPFLAGS"
+  AC_CHECK_HEADER(assuan.h, ASSUAN_MSG="yes", ASSUAN_MSG="no")
+  CPPFLAGS="$saved_CPPFLAGS"
+fi
+AM_CONDITIONAL(HAVE_ASSUAN, test "x$ASSUAN_MSG" = "xyes")
 ### END ASSUAN SPECIFIC OPTIONS
 
 PLUGINDIR="/usr/lib/mozilla/plugins"
@@ -1085,6 +1088,7 @@ echo "Libraries:           ${LIBS}"
 echo ""
 echo "Random number collection: ${RAND_MSG}"
 echo "OpenSSL support:          ${SSL_MSG}"
+echo "Assuan support:           ${ASSUAN_MSG}"
 echo "LDAP support:             ${LDAP_MSG}"
 echo "PAM support:              ${PAM_MSG}"
 echo "SIA support:              ${SIA_MSG}"
