@@ -204,6 +204,8 @@ struct sc_pkcs15_cert_info {
 	int authority;		/* boolean */
 	/* identifiers [2] SEQUENCE OF CredentialIdentifier{{KeyIdentifiers}} */
 	struct sc_path path;
+
+	sc_pkcs15_der_t value;
 };
 typedef struct sc_pkcs15_cert_info sc_pkcs15_cert_info_t;
 
@@ -579,9 +581,11 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 /* PKCS #15 ID handling functions */
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
 			 const struct sc_pkcs15_id *id2);
-void sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
+const char *sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
 void sc_pkcs15_format_id(const char *id_in, struct sc_pkcs15_id *id_out);
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
+void sc_der_copy(sc_pkcs15_der_t *, const sc_pkcs15_der_t *);
+void sc_der_clear(sc_pkcs15_der_t *);
 
 /* New object search API.
  * More complex, but also more powerful.
