@@ -179,6 +179,10 @@ static char *			action_names[] = {
 	"store certificate"
 };
 
+/* Flags for read_one_pin */
+#define READ_PIN_OPTIONAL	0x01
+#define READ_PIN_RETYPE		0x02
+
 static struct sc_context *	ctx = NULL;
 static struct sc_card *		card = NULL;
 static struct sc_pkcs15_card *	p15card = NULL;
@@ -386,8 +390,10 @@ do_store_pin(struct sc_profile *profile)
 	if (opt_pins[0] == NULL) {
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_USER_PIN, &info);
-		read_one_pin(profile, "New user PIN", &info, 0,
-				&opt_pins[0]);
+		if (!read_one_pin(profile, "New user PIN", &info,
+			       	READ_PIN_RETYPE,
+				&opt_pins[0]))
+			goto failed;
 	}
 	if (*opt_pins[0] == '\0') {
 		error("You must specify a PIN\n");
@@ -396,8 +402,11 @@ do_store_pin(struct sc_profile *profile)
 	if (opt_pins[1] == NULL) {
 		sc_pkcs15init_get_pin_info(profile,
 				SC_PKCS15INIT_SO_PIN, &info);
-		read_one_pin(profile, "Unlock code for new user PIN",
-				&info, 1, &opt_pins[1]);
+		if (!read_one_pin(profile,
+			       	"Unlock code for new user PIN", &info,
+			       	READ_PIN_RETYPE|READ_PIN_OPTIONAL,
+			       	&opt_pins[1]))
+			goto failed;
 	}
 
 	memset(&args, 0, sizeof(args));
@@ -409,6 +418,9 @@ do_store_pin(struct sc_profile *profile)
 	args.label = opt_objectlabel;
 
 	return sc_pkcs15init_store_pin(p15card, profile, &args);
+
+failed:	
+	return SC_ERROR_PKCS15INIT;
 }
 
 
@@ -620,35 +632,51 @@ init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 static int
 read_one_pin(struct sc_profile *profile, const char *name,
 		const struct sc_pkcs15_pin_info *info,
-		int optional, char **out)
+		int flags, char **out)
 {
 	char	*pin;
 	size_t	len;
+       	int	retries = 5;
 
 	printf("%s required.\n", name);
-	while (1) {
-		pin = getpass("Please enter code: ");
+	while (retries--) {
+		pin = getpass("Please enter PIN: ");
 		len = strlen(pin);
-		if (info == NULL)
-			break;
-		if (len == 0 && optional)
+		if (len == 0 && (flags & READ_PIN_OPTIONAL))
 			return 0;
-		if (len < info->min_length) {
+
+		if (info && len < info->min_length) {
 			error("Password too short (%u characters min)",
 					info->min_length);
 			continue;
 		}
-		if (len > info->stored_length) {
+		if (info && len > info->stored_length) {
 			error("Password too long (%u characters max)",
 					info->stored_length);
 			continue;
 		}
 
+		*out = strdup(pin);
+		if (flags & READ_PIN_RETYPE) {
+			memset(pin, 0, len);
+			pin = getpass("Please type again to verify: ");
+			if (strcmp(*out, pin)) {
+				fprintf(stderr, "PINs do not match; "
+					       	"please try again.\n");
+				free(*out);
+				*out = NULL;
+				continue;
+			}
+		}
+		memset(pin, 0, len);
 		break;
 	}
 
-	*out = strdup(pin);
-	memset(pin, 0, len);
+	if (retries < 0) {
+		error("Giving up.");
+		return 0;
+	}
+
 	return 1;
 }
 
