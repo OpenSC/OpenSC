@@ -708,8 +708,10 @@ static int compare_obj_id(struct sc_pkcs15_object *obj, void *arg)
 	case SC_PKCS15_TYPE_CERT_X509:
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_cert_info *) data)->id, id);
 	case SC_PKCS15_TYPE_PRKEY_RSA:
+	case SC_PKCS15_TYPE_PRKEY_DSA:
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_prkey_info *) data)->id, id);
 	case SC_PKCS15_TYPE_PUBKEY_RSA:
+	case SC_PKCS15_TYPE_PUBKEY_DSA:
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_pubkey_info *) data)->id, id);
 	case SC_PKCS15_TYPE_AUTH_PIN:
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_pin_info *) data)->auth_id, id);
@@ -743,6 +745,13 @@ int sc_pkcs15_find_prkey_by_id(struct sc_pkcs15_card *p15card,
 			       struct sc_pkcs15_object **out)
 {
 	return find_by_id(p15card, SC_PKCS15_TYPE_PRKEY_RSA, id, out);
+}
+
+int sc_pkcs15_find_pubkey_by_id(struct sc_pkcs15_card *p15card,
+				const struct sc_pkcs15_id *id,
+				struct sc_pkcs15_object **out)
+{
+	return find_by_id(p15card, SC_PKCS15_TYPE_PUBKEY, id, out);
 }
 
 int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *p15card,
