@@ -1447,7 +1447,7 @@ next_word(char **cp)
 {
 	char	*p = *cp, *ret;
 
-	while (isspace(*p))
+	while (isspace((int) *p))
 		p++;
 
 	if (*p == '\0' || *p == '#') {
@@ -1467,7 +1467,7 @@ next_word(char **cp)
 		}
 	} else {
 		ret = p;
-		while (*p && !isspace(*p) && *p != '#')
+		while (*p && !isspace((int) *p) && *p != '#')
 			p++;
 	}
 out:
@@ -1486,7 +1486,7 @@ get_authid(const char *value, unsigned int *type, unsigned int *num)
 	char	temp[16];
 	int	n;
 
-	if (isdigit(*value)) {
+	if (isdigit((int) *value)) {
 		*num = 0;
 		return get_uint(value, type);
 	}
@@ -1520,7 +1520,7 @@ get_uint(const char *value, unsigned int *vp)
 static int
 map_str2int(const char *value, unsigned int *vp, struct map *map)
 {
-	if (isdigit(*value))
+	if (isdigit((int) *value))
 		return get_uint(value, vp);
 	for (; map->name; map++) {
 		if (!strcasecmp(value, map->name)) {

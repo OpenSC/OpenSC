@@ -67,7 +67,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t * pamh, int flags, int argc, con
 			case 'h':
 			case '?':
 				usage();
-				return PAM_MODULE_UNKNOWN;
+				return PAM_MAXTRIES;
 				break;
 			}
 		}
@@ -322,7 +322,7 @@ int main(int argc, char **argv)
 			rv = pam_sm_authenticate(pamh, flags, argc, (const char **) argv);
 			fprintf(stderr, "[%02i] pam_sm_authenticate: %d\n", count, rv);
 		}
-		if (rv == PAM_MODULE_UNKNOWN) {
+		if (rv == PAM_MAXTRIES) {
 			pam_end(pamh, rv);
 			break;
 		}

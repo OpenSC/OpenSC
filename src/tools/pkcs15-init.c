@@ -1890,7 +1890,7 @@ read_options_file(const char *filename)
 			if (o->has_arg != no_argument) {
 				optarg = strtok(NULL, "");
 				if (optarg) {
-					while (isspace(*optarg))
+					while (isspace((int) *optarg))
 						optarg++;
 					optarg = strdup(optarg);
 				}

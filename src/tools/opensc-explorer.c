@@ -1108,7 +1108,6 @@ static char * my_readline(char *prompt)
 	static char buf[256];
         static int initialized;
         static int interactive;
-        char *line;
 
         if (!initialized) {
                 initialized = 1;
@@ -1120,7 +1119,7 @@ static char * my_readline(char *prompt)
         }
 #ifdef HAVE_READLINE
         if (interactive) {
-            line = readline(prompt);
+            char *line = readline(prompt);
             if (line && strlen(line) > 2 )
                     add_history(line);
             return line;
