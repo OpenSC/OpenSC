@@ -138,11 +138,11 @@ extern "C" {
 
 #define SC_MAX_AC_OPS			7
 
-/* sc_read_record() flags */
-#define SC_READ_RECORD_EF_ID_MASK	0x0001F
-#define SC_READ_RECORD_BY_REC_ID	0x00000
-#define SC_READ_RECORD_BY_REC_NR	0x00100
-#define SC_READ_RECORD_CURRENT		0
+/* sc_*_record() flags */
+#define SC_RECORD_EF_ID_MASK		0x0001F
+#define SC_RECORD_BY_REC_ID		0x00000
+#define SC_RECORD_BY_REC_NR		0x00100
+#define SC_RECORD_CURRENT		0
 
 /* various maximum values */
 #define SC_MAX_CARD_DRIVERS		16
@@ -327,8 +327,15 @@ struct sc_card_operations {
 			     const u8 * buf, size_t count, unsigned long flags);
 	int (*erase_binary)(struct sc_card *card, unsigned int idx,
 			    size_t count, unsigned long flags);
+
 	int (*read_record)(struct sc_card *card, unsigned int rec_nr,
 			   u8 * buf, size_t count, unsigned long flags);
+	int (*write_record)(struct sc_card *card, unsigned int rec_nr,
+			    const u8 * buf, size_t count, unsigned long flags);
+	int (*append_record)(struct sc_card *card, const u8 * buf,
+			     size_t count, unsigned long flags);
+	int (*update_record)(struct sc_card *card, unsigned int rec_nr,
+			     const u8 * buf, size_t count, unsigned long flags);
 
 	/* select_file: Does the equivalent of SELECT FILE command specified
 	 *   in ISO7816-4. Stores information about the selected file to
@@ -545,6 +552,13 @@ int sc_update_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
  */
 int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 * buf,
 		   size_t count, unsigned long flags);
+int sc_write_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
+		    size_t count, unsigned long flags);
+int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
+		     unsigned long flags);
+int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
+		     size_t count, unsigned long flags);
+
 int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);
 
 /* ISO 7816-8 related functions */

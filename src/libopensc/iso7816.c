@@ -123,8 +123,8 @@ static int iso7816_read_record(struct sc_card *card,
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB2, rec_nr, 0);
-	apdu.p2 = (flags & SC_READ_RECORD_EF_ID_MASK) << 3;
-	if (flags & SC_READ_RECORD_BY_REC_NR)
+	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
+	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
 	
 	apdu.le = count;
@@ -138,6 +138,85 @@ static int iso7816_read_record(struct sc_card *card,
 	memcpy(buf, recvbuf, apdu.resplen);
 
 	SC_FUNC_RETURN(card->ctx, 3, apdu.resplen);
+}
+
+static int iso7816_write_record(struct sc_card *card, unsigned int rec_nr,
+			        const u8 *buf, size_t count,
+			        unsigned long flags)
+{
+	struct sc_apdu apdu;
+	int r;
+
+	if (count > 256) {
+		error(card->ctx, "Trying to send too many bytes\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD2, rec_nr, 0);
+	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
+	if (flags & SC_RECORD_BY_REC_NR)
+		apdu.p2 |= 0x04;
+	
+	apdu.lc = count;
+	apdu.datalen = count;
+	apdu.data = buf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),
+		    "Card returned error");
+	SC_FUNC_RETURN(card->ctx, 3, count);
+}
+
+static int iso7816_append_record(struct sc_card *card,
+				 const u8 *buf, size_t count,
+				 unsigned long flags)
+{
+	struct sc_apdu apdu;
+	int r;
+
+	if (count > 256) {
+		error(card->ctx, "Trying to send too many bytes\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE2, 0, 0);
+	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
+	
+	apdu.lc = count;
+	apdu.datalen = count;
+	apdu.data = buf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),
+		    "Card returned error");
+	SC_FUNC_RETURN(card->ctx, 3, count);
+}
+
+static int iso7816_update_record(struct sc_card *card, unsigned int rec_nr,
+				 const u8 *buf, size_t count,
+				 unsigned long flags)
+{
+	struct sc_apdu apdu;
+	int r;
+
+	if (count > 256) {
+		error(card->ctx, "Trying to send too many bytes\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDC, rec_nr, 0);
+	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
+	if (flags & SC_RECORD_BY_REC_NR)
+		apdu.p2 |= 0x04;
+	
+	apdu.lc = count;
+	apdu.datalen = count;
+	apdu.data = buf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),
+		    "Card returned error");
+	SC_FUNC_RETURN(card->ctx, 3, count);
 }
 
 static int iso7816_write_binary(struct sc_card *card,
@@ -766,6 +845,9 @@ const struct sc_card_driver * sc_get_iso7816_driver(void)
 		iso_ops.match_card    = no_match;
 		iso_ops.read_binary   = iso7816_read_binary;
 		iso_ops.read_record   = iso7816_read_record;
+		iso_ops.write_record  = iso7816_write_record;
+		iso_ops.append_record = iso7816_append_record;
+		iso_ops.update_record = iso7816_update_record;
 		iso_ops.write_binary  = iso7816_write_binary;
 		iso_ops.update_binary = iso7816_update_binary;
 		iso_ops.select_file   = iso7816_select_file;

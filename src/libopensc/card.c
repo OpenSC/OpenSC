@@ -761,6 +761,45 @@ int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 *buf,
         SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
+int sc_write_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
+		    size_t count, unsigned long flags)
+{
+	int r;
+
+	assert(card != NULL);
+	SC_FUNC_CALLED(card->ctx, 2);
+        if (card->ops->write_record == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->write_record(card, rec_nr, buf, count, flags);
+        SC_FUNC_RETURN(card->ctx, 2, r);
+}
+
+int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
+		     unsigned long flags)
+{
+	int r;
+
+	assert(card != NULL);
+	SC_FUNC_CALLED(card->ctx, 2);
+        if (card->ops->append_record == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->append_record(card, buf, count, flags);
+        SC_FUNC_RETURN(card->ctx, 2, r);
+}
+
+int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
+		     size_t count, unsigned long flags)
+{
+	int r;
+
+	assert(card != NULL);
+	SC_FUNC_CALLED(card->ctx, 2);
+        if (card->ops->update_record == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->update_record(card, rec_nr, buf, count, flags);
+        SC_FUNC_RETURN(card->ctx, 2, r);
+}
+
 inline int sc_card_valid(const struct sc_card *card) {
 #ifndef NDEBUG
 	assert(card != NULL);
