@@ -171,6 +171,7 @@ static void		get_token_info(CK_SLOT_ID, CK_TOKEN_INFO_PTR);
 static CK_ULONG		get_mechanisms(CK_SLOT_ID,
 				CK_MECHANISM_TYPE_PTR *, CK_FLAGS);
 static void		p11_fatal(const char *, CK_RV);
+static void		p11_warn(const char *, CK_RV);
 static const char *	p11_slot_info_flags(CK_FLAGS);
 static const char *	p11_token_info_flags(CK_FLAGS);
 static const char *	p11_utf8_to_local(CK_UTF8CHAR *, size_t);
@@ -1142,7 +1143,7 @@ get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj) \
  \
 	rv = p11->C_GetAttributeValue(sess, obj, &attr, 1); \
 	if (rv != CKR_OK) \
-		p11_fatal("C_GetAttributeValue(" #ATTR ")", rv); \
+		p11_warn("C_GetAttributeValue(" #ATTR ")", rv); \
 	return type; \
 }
 
@@ -1158,11 +1159,11 @@ get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, CK_ULONG_PTR pulCount) \
 		if (!(attr.pValue = calloc(1, attr.ulValueLen + 1))) \
 			fatal("out of memory in get" #ATTR ": %m"); \
 		rv = p11->C_GetAttributeValue(sess, obj, &attr, 1); \
+		if (pulCount) \
+			*pulCount = attr.ulValueLen / sizeof(TYPE); \
+	} else {\
+		p11_warn("C_GetAttributeValue(" #ATTR ")", rv); \
 	} \
-	if (rv != CKR_OK) \
-		p11_fatal("C_GetAttributeValue(" #ATTR ")", rv); \
-	if (pulCount) \
-		*pulCount = attr.ulValueLen / sizeof(TYPE); \
 	return (TYPE *) attr.pValue; \
 }
 
@@ -2840,6 +2841,13 @@ void
 p11_fatal(const char *func, CK_RV rv)
 {
 	fatal("PKCS11 function %s failed: rv = %s (0x%0x)\n",
+		func, CKR2Str(rv), (unsigned int) rv);
+}
+
+void
+p11_warn(const char *func, CK_RV rv)
+{
+	warn("PKCS11 function %s failed: rv = %s (0x%0x)\n",
 		func, CKR2Str(rv), (unsigned int) rv);
 }
 
