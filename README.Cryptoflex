@@ -14,7 +14,9 @@ WARNING: You should be using a very safe terminal when issuing the
 
 0.  If you don't have a Cryptoflex 16k, you will have to add the ATR of
     your card manually to the flex_atrs structure at the top of card-flex.c.
-    The ATR can be found with 'opensc-tool -a' command.
+    The ATR can be found with 'opensc-tool -a' command.  You should mail
+    the ATR string to <juha.yrjola@iki.fi>, so it can be added in the
+    official distribution.
 
 1.  Verify the AAK key and CHV2:
 

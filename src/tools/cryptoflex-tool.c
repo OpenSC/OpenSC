@@ -1116,42 +1116,51 @@ int create_pkcs15()
 
 	memset(&cert, 0, sizeof(cert));
 	strcpy(cert.com_attr.label, "Authentication certificate");
-	sc_pkcs15_format_id("41", &cert.id);
+	sc_pkcs15_format_id("45", &cert.id);
 	sc_format_path("3F0050154301", &cert.path);
 	add_object(p15card, &p15card->df[SC_PKCS15_CDF], file_no,
 		   SC_PKCS15_TYPE_CERT_X509, &cert, sizeof(cert)),
 
 	strcpy(cert.com_attr.label, "Non-repudiation certificate");
-	sc_pkcs15_format_id("42", &cert.id);
+	sc_pkcs15_format_id("46", &cert.id);
 	sc_format_path("3F0050154302", &cert.path);
 	add_object(p15card, &p15card->df[SC_PKCS15_CDF], file_no,
 		   SC_PKCS15_TYPE_CERT_X509, &cert, sizeof(cert)),
 
 	memset(&prkey, 0, sizeof(prkey));
-	prkey.modulus_length = 1024;
+	prkey.modulus_length = opt_mod_length;
+	prkey.com_attr.flags = 1;
+	prkey.native = 1;
 
 	strcpy(prkey.com_attr.label, "Authentication key");
-	sc_pkcs15_format_id("41", &prkey.id);
+	sc_pkcs15_format_id("45", &prkey.id);
 	sc_pkcs15_format_id("01", &prkey.com_attr.auth_id);
 	sc_format_path("0012", &prkey.path);
 	prkey.key_reference = 0;
+	prkey.usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+	prkey.access_flags = 0x1D;
 	add_object(p15card, &p15card->df[SC_PKCS15_PRKDF], file_no,
 		   SC_PKCS15_TYPE_PRKEY_RSA, &prkey, sizeof(prkey)),
 
 	strcpy(prkey.com_attr.label, "Non-repudiation key");
-	sc_pkcs15_format_id("42", &prkey.id);
+	sc_pkcs15_format_id("46", &prkey.id);
 	sc_pkcs15_format_id("02", &prkey.com_attr.auth_id);
 	sc_format_path("3F004B020012", &prkey.path);
 	prkey.key_reference = 0;
+	prkey.usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
+	prkey.access_flags = 0x1D;
 	add_object(p15card, &p15card->df[SC_PKCS15_PRKDF], file_no,
 		   SC_PKCS15_TYPE_PRKEY_RSA, &prkey, sizeof(prkey)),
 
 	memset(&pin, 0, sizeof(pin));
+	pin.com_attr.flags = 0x03;
 	pin.magic = SC_PKCS15_PIN_MAGIC;
+	
 	strcpy(pin.com_attr.label, "Authentication PIN");
 	sc_pkcs15_format_id("01", &pin.auth_id);
 	sc_format_path("3F005015", &pin.path);
 	pin.reference = 1;
+	pin.flags = 0x32;
 	pin.min_length = 4;
 	pin.stored_length = 8;
 	pin.pad_char = 0x00;
@@ -1163,6 +1172,7 @@ int create_pkcs15()
 	sc_pkcs15_format_id("02", &pin.auth_id);
 	sc_format_path("3F004B02", &pin.path);
 	pin.reference = 1;
+	pin.flags = 0x32;
 	pin.min_length = 4;
 	pin.stored_length = 8;
 	pin.pad_char = 0x00;

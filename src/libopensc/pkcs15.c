@@ -461,6 +461,7 @@ struct sc_pkcs15_card * sc_pkcs15_card_new()
 	memset(p15card, 0, sizeof(struct sc_pkcs15_card));
 	for (i = 0; i < SC_PKCS15_DF_TYPE_COUNT; i++)
 		p15card->df[i].type = i;
+	p15card->magic = SC_PKCS15_CARD_MAGIC;
 	return p15card;
 }
 
@@ -468,6 +469,7 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 {
 	int i, j;
 	
+	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
 	for (j = 0; j < SC_PKCS15_DF_TYPE_COUNT; j++)
 		for (i = 0; i < p15card->df[j].count; i++) {
 			struct sc_pkcs15_object *p;
@@ -482,6 +484,7 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 				p = p2;
 			}
 		}
+	p15card->magic = 0;
 	free(p15card->label);
 	free(p15card->serial_number);
 	free(p15card->manufacturer_id);
@@ -600,7 +603,7 @@ int sc_pkcs15_detect(struct sc_card *card)
 
 int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 {
-	assert(p15card != NULL);
+	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	sc_pkcs15_card_free(p15card);
 	return 0;

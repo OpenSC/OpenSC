@@ -22,7 +22,8 @@ int sc_test_init(int *argc, char *argv[])
 		printf("sc_establish_context() failed (%d)\n", i);
 		return i;
 	}
-	ctx->use_std_output = 1;
+	ctx->error_file = stderr;
+	ctx->debug_file = stdout;
 	i = sc_detect_card(ctx, 0);
 	printf("Card %s.\n", i == 1 ? "present" : "absent");
 	if (i < 0) {

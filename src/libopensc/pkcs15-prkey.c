@@ -30,10 +30,32 @@
 void sc_pkcs15_print_prkey_info(const struct sc_pkcs15_prkey_info *prkey)
 {
 	int i;
+	const char *usages[] = {
+		"encrypt", "decrypt", "sign", "signRecover",
+		"wrap", "unwrap", "verify", "verifyRecover",
+		"derive", "nonRepudiation"
+	};
+	const int usage_count = sizeof(usages)/sizeof(usages[0]);
+	const char *access_flags[] = {
+		"sensitive", "extract", "alwaysSensitive",
+		"neverExtract", "local"
+	};
+	const int af_count = sizeof(access_flags)/sizeof(access_flags[0]);
+
 	printf("Private RSA Key [%s]\n", prkey->com_attr.label);
-	printf("\tFlags       : %X\n", prkey->com_attr.flags);
-	printf("\tUsage       : %X\n", prkey->usage);
-	printf("\tAccessFlags : %X\n", prkey->access_flags);
+	printf("\tCom. Flags  : %X\n", prkey->com_attr.flags);
+	printf("\tUsage       : [0x%X]", prkey->usage);
+        for (i = 0; i < usage_count; i++)
+                if (prkey->usage & (1 << i)) {
+                        printf(", %s", usages[i]);
+                }
+	printf("\n");
+	printf("\tAccess Flags: [0x%X]", prkey->access_flags);
+        for (i = 0; i < af_count; i++)
+                if (prkey->access_flags & (1 << i)) {
+                        printf(", %s", access_flags[i]);   
+                }
+        printf("\n");
 	printf("\tModLength   : %d\n", prkey->modulus_length);
 	printf("\tKey ref     : %d\n", prkey->key_reference);
 	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");
