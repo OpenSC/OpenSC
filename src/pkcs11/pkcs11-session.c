@@ -271,6 +271,8 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) /* the session's handle */
 		slot->login_user = -1;
 		rv = slot->card->framework->logout(slot->card, slot->fw_data);
 	}
+	else
+		rv = CKR_USER_NOT_LOGGED_IN;
 
 out:	sc_pkcs11_unlock();
 	return rv;
