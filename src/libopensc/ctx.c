@@ -69,7 +69,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 };
 
 static const struct _sc_driver_entry internal_reader_drivers[] = {
-#if defined(HAVE_LIBPCSCLITE) || defined(_WIN32)
+#if defined(HAVE_PCSCLITE) || defined(_WIN32)
 	{ "pcsc", (void *) sc_get_pcsc_driver, NULL },
 #endif
 #ifndef _WIN32
