@@ -87,7 +87,7 @@ struct flex_private_data {
 
 static struct sc_card_operations flex_ops;
 static struct sc_card_operations *iso_ops;
-static const struct sc_card_driver flex_drv = {
+static struct sc_card_driver flex_drv = {
 	"Schlumberger Multiflex/Cryptoflex",
 	"flex",
 	&flex_ops
@@ -854,7 +854,7 @@ static int flex_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	return iso_ops->pin_cmd(card, data, NULL);
 }
 
-static const struct sc_card_driver * sc_get_driver(void)
+static struct sc_card_driver * sc_get_driver(void)
 {
 	if (iso_ops == NULL)
 		iso_ops = sc_get_iso7816_driver()->ops;
@@ -876,7 +876,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 }
 
 #if 1
-const struct sc_card_driver * sc_get_flex_driver(void)
+struct sc_card_driver * sc_get_flex_driver(void)
 {
 	return sc_get_driver();
 }

@@ -427,7 +427,7 @@ struct sc_card {
 	
 	int lock_count;
 
-	const struct sc_card_driver *driver;
+	struct sc_card_driver *driver;
 	struct sc_card_operations *ops;
 	void *drv_data;
 
@@ -791,16 +791,17 @@ extern const char *sc_get_version(void);
 extern const struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern const struct sc_reader_driver *sc_get_ctapi_driver(void);
 
-extern const struct sc_card_driver *sc_get_iso7816_driver(void);
-extern const struct sc_card_driver *sc_get_emv_driver(void);
-extern const struct sc_card_driver *sc_get_setcos_driver(void);
-extern const struct sc_card_driver *sc_get_miocos_driver(void);
-extern const struct sc_card_driver *sc_get_flex_driver(void);
-extern const struct sc_card_driver *sc_get_gpk_driver(void);
-extern const struct sc_card_driver *sc_get_tcos_driver(void);
-extern const struct sc_card_driver *sc_get_default_driver(void);
-extern const struct sc_card_driver *sc_get_etoken_driver(void);
-extern const struct sc_card_driver *sc_get_mcrd_driver(void);
+extern struct sc_card_driver *sc_get_iso7816_driver(void);
+extern struct sc_card_driver *sc_get_emv_driver(void);
+extern struct sc_card_driver *sc_get_setcos_driver(void);
+extern struct sc_card_driver *sc_get_miocos_driver(void);
+extern struct sc_card_driver *sc_get_flex_driver(void);
+extern struct sc_card_driver *sc_get_gpk_driver(void);
+extern struct sc_card_driver *sc_get_tcos_driver(void);
+extern struct sc_card_driver *sc_get_default_driver(void);
+extern struct sc_card_driver *sc_get_etoken_driver(void);
+extern struct sc_card_driver *sc_get_mcrd_driver(void);
+extern struct sc_card_driver *sc_get_belpic_driver(void);
 
 #ifdef  __cplusplus
 }

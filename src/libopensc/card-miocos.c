@@ -40,7 +40,7 @@ struct miocos_priv_data {
 #define DRVDATA(card)        ((struct miocos_priv_data *) ((card)->drv_data))
 
 static struct sc_card_operations miocos_ops;
-static const struct sc_card_driver miocos_drv = {
+static struct sc_card_driver miocos_drv = {
 	"MioCOS 1.1 cards",
 	"miocos",
 	&miocos_ops
@@ -487,9 +487,9 @@ static int miocos_card_ctl(struct sc_card *card, unsigned long cmd,
 }
 
 
-static const struct sc_card_driver * sc_get_driver(void)
+static struct sc_card_driver * sc_get_driver(void)
 {
-	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
 	miocos_ops = *iso_drv->ops;
 	miocos_ops.match_card = miocos_match_card;
@@ -508,7 +508,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 }
 
 #if 1
-const struct sc_card_driver * sc_get_miocos_driver(void)
+struct sc_card_driver * sc_get_miocos_driver(void)
 {
 	return sc_get_driver();
 }

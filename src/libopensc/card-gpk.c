@@ -117,7 +117,7 @@ static struct atrinfo {
  * Driver and card ops structures
  */
 static struct sc_card_operations	gpk_ops, *iso_ops;
-static const struct sc_card_driver gpk_drv = {
+static struct sc_card_driver gpk_drv = {
 	"Gemplus GPK driver",
 	"gpk",
 	&gpk_ops
@@ -1762,11 +1762,11 @@ gpk_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 /*
  * Initialize the driver struct
  */
-static const struct sc_card_driver *
+static struct sc_card_driver *
 sc_get_driver()
 {
 	if (gpk_ops.match_card == NULL) {
-		const struct sc_card_driver *iso_drv;
+		struct sc_card_driver *iso_drv;
 
 		iso_drv = sc_get_iso7816_driver();
 		iso_ops = iso_drv->ops;
@@ -1791,7 +1791,7 @@ sc_get_driver()
 	return &gpk_drv;
 }
 
-const struct sc_card_driver *
+struct sc_card_driver *
 sc_get_gpk_driver()
 {
 	return sc_get_driver();

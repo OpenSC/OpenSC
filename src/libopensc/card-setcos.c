@@ -43,7 +43,7 @@ struct setcos_priv_data {
 #define DRVDATA(card)        ((struct setcos_priv_data *) ((card)->drv_data))
 
 static struct sc_card_operations setcos_ops;
-static const struct sc_card_driver setcos_drv = {
+static struct sc_card_driver setcos_drv = {
 	"Setec smartcards",
 	"setcos",
 	&setcos_ops
@@ -361,9 +361,9 @@ static int setcos_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	return apdu.resplen;
 }
 
-static const struct sc_card_driver * sc_get_driver(void)
+static struct sc_card_driver * sc_get_driver(void)
 {
-	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
 	setcos_ops = *iso_drv->ops;
 	setcos_ops.match_card = setcos_match_card;
@@ -380,7 +380,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 }
 
 #if 1
-const struct sc_card_driver * sc_get_setcos_driver(void)
+struct sc_card_driver * sc_get_setcos_driver(void)
 {
 	return sc_get_driver();
 }

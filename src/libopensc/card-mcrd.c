@@ -38,7 +38,7 @@ static const char *mcrd_atrs[] = {
 };
 
 static struct sc_card_operations mcrd_ops;
-static const struct sc_card_driver mcrd_drv = {
+static struct sc_card_driver mcrd_drv = {
 	"MICARDO 2 cards",
 	"mcrd",
 	&mcrd_ops
@@ -1142,9 +1142,9 @@ static int mcrd_compute_signature(struct sc_card *card,
 
 
 /* Driver binding stuff */
-static const struct sc_card_driver * sc_get_driver(void)
+static struct sc_card_driver * sc_get_driver(void)
 {
-	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
 	mcrd_ops = *iso_drv->ops;
 	mcrd_ops.match_card = mcrd_match_card;
@@ -1159,7 +1159,7 @@ static const struct sc_card_driver * sc_get_driver(void)
         return &mcrd_drv;
 }
 
-const struct sc_card_driver * sc_get_mcrd_driver(void)
+struct sc_card_driver * sc_get_mcrd_driver(void)
 {
 	return sc_get_driver();
 }

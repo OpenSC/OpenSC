@@ -323,7 +323,7 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 	struct sc_card *card;
 	struct sc_context *ctx = reader->ctx;
 	struct sc_slot_info *slot = _sc_get_slot_info(reader, slot_id);
-	const struct sc_card_driver *driver;
+	struct sc_card_driver *driver;
 	int i, r = 0, connected = 0;
 
 	assert(card_out != NULL);
@@ -374,7 +374,7 @@ int sc_connect_card(struct sc_reader *reader, int slot_id,
 			}
 		}
 	} else for (i = 0; ctx->card_drivers[i] != NULL; i++) {
-		const struct sc_card_driver *drv = ctx->card_drivers[i];
+		struct sc_card_driver *drv = ctx->card_drivers[i];
 		const struct sc_card_operations *ops = drv->ops;
 		int r;
 		

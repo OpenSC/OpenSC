@@ -35,7 +35,7 @@ static const char *tcos_atrs[] = {
 };
 
 static struct sc_card_operations tcos_ops;
-static const struct sc_card_driver tcos_drv = {
+static struct sc_card_driver tcos_drv = {
 	"TCOS 2.0 cards",
 	"tcos",
 	&tcos_ops
@@ -716,9 +716,9 @@ static int tcos_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 
 
 /* Driver binding stuff */
-static const struct sc_card_driver * sc_get_driver(void)
+static struct sc_card_driver * sc_get_driver(void)
 {
-	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
 	tcos_ops = *iso_drv->ops;
 	tcos_ops.match_card = tcos_match_card;
@@ -738,7 +738,7 @@ static const struct sc_card_driver * sc_get_driver(void)
         return &tcos_drv;
 }
 
-const struct sc_card_driver * sc_get_tcos_driver(void)
+struct sc_card_driver * sc_get_tcos_driver(void)
 {
 	return sc_get_driver();
 }

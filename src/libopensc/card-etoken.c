@@ -39,7 +39,7 @@
 static const struct sc_card_operations *iso_ops = NULL;
 
 struct sc_card_operations etoken_ops;
-const struct sc_card_driver etoken_drv = {
+struct sc_card_driver etoken_drv = {
 	"Aladdin eToken PRO",
 	"etoken",
 	&etoken_ops
@@ -822,7 +822,7 @@ etoken_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 
 /* eToken R2 supports WRITE_BINARY, PRO Tokens support UPDATE_BINARY */
 
-static const struct sc_card_driver * sc_get_driver(void)
+static struct sc_card_driver * sc_get_driver(void)
 {
 	if (iso_ops == NULL)
 		iso_ops = sc_get_iso7816_driver()->ops;
@@ -847,7 +847,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 }
 
 #if 1
-const struct sc_card_driver * sc_get_etoken_driver(void)
+struct sc_card_driver * sc_get_etoken_driver(void)
 {
 	return sc_get_driver();
 }

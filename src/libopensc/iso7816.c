@@ -887,7 +887,7 @@ static struct sc_card_operations iso_ops = {
 	NULL,
 };
 
-static const struct sc_card_driver iso_driver = {
+static struct sc_card_driver iso_driver = {
 	"ISO 7816 reference driver",
 	"iso7816",
 	&iso_ops
@@ -898,7 +898,7 @@ static int no_match(struct sc_card *card)
 	return 0;
 }
 
-const struct sc_card_driver * sc_get_iso7816_driver(void)
+struct sc_card_driver * sc_get_iso7816_driver(void)
 {
 	if (iso_ops.match_card == NULL) {
 		memset(&iso_ops, 0, sizeof(iso_ops));

@@ -22,7 +22,7 @@
 #include "log.h"
 
 static struct sc_card_operations default_ops;
-static const struct sc_card_driver default_drv = {
+static struct sc_card_driver default_drv = {
 	"Default driver for unknown cards",
 	"default",
 	&default_ops
@@ -90,7 +90,7 @@ static int autodetect_class(struct sc_card *card)
 		return 0;
 	}
 	if (rbuf[0] == 0x00 && rbuf[1] == 0x00) {
-		const struct sc_card_driver *drv;
+		struct sc_card_driver *drv;
 		if (card->ctx->debug >= 2)
 			debug(card->ctx, "SELECT FILE seems to return Schlumberger 'flex stuff\n");
 		drv = sc_get_flex_driver();
@@ -114,9 +114,9 @@ static int default_init(struct sc_card *card)
 	return 0;
 }
 
-static const struct sc_card_driver * sc_get_driver(void)
+static struct sc_card_driver * sc_get_driver(void)
 {
-	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
 	default_ops = *iso_drv->ops;
 	default_ops.match_card = default_match_card;
@@ -127,7 +127,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 }
 
 #if 1
-const struct sc_card_driver * sc_get_default_driver(void)
+struct sc_card_driver * sc_get_default_driver(void)
 {
 	return sc_get_driver();
 }

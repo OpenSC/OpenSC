@@ -23,7 +23,7 @@
 #include <string.h>
 
 static struct sc_card_operations emv_ops;
-static const struct sc_card_driver emv_drv = {
+static struct sc_card_driver emv_drv = {
 	"EMV compatible cards",
 	"emv",
 	&emv_ops
@@ -127,7 +127,7 @@ static int emv_select_file(struct sc_card *card, const struct sc_path *path,
 			   struct sc_file **file)
 {
 	int r;
-	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 	const struct sc_card_operations *ops = iso_drv->ops;
 
 	r = ops->select_file(card, path, file);
@@ -140,9 +140,9 @@ static int emv_select_file(struct sc_card *card, const struct sc_path *path,
 	return 0;
 }
 
-static const struct sc_card_driver * sc_get_driver(void)
+static struct sc_card_driver * sc_get_driver(void)
 {
-	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
 	emv_ops = *iso_drv->ops;
 	emv_ops.match_card = emv_match_card;
@@ -154,7 +154,7 @@ static const struct sc_card_driver * sc_get_driver(void)
 }
 
 #if 1
-const struct sc_card_driver * sc_get_emv_driver(void)
+struct sc_card_driver * sc_get_emv_driver(void)
 {
 	return sc_get_driver();
 }
