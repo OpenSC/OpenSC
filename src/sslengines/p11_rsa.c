@@ -107,8 +107,15 @@ int pkcs11_get_rsa_private(PKCS11_KEY * key, EVP_PKEY * pk)
 	}
 
 	/* TBD - extract RSA private key. */
+	/* In the mean time let's use the card anyway */
+	RSA_set_method(rsa, pkcs11_get_rsa_method());
+	rsa->flags |= RSA_FLAG_SIGN_VER;
+	RSA_set_app_data(rsa, key);
+	return 0;
+	/*
 	PKCS11err(PKCS11_F_PKCS11_GET_KEY, PKCS11_NOT_SUPPORTED);
 	return -1;
+	*/
 }
 
 int pkcs11_get_rsa_public(PKCS11_KEY * key, EVP_PKEY * pk)
