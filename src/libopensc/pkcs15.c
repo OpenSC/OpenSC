@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <opensc/scdl.h>
 
 
 static const struct sc_asn1_entry c_asn1_toki[] = {
@@ -293,7 +294,7 @@ static const int odf_indexes[] = {
 	SC_PKCS15_AODF,
 };
 
-static int parse_odf(const u8 * buf, int buflen, struct sc_pkcs15_card *card)
+static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 {
 	const u8 *p = buf;
 	size_t left = buflen;
@@ -568,7 +569,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
 		goto end;
 	}
-	parse_tokeninfo(p15card, buf, err);
+	parse_tokeninfo(p15card, buf, (size_t)err);
 
 	ok = 1;
 end:
@@ -646,6 +647,7 @@ error:
 	SC_FUNC_RETURN(ctx, 1, r);
 }
 
+#if 0
 int sc_pkcs15_detect(struct sc_card *card)
 {
 	int r;
@@ -657,13 +659,14 @@ int sc_pkcs15_detect(struct sc_card *card)
 		return 0;
 	return 1;
 }
+#endif
 
 int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 {
 	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	if (p15card->dll_handle)
-		sc_module_close(p15card->card->ctx, p15card->dll_handle);
+		scdl_close(p15card->dll_handle);
 	sc_pkcs15_card_free(p15card);
 	return 0;
 }
@@ -1094,8 +1097,8 @@ int sc_pkcs15_encode_df(struct sc_context *ctx,
 	u8 *buf = NULL, *tmp = NULL;
 	size_t bufsize = 0, tmpsize;
 	const struct sc_pkcs15_object *obj;
-	int (* func)(struct sc_context *, const struct sc_pkcs15_object *obj,
-		     u8 **buf, size_t *bufsize) = NULL;
+	int (* func)(struct sc_context *, const struct sc_pkcs15_object *nobj,
+		     u8 **nbuf, size_t *nbufsize) = NULL;
 	int r;
 
 	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
@@ -1155,7 +1158,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	int r;
 	struct sc_pkcs15_object *obj = NULL;
 	int (* func)(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
-		     const u8 **buf, size_t *bufsize) = NULL;
+		     const u8 **nbuf, size_t *nbufsize) = NULL;
 
 	switch (df->type) {
 	case SC_PKCS15_PRKDF:

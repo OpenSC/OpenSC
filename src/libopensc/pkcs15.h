@@ -66,7 +66,7 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 struct sc_pkcs15_pin_info {
 	struct sc_pkcs15_id auth_id;
 	int reference;
-	int flags, type;
+	unsigned int flags, type;
 	size_t min_length, stored_length, max_length;
 	u8 pad_char;
 	struct sc_path path;
@@ -255,7 +255,7 @@ struct sc_pkcs15_pubkey_info {
 	struct sc_pkcs15_id id;	/* correlates to private key id */
 	unsigned int usage, access_flags;
 	int native, key_reference;
-	int modulus_length;
+	size_t modulus_length;
 
 	struct sc_path path;
 };
@@ -280,17 +280,17 @@ typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info_t;
 #define SC_PKCS15_TYPE_AUTH_PIN			0x601
 
 #define SC_PKCS15_TYPE_TO_CLASS(t)		(1 << ((t) >> 8))
-#define SC_PKCS15_SEARCH_CLASS_PRKEY		0x0002
-#define SC_PKCS15_SEARCH_CLASS_PUBKEY		0x0004
-#define SC_PKCS15_SEARCH_CLASS_CERT		0x0010
-#define SC_PKCS15_SEARCH_CLASS_DATA		0x0020
-#define SC_PKCS15_SEARCH_CLASS_AUTH		0x0040
+#define SC_PKCS15_SEARCH_CLASS_PRKEY		0x0002U
+#define SC_PKCS15_SEARCH_CLASS_PUBKEY		0x0004U
+#define SC_PKCS15_SEARCH_CLASS_CERT		0x0010U
+#define SC_PKCS15_SEARCH_CLASS_DATA		0x0020U
+#define SC_PKCS15_SEARCH_CLASS_AUTH		0x0040U
 
 struct sc_pkcs15_object {
 	int type;
 	/* CommonObjectAttributes */
 	char label[SC_PKCS15_MAX_LABEL_SIZE];	/* zero terminated */
-	int flags;
+	unsigned int flags;
 	struct sc_pkcs15_id auth_id;
 
 	int user_consent;
