@@ -54,6 +54,7 @@ struct pkcs15_fw_data {
 	struct sc_pkcs15_card *		p15_card;
 	struct pkcs15_any_object *	objects[MAX_OBJECTS];
 	unsigned int			num_objects;
+	unsigned int			locked;
 };
 
 struct pkcs15_any_object {
@@ -121,6 +122,8 @@ static CK_RV	asn1_sequence_wrapper(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 static void	cache_pin(void *, int, const void *, size_t);
 static int	revalidate_pin(struct pkcs15_slot_data *data,
 				struct sc_pkcs11_session *ses);
+static int	lock_card(struct pkcs15_fw_data *);
+static int	unlock_card(struct pkcs15_fw_data *);
 
 /* PKCS#15 Framework */
 
@@ -148,6 +151,8 @@ static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 
 	for (i = 0; i < fw_data->num_objects; i++) 
 		__pkcs15_release_object(fw_data->objects[i]);
+
+	unlock_card(fw_data);
 
 	rc = sc_pkcs15_unbind(fw_data->p15_card);
         return sc_to_cryptoki_error(rc, p11card->reader);
@@ -634,7 +639,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 
 static CK_RV pkcs15_release_token(struct sc_pkcs11_card *p11card, void *fw_token)
 {
-        /* struct sc_pkcs15_card *card = (struct sc_pkcs15_card*) fw_card; */
+	unlock_card((struct pkcs15_fw_data *) p11card->fw_data);
         return CKR_OK;
 }
 
@@ -660,18 +665,13 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 		/* A card with no SO PIN is treated as if no SO login
 		 * is required */
 		rc = sc_pkcs15_find_so_pin(card, &auth_object);
-		if (rc == SC_ERROR_OBJECT_NOT_FOUND) {
-			/* Need to lock the card though */
-			rc = sc_lock(card->card);
-			if (rc < 0) {
-				 debug(context, "Failed to lock card (%d)\n",
-						 rc);
-				 return sc_to_cryptoki_error(rc,
-						 p11card->reader);
-			}
-			return CKR_OK;
-		}
-		else if (rc < 0)
+
+		/* If there's no SO PIN on the card, silently
+		 * accept any PIN, and lock the card if required */
+		if (rc == SC_ERROR_OBJECT_NOT_FOUND
+		 && sc_pkcs11_conf.lock_login)
+			rc = lock_card(fw_data);
+		if (rc < 0)
 			return sc_to_cryptoki_error(rc, p11card->reader);
 		break;
 	default:
@@ -697,13 +697,8 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 	 * from accessing the card while we're logged in. Otherwise
 	 * an attacker could perform some crypto operation after
 	 * we've authenticated with the card */
-	if (sc_pkcs11_conf.lock_login) {
-		rc = sc_lock(card->card);
-		if (rc < 0) {
-			 debug(context, "Failed to lock card (%d)\n", rc);
-			 return sc_to_cryptoki_error(rc, p11card->reader);
-		}
-	}
+	if (sc_pkcs11_conf.lock_login && (rc = lock_card(fw_data)) < 0)
+		return sc_to_cryptoki_error(rc, p11card->reader);
 
 	rc = sc_pkcs15_verify_pin(card, pin, pPin, ulPinLen);
         debug(context, "PIN verification returned %d\n", rc);
@@ -725,7 +720,7 @@ static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
 	sc_logout(fw_data->p15_card->card);
 
 	if (sc_pkcs11_conf.lock_login)
-		rc = sc_unlock(fw_data->p15_card->card);
+		rc = unlock_card(fw_data);
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
@@ -2131,4 +2126,27 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	}
 
 	return CKR_OK;
+}
+
+int
+lock_card(struct pkcs15_fw_data *fw_data)
+{
+	int	rc;
+
+	if ((rc = sc_lock(fw_data->p15_card->card)) < 0)
+		debug(context, "Failed to lock card (%d)\n", rc);
+	else
+		fw_data->locked++;
+
+	return rc;
+}
+
+int
+unlock_card(struct pkcs15_fw_data *fw_data)
+{
+	while (fw_data->locked) {
+		sc_unlock(fw_data->p15_card->card);
+		fw_data->locked--;
+	}
+	return 0;
 }
