@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#ifdef __APPLE__
+#include <Carbon/Carbon.h>
+#endif
 
 #define MAGIC			0xd00bed00
 
@@ -18,7 +21,8 @@ struct sc_pkcs11_module {
 	void *			_dl_handle;
 #endif
 #ifdef __APPLE__
-	struct mach_header * 	_dl_handle;    
+	struct mach_header	*_dl_handle;
+	CFBundleRef		bundleRef;  
 #endif
 };
 
@@ -188,36 +192,66 @@ sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 int
 sys_dlopen(struct sc_pkcs11_module *mod, const char *name)
 {
+	int name_len;
+
 	if (name == NULL)
 		name = "libopensc-pkcs11.dylib";
-	
-	mod->_dl_handle =  NSAddImage(name, NSADDIMAGE_OPTION_WITH_SEARCHING);
-	
-	return (mod->_dl_handle? 0 : -1);
-}
 
+	name_len = strlen(name);
+	if (name_len > 7 && strcmp(name +  name_len - 7, ".bundle") != 0) {
+		mod->_dl_handle = NSAddImage(name,
+			NSADDIMAGE_OPTION_WITH_SEARCHING);
+	mod->bundleRef = NULL;
+	}
+	else {
+		CFStringRef text = CFStringCreateWithFormat(
+			NULL, NULL, CFSTR("%s"), name);
+		CFURLRef urlRef = CFURLCreateWithFileSystemPath(
+			kCFAllocatorDefault, text, kCFURLPOSIXPathStyle, 1);
+		mod->bundleRef = CFBundleCreate(kCFAllocatorDefault, urlRef);
+		CFRelease(urlRef);
+		CFRelease(text);
+		mod->_dl_handle = NULL;
+	}
+
+	return (mod->_dl_handle == NULL && mod->bundleRef == NULL ? -1 : 0);
+}
 
 int
 sys_dlclose(struct sc_pkcs11_module *mod)
 {
+	if (mod->bundleRef != NULL) {
+		CFBundleUnloadExecutable(mod->bundleRef);
+		CFRelease(mod->bundleRef);
+	}
+
 	return CKR_OK;
 }
 
 void *
 sys_dlsym(sc_pkcs11_module_t *mod, const char *name)
 {
-	NSSymbol symbol=NULL;
-	char u_name[202];
+	NSSymbol symbol = NULL;
 	
-	if (strlen(name) > 200)
-		return NULL;
-	sprintf(u_name, "_%s", name);
-	
-	symbol = NSLookupSymbolInImage(mod->_dl_handle, u_name,
-		NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_NOW);
-	if (symbol==NULL)
-		return NULL;
-	
-	return NSAddressOfSymbol(symbol);
+	if (mod->_dl_handle != NULL) {
+		char u_name[4096];
+
+		if (strlen(name) > 4094)
+			return NULL;
+		sprintf(u_name, "_%s", name);
+		symbol = NSLookupSymbolInImage(mod->_dl_handle, u_name,
+			NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_NOW);
+		if (symbol==NULL)
+			return NULL;
+		return NSAddressOfSymbol(symbol);
+	}
+	else {
+		CFStringRef text = CFStringCreateWithFormat(
+			NULL, NULL, CFSTR("%s"), name);
+		symbol = CFBundleGetFunctionPointerForName(
+			mod->bundleRef, text);
+		CFRelease(text);
+		return symbol;
+	}
 }
 #endif
