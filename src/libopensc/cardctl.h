@@ -74,9 +74,10 @@ enum {
 	 * Starcos specific calls
 	 */
 	SC_CARDCTL_STARCOS_BASE = _CTL_PREFIX('S', 'T', 'A'),
-	SC_CARDCTL_STARCOS_SET_KEY_ATTR,
-	SC_CARDCTL_STARCOS_GET_KEY_ATTR,
-	SC_CARDCTL_STARCOS_CLEAR_KEY_ATTR,
+	SC_CARDCTL_STARCOS_SET_EX_DATA,
+	SC_CARDCTL_STARCOS_GET_EX_DATA,
+	SC_CARDCTL_STARCOS_FREE_EX_DATA,
+	SC_CARDCTL_STARCOS_FREE_ALL_EX_DATA,
 
 };
 
@@ -172,12 +173,28 @@ struct sc_cardctl_cryptoflex_genkey_info {
 };
 
 /*
- * Starcos private key attribute
+ * Starcos ex_data stuff
  */
+typedef struct sc_starcos_ex_data {
+	struct sc_starcos_ex_data *next;
+	unsigned long              key;
+	void                      *data;
+	void (*free_func)(void *);
+} sc_starcos_ex_data_t;
+
+#define SC_STARCOS_PRV_DATA	0x0001	/* for internal use only  */
+#define SC_STARCOS_KEY_ATTR	0x0002	/* set the key attributes */
+#define SC_STARCOS_PIN_ATTR	0x0004	/* set PIN attribute      */
+
+#define SC_STARCOS_EX_KEY(c,v) (((v) << 16) | (c))
+
 struct sc_cardctl_starcos_key_attr_st {
-	u8            keyID;	/* key reference */
 	unsigned long flag;	/* key attributes, e.g. SC_SEC_OPERATION_SIGN
 				 * or SC_SEC_OPERATION_AUTHENTICATE */
+};
+
+struct sc_cardctl_starcos_pin_attr_st {
+	int	verify_once;
 };
 
 #ifdef  __cplusplus
@@ -185,3 +202,4 @@ struct sc_cardctl_starcos_key_attr_st {
 #endif
 
 #endif /* _OPENSC_CARDCTL_H */
+

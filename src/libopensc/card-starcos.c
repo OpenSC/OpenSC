@@ -66,81 +66,205 @@ const static struct sc_card_error starcos_errors[] =
 	{ 0x6F81, SC_ERROR_CARD_CMD_FAILED, "system error"}
 };
 
-#define STARCOS_MAX_KEYS	8	/* this value is nearly arbitrary and
-					 * in general ignored */
-
-typedef struct sc_cardctl_starcos_key_attr_st starcos_key_attr;
-
-typedef struct starcos_mse_state_st {
-	int sec_ops;	/* the currently selected security operation,
+/* internal structure to save the current security enviroment */
+typedef struct starcos_sec_data {
+	int    sec_ops;	/* the currently selected security operation,
 			 * i.e. SC_SEC_OPERATION_AUTHENTICATE etc. */
-	u8  buf[SC_MAX_APDU_BUFFER_SIZE]; /* apdu data */
+	u8     buf[SC_MAX_APDU_BUFFER_SIZE]; /* apdu data */
 	size_t buf_len;
-	u8  p1, p2;	/* apdu parameters */
-	int fix_digestInfo;
-} starcos_mse_state;
+	u8     p1, p2;	/* apdu parameters */
+	int    fix_digestInfo;
+} starcos_sec_data_t;
 
-typedef struct starcos_extra_data_st {
-	starcos_mse_state mse;	/* space to store the state of the
-				 * security enviroment */
-	starcos_key_attr  key_attr[STARCOS_MAX_KEYS];
-	size_t            key_attr_num;
-} starcos_extra_data;
-
-static int starcos_get_key_attr(struct sc_card *card, starcos_key_attr *val)
+/* some ex_data functions */
+static int get_ex_data(sc_card_t *card, sc_starcos_ex_data_t *in_dat)
 {
-	size_t i;
-	starcos_extra_data *ex_data;
+	sc_starcos_ex_data_t *tmp = (sc_starcos_ex_data_t *)card->drv_data;
 
-	if (!card || !val)
-		return SC_ERROR_INTERNAL;
-	ex_data = (starcos_extra_data *)card->drv_data;
-	for (i = ex_data->key_attr_num; i > 0; i--)
-		if (ex_data->key_attr[i-1].keyID == val->keyID)
-		{
-			val->flag = ex_data->key_attr[i-1].flag;
+	while (tmp) {
+		if (tmp->key == in_dat->key) {
+			in_dat->data = tmp->data;
 			return SC_SUCCESS;
 		}
+		tmp = tmp->next;
+	}
 	return SC_ERROR_OBJECT_NOT_FOUND;
 }
 
-static int starcos_set_key_attr(struct sc_card *card, starcos_key_attr *val)
+static int append_ex_data(sc_card_t *card, sc_starcos_ex_data_t *in_dat)
 {
-	size_t i;
-	starcos_extra_data *ex_data;
+	sc_starcos_ex_data_t *tmp = (sc_starcos_ex_data_t *)card->drv_data,
+			     *new_dat;
 
-	if (!card || !val)
+	new_dat = malloc(sizeof(*new_dat));
+	if (!new_dat)
 		return SC_ERROR_INTERNAL;
-	ex_data = (starcos_extra_data *)card->drv_data;
-	for (i = 0; i < ex_data->key_attr_num; i++)
-		if (ex_data->key_attr[i].keyID == val->keyID)
-		{
-			ex_data->key_attr[i].flag = val->flag;
-			return SC_SUCCESS;
-		}
+	new_dat->next = NULL;
+	new_dat->key  = in_dat->key;
+	new_dat->data = in_dat->data;
+	new_dat->free_func = in_dat->free_func;
 
-	if (ex_data->key_attr_num < STARCOS_MAX_KEYS)
-	{
-		ex_data->key_attr[ex_data->key_attr_num].keyID = val->keyID;
-		ex_data->key_attr[ex_data->key_attr_num].flag  = val->flag;
-		ex_data->key_attr_num++;
+	if (!card->drv_data) {
+		card->drv_data = new_dat;
 		return SC_SUCCESS;
 	}
 
-	return SC_ERROR_INTERNAL;
-}
-
-static int starcos_clear_key_attr(struct sc_card *card)
-{
-	starcos_extra_data *ex_data;
-
-	if (!card)
-		return SC_ERROR_INTERNAL;
-	 ex_data = (starcos_extra_data *)card->drv_data;
-	memset(&ex_data->key_attr[0], 0, sizeof(ex_data->key_attr[0]));
-	ex_data->key_attr_num = 0;
+	while (tmp->next)
+		tmp = tmp->next;
+	tmp->next = new_dat;
 
 	return SC_SUCCESS;
+}
+
+static int set_ex_data(sc_card_t *card, sc_starcos_ex_data_t *in_dat)
+{
+	sc_starcos_ex_data_t *tmp = (sc_starcos_ex_data_t  *) card->drv_data;
+
+	while (tmp) {
+		if (tmp->key == in_dat->key) {
+			if (tmp->free_func)
+				tmp->free_func(tmp->data);
+			else
+				free(tmp->data);
+			tmp->data = in_dat->data;
+			tmp->free_func = in_dat->free_func;
+			return SC_SUCCESS;
+		}
+		tmp = tmp->next;
+	}
+
+	return append_ex_data(card, in_dat);
+}
+
+static void free_all_ex_data(sc_card_t *card)
+{
+	sc_starcos_ex_data_t *tmp = (sc_starcos_ex_data_t *)card->drv_data;
+
+	while (tmp) {
+		sc_starcos_ex_data_t *next = tmp->next;
+		if (tmp->free_func)
+			tmp->free_func(tmp->data);
+		else
+			free(tmp->data);
+		free(tmp);
+		tmp = next;
+	}
+	card->drv_data = NULL;
+}
+
+static void free_ex_data(sc_card_t *card, unsigned long key)
+{
+	sc_starcos_ex_data_t **p  = (sc_starcos_ex_data_t **)&card->drv_data,
+			     *tmp = (sc_starcos_ex_data_t  *) card->drv_data;
+
+	while (tmp) {
+		if (tmp->key == key) {
+			*p = tmp->next;
+			if (tmp->free_func)
+				tmp->free_func(tmp->data);
+			else
+				free(tmp->data);
+			free(tmp);
+			return;
+		}
+		p   = &tmp->next;
+		tmp =  tmp->next;
+	}
+}
+
+/* internal function to copy a sc_path_t object */
+static int copy_path(sc_path_t *dest, const sc_path_t *src)
+{
+	if ( !dest || !src )
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	dest->type  = src->type;
+	dest->len   = src->len;
+	dest->index = src->index;
+	memcpy(dest->value, src->value, src->len);
+
+	return SC_NO_ERROR;
+}
+
+/* the starcos part */
+static int starcos_match_card(struct sc_card *card)
+{
+	int i, match = -1;
+  
+	for (i = 0; starcos_atrs[i] != NULL; i++) 
+	{
+		u8 defatr[SC_MAX_ATR_SIZE];
+		size_t len = sizeof(defatr);
+		const char *atrp = starcos_atrs[i];
+      
+		if (sc_hex_to_bin(atrp, defatr, &len))
+			continue;
+		if (len != card->atr_len)
+			continue;
+		if (memcmp(card->atr, defatr, len) != 0)
+			continue;
+		match = i + 1;
+		break;
+    	}
+	if (match == -1)
+		return 0;
+  
+	return i;
+}
+
+static int starcos_init(struct sc_card *card)
+{
+	int type, flags;
+	starcos_sec_data_t  *sec_data;
+	sc_starcos_ex_data_t tmp_data;
+
+	sec_data = malloc(sizeof(starcos_sec_data_t));
+	if (!sec_data)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memset(sec_data, 0, sizeof(starcos_sec_data_t));
+
+	tmp_data.key  = SC_STARCOS_PRV_DATA;
+	tmp_data.data = sec_data;
+	tmp_data.free_func = NULL;
+
+	card->name = "StarCOS";
+	card->cla = 0x00;
+	if (set_ex_data(card, &tmp_data)) {
+		free(sec_data);
+		return SC_ERROR_INTERNAL;
+	}
+
+	/* set the supported algorithm */
+	type = starcos_match_card(card);
+
+	if (type == 1 || type == 2)
+	{
+		/* Starcos SPK 2.3 card */
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1 
+			| SC_ALGORITHM_RSA_PAD_ISO9796
+			| SC_ALGORITHM_RSA_HASH_NONE
+			| SC_ALGORITHM_RSA_HASH_SHA1
+			| SC_ALGORITHM_RSA_HASH_MD5
+			| SC_ALGORITHM_RSA_HASH_RIPEMD160;
+
+		_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
+		_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
+		_sc_card_add_rsa_alg(card,1024, flags, 0x10001);
+	}
+	else
+		return SC_ERROR_INTERNAL;
+
+	/* we need read_binary&friends with max 128 bytes per read */
+	card->max_le = 0x80;
+
+	return 0;
+}
+
+static int starcos_finish(struct sc_card *card)
+{
+	if (card->drv_data)
+		free_all_ex_data(card);
+	return 0;
 }
 
 static void process_fci(struct sc_context *ctx, struct sc_file *file,
@@ -232,96 +356,6 @@ static void process_fci(struct sc_context *ctx, struct sc_file *file,
 	}
 	file->magic = SC_FILE_MAGIC;
 }
-
-
-static int starcos_finish(struct sc_card *card)
-{
-	if (card->drv_data)
-		free(card->drv_data);
-	return 0;
-}
-
-
-static int starcos_match_card(struct sc_card *card)
-{
-	int i, match = -1;
-  
-	for (i = 0; starcos_atrs[i] != NULL; i++) 
-	{
-		u8 defatr[SC_MAX_ATR_SIZE];
-		size_t len = sizeof(defatr);
-		const char *atrp = starcos_atrs[i];
-      
-		if (sc_hex_to_bin(atrp, defatr, &len))
-			continue;
-		if (len != card->atr_len)
-			continue;
-		if (memcmp(card->atr, defatr, len) != 0)
-			continue;
-		match = i + 1;
-		break;
-    	}
-	if (match == -1)
-		return 0;
-  
-	return i;
-}
-
-
-static int starcos_init(struct sc_card *card)
-{
-	starcos_extra_data *ex_data;
-	int type, flags;
-
-	ex_data = malloc(sizeof(starcos_extra_data));
-	if (!ex_data)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memset(ex_data, 0, sizeof(*ex_data));
-
-	card->name = "StarCOS";
-	card->drv_data = ex_data;
-	card->cla = 0x00;
-
-	/* set the supported algorithm */
-	type = starcos_match_card(card);
-
-	if (type == 1 || type == 2)
-	{
-		/* Starcos SPK 2.3 card */
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 
-			| SC_ALGORITHM_RSA_PAD_ISO9796
-			| SC_ALGORITHM_RSA_HASH_NONE
-			| SC_ALGORITHM_RSA_HASH_SHA1
-			| SC_ALGORITHM_RSA_HASH_MD5
-			| SC_ALGORITHM_RSA_HASH_RIPEMD160;
-
-		_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
-		_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
-		_sc_card_add_rsa_alg(card,1024, flags, 0x10001);
-	}
-	else
-		return SC_ERROR_INTERNAL;
-
-	/* we need read_binary&friends with max 128 bytes per read */
-	card->max_le = 0x80;
-
-	return 0;
-}
-
-
-static int copy_path(sc_path_t *dest, const sc_path_t *src)
-{
-	if ( !dest || !src )
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	dest->type  = src->type;
-	dest->len   = src->len;
-	dest->index = src->index;
-	memcpy(dest->value, src->value, src->len);
-
-	return SC_NO_ERROR;
-}
-
 
 static int starcos_select_aid(struct sc_card *card,
 			      u8 aid[16], size_t len,
@@ -815,22 +849,28 @@ static int starcos_set_security_env(struct sc_card *card,
 	 *       argument and inserts the information in the
 	 *       starcos_mse_state structure.
 	 */
-	starcos_mse_state *mse;
-	starcos_key_attr  keyAttr;
-	u8                *p, keyID, algID;
-	int               operation;
+	starcos_sec_data_t  *mse;
+	u8                  *p, keyID, algID;
+	int                  operation;
+	sc_starcos_ex_data_t ex_dat;
+	struct sc_cardctl_starcos_key_attr_st *key_attr = NULL;
 
 	assert(card != NULL && env != NULL);
 
-	mse   = &((starcos_extra_data *)card->drv_data)->mse;
+	ex_dat.key = SC_STARCOS_PRV_DATA;
+	if (get_ex_data(card, &ex_dat) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
+	mse = (starcos_sec_data_t *)ex_dat.data;
+
 	p     = mse->buf;
 	keyID = env->key_ref[0];
 	algID = env->algorithm_ref & 0xFF;
-	keyAttr.keyID = keyID;
+	ex_dat.key = SC_STARCOS_EX_KEY(SC_STARCOS_KEY_ATTR, keyID);
+	if (!get_ex_data(card, &ex_dat))
+		key_attr = ex_dat.data;
 
-	if (env->operation == SC_SEC_OPERATION_SIGN &&
-	    starcos_get_key_attr(card, &keyAttr) == SC_SUCCESS &&
-	    keyAttr.flag   == SC_SEC_OPERATION_AUTHENTICATE)
+	if (env->operation == SC_SEC_OPERATION_SIGN && key_attr &&
+	    key_attr->flag == SC_SEC_OPERATION_AUTHENTICATE)
 	{
 		/* XXX We want to create a signature with a authentication 
 		 * key => change operation to SC_SEC_OPERATION_AUTHENTICATE.
@@ -954,13 +994,17 @@ static int starcos_compute_signature(struct sc_card *card,
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	starcos_mse_state *mse;
+	starcos_sec_data_t *mse;
+	sc_starcos_ex_data_t ex_dat;
 
 	assert(card != NULL && data != NULL && out != NULL);
 	if (datalen > 20)
 		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 
-	mse = &((starcos_extra_data *)card->drv_data)->mse;
+	ex_dat.key = SC_STARCOS_PRV_DATA;
+	if (get_ex_data(card, &ex_dat) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
+	mse = (starcos_sec_data_t *)ex_dat.data;
 
 	/* first step: MSE */
 	if (mse->sec_ops == 0)
@@ -1059,7 +1103,7 @@ static int starcos_compute_signature(struct sc_card *card,
 		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* clear the old mse state */
-	memset(mse, 0, sizeof(starcos_mse_state));
+	memset(mse, 0, sizeof(starcos_sec_data_t));
 
 	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
@@ -1073,7 +1117,8 @@ static int starcos_decipher(struct sc_card *card,
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	starcos_mse_state *mse;
+	starcos_sec_data_t *mse;
+	sc_starcos_ex_data_t ex_dat;
 
 	assert(card != NULL && crgram != NULL && out != NULL);
 	SC_FUNC_CALLED(card->ctx, 2);
@@ -1081,7 +1126,10 @@ static int starcos_decipher(struct sc_card *card,
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* MSE */
-	mse = &((starcos_extra_data *)card->drv_data)->mse;
+	ex_dat.key = SC_STARCOS_PRV_DATA;
+	if (get_ex_data(card, &ex_dat) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
+	mse = (starcos_sec_data_t *)ex_dat.data;
 
 	if (mse->sec_ops == 0)
 		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
@@ -1120,7 +1168,7 @@ static int starcos_decipher(struct sc_card *card,
 	}
 
 	/* clear the old mse state */
-	memset(mse, 0, sizeof(starcos_mse_state));
+	memset(mse, 0, sizeof(starcos_sec_data_t));
 
 	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
@@ -1160,12 +1208,16 @@ static int starcos_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
 	switch (cmd)
 	{
-	case SC_CARDCTL_STARCOS_SET_KEY_ATTR:
-		return starcos_set_key_attr(card, (starcos_key_attr *)ptr);
-	case SC_CARDCTL_STARCOS_GET_KEY_ATTR:
-		return starcos_get_key_attr(card, (starcos_key_attr *)ptr);
-	case SC_CARDCTL_STARCOS_CLEAR_KEY_ATTR:
-		return starcos_clear_key_attr(card);
+	case SC_CARDCTL_STARCOS_SET_EX_DATA:
+		return set_ex_data(card, (sc_starcos_ex_data_t *)ptr);
+	case SC_CARDCTL_STARCOS_GET_EX_DATA:
+		return get_ex_data(card, (sc_starcos_ex_data_t *)ptr);
+	case SC_CARDCTL_STARCOS_FREE_EX_DATA:
+		free_ex_data(card, ((sc_starcos_ex_data_t *)ptr)->key);
+		return SC_SUCCESS;
+	case SC_CARDCTL_STARCOS_FREE_ALL_EX_DATA:
+		free_all_ex_data(card);
+		return SC_SUCCESS;
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -1173,6 +1225,29 @@ static int starcos_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 }
 
 
+static int starcos_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+			   int *tries_left)
+{
+	if (data->cmd == SC_PIN_CMD_VERIFY) {
+		u8  pinId = (u8) data->pin_reference;
+		sc_starcos_ex_data_t ex_dat;
+		ex_dat.key = SC_STARCOS_EX_KEY(SC_STARCOS_PIN_ATTR, pinId);
+		if (get_ex_data(card, &ex_dat) == SC_SUCCESS) {
+			int r;
+			struct sc_cardctl_starcos_pin_attr_st *pin_attr;
+
+			pin_attr = (struct sc_cardctl_starcos_pin_attr_st *)ex_dat.data;
+			if (!pin_attr->verify_once)
+				return SC_SUCCESS;
+			r = iso_ops->pin_cmd(card, data, tries_left);
+			if (r == SC_SUCCESS)
+				pin_attr->verify_once = 0;
+			return r;
+		}
+	}
+		
+	return iso_ops->pin_cmd(card, data, tries_left);
+}
 
 static struct sc_card_driver * sc_get_driver(void)
 {
@@ -1192,6 +1267,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	starcos_ops.compute_signature = starcos_compute_signature;
 	starcos_ops.decipher    = starcos_decipher;
 	starcos_ops.card_ctl    = starcos_card_ctl;
+	starcos_ops.pin_cmd     = starcos_pin_cmd;
   
 	return &starcos_drv;
 }
@@ -1200,3 +1276,4 @@ struct sc_card_driver * sc_get_starcos_driver(void)
 {
 	return sc_get_driver();
 }
+
