@@ -29,6 +29,12 @@
 #include <openssl/des.h>
 #include <openssl/rand.h>
 
+#if OPENSSL_VERSION_NUMBER >= 0x00907000L
+# define des_cleanse(k)	OPENSSL_cleanse(k.ks, sizeof(k.ks))
+#else
+# define des_cleanse(k)	memset(&k, 0, sizeof(k))
+#endif
+
 /* Gemplus card variants */
 enum {
 	GPK4000_su256 = 4000,
@@ -831,8 +837,8 @@ gpk_compute_crycks(struct sc_card *card, struct sc_apdu *apdu,
 	apdu->le += 3;
 	if (crycks1)
 		memcpy(crycks1, out, 3);
-	memset(&k1, 0, sizeof(k1));
-	memset(&k2, 0, sizeof(k2));
+	des_cleanse(k1);
+	des_cleanse(k2);
 	memset(in, 0, sizeof(in));
 	memset(out, 0, sizeof(out));
 	memset(block, 0, sizeof(block));
@@ -974,8 +980,8 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	if (memcmp(r_rn, out+4, 4) != 0)
 		r = SC_ERROR_INVALID_ARGUMENTS;
 
-	memset(&k1, 0, sizeof(k1));
-	memset(&k2, 0, sizeof(k2));
+	des_cleanse(k1);
+	des_cleanse(k2);
 	memset(out, 0, sizeof(out));
 	return r;
 }
