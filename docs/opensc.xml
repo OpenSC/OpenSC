@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<book ns="http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<book ns="http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" id="opensc">
 	<title>OpenSC Manual</title>
 	<bookinfo>
 		<author>
@@ -10,7 +10,7 @@
 
 	<toc />
 
-	<chapter>
+	<chapter id="opensc.intro">
 		<title>Introduction</title>
 
 		<para>
@@ -26,7 +26,7 @@
 		</para>
 	</chapter>
 
-	<chapter>
+	<chapter id="opensc.authors">
 		<title>Authors and Contributors</title>
 
 		<para>
@@ -68,7 +68,7 @@
 			</listitem>
 		</itemizedlist>
 
-		<section>
+		<section id="opensc.authors.thanks">
 			<title>Thanks</title>
 
 			<para>
@@ -112,7 +112,7 @@
 		</section>
 	</chapter>
 
-	<chapter>
+	<chapter id="opensc.license">
 		<title>Copyright and License</title>
 
 		<screen>
@@ -135,7 +135,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 </screen>
 	</chapter>
 
-	<chapter>
+	<chapter id="opensc.overview">
 		<title>Overview</title>
 
 		<para>
@@ -157,7 +157,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 			each library it's own section in this document.
 		</para>
 
-		<section>
+		<section id="opensc.overview.layers">
 			<title>Layers in libopensc</title>
 
 			<para>
@@ -245,7 +245,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 			</variablelist>
 		</section>
 
-		<section>
+		<section id="opensc.overview.readers">
 			<title>The reader layer</title>
 
 			<para>
@@ -388,7 +388,7 @@ $ ./configure --enable-usbtoken
 
 	</chapter>
 
-	<chapter>
+	<chapter id="opensc.install">
 		<title>Building and Installing libopensc</title>
 
 		<para>
@@ -399,7 +399,7 @@ $ ./configure --enable-usbtoken
 			versions of Autoconf, Automake and Libtool installed.
 		</para>
 
-		<section>
+		<section id="opensc.install.windows">
 			<title>Windows </title>
 
 			<para>
@@ -438,7 +438,7 @@ $ ./configure --enable-usbtoken
 			</procedure>
 		</section>
 
-		<section>
+		<section id="opensc.install.windowsopenssl">
 			<title>Windows with OpenSSL</title>
 
 			<para>
@@ -500,11 +500,11 @@ set path=%path%;....\out32dll
 
 	</chapter>
 
-	<chapter>
+	<chapter id="opensc.status">
 		<title>Status</title>
 
 
-		<section>
+		<section id="opensc.status.cards">
 			<title>Card Status</title>
 
 			<variablelist>
@@ -535,7 +535,7 @@ set path=%path%;....\out32dll
 			</para>
 	</listitem></varlistentry>
 
-			<varlistentry><term>Aladdin eToken PRO</term>
+	<varlistentry><term>Aladdin eToken PRO</term>
 
 			<listitem>
 			<para>
@@ -543,10 +543,25 @@ set path=%path%;....\out32dll
 			</para>
 
 			<para>
-				NOTE: The eToken does not support keys that can
-				be used for decryption and signing
-				simultaneously.  You need to create two keys
-				with different usage.
+				NOTE: CardOS only supports keys for 
+				decryption or signing, but not both.
+				If you create/store keys with "--split-keys"
+				OpenSC will work around this limitation.
+			</para>
+	</listitem></varlistentry>
+
+	<varlistentry><term>Eutron CryptoIdendity IT-SEC</term>
+
+			<listitem>
+			<para>
+				Support signing/decrypting, and initialization.
+			</para>
+
+			<para>
+				NOTE: CardOS only supports keys for 
+				decryption or signing, but not both.
+				If you create/store keys with "--split-keys"
+				OpenSC will work around this limitation.
 			</para>
 	</listitem></varlistentry>
 
@@ -584,7 +599,7 @@ set path=%path%;....\out32dll
 	</variablelist>
 	</section>
 
-		<section>
+	<section id="opensc.status.windows">
 			<title>Windows</title>
 
 			<para>
@@ -595,7 +610,7 @@ set path=%path%;....\out32dll
 			</para>
 		</section>
 
-		<section>
+		<section id="opensc.status.pkcs11">
 			<title>PKCS#11 Module in Netscape and Mozilla</title>
 
 			<para>
@@ -633,10 +648,10 @@ set path=%path%;....\out32dll
 		</section>
 	</chapter>
 
-	<chapter>
+	<chapter id="opensc.using">
 		<title>Using OpenSC</title>
 
-		<section>
+		<section id="opensc.using.netscape">
 			<title>OpenSC and Netscape</title>
 
 			<procedure>
@@ -686,7 +701,7 @@ set path=%path%;....\out32dll
 			</para>
 		</section>
 
-		<section>
+		<section id="opensc.using.mozilla">
 			<title>OpenSC and Mozilla</title>
 	
 			<procedure>
@@ -720,7 +735,7 @@ set path=%path%;....\out32dll
 			</procedure>
 		</section>
 	
-		<section>
+		<section id="opensc.using.openssl">
 			<title>OpenSC and OpenSSL</title>
 		
 			<para>
@@ -851,7 +866,7 @@ OpenSSL>
 
 		</section>
 
-		<section>
+		<section id="opensc.using.openssh">
 			<title>OpenSC and OpenSSH</title>
 	
 			<para>
@@ -901,7 +916,7 @@ OpenSSL>
 			</para>
 		</section>
 
-		<section>
+		<section id="opensc.using.pam">
 			<title>Pluggable Authentication Module</title>
 
 			<para>
@@ -972,7 +987,7 @@ OpenSSL>
 				</variablelist>
 			</para>
 
-			<section>
+			<section id="opensc.using.pam.eid">
 				<title>eid based authentication</title>
 
 				<para>
@@ -995,7 +1010,7 @@ OpenSSL>
 				</para>
 			</section>
 
-			<section>
+			<section id="opensc.using.pam.ldap">
 				<title>ldap based authentication</title>
 
 				<para>
@@ -1070,10 +1085,10 @@ OpenSSL>
 		</section>
 	</chapter>
 
-	<chapter>
+	<chapter id="opensc.pkcs11">
 		<title>The OpenSC PKCS11 library</title>
 
-		<section>
+		<section id="opensc.pkcs11.whatis">
 			<title>What is PKCS11</title>
 
 			<para>
@@ -1116,7 +1131,7 @@ OpenSSL>
 			</para>
 		</section>
 
-		<section>
+		<section id="opensc.pkcs11.slots">
 			<title>Virtual slots</title>
 
 			<para>
@@ -1192,7 +1207,7 @@ OpenSSL>
 		</section>
 	</chapter>
 
-	<chapter>
+	<chapter id="opensc.todo">
 		<title>What needs to be done</title>
 
 		<screen>
@@ -1220,7 +1235,7 @@ OpenSSL>
 * pkcs11: make sure all PIN ops work through pkcs11
 		</screen>
 
-		<section>
+		<section id="opensc.todo.windows">
 			<title>Windows</title>
 
 			<para>
@@ -1233,7 +1248,7 @@ OpenSSL>
 	</chapter>
 
 
-	<chapter>
+	<chapter id="opensc.help">
 		<title>Troubleshooting</title>
 
 		<para>
@@ -1243,7 +1258,7 @@ OpenSSL>
 		</para>
 	</chapter>
 
-	<chapter>
+	<chapter id="opensc.links">
 		<title>Resources</title>
 
 		<para>
@@ -1257,7 +1272,7 @@ OpenSSL>
 		</para>
 	</chapter>
 
-	<chapter>
+	<chapter id="opensc.signer">
 		<title>Signer</title>
 
 		<para>
@@ -1266,7 +1281,7 @@ OpenSSL>
 			smartcards.
 		</para>
 
-		<section>
+		<section id="opensc.signer.install">
 			<title>Building and Installing libopensc</title>
 
 			<para>
@@ -1293,7 +1308,7 @@ OpenSSL>
 		</section>
 	</chapter>
 
-	<chapter>
+	<chapter id="opensc.docbook">
 		<title>A few hints on docbook documents</title>
 
 		<para>
