@@ -389,6 +389,7 @@ sc_ui_display_msg(sc_context_t *ctx, int type, const char *msg)
 {
 	const char	*color_pfx = "", *color_sfx = "";
 	FILE		*outf = NULL;
+	int		n;
 
 	switch (type) {
 	case SC_LOG_TYPE_ERROR:
@@ -415,6 +416,9 @@ sc_ui_display_msg(sc_context_t *ctx, int type, const char *msg)
 	}
 
 	fprintf(outf, "%s%s%s", color_pfx, msg, color_sfx);
+	n = strlen(msg);
+	if (n == 0 || msg[n-1] != '\n')
+		fprintf(outf, "\n");
 	fflush(outf);
 	return 0;
 }
