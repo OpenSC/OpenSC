@@ -261,6 +261,13 @@ function p15_store_key {
 	success
 }
 
+function p15_crypt {
+
+	run_check_status $p15crypt \
+		--pin 0000 \
+		"$@"
+}
+
 function p15_validate {
 
 	msg "Validating card using pkcs11-tool"
@@ -268,4 +275,3 @@ function p15_validate {
 		--slot-label "OpenSC Test Card" $* < /dev/null
 	success
 }
-

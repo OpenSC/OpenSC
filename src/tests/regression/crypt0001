@@ -20,7 +20,8 @@ s=$p15temp/signed
 p=$p15temp/key.pem
 
 p15_init --no-so-pin
-p15_gen_key rsa/1024 --insecure --id 45
+p15_set_pin -a 01
+p15_gen_key rsa/1024 --id 45 -a 01
 
 msg "Extracting public key"
 run_check_status $p15tool --read-public-key 45 -o $p
@@ -30,14 +31,14 @@ echo lalla > $m
 
 msg "Signing and verifying using MD5"
 run_check_status openssl dgst -md5 -binary -out $d < $m
-run_check_status $p15crypt -s --md5 --pkcs1 -i $d -o $s
+p15_crypt -s --md5 --pkcs1 -i $d -o $s
 run_check_output "Verified OK" \
 	openssl dgst -verify $p -md5 -signature $s < $m
 success
 
 msg "Signing and verifying using SHA1"
 run_check_status openssl dgst -sha1 -binary -out $d < $m
-run_check_status $p15crypt -s --sha-1 --pkcs1 -i $d -o $s
+p15_crypt -s --sha-1 --pkcs1 -i $d -o $s
 run_check_output "Verified OK" \
 	openssl dgst -verify $p -sha1 -signature $s < $m
 success
