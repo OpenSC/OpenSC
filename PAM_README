@@ -9,7 +9,7 @@ b) "ldap" - store the certificate for a user in a central ldap
 
 This guide only deals with flavor a). If you want to add documentation
 on using pam with ldap, please send a patch to the opensc-devel mailing
-list.
+list.  See also the PAM section in the OpenSC HTML docs.
 
 First initialize the token, create a user with a pin, create a key
 and create a certificate, all as documented in the QUICKSTART file.
@@ -36,16 +36,19 @@ auth       required   pam_unix.so nullok
 Note the first line is marked as "sufficient", so successful smart card
 authentication will let a user in. If both lines read "required", a user
 would have to use a smart card with the right key and certificate on it,
-enter the right pin *AND* have the right passwort for the normal login
+enter the right pin *AND* have the right password for the normal login
 procedure.
 
 Now every user needs to create a directory ".eid" in his or her home
 directory and put the certificate in a file called "authorized_certificates".
-To do this, enter the command
+To do this, enter the command (beware, this will overwrite the file):
 $ pkcs15-tool -r 45 -o ~/.eid/authorized_certificates
 
 Now try to login using the smart card. Remember to first insert your
 smart card into the reader, then enter your username, and then the
 pin on your key.
 
-
+As of OpenSC version 0.9.2, ~/.eid/authorized_certificates can contain
+multiple certificates.  To use multiple certificates there, simply
+concatenate them, for example like
+$ pkcs15-tool -r 45 >> ~/.eid/authorized_certificates

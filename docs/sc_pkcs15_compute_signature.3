@@ -37,10 +37,10 @@ of the key.
 .B SC_ALGORITHM_RSA_PAD_PKCS1
 requests that the card should sign the provided data,
 padding it according to the padding algorithm specified
-in PKCS#1.
+in PKCS #1.
 .IP
 The input data must be the output of a digest (hash) function.
-As PKCS#1 padding includes an identifier of the hash algorithm
+As PKCS #1 padding includes an identifier of the hash algorithm
 used, the
 .B flags
 argument must indicate the hash algorithm used,
@@ -76,7 +76,7 @@ suitable for the card. For instance, if a smart card supports
 raw RSA only, the function will have to add the required
 padding before passing it to the card driver.
 Conversely, an error should be returned if the card supports
-only PKCS#1 padding with a specific set of hash algorithms.
+only PKCS #1 padding with a specific set of hash algorithms.
 .PP
 ...
 .SH RETURN VALUE

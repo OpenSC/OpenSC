@@ -9,7 +9,7 @@ pkcs15-crypt \- perform crypto operations using pkcs15 smart card
 .SH DESCRIPTION
 The \*(nm utility can be used from the command line to perform
 cryptographic operations such as computing digital signatures or
-decrypting data, using keys stored on a PKCS#15 compliant smart
+decrypting data, using keys stored on a PKCS #15 compliant smart
 card.
 .SH OPTIONS
 .TP
@@ -21,7 +21,7 @@ option. By default, the contents of the file are assumed to
 be the result of an MD5 hash operation. Note that \*(nm
 expects the data in binary representation, not ASCII.
 .IP
-The digitial signature is stored, in binary representation,
+The digital signature is stored, in binary representation,
 in the file specified by the
 .B \-\-output
 option. If this option is not given, the signature
@@ -36,7 +36,7 @@ a 1024 bit key, the input must be padded to 128 bytes to match
 the modulus length). When giving the
 .B \-\-pkcs1
 option, however, \*(nm will perform the required padding
-using the algorithm outlined in the PCKS#1 v1.5 standard.
+using the algorithm outlined in the PKCS #1 standard version 1.5.
 .TP
 .B \-\-sha1
 This option tells \(*nm that the input file is the result

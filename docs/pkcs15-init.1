@@ -13,7 +13,7 @@ The profile used by default is \fBpkcs15\fR. Alternative
 profiles can be specified via the \fB-p\fR switch.
 .SH PIN Usage
 .B pkcs15-init
-can be used to create a PKCS#15 structure on your smart card,
+can be used to create a PKCS #15 structure on your smart card,
 create PINs, and install keys and certificates on the card.
 This process is also called \fIpersonalization\fP.
 .PP
@@ -30,7 +30,7 @@ characters other than digits will make the card unusable with PIN pad
 readers, because those usually have keys for entering digits only.
 .PP
 The security officer (SO) PIN is special; it is used to protect
-meta data information on the card, such as the PKCS#15 structure
+meta data information on the card, such as the PKCS #15 structure
 itself.  Setting the SO PIN is optional, because the worst that can
 usually happen is that someone finding your card can mess it up.
 To extract any of your secret keys stored on the card, an attacker
@@ -63,7 +63,7 @@ at least one PIN to protect these objects. you can do this using
 .PP
 .BI "   pkcs15-init --store-pin --auth-id " nn
 .PP
-where \fInn\fP is a PKCS#15 ID in hexadecimal notation. Common values 
+where \fInn\fP is a PKCS #15 ID in hexadecimal notation. Common values 
 are \fB01\fP, \fB02\fP, etc.
 .PP
 Entering the command above will ask you for the user's PIN and PUK.
@@ -150,8 +150,8 @@ You can download certificates to the card using the
 .B \-\-store-certificate
 option, which takes a filename as an argument. This file is supposed
 to contain the DER encoded X.509 certificate.
-.SS Downloading PKCS#12 bags
-Most browsers nowadays use PKCS#12 format files when you ask them to
+.SS Downloading PKCS #12 bags
+Most browsers nowadays use PKCS #12 format files when you ask them to
 export your key and certificate to a file. \*(nm is capable of parsing
 these files, and storing their contents on the card in a single operation.
 This works just like storing a private key, except that you need to
