@@ -46,7 +46,7 @@ static int
 dlfcn_open(scdl_context_t *mod, const char *name)
 {
 	const char	**dir, *ldlist[64];
-	char		pathbuf[4096], *ldenv;
+	char		pathbuf[4096], *ldenv = NULL;
 	unsigned int	n = 0, flags = 0;
 
 #ifdef RTLD_NOW
