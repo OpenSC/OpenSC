@@ -2042,6 +2042,8 @@ sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,	CK_OBJECT_HANDLE priv_ke
 	CK_ULONG signat_len;
 	int j, errors = 0;
 
+    memcpy(buf, "\x00\x01\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00", 11);
+
 	for (j = 0, mech_type = mech_types; *mech_type != 0xffffff; mech_type++, j++) {
 		CK_MECHANISM mech = {*mech_type, NULL, 0};
 
