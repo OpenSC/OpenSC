@@ -59,6 +59,7 @@ enum {
 	SC_CARDCTL_ETOKEN_BASE = _CTL_PREFIX('E', 'T', 'K'),
 	SC_CARDCTL_ETOKEN_PUT_DATA_FCI,
 	SC_CARDCTL_ETOKEN_PUT_DATA_OCI,
+	SC_CARDCTL_ETOKEN_PUT_DATA_SECI,
 	SC_CARDCTL_ETOKEN_GENERATE_KEY
 };
 
@@ -113,7 +114,7 @@ struct sc_cardctl_miocos_ac_info {
 /*
  * eToken PIN info
  */
-struct sc_cardctl_etoken_pin_info {
+struct sc_cardctl_etoken_obj_info {
 	u8 *		data;
 	size_t		len;
 };
