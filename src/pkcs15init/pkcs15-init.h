@@ -134,6 +134,8 @@ extern int	sc_pkcs15init_update_file(struct sc_profile *,
 				struct sc_card *, struct sc_file *, void *, unsigned int);
 extern int	sc_pkcs15init_authenticate(struct sc_profile *,
 				struct sc_card *, struct sc_file *, int);
+extern int	sc_pkcs15init_present_pin(struct sc_profile *,
+				struct sc_card *, unsigned int);
 extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_file *);
 extern int	sc_pkcs15init_fixup_acls(struct sc_profile *,
 				struct sc_file *,

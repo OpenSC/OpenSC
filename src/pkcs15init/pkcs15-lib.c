@@ -842,6 +842,16 @@ no_secret:
 }
 
 /*
+ * Present a single PIN to the card
+ */
+int
+sc_pkcs15init_present_pin(struct sc_profile *profile, struct sc_card *card,
+		unsigned int id)
+{
+	return do_verify_pin(profile, card, SC_AC_SYMBOLIC, id);
+}
+
+/*
  * Present any authentication info as required by the file.
  *
  * XXX: There's a problem here if e.g. the SO PIN defined by
