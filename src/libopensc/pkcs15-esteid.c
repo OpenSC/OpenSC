@@ -122,6 +122,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 			
 		static const int esteid_pin_min[3] = {4, 5, 8};
 		static const int esteid_pin_ref[3] = {1, 2, 0};
+		static const int esteid_pin_authid[3] = {1, 2, 3};
 		static const int esteid_pin_flags[3] = {0, 0, SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN};
 		
 		struct sc_pkcs15_pin_info pin_info;
@@ -137,7 +138,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		tries_left = buff[5];
 		
 		pin_info.auth_id.len = 1;
-		pin_info.auth_id.value[0] = i + 1;
+		pin_info.auth_id.value[0] = esteid_pin_authid[i];
 		pin_info.reference = esteid_pin_ref[i];
 		pin_info.flags = esteid_pin_flags[i];
 		pin_info.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
@@ -149,7 +150,11 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 
 		strncpy(pin_obj.label, esteid_pin_names[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = esteid_pin_flags[i];
-
+		
+		if (i < 2)
+			pin_obj.auth_id.len = 1;
+			pin_obj.auth_id.value[0] = 3;
+ 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
 			return SC_ERROR_INTERNAL;

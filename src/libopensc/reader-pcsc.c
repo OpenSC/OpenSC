@@ -925,11 +925,14 @@ class2_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	
 	r = SC_SUCCESS;
 	switch (((unsigned int) apdu->sw1 << 8) | apdu->sw2) {
-	case 0x6402: /* Input timed out */
+	case 0x6400: /* Input timed out */
 		r = SC_ERROR_KEYPAD_TIMEOUT;   
 		break;
 	case 0x6401: /* Input cancelled */
 		r = SC_ERROR_KEYPAD_CANCELLED; 
+		break;
+	case 0x6402: /* PINs don't match */
+		r = SC_ERROR_KEYPAD_PIN_MISMATCH;
 		break;
 	}
 	
