@@ -38,21 +38,21 @@
 #endif
 
 #ifndef __GNUC__
-void error(struct sc_context *ctx, const char* file, int line, const char *func, const char *format, ...)
+void error(struct sc_context *ctx, const char *format, ...)
 {
 	va_list ap;
 
 	va_start(ap, format);
-	do_log2(ctx, SC_LOG_TYPE_ERROR, file, line, func, format, ap);
+	do_log2(ctx, SC_LOG_TYPE_ERROR, NULL, 0, "", format, ap);
 	va_end(ap);
 }
 
-void debug(struct sc_context *ctx, const char* file, int line, const char *func, const char *format, ...)
+void debug(struct sc_context *ctx, const char *format, ...)
 {
 	va_list ap;
 
 	va_start(ap, format);
-	do_log2(ctx, SC_LOG_TYPE_DEBUG, file, line, func, format, ap);
+	do_log2(ctx, SC_LOG_TYPE_DEBUG, NULL, 0, "", format, ap);
 	va_end(ap);
 }
 
@@ -129,7 +129,7 @@ void do_log2(struct sc_context *ctx, int type, const char *file,
 		}
 	}
 	if (file != NULL) {
-		r = snprintf(buf, sizeof(buf), "%s:%d:%s: ", file, line, func ? func : "");
+		r = snprintf(buf, sizeof(buf), "%s:%d:%s: ", file, line, func);
 		if (r < 0)
 			return;
 	} else
