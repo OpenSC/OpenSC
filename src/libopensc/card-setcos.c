@@ -35,7 +35,7 @@ static struct sc_atr_table setcos_atrs[] = {
 
 	/* FINEID 1016 (SetCOS 4.3.1B3/PKCS#15, VRK) */
 	{ "3b:9f:94:40:1e:00:67:00:43:46:49:53:45:10:52:66:ff:81:90:00", "ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff", NULL, TYPE_FINEID },
-	/* FINEID 2032 (EIDApplet/7816-15, test) */
+	/* FINEID 2032 (EIDApplet/7816-15, VRK test) */
 	{ "3b:6b:00:ff:80:62:00:a2:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff", NULL, TYPE_FINEID },
 	/* FINEID 2132 (EIDApplet/7816-15, OPK/EMV test) */
 	{ "3b:64:00:ff:80:62:00:a2", "ff:ff:00:ff:ff:ff:00:ff", NULL, TYPE_FINEID },
@@ -44,7 +44,7 @@ static struct sc_atr_table setcos_atrs[] = {
 	/* FINEID 2164 (EIDApplet/7816-15, OPK/EMV) */
 	{ "3b:64:00:00:80:62:00:51", "ff:ff:ff:ff:ff:ff:f0:ff", NULL, TYPE_FINEID },
 	/* FINEID 2264 (EIDApplet/7816-15, OPK/EMV/AVANT) */
-	{ "3b:6e:00:00:00:62:00:00:57:41:56:41:4e:54:10:81:90:00", "ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff", NULL, TYPE_FINEID },
+	{ "3b:6e:00:00:00:62:00:00:57:41:56:41:4e:54:10:81:90:00", NULL, NULL, TYPE_FINEID },
 	{ NULL }
 };
 
