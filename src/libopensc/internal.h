@@ -44,6 +44,13 @@ struct sc_atr_table {
 	int id;
 };
 
+struct sc_atr_table_hex {
+	const char *atr;
+	const char *name;
+	int id;
+	unsigned flags;
+};
+
 /* Internal use only */
 int sc_check_sw(struct sc_card *card, int sw1, int sw2);
 size_t _sc_count_bit_string_size(const void * buf, size_t bufsize);
@@ -58,6 +65,7 @@ int _sc_add_atr(struct sc_card_driver *, const u8 *, size_t, int);
 /* Returns an index number if a match was found, -1 otherwise. table has to
  * be null terminated. */
 int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out);
+int _sc_match_atr_hex(struct sc_card *card, struct sc_atr_table_hex *table, int *id_out);
 
 int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info);
 int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,

@@ -22,6 +22,9 @@
 #include "asn1.h"
 #include <assert.h>
 #include <stdlib.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 #include <string.h>
 
 int sc_check_sw(struct sc_card *card, int sw1, int sw2)
@@ -909,6 +912,32 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *id_out)
 		if (table[i].atr_len != atr_len)
 			continue;
 		if (memcmp(table[i].atr, atr, atr_len) != 0)
+			continue;
+		if (id_out != NULL)
+			*id_out = table[i].id;
+		return i;
+	}
+	return -1;
+}
+
+int _sc_match_atr_hex(struct sc_card *card, struct sc_atr_table_hex *table, int *id_out)
+{
+	const u8 *atr = card->atr;
+	size_t atr_len = card->atr_len;
+	int i = 0;
+
+	if (table == NULL)
+		return -1;
+
+	for (i = 0; table[i].atr != NULL; i++) {
+		u8 tatr[SC_MAX_ATR_SIZE];
+		size_t tlen = sizeof(tatr);
+
+		if (sc_hex_to_bin(table[i].atr, tatr, &tlen))
+			continue;
+		if (tlen != atr_len)
+			continue;
+		if (memcmp(tatr, atr, tlen) != 0)
 			continue;
 		if (id_out != NULL)
 			*id_out = table[i].id;
