@@ -341,6 +341,9 @@ CK_RV sc_pkcs11_register_generic_mechanisms(struct sc_pkcs11_card *);
 #ifdef HAVE_OPENSSL
 void sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *);
 #endif
+CK_RV sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *,
+				CK_MECHANISM_TYPE, CK_MECHANISM_TYPE,
+				sc_pkcs11_mechanism_type_t *);
 
 #ifdef __cplusplus
 }

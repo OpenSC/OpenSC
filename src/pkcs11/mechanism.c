@@ -414,48 +414,44 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 }
 
 /*
- * Support for sign+hash
- */
-static struct hash_signature_info	sig_hash_mechs[] = {
-      { CKM_SHA1_RSA_PKCS,	CKM_SHA_1,	CKM_RSA_PKCS	},
-      { CKM_MD5_RSA_PKCS,	CKM_MD5,	CKM_RSA_PKCS	},
-      {	CKM_RIPEMD160_RSA_PKCS,	CKM_RIPEMD160,	CKM_RSA_PKCS	},
-      { 0 }
-};
-
-/*
- * Register generic mechanisms, i.e.
- *  -	software only algorithms such as digests
- *  -	sign+hash mechanisms that use the card's
- *  	signature ops and a generic digest mechanism
+ * Register generic mechanisms
  */
 CK_RV
 sc_pkcs11_register_generic_mechanisms(struct sc_pkcs11_card *p11card)
 {
-	struct hash_signature_info *info;
-
 #ifdef HAVE_OPENSSL
 	sc_pkcs11_register_openssl_mechanisms(p11card);
 #endif
 
-	for (info = sig_hash_mechs; info->mech; info++) {
-		sc_pkcs11_mechanism_type_t *hash_type, *sign_type, *new_type;
-
-		hash_type = sc_pkcs11_find_mechanism(p11card, info->hash_mech, 0);
-		sign_type = sc_pkcs11_find_mechanism(p11card, info->sign_mech, CKF_SIGN);
-		if (!hash_type || !sign_type)
-			continue;
-		info->sign_type = sign_type;
-		info->hash_type = hash_type;
-
-		new_type = sc_pkcs11_new_fw_mechanism(info->mech,
-						&sign_type->mech_info,
-						sign_type->key_type,
-						info);
-		if (new_type)
-			sc_pkcs11_register_mechanism(p11card, new_type);
-	}
-
 	return CKR_OK;
 }
 
+/*
+ * Register a sign+hash algorithm derived from an algorithm supported
+ * by the token + a software hash mechanism
+ */
+CK_RV
+sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
+		CK_MECHANISM_TYPE mech,
+		CK_MECHANISM_TYPE hash_mech,
+		sc_pkcs11_mechanism_type_t *sign_type)
+{
+	sc_pkcs11_mechanism_type_t *hash_type, *new_type;
+	struct hash_signature_info *info;
+
+	if (!(hash_type = sc_pkcs11_find_mechanism(p11card, hash_mech, CKF_DIGEST)))
+		return CKR_MECHANISM_INVALID;
+
+	info = (struct hash_signature_info *) calloc(1, sizeof(*info));
+	info->mech = mech;
+	info->sign_type = sign_type;
+	info->hash_type = hash_type;
+	info->sign_mech = sign_type->mech;
+	info->hash_mech = hash_mech;
+
+	new_type = sc_pkcs11_new_fw_mechanism(mech, &sign_type->mech_info,
+				sign_type->key_type, info);
+	if (new_type)
+		sc_pkcs11_register_mechanism(p11card, new_type);
+	return CKR_OK;
+}

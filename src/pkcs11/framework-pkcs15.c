@@ -1486,22 +1486,76 @@ cache_pin(void *p, int user, const void *pin, size_t len)
 int
 register_mechanisms(struct sc_pkcs11_card *p11card)
 {
+	sc_card_t *card = p11card->card;
+	sc_algorithm_info_t *alg_info;
 	CK_MECHANISM_INFO mech_info;
-	int rc;
+	sc_pkcs11_mechanism_type_t *mt;
+	unsigned int num;
+	int rc, flags = 0;
+
+	/* Register generic mechanisms */
+	sc_pkcs11_register_generic_mechanisms(p11card);
 
 	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP;
-	mech_info.ulMinKeySize = 512;
-	mech_info.ulMaxKeySize = 2048;
-	rc = sc_pkcs11_register_mechanism(p11card,
-			sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS, &mech_info, CKK_RSA, NULL));
-	if (rc != CKR_OK)
-		return rc;
-	rc = sc_pkcs11_register_mechanism(p11card,
-			sc_pkcs11_new_fw_mechanism(CKM_RSA_X_509, &mech_info, CKK_RSA, NULL));
-	if (rc != CKR_OK)
-		return rc;
+	mech_info.ulMinKeySize = ~0;
+	mech_info.ulMaxKeySize = 0;
 
-	/* Register generic mechanisms (e.g. digest mechanisms, software encryption/
-	 * decryption stuff, and hash+sign algorithms */
-	return sc_pkcs11_register_generic_mechanisms(p11card);
+	/* For now, we just OR all the algorithm specific
+	 * flags, based on the assumption that cards don't
+	 * support different modes for different key sizes
+	 */
+	num = card->algorithm_count;
+	alg_info = card->algorithms;
+	while (num--) {
+		if (alg_info->algorithm != SC_ALGORITHM_RSA)
+			continue;
+		if (alg_info->key_length < mech_info.ulMinKeySize)
+			mech_info.ulMinKeySize = alg_info->key_length;
+		if (alg_info->key_length > mech_info.ulMaxKeySize)
+			mech_info.ulMaxKeySize = alg_info->key_length;
+
+		flags |= alg_info->flags;
+		alg_info++;
+	}
+
+	/* Check if we support raw RSA */
+	if (flags & SC_ALGORITHM_RSA_RAW) {
+		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_X_509,
+					&mech_info, CKK_RSA, NULL);
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
+
+	/* Check for PKCS1 */
+	if (flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS,
+					&mech_info, CKK_RSA, NULL);
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+
+		/* if the driver doesn't say what hashes it supports,
+		 * claim we will do all of them */
+		if (!(flags & SC_ALGORITHM_RSA_HASHES))
+			flags |= SC_ALGORITHM_RSA_HASHES;
+
+		if (flags & SC_ALGORITHM_RSA_HASH_SHA1)
+			sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+					CKM_SHA1_RSA_PKCS, CKM_SHA_1, mt);
+		if (flags & SC_ALGORITHM_RSA_HASH_MD5)
+			sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+					CKM_MD5_RSA_PKCS, CKM_MD5, mt);
+		if (flags & SC_ALGORITHM_RSA_HASH_RIPEMD160)
+			sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+					CKM_RIPEMD160_RSA_PKCS, CKM_RIPEMD160, mt);
+#if 0
+		/* Does this correspond to any defined CKM_XXX value? */
+		if (flags & SC_ALGORITHM_RSA_HASH_MD5_SHA1)
+			sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+					CKM_XXX_RSA_PKCS, CKM_XXX, mt);
+#endif
+	}
+
+	return CKR_OK;
 }
