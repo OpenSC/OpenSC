@@ -162,6 +162,7 @@ extern "C" {
 /* If the card is willing to produce a cryptogram padded with the following 
  * methods, set these flags accordingly. */
 #define SC_ALGORITHM_RSA_PADS		0x0000000E
+#define SC_ALGORITHM_RSA_PAD_NONE	0x00000000
 #define SC_ALGORITHM_RSA_PAD_PKCS1	0x00000002
 #define SC_ALGORITHM_RSA_PAD_ANSI	0x00000004
 #define SC_ALGORITHM_RSA_PAD_ISO9796	0x00000008
@@ -758,6 +759,8 @@ int sc_reset_retry_counter(struct sc_card *card, unsigned int type,
 			   int ref, const u8 *puk, size_t puklen,
 			   const u8 *newref, size_t newlen);
 int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad);
+int sc_add_padding(struct sc_context *ctx, const u8 *in, size_t inlen, u8 *out,
+		   size_t *outlen, unsigned long flags, unsigned int mod_length);
 
 /* ISO 7816-9 */
 int sc_create_file(struct sc_card *card, struct sc_file *file);

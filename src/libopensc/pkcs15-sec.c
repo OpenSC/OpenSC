@@ -238,8 +238,11 @@ static int add_pkcs1_padding(const struct digest_info_prefix *pfx,
 	return 0;
 }
 
-static int add_padding(struct sc_context *ctx, const u8 *in, size_t inlen, u8 *out,
-		       size_t *outlen, unsigned long flags, unsigned int mod_length)
+/*
+ * Add padding - we should probably move this to sec.c
+ */
+int sc_add_padding(struct sc_context *ctx, const u8 *in, size_t inlen, u8 *out,
+		   size_t *outlen, unsigned long flags, unsigned int mod_length)
 {
 	const struct digest_info_prefix *pfx;
 	int j, pad_algo;
@@ -261,7 +264,7 @@ static int add_padding(struct sc_context *ctx, const u8 *in, size_t inlen, u8 *o
 		return SC_ERROR_WRONG_LENGTH;
 
 	switch (pad_algo) {
-	case 0: /* padding done by card */
+	case SC_ALGORITHM_RSA_PAD_NONE: /* padding done by card */
 		return add_no_padding(pfx, in, inlen, out, outlen, mod_length);
 	case SC_ALGORITHM_RSA_PAD_PKCS1:
 		return add_pkcs1_padding(pfx, in, inlen, out, outlen, mod_length);
@@ -375,7 +378,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 	if (pad_flags) {
                 buflen = sizeof(buf);
-		r = add_padding(ctx, in, inlen, buf, &buflen, pad_flags,
+		r = sc_add_padding(ctx, in, inlen, buf, &buflen, pad_flags,
 			        prkey->modulus_length/8);
                 SC_TEST_RET(ctx, r, "Unable to add padding");
 		in = buf;
