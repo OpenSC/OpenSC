@@ -1,11 +1,11 @@
 
 Steps for your OpenSSH pleasure:
 
-- Download, compile and install openssl-engine (http://www.openssl.org)
-- Download OpenSSH 3.0.1p1 (http://www.openssh.com)
-- Apply 'openssh-3.0.1p1-patch.diff' from this directory
+- Download, compile and install openssl (http://www.openssl.org)
+- Download OpenSSH 3.0.2p1 (http://www.openssh.com)
+- Apply 'openssh-3.0.2p1-patch.diff' from this directory
 - Run autoconf and autoheader
-- Run configure with the argument '--with-libsc'
+- Run configure with the argument '--with-opensc'
 - Change the hardcoded PIN to the one set on your card... =)
   The line to modify can be found in file scard-libsc.c.
   (This will be fixed in the future)

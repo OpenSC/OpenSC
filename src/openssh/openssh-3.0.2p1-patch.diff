@@ -1,0 +1,1658 @@
+diff -ruN openssh-3.0.2p1/Makefile.in openssh-new/Makefile.in
+--- openssh-3.0.2p1/Makefile.in	Mon Nov 12 01:34:23 2001
++++ openssh-new/Makefile.in	Sun Dec  2 21:01:34 2001
+@@ -46,7 +46,7 @@
+ 
+ TARGETS=ssh$(EXEEXT) sshd$(EXEEXT) ssh-add$(EXEEXT) ssh-keygen$(EXEEXT) ssh-keyscan${EXEEXT} ssh-agent$(EXEEXT) scp$(EXEEXT) $(SFTP_PROGS)
+ 
+-LIBSSH_OBJS=atomicio.o authfd.o authfile.o bufaux.o buffer.o canohost.o channels.o cipher.o compat.o compress.o crc32.o deattack.o dh.o dispatch.o mac.o hostfile.o key.o kex.o kexdh.o kexgex.o log.o match.o misc.o mpaux.o nchan.o packet.o radix.o rijndael.o entropy.o readpass.o rsa.o scard.o ssh-dss.o ssh-rsa.o tildexpand.o ttymodes.o uidswap.o uuencode.o xmalloc.o 
++LIBSSH_OBJS=atomicio.o authfd.o authfile.o bufaux.o buffer.o canohost.o channels.o cipher.o compat.o compress.o crc32.o deattack.o dh.o dispatch.o mac.o hostfile.o key.o kex.o kexdh.o kexgex.o log.o match.o misc.o mpaux.o nchan.o packet.o radix.o rijndael.o entropy.o readpass.o rsa.o scard-sectok.o scard-opensc.o ssh-dss.o ssh-rsa.o tildexpand.o ttymodes.o uidswap.o uuencode.o xmalloc.o 
+ 
+ SSHOBJS= ssh.o sshconnect.o sshconnect1.o sshconnect2.o sshtty.o readconf.o clientloop.o
+ 
+diff -ruN openssh-3.0.2p1/acconfig.h openssh-new/acconfig.h
+--- openssh-3.0.2p1/acconfig.h	Sat Nov  3 21:09:33 2001
++++ openssh-new/acconfig.h	Sun Dec  2 21:01:34 2001
+@@ -329,6 +329,12 @@
+ /* Define if you want smartcard support */
+ #undef SMARTCARD
+ 
++/* Define if you want sectok support */
++#undef SECTOK
++
++/* Define if you want OpenSC support */
++#undef OPENSC
++
+ @BOTTOM@
+ 
+ /* ******************* Shouldn't need to edit below this line ************** */
+diff -ruN openssh-3.0.2p1/configure.ac openssh-new/configure.ac
+--- openssh-3.0.2p1/configure.ac	Sat Nov  3 21:09:33 2001
++++ openssh-new/configure.ac	Sun Dec  2 21:01:34 2001
+@@ -1412,11 +1412,11 @@
+ 	AC_DEFINE(HAVE_SYS_NERR)
+ fi
+ 
+-
+-# Check whether user wants Kerberos support
+ SCARD_MSG="no" 
+-AC_ARG_WITH(smartcard,
+-	[  --with-smartcard        Enable smartcard support],
++
++# Check whether user wants smart card support
++AC_ARG_WITH(sectok,
++	[  --with-sectok           Enable sectok support (smartcard)],
+ 	[
+ 		if test "x$withval" != "xno" ; then
+ 			if test "x$withval" != "xyes" ; then
+@@ -1438,6 +1438,37 @@
+ 				AC_MSG_ERROR(Can't find libsectok)
+ 			fi
+ 			AC_DEFINE(SMARTCARD)
++			AC_DEFINE(SECTOK)
++			SCARD_MSG="yes" 
++		fi
++	]
++)
++
++# Check whether user wants opensc support
++AC_ARG_WITH(opensc,
++	[  --with-opensc           Enable OpenSC support (smartcard)],
++	[
++		if test "x$withval" != "xno" ; then
++			if test "x$withval" != "xyes" ; then
++				CPPFLAGS="$CPPFLAGS -I${withval}"
++				LDFLAGS="$LDFLAGS -L${withval}"
++				if test ! -z "$need_dash_r" ; then
++					LDFLAGS="$LDFLAGS -R${withval}"
++				fi
++				if test ! -z "$blibpath" ; then
++					blibpath="$blibpath:${withval}"
++				fi
++			fi
++			AC_CHECK_HEADERS(opensc-pkcs15.h)
++			if test "$ac_cv_header_opensc_pkcs15_h" != yes; then
++				AC_MSG_ERROR(Can't find opensc-pkcs15.h)
++			fi
++			AC_CHECK_LIB(opensc, sc_pkcs15_init)
++			if test "$ac_cv_lib_opensc_sc_pkcs15_init" != yes; then
++				AC_MSG_ERROR(Can't find libopensc)
++			fi
++			AC_DEFINE(SMARTCARD)
++			AC_DEFINE(OPENSC)
+ 			SCARD_MSG="yes" 
+ 		fi
+ 	]
+diff -ruN openssh-3.0.2p1/scard-opensc.c openssh-new/scard-opensc.c
+--- openssh-3.0.2p1/scard-opensc.c	Thu Jan  1 02:00:00 1970
++++ openssh-new/scard-opensc.c	Sun Dec  2 21:40:42 2001
+@@ -0,0 +1,463 @@
++/* libopensc support in OpenSSH -- heavily modified from scard.c
++ * 
++ * Copyright (c) 2001 Juha Yrjölä.  All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
++ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
++ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
++ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "includes.h"
++#ifdef OPENSC
++/* RCSID("$OpenBSD: scard.c,v 1.15 2001/09/28 09:49:31 djm Exp $"); */
++
++/* #include <openssl/engine.h> */
++#include <openssl/evp.h>
++#include <openssl/rsa.h>
++#include <openssl/x509.h>
++
++#include <opensc.h>
++#include <opensc-pkcs15.h>
++
++#include "key.h"
++#include "log.h"
++#include "xmalloc.h"
++#include "scard.h"
++
++#define SC_HARDCODED_PIN "1234"
++
++#define MAX_BUF_SIZE 256
++
++static int sc_reader_id;
++static struct sc_context *ctx = NULL;
++static struct sc_card *card = NULL;
++static struct sc_pkcs15_card *p15card = NULL;
++
++struct sc_priv_data
++{
++	struct sc_pkcs15_id cert_id;
++	int ref_count;
++};
++
++static RSA_METHOD * sc_get_method();
++
++static int 
++sc_init(void)
++{
++	int r;
++
++	r = sc_establish_context(&ctx);
++	if (r)
++		goto err;
++	r = sc_connect_card(ctx, sc_reader_id, &card);
++	if (r)
++		goto err;
++	r = sc_pkcs15_init(card, &p15card);
++	if (r)
++		goto err;
++	return 0;
++err:
++	sc_close();
++	return r;
++}
++
++static void
++convert_rsa_to_rsa1(Key * in, Key * out)
++{
++	struct sc_priv_data *priv;
++	
++	out->rsa->flags = in->rsa->flags;
++	out->flags = in->flags;
++	RSA_set_method(out->rsa, RSA_get_method(in->rsa));
++	BN_copy(out->rsa->n, in->rsa->n);
++	BN_copy(out->rsa->e, in->rsa->e);
++	priv = RSA_get_app_data(in->rsa);
++	priv->ref_count++;
++	RSA_set_app_data(out->rsa, priv);
++	return;
++}
++
++static int 
++sc_read_pubkey(Key * k, const struct sc_pkcs15_cert_info *cinfo)
++{
++	int r;
++	struct sc_pkcs15_cert *cert = NULL;
++	struct sc_priv_data *priv = NULL;
++	X509 *x509 = NULL;
++	EVP_PKEY *pubkey = NULL;
++	u8 *p;
++	char *tmp;
++	
++	debug("sc_read_pubkey() with cert id %02X", cinfo->id.value[0]);
++        r = sc_pkcs15_read_certificate(p15card, cinfo, &cert);
++        if (r) {
++                log("Certificate read failed: %s", sc_strerror(r));
++                goto err;
++        }
++        x509 = X509_new();
++	if (x509 == NULL) {
++		r = -1; 
++		goto err;
++	}
++        p = cert->data;
++        if (!d2i_X509(&x509, &p, cert->data_len)) {
++                log("Unable to parse X.509 certificate");
++		r = -1;
++                goto err;
++        }
++        sc_pkcs15_free_certificate(cert);
++        cert = NULL;
++        pubkey = X509_get_pubkey(x509);
++	X509_free(x509);
++	x509 = NULL;
++        if (pubkey->type != EVP_PKEY_RSA) {
++                log("Public key is of unknown type");
++		r = -1;
++                goto err;
++        }
++	k->rsa = EVP_PKEY_get1_RSA(pubkey);
++	EVP_PKEY_free(pubkey);
++
++	k->rsa->flags |= RSA_FLAG_SIGN_VER;
++	RSA_set_method(k->rsa, sc_get_method());
++	priv = xmalloc(sizeof(struct sc_priv_data));
++	priv->cert_id = cinfo->id;
++	priv->ref_count = 1;
++	RSA_set_app_data(k->rsa, priv);
++
++	k->flags = KEY_FLAG_EXT;
++	tmp = key_fingerprint(k, SSH_FP_MD5, SSH_FP_HEX);
++	debug("fingerprint %d %s", key_size(k), tmp);
++	xfree(tmp);
++	
++	return 0;
++err:
++	if (cert)
++		sc_pkcs15_free_certificate(cert);
++	if (pubkey)
++		EVP_PKEY_free(pubkey);
++	if (x509)
++		X509_free(x509);
++	return r;
++}
++
++/* private key operations */
++
++static int
++sc_private_decrypt(int flen, u_char *from, u_char *to, RSA *rsa, int padding)
++{
++	int r;
++	struct sc_priv_data *priv;
++	struct sc_pkcs15_prkey_info *key;
++	struct sc_pkcs15_pin_info *pin;
++
++	if (padding != RSA_PKCS1_PADDING)
++		return -1;	
++	priv = (struct sc_priv_data *) RSA_get_app_data(rsa);
++	if (priv == NULL)
++		return -1;
++	debug("sc_private_decrypt() called on cert %02X: pad = %d, m_len = %d",
++	      priv->cert_id.value[0], padding, flen);
++	if (p15card == NULL) {
++		sc_close();
++		r = sc_init();
++		if (r) {
++			error("SmartCard init failed: %s", sc_strerror(r));
++			goto err;
++		}
++	}
++	r = sc_pkcs15_find_prkey_by_id(p15card, &priv->cert_id, &key);
++	if (r) {
++		error("Unable to find private key from SmartCard: %s", sc_strerror(r));
++		goto err;
++	}
++	r = sc_pkcs15_find_pin_by_auth_id(p15card, &key->com_attr.auth_id, &pin);
++	if (r) {
++		error("Unable to find PIN object from SmartCard: %s", sc_strerror(r));
++		goto err;
++	}
++	r = sc_pkcs15_verify_pin(p15card, pin, SC_HARDCODED_PIN,
++				 strlen(SC_HARDCODED_PIN));
++	if (r) {
++		error("PIN code verification failed: %s", sc_strerror(r));
++		goto err;
++	}
++	r = sc_pkcs15_decipher(p15card, key, from, flen, to, flen);
++	if (r < 0) {
++		error("sc_pkcs15_decipher() failed: %s", sc_strerror(r));
++		goto err;
++	}
++	return r;
++err:
++	sc_close();
++	return -1;
++}
++
++static int
++sc_private_encrypt(int flen, u_char *from, u_char *to, RSA *rsa, int padding)
++{
++	error("unsupported function sc_private_encrypt() called");
++	return -1;
++}
++
++static int
++sc_sign(int type, u_char *m, unsigned int m_len,
++	unsigned char *sigret, unsigned int *siglen, RSA *rsa)
++{
++	int r;
++	struct sc_priv_data *priv;
++	struct sc_pkcs15_prkey_info *key;
++	struct sc_pkcs15_pin_info *pin;
++	
++	priv = (struct sc_priv_data *) RSA_get_app_data(rsa);
++	if (priv == NULL)
++		return -1;
++	debug("sc_sign() called on cert %02X: type = %d, m_len = %d",
++	      priv->cert_id.value[0], type, m_len);
++	if (p15card == NULL) {
++		sc_close();
++		r = sc_init();
++		if (r) {
++			error("SmartCard init failed: %s", sc_strerror(r));
++			goto err;
++		}
++	}
++	r = sc_pkcs15_find_prkey_by_id(p15card, &priv->cert_id, &key);
++	if (r) {
++		error("Unable to find private key from SmartCard: %s", sc_strerror(r));
++		goto err;
++	}
++	r = sc_pkcs15_find_pin_by_auth_id(p15card, &key->com_attr.auth_id, &pin);
++	if (r) {
++		error("Unable to find PIN object from SmartCard: %s", sc_strerror(r));
++		goto err;
++	}
++	r = sc_pkcs15_verify_pin(p15card, pin, SC_HARDCODED_PIN,
++				 strlen(SC_HARDCODED_PIN));
++	if (r) {
++		error("PIN code verification failed: %s", sc_strerror(r));
++		goto err;
++	}
++	/* FIXME: length of sigret correct? */
++	r = sc_pkcs15_compute_signature(p15card, key, SC_PKCS15_HASH_SHA1,
++					m, m_len, sigret, RSA_size(rsa));
++	if (r < 0) {
++		error("sc_pkcs15_compute_signature() failed: %s", sc_strerror(r));
++		goto err;
++	}
++	*siglen = r;
++	return 1;
++err:
++	sc_close();
++	return 0;
++}
++
++/* called on free */
++
++static int (*orig_finish)(RSA *rsa) = NULL;
++
++static int
++sc_finish(RSA *rsa)
++{
++	struct sc_priv_data *priv;
++
++	priv = RSA_get_app_data(rsa);
++	priv->ref_count--;
++	if (priv->ref_count == 0)
++		free(priv);
++	sc_close();
++	if (orig_finish)
++		orig_finish(rsa);
++	return 1;
++}
++
++
++/* engine for overloading private key operations */
++
++static RSA_METHOD libsc_rsa =
++{
++	"OpenSC",
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	0,
++	NULL,
++};
++#if 0
++static ENGINE *smart_engine = NULL;
++
++ENGINE *
++sc_get_engine(void)
++{
++	RSA_METHOD *def;
++
++	def = RSA_get_default_openssl_method();
++
++	/* overload */
++	smart_rsa.rsa_priv_enc	= sc_private_encrypt;
++	smart_rsa.rsa_priv_dec	= sc_private_decrypt;
++	smart_rsa.rsa_sign	= sc_sign;
++
++	/* save original */
++	orig_finish		= def->finish;
++	smart_rsa.finish	= sc_finish;
++
++	/* just use the OpenSSL version */
++	smart_rsa.rsa_pub_enc   = def->rsa_pub_enc;
++	smart_rsa.rsa_pub_dec   = def->rsa_pub_dec;
++	smart_rsa.rsa_mod_exp	= def->rsa_mod_exp;
++	smart_rsa.bn_mod_exp	= def->bn_mod_exp;
++	smart_rsa.init		= def->init;
++	smart_rsa.flags		= def->flags;
++	smart_rsa.app_data	= def->app_data;
++	smart_rsa.rsa_verify	= def->rsa_verify;
++
++	smart_engine = ENGINE_new();
++
++	ENGINE_set_id(smart_engine, "OpenSC");
++	ENGINE_set_name(smart_engine, "OpenSC");
++	ENGINE_set_RSA(smart_engine, &smart_rsa);
++	ENGINE_set_DSA(smart_engine, DSA_get_default_openssl_method());
++	ENGINE_set_DH(smart_engine, DH_get_default_openssl_method());
++	ENGINE_set_RAND(smart_engine, RAND_SSLeay());
++	ENGINE_set_BN_mod_exp(smart_engine, BN_mod_exp);
++
++	return smart_engine;
++}
++#endif
++
++static RSA_METHOD * sc_get_method()
++{
++	RSA_METHOD *def;
++
++	def = RSA_get_default_method();
++
++	/* overload */
++	libsc_rsa.rsa_priv_enc	= sc_private_encrypt;
++	libsc_rsa.rsa_priv_dec	= sc_private_decrypt;
++	libsc_rsa.rsa_sign	= sc_sign;
++
++	/* just use the OpenSSL version */
++	libsc_rsa.rsa_pub_enc   = def->rsa_pub_enc;
++	libsc_rsa.rsa_pub_dec   = def->rsa_pub_dec;
++	libsc_rsa.rsa_mod_exp	= def->rsa_mod_exp;
++	libsc_rsa.bn_mod_exp	= def->bn_mod_exp;
++	libsc_rsa.init		= def->init;
++	libsc_rsa.flags		= def->flags;
++	libsc_rsa.app_data	= def->app_data;
++	libsc_rsa.rsa_verify	= def->rsa_verify;
++
++	return &libsc_rsa;
++}
++
++void
++sc_close(void)
++{
++	if (p15card) {
++		sc_pkcs15_destroy(p15card);
++		p15card = NULL;
++	}
++	if (card) {
++		sc_disconnect_card(card);
++		card = NULL;
++	}
++	if (ctx) {
++		sc_destroy_context(ctx);
++		ctx = NULL;
++	}
++}
++
++Key **
++sc_get_keys(const char *id)
++{
++	Key *k = NULL, **keys = NULL;
++	struct sc_pkcs15_id cert_id;
++	struct sc_pkcs15_cert_info *cinfo;
++	char *buf = xstrdup(id), *p;
++	int r, i, key_count = 0, real_count = 0;
++
++	debug("sc_get_keys called: id = %s", id);
++	cert_id.len = 0;
++	if ((p = strchr(buf, ':')) != NULL) {
++		*p = 0;
++		p++;
++		sc_pkcs15_hex_string_to_id(p, &cert_id);
++	}
++	if (sscanf(buf, "%d", &sc_reader_id) != 1)
++		goto err;
++	r = sc_init();
++	if (r) {
++		error("PKCS#15 init failed: %s", sc_strerror(r));
++		goto err;
++	}
++	if (cert_id.len) {
++		r = sc_pkcs15_find_cert_by_id(p15card, &cert_id, &cinfo);
++		if (r < 0)
++			goto err;
++		key_count = 1;
++	} else {
++		r = sc_pkcs15_enum_certificates(p15card);
++		if (r == 0) {
++			log("No certificates found on smartcard");
++			r = -1;
++			goto err;
++		} else if (r < 0) {
++			error("Certificate enumeration failed: %s", sc_strerror(r));
++			goto err;
++		}
++		key_count = r;
++	}
++	keys = xmalloc(sizeof(Key *) * (key_count*2+1));
++	for (i = 0; i < key_count; i++) {
++		k = key_new(KEY_RSA);
++		if (k == NULL)
++			break;
++		if (cert_id.len)
++			r = sc_read_pubkey(k, cinfo);
++		else
++			r = sc_read_pubkey(k, &p15card->cert_info[i]);
++		if (r) {
++			error("sc_read_pubkey failed: %s", sc_strerror(r));
++			key_free(k);
++			continue;
++		}
++		keys[real_count] = k;
++		real_count++;
++		k = key_new(KEY_RSA1);
++		if (k == NULL)
++			break;
++		convert_rsa_to_rsa1(keys[real_count-1], k);
++		keys[real_count] = k;
++		real_count++;
++	}
++	keys[real_count] = NULL;
++	sc_close();
++
++	return keys;
++err:
++	sc_close();
++	return NULL;
++}
++
++#endif /* OPENSC */
+diff -ruN openssh-3.0.2p1/scard-sectok.c openssh-new/scard-sectok.c
+--- openssh-3.0.2p1/scard-sectok.c	Thu Jan  1 02:00:00 1970
++++ openssh-new/scard-sectok.c	Sun Dec  2 21:01:34 2001
+@@ -0,0 +1,389 @@
++/*
++ * Copyright (c) 2001 Markus Friedl.  All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
++ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
++ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
++ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "includes.h"
++#ifdef SECTOK
++RCSID("$OpenBSD: scard.c,v 1.15 2001/09/28 09:49:31 djm Exp $");
++
++#include <openssl/engine.h>
++#include <sectok.h>
++
++#include "key.h"
++#include "log.h"
++#include "xmalloc.h"
++#include "scard.h"
++
++#define CLA_SSH 0x05
++#define INS_DECRYPT 0x10
++#define INS_GET_KEYLENGTH 0x20
++#define INS_GET_PUBKEY 0x30
++#define INS_GET_RESPONSE 0xc0
++
++#define MAX_BUF_SIZE 256
++
++static int sc_fd = -1;
++static char *sc_reader_id = NULL;
++static int cla = 0x00;	/* class */
++
++/* interface to libsectok */
++
++static int 
++sc_open(void)
++{
++	int sw;
++
++	if (sc_fd >= 0)
++		return sc_fd;
++
++	sc_fd = sectok_friendly_open(sc_reader_id, STONOWAIT, &sw);
++	if (sc_fd < 0) {
++		error("sectok_open failed: %s", sectok_get_sw(sw));
++		return SCARD_ERROR_FAIL;
++	}
++	if (! sectok_cardpresent(sc_fd)) {
++		debug("smartcard in reader %s not present, skipping",
++		    sc_reader_id);
++		sc_close();
++		return SCARD_ERROR_NOCARD;
++	}
++	if (sectok_reset(sc_fd, 0, NULL, &sw) <= 0) {
++		error("sectok_reset failed: %s", sectok_get_sw(sw));
++		sc_fd = -1;
++		return SCARD_ERROR_FAIL;
++	}
++	if ((cla = cyberflex_inq_class(sc_fd)) < 0)
++		cla = 0;
++
++	debug("sc_open ok %d", sc_fd);
++	return sc_fd;
++}
++
++static int 
++sc_enable_applet(void)
++{
++	static u_char aid[] = {0xfc, 0x53, 0x73, 0x68, 0x2e, 0x62, 0x69, 0x6e};
++	int sw = 0;
++
++	/* select applet id */
++	sectok_apdu(sc_fd, cla, 0xa4, 0x04, 0, sizeof aid, aid, 0, NULL, &sw);
++	if (!sectok_swOK(sw)) {
++		error("sectok_apdu failed: %s", sectok_get_sw(sw));
++		sc_close();
++		return -1;
++	}
++	return 0;
++}
++
++static int 
++sc_init(void)
++{
++	int status;
++
++	status = sc_open();
++	if (status == SCARD_ERROR_NOCARD) {
++		return SCARD_ERROR_NOCARD;
++	}
++	if (status < 0 ) {
++		error("sc_open failed");
++		return status;
++	}
++	if (sc_enable_applet() < 0) {
++		error("sc_enable_applet failed");
++		return SCARD_ERROR_APPLET;
++	}
++	return 0;
++}
++
++static int 
++sc_read_pubkey(Key * k)
++{
++	u_char buf[2], *n;
++	char *p;
++	int len, sw, status = -1;
++
++	len = sw = 0;
++	n = NULL;
++
++	if (sc_fd < 0) {
++		status = sc_init();
++		if (status < 0 )
++			goto err;
++	}
++
++	/* get key size */
++	sectok_apdu(sc_fd, CLA_SSH, INS_GET_KEYLENGTH, 0, 0, 0, NULL,
++	     sizeof(buf), buf, &sw);
++	if (!sectok_swOK(sw)) {
++		error("could not obtain key length: %s", sectok_get_sw(sw));
++		goto err;
++	}
++	len = (buf[0] << 8) | buf[1];
++	len /= 8;
++	debug("INS_GET_KEYLENGTH: len %d sw %s", len, sectok_get_sw(sw));
++
++	n = xmalloc(len);
++	/* get n */
++	sectok_apdu(sc_fd, CLA_SSH, INS_GET_PUBKEY, 0, 0, 0, NULL, len, n, &sw);
++	if (!sectok_swOK(sw)) {
++		error("could not obtain public key: %s", sectok_get_sw(sw));
++		goto err;
++	}
++
++	debug("INS_GET_KEYLENGTH: sw %s", sectok_get_sw(sw));
++
++	if (BN_bin2bn(n, len, k->rsa->n) == NULL) {
++		error("c_read_pubkey: BN_bin2bn failed");
++		goto err;
++	}
++
++	/* currently the java applet just stores 'n' */
++	if (!BN_set_word(k->rsa->e, 35)) {
++		error("c_read_pubkey: BN_set_word(e, 35) failed");
++		goto err;
++	}
++
++	status = 0;
++	p = key_fingerprint(k, SSH_FP_MD5, SSH_FP_HEX);
++	debug("fingerprint %d %s", key_size(k), p);
++	xfree(p);
++
++err:
++	if (n != NULL)
++		xfree(n);
++	sc_close();
++	return status;
++}
++
++/* private key operations */
++
++static int
++sc_private_decrypt(int flen, u_char *from, u_char *to, RSA *rsa, int padding)
++{
++	u_char *padded = NULL;
++	int sw, len, olen, status = -1;
++
++	debug("sc_private_decrypt called");
++
++	olen = len = sw = 0;
++	if (sc_fd < 0) {
++		status = sc_init();
++		if (status < 0 )
++			goto err;
++	}
++	if (padding != RSA_PKCS1_PADDING)
++		goto err;
++
++	len = BN_num_bytes(rsa->n);
++	padded = xmalloc(len);
++
++	sectok_apdu(sc_fd, CLA_SSH, INS_DECRYPT, 0, 0, len, from, 0, NULL, &sw);
++	if (!sectok_swOK(sw)) {
++		error("sc_private_decrypt: INS_DECRYPT failed: %s",
++		    sectok_get_sw(sw));
++		goto err;
++	}
++	sectok_apdu(sc_fd, CLA_SSH, INS_GET_RESPONSE, 0, 0, 0, NULL,
++	     len, padded, &sw);
++	if (!sectok_swOK(sw)) {
++		error("sc_private_decrypt: INS_GET_RESPONSE failed: %s",
++		    sectok_get_sw(sw));
++		goto err;
++	}
++	olen = RSA_padding_check_PKCS1_type_2(to, len, padded + 1, len - 1,
++	    len);
++err:
++	if (padded)
++		xfree(padded);
++	sc_close();
++	return (olen >= 0 ? olen : status);
++}
++
++static int
++sc_private_encrypt(int flen, u_char *from, u_char *to, RSA *rsa, int padding)
++{
++	u_char *padded = NULL;
++	int sw, len, status = -1;
++
++	len = sw = 0;
++	if (sc_fd < 0) {
++		status = sc_init();
++		if (status < 0 )
++			goto err;
++	}
++	if (padding != RSA_PKCS1_PADDING)
++		goto err;
++
++	debug("sc_private_encrypt called");
++	len = BN_num_bytes(rsa->n);
++	padded = xmalloc(len);
++
++	if (RSA_padding_add_PKCS1_type_1(padded, len, from, flen) <= 0) {
++		error("RSA_padding_add_PKCS1_type_1 failed");
++		goto err;
++	}
++	sectok_apdu(sc_fd, CLA_SSH, INS_DECRYPT, 0, 0, len, padded, 0, NULL, &sw);
++	if (!sectok_swOK(sw)) {
++		error("sc_private_decrypt: INS_DECRYPT failed: %s",
++		    sectok_get_sw(sw));
++		goto err;
++	}
++	sectok_apdu(sc_fd, CLA_SSH, INS_GET_RESPONSE, 0, 0, 0, NULL,
++	     len, to, &sw);
++	if (!sectok_swOK(sw)) {
++		error("sc_private_decrypt: INS_GET_RESPONSE failed: %s",
++		    sectok_get_sw(sw));
++		goto err;
++	}
++err:
++	if (padded)
++		xfree(padded);
++	sc_close();
++	return (len >= 0 ? len : status);
++}
++
++/* called on free */
++
++static int (*orig_finish)(RSA *rsa) = NULL;
++
++static int
++sc_finish(RSA *rsa)
++{
++	if (orig_finish)
++		orig_finish(rsa);
++	sc_close();
++	return 1;
++}
++
++
++/* engine for overloading private key operations */
++
++static ENGINE *smart_engine = NULL;
++static RSA_METHOD smart_rsa =
++{
++	"sectok",
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	0,
++	NULL,
++};
++
++ENGINE *
++sc_get_engine(void)
++{
++	RSA_METHOD *def;
++
++	def = RSA_get_default_openssl_method();
++
++	/* overload */
++	smart_rsa.rsa_priv_enc	= sc_private_encrypt;
++	smart_rsa.rsa_priv_dec	= sc_private_decrypt;
++
++	/* save original */
++	orig_finish		= def->finish;
++	smart_rsa.finish	= sc_finish;
++
++	/* just use the OpenSSL version */
++	smart_rsa.rsa_pub_enc   = def->rsa_pub_enc;
++	smart_rsa.rsa_pub_dec   = def->rsa_pub_dec;
++	smart_rsa.rsa_mod_exp	= def->rsa_mod_exp;
++	smart_rsa.bn_mod_exp	= def->bn_mod_exp;
++	smart_rsa.init		= def->init;
++	smart_rsa.flags		= def->flags;
++	smart_rsa.app_data	= def->app_data;
++	smart_rsa.rsa_sign	= def->rsa_sign;
++	smart_rsa.rsa_verify	= def->rsa_verify;
++
++	smart_engine = ENGINE_new();
++
++	ENGINE_set_id(smart_engine, "sectok");
++	ENGINE_set_name(smart_engine, "libsectok");
++	ENGINE_set_RSA(smart_engine, &smart_rsa);
++	ENGINE_set_DSA(smart_engine, DSA_get_default_openssl_method());
++	ENGINE_set_DH(smart_engine, DH_get_default_openssl_method());
++	ENGINE_set_RAND(smart_engine, RAND_SSLeay());
++	ENGINE_set_BN_mod_exp(smart_engine, BN_mod_exp);
++
++	return smart_engine;
++}
++
++void
++sc_close(void)
++{
++	if (sc_fd >= 0) {
++		sectok_close(sc_fd);
++		sc_fd = -1;
++	}
++}
++
++Key **
++sc_get_keys(const char *id)
++{
++	Key *k, *n;
++	Key **keys;
++	int status;
++
++	if (sc_reader_id != NULL)
++		xfree(sc_reader_id);
++	sc_reader_id = xstrdup(id);
++
++	k = key_new(KEY_RSA);
++	if (k == NULL) {
++		return NULL;
++	}
++	status = sc_read_pubkey(k);
++	if (status == SCARD_ERROR_NOCARD) {
++		key_free(k);
++		return NULL;
++	}
++	if (status < 0 ) {
++		error("sc_read_pubkey failed");
++		key_free(k);
++		return NULL;
++	}
++	keys = xmalloc(sizeof(Key *) * 3);
++	n = key_new(KEY_RSA1);
++	n->flags = KEY_FLAG_EXT;
++	BN_copy(n->rsa->n, k->rsa->n);
++	BN_copy(n->rsa->e, k->rsa->e);
++	RSA_set_method(n->rsa, sc_get_engine());
++	keys[0] = n;
++	n = key_new(KEY_RSA);
++	n->flags = KEY_FLAG_EXT;
++	BN_copy(n->rsa->n, k->rsa->n);
++	BN_copy(n->rsa->e, k->rsa->e);
++	RSA_set_method(n->rsa, sc_get_engine());
++	keys[1] = n;
++	
++	keys[2] = NULL;
++	key_free(k);
++
++	return keys;
++}
++#endif /* SECTOK */
+diff -ruN openssh-3.0.2p1/scard.c openssh-new/scard.c
+--- openssh-3.0.2p1/scard.c	Fri Sep 28 12:51:54 2001
++++ openssh-new/scard.c	Thu Jan  1 02:00:00 1970
+@@ -1,371 +0,0 @@
+-/*
+- * Copyright (c) 2001 Markus Friedl.  All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+- */
+-
+-#include "includes.h"
+-#ifdef SMARTCARD
+-RCSID("$OpenBSD: scard.c,v 1.15 2001/09/28 09:49:31 djm Exp $");
+-
+-#include <openssl/engine.h>
+-#include <sectok.h>
+-
+-#include "key.h"
+-#include "log.h"
+-#include "xmalloc.h"
+-#include "scard.h"
+-
+-#define CLA_SSH 0x05
+-#define INS_DECRYPT 0x10
+-#define INS_GET_KEYLENGTH 0x20
+-#define INS_GET_PUBKEY 0x30
+-#define INS_GET_RESPONSE 0xc0
+-
+-#define MAX_BUF_SIZE 256
+-
+-static int sc_fd = -1;
+-static char *sc_reader_id = NULL;
+-static int cla = 0x00;	/* class */
+-
+-/* interface to libsectok */
+-
+-static int 
+-sc_open(void)
+-{
+-	int sw;
+-
+-	if (sc_fd >= 0)
+-		return sc_fd;
+-
+-	sc_fd = sectok_friendly_open(sc_reader_id, STONOWAIT, &sw);
+-	if (sc_fd < 0) {
+-		error("sectok_open failed: %s", sectok_get_sw(sw));
+-		return SCARD_ERROR_FAIL;
+-	}
+-	if (! sectok_cardpresent(sc_fd)) {
+-		debug("smartcard in reader %s not present, skipping",
+-		    sc_reader_id);
+-		sc_close();
+-		return SCARD_ERROR_NOCARD;
+-	}
+-	if (sectok_reset(sc_fd, 0, NULL, &sw) <= 0) {
+-		error("sectok_reset failed: %s", sectok_get_sw(sw));
+-		sc_fd = -1;
+-		return SCARD_ERROR_FAIL;
+-	}
+-	if ((cla = cyberflex_inq_class(sc_fd)) < 0)
+-		cla = 0;
+-
+-	debug("sc_open ok %d", sc_fd);
+-	return sc_fd;
+-}
+-
+-static int 
+-sc_enable_applet(void)
+-{
+-	static u_char aid[] = {0xfc, 0x53, 0x73, 0x68, 0x2e, 0x62, 0x69, 0x6e};
+-	int sw = 0;
+-
+-	/* select applet id */
+-	sectok_apdu(sc_fd, cla, 0xa4, 0x04, 0, sizeof aid, aid, 0, NULL, &sw);
+-	if (!sectok_swOK(sw)) {
+-		error("sectok_apdu failed: %s", sectok_get_sw(sw));
+-		sc_close();
+-		return -1;
+-	}
+-	return 0;
+-}
+-
+-static int 
+-sc_init(void)
+-{
+-	int status;
+-
+-	status = sc_open();
+-	if (status == SCARD_ERROR_NOCARD) {
+-		return SCARD_ERROR_NOCARD;
+-	}
+-	if (status < 0 ) {
+-		error("sc_open failed");
+-		return status;
+-	}
+-	if (sc_enable_applet() < 0) {
+-		error("sc_enable_applet failed");
+-		return SCARD_ERROR_APPLET;
+-	}
+-	return 0;
+-}
+-
+-static int 
+-sc_read_pubkey(Key * k)
+-{
+-	u_char buf[2], *n;
+-	char *p;
+-	int len, sw, status = -1;
+-
+-	len = sw = 0;
+-	n = NULL;
+-
+-	if (sc_fd < 0) {
+-		status = sc_init();
+-		if (status < 0 )
+-			goto err;
+-	}
+-
+-	/* get key size */
+-	sectok_apdu(sc_fd, CLA_SSH, INS_GET_KEYLENGTH, 0, 0, 0, NULL,
+-	     sizeof(buf), buf, &sw);
+-	if (!sectok_swOK(sw)) {
+-		error("could not obtain key length: %s", sectok_get_sw(sw));
+-		goto err;
+-	}
+-	len = (buf[0] << 8) | buf[1];
+-	len /= 8;
+-	debug("INS_GET_KEYLENGTH: len %d sw %s", len, sectok_get_sw(sw));
+-
+-	n = xmalloc(len);
+-	/* get n */
+-	sectok_apdu(sc_fd, CLA_SSH, INS_GET_PUBKEY, 0, 0, 0, NULL, len, n, &sw);
+-	if (!sectok_swOK(sw)) {
+-		error("could not obtain public key: %s", sectok_get_sw(sw));
+-		goto err;
+-	}
+-
+-	debug("INS_GET_KEYLENGTH: sw %s", sectok_get_sw(sw));
+-
+-	if (BN_bin2bn(n, len, k->rsa->n) == NULL) {
+-		error("c_read_pubkey: BN_bin2bn failed");
+-		goto err;
+-	}
+-
+-	/* currently the java applet just stores 'n' */
+-	if (!BN_set_word(k->rsa->e, 35)) {
+-		error("c_read_pubkey: BN_set_word(e, 35) failed");
+-		goto err;
+-	}
+-
+-	status = 0;
+-	p = key_fingerprint(k, SSH_FP_MD5, SSH_FP_HEX);
+-	debug("fingerprint %d %s", key_size(k), p);
+-	xfree(p);
+-
+-err:
+-	if (n != NULL)
+-		xfree(n);
+-	sc_close();
+-	return status;
+-}
+-
+-/* private key operations */
+-
+-static int
+-sc_private_decrypt(int flen, u_char *from, u_char *to, RSA *rsa, int padding)
+-{
+-	u_char *padded = NULL;
+-	int sw, len, olen, status = -1;
+-
+-	debug("sc_private_decrypt called");
+-
+-	olen = len = sw = 0;
+-	if (sc_fd < 0) {
+-		status = sc_init();
+-		if (status < 0 )
+-			goto err;
+-	}
+-	if (padding != RSA_PKCS1_PADDING)
+-		goto err;
+-
+-	len = BN_num_bytes(rsa->n);
+-	padded = xmalloc(len);
+-
+-	sectok_apdu(sc_fd, CLA_SSH, INS_DECRYPT, 0, 0, len, from, 0, NULL, &sw);
+-	if (!sectok_swOK(sw)) {
+-		error("sc_private_decrypt: INS_DECRYPT failed: %s",
+-		    sectok_get_sw(sw));
+-		goto err;
+-	}
+-	sectok_apdu(sc_fd, CLA_SSH, INS_GET_RESPONSE, 0, 0, 0, NULL,
+-	     len, padded, &sw);
+-	if (!sectok_swOK(sw)) {
+-		error("sc_private_decrypt: INS_GET_RESPONSE failed: %s",
+-		    sectok_get_sw(sw));
+-		goto err;
+-	}
+-	olen = RSA_padding_check_PKCS1_type_2(to, len, padded + 1, len - 1,
+-	    len);
+-err:
+-	if (padded)
+-		xfree(padded);
+-	sc_close();
+-	return (olen >= 0 ? olen : status);
+-}
+-
+-static int
+-sc_private_encrypt(int flen, u_char *from, u_char *to, RSA *rsa, int padding)
+-{
+-	u_char *padded = NULL;
+-	int sw, len, status = -1;
+-
+-	len = sw = 0;
+-	if (sc_fd < 0) {
+-		status = sc_init();
+-		if (status < 0 )
+-			goto err;
+-	}
+-	if (padding != RSA_PKCS1_PADDING)
+-		goto err;
+-
+-	debug("sc_private_encrypt called");
+-	len = BN_num_bytes(rsa->n);
+-	padded = xmalloc(len);
+-
+-	if (RSA_padding_add_PKCS1_type_1(padded, len, from, flen) <= 0) {
+-		error("RSA_padding_add_PKCS1_type_1 failed");
+-		goto err;
+-	}
+-	sectok_apdu(sc_fd, CLA_SSH, INS_DECRYPT, 0, 0, len, padded, 0, NULL, &sw);
+-	if (!sectok_swOK(sw)) {
+-		error("sc_private_decrypt: INS_DECRYPT failed: %s",
+-		    sectok_get_sw(sw));
+-		goto err;
+-	}
+-	sectok_apdu(sc_fd, CLA_SSH, INS_GET_RESPONSE, 0, 0, 0, NULL,
+-	     len, to, &sw);
+-	if (!sectok_swOK(sw)) {
+-		error("sc_private_decrypt: INS_GET_RESPONSE failed: %s",
+-		    sectok_get_sw(sw));
+-		goto err;
+-	}
+-err:
+-	if (padded)
+-		xfree(padded);
+-	sc_close();
+-	return (len >= 0 ? len : status);
+-}
+-
+-/* called on free */
+-
+-static int (*orig_finish)(RSA *rsa) = NULL;
+-
+-static int
+-sc_finish(RSA *rsa)
+-{
+-	if (orig_finish)
+-		orig_finish(rsa);
+-	sc_close();
+-	return 1;
+-}
+-
+-
+-/* engine for overloading private key operations */
+-
+-static ENGINE *smart_engine = NULL;
+-static RSA_METHOD smart_rsa =
+-{
+-	"sectok",
+-	NULL,
+-	NULL,
+-	NULL,
+-	NULL,
+-	NULL,
+-	NULL,
+-	NULL,
+-	NULL,
+-	0,
+-	NULL,
+-};
+-
+-ENGINE *
+-sc_get_engine(void)
+-{
+-	RSA_METHOD *def;
+-
+-	def = RSA_get_default_openssl_method();
+-
+-	/* overload */
+-	smart_rsa.rsa_priv_enc	= sc_private_encrypt;
+-	smart_rsa.rsa_priv_dec	= sc_private_decrypt;
+-
+-	/* save original */
+-	orig_finish		= def->finish;
+-	smart_rsa.finish	= sc_finish;
+-
+-	/* just use the OpenSSL version */
+-	smart_rsa.rsa_pub_enc   = def->rsa_pub_enc;
+-	smart_rsa.rsa_pub_dec   = def->rsa_pub_dec;
+-	smart_rsa.rsa_mod_exp	= def->rsa_mod_exp;
+-	smart_rsa.bn_mod_exp	= def->bn_mod_exp;
+-	smart_rsa.init		= def->init;
+-	smart_rsa.flags		= def->flags;
+-	smart_rsa.app_data	= def->app_data;
+-	smart_rsa.rsa_sign	= def->rsa_sign;
+-	smart_rsa.rsa_verify	= def->rsa_verify;
+-
+-	smart_engine = ENGINE_new();
+-
+-	ENGINE_set_id(smart_engine, "sectok");
+-	ENGINE_set_name(smart_engine, "libsectok");
+-	ENGINE_set_RSA(smart_engine, &smart_rsa);
+-	ENGINE_set_DSA(smart_engine, DSA_get_default_openssl_method());
+-	ENGINE_set_DH(smart_engine, DH_get_default_openssl_method());
+-	ENGINE_set_RAND(smart_engine, RAND_SSLeay());
+-	ENGINE_set_BN_mod_exp(smart_engine, BN_mod_exp);
+-
+-	return smart_engine;
+-}
+-
+-void
+-sc_close(void)
+-{
+-	if (sc_fd >= 0) {
+-		sectok_close(sc_fd);
+-		sc_fd = -1;
+-	}
+-}
+-
+-Key *
+-sc_get_key(const char *id)
+-{
+-	Key *k;
+-	int status;
+-
+-	if (sc_reader_id != NULL)
+-		xfree(sc_reader_id);
+-	sc_reader_id = xstrdup(id);
+-
+-	k = key_new(KEY_RSA);
+-	if (k == NULL) {
+-		return NULL;
+-	}
+-	status = sc_read_pubkey(k);
+-	if (status == SCARD_ERROR_NOCARD) {
+-		key_free(k);
+-		return NULL;
+-	}
+-	if (status < 0 ) {
+-		error("sc_read_pubkey failed");
+-		key_free(k);
+-		return NULL;
+-	}
+-	return k;
+-}
+-#endif /* SMARTCARD */
+diff -ruN openssh-3.0.2p1/scard.h openssh-new/scard.h
+--- openssh-3.0.2p1/scard.h	Tue Aug  7 00:35:52 2001
++++ openssh-new/scard.h	Sun Dec  2 21:01:34 2001
+@@ -24,17 +24,19 @@
+ 
+ /* $OpenBSD: scard.h,v 1.6 2001/08/01 22:03:33 markus Exp $ */
+ 
+-#include <openssl/engine.h>
+-
+ #ifndef SCARD_H
+ #define SCARD_H
+ 
++#include "key.h"
++
+ #define SCARD_ERROR_FAIL	-1
+ #define SCARD_ERROR_NOCARD	-2
+ #define SCARD_ERROR_APPLET	-3
++#define SCARD_ERROR_PIN_INCORRECT  -4
+ 
+-Key	*sc_get_key(const char*);
+-ENGINE	*sc_get_engine(void);
++Key    **sc_get_keys(const char *);
++int	 sc_set_pin(const char *id, const char *pin);
++int	 sc_unset_pin(const char *id);
+ void	 sc_close(void);
+ 
+ #endif
+diff -ruN openssh-3.0.2p1/ssh-agent.c openssh-new/ssh-agent.c
+--- openssh-3.0.2p1/ssh-agent.c	Tue Aug  7 01:06:35 2001
++++ openssh-new/ssh-agent.c	Sun Dec  2 21:01:34 2001
+@@ -57,7 +57,6 @@
+ #include "log.h"
+ 
+ #ifdef SMARTCARD
+-#include <openssl/engine.h>
+ #include "scard.h"
+ #endif
+ 
+@@ -450,56 +449,52 @@
+ process_add_smartcard_key (SocketEntry *e)
+ {
+ 	Idtab *tab;
+-	Key *n = NULL, *k = NULL;
++	Key **keys = NULL;
+ 	char *sc_reader_id = NULL;
+-	int success = 0;
++	int success = 0, i, ssh_ver;
+ 	
+ 	sc_reader_id = buffer_get_string(&e->input, NULL);
+-	k = sc_get_key(sc_reader_id);
+-	xfree(sc_reader_id);
+-
+-	if (k == NULL) {
+-		error("sc_get_pubkey failed");
++	keys = sc_get_keys(sc_reader_id);
++	if (keys == NULL) {
++		error("sc_get_keys failed");
+ 		goto send;
+ 	}
++	xfree(sc_reader_id);
+ 	success = 1;
+ 
+-	tab = idtab_lookup(1);
+-	k->type = KEY_RSA1;
+-	if (lookup_private_key(k, NULL, 1) == NULL) {
+-		if (tab->nentries == 0)
+-			tab->identities = xmalloc(sizeof(Identity));
+-		else
+-			tab->identities = xrealloc(tab->identities,
+-			    (tab->nentries + 1) * sizeof(Identity));
+-		n = key_new(KEY_RSA1);
+-		BN_copy(n->rsa->n, k->rsa->n);
+-		BN_copy(n->rsa->e, k->rsa->e);
+-		RSA_set_method(n->rsa, sc_get_engine());
+-		tab->identities[tab->nentries].key = n;
+-		tab->identities[tab->nentries].comment =
+-		    xstrdup("rsa1 smartcard");
+-		tab->nentries++;
+-	}
+-	k->type = KEY_RSA;
+-	tab = idtab_lookup(2);
+-	if (lookup_private_key(k, NULL, 2) == NULL) {
+-		if (tab->nentries == 0)
+-			tab->identities = xmalloc(sizeof(Identity));
+-		else
+-			tab->identities = xrealloc(tab->identities,
+-			    (tab->nentries + 1) * sizeof(Identity));
+-		n = key_new(KEY_RSA);
+-		BN_copy(n->rsa->n, k->rsa->n);
+-		BN_copy(n->rsa->e, k->rsa->e);
+-		RSA_set_method(n->rsa, sc_get_engine());
+-		tab->identities[tab->nentries].key = n;
+-		tab->identities[tab->nentries].comment =
+-		    xstrdup("rsa smartcard");
+-		tab->nentries++;
++	for (i = 0; keys[i] != NULL; i++) {
++		Key *k = keys[i];
++		
++		switch (k->type) {
++		case KEY_RSA1:
++			ssh_ver = 1;
++			break;
++		case KEY_RSA:
++		case KEY_DSA:
++			ssh_ver = 2;
++			break;
++		case KEY_UNSPEC:
++			ssh_ver = -1;
++			break;
++		}
++		if (ssh_ver == -1)
++			continue;
++		tab = idtab_lookup(ssh_ver);
++		if (lookup_private_key(k, NULL, ssh_ver) == NULL) {
++			if (tab->nentries == 0)
++				tab->identities = xmalloc(sizeof(Identity));
++			else
++				tab->identities = xrealloc(tab->identities,
++				    (tab->nentries + 1) * sizeof(Identity));
++			tab->identities[tab->nentries].key = k;
++			tab->identities[tab->nentries].comment =
++			    xstrdup("smartcard key");
++			tab->nentries++;
++		}
+ 	}
+-	key_free(k);
+ send:
++	if (keys)
++		xfree(keys);
+ 	buffer_put_int(&e->output, 1);
+ 	buffer_put_char(&e->output,
+ 	    success ? SSH_AGENT_SUCCESS : SSH_AGENT_FAILURE);
+@@ -508,43 +503,57 @@
+ static void
+ process_remove_smartcard_key(SocketEntry *e)
+ {
+-	Key *k = NULL, *private;
+-	int idx;
+-	int success = 0;
++	Key **keys = NULL, *private;
+ 	char *sc_reader_id = NULL;
+-
++	int success = 0, i, idx, ssh_ver;
++	
+ 	sc_reader_id = buffer_get_string(&e->input, NULL);
+-	k = sc_get_key(sc_reader_id);
++	keys = sc_get_keys(sc_reader_id);
++	if (keys == NULL) {
++		error("sc_get_keys failed");
++		goto send;
++	}		
+ 	xfree(sc_reader_id);
+ 
+-	if (k == NULL) {
+-		error("sc_get_pubkey failed");
+-	} else {
+-		k->type = KEY_RSA1;
+-		private = lookup_private_key(k, &idx, 1);
+-		if (private != NULL) {
+-			Idtab *tab = idtab_lookup(1);
+-			key_free(tab->identities[idx].key);
+-			xfree(tab->identities[idx].comment);
+-			if (idx != tab->nentries)
+-				tab->identities[idx] = tab->identities[tab->nentries];
+-			tab->nentries--;
+-			success = 1;
++	for (i = 0; keys[i] != NULL; i++) {
++		Key *k = keys[i];
++		
++		switch (k->type) {
++		case KEY_RSA1:
++			ssh_ver = 1;
++			break;
++		case KEY_RSA:
++		case KEY_DSA:
++			ssh_ver = 2;
++			break;
++		case KEY_UNSPEC:
++			ssh_ver = -1;
++			break;
+ 		}
+-		k->type = KEY_RSA;
+-		private = lookup_private_key(k, &idx, 2);
++		if (ssh_ver == -1)
++			continue;
++		private = lookup_private_key(k, &idx, ssh_ver);
+ 		if (private != NULL) {
+-			Idtab *tab = idtab_lookup(2);
++			Idtab *tab = idtab_lookup(ssh_ver);
+ 			key_free(tab->identities[idx].key);
+ 			xfree(tab->identities[idx].comment);
+-			if (idx != tab->nentries)
+-				tab->identities[idx] = tab->identities[tab->nentries];
++			if (tab->nentries < 1)
++				fatal("process_remove_identity: "
++				    "internal error: tab->nentries %d",
++				    tab->nentries);
++			if (idx != tab->nentries - 1) {
++				int i;
++				for (i = idx; i < tab->nentries - 1; i++)
++					tab->identities[i] = tab->identities[i+1];
++			}
++			tab->identities[tab->nentries - 1].key = NULL;
++			tab->identities[tab->nentries - 1].comment = NULL;
+ 			tab->nentries--;
+ 			success = 1;
+ 		}
+ 		key_free(k);
+ 	}
+-
++send:
+ 	buffer_put_int(&e->output, 1);
+ 	buffer_put_char(&e->output,
+ 	    success ? SSH_AGENT_SUCCESS : SSH_AGENT_FAILURE);
+diff -ruN openssh-3.0.2p1/ssh-keygen.c openssh-new/ssh-keygen.c
+--- openssh-3.0.2p1/ssh-keygen.c	Mon Nov 12 01:52:44 2001
++++ openssh-new/ssh-keygen.c	Sun Dec  2 21:01:34 2001
+@@ -29,8 +29,9 @@
+ #include "readpass.h"
+ 
+ #ifdef SMARTCARD
++#ifdef SECTOK
+ #include <sectok.h>
+-#include <openssl/engine.h>
++#endif
+ #include "scard.h"
+ #endif
+ 
+@@ -385,6 +386,21 @@
+ }
+ 
+ #ifdef SMARTCARD
++#ifdef OPENSC
++
++static void
++do_upload(struct passwd *pw, const char *sc_reader_id)
++{
++	printf("Not supported yet!\n");
++}
++
++static void
++do_download(struct passwd *pw, const char *sc_reader_id)
++{
++	printf("Not supported yet!\n");
++}
++
++#else
+ #define NUM_RSA_KEY_ELEMENTS 5+1
+ #define COPY_RSA_KEY(x, i) \
+ 	do { \
+@@ -526,6 +542,7 @@
+ 	fprintf(stdout, "\n");
+ 	exit(0);
+ }
++#endif /* OPENSC */
+ #endif /* SMARTCARD */
+ 
+ static void
+diff -ruN openssh-3.0.2p1/ssh.c openssh-new/ssh.c
+--- openssh-3.0.2p1/ssh.c	Mon Nov 12 01:52:04 2001
++++ openssh-new/ssh.c	Sun Dec  2 21:28:50 2001
+@@ -70,7 +70,6 @@
+ #include "sshtty.h"
+ 
+ #ifdef SMARTCARD
+-#include <openssl/engine.h>
+ #include "scard.h"
+ #endif
+ 
+@@ -1178,39 +1177,37 @@
+ 	char *filename;
+ 	Key *public;
+ 	int i = 0;
+-
++	
+ #ifdef SMARTCARD
+-	if (options.smartcard_device != NULL &&
+-	    options.num_identity_files + 1 < SSH_MAX_IDENTITY_FILES &&
+-	    (public = sc_get_key(options.smartcard_device)) != NULL ) {
+-		Key *new;
+-
+-		if (options.num_identity_files + 2 > SSH_MAX_IDENTITY_FILES)
+-			options.num_identity_files = SSH_MAX_IDENTITY_FILES - 2;
+-		memmove(&options.identity_files[2], &options.identity_files[0],
+-		    sizeof(char *) * options.num_identity_files);
+-		options.num_identity_files += 2;
+-		i = 2;
+-
+-		/* XXX ssh1 vs ssh2 */
+-		new = key_new(KEY_RSA);
+-		new->flags = KEY_FLAG_EXT;
+-		BN_copy(new->rsa->n, public->rsa->n);
+-		BN_copy(new->rsa->e, public->rsa->e);
+-		RSA_set_method(new->rsa, sc_get_engine());
+-		options.identity_keys[0] = new;
+-		options.identity_files[0] = xstrdup("smartcard rsa key");;
+-
+-		new = key_new(KEY_RSA1);
+-		new->flags = KEY_FLAG_EXT;
+-		BN_copy(new->rsa->n, public->rsa->n);
+-		BN_copy(new->rsa->e, public->rsa->e);
+-		RSA_set_method(new->rsa, sc_get_engine());
+-		options.identity_keys[1] = new;
+-		options.identity_files[1] = xstrdup("smartcard rsa1 key");
+-
+-		key_free(public);
++	if (options.smartcard_device != NULL) {
++		Key **keys;
++		int key_count = 0, c;
++		
++		keys = sc_get_keys(options.smartcard_device);
++		if (keys == NULL) {
++			error("sc_get_keys failed");
++			goto scard_end;
++		}
++		while (keys[key_count])
++			key_count++;
++		if (options.num_identity_files + key_count > SSH_MAX_IDENTITY_FILES) {
++			key_count = SSH_MAX_IDENTITY_FILES - options.num_identity_files;
++			if (key_count <= 0) {
++				error("no space for smartcard keys");
++				xfree(keys);
++				goto scard_end;
++			}
++		}
++		memmove(&options.identity_files[key_count],
++			&options.identity_files[0], key_count * sizeof(char *));
++		for (i = 0; keys[i] != NULL && i < key_count; i++) {
++			options.identity_keys[i] = keys[i];
++			options.identity_files[i] = xstrdup("smartcard rsa key");
++		}
++		options.num_identity_files += key_count;
++		xfree(keys);
+ 	}
++scard_end:
+ #endif /* SMARTCARD */
+ 	for (; i < options.num_identity_files; i++) {
+ 		filename = tilde_expand_filename(options.identity_files[i],
