@@ -1328,6 +1328,24 @@ do_generate_key_soft(int algorithm, unsigned int bits, EVP_PKEY **res)
 /*
  * Read a private key
  */
+static int pass_cb(char *buf, int len, int flags, void *d)
+{
+	int  plen;
+	char *pass;
+	if (d)
+		pass = (char *)d;
+	else
+		pass = getpass("Please enter passphrase "
+				"to unlock secret key: ");
+	plen = strlen(pass);
+	if (plen <= 0)
+		return 0;
+	if (plen > len)
+		plen = len;
+	memcpy(buf, pass, plen);
+	return plen;
+}
+
 static int
 do_read_pem_private_key(const char *filename, const char *passphrase,
 			EVP_PKEY **key)
@@ -1335,9 +1353,9 @@ do_read_pem_private_key(const char *filename, const char *passphrase,
 	BIO	*bio;
 
 	bio = BIO_new(BIO_s_file());
-	if (BIO_read_filename(bio, filename) < 0)
+	if (BIO_read_filename(bio, filename) <= 0)
 		fatal("Unable to open %s: %m", filename);
-	*key = PEM_read_bio_PrivateKey(bio, 0, 0, (char *) passphrase);
+	*key = PEM_read_bio_PrivateKey(bio, 0, pass_cb, (char *) passphrase);
 	BIO_free(bio);
 	if (*key == NULL) {
 		ossl_print_errors();
@@ -1360,7 +1378,7 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 	*key = NULL;
 
 	bio = BIO_new(BIO_s_file());
-	if (BIO_read_filename(bio, filename) < 0)
+	if (BIO_read_filename(bio, filename) <= 0)
 		fatal("Unable to open %s: %m", filename);
 	p12 = d2i_PKCS12_bio(bio, NULL);
 	BIO_free(bio);
@@ -1407,30 +1425,31 @@ do_read_private_key(const char *filename, const char *format,
 	if (opt_passphrase)
 		passphrase = opt_passphrase;
 
-	while (1) {
-		if (!format || !strcasecmp(format, "pem")) {
-			r = do_read_pem_private_key(filename, passphrase, pk);
-		} else if (!strcasecmp(format, "pkcs12")) {
-			r = do_read_pkcs12_private_key(filename,
-					passphrase,
-					pk, certs, max_certs);
-		} else {
-			error("Error when reading private key. "
-			      "Key file format \"%s\" not supported.\n",
-			      format);
-			return SC_ERROR_NOT_SUPPORTED;
+	if (!format || !strcasecmp(format, "pem")) {
+		r = do_read_pem_private_key(filename, passphrase, pk);
+	} else if (!strcasecmp(format, "pkcs12")) {
+		r = do_read_pkcs12_private_key(filename,
+				passphrase, pk, certs, max_certs);
+		if (r < 0 && !passphrase) {
+			/* this makes only sense for PKCS#12
+			 * PKCS12_parse must support passphrases with
+			 * length zero and NULL because of the specification
+			 * of PKCS12 - please see the sourcecode of OpenSSL
+			 * therefore OpenSSL does not ask for a passphrase like
+			 * the PEM interface
+			 * see OpenSSL: crypto/pkcs12/p12_kiss.c
+			 */
+			passphrase = getpass("Please enter passphrase "
+					     "to unlock secret key: ");
+ 			r = do_read_pkcs12_private_key(filename,
+ 					passphrase, pk, certs, max_certs);
 		}
-
-		if (r >= 0 || passphrase)
-			break;
-		/* second try ... */
-		passphrase = getpass("Please enter passphrase "
-				     "to unlock secret key: ");
-		if (!passphrase)
-			break;
+	} else {
+		error("Error when reading private key. "
+		      "Key file format \"%s\" not supported.\n", format);
+		return SC_ERROR_NOT_SUPPORTED;
 	}
-	if (passphrase)
-		memset(passphrase, 0, strlen(passphrase));
+
 	if (r < 0)
 		fatal("Unable to read private key from %s\n", filename);
 	return r;
@@ -1446,7 +1465,7 @@ do_read_pem_public_key(const char *filename)
 	EVP_PKEY	*pk;
 
 	bio = BIO_new(BIO_s_file());
-	if (BIO_read_filename(bio, filename) < 0)
+	if (BIO_read_filename(bio, filename) <= 0)
 		fatal("Unable to open %s: %m", filename);
 	pk = PEM_read_bio_PUBKEY(bio, 0, 0, NULL);
 	BIO_free(bio);
@@ -1462,7 +1481,7 @@ do_read_der_public_key(const char *filename)
 	EVP_PKEY *pk;
 
 	bio = BIO_new(BIO_s_file());
-	if (BIO_read_filename(bio, filename) < 0)
+	if (BIO_read_filename(bio, filename) <= 0)
 		fatal("Unable to open %s: %m", filename);
 	pk = d2i_PUBKEY_bio(bio, NULL);
 	BIO_free(bio);
@@ -1538,7 +1557,7 @@ do_read_pem_certificate(const char *filename)
 	X509	*xp;
 
 	bio = BIO_new(BIO_s_file());
-	if (BIO_read_filename(bio, filename) < 0)
+	if (BIO_read_filename(bio, filename) <= 0)
 		fatal("Unable to open %s: %m", filename);
 	xp = PEM_read_bio_X509(bio, 0, 0, 0);
 	BIO_free(bio);
@@ -1554,7 +1573,7 @@ do_read_der_certificate(const char *filename)
 	X509	*xp;
 
 	bio = BIO_new(BIO_s_file());
-	if (BIO_read_filename(bio, filename) < 0)
+	if (BIO_read_filename(bio, filename) <= 0)
 		fatal("Unable to open %s: %m", filename);
 	xp = d2i_X509_bio(bio, NULL);
 	BIO_free(bio);
