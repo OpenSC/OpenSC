@@ -79,7 +79,8 @@ int sc_detect_card(struct sc_context *ctx, int reader)
 
 	rgReaderStates[0].szReader = ctx->readers[reader];
 	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
-	ret = SCardGetStatusChange(ctx->pcsc_ctx, 0, rgReaderStates, 1);
+	rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
+	ret = SCardGetStatusChange(ctx->pcsc_ctx, SC_STATUS_TIMEOUT, rgReaderStates, 1);
 	if (ret != 0) {
 		error(ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(ret));
 		SC_FUNC_RETURN(ctx, 1, -1);	/* FIXME */
@@ -110,17 +111,17 @@ int sc_wait_for_card(struct sc_context *ctx, int reader, int timeout)
 			SC_FUNC_RETURN(ctx, 1, SC_ERROR_NO_READERS_FOUND);
 		for (i = 0; i < ctx->reader_count; i++) {
 			rgReaderStates[i].szReader = ctx->readers[i];
-			rgReaderStates[i].dwCurrentState =
-			    SCARD_STATE_EMPTY;
+			rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
+			rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
 		}
 		count = ctx->reader_count;
 	} else {
 		rgReaderStates[0].szReader = ctx->readers[reader];
-		rgReaderStates[0].dwCurrentState = SCARD_STATE_EMPTY;
+		rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
+		rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
 		count = 1;
 	}
-	ret = SCardGetStatusChange(ctx->pcsc_ctx, timeout, rgReaderStates,
-				   count);
+	ret = SCardGetStatusChange(ctx->pcsc_ctx, timeout, rgReaderStates, count);
 	if (ret != 0) {
 		error(ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(ret));
 		SC_FUNC_RETURN(ctx, 1, -1);

@@ -326,7 +326,8 @@ int sc_connect_card(struct sc_context *ctx,
 	
 	rgReaderStates[0].szReader = ctx->readers[reader];
 	rgReaderStates[0].dwCurrentState = SCARD_STATE_UNAWARE;
-	rv = SCardGetStatusChange(ctx->pcsc_ctx, 0, rgReaderStates, 1);
+	rgReaderStates[0].dwEventState = SCARD_STATE_UNAWARE;
+	rv = SCardGetStatusChange(ctx->pcsc_ctx, SC_STATUS_TIMEOUT, rgReaderStates, 1);
 	if (rv != 0) {
 		error(ctx, "SCardGetStatusChange failed: %s\n", pcsc_stringify_error(rv));
 		SC_FUNC_RETURN(ctx, 1, SC_ERROR_RESOURCE_MANAGER);	/* FIXME */

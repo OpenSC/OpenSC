@@ -33,4 +33,10 @@
 /* Internal use only */
 int sc_sw_to_errorcode(struct sc_card *card, int sw1, int sw2);
 
+/* Default timeout value for SCardGetStatusChange */
+#ifndef SC_CUSTOM_STATUS_TIMEOUT
+#define SC_STATUS_TIMEOUT 0
+#else SC_STATUS_TIMEOUT SC_CUSTOM_STATUS_TIMEOUT
+#endif
+
 #endif
