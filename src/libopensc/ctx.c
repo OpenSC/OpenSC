@@ -258,10 +258,25 @@ static void load_reader_driver_options(sc_context_t *ctx,
 	driver->max_recv_size = SC_APDU_CHOP_SIZE;
 	if (conf_block != NULL) {
 		const scconf_list *list;
-
+		const char *forcestr;
+		
 		if (scconf_get_bool(conf_block, "apdu_fix", 0))
 			driver->apdu_masquerade |= SC_APDU_MASQUERADE_4AS3;
-
+		/* protocol force in action, addon by -mp */
+		forcestr=scconf_get_str(conf_block, "force_protocol",NULL);
+		if (forcestr){
+			sc_debug(ctx,"Protocol force in action : %s",forcestr);
+			if (!strcmp(forcestr,"t0"))
+				driver->forced_protocol = SC_PROTO_T0;
+			else if (!strcmp(forcestr,"t1"))
+				driver->forced_protocol = SC_PROTO_T1;
+			else if (!strcmp(forcestr,"raw"))
+				driver->forced_protocol = SC_PROTO_RAW;
+			else
+				sc_error(ctx,"Unknown protocol: %s in force_protocol; ignored.",forcestr);
+		} else 
+			driver->forced_protocol = 0;
+		                                                                                                                              
 		list = scconf_find_list(conf_block, "apdu_masquerade");
 		if (list)
 			driver->apdu_masquerade = 0;

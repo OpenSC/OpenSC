@@ -260,6 +260,7 @@ struct sc_reader_driver {
 
 	size_t max_send_size, max_recv_size;
 	int apdu_masquerade;
+	unsigned int forced_protocol;
 };
 #define SC_APDU_MASQUERADE_NONE		0x00
 #define SC_APDU_MASQUERADE_4AS3		0x01

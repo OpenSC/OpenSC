@@ -378,7 +378,7 @@ static int pcsc_wait_for_event(struct sc_reader **readers,
 
 static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 {
-	DWORD active_proto;
+	DWORD active_proto, protocol;
 	SCARDHANDLE card_handle;
 	LONG rv;
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
@@ -390,9 +390,15 @@ static int pcsc_connect(struct sc_reader *reader, struct sc_slot_info *slot)
 		return r;
 	if (!(slot->flags & SC_SLOT_CARD_PRESENT))
 		return SC_ERROR_CARD_NOT_PRESENT;
-        rv = SCardConnect(priv->pcsc_ctx, priv->reader_name,
-			  SCARD_SHARE_SHARED, SCARD_PROTOCOL_ANY,
-                          &card_handle, &active_proto);
+
+	/* force a protocol, addon by -mp */	
+	if (reader->driver->forced_protocol) {
+		protocol = opensc_proto_to_pcsc(reader->driver->forced_protocol);
+	} else
+		protocol = SCARD_PROTOCOL_ANY;
+		
+	rv = SCardConnect(priv->pcsc_ctx, priv->reader_name,
+		SCARD_SHARE_SHARED, protocol, &card_handle, &active_proto);
 	if (rv != 0) {
 		PCSC_ERROR(reader->ctx, "SCardConnect failed", rv);
 		return pcsc_ret_to_error(rv);
