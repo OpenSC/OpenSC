@@ -211,8 +211,10 @@ int sc_enum_apps(struct sc_card *card)
 		size_t rec_size;
 		
 		for (rec_nr = 1; ; rec_nr++) {
+			card->ctx->suppress_errors++;
 			r = sc_read_record(card, rec_nr, buf, sizeof(buf), 
 						SC_RECORD_BY_REC_NR);
+			card->ctx->suppress_errors--;
 			if (r == SC_ERROR_RECORD_NOT_FOUND)
 				break;
 			SC_TEST_RET(card->ctx, r, "read_record() failed");
