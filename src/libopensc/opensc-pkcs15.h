@@ -330,6 +330,9 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 				 struct sc_pkcs15_object *obj,
 				 const u8 **buf, size_t *bufsize);
+int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
+				 struct sc_pkcs15_object *obj,
+				 const u8 **buf, size_t *bufsize);
 
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
 			 const struct sc_pkcs15_id *id2);
