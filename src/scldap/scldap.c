@@ -71,20 +71,18 @@ static void scldap_parse_block(scldap_context * ctx, scconf_block * block, const
 		snprintf(ctx->entry[ctx->entries].entry, len, "%s%s", cardprefix ? cardprefix : "", block->name->data);
 #define ADD(x, y) \
 { \
-  val = scconf_find_value_first(block, y); \
+  val = scconf_get_str(block, y, NULL); \
   x = val ? strdup(val) : NULL; \
 }
 		ADD(ctx->entry[ctx->entries].ldaphost, "ldaphost");
-		val = scconf_find_value_first(block, "ldapport");
-		ctx->entry[ctx->entries].ldapport = val ? atoi(val) : 0;
-		val = scconf_find_value_first(block, "scope");
-		ctx->entry[ctx->entries].scope = val ? atoi(val) : 0;
+		ctx->entry[ctx->entries].ldapport = scconf_get_int(block, "ldapport", 389);
+		ctx->entry[ctx->entries].scope = scconf_get_int(block, "scope", 0);
 		ADD(ctx->entry[ctx->entries].binddn, "binddn");
 		ADD(ctx->entry[ctx->entries].passwd, "passwd");
 		ADD(ctx->entry[ctx->entries].base, "base");
 		ADD(ctx->entry[ctx->entries].filter, "filter");
 #undef ADD
-		list = scconf_find_value(block, "attributes");
+		list = scconf_find_list(block, "attributes");
 		for (tmp = list; tmp; tmp = tmp->next) {
 			if (ctx->entry[ctx->entries].numattrs >= SCLDAP_MAX_ATTRIBUTES) {
 				break;

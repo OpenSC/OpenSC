@@ -158,10 +158,10 @@ static int load_parameters(struct sc_context *ctx, const char *app,
 
 		if (strcmp(block->name->data, app))
 			continue;
-		val = scconf_find_value_first(block, "debug");
+		val = scconf_get_str(block, "debug", NULL);
 		if (val)
 			sscanf(val, "%d", &ctx->debug);
-		val = scconf_find_value_first(block, "debug_file");
+		val = scconf_get_str(block, "debug_file", NULL);
 		if (val) {
 			if (ctx->debug_file && ctx->debug_file != stdout)
 				fclose(ctx->debug_file);
@@ -170,7 +170,7 @@ static int load_parameters(struct sc_context *ctx, const char *app,
 			else
 				ctx->debug_file = stdout;
 		}
-		val = scconf_find_value_first(block, "error_file");
+		val = scconf_get_str(block, "error_file", NULL);
 		if (val) {
 			if (ctx->error_file && ctx->error_file != stderr)
 				fclose(ctx->error_file);
@@ -180,7 +180,7 @@ static int load_parameters(struct sc_context *ctx, const char *app,
 				ctx->error_file = stderr;
 		}
 
-		list = scconf_find_value(block, "reader_drivers");
+		list = scconf_find_list(block, "reader_drivers");
 		if (list == NULL) {
 			if (opts->rcount == 0) /* Add the internal drivers */
 				add_internal_drvs(opts, 0);
@@ -196,7 +196,7 @@ static int load_parameters(struct sc_context *ctx, const char *app,
 		if (err)
 			break;
 
-		list = scconf_find_value(block, "card_drivers");
+		list = scconf_find_list(block, "card_drivers");
 		if (list == NULL) {
 			if (opts->ccount == 0) /* Add the internal drivers */
 				add_internal_drvs(opts, 1);

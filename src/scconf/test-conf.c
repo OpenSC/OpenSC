@@ -39,19 +39,19 @@ void print_ldap_block(scconf_context * conf, scconf_block * block)
 		const scconf_list *list, *tmp;
 
 		printf("LDAP entry[%s]\n", block->name->data);
-		printf("ldaphost: %s\n", scconf_find_value_first(block, "ldaphost"));
-		printf("ldapport: %s\n", scconf_find_value_first(block, "ldapport"));
-		printf("scope: %s\n", scconf_find_value_first(block, "scope"));
-		printf("binddn: %s\n", scconf_find_value_first(block, "binddn"));
-		printf("passwd: %s\n", scconf_find_value_first(block, "passwd"));
-		printf("base: %s\n", scconf_find_value_first(block, "base"));
+		printf("ldaphost: %s\n", scconf_get_str(block, "ldaphost", NULL));
+		printf("ldapport: %s\n", scconf_get_str(block, "ldapport", NULL));
+		printf("scope: %s\n", scconf_get_str(block, "scope", NULL));
+		printf("binddn: %s\n", scconf_get_str(block, "binddn", NULL));
+		printf("passwd: %s\n", scconf_get_str(block, "passwd", NULL));
+		printf("base: %s\n", scconf_get_str(block, "base", NULL));
 		printf("attributes: [");
-		list = scconf_find_value(block, "attributes");
+		list = scconf_find_list(block, "attributes");
 		for (tmp = list; tmp; tmp = tmp->next) {
 			printf(" %s", tmp->data);
 		}
 		printf(" ]\n");
-		printf("filter: %s\n", scconf_find_value_first(block, "filter"));
+		printf("filter: %s\n", scconf_get_str(block, "filter", NULL));
 		printf("\n");
 	}
 	free(blocks);

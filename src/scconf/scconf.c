@@ -24,6 +24,7 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "scconf.h"
 
 scconf_context *scconf_init(const char *filename)
@@ -112,7 +113,7 @@ scconf_block **scconf_find_blocks(scconf_context * config, const scconf_block * 
 	return blocks;
 }
 
-const scconf_list *scconf_find_value(const scconf_block * block, const char *option)
+const scconf_list *scconf_find_list(const scconf_block * block, const char *option)
 {
 	scconf_item *item;
 
@@ -128,15 +129,40 @@ const scconf_list *scconf_find_value(const scconf_block * block, const char *opt
 	return NULL;
 }
 
-const char *scconf_find_value_first(const scconf_block * block, const char *option)
+const char *scconf_get_str(const scconf_block * block, const char *option, const char *def)
 {
 	const scconf_list *list;
 
 	if (!block) {
-		return NULL;
+		return def;
 	}
-	list = scconf_find_value(block, option);
-	return !list ? NULL : list->data;
+	list = scconf_find_list(block, option);
+	return !list ? def : list->data;
+}
+
+int scconf_get_int(const scconf_block * block, const char *option, int def)
+{
+	const scconf_list *list;
+
+	if (!block) {
+		return def;
+	}
+	list = scconf_find_list(block, option);
+	return !list ? def : atoi(list->data);
+}
+
+int scconf_get_bool(const scconf_block * block, const char *option, int def)
+{
+	const scconf_list *list;
+
+	if (!block) {
+		return def;
+	}
+	list = scconf_find_list(block, option);
+	if (!list) {
+		return def;
+	}
+	return toupper((int) *list->data) == 'T' || toupper((int) *list->data) == 'Y';
 }
 
 void scconf_list_destroy(scconf_list * list)

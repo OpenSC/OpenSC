@@ -94,11 +94,19 @@ extern scconf_block **scconf_find_blocks(scconf_context * config, const scconf_b
 
 /* Get a list of values for option
  */
-extern const scconf_list *scconf_find_value(const scconf_block * block, const char *option);
+extern const scconf_list *scconf_find_list(const scconf_block * block, const char *option);
 
-/* Return the first value of the option
+/* Return the first string of the option
  */
-extern const char *scconf_find_value_first(const scconf_block * block, const char *option);
+extern const char *scconf_get_str(const scconf_block * block, const char *option, const char *def);
+
+/* Return the first value of the option as integer
+ */
+extern int scconf_get_int(const scconf_block * block, const char *option, int def);
+
+/* Return the first value of the option as boolean
+ */
+extern int scconf_get_bool(const scconf_block * block, const char *option, int def);
 
 /* Free list structure
  */
