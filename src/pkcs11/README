@@ -14,14 +14,18 @@ Netscape:
 	For proper operation, you also need to configure the module:
 	In the Crypthographic Modules dialog, select the OpenSC card,
 	and click on the "Config" button to the right. Select the
-	"Enable this token" radio button, and select both the "RSA"
-	and the "Publicly readable Certs" buttons.
+	"Enable this token" radio button, and select the "Publicly
+	readable Certs" button.
 
 	This will ensure that netscape uses the card when trying to
 	display encrypted messages in netscape messenger.  Setting
 	"Publicly readable Certs" will also stop a pretty annoying habit
 	of netscape which is to ask for all PINs when browsing sites
 	requiring client authentication.
+
+	You should _not_ select the "RSA" button. If this option is
+	selected, netscape will try to use the card for all public key
+	operations, and will fail horribly.
 
 Mozilla:
 	Make sure Personal Security Manager (PSM) is installed
