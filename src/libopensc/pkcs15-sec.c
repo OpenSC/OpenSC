@@ -48,6 +48,33 @@ static int pkcs1_strip_padding(u8 *data, size_t len)
 	return len - n;
 }
 
+static int select_key_file(struct sc_pkcs15_card *p15card,
+			   const struct sc_pkcs15_prkey_info *prkey,
+			   struct sc_security_env *senv)
+{
+	struct sc_path path, file_id;
+	int r;
+
+	if (prkey->path.len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (prkey->path.len == 2) {
+		/* Path is relative to app. DF */
+		path = p15card->file_app->path;
+		file_id = prkey->path;
+		sc_append_path(&path, &file_id);
+	} else {
+		path = prkey->path;
+		memcpy(file_id.value, prkey->path.value + prkey->path.len - 2, 2);
+		file_id.len = 2;
+	}
+	senv->file_ref = file_id;
+	senv->flags |= SC_SEC_ENV_FILE_REF_PRESENT;
+	r = sc_select_file(p15card->card, &path, NULL);
+	SC_TEST_RET(p15card->card->ctx, r, "sc_select_file() failed");
+
+	return 0;
+}
+ 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *obj,
 		       unsigned long flags,
@@ -57,26 +84,14 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	struct sc_algorithm_info *alg_info;
 	struct sc_security_env senv;
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_path path, file_id;
         const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	unsigned long pad_flags = 0;
 
+	SC_FUNC_CALLED(ctx, 1);
 	/* If the key is extractable, the caller should extract the
 	 * key and do the crypto himself */
 	if (!prkey->native)
 		return SC_ERROR_EXTRACTABLE_KEY;
-
-	if (prkey->path.len < 2)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (prkey->path.len == 2) {
-		path = p15card->file_app->path;
-		file_id = prkey->path;
-	} else {
-		path = prkey->path;
-		memcpy(file_id.value, prkey->path.value + prkey->path.len - 2, 2);
-		file_id.len = 2;
-		path.len -= 2;
-	}
 
 	alg_info = _sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
 	if (alg_info == NULL) {
@@ -103,21 +118,15 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		senv.algorithm_flags |= SC_ALGORITHM_RSA_RAW;
 	}
 
-	senv.file_ref = file_id;
 	senv.operation = SC_SEC_OPERATION_DECIPHER;
 	senv.key_ref_len = 1;
 	senv.key_ref[0] = prkey->key_reference & 0xFF;
-	senv.flags = SC_SEC_ENV_KEY_REF_PRESENT | SC_SEC_ENV_FILE_REF_PRESENT;
+	senv.flags = SC_SEC_ENV_KEY_REF_PRESENT;
 	senv.flags |= SC_SEC_ENV_ALG_PRESENT;
 
-	SC_FUNC_CALLED(ctx, 1);
-	r = sc_select_file(p15card->card, &path, NULL);
-	SC_TEST_RET(ctx, r, "sc_select_file() failed");
-#if 0
-	/* FIXME! */
-	r = sc_restore_security_env(p15card->card, 0); /* empty SE */
-	SC_TEST_RET(ctx, r, "sc_restore_security_env() failed");
-#endif
+	r = select_key_file(p15card, prkey, &senv);
+	SC_TEST_RET(ctx, r, "Unable to select private key file");
+
 	r = sc_set_security_env(p15card->card, &senv, 0);
 	SC_TEST_RET(ctx, r, "sc_set_security_env() failed");
 	r = sc_decipher(p15card->card, in, inlen, out, outlen);
@@ -215,25 +224,14 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
         const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	u8 buf[512];
 	size_t buflen;
-	struct sc_path path, file_id;
 	unsigned long pad_flags = 0;
 
+	SC_FUNC_CALLED(ctx, 1);
 	/* If the key is extractable, the caller should extract the
 	 * key and do the crypto himself */
 	if (!prkey->native)
 		return SC_ERROR_EXTRACTABLE_KEY;
 
-	if (prkey->path.len < 2)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (prkey->path.len == 2) {
-		path = p15card->file_app->path;
-		file_id = prkey->path;
-	} else {
-		path = prkey->path;
-		memcpy(file_id.value, prkey->path.value + prkey->path.len - 2, 2);
-		file_id.len = 2;
-		path.len -= 2;
-	}
 	alg_info = _sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
 	if (alg_info == NULL) {
 		error(ctx, "Card does not support RSA with key length %d\n", prkey->modulus_length);
@@ -299,20 +297,15 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		inlen = buflen;
 	}
 
-        senv.file_ref = file_id;
 	senv.operation = SC_SEC_OPERATION_SIGN;
 	senv.key_ref_len = 1;
 	senv.key_ref[0] = prkey->key_reference & 0xFF;
-	senv.flags = SC_SEC_ENV_KEY_REF_PRESENT | SC_SEC_ENV_FILE_REF_PRESENT;
+	senv.flags = SC_SEC_ENV_KEY_REF_PRESENT;
 	senv.flags |= SC_SEC_ENV_ALG_PRESENT;
 
-	r = sc_select_file(p15card->card, &path, NULL);
-	SC_TEST_RET(ctx, r, "sc_select_file() failed");
-#if 0
-	/* FIXME! */
-	r = sc_restore_security_env(p15card->card, 0); /* empty SE */
-	SC_TEST_RET(ctx, r, "sc_restore_security_env() failed");
-#endif
+	r = select_key_file(p15card, prkey, &senv);
+	SC_TEST_RET(ctx, r, "Unable to select private key file");
+
 	r = sc_set_security_env(p15card->card, &senv, 0);
 	SC_TEST_RET(ctx, r, "sc_set_security_env() failed");
 
