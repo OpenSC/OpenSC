@@ -111,10 +111,16 @@ enum {
 };
 
 const struct option	options[] = {
-	{ "reader",		required_argument, 0,	'r' },
 	{ "erase-card",		no_argument, 0,		'E' },
 	{ "create-pkcs15",	no_argument, 0,		'C' },
 	{ "store-pin",		no_argument, 0,		'P' },
+	{ "generate-key",	required_argument, 0,	'G' },
+	{ "store-private-key",	required_argument, 0,	'S' },
+	{ "store-public-key",	required_argument, 0,	OPT_PUBKEY },
+	{ "store-certificate",	required_argument, 0,	'X' },
+	{ "store-data",		required_argument, 0,	'W' },
+
+	{ "reader",		required_argument, 0,	'r' },
 	{ "pin",		required_argument, 0,	OPT_PIN1 },
 	{ "puk",		required_argument, 0,	OPT_PUK1 },
 	{ "so-pin",		required_argument, 0,	OPT_PIN2 },
@@ -123,14 +129,9 @@ const struct option	options[] = {
 	{ "auth-id",		required_argument, 0,	'a' },
 	{ "id",			required_argument, 0,	'i' },
 	{ "label",		required_argument, 0,	'l' },
-	{ "generate-key",	required_argument, 0,	'G' },
 	{ "output-file",	required_argument, 0,	'o' },
-	{ "store-private-key",	required_argument, 0,	'S' },
-	{ "store-public-key",	required_argument, 0,	OPT_PUBKEY },
 	{ "format",		required_argument, 0,	'f' },
 	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
-	{ "store-certificate",	required_argument, 0,	'X' },
-	{ "store-data",		required_argument, 0,	'W' },
 	{ "authority",		no_argument,	   0,	OPT_AUTHORITY },
 	{ "key-usage",		required_argument, 0,	'u' },
 
@@ -147,10 +148,16 @@ const struct option	options[] = {
 	{ 0, 0, 0, 0 }
 };
 const char *		option_help[] = {
-	"Specify which reader to use [default 0]",
-	"Erase the smart card",
+	"Erase the smart card (can be used with --create-pkcs15)",
 	"Creates a new PKCS #15 structure",
 	"Store a new PIN/PUK on the card",
+	"Generate a new key and store it on the card",
+	"Store private key",
+	"Store public key",
+	"Store an X.509 certificate",
+	"Store a data object",
+
+	"Specify which reader to use",
 	"Specify PIN",
 	"Specify unblock PIN",
 	"Specify security officer (SO) PIN",
@@ -159,14 +166,9 @@ const char *		option_help[] = {
 	"Specify ID of PIN to use/create",
 	"Specify ID of key/certificate",
 	"Specify label of PIN/key",
-	"Generate a new key and store it on the card",
 	"Output public portion of generated key to file",
-	"Store private key",
-	"Store public key",
 	"Specify key file format (default PEM)",
 	"Specify passphrase for unlocking secret key",
-	"Store an X.509 certificate",
-	"Store a data object",
 	"Mark certificate as a CA certificate",
 	"Specify X.509 key usage (use \"--key-usage help\" for more information)",
 
