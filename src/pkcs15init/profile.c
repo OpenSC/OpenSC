@@ -391,7 +391,8 @@ do_card_driver(int argc, char **argv)
 static int
 do_key(int argc, char **argv)
 {
-	unsigned int	type, id, key_len;
+	unsigned int	type, id;
+	size_t		key_len;
 	const char	*key = argv[1];
 	unsigned char	keybuf[32];
 
@@ -815,7 +816,7 @@ do_pin_attempts(int argc, char **argv)
 {
 	struct pin_info	*pi = cur_pin;
 
-	if (get_uint(argv[0], &pi->pin.tries_left))
+	if (get_uint(argv[0], (unsigned int *) &pi->pin.tries_left))
 		return 1;
 	/*
 	pi->puk.tries_left = 0;
