@@ -52,13 +52,16 @@ int main(int argc, char **argv) {
   }
   sc_pkcs15_print_card(p15_card);
 
-#if 0
+#if 1
   i = sc_pkcs15_enum_private_keys(p15_card);
   if (i < 0) {
     fprintf(stderr, "Private key enumeration failed with %s\n", sc_strerror(i));
     return 1;
   }
-
+  printf("%d private keys found!\n", i);
+  for (i = 0; i < p15_card->prkey_count; i++) {
+    sc_pkcs15_print_prkey_info(&p15_card->prkey_info[i]);
+  }
   return 0;
 #endif
 #if 0
