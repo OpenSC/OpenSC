@@ -31,6 +31,10 @@
 #include "pkcs15-init.h"
 #include "profile.h"
 
+#ifndef MIN
+# define MIN(a, b)	(((a) < (b))? (a) : (b))
+#endif
+
 struct tlv {
 	unsigned char *		base;
 	unsigned char *		end;
@@ -132,13 +136,24 @@ etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
 	struct sc_pkcs15_pin_info params;
 	struct sc_cardctl_etoken_pin_info args;
 	unsigned char	buffer[256];
+	unsigned char	pinpadded[16];
 	struct tlv	tlv;
-	unsigned int	pin_id, puk_id, attempts, minlen;
+	unsigned int	pin_id, puk_id, attempts, minlen, maxlen;
 
 	if (!pin_len) {
 		pin = etoken_default_pin;
 		pin_len = sizeof(etoken_default_pin);
 	}
+	/* We need to do padding because pkcs15-lib.c does it.
+	 * Would be nice to have a flag in the profile that says
+	 * "no padding required". */
+	maxlen = MIN(profile->pin_maxlen, sizeof(pinpadded));
+	if (pin_len > maxlen)
+		pin_len = maxlen;
+	memcpy(pinpadded, pin, pin_len);
+	while (pin_len < maxlen)
+		pinpadded[pin_len++] = profile->pin_pad_char;
+	pin = pinpadded;
 
 	sc_profile_get_pin_info(profile, info->profile_id, &params);
 	attempts = params.tries_left;
@@ -146,6 +161,10 @@ etoken_new_pin(struct sc_profile *profile, struct sc_card *card,
 
 	pin_id = info->id;
 	puk_id = allow_unblock? info->unblock : ETOKEN_AC_NEVER;
+
+	/* Set the profile's SOPIN reference */
+	params.reference = info->id;
+	sc_profile_set_pin_info(profile, info->profile_id, &params);
 
 	tlv_init(&tlv, buffer, sizeof(buffer));
 
