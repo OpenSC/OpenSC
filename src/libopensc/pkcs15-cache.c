@@ -28,13 +28,15 @@
 #include <unistd.h>
 #endif
 #include <sys/stat.h>
+#include <limits.h>
+#include <errno.h>
 #include <assert.h>
 
 static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 				   const struct sc_path *path,
 				   char *buf, size_t bufsize)
 {
-	char dir[80];
+	char dir[PATH_MAX];
         char pathname[SC_MAX_PATH_SIZE*2+1];
 	int i, r;
         const u8 *pathptr;
@@ -123,7 +125,7 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 			 const struct sc_path *path,
 			 const u8 *buf, size_t bufsize)
 {
-	char fname[160];
+	char fname[PATH_MAX];
 	int r;
         FILE *f;
         size_t c;
@@ -131,9 +133,19 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 	r = generate_cache_filename(p15card, path, fname, sizeof(fname));
 	if (r != 0)
 		return r;
+
 	f = fopen(fname, "wb");
+	/* If the open failed because the cache directory does
+	 * not exist, create it and a re-try the fopen() call.
+	 */
+	if (f == NULL && errno == ENOENT) {
+		if ((r = sc_make_cache_dir(p15card->card->ctx)) < 0)
+			return r;
+		f = fopen(fname, "wb");
+	}
 	if (f == NULL)
 		return 0;
+
 	c = fwrite(buf, 1, bufsize, f);
         fclose(f);
 	if (c != bufsize) {

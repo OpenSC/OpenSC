@@ -765,6 +765,7 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
 
 int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize);
+int sc_make_cache_dir(struct sc_context *ctx);
 
 int sc_enum_apps(struct sc_card *card);
 const struct sc_app_info * sc_find_app_by_aid(struct sc_card *card,

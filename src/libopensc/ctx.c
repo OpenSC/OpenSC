@@ -24,6 +24,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
+#include <sys/stat.h> /* for mkdir */
+#include <limits.h>
 
 int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader)
 {
@@ -460,4 +463,40 @@ int sc_get_cache_dir(struct sc_context *ctx, char *buf, size_t bufsize)
 	if (snprintf(buf, bufsize, "%s/%s", homedir, cache_dir) < 0)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	return 0;
+}
+
+int sc_make_cache_dir(struct sc_context *ctx)
+{
+	char dirname[PATH_MAX], *sp;
+	int r, j, namelen;
+
+	if ((r = sc_get_cache_dir(ctx, dirname, sizeof(dirname))) < 0)
+		return r;
+	namelen = strlen(dirname);
+
+	while (1) {
+		if (mkdir(dirname, 0700) >= 0)
+			break;
+		if (errno != ENOENT
+		 || (sp = strrchr(dirname, '/')) == NULL
+		 || sp == dirname)
+			goto failed;
+		*sp = '\0';
+	}
+
+	/* We may have stripped one or more path components from
+	 * the directory name. Restore them */
+	while (1) {
+		j = strlen(dirname);
+		if (j >= namelen)
+			break;
+		dirname[j] = '/';
+		if (mkdir(dirname, 0700) < 0)
+			goto failed;
+	}
+	return 0;
+
+	/* for lack of a better return code */
+failed:	error(ctx, "failed to create cache directory\n");
+	return SC_ERROR_INTERNAL;
 }
