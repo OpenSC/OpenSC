@@ -314,72 +314,6 @@ void p15_ldap_deinit(void)
 	ctx = NULL;
 }
 
-int p15_ldap_open_session(int argc, const char **argv, const char *user)
-{
-	struct passwd *userstr = NULL;
-#ifdef PCSCLITE_SERVER_PATH
-	uid_t useruid = 65534, uid = 65534;
-	gid_t gid = 65534;
-	int r;
-#endif
-
-	if (!user) {
-		scam_fw_p15_ldap.printmsg("No user.\n");
-		return SCAM_FAILED;
-	}
-	userstr = getpwnam(user);
-	if (!userstr) {
-		scam_fw_p15_ldap.printmsg("Can't get user structure. (%s)", user);
-		return SCAM_FAILED;
-	}
-#ifdef PCSCLITE_SERVER_PATH
-	useruid = userstr->pw_uid;
-	r = GetIdentity(&uid, &gid);
-	if (r < 0) {
-		scam_fw_p15_ldap.logmsg("Could not get uid/gid for pcscd.\n");
-		return SCAM_FAILED;
-	}
-	r = chown(PCSCLITE_SERVER_PATH, useruid, gid);
-	if (r < 0) {
-		scam_fw_p15_ldap.printmsg("Opening session failed, cannot chown socket to user %.", user);
-		return SCAM_FAILED;
-	}
-#endif
-	return SCAM_SUCCESS;
-}
-
-int p15_ldap_close_session(int argc, const char **argv, const char *user)
-{
-#ifdef PCSCLITE_SERVER_PATH
-	uid_t uid = 65534;
-	gid_t gid = 65534;
-	int r;
-#endif
-
-	if (!user) {
-		scam_fw_p15_ldap.printmsg("No user.\n");
-		return SCAM_FAILED;
-	}
-#ifdef PCSCLITE_SERVER_PATH
-	r = GetIdentity(&uid, &gid);
-	if (r < 0) {
-		scam_fw_p15_ldap.logmsg("Could not get uid/gid for pcscd.\n");
-		return SCAM_FAILED;
-	}
-	r = chown(PCSCLITE_SERVER_PATH, uid, gid);
-	if (r < 0) {
-		scam_fw_p15_ldap.printmsg("Closing session failed, cannot chown socket to smartcard user.");
-		return SCAM_SUCCESS;
-	}
-	r = CleanupClientSockets();
-	if (r == -1) {
-		scam_fw_p15_ldap.logmsg("CleanupClientSockets failed.\n");
-		return SCAM_FAILED;
-	}
-#endif
-	return SCAM_SUCCESS;
-}
-
 #ifdef ATR_SUPPORT
 static const char *p15_ldap_atrs[] =
 {
@@ -403,8 +337,13 @@ struct scam_framework_ops scam_fw_p15_ldap =
 	p15_ldap_qualify,	/* qualify */
 	p15_ldap_auth,		/* auth */
 	p15_ldap_deinit,	/* deinit */
-	p15_ldap_open_session,	/* open_session */
-	p15_ldap_close_session	/* close_session */
+#ifndef HAVE_SCIDI
+	NULL,			/* open_session */
+	NULL			/* close_session */
+#else
+	sp_open_session,	/* open_session */
+	sp_close_session	/* close_session */
+#endif
 };
 
 #endif
