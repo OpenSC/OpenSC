@@ -541,11 +541,11 @@ if test "x$pcsc_path" = "xno"; then
 	PCSC_MSG="no"
 fi
 if test "x$pcsc_path" != "xno" -a "x$PCSC_MSG" != "xyes"; then
-	AC_MSG_CHECKING(for PC/SC Lite support)
 	PKG_CHECK_MODULES(PCSC, libpcscslite, [
 		PCSC_MSG="yes"
 		AC_MSG_RESULT($PCSC_MSG)
 		],[ 
+	AC_MSG_CHECKING(for PC/SC Lite support (old style))
 	for pcscdir in "" /pcsc /PCSC; do
 		CPPFLAGS="$saved_CPPFLAGS"
 		LDFLAGS="$saved_LDFLAGS"
@@ -600,6 +600,21 @@ else
 	PCSC_CFLAGS=""
 fi
 
+if test "x$PCSC_MSG" = "xyes"; then
+	CFLAGS="$PCSC_CFLAGS $saved_CFLAGS"
+	LIBS="$PCSC_LIBS $saved_LIBS"
+	AC_TRY_LINK([
+#include <stdlib.h>
+#include <winscard.h>
+	], [
+SCardControl(NULL, NULL, 0, NULL, 0);
+	], [
+		AC_DEFINE(HAVE_PCSC_OLD, 1, [old version of pc/sc-lite])
+	])	
+	CFLAGS="$saved_CFLAGS"
+	LIBS="$saved_LIBS"
+fi
+
 OPENCT_MSG=no
 openct_path=/usr
 AC_SUBST(OPENCT_CFLAGS)
@@ -616,11 +631,11 @@ if test "x$openct_path" = "xno"; then
 	OPENCT_MSG="no"
 fi
 if test "x$openct_path" != "xno" -a "x$OPENCT_MSG" != "xyes"; then
-	AC_MSG_CHECKING(for OpenCT support)
 	PKG_CHECK_MODULES(OPENCT, libopenct, [
 		OPENCT_MSG="yes"
 		AC_MSG_RESULT($OPENCT_MSG)
 		], [
+	AC_MSG_CHECKING(for OpenCT support (old style))
 	CPPFLAGS="$saved_CPPFLAGS"
 	LDFLAGS="$saved_LDFLAGS"
 	LIBS="$saved_LIBS"

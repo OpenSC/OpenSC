@@ -150,7 +150,7 @@ static int pcsc_transmit(struct sc_reader *reader, struct sc_slot_info *slot,
 		rv = SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
 				   &sRecvPci, recvbuf, &dwRecvLength);
 	} else {
-#ifndef _WIN32
+#ifdef HAVE_PCSC_OLD
 		rv = SCardControl(card, sendbuf, dwSendLength,
 				  recvbuf, &dwRecvLength);
 #else
@@ -472,7 +472,7 @@ static int pcsc_init(struct sc_context *ctx, void **reader_data)
 	LONG rv;
 	DWORD reader_buf_size;
 	char *reader_buf, *p;
-	LPCSTR mszGroups = NULL;
+	const char *mszGroups = NULL;
 	SCARDCONTEXT pcsc_ctx;
 	int r, i;
 	struct pcsc_global_private_data *gpriv;
