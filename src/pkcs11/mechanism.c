@@ -389,7 +389,7 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 {
 	struct sc_pkcs11_object *key;
 	CK_ATTRIBUTE attr = { CKA_MODULUS_BITS, pLength, sizeof(*pLength) };
-	CK_RV rc;
+	CK_RV rv;
 
 	key = ((struct signature_data *) operation->priv_data)->key;
 	rv = key->ops->get_attribute(operation->session, key, &attr);
