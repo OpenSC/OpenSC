@@ -33,10 +33,10 @@ void print_ldap_block(scconf_context * conf, scconf_block * block)
 	scconf_block **blocks = NULL;
 	unsigned int i;
 
-	blocks = scconf_find_blocks(conf, block, "ldap");
+	blocks = scconf_find_blocks(conf, block, "ldap", NULL);
 	for (i = 0; blocks[i]; i++) {
-		scconf_block *block = blocks[i];
-		scconf_list *list, *tmp;
+		const scconf_block *block = blocks[i];
+		const scconf_list *list, *tmp;
 
 		printf("LDAP entry[%s]\n", !block->name ? "Default" : block->name->data);
 		printf("ldaphost: %s\n", scconf_find_value_first(block, "ldaphost"));

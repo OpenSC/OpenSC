@@ -150,13 +150,12 @@ static int load_parameters(struct sc_context *ctx, const char *app,
 	scconf_block **blocks = NULL;
 	int i, err = 0;
 
-	blocks = scconf_find_blocks(ctx->conf, NULL, "app");
+	blocks = scconf_find_blocks(ctx->conf, NULL, "app", NULL);
 	for (i = 0; blocks[i]; i++) {
-		scconf_block *block = blocks[i];
+		const scconf_block *block = blocks[i];
                 const scconf_list *list;
-		const char *val;
-		const char *s_internal = "internal";
- 
+		const char *s_internal = "internal", *val;
+
 		if (!block->name && strcmp(block->name->data, app))
 			continue;
 		val = scconf_find_value_first(block, "debug");

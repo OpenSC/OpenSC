@@ -48,11 +48,11 @@ static void scldap_parse_block(scldap_context * ctx, scconf_block * block, const
 	char fallback[32];
 	unsigned int i;
 
-	blocks = scconf_find_blocks(ctx->conf, block, "ldap");
+	blocks = scconf_find_blocks(ctx->conf, block, "ldap", NULL);
 	for (i = 0; blocks[i]; i++) {
-		scconf_block *block = blocks[i];
-		scconf_list *list = NULL, *tmp = NULL;
-		char *val = NULL;
+		const scconf_block *block = blocks[i];
+		const scconf_list *list = NULL, *tmp = NULL;
+		const char *val = NULL;
 		size_t len = 0;
 
 		if (ctx->entries >= SCLDAP_MAX_ENTRIES)
@@ -142,7 +142,7 @@ scldap_context *scldap_parse_parameters(const char *filename)
 		scldap_parse_block(ctx, NULL, NULL);
 
 		/* Parse card specific LDAP blocks */
-		blocks = scconf_find_blocks(ctx->conf, NULL, "card");
+		blocks = scconf_find_blocks(ctx->conf, NULL, "card", NULL);
 		for (i = 0; blocks[i]; i++) {
 			scconf_block *block = blocks[i];
 			char *name = NULL;

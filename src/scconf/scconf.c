@@ -60,32 +60,36 @@ void scconf_deinit(scconf_context * config)
 	config = NULL;
 }
 
-scconf_block *scconf_find_block(scconf_context * config, scconf_block * block,
-				const char *key)
+const scconf_block *scconf_find_block(scconf_context * config, const scconf_block * block, const char *item_name)
 {
 	scconf_item *item;
 
 	if (!block) {
 		block = config->root;
 	}
+	if (!item_name) {
+		return NULL;
+	}
 	for (item = block->items; item; item = item->next) {
 		if (item->type == SCCONF_ITEM_TYPE_BLOCK &&
-		    strcasecmp(key, item->key) == 0) {
+		    strcasecmp(item_name, item->key) == 0) {
 			return item->value.block;
 		}
 	}
 	return NULL;
 }
 
-scconf_block **scconf_find_blocks(scconf_context * config, scconf_block * block,
-				  const char *key)
+scconf_block **scconf_find_blocks(scconf_context * config, const scconf_block * block, const char *item_name, const char *key)
 {
 	scconf_block **blocks = NULL;
-	scconf_item *item;
 	int alloc_size, size;
+	scconf_item *item;
 
 	if (!block) {
 		block = config->root;
+	}
+	if (!item_name) {
+		return NULL;
 	}
 	size = 0;
 	alloc_size = 10;
@@ -93,7 +97,11 @@ scconf_block **scconf_find_blocks(scconf_context * config, scconf_block * block,
 
 	for (item = block->items; item; item = item->next) {
 		if (item->type == SCCONF_ITEM_TYPE_BLOCK &&
-		    strcasecmp(key, item->key) == 0) {
+		    strcasecmp(item_name, item->key) == 0) {
+			if (key && item->value.block->name) {
+				if (strcasecmp(key, item->value.block->name->data))
+					continue;
+			}
 			if (size + 1 >= alloc_size) {
 				alloc_size *= 2;
 				blocks = realloc(blocks, sizeof(scconf_block *) * alloc_size);
@@ -105,24 +113,30 @@ scconf_block **scconf_find_blocks(scconf_context * config, scconf_block * block,
 	return blocks;
 }
 
-scconf_list *scconf_find_value(scconf_block * block, const char *key)
+const scconf_list *scconf_find_value(const scconf_block * block, const char *option)
 {
 	scconf_item *item;
 
+	if (!block) {
+		return NULL;
+	}
 	for (item = block->items; item; item = item->next) {
 		if (item->type == SCCONF_ITEM_TYPE_VALUE &&
-		    strcasecmp(key, item->key) == 0) {
+		    strcasecmp(option, item->key) == 0) {
 			return item->value.list;
 		}
 	}
 	return NULL;
 }
 
-char *scconf_find_value_first(scconf_block * block, const char *key)
+const char *scconf_find_value_first(const scconf_block * block, const char *option)
 {
-	scconf_list *list;
+	const scconf_list *list;
 
-	list = scconf_find_value(block, key);
+	if (!block) {
+		return NULL;
+	}
+	list = scconf_find_value(block, option);
 	return !list ? NULL : list->data;
 }
 
@@ -182,7 +196,7 @@ void scconf_block_destroy(scconf_block * block)
 	}
 }
 
-int scconf_list_array_length(scconf_list * list)
+int scconf_list_array_length(const scconf_list * list)
 {
 	int len = 0;
 
@@ -190,11 +204,10 @@ int scconf_list_array_length(scconf_list * list)
 		len++;
 		list = list->next;
 	}
-
 	return len;
 }
 
-int scconf_list_strings_length(scconf_list * list)
+int scconf_list_strings_length(const scconf_list * list)
 {
 	int len = 0;
 
@@ -202,15 +215,17 @@ int scconf_list_strings_length(scconf_list * list)
 		len += strlen(list->data) + 1;
 		list = list->next;
 	}
-
 	return len;
 }
 
-char *scconf_list_strdup(scconf_list * list, const char *filler)
+char *scconf_list_strdup(const scconf_list * list, const char *filler)
 {
 	char *buf = NULL;
 	int len = 0;
 
+	if (!list) {
+		return NULL;
+	}
 	len = scconf_list_strings_length(list);
 	if (filler) {
 		len += scconf_list_array_length(list) * (strlen(filler) + 1);

@@ -61,38 +61,65 @@ typedef struct {
 	scconf_block *root;
 } scconf_context;
 
+/* Init configuration
+ * The filename can be NULL
+ */
 extern scconf_context *scconf_init(const char *filename);
+
+/* Free configuration
+ */
 extern void scconf_deinit(scconf_context * config);
 
-/* Returns 1 = ok, 0 = error, -1 = error opening config file */
+/* Parse configuration
+ * Returns 1 = ok, 0 = error, -1 = error opening config file
+ */
 extern int scconf_parse(scconf_context * config);
 
-/* Write config to file.
- * if filename is NULL, use the config->filename.
+/* Write config to a file
+ * If the filename is NULL, use the config->filename
  * Returns 0 = ok, else = errno
  */
 extern int scconf_write(scconf_context * config, const char *filename);
 
-/* Find config block by key. If block is NULL, the root block is used. */
-extern scconf_block *scconf_find_block(scconf_context * config, scconf_block * block, const char *key);
-extern scconf_block **scconf_find_blocks(scconf_context * config, scconf_block * block, const char *key);
+/* Find a config by the item_name
+ * If the block is NULL, the root block is used
+ */
+extern const scconf_block *scconf_find_block(scconf_context * config, const scconf_block * block, const char *item_name);
 
-/* Find value from block */
-extern scconf_list *scconf_find_value(scconf_block * block, const char *key);
-extern char *scconf_find_value_first(scconf_block * block, const char *key);
+/* Find a config by the item_name
+ * If the block is NULL, the root block is used
+ * The key can be used to specify what the blocks first name should be.
+ */
+extern scconf_block **scconf_find_blocks(scconf_context * config, const scconf_block * block, const char *item_name, const char *key);
 
-/* Free list/block structure */
+/* Get a list of values for option
+ */
+extern const scconf_list *scconf_find_value(const scconf_block * block, const char *option);
+
+/* Return the first value of the option
+ */
+extern const char *scconf_find_value_first(const scconf_block * block, const char *option);
+
+/* Free list structure
+ */
 extern void scconf_list_destroy(scconf_list * list);
+
+/* Free block structure
+ */
 extern void scconf_block_destroy(scconf_block * block);
 
-/* Return the length of an list array */
-extern int scconf_list_array_length(scconf_list * list);
+/* Return the length of an list array
+ */
+extern int scconf_list_array_length(const scconf_list * list);
 
-/* Return the combined length of the strings on all arrays */
-extern int scconf_list_strings_length(scconf_list * list);
+/* Return the combined length of the strings on all arrays
+ */
+extern int scconf_list_strings_length(const scconf_list * list);
 
-/* Return allocated string that contains all strings in a list */
-extern char *scconf_list_strdup(scconf_list * list, const char *filler);
+/* Return an allocated string that contains all
+ * the strings in a list separated by the filler
+ */
+extern char *scconf_list_strdup(const scconf_list * list, const char *filler);
 
 #ifdef __cplusplus
 }
