@@ -613,16 +613,27 @@ gpk_pkfile_init_public(sc_profile_t *profile, sc_card_t *card, sc_file_t *file,
 	/* Set up the system record */
 	memset(sysrec, 0, sizeof(sysrec));
 
-	/* XXX: How to map keyUsage to sysrec[2]?
+	/* Mapping keyUsage to sysrec[2]:
 	 * 	0x00	sign & unwrap
 	 * 	0x10	sign only
 	 * 	0x20	unwrap only
 	 * 	0x30	CA key
-	 * Which PKCS15 key usage values map to which flag?
+	 *
+	 * We start with a value of 0x30.
+	 * If the key allows decryption, clear the sign only bit.
+	 * Likewise, if it allows signing, clear the unwrap only bit.
 	 */
-	sysrec[2] = 0x00; /* no restriction for now */
+	sysrec[2] = 0x30;
+	if (usage & (SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP))
+		sysrec[2] &= ~0x10;
+	if (usage & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_NONREPUDIATION))
+		sysrec[2] &= ~0x20;
+	if (sysrec[2] == 0x30) {
+		sc_error(card->ctx, "Key usage should specify at least one of sign or decipher");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
-	/* Set the key type and algorithm */
+	/* Set the key size and algorithm */
 	if ((r = gpk_pkfile_keybits(bits, &sysrec[1])) < 0
 	 || (r = gpk_pkfile_keyalgo(algo, &sysrec[5])) < 0)
 		return r;
