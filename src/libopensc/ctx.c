@@ -27,6 +27,8 @@
 #include <sys/stat.h>
 #include <limits.h>
 
+#include <opensc/scdl.h>
+
 /* Default value for apdu_masquerade option */
 #ifndef _WIN32
 # define DEF_APDU_MASQ		SC_APDU_MASQUERADE_NONE
@@ -307,6 +309,87 @@ static void load_reader_driver_options(sc_context_t *ctx,
 	}
 }
 
+/**
+ * find library module for provided driver in configuration file
+ * if not found assume library name equals to module name
+ */
+static const char *find_library(struct sc_context *ctx, const char *name, int type)
+{
+	int          i;
+	const char   *libname = NULL;
+	scconf_block **blocks, *blk;
+
+	for (i = 0; ctx->conf_blocks[i]; i++) {
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+			(type==0) ? "reader_driver" : "card_driver", name);
+		blk = blocks[0];
+		free(blocks);
+		if (blk == NULL)
+			continue;
+		libname = scconf_get_str(blk, "module", name);
+#ifdef _WIN32
+		if (libname && libname[0] != '\\' ) {
+#else
+		if (libname && libname[0] != '/' ) {
+#endif
+			sc_debug(ctx, "warning: relative path to driver '%s' used\n",
+				 libname);
+		}
+		break;
+	}
+
+	return libname;
+}
+
+/**
+ * load card/reader driver modules
+ * Every module should contain a function " void * sc_module_init(char *) "
+ * that returns a pointer to the function _sc_get_xxxx_driver()
+ * used to initialize static modules
+ * Also, an exported "char *sc_module_version" variable should exist in module
+ * type=1 -> carddriver Type=0 -> readerdriver
+ */
+static void *load_dynamic_driver(struct sc_context *ctx, void **dll,
+	const char *name, int type)
+{
+	const char *version, *libname;
+	void *handler;
+	void *(*modinit)(const char *) = NULL;
+	const char *(*modversion)(void) = NULL;
+
+	if (name == NULL) { /* should not occurr, but... */
+		sc_error(ctx,"No module specified\n",name);
+		return NULL;
+	}
+	libname = find_library(ctx, name, type);
+	if (libname == NULL)
+		return NULL;
+	handler = scdl_open(libname);
+	if (handler == NULL) {
+		sc_error(ctx, "Module %s: cannot load %s library\n",name,libname);
+		return NULL;
+	}
+	/* verify correctness of module */
+	modinit    = scdl_get_address(handler, "sc_module_init");
+	modversion = scdl_get_address(handler, "sc_driver_version");
+	if (modinit == NULL || modversion == NULL) {
+		sc_error(ctx, "dynamic library '%s' is not a OpenSC module\n",libname);
+		scdl_close(handler);
+		return NULL;
+	}
+	/* verify module version */
+	version = modversion();
+	if (version == NULL || strncmp(version, "0.9.", strlen("0.9.")) > 0) {
+		sc_error(ctx,"dynamic library '%s': invalid module version\n",libname);
+		scdl_close(handler);
+		return NULL;
+	}
+	*dll = handler;
+	sc_debug(ctx, "successfully loaded %s driver '%s'\n",
+		type ? "card" : "reader", name);
+	return modinit(name);
+}
+
 static int load_reader_drivers(struct sc_context *ctx,
 			       struct _sc_ctx_options *opts)
 {
@@ -319,7 +402,8 @@ static int load_reader_drivers(struct sc_context *ctx,
 	for (i = 0; i < opts->rcount; i++) {
 		struct sc_reader_driver *driver;
 		struct sc_reader_driver * (*func)(void) = NULL;
-		int j;
+		int  j;
+		void *dll = NULL;
 
 		ent = &opts->rdrv[i];
 		for (j = 0; internal_reader_drivers[j].name != NULL; j++)
@@ -327,14 +411,16 @@ static int load_reader_drivers(struct sc_context *ctx,
 				func = (struct sc_reader_driver * (*)(void)) internal_reader_drivers[j].func;
 				break;
 			}
+		/* if not initialized assume external module */
+		if (func == NULL)
+			func = load_dynamic_driver(ctx, &dll, ent->name, 0);
+		/* if still null, assume driver not found */
 		if (func == NULL) {
-			/* External driver */
-			/* FIXME: Load shared library */
-			sc_error(ctx, "Unable to load '%s'. External drivers not supported yet.\n",
-			      ent->name);
+			sc_error(ctx, "Unable to load '%s'.\n", ent->name);
 			continue;
 		}
 		driver = func();
+		driver->dll = dll;
 		load_reader_driver_options(ctx, driver);
 		driver->ops->init(ctx, &ctx->reader_drv_data[i]);
 
@@ -394,7 +480,8 @@ static int load_card_drivers(struct sc_context *ctx,
 
 	for (i = 0; i < opts->ccount; i++) {
 		struct sc_card_driver * (* func)(void) = NULL;
-		int j;
+		void *dll = NULL;
+		int  j;
 
 		ent = &opts->cdrv[i];
 		for (j = 0; internal_card_drivers[j].name != NULL; j++)
@@ -402,14 +489,17 @@ static int load_card_drivers(struct sc_context *ctx,
 				func = (struct sc_card_driver * (*)(void)) internal_card_drivers[j].func;
 				break;
 			}
+		/* if not initialized assume external module */
+		if (func == NULL)
+			func = load_dynamic_driver(ctx, &dll, ent->name, 1);
+		/* if still null, assume driver not found */
 		if (func == NULL) {
-			/* External driver */
-			/* FIXME: Load shared library */
-			sc_error(ctx, "Unable to load '%s'. External drivers not supported yet.\n",
-			      ent->name);
+			sc_error(ctx, "Unable to load '%s'.\n", ent->name);
 			continue;
 		}
+
 		ctx->card_drivers[drv_count] = func();
+		ctx->card_drivers[drv_count]->dll = dll;
 
 		load_card_driver_options(ctx, ctx->card_drivers[drv_count]);
                 drv_count++;
@@ -523,6 +613,13 @@ int sc_release_context(struct sc_context *ctx)
 		
 		if (drv->ops->finish != NULL)
 			drv->ops->finish(ctx, ctx->reader_drv_data[i]);
+		if (drv->dll)
+			scdl_close(drv->dll);
+	}
+	for (i = 0; ctx->card_drivers[i]; i++) {
+		struct sc_card_driver *drv = ctx->card_drivers[i];
+		if (drv->dll)
+			scdl_close(drv->dll);
 	}
 	ctx->debug_file = ctx->error_file = NULL;
 	if (ctx->preferred_language)

@@ -261,6 +261,7 @@ struct sc_reader_driver {
 	size_t max_send_size, max_recv_size;
 	int apdu_masquerade;
 	unsigned int forced_protocol;
+	void *dll;
 };
 #define SC_APDU_MASQUERADE_NONE		0x00
 #define SC_APDU_MASQUERADE_4AS3		0x01
@@ -600,6 +601,7 @@ struct sc_card_driver {
 	struct sc_card_operations *ops;
 	struct sc_atr_table *atr_map;
 	unsigned int natrs;
+	void *dll;
 };
 
 struct sc_context {
@@ -865,7 +867,7 @@ struct sc_card_error {
 
 extern const char *sc_get_version(void);
 
-#define IMPLEMENT_DRIVER_VERSION(a) \
+#define SC_IMPLEMENT_DRIVER_VERSION(a) \
 	static const char *drv_version = (a); \
 	const char *sc_driver_version()\
 	{ \

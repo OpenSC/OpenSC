@@ -35,6 +35,8 @@ app default {
 	# internal) driver is supplied, a separate configuration
 	# configuration block has to be written for the driver.
 	# Default: internal
+	# NOTE: if "internal" keyword is used, must be the 
+	# last entry in reader_drivers list
 	#
 	# reader_drivers = openct, pcsc, ctapi;
 
@@ -90,25 +92,17 @@ app default {
 	# internal) driver is supplied, a separate configuration
 	# configuration block has to be written for the driver.
 	# Default: internal
+	# NOTE: When "internal" keyword is used, must be last entry 
 	#
-	# card_drivers = internal, customcos;
+	# card_drivers = customcos, internal;
 
-	# Card driver configuration blocks. For card drivers loaded
-	# from an external shared library/DLL, you need to specify
-	# the path name of the module, and the name of the constructor
-	# function.
-	# WARNING: this is not implemented yet.
-	#
+	# Card driver configuration blocks. 
+
 	# For all drivers, you can specify ATRs of cards that
 	# should be handled by this driver (in addition to the
-	# list of compiled-in ATRs). To do so, specify
+	# list of compiled-in ATRs). 
 	#
-	# card_driver foo {
-	#	atr = 00:11:22:33:44;
-	#	atr = 55:66:77:88:99:aa:bb;
-	# }
-	#
-	# The card driver names are
+	# The supported internal card driver names are
 	#  flex		Cryptoflex/Multiflex
 	#  setcos	Setec
 	#  etoken	Aladdin eToken and other CardOS based cards
@@ -119,16 +113,20 @@ app default {
 	#  tcos		TCOS 2.0
 	#  emv		EMV compatible cards
 
-	# card_driver customcos {
-		# The location of the driver library
-		#
-		# module = /usr/lib/opensc/drivers/card_customcos.so
-	# }
-
-	# GPK card driver
+	# GPK card driver additional ATR entry:
 	card_driver gpk {
 		# atr = 00:11:22;
 	}
+
+	# For card drivers loaded from an external shared library/DLL, 
+	# you need to specify the path name of the module
+	#
+	# card_driver customcos {
+		# The location of the driver library
+		# module = /usr/lib/opensc/drivers/card_customcos.so;
+		# atr = 00:11:22:33:44;
+		# atr = 55:66:77:88:99:aa:bb;
+	# }
 
 	# Force using specific card driver
 	#
