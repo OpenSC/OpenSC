@@ -261,7 +261,11 @@ CK_RV slot_get_token(int id, struct sc_pkcs11_slot **slot)
 		return rv;
 
 	if (!((*slot)->slot_info.flags & CKF_TOKEN_PRESENT))
-		return CKR_TOKEN_NOT_PRESENT;
+	{
+		rv = card_detect((*slot)->reader);
+		if (rv != CKR_OK)
+			return CKR_TOKEN_NOT_PRESENT;
+	}
 
         return CKR_OK;
 }
