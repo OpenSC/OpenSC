@@ -476,9 +476,9 @@ int sc_create_file(struct sc_card *card, struct sc_file *file)
 	if (card->ctx->debug >= 1) {
 		const sc_path_t *in_path = &file->path;
 
-		sc_debug(card->ctx, "called; type=%d, path=%s\n",
+		sc_debug(card->ctx, "called; type=%d, path=%s, size=%u\n",
 				in_path->type,
-				sc_print_path(in_path));
+				sc_print_path(in_path), file->size);
 	}
         if (card->ops->create_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
@@ -509,7 +509,7 @@ int sc_read_binary(struct sc_card *card, unsigned int idx,
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
 	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx, "sc_read_binary: %d bytes at index %d\n", count, idx);
+		sc_debug(card->ctx, "called; %d bytes at index %d\n", count, idx);
 	if (count == 0)
 		return 0;
 	if (card->ops->read_binary == NULL)
@@ -550,7 +550,7 @@ int sc_write_binary(struct sc_card *card, unsigned int idx,
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
 	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx, "sc_write_binary: %d bytes at index %d\n", count, idx);
+		sc_debug(card->ctx, "called; %d bytes at index %d\n", count, idx);
 	if (count == 0)
 		return 0;
 	if (card->ops->write_binary == NULL)
@@ -591,7 +591,7 @@ int sc_update_binary(struct sc_card *card, unsigned int idx,
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
 	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx, "sc_update_binary: %d bytes at index %d\n", count, idx);
+		sc_debug(card->ctx, "called; %d bytes at index %d\n", count, idx);
 	if (count == 0)
 		return 0;
 	if (card->ops->update_binary == NULL)
