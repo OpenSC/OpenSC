@@ -192,6 +192,20 @@ int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen)
 	return 0;
 }
 
+const char *sc_print_path(const sc_path_t *path)
+{
+	static char	buffer[64];
+	size_t		n, len;
+
+	buffer[0] = '\0';
+	if ((len = path->len) >= sizeof(buffer)/2)
+		len = sizeof(buffer)/2;
+	for (n = 0; n < len; n++)
+		sprintf(buffer + 2*n, "%02x", path->value[n]);
+
+	return buffer;
+}
+
 int sc_file_add_acl_entry(struct sc_file *file, unsigned int operation,
                           unsigned int method, unsigned long key_ref)
 {

@@ -804,6 +804,7 @@ int sc_file_set_type_attr(struct sc_file *file, const u8 *type_attr,
 			  size_t type_attr_len);
 
 void sc_format_path(const char *path_in, struct sc_path *path_out);
+const char *sc_print_path(const sc_path_t *path_in);
 int sc_append_path(struct sc_path *dest, const struct sc_path *src);
 int sc_append_path_id(struct sc_path *dest, const u8 *id, size_t idlen);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
