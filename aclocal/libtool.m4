@@ -2146,7 +2146,7 @@ linux-gnuoldld* | linux-gnuaout* | linux-gnucoff*)
   ;;
 
 # This must be Linux ELF.
-linux-gnu*)
+linux*)
   version_type=linux
   need_lib_prefix=no
   need_version=no
