@@ -135,20 +135,20 @@ static long t1, t2, tot_read = 0, tot_dur = 0, dur;
 /* Used for a trick in select file and read binary */
 static size_t next_idx = -1;
 
-static struct sc_atr_table belpic_atrs[] = {
+static struct sc_atr_table_hex belpic_atrs[] = {
 	/* Applet V1.1 */
-	{(const u8 *) "\x3B\x98\x13\x40\x0A\xA5\x03\x01\x01\x01\xAD\x13\x11", 13, BELPIC_EID},
-	/* Applet V 1.0 with new EMV-compatible ATR */
-	{(const u8 *) "\x3B\x98\x94\x40\x0A\xA5\x03\x01\x01\x01\xAD\x13\x10", 13, BELPIC_EID},
-	/* Applet beta 5 + V 1.0 */
-	{(const u8 *) "\x3B\x98\x94\x40\xFF\xA5\x03\x01\x01\x01\xAD\x13\x10", 13, BELPIC_EID},
+	{ "3B:98:13:40:0A:A5:03:01:01:01:AD:13:11", NULL, BELPIC_EID },
+	/* Applet V1.0 with new EMV-compatible ATR */
+	{ "3B:98:94:40:0A:A5:03:01:01:01:AD:13:10", NULL, BELPIC_EID },
+	/* Applet beta 5 + V1.0 */
+	{ "3B:98:94:40:FF:A5:03:01:01:01:AD:13:10", NULL, BELPIC_EID },
 #if 0
 	/* Applet beta 3 + 4 */
-	{(const u8 *) "\x3B\x98\x11\x40\xFF\xA5\x03\x01\x01\x01\xAD\x13\x04", 13, BELPIC_EID},
+	{ "3B:98:11:40:FF:A5:03:01:01:01:AD:13:04", NULL, BELPIC_EID },
 	/* Applet beta 2 */
-	{(const u8 *) "\x3B\x68\x00\x00\x29\x05\x01\x02\x01\xAD\x13\x03", 12, BELPIC_EID},
+	{ "3B:68:00:00:29:05:01:02:01:AD:13:03", NULL, BELPIC_EID },
 #endif
-	{NULL}
+	{ NULL }
 };
 
 struct belpic_priv_data {
@@ -970,7 +970,7 @@ static int belpic_match_card(struct sc_card *card)
 {
 	int i;
 
-	i = _sc_match_atr(card, belpic_atrs, NULL);
+	i = _sc_match_atr_hex(card, belpic_atrs, NULL);
 	if (i < 0)
 		return 0;
 	return 1;
@@ -994,7 +994,7 @@ static int belpic_init(struct sc_card *card)
 #endif
 	sc_debug(card->ctx, "\n");
 
-	i = _sc_match_atr(card, belpic_atrs, &id);
+	i = _sc_match_atr_hex(card, belpic_atrs, &id);
 	if (i < 0)
 		id = BELPIC_EID;	/* Unknown ATR: assume it's the Belpic Card */
 	priv = (struct belpic_priv_data *) calloc(1, sizeof(struct belpic_priv_data));

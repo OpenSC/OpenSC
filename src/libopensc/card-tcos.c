@@ -27,11 +27,14 @@
 #include <time.h>
 #include <stdlib.h>
 
-static const char *tcos_atrs[] = {
-	"3B:BA:13:00:81:31:86:5D:00:64:05:0A:02:01:31:80:90:00:8B", /* SLE44 */
-	"3B:BA:14:00:81:31:86:5D:00:64:05:14:02:02:31:80:90:00:91", /* SLE66S */
-	"3B:BA:96:00:81:31:86:5D:00:64:05:60:02:03:31:80:90:00:66", /* SLE66P */
-	NULL
+static struct sc_atr_table_hex tcos_atrs[] = {
+	/* SLE44 */
+	{ "3B:BA:13:00:81:31:86:5D:00:64:05:0A:02:01:31:80:90:00:8B" },
+	/* SLE66S */
+	{ "3B:BA:14:00:81:31:86:5D:00:64:05:14:02:02:31:80:90:00:91" },
+	/* SLE66P */
+	{ "3B:BA:96:00:81:31:86:5D:00:64:05:60:02:03:31:80:90:00:66" },
+	{ NULL }
 };
 
 static struct sc_card_operations tcos_ops;
@@ -55,25 +58,11 @@ static int tcos_finish(struct sc_card *card)
 
 static int tcos_match_card(struct sc_card *card)
 {
-	int i, match = -1;
+	int i;
 
-	for (i = 0; tcos_atrs[i] != NULL; i++) {
-		u8 defatr[SC_MAX_ATR_SIZE];
-		size_t len = sizeof(defatr);
-		const char *atrp = tcos_atrs[i];
-
-		if (sc_hex_to_bin(atrp, defatr, &len))
-			continue;
-		if (len != card->atr_len)
-			continue;
-		if (memcmp(card->atr, defatr, len) != 0)
-			continue;
-		match = i;
-		break;
-	}
-	if (match == -1)
+	i = _sc_match_atr_hex(card, tcos_atrs, NULL);
+	if (i < 0)
 		return 0;
-
 	return 1;
 }
 

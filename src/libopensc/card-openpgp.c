@@ -1,5 +1,5 @@
 /*
- * card-pgp.c: Support for OpenPGP card
+ * card-openpgp.c: Support for OpenPGP card
  *
  * Copyright (C) 2003  Olaf Kirch <okir@suse.de>
  *
@@ -25,9 +25,9 @@
 #include <string.h>
 #include <ctype.h>
 
-static const char *pgp_atrs[] = {
-	"3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1",
-	NULL
+static struct sc_atr_table_hex pgp_atrs[] = {
+	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1" },
+	{ NULL }
 };
 
 static struct sc_card_operations *iso_ops;
@@ -108,25 +108,11 @@ struct pgp_priv_data {
 static int
 pgp_match_card(sc_card_t *card)
 {
-	int i, match = -1;
+	int i;
 
-	for (i = 0; pgp_atrs[i] != NULL; i++) {
-		u8 defatr[SC_MAX_ATR_SIZE];
-		size_t len = sizeof(defatr);
-		const char *atrp = pgp_atrs[i];
-
-		if (sc_hex_to_bin(atrp, defatr, &len))
-			continue;
-		if (len != card->atr_len)
-			continue;
-		if (memcmp(card->atr, defatr, len) != 0)
-			continue;
-		match = i;
-		break;
-	}
-	if (match == -1)
+	i = _sc_match_atr_hex(card, pgp_atrs, NULL);
+	if (i < 0)
 		return 0;
-
 	return 1;
 }
 

@@ -43,19 +43,18 @@ static struct sc_card_driver etoken_drv = {
 	&etoken_ops
 };
 
-static const struct {
-	const char *	atr;
-	int		type;
-} etoken_atrs[] = {
-    { "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c",	CARDOS_TYPE_ANY }, /* 4.0 */
-    { "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15",	CARDOS_TYPE_ANY }, /* 4.01 */
-    { "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12",	CARDOS_TYPE_ANY }, /* 4.01a */
-    /* Italian eID card: */
-    { "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", CARDOS_TYPE_ANY },
-    /* Italian eID card from Infocamere */
-    { "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", CARDOS_TYPE_ANY },
-
-    { NULL }
+static struct sc_atr_table_hex etoken_atrs[] = {
+	/* 4.0 */
+	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, CARDOS_TYPE_ANY },
+	/* 4.01 */
+	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL, CARDOS_TYPE_ANY },
+	/* 4.01a */
+	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, CARDOS_TYPE_ANY },
+	/* Italian eID card */
+	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, CARDOS_TYPE_ANY },
+	/* Italian eID card from Infocamere */
+	{ "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", NULL, CARDOS_TYPE_ANY },
+	{ NULL }
 };
 
 static int etoken_finish(struct sc_card *card)
@@ -63,28 +62,14 @@ static int etoken_finish(struct sc_card *card)
 	return 0;
 }
 
-static int etoken_identify_card(struct sc_card *card)
+static int etoken_match_card(struct sc_card *card)
 {
 	int i;
 
-	for (i = 0; etoken_atrs[i].atr; i++) {
-		u8 defatr[SC_MAX_ATR_SIZE];
-		size_t len = sizeof(defatr);
-
-		if (sc_hex_to_bin(etoken_atrs[i].atr, defatr, &len))
-			continue;
-		if (len != card->atr_len)
-			continue;
-		if (!memcmp(card->atr, defatr, len))
-			return etoken_atrs[i].type;
-	}
-
-	return 0;
-}
-
-static int etoken_match_card(struct sc_card *card)
-{
-	return etoken_identify_card(card) != 0;
+	i = _sc_match_atr_hex(card, etoken_atrs, NULL);
+	if (i < 0)
+		return 0;
+	return 1;
 }
 
 static int etoken_init(struct sc_card *card)

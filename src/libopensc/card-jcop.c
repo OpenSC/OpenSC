@@ -23,12 +23,22 @@
 #include <string.h>
 #include <stdlib.h>
 
+static struct sc_atr_table_hex jcop_atrs[] = {
+	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:33:31:06" },
+#if 0
+	/* Requires secure messaging */
+	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:32:31:06" },
+#endif
+	{ NULL }
+};
+
 static struct sc_card_operations jcop_ops;
 static struct sc_card_driver jcop_drv = {
      "JCOP cards with BlueZ PKCS#15 applet",
      "jcop",
      &jcop_ops
 };
+
 #define SELECT_MF 0
 #define SELECT_EFDIR 1
 #define SELECT_APPDF 2
@@ -62,35 +72,15 @@ static int jcop_finish(struct sc_card *card)
      
      return 0;
 }
-static const char *jcop_atrs[] = {
-     "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:33:31:06",
-     /* Requires secure messaging */
-     /*"3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:32:31:06",*/ 
-     NULL
-};
 
 static int jcop_match_card(struct sc_card *card)
 {
-     int i, match = -1;
+	int i;
 
-     for (i = 0; jcop_atrs[i] != NULL; i++) {
-	  u8 defatr[SC_MAX_ATR_SIZE];
-	  size_t len = sizeof(defatr);
-	  const char *atrp = jcop_atrs[i];
-
-	  if (sc_hex_to_bin(atrp, defatr, &len))
-	       continue;
-	  if (len != card->atr_len)
-	       continue;
-	  if (memcmp(card->atr, defatr, len) != 0)
-	       continue;
-	  match = i;
-	  break;
-     }
-     if (match == -1)
-	  return 0;
-
-     return 1;
+	i = _sc_match_atr_hex(card, jcop_atrs, NULL);
+	if (i < 0)
+		return 0;
+	return 1;
 }
 
 static unsigned char ef_dir_contents[128] = {

@@ -27,10 +27,10 @@
 /* TODO: - secure messaging 
  */
 
-static const char *starcos_atrs[] = {
-  "3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4",
-  "3B:B7:94:00:81:31:fe:65:53:50:4b:32:33:90:00:d1",
-  NULL
+static struct sc_atr_table_hex starcos_atrs[] = {
+	{ "3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4" },
+	{ "3B:B7:94:00:81:31:fe:65:53:50:4b:32:33:90:00:d1" },
+	{ NULL }
 };
 
 static struct sc_card_operations starcos_ops;
@@ -42,7 +42,6 @@ static struct sc_card_driver starcos_drv = {
 	&starcos_ops,
 	NULL, 0
 };
-
 
 static const struct sc_card_error starcos_errors[] = 
 {
@@ -72,27 +71,12 @@ typedef struct starcos_ex_data_st {
 /* the starcos part */
 static int starcos_match_card(struct sc_card *card)
 {
-	int i, match = -1;
-  
-	for (i = 0; starcos_atrs[i] != NULL; i++) 
-	{
-		u8 defatr[SC_MAX_ATR_SIZE];
-		size_t len = sizeof(defatr);
-		const char *atrp = starcos_atrs[i];
-      
-		if (sc_hex_to_bin(atrp, defatr, &len))
-			continue;
-		if (len != card->atr_len)
-			continue;
-		if (memcmp(card->atr, defatr, len) != 0)
-			continue;
-		match = i + 1;
-		break;
-    	}
-	if (match == -1)
+	int i;
+
+	i = _sc_match_atr_hex(card, starcos_atrs, NULL);
+	if (i < 0)
 		return 0;
-  
-	return i;
+	return i + 1;	/* XXX */
 }
 
 static int starcos_init(struct sc_card *card)

@@ -103,21 +103,15 @@ static int	gpk_get_info(struct sc_card *, u8, u8, u8 *, size_t);
 /*
  * ATRs of GPK4000 cards courtesy of libscez
  */
-static struct atrinfo {
-	unsigned char	atr[SC_MAX_ATR_SIZE];
-	unsigned int	atr_len;
-	int		variant;
-	const char *	name;
-} atrlist[] = {
-  { "\x3B\x27\x00\x80\x65\xA2\x04\x01\x01\x37", 10, GPK4000_s, "GPK 4K" },
-  { "\x3B\x27\x00\x80\x65\xA2\x05\x01\x01\x37", 10, GPK4000_sp, "GPK 4K" },
-  { "\x3B\x27\x00\x80\x65\xA2\x0C\x01\x01\x37", 10, GPK4000_su256, "GPK 4K" },
-  { "\x3B\xA7\x00\x40\x14\x80\x65\xA2\x14\x01\x01\x37", 12, GPK4000_sdo, "GPK 4K" },
-  { "\x3B\xA7\x00\x40\x18\x80\x65\xA2\x08\x01\x01\x52", 12, GPK8000_8K, "GPK 8K" },
-  { "\x3B\xA7\x00\x40\x18\x80\x65\xA2\x09\x01\x01\x52", 12, GPK8000_16K, "GPK 8K" },
-  { "\x3B\xA7\x00\x40\x18\x80\x65\xA2\x09\x01\x02\x52", 12, GPK16000, "GPK 16K" },
-
-  { "", 0, -1 }
+static struct sc_atr_table_hex gpk_atrs[] = {
+	{ "3B:27:00:80:65:A2:04:01:01:37", "GPK 4K", GPK4000_s },
+	{ "3B:27:00:80:65:A2:05:01:01:37", "GPK 4K", GPK4000_sp },
+	{ "3B:27:00:80:65:A2:0C:01:01:37", "GPK 4K", GPK4000_su256 },
+	{ "3B:A7:00:40:14:80:65:A2:14:01:01:37", "GPK 4K", GPK4000_sdo },
+	{ "3B:A7:00:40:18:80:65:A2:08:01:01:52", "GPK 8K", GPK8000_8K },
+	{ "3B:A7:00:40:18:80:65:A2:09:01:01:52", "GPK 8K", GPK8000_16K },
+	{ "3B:A7:00:40:18:80:65:A2:09:01:02:52", "GPK 16K", GPK16000 },
+	{ NULL }
 };
 
 /*
@@ -138,7 +132,7 @@ static struct sc_card_driver gpk_drv = {
 static int
 gpk_identify(struct sc_card *card)
 {
-	struct atrinfo	*ai;
+	int i, variant;
 
 	/* Gemplus GPK docs say we can use just the 
 	 * FMN and PRN fields of the historical bytes
@@ -149,32 +143,29 @@ gpk_identify(struct sc_card *card)
 	if ( (card->slot->atr_info.hist_bytes_len >= 7)
 		&& (card->slot->atr_info.hist_bytes[0] == 0x80)
 		&& (card->slot->atr_info.hist_bytes[1] == 0x65)
-		&& (card->slot->atr_info.hist_bytes[2] == 0xa2)) /* FMN */
-	{
-		if (card->slot->atr_info.hist_bytes[3] == 0x08){ /* PRN? */
+		&& (card->slot->atr_info.hist_bytes[2] == 0xa2)) { /* FMN */
+		if (card->slot->atr_info.hist_bytes[3] == 0x08) { /* PRN? */
 			return GPK8000;
 		}
-		if (card->slot->atr_info.hist_bytes[3] == 0x09){ /* PRN? */
+		if (card->slot->atr_info.hist_bytes[3] == 0x09) { /* PRN? */
 			return GPK16000;
 		}
 	}
 
 	/* if the above ATR-analysis fails, check the known ATR list */
-	for (ai = atrlist; ai->atr_len; ai++) {
-		if (card->atr_len >= ai->atr_len
-		 && !memcmp(card->atr, ai->atr, ai->atr_len))
-			return ai->variant;
-	}
-	return 0;
+	i = _sc_match_atr_hex(card, gpk_atrs, &variant);
+	if (i < 0)
+		return 0;
+	return variant;
 }
 
 /*
- * return 1 iff this driver can handle the card
+ * return 1 if this driver can handle the card
  */
 static int
-gpk_match(struct sc_card *card)
+gpk_match_card(struct sc_card *card)
 {
-	return gpk_identify(card)? 1 : 0;
+	return gpk_identify(card) ? 1 : 0;
 }
 
 /*
@@ -1906,7 +1897,7 @@ sc_get_driver()
 		iso_ops = iso_drv->ops;
 		gpk_ops = *iso_ops;
 
-		gpk_ops.match_card	= gpk_match;
+		gpk_ops.match_card	= gpk_match_card;
 		gpk_ops.init		= gpk_init;
 		gpk_ops.finish		= gpk_finish;
 		gpk_ops.select_file	= gpk_select_file;

@@ -25,13 +25,13 @@
 #define SETEC_PKI	1
 #define SETEC_OTHER	2
 
-static struct sc_atr_table setcos_atrs[] = {
+static struct sc_atr_table_hex setcos_atrs[] = {
 	/* the current FINEID card has this ATR: */
-	{ (const u8 *) "\x3B\x9F\x94\x40\x1E\x00\x67\x11\x43\x46\x49\x53\x45\x10\x52\x66\xFF\x81\x90\x00", 20, SETEC_PKI },
+	{ "3B:9F:94:40:1E:00:67:11:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, SETEC_PKI },
 	/* RSA SecurID 3100 */
-	{ (const u8 *) "\x3B\x9F\x94\x40\x1E\x00\x67\x16\x43\x46\x49\x53\x45\x10\x52\x66\xFF\x81\x90\x00", 20, SETEC_PKI },
+	{ "3B:9F:94:40:1E:00:67:16:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, SETEC_PKI },
 	/* this is from a Nokia branded SC */
-	{ (const u8 *) "\x3B\x1F\x11\x00\x67\x80\x42\x46\x49\x53\x45\x10\x52\x66\xFF\x81\x90\x00", 18, SETEC_OTHER },
+	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, SETEC_OTHER },
 	{ NULL }
 };
 
@@ -63,8 +63,7 @@ static int setcos_match_card(struct sc_card *card)
 		return 0;
 	if (memcmp(hist_bytes + 4, "FISE", 4) != 0)
 		return 0;
-	
-	i = _sc_match_atr(card, setcos_atrs, NULL);
+	i = _sc_match_atr_hex(card, setcos_atrs, NULL);
 	if (i < 0)
 		return 0;
 	return 1;
@@ -75,7 +74,7 @@ static int setcos_init(struct sc_card *card)
 	int i, id;
 	struct setcos_priv_data *priv = NULL;
 
-	i = _sc_match_atr(card, setcos_atrs, &id);
+	i = _sc_match_atr_hex(card, setcos_atrs, &id);
 	if (i < 0)
 		return 0;
 	priv = (struct setcos_priv_data *) malloc(sizeof(struct setcos_priv_data));

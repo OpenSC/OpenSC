@@ -26,17 +26,11 @@
 #include "cardctl.h"
 #include "pkcs15.h"
 #ifdef HAVE_OPENSSL
-
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-
 #include <openssl/des.h>
 #include <openssl/opensslv.h>
-
-#include "log.h"
-#include "pkcs15.h"
-
 #include "card-oberthur.h"
 
 /* keep OpenSSL 0.9.6 users happy ;-) */
@@ -47,42 +41,30 @@
 #define DES_ecb_encrypt(a,b,c,d) 	des_ecb_encrypt(a,b,*c,d)
 #endif
 
-static NTLV_t oberthur_atrs[] = {
+static struct sc_atr_table_hex oberthur_atrs[] = {
 #if 0
-	{ "Oberthur 32k", ATR_OBERTHUR_32K, 20,
-	  (unsigned char *) "\x3B\x7F\x18\x00\x00\x00\x31\xC0\x73\x9E\x01\x0B\x64\x52\xD9\x04\x00\x82\x90\x00"
-	},
-	{ "Oberthur 32k BIO", ATR_OBERTHUR_32K_BIO, 20,
-	  (unsigned char *) "\x3B\x7F\x18\x00\x00\x00\x31\xC0\x73\x9E\x01\x0B\x64\x52\xD9\x05\x00\x82\x90\x00"
-	},
+	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:04:00:82:90:00", "Oberthur 32k", ATR_OBERTHUR_32K },
+	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:05:00:82:90:00", "Oberthur 32k BIO", ATR_OBERTHUR_32K_BIO },
 #endif
-	{ "Oberthur 64k v4/2.1.1", ATR_OBERTHUR_64K, 18,
-	  "\x3B\x7D\x18\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x01\x00\x82\x90\x00"
-	},
-	{ "Oberthur 64k v4/2.1.1", ATR_OBERTHUR_64K, 18,
-	  "\x3B\x7D\x18\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x02\x00\x82\x90\x00"
-	},
-	{ "Oberthur 64k v5", ATR_OBERTHUR_64K, 18,
-	  "\x3B\x7D\x11\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x01\x00\x82\x90\x00"
-	},
-	{ "Oberthur 64k v5/2.2.0", ATR_OBERTHUR_64K, 18,
-	  "\x3B\x7D\x11\x00\x00\x00\x31\x80\x71\x8E\x64\x77\xE3\x02\x00\x82\x90\x00"
-	},
-	{ NULL, 0, 0, NULL	}
+	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", "Oberthur 64k v4/2.1.1", ATR_OBERTHUR_64K },
+	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", "Oberthur 64k v4/2.1.1", ATR_OBERTHUR_64K },
+	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", "Oberthur 64k v5", ATR_OBERTHUR_64K },
+	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", "Oberthur 64k v5/2.2.0", ATR_OBERTHUR_64K },
+	{ NULL }
 };
 
 
 static NTLV_t oberthur_aids[] = {
 #if 0
 	{ "AuthentIC v2", AID_OBERTHUR_V2, 14,
-	  (unsigned char *) "\xA0\x00\x00\x00\x77\x58\x35\x30\x39\x23\x56\x32\x2E\x30"
+	  (const unsigned char *) "\xA0\x00\x00\x00\x77\x58\x35\x30\x39\x23\x56\x32\x2E\x30"
 	},
 	{ "AuthentIC v4", AID_OBERTHUR_V4, 16,
-	  (unsigned char *) "\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x20\x03\xF1\x00\x00\x00\x02"
+	  (const unsigned char *) "\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x20\x03\xF1\x00\x00\x00\x02"
 	},
 #endif
 	{ "AuthentIC v5", AID_OBERTHUR_V5, 16,
-	  "\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x00\x00\xF1\x00\x00\x00\x02"
+	  (const unsigned char *) "\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x00\x00\xF1\x00\x00\x00\x02"
 	},
 	{ NULL, 0, 0, NULL }
 }; 
@@ -184,22 +166,16 @@ auth_select_aid(struct sc_card *card)
 	return oberthur_aids[ii].value == NULL ? -1 : 0;
 }
 
-
 static int 
 auth_match_card(struct sc_card *card)
 {
-	int ii;
-	
-	for (ii = 0; oberthur_atrs[ii].value != NULL; ii++) {
-		if (oberthur_atrs[ii].len != card->atr_len)
-			continue;
-		else if (!memcmp(card->atr, oberthur_atrs[ii].value, oberthur_atrs[ii].len))
-			return 1;
-	}
+	int i;
 
-	return 0;
+	i = _sc_match_atr_hex(card, oberthur_atrs, NULL);
+	if (i < 0)
+		return 0;
+	return 1;
 }
-
 
 static int 
 auth_init(struct sc_card *card)

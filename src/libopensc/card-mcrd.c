@@ -28,28 +28,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-
 #include "esteid.h"
 
-#define TYPE_UNKNOWN   0
-#define TYPE_ANY       1
-#define TYPE_ESTEID    2
+#define TYPE_UNKNOWN	0
+#define TYPE_ANY	1
+#define TYPE_ESTEID	2
 
-
-/* this structure should be somewhere else. Copied from other card source. 
- * I need to make sure a 'variant' of a card to make decisions.
- */
-struct sc_card_atrs {
-	const char *atr;
-	const int type;
-	const char *name;
-};
-
-static struct sc_card_atrs mcrd_atrs[] = {
-	{"3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", TYPE_ANY, "German BMI"},
-	{"3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43", TYPE_ESTEID, "EstEID (cold)"},
-	{"3B:6E:00:FF:45:73:74:45:49:44:20:76:65:72:20:31:2E:30", TYPE_ESTEID, "EstEID (warm)"},
-	{NULL, TYPE_UNKNOWN, NULL}
+static struct sc_atr_table_hex mcrd_atrs[] = {
+	{ "3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", "German BMI", TYPE_ANY },
+	{ "3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43", "EstEID (cold)", TYPE_ESTEID },
+	{ "3B:6E:00:FF:45:73:74:45:49:44:20:76:65:72:20:31:2E:30", "EstEID (warm)", TYPE_ESTEID },
+	{ NULL }
 };
 
 static struct sc_card_operations mcrd_ops;
@@ -160,26 +149,6 @@ static void clear_special_files (struct df_info_s *dfi)
 	}
 }
 
-/* this function should be somewhere else in opensc code, too */
-static int
-sc_card_identify (struct sc_card *card, struct sc_card_atrs *atr_list)
-{
-	int i;
-	for (i = 0; atr_list[i].atr != NULL; i++)
-	{
-		u8 defatr[SC_MAX_ATR_SIZE];
-		size_t len = sizeof (defatr);
-		const char *atrp = atr_list[i].atr;
-		if (sc_hex_to_bin (atrp, defatr, &len))
-			continue;
-		if (len != card->atr_len)
-			continue;
-		if (memcmp (card->atr, defatr, len) == 0)
-		return atr_list[i].type;
-	}
-	return 0;
-}
-
 /* Some functionality straight from the EstEID manual. 
  * Official notice: Refer to the Micardo 2.1 Public manual.
  * Sad side: not available without a NDA.
@@ -278,9 +247,24 @@ mcrd_set_decipher_key_ref (struct sc_card *card, int key_reference)
 	SC_FUNC_RETURN (card->ctx, 2, sc_check_sw (card, apdu.sw1, apdu.sw2));
 }
 
+static int sc_card_type(struct sc_card *card)
+{
+	int i, type;
+
+	i = _sc_match_atr_hex(card, mcrd_atrs, &type);
+	if (i < 0)
+		return 0;
+	return type;
+}
+
 static int mcrd_match_card(struct sc_card *card)
 {
-	 return sc_card_identify(card, mcrd_atrs) != 0;
+	int i;
+
+	i = _sc_match_atr_hex(card, mcrd_atrs, NULL);
+	if (i < 0)
+		return 0;
+	return 1;
 }
 
 static int mcrd_init(struct sc_card *card)
@@ -305,7 +289,7 @@ static int mcrd_init(struct sc_card *card)
 
 	priv->curpath[0] = MFID;
 	priv->curpathlen = 1;
-	if (sc_card_identify(card, mcrd_atrs) != TYPE_ESTEID)
+	if (sc_card_type(card) != TYPE_ESTEID)
 		load_special_files (card);
 	return 0;
 }
@@ -1101,7 +1085,7 @@ static int mcrd_set_security_env(struct sc_card *card,
 	SC_FUNC_CALLED(card->ctx, 2);
 	
 	/* special environemnt handling for esteid, stolen from openpgp */
-	if (sc_card_identify(card, mcrd_atrs) == TYPE_ESTEID) {
+	if (sc_card_type(card) == TYPE_ESTEID) {
 		/* some sanity checks */
 		if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
 			if (env->algorithm != SC_ALGORITHM_RSA)

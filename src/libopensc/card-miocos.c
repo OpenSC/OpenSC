@@ -24,11 +24,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct sc_atr_table miocos_atrs[] = {
+static struct sc_atr_table_hex miocos_atrs[] = {
 	/* Test card with 32 kB memory */
-	{ (const u8 *) "\x3B\x9D\x94\x40\x23\x00\x68\x10\x11\x4D\x69\x6F\x43\x4F\x53\x00\x90\x00", 18 },
+	{ "3B:9D:94:40:23:00:68:10:11:4D:69:6F:43:4F:53:00:90:00" },
 	/* Test card with 64 kB memory */
-	{ (const u8 *) "\x3B\x9D\x94\x40\x23\x00\x68\x20\x01\x4D\x69\x6F\x43\x4F\x53\x00\x90\x00", 18 },
+	{ "3B:9D:94:40:23:00:68:20:01:4D:69:6F:43:4F:53:00:90:00" },
 	{ NULL }
 };
 
@@ -54,7 +54,7 @@ static int miocos_match_card(struct sc_card *card)
 {
 	int i;
 
-	i = _sc_match_atr(card, miocos_atrs, NULL);
+	i = _sc_match_atr_hex(card, miocos_atrs, NULL);
 	if (i < 0)
 		return 0;
 	return 1;
@@ -62,12 +62,8 @@ static int miocos_match_card(struct sc_card *card)
 
 static int miocos_init(struct sc_card *card)
 {
-	int i, id;
 	struct miocos_priv_data *priv = NULL;
 
-	i = _sc_match_atr(card, miocos_atrs, &id);
-	if (i < 0)
-		return 0;
 	priv = (struct miocos_priv_data *) malloc(sizeof(struct miocos_priv_data));
 	if (priv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
