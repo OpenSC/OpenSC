@@ -57,7 +57,7 @@
 #define sleep(t) Sleep((t) * 1000)
 
 #ifndef VERSION
-#define VERSION "0.8.1"
+#define VERSION "0.9.4"
 #endif
 
 /* src/common/getpass.c */
