@@ -484,7 +484,7 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
       const struct option *pfound = NULL;
       int exact = 0;
       int ambig = 0;
-      int indfound;
+      int indfound = 0;
       int option_index;
 
       for (nameend = nextchar; *nameend && *nameend != '='; nameend++)
@@ -537,17 +537,17 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 	      else
 		{
 		  if (opterr)
-		   if (argv[optind - 1][1] == '-')
+		   if (argv[optind - 1][1] == '-') {
 		    /* --option */
 		    fprintf (stderr,
 		     gettext ("%s: option `--%s' doesn't allow an argument\n"),
 		     argv[0], pfound->name);
-		   else
+		   } else {
 		    /* +option or -option */
 		    fprintf (stderr,
 		     gettext ("%s: option `%c%s' doesn't allow an argument\n"),
 		     argv[0], argv[optind - 1][0], pfound->name);
-
+		   }
 		  nextchar += strlen (nextchar);
 		  return '?';
 		}
