@@ -907,7 +907,7 @@ if (test x$enable_ldap = xyes); then
     AC_CHECK_LIB(ldapssl30, ldap_search, LIBLDAP="-lldapssl30 $LIBLDAP" found_ldap_lib=yes need_pthread=true,, -lpthread)
   fi
 
-  if test -n "$found_ldap_lib"; then
+  if test -n "$found_ldap_lib" -a "x$ac_cv_header_ldap_h" = "xyes"; then
     AC_DEFINE(LDAP_REFERRALS,1,[This is needed for the native Solaris LDAP SDK])
     AC_DEFINE(HAVE_LDAP, 1, [Use LDAP for authentication etc.])
     LDAP_MSG="yes"
