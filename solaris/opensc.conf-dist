@@ -28,6 +28,10 @@ app default {
 	#
 	# error_file = /tmp/opensc-errors.log;
 
+        # Where to find the *.profile files for pkcs15init;
+
+	profile_dir = /usr/share/opensc;
+
 	# What reader drivers to load at start-up
 	#
 	# A special value of 'internal' will load all

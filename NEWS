@@ -27,7 +27,11 @@ New in 0.9.x; 2005-xx-xx; Antti Tapaninen:
 * Several memory leaks and other bugs fixed.
 
 New in 0.9.6; not yet released;
+* undo user_content changes to retain compatibility with 0.9.4.
+* add solaris/ files for easier installation on solaris.
 * Makefile.am: require automake 1.5
+* free() fixes in some card drivers.
+* fix autoconf configure code.
 
 New in 0.9.5; 2005-01-11; Andreas Jellinghaus:
 * Big rewrite of the autoconf code for openssl. This fixes bugs on Mac OS X
