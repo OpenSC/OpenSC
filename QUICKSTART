@@ -103,8 +103,8 @@ and install the software as root
 
 usually opensc is fine without any config file, still you can install it:
 
-# cp etc/opensc.conf.example /etc/opensc.conf
-# cp etc/scldap.conf.example /etc/scldap.conf
+# cp etc/opensc.conf /etc/opensc.conf
+# cp etc/scldap.conf /etc/scldap.conf
 
 If you have some reason to edit the config file, feel free to do so.
 But most users are fine without.
