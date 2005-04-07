@@ -54,9 +54,10 @@
 #else
 
 #define PCSC_ERROR(ctx, desc, rv) sc_error(ctx, desc ": %s\n", pcsc_stringify_error(rv));
-/* For mangling ioctl codes from IFDHandlers */
-#define dw2i(a, x) ((((((a[x+3] << 8) + a[x+2]) << 8) + a[x+1]) << 8) + a[x])
 #endif
+
+/* Utility for handling big endian IOCTL codes. */
+#define dw2i_be(a, x) ((((((a[x] << 8) + a[x+1]) << 8) + a[x+2]) << 8) + a[x+3])
 
 #define GET_SLOT_PTR(s, i) (&(s)->slot[(i)])
 #define GET_PRIV_DATA(r) ((struct pcsc_private_data *) (r)->drv_data)
@@ -429,11 +430,11 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 			for (i = 0; i < feature_len; i += 6) {
 				if (feature_buf[i] == FEATURE_VERIFY_PIN_DIRECT) {
 					sc_debug(reader->ctx, "Reader supports pinpad verification");
-					pslot->verify_ioctl = dw2i(feature_buf, i + 2);
+					pslot->verify_ioctl = dw2i_be(feature_buf, i + 2);
 					slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
 				} else if (feature_buf[i] == FEATURE_MODIFY_PIN_DIRECT) {
 					sc_debug(reader->ctx, "Reader supports pinpad modification");
-					pslot->modify_ioctl = dw2i(feature_buf, i + 2);
+					pslot->modify_ioctl = dw2i_be(feature_buf, i + 2);
 					slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
 				} else {
 					sc_debug(reader->ctx, "Reader pinpad feature: %c not recognized", feature_buf[i]);
@@ -726,7 +727,7 @@ static int class2_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	buf[count++] = 0x00;	/* " */
 	
 	/* ulDataLength */
-	if (data->pin1.length_offset > 4)
+	if (data->pin1.length_offset != 4)
 		tmp = apdu->datalen + 4;
 	else
 		tmp = 4;
@@ -739,7 +740,7 @@ static int class2_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	buf[count++] = apdu->p2;
 	
 	/* Copy data if not Case 1 */
-	if (data->pin1.length_offset > 4) {
+	if (data->pin1.length_offset != 4) {
 		memcpy(&buf[count], apdu->data, apdu->datalen);
 		count += apdu->datalen;
 	}
@@ -815,16 +816,16 @@ static int class2_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	buf[count++] = 0x00;	/* bNumberMessage */
 	buf[count++] = 0x00;	/* wLangId */
 	buf[count++] = 0x00;	/* " */
-	/* FIXME: Only as many as bNumberMessage messages! */
-	buf[count++] = 0x00;	/* bMsgIndex1 */
-	buf[count++] = 0x00;	/* bMsgIndex2 */
-	buf[count++] = 0x00;	/* bMsgIndex3 */
-	buf[count++] = 0x00;	/* bTeoPrologue */
+	/* Only as many as bNumberMessage messages, currently none */
+	/* buf[count++] = 0x00; */	/* bMsgIndex1 */
+	/* buf[count++] = 0x00;	*/ /* bMsgIndex2 */
+	/* buf[count++] = 0x00;	*/ /* bMsgIndex3 */
+	buf[count++] = 0x00; /* bTeoPrologue */
 	buf[count++] = 0x00;	/* " */
 	buf[count++] = 0x00;	/* " */
 	
 	/* ulDataLength */
-	if (data->pin1.length_offset > 4)
+	if (data->pin1.length_offset != 4)
 		tmp = apdu->datalen + 4;
 	else
 		tmp = 4;
@@ -837,7 +838,7 @@ static int class2_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	buf[count++] = apdu->p2;
 	
 	/* Copy full APDU if not Case 1 */
-	if (data->pin1.length_offset > 4) {
+	if (data->pin1.length_offset != 4) {
 		memcpy(&buf[count], apdu->data, apdu->datalen);
 		count += apdu->datalen;
 	}
@@ -854,7 +855,7 @@ class2_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE], dbuf[SC_MAX_APDU_BUFFER_SIZE * 3];
 	size_t rcount = sizeof(rbuf), scount = 0;
 	int r;
-	unsigned long ioctl = 0;
+	DWORD ioctl = 0;
 	sc_apdu_t *apdu;
 	struct pcsc_slot_data *pslot = (struct pcsc_slot_data *) slot->drv_data;
 	   

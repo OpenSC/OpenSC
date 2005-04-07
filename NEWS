@@ -12,8 +12,8 @@ New in 0.9.x; 2005-xx-xx; Antti Tapaninen:
 * Experimental multi-slot support for CT-API
   and dynamic loading support for win32.
   Thanks to Bernhard Froehlich <ted@convey.de>
-* Experimental CCID pinpad support for libccid
-  using PC/SC reader driver interface.
+* Experimental Class 2 pinpad reader support
+  via TeleTrust compatible PC/SC interface.
 * Fixed OpenSSL behaviour in the configure
   script.
 * PKCS#15 emulation layer improvements and

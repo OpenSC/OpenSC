@@ -168,16 +168,16 @@ static int _validate_pin(struct sc_pkcs15_card *p15card,
 	/* prevent buffer overflow from hostile card */	
 	if (pin->stored_length > SC_MAX_PIN_SIZE)
 		return SC_ERROR_BUFFER_TOO_SMALL;
-		
-	max_length = pin->max_length != 0 ? pin->max_length : SC_MAX_PIN_SIZE;
-	
+
 	/* if we use pinpad, no more checks are needed */
 	if (p15card->opts.use_pinpad)
 		return SC_SUCCESS;
 		
 	/* If pin is given, make sure it is within limits */
-	if (pinlen && (pinlen > pin->stored_length || pinlen < pin->min_length))
+	max_length = pin->max_length != 0 ? pin->max_length : SC_MAX_PIN_SIZE;
+	if (pinlen > max_length || pinlen < pin->min_length)
 		return SC_ERROR_INVALID_PIN_LENGTH;
+
 	return SC_SUCCESS;
 }
 
@@ -379,13 +379,13 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		}
 	}
 	if (!puk_info) {
-		sc_debug(card->ctx, "unable to get puk object use pin object instead\n");
+		sc_debug(card->ctx, "Unable to get puk object, using pin object instead!\n");
 		puk_info = pin;
 	}
-	if (puklen > puk_info->stored_length)
-		return SC_ERROR_INVALID_PIN_LENGTH;
-	if (puklen < puk_info->min_length)
-		return SC_ERROR_INVALID_PIN_LENGTH;
+	
+	/* make sure the puk is in valid range */
+	if ((r = _validate_pin(p15card, puk_info, puk, puklen)) != SC_SUCCESS)
+		return r;
 
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
