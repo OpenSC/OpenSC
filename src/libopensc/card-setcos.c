@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <opensc/asn1.h>
+
 static struct sc_atr_table setcos_atrs[] = {
 	/* some Nokia branded SC */
 	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_GENERIC, 0 },
@@ -314,7 +316,7 @@ static u8 acl_to_byte(const sc_acl_entry_t *e)
 	return 0x00;
 }
 
-static u8 acl_to_byte_44(const struct sc_acl_entry *e, u8* p_bNumber)
+static unsigned int acl_to_byte_44(const struct sc_acl_entry *e, u8* p_bNumber)
 {
 	/* Handle special fixed values */
 	if (e == (sc_acl_entry_t *) 1)           /* SC_AC_NEVER */
@@ -359,7 +361,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 	u8 bNumber = 0;
 	u8 bPinNumber = 0;
 	u8 bKeyNumber = 0;
-	u8 bMethod = 0;
+	unsigned int bMethod = 0;
 
 	/* -1 means RFU */
 	const int df_idx[8] = {  /* byte 1 = OpenSC type of AC Bit0,  byte 2 = OpenSC type of AC Bit1 ...*/
@@ -885,7 +887,7 @@ static int setcos_process_fci(sc_card_t *card, sc_file_t *file,
 }
 
 /* Write internal data, e.g. add default pin-records to pin-file */
-setcos_putdata(struct sc_card *card, struct sc_cardctl_setcos_data_obj* data_obj)
+static int setcos_putdata(struct sc_card *card, struct sc_cardctl_setcos_data_obj* data_obj)
 {
 	int				r;
 	struct sc_apdu			apdu;
@@ -912,7 +914,7 @@ setcos_putdata(struct sc_card *card, struct sc_cardctl_setcos_data_obj* data_obj
 }
 
 /* Read internal data, e.g. get RSA public key */
-setcos_getdata(struct sc_card *card, struct sc_cardctl_setcos_data_obj* data_obj)
+static int setcos_getdata(struct sc_card *card, struct sc_cardctl_setcos_data_obj* data_obj)
 {
 	int				r;
 	struct sc_apdu			apdu;
@@ -953,7 +955,7 @@ static int setcos_generate_store_key(sc_card_t *card,
 {
 	struct	sc_apdu apdu;
 	u8	sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int	r, p2, len;
+	int	r, len;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
