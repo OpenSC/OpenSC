@@ -163,6 +163,184 @@ static int hex_to_bin(const char *in, unsigned char *out, size_t * outlen)
 
 #define MAX_VALUE_LEN	200
 
+/* prototype for OpenSSL ENGINE_load_cert */
+/* used by load_cert_ctrl via ENGINE_ctrl for now */
+
+X509 *pkcs11_load_cert(ENGINE * e, const char *s_slot_cert_id)
+{
+	PKCS11_SLOT *slot_list, *slot;
+	PKCS11_TOKEN *tok;
+	PKCS11_CERT *certs, *selected_cert = NULL;;
+	X509 *x509;
+	unsigned int count, n, m;
+	unsigned char cert_id[MAX_VALUE_LEN / 2];
+	char *s_cert_id = NULL, buf[MAX_VALUE_LEN];
+	size_t cert_id_len = sizeof(cert_id);
+	int slot_nr = -1;
+	char flags[64];
+
+	/* Parse s_slot_cert_id: [slot_<slotNr>][-][id_<certID>] or NULL,
+	   with slotNr in decimal (0 = first slot, ...), and certID in hex.
+	    E.g."slot_1" or "id_46" or "slot_1-id_46 */
+	while (s_slot_cert_id != NULL && *s_slot_cert_id != '\0') {
+		char *p_sep1, *p_sep2;
+		char val[MAX_VALUE_LEN];
+		int val_len;;
+
+		p_sep1 = strchr(s_slot_cert_id, '_');
+		if (p_sep1 == NULL) {
+			fprintf(stderr,"No \'_\' found in \"-cert\" option \"%s\"\n", s_slot_cert_id);
+			fprintf(stderr,"Format: [slot_<slotNr>][-][id_<certID>]\n");
+			fprintf(stderr,"  with slotNr = 0, 1, ... and certID = a hex string\n");
+			return NULL;
+		}
+
+		p_sep2 = strchr(p_sep1, '-');
+		if (p_sep2 == NULL)
+			p_sep2 = p_sep1 + strlen(p_sep1);
+
+		/* val = the string between the _ and the - (or '\0') */
+		val_len = p_sep2 - p_sep1 - 1;
+		if (val_len >= MAX_VALUE_LEN || val_len == 0)
+			fail("Too long or empty value after the \'-\' sign\n");
+		memcpy(val, p_sep1 + 1, val_len);
+		val[val_len] = '\0';
+ 		if (strncasecmp(s_slot_cert_id, "slot", p_sep1 - s_slot_cert_id) == 0) {
+			if (val_len >= 3) {
+				fprintf(stderr,"Slot number \"%s\" should be a small integer\n", val);
+				return NULL;
+			}
+			slot_nr = atoi(val);
+			if (slot_nr == 0 && val[0] != '0') {
+				fprintf(stderr,"Slot number \"%s\" should be an integer\n", val);
+				return NULL;
+			}
+		} else if (strncasecmp(s_slot_cert_id, "id", p_sep1 - s_slot_cert_id)
+			   == 0) {
+			if (!hex_to_bin(val, cert_id, &cert_id_len)) {
+				fprintf(stderr,"cert id \"%s\" should be a hex string\n", val);
+				return NULL;
+			}
+			strcpy(buf, val);
+			s_cert_id = buf;
+		} else {
+			memcpy(val, s_slot_cert_id, p_sep1 - s_slot_cert_id);
+			val[p_sep1 - s_slot_cert_id] = '\0';
+			fprintf(stderr,"Now allowed in -cert: \"%s\"\n", val);
+			return NULL;
+		}
+		s_slot_cert_id = (*p_sep2 == '\0' ? p_sep2 : p_sep2 + 1);
+	}
+
+	if (PKCS11_enumerate_slots(ctx, &slot_list, &count) < 0)
+		fail("failed to enumerate slots\n");
+
+	if(verbose) {
+		fprintf(stderr,"Found %u slot%s\n", count, (count <= 1) ? "" : "s");
+	}
+	for (n = 0; n < count; n++) {
+		slot = slot_list + n;
+		flags[0] = '\0';
+		if (slot->token) {
+			if (!slot->token->initialized)
+				strcat(flags, "uninitialized, ");
+			else if (!slot->token->userPinSet)
+				strcat(flags, "no pin, ");
+			if (slot->token->loginRequired)
+				strcat(flags, "login, ");
+			if (slot->token->readOnly)
+				strcat(flags, "ro, ");
+		} else {
+			strcpy(flags, "no token");
+		}
+		if ((m = strlen(flags)) != 0) {
+			flags[m - 2] = '\0';
+		}
+		
+		if(verbose) {
+			fprintf(stderr,"[%u] %-25.25s  %-16s", n, slot->description, flags);
+			if (slot->token) {
+				fprintf(stderr,"  (%s)",
+				       slot->token->label[0] ?
+				       slot->token->label : "no label");
+			}
+			fprintf(stderr,"\n");
+		}
+	}
+
+	if (slot_nr == -1) {
+		if (!(slot = PKCS11_find_token(ctx)))
+			fail("didn't find any tokens\n");
+	} else if (slot_nr >= 0 && slot_nr < count)
+		slot = slot_list + slot_nr;
+	else {
+		fprintf(stderr,"Invalid slot number: %d\n", slot_nr);
+		return NULL;
+	}
+	tok = slot->token;
+
+	if (tok == NULL) {
+		fprintf(stderr,"Found empty token; \n");
+		return NULL;
+	}
+
+	if(verbose) {
+		fprintf(stderr,"Found slot:  %s\n", slot->description);
+		fprintf(stderr,"Found token: %s\n", slot->token->label);
+	}
+
+	if (PKCS11_enumerate_certs(tok, &certs, &count)) {
+		fail("unable to enumerate certificates\n");
+
+		return NULL;
+	}
+
+	if(verbose) {
+		fprintf(stderr,"Found %u cert%s:\n", count, (count <= 1) ? "" : "s");
+	}
+	for (n = 0; n < count; n++) {
+		PKCS11_CERT *k = certs + n;
+
+		if (cert_id_len != 0 && k->id_len == cert_id_len &&
+		    memcmp(k->id, cert_id, cert_id_len) == 0) {
+			if(verbose) {
+				fprintf(stderr,"        ID = %s\n", s_cert_id);
+			}
+			selected_cert = k;
+		}
+	}
+
+	if (selected_cert == NULL) {
+		if (s_cert_id != NULL) {
+			fprintf(stderr,"No cert with ID \"%s\" found.\n", s_cert_id);
+			return NULL;
+		} else		/* Take the first cert that was found */
+			selected_cert = &certs[0];
+	}
+
+	x509 = X509_dup(selected_cert->x509);
+
+	return x509;
+}
+
+int load_cert_ctrl(ENGINE *e, void *p)
+{
+	struct {
+		const char * s_slot_cert_id;
+		X509 *cert;
+	} *parms = p;
+	
+	if (parms->cert != NULL)
+		return 0;
+
+	parms->cert = pkcs11_load_cert(e, parms->s_slot_cert_id);
+	if (parms->cert == NULL)
+		return 0;
+
+	return 1;
+}
+
+
 EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 			  UI_METHOD * ui_method, void *callback_data, int isPrivate)
 {

@@ -17,7 +17,7 @@ fi;
 # self-signed certificate has a locking problem, don't try yet....
 openssl << EOT
 engine dynamic -vvvv -pre SO_PATH:.libs/engine_${ENGINE}.so -pre ID:${ENGINE} -pre NO_VCHECK:1 -pre LIST_ADD:1 -pre LOAD ${POSTCMD}
-req -engine ${ENGINE} -new -x509 -key 45 -keyform engine -out /tmp/selfcert.crt -text
+req -engine ${ENGINE} -new -x509 -key slot_0 -keyform engine -out /tmp/selfcert.crt -text
 US
 Maryland
 Bethesda
@@ -37,7 +37,7 @@ fi;
 # company name needs to match ca certificate used to sign (below).
 openssl << EOT
 engine dynamic -vvvv -pre SO_PATH:.libs/engine_${ENGINE}.so -pre ID:${ENGINE} -pre NO_VCHECK:1 -pre LIST_ADD:1 -pre LOAD ${POSTCMD}
-req -engine ${ENGINE} -md5 -new -key 45 -keyform engine -out /tmp/cert.md5.crq -text
+req -engine ${ENGINE} -md5 -new -key 1 -keyform engine -out /tmp/cert.md5.crq -text
 US
 Maryland
 Bethesda

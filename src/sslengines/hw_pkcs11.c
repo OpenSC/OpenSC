@@ -78,6 +78,7 @@
 #define CMD_PIN		(ENGINE_CMD_BASE+2)
 #define CMD_VERBOSE		(ENGINE_CMD_BASE+3)
 #define CMD_QUIET		(ENGINE_CMD_BASE+4)
+#define CMD_LOAD_CERT_CTRL	(ENGINE_CMD_BASE+5)
 
 static int pkcs11_engine_destroy(ENGINE * e);
 static int pkcs11_engine_ctrl(ENGINE * e, int cmd, long i, void *p, void (*f) ());
@@ -107,6 +108,10 @@ static const ENGINE_CMD_DEFN pkcs11_cmd_defns[] = {
 	 "QUIET",
 	 "Remove additional details",
 	 ENGINE_CMD_FLAG_NO_INPUT},
+	{CMD_LOAD_CERT_CTRL,
+	 "LOAD_CERT_CTRL",
+	 "Get the certificate from card",
+	 ENGINE_CMD_FLAG_INTERNAL},
 	{0, NULL, NULL, 0}
 };
 
@@ -126,6 +131,8 @@ static int pkcs11_engine_ctrl(ENGINE * e, int cmd, long i, void *p, void (*f) ()
 		return set_pin((const char *) p);
 	case CMD_VERBOSE:
 		return inc_verbose();
+	case CMD_LOAD_CERT_CTRL:
+		return load_cert_ctrl(e, p);
 	default:
 		break;
 	}
