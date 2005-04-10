@@ -144,6 +144,15 @@ out:	if (r == SC_SUCCESS) {
 	return r;
 }
 
+static int emu_detect_card(sc_card_t *card, const scconf_block *blk, int *force)
+{
+	int ret = 0;
+
+	/* TBD */
+
+	return ret;
+}
+
 static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 {
 	sc_card_t	*card = p15card->card;
@@ -152,28 +161,22 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	void		*dll = NULL;
 	int		(*init_func)(sc_pkcs15_card_t *);
 	int		(*init_func_ex)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
-	int		r;
-	scconf_block	*atrblock = NULL;
-	const char	*driver, *matchstr, *module_name;
+	int		r, force = 0;
+	const char	*driver, *module_name;
 
 	driver = conf->name->data;
-	/* XXX: Pass card->driver? Requires that the pkcs15emu
-	 * parameter is assigned to actual card driver used. */
-	atrblock = _sc_match_atr_block(ctx, NULL, card->atr, card->atr_len);
-	if (!atrblock)
-		return SC_ERROR_WRONG_CARD;
-	matchstr = scconf_get_str(atrblock, "pkcs15emu", NULL);
-	if (!matchstr)
-		return SC_ERROR_WRONG_CARD;
-	if (strcmp(driver, matchstr))
-		return SC_ERROR_WRONG_CARD;
+
+	r = emu_detect_card(card, conf, &force);
+	if (r < 0)
+		return SC_ERROR_INTERNAL;
 
 	init_func    = NULL;
 	init_func_ex = NULL;
 
 	memset(&opts, 0, sizeof(opts));
 	opts.blk     = conf;
-	opts.flags   = SC_PKCS15EMU_FLAGS_NO_CHECK;
+	if (force != 0)
+		opts.flags   = SC_PKCS15EMU_FLAGS_NO_CHECK;
 
 	module_name = scconf_get_str(conf, "module", builtin_name);
 	if (!strcmp(module_name, "builtin")) {
