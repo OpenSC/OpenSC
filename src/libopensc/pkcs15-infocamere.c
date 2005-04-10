@@ -222,7 +222,9 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
 				SC_PKCS15_TYPE_CERT_X509, authority,
 				&path, &id, authlabel, SC_PKCS15_CO_FLAG_MODIFIABLE);
 
-        
+		/* XXX: the IDs for the key/pin in case of the 1203 type 
+		 * are wrong, therefore I disable them for now -- Nils */
+		if (!change_sign) {    
 		/* add authentication PIN */
 
                 sc_format_path(infocamere_auth_path[ef_gdo[len_iccsn+6]-2], &path);
@@ -244,6 +246,7 @@ sc_pkcs15emu_infocamere_init(sc_pkcs15_card_t *p15card)
                                 1024, authprkey_usage,
                                 &path, infocamere_idprkey_auth_obj[ef_gdo[len_iccsn+6]-2],
                                 &auth_id, SC_PKCS15_CO_FLAG_PRIVATE);
+		}
 
         }
 
