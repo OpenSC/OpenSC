@@ -580,7 +580,7 @@ if test "x$pcsc_path" != "xno" -a "x$PCSC_MSG" != "xyes"; then
 		AC_MSG_RESULT($PCSC_MSG)
 		],[
 	AC_MSG_CHECKING(for PC/SC Lite support (old style))
-	for pcscdir in "" /PCSC; do
+	for pcscdir in "" /pcsc /PCSC; do
 		CPPFLAGS="$saved_CPPFLAGS"
 		LDFLAGS="$saved_LDFLAGS"
 		LIBS="-lpcsclite $saved_LIBS"
