@@ -4,7 +4,7 @@ dnl Process this file with autoconf to produce a configure script.
 # Require autoconf 2.52
 AC_PREREQ(2.52)
 
-AC_INIT(opensc, CVS)
+AC_INIT(opensc, WIP)
 AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
 
