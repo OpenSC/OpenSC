@@ -372,10 +372,8 @@ setcos_generate_store_key(sc_profile_t *profile, sc_card_t *card,
 	struct sc_cardctl_setcos_gen_store_key_info args;
 	struct sc_cardctl_setcos_data_obj data_obj;
 	unsigned char raw_pubkey[256];
-	unsigned char pinbuf[12];
 	int           r, mod_len;
 	sc_file_t    *prkf = NULL;
-	u8            bData[32];
 
 	/* Parameter check */
 	if ( (keybits < 512) || (keybits > 1024) || (keybits & 0X7)) {
@@ -477,7 +475,6 @@ setcos_create_pin_internal(sc_profile_t *profile, sc_card_t *card,
 	u8  data[32];
 	int so_pin_ref;
 	int	r;
-	int	pin_type;
 	struct sc_cardctl_setcos_data_obj data_obj;
 	sc_file_t *pinfile = NULL;
 

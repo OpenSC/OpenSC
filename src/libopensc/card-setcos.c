@@ -708,7 +708,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 
 	u8		bValue;
 	int		i;
-	int		iKeyRef;
+	int		iKeyRef = 0;
 	int		iMethod;
 	int		iPinCount;
 	int		iOffset = 0;
