@@ -31,7 +31,7 @@ libopensc_la_SOURCES = \
 	card-oberthur.c card-belpic.c \
 	\
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
-	pkcs15-netkey.c pkcs15-esteid.c pkcs15-postecert.c
+	pkcs15-netkey.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafe.c
 libopensc_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
 libopensc_la_LIBADD = @LIBSCCONF@ ../scdl/libscdl.la @LIBDL@ @LIBCRYPTO@ @OPENCT_LIBS@ @PCSC_LIBS@
 
