@@ -337,8 +337,8 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 		cert_obj.flags = certs[i].obj_flags;
 
 		while (idx1 < file->size - 16) { /* actually 13 for all these tests */
-			if (idx1 > idx2 - 16) { 	 /* need more data in buff */
-				idxlen = 248; 			 /* read in next 248 bytes */
+			if (idx1 + 16 > idx2 ) { 	/* need more data in buff */
+				idxlen = 248; 		/* read in next 248 bytes */
 				if (idxlen > file->size - idx2)
 					idxlen = file->size - idx2;
 				r = sc_read_binary(card, idx2, gsdata + idx2, idxlen, 0);
