@@ -227,6 +227,13 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 	path.len = sizeof(gemsafe_aid);
 	path.type = SC_PATH_TYPE_DF_NAME;
 	r = sc_select_file(card, &path, &file);
+	if (r < 0) {
+		/* OK, then lets try for 3f000200 */
+		sc_format_path("3F000200",&path);
+		path.type = SC_PATH_TYPE_PATH;
+		r = sc_select_file(card, &path, &file);
+	}
+
 	if (r < 0)
 		return SC_ERROR_WRONG_CARD;
 
