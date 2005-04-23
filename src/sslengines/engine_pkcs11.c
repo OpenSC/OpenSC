@@ -60,13 +60,16 @@ int inc_verbose()
 	return 1;
 }
 
-char *get_pin(UI_METHOD * ui_method, char *sc_pin, int maxlen)
+static char *get_pin(UI_METHOD * ui_method, void *callback_data, char *sc_pin, int maxlen)
 {
 	UI *ui;
 
 	ui = UI_new();
-	if (ui_method)
+	if (ui_method != NULL)
 		UI_set_method(ui, ui_method);
+	if (callback_data != NULL)
+		UI_set_app_data(ui, callback_data);
+
 	if (!UI_add_input_string(ui, "PKCS#11 token PIN: ", 0, sc_pin, 1, maxlen)) {
 		fprintf(stderr, "UI_add_input_string failed\n");
 		UI_free(ui);
@@ -509,7 +512,7 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 		if (pin == NULL) {
 			pin = (char *) calloc(12, sizeof(char));
 			if (!tok->secureLogin)
-				get_pin(ui_method, pin, 12);
+				get_pin(ui_method, callback_data, pin, 12);
 		}
 		if (PKCS11_login(slot, 0, pin)) {
 			if(pin != NULL) {

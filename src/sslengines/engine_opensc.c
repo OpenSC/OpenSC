@@ -272,13 +272,16 @@ int set_pin(const char *_pin)
 	return 1;
 }
 
-char *get_pin(UI_METHOD * ui_method, char *sc_pin, int maxlen)
+static char *get_pin(UI_METHOD * ui_method, void *callback_data, char *sc_pin, int maxlen)
 {
 	UI *ui;
 
 	ui = UI_new();
-	if (ui_method)
+	if (ui_method != NULL)
 		UI_set_method(ui, ui_method);
+	if (callback_data != NULL)
+		UI_set_app_data(ui, callback_data);
+
 	if (!UI_add_input_string(ui, "SmartCard PIN: ", 0, sc_pin, 1, maxlen)) {
 		fprintf(stderr, "UI_add_input_string failed\n");
 		UI_free(ui);
@@ -311,7 +314,7 @@ EVP_PKEY *opensc_load_private_key(ENGINE * e, const char *s_key_id,
 			EVP_PKEY_free(key_out);
 			return NULL;
 		}
-		if (!get_pin(ui_method, sc_pin, 12)) {
+		if (!get_pin(ui_method, callback_data, sc_pin, 12)) {
 			fprintf(stderr, "Failed to get pin\n");
 			unset_pin();
 			EVP_PKEY_free(key_out);
