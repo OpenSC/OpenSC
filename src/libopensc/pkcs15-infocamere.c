@@ -80,6 +80,8 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 	char serial[256];
 	unsigned char certlen[2];
 	int authority, change_sign = 0;
+	struct sc_pkcs15_cert_info cert_info;
+        struct sc_pkcs15_object    cert_obj;
 
 	const char *label = "User Non-repudiation Certificate";
 	const char *calabel = "CA Certificate";
@@ -144,20 +146,20 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	sc_format_path("3F002F02", &path);
 
+	card->ctx->suppress_errors++;
 	r = sc_select_file(card, &path, &file);
-
-	if (r < 0 || file->size > 255) {
+	card->ctx->suppress_errors--;
+	
+	if (r != SC_SUCCESS || file->size > 255) {
 		/* Not EF.GDO */
-		r = SC_ERROR_WRONG_CARD;
-		goto failed;
+		return SC_ERROR_WRONG_CARD;
 	}
 
 	sc_read_binary(card, 0, ef_gdo, file->size, 0);
 
 	if (ef_gdo[0] != 0x5A || file->size < 3) {
 		/* Not EF.GDO */
-		r = SC_ERROR_WRONG_CARD;
-		goto failed;
+		return SC_ERROR_WRONG_CARD;
 	}
 
 	len_iccsn = ef_gdo[1];
@@ -168,24 +170,21 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	if (file->size < (size_t) (len_iccsn + 5)) {
 		/* Not CHN */
-		r = SC_ERROR_WRONG_CARD;
-		goto failed;
+		return SC_ERROR_WRONG_CARD;
 	}
 
 	if (!
 	    (ef_gdo[len_iccsn + 2] == 0x5F
 	     && ef_gdo[len_iccsn + 3] == 0x20)) {
 		/* Not CHN */
-		r = SC_ERROR_WRONG_CARD;
-		goto failed;
+		return SC_ERROR_WRONG_CARD;
 	}
 
 	len_chn = ef_gdo[len_iccsn + 4];
 
 	if (len_chn < 2 || len_chn > 8) {
 		/* Length CHN incorrect */
-		r = SC_ERROR_WRONG_CARD;
-		goto failed;
+		return SC_ERROR_WRONG_CARD;
 	}
 
 	if (!
@@ -193,8 +192,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 	     && (ef_gdo[len_iccsn + 6] == 0x02
 		 || ef_gdo[len_iccsn + 6] == 0x03))) {
 		/* Not Infocamere Card */
-		r = SC_ERROR_WRONG_CARD;
-		goto failed;
+		return SC_ERROR_WRONG_CARD;
 	}
 
 	set_string(&p15card->serial_number, serial);
@@ -214,7 +212,12 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	sc_format_path(infocamere_auth_certpath[ef_gdo[len_iccsn+6]-2], &path);
 
-	if (sc_select_file(card, &path, NULL) >= 0) {
+	card->ctx->suppress_errors++;
+	r = sc_select_file(card, &path, NULL);
+	card->ctx->suppress_errors--;
+
+	if (r >= 0) {
+
 		sc_read_binary(card, 0, certlen, 2, 0);
 
 		/* Now set the certificate offset/len */
@@ -222,12 +225,18 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 		path.index = 2;
 		path.count = (certlen[1] << 8) + certlen[0];
 
-		id.value[0] = 1;
-		id.len = 1;
+		memset(&cert_info, 0, sizeof(cert_info));
+                memset(&cert_obj,  0, sizeof(cert_obj));
 
-		sc_pkcs15emu_add_cert(p15card,
-				SC_PKCS15_TYPE_CERT_X509, authority,
-				&path, &id, authlabel, SC_PKCS15_CO_FLAG_MODIFIABLE);
+		sc_pkcs15_format_id("1", &cert_info.id);
+        	cert_info.authority = authority;
+        	cert_info.path = path;
+		strncpy(cert_obj.label, authlabel, SC_PKCS15_MAX_LABEL_SIZE - 1);
+	        cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
+
+		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+        	if (r < 0)
+        		return SC_ERROR_INTERNAL;
 
 		/* XXX: the IDs for the key/pin in case of the 1203 type 
 		 * are wrong, therefore I disable them for now -- Nils */
@@ -263,8 +272,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	if (sc_select_file(card, &path, NULL) < 0)
 		{
-		r = SC_ERROR_INTERNAL;
-		goto failed;
+		return SC_ERROR_INTERNAL;
 		}
 
 	sc_read_binary(card, 0, certlen, 2, 0);
@@ -273,14 +281,19 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 	path.index = 2;
 	path.count = (certlen[1] << 8) + certlen[0];
 	
-	id.value[0] = 2;
-	id.len = 1;
+        memset(&cert_info, 0, sizeof(cert_info));
+        memset(&cert_obj,  0, sizeof(cert_obj));
 
+	sc_pkcs15_format_id("2", &cert_info.id);
 
-	sc_pkcs15emu_add_cert(p15card,
-				SC_PKCS15_TYPE_CERT_X509, authority,
-				&path, &id, label, SC_PKCS15_CO_FLAG_MODIFIABLE);
+        cert_info.authority = authority;
+        cert_info.path = path;
+        strncpy(cert_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+        cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
+	r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+        if (r < 0)
+        	return SC_ERROR_INTERNAL;
 
 	/* Get the CA certificate length */
 
@@ -288,18 +301,30 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	sc_format_path(infocamere_cacert_path[ef_gdo[len_iccsn+6]-2], &path);
 
-	if (sc_select_file(card, &path, NULL) >= 0) {
+	card->ctx->suppress_errors++;
+	r = sc_select_file(card, &path, NULL);
+	card->ctx->suppress_errors--;
+
+	if (r >= 0) {
+
 		sc_read_binary(card, 0, certlen, 2, 0);
 
 		/* Now set the certificate offset/len */
 		path.index = 2;
 		path.count = (certlen[1] << 8) + certlen[0];
 
-		id.value[0] = 3;
+		memset(&cert_info, 0, sizeof(cert_info));
+                memset(&cert_obj,  0, sizeof(cert_obj));
 
-		sc_pkcs15emu_add_cert(p15card,
-				SC_PKCS15_TYPE_CERT_X509, authority,
-				&path, &id, calabel, SC_PKCS15_CO_FLAG_MODIFIABLE);
+		sc_pkcs15_format_id("1", &cert_info.id);
+        	cert_info.authority = authority;
+        	cert_info.path = path;
+        	strncpy(cert_obj.label, calabel, SC_PKCS15_MAX_LABEL_SIZE - 1);
+	        cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
+
+		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+        	if (r < 0)
+        		return SC_ERROR_INTERNAL;
 	}               
 
         /* add non repudiation PIN */
@@ -327,7 +352,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	/* return to MF */
 	sc_format_path("3F00", &path);
-	r = sc_select_file(card, &path, NULL);
+	sc_select_file(card, &path, NULL);
 
 	if (change_sign) {
 		/* save old signature funcs */
@@ -337,12 +362,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 		card->ops->compute_signature = do_sign;
 	}
 
-	return 0;
-
-      failed:sc_error(card->ctx,
-		 "Failed to initialize Infocamere emulation: %s\n",
-		 sc_strerror(r));
-	return r;
+	return SC_SUCCESS;
 }
 
 #ifdef HAVE_ZLIB_H
@@ -415,7 +435,7 @@ static int infocamere_1400_init(sc_pkcs15_card_t * p15card)
 	sc_format_path("30000001", &path);
 
 	r = sc_select_file(card, &path, NULL);
-
+	
 	if (r != SC_SUCCESS)
 		return SC_ERROR_WRONG_CARD;
 
@@ -511,7 +531,7 @@ static int infocamere_1400_init(sc_pkcs15_card_t * p15card)
 
 	/* return to MF */
 	sc_format_path("3F00", &path);
-	r = sc_select_file(card, &path, NULL);
+	sc_select_file(card, &path, NULL);
 
 	return SC_SUCCESS;
 }
