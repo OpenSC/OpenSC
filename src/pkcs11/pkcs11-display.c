@@ -611,8 +611,8 @@ void print_slot_info(FILE *f, CK_SLOT_INFO *info)
 
 void print_token_info(FILE *f, CK_TOKEN_INFO *info)
 {
-  int            i;
-  enum_specs ck_flags[18] = {
+  size_t            i;
+  enum_specs ck_flags[] = {
     { CKF_RNG                          , "CKF_RNG                          " },
     { CKF_WRITE_PROTECTED              , "CKF_WRITE_PROTECTED              " },
     { CKF_LOGIN_REQUIRED               , "CKF_LOGIN_REQUIRED               " },
@@ -651,7 +651,7 @@ void print_token_info(FILE *f, CK_TOKEN_INFO *info)
   fprintf(f, "      firmwareVersion:         %d.%d\n",     info->firmwareVersion.major, info->firmwareVersion.minor );
   fprintf(f, "      time:                   '%16.16s'\n",  info->utcTime );
   fprintf(f, "      flags:                   %0lx\n",      info->flags );
-  for(i = 0; i < 8; i++) {
+  for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++) {
     if(info->flags & ck_flags[i].type) {
       fprintf(f, "        %s\n", ck_flags[i].name);
     }
