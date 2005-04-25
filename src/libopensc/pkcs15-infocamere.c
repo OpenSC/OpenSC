@@ -245,6 +245,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
                 sc_format_path(infocamere_auth_path[ef_gdo[len_iccsn+6]-2], &path);
                 
+		sc_pkcs15_format_id("1", &id);
 		sc_pkcs15emu_add_pin(p15card, &id,
                                 authPIN, &path, infocamere_idpin_auth_obj[ef_gdo[len_iccsn+6]-2],
                                 SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
@@ -316,7 +317,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 		memset(&cert_info, 0, sizeof(cert_info));
                 memset(&cert_obj,  0, sizeof(cert_obj));
 
-		sc_pkcs15_format_id("1", &cert_info.id);
+		sc_pkcs15_format_id("3", &cert_info.id);
         	cert_info.authority = authority;
         	cert_info.path = path;
         	strncpy(cert_obj.label, calabel, SC_PKCS15_MAX_LABEL_SIZE - 1);
@@ -330,8 +331,8 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
         /* add non repudiation PIN */
 
 	sc_format_path(infocamere_nrepud_path[ef_gdo[len_iccsn+6]-2], &path);
-	id.value[0] = 2;
-                
+
+	sc_pkcs15_format_id("2", &id);
 	sc_pkcs15emu_add_pin(p15card, &id,
 		nonrepPIN, &path, infocamere_idpin_nrepud_obj[ef_gdo[len_iccsn+6]-2],
 		SC_PKCS15_PIN_TYPE_ASCII_NUMERIC, 5, 8, flags, 3, 0,
