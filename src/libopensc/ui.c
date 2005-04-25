@@ -361,7 +361,7 @@ __sc_ui_read_pin(sc_context_t *ctx, const char *prompt,
 static int
 use_color(sc_context_t *ctx, FILE * outf)
 {
-	static const char *terms[] = { "linux", "xterm", "Eterm" };
+	static const char *terms[] = { "linux", "xterm", "Eterm", "rxvt" };
 	static char	*term = NULL;
 	int		term_count = sizeof(terms) / sizeof(terms[0]);
 	int		do_color, i;
