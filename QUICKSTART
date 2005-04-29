@@ -184,7 +184,7 @@ work, there is no way for the security officer to get to my key.
 Also I need to remember my unblocking pin, as only I can reset it,
 the security officer cannot.
 
-$ pkcs15-init --generate-key rsa/1024 --auth-id 01
+$ pkcs15-init --generate-key rsa/1024 --auth-id 01 --key-usage sign,decrypt
 Security officer PIN required.
 Please enter Security officer PIN: 
 User PIN required.
