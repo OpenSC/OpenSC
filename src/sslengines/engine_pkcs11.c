@@ -89,6 +89,10 @@ int pkcs11_finish(ENGINE * engine)
 	if (ctx) {
 		PKCS11_CTX_free(ctx);
 	}
+	if (pin != NULL) {
+		free(pin);
+		pin = NULL;
+	}
 	return 1;
 }
 
@@ -109,6 +113,7 @@ int pkcs11_rsa_finish(RSA * rsa)
 {
 	if (pin) {
 		free(pin);
+		pin = NULL;
 	}
 	if (!default_module && module) {
 		free(module);
