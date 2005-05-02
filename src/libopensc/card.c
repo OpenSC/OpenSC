@@ -1040,6 +1040,8 @@ int _sc_add_atr(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr_
 	driver->atr_map = map;
 	dst = &driver->atr_map[driver->natrs++];
 	memset(dst, 0, sizeof(*dst));
+	memset(&driver->atr_map[driver->natrs], 0, sizeof(struct sc_atr_table));
+	dst->atr = strdup(src->atr);
 	dst->atr = strdup(src->atr);
 	if (!dst->atr)
 		return SC_ERROR_OUT_OF_MEMORY;
