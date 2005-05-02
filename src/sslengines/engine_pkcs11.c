@@ -30,6 +30,8 @@
 #include <string.h>
 #include <openssl/crypto.h>
 #include <openssl/objects.h>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
 #include "engine_pkcs11.h"
 
 #define fail(msg) { fprintf(stderr,msg); return NULL;}
@@ -178,7 +180,7 @@ X509 *pkcs11_load_cert(ENGINE * e, const char *s_slot_cert_id)
 {
 	PKCS11_SLOT *slot_list, *slot;
 	PKCS11_TOKEN *tok;
-	PKCS11_CERT *certs, *selected_cert = NULL;;
+	PKCS11_CERT *certs, *selected_cert = NULL;
 	X509 *x509;
 	unsigned int count, n, m;
 	unsigned char cert_id[MAX_VALUE_LEN / 2];
