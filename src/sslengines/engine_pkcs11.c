@@ -30,8 +30,6 @@
 #include <string.h>
 #include <openssl/crypto.h>
 #include <openssl/objects.h>
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
 #include "engine_pkcs11.h"
 
 #define fail(msg) { fprintf(stderr,msg); return NULL;}
