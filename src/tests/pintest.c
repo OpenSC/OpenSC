@@ -56,20 +56,8 @@ int ask_and_verify_pin(struct sc_pkcs15_object *obj)
 		return 0;
 	}
 
-	while (1) {
-		sprintf(prompt, "Please enter PIN code [%s]: ", obj->label);
-		pass = (u8 *) getpass(prompt);
-
-		if (strlen((char *) pass) == 0) {
-			printf("Not verifying PIN code.\n");
-			return -1;
-		}
-		if (strlen((char *) pass) < pin->min_length)
-			break;
-		if (strlen((char *) pass) > pin->max_length)
-			break;
-		break;
-	}
+	sprintf(prompt, "Please enter PIN code [%s]: ", obj->label);
+	pass = (u8 *) getpass(prompt);
 
 	sc_lock(card);
 	i = sc_pkcs15_verify_pin(p15card, pin, pass, strlen((char *) pass));
@@ -98,6 +86,8 @@ int main(int argc, char *argv[])
 	i = sc_test_init(&argc, argv);
 	if (i < 0)
 		return 1;
+	if (card->slot->capabilities & SC_SLOT_CAP_PIN_PAD)
+		printf("Slot is capable of doing pinpad operations!\n");
 	printf("Looking for a PKCS#15 compatible Smart Card... ");
 	fflush(stdout);
 	sc_lock(card);
