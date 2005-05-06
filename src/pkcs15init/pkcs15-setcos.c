@@ -220,6 +220,16 @@ static int setcos_init_app(sc_profile_t *profile, sc_card_t *card,
 	if (r < 0)
 		goto done;
 
+    /* Before we relink th SO_PIN back to the pkcs15 DF, we have to fill in
+     * its value for the MF in the keycache. Otherwise, we will be asked to
+     * enter the value for the "pin with ref. 1" if we want to create a
+     * DF or EF in the MF. */
+    sc_pkcs15init_authenticate(profile, card, profile->mf_info->file, SC_AC_OP_CREATE);
+
+	/* Re-link the SO-PIN back to the original DF (= the pkcs15 DF) */
+	sc_keycache_set_pin_name(&profile->df_info->file->path,
+		pin_ref, SC_PKCS15INIT_SO_PIN);
+
 done:
 	if (pinfile)
 		free(pinfile);
