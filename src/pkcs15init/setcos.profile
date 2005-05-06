@@ -90,7 +90,6 @@ filesystem {
             EF template-data {
                 file-id     = 5000;
                 structure   = transparent;
-                size        = 1000;
                 ACL         = *=$SOPIN, *=NONE;
             }
         }

@@ -279,15 +279,13 @@ setcos_new_file(sc_profile_t *profile, sc_card_t *card,
 	sc_path_t *p;
 	char name[64], *tag;
 
-	if ((type & SC_PKCS15_TYPE_PRKEY_RSA) == SC_PKCS15_TYPE_PRKEY_RSA)
+	if (type == SC_PKCS15_TYPE_PRKEY_RSA)
 		tag = "private-key";
-	else if ((type & SC_PKCS15_TYPE_PRKEY) == SC_PKCS15_TYPE_PRKEY)
-		tag = "extractable-key";
-	else if ((type & SC_PKCS15_TYPE_PUBKEY_RSA) == SC_PKCS15_TYPE_PUBKEY_RSA)
+	else if (type  == SC_PKCS15_TYPE_PUBKEY_RSA)
 		tag = "public-key";
-	else if ((type & SC_PKCS15_TYPE_CERT) == SC_PKCS15_TYPE_CERT)
+	else if ((type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT)
 		tag = "certificate";
-	else if ((type & SC_PKCS15_TYPE_DATA_OBJECT) == SC_PKCS15_TYPE_DATA_OBJECT)
+	else if ((type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_DATA_OBJECT)
 		tag = "data";
 	else {
 		sc_error(card->ctx, "Unsupported file type");
