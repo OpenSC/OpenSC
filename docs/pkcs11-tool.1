@@ -23,6 +23,20 @@ Use the given \fIpin\fP for token operations.
 WARNING: Be careful using this option as other users may be able to
 read the command line from the system or if it is embedded in a script.
 .TP
+.BR "\-\-so\-pin " \fIpin\fP
+Use the given \fIpin\fP as the Security Officer PIN for some token operations
+(token initialization, user PIN initialization, etc). The same warning
+than \-\-pin also applies here.
+.TP
+.BR \-\-init\-token
+Initializes a token: set the token label as well as a Security Officer
+PIN (the label must be specified using \-\-label).
+.TP
+.BR \-\-init\-pin
+Initializes the user PIN. This option differs from \-\-change\-pin in that
+it sets the user PIN for the first time. Once set, the user PIN can be
+changed using \-\-change\-pin.
+.TP
 .BR \-\-change\-pin ", " \-c
 Change the user PIN on the token
 .TP
@@ -66,7 +80,8 @@ Specify the type of object to operate on.  Examples are \fIcert\fP ,
 Specify the id of the object to operate on."
 .TP
 .BR "\-\-label " \fIname\fP ", \-a " \fIname\fP
-Specify the name of the object to operate on.
+Specify the name of the object to operate on (or the token label when
+\-\-init\-token is used).
 .TP
 .BR "\-\-slot " \fIid\fP 
 Specify the id of the slot to use.

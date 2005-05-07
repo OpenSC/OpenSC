@@ -42,6 +42,9 @@ enum {
 	OPT_SLOT,
 	OPT_SLOT_LABEL,
 	OPT_APPLICATION_ID,
+	OPT_SO_PIN,
+	OPT_INIT_TOKEN,
+	OPT_INIT_PIN,
 };
 
 const struct option options[] = {
@@ -56,6 +59,9 @@ const struct option options[] = {
 
 	{ "login",		0, 0,		'l' },
 	{ "pin",		1, 0,		'p' },
+	{ "so-pin",		1, 0,		OPT_SO_PIN },
+	{ "init-token",		0, 0,		OPT_INIT_TOKEN },
+	{ "init-pin",		0, 0,		OPT_INIT_PIN },
 	{ "change-pin",		0, 0,		'c' },
 	{ "keypairgen", 	0, 0, 		'k' },
 	{ "write-object",	1, 0, 		'w' },
@@ -88,8 +94,11 @@ const char *option_help[] = {
 	"Specify mechanism (use -M for a list of supported mechanisms)",
 
 	"Log into the token first (not needed when using --pin)",
-	"Supply PIN on the command line (if used in scripts: careful!)",
-	"Change your (user) PIN",
+	"Supply User PIN on the command line (if used in scripts: careful!)",
+	"Supply SO PIN on the command line (if used in scripts: careful!)",
+	"Initialize the token, its label and its SO PIN (use with --label and --so-pin)",
+	"Initialize the User PIN (use with --pin)",
+	"Change your User PIN",
 	"Key pair generation",
 	"Write an object (key, cert) to the card",
 	"Get object's CKA_VALUE attribute (use with --type)",
@@ -125,6 +134,7 @@ static CK_BYTE		opt_object_id[100], new_object_id[100];
 static size_t		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
 static char *		opt_pin = NULL;
+static char *		opt_so_pin = NULL;
 static char *	opt_application_id = NULL;
 
 static void *module = NULL;
@@ -147,7 +157,9 @@ static void		list_slots(void);
 static void		show_token(CK_SLOT_ID);
 static void		list_mechs(CK_SLOT_ID);
 static void		list_objects(CK_SESSION_HANDLE);
-static int		login(CK_SESSION_HANDLE);
+static int		login(CK_SESSION_HANDLE, int);
+static void		init_token(CK_SLOT_ID);
+static void		init_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int		change_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE, int);
@@ -213,7 +225,10 @@ main(int argc, char * const argv[])
 	int do_test = 0;
 	int do_test_kpgen_certwrite = 0;
 	int need_session = 0;
+	int need_to_be_so = 0;
 	int opt_login = 0;
+	int do_init_token = 0;
+	int do_init_pin = 0;
 	int do_change_pin = 0;
 	int action_count = 0;
 	CK_RV rv;
@@ -349,6 +364,19 @@ main(int argc, char * const argv[])
 		case OPT_APPLICATION_ID:
 			opt_application_id = optarg;
 			break;
+		case OPT_SO_PIN:
+			opt_so_pin = optarg;
+			break;
+		case OPT_INIT_TOKEN:
+			do_init_token = 1;
+			action_count++;
+			break ;
+		case OPT_INIT_PIN:
+			need_session |= NEED_SESSION_RW;
+			need_to_be_so |= 1;
+			do_init_pin = 1;
+			action_count++;
+			break ;
 		default:
 			print_usage_and_die();
 		}
@@ -427,6 +455,9 @@ main(int argc, char * const argv[])
 			opt_login++;
 	}
 
+	if (do_init_token)
+		init_token(opt_slot);
+
 	if (need_session) {
 		int flags = CKF_SERIAL_SESSION;
 
@@ -443,10 +474,17 @@ main(int argc, char * const argv[])
 		 * we safely stop here. */
 		return change_pin(opt_slot, session);
 
-	if (opt_login || opt_pin) {
-		int r = login(session);
+	if (opt_login || opt_pin || do_init_pin) {
+		int r = login(session, need_to_be_so);
 		if (r != 0)
 			return r;
+	}
+
+	if (do_init_pin) {
+		init_pin(opt_slot, session);
+		/* We logged in as a CKU_SO user just to initialize
+		* the User PIN, we now have to exit. */
+		goto end;
 	}
 
 	if (do_sign) {
@@ -661,7 +699,7 @@ list_objects(CK_SESSION_HANDLE sess)
 	p11->C_FindObjectsFinal(sess);
 }
 
-static int login(CK_SESSION_HANDLE session)
+static int login(CK_SESSION_HANDLE session, int need_to_be_so)
  {
 	char		*pin = NULL;
 	CK_TOKEN_INFO	info;
@@ -672,25 +710,98 @@ static int login(CK_SESSION_HANDLE session)
 	/* Identify which pin to enter */
 
 	if (info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) {
-		if (opt_pin)
-			pin = opt_pin;
+		if (need_to_be_so ? opt_so_pin : opt_pin)
+			pin = need_to_be_so ? opt_so_pin : opt_pin;
 	} else
-	if (info.flags & CKF_LOGIN_REQUIRED) {
-		if (opt_pin == NULL)
-			pin = getpass("Please enter PIN: ");
+	if (info.flags & CKF_LOGIN_REQUIRED || need_to_be_so) {
+		if (need_to_be_so ? !opt_so_pin : !opt_pin)
+			pin = getpass(need_to_be_so ?
+					"Please enter SO PIN: " :
+					"Please enter User PIN: ");
 		else
-			pin = opt_pin;
+			pin = need_to_be_so ? opt_so_pin : opt_pin;
 		if (!pin || !*pin)
 			return 1;
 	} else {
 		return 0;
 	}
-	rv = p11->C_Login(session, CKU_USER, (CK_UTF8CHAR *) pin,
+	rv = p11->C_Login(session, need_to_be_so ? CKU_SO : CKU_USER,
+			(CK_UTF8CHAR *) pin,
 		pin == NULL ? 0 : strlen(pin));
 	if (rv != CKR_OK)
 		p11_fatal("C_Login", rv);
 
 	return 0;
+}
+
+void
+init_token(CK_SLOT_ID slot)
+{
+	char token_label[33];
+	char new_buf[21], *new_pin = NULL;
+	CK_TOKEN_INFO	info;
+	CK_RV rv;
+
+	if (!opt_object_label)
+		fatal("The token label must be specified using --label\n");
+	snprintf(token_label, sizeof (token_label), "%-32.32s",
+			opt_object_label);
+
+	get_token_info(slot, &info);
+	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
+		if (opt_so_pin == NULL) {
+			new_pin = getpass("Please enter the new SO PIN: ");
+			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
+				fatal("Invalid SO PIN\n");
+			strcpy(new_buf, new_pin);
+			new_pin = getpass("Please enter the new SO PIN "
+					"(again): ");
+			if (!new_pin || !*new_pin ||
+					strcmp(new_buf, new_pin) != 0)
+				fatal("Different new SO PINs, exiting\n");
+		} else {
+			new_pin = opt_so_pin;
+		}
+		if (!new_pin || !*new_pin)
+			fatal("Invalid SO PIN\n");
+	}
+
+	rv = p11->C_InitToken(slot, (CK_UTF8CHAR *) new_pin,
+			new_pin == NULL ? 0 : strlen(new_pin), token_label);
+	if (rv != CKR_OK)
+		p11_fatal("C_InitToken", rv);
+	printf("Token successfully initialized\n");
+}
+
+void
+init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
+{
+	char new_buf[21], *new_pin = NULL;
+	CK_TOKEN_INFO	info;
+	CK_RV rv;
+
+	get_token_info(slot, &info);
+
+	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
+		if (opt_pin == NULL) {
+			new_pin = getpass("Please enter the new PIN: ");
+			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
+				fatal("Invalid User PIN\n");
+			strcpy(new_buf, new_pin);
+			new_pin = getpass("Please enter the new PIN again: ");
+			if (!new_pin || !*new_pin ||
+					strcmp(new_buf, new_pin) != 0)
+				fatal("Different new User PINs, exiting\n");
+		} else {
+			new_pin = opt_pin;
+		}
+	}
+
+	rv = p11->C_InitPIN(sess,
+		(CK_UTF8CHAR *) new_pin, new_pin == NULL ? 0 : strlen(new_pin));
+	if (rv != CKR_OK)
+		p11_fatal("C_InitPIN", rv);
+	printf("User PIN successfully initialized\n");
 }
 
 int
@@ -2745,7 +2856,7 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
 
-	login(session);
+	login(session, 0);
 
 	printf("\n*** Put a cert on the card (NOTE: doesn't correspond with the key!) ***\n");
 
