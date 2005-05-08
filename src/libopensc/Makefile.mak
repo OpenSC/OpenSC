@@ -29,7 +29,7 @@ OBJECTS			= \
 	\
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-netkey.obj pkcs15-esteid.obj pkcs15-postecert.obj \
-	pkcs15-gemsafe.obj \
+	pkcs15-gemsafe.obj pkcs15-actalis.obj \
 	\
 	$(TOPDIR)\win32\version.res
 
