@@ -1094,7 +1094,6 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 
 		r = sc_pkcs15init_store_public_key(p15card, profile,
 				&pubkey_args, &pub_object);
-		sc_pkcs15_free_object(pub_object);
 	}
 
 	if (r >= 0 && res_obj)
