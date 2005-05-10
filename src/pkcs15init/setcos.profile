@@ -41,56 +41,56 @@ filesystem {
             size        = 82;  # size = 2 + 2*(number of sub-files) -> 40 sub-files
 
             EF PKCS15-PrKDF {
-                file-id     = 4402;
-                size        = 512;
+                file-id     = 4401;
+                size        = 480;
                 acl         = *=$SOPIN, READ=NONE;
             }
 
             EF PKCS15-PuKDF {
                 file-id     = 4403;
-                size        = 512;
+                size        = 480;
                 acl         = *=$SOPIN, READ=NONE;
             }
 
             EF PKCS15-CDF {
                 file-id     = 4404;
-                size        = 1024;
+                size        = 960;
                 acl         = *=$SOPIN, READ=NONE;
             }
 
             EF PKCS15-DODF {
                 file-id     = 4405;
-                size        = 512;
+                size        = 480;
                 acl         = *=$SOPIN, READ=NONE;
             }
 
             EF template-private-key {
-                file-id     = 5101;   # incremented for following objects: 5102, 5103 ...
+                file-id     = 5100;
                 type        = internal-ef;
-                size        = 512;    # 512bit=196, 768bit=410, 1024bit:512
+                size        = 512;    # enough for a 1024 bit RSA key
                 ACL         = *=NEVER, READ=NONE, CRYPTO=$PIN, UPDATE=$SOPIN; # READ: only for public key
             }
             EF template-extractable-key {
-                file-id     = 7000;   # incremented for following objects: 5102, 5103 ...
+                file-id     = 5300;
                 type        = internal-ef;
-                size        = 512;    # 512bit=196, 768bit=410, 1024bit:512
+                size        = 512;    # enough for a 1024 bit RSA key
                 ACL         = *=NEVER, READ=$PIN, UPDATE=$SOPIN;
             }
 
             EF template-public-key {
-                file-id     = 5201;   # incremented for following objects: 5202, 5203 ...
+                file-id     = 5200;
                 ACL         = *=$SOPIN, READ=NONE;
             }
 
             EF template-certificate {
-                file-id     = 5501;   # incremented for following objects: 5502, 5503 ...
+                file-id     = 5500;
                 ACL         = *=$SOPIN, READ=NONE;
             }
 
             EF template-data {
                 file-id     = 5000;
                 structure   = transparent;
-                ACL         = *=$SOPIN, *=NONE;
+                ACL         = *=$SOPIN, READ=NONE;
             }
         }
     }
