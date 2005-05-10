@@ -120,6 +120,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	set_string(&p15card->manufacturer_id, "Actalis");
 	set_string(&p15card->serial_number, serial);
 
+#ifdef HAVE_ZLIB_H
 	for (i = 0; i < 3; i++) {
 		unsigned char *compCert = NULL, *cert = NULL, size[2];
 		unsigned int compLen, len;
@@ -170,6 +171,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 
 		sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 	}
+#endif
 	
 	/* adding PINs & private keys */
 	flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
