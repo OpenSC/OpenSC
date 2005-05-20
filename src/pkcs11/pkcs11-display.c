@@ -590,7 +590,7 @@ void print_slot_list(FILE *f, CK_SLOT_ID_PTR pSlotList, CK_ULONG ulCount)
 void print_slot_info(FILE *f, CK_SLOT_INFO *info)
 {
   int            i;
-  enum_specs ck_flags[3] = {
+  enum_specs ck_flags[] = {
     { CKF_TOKEN_PRESENT    , "CKF_TOKEN_PRESENT                " },
     { CKF_REMOVABLE_DEVICE , "CKF_REMOVABLE_DEVICE             " },
     { CKF_HW_SLOT          , "CKF_HW_SLOT                      " },
@@ -602,7 +602,7 @@ void print_slot_info(FILE *f, CK_SLOT_INFO *info)
   fprintf(f, "      hardwareVersion:         %d.%d\n",    info->hardwareVersion.major, info->hardwareVersion.minor );
   fprintf(f, "      firmwareVersion:         %d.%d\n",    info->firmwareVersion.major, info->firmwareVersion.minor );
   fprintf(f, "      flags:                   %0lx\n",     info->flags );
-  for(i = 0; i < 3; i++) {
+  for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++) {
     if(info->flags & ck_flags[i].type) {
       fprintf(f, "        %s\n", ck_flags[i].name);
     }
@@ -760,7 +760,7 @@ void print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
 void print_session_info(FILE *f, CK_SESSION_INFO *info)
 {
   int            i;
-  enum_specs ck_flags[2] = {
+  enum_specs ck_flags[] = {
     { CKF_RW_SESSION     , "CKF_RW_SESSION                   " },
     { CKF_SERIAL_SESSION , "CKF_SERIAL_SESSION               " }
   };
@@ -768,7 +768,7 @@ void print_session_info(FILE *f, CK_SESSION_INFO *info)
   fprintf(f, "      slotID:                  %ld\n",       info->slotID );
   fprintf(f, "      state:                  '%32.32s'\n",  lookup_enum(STA_T, info->state));
   fprintf(f, "      flags:                   %0lx\n",     info->flags );
-  for(i = 0; i < 2; i++) {
+  for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++) {
     if(info->flags & ck_flags[i].type) {
       fprintf(f, "        %s\n", ck_flags[i].name);
     }
