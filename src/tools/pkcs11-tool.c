@@ -29,6 +29,9 @@
 #ifdef HAVE_OPENSSL
 #include "openssl/evp.h"
 #include "openssl/x509.h"
+#include "openssl/rsa.h"
+#include "openssl/engine.h"
+#include "openssl/bn.h"
 #include "openssl/err.h"
 #endif
 
@@ -45,6 +48,7 @@ enum {
 	OPT_SO_PIN,
 	OPT_INIT_TOKEN,
 	OPT_INIT_PIN,
+	OPT_ATTR_FROM,
 };
 
 const struct option options[] = {
@@ -73,6 +77,7 @@ const struct option options[] = {
 	{ "slot",		1, 0,		OPT_SLOT },
 	{ "slot-label",		1, 0,		OPT_SLOT_LABEL },
 	{ "set-id",		1, 0, 		'e' },
+	{ "attr-from",		1, 0, 		OPT_ATTR_FROM },
 	{ "input-file",		1, 0,		'i' },
 	{ "output-file",	1, 0,		'o' },
 	{ "module",		1, 0,		OPT_MODULE },
@@ -109,6 +114,7 @@ const char *option_help[] = {
 	"Specify number of the slot to use",
 	"Specify label of the slot to use",
 	"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
+	"Use <arg> to create some attributes when writing an object",
 	"Specify the input file",
 	"Specify the output file",
 	"Specify the module to load",
@@ -131,6 +137,7 @@ static const char *	opt_file_to_write = NULL;
 static const char *	opt_object_class_str = NULL;
 static CK_OBJECT_CLASS	opt_object_class = -1;
 static CK_BYTE		opt_object_id[100], new_object_id[100];
+static const char *	opt_attr_from_file = NULL;
 static size_t		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
 static char *		opt_pin = NULL;
@@ -150,6 +157,32 @@ struct mech_info {
 	CK_MECHANISM_TYPE mech;
 	const char *	name;
 	const char *	short_name;
+};
+struct x509cert_info {
+	unsigned char	subject[128];
+	int		subject_len;
+	unsigned char	issuer[128];
+	int		issuer_len;
+	unsigned char	serialnum[128];
+	int		serialnum_len;
+};
+struct rsakey_info {
+	unsigned char	*modulus;
+	int		modulus_len;
+	unsigned char	*public_exponent;
+	int		public_exponent_len;
+	unsigned char	*private_exponent;
+	int		private_exponent_len;
+	unsigned char	*prime_1;
+	int		prime_1_len;
+	unsigned char	*prime_2;
+	int		prime_2_len;
+	unsigned char	*exponent_1;
+	int		exponent_1_len;
+	unsigned char	*exponent_2;
+	int		exponent_2_len;
+	unsigned char	*coefficient;
+	int		coefficient_len;
 };
 
 static void		show_cryptoki_info(void);
@@ -287,6 +320,9 @@ main(int argc, char * const argv[])
 			}
 			action_count++;
 			break;
+		case OPT_ATTR_FROM:
+			opt_attr_from_file = optarg;
+			break;
 		case 'y':
 			opt_object_class_str = optarg;
 			if (strcmp(optarg, "cert") == 0)
@@ -383,6 +419,10 @@ main(int argc, char * const argv[])
 	}
 	if (action_count == 0)
 		print_usage_and_die();
+
+#ifdef HAVE_OPENSSL
+	/* ERR_load_crypto_strings(); */
+#endif
 
 	module = C_LoadModule(opt_module, &p11);
 	if (module == NULL)
@@ -1018,18 +1058,111 @@ gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	return 1;
 }
 
-/* Currently only for certificates (-type cert) */
+#ifdef HAVE_OPENSSL
+static void	parse_certificate(struct x509cert_info *cert,
+		unsigned char *data, int len)
+{
+	X509 *x;
+	unsigned char *p;
+	int n;
+
+	p = data;
+	x = d2i_X509(NULL, &p, len);
+	if (!x) {
+		/* ERR_print_errors_fp(stderr); */
+		fatal("OpenSSL error during X509 certificate parsing");
+	}
+	p = cert->subject;
+	n = i2d_X509_NAME(x->cert_info->subject, &p);
+	if (n < 0)
+		fatal("OpenSSL error while encoding subject name");
+	if (n > (int)sizeof (cert->subject))
+		fatal("subject name too long");
+	cert->subject_len = n;
+
+	p = cert->issuer;
+	n = i2d_X509_NAME(x->cert_info->issuer, &p);
+	if (n < 0)
+		fatal("OpenSSL error while encoding issuer name");
+	if (n > (int)sizeof (cert->issuer))
+		fatal("issuer name too long");
+	cert->issuer_len = n;
+
+	p = cert->serialnum;
+	n = i2d_ASN1_INTEGER(x->cert_info->serialNumber, &p);
+	if (n < 0)
+		fatal("OpenSSL error while encoding serial number");
+	if (n > (int)sizeof (cert->serialnum))
+		fatal("serial number too long");
+	cert->serialnum_len = n;
+}
+
+#define RSA_GET_BN(LOCALNAME, BNVALUE) \
+	do { \
+		rsa->LOCALNAME = malloc(BN_num_bytes(BNVALUE)); \
+		if (!rsa->LOCALNAME) \
+			fatal("malloc() failure\n"); \
+		rsa->LOCALNAME##_len = BN_bn2bin(BNVALUE, rsa->LOCALNAME); \
+	} while (0)
+
+static void	parse_rsa_private_key(struct rsakey_info *rsa,
+		unsigned char *data, int len)
+{
+	RSA *r = NULL;
+	const unsigned char *p;
+
+	p = data;
+	r = d2i_RSAPrivateKey(NULL, &p, len);
+	if (!r) {
+		/* ERR_print_errors_fp(stderr); */
+		fatal("OpenSSL error during RSA private key parsing");
+	}
+	RSA_GET_BN(modulus, r->n);
+	RSA_GET_BN(public_exponent, r->e);
+	RSA_GET_BN(private_exponent, r->d);
+	RSA_GET_BN(prime_1, r->p);
+	RSA_GET_BN(prime_2, r->q);
+	RSA_GET_BN(exponent_1, r->dmp1);
+	RSA_GET_BN(exponent_2, r->dmq1);
+	RSA_GET_BN(coefficient, r->iqmp);
+}
+#endif
+
+#define MAX_OBJECT_SIZE	5000
+
+/* Currently only for certificates (-type cert) and private keys
+   (-type privkey). Note: only RSA private keys are supported. */
 int
 write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
 	CK_BBOOL _true = TRUE;
-	unsigned char contents[5000];
-	int contents_len;
+	unsigned char contents[MAX_OBJECT_SIZE];
+	int contents_len = 0;
+	unsigned char certdata[MAX_OBJECT_SIZE];
+	int certdata_len = 0;
 	FILE *f;
 	CK_OBJECT_HANDLE cert_obj, pubkey_obj, privkey_obj;
 	CK_ATTRIBUTE cert_templ[20], pubkey_templ[20], privkey_templ[20];
 	int n_cert_attr = 0, n_pubkey_attr = 0, n_privkey_attr = 0;
 	CK_RV rv;
+	int need_to_parse_certdata = 0;
+#ifdef HAVE_OPENSSL
+	struct x509cert_info cert = {
+		.subject = "", .subject_len = 0,
+		.issuer = "", .issuer_len = 0,
+		.serialnum = "", .serialnum_len = 0,
+	};
+	struct rsakey_info rsa = {
+		.modulus = NULL, .modulus_len = 0,
+		.public_exponent = NULL, .public_exponent_len = 0,
+		.private_exponent = NULL, .private_exponent_len = 0,
+		.prime_1 = NULL, .prime_1_len = 0,
+		.prime_2 = NULL, .prime_2_len = 0,
+		.exponent_1 = NULL, .exponent_1_len = 0,
+		.exponent_2 = NULL, .exponent_2_len = 0,
+		.coefficient = NULL, .coefficient_len = 0,
+	};
+#endif
 
 	f = fopen(opt_file_to_write, "rb");
 	if (f == NULL)
@@ -1038,6 +1171,36 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (contents_len < 0)
 		fatal("Couldn't read from file \"%s\"\n", opt_file_to_write);
 	fclose(f);
+
+	if (opt_attr_from_file) {
+		if (!(f = fopen(opt_attr_from_file, "rb")))
+			fatal("Couldn't open file \"%s\"\n", opt_attr_from_file);
+		certdata_len = fread(certdata, 1, sizeof(certdata), f);
+		if (certdata_len < 0)
+			fatal("Couldn't read from file \"%s\"\n", opt_attr_from_file);
+		fclose(f);
+		need_to_parse_certdata = 1;
+	}
+	if (opt_object_class == CKO_CERTIFICATE && !opt_attr_from_file) {
+		memcpy(certdata, contents, MAX_OBJECT_SIZE);
+		certdata_len = contents_len;
+		need_to_parse_certdata = 1;
+	}
+
+	if (need_to_parse_certdata) {
+#ifdef HAVE_OPENSSL
+		parse_certificate(&cert, certdata, certdata_len);
+#else
+		fatal("No OpenSSL support, cannot parse certificate\n");
+#endif
+	}
+	if (opt_object_class == CKO_PRIVATE_KEY) {
+#ifdef HAVE_OPENSSL
+		parse_rsa_private_key(&rsa, contents, contents_len);
+#else
+		fatal("No OpenSSL support, cannot parse RSA private key\n");
+#endif
+	}
 
 	if (opt_object_class == CKO_CERTIFICATE) {
 		CK_OBJECT_CLASS clazz = CKO_CERTIFICATE;
@@ -1059,6 +1222,72 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 				opt_object_id, opt_object_id_len);
 			n_cert_attr++;
 		}
+#ifdef HAVE_OPENSSL
+		/* according to PKCS #11 CKA_SUBJECT MUST be specified */
+		FILL_ATTR(cert_templ[n_cert_attr], CKA_SUBJECT,
+			cert.subject, cert.subject_len);
+		n_cert_attr++;
+		FILL_ATTR(cert_templ[n_cert_attr], CKA_ISSUER,
+			cert.issuer, cert.issuer_len);
+		n_cert_attr++;
+		FILL_ATTR(cert_templ[n_cert_attr], CKA_SERIAL_NUMBER,
+			cert.serialnum, cert.serialnum_len);
+		n_cert_attr++;
+#endif
+	}
+	else
+	if (opt_object_class == CKO_PRIVATE_KEY) {
+		CK_OBJECT_CLASS clazz = CKO_PRIVATE_KEY;
+		CK_KEY_TYPE type = CKK_RSA;
+
+		FILL_ATTR(privkey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
+		FILL_ATTR(privkey_templ[1], CKA_KEY_TYPE, &type, sizeof(type));
+		FILL_ATTR(privkey_templ[2], CKA_TOKEN, &_true, sizeof(_true));
+		FILL_ATTR(privkey_templ[3], CKA_PRIVATE, &_true, sizeof(_true));
+		FILL_ATTR(privkey_templ[4], CKA_SENSITIVE, &_true, sizeof(_true));
+		n_privkey_attr = 5;
+
+		if (opt_object_label != NULL) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_LABEL,
+				opt_object_label, strlen(opt_object_label));
+			n_privkey_attr++;
+		}
+		if (opt_object_id_len != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_ID,
+				opt_object_id, opt_object_id_len);
+			n_privkey_attr++;
+		}
+#ifdef HAVE_OPENSSL
+		if (cert.subject_len != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SUBJECT,
+				cert.subject, cert.subject_len);
+			n_privkey_attr++;
+		}
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_MODULUS,
+			rsa.modulus, rsa.modulus_len);
+		n_privkey_attr++;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PUBLIC_EXPONENT,
+			rsa.public_exponent, rsa.public_exponent_len);
+		n_privkey_attr++;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIVATE_EXPONENT,
+			rsa.private_exponent, rsa.private_exponent_len);
+		n_privkey_attr++;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIME_1,
+			rsa.prime_1, rsa.prime_1_len);
+		n_privkey_attr++;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIME_2,
+			rsa.prime_2, rsa.prime_2_len);
+		n_privkey_attr++;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EXPONENT_1,
+			rsa.exponent_1, rsa.exponent_1_len);
+		n_privkey_attr++;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EXPONENT_2,
+			rsa.exponent_2, rsa.exponent_2_len);
+		n_privkey_attr++;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_COEFFICIENT,
+			rsa.coefficient, rsa.coefficient_len);
+		n_privkey_attr++;
+#endif
 	}
 	else
 		fatal("Writing of a \"%s\" type not (yet) supported\n", opt_object_class_str);

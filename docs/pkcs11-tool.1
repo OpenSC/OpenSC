@@ -92,6 +92,12 @@ Specify the name of the slot to use.
 .BR "\-\-set\-id " \fIid\fP ", \-e " \fIid\fP
 Set the CKA_ID of the object.
 .TP
+.BR "\-\-attr\-from " \fIpath\fP
+Extract informations from \fIpath\fP (DER-encoded certificate file)
+and create the corresponding attributes when writing an object to the
+token. Example: the certificate subject name is used to create the
+CKA_SUBJECT attribute.
+.TP
 .BR "\-\-input\-file " \fIpath\fP ", \-i " \fIpath\fP
 Specify the path to a file for input.
 .TP
