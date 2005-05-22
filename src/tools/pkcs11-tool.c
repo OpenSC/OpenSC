@@ -1147,21 +1147,11 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_RV rv;
 	int need_to_parse_certdata = 0;
 #ifdef HAVE_OPENSSL
-	struct x509cert_info cert = {
-		.subject = "", .subject_len = 0,
-		.issuer = "", .issuer_len = 0,
-		.serialnum = "", .serialnum_len = 0,
-	};
-	struct rsakey_info rsa = {
-		.modulus = NULL, .modulus_len = 0,
-		.public_exponent = NULL, .public_exponent_len = 0,
-		.private_exponent = NULL, .private_exponent_len = 0,
-		.prime_1 = NULL, .prime_1_len = 0,
-		.prime_2 = NULL, .prime_2_len = 0,
-		.exponent_1 = NULL, .exponent_1_len = 0,
-		.exponent_2 = NULL, .exponent_2_len = 0,
-		.coefficient = NULL, .coefficient_len = 0,
-	};
+	struct x509cert_info cert;
+	struct rsakey_info rsa;
+
+	memset(&cert, 0, sizeof(cert));
+	memset(&rsa,  0, sizeof(rsa));
 #endif
 
 	f = fopen(opt_file_to_write, "rb");
