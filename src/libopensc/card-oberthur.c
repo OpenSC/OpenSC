@@ -1850,6 +1850,19 @@ auth_init_pin_info(sc_card_t *card, struct sc_pin_cmd_pin *pin,
 	}
 }
 
+static int
+auth_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+	int *tries_left)
+{
+	int rv, pin_ref;
+	
+	rv = auth_get_pin_reference (card, data->pin_type, 1, SC_PIN_CMD_VERIFY, &pin_ref);
+	if (rv)
+		return rv;
+		
+	data->pin_reference = pin_ref;
+	return iso_ops->pin_cmd(card, data, tries_left);
+}
 
 static int
 auth_verify(sc_card_t *card, unsigned int type,
@@ -2342,7 +2355,7 @@ sc_get_driver(void)
 	auth_ops.compute_signature = auth_compute_signature;
 	auth_ops.decipher = auth_decipher;
 	
-	auth_ops.pin_cmd = NULL;
+	auth_ops.pin_cmd = auth_pin_cmd;
 	auth_ops.verify = auth_verify;
 	auth_ops.reset_retry_counter = auth_reset_retry_counter;
 	auth_ops.change_reference_data = auth_change_reference_data;
