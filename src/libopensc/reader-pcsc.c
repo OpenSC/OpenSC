@@ -904,14 +904,7 @@ class2_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	sc_bin_to_hex(sbuf, scount, dbuf, sizeof(dbuf), ':');
 	sc_debug(reader->ctx, "Class 2 block: %s", dbuf);
 	
-	/* The slot must be manually locked, as the control does not pass through card.c
-	 * wrappers that lock the card (card_transmit is not OK in this case, as it assumes
-	 * a proper APDU as a parameter, not an arbitary binary blob to be sent to the reader)
-	 */
-	r = reader->ops->lock(reader, slot);
-	SC_TEST_RET(reader->ctx, r, "Class 2: could not lock!");
 	r = reader->ops->transmit(reader, slot, sbuf, scount, rbuf, &rcount, ioctl);
-	reader->ops->unlock(reader, slot);
 
 	SC_TEST_RET(reader->ctx, r, "Class 2: block transmit failed!");
 	
