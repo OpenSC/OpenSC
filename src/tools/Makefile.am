@@ -7,7 +7,7 @@ EXTRA_DIST = Makefile.mak
 AM_LDFLAGS = @LIBOPENSC@
 
 if HAVE_SSL
-PROGRAMS_SSL = cryptoflex-tool pkcs15-init
+PROGRAMS_SSL = cryptoflex-tool pkcs15-init netkey-tool
 endif
 
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
@@ -32,5 +32,7 @@ cardos_info_SOURCES = cardos-info.c util.c
 cardos_info_LDADD = @GETOPTSRC@
 eidenv_SOURCES = eidenv.c
 eidenv_LDADD = @GETOPTSRC@
+netkey_tool_SOURCES = netkey-tool.c
+netkey_tool_LDADD = @GETOPTSRC@ @LIBCRYPTO@
 
 noinst_HEADERS = util.h
