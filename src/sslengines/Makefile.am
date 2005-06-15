@@ -1,7 +1,7 @@
 # Process this file with automake to create Makefile.in
 
 bundledir = @BUNDLEDIR@/opensc
-libdir = @libdir@/opensc
+enginedir = @libdir@/openssl
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -9,7 +9,7 @@ EXTRA_DIST = Makefile.mak engine_pkcs11.def test_engine.sh \
 	$(engine_opensc_la_SOURCES) $(engine_pkcs11_la_SOURCES) 
 
 if HAVE_ENGINE
-lib_LTLIBRARIES = engine_opensc.la engine_pkcs11.la
+engine_LTLIBRARIES = engine_opensc.la engine_pkcs11.la
 endif
 
 OPENSSL_CFLAGS = \
@@ -34,9 +34,9 @@ engine_pkcs11_la_LDFLAGS = @OPENSSL_LDFLAGS@ -module -avoid-version
 install-exec-local: install-libLTLIBRARIES
 if HAVE_ENGINE
 if HAVE_BUNDLES
-	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(libdir)/engine_opensc.so \
+	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(enginedir)/engine_opensc.so \
 		$(DESTDIR)$(bundledir)/
-	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(libdir)/engine_pkcs11.so \
+	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(enginedir)/engine_pkcs11.so \
 		$(DESTDIR)$(bundledir)/
 endif
 endif

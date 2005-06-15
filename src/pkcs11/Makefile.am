@@ -1,7 +1,7 @@
 # Process this file with automake to create Makefile.in
 
 bundledir = @BUNDLEDIR@/pkcs11
-libdir = @libdir@/pkcs11
+libdir = @libdir@
 includedir = @includedir@/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
