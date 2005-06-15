@@ -21,9 +21,16 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#ifdef HAVE_OPENSSL
+#include <asm/types.h>
+#include <netinet/in.h>
+#include <openssl/bn.h>
+#include <openssl/crypto.h>
+#endif
 #include <limits.h>
 #include <opensc/pkcs15.h>
 #include "util.h"
+
 
 const char *app_name = "pkcs15-tool";
 
@@ -48,6 +55,9 @@ enum {
 	OPT_NO_CACHE,
 	OPT_LIST_PUB,
 	OPT_READ_PUB,
+#ifdef HAVE_OPENSSL
+	OPT_READ_SSH,
+#endif
 	OPT_PIN,
 	OPT_NEWPIN,
 	OPT_PUK,
@@ -71,6 +81,9 @@ const struct option options[] = {
 	{ "list-keys",          no_argument, 0,         'k' },
 	{ "list-public-keys",	no_argument, 0,		OPT_LIST_PUB },
 	{ "read-public-key",	required_argument, 0,	OPT_READ_PUB },
+#ifdef HAVE_OPENSSL
+	{ "read-ssh-key",	required_argument, 0,	OPT_READ_SSH },
+#endif
 	{ "reader",		required_argument, 0,	OPT_READER },
 	{ "pin",                required_argument, 0,   OPT_PIN },
 	{ "new-pin",		required_argument, 0,	OPT_NEWPIN },
@@ -95,6 +108,7 @@ const char *option_help[] = {
 	"Lists private keys",
 	"Lists public keys",
 	"Reads public key with ID <arg>",
+	"Reads public key with ID <arg>, outputs ssh format",
 	"Uses reader number <arg>",
 	"Specify PIN",
 	"Specify New PIN (when changing or unblocking)",
@@ -540,6 +554,228 @@ static int read_public_key(void)
 	return r;
 }
 
+#ifdef HAVE_OPENSSL
+static int read_ssh_key(void)
+{
+	int r;
+	struct sc_pkcs15_id id;
+	struct sc_pkcs15_object *obj;
+	sc_pkcs15_pubkey_t *pubkey = NULL;
+	sc_pkcs15_cert_t *cert = NULL;
+
+	id.len = SC_PKCS15_MAX_ID_SIZE;
+	sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
+
+	r = sc_pkcs15_find_pubkey_by_id(p15card, &id, &obj);
+	if (r >= 0) {
+		if (verbose)
+			printf("Reading ssh key with ID '%s'\n", opt_pubkey);
+		r = authenticate(obj);
+		if (r >= 0)
+			r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
+	} else if (r == SC_ERROR_OBJECT_NOT_FOUND) {
+		/* No pubkey - try if there's a certificate */
+		r = sc_pkcs15_find_cert_by_id(p15card, &id, &obj);
+		if (r >= 0) {
+			if (verbose)
+				printf("Reading certificate with ID '%s'\n", opt_pubkey);
+			r = sc_pkcs15_read_certificate(p15card,
+				(sc_pkcs15_cert_info_t *) obj->data,
+				&cert);
+		}
+		if (r >= 0)
+			pubkey = &cert->key;
+	}
+
+	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
+		fprintf(stderr, "Public key with ID '%s' not found.\n", opt_pubkey);
+		return 2;
+	}
+	if (r < 0) {
+		fprintf(stderr, "Public key enumeration failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+
+	/* rsa1 keys */
+	if (pubkey->algorithm == SC_ALGORITHM_RSA) {
+		int bits;
+		BIGNUM *bn;
+		char *exp,*mod;
+
+		bn = BN_new();
+		BN_bin2bn((unsigned char*)pubkey->u.rsa.modulus.data,
+				pubkey->u.rsa.modulus.len, bn);
+		bits = BN_num_bits(bn);
+		exp =  BN_bn2dec(bn);
+		BN_free(bn);
+
+		bn = BN_new();
+		BN_bin2bn((unsigned char*)pubkey->u.rsa.exponent.data,
+				pubkey->u.rsa.exponent.len, bn);
+		mod = BN_bn2dec(bn);
+		BN_free(bn);
+
+		if (bits && exp && mod) {
+			printf("%u %s %s\n", bits,mod,exp);
+		} else {
+			printf("decoding rsa key failed!\n");
+		}
+		OPENSSL_free(exp);
+		OPENSSL_free(mod);
+	}
+	
+	/* rsa and des keys - ssh2 */
+	/* key_to_blob */
+
+	if (pubkey->algorithm == SC_ALGORITHM_RSA) {
+		char buf[2048];
+		char *uu;
+		__u32 len;
+		__u32 n;
+
+		buf[0]=0;
+		buf[1]=0;
+		buf[2]=0;
+		buf[3]=7;
+
+		len = sprintf(buf+4,"ssh-rsa");
+		len+=4;
+
+		if (sizeof(buf)-len < 4+pubkey->u.rsa.exponent.len)
+			goto fail;
+		n = pubkey->u.rsa.exponent.len;
+		if (pubkey->u.rsa.exponent.data[0] & 0x80) n++;
+		buf[len++]=(n >>24) & 0xff;
+		buf[len++]=(n >>16) & 0xff;
+		buf[len++]=(n >>8) & 0xff;
+		buf[len++]=(n) & 0xff;
+		if (pubkey->u.rsa.exponent.data[0] & 0x80) 
+			buf[len++]= 0;
+
+		memcpy(buf+len,pubkey->u.rsa.exponent.data,
+			pubkey->u.rsa.exponent.len);
+		len += pubkey->u.rsa.exponent.len;
+
+		if (sizeof(buf)-len < 5+pubkey->u.rsa.modulus.len)
+			goto fail;
+		n = pubkey->u.rsa.modulus.len;
+		if (pubkey->u.rsa.modulus.data[0] & 0x80) n++;
+		buf[len++]=(n >>24) & 0xff;
+		buf[len++]=(n >>16) & 0xff;
+		buf[len++]=(n >>8) & 0xff;
+		buf[len++]=(n) & 0xff;
+		if (pubkey->u.rsa.modulus.data[0] & 0x80) 
+			buf[len++]= 0;
+
+		memcpy(buf+len,pubkey->u.rsa.modulus.data,
+			pubkey->u.rsa.modulus.len);
+		len += pubkey->u.rsa.modulus.len;
+
+		uu = malloc(len*2);
+		r = sc_base64_encode(buf, len, uu, 2*len, 2*len);
+
+		printf("ssh-rsa %s", uu);
+		free(uu);
+
+	}
+
+	if (pubkey->algorithm == SC_ALGORITHM_DSA) {
+		char buf[2048];
+		char *uu;
+		__u32 len;
+		__u32 n;
+
+		buf[0]=0;
+		buf[1]=0;
+		buf[2]=0;
+		buf[3]=7;
+
+		len = sprintf(buf+4,"ssh-dss");
+		len+=4;
+
+		if (sizeof(buf)-len < 5+pubkey->u.dsa.p.len)
+			goto fail;
+		n = pubkey->u.dsa.p.len;
+		if (pubkey->u.dsa.p.data[0] & 0x80) n++;
+		buf[len++]=(n >>24) & 0xff;
+		buf[len++]=(n >>16) & 0xff;
+		buf[len++]=(n >>8) & 0xff;
+		buf[len++]=(n) & 0xff;
+		if (pubkey->u.dsa.p.data[0] & 0x80) 
+			buf[len++]= 0;
+
+		memcpy(buf+len,pubkey->u.dsa.p.data,
+			pubkey->u.dsa.p.len);
+		len += pubkey->u.dsa.p.len;
+
+		if (sizeof(buf)-len < 5+pubkey->u.dsa.q.len)
+			goto fail;
+		n = pubkey->u.dsa.q.len;
+		if (pubkey->u.dsa.q.data[0] & 0x80) n++;
+		buf[len++]=(n >>24) & 0xff;
+		buf[len++]=(n >>16) & 0xff;
+		buf[len++]=(n >>8) & 0xff;
+		buf[len++]=(n) & 0xff;
+		if (pubkey->u.dsa.q.data[0] & 0x80) 
+			buf[len++]= 0;
+
+		memcpy(buf+len,pubkey->u.dsa.q.data,
+			pubkey->u.dsa.q.len);
+		len += pubkey->u.dsa.q.len;
+
+		if (sizeof(buf)-len < 5+pubkey->u.dsa.g.len)
+			goto fail;
+		n = pubkey->u.dsa.g.len;
+		if (pubkey->u.dsa.g.data[0] & 0x80) n++;
+		buf[len++]=(n >>24) & 0xff;
+		buf[len++]=(n >>16) & 0xff;
+		buf[len++]=(n >>8) & 0xff;
+		buf[len++]=(n) & 0xff;
+		if (pubkey->u.dsa.g.data[0] & 0x80) 
+			buf[len++]= 0;
+
+		memcpy(buf+len,pubkey->u.dsa.g.data,
+			pubkey->u.dsa.g.len);
+		len += pubkey->u.dsa.g.len;
+
+		if (sizeof(buf)-len < 5+pubkey->u.dsa.pub.len)
+			goto fail;
+		n = pubkey->u.dsa.pub.len;
+		if (pubkey->u.dsa.pub.data[0] & 0x80) n++;
+		buf[len++]=(n >>24) & 0xff;
+		buf[len++]=(n >>16) & 0xff;
+		buf[len++]=(n >>8) & 0xff;
+		buf[len++]=(n) & 0xff;
+		if (pubkey->u.dsa.pub.data[0] & 0x80) 
+			buf[len++]= 0;
+
+		memcpy(buf+len,pubkey->u.dsa.pub.data,
+			pubkey->u.dsa.pub.len);
+		len += pubkey->u.dsa.pub.len;
+
+		uu = malloc(len*2);
+		r = sc_base64_encode(buf, len, uu, 2*len, 2*len);
+
+		printf("ssh-dss %s", uu);
+		free(uu);
+
+	}
+
+	if (cert)
+		sc_pkcs15_free_certificate(cert);
+	else if (pubkey)
+		sc_pkcs15_free_pubkey(pubkey);
+
+	return 0;
+fail:
+		printf("can't convert key: buffer too small\n");
+	if (cert)
+		sc_pkcs15_free_certificate(cert);
+	else if (pubkey)
+		sc_pkcs15_free_pubkey(pubkey);
+	return SC_ERROR_OUT_OF_MEMORY;
+}
+#endif
 
 static sc_pkcs15_object_t *
 get_pin_info(void)
@@ -875,6 +1111,7 @@ int main(int argc, char * const argv[])
 	int do_list_prkeys = 0;
 	int do_list_pubkeys = 0;
 	int do_read_pubkey = 0;
+	int do_read_sshkey = 0;
 	int do_change_pin = 0;
 	int do_unblock_pin = 0;
 	int do_learn_card = 0;
@@ -928,6 +1165,11 @@ int main(int argc, char * const argv[])
 		case OPT_READ_PUB:
 			opt_pubkey = optarg;
 			do_read_pubkey = 1;
+			action_count++;
+			break;
+		case OPT_READ_SSH:
+			opt_pubkey = optarg;
+			do_read_sshkey = 1;
 			action_count++;
 			break;
 		case 'L':
@@ -1026,6 +1268,11 @@ int main(int argc, char * const argv[])
 	}
 	if (do_read_pubkey) {
 		if ((err = read_public_key()))
+			goto end;
+		action_count--;
+	}
+	if (do_read_sshkey) {
+		if ((err = read_ssh_key()))
 			goto end;
 		action_count--;
 	}
