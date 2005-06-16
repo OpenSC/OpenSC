@@ -31,7 +31,7 @@ engine_pkcs11_la_CFLAGS = $(OPENSSL_CFLAGS)
 engine_pkcs11_la_LIBADD = @ENGINE_LINK@ ../pkcs11/libpkcs11.la
 engine_pkcs11_la_LDFLAGS = @OPENSSL_LDFLAGS@ -module -avoid-version
 
-install-exec-local: install-libLTLIBRARIES
+install-exec-local: install-engineLTLIBRARIES
 if HAVE_ENGINE
 if HAVE_BUNDLES
 	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(enginedir)/engine_opensc.so \
@@ -41,7 +41,7 @@ if HAVE_BUNDLES
 endif
 endif
 
-uninstall-local: uninstall-libLTLIBRARIES
+uninstall-local: uninstall-engineLTLIBRARIES
 if HAVE_ENGINE
 if HAVE_BUNDLES
 	rm -rf $(DESTDIR)$(bundledir)/engine_opensc.bundle/
