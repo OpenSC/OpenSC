@@ -38,7 +38,7 @@ typedef struct sc_app_info {
 	<refsect1>
 		<title>Description</title>
 		<para>
-			This structure describes a smartcard application. It contains the following
+			This structure describes a smart card application. It contains the following
 			members:
 			<variablelist>
 				

@@ -9,7 +9,7 @@
 
 	<refnamediv>
 		<refname>sc_wait_for_event</refname>
-		<refpurpose>Wait for an event on a smartcard reader</refpurpose>
+		<refpurpose>Wait for an event on a smart card reader</refpurpose>
 	</refnamediv>
 
 	<refsect1>

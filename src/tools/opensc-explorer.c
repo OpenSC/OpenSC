@@ -1,5 +1,5 @@
 /*
- * opensc-explorer.c: A shell for accessing SmartCards with libopensc
+ * opensc-explorer.c: A shell for accessing smart cards with libopensc
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

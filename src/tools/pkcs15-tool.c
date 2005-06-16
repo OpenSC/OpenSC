@@ -1,5 +1,5 @@
 /*
- * pkcs15-tool.c: Tool for poking with PKCS #15 smartcards
+ * pkcs15-tool.c: Tool for poking with PKCS #15 smart cards
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

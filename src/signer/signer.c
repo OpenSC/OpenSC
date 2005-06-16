@@ -23,7 +23,7 @@ NPP_GetValue(void *inst, NPPVariable variable, void *value)
 		case NPPVpluginDescriptionString:
 			*((char **)value) = (char *) "This plugins handles"
 					    " web signatures using OpenSC"
-					    " smartcard library.";
+					    " smart card library.";
 			break;
 		default:
 			err = NPERR_GENERIC_ERROR;

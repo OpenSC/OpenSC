@@ -118,7 +118,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 		  "OpenSC Project (www.opensc.org)",
 		  sizeof(pInfo->manufacturerID));
 	strcpy_bp(pInfo->libraryDescription,
-		  "SmartCard PKCS#11 API",
+		  "smart card PKCS#11 API",
 		  sizeof(pInfo->libraryDescription));
 	pInfo->libraryVersion.major = 1;
 	pInfo->libraryVersion.minor = 0;

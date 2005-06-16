@@ -107,7 +107,7 @@ const char *sc_strerror(int error)
 	const int p15i_base = -SC_ERROR_PKCS15INIT;
 	const char *misc_errors[] = {
 		"Unknown error",
-		"PKCS#15 compatible SmartCard not found",
+		"PKCS#15 compatible smart card not found",
 	};
 	const int misc_base = -SC_ERROR_UNKNOWN;
 	const char **errors = NULL;

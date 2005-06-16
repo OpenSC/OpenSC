@@ -59,7 +59,7 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 		sc_close(priv);
 		r = sc_init(priv);
 		if (r) {
-			DBG(printf("SmartCard init failed: %s", sc_strerror(r)));
+			DBG(printf("smart card init failed: %s", sc_strerror(r)));
 			goto err;
 		}
 	}
@@ -68,12 +68,12 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 				SC_PKCS15_PRKEY_USAGE_DECRYPT,
 				&key);
 	if (r) {
-		DBG(printf("Unable to find private key from SmartCard: %s", sc_strerror(r)));
+		DBG(printf("Unable to find private key from smart card: %s", sc_strerror(r)));
 		goto err;
 	}
 	r = sc_pkcs15_find_pin_by_auth_id(priv->p15card, &key->auth_id, &pin);
 	if (r) {
-		DBG(printf("Unable to find PIN object from SmartCard: %s", sc_strerror(r)));
+		DBG(printf("Unable to find PIN object from smart card: %s", sc_strerror(r)));
 		goto err;
 	}
 
@@ -122,7 +122,7 @@ sc_sign(int type, const unsigned char *m, unsigned int m_len,
 		sc_close(priv);
 		r = sc_init(priv);
 		if (r) {
-			DBG(printf("SmartCard init failed: %s", sc_strerror(r)));
+			DBG(printf("smart card init failed: %s", sc_strerror(r)));
 			goto err;
 		}
 	}
@@ -131,12 +131,12 @@ sc_sign(int type, const unsigned char *m, unsigned int m_len,
 					SC_PKCS15_PRKEY_USAGE_SIGN,
 					&key);
 	if (r) {
-		DBG(printf("Unable to find private key from SmartCard: %s", sc_strerror(r)));
+		DBG(printf("Unable to find private key from smart card: %s", sc_strerror(r)));
 		goto err;
 	}
 	r = sc_pkcs15_find_pin_by_auth_id(priv->p15card, &key->auth_id, &pin);
 	if (r) {
-		DBG(printf("Unable to find PIN object from SmartCard: %s", sc_strerror(r)));
+		DBG(printf("Unable to find PIN object from smart card: %s", sc_strerror(r)));
 		goto err;
 	}
 

@@ -9,7 +9,7 @@
 
 	<refnamediv>
 		<refname>sc_set_card_driver</refname>
-		<refpurpose>Force the use of a specified smartcard driver</refpurpose>
+		<refpurpose>Force the use of a specified smart card driver</refpurpose>
 	</refnamediv>
 
 	<refsect1>

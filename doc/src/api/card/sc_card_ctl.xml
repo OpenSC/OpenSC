@@ -26,7 +26,7 @@ int sc_card_ctl(struct sc_card *card, unsigned long cmd, void *args);
 
 	<refsect1>
 		<title>Description</title>
-		<para>This function is used to send various control commands to the smartcard associated with
+		<para>This function is used to send various control commands to the smart card associated with
 			<emphasis>card</emphasis>. The command is specified in <emphasis>cmd</emphasis>, and any
 			command-specific arguments are pointed to by <emphasis>args</emphasis>.
 		</para>

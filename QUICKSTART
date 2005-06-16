@@ -213,7 +213,7 @@ anything. This command loads the opensc engine, so openssl can delegate
 some work from your computers cpu to the smart card.
 
 OpenSSL> req -engine pkcs11 -new -key id_45 -keyform engine -out req.pem -text -x509
-SmartCard PIN: 
+Smart card PIN: 
 You are about to be asked to enter information that will be incorporated
 into your certificate request.
 What you are about to enter is what is called a Distinguished Name or a DN.

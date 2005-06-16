@@ -107,7 +107,7 @@ struct sc_pkcs15init_operations {
 
 	/*
 	 * Finalize card
-	 * Ends the initialization phase of the smartcard/token
+	 * Ends the initialization phase of the smart card/token
 	 * (actually this command is currently only for starcos spk 2.3
 	 * cards).
 	 */

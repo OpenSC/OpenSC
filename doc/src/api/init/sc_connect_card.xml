@@ -9,7 +9,7 @@
 
 	<refnamediv>
 		<refname>sc_connect_card</refname>
-		<refpurpose>Connect to smartcard in reader</refpurpose>
+		<refpurpose>Connect to smart card in reader</refpurpose>
 	</refnamediv>
 
 	<refsect1>

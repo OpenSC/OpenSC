@@ -1,5 +1,5 @@
 /*
- * card.c: General SmartCard functions
+ * card.c: General smart card functions
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  *

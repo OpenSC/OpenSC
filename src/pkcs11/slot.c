@@ -1,5 +1,5 @@
 /*
- * slot.c: Smartcard and slot related management functions
+ * slot.c: smart card and slot related management functions
  *
  * Copyright (C) 2002  Timo Teräs <timo.teras@iki.fi>
  *
@@ -80,7 +80,7 @@ CK_RV card_detect(int reader)
 
 	rv = CKR_OK;
 
-	sc_debug(context, "%d: Detecting SmartCard\n", reader);
+	sc_debug(context, "%d: Detecting smart card\n", reader);
 	for (i = card->max_slots; i--; ) {
 		struct sc_pkcs11_slot *slot;
 
@@ -118,7 +118,7 @@ again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 
 	/* Detect the card if it's not known already */
 	if (card->card == NULL) {
-		sc_debug(context, "%d: Connecting to SmartCard\n", reader);
+		sc_debug(context, "%d: Connecting to smart card\n", reader);
 		rc = sc_connect_card(context->reader[reader], 0, &card->card);
 		if (rc != SC_SUCCESS)
 			return sc_to_cryptoki_error(rc, reader);
@@ -180,7 +180,7 @@ CK_RV card_removed(int reader)
 	int i;
 	struct sc_pkcs11_card *card;
 
-	sc_debug(context, "%d: SmartCard removed\n", reader);
+	sc_debug(context, "%d: smart card removed\n", reader);
 
 	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++) {
 		if (virtual_slots[i].card &&

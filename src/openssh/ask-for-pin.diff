@@ -34,7 +34,7 @@ diff -u -r1.12 scard-opensc.c
 +		char prompt[64];
 +
 +		snprintf(prompt, sizeof(prompt), "Enter PIN for %s: ",
-+			key_obj->label ? key_obj->label : "smartcard key");
++			key_obj->label ? key_obj->label : "smart card key");
 +		passphrase = read_passphrase(prompt, 0);
 +		if (!passphrase || !strcmp(passphrase, ""))
 +			goto err;
@@ -44,7 +44,7 @@ diff -u -r1.12 scard-opensc.c
 +
  	r = sc_lock(card);
  	if (r) {
- 		error("Unable to lock smartcard: %s", sc_strerror(r));
+ 		error("Unable to lock smart card: %s", sc_strerror(r));
  		goto err;
  	}
 -	if (sc_pin != NULL) {

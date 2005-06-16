@@ -134,20 +134,20 @@ int sc_prkey_op_init(const RSA * rsa, struct sc_pkcs15_object **key_obj_out,
 		opensc_finish();
 		r = opensc_init();
 		if (r) {
-			fprintf(stderr, "SmartCard init failed: %s\n", sc_strerror(r));
+			fprintf(stderr, "smart card init failed: %s\n", sc_strerror(r));
 			goto err;
 		}
 	}
 	r = sc_pkcs15_find_prkey_by_id_usage(p15card, key_id, usage, &key_obj);
 	if (r) {
-		fprintf(stderr, "Unable to find private key from SmartCard: %s\n",
+		fprintf(stderr, "Unable to find private key from smart card: %s\n",
 			sc_strerror(r));
 		goto err;
 	}
 	key = (struct sc_pkcs15_prkey_info *) key_obj->data;
 	r = sc_pkcs15_find_pin_by_auth_id(p15card, &key_obj->auth_id, &pin_obj);
 	if (r) {
-		fprintf(stderr, "Unable to find PIN object from SmartCard: %s\n",
+		fprintf(stderr, "Unable to find PIN object from smart card: %s\n",
 			sc_strerror(r));
 		goto err;
 	}
@@ -155,7 +155,7 @@ int sc_prkey_op_init(const RSA * rsa, struct sc_pkcs15_object **key_obj_out,
 
 	r = sc_lock(card);
 	if (r) {
-		fprintf(stderr, "Unable to lock smartcard: %s\n", sc_strerror(r));
+		fprintf(stderr, "Unable to lock smart card: %s\n", sc_strerror(r));
 		goto err;
 	}
 	if (sc_pin != NULL) {
@@ -282,7 +282,7 @@ static char *get_pin(UI_METHOD * ui_method, void *callback_data, char *sc_pin, i
 	if (callback_data != NULL)
 		UI_set_app_data(ui, callback_data);
 
-	if (!UI_add_input_string(ui, "SmartCard PIN: ", 0, sc_pin, 1, maxlen)) {
+	if (!UI_add_input_string(ui, "Smart card PIN: ", 0, sc_pin, 1, maxlen)) {
 		fprintf(stderr, "UI_add_input_string failed\n");
 		UI_free(ui);
 		return NULL;

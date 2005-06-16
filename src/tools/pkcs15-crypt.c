@@ -1,5 +1,5 @@
 /*
- * pkcs15-crypt.c: Tool for cryptography operations with SmartCards
+ * pkcs15-crypt.c: Tool for cryptography operations with smart cards
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

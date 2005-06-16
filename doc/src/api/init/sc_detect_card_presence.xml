@@ -9,7 +9,7 @@
 
 	<refnamediv>
 		<refname>sc_detect_card_presence</refname>
-		<refpurpose>Detect presence of smartcard in a reader</refpurpose>
+		<refpurpose>Detect presence of smart card in a reader</refpurpose>
 	</refnamediv>
 
 	<refsect1>

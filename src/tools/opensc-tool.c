@@ -1,5 +1,5 @@
 /*
- * opensc-tool.c: Tool for accessing SmartCards with libopensc
+ * opensc-tool.c: Tool for accessing smart cards with libopensc
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *

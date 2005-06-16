@@ -2,7 +2,7 @@
     CT-BCS commands, responses and parameters for terminals 
     without keypad and display.
 
-    This file is part of the Unix driver for Towitoko smartcard readers
+    This file is part of the Unix driver for Towitoko smart card readers
     Copyright (C) 1998 1999 2000 Carlos Prados <cprados@yahoo.com>
 
     This library is free software; you can redistribute it and/or

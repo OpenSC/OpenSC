@@ -9,7 +9,7 @@
 
 	<refnamediv>
 		<refname>sc_disconnect_card</refname>
-		<refpurpose>Disconnect from a smartcard</refpurpose>
+		<refpurpose>Disconnect from a smart card</refpurpose>
 	</refnamediv>
 
 	<refsect1>

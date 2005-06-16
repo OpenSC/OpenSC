@@ -204,7 +204,7 @@ const char *		option_help[] = {
 	"Mark certificate as a CA certificate",
 	"Specify X.509 key usage (use \"--key-usage help\" for more information)",
 	"Automatically create two keys with same ID and different usage (sign vs decipher)",
-	"Finish initialization phase of the smartcard",
+	"Finish initialization phase of the smart card",
 
 	"Private key stored as an extractable key",
 	"Insecure mode: do not require PIN/passphrase for private key",

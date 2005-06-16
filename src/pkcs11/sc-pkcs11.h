@@ -132,7 +132,7 @@ struct sc_pkcs11_object {
 
 
 /*
- * PKCS#11 Smartcard Framework abstraction
+ * PKCS#11 smart card Framework abstraction
  */
 
 struct sc_pkcs11_framework_ops {
