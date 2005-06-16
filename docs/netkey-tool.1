@@ -2,7 +2,7 @@
 .ds nm \fBnetkey-tool\fR
 .TH netkey-tool 1 "May 16, 2005" "" OpenSC
 .SH NAME
-netkey-tool \- utility for NetKey E4 smartcards
+netkey-tool \- utility for NetKey E4 smart cards
 .SH SYNOPSIS
 \*(nm
 .RI [OPTIONS]
@@ -45,7 +45,7 @@ intedend to use 12:34 or 01:02:03:04 wich are pins of length
 2 and 4.
 .SH COMMANDS
 When used without any options or commands, \*(nm will
-display information about the smartcards pins and
+display information about the smart cards pins and
 certificates. This will not change your card in
 any aspect (assumed there are no bugs in \*(nm).
 In particular the tries-left counters of the pins
@@ -87,9 +87,9 @@ Certificates on a NetKey E4 card are readable without
 a pin, so you don't have to specify one.
 .IP "\fBcert  \fIfilename\fP  \fIno\fP" 4
 This command will read the first PEM-encoded certificate from
-file \fIfilename\fP and store this into your smartcards
+file \fIfilename\fP and store this into your smart cards
 certificate file number \fIno\fP. Some of your
-smartcards certificate files might be readonly, so
+smart cards certificate files might be readonly, so
 this will not work with all values of \fIno\fP. If
 a certificate file is writable you must specify a
 pin in order to change it. If you try to use this
