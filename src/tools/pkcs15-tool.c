@@ -1167,11 +1167,13 @@ int main(int argc, char * const argv[])
 			do_read_pubkey = 1;
 			action_count++;
 			break;
+#ifdef HAVE_OPENSSL
 		case OPT_READ_SSH:
 			opt_pubkey = optarg;
 			do_read_sshkey = 1;
 			action_count++;
 			break;
+#endif
 		case 'L':
 			do_learn_card = 1;
 			action_count++;
