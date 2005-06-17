@@ -15,7 +15,9 @@
 
 		<para>
 			libopensc is a library for accessing smart card devices. It is also
-			the core library of the OpenSC project. Basic functionality (e.g.
+			the core library of the OpenSC project. libopensc also supports usb
+			crypto tokens (they usualy have a smart card inside).
+			Basic functionality (e.g.
 			SELECT FILE, READ BINARY) should work on any ISO 7816-4 compatible
 			smart card. Encryption and decryption using private keys on the
 			smart card is possible with PKCS #15 compatible cards, such as
