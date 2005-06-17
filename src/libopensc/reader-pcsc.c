@@ -247,12 +247,16 @@ static int refresh_slot_attributes(sc_reader_t *reader, sc_slot_info_t *slot)
 		 * the card handle is still valid. If the card changed,
 		 * the handle will be invalid. */
 		slot->flags &= ~SC_SLOT_CARD_CHANGED;
-		if (maybe_changed && (old_flags & SC_SLOT_CARD_PRESENT)) {
-			DWORD readers_len = 0, state, prot, atr_len = 32;
-			unsigned char atr[32];
-			LONG rv = SCardStatus(pslot->pcsc_card, NULL, &readers_len,
-				&state,	&prot, atr, &atr_len);
-			if (rv == (LONG)SCARD_W_REMOVED_CARD)
+		if (maybe_changed) {
+			if (old_flags & SC_SLOT_CARD_PRESENT) {
+				DWORD readers_len = 0, state, prot, atr_len = 32;
+				unsigned char atr[32];
+				LONG rv = SCardStatus(pslot->pcsc_card, NULL, &readers_len,
+					&state,	&prot, atr, &atr_len);
+				if (rv == (LONG)SCARD_W_REMOVED_CARD)
+					slot->flags |= SC_SLOT_CARD_CHANGED;
+			}
+			else
 				slot->flags |= SC_SLOT_CARD_CHANGED;
 		}
 	} else {
