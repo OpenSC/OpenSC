@@ -22,8 +22,12 @@
 #include <config.h>
 #endif
 #ifdef HAVE_OPENSSL
+#ifndef _WIN32
 #include <asm/types.h>
 #include <netinet/in.h>
+#else
+typedef unsigned long __u32;
+#endif
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #endif
