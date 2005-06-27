@@ -2435,7 +2435,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		if (rc != CKR_OK)
 			return rc;
 
-		/* If the card supports RAW, it should be all means
+		/* If the card supports RAW, it should by all means
 		 * have registered everything else, too. If it didn't
 		 * we help it a little
 		 */
