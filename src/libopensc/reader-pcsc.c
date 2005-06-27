@@ -441,7 +441,7 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 					pslot->modify_ioctl = dw2i_be(feature_buf, i + 2);
 					slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
 				} else {
-					sc_debug(reader->ctx, "Reader pinpad feature: %c not recognized", feature_buf[i]);
+					sc_debug(reader->ctx, "Reader pinpad feature: %02x not recognized", feature_buf[i]);
 				}
 			}
 		} else
