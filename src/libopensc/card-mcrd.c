@@ -1039,8 +1039,7 @@ mcrd_select_file(sc_card_t *card, const sc_path_t *path,
 
 
 /* Crypto operations */
-
-static int mcrd_enable_se (sc_card_t *card, int se_num)
+static int mcrd_restore_se (sc_card_t *card, int se_num)
 {
 	sc_apdu_t apdu;
 	int r;
@@ -1089,7 +1088,7 @@ static int mcrd_set_security_env(sc_card_t *card,
 			sc_debug(card->ctx,
 				 "Using keyref %d to dechiper\n",
 				 env->key_ref[0]);
-			mcrd_enable_se(card, 6);
+			mcrd_restore_se(card, 6);
 			mcrd_delete_ref_to_authkey(card);
 			mcrd_delete_ref_to_signkey(card);
 			mcrd_set_decipher_key_ref(card, env->key_ref[0]);
@@ -1097,7 +1096,7 @@ static int mcrd_set_security_env(sc_card_t *card,
 		case SC_SEC_OPERATION_SIGN:
 			sc_debug(card->ctx, "Using keyref %d to sign\n",
 				 env->key_ref[0]);
-			mcrd_enable_se(card, 1);
+			mcrd_restore_se(card, 1);
 			break;
 		default:
 			return SC_ERROR_INVALID_ARGUMENTS;
@@ -1135,7 +1134,7 @@ static int mcrd_set_security_env(sc_card_t *card,
 		if (num != -1) {
 			/* Need to restore the security environmnet. */
 			if (num) {
-				r = mcrd_enable_se (card, num);
+				r = mcrd_restore_se (card, num);
 				SC_TEST_RET(card->ctx, r, "mcrd_enable_se failed");
 			}
 			p += 2;
