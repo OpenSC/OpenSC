@@ -1,12 +1,33 @@
-Index: scard-opensc.c
-===================================================================
-RCS file: /cvs/openssh/scard-opensc.c,v
-retrieving revision 1.12
-diff -u -r1.12 scard-opensc.c
---- scard-opensc.c	25 Aug 2003 00:58:26 -0000	1.12
-+++ scard-opensc.c	27 Aug 2003 11:42:02 -0000
+diff -udrNP openssh-4.1p1.orig/scard.c openssh-4.1p1/scard.c
+--- openssh-4.1p1.orig/scard.c	2004-05-13 08:15:48.000000000 +0200
++++ openssh-4.1p1/scard.c	2005-06-28 06:00:11.951466616 +0200
+@@ -35,6 +35,9 @@
+ #include "misc.h"
+ #include "scard.h"
+ 
++/* currently unused */
++int ask_for_pin = 0;
++
+ #if OPENSSL_VERSION_NUMBER < 0x00907000L
+ #define USE_ENGINE
+ #define RSA_get_default_method RSA_get_default_openssl_method
+diff -udrNP openssh-4.1p1.orig/scard.h openssh-4.1p1/scard.h
+--- openssh-4.1p1.orig/scard.h	2003-06-18 12:28:40.000000000 +0200
++++ openssh-4.1p1/scard.h	2005-06-28 06:00:11.956465856 +0200
+@@ -33,6 +33,8 @@
+ #define SCARD_ERROR_NOCARD	-2
+ #define SCARD_ERROR_APPLET	-3
+ 
++extern int ask_for_pin;
++
+ Key	**sc_get_keys(const char *, const char *);
+ void	 sc_close(void);
+ int	 sc_put_key(Key *, const char *);
+diff -udrNP openssh-4.1p1.orig/scard-opensc.c openssh-4.1p1/scard-opensc.c
+--- openssh-4.1p1.orig/scard-opensc.c	2004-05-13 09:29:35.000000000 +0200
++++ openssh-4.1p1/scard-opensc.c	2005-06-28 06:00:11.940468288 +0200
 @@ -38,6 +38,8 @@
- #include "readpass.h"
+ #include "misc.h"
  #include "scard.h"
  
 +int ask_for_pin=0;
@@ -34,7 +55,7 @@ diff -u -r1.12 scard-opensc.c
 +		char prompt[64];
 +
 +		snprintf(prompt, sizeof(prompt), "Enter PIN for %s: ",
-+			key_obj->label ? key_obj->label : "smart card key");
++			key_obj->label ? key_obj->label : "smartcard key");
 +		passphrase = read_passphrase(prompt, 0);
 +		if (!passphrase || !strcmp(passphrase, ""))
 +			goto err;
@@ -44,7 +65,7 @@ diff -u -r1.12 scard-opensc.c
 +
  	r = sc_lock(card);
  	if (r) {
- 		error("Unable to lock smart card: %s", sc_strerror(r));
+ 		error("Unable to lock smartcard: %s", sc_strerror(r));
  		goto err;
  	}
 -	if (sc_pin != NULL) {
@@ -79,47 +100,10 @@ diff -u -r1.12 scard-opensc.c
  	sc_close();
  	return -1;
  }
-Index: scard.c
-===================================================================
-RCS file: /cvs/openssh/scard.c,v
-retrieving revision 1.27
-diff -u -r1.27 scard.c
---- scard.c	18 Jun 2003 10:28:40 -0000	1.27
-+++ scard.c	27 Aug 2003 11:42:02 -0000
-@@ -35,6 +35,9 @@
- #include "readpass.h"
- #include "scard.h"
- 
-+/* currently unused */
-+int ask_for_pin = 0;
-+
- #if OPENSSL_VERSION_NUMBER < 0x00907000L
- #define USE_ENGINE
- #define RSA_get_default_method RSA_get_default_openssl_method
-Index: scard.h
-===================================================================
-RCS file: /cvs/openssh/scard.h,v
-retrieving revision 1.10
-diff -u -r1.10 scard.h
---- scard.h	18 Jun 2003 10:28:40 -0000	1.10
-+++ scard.h	27 Aug 2003 11:42:02 -0000
-@@ -33,6 +33,8 @@
- #define SCARD_ERROR_NOCARD	-2
- #define SCARD_ERROR_APPLET	-3
- 
-+extern int ask_for_pin;
-+
- Key	**sc_get_keys(const char *, const char *);
- void	 sc_close(void);
- int	 sc_put_key(Key *, const char *);
-Index: ssh.c
-===================================================================
-RCS file: /cvs/openssh/ssh.c,v
-retrieving revision 1.180
-diff -u -r1.180 ssh.c
---- ssh.c	21 Aug 2003 23:34:41 -0000	1.180
-+++ ssh.c	27 Aug 2003 11:42:02 -0000
-@@ -1155,6 +1155,9 @@
+diff -udrNP openssh-4.1p1.orig/ssh.c openssh-4.1p1/ssh.c
+--- openssh-4.1p1.orig/ssh.c	2005-05-04 07:33:09.000000000 +0200
++++ openssh-4.1p1/ssh.c	2005-06-28 06:00:11.967464184 +0200
+@@ -1216,6 +1216,9 @@
  #ifdef SMARTCARD
  	Key **keys;
  
