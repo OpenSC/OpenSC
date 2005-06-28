@@ -22,14 +22,7 @@
 #include <config.h>
 #endif
 #ifdef HAVE_OPENSSL
-#if defined(_WIN32)
-typedef unsigned long __u32;
-#elif defined(__APPLE__)
 #include <stdint.h>
-typedef uint32_t __u32;
-#else
-#include <asm/types.h>
-#include <netinet/in.h>
 #endif
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
@@ -637,8 +630,8 @@ static int read_ssh_key(void)
 	if (pubkey->algorithm == SC_ALGORITHM_RSA) {
 		char buf[2048];
 		char *uu;
-		__u32 len;
-		__u32 n;
+		uint32_t len;
+		uint32_t n;
 
 		buf[0]=0;
 		buf[1]=0;
@@ -689,8 +682,8 @@ static int read_ssh_key(void)
 	if (pubkey->algorithm == SC_ALGORITHM_DSA) {
 		char buf[2048];
 		char *uu;
-		__u32 len;
-		__u32 n;
+		uint32_t len;
+		uint32_t n;
 
 		buf[0]=0;
 		buf[1]=0;
