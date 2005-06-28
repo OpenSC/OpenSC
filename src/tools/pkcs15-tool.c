@@ -22,8 +22,11 @@
 #include <config.h>
 #endif
 #ifdef HAVE_OPENSSL
-#if defined(__APPLE__) || defined(_WIN32)
+#if defined(_WIN32)
 typedef unsigned long __u32;
+#elif defined(__APPLE__)
+#include <stdint.h>
+typedef uint32_t __u32;
 #else
 #include <asm/types.h>
 #include <netinet/in.h>
