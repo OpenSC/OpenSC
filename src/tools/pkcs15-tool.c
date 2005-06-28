@@ -23,7 +23,6 @@
 #endif
 #ifdef HAVE_OPENSSL
 #include <stdint.h>
-#endif
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #endif
