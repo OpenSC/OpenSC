@@ -60,7 +60,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	int r, i, flags;
 	sc_path_t tmppath;
 
-	set_string (&p15card->label, "EstEID isikutunnistus");
+	set_string (&p15card->label, "ID-kaart");
 	set_string (&p15card->manufacturer_id, "AS Sertifitseerimiskeskus");
 
 	/* read the serial (document number) */
@@ -116,8 +116,8 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	for (i = 0; i < 3; i++) {
 		unsigned char tries_left;
 		static const char *esteid_pin_names[3] = {
-			"PIN1 - Isikutuvastus",
-			"PIN2 - Allkirjastamine",
+			"PIN1, Isikutuvastus",
+			"PIN2, Allkirjastamine",
 			"PUK" };
 			
 		static const int esteid_pin_min[3] = {4, 5, 8};
