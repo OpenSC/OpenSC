@@ -292,7 +292,6 @@ etoken_generate_key(sc_profile_t *profile, sc_card_t *card,
 	struct sc_cardctl_etoken_genkey_info args;
 	struct sc_file	*temp;
 	u8		abignum[RSAKEY_MAX_SIZE];
-	u8		randbuf[64];
 	unsigned int	keybits;
 	int		algorithm, r, delete_it = 0;
 	
@@ -341,7 +340,6 @@ etoken_generate_key(sc_profile_t *profile, sc_card_t *card,
 	args.key_bits = keybits;
 	args.fid = temp->id;
 	r = sc_card_ctl(card, SC_CARDCTL_ETOKEN_GENERATE_KEY, &args);
-	memset(randbuf, 0, sizeof(randbuf));
 	if (r < 0)
 		goto out;
 
