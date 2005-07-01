@@ -194,8 +194,6 @@ struct sc_cardctl_etoken_obj_info {
 };
 
 struct sc_cardctl_etoken_genkey_info {
-	u8 *		random_data;
-	size_t		random_len;
 	unsigned int	key_id;
 	unsigned int	key_bits;
 	unsigned short	fid;

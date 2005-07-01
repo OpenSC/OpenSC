@@ -817,14 +817,6 @@ etoken_generate_key(sc_card_t *card,
 	u8		data[8];
 	int		r;
 
-	if (args->random_len) {
-		/* XXX FIXME: do a GIVE_RANDOM command with this data */
-		sc_error(card->ctx,
-			"initialization of card's random pool "
-			"not yet implemented\n");
-		return SC_ERROR_INTERNAL;
-	}
-
 	data[0] = 0x20;		/* store as PSO object */
 	data[1] = args->key_id;
 	data[2] = args->fid >> 8;

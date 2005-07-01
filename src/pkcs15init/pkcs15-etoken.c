@@ -337,19 +337,6 @@ etoken_generate_key(sc_profile_t *profile, sc_card_t *card,
 		goto out;
 
 	memset(&args, 0, sizeof(args));
-#ifdef notyet
-	if ((r = scrandom_get_data(randbuf, sizeof(randbuf))) < 0)
-		goto out;
-
-	/* For now, we have to rely on the card's internal number
-	 * generator because libscrandom is static, which causes
-	 * all sorts of headaches when linking against it
-	 * (some platforms don't allow non-PIC code in a shared lib,
-	 * such as ia64).
-	 */
-	args.random_data = randbuf;
-	args.random_len = sizeof(randbuf);
-#endif
 	args.key_id = key_info->key_reference;
 	args.key_bits = keybits;
 	args.fid = temp->id;
