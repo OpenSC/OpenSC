@@ -917,6 +917,7 @@ extern sc_card_driver_t *sc_get_openpgp_driver(void);
 extern sc_card_driver_t *sc_get_jcop_driver(void);
 extern sc_card_driver_t *sc_get_oberthur_driver(void);
 extern sc_card_driver_t *sc_get_belpic_driver(void);
+extern sc_card_driver_t *sc_get_atrust_acos_driver(void);
 
 #ifdef __cplusplus
 }

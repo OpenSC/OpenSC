@@ -74,6 +74,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "oberthur", (void *) sc_get_oberthur_driver },
 #endif
 	{ "belpic", (void *) sc_get_belpic_driver },
+	{ "atrust-acos", (void *)sc_get_atrust_acos_driver },
 	{ "emv", (void *) sc_get_emv_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */

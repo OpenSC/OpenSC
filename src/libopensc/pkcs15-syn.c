@@ -44,6 +44,8 @@ extern int sc_pkcs15emu_gemsafe_init_ex(sc_pkcs15_card_t *p15card,
 					sc_pkcs15emu_opt_t *opts);
 extern int sc_pkcs15emu_actalis_init_ex(sc_pkcs15_card_t *p15card,
 					sc_pkcs15emu_opt_t *opts);
+extern int sc_pkcs15emu_atrust_acos_init_ex(sc_pkcs15_card_t *p15card,
+					sc_pkcs15emu_opt_t *opts);
 
 static struct {
 	const char *		name;
@@ -57,6 +59,7 @@ static struct {
 	{ "postecert",	sc_pkcs15emu_postecert_init_ex  },
 	{ "gemsafe",	sc_pkcs15emu_gemsafe_init_ex	},
 	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
+	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ NULL }
 };
 
