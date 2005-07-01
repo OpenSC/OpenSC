@@ -29,7 +29,6 @@
 #include <opensc/opensc.h>
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
-#include <opensc/scrandom.h>
 #include "pkcs15-init.h"
 #include "profile.h"
 
