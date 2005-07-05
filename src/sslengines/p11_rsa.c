@@ -69,10 +69,11 @@ static int pkcs11_get_rsa_public(PKCS11_KEY *, EVP_PKEY *);
 static int pkcs11_get_rsa_private(PKCS11_KEY *, EVP_PKEY *);
 RSA_METHOD *pkcs11_get_rsa_method(void);
 
-#define key_getattr(k, t, p, s) \
-	pkcs11_getattr(KEY2TOKEN(key), PRIVKEY(key)->object, t, p, s)
-#define key_getattr_bn(k, t, bn) \
-	pkcs11_getattr_bn(KEY2TOKEN(key), PRIVKEY(key)->object, t, bn)
+#define key_getattr(key, t, p, s) \
+	pkcs11_getattr(KEY2TOKEN((key)), PRIVKEY((key))->object, (t), (p), (s))
+
+#define key_getattr_bn(key, t, bn) \
+	pkcs11_getattr_bn(KEY2TOKEN((key)), PRIVKEY((key))->object, (t), (bn)) 
 
 /*
  * Get RSA key material
