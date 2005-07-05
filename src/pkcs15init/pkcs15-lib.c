@@ -326,6 +326,10 @@ sc_pkcs15init_bind(sc_card_t *card, const char *name,
 	 */
 	if (!get_profile_from_config(card, card_profile, sizeof(card_profile)))
 		strcpy(card_profile, driver);
+	if (profile_option != NULL) {
+		strncpy(card_profile, profile_option, sizeof(card_profile));
+		card_profile[sizeof(card_profile) - 1] = '\0';
+	}
 
 	if ((r = sc_profile_load(profile, profile->name)) < 0
 	 || (r = sc_profile_load(profile, card_profile)) < 0
