@@ -150,6 +150,7 @@ static int setcos_init(sc_card_t *card)
 		card->cla = 0x00;
 		card->caps |= SC_CARD_CAP_USE_FCI_AC;
 		card->caps |= SC_CARD_CAP_RNG;
+		card->caps |= SC_CARD_FLAG_ONBOARD_KEY_GEN;
 		break;
 	default:
 		/* XXX: Get SetCOS version */
@@ -178,7 +179,10 @@ static int setcos_init(sc_card_t *card)
 
 			flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
 			flags |= SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1;
+			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 
+			_sc_card_add_rsa_alg(card, 512, flags, 0);
+			_sc_card_add_rsa_alg(card, 768, flags, 0);
 			_sc_card_add_rsa_alg(card, 1024, flags, 0);
 		}
 		break;
