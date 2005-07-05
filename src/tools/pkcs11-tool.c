@@ -159,11 +159,11 @@ struct mech_info {
 	const char *	short_name;
 };
 struct x509cert_info {
-	unsigned char	subject[128];
+	unsigned char	subject[256];
 	int		subject_len;
-	unsigned char	issuer[128];
+	unsigned char	issuer[256];
 	int		issuer_len;
-	unsigned char	serialnum[128];
+	unsigned char	serialnum[256];
 	int		serialnum_len;
 };
 struct rsakey_info {
