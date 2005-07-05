@@ -41,7 +41,7 @@ filesystem {
             size        = 82;  # size = 2 + 2*(number of sub-files) -> 40 sub-files
 
             EF PKCS15-PrKDF {
-                file-id     = 4401;
+                file-id     = 4402;
                 size        = 480;
                 acl         = *=$SOPIN, READ=NONE;
             }
