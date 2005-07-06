@@ -22,7 +22,11 @@
 #include <config.h>
 #endif
 #ifdef HAVE_OPENSSL
+#ifdef _WIN32
+typedef unsigned __int32 uint32_t;
+#else
 #include <stdint.h>
+#endif
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #endif
