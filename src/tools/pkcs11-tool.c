@@ -163,7 +163,7 @@ struct x509cert_info {
 	int		subject_len;
 	unsigned char	issuer[256];
 	int		issuer_len;
-	unsigned char	serialnum[256];
+	unsigned char	serialnum[128];
 	int		serialnum_len;
 };
 struct rsakey_info {
