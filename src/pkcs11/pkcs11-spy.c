@@ -537,8 +537,15 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,
   spy_dump_ulong_in("hSession", hSession);
   spy_dump_ulong_in("hObject", hObject);
   spy_attribute_req_in("pTemplate", pTemplate, ulCount);
+  /* PKCS#11 says:
+   * ``Note that the error codes CKR_ATTRIBUTE_SENSITIVE,
+   *   CKR_ATTRIBUTE_TYPE_INVALID, and CKR_BUFFER_TOO_SMALL do not denote
+   *   true errors for C_GetAttributeValue.''
+   * That's why we ignore these error codes, because we want to display
+   * all other attributes anyway (they may have been returned correctly) */
   rv = po->C_GetAttributeValue(hSession, hObject, pTemplate, ulCount);
-  if (rv == CKR_OK) {
+  if (rv == CKR_OK || rv == CKR_ATTRIBUTE_SENSITIVE ||
+	  rv == CKR_ATTRIBUTE_TYPE_INVALID || rv == CKR_BUFFER_TOO_SMALL) {
     spy_attribute_list_out("pTemplate", pTemplate, ulCount);
   }
   return retne(rv);
