@@ -237,6 +237,11 @@ typedef struct CK_TOKEN_INFO {
  * expired by the card. */
 #define CKF_SO_PIN_TO_BE_CHANGED     0x00800000
 
+/* Any attribute whose value is an array of attributes is
+ * identifiable by virtue of the attribute type having the
+ * CKF_ARRAY_ATTRIBUTE bit set. */
+#define CKF_ARRAY_ATTRIBUTE          0x40000000
+
 typedef CK_TOKEN_INFO CK_PTR CK_TOKEN_INFO_PTR;
 
 
@@ -409,6 +414,12 @@ typedef CK_ULONG          CK_ATTRIBUTE_TYPE;
 /* CKA_TRUSTED is new for v2.11 */
 #define CKA_TRUSTED            0x00000086
 
+#define CKA_CERTIFICATE_CATEGORY       0x00000087
+#define CKA_JAVA_MIDP_SECURITY_DOMAIN  0x00000088
+#define CKA_URL                        0x00000089
+#define CKA_HASH_OF_SUBJECT_PUBLIC_KEY 0x0000008a
+#define CKA_HASH_OF_ISSUER_PUBLIC_KEY  0x0000008b
+#define CKA_CHECK_VALUE                0x00000090
 #define CKA_KEY_TYPE           0x00000100
 #define CKA_SUBJECT            0x00000101
 #define CKA_ID                 0x00000102
@@ -469,9 +480,28 @@ typedef CK_ULONG          CK_ATTRIBUTE_TYPE;
  * are new for v2.10 */
 #define CKA_SECONDARY_AUTH     0x00000200
 #define CKA_AUTH_PIN_FLAGS     0x00000201
+#define CKA_ALWAYS_AUTHENTICATE        0x00000202
+#define CKA_WRAP_WITH_TRUSTED          0x00000210
+#define CKA_WRAP_TEMPLATE              (CKF_ARRAY_ATTRIBUTE|0x00000211)
+#define CKA_UNWRAP_TEMPLATE            (CKF_ARRAY_ATTRIBUTE|0x00000212)
 #define CKA_HW_FEATURE_TYPE    0x00000300
 #define CKA_RESET_ON_INIT      0x00000301
 #define CKA_HAS_RESET          0x00000302
+#define CKA_PIXEL_X                    0x00000400
+#define CKA_PIXEL_Y                    0x00000401
+#define CKA_RESOLUTION                 0x00000402
+#define CKA_CHAR_ROWS                  0x00000403
+#define CKA_CHAR_COLUMNS               0x00000404
+#define CKA_COLOR                      0x00000405
+#define CKA_BITS_PER_PIXEL             0x00000406
+#define CKA_CHAR_SETS                  0x00000480
+#define CKA_ENCODING_METHODS           0x00000481
+#define CKA_MIME_TYPES                 0x00000482
+#define CKA_MECHANISM_TYPE             0x00000500
+#define CKA_REQUIRED_CMS_ATTRIBUTES    0x00000501
+#define CKA_DEFAULT_CMS_ATTRIBUTES     0x00000502
+#define CKA_SUPPORTED_CMS_ATTRIBUTES   0x00000503
+#define CKA_ALLOWED_MECHANISMS         (CKF_ARRAY_ATTRIBUTE|0x00000600)
 
 #define CKA_VENDOR_DEFINED     0x80000000
 

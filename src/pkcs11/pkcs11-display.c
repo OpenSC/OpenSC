@@ -485,6 +485,12 @@ type_spec ck_attribute_specs[] = {
   { CKA_OWNER             , "CKA_OWNER            ", print_generic, NULL },
   { CKA_ATTR_TYPES        , "CKA_ATTR_TYPES       ", print_generic, NULL },
   { CKA_TRUSTED           , "CKA_TRUSTED          ", print_generic, NULL },
+  { CKA_CERTIFICATE_CATEGORY, "CKA_CERTIFICATE_CATEGORY ", print_generic, NULL },
+  { CKA_JAVA_MIDP_SECURITY_DOMAIN, "CKA_JAVA_MIDP_SECURITY_DOMAIN ", print_generic, NULL },
+  { CKA_URL               , "CKA_URL              ", print_generic, NULL },
+  { CKA_HASH_OF_SUBJECT_PUBLIC_KEY, "CKA_HASH_OF_SUBJECT_PUBLIC_KEY ", print_generic, NULL },
+  { CKA_HASH_OF_ISSUER_PUBLIC_KEY, "CKA_HASH_OF_ISSUER_PUBLIC_KEY ", print_generic, NULL },
+  { CKA_CHECK_VALUE       , "CKA_CHECK_VALUE      ", print_generic, NULL },
   { CKA_KEY_TYPE          , "CKA_KEY_TYPE         ", print_enum,    ck_key_t },
 #ifdef HAVE_OPENSSL 
   { CKA_SUBJECT           , "CKA_SUBJECT          ", print_dn,      NULL },
@@ -526,13 +532,33 @@ type_spec ck_attribute_specs[] = {
   { CKA_ALWAYS_SENSITIVE  , "CKA_ALWAYS_SENSITIVE ", print_boolean, NULL },
   { CKA_KEY_GEN_MECHANISM , "CKA_KEY_GEN_MECHANISM", print_boolean, NULL },
   { CKA_MODIFIABLE        , "CKA_MODIFIABLE       ", print_boolean, NULL },
+  { CKA_ECDSA_PARAMS      , "CKA_ECDSA_PARAMS     ", print_generic, NULL },
   { CKA_EC_PARAMS         , "CKA_EC_PARAMS        ", print_generic, NULL },
   { CKA_EC_POINT          , "CKA_EC_POINT         ", print_generic, NULL },
   { CKA_SECONDARY_AUTH    , "CKA_SECONDARY_AUTH   ", print_generic, NULL },
   { CKA_AUTH_PIN_FLAGS    , "CKA_AUTH_PIN_FLAGS   ", print_generic, NULL },
+  { CKA_ALWAYS_AUTHENTICATE, "CKA_ALWAYS_AUTHENTICATE ", print_generic, NULL },
+  { CKA_WRAP_WITH_TRUSTED , "CKA_WRAP_WITH_TRUSTED ", print_generic, NULL },
+  { CKA_WRAP_TEMPLATE     , "CKA_WRAP_TEMPLATE    ", print_generic, NULL },
+  { CKA_UNWRAP_TEMPLATE   , "CKA_UNWRAP_TEMPLATE  ", print_generic, NULL },
   { CKA_HW_FEATURE_TYPE   , "CKA_HW_FEATURE_TYPE  ", print_generic, NULL },
   { CKA_RESET_ON_INIT     , "CKA_RESET_ON_INIT    ", print_generic, NULL },
-  { CKA_HAS_RESET         , "CKA_HAS_RESET        ", print_generic, NULL }
+  { CKA_HAS_RESET         , "CKA_HAS_RESET        ", print_generic, NULL },
+  { CKA_PIXEL_X           , "CKA_PIXEL_X          ", print_generic, NULL },
+  { CKA_PIXEL_Y           , "CKA_PIXEL_Y          ", print_generic, NULL },
+  { CKA_RESOLUTION        , "CKA_RESOLUTION       ", print_generic, NULL },
+  { CKA_CHAR_ROWS         , "CKA_CHAR_ROWS        ", print_generic, NULL },
+  { CKA_CHAR_COLUMNS      , "CKA_CHAR_COLUMNS     ", print_generic, NULL },
+  { CKA_COLOR             , "CKA_COLOR            ", print_generic, NULL },
+  { CKA_BITS_PER_PIXEL    , "CKA_BITS_PER_PIXEL   ", print_generic, NULL },
+  { CKA_CHAR_SETS         , "CKA_CHAR_SETS        ", print_generic, NULL },
+  { CKA_ENCODING_METHODS  , "CKA_ENCODING_METHODS ", print_generic, NULL },
+  { CKA_MIME_TYPES        , "CKA_MIME_TYPES       ", print_generic, NULL },
+  { CKA_MECHANISM_TYPE    , "CKA_MECHANISM_TYPE   ", print_generic, NULL },
+  { CKA_REQUIRED_CMS_ATTRIBUTES, "CKA_REQUIRED_CMS_ATTRIBUTES ", print_generic, NULL },
+  { CKA_DEFAULT_CMS_ATTRIBUTES, "CKA_DEFAULT_CMS_ATTRIBUTES ", print_generic, NULL },
+  { CKA_SUPPORTED_CMS_ATTRIBUTES, "CKA_SUPPORTED_CMS_ATTRIBUTES ", print_generic, NULL },
+  { CKA_ALLOWED_MECHANISMS, "CKA_ALLOWED_MECHANISMS ", print_generic, NULL },
 };
 
 CK_ULONG ck_attribute_num = sizeof(ck_attribute_specs)/sizeof(type_spec);
@@ -724,9 +750,12 @@ void print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
 			  CK_ULONG  ulCount)
 {
   CK_ULONG j, k;
+  int found;
   for(j = 0; j < ulCount ; j++) {
+    found = 0;
     for(k = 0; k < ck_attribute_num; k++) {
       if(ck_attribute_specs[k].type == pTemplate[j].type) {
+	found = 1;
 	fprintf(f, "    %s ", ck_attribute_specs[k].name);
 	if(pTemplate[j].pValue) {
 	  ck_attribute_specs[k].display
@@ -739,6 +768,10 @@ void print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
 	k = ck_attribute_num;
       }
     }
+    if (!found) {
+	fprintf(f, "    CKA_? (0x%08lx)    ", pTemplate[j].type);
+	fprintf(f, "has size %ld\n", pTemplate[j].ulValueLen); 
+    }
   }
 }
 
@@ -746,13 +779,20 @@ void print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
 			      CK_ULONG  ulCount)
 {
   CK_ULONG j, k;
+  int found;
   for(j = 0; j < ulCount ; j++) {
+    found = 0;
     for(k = 0; k < ck_attribute_num; k++) {
       if(ck_attribute_specs[k].type == pTemplate[j].type) {
+	found = 1;
 	fprintf(f, "    %s ", ck_attribute_specs[k].name);
 	fprintf(f, "requested with %ld buffer\n", pTemplate[j].ulValueLen); 
 	k = ck_attribute_num;
       }
+    }
+    if (!found) {
+	fprintf(f, "    CKA_? (0x%08lx)    ", pTemplate[j].type);
+	fprintf(f, "requested with %ld buffer\n", pTemplate[j].ulValueLen); 
     }
   }
 }
