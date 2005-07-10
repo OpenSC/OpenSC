@@ -7,7 +7,7 @@
  * Copyright (C) 2002, Olaf Kirch <okir@lst.de>
  */
 
-#include "pkcs11-internal.h"
+#include <libp11.h>
 #include <assert.h>
 #include <string.h>
 

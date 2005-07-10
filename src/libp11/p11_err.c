@@ -55,7 +55,7 @@
  *
  */
 
-#include "pkcs11-internal.h"
+#include <libp11.h>
 
 /* BEGIN ERROR CODES */
 #ifndef NO_ERR
