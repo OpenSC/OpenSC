@@ -1,7 +1,7 @@
 # Process this file with automake to create Makefile.in
 
 MAINTAINERCLEANFILES = Makefile.in
-
+DISTCLEANFILES= libp11.pc
 EXTRA_DIST = Makefile.mak
 
 lib_LTLIBRARIES = libp11.la
