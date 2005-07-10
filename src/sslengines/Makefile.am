@@ -25,7 +25,7 @@ engine_opensc_la_LDFLAGS = @OPENSSL_LDFLAGS@ -module -avoid-version
 engine_pkcs11_la_SOURCES = \
 	hw_pkcs11.c engine_pkcs11.c engine_pkcs11.h \
 	pkcs11-internal.h
-engine_pkcs11_la_CFLAGS = $(OPENSSL_CFLAGS)
+engine_pkcs11_la_CFLAGS = $(OPENSSL_CFLAGS) -I$(srcdir)/../libp11
 engine_pkcs11_la_LIBADD = @ENGINE_LINK@ ../pkcs11/libpkcs11.la ../libp11/libp11.la
 engine_pkcs11_la_LDFLAGS = @OPENSSL_LDFLAGS@ -module -avoid-version
 
