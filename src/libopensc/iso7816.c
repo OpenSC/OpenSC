@@ -509,10 +509,10 @@ static int iso7816_construct_fci(sc_card_t *card, const sc_file_t *file,
 	} else {
 		buf[0] = file->shareable ? 0x40 : 0;
 		switch (file->type) {
-		case SC_FILE_TYPE_WORKING_EF:
-			break;
 		case SC_FILE_TYPE_INTERNAL_EF:
 			buf[0] |= 0x08;
+		case SC_FILE_TYPE_WORKING_EF:
+			buf[0] |= file->ef_structure & 7;
 			break;
 		case SC_FILE_TYPE_DF:
 			buf[0] |= 0x38;
@@ -520,7 +520,6 @@ static int iso7816_construct_fci(sc_card_t *card, const sc_file_t *file,
 		default:
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-		buf[0] |= file->ef_structure & 7;
 		sc_asn1_put_tag(0x82, buf, 1, p, 16, &p);
 	}
 	buf[0] = (file->id >> 8) & 0xFF;

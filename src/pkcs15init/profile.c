@@ -236,7 +236,8 @@ init_file(unsigned int type)
 	}
 	file->type = type;
 	file->status = SC_FILE_STATUS_ACTIVATED;
-	file->ef_structure = SC_FILE_EF_TRANSPARENT;
+	if (file->type != SC_FILE_TYPE_DF)
+		file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	return file;
 }
 
