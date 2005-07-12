@@ -344,7 +344,29 @@ static int update_single_record(sc_card_t *card, sc_file_t *file,
 	r = encode_dir_record(card->ctx, app, &rec, &rec_size);
 	if (r)
 		return r;
-	r = sc_update_record(card, (unsigned int)app->rec_nr, rec, rec_size, 0);
+	if (app->rec_nr > 0)
+		r = sc_update_record(card, (unsigned int)app->rec_nr, rec, rec_size, SC_RECORD_BY_REC_NR);
+	else if (app->rec_nr == 0) {
+		/* create new record entry */
+		card->ctx->suppress_errors++;
+		r = sc_append_record(card, rec, rec_size, 0);
+		card->ctx->suppress_errors--;
+		if (r == SC_ERROR_NOT_SUPPORTED) {
+			/* if the card doesn't support APPEND RECORD we try a
+			 * UPDATE RECORD on the next unused record (and hope
+			 * that there is a record with this index).
+			 */
+			int rec_nr = 0, i;
+			for(i = 0; i < card->app_count; i++)
+				if (card->app[i]->rec_nr > rec_nr)
+					rec_nr = card->app[i]->rec_nr;
+			rec_nr++;
+			r = sc_update_record(card, (unsigned int)rec_nr, rec, rec_size, SC_RECORD_BY_REC_NR);
+		}
+	} else {
+		sc_error(card->ctx, "invalid record number\n");
+		r = SC_ERROR_INTERNAL;
+	}
 	free(rec);
 	SC_TEST_RET(card->ctx, r, "Unable to update EF(DIR) record");
 	return 0;
