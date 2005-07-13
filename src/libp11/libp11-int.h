@@ -204,13 +204,5 @@ extern PKCS11_KEY_ops pkcs11_rsa_ops;
 
 extern int pkcs11_find_key(PKCS11_CTX * ctx, PKCS11_KEY **key,
 	char* passphrase, char* s_slot_key_id, int verbose);
-extern int pkcs11_sign(int type, const unsigned char *m, unsigned int m_len,
-	unsigned char *sigret, unsigned int *siglen, const PKCS11_KEY * key);
-extern int pkcs11_private_encrypt(int flen, const unsigned char *from,
-	unsigned char *to, const PKCS11_KEY * rsa, int padding);
-extern int pkcs11_private_decrypt(int flen, const unsigned char *from,
-	unsigned char *to, PKCS11_KEY * key, int padding);
-extern int pkcs11_verify(int type, const unsigned char *m, unsigned int m_len,
-	unsigned char *signature, unsigned int siglen, PKCS11_KEY * key);
 
 #endif

@@ -179,6 +179,17 @@ extern int PKCS11_init_pin(PKCS11_TOKEN *, char *pin);
 extern int PKCS11_generate_key(PKCS11_TOKEN *, int, unsigned int, char *);
 extern int PKCS11_store_private_key(PKCS11_TOKEN *, EVP_PKEY *, char *);
 
+/* rsa private key operations */
+extern int PKCS11_sign(int type, const unsigned char *m, unsigned int m_len,
+	unsigned char *sigret, unsigned int *siglen, const PKCS11_KEY * key);
+extern int PKCS11_private_encrypt(int flen, const unsigned char *from,
+	unsigned char *to, const PKCS11_KEY * rsa, int padding);
+extern int PKCS11_private_decrypt(int flen, const unsigned char *from,
+	unsigned char *to, PKCS11_KEY * key, int padding);
+extern int PKCS11_verify(int type, const unsigned char *m, unsigned int m_len,
+	unsigned char *signature, unsigned int siglen, PKCS11_KEY * key);
+
+
 /* Load PKCS11 error strings */
 extern void ERR_load_PKCS11_strings(void);
 

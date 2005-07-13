@@ -62,9 +62,8 @@
 #include <string.h>
 #include "libp11-int.h"
 
-
 int
-pkcs11_sign(int type, const unsigned char *m, unsigned int m_len,
+PKCS11_sign(int type, const unsigned char *m, unsigned int m_len,
 		unsigned char *sigret, unsigned int *siglen, const PKCS11_KEY * key)
 {
 
@@ -140,7 +139,7 @@ pkcs11_sign(int type, const unsigned char *m, unsigned int m_len,
 
 
 int
-pkcs11_private_encrypt(int flen, const unsigned char *from, unsigned char *to,
+PKCS11_private_encrypt(int flen, const unsigned char *from, unsigned char *to,
 		   const PKCS11_KEY * rsa, int padding)
 {
 	/* PKCS11 calls go here */
@@ -149,7 +148,7 @@ pkcs11_private_encrypt(int flen, const unsigned char *from, unsigned char *to,
 }
 
 int
-pkcs11_private_decrypt(int flen, const unsigned char *from, unsigned char *to,
+PKCS11_private_decrypt(int flen, const unsigned char *from, unsigned char *to,
 		   PKCS11_KEY * key, int padding)
 {
 	CK_RV rv;
@@ -190,7 +189,7 @@ pkcs11_private_decrypt(int flen, const unsigned char *from, unsigned char *to,
 }
 
 int
-pkcs11_verify(int type, const unsigned char *m, unsigned int m_len,
+PKCS11_verify(int type, const unsigned char *m, unsigned int m_len,
 		  unsigned char *signature, unsigned int siglen, PKCS11_KEY * key)
 {
 

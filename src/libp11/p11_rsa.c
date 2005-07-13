@@ -127,14 +127,14 @@ pkcs11_rsa_decrypt(int flen, const unsigned char *from, unsigned char *to,
 		   RSA * rsa, int padding)
 {
 
-	return pkcs11_private_decrypt(	flen, from, to, (PKCS11_KEY *) RSA_get_app_data(rsa), padding);
+	return PKCS11_private_decrypt(	flen, from, to, (PKCS11_KEY *) RSA_get_app_data(rsa), padding);
 }
 
 static int
 pkcs11_rsa_encrypt(int flen, const unsigned char *from, unsigned char *to,
 		   RSA * rsa, int padding)
 {
-	return pkcs11_private_encrypt(flen,from,to,(PKCS11_KEY *) RSA_get_app_data(rsa), padding);
+	return PKCS11_private_encrypt(flen,from,to,(PKCS11_KEY *) RSA_get_app_data(rsa), padding);
 }
 
 static int
@@ -142,7 +142,7 @@ pkcs11_rsa_sign(int type, const unsigned char *m, unsigned int m_len,
 		unsigned char *sigret, unsigned int *siglen, const RSA * rsa)
 {
 	
-	return pkcs11_sign(type,m,m_len,sigret,siglen,(PKCS11_KEY *) RSA_get_app_data(rsa));
+	return PKCS11_sign(type,m,m_len,sigret,siglen,(PKCS11_KEY *) RSA_get_app_data(rsa));
 }
 /* Lousy hack alert. If RSA_verify detects that the key has the
  * RSA_FLAG_SIGN_VER flags set, it will assume that verification
