@@ -25,11 +25,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <libp11.h>
 #include <stdio.h>
 #include <string.h>
 #include <openssl/crypto.h>
 #include <openssl/objects.h>
+#include <libp11.h>
 #include "engine_pkcs11.h"
 
 #define fail(msg) { fprintf(stderr,msg); return NULL;}
@@ -37,6 +37,16 @@
 PKCS11_CTX *ctx;
 char *pin = NULL;
 int verbose = 0;
+
+#if defined(_WIN32)
+#define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11"
+#elif defined(HAVE_DLFCN_H) && defined(__APPLE__)
+#define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11.so"
+#elif defined(__APPLE__)
+#define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11.bundle"
+#else
+#define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11.so"
+#endif
 
 char *module = PKCS11_DEFAULT_MODULE_NAME;
 int default_module = 1;
