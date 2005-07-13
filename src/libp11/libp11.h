@@ -257,7 +257,7 @@ typedef struct pkcs11_key_ops {
 typedef struct pkcs11_key_private {
 	PKCS11_TOKEN *parent;
 	CK_OBJECT_HANDLE object;
-	unsigned char id[32];
+	unsigned char id[255];
 	size_t id_len;
 	PKCS11_KEY_ops *ops;
 } PKCS11_KEY_private;
@@ -269,7 +269,7 @@ typedef struct pkcs11_key_private {
 typedef struct pkcs11_cert_private {
 	PKCS11_TOKEN *parent;
 	CK_OBJECT_HANDLE object;
-	unsigned char id[32];
+	unsigned char id[255];
 	size_t id_len;
 } PKCS11_CERT_private;
 #define PRIVCERT(cert)		((PKCS11_CERT_private *) cert->_private)
