@@ -60,10 +60,10 @@
  * PKCS11 token
  */
 
-#include <libp11.h>
 #include <string.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
+#include "libp11-int.h"
 
 static int pkcs11_get_rsa_public(PKCS11_KEY *, EVP_PKEY *);
 static int pkcs11_get_rsa_private(PKCS11_KEY *, EVP_PKEY *);

@@ -7,9 +7,10 @@
  * Copyright (C) 2002, Olaf Kirch <okir@lst.de>
  */
 
-#include <libp11.h>
 #include <assert.h>
 #include <string.h>
+
+#include "libp11-int.h"
 
 static int pkcs11_getattr_int(PKCS11_CTX *, CK_SESSION_HANDLE,
 			      CK_OBJECT_HANDLE, CK_ATTRIBUTE_TYPE, void *, size_t *);

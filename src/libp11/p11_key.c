@@ -55,8 +55,8 @@
  *
  */
 
-#include <libp11.h>
 #include <string.h>
+#include "libp11-int.h"
 
 static int pkcs11_find_keys(PKCS11_TOKEN *, unsigned int);
 static int pkcs11_next_key(PKCS11_CTX * ctx, PKCS11_TOKEN * token,
@@ -68,12 +68,14 @@ static int pkcs11_store_private_key(PKCS11_TOKEN *, EVP_PKEY *, char *,
 				    unsigned char *, unsigned int, PKCS11_KEY **);
 static int pkcs11_store_public_key(PKCS11_TOKEN *, EVP_PKEY *, char *,
 				   unsigned char *, unsigned int, PKCS11_KEY **);
+static int hex_to_bin(const char *in, unsigned char *out, size_t * outlen);
 
 static CK_OBJECT_CLASS key_search_class;
 static CK_ATTRIBUTE key_search_attrs[] = {
 	{CKA_CLASS, &key_search_class, sizeof(key_search_class)},
 };
 #define numof(arr)	(sizeof(arr)/sizeof((arr)[0]))
+#define MAX_VALUE_LEN     200
 
 /*
  * Enumerate all keys on the card
@@ -183,6 +185,12 @@ EVP_PKEY *PKCS11_get_private_key(PKCS11_KEY * key)
 	return pk;
 }
 
+EVP_PKEY *PKCS11_get_public_key(PKCS11_KEY * key)
+{
+	return PKCS11_get_private_key(key);
+}
+
+
 /*
  * Find all keys of a given type (public or private)
  */
@@ -211,6 +219,225 @@ int pkcs11_find_keys(PKCS11_TOKEN * token, unsigned int type)
 	CRYPTOKI_call(ctx, C_FindObjectsFinal(session));
 	return (res < 0) ? -1 : 0;
 }
+
+int pkcs11_find_key(PKCS11_CTX * ctx, PKCS11_KEY **key, char* passphrase, char* s_slot_key_id, int verbose) 
+{
+	/* need to confirm if passphrase required, perhaps substitute callback */
+
+#define fail(msg) { fprintf(stderr,msg); return NULL;}
+	PKCS11_SLOT *slot, *slot_list;
+	PKCS11_TOKEN *tok;
+	PKCS11_CERT *certs;
+	PKCS11_KEY *keys, *selected_key = NULL;
+	char *s_key_id = NULL, buf[MAX_VALUE_LEN];
+	size_t key_id_len;
+	int slot_nr = -1;
+	char flags[64];
+	int logged_in = 0;
+	int n,m,count,isPrivate=0;
+
+	char *p_sep1, *p_sep2;
+	char val[MAX_VALUE_LEN];
+	int val_len;;
+	
+	key_id_len=strlen(s_slot_key_id);
+	while (s_slot_key_id != NULL && *(s_slot_key_id) != '\0') {
+
+		p_sep1 = strchr(s_slot_key_id, '_');
+		if (p_sep1 == NULL) {
+			fprintf(stderr,"No \'_\' found in key id option \"%s\"\n", s_slot_key_id);
+			fprintf(stderr,"Format: [slot_<slotNr>][-][id_<keyID>]\n");
+			fprintf(stderr,"  with slotNr = 0, 1, ... and keyID = a hex string\n");
+			return 0;
+		}
+
+		p_sep2 = strchr(p_sep1, '-');
+		if (p_sep2 == NULL)
+			p_sep2 = p_sep1 + strlen(p_sep1);
+
+		/* val = the string between the _ and the - (or '\0') */
+		val_len = p_sep2 - p_sep1 - 1;
+		if (val_len >= MAX_VALUE_LEN || val_len == 0) {
+			fprintf(stderr,"Too long or empty value after the \'-\' sign\n"); return 0; }
+		memcpy(val, p_sep1 + 1, val_len);
+		val[val_len] = '\0';
+
+		if (strncasecmp(s_slot_key_id, "slot", p_sep1 - s_slot_key_id) == 0) {
+			if (val_len >= 3) {
+				fprintf(stderr,"Slot number \"%s\" should be a small integer\n", val);
+				return 0;
+			}
+			slot_nr = atoi(val);
+			if (slot_nr == 0 && val[0] != '0') {
+				fprintf(stderr,"Slot number \"%s\" should be an integer\n", val);
+				return 0;
+			}
+		} else if (strncasecmp(s_slot_key_id, "id", p_sep1 - s_slot_key_id)
+			   == 0) {
+			if (!hex_to_bin(p_sep1+1, val, &key_id_len)) {
+				fprintf(stderr,"Key id \"%s\" should be a hex string\n", val);
+				return 0;
+			}
+			strcpy(buf, val);
+			s_key_id = buf;
+		} else {
+			memcpy(val, s_slot_key_id, p_sep1 - s_slot_key_id);
+			val[p_sep1 - s_slot_key_id] = '\0';
+			fprintf(stderr,"Now allowed in -key: \"%s\"\n", val);
+			return 0;
+		}
+		s_slot_key_id = (*p_sep2 == '\0' ? p_sep2 : p_sep2 + 1);
+	}
+
+	if (PKCS11_enumerate_slots(ctx, &slot_list, &count) < 0) {
+		fprintf(stderr, "failed to enumerate slots\n");
+		return 0;
+	}
+
+	if(verbose) {
+		fprintf(stderr,"Found %u slot%s\n", count, (count <= 1) ? "" : "s");
+	}
+
+	if(verbose) {  /* or looking for labelled token */
+	  for (n = 0; n < count; n++) {
+		slot = slot_list + n;
+		flags[0] = '\0';
+		if (slot->token) {
+			if (!slot->token->initialized)
+				strcat(flags, "uninitialized, ");
+			else if (!slot->token->userPinSet)
+				strcat(flags, "no pin, ");
+			if (slot->token->loginRequired)
+				strcat(flags, "login, ");
+			if (slot->token->readOnly)
+				strcat(flags, "ro, ");
+		} else {
+			strcpy(flags, "no token");
+		}
+		if ((m = strlen(flags)) != 0) {
+			flags[m - 2] = '\0';
+		}
+		
+		fprintf(stderr,"[%u] %-25.25s  %-16s", n, slot->description, flags);
+		if (slot->token) {
+				fprintf(stderr,"  (%s)",
+				       slot->token->label[0] ?
+				       slot->token->label : "no label");
+		}
+		fprintf(stderr,"\n");
+	  }		
+	}
+
+	if (slot_nr == -1) {
+		if (!(slot = PKCS11_find_token(ctx)))
+			fail("didn't find any tokens\n");
+	} else if (slot_nr >= 0 && slot_nr < count)
+		slot = slot_list + slot_nr;
+	else {
+		fprintf(stderr,"Invalid slot number: %d\n", slot_nr);
+		return 0;
+	}
+	tok = slot->token;
+
+	if (tok == NULL) {
+		fprintf(stderr,"Found empty token; \n");
+		return 0;
+	}
+	if (!tok->initialized) {
+		fprintf(stderr,"Found uninitialized token; \n");
+		return 0;
+	}
+
+	if (isPrivate && !tok->userPinSet && !tok->readOnly) {
+		fprintf(stderr,"Found slot without user PIN\n");
+		return 0;
+	}
+
+	if(verbose) {
+		fprintf(stderr,"Found slot:  %s\n", slot->description);
+		fprintf(stderr,"Found token: %s\n", slot->token->label);
+	}
+
+
+	if(verbose) {
+		if (PKCS11_enumerate_certs(tok, &certs, &count))
+			fail("unable to enumerate certificates\n");
+		fprintf(stderr,"Found %u certificate%s:\n", count, (count <= 1) ? "" : "s");
+		for (n = 0; n < count; n++) {
+			PKCS11_CERT *c = certs + n;
+			char *dn = NULL;
+
+			fprintf(stderr,"  %2u    %s", n + 1, c->label);
+			if (c->x509)
+				dn = X509_NAME_oneline(X509_get_subject_name(c->x509), NULL, 0);
+			if (dn) {
+				fprintf(stderr," (%s)", dn);
+				OPENSSL_free(dn);
+			}
+			fprintf(stderr,"\n");
+		}
+	}
+
+	while (1) {
+		if (PKCS11_enumerate_keys(tok, &keys, &count))
+			fail("unable to enumerate keys\n");
+		if (count)
+			break;
+		if (logged_in || !tok->loginRequired)
+			break;
+/*		if (pin == NULL) {
+			pin = (char *) malloc(12);
+			get_pin(ui_method, pin, 12);
+		}
+*/
+		if (!passphrase || PKCS11_login(slot, 0, passphrase)) {
+/*			if(pin != NULL) {
+				free(pin);
+				pin = NULL;
+			}*/
+			passphrase=NULL;
+			fail("Card login failed\n");
+		}
+		logged_in++;
+	}
+
+	if (count == 0) {
+		fprintf(stderr,"No keys found.\n");
+		return 0;
+	}
+
+	if(verbose) {
+		fprintf(stderr,"Found %u key%s:\n", count, (count <= 1) ? "" : "s");
+	}
+	for (n = 0; n < count; n++) {
+		PKCS11_KEY *k = keys + n;
+
+		if(verbose) {
+			fprintf(stderr,"  %2u %c%c %s\n", n + 1,
+			       k->isPrivate ? 'P' : ' ', k->needLogin ? 'L' : ' ', k->label);
+		}
+		if(verbose) {
+			fprintf(stderr,"        ID = %s\n", k->id);
+		}
+		if (key_id_len != 0 && k->id_len == key_id_len &&
+		    memcmp(k->id, s_key_id, key_id_len) == 0) {
+			selected_key = k;
+		}
+	}
+
+	if (selected_key == NULL) {
+		if (s_key_id != NULL) {
+			fprintf(stderr,"No key with ID \"%s\" found.\n", s_key_id);
+			return 0;
+		} else		/* Take the first key that was found */
+			selected_key = &keys[0];
+	}
+	
+	*key=selected_key;
+	return 1;
+
+}
+
 
 int
 pkcs11_next_key(PKCS11_CTX * ctx, PKCS11_TOKEN * token,
@@ -422,3 +649,79 @@ pkcs11_store_public_key(PKCS11_TOKEN * token, EVP_PKEY * pk, char *label,
 	/* Gobble the key object */
 	return pkcs11_init_key(ctx, token, session, object, CKO_PUBLIC_KEY, ret_key);
 }
+int PKCS11_get_key_modulus(PKCS11_KEY * key, BIGNUM **bn) 
+{
+	
+	if (pkcs11_getattr_bn(KEY2TOKEN(key), PRIVKEY(key)->object, CKA_MODULUS, bn))
+		return 0;
+	return 1;
+}
+int PKCS11_get_key_exponent(PKCS11_KEY * key, BIGNUM **bn) 
+{
+	
+	if (pkcs11_getattr_bn(KEY2TOKEN(key), PRIVKEY(key)->object, CKA_PUBLIC_EXPONENT, bn))
+		return 0;
+	return 1;
+}
+
+
+int PKCS11_get_key_size(PKCS11_KEY * key) 
+{
+   BIGNUM* n;
+   int numbytes=0;
+   n=BN_new();
+   if(key_getattr_bn(key, CKA_MODULUS, &n)) 
+	   return 0;
+   numbytes=BN_num_bytes(n);
+   BN_free(n);
+   return numbytes;
+}
+
+
+static int hex_to_bin(const char *in, unsigned char *out, size_t * outlen)
+{
+	size_t left, count = 0;
+
+	if (in == NULL || *in == '\0') {
+		*outlen = 0;
+		return 1;
+	}
+
+	left = *outlen;
+
+	while (*in != '\0') {
+		int byte = 0, nybbles = 2;
+		char c;
+
+		while (nybbles-- && *in && *in != ':') {
+			byte <<= 4;
+			c = *in++;
+			if ('0' <= c && c <= '9')
+				c -= '0';
+			else if ('a' <= c && c <= 'f')
+				c = c - 'a' + 10;
+			else if ('A' <= c && c <= 'F')
+				c = c - 'A' + 10;
+			else {
+				fprintf(stderr,"hex_to_bin(): invalid char '%c' in hex string\n", c);
+				*outlen = 0;
+				return 0;
+			}
+			byte |= c;
+		}
+		if (*in == ':')
+			in++;
+		if (left <= 0) {
+			fprintf(stderr,"hex_to_bin(): hex string too long");
+			*outlen = 0;
+			return 0;
+		}
+		out[count++] = (unsigned char) byte;
+		left--;
+		c++;
+	}
+
+	*outlen = count;
+	return 1;
+}
+

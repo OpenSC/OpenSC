@@ -55,8 +55,8 @@
  *
  */
 
-#include <libp11.h>
 #include <string.h>
+#include "libp11-int.h"
 
 static void *handle = NULL;
 

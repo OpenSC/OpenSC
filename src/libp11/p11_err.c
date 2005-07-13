@@ -55,7 +55,7 @@
  *
  */
 
-#include <libp11.h>
+#include "libp11-int.h"
 
 /* BEGIN ERROR CODES */
 #ifndef NO_ERR

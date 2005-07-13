@@ -55,9 +55,9 @@
  *
  */
 
-#include <libp11.h>
 #include <string.h>
 #include <openssl/buffer.h>
+#include "libp11-int.h"
 
 static int pkcs11_init_slot(PKCS11_CTX *, PKCS11_SLOT *, CK_SLOT_ID);
 static int pkcs11_check_token(PKCS11_CTX *, PKCS11_SLOT *);

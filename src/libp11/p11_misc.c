@@ -55,9 +55,9 @@
  *
  */
 
-#include <libp11.h>
 #include <string.h>
 #include <openssl/crypto.h>
+#include "libp11-int.h"
 
 void *pkcs11_malloc(size_t size)
 {
