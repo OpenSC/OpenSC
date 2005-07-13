@@ -61,13 +61,23 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/x509.h>
-#include <opensc/pkcs11.h>
+
+#ifndef _WIN32
+#include <rsaref/unix.h>
+#include <rsaref/pkcs11.h>
+#else
+#include <rsaref/win32.h>
+#pragma pack(push, cryptoki, 1)
+#include <rsaref/pkcs11.h>
+#pragma pack(pop, cryptoki)
+#endif
+
+#include <rsaref/pkcs11.h>
+
+extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
+extern CK_RV C_UnloadModule(void *module);
 
 #include <libp11.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* get private implementations of PKCS11 structures */
 
@@ -106,9 +116,9 @@ typedef struct pkcs11_token_private {
 #define TOKEN2CTX(token)	SLOT2CTX(TOKEN2SLOT(token))
 
 typedef struct pkcs11_key_ops {
-        int type;               /* EVP_PKEY_xxx */
-        int (*get_public) (PKCS11_KEY *, EVP_PKEY *);
-        int (*get_private) (PKCS11_KEY *, EVP_PKEY *);
+	int type;               /* EVP_PKEY_xxx */
+	int (*get_public) (PKCS11_KEY *, EVP_PKEY *);
+	int (*get_private) (PKCS11_KEY *, EVP_PKEY *);
 } PKCS11_KEY_ops;
 
 typedef struct pkcs11_key_private {
@@ -174,6 +184,12 @@ extern int pkcs11_getattr_var(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
 extern int pkcs11_getattr_bn(PKCS11_TOKEN *, CK_OBJECT_HANDLE,
 			     unsigned int, BIGNUM **);
 
+#define key_getattr(key, t, p, s) \
+	pkcs11_getattr(KEY2TOKEN((key)), PRIVKEY((key))->object, (t), (p), (s))
+
+#define key_getattr_bn(key, t, bn) \
+	pkcs11_getattr_bn(KEY2TOKEN((key)), PRIVKEY((key))->object, (t), (bn))
+
 typedef int (*pkcs11_i2d_fn) (void *, unsigned char **);
 extern void pkcs11_addattr(CK_ATTRIBUTE_PTR, int, const void *, size_t);
 extern void pkcs11_addattr_int(CK_ATTRIBUTE_PTR, int, unsigned long);
@@ -186,7 +202,15 @@ extern void *memdup(const void *, size_t);
 
 extern PKCS11_KEY_ops pkcs11_rsa_ops;
 
-#ifdef __cplusplus
-}
-#endif
+extern int pkcs11_find_key(PKCS11_CTX * ctx, PKCS11_KEY **key,
+	char* passphrase, char* s_slot_key_id, int verbose);
+extern int pkcs11_sign(int type, const unsigned char *m, unsigned int m_len,
+	unsigned char *sigret, unsigned int *siglen, const PKCS11_KEY * key);
+extern int pkcs11_private_encrypt(int flen, const unsigned char *from,
+	unsigned char *to, const PKCS11_KEY * rsa, int padding);
+extern int pkcs11_private_decrypt(int flen, const unsigned char *from,
+	unsigned char *to, PKCS11_KEY * key, int padding);
+extern int pkcs11_verify(int type, const unsigned char *m, unsigned int m_len,
+	unsigned char *signature, unsigned int siglen, PKCS11_KEY * key);
+
 #endif

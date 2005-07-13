@@ -61,7 +61,6 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/x509.h>
-#include <opensc/pkcs11.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -154,8 +153,15 @@ extern int PKCS11_enumerate_keys(PKCS11_TOKEN *, PKCS11_KEY **, unsigned int *);
 /* Get the key type (as EVP_PKEY_XXX) */
 extern int PKCS11_get_key_type(PKCS11_KEY *);
 
+/* Get size of key modulus in number of bytes */
+extern int PKCS11_get_key_size(PKCS11_KEY *);
+/* Get actual modules and public exponent as BIGNUM */
+extern int PKCS11_get_key_modulus(PKCS11_KEY *, BIGNUM **);
+extern int PKCS11_get_key_exponent(PKCS11_KEY *, BIGNUM **);
+
 /* Get the enveloped private key */
 extern EVP_PKEY *PKCS11_get_private_key(PKCS11_KEY *);
+extern EVP_PKEY *PKCS11_get_public_key(PKCS11_KEY *);
 
 /* Find the corresponding certificate (if any) */
 extern PKCS11_CERT *PKCS11_find_certificate(PKCS11_KEY *);
