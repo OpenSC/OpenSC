@@ -166,6 +166,9 @@ extern EVP_PKEY *PKCS11_get_public_key(PKCS11_KEY *);
 /* Find the corresponding certificate (if any) */
 extern PKCS11_CERT *PKCS11_find_certificate(PKCS11_KEY *);
 
+/* Find the corresponding key (if any) */
+extern PKCS11_KEY *PKCS11_find_key(PKCS11_CERT *);
+
 /* Get a list of all certificates associated with this token */
 extern int PKCS11_enumerate_certs(PKCS11_TOKEN *, PKCS11_CERT **, unsigned int *);
 

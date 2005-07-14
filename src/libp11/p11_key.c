@@ -104,6 +104,28 @@ PKCS11_enumerate_keys(PKCS11_TOKEN * token, PKCS11_KEY ** keyp, unsigned int *co
 }
 
 /*
+ * Find key matching a certificate
+ */
+PKCS11_KEY *PKCS11_find_key(PKCS11_CERT *cert)
+{
+        PKCS11_CERT_private *cpriv;
+        PKCS11_KEY_private *kpriv;
+        PKCS11_KEY *key;
+        unsigned int n, count;
+
+	cpriv = PRIVCERT(cert);
+        if (PKCS11_enumerate_keys(CERT2TOKEN(cert), &key, &count))
+                return NULL;
+        for (n = 0; n < count; n++, key++) {
+                kpriv = PRIVKEY(key);
+                if (cpriv->id_len == kpriv->id_len
+                    && !memcmp(cpriv->id, kpriv->id, cpriv->id_len))
+                        return key;
+        }
+        return NULL;
+}
+
+/*
  * Store a private key on the token
  */
 int PKCS11_store_private_key(PKCS11_TOKEN * token, EVP_PKEY * pk, char *label)

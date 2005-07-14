@@ -140,6 +140,9 @@ typedef struct pkcs11_cert_private {
 	size_t id_len;
 } PKCS11_CERT_private;
 #define PRIVCERT(cert)		((PKCS11_CERT_private *) cert->_private)
+#define CERT2SLOT(cert)		TOKEN2SLOT(CERT2TOKEN(cert))
+#define CERT2TOKEN(cert)	(PRIVCERT(cert)->parent)
+#define CERT2CTX(cert)		TOKEN2CTX(CERT2TOKEN(cert))
 
 /*
  * Mapping Cryptoki error codes to those used internally
