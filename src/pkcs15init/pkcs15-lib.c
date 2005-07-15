@@ -2261,8 +2261,24 @@ sc_pkcs15init_remove_object(sc_pkcs15_card_t *p15card,
 	struct sc_pkcs15_df *df;
 	sc_path_t	path;
 	int		r = 0;
-			
-	path = ((struct sc_pkcs15_pubkey_info *)obj->data)->path;
+
+	switch(obj->type)
+	{
+	case SC_PKCS15_TYPE_PUBKEY:
+		path = ((sc_pkcs15_pubkey_info_t *)obj->data)->path;
+		break;
+	case SC_PKCS15_TYPE_PRKEY:
+		path = ((sc_pkcs15_prkey_info_t *)obj->data)->path;
+		break;
+	case SC_PKCS15_TYPE_CERT:
+		path = ((sc_pkcs15_cert_info_t *)obj->data)->path;
+		break;
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		path = ((sc_pkcs15_data_info_t *)obj->data)->path;
+		break;
+	default:
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	}
 
 	/* Get the DF we're part of. If there's no DF, fine, we haven't
 	 * been added yet. */
