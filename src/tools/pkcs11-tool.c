@@ -2345,13 +2345,20 @@ test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		modLenBits = get_private_key_length(sess, privKeyObject);
 		modLenBytes = (modLenBits + 7) / 8;
 
-		printf("  testing key %d (%u bits%s%s) with 1 signature mechanism\n",
+		printf("  testing key %d (%u bits%s%s) with 1 signature mechanism",
 				(int) (j-1),
 				(int) modLenBits,
 				label? ", label=" : "",
 				label? label : "");
 		if (label)
 			free(label);
+
+		if (!getSIGN(sess, privKeyObject)) {
+			printf(" -- can't be used to sign/verify, skipping\n");
+			continue;
+		}
+		else
+			printf("\n");
 
 		errors += sign_verify_openssl(slot, sess, &ck_mech, privKeyObject,
 			datas[i], dataLens[i], verifyData, sizeof(verifyData),
