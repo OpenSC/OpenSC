@@ -192,6 +192,9 @@ extern int PKCS11_private_decrypt(int flen, const unsigned char *from,
 extern int PKCS11_verify(int type, const unsigned char *m, unsigned int m_len,
 	unsigned char *signature, unsigned int siglen, PKCS11_KEY * key);
 
+/* access random number generator */
+extern int PKCS11_seed_random(PKCS11_SLOT *, const unsigned char *s, unsigned int s_len);
+extern int PKCS11_generate_random(PKCS11_SLOT *, unsigned char *r, unsigned int r_len);
 
 /* Load PKCS11 error strings */
 extern void ERR_load_PKCS11_strings(void);
@@ -218,6 +221,8 @@ extern void ERR_load_PKCS11_strings(void);
 #define PKCS11_F_PKCS11_GENERATE_KEY		17
 #define PKCS11_F_PKCS11_STORE_PUBLIC_KEY	18
 #define PKCS11_F_PKCS11_STORE_CERTIFICATE	19
+#define PKCS11_F_PKCS11_SEED_RANDOM		20
+#define PKCS11_F_PKCS11_GENERATE_RANDOM		21
 #define PKCS11_F_PKCS11_GETATTR			40
 
 #define PKCS11_ERR_BASE				1024

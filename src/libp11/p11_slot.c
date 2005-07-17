@@ -252,6 +252,48 @@ int PKCS11_init_pin(PKCS11_TOKEN * token, char *pin)
 }
 
 /*
+ * Seed the random number generator
+ */
+int PKCS11_seed_random(PKCS11_SLOT *slot, const unsigned char *s,
+		unsigned int s_len)
+{
+	PKCS11_SLOT_private *priv = PRIVSLOT(slot);
+	PKCS11_CTX *ctx = priv->parent;
+	int rv;
+
+	if (!priv->haveSession) {
+		PKCS11err(PKCS11_F_PKCS11_SEED_RANDOM, PKCS11_NO_SESSION);
+		return -1;
+	}
+
+	rv = CRYPTOKI_call(ctx, C_SeedRandom(priv->session, (CK_BYTE_PTR) s, s_len));
+	CRYPTOKI_checkerr(PKCS11_F_PKCS11_SEED_RANDOM, rv);
+
+	return pkcs11_check_token(ctx, slot);
+}
+
+/*
+ * Generate random numbers
+ */
+int PKCS11_generate_random(PKCS11_SLOT *slot, unsigned char *r,
+		unsigned int r_len)
+{
+	PKCS11_SLOT_private *priv = PRIVSLOT(slot);
+	PKCS11_CTX *ctx = priv->parent;
+	int rv;
+
+	if (!priv->haveSession) {
+		PKCS11err(PKCS11_F_PKCS11_GENERATE_RANDOM, PKCS11_NO_SESSION);
+		return -1;
+	}
+
+	rv = CRYPTOKI_call(ctx, C_GenerateRandom(priv->session, (CK_BYTE_PTR) r, r_len));
+	CRYPTOKI_checkerr(PKCS11_F_PKCS11_GENERATE_RANDOM, rv);
+
+	return pkcs11_check_token(ctx, slot);
+}
+
+/*
  * Helper functions
  */
 int pkcs11_init_slot(PKCS11_CTX * ctx, PKCS11_SLOT * slot, CK_SLOT_ID id)
