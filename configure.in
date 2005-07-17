@@ -616,68 +616,6 @@ else
 	OPENCT_CFLAGS=""
 fi
 
-# Check for user-specified random device, otherwise check /dev/urandom
-AC_ARG_WITH(random,
-	AC_HELP_STRING([--with-random=FILE], [read entropy from FILE (default=/dev/urandom)]),
-	[
-		if test "x$withval" != "xno" ; then
-			RANDOM_POOL="$withval";
-			AC_DEFINE_UNQUOTED(RANDOM_POOL, "$RANDOM_POOL", [Location of random number pool])
-		fi
-	],
-	[
-		# Check for random device
-		AC_CHECK_FILE("/dev/urandom",
-			[
-				RANDOM_POOL="/dev/urandom";
-				AC_SUBST(RANDOM_POOL)
-				AC_DEFINE_UNQUOTED(RANDOM_POOL, "$RANDOM_POOL", [Location of random number pool])
-			]
-		)
-	]
-)
-
-# Check for PRNGD/EGD pool file
-AC_ARG_WITH(prngd-port,
-	AC_HELP_STRING([--with-prngd-port=PORT], [read entropy from PRNGD/EGD localhost:PORT]),
-	[
-		if test ! -z "$withval" -a "x$withval" != "xno" ; then
-			PRNGD_PORT="$withval"
-			AC_DEFINE_UNQUOTED(PRNGD_PORT, $PRNGD_PORT, [Port number of PRNGD/EGD random number socket])
-		fi
-	]
-)
-
-# Check for PRNGD/EGD pool file
-AC_ARG_WITH(prngd-socket,
-	AC_HELP_STRING([--with-prngd-socket=FILE], [read entropy from PRNGD/EGD socket FILE (default=/var/run/egd-pool)]),
-	[
-		if test "x$withval" != "xno" ; then
-			PRNGD_SOCKET="$withval"
-			AC_DEFINE_UNQUOTED(PRNGD_SOCKET, "$PRNGD_SOCKET", [Location of PRNGD/EGD random number socket])
-		fi
-	],
-	[
-		# Check for existing socket only if we don't have a random device already
-		if test -z "$RANDOM_POOL" ; then
-			AC_MSG_CHECKING(for PRNGD/EGD socket)
-			# Insert other locations here
-			for sock in /var/run/egd-pool /dev/egd-pool /etc/entropy /tmp/entropy; do
-				if test -r $sock && $TEST_MINUS_S_SH -c "test -S $sock -o -p $sock" ; then
-					PRNGD_SOCKET="$sock"
-					AC_DEFINE_UNQUOTED(PRNGD_SOCKET, "$PRNGD_SOCKET", [Location of PRNGD/EGD random number socket])
-					break;
-				fi
-			done
-			if test ! -z "$PRNGD_SOCKET" ; then
-				AC_MSG_RESULT($PRNGD_SOCKET)
-			else
-				AC_MSG_RESULT(not found)
-			fi
-		fi
-	]
-)
-
 dnl enable/disable logging of sensitive apdu data
 AC_ARG_ENABLE(sensitive-logging,
 	AC_HELP_STRING([--disable-sensitive-logging], [disable logging of sensitive APDU data [default=no]]),
@@ -836,19 +774,6 @@ src/tools/Makefile
 win32/Makefile
 ])
 
-if test ! -z "$RANDOM_POOL" ; then
-	RAND_MSG="device ($RANDOM_POOL)"
-else
-	if test ! -z "$PRNGD_PORT" ; then
-		RAND_MSG="PRNGD/EGD (port localhost:$PRNGD_PORT)"
-	elif test ! -z "$PRNGD_SOCKET" ; then
-		RAND_MSG="PRNGD/EGD (socket $PRNGD_SOCKET)"
-	else
-		RAND_MSG="Builtin kluge"
-		BUILTIN_RNG=1
-	fi
-fi
-
 A=`eval echo ${prefix}` ; A=`eval echo ${A}`
 B=`eval echo ${bindir}` ; B=`eval echo ${B}`
 C=`eval echo ${sysconfdir}` ; C=`eval echo ${C}`
@@ -870,30 +795,15 @@ echo "Linker flags:        ${LDFLAGS}"
 echo "Libraries:           ${LIBS}"
 
 echo ""
-echo "Random number collection: ${RAND_MSG}"
 echo "OpenSSL support:          ${SSL_MSG}"
 echo "        with engine:      ${ENGINE_MSG}"
 echo "        with sslhack:     ${SSLHACK_MSG}"
 echo "PC/SC support:            ${PCSC_MSG}"
 echo "OpenCT support:           ${OPENCT_MSG}"
 echo "Assuan support:           ${ASSUAN_MSG}"
-echo "LDAP support:             ${LDAP_MSG}"
-case "$host" in
-*-*-osf*)
-	echo "SIA support:              ${SIA_MSG}"
-	;;
-esac
 echo ""
 
 if test "x$ENGINE_MSG" = "xno" -a "x$SSL_MSG" = "xyes"; then
   echo "OpenSSL was found. But to use the engine you will need"
   echo "version 0.9.7a or later."
-fi
-
-if test ! -z "$BUILTIN_RNG"; then
-  echo "WARNING: you are using the builtin random number service."
-  echo "The random number service is very simple and is only"
-  echo "intended for testing purposes. Please request your OS"
-  echo "vendor to include /dev/random in future versions of"
-  echo "their OS. Or use PRNGD/EGD instead, your choice."
 fi
