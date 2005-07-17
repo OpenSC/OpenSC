@@ -918,7 +918,7 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		   CK_BYTE_PTR       pSeed,     /* the seed material */
 		   CK_ULONG          ulSeedLen) /* count of bytes of seed material */
 {
-#ifdef HAVE_OPENSSL
+#ifdef NEW_IMPLEMENTATION_COMPLETE
 	struct sc_pkcs11_session *session;
 	int rv;
 
@@ -941,7 +941,7 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		       CK_BYTE_PTR       RandomData,  /* receives the random data */
 		       CK_ULONG          ulRandomLen) /* number of bytes to be generated */
 {
-#ifdef HAVE_OPENSSL
+#ifdef NEW_IMPLEMENTATION_COMPLETE
 	struct sc_pkcs11_session *session;
 	int rv;
 

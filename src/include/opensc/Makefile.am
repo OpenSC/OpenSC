@@ -20,9 +20,7 @@ DISTCLEANFILES = \
 	keycache.h \
 	pkcs15-init.h \
 	scconf.h \
-	scdl.h \
-	scldap.h \
-	scrandom.h
+	scdl.h 
 
 all-local:
 	@$(RM) *.h

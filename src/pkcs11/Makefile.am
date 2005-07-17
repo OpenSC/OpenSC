@@ -23,7 +23,7 @@ noinst_LTLIBRARIES = libpkcs11.la
 opensc_pkcs11_la_SOURCES = $(SRC) $(INC)
 opensc_pkcs11_la_LDFLAGS = -module -avoid-version
 opensc_pkcs11_la_LIBADD = @LIBOPENSC@ @LIBCRYPTO@ \
-	../pkcs15init/libpkcs15init.la ../scrandom/libscrandom.la
+	../pkcs15init/libpkcs15init.la 
 
 libpkcs11_la_SOURCES = libpkcs11.c
 libpkcs11_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@

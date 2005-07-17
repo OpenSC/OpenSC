@@ -7,7 +7,6 @@
 
 #include <string.h>
 #include "sc-pkcs11.h"
-#include "opensc/scrandom.h"
 
 #ifdef HAVE_OPENSSL
 #include <openssl/evp.h>
@@ -61,8 +60,6 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *card)
 	openssl_ripemd160_mech.mech_data = EVP_ripemd160();
 	sc_pkcs11_register_mechanism(card, &openssl_ripemd160_mech);
 }
-
-static int rng_seeded = 0; 
 
 
 /*
@@ -151,23 +148,11 @@ sc_pkcs11_openssl_add_gen_rand(struct sc_pkcs11_session *session,
 	if (RandomData == NULL || ulRandomLen == 0)
 		return CKR_OK;
 
-	if (scrandom_get_data(seed, 20) == -1) {
-		sc_error(context, "scrandom_get_data() failed\n");
-		return CKR_FUNCTION_FAILED;
+	r = sc_get_challenge(session->slot->card->card, RandomData, ulRandomLen);
+	if (r != 0) {
+		sc_error(context, "sc_get_challenge() returned %d\n", r);
+		return sc_to_cryptoki_error(r, session->slot->card->reader);
 	}
-	RAND_seed(seed, 20);
-
-	if (rng_seeded == 0) {
-		r = sc_get_challenge(session->slot->card->card, seed, 20);
-		if (r != 0) {
-			sc_error(context, "sc_get_challenge() returned %d\n", r);
-			return sc_to_cryptoki_error(r, session->slot->card->reader);
-		}
-		rng_seeded = 1;
-	}
-	RAND_seed(seed, 20);
-
-	r = RAND_bytes(RandomData, ulRandomLen);
 
 	return r == 1 ? CKR_OK : CKR_FUNCTION_FAILED;
 }
