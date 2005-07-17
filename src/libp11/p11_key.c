@@ -246,7 +246,6 @@ int pkcs11_find_key(PKCS11_CTX * ctx, PKCS11_KEY **key, char* passphrase, char* 
 {
 	/* need to confirm if passphrase required, perhaps substitute callback */
 
-#define fail(msg) { fprintf(stderr,msg); return NULL;}
 	PKCS11_SLOT *slot, *slot_list;
 	PKCS11_TOKEN *tok;
 	PKCS11_CERT *certs;
@@ -351,8 +350,10 @@ int pkcs11_find_key(PKCS11_CTX * ctx, PKCS11_KEY **key, char* passphrase, char* 
 	}
 
 	if (slot_nr == -1) {
-		if (!(slot = PKCS11_find_token(ctx)))
-			fail("didn't find any tokens\n");
+		if (!(slot = PKCS11_find_token(ctx))) {
+			fprintf(stderr,"didn't find any tokens\n");
+			return 0;
+		}
 	} else if (slot_nr >= 0 && slot_nr < count)
 		slot = slot_list + slot_nr;
 	else {
@@ -382,8 +383,10 @@ int pkcs11_find_key(PKCS11_CTX * ctx, PKCS11_KEY **key, char* passphrase, char* 
 
 
 	if(verbose) {
-		if (PKCS11_enumerate_certs(tok, &certs, &count))
-			fail("unable to enumerate certificates\n");
+		if (PKCS11_enumerate_certs(tok, &certs, &count)) {
+			fprintf(stderr,"unable to enumerate certificates\n");
+			return 0;
+		}
 		fprintf(stderr,"Found %u certificate%s:\n", count, (count <= 1) ? "" : "s");
 		for (n = 0; n < count; n++) {
 			PKCS11_CERT *c = certs + n;
@@ -401,8 +404,10 @@ int pkcs11_find_key(PKCS11_CTX * ctx, PKCS11_KEY **key, char* passphrase, char* 
 	}
 
 	while (1) {
-		if (PKCS11_enumerate_keys(tok, &keys, &count))
-			fail("unable to enumerate keys\n");
+		if (PKCS11_enumerate_keys(tok, &keys, &count)) {
+			fprintf(stderr,"unable to enumerate keys\n");
+			return 0;
+		}
 		if (count)
 			break;
 		if (logged_in || !tok->loginRequired)
@@ -418,7 +423,8 @@ int pkcs11_find_key(PKCS11_CTX * ctx, PKCS11_KEY **key, char* passphrase, char* 
 				pin = NULL;
 			}*/
 			passphrase=NULL;
-			fail("Card login failed\n");
+			fprintf(stderr,"Card login failed\n");
+			return 0;
 		}
 		logged_in++;
 	}
