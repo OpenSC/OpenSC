@@ -966,11 +966,13 @@ AC_SUBST(pkgdata)
 AC_OUTPUT([
 Makefile
 aclocal/Makefile
-docs/Makefile
-docs/pkcs15-profile.5
+doc/Makefile
+doc/old/Makefile
+doc/src/Makefile
 etc/Makefile
 macos/Makefile
 man/Makefile
+man/pkcs15-profile.5
 src/Makefile
 src/common/Makefile
 src/include/Makefile
