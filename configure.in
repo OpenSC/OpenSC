@@ -712,6 +712,7 @@ opensc_conf_path=`eval echo ${opensc_etc_path}/opensc.conf`
 AC_DEFINE_UNQUOTED(OPENSC_CONF_PATH, "$opensc_conf_path", [default config file for libopensc])
 
 AC_SUBST(LIBSCCONF)
+LIBSCCONF="\${top_builddir}/src/scconf/libscconf.la"
 AC_SUBST(LIBOPENSC)
 LIBOPENSC="\${top_builddir}/src/libopensc/libopensc.la"
 
