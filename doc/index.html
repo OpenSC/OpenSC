@@ -1,0 +1,121 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>OpenSC</h1>
+<p>
+OpenSC provides a set of libraries and utilities to access smart
+cards. Its main focus is on cards that support cryptographic operations,
+and facilitate their use in security applications such as mail encryption,
+authentication, and digital signature. OpenSC implements the PKCS#11 API
+so applications supporting this API such as Mozilla Firefox and Thunderbird
+can use it. OpenSC implements the PKCS#15 standard and aims to be compatible
+with every software that does so, too.
+</p>
+<h2>Card Support</h2>
+<p>
+<a href="CardsAndTokens.html" shape="rect">CardsAndTokens</a> has the full list of all smart cards and tokens.
+</p>
+<p>
+Each release is tested with a subset of the supported cards, and users provide
+additional test results. These are collected in <a href="RecentTestresults.html" shape="rect">RecentTestresults</a>.
+</p>
+<h2>Operating Systems</h2>
+<p>
+OpenSC runs on Windows, <a href="MacOsX.html" shape="rect">Mac OS X</a> and several other Unix and Bsd flavors.
+It is even shipped as integral part of some <a href="LinuxDistributions.html" shape="rect">LinuxDistributions</a>.
+</p>
+<p>
+OpenSC can be integrated with OS-centric cryptography frameworks such as <a href="WindowsCsp.html" shape="rect">WindowsCsp</a>.
+</p>
+<h2>Card Readers</h2>
+<p>
+To use OpenSC you need a driver for your smart card reader. This can either be a driver
+in CT-API format, or an <a class="missing" href="/opensc/wiki/IfdHandler" shape="rect">IfdHandler?</a> driver in combination with <a class="missing" href="/opensc/wiki/PcscLite" shape="rect">PcscLite?</a>, or <a class="missing" href="/opensc/wiki/OpenCt" shape="rect">OpenCt?</a>.
+Most developers use OpenCT in direct combination, i.e. not using the OpenCT CT-API
+driver nor the OpenCT ifdhandler with PC/SC-Lite. However those alternatives should
+work fine, too.
+</p>
+<p>
+On Win32 platforms you usually get a PC/SC driver. Most <a href="PinpadReaders.html" shape="rect">Pinpad readers</a> (aka Class 2+ readers) also supply  a CT-API driver. Though both drivers can be used with OpenSC you are currently limited to the CT-API driver if you want to use the reader's pinpad.
+</p>
+<h2>Features</h2>
+<p>
+* <a href="ReplacingCertificates.html" shape="rect">ReplacingCertificates</a>
+</p>
+<h2>Application Support</h2>
+<p>
+OpenSC comes with a bundle of tools for testing, debugging and initialization.
+In addition it contains two <a href="OpensslEngines.html" shape="rect">OpensslEngines</a> that can be combined with OpenSSL to use
+the normal OpenSSL commands while using a smart card hardware to do the crypto operations.
+</p>
+<p>
+OpenSC contains a <a class="missing" href="/opensc/wiki/PamModule" shape="rect">PamModule?</a> for authentication/login via smart card. That pam module however
+has a few minor bugs. But there is also a new pam module
+<a class="ext-link" title="http://oasis.dit.upm.es/~jantonio/pam-pkcs11/" href="http://oasis.dit.upm.es/~jantonio/pam-pkcs11/" shape="rect">for PKCS!#11</a> libaries.
+</p>
+<p>
+OpenSC contains a PKCS#11 library called opensc-pkcs11.so. This library can be used
+with <a class="missing" href="/opensc/wiki/MozillaFirebird" shape="rect">MozillaFirebird?</a>, <a class="missing" href="/opensc/wiki/MozillaThunderbird" shape="rect">MozillaThunderbird?</a> or plain Mozilla to login to websites using
+certificates from the smart card, or to sign and decrypt eMails or authenticate
+to your mail server with your certificate. Keypair generation, certificate request
+and writing the requested cert through an on-line CA should also be <a href="pkcs11_keypair_gen.html" shape="rect">possible</a>.
+</p>
+<p>
+<a class="missing" href="/opensc/wiki/FreeSwan/StrongSwan/OpenSwan" shape="rect">FreeSwan/StrongSwan/OpenSwan?</a> can be compiled with OpenSC support and thus be used
+to authenticate a VPN connection using a smart card.
+</p>
+<p>
+OpenSSH can be compiled with OpenSC support and thus use the smart card for 
+authenticating at a remote ssh server. See <a href="OpenSsh.html" shape="rect">OpenSsh</a> for details.
+</p>
+<p>
+On Windows there is a patched version of Putty with support for PKCS#11 libraries
+such as OpenSC. See the <a class="ext-link" title="http://www.opensc.org/scb/" href="http://www.opensc.org/scb/" shape="rect">Smart Card Bundle</a> for a binary
+package with installer containing OpenSSL, OpenSC and Putty for Windows.
+</p>
+<p>
+<a class="missing" href="/opensc/wiki/GnuPg" shape="rect">GnuPg?</a> contains support for OpenSC in the experimental 1.9 branch.
+</p>
+<p>
+There is a patch for <a class="missing" href="/opensc/wiki/WpaSupplicant" shape="rect">WpaSupplicant?</a> to allow authentication to access points using
+smart cards.
+</p>
+<p>
+<a class="ext-link" title="http://sourceforge.net/projects/gdigidoc" href="http://sourceforge.net/projects/gdigidoc" shape="rect">Gdigidoc</a> uses <a class="ext-link" title="http://www.openxades.org/" href="http://www.openxades.org/" shape="rect">OpenXAdES</a> library what in turn can make use of OpenSC PKCS#11 module or CSP on windows.
+</p>
+<p>
+<a href="PuTTYcard.html" shape="rect">Here's a Wikipage</a> that has some information about PuTTYcard, an extension to Simon Tathams PuTTY.
+PuTTYcard let you use your Smartcards RSA keys with Pageant.exe.
+</p>
+<p>
+<a class="ext-link" title="http://www.libchipcard.de" href="http://www.libchipcard.de" shape="rect">LibChipcard</a> is a library and tools to use all kind of chipcards like HBCI chip cards and german medical cards.
+It is used by many online banking applications. The latest development snapshot for version 2 now includes
+support for using opensc reader layer. great new! 
+</p>
+<p>
+<a href="TroubleShooting.html" shape="rect">TroubleShooting</a> explains the most common problems and how to solve the,
+</p>
+<h2>Getting OpenSC</h2>
+<p>
+You can either download OpenSC releases from our <a class="ext-link" title="http://www.opensc.org/files/" href="http://www.opensc.org/files/" shape="rect">File Archive</a>
+or access our <a href="SubversionRepository.html" shape="rect">SubversionRepository</a>.
+</p>
+<h2>Links</h2>
+<p>
+* <a class="ext-link" title="http://csrc.nist.gov/publications/fips/fips201/FIPS-201-022505.pdf" href="http://csrc.nist.gov/publications/fips/fips201/FIPS-201-022505.pdf" shape="rect">NIST</a> has a document about personal identity verification cards.
+</p>
+<h2>Developers Corner</h2>
+<p>
+We would like to gather some information on developers to make it easier for all of us.
+New pages: <a class="missing" href="/opensc/wiki/DeveloperHardware" shape="rect">DeveloperHardware?</a> (donations welcome!), <a href="AutoVersions.html" shape="rect">AutoVersions</a>.
+</p>
+<p>
+<a href="ReleaseHowto.html" shape="rect">ReleaseHowto</a> documents our release process.
+</p>
+<p>
+For interoperability with other smart card projects, mostly national id cards, there is a mailing
+list at [<a class="ext-link" title="http://www.gol.grosseto.it/mailman/listinfo/interopeid" href="http://www.gol.grosseto.it/mailman/listinfo/interopeid" shape="rect">http://www.gol.grosseto.it/mailman/listinfo/interopeid</a>]
+</p>
+</div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

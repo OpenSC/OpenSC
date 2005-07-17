@@ -1,0 +1,28 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>pkcs11_keypair_gen - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><p>
+<strong>PKCS11 Keypair generation, certificate request and writing the requested cert to the card</strong>
+</p>
+<p>
+You can use the the pkcs11 library (<i>opensc-pkcs11.so</i> or <i>opensc-pkcs11.dll</i>) with Mozilla/Firefox/Netscape to go to an on-line CA (Certificate Authority). In this case, the browser will:
+</p>
+<ul><li>ask the pkcs11 lib to generate a keypair on your card,
+</li><li>create a certificate request,
+</li><li>ask the pkcs11 lib to sign the cert request,
+</li><li>send the cert request to the CA,
+</li><li>(at a later time, when the CA is done) download the requested cert,
+</li><li>and ask the pkcs11 lib to store the cert on your card.
+</li></ul><p>
+However in order to work:
+</p>
+<ul><li>you have to format your card with the "onepin" profile option:
+<ul><li> <i>pkcs15-init -E</i>
+</li><li> <i>pkcs15-init -C -p pkcs15+onepin --pin xxxx --puk yyyy</i>
+</li></ul></li><li>you have set <i>cache_pins</i> should to <i>true</i> in <i>opensc.conf</i>
+</li></ul><p>
+Currently, only 1 certificate can be requested this way. The reason is that Mozilla changes the ID of the key and cert into a hash of 20 bytes, and this confuses our pkcs15init library (used to 1-byte IDs) who will attempt to create a new key on the place of the first key (which fails)...
+</p>
+</div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

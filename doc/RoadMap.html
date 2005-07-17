@@ -1,0 +1,24 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>RoadMap - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>Roadmap for OpenSC</h1>
+<p>
+This page should be a place for discussions about future developments of OpenSC in free form untill something clear comes out so that a reference to the Roadmap module and an exact ticket can be made. Issues not directly concerning OpenSC go here too. Feel free to add comments (also state your name in parentheses after your comment!) and ideas for others to digest. This way the targets can be analysed, grouped etc. <a href="DesignDiscussion.html" shape="rect">DesignDiscussion</a> complements this page.
+</p>
+<hr></hr>
+<p>
+Some assumptions/facts by martin:
+</p>
+<ul><li>There are two main card oriented interests in OpenSC
+<ol><li>Pure pkcs15
+</li><li>Everything else - mostly read-only, (pkcs15 emulation) <a class="missing" href="/opensc/wiki/NationalIdCards" shape="rect">NationalIdCards?</a>
+</li></ol></li><li>Whataver the case - most used component is pkcs11 module
+</li><li>Though there are several different <a class="missing" href="/opensc/wiki/SmartCards" shape="rect">SmartCards?</a> popping into the wallets of people lately - the biggest userbase will be (is?) <a class="missing" href="/opensc/wiki/NationalIdCards" shape="rect">NationalIdCards?</a> owners
+</li></ul><p>
+Based on those assumptions, I'd suggest to focus the efforts on these aspects:
+</p>
+<ul><li>Improve, test (upgrade to pkcs11 v2.20?) the pkcs11 implementation. Who wins: most users. For 'normal people' and majority of applications this is the only useful interface to the library.
+</li><li>Improve security - secure pin operations, <a class="missing" href="/opensc/wiki/UserConsent" shape="rect">UserConsent?</a> style issues (CKA_ALWAYS_AUTHENTICATE flag in pkcs11 v2.20) etc. Who wins: everybody, especially <a class="missing" href="/opensc/wiki/DigitalSignature" shape="rect">DigitalSignature?</a> functionality users of various <a class="missing" href="/opensc/wiki/NationalIdCards" shape="rect">NationalIdCards?</a>. After we have pretty solid support for different cards and different usages, it is about time to focus on security - one reason smartcards exist in the first place.
+</li></ul></div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

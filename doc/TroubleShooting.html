@@ -1,0 +1,64 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>TroubleShooting - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>Debugging OpenSC</h1>
+<pre class="wiki" xml:space="preserve">opensc-tool -l
+</pre><p>
+will give you a list of readers opensc has found. If your reader isn't listed, you have
+a problem with that reader. For OpenCT see [<a class="ext-link" title="http://www.opensc.org/openct/wiki/TroubleShooting" href="http://www.opensc.org/openct/wiki/TroubleShooting" shape="rect">http://www.opensc.org/openct/wiki/TroubleShooting</a>] for details.
+For PCSC/Lite see it's documentation (FIXME: a link would be nice). For CT-API readers, edit the
+opensc.conf and make sure the reader is properly configured. If it still doesn't help, increase
+debugging to level 5 or higher in opensc.conf, run "opensc-tool -l" again and send a debug log
+to the mailing list (see <a class="missing" href="/opensc/wiki/ContactInfo" shape="rect">ContactInfo?</a> for details).
+</p>
+<p>
+FIXME: more help for debugging opensc.
+</p>
+<h2>Unsupported INS byte in APDU</h2>
+<p>
+This is a common error message. The best translation is:
+</p>
+<pre class="wiki" xml:space="preserve">Sorry, we don't know that card.
+</pre><p>
+Each card is identified by it so called ATR ("Answer to reset").
+You can get this identification code by running
+</p>
+<pre class="wiki" xml:space="preserve">opensc-tool --atr
+</pre><p>
+OpenSC contains a compiled in list of atr it knows in each card driver.
+To check if any card driver knows about your card, please run
+</p>
+<pre class="wiki" xml:space="preserve">opensc-tool --name
+</pre><p>
+So if that name is "Default driver for unknown cards" then either your card
+is not supported at all, or it is a brand new version of an old and supported
+card, and if it is compatible with the older version it might work.
+</p>
+<p>
+In case it is only a new version, but still compatible, you can edit opensc.conf
+and configure some driver to also accept this new atr. opensc.conf already contains
+a configuration example, you only need to change the atr and driver and enable it.
+Here is that example code:
+</p>
+<pre class="wiki" xml:space="preserve">        # GPK card driver additional ATR entry:
+        card_driver gpk {
+                atr = 00:11:22;
+        }
+
+</pre><p>
+Replace "gpk" with the card driver of your card and "00:11:22" with the atr
+printed by "opensc-tool --atr". WARNING: this can damage your card and render
+it useless (in case the driver is not compatible with your card). So don't do
+this, unless you are absolutely sure of what you are doing. If you are not
+sure, please contact the OpenSC Team (see <a class="missing" href="/opensc/wiki/ContactInfo" shape="rect">ContactInfo?</a> for details).
+</p>
+<p>
+Also note: more and more drivers have internal flags, for example for subtypes
+of cards or for certain properties, like whether or nor a card can generate
+keys (very old smartcards can't do that). Currently it is not possible to set
+those flags in the config file, so often it might be necessary to edit OpenSC
+source code and recompile OpenSC.
+</p>
+</div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

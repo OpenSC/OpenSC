@@ -1,0 +1,10 @@
+This directory contains a snapshot of the OpenCT Wiki
+=====================================================
+
+The original wiki page is at http://www.opensc.org/openct/
+and includes a bug tracker and source browser.
+
+The wiki was transformed to html using the export-wiki shell
+script and xsl style sheet. The original version is at 
+	http://www.twdata.org/trac-howto/
+

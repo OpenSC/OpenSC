@@ -1,0 +1,47 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>MartinBlogMuscle - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>MUSCLE</h1>
+<p>
+##TODO## muscle info
+</p>
+<p>
+What i have
+</p>
+<ul><li>USB e-gate token for Cyberflex cards
+</li><li>Two Cyberflex 32k cards (one in token and one full size card)
+</li></ul><p>
+What i run on
+</p>
+<ul><li>WindowsXP SP2 (x86, free visual c toolkit, .net sdk, mingw setup)
+</li><li>GNU/Linux (x86, kernel 2.6, mostly Debian/unstable)
+</li><li>OS X 10.4 (Xcode et al, fink)
+</li></ul><p>
+How to access the e-gate USB token
+</p>
+<ul><li>Windows: <a class="ext-link" title="http://www.reflexreaders.com/Support/software.html" href="http://www.reflexreaders.com/Support/software.html" shape="rect">http://www.reflexreaders.com/Support/software.html</a> (works well)
+</li><li>Linux:
+<ul><li>OpenCT provides support directly to OpenSC, also a <a class="missing" href="/opensc/wiki/IfdHandler" shape="rect">IfdHandler?</a> for pcsc-lite (openct works, pcsc-lite integration needs to be checked, problems with the device file option in reader.conf)
+</li><li>ifd-egate available here: <a class="ext-link" title="http://secure.netroedge.com/~phil/egate/" href="http://secure.netroedge.com/~phil/egate/" shape="rect">http://secure.netroedge.com/~phil/egate/</a> with minor modifications compiles cleanly and works well on linux)
+</li></ul></li><li>OSX: openct and-or ifd-egate and-or normal supported reader?
+</li></ul><p>
+  
+How to load the applet to the card
+</p>
+<ul><li><a class="ext-link" title="http://www.identityalliance.com/CardManagerClient-1.0.2.tar.gz" href="http://www.identityalliance.com/CardManagerClient-1.0.2.tar.gz" shape="rect">http://www.identityalliance.com/CardManagerClient-1.0.2.tar.gz</a> to use a card management server by identityalliance
+<ul><li>compiled smoothly on linux and osx
+</li><li>Did do something as well on Linux (Had to download the new certificate before). Procedure: select card, select applet, go! Very nice.
+</li><li>use <a class="ext-link" title="http://archives.neohapsis.com/archives/dev/muscle/2005-q2/0241.html" href="http://archives.neohapsis.com/archives/dev/muscle/2005-q2/0241.html" shape="rect">http://archives.neohapsis.com/archives/dev/muscle/2005-q2/0241.html</a> as rootcert.pem
+</li></ul></li></ul><p>
+What to do with the card then?
+</p>
+<ul><li><a class="ext-link" title="http://www.musclecard.com/musclecard/files/mcardprot-1.2.1.pdf" href="http://www.musclecard.com/musclecard/files/mcardprot-1.2.1.pdf" shape="rect">http://www.musclecard.com/musclecard/files/mcardprot-1.2.1.pdf</a> - contains the card in terface that should be implemented in OpenSC
+</li><li><a class="ext-link" title="http://www.linuxnet.com/musclecard/index.html" href="http://www.linuxnet.com/musclecard/index.html" shape="rect">http://www.linuxnet.com/musclecard/index.html</a> contains everything else needed too, hopefully
+</li></ul><p>
+Some notes
+</p>
+<ul><li>David: OpenSC PKCS<a href="/opensc/ticket/11" title="CLOSED : gcc4 build failure" shape="rect"><del>#11</del></a> needs to be updated to better support token initialization (<a class="missing" href="/opensc/wiki/InitToken" shape="rect">InitToken?</a>, InitPIN, <a class="missing" href="/opensc/wiki/CreateObject" shape="rect">CreateObject?</a>, .....)
+</li><li>To be continued
+</li></ul></div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

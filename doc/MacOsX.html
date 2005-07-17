@@ -1,0 +1,66 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>MacOsX - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>Using OpenSC on Mac OS X</h1>
+<p>
+First you need Mac OS X Version 10.4 or later. Older version are supposed to not work well,
+but if you try and have success, please report here.
+I report!
+it worked for me under 10.3.9 G4 1,2Ghz, and i can use my mpmanF50 again. Thanks.
+reach me  nicolasb at gmaildotcom. French tutorial here : <a class="ext-link" title="http://nicolasbizard.free.fr/blog" href="http://nicolasbizard.free.fr/blog" shape="rect">http://nicolasbizard.free.fr/blog</a>
+</p>
+<p>
+Then you need a driver for your smart card reader. Hier is an examle for Axalto e-gate tokens:
+* Download and install libusb. <a class="ext-link" title="http://libusb.sourceforge.net/" href="http://libusb.sourceforge.net/" shape="rect">http://libusb.sourceforge.net/</a>
+* Download ifd-egate from <a class="ext-link" title="http://www.luusa.org/~wbx/sc/ifd-egate-0.05-patched.tar.gz" href="http://www.luusa.org/~wbx/sc/ifd-egate-0.05-patched.tar.gz" shape="rect">http://www.luusa.org/~wbx/sc/ifd-egate-0.05-patched.tar.gz</a>
+</p>
+<p>
+To install libusb, you need to extract the files, configure it, make, make install:
+</p>
+<pre class="wiki" xml:space="preserve">wget http://switch.dl.sourceforge.net/sourceforge/libusb/libusb-0.1.10a.tar.gz
+tar xfvz libusb-0.1.10a.tar.gz
+cd libusb-0.1.10a
+./configure --prefix=/opt/smartcard
+make
+make install
+cd ..
+</pre><p>
+To install ifd-egate you need to extract the files, and use some environment variables to make sure it finds everything (or edit the
+compile options in the Makefile directly):
+</p>
+<pre class="wiki" xml:space="preserve">wget http://www.luusa.org/~wbx/sc/ifd-egate-0.05-patched.tar.gz
+tar xfvz ifd-egate-0.05-patched.tar.gz
+cd ifd-egate-0.05
+export USB_CFLAGS="-I/opt/smartcard/include -I/System/Library/Frameworks/PCSC.framework/Headers"
+export USB_LDFLAGS="-L/opt/smartcard/lib -lusb -Wl,-framework -Wl,PCSC"
+make -f Makefile-OSX clean
+make -f Makefile-OSX 
+make -f Makefile-OSX install
+export USB_CFLAGS=
+export USB_LDFLAGS=
+cd ..
+</pre><p>
+Last you need to download and install opensc. This is straight forward: download, extract, configure, make, make install.
+</p>
+<pre class="wiki" xml:space="preserve">wget http://www.opensc.org/files/opensc-0.9.6.tar.gz
+tar xfvz opensc-0.9.6.tar.gz
+cd  opensc-0.9.6
+./configure --prefix=/opt/smartcard --sysconfdir=/etc
+make
+make install
+cd ..
+</pre><h2>SSH with smartcard support</h2>
+<p>
+Mac OS X does include openssh, but unfortunatly compiled without smartcard support.
+Here is how you can recompile openssh with it:
+</p>
+<pre class="wiki" xml:space="preserve">wget ftp://ftp.leo.org/pub/OpenBSD/OpenSSH/portable/openssh-4.1p1.tar.gz 
+tar xfvz openssh-4.1p1.tar.gz
+cd  openssh-4.1p1
+./configure --prefix=/opt/smartcard --sysconfdir=/etc --with-opensc=/opt/smartcard
+make
+make install
+cd ..
+</pre></div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

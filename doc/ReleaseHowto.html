@@ -1,0 +1,36 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>ReleaseHowto - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>OpenSC Release Howto</h1>
+<p>
+Announcement
+</p>
+<ul><li>Write announcement. Write short version (600 bytes) for freshmeat.
+</li><li>find someone to proofread announcement
+</li></ul><p>
+The OpenSC version must be updated in these files:
+</p>
+<ul><li>configure.in
+</li><li>win32/version.rc
+</li><li>src/include/winversion.h
+</li><li>docs/doxygen.conf
+</li></ul><p>
+The News file needs to be edited: put in Name and Date.
+</p>
+<p>
+The library version must be updated in these files:
+</p>
+<ul><li>configure.in
+</li><li>src/pkcs11/pkcs11-global.c
+</li></ul><p>
+Announce:
+</p>
+<ul><li>change LATEST file in svn/web/trunk
+</li><li>add file to svn/web/trunk/news/
+</li><li>via mail to opensc-announce,users,devel
+</li><li>update freshmeat entry
+</li><li>(root@opensc): trac-admin /home/trac/opensc version add 0.X.Y
+</li><li>(root@opensc): edit /home/trac/opensc/conf/trac.ini change default_version
+</li></ul></div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

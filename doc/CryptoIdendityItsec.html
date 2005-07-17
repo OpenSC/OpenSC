@@ -1,0 +1,42 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>CryptoIdendityItsec - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>Eutrom CryptoIdendity IT-SEC</h1>
+<p>
+<a class="ext-link" title="http://www.eutron.it/" href="http://www.eutron.it/" shape="rect">Eutron</a> offers the Crypto Idendity IT-SEC, an USB crypto token with 32k memory
+and support for RSA keys up to 1024bit key length.
+</p>
+<p>
+The Crypto Idendity IT-SEC is fully supported by OpenSC, but has not been tested for a while.
+</p>
+<p>
+Note that Eutron also offers two other crypto tokens in the Crypto Idendity line, but those
+are not supported at all (no documentation available).
+</p>
+<p>
+The smart card inside is an Infineon Chip with the Siemens CardOS M4 smart card operating system.
+The driver is called "etoken" because this was the first device with that smart card. Only the usb
+interface differs, the rest seems to be the same.
+</p>
+<p>
+One minor feature of the Siemens CardOS M4 is, that a rsa key cannot be used for both signing
+and decryption. OpenSC has implemented a workaround: software key generation and storing that
+key twice, once marked as decryption key and once marked as signing key. To enable this workaround
+specifiy "--split-key" on the command line, when creating the key.
+</p>
+<p>
+Eutron has their own software for windows. This software does not implement PKCS#15 and thus is not compatible with OpenSC. As long as the card has memory, you can initialize the card with both software packages, and thus install files and keys side by side - each software can only handle their own structures.
+</p>
+<p>
+Documentation was not necessary, as the driver for the smart card inside was already implemented.
+</p>
+<p>
+However there is no tool to format a token (for example if you lock it up by accident), and the card
+is slightly differently initialized than the Aladdin eToken PRO, so the scripts for that token do not work with the Eutron Crypto Idendity IT-SEC. A support email was not answered.
+</p>
+<p>
+For price and availability, please contact Eutron directly.
+</p>
+</div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

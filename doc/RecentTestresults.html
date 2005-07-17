@@ -1,0 +1,232 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>RecentTestresults - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>Recent test results for various smart cards</h1>
+<p>
+Providing test results is a bit difficult, since a test includes
+</p>
+<ul><li>OpenSC (Version)
+</li><li>Smart card (Name, Variant, blank or pre-initialized)
+</li><li>Operating Sytem (Name, Version, Architecture)
+</li><li>Smart card reader (Name, Modell, Firmware version)
+</li><li>Software for the smart card reader driver (Name of the driver, version)
+</li><li>Middleware (PC/SC-Lite? Version? Configuration?)
+</li><li>opensc.conf configuration
+</li></ul><p>
+And of course the features that were tested. Here is a list:
+</p>
+<ul><li>src/test/regression test suite, run-all script.
+</li><li>pkcs15-init (manual init, keygen, certificate store, cert+key store)
+</li><li>pkcs11-tool (manual, "pkcs11-tool --test --login")
+</li><li>openssl command line tool with opensc engine
+</li><li>openssl command line tool with pkcs11 engine
+</li><li>firefox with pkcs11 module (https authentication with a client certificate and key)
+</li><li>thunderbird with pkcs11 module (email signing and decryption)
+</li><li>mozilla with the same tests as firefox and thunderbird
+</li><li>netscape with the same tests as firefox and thunderbird
+</li><li>key generation and certificate store via some web site (e.g. thawte community)
+</li><li>openssh with smart card authentication (or putty on windows)
+</li><li>openssh agent with smart card authentication (or pageant on windows)
+</li><li>login with pam module (with local .eid/authorized_certificates)
+</li><li>login with pam module (with the certificate in an ldap server)
+</li><li>free/open/stronswan vpn with x.509 certificate authentication using a smart card
+</li><li>accessing a wireless lan protected with wpa, 802.1x, eap-tls using the wpa_supplicant, with a smart card
+</li><li>testing the Identity Alliance CSP on windows with the opensc-pkcs11.dll: using internet explorer for client certificate authentication at some website.
+</li><li>testing the Identity Alliance CSP on windows with the opensc-pkcs11.dll: using outlook to sign and decrypt emails.
+</li><li>testing CSP <a href="/opensc/ticket/11" title="CLOSED : gcc4 build failure" shape="rect"><del>#11</del></a> on windows with the opensc-pkcs11.dll: using internet explorer for client certificate authentication at some website
+</li><li>testing CSP <a href="/opensc/ticket/11" title="CLOSED : gcc4 build failure" shape="rect"><del>#11</del></a> on windows with the opensc-pkcs11.dll: using outlook to sign an decrypt emails.
+</li></ul><p>
+We can't test all combinations of OpenSC, card, Reader, driver software with all features.
+</p>
+<p>
+So the basic regression tests (or pkcs11-tool for pre-initialized cards) is done with as many cards
+as possible on at least one plattform. Once we know the cards work with OpenSC on this plattform, the next test is
+to test as many features as possible on many plattforms, but it is ok to test only with a few or only once card.
+</p>
+<p>
+Which cards passed the src/test/regression/run-all test suite?
+</p>
+<div class="document">
+<table border="1" class="docutils">
+<colgroup span="1">
+<col width="19%" span="1"></col>
+<col width="6%" span="1"></col>
+<col width="11%" span="1"></col>
+<col width="19%" span="1"></col>
+<col width="15%" span="1"></col>
+<col width="8%" span="1"></col>
+<col width="22%" span="1"></col>
+</colgroup>
+<tbody valign="top">
+<tr><td rowspan="1" colspan="1">Card Name</td>
+<td rowspan="1" colspan="1">OpenSC</td>
+<td rowspan="1" colspan="1">Date</td>
+<td rowspan="1" colspan="1">Reader</td>
+<td rowspan="1" colspan="1">Reader driver</td>
+<td rowspan="1" colspan="1">Result</td>
+<td rowspan="1" colspan="1">Tester</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Aladdin eToken PRO</td>
+<td rowspan="1" colspan="1">0.9.5</td>
+<td rowspan="1" colspan="1">2005-01-13</td>
+<td rowspan="1" colspan="1">Aladdin eToken PRO</td>
+<td rowspan="1" colspan="1">OpenCT 0.6.3</td>
+<td rowspan="1" colspan="1">All ok.</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Cryptoflex 32k</td>
+<td rowspan="1" colspan="1">0.9.5</td>
+<td rowspan="1" colspan="1">2005-01-13</td>
+<td rowspan="1" colspan="1">eGate Token</td>
+<td rowspan="1" colspan="1">OpenCT 0.6.3</td>
+<td rowspan="1" colspan="1">All ok.</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Rainbow iKey 3000</td>
+<td rowspan="1" colspan="1">0.9.5</td>
+<td rowspan="1" colspan="1">2005-01-13</td>
+<td rowspan="1" colspan="1">Rainbow iKey 3000</td>
+<td rowspan="1" colspan="1">OpenCT 0.6.3</td>
+<td rowspan="1" colspan="1">All ok.</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+</tbody>
+</table>
+</div><p>
+Note that Rainbow iKey 3000 has a Starcos SPK 2.3 operating system, and thus the pin0002 test will
+fail, but this is ok as the Starcos SPK 2.3 implementation of the ISO 7816 RESET RETRY COUNTER command 
+is not ISO compliant.
+</p>
+<p>
+Which cards passed the "pkcs11-tool --test --login" test? (Only for pre-initialized cards)
+</p>
+<div class="document">
+<table border="1" class="docutils">
+<colgroup span="1">
+<col width="19%" span="1"></col>
+<col width="6%" span="1"></col>
+<col width="11%" span="1"></col>
+<col width="19%" span="1"></col>
+<col width="15%" span="1"></col>
+<col width="8%" span="1"></col>
+<col width="22%" span="1"></col>
+</colgroup>
+<tbody valign="top">
+<tr><td rowspan="1" colspan="1">Card Name</td>
+<td rowspan="1" colspan="1">OpenSC</td>
+<td rowspan="1" colspan="1">Date</td>
+<td rowspan="1" colspan="1">Reader</td>
+<td rowspan="1" colspan="1">Reader driver</td>
+<td rowspan="1" colspan="1">Result</td>
+<td rowspan="1" colspan="1">Tester</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Signtrust TCOS</td>
+<td rowspan="1" colspan="1">0.9.5</td>
+<td rowspan="1" colspan="1">2005-03-04</td>
+<td rowspan="1" colspan="1">Towitoko Serial</td>
+<td rowspan="1" colspan="1">OpenCT 0.6.3</td>
+<td rowspan="1" colspan="1">???</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+</tbody>
+</table>
+</div><p>
+Which operating system works fine with OpenSC? Add one line for every feature that works or not.
+</p>
+<div class="document">
+<table border="1" class="docutils">
+<colgroup span="1">
+<col width="18%" span="1"></col>
+<col width="12%" span="1"></col>
+<col width="18%" span="1"></col>
+<col width="13%" span="1"></col>
+<col width="11%" span="1"></col>
+<col width="10%" span="1"></col>
+<col width="18%" span="1"></col>
+</colgroup>
+<tbody valign="top">
+<tr><td rowspan="1" colspan="1">Operating System</td>
+<td rowspan="1" colspan="1">Version</td>
+<td rowspan="1" colspan="1">Architecture</td>
+<td rowspan="1" colspan="1">OpenSC</td>
+<td rowspan="1" colspan="1">Feature</td>
+<td rowspan="1" colspan="1">Result</td>
+<td rowspan="1" colspan="1">Tester</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Windows XP</td>
+<td rowspan="1" colspan="1">PRO SP2</td>
+<td rowspan="1" colspan="1">i386</td>
+<td rowspan="1" colspan="1">0.9.5+winfixes</td>
+<td rowspan="1" colspan="1">pkcs15-init</td>
+<td rowspan="1" colspan="1">All ok.</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Windows XP</td>
+<td rowspan="1" colspan="1">PRO SP2</td>
+<td rowspan="1" colspan="1">i386</td>
+<td rowspan="1" colspan="1">0.9.5+winfixes</td>
+<td rowspan="1" colspan="1">pkcs11-tool</td>
+<td rowspan="1" colspan="1">All ok.</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Windows XP</td>
+<td rowspan="1" colspan="1">PRO SP2</td>
+<td rowspan="1" colspan="1">i386</td>
+<td rowspan="1" colspan="1">0.9.5+winfixes</td>
+<td rowspan="1" colspan="1">putty</td>
+<td rowspan="1" colspan="1">All ok.</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Windows XP</td>
+<td rowspan="1" colspan="1">PRO SP2</td>
+<td rowspan="1" colspan="1">i386</td>
+<td rowspan="1" colspan="1">0.9.5+winfixes</td>
+<td rowspan="1" colspan="1">firefox</td>
+<td rowspan="1" colspan="1">Crashes.</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Debian GNU/Linux</td>
+<td rowspan="1" colspan="1">Sarge</td>
+<td rowspan="1" colspan="1">i386</td>
+<td rowspan="1" colspan="1">0.9.5</td>
+<td rowspan="1" colspan="1">pkcs15-init</td>
+<td rowspan="1" colspan="1">All ok.</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Debian GNU/Linux</td>
+<td rowspan="1" colspan="1">Sarge</td>
+<td rowspan="1" colspan="1">i386</td>
+<td rowspan="1" colspan="1">0.9.5</td>
+<td rowspan="1" colspan="1">pkcs15-init</td>
+<td rowspan="1" colspan="1">All ok.</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Debian GNU/Linux</td>
+<td rowspan="1" colspan="1">Sarge</td>
+<td rowspan="1" colspan="1">i386</td>
+<td rowspan="1" colspan="1">0.9.5</td>
+<td rowspan="1" colspan="1">pkcs15-init</td>
+<td rowspan="1" colspan="1">All ok.</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+<tr><td rowspan="1" colspan="1">Debian GNU/Linux</td>
+<td rowspan="1" colspan="1">Sarge</td>
+<td rowspan="1" colspan="1">i386</td>
+<td rowspan="1" colspan="1">0.9.5</td>
+<td rowspan="1" colspan="1">pkcs15-init</td>
+<td rowspan="1" colspan="1">All ok.</td>
+<td rowspan="1" colspan="1">Andreas Jellinghaus</td>
+</tr>
+</tbody>
+</table>
+</div><p>
+After you have tested some hardware, please let us know by adding a line.
+If something does not work as expected, please also open a new ticket
+with a detailed bug report. 
+</p>
+<p>
+Note: adding your name as tester is optional. I think it might be nice so one can ask more details if necessary.
+</p>
+</div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

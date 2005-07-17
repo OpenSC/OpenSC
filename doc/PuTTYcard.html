@@ -1,0 +1,251 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>PuTTYcard - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h2>PuTTYcard</h2>
+<p>
+PuTTYcard is an extension to PuTTY, the free SSH-client
+from Simon Tatham. With this extension PuTTY can use
+RSA-keys from external devices, ie. smart cards, usb-tokens.
+</p>
+<p>
+If pageant is called with one argument, it will interpret
+this argument as the name of a key-file. Pageant will then
+load this ppk-file into its keylist, or if another instance of
+Pageant is already running into the keylist of that instance.
+</p>
+<p>
+The pageant-version from PuTTYcard-0.58-V1.2.zip (can be downloaded
+from OpenSCs contrib area) will do exactly the same thing
+with one exception. If the first line of the ppk-file
+has the form:
+</p>
+<pre class="wiki" xml:space="preserve">PuTTYcard,&lt;path to DLL&gt;,&lt;arguments for the DLL&gt;
+</pre><p>
+then Pageant will NOT read the key from the ppk-file. Instead
+it loads the DLL and calls a function from that DLL passing
+the arguments from the ppk-file to this function.
+</p>
+<p>
+The function may then fetch a public RSA key from any
+source. Possbile choices are: files, smart cards, PKCS11
+libraries, Cryptographic Service Providers, etc.
+</p>
+<p>
+PuTTYcard-0.58-V1.2.zip contains PuTTYiso7816.dll. This
+DLL will load an RSA key from any ISO-7816-8 compatible
+smart card. PuTTYiso7816 need additional information
+from the ppk-file, namely the location of the RSA key
+on your specific smartcard.
+</p>
+<p>
+This information is given as 4 hexadecimal numbers, i.e.
+your ppk-file should look like
+</p>
+<pre class="wiki" xml:space="preserve">PuTTYcard,PuTTYiso7816.dll,&lt;path&gt;,AA,BB,CCCC
+</pre><p>
+&lt;path&gt; is the DF on your smart card that contains the RSA-key.
+This must be specified as a 4,8,12 or 16digit hexadecimal
+number. Do NOT prefix the path with 3F00.
+AA is the key-reference of the private key, BB is the
+pin-reference of the pin that protects your private key.
+CCCC is the ID of a file on your card that contains your
+public key. This file must either contain the public key
+as two ASN1-encoded records or it must be a certificate file
+from which the pulic key will be extracted.
+</p>
+<h3>How do I find the above mentiones numbers?</h3>
+<p>
+One of the first actions of PuTTYcard
+is to change its working DF to the DF given by the
+<strong>&lt;path&gt;</strong>-argument. The remaining information 
+(private and public key, PIN and maybe a certificate)
+will then be read from that DF. Try <strong>pkcs15-tool -k</strong>
+to list all of your keys and that should give you the
+information you need.
+</p>
+<p>
+Here's the output for my Netkey E4 card:
+</p>
+<pre class="wiki" xml:space="preserve">$ pkcs15-tool -k
+Private RSA Key [Signatur-Schlüssel]
+        Com. Flags  : 1
+        Usage       : [0x204], sign, nonRepudiation
+        Access Flags: [0x1D], sensitive, alwaysSensitive, neverExtract, local
+        ModLength   : 1024
+        Key ref     : 128
+        Native      : yes
+        Path        : DF015331
+        Auth ID     : 04
+        ID          : 01
+
+Private RSA Key [Authentifizierungs-Schlüssel]
+        Com. Flags  : 1
+        Usage       : [0x207], encrypt, decrypt, sign, nonRepudiation
+        Access Flags: [0x1D], sensitive, alwaysSensitive, neverExtract, local
+        ModLength   : 1024
+        Key ref     : 130
+        Native      : yes
+        Path        : DF015371
+        Auth ID     : 04
+        ID          : 02
+
+Private RSA Key [Verschlüsselungs-Schlüssel]
+        Com. Flags  : 1
+        Usage       : [0x207], encrypt, decrypt, sign, nonRepudiation
+        Access Flags: [0x1D], sensitive, alwaysSensitive, neverExtract, local
+        ModLength   : 1024
+        Key ref     : 129
+        Native      : yes
+        Path        : DF0153B1
+        Auth ID     : 03
+        ID          : 03
+</pre><p>
+This card has three keys all of which are stored in DF <strong>DF01</strong>.
+This is your &lt;path&gt;-value. Do not include the last component of the
+path from the <strong>pkcs15-tool</strong>-output as this is the ID of the
+private key itself.
+</p>
+<p>
+The next information you need is the key reference. This value
+is included as a decimal number in the above output (ie. 128, 130 and 129).
+This value must be converted to a 2-digit hexadcimal number. Let's
+use the second key, so your AA-value is 82.
+</p>
+<p>
+Your private key is protected by a PIN and the <strong>pkcs15-tool -k</strong>-output
+contains the Auth-ID of this PIN. Here it is 04. This is not
+your PIN-reference. Use <strong>pkcs15-tool --list-pins</strong> to list all
+your PINs and use the PIN-reference of the PIN that has the same Id
+as the Auth-Id of your key.
+</p>
+<pre class="wiki" xml:space="preserve">$ pkcs15-tool --list-pins
+PIN [globale PIN]
+        Com. Flags: 0x3
+        ID        : 01
+        Flags     : [0x51], case-sensitive, initialized, unblockingPin
+        Length    : min_len:6, max_len:16, stored_len:16
+        Pad char  : 0x00
+        Reference : 0
+        Type      : ascii-numeric
+        Path      : 5000
+        Tries left: 3
+
+PIN [globale PUK]
+        Com. Flags: 0x3
+        ID        : 02
+        Flags     : [0xD1], case-sensitive, initialized, unblockingPin, soPin
+        Length    : min_len:8, max_len:16, stored_len:16
+        Pad char  : 0x00
+        Reference : 1
+        Type      : ascii-numeric
+        Path      : 5001
+        Tries left: 3
+
+PIN [lokale PIN0]
+        Com. Flags: 0x3
+        ID        : 03
+        Flags     : [0x13], case-sensitive, local, initialized
+        Length    : min_len:6, max_len:16, stored_len:16
+        Pad char  : 0x00
+        Reference : 128
+        Type      : ascii-numeric
+        Path      : DF015080
+        Tries left: 3
+
+PIN [lokale PIN1]
+        Com. Flags: 0x3
+        ID        : 04
+        Flags     : [0xD3], case-sensitive, local, initialized, unblockingPin, soPin
+        Length    : min_len:6, max_len:16, stored_len:16
+        Pad char  : 0x00
+        Reference : 129
+        Type      : ascii-numeric
+        Path      : DF015081
+        Tries left: 3
+</pre><p>
+Again the PIN-reference is given in decimal (here it is 129) and must be
+converted to a 2-digit hexdecimal number, namely 81. This is
+your BB-value.
+</p>
+<p>
+Finally you need the file-ID of the public key or a certificate file
+from which he public key could be extracted.
+</p>
+<p>
+So either use <strong>pkcs15-tool --list-public-keys</strong> or
+<strong>pkcs15-tool -c</strong>. With my Netkey card <strong>pkcs15-tool --list-public-keys</strong>
+does not show any keys. This is because my Netkey card
+contains the public key, but it cannot be used for cryptographic
+operations. From other sources (ie. card doku) I know that
+the public key is stored in file DF01:4571, so one possible
+CCCC-value is 4571.
+</p>
+<p>
+If I list all my certificates I get:
+</p>
+<pre class="wiki" xml:space="preserve">$ pkcs15-tool -c                
+X.509 Certificate [Telesec Signatur Zertifikat]
+        Flags    : 0
+        Authority: no
+        Path     : DF01C000
+        ID       : 01
+
+X.509 Certificate [User Signatur Zertifikat 1]
+        Flags    : 2
+        Authority: no
+        Path     : DF014331
+        ID       : 01
+
+X.509 Certificate [User Signatur Zertifikat 2]
+        Flags    : 2
+        Authority: no
+        Path     : DF014332
+        ID       : 01
+
+X.509 Certificate [Telesec Authentifizierungs Zertifikat]
+        Flags    : 0
+        Authority: no
+        Path     : DF01C100
+        ID       : 02
+
+X.509 Certificate [User Authentifizierungs Zertifikat 1]
+        Flags    : 2
+        Authority: no
+        Path     : DF014371
+        ID       : 02
+
+X.509 Certificate [Telesec Verschlüsselungs Zertifikat]
+        Flags    : 0
+        Authority: no
+        Path     : DF01C200
+        ID       : 03
+
+X.509 Certificate [User Verschlüsselungs Zertifikat 1]
+        Flags    : 2
+        Authority: no
+        Path     : DF0143B1
+        ID       : 03
+</pre><p>
+A certificate contains the right public key, if it has the
+same ID as the private key (here 02). My card has two such
+certificates namely DF01:C100 and DF01:4371 so two other
+possible CCCC-values are C100 and 4371
+</p>
+<p>
+On a Netkey card a private key may be protected by more than
+one PIN. So instead of PIN-reference 81 (which references 
+local PIN1) I may alternatively use PIN-reference 00 (which
+references global PIN0)
+</p>
+<p>
+So all of the following six lines will work:
+</p>
+<pre class="wiki" xml:space="preserve">PuTTYcard,PuTTYiso7816.dll,DF01,82,81,4571
+PuTTYcard,PuTTYiso7816.dll,DF01,82,81,C100
+PuTTYcard,PuTTYiso7816.dll,DF01,82,81,4371
+PuTTYcard,PuTTYiso7816.dll,DF01,82,00,4571
+PuTTYcard,PuTTYiso7816.dll,DF01,82,00,C100
+PuTTYcard,PuTTYiso7816.dll,DF01,82,00,4371
+</pre></div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

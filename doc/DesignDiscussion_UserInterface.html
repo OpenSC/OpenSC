@@ -1,0 +1,20 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>DesignDiscussion/UserInterface - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>User Interface</h1>
+<p>
+OpenSC is all about <a class="missing" href="/opensc/wiki/SmartCards" shape="rect">SmartCards?</a>. <a class="missing" href="/opensc/wiki/SmartCards" shape="rect">SmartCards?</a> are all about cryptography. Cryptography is something users don't care much about nor want to know about. At the same time - <a class="missing" href="/opensc/wiki/SmartCards" shape="rect">SmartCards?</a> are usually tightly tied to the cardholder. So user interaction and <a class="missing" href="/opensc/wiki/UserInterface" shape="rect">UserInterface?</a> are actually important components of the overall solutions that <a class="missing" href="/opensc/wiki/SmartCards" shape="rect">SmartCards?</a> provide.
+</p>
+<p>
+To sum up where exactly and how user interaction takes place, can take place or should take place, we need to know what layers and standards affect this area. Then we can find the most convinient and optimal path so that the whole usage of smartcards can be somewhat hidden and convenient for the user. To be more precise: user interaction is everything that the user _must_ do in normal cases - so user _has_ to authenticate to the card somehow, but she must not start other interactions - some application can have the initiative. Information to the end user (errors etc) falls into this category too.
+</p>
+<h2>To be continued</h2>
+<ul><li>pkcs11 defines login functions, what means user interaction is done by the application to get the pin
+</li><li>pkcs11 also defines secure authentication path variable, what leaves the authentication process outside of the scope of pkcs11
+</li><li>pkcs15 defines user consent attribute, that must result in user interaction.
+</li><li>opensc includes ui* functions that should deal with some of the problems described here
+</li><li>applications (utilities) deal with user interaction - this should happen in a unified manner
+</li><li>help to fill in!
+</li></ul></div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

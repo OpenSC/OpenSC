@@ -1,0 +1,20 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>OpensslEngines - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>OpenSSL Engines</h1>
+<p>
+The <a class="ext-link" title="http://www.openssl.org" href="http://www.openssl.org" shape="rect">OpenSSL project</a> offers the possibility to source out cryptographic functionality to plugin modules called engines. Usually there is one of two reasons for doing this, performance and security. 
+</p>
+<p>
+The performance reason is rather obvious, specialized hardware can do cryptography much faster than a general purpose computer. 
+</p>
+<p>
+The reason for using the opensc-engine typically is a security reason. If you are storing your private keys on a harddisk there is a lot of things an administrator (or a virus with root privileges) can do to steal your key. If the key is on a smart card there is usually no way to export the private key, so if you pull the card from the reader noone can use your keys. And if you use a certified and sealed reader device you can even be reasonably sure that noone can steal your PIN.
+</p>
+<h2>Using OpenSC as a smart card engine for OpenSSL</h2>
+<p>
+Include the text from QUICKSTART here?
+</p>
+</div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

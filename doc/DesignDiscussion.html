@@ -1,0 +1,43 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>DesignDiscussion - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>Design issues</h1>
+<p>
+Every change that is not a small fix or minor enhancement requires some kind of design. In order to discuss design decisions as much as possible and leave some kind of track about decisions made and design in place other than source code and comments and maybe even documentation, this sector of the wiki could be used. As always - feel free to comment (but please leave your name after your comment).
+</p>
+<h2>Pinpad functionality</h2>
+<p>
+(Martin)
+Current state of secure pin entry methods in OpenSC is somewhat limited and hairy. Checks and features and functionality spans several component borders (application, library, card driver, reader, pkcs15 layer, etc). The target is to provide smooth pinpad support.
+</p>
+<p>
+In theory different layers affect the total pinpad-oriented functioning:
+</p>
+<ol><li>Reader capabilities - actual reader capabilities detected and enabled by the reader (ctapi, pcsc, openct)
+</li><li>Reader driver and how-if-what verify methods it implements (though the name <i>verify</i> is not correct if we talk about full pin operations)
+</li><li>Card driver and if it implements the new pin command interface or if it is possible at all for the given card (maybe it uses some other method, maybe it uses non-numeric passwords)
+</li><li>pkcs15 layer - what it thinks about underlying hardware capacities and if/how it makes use of it
+</li><li>pkcs11 layer - exports PROTECTED_AUTHENTICATION_PATH to indicate 'secure authentication (aka pinpad)' and itself feeds data to pkcs15 layer.
+</li><li>applications - how they interpret various parameters (like slot capabilities, pkcs11 features, etc), how/if they react or should react on empty pins etc.
+</li><li>Library internal UI functionality - instead of asking for a pin who should notify the user to insert the pin to the pinpad and how?
+</li></ol><p>
+All these should be put to work for a common goal in a nice way.
+</p>
+<h3>Requirements</h3>
+<ul><li>Slot flags must correctly state the capabilities of the slot and all functionality must strictly check this flag.
+</li><li>A card driver should have a possibility to disable pinpad enabled functionality even if the slot tells it can do it - for reasons like character passwords
+</li><li>It should be possible to disable pinpad functionality on reader(driver)/global layer as a configuration option - this will result the slot capabilities to be hidden
+</li><li>It should be possible to disable pinpad functionality on a higher level - as a global option. This could result in different 
+</li><li>pkcs11 flag about secure authentication flag can be affected by any of the previous config options.
+</li><li>One reader should support different verification methods (you can talk class2 via pcsc and you can talk ctbcs)
+</li></ul><h3>Things to keep in mind</h3>
+<ul><li>Backwards compatibility
+</li><li>User interaction.
+</li></ul><h3>Decisions</h3>
+<ul><li>Implement pinpad functionality in a proper way (err, small decisions should be outlined now)
+</li></ul><p>
+... to be continued ...
+</p>
+</div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>

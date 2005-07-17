@@ -1,0 +1,41 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:html="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>CardReaders/SPR532 - OpenSC - Trac</title><style type="text/css">
+           @import url(trac.css);
+          </style></head><body><div class="wikipage">
+    <div id="searchable"><h1>PinPad AKA SPR532 and OpenSC mini-howto</h1>
+<p>
+To get feedback as early as possible, here's a small tutorial how to get going with SPR532 and pinpad. There are other <a href="PinpadReaders.html" shape="rect">PinpadReaders</a> and other interfaces but the given interface makes use of <a class="ext-link" title="http://www.teletrust.de/down/ag2_ioctls_V1.14-2.zip" href="http://www.teletrust.de/down/ag2_ioctls_V1.14-2.zip" shape="rect">TeleTrust Class 2 reader IOCTL mechanism</a> that shall be part of <a class="ext-link" title="http://www.pcscworkgroup.com/specifications/overview.php" href="http://www.pcscworkgroup.com/specifications/overview.php" shape="rect">PC/SC version 2.0 spec</a> as Part 10. There is also part 10 of the new PC/SC spec but <a class="missing" href="/opensc/wiki/TeleTrust" shape="rect">TeleTrust?</a> interface requires no special features from the PC/SC middleware but from the given IFDHandler itself and thus can be deployed now - by introducing the needed support in reader drivers and application side (OpenSC in this case).
+</p>
+<p>
+Things you need to try it out:
+</p>
+<ul><li>get yourself a SPR532 reader from www.scmmicro.com
+</li><li>upgrade the firmware to the latest (5.05 version) using stuff from here: <a class="ext-link" title="http://martin.paljak.pri.ee/download/esteid/ccid/SCM-readers/SPR532/" href="http://martin.paljak.pri.ee/download/esteid/ccid/SCM-readers/SPR532/" shape="rect">http://martin.paljak.pri.ee/download/esteid/ccid/SCM-readers/SPR532/</a>
+</li><li>install pcsc-lite from the tarball available here: <a class="ext-link" title="http://martin.paljak.pri.ee/download/esteid/pcsc-lite/" href="http://martin.paljak.pri.ee/download/esteid/pcsc-lite/" shape="rect">http://martin.paljak.pri.ee/download/esteid/pcsc-lite/</a>
+</li><li>install the ccid driver from the tarball available there: <a class="ext-link" title="http://martin.paljak.pri.ee/download/esteid/ccid/" href="http://martin.paljak.pri.ee/download/esteid/ccid/" shape="rect">http://martin.paljak.pri.ee/download/esteid/ccid/</a>
+</li><li>install opensc from snapshots that pop out here: <a class="ext-link" title="http://martin.paljak.pri.ee/download/esteid/opensc" href="http://martin.paljak.pri.ee/download/esteid/opensc" shape="rect">http://martin.paljak.pri.ee/download/esteid/opensc</a> and set the use_pinpad option in the config file.
+</li></ul><p>
+<i>NOTE: from the three download links above, directory <tt>test/</tt> contains the latest versions and thus might be better for the braves</i>.
+</p>
+<p>
+Notes:
+</p>
+<ul><li>untill the needed changes get upstream, make sure that you have the versions from the locations mentioned before.
+</li><li>the whole topic is hairy - see discussions on muscle and opensc-devel mailinglist:
+<ul><li><a class="ext-link" title="http://archives.neohapsis.com/archives/dev/muscle/2005-q1/0199.html" href="http://archives.neohapsis.com/archives/dev/muscle/2005-q1/0199.html" shape="rect">http://archives.neohapsis.com/archives/dev/muscle/2005-q1/0199.html</a>
+</li><li><a class="ext-link" title="http://archives.neohapsis.com/archives/dev/muscle/2005-q1/0221.html" href="http://archives.neohapsis.com/archives/dev/muscle/2005-q1/0221.html" shape="rect">http://archives.neohapsis.com/archives/dev/muscle/2005-q1/0221.html</a>
+</li><li><a class="ext-link" title="http://www.opensc.org/pipermail/opensc-devel/2005-March/005709.html" href="http://www.opensc.org/pipermail/opensc-devel/2005-March/005709.html" shape="rect">http://www.opensc.org/pipermail/opensc-devel/2005-March/005709.html</a>
+</li></ul></li></ul><p>
+What you can do:
+</p>
+<ol><li>test and provide feedback
+</li><li>make the code of ccid library better. It seriously looks ugly when the SecurePIN functions come to play - though it works.
+</li><li>help to argue how things should look like in different places and how we shall solve some issues - see <a href="DesignDiscussion.html" shape="rect">DesignDiscussion</a>
+</li></ol><p>
+Known issues: 
+</p>
+<ol><li>It is known to work with SPR532 under Linux. In practice it should work without modifications on windows using the latest windows drivers available from the SCM specific download location above.
+</li><li>Support is only for T=0 cards (as of now Estonian and Belgian eID cards have been tested on Linux). It might as well work with T=1 cards, but to try it out you must disable the check for active protocol in reader-pcsc.c. Write a note here if it works.
+</li><li>Support for pinpad operations in general might lag behind your needs. Patches most welcome :)
+</li></ol></div>
+   </div><div class="footer"><hr></hr><p><a href="index.html">Back to Index</a></p></div></body></html>
