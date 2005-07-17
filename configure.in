@@ -986,16 +986,12 @@ src/libopensc/libscam.pc
 src/libopensc/libscconf.pc
 src/libopensc/libscldap.pc
 src/openssh/Makefile
-src/pam/Makefile
 src/pkcs11/Makefile
 src/pkcs11/rsaref/Makefile
 src/pkcs15init/Makefile
-src/scam/Makefile
 src/scconf/Makefile
 src/scdl/Makefile
-src/scldap/Makefile
 src/scrandom/Makefile
-src/sia/Makefile
 src/signer/Makefile
 src/signer/npinclude/Makefile
 src/libp11/Makefile

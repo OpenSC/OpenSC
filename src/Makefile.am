@@ -5,5 +5,5 @@ MAINTAINERCLEANFILES = Makefile.in
 EXTRA_DIST = Makefile.mak
 
 # Order IS important
-SUBDIRS = common include scconf scdl scldap scrandom libopensc pkcs15init pkcs11 \
-	tests tools openssh scam pam sia signer libp11 sslengines
+SUBDIRS = common include scconf scdl scrandom libopensc pkcs15init pkcs11 \
+	tests tools openssh signer libp11 sslengines
