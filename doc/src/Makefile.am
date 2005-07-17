@@ -1,3 +1,4 @@
+MAINTAINERCLEANFILES = Makefile.in
 
 XMLFILES= api/file/sc_list_files.xml api/file/sc_write_binary.xml \
 	api/file/sc_delete_file.xml api/file/chapter.xml \
