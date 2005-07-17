@@ -825,7 +825,6 @@ src/pkcs11/rsaref/Makefile
 src/pkcs15init/Makefile
 src/scconf/Makefile
 src/scdl/Makefile
-src/scrandom/Makefile
 src/signer/Makefile
 src/signer/npinclude/Makefile
 src/libp11/Makefile
