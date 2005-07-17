@@ -39,5 +39,3 @@ all-local:
 	@$(LN_S) ${top_srcdir}/src/pkcs15init/pkcs15-init.h pkcs15-init.h
 	@$(LN_S) ${top_srcdir}/src/scconf/scconf.h scconf.h
 	@$(LN_S) ${top_srcdir}/src/scdl/scdl.h scdl.h
-	@$(LN_S) ${top_srcdir}/src/scldap/scldap.h scldap.h
-	@$(LN_S) ${top_srcdir}/src/scrandom/scrandom.h scrandom.h
