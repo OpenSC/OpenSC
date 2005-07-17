@@ -706,22 +706,12 @@ AC_ARG_ENABLE(debug,
 CPPFLAGS="-I\${top_builddir}/src/include $CPPFLAGS"
 AM_CONDITIONAL(HAVE_BUNDLES, test "x$with_bundles" = "xyes")
 
-scldap_etc_path=`eval echo ${sysconfdir}` ; scldap_etc_path=`eval echo ${scldap_etc_path}`
-AC_DEFINE_UNQUOTED(SCLDAP_ETC_PATH, "$scldap_etc_path", [etc path for libscldap])
-scldap_conf_path=`eval echo ${scldap_etc_path}/scldap.conf`
-AC_DEFINE_UNQUOTED(SCLDAP_CONF_PATH, "$scldap_conf_path", [default config file for libscldap])
-
 opensc_etc_path=`eval echo ${sysconfdir}` ; opensc_etc_path=`eval echo ${opensc_etc_path}`
 AC_DEFINE_UNQUOTED(OPENSC_ETC_PATH, "$opensc_etc_path", [etc path for libopensc])
 opensc_conf_path=`eval echo ${opensc_etc_path}/opensc.conf`
 AC_DEFINE_UNQUOTED(OPENSC_CONF_PATH, "$opensc_conf_path", [default config file for libopensc])
 
 AC_SUBST(LIBSCCONF)
-LIBSCCONF="\${top_builddir}/src/scconf/libscconf.la"
-AC_SUBST(LIBSCLDAP)
-if test "x$LDAP_MSG" = "xyes" ; then
-  LIBSCLDAP="\${top_builddir}/src/scldap/libscldap.la"
-fi
 AC_SUBST(LIBOPENSC)
 LIBOPENSC="\${top_builddir}/src/libopensc/libopensc.la"
 
@@ -754,9 +744,7 @@ src/libopensc/Makefile
 src/libopensc/opensc-config
 src/libopensc/libopensc.pc
 src/libopensc/libpkcs15init.pc
-src/libopensc/libscam.pc
 src/libopensc/libscconf.pc
-src/libopensc/libscldap.pc
 src/openssh/Makefile
 src/pkcs11/Makefile
 src/pkcs11/rsaref/Makefile
