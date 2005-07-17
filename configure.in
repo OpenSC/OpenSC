@@ -970,6 +970,7 @@ docs/Makefile
 docs/pkcs15-profile.5
 etc/Makefile
 macos/Makefile
+man/Makefile
 src/Makefile
 src/common/Makefile
 src/include/Makefile
