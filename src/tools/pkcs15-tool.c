@@ -1276,11 +1276,13 @@ int main(int argc, char * const argv[])
 			goto end;
 		action_count--;
 	}
+#ifdef HAVE_OPENSSL
 	if (do_read_sshkey) {
 		if ((err = read_ssh_key()))
 			goto end;
 		action_count--;
 	}
+#endif
 	if (do_list_pins) {
 		if ((err = list_pins()))
 			goto end;
