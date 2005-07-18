@@ -92,6 +92,7 @@ static int starcos_init(sc_card_t *card)
 
 	flags = SC_ALGORITHM_RSA_PAD_PKCS1 
 		| SC_ALGORITHM_ONBOARD_KEY_GEN
+		| SC_CARD_FLAG_RNG
 		| SC_ALGORITHM_RSA_PAD_ISO9796
 		| SC_ALGORITHM_RSA_HASH_NONE
 		| SC_ALGORITHM_RSA_HASH_SHA1
@@ -102,6 +103,8 @@ static int starcos_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
 	_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
 	_sc_card_add_rsa_alg(card,1024, flags, 0x10001);
+
+	card->caps = SC_CARD_CAP_RNG; 
 
 	/* we need read_binary&friends with max 128 bytes per read */
 	if (card->max_send_size > 128)
