@@ -261,7 +261,7 @@ int PKCS11_seed_random(PKCS11_SLOT *slot, const unsigned char *s,
 	PKCS11_CTX *ctx = priv->parent;
 	int rv;
 
-	if (!priv->haveSession) {
+	if (!priv->haveSession && PKCS11_open_session(slot, 0)) {
 		PKCS11err(PKCS11_F_PKCS11_SEED_RANDOM, PKCS11_NO_SESSION);
 		return -1;
 	}
@@ -282,7 +282,7 @@ int PKCS11_generate_random(PKCS11_SLOT *slot, unsigned char *r,
 	PKCS11_CTX *ctx = priv->parent;
 	int rv;
 
-	if (!priv->haveSession) {
+	if (!priv->haveSession && PKCS11_open_session(slot, 0)) {
 		PKCS11err(PKCS11_F_PKCS11_GENERATE_RANDOM, PKCS11_NO_SESSION);
 		return -1;
 	}
