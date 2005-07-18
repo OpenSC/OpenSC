@@ -58,6 +58,10 @@
 #include <string.h>
 #include "libp11-int.h"
 
+#ifndef strncasecmp
+#define strncasecmp strnicmp
+#endif
+
 static int pkcs11_find_keys(PKCS11_TOKEN *, unsigned int);
 static int pkcs11_next_key(PKCS11_CTX * ctx, PKCS11_TOKEN * token,
 			   CK_SESSION_HANDLE session, CK_OBJECT_CLASS type);
