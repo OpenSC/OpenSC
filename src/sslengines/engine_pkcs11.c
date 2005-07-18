@@ -32,6 +32,10 @@
 #include <libp11.h>
 #include "engine_pkcs11.h"
 
+#ifndef strncasecmp
+#define strncasecmp strnicmp
+#endif
+
 #define fail(msg) { fprintf(stderr,msg); return NULL;}
 
 PKCS11_CTX *ctx;
