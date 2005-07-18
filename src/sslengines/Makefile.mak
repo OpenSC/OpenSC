@@ -2,13 +2,11 @@ TOPDIR = ..\..
 
 TARGET                  = engine_pkcs11.dll
 
-OBJECTS			= engine_pkcs11.obj hw_pkcs11.obj p11_attr.obj p11_cert.obj \
-                          p11_err.obj p11_key.obj p11_load.obj p11_misc.obj p11_rsa.obj \
-                          p11_slot.obj
+OBJECTS			= engine_pkcs11.obj hw_pkcs11.obj
 
 all: $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-$(TARGET): $(OBJECTS) ..\pkcs11\libpkcs11.obj ..\scconf\scconf.lib ..\scdl\scdl.lib
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\pkcs11\libpkcs11.obj ..\scconf\scconf.lib ..\scdl\scdl.lib winscard.lib $(OPENSSL_LIB) gdi32.lib
+$(TARGET): $(OBJECTS) ..\libp11\libp11.lib ..\scconf\scconf.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\libp11\libp11.lib ..\scconf\scconf.lib winscard.lib $(OPENSSL_LIB) gdi32.lib
