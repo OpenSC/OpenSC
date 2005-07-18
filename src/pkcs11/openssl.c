@@ -120,43 +120,6 @@ sc_pkcs11_openssl_md_release(sc_pkcs11_operation_t *op)
 	op->priv_data = NULL;
 }
 
-CK_RV
-sc_pkcs11_openssl_add_seed_rand(struct sc_pkcs11_session *session,
-				CK_BYTE_PTR pSeed, CK_ULONG ulSeedLen)
-{
-	if (!(session->slot->card->card->caps & SC_CARD_CAP_RNG))
-		return CKR_RANDOM_NO_RNG;
-
-	if (pSeed == NULL || ulSeedLen == 0)
-		return CKR_OK;
-
-	RAND_seed(pSeed, ulSeedLen);
-
-	return CKR_OK;
-}
-
-CK_RV
-sc_pkcs11_openssl_add_gen_rand(struct sc_pkcs11_session *session,
-				CK_BYTE_PTR RandomData, CK_ULONG ulRandomLen)
-{
-	unsigned char seed[20];
-	int r;
-
-	if (!(session->slot->card->card->caps & SC_CARD_CAP_RNG))
-		return CKR_RANDOM_NO_RNG;
-
-	if (RandomData == NULL || ulRandomLen == 0)
-		return CKR_OK;
-
-	r = sc_get_challenge(session->slot->card->card, RandomData, ulRandomLen);
-	if (r != 0) {
-		sc_error(context, "sc_get_challenge() returned %d\n", r);
-		return sc_to_cryptoki_error(r, session->slot->card->reader);
-	}
-
-	return r == 1 ? CKR_OK : CKR_FUNCTION_FAILED;
-}
-
 static int
 do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
 {

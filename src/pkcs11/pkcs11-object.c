@@ -918,8 +918,8 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		   CK_BYTE_PTR       pSeed,     /* the seed material */
 		   CK_ULONG          ulSeedLen) /* count of bytes of seed material */
 {
-#ifdef NEW_IMPLEMENTATION_COMPLETE
 	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_slot    *slot;
 	int rv;
 
 	rv = sc_pkcs11_lock();
@@ -927,22 +927,24 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
-	if (rv == CKR_OK)
-		rv = sc_pkcs11_openssl_add_seed_rand(session, pSeed, ulSeedLen);
+	if (rv == CKR_OK) {
+		slot = session->slot;
+		if (slot->card->framework->seed_random == NULL)
+			rv = CKR_FUNCTION_NOT_SUPPORTED;
+		else
+			rv = slot->card->framework->seed_random(slot->card, pSeed, ulSeedLen);
+	}
 
 	sc_pkcs11_unlock();
 	return rv;
-#else
-	return CKR_FUNCTION_NOT_SUPPORTED;
-#endif
 }
 
 CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		       CK_BYTE_PTR       RandomData,  /* receives the random data */
 		       CK_ULONG          ulRandomLen) /* number of bytes to be generated */
 {
-#ifdef NEW_IMPLEMENTATION_COMPLETE
 	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_slot    *slot;
 	int rv;
 
 	rv = sc_pkcs11_lock();
@@ -950,14 +952,16 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		return rv;
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
-	if (rv == CKR_OK)
-		rv = sc_pkcs11_openssl_add_gen_rand(session, RandomData, ulRandomLen);
+	if (rv == CKR_OK) {
+		slot = session->slot;
+		if (slot->card->framework->get_random == NULL)
+			rv = CKR_FUNCTION_NOT_SUPPORTED;
+		else
+			rv = slot->card->framework->get_random(slot->card, RandomData, ulRandomLen);
+	}
 
 	sc_pkcs11_unlock();
 	return rv;
-#else
-	return CKR_FUNCTION_NOT_SUPPORTED;
-#endif
 }
 
 CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE hSession) /* the session's handle */

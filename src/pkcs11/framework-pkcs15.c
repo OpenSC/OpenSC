@@ -1413,6 +1413,17 @@ kpgen_done:
 }
 #endif
 
+static CK_RV pkcs15_get_random(struct sc_pkcs11_card *p11card,
+				CK_BYTE_PTR p, CK_ULONG len)
+{
+	int rc;
+        struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+        struct sc_card *card = fw_data->p15_card->card;
+
+	rc = sc_get_challenge(card, p, (size_t)len);
+	return sc_to_cryptoki_error(rc, p11card->reader);
+}
+
 struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_bind,
 	pkcs15_unbind,
@@ -1428,8 +1439,11 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_gen_keypair,
 #else
 	NULL,
+	NULL,
 	NULL
 #endif
+	NULL,			/* seed_random */
+	pkcs15_get_random
 };
 
 static CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,

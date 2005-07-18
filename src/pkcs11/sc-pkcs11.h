@@ -174,8 +174,11 @@ struct sc_pkcs11_framework_ops {
 				CK_ATTRIBUTE_PTR pPubKeyTempl, CK_ULONG ulPubKeyAttrCnt,
 				CK_ATTRIBUTE_PTR pPrivKeyTempl, CK_ULONG ulPrivKeyAttrCnt,
 				CK_OBJECT_HANDLE_PTR phPubKey, CK_OBJECT_HANDLE_PTR phPrivKey);
+	CK_RV (*seed_random)(struct sc_pkcs11_card *p11card,
+				CK_BYTE_PTR, CK_ULONG);
+	CK_RV (*get_random)(struct sc_pkcs11_card *p11card,
+				CK_BYTE_PTR, CK_ULONG);
 };
-
 
 /*
  * PKCS#11 Slot (used to access card with specific framework data)
@@ -419,8 +422,6 @@ CK_RV sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *,
 
 #ifdef HAVE_OPENSSL
 /* Random generation functions */
-CK_RV sc_pkcs11_openssl_add_seed_rand(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
-CK_RV sc_pkcs11_openssl_add_gen_rand(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
 CK_RV sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 	struct sc_pkcs15_prkey *privkey, struct sc_pkcs15_pubkey *pubkey);
 CK_RV sc_pkcs11_verify_data(unsigned char *pubkey, int pubkey_len,
