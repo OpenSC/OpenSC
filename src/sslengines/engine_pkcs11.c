@@ -32,7 +32,7 @@
 #include <libp11.h>
 #include "engine_pkcs11.h"
 
-#ifndef strncasecmp
+#ifdef _WIN32
 #define strncasecmp strnicmp
 #endif
 

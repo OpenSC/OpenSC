@@ -58,7 +58,7 @@
 #include <string.h>
 #include "libp11-int.h"
 
-#ifndef strncasecmp
+#ifdef _WIN32
 #define strncasecmp strnicmp
 #endif
 
