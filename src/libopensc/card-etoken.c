@@ -47,8 +47,8 @@ static struct sc_atr_table etoken_atrs[] = {
 	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
 	/* 4.01a */
 	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
-	/* aladdin etoken pro 64 */
-	{ "3b f2 18 00 ff c1 0a 31 fe 55 c8 06 8a", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
+	/* aladdin etoken pro 64 - aj: not compatible :/ */
+	/* { "3b f2 18 00 ff c1 0a 31 fe 55 c8 06 8a", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC }, */
 	/* Italian eID card, postecert */
 	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
 	/* Italian eID card, infocamere */
