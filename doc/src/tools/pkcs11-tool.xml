@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="pkcs11-tool">
+	<refmeta>
+		<refentrytitle>pkcs11-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>pkcs11-tool</refname>
+		<refpurpose>utility for managing and using PKCS #11 security tokens</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+			<command>pkcs11-tool</command> [OPTIONS]
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>pkcs11-tool</command> utility is used to manage the
+			data objects on smart cards and similar PKCS #11 security tokens.
+			Users can list and read PINs, keys and certificates stored on the
+			token. User PIN authentication is performed for those operations
+			that require it.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term><option>--login, -l</option></term>
+					<listitem><para>Authenticate to the token before performing
+					other operations. This option is not needed if a PIN is
+					provided on the command line.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--pin</option> <varname>pin</varname>,
+					<option>-p</option> <varname>pin</varname></term>
+					<listitem><para>Use the given <varname>pin</varname> for
+					token operations. WARNING: Be careful using this option
+					as other users may be able to read the command line from
+					the system or if it is embedded in a script.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--so-pin</option> <varname>pin</varname></term>
+					<listitem><para>Use the given <varname>pin</varname> as the
+					Security Officer PIN for some token operations (token
+					initialization, user PIN initialization, etc). The same
+					warning as --pin also applies here.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--init-token</option></term>
+					<listitem><para>Initializes a token: set the token label as
+					well as a Security Officer PIN (the label must be specified
+					using --label).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--init-pin</option></term>
+					<listitem><para>Initializes the user PIN. This option
+					differs from --change-pin in that it sets the user PIN
+					for the first time. Once set, the user PIN can be changed
+					using --change-pin.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--change-pin, -c</option></term>
+					<listitem><para>Change the user PIN on the token</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--test, -t</option></term>
+					<listitem><para>Performs some tests on the token. This
+					option is most useful when used with either --login or
+					--pin.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--show-info, -I</option></term>
+					<listitem><para>Displays general token information.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--list-slots, -L</option></term>
+					<listitem><para>Displays a list of available slots on the token.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--list-mechanisms, -M</option></term>
+					<listitem><para>Displays a list of mechanisms supported by the token.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--list-objects, -O</option></term>
+					<listitem><para>Displays a list of objects.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--sign, s</option></term>
+					<listitem><para>Sign some data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--hash, -h</option></term>
+					<listitem><para>Hash some data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--mechanism</option> <varname>mechanism</varname>,
+					<option>-m</option> <varname>mechanism</varname></term>
+					<listitem><para>Use the specified <varname>mechanism</varname>
+					for token operations. See -M for a list of mechanisms supported
+					by your token.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--keypairgen, -k</option></term>
+					<listitem><para>Generate a new key pair (public and private pair.)</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--write-object</option> <varname>id</varname>,
+					<option>-w</option> <varname>id</varname></term>
+					<listitem><para>Write a key or certificate object to the token.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--type</option> <varname>type</varname>,
+					<option>-y</option> <varname>type</varname></term>
+					<listitem><para>Specify the type of object to operate on.
+					Examples are <emphasis>cert</emphasis>, <emphasis>privkey</emphasis>
+					and <emphasis>pubkey</emphasis>.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--id</option> <varname>id</varname>,
+					<option>-d</option> <varname>id</varname></term>
+					<listitem><para>Specify the id of the object to operate on.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--label</option> <varname>name</varname>,
+					<option>-a</option> <varname>name</varname></term>
+					<listitem><para>Specify the name of the object to operate on
+					(or the token label when --init-token is used).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--slot</option> <varname>id</varname></term>
+					<listitem><para>Specify the id of the slot to use.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--slot-id</option> <varname>name</varname></term>
+					<listitem><para>Specify the name of the slot to use.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--set-id</option> <varname>id</varname>,
+					<option>-e</option> <varname>id</varname></term>
+					<listitem><para>Set the CKA_ID of the object.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--attr-from</option> <varname>path</varname></term>
+					<listitem><para>Extract information from <varname>path</varname>
+					(DER-encoded certificate file) and create the corresponding
+					attributes when writing an object to the token. Example: the
+					certificate subject name is used to create the CKA_SUBJECT
+					attribute.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--input-file</option> <varname>path</varname>,
+					<option>-i</option> <varname>path</varname></term>
+					<listitem><para>Specify the path to a file for input.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--output-file</option> <varname>path</varname>,
+					<option>-o</option> <varname>path</varname></term>
+					<listitem><para>Specify the path to a file for output.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--module</option> <varname>mod</varname></term>
+					<listitem><para>Specify a module to load.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--moz-cert</option> <varname>path</varname>,
+					<option>-z</option> <varname>path</varname></term>
+					<listitem><para>Tests a Mozilla-like keypair generation
+					and certificate request. Specify the <varname>path</varname>
+					to the certificate file.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--verbose, -v</option></term>
+					<listitem><para>Causes <command>pkcs11-tool</command> to be
+					more verbose. Specify this flag several times to enable debug
+					output in the OpenSC library.</para></listitem>
+				</varlistentry>
+
+			</variablelist>
+		</para>
+	</refsect1>
+	
+	<refsect1>
+		<title>See also</title>
+		<para>opensc(7)</para>
+	</refsect1>
+
+</refentry>

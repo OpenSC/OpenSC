@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="opensc-config">
+	<refmeta>
+		<refentrytitle>opensc-config</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>opensc-config</refname>
+		<refpurpose>a tool to get information about the installed version of OpenSC</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+			<command>opensc-config</command> [OPTIONS]
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			<command>opensc-config</command> is a tool that is used to get various information
+			about the installed version of OpenSC.  It is particularly useful in determining
+			compiler and linker flags necessary to build programs with the OpenSC libraries.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<command>opensc-config</command> accepts the following options:
+			<variablelist>
+				<varlistentry>
+					<term><option>--version</option></term>
+					<listitem><para>Print the installed version of OpenSC to standard output.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--libs</option></term>
+					<listitem><para>Print the linker flags that are needed to compile a program
+					to use the OpenSC libraries.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--cflags</option></term>
+					<listitem><para>Print the compiler flags that are needed to compile a program
+					to use the OpenSC libraries.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--prefix=PREFIX</option></term>
+					<listitem><para>If specified, use PREFIX instead of the installation
+					prefix that OpenSC was built with when computing the output for the
+					--cflags and --libs options. This option is also used for the exec
+					prefix if --exec-prefix was not specified. This option must be specified
+					before any --libs or --cflags options.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--exec-prefix=PREFIX</option></term>
+					<listitem><para>If specified, use PREFIX instead of the installation
+					exec prefix that OpenSC was built with when computing the output for
+					the --cflags and --libs options. This option must be specified before any
+					--libs or --cflags options.</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+	
+	<refsect1>
+		<title>See also</title>
+		<para>opensc(7)</para>
+	</refsect1>
+
+</refentry>

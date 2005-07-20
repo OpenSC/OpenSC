@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="cardos-info">
+	<refmeta>
+		<refentrytitle>cardos-info</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>cardos-info</refname>
+		<refpurpose>displays information about Card OS-based security tokens
+		</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+			<command>cardos-info</command> [OPTIONS]
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>cardos-info</command> utility is used to display information about
+smart cards and similar security tokens based on Siemens Card/OS M4.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term><option>--reader</option> number, <option>-r</option> number</term>
+					<listitem><para>Display information about the token in reader number <varname>number</varname>.
+					The default is reader 0.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--card-driver</option> name, <option>-c</option> driver</term>
+					<listitem><para>Use the card driver specified by <varname>name</varname>. The default
+					is to auto-detect the correct card driver.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--wait, -w</option></term>
+					<listitem><para>Causes <command>cardos-info</command> to wait for the token
+					to be inserted into reader.</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--verbose, -v</option></term>
+					<listitem><para>Causes <command>cardos-info</command> to be more verbose. Specify this flag several times
+to enable debug output in the opensc library.</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+	
+	<refsect1>
+		<title>See also</title>
+		<para>opensc(7)</para>
+	</refsect1>
+
+</refentry>

@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="opensc-explorer">
+	<refmeta>
+		<refentrytitle>opensc-explorer</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>opensc-explorer</refname>
+		<refpurpose>
+			generic interactive utility for accessing smart card
+			and similar security token functions
+		</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+			<command>opensc-explorer</command> [OPTIONS]
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>opensc-explorer</command> utility can be
+			used interactively to perform miscellaneous operations
+			such as exploring the contents of or sending arbitrary
+			APDU commands to a smart card or similar security token.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			The following are the command-line options for
+			<command>opensc-explorer</command>.  There are additional
+			interactive commands available once it is running.
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--reader</option> num,
+						<option>-r</option> num
+					</term>
+					<listitem><para>
+					Use the given reader number. The default
+					is 0, the first reader in the system.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--card-driver</option> driver,
+						<option>-c</option> driver
+					</term>
+					<listitem><para>
+						Use the given card driver.  The default is
+						auto-detected.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--verbose, -v</option></term>
+					<listitem><para>
+						Causes <command>opensc-explorer</command> to be more
+						verbose. Specify this flag several times to enable
+						debug output in the opensc library.
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+<refsect1>
+	<title>Commands</title>
+	<para>
+		The following commands are supported at the <command>opensc-explorer</command>
+		interactive prompt.
+		<variablelist>
+			<varlistentry>
+				<term><option>ls</option></term>
+				<listitem><para>list all files in the current DF</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>cd</option> <varname>file-id</varname></term>
+				<listitem><para>change to another DF specified by <varname>file-id</varname></para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>cat</option></term>
+				<listitem><para>print the contents of the currently selected EF</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>info</option> [<varname>file-id</varname>]</term>
+				<listitem><para>display attributes of a file specified by <varname>file-id</varname>.
+				If <varname>file-id</varname> is not supplied,
+				the attributes of the current file are printed.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>create</option> <varname>file-id</varname> <varname>size</varname></term>
+				<listitem><para>create a new EF.  <varname>file-id</varname> specifies the
+				id number and <varname>size</varname> is the size of the new file.
+				</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>delete</option> <varname>file-id</varname></term>
+				<listitem><para>remove the EF or DF specified by <varname>file-id</varname></para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>verify</option> <varname>key-type</varname><varname>key-id</varname>
+				[<varname>key</varname>]</term>
+				<listitem><para>present a PIN or key to the card. Where <varname>key-type</varname>
+				can be one of CHV, KEY or PRO. <varname>key-id</varname> is a number representing the
+				key or PIN number. <varname>key</varname> is the key or PIN to be verified in hex.
+				</para>
+				<para>
+					Example: verify CHV0 31:32:33:34:00:00:00:00
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>change CHV</option><varname>id [old-pin] new-pin</varname></term>
+				<listitem><para>change a PIN</para>
+				<para>
+					Example: change CHV0 31:32:33:34:00:00:00:00 'secret'
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>put</option> <varname>file-id</varname> [<varname>input</varname>]</term>
+				<listitem><para>copy a local file to the card. The local file is specified
+				by <varname>input</varname> while the card file is specified by <varname>file-id</varname>
+				</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>get</option> <varname>file-id</varname> [<varname>output</varname>]</term>
+				<listitem><para>copy an EF to a local file. The local file is specified
+				by <varname>output</varname> while the card file is specified by <varname>file-id</varname>.
+				</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>mkdir</option> <varname>file-id</varname> <varname>size</varname></term>
+				<listitem><para>create a DF.  <varname>file-id</varname> specifies the id number
+				and <varname>size</varname> is the size of the new file.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>pksign</option></term>
+				<listitem><para>create a public key signature.  NOTE: This command is currently not implemented.
+				</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>pkdecrypt</option></term>
+				<listitem><para>perform a public key decryption.  NOTE: This command is currently not implemented.
+				</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>erase</option></term>
+				<listitem><para>erase the card, if the card supports it.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>debug</option> [<varname>level</varname>]</term>
+				<listitem><para>get or set the debug level</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>quit</option></term>
+				<listitem><para>exit the program</para></listitem>
+			</varlistentry>
+
+		</variablelist>
+	</para>
+</refsect1>
+	
+	<refsect1>
+		<title>See also</title>
+		<para>opensc(7), opensc-tool(1)</para>
+	</refsect1>
+
+</refentry>

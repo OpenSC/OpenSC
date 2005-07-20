@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="pkcs15-tool">
+	<refmeta>
+		<refentrytitle>pkcs15-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>pkcs15-tool</refname>
+		<refpurpose>utility for manipulating PKCS #15 data structures
+		on smart cards and similar security tokens</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+			<command>pkcs15-tool</command> [OPTIONS]
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>pkcs15-tool</command> utility is used to manipulate
+			the PKCS #15 data structures on smart cards and similar security
+			tokens. Users can list and read PINs, keys and certificates stored
+			on the token. User PIN authentication is performed for those
+			operations that require it.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term><option>--learn-card, -L</option></term>
+					<listitem><para>Cache PKCS #15 token data to the local filesystem.
+					Subsequent operations are performed on the cached data where possible.
+					If the cache becomes out-of-sync with the token state (eg. new key is
+					generated and stored on the token), the cache should be updated or
+					operations may show stale results.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--read-certificate</option> <varname>cert</varname>,
+					<option>-r</option> <varname>cert</varname></term>
+					<listitem><para>Reads the certificate with the given id.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--list-certificates, -c</option></term>
+					<listitem><para>Lists all certificates stored on the token.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--list-pins</option></term>
+					<listitem><para>Lists all PINs stored on the token. General information
+					about each PIN is listed (eg. PIN name). Actual PIN values are not shown.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--change-pin</option></term>
+					<listitem><para>Changes a PIN stored on the token. User authentication
+					is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--list-keys, -k</option></term>
+					<listitem><para>Lists all private keys stored on the token. General
+					information about each private key is listed (eg. key name, id and
+					algorithm). Actual private key values are not displayed.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--list-public-keys</option></term>
+					<listitem><para>Lists all public keys stored on the token, including
+					key name, id, algorithm and length information.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--read-public-key</option> <varname>id</varname></term>
+					<listitem><para>Reads the public key with id <varname>id</varname>,
+					allowing the user to extract and store or use the public key.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--output</option> <varname>filename</varname>,
+					<option>-o</option> <varname>filename</varname></term>
+					<listitem><para>Specifies where key output should be written.
+					If <varname>filename</varname> already exists, it will be overwritten.
+					If this option is not given, keys will be printed to standard output.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--no-cache</option></term>
+					<listitem><para>Disables token data caching.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--pin-id</option> <varname>pin</varname>,
+					<option>-a</option> <varname>pin</varname></term>
+					<listitem><para>Specifies the auth id of the PIN to use for the
+					operation. This is useful with the --change-pin operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--reader</option> <varname>num</varname></term>
+					<listitem><para>Forces <command>pkcs15-tool</command> to use reader
+					number <varname>num</varname> for operations. The default is to use
+					reader number 0, the first reader in the system.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--verbose, -v</option></term>
+					<listitem><para>Causes <command>pkcs15-tool</command> to be more
+					verbose. Specify this flag several times to enable debug output
+					in the OpenSC library.</para></listitem>
+				</varlistentry>
+
+			</variablelist>
+		</para>
+	</refsect1>
+	
+	<refsect1>
+		<title>See also</title>
+		<para>opensc(7), pkcs15-init(1), pkcs15-crypt(1)</para>
+	</refsect1>
+
+</refentry>

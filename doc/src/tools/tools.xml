@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V4.2//EN"
+                      "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<book xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>OpenSC tools</title>
+	<reference>
+		<referenceinfo>
+			<title>OpenSC</title>
+		</referenceinfo>
+		<xi:include href="opensc-config.xml"/>
+		<xi:include href="opensc-tool.xml"/>
+		<xi:include href="opensc-explorer.xml"/>
+		<xi:include href="pkcs11-tool.xml"/>
+		<xi:include href="pkcs15-crypt.xml"/>
+		<xi:include href="pkcs15-tool.xml"/>
+		<xi:include href="pkcs15-init.xml"/>
+		<xi:include href="pkcs15-profile.xml"/>
+		<xi:include href="cardos-info.xml"/>
+		<xi:include href="cryptoflex-tool.xml"/>
+	</reference>
+</book>
+
+<!-- TODO
+opensc
+-->
