@@ -1644,7 +1644,7 @@ sc_pkcs15init_map_usage(unsigned long x509_usage, int _private)
 	bits = _private? x509_to_pkcs15_private_key_usage
 		      : x509_to_pkcs15_public_key_usage;
 	for (n = p15_usage = 0; n < 16; n++) {
-		if (x509_usage & (1 << n))
+		if (x509_usage & ((0x80 >> (n % 8)) << (n / 8)))
 			p15_usage |= bits[n];
 	}
 	return p15_usage;

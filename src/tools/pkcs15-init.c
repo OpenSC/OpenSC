@@ -44,6 +44,7 @@
 #include <openssl/dsa.h>
 #include <openssl/bn.h>
 #include <openssl/pkcs12.h>
+#include <openssl/x509v3.h>
 #include <opensc/cardctl.h>
 #include <opensc/pkcs15.h>
 #include <opensc/pkcs15-init.h>
@@ -701,11 +702,16 @@ do_store_private_key(struct sc_profile *profile)
 	if ((r = do_convert_private_key(&args.key, pkey)) < 0)
 		return r;
 	if (ncerts) {
-		unsigned int	usage = cert[0]->ex_kusage;
+		unsigned int	usage;
+
+		/* tell openssl to cache the extensions */
+		X509_check_purpose(cert[0], -1, -1);
+		usage = cert[0]->ex_kusage;
 
 		/* No certificate usage? Assume ordinary
 		 * user cert */
-		usage = 0x1F;
+		if (usage == 0)
+			usage = 0x1F;
 
 		/* If the user requested a specific key usage on the
 		 * command line check if it includes _more_
@@ -749,6 +755,7 @@ do_store_private_key(struct sc_profile *profile)
 		if ((r = do_convert_cert(&cargs.der_encoded, cert[i])) < 0)
 			return r;
 
+		X509_check_purpose(cert[i], -1, -1);
 		cargs.x509_usage = cert[i]->ex_kusage;
 		cargs.label = X509_NAME_oneline(cert[i]->cert_info->subject,
 					namebuf, sizeof(namebuf));
