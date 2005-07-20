@@ -167,6 +167,7 @@ int
 openct_reader_release(sc_reader_t *reader)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
+	int i;
 
 	SC_FUNC_CALLED(reader->ctx, 1);
 	if (data) {
@@ -175,6 +176,11 @@ openct_reader_release(sc_reader_t *reader)
 		memset(data, 0, sizeof(*data));
 		reader->drv_data = NULL;
 		free(data);
+	}
+
+	for (i = 0; i < SC_MAX_SLOTS; i++) {
+		if(reader->slot[i].drv_data)
+			free(reader->slot[i].drv_data);
 	}
 	
 	return SC_NO_ERROR;

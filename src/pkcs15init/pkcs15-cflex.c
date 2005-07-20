@@ -142,6 +142,7 @@ cryptoflex_init_card(sc_profile_t *profile, sc_card_t *card)
 
 	if ((len = file->size) > sizeof(buf))
 		len = sizeof(buf);
+	sc_file_free(file);
 	if ((r = sc_read_binary(card, 0, buf, len, 0)) < 0)
 		return r;
 	len = r;
