@@ -1440,7 +1440,7 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 #else
 	NULL,
 	NULL,
-	NULL
+	NULL,
 #endif
 	NULL,			/* seed_random */
 	pkcs15_get_random
