@@ -674,18 +674,21 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 				continue;
 
 			if (is_privkey(obj))   {
-			sc_debug(context, "Adding private key %d to PIN %d\n", j, i);
-			pkcs15_add_object(slot, obj, NULL);
-		}
-			else if (is_data(obj))   {
+				sc_debug(context, "Adding private key %d to PIN %d\n", j, i);
+				pkcs15_add_object(slot, obj, NULL);
+			} else if (is_data(obj))   {
 				sc_debug(context, "Adding data object %d to PIN %d\n", j, i);
 				pkcs15_add_object(slot, obj, NULL);
 			}
 		}
 	}
 
-	/* Add all public objects to a virtual slot without pin protection */
-	slot = NULL;
+	/* Add all public objects to a virtual slot without pin protection.
+	 * If there's only 1 pin and the hide_empty_tokens option is set,
+	 * add the public objects to the slot that corresponds to that pin.
+	 */
+	if (!(auth_count == 1 && sc_pkcs11_conf.hide_empty_tokens))
+		slot = NULL;
 
 	/* Add all the remaining objects */
 	for (j = 0; j < fw_data->num_objects; j++) {
