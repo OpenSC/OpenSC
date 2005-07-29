@@ -203,7 +203,7 @@ static void print_cert_x509(const struct sc_pkcs15_object *obj)
 static void print_data_object_summary(const struct sc_pkcs15_object *obj)
 {
 	struct sc_pkcs15_data_info *data_object;
-	int i;
+	unsigned i;
 
 	data_object = (struct sc_pkcs15_data_info *) obj->data;
 	printf("\tPath        : ");
