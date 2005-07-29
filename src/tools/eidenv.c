@@ -29,6 +29,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <opensc/opensc.h>
+#include <opensc/asn1.h>
 
 #include "../libopensc/cards.h"
 #include "../libopensc/esteid.h"
@@ -133,49 +134,11 @@ static void decode_options(int argc, char **argv)
 	}
 }
 
-
-int main(int argc, char **argv)
+static void do_esteid(sc_card_t *card)
 {
-	sc_context_t *ctx = NULL;
-	sc_reader_t *reader = NULL;
-	sc_card_t *card = NULL;
 	sc_path_t path;
 	int r, i;
 	char buff[512];
-
-	/* get options */
-	decode_options(argc, argv);
-
-	/* connect to the card */
-	r = sc_establish_context(&ctx, "eidenv");
-	if (r) {
-	fprintf(stderr, "Failed to establish context: %s\n",
-		sc_strerror(r));
-		return 1;
-	}
-	if (reader_num > ctx->reader_count) {
-		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
-		return 1;
-	}
-	reader = ctx->reader[reader_num];
-
-	r = sc_connect_card(reader, 0, &card);
-	if (r) {
-	fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
-	return 1;
-	}
-
-	r = sc_lock(card);
-	if (r) {
-	fprintf(stderr, "Failed to lock card: %s\n", sc_strerror(r));
-	return 1;
-	}
-
-	/* Make sure it is an EstEID card  */
-	if (card->type != SC_CARD_TYPE_MCRD_ESTEID) {
-		fprintf(stderr, "Not an EstEID card!\n");
-		goto out;
-	}
 
 	if (stats) {
 		int key_used[4];
@@ -233,6 +196,238 @@ int main(int argc, char **argv)
 	}
 	
 	exit_status = EXIT_SUCCESS;
+
+out:
+	return;
+}
+
+/* Select and read a transparent EF */
+static int read_transp(sc_card_t *card, const char *pathstring, unsigned char *buf, int buflen)
+{
+	sc_path_t path;
+	int r;
+
+	sc_format_path(pathstring, &path);
+	r = sc_select_file(card, &path, NULL);
+	if (r < 0)
+		fprintf(stderr, "\nFailed to select file %s: %s\n", pathstring, sc_strerror(r));
+	else {
+		r = sc_read_binary(card, 0, buf, buflen, 0);
+		if (r < 0)
+			fprintf(stderr, "\nFailed to read %s: %s\n", pathstring, sc_strerror(r));
+	}
+
+	return r;
+}
+
+/* Hex-encode the buf, 2*len+1 bytes must be reserved. E.g. {'1','2'} -> {'3','1','3','2','\0'} */
+const static char hextable[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'E'};
+static char bintohex(char *buf, int len)
+{
+	int i;
+	for (i = len - 1; i >= 0; i--) {
+		buf[2 * i + 1] = hextable[((unsigned char) buf[i]) % 16];
+		buf[2 * i] = hextable[((unsigned char) buf[i]) / 16];
+	}
+}
+
+static void exportprint(const char *key, const char *val)
+{
+	if (exec_program) {
+		char * cp;
+		cp = malloc(strlen(key) + strlen(val) + 2);
+		if (cp) { 
+			strcpy(cp, key);
+			strcat(cp, "=");
+			strcat(cp, val);
+			putenv(cp);
+		}
+	} else
+		printf("%s: %s\n", key, val);
+}
+
+static void do_belpic(sc_card_t *card)
+{
+	/* Contents of the ID file (3F00\DF01\4031) */
+	char cardnumber[12 + 1];
+	int cardnumberlen = sizeof(cardnumber);
+	char chipnumber[2 * 16 + 1];
+	int chipnumberlen = sizeof(chipnumber);
+	char validfrom[10 + 1];
+	int validfromlen = sizeof(validfrom);
+	char validtill[10 + 1];
+	int validtilllen = sizeof(validtill);
+	char deliveringmunicipality[50 + 1];  /* UTF8 */
+	int deliveringmunicipalitylen = sizeof(deliveringmunicipality);
+	char nationalnumber[12 + 1];
+	int nationalnumberlen = sizeof(nationalnumber);
+	char name[90 + 1]; /* UTF8 */
+	int namelen = sizeof(name);
+	char firstnames[75 + 1]; /* UTF8 */
+	int firstnameslen = sizeof(firstnames);
+	char initial[3 + 1]; /* UTF8 */
+	int initiallen = sizeof(initial);
+	char nationality[65 + 1]; /* UTF8 */
+	char nationalitylen = sizeof(nationality);
+	char birthlocation[60 + 1]; /* UTF8 */
+	int birthlocationlen = sizeof(birthlocation);
+	char birthdate[12 + 1];
+	int birthdatelen = sizeof(birthdate);
+	char sex[1 + 1];
+	int sexlen = sizeof(sex);
+	char noblecondition[30 + 1]; /* UTF8 */
+	int nobleconditionlen = sizeof(noblecondition);
+	char documenttype[5 + 1];
+	int documenttypelen = sizeof(documenttype);
+	char specialstatus[5 + 1];
+	int specialstatuslen = sizeof(specialstatus);
+	struct sc_asn1_entry id[] = {
+		{"cardnumber", SC_ASN1_UTF8STRING, 1, 0, cardnumber, &cardnumberlen},
+		{"chipnumber", SC_ASN1_OCTET_STRING, 2, 0, chipnumber, &chipnumberlen},
+		{"validfrom", SC_ASN1_UTF8STRING, 3, 0, validfrom, &validfromlen},
+		{"validtill", SC_ASN1_UTF8STRING, 4, 0, validtill, &validtilllen},
+		{"deliveringmunicipality", SC_ASN1_UTF8STRING, 5, 0, deliveringmunicipality, &deliveringmunicipalitylen},
+		{"nationalnumber", SC_ASN1_UTF8STRING, 6, 0, nationalnumber, &nationalnumberlen},
+		{"name", SC_ASN1_UTF8STRING, 7, 0, name, &namelen},
+		{"firstname(s)", SC_ASN1_UTF8STRING, 8, 0, firstnames, &firstnameslen},
+		{"initial", SC_ASN1_UTF8STRING, 9, 0, initial, &initiallen},
+		{"initial", SC_ASN1_UTF8STRING, 10, 0, nationality, &nationalitylen},
+		{"birthlocation", SC_ASN1_UTF8STRING, 11, 0, birthlocation, &birthlocationlen},
+		{"birthdate", SC_ASN1_UTF8STRING, 12, 0, birthdate, &birthdatelen},
+		{"sex", SC_ASN1_UTF8STRING, 13, 0, sex, &sexlen},
+		{"noblecondition", SC_ASN1_UTF8STRING, 14, 0, noblecondition, &nobleconditionlen},
+		{"documenttype", SC_ASN1_UTF8STRING, 15, 0, documenttype, &documenttypelen},
+		{"specialstatus", SC_ASN1_UTF8STRING, 16, 0, documenttype, &documenttypelen},
+		NULL};
+
+	/* Contents of the Address file (3F00\DF01\4033) */
+	char streetandnumber[63 + 1]; /* UTF8 */
+	int streetandnumberlen = sizeof(streetandnumber);
+	char zipcode[4 + 1];
+	int zipcodelen = sizeof(zipcode);
+	char municipality[40 + 1]; /* UTF8 */
+	int municipalitylen = sizeof(municipality);
+	struct sc_asn1_entry address[] = {
+		{"streetandnumber", SC_ASN1_UTF8STRING, 1, 0, streetandnumber, &streetandnumberlen},
+		{"zipcode", SC_ASN1_UTF8STRING, 2, 0, zipcode, &zipcodelen},
+		{"municipal", SC_ASN1_UTF8STRING, 3, 0, municipality, &municipalitylen},
+		NULL};
+
+	char buff[512];
+	int r;
+
+	r = read_transp(card, "3f00df014031", buff, sizeof(buff));
+	if (r < 0)
+		goto out;
+
+	memset(cardnumber, '\0', sizeof(cardnumber));
+	memset(chipnumber, '\0', sizeof(chipnumber));
+	memset(validfrom, '\0', sizeof(validfrom));
+	memset(validtill, '\0', sizeof(validtill));
+	memset(deliveringmunicipality, '\0', sizeof(deliveringmunicipality));
+	memset(nationalnumber, '\0', sizeof(nationalnumber));
+	memset(name, '\0', sizeof(name));
+	memset(firstnames, '\0', sizeof(firstnames));
+	memset(initial, '\0', sizeof(initial));
+	memset(nationality, '\0', sizeof(nationality));
+	memset(birthlocation, '\0', sizeof(birthlocation));
+	memset(birthdate, '\0', sizeof(birthdate));
+	memset(sex, '\0', sizeof(sexlen));
+	memset(noblecondition, '\0', sizeof(noblecondition));
+	memset(documenttype, '\0', sizeof(documenttype));
+	memset(specialstatus, '\0', sizeof(specialstatus));
+
+	r = sc_asn1_decode(card->ctx, id, buff, r, NULL, NULL);
+	if (r < 0) {
+		fprintf(stderr, "\nFailed to decode the ID file: %s\n", sc_strerror(r));
+		goto out;
+	}
+
+	exportprint("BELPIC_CARDNUMBER", cardnumber);
+	bintohex(chipnumber, chipnumberlen);
+	exportprint("BELPIC_CHIPNUMBER", chipnumber);
+	exportprint("BELPIC_VALIDFROM", validfrom);
+	exportprint("BELPIC_VALIDTILL", validtill);
+	exportprint("BELPIC_DELIVERINGMUNICIPALITY", deliveringmunicipality);
+	exportprint("BELPIC_NATIONALNUMBER", nationalnumber);
+	exportprint("BELPIC_NAME", name);
+	exportprint("BELPIC_FIRSTNAMES", firstnames);
+	exportprint("BELPIC_INITIAL", initial);
+	exportprint("BELPIC_NATIONALITY", nationality);
+	exportprint("BELPIC_BIRTHLOCATION", birthlocation);
+	exportprint("BELPIC_BIRTHDATE", birthdate);
+	exportprint("BELPIC_SEX", sex);
+	exportprint("BELPIC_NOBLECONDITION", noblecondition);
+	exportprint("BELPIC_DOCUMENTTYPE", documenttype);
+	exportprint("BELPIC_SPECIALSTATUS", specialstatus);
+
+	r = read_transp(card, "3f00df014033", buff, sizeof(buff));
+	if (r < 0)
+		goto out;
+
+	memset(streetandnumber, '\0', sizeof(streetandnumber));
+	memset(zipcode, '\0', sizeof(zipcode));
+	memset(municipality, '\0', sizeof(municipality));
+
+	r = sc_asn1_decode(card->ctx, address, buff, r, NULL, NULL);
+	if (r < 0) {
+		fprintf(stderr, "\nFailed to decode the Address file: %s\n", sc_strerror(r));
+		goto out;
+	}
+
+	exportprint("BELPIC_STREETANDNUMBER", streetandnumber);
+	exportprint("BELPIC_ZIPCODE", zipcode);
+	exportprint("BELPIC_MUNICIPALITY", municipality);
+
+out:
+	return;
+}
+
+int main(int argc, char **argv)
+{
+	sc_context_t *ctx = NULL;
+	sc_reader_t *reader = NULL;
+	sc_card_t *card = NULL;
+	sc_path_t path;
+	int r;
+
+	/* get options */
+	decode_options(argc, argv);
+
+	/* connect to the card */
+	r = sc_establish_context(&ctx, "eidenv");
+	if (r) {
+	fprintf(stderr, "Failed to establish context: %s\n",
+		sc_strerror(r));
+		return 1;
+	}
+	if (reader_num > ctx->reader_count) {
+		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
+		return 1;
+	}
+	reader = ctx->reader[reader_num];
+
+	r = sc_connect_card(reader, 0, &card);
+	if (r) {
+		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
+		return 1;
+	}
+
+	r = sc_lock(card);
+	if (r) {
+		fprintf(stderr, "Failed to lock card: %s\n", sc_strerror(r));
+		return 1;
+	}
+
+	/* Check card type */
+	if (card->type == SC_CARD_TYPE_MCRD_ESTEID)
+		do_esteid(card);
+	else if (card->type == SC_CARD_TYPE_BELPIC_EID)
+		do_belpic(card);
+	else {
+		fprintf(stderr, "Not an EstEID or Belpic card!\n");
+		goto out;
+	}
 	
 	if (exec_program) {
 		char *largv[2];
