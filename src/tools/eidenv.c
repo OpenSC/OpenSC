@@ -22,7 +22,9 @@
 #include <config.h>
 #endif
 #include <stdio.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
@@ -46,6 +48,10 @@ static struct option const long_options[] = {
 	{NULL, 0, NULL, 0}
 };
 
+/* Probably not used, but needed to build on Windows */
+const char *app_name = "eidenv";
+const struct option options[] = {NULL};
+const char *option_help[] = {NULL};
 
 static struct {
 	const char *name;
