@@ -62,6 +62,8 @@
 void *pkcs11_malloc(size_t size)
 {
 	void *p = OPENSSL_malloc(size);
+	if (p == NULL)
+		return NULL;
 	memset(p, 0, size);
 	return p;
 }
@@ -77,6 +79,8 @@ char *pkcs11_strdup(char *mem, size_t size)
 	while (size && mem[size - 1] == ' ')
 		size--;
 	res = (char *) OPENSSL_malloc(size + 1);
+	if (res == NULL)
+		NULL;
 	memcpy(res, mem, size);
 	res[size] = '\0';
 	return res;
@@ -90,6 +94,8 @@ void *memdup(const void *src, size_t size)
 	void *dst;
 
 	dst = malloc(size);
+	if (dst == NULL)
+		return NULL;
 	memcpy(dst, src, size);
 	return dst;
 }
