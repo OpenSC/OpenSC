@@ -1127,8 +1127,8 @@ static int belpic_read_binary(sc_card_t *card,
 	if (r == SC_ERROR_INCORRECT_PARAMETERS)
 		return 0;
 
-	if (r >= 0 && r < count)
-		next_idx = idx + r;
+	if (r >= 0 && (size_t)r < count)
+		next_idx = idx + (size_t)r;
 
 	dur = t2 - t1;
 	tot_dur += dur;

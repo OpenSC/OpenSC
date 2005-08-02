@@ -99,8 +99,6 @@ int sc_base64_encode(const u8 *in, size_t len, u8 *out, size_t outlen, size_t li
 	size_t i, c;
 
 	linelength -= linelength & 0x03;
-	if (linelength < 0)
-		return SC_ERROR_INVALID_ARGUMENTS;
 	while (len >= 3) {
 		i = in[2] + (in[1] << 8) + (in[0] << 16);
 		in += 3;

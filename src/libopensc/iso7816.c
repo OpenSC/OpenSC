@@ -24,7 +24,7 @@
 #include <ctype.h>
 #include <string.h>
 
-const static struct sc_card_error iso7816_errors[] = {
+static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6200, SC_ERROR_MEMORY_FAILURE,	"State of non-volatile memory unchanged" },
 	{ 0x6281, SC_ERROR_MEMORY_FAILURE,	"Part of returned data may be corrupted" },
 	{ 0x6282, SC_ERROR_CARD_CMD_FAILED,	"End of file/record reached before reading Le bytes" },

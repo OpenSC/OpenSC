@@ -93,7 +93,7 @@ static int etoken_init(sc_card_t *card)
 	return 0;
 }
 
-const static struct sc_card_error etoken_errors[] = {
+static const struct sc_card_error etoken_errors[] = {
 /* some error inside the card */
 /* i.e. nothing you can do */
 { 0x6581, SC_ERROR_MEMORY_FAILURE,	"EEPROM error; command aborted"}, 
@@ -347,7 +347,7 @@ static int acl_to_byte(const sc_acl_entry_t *e)
 		case SC_AC_AUT:
 			if (e->key_ref == SC_AC_KEY_REF_NONE)
 				return -1;
-			if (e->key_ref < 0x00 || e->key_ref > 0x7F)
+			if (e->key_ref > 0x7F)
 				return -1;
 			return e->key_ref;
 		}
