@@ -297,7 +297,7 @@ static void do_belpic(sc_card_t *card)
 		{"sex", SC_ASN1_UTF8STRING, 13, 0, sex, &sexlen},
 		{"noblecondition", SC_ASN1_UTF8STRING, 14, 0, noblecondition, &nobleconditionlen},
 		{"documenttype", SC_ASN1_UTF8STRING, 15, 0, documenttype, &documenttypelen},
-		{"specialstatus", SC_ASN1_UTF8STRING, 16, 0, documenttype, &documenttypelen},
+		{"specialstatus", SC_ASN1_UTF8STRING, 16, 0, specialstatus, &specialstatuslen},
 		NULL};
 
 	/* Contents of the Address file (3F00\DF01\4033) */
