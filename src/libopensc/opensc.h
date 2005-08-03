@@ -870,7 +870,7 @@ int sc_append_path(sc_path_t *dest, const sc_path_t *src);
 int sc_append_path_id(sc_path_t *dest, const u8 *id, size_t idlen);
 int sc_append_file_id(sc_path_t *dest, unsigned int fid);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
-int sc_bin_to_hex(const u8 *, size_t, char *, size_t, char separator);
+int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
 int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2);
 
 int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize);
