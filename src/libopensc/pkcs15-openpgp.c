@@ -87,7 +87,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 	if ((r = read_file(card, "004f", buffer, sizeof(buffer))) < 0)
 		goto failed;
-	sc_bin_to_hex(buffer, r, string, sizeof(string), 0);
+	sc_bin_to_hex(buffer, (size_t)r, string, sizeof(string), 0);
 	set_string(&p15card->serial_number, string);
 	p15card->version = (buffer[6] << 8) | buffer[7];
 

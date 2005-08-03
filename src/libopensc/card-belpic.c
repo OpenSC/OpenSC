@@ -132,7 +132,7 @@ static long t1, t2, tot_read = 0, tot_dur = 0, dur;
 #define BELPIC_KEY_REF_NONREP		0x83
 
 /* Used for a trick in select file and read binary */
-static size_t next_idx = -1;
+static size_t next_idx = (size_t)-1;
 
 static struct sc_atr_table belpic_atrs[] = {
 	/* Applet V1.1 */
@@ -817,7 +817,7 @@ static int get_language(sc_card_t *card)
 
 #endif	/* GET_LANG_FROM_CARD */
 
-static scconf_block *get_belpic_conf(sc_context_t *ctx, char *name)
+static scconf_block *get_belpic_conf(sc_context_t *ctx, const char *name)
 {
 	scconf_block *conf_block = NULL, **blocks;
 	int i;
@@ -1089,7 +1089,7 @@ static int belpic_select_file(sc_card_t *card,
 	if (r)
 		SC_FUNC_RETURN(card->ctx, 2, r);
 
-	next_idx = -1;		/* reset */
+	next_idx = (size_t)-1;		/* reset */
 
 	if (file_out != NULL) {
 		file = sc_file_new();

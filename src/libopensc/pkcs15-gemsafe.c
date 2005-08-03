@@ -104,7 +104,7 @@ static int my_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data * data,
 	memset(newpin, 0xff, sizeof(newpin));
 
 	if (data->pin1.data && data->pin1.len < 8 && data->pin1.len > 0) {
-		memcpy(newpin,data->pin1.data, data->pin1.len);
+		memcpy(newpin,data->pin1.data, (size_t)data->pin1.len);
 		newpin[data->pin1.len] = 0x00;
 		
 		sc_debug(card->ctx, "pin len=%d", data->pin1.len);
@@ -123,9 +123,6 @@ static int my_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data * data,
 	}
 
 	SC_FUNC_RETURN(card->ctx, 2, r);
-
-	return r;
-
 }
 
 
@@ -203,7 +200,7 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 
 	u8 sysrec[7];
 	int num_keyinfo = 0;
-	keyinfo keyinfo[8]; /* will loook for 8 keys */
+	keyinfo kinfo[8]; /* will loook for 8 keys */
 	u8 modulus_buf[ 1 + 1024 / 8]; /* tag+modulus */
 	u8 *cp;
 	char buf[256];
@@ -269,26 +266,26 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 		}
 
 		switch (sysrec[1]) {
-			case 0x00: keyinfo[num_keyinfo].modulus_len =  512 / 8; break;
-			case 0x10: keyinfo[num_keyinfo].modulus_len =  768 / 8; break;
-			case 0x11: keyinfo[num_keyinfo].modulus_len = 1024 / 8; break;
+			case 0x00: kinfo[num_keyinfo].modulus_len =  512 / 8; break;
+			case 0x10: kinfo[num_keyinfo].modulus_len =  768 / 8; break;
+			case 0x11: kinfo[num_keyinfo].modulus_len = 1024 / 8; break;
 			default:
 				sc_error(card->ctx, "Unsupported modulus length");
 				continue;
 		}
 
-		keyinfo[num_keyinfo].fileid = i;
-		sc_pkcs15_format_id("NONE", &keyinfo[num_keyinfo].id); 
+		kinfo[num_keyinfo].fileid = i;
+		sc_pkcs15_format_id("NONE", &kinfo[num_keyinfo].id); 
 
 		sc_debug(card->ctx,"reading modulus");
 		r = sc_read_record(card, 2, modulus_buf, 
-				keyinfo[num_keyinfo].modulus_len+1, SC_RECORD_BY_REC_NR);
+				kinfo[num_keyinfo].modulus_len+1, SC_RECORD_BY_REC_NR);
 		if (r < 0) 
 			continue;
 			
 		/* need to reverse the modulus skiping the tag */
-		j = keyinfo[num_keyinfo].modulus_len;
-		cp = keyinfo[num_keyinfo].modulus;
+		j = kinfo[num_keyinfo].modulus_len;
+		cp = kinfo[num_keyinfo].modulus;
 		while (j--) 
 			*cp++ =  modulus_buf[j + 1];
 		num_keyinfo++;
@@ -401,10 +398,10 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 			return SC_ERROR_INTERNAL;
 
 		for (j = 0; j < num_keyinfo; j++) { 
-			if (cert_out->key.u.rsa.modulus.len == keyinfo[j].modulus_len &&	
+			if (cert_out->key.u.rsa.modulus.len == kinfo[j].modulus_len &&	
 					memcmp(cert_out->key.u.rsa.modulus.data, 
-					&keyinfo[j].modulus, cert_out->key.u.rsa.modulus.len) == 0) { 
-			memcpy(&keyinfo[j].id, &cert_info.id, sizeof(sc_pkcs15_id_t));
+					&kinfo[j].modulus, cert_out->key.u.rsa.modulus.len) == 0) { 
+			memcpy(&kinfo[j].id, &cert_info.id, sizeof(sc_pkcs15_id_t));
 			sc_debug(card->ctx, "found match");
 			}
 		}
@@ -478,11 +475,11 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 		/* This allows us to have a card with a key but no cert */
 	
 		for (j = 0; j < num_keyinfo; j++) {
-			if (sc_pkcs15_compare_id(&keyinfo[j].id, &prkey_info.id))  {
+			if (sc_pkcs15_compare_id(&kinfo[j].id, &prkey_info.id))  {
 				sc_debug(card->ctx, "found key in file %d for id %d", 
-						keyinfo[j].fileid, prkey_info.id);
-				prkey_info.path.value[4] = keyinfo[j].fileid >> 8;
-				prkey_info.path.value[5] = keyinfo[j].fileid & 0xff;
+						kinfo[j].fileid, prkey_info.id);
+				prkey_info.path.value[4] = kinfo[j].fileid >> 8;
+				prkey_info.path.value[5] = kinfo[j].fileid & 0xff;
 				break;
 			}
 		}
