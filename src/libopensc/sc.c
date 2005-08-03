@@ -102,6 +102,19 @@ int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
 	return 0;
 }
 
+int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2)
+{
+	int i;
+	assert(oid1 != NULL && oid2 != NULL);
+	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS; i++) {
+		if (oid1->value[i] != oid2->value[i])
+			return 0;
+		if (oid1->value[i] < 0)
+			return 1;
+	}
+	return 1;
+}
+
 sc_slot_info_t * _sc_get_slot_info(sc_reader_t *reader, int slot_id)
 {
 	assert(reader != NULL);
