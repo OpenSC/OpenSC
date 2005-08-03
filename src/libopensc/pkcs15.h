@@ -439,6 +439,9 @@ int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 int sc_pkcs15_find_data_object_by_id(struct sc_pkcs15_card *p15card,
 				     const struct sc_pkcs15_id *id,
 				     struct sc_pkcs15_object **out);
+int sc_pkcs15_find_data_object_by_app_oid(struct sc_pkcs15_card *p15card,
+					  const struct sc_object_id *app_oid,
+					  struct sc_pkcs15_object **out);
 void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object);
 
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *card,
@@ -603,6 +606,7 @@ typedef struct sc_pkcs15_search_key {
 	unsigned int		class_mask;
 	unsigned int		type;
 	const sc_pkcs15_id_t *	id;
+	const struct sc_object_id *app_oid;
 	const sc_path_t *	path;
 	unsigned int		usage_mask, usage_value;
 	unsigned int		flags_mask, flags_value;
