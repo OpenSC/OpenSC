@@ -268,7 +268,7 @@ static void do_belpic(sc_card_t *card)
 	char initial[3 + 1]; /* UTF8 */
 	int initiallen = sizeof(initial);
 	char nationality[65 + 1]; /* UTF8 */
-	char nationalitylen = sizeof(nationality);
+	int nationalitylen = sizeof(nationality);
 	char birthlocation[60 + 1]; /* UTF8 */
 	int birthlocationlen = sizeof(birthlocation);
 	char birthdate[12 + 1];
@@ -291,7 +291,7 @@ static void do_belpic(sc_card_t *card)
 		{"name", SC_ASN1_UTF8STRING, 7, 0, name, &namelen},
 		{"firstname(s)", SC_ASN1_UTF8STRING, 8, 0, firstnames, &firstnameslen},
 		{"initial", SC_ASN1_UTF8STRING, 9, 0, initial, &initiallen},
-		{"initial", SC_ASN1_UTF8STRING, 10, 0, nationality, &nationalitylen},
+		{"nationality", SC_ASN1_UTF8STRING, 10, 0, nationality, &nationalitylen},
 		{"birthlocation", SC_ASN1_UTF8STRING, 11, 0, birthlocation, &birthlocationlen},
 		{"birthdate", SC_ASN1_UTF8STRING, 12, 0, birthdate, &birthdatelen},
 		{"sex", SC_ASN1_UTF8STRING, 13, 0, sex, &sexlen},
