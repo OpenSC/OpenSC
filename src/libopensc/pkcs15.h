@@ -447,8 +447,6 @@ void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object);
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_cert_info *info,
 			       struct sc_pkcs15_cert **cert);
-int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen,
-		    struct sc_pkcs15_cert *cert);
 void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert);
 int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
 			      const struct sc_pkcs15_id *id,
