@@ -64,6 +64,8 @@ static struct {
 };
 
 static int parse_emu_block(sc_pkcs15_card_t *, scconf_block *);
+static sc_pkcs15_df_t * sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,
+	unsigned int type);
 
 static const char *builtin_name = "builtin";
 static const char *func_name    = "sc_pkcs15_init_func";
@@ -258,8 +260,8 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	return r;
 }
 
-sc_pkcs15_df_t *
-sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card, int type)
+static sc_pkcs15_df_t * sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,
+	unsigned int type)
 {
 	sc_pkcs15_df_t	*df;
 	sc_file_t	*file;
@@ -383,7 +385,7 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 		const sc_pkcs15_id_t *auth_id, int obj_flags)
 {
 	sc_pkcs15_object_t *obj;
-	int		df_type;
+	unsigned int	df_type;
 
 	obj = (sc_pkcs15_object_t *) calloc(1, sizeof(*obj));
 	if (!obj)

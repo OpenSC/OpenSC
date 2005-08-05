@@ -1,2 +1,20 @@
-See http://www.opensc.org/files/ChangeLog-opensc for
-automatically up-to-date version.
+Changes between 0.9.6 and 0.9.7 [XX xxx XXXX]
+
+ *) add support for TokenInfo::lastUpdate entry (currently
+    the generalizedTime variant). Change pkcs15 cache
+    functions to use the lastUpdate field (if present) and
+    the card serial number to identify cached files.
+    [Nils Larsch]
+
+ *) add support (card driver and PKCS#15 emulation) for the
+    A-Trust ACos card.
+    [Franz Brandl <brandl@a-trust.at>]
+
+ *) add partial PKCS#15 emulation support for GemSAFE cards
+    [Douglas E. Engert <deengert@anl.gov>]
+
+ *) add PKCS#15 emulation support for Italian Actalis card.
+    [Andrea Frigido <andrea@frisoft.it>]
+
+ *) add PKCS#15 emulation support for Italian Postecert and Cnipa card.
+    [Antonino Iacono <ant_iacono@tin.it>]

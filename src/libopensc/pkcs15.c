@@ -29,20 +29,24 @@
 
 
 static const struct sc_asn1_entry c_asn1_toki[] = {
-	{ "version",        SC_ASN1_INTEGER,      ASN1_INTEGER, 0, NULL },
-	{ "serialNumber",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL },
-	{ "manufacturerID", SC_ASN1_UTF8STRING,   ASN1_UTF8STRING, SC_ASN1_OPTIONAL, NULL },
-	{ "label",	    SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL },
-	{ "tokenflags",	    SC_ASN1_BIT_FIELD,   ASN1_BIT_STRING, 0, NULL },
-	{ "seInfo",	    SC_ASN1_SEQUENCE,	  SC_ASN1_CONS | ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL },
-	{ "recordInfo",	    SC_ASN1_STRUCT,       SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL },
-	{ "supportedAlgorithms", SC_ASN1_STRUCT,  SC_ASN1_CONS | SC_ASN1_CTX | 2, SC_ASN1_OPTIONAL, NULL },
-	{ NULL }
+	{ "version",        SC_ASN1_INTEGER,      ASN1_INTEGER, 0, NULL, NULL },
+	{ "serialNumber",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL, NULL },
+	{ "manufacturerID", SC_ASN1_UTF8STRING,   ASN1_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "label",	    SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "tokenflags",	    SC_ASN1_BIT_FIELD,   ASN1_BIT_STRING, 0, NULL, NULL },
+	{ "seInfo",	    SC_ASN1_SEQUENCE,	  SC_ASN1_CONS | ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "recordInfo",	    SC_ASN1_STRUCT,       SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "supportedAlgorithms", SC_ASN1_STRUCT,  SC_ASN1_CONS | SC_ASN1_CTX | 2, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "issuerId",       SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 3, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "holderId",       SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 4, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "lastUpdate",     SC_ASN1_GENERALIZEDTIME, SC_ASN1_CTX | 5, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "preferredLanguage", SC_ASN1_PRINTABLESTRING, ASN1_PRINTABLESTRING, SC_ASN1_OPTIONAL, NULL, NULL }, 
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static const struct sc_asn1_entry c_asn1_tokeninfo[] = {
-	{ "TokenInfo", SC_ASN1_STRUCT, SC_ASN1_CONS | ASN1_SEQUENCE, 0, NULL },
-	{ NULL }
+	{ "TokenInfo", SC_ASN1_STRUCT, SC_ASN1_CONS | ASN1_SEQUENCE, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t buflen)
@@ -55,9 +59,12 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 	size_t mnfid_len = sizeof(mnfid);
 	u8 label[SC_PKCS15_MAX_LABEL_SIZE];
 	size_t label_len = sizeof(label);
+	u8 last_update[32];
+	size_t lupdate_len = sizeof(last_update) - 1;
 	size_t flags_len = sizeof(card->flags);
-	struct sc_asn1_entry asn1_toki[9], asn1_tokeninfo[3];
+	struct sc_asn1_entry asn1_toki[13], asn1_tokeninfo[3];
 
+	memset(last_update, 0, sizeof(last_update));
 	sc_copy_asn1_entry(c_asn1_toki, asn1_toki);
 	sc_copy_asn1_entry(c_asn1_tokeninfo, asn1_tokeninfo);
 	sc_format_asn1_entry(asn1_toki + 0, &card->version, NULL, 0);
@@ -65,6 +72,13 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 	sc_format_asn1_entry(asn1_toki + 2, mnfid, &mnfid_len, 0);
 	sc_format_asn1_entry(asn1_toki + 3, label, &label_len, 0);
 	sc_format_asn1_entry(asn1_toki + 4, &card->flags, &flags_len, 0);
+	sc_format_asn1_entry(asn1_toki + 5, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 6, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 7, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 8, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 9, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 10, last_update, &lupdate_len, 0);
+	sc_format_asn1_entry(asn1_toki + 11, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki, NULL, 0);
 	
 	r = sc_asn1_decode(card->card->ctx, asn1_tokeninfo, buf, buflen, NULL, NULL);
@@ -99,6 +113,8 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 		else
 			card->label = strdup("(unknown)");
 	}
+	if (asn1_toki[10].flags & SC_ASN1_PRESENT)
+		card->last_update = strdup((char *)last_update);
 	return;
 err:
 	if (card->serial_number == NULL)
@@ -113,39 +129,51 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 			       u8 **buf, size_t *buflen)
 {
 	int r;
-	u8 serial[128];
-	size_t serial_len = 0;
-	size_t mnfid_len;
-	size_t label_len;
-	size_t flags_len;
 	int version = card->version;
 	
-	struct sc_asn1_entry asn1_toki[9], asn1_tokeninfo[2];
+	struct sc_asn1_entry asn1_toki[13], asn1_tokeninfo[2];
 
 	sc_copy_asn1_entry(c_asn1_toki, asn1_toki);
 	sc_copy_asn1_entry(c_asn1_tokeninfo, asn1_tokeninfo);
 	version--;
 	sc_format_asn1_entry(asn1_toki + 0, &version, NULL, 1);
 	if (card->serial_number != NULL) {
+		u8 serial[128];
+		size_t serial_len = 0;
 		if (strlen(card->serial_number)/2 > sizeof(serial))
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		serial_len = sizeof(serial);
 		if (sc_hex_to_bin(card->serial_number, serial, &serial_len) < 0)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		sc_format_asn1_entry(asn1_toki + 1, serial, &serial_len, 1);
-	}
+	} else
+		sc_format_asn1_entry(asn1_toki + 1, NULL, NULL, 0);
 	if (card->manufacturer_id != NULL) {
-		mnfid_len = strlen(card->manufacturer_id);
+		size_t mnfid_len = strlen(card->manufacturer_id);
 		sc_format_asn1_entry(asn1_toki + 2, card->manufacturer_id, &mnfid_len, 1);
-	}
+	} else
+		sc_format_asn1_entry(asn1_toki + 2, NULL, NULL, 0);
 	if (card->label != NULL) {
-		label_len = strlen(card->label);
+		size_t label_len = strlen(card->label);
 		sc_format_asn1_entry(asn1_toki + 3, card->label, &label_len, 1);
-	}
+	} else
+		sc_format_asn1_entry(asn1_toki + 3, NULL, NULL, 0);
 	if (card->flags) {
-		flags_len = sizeof(card->flags);
+		size_t flags_len = sizeof(card->flags);
 		sc_format_asn1_entry(asn1_toki + 4, &card->flags, &flags_len, 1);
-	}
+	} else
+		sc_format_asn1_entry(asn1_toki + 4, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 5, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 6, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 7, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 8, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 9, NULL, NULL, 0);
+	if (card->last_update != NULL) {
+		size_t len = strlen(card->last_update);
+		sc_format_asn1_entry(asn1_toki + 10, card->last_update, &len, 1);
+	} else
+		sc_format_asn1_entry(asn1_toki + 10, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 11, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki, NULL, 1);
 
 	r = sc_asn1_encode(ctx, asn1_tokeninfo, buf, buflen);
@@ -157,11 +185,11 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 }
 
 static const struct sc_asn1_entry c_asn1_ddo[] = {
-	{ "oid",	   SC_ASN1_OBJECT, ASN1_OBJECT, 0, NULL },
-	{ "odfPath",	   SC_ASN1_PATH, SC_ASN1_CONS | ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL },
-	{ "tokenInfoPath", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL },
-	{ "unusedPath",    SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL },
-	{ NULL }
+	{ "oid",	   SC_ASN1_OBJECT, ASN1_OBJECT, 0, NULL, NULL },
+	{ "odfPath",	   SC_ASN1_PATH, SC_ASN1_CONS | ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "tokenInfoPath", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "unusedPath",    SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
@@ -228,18 +256,18 @@ static int encode_ddo(struct sc_pkcs15_card *p15card, u8 **buf, size_t *buflen)
 #endif
 
 static const struct sc_asn1_entry c_asn1_odf[] = {
-	{ "privateKeys",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, NULL },
-	{ "publicKeys",		 SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, 0, NULL },
-	{ "trustedPublicKeys",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 2 | SC_ASN1_CONS, 0, NULL },
-	{ "certificates",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 4 | SC_ASN1_CONS, 0, NULL },
-	{ "trustedCertificates", SC_ASN1_STRUCT, SC_ASN1_CTX | 5 | SC_ASN1_CONS, 0, NULL },
-	{ "usefulCertificates",  SC_ASN1_STRUCT, SC_ASN1_CTX | 6 | SC_ASN1_CONS, 0, NULL },
-	{ "dataObjects",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 7 | SC_ASN1_CONS, 0, NULL },
-	{ "authObjects",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 8 | SC_ASN1_CONS, 0, NULL },
-	{ NULL }
+	{ "privateKeys",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "publicKeys",		 SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "trustedPublicKeys",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 2 | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "certificates",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 4 | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "trustedCertificates", SC_ASN1_STRUCT, SC_ASN1_CTX | 5 | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "usefulCertificates",  SC_ASN1_STRUCT, SC_ASN1_CTX | 6 | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "dataObjects",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 7 | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "authObjects",	 SC_ASN1_STRUCT, SC_ASN1_CTX | 8 | SC_ASN1_CONS, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-static const int odf_indexes[] = {
+static const unsigned int odf_indexes[] = {
 	SC_PKCS15_PRKDF,
 	SC_PKCS15_PUKDF,
 	SC_PKCS15_PUKDF_TRUSTED,
@@ -257,8 +285,8 @@ static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 	int r, i;
 	sc_path_t path;
 	struct sc_asn1_entry asn1_obj_or_path[] = {
-		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path },
-		{ NULL }
+		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	struct sc_asn1_entry asn1_odf[9];
 	
@@ -284,8 +312,8 @@ int sc_pkcs15_encode_odf(sc_context_t *ctx,
 {
 	sc_path_t path;
 	struct sc_asn1_entry asn1_obj_or_path[] = {
-		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path },
-		{ NULL }
+		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	struct sc_asn1_entry *asn1_paths = NULL;
 	struct sc_asn1_entry *asn1_odf = NULL;
@@ -353,7 +381,9 @@ struct sc_pkcs15_card * sc_pkcs15_card_new()
 
 void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 {
-	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
+	if (p15card == NULL)
+		return;
+	assert(p15card->magic == SC_PKCS15_CARD_MAGIC);
 	while (p15card->obj_list)
 		sc_pkcs15_remove_object(p15card, p15card->obj_list);
 	while (p15card->df_list)
@@ -365,52 +395,60 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 	if (p15card->file_odf != NULL)
 		sc_file_free(p15card->file_odf);
 	p15card->magic = 0;
-	if (p15card->label)
+	if (p15card->label != NULL)
 		free(p15card->label);
-	if (p15card->serial_number)
+	if (p15card->serial_number != NULL)
 		free(p15card->serial_number);
-	if (p15card->manufacturer_id)
+	if (p15card->manufacturer_id != NULL)
 		free(p15card->manufacturer_id);
-	if (p15card->preferred_language)
+	if (p15card->last_update != NULL)
+		free(p15card->last_update);
+	if (p15card->preferred_language != NULL)
 		free(p15card->preferred_language);
 	free(p15card);
 }
 
 void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 {
+	if (p15card == NULL)
+		return;
 	p15card->version = 0;
 	p15card->flags   = 0;
-	while (p15card->obj_list)
+	while (p15card->obj_list != NULL)
 		sc_pkcs15_remove_object(p15card, p15card->obj_list);
 	p15card->obj_list = NULL;
-	while (p15card->df_list)
+	while (p15card->df_list != NULL)
 		sc_pkcs15_remove_df(p15card, p15card->df_list);
 	p15card->df_list = NULL;
-	if (p15card->file_app) {
+	if (p15card->file_app != NULL) {
 		sc_file_free(p15card->file_app);
 		p15card->file_app = NULL;
 	}
-	if (p15card->file_tokeninfo) {
+	if (p15card->file_tokeninfo != NULL) {
 		sc_file_free(p15card->file_tokeninfo);
 		p15card->file_tokeninfo = NULL;
 	}
-	if (p15card->file_odf) {
+	if (p15card->file_odf != NULL) {
 		sc_file_free(p15card->file_odf);
 		p15card->file_odf = NULL;
 	}
-	if (p15card->label) {
+	if (p15card->label != NULL) {
 		free(p15card->label);
 		p15card->label = NULL;
 	}
-	if (p15card->serial_number) {
+	if (p15card->serial_number != NULL) {
 		free(p15card->serial_number);
 		p15card->serial_number = NULL;
 	}
-	if (p15card->manufacturer_id) {
+	if (p15card->manufacturer_id != NULL) {
 		free(p15card->manufacturer_id);
 		p15card->manufacturer_id = NULL;
 	}
-	if (p15card->preferred_language) {
+	if (p15card->last_update != NULL) {
+		free(p15card->last_update);
+		p15card->last_update = NULL;
+	}
+	if (p15card->preferred_language != NULL) {
 		free(p15card->preferred_language);
 		p15card->preferred_language = NULL;
 	}
@@ -642,7 +680,7 @@ int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 
 static int
 __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
-			unsigned int class_mask, int type,
+			unsigned int class_mask, unsigned int type,
 			int (*func)(sc_pkcs15_object_t *, void *),
                         void *func_arg,
 			sc_pkcs15_object_t **ret, size_t ret_size)
@@ -718,8 +756,8 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 	return match_count;
 }
 
-int sc_pkcs15_get_objects(struct sc_pkcs15_card *p15card, int type,
-			  struct sc_pkcs15_object **ret, int ret_size)
+int sc_pkcs15_get_objects(struct sc_pkcs15_card *p15card, unsigned int type,
+			  struct sc_pkcs15_object **ret, size_t ret_size)
 {
 	return sc_pkcs15_get_objects_cond(p15card, type, NULL, NULL, ret, ret_size);
 }
@@ -847,7 +885,7 @@ static int compare_obj_key(struct sc_pkcs15_object *obj, void *arg)
 }
 
 static int find_by_key(struct sc_pkcs15_card *p15card,
-		       int type, struct sc_pkcs15_search_key *sk,
+		       unsigned int type, struct sc_pkcs15_search_key *sk,
 		       struct sc_pkcs15_object **out)
 {
 	int r;
@@ -870,17 +908,17 @@ sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card, sc_pkcs15_search_key_t *sk,
 			ret, ret_size);
 }
 
-int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, int type,
+int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, unsigned int type,
 			       int (* func)(struct sc_pkcs15_object *, void *),
                                void *func_arg,
-			       struct sc_pkcs15_object **ret, int ret_size)
+			       struct sc_pkcs15_object **ret, size_t ret_size)
 {
 	return __sc_pkcs15_search_objects(p15card, 0, type,
 			func, func_arg, ret, ret_size);
 }
 
 int sc_pkcs15_find_object_by_id(sc_pkcs15_card_t *p15card,
-				int type, const sc_pkcs15_id_t *id,
+				unsigned int type, const sc_pkcs15_id_t *id,
 				sc_pkcs15_object_t **out)
 {
 	sc_pkcs15_search_key_t sk;
@@ -1066,7 +1104,7 @@ void sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
 }
 
 int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
-		     int type, const sc_path_t *path,
+		     unsigned int type, const sc_path_t *path,
 		     const sc_file_t *file)
 {
 	struct sc_pkcs15_df *p = p15card->df_list, *newdf;
