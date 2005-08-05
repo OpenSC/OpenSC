@@ -59,7 +59,7 @@ sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
 			SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN |
 			SC_PKCS15_PIN_FLAG_SO_PIN},
-		{0}
+		{0, 0, 0, 0, NULL, NULL, 0}
 	};
 	static const struct {
 		int           id, auth_id;
@@ -70,7 +70,7 @@ sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
 		{1, 4, "DF015331", 0x80, "Signatur-Schlüssel"},
 		{2, 4, "DF015371", 0x82, "Authentifizierungs-Schlüssel"},
 		{3, 3, "DF0153B1", 0x81, "Verschlüsselungs-Schlüssel"},
-		{0}
+		{0, 0, NULL, 0, NULL}
 	};
 	static const struct {
 		int         id;
@@ -87,7 +87,7 @@ sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
 		{3, 0, "DF01C200", "Telesec Verschlüsselungs Zertifikat"},
 		{3, 1, "DF0143B1", "User Verschlüsselungs Zertifikat 1"},
 		{3, 1, "DF0143B2", "User Verschlüsselungs Zertifikat 2"},
-		{0}
+		{0, 0, NULL, NULL}
 	};
 	sc_card_t         *card = p15card->card;
 	sc_context_t      *ctx = p15card->card->ctx;

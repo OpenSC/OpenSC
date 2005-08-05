@@ -134,7 +134,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 		  SC_PKCS15_PIN_FLAG_LOCAL, -1, 0x00,
 		  SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
 #endif
-		{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0} 
+		{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0} 
 	};
 
 	const prdata prkeys[] = {

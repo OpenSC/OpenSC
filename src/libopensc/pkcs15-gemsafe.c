@@ -180,7 +180,7 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 		  8, 4, 8, SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
 		  SC_PKCS15_PIN_FLAG_LOCAL, -1, 0x00,
 		  SC_PKCS15_CO_FLAG_PRIVATE },
-		{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0}
+		{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	};
 
 	const prdata prkeys[] = {
