@@ -60,16 +60,16 @@ const sc_app_info_t * sc_find_pkcs15_app(sc_card_t *card)
 }
 
 static const struct sc_asn1_entry c_asn1_dirrecord[] = {
-	{ "aid",   SC_ASN1_OCTET_STRING, SC_ASN1_APP | 15, 0, NULL },
-	{ "label", SC_ASN1_UTF8STRING,   SC_ASN1_APP | 16, SC_ASN1_OPTIONAL, NULL },
-	{ "path",  SC_ASN1_OCTET_STRING, SC_ASN1_APP | 17, SC_ASN1_OPTIONAL, NULL },
-	{ "ddo",   SC_ASN1_OCTET_STRING, SC_ASN1_APP | 19 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
-	{ NULL }
+	{ "aid",   SC_ASN1_OCTET_STRING, SC_ASN1_APP | 15, 0, NULL, NULL },
+	{ "label", SC_ASN1_UTF8STRING,   SC_ASN1_APP | 16, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "path",  SC_ASN1_OCTET_STRING, SC_ASN1_APP | 17, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "ddo",   SC_ASN1_OCTET_STRING, SC_ASN1_APP | 19 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static const struct sc_asn1_entry c_asn1_dir[] = {
-	{ "dirRecord", SC_ASN1_STRUCT, SC_ASN1_APP | 1 | SC_ASN1_CONS, 0, NULL },
-	{ NULL }
+	{ "dirRecord", SC_ASN1_STRUCT, SC_ASN1_APP | 1 | SC_ASN1_CONS, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,

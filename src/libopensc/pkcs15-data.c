@@ -30,11 +30,10 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <assert.h>
 
 static const struct sc_asn1_entry     c_asn1_data_object[] = {
-        { "dataObject", SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0 },
-        { NULL }
+        { "dataObject", SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL, NULL },
+        { NULL, 0, 0, 0, NULL, NULL }
 };
 
 int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
@@ -46,7 +45,8 @@ int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 	u8 *data = NULL;
 	size_t len;
 	
-	assert(p15card != NULL && info != NULL && data_object_out != NULL);
+	if (p15card == NULL || info == NULL || data_object_out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 
 	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
@@ -66,17 +66,17 @@ int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 }
 
 static const struct sc_asn1_entry c_asn1_data[] = {
-	{ "data", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS },
-	{ NULL }
+	{ "data", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 static const struct sc_asn1_entry c_asn1_com_data_attr[] = {
-	{ "appName", SC_ASN1_UTF8STRING, ASN1_UTF8STRING, SC_ASN1_OPTIONAL },
-	{ "appOID", SC_ASN1_OBJECT, ASN1_OBJECT, SC_ASN1_OPTIONAL },
-	{ NULL }
+	{ "appName", SC_ASN1_UTF8STRING, ASN1_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "appOID", SC_ASN1_OBJECT, ASN1_OBJECT, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 static const struct sc_asn1_entry c_asn1_type_data_attr[] = {
-	{ "path", SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS },
-	{ NULL }
+	{ "path", SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
@@ -156,7 +156,8 @@ int sc_pkcs15_encode_dodf_entry(sc_context_t *ctx,
 
 void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object)
 {
-	assert(data_object != NULL);
+	if (data_object == NULL)
+		return;
 
 	free(data_object->data);
 	free(data_object);

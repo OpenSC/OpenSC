@@ -27,28 +27,28 @@
 #include <stdio.h>
 
 static const struct sc_asn1_entry c_asn1_com_ao_attr[] = {
-	{ "authId",       SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, NULL },
-	{ NULL }
+	{ "authId",       SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 static const struct sc_asn1_entry c_asn1_pin_attr[] = {
-	{ "pinFlags",	  SC_ASN1_BIT_FIELD, ASN1_BIT_STRING, 0, NULL },
-	{ "pinType",      SC_ASN1_ENUMERATED, ASN1_ENUMERATED, 0, NULL },
-	{ "minLength",    SC_ASN1_INTEGER, ASN1_INTEGER, 0, NULL },
-	{ "storedLength", SC_ASN1_INTEGER, ASN1_INTEGER, 0, NULL },
-	{ "maxLength",    SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
-	{ "pinReference", SC_ASN1_INTEGER, SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL },
-	{ "padChar",      SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, NULL },
-	{ "lastPinChange",SC_ASN1_GENERALIZEDTIME, ASN1_GENERALIZEDTIME, SC_ASN1_OPTIONAL, NULL },
-	{ "path",         SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
-	{ NULL }
+	{ "pinFlags",	  SC_ASN1_BIT_FIELD, ASN1_BIT_STRING, 0, NULL, NULL },
+	{ "pinType",      SC_ASN1_ENUMERATED, ASN1_ENUMERATED, 0, NULL, NULL },
+	{ "minLength",    SC_ASN1_INTEGER, ASN1_INTEGER, 0, NULL, NULL },
+	{ "storedLength", SC_ASN1_INTEGER, ASN1_INTEGER, 0, NULL, NULL },
+	{ "maxLength",    SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "pinReference", SC_ASN1_INTEGER, SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "padChar",      SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "lastPinChange",SC_ASN1_GENERALIZEDTIME, ASN1_GENERALIZEDTIME, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "path",         SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 static const struct sc_asn1_entry c_asn1_type_pin_attr[] = {
-	{ "pinAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
-	{ NULL }
+	{ "pinAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 static const struct sc_asn1_entry c_asn1_pin[] = {
-	{ "pin", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
-	{ NULL }
+	{ "pin", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
@@ -157,7 +157,7 @@ int sc_pkcs15_encode_aodf_entry(sc_context_t *ctx,
 
 static int _validate_pin(struct sc_pkcs15_card *p15card,
                          struct sc_pkcs15_pin_info *pin,
-                         const u8 *pincode, size_t pinlen)
+                         size_t pinlen)
 {
 	size_t max_length;
 	assert(p15card != NULL);
@@ -196,7 +196,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	sc_card_t *card;
 	struct sc_pin_cmd_data data;
 
-	if ((r = _validate_pin(p15card, pin, pincode, pinlen)) != SC_SUCCESS)
+	if ((r = _validate_pin(p15card, pin, pinlen)) != SC_SUCCESS)
 		return r;
 
 	card = p15card->card;
@@ -269,9 +269,9 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	struct sc_pin_cmd_data data;
 	
 	/* make sure the pins are in valid range */
-	if ((r = _validate_pin(p15card, pin, oldpin, oldpinlen)) != SC_SUCCESS)
+	if ((r = _validate_pin(p15card, pin, oldpinlen)) != SC_SUCCESS)
 		return r;
-	if ((r = _validate_pin(p15card, pin, newpin, newpinlen)) != SC_SUCCESS)
+	if ((r = _validate_pin(p15card, pin, newpinlen)) != SC_SUCCESS)
 		return r;
 
 	/* pin change with pin pad reader not yet supported */
@@ -355,7 +355,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_pin_info *puk_info = NULL;
 
 	/* make sure the pins are in valid range */
-	if ((r = _validate_pin(p15card, pin, newpin, newpinlen)) != SC_SUCCESS)
+	if ((r = _validate_pin(p15card, pin, newpinlen)) != SC_SUCCESS)
 		return r;
 
 	/* pin change with pin pad reader not yet supported */
@@ -384,7 +384,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	}
 	
 	/* make sure the puk is in valid range */
-	if ((r = _validate_pin(p15card, puk_info, puk, puklen)) != SC_SUCCESS)
+	if ((r = _validate_pin(p15card, puk_info, puklen)) != SC_SUCCESS)
 		return r;
 
 	r = sc_lock(card);
