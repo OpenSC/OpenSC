@@ -38,6 +38,10 @@
 #include <stdarg.h>
 #include <string.h>
 #include <limits.h>
+#include <time.h>
+#ifdef HAVE_GETTIMEOFDAY
+#include <sys/time.h>
+#endif
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
 #endif
@@ -124,7 +128,8 @@ static int	sc_pkcs15init_get_pin_path(sc_pkcs15_card_t *,
 			sc_pkcs15_id_t *, sc_path_t *);
 static int	sc_pkcs15init_qualify_pin(sc_card_t *, const char *,
 	       		unsigned int, sc_pkcs15_pin_info_t *);
-static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *, int);
+static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *,
+			unsigned int);
 static int	sc_pkcs15init_read_info(sc_card_t *card, sc_profile_t *);
 static int	sc_pkcs15init_parse_info(sc_card_t *, const u8 *, size_t, sc_profile_t *);
 static int	sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *,
@@ -346,6 +351,14 @@ sc_pkcs15init_bind(sc_card_t *card, const char *name,
 void
 sc_pkcs15init_unbind(struct sc_profile *profile)
 {
+	int r;
+	struct sc_context *ctx = profile->card->ctx;
+
+	if (profile->dirty != 0 && profile->p15_data != NULL) {
+		r = sc_pkcs15init_update_tokeninfo(profile->p15_data, profile);
+		if (r < 0)
+			sc_error(ctx, "Failed to update TokenInfo: %s\n", sc_strerror(r));
+	}
 	if (profile->dll)
 		scdl_close(profile->dll);
 	sc_profile_free(profile);
@@ -773,6 +786,8 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 		r = sc_pkcs15init_add_object(p15card, profile,
 			       	SC_PKCS15_AODF, pin_obj);
 
+	profile->dirty = 1;
+
 	return r;
 }
 
@@ -1105,6 +1120,8 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 		
 	sc_pkcs15_erase_pubkey(&pubkey_args.key);
 
+	profile->dirty = 1;
+
 	return r;
 }
 
@@ -1224,6 +1241,8 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+
+	profile->dirty = 1;
 
 	return r;
 }
@@ -1390,6 +1409,8 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	if (der_encoded.value)
 		free(der_encoded.value);
 
+	profile->dirty = 1;
+
 	return r;
 }
 
@@ -1468,6 +1489,8 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+
+	profile->dirty = 1;
 
 	return r;
 }
@@ -1548,6 +1571,8 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+
+	profile->dirty = 1;
 
 	return r;
 }
@@ -1876,7 +1901,7 @@ prkey_pkcs15_algo(sc_pkcs15_card_t *p15card, sc_pkcs15_prkey_t *key)
 }
 
 static struct sc_pkcs15_df *
-find_df_by_type(struct sc_pkcs15_card *p15card, int type)
+find_df_by_type(struct sc_pkcs15_card *p15card, unsigned int type)
 {
 	struct sc_pkcs15_df *df = p15card->df_list;
 	
@@ -2067,14 +2092,56 @@ sc_pkcs15init_update_dir(struct sc_pkcs15_card *p15card,
 	return r;
 }
 
-static int
-sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
+static char *get_generalized_time(sc_context_t *ctx)
+{
+#ifdef HAVE_GETTIMEOFDAY
+	struct timeval tv;
+#endif
+	struct tm *tm_time;
+	time_t t;
+	char*  ret;
+	size_t r;
+
+#ifdef HAVE_GETTIMEOFDAY
+	gettimeofday(&tv, NULL);
+	t = tv.tv_sec;
+#else
+	t = time(NULL);
+#endif
+	tm_time = gmtime(&t);
+	if (tm_time == NULL) {
+		sc_error(ctx, "error: gmtime failed\n");
+		return NULL;
+	}
+
+	ret = calloc(1, 16);
+	if (ret == NULL) {
+		sc_error(ctx, "error: calloc failed\n");
+		return NULL;
+	}
+	/* print time in generalized time format */
+	r = strftime(ret, 16, "%Y%m%d%H%M%SZ", tm_time);
+	if (r == 0) {
+		sc_error(ctx, "error: strftime failed\n");
+		free(ret);
+		return NULL;
+	}
+
+	return ret;
+}
+
+static int sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile)
 {
 	struct sc_card	*card = p15card->card;
 	u8		*buf = NULL;
 	size_t		size;
 	int		r;
+
+	/* set lastUpdate field */
+	p15card->last_update = get_generalized_time(card->ctx);
+	if (p15card->last_update == NULL)
+		return SC_ERROR_INTERNAL;
 
 	r = sc_pkcs15_encode_tokeninfo(card->ctx, p15card, &buf, &size);
 	if (r >= 0)

@@ -75,7 +75,7 @@ static u8 get_so_ac(const sc_file_t *file, unsigned int op,
 
 static int starcos_init_card(sc_profile_t *profile, sc_card_t *card)
 {
-	const static u8 key[]  = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
+	static const u8 key[]  = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
 	int		ret;
 	sc_starcos_create_data  mf_data, ipf_data;
 	sc_file_t	*mf_file, *isf_file, *ipf_file;

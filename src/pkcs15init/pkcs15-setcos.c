@@ -380,7 +380,8 @@ setcos_generate_store_key(sc_profile_t *profile, sc_card_t *card,
 	struct sc_cardctl_setcos_gen_store_key_info args;
 	struct sc_cardctl_setcos_data_obj data_obj;
 	unsigned char raw_pubkey[256];
-	int           r, mod_len;
+	int           r;
+	unsigned int  mod_len;
 	sc_file_t    *prkf = NULL;
 
 	/* Parameter check */

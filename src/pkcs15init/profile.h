@@ -115,6 +115,10 @@ struct sc_profile {
 	/* PKCS15 information */
 	sc_pkcs15_card_t *	p15_spec; /* as given by profile */
 	sc_pkcs15_card_t *	p15_data; /* as found on card */
+	/* flag to indicate whether the TokenInfo::lastUpdate field
+	 * needs to be updated (in other words: if the card content
+	 * has been changed) */
+	int			dirty;
 };
 
 struct sc_profile *sc_profile_new(void);

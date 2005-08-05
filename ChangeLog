@@ -4,6 +4,10 @@ Changes between 0.9.6 and 0.9.7 [XX xxx XXXX]
     the generalizedTime variant). Change pkcs15 cache
     functions to use the lastUpdate field (if present) and
     the card serial number to identify cached files.
+    Add 'dirty' flag to 'struct sc_profile' to indicate if
+    the TokenUpdate::lastUpdate needs to be updated. If set
+    sc_pkcs15init_update_tokeninfo will be called in
+    sc_pkcs15init_unbind to update the lastUpdate field.
     [Nils Larsch]
 
  *) add support (card driver and PKCS#15 emulation) for the
