@@ -27,9 +27,12 @@
 #endif
 #include <string.h>
 
-int sc_check_sw(sc_card_t *card, int sw1, int sw2)
+int sc_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
-	assert(card->ops->check_sw != NULL);
+	if (card == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (card->ops->check_sw == NULL)
+		return SC_ERROR_NOT_SUPPORTED;
 	return card->ops->check_sw(card, sw1, sw2);
 }
 

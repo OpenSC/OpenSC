@@ -76,7 +76,7 @@ static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,  "Application exists"},
 };
 
-static int iso7816_check_sw(sc_card_t *card, int sw1, int sw2)
+static int iso7816_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
 	const int err_count = sizeof(iso7816_errors)/sizeof(iso7816_errors[0]);
 	int i;
@@ -88,7 +88,7 @@ static int iso7816_check_sw(sc_card_t *card, int sw1, int sw2)
 	}
 	if (sw1 == 0x90)
 		return SC_NO_ERROR;
-        if (sw1 == 0x63 && (sw2 & ~0x0f) == 0xc0 ) {
+        if (sw1 == 0x63U && (sw2 & ~0x0fU) == 0xc0U ) {
              sc_error(card->ctx, "Verification failed (remaining tries: %d)\n",
                    (sw2 & 0x0f));
              return SC_ERROR_PIN_CODE_INCORRECT;

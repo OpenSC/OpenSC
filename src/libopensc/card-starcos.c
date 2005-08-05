@@ -529,8 +529,9 @@ static int starcos_select_file(sc_card_t *card,
 #define STARCOS_AC_NEVER	0x5f
 #define STARCOS_PINID2STATE(a)	((((a) & 0x0f) == 0x01) ? ((a) & 0x0f) : (0x0f - ((0x0f & (a)) >> 1)))
 
-static u8 process_acl_entry(sc_file_t *in, unsigned int method, u8 def)
+static u8 process_acl_entry(sc_file_t *in, unsigned int method, unsigned int in_def)
 {
+	u8 def = (u8)in_def;
 	const sc_acl_entry_t *entry = sc_file_get_acl_entry(in, method);
 	if (!entry)
 		return def;
@@ -1249,7 +1250,7 @@ static int starcos_compute_signature(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static int starcos_check_sw(sc_card_t *card, int sw1, int sw2)
+static int starcos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
 	const int err_count = sizeof(starcos_errors)/sizeof(starcos_errors[0]);
 	int i;
@@ -1259,7 +1260,7 @@ static int starcos_check_sw(sc_card_t *card, int sw1, int sw2)
   
 	if (sw1 == 0x90)
 		return SC_NO_ERROR;
-	if (sw1 == 0x63 && (sw2 & ~0x0f) == 0xc0 )
+	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
 	{
 		sc_error(card->ctx, "Verification failed (remaining tries: %d)\n",
 		(sw2 & 0x0f));

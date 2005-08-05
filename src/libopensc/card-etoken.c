@@ -154,7 +154,7 @@ static const struct sc_card_error etoken_errors[] = {
 { 0x9850, SC_NO_ERROR,		"over/underflow useing in/decrease"}
 };
 
-static int etoken_check_sw(sc_card_t *card, int sw1, int sw2)
+static int etoken_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
 	const int err_count = sizeof(etoken_errors)/sizeof(etoken_errors[0]);
 	int i;

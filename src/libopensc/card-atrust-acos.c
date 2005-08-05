@@ -797,7 +797,8 @@ static int atrust_acos_decipher(struct sc_card *card,
 
 /*****************************************************************************/
 
-static int atrust_acos_check_sw(struct sc_card *card, int sw1, int sw2)
+static int atrust_acos_check_sw(struct sc_card *card, unsigned int sw1,
+	unsigned int sw2)
 {
 
 	if (card->ctx->debug >= 3)
@@ -805,7 +806,7 @@ static int atrust_acos_check_sw(struct sc_card *card, int sw1, int sw2)
   
 	if (sw1 == 0x90)
 		return SC_NO_ERROR;
-	if (sw1 == 0x63 && (sw2 & ~0x0f) == 0xc0 )
+	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
 	{
 		sc_error(card->ctx, "Verification failed (remaining tries: %d)\n",
 		(sw2 & 0x0f));

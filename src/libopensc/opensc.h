@@ -599,7 +599,7 @@ struct sc_card_operations {
 	 *   the number of bytes stored. */
 	int (*list_files)(struct sc_card *card, u8 *buf, size_t buflen);
 
-	int (*check_sw)(struct sc_card *card, int sw1, int sw2);
+	int (*check_sw)(struct sc_card *card,unsigned int sw1,unsigned int sw2);
 	int (*card_ctl)(struct sc_card *card, unsigned long request,
 				void *data);
 	int (*process_fci)(struct sc_card *card, struct sc_file *file,
@@ -884,7 +884,7 @@ const sc_app_info_t * sc_find_app_by_aid(sc_card_t *card,
 int sc_update_dir(sc_card_t *card, sc_app_info_t *app);
 
 struct sc_card_error {
-	int SWs;
+	unsigned int SWs;
 	int errorno;
 	const char *errorstr;
 };
