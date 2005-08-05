@@ -315,7 +315,10 @@ const u8 *sc_asn1_find_tag(sc_context_t *ctx, const u8 * buf,
 		buf = p;
 		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != 1)
 			return NULL;
-		assert(left >= (size_t)(p - buf)); /* should not happen */
+		if (left < (size_t)(p - buf)) {
+			sc_error(ctx, "invalid TLV object\n");
+			return NULL;
+		}
 		left -= (p - buf);
 		if ((tag | cla) == tag_in) {
 			if (taglen > left)
@@ -323,7 +326,10 @@ const u8 *sc_asn1_find_tag(sc_context_t *ctx, const u8 * buf,
 			*taglen_in = taglen;
 			return p;
 		}
-		assert(left >= taglen); /* should not happen */
+		if (left < taglen) {
+			sc_error(ctx, "invalid TLV object\n");
+			return NULL;
+		}
 		left -= taglen;
 		p += taglen;
 	}
@@ -564,11 +570,11 @@ int sc_asn1_decode_object_id(const u8 * inbuf, size_t inlen,
 {
 	int i, a;
 	const u8 *p = inbuf;
-	int *octet = id->value;
+	int *octet;
 	
-	assert(id != NULL);
-	if (inlen < 1)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
+	if (inlen == 0 || inbuf == NULL || id == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	octet = id->value;
 	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS; i++)
 		id->value[i] = -1;
 	a = *p;
@@ -720,10 +726,10 @@ static int asn1_write_element(sc_context_t *ctx, unsigned int tag,
 }
 
 static const struct sc_asn1_entry c_asn1_path[4] = {
-	{ "path",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL },
-	{ "index",  SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
-	{ "length", SC_ASN1_INTEGER, SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL },
-	{ NULL }
+	{ "path",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL, NULL },
+	{ "index",  SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "length", SC_ASN1_INTEGER, SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static int asn1_decode_path(sc_context_t *ctx, const u8 *in, size_t len,
@@ -773,20 +779,20 @@ static int asn1_encode_path(sc_context_t *ctx, const sc_path_t *path,
 }
 
 static const struct sc_asn1_entry c_asn1_com_obj_attr[6] = {
-	{ "label", SC_ASN1_UTF8STRING, ASN1_UTF8STRING, SC_ASN1_OPTIONAL, NULL },
-	{ "flags", SC_ASN1_BIT_FIELD, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, NULL },
-	{ "authId", SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, NULL },
-	{ "userConsent", SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL },
-	{ "accessControlRules", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
-	{ NULL }
+	{ "label", SC_ASN1_UTF8STRING, ASN1_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "flags", SC_ASN1_BIT_FIELD, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "authId", SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "userConsent", SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "accessControlRules", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static const struct sc_asn1_entry c_asn1_p15_obj[5] = {
-	{ "commonObjectAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
-	{ "classAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL },
-	{ "subClassAttributes", SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL },
-	{ "typeAttributes", SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, 0, NULL },
-	{ NULL }
+	{ "commonObjectAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "classAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "subClassAttributes", SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "typeAttributes", SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static int asn1_decode_p15_object(sc_context_t *ctx, const u8 *in,
@@ -943,8 +949,6 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 		}
 		break;
 	case SC_ASN1_GENERALIZEDTIME:
-		/* FIXME: we should parse the string and convert it
-		   into a standard ISO time string. */
 		if (parm != NULL) {
 			size_t c;
 			assert(len != NULL);
@@ -1011,7 +1015,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 		break;
 	default:
 		sc_error(ctx, "invalid ASN.1 type: %d\n", entry->type);
-		assert(0);
+		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	if (r) {
 		sc_error(ctx, "decoding of ASN.1 object '%s' failed: %s\n", entry->name,
@@ -1175,7 +1179,11 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		return asn1_encode_entry(ctx, choice, obj, objlen, depth + 1);
 	}
 
-	assert(entry->type == SC_ASN1_NULL || parm != NULL);
+	if (entry->type != SC_ASN1_NULL && parm == NULL) {
+		sc_error(ctx, "unexpected parm == NULL\n");
+		return SC_ERROR_INVALID_ASN1_OBJECT;
+	}
+
 	switch (entry->type) {
 	case SC_ASN1_STRUCT:
 		r = asn1_encode(ctx, (const struct sc_asn1_entry *) parm, &buf,
@@ -1228,15 +1236,24 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		memcpy(buf + buflen, parm, *len);
 		buflen += *len;
 		break;
+	case SC_ASN1_GENERALIZEDTIME:
+		assert(len != NULL);
+		buf = (u8 *) malloc(*len);
+		if (buf == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			break;
+		}
+		memcpy(buf, parm, *len);
+		buflen = *len;
+		break;
 	case SC_ASN1_OBJECT:
-		if (parm != NULL)
-			r = sc_asn1_encode_object_id(&buf, &buflen, (struct sc_object_id *) parm);
+		r = sc_asn1_encode_object_id(&buf, &buflen, (struct sc_object_id *) parm);
 		break;
 	case SC_ASN1_PATH:
 		r = asn1_encode_path(ctx, (const sc_path_t *) parm, &buf, &buflen, depth);
 		break;
 	case SC_ASN1_PKCS15_ID:
-		if (entry->parm != NULL) {
+		{
 			const struct sc_pkcs15_id *id = (const struct sc_pkcs15_id *) parm;
 
 			buf = (u8 *) malloc(id->len);
@@ -1259,7 +1276,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		break;
 	default:
 		sc_error(ctx, "invalid ASN.1 type: %d\n", entry->type);
-		assert(0);
+		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	if (r) {
 		sc_error(ctx, "encoding of ASN.1 object '%s' failed: %s\n", entry->name,
