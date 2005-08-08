@@ -222,7 +222,7 @@ static int read_transp(sc_card_t *card, const char *pathstring, unsigned char *b
 
 /* Hex-encode the buf, 2*len+1 bytes must be reserved. E.g. {'1','2'} -> {'3','1','3','2','\0'} */
 const static char hextable[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'E'};
-static char bintohex(char *buf, int len)
+static void bintohex(char *buf, int len)
 {
 	int i;
 	for (i = len - 1; i >= 0; i--) {
@@ -249,68 +249,73 @@ static void exportprint(const char *key, const char *val)
 static void do_belpic(sc_card_t *card)
 {
 	/* Contents of the ID file (3F00\DF01\4031) */
-	char cardnumber[12 + 1];
-	int cardnumberlen = sizeof(cardnumber);
-	char chipnumber[2 * 16 + 1];
-	int chipnumberlen = sizeof(chipnumber);
-	char validfrom[10 + 1];
-	int validfromlen = sizeof(validfrom);
-	char validtill[10 + 1];
-	int validtilllen = sizeof(validtill);
-	char deliveringmunicipality[50 + 1];  /* UTF8 */
-	int deliveringmunicipalitylen = sizeof(deliveringmunicipality);
-	char nationalnumber[12 + 1];
-	int nationalnumberlen = sizeof(nationalnumber);
-	char name[90 + 1]; /* UTF8 */
-	int namelen = sizeof(name);
-	char firstnames[75 + 1]; /* UTF8 */
-	int firstnameslen = sizeof(firstnames);
-	char initial[3 + 1]; /* UTF8 */
-	int initiallen = sizeof(initial);
-	char nationality[65 + 1]; /* UTF8 */
-	int nationalitylen = sizeof(nationality);
-	char birthlocation[60 + 1]; /* UTF8 */
-	int birthlocationlen = sizeof(birthlocation);
-	char birthdate[12 + 1];
-	int birthdatelen = sizeof(birthdate);
-	char sex[1 + 1];
-	int sexlen = sizeof(sex);
-	char noblecondition[30 + 1]; /* UTF8 */
-	int nobleconditionlen = sizeof(noblecondition);
-	char documenttype[5 + 1];
-	int documenttypelen = sizeof(documenttype);
-	char specialstatus[5 + 1];
-	int specialstatuslen = sizeof(specialstatus);
+	struct {
+		char cardnumber[12 + 1];
+		char chipnumber[2 * 16 + 1];
+		char validfrom[10 + 1];
+		char validtill[10 + 1];
+		char deliveringmunicipality[50 + 1];  /* UTF8 */
+		char nationalnumber[12 + 1];
+		char name[90 + 1]; /* UTF8 */
+		char firstnames[75 + 1]; /* UTF8 */
+		char initial[3 + 1]; /* UTF8 */
+		char nationality[65 + 1]; /* UTF8 */
+		char birthlocation[60 + 1]; /* UTF8 */
+		char birthdate[12 + 1];
+		char sex[1 + 1];
+		char noblecondition[30 + 1]; /* UTF8 */
+		char documenttype[5 + 1];
+		char specialstatus[5 + 1];
+	} id_data;
+	int cardnumberlen = sizeof(id_data.cardnumber);
+	int chipnumberlen = sizeof(id_data.chipnumber);
+	int validfromlen = sizeof(id_data.validfrom);
+	int validtilllen = sizeof(id_data.validtill);
+	int deliveringmunicipalitylen = sizeof(id_data.deliveringmunicipality);
+	int nationalnumberlen = sizeof(id_data.nationalnumber);
+	int namelen = sizeof(id_data.name);
+	int firstnameslen = sizeof(id_data.firstnames);
+	int initiallen = sizeof(id_data.initial);
+	int nationalitylen = sizeof(id_data.nationality);
+	int birthlocationlen = sizeof(id_data.birthlocation);
+	int birthdatelen = sizeof(id_data.birthdate);
+	int sexlen = sizeof(id_data.sex);
+	int nobleconditionlen = sizeof(id_data.noblecondition);
+	int documenttypelen = sizeof(id_data.documenttype);
+	int specialstatuslen = sizeof(id_data.specialstatus);
+
 	struct sc_asn1_entry id[] = {
-		{"cardnumber", SC_ASN1_UTF8STRING, 1, 0, cardnumber, &cardnumberlen},
-		{"chipnumber", SC_ASN1_OCTET_STRING, 2, 0, chipnumber, &chipnumberlen},
-		{"validfrom", SC_ASN1_UTF8STRING, 3, 0, validfrom, &validfromlen},
-		{"validtill", SC_ASN1_UTF8STRING, 4, 0, validtill, &validtilllen},
-		{"deliveringmunicipality", SC_ASN1_UTF8STRING, 5, 0, deliveringmunicipality, &deliveringmunicipalitylen},
-		{"nationalnumber", SC_ASN1_UTF8STRING, 6, 0, nationalnumber, &nationalnumberlen},
-		{"name", SC_ASN1_UTF8STRING, 7, 0, name, &namelen},
-		{"firstname(s)", SC_ASN1_UTF8STRING, 8, 0, firstnames, &firstnameslen},
-		{"initial", SC_ASN1_UTF8STRING, 9, 0, initial, &initiallen},
-		{"nationality", SC_ASN1_UTF8STRING, 10, 0, nationality, &nationalitylen},
-		{"birthlocation", SC_ASN1_UTF8STRING, 11, 0, birthlocation, &birthlocationlen},
-		{"birthdate", SC_ASN1_UTF8STRING, 12, 0, birthdate, &birthdatelen},
-		{"sex", SC_ASN1_UTF8STRING, 13, 0, sex, &sexlen},
-		{"noblecondition", SC_ASN1_UTF8STRING, 14, 0, noblecondition, &nobleconditionlen},
-		{"documenttype", SC_ASN1_UTF8STRING, 15, 0, documenttype, &documenttypelen},
-		{"specialstatus", SC_ASN1_UTF8STRING, 16, 0, specialstatus, &specialstatuslen},
+		{"cardnumber", SC_ASN1_UTF8STRING, 1, 0, id_data.cardnumber, &cardnumberlen},
+		{"chipnumber", SC_ASN1_OCTET_STRING, 2, 0, id_data.chipnumber, &chipnumberlen},
+		{"validfrom", SC_ASN1_UTF8STRING, 3, 0, id_data.validfrom, &validfromlen},
+		{"validtill", SC_ASN1_UTF8STRING, 4, 0, id_data.validtill, &validtilllen},
+		{"deliveringmunicipality", SC_ASN1_UTF8STRING, 5, 0, id_data.deliveringmunicipality, &deliveringmunicipalitylen},
+		{"nationalnumber", SC_ASN1_UTF8STRING, 6, 0, id_data.nationalnumber, &nationalnumberlen},
+		{"name", SC_ASN1_UTF8STRING, 7, 0, id_data.name, &namelen},
+		{"firstname(s)", SC_ASN1_UTF8STRING, 8, 0, id_data.firstnames, &firstnameslen},
+		{"initial", SC_ASN1_UTF8STRING, 9, 0, id_data.initial, &initiallen},
+		{"nationality", SC_ASN1_UTF8STRING, 10, 0, id_data.nationality, &nationalitylen},
+		{"birthlocation", SC_ASN1_UTF8STRING, 11, 0, id_data.birthlocation, &birthlocationlen},
+		{"birthdate", SC_ASN1_UTF8STRING, 12, 0, id_data.birthdate, &birthdatelen},
+		{"sex", SC_ASN1_UTF8STRING, 13, 0, id_data.sex, &sexlen},
+		{"noblecondition", SC_ASN1_UTF8STRING, 14, 0, id_data.noblecondition, &nobleconditionlen},
+		{"documenttype", SC_ASN1_UTF8STRING, 15, 0, id_data.documenttype, &documenttypelen},
+		{"specialstatus", SC_ASN1_UTF8STRING, 16, 0, id_data.specialstatus, &specialstatuslen},
 		NULL};
 
 	/* Contents of the Address file (3F00\DF01\4033) */
-	char streetandnumber[63 + 1]; /* UTF8 */
-	int streetandnumberlen = sizeof(streetandnumber);
-	char zipcode[4 + 1];
-	int zipcodelen = sizeof(zipcode);
-	char municipality[40 + 1]; /* UTF8 */
-	int municipalitylen = sizeof(municipality);
+	struct {
+		char streetandnumber[63 + 1]; /* UTF8 */
+		char zipcode[4 + 1];
+		char municipality[40 + 1]; /* UTF8 */
+	} address_data;
+	int streetandnumberlen = sizeof(address_data.streetandnumber);
+	int zipcodelen = sizeof(address_data.zipcode);
+	int municipalitylen = sizeof(address_data.municipality);
 	struct sc_asn1_entry address[] = {
-		{"streetandnumber", SC_ASN1_UTF8STRING, 1, 0, streetandnumber, &streetandnumberlen},
-		{"zipcode", SC_ASN1_UTF8STRING, 2, 0, zipcode, &zipcodelen},
-		{"municipal", SC_ASN1_UTF8STRING, 3, 0, municipality, &municipalitylen},
+		{"streetandnumber", SC_ASN1_UTF8STRING, 1, 0, address_data.streetandnumber, &streetandnumberlen},
+		{"zipcode", SC_ASN1_UTF8STRING, 2, 0, address_data.zipcode, &zipcodelen},
+		{"municipal", SC_ASN1_UTF8STRING, 3, 0, address_data.municipality, &municipalitylen},
 		NULL};
 
 	char buff[512];
@@ -320,22 +325,7 @@ static void do_belpic(sc_card_t *card)
 	if (r < 0)
 		goto out;
 
-	memset(cardnumber, '\0', sizeof(cardnumber));
-	memset(chipnumber, '\0', sizeof(chipnumber));
-	memset(validfrom, '\0', sizeof(validfrom));
-	memset(validtill, '\0', sizeof(validtill));
-	memset(deliveringmunicipality, '\0', sizeof(deliveringmunicipality));
-	memset(nationalnumber, '\0', sizeof(nationalnumber));
-	memset(name, '\0', sizeof(name));
-	memset(firstnames, '\0', sizeof(firstnames));
-	memset(initial, '\0', sizeof(initial));
-	memset(nationality, '\0', sizeof(nationality));
-	memset(birthlocation, '\0', sizeof(birthlocation));
-	memset(birthdate, '\0', sizeof(birthdate));
-	memset(sex, '\0', sizeof(sexlen));
-	memset(noblecondition, '\0', sizeof(noblecondition));
-	memset(documenttype, '\0', sizeof(documenttype));
-	memset(specialstatus, '\0', sizeof(specialstatus));
+	memset(&id_data, 0, sizeof(id_data));
 
 	r = sc_asn1_decode(card->ctx, id, buff, r, NULL, NULL);
 	if (r < 0) {
@@ -343,31 +333,29 @@ static void do_belpic(sc_card_t *card)
 		goto out;
 	}
 
-	exportprint("BELPIC_CARDNUMBER", cardnumber);
-	bintohex(chipnumber, chipnumberlen);
-	exportprint("BELPIC_CHIPNUMBER", chipnumber);
-	exportprint("BELPIC_VALIDFROM", validfrom);
-	exportprint("BELPIC_VALIDTILL", validtill);
-	exportprint("BELPIC_DELIVERINGMUNICIPALITY", deliveringmunicipality);
-	exportprint("BELPIC_NATIONALNUMBER", nationalnumber);
-	exportprint("BELPIC_NAME", name);
-	exportprint("BELPIC_FIRSTNAMES", firstnames);
-	exportprint("BELPIC_INITIAL", initial);
-	exportprint("BELPIC_NATIONALITY", nationality);
-	exportprint("BELPIC_BIRTHLOCATION", birthlocation);
-	exportprint("BELPIC_BIRTHDATE", birthdate);
-	exportprint("BELPIC_SEX", sex);
-	exportprint("BELPIC_NOBLECONDITION", noblecondition);
-	exportprint("BELPIC_DOCUMENTTYPE", documenttype);
-	exportprint("BELPIC_SPECIALSTATUS", specialstatus);
+	exportprint("BELPIC_CARDNUMBER", id_data.cardnumber);
+	bintohex(id_data.chipnumber, chipnumberlen);
+	exportprint("BELPIC_CHIPNUMBER", id_data.chipnumber);
+	exportprint("BELPIC_VALIDFROM", id_data.validfrom);
+	exportprint("BELPIC_VALIDTILL", id_data.validtill);
+	exportprint("BELPIC_DELIVERINGMUNICIPALITY", id_data.deliveringmunicipality);
+	exportprint("BELPIC_NATIONALNUMBER", id_data.nationalnumber);
+	exportprint("BELPIC_NAME", id_data.name);
+	exportprint("BELPIC_FIRSTNAMES", id_data.firstnames);
+	exportprint("BELPIC_INITIAL", id_data.initial);
+	exportprint("BELPIC_NATIONALITY", id_data.nationality);
+	exportprint("BELPIC_BIRTHLOCATION", id_data.birthlocation);
+	exportprint("BELPIC_BIRTHDATE", id_data.birthdate);
+	exportprint("BELPIC_SEX", id_data.sex);
+	exportprint("BELPIC_NOBLECONDITION", id_data.noblecondition);
+	exportprint("BELPIC_DOCUMENTTYPE", id_data.documenttype);
+	exportprint("BELPIC_SPECIALSTATUS", id_data.specialstatus);
 
 	r = read_transp(card, "3f00df014033", buff, sizeof(buff));
 	if (r < 0)
 		goto out;
 
-	memset(streetandnumber, '\0', sizeof(streetandnumber));
-	memset(zipcode, '\0', sizeof(zipcode));
-	memset(municipality, '\0', sizeof(municipality));
+	memset(&address_data, 0, sizeof(address_data));
 
 	r = sc_asn1_decode(card->ctx, address, buff, r, NULL, NULL);
 	if (r < 0) {
@@ -375,9 +363,9 @@ static void do_belpic(sc_card_t *card)
 		goto out;
 	}
 
-	exportprint("BELPIC_STREETANDNUMBER", streetandnumber);
-	exportprint("BELPIC_ZIPCODE", zipcode);
-	exportprint("BELPIC_MUNICIPALITY", municipality);
+	exportprint("BELPIC_STREETANDNUMBER", address_data.streetandnumber);
+	exportprint("BELPIC_ZIPCODE", address_data.zipcode);
+	exportprint("BELPIC_MUNICIPALITY", address_data.municipality);
 
 out:
 	return;
