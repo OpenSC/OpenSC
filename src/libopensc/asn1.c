@@ -654,13 +654,13 @@ static int sc_asn1_decode_utf8string(const u8 *inbuf, size_t inlen,
 	return 0;
 }
 
-int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen, u8 **ptr)
+int sc_asn1_put_tag(int tag, const u8 * data, size_t datalen, u8 * out, size_t outlen, u8 **ptr)
 {
 	u8 *p = out;
 
 	if (outlen < 2)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (datalen < 0 || datalen > 127)
+	if (datalen > 127)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	*p++ = tag & 0xFF;	/* FIXME: Support longer tags */
 	outlen--;
@@ -669,7 +669,7 @@ int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen,
 	if (outlen < datalen)
 		return SC_ERROR_INVALID_ARGUMENTS;
 		
-	memcpy(p, data, (size_t)datalen);
+	memcpy(p, data, datalen);
 	p += datalen;
 	if (ptr != NULL)
 		*ptr = p;

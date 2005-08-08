@@ -68,8 +68,8 @@ static int sc_pkcs15emu_postecert_init(sc_pkcs15_card_t * p15card)
 	int count_cert[4];
 	int flags;
 	int authority;
-	int count;
-	int i, r;
+	size_t i, count;
+	int r;
 	int o = 0;
 
 	const char *label = "User Non-repudiation Certificate";
@@ -101,6 +101,8 @@ static int sc_pkcs15emu_postecert_init(sc_pkcs15_card_t * p15card)
 
 	/* Now set the certificate offset/len */
 	count = (certlen[0] << 8) + certlen[1];
+	if (count < 256)
+		return SC_ERROR_INTERNAL;
 
 	certi = (unsigned char *) malloc(count);
 

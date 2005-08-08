@@ -60,7 +60,7 @@ static struct {
 	{ "gemsafe",	sc_pkcs15emu_gemsafe_init_ex	},
 	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
-	{ NULL }
+	{ NULL, 0 }
 };
 
 static int parse_emu_block(sc_pkcs15_card_t *, scconf_block *);

@@ -83,7 +83,7 @@ const u8 *sc_asn1_skip_tag(struct sc_context *ctx, const u8 ** buf,
 
 /* Argument 'ptr' is set to the location of the next possible ASN.1 object.
  * If NULL, no action on 'ptr' is performed. */
-int sc_asn1_put_tag(int tag, const u8 * data, int datalen, u8 * out, int outlen, u8 ** ptr);
+int sc_asn1_put_tag(int tag, const u8 * data, size_t datalen, u8 * out, size_t outlen, u8 ** ptr);
 
 /* ASN.1 printing functions */
 void sc_asn1_print_tags(const u8 * buf, size_t buflen);

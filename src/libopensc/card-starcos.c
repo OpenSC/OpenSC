@@ -78,7 +78,7 @@ static int starcos_match_card(sc_card_t *card)
 
 static int starcos_init(sc_card_t *card)
 {
-	int flags;
+	unsigned int flags;
 	starcos_ex_data *ex_data;
 
 	ex_data = (starcos_ex_data *) malloc(sizeof(starcos_ex_data));
@@ -264,11 +264,11 @@ static int starcos_select_aid(sc_card_t *card,
 }
 
 static int starcos_select_fid(sc_card_t *card,
-			      u8 id_hi, u8 id_lo,
+			      unsigned int id_hi, unsigned int id_lo,
 			      sc_file_t **file_out)
 {
 	sc_apdu_t apdu;
-	u8 data[] = {id_hi, id_lo};
+	u8 data[] = {id_hi & 0xff, id_lo & 0xff};
 	u8 resp[SC_MAX_APDU_BUFFER_SIZE];
 	int bIsDF = 0, r;
 
@@ -1235,7 +1235,7 @@ static int starcos_compute_signature(sc_card_t *card,
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-			int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 			memcpy(out, apdu.resp, len);
 			SC_FUNC_RETURN(card->ctx, 4, len);

@@ -99,7 +99,7 @@ static int tcos_construct_fci(const sc_file_t *file,
 {
 	u8 *p = out;
 	u8 buf[64];
-        int n;
+        size_t n;
 
         /* FIXME: possible buffer overflow */
 
@@ -213,9 +213,9 @@ static int tcos_create_file(sc_card_t *card, sc_file_t *file)
 
 
 
-static int map_operations (int commandbyte )
+static unsigned int map_operations (int commandbyte )
 {
-  int op = -1;
+  unsigned int op = (unsigned int)-1;
 
   switch ( (commandbyte & 0xfe) )
     {
@@ -253,7 +253,7 @@ static int map_operations (int commandbyte )
 static void parse_sec_attr(sc_card_t *card,
                            sc_file_t *file, const u8 *buf, size_t len)
 {
-        int op;
+        unsigned int op;
         
         /* list directory is not covered by ACLs - so always add an entry */
         sc_file_add_acl_entry (file, SC_AC_OP_LIST_FILES,
@@ -288,7 +288,7 @@ static void parse_sec_attr(sc_card_t *card,
                            because this one distinguish between AND/OR
                            combination of PINs*/
                         op = map_operations (buf[0]);
-                        if (op == -1)
+                        if (op == (unsigned int)-1)
                         {
                                 sc_debug (card->ctx,
                                        "Unknown security command byte %02x\n",
@@ -730,7 +730,7 @@ static int tcos_decipher(sc_card_t *card,
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
 		SC_FUNC_RETURN(card->ctx, 2, len);

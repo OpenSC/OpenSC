@@ -49,7 +49,8 @@ static int starcos_erase_card(struct sc_profile *pro, sc_card_t *card)
 }
 
 static u8 get_so_ac(const sc_file_t *file, unsigned int op,
-	const sc_pkcs15_pin_info_t *pin, u8 def, u8 need_global)
+	const sc_pkcs15_pin_info_t *pin, unsigned int def,
+	unsigned int need_global)
 {
 	int is_global = 1;
 	const sc_acl_entry_t *acl;
@@ -57,7 +58,7 @@ static u8 get_so_ac(const sc_file_t *file, unsigned int op,
 	if (pin->flags & SC_PKCS15_PIN_FLAG_LOCAL)
 		is_global = 0;
 	if (!is_global && need_global)
-		return def;
+		return def & 0xff;
 	acl = sc_file_get_acl_entry(file, op);
 	if (acl->method == SC_AC_NONE)
 		return STARCOS_AC_ALWAYS;
@@ -586,7 +587,7 @@ static size_t starcos_ipf_get_lastpos(u8 *ipf, size_t ipf_len)
 		/* get offset to the next key header */
 		tmp = 12 + (p[1] << 8) + p[2];
 		if (tmp + offset > ipf_len)
-			return SC_ERROR_INTERNAL;
+			return 0;
 		p += tmp;
 	}
 

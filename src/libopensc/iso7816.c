@@ -477,7 +477,7 @@ static int iso7816_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	apdu.resplen = 8;	/* include SW's */
 
 	while (len > 0) {
-		int n = len > 8 ? 8 : len;
+		size_t n = len > 8 ? 8 : len;
 		
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -744,7 +744,7 @@ static int iso7816_compute_signature(sc_card_t *card,
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
 		SC_FUNC_RETURN(card->ctx, 4, len);
@@ -783,7 +783,7 @@ static int iso7816_decipher(sc_card_t *card,
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
 		SC_FUNC_RETURN(card->ctx, 2, len);

@@ -82,7 +82,7 @@ static int atrust_acos_match_card(struct sc_card *card)
 
 static int atrust_acos_init(struct sc_card *card)
 {
-	int flags;
+	unsigned int flags;
 	atrust_acos_ex_data *ex_data;
 
 	ex_data = (atrust_acos_ex_data *) malloc(sizeof(atrust_acos_ex_data));
@@ -268,11 +268,11 @@ static int atrust_acos_select_aid(struct sc_card *card,
 /*****************************************************************************/
 
 static int atrust_acos_select_fid(struct sc_card *card,
-			      u8 id_hi, u8 id_lo,
+			      unsigned int id_hi, unsigned int id_lo,
 			      struct sc_file **file_out)
 {
 	sc_apdu_t apdu;
-	u8 data[] = {id_hi, id_lo};
+	u8 data[] = {id_hi & 0xff, id_lo & 0xff};
 	u8 resp[SC_MAX_APDU_BUFFER_SIZE];
 	int bIsDF = 0, r;
 
@@ -738,7 +738,7 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		{
-			int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 			memcpy(out, apdu.resp, len);
 			SC_FUNC_RETURN(card->ctx, 4, len);
@@ -786,7 +786,7 @@ static int atrust_acos_decipher(struct sc_card *card,
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
 		SC_FUNC_RETURN(card->ctx, 2, len);
