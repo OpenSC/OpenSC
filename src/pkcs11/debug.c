@@ -257,7 +257,7 @@ sc_pkcs11_print_bool(struct fmap *fm, void *ptr, size_t count)
 		memcpy(&value, ptr, count);
 		if (value)
 			return "TRUE";
-		return FALSE;
+		return "FALSE";
 	}
 
 	return sc_pkcs11_print_value(NULL, ptr, count);

@@ -25,7 +25,11 @@
 #ifdef _WIN32
 typedef unsigned __int32 uint32_t;
 #else
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
+#else
+#include <sys/types.h>
+#endif
 #endif
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
