@@ -595,7 +595,7 @@ static int do_verify(int argc, char **argv)
 		{ NULL, 	SC_AC_NONE	}
 	};
 	int r, tries_left = -1;
-	u8 buf[30];
+	u8 buf[64];
 	const char *s;
 	size_t buflen = sizeof(buf), i;
 	struct sc_pin_cmd_data data;
