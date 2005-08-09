@@ -80,7 +80,7 @@ char *pkcs11_strdup(char *mem, size_t size)
 		size--;
 	res = (char *) OPENSSL_malloc(size + 1);
 	if (res == NULL)
-		NULL;
+		return NULL;
 	memcpy(res, mem, size);
 	res[size] = '\0';
 	return res;
