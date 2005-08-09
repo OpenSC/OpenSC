@@ -186,7 +186,18 @@ cosm_init_app(struct sc_profile *profile, sc_card_t *card,
 		const u8 *puk, size_t puk_len)
 {
 	int r;
+	size_t ii;
 	sc_file_t *file = NULL;
+	static const char *create_dfs[8] = {
+		"private-DF",
+		"public-DF",
+		"PKCS15-ODF",
+		"PKCS15-AODF",
+		"PKCS15-PrKDF",
+		"PKCS15-PuKDF",
+		"PKCS15-CDF",
+		"PKCS15-DODF"
+	};
 
 	sc_debug(card->ctx, "pin_len %i; puk_len %i\n", pin_len, puk_len);
 	/* Create the application DF */
@@ -196,27 +207,18 @@ cosm_init_app(struct sc_profile *profile, sc_card_t *card,
 	
 	/* Oberthur AWP file system is expected.*/
 	/* Create private objects DF */
-	if (sc_profile_get_file(profile, "private-DF", &file))   {
-		sc_error(card->ctx, "Inconsistent profile: cannot find private-DF");
-		return SC_ERROR_INCONSISTENT_PROFILE;
+	for (ii = 0; ii<sizeof(create_dfs)/sizeof(char *); ii++)   {
+		if (sc_profile_get_file(profile, create_dfs[ii], &file))   {
+			sc_error(card->ctx, "Inconsistent profile: cannot find %s", create_dfs[ii]);
+			return SC_ERROR_INCONSISTENT_PROFILE;
+		}
+	
+		r = sc_pkcs15init_create_file(profile, card, file);
+		sc_file_free(file);
+		if (r && r!=SC_ERROR_FILE_ALREADY_EXISTS)
+			return r;
 	}
 	
-	r = sc_pkcs15init_create_file(profile, card, file);
-	sc_file_free(file);
-	if (r)
-		return r;
-
-	/* Create public objects DF */
-	if (sc_profile_get_file(profile, "public-DF", &file))   {
-		sc_error(card->ctx, "Inconsistent profile: cannot find public-DF");
-		return SC_ERROR_INCONSISTENT_PROFILE;
-	}
-	
-	r = sc_pkcs15init_create_file(profile, card, file);
-	sc_file_free(file);
-	if (r)
-		return r;
-
 	/* Create Oberthur AWP application DF (5011),
 	 * and populate with Oberthur's xxDF files*/
 	r = sc_profile_get_file(profile, COSM_TITLE"-AppDF", &file);

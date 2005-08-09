@@ -49,6 +49,7 @@ static struct sc_atr_table oberthur_atrs[] = {
 	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", NULL, "Oberthur 64k v4/2.1.1", SC_CARD_TYPE_OBERTHUR_64K },
 	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL, "Oberthur 64k v5", SC_CARD_TYPE_OBERTHUR_64K },
 	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", NULL, "Oberthur 64k v5/2.2.0", SC_CARD_TYPE_OBERTHUR_64K },
+	{ "3B:7B:18:00:00:00:31:C0:64:77:E3:03:00:82:90:00", NULL, "Oberthur 64k CosmopolIC v5.2/2.2", SC_CARD_TYPE_OBERTHUR_64K },
 	{ NULL }
 };
 
@@ -806,6 +807,9 @@ auth_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, rv, "Card returned error");
+	
+	if (apdu.resplen == 0x100 && rbuf[0]==0 && rbuf[1]==0)
+		return 0;
 	
 	buflen = buflen < apdu.resplen ? buflen : apdu.resplen;
 	memcpy(buf, rbuf, buflen);
