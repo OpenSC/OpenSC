@@ -144,7 +144,7 @@ extern int PKCS11_enumerate_slots(PKCS11_CTX *, PKCS11_SLOT **, unsigned int *);
 extern PKCS11_SLOT *PKCS11_find_token(PKCS11_CTX *);
 
 /* Authenticate to the card */
-extern int PKCS11_login(PKCS11_SLOT *, int so, char *pin);
+extern int PKCS11_login(PKCS11_SLOT *, int so, const char *pin);
 extern int PKCS11_logout(PKCS11_SLOT *);
 
 /* Get a list of all keys associated with this token */
@@ -173,10 +173,11 @@ extern PKCS11_KEY *PKCS11_find_key(PKCS11_CERT *);
 extern int PKCS11_enumerate_certs(PKCS11_TOKEN *, PKCS11_CERT **, unsigned int *);
 
 /* Initialize a token */
-extern int PKCS11_init_token(PKCS11_TOKEN *, char *pin, char *label);
+extern int PKCS11_init_token(PKCS11_TOKEN *, const char *pin,
+	const char *label);
 
 /* Initialize the user PIN on a token */
-extern int PKCS11_init_pin(PKCS11_TOKEN *, char *pin);
+extern int PKCS11_init_pin(PKCS11_TOKEN *, const char *pin);
 
 /* Store various objects on the token */
 extern int PKCS11_generate_key(PKCS11_TOKEN *, int, unsigned int, char *);

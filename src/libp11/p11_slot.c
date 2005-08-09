@@ -150,7 +150,7 @@ int PKCS11_open_session(PKCS11_SLOT * slot, int rw)
 /*
  * Authenticate with the card
  */
-int PKCS11_login(PKCS11_SLOT * slot, int so, char *pin)
+int PKCS11_login(PKCS11_SLOT * slot, int so, const char *pin)
 {
 	PKCS11_SLOT_private *priv = PRIVSLOT(slot);
 	PKCS11_CTX *ctx = priv->parent;
@@ -207,7 +207,7 @@ int PKCS11_logout(PKCS11_SLOT * slot)
 /*
  * Initialize the token
  */
-int PKCS11_init_token(PKCS11_TOKEN * token, char *pin, char *label)
+int PKCS11_init_token(PKCS11_TOKEN * token, const char *pin, const char *label)
 {
 	PKCS11_SLOT_private *priv = PRIVSLOT(TOKEN2SLOT(token));
 	PKCS11_CTX_private *cpriv;
@@ -233,7 +233,7 @@ int PKCS11_init_token(PKCS11_TOKEN * token, char *pin, char *label)
 /*
  * Set the User PIN
  */
-int PKCS11_init_pin(PKCS11_TOKEN * token, char *pin)
+int PKCS11_init_pin(PKCS11_TOKEN * token, const char *pin)
 {
 	PKCS11_SLOT_private *priv = PRIVSLOT(TOKEN2SLOT(token));
 	PKCS11_CTX *ctx = priv->parent;
