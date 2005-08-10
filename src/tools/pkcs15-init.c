@@ -899,6 +899,7 @@ do_store_data_object(struct sc_profile *profile)
 	int	r=0;
 
 	memset(&args, 0, sizeof(args));
+	args.app_oid.value[0] = -1;
 
 	if (opt_objectid)
 		sc_pkcs15_format_id(opt_objectid, &args.id);
