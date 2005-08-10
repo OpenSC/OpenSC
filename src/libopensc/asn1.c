@@ -1356,6 +1356,7 @@ static int asn1_encode(sc_context_t *ctx, const struct sc_asn1_entry *asn1,
 		buf = tmp;
 		memcpy(buf + total, obj, objsize);
 		free(obj);
+		obj = NULL;
 		total += objsize;
 	}
 	*ptr = buf;
