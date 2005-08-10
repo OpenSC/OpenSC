@@ -25,10 +25,10 @@
 #ifdef _WIN32
 typedef unsigned __int32 uint32_t;
 #else
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
+#ifdef HAVE_INTTYPES_H
+#include <inttypes.h>
 #else
-#include <sys/types.h>
+#warning no uint32_t type available, please contact opensc-devel@opensc.org
 #endif
 #endif
 #include <openssl/bn.h>
@@ -37,7 +37,6 @@ typedef unsigned __int32 uint32_t;
 #include <limits.h>
 #include <opensc/pkcs15.h>
 #include "util.h"
-
 
 const char *app_name = "pkcs15-tool";
 
@@ -62,7 +61,7 @@ enum {
 	OPT_NO_CACHE,
 	OPT_LIST_PUB,
 	OPT_READ_PUB,
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	OPT_READ_SSH,
 #endif
 	OPT_PIN,
@@ -88,7 +87,7 @@ const struct option options[] = {
 	{ "list-keys",          no_argument, 0,         'k' },
 	{ "list-public-keys",	no_argument, 0,		OPT_LIST_PUB },
 	{ "read-public-key",	required_argument, 0,	OPT_READ_PUB },
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	{ "read-ssh-key",	required_argument, 0,	OPT_READ_SSH },
 #endif
 	{ "reader",		required_argument, 0,	OPT_READER },
@@ -561,7 +560,7 @@ static int read_public_key(void)
 	return r;
 }
 
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 static int read_ssh_key(void)
 {
 	int r;
@@ -1118,7 +1117,9 @@ int main(int argc, char * const argv[])
 	int do_list_prkeys = 0;
 	int do_list_pubkeys = 0;
 	int do_read_pubkey = 0;
+#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	int do_read_sshkey = 0;
+#endif
 	int do_change_pin = 0;
 	int do_unblock_pin = 0;
 	int do_learn_card = 0;
@@ -1174,7 +1175,7 @@ int main(int argc, char * const argv[])
 			do_read_pubkey = 1;
 			action_count++;
 			break;
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 		case OPT_READ_SSH:
 			opt_pubkey = optarg;
 			do_read_sshkey = 1;
@@ -1280,7 +1281,7 @@ int main(int argc, char * const argv[])
 			goto end;
 		action_count--;
 	}
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	if (do_read_sshkey) {
 		if ((err = read_ssh_key()))
 			goto end;
