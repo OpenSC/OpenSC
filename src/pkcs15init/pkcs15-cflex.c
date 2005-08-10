@@ -855,46 +855,41 @@ cyberflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
         return 0;
 }
 
-static struct sc_pkcs15init_operations sc_pkcs15init_cryptoflex_operations;
-static struct sc_pkcs15init_operations sc_pkcs15init_cyberflex_operations;
+static struct sc_pkcs15init_operations sc_pkcs15init_cryptoflex_operations = {
+	.erase_card = cflex_erase_card,
+	.init_card = cryptoflex_init_card,
+	.create_dir = cflex_create_dir,
+	.create_domain = cflex_create_domain,
+	.select_pin_reference = cflex_select_pin_reference,
+	.create_pin = cflex_create_pin,
+	.create_key = cflex_create_key,
+	.generate_key = cflex_generate_key,
+	.store_key = cflex_store_key,
+	.encode_private_key = cryptoflex_encode_private_key,
+	.encode_public_key = cryptoflex_encode_public_key
+};
+
+static struct sc_pkcs15init_operations sc_pkcs15init_cyberflex_operations = {
+	.erase_card = cflex_erase_card,
+	.create_dir = cflex_create_dir,
+	.create_domain = cflex_create_domain,
+	.select_pin_reference = cflex_select_pin_reference,
+	.create_pin = cflex_create_pin,
+	.create_key = cflex_create_key,
+	.generate_key = cflex_generate_key,
+	.store_key = cflex_store_key,
+	.encode_private_key = cyberflex_encode_private_key,
+	.encode_public_key = cyberflex_encode_public_key
+};
 
 struct sc_pkcs15init_operations *
 sc_pkcs15init_get_cryptoflex_ops(void)
 {
-	struct sc_pkcs15init_operations *ops;
-	
-	ops = &sc_pkcs15init_cryptoflex_operations;
-	ops->erase_card = cflex_erase_card;
-	ops->init_card = cryptoflex_init_card;
-	ops->create_dir = cflex_create_dir;
-	ops->create_domain = cflex_create_domain;
-	ops->select_pin_reference = cflex_select_pin_reference;
-	ops->create_pin = cflex_create_pin;
-	ops->create_key = cflex_create_key;
-	ops->generate_key = cflex_generate_key;
-	ops->store_key = cflex_store_key;
-	ops->encode_private_key = cryptoflex_encode_private_key;
-	ops->encode_public_key = cryptoflex_encode_public_key;
-
-	return ops;
+	return &sc_pkcs15init_cryptoflex_operations;
 }
 
 struct sc_pkcs15init_operations *
 sc_pkcs15init_get_cyberflex_ops(void)
 {
-	struct sc_pkcs15init_operations *ops;
-	
-	ops = &sc_pkcs15init_cyberflex_operations;
-	ops->erase_card = cflex_erase_card;
-	ops->create_dir = cflex_create_dir;
-	ops->create_domain = cflex_create_domain;
-	ops->select_pin_reference = cflex_select_pin_reference;
-	ops->create_pin = cflex_create_pin;
-	ops->create_key = cflex_create_key;
-	ops->generate_key = cflex_generate_key;
-	ops->store_key = cflex_store_key;
-	ops->encode_private_key = cyberflex_encode_private_key;
-	ops->encode_public_key = cyberflex_encode_public_key;
-
-	return ops;
+	return &sc_pkcs15init_cyberflex_operations;
 }

@@ -201,14 +201,14 @@ miocos_new_key(struct sc_profile *profile, sc_card_t *card,
 	return r;
 }
 
-static struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations;
+static struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations = {
+	.init_app = miocos_init_app,
+	.new_pin = miocos_new_pin,
+	.new_key = miocos_new_key,
+	.new_file = miocos_new_file
+};
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_miocos_ops(void)
 {
-	sc_pkcs15init_miocos_operations.init_app = miocos_init_app;
-	sc_pkcs15init_miocos_operations.new_pin = miocos_new_pin;
-	sc_pkcs15init_miocos_operations.new_key = miocos_new_key;
-	sc_pkcs15init_miocos_operations.new_file = miocos_new_file;
-
 	return &sc_pkcs15init_miocos_operations;
 }

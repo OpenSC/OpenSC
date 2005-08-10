@@ -611,19 +611,19 @@ etoken_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 	return 0;
 }
 
-static struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations;
+static struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations = {
+	.erase_card = etoken_erase,
+	.create_dir = etoken_create_dir,
+	.select_pin_reference = etoken_select_pin_reference,
+	.create_pin = etoken_create_pin,
+	.select_key_reference = etoken_select_key_reference,
+	.create_key = etoken_create_key,
+	.store_key = etoken_store_key,
+	.generate_key = etoken_generate_key
+};
 
 struct sc_pkcs15init_operations *
 sc_pkcs15init_get_etoken_ops(void)
 {
-	sc_pkcs15init_etoken_operations.erase_card = etoken_erase;
-	sc_pkcs15init_etoken_operations.create_dir = etoken_create_dir;
-	sc_pkcs15init_etoken_operations.select_pin_reference = etoken_select_pin_reference;
-	sc_pkcs15init_etoken_operations.create_pin = etoken_create_pin;
-	sc_pkcs15init_etoken_operations.select_key_reference = etoken_select_key_reference;
-	sc_pkcs15init_etoken_operations.create_key = etoken_create_key;
-	sc_pkcs15init_etoken_operations.store_key = etoken_store_key;
-	sc_pkcs15init_etoken_operations.generate_key = etoken_generate_key;
-
 	return &sc_pkcs15init_etoken_operations;
 }

@@ -913,20 +913,20 @@ static int starcos_finalize_card(sc_card_t *card)
 	return r;
 }
 
-static struct sc_pkcs15init_operations sc_pkcs15init_starcos_operations;
+static struct sc_pkcs15init_operations sc_pkcs15init_starcos_operations = {
+	.erase_card = starcos_erase_card,
+	.init_card  = starcos_init_card,
+	.create_dir = starcos_create_dir,
+	.select_pin_reference = starcos_pin_reference,
+	.create_pin = starcos_create_pin,
+	.select_key_reference = starcos_key_reference,
+	.create_key = starcos_create_key,
+	.store_key  = starcos_store_key,
+	.generate_key = starcos_generate_key,
+	.finalize_card = starcos_finalize_card
+};
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_starcos_ops(void)
 {
-	sc_pkcs15init_starcos_operations.erase_card = starcos_erase_card;
-	sc_pkcs15init_starcos_operations.init_card  = starcos_init_card;
-	sc_pkcs15init_starcos_operations.create_dir = starcos_create_dir;
-	sc_pkcs15init_starcos_operations.select_pin_reference = starcos_pin_reference;
-	sc_pkcs15init_starcos_operations.create_pin = starcos_create_pin;
-	sc_pkcs15init_starcos_operations.select_key_reference = starcos_key_reference;
-	sc_pkcs15init_starcos_operations.create_key = starcos_create_key;
-	sc_pkcs15init_starcos_operations.store_key  = starcos_store_key;
-	sc_pkcs15init_starcos_operations.generate_key = starcos_generate_key;
-	sc_pkcs15init_starcos_operations.finalize_card = starcos_finalize_card;
-
 	return &sc_pkcs15init_starcos_operations;
 }

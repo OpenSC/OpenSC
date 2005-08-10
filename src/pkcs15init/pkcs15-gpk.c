@@ -1116,17 +1116,17 @@ gpk_read_rsa_key(sc_card_t *card, struct sc_pkcs15_pubkey_rsa *rsa)
 	return 0;
 }
 
-static struct sc_pkcs15init_operations sc_pkcs15init_gpk_operations;
+static struct sc_pkcs15init_operations sc_pkcs15init_gpk_operations = {
+	.erase_card = gpk_erase_card,
+	.create_dir = gpk_create_dir,
+	.select_pin_reference = gpk_select_pin_reference,
+	.create_pin = gpk_create_pin,
+	.create_key = gpk_create_key,
+	.generate_key = gpk_generate_key,
+	.store_key = gpk_store_key
+};
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void)
 {
-	sc_pkcs15init_gpk_operations.erase_card = gpk_erase_card;
-	sc_pkcs15init_gpk_operations.create_dir = gpk_create_dir;
-	sc_pkcs15init_gpk_operations.select_pin_reference = gpk_select_pin_reference;
-	sc_pkcs15init_gpk_operations.create_pin = gpk_create_pin;
-	sc_pkcs15init_gpk_operations.create_key = gpk_create_key;
-	sc_pkcs15init_gpk_operations.generate_key = gpk_generate_key;
-	sc_pkcs15init_gpk_operations.store_key = gpk_store_key;
-
 	return &sc_pkcs15init_gpk_operations;
 }

@@ -686,33 +686,20 @@ failed:
 }
 
 
-struct sc_pkcs15init_operations sc_pkcs15init_oberthur_operations;
+static struct sc_pkcs15init_operations sc_pkcs15init_oberthur_operations = {
+	.erase_card = cosm_erase_card,
+	/* NEW */
+	.select_pin_reference = cosm_select_pin_reference,
+	.create_pin = cosm_create_pin,
+	/* OLD */
+	.init_app = cosm_init_app,
+	.new_key = cosm_new_key,
+	.new_file = cosm_new_file,
+	.old_generate_key = cosm_old_generate_key
+};
 
 struct sc_pkcs15init_operations *
 sc_pkcs15init_get_oberthur_ops(void)
 {   
-	struct sc_pkcs15init_operations *ops = &sc_pkcs15init_oberthur_operations;
-	
-	ops->erase_card = cosm_erase_card;
-	
-/* NEW */
-	ops->create_dir = NULL;
-	ops->create_domain = NULL;
-	ops->select_pin_reference = cosm_select_pin_reference;
-	ops->create_pin = cosm_create_pin;
-	ops->select_key_reference = NULL;
-	ops->create_key = NULL;
-	ops->store_key = NULL;
-	ops->generate_key = NULL; 
-	ops->encode_private_key = NULL; 
-	ops->encode_public_key = NULL;
-
-/* OLD */
-	ops->init_app = cosm_init_app;
-	ops->new_pin = NULL;
-	ops->new_key = cosm_new_key;
-	ops->new_file = cosm_new_file;
-	ops->old_generate_key = cosm_old_generate_key;
-
-	return ops;
+	return &sc_pkcs15init_oberthur_operations;
 }

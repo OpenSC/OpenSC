@@ -343,18 +343,18 @@ jcop_generate_key(sc_profile_t *profile, sc_card_t *card,
 
 
 
-static struct sc_pkcs15init_operations sc_pkcs15init_jcop_operations;
+static struct sc_pkcs15init_operations sc_pkcs15init_jcop_operations = {
+	.erase_card = jcop_erase_card,
+	.init_app   = jcop_init_app,
+	.select_pin_reference = jcop_select_pin_reference,
+	.create_pin = jcop_create_pin,
+	.create_key = jcop_create_key,
+	.store_key  = jcop_store_key,
+	.generate_key = jcop_generate_key
+};
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_jcop_ops(void)
 {
-     sc_pkcs15init_jcop_operations.erase_card = jcop_erase_card;
-     sc_pkcs15init_jcop_operations.init_app = jcop_init_app;
-     sc_pkcs15init_jcop_operations.select_pin_reference = jcop_select_pin_reference;
-     sc_pkcs15init_jcop_operations.create_pin = jcop_create_pin;
-     sc_pkcs15init_jcop_operations.create_key = jcop_create_key;
-     sc_pkcs15init_jcop_operations.store_key = jcop_store_key;
-     sc_pkcs15init_jcop_operations.generate_key = jcop_generate_key;
-     
      return &sc_pkcs15init_jcop_operations;
 }
 
