@@ -2358,8 +2358,13 @@ sc_get_driver(void)
 	auth_ops.restore_security_env = auth_restore_security_env;
 	auth_ops.compute_signature = auth_compute_signature;
 	auth_ops.decipher = auth_decipher;
-	
+
+/* not yet */	
+#if 0	
 	auth_ops.pin_cmd = auth_pin_cmd;
+#else
+	auth_ops.pin_cmd = NULL
+#endif
 	auth_ops.verify = auth_verify;
 	auth_ops.reset_retry_counter = auth_reset_retry_counter;
 	auth_ops.change_reference_data = auth_change_reference_data;

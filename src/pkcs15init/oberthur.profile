@@ -2,7 +2,7 @@
 # PKCS15 r/w profile for Oberthur cards
 #
 cardinfo {
-    label       = "S3M";
+    label       = "SCM";
     manufacturer    = "Oberthur/OpenSC";
 		
     max-pin-length	= 64;
