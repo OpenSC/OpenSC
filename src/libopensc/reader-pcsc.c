@@ -63,12 +63,12 @@
 #define GET_PRIV_DATA(r) ((struct pcsc_private_data *) (r)->drv_data)
 #define GET_SLOT_DATA(r) ((struct pcsc_slot_data *) (r)->drv_data)
 
-static int class2_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
+static int part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
                           struct sc_pin_cmd_data *data);
-        
 
 struct pcsc_global_private_data {
 	SCARDCONTEXT pcsc_ctx;
+	int enable_pinpad;
 };
 
 struct pcsc_private_data {
@@ -148,11 +148,11 @@ static int pcsc_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 	sSendPci.cbPciLength = sizeof(sSendPci);
 	sRecvPci.dwProtocol = opensc_proto_to_pcsc(slot->active_protocol);
 	sRecvPci.cbPciLength = sizeof(sRecvPci);
-	
+
 	dwSendLength = sendsize;
 	dwRecvLength = *recvsize;
 
-        if (dwRecvLength > 258)
+	if (dwRecvLength > 258)
 		dwRecvLength = 258;
 
 	if (!control) {
@@ -179,18 +179,18 @@ static int pcsc_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 			    SC_SLOT_CARD_PRESENT) == 0)
 				return SC_ERROR_CARD_REMOVED;
 			return SC_ERROR_TRANSMIT_FAILED;
-                default:
-                	/* Windows' PC/SC returns 0x8010002f (??) if a card is removed */
+		default:
+			/* Windows' PC/SC returns 0x8010002f (??) if a card is removed */
 			if (pcsc_detect_card_presence(reader, slot) != 1)
 				return SC_ERROR_CARD_REMOVED;
-                        PCSC_ERROR(reader->ctx, "SCardTransmit failed", rv);
+			PCSC_ERROR(reader->ctx, "SCardTransmit failed", rv);
 			return SC_ERROR_TRANSMIT_FAILED;
 		}
 	}
 	if (dwRecvLength < 2)
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	*recvsize = dwRecvLength;
-	
+
 	return 0;
 }
 
@@ -295,7 +295,7 @@ static int pcsc_wait_for_event(sc_reader_t **readers,
 
 	/* Prevent buffer overflow */
 	if (nslots >= SC_MAX_READERS)
-	       return SC_ERROR_INVALID_ARGUMENTS;
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	on_bits = off_bits = 0;
 	if (event_mask & SC_EVENT_CARD_INSERTED) {
@@ -307,7 +307,7 @@ static int pcsc_wait_for_event(sc_reader_t **readers,
 		off_bits |= SCARD_STATE_PRESENT;
 	}
 	if (event_mask != 0)
-	       return SC_ERROR_INVALID_ARGUMENTS;
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* Find out the current status */
 	ctx = readers[0]->ctx;
@@ -341,7 +341,7 @@ static int pcsc_wait_for_event(sc_reader_t **readers,
 		/* Scan the current state of all readers to see if they
 		 * match any of the events we're polling for */
 		*event = 0;
-	       	for (i = 0, rsp = rgReaderStates; i < nslots; i++, rsp++) {
+		for (i = 0, rsp = rgReaderStates; i < nslots; i++, rsp++) {
 			unsigned long state, prev_state;
 
 			prev_state = rsp->dwCurrentState;
@@ -354,13 +354,13 @@ static int pcsc_wait_for_event(sc_reader_t **readers,
 				*event |= SC_EVENT_CARD_REMOVED;
 			if (*event) {
 				*reader = i;
-			       	return 0;
-		       	}
+				return 0;
+			}
 
 			/* No match - copy the state so pcscd knows
 			 * what to watch out for */
 			rsp->dwCurrentState = rsp->dwEventState;
-	       	}
+		}
 
 		/* Set the timeout if caller wants to time out */
 		if (timeout == 0)
@@ -375,16 +375,16 @@ static int pcsc_wait_for_event(sc_reader_t **readers,
 		}
 
 		ret = SCardGetStatusChange(pcsc_ctx, 1000 * delta,
-				rgReaderStates, nslots);
-	       	if (ret == (LONG)SCARD_E_TIMEOUT) {
+					   rgReaderStates, nslots);
+		if (ret == (LONG) SCARD_E_TIMEOUT) {
 			if (timeout < 0)
 				continue;
-		       	return SC_ERROR_EVENT_TIMEOUT;
+			return SC_ERROR_EVENT_TIMEOUT;
 		}
-	       	if (ret != 0) {
-		       	PCSC_ERROR(ctx, "SCardGetStatusChange(2) failed", ret);
-		       	return pcsc_ret_to_error(ret);
-	       	}
+		if (ret != 0) {
+			PCSC_ERROR(ctx, "SCardGetStatusChange(2) failed", ret);
+			return pcsc_ret_to_error(ret);
+		}
 	}
 }
 
@@ -425,21 +425,25 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 
 	/* check for pinpad support */
 #ifdef CM_IOCTL_GET_FEATURE_REQUEST
-	sc_debug(reader->ctx, "Requesting for pinpad reader features ... ");
+	sc_debug(reader->ctx, "Requesting reader features ... ");
 
-	rv = SCardControl(pslot->pcsc_card, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, 
-							feature_buf, sizeof(feature_buf), &feature_len);
+	rv = SCardControl(pslot->pcsc_card, CM_IOCTL_GET_FEATURE_REQUEST, NULL,
+	                  0, feature_buf, sizeof(feature_buf), &feature_len);
 	if (rv == SCARD_S_SUCCESS) {
 		if (!(feature_len % 6)) {
 			for (i = 0; i < feature_len; i += 6) {
 				if (feature_buf[i] == FEATURE_VERIFY_PIN_DIRECT) {
-					sc_debug(reader->ctx, "Reader supports pinpad verification");
+					sc_debug(reader->ctx, "Reader supports pinpad PIN verification");
 					pslot->verify_ioctl = dw2i_be(feature_buf, i + 2);
-					slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+					if (priv->gpriv->enable_pinpad) {
+						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+					}
 				} else if (feature_buf[i] == FEATURE_MODIFY_PIN_DIRECT) {
-					sc_debug(reader->ctx, "Reader supports pinpad modification");
+					sc_debug(reader->ctx, "Reader supports pinpad PIN modification");
 					pslot->modify_ioctl = dw2i_be(feature_buf, i + 2);
-					slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+					if (priv->gpriv->enable_pinpad) {
+						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+					}
 				} else {
 					sc_debug(reader->ctx, "Reader pinpad feature: %02x not recognized", feature_buf[i]);
 				}
@@ -488,7 +492,7 @@ static int pcsc_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
 	rv = SCardEndTransaction(pslot->pcsc_card, SCARD_LEAVE_CARD);
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_ERROR(reader->ctx, "SCardEndTransaction failed", rv);
-                return pcsc_ret_to_error(rv);
+		return pcsc_ret_to_error(rv);
 	}
 	return 0;
 }
@@ -544,7 +548,7 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 	}
 	gpriv->pcsc_ctx = pcsc_ctx;
 	*reader_data = gpriv;
-	
+
 	reader_buf = (char *) malloc(sizeof(char) * reader_buf_size);
 	if (!reader_buf) {
 		free(gpriv);
@@ -567,7 +571,7 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 		struct pcsc_private_data *priv = (struct pcsc_private_data *) malloc(sizeof(struct pcsc_private_data));
 		struct pcsc_slot_data *pslot = (struct pcsc_slot_data *) malloc(sizeof(struct pcsc_slot_data));
 		sc_slot_info_t *slot;
-		
+
 		if (reader == NULL || priv == NULL || pslot == NULL) {
 			if (reader)
 				free(reader);
@@ -617,7 +621,7 @@ static int pcsc_finish(sc_context_t *ctx, void *prv_data)
 		SCardReleaseContext(priv->pcsc_ctx);
 		free(priv);
 	}
-	
+
 	return 0;
 }
 
@@ -626,7 +630,7 @@ pcsc_pin_cmd(sc_reader_t *reader, sc_slot_info_t * slot, struct sc_pin_cmd_data 
 {
 	/* XXX: temporary */
 	if (slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
-		return class2_pin_cmd(reader, slot, data);
+		return part10_pin_cmd(reader, slot, data);
 	} else {
 		return ctbcs_pin_cmd(reader, slot, data);
 	}
@@ -645,15 +649,15 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 	pcsc_ops.disconnect = pcsc_disconnect;
 	pcsc_ops.perform_verify = pcsc_pin_cmd;
 	pcsc_ops.wait_for_event = pcsc_wait_for_event;
-	
+
 	return &pcsc_drv;
 }
 
 /*
- * Pinpad support, based on TeleTrust Class 2 PC/SC reader interface
+ * Pinpad support, based on PC/SC v2 Part 10 interface
  * Similar to CCID in spirit.
  */
- 
+
 /* Local definitions */
 #define SC_CCID_PIN_TIMEOUT        30
 
@@ -665,7 +669,7 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 #define SC_CCID_PIN_UNITS_BYTES    0x80
 
 /* Build a pin verification block + APDU */
-static int class2_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
+static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
 {
 	size_t buflen, count = 0;
 	sc_apdu_t *apdu = data->apdu;
@@ -675,15 +679,15 @@ static int class2_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	/* PIN verification control message */
 	buf[count++] = SC_CCID_PIN_TIMEOUT;	/* bTimeOut */
 	buf[count++] = SC_CCID_PIN_TIMEOUT;	/* bTimeOut2 */
-	
+
 	/* bmFormatString */
 	tmp = 0x00;
-	if (data->pin1.encoding == SC_PIN_ENCODING_ASCII) {	
+	if (data->pin1.encoding == SC_PIN_ENCODING_ASCII) {
 		tmp |= SC_CCID_PIN_ENCODING_ASCII;
-		
-		/* if the effective pin length offset is specified, use it*/
+
+		/* if the effective pin length offset is specified, use it */
 		if (data->pin1.length_offset > 3) {
-			tmp |= SC_CCID_PIN_UNITS_BYTES;	
+			tmp |= SC_CCID_PIN_UNITS_BYTES;
 			tmp |= (data->pin1.length_offset - 5) << 3;
 		}
 	} else if (data->pin1.encoding == SC_PIN_ENCODING_BCD) {
@@ -691,7 +695,7 @@ static int class2_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 		tmp |= SC_CCID_PIN_UNITS_BYTES;
 	} else if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
 		/* see comment about GLP pins in sec.c */
-		tmp |= SC_CCID_PIN_ENCODING_BCD;	
+		tmp |= SC_CCID_PIN_ENCODING_BCD;
 		tmp |= 0x04 << 3;
 	} else
 		return SC_ERROR_NOT_SUPPORTED;
@@ -705,18 +709,18 @@ static int class2_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 		tmp |= 0x40 | 0x08;
 	}
 	buf[count++] = tmp; /* bmPINBlockString */
-	
+
 	/* bmPINLengthFormat */
 	tmp = 0x00;
 	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
 		/* GLP pins expect the effective pin length from bit 4 */
-		tmp |= 0x04; 		
+		tmp |= 0x04;
 	}
 	buf[count++] = tmp;	/* bmPINLengthFormat */
 
 	if (!data->pin1.min_length || !data->pin1.max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	buf[count++] = data->pin1.max_length;	/* wPINMaxExtraDigit: max */	
+	buf[count++] = data->pin1.max_length;	/* wPINMaxExtraDigit: max */
 	buf[count++] = data->pin1.min_length;	/* wPINMaxExtraDigit: min */
 
 	buf[count++] = 0x02;	/* bEntryValidationCondition, keypress only */
@@ -729,20 +733,20 @@ static int class2_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	buf[count++] = 0x00;	/* bTeoPrologue */
 	buf[count++] = 0x00;	/* " */
 	buf[count++] = 0x00;	/* " */
-	
+
 	/* ulDataLength */
 	if (data->pin1.length_offset != 4)
 		tmp = apdu->datalen + 4;
 	else
 		tmp = 4;
 	buf[count++] = tmp; /* ulDataLength */
-	
+
 	/* APDU itself */
 	buf[count++] = apdu->cla;
 	buf[count++] = apdu->ins;
 	buf[count++] = apdu->p1;
 	buf[count++] = apdu->p2;
-	
+
 	/* Copy data if not Case 1 */
 	if (data->pin1.length_offset != 4) {
 		memcpy(&buf[count], apdu->data, apdu->datalen);
@@ -756,7 +760,7 @@ static int class2_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 
 
 /* Build a pin modification block + APDU */
-static int class2_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
+static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
 {
 	size_t buflen, count = 0;
 	sc_apdu_t *apdu = data->apdu;
@@ -766,15 +770,15 @@ static int class2_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	/* PIN verification control message */
 	buf[count++] = SC_CCID_PIN_TIMEOUT;	/* bTimeOut */
 	buf[count++] = SC_CCID_PIN_TIMEOUT;	/* bTimeOut2 */
-	
+
 	/* bmFormatString */
 	tmp = 0x00;
-	if (data->pin1.encoding == SC_PIN_ENCODING_ASCII) {	
+	if (data->pin1.encoding == SC_PIN_ENCODING_ASCII) {
 		tmp |= SC_CCID_PIN_ENCODING_ASCII;
-		
-		/* if the effective pin length offset is specified, use it*/
+
+		/* if the effective pin length offset is specified, use it */
 		if (data->pin1.length_offset > 3) {
-			tmp |= SC_CCID_PIN_UNITS_BYTES;	
+			tmp |= SC_CCID_PIN_UNITS_BYTES;
 			tmp |= (data->pin1.length_offset - 5) << 3;
 		}
 	} else if (data->pin1.encoding == SC_PIN_ENCODING_BCD) {
@@ -782,7 +786,7 @@ static int class2_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 		tmp |= SC_CCID_PIN_UNITS_BYTES;
 	} else if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
 		/* see comment about GLP pins in sec.c */
-		tmp |= SC_CCID_PIN_ENCODING_BCD;	
+		tmp |= SC_CCID_PIN_ENCODING_BCD;
 		tmp |= 0x04 << 3;
 	} else
 		return SC_ERROR_NOT_SUPPORTED;
@@ -796,21 +800,21 @@ static int class2_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 		tmp |= 0x40 | 0x08;
 	}
 	buf[count++] = tmp; /* bmPINBlockString */
-	
+
 	/* bmPINLengthFormat */
 	tmp = 0x00;
 	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
 		/* GLP pins expect the effective pin length from bit 4 */
-		tmp |= 0x04; 		
+		tmp |= 0x04;
 	}
 	buf[count++] = tmp;	/* bmPINLengthFormat */
-	
+
 	buf[count++] = 0x00;  /* bOffsetOld */
 	buf[count++] = 0x00;  /* bOffsetNew */
-	
+
 	if (!data->pin1.min_length || !data->pin1.max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	buf[count++] = data->pin1.max_length;	/* wPINMaxExtraDigit: max */	
+	buf[count++] = data->pin1.max_length;	/* wPINMaxExtraDigit: max */
 	buf[count++] = data->pin1.min_length;	/* wPINMaxExtraDigit: min */
 
 	buf[count++] = 0x03;	/* bConfirmPIN, all */
@@ -827,20 +831,20 @@ static int class2_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	buf[count++] = 0x00; /* bTeoPrologue */
 	buf[count++] = 0x00;	/* " */
 	buf[count++] = 0x00;	/* " */
-	
+
 	/* ulDataLength */
 	if (data->pin1.length_offset != 4)
 		tmp = apdu->datalen + 4;
 	else
 		tmp = 4;
 	buf[count++] = tmp; /* ulDataLength */
-	
+
 	/* APDU itself */
 	buf[count++] = apdu->cla;
 	buf[count++] = apdu->ins;
 	buf[count++] = apdu->p1;
 	buf[count++] = apdu->p2;
-	
+
 	/* Copy full APDU if not Case 1 */
 	if (data->pin1.length_offset != 4) {
 		memcpy(&buf[count], apdu->data, apdu->datalen);
@@ -853,7 +857,7 @@ static int class2_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 
 /* Do the PIN command */
 static int
-class2_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
+part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	     struct sc_pin_cmd_data *data)
 {
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE], dbuf[SC_MAX_APDU_BUFFER_SIZE * 3];
@@ -862,16 +866,16 @@ class2_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	DWORD ioctl = 0;
 	sc_apdu_t *apdu;
 	struct pcsc_slot_data *pslot = (struct pcsc_slot_data *) slot->drv_data;
-	   
+
 	SC_FUNC_CALLED(reader->ctx, 3);
-   assert(pslot != NULL);
-   
+	assert(pslot != NULL);
+
 	/* The APDU must be provided by the card driver */
 	if (!data->apdu) {
-		sc_error(reader->ctx, "No APDU provided for Class 2 pinpad verification!");
+		sc_error(reader->ctx, "No APDU provided for Part 10 pinpad verification!");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-	
+
 	/* Only T=0 is currently supported */
 	if (slot->active_protocol != SC_PROTO_T0) {
 		sc_error(reader->ctx, "Only T=0 is currently supported!");
@@ -885,7 +889,7 @@ class2_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 			sc_error(reader->ctx, "Pinpad reader does not support verification!");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-		r = class2_build_verify_pin_block(sbuf, &scount, data);
+		r = part10_build_verify_pin_block(sbuf, &scount, data);
 		ioctl = pslot->verify_ioctl;
 		break;
 	case SC_PIN_CMD_CHANGE:
@@ -894,7 +898,7 @@ class2_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 			sc_error(reader->ctx, "Pinpad reader does not support modification!");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-		r = class2_build_modify_pin_block(sbuf, &scount, data);
+		r = part10_build_modify_pin_block(sbuf, &scount, data);
 		ioctl = pslot->modify_ioctl;
 		break;
 	default:
@@ -903,24 +907,24 @@ class2_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	}
 
 	/* If PIN block building failed, we fail too */
-	SC_TEST_RET(reader->ctx, r, "Class 2 PIN block building failed!");
+	SC_TEST_RET(reader->ctx, r, "Part10 PIN block building failed!");
 	/* If not, debug it, just for fun */
 	sc_bin_to_hex(sbuf, scount, dbuf, sizeof(dbuf), ':');
-	sc_debug(reader->ctx, "Class 2 block: %s", dbuf);
-	
+	sc_debug(reader->ctx, "Part 10 block: %s", dbuf);
+
 	r = reader->ops->transmit(reader, slot, sbuf, scount, rbuf, &rcount, ioctl);
 
-	SC_TEST_RET(reader->ctx, r, "Class 2: block transmit failed!");
-	
+	SC_TEST_RET(reader->ctx, r, "Part 10: block transmit failed!");
+
 	/* We expect only two bytes of result data (SW1 and SW2) */
 	if (rcount != 2) {
 		SC_FUNC_RETURN(reader->ctx, 2, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	}
-	
+
 	/* Extract the SWs for the result APDU */
 	apdu->sw1 = (unsigned int) rbuf[rcount - 2];
 	apdu->sw2 = (unsigned int) rbuf[rcount - 1];
-	
+
 	r = SC_SUCCESS;
 	switch (((unsigned int) apdu->sw1 << 8) | apdu->sw2) {
 	case 0x6400: /* Input timed out */
@@ -933,9 +937,9 @@ class2_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 		r = SC_ERROR_KEYPAD_PIN_MISMATCH;
 		break;
 	}
-	
+
 	SC_TEST_RET(reader->ctx, r, "PIN command failed");
-	   
+
 	/* PIN command completed, all is good */
 	return SC_SUCCESS;
 }

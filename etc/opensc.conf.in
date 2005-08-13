@@ -88,6 +88,9 @@ app default {
 		#
 		max_send_size = 252;
 		max_recv_size = 252;
+		# Enable pinpad if detected (PC/SC v2.0.2 Part 10)
+		# Default: false
+		enable_pinpad = false;
 	}
 
 	# What card drivers to load at start-up
