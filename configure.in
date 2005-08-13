@@ -560,6 +560,15 @@ SCardControl(NULL, NULL, 0, NULL, NULL);
 	LIBS="$saved_LIBS"
 fi
 
+# check for reader.h
+saved_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS $PCSC_CFLAGS"
+AC_CHECK_HEADER(reader.h,
+	[AC_DEFINE([HAVE_READER_H], 1, [Define if pcsc-lite with reader.h exists])],
+	[AC_MSG_WARN([reader.h not found, install pcsc-lite 1.2.9-beta8 or later, or use CFLAGS=... ./configure])],
+	[ #include <reader.h>])
+CFLAGS="$saved_CFLAGS"
+
 OPENCT_MSG=no
 openct_path=/usr
 AC_SUBST(OPENCT_CFLAGS)
