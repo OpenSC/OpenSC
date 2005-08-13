@@ -237,10 +237,6 @@ app default {
 		# Default: false
 		#
 		use_caching = true;
-		# If the given slot has pinpad capabilities, default to pinpad enabled
-		# operation and don't do pointless guessing
-		# Default: false
-		use_pinpad = false;
 		# Enable pkcs15 emulation.
 		# Default: yes
 		enable_pkcs15_emulation = yes;

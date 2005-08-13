@@ -610,8 +610,6 @@ int sc_pkcs15_bind(sc_card_t *card,
 
 	if (conf_block) {
 		p15card->opts.use_cache = scconf_get_bool(conf_block, "use_caching", 0);
-		p15card->opts.use_pinpad = scconf_get_bool(conf_block, "use_pinpad", 0)
-			&& card->slot->capabilities & SC_SLOT_CAP_PIN_PAD;
 	}
 
 	r = sc_lock(card);

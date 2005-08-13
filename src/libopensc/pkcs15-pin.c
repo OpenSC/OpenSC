@@ -170,7 +170,7 @@ static int _validate_pin(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	/* if we use pinpad, no more checks are needed */
-	if (p15card->opts.use_pinpad)
+	if (p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD)
 		return SC_SUCCESS;
 		
 	/* If pin is given, make sure it is within limits */
@@ -205,10 +205,8 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	/* the path in the pin object is optional */
 	if (pin->path.len > 0) {
 		r = sc_select_file(card, &pin->path, NULL);
-		if (r) {
-			sc_unlock(card);
-			return r;
-		}
+		if (r)
+			goto out;
 	}
 
 	/* Initialize arguments */
@@ -220,6 +218,8 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	data.pin1.max_length = pin->max_length;
 	data.pin1.pad_length = pin->stored_length;
 	data.pin1.pad_char = pin->pad_char;
+	data.pin1.data = pincode;
+	data.pin1.len = pinlen;
 
 	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
 		data.flags |= SC_PIN_CMD_NEED_PADDING;
@@ -236,13 +236,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 		data.pin1.encoding = 0;
 	}
 
-	if (pinlen != 0) {
-		/* Good old-fashioned PIN verification */
-		data.pin1.data = pincode;
-		data.pin1.len = pinlen;
-	} else {
-		/* Use the reader's PIN PAD */
-		/* XXX need some sort of internationalization here */
+	if(p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 		if (pin->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 			data.pin1.prompt = "Please enter SO PIN";
@@ -251,7 +245,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	}
 
 	r = sc_pin_cmd(card, &data, &pin->tries_left);
-
+out:
 	sc_unlock(card);
 	return r;
 }
@@ -274,21 +268,14 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	if ((r = _validate_pin(p15card, pin, newpinlen)) != SC_SUCCESS)
 		return r;
 
-	/* pin change with pin pad reader not yet supported */
-	if ((p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) &&
-		(oldpin == NULL || newpin == NULL || oldpinlen == 0 || newpinlen == 0))
-			return SC_ERROR_NOT_SUPPORTED;
-
 	card = p15card->card;
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 	/* the path in the pin object is optional */
 	if (pin->path.len > 0) {
 		r = sc_select_file(card, &pin->path, NULL);
-		if (r) {
-			sc_unlock(card);
-			return r;
-		}
+		if (r)
+			goto out;
 	}
 
 	/* set pin_cmd data */
@@ -323,7 +310,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 		break;
 	}
 	
-	if(p15card->opts.use_pinpad) {
+	if(p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 		if (pin->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 			data.pin1.prompt = "Please enter SO PIN";
@@ -336,6 +323,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 
 	r = sc_pin_cmd(card, &data, &pin->tries_left);
 
+out:
 	sc_unlock(card);
 	return r;
 }
@@ -357,11 +345,6 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	/* make sure the pins are in valid range */
 	if ((r = _validate_pin(p15card, pin, newpinlen)) != SC_SUCCESS)
 		return r;
-
-	/* pin change with pin pad reader not yet supported */
-	if ((p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) &&
-		(newpin == NULL || newpinlen == 0))
-			return SC_ERROR_NOT_SUPPORTED;
 
 	card = p15card->card;
 	/* get pin_info object of the puk (this is a little bit complicated
@@ -392,10 +375,8 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	/* the path in the pin object is optional */
 	if (pin->path.len > 0) {
 		r = sc_select_file(card, &pin->path, NULL);
-		if (r) {
-			sc_unlock(card);
-			return r;
-		}
+		if (r)
+			goto out;
 	}
 
 	/* set pin_cmd data */
@@ -437,7 +418,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		break;
 	}
 	
-	if(p15card->opts.use_pinpad) {
+	if(p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 		if (pin->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 			data.pin1.prompt = "Please enter PUK";
@@ -450,6 +431,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 
 	r = sc_pin_cmd(card, &data, &pin->tries_left);
 
+out:
 	sc_unlock(card);
 	return r;
 }
