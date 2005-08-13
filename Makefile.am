@@ -2,7 +2,7 @@
 
 SUBDIRS = . aclocal doc etc macos man src win32
 
-EXTRA_DIST = ANNOUNCE CodingStyle PAM_README QUICKSTART README \
+EXTRA_DIST = ANNOUNCE CodingStyle QUICKSTART README \
 	bootstrap Makefile.mak depcomp \
 	solaris/Makefile solaris/README solaris/checkinstall.in \
 	solaris/opensc.conf-dist solaris/pkginfo.in solaris/proto

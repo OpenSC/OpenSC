@@ -33,7 +33,6 @@ f none usr/share/man/man7/opensc.7 0644 root other
 f none usr/share/man/man7/pkcs15.7 0644 root other
 d none usr/share/opensc 0755 root other
 f none usr/share/opensc/opensc.conf.example 0644 root other
-f none usr/share/opensc/scldap.conf.example 0644 root other
 f none usr/share/opensc/cyberflex.profile 0644 root other
 f none usr/share/opensc/flex.profile 0644 root other
 f none usr/share/opensc/gpk.profile 0644 root other
@@ -47,22 +46,15 @@ d none usr/lib 0755 root bin
 s none usr/lib/libscconf.so.0=libscconf.so.0.0.9
 f none usr/lib/libscconf.so.0.0.9 0755 root bin
 s none usr/lib/libscconf.so=libscconf.so.0.0.9
-s none usr/lib/libscldap.so.0=libscldap.so.0.0.9
 f none usr/lib/libscconf.la 0755 root bin
 f none usr/lib/libscconf.a 0644 root bin
-f none usr/lib/libscldap.so.0.0.9 0755 root bin
-s none usr/lib/libscldap.so=libscldap.so.0.0.9
 s none usr/lib/libopensc.so.0=libopensc.so.0.0.9
-f none usr/lib/libscldap.la 0755 root bin
-f none usr/lib/libscldap.a 0644 root bin
 f none usr/lib/libopensc.so.0.0.9 0755 root bin
 s none usr/lib/libopensc.so=libopensc.so.0.0.9
 d none usr/lib/pkgconfig 0755 root bin
 f none usr/lib/pkgconfig/libopensc.pc 0644 root bin
 f none usr/lib/pkgconfig/libpkcs15init.pc 0644 root bin
-f none usr/lib/pkgconfig/libscam.pc 0644 root bin
 f none usr/lib/pkgconfig/libscconf.pc 0644 root bin
-f none usr/lib/pkgconfig/libscldap.pc 0644 root bin
 f none usr/lib/libopensc.la 0755 root bin
 f none usr/lib/libopensc.a 0644 root bin
 d none usr/lib/pkcs11 0755 root bin
@@ -79,18 +71,9 @@ f none usr/lib/pkcs11/pkcs11-spy.la 0755 root bin
 f none usr/lib/pkcs11/pkcs11-spy.a 0644 root bin
 f none usr/lib/libpkcs15init.so.0.0.9 0755 root bin
 s none usr/lib/libpkcs15init.so.0=libpkcs15init.so.0.0.9
-s none usr/lib/libscam.so=libscam.so.0.0.9
 s none usr/lib/libpkcs15init.so=libpkcs15init.so.0.0.9
 f none usr/lib/libpkcs15init.la 0755 root bin
 f none usr/lib/libpkcs15init.a 0644 root bin
-s none usr/lib/libscam.so.0=libscam.so.0.0.9
-f none usr/lib/libscam.so.0.0.9 0755 root bin
-d none usr/lib/security 0755 root bin
-f none usr/lib/security/pam_opensc.so 0755 root bin
-f none usr/lib/security/pam_opensc.la 0755 root bin
-f none usr/lib/security/pam_opensc.a 0644 root bin
-f none usr/lib/libscam.la 0755 root bin
-f none usr/lib/libscam.a 0644 root bin
 d none usr/lib/opensc 0755 root bin
 f none usr/lib/opensc/engine_opensc.so 0755 root bin
 f none usr/lib/opensc/engine_opensc.la 0755 root bin
@@ -107,7 +90,6 @@ f none usr/include/opensc/rsaref/pkcs11t.h 0644 root bin
 f none usr/include/opensc/rsaref/unix.h 0644 root bin
 f none usr/include/opensc/rsaref/win32.h 0644 root bin
 f none usr/include/opensc/scconf.h 0644 root bin
-f none usr/include/opensc/scldap.h 0644 root bin
 f none usr/include/opensc/opensc.h 0644 root bin
 f none usr/include/opensc/pkcs15.h 0644 root bin
 f none usr/include/opensc/emv.h 0644 root bin
