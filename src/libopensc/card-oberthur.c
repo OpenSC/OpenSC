@@ -2363,7 +2363,7 @@ sc_get_driver(void)
 #if 0	
 	auth_ops.pin_cmd = auth_pin_cmd;
 #else
-	auth_ops.pin_cmd = NULL
+	auth_ops.pin_cmd = NULL;
 #endif
 	auth_ops.verify = auth_verify;
 	auth_ops.reset_retry_counter = auth_reset_retry_counter;
