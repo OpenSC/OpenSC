@@ -344,13 +344,20 @@ jcop_generate_key(sc_profile_t *profile, sc_card_t *card,
 
 
 static struct sc_pkcs15init_operations sc_pkcs15init_jcop_operations = {
-	.erase_card = jcop_erase_card,
-	.init_app   = jcop_init_app,
-	.select_pin_reference = jcop_select_pin_reference,
-	.create_pin = jcop_create_pin,
-	.create_key = jcop_create_key,
-	.store_key  = jcop_store_key,
-	.generate_key = jcop_generate_key
+	jcop_erase_card,
+	NULL,				/* init_card     */
+	NULL,				/* create_dir    */
+	NULL,				/* create_domain */
+	jcop_select_pin_reference,
+	jcop_create_pin,
+	NULL,				/* select_key_reference */
+	jcop_create_key,
+	jcop_store_key,
+	jcop_generate_key,
+	NULL, NULL,			/* encode private/public key */
+	NULL,				/* finalize_card */
+	jcop_init_app,			/* old */
+	NULL, NULL, NULL, NULL		/* rest of old style api */
 };
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_jcop_ops(void)

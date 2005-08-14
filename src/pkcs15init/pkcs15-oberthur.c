@@ -687,15 +687,23 @@ failed:
 
 
 static struct sc_pkcs15init_operations sc_pkcs15init_oberthur_operations = {
-	.erase_card = cosm_erase_card,
-	/* NEW */
-	.select_pin_reference = cosm_select_pin_reference,
-	.create_pin = cosm_create_pin,
-	/* OLD */
-	.init_app = cosm_init_app,
-	.new_key = cosm_new_key,
-	.new_file = cosm_new_file,
-	.old_generate_key = cosm_old_generate_key
+	cosm_erase_card,
+	NULL,				/* init_card  */
+	NULL,				/* create_dir */
+	NULL,				/* create_domain */
+	cosm_select_pin_reference,
+	cosm_create_pin,
+	NULL,				/* select_key_reference */
+	NULL,				/* create_key */
+	NULL,				/* store_key */
+	NULL,				/* generate_key */
+	NULL, NULL,			/* encode private/public key */
+	NULL,				/* finalize_card */
+	cosm_init_app,			/* old */
+	NULL,				/* new_pin */
+	cosm_new_key,
+	cosm_new_file,
+	cosm_old_generate_key
 };
 
 struct sc_pkcs15init_operations *

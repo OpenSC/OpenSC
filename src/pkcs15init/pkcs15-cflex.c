@@ -856,30 +856,37 @@ cyberflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 }
 
 static struct sc_pkcs15init_operations sc_pkcs15init_cryptoflex_operations = {
-	.erase_card = cflex_erase_card,
-	.init_card = cryptoflex_init_card,
-	.create_dir = cflex_create_dir,
-	.create_domain = cflex_create_domain,
-	.select_pin_reference = cflex_select_pin_reference,
-	.create_pin = cflex_create_pin,
-	.create_key = cflex_create_key,
-	.generate_key = cflex_generate_key,
-	.store_key = cflex_store_key,
-	.encode_private_key = cryptoflex_encode_private_key,
-	.encode_public_key = cryptoflex_encode_public_key
+	cflex_erase_card,
+	cryptoflex_init_card,
+	cflex_create_dir,
+	cflex_create_domain,
+	cflex_select_pin_reference,
+	cflex_create_pin,
+	NULL,					/* select_key_reference */
+	cflex_create_key,
+	cflex_store_key,
+	cflex_generate_key,
+	cryptoflex_encode_private_key,
+	cryptoflex_encode_public_key,
+	NULL,					/* finalize_card */
+	NULL, NULL, NULL, NULL, NULL		/* old style api */
 };
 
 static struct sc_pkcs15init_operations sc_pkcs15init_cyberflex_operations = {
-	.erase_card = cflex_erase_card,
-	.create_dir = cflex_create_dir,
-	.create_domain = cflex_create_domain,
-	.select_pin_reference = cflex_select_pin_reference,
-	.create_pin = cflex_create_pin,
-	.create_key = cflex_create_key,
-	.generate_key = cflex_generate_key,
-	.store_key = cflex_store_key,
-	.encode_private_key = cyberflex_encode_private_key,
-	.encode_public_key = cyberflex_encode_public_key
+	cflex_erase_card,
+	NULL,					/* init_card */
+	cflex_create_dir,
+	cflex_create_domain,
+	cflex_select_pin_reference,
+	cflex_create_pin,
+	NULL,					/* select_key_reference */
+	cflex_create_key,
+	cflex_store_key,
+	cflex_generate_key,
+	cyberflex_encode_private_key,
+	cyberflex_encode_public_key,
+	NULL,					/* finalize_card */
+	NULL, NULL, NULL, NULL, NULL		/* old style api */
 };
 
 struct sc_pkcs15init_operations *

@@ -914,16 +914,19 @@ static int starcos_finalize_card(sc_card_t *card)
 }
 
 static struct sc_pkcs15init_operations sc_pkcs15init_starcos_operations = {
-	.erase_card = starcos_erase_card,
-	.init_card  = starcos_init_card,
-	.create_dir = starcos_create_dir,
-	.select_pin_reference = starcos_pin_reference,
-	.create_pin = starcos_create_pin,
-	.select_key_reference = starcos_key_reference,
-	.create_key = starcos_create_key,
-	.store_key  = starcos_store_key,
-	.generate_key = starcos_generate_key,
-	.finalize_card = starcos_finalize_card
+	starcos_erase_card,
+	starcos_init_card,
+	starcos_create_dir,
+	NULL,				/* create_domain */
+	starcos_pin_reference,
+	starcos_create_pin,
+	starcos_key_reference,
+	starcos_create_key,
+	starcos_store_key,
+	starcos_generate_key,
+	NULL, NULL,			/* encode private/public key */
+	starcos_finalize_card,
+	NULL, NULL, NULL, NULL, NULL	/* old style api */
 };
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_starcos_ops(void)

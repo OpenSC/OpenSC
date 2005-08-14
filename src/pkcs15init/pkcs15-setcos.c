@@ -566,23 +566,29 @@ static int setcos_puk_retries(sc_profile_t *profile, int pin_ref)
 	return pin_info.tries_left;
 }
 
-static struct sc_pkcs15init_operations sc_pkcs15init_setcos_operations;
+static struct sc_pkcs15init_operations sc_pkcs15init_setcos_operations = {
+	setcos_erase_card,
+	NULL,				/* init_card     */
+	NULL,				/* create_dir    */
+	NULL,				/* create_domain */
+	setcos_select_pin_reference,
+	setcos_create_pin,
+	NULL,				/* select_key_reference */
+	NULL,				/* create_key */
+	NULL,				/* store_key  */
+	NULL,				/* generate_key */
+	setcos_encode_private_key,
+	setcos_encode_public_key,
+	NULL,				/* finalize_card */
+	setcos_init_app,		/* old */
+	NULL,				/* old style api */
+	setcos_new_key,
+	setcos_new_file,
+	setcos_old_generate_key
+};
 
 struct sc_pkcs15init_operations *
 sc_pkcs15init_get_setcos_ops(void)
 {
-	struct sc_pkcs15init_operations *ops;
-	
-	ops = &sc_pkcs15init_setcos_operations;
-	ops->erase_card = setcos_erase_card;
-	ops->init_app = setcos_init_app;
-	ops->select_pin_reference = setcos_select_pin_reference;
-	ops->create_pin = setcos_create_pin;
-	ops->old_generate_key = setcos_old_generate_key;
-	ops->new_key = setcos_new_key;
-	ops->new_file = setcos_new_file;
-	ops->encode_private_key = setcos_encode_private_key;
-	ops->encode_public_key = setcos_encode_public_key;
-
-	return ops;
+	return &sc_pkcs15init_setcos_operations;
 }
