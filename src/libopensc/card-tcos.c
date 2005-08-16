@@ -48,6 +48,7 @@ static const struct sc_card_operations *iso_ops = NULL;
 
 typedef struct tcos_data_st {
 	unsigned int pad_flags;
+	unsigned int default_sec_env;
 } tcos_data;
 
 static int tcos_finish(sc_card_t *card)
@@ -610,15 +611,17 @@ static int tcos_set_security_env(sc_card_t *card,
         if (se_num) 
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 
-        if (env->operation == SC_SEC_OPERATION_SIGN) {
-                /* There is only a default security environment for
-                   signature creation. */
+	/* for signature-computation with local key 0 the default security environment
+           will be used automatically, so we return immediately. */
+	if (env->operation == SC_SEC_OPERATION_SIGN && env->key_ref_len==1 && *env->key_ref==0x80 ) {
+		((tcos_data *)card->drv_data)->default_sec_env = 1;
 		return 0;
-        }
+	} else ((tcos_data *)card->drv_data)->default_sec_env = 0;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
+	case SC_SEC_OPERATION_SIGN:
 		apdu.p1 = 0xC1;
 		apdu.p2 = 0xB8;
 		/* save padding flags */
@@ -627,6 +630,7 @@ static int tcos_set_security_env(sc_card_t *card,
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+
 	apdu.le = 0;
 	p = sbuf;
 	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
@@ -681,6 +685,52 @@ err:
 static int tcos_restore_security_env(sc_card_t *card, int se_num)
 {
 	return 0;
+}
+
+/**
+ * TCOS compute_signature command. As TCOS can compute signatures
+ * with the default security environment only, signatures with other
+ * security environments are computed by encrypting the pkcs1-padded data
+ */
+static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datalen, u8 * out, size_t outlen)
+{
+	int r;
+	sc_apdu_t apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+
+	assert(card != NULL && data != NULL && out != NULL);
+
+	if (datalen > 255) SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+
+	if(((tcos_data *)card->drv_data)->default_sec_env){
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
+		memcpy(sbuf, data, datalen);
+	} else {
+		unsigned int keylen=128; /* FIXME: use correct key-size */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x84);
+		for(r=0;r<sizeof(sbuf);++r) sbuf[r]=0xff;
+		sbuf[0]=0x00; sbuf[1]=0x01; sbuf[keylen-datalen-1]=0x00;
+		memcpy(sbuf+keylen-datalen, data, datalen);
+		datalen=keylen;
+	}
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = 256;
+
+	apdu.data = sbuf;
+	apdu.lc = datalen;
+	apdu.datalen = datalen;
+	apdu.sensitive = 1;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
+
+		memcpy(out, apdu.resp, len);
+		SC_FUNC_RETURN(card->ctx, 4, len);
+	}
+	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 /**
@@ -817,20 +867,21 @@ static struct sc_card_driver * sc_get_driver(void)
 	tcos_ops = *iso_drv->ops;
 	tcos_ops.match_card = tcos_match_card;
 	tcos_ops.init = tcos_init;
-        tcos_ops.finish = tcos_finish;
+	tcos_ops.finish = tcos_finish;
 	if (iso_ops == NULL)
-                iso_ops = iso_drv->ops;
+		iso_ops = iso_drv->ops;
 	tcos_ops.create_file = tcos_create_file;
 	tcos_ops.set_security_env = tcos_set_security_env;
 	tcos_ops.select_file = tcos_select_file;
 	tcos_ops.list_files  = tcos_list_files;
-        tcos_ops.delete_file = tcos_delete_file;
-        tcos_ops.set_security_env	= tcos_set_security_env;
+	tcos_ops.delete_file = tcos_delete_file;
+	tcos_ops.set_security_env	= tcos_set_security_env;
+	tcos_ops.compute_signature	= tcos_compute_signature;
 	tcos_ops.decipher    = tcos_decipher;
-        tcos_ops.restore_security_env	= tcos_restore_security_env;
-        tcos_ops.card_ctl    = tcos_card_ctl;
+	tcos_ops.restore_security_env	= tcos_restore_security_env;
+	tcos_ops.card_ctl    = tcos_card_ctl;
 	
-        return &tcos_drv;
+	return &tcos_drv;
 }
 
 struct sc_card_driver * sc_get_tcos_driver(void)
