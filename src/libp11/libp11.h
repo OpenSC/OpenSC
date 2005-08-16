@@ -67,8 +67,7 @@ extern "C" {
 #endif
 
 /* get some structures for local code to handle pkcs11 data readily */
-/* Use the first free lib ID available */
-#define ERR_LIB_PKCS11	42
+#define ERR_LIB_PKCS11	ERR_LIB_USER
 
 #define PKCS11err(f,r) \
 ERR_PUT_error(ERR_LIB_PKCS11,(f),(r),__FILE__,__LINE__)
