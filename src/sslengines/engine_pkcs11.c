@@ -38,8 +38,19 @@
 
 #define fail(msg) { fprintf(stderr,msg); return NULL;}
 
+/** The maximum length of an internally-allocated PIN */
+#define MAX_PIN_LENGTH   12
+
 PKCS11_CTX *ctx;
-char *pin = NULL;
+
+/** 
+ * The PIN used for login. May be assigend by set_pin function, or by the
+ * get_pin function (using an external UI). The memory for this PIN is always
+ * owned internally, and may be freed as necessary. Before freeing, the PIN 
+ * must be whitened, to prevent security holes.
+ */ 
+static char *pin = NULL;
+
 int verbose = 0;
 
 #if defined(_WIN32)
@@ -62,10 +73,32 @@ int set_module(const char *modulename)
 	return 1;
 }
 
+/**
+ * Set the PIN used for login. A copy of the PIN shall be made.
+ *
+ * If the PIN cannot be assigned, the value 0 shall be returned
+ * and errno shall be set as follows:
+ *
+ *   EINVAL - a NULL PIN was supplied
+ *   ENOMEM - insufficient memory to copy the PIN
+ *
+ * @param _pin the pin to use for login. Must not be NULL.
+ *
+ * @return 1 on success, 0 on failure.
+ */
 int set_pin(const char *_pin)
 {
+        /* Pre-condition check */
+        if (_pin == NULL) {
+              errno = EINVAL;
+              return 0;
+        }
+     
+        /* Copy the PIN. If the string cannot be copied, NULL
+           shall be returned and errno shall be set. */
 	pin = strdup(_pin);
-	return 1;
+
+	return (pin != NULL);
 }
 
 int inc_verbose()
@@ -104,6 +137,7 @@ int pkcs11_finish(ENGINE * engine)
 		PKCS11_CTX_free(ctx);
 	}
 	if (pin != NULL) {
+		OPENSSL_cleanse(pin, strlen(pin));
 		free(pin);
 		pin = NULL;
 	}
@@ -377,7 +411,6 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 	size_t key_id_len = sizeof(key_id);
 	int slot_nr = -1;
 	char flags[64];
-	int logged_in = 0;
 
 	/* Parse s_slot_key_id: [slot_<slotNr>][-][id_<keyID>] or NULL,
 	   with slotNr in decimal (0 = first slot, ...), and keyID in hex.
@@ -521,31 +554,60 @@ EVP_PKEY *pkcs11_load_key(ENGINE * e, const char *s_slot_key_id,
 		}
 	}
 
-	while (1) {
-		if (PKCS11_enumerate_keys(tok, &keys, &count))
-			fail("unable to enumerate keys\n");
-		if (count)
-			break;
-		if (logged_in || !tok->loginRequired)
-			break;
-		if (pin == NULL) {
-			pin = (char *) calloc(12, sizeof(char));
-			if (!tok->secureLogin)
-				get_pin(ui_method, callback_data, pin, 12);
-		}
-		if (PKCS11_login(slot, 0, pin)) {
-			if(pin != NULL) {
-				free(pin);
+        /* Perform login to the token if required */
+        if (tok->loginRequired) {
+                /* If the token has a secure login (i.e., an external keypad),
+                   then use a NULL pin. Otherwise, check if a PIN exists. If
+                   not, allocate and obtain a new PIN. */
+                if (tok->secureLogin) {
+                        /* Free the PIN if it has already been 
+                           assigned (i.e, via set_pin */
+			if (pin != NULL) {
+				OPENSSL_cleanse(pin, strlen(pin));
+				free (pin);
 				pin = NULL;
 			}
-			fail("Login failed\n");
-		}
-		logged_in++;
-	}
-
+                }
+                else if (pin == NULL) {
+                        pin = (char *) calloc(MAX_PIN_LENGTH, sizeof(char));
+                        if (pin == NULL) {
+                                fail("Could not allocate memory for PIN");
+                        }        
+                        get_pin(ui_method, callback_data, pin, MAX_PIN_LENGTH);
+                }
+                
+                /* Now login in with the (possibly NULL) pin */
+                if (PKCS11_login(slot, 0, pin)) {
+                        /* Login failed, so free the PIN if present */
+                        if(pin != NULL) {
+				OPENSSL_cleanse(pin, strlen(pin));
+                                free(pin);
+                                pin = NULL;
+                        }
+                        fail("Login failed\n");
+                }
+                /* Login successful, PIN retained in case further logins are 
+                   required. This will occur on subsequent calls to the
+                   pkcs11_load_key function. Subsequent login calls should be
+                   relatively fast (the token should maintain its own login
+                   state), although there may still be a slight performance 
+                   penalty. We could maintain state noting that successful
+                   login has been performed, but this state may not be updated
+                   if the token is removed and reinserted between calls. It
+                   seems safer to retain the PIN and peform a login on each
+                   call to pkcs11_load_key, even if this may not be strictly
+                   necessary. */
+                /* TODO when does PIN get freed after successful login? */
+                /* TODO confirm that multiple login attempts do not introduce
+                        significant performance penalties */
+        }
+        
+        /* Make sure there is at least one private key on the token */
+        if (PKCS11_enumerate_keys(tok, &keys, &count)) {
+                fail("unable to enumerate keys\n");
+        }
 	if (count == 0) {
-		fprintf(stderr,"No keys found.\n");
-		return NULL;
+		fail("No keys found.\n");
 	}
 
 	if(verbose) {
