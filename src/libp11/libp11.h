@@ -179,6 +179,10 @@ extern int PKCS11_init_token(PKCS11_TOKEN *, const char *pin,
 /* Initialize the user PIN on a token */
 extern int PKCS11_init_pin(PKCS11_TOKEN *, const char *pin);
 
+/* Change the user PIN on a token */
+extern int PKCS11_change_pin(PKCS11_SLOT *, const char *old_pin,
+	const char *new_pin);
+
 /* Store various objects on the token */
 extern int PKCS11_generate_key(PKCS11_TOKEN *, int, unsigned int, char *);
 extern int PKCS11_store_private_key(PKCS11_TOKEN *, EVP_PKEY *, char *);
@@ -224,6 +228,7 @@ extern void ERR_load_PKCS11_strings(void);
 #define PKCS11_F_PKCS11_STORE_CERTIFICATE	19
 #define PKCS11_F_PKCS11_SEED_RANDOM		20
 #define PKCS11_F_PKCS11_GENERATE_RANDOM		21
+#define PKCS11_F_PKCS11_CHANGE_PIN		22
 #define PKCS11_F_PKCS11_GETATTR			40
 
 #define PKCS11_ERR_BASE				1024

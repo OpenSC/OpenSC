@@ -252,6 +252,30 @@ int PKCS11_init_pin(PKCS11_TOKEN * token, const char *pin)
 }
 
 /*
+ * Change the User PIN
+ */
+int PKCS11_change_pin(PKCS11_SLOT * slot, const char *old_pin,
+		const char *new_pin)
+{
+	PKCS11_SLOT_private *priv = PRIVSLOT(slot);
+	PKCS11_CTX *ctx = priv->parent;
+	int old_len, new_len, rv;
+
+	if (!priv->haveSession) {
+		PKCS11err(PKCS11_F_PKCS11_CHANGE_PIN, PKCS11_NO_SESSION);
+		return -1;
+	}
+
+	old_len = old_pin ? strlen(old_pin) : 0;
+	new_len = new_pin ? strlen(new_pin) : 0;
+	rv = CRYPTOKI_call(ctx, C_SetPIN(priv->session, (CK_UTF8CHAR *) old_pin,
+		old_len, (CK_UTF8CHAR *) new_pin, new_len));
+	CRYPTOKI_checkerr(PKCS11_F_PKCS11_CHANGE_PIN, rv);
+
+	return pkcs11_check_token(ctx, slot);
+}
+
+/*
  * Seed the random number generator
  */
 int PKCS11_seed_random(PKCS11_SLOT *slot, const unsigned char *s,
