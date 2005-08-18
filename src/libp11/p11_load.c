@@ -137,8 +137,12 @@ void PKCS11_CTX_unload(PKCS11_CTX * ctx)
  */
 void PKCS11_CTX_free(PKCS11_CTX * ctx)
 {
+	/* Do not remove the strings since OpenSSL strings may still be used by
+	 * the application and we can't know
+
 	ERR_free_strings();
 	ERR_remove_state(0);
+	*/
 	OPENSSL_free(ctx->manufacturer);
 	OPENSSL_free(ctx->description);
 	OPENSSL_free(ctx->_private);
