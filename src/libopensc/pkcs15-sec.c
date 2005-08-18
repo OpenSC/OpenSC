@@ -28,8 +28,6 @@
 #include <unistd.h>
 #endif
 
-static int sc_askpin_login(sc_pkcs15_card_t *p15card, const sc_pkcs15_object_t *key_obj);
-
 static int select_key_file(struct sc_pkcs15_card *p15card,
 			   const struct sc_pkcs15_prkey_info *prkey,
 			   sc_security_env_t *senv)
@@ -160,7 +158,6 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	u8 buf[512], *tmpin, *tmpout, *help;
 	size_t tmpoutlen;
 	unsigned long pad_flags = 0;
-	int first_try = 1;
 
 	SC_FUNC_CALLED(ctx, 1);
 	/* If the key is extractable, the caller should extract the
@@ -309,8 +306,6 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-try_again:
-
 	r = sc_set_security_env(p15card->card, &senv, 0);
 	if (r < 0) {
 		sc_unlock(p15card->card);
@@ -326,65 +321,14 @@ try_again:
 	 * always have algorithm RSA_PURE_SIG so the input buffer
 	 * is padded and has the same length as the signature. --okir 
 	 */
-	if (tmpin == out && first_try) {
+	if (tmpin == out) {
 		memcpy(tmpout, tmpin, inlen);
 		tmpin = tmpout;
 	}
-
 	r = sc_compute_signature(p15card->card, tmpin, inlen, out, outlen);
-
-	/* Handling a UserConsent key */
-	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED && first_try &&
-			obj->user_consent != 0) {
-		r = sc_askpin_login(p15card, obj);
-		if (r >= 0) {
-			first_try = 0;
-			goto try_again;
-		}
-	}
-
 	memset(buf, 0, sizeof(buf));
 	sc_unlock(p15card->card);
 	SC_TEST_RET(ctx, r, "sc_compute_signature() failed");
-
-	return r;
-}
-
-static int sc_askpin_login(sc_pkcs15_card_t *p15card, const sc_pkcs15_object_t *key_obj)
-{
-	int r;
-	char prompt[200];
-	char *pincode = NULL;
-	sc_ui_hints_t hints;
-	sc_pkcs15_object_t *pin_obj;
-	sc_pkcs15_pin_info_t *pin_info;
-
-	r = sc_pkcs15_find_pin_by_auth_id(p15card, &key_obj->auth_id, &pin_obj);
-	SC_TEST_RET(p15card->card->ctx, r, "sc_pkcs15_find_pin_by_auth_id() failed");
-	pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.dialog_name = "Enter PIN";
-	sprintf("Enter your PIN (called \"%s\" in order to make\na signature with your \"%s\" key.\nNOTE, this may be a (legally) binding signature!\n",
-		pin_obj->label, key_obj->label);
-	hints.prompt	= prompt;
-	hints.obj_label	= pin_obj->label;
-	hints.usage	= SC_UI_USAGE_OTHER;
-	hints.card	= p15card->card;
-	hints.p15card	= p15card;
-
-	r = sc_ui_get_pin(&hints, &pincode);
-	SC_TEST_RET(p15card->card->ctx, r, "sc_ui_get_pin() failed");
-	if (pincode == NULL)
-		return SC_ERROR_KEYPAD_CANCELLED;
-	if (strlen(pincode) == 0) {
-		free(pincode);
-		return SC_ERROR_KEYPAD_CANCELLED;
-	}
-
-	r = sc_pkcs15_verify_pin(p15card, pin_info, pincode, strlen(pincode));
-	free(pincode);
-	SC_TEST_RET(p15card->card->ctx, r, "sc_pkcs15_verify_pin() failed");
 
 	return r;
 }
