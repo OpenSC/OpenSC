@@ -55,8 +55,8 @@
  *
  */
 
-#ifndef _LIB11_INT_H
-#define _LIB11_INT_H
+#ifndef _LIB11_H
+#define _LIB11_H
 
 #include <openssl/bio.h>
 #include <openssl/err.h>
