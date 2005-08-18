@@ -2329,7 +2329,7 @@ sc_pkcs15init_remove_object(sc_pkcs15_card_t *p15card,
 	sc_path_t	path;
 	int		r = 0;
 
-	switch(obj->type)
+	switch(obj->type & SC_PKCS15_TYPE_CLASS_MASK)
 	{
 	case SC_PKCS15_TYPE_PUBKEY:
 		path = ((sc_pkcs15_pubkey_info_t *)obj->data)->path;
