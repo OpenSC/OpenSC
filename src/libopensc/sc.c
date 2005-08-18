@@ -344,11 +344,10 @@ void sc_file_clear_acl_entries(sc_file_t *file, unsigned int operation)
 
 sc_file_t * sc_file_new()
 {
-	sc_file_t *file = (sc_file_t *) malloc(sizeof(sc_file_t));
-
+	sc_file_t *file = (sc_file_t *)calloc(1, sizeof(sc_file_t));
 	if (file == NULL)
 		return NULL;
-	memset(file, 0, sizeof(sc_file_t));
+
 	file->magic = SC_FILE_MAGIC;
 	return file;
 }
