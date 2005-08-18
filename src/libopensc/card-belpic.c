@@ -1506,9 +1506,7 @@ static int belpic_set_security_env(sc_card_t *card,
 			sc_error(card->ctx, "Verify PIN in SET command returned %d\n", r);
 		else
 			sc_debug(card->ctx, "Verify PIN in SET command returned %d\n", r);
-#else
-		sc_debug(card->ctx, "No GUI for NonRep key present, signature cancelled\n");
-		return SC_ERROR_NOT_SUPPORTED;
+
 #endif
 	}
 

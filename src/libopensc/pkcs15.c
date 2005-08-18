@@ -130,6 +130,7 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 {
 	int r;
 	int version = card->version;
+	size_t serial_len, mnfid_len, label_len, flags_len, last_upd_len;
 	
 	struct sc_asn1_entry asn1_toki[13], asn1_tokeninfo[2];
 
@@ -139,7 +140,7 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_toki + 0, &version, NULL, 1);
 	if (card->serial_number != NULL) {
 		u8 serial[128];
-		size_t serial_len = 0;
+		serial_len = 0;
 		if (strlen(card->serial_number)/2 > sizeof(serial))
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		serial_len = sizeof(serial);
@@ -149,17 +150,17 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 	} else
 		sc_format_asn1_entry(asn1_toki + 1, NULL, NULL, 0);
 	if (card->manufacturer_id != NULL) {
-		size_t mnfid_len = strlen(card->manufacturer_id);
+		mnfid_len = strlen(card->manufacturer_id);
 		sc_format_asn1_entry(asn1_toki + 2, card->manufacturer_id, &mnfid_len, 1);
 	} else
 		sc_format_asn1_entry(asn1_toki + 2, NULL, NULL, 0);
 	if (card->label != NULL) {
-		size_t label_len = strlen(card->label);
+		label_len = strlen(card->label);
 		sc_format_asn1_entry(asn1_toki + 3, card->label, &label_len, 1);
 	} else
 		sc_format_asn1_entry(asn1_toki + 3, NULL, NULL, 0);
 	if (card->flags) {
-		size_t flags_len = sizeof(card->flags);
+		flags_len = sizeof(card->flags);
 		sc_format_asn1_entry(asn1_toki + 4, &card->flags, &flags_len, 1);
 	} else
 		sc_format_asn1_entry(asn1_toki + 4, NULL, NULL, 0);
@@ -169,8 +170,8 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_toki + 8, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 9, NULL, NULL, 0);
 	if (card->last_update != NULL) {
-		size_t len = strlen(card->last_update);
-		sc_format_asn1_entry(asn1_toki + 10, card->last_update, &len, 1);
+		last_upd_len = strlen(card->last_update);
+		sc_format_asn1_entry(asn1_toki + 10, card->last_update, &last_upd_len, 1);
 	} else
 		sc_format_asn1_entry(asn1_toki + 10, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 11, NULL, NULL, 0);
