@@ -533,7 +533,7 @@ cosm_old_generate_key(struct sc_profile *profile, sc_card_t *card,
 	path.len -= 2;
 	if ((rv = sc_profile_get_file_by_path(profile, &path, &tmpf))) 
 		goto failed;
-    else if ((rv = sc_pkcs15init_authenticate(profile, card, tmpf, 
+	else if ((rv = sc_pkcs15init_authenticate(profile, card, tmpf, 
 					SC_AC_OP_CRYPTO)) < 0)  
 		goto failed;
 	else if ((rv = sc_pkcs15init_authenticate(profile, card, tmpf, 
@@ -545,6 +545,10 @@ cosm_old_generate_key(struct sc_profile *profile, sc_card_t *card,
 	/* In the private key DF create the temporary public RSA file. */
 	sc_debug(card->ctx, "ready to create public key\n");
 	sc_file_dup(&tmpf, prkf);
+	if (tmpf == NULL) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		goto failed; 
+	}
 	tmpf->type = SC_FILE_TYPE_INTERNAL_EF;
 	tmpf->ef_structure = SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC;
 	tmpf->id = 0x1012;

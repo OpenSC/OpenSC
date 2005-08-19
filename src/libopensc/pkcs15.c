@@ -1113,8 +1113,14 @@ int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	newdf->path = *path;
 	newdf->type = type;
-	if (file != NULL)
+	if (file != NULL) {
 		sc_file_dup(&newdf->file, file);
+		if (newdf->file == NULL) {
+			free(newdf);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+			
+	}
 	if (p15card->df_list == NULL) {
 		p15card->df_list = newdf;
 		return 0;

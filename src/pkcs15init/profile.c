@@ -465,6 +465,8 @@ sc_profile_get_file_in(sc_profile_t *profile,
 	if ((fi = sc_profile_find_file(profile, path, name)) == NULL)
 		return SC_ERROR_FILE_NOT_FOUND;
 	sc_file_dup(ret, fi->file);
+	if (*ret == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	return 0;
 }
 
@@ -477,6 +479,8 @@ sc_profile_get_file(struct sc_profile *profile,
 	if ((fi = sc_profile_find_file(profile, NULL, name)) == NULL)
 		return SC_ERROR_FILE_NOT_FOUND;
 	sc_file_dup(ret, fi->file);
+	if (*ret == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	return 0;
 }
 
@@ -501,6 +505,8 @@ sc_profile_get_file_by_path(struct sc_profile *profile,
 	if ((fi = sc_profile_find_file_by_path(profile, path)) == NULL)
 		return SC_ERROR_FILE_NOT_FOUND;
 	sc_file_dup(ret, fi->file);
+	if (*ret == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	return 0;
 }
 
@@ -516,6 +522,8 @@ sc_profile_add_file(sc_profile_t *profile, const char *name, sc_file_t *file)
 		return SC_ERROR_FILE_NOT_FOUND;
 	}
 	sc_file_dup(&file, file);
+	if (file == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	add_file(profile, name, file, parent);
 	return 0;
 }
@@ -550,6 +558,8 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		 && sc_compare_path(&fi->inst_path, base_path)
 		 && !strcmp(fi->ident, file_name)) {
 			sc_file_dup(ret, fi->file);
+			if (*ret == NULL)
+				return SC_ERROR_OUT_OF_MEMORY;
 			return 0;
 		}
 	}
@@ -599,6 +609,8 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 	sc_file_dup(ret, match->file);
+	if (*ret == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	return 0;
 }
 
@@ -615,7 +627,16 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 	fi->instance = fi;
 	fi->parent = parent;
 	fi->ident = strdup(ft->ident);
+	if (fi->ident == NULL) {
+		free(fi);
+		return NULL;
+	}
 	sc_file_dup(&fi->file, ft->file);
+	if (fi->file == NULL) {
+		free(fi->ident);
+		free(fi);
+		return NULL;
+	}
 	fi->file->path = parent->file->path;
 	fi->file->id += skew;
 	sc_append_file_id(&fi->file->path, fi->file->id);
@@ -1394,7 +1415,7 @@ find_macro(sc_profile_t *profile, const char *name)
  */
 static struct command	key_commands[] = {
  { "value",		1,	1,	do_key_value	},
- { NULL }
+ { NULL, 0, 0, NULL }
 };
 
 /*
@@ -1418,7 +1439,7 @@ static struct command	ci_commands[] = {
 static struct block	ci_blocks[] = {
  { "key",		process_key,	key_commands,	NULL	},
 
- { NULL }
+ { NULL, NULL, NULL, NULL }
 };
 
 /*
@@ -1479,7 +1500,7 @@ static struct block	root_blocks[] = {
  { "macros",		process_macros,	NULL,		NULL	},
  { "pkcs15",		process_block,	p15_commands,	NULL	},
 
- { NULL, NULL , NULL }
+ { NULL, NULL, NULL, NULL }
 };
 
 static struct block	root_ops = {
@@ -1689,7 +1710,7 @@ get_authid(struct state *cur, const char *value,
 		unsigned int *type, unsigned int *num)
 {
 	char	temp[16];
-	int	n;
+	size_t	n;
 
 	if (isdigit((int) *value)) {
 		*num = 0;
@@ -1806,11 +1827,11 @@ expr_fail(struct num_exp_ctx *ctx)
 }
 
 static void
-expr_put(struct num_exp_ctx *ctx, char c)
+expr_put(struct num_exp_ctx *ctx, int c)
 {
 	if (ctx->j >= (int)sizeof(ctx->word))
 		expr_fail(ctx);
-	ctx->word[ctx->j++] = c;
+	ctx->word[ctx->j++] = (char)c;
 }
 
 static char *
@@ -1872,12 +1893,12 @@ expr_unget(struct num_exp_ctx *ctx, char *s)
 }
 
 static void
-expr_expect(struct num_exp_ctx *ctx, char c)
+expr_expect(struct num_exp_ctx *ctx, int c)
 {
 	char	*tok;
 
 	tok = expr_get(ctx);
-	if (tok[0] != c || tok[1])
+	if (tok[0] != (char)c || tok[1])
 		expr_fail(ctx);
 }
 

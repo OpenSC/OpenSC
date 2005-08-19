@@ -312,6 +312,8 @@ gpk_init_pinfile(struct sc_profile *profile, sc_card_t *card,
 	user_attempts[1] = sc_profile_get_pin_retries(profile, SC_PKCS15INIT_USER_PUK);
 
 	sc_file_dup(&pinfile, file);
+	if (pinfile == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	/* Create the PIN file. */
 	acl = sc_file_get_acl_entry(pinfile, SC_AC_OP_WRITE);

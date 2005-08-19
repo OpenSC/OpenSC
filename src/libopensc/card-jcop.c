@@ -217,7 +217,9 @@ static int jcop_select_file(sc_card_t *card, const sc_path_t *path,
      if (path->len == 2 && memcmp(path->value, "\x3F\x00", 2) == 0) {
 	  drvdata->selected=SELECT_MF;
 	  if (file) {
-	       sc_file_dup(file, drvdata->virtmf);
+		sc_file_dup(file, drvdata->virtmf);
+		if (*file == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
 	  }
 	  return 0;
      }
@@ -228,7 +230,9 @@ static int jcop_select_file(sc_card_t *card, const sc_path_t *path,
 	  memcmp(path->value, "\x2F\x00", 2) == 0)) {
 	  drvdata->selected=SELECT_EFDIR;
 	  if (file) {
-	       sc_file_dup(file, drvdata->virtdir);
+		sc_file_dup(file, drvdata->virtdir);
+		if (*file == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
 	  }
 	  return 0;
      }	  
