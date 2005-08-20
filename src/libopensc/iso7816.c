@@ -954,47 +954,55 @@ static int iso7816_logout(sc_card_t *card)
 	return sc_select_file(card, &in_path, NULL);
 }
 
-static struct sc_card_operations iso_ops = {
-	NULL,
-};
-
-static struct sc_card_driver iso_driver = {
-	"ISO 7816 reference driver",
-	"iso7816",
-	&iso_ops
-};
-
 static int no_match(sc_card_t *card)
 {
 	return 0;
 }
 
+static struct sc_card_operations iso_ops = {
+	no_match,
+	NULL,			/* init   */
+	NULL,			/* finish */
+	iso7816_read_binary,
+	iso7816_write_binary,
+	iso7816_update_binary,
+	NULL,			/* erase_binary */
+	iso7816_read_record,
+	iso7816_write_record,
+	iso7816_append_record,
+	iso7816_update_record,
+	iso7816_select_file,
+	iso7816_get_response,
+	iso7816_get_challenge,
+	NULL,			/* verify */
+	iso7816_logout,
+	iso7816_restore_security_env,
+	iso7816_set_security_env,
+	iso7816_decipher,
+	iso7816_compute_signature,
+	NULL,			/* change_reference_data */
+	NULL,			/* reset_retry_counter   */
+	iso7816_create_file,
+	iso7816_delete_file,
+	NULL,			/* list_files */
+	iso7816_check_sw,
+	NULL,			/* card_ctl */
+	iso7816_process_fci,
+	iso7816_construct_fci,
+	iso7816_pin_cmd,
+	NULL,			/* get_data */
+	NULL,			/* put_data */
+	NULL			/* delete_record */
+};
+
+static struct sc_card_driver iso_driver = {
+	"ISO 7816 reference driver",
+	"iso7816",
+	&iso_ops,
+	NULL, 0, NULL
+};
+
 struct sc_card_driver * sc_get_iso7816_driver(void)
 {
-	if (iso_ops.match_card == NULL) {
-		memset(&iso_ops, 0, sizeof(iso_ops));
-		iso_ops.match_card    = no_match;
-		iso_ops.read_binary   = iso7816_read_binary;
-		iso_ops.read_record   = iso7816_read_record;
-		iso_ops.write_record  = iso7816_write_record;
-		iso_ops.append_record = iso7816_append_record;
-		iso_ops.update_record = iso7816_update_record;
-		iso_ops.write_binary  = iso7816_write_binary;
-		iso_ops.update_binary = iso7816_update_binary;
-		iso_ops.select_file   = iso7816_select_file;
-		iso_ops.get_challenge = iso7816_get_challenge;
-		iso_ops.create_file   = iso7816_create_file;
-		iso_ops.get_response   = iso7816_get_response;
-		iso_ops.delete_file   = iso7816_delete_file;
-		iso_ops.set_security_env	= iso7816_set_security_env;
-		iso_ops.restore_security_env	= iso7816_restore_security_env;
-		iso_ops.compute_signature	= iso7816_compute_signature;
-		iso_ops.decipher		= iso7816_decipher;
-		iso_ops.check_sw      = iso7816_check_sw;
-		iso_ops.pin_cmd	      = iso7816_pin_cmd;
-		iso_ops.logout        = iso7816_logout;
-		iso_ops.process_fci   = iso7816_process_fci;
-		iso_ops.construct_fci   = iso7816_construct_fci;
-	}
 	return &iso_driver;
 }
