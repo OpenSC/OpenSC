@@ -170,8 +170,11 @@ sc_pkcs15emu_netkey_init(sc_pkcs15_card_t *p15card) {
 		r = sc_select_file(card, &path, &file);
 		if (r < 0) continue;
 
-		usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION | SC_PKCS15_PRKEY_USAGE_SIGN;
-                if(file->prop_attr[1] & 0x04) usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT;
+		usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+                if (file->prop_attr[1] & 0x04)
+			usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT;
+		else if (file->prop_attr[1] & 0x08)
+			usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		prkey_info.id.len         = 1;
