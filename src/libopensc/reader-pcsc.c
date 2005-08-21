@@ -547,6 +547,12 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	gpriv->pcsc_ctx = pcsc_ctx;
+	
+	conf_block = _get_conf_block(ctx, "reader_driver", "pcsc", 1);
+	if (conf_block) {
+		gpriv->enable_pinpad =
+		    scconf_get_bool(conf_block, "enable_pinpad", 0);		    
+	}
 	*reader_data = gpriv;
 
 	reader_buf = (char *) malloc(sizeof(char) * reader_buf_size);
