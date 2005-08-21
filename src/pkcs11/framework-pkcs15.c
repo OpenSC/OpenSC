@@ -29,6 +29,7 @@
 #define MAX_CACHE_PIN		32
 struct pkcs15_slot_data {
 	struct sc_pkcs15_object *auth_obj;
+	int user_consent;
 	struct {
 		sc_path_t	path;
 		u8		value[MAX_CACHE_PIN];
@@ -512,6 +513,11 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 	obj->base.flags |= SC_PKCS11_OBJECT_SEEN;
 	obj->refcount++;
 
+	if (obj->p15_object && (obj->p15_object->user_consent > 0) ) {
+		sc_debug(context, "User consent object deteced, marking slot as user_consent!\n");
+		((struct pkcs15_slot_data *)slot->fw_data)->user_consent = 1;
+	}
+
 	/* Add related objects
 	 * XXX prevent infinite recursion when a card specifies two certificates
 	 * referring to each other.
@@ -669,14 +675,14 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 
 			if (__p15_type(obj) == -1)
 				continue;
-			else if (!sc_pkcs15_compare_id(&pin_info->auth_id,
-						  &obj->p15_object->auth_id))
+			else if (!sc_pkcs15_compare_id(&pin_info->auth_id, &obj->p15_object->auth_id))
 				continue;
 
-			if (is_privkey(obj))   {
+			if (is_privkey(obj)) {
 				sc_debug(context, "Adding private key %d to PIN %d\n", j, i);
 				pkcs15_add_object(slot, obj, NULL);
-			} else if (is_data(obj))   {
+			}
+			else if (is_data(obj)) {
 				sc_debug(context, "Adding data object %d to PIN %d\n", j, i);
 				pkcs15_add_object(slot, obj, NULL);
 			}
@@ -2364,8 +2370,12 @@ cache_pin(void *p, int user, const sc_path_t *path, const void *pin, size_t len)
 	}
 #endif
 
-	if ((user != 0 && user != 1) || !sc_pkcs11_conf.cache_pins)
+	if ((user != CKU_SO && user != CKU_USER) || !sc_pkcs11_conf.cache_pins)
 		return;
+	/* Don't cache pins related to user_consent objects/slots */
+	if (data->user_consent)
+		return;
+
 	memset(&data->pin[user], 0, sizeof(data->pin[user]));
 	if (len && len <= MAX_CACHE_PIN) {
 		memcpy(data->pin[user].value, pin, len);
@@ -2375,19 +2385,25 @@ cache_pin(void *p, int user, const sc_path_t *path, const void *pin, size_t len)
 	}
 }
 
+/* TODO: GUI must indicate pinpad revalidation instead of a plain error.*/
 static int
 revalidate_pin(struct pkcs15_slot_data *data, struct sc_pkcs11_session *ses)
 {
 	int rv;
 	u8 value[MAX_CACHE_PIN];
 
-	sc_debug(context, "revalidate_pin called\n");
-	if (!sc_pkcs11_conf.cache_pins &&
-	    !(ses->slot->token_info.flags & CKF_PROTECTED_AUTHENTICATION_PATH))
+	sc_debug(context, "PIN revalidation\n");
+
+	if (!sc_pkcs11_conf.cache_pins
+	     && !(ses->slot->token_info.flags & CKF_PROTECTED_AUTHENTICATION_PATH))
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 
-	if (ses->slot->token_info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)
+	if (sc_pkcs11_conf.cache_pins && data->user_consent)
+		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+
+	if (ses->slot->token_info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) {
 		rv = pkcs15_login(ses->slot->card, ses->slot->fw_data, CKU_USER, NULL, 0);
+	}
 	else {
 		memcpy(value, data->pin[CKU_USER].value, data->pin[CKU_USER].len);
 		rv = pkcs15_login(ses->slot->card, ses->slot->fw_data, CKU_USER,
