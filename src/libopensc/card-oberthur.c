@@ -132,7 +132,7 @@ static int auth_verify(sc_card_t *card, unsigned int type,
 		int ref, const u8 *data, size_t data_len, int *tries_left);
 static int auth_create_reference_data (sc_card_t *card,
 		struct sc_cardctl_oberthur_createpin_info *args);
-
+static int auth_get_serialnr(sc_card_t *card, sc_serial_number_t *serial);
 
 static int 
 auth_finish(sc_card_t *card)
@@ -171,6 +171,8 @@ auth_select_aid(sc_card_t *card)
 	apdu.resp = apdu_resp;
 	sc_transmit_apdu(card, &apdu);
 	if (apdu.sw1==0x90)  {
+		card->serialnr.len = 4;
+		memcpy(card->serialnr.value, apdu.resp+15, 4);
 		sc_debug(card->ctx, "serial number %li\n", 
 			*(apdu.resp+15)*0x1000000 + *(apdu.resp+16)*0x10000 +
 			*(apdu.resp+17)*0x100 + *(apdu.resp+18));
@@ -1734,6 +1736,8 @@ auth_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_OBERTHUR_CREATE_PIN:
 		return auth_create_reference_data(card,
 				(struct sc_cardctl_oberthur_createpin_info *) ptr); 
+    case SC_CARDCTL_GET_SERIALNR:
+        return auth_get_serialnr(card, (sc_serial_number_t *)ptr);
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -2334,7 +2338,18 @@ auth_delete_record(sc_card_t *card, unsigned int nr_rec)
 	return rv;
 }
 		
+static int
+auth_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
+{
+	if (!card || !serial)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
+	if (card->serialnr.len==0)
+		return SC_ERROR_INTERNAL;
+
+	memcpy(serial, &card->serialnr, sizeof(*serial));
+	return SC_SUCCESS;
+}
 
 static struct sc_card_driver * 
 sc_get_driver(void)
