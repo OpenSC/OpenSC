@@ -926,7 +926,8 @@ static struct sc_pkcs15init_operations sc_pkcs15init_starcos_operations = {
 	starcos_generate_key,
 	NULL, NULL,			/* encode private/public key */
 	starcos_finalize_card,
-	NULL, NULL, NULL, NULL, NULL	/* old style api */
+	NULL, NULL, NULL, NULL, NULL,	/* old style api */
+	NULL 				/* delete_object */
 };
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_starcos_ops(void)

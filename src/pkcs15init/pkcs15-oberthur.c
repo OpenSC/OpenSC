@@ -707,7 +707,8 @@ static struct sc_pkcs15init_operations sc_pkcs15init_oberthur_operations = {
 	NULL,				/* new_pin */
 	cosm_new_key,
 	cosm_new_file,
-	cosm_old_generate_key
+	cosm_old_generate_key,
+	NULL 				/* delete_object */
 };
 
 struct sc_pkcs15init_operations *

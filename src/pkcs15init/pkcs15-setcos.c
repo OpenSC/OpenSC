@@ -566,6 +566,13 @@ static int setcos_puk_retries(sc_profile_t *profile, int pin_ref)
 	return pin_info.tries_left;
 }
 
+static int setcos_delete_object(struct sc_profile *profile, struct sc_card *card,
+	unsigned int type, const void *data, const sc_path_t *path)
+{
+	/* For Setcos, all objects are files that can be deleted in any order */
+	return sc_pkcs15init_delete_by_path(profile, card, path);
+}
+
 static struct sc_pkcs15init_operations sc_pkcs15init_setcos_operations = {
 	setcos_erase_card,
 	NULL,				/* init_card     */
@@ -584,7 +591,8 @@ static struct sc_pkcs15init_operations sc_pkcs15init_setcos_operations = {
 	NULL,				/* old style api */
 	setcos_new_key,
 	setcos_new_file,
-	setcos_old_generate_key
+	setcos_old_generate_key,
+	setcos_delete_object
 };
 
 struct sc_pkcs15init_operations *

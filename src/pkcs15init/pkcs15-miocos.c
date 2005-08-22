@@ -218,7 +218,8 @@ static struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations = {
 	miocos_new_pin,
 	miocos_new_key,
 	miocos_new_file,
-	NULL				/* old_generate_key */
+	NULL,				/* old_generate_key */
+	NULL 				/* delete_object */
 };
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_miocos_ops(void)

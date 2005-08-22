@@ -447,6 +447,48 @@ out:	/* Forget any cached keys, the objects on card are all gone. */
 	return r;
 }
 
+int sc_pkcs15init_delete_by_path(struct sc_profile *profile,
+		struct sc_card *card, const sc_path_t *file_path)
+{
+	sc_file_t *parent, *file;
+	sc_path_t path;
+	int r;
+
+	if (file_path->len >= 2) {
+		/* Select the parent DF */
+		path = *file_path;
+		path.len -= 2;
+		r = sc_select_file(card, &path, &parent);
+		if (r < 0)
+			return r;
+
+		r = sc_pkcs15init_authenticate(profile, card, parent, SC_AC_OP_DELETE);
+		sc_file_free(parent);
+		if (r < 0)
+			return r;
+	}
+
+	/* Select the file itself */
+	path = *file_path;
+	r = sc_select_file(card, &path, &file);
+	if (r < 0)
+		return r;
+
+	r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_DELETE);
+	sc_file_free(file);
+	if (r < 0) 
+		return r;
+
+	memset(&path, 0, sizeof(path));
+	path.type = SC_PATH_TYPE_FILE_ID;
+	path.value[0] = file_path->value[file_path->len - 2];
+	path.value[1] = file_path->value[file_path->len - 1];
+	path.len = 2;
+
+	r = sc_delete_file(card, &path);
+	return r;
+}
+
 /*
  * Try to delete a file (and, in the DF case, its contents).
  * Note that this will not work if a pkcs#15 file's ERASE AC
@@ -505,11 +547,13 @@ sc_pkcs15init_rmdir(sc_card_t *card, struct sc_profile *profile,
 	if (r < 0)
 		return r;
 
+	r = sc_pkcs15init_authenticate(profile, card, df, SC_AC_OP_DELETE);
+	if (r < 0) {
+		sc_file_free(parent);
+		return r;
+	}
 	r = sc_pkcs15init_authenticate(profile, card, parent, SC_AC_OP_DELETE);
 	sc_file_free(parent);
-	if (r < 0)
-		return r;
-	r = sc_pkcs15init_authenticate(profile, card, df, SC_AC_OP_ERASE);
 	if (r < 0)
 		return r;
 
@@ -2476,6 +2520,57 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card,
 	}
 
 	return r < 0 ? r : 0;
+}
+
+int sc_pkcs15init_delete_object(sc_pkcs15_card_t *p15card,
+	sc_profile_t *profile, sc_pkcs15_object_t *obj)
+{
+	sc_path_t path;
+	struct sc_pkcs15_df *df;
+	int r;
+
+	if (profile->ops->delete_object == NULL)
+		return SC_ERROR_NOT_SUPPORTED;
+
+	switch(obj->type & SC_PKCS15_TYPE_CLASS_MASK)
+	{
+	case SC_PKCS15_TYPE_PUBKEY:
+		path = ((sc_pkcs15_pubkey_info_t *)obj->data)->path;
+		break;
+	case SC_PKCS15_TYPE_PRKEY:
+		path = ((sc_pkcs15_prkey_info_t *)obj->data)->path;
+		break;
+	case SC_PKCS15_TYPE_CERT:
+		path = ((sc_pkcs15_cert_info_t *)obj->data)->path;
+		break;
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		path = ((sc_pkcs15_data_info_t *)obj->data)->path;
+		break;
+	default:
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	/* Set the SO PIN reference from card */
+	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
+		return r;
+
+	r = profile->ops->delete_object(profile, p15card->card,
+		obj->type, obj->data, &path);
+	if (r < 0) {
+		sc_error(p15card->card->ctx, "ops->delete_object() failed: %d", r);
+		return r;
+	}
+
+	/* Get the DF we're part of. If there's no DF, fine, we haven't
+	 * been added yet. */
+	if ((df = obj->df) == NULL)
+		return 0;
+
+	/* Unlink the object and update the DF */
+	sc_pkcs15_remove_object(p15card, obj);
+	r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
+
+	return r;
 }
 
 /*

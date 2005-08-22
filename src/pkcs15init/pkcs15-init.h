@@ -159,6 +159,11 @@ struct sc_pkcs15init_operations {
 			sc_pkcs15_pubkey_t *pubkey_res,
 			struct sc_pkcs15_prkey_info *);
 
+	/*
+	 * Delete object
+	 */
+	int (*delete_object)(struct sc_profile *, struct sc_card *,
+			unsigned int type, const void *data, const sc_path_t *path);
 };
 
 /* Do not change these or reorder these */
@@ -317,6 +322,9 @@ extern int	sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card,
 				int new_attrib_type,
 				void *new_value,
 				int new_len);
+extern int	sc_pkcs15init_delete_object(sc_pkcs15_card_t *p15card,
+				sc_profile_t *profile,
+				sc_pkcs15_object_t *obj);
 
 extern int	sc_pkcs15init_create_file(struct sc_profile *,
 				struct sc_card *, struct sc_file *);
@@ -344,6 +352,8 @@ extern int	sc_pkcs15init_set_pin_data(struct sc_profile *, int,
 				const u8 *, size_t);
 extern int	sc_pkcs15init_verify_key(struct sc_profile *, struct sc_card *,
 				sc_file_t *,  unsigned int, unsigned int);
+extern int	sc_pkcs15init_delete_by_path(struct sc_profile *,
+				struct sc_card *, const sc_path_t *path);
 
 /* Erasing the card structure via rm -rf */
 extern int	sc_pkcs15init_erase_card_recursively(struct sc_card *,
