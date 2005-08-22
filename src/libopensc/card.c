@@ -1122,7 +1122,7 @@ int _sc_check_forced_protocol(sc_context_t *ctx, u8 *atr, size_t atr_len, unsign
 	return ok;
 }
 
-scconf_block *_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2, u8 priority)
+scconf_block *_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2, int priority)
 {
 	int i;
 	scconf_block *conf_block = NULL;
