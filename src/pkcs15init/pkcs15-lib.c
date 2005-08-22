@@ -2570,6 +2570,9 @@ int sc_pkcs15init_delete_object(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_remove_object(p15card, obj);
 	r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
 
+	/* mark card as dirty */
+	profile->dirty = 1;
+
 	return r;
 }
 
