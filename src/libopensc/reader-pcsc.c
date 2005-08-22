@@ -530,6 +530,7 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 	SCARDCONTEXT pcsc_ctx;
 	int r;
 	struct pcsc_global_private_data *gpriv;
+	scconf_block *conf_block;
 
 	rv = SCardEstablishContext(SCARD_SCOPE_GLOBAL,
                               NULL, NULL, &pcsc_ctx);
