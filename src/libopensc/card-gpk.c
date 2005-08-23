@@ -84,7 +84,7 @@ struct gpk_private_data {
 };
 #define DRVDATA(card)	((struct gpk_private_data *) ((card)->drv_data))
 
-static int	gpk_get_info(sc_card_t *, u8, u8, u8 *, size_t);
+static int	gpk_get_info(sc_card_t *, int, int, u8 *, size_t);
 
 /*
  * ATRs of GPK4000 cards courtesy of libscez
@@ -327,7 +327,7 @@ okay:
 }
 
 static void
-ac_to_acl(unsigned short int ac, sc_file_t *file, unsigned int op)
+ac_to_acl(unsigned int ac, sc_file_t *file, unsigned int op)
 {
 	unsigned int	npins, pin;
 
@@ -512,7 +512,7 @@ gpk_parse_fileinfo(sc_card_t *card,
 }
 
 static int
-gpk_select(sc_card_t *card, u8 kind,
+gpk_select(sc_card_t *card, int kind,
 		const u8 *buf, size_t buflen,
 		sc_file_t **file)
 {
@@ -569,7 +569,7 @@ gpk_select(sc_card_t *card, u8 kind,
 }
 
 static int
-gpk_select_id(sc_card_t *card, u8 kind, unsigned short int fid,
+gpk_select_id(sc_card_t *card, int kind, unsigned int fid,
 		sc_file_t **file)
 {
 	sc_path_t	*cp = &card->cache.current_path;
@@ -1658,7 +1658,7 @@ gpk_max_session_key(sc_card_t *card)
  * GetInfo call
  */
 int
-gpk_get_info(sc_card_t *card, u8 p1, u8 p2, u8 *buf, size_t buflen)
+gpk_get_info(sc_card_t *card, int p1, int p2, u8 *buf, size_t buflen)
 {
 	sc_apdu_t	apdu;
 	int	r, retry = 0;
@@ -1865,29 +1865,28 @@ gpk_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 static struct sc_card_driver *
 sc_get_driver()
 {
-	if (gpk_ops.match_card == NULL) {
-		struct sc_card_driver *iso_drv;
+	struct sc_card_driver *iso_drv;
 
-		iso_drv = sc_get_iso7816_driver();
-		iso_ops = iso_drv->ops;
-		gpk_ops = *iso_ops;
+	iso_drv = sc_get_iso7816_driver();
+	iso_ops = iso_drv->ops;
+	gpk_ops = *iso_ops;
 
-		gpk_ops.match_card	= gpk_match_card;
-		gpk_ops.init		= gpk_init;
-		gpk_ops.finish		= gpk_finish;
-		gpk_ops.select_file	= gpk_select_file;
-		gpk_ops.read_binary	= gpk_read_binary;
-		gpk_ops.write_binary	= gpk_write_binary;
-		gpk_ops.update_binary	= gpk_update_binary;
-		gpk_ops.create_file	= gpk_create_file;
-		/* gpk_ops.check_sw	= gpk_check_sw; */
-		gpk_ops.card_ctl	= gpk_card_ctl;
-		gpk_ops.set_security_env= gpk_set_security_env;
-		gpk_ops.restore_security_env= gpk_restore_security_env;
-		gpk_ops.compute_signature= gpk_compute_signature;
-		gpk_ops.decipher	= gpk_decipher;
-		gpk_ops.pin_cmd		= gpk_pin_cmd;
-	}
+	gpk_ops.match_card	= gpk_match_card;
+	gpk_ops.init		= gpk_init;
+	gpk_ops.finish		= gpk_finish;
+	gpk_ops.select_file	= gpk_select_file;
+	gpk_ops.read_binary	= gpk_read_binary;
+	gpk_ops.write_binary	= gpk_write_binary;
+	gpk_ops.update_binary	= gpk_update_binary;
+	gpk_ops.create_file	= gpk_create_file;
+	/* gpk_ops.check_sw	= gpk_check_sw; */
+	gpk_ops.card_ctl	= gpk_card_ctl;
+	gpk_ops.set_security_env= gpk_set_security_env;
+	gpk_ops.restore_security_env= gpk_restore_security_env;
+	gpk_ops.compute_signature= gpk_compute_signature;
+	gpk_ops.decipher	= gpk_decipher;
+	gpk_ops.pin_cmd		= gpk_pin_cmd;
+
 	return &gpk_drv;
 }
 
