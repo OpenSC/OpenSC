@@ -101,6 +101,7 @@ static int	do_read_certificate(const char *, const char *, X509 **);
 static void	parse_commandline(int argc, char **argv);
 static void	read_options_file(const char *);
 static void	ossl_print_errors(void);
+static void set_userpin_ref();
 
 
 enum {
@@ -1074,6 +1075,8 @@ do_delete_objects(struct sc_profile *profile, unsigned int opt_delete_flags)
 {
 	int r, count = 0;
 
+	set_userpin_ref();
+
 	if (opt_delete_flags & SC_PKCS15INIT_DEL_DATA) {
 		struct sc_object_id app_oid;
 		sc_pkcs15_object_t *obj;
@@ -2011,6 +2014,26 @@ parse_delete_flags(const char *list)
 	}
 
 	return res;
+}
+
+/* If the user PIN and it's ID is given, put the pin ref in the keycache */
+static void set_userpin_ref()
+{
+	int r;
+
+	if ((opt_pins[0] != NULL) && (opt_authid != 0)) {
+		sc_path_t path;
+		sc_pkcs15_id_t auth_id;
+		sc_pkcs15_object_t *pinobj;
+		sc_pkcs15_pin_info_t *pin_info;
+		sc_format_path("3F00", &path);
+		sc_pkcs15_format_id(opt_authid, &auth_id);
+		r = sc_pkcs15_find_pin_by_auth_id(p15card, &auth_id, &pinobj);
+		if (r < 0)
+			fatal("Searching for user PIN %d failed: %s\n", opt_authid, sc_strerror(r));
+		pin_info = (sc_pkcs15_pin_info_t *) pinobj->data;
+		sc_keycache_set_pin_name(&path, pin_info->reference, SC_PKCS15INIT_USER_PIN);
+	}
 }
 
 /*
