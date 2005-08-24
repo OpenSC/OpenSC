@@ -255,6 +255,8 @@ sc_profile_new(void)
 		return NULL;
 	pro->p15_spec = p15card = sc_pkcs15_card_new();
 
+	pro->pkcs15.odf_last_update = 1;
+
 	/* Set up EF(TokenInfo) and EF(ODF) */
 	p15card->file_tokeninfo = init_file(SC_FILE_TYPE_WORKING_EF);
 	p15card->file_odf = init_file(SC_FILE_TYPE_WORKING_EF);
@@ -747,6 +749,12 @@ static int
 do_encode_df_length(struct state *cur, int argc, char **argv)
 {
 	return get_bool(cur, argv[0], &cur->profile->pkcs15.encode_df_length);
+}
+
+static int
+do_encode_odf_update_field(struct state *cur, int argc, char **argv)
+{
+	return get_bool(cur, argv[0], &cur->profile->pkcs15.odf_last_update);
 }
 
 /*
@@ -1489,6 +1497,7 @@ static struct command	pi_commands[] = {
 static struct command	p15_commands[] = {
  { "direct-certificates", 1,	1,	do_direct_certificates },
  { "encode-df-length",	1,	1,	do_encode_df_length },
+ { "odf-last-update", 1, 1, do_encode_odf_update_field },
  { NULL, 0, 0, NULL }
 };
 

@@ -20,6 +20,8 @@ pkcs15 {
     direct-certificates	= no;
     # Put the DF length into the ODF file?
     encode-df-length	= no;
+    # Have a lastUpdate field in the ODF?
+    odf-last-update		= yes;
 }
 
 # Default settings.

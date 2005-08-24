@@ -354,7 +354,7 @@ sc_pkcs15init_unbind(struct sc_profile *profile)
 	int r;
 	struct sc_context *ctx = profile->card->ctx;
 
-	if (profile->dirty != 0 && profile->p15_data != NULL) {
+	if (profile->dirty != 0 && profile->p15_data != NULL && profile->pkcs15.odf_last_update) {
 		r = sc_pkcs15init_update_tokeninfo(profile->p15_data, profile);
 		if (r < 0)
 			sc_error(ctx, "Failed to update TokenInfo: %s\n", sc_strerror(r));
