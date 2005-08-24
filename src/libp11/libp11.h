@@ -136,6 +136,9 @@ extern int PKCS11_CTX_load(PKCS11_CTX *, const char *ident);
 extern void PKCS11_CTX_unload(PKCS11_CTX *);
 extern void PKCS11_CTX_free(PKCS11_CTX *);
 
+/* open a session in RO or RW mode */
+extern int PKCS11_open_session(PKCS11_SLOT *, int);
+
 /* Get a list of all slots */
 extern int PKCS11_enumerate_slots(PKCS11_CTX *, PKCS11_SLOT **, unsigned int *);
 
