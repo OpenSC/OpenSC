@@ -972,6 +972,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 		if (parm != NULL)
 			r = sc_asn1_decode_object_id(obj, objlen, (struct sc_object_id *) parm);
 		break;
+	case SC_ASN1_PRINTABLESTRING:
 	case SC_ASN1_UTF8STRING:
 		if (parm != NULL) {
 			assert(len != NULL);
@@ -1218,6 +1219,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		assert(len != NULL);
 		r = encode_bit_field((const u8 *) parm, *len, &buf, &buflen);
 		break;
+	case SC_ASN1_PRINTABLESTRING:
 	case SC_ASN1_OCTET_STRING:
 	case SC_ASN1_UTF8STRING:
 		assert(len != NULL);
