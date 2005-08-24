@@ -48,6 +48,7 @@
 #include <opensc/cardctl.h>
 #include <opensc/pkcs15.h>
 #include <opensc/pkcs15-init.h>
+#include <opensc/keycache.h>
 #include <opensc/log.h>
 #include <opensc/ui.h>
 #include "util.h"
@@ -1073,7 +1074,7 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *p15card,
 static int
 do_delete_objects(struct sc_profile *profile, unsigned int opt_delete_flags)
 {
-	int r, count = 0;
+	int r = 0, count = 0;
 
 	set_userpin_ref();
 
@@ -1983,7 +1984,7 @@ parse_delete_flags(const char *list)
 	};
 
 	while (1) {
-		int	len, n, match = 0;
+		int	len, n;
 		
 		while (*list == ',')
 			list++;
