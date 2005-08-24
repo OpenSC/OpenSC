@@ -51,7 +51,7 @@ static struct option const long_options[] = {
 
 /* Probably not used, but needed to build on Windows */
 const char *app_name = "eidenv";
-const struct option options[] = {NULL};
+const struct option options[] = {{NULL, 0, NULL, 0}};
 const char *option_help[] = {NULL};
 
 static struct {
@@ -301,7 +301,8 @@ static void do_belpic(sc_card_t *card)
 		{"noblecondition", SC_ASN1_UTF8STRING, 14, 0, id_data.noblecondition, &nobleconditionlen},
 		{"documenttype", SC_ASN1_UTF8STRING, 15, 0, id_data.documenttype, &documenttypelen},
 		{"specialstatus", SC_ASN1_UTF8STRING, 16, 0, id_data.specialstatus, &specialstatuslen},
-		NULL};
+		{NULL, 0, 0, 0, NULL, NULL}
+	};
 
 	/* Contents of the Address file (3F00\DF01\4033) */
 	struct {
@@ -316,7 +317,7 @@ static void do_belpic(sc_card_t *card)
 		{"streetandnumber", SC_ASN1_UTF8STRING, 1, 0, address_data.streetandnumber, &streetandnumberlen},
 		{"zipcode", SC_ASN1_UTF8STRING, 2, 0, address_data.zipcode, &zipcodelen},
 		{"municipal", SC_ASN1_UTF8STRING, 3, 0, address_data.municipality, &municipalitylen},
-		NULL};
+		{NULL, 0, 0, 0, NULL, NULL}};
 
 	char buff[512];
 	int r;
@@ -376,7 +377,6 @@ int main(int argc, char **argv)
 	sc_context_t *ctx = NULL;
 	sc_reader_t *reader = NULL;
 	sc_card_t *card = NULL;
-	sc_path_t path;
 	int r;
 
 	/* get options */
