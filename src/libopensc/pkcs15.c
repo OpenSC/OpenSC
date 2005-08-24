@@ -63,6 +63,8 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 	size_t lupdate_len = sizeof(last_update) - 1;
 	size_t flags_len = sizeof(card->flags);
 	struct sc_asn1_entry asn1_toki[13], asn1_tokeninfo[3];
+	u8 preferred_language[3];
+	size_t lang_length = sizeof(preferred_language);
 
 	memset(last_update, 0, sizeof(last_update));
 	sc_copy_asn1_entry(c_asn1_toki, asn1_toki);
@@ -78,7 +80,7 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 	sc_format_asn1_entry(asn1_toki + 8, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 9, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 10, last_update, &lupdate_len, 0);
-	sc_format_asn1_entry(asn1_toki + 11, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 11, preferred_language, &lang_length, 0);
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki, NULL, 0);
 	
 	r = sc_asn1_decode(card->card->ctx, asn1_tokeninfo, buf, buflen, NULL, NULL);
@@ -115,6 +117,10 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 	}
 	if (asn1_toki[10].flags & SC_ASN1_PRESENT)
 		card->last_update = strdup((char *)last_update);
+	if (asn1_toki[11].flags & SC_ASN1_PRESENT) {
+		preferred_language[2] = 0;
+		card->preferred_language = strdup((char *)preferred_language);
+	}
 	return;
 err:
 	if (card->serial_number == NULL)
