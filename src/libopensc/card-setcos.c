@@ -817,7 +817,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 
 			/* Pin present ? */
 			if ( iPinCount > 0 ) {
-				iKeyRef = (buf[iOffset + 2] & 0x7);	/* pin ref */
+				iKeyRef = buf[iOffset + 2];	/* pin ref */
 				iMethod = SC_AC_CHV;
 			}
 
