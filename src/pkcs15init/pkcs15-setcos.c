@@ -288,6 +288,7 @@ setcos_new_file(sc_profile_t *profile, sc_card_t *card,
 	sc_file_t *file;
 	sc_path_t *p;
 	char name[64], *tag;
+	int r;
 
 	if (type == SC_PKCS15_TYPE_PRKEY_RSA)
 		tag = "private-key";
@@ -315,6 +316,15 @@ setcos_new_file(sc_profile_t *profile, sc_card_t *card,
 	*p = profile->df_info->file->path;
 	p->value[p->len++] = (u8) (file->id / 256);
 	p->value[p->len++] = (u8) (file->id % 256);
+
+	/* Increment FID until there's no file with such path */
+	r = sc_select_file(card, p, NULL);
+	while(r == 0) {
+		file->id++;
+		p->value[p->len - 2] = (u8) (file->id / 256);
+		p->value[p->len - 1] = (u8) (file->id % 256);
+		r = sc_select_file(card, p, NULL);
+	}
 
 	*out = file;
 	return 0;
