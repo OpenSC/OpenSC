@@ -763,9 +763,6 @@ src/scconf/Makefile
 src/scdl/Makefile
 src/signer/Makefile
 src/signer/npinclude/Makefile
-src/libp11/Makefile
-src/libp11/libp11.pc
-src/sslengines/Makefile
 src/tests/Makefile
 src/tests/regression/Makefile
 src/tools/Makefile

@@ -6,4 +6,4 @@ EXTRA_DIST = Makefile.mak
 
 # Order IS important
 SUBDIRS = common include scconf scdl libopensc pkcs15init pkcs11 \
-	tests tools openssh signer libp11 sslengines
+	tests tools openssh signer 

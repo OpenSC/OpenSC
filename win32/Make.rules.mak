@@ -9,8 +9,6 @@
 !IF "$(OPENSSL_DEF)" == "/DHAVE_OPENSSL"
 OPENSSL_INCL_DIR = /IC:\openssl\include
 OPENSSL_LIB = C:\openssl\out32dll\libeay32.lib
-LIBP11_DIR = libp11
-OPENSSL_ENGINES_DIR = sslengines
 PKCS15_INIT = pkcs15-init.exe
 !ENDIF
 
