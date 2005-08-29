@@ -110,7 +110,7 @@ struct sc_profile {
 	struct {
 		unsigned int	direct_certificates;
 		unsigned int	encode_df_length;
-		unsigned int	odf_last_update;
+		unsigned int	do_last_update;
 	} pkcs15;
 
 	/* PKCS15 information */
