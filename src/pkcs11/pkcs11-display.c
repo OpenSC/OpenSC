@@ -25,6 +25,65 @@
 #endif
 #include "pkcs11-display.h"
 
+/* Some Netscape/Mozilla-specific stuff:
+ * http://www.opensource.apple.com/darwinsource/10.3/SecurityNssAsn1-11/nssDER/Source/pkcs11n.h */
+
+/*
+ * Netscape-defined object classes
+ * 
+ */
+#define CKO_NETSCAPE 0xCE534350
+
+#define CKO_NETSCAPE_CRL                (CKO_NETSCAPE + 1)
+#define CKO_NETSCAPE_SMIME              (CKO_NETSCAPE + 2)
+#define CKO_NETSCAPE_TRUST              (CKO_NETSCAPE + 3)
+#define CKO_NETSCAPE_BUILTIN_ROOT_LIST  (CKO_NETSCAPE + 4)
+
+/*
+ * Netscape-defined object attributes
+ *
+ */
+
+#define CKA_NETSCAPE 0xCE534350
+
+#define CKA_NETSCAPE_URL                (CKA_NETSCAPE +  1)
+#define CKA_NETSCAPE_EMAIL              (CKA_NETSCAPE +  2)
+#define CKA_NETSCAPE_SMIME_INFO         (CKA_NETSCAPE +  3)
+#define CKA_NETSCAPE_SMIME_TIMESTAMP    (CKA_NETSCAPE +  4)
+#define CKA_NETSCAPE_PKCS8_SALT         (CKA_NETSCAPE +  5)
+#define CKA_NETSCAPE_PASSWORD_CHECK     (CKA_NETSCAPE +  6)
+#define CKA_NETSCAPE_EXPIRES            (CKA_NETSCAPE +  7)
+#define CKA_NETSCAPE_KRL                (CKA_NETSCAPE +  8)
+
+#define CKA_NETSCAPE_PQG_COUNTER        (CKA_NETSCAPE +  20)
+#define CKA_NETSCAPE_PQG_SEED           (CKA_NETSCAPE +  21)
+#define CKA_NETSCAPE_PQG_H              (CKA_NETSCAPE +  22)
+#define CKA_NETSCAPE_PQG_SEED_BITS      (CKA_NETSCAPE +  23)
+
+#define CKA_TRUST (CKA_NETSCAPE + 0x2000)
+
+/* "Usage" key information */
+#define CKA_TRUST_DIGITAL_SIGNATURE     (CKA_TRUST +  1)
+#define CKA_TRUST_NON_REPUDIATION       (CKA_TRUST +  2)
+#define CKA_TRUST_KEY_ENCIPHERMENT      (CKA_TRUST +  3)
+#define CKA_TRUST_DATA_ENCIPHERMENT     (CKA_TRUST +  4)
+#define CKA_TRUST_KEY_AGREEMENT         (CKA_TRUST +  5)
+#define CKA_TRUST_KEY_CERT_SIGN         (CKA_TRUST +  6)
+#define CKA_TRUST_CRL_SIGN              (CKA_TRUST +  7)
+
+/* "Purpose" trust information */
+#define CKA_TRUST_SERVER_AUTH           (CKA_TRUST +  8)
+#define CKA_TRUST_CLIENT_AUTH           (CKA_TRUST +  9)
+#define CKA_TRUST_CODE_SIGNING          (CKA_TRUST + 10)
+#define CKA_TRUST_EMAIL_PROTECTION      (CKA_TRUST + 11)
+#define CKA_TRUST_IPSEC_END_SYSTEM      (CKA_TRUST + 12)
+#define CKA_TRUST_IPSEC_TUNNEL          (CKA_TRUST + 13)
+#define CKA_TRUST_IPSEC_USER            (CKA_TRUST + 14)
+#define CKA_TRUST_TIME_STAMPING         (CKA_TRUST + 15)
+#define CKA_CERT_SHA1_HASH	            (CKA_TRUST + 100)
+#define CKA_CERT_MD5_HASH		        (CKA_TRUST + 101)
+
+
 void print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
   enum_spec *spec = (enum_spec*)arg;
@@ -126,6 +185,10 @@ enum_specs ck_cls_s[] = {
   { CKO_SECRET_KEY       , "CKO_SECRET_KEY       " },
   { CKO_HW_FEATURE       , "CKO_HW_FEATURE       " },
   { CKO_DOMAIN_PARAMETERS, "CKO_DOMAIN_PARAMETERS" },
+  { CKO_NETSCAPE_CRL,              "CKO_NETSCAPE_CRL               " },
+  { CKO_NETSCAPE_SMIME ,           "CKO_NETSCAPE_SMIME             " },
+  { CKO_NETSCAPE_TRUST,            "CKO_NETSCAPE_TRUST             " },
+  { CKO_NETSCAPE_BUILTIN_ROOT_LIST, "CKO_NETSCAPE_BUILTIN_ROOT_LIST" },
   { CKO_VENDOR_DEFINED   , "CKO_VENDOR_DEFINED   " }
 };
 
@@ -559,6 +622,35 @@ type_spec ck_attribute_specs[] = {
   { CKA_DEFAULT_CMS_ATTRIBUTES, "CKA_DEFAULT_CMS_ATTRIBUTES ", print_generic, NULL },
   { CKA_SUPPORTED_CMS_ATTRIBUTES, "CKA_SUPPORTED_CMS_ATTRIBUTES ", print_generic, NULL },
   { CKA_ALLOWED_MECHANISMS, "CKA_ALLOWED_MECHANISMS ", print_generic, NULL },
+  { CKA_NETSCAPE_URL, "CKA_NETSCAPE_URL(Netsc)                         ", print_generic, NULL },
+  { CKA_NETSCAPE_EMAIL, "CKA_NETSCAPE_EMAIL(Netsc)                     ", print_generic, NULL },
+  { CKA_NETSCAPE_SMIME_INFO, "CKA_NETSCAPE_SMIME_INFO(Netsc)           ", print_boolean, NULL },
+  { CKA_NETSCAPE_SMIME_TIMESTAMP, "CKA_NETSCAPE_SMIME_TIMESTAMP(Netsc) ", print_generic, NULL },
+  { CKA_NETSCAPE_PKCS8_SALT, "CKA_NETSCAPE_PKCS8_SALT(Netsc)           ", print_generic, NULL },
+  { CKA_NETSCAPE_PASSWORD_CHECK, "CKA_NETSCAPE_PASSWORD_CHECK(Netsc)   ", print_generic, NULL },
+  { CKA_NETSCAPE_EXPIRES, "CKA_NETSCAPE_EXPIRES(Netsc)                 ", print_generic, NULL },
+  { CKA_NETSCAPE_KRL, "CKA_NETSCAPE_KRL(Netsc)                         ", print_generic, NULL },
+  { CKA_NETSCAPE_PQG_COUNTER, "CKA_NETSCAPE_PQG_COUNTER(Netsc)         ", print_generic, NULL },
+  { CKA_NETSCAPE_PQG_SEED, "CKA_NETSCAPE_PQG_SEED(Netsc)               ", print_generic, NULL },
+  { CKA_NETSCAPE_PQG_H, "CKA_NETSCAPE_PQG_H(Netsc)                     ", print_generic, NULL },
+  { CKA_NETSCAPE_PQG_SEED_BITS, "CKA_NETSCAPE_PQG_SEED_BITS(Netsc)     ", print_generic, NULL },
+  { CKA_TRUST_DIGITAL_SIGNATURE, "CKA_TRUST_DIGITAL_SIGNATURE(Netsc)   ", print_boolean, NULL },
+  { CKA_TRUST_NON_REPUDIATION, "CKA_TRUST_NON_REPUDIATION(Netsc)       ", print_boolean, NULL },
+  { CKA_TRUST_KEY_ENCIPHERMENT, "CKA_TRUST_KEY_ENCIPHERMENT(Netsc)     ", print_boolean, NULL },
+  { CKA_TRUST_DATA_ENCIPHERMENT, "CKA_TRUST_DATA_ENCIPHERMENT(Netsc)   ", print_boolean, NULL },
+  { CKA_TRUST_KEY_AGREEMENT, "CKA_TRUST_KEY_AGREEMENT(Netsc)           ", print_boolean, NULL },
+  { CKA_TRUST_KEY_CERT_SIGN, "CKA_TRUST_KEY_CERT_SIGN(Netsc)           ", print_boolean, NULL },
+  { CKA_TRUST_CRL_SIGN, "CKA_TRUST_CRL_SIGN(Netsc)                     ", print_boolean, NULL },
+  { CKA_TRUST_SERVER_AUTH, "CKA_TRUST_SERVER_AUTH(Netsc)               ", print_boolean, NULL },
+  { CKA_TRUST_CLIENT_AUTH, "CKA_TRUST_CLIENT_AUTH(Netsc)               ", print_boolean, NULL },
+  { CKA_TRUST_CODE_SIGNING, "CKA_TRUST_CODE_SIGNING(Netsc)             ", print_boolean, NULL },
+  { CKA_TRUST_EMAIL_PROTECTION, "CKA_TRUST_EMAIL_PROTECTION(Netsc)     ", print_boolean, NULL },
+  { CKA_TRUST_IPSEC_END_SYSTEM, "CKA_TRUST_IPSEC_END_SYSTEM(Netsc)     ", print_boolean, NULL },
+  { CKA_TRUST_IPSEC_TUNNEL, "CKA_TRUST_IPSEC_TUNNEL(Netsc)             ", print_boolean, NULL },
+  { CKA_TRUST_IPSEC_USER, "CKA_TRUST_IPSEC_USER(Netsc)                 ", print_boolean, NULL },
+  { CKA_TRUST_TIME_STAMPING, "CKA_TRUST_TIME_STAMPING(Netsc)           ", print_boolean, NULL },
+  { CKA_CERT_SHA1_HASH, "CKA_CERT_SHA1_HASH(Netsc)                     ", print_generic, NULL },
+  { CKA_CERT_MD5_HASH, "CKA_CERT_MD5_HASH(Netsc)                       ", print_generic, NULL },
 };
 
 CK_ULONG ck_attribute_num = sizeof(ck_attribute_specs)/sizeof(type_spec);
@@ -749,30 +841,31 @@ void print_mech_info(FILE *f, CK_MECHANISM_TYPE type,
 void print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
 			  CK_ULONG  ulCount)
 {
-  CK_ULONG j, k;
-  int found;
-  for(j = 0; j < ulCount ; j++) {
-    found = 0;
-    for(k = 0; k < ck_attribute_num; k++) {
-      if(ck_attribute_specs[k].type == pTemplate[j].type) {
-	found = 1;
-	fprintf(f, "    %s ", ck_attribute_specs[k].name);
-	if(pTemplate[j].pValue) {
-	  ck_attribute_specs[k].display
-	    (f, pTemplate[j].type, pTemplate[j].pValue,
-	     pTemplate[j].ulValueLen,
-	     ck_attribute_specs[k].arg);
-	} else {
-	  fprintf(f, "has size %ld\n", pTemplate[j].ulValueLen); 
+	CK_ULONG j, k;
+	int found;
+
+	for(j = 0; j < ulCount ; j++) {
+		found = 0;
+		for(k = 0; k < ck_attribute_num; k++) {
+			if(ck_attribute_specs[k].type == pTemplate[j].type) {
+				found = 1;
+				fprintf(f, "    %s ", ck_attribute_specs[k].name);
+				if(pTemplate[j].pValue) {
+					ck_attribute_specs[k].display
+					(f, pTemplate[j].type, pTemplate[j].pValue,
+						pTemplate[j].ulValueLen,
+					ck_attribute_specs[k].arg);
+				} else {
+					fprintf(f, "has size %ld\n", pTemplate[j].ulValueLen); 
+				}
+				k = ck_attribute_num;
+			}
+		}
+		if (!found) {
+			fprintf(f, "    CKA_? (0x%08lx)    ", pTemplate[j].type);
+			fprintf(f, "has size %ld\n", pTemplate[j].ulValueLen); 
+		}
 	}
-	k = ck_attribute_num;
-      }
-    }
-    if (!found) {
-	fprintf(f, "    CKA_? (0x%08lx)    ", pTemplate[j].type);
-	fprintf(f, "has size %ld\n", pTemplate[j].ulValueLen); 
-    }
-  }
 }
 
 void print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
