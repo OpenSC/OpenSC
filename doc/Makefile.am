@@ -2,7 +2,7 @@
 
 SUBDIRS = . old src
 
-MAINTAINERCLEANFILES = Makefile.in
+MAINTAINERCLEANFILES = Makefile.in $(HTML)
 
 EXTRA_DIST = README export-wiki.sh export-wiki.xsl $(HTML)
 
