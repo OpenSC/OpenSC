@@ -23,7 +23,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <opensc/scdl.h>
+#include <ltdl.h>
 
 #define GET_SLOT_PTR(s, i) (&(s)->slot[(i)])
 #define GET_PRIV_DATA(r) ((struct ctapi_private_data *) (r)->drv_data)
@@ -446,19 +446,19 @@ static int ctapi_load_module(sc_context_t *ctx,
 	}
 
 	val = conf->name->data;
-	dlh = scdl_open(val);
+	dlh = lt_dlopen(val);
 	if (!dlh) {
 		sc_error(ctx, "Unable to open shared library '%s'\n", val);
 		return -1;
 	}
 
-	funcs.CT_init = (CT_INIT_TYPE *) scdl_get_address(dlh, "CT_init");
+	funcs.CT_init = (CT_INIT_TYPE *) lt_dlsym(dlh, "CT_init");
 	if (!funcs.CT_init)
 		goto symerr;
-	funcs.CT_close = (CT_CLOSE_TYPE *) scdl_get_address(dlh, "CT_close");
+	funcs.CT_close = (CT_CLOSE_TYPE *) lt_dlsym(dlh, "CT_close");
 	if (!funcs.CT_close)
 		goto symerr;
-	funcs.CT_data = (CT_DATA_TYPE *) scdl_get_address(dlh, "CT_data");
+	funcs.CT_data = (CT_DATA_TYPE *) lt_dlsym(dlh, "CT_data");
 	if (!funcs.CT_data)
 		goto symerr;
 
@@ -510,7 +510,7 @@ static int ctapi_load_module(sc_context_t *ctx,
 	return 0;
 symerr:
 	sc_error(ctx, "Unable to resolve CT-API symbols.\n");
-	scdl_close(dlh);
+	lt_dlclose(dlh);
 	return -1;
 }
 
@@ -555,7 +555,7 @@ static int ctapi_finish(sc_context_t *ctx, void *prv_data)
 			struct ctapi_module *mod = &priv->modules[i];
 			
 			free(mod->name);
-			scdl_close(mod->dlhandle);
+			lt_dlclose(mod->dlhandle);
 		}
 		if (priv->module_count)
 			free(priv->modules);

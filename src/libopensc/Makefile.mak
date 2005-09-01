@@ -37,6 +37,6 @@ all: install-headers $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-$(TARGET): $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib ..\common\common.lib
+$(TARGET): $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib
 	perl $(TOPDIR)\win32\makedef.pl $*.def $* $(OBJECTS)
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\scdl\scdl.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) gdi32.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) gdi32.lib

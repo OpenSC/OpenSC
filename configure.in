@@ -59,42 +59,6 @@ case "$host" in
 	;;
 esac
 
-AC_ARG_WITH(common-dir,
-	AC_HELP_STRING([--with-common-dir=PATH], [Specify path for common installation libraries]),
-	[
-		if test "x$withval" != "xno" ; then
-			trycommondir=$withval
-		fi
-	]
-)
-
-saved_LDFLAGS="$LDFLAGS"
-saved_CPPFLAGS="$CPPFLAGS"
-AC_CACHE_CHECK([for common directory], ac_cv_commondir, [
-	for commondir in $trycommondir "" /usr/local /usr/pkg /opt ; do
-		# Skip directories if they don't exist
-		if test ! -z "$commondir" -a ! -d "$commondir/" ; then
-			continue;
-		fi
-		CPPFLAGS="$saved_CPPFLAGS"
-		LDFLAGS="$saved_LDFLAGS"
-
-		if test ! -z "$commondir" -a "x$commondir" != "x/usr"; then
-			LDFLAGS="-L$commondir/lib $saved_LDFLAGS"
-			if test ! -z "$need_dash_r" ; then
-				LDFLAGS="-R$commondir/lib $LDFLAGS"
-			fi
-			CPPFLAGS="-I$commondir/include $saved_CPPFLAGS"
-		fi
-		break;
-	done
-
-	if test -z "$commondir" ; then
-		commondir="(system)"
-	fi
-	ac_cv_commondir=$commondir
-])
-
 dnl Options
 AM_MAINTAINER_MODE
 
@@ -108,29 +72,19 @@ AC_PATH_PROG(TEST_MINUS_S_SH, bash)
 AC_PATH_PROG(TEST_MINUS_S_SH, ksh)
 AC_PATH_PROG(TEST_MINUS_S_SH, sh)
 
-dnl Special check for pthread support.
-ACX_PTHREAD(
-[
- AC_DEFINE(HAVE_PTHREAD,1,
-  [Define if you have POSIX threads libraries and header files.])
-], [
- AC_MSG_ERROR([POSIX thread support required])
-])
-LIBS="$PTHREAD_LIBS $LIBS"
-CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
-CC="$PTHREAD_CC"
-
 dnl Add libtool support.
 AM_PROG_LIBTOOL
-dnl Automatically update the libtool script if it becomes out-of-date.
-#AC_SUBST(LIBTOOL_DEPS)
+
+dnl C Compiler features
+AC_C_INLINE
+if test "$GCC" = "yes"; then
+	CFLAGS="-Wall -fno-strict-aliasing $CFLAGS"
+fi
 
 dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([errno.h fcntl.h malloc.h stdlib.h inttypes.h string.h strings.h sys/time.h unistd.h locale.h getopt.h dlfcn.h utmp.h])
-
-AC_CHECK_HEADERS([zlib.h],[LIBS="$LIBS -lz"])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -144,14 +98,19 @@ AC_FUNC_STAT
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([getpass gettimeofday memset mkdir strdup strerror setutent vsyslog setlocale])
 
-dnl C Compiler features
-AC_C_INLINE
-if test "$GCC" = "yes"; then
-	CFLAGS="-Wall -fno-strict-aliasing $CFLAGS"
-fi
+AC_CHECK_HEADERS([zlib.h],[LIBS="$LIBS -lz"])
 
-AC_SUBST(LIBDL)
-AC_CHECK_LIB(dl, dlopen, [LIBDL="$LIBDL -ldl" ac_cv_func_dlopen_ldl=yes], ac_cv_func_dlopen_ldl=no)
+dnl Special check for pthread support.
+ACX_PTHREAD(
+[
+ AC_DEFINE(HAVE_PTHREAD,1,
+  [Define if you have POSIX threads libraries and header files.])
+], [
+ AC_MSG_ERROR([POSIX thread support required])
+])
+LIBS="$PTHREAD_LIBS $LIBS"
+CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+CC="$PTHREAD_CC"
 
 dnl See if socket() is found from libsocket
 AC_CHECK_LIB(socket, socket, [LIBS="$LIBS -lsocket" ac_cv_func_socket_in_lsocket=yes], ac_cv_func_socket_in_lsocket=no)
@@ -226,318 +185,54 @@ AC_CACHE_CHECK([for flex directory], ac_cv_flexdir, [
 	ac_cv_flexdir=$flexdir
 ])
 
+dnl use ltdl
+AC_CHECK_LIB(ltdl, lt_dlopen,, [AC_MSG_ERROR([libltdl not found])])
 
-dnl The big mess with OpenSSL
-saved_LIBS="$LIBS"
-saved_LDFLAGS="$LDFLAGS"
-saved_CPPFLAGS="$CPPFLAGS"
-
-SSL_MSG="no"
-ssldir=""
-
-AC_ARG_WITH(openssl,
-	AC_HELP_STRING([--with-openssl=PATH], [use OpenSSL in PATH]),
-	[
-		# Disable OpenSSL support
-		if test "x$withval" = "xno" ; then
-			SSL_MSG="no (disabled)"
-			break;
-		fi
-
-		# ok we got a directory, so only check in that dir.
-		LIBCRYPTO="-lcrypto"
-		CPPFLAGS="$saved_CPPFLAGS"
-		LDFLAGS="$saved_LDFLAGS"
-		LIBS="$LIBCRYPTO $saved_LIBS"
-		LDFLAGS="-L$withval/lib $saved_LDFLAGS"
-		if test ! -z "$need_dash_r" ; then
-			LDFLAGS="-R$withval/lib $LDFLAGS"
-		fi
-		CPPFLAGS="-I$withval/include $saved_CPPFLAGS"
-
-		AC_TRY_RUN(
-			[
-#include <string.h>
-#include <openssl/rand.h>
-int main(void)
-{
-	char a[2048];
-	memset(a, 0, sizeof(a));
-	RAND_add(a, sizeof(a), sizeof(a));
-	return(RAND_status() <= 0);
-}
-			],
-			[
-				SSL_MSG="yes"
-				ssldir="$withval"
-				break
-			])
-			],[
-
-	# we didn't get a directory, so we start searching for openssl
-	for tryssldir in $commondir /usr /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/pkg /opt /opt/openssl; do
-		# Skip directories if they don't exist
-		if test ! -d "$tryssldir/" ; then
-			continue;
-		fi
-
-		LIBCRYPTO="-lcrypto"
-		CPPFLAGS="$saved_CPPFLAGS"
-		LDFLAGS="$saved_LDFLAGS"
-		LIBS="$saved_LIBS $LIBCRYPTO"
-
-		if test "x$tryssldir" != "x/usr"; then
-			LDFLAGS="-L$tryssldir/lib $saved_LDFLAGS"
-			if test ! -z "$need_dash_r" ; then
-				LDFLAGS="-R$tryssldir/lib $LDFLAGS"
-			fi
-			CPPFLAGS="-I$tryssldir/include $saved_CPPFLAGS"
-		fi
-
-		# Basic test to check for compatible version and correct linking
-		# *does not* test for RSA - that comes later.
-		AC_TRY_RUN(
-			[
-#include <string.h>
-#include <openssl/rand.h>
-int main(void)
-{
-	char a[2048];
-	memset(a, 0, sizeof(a));
-	RAND_add(a, sizeof(a), sizeof(a));
-	return(RAND_status() <= 0);
-}
-			],
-			[
-				SSL_MSG="yes"
-				ssldir=$tryssldir
-				break;
-			],
-			[
-				SSL_MSG="no"
-				LIBS="$saved_LIBS"
-				LDFLAGS="$saved_LDFLAGS"
-				CPPFLAGS="$saved_CPPFLAGS"
-			])
-	done
+PKG_CHECK_MODULES(OPENCT, [openct], [
+	OPENCT_MSG=yes
+	AC_DEFINE(HAVE_OPENCT, 1, [Have OpenCT libraries and header files])
+	], [
+	OPENCT_MSG=no
 	])
-LIBS="$saved_LIBS"
-AC_SUBST(LIBCRYPTO)
-AM_CONDITIONAL(HAVE_SSL, test "x$SSL_MSG" = "xyes")
+AC_SUBST(OPENCT_CFLAGS)
+AC_SUBST(OPENCT_LIBS)
 
-if test "x$SSL_MSG" = "xyes" ; then
-  AC_DEFINE(HAVE_OPENSSL, 1, [Have OpenSSL libraries])
-else
-  LIBCRYPTO=""
-fi
+AM_CONDITIONAL(HAVE_OPENCT, test "x$OPENCT_MSG" = "xyes")
 
-# ok, we checked for basic ssl support.
-# if it is not available, we can skip the rest of
-# the test. also we have $ssldir set to the location
-# of the openssl libs.
+PKG_CHECK_MODULES(OPENSSL, [openssl], [
+        OPENSSL_MSG=yes
+        AC_DEFINE(HAVE_OPENSSL, 1, [Have OpenSSL libraries and header files])
+        ], [
+        OPENSSL_MSG=no
+        ])
+AC_SUBST(OPENSSL_CFLAGS)
+AC_SUBST(OPENSSL_LIBS)
 
-ENGINE_MSG="no"
-if test "x$SSL_MSG" = "xyes"; then
-	# engine has to be there and working
-	LIBS="$saved_LIBS $LIBCRYPTO $LIBDL"
-	AC_TRY_RUN(
-	[
-#include <string.h>
-#include <openssl/opensslv.h>
-#include <openssl/engine.h>
-#include <openssl/rand.h>
-int main(void)
-{
-	char a[2048];
-	ENGINE *e;
-
-	e = ENGINE_new();
-	ENGINE_load_dynamic();
-	if (!e) return 1;
-	memset(a, 0, sizeof(a));
-	RAND_add(a, sizeof(a), sizeof(a));
-	return(RAND_status() <= 0);
-}
-	],
-	[
-		ENGINE_MSG=yes
-		ENGINE_LINK="$LIBCRYPTO"
-	],
-	[
-		ENGINE_MSG=no
-	]);
-fi
-LIBS="$saved_LIBS"
-AC_SUBST(ENGINE_LINK)
-AM_CONDITIONAL(HAVE_ENGINE, test "x$ENGINE_MSG" = "xyes")
-
-# ok, now we might (or not) have ssl and an engine.
-# still room for "improvements", i.e. hacks to work
-# with old engines.
-
-SSLHACK_MSG=no
-if test "x$SSL_MSG" = "xyes" -a "x$ENGINE_MSG" = "xyes"; then
-	# latest openssl version with engine
-	# properly integrated?
-	AC_MSG_CHECKING([for openssl version])
-	AC_TRY_RUN(
-	[
-#include <stdlib.h>
-#include <string.h>
-#include <openssl/opensslv.h>
-
-int main(void)
-{
-	if(OPENSSL_VERSION_NUMBER >= 0x0090704fL) {
-		exit(0);
-	} else {
-		exit(1);
-	}
-}
-	],
-	[
-		AC_MSG_RESULT([good, 0.9.7d or later])
-		OLD_OPENSSL=no
-	],
-	[
-		AC_MSG_RESULT([not so good, 0.9.7d or later would be better])
-		OLD_OPENSSL=yes
-	])
-
-	if test "x$OLD_OPENSSL" = "xyes"; then
-		# openssl found, but version less than 0.9.7d
-		# linking libcrypto.a statically possible?
-
-		LIBS="$saved_LIBS $ssldir/lib/libcrypto.a $LIBDL"
-		AC_TRY_RUN(
-		[
-#include <string.h>
-#include <openssl/opensslv.h>
-#include <openssl/engine.h>
-#include <openssl/rand.h>
-int main(void)
-{
-	char a[2048];
-	ENGINE *e;
-
-	e = ENGINE_new();
-	ENGINE_load_dynamic();
-	if (!e) return 1;
-	memset(a, 0, sizeof(a));
-	RAND_add(a, sizeof(a), sizeof(a));
-	return(RAND_status() <= 0);
-}
-		],
-		[
-			SSLHACK_MSG=yes
-			ENGINE_LINK="$ssldir/lib/libcrypto.a"
-		])
-		LIBS="$saved_LIBS"
-	fi
-fi
-
-# now - last part to do: check if we gain anything from
-# funny parameters to link openssl with.
-
-saved_LDFLAGS="$LDFLAGS"
-if test "x$ENGINE_MSG" = "xyes" ; then
-  for openssl_ldflag in "-Wl,-Bsymbolic" "-G -Wl,-Bsymbolic" "-shared -G -Wl,-Bsymbolic" "-Wl,-all_load"; do
-	AC_MSG_CHECKING([whether we can use $openssl_ldflag])
-	LDFLAGS="$saved_LDFLAGS $openssl_ldflag"
-	AC_TRY_LINK(,[return 1],ac_cv_use_openssl_flag="yes",ac_cv_use_openssl_flag="no")
-	AC_MSG_RESULT($ac_cv_use_openssl_flag)
-	if test "$ac_cv_use_openssl_flag" = "yes"; then
-		OPENSSL_LDFLAGS="$openssl_ldflag"
-		break;
-	fi
-  done
-fi
-LDFLAGS="$saved_LDFLAGS"
-AC_SUBST(OPENSSL_LDFLAGS)
-
-PCSC_MSG=no
-pcsc_path=/usr
-AC_SUBST(PCSC_CFLAGS)
-AC_SUBST(PCSC_LIBS)
+AM_CONDITIONAL(HAVE_OPENSSL, test "x$OPENSSL_MSG" = "xyes")
 
 case "$host" in
 *-*-darwin*)
-	PCSC_MSG=yes
-	PCSC_CFLAGS=""
-	PCSC_LIBS="-Wl,-framework,PCSC"
+	if test -n "$PCSC_LIBS" -a -n "$PCSC_LIBS"
+	then
+		PCSC_MSG=yes
+		PCSC_CFLAGS=""
+		PCSC_LIBS="-Wl,-framework,PCSC"
+	fi
 	;;
 esac
 
-saved_LIBS="$LIBS"
-saved_CFLAGS="$CFLAGS"
-saved_LDFLAGS="$LDFLAGS"
-saved_CPPFLAGS="$CPPFLAGS"
-AC_ARG_WITH(pcsclite,
-	AC_HELP_STRING([--with-pcsclite=PATH], [use PC/SC Lite in PATH]),
-	[pcsc_path=$withval])
-if test "x$pcsc_path" = "xno"; then
-	PCSC_MSG="no"
-fi
-if test "x$pcsc_path" != "xno" -a "x$PCSC_MSG" != "xyes"; then
-	PKG_CHECK_MODULES(PCSC, libpcsclite, [
-		PCSC_MSG="yes"
-		AC_MSG_RESULT($PCSC_MSG)
-		],[
-	AC_MSG_CHECKING(for PC/SC Lite support (old style))
-	for pcscdir in "" /pcsc /PCSC; do
-		CPPFLAGS="$saved_CPPFLAGS"
-		LDFLAGS="$saved_LDFLAGS"
-		LIBS="-lpcsclite $saved_LIBS"
-		PCSC_CFLAGS=""
-
-		for pcsc_libdir in $pcsc_path/lib$pcscdir \
-			      $pcsc_path$pcscdir/lib \
-			      $pcsc_path$pcscdir; do
-			if test -d $pcsc_libdir; then
-				if test -n "${need_dash_r}"; then
-					LDFLAGS="-R${pcsc_libdir}/ ${LDFLAGS}"
-				fi
-				LDFLAGS="-L${pcsc_libdir} ${LDFLAGS}"
-			fi
-		done
-
-		for pcsc_incdir in $pcsc_path/include$pcscdir \
-			      $pcsc_path$pcscdir/include \
-			      $pcsc_path$pcscdir; do
-		      if test -d $pcsc_incdir; then
-				PCSC_CFLAGS="-I${pcsc_incdir}"
-				break;
-		      fi
-		done
-
-		CPPFLAGS="${PCSC_CFLAGS} ${CPPFLAGS}"
-		AC_TRY_LINK([#include <stdlib.h>
-#include <winscard.h>],[SCardEstablishContext(0, NULL, NULL, NULL);], ac_cv_lib_pcsclite_SCardEstablishContext=yes)
-		if test "x$ac_cv_lib_pcsclite_SCardEstablishContext" = "xyes"; then
-			PCSC_MSG=yes
-			break;
-		fi
-		CPPFLAGS="$saved_CPPFLAGS"
-		LDFLAGS="$saved_LDFLAGS"
-		LIBS="$saved_LIBS"
-		PCSC_CFLAGS=""
-	done
-	AC_MSG_RESULT($PCSC_MSG)
-	if test "x$PCSC_MSG" = "xyes" ; then
-		PCSC_LIBS="-lpcsclite"
-		CPPFLAGS="$saved_CPPFLAGS"
-		LIBS="$saved_LIBS"
-	fi
-	])
-fi
-AM_CONDITIONAL(HAVE_PCSC, test "x$PCSC_MSG" = "xyes")
-if test "x$PCSC_MSG" = "xyes"; then
+PKG_CHECK_MODULES(PCSC, [libpcsclite], [
+        PCSC_MSG=yes
 	AC_DEFINE(HAVE_PCSC, 1, [Have PC/SC implementation])
-else
-	PCSC_LIBS=""
-	PCSC_CFLAGS=""
-fi
+        ], [
+        PCSC_MSG=no
+        ])
+AC_SUBST(PCSC_CFLAGS)
+AC_SUBST(PCSC_LIBS)
 
+AM_CONDITIONAL(HAVE_PCSC, test "x$PCSC_MSG" = "xyes")
+
+saved_LIBS="$LIBS"
 if test "x$PCSC_MSG" = "xyes"; then
 	CPPFLAGS="${PCSC_CFLAGS} $saved_CPPFLAGS"
 	CFLAGS="$PCSC_CFLAGS $saved_CFLAGS"
@@ -569,93 +264,22 @@ AC_CHECK_HEADER(reader.h,
 	[ #include <reader.h>])
 CFLAGS="$saved_CFLAGS"
 
-OPENCT_MSG=no
-openct_path=/usr
-AC_SUBST(OPENCT_CFLAGS)
-AC_SUBST(OPENCT_LDFLAGS)
-AC_SUBST(OPENCT_LIBS)
-
-saved_LIBS="$LIBS"
-saved_CFLAGS="$CFLAGS"
-saved_LDFLAGS="$LDFLAGS"
-saved_CPPFLAGS="$CPPFLAGS"
-AC_ARG_WITH(openct,
-	AC_HELP_STRING([--with-openct=PATH], [use OpenCT in PATH]),
-	[openct_path=$withval])
-if test "x$openct_path" = "xno"; then
-	OPENCT_MSG="no"
-fi
-if test "x$openct_path" != "xno" -a "x$OPENCT_MSG" != "xyes"; then
-	PKG_CHECK_MODULES(OPENCT, libopenct, [
-		OPENCT_MSG="yes"
-		AC_MSG_RESULT($OPENCT_MSG)
-		],[
-	AC_MSG_CHECKING(for OpenCT support (old style))
-	CPPFLAGS="$saved_CPPFLAGS"
-	LDFLAGS="$saved_LDFLAGS"
-	LIBS="$saved_LIBS"
-
-	OPENCT_CFLAGS="-I${openct_path}/include"
-	OPENCT_LIBS="-lopenct"
-	OPENCT_LDFLAGS=""
-	if test -n "${need_dash_r}"; then
-		OPENCT_LDFLAGS="-R${openct_path}/lib"
-	fi
-	OPENCT_LDFLAGS="-L${openct_path}/lib $OPENCT_LDFLAGS"
-
-	LIBS="$OPENCT_LIBS $saved_LIBS"
-	LDFLAGS="$OPENCT_LDFLAGS $saved_LDFLAGS"
-	CFLAGS="$OPENCT_CFLAGS $saved_CFLAGS"
-
-	AC_TRY_LINK([#include <openct/openct.h>],[ct_reader_connect(0);],OPENCT_MSG=yes,OPENCT_MSG=no)
-	AC_MSG_RESULT($OPENCT_MSG)
-
-	CFLAGS="$saved_CFLAGS"
-	LDFLAGS="$saved_LDFLAGS"
-	LIBS="$saved_LIBS"
+dnl AM_PATH_LIBASSUAN([MINIMUM-VERSION,
+dnl                   [ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND ]]])
+dnl Test for libassuan and define LIBASSUAN_CFLAGS and LIBASSUAN_LIBS
+AM_PATH_LIBASSUAN( , [
+	AM_CONDITIONAL(HAVE_ASSUAN, true)
+	], 
+	[
 	])
-fi
-
-AM_CONDITIONAL(HAVE_OPENCT, test "x$OPENCT_MSG" = "xyes")
-if test "x$OPENCT_MSG" = "xyes"; then
-	AC_DEFINE(HAVE_OPENCT, 1, [Have OpenCT libraries and header files])
-else
-	OPENCT_LDFLAGS=""
-	OPENCT_LIBS=""
-	OPENCT_CFLAGS=""
-fi
+AC_SUBST(ASSUAN_CFLAGS)
+AC_SUBST(ASSUAN_LIBS)
 
 dnl enable/disable logging of sensitive apdu data
 AC_ARG_ENABLE(sensitive-logging,
 	AC_HELP_STRING([--disable-sensitive-logging], [disable logging of sensitive APDU data [default=no]]),
 	AC_DEFINE(OPENSC_DONT_LOG_SENSITIVE,1,[Disable logging of sensitive APDU data]))
 
-### BEGIN ASSUAN SPECIFIC OPTIONS
-ASSUAN_MSG="no"
-AC_SUBST(CFLAGS_ASSUAN)
-AC_SUBST(LIBASSUAN)
-LIBASSUAN="-lassuan"
-AC_ARG_WITH(assuan,
-	AC_HELP_STRING([--with-assuan=PATH], [use Assuan libraries in PATH]),
-	[
-		if test -n "${need_dash_r}"; then
-			LDFLAGS="-L${withval}/lib -R${withval}/lib ${LDFLAGS}"
-		else
-			LDFLAGS="-L${withval}/lib ${LDFLAGS}"
-		fi
-		CFLAGS_ASSUAN="-I${withval}/include ${CFLAGS_ASSUAN}"
-	]
-)
-
-AC_CHECK_LIB(assuan, assuan_pipe_connect, ASSUAN_MSG="yes", ASSUAN_MSG="no")
-if test "x$ASSUAN_MSG" != "xno" ; then
-  saved_CPPFLAGS="$CPPFLAGS"
-  CPPFLAGS="$CFLAGS_ASSUAN $CPPFLAGS"
-  AC_CHECK_HEADER(assuan.h, ASSUAN_MSG="yes", ASSUAN_MSG="no")
-  CPPFLAGS="$saved_CPPFLAGS"
-fi
-AM_CONDITIONAL(HAVE_ASSUAN, test "x$ASSUAN_MSG" = "xyes")
-### END ASSUAN SPECIFIC OPTIONS
 
 PLUGINDIR="/usr/lib/mozilla/plugins"
 AC_ARG_WITH(plugin-dir,
@@ -686,19 +310,6 @@ AC_ARG_WITH(pin-entry,
 	]
 )
 AC_DEFINE_UNQUOTED(PIN_ENTRY, "$PIN_ENTRY", [PIN-entry program for OpenSC Signer])
-
-dnl Check for SGML processor
-AC_ARG_WITH(docbook,
-	AC_HELP_STRING([--without-docbook], [do no generate html manual (needs docbook)]),
-	with_docbook=$withval)
-AC_CHECK_PROG(XSLTPROC, xsltproc, xsltproc)
-if test "x$XSLTPROC" = "x"; then
-	if test "x$with_docbook" = "xyes"; then
-		AC_MSG_ERROR([Docbook support requested, but cannot find xsltproc])
-	fi
-	with_docbook=no
-fi
-AM_CONDITIONAL(HAVE_DOCBOOK, test "x$with_docbook" = "xyes")
 
 if test "x$prefix" = xNONE; then
   prefix=$ac_default_prefix
@@ -760,7 +371,6 @@ src/pkcs11/Makefile
 src/pkcs11/rsaref/Makefile
 src/pkcs15init/Makefile
 src/scconf/Makefile
-src/scdl/Makefile
 src/signer/Makefile
 src/signer/npinclude/Makefile
 src/tests/Makefile

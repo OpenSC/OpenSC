@@ -55,12 +55,12 @@
 #include <openssl/rsa.h>
 #include <openssl/pkcs12.h>
 #endif
+#include <ltdl.h>
 #include <opensc/pkcs15.h>
 #include "profile.h"
 #include "pkcs15-init.h"
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
-#include <opensc/scdl.h>
 
 #define OPENSC_INFO_FILEPATH		"3F0050154946"
 #define OPENSC_INFO_FILEID		0x4946
@@ -230,35 +230,35 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 	const char *name)
 {
 	const char *version, *libname;
-	void *handler;
+	lt_dlhandle handle;
 	void *(*modinit)(const char *)  = NULL;
 	const char *(*modversion)(void) = NULL;
 
 	libname = find_library(ctx, name);
 	if (!libname)
 		return NULL;
-	handler = scdl_open(libname);
-	if (handler == NULL) {
+	handle = lt_dlopen(libname);
+	if (handle == NULL) {
 		sc_error(ctx, "Module %s: cannot load %s library\n",name,libname);
 		return NULL;
 	}
 
 	/* verify correctness of module */
-	modinit    = (void *(*)(const char *)) scdl_get_address(handler, "sc_module_init");
-	modversion = (const char *(*)(void)) scdl_get_address(handler, "sc_driver_version");
+	modinit    = (void *(*)(const char *)) lt_dlsym(handle, "sc_module_init");
+	modversion = (const char *(*)(void)) lt_dlsym(handle, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
 		sc_error(ctx, "dynamic library '%s' is not a OpenSC module\n",libname);
-		scdl_close(handler);
+		lt_dlclose(handle);
 		return NULL;
 	}
 	/* verify module version */
 	version = modversion();
 	if (version == NULL || strncmp(version, "0.9.", strlen("0.9.")) > 0) {
 		sc_error(ctx,"dynamic library '%s': invalid module version\n",libname);
-		scdl_close(handler);
+		lt_dlclose(handle);
 		return NULL;
 	}
-	*dll = handler;
+	*dll = handle;
 	sc_debug(ctx, "successfully loaded pkcs15init driver '%s'\n", name);
 
 	return modinit(name);
@@ -360,7 +360,7 @@ sc_pkcs15init_unbind(struct sc_profile *profile)
 			sc_error(ctx, "Failed to update TokenInfo: %s\n", sc_strerror(r));
 	}
 	if (profile->dll)
-		scdl_close(profile->dll);
+		lt_dlclose(profile->dll);
 	sc_profile_free(profile);
 }
 

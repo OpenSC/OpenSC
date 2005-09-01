@@ -19,8 +19,7 @@ DISTCLEANFILES = \
 	pkcs11.h \
 	keycache.h \
 	pkcs15-init.h \
-	scconf.h \
-	scdl.h 
+	scconf.h 
 
 all-local:
 	@$(RM) *.h
@@ -38,4 +37,3 @@ all-local:
 	@$(LN_S) ${top_srcdir}/src/pkcs15init/keycache.h keycache.h
 	@$(LN_S) ${top_srcdir}/src/pkcs15init/pkcs15-init.h pkcs15-init.h
 	@$(LN_S) ${top_srcdir}/src/scconf/scconf.h scconf.h
-	@$(LN_S) ${top_srcdir}/src/scdl/scdl.h scdl.h

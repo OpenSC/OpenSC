@@ -9,16 +9,16 @@ SUBDIRS = . npinclude
 
 EXTRA_DIST = testprog.c
 
-INCLUDES = @CPPFLAGS@ @CFLAGS_ASSUAN@ -I$(top_srcdir)/src/signer/npinclude
+INCLUDES = @CPPFLAGS@ @OPENSSL_CFLAGS@ @ASSUAN_CFLAGS@ -I$(srcdir)/npinclude
 
-if HAVE_SSL
+if HAVE_OPENSSL
 if HAVE_ASSUAN
 lib_LTLIBRARIES = opensc-signer.la
 endif
 endif
 
 opensc_signer_la_LDFLAGS = -module -avoid-version
-opensc_signer_la_LIBADD = @LIBOPENSC@ @LIBCRYPTO@ @LIBASSUAN@
+opensc_signer_la_LIBADD = @LIBOPENSC@ @OPENSSL_LIBS@ @ASSUAN_LIBS@
 opensc_signer_la_CFLAGS = $(AM_CFLAGS) -DXP_UNIX
 opensc_signer_la_SOURCES = \
 	opensc-crypto.c opensc-support.c signer.c stubs.c dialog.c
@@ -26,7 +26,7 @@ noinst_HEADERS = \
 	opensc-crypto.h opensc-support.h signer.h 
 
 install-exec-local: install-libLTLIBRARIES
-if HAVE_SSL
+if HAVE_OPENSSL
 if HAVE_ASSUAN
 	-$(LN_S) -f $(libdir)/opensc-signer.so $(DESTDIR)$(plugindir)/
 endif

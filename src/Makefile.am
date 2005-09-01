@@ -5,5 +5,5 @@ MAINTAINERCLEANFILES = Makefile.in
 EXTRA_DIST = Makefile.mak
 
 # Order IS important
-SUBDIRS = common include scconf scdl libopensc pkcs15init pkcs11 \
+SUBDIRS = common include scconf libopensc pkcs15init pkcs11 \
 	tests tools openssh signer 

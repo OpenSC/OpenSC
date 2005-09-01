@@ -26,7 +26,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
-#include <opensc/scdl.h>
+#include <ltdl.h>
 
 extern int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
@@ -169,7 +169,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	sc_card_t	*card = p15card->card;
 	sc_context_t	*ctx = card->ctx;
 	sc_pkcs15emu_opt_t opts;
-	void		*dll = NULL;
+	lt_dlhandle	handle = NULL;
 	int		(*init_func)(sc_pkcs15_card_t *);
 	int		(*init_func_ex)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 	int		r, force = 0;
@@ -210,14 +210,14 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		sc_debug(ctx, "Loading %s\n", module_name);
 		
 		/* try to open dynamic library */
-		dll = scdl_open(module_name);
-		if (!dll) {
+		handle = lt_dlopen(module_name);
+		if (!handle) {
 			sc_debug(ctx, "unable to open dynamic library '%s'\n",
 			         module_name);
 			return SC_ERROR_INTERNAL;
 		}
 		/* try to get version of the driver/api */
-		get_version =  (const char *(*)(void)) scdl_get_address(dll, "sc_driver_version");
+		get_version =  (const char *(*)(void)) lt_dlsym(handle, "sc_driver_version");
 		if (!get_version || strcmp(get_version(), "0.9.3") < 0) {
 			/* no sc_driver_version function => assume old style
 			 * init function (note: this should later give an error
@@ -225,13 +225,13 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 			/* get the init function name */
 			name = scconf_get_str(conf, "function", func_name);
 
-			address = scdl_get_address(dll, name);
+			address = lt_dlsym(handle, name);
 			if (address)
 				init_func = (int (*)(sc_pkcs15_card_t *)) address;
 		} else {
 			name = scconf_get_str(conf, "function", exfunc_name);
 
-			address = scdl_get_address(dll, name);
+			address = lt_dlsym(handle, name);
 			if (address)
 				init_func_ex = (int (*)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *)) address;
 		}
@@ -247,14 +247,14 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	if (r >= 0) {
 		sc_debug(card->ctx, "%s succeeded, card bound\n",
 				module_name);
-		p15card->dll_handle = dll;
+		p15card->dll_handle = handle;
 	} else if (ctx->debug >= 4) {
 		sc_debug(card->ctx, "%s failed: %s\n",
 				module_name, sc_strerror(r));
 		/* clear pkcs15 card */
 		sc_pkcs15_card_clear(p15card);
-		if (dll)
-			scdl_close(dll);
+		if (handle)
+			lt_dlclose(handle);
 	}
 
 	return r;

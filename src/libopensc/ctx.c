@@ -26,7 +26,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <limits.h>
-#include <opensc/scdl.h>
+#include <ltdl.h>
 
 #ifdef _WIN32
 #include <winreg.h>
@@ -337,7 +337,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 	const char *name, int type)
 {
 	const char *version, *libname;
-	void *handler;
+	lt_dlhandle handle;
 	void *(*modinit)(const char *) = NULL;
 	const char *(*modversion)(void) = NULL;
 
@@ -348,28 +348,28 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 	libname = find_library(ctx, name, type);
 	if (libname == NULL)
 		return NULL;
-	handler = scdl_open(libname);
-	if (handler == NULL) {
+	handle = lt_dlopen(libname);
+	if (handle == NULL) {
 		sc_error(ctx, "Module %s: cannot load %s library\n",name,libname);
 		return NULL;
 	}
 
 	/* verify correctness of module */
-	modinit    = (void *(*)(const char *)) scdl_get_address(handler, "sc_module_init");
-	modversion = (const char *(*)(void)) scdl_get_address(handler, "sc_driver_version");
+	modinit    = (void *(*)(const char *)) lt_dlsym(handle, "sc_module_init");
+	modversion = (const char *(*)(void)) lt_dlsym(handle, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
 		sc_error(ctx, "dynamic library '%s' is not a OpenSC module\n",libname);
-		scdl_close(handler);
+		lt_dlclose(handle);
 		return NULL;
 	}
 	/* verify module version */
 	version = modversion();
 	if (version == NULL || strncmp(version, "0.9.", strlen("0.9.")) > 0) {
 		sc_error(ctx,"dynamic library '%s': invalid module version\n",libname);
-		scdl_close(handler);
+		lt_dlclose(handle);
 		return NULL;
 	}
-	*dll = handler;
+	*dll = handle;
 	sc_debug(ctx, "successfully loaded %s driver '%s'\n",
 		type ? "card" : "reader", name);
 	return modinit(name);
@@ -660,6 +660,14 @@ int sc_establish_context(sc_context_t **ctx_out, const char *app_name)
 	ctx->mutex = sc_mutex_new();
 	sc_debug(ctx, "===================================\n"); /* first thing in the log */
 	sc_debug(ctx, "opensc version: %s\n", sc_get_version());
+
+        /* initialize ltdl */
+	if (lt_dlinit() != 0) {
+		sc_debug(ctx, "lt_dlinit failed\n");
+		sc_release_context(ctx);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
 	load_reader_drivers(ctx, &opts);
 	load_card_drivers(ctx, &opts);
 	load_card_atrs(ctx, &opts);
@@ -697,12 +705,12 @@ int sc_release_context(sc_context_t *ctx)
 		if (drv->ops->finish != NULL)
 			drv->ops->finish(ctx, ctx->reader_drv_data[i]);
 		if (drv->dll)
-			scdl_close(drv->dll);
+			lt_dlclose(drv->dll);
 	}
 	for (i = 0; ctx->card_drivers[i]; i++) {
 		struct sc_card_driver *drv = ctx->card_drivers[i];
 		if (drv->dll)
-			scdl_close(drv->dll);
+			lt_dlclose(drv->dll);
 		if (drv->atr_map)
 			_sc_free_atr(ctx, drv);
 	}
