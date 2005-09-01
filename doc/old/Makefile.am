@@ -3,18 +3,9 @@
 XSLTPROC = @XSLTPROC@
 HTMLFILES = opensc.html opensc.css opensc-es.html
 XMLFILES = opensc.xml opensc.xsl opensc-es.xml
+STYLESHEET = opensc.xsl
 
 MAINTAINERCLEANFILES = Makefile.in 
 
-noinst_DATA = $(HTMLFILES)
-EXTRA_DIST = pkcs-15v1_1.asn $(XMLFILES) $(HTMLFILES) doxygen.conf
+EXTRA_DIST = pkcs-15v1_1.asn $(XMLFILES) $(HTMLFILES) $(STYLESHEET) doxygen.conf generate.sh
 
-STYLESHEET = opensc.xsl
-
-%.html: %.xml
-if HAVE_DOCBOOK
-	$(XSLTPROC) -o $@ $(STYLESHEET) $<
-	tidy -im -utf8 -xml $@ || true
-else
-	@echo "Docbook support disabled, not building $@" >&2
-endif

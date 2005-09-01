@@ -6,29 +6,42 @@ export SERVER=http://www.opensc.org
 export WIKI=opensc/wiki
 export XSL=export-wiki.xsl
 
-test -f `basename $0`
+SRCDIR=.
 
-rm -rf *.html *.css
+if test -n "$1"
+then
+	SRCDIR="$1"
+fi
 
-wget $SERVER/$WIKI/TitleIndex -O TitleIndex.tmp
+test -f "$SRCDIR"/`basename $0`
 
-grep "\"/$WIKI/[^\"]*\"" TitleIndex.tmp \
+if ! test -w "$SRCDIR"
+then
+	exit 0
+fi
+
+rm -rf "$SRCDIR"/*.html "$SRCDIR"/*.css
+
+wget --non-verbose $SERVER/$WIKI/TitleIndex -O "$SRCDIR"/TitleIndex.tmp
+
+grep "\"/$WIKI/[^\"]*\"" "$SRCDIR"/TitleIndex.tmp \
         |sed -e "s#.*\"/$WIKI/\([^\"]*\)\".*#\1#g" \
-	> WikiWords.tmp
+	> "$SRCDIR"/WikiWords.tmp
 sed -e /^Trac/d -e /^Wiki/d -e /^TitleIndex/d -e /^RecentChanges/d \
-	-e /^CamelCase/d -e /^SandBox/d -i WikiWords.tmp
+	-e /^CamelCase/d -e /^SandBox/d -i "$SRCDIR"/WikiWords.tmp
 
-for A in WikiStart `cat WikiWords.tmp`
+for A in WikiStart `cat "$SRCDIR"/WikiWords.tmp`
 do
 	F=`echo $A|sed -e 's/\//_/g'`
-	wget $SERVER/$WIKI/$A  -O $F.tmp
-	xsltproc --output $F.html $XSL $F.tmp
+	wget --non-verbose $SERVER/$WIKI/$A  -O "$SRCDIR"/$F.tmp
+	xsltproc --output "$SRCDIR"/$F.html "$SRCDIR"/$XSL "$SRCDIR"/$F.tmp
 	sed -e "s#<a href=\"/$WIKI/\([^\"]*\)\"#<a href=\"\1.html\"#g" \
-		-i $F.html
+		-i "$SRCDIR"/$F.html
 done
 
-mv WikiStart.html index.html
+mv "$SRCDIR"/WikiStart.html "$SRCDIR"/index.html
 
-wget http://www.opensc.org/trac/css/trac.css
+wget --non-verbose http://www.opensc.org/trac/css/trac.css \
+	-O "$SRCDIR"/trac.css
 
-rm *.tmp
+rm "$SRCDIR"/*.tmp
