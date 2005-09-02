@@ -1,6 +1,7 @@
 # Process this file with automake to create Makefile.in
 
-SUBDIRS = . aclocal doc etc macos man src win32
+SUBDIRS = . aclocal etc macos man src win32
+DIST_SUBDIRS = . aclocal doc etc macos man src win32
 
 EXTRA_DIST = ANNOUNCE CodingStyle QUICKSTART README \
 	bootstrap Makefile.mak depcomp \
@@ -16,9 +17,3 @@ MAINTAINERCLEANFILES = \
 DEPCLEANFILES = config.log configure
 
 AUTOMAKE_OPTIONS = foreign 1.5
-
-dist: gendoc
-
-gendoc:
-	sh $(srcdir)/doc/export-wiki.sh $(srcdir)/doc
-	sh $(srcdir)/doc/old/generate.sh $(srcdir)/doc/old
