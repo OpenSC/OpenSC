@@ -57,7 +57,6 @@ struct sc_atr_table {
 
 /* Internal use only */
 int sc_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2);
-size_t _sc_count_bit_string_size(const void * buf, size_t bufsize);
 
 int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader);
 int _sc_parse_atr(struct sc_context *ctx, struct sc_slot_info *slot);

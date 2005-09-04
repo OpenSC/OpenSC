@@ -121,24 +121,6 @@ void sc_copy_asn1_entry(const struct sc_asn1_entry *src,
 	dest->name = NULL;
 }
 
-size_t _sc_count_bit_string_size(const void * buf, size_t bufsize)
-{
-	const u8 *p = (const u8 *) buf + bufsize - 1;
-	u8 c;
-	size_t skip = 0;
-	int i;
-
-	while (p >= (const u8 *) buf && *p == 0) {
-		skip += 8;
-		p--;
-	}
-	if (p < (const u8 *) buf)
-		return 0;
-	c = *p;
-	for (i = 0; (c >> (7-i)) == 0; i++);
-	return bufsize * 8 - (skip + i);
-}
-
 static void sc_asn1_print_octet_string(const u8 * buf, size_t buflen)
 {
 	size_t i;
