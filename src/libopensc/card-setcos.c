@@ -29,26 +29,27 @@
 
 static struct sc_atr_table setcos_atrs[] = {
 	/* some Nokia branded SC */
-	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_GENERIC, 0 },
+	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_GENERIC, 0, NULL },
 	/* RSA SecurID 3100 */
-	{ "3B:9F:94:40:1E:00:67:16:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_PKI, 0 },
+	{ "3B:9F:94:40:1E:00:67:16:43:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_PKI, 0, NULL },
 
 	/* FINEID 1016 (SetCOS 4.3.1B3/PKCS#15, VRK) */
-	{ "3b:9f:94:40:1e:00:67:00:43:46:49:53:45:10:52:66:ff:81:90:00", "ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID, SC_CARD_FLAG_RNG },
+	{ "3b:9f:94:40:1e:00:67:00:43:46:49:53:45:10:52:66:ff:81:90:00", "ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID, SC_CARD_FLAG_RNG, NULL },
 	/* FINEID 2032 (EIDApplet/7816-15, VRK test) */
-	{ "3b:6b:00:ff:80:62:00:a2:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0 },
+	{ "3b:6b:00:ff:80:62:00:a2:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0, NULL },
 	/* FINEID 2132 (EIDApplet/7816-15, 3rdparty test) */
-	{ "3b:64:00:ff:80:62:00:a2", "ff:ff:00:ff:ff:ff:00:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0 },
+	{ "3b:64:00:ff:80:62:00:a2", "ff:ff:00:ff:ff:ff:00:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0, NULL },
 	/* FINEID 2064 (EIDApplet/7816-15, VRK) */
-	{ "3b:7b:00:00:00:80:62:00:51:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:ff:f0:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0 },
+	{ "3b:7b:00:00:00:80:62:00:51:56:46:69:6e:45:49:44", "ff:ff:00:ff:ff:ff:ff:f0:ff:ff:ff:ff:ff:ff:ff:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0, NULL },
 	/* FINEID 2164 (EIDApplet/7816-15, 3rdparty) */
-	{ "3b:64:00:00:80:62:00:51", "ff:ff:ff:ff:ff:ff:f0:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0 },
+	{ "3b:64:00:00:80:62:00:51", "ff:ff:ff:ff:ff:ff:f0:ff", NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0, NULL },
 	/* FINEID 2264 (EIDApplet/7816-15, OPK/EMV/AVANT) */
-	{ "3b:6e:00:00:00:62:00:00:57:41:56:41:4e:54:10:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0 },
+	{ "3b:6e:00:00:00:62:00:00:57:41:56:41:4e:54:10:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0, NULL },
+	{ "3b:7b:94:00:00:80:62:11:51:56:46:69:6e:45:49:44", NULL, NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0, NULL },
 
 	/* Setcos 4.4.1 */
-	{ "3b:9f:94:80:1f:c3:00:68:11:44:05:01:46:49:53:45:31:c8:00:00:00:00", "ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:00:00", NULL, SC_CARD_TYPE_SETCOS_44, 0 },
-	{ NULL }
+	{ "3b:9f:94:80:1f:c3:00:68:11:44:05:01:46:49:53:45:31:c8:00:00:00:00", "ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:00:00", NULL, SC_CARD_TYPE_SETCOS_44, 0, NULL },
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 /* Setcos 4.4 Life Cycle Status Integer  */
@@ -62,7 +63,8 @@ static struct sc_card_operations setcos_ops;
 static struct sc_card_driver setcos_drv = {
 	"Setec cards",
 	"setcos",
-	&setcos_ops
+	&setcos_ops,
+	NULL, 0, NULL
 };
 
 static int setcos_finish(sc_card_t *card)
