@@ -33,14 +33,20 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 	CK_RV (*c_get_function_list)(CK_FUNCTION_LIST_PTR_PTR);
 	int rv;
 
+	lt_dlinit();
+
 	mod = (sc_pkcs11_module_t *) calloc(1, sizeof(*mod));
 	mod->_magic = MAGIC;
 
 	if (mspec == NULL)
 		mspec = PKCS11_DEFAULT_MODULE_NAME;
 	mod->handle = lt_dlopen(mspec);
-	if (mod->handle == NULL)
+	if (mod->handle == NULL) {
+#if 0
+		fprintf(stderr, "lt_dlopen failed: %s\n", lt_dlerror());
+#endif
 		goto failed;
+	}
 
 	/* Get the list of function pointers */
 	c_get_function_list = (CK_RV (*)(CK_FUNCTION_LIST_PTR_PTR))
