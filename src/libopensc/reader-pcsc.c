@@ -32,6 +32,10 @@
 #include <winscard.h>
 #endif
 
+#ifdef HAVE_READER_H
+#include <reader.h>
+#endif
+
 /* Default timeout value for SCardGetStatusChange
  * Needs to be increased for some broken PC/SC
  * Lite implementations.
