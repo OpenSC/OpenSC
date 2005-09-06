@@ -2043,15 +2043,18 @@ static void set_userpin_ref()
 static void
 parse_x509_usage(const char *list, unsigned int *res)
 {
-	static const char *	x509_usage_names[] = {
-		"digitalSignature",
-		"nonRepudiation",
-		"keyEncipherment",
-		"dataEncipherment",
-		"keyAgreement",
-		"keyCertSign",
-		"cRLSign",
-		NULL
+	static struct {
+		const char* name;
+		unsigned int flag;
+	} x509_usage_names[] = {
+		{ "digitalSignature", 0x0080 },
+		{ "nonRepudiation",   0x0040 },
+		{ "keyEncipherment",  0x0020 },
+		{ "dataEncipherment", 0x0010 },
+		{ "keyAgreement",     0x0008 },
+		{ "keyCertSign",      0x0004 },
+		{ "cRLSign",          0x0002 },
+		{ NULL, 0 }
 	};
 	static struct {
 		const char *	name;
@@ -2072,8 +2075,8 @@ parse_x509_usage(const char *list, unsigned int *res)
 		len = strcspn(list, ",");
 		if (len == 4 && !strncasecmp(list, "help", 4)) {
 			printf("Valid X.509 usage names (case-insensitive):\n");
-			for (n = 0; x509_usage_names[n]; n++)
-				printf("  %s\n", x509_usage_names[n]);
+			for (n = 0; x509_usage_names[n].name; n++)
+				printf("  %s\n", x509_usage_names[n].name);
 			printf("\nAliases:\n");
 			for (n = 0; x509_usage_aliases[n].name; n++) {
 				printf("  %-12s %s\n",
@@ -2084,9 +2087,9 @@ parse_x509_usage(const char *list, unsigned int *res)
 			       "Abbreviated names are okay if unique (e.g. dataEnc)\n");
 			exit(0);
 		}
-		for (n = 0; x509_usage_names[n]; n++) {
-			if (!strncasecmp(x509_usage_names[n], list, len)) {
-				*res |= (1 << n);
+		for (n = 0; x509_usage_names[n].name != NULL; n++) {
+			if (!strncasecmp(x509_usage_names[n].name, list, len)) {
+				*res |= x509_usage_names[n].flag;
 				match++;
 			}
 		}
