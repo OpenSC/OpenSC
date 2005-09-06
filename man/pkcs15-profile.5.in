@@ -1,5 +1,5 @@
 .PU
-.ds nm \fBpkcs15-init\fP
+.ds nm \fBpkcs15-profile\fP
 .TH pkcs15-profile 5 "" "" OpenSC
 .SH NAME
 pkcs15-profile \- format of profiles for \*(nm
