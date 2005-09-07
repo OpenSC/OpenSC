@@ -24,19 +24,20 @@
 #include <stdlib.h>
 
 static struct sc_atr_table jcop_atrs[] = {
-	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:33:31:06", NULL, NULL, SC_CARD_TYPE_JCOP_GENERIC },
+	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:33:31:06", NULL, NULL, SC_CARD_TYPE_JCOP_GENERIC, 0, NULL },
 #if 0
 	/* Requires secure messaging */
-	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:32:31:06", NULL, NULL, SC_CARD_TYPE_JCOP_GENERIC },
+	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:32:31:06", NULL, NULL, SC_CARD_TYPE_JCOP_GENERIC, 0, NULL },
 #endif
-	{ NULL }
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 static struct sc_card_operations jcop_ops;
 static struct sc_card_driver jcop_drv = {
-     "JCOP cards with BlueZ PKCS#15 applet",
-     "jcop",
-     &jcop_ops
+	"JCOP cards with BlueZ PKCS#15 applet",
+	"jcop",
+	&jcop_ops,
+	NULL, 0, NULL
 };
 
 #define SELECT_MF 0
