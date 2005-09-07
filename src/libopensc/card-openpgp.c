@@ -26,8 +26,8 @@
 #include <ctype.h>
 
 static struct sc_atr_table pgp_atrs[] = {
-	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, NULL, SC_CARD_TYPE_OPENPGP_GENERIC },
-	{ NULL }
+	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, NULL, SC_CARD_TYPE_OPENPGP_GENERIC, 0, NULL },
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 static struct sc_card_operations *iso_ops;
@@ -35,7 +35,8 @@ static struct sc_card_operations pgp_ops;
 static struct sc_card_driver pgp_drv = {
 	"OpenPGP card",
 	"openpgp",
-	&pgp_ops
+	&pgp_ops,
+	NULL, 0, NULL
 };
 
 /*
@@ -93,7 +94,7 @@ static struct do_info		pgp_objects[] = {
       { 0xb801,		0, 0,	pgp_get_pubkey_pem,NULL		},
       { 0xa401,		0, 0,	pgp_get_pubkey_pem,NULL		},
 
-      { 0 },
+      { 0, 0, 0, NULL, NULL },
 };
 
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))

@@ -26,17 +26,18 @@
 
 static struct sc_atr_table miocos_atrs[] = {
 	/* Test card with 32 kB memory */
-	{ "3B:9D:94:40:23:00:68:10:11:4D:69:6F:43:4F:53:00:90:00", NULL, NULL, SC_CARD_TYPE_MIOCOS_GENERIC },
+	{ "3B:9D:94:40:23:00:68:10:11:4D:69:6F:43:4F:53:00:90:00", NULL, NULL, SC_CARD_TYPE_MIOCOS_GENERIC, 0, NULL },
 	/* Test card with 64 kB memory */
-	{ "3B:9D:94:40:23:00:68:20:01:4D:69:6F:43:4F:53:00:90:00", NULL, NULL, SC_CARD_TYPE_MIOCOS_GENERIC },
-	{ NULL }
+	{ "3B:9D:94:40:23:00:68:20:01:4D:69:6F:43:4F:53:00:90:00", NULL, NULL, SC_CARD_TYPE_MIOCOS_GENERIC, 0, NULL },
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 static struct sc_card_operations miocos_ops;
 static struct sc_card_driver miocos_drv = {
 	"MioCOS 1.1",
 	"miocos",
-	&miocos_ops
+	&miocos_ops,
+	NULL, 0, NULL
 };
 
 static int miocos_finish(sc_card_t *card)

@@ -410,7 +410,8 @@ static struct sc_reader_operations ctapi_ops;
 static struct sc_reader_driver ctapi_drv = {
 	"CT-API module",
 	"ctapi",
-	&ctapi_ops
+	&ctapi_ops,
+	0, 0, 0, NULL
 };
 
 static struct ctapi_module * add_module(struct ctapi_global_private_data *gpriv,

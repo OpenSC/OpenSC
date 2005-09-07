@@ -41,7 +41,7 @@ static struct sc_card_driver atrust_acos_drv = {
 	"A-Trust ACOS cards",
 	"atrust-acos",
 	&atrust_acos_ops,
-	NULL, 0
+	NULL, 0, NULL
 };
 
 /* internal structure to save the current security enviroment */

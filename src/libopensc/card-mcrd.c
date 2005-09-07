@@ -31,17 +31,18 @@
 #include "esteid.h"
 
 static struct sc_atr_table mcrd_atrs[] = {
-	{ "3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", NULL, "German BMI", SC_CARD_TYPE_MCRD_GENERIC },
-	{ "3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43", NULL, "EstEID (cold)", SC_CARD_TYPE_MCRD_ESTEID },
-	{ "3B:6E:00:FF:45:73:74:45:49:44:20:76:65:72:20:31:2E:30", NULL, "EstEID (warm)", SC_CARD_TYPE_MCRD_ESTEID },
-	{ NULL }
+	{ "3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", NULL, "German BMI", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL },
+	{ "3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43", NULL, "EstEID (cold)", SC_CARD_TYPE_MCRD_ESTEID, 0, NULL },
+	{ "3B:6E:00:FF:45:73:74:45:49:44:20:76:65:72:20:31:2E:30", NULL, "EstEID (warm)", SC_CARD_TYPE_MCRD_ESTEID, 0, NULL },
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 static struct sc_card_operations mcrd_ops;
 static struct sc_card_driver mcrd_drv = {
 	"MICARDO 2.1",
 	"mcrd",
-	&mcrd_ops
+	&mcrd_ops,
+	NULL, 0, NULL
 };
 
 static const struct sc_card_operations *iso_ops = NULL;

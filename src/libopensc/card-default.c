@@ -25,7 +25,8 @@ static struct sc_card_operations default_ops;
 static struct sc_card_driver default_drv = {
 	"Default driver for unknown cards",
 	"default",
-	&default_ops
+	&default_ops,
+	NULL, 0, NULL
 };
 
 static int default_finish(sc_card_t *card)

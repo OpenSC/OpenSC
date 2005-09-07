@@ -90,15 +90,15 @@ static int	gpk_get_info(sc_card_t *, int, int, u8 *, size_t);
  * ATRs of GPK4000 cards courtesy of libscez
  */
 static struct sc_atr_table gpk_atrs[] = {
-	{ "3B:27:00:80:65:A2:04:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_s },
-	{ "3B:27:00:80:65:A2:05:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_sp },
-	{ "3B:27:00:80:65:A2:0C:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_su256 },
-	{ "3B:A7:00:40:14:80:65:A2:14:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_sdo },
-	{ "3B:A7:00:40:18:80:65:A2:08:01:01:52", NULL, "GPK 8K", SC_CARD_TYPE_GPK_GPK8000_8K },
-	{ "3B:A7:00:40:18:80:65:A2:09:01:01:52", NULL, "GPK 8K", SC_CARD_TYPE_GPK_GPK8000_16K },
-	{ "3B:A7:00:40:18:80:65:A2:09:01:02:52", NULL, "GPK 16K", SC_CARD_TYPE_GPK_GPK16000 },
-	{ "3B:A7:00:40:18:80:65:A2:09:01:03:52", NULL, "GPK 16K", SC_CARD_TYPE_GPK_GPK16000 },
-	{ NULL }
+	{ "3B:27:00:80:65:A2:04:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_s, 0, NULL },
+	{ "3B:27:00:80:65:A2:05:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_sp, 0, NULL },
+	{ "3B:27:00:80:65:A2:0C:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_su256, 0, NULL },
+	{ "3B:A7:00:40:14:80:65:A2:14:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_sdo, 0, NULL },
+	{ "3B:A7:00:40:18:80:65:A2:08:01:01:52", NULL, "GPK 8K", SC_CARD_TYPE_GPK_GPK8000_8K, 0, NULL },
+	{ "3B:A7:00:40:18:80:65:A2:09:01:01:52", NULL, "GPK 8K", SC_CARD_TYPE_GPK_GPK8000_16K, 0, NULL },
+	{ "3B:A7:00:40:18:80:65:A2:09:01:02:52", NULL, "GPK 16K", SC_CARD_TYPE_GPK_GPK16000, 0, NULL },
+	{ "3B:A7:00:40:18:80:65:A2:09:01:03:52", NULL, "GPK 16K", SC_CARD_TYPE_GPK_GPK16000, 0, NULL },
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 /*
@@ -108,7 +108,8 @@ static struct sc_card_operations	gpk_ops, *iso_ops;
 static struct sc_card_driver gpk_drv = {
 	"Gemplus GPK",
 	"gpk",
-	&gpk_ops
+	&gpk_ops,
+	NULL, 0, NULL
 };
 
 /*

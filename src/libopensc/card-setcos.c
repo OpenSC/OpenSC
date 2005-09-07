@@ -442,7 +442,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 			bBuf[len++] = bCommands_always;
 		}
 		/* Add commands that require pins */
-		for (i = 0; i < sizeof(bCommands_pin) && pins[i] != -1; i++) {
+		for (i = 0; i < (int)sizeof(bCommands_pin) && pins[i] != -1; i++) {
 			bBuf[len++] = 2;
 			bBuf[len++] = bCommands_pin[i];
 			bBuf[len++] = pins[i] & 0x07;  /* pin ref */

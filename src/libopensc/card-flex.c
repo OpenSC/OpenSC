@@ -28,50 +28,50 @@
 static struct sc_atr_table flex_atrs[] = {
 	/* Cryptoflex */
 	/* 8k win2000 */
-	{ "3b:95:15:40:20:68:01:02:00:00", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
+	{ "3b:95:15:40:20:68:01:02:00:00", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0, NULL },
 	/* 8k */
-	{ "3B:95:15:40:FF:68:01:02:02:01", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
+	{ "3B:95:15:40:FF:68:01:02:02:01", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0, NULL },
 	/* 8k */
-	{ "3B:95:15:40:FF:68:01:02:02:04", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
+	{ "3B:95:15:40:FF:68:01:02:02:04", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0, NULL },
 	/* 8k */
-	{ "3B:85:40:20:68:01:01:05:01", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
+	{ "3B:85:40:20:68:01:01:05:01", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0, NULL },
 	/* 16k */
-	{ "3B:95:94:40:FF:63:01:01:02:01", NULL, "Cryptoflex 16K", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
+	{ "3B:95:94:40:FF:63:01:01:02:01", NULL, "Cryptoflex 16K", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN, NULL },
 	/* 32K v4 */
-	{ "3B:95:18:40:FF:64:02:01:01:02", NULL, "Cryptoflex 32K v4", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
+	{ "3B:95:18:40:FF:64:02:01:01:02", NULL, "Cryptoflex 32K v4", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN, NULL },
 	/* 32K e-gate */
-	{ "3B:95:18:40:FF:62:01:02:01:04", NULL, "Cryptoflex 32K e-gate", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
+	{ "3B:95:18:40:FF:62:01:02:01:04", NULL, "Cryptoflex 32K e-gate", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN, NULL },
 	/* 32K e-gate v4 */
-	{ "3B:95:18:40:FF:62:04:01:01:05", NULL, "Cryptoflex 32K e-gate v4", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
+	{ "3B:95:18:40:FF:62:04:01:01:05", NULL, "Cryptoflex 32K e-gate v4", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN, NULL },
 
-	{ "3B:E2:00:00:40:20:49:06", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
+	{ "3B:E2:00:00:40:20:49:06", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, 0, NULL },
 	/* + full DES option */
-	{ "3B:E2:00:00:40:20:49:05", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, 0 },
+	{ "3B:E2:00:00:40:20:49:05", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, 0, NULL },
 	/* + Key Generation */
-	{ "3B:E2:00:00:40:20:49:07", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
+	{ "3B:E2:00:00:40:20:49:07", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN, NULL },
 	/* + Key Generation */
-	{ "3B:85:40:20:68:01:01:03:05", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN },
+	{ "3B:85:40:20:68:01:01:03:05", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, SC_CARD_FLAG_ONBOARD_KEY_GEN, NULL },
 
 	/* Multiflex */
 	/* 3K */
-	{ "3B:02:14:50", NULL, "Multiflex 3K", SC_CARD_TYPE_FLEX_MULTI, 0 },
+	{ "3B:02:14:50", NULL, "Multiflex 3K", SC_CARD_TYPE_FLEX_MULTI, 0, NULL },
 	/* 4K */
-	{ "3B:19:14:55:90:01:02:01:00:05:04:B0", NULL, "Multiflex 4K", SC_CARD_TYPE_FLEX_MULTI, 0 },
+	{ "3B:19:14:55:90:01:02:01:00:05:04:B0", NULL, "Multiflex 4K", SC_CARD_TYPE_FLEX_MULTI, 0, NULL },
 	/* 8K */
-	{ "3B:32:15:00:06:80", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0 },
+	{ "3B:32:15:00:06:80", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0, NULL },
 	/* 8K + full DES option */
-	{ "3B:32:15:00:06:95", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0 },
+	{ "3B:32:15:00:06:95", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0, NULL },
 	/* 8K */
-	{ "3B:19:14:59:01:01:0F:01:00:05:08:B0", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0 },
+	{ "3B:19:14:59:01:01:0F:01:00:05:08:B0", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0, NULL },
 	/* 8K */
-	{ "3B:19:14:55:90:01:01:01:00:05:08:B0", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0 },
+	{ "3B:19:14:55:90:01:01:01:00:05:08:B0", NULL, "Multiflex 8K", SC_CARD_TYPE_FLEX_MULTI, 0, NULL },
 
 	/* Cyberflex Access */
 	/* Crypto */
-	{ "3B:16:94:81:10:06:01:81:3F", NULL, "Cyberflex Access", SC_CARD_TYPE_FLEX_CYBER, 0 },
+	{ "3B:16:94:81:10:06:01:81:3F", NULL, "Cyberflex Access", SC_CARD_TYPE_FLEX_CYBER, 0, NULL },
 	/* Aug. Crypto */
-	{ "3B:16:94:81:10:06:01:81:2F", NULL, "Cyberflex Access", SC_CARD_TYPE_FLEX_CYBER, 0 },
-	{ NULL }
+	{ "3B:16:94:81:10:06:01:81:2F", NULL, "Cyberflex Access", SC_CARD_TYPE_FLEX_CYBER, 0, NULL },
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 struct flex_private_data {
@@ -91,12 +91,14 @@ static struct sc_card_operations *iso_ops;
 static struct sc_card_driver cryptoflex_drv = {
 	"Schlumberger Multiflex/Cryptoflex",
 	"flex",
-	&cryptoflex_ops
+	&cryptoflex_ops,
+	NULL, 0, NULL
 };
 static struct sc_card_driver cyberflex_drv = {
 	"Schlumberger Cyberflex",
 	"cyberflex",
-	&cyberflex_ops
+	&cyberflex_ops,
+	NULL, 0, NULL
 };
 
 static int flex_finish(sc_card_t *card)

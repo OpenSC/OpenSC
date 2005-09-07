@@ -136,18 +136,18 @@ static size_t next_idx = (size_t)-1;
 
 static struct sc_atr_table belpic_atrs[] = {
 	/* Applet V1.1 */
-	{ "3B:98:13:40:0A:A5:03:01:01:01:AD:13:11", NULL, NULL, SC_CARD_TYPE_BELPIC_EID },
+	{ "3B:98:13:40:0A:A5:03:01:01:01:AD:13:11", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
 	/* Applet V1.0 with new EMV-compatible ATR */
-	{ "3B:98:94:40:0A:A5:03:01:01:01:AD:13:10", NULL, NULL, SC_CARD_TYPE_BELPIC_EID },
+	{ "3B:98:94:40:0A:A5:03:01:01:01:AD:13:10", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
 	/* Applet beta 5 + V1.0 */
-	{ "3B:98:94:40:FF:A5:03:01:01:01:AD:13:10", NULL, NULL, SC_CARD_TYPE_BELPIC_EID },
+	{ "3B:98:94:40:FF:A5:03:01:01:01:AD:13:10", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
 #if 0
 	/* Applet beta 3 + 4 */
-	{ "3B:98:11:40:FF:A5:03:01:01:01:AD:13:04", NULL, NULL, SC_CARD_TYPE_BELPIC_EID },
+	{ "3B:98:11:40:FF:A5:03:01:01:01:AD:13:04", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
 	/* Applet beta 2 */
-	{ "3B:68:00:00:29:05:01:02:01:AD:13:03", NULL, NULL, SC_CARD_TYPE_BELPIC_EID },
+	{ "3B:68:00:00:29:05:01:02:01:AD:13:03", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
 #endif
-	{ NULL }
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 struct belpic_priv_data {
@@ -174,7 +174,8 @@ static struct sc_card_operations belpic_ops;
 static struct sc_card_driver belpic_drv = {
 	"Belpic cards",
 	"belpic",
-	&belpic_ops
+	&belpic_ops,
+	NULL, 0, NULL
 };
 static const struct sc_card_operations *iso_ops = NULL;
 

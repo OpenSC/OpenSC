@@ -42,15 +42,15 @@
 
 static struct sc_atr_table oberthur_atrs[] = {
 #if 0
-	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:04:00:82:90:00", NULL, "Oberthur 32k", SC_CARD_TYPE_OBERTHUR_32K },
-	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:05:00:82:90:00", NULL, "Oberthur 32k BIO", SC_CARD_TYPE_OBERTHUR_32K_BIO },
+	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:04:00:82:90:00", NULL, "Oberthur 32k", SC_CARD_TYPE_OBERTHUR_32K, 0, NULL },
+	{ "3B:7F:18:00:00:00:31:C0:73:9E:01:0B:64:52:D9:05:00:82:90:00", NULL, "Oberthur 32k BIO", SC_CARD_TYPE_OBERTHUR_32K_BIO, 0, NULL },
 #endif
-	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL, "Oberthur 64k v4/2.1.1", SC_CARD_TYPE_OBERTHUR_64K },
-	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", NULL, "Oberthur 64k v4/2.1.1", SC_CARD_TYPE_OBERTHUR_64K },
-	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL, "Oberthur 64k v5", SC_CARD_TYPE_OBERTHUR_64K },
-	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", NULL, "Oberthur 64k v5/2.2.0", SC_CARD_TYPE_OBERTHUR_64K },
-	{ "3B:7B:18:00:00:00:31:C0:64:77:E3:03:00:82:90:00", NULL, "Oberthur 64k CosmopolIC v5.2/2.2", SC_CARD_TYPE_OBERTHUR_64K },
-	{ NULL }
+	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL, "Oberthur 64k v4/2.1.1", SC_CARD_TYPE_OBERTHUR_64K, 0, NULL },
+	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", NULL, "Oberthur 64k v4/2.1.1", SC_CARD_TYPE_OBERTHUR_64K, 0, NULL },
+	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL, "Oberthur 64k v5", SC_CARD_TYPE_OBERTHUR_64K, 0, NULL },
+	{ "3B:7D:11:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", NULL, "Oberthur 64k v5/2.2.0", SC_CARD_TYPE_OBERTHUR_64K, 0, NULL },
+	{ "3B:7B:18:00:00:00:31:C0:64:77:E3:03:00:82:90:00", NULL, "Oberthur 64k CosmopolIC v5.2/2.2", SC_CARD_TYPE_OBERTHUR_64K, 0, NULL },
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 struct NTLV {
@@ -120,7 +120,8 @@ static struct sc_card_operations *iso_ops;
 static struct sc_card_driver auth_drv = {
 	"Oberthur AuthentIC.v2/CosmopolIC.v4",
 	"oberthur",
-	&auth_ops
+	&auth_ops,
+	NULL, 0, NULL
 };
 
 static int auth_get_pin_reference (sc_card_t *card,
@@ -1858,6 +1859,7 @@ auth_init_pin_info(sc_card_t *card, struct sc_pin_cmd_pin *pin,
 	}
 }
 
+#if 0
 static int
 auth_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	int *tries_left)
@@ -1871,6 +1873,7 @@ auth_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	data->pin_reference = pin_ref;
 	return iso_ops->pin_cmd(card, data, tries_left);
 }
+#endif
 
 static int
 auth_verify(sc_card_t *card, unsigned int type,

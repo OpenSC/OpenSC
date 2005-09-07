@@ -25,7 +25,8 @@ static struct sc_card_operations emv_ops;
 static struct sc_card_driver emv_drv = {
 	"EMV compatible cards",
 	"emv",
-	&emv_ops
+	&emv_ops,
+	NULL, 0, NULL
 };
 
 static int emv_finish(sc_card_t *card)

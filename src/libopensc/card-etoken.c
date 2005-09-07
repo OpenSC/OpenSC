@@ -37,25 +37,26 @@ struct sc_card_operations etoken_ops;
 static struct sc_card_driver etoken_drv = {
 	"Siemens CardOS",
 	"etoken",
-	&etoken_ops
+	&etoken_ops,
+	NULL, 0, NULL
 };
 
 static struct sc_atr_table etoken_atrs[] = {
 	/* 4.0 */
-	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
+	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
 	/* 4.01 */
-	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
+	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
 	/* 4.01a */
-	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
+	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
 	/* aladdin etoken pro 64 - aj: not compatible :/ */
-	/* { "3b f2 18 00 ff c1 0a 31 fe 55 c8 06 8a", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC }, */
+	/* { "3b f2 18 00 ff c1 0a 31 fe 55 c8 06 8a", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL }, */
 	/* Italian eID card, postecert */
-	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
+	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
 	/* Italian eID card, infocamere */
-	{ "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
+	{ "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
 	/* Another Italian InfocamereCard */
-	{ "3b:fc:98:00:ff:c1:10:31:fe:55:c8:03:49:6e:66:6f:63:61:6d:65:72:65:28", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC },
-	{ NULL }
+	{ "3b:fc:98:00:ff:c1:10:31:fe:55:c8:03:49:6e:66:6f:63:61:6d:65:72:65:28", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 static int etoken_finish(sc_card_t *card)

@@ -522,7 +522,8 @@ static struct sc_reader_operations pcsc_ops;
 static struct sc_reader_driver pcsc_drv = {
 	"PC/SC reader",
 	"pcsc",
-	&pcsc_ops
+	&pcsc_ops,
+	0, 0, 0, NULL
 };
 
 static int pcsc_init(sc_context_t *ctx, void **reader_data)

@@ -29,19 +29,20 @@
 
 static struct sc_atr_table tcos_atrs[] = {
 	/* SLE44 */
-	{ "3B:BA:13:00:81:31:86:5D:00:64:05:0A:02:01:31:80:90:00:8B", NULL, NULL, SC_CARD_TYPE_TCOS_GENERIC },
+	{ "3B:BA:13:00:81:31:86:5D:00:64:05:0A:02:01:31:80:90:00:8B", NULL, NULL, SC_CARD_TYPE_TCOS_GENERIC, 0, NULL },
 	/* SLE66S */
-	{ "3B:BA:14:00:81:31:86:5D:00:64:05:14:02:02:31:80:90:00:91", NULL, NULL, SC_CARD_TYPE_TCOS_GENERIC },
+	{ "3B:BA:14:00:81:31:86:5D:00:64:05:14:02:02:31:80:90:00:91", NULL, NULL, SC_CARD_TYPE_TCOS_GENERIC, 0, NULL },
 	/* SLE66P */
-	{ "3B:BA:96:00:81:31:86:5D:00:64:05:60:02:03:31:80:90:00:66", NULL, NULL, SC_CARD_TYPE_TCOS_GENERIC },
-	{ NULL }
+	{ "3B:BA:96:00:81:31:86:5D:00:64:05:60:02:03:31:80:90:00:66", NULL, NULL, SC_CARD_TYPE_TCOS_GENERIC, 0, NULL },
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 static struct sc_card_operations tcos_ops;
 static struct sc_card_driver tcos_drv = {
 	"TCOS 2.0",
 	"tcos",
-	&tcos_ops
+	&tcos_ops,
+	NULL, 0, NULL
 };
 
 static const struct sc_card_operations *iso_ops = NULL;
@@ -695,6 +696,7 @@ static int tcos_restore_security_env(sc_card_t *card, int se_num)
 static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datalen, u8 * out, size_t outlen)
 {
 	int r;
+	size_t i;
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -709,7 +711,8 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 	} else {
 		unsigned int keylen=128; /* FIXME: use correct key-size */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x84);
-		for(r=0;r<sizeof(sbuf);++r) sbuf[r]=0xff;
+		for(i = 0; i < sizeof(sbuf); ++i)
+			sbuf[i]=0xff;
 		sbuf[0]=0x00; sbuf[1]=0x01; sbuf[keylen-datalen-1]=0x00;
 		memcpy(sbuf+keylen-datalen, data, datalen);
 		datalen=keylen;
