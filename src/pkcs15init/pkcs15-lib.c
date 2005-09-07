@@ -1679,42 +1679,48 @@ done:	if (file)
 /*
  * Map X509 keyUsage extension bits to PKCS#15 keyUsage bits
  */
-static unsigned int	x509_to_pkcs15_private_key_usage[16] = {
-	SC_PKCS15_PRKEY_USAGE_SIGN
-	| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,	/* digitalSignature */
-	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,	/* NonRepudiation */
-	SC_PKCS15_PRKEY_USAGE_UNWRAP,		/* keyEncipherment */
-	SC_PKCS15_PRKEY_USAGE_DECRYPT,		/* dataEncipherment */
-	SC_PKCS15_PRKEY_USAGE_DERIVE,		/* keyAgreement */
-	SC_PKCS15_PRKEY_USAGE_SIGN
-	| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,	/* keyCertSign */
-	SC_PKCS15_PRKEY_USAGE_SIGN
-	| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,	/* cRLSign */
+typedef struct {
+	unsigned long x509_usage;
+	unsigned int p15_usage;
+} sc_usage_map;
+
+static sc_usage_map x509_to_pkcs15_private_key_usage[16] = {
+	{ SC_PKCS15INIT_X509_DIGITAL_SIGNATURE,
+	  SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER },
+	{ SC_PKCS15INIT_X509_NON_REPUDIATION, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION },
+	{ SC_PKCS15INIT_X509_KEY_ENCIPHERMENT, SC_PKCS15_PRKEY_USAGE_UNWRAP },
+	{ SC_PKCS15INIT_X509_DATA_ENCIPHERMENT, SC_PKCS15_PRKEY_USAGE_DECRYPT },
+	{ SC_PKCS15INIT_X509_KEY_AGREEMENT, SC_PKCS15_PRKEY_USAGE_DERIVE },
+	{ SC_PKCS15INIT_X509_KEY_CERT_SIGN,
+	  SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER },
+	{ SC_PKCS15INIT_X509_CRL_SIGN,
+	  SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER }
 };
 
-static unsigned int	x509_to_pkcs15_public_key_usage[16] = {
-	SC_PKCS15_PRKEY_USAGE_VERIFY
-	| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,	/* digitalSignature */
-	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,	/* NonRepudiation */
-	SC_PKCS15_PRKEY_USAGE_WRAP,		/* keyEncipherment */
-	SC_PKCS15_PRKEY_USAGE_ENCRYPT,		/* dataEncipherment */
-	SC_PKCS15_PRKEY_USAGE_DERIVE,		/* keyAgreement */
-	SC_PKCS15_PRKEY_USAGE_VERIFY
-	| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,	/* keyCertSign */
-	SC_PKCS15_PRKEY_USAGE_VERIFY
-	| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,	/* cRLSign */
+static sc_usage_map x509_to_pkcs15_public_key_usage[16] = {
+	{ SC_PKCS15INIT_X509_DIGITAL_SIGNATURE,
+	  SC_PKCS15_PRKEY_USAGE_VERIFY | SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER },
+	{ SC_PKCS15INIT_X509_NON_REPUDIATION, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION },
+	{ SC_PKCS15INIT_X509_KEY_ENCIPHERMENT, SC_PKCS15_PRKEY_USAGE_WRAP },
+	{ SC_PKCS15INIT_X509_DATA_ENCIPHERMENT, SC_PKCS15_PRKEY_USAGE_ENCRYPT },
+	{ SC_PKCS15INIT_X509_KEY_AGREEMENT, SC_PKCS15_PRKEY_USAGE_DERIVE },
+	{ SC_PKCS15INIT_X509_KEY_CERT_SIGN,
+	  SC_PKCS15_PRKEY_USAGE_VERIFY | SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER },
+	{ SC_PKCS15INIT_X509_CRL_SIGN,
+	  SC_PKCS15_PRKEY_USAGE_VERIFY | SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER }
 };
 
 static int
 sc_pkcs15init_map_usage(unsigned long x509_usage, int _private)
 {
-	unsigned int	p15_usage, n, *bits;
+	unsigned int	p15_usage = 0, n;
+	sc_usage_map   *map;
 
-	bits = _private? x509_to_pkcs15_private_key_usage
+	map = _private ? x509_to_pkcs15_private_key_usage
 		      : x509_to_pkcs15_public_key_usage;
-	for (n = p15_usage = 0; n < 16; n++) {
-		if (x509_usage & ((0x80 >> (n % 8)) << (n / 8)))
-			p15_usage |= bits[n];
+	for (n = 0; n < 16; n++) {
+		if (x509_usage & map[n].x509_usage)
+			p15_usage |= map[n].p15_usage;
 	}
 	return p15_usage;
 }

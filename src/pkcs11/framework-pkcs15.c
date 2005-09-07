@@ -102,7 +102,7 @@ struct pkcs15_pubkey_object {
 #define pub_p15obj		base.p15_object
 #define pub_cert		base.related_cert
 
-#define __p15_type(obj)		(((obj) && (obj)->p15_object)? ((obj)->p15_object->type) : -1)
+#define __p15_type(obj)		(((obj) && (obj)->p15_object)? ((obj)->p15_object->type) : (unsigned int)-1)
 #define is_privkey(obj)		(__p15_type(obj) == SC_PKCS15_TYPE_PRKEY_RSA)
 #define is_pubkey(obj)		(__p15_type(obj) == SC_PKCS15_TYPE_PUBKEY_RSA)
 #define is_cert(obj)		(__p15_type(obj) == SC_PKCS15_TYPE_CERT_X509)
@@ -673,7 +673,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		for (j=0; j < fw_data->num_objects; j++) {
 			struct pkcs15_any_object *obj = fw_data->objects[j];
 
-			if (__p15_type(obj) == -1)
+			if (__p15_type(obj) == (unsigned int)-1)
 				continue;
 			else if (!sc_pkcs15_compare_id(&pin_info->auth_id, &obj->p15_object->auth_id))
 				continue;
@@ -1214,13 +1214,13 @@ get_X509_usage_privk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x
 		if (val == NULL)
 			continue;
 		if (typ == CKA_SIGN && *val)
-			*x509_usage |= 1;
+			*x509_usage |= SC_PKCS15INIT_X509_DIGITAL_SIGNATURE;
 		if (typ == CKA_UNWRAP && *val)
-			*x509_usage |= 4;
+			*x509_usage |= SC_PKCS15INIT_X509_KEY_ENCIPHERMENT;
 		if (typ == CKA_DECRYPT && *val)
-			*x509_usage |= 8;
+			*x509_usage |= SC_PKCS15INIT_X509_DATA_ENCIPHERMENT;
 		if (typ == CKA_DERIVE && *val)
-			*x509_usage |= 16;
+			*x509_usage |= SC_PKCS15INIT_X509_KEY_AGREEMENT;
 		if (typ == CKA_VERIFY || typ == CKA_WRAP || typ == CKA_ENCRYPT) {
 			sc_debug(context, "get_X509_usage_privk(): invalid typ = 0x%0x\n", typ);
 			return CKR_ATTRIBUTE_TYPE_INVALID;
@@ -1239,13 +1239,13 @@ get_X509_usage_pubk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x5
 		if (val == NULL)
 			continue;
 		if (typ == CKA_VERIFY && *val)
-			*x509_usage |= 1;
+			*x509_usage |= SC_PKCS15INIT_X509_DIGITAL_SIGNATURE;
 		if (typ == CKA_WRAP && *val)
-			*x509_usage |= 4;
+			*x509_usage |= SC_PKCS15INIT_X509_KEY_ENCIPHERMENT;
 		if (typ == CKA_ENCRYPT && *val)
-			*x509_usage |= 8;
+			*x509_usage |= SC_PKCS15INIT_X509_DATA_ENCIPHERMENT;
 		if (typ == CKA_DERIVE && *val)
-			*x509_usage |= 16;
+			*x509_usage |= SC_PKCS15INIT_X509_KEY_AGREEMENT;
 		if (typ == CKA_SIGN || typ == CKA_UNWRAP || typ == CKA_DECRYPT) {
 			sc_debug(context, "get_X509_usage_pubk(): invalid typ = 0x%0x\n", typ);
 			return CKR_ATTRIBUTE_TYPE_INVALID;
@@ -1649,6 +1649,8 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	pkcs15_cert_cmp_attribute,
 	NULL,
 	NULL,
+	NULL,
+	NULL,
 	NULL
 };
 
@@ -1933,13 +1935,13 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 {
 	u8 unwrapped_key[256];
 	CK_ULONG key_len = sizeof(unwrapped_key);
-	CK_RV rv;
+	int   r;
 
-	rv = pkcs15_prkey_decrypt(ses, obj, pMechanism, pData, ulDataLen,
+	r = pkcs15_prkey_decrypt(ses, obj, pMechanism, pData, ulDataLen,
 			unwrapped_key, &key_len);
 
-	if (rv < 0)
-		return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+	if (r < 0)
+		return sc_to_cryptoki_error(r, ses->slot->card->reader);
 	return sc_pkcs11_create_secret_key(ses,
 			unwrapped_key, key_len,
 			pTemplate, ulAttributeCount,
@@ -2082,6 +2084,8 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	pkcs15_pubkey_set_attribute,
 	pkcs15_pubkey_get_attribute,
 	sc_pkcs11_any_cmp_attribute,
+	NULL,
+	NULL,
 	NULL,
 	NULL,
 	NULL

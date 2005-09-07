@@ -2047,13 +2047,13 @@ parse_x509_usage(const char *list, unsigned int *res)
 		const char* name;
 		unsigned int flag;
 	} x509_usage_names[] = {
-		{ "digitalSignature", 0x0080 },
-		{ "nonRepudiation",   0x0040 },
-		{ "keyEncipherment",  0x0020 },
-		{ "dataEncipherment", 0x0010 },
-		{ "keyAgreement",     0x0008 },
-		{ "keyCertSign",      0x0004 },
-		{ "cRLSign",          0x0002 },
+		{ "digitalSignature", SC_PKCS15INIT_X509_DIGITAL_SIGNATURE },
+		{ "nonRepudiation",   SC_PKCS15INIT_X509_NON_REPUDIATION   },
+		{ "keyEncipherment",  SC_PKCS15INIT_X509_KEY_ENCIPHERMENT  },
+		{ "dataEncipherment", SC_PKCS15INIT_X509_DATA_ENCIPHERMENT },
+		{ "keyAgreement",     SC_PKCS15INIT_X509_KEY_AGREEMENT     },
+		{ "keyCertSign",      SC_PKCS15INIT_X509_KEY_CERT_SIGN     },
+		{ "cRLSign",          SC_PKCS15INIT_X509_CRL_SIGN          },
 		{ NULL, 0 }
 	};
 	static struct {
