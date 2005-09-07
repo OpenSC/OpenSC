@@ -6,7 +6,7 @@ SUBDIRS = . regression
 
 EXTRA_DIST = Makefile.mak
 
-AM_LDFLAGS = @LIBOPENSC@
+AM_LDFLAGS = @LIBOPENSC@ @LIBLTDL@
 
 noinst_PROGRAMS = base64 lottery p15dump pintest prngtest
 
