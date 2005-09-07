@@ -117,7 +117,7 @@ CK_RV sc_pkcs11_close_all_sessions(CK_SLOT_ID slotID)
 		session = (struct sc_pkcs11_session*) item->item;
 		next = item->next;
 
-		if (session->slot->id == slotID)
+		if (session->slot->id == (int)slotID)
 			sc_pkcs11_close_session(item->handle);
 	}
 
