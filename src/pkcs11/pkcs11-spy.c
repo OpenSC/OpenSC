@@ -21,8 +21,12 @@
 #endif
 #include <stdlib.h>
 #include <stdio.h>
-#include <opensc/opensc.h>
+#include <opensc/scconf.h>
 #include "pkcs11-display.h"
+
+#ifdef _WIN32
+#include <winreg.h>
+#endif
 
 #define __PASTE(x,y)      x##y
 
@@ -47,13 +51,42 @@ FILE *spy_output = NULL;
 #define CK_PKCS11_FUNCTION_INFO(name) \
     pkcs11_spy->name = name;
 
+#ifdef _WIN32
+const char *get_reg_config(const char *spath)
+{
+  static char path[PATH_MAX];
+  char  *ptr  = NULL;
+  int    plen = sizeof(path);
+  long   rc;
+  HKEY   hkey;
+
+  rc = RegOpenKeyEx(HKEY_CURRENT_USER, spath, 0, KEY_QUERY, &hkey);
+  if (rc == ERROR_SUCCESS) {
+    rc = RegQueryValueEx(hkey, "ConfigFile", NULL, NULL, (LPBYTE)path, &plen);
+    if ((rc == ERROR_SUCCESS) && (plen < PATH_MAX))
+      ptr = path;
+    RegCloseKey(hkey);
+  }
+  if (ptr == NULL) {
+    rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, spath, 0, KEY_QUERY, &hkey);
+    if (rc == ERROR_SUCCESS) {
+      rc = RegQueryValueEx(hkey, "ConfigFile", NULL, NULL, (LPBYTE)path, &plen);
+      if ((rc == ERROR_SUCCESS) && (plen < PATH_MAX))
+        ptr = path;
+      RegCloseKey(hkey);
+    }
+  }
+  return ptr;
+}
+#endif
+
 /* Inits the spy. If successfull, po != NULL */
 static CK_RV init_spy(void)
 {
-  const char *mspec = NULL, *file = NULL, *env = NULL;
+  const char *mspec = NULL, *file = NULL, *env = NULL, *conf_path = NULL;
+  scconf_context *conf_ctx = NULL;
   scconf_block *conf_block = NULL, **blocks;
-  sc_context_t *ctx = NULL;
-  int rv = CKR_OK, r, i;
+  int rv = CKR_OK, r;
 
   /* Allocates and initializes the pkcs11_spy structure */
   pkcs11_spy =
@@ -64,19 +97,49 @@ static CK_RV init_spy(void)
     return CKR_HOST_MEMORY;
   }
 
-  r = sc_establish_context(&ctx, "pkcs11-spy");
-  if (r != 0) {
-    free(pkcs11_spy);
-    return CKR_HOST_MEMORY;
+#ifdef _WIN32
+  conf_path = get_reg_config("Software\\pkcs15-spy");
+  if (conf_path == NULL)
+    conf_path = get_reg_config("Software\\OpenSC");
+#else
+  conf_path = getenv("PKCS11SPY_CONF");
+  if (conf_path == NULL) {
+    conf_path = getenv("OPENSC_CONF");
   }
-
-  for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
-    blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
-      "spy", NULL);
-    conf_block = blocks[0];
-    free(blocks);
-    if (conf_block != NULL)
-      break;
+#endif
+  if (conf_path == NULL) {
+    fprintf(stderr, "Error: no config file found.\n");
+    fprintf(stderr, "Please set the path to the config in the PKCS11SPY_CONF environment variable.\n");
+    free(pkcs11_spy);
+    return CKR_DEVICE_ERROR;
+  }
+  conf_ctx = scconf_new(conf_path);
+  if (conf_ctx == NULL) {
+    fprintf(spy_output, "Error: unable to parse config file\n");
+    free(pkcs11_spy);
+    return CKR_DEVICE_ERROR;
+  }
+  r = scconf_parse(conf_ctx);
+  if (r < 0) {
+    fprintf(stderr, "Error: scconf_parse failed\n");
+    free(pkcs11_spy);
+    return CKR_DEVICE_ERROR;
+  }
+  blocks = scconf_find_blocks(conf_ctx, NULL, "app", "pkcs11-spy");
+  conf_block = blocks[0];
+  free(blocks);
+  if (conf_block == NULL) {
+    fprintf(stderr, "Error: scconf_find_blocks failed for 'pkcs11-spy'\n");
+    free(pkcs11_spy);
+    return CKR_DEVICE_ERROR;
+  }
+  blocks = scconf_find_blocks(conf_ctx, conf_block, "spy", NULL);
+  conf_block = blocks[0];
+  free(blocks);
+  if (conf_block == NULL) {
+    fprintf(stderr, "Error: scconf_find_blocks failed for 'spy'\n");
+    free(pkcs11_spy);
+    return CKR_DEVICE_ERROR;
   }
 
   /* If conf_block is NULL, just return the default value
@@ -97,15 +160,20 @@ static CK_RV init_spy(void)
 
   env = getenv("PKCS11SPY");
   mspec = env ? env : scconf_get_str(conf_block, "module", NULL);
+  if (mspec == NULL) {
+    fprintf(spy_output, "Error: no module specified\n");
+    free(pkcs11_spy);
+    return CKR_DEVICE_ERROR;
+  }
   modhandle = C_LoadModule(mspec, &po);
   if (modhandle && po) {
-    fprintf(spy_output, "Loaded: \"%s\"\n", mspec == NULL ? "default module" : mspec);
+    fprintf(spy_output, "Loaded: \"%s\"\n", mspec);
   } else {
   	po = NULL;
   	free(pkcs11_spy);
   	rv = CKR_GENERAL_ERROR;
   }
-  sc_release_context(ctx);
+  scconf_free(conf_ctx);
   return rv;
 }
 
