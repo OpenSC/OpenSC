@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(HAVE_PCSC_OLD)
 #include <PCSC/wintypes.h>
 #include <PCSC/winscard.h>
 #else
@@ -73,6 +73,10 @@ static int part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 struct pcsc_global_private_data {
 	SCARDCONTEXT pcsc_ctx;
 	int enable_pinpad;
+	int connect_exclusive;
+	int connect_reset;
+	int transaction_reset;
+	
 };
 
 struct pcsc_private_data {
@@ -95,12 +99,12 @@ static int pcsc_ret_to_error(long rv)
 	switch (rv) {
 	case SCARD_W_REMOVED_CARD:
 		return SC_ERROR_CARD_REMOVED;
-	case SCARD_W_RESET_CARD:
-		return SC_ERROR_CARD_RESET;
 	case SCARD_E_NOT_TRANSACTED:
 		return SC_ERROR_TRANSMIT_FAILED;
 	case SCARD_W_UNRESPONSIVE_CARD:
 		return SC_ERROR_CARD_UNRESPONSIVE;
+	case SCARD_E_SHARING_VIOLATION:
+		return SC_ERROR_READER;
 	default:
 		return SC_ERROR_UNKNOWN;
 	}
@@ -176,11 +180,8 @@ static int pcsc_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 		switch (rv) {
 		case SCARD_W_REMOVED_CARD:
 			return SC_ERROR_CARD_REMOVED;
-		case SCARD_W_RESET_CARD:
-			return SC_ERROR_CARD_RESET;
 		case SCARD_E_NOT_TRANSACTED:
-			if ((pcsc_detect_card_presence(reader, slot) &
-			    SC_SLOT_CARD_PRESENT) == 0)
+			if (!(pcsc_detect_card_presence(reader, slot) & SC_SLOT_CARD_PRESENT))
 				return SC_ERROR_CARD_REMOVED;
 			return SC_ERROR_TRANSMIT_FAILED;
 		default:
@@ -392,6 +393,41 @@ static int pcsc_wait_for_event(sc_reader_t **readers,
 	}
 }
 
+static int pcsc_reconnect(sc_reader_t * reader, sc_slot_info_t * slot)
+{
+	DWORD active_proto, protocol;
+	LONG rv;
+	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
+	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
+	int r;
+
+	sc_debug(reader->ctx, "Reconnecting to the card...");
+
+	r = refresh_slot_attributes(reader, slot);
+	if (r)
+		return r;
+	if (!(slot->flags & SC_SLOT_CARD_PRESENT))
+		return SC_ERROR_CARD_NOT_PRESENT;
+
+	if (_sc_check_forced_protocol
+	    (reader->ctx, slot->atr, slot->atr_len,
+	     (unsigned int *)&protocol)) {
+		protocol = opensc_proto_to_pcsc(protocol);
+	} else {
+		protocol = slot->active_protocol;
+	}
+
+	rv = SCardReconnect(pslot->pcsc_card,
+			    priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED, protocol,
+			    SCARD_LEAVE_CARD, &active_proto);
+	if (rv != SCARD_S_SUCCESS) {
+		PCSC_ERROR(reader->ctx, "SCardReconnect failed", rv);
+		return pcsc_ret_to_error(rv);
+	}
+	slot->active_protocol = pcsc_proto_to_opensc(active_proto);
+	return SC_SUCCESS;
+}
+
 static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	DWORD active_proto, protocol;
@@ -419,7 +455,8 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	}
 
 	rv = SCardConnect(priv->pcsc_ctx, priv->reader_name,
-		SCARD_SHARE_SHARED, protocol, &card_handle, &active_proto);
+			  priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
+			  protocol, &card_handle, &active_proto);
 	if (rv != 0) {
 		PCSC_ERROR(reader->ctx, "SCardConnect failed", rv);
 		return pcsc_ret_to_error(rv);
@@ -465,9 +502,10 @@ static int pcsc_disconnect(sc_reader_t *reader, sc_slot_info_t *slot,
 			   int action)
 {
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
+	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
-	/* FIXME: check action */
-	SCardDisconnect(pslot->pcsc_card, SCARD_LEAVE_CARD);
+	SCardDisconnect(pslot->pcsc_card, priv->gpriv->transaction_reset ?
+                  SCARD_RESET_CARD : SCARD_LEAVE_CARD);
 	memset(pslot, 0, sizeof(*pslot));
 	slot->flags = 0;
 	return 0;
@@ -479,21 +517,37 @@ static int pcsc_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 
 	assert(pslot != NULL);
-        rv = SCardBeginTransaction(pslot->pcsc_card);
-        if (rv != SCARD_S_SUCCESS) {
+
+	rv = SCardBeginTransaction(pslot->pcsc_card);
+
+	if (rv == SCARD_W_RESET_CARD) {
+		/* try to reconnect if the card was reset by some other application */
+		rv = pcsc_reconnect(reader, slot);
+		if (rv != SCARD_S_SUCCESS) {
+			PCSC_ERROR(reader->ctx, "SCardReconnect failed", rv);
+			return pcsc_ret_to_error(rv);
+		}
+		/* Now try to begin a new transaction after we reconnected and we fail if
+		 some other program was faster to lock the reader */
+		rv = SCardBeginTransaction(pslot->pcsc_card);
+	}
+
+	if (rv != SCARD_S_SUCCESS) {
 		PCSC_ERROR(reader->ctx, "SCardBeginTransaction failed", rv);
-                return pcsc_ret_to_error(rv);
-        }
-	return 0;
+		return pcsc_ret_to_error(rv);
+	}
+	return SC_SUCCESS;
 }
 
 static int pcsc_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	long rv;
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
+	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
 	assert(pslot != NULL);
-	rv = SCardEndTransaction(pslot->pcsc_card, SCARD_LEAVE_CARD);
+	rv = SCardEndTransaction(pslot->pcsc_card, priv->gpriv->transaction_reset ?
+                           SCARD_RESET_CARD : SCARD_LEAVE_CARD);
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_ERROR(reader->ctx, "SCardEndTransaction failed", rv);
 		return pcsc_ret_to_error(rv);
@@ -556,6 +610,12 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 	
 	conf_block = _get_conf_block(ctx, "reader_driver", "pcsc", 1);
 	if (conf_block) {
+		gpriv->connect_reset =
+		    scconf_get_bool(conf_block, "connect_reset", 1);
+		gpriv->connect_exclusive =
+		    scconf_get_bool(conf_block, "connect_exclusive", 0);
+		gpriv->transaction_reset =
+		    scconf_get_bool(conf_block, "transaction_reset", 0);
 		gpriv->enable_pinpad =
 		    scconf_get_bool(conf_block, "enable_pinpad", 0);		    
 	}

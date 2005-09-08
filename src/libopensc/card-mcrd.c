@@ -1196,8 +1196,8 @@ static int mcrd_compute_signature(sc_card_t *card,
 		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_debug(card->ctx,
-		 "Will compute signature for %d (0x%02x) bytes using key %d\n",
-		 datalen, datalen, env->key_ref[0]);
+		 "Will compute signature (%d) for %d (0x%02x) bytes using key %d algorithm %d flags %d\n",
+		 env->operation, datalen, datalen, env->key_ref[0], env->algorithm, env->algorithm_flags);
 
 	switch (env->key_ref[0]) {
 	case SC_ESTEID_AUTH:	/* authentication key */
