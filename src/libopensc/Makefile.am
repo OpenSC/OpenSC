@@ -6,7 +6,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 EXTRA_DIST = Makefile.mak libopensc.pc.in libpkcs15init.pc.in libscconf.pc.in 
 
-INCLUDES = @CPPFLAGS@ @OPENSSL_CFLAGS@ @OPENCT_CFLAGS@ @PCSC_CFLAGS@
+INCLUDES = $(CPPFLAGS) $(OPENSSL_CFLAGS) $(OPENCT_CFLAGS) $(PCSC_CFLAGS)
 AM_LDFLAGS = 
 
 bin_SCRIPTS = opensc-config
@@ -33,7 +33,7 @@ libopensc_la_SOURCES = \
 	pkcs15-netkey.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafe.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c
 libopensc_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
-libopensc_la_LIBADD = @LIBSCCONF@ @OPENSSL_LIBS@ @OPENCT_LIBS@ @PCSC_LIBS@ @LIBLTDL@
+libopensc_la_LIBADD = @LIBSCCONF@ $(OPENSSL_LIBS) $(OPENCT_LIBS) $(PCSC_LIBS) $(LIBLTDL)
 
 include_HEADERS = \
 	opensc.h pkcs15.h emv.h \
@@ -42,5 +42,5 @@ include_HEADERS = \
 
 noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h
 
-pkgconfigdir = @libdir@/pkgconfig
+pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libopensc.pc libpkcs15init.pc libscconf.pc

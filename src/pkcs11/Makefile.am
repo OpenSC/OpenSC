@@ -1,7 +1,6 @@
 # Process this file with automake to create Makefile.in
 
-bundledir = @BUNDLEDIR@/pkcs11
-libdir = @libdir@
+bundledir = $(BUNDLEDIR)/pkcs11
 includedir = @includedir@/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
@@ -10,7 +9,7 @@ EXTRA_DIST = Makefile.mak opensc_pkcs11_install.js
 
 SUBDIRS = . rsaref
 
-INCLUDES = @CPPFLAGS@ -I${top_srcdir}/src/pkcs15init @OPENSSL_CFLAGS@
+INCLUDES = $(CPPFLAGS) -I${top_srcdir}/src/pkcs15init $(OPENSSL_CFLAGS)
 
 SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
 	mechanism.c openssl.c secretkey.c framework-pkcs15.c \
@@ -22,7 +21,7 @@ noinst_LTLIBRARIES = libpkcs11.la
 
 opensc_pkcs11_la_SOURCES = $(SRC) $(INC)
 opensc_pkcs11_la_LDFLAGS = -module -avoid-version
-opensc_pkcs11_la_LIBADD = @LIBOPENSC@ @OPENSSL_LIBS@ \
+opensc_pkcs11_la_LIBADD = @LIBOPENSC@ $(OPENSSL_LIBS) \
 	../pkcs15init/libpkcs15init.la 
 
 libpkcs11_la_SOURCES = libpkcs11.c
@@ -31,7 +30,7 @@ libpkcs11_la_LIBADD =
 
 pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h
 pkcs11_spy_la_LDFLAGS = -module -avoid-version
-pkcs11_spy_la_LIBADD = @LIBSCCONF@ @OPENSSL_LIBS@ libpkcs11.la @LIBLTDL@
+pkcs11_spy_la_LIBADD = @LIBSCCONF@ $(OPENSSL_LIBS) libpkcs11.la $(LIBLTDL)
 
 include_HEADERS = pkcs11.h
 
