@@ -12,6 +12,6 @@ all: install-headers $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-$(TARGET): $(OBJECTS) ..\scdl\scdl.lib 
+$(TARGET): $(OBJECTS) 
 	perl $(TOPDIR)\win32\makedef.pl $*.def $* $(OBJECTS)
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\pkcs11\libpkcs11.lib ..\scdl\scdl.lib $(OPENSSL_LIB)
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\pkcs11\libpkcs11.lib ..\scdl\scdl.lib $(OPENSSL_LIB) $(LIBLTDL)

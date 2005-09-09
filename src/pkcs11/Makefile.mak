@@ -21,7 +21,7 @@ all: install-headers install-headers-dir $(TARGET) $(TARGET2) $(TARGET3)
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
 $(TARGET): $(OBJECTS) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib
-	link $(LINKFLAGS) /dll /out:$(TARGET) $(OBJECTS) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib winscard.lib ..\scdl\scdl.lib $(OPENSSL_LIB) gdi32.lib
+	link $(LINKFLAGS) /dll /out:$(TARGET) $(OBJECTS) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib winscard.lib $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
 
 $(TARGET2): $(OBJECTS2)  ..\scdl\scdl.lib
 	lib /nologo /machine:ix86 /out:$(TARGET2) $(OBJECTS2) ..\scdl\scdl.lib
