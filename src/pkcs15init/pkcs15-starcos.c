@@ -728,6 +728,9 @@ static int starcos_create_key(sc_profile_t *profile, sc_card_t *card,
 	if (acl_entry->method  != SC_AC_NONE) {
 		r = sc_pkcs15init_authenticate(profile, card, tfile, SC_AC_OP_WRITE);
 	}
+	else   {
+		r = sc_select_file(card, &tfile->path, NULL);
+	}
 	sc_file_free(tfile);
 	if (r < 0)
 		return r;
