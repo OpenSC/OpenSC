@@ -279,13 +279,6 @@ app default {
 	}
 }
 
-# For applications that use SCAM (pam_opensc, sia_opensc)
-app scam {
-	framework pkcs15 {
-		use_caching = false;
-	}
-}
-
 # Parameters for the OpenSC PKCS11 module
 app opensc-pkcs11 {
 	pkcs11 {
