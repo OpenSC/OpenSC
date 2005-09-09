@@ -34,7 +34,7 @@ extern int sc_pkcs15emu_infocamere_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
 extern int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
-extern int sc_pkcs15emu_netkey_init_ex(sc_pkcs15_card_t *,
+extern int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
 extern int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
@@ -54,7 +54,7 @@ static struct {
 	{ "openpgp",	sc_pkcs15emu_openpgp_init_ex	},
 	{ "infocamere",	sc_pkcs15emu_infocamere_init_ex	},
 	{ "starcert",	sc_pkcs15emu_starcert_init_ex	},
-	{ "netkey",	sc_pkcs15emu_netkey_init_ex	},
+	{ "tcos",	sc_pkcs15emu_tcos_init_ex	},
 	{ "esteid",	sc_pkcs15emu_esteid_init_ex	},
 	{ "postecert",	sc_pkcs15emu_postecert_init_ex  },
 	{ "gemsafe",	sc_pkcs15emu_gemsafe_init_ex	},

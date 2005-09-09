@@ -187,7 +187,7 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		}
 	}
 	if (ctx->debug >= 1) sc_debug(ctx, "Detected TCOS-Card Type-%d\n", cardtype);
-	if(cardtype<1 || cardtype>sizeof(cardlist)/sizeof(cardlist[0])){
+	if(cardtype<1 || cardtype>(int)(sizeof(cardlist)/sizeof(cardlist[0]))){
 		r = SC_ERROR_WRONG_CARD;
 		goto failed;
 	}
