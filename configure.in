@@ -218,7 +218,7 @@ AM_CONDITIONAL(HAVE_OPENSSL, test "x$OPENSSL_MSG" = "xyes")
 
 case "$host" in
 *-*-darwin*)
-	if test -n "$PCSC_LIBS" -a -n "$PCSC_LIBS"
+	if test -z "$PCSC_LIBS" -a -z "$PCSC_LIBS"
 	then
 		PCSC_MSG=yes
 		PCSC_CFLAGS=""
