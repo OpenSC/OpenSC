@@ -223,6 +223,16 @@ case "$host" in
 		PCSC_MSG=yes
 		PCSC_CFLAGS=""
 		PCSC_LIBS="-Wl,-framework,PCSC"
+
+		# overwrite autoconf cached variables, too.
+		ac_env_PCSC_CFLAGS_set=${PCSC_CFLAGS+set}
+		ac_env_PCSC_CFLAGS_value=$PCSC_CFLAGS
+		ac_cv_env_PCSC_CFLAGS_set=${PCSC_CFLAGS+set}
+		ac_cv_env_PCSC_CFLAGS_value=$PCSC_CFLAGS
+		ac_env_PCSC_LIBS_set=${PCSC_LIBS+set}
+		ac_env_PCSC_LIBS_value=$PCSC_LIBS
+		ac_cv_env_PCSC_LIBS_set=${PCSC_LIBS+set}
+		ac_cv_env_PCSC_LIBS_value=$PCSC_LIBS
 	fi
 	;;
 esac
