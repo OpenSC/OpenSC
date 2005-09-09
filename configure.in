@@ -412,7 +412,3 @@ echo "OpenCT support:           ${OPENCT_MSG}"
 echo "Assuan support:           ${ASSUAN_MSG}"
 echo ""
 
-if test "x$ENGINE_MSG" = "xno" -a "x$SSL_MSG" = "xyes"; then
-  echo "OpenSSL was found. But to use the engine you will need"
-  echo "version 0.9.7a or later."
-fi
