@@ -60,7 +60,7 @@ const char *get_reg_config(const char *spath)
   long   rc;
   HKEY   hkey;
 
-  rc = RegOpenKeyEx(HKEY_CURRENT_USER, spath, 0, KEY_QUERY, &hkey);
+  rc = RegOpenKeyEx(HKEY_CURRENT_USER, spath, 0, KEY_QUERY_VALUE, &hkey);
   if (rc == ERROR_SUCCESS) {
     rc = RegQueryValueEx(hkey, "ConfigFile", NULL, NULL, (LPBYTE)path, &plen);
     if ((rc == ERROR_SUCCESS) && (plen < PATH_MAX))
@@ -68,7 +68,7 @@ const char *get_reg_config(const char *spath)
     RegCloseKey(hkey);
   }
   if (ptr == NULL) {
-    rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, spath, 0, KEY_QUERY, &hkey);
+    rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, spath, 0, KEY_QUERY_VALUE, &hkey);
     if (rc == ERROR_SUCCESS) {
       rc = RegQueryValueEx(hkey, "ConfigFile", NULL, NULL, (LPBYTE)path, &plen);
       if ((rc == ERROR_SUCCESS) && (plen < PATH_MAX))
