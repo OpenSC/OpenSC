@@ -66,7 +66,7 @@ sc_ui_set_language(sc_context_t *ctx, const char *lang)
 int
 sc_ui_get_pin(sc_ui_hints_t *hints, char **out)
 {
-	static sc_ui_get_pin_fn_t *get_pin_fn;
+	static sc_ui_get_pin_fn_t *get_pin_fn, **t_fn = &get_pin_fn;
 	int		r;
 
 	if (!get_pin_fn) {
@@ -77,7 +77,7 @@ sc_ui_get_pin(sc_ui_hints_t *hints, char **out)
 				&addr);
 		if (r < 0)
 			return r;
-		get_pin_fn = (sc_ui_get_pin_fn_t *) addr;
+		*(void **)(t_fn) = addr;
 		if (get_pin_fn == NULL)
 			get_pin_fn = sc_ui_get_pin_default;
 	}
@@ -88,7 +88,7 @@ sc_ui_get_pin(sc_ui_hints_t *hints, char **out)
 int
 sc_ui_get_pin_pair(sc_ui_hints_t *hints, char **old_out, char **new_out)
 {
-	static sc_ui_get_pin_pair_fn_t *get_pin_pair_fn;
+	static sc_ui_get_pin_pair_fn_t *get_pin_pair_fn, **t_fn = &get_pin_pair_fn;
 	int		r;
 
 	if (!get_pin_pair_fn) {
@@ -99,7 +99,7 @@ sc_ui_get_pin_pair(sc_ui_hints_t *hints, char **old_out, char **new_out)
 				&addr);
 		if (r < 0)
 			return r;
-		get_pin_pair_fn = (sc_ui_get_pin_pair_fn_t *) addr;
+		*(void **)(t_fn) = addr;
 		if (get_pin_pair_fn == NULL)
 			get_pin_pair_fn = sc_ui_get_pin_pair_default;
 	}
@@ -110,7 +110,7 @@ sc_ui_get_pin_pair(sc_ui_hints_t *hints, char **old_out, char **new_out)
 int
 sc_ui_display_error(sc_context_t *ctx, const char *msg)
 {
-	static sc_ui_display_fn_t *display_fn;
+	static sc_ui_display_fn_t *display_fn, **t_fn = &display_fn;
 	int		r;
 
 	if (!display_fn) {
@@ -121,7 +121,7 @@ sc_ui_display_error(sc_context_t *ctx, const char *msg)
 				&addr);
 		if (r < 0)
 			return r;
-		display_fn = (sc_ui_display_fn_t *) addr;
+		*(void **)(t_fn) = addr;
 		if (display_fn == NULL)
 			display_fn = sc_ui_display_error_default;
 	}
@@ -132,7 +132,7 @@ sc_ui_display_error(sc_context_t *ctx, const char *msg)
 int
 sc_ui_display_debug(sc_context_t *ctx, const char *msg)
 {
-	static sc_ui_display_fn_t *display_fn;
+	static sc_ui_display_fn_t *display_fn, **t_fn = &display_fn;
 	int		r;
 
 	if (!display_fn) {
@@ -143,7 +143,7 @@ sc_ui_display_debug(sc_context_t *ctx, const char *msg)
 				&addr);
 		if (r < 0)
 			return r;
-		display_fn = (sc_ui_display_fn_t *) addr;
+		*(void **)t_fn = addr;
 		if (display_fn == NULL)
 			display_fn = sc_ui_display_debug_default;
 	}
