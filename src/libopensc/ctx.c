@@ -53,43 +53,43 @@ int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 
 struct _sc_driver_entry {
 	char *name;
-	void *func;
+	void *(*func)(void);
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
-	{ "etoken", (void *) sc_get_etoken_driver },
-	{ "flex", (void *) sc_get_cryptoflex_driver },
-	{ "cyberflex", (void *) sc_get_cyberflex_driver },
+	{ "etoken",	(void *(*)()) sc_get_etoken_driver },
+	{ "flex",	(void *(*)()) sc_get_cryptoflex_driver },
+	{ "cyberflex",	(void *(*)()) sc_get_cyberflex_driver },
 #ifdef HAVE_OPENSSL
-	{ "gpk", (void *) sc_get_gpk_driver },
+	{ "gpk",	(void *(*)()) sc_get_gpk_driver },
 #endif
-	{ "miocos", (void *) sc_get_miocos_driver },
-	{ "mcrd", (void *) sc_get_mcrd_driver },
-	{ "setcos", (void *) sc_get_setcos_driver },
-	{ "starcos", (void *) sc_get_starcos_driver },
-	{ "tcos", (void *) sc_get_tcos_driver },
-	{ "opengpg", (void *) sc_get_openpgp_driver },
-	{ "jcop", (void *) sc_get_jcop_driver },
+	{ "miocos",	(void *(*)()) sc_get_miocos_driver },
+	{ "mcrd",	(void *(*)()) sc_get_mcrd_driver },
+	{ "setcos",	(void *(*)()) sc_get_setcos_driver },
+	{ "starcos",	(void *(*)()) sc_get_starcos_driver },
+	{ "tcos",	(void *(*)()) sc_get_tcos_driver },
+	{ "opengpg",	(void *(*)()) sc_get_openpgp_driver },
+	{ "jcop",	(void *(*)()) sc_get_jcop_driver },
 #ifdef HAVE_OPENSSL
-	{ "oberthur", (void *) sc_get_oberthur_driver },
+	{ "oberthur",	(void *(*)()) sc_get_oberthur_driver },
 #endif
-	{ "belpic", (void *) sc_get_belpic_driver },
-	{ "atrust-acos", (void *)sc_get_atrust_acos_driver },
-	{ "emv", (void *) sc_get_emv_driver },
+	{ "belpic",	(void *(*)()) sc_get_belpic_driver },
+	{ "atrust-acos",(void *(*)())sc_get_atrust_acos_driver },
+	{ "emv",	(void *(*)()) sc_get_emv_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
-	{ "default", (void *) sc_get_default_driver },
+	{ "default",	(void *(*)()) sc_get_default_driver },
 	{ NULL, NULL }
 };
 
 static const struct _sc_driver_entry internal_reader_drivers[] = {
 #if defined(HAVE_PCSC)
-	{ "pcsc", (void *) sc_get_pcsc_driver },
+	{ "pcsc",	(void *(*)()) sc_get_pcsc_driver },
 #endif
-	{ "ctapi", (void *) sc_get_ctapi_driver },
+	{ "ctapi",	(void *(*)()) sc_get_ctapi_driver },
 #ifndef _WIN32
 #ifdef HAVE_OPENCT
-	{ "openct", (void *) sc_get_openct_driver },
+	{ "openct",	(void *(*)()) sc_get_openct_driver },
 #endif
 #endif
 	{ NULL, NULL }
@@ -339,7 +339,9 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 	const char *version, *libname;
 	lt_dlhandle handle;
 	void *(*modinit)(const char *) = NULL;
+	void *(**tmodi)(const char *) = &modinit;
 	const char *(*modversion)(void) = NULL;
+	const char *(**tmodv)(void) = &modversion;
 
 	if (name == NULL) { /* should not occurr, but... */
 		sc_error(ctx,"No module specified\n",name);
@@ -355,8 +357,8 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 	}
 
 	/* verify correctness of module */
-	modinit    = (void *(*)(const char *)) lt_dlsym(handle, "sc_module_init");
-	modversion = (const char *(*)(void)) lt_dlsym(handle, "sc_driver_version");
+	*(void **)tmodi = lt_dlsym(handle, "sc_module_init");
+	*(void **)tmodv = lt_dlsym(handle, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
 		sc_error(ctx, "dynamic library '%s' is not a OpenSC module\n",libname);
 		lt_dlclose(handle);
@@ -387,6 +389,7 @@ static int load_reader_drivers(sc_context_t *ctx,
 	for (i = 0; i < opts->rcount; i++) {
 		struct sc_reader_driver *driver;
 		struct sc_reader_driver *(*func)(void) = NULL;
+		struct sc_reader_driver *(**tfunc)(void) = &func;
 		int  j;
 		void *dll = NULL;
 
@@ -398,7 +401,7 @@ static int load_reader_drivers(sc_context_t *ctx,
 			}
 		/* if not initialized assume external module */
 		if (func == NULL)
-			func = (struct sc_reader_driver *(*)(void)) load_dynamic_driver(ctx, &dll, ent->name, 0);
+			*(void**)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name, 0);
 		/* if still null, assume driver not found */
 		if (func == NULL) {
 			sc_error(ctx, "Unable to load '%s'.\n", ent->name);
@@ -447,6 +450,7 @@ static int load_card_drivers(sc_context_t *ctx,
 
 	for (i = 0; i < opts->ccount; i++) {
 		struct sc_card_driver *(*func)(void) = NULL;
+		struct sc_card_driver *(**tfunc)(void) = &func;
 		void *dll = NULL;
 		int  j;
 
@@ -458,7 +462,7 @@ static int load_card_drivers(sc_context_t *ctx,
 			}
 		/* if not initialized assume external module */
 		if (func == NULL)
-			func = (struct sc_card_driver *(*)(void)) load_dynamic_driver(ctx, &dll, ent->name, 1);
+			*(void **)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name, 1);
 		/* if still null, assume driver not found */
 		if (func == NULL) {
 			sc_error(ctx, "Unable to load '%s'.\n", ent->name);
