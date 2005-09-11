@@ -102,7 +102,7 @@ enum {
 	/* belpic driver */
 	SC_CARD_TYPE_BELPIC_BASE = 12000,
 	SC_CARD_TYPE_BELPIC_GENERIC,
-	SC_CARD_TYPE_BELPIC_EID,
+	SC_CARD_TYPE_BELPIC_EID
 };
 
 #ifdef __cplusplus
