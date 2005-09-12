@@ -34,7 +34,7 @@ for A in WikiStart `cat "$SRCDIR"/WikiWords.tmp`
 do
 	F=`echo $A|sed -e 's/\//_/g'`
 	wget --non-verbose $SERVER/$WIKI/$A  -O "$SRCDIR"/$F.tmp
-	xsltproc --output "$SRCDIR"/$F.html "$SRCDIR"/$XSL "$SRCDIR"/$F.tmp
+	xsltproc --nonet --output "$SRCDIR"/$F.html "$SRCDIR"/$XSL "$SRCDIR"/$F.tmp
 	sed -e "s#<a href=\"/$WIKI/\([^\"]*\)\"#<a href=\"\1.html\"#g" \
 		-i "$SRCDIR"/$F.html
 done

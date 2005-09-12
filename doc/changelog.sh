@@ -22,7 +22,7 @@ rm -rf "$SRCDIR"/ChangeLog
 cd "$SRCDIR"/..
 
 svn --verbose --xml log | \
-  xsltproc --stringparam linelen 75 \
+  xsltproc --nonet --stringparam linelen 75 \
            --stringparam groupbyday no \
            --stringparam include-rev no \
            doc/svn2cl.xsl - > doc/ChangeLog
