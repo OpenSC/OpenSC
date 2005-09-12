@@ -373,7 +373,6 @@ doc/src/Makefile
 etc/Makefile
 macos/Makefile
 man/Makefile
-man/pkcs15-profile.5
 src/Makefile
 src/common/Makefile
 src/include/Makefile
