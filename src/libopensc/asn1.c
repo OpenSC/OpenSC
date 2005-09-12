@@ -841,10 +841,11 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 {
 	void *parm = entry->parm;
 	int (*callback_func)(sc_context_t *nctx, void *arg, const u8 *nobj,
-			     size_t nobjlen, int ndepth) =
-		(int (*)(sc_context_t *, void *, const u8 *, size_t, int)) parm;
+			     size_t nobjlen, int ndepth); 
 	size_t *len = (size_t *) entry->arg;
 	int r = 0;
+
+	*(void **)(&callback_func) = parm;
 
 	if (ctx->debug >= 3)
 		sc_debug(ctx, "%*.*sdecoding '%s'\n", depth, depth, "", entry->name);
@@ -1118,12 +1119,13 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 {
 	void *parm = entry->parm;
 	int (*callback_func)(sc_context_t *nctx, void *arg, u8 **nobj,
-			     size_t *nobjlen, int ndepth) =
-		(int (*)(sc_context_t *, void *, u8 **, size_t *, int)) parm;
+			     size_t *nobjlen, int ndepth);
 	const size_t *len = (const size_t *) entry->arg;
 	int r = 0;
 	u8 * buf = NULL;
 	size_t buflen = 0;
+
+	*(void **)(&callback_func) = parm;
 
 	if (ctx->debug >= 3)
 		sc_debug(ctx, "%*.*sencoding '%s'%s\n",

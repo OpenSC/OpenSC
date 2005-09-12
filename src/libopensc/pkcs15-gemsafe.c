@@ -97,7 +97,7 @@ static int my_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data * data,
 	int r;
 	const u8 *saved_data = NULL;
 	int saved_len = 0;
-	char newpin[8];
+	u8  newpin[8];
 	
 	SC_FUNC_CALLED(card->ctx, 2);
 
@@ -126,7 +126,7 @@ static int my_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data * data,
 }
 
 
-static int is_seq(unsigned char * seq, int *seq_size, int *seq_len) 
+static int is_seq(unsigned char * seq, unsigned int *seq_size, unsigned int *seq_len) 
 {
 	int i,j,k;
 

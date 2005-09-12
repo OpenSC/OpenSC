@@ -152,7 +152,8 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 	};
 
 	int    r, i;
-	char   buf[256], buf2[256];
+	u8     buf[256];
+	char   buf2[256];
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	sc_card_t *card = p15card->card;

@@ -443,7 +443,7 @@ static int infocamere_1400_init(sc_pkcs15_card_t * p15card)
 	sc_read_binary(card, 15, serial, 15, 0);
 	serial[15] = '\0';
 
-	set_string(&p15card->serial_number, serial);
+	set_string(&p15card->serial_number, (char *)serial);
 	set_string(&p15card->label, "Infocamere 1400 Card");
 	set_string(&p15card->manufacturer_id, "Infocamere");
 

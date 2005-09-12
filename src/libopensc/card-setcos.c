@@ -198,7 +198,7 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 {
 	u8 *p = out;
 	u8 buf[64];
-	u8 *pin_key_info;
+	const u8 *pin_key_info;
 
 	/* Command */
 	*p++ = 0x6F;
@@ -270,9 +270,9 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 
 		/* Pin/key info: define 4 pins, no keys */
 		if(file->path.len == 2)
-			pin_key_info = "\xC1\x04\x81\x82\x83\x84\xC2\x00";	/* root-MF: use local pin-file */
+			pin_key_info = (const u8*)"\xC1\x04\x81\x82\x83\x84\xC2\x00";	/* root-MF: use local pin-file */
 		else
-			pin_key_info = "\xC1\x04\x01\x02\x03\x04\xC2\x00";	/* sub-DF: use parent pin-file in root-MF */
+			pin_key_info = (const u8 *)"\xC1\x04\x01\x02\x03\x04\xC2\x00";	/* sub-DF: use parent pin-file in root-MF */
 		sc_asn1_put_tag(0xA5, pin_key_info, 8, p, 18, &p);
 		break;
 

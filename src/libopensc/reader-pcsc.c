@@ -932,7 +932,8 @@ static int
 part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	     struct sc_pin_cmd_data *data)
 {
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE], dbuf[SC_MAX_APDU_BUFFER_SIZE * 3];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	char dbuf[SC_MAX_APDU_BUFFER_SIZE * 3];
 	size_t rcount = sizeof(rbuf), scount = 0;
 	int r;
 	DWORD ioctl = 0;

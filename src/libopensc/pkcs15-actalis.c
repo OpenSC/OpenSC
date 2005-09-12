@@ -118,7 +118,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 			
 	set_string(&p15card->label, "Actalis");
 	set_string(&p15card->manufacturer_id, "Actalis");
-	set_string(&p15card->serial_number, serial);
+	set_string(&p15card->serial_number, (char *)serial);
 
 #ifdef HAVE_ZLIB_H
 	for (i = 0; i < 3; i++) {
