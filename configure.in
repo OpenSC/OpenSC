@@ -369,7 +369,6 @@ Makefile
 aclocal/Makefile
 doc/Makefile
 doc/old/Makefile
-doc/src/Makefile
 etc/Makefile
 macos/Makefile
 man/Makefile
