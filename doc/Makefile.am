@@ -1,8 +1,8 @@
 # Process this file with automake to create Makefile.in
 
-SUBDIRS = . old src
+SUBDIRS = . old 
 
-MAINTAINERCLEANFILES = Makefile.in $(HTML)
+MAINTAINERCLEANFILES = Makefile.in $(HTML) ChangeLog
 
 EXTRA_DIST = README export-wiki.sh export-wiki.xsl generate-man.sh \
 		$(HTML) $(XML) index.html

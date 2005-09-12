@@ -22,4 +22,4 @@ rm -rf html
 xsltproc --xinclude -o html/api.html api/html.xsl api/api.xml
 xsltproc --xinclude -o ../man/ api/man.xsl api/api.xml
 xsltproc --xinclude -o html/tools.html api/html.xsl tools/tools.xml
-xsltproc --xinclude -o ../man/ api/man.xsl tools/api.xml
+xsltproc --xinclude -o ../man/ api/man.xsl tools/tools.xml
