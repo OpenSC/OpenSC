@@ -14,3 +14,6 @@ index.html:
 	sh $(srcdir)/export-wiki.sh $(srcdir)
 	sh $(srcdir)/generate-man.sh $(srcdir)
 	sh $(srcdir)/old/generate.sh $(srcdir)/old
+
+maintainer-clean-local:
+	rm -rf $(srcdir)/html
