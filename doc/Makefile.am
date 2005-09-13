@@ -14,8 +14,10 @@ XML = $(shell ls tools/*.xml api/*.xml api/*/*.xml api/api.css api/*.xsl)
 index.html:
 	sh $(srcdir)/export-wiki.sh $(srcdir)
 	sh $(srcdir)/generate-man.sh $(srcdir)
-	sh $(srcdir)/changelog.sh $(srcdir)
 	sh $(srcdir)/old/generate.sh $(srcdir)/old
+
+ChangeLog:
+	sh $(srcdir)/changelog.sh $(srcdir)
 
 maintainer-clean-local:
 	rm -rf $(srcdir)/html
