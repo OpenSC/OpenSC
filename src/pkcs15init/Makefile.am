@@ -16,6 +16,7 @@ PROFILES = \
 	jcop.profile \
 	oberthur.profile \
 	starcos.profile \
+	setcos.profile \
 	pkcs15.profile 
 
 EXTRA_DIST = $(PROFILES) Makefile.mak
