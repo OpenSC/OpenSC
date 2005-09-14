@@ -22,7 +22,7 @@ fi
 
 rm -rf "$SRCDIR"/*.html "$SRCDIR"/*.css
 
-wget --non-verbose $SERVER/$WIKI/TitleIndex -O "$SRCDIR"/TitleIndex.tmp
+wget -nv $SERVER/$WIKI/TitleIndex -O "$SRCDIR"/TitleIndex.tmp
 
 grep "\"/$WIKI/[^\"]*\"" "$SRCDIR"/TitleIndex.tmp \
         |sed -e "s#.*\"/$WIKI/\([^\"]*\)\".*#\1#g" \
@@ -33,7 +33,7 @@ sed -e /^Trac/d -e /^Wiki/d -e /^TitleIndex/d -e /^RecentChanges/d \
 for A in WikiStart `cat "$SRCDIR"/WikiWords.tmp`
 do
 	F=`echo $A|sed -e 's/\//_/g'`
-	wget --non-verbose $SERVER/$WIKI/$A  -O "$SRCDIR"/$F.tmp
+	wget -nv $SERVER/$WIKI/$A  -O "$SRCDIR"/$F.tmp
 	xsltproc --nonet --output "$SRCDIR"/$F.html "$SRCDIR"/$XSL "$SRCDIR"/$F.tmp
 	sed -e "s#<a href=\"/$WIKI/\([^\"]*\)\"#<a href=\"\1.html\"#g" \
 		-i "$SRCDIR"/$F.html
@@ -41,7 +41,7 @@ done
 
 mv "$SRCDIR"/WikiStart.html "$SRCDIR"/index.html
 
-wget --non-verbose http://www.opensc.org/trac/css/trac.css \
+wget -nv http://www.opensc.org/trac/css/trac.css \
 	-O "$SRCDIR"/trac.css
 
 rm "$SRCDIR"/*.tmp
