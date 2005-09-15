@@ -333,6 +333,15 @@ extern int	sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card,
 extern int	sc_pkcs15init_delete_object(sc_pkcs15_card_t *p15card,
 				sc_profile_t *profile,
 				sc_pkcs15_object_t *obj);
+/* Replace an existing cert with a new one, which is assumed to be
+ * compatible with the correcsponding private key (e.g. the old and
+ * new cert should have the same public key).
+ */
+extern int	sc_pkcs15init_update_certificate(sc_pkcs15_card_t *p15card,
+				sc_profile_t *profile,
+				sc_pkcs15_object_t *obj,
+				const unsigned char *rawcert,
+				int certlen);
 
 extern int	sc_pkcs15init_create_file(struct sc_profile *,
 				struct sc_card *, struct sc_file *);

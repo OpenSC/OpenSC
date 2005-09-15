@@ -2582,6 +2582,82 @@ int sc_pkcs15init_delete_object(sc_pkcs15_card_t *p15card,
 	return r;
 }
 
+int
+sc_pkcs15init_update_certificate(sc_pkcs15_card_t *p15card,
+	sc_profile_t *profile,
+	sc_pkcs15_object_t *obj,
+	const unsigned char *rawcert, int certlen)
+{
+	sc_file_t *file = NULL, *parent = NULL;
+	sc_path_t *path = &((sc_pkcs15_cert_info_t *)obj->data)->path;
+	int r;
+
+	/* Set the SO PIN reference from card */
+	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
+		return r;
+
+	r = sc_select_file(p15card->card, path, &file);
+	if (r < 0)
+		return r;
+
+	/* If the new cert doesn't fit in the EF, delete it and make the same, but bigger EF */
+	if (file->size < certlen) {
+		if ((r = sc_pkcs15init_delete_by_path(profile, p15card->card, path)) < 0)
+			goto done;
+
+		file->size = certlen;
+
+		if ((r = do_select_parent(profile, p15card->card, file, &parent)) < 0
+			|| (r = sc_pkcs15init_authenticate(profile, p15card->card,
+				parent, SC_AC_OP_CREATE)) < 0)
+					goto done;
+ 		if ((r = sc_create_file(p15card->card, file)) < 0)
+			goto done;
+	}
+
+	/* Write the new cert */
+	if ((r = sc_pkcs15init_authenticate(profile, p15card->card, file, SC_AC_OP_UPDATE)) < 0)
+		goto done;
+	if ((r = sc_select_file(p15card->card, path, NULL)) < 0)
+		goto done;
+	if ((r = sc_update_binary(p15card->card, 0, rawcert, certlen, 0)) < 0)
+		goto done;
+
+	/* Fill the remaining space in the EF (if any) with zeros */
+	if (certlen < file->size) {
+		unsigned char *tmp = (unsigned char *) calloc(file->size - certlen, 1);
+		if (tmp == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto done;
+		}
+		r = sc_update_binary(p15card->card, certlen, tmp, file->size - certlen, 0);
+		free(tmp);
+	}
+
+	if (r >= 0) {
+		/* Update the CDF entry */
+		path = &((sc_pkcs15_cert_info_t *)obj->data)->path;
+		if (file->size != certlen) {
+			path->index = 0;
+			path->count = certlen;
+		}
+		else
+			path->count = -1;
+		r = sc_pkcs15init_update_any_df(p15card, profile, obj->df, 0);
+	}
+
+	/* mark card as dirty */
+	profile->dirty = 1;
+
+done:
+	if (file)
+		sc_file_free(file);
+	if (parent)
+		sc_file_free(parent);
+
+	return r;
+}
+
 /*
  * PIN verification
  */

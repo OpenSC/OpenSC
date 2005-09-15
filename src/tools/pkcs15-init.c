@@ -73,6 +73,7 @@ static int	do_generate_key(struct sc_profile *, const char *);
 static int	do_store_private_key(struct sc_profile *);
 static int	do_store_public_key(struct sc_profile *, EVP_PKEY *);
 static int	do_store_certificate(struct sc_profile *);
+static int	do_update_certificate(struct sc_profile *);
 static int	do_convert_private_key(struct sc_pkcs15_prkey *, EVP_PKEY *);
 static int	do_convert_public_key(struct sc_pkcs15_pubkey *, EVP_PKEY *);
 static int	do_convert_cert(sc_pkcs15_der_t *, X509 *);
@@ -137,6 +138,7 @@ const struct option	options[] = {
 	{ "store-private-key",	required_argument, 0,	'S' },
 	{ "store-public-key",	required_argument, 0,	OPT_PUBKEY },
 	{ "store-certificate",	required_argument, 0,	'X' },
+	{ "update-certificate",	required_argument, 0,	'U' },
 	{ "store-data",		required_argument, 0,	'W' },
 	{ "delete-objects",	required_argument, 0,	'D' },
 
@@ -188,6 +190,7 @@ const char *		option_help[] = {
 	"Store private key",
 	"Store public key",
 	"Store an X.509 certificate",
+	"Update an X.509 certificate (carefull with mail decryption certs!!)",
 	"Store a data object",
 	"Delete object(s) (use \"help\" for more information)",
 
@@ -205,7 +208,7 @@ const char *		option_help[] = {
 	"Specify user cert label (use with --store-private-key)",
 	"Specify application id of data object (use with --store-data-object)",
 	"Output public portion of generated key to file",
-	"Specify key file format (default PEM)",
+	"Specify key/cert file format: PEM (=default), DER or PKCS12",
 	"Specify passphrase for unlocking secret key",
 	"Mark certificate as a CA certificate",
 	"Specify X.509 key usage (use \"--key-usage help\" for more information)",
@@ -239,6 +242,7 @@ enum {
 	ACTION_STORE_PRIVKEY,
 	ACTION_STORE_PUBKEY,
 	ACTION_STORE_CERT,
+	ACTION_UPDATE_CERT,
 	ACTION_STORE_DATA,
 	ACTION_FINALIZE_CARD,
 	ACTION_DELETE_OBJECTS,
@@ -255,6 +259,7 @@ static const char *action_names[] = {
 	"store private key",
 	"store public key",
 	"store certificate",
+	"update certificate",
 	"store data object",
 	"finalizing card",
 	"delete object(s)"
@@ -416,6 +421,9 @@ main(int argc, char **argv)
 			break;
 		case ACTION_STORE_CERT:
 			r = do_store_certificate(profile);
+			break;
+		case ACTION_UPDATE_CERT:
+			r = do_update_certificate(profile);
 			break;
 		case ACTION_STORE_DATA:
 			r = do_store_data_object(profile);
@@ -902,6 +910,108 @@ do_store_certificate(struct sc_profile *profile)
 
 	if (args.der_encoded.value)
 		free(args.der_encoded.value);
+
+	return r;
+}
+
+static int
+do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
+	const char *filename, const char *format, sc_pkcs15_der_t *newcert_raw)
+{
+	X509 *oldcert, *newcert;
+	EVP_PKEY *oldpk, *newpk;
+	u8 *ptr;
+	int r;
+
+	/* Get the public key from the old cert */
+	ptr = sc_oldcert->data;
+	oldcert = d2i_X509(NULL, &ptr, sc_oldcert->data_len);
+
+	if (oldcert == NULL)
+		return SC_ERROR_INTERNAL;
+
+	/* Read the new cert from file and get it's public key */
+	r = do_read_certificate(filename, format, &newcert);
+	if (r < 0) {
+		X509_free(oldcert);
+		return r;
+	}
+
+	oldpk = X509_get_pubkey(oldcert);
+	newpk = X509_get_pubkey(newcert);
+
+	/* Compare the public keys, there's no high level openssl function for this(?) */
+	r = SC_ERROR_INVALID_ARGUMENTS;
+	if (oldpk->type == newpk->type)
+	{
+		if ((oldpk->type == EVP_PKEY_DSA) &&
+			!BN_cmp(oldpk->pkey.dsa->p, newpk->pkey.dsa->p) &&
+			!BN_cmp(oldpk->pkey.dsa->q, newpk->pkey.dsa->q) &&
+			!BN_cmp(oldpk->pkey.dsa->g, newpk->pkey.dsa->g))
+				r = 0;
+		else if ((oldpk->type == EVP_PKEY_RSA) &&
+			!BN_cmp(oldpk->pkey.rsa->n, newpk->pkey.rsa->n) &&
+			!BN_cmp(oldpk->pkey.rsa->e, newpk->pkey.rsa->e))
+				r = 0;
+	}
+
+	EVP_PKEY_free(newpk);
+	EVP_PKEY_free(oldpk);
+	X509_free(oldcert);
+
+	if (r == 0)
+		r = do_convert_cert(newcert_raw, newcert);
+	else
+		error("the public keys in the old and new certificate differ");
+
+	X509_free(newcert);
+
+	return r;
+}
+
+/*
+ * Update an existing certificate with a new certificate having
+ * the same public key.
+ */
+static int
+do_update_certificate(struct sc_profile *profile)
+{
+	sc_pkcs15_id_t id;
+	sc_pkcs15_object_t *obj;
+	sc_pkcs15_cert_info_t *certinfo;
+	sc_pkcs15_cert_t *oldcert = NULL;
+	X509 *newcert = NULL;
+	sc_pkcs15_der_t newcert_raw;
+	int r;
+
+	set_userpin_ref();
+
+	if (opt_objectid == NULL) {
+		error("no ID given for the cert: use --id");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	sc_pkcs15_format_id(opt_objectid, &id);
+    if (sc_pkcs15_find_cert_by_id(p15card, &id, &obj) != 0) {
+    	error("Couldn't find the cert with ID %s\n", opt_objectid);
+    	return SC_ERROR_OBJECT_NOT_FOUND;
+    }
+
+	certinfo = (sc_pkcs15_cert_info_t *) obj->data;
+	r = sc_pkcs15_read_certificate(p15card, certinfo, &oldcert);
+	if (r < 0)
+		return r;
+
+	newcert_raw.value = NULL;
+	r = do_read_check_certificate(oldcert, opt_infile, opt_format, &newcert_raw);
+	sc_pkcs15_free_certificate(oldcert);
+	if (r < 0)
+		return r;
+
+	r = sc_pkcs15init_update_certificate(p15card, profile, obj,
+		newcert_raw.value, newcert_raw.len);
+
+	if (newcert_raw.value)
+		free(newcert_raw.value);
 
 	return r;
 }
@@ -2144,6 +2254,10 @@ handle_option(const struct option *opt)
 		break;
 	case 'X':
 		this_action = ACTION_STORE_CERT;
+		opt_infile = optarg;
+		break;
+	case 'U':
+		this_action = ACTION_UPDATE_CERT;
 		opt_infile = optarg;
 		break;
 	case 'W':
