@@ -23,8 +23,8 @@ all: install-headers install-headers-dir $(TARGET) $(TARGET2) $(TARGET3)
 $(TARGET): $(OBJECTS) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib
 	link $(LINKFLAGS) /dll /out:$(TARGET) $(OBJECTS) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib winscard.lib $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
 
-$(TARGET2): $(OBJECTS2)  ..\scdl\scdl.lib
-	lib /nologo /machine:ix86 /out:$(TARGET2) $(OBJECTS2) ..\scdl\scdl.lib
+$(TARGET2): $(OBJECTS2)
+	lib /nologo /machine:ix86 /out:$(TARGET2) $(OBJECTS2) $(LIBLTDL_LIB)
 
-$(TARGET3): $(OBJECTS3) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\scdl\scdl.lib
-	link $(LINKFLAGS) /dll /out:$(TARGET3) $(OBJECTS3) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\scdl\scdl.lib $(OPENSSL_LIB) gdi32.lib
+$(TARGET3): $(OBJECTS3) ..\libopensc\opensc.lib ..\scconf\scconf.lib
+	link $(LINKFLAGS) /dll /out:$(TARGET3) $(OBJECTS3) ..\libopensc\opensc.lib ..\scconf\scconf.lib $(OPENSSL_LIB) $(LIBLTDL_LIB) gdi32.lib advapi32.lib

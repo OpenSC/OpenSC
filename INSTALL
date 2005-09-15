@@ -180,3 +180,11 @@ operates.
      script, and exit.
 
 `configure' also accepts some other, not widely useful, options.
+
+Windows
+=======
+
+If you have Cygwin or Mingw installed (with the necessary packages/libs),
+you should be able to follow the above instructions.
+If you use the MS compiler, you should also install perl. And you have
+to follow the instruction in win32\Makes.rules.mak and edit this file.
