@@ -57,39 +57,39 @@ struct _sc_driver_entry {
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
-	{ "etoken",	(void *(*)()) sc_get_etoken_driver },
-	{ "flex",	(void *(*)()) sc_get_cryptoflex_driver },
-	{ "cyberflex",	(void *(*)()) sc_get_cyberflex_driver },
+	{ "etoken",	(void *(*)(void)) sc_get_etoken_driver },
+	{ "flex",	(void *(*)(void)) sc_get_cryptoflex_driver },
+	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },
 #ifdef HAVE_OPENSSL
-	{ "gpk",	(void *(*)()) sc_get_gpk_driver },
+	{ "gpk",	(void *(*)(void)) sc_get_gpk_driver },
 #endif
-	{ "miocos",	(void *(*)()) sc_get_miocos_driver },
-	{ "mcrd",	(void *(*)()) sc_get_mcrd_driver },
-	{ "setcos",	(void *(*)()) sc_get_setcos_driver },
-	{ "starcos",	(void *(*)()) sc_get_starcos_driver },
-	{ "tcos",	(void *(*)()) sc_get_tcos_driver },
-	{ "opengpg",	(void *(*)()) sc_get_openpgp_driver },
-	{ "jcop",	(void *(*)()) sc_get_jcop_driver },
+	{ "miocos",	(void *(*)(void)) sc_get_miocos_driver },
+	{ "mcrd",	(void *(*)(void)) sc_get_mcrd_driver },
+	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
+	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
+	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
+	{ "opengpg",	(void *(*)(void)) sc_get_openpgp_driver },
+	{ "jcop",	(void *(*)(void)) sc_get_jcop_driver },
 #ifdef HAVE_OPENSSL
-	{ "oberthur",	(void *(*)()) sc_get_oberthur_driver },
+	{ "oberthur",	(void *(*)(void)) sc_get_oberthur_driver },
 #endif
-	{ "belpic",	(void *(*)()) sc_get_belpic_driver },
-	{ "atrust-acos",(void *(*)())sc_get_atrust_acos_driver },
-	{ "emv",	(void *(*)()) sc_get_emv_driver },
+	{ "belpic",	(void *(*)(void)) sc_get_belpic_driver },
+	{ "atrust-acos",(void *(*)(void))sc_get_atrust_acos_driver },
+	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
-	{ "default",	(void *(*)()) sc_get_default_driver },
+	{ "default",	(void *(*)(void)) sc_get_default_driver },
 	{ NULL, NULL }
 };
 
 static const struct _sc_driver_entry internal_reader_drivers[] = {
 #if defined(HAVE_PCSC)
-	{ "pcsc",	(void *(*)()) sc_get_pcsc_driver },
+	{ "pcsc",	(void *(*)(void)) sc_get_pcsc_driver },
 #endif
-	{ "ctapi",	(void *(*)()) sc_get_ctapi_driver },
+	{ "ctapi",	(void *(*)(void)) sc_get_ctapi_driver },
 #ifndef _WIN32
 #ifdef HAVE_OPENCT
-	{ "openct",	(void *(*)()) sc_get_openct_driver },
+	{ "openct",	(void *(*)(void)) sc_get_openct_driver },
 #endif
 #endif
 	{ NULL, NULL }
