@@ -264,7 +264,7 @@ app default {
 		# Default: yes
 		enable_builtin_emulation = yes;
 		# list of the builtin pkcs15 emulators to test
-		builtin_emulators = esteid, openpgp, tcos, starcert, infocamere, postecert, actalis, atrust-acosi, gemsafe;
+		builtin_emulators = esteid, openpgp, tcos, starcert, infocamere, postecert, actalis, atrust-acosi, gemsafe, tccardos;
 
 		# additional settings per driver
 		#

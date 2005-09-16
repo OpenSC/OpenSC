@@ -30,6 +30,7 @@ OBJECTS			= \
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj \
 	pkcs15-gemsafe.obj pkcs15-actalis.obj pkcs15-atrust-acos.obj \
+	pkcs15-tccardos.obj \
 	\
 	$(TOPDIR)\win32\version.res
 
