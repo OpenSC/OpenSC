@@ -83,10 +83,12 @@ CK_RV card_detect(int reader)
 	sc_debug(context, "%d: Detecting smart card\n", reader);
 	for (i = card->max_slots; i--; ) {
 		struct sc_pkcs11_slot *slot;
+		sc_reader_t *rdr = sc_ctx_get_reader(context, (unsigned int)reader);
 
+		if (rdr == NULL)
+			return CKR_GENERAL_ERROR;
 		slot = virtual_slots + card->first_slot + i;
-		strcpy_bp(slot->slot_info.slotDescription,
-				context->reader[reader]->name, 64);
+		strcpy_bp(slot->slot_info.slotDescription, rdr->name, 64);
 		slot->reader = reader;
 	}
 
@@ -119,7 +121,7 @@ again:	rc = sc_detect_card_presence(context->reader[reader], 0);
 	/* Detect the card if it's not known already */
 	if (card->card == NULL) {
 		sc_debug(context, "%d: Connecting to smart card\n", reader);
-		rc = sc_connect_card(context->reader[reader], 0, &card->card);
+		rc = sc_connect_card(sc_ctx_get_reader(context, reader), 0, &card->card);
 		if (rc != SC_SUCCESS)
 			return sc_to_cryptoki_error(rc, reader);
 	}
@@ -158,7 +160,7 @@ CK_RV __card_detect_all(int report_events)
 
 	if (context == NULL_PTR)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
-	for (i = 0; i < context->reader_count; i++)
+	for (i = 0; i < (int)sc_ctx_get_reader_count(context); i++)
 		card_detect(i);
 	if (!report_events) {
 		CK_SLOT_ID id;

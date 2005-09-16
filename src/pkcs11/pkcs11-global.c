@@ -84,7 +84,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	}
 
 	sc_debug(context, "Shutting down Cryptoki\n");
-	for (i=0; i<context->reader_count; i++)
+	for (i=0; i < (int)sc_ctx_get_reader_count(context); i++)
 		card_removed(i);
 
 	sc_release_context(context);
@@ -361,8 +361,12 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	 || (flags & CKF_DONT_BLOCK))
 		goto out;
 
-	for (i = k = 0; i < context->reader_count; i++) {
-		reader = context->reader[i];
+	for (i = k = 0; i < (int)sc_ctx_get_reader_count(context); i++) {
+		reader = sc_ctx_get_reader(context, i);
+		if (reader == NULL) {
+			rv = CKR_GENERAL_ERROR;
+			goto out;
+		}
 		for (j = 0; j < reader->slot_count; j++, k++) {
 			readers[k] = reader;
 			slots[k] = j;

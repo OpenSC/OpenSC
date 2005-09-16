@@ -643,6 +643,18 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		load_parameters(ctx, ctx->conf_blocks[i], opts);
 }
 
+sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i)
+{
+	if (i >= (unsigned int)ctx->reader_count || i >= SC_MAX_READERS)
+		return NULL;
+	return ctx->reader[i];
+}
+
+unsigned int sc_ctx_get_reader_count(sc_context_t *ctx)
+{
+	return (unsigned int)ctx->reader_count;
+}
+
 int sc_establish_context(sc_context_t **ctx_out, const char *app_name)
 {
 	const char *default_app = "default";

@@ -678,6 +678,23 @@ int sc_establish_context(sc_context_t **ctx, const char *app_name);
  * @param ctx A pointer to the context structure to be released
  */
 int sc_release_context(sc_context_t *ctx);
+
+/**
+ * Returns a pointer to the specified sc_reader_t object
+ * @param  ctx  OpenSC context
+ * @param  i    number of the reader structure to return (starting with 0)
+ * @return the requested sc_reader object or NULL if the index is
+ *         not available
+ */
+sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i);
+
+/**
+ * Returns the number a available sc_reader objects
+ * @param  ctx  OpenSC context
+ * @return the number of available reader objects
+ */
+unsigned int sc_ctx_get_reader_count(sc_context_t *ctx);
+
 /**
  * Forces the use of a specified card driver
  * @param ctx OpenSC context
