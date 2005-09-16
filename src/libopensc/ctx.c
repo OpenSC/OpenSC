@@ -352,7 +352,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 		return NULL;
 	handle = lt_dlopen(libname);
 	if (handle == NULL) {
-		sc_error(ctx, "Module %s: cannot load %s library\n",name,libname);
+		sc_error(ctx, "Module %s: cannot load %s library: %s\n", name, libname, lt_dlerror());
 		return NULL;
 	}
 

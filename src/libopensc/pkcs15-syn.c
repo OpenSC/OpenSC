@@ -214,8 +214,8 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		/* try to open dynamic library */
 		handle = lt_dlopen(module_name);
 		if (!handle) {
-			sc_debug(ctx, "unable to open dynamic library '%s'\n",
-			         module_name);
+			sc_debug(ctx, "unable to open dynamic library '%s': %s\n",
+			         module_name, lt_dlerror());
 			return SC_ERROR_INTERNAL;
 		}
 		/* try to get version of the driver/api */

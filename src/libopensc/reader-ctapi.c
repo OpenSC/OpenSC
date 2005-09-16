@@ -449,7 +449,7 @@ static int ctapi_load_module(sc_context_t *ctx,
 	val = conf->name->data;
 	dlh = lt_dlopen(val);
 	if (!dlh) {
-		sc_error(ctx, "Unable to open shared library '%s'\n", val);
+		sc_error(ctx, "Unable to open shared library '%s': %s\n", val, lt_dlerror());
 		return -1;
 	}
 
