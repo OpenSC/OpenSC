@@ -791,11 +791,9 @@ static int iso7816_decipher(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static int iso7816_build_pin_apdu(sc_card_t *card,
-		sc_apdu_t *apdu,
-		struct sc_pin_cmd_data *data)
+static int iso7816_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu,
+		struct sc_pin_cmd_data *data, u8 *buf, size_t buf_len)
 {
-	static u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r, len = 0, pad = 0, use_pin_pad = 0, ins, p1 = 0;
 	
 	switch (data->pin_type) {
@@ -815,14 +813,14 @@ static int iso7816_build_pin_apdu(sc_card_t *card,
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
 		ins = 0x20;
-		if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
+		if ((r = sc_build_pin(buf, buf_len, &data->pin1, pad)) < 0)
 			return r;
 		len = r;
 		break;
 	case SC_PIN_CMD_CHANGE:
 		ins = 0x24;
 		if (data->pin1.len != 0 || use_pin_pad) {
-			if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
+			if ((r = sc_build_pin(buf, buf_len, &data->pin1, pad)) < 0)
 				return r;
 			len += r;
 		} else {
@@ -831,14 +829,14 @@ static int iso7816_build_pin_apdu(sc_card_t *card,
 		}
 
 		data->pin2.offset = data->pin1.offset + len;
-		if ((r = sc_build_pin(sbuf+len, sizeof(sbuf)-len, &data->pin2, pad)) < 0)
+		if ((r = sc_build_pin(buf+len, buf_len-len, &data->pin2, pad)) < 0)
 			return r;
 		len += r;
 		break;
 	case SC_PIN_CMD_UNBLOCK:
 		ins = 0x2C;
 		if (data->pin1.len != 0 || use_pin_pad) {
-			if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
+			if ((r = sc_build_pin(buf, buf_len, &data->pin1, pad)) < 0)
 				return r;
 			len += r;
 		} else {
@@ -847,7 +845,7 @@ static int iso7816_build_pin_apdu(sc_card_t *card,
 
 		if (data->pin2.len != 0 || use_pin_pad) {
 			data->pin2.offset = data->pin1.offset + len;
-			if ((r = sc_build_pin(sbuf+len, sizeof(sbuf)-len, &data->pin2, pad)) < 0)
+			if ((r = sc_build_pin(buf+len, buf_len-len, &data->pin2, pad)) < 0)
 				return r;
 			len += r;
 		} else {
@@ -863,7 +861,7 @@ static int iso7816_build_pin_apdu(sc_card_t *card,
 
 	apdu->lc = len;
 	apdu->datalen = len;
-	apdu->data = sbuf;
+	apdu->data = buf;
 	apdu->resplen = 0;
 	apdu->sensitive = 1;
 
@@ -875,6 +873,7 @@ static int iso7816_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 {
 	sc_apdu_t local_apdu, *apdu;
 	int r;
+	u8  sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	if (tries_left)
 		*tries_left = -1;
@@ -885,7 +884,7 @@ static int iso7816_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	 * special circumstances.
 	 */
 	if (data->apdu == NULL) {
-		r = iso7816_build_pin_apdu(card, &local_apdu, data);
+		r = iso7816_build_pin_apdu(card, &local_apdu, data, sbuf, sizeof(sbuf));
 		if (r < 0)
 			return r;
 		data->apdu = &local_apdu;
@@ -897,7 +896,7 @@ static int iso7816_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		r = sc_transmit_apdu(card, apdu);
 
 		/* Clear the buffer - it may contain pins */
-		memset((void *) apdu->data, 0, apdu->datalen);
+		memset(sbuf, 0, sizeof(sbuf));
 	} else {
 		/* Call the reader driver to collect
 		 * the PIN and pass on the APDU to the card */
