@@ -159,10 +159,9 @@ gpk_init(sc_card_t *card)
 	unsigned long	exponent, flags, kg;
 	unsigned char info[13];
 
-	card->drv_data = priv = (struct gpk_private_data *) malloc(sizeof(*priv));
+	card->drv_data = priv = (struct gpk_private_data *) calloc(1, sizeof(*priv));
 	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(priv, 0, sizeof(*priv));
 
 	/* read/write/update binary expect offset to be the
 	 * number of 32 bit words.
@@ -816,9 +815,9 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 		memcpy(crycks1, out, 3);
 	des_cleanse(k1);
 	des_cleanse(k2);
-	memset(in, 0, sizeof(in));
-	memset(out, 0, sizeof(out));
-	memset(block, 0, sizeof(block));
+	sc_mem_clear(in, sizeof(in));
+	sc_mem_clear(out, sizeof(out));
+	sc_mem_clear(block, sizeof(block));
 	return 0;
 }
 
@@ -959,7 +958,7 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 
 	des_cleanse(k1);
 	des_cleanse(k2);
-	memset(out, 0, sizeof(out));
+	sc_mem_clear(out, sizeof(out));
 	return r;
 }
 
@@ -1008,7 +1007,7 @@ gpk_select_key(sc_card_t *card, int key_sfi, const u8 *buf, size_t buflen)
 		priv->key_reference = key_sfi;
 	}
 
-	memset(resp, 0, sizeof(resp));
+	sc_mem_clear(resp, sizeof(resp));
 	return r;
 }
 

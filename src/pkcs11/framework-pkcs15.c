@@ -248,7 +248,7 @@ __pkcs15_release_object(struct pkcs15_any_object *obj)
 	if (--(obj->refcount) != 0)
 		return obj->refcount;
 	
-	memset(obj, 0xAA, obj->size);
+	sc_mem_clear(obj, obj->size);
 	free(obj);
 
 	return 0;

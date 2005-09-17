@@ -326,7 +326,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		tmpin = tmpout;
 	}
 	r = sc_compute_signature(p15card->card, tmpin, inlen, out, outlen);
-	memset(buf, 0, sizeof(buf));
+	sc_mem_clear(buf, sizeof(buf));
 	sc_unlock(p15card->card);
 	SC_TEST_RET(ctx, r, "sc_compute_signature() failed");
 

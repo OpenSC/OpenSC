@@ -890,6 +890,14 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
 int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2);
 
+/**
+ * Clears a memory buffer (note: when OpenSSL is used this is
+ * currently a wrapper for OPENSSL_cleanse() ).
+ * @param  ptr  pointer to the memory buffer
+ * @param  len  length of the memory buffer
+ */
+void sc_mem_clear(void *ptr, size_t len);
+
 int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize);
 int sc_make_cache_dir(sc_context_t *ctx);
 

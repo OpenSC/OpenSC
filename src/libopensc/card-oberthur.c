@@ -1712,7 +1712,7 @@ auth_update_component(sc_card_t *card, struct sc_cardctl_oberthur_updatekey_info
 	}
 
 	rv = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, sizeof(sbuf));
+	sc_mem_clear(sbuf, sizeof(sbuf));
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1937,7 +1937,7 @@ auth_verify(sc_card_t *card, unsigned int type,
 	apdu.lc = pinfo.pad_length;
 	apdu.sensitive = 1;
 	rv = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, sizeof(sbuf));
+	sc_mem_clear(sbuf, sizeof(sbuf));
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	if (tries_left && apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) 
@@ -1979,7 +1979,7 @@ auth_change_reference_data (sc_card_t *card, unsigned int type,
 	apdu.sensitive = 1;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, sizeof(sbuf));
+	sc_mem_clear(sbuf, sizeof(sbuf));
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	if (tries_left && apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) 
@@ -2030,7 +2030,7 @@ auth_reset_retry_counter(sc_card_t *card, unsigned int type,
 	apdu.sensitive = 1;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, sizeof(sbuf));
+	sc_mem_clear(sbuf, sizeof(sbuf));
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -2093,7 +2093,7 @@ auth_create_reference_data (sc_card_t *card,
 	apdu.sensitive = 1;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	memset(sbuf, 0, sizeof(sbuf));
+	sc_mem_clear(sbuf, sizeof(sbuf));
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
 	
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);

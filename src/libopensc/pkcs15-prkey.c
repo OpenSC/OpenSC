@@ -402,7 +402,7 @@ sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
 		free(key->u.dsa.priv.data);
 		break;
 	}
-	memset(key, 0, sizeof(key));
+	sc_mem_clear(key, sizeof(key));
 }
 
 void

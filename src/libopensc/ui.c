@@ -323,14 +323,14 @@ __sc_ui_read_pin(sc_context_t *ctx, const char *prompt,
 		}
 
 		*out = strdup(pin);
-		memset(pin, 0, len);
+		sc_mem_clear(pin, len);
 
 		if (!(flags & SC_UI_PIN_RETYPE))
 			break;
 
 		pin = getpass("Please type again to verify: ");
 		if (!strcmp(*out, pin)) {
-			memset(pin, 0, len);
+			sc_mem_clear(pin, len);
 			break;
 		}
 
@@ -345,7 +345,7 @@ __sc_ui_read_pin(sc_context_t *ctx, const char *prompt,
 		fprintf(stderr,
 			"Sorry, the two pins did not match. "
 			"Please try again.\n");
-		memset(pin, 0, strlen(pin));
+		sc_mem_clear(pin, strlen(pin));
 
 		/* Currently, there's no way out of this dialog.
 		 * We should allow the user to bail out after n

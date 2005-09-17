@@ -333,7 +333,7 @@ sc_keycache_forget_key(const sc_path_t *path, int type, int ref)
 			*prev = s->next;
 			if (s->named_pin != -1 && s->ref == -1)
 				named_pin[s->named_pin] = NULL;
-			memset(s, 0, sizeof(*s));
+			sc_mem_clear(s, sizeof(*s));
 			free(s);
 		} else {
 			prev = &s->next;

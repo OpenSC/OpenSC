@@ -18,12 +18,20 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include "internal.h"
 #include "asn1.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
+#ifdef HAVE_OPENSSL
+#include <openssl/crypto.h>	/* for OPENSSL_cleanse */
+#endif
 
 #ifdef VERSION
 const char *sc_version = VERSION;
@@ -579,4 +587,13 @@ int _sc_parse_atr(sc_context_t *ctx, sc_slot_info_t *slot)
 	slot->atr_info.hist_bytes_len = n_hist;
 	slot->atr_info.hist_bytes = p;
 	return 0;
+}
+
+void sc_mem_clear(void *ptr, size_t len)
+{
+#ifdef HAVE_OPENSSL
+	OPENSSL_cleanse(ptr, len);
+#else
+	memset(ptr, 0, len);
+#endif
 }

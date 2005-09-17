@@ -433,7 +433,7 @@ void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 		break;
 	}
 	free(key->data.value);
-	memset(key, 0, sizeof(*key));
+	sc_mem_clear(key, sizeof(*key));
 }
 
 void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *key)

@@ -173,7 +173,7 @@ openct_reader_release(sc_reader_t *reader)
 	if (data) {
 		if (data->h)
 			ct_reader_disconnect(data->h);
-		memset(data, 0, sizeof(*data));
+		sc_mem_clear(data, sizeof(*data));
 		reader->drv_data = NULL;
 		free(data);
 	}

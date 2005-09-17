@@ -223,7 +223,7 @@ static int sc_transceive(sc_card_t *card, sc_apdu_t *apdu)
 					sendsize, rbuf, &recvsize,
 					apdu->control);
 	if (apdu->sensitive)
-		memset(sbuf, 0, sendsize);
+		sc_mem_clear(sbuf, sendsize);
 	SC_TEST_RET(card->ctx, r, "Unable to transmit");
 
 	assert(recvsize >= 2);
@@ -239,7 +239,7 @@ static int sc_transceive(sc_card_t *card, sc_apdu_t *apdu)
 	if (recvsize > 0) {
 		memcpy(apdu->resp, rbuf, data_bytes);
 		if (apdu->sensitive)
-			memset(rbuf, 0, recvsize);
+			sc_mem_clear(rbuf, recvsize);
 	}
 	return 0;
 }
@@ -354,7 +354,7 @@ static void sc_card_free(sc_card_t *card)
 	if (card->algorithms != NULL)
 		free(card->algorithms);
 	sc_mutex_free(card->mutex);
-	memset(card, 0, sizeof(*card));
+	sc_mem_clear(card, sizeof(*card));
 	free(card);
 }
 

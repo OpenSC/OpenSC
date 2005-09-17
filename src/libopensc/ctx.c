@@ -740,7 +740,7 @@ int sc_release_context(sc_context_t *ctx)
 		scconf_free(ctx->conf);
 	sc_mutex_free(ctx->mutex);
 	free(ctx->app_name);
-	memset(ctx, 0, sizeof(*ctx));
+	sc_mem_clear(ctx, sizeof(*ctx));
 	free(ctx);
 	return SC_SUCCESS;
 }

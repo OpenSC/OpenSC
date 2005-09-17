@@ -896,7 +896,7 @@ static int iso7816_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		r = sc_transmit_apdu(card, apdu);
 
 		/* Clear the buffer - it may contain pins */
-		memset(sbuf, 0, sizeof(sbuf));
+		sc_mem_clear(sbuf, sizeof(sbuf));
 	} else {
 		/* Call the reader driver to collect
 		 * the PIN and pass on the APDU to the card */
