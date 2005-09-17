@@ -480,9 +480,8 @@ static int ctapi_load_module(sc_context_t *ctx,
 			sc_error(ctx, "CT_init() failed with %d\n", rv);
 			continue;
 		}
-		reader = (sc_reader_t *) malloc(sizeof(sc_reader_t));
+		reader = (sc_reader_t *) calloc(1, sizeof(sc_reader_t));
 		priv = (struct ctapi_private_data *) malloc(sizeof(struct ctapi_private_data));
-		memset(reader, 0, sizeof(*reader));
 		reader->drv_data = priv;
 		reader->ops = &ctapi_ops;
 		reader->driver = &ctapi_drv;
@@ -521,10 +520,9 @@ static int ctapi_init(sc_context_t *ctx, void **reader_data)
 	struct ctapi_global_private_data *gpriv;
 	scconf_block **blocks = NULL, *conf_block = NULL;
 
-	gpriv = (struct ctapi_global_private_data *) malloc(sizeof(struct ctapi_global_private_data));
+	gpriv = (struct ctapi_global_private_data *) calloc(1, sizeof(struct ctapi_global_private_data));
 	if (gpriv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(gpriv, 0, sizeof(*gpriv));
 	*reader_data = gpriv;
 	
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {

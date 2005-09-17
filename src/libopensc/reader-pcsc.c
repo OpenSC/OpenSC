@@ -639,7 +639,7 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 	}
 	p = reader_buf;
 	do {
-		sc_reader_t *reader = (sc_reader_t *) malloc(sizeof(sc_reader_t));
+		sc_reader_t *reader = (sc_reader_t *) calloc(1, sizeof(sc_reader_t));
 		struct pcsc_private_data *priv = (struct pcsc_private_data *) malloc(sizeof(struct pcsc_private_data));
 		struct pcsc_slot_data *pslot = (struct pcsc_slot_data *) malloc(sizeof(struct pcsc_slot_data));
 		sc_slot_info_t *slot;
@@ -654,7 +654,6 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 			break;
 		}
 
-		memset(reader, 0, sizeof(*reader));
 		reader->drv_data = priv;
 		reader->ops = &pcsc_ops;
 		reader->driver = &pcsc_drv;

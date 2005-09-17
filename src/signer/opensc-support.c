@@ -119,10 +119,9 @@ static int extract_certificate_and_pkey(PluginInstance *inst,
 		goto err;
 	rsa->flags |= RSA_FLAG_SIGN_VER;
 	RSA_set_method(rsa, sc_get_method());
-	priv = (struct sc_priv_data *) malloc(sizeof(*priv));
+	priv = (struct sc_priv_data *) calloc(1, sizeof(*priv));
 	if (priv == NULL)
 		goto err;
-	memset(priv, 0, sizeof(struct sc_priv_data));
 	priv->cert_id = cert_id;
 	priv->ref_count = 1;
 	RSA_set_app_data(rsa, priv);
