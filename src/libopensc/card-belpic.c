@@ -1559,8 +1559,6 @@ static struct sc_card_driver *sc_get_driver(void)
 	if (iso_ops == NULL)
 		iso_ops = sc_get_iso7816_driver()->ops;
 
-	memset(&belpic_ops, 0, sizeof(belpic_ops));
-
 	belpic_ops.match_card = belpic_match_card;
 	belpic_ops.init = belpic_init;
 	belpic_ops.finish = belpic_finish;
