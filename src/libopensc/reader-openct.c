@@ -84,10 +84,19 @@ struct slot_data {
 static int
 openct_reader_init(sc_context_t *ctx, void **priv_data)
 {
-	unsigned int	i;
+	unsigned int	i,max;
+	scconf_block *conf_block;
 
 	SC_FUNC_CALLED(ctx, 1);
-	for (i = 0; i < OPENCT_MAX_READERS; i++) {
+
+	max=OPENCT_MAX_READERS; 
+
+        conf_block = _get_conf_block(ctx, "reader_driver", "openct", 1);
+	if (conf_block) {
+		max = scconf_get_int(conf_block, "readers", OPENCT_MAX_READERS);
+	}
+
+	for (i = 0; i < max; i++) {
 		ct_info_t	info;
 
 		if (ct_reader_info(i, &info) >= 0) {

@@ -106,6 +106,12 @@ app default {
 		enable_pinpad = false;
 	}
 
+	# options for openct support
+	reader_driver openct {
+		# virtual readers to allocate. default:5
+		readers = 5;
+	};
+
 	# What card drivers to load at start-up
 	#
 	# A special value of 'internal' will load all
