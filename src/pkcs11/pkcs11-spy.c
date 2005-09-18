@@ -21,7 +21,6 @@
 #endif
 #include <stdlib.h>
 #include <stdio.h>
-#include <opensc/scconf.h>
 #include "pkcs11-display.h"
 
 #ifdef _WIN32
@@ -83,10 +82,14 @@ const char *get_reg_config(const char *spath)
 /* Inits the spy. If successfull, po != NULL */
 static CK_RV init_spy(void)
 {
-  const char *mspec = NULL, *file = NULL, *env = NULL, *conf_path = NULL;
-  scconf_context *conf_ctx = NULL;
-  scconf_block *conf_block = NULL, **blocks;
-  int rv = CKR_OK, r;
+  const char *output, *module;
+  int rv = CKR_OK;
+#ifdef _WIN32
+        char temp_path[PATH_MAX];
+        int temp_len;
+        long rc;
+        HKEY hKey;
+#endif
 
   /* Allocates and initializes the pkcs11_spy structure */
   pkcs11_spy =
@@ -97,83 +100,63 @@ static CK_RV init_spy(void)
     return CKR_HOST_MEMORY;
   }
 
-#ifdef _WIN32
-  conf_path = get_reg_config("Software\\pkcs15-spy");
-  if (conf_path == NULL)
-    conf_path = get_reg_config("Software\\OpenSC");
-#else
-  conf_path = getenv("PKCS11SPY_CONF");
-  if (conf_path == NULL) {
-    conf_path = getenv("OPENSC_CONF");
-  }
-#endif
-  if (conf_path == NULL) {
-    fprintf(stderr, "Error: no config file found.\n");
-    fprintf(stderr, "Please set the path to the config in the PKCS11SPY_CONF environment variable.\n");
-    free(pkcs11_spy);
-    return CKR_DEVICE_ERROR;
-  }
-  conf_ctx = scconf_new(conf_path);
-  if (conf_ctx == NULL) {
-    fprintf(spy_output, "Error: unable to parse config file\n");
-    free(pkcs11_spy);
-    return CKR_DEVICE_ERROR;
-  }
-  r = scconf_parse(conf_ctx);
-  if (r < 0) {
-    fprintf(stderr, "Error: scconf_parse failed\n");
-    free(pkcs11_spy);
-    return CKR_DEVICE_ERROR;
-  }
-  blocks = scconf_find_blocks(conf_ctx, NULL, "app", "pkcs11-spy");
-  conf_block = blocks[0];
-  free(blocks);
-  if (conf_block == NULL) {
-    fprintf(stderr, "Error: scconf_find_blocks failed for 'pkcs11-spy'\n");
-    free(pkcs11_spy);
-    return CKR_DEVICE_ERROR;
-  }
-  blocks = scconf_find_blocks(conf_ctx, conf_block, "spy", NULL);
-  conf_block = blocks[0];
-  free(blocks);
-  if (conf_block == NULL) {
-    fprintf(stderr, "Error: scconf_find_blocks failed for 'spy'\n");
-    free(pkcs11_spy);
-    return CKR_DEVICE_ERROR;
-  }
-
-  /* If conf_block is NULL, just return the default value
-   *
+  /* 
    * Don't use getenv() as the last parameter for scconf_get_str(),
    * as we want to be able to override configuration file via
    * environment variables
    */
-  env = getenv("PKCS11SPY_OUTPUT");
-  file = env ? env : scconf_get_str(conf_block, "output", NULL);
-  if (file) {
-    spy_output = fopen(file, "a");
+  output = getenv("PKCS11SPY_OUTPUT");
+  if (output) {
+    spy_output = fopen(output, "a");
   }
+#ifdef _WIN32
+  if (!spy_output) {
+        rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\PKCS11-Spy",
+                0, KEY_QUERY_VALUE, &hKey );
+        if( rc == ERROR_SUCCESS ) {
+                temp_len = PATH_MAX;
+                rc = RegQueryValueEx( hKey, "Output", NULL, NULL,
+                        (LPBYTE) temp_path, &temp_len);
+                if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
+                        output = temp_path;
+                RegCloseKey( hKey );
+        }
+    spy_output = fopen(output, "a");
+  }
+#endif
   if (!spy_output) {
     spy_output = stderr;
   }
   fprintf(spy_output, "\n\n*************** OpenSC PKCS#11 spy *****************\n");
 
-  env = getenv("PKCS11SPY");
-  mspec = env ? env : scconf_get_str(conf_block, "module", NULL);
-  if (mspec == NULL) {
-    fprintf(spy_output, "Error: no module specified\n");
+  module = getenv("PKCS11SPY");
+#ifdef _WIN32
+  if (!module) {
+        rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\PKCS11-Spy",
+                0, KEY_QUERY_VALUE, &hKey );
+        if( rc == ERROR_SUCCESS ) {
+                temp_len = PATH_MAX;
+                rc = RegQueryValueEx( hKey, "Module", NULL, NULL,
+                        (LPBYTE) temp_path, &temp_len);
+                if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
+                        module = temp_path;
+                RegCloseKey( hKey );
+        }
+  }
+#endif
+  if (module == NULL) {
+    fprintf(spy_output, "Error: no module specified. Please set PKCS11SPY environment.\n");
     free(pkcs11_spy);
     return CKR_DEVICE_ERROR;
   }
-  modhandle = C_LoadModule(mspec, &po);
+  modhandle = C_LoadModule(module, &po);
   if (modhandle && po) {
-    fprintf(spy_output, "Loaded: \"%s\"\n", mspec);
+    fprintf(spy_output, "Loaded: \"%s\"\n", module);
   } else {
   	po = NULL;
   	free(pkcs11_spy);
   	rv = CKR_GENERAL_ERROR;
   }
-  scconf_free(conf_ctx);
   return rv;
 }
 

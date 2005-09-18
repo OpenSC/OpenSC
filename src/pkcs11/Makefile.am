@@ -30,7 +30,7 @@ libpkcs11_la_LIBADD =
 
 pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h
 pkcs11_spy_la_LDFLAGS = -module -avoid-version
-pkcs11_spy_la_LIBADD = @LIBSCCONF@ $(OPENSSL_LIBS) libpkcs11.la $(LTLIBLTDL)
+pkcs11_spy_la_LIBADD = $(OPENSSL_LIBS) libpkcs11.la $(LTLIBLTDL)
 
 include_HEADERS = pkcs11.h
 
