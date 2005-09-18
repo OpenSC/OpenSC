@@ -183,13 +183,10 @@ static int sc_transceive(sc_card_t *card, sc_apdu_t *apdu)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		memcpy(data, apdu->data, data_bytes);
 		data += data_bytes;
-		/* in case of T0 the Le value is omitted  */
-		if (card->slot->active_protocol == SC_PROTO_T1) {
-			if (apdu->le == 256)
-				*data++ = 0x00;
-			else
-				*data++ = (u8) apdu->le;
-		}
+		if (apdu->le == 256)
+			*data++ = 0x00;
+		else
+			*data++ = (u8) apdu->le;
 		break;
 	}
 	sendsize = data - sbuf;
