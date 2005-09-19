@@ -980,7 +980,6 @@ do_update_certificate(struct sc_profile *profile)
 	sc_pkcs15_object_t *obj;
 	sc_pkcs15_cert_info_t *certinfo;
 	sc_pkcs15_cert_t *oldcert = NULL;
-	X509 *newcert = NULL;
 	sc_pkcs15_der_t newcert_raw;
 	int r;
 
