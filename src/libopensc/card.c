@@ -129,6 +129,8 @@ sc_masquerade_apdu(sc_card_t *card, sc_apdu_t *apdu)
 	return 0;
 }
 
+/** Builds the TPDU and sends it to the reader driver
+ */
 static int sc_transceive(sc_card_t *card, sc_apdu_t *apdu)
 {
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -161,6 +163,9 @@ static int sc_transceive(sc_card_t *card, sc_apdu_t *apdu)
 	*data++ = apdu->p2;
 	switch (apdu->cse) {
 	case SC_APDU_CASE_1:
+		if (card->slot->active_protocol == SC_PROTO_T0)
+			/* TO adds an additional 0x00 byte to the TPDU */
+			*data++;
 		break;
 	case SC_APDU_CASE_2_SHORT:
 		*data++ = (u8) apdu->le;
@@ -183,10 +188,9 @@ static int sc_transceive(sc_card_t *card, sc_apdu_t *apdu)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		memcpy(data, apdu->data, data_bytes);
 		data += data_bytes;
-		if (apdu->le == 256)
-			*data++ = 0x00;
-		else
-			*data++ = (u8) apdu->le;
+		if (card->slot->active_protocol != SC_PROTO_T0)
+			/* unless T0 is used add Le byte */
+			*data++ = (u8) (apdu->le & 0xff);
 		break;
 	}
 	sendsize = data - sbuf;
