@@ -35,3 +35,7 @@ install-headers-dir:
 
 .c.obj::
 	cl $(COPTS) /c $<
+
+clean::
+	del /Q *.obj *.dll *.exe
+
