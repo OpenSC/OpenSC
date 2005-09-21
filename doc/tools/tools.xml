@@ -18,6 +18,7 @@
 		<xi:include href="pkcs15-profile.xml"/>
 		<xi:include href="cardos-info.xml"/>
 		<xi:include href="cryptoflex-tool.xml"/>
+		<xi:include href="netkey-tool.xml"/>
 	</reference>
 </book>
 
