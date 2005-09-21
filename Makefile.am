@@ -1,7 +1,7 @@
 # Process this file with automake to create Makefile.in
 
-SUBDIRS = . aclocal etc macos man src win32
-DIST_SUBDIRS = . aclocal doc etc macos man src win32
+SUBDIRS = . aclocal etc man src win32
+DIST_SUBDIRS = . aclocal doc etc man src win32
 
 EXTRA_DIST = CodingStyle QUICKSTART \
 	bootstrap Makefile.mak depcomp \

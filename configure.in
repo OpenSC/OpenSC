@@ -370,7 +370,6 @@ aclocal/Makefile
 doc/Makefile
 doc/old/Makefile
 etc/Makefile
-macos/Makefile
 man/Makefile
 src/Makefile
 src/common/Makefile
