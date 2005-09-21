@@ -27,4 +27,4 @@ $(TARGET2): $(OBJECTS2)
 	lib /nologo /machine:ix86 /out:$(TARGET2) $(OBJECTS2) $(LIBLTDL_LIB)
 
 $(TARGET3): $(OBJECTS3) ..\libopensc\opensc.lib
-	link $(LINKFLAGS) /dll /out:$(TARGET3) $(OBJECTS3) ..\libopensc\opensc.lib ..\scconf\scconf.lib $(OPENSSL_LIB) $(LIBLTDL_LIB) gdi32.lib advapi32.lib
+	link $(LINKFLAGS) /dll /out:$(TARGET3) $(OBJECTS3) ..\libopensc\opensc.lib $(OPENSSL_LIB) $(LIBLTDL_LIB) gdi32.lib advapi32.lib
