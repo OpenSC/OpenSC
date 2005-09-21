@@ -42,17 +42,3 @@ pkcs11-jar: jar-dir
 	cp opensc_pkcs11_install.js jar-dir
 	signtool -Z"opensc-pkcs11.jar" -i"opensc_pkcs11_install.js" \
 		 -k"testcert" jar-dir
-
-install-exec-local: install-libLTLIBRARIES
-if HAVE_BUNDLES
-	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(libdir)/opensc-pkcs11.so \
-		$(DESTDIR)$(bundledir)/
-	-${top_srcdir}/macos/libtool-bundle $(DESTDIR)$(libdir)/pkcs11-spy.so \
-		$(DESTDIR)$(bundledir)/
-endif
-
-uninstall-local: uninstall-libLTLIBRARIES
-if HAVE_BUNDLES
-	rm -rf $(DESTDIR)$(bundledir)/opensc-pkcs11.bundle/
-	rm -rf $(DESTDIR)$(bundledir)/pkcs11-spy.bundle/
-endif
