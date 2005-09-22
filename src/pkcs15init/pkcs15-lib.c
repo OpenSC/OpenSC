@@ -474,7 +474,7 @@ int sc_pkcs15init_delete_by_path(struct sc_profile *profile,
 	if (r < 0)
 		return r;
 
-	r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_DELETE);
+	r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_ERASE);
 	sc_file_free(file);
 	if (r < 0) 
 		return r;
