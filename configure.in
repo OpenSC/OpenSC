@@ -308,15 +308,6 @@ AC_ARG_WITH(plugin-dir,
 )
 AC_SUBST(PLUGINDIR)
 
-BUNDLEDIR="${libdir}"
-AC_ARG_WITH(bundle-dir,
-	AC_HELP_STRING([--with-bundle-dir=PATH], [install MacOS X bundles to PATH [[EPREFIX/lib]]]),
-	[
-		BUNDLEDIR="$withval"
-	]
-)
-AC_SUBST(BUNDLEDIR)
-
 # Check for PIN entry program used by OpenSC Signer
 PIN_ENTRY="/usr/local/bin/gpinentry"
 AC_ARG_WITH(pin-entry,
@@ -342,7 +333,6 @@ AC_ARG_ENABLE(debug,
 	AC_DEFINE(DEBUG, 1, [Enable debug messages.]))
 
 CPPFLAGS="-I\${top_builddir}/src/include $CPPFLAGS"
-AM_CONDITIONAL(HAVE_BUNDLES, test "x$with_bundles" = "xyes")
 
 opensc_etc_path=`eval echo ${sysconfdir}` ; opensc_etc_path=`eval echo ${opensc_etc_path}`
 AC_DEFINE_UNQUOTED(OPENSC_ETC_PATH, "$opensc_etc_path", [etc path for libopensc])
