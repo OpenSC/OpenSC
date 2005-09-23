@@ -9,7 +9,7 @@ EXTRA_DIST = README ChangeLog $(HTML) $(XML) index.html \
 		generate-man.sh changelog.sh svn2cl.xsl 
 
 HTML= $(shell ls $(srcdir)/*.html $(srcdir)/*.css $(srcdir)/html/*)
-XML = $(shell ls tools/*.xml api/*.xml api/*/*.xml api/api.css api/*.xsl)
+XML = $(shell ls $(srcdir)/tools/*.xml $(srcdir)/api/*.xml $(srcdir)/api/*/*.xml $(srcdir)/api/api.css $(srcdir)/api/*.xsl)
 
 index.html:
 	sh $(srcdir)/export-wiki.sh $(srcdir)
