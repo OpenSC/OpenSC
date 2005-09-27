@@ -49,6 +49,7 @@ enum {
 	OPT_INIT_TOKEN,
 	OPT_INIT_PIN,
 	OPT_ATTR_FROM,
+	OPT_KEY_TYPE
 };
 
 const struct option options[] = {
@@ -68,6 +69,7 @@ const struct option options[] = {
 	{ "init-pin",		0, 0,		OPT_INIT_PIN },
 	{ "change-pin",		0, 0,		'c' },
 	{ "keypairgen", 	0, 0, 		'k' },
+	{ "key-type",		1, 0,		OPT_KEY_TYPE },
 	{ "write-object",	1, 0, 		'w' },
 	{ "read-object",	0, 0, 		'r' },
 	{ "application-id",	1, 0, 	OPT_APPLICATION_ID },
@@ -105,6 +107,7 @@ const char *option_help[] = {
 	"Initialize the User PIN (use with --pin)",
 	"Change your User PIN",
 	"Key pair generation",
+	"Specify the type and length of the key to create, for example rsa:1024",
 	"Write an object (key, cert) to the card",
 	"Get object's CKA_VALUE attribute (use with --type)",
 	"Specify the application id of the data object (use with --type data)",
@@ -142,7 +145,8 @@ static size_t		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
 static char *		opt_pin = NULL;
 static char *		opt_so_pin = NULL;
-static char *	opt_application_id = NULL;
+static char *		opt_application_id = NULL;
+static char *		opt_key_type = NULL;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -202,7 +206,7 @@ static void		sign_data(CK_SLOT_ID,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int		gen_keypair(CK_SLOT_ID, CK_SESSION_HANDLE,
-				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *);
+				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
 static int 		write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static int 		read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static void 		set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
@@ -413,6 +417,9 @@ main(int argc, char * const argv[])
 			do_init_pin = 1;
 			action_count++;
 			break ;
+		case OPT_KEY_TYPE:
+			opt_key_type = optarg;
+			break;
 		default:
 			print_usage_and_die();
 		}
@@ -543,7 +550,7 @@ main(int argc, char * const argv[])
 
 	if (do_gen_keypair) {
 		CK_OBJECT_HANDLE hPublicKey, hPrivateKey;
-		gen_keypair(opt_slot, session, &hPublicKey, &hPrivateKey);
+		gen_keypair(opt_slot, session, &hPublicKey, &hPrivateKey, opt_key_type);
 	}
 
 	if (do_write_object) {
@@ -997,7 +1004,7 @@ hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 int
 gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
-	CK_OBJECT_HANDLE *hPublicKey, CK_OBJECT_HANDLE *hPrivateKey)
+	CK_OBJECT_HANDLE *hPublicKey, CK_OBJECT_HANDLE *hPrivateKey, const char *type)
 {
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_KEY_PAIR_GEN, NULL_PTR, 0};
 	CK_ULONG modulusBits = 768;
@@ -1025,6 +1032,22 @@ gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	};
 	int n_privkey_attr = 7;
 	CK_RV rv;
+
+	if (type != NULL) {
+		if (strncmp(type, "RSA:", strlen("RSA:")) == 0 ||
+		    strncmp(type, "rsa:", strlen("rsa:")) == 0) {
+			CK_ULONG    key_length;
+			const char *size = type + strlen("RSA:");
+
+			if (size == NULL)
+				fatal("Unknown key type %s", type);
+			key_length = (unsigned long)atol(size);
+			if (key_length != 0)
+				modulusBits = key_length;
+		} else {
+			fatal("Unknown key type %s", type);
+		}
+	}
 
 	if (opt_object_label != NULL) {
 		FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_LABEL,
@@ -2977,7 +3000,7 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	
 	printf("\n*** Generating a 1024 bit RSA key pair ***\n");
 
-	if (!gen_keypair(slot, session, &pub_key, &priv_key))
+	if (!gen_keypair(slot, session, &pub_key, &priv_key, opt_key_type))
 		return;
 
 	tmp = getID(session, priv_key, (CK_ULONG *) &opt_object_id_len);
