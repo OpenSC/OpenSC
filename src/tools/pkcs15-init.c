@@ -1160,7 +1160,7 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *p15card,
 			else if (has_sibling)
 				sc_debug(ctx, "Chain deletion stops with cert %s\n", sc_pkcs15_print_id(
 					&((sc_pkcs15_cert_info_t *) objs[count - 1]->data)->id));
-			else if ((objs[count] != NULL))
+			else if (stop && (objs[count] != NULL))
 				count++;
 			if (stop || (objs[count] == NULL))
 				break;
