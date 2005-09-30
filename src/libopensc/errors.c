@@ -87,7 +87,7 @@ const char *sc_strerror(int error)
 		"The key is extractable",
 		"Decryption failed",
 		"Wrong padding",
-		"Wrong card",
+		"Unsupported card",
 		"Unable to load external module",
 	};
 	const int int_base = -SC_ERROR_INTERNAL;
