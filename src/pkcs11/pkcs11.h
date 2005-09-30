@@ -40,7 +40,7 @@ extern "C" {
 #elif defined(HAVE_DLFCN_H) && defined(__APPLE__)
 #define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11.so"
 #elif defined(__APPLE__)
-#define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11.bundle"
+#define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11.so"
 #else
 #define PKCS11_DEFAULT_MODULE_NAME	"opensc-pkcs11.so"
 #endif
