@@ -864,9 +864,15 @@ static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 	sc_pkcs15_pin_info_t	*pin_info;
 	int			rc;
 
-	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
+	rc = sc_lock(p11card->card);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
+
+	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
+	if (rc < 0) {
+		sc_lock(p11card->card);
+		return sc_to_cryptoki_error(rc, p11card->reader);
+	}
 
 	memset(&args, 0, sizeof(args));
 	args.label = "User PIN";
@@ -874,6 +880,7 @@ static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 	args.pin_len = ulPinLen;
 	rc = sc_pkcs15init_store_pin(fw_data->p15_card, profile, &args);
 
+	sc_lock(p11card->card);
 	sc_pkcs15init_unbind(profile);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
@@ -1168,14 +1175,14 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 	if (rv != CKR_OK)
 		return rv;
 
-	/* Bind the profile */
-	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
+	rc = sc_lock(p11card->card);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
 
-	rc = sc_lock(p11card->card);
+	/* Bind the profile */
+	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0) {
-		sc_pkcs15init_unbind(profile);
+		sc_unlock(p11card->card);
 		return sc_to_cryptoki_error(rc, p11card->reader);
 	}
 
@@ -1199,8 +1206,9 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	}
 
-	sc_unlock(p11card->card);
 	sc_pkcs15init_unbind(profile);
+	sc_unlock(p11card->card);
+
 	return rv;
 }
 
@@ -1285,18 +1293,18 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 	if (pMechanism->mechanism != CKM_RSA_PKCS_KEY_PAIR_GEN)
 		return CKR_MECHANISM_INVALID;
 
-	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
+	rc = sc_lock(p11card->card);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
 
-	memset(&keygen_args, 0, sizeof(keygen_args));
-	memset(&pub_args, 0, sizeof(pub_args));
-
-	rc = sc_lock(p11card->card);
+	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0) {
-		sc_pkcs15init_unbind(profile);
+		sc_unlock(p11card->card);
 		return sc_to_cryptoki_error(rc, p11card->reader);
 	}
+
+	memset(&keygen_args, 0, sizeof(keygen_args));
+	memset(&pub_args, 0, sizeof(pub_args));
 
 	/* 1. Convert the pkcs11 attributes to pkcs15init args */
 
@@ -1415,8 +1423,8 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 		(struct pkcs15_pubkey_object *)pub_any_obj;
 
 kpgen_done:
-	sc_unlock(p11card->card);
 	sc_pkcs15init_unbind(profile);
+	sc_unlock(p11card->card);
 
 	return rv;
 }
@@ -1469,13 +1477,13 @@ static CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
 	int rc = 0;
 	CK_RV rv = CKR_OK;
 
-	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
+	rc = sc_lock(p11card->card);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
 
-	rc = sc_lock(p11card->card);
+	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0) {
-		sc_pkcs15init_unbind(profile);
+		rc = sc_unlock(p11card->card);
 		return sc_to_cryptoki_error(rc, p11card->reader);
 	}
 
@@ -1508,8 +1516,8 @@ static CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
 	rv = sc_to_cryptoki_error(rc, p11card->reader);
 
 set_attr_done:
-	sc_unlock(p11card->card);
 	sc_pkcs15init_unbind(profile);
+	sc_unlock(p11card->card);
 	
 	return rv;
 #endif
