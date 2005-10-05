@@ -1,10 +1,9 @@
 TOPDIR = ..\..
 
-HEADERS = getopt.h
+HEADERS = getopt.h my_getopt.h
 HEADERSDIR = $(TOPDIR)\src\include
 TARGET = common.lib
-OBJECTS = getopt.obj getopt1.obj getpass.obj
-
+OBJECTS = getpass.obj my_getopt.obj
 
 all: install-headers $(TARGET)
 

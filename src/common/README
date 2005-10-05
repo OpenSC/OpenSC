@@ -1,0 +1,140 @@
+my_getopt - a command-line argument parser
+Copyright 1997-2002, Benjamin Sittler
+
+The author can be reached by sending email to <bsittler@iname.com>.
+
+The version of my_getopt in this package (1.4) has a BSD-like license;
+see the file LICENSE for details. Version 1.0 of my_getopt was similar
+to the GPL'ed version of my_getopt included with SMOKE-16 Version 1,
+Release 19990717. SMOKE-16 packages are available from:
+
+  http://geocities.com/bsittler/#smoke16
+
+OVERVIEW OF THE ARGUMENT PARSER
+===============================
+
+The getopt(), getopt_long() and getopt_long_only() functions parse
+command line arguments. The argc and argv parameters passed to these
+functions correspond to the argument count and argument list passed to
+your program's main() function at program start-up. Element 0 of the
+argument list conventionally contains the name of your program. Any
+remaining arguments starting with "-" (except for "-" or "--" by
+themselves) are option arguments, some of include option values. This
+family of getopt() functions allows intermixed option and non-option
+arguments anywhere in the argument list, except that "--" by itself
+causes the remaining elements of the argument list to be treated as
+non-option arguments.
+
+[ See the parts of this document labeled "DOCUMENTATION" and
+  "WHY RE-INVENT THE WHEEL?" for a more information. ]
+
+FILES
+=====
+
+The following four files constitute the my_getopt package:
+
+ LICENSE         - license and warranty information for my_getopt
+ my_getopt.c     - implementation of my getopt replacement
+ my_getopt.h     - interface for my getopt replacement
+ getopt.h        - a header file to make my getopt look like GNU getopt
+
+USAGE
+=====
+
+To use my_getopt in your application, include the following line to
+your main program source:
+
+ #include "getopt.h"
+
+This line should appear after your standard system header files to
+avoid conflicting with your system's built-in getopt.
+
+Then compile my_getopt.c into my_getopt.o, and link my_getopt.o into
+your application:
+
+ $ cc -c my_getopt.c
+ $ ld -o app app.o ... my_getopt.o
+
+To avoid conflicting with standard library functions, the function
+names and global variables used by my_getopt all begin with `my_'. To
+ensure compatibility with existing C programs, the `getopt.h' header
+file uses the C preprocessor to redefine names like getopt, optarg,
+optind, and so forth to my_getopt, my_optarg, my_optind, etc.
+
+SAMPLE PROGRAM
+==============
+
+There is also a public-domain sample program:
+
+ main.c          - main() for a sample program using my_getopt
+ Makefile        - build script for the sample program (called `copy')
+
+To build and test the sample program:
+
+ $ make
+ $ ./copy -help
+ $ ./copy -version
+
+The sample program bears a slight resemblance to the UNIX `cat'
+utility, but can be used rot13-encode streams, and can redirect output
+to a file.
+
+DOCUMENTATION
+=============
+
+There is not yet any real documentation for my_getopt. For the moment,
+use the Linux manual page for getopt. It has its own copyright and
+license; view the file `getopt.3' in a text editor for more details.
+
+ getopt.3        - the manual page for GNU getopt
+ getopt.txt      - preformatted copy of the manual page for GNU getopt,
+                   for your convenience
+
+WHY RE-INVENT THE WHEEL?
+========================
+
+I re-implemented getopt, getopt_long, and getopt_long_only because
+there were noticable bugs in several versions of the GNU
+implementations, and because the GNU versions aren't always available
+on some systems (*BSD, for example.) Other systems don't include any
+sort of standard argument parser (Win32 with Microsoft tools, for
+example, has no getopt.)
+
+These should do all the expected Unix- and GNU-style argument
+parsing, including permution, bunching, long options with single or
+double dashes (double dashes are required if you use
+my_getopt_long,) and optional arguments for both long and short
+options. A word with double dashes all by themselves halts argument
+parsing. A required long option argument can be in the same word as
+the option name, separated by '=', or in the next word. An optional
+long option argument must be in the same word as the option name,
+separated by '='.
+
+As with the GNU versions, a '+' prefix to the short option
+specification (or the POSIXLY_CORRECT environment variable) disables
+permution, a '-' prefix to the short option specification returns 1
+for non-options, ':' after a short option indicates a required
+argument, and '::' after a short option specification indicates an
+optional argument (which must appear in the same word.) If you'd like
+to recieve ':' instead of '?' for missing option arguments, prefix the
+short option specification with ':'.
+
+The original intent was to re-implement the documented behavior of
+the GNU versions, but I have found it necessary to emulate some of
+the undocumented behavior as well. Some programs depend on it.
+
+KNOWN BUGS
+==========
+
+The GNU versions support POSIX-style -W "name=value" long
+options. Currently, my_getopt does not support these, because I
+don't have any documentation on them (other than the fact that they
+are enabled by "W;" in the short option specification.) As a
+temporary workaround, my_getopt treats "W;" in the short option
+string identically to "W:".
+
+The GNU versions support internationalized/localized
+messages. Currently, my_getopt does not.
+
+There should be re-entrant versions of all these functions so that
+multiple threads can parse arguments simultaneously.

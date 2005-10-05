@@ -1,5 +1,5 @@
 /*
- *  getopt.h - cpp wrapper for my_getopt to make it look like getopt.
+ *  my_getopt.h - interface to my re-implementation of getopt.
  *  Copyright 1997, 2000, 2001, 2002, Benjamin Sittler
  *
  *  Permission is hereby granted, free of charge, to any person
@@ -23,34 +23,47 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef MY_WRAPPER_GETOPT_H_INCLUDED
-#define MY_WRAPPER_GETOPT_H_INCLUDED
+#ifndef MY_GETOPT_H_INCLUDED
+#define MY_GETOPT_H_INCLUDED
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "my_getopt.h"
+/* UNIX-style short-argument parser */
+extern int my_getopt(int argc, char * argv[], const char *opts);
 
-#undef getopt
-#define getopt my_getopt
-#undef getopt_long
-#define getopt_long my_getopt_long
-#undef getopt_long_only
-#define getopt_long_only my_getopt_long_only
-#undef _getopt_internal
-#define _getopt_internal _my_getopt_internal
-#undef opterr
-#define opterr my_opterr
-#undef optind
-#define optind my_optind
-#undef optopt
-#define optopt my_optopt
-#undef optarg
-#define optarg my_optarg
+extern int my_optind, my_opterr, my_optopt;
+extern char *my_optarg;
+
+struct option {
+  const char *name;
+  int has_arg;
+  int *flag;
+  int val;
+};
+
+/* human-readable values for has_arg */
+#undef no_argument
+#define no_argument 0
+#undef required_argument
+#define required_argument 1
+#undef optional_argument
+#define optional_argument 2
+
+/* GNU-style long-argument parsers */
+extern int my_getopt_long(int argc, char * argv[], const char *shortopts,
+                       const struct option *longopts, int *longind);
+
+extern int my_getopt_long_only(int argc, char * argv[], const char *shortopts,
+                            const struct option *longopts, int *longind);
+
+extern int _my_getopt_internal(int argc, char * argv[], const char *shortopts,
+                            const struct option *longopts, int *longind,
+                            int long_only);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* MY_WRAPPER_GETOPT_H_INCLUDED */
+#endif /* MY_GETOPT_H_INCLUDED */

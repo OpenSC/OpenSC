@@ -1,0 +1,16 @@
+2002-07-26  Benjamin C. W. Sittler  <bsittler@knownow.com>
+
+	* README: updated for version 1.4
+
+	* my_getopt.c: now we include <sys/types.h> explicitly for those
+	systems that narrowly (mis-)interpret ANSI C and POSIX
+	(_my_getopt_internal): added an explicit cast to size_t to make
+	g++ happy
+
+	* getopt.h, my_getopt.h: added extern "C" { ... } for C++
+	compilation (thanks to Jeff Lawson <bovine@ud.com> and others)
+
+2001-08-20  Benjamin C. W. Sittler  <bsittler@knownow.com>
+
+	* getopt.h (getopt_long_only): fixed typo (thanks to Justin Lee
+	<justin_lee@ud.com>)
