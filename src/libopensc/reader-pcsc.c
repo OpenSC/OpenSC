@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#if defined(__APPLE__) && defined(HAVE_PCSC_OLD)
+#ifdef PCSC_INCLUDE
 #include <PCSC/wintypes.h>
 #include <PCSC/winscard.h>
 #else

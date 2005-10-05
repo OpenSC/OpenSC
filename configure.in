@@ -122,7 +122,7 @@ fi
 
 AC_SUBST(GETOPTSRC)
 AC_CHECK_FUNC(getopt_long, AC_DEFINE(HAVE_GETOPT_LONG, 1, [Define if you have the `getopt_long' function.]),
-              [GETOPTSRC="$GETOPTSRC \$(top_srcdir)/src/common/getopt.c \$(top_srcdir)/src/common/getopt1.c"
+              [GETOPTSRC="$GETOPTSRC \$(top_srcdir)/src/common/my_getopt.c"
                CPPFLAGS="-I\$(top_srcdir)/src/common $CPPFLAGS"
                AC_DEFINE(HAVE_GETOPT_H, 1, [Define if you have the <getopt.h> header file.])])
 
@@ -233,6 +233,9 @@ case "$host" in
 		ac_env_PCSC_LIBS_value=$PCSC_LIBS
 		ac_cv_env_PCSC_LIBS_set=${PCSC_LIBS+set}
 		ac_cv_env_PCSC_LIBS_value=$PCSC_LIBS
+
+		# header files are included via PCSC/*
+		AC_DEFINE(PCSC_INCLUDE, 1, [Header files in PCSC subdirectory])
 	fi
 	;;
 esac
@@ -255,7 +258,7 @@ if test "x$PCSC_MSG" = "xyes"; then
 	LIBS="$PCSC_LIBS $saved_LIBS"
 	AC_TRY_LINK([
 #include <stdlib.h>
-#ifdef __APPLE__
+#ifdef PCSC_INCLUDE
 #include <PCSC/wintypes.h>
 #include <PCSC/winscard.h>
 #else
