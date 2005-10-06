@@ -216,6 +216,15 @@ AC_SUBST(OPENSSL_LIBS)
 
 AM_CONDITIONAL(HAVE_OPENSSL, test "x$OPENSSL_MSG" = "xyes")
 
+PKG_CHECK_MODULES(PCSC, [libpcsclite], [
+        PCSC_MSG=yes
+	AC_DEFINE(HAVE_PCSC, 1, [Have PC/SC implementation])
+        ], [
+        PCSC_MSG=no
+        ])
+AC_SUBST(PCSC_CFLAGS)
+AC_SUBST(PCSC_LIBS)
+
 case "$host" in
 *-*-darwin*)
 	if test -z "$PCSC_LIBS" -a -z "$PCSC_LIBS"
@@ -240,15 +249,6 @@ case "$host" in
 	;;
 esac
 
-PKG_CHECK_MODULES(PCSC, [libpcsclite], [
-        PCSC_MSG=yes
-	AC_DEFINE(HAVE_PCSC, 1, [Have PC/SC implementation])
-        ], [
-        PCSC_MSG=no
-        ])
-AC_SUBST(PCSC_CFLAGS)
-AC_SUBST(PCSC_LIBS)
-
 AM_CONDITIONAL(HAVE_PCSC, test "x$PCSC_MSG" = "xyes")
 
 saved_LIBS="$LIBS"
@@ -258,7 +258,7 @@ if test "x$PCSC_MSG" = "xyes"; then
 	LIBS="$PCSC_LIBS $saved_LIBS"
 	AC_TRY_LINK([
 #include <stdlib.h>
-#ifdef PCSC_INCLUDE
+#ifdef PCSC_INCLUDES_IN_PCSC
 #include <PCSC/wintypes.h>
 #include <PCSC/winscard.h>
 #else
