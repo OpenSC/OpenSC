@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#ifdef PCSC_INCLUDE
+#ifdef PCSC_INCLUDES_IN_PCSC
 #include <PCSC/wintypes.h>
 #include <PCSC/winscard.h>
 #else

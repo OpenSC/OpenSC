@@ -235,7 +235,7 @@ case "$host" in
 		ac_cv_env_PCSC_LIBS_value=$PCSC_LIBS
 
 		# header files are included via PCSC/*
-		AC_DEFINE(PCSC_INCLUDE, 1, [Header files in PCSC subdirectory])
+		AC_DEFINE(PCSC_INCLUDES_IN_PCSC, 1, [Header files in PCSC subdirectory])
 	fi
 	;;
 esac
