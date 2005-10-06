@@ -82,6 +82,7 @@ const struct option options[] = {
 	{ "read-data-object",	required_argument, 0, 	'R' },
 	{ "list-data-objects",	no_argument, 0,		'C' },
 	{ "list-pins",		no_argument, 0,		OPT_LIST_PINS },
+	{ "dump",		no_argument, 0,		'D' },
 	{ "unblock-pin",	no_argument, 0,		'u' },
 	{ "change-pin",		no_argument, 0,		OPT_CHANGE_PIN },
 	{ "list-keys",          no_argument, 0,         'k' },
@@ -109,6 +110,7 @@ const char *option_help[] = {
 	"Reads data object with applicationName or OID <arg>",
 	"Lists data objects",
 	"Lists PIN codes",
+	"Dump card objects",
 	"Unblock PIN code",
 	"Changes the PIN code",
 	"Lists private keys",
@@ -919,6 +921,30 @@ static int list_pins(void)
 	return 0;
 }
 
+static int dump()
+{
+
+	int i;
+	printf("Looking for a PKCS#15 compatible Smart Card... ");
+	fflush(stdout);
+	sc_lock(card);
+	i = sc_pkcs15_bind(card, &p15card);
+	if (i) {
+		fprintf(stderr, "failed: %s\n", sc_strerror(i));
+		return 1;
+	}
+	printf("found.\n");
+
+	list_pins();
+	list_private_keys();
+	list_public_keys();
+	list_certificates();
+	list_data_objects();
+
+	sc_unlock(card);
+	return 0;
+}
+
 static int unblock_pin(void)
 {
 	struct sc_pkcs15_pin_info *pinfo = NULL;
@@ -1114,6 +1140,7 @@ int main(int argc, char * const argv[])
 	int do_read_data_object = 0;
 	int do_list_data_objects = 0;
 	int do_list_pins = 0;
+	int do_dump = 0;
 	int do_list_prkeys = 0;
 	int do_list_pubkeys = 0;
 	int do_read_pubkey = 0;
@@ -1126,7 +1153,7 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:cuko:va:LR:Cw", options, &long_optind);
+		c = getopt_long(argc, argv, "r:cuko:va:LR:CwD", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1160,6 +1187,10 @@ int main(int argc, char * const argv[])
 			break;
 		case OPT_LIST_PINS:
 			do_list_pins = 1;
+			action_count++;
+			break;
+		case 'D':
+			do_dump = 1;
 			action_count++;
 			break;
 		case 'k':
@@ -1290,6 +1321,11 @@ int main(int argc, char * const argv[])
 #endif
 	if (do_list_pins) {
 		if ((err = list_pins()))
+			goto end;
+		action_count--;
+	}
+	if (do_dump) {
+		if ((err = dump()))
 			goto end;
 		action_count--;
 	}
