@@ -245,6 +245,7 @@ case "$host" in
 
 		# header files are included via PCSC/*
 		AC_DEFINE(PCSC_INCLUDES_IN_PCSC, 1, [Header files in PCSC subdirectory])
+		AC_DEFINE(HAVE_PCSC, 1 , [Have PC/SC implementation])
 	fi
 	;;
 esac
