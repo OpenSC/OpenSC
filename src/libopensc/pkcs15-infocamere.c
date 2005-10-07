@@ -307,25 +307,30 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 	card->ctx->suppress_errors--;
 
 	if (r >= 0) {
+		size_t len;
 
 		sc_read_binary(card, 0, certlen, 2, 0);
 
-		/* Now set the certificate offset/len */
-		path.index = 2;
-		path.count = (certlen[1] << 8) + certlen[0];
+		len = (certlen[1] << 8) + certlen[0];
 
-		memset(&cert_info, 0, sizeof(cert_info));
-                memset(&cert_obj,  0, sizeof(cert_obj));
+		if (len != 0) {
+			/* Now set the certificate offset/len */
+			path.index = 2;
+			path.count = len;
 
-		sc_pkcs15_format_id("3", &cert_info.id);
-        	cert_info.authority = authority;
-        	cert_info.path = path;
-        	strncpy(cert_obj.label, calabel, SC_PKCS15_MAX_LABEL_SIZE - 1);
-	        cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
+			memset(&cert_info, 0, sizeof(cert_info));
+	                memset(&cert_obj,  0, sizeof(cert_obj));
 
-		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
-        	if (r < 0)
+			sc_pkcs15_format_id("3", &cert_info.id);
+	        	cert_info.authority = authority;
+	        	cert_info.path = path;
+	        	strncpy(cert_obj.label, calabel, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		        cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
+
+			r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+        		if (r < 0)
         		return SC_ERROR_INTERNAL;
+		}
 	}               
 
         /* add non repudiation PIN */
