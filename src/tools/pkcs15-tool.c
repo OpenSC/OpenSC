@@ -947,6 +947,8 @@ static int dump()
 	printf("\tVersion        : %d\n", p15card->version);
 	printf("\tSerial number  : %s\n", p15card->serial_number);
 	printf("\tManufacturer ID: %s\n", p15card->manufacturer_id);
+	if (p15card->last_update)
+		printf("\tLast update    : %s\n", p15card->last_update);
 	if (p15card->preferred_language)
 		printf("\tLanguage       : %s\n", p15card->preferred_language);
 	printf("\tFlags          : ");
