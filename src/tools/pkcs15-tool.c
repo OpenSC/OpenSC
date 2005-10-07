@@ -924,16 +924,41 @@ static int list_pins(void)
 static int dump()
 {
 
-	int i;
+	const char *flags[] = {
+		"Read-only",
+		"Login required",
+		"PRN generation",
+		"EID compliant"
+	};
+
+	int i, count = 0;
 	printf("Looking for a PKCS#15 compatible Smart Card... ");
 	fflush(stdout);
 	sc_lock(card);
 	i = sc_pkcs15_bind(card, &p15card);
+
 	if (i) {
 		fprintf(stderr, "failed: %s\n", sc_strerror(i));
 		return 1;
 	}
-	printf("found.\n");
+	printf("found.\n\n");
+
+	printf("PKCS#15 Card [%s]:\n", p15card->label);
+	printf("\tVersion        : %d\n", p15card->version);
+	printf("\tSerial number  : %s\n", p15card->serial_number);
+	printf("\tManufacturer ID: %s\n", p15card->manufacturer_id);
+	if (p15card->preferred_language)
+		printf("\tLanguage       : %s\n", p15card->preferred_language);
+	printf("\tFlags          : ");
+	for (i = 0; i < 4; i++) {
+		if ((p15card->flags >> i) & 1) {
+			if (count)
+				printf(", ");
+			printf("%s", flags[i]);
+			count++;
+		}
+	}
+	printf("\n\n");
 
 	list_pins();
 	list_private_keys();
