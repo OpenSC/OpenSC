@@ -517,16 +517,24 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 		goto end;
 
 	if (p15card->file_odf == NULL) {
+		/* check if an ODF is present; suppress errors as we
+		 * don't know yet whether we have a pkcs15 card */
 		tmppath = p15card->file_app->path;
 		sc_append_path_id(&tmppath, (const u8 *) "\x50\x31", 2);
+		card->ctx->suppress_errors++;
+		err = sc_select_file(card, &tmppath, &p15card->file_odf);
+		card->ctx->suppress_errors--;
+		
 	} else {
 		tmppath = p15card->file_odf->path;
 		sc_file_free(p15card->file_odf);
 		p15card->file_odf = NULL;
+		err = sc_select_file(card, &tmppath, &p15card->file_odf);
 	}
-	err = sc_select_file(card, &tmppath, &p15card->file_odf);
-	if (err) /* FIXME: finish writing error reporting stuff */
+	if (err != SC_SUCCESS) {
+		sc_debug(ctx, "EF(ODF) not found in '%s'\n", sc_print_path(&tmppath));
 		goto end;
+	}
 
 	/* XXX: fix buffer overflow. Silently truncate ODF if it
 	 * is too large.  --okir */

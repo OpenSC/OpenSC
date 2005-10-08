@@ -170,7 +170,7 @@ int sc_enum_apps(sc_card_t *card)
 	if (r)
 		return r;
 	if (card->ef_dir->type != SC_FILE_TYPE_WORKING_EF) {
-		sc_error(card->ctx, "EF(DIR) is not a working EF.\n");
+		sc_debug(card->ctx, "EF(DIR) is not a working EF.\n");
 		sc_file_free(card->ef_dir);
 		card->ef_dir = NULL;
 		return SC_ERROR_INVALID_CARD;
