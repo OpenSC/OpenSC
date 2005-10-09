@@ -22,16 +22,15 @@
 #include <config.h>
 #endif
 
+#ifdef HAVE_OPENSSL
+#include <openssl/crypto.h>     /* for OPENSSL_cleanse */
+#endif
+
 #include "internal.h"
-#include "asn1.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
-#ifdef HAVE_OPENSSL
-#include <openssl/crypto.h>	/* for OPENSSL_cleanse */
-#endif
 
 #ifdef VERSION
 const char *sc_version = VERSION;
