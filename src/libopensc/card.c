@@ -164,8 +164,8 @@ static int sc_transceive(sc_card_t *card, sc_apdu_t *apdu)
 	switch (apdu->cse) {
 	case SC_APDU_CASE_1:
 		if (card->slot->active_protocol == SC_PROTO_T0)
-			/* TO adds an additional 0x00 byte to the TPDU */
-			*data++;
+			/* T0 adds an additional 0x00 byte to the TPDU */
+			*data++ = 0x00;
 		break;
 	case SC_APDU_CASE_2_SHORT:
 		*data++ = (u8) apdu->le;
