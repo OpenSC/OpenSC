@@ -100,7 +100,7 @@
           <command>netkey-tool</command> will tell you which one is needed.</para></listitem>
         </varlistentry>
         <varlistentry>
-          <term><option>change</option> { <option>pin</option> | <option>puk</otpion> |
+          <term><option>change</option> { <option>pin</option> | <option>puk</option> |
           <option>pin0</option> | <option>pin1</option> } new-pin</term>
           <listitem><para>This changes the value of the specified pin to the given new value.
           You must specify either the current value of the pin or another pin to be able to do
