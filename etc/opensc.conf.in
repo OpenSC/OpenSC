@@ -80,7 +80,7 @@ app default {
 		#                    The Sun SCF reader may require this
 		# Default: none
 		#
-		apdu_masquerade = case4as3, case1as2;
+		apdu_masquerade = none;
 		#
 		# This sets the maximum send and receive sizes.
 		# Some IFD handlers do not properly handle APDUs with
