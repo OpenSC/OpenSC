@@ -4,9 +4,6 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#ifdef HAVE_GETOPT_H
-#include <getopt.h>
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +16,9 @@
 #include <unistd.h>
 #endif
 #include <sys/stat.h>
+#ifdef HAVE_GETOPT_H
+#include <getopt.h>
+#endif
 #include <opensc/opensc.h>
 
 #ifdef __cplusplus

@@ -21,7 +21,6 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#include <getopt.h>
 
 #include <opensc/pkcs11.h>
 #include "util.h"
