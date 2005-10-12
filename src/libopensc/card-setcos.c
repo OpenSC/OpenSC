@@ -499,8 +499,11 @@ static int setcos_create_file(sc_card_t *card, sc_file_t *file)
 			for (i = 0; i < 6; i++)
 				idx[i] = ef_idx[i];
 		}
-		for (i = 0; i < 6; i++)
-			buf[i] = acl_to_byte(file->acl[idx[i]]);
+		for (i = 0; i < 6; i++) {
+			const struct sc_acl_entry *entry;
+			entry = sc_file_get_acl_entry(file, idx[i]);
+			buf[i] = acl_to_byte(entry);
+		}
 
 		sc_file_set_sec_attr(file, buf, 6);
 	}
