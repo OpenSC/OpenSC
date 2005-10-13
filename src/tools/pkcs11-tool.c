@@ -243,7 +243,7 @@ static CK_ULONG		get_private_key_length(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE
 #endif
 
 int
-main(int argc, char * const argv[])
+main(int argc, char * argv[])
 {
 	CK_SESSION_HANDLE session = CK_INVALID_HANDLE;
 	CK_OBJECT_HANDLE object = CK_INVALID_HANDLE;
