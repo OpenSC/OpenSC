@@ -51,7 +51,7 @@ static const struct sc_card_operations *iso_ops = NULL;
 
 typedef struct tcos_data_st {
 	unsigned int pad_flags;
-	unsigned int default_sec_env;
+	unsigned int sign_with_def_env;
 } tcos_data;
 
 static int tcos_finish(sc_card_t *card)
@@ -596,30 +596,44 @@ static int tcos_delete_file(sc_card_t *card, const sc_path_t *path)
 /* Crypto operations */
 
 
-/* Although the TCOS manual says that the manage security environment
-   is compatible with 7816-8.2 we use our own implementation here.
-   The problem is that I don't have the ISO specs and Juha's 7816 code
-   uses parameters which are not described in the TCOS specs.  [wk] 
+/* TCOS has two kind of RSA-keys: signature-keys and encryption-keys
+   signature-keys: can be used for sign-operations only and can be used
+     only within the default security environment. hence must be
+     stored as local key 0, a SetSecEnv-cmd must not be used (if you
+     do - even with default parameters - it will fail with 6A88)
+   encryption-keys: can be used for both sign- and decipher-operations,
+     can be used within any security environment, a SetSecEnv-cmd
+     must be used (even if you want to use the default security environment
+     you must a SetSecEnv-cmd with default parameters)
+   Unfortunately we cannot find out wether the referenced key is a
+   signature-key or encryption-key when this routine is called. Therefore
+   we have a problem if the key-reference is 0x80. If the referenced key
+   was a signature-key a SetSecEnv must not be used, if the key was an
+   encryption-key it must be used.
+   Therefore we suppress error-messages in this case, try a SetSecEnv-cmd
+   with default parameters and watch out for 6A88-responses [pk_opensc@web.de]
 */
 static int tcos_set_security_env(sc_card_t *card,
                                  const sc_security_env_t *env,
                                  int se_num)
 {
+	sc_context_t *ctx;
 	sc_apdu_t apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 *p;
-	int r, locked = 0;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE], *p;
+	int r, sign_with_def_env=0;
 
 	assert(card != NULL && env != NULL);
-        if (se_num) 
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+	ctx = card->ctx;
 
-	/* for signature-computation with local key 0 the default security environment
-           will be used automatically, so we return immediately. */
-	if (env->operation == SC_SEC_OPERATION_SIGN && env->key_ref_len==1 && *env->key_ref==0x80 ) {
-		((tcos_data *)card->drv_data)->default_sec_env = 1;
-		return 0;
-	} else ((tcos_data *)card->drv_data)->default_sec_env = 0;
+        if (se_num) SC_FUNC_RETURN(ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+
+	if(ctx->debug >= 3) sc_debug(ctx, "Security Environment %d:%02X\n", env->key_ref_len, *env->key_ref);
+	if(env->operation == SC_SEC_OPERATION_SIGN &&
+	   (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || (env->key_ref_len==1 && *env->key_ref==0x80))
+	){
+		if (ctx->debug >= 3) sc_debug(ctx, "Sign-Operation with Default Security Environment\n");
+		sign_with_def_env=1;
+	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
 	switch (env->operation) {
@@ -627,8 +641,9 @@ static int tcos_set_security_env(sc_card_t *card,
 	case SC_SEC_OPERATION_SIGN:
 		apdu.p1 = 0xC1;
 		apdu.p2 = 0xB8;
-		/* save padding flags */
+		/* save padding flags and default secEnv indictor */
 		((tcos_data *)card->drv_data)->pad_flags = env->algorithm_flags;
+		((tcos_data *)card->drv_data)->sign_with_def_env = sign_with_def_env;
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -642,10 +657,7 @@ static int tcos_set_security_env(sc_card_t *card,
 		*p++ = env->algorithm_ref & 0xFF;
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
-		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
-			*p++ = 0x83;
-		else
-			*p++ = 0x84;
+		*p++ = (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC) ? 0x83 : 0x84;
 		*p++ = env->key_ref_len;
 		memcpy(p, env->key_ref, env->key_ref_len);
 		p += env->key_ref_len;
@@ -655,33 +667,25 @@ static int tcos_set_security_env(sc_card_t *card,
 	apdu.datalen = r;
 	apdu.data = sbuf;
 	apdu.resplen = 0;
-	if (se_num > 0) {
-		r = sc_lock(card);
-		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-		locked = 1;
-	}
+
 	if (apdu.datalen != 0) {
 		r = sc_transmit_apdu(card, &apdu);
 		if (r) {
-			sc_perror(card->ctx, r, "APDU transmit failed");
-			goto err;
+			sc_perror(ctx, r, "APDU transmit failed");
+			return r;
 		}
+		if (sign_with_def_env && apdu.sw1==0x6A && apdu.sw2==0x88) return 0;
+		((tcos_data *)card->drv_data)->sign_with_def_env = sign_with_def_env = 0;
+
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (r) {
-			sc_perror(card->ctx, r, "Card returned error");
-			goto err;
+			sc_perror(ctx, r, "Card returned error");
+			return r;
 		}
 	}
-	if (se_num <= 0)
-		return 0;
-	sc_unlock(card);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
-err:
-	if (locked)
-		sc_unlock(card);
-	return r;
+	return 0;
 }
+
 
 /* See tcos_set_security_env() for comments.  So we always return
    success */
@@ -707,7 +711,7 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 
 	if (datalen > 255) SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 
-	if(((tcos_data *)card->drv_data)->default_sec_env){
+	if(((tcos_data *)card->drv_data)->sign_with_def_env){
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
 		memcpy(sbuf, data, datalen);
 	} else {
