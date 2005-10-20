@@ -1,0 +1,32 @@
+OpenSC documentation is now maintained in our online wiki at
+	http://www.opensc.org/opensc/
+and a copy in html format is provided in the doc/ directory
+with all releases or snapshots of OpenSC in tar.gz files.
+
+Please take a look at the documentation before trying to
+install OpenSC. Most important are the pages
+	
+	OverView
+A short introduction what OpenSC is and how it fits into the big picture. 
+
+	WhatsNew
+What is new, what has changed since the last major release? 
+
+	OperatingSystems
+What your operating system needs to have for OpenSC to work. 
+
+	CompilingInstalling
+How to compile and install OpenSC yourself. 
+
+	QuickStart
+installation and basic steps to initialize a blank smart card. 
+
+	UsingOpensc
+options when using OpenSC. 
+
+
+Also check the specific pages of the smart cards or crypto tokens you want
+to use. If you have any trouble the MailingLists page will tell you how
+to contact us for help.
+
+Regards, the OpenSC Team.
