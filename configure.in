@@ -15,7 +15,7 @@ AC_CONFIG_SRCDIR(src/libopensc/sc.c)
 #   (Interfaces added/removed/changed:  CURRENT++, REVISION=0)
 #   (Interfaces added:                  AGE++)
 #   (Interfaces removed:                AGE=0)
-OPENSC_LT_CURRENT=1
+OPENSC_LT_CURRENT=2
 OPENSC_LT_REVISION=0
 OPENSC_LT_AGE=0
 
