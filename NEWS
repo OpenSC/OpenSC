@@ -1,6 +1,12 @@
 NEWS for OpenSC -- History of user visible changes
 
-New in 0.10.x; not yet released
+Please also see doc/WhatsNew.html or
+http://www.opensc.org/opensc/wiki/WhatsNew
+
+Also see the svn changelog using svn command
+or doc/ChangeLog.
+
+New in 0.10.0-rc1; Andreas Jellinghaus
 * New generic ATR/card matching code with
   atrmask support, used by all card drivers.
 * Much improved and unified ATR handling in
