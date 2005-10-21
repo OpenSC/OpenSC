@@ -2976,7 +2976,7 @@ test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	};
 	FILE			*f;
 
-	printf("\n*** We allready opened a session and logged in ***\n");
+	printf("\n*** We already opened a session and logged in ***\n");
 
 	num_mechs = get_mechanisms(slot, &mech_type, -1);
 	for (i = 0; i < num_mechs; i++) {
