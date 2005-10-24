@@ -8,7 +8,7 @@ HEADERSDIR = $(TOPDIR)\src\include\opensc
 OBJECTS = profile.obj pkcs15-lib.obj keycache.obj \
           pkcs15-miocos.obj pkcs15-gpk.obj pkcs15-cflex.obj \
           pkcs15-etoken.obj pkcs15-jcop.obj pkcs15-starcos.obj \
-          pkcs15-oberthur.obj pkcs15-setcos.obj
+          pkcs15-oberthur.obj pkcs15-setcos.obj pkcs15-incrypto34.obj
 
 all: install-headers $(TARGET)
 

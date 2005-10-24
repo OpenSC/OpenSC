@@ -148,6 +148,7 @@ static struct profile_operations {
 	{ "starcos", (void *) sc_pkcs15init_get_starcos_ops },
 	{ "oberthur", (void *) sc_pkcs15init_get_oberthur_ops },
 	{ "setcos", (void *) sc_pkcs15init_get_setcos_ops },
+	{ "incrypto34", (void *) sc_pkcs15init_get_incrypto34_ops },
 	{ NULL, NULL },
 };
 

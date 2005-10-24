@@ -109,7 +109,18 @@ enum {
 	SC_CARDCTL_SETCOS_PUTDATA,
 	SC_CARDCTL_SETCOS_GETDATA,
 	SC_CARDCTL_SETCOS_GENERATE_STORE_KEY,
-	SC_CARDCTL_SETCOS_ACTIVATE_FILE
+	SC_CARDCTL_SETCOS_ACTIVATE_FILE,
+
+	/*
+	 * Incrypto34 specific calls
+	 */
+	SC_CARDCTL_INCRYPTO34_BASE = _CTL_PREFIX('I', '3', '4'),
+	SC_CARDCTL_INCRYPTO34_PUT_DATA_FCI,
+	SC_CARDCTL_INCRYPTO34_PUT_DATA_OCI,
+	SC_CARDCTL_INCRYPTO34_PUT_DATA_SECI,
+	SC_CARDCTL_INCRYPTO34_GENERATE_KEY,
+	SC_CARDCTL_INCRYPTO34_CHANGE_KEY_DATA,
+	SC_CARDCTL_INCRYPTO34_ERASE_FILES
 };
 
 enum {
@@ -194,6 +205,22 @@ struct sc_cardctl_etoken_obj_info {
 };
 
 struct sc_cardctl_etoken_genkey_info {
+	unsigned int	key_id;
+	unsigned int	key_bits;
+	unsigned short	fid;
+};
+
+/*
+ * Incrypto34 PIN info
+ */
+struct sc_cardctl_incrypto34_obj_info {
+	u8 *		data;
+	size_t		len;
+	unsigned int	key_id;
+	unsigned int	key_class;
+};
+
+struct sc_cardctl_incrypto34_genkey_info {
 	unsigned int	key_id;
 	unsigned int	key_bits;
 	unsigned short	fid;

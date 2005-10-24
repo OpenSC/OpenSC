@@ -34,7 +34,7 @@ extern "C" {
 #define SC_LOG_TYPE_DEBUG	2
 
 /* You can't do #ifndef __FUNCTION__ */
-#if !defined(__GNUC__) && !defined(__IBMC__)
+#if !defined(__GNUC__) && !defined(__IBMC__) && !(defined(_MSC_VER) && (_MSC_VER >= 1300))
 #define __FUNCTION__ NULL
 #endif
 
