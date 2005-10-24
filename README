@@ -11,6 +11,13 @@ A short introduction what OpenSC is and how it fits into the big picture.
 
 	WhatsNew
 What is new, what has changed since the last major release? 
+Also see this section for a list of incompatibilities.
+
+Short list: libopensc is now version 2.0.0, i.e. you need to
+recompile applications using opensc. And all libraries and
+the opensc-pkcs11.so module moved from lib/pkcs11/ or lib/opensc/
+to simply lib/. That fixes a number of problems, but you might
+need to change some configuration.
 
 	OperatingSystems
 What your operating system needs to have for OpenSC to work. 
