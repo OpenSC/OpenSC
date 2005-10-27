@@ -56,7 +56,7 @@ static struct sc_atr_table etoken_atrs[] = {
 	{ "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
 	/* Another Italian InfocamereCard */
 	{ "3b:fc:98:00:ff:c1:10:31:fe:55:c8:03:49:6e:66:6f:63:61:6d:65:72:65:28", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
-	{ "0x3b, 0xf4, 0x98, 0x00, 0xff, 0xc1, 0x10, 0x31, 0xfe, 0x55, 0x4d, 0x34, 0x63, 0x76, 0xb4", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL},
+	{ "3b:f4:98:00:ff:c1:10:31:fe:55:4d:34:63:76:b4", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
