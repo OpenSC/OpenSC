@@ -331,7 +331,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
         		if (r < 0)
         		return SC_ERROR_INTERNAL;
 		}
-	}               
+	}
 
         /* add non repudiation PIN */
 
@@ -371,14 +371,6 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 	return SC_SUCCESS;
 }
 
-#ifdef HAVE_ZLIB_H
-
-static const u8 ATR_1400[] =
-    { 0x3b, 0xfc, 0x98, 0x00, 0xff, 0xc1, 0x10, 0x31, 0xfe, 0x55, 0xc8,
-	0x03, 0x49, 0x6e, 0x66, 0x6f, 0x63, 0x61, 0x6d, 0x65, 0x72, 0x65,
-	    0x28
-};
-
 static int infocamere_1400_set_sec_env(struct sc_card *card,
 				       const struct sc_security_env *env,
 				       int se_num)
@@ -396,6 +388,75 @@ static int infocamere_1400_set_sec_env(struct sc_card *card,
 		return r;
 }
 
+#ifdef HAVE_ZLIB_H
+
+static const u8 ATR_1400[] =
+    { 0x3b, 0xfc, 0x98, 0x00, 0xff, 0xc1, 0x10, 0x31, 0xfe, 0x55, 0xc8,
+	0x03, 0x49, 0x6e, 0x66, 0x6f, 0x63, 0x61, 0x6d, 0x65, 0x72, 0x65,
+	0x28
+};
+
+/* Loads certificates.
+* Certificates are stored in a ZLib compressed form with
+* a 4 byte header, so we extract, decompress and cache
+* them.
+*/
+static int loadCertificate(sc_pkcs15_card_t * p15card, int i,
+			   const char *certPath, const char *certLabel)
+{
+	unsigned char *compCert = NULL, *cert = NULL, size[2];
+	unsigned long int compLen, len;
+	sc_pkcs15_cert_info_t cert_info;
+	sc_pkcs15_object_t cert_obj;
+	sc_path_t cpath;
+	sc_card_t *card = p15card->card;
+	sc_pkcs15_id_t id;
+	int r;
+
+	memset(&cert_info, 0, sizeof(cert_info));
+	memset(&cert_obj, 0, sizeof(cert_obj));
+
+	sc_format_path(certPath, &cpath);
+
+	if (sc_select_file(card, &cpath, NULL) != SC_SUCCESS)
+		return SC_ERROR_WRONG_CARD;
+
+	sc_read_binary(card, 2, size, 2, 0);
+
+	compLen = (size[0] << 8) + size[1];
+	compCert =
+	    (unsigned char *) malloc(compLen * sizeof(unsigned char));
+	len = 4 * compLen;	/*Approximation of the uncompressed size */
+	cert = (unsigned char *) malloc(len * sizeof(unsigned char));
+
+	sc_read_binary(card, 4, compCert, compLen, 0);
+
+	if ((r = uncompress(cert, &len, compCert, compLen)) != Z_OK) {
+		sc_error(p15card->card->ctx, "Zlib error: %d", r);
+		return SC_ERROR_INTERNAL;
+	}
+
+	cpath.index = 0;
+	cpath.count = len;
+
+	sc_pkcs15_cache_file(p15card, &cpath, cert, len);
+
+	id.len=1;
+	id.value[0] = i + 1;
+
+	cert_info.id = id;
+	cert_info.path = cpath;
+	cert_info.authority = (i == 2);
+
+	strncpy(cert_obj.label, certLabel, SC_PKCS15_MAX_LABEL_SIZE - 1);
+	cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
+
+	sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+
+	return SC_SUCCESS;
+}
+
+
 static int infocamere_1400_init(sc_pkcs15_card_t * p15card)
 {
 	sc_card_t *card = p15card->card;
@@ -403,7 +464,8 @@ static int infocamere_1400_init(sc_pkcs15_card_t * p15card)
 	sc_pkcs15_id_t id, auth_id;
 	unsigned char serial[16];
 	int flags;
-	int i, r;
+	int r;
+	int hasAuthCert = 0;
 
 	const char *certLabel[] = { "User Non-repudiation Certificate",
 		"User Authentication Certificate",
@@ -452,85 +514,61 @@ static int infocamere_1400_init(sc_pkcs15_card_t * p15card)
 	set_string(&p15card->label, "Infocamere 1400 Card");
 	set_string(&p15card->manufacturer_id, "Infocamere");
 
-	/* Adding certificates.
-	 * Certificates are stored in a ZLib compressed form with
-	 * a 4 byte header, so we extract, decompress and cache
-	 * them.
-	 */
-	for (i = 0; i < 3; i++) {
-		unsigned char *compCert = NULL, *cert = NULL, size[2];
-		unsigned int compLen, len;
-		sc_pkcs15_cert_info_t cert_info;
-		sc_pkcs15_object_t cert_obj;
-		sc_path_t cpath;
-
-		memset(&cert_info, 0, sizeof(cert_info));
-		memset(&cert_obj, 0, sizeof(cert_obj));
-
-		sc_format_path(certPath[i], &cpath);
-
-		if (sc_select_file(card, &cpath, NULL) != SC_SUCCESS)
-			return SC_ERROR_WRONG_CARD;
-
-		sc_read_binary(card, 2, size, 2, 0);
-
-		compLen = (size[0] << 8) + size[1];
-		compCert =
-		    (unsigned char *) malloc(compLen *
-					     sizeof(unsigned char));
-		len = 3 * compLen;	/*Approximation of the uncompressed size */
-		cert =
-		    (unsigned char *) malloc(len * sizeof(unsigned char));
-
-		sc_read_binary(card, 4, compCert, compLen, 0);
-
-		if (uncompress
-		    (cert, (unsigned long int *) &len, compCert,
-		     compLen) != Z_OK)
-			return SC_ERROR_INTERNAL;
-
-		cpath.index = 0;
-		cpath.count = len;
-
-		sc_pkcs15_cache_file(p15card, &cpath, cert, len);
-
-		id.value[0] = i + 1;
-
-		cert_info.id = id;
-		cert_info.path = cpath;
-		cert_info.authority = (i == 2);
-
-		strncpy(cert_obj.label, certLabel[i],
-			SC_PKCS15_MAX_LABEL_SIZE - 1);
-		cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
-
-		sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+	if ((r = loadCertificate(p15card, 0, certPath[0], certLabel[0])) !=
+	    SC_SUCCESS) {
+		sc_error(p15card->card->ctx, "%s", sc_strerror(r));
+		return SC_ERROR_WRONG_CARD;
 	}
 
+	hasAuthCert =
+	    loadCertificate(p15card, 1, certPath[1],
+			    certLabel[1]) == SC_SUCCESS;
+	loadCertificate(p15card, 2, certPath[2], certLabel[2]);
 
 	flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
 	    SC_PKCS15_PIN_FLAG_INITIALIZED |
 	    SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
 
 	/* adding PINs & private keys */
-	for (i = 0; i < 2; i++) {
+
+	sc_format_path("30004000", &path);
+	id.value[0] = 1;
+
+	sc_pkcs15emu_add_pin(p15card, &id,
+			     pinLabel[0], &path, 1,
+			     SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
+			     5, 8, flags, retries[0], 0,
+			     SC_PKCS15_CO_FLAG_MODIFIABLE |
+			     SC_PKCS15_CO_FLAG_PRIVATE);
+
+	sc_format_path(keyPath[0], &path);
+	auth_id.value[0] = 1;
+	sc_pkcs15emu_add_prkey(p15card, &id,
+			       keyLabel[0],
+			       SC_PKCS15_TYPE_PRKEY_RSA,
+			       1024, usage[0],
+			       &path, 1,
+			       &auth_id, SC_PKCS15_CO_FLAG_PRIVATE);
+
+
+	if (hasAuthCert) {
 		sc_format_path("30004000", &path);
-		id.value[0] = i + 1;
+		id.value[0] = 2;
 
 		sc_pkcs15emu_add_pin(p15card, &id,
-				     pinLabel[i], &path, i + 1,
+				     pinLabel[1], &path, 2,
 				     SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-				     5, 8, flags, retries[i], 0,
+				     5, 8, flags, retries[1], 0,
 				     SC_PKCS15_CO_FLAG_MODIFIABLE |
 				     SC_PKCS15_CO_FLAG_PRIVATE);
 
-		sc_format_path(keyPath[i], &path);
-		auth_id.value[0] = i + 1;
+		sc_format_path(keyPath[1], &path);
+		auth_id.value[0] = 2;
 		sc_pkcs15emu_add_prkey(p15card, &id,
-				       keyLabel[i],
+				       keyLabel[1],
 				       SC_PKCS15_TYPE_PRKEY_RSA,
-				       1024, usage[i],
-				       &path, i + 1,
+				       1024, usage[1],
+				       &path, 2,
 				       &auth_id,
 				       SC_PKCS15_CO_FLAG_PRIVATE);
 	}
@@ -540,9 +578,147 @@ static int infocamere_1400_init(sc_pkcs15_card_t * p15card)
 	sc_select_file(card, &path, NULL);
 
 	return SC_SUCCESS;
-}
+	}
 
 #endif
+
+static const u8 ATR_1600[] = { 0x3B, 0xF4, 0x98, 0x00, 0xFF, 0xC1, 0x10,
+	0x31, 0xFE, 0x55, 0x4D, 0x34, 0x63, 0x76, 0xB4
+};
+
+static int infocamere_1600_init(sc_pkcs15_card_t * p15card)
+{
+	sc_card_t *card = p15card->card;
+	sc_path_t path;
+	sc_pkcs15_id_t id, auth_id;
+	unsigned char serial[17];
+	int flags;
+	int r;
+	int hasAuthCert = 0;
+
+	const char *certLabel[] = { "User Non-repudiation Certificate",
+		"User Authentication Certificate"
+	};
+
+	const char *certPath[] = { "200020010008", "20002001000E" };
+
+	const char *pinLabel[] =
+	    { "Non-repudiation PIN", "Authentication PIN" };
+	int retries[] = { 3, -1 };
+
+	const char *keyPath[] = { "200020010004", "20002001000A" };
+	const char *keyLabel[] =
+	    { "Non repudiation Key", "Authentication Key" };
+	static int usage[] = { SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,
+		SC_PKCS15_PRKEY_USAGE_SIGN
+		    | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
+		    | SC_PKCS15_PRKEY_USAGE_ENCRYPT
+		    | SC_PKCS15_PRKEY_USAGE_DECRYPT
+	};
+
+	auth_id.len = 1;
+	id.len = 1;
+
+	/* OpenSC doesn't define constants to identify BSOs for
+	 * restoring security environment, so we overload
+	 * the set_security_env function to support restore_sec_env */
+	set_security_env = card->ops->set_security_env;
+	card->ops->set_security_env = infocamere_1400_set_sec_env;
+	card->ops->compute_signature = do_sign;
+
+	sc_format_path("200020012002", &path);
+
+	r = sc_select_file(card, &path, NULL);
+
+	if (r != SC_SUCCESS)
+		return SC_ERROR_WRONG_CARD;
+
+	sc_read_binary(card, 30, serial, 16, 0);
+	serial[16] = '\0';
+
+	set_string(&p15card->serial_number, (char *) serial);
+	set_string(&p15card->label, "Infocamere 1600 Card");
+	set_string(&p15card->manufacturer_id, "Infocamere");
+
+	/* Adding certificates.
+	 * Certificates are stored in a ZLib compressed form with
+	 * a 4 byte header, so we extract, decompress and cache
+	 * them.
+	 */
+	sc_format_path(certPath[0], &path);
+	if (sc_select_file(card, &path, NULL) != SC_SUCCESS)
+		return SC_ERROR_WRONG_CARD;
+
+	id.value[0] = 1;
+
+	sc_pkcs15emu_add_cert(p15card,
+			      SC_PKCS15_TYPE_CERT_X509, 0,
+			      &path, &id, certLabel[0],
+			      SC_PKCS15_CO_FLAG_MODIFIABLE);
+
+	sc_format_path(certPath[1], &path);
+	if (sc_select_file(card, &path, NULL) == SC_SUCCESS) {
+		hasAuthCert = 1;
+
+		id.value[0] = 2;
+
+		sc_pkcs15emu_add_cert(p15card,
+				      SC_PKCS15_TYPE_CERT_X509, 1,
+				      &path, &id, certLabel[1],
+				      SC_PKCS15_CO_FLAG_MODIFIABLE);
+	}
+
+	flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
+	    SC_PKCS15_PIN_FLAG_INITIALIZED |
+	    SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
+
+	/* adding PINs & private keys */
+	sc_format_path("2000", &path);
+	id.value[0] = 1;
+
+	sc_pkcs15emu_add_pin(p15card, &id,
+			     pinLabel[0], &path, 1,
+			     SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
+			     5, 8, flags, retries[0], 0,
+			     SC_PKCS15_CO_FLAG_MODIFIABLE |
+			     SC_PKCS15_CO_FLAG_PRIVATE);
+
+	sc_format_path(keyPath[0], &path);
+	auth_id.value[0] = 1;
+	sc_pkcs15emu_add_prkey(p15card, &id,
+			       keyLabel[0],
+			       SC_PKCS15_TYPE_PRKEY_RSA,
+			       1024, usage[0],
+			       &path, 1,
+			       &auth_id, SC_PKCS15_CO_FLAG_PRIVATE);
+
+	if (hasAuthCert) {
+		id.value[0] = 2;
+
+		sc_pkcs15emu_add_pin(p15card, &id,
+				     pinLabel[1], &path, 2,
+				     SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
+				     5, 8, flags, retries[1], 0,
+				     SC_PKCS15_CO_FLAG_MODIFIABLE |
+				     SC_PKCS15_CO_FLAG_PRIVATE);
+
+		sc_format_path(keyPath[1], &path);
+		auth_id.value[0] = 2;
+		sc_pkcs15emu_add_prkey(p15card, &id,
+				       keyLabel[1],
+				       SC_PKCS15_TYPE_PRKEY_RSA,
+				       1024, usage[1],
+				       &path, 2,
+				       &auth_id,
+				       SC_PKCS15_CO_FLAG_PRIVATE);
+	}
+
+	/* return to MF */
+	sc_format_path("3F00", &path);
+	r = sc_select_file(card, &path, NULL);
+
+	return SC_SUCCESS;
+}
 
 static int infocamere_detect_card(sc_pkcs15_card_t * p15card)
 {
@@ -563,16 +739,15 @@ int sc_pkcs15emu_infocamere_init_ex(sc_pkcs15_card_t * p15card,
 		if (infocamere_detect_card(p15card))
 			return SC_ERROR_WRONG_CARD;
 	}
-#ifdef HAVE_ZLIB_H
 
-	if (memcmp(p15card->card->atr, ATR_1400, sizeof(ATR_1400)) == 0)
+	if (memcmp(p15card->card->atr, ATR_1600, sizeof(ATR_1600)) == 0)
+		return infocamere_1600_init(p15card);
+#ifdef HAVE_ZLIB_H
+	else if (memcmp(p15card->card->atr, ATR_1400, sizeof(ATR_1400)) ==
+		 0)
 		return infocamere_1400_init(p15card);
+#endif
 	else
 		return infocamere_1200_init(p15card);
 
-#else
-
-	return infocamere_1200_init(p15card);
-
-#endif
 }
