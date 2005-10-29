@@ -34,6 +34,9 @@
 
 #ifdef HAVE_READER_H
 #include <reader.h>
+#ifdef HOST_TO_CCID_32
+#define PINPAD_ENABLED
+#endif
 #endif
 
 /* Default timeout value for SCardGetStatusChange
@@ -436,10 +439,11 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	int r;
-#ifdef CM_IOCTL_GET_FEATURE_REQUEST
+#ifdef PINPAD_ENABLED
 	int i;
 	u8 feature_buf[256];
 	DWORD feature_len;
+	PCSC_TLV_STRUCTURE *pcsc_tlv;
 #endif
 
 	r = refresh_slot_attributes(reader, slot);
@@ -465,28 +469,33 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	pslot->pcsc_card = card_handle;
 
 	/* check for pinpad support */
-#ifdef CM_IOCTL_GET_FEATURE_REQUEST
+#ifdef PINPAD_ENABLED
 	sc_debug(reader->ctx, "Requesting reader features ... ");
 
 	rv = SCardControl(pslot->pcsc_card, CM_IOCTL_GET_FEATURE_REQUEST, NULL,
 	                  0, feature_buf, sizeof(feature_buf), &feature_len);
 	if (rv == SCARD_S_SUCCESS) {
-		if (!(feature_len % 6)) {
-			for (i = 0; i < feature_len; i += 6) {
-				if (feature_buf[i] == FEATURE_VERIFY_PIN_DIRECT) {
+		
+		if (!(feature_len % sizeof(PCSC_TLV_STRUCTURE))) {
+			/* get the number of elements instead of the complete size */
+			feature_len /= sizeof(PCSC_TLV_STRUCTURE);
+
+			pcsc_tlv = (PCSC_TLV_STRUCTURE *)feature_buf;
+			for (i = 0; i < feature_len; i++) {
+				if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_DIRECT) {
 					sc_debug(reader->ctx, "Reader supports pinpad PIN verification");
-					pslot->verify_ioctl = dw2i_be(feature_buf, i + 2);
+					pslot->verify_ioctl = pcsc_tlv[i].value;
 					if (priv->gpriv->enable_pinpad) {
 						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
 					}
-				} else if (feature_buf[i] == FEATURE_MODIFY_PIN_DIRECT) {
+				} else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_DIRECT) {
 					sc_debug(reader->ctx, "Reader supports pinpad PIN modification");
-					pslot->modify_ioctl = dw2i_be(feature_buf, i + 2);
+					pslot->modify_ioctl = pcsc_tlv[i].value;
 					if (priv->gpriv->enable_pinpad) {
 						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
 					}
 				} else {
-					sc_debug(reader->ctx, "Reader pinpad feature: %02x not recognized", feature_buf[i]);
+					sc_debug(reader->ctx, "Reader pinpad feature: %02x not recognized", pcsc_tlv[i].tag);
 				}
 			}
 		} else
@@ -494,7 +503,7 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	} else {
 		PCSC_ERROR(reader->ctx, "SCardControl failed", rv)
 	}
-#endif /* CM_IOCTL_GET_FEATURE_REQUEST */
+#endif /* PINPAD_ENABLED */
 	return SC_SUCCESS;
 }
 
@@ -729,6 +738,7 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
  * Similar to CCID in spirit.
  */
 
+#ifdef PINPAD_ENABLED
 /* Local definitions */
 #define SC_CCID_PIN_TIMEOUT        30
 
@@ -742,22 +752,23 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 /* Build a pin verification block + APDU */
 static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
 {
-	size_t buflen, count = 0;
+	int offset = 0, count = 0;
 	sc_apdu_t *apdu = data->apdu;
 	u8 tmp;
-	buflen = sizeof(buf);
-
+	uint16_t tmp16;
+	PIN_VERIFY_STRUCTURE *pin_verify  = (PIN_VERIFY_STRUCTURE *)buf; 
+	
 	/* PIN verification control message */
-	buf[count++] = SC_CCID_PIN_TIMEOUT;	/* bTimeOut */
-	buf[count++] = SC_CCID_PIN_TIMEOUT;	/* bTimeOut2 */
-
+	pin_verify->bTimerOut = SC_CCID_PIN_TIMEOUT;
+	pin_verify->bTimerOut2 = SC_CCID_PIN_TIMEOUT;
+	
 	/* bmFormatString */
 	tmp = 0x00;
 	if (data->pin1.encoding == SC_PIN_ENCODING_ASCII) {
 		tmp |= SC_CCID_PIN_ENCODING_ASCII;
 
 		/* if the effective pin length offset is specified, use it */
-		if (data->pin1.length_offset > 3) {
+		if (data->pin1.length_offset > 4) {
 			tmp |= SC_CCID_PIN_UNITS_BYTES;
 			tmp |= (data->pin1.length_offset - 5) << 3;
 		}
@@ -771,7 +782,7 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	} else
 		return SC_ERROR_NOT_SUPPORTED;
 
-	buf[count++] = tmp;	/* bmFormatString */
+	pin_verify->bmFormatString = tmp;
 
 	/* bmPINBlockString */
 	tmp = 0x00;
@@ -779,7 +790,7 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 		/* GLP pin length is encoded in 4 bits and block size is always 8 bytes */
 		tmp |= 0x40 | 0x08;
 	}
-	buf[count++] = tmp; /* bmPINBlockString */
+	pin_verify->bmPINBlockString = tmp;
 
 	/* bmPINLengthFormat */
 	tmp = 0x00;
@@ -787,43 +798,39 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 		/* GLP pins expect the effective pin length from bit 4 */
 		tmp |= 0x04;
 	}
-	buf[count++] = tmp;	/* bmPINLengthFormat */
+	pin_verify->bmPINLengthFormat = tmp;	/* bmPINLengthFormat */
 
 	if (!data->pin1.min_length || !data->pin1.max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	buf[count++] = data->pin1.max_length;	/* wPINMaxExtraDigit: max */
-	buf[count++] = data->pin1.min_length;	/* wPINMaxExtraDigit: min */
 
-	buf[count++] = 0x02;	/* bEntryValidationCondition, keypress only */
-
+	tmp16 = (data->pin1.min_length << 8 ) + data->pin1.max_length;
+	pin_verify->wPINMaxExtraDigit = HOST_TO_CCID_16(tmp16); /* Min Max */
+	
+	pin_verify->bEntryValidationCondition = 0x02; /* Keypress only */
+	
 	/* Ignore language and T=1 parameters. */
-	buf[count++] = 0x00;	/* bNumberMessage */
-	buf[count++] = 0x00;	/* wLangId */
-	buf[count++] = 0x00;	/* " */
-	buf[count++] = 0x00;	/* bMsgIndex */
-	buf[count++] = 0x00;	/* bTeoPrologue */
-	buf[count++] = 0x00;	/* " */
-	buf[count++] = 0x00;	/* " */
-
-	/* ulDataLength */
-	if (data->pin1.length_offset != 4)
-		tmp = apdu->datalen + 4;
-	else
-		tmp = 4;
-	buf[count++] = tmp; /* ulDataLength */
-
+	pin_verify->bNumberMessage = 0x00;
+	pin_verify->wLangId = HOST_TO_CCID_16(0x0000);
+	pin_verify->bMsgIndex = 0x00;
+	pin_verify->bTeoPrologue[0] = 0x00;
+	pin_verify->bTeoPrologue[1] = 0x00;
+	pin_verify->bTeoPrologue[2] = 0x00;
+	                
 	/* APDU itself */
-	buf[count++] = apdu->cla;
-	buf[count++] = apdu->ins;
-	buf[count++] = apdu->p1;
-	buf[count++] = apdu->p2;
+	pin_verify->abData[offset++] = apdu->cla;
+	pin_verify->abData[offset++] = apdu->ins;
+	pin_verify->abData[offset++] = apdu->p1;
+	pin_verify->abData[offset++] = apdu->p2;
 
 	/* Copy data if not Case 1 */
 	if (data->pin1.length_offset != 4) {
-		memcpy(&buf[count], apdu->data, apdu->datalen);
-		count += apdu->datalen;
+		memcpy(&pin_verify->abData[offset], apdu->data, apdu->datalen);
+		offset += apdu->datalen;
 	}
 
+	pin_verify->ulDataLength = HOST_TO_CCID_32(offset); /* APDU size */
+	
+	count = sizeof(PIN_VERIFY_STRUCTURE) + offset -1;
 	*size = count;
 	return SC_SUCCESS;
 }
@@ -833,14 +840,15 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 /* Build a pin modification block + APDU */
 static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
 {
-	size_t buflen, count = 0;
+	int offset = 0, count = 0;
 	sc_apdu_t *apdu = data->apdu;
 	u8 tmp;
-	buflen = sizeof(buf);
+	uint16_t tmp16;
+	PIN_MODIFY_STRUCTURE *pin_modify  = (PIN_MODIFY_STRUCTURE *)buf;
 
 	/* PIN verification control message */
-	buf[count++] = SC_CCID_PIN_TIMEOUT;	/* bTimeOut */
-	buf[count++] = SC_CCID_PIN_TIMEOUT;	/* bTimeOut2 */
+	pin_modify->bTimerOut = SC_CCID_PIN_TIMEOUT;	/* bTimeOut */
+	pin_modify->bTimerOut2 = SC_CCID_PIN_TIMEOUT;	/* bTimeOut2 */
 
 	/* bmFormatString */
 	tmp = 0x00;
@@ -848,7 +856,7 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 		tmp |= SC_CCID_PIN_ENCODING_ASCII;
 
 		/* if the effective pin length offset is specified, use it */
-		if (data->pin1.length_offset > 3) {
+		if (data->pin1.length_offset > 4) {
 			tmp |= SC_CCID_PIN_UNITS_BYTES;
 			tmp |= (data->pin1.length_offset - 5) << 3;
 		}
@@ -862,7 +870,7 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	} else
 		return SC_ERROR_NOT_SUPPORTED;
 
-	buf[count++] = tmp;	/* bmFormatString */
+	pin_modify->bmFormatString = tmp;	/* bmFormatString */
 
 	/* bmPINBlockString */
 	tmp = 0x00;
@@ -870,7 +878,7 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 		/* GLP pin length is encoded in 4 bits and block size is always 8 bytes */
 		tmp |= 0x40 | 0x08;
 	}
-	buf[count++] = tmp; /* bmPINBlockString */
+	pin_modify->bmPINBlockString = tmp; /* bmPINBlockString */
 
 	/* bmPINLengthFormat */
 	tmp = 0x00;
@@ -878,59 +886,56 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 		/* GLP pins expect the effective pin length from bit 4 */
 		tmp |= 0x04;
 	}
-	buf[count++] = tmp;	/* bmPINLengthFormat */
+	pin_modify->bmPINLengthFormat = tmp;	/* bmPINLengthFormat */
 
-	buf[count++] = 0x00;  /* bOffsetOld */
-	buf[count++] = 0x00;  /* bOffsetNew */
+	pin_modify->bInsertionOffsetOld = 0x00;  /* bOffsetOld */
+	pin_modify->bInsertionOffsetNew = 0x00;  /* bOffsetNew */
 
 	if (!data->pin1.min_length || !data->pin1.max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	buf[count++] = data->pin1.max_length;	/* wPINMaxExtraDigit: max */
-	buf[count++] = data->pin1.min_length;	/* wPINMaxExtraDigit: min */
+		
+	tmp16 = (data->pin1.min_length << 8 ) + data->pin1.max_length;
+	pin_modify->wPINMaxExtraDigit = HOST_TO_CCID_16(tmp16); /* Min Max */
 
-	buf[count++] = 0x03;	/* bConfirmPIN, all */
-	buf[count++] = 0x02;	/* bEntryValidationCondition, keypress only */
+	pin_modify->bConfirmPIN = 0x03;	/* bConfirmPIN, all */
+	pin_modify->bEntryValidationCondition = 0x02;	/* bEntryValidationCondition, keypress only */
 
 	/* Ignore language and T=1 parameters. */
-	buf[count++] = 0x00;	/* bNumberMessage */
-	buf[count++] = 0x00;	/* wLangId */
-	buf[count++] = 0x00;	/* " */
-	/* Only as many as bNumberMessage messages, currently none */
-	/* buf[count++] = 0x00; */	/* bMsgIndex1 */
-	/* buf[count++] = 0x00;	*/ /* bMsgIndex2 */
-	/* buf[count++] = 0x00;	*/ /* bMsgIndex3 */
-	buf[count++] = 0x00; /* bTeoPrologue */
-	buf[count++] = 0x00;	/* " */
-	buf[count++] = 0x00;	/* " */
-
-	/* ulDataLength */
-	if (data->pin1.length_offset != 4)
-		tmp = apdu->datalen + 4;
-	else
-		tmp = 4;
-	buf[count++] = tmp; /* ulDataLength */
-
+	pin_modify->bNumberMessage = 0x00;
+	pin_modify->wLangId = HOST_TO_CCID_16(0x0000);
+	pin_modify->bMsgIndex1 = 0x00;
+	pin_modify->bMsgIndex2 = 0x00;
+	pin_modify->bMsgIndex3 = 0x00;
+	pin_modify->bTeoPrologue[0] = 0x00;
+	pin_modify->bTeoPrologue[1] = 0x00;
+	pin_modify->bTeoPrologue[2] = 0x00;
+	                
 	/* APDU itself */
-	buf[count++] = apdu->cla;
-	buf[count++] = apdu->ins;
-	buf[count++] = apdu->p1;
-	buf[count++] = apdu->p2;
+	pin_modify->abData[offset++] = apdu->cla;
+	pin_modify->abData[offset++] = apdu->ins;
+	pin_modify->abData[offset++] = apdu->p1;
+	pin_modify->abData[offset++] = apdu->p2;
 
-	/* Copy full APDU if not Case 1 */
+	/* Copy data if not Case 1 */
 	if (data->pin1.length_offset != 4) {
-		memcpy(&buf[count], apdu->data, apdu->datalen);
-		count += apdu->datalen;
+		memcpy(&pin_modify->abData[offset], apdu->data, apdu->datalen);
+		offset += apdu->datalen;
 	}
 
+	pin_modify->ulDataLength = HOST_TO_CCID_32(offset); /* APDU size */
+	
+	count = sizeof(PIN_MODIFY_STRUCTURE) + offset -1;
 	*size = count;
 	return SC_SUCCESS;
 }
 
+#endif
 /* Do the PIN command */
 static int
 part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	     struct sc_pin_cmd_data *data)
 {
+#ifdef PINPAD_ENABLED
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	char dbuf[SC_MAX_APDU_BUFFER_SIZE * 3];
 	size_t rcount = sizeof(rbuf), scount = 0;
@@ -1014,6 +1019,9 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 
 	/* PIN command completed, all is good */
 	return SC_SUCCESS;
+#else
+	return SC_ERROR_NOT_SUPPORTED;
+#endif /* PINPAD_ENABLED */
 }
 #endif   /* HAVE_PCSC */
 
