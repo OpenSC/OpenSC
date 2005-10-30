@@ -620,9 +620,9 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 		apdu.le      = 0;
 		/* suppress errors, as don't know whether to use 
 		 * COMPUTE SIGNATURE or INTERNAL AUTHENTICATE */
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_transmit_apdu(card, &apdu);
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			ex_data->fix_digestInfo = 0;
@@ -881,9 +881,9 @@ static int atrust_acos_logout(struct sc_card *card)
 	apdu.datalen = 2;
 	apdu.resplen = 0;
 	
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_transmit_apdu(card, &apdu);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	SC_TEST_RET(card->ctx, r, "APDU re-transmit failed");
 
 	if (apdu.sw1 == 0x69 && apdu.sw2 == 0x85)

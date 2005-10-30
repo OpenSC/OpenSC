@@ -72,10 +72,10 @@ cflex_delete_file(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
         path.value[1] = df->id & 0xFF;
         path.len = 2;
 
-        card->ctx->suppress_errors++;
-        r = sc_delete_file(card, &path);
-        card->ctx->suppress_errors--;
-        return r;
+	sc_ctx_suppress_errors_on(card->ctx);
+	r = sc_delete_file(card, &path);
+	sc_ctx_suppress_errors_off(card->ctx);
+	return r;
 }
 
 /*
@@ -446,9 +446,9 @@ cflex_create_dummy_chvs(sc_profile_t *profile, sc_card_t *card,
 			 && !memcmp(ef.value, parent.value, ef.len))
 				continue;
 
-			card->ctx->suppress_errors++;
+			sc_ctx_suppress_errors_on(card->ctx);
 			r = sc_select_file(card, &ef, NULL);
-			card->ctx->suppress_errors--;
+			sc_ctx_suppress_errors_off(card->ctx);
 		}
 
 		/* If a valid EF(CHVx) was found, we're fine */
@@ -520,9 +520,9 @@ cflex_create_pin_file(sc_profile_t *profile, sc_card_t *card,
 	path.value[path.len++] = 0;
 
 	/* See if the CHV already exists */
-        card->ctx->suppress_errors++;
-        r = sc_select_file(card, &path, NULL);
-        card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_on(card->ctx);
+	r = sc_select_file(card, &path, NULL);
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r >= 0)
 		return SC_ERROR_FILE_ALREADY_EXISTS;
 

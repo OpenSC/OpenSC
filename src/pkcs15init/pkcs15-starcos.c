@@ -89,9 +89,9 @@ static int starcos_init_card(sc_profile_t *profile, sc_card_t *card)
 	tpath.value[1] = 0x00;
 	tpath.len      = 2;
 	tpath.type     = SC_PATH_TYPE_PATH;
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	ret = sc_select_file(card, &tpath, NULL);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (ret == SC_SUCCESS)
 		/* we already have a MF => return OK */
 		return ret;
@@ -899,17 +899,17 @@ static int starcos_finalize_card(sc_card_t *card)
 	/* call CREATE END for the MF (ignore errors) */
 	tfile.type = SC_FILE_TYPE_DF;
 	tfile.id   = 0x3f00;
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_card_ctl(card, SC_CARDCTL_STARCOS_CREATE_END, &tfile);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r < 0)
 		sc_debug(card->ctx, "failed to call CREATE END for the MF\n");
 	/* call CREATE END for the apps (pkcs15) DF */
 	tfile.type = SC_FILE_TYPE_DF;
 	tfile.id   = 0x5015;
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_card_ctl(card, SC_CARDCTL_STARCOS_CREATE_END, &tfile);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r == SC_ERROR_NOT_ALLOWED)
 		/* card is already finalized */ 
 		return SC_SUCCESS;

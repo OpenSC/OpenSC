@@ -951,9 +951,9 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 	r = sc_select_file(card, inpath, NULL);
 	if (r)
 		return -1;
-	ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(ctx);
 	r = sc_select_file(card, &file_id, NULL);
-	ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(ctx);
 	if (r == 0)
 		return 0;
 	for (;;) {

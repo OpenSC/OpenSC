@@ -94,9 +94,9 @@ static int acos_detect_card(sc_pkcs15_card_t *p15card)
 		return SC_ERROR_WRONG_CARD;
 	/* read EF_CIN_CSN file */
 	sc_format_path("DF71D001", &path);
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, NULL);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r != SC_SUCCESS)
 		return SC_ERROR_WRONG_CARD;
 	r = sc_read_binary(card, 0, buf, 8, 0);
@@ -162,9 +162,9 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 
 	/* read EF_CIN_CSN file */
 	sc_format_path("DF71D001", &path);
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, NULL);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r != SC_SUCCESS)
 		return SC_ERROR_INTERNAL;
 	r = sc_read_binary(card, 0, buf, 8, 0);

@@ -104,9 +104,9 @@ static int starcert_detect_card(sc_pkcs15_card_t *p15card)
 		return SC_ERROR_WRONG_CARD;
 	/* read EF_Info file */
 	sc_format_path("3F00FE13", &path);
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, NULL);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r != SC_SUCCESS)
 		return SC_ERROR_WRONG_CARD;
 	r = sc_read_binary(card, 0, buf, 64, 0);

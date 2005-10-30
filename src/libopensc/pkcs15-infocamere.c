@@ -146,9 +146,9 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	sc_format_path("3F002F02", &path);
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, &file);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	
 	if (r != SC_SUCCESS || file->size > 255) {
 		/* Not EF.GDO */
@@ -212,9 +212,9 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	sc_format_path(infocamere_auth_certpath[ef_gdo[len_iccsn+6]-2], &path);
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, NULL);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 
 	if (r >= 0) {
 
@@ -302,9 +302,9 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	sc_format_path(infocamere_cacert_path[ef_gdo[len_iccsn+6]-2], &path);
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, NULL);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 
 	if (r >= 0) {
 		size_t len;

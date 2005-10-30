@@ -500,7 +500,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 	}
 
 	/* Check if pkcs15 directory exists */
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	err = sc_select_file(card, &p15card->file_app->path, NULL);
 #if 1
 	/* If the above test failed on cards without EF(DIR),
@@ -512,7 +512,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 		err = SC_NO_ERROR;
 	}
 #endif
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (err < 0)
 		goto end;
 
@@ -521,9 +521,9 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 		 * don't know yet whether we have a pkcs15 card */
 		tmppath = p15card->file_app->path;
 		sc_append_path_id(&tmppath, (const u8 *) "\x50\x31", 2);
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		err = sc_select_file(card, &tmppath, &p15card->file_odf);
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		
 	} else {
 		tmppath = p15card->file_odf->path;

@@ -235,9 +235,9 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 	if (blob->info == NULL)
 		return blob->status;
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = blob->info->get_fn(card, blob->id, buffer, sizeof(buffer));
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 
 	if (r < 0) {
 		blob->status = r;

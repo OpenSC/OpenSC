@@ -33,9 +33,9 @@ static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card)
 	struct sc_profile *profile;
 	int		rc;
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	rc = sc_pkcs15init_bind(card, "pkcs15", NULL, &profile);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (rc == 0)
 		p11card->fw_data = profile;
 	return sc_to_cryptoki_error(rc, p11card->reader);

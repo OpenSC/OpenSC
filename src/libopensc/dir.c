@@ -164,9 +164,9 @@ int sc_enum_apps(sc_card_t *card)
 		sc_file_free(card->ef_dir);
 		card->ef_dir = NULL;
 	}
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, &card->ef_dir);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r)
 		return r;
 	if (card->ef_dir->type != SC_FILE_TYPE_WORKING_EF) {
@@ -211,10 +211,10 @@ int sc_enum_apps(sc_card_t *card)
 		size_t       rec_size;
 		
 		for (rec_nr = 1; ; rec_nr++) {
-			card->ctx->suppress_errors++;
+			sc_ctx_suppress_errors_on(card->ctx);
 			r = sc_read_record(card, rec_nr, buf, sizeof(buf), 
 						SC_RECORD_BY_REC_NR);
-			card->ctx->suppress_errors--;
+			sc_ctx_suppress_errors_off(card->ctx);
 			if (r == SC_ERROR_RECORD_NOT_FOUND)
 				break;
 			SC_TEST_RET(card->ctx, r, "read_record() failed");
@@ -348,9 +348,9 @@ static int update_single_record(sc_card_t *card, sc_file_t *file,
 		r = sc_update_record(card, (unsigned int)app->rec_nr, rec, rec_size, SC_RECORD_BY_REC_NR);
 	else if (app->rec_nr == 0) {
 		/* create new record entry */
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_append_record(card, rec, rec_size, 0);
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		if (r == SC_ERROR_NOT_SUPPORTED) {
 			/* if the card doesn't support APPEND RECORD we try a
 			 * UPDATE RECORD on the next unused record (and hope

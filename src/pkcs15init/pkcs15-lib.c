@@ -405,12 +405,12 @@ sc_pkcs15init_erase_card_recursively(sc_card_t *card,
 	if (sc_keycache_find_named_pin(NULL, SC_PKCS15INIT_SO_PIN) == -1) {
 		struct sc_pkcs15_card *p15card = NULL;
 
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		if (sc_pkcs15_bind(card, &p15card) >= 0) {
 			set_so_pin_from_card(p15card, profile);
 			profile->p15_data = p15card;
 		}
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 	}
 
 	/* Delete EF(DIR). This may not be very nice
@@ -427,9 +427,9 @@ sc_pkcs15init_erase_card_recursively(sc_card_t *card,
 			goto out;
 	}
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &df->path, &df);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r >= 0) {
 		r = sc_pkcs15init_rmdir(card, profile, df);
 		sc_file_free(df);
@@ -514,9 +514,9 @@ sc_pkcs15init_rmdir(sc_card_t *card, struct sc_profile *profile,
 				SC_AC_OP_LIST_FILES);
 		if (r < 0)
 			return r;
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_list_files(card, buffer, sizeof(buffer));
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		if (r < 0)
 			return r;
 
@@ -564,9 +564,9 @@ sc_pkcs15init_rmdir(sc_card_t *card, struct sc_profile *profile,
 	path.value[1] = df->id & 0xFF;
 	path.len = 2;
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_delete_file(card, &path);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	return r;
 }
 
@@ -743,9 +743,9 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 	if (r >= 0)
 		r = sc_pkcs15init_update_tokeninfo(p15spec, profile);
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	sc_pkcs15init_write_info(card, profile, pin_obj);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	return r;
 }
 
@@ -768,7 +768,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 		unsigned int	n;
 
 		args->auth_id.len = 1;
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		for (n = 1, r = 0; n < 256; n++) {
 			args->auth_id.value[0] = n;
 			r = sc_pkcs15_find_pin_by_auth_id(p15card,
@@ -776,7 +776,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 			if (r == SC_ERROR_OBJECT_NOT_FOUND)
 				break;
 		}
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		if (r != SC_ERROR_OBJECT_NOT_FOUND) {
 			sc_error(card->ctx, "No auth_id specified for new PIN");
 			return SC_ERROR_INVALID_ARGUMENTS;
@@ -785,9 +785,9 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *dummy;
 
 		/* Make sure we don't get duplicate PIN IDs */
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_pkcs15_find_pin_by_auth_id(p15card, &args->auth_id, &dummy);
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		if (r != SC_ERROR_OBJECT_NOT_FOUND) {
 			sc_error(card->ctx, "There already is a PIN with this ID.");
 			return SC_ERROR_INVALID_ARGUMENTS;
@@ -2122,9 +2122,9 @@ sc_pkcs15init_update_dir(struct sc_pkcs15_card *p15card,
 		struct sc_file	*dir_file;
 		struct sc_path	path;
 
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_enum_apps(card);
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 
 		if (r != SC_ERROR_FILE_NOT_FOUND)
 			break;
@@ -2979,9 +2979,9 @@ do_select_parent(struct sc_profile *pro, sc_card_t *card,
 
 	/* Select the parent DF. */
 	*parent = NULL;
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, parent);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	/* If DF doesn't exist, create it (unless it's the MF,
 	 * but then something's badly broken anyway :-) */
 	if (r == SC_ERROR_FILE_NOT_FOUND && path.len != 2) {
@@ -3042,9 +3042,9 @@ sc_pkcs15init_update_file(struct sc_profile *profile, sc_card_t *card,
 	sc_debug(card->ctx, "called, path=%s, %u bytes\n",
 			sc_print_path(&file->path), datalen);
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	if ((r = sc_select_file(card, &file->path, &info)) < 0) {
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		/* Create file if it doesn't exist */
 		if (file->size < datalen)
 			file->size = datalen;
@@ -3053,7 +3053,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile, sc_card_t *card,
 		 || (r = sc_select_file(card, &file->path, &info)) < 0)
 			return r;
 	} else {
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		need_to_zap = 1;
 	}
 
@@ -3306,7 +3306,7 @@ sc_pkcs15init_read_info(sc_card_t *card, sc_profile_t *profile)
 	size_t		len = 0;
 	int		r;
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	sc_format_path(OPENSC_INFO_FILEPATH, &path);
 	if ((r = sc_select_file(card, &path, &file)) >= 0) {
 		len = file->size;
@@ -3318,7 +3318,7 @@ sc_pkcs15init_read_info(sc_card_t *card, sc_profile_t *profile)
 	} else {
 		r = 0;
 	}
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 
 	if (r >= 0)
 		r = sc_pkcs15init_parse_info(card, mem, len, profile);

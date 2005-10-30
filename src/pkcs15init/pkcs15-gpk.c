@@ -561,9 +561,9 @@ gpk_pkfile_create(sc_profile_t *profile, sc_card_t *card, sc_file_t *file)
 	struct sc_file	*found = NULL;
 	int		r;
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &file->path, &found);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
 		r = sc_pkcs15init_create_file(profile, card, file);
 		if (r >= 0)
@@ -693,10 +693,10 @@ gpk_pkfile_init_public(sc_profile_t *profile, sc_card_t *card, sc_file_t *file,
 	for (n = 0; n < 6; n++)
 		sysrec[6] ^= sysrec[n];
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_read_record(card, 1, buffer, sizeof(buffer),
 			SC_RECORD_BY_REC_NR);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r >= 0) {
 		if (r != 7 || buffer[0] != 0) {
 			sc_error(card->ctx,
@@ -729,10 +729,10 @@ gpk_pkfile_update_public(struct sc_profile *profile,
 
 	/* If we've been given a key with public parts, write them now */
 	for (n = 2; n < 256; n++) {
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_read_record(card, n, buffer, sizeof(buffer),
 				SC_RECORD_BY_REC_NR);
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		if (r < 0) {
 			r = 0;
 			break;
@@ -1096,10 +1096,10 @@ gpk_read_rsa_key(sc_card_t *card, struct sc_pkcs15_pubkey_rsa *rsa)
 		u8		buffer[256];
 		size_t		m;
 
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_read_record(card, n, buffer, sizeof(buffer),
 				SC_RECORD_BY_REC_NR);
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		if (r < 1)
 			break;
 

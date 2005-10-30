@@ -582,9 +582,9 @@ gpk_select_id(sc_card_t *card, int kind, unsigned int fid,
 	fbuf[0] = fid >> 8;
 	fbuf[1] = fid & 0xff;
 
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = gpk_select(card, kind, fbuf, 2, file);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 
 	/* Fix up the path cache.
 	 * NB we never cache the ID of an EF, just the DF path */

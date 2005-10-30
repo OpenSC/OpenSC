@@ -148,9 +148,9 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		if(certlist[i].type<0 && cardtype!=-certlist[i].type) continue;
 
 		sc_format_path(certlist[i].path, &path);
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_select_file(card, &path, NULL);
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		if (r < 0) continue;
 		if(certlist[i].type>0) cardtype=certlist[i].type;
 
@@ -201,9 +201,9 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		if(keylist[i].type!=cardtype) continue;
 
 		sc_format_path(keylist[i].path, &path);
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_select_file(card, &path, &file);
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		if (r < 0) continue;
 
 		usage = SC_PKCS15_PRKEY_USAGE_SIGN;
@@ -241,9 +241,9 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		if(pinlist[i].type && pinlist[i].type!=cardtype) continue;
 
 		sc_format_path(pinlist[i].path, &path);
-		card->ctx->suppress_errors++;
+		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_select_file(card, &path, &file);
-		card->ctx->suppress_errors--;
+		sc_ctx_suppress_errors_off(card->ctx);
 		if (r < 0) continue;
 
 		memset(&pin_info, 0, sizeof(pin_info));

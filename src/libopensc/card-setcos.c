@@ -120,9 +120,9 @@ static int select_fineid_app(sc_card_t * card)
 	/* Regular PKCS#15 AID */
 	sc_format_path("A000000063504B43532D3135", &app);
 	app.type = SC_PATH_TYPE_DF_NAME;
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &app, NULL);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	return r;
 }
 

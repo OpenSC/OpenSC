@@ -761,9 +761,9 @@ select_part (sc_card_t *card, u8 kind, unsigned short int fid,
 
 	fbuf[0] = fid >> 8;
 	fbuf[1] = fid & 0xff;
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = do_select (card, kind, fbuf, 2, file);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 
 	return r;
 }

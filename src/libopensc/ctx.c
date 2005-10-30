@@ -656,6 +656,16 @@ unsigned int sc_ctx_get_reader_count(sc_context_t *ctx)
 	return (unsigned int)ctx->reader_count;
 }
 
+void sc_ctx_suppress_errors_on(sc_context_t *ctx)
+{
+	ctx->suppress_errors++;
+}
+
+void sc_ctx_suppress_errors_off(sc_context_t *ctx)
+{
+	ctx->suppress_errors--;
+}
+
 int sc_establish_context(sc_context_t **ctx_out, const char *app_name)
 {
 	const char *default_app = "default";

@@ -497,7 +497,7 @@ do_assert_pristine(sc_card_t *in_card)
 	 * on starcos card NOT ALLOWED is also ok, as the MF does
 	 * not exist. */
 
-	in_card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(in_card->ctx);
 
 	sc_format_path("2F00", &path);
 	r = sc_select_file(in_card, &path, NULL);
@@ -515,7 +515,7 @@ do_assert_pristine(sc_card_t *in_card)
 		 	strcmp(in_card->name, "STARCOS SPK 2.3") != 0)
 		res = -1;
 
-	in_card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(in_card->ctx);
 
 	if (res < 0) {
 		fprintf(stderr,

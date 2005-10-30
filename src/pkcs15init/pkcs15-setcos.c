@@ -169,9 +169,9 @@ static int setcos_init_app(sc_profile_t *profile, sc_card_t *card,
 			pin_ref, SC_PKCS15INIT_SO_PIN);
 
 	/* Create the MF if it doesn't exist yet */
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &mf->path, NULL);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
 		sc_debug(card->ctx, "MF doesn't exist, creating now");
 		/* Fix up the file's ACLs */
@@ -188,9 +188,9 @@ static int setcos_init_app(sc_profile_t *profile, sc_card_t *card,
 	/* Create the global pin file if it doesn't exist yet */
 	if ((r = sc_profile_get_file(profile, "pinfile", &pinfile)) < 0)
 		goto done;
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &pinfile->path, NULL);
-	card->ctx->suppress_errors--;
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
 		sc_debug(card->ctx, "Global pin file doesn't exist, creating now");
 		/* Fix up the file's ACLs */

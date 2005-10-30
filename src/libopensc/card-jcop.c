@@ -328,9 +328,9 @@ static int jcop_read_binary(sc_card_t *card, unsigned int idx,
 	  if (idx + count > 128) {
 	       count=128-idx;
 	  }
-	  card->ctx->suppress_errors++;
+          sc_ctx_suppress_errors_on(card->ctx);
 	  r = iso_ops->select_file(card, &drvdata->aid, &tfile);
-	  card->ctx->suppress_errors--;
+	  sc_ctx_suppress_errors_off(card->ctx);
 	  if (r < 0) { /* no pkcs15 app, so return empty DIR. */
 	       memset(buf, 0, count);
 	  } else {
@@ -356,9 +356,9 @@ static int jcop_list_files(sc_card_t *card, u8 *buf, size_t buflen) {
 	  if (buflen < 4)
 	       return 2;
 	  /* AppDF only exists if applet is selectable */
-	  card->ctx->suppress_errors++;
+	  sc_ctx_suppress_errors_on(card->ctx);
 	  r = iso_ops->select_file(card, &drvdata->aid, &tfile);
-	  card->ctx->suppress_errors--;
+	  sc_ctx_suppress_errors_off(card->ctx);
 	  if (r < 0) { 
 	       return 2;
 	  } else {

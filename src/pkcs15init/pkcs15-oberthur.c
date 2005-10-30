@@ -130,7 +130,7 @@ static int cosm_erase_card(struct sc_profile *profile, sc_card_t *card)
 	 * Note we need to delete if before the DF because we create
 	 * it *after* the DF. 
 	 * */
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_on(card->ctx);
 	if (sc_profile_get_file(profile, "DIR", &dir) >= 0) {
 		sc_debug(card->ctx, "erase file dir %04X\n",dir->id);
 		r = cosm_delete_file(card, profile, dir);
@@ -167,7 +167,7 @@ static int cosm_erase_card(struct sc_profile *profile, sc_card_t *card)
 
 done:		
 	sc_keycache_forget_key(NULL, -1, -1);
-	card->ctx->suppress_errors++;
+	sc_ctx_suppress_errors_off(card->ctx);
 
 	if (r == SC_ERROR_FILE_NOT_FOUND)
 		r=0;

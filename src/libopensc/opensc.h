@@ -653,18 +653,15 @@ typedef struct sc_context {
 	unsigned int magic;
 } sc_context_t;
 
-/* Base64 encoding/decoding functions */
-int sc_base64_encode(const u8 *in, size_t inlen, u8 *out, size_t outlen,
-		     size_t linelength);
-int sc_base64_decode(const char *in, u8 *out, size_t outlen);
-
-/* Returns the current time in milliseconds */
-sc_timestamp_t sc_current_time(void);
-
 /* APDU handling functions */
 int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu);
 void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu, int cse, int ins,
 		    int p1, int p2);
+
+
+/********************************************************************/
+/*                  opensc context functions                        */
+/********************************************************************/
 
 /**
  * Establishes an OpenSC context
@@ -695,6 +692,18 @@ sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i);
  * @return the number of available reader objects
  */
 unsigned int sc_ctx_get_reader_count(sc_context_t *ctx);
+
+/**  
+ * Turns on error suppression 
+ * @param  ctx  OpenSC context
+ */
+void sc_ctx_suppress_errors_on(sc_context_t *ctx);
+
+/**
+ * Turns off error suppression
+ * @param  ctx  OpenSC context
+ */
+void sc_ctx_suppress_errors_off(sc_context_t *ctx);
 
 /**
  * Forces the use of a specified card driver
@@ -906,6 +915,14 @@ int sc_format_oid(struct sc_object_id *oid, const char *in);
  * @return 0 if the oids are equal and a non-zero value otherwise
  */
 int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2);
+
+/* Base64 encoding/decoding functions */
+int sc_base64_encode(const u8 *in, size_t inlen, u8 *out, size_t outlen,
+		     size_t linelength);
+int sc_base64_decode(const char *in, u8 *out, size_t outlen);
+
+/* Returns the current time in milliseconds */
+sc_timestamp_t sc_current_time(void);
 
 /**
  * Clears a memory buffer (note: when OpenSSL is used this is
