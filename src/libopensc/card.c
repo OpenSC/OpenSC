@@ -352,7 +352,7 @@ int sc_chain_transmit_apdu(sc_card_t *card, sc_apdu_t *in_apdu)
 {
 	int       r = SC_ERROR_INTERNAL;
 	size_t    len, plen;
-	u8        *buf;
+	const u8  *buf;
 	sc_apdu_t apdu;
 	u8	  rbuf[2];
 
