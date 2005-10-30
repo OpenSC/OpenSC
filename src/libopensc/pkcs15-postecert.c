@@ -52,6 +52,101 @@ static void set_string(char **strp, const char *value)
 	*strp = value ? strdup(value) : NULL;
 }
 
+#if 1
+/* XXX: temporary copy of the old pkcs15emu functions,
+ *      to be removed */
+static int sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
+                const sc_pkcs15_id_t *id, const char *label,
+                const sc_path_t *path, int ref, int type,
+                unsigned int min_length,
+                unsigned int max_length,
+                int flags, int tries_left, const char pad_char, int obj_flags)
+{
+        sc_pkcs15_pin_info_t info;
+	sc_pkcs15_object_t   obj;
+
+	memset(&info, 0, sizeof(info));
+	memset(&obj,  0, sizeof(obj));
+
+        info.auth_id           = *id;
+        info.min_length        = min_length;
+        info.max_length        = max_length;
+        info.stored_length     = max_length;
+        info.type              = type;
+        info.reference         = ref;
+        info.flags             = flags;
+        info.tries_left        = tries_left;
+        info.magic             = SC_PKCS15_PIN_MAGIC;
+        info.pad_char          = pad_char;
+
+        if (path)
+                info.path = *path;
+        if (type == SC_PKCS15_PIN_TYPE_BCD)
+                info.stored_length /= 2;
+
+	strncpy(obj.label, label, SC_PKCS15_MAX_LABEL_SIZE-1);
+	obj.flags = obj_flags;
+
+        return sc_pkcs15emu_add_pin_obj(p15card, &obj, &info);
+}
+
+static int sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
+                const sc_pkcs15_id_t *id,
+                const char *label,
+                int type, unsigned int modulus_length, int usage,
+                const sc_path_t *path, int ref,
+                const sc_pkcs15_id_t *auth_id, int obj_flags)
+{
+        sc_pkcs15_prkey_info_t info;
+	sc_pkcs15_object_t     obj;
+
+	memset(&info, 0, sizeof(info));
+	memset(&obj,  0, sizeof(obj));
+
+        info.id                = *id;
+        info.modulus_length    = modulus_length;
+        info.usage             = usage;
+        info.native            = 1;
+        info.access_flags      = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+                                | SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+                                | SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+                                | SC_PKCS15_PRKEY_ACCESS_LOCAL;
+        info.key_reference     = ref;
+
+        if (path)
+                info.path = *path;
+
+	obj.flags = obj_flags;
+	strncpy(obj.label, label, SC_PKCS15_MAX_LABEL_SIZE-1);
+	if (auth_id != NULL)
+		obj.auth_id = *auth_id;
+
+        return sc_pkcs15emu_add_rsa_prkey(p15card, &obj, &info);
+}
+
+static int sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
+	int type, int authority, const sc_path_t *path,
+	const sc_pkcs15_id_t *id, const char *label, int obj_flags)
+{
+	/* const char *label = "Certificate"; */
+	sc_pkcs15_cert_info_t info;
+	sc_pkcs15_object_t    obj;
+
+	memset(&info, 0, sizeof(info));
+	memset(&obj,  0, sizeof(obj));
+
+	info.id                = *id;
+	info.authority         = authority;
+	if (path)
+		info.path = *path;
+
+	strncpy(obj.label, label, SC_PKCS15_MAX_LABEL_SIZE-1);
+	obj.flags = obj_flags;
+
+	return sc_pkcs15emu_add_x509_cert(p15card, &obj, &info);
+}
+#endif
+
 static int sc_pkcs15emu_postecert_init(sc_pkcs15_card_t * p15card)
 {
 	static int prkey_usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;

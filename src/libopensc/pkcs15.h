@@ -643,32 +643,6 @@ int sc_pkcs15emu_add_x509_cert(sc_pkcs15_card_t *p15card,
 int sc_pkcs15emu_add_data_object(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *, const sc_pkcs15_data_info_t *);
 
-#ifndef OPENSC_NO_DEPRECATED
-int sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
-			const char *label, void *data,
-			const sc_pkcs15_id_t *auth_id, int obj_flags);
-int sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
-                	const sc_pkcs15_id_t *id, const char *label,
-                	const sc_path_t *path, int ref, int type,
-                	unsigned int min_length, unsigned int max_length,
-                	int flags, int tries_left, const char pad_char,
-			int obj_flags);
-int sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card, int type,
-        		int authority, const sc_path_t *path,
-			const sc_pkcs15_id_t *id, const char *label,
-			int obj_flags);
-int sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
-			const sc_pkcs15_id_t *id, const char *label,
-			int type, unsigned int modulus_length, int usage,
-			const sc_path_t *path, int ref,
-			const sc_pkcs15_id_t *auth_id,
-			int obj_flags);
-int sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
-			const sc_pkcs15_id_t *id, const char *label,
-			int type, unsigned int modulus_length, int usage,
-			const sc_path_t *path, int ref,
-			const sc_pkcs15_id_t *auth_id, int obj_flags);
-#endif /* OPENSC_NO_DEPRECATED */
 #ifdef __cplusplus
 }
 #endif
