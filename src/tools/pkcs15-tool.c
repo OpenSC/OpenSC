@@ -307,7 +307,7 @@ static int read_data_object(void)
 	}
 	count = r;
 
-	r = parse_application_id(&oid, opt_data);
+	r = sc_format_oid(&oid, opt_data);
 	if (r == SC_SUCCESS) {
 		while (oid.value[oid_len] >= 0) oid_len++;
 	}

@@ -2,6 +2,7 @@
  * internal.h: Internal definitions for libopensc
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ *               2005        The OpenSC project
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -87,6 +88,25 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		     unsigned int *tag_out, size_t *taglen);
 
 scconf_block *_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2, int priority);
+
+
+/********************************************************************/
+/*                 pkcs1 padding/encoding functions                 */
+/********************************************************************/
+
+int sc_pkcs1_add_01_padding(const u8 *in, size_t in_len, u8 *out,
+			    size_t *out_len, size_t mod_length);
+int sc_pkcs1_strip_01_padding(const u8 *in_dat, size_t in_len, u8 *out_dat,
+			      size_t *out_len);
+int sc_pkcs1_strip_02_padding(const u8 *data, size_t len, u8 *out_dat,
+			      size_t *out_len);
+int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm, const u8 *in_dat,
+		size_t in_len, u8 *out_dat, size_t *out_len);
+int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
+		const u8 *in_dat, size_t in_len, u8 *out_dat, size_t *out_len);
+int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
+	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_len);
+int sc_strip_zero_padding(const u8 *in,size_t in_len, u8 *out, size_t *out_len);
 
 #ifdef __cplusplus
 }

@@ -40,7 +40,6 @@ void fatal(const char *fmt, ...);
 /* All singing all dancing card connect routine */
 int connect_card(struct sc_context *, struct sc_card **,
 		int reader_id, int slot_id, int wait, int verbose);
-int parse_application_id(struct sc_object_id *oid, char *oid_str);
 
 #ifdef __cplusplus
 }

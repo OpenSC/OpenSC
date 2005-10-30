@@ -2,6 +2,7 @@
  * opensc.h: OpenSC library header file
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ *               2005        The OpenSC project
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -775,7 +776,10 @@ int sc_lock(sc_card_t *card);
  */
 int sc_unlock(sc_card_t *card);
 
-/* ISO 7816-4 related functions */
+
+/********************************************************************/
+/*                ISO 7816-4 related functions                      */
+/********************************************************************/
 
 /**
  * Does the equivalent of ISO 7816-4 command SELECT FILE.
@@ -821,7 +825,10 @@ int sc_put_data(sc_card_t *, unsigned int, const u8 *, size_t);
 
 int sc_get_challenge(sc_card_t *card, u8 * rndout, size_t len);
 
-/* ISO 7816-8 related functions */
+/********************************************************************/
+/*              ISO 7816-8 related functions                        */
+/********************************************************************/
+
 int sc_restore_security_env(sc_card_t *card, int se_num);
 int sc_set_security_env(sc_card_t *card,
 			const struct sc_security_env *env, int se_num);
@@ -841,21 +848,12 @@ int sc_reset_retry_counter(sc_card_t *card, unsigned int type,
 			   int ref, const u8 *puk, size_t puklen,
 			   const u8 *newref, size_t newlen);
 int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad);
-/* pkcs1 padding/encoding functions */
-int sc_pkcs1_add_01_padding(const u8 *in, size_t in_len, u8 *out,
-			    size_t *out_len, size_t mod_length);
-int sc_pkcs1_strip_01_padding(const u8 *in_dat, size_t in_len, u8 *out_dat,
-			      size_t *out_len);
-int sc_pkcs1_strip_02_padding(const u8 *data, size_t len, u8 *out_dat,
-			      size_t *out_len);
-int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm, const u8 *in_dat,
-		size_t in_len, u8 *out_dat, size_t *out_len);
-int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
-		const u8 *in_dat, size_t in_len, u8 *out_dat, size_t *out_len);
-int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
-	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_len);
-int sc_strip_zero_padding(const u8 *in,size_t in_len, u8 *out, size_t *out_len);
-/* ISO 7816-9 */
+
+
+/********************************************************************/
+/*               ISO 7816-9 related functions                       */
+/********************************************************************/
+
 int sc_create_file(sc_card_t *card, sc_file_t *file);
 int sc_delete_file(sc_card_t *card, const sc_path_t *path);
 
@@ -886,8 +884,27 @@ int sc_compare_path(const sc_path_t *, const sc_path_t *);
 int sc_append_path(sc_path_t *dest, const sc_path_t *src);
 int sc_append_path_id(sc_path_t *dest, const u8 *id, size_t idlen);
 int sc_append_file_id(sc_path_t *dest, unsigned int fid);
+
+
+/********************************************************************/
+/*             miscellaneous functions                              */
+/********************************************************************/
+
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
+/**
+ * Converts a given OID in ascii form to a internal sc_object_id object
+ * @param  oid  OUT sc_object_id object for the result
+ * @param  in   ascii string with the oid ("1.2.3.4.5...")
+ * @return SC_SUCCESS or an error value if an error occurred.
+ */
+int sc_format_oid(struct sc_object_id *oid, const char *in);
+/**
+ * Compares two sc_object_id objects
+ * @param  oid1  the first sc_object_id object
+ * @param  oid2  the second sc_object_id object
+ * @return 0 if the oids are equal and a non-zero value otherwise
+ */
 int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2);
 
 /**

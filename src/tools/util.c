@@ -271,32 +271,3 @@ warn(const char *fmt, ...)
 	va_end(ap);
 }
 
-
-int parse_application_id(struct sc_object_id *oid, char *oid_str)
-{
-	int ii, ret = SC_ERROR_INVALID_ARGUMENTS;
-	char *p, *q;
-
-	if (!oid)
-		return ret;
-	/* init oid */
-	for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS; ii++)
-		oid->value[ii] = -1;
-
-	if (!(p = oid_str))
-		return ret;
-	
-	for (ii=0; ii < SC_MAX_OBJECT_ID_OCTETS; ii++)   {
-		oid->value[ii] = strtol(p, &q, 10);
-		if (!*q)
-			break;
-		if (!(q[0] == '.' && isdigit(q[1]))) {
-			return ret;
-		}
-		p = q + 1;
-	}
-
-	return SC_SUCCESS;
-}
-
-

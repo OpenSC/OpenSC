@@ -1036,7 +1036,7 @@ do_store_data_object(struct sc_profile *profile)
 	args.label = opt_label;
 	args.app_label = "pkcs15-init";
 
-	parse_application_id(&args.app_oid, opt_application_id);
+	sc_format_oid(&args.app_oid, opt_application_id);
 
 	r = do_read_data_object(opt_infile, &data, &datalen);
 	if (r >= 0) {
@@ -1192,7 +1192,7 @@ do_delete_objects(struct sc_profile *profile, unsigned int opt_delete_flags)
 		sc_pkcs15_object_t *obj;
 		if (opt_application_id == NULL)
 			fatal("Specify the --application-id for the data object to be deleted\n");
-		parse_application_id(&app_oid, opt_application_id);
+		sc_format_oid(&app_oid, opt_application_id);
 
 		r = sc_pkcs15_find_data_object_by_app_oid(p15card, &app_oid, &obj);
 		if (r >= 0) {

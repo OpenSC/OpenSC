@@ -28,6 +28,7 @@
 
 #include "internal.h"
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -108,6 +109,33 @@ int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
 	}
 	*pos = '\0';
 	return 0;
+}
+
+int sc_format_oid(struct sc_object_id *oid, const char *in)
+{
+	int ii, ret = SC_ERROR_INVALID_ARGUMENTS;
+	const char *p;
+	char       *q;
+
+	if (oid == NULL || in == NULL)
+		return ret;
+	/* init oid */
+	for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS; ii++)
+		oid->value[ii] = -1;
+
+	p = in;
+	
+	for (ii=0; ii < SC_MAX_OBJECT_ID_OCTETS; ii++)   {
+		oid->value[ii] = strtol(p, &q, 10);
+		if (!*q)
+			break;
+		if (!(q[0] == '.' && isdigit(q[1]))) {
+			return ret;
+		}
+		p = q + 1;
+	}
+
+	return SC_SUCCESS;
 }
 
 int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2)

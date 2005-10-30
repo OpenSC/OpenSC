@@ -1808,7 +1808,7 @@ read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	}
 
 	if (opt_application_id != NULL)   {
-		parse_application_id(&oid, opt_application_id);
+		sc_format_oid(&oid, opt_application_id);
 		FILL_ATTR(attrs[nn_attrs], CKA_OBJECT_ID,
 				(unsigned char *)oid.value, sizeof(oid.value));
 		nn_attrs++;
