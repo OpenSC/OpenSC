@@ -94,7 +94,7 @@ CK_RV card_detect(int reader)
 
 
 	/* Check if someone inserted a card */
-again:	rc = sc_detect_card_presence(context->reader[reader], 0);
+again:	rc = sc_detect_card_presence(sc_ctx_get_reader(context, reader), 0);
 	if (rc < 0) {
 		sc_debug(context, "Card detection failed for reader %d: %s\n",
 				reader, sc_strerror(rc));
