@@ -564,15 +564,15 @@ static int iso7816_create_file(sc_card_t *card, sc_file_t *file)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-static int iso7816_get_response(sc_card_t *card, sc_apdu_t *orig_apdu, size_t count)
+static int iso7816_get_response(sc_card_t *card, size_t count, u8 *buf)
 {
 	sc_apdu_t apdu;
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);
-	apdu.le = count;
+	apdu.le      = count;
 	apdu.resplen = count;
-	apdu.resp = orig_apdu->resp;
+	apdu.resp    = buf;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -583,11 +583,14 @@ static int iso7816_get_response(sc_card_t *card, sc_apdu_t *orig_apdu, size_t co
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_WRONG_LENGTH);
 	}
 
-	orig_apdu->resplen = apdu.resplen;
-	orig_apdu->sw1 = 0x90;
-	orig_apdu->sw2 = 0x00;
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+		r = 0;					/* no more data to read */
+	else if (apdu.sw1 == 0x61)
+		r = apdu.sw2 == 0 ? 256 : apdu.sw2;	/* more data to read    */
+	else 
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
-	SC_FUNC_RETURN(card->ctx, 3, apdu.resplen);
+	return r;
 }
 
 static int iso7816_delete_file(sc_card_t *card, const sc_path_t *path)

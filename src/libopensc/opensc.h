@@ -120,6 +120,7 @@ extern "C" {
 #define SC_MAX_SLOTS			4
 #define SC_MAX_CARD_APPS		8
 #define SC_MAX_APDU_BUFFER_SIZE		258
+#define SC_MAX_EXT_APDU_BUFFER_SIZE	65538
 #define SC_MAX_PIN_SIZE			256 /* OpenPGP card has 254 max */
 #define SC_MAX_ATR_SIZE			33
 #define SC_MAX_AID_SIZE			16
@@ -543,7 +544,7 @@ struct sc_card_operations {
 	 *   <file>, if not NULL. */
 	int (*select_file)(struct sc_card *card, const struct sc_path *path,
 			   struct sc_file **file_out);
-	int (*get_response)(struct sc_card *card, sc_apdu_t *orig_apdu, size_t count);
+	int (*get_response)(struct sc_card *card, size_t count, u8 *buf);
 	int (*get_challenge)(struct sc_card *card, u8 * buf, size_t count);
 
 	/*
@@ -655,6 +656,11 @@ typedef struct sc_context {
 
 /* APDU handling functions */
 int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu);
+/* sends an APDU to the reader using command chaining if necessary
+ * XXX: this is only a temporary function, it's very likely that it's
+ *      functionality will be included in sc_transmit_apdu very soon */
+int sc_chain_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu);
+
 void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu, int cse, int ins,
 		    int p1, int p2);
 

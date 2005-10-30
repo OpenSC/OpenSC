@@ -36,14 +36,21 @@ int sc_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	return card->ops->check_sw(card, sw1, sw2);
 }
 
+#define SC_IS_SHORT_APDU(a)	((a)->cse >= SC_APDU_CASE_1 && (a)->cse <= SC_APDU_CASE_4_SHORT)
+#define SC_IS_EXT_APDU(a)	((a)->cse >= SC_APDU_CASE_2_EXT && (a)->cse <= SC_APDU_CASE_4_EXT)
+
 static int sc_check_apdu(sc_context_t *ctx, const sc_apdu_t *apdu)
 {
-	if (apdu->le > 256) {
-		sc_error(ctx, "Value of Le too big (maximum 256 bytes)\n");
+	if ((apdu->le > 256 && SC_IS_SHORT_APDU(apdu)) ||
+	    (apdu->le > 65536 && SC_IS_EXT_APDU(apdu))) {
+		sc_error(ctx, "Value of Le too big '%lu' (maximum %d bytes)\n",
+			apdu->le, SC_IS_EXT_APDU(apdu) ? 65536 : 256);
 		SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	if (apdu->lc > 255) {
-		sc_error(ctx, "Value of Lc too big (maximum 255 bytes)\n");
+	if ((apdu->lc > 255 && SC_IS_SHORT_APDU(apdu)) ||
+	    (apdu->lc > 65535 && SC_IS_EXT_APDU(apdu))){
+		sc_error(ctx, "Value of Lc too big '%lu' (maximum %d bytes)\n",
+			apdu->lc, SC_IS_EXT_APDU(apdu) ? 65535 : 255);
 		SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	switch (apdu->cse) {
@@ -54,6 +61,7 @@ static int sc_check_apdu(sc_context_t *ctx, const sc_apdu_t *apdu)
 		}
 		break;
 	case SC_APDU_CASE_2_SHORT:
+	case SC_APDU_CASE_2_EXT:
 		if (apdu->datalen > 0) {
 			sc_error(ctx, "Case 2 APDU with data supplied\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
@@ -68,12 +76,14 @@ static int sc_check_apdu(sc_context_t *ctx, const sc_apdu_t *apdu)
 		}
 		break;
 	case SC_APDU_CASE_3_SHORT:
+	case SC_APDU_CASE_3_EXT:
 		if (apdu->datalen == 0 || apdu->data == NULL) {
 			sc_error(ctx, "Case 3 APDU with no data supplied\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		break;
 	case SC_APDU_CASE_4_SHORT:
+	case SC_APDU_CASE_4_EXT:
 		if (apdu->datalen == 0 || apdu->data == NULL) {
 			sc_error(ctx, "Case 4 APDU with no data supplied\n");
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
@@ -87,9 +97,7 @@ static int sc_check_apdu(sc_context_t *ctx, const sc_apdu_t *apdu)
 			SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		break;
-	case SC_APDU_CASE_2_EXT:
-	case SC_APDU_CASE_3_EXT:
-	case SC_APDU_CASE_4_EXT:
+	default:
 		sc_error(ctx, "Invalid APDU case %d\n", apdu->cse);
 		SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 	}
@@ -171,9 +179,16 @@ static int sc_transceive(sc_card_t *card, sc_apdu_t *apdu)
 		*data++ = (u8) apdu->le;
 		break;
 	case SC_APDU_CASE_2_EXT:
-		*data++ = (u8) 0;
-		*data++ = (u8) (apdu->le >> 8);
-		*data++ = (u8) (apdu->le & 0xFF);
+		if (card->slot->active_protocol == SC_PROTO_T0) {
+			if (apdu->le >= 256)
+				*data++ = 0x00;
+			else
+				*data++ = apdu->le & 0xff;
+		} else {
+			*data++ = (u8) 0;
+			*data++ = (u8) (apdu->le >> 8);
+			*data++ = (u8) (apdu->le & 0xFF);
+		}
 		break;
 	case SC_APDU_CASE_3_SHORT:
 		*data++ = (u8) apdu->lc;
@@ -191,6 +206,22 @@ static int sc_transceive(sc_card_t *card, sc_apdu_t *apdu)
 		if (card->slot->active_protocol != SC_PROTO_T0)
 			/* unless T0 is used add Le byte */
 			*data++ = (u8) (apdu->le & 0xff);
+		break;
+	case SC_APDU_CASE_4_EXT:
+		if (card->slot->active_protocol == SC_PROTO_T0) {
+			/* currently there's no support for lc values > 255 */
+			*data++ = (u8) apdu->lc;
+			memcpy(data, apdu->data, data_bytes);
+			data += data_bytes;
+		} else {
+			*data++ = 0x00;
+			*data++ = (u8)(apdu->lc >> 8);
+			*data++ = (u8)(apdu->lc & 0xff);
+			memcpy(data, apdu->data, data_bytes);
+			data += data_bytes;
+			*data++ = (u8)(apdu->le >> 8);
+			*data++ = (u8)(apdu->le & 0xff);
+		}
 		break;
 	}
 	sendsize = data - sbuf;
@@ -286,29 +317,72 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 		}
 	}
 	if (apdu->sw1 == 0x61 && apdu->resplen == 0) {
-		size_t le;
-
-		if (orig_resplen == 0) {
-			apdu->sw1 = 0x90;	/* FIXME: should we do this? */
-			apdu->sw2 = 0;
-			sc_unlock(card);
-			return 0;
-		}
-
-		le = apdu->sw2? (size_t) apdu->sw2 : 256;
+		size_t le, buflen = orig_resplen;
+		u8     *buf = apdu->resp;
 
 		if (card->ops->get_response == NULL) {
-			sc_unlock(card);
-			SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
-		}
-		r = card->ops->get_response(card, apdu, le);
-		if (r < 0) {
-			sc_unlock(card);
-			SC_FUNC_RETURN(card->ctx, 2, r);
-		}
+                        sc_unlock(card);
+			sc_error(card->ctx, "errror: no GET RESPONSE command\n");
+                        return SC_ERROR_NOT_SUPPORTED;
+                }
+
+		le = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
+
+		do {
+			if (buflen < le)
+				return SC_ERROR_WRONG_LENGTH;
+
+			r = card->ops->get_response(card, le, buf);
+			if (r < 0) {
+				sc_unlock(card);
+				SC_FUNC_RETURN(card->ctx, 2, r);
+			}
+			buf    += le;
+			buflen -= le;
+		} while (r != 0);
+		/* we've read all data, let's return 0x9000 */
+		apdu->sw1 = 0x90;
+		apdu->sw2 = 0x00;
 	}
 	sc_unlock(card);
 	return 0;
+}
+
+int sc_chain_transmit_apdu(sc_card_t *card, sc_apdu_t *in_apdu)
+{
+	int       r = SC_ERROR_INTERNAL;
+	size_t    len, plen;
+	u8        *buf;
+	sc_apdu_t apdu;
+	u8	  rbuf[2];
+
+	if (card == NULL || in_apdu == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	len  = in_apdu->datalen;
+	buf  = in_apdu->data;
+
+	while (len != 0) {
+		apdu = *in_apdu;
+		if (len > 255) {
+			plen         = 255;
+			apdu.cla    |= 0x10;
+			apdu.le      = 2;
+			apdu.resplen = 2;
+			apdu.resp    = rbuf;
+		} else
+			plen = len;
+		apdu.data    = buf;
+		apdu.datalen = plen;
+
+		r = sc_transmit_apdu(card, &apdu);
+		if (r < 0)
+			return r;
+		len -= plen;
+		buf += plen;
+	}
+
+	return r;
 }
 
 void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
