@@ -331,6 +331,12 @@ int sc_pkcs15emu_add_x509_cert(sc_pkcs15_card_t *p15card,
 	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_CERT_X509, obj, cert);
 }
 
+int sc_pkcs15emu_add_data_object(sc_pkcs15_card_t *p15card,
+	const sc_pkcs15_object_t *obj, const sc_pkcs15_data_info_t *data)
+{
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT, obj, data);
+}
+
 int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	const sc_pkcs15_object_t *in_obj, const void *data)
 {
@@ -360,6 +366,10 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	case SC_PKCS15_TYPE_CERT:
 		df_type = SC_PKCS15_CDF;
 		data_len = sizeof(struct sc_pkcs15_cert_info);
+		break;
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		df_type = SC_PKCS15_DODF;
+		data_len = sizeof(struct sc_pkcs15_data_info);
 		break;
 	default:
 		sc_error(p15card->card->ctx,
