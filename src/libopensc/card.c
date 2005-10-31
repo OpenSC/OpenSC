@@ -317,32 +317,46 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 		}
 	}
 	if (apdu->sw1 == 0x61 && apdu->resplen == 0) {
-		size_t le, buflen = orig_resplen;
-		u8     *buf = apdu->resp;
+		if (orig_resplen == 0) {
+			apdu->sw1 = 0x90;
+			apdu->sw2 = 0x00;
+			
+		} else {
+			size_t le, buflen = orig_resplen;
+			u8     *buf = apdu->resp;
 
-		if (card->ops->get_response == NULL) {
-                        sc_unlock(card);
-			sc_error(card->ctx, "errror: no GET RESPONSE command\n");
-                        return SC_ERROR_NOT_SUPPORTED;
-                }
 
-		le = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
+			if (card->ops->get_response == NULL) {
+        	                sc_unlock(card);
+				sc_error(card->ctx, "error: no GET RESPONSE command\n");
+                        	return SC_ERROR_NOT_SUPPORTED;
+	                }
 
-		do {
-			if (buflen < le)
-				return SC_ERROR_WRONG_LENGTH;
+			le = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
 
-			r = card->ops->get_response(card, le, buf);
-			if (r < 0) {
-				sc_unlock(card);
-				SC_FUNC_RETURN(card->ctx, 2, r);
-			}
-			buf    += le;
-			buflen -= le;
-		} while (r != 0);
-		/* we've read all data, let's return 0x9000 */
-		apdu->sw1 = 0x90;
-		apdu->sw2 = 0x00;
+			do {
+				u8 tbuf[256];
+	
+				r = card->ops->get_response(card, &le, tbuf);
+				if (r < 0) {
+					sc_unlock(card);
+					SC_FUNC_RETURN(card->ctx, 2, r);
+				}
+
+				if (buflen < le) {
+					sc_unlock(card);
+					return SC_ERROR_WRONG_LENGTH;
+				}
+
+				memcpy(buf, tbuf, le);
+				buf    += le;
+				buflen -= le;
+			} while (r != 0);
+			/* we've read all data, let's return 0x9000 */
+			apdu->resplen = buf - apdu->resp;
+			apdu->sw1 = 0x90;
+			apdu->sw2 = 0x00;
+		}
 	}
 	sc_unlock(card);
 	return 0;
