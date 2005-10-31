@@ -51,6 +51,7 @@
 #include <opensc/keycache.h>
 #include <opensc/log.h>
 #include <opensc/ui.h>
+#include <opensc/cards.h>
 #include "util.h"
 
 
@@ -491,33 +492,39 @@ static int
 do_assert_pristine(sc_card_t *in_card)
 {
 	sc_path_t	path;
-	int		r, res=0;
+	int		r, ok = 1;
 
 	/* we need FILE NOT FOUND.
-	 * on starcos card NOT ALLOWED is also ok, as the MF does
-	 * not exist. */
+	 * - on starcos card NOT ALLOWED is also ok, as the MF does not exist.
+	 * - on setcos 4.4 card, we should get 6F00 (translates to
+	  *    SC_ERROR_CARD_CMD_FAILED) to indicate that no MF exists. */
 
 	sc_ctx_suppress_errors_on(in_card->ctx);
 
 	sc_format_path("2F00", &path);
 	r = sc_select_file(in_card, &path, NULL);
 
-	if (r != SC_ERROR_FILE_NOT_FOUND)
-		if (r != SC_ERROR_NOT_ALLOWED ||
-		 	strcmp(in_card->name, "STARCOS SPK 2.3") != 0)
-		res = -1;
+	if (r != SC_ERROR_FILE_NOT_FOUND) {
+		ok &= (r == SC_ERROR_NOT_ALLOWED &&
+			strcmp(in_card->name, "STARCOS SPK 2.3") == 0) ||
+		      (r == SC_ERROR_CARD_CMD_FAILED &&
+			in_card->type == SC_CARD_TYPE_SETCOS_44);
+	}
 
 	sc_format_path("5015", &path);
 	r = sc_select_file(in_card, &path, NULL);
 
-	if (r != SC_ERROR_FILE_NOT_FOUND)
-		if (r != SC_ERROR_NOT_ALLOWED ||
-		 	strcmp(in_card->name, "STARCOS SPK 2.3") != 0)
-		res = -1;
+	if (r != SC_ERROR_FILE_NOT_FOUND) {
+		ok &= (r == SC_ERROR_NOT_ALLOWED &&
+			strcmp(in_card->name, "STARCOS SPK 2.3") == 0) ||
+		      (r == SC_ERROR_CARD_CMD_FAILED &&
+			in_card->type == SC_CARD_TYPE_SETCOS_44);
+	}
+
 
 	sc_ctx_suppress_errors_off(in_card->ctx);
 
-	if (res < 0) {
+	if (!ok) {
 		fprintf(stderr,
 			"Card not pristine; detected (possibly incomplete) "
 			"PKCS#15 structure\n");
@@ -525,7 +532,7 @@ do_assert_pristine(sc_card_t *in_card)
 		printf("Pristine card.\n");
 	}
 
-	return res;
+	return ok ? 0 : -1;
 }
 
 /*
