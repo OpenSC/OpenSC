@@ -129,10 +129,14 @@ int cardos_info(void)
 	}
 
 	printf("OS Version: %d.%d", apdu.resp[0], apdu.resp[1]);
-	if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 02) {
+	if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x02) {
 		printf(" (that's CardOS M4.0)\n");
-	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 03) {
+	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x03) {
 		printf(" (that's CardOS M4.01)\n");
+	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x04) {
+		printf(" (that's CardOS M4.01a)\n");
+	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x08) {
+		printf(" (that's CardOS M4.3B)\n");
 	} else {
 		printf(" (unknown Version)\n");
 	}
