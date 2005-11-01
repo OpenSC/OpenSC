@@ -8,7 +8,7 @@
 
 p15_init --no-so-pin
 p15_set_pin -a 01
-p15_gen_key rsa/512 -a 01 --split-key --key-usage sign,decrypt
+p15_gen_key rsa/1024 -a 01 --split-key --key-usage sign,decrypt
 p15_validate
 p15_erase --secret @01=0000
 
