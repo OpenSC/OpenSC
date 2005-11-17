@@ -102,8 +102,10 @@ extern "C" {
 /* Operations relating to access control (in case of EF) */
 #define SC_AC_OP_READ			0
 #define SC_AC_OP_UPDATE			1
-#define SC_AC_OP_WRITE			2
-#define SC_AC_OP_ERASE			3
+/* the use of SC_AC_OP_ERASE is deprecated, SC_AC_OP_DELETE should be used
+ * instead  */
+#define SC_AC_OP_ERASE			SC_AC_OP_DELETE
+#define SC_AC_OP_WRITE			3
 /* rehab and invalidate are the same as in DF case */
 
 /* sc_*_record() flags */
