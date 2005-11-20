@@ -277,6 +277,7 @@ static int starcos_select_fid(sc_card_t *card,
 
 	/* request FCI to distinguish between EFs and DFs */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x00, 0x00);
+	apdu.p2   = (file_out != NULL) ? 0x00 : 0x0C;
 	apdu.resp = (u8*)resp;
 	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
 	apdu.le = 256;
@@ -481,15 +482,6 @@ static int starcos_select_file(sc_card_t *card,
 				 * requested directory */
 				if ( card->ctx->debug >= 4 )
 					sc_debug(card->ctx, "cache hit\n");
-				/* TODO: Should SELECT DF be called again ? 
-				 *       (Calling SELECT DF resets the status 
-				 *       of the current DF).
-				 */
-#if 0
-				/* SELECT the DF again */
-				return starcos_select_fid(card, path[pathlen-2],
-						path[pathlen-1], file_out);
-#else
 				/* copy file info (if necessary) */
 				if (file_out) {
 					sc_file_t *file = sc_file_new();
@@ -507,7 +499,6 @@ static int starcos_select_file(sc_card_t *card,
 				}
 				/* nothing left to do */
 				return SC_SUCCESS;
-#endif 
 			}
 		}
 		else
