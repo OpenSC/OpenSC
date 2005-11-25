@@ -755,7 +755,7 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	int offset = 0, count = 0;
 	sc_apdu_t *apdu = data->apdu;
 	u8 tmp;
-	uint16_t tmp16;
+	unsigned int tmp16;
 	PIN_VERIFY_STRUCTURE *pin_verify  = (PIN_VERIFY_STRUCTURE *)buf; 
 	
 	/* PIN verification control message */
@@ -843,7 +843,7 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	int offset = 0, count = 0;
 	sc_apdu_t *apdu = data->apdu;
 	u8 tmp;
-	uint16_t tmp16;
+	unsigned int tmp16;
 	PIN_MODIFY_STRUCTURE *pin_modify  = (PIN_MODIFY_STRUCTURE *)buf;
 
 	/* PIN verification control message */
