@@ -81,10 +81,9 @@ static int starcos_init(sc_card_t *card)
 	unsigned int flags;
 	starcos_ex_data *ex_data;
 
-	ex_data = (starcos_ex_data *) malloc(sizeof(starcos_ex_data));
-	if (!ex_data)
+	ex_data = (starcos_ex_data *) calloc(1, sizeof(starcos_ex_data));
+	if (ex_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(ex_data, 0, sizeof(starcos_ex_data));
 
 	card->name = "STARCOS SPK 2.3";
 	card->cla  = 0x00;
@@ -223,9 +222,6 @@ static int starcos_select_aid(sc_card_t *card,
 	int r;
 	size_t i = 0;
 
-	if (!card )
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
-  
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
 	apdu.lc = len;
 	apdu.data = (u8*)aid;
@@ -271,9 +267,6 @@ static int starcos_select_fid(sc_card_t *card,
 	u8 data[] = {id_hi & 0xff, id_lo & 0xff};
 	u8 resp[SC_MAX_APDU_BUFFER_SIZE];
 	int bIsDF = 0, r;
-
-	if (!card )
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* request FCI to distinguish between EFs and DFs */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x00, 0x00);
@@ -370,24 +363,14 @@ static int starcos_select_file(sc_card_t *card,
 	int    r;
 	size_t i, pathlen;
 
-	if ( !card || !in_path )
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
-
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	if (card->ctx->debug >= 4)
-	{
-		char buf[128], *p_buf = buf;
-		for (i = 0; i < card->cache.current_path.len; i++) 
-		{
-			sprintf(p_buf, "%02X", card->cache.current_path.value[i]);
-			p_buf += 2;
-		}
-		p_buf[0] = 0x00;
+	if (card->ctx->debug >= 4) {
 		sc_debug(card->ctx, "current path (%s, %s): %s (len: %u)\n",
 			(card->cache.current_path.type==SC_PATH_TYPE_DF_NAME?"aid":"path"),
 			(card->cache_valid?"valid":"invalid"),
-			buf, card->cache.current_path.len);
+			sc_print_path(&card->cache.current_path),
+			card->cache.current_path.len);
 	}
   
 	memcpy(path, in_path->value, in_path->len);
@@ -554,7 +537,6 @@ static u8 process_acl_entry(sc_file_t *in, unsigned int method, unsigned int in_
 static int starcos_process_acl(sc_card_t *card, sc_file_t *file,
 	sc_starcos_create_data *data)
 {
-	int    r;
 	u8     tmp, *p;
 	static const u8 def_key[] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
 
@@ -643,11 +625,14 @@ static int starcos_process_acl(sc_card_t *card, sc_file_t *file,
 		*p++ = 0x00;			/* rfu         */
 		*p++ = 0x00;			/* rfu         */
 		/* use sm (in combined mode) if wanted */
-		for (tmp = 0, r = 0; tmp != 0 && r < 4; r++)
-			if (file->acl[r] && (sc_file_get_acl_entry(file, r))->method &  SC_AC_PRO)
-				tmp = 0x03;
+		if ((file->acl[SC_AC_OP_READ]   && (sc_file_get_acl_entry(file, SC_AC_OP_READ)->method & SC_AC_PRO)) ||
+		    (file->acl[SC_AC_OP_UPDATE] && (sc_file_get_acl_entry(file, SC_AC_OP_UPDATE)->method & SC_AC_PRO)) ||
+		    (file->acl[SC_AC_OP_WRITE]  && (sc_file_get_acl_entry(file, SC_AC_OP_WRITE)->method & SC_AC_PRO)) )
+			tmp = 0x03;
+		else
+			tmp = 0x00;
 		*p++ = tmp;			/* SM byte     */
-		*p++ = 0x0;			/* use the least significant 5 bits
+		*p++ = 0x00;			/* use the least significant 5 bits
 					 	 * of the FID as SID */
 		switch (file->type)
 		{
@@ -693,7 +678,7 @@ static int starcos_create_mf(sc_card_t *card, sc_starcos_create_data *data)
 	sc_context_t   *ctx = card->ctx;
 
 	if (ctx->debug >= 3)
-			sc_debug(ctx, "creating MF \n");
+		sc_debug(ctx, "creating MF \n");
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
 	apdu.cla |= 0x80;
 	apdu.lc   = 19;
@@ -902,8 +887,8 @@ static int starcos_write_key(sc_card_t *card, sc_starcos_wkey_data *data)
 	size_t    len = sizeof(sbuf), tlen, offset = 0;
 	sc_apdu_t       apdu;
 
-	if (!data->mode)	/* mode == 0 => install */
-	{	/* install key header */
+	if (data->mode == 0) {	/* mode == 0 => install */
+		/* install key header */
 		sbuf[0] = 0xc1;	/* key header tag    */
 		sbuf[1]	= 0x0c;	/* key header length */
 		memcpy(sbuf + 2, data->key_header, 12);
@@ -918,15 +903,17 @@ static int starcos_write_key(sc_card_t *card, sc_starcos_wkey_data *data)
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			return sc_check_sw(card, apdu.sw1, apdu.sw2);
+		if (data->key == NULL)
+			return SC_SUCCESS;
 	}
 
-	if (data->key == NULL && data->mode == 0)
-		return SC_SUCCESS;
+	if (data->key == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	p    = data->key;
 	tlen = data->key_len;
-	while (tlen)
-	{	/* transmit the key in chunks of STARCOS_WKEY_CSIZE bytes */
+	while (tlen != 0) {
+		/* transmit the key in chunks of STARCOS_WKEY_CSIZE bytes */
 		u8 clen = tlen < STARCOS_WKEY_CSIZE ? tlen : STARCOS_WKEY_CSIZE;
 		sbuf[0] = 0xc2;
 		sbuf[1] = 3 + clen;

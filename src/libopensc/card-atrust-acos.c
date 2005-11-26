@@ -85,10 +85,9 @@ static int atrust_acos_init(struct sc_card *card)
 	unsigned int flags;
 	atrust_acos_ex_data *ex_data;
 
-	ex_data = (atrust_acos_ex_data *) malloc(sizeof(atrust_acos_ex_data));
-	if (!ex_data)
+	ex_data = (atrust_acos_ex_data *) calloc(1, sizeof(atrust_acos_ex_data));
+	if (ex_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(ex_data, 0, sizeof(atrust_acos_ex_data));
 
 	card->name = "A-TRUST ACOS";
 	card->cla  = 0x00;
@@ -225,9 +224,6 @@ static int atrust_acos_select_aid(struct sc_card *card,
 	int r;
 	size_t i = 0;
 
-	if (!card )
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
-  
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
 	apdu.lc = len;
 	apdu.data = (u8*)aid;
@@ -275,9 +271,6 @@ static int atrust_acos_select_fid(struct sc_card *card,
 	u8 data[] = {id_hi & 0xff, id_lo & 0xff};
 	u8 resp[SC_MAX_APDU_BUFFER_SIZE];
 	int bIsDF = 0, r;
-
-	if (!card )
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* request FCI to distinguish between EFs and DFs */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x00, 0x00);
@@ -375,22 +368,12 @@ static int atrust_acos_select_file(struct sc_card *card,
 	int    r;
 	size_t i, pathlen;
 
-	if ( !card || !in_path )
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
-
-	if (card->ctx->debug >= 4)
-	{
-		char buf[128], *p_buf = buf;
-		for (i = 0; i < card->cache.current_path.len; i++) 
-		{
-			sprintf(p_buf, "%02X", card->cache.current_path.value[i]);
-			p_buf += 2;
-		}
-		p_buf[0] = 0x00;
+	if (card->ctx->debug >= 4) {
 		sc_debug(card->ctx, "current path (%s, %s): %s (len: %u)\n",
 			(card->cache.current_path.type==SC_PATH_TYPE_DF_NAME?"aid":"path"),
 			(card->cache_valid?"valid":"invalid"),
-			buf, card->cache.current_path.len);
+			sc_print_path(&card->cache.current_path),
+			card->cache.current_path.len);
 	}
   
 	memcpy(path, in_path->value, in_path->len);
