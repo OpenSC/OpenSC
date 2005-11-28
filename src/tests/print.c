@@ -56,7 +56,6 @@ static void print_pin(const struct sc_pkcs15_object *obj)
 	struct sc_pkcs15_pin_info *pin;
 	const int pf_count = sizeof(pin_flags) / sizeof(pin_flags[0]);
 	int i;
-	char *p;
 
 	pin = (struct sc_pkcs15_pin_info *) obj->data;
 	printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&pin->auth_id));
@@ -84,14 +83,8 @@ static void print_pin(const struct sc_pkcs15_object *obj)
 	default:
 		printf("[encoding %d]\n", pin->type);
 	}
-	if (pin->path.len) {
-		printf("\tPath        : ");
-		for (i = 0; i < pin->path.len; i++) {
-			printf("%02X", pin->path.value[i]);
-			p += 2;
-		}
-		printf("\n");
-	}
+	if (pin->path.len)
+		printf("\tPath        : %s\n", sc_print_path(&pin->path));
 	if (pin->tries_left >= 0)
 		printf("\tTries left  : %d\n", pin->tries_left);
 }
