@@ -134,16 +134,12 @@ struct sc_pkcs15_card *p15card = NULL;
 
 static void print_cert_info(const struct sc_pkcs15_object *obj)
 {
-	unsigned int i;
 	struct sc_pkcs15_cert_info *cert = (struct sc_pkcs15_cert_info *) obj->data;
 
 	printf("X.509 Certificate [%s]\n", obj->label);
 	printf("\tFlags    : %d\n", obj->flags);
 	printf("\tAuthority: %s\n", cert->authority ? "yes" : "no");
-	printf("\tPath     : ");
-	for (i = 0; i < cert->path.len; i++)
-		printf("%02X", cert->path.value[i]);
-	printf("\n");
+	printf("\tPath     : %s\n", sc_print_path(&cert->path));
 	printf("\tID       : %s\n", sc_pkcs15_print_id(&cert->id));
 }
 
@@ -414,10 +410,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	printf("\tModLength   : %d\n", prkey->modulus_length);
 	printf("\tKey ref     : %d\n", prkey->key_reference);
 	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");
-	printf("\tPath        : ");
-	for (i = 0; i < prkey->path.len; i++)
-		printf("%02X", prkey->path.value[i]);
-	printf("\n");
+	printf("\tPath        : %s\n", sc_print_path(&prkey->path));
 	printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID          : %s\n", sc_pkcs15_print_id(&prkey->id));
 }
@@ -475,10 +468,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	printf("\tModLength   : %d\n", pubkey->modulus_length);
 	printf("\tKey ref     : %d\n", pubkey->key_reference);
 	printf("\tNative      : %s\n", pubkey->native ? "yes" : "no");
-	printf("\tPath        : ");
-	for (i = 0; i < pubkey->path.len; i++)
-		printf("%02X", pubkey->path.value[i]);
-	printf("\n");
+	printf("\tPath        : %s\n", sc_print_path(&pubkey->path));
 	printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID          : %s\n", sc_pkcs15_print_id(&pubkey->id));
 }
@@ -873,16 +863,8 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 		"halfnibble bcd", "iso 9664-1"}; 
 	const struct sc_pkcs15_pin_info *pin = (const struct sc_pkcs15_pin_info *) obj->data;
 	const size_t pf_count = sizeof(pin_flags)/sizeof(pin_flags[0]);
-	char path[SC_MAX_PATH_SIZE * 2 + 1];
 	size_t i;
-	char *p;
 
-	p = path;
-	*p = 0;
-	for (i = 0; i < pin->path.len; i++) {
-		sprintf(p, "%02X", pin->path.value[i]);
-		p += 2;
-	}
 	printf("PIN [%s]\n", obj->label);
 	printf("\tCom. Flags: 0x%X\n", obj->flags);
 	printf("\tID        : %s\n", sc_pkcs15_print_id(&pin->auth_id));
@@ -897,7 +879,7 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 	printf("\tPad char  : 0x%02X\n", pin->pad_char);
 	printf("\tReference : %d\n", pin->reference);
 	printf("\tType      : %s\n", pin_types[pin->type]);
-	printf("\tPath      : %s\n", path);
+	printf("\tPath      : %s\n", sc_print_path(&pin->path));
 	if (pin->tries_left >= 0)
 		printf("\tTries left: %d\n", pin->tries_left);
 }

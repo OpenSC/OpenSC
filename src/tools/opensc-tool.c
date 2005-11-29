@@ -144,11 +144,7 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 	
 	for (r = 0; r < depth; r++)
 		printf("  ");
-	for (r = 0; r < (int)path->len; r++) {
-		printf("%02X", path->value[r]);
-		if (r && (r & 1) == 1)
-			printf(" ");
-	}
+	printf("%s ", sc_print_path(path));
 	if (file->namelen) {
 		printf("[");
 		print_binary(stdout, file->name, file->namelen);
