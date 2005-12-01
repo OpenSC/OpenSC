@@ -1000,7 +1000,7 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
-	size_t i;
+	size_t i, i2;
 	
 	if (data_len != 64 && data_len != 96 && data_len != 128  && data_len != 256) {
 		sc_error(card->ctx, "Illegal input length: %d\n", data_len);
@@ -1016,15 +1016,16 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 	 * lc=00 (Chaskiel M Grundman <cg2v@andrew.cmu.edu>) */
 	if (data_len == 256) {
 		apdu.cla=0x10;
-		apdu.lc=1;
-		apdu.datalen=1;
+		apdu.lc=10;
+		apdu.datalen=10;
 		apdu.data = sbuf;
-		sbuf[0]=data[data_len-1];
+		for (i2 = 0; i2 < 10; i2++)
+			sbuf[i2]=data[data_len-1-i2];
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		SC_TEST_RET(card->ctx, r, "Card returned error");
-		data_len--;
+		data_len -= 10;
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, 0x00, prv->rsa_key_ref);
 		apdu.cla=0x0;
 	}
