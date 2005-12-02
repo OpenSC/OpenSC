@@ -188,8 +188,8 @@ int incrypto34_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 get_next_part:
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xFC, 0x00, offset?0x01:0x00);
 	apdu.cla = 0xB0;
-	apdu.le = 256;
-	apdu.resplen = 3;
+	apdu.le = 3;
+	apdu.resplen = sizeof(rbuf);
 	apdu.resp = rbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
