@@ -611,7 +611,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 {
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct sc_pkcs15_object *auths[MAX_OBJECTS];
-	struct sc_pkcs11_slot *slot;
+	struct sc_pkcs11_slot *slot = NULL;
 	int i, rv, reader = p11card->reader;
 	int auth_count;
 	unsigned int j;
