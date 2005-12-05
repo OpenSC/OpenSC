@@ -321,6 +321,8 @@ cflex_generate_key(sc_profile_t *profile, sc_card_t *card,
 	r = cflex_get_keyfiles(profile, card, &key_info->path, &prkf, &pukf);
 	if (r < 0)
 		return r;
+	if (! prkf)
+		return SC_ERROR_NOT_SUPPORTED;
 
 	/* Make sure we authenticate first */
 	r = sc_pkcs15init_authenticate(profile, card, prkf, SC_AC_OP_CRYPTO);
