@@ -1163,9 +1163,14 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	unsigned char certdata[MAX_OBJECT_SIZE];
 	int certdata_len = 0;
 	FILE *f;
-	CK_OBJECT_HANDLE cert_obj, pubkey_obj, privkey_obj;
-	CK_ATTRIBUTE cert_templ[20], pubkey_templ[20], privkey_templ[20];
-	int n_cert_attr = 0, n_pubkey_attr = 0, n_privkey_attr = 0;
+	CK_OBJECT_HANDLE cert_obj, privkey_obj;
+	CK_ATTRIBUTE cert_templ[20], privkey_templ[20];
+	int n_cert_attr = 0, n_privkey_attr = 0;
+#if 0 
+	CK_ATTRIBUTE pubkey_templ[20];
+	CK_OBJECT_HANDLE pubkey_obj;
+	int n_pubkey_attr = 0;
+#endif
 	CK_RV rv;
 	int need_to_parse_certdata = 0;
 #ifdef HAVE_OPENSSL
@@ -1313,6 +1318,7 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		show_object(session, cert_obj);
 	}
 
+#if 0
 	if (n_pubkey_attr) {
 		rv = p11->C_CreateObject(session, pubkey_templ, n_pubkey_attr, &pubkey_obj);
 		if (rv != CKR_OK)
@@ -1321,6 +1327,7 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		printf("Generated public key:\n");
 		show_object(session, pubkey_obj);
 	}
+#endif
 
 	if (n_privkey_attr) {
 		rv = p11->C_CreateObject(session, privkey_templ, n_privkey_attr, &privkey_obj);
@@ -3225,9 +3232,9 @@ int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 
 	while (*in != '\0') {
 		int byte = 0, nybbles = 2;
-		char c;
 
 		while (nybbles-- && *in && *in != ':') {
+			char c;
 			byte <<= 4;
 			c = *in++;
 			if ('0' <= c && c <= '9')
@@ -3254,7 +3261,6 @@ int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 		}
 		out[count++] = (unsigned char) byte;
 		left--;
-		c++;
 	}
 
 	*outlen = count;
