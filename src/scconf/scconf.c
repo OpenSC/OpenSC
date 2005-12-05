@@ -679,7 +679,7 @@ static int write_type(scconf_context * config, scconf_block * block, scconf_entr
 		break;
 	case SCCONF_STRING:
 		if (parm) {
-			const char *val = *(const char *) parm;
+			const char *val = (const char *) parm;
 
 			scconf_put_str(block, entry->name, val);
 			if (entry->flags & SCCONF_VERBOSE) {
