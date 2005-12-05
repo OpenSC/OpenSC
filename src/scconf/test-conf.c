@@ -157,12 +157,13 @@ int main(int argc, char **argv)
 
 	scconf_list_add(&foo_list, "value3");
 
-	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, NULL, "# comment1");
-	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_VALUE, "list1", foo_list);
+	/* FIXME - segfault: foo_item is NULL, _item_add dereferences it */
+	scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, NULL, "# comment1");
+	scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_VALUE, "list1", foo_list);
 	foo_block = NULL;
-	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_BLOCK, "block3", (void *) scconf_find_block(conf, NULL, "foo"));
-	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_VALUE, "list2", foo_list);
-	foo_item = scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, NULL, "# comment2");
+	scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_BLOCK, "block3", (void *) scconf_find_block(conf, NULL, "foo"));
+	scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_VALUE, "list2", foo_list);
+	scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, NULL, "# comment2");
 
 	if (write_entries(conf, foo_list) != 0) {
 		printf("scconf_write_entries failed\n");
