@@ -103,7 +103,7 @@ asn1_decode_pbkdf2_params(sc_context_t *ctx, void **paramp,
 		return r;
 
 	*paramp = malloc(sizeof(info));
-	if (*paramp)
+	if (!*paramp)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(*paramp, &info, sizeof(info));
 	return 0;
@@ -335,14 +335,14 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 	u8 *tmp;
 
 	alg_info = sc_asn1_get_algorithm_info(id);
+	if (alg_info == NULL) {
+		sc_error(ctx, "Cannot encode unknown algorithm %u.\n",
+				id->algorithm);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	/* Set the oid if not yet given */
 	if (id->obj_id.value[0] <= 0) {
-		if (alg_info == NULL) {
-			sc_error(ctx, "Cannot encode unknown algorithm %u.\n",
-					id->algorithm);
-			return SC_ERROR_INVALID_ARGUMENTS;
-		}
 		temp_id = *id;
 		temp_id.obj_id = alg_info->oid;
 		id = &temp_id;
