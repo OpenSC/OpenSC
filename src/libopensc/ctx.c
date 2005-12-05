@@ -250,8 +250,10 @@ static void load_reader_driver_options(sc_context_t *ctx,
 
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 					    "reader_driver", name);
-		conf_block = blocks[0];
-		free(blocks);
+		if (blocks) {
+			conf_block = blocks[0];
+			free(blocks);
+		}
 		if (conf_block != NULL)
 			break;
 	}
@@ -305,6 +307,8 @@ static const char *find_library(sc_context_t *ctx, const char *name, int type)
 	for (i = 0; ctx->conf_blocks[i]; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 			(type==0) ? "reader_driver" : "card_driver", name);
+		if (!blocks)
+			continue;
 		blk = blocks[0];
 		free(blocks);
 		if (blk == NULL)
@@ -429,6 +433,8 @@ static int load_card_driver_options(sc_context_t *ctx,
 		blocks = scconf_find_blocks(ctx->conf,
 					ctx->conf_blocks[i],
 					"card_driver", driver->short_name);
+		if (!blocks)
+			continue;
 		blk = blocks[0];
 		free(blocks);
 
