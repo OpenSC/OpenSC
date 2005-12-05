@@ -825,6 +825,8 @@ static scconf_block *get_belpic_conf(sc_context_t *ctx, const char *name)
 
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i], name, NULL);
+		if (!blocks)
+			return NULL;
 		conf_block = blocks[0];
 		free(blocks);
 		if (conf_block != NULL)
