@@ -65,8 +65,11 @@ sc_pkcs11_create_secret_key(struct sc_pkcs11_session *session,
 	CK_ATTRIBUTE_PTR attr;
 	int		n, rv;
 
-	if (!(key = (struct pkcs11_secret_key *) calloc(1, sizeof(*key)))
-	 || !(key->value = (CK_BYTE *) malloc(value_len))) {
+	key = (struct pkcs11_secret_key *) calloc(1, sizeof(*key));
+	if (!key)
+		return CKR_HOST_MEMORY;
+	key->value = (CK_BYTE *) malloc(value_len);
+	if (!key->value) {
 		pkcs11_secret_key_ops.release(key);
 		return CKR_HOST_MEMORY; /* XXX correct? */
 	}
