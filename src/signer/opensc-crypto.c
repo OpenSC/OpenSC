@@ -58,7 +58,7 @@ static int sc_private_decrypt(int flen, const unsigned char *from, unsigned char
 	if (priv->p15card == NULL) {
 		sc_close(priv);
 		r = sc_init(priv);
-		if (r) {
+		if (r || priv->p15card == NULL) {
 			DBG(printf("smart card init failed: %s", sc_strerror(r)));
 			goto err;
 		}
@@ -121,7 +121,7 @@ sc_sign(int type, const unsigned char *m, unsigned int m_len,
 	if (priv->p15card == NULL) {
 		sc_close(priv);
 		r = sc_init(priv);
-		if (r) {
+		if (r || priv->p15card == NULL) {
 			DBG(printf("smart card init failed: %s", sc_strerror(r)));
 			goto err;
 		}
