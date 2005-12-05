@@ -450,8 +450,10 @@ static int iso7816_select_file(sc_card_t *card,
 		if (file == NULL)
 			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 		file->path = *in_path;
-		if (card->ops->process_fci == NULL)
+		if (card->ops->process_fci == NULL) {
+			sc_file_free(file);
 			SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+		}
 		if (apdu.resp[1] <= apdu.resplen)
 			card->ops->process_fci(card, file, apdu.resp+2, apdu.resp[1]);
 		*file_out = file;
