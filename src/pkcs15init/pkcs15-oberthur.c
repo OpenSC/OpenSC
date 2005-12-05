@@ -269,8 +269,10 @@ static int cosm_create_reference_data(struct sc_profile *profile, sc_card_t *car
 			goto done;
 
 		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &profile_puk);
-		if (profile_puk.max_length > 0x100)
+		if (profile_puk.max_length > 0x100) {
+			free(puk_buff);
 			return SC_ERROR_INCONSISTENT_PROFILE;
+		}
 		memset(puk_buff, profile_puk.pad_char, 0x100);
 		for (ii=0; ii<8 && (size_t)(ptr-puk) < puk_len && (*ptr); ii++)   {
 			jj = 0;
@@ -618,7 +620,7 @@ cosm_new_key(struct sc_profile *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey *key, unsigned int idx,
 		struct sc_pkcs15_prkey_info *info)
 {
-	sc_file_t *prvfile = NULL, *pubfile = NULL;
+	sc_file_t *prvfile = NULL;
 	struct sc_pkcs15_prkey_rsa *rsa = NULL;
 	struct sc_pkcs15_bignum bn[6];
 	u8 *buff;
@@ -633,7 +635,7 @@ cosm_new_key(struct sc_profile *profile, sc_card_t *card,
 	/* Create and populate the private part. */
 	rv = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, idx,
 					&prvfile);
-	if (rv < 0)
+	if (rv < 0 || !prvfile)
 		return SC_ERROR_SYNTAX_ERROR;
 	
 	sc_debug(card->ctx, " prvfile->id %i;  path=%s\n", 
@@ -681,7 +683,6 @@ cosm_new_key(struct sc_profile *profile, sc_card_t *card,
 	info->modulus_length = rsa->modulus.len << 3;
 
 failed:
-	if (pubfile) sc_file_free(pubfile);
 	if (prvfile) sc_file_free(prvfile);
 	if (buff)	free(buff);
 
