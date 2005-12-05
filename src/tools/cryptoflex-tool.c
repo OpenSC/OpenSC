@@ -100,6 +100,7 @@ static char *getpin(const char *prompt)
 		return NULL;
 	if (strlen(pass) > 8) {
 		fprintf(stderr, "PIN code too long.\n");
+		free(buf);
 		return NULL;
 	}
 	memset(buf, 0, 8);
@@ -591,6 +592,10 @@ static int create_key_files(void)
 		printf("Creating key files for %d keys.\n", opt_key_count);
 	
 	file = sc_file_new();
+	if (!file) {
+		fprintf(stderr, "out of memory.\n");
+		return 1;
+	}
 	file->type = SC_FILE_TYPE_WORKING_EF;
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 
@@ -601,8 +606,10 @@ static int create_key_files(void)
 	sc_file_add_acl_entry(file, SC_AC_OP_INVALIDATE, SC_AC_CHV, 1);
 	sc_file_add_acl_entry(file, SC_AC_OP_REHABILITATE, SC_AC_CHV, 1);
 
-	if (select_app_df())
+	if (select_app_df()) {
+		sc_file_free(file);
 		return 1;
+	}
 	r = sc_create_file(card, file);
 	sc_file_free(file);
 	if (r) {
@@ -611,6 +618,10 @@ static int create_key_files(void)
 	}
 
 	file = sc_file_new();
+	if (!file) {
+		fprintf(stderr, "out of memory.\n");
+		return 1;
+	}
 	file->type = SC_FILE_TYPE_WORKING_EF;
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 
@@ -984,8 +995,10 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 #endif
 		sprintf(prompt, "Please enter PUK for CHV%d%s: ", chv, key_id);
 		puk = getpin(prompt);
-		if (puk == NULL)
+		if (puk == NULL) {
+			free(pin);
 			return -1;
+		}
 #if 0
 		sprintf(prompt, "Please enter PUK for CHV%d%s again: ", chv, key_id);
 		tmp = getpin(prompt);
@@ -1011,6 +1024,9 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 	*p++ = opt_puk_attempts;
 	*p++ = opt_puk_attempts;
 	len = p - buf;
+
+	free(pin);
+	free(puk);
 	
 	file = sc_file_new();
 	file->type = SC_FILE_TYPE_WORKING_EF;
