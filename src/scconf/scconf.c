@@ -167,17 +167,15 @@ int scconf_get_bool(const scconf_block * block, const char *option, int def)
 const char *scconf_put_str(scconf_block * block, const char *option, const char *value)
 {
 	scconf_list *list = NULL;
-	scconf_item *item;
 
 	scconf_list_add(&list, value);
-	item = scconf_item_add(NULL, block, NULL, SCCONF_ITEM_TYPE_VALUE, option, list);
+	scconf_item_add(NULL, block, NULL, SCCONF_ITEM_TYPE_VALUE, option, list);
 	scconf_list_destroy(list);
 	return value;
 }
 
 int scconf_put_int(scconf_block * block, const char *option, int value)
 {
-	const char *ret;
 	char *str;
 
 	str = (char *) malloc(64);
@@ -185,7 +183,7 @@ int scconf_put_int(scconf_block * block, const char *option, int value)
 		return value;
 	}
 	snprintf(str, 64, "%i", value);
-	ret = scconf_put_str(block, option, str);
+	scconf_put_str(block, option, str);
 	free(str);
 	return value;
 }
@@ -661,7 +659,7 @@ static int write_type(scconf_context * config, scconf_block * block, scconf_entr
 		break;
 	case SCCONF_BOOLEAN:
 		if (parm) {
-			const int val = parm ? (int) parm : 0;
+			const int val = * (int* ) parm;
 
 			scconf_put_bool(block, entry->name, val);
 			if (entry->flags & SCCONF_VERBOSE) {
@@ -671,7 +669,7 @@ static int write_type(scconf_context * config, scconf_block * block, scconf_entr
 		break;
 	case SCCONF_INTEGER:
 		if (parm) {
-			const int val = parm ? (int) parm : 0;
+			const int val = * (int*) parm;
 
 			scconf_put_int(block, entry->name, val);
 			if (entry->flags & SCCONF_VERBOSE) {
@@ -681,7 +679,7 @@ static int write_type(scconf_context * config, scconf_block * block, scconf_entr
 		break;
 	case SCCONF_STRING:
 		if (parm) {
-			const char *val = parm ? (const char *) parm : "";
+			const char *val = *(const char *) parm;
 
 			scconf_put_str(block, entry->name, val);
 			if (entry->flags & SCCONF_VERBOSE) {
