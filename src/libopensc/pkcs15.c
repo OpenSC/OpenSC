@@ -618,7 +618,7 @@ int sc_pkcs15_bind(sc_card_t *card,
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 			"framework", "pkcs15");
-		if (blocks[0] != NULL)
+		if (blocks && blocks[0] != NULL)
 			conf_block = blocks[0];
 		free(blocks);
 	}
