@@ -362,7 +362,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 		SETEC_LCSI_CREATE : SETEC_LCSI_ACTIVATED;
 	u8 bCommands_always = 0;
 	int pins[] = {-1, -1, -1, -1, -1, -1, -1};
-	u8 bCommands_pin[sizeof(pins)];
+	u8 bCommands_pin[7]; /* both 7 entries big */
 	u8 bCommands_key = 0;
 	u8 bNumber = 0;
 	u8 bPinNumber = 0;
