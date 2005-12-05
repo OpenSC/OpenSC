@@ -407,6 +407,7 @@ sc_pkcs15init_erase_card_recursively(sc_card_t *card,
 
 		sc_ctx_suppress_errors_on(card->ctx);
 		if (sc_pkcs15_bind(card, &p15card) >= 0) {
+			/* result of set_so_pin_from_card ignored */
 			set_so_pin_from_card(p15card, profile);
 			profile->p15_data = p15card;
 		}
@@ -652,7 +653,8 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 	/* Perform card-specific initialization */
 	if (profile->ops->init_card
 	 && (r = profile->ops->init_card(profile, card)) < 0) {
-		sc_profile_free(profile);
+		if (pin_obj)
+			sc_pkcs15_free_object(pin_obj);
 		return r;
 	}
 
@@ -674,8 +676,11 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 				args->so_pin, args->so_pin_len,
 				args->so_puk, args->so_puk_len);
 	}
-	if (r < 0)
+	if (r < 0) {
+		if (pin_obj)
+			sc_pkcs15_free_object(pin_obj);
 		return r;
+	}
 
 	/* Put the new SO pin in the key cache (note: in case
 	 * of the "onepin" profile store it as a normal pin) */
@@ -804,8 +809,10 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 	pin_info->auth_id = args->auth_id;
 
 	/* Set the SO PIN reference from card */
-	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
+	if ((r = set_so_pin_from_card(p15card, profile)) < 0) {
+		sc_pkcs15_free_object(pin_obj);
 		return r;
+	}
 
 	/* Now store the PINs */
 	if (profile->ops->create_pin) {
@@ -827,9 +834,11 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 				SC_PKCS15INIT_USER_PIN);
 	}
 
-	if (r >= 0)
+	if (r >= 0) {
 		r = sc_pkcs15init_add_object(p15card, profile,
 			       	SC_PKCS15_AODF, pin_obj);
+	} else
+		sc_pkcs15_free_object(pin_obj);
 
 	profile->dirty = 1;
 
@@ -980,9 +989,10 @@ sc_pkcs15init_init_prkdf(sc_pkcs15_card_t *p15card,
 	unsigned int	usage;
 	int		r = 0;
 
-	*res_obj = NULL;
-	if (!keybits)
+	if (!res_obj || !keybits)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	*res_obj = NULL;
 
 	if ((usage = keyargs->usage) == 0) {
 		usage = SC_PKCS15_PRKEY_USAGE_SIGN;
@@ -1370,6 +1380,9 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	unsigned int	keybits, type, usage;
 	int		r;
 
+	if (!res_obj || !keyargs)
+		return SC_ERROR_NOT_SUPPORTED;
+
 	/* Create a copy of the key first */
 	key = keyargs->key;
 
@@ -1528,9 +1541,11 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	}
 
 	/* Now update the CDF */
-	if (r >= 0)
+	if (r >= 0) {
 		r = sc_pkcs15init_add_object(p15card, profile,
 				SC_PKCS15_CDF, object);
+	} else
+		sc_pkcs15_free_object(object);
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
