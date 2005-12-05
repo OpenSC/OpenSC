@@ -117,6 +117,7 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 	if (asn1_dirrecord[2].flags & SC_ASN1_PRESENT) {
 		if (path_len > SC_MAX_PATH_SIZE) {
 			sc_error(card->ctx, "Application path is too long.\n");
+			free(app);
 			return SC_ERROR_INVALID_ASN1_OBJECT;
 		}
 		memcpy(app->path.value, path, path_len);
@@ -130,8 +131,10 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 		app->path.len = 0;
 	if (asn1_dirrecord[3].flags & SC_ASN1_PRESENT) {
 		app->ddo = (u8 *) malloc(ddo_len);
-		if (app->ddo == NULL)
+		if (app->ddo == NULL) {
+			free(app);
 			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		memcpy(app->ddo, ddo, ddo_len);
 		app->ddo_len = ddo_len;
 	} else {
@@ -316,6 +319,7 @@ static int update_transparent(sc_card_t *card, sc_file_t *file)
 		memcpy(buf + buf_size, rec, rec_size);
 		buf_size += rec_size;
 		free(rec);
+		rec=NULL;
 	}
 	if (file->size > buf_size) {
 		tmp = (u8 *) realloc(buf, file->size);
