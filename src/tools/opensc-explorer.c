@@ -840,10 +840,12 @@ static int do_get(int argc, char **argv)
 	}
 	r = sc_select_file(card, &path, &file);
 	if (r) {
+		fclose(outf);
 		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 		return -1;
 	}
 	if (file->type != SC_FILE_TYPE_WORKING_EF) {
+		fclose(outf);
 		printf("only working EFs may be read\n");
 		sc_file_free(file);
 		return -1;
@@ -1081,6 +1083,7 @@ static int do_put(int argc, char **argv)
 	r = sc_select_file(card, &path, &file);
 	if (r) {
 		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
+		fclose(outf);
 		return -1;
 	}
 	count = file->size;
