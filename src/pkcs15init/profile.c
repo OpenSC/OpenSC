@@ -257,16 +257,16 @@ sc_profile_new(void)
 
 	pro->pkcs15.do_last_update = 1;
 
-	/* Set up EF(TokenInfo) and EF(ODF) */
-	p15card->file_tokeninfo = init_file(SC_FILE_TYPE_WORKING_EF);
-	p15card->file_odf = init_file(SC_FILE_TYPE_WORKING_EF);
-
 	if (p15card) {
 		p15card->label = strdup("OpenSC Card");
 		p15card->manufacturer_id = strdup("OpenSC Project");
 		p15card->serial_number = strdup("0000");
 		p15card->flags = SC_PKCS15_CARD_FLAG_EID_COMPLIANT;
 		p15card->version = 1;
+
+		/* Set up EF(TokenInfo) and EF(ODF) */
+		p15card->file_tokeninfo = init_file(SC_FILE_TYPE_WORKING_EF);
+		p15card->file_odf = init_file(SC_FILE_TYPE_WORKING_EF);
 	}
 
 	/* Assume card does RSA natively, but no DSA */
@@ -1007,6 +1007,9 @@ new_file(struct state *cur, const char *name, unsigned int type)
 	if (file->type != (int)type) {
 		parse_error(cur, "inconsistent file type (should be %s)",
 			(file->type == SC_FILE_TYPE_DF)? "DF" : "EF");
+		if (strncasecmp(name, "PKCS15-", 7) ||
+			!strcasecmp(name+7, "AppDF")) 
+			sc_file_free(file);
 		return NULL;
 	}
 
