@@ -1220,6 +1220,8 @@ scconf_block *_get_conf_block(sc_context_t *ctx, const char *name1, const char *
 		scconf_block **blocks;
 		
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i], name1, name2);
+		if (!blocks)
+			return NULL;
 		conf_block = blocks[0];
 		free(blocks);
 		if (conf_block != NULL && priority)
