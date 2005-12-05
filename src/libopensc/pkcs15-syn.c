@@ -89,7 +89,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 						"framework", "pkcs15");
-		if (blocks[0] != NULL)
+		if (blocks && blocks[0] != NULL)
 			conf_block = blocks[0];
 		free(blocks);
 	}
@@ -131,7 +131,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 		/* search for 'emulate foo { ... }' entries in the conf file */
 		sc_debug(ctx, "searching for 'emulate foo { ... }' blocks\n");
 		blocks = scconf_find_blocks(ctx->conf, conf_block, "emulate", NULL);
-		for (i = 0; (blk = blocks[i]) != NULL; i++) {
+		for (i = 0; blocks && (blk = blocks[i]) != NULL; i++) {
 			const char *name = blk->name->data;
 			sc_debug(ctx, "trying %s\n", name);
 			r = parse_emu_block(p15card, blk);
@@ -374,6 +374,7 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	default:
 		sc_error(p15card->card->ctx,
 			"Unknown PKCS15 object type %d\n", type);
+		free(obj);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
