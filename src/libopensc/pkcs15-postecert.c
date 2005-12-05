@@ -316,7 +316,10 @@ static int sc_pkcs15emu_postecert_init(sc_pkcs15_card_t * p15card)
 
 	/* return to MF */
 	sc_format_path("3F00", &path);
-	sc_select_file(card, &path, NULL);
+	r = sc_select_file(card, &path, NULL);
+	if (r != SC_SUCCESS)
+		return r;
+
 	{
 		/* save old signature funcs */
 		set_security_env = card->ops->set_security_env;
