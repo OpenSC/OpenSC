@@ -624,11 +624,15 @@ select_mf(sc_card_t *card, sc_file_t **file_out)
 	for(ii=0;;ii++)   {	
 		rv = select_parent(card, &file);
 		SC_TEST_RET(card->ctx, rv, "Select parent failed");
+		if (!file) 
+			return SC_ERROR_CARD_CMD_FAILED;
 		
 		if (file->id==0x3F00)
 			break;
-		else
+		else {
 			sc_file_free(file);
+			file=NULL;
+		}
 		
 		if (ii>5)
 			return SC_ERROR_CARD_CMD_FAILED;
@@ -1222,6 +1226,8 @@ auth_set_security_env(sc_card_t *card,
 	rv = auth_select_file(card, &env->file_ref, &key_file);
 	if (rv)
 		return rv;
+	if (!key_file) 
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	switch (env->algorithm)   {
 	case SC_ALGORITHM_DES:
@@ -1305,8 +1311,7 @@ auth_set_security_env(sc_card_t *card,
 	senv->key_file_id = key_file->id;
 	senv->key_size = key_file->size;
 
-	if (key_file)
-		sc_file_free(key_file);
+	sc_file_free(key_file);
 	
 	return 0;
 }
@@ -1802,10 +1807,12 @@ auth_read_component(sc_card_t *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type,
 static int auth_get_pin_reference (sc_card_t *card, 
 	 int type, int reference, int cmd, int *out_ref)
 {
-	struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
+	struct auth_private_data *prv;
 
 	if (!card || !out_ref)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	
+	prv = (struct auth_private_data *) card->drv_data;
     
 	switch (prv->aid.tag)   {
     case AID_OBERTHUR_V5 :
