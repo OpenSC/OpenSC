@@ -73,6 +73,9 @@ sc_pkcs15_derive_key(sc_context_t *ctx,
 	u8		*iv = NULL, key[64];
 	int		r;
 
+	if (!ctx || ! der_alg || !enc_alg) 
+		return SC_ERROR_NOT_SUPPORTED;
+
 	/* XXX: We might also encounter PBES2 here */
 	if (der_alg->algorithm != SC_ALGORITHM_PBKDF2) {
 		sc_error(ctx, "Unsupported key derivation algorithm.\n");
@@ -92,9 +95,18 @@ sc_pkcs15_derive_key(sc_context_t *ctx,
 		sc_error(ctx, "Unsupported key encryption algorithm.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
+
+	if (!iv) {
+		sc_error(ctx, "Unsupported key encryption parameters.\n");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
 	key_len = EVP_CIPHER_key_length(cipher);
 
 	info = (struct sc_pbkdf2_params *) der_alg->params;
+	if (!info) {
+		sc_error(ctx, "Key parameters missing.\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	if (info->key_length && info->key_length != key_len) {
 		sc_error(ctx, "Incompatible key length.\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
