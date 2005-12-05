@@ -833,14 +833,14 @@ is_cacert_already_present(struct sc_pkcs15init_certargs *args)
 	sc_pkcs15_object_t	*objs[32];
 	sc_pkcs15_cert_info_t	*cinfo;
 	sc_pkcs15_cert_t	*cert;
-	int			i, count, r, match = 0;
+	int			i, count, r;
 
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, 32);
 	if (r <= 0)
 		return 0;
 
 	count = r;
-	for (i = 0; !match && i < count; i++) {
+	for (i = 0; i < count; i++) {
 		cinfo = (sc_pkcs15_cert_info_t *) objs[i]->data;
 
 		if (!cinfo->authority)
@@ -852,17 +852,20 @@ is_cacert_already_present(struct sc_pkcs15init_certargs *args)
 
 		/* Compare the DER representation of the certificates */
 		r = sc_pkcs15_read_certificate(p15card, cinfo, &cert);
-		if (r < 0)
+		if (r < 0 || !cert)
 			continue;
 
-		match = cert->data_len == args->der_encoded.len
+		if (cert->data_len == args->der_encoded.len
 		     && !memcmp(cert->data, args->der_encoded.value,
-				     cert->data_len);
-
+				     cert->data_len)) {
+			sc_pkcs15_free_certificate(cert);
+			return 1;
+		}
 		sc_pkcs15_free_certificate(cert);
+		cert=NULL;
 	}
 
-	return match;
+	return 0;
 }
 
 /*
@@ -1090,10 +1093,12 @@ static int get_cert_info(sc_pkcs15_card_t *p15card, sc_pkcs15_object_t *certobj,
 		if ((otherobj == certobj) ||
 			!((otherobj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT))
 				continue;
-		if (othercert)
+		if (othercert) {
 			sc_pkcs15_free_certificate(othercert);
+			othercert=NULL;
+		}
 		r = sc_pkcs15_read_certificate(p15card, (sc_pkcs15_cert_info_t *) otherobj->data, &othercert);
-		if (r < 0)
+		if (r < 0 || !othercert)
 			goto done;
 		if ((cert->issuer_len == othercert->subject_len) &&
 			(memcmp(cert->issuer, othercert->subject, cert->issuer_len) == 0)) {
