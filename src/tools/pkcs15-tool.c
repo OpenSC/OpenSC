@@ -533,6 +533,10 @@ static int read_public_key(void)
 		fprintf(stderr, "Public key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
+	if (!pubkey) {
+		fprintf(stderr, "Public key not available\n");
+		return 1;
+	}
 
 	r = pem_encode(ctx, pubkey->algorithm, &pubkey->data, &pem_key);
 	if (r < 0) {
@@ -1043,6 +1047,7 @@ static int change_pin(void)
 		printf("PIN codes do not match, try again.\n");
 		free(newpin);
 		free(newpin2);
+		newpin=NULL;
 	}
 	r = sc_pkcs15_change_pin(p15card, pinfo, pincode, strlen((char *) pincode),
 				 newpin, strlen((char *) newpin));
@@ -1062,7 +1067,7 @@ static int read_and_cache_file(const sc_path_t *path)
 {
 	sc_file_t *tfile;
 	const sc_acl_entry_t *e;
-	u8 buf[16384];
+	u8 *buf;
 	int r;
 
 	if (verbose) {
@@ -1081,17 +1086,25 @@ static int read_and_cache_file(const sc_path_t *path)
 			printf("Skipping; ACL for read operation is not NONE.\n");
 		return -1;
 	}
+	buf = malloc(tfile->size);
+	if (!buf) {
+		printf("out of memory!");
+		return -1;
+	}
 	r = sc_read_binary(card, 0, buf, tfile->size, 0);
 	if (r < 0) {
 		fprintf(stderr, "sc_read_binary() failed: %s\n", sc_strerror(r));
+		free(buf);
 		return -1;
 	}
 	r = sc_pkcs15_cache_file(p15card, path, buf, r);
 	if (r) {
 		fprintf(stderr, "Unable to cache file: %s\n", sc_strerror(r));
+		free(buf);
 		return -1;
 	}
 	sc_file_free(tfile);
+	free(buf);
 	return 0;
 }
 
