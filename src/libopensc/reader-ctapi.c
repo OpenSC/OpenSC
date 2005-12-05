@@ -528,7 +528,8 @@ static int ctapi_init(sc_context_t *ctx, void **reader_data)
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 					    "reader_driver", "ctapi");
-		conf_block = blocks[0];
+		if (blocks && blocks[0])
+			conf_block = blocks[0];
 		free(blocks);
 		if (conf_block != NULL)
 			break;
