@@ -638,17 +638,17 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	/* There's some funny padding indicator that must be
 	 * prepended... hmm. */
-	if (1) {
-		if (!(temp = (u8 *) malloc(inlen + 1)))
-			return SC_ERROR_OUT_OF_MEMORY;
-		temp[0] = '\0';
-		memcpy(temp + 1, in, inlen);
-		in = temp;
-		inlen += 1;
-	}
+	if (!(temp = (u8 *) malloc(inlen + 1)))
+		return SC_ERROR_OUT_OF_MEMORY;
+	temp[0] = '\0';
+	memcpy(temp + 1, in, inlen);
+	in = temp;
+	inlen += 1;
 
-	if (env->operation != SC_SEC_OPERATION_DECIPHER)
+	if (env->operation != SC_SEC_OPERATION_DECIPHER) {
+		free(temp);
 		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	switch (env->key_ref[0]) {
 	case 0x01: /* Decryption key */
@@ -660,10 +660,12 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	case 0x02: /* authentication key */
 		sc_error(card->ctx,
 			"Invalid key reference (signature only key)\n");
+		free(temp);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	default:
 		sc_error(card->ctx, "Invalid key reference 0x%02x\n",
 				env->key_ref[0]);
+		free(temp);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -675,6 +677,8 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	apdu.resplen = outlen;
 
 	r = sc_transmit_apdu(card, &apdu);
+	free(temp);
+
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
