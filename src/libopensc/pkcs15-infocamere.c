@@ -453,7 +453,9 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	/* return to MF */
 	sc_format_path("3F00", &path);
-	sc_select_file(card, &path, NULL);
+	r = sc_select_file(card, &path, NULL);
+	if (r != SC_SUCCESS)
+		return r;
 
 	if (change_sign) {
 		/* save old signature funcs */
@@ -670,9 +672,8 @@ static int infocamere_1400_init(sc_pkcs15_card_t * p15card)
 
 	/* return to MF */
 	sc_format_path("3F00", &path);
-	sc_select_file(card, &path, NULL);
-
-	return SC_SUCCESS;
+	r = sc_select_file(card, &path, NULL);
+	return r;
 	}
 
 #endif
