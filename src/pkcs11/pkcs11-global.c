@@ -374,10 +374,16 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	}
 
 again:
+	/* Check if C_Finalize() has been called in another thread */
+	if (context == NULL)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
+
 	sc_pkcs11_unlock();
 	r = sc_wait_for_event(readers, slots, k, mask, &found, &events, -1);
 
 	/* There may have been a C_Finalize while we slept */
+	if (context == NULL)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 	if ((rv = sc_pkcs11_lock()) != CKR_OK)
 		return rv;
 
