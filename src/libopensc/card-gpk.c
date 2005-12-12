@@ -1337,15 +1337,13 @@ gpk_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	SC_TEST_RET(card->ctx, r, "Cryptogram too large");
 	in = buffer;
 
-	memset(&apdu, 0, sizeof(apdu));
-	apdu.cse = SC_APDU_CASE_3_SHORT;
-	apdu.cla = 0x80;
-	apdu.ins = 0x1C;
-	apdu.p2  = 0;		/* PKCS1 padding */
-	apdu.lc  = inlen;
-	apdu.data= in;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x1C, 0x00, 0x00);
+	apdu.cla |= 0x80;
+	apdu.lc   = inlen;
+	apdu.data = in;
 	apdu.datalen = inlen;
-	apdu.resp= buffer;
+	apdu.le   = 256;		/* give me all you got :) */
+	apdu.resp = buffer;
 	apdu.resplen = sizeof(buffer);
 	apdu.sensitive = 1;
 

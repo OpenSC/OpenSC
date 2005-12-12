@@ -970,7 +970,7 @@ static int starcos_gen_key(sc_card_t *card, sc_starcos_gen_key_data *data)
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	/* read public key via READ PUBLIC KEY */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xf0,  0x9c, 0x00);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xf0,  0x9c, 0x00);
 	sbuf[0]      = data->key_id;
 	apdu.cla    |= 0x80;
 	apdu.data    = sbuf;
