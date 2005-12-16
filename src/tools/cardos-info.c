@@ -135,8 +135,10 @@ int cardos_info(void)
 		printf(" (that's CardOS M4.01)\n");
 	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x04) {
 		printf(" (that's CardOS M4.01a)\n");
+	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x06) {
+		printf(" (that's CardOS M4.2)\n");
 	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x08) {
-		printf(" (that's CardOS M4.3B)\n");
+		printf(" (that's CardOS M4.3b)\n");
 	} else {
 		printf(" (unknown Version)\n");
 	}
@@ -149,7 +151,7 @@ int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00 || opt_debug) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -306,9 +308,9 @@ int cardos_info(void)
 		return 1;
 	}
 
-	printf("System keys: PackageLoadKey (version %d, retries %d)\n",
+	printf("System keys: PackageLoadKey (version 0x%02x, retries %d)\n",
 			rbuf[0], rbuf[1]);
-	printf("System keys: StartKey (version %d, retries %d)\n",
+	printf("System keys: StartKey (version 0x%02x, retries %d)\n",
 			rbuf[2], rbuf[3]);
 
 	apdu.p2 = 0x87;
@@ -320,6 +322,7 @@ int cardos_info(void)
 		return 1;
 	}
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+		fprintf(stderr, "Unable to determine current DF:\n");
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
