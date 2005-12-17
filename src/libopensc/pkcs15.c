@@ -1376,7 +1376,7 @@ int sc_pkcs15_encode_unusedspace(sc_context_t *ctx,
 			 struct sc_pkcs15_card *p15card,
 			 u8 **buf, size_t *buflen)
 {
-	sc_path_t path, dummy_path;
+	sc_path_t dummy_path;
 	static const struct sc_asn1_entry c_asn1_unusedspace[] = {
 		{ "UnusedSpace", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
@@ -1448,7 +1448,7 @@ int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen, struct sc_pkcs15_
 {
 	const u8 *p = buf;
 	size_t left = buflen;
-	int r, i;
+	int r;
 	sc_path_t path, dummy_path;
 	sc_pkcs15_id_t auth_id;
 	struct sc_asn1_entry asn1_unusedspace[] = {
