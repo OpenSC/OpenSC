@@ -573,6 +573,11 @@ sc_pkcs15init_rmdir(sc_card_t *card, struct sc_profile *profile,
 	path.value[1] = df->id & 0xFF;
 	path.len = 2;
 
+	/* ensure that the card is in the correct lifecycle */
+	r = sc_pkcs15init_set_lifecycle(card, SC_CARDCTRL_LIFECYCLE_ADMIN);
+	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
+		return r;
+
 	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_delete_file(card, &path);
 	sc_ctx_suppress_errors_off(card->ctx);
@@ -1484,13 +1489,18 @@ sc_pkcs15init_store_split_key(struct sc_pkcs15_card *p15card,
 	int		r;
 
 	/* keyEncipherment|dataEncipherment|keyAgreement */
-	keyargs->x509_usage = usage & 0x1C;
+	keyargs->x509_usage = usage & (SC_PKCS15INIT_X509_KEY_ENCIPHERMENT |
+				SC_PKCS15INIT_X509_DATA_ENCIPHERMENT |
+				SC_PKCS15INIT_X509_KEY_AGREEMENT);
 	r = sc_pkcs15init_store_private_key(p15card, profile,
 				keyargs, prk1_obj);
 
 	if (r >= 0) {
 		/* digitalSignature|nonRepudiation|certSign|cRLSign */
-		keyargs->x509_usage = usage & 0x63;
+		keyargs->x509_usage = usage & (SC_PKCS15INIT_X509_DIGITAL_SIGNATURE |
+				SC_PKCS15INIT_X509_NON_REPUDIATION |
+				SC_PKCS15INIT_X509_KEY_CERT_SIGN   |
+				SC_PKCS15INIT_X509_CRL_SIGN);
 
 		/* Prevent pkcs15init from choking on duplicate ID */
 		keyargs->flags |= SC_PKCS15INIT_SPLIT_KEY;
@@ -2809,6 +2819,10 @@ sc_pkcs15init_update_certificate(sc_pkcs15_card_t *p15card,
 			|| (r = sc_pkcs15init_authenticate(profile, p15card->card,
 				parent, SC_AC_OP_CREATE)) < 0)
 					goto done;
+		/* ensure we are in the correct lifecycle */
+		r = sc_pkcs15init_set_lifecycle(p15card->card, SC_CARDCTRL_LIFECYCLE_ADMIN);
+		if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
+			return r;
  		if ((r = sc_create_file(p15card->card, file)) < 0)
 			goto done;
 	}
@@ -3220,6 +3234,11 @@ sc_pkcs15init_create_file(struct sc_profile *pro, sc_card_t *card,
 	/* Fix up the file's ACLs */
 	if ((r = sc_pkcs15init_fixup_file(pro, file)) < 0)
 		return r;
+
+	/* ensure we are in the correct lifecycle */
+	r = sc_pkcs15init_set_lifecycle(card, SC_CARDCTRL_LIFECYCLE_ADMIN);
+        if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
+                return r;
 
 	r = sc_create_file(card, file);
 
