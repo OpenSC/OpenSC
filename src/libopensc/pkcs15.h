@@ -333,6 +333,14 @@ struct sc_pkcs15_df {
 };
 typedef struct sc_pkcs15_df sc_pkcs15_df_t;
 
+struct sc_pkcs15_unusedspace {
+	sc_path_t path;
+	sc_pkcs15_id_t auth_id;
+
+	struct sc_pkcs15_unusedspace *next, *prev;
+};
+typedef struct sc_pkcs15_unusedspace sc_pkcs15_unusedspace_t;
+
 #define SC_PKCS15_CARD_MAGIC		0x10203040
 
 typedef struct sc_pkcs15_card {
@@ -346,11 +354,13 @@ typedef struct sc_pkcs15_card {
 	struct sc_pkcs15_algorithm_info alg_info[1];
 
 	sc_file_t *file_app;
-	sc_file_t *file_tokeninfo, *file_odf;
+	sc_file_t *file_tokeninfo, *file_odf, *file_unusedspace;
 
 	struct sc_pkcs15_df *df_list;
 	struct sc_pkcs15_object *obj_list;
 	int record_lengths[SC_PKCS15_DF_TYPE_COUNT];
+	sc_pkcs15_unusedspace_t *unusedspace_list;
+	int unusedspace_read;
 
 	struct sc_pkcs15_card_opts {
 		int use_cache;
@@ -559,6 +569,16 @@ int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 		     const struct sc_file *file);
 void sc_pkcs15_remove_df(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_df *df);
+
+int sc_pkcs15_add_unusedspace(struct sc_pkcs15_card *p15card,
+		     const sc_path_t *path, const sc_pkcs15_id_t *auth_id);
+void sc_pkcs15_remove_unusedspace(struct sc_pkcs15_card *p15card,
+			 sc_pkcs15_unusedspace_t *obj);
+int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen,
+			struct sc_pkcs15_card *card);
+int sc_pkcs15_encode_unusedspace(sc_context_t *ctx,
+			 struct sc_pkcs15_card *p15card,
+			 u8 **buf, size_t *buflen);
 
 void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key);
 void sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *key);

@@ -202,12 +202,13 @@ static const struct sc_asn1_entry c_asn1_ddo[] = {
 static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
 {
 	struct sc_asn1_entry asn1_ddo[5];
-	sc_path_t odf_path, ti_path;
+	sc_path_t odf_path, ti_path, us_path;
 	int r;
 
 	sc_copy_asn1_entry(c_asn1_ddo, asn1_ddo);
 	sc_format_asn1_entry(asn1_ddo + 1, &odf_path, NULL, 0);
 	sc_format_asn1_entry(asn1_ddo + 2, &ti_path, NULL, 0);
+	sc_format_asn1_entry(asn1_ddo + 3, &us_path, NULL, 0);
 
 	r = sc_asn1_decode(p15card->card->ctx, asn1_ddo, buf, buflen, NULL, NULL);
 	if (r) {
@@ -227,6 +228,12 @@ static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t bufl
 			goto mem_err;
 		p15card->file_tokeninfo->path = ti_path;
 	}
+	if (asn1_ddo[3].flags & SC_ASN1_PRESENT) {
+		p15card->file_unusedspace = sc_file_new();
+		if (p15card->file_unusedspace == NULL)
+			goto mem_err;
+		p15card->file_unusedspace->path = us_path;
+	}
 	return 0;
 mem_err:
 	if (p15card->file_odf != NULL) {
@@ -236,6 +243,10 @@ mem_err:
 	if (p15card->file_tokeninfo != NULL) {
 		sc_file_free(p15card->file_tokeninfo);
 		p15card->file_tokeninfo = NULL;
+	}
+	if (p15card->file_unusedspace != NULL) {
+		sc_file_free(p15card->file_unusedspace);
+		p15card->file_unusedspace = NULL;
 	}
 	return SC_ERROR_OUT_OF_MEMORY;
 }
@@ -395,12 +406,17 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 		sc_pkcs15_remove_object(p15card, p15card->obj_list);
 	while (p15card->df_list)
 		sc_pkcs15_remove_df(p15card, p15card->df_list);
+	while (p15card->unusedspace_list)
+		sc_pkcs15_remove_unusedspace(p15card, p15card->unusedspace_list);
+	p15card->unusedspace_read = 0;
 	if (p15card->file_app != NULL)
 		sc_file_free(p15card->file_app);
 	if (p15card->file_tokeninfo != NULL)
 		sc_file_free(p15card->file_tokeninfo);
 	if (p15card->file_odf != NULL)
 		sc_file_free(p15card->file_odf);
+	if (p15card->file_unusedspace != NULL)
+		sc_file_free(p15card->file_unusedspace);
 	p15card->magic = 0;
 	if (p15card->label != NULL)
 		free(p15card->label);
@@ -438,6 +454,10 @@ void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 	if (p15card->file_odf != NULL) {
 		sc_file_free(p15card->file_odf);
 		p15card->file_odf = NULL;
+	}
+	if (p15card->file_unusedspace != NULL) {
+		sc_file_free(p15card->file_unusedspace);
+		p15card->file_unusedspace = NULL;
 	}
 	if (p15card->label != NULL) {
 		free(p15card->label);
@@ -1308,6 +1328,170 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 ret:
 	free(buf);
 	return r;
+}
+
+int sc_pkcs15_add_unusedspace(struct sc_pkcs15_card *p15card,
+		     const sc_path_t *path, const sc_pkcs15_id_t *auth_id)
+{
+	sc_pkcs15_unusedspace_t *p = p15card->unusedspace_list, *new_unusedspace;
+
+	if (path->count == -1) {
+		sc_error(p15card->card->ctx, "No offset and length present in path %s\n",
+			sc_print_path(path));
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	new_unusedspace = (sc_pkcs15_unusedspace_t *) calloc(1, sizeof(sc_pkcs15_unusedspace_t));
+	if (new_unusedspace == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	new_unusedspace->path = *path;
+	if (auth_id != NULL)
+		new_unusedspace->auth_id = *auth_id;
+
+	if (p15card->unusedspace_list == NULL) {
+		p15card->unusedspace_list = new_unusedspace;
+		return 0;
+	}
+	while (p->next != NULL)
+ 		p = p->next;
+	p->next = new_unusedspace;
+	new_unusedspace->prev = p;
+
+	return 0;
+}
+
+void sc_pkcs15_remove_unusedspace(struct sc_pkcs15_card *p15card,
+			 sc_pkcs15_unusedspace_t *unusedspace)
+{
+	if (unusedspace->prev == NULL)
+		p15card->unusedspace_list = unusedspace->next;
+	else
+		unusedspace->prev->next = unusedspace->next;
+	if (unusedspace->next != NULL)
+		unusedspace->next->prev = unusedspace->prev;
+	free(unusedspace);
+}
+
+int sc_pkcs15_encode_unusedspace(sc_context_t *ctx,
+			 struct sc_pkcs15_card *p15card,
+			 u8 **buf, size_t *buflen)
+{
+	sc_path_t path, dummy_path;
+	static const struct sc_asn1_entry c_asn1_unusedspace[] = {
+		{ "UnusedSpace", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	static const struct sc_asn1_entry c_asn1_unusedspace_values[] = {
+		{ "path", SC_ASN1_PATH,	ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ "authId", SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	struct sc_asn1_entry *asn1_unusedspace = NULL;
+	struct sc_asn1_entry *asn1_values = NULL;
+	int unusedspace_count = 0, r, c = 0;
+	sc_pkcs15_unusedspace_t *unusedspace;
+
+	sc_format_path("3F00", &dummy_path);
+	dummy_path.index = dummy_path.count = 0;
+
+	unusedspace = p15card->unusedspace_list;
+	for ( ; unusedspace != NULL; unusedspace = unusedspace->next)
+		unusedspace_count++;
+	if (unusedspace_count == 0) {
+		/* The standard says there has to be at least 1 entry,
+		 * so we use a path with a length of 0 bytes */
+		r = sc_pkcs15_add_unusedspace(p15card, &dummy_path, NULL);
+		if (r)
+			return r;
+		unusedspace_count = 1;
+	}
+
+	asn1_unusedspace = (struct sc_asn1_entry *)
+		malloc(sizeof(struct sc_asn1_entry) * (unusedspace_count + 1));
+	if (asn1_unusedspace == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
+	asn1_values = (struct sc_asn1_entry *)
+		malloc(sizeof(struct sc_asn1_entry) * (unusedspace_count * 3));
+	if (asn1_values == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
+
+	for (unusedspace = p15card->unusedspace_list; unusedspace != NULL; unusedspace = unusedspace->next) {
+		sc_copy_asn1_entry(c_asn1_unusedspace, asn1_unusedspace + c);
+		sc_format_asn1_entry(asn1_unusedspace + c, asn1_values + 3*c, NULL, 1);
+		sc_copy_asn1_entry(c_asn1_unusedspace_values, asn1_values + 3*c);
+		sc_format_asn1_entry(asn1_values + 3*c, &unusedspace->path, NULL, 1);
+		sc_format_asn1_entry(asn1_values + 3*c+1, &unusedspace->auth_id, NULL, unusedspace->auth_id.len);
+		c++;
+	}
+	asn1_unusedspace[c].name = NULL;
+
+	r = sc_asn1_encode(ctx, asn1_unusedspace, buf, buflen);
+
+err:
+	if (asn1_values != NULL)
+		free(asn1_values);
+	if (asn1_unusedspace != NULL)
+		free(asn1_unusedspace);
+
+	/* If we added the dummy entry, remove it now */
+	if (unusedspace_count == 1 && sc_compare_path(&p15card->unusedspace_list->path, &dummy_path))
+		sc_pkcs15_remove_unusedspace(p15card, p15card->unusedspace_list);
+
+	return r;
+}
+
+int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
+{
+	const u8 *p = buf;
+	size_t left = buflen;
+	int r, i;
+	sc_path_t path, dummy_path;
+	sc_pkcs15_id_t auth_id;
+	struct sc_asn1_entry asn1_unusedspace[] = {
+		{ "UnusedSpace", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	struct sc_asn1_entry asn1_unusedspace_values[] = {
+		{ "path", SC_ASN1_PATH,	ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ "authId", SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+
+	/* Clean the list if already present */
+	while (card->unusedspace_list)
+		sc_pkcs15_remove_unusedspace(card, card->unusedspace_list);
+
+	sc_format_path("3F00", &dummy_path);
+	dummy_path.index = dummy_path.count = 0;
+
+	sc_format_asn1_entry(asn1_unusedspace, asn1_unusedspace_values, NULL, 1);
+	sc_format_asn1_entry(asn1_unusedspace_values, &path, NULL, 1);
+	sc_format_asn1_entry(asn1_unusedspace_values+1, &auth_id, NULL, 0);
+
+	while (left > 0) {
+		memset(&auth_id, 0, sizeof(auth_id));
+		r = sc_asn1_decode(card->card->ctx, asn1_unusedspace, p, left, &p, &left);
+		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
+			break;
+		if (r < 0)
+			return r;
+		/* If the path length is 0, it's a dummy path then don't add it.
+		 * If the path length isn't include (-1) then it's against the standard
+		 *   but we'll just ignore it instead of returning an error. */
+		if (path.count > 0) {
+			r = sc_pkcs15_add_unusedspace(card, &path, &auth_id);
+			if (r)
+				return r;
+		}
+	}
+
+	card->unusedspace_read = 1;
+
+	return 0;
 }
 
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,

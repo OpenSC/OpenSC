@@ -134,6 +134,14 @@ static int	sc_pkcs15init_read_info(sc_card_t *card, sc_profile_t *);
 static int	sc_pkcs15init_parse_info(sc_card_t *, const u8 *, size_t, sc_profile_t *);
 static int	sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *,
 			sc_pkcs15_object_t *pin_obj);
+static int	sc_pkcs15init_read_unusedspace(sc_pkcs15_card_t *);
+static int sc_pkcs15init_update_unusedspace(sc_pkcs15_card_t *, sc_profile_t *);
+static sc_pkcs15_unusedspace_t *merge_paths(sc_pkcs15_unusedspace_t *, const sc_path_t *);
+static int sc_pkcs15init_add_unusedspace(sc_pkcs15_card_t *,
+			sc_profile_t *, const sc_path_t *, const sc_pkcs15_id_t *);
+static int sc_pkcs15init_remove_unusedspace(sc_pkcs15_card_t *,
+			sc_profile_t *, const sc_path_t *);
+
 
 static struct profile_operations {
 	const char *name;
@@ -702,7 +710,7 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 	 * all sorts of assumptions about DF and EF names, and
 	 * doesn't work if secure messaging is required for the
 	 * MF (which is the case with the GPK) */
-	app = (sc_app_info_t *) calloc(1, sizeof(*app));
+	app = (sc_app_info_t *)calloc(1, sizeof(*app));
 	if (app == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	app->path = p15spec->file_app->path;
@@ -752,6 +760,169 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 	sc_pkcs15init_write_info(card, profile, pin_obj);
 	sc_ctx_suppress_errors_off(card->ctx);
 	return r;
+}
+
+/* Read the EF(UnusedSpace) file */
+static int sc_pkcs15init_read_unusedspace(sc_pkcs15_card_t *p15card)
+{
+	sc_path_t path;
+	u8 *buf = NULL;
+	size_t buf_len;
+	int r;
+
+	/* Check if EF(UnusedSpace) file is already read */
+	if (p15card->unusedspace_read)
+		return 0;
+
+	if (p15card->file_unusedspace != NULL)
+		path = p15card->file_unusedspace->path;
+	else {
+		path = p15card->file_app->path;
+		sc_append_path_id(&path, (const u8 *) "\x50\x33", 2);
+		path.count = -1;
+	}
+
+	r = sc_pkcs15_read_file(p15card, &path, &buf, &buf_len, NULL);
+	if (r < 0) {
+		if (r == SC_ERROR_FILE_NOT_FOUND)
+			r = 0;
+		goto err;
+	}
+
+	r = sc_pkcs15_parse_unusedspace(buf, buf_len, p15card);
+
+err:
+	if (buf != NULL)
+		free(buf);
+	return r;
+}
+
+/* Update the EF(UnusedSpace) file */
+static int sc_pkcs15init_update_unusedspace(sc_pkcs15_card_t *p15card,
+	sc_profile_t *profile)
+{
+	sc_path_t path;
+	u8 *buf = NULL;
+	size_t buf_len;
+	sc_file_t *file = NULL;
+	int r;
+
+	/* Make sure we've read the EF(UnusedSpace) file first */
+	r = sc_pkcs15init_read_unusedspace(p15card);
+	if (r < 0)
+		return r;
+	if (p15card->unusedspace_list == NULL)
+		return 0;
+
+	r = sc_profile_get_file(profile, "PKCS15-UnusedSpace", &file);
+	if (r < 0)
+		return r;
+
+	r = sc_pkcs15_encode_unusedspace(p15card->card->ctx, p15card, &buf, &buf_len);
+	if (r < 0)
+		goto err;
+
+	r = sc_pkcs15init_update_file(profile, p15card->card,
+		file, buf, buf_len);
+
+err:
+	if (buf != NULL)
+		free(buf);
+	if (file != NULL)
+		sc_file_free(file);
+	return r;
+}
+
+/* Called by sc_pkcs15init_add_unusedspace(), to try to merge path
+ * with one of the paths in us, so one large path can be made */
+static sc_pkcs15_unusedspace_t *merge_paths(sc_pkcs15_unusedspace_t *us,
+	const sc_path_t *path)
+{
+	for ( ; us != NULL; us = us->next) {
+		sc_path_t *old = &us->path;
+		if (!sc_compare_path(path, old))
+			continue;
+		if (old->index + old->count == path->index) {
+			old->count += path->count;
+			return us;
+		}
+		if (path->index + path->count == old->index) {
+			old->index = path->index;
+			old->count += path->count;
+			return us;
+		}
+	}
+	return NULL; /* Couldn't merge */
+}
+
+/* Add a path to the EF(UnusedSpace) file. This is done when (part of) the
+ * file where the path points to is no longer used (i.e. the pkcs15 object
+ * inside has been "deleted"). */
+static int sc_pkcs15init_add_unusedspace(sc_pkcs15_card_t *p15card,
+	sc_profile_t *profile, const sc_path_t *path, const sc_pkcs15_id_t *auth_id)
+{
+	sc_pkcs15_unusedspace_t *us;
+	int r = 0;
+
+	if (path->count == -1)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	/* Make sure we've read the EF(UnusedSpace) file first */
+	r = sc_pkcs15init_read_unusedspace(p15card);
+	if (r < 0)
+		return r;
+
+	/* See if we can merge this new entry with one that already exists */
+	us = merge_paths(p15card->unusedspace_list, path);
+	if (us == NULL)
+		sc_pkcs15_add_unusedspace(p15card, path, auth_id);
+	else {
+		/* So we could merge it. But now the path pointed to by us
+		* might be mergeable with another path further on in the list */
+		if (merge_paths(us->next, &us->path))
+			sc_pkcs15_remove_unusedspace(p15card, us);
+	}
+
+	return sc_pkcs15init_update_unusedspace(p15card, profile);
+}
+
+/* Remove some space from the EF(UnusedSpace) file. This is done when you want
+ * to use the space  for a certificate, data, ... */
+static int sc_pkcs15init_remove_unusedspace(sc_pkcs15_card_t *p15card,
+	sc_profile_t *profile, const sc_path_t *path)
+{
+	sc_pkcs15_unusedspace_t *us;
+	int ok = 0;
+	int r = 0;
+
+	/* Make sure we've read the EF(UnusedSpace) file first */
+	r = sc_pkcs15init_read_unusedspace(p15card);
+	if (r < 0)
+		return r;
+
+	/* Search in the EF(UnusedSpace) for a path where the required
+	 * space (referred to by 'path') can be subtracted from  */
+	for (us = p15card->unusedspace_list; us != NULL && !ok; us = us->next) {
+		sc_path_t *old = &us->path;
+		if (!sc_compare_path(path, old) || old->count < path->count)
+				continue;
+		if (old->index == path->index) {
+			old->index += path->count;
+			old->count -= path->count;
+			ok = 1;
+		}
+		else if (old->index + old->count == path->index + path->count) {
+			old->count -= path->count;
+			ok = 1;
+		}
+		if (old->count == 0)
+			sc_pkcs15_remove_unusedspace(p15card, us);
+	}
+
+	if (!ok)
+		return SC_ERROR_OBJECT_NOT_FOUND; /* the space couldn't be found */
+
+	return sc_pkcs15init_update_unusedspace(p15card, profile);
 }
 
 /*
@@ -2551,9 +2722,6 @@ int sc_pkcs15init_delete_object(sc_pkcs15_card_t *p15card,
 	struct sc_pkcs15_df *df;
 	int r;
 
-	if (profile->ops->delete_object == NULL)
-		return SC_ERROR_NOT_SUPPORTED;
-
 	switch(obj->type & SC_PKCS15_TYPE_CLASS_MASK)
 	{
 	case SC_PKCS15_TYPE_PUBKEY:
@@ -2576,21 +2744,35 @@ int sc_pkcs15init_delete_object(sc_pkcs15_card_t *p15card,
 	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
 		return r;
 
-	r = profile->ops->delete_object(profile, p15card->card,
-		obj->type, obj->data, &path);
-	if (r < 0) {
-		sc_error(p15card->card->ctx, "ops->delete_object() failed: %d", r);
-		return r;
+	/* If there's a card-specific way to delete objects, use it.
+	 * Otherwise, just set its label to "deleted" to indicate
+	 * that we can re-used it when we have to make a next
+	 * object in the future. */
+	if (profile->ops->delete_object != NULL) {
+		r = profile->ops->delete_object(profile, p15card->card,
+			obj->type, obj->data, &path);
+		if (r < 0) {
+			sc_error(p15card->card->ctx, "ops->delete_object() failed: %d", r);
+			return r;
+		}
+
+		/* Get the DF we're part of. If there's no DF, fine, we haven't
+		 * been added yet. */
+		if ((df = obj->df) != NULL) {
+			/* Unlink the object and update the DF */
+			sc_pkcs15_remove_object(p15card, obj);
+			r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
+		}
 	}
-
-	/* Get the DF we're part of. If there's no DF, fine, we haven't
-	 * been added yet. */
-	if ((df = obj->df) == NULL)
-		return 0;
-
-	/* Unlink the object and update the DF */
-	sc_pkcs15_remove_object(p15card, obj);
-	r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
+	else {
+		/* Get the DF we're part of. If there's no DF, fine, we haven't
+		 * been added yet. */
+		if ((df = obj->df) != NULL) {
+			/*Change the label into "deleted" and update the DF */
+			strcpy(obj->label, "deleted");
+			r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
+		}
+	}
 
 	/* mark card as dirty */
 	profile->dirty = 1;

@@ -267,6 +267,7 @@ sc_profile_new(void)
 		/* Set up EF(TokenInfo) and EF(ODF) */
 		p15card->file_tokeninfo = init_file(SC_FILE_TYPE_WORKING_EF);
 		p15card->file_odf = init_file(SC_FILE_TYPE_WORKING_EF);
+		p15card->file_unusedspace = init_file(SC_FILE_TYPE_WORKING_EF);
 	}
 
 	/* Assume card does RSA natively, but no DSA */
@@ -993,6 +994,9 @@ new_file(struct state *cur, const char *name, unsigned int type)
 		dont_free = 1;
 	} else if (!strcasecmp(name+7, "ODF")) {
 		file = profile->p15_spec->file_odf;
+		dont_free = 1;
+	} else if (!strcasecmp(name+7, "UnusedSpace")) {
+		file = profile->p15_spec->file_unusedspace;
 		dont_free = 1;
 	} else if (!strcasecmp(name+7, "AppDF")) {
 		file = init_file(SC_FILE_TYPE_DF);
