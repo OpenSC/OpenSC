@@ -152,6 +152,12 @@ filesystem {
 		ACL		= $unprotected;
 	    }
 
+	    EF PKCS15-UnusedSpace {
+		file-id		= 5033;
+		size		= $unusedspace-size;
+		ACL		= $unprotected;
+	    }
+
 	    EF PKCS15-AODF {
 	        file-id		= 4401;
 		size		= $aodf-size;
