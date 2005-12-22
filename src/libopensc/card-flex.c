@@ -1010,12 +1010,13 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 		sc_error(card->ctx, "Output buffer too small.\n");
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, 0x00, prv->rsa_key_ref);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x00, prv->rsa_key_ref);
 
 	/* This works around a problem with some PC/SC IFD drivers that don't grok
 	 * lc=00 (Chaskiel M Grundman <cg2v@andrew.cmu.edu>) */
 	if (data_len == 256) {
 		apdu.cla=0x10;
+		apdu.cse= SC_APDU_CASE_3_SHORT;
 		apdu.lc=10;
 		apdu.datalen=10;
 		apdu.data = sbuf;
@@ -1026,7 +1027,7 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		SC_TEST_RET(card->ctx, r, "Card returned error");
 		data_len -= 10;
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, 0x00, prv->rsa_key_ref);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x00, prv->rsa_key_ref);
 		apdu.cla=0x0;
 	}
 
@@ -1036,7 +1037,8 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 		sbuf[i] = data[data_len-1-i];
 	apdu.data = sbuf;
 	apdu.resplen = outlen > sizeof(sbuf) ? sizeof(sbuf) : outlen;
-	apdu.resp = sbuf;
+	apdu.le      = apdu.resplen > 256 ? 256 : apdu.resplen;
+	apdu.resp    = sbuf;
 	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
