@@ -70,20 +70,14 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	int	(*display_fn)(sc_context_t *, const char *);
 	char	buf[1536], *p;
 	const char *tag = "";
-	int	r, suppress_errors;
+	int	r;
 	size_t	left;
 
-	/* In case of multiple threads, this function could be called in one thread
-	 * while another thread already release the context and set it to NULL.
-	 * This is the case with our pkcs11 lib in e.g. Firefox 1.5. */
-	if (ctx == NULL)
-		suppress_errors = 0;
-	else
-		suppress_errors = ctx->suppress_errors;
+	assert(ctx != NULL);
 
 	switch (type) {
 	case SC_LOG_TYPE_ERROR:
-		if (!suppress_errors) {
+		if (!ctx->suppress_errors) {
 			display_fn = &sc_ui_display_error;
 			tag = "error:";
 			break;
@@ -94,7 +88,7 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 		type = SC_LOG_TYPE_DEBUG;
 
 	case SC_LOG_TYPE_DEBUG:
-		if (ctx != NULL && ctx->debug == 0)
+		if (ctx->debug == 0)
 			return;
 		display_fn = &sc_ui_display_debug;
 		break;
@@ -119,10 +113,7 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	p += r;
 	left -= r;
 
-	if (ctx != NULL)
-		display_fn(ctx, buf);
-	else
-		fprintf(stderr, buf);
+	display_fn(ctx, buf);
 }
 
 void sc_hex_dump(sc_context_t *ctx, const u8 * in, size_t count, char *buf, size_t len)

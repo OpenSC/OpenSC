@@ -346,6 +346,18 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	unsigned int mask, events;
 	CK_RV rv;
 
+	/* Firefox 1.5 calls this function (blocking) from a seperate thread,
+	 * which gives 2 problems:
+	 * - on Windows/Mac: this waiting thread will log to a NULL context
+	 *   after the 'main' thread does a C_Finalize() and sets the ctx to NULL.
+	 * - on Linux, things just hang (at least on Debian 'sid')
+	 * So we just return CKR_FUNCTION_NOT_SUPPORTED on a blocking call,
+	 * in which case Ff just seems to default to polling in the main thread
+	 * as the Mozilla family of browsers did before.
+	 */
+	if (!(flags & CKF_DONT_BLOCK))
+		return CKR_FUNCTION_NOT_SUPPORTED;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
