@@ -57,14 +57,17 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		{-1,  7, 0, "DF01C200",     "Telesec Verschlüsselungs Zertifikat"},
 		{-1,  8, 1, "DF0143B1",     "Verschlüsselungs Zertifikat 1"},
 		{-1,  9, 1, "DF0143B2",     "Verschlüsselungs Zertifikat 2"},
-		{ 2, 10, 1, "8000DF01C000", "SignTrust Signatur Zertifikat"},
-		{ 2, 11, 1, "800082008220", "SignTrust Authentifizierungs Zertifikat"},
-		{ 2, 12, 1, "800083008320", "SignTrust Verschlüsselungs Zertifikat"},
-		{-1, 13, 1, "41014352",     "W2K Logon Zertifikat"},
-		{ 3, 14, 1, "42014352",     "W2K Logon Zertifikat"},
-		{ 3, 15, 1, "43014352",     "Smartkey Zertifikat 1"},
-		{ 3, 16, 1, "43014353",     "Smartkey Zertifikat 2"},
-		{ 0, 0,  0, NULL, NULL}
+		{-1, 10, 1, "41014352",     "W2K Logon Zertifikat"},
+		{ 2,  1, 1, "8000DF01C000", "SignTrust Signatur Zertifikat"},
+		{ 2,  2, 1, "800082008220", "SignTrust Authentifizierungs Zertifikat"},
+		{ 2,  3, 1, "800083008320", "SignTrust Verschlüsselungs Zertifikat"},
+		{ 3,  1, 1, "41014352",     "Smartkey Typ1 Zertifikat 1"},
+		{-3,  2, 1, "41014353",     "Smartkey Typ1 Zertifikat 2"},
+		{ 3,  3, 1, "42014352",     "Smartkey Typ2 Zertifikat 1"},
+		{-3,  4, 1, "42014353",     "Smartkey Typ2 Zertifikat 2"},
+		{ 3,  5, 1, "43014352",     "Smartkey Typ3 Zertifikat 1"},
+		{-3,  6, 1, "43014353",     "Smartkey Typ3 Zertifikat 2"},
+		{ 0,  0, 0, NULL, NULL}
 	};
 	static const struct {
 		int           type, id, auth_id;
@@ -73,15 +76,18 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		const char   *label;
 	} keylist[]={
 		{1,  1, 4, "DF015331",     0x80, "Signatur Schlüssel"},
-		{1,  4, 4, "DF015371",     0x82, "Authentifizierungs Schlüssel"},
+		{1,  4, 3, "DF015371",     0x82, "Authentifizierungs Schlüssel"},
 		{1,  7, 3, "DF0153B1",     0x81, "Verschlüsselungs Schlüssel"},
-		{2, 10, 5, "8000DF015331", 0x80, "Signatur Schlüssel"},
-		{2, 11, 6, "800082008210", 0x80, "Authentifzierungs Schlüssel"},
-		{2, 12, 7, "800083008310", 0x80, "Verschlüsselungs Schlüssel"},
-		{1, 13, 1, "41015103",     0x83, "W2K Logon Schlüssel"},
-		{3, 14, 1, "42015103",     0x83, "W2K Logon Schlüssel"},
-		{3, 15, 1, "43015103",     0x83, "Schlüssel 1"},
-		{3, 16, 1, "43015104",     0x84, "Schlüssel 2"},
+		{1, 10, 1, "41015103",     0x83, "W2K Logon Schlüssel"},
+		{2,  1, 1, "8000DF015331", 0x80, "Signatur Schlüssel"},
+		{2,  2, 2, "800082008210", 0x80, "Authentifzierungs Schlüssel"},
+		{2,  3, 3, "800083008310", 0x80, "Verschlüsselungs Schlüssel"},
+		{3,  1, 1, "41015103",     0x83, "Smartkey Typ1 Schlüssel 1"},
+		{3,  2, 1, "41015104",     0x84, "Smartkey Typ1 Schlüssel 2"},
+		{3,  3, 1, "42015103",     0x83, "Smartkey Typ2 Schlüssel 1"},
+		{3,  4, 1, "42015104",     0x84, "Smartkey Typ2 Schlüssel 2"},
+		{3,  5, 1, "43015103",     0x83, "Smartkey Typ3 Schlüssel 1"},
+		{3,  6, 1, "43015104",     0x84, "Smartkey Typ3 Schlüssel 2"},
 		{0, 0, 0, NULL, 0, NULL}
 	};
 	static const struct {
@@ -91,10 +97,10 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		const char   *label;
 		int           flags;
 	} pinlist[]={
-		{0, 1, 2, 6, 0x00, "5000", "globale PIN",
+		{1, 1, 2, 6, 0x00, "5000", "globale PIN",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED |
 			SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN},
-		{0, 2, 0, 8, 0x01, "5001", "globale PUK",
+		{1, 2, 0, 8, 0x01, "5001", "globale PUK",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED |
 			SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN | SC_PKCS15_PIN_FLAG_SO_PIN},
 		{1, 3, 4, 6, 0x80, "DF015080", "Netkey PIN0",
@@ -104,15 +110,21 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
 			SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN |
 			SC_PKCS15_PIN_FLAG_SO_PIN},
-		{2, 5, 1, 6, 0x81, "8000DF010000", "Signatur PIN",
+		{2, 1, 0, 6, 0x81, "8000DF010000", "Signatur PIN",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
 			SC_PKCS15_PIN_FLAG_INITIALIZED},
-		{2, 6, 1, 6, 0x81, "800082000040", "Authentifizierungs PIN",
+		{2, 2, 0, 6, 0x81, "800082000040", "Authentifizierungs PIN",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
 			SC_PKCS15_PIN_FLAG_INITIALIZED},
-		{2, 7, 1, 6, 0x81, "800083000040", "Verschlüsselungs PIN",
+		{2, 3, 0, 6, 0x81, "800083000040", "Verschlüsselungs PIN",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
 			SC_PKCS15_PIN_FLAG_INITIALIZED},
+		{3, 1, 2, 6, 0x00, "5000", "globale PIN",
+			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED |
+			SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN},
+		{3, 2, 0, 8, 0x01, "5008", "globale PUK",
+			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED |
+			SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN | SC_PKCS15_PIN_FLAG_SO_PIN},
 		{0, 0, 0, 0, 0, NULL, NULL, 0}
 	};
 	sc_card_t         *card = p15card->card;

@@ -467,7 +467,7 @@ int main(
 		{ "pin",      1, 0, 'p' },
 		{ "puk",      1, 0, 'u' },
 		{ "pin0",     1, 0, '0' },
-		{ "pin1",     1, 0, 'r' },
+		{ "pin1",     1, 0, '1' },
 		{ 0, 0, 0, 0 }
 	};
 	sc_context_t *ctx;
@@ -493,16 +493,16 @@ int main(
 		fprintf(stderr,"\nOptions:\n");
 		fprintf(stderr,"  -v                       : verbose, may be specified several times\n");
 		fprintf(stderr,"  --reader <num>, -r <num> : use reader num (default 0)\n");
-		fprintf(stderr,"  --pin <ppp>, -p <ppp>    : global PIN\n");
-		fprintf(stderr,"  --puk <ppp>, -u <ppp>    : global PUK\n");
-		fprintf(stderr,"  --pin0 <ppp>, -0 <ppp>   : local PIN0\n");
-		fprintf(stderr,"  --pin1 <ppp>, -1 <ppp>   : local PIN1\n");
+		fprintf(stderr,"  --pin <pin>, -p <pin>    : current value of global PIN\n");
+		fprintf(stderr,"  --puk <pin>, -u <pin>    : current value of global PUK\n");
+		fprintf(stderr,"  --pin0 <pin>, -0 <pin>   : current value of local PIN0\n");
+		fprintf(stderr,"  --pin1 <pin>, -1 <pin>   : current value of local PIN1\n");
 		fprintf(stderr,"\nCommands:\n");
 		fprintf(stderr,"  unblock {pin | pin0 | pin1}\n");
 		fprintf(stderr,"  change {pin | puk | pin0 | pin1} <new pin>\n");
 		fprintf(stderr,"  nullpin <new pin>\n");
-		fprintf(stderr,"  cert <num> <certfile>\n");
-		fprintf(stderr,"  cert <certfile> <num>\n");
+		fprintf(stderr,"  cert <certnum> <filepath>\n");
+		fprintf(stderr,"  cert <filepath> <certnum>\n");
 		fprintf(stderr,"\nExamples:\n");
 		fprintf(stderr,"list PINs and Certs without changing anything. Try this first!!\n");
 		fprintf(stderr,"  %s\n", argv[0]);
