@@ -501,7 +501,7 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 		} else
 			sc_debug(reader->ctx, "Inconsistent TLV from reader!");
 	} else {
-		PCSC_ERROR(reader->ctx, "SCardControl failed", rv)
+		sc_debug(reader->ctx, "SCardControl failed %d", rv);
 	}
 #endif /* PINPAD_ENABLED */
 	return SC_SUCCESS;
