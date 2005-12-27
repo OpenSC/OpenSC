@@ -587,7 +587,9 @@ static int iso7816_get_response(sc_card_t *card, size_t *count, u8 *buf)
 		r = 0;					/* no more data to read */
 	else if (apdu.sw1 == 0x61)
 		r = apdu.sw2 == 0 ? 256 : apdu.sw2;	/* more data to read    */
-	else 
+	else if (apdu.sw1 == 0x62 && apdu.sw2 == 0x82)
+		r = 0; /* Le not reached but file/record ended */
+	else
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	return r;
