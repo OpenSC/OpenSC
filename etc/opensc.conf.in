@@ -93,19 +93,19 @@ app default {
 		#
 		# Connect to reader in exclusive mode.
 		# Default: false
-		# connect_exclusive = false;
+		# connect_exclusive = true;
 		#
 		# Reset the card after disconnect.
 		# Default: true
-		# connect_reset = true;
+		# connect_reset = false;
 		#
 		# Reset the card after each transaction.
 		# Default: false
-		# transcaction_reset = false;
+		# transcaction_reset = true;
 		#
 		# Enable pinpad if detected (PC/SC v2.0.2 Part 10)
 		# Default: false
-		# enable_pinpad = false;
+		# enable_pinpad = true;
 	}
 
 	# options for openct support
@@ -263,11 +263,11 @@ app default {
 		use_caching = true;
 		# Enable pkcs15 emulation.
 		# Default: yes
-		# enable_pkcs15_emulation = yes;
+		# enable_pkcs15_emulation = no;
 		# Prefer pkcs15 emulation code before
 		# the normal pkcs15 processing.
 		# Default: no
-		# try_emulation_first = no;
+		# try_emulation_first = yes;
 		# Enable builtin emulators.
 		# Default: yes
 		# enable_builtin_emulation = yes;
@@ -322,6 +322,7 @@ app opensc-pkcs11 {
 		# has done a C_Logout or C_Finalize. In the case of
 		# Netscape or Mozilla, this does not happen until
 		# you exit the browser.
+		# Default: false
 		# lock_login = true;
 
 		# Normally, the pkcs11 module will not cache PINs
@@ -334,12 +335,12 @@ app opensc-pkcs11 {
 		# cache_pins = true
 		#
 		# Default: false
-		# cache_pins = false;
+		# cache_pins = true;
 
 		# Set this value to false if you want to enfore on-card
 		# keypair generation
 		#
 		# Default: true
-		# soft_keygen_allowed = true;
+		# soft_keygen_allowed = false;
 	}
 }
