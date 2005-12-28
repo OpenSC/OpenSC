@@ -529,7 +529,7 @@ static int pcsc_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 
 	rv = SCardBeginTransaction(pslot->pcsc_card);
 
-	if (rv == SCARD_W_RESET_CARD) {
+	if ((unsigned int)rv == SCARD_W_RESET_CARD) {
 		/* try to reconnect if the card was reset by some other application */
 		rv = pcsc_reconnect(reader, slot);
 		if (rv != SCARD_S_SUCCESS) {

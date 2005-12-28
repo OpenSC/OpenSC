@@ -60,7 +60,8 @@ static struct sc_reader_operations openct_ops;
 static struct sc_reader_driver openct_reader_driver = {
 	"OpenCT reader",
 	"openct",
-	&openct_ops
+	&openct_ops,
+	0, 0, 0, NULL
 };
 
 /* private data structures */

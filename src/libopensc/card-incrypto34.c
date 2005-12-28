@@ -38,7 +38,8 @@ struct sc_card_operations incrypto34_ops;
 struct sc_card_driver incrypto34_drv = {
 	"Incard Incripto34",
 	"incrypto34",
-	&incrypto34_ops
+	&incrypto34_ops,
+	NULL, 0, NULL
 };
 
 static struct sc_atr_table incrypto34_atrs[] = {
