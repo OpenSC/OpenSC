@@ -314,7 +314,9 @@ static int read_and_print_record_file(sc_file_t *file)
 	int rec, r;
 
 	for (rec = 1; ; rec++) {
+		ctx->suppress_errors++;
 		r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+		ctx->suppress_errors--;
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
 			return 0;
 		if (r < 0) {
