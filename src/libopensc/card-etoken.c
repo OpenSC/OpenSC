@@ -2,6 +2,7 @@
  * card-etoken.c: Support for Siemens CardOS based cards and tokens
  * 	(for example Aladdin eToken PRO, Eutron CryptoIdentity IT-SEC)
  *
+ * Copyright (c) 2005  Nils Larsch <nils@larsch.net>
  * Copyright (C) 2002  Andreas Jellinghaus <aj@dungeon.inka.de>
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -24,6 +25,8 @@
 #include "cardctl.h"
 #include <ctype.h>
 #include <string.h>
+
+#include <opensc/asn1.h>
 
 /* andreas says: hm, my card only works for small payloads */
 /* comment by okir: one of the examples in the developer guide
@@ -48,8 +51,8 @@ static struct sc_atr_table etoken_atrs[] = {
 	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
 	/* 4.01a */
 	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
-	/* aladdin etoken pro 64 - aj: not compatible :/ */
-	/* { "3b f2 18 00 ff c1 0a 31 fe 55 c8 06 8a", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL }, */
+	/* M4.2 */
+	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:8a", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
 	/* Italian eID card, postecert */
 	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
 	/* Italian eID card, infocamere */
@@ -75,6 +78,42 @@ static int etoken_match_card(sc_card_t *card)
 	return 1;
 }
 
+static int cardos_have_2048bit_package(sc_card_t *card)
+{
+	sc_apdu_t apdu;
+        u8        rbuf[SC_MAX_APDU_BUFFER_SIZE];
+        int       r;
+	const u8  *p = rbuf, *q;
+	size_t    len, tlen = 0, ilen = 0;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x88);
+	apdu.resp    = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.lc = 0;
+	apdu.le = 256;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	if ((len = apdu.resplen) == 0)
+		/* looks like no package has been installed  */
+		return 0;
+
+	while (len != 0) {
+		p = sc_asn1_find_tag(card->ctx, p, len, 0xe1, &tlen);
+		if (p == NULL)
+			return 0;
+		q = sc_asn1_find_tag(card->ctx, p, tlen, 0x01, &ilen);
+		if (q == NULL || ilen != 4)
+			return 0;
+		if (q[0] == 0x1c)
+			return 1;
+		p   += tlen;
+		len -= tlen + 2;
+	}
+
+	return 0;
+}
+
 static int etoken_init(sc_card_t *card)
 {
 	unsigned long	flags;
@@ -91,6 +130,22 @@ static int etoken_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card,  512, flags, 0);
 	_sc_card_add_rsa_alg(card,  768, flags, 0);
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
+
+	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
+		int r = cardos_have_2048bit_package(card);
+		if (r < 0)
+			return r;
+		if (r == 1)
+			card->caps |= SC_CARD_CAP_RSA_2048;
+		card->caps |= SC_CARD_CAP_APDU_EXT;
+	}
+
+	if (card->caps & SC_CARD_CAP_RSA_2048) {
+		_sc_card_add_rsa_alg(card, 1280, flags, 0);
+		_sc_card_add_rsa_alg(card, 1536, flags, 0);
+		_sc_card_add_rsa_alg(card, 1792, flags, 0);
+		_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	}
 
 	return 0;
 }
@@ -174,90 +229,15 @@ static int etoken_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
-static u8 etoken_extract_offset(u8 *buf, int buflen) {
-	int i;
-	int mode;
-	u8 tag,len;
-
-	tag=0; len=0;
-	mode = 0;
-
-	for (i=0; i < buflen;) {
-		if (mode == 0) {
-			tag = buf[i++];
-			mode=1;
-			continue;
-		}
-		if (mode == 1) {
-			len=buf[i++];
-			mode=2;
-			continue;
-		}
-		if (len == 0) {
-			mode=0;
-			continue;
-		}
-		if (tag == 0x8a && len == 1) {
-			return buf[i];
-		}
-
-		i+=len;
-		mode=0;
-	}
-	
-	return 0;
-}
-
-static u8* etoken_extract_fid(u8 *buf, int buflen) {
-	int i;
-	int mode;
-	u8 tag,len;
-
-	mode = 0;
-	tag = 0;
-	len = 0;
-
-
-	for (i=0; i < buflen;) {
-		if (mode == 0) {
-			tag = buf[i++];
-			mode=1;
-			continue;
-		}
-		if (mode == 1) {
-			len=buf[i++];
-			mode=2;
-			continue;
-		}
-		if (len == 0) {
-			mode=0;
-			continue;
-		}
-		if ((tag == 0x86) && (len == 2) && (i+1 < buflen)) {
-			return &buf[i];
-		}
-
-		i+=len;
-		mode=0;
-	}
-	
-	return NULL;
-}
-
 static int etoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
 	sc_apdu_t apdu;
-	u8 rbuf[256];
-	int r;
-	int len;
-	size_t i, fids;
-	u8 offset;
-	u8 *fid;
+	u8        rbuf[256], offset = 0;
+	const u8  *p = rbuf, *q;
+	int       r;
+	size_t    fids = 0, len;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-
-	fids=0;
-	offset=0;
 
 	/* 0x16: DIRECTORY */
 	/* 0x02: list both DF and EF */
@@ -278,34 +258,41 @@ get_next_part:
 		sc_error(card->ctx, "directory listing > 256 bytes, cutting");
 		r = 256;
 	}
-	for (i=0; i < apdu.resplen;) {
+
+	len = apdu.resplen;
+	while (len != 0) {
+		size_t   tlen = 0, ilen = 0;
 		/* is there a file informatin block (0x6f) ? */
-		if (rbuf[i] != 0x6f) {
-			sc_error(card->ctx, "directory listing not parseable");
+		p = sc_asn1_find_tag(card->ctx, p, len, 0x6f, &tlen);
+		if (p == NULL) {
+			sc_error(card->ctx, "directory tag missing");
+			return SC_ERROR_INTERNAL;
+		}
+		if (tlen == 0)
+			/* empty directory */
 			break;
+		q = sc_asn1_find_tag(card->ctx, p, tlen, 0x86, &ilen);
+		if (q == NULL || ilen != 2) {
+			sc_error(card->ctx, "error parsing file id TLV object");
+			return SC_ERROR_INTERNAL;
 		}
-		if (i+1 > apdu.resplen) {
-			sc_error(card->ctx, "directory listing short");
+		/* put file id in buf */
+		if (buflen >= 2) {
+			buf[fids++] = q[0];
+			buf[fids++] = q[1];
+			buflen -= 2;
+		} else
+			/* not enought space left in buffer => break */
 			break;
+		/* extract next offset */
+		q = sc_asn1_find_tag(card->ctx, p, tlen, 0x8a, &ilen);
+		if (q != NULL && ilen == 1) {
+			offset = (u8)ilen;
+			if (offset != 0)
+				goto get_next_part;
 		}
-		len = rbuf[i+1];
-		if (i + 1 + len > apdu.resplen) {
-			sc_error(card->ctx, "directory listing short");
-			break;
-		}
-		fid = etoken_extract_fid(&rbuf[i+2], len);
-
-		if (fid) {
-			if (fids + 2 >= buflen)
-				break;
-			buf[fids++] = fid[0];
-			buf[fids++] = fid[1];
-		}
-
-		offset = etoken_extract_offset(&rbuf[i+2], len);
-		if (offset) 
-			goto get_next_part;
-		i += len+2;
+		len -= tlen + 2;
+		p   += tlen;
 	}
 
 	r = fids;
@@ -377,7 +364,7 @@ static const int ef_acl[9] = {
 
 	SC_AC_OP_INVALIDATE,	/* EF */
 	SC_AC_OP_REHABILITATE,	/* EF */
-	SC_AC_OP_ERASE,		/* (delete) EF */
+	SC_AC_OP_DELETE,	/* (delete) EF */
 
 	/* XXX: ADMIN should be an ACL type of its own, or mapped
 	 * to erase */
@@ -412,47 +399,56 @@ static int etoken_select_file(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
-static int etoken_create_file(sc_card_t *card, sc_file_t *file)
+static int cardos_acl_to_bytes(sc_card_t *card, const sc_file_t *file,
+	u8 *buf, size_t *outlen)
 {
-	int r, i, byte;
+	int       i, byte;
 	const int *idx;
-	u8 acl[9], type[3], status[3];
 
-	if (card->ctx->debug >= 1) {
-		char	pbuf[128+1];
-		size_t	n;
+	if (buf == NULL || *outlen < 9)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
-		for (n = 0; n < file->path.len; n++) {
-			snprintf(pbuf + 2 * n, sizeof(pbuf) - 2 * n,
-				"%02X", file->path.value[n]);
+	idx = (file->type == SC_FILE_TYPE_DF) ?  df_acl : ef_acl;
+	for (i = 0; i < 9; i++) {
+		if (idx[i] < 0)
+			byte = 0x00;
+		else
+			byte = acl_to_byte(sc_file_get_acl_entry(file, idx[i]));
+		if (byte < 0) {
+			sc_error(card->ctx, "Invalid ACL\n");
+			return SC_ERROR_INVALID_ARGUMENTS;
 		}
-
-		sc_debug(card->ctx, "etoken_create_file(%s)\n", pbuf);
+		buf[i] = byte;
 	}
+	*outlen = 9;
+
+	return SC_SUCCESS;
+}
+
+static int cardos_set_file_attributes(sc_card_t *card, sc_file_t *file)
+{
+	int r;
 
 	if (file->type_attr_len == 0) {
+		u8 type[3];
+
 		memset(type, 0, sizeof(type));
 		type[0] = 0x00;
 		switch (file->type) {
 		case SC_FILE_TYPE_WORKING_EF:
 			break;
-		case SC_FILE_TYPE_INTERNAL_EF:
-			type[0] = 0x08;
-			break;
 		case SC_FILE_TYPE_DF:
 			type[0] = 0x38;
 			break;
 		default:
-			r = SC_ERROR_NOT_SUPPORTED;
-			goto out;
+			return SC_ERROR_NOT_SUPPORTED;
 		}
 		if (file->type != SC_FILE_TYPE_DF) {
 			switch (file->ef_structure) {
 			case SC_FILE_EF_LINEAR_FIXED_TLV:
 			case SC_FILE_EF_LINEAR_VARIABLE:
 			case SC_FILE_EF_CYCLIC_TLV:
-				r = SC_ERROR_NOT_SUPPORTED;
-				goto out;
+				return SC_ERROR_NOT_SUPPORTED;
 				/* No idea what this means, but it
 				 * seems to be required for key
 				 * generation. */
@@ -464,10 +460,12 @@ static int etoken_create_file(sc_card_t *card, sc_file_t *file)
 			}
 		}
 		r = sc_file_set_type_attr(file, type, sizeof(type));
-		if (r)
-			goto out;
+		if (r != SC_SUCCESS)
+			return r;
 	}
 	if (file->prop_attr_len == 0) {
+		u8 status[3];
+
 		status[0] = 0x01;
 		if (file->type == SC_FILE_TYPE_DF) {
 			status[1] = file->size >> 8;
@@ -476,34 +474,164 @@ static int etoken_create_file(sc_card_t *card, sc_file_t *file)
 			status[1] = status[2] = 0x00; /* not used */
 		}
 		r = sc_file_set_prop_attr(file, status, sizeof(status));
-		if (r)
-			goto out;
+		if (r != SC_SUCCESS)
+			return r;
 	}
 	if (file->sec_attr_len == 0) {
-		idx = (file->type == SC_FILE_TYPE_DF) ?  df_acl : ef_acl;
-		for (i = 0; i < 9; i++) {
-			if (idx[i] < 0)
-				byte = 0x00;
-			else
-				byte = acl_to_byte(
-				    sc_file_get_acl_entry(file, idx[i]));
-                        if (byte < 0) {
-                                sc_error(card->ctx, "Invalid ACL\n");
-                                r = SC_ERROR_INVALID_ARGUMENTS;
-				goto out;
-                        }
-			acl[i] = byte;
-		}
-		r = sc_file_set_sec_attr(file, acl, sizeof(acl));
-		if (r)
-			goto out;
+		u8     acl[9];
+		size_t blen = sizeof(acl);
+
+		r = cardos_acl_to_bytes(card, file, acl, &blen);
+		if (r != SC_SUCCESS)
+			return r;
+		r = sc_file_set_sec_attr(file, acl, blen);
+		if (r != SC_SUCCESS)
+			return r;
 	}
-	r = iso_ops->create_file(card, file);
+	return SC_SUCCESS;
+}
 
-	/* FIXME: if this is a DF and there's an AID, set it here
-	 * using PUT_DATA_FCI */
+/* newer versions of cardos seems to prefer the FCP */
+static int cardos_construct_fcp(sc_card_t *card, const sc_file_t *file,
+	u8 *out, size_t *outlen)
+{
+	u8     buf[64], *p = out;
+	size_t inlen = *outlen, len;
+	int    r;
 
-out:	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_CALLED(card->ctx, 2);
+
+	if (out == NULL || inlen < 64)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	/* add FCP tag */
+	*p++ = 0x62;
+	/* we will add the length later  */
+	p++;
+
+	/* set the length */
+	buf[0] = (file->size >> 8) & 0xff;
+	buf[1] = file->size        & 0xff;
+	if (file->type == SC_FILE_TYPE_DF)
+		r = sc_asn1_put_tag(0x81, buf, 2, p, 4, &p);
+	else
+		r = sc_asn1_put_tag(0x80, buf, 2, p, 4, &p);
+	if (r != SC_SUCCESS)
+		return r;
+	/* set file type  */
+	if (file->shareable != 0)
+		buf[0] = 0x40;
+	else
+		buf[0] = 0x00;
+	if (file->type == SC_FILE_TYPE_WORKING_EF) {
+		switch (file->ef_structure) {
+		case SC_FILE_EF_TRANSPARENT:
+			buf[0] |= 0x01;
+			break;
+		case SC_FILE_EF_LINEAR_VARIABLE_TLV:
+			buf[0] |= 0x05;
+			break;
+		case SC_FILE_EF_LINEAR_FIXED:
+			buf[0] |= 0x02;
+			buf[1] |= 0x21;
+			buf[2] |= 0x00;
+			buf[3] |= (u8) file->record_length;
+			buf[4] |= (u8) file->record_count;
+			break;
+		case SC_FILE_EF_CYCLIC:
+			buf[0] |= 0x06;
+			buf[1] |= 0x21;
+			buf[2] |= 0x00;
+			buf[3] |= (u8) file->record_length;
+			buf[4] |= (u8) file->record_count;
+			break;
+		default:
+			sc_error(card->ctx, "unknown EF type: %u", file->type);
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
+		if (file->ef_structure == SC_FILE_EF_CYCLIC ||
+		    file->ef_structure == SC_FILE_EF_LINEAR_FIXED)
+		r = sc_asn1_put_tag(0x82, buf, 5, p, 8, &p);
+	else
+		r = sc_asn1_put_tag(0x82, buf, 1, p, 8, &p);
+	} else if (file->type == SC_FILE_TYPE_DF) {
+		buf[0] |= 0x38;
+		r = sc_asn1_put_tag(0x82, buf, 1, p, 8, &p);
+	} else
+		return SC_ERROR_NOT_SUPPORTED;
+	if (r != SC_SUCCESS)
+		return r;
+	/* set file id */
+	buf[0] = (file->id >> 8) & 0xff;
+	buf[1] = file->id        & 0xff;
+	r = sc_asn1_put_tag(0x83, buf, 2, p, 8, &p);
+	if (r != SC_SUCCESS)
+		return r;
+	/* set aid (for DF only) */
+	if (file->type == SC_FILE_TYPE_DF && file->namelen != 0) {
+		r = sc_asn1_put_tag(0x84, file->name, file->namelen, p, 20, &p);
+		if (r != SC_SUCCESS)
+			return r;
+	}
+	/* set proprietary file attributes */
+	buf[0] = 0x00;		/* use default values */
+	if (file->type == SC_FILE_TYPE_DF)
+		r = sc_asn1_put_tag(0x85, buf, 1, p, 8, &p);
+	else {
+		buf[1] = 0x00;
+		buf[2] = 0x00;
+		r = sc_asn1_put_tag(0x85, buf, 1, p, 8, &p);
+	}
+	if (r != SC_SUCCESS)
+		return r;
+	/* set ACs  */
+	len = 9;
+	r = cardos_acl_to_bytes(card, file, buf, &len);
+	if (r != SC_SUCCESS)
+		return r;
+	r = sc_asn1_put_tag(0x86, buf, len, p, 18, &p);
+	if (r != SC_SUCCESS)
+		return r;
+	/* finally set the length of the FCP */
+	out[1] = p - out - 2;
+
+	*outlen = p - out;
+
+	return SC_SUCCESS;
+}
+
+static int cardos_create_file(sc_card_t *card, sc_file_t *file)
+{
+	int       r;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	if (card->type == SC_CARD_TYPE_ETOKEN_GENERIC) {
+		r = cardos_set_file_attributes(card, file);
+		if (r != SC_SUCCESS)
+			return r;
+		return iso_ops->create_file(card, file);
+	} else if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
+		u8        sbuf[SC_MAX_APDU_BUFFER_SIZE];
+		size_t    len = sizeof(sbuf);
+		sc_apdu_t apdu;
+
+		r = cardos_construct_fcp(card, file, sbuf, &len);
+		if (r < 0) {
+			sc_error(card->ctx, "unable to create FCP");
+			return r;
+		}
+	
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
+		apdu.lc      = len;
+		apdu.datalen = len;
+		apdu.data    = sbuf;
+
+		r = sc_transmit_apdu(card, &apdu);
+		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+		return sc_check_sw(card, apdu.sw1, apdu.sw2);
+	} else
+		return SC_ERROR_NOT_SUPPORTED;
 }
 
 /*
@@ -594,34 +722,26 @@ do_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 {
 	int r;
 	sc_apdu_t apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-
-	if (datalen > SC_MAX_APDU_BUFFER_SIZE ||
-	    outlen > SC_MAX_APDU_BUFFER_SIZE)
-		return SC_ERROR_INTERNAL;
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
 	 * P2:  0x9A  Cmd: Input for Digital Signature */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
-	apdu.resp = rbuf;
-	apdu.le = outlen;
-	apdu.resplen = sizeof(rbuf);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x9E, 0x9A);
+	apdu.resp    = out;
+	apdu.le      = outlen;
+	apdu.resplen = outlen;
 
-	memcpy(sbuf, data, datalen);
-	apdu.data = sbuf;
-	apdu.lc = datalen;
+	apdu.data    = data;
+	apdu.lc      = datalen;
 	apdu.datalen = datalen;
 	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		memcpy(out, rbuf, outlen);
-		SC_FUNC_RETURN(card->ctx, 4, apdu.resplen);
-	}
-	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+		SC_FUNC_RETURN(card->ctx, 4, apdu.resplen)
+	else
+		SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2))
 }
 
 static int
@@ -637,7 +757,7 @@ etoken_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	ctx = card->ctx;
 	SC_FUNC_CALLED(ctx, 1);
 
-	if (datalen > 255)
+	if (datalen > SC_MAX_APDU_BUFFER_SIZE)
 		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 	if (outlen < datalen)
 		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_BUFFER_TOO_SMALL);
@@ -688,7 +808,7 @@ etoken_lifecycle_get(sc_card_t *card, int *mode)
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 01, 0x83);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x83);
 	apdu.cla = 0x00;
 	apdu.le = 256;
 	apdu.resplen = sizeof(rbuf);
@@ -835,7 +955,6 @@ etoken_generate_key(sc_card_t *card,
 	apdu.cla = 0x00;
 	apdu.ins = 0x46;
 	apdu.p1  = 0x00;
-	apdu.p2  = args->key_id;/* doc is not clear, it just says "ID" */
 	apdu.p2  = 0x00;
 	apdu.data= data;
 	apdu.datalen = apdu.lc = sizeof(data);
@@ -848,7 +967,7 @@ etoken_generate_key(sc_card_t *card,
 	return r;
 }
 
-static int etoken_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
+static int cardos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 {
 	int r;
 	sc_apdu_t apdu;
@@ -897,7 +1016,7 @@ etoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_LIFECYCLE_SET:
 		return etoken_lifecycle_set(card, (int *) ptr);
 	case SC_CARDCTL_GET_SERIALNR:
-		return etoken_get_serialnr(card, (sc_serial_number_t *)ptr);
+		return cardos_get_serialnr(card, (sc_serial_number_t *)ptr);
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -922,6 +1041,30 @@ etoken_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	return iso_ops->pin_cmd(card, data, tries_left);
 }
 
+static int cardos_logout(sc_card_t *card)
+{
+	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
+		sc_apdu_t apdu;
+		int       r;
+		sc_path_t path;
+
+		sc_format_path("3F00", &path);
+		r = sc_select_file(card, &path, NULL);
+		if (r != SC_SUCCESS)
+			return r;
+
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xEA, 0x00, 0x00);
+		apdu.cla = 0x80;
+
+		r = sc_transmit_apdu(card, &apdu);
+		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+		return sc_check_sw(card, apdu.sw1, apdu.sw2);
+	} else
+		return iso_ops->logout(card);
+}
+
+
 
 /* eToken R2 supports WRITE_BINARY, PRO Tokens support UPDATE_BINARY */
 
@@ -934,7 +1077,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	etoken_ops.init = etoken_init;
 	etoken_ops.finish = etoken_finish;
 	etoken_ops.select_file = etoken_select_file;
-	etoken_ops.create_file = etoken_create_file;
+	etoken_ops.create_file = cardos_create_file;
 	etoken_ops.set_security_env = etoken_set_security_env;
 	etoken_ops.restore_security_env = etoken_restore_security_env;
 	etoken_ops.compute_signature = etoken_compute_signature;
@@ -943,6 +1086,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	etoken_ops.check_sw = etoken_check_sw;
 	etoken_ops.card_ctl = etoken_card_ctl;
 	etoken_ops.pin_cmd = etoken_pin_cmd;
+	etoken_ops.logout  = cardos_logout;
 
 	return &etoken_drv;
 }

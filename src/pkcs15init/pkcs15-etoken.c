@@ -1,6 +1,7 @@
 /*
  * CardOS specific operation for PKCS15 initialization
  *
+ * Copyright (C) 2005 Nils Larsch <nils@larsch.net>
  * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
  *
  * This library is free software; you can redistribute it and/or
@@ -29,6 +30,8 @@
 #include <opensc/opensc.h>
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
+#include <opensc/cards.h>
+#include <opensc/asn1.h>
 #include "pkcs15-init.h"
 #include "profile.h"
 
@@ -42,14 +45,6 @@ struct tlv {
 	unsigned char *		current;
 	unsigned char *		next;
 };
-#define RSAKEY_MAX_BITS		1024
-#define RSAKEY_MAX_SIZE		(RSAKEY_MAX_BITS/8)
-struct rsakey {
-	struct bignum {
-		size_t		len;
-		u8		data[RSAKEY_MAX_SIZE];
-	}			n, d;
-};
 
 /*
  * Local functions
@@ -59,12 +54,14 @@ static int	etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
 			const u8 *pin, size_t pin_len);
 static int	etoken_create_sec_env(sc_profile_t *, sc_card_t *,
 			unsigned int, unsigned int);
-static int	etoken_put_key(struct sc_profile *, sc_card_t *,
+static int	cardos_put_key(struct sc_profile *, sc_card_t *,
 			int, sc_pkcs15_prkey_info_t *,
 		       	struct sc_pkcs15_prkey_rsa *);
-static int	etoken_key_algorithm(unsigned int, int *);
-static int	etoken_extract_pubkey(sc_card_t *, int,
-			u8, sc_pkcs15_bignum_t *);
+static int	cardos_key_algorithm(unsigned int, size_t, int *);
+static int	cardos_extract_pubkey(sc_card_t *, sc_pkcs15_pubkey_t *,
+			sc_file_t *, int);
+static int	etoken_extract_pubkey(sc_card_t *card, int nr, u8 tag,
+			sc_pkcs15_bignum_t *bn);
 
 /* Object IDs for PIN objects.
  * SO PIN = 0x01, SO PUK = 0x02
@@ -82,8 +79,8 @@ static int	etoken_extract_pubkey(sc_card_t *, int,
 #define ETOKEN_ALGO_RSA_PURE_SIG	0x8C
 #define ETOKEN_ALGO_RSA_SIG_SHA1	0xC8
 #define ETOKEN_ALGO_RSA_PURE_SIG_SHA1	0xCC
-#define ETOKEN_SIGN_RSA			ETOKEN_ALGO_RSA_PURE_SIG
-#define ETOKEN_DECIPHER_RSA		ETOKEN_ALGO_RSA_PURE
+#define CARDOS_ALGO_EXT_RSA_PURE	0x0a
+#define CARDOS_ALGO_EXT_RSA_SIG_PURE	0x8a
 #define ETOKEN_ALGO_PIN			0x87
 
 static inline void
@@ -215,8 +212,7 @@ etoken_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
 
 	if (r >= 0) {
 		r = etoken_store_pin(profile, card,
-				pin_info, puk_id,
-				pin, pin_len);
+				pin_info, puk_id, pin, pin_len);
 	}
 
 	return r;
@@ -267,15 +263,37 @@ etoken_store_key(sc_profile_t *profile, sc_card_t *card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	if (etoken_key_algorithm(key_info->usage, &algorithm) < 0) {
+	if (cardos_key_algorithm(key_info->usage, key_info->modulus_length, &algorithm) < 0) {
 		sc_error(card->ctx, "CardOS does not support keys "
 			       "that can both sign _and_ decrypt.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = etoken_put_key(profile, card, algorithm, key_info, &key->u.rsa);
+	r = cardos_put_key(profile, card, algorithm, key_info, &key->u.rsa);
 
 	return r;
+}
+
+static void init_key_object(struct sc_pkcs15_prkey_rsa *key,
+	u8 *data, size_t len)
+{
+	/* Create a key object, initializing components to 0xff */
+	memset(key,  0x00, sizeof(*key));
+	memset(data, 0xff, len);
+	key->modulus.data = data;
+	key->modulus.len  = len;
+	key->d.data       = data;
+	key->d.len        = len;
+	key->p.len        = len >> 1;
+	key->p.data       = data;
+	key->q.len        = len >> 1;
+	key->q.data       = data;
+	key->iqmp.len     = len >> 1;
+	key->iqmp.data    = data;
+	key->dmp1.len     = len >> 1;
+	key->dmp1.data    = data;
+	key->dmq1.len     = len >> 1;
+	key->dmq1.data    = data;
 }
 
 /*
@@ -290,26 +308,27 @@ etoken_generate_key(sc_profile_t *profile, sc_card_t *card,
 	struct sc_pkcs15_prkey_rsa key_obj;
 	struct sc_cardctl_etoken_genkey_info args;
 	struct sc_file	*temp;
-	u8		abignum[RSAKEY_MAX_SIZE];
-	unsigned int	keybits;
-	int		algorithm, r, delete_it = 0;
+	u8		abignum[256];
+	int		algorithm, r, delete_it = 0, use_ext_rsa = 0;
+	size_t		keybits, rsa_max_size;
 	
-	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_error(card->ctx, "CardOS supports only RSA keys.");
+	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		return SC_ERROR_NOT_SUPPORTED;
+
+	rsa_max_size = (card->caps & SC_CARD_CAP_RSA_2048) ? 2048 : 1024;
+	keybits = key_info->modulus_length & ~7UL;
+	if (keybits > rsa_max_size) {
+		sc_error(card->ctx, "Unable to generate key, max size is %lu", rsa_max_size);
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	if (etoken_key_algorithm(key_info->usage, &algorithm) < 0) {
+	if (keybits > 1024)
+		use_ext_rsa = 1;
+
+	if (cardos_key_algorithm(key_info->usage, keybits, &algorithm) < 0) {
 		sc_error(card->ctx, "CardOS does not support keys "
 			       "that can both sign _and_ decrypt.");
 		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	keybits = key_info->modulus_length & ~7UL;
-	if (keybits > RSAKEY_MAX_BITS) {
-		sc_error(card->ctx, "Unable to generate key, max size is %d",
-				RSAKEY_MAX_BITS);
-		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	if (sc_profile_get_file(profile, "tempfile", &temp) < 0) {
@@ -317,20 +336,18 @@ etoken_generate_key(sc_profile_t *profile, sc_card_t *card,
 				"for key generation.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-	memset(pubkey, 0, sizeof(*pubkey));
+	if (use_ext_rsa == 0)
+		temp->ef_structure = SC_FILE_EF_LINEAR_VARIABLE_TLV;
+	else
+		temp->ef_structure = SC_FILE_EF_TRANSPARENT;
 
 	if ((r = sc_pkcs15init_create_file(profile, card, temp)) < 0)
 		goto out;
 	delete_it = 1;
 
-	/* Create a key object, initializing components to 0xff */
-	memset(&key_obj, 0, sizeof(key_obj));
-	memset(abignum, 0xFF, sizeof(abignum));
-	key_obj.modulus.data = abignum;
-	key_obj.modulus.len = keybits >> 3;
-	key_obj.d.data = abignum;
-	key_obj.d.len = keybits >> 3;
-	r = etoken_put_key(profile, card, algorithm, key_info, &key_obj);
+	init_key_object(&key_obj, abignum, keybits >> 3);
+
+	r = cardos_put_key(profile, card, algorithm, key_info, &key_obj);
 	if (r < 0)
 		goto out;
 
@@ -342,21 +359,12 @@ etoken_generate_key(sc_profile_t *profile, sc_card_t *card,
 	if (r < 0)
 		goto out;
 
-	/* extract public key from file and delete it */
-	if ((r = sc_select_file(card, &temp->path, NULL)) < 0)
-		goto out;
-	r = etoken_extract_pubkey(card, 1, 0x10, &pubkey->u.rsa.modulus);
-	if (r < 0)
-		goto out;
-	r = etoken_extract_pubkey(card, 2, 0x11, &pubkey->u.rsa.exponent);
-	if (r < 0)
-		goto out;
-	pubkey->algorithm = SC_ALGORITHM_RSA;
-
-out:	if (delete_it) {
+	r = cardos_extract_pubkey(card, pubkey, temp, use_ext_rsa);
+out:
+	if (delete_it != 0)
 		sc_pkcs15init_rmdir(card, profile, temp);
-	}
 	sc_file_free(temp);
+
 	if (r < 0) {
 		if (pubkey->u.rsa.modulus.data)
 			free (pubkey->u.rsa.modulus.data);
@@ -379,13 +387,17 @@ etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
 	unsigned char	pinpadded[16];
 	struct tlv	tlv;
 	unsigned int	attempts, minlen, maxlen;
+	int		r;
 
 	/* We need to do padding because pkcs15-lib.c does it.
 	 * Would be nice to have a flag in the profile that says
 	 * "no padding required". */
 	maxlen = MIN(profile->pin_maxlen, sizeof(pinpadded));
-	if (pin_len > maxlen)
-		pin_len = maxlen;
+	if (pin_len > maxlen) {
+		sc_error(card->ctx, "invalid pin length: %u (max %u)\n",
+		         pin_len, maxlen);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	memcpy(pinpadded, pin, pin_len);
 	while (pin_len < maxlen)
 		pinpadded[pin_len++] = profile->pin_pad_char;
@@ -416,9 +428,12 @@ etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
 	tlv_add(&tlv, 0xff);
 
 	/* DEK: not documented, no idea what it means */
-	tlv_add(&tlv, 0x00);
+	tlv_add(&tlv, 0xff);
 
-	/* ARA counter: Nils says this is the userConsent field */
+	/* ARA counter: number of times the test object can be used before
+	 *              another verification is required (~ user consent)
+	 *              (0x00 unlimited usage)
+	 */
 	tlv_add(&tlv, 0x00);
 
 	tlv_add(&tlv, minlen);			/* minlen */
@@ -437,6 +452,11 @@ etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
 	args.data = buffer;
 	args.len = tlv_len(&tlv);
 
+	/* ensure we are in the correct lifecycle */
+	r = sc_pkcs15init_set_lifecycle(card, SC_CARDCTRL_LIFECYCLE_ADMIN);
+	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
+		return r;
+
 	return sc_card_ctl(card, SC_CARDCTL_ETOKEN_PUT_DATA_OCI, &args);
 }
 
@@ -450,6 +470,7 @@ etoken_create_sec_env(struct sc_profile *profile, sc_card_t *card,
 	struct sc_cardctl_etoken_obj_info args;
 	struct tlv	tlv;
 	unsigned char	buffer[64];
+	int		r;
 
 	tlv_init(&tlv, buffer, sizeof(buffer));
 	tlv_next(&tlv, 0x83);
@@ -469,6 +490,12 @@ etoken_create_sec_env(struct sc_profile *profile, sc_card_t *card,
 
 	args.data = buffer;
 	args.len = tlv_len(&tlv);
+
+	/* ensure we are in the correct lifecycle */
+	r = sc_pkcs15init_set_lifecycle(card, SC_CARDCTRL_LIFECYCLE_ADMIN);
+	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
+		return r;
+
 	return sc_card_ctl(card, SC_CARDCTL_ETOKEN_PUT_DATA_SECI, &args);
 }
 
@@ -482,17 +509,22 @@ etoken_create_sec_env(struct sc_profile *profile, sc_card_t *card,
 #define USAGE_ANY_DECIPHER	(SC_PKCS15_PRKEY_USAGE_DECRYPT|\
 				 SC_PKCS15_PRKEY_USAGE_UNWRAP)
 
-static int
-etoken_key_algorithm(unsigned int usage, int *algop)
+static int cardos_key_algorithm(unsigned int usage, size_t keylen, int *algop)
 {
 	int	sign = 0, decipher = 0;
 
 	if (usage & USAGE_ANY_SIGN) {
-		*algop = ETOKEN_SIGN_RSA;
+		if (keylen <= 1024)
+			*algop = ETOKEN_ALGO_RSA_PURE_SIG;
+		else
+			*algop = CARDOS_ALGO_EXT_RSA_SIG_PURE;
 		sign = 1;
 	}
 	if (usage & USAGE_ANY_DECIPHER) {
-		*algop = ETOKEN_DECIPHER_RSA;
+		if (keylen <= 1024)
+			*algop = ETOKEN_ALGO_RSA_PURE;
+		else
+			*algop = CARDOS_ALGO_EXT_RSA_PURE;
 		decipher = 1;
 	}
 	return (sign == decipher)? -1 : 0;
@@ -509,12 +541,15 @@ etoken_store_key_component(sc_card_t *card,
 		unsigned int key_id, unsigned int pin_id,
 		unsigned int num,
 		const u8 *data, size_t len,
-		int last)
+		int last, int use_prefix)
 {
 	struct sc_cardctl_etoken_obj_info args;
 	struct tlv	tlv;
 	unsigned char	buffer[256];
+#if SET_SM_BYTES
 	unsigned int	n;
+#endif
+	int		r;
 
 	/* Initialize the TLV encoder */
 	tlv_init(&tlv, buffer, sizeof(buffer));
@@ -540,35 +575,46 @@ etoken_store_key_component(sc_card_t *card,
 	tlv_add(&tlv, pin_id);	/* AC USE */
 	tlv_add(&tlv, pin_id);	/* AC CHANGE */
 	tlv_add(&tlv, pin_id);	/* UNKNOWN */
-	/* The next 4 AC bytes are sent by the eToken run-time
-	 * as well, but aren't documented anywhere.
-	 * Key generation won't work without them, however. */
+	tlv_add(&tlv, 0);	/* rfu */
+	tlv_add(&tlv, 0);	/* rfu */
+	tlv_add(&tlv, 0);	/* rfu */
+#if 0
+	tlv_add(&tlv, pin_id);	/* AC GENKEY */
+#else
 	tlv_add(&tlv, 0);
-	tlv_add(&tlv, 0);
-	tlv_add(&tlv, 0);
-	tlv_add(&tlv, 0);
+#endif
 
+#if SET_SM_BYTES
+	/* it shouldn't be necessary to set the default value */
 	/* SM bytes */
 	tlv_next(&tlv, 0x8B);
 	for (n = 0; n < 16; n++)
 		tlv_add(&tlv, 0xFF);
+#endif
 
 	/* key component */
 	tlv_next(&tlv, 0x8f);
-	tlv_add(&tlv, len+1);
-	tlv_add(&tlv, 0);
+	if (use_prefix != 0) {
+		tlv_add(&tlv, len+1);
+		tlv_add(&tlv, 0);
+	}
 	while (len--)
 		tlv_add(&tlv, *data++);
 
 	args.data = buffer;
 	args.len = tlv_len(&tlv);
+
+	/* ensure we are in the correct lifecycle */
+	r = sc_pkcs15init_set_lifecycle(card, SC_CARDCTRL_LIFECYCLE_ADMIN);
+	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
+		return r;
+
 	return sc_card_ctl(card, SC_CARDCTL_ETOKEN_PUT_DATA_OCI, &args);
 }
 
-static int
-etoken_put_key(sc_profile_t *profile, sc_card_t *card,
-		int algorithm, sc_pkcs15_prkey_info_t *key_info,
-		struct sc_pkcs15_prkey_rsa *key)
+static int cardos_put_key(sc_profile_t *profile, sc_card_t *card,
+	int algorithm, sc_pkcs15_prkey_info_t *key_info,
+	struct sc_pkcs15_prkey_rsa *key)
 {
 	int	r, key_id, pin_id;
 
@@ -577,12 +623,33 @@ etoken_put_key(sc_profile_t *profile, sc_card_t *card,
 	if (pin_id < 0)
 		pin_id = 0;
 
-	r = etoken_store_key_component(card, algorithm, key_id, pin_id, 0,
-			key->modulus.data, key->modulus.len, 0);
-	if (r < 0)
-		return r;
-	r = etoken_store_key_component(card, algorithm, key_id, pin_id, 1,
-			key->d.data, key->d.len, 1);
+	if (key_info->modulus_length > 1024 && card->type == SC_CARD_TYPE_CARDOS_M4_2) {
+		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 0,
+			key->p.data, key->p.len, 0, 0);
+		if (r != SC_SUCCESS)
+			return r;
+		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 1,
+			key->q.data, key->q.len, 0, 0);
+		if (r != SC_SUCCESS)
+			return r;
+		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 2,
+			key->dmp1.data, key->dmp1.len, 0, 0);
+		if (r != SC_SUCCESS)
+			return r;
+		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 3,
+			key->dmq1.data, key->dmq1.len, 0, 0);
+		if (r != SC_SUCCESS)
+			return r;
+		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 4,
+			key->iqmp.data, key->iqmp.len, 1, 0);
+	} else {
+		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 0,
+			key->modulus.data, key->modulus.len, 0, 1);
+		if (r != SC_SUCCESS)
+			return r;
+		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 1,
+			key->d.data, key->d.len, 1, 1);
+	}
 
 	return r;
 }
@@ -591,6 +658,52 @@ etoken_put_key(sc_profile_t *profile, sc_card_t *card,
  * Extract a key component from the public key file populated by
  * GENERATE KEY PAIR
  */
+static int parse_ext_pubkey_file(sc_card_t *card, const u8 *data, size_t len,
+	sc_pkcs15_pubkey_t *pubkey)
+{
+	const u8     *p;
+	size_t       ilen = 0, tlen = 0, i;
+
+	if (data == NULL || len < 32)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (*data++ != 0x7f || *data++ != 0x49) {
+		sc_error(card->ctx, "invalid public key data: missing tag");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	len -= 2;
+	tlen = *data++ & 0x7f;
+	if (tlen > 3) {
+		sc_error(card->ctx, "invalid public key data: invalid tag length");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	for (i = 0; i < tlen; i++)
+		ilen += (*data++) << (8 * (tlen - i - 1));
+
+	p = sc_asn1_find_tag(card->ctx, data, ilen, 0x81, &tlen);
+	if (p == NULL) {
+		sc_error(card->ctx, "invalid public key data: missing modulus");
+		return SC_ERROR_INTERNAL;
+	}
+	pubkey->u.rsa.modulus.len  = tlen;
+	pubkey->u.rsa.modulus.data = malloc(tlen);
+	if (pubkey->u.rsa.modulus.data == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memcpy(pubkey->u.rsa.modulus.data, p, tlen);
+
+	p = sc_asn1_find_tag(card->ctx, data, ilen, 0x82, &tlen);
+	if (p == NULL) {
+		sc_error(card->ctx, "invalid public key data: missing exponent");
+		return SC_ERROR_INTERNAL;
+	}
+	pubkey->u.rsa.exponent.len  = tlen;
+	pubkey->u.rsa.exponent.data = malloc(tlen);
+	if (pubkey->u.rsa.exponent.data == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memcpy(pubkey->u.rsa.exponent.data, p, tlen);
+
+	return SC_SUCCESS; 
+}
+
 static int
 etoken_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 			sc_pkcs15_bignum_t *bn)
@@ -603,12 +716,47 @@ etoken_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 		return r;
 	count = r - 4;
 	if (count <= 0 || buf[0] != tag || buf[1] != count + 2
-	 || buf[2] != count + 1 || buf[3] != 0)
+	    || buf[2] != count + 1 || buf[3] != 0)
 		return SC_ERROR_INTERNAL;
 	bn->len = count;
 	bn->data = (u8 *) malloc(count);
+	if (bn->data == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(bn->data, buf + 4, count);
-	return 0;
+	return SC_SUCCESS;
+}
+
+static int cardos_extract_pubkey(sc_card_t *card, sc_pkcs15_pubkey_t *pubkey,
+	sc_file_t *tfile, int use_ext_rsa)
+{
+	int r;
+
+	memset(pubkey, 0, sizeof(*pubkey));
+
+	r = sc_select_file(card, &tfile->path, NULL);
+	if (r != SC_SUCCESS)
+		return r;
+
+	if (use_ext_rsa == 0) {
+		r = etoken_extract_pubkey(card, 1, 0x10, &pubkey->u.rsa.modulus);
+		if (r != SC_SUCCESS)
+			return r;
+		r = etoken_extract_pubkey(card, 2, 0x11, &pubkey->u.rsa.exponent);
+	} else {
+		u8 *buf;
+
+		buf = malloc(tfile->size);
+		if (buf == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
+		r = sc_read_binary(card, 0, buf, tfile->size, 0);
+		if (r > 0)
+			r = parse_ext_pubkey_file(card, buf, (size_t)r, pubkey);
+		free(buf);
+	}
+
+	pubkey->algorithm = SC_ALGORITHM_RSA;
+
+	return r;
 }
 
 static struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations = {
