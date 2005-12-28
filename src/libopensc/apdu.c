@@ -1,0 +1,654 @@
+/*
+ * apdu.c: basic APDU handling functions
+ *
+ * Copyright (C) 2005 Nils Larsch <nils@larsch.net>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <string.h>
+
+#include "internal.h"
+
+/*********************************************************************/
+/*   low level APDU handling functions                               */
+/*********************************************************************/
+
+/** Calculates the length of the encoded APDU in octets.
+ *  @param  apdu   the APDU
+ *  @param  proto  the desired protocol
+ *  @return length of the encoded APDU
+ */
+static size_t sc_get_apdu_length(const sc_apdu_t *apdu, unsigned int proto)
+{
+	size_t ret = 4;
+
+	switch (apdu->cse) {
+	case SC_APDU_CASE_1:
+		if (proto == SC_PROTO_T0)
+			ret++;
+		break;
+	case SC_APDU_CASE_2_SHORT:
+		ret++;
+		break;
+	case SC_APDU_CASE_2_EXT:
+		ret += (proto == SC_PROTO_T0 ? 1 : 3);
+		break;
+	case SC_APDU_CASE_3_SHORT:
+		ret += 1 + apdu->lc;
+		break;
+	case SC_APDU_CASE_3_EXT:
+		ret += apdu->lc + (proto == SC_PROTO_T0 ? 1 : 3);
+		break;
+	case SC_APDU_CASE_4_SHORT:
+		ret += apdu->lc + (proto != SC_PROTO_T0 ? 2 : 1);
+		break;
+	case SC_APDU_CASE_4_EXT:
+		ret += apdu->lc + (proto == SC_PROTO_T0 ? 1 : 5);
+		break;
+	default:
+		return 0;
+	}
+	return ret;
+}
+
+/** Encodes a APDU as an octet string
+ *  @param  ctx     sc_context_t object (used for logging)
+ *  @param  apdu    APDU to be encoded as an octet string
+ *  @param  proto   protocol version to be used
+ *  @param  out     output buffer of size outlen. 
+ *  @param  outlen  size of hte output buffer
+ *  @return SC_SUCCESS on success and an error code otherwise
+ */
+static int sc_apdu2bytes(sc_context_t *ctx, const sc_apdu_t *apdu,
+	unsigned int proto, u8 *out, size_t outlen)
+{
+	u8     *p = out;
+
+	size_t len = sc_get_apdu_length(apdu, proto);
+
+	if (out == NULL || outlen < len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	/* CLA, INS, P1 and P2 */
+	*p++ = apdu->cla;
+	*p++ = apdu->ins;
+	*p++ = apdu->p1;
+	*p++ = apdu->p2;
+	/* case depend part */
+	switch (apdu->cse) {
+	case SC_APDU_CASE_1:
+		/* T0 needs an additional 0x00 byte */
+		if (proto == SC_PROTO_T0)
+			*p++ = (u8)0x00;
+		break;
+	case SC_APDU_CASE_2_SHORT:
+		*p++ = (u8)apdu->le;
+		break;
+	case SC_APDU_CASE_2_EXT:
+		if (proto == SC_PROTO_T0)
+			/* T0 extended APDUs look just like short APDUs */
+			*p++ = (u8)apdu->le;
+		else {
+			/* in case of T1 always use 3 bytes for length */
+			*p++ = (u8)0x00;
+			*p++ = (u8)(apdu->le >> 8);
+			*p++ = (u8)apdu->le;
+		}
+		break;
+	case SC_APDU_CASE_3_SHORT:
+		*p++ = (u8)apdu->lc;
+		memcpy(p, apdu->data, apdu->lc);
+		p += apdu->lc;
+		break;
+	case SC_APDU_CASE_3_EXT:
+		if (proto == SC_PROTO_T0) {
+			/* in case of T0 the command is transmitted in chunks
+			 * < 255 using the ENVELOPE command ... */
+			if (apdu->lc > 255) {
+				/* ... so if Lc is greater than 255 bytes 
+				 * an error has occurred on a higher level */
+				sc_error(ctx, "invalid Lc length for CASE 3 "
+					"extended APDU (need ENVELOPE)");
+				return SC_ERROR_INVALID_ARGUMENTS;
+			}
+		} else {
+			/* in case of T1 always use 3 bytes for length */
+			*p++ = (u8)0x00;
+			*p++ = (u8)(apdu->lc >> 8);
+			*p++ = (u8)apdu->lc;
+		}
+		memcpy(p, apdu->data, apdu->lc);
+		p += apdu->lc;
+		break;
+	case SC_APDU_CASE_4_SHORT:
+		*p++ = (u8)apdu->lc;
+		memcpy(p, apdu->data, apdu->lc);
+		p += apdu->lc;
+		/* in case of T0 no Le byte is added */
+		if (proto != SC_PROTO_T0)
+			*p++ = (u8)apdu->le;
+		break;
+	case SC_APDU_CASE_4_EXT:
+		if (proto == SC_PROTO_T0) {
+			/* again a T0 extended case 4 APDU looks just
+			 * like a short APDU, the additional data is
+			 * transferred using ENVELOPE and GET RESPONSE */
+			*p++ = (u8)apdu->lc;
+			memcpy(p, apdu->data, apdu->lc);
+			p += apdu->lc & 0xff;
+		} else {
+			*p++ = (u8)0x00;
+			*p++ = (u8)(apdu->lc >> 8);
+			*p++ = (u8)apdu->lc;
+			memcpy(p, apdu->data, apdu->lc);
+			p += apdu->lc;
+			/* only 2 bytes are use to specify the length of the
+			 * expected data */
+			*p++ = (u8)(apdu->le >> 8);
+			*p++ = (u8)apdu->le;
+		}
+		break;
+	}
+
+	return SC_SUCCESS;
+}
+
+static void sc_apdu_log_in(sc_context_t *ctx, const u8 *data, size_t len, int s)
+{
+	size_t buflen = len * 5 + 128;
+	char * buf = malloc(buflen);
+	if (buf == NULL)
+		return;
+
+	if (s == 0 || ctx->debug >= 6)
+		sc_hex_dump(ctx, data, len, buf, buflen);
+	else
+		snprintf(buf, buflen, "%02x %02x %02x %02x [sensitive data]\n",
+				data[0], data[1], data[2], data[3]);
+
+	sc_debug(ctx,
+		"\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %4d bytes send\n"
+		"%s"
+		">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n",
+		(int)len, buf);
+
+	free(buf);
+}
+
+static void sc_apdu_log_out(sc_context_t *ctx, const u8 *data, size_t len, int s)
+{
+	size_t buflen = len * 5 + 128;
+	char * buf = malloc(buflen);
+	if (buf == NULL)
+		return;
+
+	if (s == 0 || ctx->debug >= 6)
+		sc_hex_dump(ctx, data, len, buf, buflen);
+	else
+		snprintf(buf, buflen, "[sensitive data]\n");
+
+	sc_debug(ctx,
+		"\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< %4d bytes received\n"
+		"%s"
+		"<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n",
+		(int)len, buf);
+
+	free(buf);
+}
+
+/** Encodes the APDU in a octet buffer and sends it to the token
+ *  using the sc_reader_operations::transmit function.
+ *  @param  card  sc_card_t object of the token to which the APDU
+ *                should be sent
+ *  @param  apdu  sc_apdu_t object to transmit
+ *  @return SC_SUCCESS on success and an error code otherwise
+ */
+static int sc_apdu_encode_send(sc_card_t *card, sc_apdu_t *apdu,
+	unsigned int proto)
+{
+	size_t       sendsize, recvsize, rbuflen = 0;
+	u8           *sbuf = NULL, *rbuf = NULL;
+	int          r;
+	sc_context_t *ctx = card->ctx;
+
+	if (card->reader->ops->transmit == NULL)
+		return SC_ERROR_NOT_SUPPORTED;
+
+	/* we always use a at least 258 byte size big return buffer
+	 * to mimic the behaviour of the old implementation (some readers
+	 * seems to require a larger than necessary return buffer).
+	 * The buffer for the returned data needs to be at least 2 bytes
+	 * larger than the expected data length to store SW1 and SW2. */
+	recvsize = rbuflen = apdu->resplen <= 256 ? 258 : apdu->resplen + 2;
+	rbuf     = malloc(rbuflen);
+	/* get the estimated length of encoded APDU */
+	sendsize = sc_get_apdu_length(apdu, proto);
+	if (sendsize == 0) {
+		r = SC_ERROR_INTERNAL;
+		goto out;
+	}
+	sbuf = malloc(sendsize);
+	if (sbuf == NULL || rbuf == NULL) {
+		r = SC_ERROR_MEMORY_FAILURE;
+		goto out;
+	}
+	/* encode the APDU in the buffer */
+	r = sc_apdu2bytes(ctx, apdu, proto, sbuf, sendsize);
+	if (r != SC_SUCCESS)
+		goto out;
+
+	/* log outgoing APDU */
+#ifndef OPENSC_DONT_LOG_SENSITIVE
+	if (ctx->debug >= 5)
+		sc_apdu_log_in(ctx, sbuf, sendsize, (int)apdu->sensitive);
+#endif
+	/* now let the reader driver transmit the APDU to the token */
+	r = card->reader->ops->transmit(card->reader, card->slot, sbuf,
+					sendsize, rbuf, &recvsize,
+					apdu->control);
+	if (r < 0) {
+		/* unable to transmit ... most likely a reader problem */
+		sc_error(ctx, "unable to transmit");
+		goto out;
+	}
+	/* log incoming data */
+#ifndef OPENSC_DONT_LOG_SENSITIVE
+	if (ctx->debug >= 5)
+		sc_apdu_log_out(ctx, rbuf, recvsize, (int)apdu->sensitive);
+#endif
+
+	if (recvsize < 2) {
+		/* no SW1 SW2 ... something went terrible wrong */
+		sc_error(ctx, "SW1 SW2 missing");
+		r = SC_ERROR_INTERNAL;
+		goto out;
+	}
+	/* the last two bytes contain the status bytes SW1 and SW2 */
+	apdu->sw1 = (unsigned int)rbuf[recvsize - 2];
+	apdu->sw2 = (unsigned int)rbuf[recvsize - 1];
+	recvsize -= 2;
+	/* set output length and copy the returned data if necessary */
+	if (recvsize <= apdu->resplen)
+		apdu->resplen = recvsize;
+
+	if (apdu->resplen != 0)
+		memcpy(apdu->resp, rbuf, apdu->resplen);
+
+	r = SC_SUCCESS;
+out:
+	if (sbuf != NULL) {
+		sc_mem_clear(sbuf, sendsize);
+		free(sbuf);
+	}
+	if (rbuf != NULL) {
+		sc_mem_clear(rbuf, rbuflen);
+		free(rbuf);
+	}
+	
+	return r;
+}
+
+/*********************************************************************/
+/*   higher level APDU transfer handling functions                   */
+/*********************************************************************/
+/*   +------------------+
+ *   | sc_transmit_apdu |
+ *   +------------------+
+ *         |  |  |
+ *         |  |  |     detect APDU cse               +--------------------+
+ *         |  |  +---------------------------------> | sc_detect_apdu_cse |
+ *         |  |                                      +--------------------+
+ *         |  |        check consistency of APDU     +--------------------+
+ *         |  +------------------------------------> | sc_check_apdu      |
+ *         |                                         +--------------------+
+ *         |           send single APDU              +--------------------+
+ *         +---------------------------------------> | do_single_transmit |
+ *                        ^                          +--------------------+
+ *                        |                               |
+ *                        |  re-transmit if wrong length  |
+ *                        |       or GET RESPONSE         |
+ *                        +-------------------------------+
+ *                                                        |
+ *                                                        v
+ *                                               card->reader->ops->tranmit
+ */
+
+/** basic consistency check of the sc_apdu_t object
+ *  @param  ctx   sc_context_t object for error messages
+ *  @param  apdu  sc_apdu_t object to check
+ *  @return SC_SUCCESS on success and an error code otherwise
+ */
+static int sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
+{
+	if ((apdu->cse & ~SC_APDU_SHORT_MASK) == 0) {
+		/* length check for short APDU    */
+		if (apdu->le > 256 || (apdu->lc > 255 && 
+		    (apdu->flags & SC_APDU_FLAGS_CHAINING) == 0))
+			goto error;
+	} else if ((apdu->cse & SC_APDU_EXT) != 0) {
+		/* check if the card support extended APDUs */
+		if ((card->caps & SC_CARD_CAP_APDU_EXT) == 0) {
+			sc_error(card->ctx, "card doesn't support extended APDUs");
+			goto error;
+		}
+		/* length check for extended APDU */
+		if (apdu->le > 65536 || apdu->lc > 65535)
+			goto error;
+	} else
+		goto error;
+
+	switch (apdu->cse & SC_APDU_SHORT_MASK) {
+	case SC_APDU_CASE_1:
+		/* no data is send or received */
+		if (apdu->datalen != 0 || apdu->lc != 0 || apdu->le != 0)
+			goto error;
+		break;
+	case SC_APDU_CASE_2_SHORT:
+		/* no data is send        */
+		if (apdu->datalen != 0 || apdu->lc != 0)
+			goto error;
+		/* data is expected       */
+		if (apdu->le == 0 || apdu->resplen == 0 || apdu->resp == NULL)
+			goto error;
+		/* return buffer to small */
+		if (apdu->resplen < apdu->le)
+			goto error;
+		break;
+	case SC_APDU_CASE_3_SHORT:
+		/* data is send           */
+		if (apdu->datalen == 0 || apdu->data == NULL || apdu->lc == 0)
+			goto error;
+		/* no data is expected    */
+		if (apdu->le != 0)
+			goto error;
+		/* inconsistent datalen   */
+		if (apdu->datalen != apdu->lc)
+			goto error;
+		break;
+	case SC_APDU_CASE_4_SHORT:
+		/* data is send           */
+		if (apdu->datalen == 0 || apdu->data == NULL || apdu->lc == 0)
+			goto error;
+		/* data is expected       */
+		if (apdu->le == 0 || apdu->resplen == 0 || apdu->resp == NULL)
+			goto error;
+		/* return buffer to small */
+		if (apdu->resplen < apdu->le)
+			goto error;
+		/* inconsistent datalen   */
+		if (apdu->datalen != apdu->lc)
+			goto error;
+		break;
+	default:
+		sc_error(card->ctx, "Invalid APDU case %d\n", apdu->cse);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	return SC_SUCCESS;
+error:
+	sc_error(card->ctx, "Invalid Case %d %s APDU:\n"
+		"cse=%02x cla=%02x ins=%02x p1=%02x p2=%02x lc=%lu le=%lu\n"
+		"resp=%p resplen=%lu data=%p datelen=%lu",
+		apdu->cse & SC_APDU_SHORT_MASK,
+		(apdu->cse & SC_APDU_EXT) != 0 ? "extended" : "short",
+		apdu->cse, apdu->cla, apdu->ins, apdu->p1,
+		apdu->p2, apdu->lc,  apdu->le, apdu->resp,
+		apdu->resplen, apdu->data, apdu->datalen);
+	return SC_ERROR_INVALID_ARGUMENTS;
+}
+
+/** Tries to determine the APDU type (short or extended) of the supplied
+ *  APDU if one of the SC_APDU_CASE_? types is used. 
+ *  @param  apdu  APDU object
+ */
+static void sc_detect_apdu_cse(const sc_card_t *card, sc_apdu_t *apdu)
+{
+	if (apdu->cse == SC_APDU_CASE_2 || apdu->cse == SC_APDU_CASE_3 ||
+	    apdu->cse == SC_APDU_CASE_4) {
+		int btype = apdu->cse & SC_APDU_SHORT_MASK;
+		/* if either Lc or Le is bigger than the maximun for
+		 * short APDUs and the card supports extended APDUs
+		 * use extended APDUs (unless Lc is greater than
+		 * 255 and command chaining is activated) */
+		if ((apdu->le > 256 || (apdu->lc > 255 && (apdu->flags & SC_APDU_FLAGS_CHAINING) == 0)) &&
+		    (card->caps & SC_CARD_CAP_APDU_EXT) != 0)
+			btype |= SC_APDU_EXT;
+		apdu->cse = btype;
+	}
+}
+
+
+/** Sends a single APDU to the card reader and calls 
+ *  GET RESPONSE to get the return data if necessary.
+ *  @param  card  sc_card_t object for the smartcard
+ *  @param  apdu  APDU to be send
+ *  @return SC_SUCCESS on success and an error value otherwise
+ */
+static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
+{
+	int          r;
+	size_t       olen  = apdu->resplen;
+	sc_context_t *ctx  = card->ctx;
+
+	/* XXX: insert secure messaging here (?), i.e. something like
+	if (card->sm_ctx->use_sm != 0) {
+		r = card->ops->sm_transform(...);
+		if (r != SC_SUCCESS)
+			...
+		r = sc_check_apdu(...);
+		if (r != SC_SUCCESS)
+			...
+	}
+	*/
+
+	/* send APDU to the reader driver */
+	r = sc_apdu_encode_send(card, apdu, card->slot->active_protocol);
+	if (r != 0) {
+		sc_error(ctx, "unable to transmit APDU");
+		return r;
+	}
+	/* ok, the APDU was successfully transmitted. Now we have two
+	 * special cases:
+	 * 1. the card returnd 0x6Cxx: in this case we re-trasmit the APDU
+	 *    wit hLe set to SW2 (this is course only possible if the
+	 *    response buffer size is larger than the new Le = SW2)
+	 */
+	if (apdu->sw1 == 0x6C && (apdu->flags & SC_APDU_FLAGS_NO_RETRY_WL) == 0) {
+		size_t nlen = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
+		if (olen >= nlen) {
+			/* don't try again if it doesn't work this time */
+			apdu->flags  |= SC_APDU_FLAGS_NO_GET_RESP;
+			/* set the new expected length */
+			apdu->resplen = olen;
+			apdu->le      = nlen;
+			/* as some reader/smartcards can't handle an immediate
+			 * re-transmit so we optionally need to sleep for
+			 * a while */
+			if (card->wait_resend_apdu != 0)
+				msleep(card->wait_resend_apdu);
+			/* re-transmit the APDU with new Le length */
+			r = do_single_transmit(card, apdu);
+			if (r != SC_SUCCESS) {
+				sc_error(ctx, "unable to transmit APDU");
+				return r;
+			}
+		} else {
+			/* we cannot re-transmit the APDU with the demanded
+			 * Le value as the buffer is too small => error */
+			sc_debug(ctx, "wrong length: required length exceeds resplen");
+			return SC_ERROR_WRONG_LENGTH;
+		}
+	}
+
+	/* 2. the card returned 0x61xx: more data can be read from the card
+	 *    using the GET RESPONSE command (mostly used in the T0 protocol).
+	 *    Unless the SC_APDU_FLAGS_NO_GET_RESP is set we try to read as
+	 *    much data as possible using GET RESPONSE.
+	 */
+	if (apdu->sw1 == 0x61 && (apdu->flags & SC_APDU_FLAGS_NO_GET_RESP) == 0) {
+		if (apdu->le == 0) {
+			/* no data is requested => change return value to
+			 * 0x9000 and ignore the remaining data */
+			/* FIXME: why not return 0x61xx ? It's not an
+			 *        error */
+			apdu->sw1 = 0x90;
+			apdu->sw2 = 0x00;
+			
+		} else {
+			/* call GET RESPONSE until we have read all data
+			 * requested or until the card retuns 0x9000, 
+			 * whatever happens first.
+			 */
+			size_t le, buflen;
+			u8     *buf;
+
+			if (card->ops->get_response == NULL) {
+				/* this should _never_ happen */
+				sc_error(ctx, "no GET RESPONSE command\n");
+                        	return SC_ERROR_NOT_SUPPORTED;
+	                }
+
+			/* if the command already returned some data 
+			 * append the new data to the end of the buffer
+			 */
+			buf = apdu->resp + apdu->resplen;
+
+			/* read as much data as fits in apdu->resp (i.e.
+			 * max(apdu->resplen, amount of data available)).
+			 */
+			buflen = olen - apdu->resplen;
+
+			/* 0x6100 means at least 256 more bytes to read */
+			le = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
+
+			do {
+				u8 tbuf[256];
+				/* call GET RESPONSE to get more date from
+				 * the card; note: GET RESPONSE returns the
+				 * amount of data left (== SW2) */
+				r = card->ops->get_response(card, &le, tbuf);
+				if (r < 0)
+					SC_FUNC_RETURN(ctx, 2, r);
+
+				if (buflen < le)
+					return SC_ERROR_WRONG_LENGTH;
+
+				memcpy(buf, tbuf, le);
+				buf    += le;
+				buflen -= le;
+			} while (r != 0);
+			/* we've read all data, let's return 0x9000 */
+			apdu->resplen = buf - apdu->resp;
+			apdu->sw1 = 0x90;
+			apdu->sw2 = 0x00;
+		}
+	}
+
+	return SC_SUCCESS;
+}
+
+int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
+{
+	int r = SC_SUCCESS;
+
+	if (card == NULL || apdu == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	SC_FUNC_CALLED(card->ctx, 4);
+
+	/* determine the APDU type if necessary, i.e. to use
+	 * short or extended APDUs  */
+	sc_detect_apdu_cse(card, apdu);
+	/* basic APDU consistency check */
+	r = sc_check_apdu(card, apdu);
+	if (r != SC_SUCCESS)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	r = sc_lock(card);	/* acquire card lock*/
+	if (r != SC_SUCCESS) {
+		sc_error(card->ctx, "unable to acquire lock");
+		return r;
+	} 
+
+	if ((apdu->flags & SC_APDU_FLAGS_CHAINING) != 0) {
+		/* divide et impera: transmit APDU in chunks with Lc < 255
+		 * bytes using command chaining */
+		size_t    len  = apdu->datalen;
+		const u8  *buf = apdu->data;
+
+		while (len != 0) {
+			size_t    plen;
+			sc_apdu_t tapdu;
+			int       last = 0;
+
+			tapdu = *apdu;
+			/* clear chaining flag */
+			tapdu.flags &= ~SC_APDU_FLAGS_CHAINING;
+			if (len > 255) {
+				/* adjust APDU case: in case of CASE 4 APDU
+				 * the intermediate APDU are of CASE 3 */
+				if ((tapdu.cse & SC_APDU_SHORT_MASK) == SC_APDU_CASE_4_SHORT)
+					tapdu.cse--;
+				/* XXX: the chunk size must be adjusted when
+				 *      secure messaging is used */
+				plen          = 255;
+				tapdu.cla    |= 0x10;
+				tapdu.le      = 2;
+				/* the intermediate APDU don't expect data */
+				tapdu.lc      = 0;
+				tapdu.resplen = 0;
+				tapdu.resp    = NULL;
+			} else {
+				plen = len;
+				last = 1;
+			}
+			tapdu.data    = buf;
+			tapdu.datalen = tapdu.lc = plen;
+
+			r = sc_check_apdu(card, &tapdu);
+			if (r != SC_SUCCESS) {
+				sc_error(card->ctx, "inconsistent APDU while chaining");
+				break;
+			}
+
+			r = do_single_transmit(card, &tapdu);
+			if (r != SC_SUCCESS)
+				break;
+			if (last != 0) {
+				/* in case of the last APDU set the SW1 
+				 * and SW2 bytes in the original APDU */
+				apdu->sw1 = tapdu.sw1;
+				apdu->sw2 = tapdu.sw2;
+				apdu->resplen = tapdu.resplen;
+			} else {
+				/* otherwise check the status bytes */
+				r = sc_check_sw(card, tapdu.sw1, tapdu.sw2);
+				if (r != SC_SUCCESS)
+					break;
+			}
+			len -= plen;
+			buf += plen;
+		}
+	} else 
+		/* transmit single APDU */
+		r = do_single_transmit(card, apdu);
+	/* all done => release lock */
+	if (sc_unlock(card) != SC_SUCCESS)
+		sc_error(card->ctx, "sc_unlock failed");
+
+	return r;
+}

@@ -88,6 +88,19 @@ typedef struct sc_file {
 	unsigned int magic;
 } sc_file_t;
 
+/* use command chaining if the Lc value is greater than normally
+ * allowed
+ */
+#define SC_APDU_FLAGS_CHAINING		0x00000001UL
+/* do not automatically call GET RESPONSE to read all available
+ * data
+ */
+#define SC_APDU_FLAGS_NO_GET_RESP	0x00000002UL
+/* do not automatically try a re-transmit with a new length
+ * if the card returns 0x6Cxx (wrong length)
+ */
+#define SC_APDU_FLAGS_NO_RETRY_WL	0x00000004UL
+
 typedef struct sc_apdu {
 	int cse;		/* APDU case */
 	u8 cla, ins, p1, p2;	/* CLA, INS, P1 and P2 bytes */
@@ -103,6 +116,8 @@ typedef struct sc_apdu {
 	u8 control;		/* Set if APDU should go to the reader */
 
 	unsigned int sw1, sw2;	/* Status words returned in R-APDU */
+
+	unsigned long flags;
 } sc_apdu_t;
 
 #ifdef __cplusplus

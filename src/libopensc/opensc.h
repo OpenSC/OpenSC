@@ -46,14 +46,21 @@ extern "C" {
 #endif
 
 /* Different APDU cases */
-#define SC_APDU_CASE_NONE		0
-#define SC_APDU_CASE_1                  1
-#define SC_APDU_CASE_2_SHORT            2
-#define SC_APDU_CASE_3_SHORT            3
-#define SC_APDU_CASE_4_SHORT            4
-#define SC_APDU_CASE_2_EXT              5
-#define SC_APDU_CASE_3_EXT              6
-#define SC_APDU_CASE_4_EXT              7
+#define SC_APDU_CASE_NONE		0x00
+#define SC_APDU_CASE_1			0x01
+#define SC_APDU_CASE_2_SHORT		0x02
+#define SC_APDU_CASE_3_SHORT		0x03
+#define SC_APDU_CASE_4_SHORT		0x04
+#define SC_APDU_SHORT_MASK		0x0f
+#define SC_APDU_EXT			0x10
+#define SC_APDU_CASE_2_EXT		SC_APDU_CASE_2_SHORT | SC_APDU_EXT
+#define SC_APDU_CASE_3_EXT		SC_APDU_CASE_3_SHORT | SC_APDU_EXT
+#define SC_APDU_CASE_4_EXT		SC_APDU_CASE_4_SHORT | SC_APDU_EXT
+/* the following types let OpenSC decides whether to use 
+ * short or extended APDUs */
+#define SC_APDU_CASE_2			0x22
+#define SC_APDU_CASE_3			0x23
+#define SC_APDU_CASE_4			0x24
 
 /* File types */
 #define SC_FILE_TYPE_DF			0x04
@@ -467,6 +474,9 @@ void sc_mutex_free(struct sc_mutex *p);
  * instead of relying on the ACL info in the profile files. */
 #define SC_CARD_CAP_USE_FCI_AC		0x00000010
 
+/* The card supports 2048 bit RSA keys */
+#define SC_CARD_CAP_RSA_2048		0x00000020
+
 typedef struct sc_card {
 	struct sc_context *ctx;
 	struct sc_reader *reader;
@@ -657,11 +667,13 @@ typedef struct sc_context {
 } sc_context_t;
 
 /* APDU handling functions */
+
+/** Sends a APDU to the card
+ *  @param  card  sc_card_t object to which the APDU should be send
+ *  @param  apdu  sc_apdu_t object of the APDU to be send
+ *  @return SC_SUCCESS on succcess and an error code otherwise
+ */
 int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu);
-/* sends an APDU to the reader using command chaining if necessary
- * XXX: this is only a temporary function, it's very likely that it's
- *      functionality will be included in sc_transmit_apdu very soon */
-int sc_chain_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu);
 
 void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu, int cse, int ins,
 		    int p1, int p2);
