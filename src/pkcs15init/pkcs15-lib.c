@@ -806,7 +806,6 @@ err:
 static int sc_pkcs15init_update_unusedspace(sc_pkcs15_card_t *p15card,
 	sc_profile_t *profile)
 {
-	sc_path_t path;
 	u8 *buf = NULL;
 	size_t buf_len;
 	sc_file_t *file = NULL;
