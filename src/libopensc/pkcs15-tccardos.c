@@ -1,7 +1,7 @@
 /*
  * pkcs15-tccardos.c: PKCS#15 profile for TC CardOS M4 cards
  *
- * Copyright (C) 2005  nils.larsch@cybertrust.com 
+ * Copyright (C) 2005  Nils Larsch <nils@larsch.net> 
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
