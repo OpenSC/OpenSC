@@ -148,7 +148,7 @@ static int list_certificates(void)
 {
 	int r, i;
 	struct sc_pkcs15_object *objs[32];
-	
+
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, 32);
 	if (r < 0) {
 		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
@@ -480,7 +480,7 @@ static int list_public_keys(void)
 	
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY_RSA, objs, 32);
 	if (r < 0) {
-		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
+		fprintf(stderr, "Public key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
 	if (verbose)
@@ -895,7 +895,7 @@ static int list_pins(void)
 	
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 	if (r < 0) {
-		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
+		fprintf(stderr, "PIN enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
 	if (verbose)
