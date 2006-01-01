@@ -223,12 +223,7 @@ void sc_format_path(const char *str, sc_path_t *path)
 
 int sc_append_path(sc_path_t *dest, const sc_path_t *src)
 {
-	assert(dest != NULL && src != NULL);
-	if (dest->len + src->len > SC_MAX_PATH_SIZE)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	memcpy(dest->value + dest->len, src->value, src->len);
-	dest->len += src->len;
-	return 0;
+	return sc_concatenate_path(dest, dest, src);
 }
 
 int sc_append_path_id(sc_path_t *dest, const u8 *id, size_t idlen)
@@ -245,6 +240,27 @@ int sc_append_file_id(sc_path_t *dest, unsigned int fid)
 	u8 id[2] = { fid >> 8, fid & 0xff };
 
 	return sc_append_path_id(dest, id, 2);
+}
+
+int sc_concatenate_path(sc_path_t *d, const sc_path_t *p1, const sc_path_t *p2)
+{
+	sc_path_t tpath;
+
+	if (d == NULL || p1 == NULL || p2 == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (p1->len + p2->len > SC_MAX_PATH_SIZE)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memset(&tpath, 0, sizeof(sc_path_t));
+	memcpy(tpath.value, p1->value, p1->len);
+	memcpy(tpath.value + p1->len, p2->value, p2->len);
+	tpath.len  = p1->len + p2->len;
+	tpath.type = SC_PATH_TYPE_PATH;
+
+	*d = tpath;
+
+	return SC_SUCCESS;
 }
 
 const char *sc_print_path(const sc_path_t *path)
@@ -265,6 +281,26 @@ int sc_compare_path(const sc_path_t *path1, const sc_path_t *path2)
 {
 	return path1->len == path2->len
 		&& !memcmp(path1->value, path2->value, path1->len);
+}
+
+int sc_compare_path_prefix(const sc_path_t *prefix, const sc_path_t *path)
+{
+	sc_path_t tpath;
+
+	if (prefix->len > path->len)
+		return 0;
+
+	tpath      = *path;
+	tpath.len -= prefix->len;
+
+	return sc_compare_path(&tpath, prefix);
+}
+
+const sc_path_t *sc_get_mf_path(void)
+{
+	static const sc_path_t mf_path = { {0x3f, 0x00, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0}, 2, 0, 0, SC_PATH_TYPE_PATH};
+	return &mf_path;
 }
 
 int sc_file_add_acl_entry(sc_file_t *file, unsigned int operation,

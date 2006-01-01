@@ -907,13 +907,59 @@ int sc_file_set_prop_attr(sc_file_t *file, const u8 *prop_attr,
 int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 			  size_t type_attr_len);
 
+
+/********************************************************************/
+/*             sc_path_t handling functions                         */
+/********************************************************************/
+
 void sc_format_path(const char *path_in, sc_path_t *path_out);
-const char *sc_print_path(const sc_path_t *path_in);
-int sc_compare_path(const sc_path_t *, const sc_path_t *);
+/**
+ * Return string representation of the given sc_path_t object
+ * Warning: as static memory is used this function is not thread-safe.
+ * @param  path  sc_path_t object of the path to be printed
+ * @return pointer to a const buffer with the string representation
+ *         of the path
+ */
+const char *sc_print_path(const sc_path_t *path);
+/**
+ * Compares two sc_path_t objects 
+ * @param  patha  sc_path_t object of the first path
+ * @param  pathb  sc_path_t object of the second path
+ * @return 1 if both paths are equal and 0 otherwise
+ */
+int sc_compare_path(const sc_path_t *patha, const sc_path_t *pathb);
+/**
+ * Concatenate two sc_path_t values and store the result in
+ * d (note: d can be the same as p1 or p2).
+ * @param  d   destination sc_path_t object
+ * @param  p1  first sc_path_t object
+ * @param  p2  second sc_path_t object
+ * @return SC_SUCCESS on success and an error code otherwise
+ */
+int sc_concatenate_path(sc_path_t *d, const sc_path_t *p1, const sc_path_t *p2);
+/**
+ * Appends a sc_path_t object to another sc_path_t object (note:
+ * this function is a wrapper for sc_concatenate_path)
+ * @param  dest  destination sc_path_t object
+ * @param  src   sc_path_t object to append
+ * @return SC_SUCCESS on success and an error code otherwise
+ */
 int sc_append_path(sc_path_t *dest, const sc_path_t *src);
+/**
+ * Checks whether one path is a prefix of another path 
+ * @param  prefix  sc_path_t object with the prefix
+ * @param  path    sc_path_t object with the path which should start
+ *                 with the given prefix
+ * @return 1 if the parameter prefix is a prefix of path and 0 otherwise
+ */
+int sc_compare_path_prefix(const sc_path_t *prefix, const sc_path_t *path);
 int sc_append_path_id(sc_path_t *dest, const u8 *id, size_t idlen);
 int sc_append_file_id(sc_path_t *dest, unsigned int fid);
-
+/**
+ * Returns a const sc_path_t object for the MF
+ * @return sc_path_t object of the MF
+ */
+const sc_path_t *sc_get_mf_path(void);
 
 /********************************************************************/
 /*             miscellaneous functions                              */
@@ -932,7 +978,7 @@ int sc_format_oid(struct sc_object_id *oid, const char *in);
  * Compares two sc_object_id objects
  * @param  oid1  the first sc_object_id object
  * @param  oid2  the second sc_object_id object
- * @return 0 if the oids are equal and a non-zero value otherwise
+ * @return 1 if the oids are equal and a non-zero value otherwise
  */
 int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2);
 
