@@ -146,7 +146,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	sc_card_t *card = p15card->card;
 	sc_path_t path;
 	sc_pkcs15_id_t id, auth_id;
-	unsigned char serial[8];
+	unsigned char serial[9];
 	int flags;
 	int i, r;
 
