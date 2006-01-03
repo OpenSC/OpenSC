@@ -68,6 +68,7 @@ static int	open_reader_and_card(int);
 static int	do_assert_pristine(sc_card_t *);
 static int	do_erase(sc_card_t *, struct sc_profile *);
 static int	do_delete_objects(struct sc_profile *, unsigned int opt_delete_flags);
+static int	do_change_attributes(struct sc_profile *, unsigned int opt_type);
 static int	do_init_app(struct sc_profile *);
 static int	do_store_pin(struct sc_profile *);
 static int	do_generate_key(struct sc_profile *, const char *);
@@ -142,6 +143,7 @@ const struct option	options[] = {
 	{ "update-certificate",	required_argument, 0,	'U' },
 	{ "store-data",		required_argument, 0,	'W' },
 	{ "delete-objects",	required_argument, 0,	'D' },
+	{ "change-attributes",	required_argument, 0,	'A' },
 
 	{ "reader",		required_argument, 0,	'r' },
 	{ "pin",		required_argument, 0,	OPT_PIN1 },
@@ -194,6 +196,7 @@ const char *		option_help[] = {
 	"Update an X.509 certificate (carefull with mail decryption certs!!)",
 	"Store a data object",
 	"Delete object(s) (use \"help\" for more information)",
+	"Change attribute(s) (use \"help\" for more information)",
 
 	"Specify which reader to use",
 	"Specify PIN",
@@ -247,6 +250,7 @@ enum {
 	ACTION_STORE_DATA,
 	ACTION_FINALIZE_CARD,
 	ACTION_DELETE_OBJECTS,
+	ACTION_CHANGE_ATTRIBUTES,
 
 	ACTION_MAX
 };
@@ -263,7 +267,8 @@ static const char *action_names[] = {
 	"update certificate",
 	"store data object",
 	"finalizing card",
-	"delete object(s)"
+	"delete object(s)",
+	"change attribute(s)",
 };
 
 #define MAX_CERTS		4
@@ -276,13 +281,12 @@ struct secret {
 	size_t			len;
 };
 
-#define SC_PKCS15INIT_DEL_DATA	0x8000
-
-/* Flags for do_delete_crypto_objects() */
-#define SC_PKCS15INIT_DEL_PRKEY		1
-#define SC_PKCS15INIT_DEL_PUBKEY	2
-#define SC_PKCS15INIT_DEL_CERT		4
-#define SC_PKCS15INIT_DEL_CHAIN		(8 | 4)
+/* Flags for do_delete_crypto_objects() and do_change_attributes() */
+#define SC_PKCS15INIT_TYPE_PRKEY	1
+#define SC_PKCS15INIT_TYPE_PUBKEY	2
+#define SC_PKCS15INIT_TYPE_CERT		4
+#define SC_PKCS15INIT_TYPE_CHAIN	(8 | 4)
+#define SC_PKCS15INIT_TYPE_DATA		16
 
 static sc_context_t *	ctx = NULL;
 static sc_card_t *		card = NULL;
@@ -315,6 +319,7 @@ static char *			opt_outkey = 0;
 static char *			opt_application_id = 0;
 static unsigned int		opt_x509_usage = 0;
 static unsigned int		opt_delete_flags = 0;
+static unsigned int		opt_type = 0;
 static int			ignore_cmdline_pins = 0;
 static struct secret		opt_secrets[MAX_SECRETS];
 static unsigned int		opt_secret_count;
@@ -398,7 +403,19 @@ main(int argc, char **argv)
 
 		if (verbose && action != ACTION_ASSERT_PRISTINE)
 			printf("About to %s.\n", action_names[action]);
-
+/*
+{
+	sc_path_t p1, p2, p3, p4;
+	sc_format_path("3F0050156666", &p1); p1.index = 0; p1.count = 50;
+	sc_format_path("3F0050157777", &p2); p2.index = 50; p2.count = 50;
+	sc_format_path("3F0050156666", &p3); p3.index = 200; p3.count = 50;
+	sc_format_path("3F0050156666", &p4); p4.index = 50; p4.count = 150;
+	r = sc_pkcs15init_remove_unusedspace(p15card, profile, &p1, NULL);
+	printf("sc_pkcs15init_add_unusedspace(): %d\n", r);
+	//r = sc_pkcs15init_add_unusedspace(p15card, profile, &p3, NULL);
+	//printf("sc_pkcs15init_add_unusedspace(): %d\n", r);
+}
+*/
 		switch (action) {
 		case ACTION_ASSERT_PRISTINE:
 			/* skip printing error message */
@@ -431,6 +448,9 @@ main(int argc, char **argv)
 			break;
 		case ACTION_DELETE_OBJECTS:
 			r = do_delete_objects(profile, opt_delete_flags);
+			break;
+		case ACTION_CHANGE_ATTRIBUTES:
+			r = do_change_attributes(profile, opt_type);
 			break;
 		case ACTION_GENERATE_KEY:
 			r = do_generate_key(profile, opt_newkey);
@@ -1123,8 +1143,8 @@ done:
 }
 
 /* Delete object(s) by ID. The 'which' param can be any combination of
- * SC_PKCS15INIT_DEL_PRKEY, SC_PKCS15INIT_DEL_PUBKEY, SC_PKCS15INIT_DEL_CERT
- * and SC_PKCS15INIT_DEL_CHAIN. In the last case, every cert in the chain is
+ * SC_PKCS15INIT_TYPE_PRKEY, SC_PKCS15INIT_TYPE_PUBKEY, SC_PKCS15INIT_TYPE_CERT
+ * and SC_PKCS15INIT_TYPE_CHAIN. In the last case, every cert in the chain is
  * deleted, starting with the cert with ID 'id' and untill a CA cert is
  * reached that certified other remaining certs on the card.
  */
@@ -1137,21 +1157,21 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *p15card,
 	sc_context_t *ctx = p15card->card->ctx;
 	int i, r = 0, count = 0, del_cert = 0;
 
-	if (which & SC_PKCS15INIT_DEL_PRKEY) {
+	if (which & SC_PKCS15INIT_TYPE_PRKEY) {
 	    if (sc_pkcs15_find_prkey_by_id(p15card, &id, &objs[count]) != 0)
 			sc_debug(ctx, "NOTE: couldn't find privkey %s to delete\n", sc_pkcs15_print_id(&id));
 		else
 			count++;
 	}
 
-	if (which & SC_PKCS15INIT_DEL_PUBKEY) {
+	if (which & SC_PKCS15INIT_TYPE_PUBKEY) {
 	    if (sc_pkcs15_find_pubkey_by_id(p15card, &id, &objs[count]) != 0)
 			sc_debug(ctx, "NOTE: couldn't find pubkey %s to delete\n", sc_pkcs15_print_id(&id));
 		else
 			count++;
 	}
 
-	if (which & SC_PKCS15INIT_DEL_CERT) {
+	if (which & SC_PKCS15INIT_TYPE_CERT) {
 	    if (sc_pkcs15_find_cert_by_id(p15card, &id, &objs[count]) != 0)
 			sc_debug(ctx, "NOTE: couldn't find cert %s to delete\n", sc_pkcs15_print_id(&id));
 		else {
@@ -1160,7 +1180,7 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *p15card,
 		}
 	}
 
-	if (del_cert && ((which & SC_PKCS15INIT_DEL_CHAIN) == SC_PKCS15INIT_DEL_CHAIN)) {
+	if (del_cert && ((which & SC_PKCS15INIT_TYPE_CHAIN) == SC_PKCS15INIT_TYPE_CHAIN)) {
 		/* Get the cert chain, stop if there's a CA that is the issuer of
 		 * other certs on this card */
 		int has_sibling; /* siblings: certs having the same issuer */
@@ -1199,7 +1219,7 @@ do_delete_objects(struct sc_profile *profile, unsigned int opt_delete_flags)
 
 	set_userpin_ref();
 
-	if (opt_delete_flags & SC_PKCS15INIT_DEL_DATA) {
+	if (opt_delete_flags & SC_PKCS15INIT_TYPE_DATA) {
 		struct sc_object_id app_oid;
 		sc_pkcs15_object_t *obj;
 		if (opt_application_id == NULL)
@@ -1214,7 +1234,7 @@ do_delete_objects(struct sc_profile *profile, unsigned int opt_delete_flags)
 		}
 	}
 
-	if (opt_delete_flags & (SC_PKCS15INIT_DEL_PRKEY | SC_PKCS15INIT_DEL_PUBKEY | SC_PKCS15INIT_DEL_CHAIN)) {
+	if (opt_delete_flags & (SC_PKCS15INIT_TYPE_PRKEY | SC_PKCS15INIT_TYPE_PUBKEY | SC_PKCS15INIT_TYPE_CHAIN)) {
 		sc_pkcs15_id_t id;
 		if (opt_objectid == NULL)
 				fatal("Specify the --id for key(s) or cert(s) to be deleted\n");
@@ -1226,6 +1246,61 @@ do_delete_objects(struct sc_profile *profile, unsigned int opt_delete_flags)
 	}
 
 	printf("Deleted %d objects\n", count);
+
+	return r;
+}
+
+static int
+do_change_attributes(struct sc_profile *profile, unsigned int opt_type)
+{
+	int r = 0, count = 0;
+	sc_pkcs15_id_t id;
+	sc_pkcs15_object_t *obj;
+
+	if (opt_objectid == NULL) {
+		printf("You have to specify the --id of the object\n");
+		return 0;
+	}
+	sc_pkcs15_format_id(opt_objectid, &id);
+
+	/* Right now, only changing the label is supported */
+	if (opt_label == NULL) {
+		printf("You should specify a --label\n");
+		return 0;
+	}
+
+	switch(opt_type) {
+		case SC_PKCS15INIT_TYPE_PRKEY:
+		    if ((r = sc_pkcs15_find_prkey_by_id(p15card, &id, &obj)) != 0)
+				return r;
+			break;
+		case SC_PKCS15INIT_TYPE_PUBKEY:
+		    if ((r = sc_pkcs15_find_pubkey_by_id(p15card, &id, &obj)) != 0)
+				return r;
+			break;
+		case SC_PKCS15INIT_TYPE_CERT:
+		    if ((r = sc_pkcs15_find_cert_by_id(p15card, &id, &obj)) != 0)
+				return r;
+			break;
+		case SC_PKCS15INIT_TYPE_DATA:
+		    if ((r = sc_pkcs15_find_data_object_by_id(p15card, &id, &obj)) != 0)
+				return r;
+			break;
+	}
+
+	if (obj == NULL) {
+		printf("No object of the specified type and with id = \"%s\" found\n", opt_objectid);
+		return 0;
+	}
+
+	if (opt_label != NULL) {
+		strncpy(obj->label, opt_label, SC_PKCS15_MAX_LABEL_SIZE);
+		obj->label[SC_PKCS15_MAX_LABEL_SIZE - 1] = '\0';
+	}
+
+	set_userpin_ref();
+
+	r = sc_pkcs15init_update_any_df(p15card, profile, obj->df, 0);
 
 	return r;
 }
@@ -2089,18 +2164,18 @@ do_convert_cert(sc_pkcs15_der_t *der, X509 *cert)
 }
 
 static unsigned int
-parse_delete_flags(const char *list)
+parse_objects(const char *list, unsigned int action)
 {
 	unsigned int res = 0;
 	static struct {
 		const char	*name;
 		unsigned int	flag;
 	}	del_flags[] = {
-		{"privkey", SC_PKCS15INIT_DEL_PRKEY},
-		{"pubkey", SC_PKCS15INIT_DEL_PUBKEY},
-		{"cert", SC_PKCS15INIT_DEL_CERT},
-		{"chain", SC_PKCS15INIT_DEL_CHAIN},
-		{"data", SC_PKCS15INIT_DEL_DATA},
+		{"privkey", SC_PKCS15INIT_TYPE_PRKEY},
+		{"pubkey", SC_PKCS15INIT_TYPE_PUBKEY},
+		{"cert", SC_PKCS15INIT_TYPE_CERT},
+		{"chain", SC_PKCS15INIT_TYPE_CHAIN},
+		{"data", SC_PKCS15INIT_TYPE_DATA},
 		{NULL, 0}
 	};
 
@@ -2113,13 +2188,21 @@ parse_delete_flags(const char *list)
 			break;
 		len = strcspn(list, ",");
 		if (len == 4 && !strncasecmp(list, "help", 4)) {
-			printf("\nDelete arguments: a comma-separated list containing any of the following:\n");
-			printf("  privkey,pubkey,cert,chain,data\n");
-			printf("When \"data\" is specified, an --application-id must also be specified,\n");
-			printf("  in the other cases an \"--id\" must also be specified\n");
-			printf("When \"chain\" is specified, the certificate chain starting with the cert\n");
-			printf("  with specified ID will be deleted, untill there's a CA cert that certifies\n");
-			printf("  another cert on the card\n");
+			if (action == ACTION_DELETE_OBJECTS) {
+				printf("\nDelete arguments: a comma-separated list containing any of the following:\n");
+				printf("  privkey,pubkey,cert,chain,data\n");
+				printf("When \"data\" is specified, an --application-id must also be specified,\n");
+				printf("  in the other cases an \"--id\" must also be specified\n");
+				printf("When \"chain\" is specified, the certificate chain starting with the cert\n");
+				printf("  with specified ID will be deleted, untill there's a CA cert that certifies\n");
+				printf("  another cert on the card\n");
+			}
+			else {
+				printf("\nChange attribute argument: either privkey, pubkey, cert or data\n");
+				printf("You also have to specify the --id of the object\n");
+				printf("For now, you can only change the --label\n");
+				printf("E.g. pkcs15-init -A cert --id 45 -a 1 --label Jim\n");
+			}
 			exit(0);
 		}
 		for (n = 0; del_flags[n].name; n++) {
@@ -2277,7 +2360,11 @@ handle_option(const struct option *opt)
 		break;
 	case 'D':
 		this_action = ACTION_DELETE_OBJECTS;
-		opt_delete_flags = parse_delete_flags(optarg);
+		opt_delete_flags = parse_objects(optarg, ACTION_DELETE_OBJECTS);
+		break;
+	case 'A':
+		this_action = ACTION_CHANGE_ATTRIBUTES;
+		opt_type = parse_objects(optarg, ACTION_CHANGE_ATTRIBUTES);
 		break;
 	case 'v':
 		verbose++;

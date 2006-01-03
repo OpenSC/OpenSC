@@ -93,9 +93,6 @@ static int	sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
 static int	sc_pkcs15init_update_odf(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
-static int  sc_pkcs15init_update_any_df(sc_pkcs15_card_t *p15card,
-			sc_profile_t *profile, 
-			sc_pkcs15_df_t *df, int is_new);
 static sc_pkcs15_object_t *sc_pkcs15init_new_object(int type, const char *label,
 	       		sc_pkcs15_id_t *auth_id, void *data);
 static int	sc_pkcs15init_add_object(struct sc_pkcs15_card *,
@@ -2420,7 +2417,7 @@ sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card,
 /*
  * Update any PKCS15 DF file (except ODF and DIR)
  */
-static int
+int
 sc_pkcs15init_update_any_df(sc_pkcs15_card_t *p15card, 
 		sc_profile_t *profile,
 		sc_pkcs15_df_t *df,
