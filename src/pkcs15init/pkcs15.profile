@@ -36,6 +36,7 @@ option default {
 	so-auth-id	= FF;
 	so-puk-attempts	= 4;
 	so-min-puk-length = 6;
+	unusedspace-size = 128;
 	odf-size	= 256;
 	aodf-size	= 256;
 	cdf-size	= 512;
