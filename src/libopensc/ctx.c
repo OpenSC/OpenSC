@@ -605,8 +605,10 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
                 }
         }
 
-        if (! conf_path)
-                sc_error(ctx, "process_config_file doesn't find opensc config file. Please set the registry key.");
+	if (! conf_path) {
+		sc_debug(ctx, "process_config_file doesn't find opensc config file. Please set the registry key.");
+		return;
+	}
 
 #else
         conf_path = getenv("OPENSC_CONF");
