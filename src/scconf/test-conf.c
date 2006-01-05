@@ -88,6 +88,7 @@ static int write_cb(scconf_context * config, scconf_block * block, scconf_entry 
 
 int write_entries(scconf_context *conf, scconf_list *list)
 {
+	static int int42 = 42, int1 = 1;
 	scconf_entry subblock[] =
 	{
 		{"stringIT", SCCONF_STRING, SCCONF_VERBOSE, (void *) "sexy"},
@@ -97,8 +98,8 @@ int write_entries(scconf_context *conf, scconf_list *list)
 	scconf_entry wentry[] =
 	{
 		{"string", SCCONF_STRING, SCCONF_VERBOSE, (void *) "value1"},
-		{"integer", SCCONF_INTEGER, SCCONF_VERBOSE, (void *) 42},
-		{"sucks", SCCONF_BOOLEAN, SCCONF_VERBOSE, (void *) 1},
+		{"integer", SCCONF_INTEGER, SCCONF_VERBOSE, (void *) &int42},
+		{"sucks", SCCONF_BOOLEAN, SCCONF_VERBOSE,   (void *) &int1 },
 		{"listN", SCCONF_LIST, SCCONF_VERBOSE, (void *) list},
 		{"blockN", SCCONF_BLOCK, SCCONF_VERBOSE, (void *) subblock, (void *) list},
 		{NULL}
@@ -157,7 +158,6 @@ int main(int argc, char **argv)
 
 	scconf_list_add(&foo_list, "value3");
 
-	/* FIXME - segfault: foo_item is NULL, _item_add dereferences it */
 	scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, NULL, "# comment1");
 	scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_VALUE, "list1", foo_list);
 	foo_block = NULL;
