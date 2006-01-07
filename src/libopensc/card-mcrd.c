@@ -322,32 +322,27 @@ static int load_special_files (sc_card_t *card)
 	/* Read rule file. Note that we bypass our cache here. */
 	r = select_part (card, 2, EF_Rule, NULL);
 	SC_TEST_RET(ctx, r, "selecting EF_Rule failed");
+	
+	
 
-	for (recno=1;; recno++) {
-		sc_apdu_t apdu;
-		u8 recvbuf[200];
-
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
-			       0xB2, recno, 0x04);
-		apdu.le      = sizeof recvbuf;
-		apdu.resplen = sizeof recvbuf;
-		apdu.resp = recvbuf;
-		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-		if (apdu.sw1 == 0x6a && apdu.sw2 == 0x83)
-			break; /* No more records. */
-		if (!((apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		      ||(apdu.sw1 == 0x62 && apdu.sw2 == 0x82)))
-			SC_FUNC_RETURN(ctx, 2,
-				       sc_check_sw(card, apdu.sw1, apdu.sw2));
-		rule = (struct rule_record_s *) malloc (sizeof*rule + apdu.resplen);
-		if (!rule)
-			SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
-		rule->recno = recno;
-		rule->datalen = apdu.resplen;
-		memcpy (rule->data, apdu.resp, apdu.resplen);
-		rule->next = dfi->rule_file;
-		dfi->rule_file = rule;
+	for (recno = 1; ;recno++) {
+		u8 recbuf[256];
+		r = sc_read_record(card, recno, recbuf, sizeof(recbuf), SC_RECORD_BY_REC_NR);
+ 		
+		if (r == SC_ERROR_RECORD_NOT_FOUND)
+			break;
+		else if (r < 0) {
+			SC_FUNC_RETURN(ctx, 2, r);
+		} else {
+			rule = (struct rule_record_s *) malloc (sizeof*rule + r);
+			if (!rule)
+				SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+			rule->recno = recno;
+			rule->datalen = r;
+			memcpy (rule->data, recbuf, r);
+			rule->next = dfi->rule_file;
+			dfi->rule_file = rule;
+		}
 	}
 
 	sc_debug(ctx, "new EF_Rule file loaded (%d records)\n", recno-1);
@@ -360,35 +355,28 @@ static int load_special_files (sc_card_t *card)
 	}
 	SC_TEST_RET(ctx, r, "selecting EF_KeyD failed");
 
-	for (recno=1;; recno++) {
-		sc_apdu_t apdu;
-		u8 recvbuf[200];
-
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
-			       0xB2, recno, 0x04);
-		apdu.le      = sizeof recvbuf;
-		apdu.resplen = sizeof recvbuf;
-		apdu.resp = recvbuf;
-		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-		if (apdu.sw1 == 0x6a && apdu.sw2 == 0x83)
-			break; /* No more records. */
-		if (!((apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		      ||(apdu.sw1 == 0x62 && apdu.sw2 == 0x82)))
-			SC_FUNC_RETURN(ctx, 2,
-				       sc_check_sw(card, apdu.sw1, apdu.sw2));
-		keyd = (struct keyd_record_s *) malloc (sizeof *keyd + apdu.resplen);
-		if (!keyd)
-			SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
-		keyd->recno = recno;
-		keyd->datalen = apdu.resplen;
-		memcpy (keyd->data, apdu.resp, apdu.resplen);
-		keyd->next = dfi->keyd_file;
-		dfi->keyd_file = keyd;
+	for (recno =1; ;recno++) {
+		u8 recbuf[256];
+		r = sc_read_record(card, recno, recbuf, sizeof(recbuf), SC_RECORD_BY_REC_NR);
+ 		
+		if (r == SC_ERROR_RECORD_NOT_FOUND)
+			break;
+		else if (r < 0) {
+			SC_FUNC_RETURN(ctx, 2, r);
+		} else {
+			keyd = (struct keyd_record_s *) malloc (sizeof*keyd + r);
+			if (!keyd)
+				SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+			keyd->recno = recno;
+			keyd->datalen = r;
+			memcpy (keyd->data, recbuf, r);
+			keyd->next = dfi->keyd_file;
+			dfi->keyd_file = keyd;
+		}		
 	}
 
 	sc_debug(ctx, "new EF_KeyD file loaded (%d records)\n", recno-1);
-	/* fixme: Do we need to restore the current DF?  I guess it is
+	/* FIXME: Do we need to restore the current DF?  I guess it is
 	   not required, but we could try to do so by selecting 3fff?  */
 	return 0;
 }
