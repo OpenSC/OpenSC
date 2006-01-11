@@ -625,6 +625,7 @@ cosm_new_key(struct sc_profile *profile, sc_card_t *card,
 	struct sc_pkcs15_bignum bn[6];
 	u8 *buff;
 	int rv, ii;
+	char pbuf[SC_MAX_PATH_STRING_SIZE];
 
 	sc_debug(card->ctx, " index %i\n", idx);
 	if (key->algorithm != SC_ALGORITHM_RSA) {
@@ -638,8 +639,10 @@ cosm_new_key(struct sc_profile *profile, sc_card_t *card,
 	if (rv < 0 || !prvfile)
 		return SC_ERROR_SYNTAX_ERROR;
 	
-	sc_debug(card->ctx, " prvfile->id %i;  path=%s\n", 
-			prvfile->id, sc_print_path(&prvfile->path));
+	rv = sc_path_print(pbuf, sizeof(pbuf), &prvfile->path);
+	if (rv != SC_SUCCESS)
+		pbuf[0] = '\0';
+	sc_debug(card->ctx, " prvfile->id %i;  path=%s\n", prvfile->id, pbuf);
 
 	rsa = &key->u.rsa;
 	

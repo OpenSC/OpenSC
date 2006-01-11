@@ -366,10 +366,15 @@ static int starcos_select_file(sc_card_t *card,
 	SC_FUNC_CALLED(card->ctx, 1);
 
 	if (card->ctx->debug >= 4) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		r = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
 		sc_debug(card->ctx, "current path (%s, %s): %s (len: %u)\n",
 			(card->cache.current_path.type==SC_PATH_TYPE_DF_NAME?"aid":"path"),
-			(card->cache_valid?"valid":"invalid"),
-			sc_print_path(&card->cache.current_path),
+			(card->cache_valid?"valid":"invalid"), pbuf,
 			card->cache.current_path.len);
 	}
   

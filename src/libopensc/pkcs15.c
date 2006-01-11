@@ -552,7 +552,13 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 		err = sc_select_file(card, &tmppath, &p15card->file_odf);
 	}
 	if (err != SC_SUCCESS) {
-		sc_debug(ctx, "EF(ODF) not found in '%s'\n", sc_print_path(&tmppath));
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		int r = sc_path_print(pbuf, sizeof(pbuf), &tmppath);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_debug(ctx, "EF(ODF) not found in '%s'\n", pbuf);
 		goto end;
 	}
 
@@ -579,10 +585,15 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 
 		sc_debug(card->ctx, "The following DFs were found:\n");
 		for (df = p15card->df_list; df; df = df->next) {
+			char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+			int r = sc_path_print(pbuf, sizeof(pbuf), &df->path);
+			if (r != SC_SUCCESS)
+				pbuf[0] = '\0';
+
 			sc_debug(card->ctx,
 				"  DF type %u, path %s, index %u, count %d\n",
-				df->type, sc_print_path(&df->path),
-				df->path.index, df->path.count);
+				df->type, pbuf, df->path.index, df->path.count);
 		}
 	}
 
@@ -1336,8 +1347,13 @@ int sc_pkcs15_add_unusedspace(struct sc_pkcs15_card *p15card,
 	sc_pkcs15_unusedspace_t *p = p15card->unusedspace_list, *new_unusedspace;
 
 	if (path->count == -1) {
-		sc_error(p15card->card->ctx, "No offset and length present in path %s\n",
-			sc_print_path(path));
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		int r = sc_path_print(pbuf, sizeof(pbuf), path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_error(p15card->card->ctx, "No offset and length present in path %s\n", pbuf);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -1506,8 +1522,17 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 	int	r = -1;
 
 	assert(p15card != NULL && in_path != NULL && buf != NULL);
-	sc_debug(p15card->card->ctx, "called, path=%s, index=%u, count=%d\n",
-				sc_print_path(in_path), in_path->index, in_path->count);
+
+	if (p15card->card->ctx->debug >= 1) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		r = sc_path_print(pbuf, sizeof(pbuf), in_path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_debug(p15card->card->ctx, "called, path=%s, index=%u, count=%d\n",
+			pbuf, in_path->index, in_path->count);
+	}
 
 	if (in_path->type == SC_PATH_TYPE_FILE_ID) {
 		/* in case of a FID prepend the application DF */

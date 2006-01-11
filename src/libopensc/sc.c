@@ -265,16 +265,29 @@ int sc_concatenate_path(sc_path_t *d, const sc_path_t *p1, const sc_path_t *p2)
 
 const char *sc_print_path(const sc_path_t *path)
 {
-	static char	buffer[64];
-	size_t		n, len;
+	static char	buffer[SC_MAX_PATH_STRING_SIZE];
 
-	buffer[0] = '\0';
-	if ((len = path->len) >= sizeof(buffer)/2)
-		len = sizeof(buffer)/2;
-	for (n = 0; n < len; n++)
-		sprintf(buffer + 2*n, "%02x", path->value[n]);
+	if (sc_path_print(buffer, sizeof(buffer), path) != SC_SUCCESS)
+		buffer[0] = '\0';
 
 	return buffer;
+}
+
+int sc_path_print(char *buf, size_t buflen, const sc_path_t *path)
+{
+	size_t i;
+
+	if (buf == NULL || path == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (buflen < path->len * 2 + 1)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+
+	buf[0] = '\0';
+	for (i = 0; i < path->len; i++)
+		snprintf(buf + 2 * i, buflen - 2 * i, "%02x", path->value[i]);
+
+	return SC_SUCCESS;
 }
 
 int sc_compare_path(const sc_path_t *path1, const sc_path_t *path2)

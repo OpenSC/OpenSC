@@ -497,9 +497,17 @@ gpk_generate_key(sc_profile_t *profile, sc_card_t *card,
 	sc_file_t	*keyfile;
 	int             r, n;
 
-	sc_debug(card->ctx, "path=%s, %d bits\n",
-			sc_print_path(&key_info->path),
+	if (card->ctx->debug >= 1) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		r = sc_path_print(pbuf, sizeof(pbuf), &key_info->path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_debug(card->ctx, "path=%s, %d bits\n", pbuf,
 			key_info->modulus_length);
+	}
+
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_error(card->ctx, "GPK supports generating only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;

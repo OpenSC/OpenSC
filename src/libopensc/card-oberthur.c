@@ -737,10 +737,22 @@ auth_select_file(sc_card_t *card, const sc_path_t *path,
 	int locked = 0, magic_done;
 	u8 p1 = 0;
 
-	sc_debug(card->ctx, "path; type=%d, path=%s\n",
-			path->type, sc_print_path(path));
-	sc_debug(card->ctx, "cache; type=%d, path=%s\n",
-			card->cache.current_path.type, sc_print_path(&card->cache.current_path));
+	if (card->ctx->debug >= 1) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		rv = sc_path_print(pbuf, sizeof(pbuf), path);
+		if (rv != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_debug(card->ctx, "path; type=%d, path=%s\n", path->type, pbuf);
+
+		rv = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
+		if (rv != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_debug(card->ctx, "cache; type=%d, path=%s\n",
+			card->cache.current_path.type, pbuf);
+	}
 	
 	switch (path->type) {
 	case SC_PATH_TYPE_PATH:
@@ -832,7 +844,16 @@ auth_delete_file(sc_card_t *card, const sc_path_t *path)
 	u8 sbuf[2];
 	sc_apdu_t apdu;
 
-	sc_debug(card->ctx, "path; type=%d, path=%s\n", path->type, sc_print_path(path));
+	if (card->ctx->debug >= 1) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		rv = sc_path_print(pbuf, sizeof(pbuf), path);
+		if (rv != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_debug(card->ctx, "path; type=%d, path=%s\n", path->type, pbuf);
+	}
+
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (path->len < 2)   {
 		sc_error(card->ctx, "Invalid path length\n");
@@ -1135,16 +1156,28 @@ auth_create_file(sc_card_t *card, sc_file_t *file)
 	int rv, rec_nr;
 	sc_apdu_t apdu;
 	sc_path_t path;
+	char pbuf[SC_MAX_PATH_STRING_SIZE];
 	struct auth_private_data *prv = (struct auth_private_data *) card->drv_data;
 
-	sc_debug(card->ctx, " create path=%s\n", sc_print_path(&file->path));
-	sc_debug(card->ctx,"id %04X; size %i; type %i; ef %i\n",
+	if (card->ctx->debug >= 1) {
+		rv = sc_path_print(pbuf, sizeof(pbuf), &file->path);
+		if (rv != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_debug(card->ctx, " create path=%s\n", pbuf);
+		sc_debug(card->ctx,"id %04X; size %i; type %i; ef %i\n",
 			file->id, file->size, file->type, file->ef_structure);
+	}
+
 	if (file->id==0x0000 || file->id==0xFFFF || file->id==0x3FFF)  
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	sc_debug(card->ctx, " cache path=%s\n", 
-			sc_print_path(&card->cache.current_path));
+	if (card->ctx->debug >= 1) {
+		rv = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
+		if (rv != SC_SUCCESS)
+			pbuf[0] = '\0';
+		sc_debug(card->ctx, " cache path=%s\n", pbuf);
+	}
 
 	if (file->path.len)   {
 		memcpy(&path, &file->path, sizeof(path));

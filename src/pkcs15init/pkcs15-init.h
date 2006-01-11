@@ -341,7 +341,7 @@ extern int	sc_pkcs15init_update_certificate(sc_pkcs15_card_t *p15card,
 				sc_profile_t *profile,
 				sc_pkcs15_object_t *obj,
 				const unsigned char *rawcert,
-				int certlen);
+				size_t certlen);
 
 extern int	sc_pkcs15init_create_file(struct sc_profile *,
 				struct sc_card *, struct sc_file *);

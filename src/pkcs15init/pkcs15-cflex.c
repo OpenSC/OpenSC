@@ -612,9 +612,14 @@ cflex_get_keyfiles(sc_profile_t *profile, sc_card_t *card,
 	/* Get the private key file */
 	r = sc_profile_get_file_by_path(profile, &path, prkf);
 	if (r < 0) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		r = sc_path_print(pbuf, sizeof(pbuf), &path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
 		sc_error(card->ctx, "Cannot find private key file info "
-				"in profile (path=%s).",
-				sc_print_path(&path));
+				"in profile (path=%s).", pbuf);
 		return r;
 	}
 

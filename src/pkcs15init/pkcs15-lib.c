@@ -509,9 +509,13 @@ sc_pkcs15init_rmdir(sc_card_t *card, struct sc_profile *profile,
 	struct sc_path	path;
 	struct sc_file	*file, *parent;
 	int		r = 0, nfids;
+	char            pbuf[SC_MAX_PATH_STRING_SIZE];
 
-	sc_debug(card->ctx, "sc_pkcs15init_rmdir(%s)\n",
-			sc_print_path(&df->path));
+	r = sc_path_print(pbuf, sizeof(pbuf), &df->path);
+	if (r != SC_SUCCESS)
+		pbuf[0] = '\0';
+
+	sc_debug(card->ctx, "sc_pkcs15init_rmdir(%s)\n", pbuf);
 
 	if (df == NULL)
 		return SC_ERROR_INTERNAL;
@@ -2250,6 +2254,7 @@ select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 	sc_file_t	*file;
 	const char	*name;
 	int		r;
+	char		pbuf[SC_MAX_PATH_STRING_SIZE];
 
 	/* For cards with a pin-domain profile, we need
 	 * to put the key below the DF of the specified PIN */
@@ -2282,9 +2287,13 @@ select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 		return 0;
 	}
 
+	r = sc_path_print(pbuf, sizeof(pbuf), path);
+	if (r != SC_SUCCESS)
+		pbuf[0] = '\0';
+
 	sc_debug(p15card->card->ctx,
-		"key-domain.%s @%s (auth_id.len=%d)\n",
-		name, sc_print_path(path), obj->auth_id.len);
+		"key-domain.%s @%s (auth_id.len=%d)\n", 
+		name, pbuf, obj->auth_id.len);
 	r = sc_profile_instantiate_template(profile,
 					"key-domain", path, 
 					name, obj_id, &file);
@@ -2790,7 +2799,7 @@ int
 sc_pkcs15init_update_certificate(sc_pkcs15_card_t *p15card,
 	sc_profile_t *profile,
 	sc_pkcs15_object_t *obj,
-	const unsigned char *rawcert, int certlen)
+	const unsigned char *rawcert, size_t certlen)
 {
 	sc_file_t *file = NULL, *parent = NULL;
 	sc_path_t *path = &((sc_pkcs15_cert_info_t *)obj->data)->path;
@@ -3138,10 +3147,14 @@ sc_pkcs15init_authenticate(struct sc_profile *pro, sc_card_t *card,
 {
 	const sc_acl_entry_t *acl;
 	sc_file_t *file_tmp = NULL;
-	int		r = 0;
+	int  r = 0;
+	char pbuf[SC_MAX_PATH_STRING_SIZE];     
 
-	sc_debug(card->ctx, "path=%s, op=%u\n",
-				sc_print_path(&file->path), op);
+	r = sc_path_print(pbuf, sizeof(pbuf), &file->path);
+	if (r != SC_SUCCESS)
+		pbuf[0] = '\0';
+
+	sc_debug(card->ctx, "path=%s, op=%u\n", pbuf, op);
 
 	if (card->caps & SC_CARD_CAP_USE_FCI_AC) {
 		if ((r = sc_select_file(card, &file->path, &file_tmp)) < 0)
@@ -3194,8 +3207,14 @@ do_select_parent(struct sc_profile *pro, sc_card_t *card,
 	if (r == SC_ERROR_FILE_NOT_FOUND && path.len != 2) {
 		r = sc_profile_get_file_by_path(pro, &path, parent);
 		if (r < 0) {
-			sc_error(card->ctx, "profile doesn't define a DF %s",
-					sc_print_path(&path));
+			char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+			r = sc_path_print(pbuf, sizeof(pbuf), &path);
+			if (r != SC_SUCCESS)
+				pbuf[0] = '\0';
+
+			sc_error(card->ctx,
+				"profile doesn't define a DF %s", pbuf);
 			return r;
 		}
 		if (!(r = sc_pkcs15init_create_file(pro, card, *parent)))
@@ -3206,8 +3225,14 @@ do_select_parent(struct sc_profile *pro, sc_card_t *card,
 		sc_file_free(*parent);
 		r = sc_profile_get_file_by_path(pro, &path, parent);
 		if (r < 0) {
-			sc_error(card->ctx, "profile doesn't define a DF %s",
-					sc_print_path(&path));
+			char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+			r = sc_path_print(pbuf, sizeof(pbuf), &path);
+			if (r != SC_SUCCESS)
+				pbuf[0] = '\0';
+
+			sc_error(card->ctx,
+				"profile doesn't define a DF %s", pbuf);
 			return r;
 		}
 	}
@@ -3250,9 +3275,12 @@ sc_pkcs15init_update_file(struct sc_profile *profile, sc_card_t *card,
 	struct sc_file	*info = NULL;
 	void		*copy = NULL;
 	int		r, need_to_zap = 0;
+	char		pbuf[SC_MAX_PATH_STRING_SIZE];
 
-	sc_debug(card->ctx, "called, path=%s, %u bytes\n",
-			sc_print_path(&file->path), datalen);
+	r = sc_path_print(pbuf, sizeof(pbuf), &file->path);
+	if (r != SC_SUCCESS)
+		pbuf[0] = '\0';
+	sc_debug(card->ctx, "called, path=%s, %u bytes\n", pbuf, datalen);
 
 	sc_ctx_suppress_errors_on(card->ctx);
 	if ((r = sc_select_file(card, &file->path, &info)) < 0) {
@@ -3270,11 +3298,16 @@ sc_pkcs15init_update_file(struct sc_profile *profile, sc_card_t *card,
 	}
 
 	if (info->size < datalen) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		r = sc_path_print(pbuf, sizeof(pbuf), &file->path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
 		sc_error(card->ctx,
-			      "File %s too small (require %u, have %u) - "
-			      "please increase size in profile",
-			      sc_print_path(&file->path),
-			      datalen, info->size);
+			"File %s too small (require %u, have %u) - "
+			"please increase size in profile", pbuf,
+			datalen, info->size);
 		sc_file_free(info);
 		return SC_ERROR_TOO_MANY_OBJECTS;
 	} else if (info->size > datalen && need_to_zap) {

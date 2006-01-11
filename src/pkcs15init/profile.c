@@ -568,15 +568,25 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	}
 
 	if (profile->card->ctx->debug >= 2) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		int r = sc_path_print(pbuf, sizeof(pbuf), base_path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
 		sc_debug(profile->card->ctx,
-			"Instantiating template %s at %s",
-			template_name, sc_print_path(base_path));
+			"Instantiating template %s at %s", template_name, pbuf);
 	}
 
 	base_file = sc_profile_find_file_by_path(profile, base_path);
 	if (base_file == NULL) {
-		sc_error(card->ctx, "Directory %s not defined in profile",
-					sc_print_path(base_path));
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		int r = sc_path_print(pbuf, sizeof(pbuf), base_path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_error(card->ctx, "Directory %s not defined in profile", pbuf);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
@@ -649,11 +659,19 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 	ft->instance = fi;
 
 	if (card->ctx->debug >= 2) {
-		sc_debug(card->ctx, "Instantiated %s at %s",
-				ft->ident, sc_print_path(&fi->file->path));
-		sc_debug(card->ctx, "  parent=%s@%s",
-				parent->ident,
-				sc_print_path(&parent->file->path));
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		int r = sc_path_print(pbuf, sizeof(pbuf), &fi->file->path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_debug(card->ctx, "Instantiated %s at %s", ft->ident, pbuf);
+
+		r = sc_path_print(pbuf, sizeof(pbuf), &parent->file->path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_debug(card->ctx, "  parent=%s@%s", parent->ident, pbuf);
 	}
 
 	return fi;

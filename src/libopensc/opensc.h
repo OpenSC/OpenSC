@@ -915,12 +915,21 @@ int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 void sc_format_path(const char *path_in, sc_path_t *path_out);
 /**
  * Return string representation of the given sc_path_t object
- * Warning: as static memory is used this function is not thread-safe.
+ * Warning: as static memory is used for the return value 
+ *          this function is not thread-safe !!!
  * @param  path  sc_path_t object of the path to be printed
  * @return pointer to a const buffer with the string representation
  *         of the path
  */
 const char *sc_print_path(const sc_path_t *path);
+/**
+ * Prints the sc_path_t object to a character buffer
+ * @param  buf     pointer to the buffer
+ * @param  buflen  size of the buffer
+ * @param  path    sc_path_t object to be printed
+ * @return SC_SUCCESS on success and an error code otherwise
+ */
+int sc_path_print(char *buf, size_t buflen, const sc_path_t *path);
 /**
  * Compares two sc_path_t objects 
  * @param  patha  sc_path_t object of the first path

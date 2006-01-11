@@ -578,8 +578,15 @@ static int flex_select_file(sc_card_t *card, const sc_path_t *path,
 	int locked = 0, magic_done;
 	u8 p1 = 0;
 
-	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx, "called, cached path=%s\n", sc_print_path(&card->cache.current_path));
+	if (card->ctx->debug >= 2) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		r = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
+		sc_debug(card->ctx, "called, cached path=%s\n", pbuf);
+	}
 
 	switch (path->type) {
 	case SC_PATH_TYPE_PATH:

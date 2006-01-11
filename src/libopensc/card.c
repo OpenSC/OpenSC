@@ -297,11 +297,15 @@ int sc_create_file(sc_card_t *card, sc_file_t *file)
 
 	assert(card != NULL);
 	if (card->ctx->debug >= 1) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
 		const sc_path_t *in_path = &file->path;
 
+		r = sc_path_print(pbuf, sizeof(pbuf), in_path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
 		sc_debug(card->ctx, "called; type=%d, path=%s, size=%u\n",
-				in_path->type,
-				sc_print_path(in_path), file->size);
+				in_path->type, pbuf, file->size);
 	}
 	if (card->ops->create_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
@@ -315,9 +319,14 @@ int sc_delete_file(sc_card_t *card, const sc_path_t *path)
 
 	assert(card != NULL);
 	if (card->ctx->debug >= 1) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		r = sc_path_print(pbuf, sizeof(pbuf), path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
 		sc_debug(card->ctx, "called; type=%d, path=%s\n",
-				path->type,
-				sc_print_path(path));
+				path->type, pbuf);
 	}
 	if (card->ops->delete_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
@@ -459,9 +468,14 @@ int sc_select_file(sc_card_t *card,
 
 	assert(card != NULL && in_path != NULL);
 	if (card->ctx->debug >= 1) {
+		char pbuf[SC_MAX_PATH_STRING_SIZE];
+
+		r = sc_path_print(pbuf, sizeof(pbuf), in_path);
+		if (r != SC_SUCCESS)
+			pbuf[0] = '\0';
+
 		sc_debug(card->ctx, "called; type=%d, path=%s\n",
-				in_path->type,
-				sc_print_path(in_path));
+				in_path->type, pbuf);
 	}
 	if (in_path->len > SC_MAX_PATH_SIZE)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
