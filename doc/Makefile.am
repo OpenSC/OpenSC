@@ -1,6 +1,6 @@
 # Process this file with automake to create Makefile.in
 
-SUBDIRS = . old 
+SUBDIRS = . 
 
 MAINTAINERCLEANFILES = Makefile.in $(HTML) ChangeLog
 
@@ -14,7 +14,6 @@ XML = $(shell ls $(srcdir)/tools/*.xml $(srcdir)/api/*.xml $(srcdir)/api/*/*.xml
 index.html:
 	sh $(srcdir)/export-wiki.sh $(srcdir)
 	sh $(srcdir)/generate-man.sh $(srcdir)
-	sh $(srcdir)/old/generate.sh $(srcdir)/old
 
 ChangeLog:
 	sh $(srcdir)/changelog.sh $(srcdir)
