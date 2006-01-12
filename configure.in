@@ -362,7 +362,6 @@ AC_OUTPUT([
 Makefile
 aclocal/Makefile
 doc/Makefile
-doc/old/Makefile
 etc/Makefile
 man/Makefile
 src/Makefile
