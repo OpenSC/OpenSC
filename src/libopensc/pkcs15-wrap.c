@@ -254,23 +254,23 @@ sc_pkcs15_unwrap_data(sc_context_t *ctx,
  * we treat it as if there's always just one element in the set.
  */
 static const struct sc_asn1_entry	c_asn1_enveloped_data_attr[] = {
-	{ "version",	SC_ASN1_INTEGER, ASN1_INTEGER, 0, NULL, NULL },
-	{ "originator",	SC_ASN1_STRUCT,	SC_ASN1_CONS|ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "recipients",	SC_ASN1_STRUCT, SC_ASN1_CONS|ASN1_SET, 0, NULL, NULL },
-	{ "contentInfo",SC_ASN1_STRUCT, SC_ASN1_CONS|ASN1_SEQUENCE, 0, NULL, NULL },
+	{ "version",	SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
+	{ "originator",	SC_ASN1_STRUCT,	SC_ASN1_CONS| SC_ASN1_TAG_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "recipients",	SC_ASN1_STRUCT, SC_ASN1_CONS| SC_ASN1_TAG_SET, 0, NULL, NULL },
+	{ "contentInfo",SC_ASN1_STRUCT, SC_ASN1_CONS| SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL },
 	/* some more optional foo we ignore for now */
 	{ NULL, 0, 0, 0, NULL, NULL}
 };
 
 static const struct sc_asn1_entry	c_asn1_content_attr[] = {
-	{ "contentType",SC_ASN1_OBJECT, ASN1_OBJECT, 0, NULL, NULL },
-	{ "contentEncrAlg", SC_ASN1_ALGORITHM_ID, SC_ASN1_CONS|ASN1_SEQUENCE, 0, NULL, NULL },
+	{ "contentType",SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
+	{ "contentEncrAlg", SC_ASN1_ALGORITHM_ID, SC_ASN1_CONS| SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL },
 	{ "encrContent",SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static const struct sc_asn1_entry	c_asn1_encr_content[] = {
-	{ "data",	SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
+	{ "data",	SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -280,17 +280,17 @@ static const struct sc_asn1_entry	c_asn1_recipients_attr[] = {
 };
 
 static const struct sc_asn1_entry	c_asn1_kekri_attr[] = {
-	{ "version",	SC_ASN1_INTEGER, ASN1_INTEGER, 0, NULL, NULL },
-	{ "id",		SC_ASN1_STRUCT, SC_ASN1_CONS|ASN1_SEQUENCE, 0, NULL, NULL },
-	{ "keyEncrAlg",	SC_ASN1_ALGORITHM_ID, SC_ASN1_CONS|ASN1_SEQUENCE, 0, NULL, NULL },
-	{ "keyEncrKey",	SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
+	{ "version",	SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
+	{ "id",		SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL },
+	{ "keyEncrAlg",	SC_ASN1_ALGORITHM_ID, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL },
+	{ "keyEncrKey",	SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static const struct sc_asn1_entry	c_asn1_kek_attr[] = {
-	{ "id",		SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL, NULL },
-	{ "date",	SC_ASN1_OCTET_STRING, ASN1_GENERALIZEDTIME, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "other",	SC_ASN1_STRUCT, SC_ASN1_CONS|ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "id",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
+	{ "date",	SC_ASN1_OCTET_STRING, SC_ASN1_TAG_GENERALIZEDTIME, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "other",	SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 

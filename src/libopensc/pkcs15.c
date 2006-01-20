@@ -29,23 +29,23 @@
 
 
 static const struct sc_asn1_entry c_asn1_toki[] = {
-	{ "version",        SC_ASN1_INTEGER,      ASN1_INTEGER, 0, NULL, NULL },
-	{ "serialNumber",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL, NULL },
-	{ "manufacturerID", SC_ASN1_UTF8STRING,   ASN1_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "version",        SC_ASN1_INTEGER,      SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
+	{ "serialNumber",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
+	{ "manufacturerID", SC_ASN1_UTF8STRING,   SC_ASN1_TAG_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "label",	    SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "tokenflags",	    SC_ASN1_BIT_FIELD,   ASN1_BIT_STRING, 0, NULL, NULL },
-	{ "seInfo",	    SC_ASN1_SEQUENCE,	  SC_ASN1_CONS | ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "tokenflags",	    SC_ASN1_BIT_FIELD,    SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL },
+	{ "seInfo",	    SC_ASN1_SEQUENCE,	  SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "recordInfo",	    SC_ASN1_STRUCT,       SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "supportedAlgorithms", SC_ASN1_STRUCT,  SC_ASN1_CONS | SC_ASN1_CTX | 2, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "issuerId",       SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 3, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "holderId",       SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 4, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "lastUpdate",     SC_ASN1_GENERALIZEDTIME, SC_ASN1_CTX | 5, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "preferredLanguage", SC_ASN1_PRINTABLESTRING, ASN1_PRINTABLESTRING, SC_ASN1_OPTIONAL, NULL, NULL }, 
+	{ "preferredLanguage", SC_ASN1_PRINTABLESTRING, SC_ASN1_TAG_PRINTABLESTRING, SC_ASN1_OPTIONAL, NULL, NULL }, 
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static const struct sc_asn1_entry c_asn1_tokeninfo[] = {
-	{ "TokenInfo", SC_ASN1_STRUCT, SC_ASN1_CONS | ASN1_SEQUENCE, 0, NULL, NULL },
+	{ "TokenInfo", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -192,8 +192,8 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 }
 
 static const struct sc_asn1_entry c_asn1_ddo[] = {
-	{ "oid",	   SC_ASN1_OBJECT, ASN1_OBJECT, 0, NULL, NULL },
-	{ "odfPath",	   SC_ASN1_PATH, SC_ASN1_CONS | ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "oid",	   SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
+	{ "odfPath",	   SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "tokenInfoPath", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "unusedPath",    SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
@@ -1394,12 +1394,12 @@ int sc_pkcs15_encode_unusedspace(sc_context_t *ctx,
 {
 	sc_path_t dummy_path;
 	static const struct sc_asn1_entry c_asn1_unusedspace[] = {
-		{ "UnusedSpace", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ "UnusedSpace", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	static const struct sc_asn1_entry c_asn1_unusedspace_values[] = {
-		{ "path", SC_ASN1_PATH,	ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ "authId", SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ "path", SC_ASN1_PATH,	SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ "authId", SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	struct sc_asn1_entry *asn1_unusedspace = NULL;
@@ -1468,12 +1468,12 @@ int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen, struct sc_pkcs15_
 	sc_path_t path, dummy_path;
 	sc_pkcs15_id_t auth_id;
 	struct sc_asn1_entry asn1_unusedspace[] = {
-		{ "UnusedSpace", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ "UnusedSpace", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	struct sc_asn1_entry asn1_unusedspace_values[] = {
-		{ "path", SC_ASN1_PATH,	ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ "authId", SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ "path", SC_ASN1_PATH,	SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ "authId", SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 

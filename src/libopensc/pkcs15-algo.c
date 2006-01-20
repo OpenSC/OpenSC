@@ -30,7 +30,7 @@
  * AlgorithmIdentifier handling
  */
 static struct sc_asn1_entry	c_asn1_des_iv[] = {
-	{ "iv",	SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL, NULL },
+	{ "iv",	SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -69,10 +69,10 @@ asn1_encode_des_params(sc_context_t *ctx, void *params,
 }
 
 static const struct sc_asn1_entry	c_asn1_pbkdf2_params[] = {
-	{ "salt",	SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL, NULL },
-	{ "count",	SC_ASN1_INTEGER, ASN1_INTEGER, 0, NULL, NULL },
-	{ "keyLength",	SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "prf",	SC_ASN1_ALGORITHM_ID, ASN1_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "salt",	SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
+	{ "count",	SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
+	{ "keyLength",	SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "prf",	SC_ASN1_ALGORITHM_ID, SC_ASN1_TAG_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -134,8 +134,8 @@ asn1_encode_pbkdf2_params(sc_context_t *ctx, void *params,
 }
 
 static const struct sc_asn1_entry	c_asn1_pbes2_params[] = {
-	{ "keyDerivationAlg", SC_ASN1_ALGORITHM_ID, ASN1_SEQUENCE, 0, NULL, NULL },
-	{ "keyEcnryptionAlg", SC_ASN1_ALGORITHM_ID, ASN1_SEQUENCE, 0, NULL, NULL },
+	{ "keyDerivationAlg", SC_ASN1_ALGORITHM_ID, SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL },
+	{ "keyEcnryptionAlg", SC_ASN1_ALGORITHM_ID, SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -283,8 +283,8 @@ sc_asn1_get_algorithm_info(const struct sc_algorithm_id *id)
 }
 
 static const struct sc_asn1_entry c_asn1_alg_id[6] = {
-	{ "algorithm",  SC_ASN1_OBJECT, ASN1_OBJECT, 0, NULL, NULL },
-	{ "nullParam",  SC_ASN1_NULL, ASN1_NULL, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "algorithm",  SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
+	{ "nullParam",  SC_ASN1_NULL, SC_ASN1_TAG_NULL, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 

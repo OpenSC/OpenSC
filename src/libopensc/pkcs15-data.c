@@ -32,7 +32,7 @@
 #endif
 
 static const struct sc_asn1_entry     c_asn1_data_object[] = {
-        { "dataObject", SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL, NULL },
+        { "dataObject", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
         { NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -66,16 +66,16 @@ int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 }
 
 static const struct sc_asn1_entry c_asn1_data[] = {
-	{ "data", SC_ASN1_PKCS15_OBJECT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "data", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 static const struct sc_asn1_entry c_asn1_com_data_attr[] = {
-	{ "appName", SC_ASN1_UTF8STRING, ASN1_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "appOID", SC_ASN1_OBJECT, ASN1_OBJECT, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "appName", SC_ASN1_UTF8STRING, SC_ASN1_TAG_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "appOID", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 static const struct sc_asn1_entry c_asn1_type_data_attr[] = {
-	{ "path", SC_ASN1_PATH, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "path", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 

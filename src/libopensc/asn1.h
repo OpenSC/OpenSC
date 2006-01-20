@@ -152,45 +152,43 @@ void sc_asn1_clear_algorithm_id(struct sc_algorithm_id *);
 /* use callback function */
 #define SC_ASN1_CALLBACK		384
 
-#define ASN1_TAG_CLASS			0xC0
-#define ASN1_TAG_UNIVERSAL		0x00
-#define ASN1_TAG_APPLICATION		0x40
-#define ASN1_TAG_CONTEXT		0x80
-#define ASN1_TAG_PRIVATE		0xC0
+#define SC_ASN1_TAG_CLASS		0xC0
+#define SC_ASN1_TAG_UNIVERSAL		0x00
+#define SC_ASN1_TAG_APPLICATION		0x40
+#define SC_ASN1_TAG_CONTEXT		0x80
+#define SC_ASN1_TAG_PRIVATE		0xC0
 
-#define ASN1_TAG_CONSTRUCTED		0x20
-#define ASN1_TAG_PRIMITIVE		0x1F
+#define SC_ASN1_TAG_CONSTRUCTED		0x20
+#define SC_ASN1_TAG_PRIMITIVE		0x1F
 
-#define ASN1_EOC                      0
-#define ASN1_BOOLEAN                  1
-#define ASN1_INTEGER                  2
-#define ASN1_NEG_INTEGER              (2 | ASN1_NEG)
-#define ASN1_BIT_STRING               3
-#define ASN1_OCTET_STRING             4
-#define ASN1_NULL                     5
-#define ASN1_OBJECT                   6
-#define ASN1_OBJECT_DESCRIPTOR        7
-#define ASN1_EXTERNAL                 8
-#define ASN1_REAL                     9
-#define ASN1_ENUMERATED               10
-#define ASN1_NEG_ENUMERATED           (10 | ASN1_NEG)
-#define ASN1_UTF8STRING               12
-#define ASN1_SEQUENCE                 16
-#define ASN1_SET                      17
-#define ASN1_NUMERICSTRING            18
-#define ASN1_PRINTABLESTRING          19
-#define ASN1_T61STRING                20
-#define ASN1_TELETEXSTRING            20
-#define ASN1_VIDEOTEXSTRING           21
-#define ASN1_IA5STRING                22
-#define ASN1_UTCTIME                  23
-#define ASN1_GENERALIZEDTIME          24
-#define ASN1_GRAPHICSTRING            25
-#define ASN1_ISO64STRING              26
-#define ASN1_VISIBLESTRING            26
-#define ASN1_GENERALSTRING            27
-#define ASN1_UNIVERSALSTRING          28
-#define ASN1_BMPSTRING                30
+#define SC_ASN1_TAG_EOC			0
+#define SC_ASN1_TAG_BOOLEAN		1
+#define SC_ASN1_TAG_INTEGER		2
+#define SC_ASN1_TAG_BIT_STRING		3
+#define SC_ASN1_TAG_OCTET_STRING	4
+#define SC_ASN1_TAG_NULL		5
+#define SC_ASN1_TAG_OBJECT		6
+#define SC_ASN1_TAG_OBJECT_DESCRIPTOR	7
+#define SC_ASN1_TAG_EXTERNAL		8
+#define SC_ASN1_TAG_REAL		9
+#define SC_ASN1_TAG_ENUMERATED		10
+#define SC_ASN1_TAG_UTF8STRING		12
+#define SC_ASN1_TAG_SEQUENCE		16
+#define SC_ASN1_TAG_SET			17
+#define SC_ASN1_TAG_NUMERICSTRING	18
+#define SC_ASN1_TAG_PRINTABLESTRING	19
+#define SC_ASN1_TAG_T61STRING		20
+#define SC_ASN1_TAG_TELETEXSTRING	20
+#define SC_ASN1_TAG_VIDEOTEXSTRING	21
+#define SC_ASN1_TAG_IA5STRING		22
+#define SC_ASN1_TAG_UTCTIME		23
+#define SC_ASN1_TAG_GENERALIZEDTIME	24
+#define SC_ASN1_TAG_GRAPHICSTRING	25
+#define SC_ASN1_TAG_ISO64STRING		26
+#define SC_ASN1_TAG_VISIBLESTRING	26
+#define SC_ASN1_TAG_GENERALSTRING	27
+#define SC_ASN1_TAG_UNIVERSALSTRING	28
+#define SC_ASN1_TAG_BMPSTRING		30
 
 #ifdef __cplusplus
 }

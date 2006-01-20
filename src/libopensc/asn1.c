@@ -64,9 +64,9 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		return 0;
 	if (*p == 0xFF) /* FIXME */
 		return 0;
-	cla = (*p & ASN1_TAG_CLASS) | (*p & ASN1_TAG_CONSTRUCTED);
-	tag = *p & ASN1_TAG_PRIMITIVE;
-	if (tag == ASN1_TAG_PRIMITIVE) {	/* 0x1F */
+	cla = (*p & SC_ASN1_TAG_CLASS) | (*p & SC_ASN1_TAG_CONSTRUCTED);
+	tag = *p & SC_ASN1_TAG_PRIMITIVE;
+	if (tag == SC_ASN1_TAG_PRIMITIVE) {	/* 0x1F */
 		fprintf(stderr, "Tag number >= 0x1F not supported!\n");
 		goto error;
 	}
@@ -242,33 +242,33 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 		}
 		p += hlen + len;
 		bytesleft -= hlen + len;
-		if ((cla & ASN1_TAG_CLASS) == ASN1_TAG_UNIVERSAL)
+		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_UNIVERSAL)
 			printf("%s", tag2str(tag));
 
-		if (cla & ASN1_TAG_CONSTRUCTED) {
+		if (cla & SC_ASN1_TAG_CONSTRUCTED) {
 			putchar('\n');
 			print_tags_recursive(buf0, tagp, len, depth + 1);
 			continue;
 		}
-		if ((cla & ASN1_TAG_CLASS) == ASN1_TAG_UNIVERSAL) {
+		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_UNIVERSAL) {
 			printf(" [");
 			switch (tag) {
-			case ASN1_BIT_STRING:
+			case SC_ASN1_TAG_BIT_STRING:
 				sc_asn1_print_bit_string(tagp, len);
 				break;
-			case ASN1_OCTET_STRING:
+			case SC_ASN1_TAG_OCTET_STRING:
 				sc_asn1_print_octet_string(tagp, len);
 				break;
-			case ASN1_OBJECT:
+			case SC_ASN1_TAG_OBJECT:
 				sc_asn1_print_object_id(tagp, len);
 				break;
-			case ASN1_INTEGER:
-			case ASN1_ENUMERATED:
+			case SC_ASN1_TAG_INTEGER:
+			case SC_ASN1_TAG_ENUMERATED:
 				sc_asn1_print_integer(tagp, len);
 				break;
-			case ASN1_T61STRING:
-			case ASN1_PRINTABLESTRING:
-			case ASN1_UTF8STRING:
+			case SC_ASN1_TAG_T61STRING:
+			case SC_ASN1_TAG_PRINTABLESTRING:
+			case SC_ASN1_TAG_UTF8STRING:
 				sc_asn1_print_utf8string(tagp, len);
 				break;
 			}
@@ -328,24 +328,24 @@ const u8 *sc_asn1_skip_tag(sc_context_t *ctx, const u8 ** buf, size_t *buflen,
 	if (sc_asn1_read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != 1)
 		return NULL;
 	switch (cla & 0xC0) {
-	case ASN1_TAG_UNIVERSAL:
+	case SC_ASN1_TAG_UNIVERSAL:
 		if ((tag_in & SC_ASN1_CLASS_MASK) != SC_ASN1_UNI)
 			return NULL;
 		break;
-	case ASN1_TAG_APPLICATION:
+	case SC_ASN1_TAG_APPLICATION:
 		if ((tag_in & SC_ASN1_CLASS_MASK) != SC_ASN1_APP)
 			return NULL;
 		break;
-	case ASN1_TAG_CONTEXT:
+	case SC_ASN1_TAG_CONTEXT:
 		if ((tag_in & SC_ASN1_CLASS_MASK) != SC_ASN1_CTX)
 			return NULL;
 		break;
-	case ASN1_TAG_PRIVATE:
+	case SC_ASN1_TAG_PRIVATE:
 		if ((tag_in & SC_ASN1_CLASS_MASK) != SC_ASN1_PRV)
 			return NULL;
 		break;
 	}
-	if (cla & ASN1_TAG_CONSTRUCTED) {
+	if (cla & SC_ASN1_TAG_CONSTRUCTED) {
 		if ((tag_in & SC_ASN1_CONS) == 0)
 			return NULL;
 	} else
@@ -674,17 +674,17 @@ static int asn1_write_element(sc_context_t *ctx, unsigned int tag,
 	case SC_ASN1_UNI:
 		break;
 	case SC_ASN1_APP:
-		t |= ASN1_TAG_APPLICATION;
+		t |= SC_ASN1_TAG_APPLICATION;
 		break;
 	case SC_ASN1_CTX:
-		t |= ASN1_TAG_CONTEXT;
+		t |= SC_ASN1_TAG_CONTEXT;
 		break;
 	case SC_ASN1_PRV:
-		t |= ASN1_TAG_PRIVATE;
+		t |= SC_ASN1_TAG_PRIVATE;
 		break;
 	}
 	if (tag & SC_ASN1_CONS)
-		t |= ASN1_TAG_CONSTRUCTED;
+		t |= SC_ASN1_TAG_CONSTRUCTED;
 	if (datalen > 127) {
 		c = 1;
 		while (datalen >> (c << 3))
@@ -708,8 +708,8 @@ static int asn1_write_element(sc_context_t *ctx, unsigned int tag,
 }
 
 static const struct sc_asn1_entry c_asn1_path[4] = {
-	{ "path",   SC_ASN1_OCTET_STRING, ASN1_OCTET_STRING, 0, NULL, NULL },
-	{ "index",  SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "path",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
+	{ "index",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "length", SC_ASN1_INTEGER, SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
@@ -761,17 +761,17 @@ static int asn1_encode_path(sc_context_t *ctx, const sc_path_t *path,
 }
 
 static const struct sc_asn1_entry c_asn1_com_obj_attr[6] = {
-	{ "label", SC_ASN1_UTF8STRING, ASN1_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "flags", SC_ASN1_BIT_FIELD, ASN1_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "authId", SC_ASN1_PKCS15_ID, ASN1_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "userConsent", SC_ASN1_INTEGER, ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "accessControlRules", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "label", SC_ASN1_UTF8STRING, SC_ASN1_TAG_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "flags", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "authId", SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "userConsent", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "accessControlRules", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 static const struct sc_asn1_entry c_asn1_p15_obj[5] = {
-	{ "commonObjectAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ "classAttributes", SC_ASN1_STRUCT, ASN1_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "commonObjectAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "classAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ "subClassAttributes", SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "typeAttributes", SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
