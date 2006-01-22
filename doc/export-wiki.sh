@@ -2,7 +2,7 @@
 
 set -e
 
-export SERVER=http://www.opensc.org
+export SERVER=http://www.opensc-project.org
 export WIKI=opensc/wiki
 export XSL=export-wiki.xsl
 
@@ -41,7 +41,7 @@ done
 
 mv "$SRCDIR"/WikiStart.html "$SRCDIR"/index.html
 
-wget -nv http://www.opensc.org/trac/css/trac.css \
+wget -nv http://www.opensc-project.org/trac/css/trac.css \
 	-O "$SRCDIR"/trac.css
 
 rm "$SRCDIR"/*.tmp
