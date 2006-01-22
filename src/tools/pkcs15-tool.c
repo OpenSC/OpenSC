@@ -28,7 +28,7 @@ typedef unsigned __int32 uint32_t;
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #else
-#warning no uint32_t type available, please contact opensc-devel@opensc.org
+#warning no uint32_t type available, please contact opensc-devel@opensc-project.org
 #endif
 #endif
 #include <openssl/bn.h>

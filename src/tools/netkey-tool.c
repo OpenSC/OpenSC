@@ -520,7 +520,7 @@ int main(
 		fprintf(stderr,"  %s --pin1 123456 cert /tmp/cert1 2\n", argv[0]);
 		fprintf(stderr,"  %s cert 2 /tmp/cert2\n", argv[0]);
 		fprintf(stderr,"\nBe carful - this tool may destroy your card\n");
-		fprintf(stderr,"\nQuestions? Comments? ==> opensc-user@opensc.org\n");
+		fprintf(stderr,"\nQuestions? Comments? ==> opensc-user@opensc-project.org\n");
 		exit(1);
 	}
 	if(optind==argc-2 && !strcmp(argv[optind],"unblock")){

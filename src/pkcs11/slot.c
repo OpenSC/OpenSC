@@ -36,7 +36,7 @@ unsigned int first_free_slot = 0;
 static void init_slot_info(CK_SLOT_INFO_PTR pInfo)
 {
 	strcpy_bp(pInfo->slotDescription, "Virtual slot", 64);
-	strcpy_bp(pInfo->manufacturerID, "OpenSC project (www.opensc.org)", 32);
+	strcpy_bp(pInfo->manufacturerID, "OpenSC project (www.opensc-project.org)", 32);
 	pInfo->flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 	pInfo->hardwareVersion.major = 0;
 	pInfo->hardwareVersion.minor = 0;
