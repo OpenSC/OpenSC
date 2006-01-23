@@ -51,6 +51,7 @@ enum {
 	MCRD_SEL_MF  = 0x00,
 	MCRD_SEL_DF  = 0x01,
 	MCRD_SEL_EF  = 0x02,
+	MCRD_SEL_PARENT = 0x03,
 	MCRD_SEL_AID = 0x04
 };
 
@@ -93,8 +94,7 @@ struct mcrd_priv_data {
 #define DRVDATA(card)        ((struct mcrd_priv_data *) ((card)->drv_data))
 
 static int load_special_files(sc_card_t *card);
-static int select_part (sc_card_t *card, u8 kind, unsigned short int fid,
-	                sc_file_t **file);
+static int select_part (sc_card_t *card, u8 kind, unsigned short int fid, sc_file_t **file);
 
 /* Return the DF_info for the current path.  If does not yet exist,
    create it.  Returns NULL on error. */
@@ -320,7 +320,7 @@ static int load_special_files (sc_card_t *card)
 	clear_special_files (dfi);
 
 	/* Read rule file. Note that we bypass our cache here. */
-	r = select_part (card, 2, EF_Rule, NULL);
+	r = select_part (card, MCRD_SEL_EF, EF_Rule, NULL);
 	SC_TEST_RET(ctx, r, "selecting EF_Rule failed");
 	
 	
@@ -348,7 +348,7 @@ static int load_special_files (sc_card_t *card)
 	sc_debug(ctx, "new EF_Rule file loaded (%d records)\n", recno-1);
 
 	/* Read the KeyD file. Note that we bypass our cache here. */
-	r = select_part (card, 2, EF_KeyD, NULL);
+	r = select_part (card, MCRD_SEL_EF, EF_KeyD, NULL);
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
 		sc_debug(ctx, "no EF_KeyD file available\n");
 		return 0; /* That is okay. */
@@ -684,22 +684,17 @@ do_select(sc_card_t *card, u8 kind,
 	  const u8 *buf, size_t buflen,
 	  sc_file_t **file)
 {
-	sc_apdu_t	apdu;
-	u8	resbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_apdu_t apdu;
+	u8	resbuf[255];
 	int r;
 
-	/* create the apdu */
-	memset(&apdu, 0, sizeof(apdu));
-	apdu.cla = 0x00;
-	apdu.cse = SC_APDU_CASE_3_SHORT;
-	apdu.ins = 0xA4;
-	apdu.p1 = kind;
-	apdu.p2 = 0;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, kind, 0x00);
 	apdu.data = buf;
 	apdu.datalen = buflen;
 	apdu.lc = apdu.datalen;
 	apdu.resp = resbuf;
-	apdu.resplen = file ? sizeof(resbuf) : 0;
+	apdu.resplen = sizeof(resbuf);
+	apdu.le = sizeof(resbuf);
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -741,8 +736,7 @@ select_part (sc_card_t *card, u8 kind, unsigned short int fid,
 	int r;
 
 	if (card->ctx->debug >=3)
-		sc_debug(card->ctx, "select_part (0x%04X, kind=%u)\n",
-		      fid, kind);
+		sc_debug(card->ctx, "select_part (0x%04X, kind=%u)\n", fid, kind);
 	
 	if (fid == MFID)
 		kind = MCRD_SEL_MF; /* force this kind. */
@@ -968,14 +962,6 @@ mcrd_select_file(sc_card_t *card, const sc_path_t *path,
 	if (card->ctx->debug >= 3) {
 		char line[256], *linep = line;
 		size_t i;
-
-		linep += sprintf(linep, "requesting type %d, path ", path->type);
-		for (i = 0; i < path->len; i++) {
-			sprintf(linep, "%02X", path->value[i]);
-			linep += 2;
-		}
-		strcpy(linep, "\n");
-		sc_debug(card->ctx, line);
 
 		linep = line;
 		linep += sprintf(linep, "ef=%d, curpath=",priv->is_ef);
@@ -1239,17 +1225,18 @@ static int mcrd_decipher(sc_card_t *card,
 	crgram = temp;
 	crgram_len += 1;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80,
-		       0x86);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
 
 	apdu.resp = out;
 	apdu.resplen = out_len;
+	apdu.le = apdu.resplen;
 
 	apdu.data = crgram;
 	apdu.datalen = crgram_len;
+	apdu.lc = apdu.datalen;
 
-	apdu.lc = crgram_len;
 	apdu.sensitive = 1;
+
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);

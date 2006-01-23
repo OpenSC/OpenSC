@@ -45,7 +45,7 @@ select_esteid_df (sc_card_t * card)
 {
 	int r;
 	sc_path_t tmppath;
-	sc_format_path ("3f00eeee", &tmppath);
+	sc_format_path ("3F00EEEE", &tmppath);
 	tmppath.type = SC_PATH_TYPE_PATH;
 	r = sc_select_file (card, &tmppath, NULL);
 	SC_TEST_RET (card->ctx, r, "esteid select DF failed");
@@ -151,6 +151,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		strncpy(pin_obj.label, esteid_pin_names[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = esteid_pin_flags[i];
 
+		/* Link normal PINs with PUK */
 		if (i < 2) {
 			pin_obj.auth_id.len = 1;
 			pin_obj.auth_id.value[0] = 3;
