@@ -24,7 +24,7 @@ OBJECTS			= \
 	ctbcs.obj reader-ctapi.obj reader-pcsc.obj \
 	\
 	card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
-	card-etoken.obj card-tcos.obj card-emv.obj card-default.obj \
+	card-cardos.obj card-tcos.obj card-emv.obj card-default.obj \
 	card-mcrd.obj card-starcos.obj card-openpgp.obj card-jcop.obj \
 	card-oberthur.obj card-belpic.obj card-atrust-acos.obj \
 	card-incrypto34.obj \
