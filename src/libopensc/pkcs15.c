@@ -1519,7 +1519,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 	sc_path_t tmp_path, *path = &tmp_path;
 	u8	*data = NULL;
 	size_t	len = 0, offset = 0;
-	int	r = -1;
+	int	r;
 
 	assert(p15card != NULL && in_path != NULL && buf != NULL);
 
@@ -1543,7 +1543,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 	} else {
 		memcpy(path, in_path, sizeof(sc_path_t));
 	}
-	
+	r = -1; /* file state: not in cache */
 	if (p15card->opts.use_cache) {
 		r = sc_pkcs15_read_cached_file(p15card, path, &data, &len);
 	}

@@ -123,7 +123,7 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 	*bufsize = count;
 	if (data)
 		*buf = data;
-        return 0;
+	return 0;
 }
 
 int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
