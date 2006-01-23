@@ -57,7 +57,9 @@ struct _sc_driver_entry {
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
-	{ "etoken",	(void *(*)(void)) sc_get_etoken_driver },
+	/* legacy, the old name was "etoken", so we keep that for a while */
+	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },
+	{ "etoken",	(void *(*)(void)) sc_get_cardos_driver },
 	{ "flex",	(void *(*)(void)) sc_get_cryptoflex_driver },
 	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },
 #ifdef HAVE_OPENSSL
