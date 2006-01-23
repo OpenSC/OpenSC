@@ -49,10 +49,10 @@ struct tlv {
 /*
  * Local functions
  */
-static int	etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
+static int	cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 			sc_pkcs15_pin_info_t *pin_info, int puk_id,
 			const u8 *pin, size_t pin_len);
-static int	etoken_create_sec_env(sc_profile_t *, sc_card_t *,
+static int	cardos_create_sec_env(sc_profile_t *, sc_card_t *,
 			unsigned int, unsigned int);
 static int	cardos_put_key(struct sc_profile *, sc_card_t *,
 			int, sc_pkcs15_prkey_info_t *,
@@ -60,28 +60,28 @@ static int	cardos_put_key(struct sc_profile *, sc_card_t *,
 static int	cardos_key_algorithm(unsigned int, size_t, int *);
 static int	cardos_extract_pubkey(sc_card_t *, sc_pkcs15_pubkey_t *,
 			sc_file_t *, int);
-static int	etoken_extract_pubkey(sc_card_t *card, int nr, u8 tag,
+static int	cardos_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 			sc_pkcs15_bignum_t *bn);
 
 /* Object IDs for PIN objects.
  * SO PIN = 0x01, SO PUK = 0x02
  * each user pin is 2*N+1, each corresponding PUK is 2*N+2
  */
-#define ETOKEN_PIN_ID_MIN	1
-#define ETOKEN_PIN_ID_MAX	15
-#define ETOKEN_KEY_ID_MIN	16
-#define ETOKEN_KEY_ID_MAX	31
-#define ETOKEN_AC_NEVER		0xFF
+#define CARDOS_PIN_ID_MIN	1
+#define CARDOS_PIN_ID_MAX	15
+#define CARDOS_KEY_ID_MIN	16
+#define CARDOS_KEY_ID_MAX	31
+#define CARDOS_AC_NEVER		0xFF
 
-#define ETOKEN_ALGO_RSA			0x08
-#define ETOKEN_ALGO_RSA_PURE		0x0C
-#define ETOKEN_ALGO_RSA_SIG		0x88
-#define ETOKEN_ALGO_RSA_PURE_SIG	0x8C
-#define ETOKEN_ALGO_RSA_SIG_SHA1	0xC8
-#define ETOKEN_ALGO_RSA_PURE_SIG_SHA1	0xCC
+#define CARDOS_ALGO_RSA			0x08
+#define CARDOS_ALGO_RSA_PURE		0x0C
+#define CARDOS_ALGO_RSA_SIG		0x88
+#define CARDOS_ALGO_RSA_PURE_SIG	0x8C
+#define CARDOS_ALGO_RSA_SIG_SHA1	0xC8
+#define CARDOS_ALGO_RSA_PURE_SIG_SHA1	0xCC
 #define CARDOS_ALGO_EXT_RSA_PURE	0x0a
 #define CARDOS_ALGO_EXT_RSA_SIG_PURE	0x8a
-#define ETOKEN_ALGO_PIN			0x87
+#define CARDOS_ALGO_PIN			0x87
 
 static inline void
 tlv_init(struct tlv *tlv, u8 *base, size_t size)
@@ -120,7 +120,7 @@ tlv_len(struct tlv *tlv)
  * it's close enough to be useful.
  */
 static int
-etoken_erase(struct sc_profile *profile, sc_card_t *card)
+cardos_erase(struct sc_profile *profile, sc_card_t *card)
 {
 	return sc_pkcs15init_erase_card_recursively(card, profile, -1);
 }
@@ -129,7 +129,7 @@ etoken_erase(struct sc_profile *profile, sc_card_t *card)
  * Create the Application DF
  */
 static int
-etoken_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
+cardos_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
 {
 	int	r;
 
@@ -143,7 +143,7 @@ etoken_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
 	/* Create a default security environment for this DF.
 	 * This SE autometically becomes the current SE when the
 	 * DF is selected. */
-	if ((r = etoken_create_sec_env(profile, card, 0x01, 0x00)) < 0)
+	if ((r = cardos_create_sec_env(profile, card, 0x01, 0x00)) < 0)
 		return r;
 
 	return 0;
@@ -154,13 +154,13 @@ etoken_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
  * See if it's good, and if it isn't, propose something better
  */
 static int
-etoken_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
+cardos_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 		sc_pkcs15_pin_info_t *pin_info)
 {
 	int	preferred, current;
 
 	if ((current = pin_info->reference) < 0)
-		current = ETOKEN_PIN_ID_MIN;
+		current = CARDOS_PIN_ID_MIN;
 
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		preferred = 1;
@@ -173,7 +173,7 @@ etoken_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 			return SC_ERROR_TOO_MANY_OBJECTS;
 	}
 
-	if (current > preferred || preferred > ETOKEN_PIN_ID_MAX)
+	if (current > preferred || preferred > CARDOS_PIN_ID_MAX)
 		return SC_ERROR_TOO_MANY_OBJECTS;
 	pin_info->reference = preferred;
 	return 0;
@@ -183,13 +183,13 @@ etoken_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
  * Store a PIN
  */
 static int
-etoken_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
+cardos_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
 		sc_pkcs15_object_t *pin_obj,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
 {
 	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
-	unsigned int	puk_id = ETOKEN_AC_NEVER;
+	unsigned int	puk_id = CARDOS_AC_NEVER;
 	int		r;
 
 	if (!pin || !pin_len)
@@ -205,13 +205,13 @@ etoken_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
 		sc_profile_get_pin_info(profile,
 				SC_PKCS15INIT_USER_PUK, &puk_info);
 		puk_info.reference = puk_id = pin_info->reference + 1;
-		r = etoken_store_pin(profile, card,
-				&puk_info, ETOKEN_AC_NEVER,
+		r = cardos_store_pin(profile, card,
+				&puk_info, CARDOS_AC_NEVER,
 				puk, puk_len);
 	}
 
 	if (r >= 0) {
-		r = etoken_store_pin(profile, card,
+		r = cardos_store_pin(profile, card,
 				pin_info, puk_id, pin, pin_len);
 	}
 
@@ -222,14 +222,14 @@ etoken_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
  * Select a key reference
  */
 static int
-etoken_select_key_reference(sc_profile_t *profile, sc_card_t *card,
+cardos_select_key_reference(sc_profile_t *profile, sc_card_t *card,
 			sc_pkcs15_prkey_info_t *key_info)
 {
 	struct sc_file	*df = profile->df_info->file;
 
-	if (key_info->key_reference < ETOKEN_KEY_ID_MIN)
-		key_info->key_reference = ETOKEN_KEY_ID_MIN;
-	if (key_info->key_reference > ETOKEN_KEY_ID_MAX)
+	if (key_info->key_reference < CARDOS_KEY_ID_MIN)
+		key_info->key_reference = CARDOS_KEY_ID_MIN;
+	if (key_info->key_reference > CARDOS_KEY_ID_MAX)
 		return SC_ERROR_TOO_MANY_OBJECTS;
 
 	key_info->path = df->path;
@@ -241,7 +241,7 @@ etoken_select_key_reference(sc_profile_t *profile, sc_card_t *card,
  * This is a no-op.
  */
 static int
-etoken_create_key(sc_profile_t *profile, sc_card_t *card,
+cardos_create_key(sc_profile_t *profile, sc_card_t *card,
 			sc_pkcs15_object_t *obj)
 {
 	return 0;
@@ -251,7 +251,7 @@ etoken_create_key(sc_profile_t *profile, sc_card_t *card,
  * Store a private key object.
  */
 static int
-etoken_store_key(sc_profile_t *profile, sc_card_t *card,
+cardos_store_key(sc_profile_t *profile, sc_card_t *card,
 			sc_pkcs15_object_t *obj,
 			sc_pkcs15_prkey_t *key)
 {
@@ -300,13 +300,13 @@ static void init_key_object(struct sc_pkcs15_prkey_rsa *key,
  * Key generation
  */
 static int
-etoken_generate_key(sc_profile_t *profile, sc_card_t *card,
+cardos_generate_key(sc_profile_t *profile, sc_card_t *card,
 		sc_pkcs15_object_t *obj,
 		sc_pkcs15_pubkey_t *pubkey)
 {
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 	struct sc_pkcs15_prkey_rsa key_obj;
-	struct sc_cardctl_etoken_genkey_info args;
+	struct sc_cardctl_cardos_genkey_info args;
 	struct sc_file	*temp;
 	u8		abignum[256];
 	int		algorithm, r, delete_it = 0, use_ext_rsa = 0;
@@ -355,7 +355,7 @@ etoken_generate_key(sc_profile_t *profile, sc_card_t *card,
 	args.key_id = key_info->key_reference;
 	args.key_bits = keybits;
 	args.fid = temp->id;
-	r = sc_card_ctl(card, SC_CARDCTL_ETOKEN_GENERATE_KEY, &args);
+	r = sc_card_ctl(card, SC_CARDCTL_CARDOS_GENERATE_KEY, &args);
 	if (r < 0)
 		goto out;
 
@@ -378,11 +378,11 @@ out:
  * Store a PIN or PUK
  */
 static int
-etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
+cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 		sc_pkcs15_pin_info_t *pin_info, int puk_id,
 		const u8 *pin, size_t pin_len)
 {
-	struct sc_cardctl_etoken_obj_info args;
+	struct sc_cardctl_cardos_obj_info args;
 	unsigned char	buffer[256];
 	unsigned char	pinpadded[16];
 	struct tlv	tlv;
@@ -417,7 +417,7 @@ etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
 	tlv_next(&tlv, 0x85);
 	tlv_add(&tlv, 0x02);		/* options byte */
 	tlv_add(&tlv, attempts & 0xf);	/* flags byte */
-	tlv_add(&tlv, ETOKEN_ALGO_PIN);	/* algorithm = pin-test */
+	tlv_add(&tlv, CARDOS_ALGO_PIN);	/* algorithm = pin-test */
 	tlv_add(&tlv, attempts & 0xf);	/* errcount = attempts */
 
 	/* usecount: not documented, but seems to work like this:
@@ -457,17 +457,17 @@ etoken_store_pin(sc_profile_t *profile, sc_card_t *card,
 	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
 		return r;
 
-	return sc_card_ctl(card, SC_CARDCTL_ETOKEN_PUT_DATA_OCI, &args);
+	return sc_card_ctl(card, SC_CARDCTL_CARDOS_PUT_DATA_OCI, &args);
 }
 
 /*
  * Create an empty security environment
  */
 static int
-etoken_create_sec_env(struct sc_profile *profile, sc_card_t *card,
+cardos_create_sec_env(struct sc_profile *profile, sc_card_t *card,
 		unsigned int se_id, unsigned int key_id)
 {
-	struct sc_cardctl_etoken_obj_info args;
+	struct sc_cardctl_cardos_obj_info args;
 	struct tlv	tlv;
 	unsigned char	buffer[64];
 	int		r;
@@ -496,7 +496,7 @@ etoken_create_sec_env(struct sc_profile *profile, sc_card_t *card,
 	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
 		return r;
 
-	return sc_card_ctl(card, SC_CARDCTL_ETOKEN_PUT_DATA_SECI, &args);
+	return sc_card_ctl(card, SC_CARDCTL_CARDOS_PUT_DATA_SECI, &args);
 }
 
 /*
@@ -515,14 +515,14 @@ static int cardos_key_algorithm(unsigned int usage, size_t keylen, int *algop)
 
 	if (usage & USAGE_ANY_SIGN) {
 		if (keylen <= 1024)
-			*algop = ETOKEN_ALGO_RSA_PURE_SIG;
+			*algop = CARDOS_ALGO_RSA_PURE_SIG;
 		else
 			*algop = CARDOS_ALGO_EXT_RSA_SIG_PURE;
 		sign = 1;
 	}
 	if (usage & USAGE_ANY_DECIPHER) {
 		if (keylen <= 1024)
-			*algop = ETOKEN_ALGO_RSA_PURE;
+			*algop = CARDOS_ALGO_RSA_PURE;
 		else
 			*algop = CARDOS_ALGO_EXT_RSA_PURE;
 		decipher = 1;
@@ -533,17 +533,17 @@ static int cardos_key_algorithm(unsigned int usage, size_t keylen, int *algop)
 /*
  * Create a private key object
  */
-#define ETOKEN_KEY_OPTIONS	0x02
-#define ETOKEN_KEY_FLAGS	0x00
+#define CARDOS_KEY_OPTIONS	0x02
+#define CARDOS_KEY_FLAGS	0x00
 static int
-etoken_store_key_component(sc_card_t *card,
+cardos_store_key_component(sc_card_t *card,
 		int algorithm,
 		unsigned int key_id, unsigned int pin_id,
 		unsigned int num,
 		const u8 *data, size_t len,
 		int last, int use_prefix)
 {
-	struct sc_cardctl_etoken_obj_info args;
+	struct sc_cardctl_cardos_obj_info args;
 	struct tlv	tlv;
 	unsigned char	buffer[256];
 #if SET_SM_BYTES
@@ -561,8 +561,8 @@ etoken_store_key_component(sc_card_t *card,
 
 	/* Object parameters */
 	tlv_next(&tlv, 0x85);
-	tlv_add(&tlv, ETOKEN_KEY_OPTIONS|(last? 0x00 : 0x20));
-	tlv_add(&tlv, ETOKEN_KEY_FLAGS);
+	tlv_add(&tlv, CARDOS_KEY_OPTIONS|(last? 0x00 : 0x20));
+	tlv_add(&tlv, CARDOS_KEY_FLAGS);
 	tlv_add(&tlv, algorithm);
 	tlv_add(&tlv, 0x00);
 	tlv_add(&tlv, 0xFF);	/* use count */
@@ -609,7 +609,7 @@ etoken_store_key_component(sc_card_t *card,
 	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
 		return r;
 
-	return sc_card_ctl(card, SC_CARDCTL_ETOKEN_PUT_DATA_OCI, &args);
+	return sc_card_ctl(card, SC_CARDCTL_CARDOS_PUT_DATA_OCI, &args);
 }
 
 static int cardos_put_key(sc_profile_t *profile, sc_card_t *card,
@@ -624,30 +624,30 @@ static int cardos_put_key(sc_profile_t *profile, sc_card_t *card,
 		pin_id = 0;
 
 	if (key_info->modulus_length > 1024 && card->type == SC_CARD_TYPE_CARDOS_M4_2) {
-		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 0,
+		r = cardos_store_key_component(card, algorithm, key_id, pin_id, 0,
 			key->p.data, key->p.len, 0, 0);
 		if (r != SC_SUCCESS)
 			return r;
-		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 1,
+		r = cardos_store_key_component(card, algorithm, key_id, pin_id, 1,
 			key->q.data, key->q.len, 0, 0);
 		if (r != SC_SUCCESS)
 			return r;
-		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 2,
+		r = cardos_store_key_component(card, algorithm, key_id, pin_id, 2,
 			key->dmp1.data, key->dmp1.len, 0, 0);
 		if (r != SC_SUCCESS)
 			return r;
-		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 3,
+		r = cardos_store_key_component(card, algorithm, key_id, pin_id, 3,
 			key->dmq1.data, key->dmq1.len, 0, 0);
 		if (r != SC_SUCCESS)
 			return r;
-		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 4,
+		r = cardos_store_key_component(card, algorithm, key_id, pin_id, 4,
 			key->iqmp.data, key->iqmp.len, 1, 0);
 	} else {
-		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 0,
+		r = cardos_store_key_component(card, algorithm, key_id, pin_id, 0,
 			key->modulus.data, key->modulus.len, 0, 1);
 		if (r != SC_SUCCESS)
 			return r;
-		r = etoken_store_key_component(card, algorithm, key_id, pin_id, 1,
+		r = cardos_store_key_component(card, algorithm, key_id, pin_id, 1,
 			key->d.data, key->d.len, 1, 1);
 	}
 
@@ -705,7 +705,7 @@ static int parse_ext_pubkey_file(sc_card_t *card, const u8 *data, size_t len,
 }
 
 static int
-etoken_extract_pubkey(sc_card_t *card, int nr, u8 tag,
+cardos_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 			sc_pkcs15_bignum_t *bn)
 {
 	u8	buf[256];
@@ -738,10 +738,10 @@ static int cardos_extract_pubkey(sc_card_t *card, sc_pkcs15_pubkey_t *pubkey,
 		return r;
 
 	if (use_ext_rsa == 0) {
-		r = etoken_extract_pubkey(card, 1, 0x10, &pubkey->u.rsa.modulus);
+		r = cardos_extract_pubkey(card, 1, 0x10, &pubkey->u.rsa.modulus);
 		if (r != SC_SUCCESS)
 			return r;
-		r = etoken_extract_pubkey(card, 2, 0x11, &pubkey->u.rsa.exponent);
+		r = cardos_extract_pubkey(card, 2, 0x11, &pubkey->u.rsa.exponent);
 	} else {
 		u8 *buf;
 
@@ -759,17 +759,17 @@ static int cardos_extract_pubkey(sc_card_t *card, sc_pkcs15_pubkey_t *pubkey,
 	return r;
 }
 
-static struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations = {
-	etoken_erase,
+static struct sc_pkcs15init_operations sc_pkcs15init_cardos_operations = {
+	cardos_erase,
 	NULL,				/* init_card */
-	etoken_create_dir,
+	cardos_create_dir,
 	NULL,				/* create_domain */
-	etoken_select_pin_reference,
-	etoken_create_pin,
-	etoken_select_key_reference,
-	etoken_create_key,
-	etoken_store_key,
-	etoken_generate_key,
+	cardos_select_pin_reference,
+	cardos_create_pin,
+	cardos_select_key_reference,
+	cardos_create_key,
+	cardos_store_key,
+	cardos_generate_key,
 	NULL, NULL, 			/* encode private/public key */
 	NULL,				/* finalize_card */
 	NULL, NULL, NULL, NULL, NULL,	/* old style api */
@@ -777,7 +777,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_etoken_operations = {
 };
 
 struct sc_pkcs15init_operations *
-sc_pkcs15init_get_etoken_ops(void)
+sc_pkcs15init_get_cardos_ops(void)
 {
-	return &sc_pkcs15init_etoken_operations;
+	return &sc_pkcs15init_cardos_operations;
 }

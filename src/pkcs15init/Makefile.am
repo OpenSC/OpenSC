@@ -12,7 +12,7 @@ PROFILES = \
 	flex.profile \
 	gpk.profile \
 	miocos.profile \
-	etoken.profile \
+	cardos.profile \
 	incrypto34.profile \
 	jcop.profile \
 	oberthur.profile \
@@ -27,7 +27,7 @@ lib_LTLIBRARIES = libpkcs15init.la
 libpkcs15init_la_SOURCES = \
 	pkcs15-lib.c profile.c keycache.c \
 	pkcs15-gpk.c pkcs15-miocos.c pkcs15-cflex.c \
-	pkcs15-etoken.c pkcs15-jcop.c pkcs15-starcos.c \
+	pkcs15-cardos.c pkcs15-jcop.c pkcs15-starcos.c \
 	pkcs15-oberthur.c pkcs15-setcos.c pkcs15-incrypto34.c
 
 libpkcs15init_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@

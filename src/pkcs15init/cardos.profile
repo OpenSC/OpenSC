@@ -1,5 +1,6 @@
 #
-# PKCS15 r/w profile for Aladdin eToken
+# PKCS15 r/w profile for Siemens CardOS M4 
+# smart cards and crypto tokens (for example Aladdin eToken)
 #
 cardinfo {
     max-pin-length	= 8;
