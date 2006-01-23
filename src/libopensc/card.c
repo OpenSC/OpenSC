@@ -89,7 +89,7 @@ int sc_connect_card(sc_reader_t *reader, int slot_id,
 	sc_context_t *ctx = reader->ctx;
 	sc_slot_info_t *slot = _sc_get_slot_info(reader, slot_id);
 	struct sc_card_driver *driver;
-	int i, r = 0, idx;
+	int i, r = 0, idx, connected = 0;
 
 	assert(card_out != NULL);
 	SC_FUNC_CALLED(ctx, 1);
@@ -105,6 +105,7 @@ int sc_connect_card(sc_reader_t *reader, int slot_id,
 	if (r)
 		goto err;
 
+	connected = 1;
 	card->reader = reader;
 	card->slot = slot;
 	card->ctx = ctx;
@@ -203,6 +204,8 @@ int sc_connect_card(sc_reader_t *reader, int slot_id,
 	sc_debug(ctx, "card info: %s, %i, 0x%X\n", card->name, card->type, card->flags);
 	SC_FUNC_RETURN(ctx, 1, 0);
 err:
+	if (connected)
+		reader->ops->disconnect(reader, slot, 0);
 	if (card != NULL)
 		sc_card_free(card);
 	SC_FUNC_RETURN(ctx, 1, r);
