@@ -1,5 +1,5 @@
 /*
- * card-etoken.c: Support for Siemens CardOS based cards and tokens
+ * card-cardos.c: Support for Siemens CardOS based cards and tokens
  * 	(for example Aladdin eToken PRO, Eutron CryptoIdentity IT-SEC)
  *
  * Copyright (c) 2005  Nils Larsch <nils@larsch.net>
@@ -32,47 +32,47 @@
 /* comment by okir: one of the examples in the developer guide
  * also talks about copying data in chunks of 128.
  * Either coincidence, or a known problem. */
-#define ETOKEN_MAX_PAYLOAD	120
+#define CARDOS_MAX_PAYLOAD	120
 
 static const struct sc_card_operations *iso_ops = NULL;
 
-struct sc_card_operations etoken_ops;
-static struct sc_card_driver etoken_drv = {
+struct sc_card_operations cardos_ops;
+static struct sc_card_driver cardos_drv = {
 	"Siemens CardOS",
-	"etoken",
-	&etoken_ops,
+	"cardos",
+	&cardos_ops,
 	NULL, 0, NULL
 };
 
-static struct sc_atr_table etoken_atrs[] = {
+static struct sc_atr_table cardos_atrs[] = {
 	/* 4.0 */
-	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
+	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* 4.01 */
-	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
+	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* 4.01a */
-	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
+	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* M4.2 */
 	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:8a", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
 	/* Italian eID card, postecert */
-	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
+	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* Italian eID card, infocamere */
-	{ "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
+	{ "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* Another Italian InfocamereCard */
-	{ "3b:fc:98:00:ff:c1:10:31:fe:55:c8:03:49:6e:66:6f:63:61:6d:65:72:65:28", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL },
-	{ "3b:f4:98:00:ff:c1:10:31:fe:55:4d:34:63:76:b4", NULL, NULL, SC_CARD_TYPE_ETOKEN_GENERIC, 0, NULL},
+	{ "3b:fc:98:00:ff:c1:10:31:fe:55:c8:03:49:6e:66:6f:63:61:6d:65:72:65:28", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
+	{ "3b:f4:98:00:ff:c1:10:31:fe:55:4d:34:63:76:b4", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
-static int etoken_finish(sc_card_t *card)
+static int cardos_finish(sc_card_t *card)
 {
 	return 0;
 }
 
-static int etoken_match_card(sc_card_t *card)
+static int cardos_match_card(sc_card_t *card)
 {
 	int i;
 
-	i = _sc_match_atr(card, etoken_atrs, &card->type);
+	i = _sc_match_atr(card, cardos_atrs, &card->type);
 	if (i < 0)
 		return 0;
 	return 1;
@@ -114,7 +114,7 @@ static int cardos_have_2048bit_package(sc_card_t *card)
 	return 0;
 }
 
-static int etoken_init(sc_card_t *card)
+static int cardos_init(sc_card_t *card)
 {
 	unsigned long	flags;
 
@@ -150,7 +150,7 @@ static int etoken_init(sc_card_t *card)
 	return 0;
 }
 
-static const struct sc_card_error etoken_errors[] = {
+static const struct sc_card_error cardos_errors[] = {
 /* some error inside the card */
 /* i.e. nothing you can do */
 { 0x6581, SC_ERROR_MEMORY_FAILURE,	"EEPROM error; command aborted"}, 
@@ -211,17 +211,17 @@ static const struct sc_card_error etoken_errors[] = {
 { 0x9850, SC_NO_ERROR,		"over/underflow useing in/decrease"}
 };
 
-static int etoken_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
+static int cardos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
-	const int err_count = sizeof(etoken_errors)/sizeof(etoken_errors[0]);
+	const int err_count = sizeof(cardos_errors)/sizeof(cardos_errors[0]);
 	int i;
 			        
 	for (i = 0; i < err_count; i++) {
-		if (etoken_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			if ( etoken_errors[i].errorstr ) 
+		if (cardos_errors[i].SWs == ((sw1 << 8) | sw2)) {
+			if ( cardos_errors[i].errorstr ) 
 				sc_error(card->ctx, "%s\n",
-				 	etoken_errors[i].errorstr);
-			return etoken_errors[i].errorno;
+				 	cardos_errors[i].errorstr);
+			return cardos_errors[i].errorno;
 		}
 	}
 
@@ -229,7 +229,7 @@ static int etoken_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
-static int etoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
+static int cardos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
 	sc_apdu_t apdu;
 	u8        rbuf[256], offset = 0;
@@ -386,7 +386,7 @@ static void parse_sec_attr(sc_file_t *file, const u8 *buf, size_t len)
 			add_acl_entry(file, idx[i], (u8)((i < len) ? buf[i] : 0xFF));
 }
 
-static int etoken_select_file(sc_card_t *card,
+static int cardos_select_file(sc_card_t *card,
 			      const sc_path_t *in_path,
 			      sc_file_t **file)
 {
@@ -605,7 +605,7 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	if (card->type == SC_CARD_TYPE_ETOKEN_GENERIC) {
+	if (card->type == SC_CARD_TYPE_CARDOS_GENERIC) {
 		r = cardos_set_file_attributes(card, file);
 		if (r != SC_SUCCESS)
 			return r;
@@ -638,7 +638,7 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
  * Restore the indicated SE
  */
 static int
-etoken_restore_security_env(sc_card_t *card, int se_num)
+cardos_restore_security_env(sc_card_t *card, int se_num)
 {
 	sc_apdu_t apdu;
 	int	r;
@@ -667,7 +667,7 @@ etoken_restore_security_env(sc_card_t *card, int se_num)
  * XXX Need to find out how the Aladdin drivers do it.
  */
 static int
-etoken_set_security_env(sc_card_t *card,
+cardos_set_security_env(sc_card_t *card,
 			    const sc_security_env_t *env,
 			    int se_num)
 {
@@ -745,7 +745,7 @@ do_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 }
 
 static int
-etoken_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
+cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 			 u8 *out, size_t outlen)
 {
 	int    r;
@@ -800,7 +800,7 @@ etoken_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 }
 
 static int
-etoken_lifecycle_get(sc_card_t *card, int *mode)
+cardos_lifecycle_get(sc_card_t *card, int *mode)
 {
 	sc_apdu_t	apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -844,7 +844,7 @@ etoken_lifecycle_get(sc_card_t *card, int *mode)
 }
 
 static int
-etoken_lifecycle_set(sc_card_t *card, int *mode)
+cardos_lifecycle_set(sc_card_t *card, int *mode)
 {
 	sc_apdu_t	apdu;
 	int		r;
@@ -856,7 +856,7 @@ etoken_lifecycle_set(sc_card_t *card, int *mode)
 
 	target = *mode;
 
-	r = etoken_lifecycle_get(card, &current);
+	r = cardos_lifecycle_get(card, &current);
 	
 	if (r != SC_SUCCESS)
 		return r;
@@ -880,8 +880,8 @@ etoken_lifecycle_set(sc_card_t *card, int *mode)
 }
 
 static int
-etoken_put_data_oci(sc_card_t *card,
-			struct sc_cardctl_etoken_obj_info *args)
+cardos_put_data_oci(sc_card_t *card,
+			struct sc_cardctl_cardos_obj_info *args)
 {
 	sc_apdu_t	apdu;
 	int		r;
@@ -908,8 +908,8 @@ etoken_put_data_oci(sc_card_t *card,
 }
 
 static int
-etoken_put_data_seci(sc_card_t *card,
-			struct sc_cardctl_etoken_obj_info *args)
+cardos_put_data_seci(sc_card_t *card,
+			struct sc_cardctl_cardos_obj_info *args)
 {
 	sc_apdu_t	apdu;
 	int		r;
@@ -934,8 +934,8 @@ etoken_put_data_seci(sc_card_t *card,
 }
 
 static int
-etoken_generate_key(sc_card_t *card,
-		struct sc_cardctl_etoken_genkey_info *args)
+cardos_generate_key(sc_card_t *card,
+		struct sc_cardctl_cardos_genkey_info *args)
 {
 	sc_apdu_t	apdu;
 	u8		data[8];
@@ -995,26 +995,26 @@ static int cardos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 }
 
 static int
-etoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
+cardos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	switch (cmd) {
-	case SC_CARDCTL_ETOKEN_PUT_DATA_FCI:
+	case SC_CARDCTL_CARDOS_PUT_DATA_FCI:
 		break;
-	case SC_CARDCTL_ETOKEN_PUT_DATA_OCI:
-		return etoken_put_data_oci(card,
-			(struct sc_cardctl_etoken_obj_info *) ptr);
+	case SC_CARDCTL_CARDOS_PUT_DATA_OCI:
+		return cardos_put_data_oci(card,
+			(struct sc_cardctl_cardos_obj_info *) ptr);
 		break;
-	case SC_CARDCTL_ETOKEN_PUT_DATA_SECI:
-		return etoken_put_data_seci(card,
-			(struct sc_cardctl_etoken_obj_info *) ptr);
+	case SC_CARDCTL_CARDOS_PUT_DATA_SECI:
+		return cardos_put_data_seci(card,
+			(struct sc_cardctl_cardos_obj_info *) ptr);
 		break;
-	case SC_CARDCTL_ETOKEN_GENERATE_KEY:
-		return etoken_generate_key(card,
-			(struct sc_cardctl_etoken_genkey_info *) ptr);
+	case SC_CARDCTL_CARDOS_GENERATE_KEY:
+		return cardos_generate_key(card,
+			(struct sc_cardctl_cardos_genkey_info *) ptr);
 	case SC_CARDCTL_LIFECYCLE_GET:
-		return etoken_lifecycle_get(card, (int *) ptr);
+		return cardos_lifecycle_get(card, (int *) ptr);
 	case SC_CARDCTL_LIFECYCLE_SET:
-		return etoken_lifecycle_set(card, (int *) ptr);
+		return cardos_lifecycle_set(card, (int *) ptr);
 	case SC_CARDCTL_GET_SERIALNR:
 		return cardos_get_serialnr(card, (sc_serial_number_t *)ptr);
 	}
@@ -1027,7 +1027,7 @@ etoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
  * Unfortunately, it doesn't seem to work without this flag :-/
  */
 static int
-etoken_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
+cardos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		 int *tries_left)
 {
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
@@ -1072,27 +1072,27 @@ static struct sc_card_driver * sc_get_driver(void)
 {
 	if (iso_ops == NULL)
 		iso_ops = sc_get_iso7816_driver()->ops;
-	etoken_ops = *iso_ops;
-	etoken_ops.match_card = etoken_match_card;
-	etoken_ops.init = etoken_init;
-	etoken_ops.finish = etoken_finish;
-	etoken_ops.select_file = etoken_select_file;
-	etoken_ops.create_file = cardos_create_file;
-	etoken_ops.set_security_env = etoken_set_security_env;
-	etoken_ops.restore_security_env = etoken_restore_security_env;
-	etoken_ops.compute_signature = etoken_compute_signature;
+	cardos_ops = *iso_ops;
+	cardos_ops.match_card = cardos_match_card;
+	cardos_ops.init = cardos_init;
+	cardos_ops.finish = cardos_finish;
+	cardos_ops.select_file = cardos_select_file;
+	cardos_ops.create_file = cardos_create_file;
+	cardos_ops.set_security_env = cardos_set_security_env;
+	cardos_ops.restore_security_env = cardos_restore_security_env;
+	cardos_ops.compute_signature = cardos_compute_signature;
 
-	etoken_ops.list_files = etoken_list_files;
-	etoken_ops.check_sw = etoken_check_sw;
-	etoken_ops.card_ctl = etoken_card_ctl;
-	etoken_ops.pin_cmd = etoken_pin_cmd;
-	etoken_ops.logout  = cardos_logout;
+	cardos_ops.list_files = cardos_list_files;
+	cardos_ops.check_sw = cardos_check_sw;
+	cardos_ops.card_ctl = cardos_card_ctl;
+	cardos_ops.pin_cmd = cardos_pin_cmd;
+	cardos_ops.logout  = cardos_logout;
 
-	return &etoken_drv;
+	return &cardos_drv;
 }
 
 #if 1
-struct sc_card_driver * sc_get_etoken_driver(void)
+struct sc_card_driver * sc_get_cardos_driver(void)
 {
 	return sc_get_driver();
 }

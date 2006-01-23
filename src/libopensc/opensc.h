@@ -1038,7 +1038,7 @@ extern struct sc_reader_driver *sc_get_openct_driver(void);
 
 extern sc_card_driver_t *sc_get_default_driver(void);
 extern sc_card_driver_t *sc_get_emv_driver(void);
-extern sc_card_driver_t *sc_get_etoken_driver(void);
+extern sc_card_driver_t *sc_get_cardos_driver(void);
 extern sc_card_driver_t *sc_get_cryptoflex_driver(void);
 extern sc_card_driver_t *sc_get_cyberflex_driver(void);
 extern sc_card_driver_t *sc_get_gpk_driver(void);

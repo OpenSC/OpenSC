@@ -36,9 +36,9 @@ enum {
 	/* Cards without registered type, yet */
 	SC_CARD_TYPE_TEST_BASE = 500,
 
-	/* etoken driver */
-	SC_CARD_TYPE_ETOKEN_BASE = 1000,
-	SC_CARD_TYPE_ETOKEN_GENERIC,
+	/* cardos driver */
+	SC_CARD_TYPE_CARDOS_BASE = 1000,
+	SC_CARD_TYPE_CARDOS_GENERIC,
 	SC_CARD_TYPE_CARDOS_M4_2,
 
 	/* flex/cyberflex drivers */

@@ -70,13 +70,14 @@ enum {
 	SC_CARDCTL_TCOS_SETPERM,
 
 	/*
-	 * eToken specific calls
+	 * CardOS specific calls
+	 * (formerly known as "etoken" driver, thus ETK as prefix)
 	 */
-	SC_CARDCTL_ETOKEN_BASE = _CTL_PREFIX('E', 'T', 'K'),
-	SC_CARDCTL_ETOKEN_PUT_DATA_FCI,
-	SC_CARDCTL_ETOKEN_PUT_DATA_OCI,
-	SC_CARDCTL_ETOKEN_PUT_DATA_SECI,
-	SC_CARDCTL_ETOKEN_GENERATE_KEY,
+	SC_CARDCTL_CARDOS_BASE = _CTL_PREFIX('E', 'T', 'K'),
+	SC_CARDCTL_CARDOS_PUT_DATA_FCI,
+	SC_CARDCTL_CARDOS_PUT_DATA_OCI,
+	SC_CARDCTL_CARDOS_PUT_DATA_SECI,
+	SC_CARDCTL_CARDOS_GENERATE_KEY,
 
 	/*
 	 * Starcos SPK 2.3 specific calls
@@ -197,14 +198,14 @@ struct sc_cardctl_miocos_ac_info {
 };
 
 /*
- * eToken PIN info
+ * Siemens CardOS PIN info
  */
-struct sc_cardctl_etoken_obj_info {
+struct sc_cardctl_cardos_obj_info {
 	u8 *		data;
 	size_t		len;
 };
 
-struct sc_cardctl_etoken_genkey_info {
+struct sc_cardctl_cardos_genkey_info {
 	unsigned int	key_id;
 	unsigned int	key_bits;
 	unsigned short	fid;
