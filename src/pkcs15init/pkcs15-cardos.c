@@ -60,7 +60,7 @@ static int	cardos_put_key(struct sc_profile *, sc_card_t *,
 static int	cardos_key_algorithm(unsigned int, size_t, int *);
 static int	cardos_extract_pubkey(sc_card_t *, sc_pkcs15_pubkey_t *,
 			sc_file_t *, int);
-static int	cardos_extract_pubkey(sc_card_t *card, int nr, u8 tag,
+static int	do_cardos_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 			sc_pkcs15_bignum_t *bn);
 
 /* Object IDs for PIN objects.
@@ -705,7 +705,7 @@ static int parse_ext_pubkey_file(sc_card_t *card, const u8 *data, size_t len,
 }
 
 static int
-cardos_extract_pubkey(sc_card_t *card, int nr, u8 tag,
+do_cardos_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 			sc_pkcs15_bignum_t *bn)
 {
 	u8	buf[256];
@@ -738,10 +738,10 @@ static int cardos_extract_pubkey(sc_card_t *card, sc_pkcs15_pubkey_t *pubkey,
 		return r;
 
 	if (use_ext_rsa == 0) {
-		r = cardos_extract_pubkey(card, 1, 0x10, &pubkey->u.rsa.modulus);
+		r = do_cardos_extract_pubkey(card, 1, 0x10, &pubkey->u.rsa.modulus);
 		if (r != SC_SUCCESS)
 			return r;
-		r = cardos_extract_pubkey(card, 2, 0x11, &pubkey->u.rsa.exponent);
+		r = do_cardos_extract_pubkey(card, 2, 0x11, &pubkey->u.rsa.exponent);
 	} else {
 		u8 *buf;
 

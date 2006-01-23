@@ -393,7 +393,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_miocos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cryptoflex_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cyberflex_ops(void);
-extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cardosen_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cardos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_jcop_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_starcos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_oberthur_ops(void);
