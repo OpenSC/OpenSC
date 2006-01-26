@@ -53,6 +53,8 @@ static struct sc_atr_table cardos_atrs[] = {
 	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* M4.2 */
 	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:8a", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
+	/* M4.3 */
+	{ "3b:f2:18:00:02:c1:0a:31:fe;55:c8:07:76", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_3, 0, NULL },
 	/* Italian eID card, postecert */
 	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* Italian eID card, infocamere */

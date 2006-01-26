@@ -137,6 +137,8 @@ int cardos_info(void)
 		printf(" (that's CardOS M4.01a)\n");
 	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x06) {
 		printf(" (that's CardOS M4.2)\n");
+	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x07) {
+		printf(" (that's CardOS M4.3)\n");
 	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x08) {
 		printf(" (that's CardOS M4.3b)\n");
 	} else {
