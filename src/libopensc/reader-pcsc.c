@@ -617,7 +617,7 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 	}
 	gpriv->pcsc_ctx = pcsc_ctx;
 	
-	conf_block = _get_conf_block(ctx, "reader_driver", "pcsc", 1);
+	conf_block = sc_get_conf_block(ctx, "reader_driver", "pcsc", 1);
 	if (conf_block) {
 		gpriv->connect_reset =
 		    scconf_get_bool(conf_block, "connect_reset", 1);

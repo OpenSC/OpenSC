@@ -976,6 +976,7 @@ const sc_path_t *sc_get_mf_path(void);
 
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
+scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2, int priority);
 /**
  * Converts a given OID in ascii form to a internal sc_object_id object
  * @param  oid  OUT sc_object_id object for the result

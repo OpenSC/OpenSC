@@ -92,7 +92,7 @@ openct_reader_init(sc_context_t *ctx, void **priv_data)
 
 	max=OPENCT_MAX_READERS; 
 
-        conf_block = _get_conf_block(ctx, "reader_driver", "openct", 1);
+        conf_block = sc_get_conf_block(ctx, "reader_driver", "openct", 1);
 	if (conf_block) {
 		max = scconf_get_int(conf_block, "readers", OPENCT_MAX_READERS);
 	}
