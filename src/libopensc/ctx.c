@@ -678,23 +678,49 @@ void sc_ctx_suppress_errors_off(sc_context_t *ctx)
 
 int sc_establish_context(sc_context_t **ctx_out, const char *app_name)
 {
-	const char *default_app = "default";
-	sc_context_t *ctx;
-	struct _sc_ctx_options opts;
+	sc_context_param_t ctx_param;
 
-	assert(ctx_out != NULL);
-	ctx = (sc_context_t *) calloc(1, sizeof(sc_context_t));
+	memset(&ctx_param, 0, sizeof(sc_context_param_t));
+	ctx_param.ver      = 0;
+	ctx_param.app_name = app_name;
+	return sc_context_create(ctx_out, &ctx_param);
+}
+
+int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
+{
+	sc_context_t		*ctx;
+	struct _sc_ctx_options	opts;
+	int			r;
+
+	if (ctx_out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = calloc(1, sizeof(sc_context_t));
 	if (ctx == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(&opts, 0, sizeof(opts));
 	set_defaults(ctx, &opts);
-	ctx->app_name = app_name ? strdup(app_name) : strdup(default_app);
+
+	/* set the application name if set in the parameter options */
+	if (parm != NULL && parm->app_name != NULL)
+		ctx->app_name = strdup(parm->app_name);
+	else
+		ctx->app_name = strdup("default");
 	if (ctx->app_name == NULL) {
 		sc_release_context(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
+
+	/* set thread context and create mutex object (if specified) */
+	if (parm != NULL && parm->thread_ctx != NULL)
+		ctx->thread_ctx = parm->thread_ctx;
+	r = sc_mutex_create(ctx, &ctx->mutex);
+	if (r != SC_SUCCESS) {
+		sc_release_context(ctx);
+		return r;
+	}
+
 	process_config_file(ctx, &opts);
-	ctx->mutex = sc_mutex_new();
 	sc_debug(ctx, "===================================\n"); /* first thing in the log */
 	sc_debug(ctx, "opensc version: %s\n", sc_get_version());
 
@@ -755,12 +781,14 @@ int sc_release_context(sc_context_t *ctx)
 		fclose(ctx->debug_file);
 	if (ctx->error_file && ctx->error_file != stderr)
 		fclose(ctx->error_file);
-	if (ctx->preferred_language)
+	if (ctx->preferred_language != NULL)
 		free(ctx->preferred_language);
-	if (ctx->conf)
+	if (ctx->conf != NULL)
 		scconf_free(ctx->conf);
-	sc_mutex_free(ctx->mutex);
-	free(ctx->app_name);
+	if (ctx->mutex != NULL)
+		sc_mutex_destroy(ctx, ctx->mutex);
+	if (ctx->app_name != NULL)
+		free(ctx->app_name);
 	sc_mem_clear(ctx, sizeof(*ctx));
 	free(ctx);
 	return SC_SUCCESS;
@@ -770,7 +798,7 @@ int sc_set_card_driver(sc_context_t *ctx, const char *short_name)
 {
 	int i = 0, match = 0;
 
-	sc_mutex_lock(ctx->mutex);
+	sc_mutex_lock(ctx, ctx->mutex);
 	if (short_name == NULL) {
 		ctx->forced_driver = NULL;
 		match = 1;
@@ -784,7 +812,7 @@ int sc_set_card_driver(sc_context_t *ctx, const char *short_name)
 		}
 		i++;
 	}
-	sc_mutex_unlock(ctx->mutex);
+	sc_mutex_unlock(ctx, ctx->mutex);
 	if (match == 0)
 		return SC_ERROR_OBJECT_NOT_FOUND; /* FIXME: invent error */
 	return SC_SUCCESS;

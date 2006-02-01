@@ -184,6 +184,12 @@ struct sc_pkcs11_framework_ops {
  * PKCS#11 Slot (used to access card with specific framework data)
  */
 
+#ifndef _WIN32
+typedef unsigned long long sc_timestamp_t;
+#else
+typedef unsigned __int64   sc_timestamp_t;
+#endif
+
 struct sc_pkcs11_card {
 	int reader;
 	struct sc_card *card;

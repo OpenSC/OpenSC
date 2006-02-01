@@ -40,6 +40,13 @@ extern "C" {
 #define SC_CARD_MAGIC			0x27182818
 #define SC_CTX_MAGIC			0x0A550335
 
+#ifndef _WIN32
+#define msleep(t)	usleep((t) * 1000)
+#else
+#define msleep(t)	Sleep(t)
+#define sleep(t)	Sleep((t) * 1000)
+#endif
+
 struct sc_atr_table {
 	/* The atr fields are required to
 	 * be in aa:bb:cc hex format. */
@@ -104,6 +111,51 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_len);
 int sc_strip_zero_padding(const u8 *in,size_t in_len, u8 *out, size_t *out_len);
+
+/********************************************************************/
+/*             mutex functions                                      */
+/********************************************************************/
+
+/**
+ * Creates a new sc_mutex object. Note: unless sc_mutex_set_mutex_funcs()
+ * this function does nothing and always returns SC_SUCCESS.
+ * @param  ctx    sc_context_t object with the thread context
+ * @param  mutex  pointer for the newly created mutex object
+ * @return SC_SUCCESS on success and an error code otherwise
+ */
+int sc_mutex_create(const sc_context_t *ctx, void **mutex);
+/**
+ * Tries to acquire a lock for a sc_mutex object. Note: Unless
+ * sc_mutex_set_mutex_funcs() has been called before this 
+ * function does nothing and always returns SUCCESS.
+ * @param  ctx    sc_context_t object with the thread context
+ * @param  mutex  mutex object to lock
+ * @return SC_SUCCESS on success and an error code otherwise
+ */
+int sc_mutex_lock(const sc_context_t *ctx, void *mutex);
+/**
+ * Unlocks a sc_mutex object. Note: Unless sc_mutex_set_mutex_funcs()
+ * has been called before this function does nothing and always returns
+ * SC_SUCCESS.
+ * @param  ctx    sc_context_t object with the thread context
+ * @param  mutex  mutex object to unlock
+ * @return SC_SUCCESS on success and an error code otherwise
+ */
+int sc_mutex_unlock(const sc_context_t *ctx, void *mutex);
+/**
+ * Destroys a sc_mutex object. Note: Unless sc_mutex_set_mutex_funcs()
+ * has been called before this function does nothing and always returns
+ * SC_SUCCESS.
+ * @param  ctx    sc_context_t object with the thread context
+ * @param  mutex  mutex object to be destroyed
+ */
+void sc_mutex_destroy(const sc_context_t *ctx, void *mutex);
+/**
+ * Returns a unique id for every thread.
+ * @param  ctx  sc_context_t object with the thread context
+ * @return unsigned long with the unique id or 0 if not supported
+ */
+unsigned long sc_thread_id(const sc_context_t *ctx);
 
 #ifdef __cplusplus
 }

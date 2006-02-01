@@ -178,12 +178,14 @@ ctbcs_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	dummy_card.reader = reader;
 	dummy_card.slot = slot;
 	dummy_card.ctx = reader->ctx;
-	dummy_card.mutex = sc_mutex_new();
+	r = sc_mutex_create(reader->ctx, &dummy_card.mutex);
+	if (r != SC_SUCCESS)
+		return r;
 	dummy_card.ops   = &ops;
 	card = &dummy_card;
 
 	r = sc_transmit_apdu(card, &apdu);
-	sc_mutex_free(card->mutex);
+	sc_mutex_destroy(reader->ctx, card->mutex);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	
 	/* Check CTBCS status word */

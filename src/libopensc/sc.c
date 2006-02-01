@@ -672,3 +672,52 @@ void sc_mem_clear(void *ptr, size_t len)
 	memset(ptr, 0, len);
 #endif
 }
+
+/**************************** mutex functions ************************/
+
+int sc_mutex_create(const sc_context_t *ctx, void **mutex)
+{
+	if (ctx == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (ctx->thread_ctx != NULL && ctx->thread_ctx->create_mutex != NULL)
+		return ctx->thread_ctx->create_mutex(mutex);
+	else
+		return SC_SUCCESS;
+}
+
+int sc_mutex_lock(const sc_context_t *ctx, void *mutex)
+{
+	if (ctx == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (ctx->thread_ctx != NULL && ctx->thread_ctx->lock_mutex != NULL)
+		return ctx->thread_ctx->lock_mutex(mutex);
+	else
+		return SC_SUCCESS;
+}
+
+int sc_mutex_unlock(const sc_context_t *ctx, void *mutex)
+{
+	if (ctx == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (ctx->thread_ctx != NULL && ctx->thread_ctx->unlock_mutex != NULL)
+		return ctx->thread_ctx->unlock_mutex(mutex);
+	else
+		return SC_SUCCESS;
+}
+
+void sc_mutex_destroy(const sc_context_t *ctx, void *mutex)
+{
+	if (ctx == NULL || ctx->thread_ctx == NULL ||
+	    ctx->thread_ctx->destroy_mutex == NULL)
+		return;
+	ctx->thread_ctx->destroy_mutex(mutex);
+}
+
+unsigned long sc_thread_id(const sc_context_t *ctx)
+{
+	if (ctx == NULL || ctx->thread_ctx == NULL || 
+	    ctx->thread_ctx->thread_id == NULL)
+		return 0UL;
+	else
+		return ctx->thread_ctx->thread_id();
+}

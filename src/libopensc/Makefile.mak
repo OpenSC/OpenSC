@@ -11,7 +11,7 @@ HEADERS			= \
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
 
 OBJECTS			= \
-	sc.obj ctx.obj ui.obj log.obj errors.obj portability.obj \
+	sc.obj ctx.obj ui.obj log.obj errors.obj \
 	asn1.obj base64.obj sec.obj card.obj iso7816.obj dir.obj padding.obj \
 	apdu.obj \
 	\

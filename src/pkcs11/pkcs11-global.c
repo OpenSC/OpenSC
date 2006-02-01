@@ -18,8 +18,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 #include <string.h>
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
 #include "sc-pkcs11.h"
 
 sc_context_t *context = NULL;
@@ -30,16 +37,156 @@ struct sc_pkcs11_config sc_pkcs11_conf;
 
 extern CK_FUNCTION_LIST pkcs11_function_list;
 
+#if defined(HAVE_PTHREAD) && defined(PKCS11_THREAD_LOCKING)
+#include <pthread.h>
+CK_RV mutex_create(void **mutex)
+{
+	pthread_mutex_t *m = (pthread_mutex_t *) malloc(sizeof(*mutex));
+	if (m == NULL)
+		return CKR_GENERAL_ERROR;;
+	pthread_mutex_init(m, NULL);
+	*mutex = m;
+	return CKR_OK;
+}
+
+CK_RV mutex_lock(void *p)
+{
+	if (pthread_mutex_lock((pthread_mutex_t *) p) == 0)
+		return CKR_OK;
+	else
+		return CKR_GENERAL_ERROR;
+}
+
+CK_RV mutex_unlock(void *p)
+{
+	if (pthread_mutex_unlock((pthread_mutex_t *) p) == 0)
+		return CKR_OK;
+	else
+		return CKR_GENERAL_ERROR;
+}
+
+CK_RV mutex_destroy(void *p)
+{
+	pthread_mutex_destroy((pthread_mutex_t *) p);
+	free(p);
+	return CKR_OK;
+}
+
+static CK_C_INITIALIZE_ARGS _def_locks = {
+	mutex_create, mutex_destroy, mutex_lock, mutex_unlock, 0, NULL };
+#elif defined(_WIN32) && defined (PKCS11_THREAD_LOCKING)
+CK_RV mutex_create(void **mutex)
+{
+	CRITICAL_SECTION *m;
+
+	m = (CRITICAL_SECTION *) malloc(sizeof(*mutex));
+	if (m == NULL)
+		return CKR_GENERAL_ERROR;
+	InitializeCriticalSection(m);
+	*mutex = m;
+	return CKR_OK;
+}
+
+CK_RV mutex_lock(void *p)
+{
+	EnterCriticalSection((CRITICAL_SECTION *) p);
+	return CKR_OK;
+}
+
+
+CK_RV mutex_unlock(void *p)
+{
+	LeaveCriticalSection((CRITICAL_SECTION *) p);
+	return CKR_OK;
+}
+
+
+CK_RV mutex_destroy(void *p)
+{
+	DeleteCriticalSection((CRITICAL_SECTION *) p);
+	free(p);
+	return CKR_OK;
+}
+static CK_C_INITIALIZE_ARGS _def_locks = {
+	mutex_create, mutex_destroy, mutex_lock, mutex_unlock, 0, NULL };
+#endif
+
+static CK_C_INITIALIZE_ARGS_PTR	_locking;
+static void *			_lock = NULL;
+#if (defined(HAVE_PTHREAD) || defined(_WIN32)) && defined(PKCS11_THREAD_LOCKING)
+static CK_C_INITIALIZE_ARGS_PTR default_mutex_funcs = &_def_locks;
+#else
+static CK_C_INITIALIZE_ARGS_PTR default_mutex_funcs = NULL;
+#endif
+
+/* wrapper for the locking functions for libopensc */
+static int sc_create_mutex(void **m)
+{
+	if (_locking == NULL)
+		return SC_SUCCESS;
+	if (_locking->CreateMutex(m) == CKR_OK)
+		return SC_SUCCESS;
+	else
+		return SC_ERROR_INTERNAL;
+}
+
+static int sc_lock_mutex(void *m)
+{
+	if (_locking == NULL)
+		return SC_SUCCESS;
+	if (_locking->LockMutex(m) == CKR_OK)
+		return SC_SUCCESS;
+	else
+		return SC_ERROR_INTERNAL;
+}
+
+static int sc_unlock_mutex(void *m)
+{
+	if (_locking == NULL)
+		return SC_SUCCESS;
+	if (_locking->UnlockMutex(m) == CKR_OK)
+		return SC_SUCCESS;
+	else
+		return SC_ERROR_INTERNAL;
+	
+}
+
+static void sc_destroy_mutex(void *m)
+{
+	if (_locking == NULL)
+		return;
+	_locking->DestroyMutex(m);
+}
+
+static sc_thread_context_t sc_thread_ctx = {
+	0, sc_create_mutex, sc_lock_mutex,
+	sc_unlock_mutex, sc_destroy_mutex, NULL
+};
+
 CK_RV C_Initialize(CK_VOID_PTR pReserved)
 {
 	int i, rc, rv;
+	sc_context_param_t ctx_opts;
 
 	if (context != NULL) {
 		sc_error(context, "C_Initialize(): Cryptoki already initialized\n");
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
-	rc = sc_establish_context(&context, "opensc-pkcs11");
-	if (rc != 0) {
+
+	rv = sc_pkcs11_init_lock((CK_C_INITIALIZE_ARGS_PTR) pReserved);
+	if (rv != CKR_OK)   {
+		sc_release_context(context);
+		context = NULL;
+	}
+
+	/* set context options */
+	memset(&ctx_opts, 0, sizeof(sc_context_param_t));
+	ctx_opts.ver        = 0;
+	ctx_opts.app_name   = "opensc-pkcs11";
+	ctx_opts.thread_ctx = &sc_thread_ctx;
+	
+	rc = sc_context_create(&context, &ctx_opts);
+	if (rc != SC_SUCCESS) {
 		rv = CKR_DEVICE_ERROR;
 		goto out;
 	}
@@ -56,12 +203,6 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 
 	/* Detect any card, but do not flag "insert" events */
 	__card_detect_all(0);
-
-	rv = sc_pkcs11_init_lock((CK_C_INITIALIZE_ARGS_PTR) pReserved);
-	if (rv != CKR_OK)   {
-		sc_release_context(context);
-		context = NULL;
-	}
 
 out:	
 	if (context != NULL)
@@ -190,6 +331,33 @@ out:	sc_pkcs11_unlock();
 	return rv;
 }
 
+static sc_timestamp_t get_current_time(void)
+{
+#ifndef _WIN32
+	struct timeval tv;
+	struct timezone tz;
+	sc_timestamp_t curr;
+
+	if (gettimeofday(&tv, &tz) != 0)
+		return 0;
+
+	curr = tv.tv_sec;
+	curr *= 1000;
+	curr += tv.tv_usec / 1000;
+#else
+	struct _timeb time_buf;
+	timestamp_t curr;
+
+	_ftime(&time_buf);
+
+	curr = time_buf.time;
+	curr *= 1000;
+	curr += time_buf.millitm;
+#endif
+
+	return curr;
+}
+
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot;
@@ -209,7 +377,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 
 	rv = slot_get_slot(slotID, &slot);
 	if (rv == CKR_OK){
-		now = sc_current_time();
+		now = get_current_time();
 		if (now >= card_table[slot->reader].slot_state_expires || now == 0) {
 			/* Update slot status */
 			rv = card_detect(slot->reader);
@@ -418,9 +586,6 @@ out:	sc_pkcs11_unlock();
  * Locking functions
  */
 
-static CK_C_INITIALIZE_ARGS_PTR	_locking;
-static void *			_lock = NULL;
-
 CK_RV
 sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 {
@@ -441,7 +606,7 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 	 */
 	_locking = NULL;
 	if (args->flags & CKF_OS_LOCKING_OK) {
-#if (defined(HAVE_PTHREAD) && !defined(PKCS11_THREAD_LOCKING))
+#if defined(HAVE_PTHREAD) && !defined(PKCS11_THREAD_LOCKING)
 		/* FIXME:
 		 * Mozilla uses the CKF_OS_LOCKING_OK flag in C_Initialize().
 		 * The result is that the Mozilla process doesn't end when
@@ -457,16 +622,15 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 		 */
 		 return CKR_OK;
 #endif
-		if (!(_lock = sc_mutex_new()))
-			rv = CKR_CANT_LOCK;
-	} else
-	if (args->CreateMutex
-	 && args->DestroyMutex
-	 && args->LockMutex
-	 && args->UnlockMutex) {
-		rv = args->CreateMutex(&_lock);
-		if (rv == CKR_OK)
-			_locking = args;
+		_locking = default_mutex_funcs;
+	} else if (args->CreateMutex && args->DestroyMutex &&
+		   args->LockMutex   && args->UnlockMutex) {
+		_locking = args;
+	}
+
+	if (_locking != NULL) {
+		/* create mutex */
+		rv = _locking->CreateMutex(&_lock);
 	}
 
 	return rv;
@@ -483,9 +647,7 @@ sc_pkcs11_lock()
 	if (_locking)  {
 		while (_locking->LockMutex(_lock) != CKR_OK)
 			;
-	} else {
-		sc_mutex_lock((sc_mutex_t *) _lock);
-	}
+	} 
 
 	return CKR_OK;
 }
@@ -498,9 +660,7 @@ __sc_pkcs11_unlock(void *lock)
 	if (_locking) {
 		while (_locking->UnlockMutex(lock) != CKR_OK)
 			;
-	} else {
-		sc_mutex_unlock((sc_mutex_t *) lock);
-	}
+	} 
 }
 
 void
@@ -532,8 +692,6 @@ sc_pkcs11_free_lock()
 
 	if (_locking)
 		_locking->DestroyMutex(tempLock);
-	else
-		sc_mutex_free((sc_mutex_t *) tempLock);
 	_locking = NULL;
 }
 

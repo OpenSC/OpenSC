@@ -483,6 +483,14 @@ gpk_store_key(sc_profile_t *profile, sc_card_t *card,
 	return r;
 }
 
+/* this could be removed once we include libopensc/internal.h */
+#ifndef _WIN32
+#define msleep(t)	usleep((t) * 1000)
+#else
+#define msleep(t)	Sleep(t)
+#define sleep(t)	Sleep((t) * 1000)
+#endif
+
 /*
  * On-board key generation.
  */

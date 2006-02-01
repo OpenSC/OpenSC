@@ -48,9 +48,12 @@ void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	apdu->p2 = (u8) p2;
 }
 
-static sc_card_t * sc_card_new(void)
+static sc_card_t * sc_card_new(sc_context_t *ctx)
 {
 	sc_card_t *card;
+
+	if (ctx == NULL)
+		return NULL;
 
 	card = (sc_card_t *) calloc(1, sizeof(struct sc_card));
 	if (card == NULL)
@@ -60,10 +63,17 @@ static sc_card_t * sc_card_new(void)
 		free(card);
 		return NULL;
 	}
+
+	card->ctx = ctx;
+	if (sc_mutex_create(ctx, &card->mutex) != SC_SUCCESS) {
+		free(card->ops);
+		free(card);
+		return NULL;
+	}
+
 	card->type = -1;
 	card->app_count = -1;
 	card->magic = SC_CARD_MAGIC;
-	card->mutex = sc_mutex_new();
 
 	return card;
 }
@@ -77,28 +87,30 @@ static void sc_card_free(sc_card_t *card)
 	free(card->ops);
 	if (card->algorithms != NULL)
 		free(card->algorithms);
-	sc_mutex_free(card->mutex);
+	if (card->mutex != NULL)
+		sc_mutex_destroy(card->ctx, card->mutex);
 	sc_mem_clear(card, sizeof(*card));
 	free(card);
 }
 
-int sc_connect_card(sc_reader_t *reader, int slot_id,
-		    sc_card_t **card_out)
+int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card_out)
 {
 	sc_card_t *card;
-	sc_context_t *ctx = reader->ctx;
+	sc_context_t *ctx;
 	sc_slot_info_t *slot = _sc_get_slot_info(reader, slot_id);
 	struct sc_card_driver *driver;
 	int i, r = 0, idx, connected = 0;
 
-	assert(card_out != NULL);
+	if (card_out == NULL || reader == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	ctx = reader->ctx;
 	SC_FUNC_CALLED(ctx, 1);
 	if (reader->ops->connect == NULL)
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_NOT_SUPPORTED);
 	if (slot == NULL)
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_SLOT_NOT_FOUND);
 
-	card = sc_card_new();
+	card = sc_card_new(ctx);
 	if (card == NULL)
 		SC_FUNC_RETURN(ctx, 1, SC_ERROR_OUT_OF_MEMORY);
 	r = reader->ops->connect(reader, slot);
@@ -238,8 +250,11 @@ int sc_lock(sc_card_t *card)
 {
 	int r = 0;
 
-	assert(card != NULL);
-	sc_mutex_lock(card->mutex);
+	if (card == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	r = sc_mutex_lock(card->ctx, card->mutex);
+	if (r != SC_SUCCESS)
+		return r;
 	if (card->lock_count == 0) {
 		SC_FUNC_CALLED(card->ctx, 3);
 		if (card->reader->ops->lock != NULL)
@@ -249,7 +264,7 @@ int sc_lock(sc_card_t *card)
 	}
 	if (r == 0)
 		card->lock_count++;
-	sc_mutex_unlock(card->mutex);
+	r = sc_mutex_unlock(card->ctx, card->mutex);
 	return r;
 }
 
@@ -257,18 +272,28 @@ int sc_unlock(sc_card_t *card)
 {
 	int r = 0;
 
-	assert(card != NULL);
-	sc_mutex_lock(card->mutex);
+	if (card == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	r = sc_mutex_lock(card->ctx, card->mutex);
+	if (r != SC_SUCCESS)
+		return r;
 	assert(card->lock_count >= 1);
 	if (card->lock_count == 1) {
 		SC_FUNC_CALLED(card->ctx, 3);
 		memset(&card->cache, 0, sizeof(card->cache));
 		card->cache_valid = 0;
 		if (card->ops->logout != NULL) {
-			sc_mutex_unlock(card->mutex);
+			/*XXX*/
+			r = sc_mutex_unlock(card->ctx, card->mutex);
+			if (r != SC_SUCCESS) {
+				sc_error(card->ctx, "unable to release lock\n");
+				return r;
+			}
 			sc_debug(card->ctx, "Calling card logout function\n");
 			card->ops->logout(card);
-			sc_mutex_lock(card->mutex);
+			r = sc_mutex_lock(card->ctx, card->mutex);
+			if (r != SC_SUCCESS)
+				return r;
 		}
 	}
 	/* Check again, lock count may have changed
@@ -278,7 +303,7 @@ int sc_unlock(sc_card_t *card)
 			r = card->reader->ops->unlock(card->reader, card->slot);
 	}
 	card->lock_count--;
-	sc_mutex_unlock(card->mutex);
+	r = sc_mutex_unlock(card->ctx, card->mutex);
 	return r;
 }
 

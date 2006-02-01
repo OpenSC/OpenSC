@@ -192,16 +192,6 @@ extern "C" {
 #define SC_ALGORITHM_RSA_HASH_MD5_SHA1	0x00000080
 #define SC_ALGORITHM_RSA_HASH_RIPEMD160	0x00000100
 
-/* A 64-bit uint, used in sc_current_time() */
-#ifndef _WIN32
-typedef unsigned long long sc_timestamp_t;
-#define msleep(t)	usleep((t) * 1000)
-#else
-typedef unsigned __int64 sc_timestamp_t;
-#define msleep(t)	Sleep(t)
-#define sleep(t)	Sleep((t) * 1000)
-#endif
-
 /* Event masks for sc_wait_for_event() */
 #define SC_EVENT_CARD_INSERTED		0x0001
 #define SC_EVENT_CARD_REMOVED		0x0002
@@ -419,17 +409,6 @@ struct sc_reader_operations {
 			      int timeout);
 };
 
-/* Mutexes - this is just a dummy struct used for type
- * safety; internally we use objects defined by the
- * underlying thread model
- */
-typedef struct sc_mutex sc_mutex_t;
-
-struct sc_mutex *sc_mutex_new(void);
-void sc_mutex_lock(struct sc_mutex *p);
-void sc_mutex_unlock(struct sc_mutex *p);
-void sc_mutex_free(struct sc_mutex *p);
-
 /*
  * Card flags
  *
@@ -511,7 +490,7 @@ typedef struct sc_card {
 
 	sc_serial_number_t serialnr;
 
-	sc_mutex_t *mutex;
+	void *mutex;
 
 	unsigned int magic;
 } sc_card_t;
@@ -642,6 +621,26 @@ typedef struct sc_card_driver {
 	void *dll;
 } sc_card_driver_t;
 
+/**
+ * @struct sc_thread_context_t
+ * Structure for the locking function to use when using libopensc
+ * in a multi-threaded application.
+ */
+typedef struct {
+	/** the version number of this structure (0 for this version) */
+	unsigned int ver;
+	/** creates a mutex object */
+	int (*create_mutex)(void **);
+	/** locks a mutex object (blocks until the lock has been acquired) */
+	int (*lock_mutex)(void *);
+	/** unlocks a mutex object  */
+	int (*unlock_mutex)(void *);
+	/** destroys a mutex object */
+	void (*destroy_mutex)(void *);
+	/** returns unique identifier for the thread (can be NULL) */
+	unsigned long (*thread_id)(void);
+} sc_thread_context_t;
+
 typedef struct sc_context {
 	scconf_context *conf;
 	scconf_block *conf_blocks[3];
@@ -661,7 +660,8 @@ typedef struct sc_context {
 	struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS];
 	struct sc_card_driver *forced_driver;
 
-	sc_mutex_t *mutex;
+	sc_thread_context_t	*thread_ctx;
+	void *mutex;
 
 	unsigned int magic;
 } sc_context_t;
@@ -684,12 +684,41 @@ void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu, int cse, int ins,
 /********************************************************************/
 
 /**
- * Establishes an OpenSC context
+ * Establishes an OpenSC context. Note: this function is deprecated,
+ * please use sc_context_create() instead.
  * @param ctx A pointer to a pointer that will receive the allocated context
  * @param app_name A string that identifies the application, used primarily
  *	in finding application-specific configuration data. Can be NULL.
  */
 int sc_establish_context(sc_context_t **ctx, const char *app_name);
+
+/**
+ * @struct sc_context_t initialization parameters
+ * Structure to supply additional parameters, for example
+ * mutex information, to the sc_context_t creation.
+ */
+typedef struct {
+	/** version number of this structure (0 for this version) */
+	unsigned int  ver;
+	/** name of the application (used for finding application
+	 *  dependend configuration data). If NULL the name "default"
+	 *  will be used. */
+	const char    *app_name;
+	/** flags, currently unused */
+	unsigned long flags;
+	/** mutex functions to use (optional) */
+	sc_thread_context_t *thread_ctx;
+} sc_context_param_t;
+/**
+ * Creates a new sc_context_t object.
+ * @param  ctx   pointer to a sc_context_t pointer for the newly
+ *               created sc_context_t object.
+ * @param  parm  parameters for the sc_context_t creation (see 
+ *               sc_context_param_t for a description of the supported
+ *               options). This parameter is optional and can be NULL.
+ * @return SC_SUCCESS on success and an error code otherwise.
+ */
+int sc_context_create(sc_context_t **ctx, const sc_context_param_t *parm);
 
 /**
  * Releases an established OpenSC context
@@ -737,8 +766,7 @@ int sc_set_card_driver(sc_context_t *ctx, const char *short_name);
  * @param reader Reader structure
  * @param slot_id Slot ID to connect to
  * @param card The allocated card object will go here */
-int sc_connect_card(sc_reader_t *reader, int slot_id,
-		    sc_card_t **card);
+int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card);
 /**
  * Disconnects from a card, and frees the card structure. Any locks
  * made by the application must be released before calling this function.
@@ -996,9 +1024,6 @@ int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *o
 int sc_base64_encode(const u8 *in, size_t inlen, u8 *out, size_t outlen,
 		     size_t linelength);
 int sc_base64_decode(const char *in, u8 *out, size_t outlen);
-
-/* Returns the current time in milliseconds */
-sc_timestamp_t sc_current_time(void);
 
 /**
  * Clears a memory buffer (note: when OpenSSL is used this is
