@@ -607,7 +607,7 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 				 *      secure messaging is used */
 				plen          = 255;
 				tapdu.cla    |= 0x10;
-				tapdu.le      = 2;
+				tapdu.le      = 0;
 				/* the intermediate APDU don't expect data */
 				tapdu.lc      = 0;
 				tapdu.resplen = 0;
