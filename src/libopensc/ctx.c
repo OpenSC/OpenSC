@@ -32,13 +32,6 @@
 #include <winreg.h>
 #endif
 
-/* Default value for apdu_masquerade option */
-#ifndef _WIN32
-# define DEF_APDU_MASQ		SC_APDU_MASQUERADE_NONE
-#else
-# define DEF_APDU_MASQ		SC_APDU_MASQUERADE_4AS3
-#endif
-
 int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 {
 	assert(reader != NULL);
@@ -260,33 +253,9 @@ static void load_reader_driver_options(sc_context_t *ctx,
 			break;
 	}
 
-	driver->apdu_masquerade = DEF_APDU_MASQ;
 	driver->max_send_size = SC_APDU_CHOP_SIZE;
 	driver->max_recv_size = SC_APDU_CHOP_SIZE;
 	if (conf_block != NULL) {
-		const scconf_list *list;
-
-		list = scconf_find_list(conf_block, "apdu_masquerade");
-		if (list)
-			driver->apdu_masquerade = 0;
-		for (; list; list = list->next) {
-			if (!strcmp(list->data, "case4as3")) {
-				driver->apdu_masquerade |= SC_APDU_MASQUERADE_4AS3;
-			} else if (!strcmp(list->data, "case1as2")) {
-				driver->apdu_masquerade |= SC_APDU_MASQUERADE_1AS2;
-			} else if (!strcmp(list->data, "case1as2_always")) {
-				driver->apdu_masquerade |= SC_APDU_MASQUERADE_1AS2_ALWAYS;
-			} else if (!strcmp(list->data, "none")) {
-				driver->apdu_masquerade = 0;
-			} else {
-				/* no match. Should something be logged? */
-				sc_error(ctx,
-					"Unexpected keyword \"%s\" in "
-					"apdu_masquerade; ignored\n",
-					list->data);
-			}
-		}
-
 		driver->max_send_size = scconf_get_int(conf_block,
 						"max_send_size",
 						SC_APDU_CHOP_SIZE);

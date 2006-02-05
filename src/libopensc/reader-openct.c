@@ -43,9 +43,7 @@ static int openct_reader_connect(sc_reader_t *reader,
 static int openct_reader_disconnect(sc_reader_t *reader,
 			sc_slot_info_t *slot, int action);
 static int openct_reader_transmit(sc_reader_t *reader,
-			sc_slot_info_t *slot,
-			const u8 *sendbuf, size_t sendsize,
-			u8 *recvbuf, size_t *recvsize, unsigned long control);
+			sc_slot_info_t *slot, sc_apdu_t *apdu);
 static int openct_reader_perform_verify(sc_reader_t *reader,
 			sc_slot_info_t *slot,
 			struct sc_pin_cmd_data *info);
@@ -61,7 +59,7 @@ static struct sc_reader_driver openct_reader_driver = {
 	"OpenCT reader",
 	"openct",
 	&openct_ops,
-	0, 0, 0, NULL
+	0, 0, NULL
 };
 
 /* private data structures */
@@ -287,7 +285,7 @@ openct_reader_disconnect(sc_reader_t *reader,
 }
 
 int
-openct_reader_transmit(sc_reader_t *reader,
+openct_reader_internal_transmit(sc_reader_t *reader,
 		sc_slot_info_t *slot,
 		const u8 *sendbuf, size_t sendsize,
 		u8 *recvbuf, size_t *recvsize, unsigned long control)
@@ -314,6 +312,48 @@ openct_reader_transmit(sc_reader_t *reader,
 
 	return openct_error(reader, rc);
 }
+
+static int openct_reader_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
+	sc_apdu_t *apdu)
+{
+	size_t       ssize, rsize, rbuflen = 0;
+	u8           *sbuf = NULL, *rbuf = NULL;
+	int          r;
+
+	rsize = rbuflen = apdu->resplen + 2;
+	rbuf     = malloc(rbuflen);
+	if (rbuf == NULL) {
+		r = SC_ERROR_MEMORY_FAILURE;
+		goto out;
+	}
+	/* encode and log the APDU */
+	r = sc_apdu_get_octets(reader->ctx, apdu, &sbuf, &ssize, SC_PROTO_RAW, 1);
+	if (r != SC_SUCCESS)
+		goto out;
+	r = openct_reader_internal_transmit(reader, slot, sbuf, ssize,
+				rbuf, &rsize, apdu->control);
+	if (r < 0) {
+		/* unable to transmit ... most likely a reader problem */
+		sc_error(reader->ctx, "unable to transmit");
+		goto out;
+	}
+	/* log and set response */
+	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize, 1);
+	if (r != SC_SUCCESS)
+		return r;
+out:
+	if (sbuf != NULL) {
+		sc_mem_clear(sbuf, ssize);
+		free(sbuf);
+	}
+	if (rbuf != NULL) {
+		sc_mem_clear(rbuf, rbuflen);
+		free(rbuf);
+	}
+	
+	return r;
+}
+
 
 int
 openct_reader_perform_verify(sc_reader_t *reader,

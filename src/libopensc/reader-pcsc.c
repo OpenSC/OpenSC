@@ -141,7 +141,7 @@ static DWORD opensc_proto_to_pcsc(unsigned int proto)
 	}
 }
 
-static int pcsc_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
+static int pcsc_internal_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 			 const u8 *sendbuf, size_t sendsize,
 			 u8 *recvbuf, size_t *recvsize,
 			 unsigned long control)
@@ -201,6 +201,53 @@ static int pcsc_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 
 	return 0;
 }
+
+static int pcsc_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
+	sc_apdu_t *apdu)
+{
+	size_t       ssize, rsize, rbuflen = 0;
+	u8           *sbuf = NULL, *rbuf = NULL;
+	int          r;
+
+	/* we always use a at least 258 byte size big return buffer
+	 * to mimic the behaviour of the old implementation (some readers
+	 * seems to require a larger than necessary return buffer).
+	 * The buffer for the returned data needs to be at least 2 bytes
+	 * larger than the expected data length to store SW1 and SW2. */
+	rsize = rbuflen = apdu->resplen <= 256 ? 258 : apdu->resplen + 2;
+	rbuf     = malloc(rbuflen);
+	if (rbuf == NULL) {
+		r = SC_ERROR_MEMORY_FAILURE;
+		goto out;
+	}
+	/* encode and log the APDU */
+	r = sc_apdu_get_octets(reader->ctx, apdu, &sbuf, &ssize, slot->active_protocol, 1);
+	if (r != SC_SUCCESS)
+		goto out;
+	r = pcsc_internal_transmit(reader, slot, sbuf, ssize,
+				rbuf, &rsize, apdu->control);
+	if (r < 0) {
+		/* unable to transmit ... most likely a reader problem */
+		sc_error(reader->ctx, "unable to transmit");
+		goto out;
+	}
+	/* log and set response */
+	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize, 1);
+	if (r != SC_SUCCESS)
+		return r;
+out:
+	if (sbuf != NULL) {
+		sc_mem_clear(sbuf, ssize);
+		free(sbuf);
+	}
+	if (rbuf != NULL) {
+		sc_mem_clear(rbuf, rbuflen);
+		free(rbuf);
+	}
+	
+	return r;
+}
+
 
 static int refresh_slot_attributes(sc_reader_t *reader, sc_slot_info_t *slot)
 {
@@ -586,7 +633,7 @@ static struct sc_reader_driver pcsc_drv = {
 	"PC/SC reader",
 	"pcsc",
 	&pcsc_ops,
-	0, 0, 0, NULL
+	0, 0, NULL
 };
 
 static int pcsc_init(sc_context_t *ctx, void **reader_data)

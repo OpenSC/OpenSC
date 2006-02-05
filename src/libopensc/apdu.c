@@ -34,7 +34,7 @@
  *  @param  proto  the desired protocol
  *  @return length of the encoded APDU
  */
-static size_t sc_get_apdu_length(const sc_apdu_t *apdu, unsigned int proto)
+static size_t sc_apdu_get_length(const sc_apdu_t *apdu, unsigned int proto)
 {
 	size_t ret = 4;
 
@@ -80,7 +80,7 @@ static int sc_apdu2bytes(sc_context_t *ctx, const sc_apdu_t *apdu,
 {
 	u8     *p = out;
 
-	size_t len = sc_get_apdu_length(apdu, proto);
+	size_t len = sc_apdu_get_length(apdu, proto);
 
 	if (out == NULL || outlen < len)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -168,139 +168,89 @@ static int sc_apdu2bytes(sc_context_t *ctx, const sc_apdu_t *apdu,
 	return SC_SUCCESS;
 }
 
-static void sc_apdu_log_in(sc_context_t *ctx, const u8 *data, size_t len, int s)
+static void sc_apdu_log(sc_context_t *ctx, const u8 *data, size_t len,
+	int is_sensitive, int is_outgoing)
 {
-	size_t buflen = len * 5 + 128;
-	char * buf = malloc(buflen);
+	size_t blen = len * 5 + 128;
+	char   *buf = malloc(blen);
 	if (buf == NULL)
 		return;
 
-	if (s == 0 || ctx->debug >= 6)
-		sc_hex_dump(ctx, data, len, buf, buflen);
-	else
-		snprintf(buf, buflen, "%02x %02x %02x %02x [sensitive data]\n",
+	if (is_sensitive == 0 || ctx->debug >= 6)
+		sc_hex_dump(ctx, data, len, buf, blen);
+	else {
+		if (is_outgoing != 0)
+			/* is case of a outgoing APDU log the command header */
+			snprintf(buf, blen, "%02x %02x %02x %02x "
+				"[senstive data]\n",
 				data[0], data[1], data[2], data[3]);
+		else
+			snprintf(buf, blen, "[sensitive data]\n"); 
+	}
 
-	sc_debug(ctx,
-		"\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %4d bytes send\n"
+	sc_debug(ctx, "\n%s APDU data [%5u bytes] =====================================\n"
 		"%s"
-		">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n",
-		(int)len, buf);
-
+		"======================================================================\n",
+		is_outgoing != 0 ? "Outgoing" : "Incoming", len,
+		buf);
 	free(buf);
 }
 
-static void sc_apdu_log_out(sc_context_t *ctx, const u8 *data, size_t len, int s)
+int sc_apdu_get_octets(sc_context_t *ctx, const sc_apdu_t *apdu, u8 **buf,
+	size_t *len, unsigned int proto, int do_log)
 {
-	size_t buflen = len * 5 + 128;
-	char * buf = malloc(buflen);
-	if (buf == NULL)
-		return;
+	size_t	nlen;
+	u8	*nbuf;
 
-	if (s == 0 || ctx->debug >= 6)
-		sc_hex_dump(ctx, data, len, buf, buflen);
-	else
-		snprintf(buf, buflen, "[sensitive data]\n");
+	if (apdu == NULL || buf == NULL || len == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
-	sc_debug(ctx,
-		"\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< %4d bytes received\n"
-		"%s"
-		"<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n",
-		(int)len, buf);
-
-	free(buf);
-}
-
-/** Encodes the APDU in a octet buffer and sends it to the token
- *  using the sc_reader_operations::transmit function.
- *  @param  card  sc_card_t object of the token to which the APDU
- *                should be sent
- *  @param  apdu  sc_apdu_t object to transmit
- *  @return SC_SUCCESS on success and an error code otherwise
- */
-static int sc_apdu_encode_send(sc_card_t *card, sc_apdu_t *apdu,
-	unsigned int proto)
-{
-	size_t       sendsize, recvsize, rbuflen = 0;
-	u8           *sbuf = NULL, *rbuf = NULL;
-	int          r;
-	sc_context_t *ctx = card->ctx;
-
-	if (card->reader->ops->transmit == NULL)
-		return SC_ERROR_NOT_SUPPORTED;
-
-	/* we always use a at least 258 byte size big return buffer
-	 * to mimic the behaviour of the old implementation (some readers
-	 * seems to require a larger than necessary return buffer).
-	 * The buffer for the returned data needs to be at least 2 bytes
-	 * larger than the expected data length to store SW1 and SW2. */
-	recvsize = rbuflen = apdu->resplen <= 256 ? 258 : apdu->resplen + 2;
-	rbuf     = malloc(rbuflen);
 	/* get the estimated length of encoded APDU */
-	sendsize = sc_get_apdu_length(apdu, proto);
-	if (sendsize == 0) {
-		r = SC_ERROR_INTERNAL;
-		goto out;
-	}
-	sbuf = malloc(sendsize);
-	if (sbuf == NULL || rbuf == NULL) {
-		r = SC_ERROR_MEMORY_FAILURE;
-		goto out;
-	}
+	nlen = sc_apdu_get_length(apdu, proto);
+	if (nlen == 0)
+		return SC_ERROR_INTERNAL;
+	nbuf = malloc(nlen);
+	if (nbuf == NULL)
+		return SC_ERROR_MEMORY_FAILURE;
 	/* encode the APDU in the buffer */
-	r = sc_apdu2bytes(ctx, apdu, proto, sbuf, sendsize);
-	if (r != SC_SUCCESS)
-		goto out;
+	if (sc_apdu2bytes(ctx, apdu, proto, nbuf, nlen) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
+	*buf = nbuf;
+	*len = nlen;
 
-	/* log outgoing APDU */
 #ifndef OPENSC_DONT_LOG_SENSITIVE
-	if (ctx->debug >= 5)
-		sc_apdu_log_in(ctx, sbuf, sendsize, (int)apdu->sensitive);
-#endif
-	/* now let the reader driver transmit the APDU to the token */
-	r = card->reader->ops->transmit(card->reader, card->slot, sbuf,
-					sendsize, rbuf, &recvsize,
-					apdu->control);
-	if (r < 0) {
-		/* unable to transmit ... most likely a reader problem */
-		sc_error(ctx, "unable to transmit");
-		goto out;
-	}
-	/* log incoming data */
-#ifndef OPENSC_DONT_LOG_SENSITIVE
-	if (ctx->debug >= 5)
-		sc_apdu_log_out(ctx, rbuf, recvsize, (int)apdu->sensitive);
+	if (do_log != 0 && ctx->debug >= 5)
+                sc_apdu_log(ctx, nbuf, nlen, apdu->sensitive, 1);
 #endif
 
-	if (recvsize < 2) {
+	return SC_SUCCESS;
+}
+
+int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
+	size_t len, int do_log)
+{
+#ifndef OPENSC_DONT_LOG_SENSITIVE
+	if (do_log != 0 && ctx->debug >= 5)
+		sc_apdu_log(ctx, buf, len, apdu->sensitive, 0);
+#endif
+	if (len < 2) {
 		/* no SW1 SW2 ... something went terrible wrong */
-		sc_error(ctx, "SW1 SW2 missing");
-		r = SC_ERROR_INTERNAL;
-		goto out;
+		sc_error(ctx, "invalid response: SW1 SW2 missing");
+		return SC_ERROR_INTERNAL;
 	}
-	/* the last two bytes contain the status bytes SW1 and SW2 */
-	apdu->sw1 = (unsigned int)rbuf[recvsize - 2];
-	apdu->sw2 = (unsigned int)rbuf[recvsize - 1];
-	recvsize -= 2;
+	/* set the SW1 and SW2 status bytes (the last two bytes of
+	 * the response */
+	apdu->sw1 = (unsigned int)buf[len - 2];
+	apdu->sw2 = (unsigned int)buf[len - 1];
+	len -= 2;
 	/* set output length and copy the returned data if necessary */
-	if (recvsize <= apdu->resplen)
-		apdu->resplen = recvsize;
+	if (len <= apdu->resplen)
+		apdu->resplen = len;
 
 	if (apdu->resplen != 0)
-		memcpy(apdu->resp, rbuf, apdu->resplen);
+		memcpy(apdu->resp, buf, apdu->resplen);
 
-	r = SC_SUCCESS;
-out:
-	if (sbuf != NULL) {
-		sc_mem_clear(sbuf, sendsize);
-		free(sbuf);
-	}
-	if (rbuf != NULL) {
-		sc_mem_clear(rbuf, rbuflen);
-		free(rbuf);
-	}
-	
-	return r;
+	return SC_SUCCESS;
 }
 
 /*********************************************************************/
@@ -456,7 +406,9 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 	*/
 
 	/* send APDU to the reader driver */
-	r = sc_apdu_encode_send(card, apdu, card->slot->active_protocol);
+	if (card->reader->ops->transmit == NULL)
+		return SC_ERROR_NOT_SUPPORTED;
+	r = card->reader->ops->transmit(card->reader, card->slot, apdu);
 	if (r != 0) {
 		sc_error(ctx, "unable to transmit APDU");
 		return r;

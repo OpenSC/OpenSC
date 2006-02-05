@@ -157,6 +157,33 @@ void sc_mutex_destroy(const sc_context_t *ctx, void *mutex);
  */
 unsigned long sc_thread_id(const sc_context_t *ctx);
 
+/********************************************************************/
+/*             internal APDU handling functions                     */
+/********************************************************************/
+
+/**
+ * Returns the encoded APDU in newly created buffer.
+ * @param  ctx     sc_context_t object
+ * @param  apdu    sc_apdu_t object with the APDU to encode
+ * @param  buf     pointer to the newly allocated buffer
+ * @param  len     length of the encoded APDU
+ * @param  proto   protocol to be used
+ * @param  do_log  log data to send
+ * @return SC_SUCCESS on success and an error code otherwise
+ */
+int sc_apdu_get_octets(sc_context_t *ctx, const sc_apdu_t *apdu, u8 **buf,
+	size_t *len, unsigned int proto, int do_log);
+/**
+ * Sets the status bytes and return data in the APDU
+ * @param  ctx     sc_context_t object
+ * @param  apdu    the apdu to which the data should be written
+ * @param  buf     returned data
+ * @param  len     length of the returned data
+ * @param  do_log  log returned data
+ * @return SC_SUCCESS on success and an error code otherwise
+ */
+int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
+	size_t len, int do_log);
 #ifdef __cplusplus
 }
 #endif

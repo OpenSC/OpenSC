@@ -265,13 +265,8 @@ struct sc_reader_driver {
 	struct sc_reader_operations *ops;
 
 	size_t max_send_size, max_recv_size;
-	int apdu_masquerade;
 	void *dll;
 };
-#define SC_APDU_MASQUERADE_NONE		0x00
-#define SC_APDU_MASQUERADE_4AS3		0x01
-#define SC_APDU_MASQUERADE_1AS2		0x02
-#define SC_APDU_MASQUERADE_1AS2_ALWAYS	0x04
 
 /* slot flags */
 #define SC_SLOT_CARD_PRESENT	0x00000001
@@ -386,9 +381,7 @@ struct sc_reader_operations {
 	int (*disconnect)(struct sc_reader *reader, struct sc_slot_info *slot,
 			  int action);
 	int (*transmit)(struct sc_reader *reader, struct sc_slot_info *slot,
-			const u8 *sendbuf, size_t sendsize,
-			u8 *recvbuf, size_t *recvsize,
-			unsigned long control);
+			sc_apdu_t *apdu);
 	int (*lock)(struct sc_reader *reader, struct sc_slot_info *slot);
 	int (*unlock)(struct sc_reader *reader, struct sc_slot_info *slot);
 	int (*set_protocol)(struct sc_reader *reader, struct sc_slot_info *slot,
