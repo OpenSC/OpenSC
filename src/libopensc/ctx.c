@@ -746,16 +746,21 @@ int sc_release_context(sc_context_t *ctx)
 		if (drv->atr_map)
 			_sc_free_atr(ctx, drv);
 	}
+	if (ctx->preferred_language != NULL)
+		free(ctx->preferred_language);
+	if (ctx->mutex != NULL) {
+		int r = sc_mutex_destroy(ctx, ctx->mutex);
+		if (r != SC_SUCCESS) {
+			sc_error(ctx, "unable to destroy mutex\n");
+			return r;
+		}
+	}
+	if (ctx->conf != NULL)
+		scconf_free(ctx->conf);
 	if (ctx->debug_file && ctx->debug_file != stdout)
 		fclose(ctx->debug_file);
 	if (ctx->error_file && ctx->error_file != stderr)
 		fclose(ctx->error_file);
-	if (ctx->preferred_language != NULL)
-		free(ctx->preferred_language);
-	if (ctx->conf != NULL)
-		scconf_free(ctx->conf);
-	if (ctx->mutex != NULL)
-		sc_mutex_destroy(ctx, ctx->mutex);
 	if (ctx->app_name != NULL)
 		free(ctx->app_name);
 	sc_mem_clear(ctx, sizeof(*ctx));

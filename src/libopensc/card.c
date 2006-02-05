@@ -87,8 +87,11 @@ static void sc_card_free(sc_card_t *card)
 	free(card->ops);
 	if (card->algorithms != NULL)
 		free(card->algorithms);
-	if (card->mutex != NULL)
-		sc_mutex_destroy(card->ctx, card->mutex);
+	if (card->mutex != NULL) {
+		int r = sc_mutex_destroy(card->ctx, card->mutex);
+		if (r != SC_SUCCESS)
+			sc_error(card->ctx, "unable to destroy mutex\n");
+	}
 	sc_mem_clear(card, sizeof(*card));
 	free(card);
 }

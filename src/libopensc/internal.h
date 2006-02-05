@@ -148,8 +148,9 @@ int sc_mutex_unlock(const sc_context_t *ctx, void *mutex);
  * SC_SUCCESS.
  * @param  ctx    sc_context_t object with the thread context
  * @param  mutex  mutex object to be destroyed
+ * @return SC_SUCCESS on success and an error code otherwise
  */
-void sc_mutex_destroy(const sc_context_t *ctx, void *mutex);
+int sc_mutex_destroy(const sc_context_t *ctx, void *mutex);
 /**
  * Returns a unique id for every thread.
  * @param  ctx  sc_context_t object with the thread context

@@ -629,7 +629,7 @@ typedef struct {
 	/** unlocks a mutex object  */
 	int (*unlock_mutex)(void *);
 	/** destroys a mutex object */
-	void (*destroy_mutex)(void *);
+	int (*destroy_mutex)(void *);
 	/** returns unique identifier for the thread (can be NULL) */
 	unsigned long (*thread_id)(void);
 } sc_thread_context_t;

@@ -158,7 +158,7 @@ ctbcs_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	sc_card_t dummy_card, *card;
 	sc_apdu_t apdu;
 	struct sc_card_operations ops;
-	int r;
+	int r, s;
 
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
@@ -185,7 +185,11 @@ ctbcs_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	card = &dummy_card;
 
 	r = sc_transmit_apdu(card, &apdu);
-	sc_mutex_destroy(reader->ctx, card->mutex);
+	s = sc_mutex_destroy(reader->ctx, card->mutex);
+	if (s != SC_SUCCESS) {
+		sc_error(reader->ctx, "unable to destroy mutex\n");
+		return s;
+	}
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	
 	/* Check CTBCS status word */

@@ -151,11 +151,14 @@ static int sc_unlock_mutex(void *m)
 	
 }
 
-static void sc_destroy_mutex(void *m)
+static int sc_destroy_mutex(void *m)
 {
 	if (_locking == NULL)
-		return;
-	_locking->DestroyMutex(m);
+		return SC_SUCCESS;
+	if (_locking->DestroyMutex(m) == CKR_OK)
+		return SC_SUCCESS;
+	else
+		return SC_ERROR_INTERNAL;
 }
 
 static sc_thread_context_t sc_thread_ctx = {
