@@ -471,6 +471,7 @@ int main(
 		{ 0, 0, 0, 0 }
 	};
 	sc_context_t *ctx;
+	sc_context_param_t ctx_param;
 	sc_card_t *card;
 	int do_help=0, do_unblock=0, do_change=0, do_nullpin=0, do_readcert=0, do_writecert=0;
 	u8 newpin[32];
@@ -555,7 +556,12 @@ int main(
 		exit(1);
 	}
 
-	if((i=sc_establish_context(&ctx, argv[0]))<0){
+	memset(&ctx_param, 0, sizeof(ctx_param));
+	ctx_param.ver      = 0;
+	ctx_param.app_name = argv[0];
+
+	i = sc_context_create(&ctx, &ctx_param);
+	if(i<0){
 		fprintf(stderr,"Establish-Context failed: %s\n", sc_strerror(i));
 		exit(1);
 	}

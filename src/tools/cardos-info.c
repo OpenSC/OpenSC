@@ -343,6 +343,7 @@ int main(int argc, char *const argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	const char *opt_driver = NULL;
+	sc_context_param_t ctx_param;
 
 	while (1) {
 		c = getopt_long(argc, argv, "r:vc:w", options,
@@ -370,7 +371,12 @@ int main(int argc, char *const argv[])
 			break;
 		}
 	}
-	r = sc_establish_context(&ctx, app_name);
+
+	/* create sc_context_t object */
+	memset(&ctx_param, 0, sizeof(ctx_param));
+	ctx_param.ver      = 0;
+	ctx_param.app_name = app_name;
+	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n",
 			sc_strerror(r));

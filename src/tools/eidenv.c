@@ -375,6 +375,7 @@ out:
 int main(int argc, char **argv)
 {
 	sc_context_t *ctx = NULL;
+	sc_context_param_t ctx_param;
 	sc_reader_t *reader = NULL;
 	sc_card_t *card = NULL;
 	int r;
@@ -383,7 +384,11 @@ int main(int argc, char **argv)
 	decode_options(argc, argv);
 
 	/* connect to the card */
-	r = sc_establish_context(&ctx, "eidenv");
+	memset(&ctx_param, 0, sizeof(ctx_param));
+	ctx_param.ver      = 0;
+	ctx_param.app_name = app_name;
+
+	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 	fprintf(stderr, "Failed to establish context: %s\n",
 		sc_strerror(r));

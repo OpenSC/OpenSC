@@ -1516,6 +1516,7 @@ int main(int argc, char * const argv[])
 	char *line;
 	int cargc;
 	char *cargv[20];
+	sc_context_param_t ctx_param;
 
 	printf("OpenSC Explorer version %s\n", sc_get_version());
 
@@ -1541,7 +1542,11 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	r = sc_establish_context(&ctx, app_name);
+	memset(&ctx_param, 0, sizeof(ctx_param));
+	ctx_param.ver      = 0;
+	ctx_param.app_name = app_name;
+
+	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;

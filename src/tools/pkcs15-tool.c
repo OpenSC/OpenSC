@@ -1173,6 +1173,7 @@ int main(int argc, char * const argv[])
 	int do_unblock_pin = 0;
 	int do_learn_card = 0;
 	int action_count = 0;
+	sc_context_param_t ctx_param;
 
 	while (1) {
 		c = getopt_long(argc, argv, "r:cuko:va:LR:CwD", options, &long_optind);
@@ -1270,7 +1271,12 @@ int main(int argc, char * const argv[])
 	}
 	if (action_count == 0)
 		print_usage_and_die();
-	r = sc_establish_context(&ctx, app_name);
+
+	memset(&ctx_param, 0, sizeof(ctx_param));
+	ctx_param.ver      = 0;
+	ctx_param.app_name = app_name;
+
+	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;

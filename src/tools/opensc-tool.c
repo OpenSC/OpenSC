@@ -376,6 +376,7 @@ int main(int argc, char * const argv[])
 	int do_print_name = 0;
 	int action_count = 0;
 	const char *opt_driver = NULL;
+	sc_context_param_t ctx_param;
 		
 	setbuf(stderr, NULL);
 	setbuf(stdout, NULL);
@@ -440,7 +441,12 @@ int main(int argc, char * const argv[])
 	}
 	if (action_count == 0)
 		print_usage_and_die();
-	r = sc_establish_context(&ctx, app_name);
+
+	memset(&ctx_param, 0, sizeof(ctx_param));
+	ctx_param.ver      = 0;
+	ctx_param.app_name = app_name;
+
+	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;

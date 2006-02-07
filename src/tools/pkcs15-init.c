@@ -488,8 +488,13 @@ static int
 open_reader_and_card(int reader)
 {
 	int	r;
+	sc_context_param_t ctx_param;
 
-	r = sc_establish_context(&ctx, app_name);
+	memset(&ctx_param, 0, sizeof(ctx_param));
+	ctx_param.ver      = 0;
+	ctx_param.app_name = app_name;
+
+	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		error("Failed to establish context: %s\n", sc_strerror(r));
 		return 0;
@@ -1253,7 +1258,7 @@ do_delete_objects(struct sc_profile *profile, unsigned int opt_delete_flags)
 static int
 do_change_attributes(struct sc_profile *profile, unsigned int opt_type)
 {
-	int r = 0, count = 0;
+	int r = 0;
 	sc_pkcs15_id_t id;
 	sc_pkcs15_object_t *obj;
 

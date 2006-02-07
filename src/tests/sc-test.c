@@ -39,6 +39,7 @@ int sc_test_init(int *argc, char *argv[])
 	char	*opt_driver = NULL, *app_name;
 	int	opt_debug = 0, opt_reader = -1;
 	int	i, c, rc;
+	sc_context_param_t ctx_param;
 
 	if  ((app_name = strrchr(argv[0], '/')) != NULL)
 		app_name++;
@@ -66,7 +67,12 @@ int sc_test_init(int *argc, char *argv[])
 	*argc = optind;
 
 	printf("Using libopensc version %s.\n", sc_get_version());
-	i = sc_establish_context(&ctx, app_name);
+
+	memset(&ctx_param, 0, sizeof(ctx_param));
+	ctx_param.ver      = 0;
+	ctx_param.app_name = app_name;
+
+	i = sc_context_create(&ctx, &ctx_param);
 	if (i != SC_SUCCESS) {
 		printf("Failed to establish context: %s\n", sc_strerror(i));
 		return i;
