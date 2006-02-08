@@ -48,26 +48,26 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		const char *path;
 		const char *label;
 	} certlist[]={
-		{ 1,  1, 0, "DF01C000",     "Telesec Signatur Zertifikat"},
-		{-1,  2, 1, "DF014331",     "Signatur Zertifikat 1"},
-		{-1,  3, 1, "DF014332",     "Signatur Zertifikat 2"},
-		{-1,  4, 0, "DF01C100",     "Telesec Authentifizierungs Zertifikat"},
-		{-1,  5, 1, "DF014371",     "Authentifizierungs Zertifikat 1"},
-		{-1,  6, 1, "DF014372",     "Authentifizierungs Zertifikat 2"},
-		{-1,  7, 0, "DF01C200",     "Telesec Verschlüsselungs Zertifikat"},
-		{-1,  8, 1, "DF0143B1",     "Verschlüsselungs Zertifikat 1"},
-		{-1,  9, 1, "DF0143B2",     "Verschlüsselungs Zertifikat 2"},
-		{-1, 10, 1, "41014352",     "W2K Logon Zertifikat"},
-		{ 2,  1, 1, "8000DF01C000", "SignTrust Signatur Zertifikat"},
-		{ 2,  2, 1, "800082008220", "SignTrust Authentifizierungs Zertifikat"},
-		{ 2,  3, 1, "800083008320", "SignTrust Verschlüsselungs Zertifikat"},
-		{ 3,  1, 1, "41014352",     "Smartkey Typ1 Zertifikat 1"},
-		{-3,  2, 1, "41014353",     "Smartkey Typ1 Zertifikat 2"},
-		{ 3,  3, 1, "42014352",     "Smartkey Typ2 Zertifikat 1"},
-		{-3,  4, 1, "42014353",     "Smartkey Typ2 Zertifikat 2"},
-		{ 3,  5, 1, "43014352",     "Smartkey Typ3 Zertifikat 1"},
-		{-3,  6, 1, "43014353",     "Smartkey Typ3 Zertifikat 2"},
-		{ 0,  0, 0, NULL, NULL}
+		{ 1, 0x45, 0, "DF01C000",     "Telesec Signatur Zertifikat"},
+		{-1, 0x45, 1, "DF014331",     "Signatur Zertifikat 1"},
+		{-1, 0x45, 1, "DF014332",     "Signatur Zertifikat 2"},
+		{-1, 0x46, 0, "DF01C100",     "Telesec Authentifizierungs Zertifikat"},
+		{-1, 0x46, 1, "DF014371",     "Authentifizierungs Zertifikat 1"},
+		{-1, 0x46, 1, "DF014372",     "Authentifizierungs Zertifikat 2"},
+		{-1, 0x47, 0, "DF01C200",     "Telesec Verschlüsselungs Zertifikat"},
+		{-1, 0x47, 1, "DF0143B1",     "Verschlüsselungs Zertifikat 1"},
+		{-1, 0x47, 1, "DF0143B2",     "Verschlüsselungs Zertifikat 2"},
+		{-1, 0x48, 1, "41014352",     "W2K Logon Zertifikat"},
+		{ 2, 0x45, 1, "8000DF01C000", "SignTrust Signatur Zertifikat"},
+		{-2, 0x46, 1, "800082008220", "SignTrust Authentifizierungs Zertifikat"},
+		{-2, 0x47, 1, "800083008320", "SignTrust Verschlüsselungs Zertifikat"},
+		{ 3, 0x45, 1, "41014352",     "Smartkey Zertifikat A1"},
+		{-3, 0x46, 1, "41014353",     "Smartkey Zertifikat A2"},
+		{ 3, 0x47, 1, "42014352",     "Smartkey Zertifikat B1"},
+		{-3, 0x48, 1, "42014353",     "Smartkey Zertifikat B2"},
+		{ 3, 0x49, 1, "43014352",     "Smartkey Zertifikat C1"},
+		{-3, 0x4A, 1, "43014353",     "Smartkey Zertifikat C2"},
+		{ 0, 0, 0, NULL, NULL}
 	};
 	static const struct {
 		int           type, id, auth_id;
@@ -75,19 +75,19 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		unsigned char key_reference;
 		const char   *label;
 	} keylist[]={
-		{1,  1, 4, "DF015331",     0x80, "Signatur Schlüssel"},
-		{1,  4, 3, "DF015371",     0x82, "Authentifizierungs Schlüssel"},
-		{1,  7, 3, "DF0153B1",     0x81, "Verschlüsselungs Schlüssel"},
-		{1, 10, 1, "41015103",     0x83, "W2K Logon Schlüssel"},
-		{2,  1, 1, "8000DF015331", 0x80, "Signatur Schlüssel"},
-		{2,  2, 2, "800082008210", 0x80, "Authentifzierungs Schlüssel"},
-		{2,  3, 3, "800083008310", 0x80, "Verschlüsselungs Schlüssel"},
-		{3,  1, 1, "41015103",     0x83, "Smartkey Typ1 Schlüssel 1"},
-		{3,  2, 1, "41015104",     0x84, "Smartkey Typ1 Schlüssel 2"},
-		{3,  3, 1, "42015103",     0x83, "Smartkey Typ2 Schlüssel 1"},
-		{3,  4, 1, "42015104",     0x84, "Smartkey Typ2 Schlüssel 2"},
-		{3,  5, 1, "43015103",     0x83, "Smartkey Typ3 Schlüssel 1"},
-		{3,  6, 1, "43015104",     0x84, "Smartkey Typ3 Schlüssel 2"},
+		{1, 0x45, 4, "DF015331",     0x80, "Signatur Schlüssel"},
+		{1, 0x46, 3, "DF015371",     0x82, "Authentifizierungs Schlüssel"},
+		{1, 0x47, 3, "DF0153B1",     0x81, "Verschlüsselungs Schlüssel"},
+		{1, 0x48, 1, "41015103",     0x83, "W2K Logon Schlüssel"},
+		{2, 0x45, 1, "8000DF015331", 0x80, "Signatur Schlüssel"},
+		{2, 0x46, 2, "800082008210", 0x80, "Authentifzierungs Schlüssel"},
+		{2, 0x47, 3, "800083008310", 0x80, "Verschlüsselungs Schlüssel"},
+		{3, 0x45, 1, "41015103",     0x83, "Smartkey Schlüssel A1"},
+		{3, 0x46, 1, "41015104",     0x84, "Smartkey Schlüssel A2"},
+		{3, 0x47, 1, "42015103",     0x83, "Smartkey Schlüssel B1"},
+		{3, 0x48, 1, "42015104",     0x84, "Smartkey Schlüssel B2"},
+		{3, 0x49, 1, "43015103",     0x83, "Smartkey Schlüssel C1"},
+		{3, 0x4A, 1, "43015104",     0x84, "Smartkey Schlüssel C2"},
 		{0, 0, 0, NULL, 0, NULL}
 	};
 	static const struct {
@@ -103,13 +103,12 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		{1, 2, 0, 8, 0x01, "5001", "globale PUK",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED |
 			SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN | SC_PKCS15_PIN_FLAG_SO_PIN},
-		{1, 3, 4, 6, 0x80, "DF015080", "Netkey PIN0",
+		{1, 3, 1, 6, 0x80, "DF015080", "Netkey PIN0",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
 			SC_PKCS15_PIN_FLAG_INITIALIZED},
 		{1, 4, 1, 6, 0x81, "DF015081", "Netkey PIN1",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
-			SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN |
-			SC_PKCS15_PIN_FLAG_SO_PIN},
+			SC_PKCS15_PIN_FLAG_INITIALIZED},
 		{2, 1, 0, 6, 0x81, "8000DF010000", "Signatur PIN",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
 			SC_PKCS15_PIN_FLAG_INITIALIZED},
