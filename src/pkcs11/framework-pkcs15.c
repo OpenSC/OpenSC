@@ -265,6 +265,10 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data,
 	int rv;
 
 	p15_info = (struct sc_pkcs15_cert_info *) cert->data;
+
+	if (cert->flags & SC_PKCS15_CO_FLAG_PRIVATE)   	/* is the cert private? */
+		p15_cert = NULL; 		/* will read cert when needed */
+	else
 	if ((rv = sc_pkcs15_read_certificate(fw_data->p15_card, p15_info, &p15_cert) < 0))
 		return rv;
 
@@ -285,16 +289,20 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data,
 	if (rv < 0)
 		return rv;
 
-	obj2->pub_data = &p15_cert->key;
-	obj2->pub_data = (sc_pkcs15_pubkey_t *)calloc(1, sizeof(sc_pkcs15_pubkey_t));
-	if (!obj2->pub_data)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memcpy(obj2->pub_data, &p15_cert->key, sizeof(sc_pkcs15_pubkey_t));
-	/* invalidate public data of the cert object so that sc_pkcs15_cert_free
-	 * does not free the public key data as well (something like
-	 * sc_pkcs15_pubkey_dup would have been nice here) -- Nils
-	 */
-	memset(&p15_cert->key, 0, sizeof(sc_pkcs15_pubkey_t));
+	if (p15_cert) {
+		obj2->pub_data = &p15_cert->key;
+		obj2->pub_data = (sc_pkcs15_pubkey_t *)calloc(1, sizeof(sc_pkcs15_pubkey_t));
+		if (!obj2->pub_data)
+			return SC_ERROR_OUT_OF_MEMORY;
+		memcpy(obj2->pub_data, &p15_cert->key, sizeof(sc_pkcs15_pubkey_t));
+		/* invalidate public data of the cert object so that sc_pkcs15_cert_free
+		 * does not free the public key data as well (something like
+		 * sc_pkcs15_pubkey_dup would have been nice here) -- Nils
+		 */
+		memset(&p15_cert->key, 0, sizeof(sc_pkcs15_pubkey_t));
+	} else
+		obj2->pub_data = NULL; /* will copy from cert when cert is read */
+
 	obj2->pub_cert = object;
 	object->cert_pubkey = obj2;
 
@@ -313,8 +321,12 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	int rv;
 
 	/* Read public key from card */
+	/* Attempt to read pubkey from card or file. 
+	 * During initialization process, the key may have been created
+	 * and saved as a file before the certificate has been created. 
+	 */  
 	if ((rv = sc_pkcs15_read_pubkey(fw_data->p15_card, pubkey, &p15_key)) < 0)
-		return rv;
+		p15_key = NULL; 
 
 	/* Public key object */
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &object,
@@ -482,6 +494,46 @@ pkcs15_bind_related_objects(struct pkcs15_fw_data *fw_data)
 			__pkcs15_cert_bind_related(fw_data, (struct pkcs15_cert_object *) obj);
 		}
 	}
+}
+
+/* We deferred reading of the cert until needed, as it may be
+ * a private object, so we must wait till login to read
+ */
+
+static int 
+check_cert_data_read(struct pkcs15_fw_data *fw_data,
+				 struct pkcs15_cert_object *cert)
+{
+	int rv;
+	struct pkcs15_pubkey_object *obj2;
+
+	if (!cert)
+		return SC_ERROR_OBJECT_NOT_FOUND;
+
+	if (cert->cert_data) 
+		return 0;
+	if ((rv = sc_pkcs15_read_certificate(fw_data->p15_card, 
+				cert->cert_info, &cert->cert_data) < 0))
+		return rv;
+
+	/* update the related public key object */
+	obj2 = cert->cert_pubkey;
+
+    obj2->pub_data = (sc_pkcs15_pubkey_t *)calloc(1, sizeof(sc_pkcs15_pubkey_t));
+	if (!obj2->pub_data)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memcpy(obj2->pub_data, &cert->cert_data->key, sizeof(sc_pkcs15_pubkey_t));
+	/* invalidate public data of the cert object so that sc_pkcs15_cert_free
+	 * does not free the public key data as well (something like
+	 * sc_pkcs15_pubkey_dup would have been nice here) -- Nils
+	 */
+	memset(&cert->cert_data->key, 0, sizeof(sc_pkcs15_pubkey_t));
+
+	/* now that we have the cert and pub key, lets see if we can bind anything else */
+	
+	pkcs15_bind_related_objects(fw_data);
+
+	return 0;
 }
 
 static int
@@ -684,6 +736,10 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 			}
 			else if (is_data(obj)) {
 				sc_debug(context, "Adding data object %d to PIN %d\n", j, i);
+				pkcs15_add_object(slot, obj, NULL);
+			}
+			else if (is_cert(obj)) {
+				sc_debug(context, "Adding cert object %d to PIN %d\n", j, i);
 				pkcs15_add_object(slot, obj, NULL);
 			}
 		}
@@ -1532,8 +1588,10 @@ static void pkcs15_cert_release(void *obj)
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object *) obj;
 	struct sc_pkcs15_cert      *cert_data = cert->cert_data;
 
-	if (__pkcs15_release_object((struct pkcs15_any_object *) obj) == 0)
-		sc_pkcs15_free_certificate(cert_data);
+	if (__pkcs15_release_object((struct pkcs15_any_object *) obj) == 0) {
+		if (cert_data) /* may never have been read */
+			sc_pkcs15_free_certificate(cert_data);
+	}
 }
 
 static CK_RV pkcs15_cert_set_attribute(struct sc_pkcs11_session *session,
@@ -1549,6 +1607,7 @@ static CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object*) object;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fw_data;
 	size_t len;
 
 	switch (attr->type) {
@@ -1561,6 +1620,10 @@ static CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = TRUE;
 		break;
 	case CKA_PRIVATE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue =
+			(cert->base.p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0;
+		break;
 	case CKA_MODIFIABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = FALSE;
@@ -1590,17 +1653,33 @@ static CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = cert->cert_info->authority ? TRUE : FALSE;
 		break;
 	case CKA_VALUE:
+		if (check_cert_data_read(fw_data, cert) != 0) {
+			attr->ulValueLen = 0;
+			return CKR_OK;
+		}
 		check_attribute_buffer(attr, cert->cert_data->data_len);
 		memcpy(attr->pValue, cert->cert_data->data, cert->cert_data->data_len);
 		break;
 	case CKA_SERIAL_NUMBER:
+		if (check_cert_data_read(fw_data, cert) != 0) {
+			attr->ulValueLen = 0;
+			return CKR_OK;
+		}
 		check_attribute_buffer(attr, cert->cert_data->serial_len);
 		memcpy(attr->pValue, cert->cert_data->serial, cert->cert_data->serial_len);
 		break;
 	case CKA_SUBJECT:
+		if (check_cert_data_read(fw_data, cert) != 0) {
+			attr->ulValueLen = 0;
+			return CKR_OK;
+		}
 		return asn1_sequence_wrapper(cert->cert_data->subject,
 		                             cert->cert_data->subject_len, attr);
 	case CKA_ISSUER:
+		if (check_cert_data_read(fw_data, cert) != 0) {
+			attr->ulValueLen = 0;
+			return CKR_OK;
+		}
 		return asn1_sequence_wrapper(cert->cert_data->issuer,
 				 cert->cert_data->issuer_len, attr);
 	default:
@@ -1616,6 +1695,7 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object*) object;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fw_data;
 	u8	*data;
 	size_t	len;
 
@@ -1624,6 +1704,8 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 	 * in the ASN.1 encoded SEQUENCE OF SET ... while OpenSC just
 	 * keeps the SET in the issuer field. */
 	case CKA_ISSUER:
+		if (check_cert_data_read(fw_data, cert) != 0)
+			break;
 		if (cert->cert_data->issuer_len == 0)
 			break;
 		data = (u8 *) attr->pValue;
@@ -1683,13 +1765,29 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) object;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fw_data;
 	struct sc_pkcs15_pubkey *key = NULL;
 	unsigned int usage;
 	size_t len;
 
-	if (prkey->prv_cert && prkey->prv_cert->cert_pubkey)
-		key = prkey->prv_cert->cert_pubkey->pub_data;
-	else if (prkey->prv_pubkey)
+	/* will use modulus from cert, or pubkey if possible */
+	if (prkey->prv_cert && prkey->prv_cert->cert_pubkey) {
+		/* make sure we have read the cert to get modulus etc but only if needed. */
+		switch(attr->type) {
+			case CKA_MODULUS:
+			case CKA_PUBLIC_EXPONENT:
+			case CKA_MODULUS_BITS:
+				if (check_cert_data_read(fw_data, prkey->prv_cert) != 0) {
+					/* no cert found, maybe we have a pub_key */
+					if (prkey->prv_pubkey && prkey->prv_pubkey->pub_data)
+						key = prkey->prv_pubkey->pub_data; /* may be NULL */
+				} else
+					key = prkey->prv_cert->cert_pubkey->pub_data;
+				break;
+			default:
+				key = prkey->prv_cert->cert_pubkey->pub_data;
+		}
+	} else if (prkey->prv_pubkey)
 		key = prkey->prv_pubkey->pub_data;
 
 	switch (attr->type) {
@@ -1976,8 +2074,10 @@ static void pkcs15_pubkey_release(void *object)
 	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
 	struct sc_pkcs15_pubkey *key_data = pubkey->pub_data;
 
-	if (__pkcs15_release_object((struct pkcs15_any_object *) object) == 0)
-		sc_pkcs15_free_pubkey(key_data);
+	if (__pkcs15_release_object((struct pkcs15_any_object *) object) == 0) {
+		if (key_data) 
+			sc_pkcs15_free_pubkey(key_data);
+	}
 }
 
 static CK_RV pkcs15_pubkey_set_attribute(struct sc_pkcs11_session *session,
@@ -1994,7 +2094,19 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 {
 	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
 	struct pkcs15_cert_object *cert = pubkey->pub_cert;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fw_data;
 	size_t len;
+
+	/* We may need to get these from cert */
+	switch (attr->type) {
+		case CKA_MODULUS:
+		case CKA_MODULUS_BITS:
+		case CKA_VALUE:
+		case CKA_PUBLIC_EXPONENT:
+			if (pubkey->pub_data == NULL) 
+				check_cert_data_read(fw_data, cert);
+			break;
+	}
 
 	switch (attr->type) {
 	case CKA_CLASS:
@@ -2010,6 +2122,17 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = TRUE;
 		break;
 	case CKA_PRIVATE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		if (pubkey->pub_p15obj) {
+			*(CK_BBOOL*)attr->pValue =
+				(pubkey->pub_p15obj->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0;
+		} else if (cert && cert->cert_p15obj) {
+			*(CK_BBOOL*)attr->pValue =
+				(cert->pub_p15obj->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0;
+		} else  {
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+		}
+		break;
 	case CKA_MODIFIABLE:
 	case CKA_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
