@@ -662,22 +662,15 @@ static int parse_ext_pubkey_file(sc_card_t *card, const u8 *data, size_t len,
 	sc_pkcs15_pubkey_t *pubkey)
 {
 	const u8     *p;
-	size_t       ilen = 0, tlen = 0, i;
+	size_t       ilen = 0, tlen = 0;
 
 	if (data == NULL || len < 32)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (*data++ != 0x7f || *data++ != 0x49) {
+	data = sc_asn1_find_tag(card->ctx, data, len, 0x7f49, &ilen);
+	if (data == NULL) {
 		sc_error(card->ctx, "invalid public key data: missing tag");
-		return SC_ERROR_INVALID_ARGUMENTS;
+		return SC_ERROR_INTERNAL;
 	}
-	len -= 2;
-	tlen = *data++ & 0x7f;
-	if (tlen > 3) {
-		sc_error(card->ctx, "invalid public key data: invalid tag length");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	for (i = 0; i < tlen; i++)
-		ilen += (*data++) << (8 * (tlen - i - 1));
 
 	p = sc_asn1_find_tag(card->ctx, data, ilen, 0x81, &tlen);
 	if (p == NULL) {
