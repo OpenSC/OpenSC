@@ -58,28 +58,41 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 	unsigned int cla, tag, i;
 
 	if (left < 2)
-		goto error;
+		return SC_ERROR_INVALID_ASN1_OBJECT;
 	*buf = NULL;
-	if (*p == 0)
-		return 0;
-	if (*p == 0xFF) /* FIXME */
-		return 0;
+	if (*p == 0xff || *p == 0)
+		/* end of data reached */
+		return SC_SUCCESS;
+	/* parse tag byte(s) */
 	cla = (*p & SC_ASN1_TAG_CLASS) | (*p & SC_ASN1_TAG_CONSTRUCTED);
 	tag = *p & SC_ASN1_TAG_PRIMITIVE;
-	if (tag == SC_ASN1_TAG_PRIMITIVE) {	/* 0x1F */
-		fprintf(stderr, "Tag number >= 0x1F not supported!\n");
-		goto error;
-	}
 	p++;
-	if (--left == 0)
-		goto error;
+	left--;
+	if (tag == SC_ASN1_TAG_PRIMITIVE) {
+		/* high tag number */
+		size_t n = sizeof(int) - 1;
+		/* search the last tag octet */
+		while (left-- != 0 && n != 0) {
+			tag <<= 8;
+			tag |= *p;
+			if ((*p++ & 0x80) == 0)
+				break;
+			n--;
+		}
+		if (left == 0 || n == 0)
+			/* either an invalid tag or it doesn't fit in
+			 * unsigned int */
+			return SC_ERROR_INVALID_ASN1_OBJECT;
+		
+	}
+	if (left == 0)
+		return SC_ERROR_INVALID_ASN1_OBJECT;
+	/* parse length byte(s) */
 	len = *p & 0x7f;
 	if (*p++ & 0x80) {
 		unsigned int a = 0;
-		if (len > 4 || len > left) {
-			fprintf(stderr, "ASN.1 tag too long!\n");
-			goto error;
-		}
+		if (len > 4 || len > left)
+			return SC_ERROR_INVALID_ASN1_OBJECT;
 		left -= len;
 		for (i = 0; i < len; i++) {
 			a <<= 8;
@@ -88,17 +101,13 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		}
 		len = a;
 	}
-	if (len > left) {
-		fprintf(stderr, "ASN.1 value too long!\n");
-		goto error;
-	}
+	if (len > left)
+		return SC_ERROR_INVALID_ASN1_OBJECT;
 	*cla_out = cla;
 	*tag_out = tag;
 	*taglen = len;
 	*buf = p;
-	return 1;
-      error:
-	return -1;
+	return SC_SUCCESS;
 }
 
 void sc_format_asn1_entry(struct sc_asn1_entry *entry, void *parm, void *arg,
@@ -219,7 +228,7 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 		size_t len;
 
 		r = sc_asn1_read_tag(&tagp, bytesleft, &cla, &tag, &len);
-		if (r < 0) {
+		if (r != SC_SUCCESS) {
 			printf("Error in decoding.\n");
 			return;
 		}
@@ -286,28 +295,39 @@ void sc_asn1_print_tags(const u8 * buf, size_t buflen)
 }
 
 const u8 *sc_asn1_find_tag(sc_context_t *ctx, const u8 * buf,
-			   size_t buflen, unsigned int tag_in, size_t *taglen_in)
+	size_t buflen, unsigned int tag_in, size_t *taglen_in)
 {
 	size_t left = buflen, taglen;
-	unsigned int cla, tag;
 	const u8 *p = buf;
 
 	*taglen_in = 0;
 	while (left >= 2) {
+		unsigned int cla, tag, mask = 0xff00;
+
 		buf = p;
-		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != 1)
+		/* read a tag */
+		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != SC_SUCCESS)
 			return NULL;
 		if (left < (size_t)(p - buf)) {
 			sc_error(ctx, "invalid TLV object\n");
 			return NULL;
 		}
 		left -= (p - buf);
+		/* we need to shift the class byte to the leftmost
+		 * byte of the tag */
+		while ((tag & mask) != 0) {
+			cla  <<= 8;
+			mask <<= 8;
+		}
+		/* compare the read tag with the given tag */
 		if ((tag | cla) == tag_in) {
+			/* we have a match => return length and value part */
 			if (taglen > left)
 				return NULL;
 			*taglen_in = taglen;
 			return p;
 		}
+		/* otherwise continue reading tags */
 		if (left < taglen) {
 			sc_error(ctx, "invalid TLV object\n");
 			return NULL;
@@ -325,7 +345,7 @@ const u8 *sc_asn1_skip_tag(sc_context_t *ctx, const u8 ** buf, size_t *buflen,
 	size_t len = *buflen, taglen;
 	unsigned int cla, tag;
 
-	if (sc_asn1_read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != 1)
+	if (sc_asn1_read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != SC_SUCCESS)
 		return NULL;
 	switch (cla & 0xC0) {
 	case SC_ASN1_TAG_UNIVERSAL:
