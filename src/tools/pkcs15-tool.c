@@ -918,16 +918,7 @@ static int dump()
 	};
 
 	int i, count = 0;
-	printf("Looking for a PKCS#15 compatible Smart Card... ");
-	fflush(stdout);
 	sc_lock(card);
-	i = sc_pkcs15_bind(card, &p15card);
-
-	if (i) {
-		fprintf(stderr, "failed: %s\n", sc_strerror(i));
-		return 1;
-	}
-	printf("found.\n\n");
 
 	printf("PKCS#15 Card [%s]:\n", p15card->label);
 	printf("\tVersion        : %d\n", p15card->version);
