@@ -2392,6 +2392,8 @@ static int sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
 	int		r;
 
 	/* set lastUpdate field */
+	if (p15card->last_update != NULL)
+		free(p15card->last_update);
 	p15card->last_update = get_generalized_time(card->ctx);
 	if (p15card->last_update == NULL)
 		return SC_ERROR_INTERNAL;
