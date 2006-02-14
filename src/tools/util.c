@@ -124,7 +124,7 @@ void hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)
 
  	while (count) {
 		char ascbuf[17];
-		int i;
+		size_t i;
 		
 		if (addr >= 0) {
 			fprintf(f, "%08X: ", addr);
