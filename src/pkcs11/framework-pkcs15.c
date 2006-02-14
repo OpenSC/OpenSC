@@ -714,8 +714,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		pin_info = (struct sc_pkcs15_pin_info*) auths[i]->data;
 
 		/* Ignore any non-authentication PINs */
-		if ((pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-		 || (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))
+		if ((pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) != 0)
 			continue;
 
 		/* Add all the private keys related to this pin */
