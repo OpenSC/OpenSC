@@ -325,6 +325,8 @@ static int read_data_object(void)
 		r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
 		if (r) {
 			fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
+			if (r == SC_ERROR_FILE_NOT_FOUND)
+				continue; /* DEE emulation may say there is a file */
 			return 1;
 		}
 		r = print_data_object("Data Object", data_object->data, data_object->data_len);
@@ -369,6 +371,8 @@ static int list_data_objects(void)
 		r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
 		if (r) {
 			fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
+			if (r == SC_ERROR_FILE_NOT_FOUND)
+				 continue; /* DEE emulation may say there is a file */
 			return 1;
 		}
 		r = list_data_object("Data Object", data_object->data, data_object->data_len);

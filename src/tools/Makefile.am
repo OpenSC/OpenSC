@@ -12,11 +12,14 @@ PROGRAMS_OPENSSL = cryptoflex-tool pkcs15-init netkey-tool
 endif
 
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
+	piv-tool \
 	pkcs11-tool cardos-info eidenv \
 	$(PROGRAMS_OPENSSL)
 
 opensc_tool_SOURCES = opensc-tool.c util.c
 opensc_tool_LDADD = @GETOPTSRC@
+piv_tool_SOURCES = piv-tool.c util.c
+piv_tool_LDADD = @GETOPTSRC@
 opensc_explorer_SOURCES = opensc-explorer.c util.c
 opensc_explorer_LDADD = @GETOPTSRC@ $(LIBREADLINE)
 pkcs15_tool_SOURCES = pkcs15-tool.c util.c
