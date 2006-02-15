@@ -94,7 +94,7 @@ BIO * bp = NULL;
 RSA * newkey = NULL;
 
 
-static int load_cert(char * cert_id, char * cert_file)
+static int load_cert(const char * cert_id, const char * cert_file)
 {
 	X509 * cert = NULL;
 	FILE *fp;
@@ -147,7 +147,7 @@ static int load_cert(char * cert_id, char * cert_file)
 	return r;
 
 }
-static int admin_mode(char* admin_info)
+static int admin_mode(const char* admin_info)
 {
 	int r;
 	u8 opts[3];
@@ -172,15 +172,17 @@ static int admin_mode(char* admin_info)
 	return r;
 }
 
+#if 0
 /* generate a req using xxx as subject */
 static int req()
 {
 	fprintf(stderr, "Not Implemented yet\n");
 	return -1;
 }
+#endif
 
 /* generate a new key pair, and save public key in newkey */
-static int gen_key(char * key_info)
+static int gen_key(const char * key_info)
 {
 	int r;
 	u8 buf[2];
@@ -421,7 +423,7 @@ int main(int argc, char * const argv[])
 
 	if (out_file) {
 		bp = BIO_new(BIO_s_file());
-		BIO_write_filename(bp, out_file);
+		BIO_write_filename(bp, (char *)out_file);
 	} else {
 		bp = BIO_new(BIO_s_file());
 		BIO_set_fp(bp,stdout,BIO_NOCLOSE);
