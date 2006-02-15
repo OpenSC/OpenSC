@@ -17,13 +17,14 @@ int connect_card(sc_context_t *ctx, sc_card_t **cardp,
 	if (wait) {
 		sc_reader_t *readers[16];
 		int slots[16];
-		int i, j, k, found;
+		unsigned int i;
+		int j, k, found;
 		unsigned int event;
 
-		for (i = k = 0; i < ctx->reader_count; i++) {
-			if (reader_id >= 0 && reader_id != i)
+		for (i = k = 0; i < sc_ctx_get_reader_count(ctx); i++) {
+			if (reader_id >= 0 && (unsigned int)reader_id != i)
 				continue;
-			reader = ctx->reader[i];
+			reader = sc_ctx_get_reader(ctx, i);
 			for (j = 0; j < reader->slot_count; j++, k++) {
 				readers[k] = reader;
 				slots[k] = j;
@@ -46,20 +47,20 @@ int connect_card(sc_context_t *ctx, sc_card_t **cardp,
 	} else {
 		if (reader_id < 0)
 			reader_id = 0;
-		if (ctx->reader_count == 0) {
+		if (sc_ctx_get_reader_count(ctx) == 0) {
 			fprintf(stderr,
 				"No smart card readers configured.\n");
 			return 1;
 		}
-		if (reader_id >= ctx->reader_count) {
+		if ((unsigned int)reader_id >= sc_ctx_get_reader_count(ctx)) {
 			fprintf(stderr,
 				"Illegal reader number. "
 				"Only %d reader(s) configured.\n",
-				ctx->reader_count);
+				sc_ctx_get_reader_count(ctx));
 			return 1;
 		}
 
-		reader = ctx->reader[reader_id];
+		reader = sc_ctx_get_reader(ctx, reader_id);
 		slot_id = 0;
 		if (sc_detect_card_presence(reader, 0) <= 0) {
 			fprintf(stderr, "Card not present.\n");

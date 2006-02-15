@@ -1091,6 +1091,7 @@ int main(int argc, char * const argv[])
 	int do_list_keys = 0;
 	int do_store_key = 0;
 	int do_create_pin_file = 0;
+	sc_reader_t *screader= NULL;
 	sc_context_param_t ctx_param;
 
 	while (1) {
@@ -1173,19 +1174,24 @@ int main(int argc, char * const argv[])
 	}
 	if (verbose > 1)
 		ctx->debug = verbose-1;
-	if (opt_reader >= ctx->reader_count || opt_reader < 0) {
-		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
+	if (opt_reader >= (int)sc_ctx_get_reader_count(ctx) || opt_reader < 0) {
+		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", sc_ctx_get_reader_count(ctx));
 		err = 1;
 		goto end;
 	}
-	if (sc_detect_card_presence(ctx->reader[opt_reader], 0) <= 0) {
+	screader = sc_ctx_get_reader(ctx, opt_reader);
+	if (screader == NULL) {
+		err = 1;
+		goto end;
+	}
+	if (sc_detect_card_presence(screader, 0) <= 0) {
 		fprintf(stderr, "Card not present.\n");
 		err = 3;
 		goto end;
 	}
 	if (verbose)
-		fprintf(stderr, "Connecting to card in reader %s...\n", ctx->reader[opt_reader]->name);
-	r = sc_connect_card(ctx->reader[opt_reader], 0, &card);
+		fprintf(stderr, "Connecting to card in reader %s...\n", screader->name);
+	r = sc_connect_card(screader, 0, &card);
 	if (r) {
 		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
 		err = 1;

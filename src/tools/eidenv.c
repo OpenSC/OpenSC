@@ -394,11 +394,11 @@ int main(int argc, char **argv)
 		sc_strerror(r));
 		return 1;
 	}
-	if (reader_num > ctx->reader_count) {
-		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", ctx->reader_count);
+	if (reader_num > (int)sc_ctx_get_reader_count(ctx)) {
+		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", sc_ctx_get_reader_count(ctx));
 		return 1;
 	}
-	reader = ctx->reader[reader_num];
+	reader = sc_ctx_get_reader(ctx, (unsigned int)reader_num);
 
 	r = sc_connect_card(reader, 0, &card);
 	if (r) {

@@ -82,17 +82,18 @@ sc_card_t *card = NULL;
 
 static int list_readers(void)
 {
-	int i;
+	unsigned int i, rcount = sc_ctx_get_reader_count(ctx);
 	
-	if (ctx->reader_count == 0) {
+	if (rcount == 0) {
 		printf("No readers configured!\n");
 		return 0;
 	}
 	printf("Readers known about:\n");
 	printf("Nr.    Driver     Name\n");
-	for (i = 0; i < ctx->reader_count; i++) {
-		printf("%-7d%-11s%s\n", i, ctx->reader[i]->driver->short_name,
-		       ctx->reader[i]->name);
+	for (i = 0; i < rcount; i++) {
+		sc_reader_t *screader = sc_ctx_get_reader(ctx, i);
+		printf("%-7d%-11s%s\n", i, screader->driver->short_name,
+		       screader->name);
 	}
 	return 0;
 }
