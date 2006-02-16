@@ -41,7 +41,8 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 	} cardlist[]={
 		{"Netkey E4 Card", "TeleSec GmbH"},
 		{"SignTrust Card", "Deutsche Post"},
-		{"Smartkey Card", "Kobil GmbH"}
+		{"Smartkey Card", "Kobil GmbH"},
+		{"UniCard Giessen", "Kobil GmbH"}
 	};
 	static const struct {
 		int         type, id, writable;
@@ -67,6 +68,7 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		{-3, 0x48, 1, "42014353",     "Smartkey Zertifikat B2"},
 		{ 3, 0x49, 1, "43014352",     "Smartkey Zertifikat C1"},
 		{-3, 0x4A, 1, "43014353",     "Smartkey Zertifikat C2"},
+		{ 4, 0x45, 1, "41004352",     "UniCard Giessen Zertifikat"},
 		{ 0, 0, 0, NULL, NULL}
 	};
 	static const struct {
@@ -88,6 +90,7 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		{3, 0x48, 1, "42015104",     0x84, "Smartkey Schlüssel B2"},
 		{3, 0x49, 1, "43015103",     0x83, "Smartkey Schlüssel C1"},
 		{3, 0x4A, 1, "43015104",     0x84, "Smartkey Schlüssel C2"},
+		{4, 0x45, 1, "3F004100",     0x83, "UniCard Giessen Schlüssel"},
 		{0, 0, 0, NULL, 0, NULL}
 	};
 	static const struct {
@@ -124,6 +127,8 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		{3, 2, 0, 8, 0x01, "5008", "globale PUK",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED |
 			SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN | SC_PKCS15_PIN_FLAG_SO_PIN},
+		{4, 1, 0, 6, 0x00, "4100", "globale PIN",
+			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED},
 		{0, 0, 0, 0, 0, NULL, NULL, 0}
 	};
 	sc_card_t         *card = p15card->card;
