@@ -541,7 +541,7 @@ static int piv_get_data(sc_card_t * card, unsigned int enumtag,
 	if (piv_objects[enumtag].enumtag == PIV_OBJ_9A06)  {
 		BIO * bp = NULL;
 		RSA * rsa = NULL;
-		u8 *p;
+		u8 *q;
 		size_t derlen;
 		size_t taglen;
 		char * keyfilename = NULL;
@@ -586,12 +586,12 @@ static int piv_get_data(sc_card_t * card, unsigned int enumtag,
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
-		p = *buf;
+		q = *buf;
 
-		put_tag_and_len(0x53, taglen, &p);
-		put_tag_and_len(0x99, derlen, &p);
+		put_tag_and_len(0x53, taglen, &q);
+		put_tag_and_len(0x99, derlen, &q);
 
-		i2d_RSAPublicKey(rsa, &p);
+		i2d_RSAPublicKey(rsa, &q);
       
 		RSA_free(rsa);
 	

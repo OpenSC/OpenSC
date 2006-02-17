@@ -544,7 +544,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 {
 	int i, r, count = 0;
 	scconf_block **blocks;
-	char *conf_path;
+	const char *conf_path = NULL;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
 	int temp_len;
@@ -552,7 +552,6 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	HKEY hKey;
 #endif
 
-	conf_path = 0;
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
         rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC",
