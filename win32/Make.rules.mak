@@ -37,5 +37,4 @@ install-headers-dir:
 	cl $(COPTS) /c $<
 
 clean::
-	del /Q *.obj *.dll *.exe
-
+	del /Q *.obj *.dll *.exe *.pdb

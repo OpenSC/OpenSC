@@ -1036,7 +1036,7 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	sc_bin_to_hex(sbuf, scount, dbuf, sizeof(dbuf), ':');
 	sc_debug(reader->ctx, "Part 10 block: %s", dbuf);
 
-	r = reader->ops->transmit(reader, slot, sbuf, scount, rbuf, &rcount, ioctl);
+	r = pcsc_internal_transmit(reader, slot, sbuf, scount, rbuf, &rcount, ioctl);
 
 	SC_TEST_RET(reader->ctx, r, "Part 10: block transmit failed!");
 
