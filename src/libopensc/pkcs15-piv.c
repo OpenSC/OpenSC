@@ -28,7 +28,6 @@
 #include <opensc/log.h>
 #include <opensc/cardctl.h>
 #include <opensc/cards.h>
-#include "../tools/util.h"
 #include <openssl/bio.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
@@ -41,7 +40,7 @@ int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 typedef struct objdata_st {
 	const char *id;
 	const char *label;
-	char *aoid;
+	const char *aoid;
 	int     authority;
 	const char *path;
 	int         obj_flags;
@@ -112,36 +111,6 @@ typedef struct keyinfo_st {
 			SC_PKCS15_PRKEY_USAGE_UNWRAP  | \
 			SC_PKCS15_PRKEY_USAGE_SIGN
 
-
-
-/* copied from util.c to get around link problems in tests etc */
-static int 
-piv_parse_application_id(struct sc_object_id *oid, char *oid_str)
-{
-	int ii, ret = SC_ERROR_INVALID_ARGUMENTS;
-	char *p, *q;
-
-	if (!oid)
-		return ret;
-	/* init oid */
-	for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS; ii++)
-		oid->value[ii] = -1;
-
-	if (!(p = oid_str))
-		return ret;
-	
-	for (ii=0; ii < SC_MAX_OBJECT_ID_OCTETS; ii++)   {
-		oid->value[ii] = strtol(p, &q, 10);
-		if (!*q)
-			break;
-		if (!(q[0] == '.' && isdigit(q[1]))) {
-			return ret;
-		}
-		p = q + 1;
-	}
-
-	return SC_SUCCESS;
-}
 
 
 static int piv_detect_card(sc_pkcs15_card_t *p15card)
@@ -257,11 +226,13 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	p15card->manufacturer_id = strdup(MANU_ID);
 	/* get serial number */
 	/* We could also use the CCC or CHUID info here */
-//        r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
-//        r = sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
-//        if (r != SC_SUCCESS)
-//                return SC_ERROR_INTERNAL;
-//        p15card->serial_number = strdup(buf);
+#if 0
+	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
+	r = sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
+	if (r != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
+	p15card->serial_number = strdup(buf);
+#endif
         p15card->serial_number = strdup("9876543210");
 
 	sc_debug(card->ctx, "PIV-II adding objects...");
@@ -276,7 +247,9 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_format_id(objects[i].id, &obj_info.id);
 		sc_format_path(objects[i].path, &obj_info.path);
 		strncpy(obj_info.app_label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
-		piv_parse_application_id(&obj_info.app_oid, objects[i].aoid);
+		r = sc_format_oid(&obj_info.app_oid, objects[i].aoid);
+		if (r != SC_SUCCESS)
+			return r;
 
 		strncpy(obj_obj.label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		obj_obj.flags = objects[i].obj_flags;
