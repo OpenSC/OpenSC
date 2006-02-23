@@ -1,7 +1,17 @@
+#ifdef APSTUDIO_INVOKED
+#define APSTUDIO_HIDDEN_SYMBOLS // Ignore following symbols
+#endif
 
-#define APSTUDIO_READONLY_SYMBOLS
-#include "afxres.h"
-#undef APSTUDIO_READONLY_SYMBOLS
+#ifndef WINVER
+#define WINVER 0x0400   // default to Windows Version 4 (NT 4)
+#endif
+
+#include <winresrc.h>
+
+#ifdef APSTUDIO_INVOKED
+#undef APSTUDIO_HIDDEN_SYMBOLS
+#endif
+
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENG)
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK

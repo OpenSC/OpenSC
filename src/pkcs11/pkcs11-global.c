@@ -349,7 +349,7 @@ static sc_timestamp_t get_current_time(void)
 	curr += tv.tv_usec / 1000;
 #else
 	struct _timeb time_buf;
-	timestamp_t curr;
+	sc_timestamp_t curr;
 
 	_ftime(&time_buf);
 

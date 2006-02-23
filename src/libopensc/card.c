@@ -522,7 +522,7 @@ int sc_select_file(sc_card_t *card,
 				SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 		}
 	}
-        if (card->ops->select_file == NULL)
+	if (card->ops->select_file == NULL)
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->select_file(card, in_path, file);
 	/* Remember file path */
@@ -900,10 +900,10 @@ scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char
 		scconf_block **blocks;
 		
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i], name1, name2);
-		if (!blocks)
-			return NULL;
-		conf_block = blocks[0];
-		free(blocks);
+		if (blocks != NULL) {
+			conf_block = blocks[0];
+			free(blocks);
+		}
 		if (conf_block != NULL && priority)
 			break;
 	}

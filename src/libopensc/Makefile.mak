@@ -27,12 +27,12 @@ OBJECTS			= \
 	card-cardos.obj card-tcos.obj card-emv.obj card-default.obj \
 	card-mcrd.obj card-starcos.obj card-openpgp.obj card-jcop.obj \
 	card-oberthur.obj card-belpic.obj card-atrust-acos.obj \
-	card-incrypto34.obj \
+	card-incrypto34.obj card-piv.obj\
 	\
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj \
 	pkcs15-gemsafe.obj pkcs15-actalis.obj pkcs15-atrust-acos.obj \
-	pkcs15-tccardos.obj \
+	pkcs15-tccardos.obj pkcs15-piv.obj\
 	\
 	$(TOPDIR)\win32\version.res
 
