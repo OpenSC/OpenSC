@@ -1302,17 +1302,17 @@ static int piv_match_card(sc_card_t *card)
 {
 	SC_FUNC_CALLED(card->ctx,1);
 	/* dee need to look at AID */
-	return 1;		/* always match */
+	return 0; /* never match */
 }
 
 
 static int piv_init(sc_card_t *card)
 {
 	int r;
-	 unsigned long flags;
+	unsigned long flags;
 	struct piv_private_data *priv;
 
-	 SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx,1);
 	priv = (struct piv_private_data *) calloc(1, sizeof(struct piv_private_data));
 
 	if (!priv)

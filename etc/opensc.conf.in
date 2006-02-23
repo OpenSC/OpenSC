@@ -215,6 +215,13 @@ app default {
 		# force_protocol = "t0";
 	# }
 
+	# PIV cards need an entry similar to this one:
+	# card_atr 3B:7D:96:00:00:80:31:80:65:B0:83:11:00:AC:83:00:90:00 {
+		# name = "PIV-II";
+	 	# driver = "piv";
+		# pkcs15emu = "PIV-II";
+	# }
+
 	# Estonian ID card and Micardo driver currently play together with T=0 only.
 	# In theory only the 'cold' ATR should be specified, as T=0 will be the preferred
 	# protocol once you boot it up with T=0, but be paranoid.
