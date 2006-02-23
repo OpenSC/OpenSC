@@ -743,10 +743,11 @@ int sc_release_context(sc_context_t *ctx)
 	}
 	for (i = 0; ctx->card_drivers[i]; i++) {
 		struct sc_card_driver *drv = ctx->card_drivers[i];
-		if (drv->dll)
-			lt_dlclose(drv->dll);
+
 		if (drv->atr_map)
 			_sc_free_atr(ctx, drv);
+		if (drv->dll)
+			lt_dlclose(drv->dll);
 	}
 	if (ctx->preferred_language != NULL)
 		free(ctx->preferred_language);
