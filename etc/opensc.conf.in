@@ -324,3 +324,10 @@ app opensc-pkcs11 {
 		# soft_keygen_allowed = false;
 	}
 }
+
+app tokend {
+	# Score for OpenSC.tokend
+	framework tokend {
+		score = 10;
+	}
+}
