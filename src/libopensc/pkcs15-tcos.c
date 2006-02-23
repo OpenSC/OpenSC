@@ -38,12 +38,12 @@ set_string(char **strp, const char *value)
 int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opts)
 {
 	static const struct {
-		char *card, *manufacturer;
+		const char *card, *manufacturer;
 	} cardlist[]={
 		{"Netkey E4 Card", "TeleSec GmbH"},
 		{"SignTrust Card", "Deutsche Post"},
 		{"Smartkey Card", "Kobil GmbH"},
-		{"UniCard Giessen", "Kobil GmbH"}
+		{"Chipkarte JLU Giessen           ", "Kobil GmbH"}
 	};
 	static const struct {
 		int         type, id, writable;
