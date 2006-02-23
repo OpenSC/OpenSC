@@ -76,12 +76,12 @@ enum {
 
 struct piv_object {
 	int enumtag;
-	char * name;
-	char * oidstring;
-	int tag_len;
+	const char * name;
+	const char * oidstring;
+	size_t tag_len;
 	u8  tag_value[3];
-	u8  containerid[2];  /* will use as relative paths for simulation */
-	int maxlen; 		 /* advisory, used with select_file, but we can read larger */
+	u8  containerid[2];	/* will use as relative paths for simulation */
+	size_t maxlen;		/* advisory, used with select_file, but we can read larger */
 };
 
 static struct piv_object piv_objects[] = { 
@@ -131,7 +131,7 @@ static struct sc_card_driver piv_drv = {
  * oterwise, store tag and length at **ptr, and increment
  */
 
-static int put_tag_and_len(u8 tag, size_t len, u8 **ptr)
+static size_t put_tag_and_len(unsigned int tag, size_t len, u8 **ptr)
 {
 	int i;
 	u8 *p;
@@ -146,7 +146,7 @@ static int put_tag_and_len(u8 tag, size_t len, u8 **ptr)
 	
 	if (ptr) {
 		p = *ptr;
-		*p++ = tag;
+		*p++ = (u8)tag;
 		switch (i) {
 			case 2:
 				*p++ = len;
@@ -515,7 +515,7 @@ static int piv_get_data(sc_card_t * card, unsigned int enumtag,
 	u8 *p;
 	int r = 0;
 	u8 tagbuf[8];
-	int tag_len;
+	size_t tag_len;
 		
 	SC_FUNC_CALLED(card->ctx,1);
 	sc_debug(card->ctx, "get_data: tag=%d \n", enumtag);
@@ -694,18 +694,17 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 static int piv_put_data(sc_card_t *card, unsigned int tag, 
 		const u8 *buf, size_t buf_len) 
 {
-//	struct piv_private_data * priv = (struct piv_private_data *) card->drv_data;
 	int r;
 	u8 * sbuf;
 	size_t sbuflen;
 	u8 * p;
-	int tag_len;
+	size_t tag_len;
 
 	SC_FUNC_CALLED(card->ctx,1);
 
 	tag_len = piv_objects[tag].tag_len;
 	sbuflen = put_tag_and_len(0x5c, tag_len, NULL) + buf_len;
-	 if (!(sbuf = (u8 *) malloc(sbuflen))) 
+	if (!(sbuf = (u8 *) malloc(sbuflen))) 
 		return SC_ERROR_OUT_OF_MEMORY;
 
 	p = sbuf;
@@ -851,10 +850,10 @@ err:
  */
 
 static int piv_general_mutual_authenticate(sc_card_t *card, 
-		u8 key_ref, u8 alg_id)
+	unsigned int key_ref, unsigned int alg_id)
 {
 	int r;
-	int N;
+	size_t N;
 	int locked = 0;
 	u8  *rbuf = NULL;
 	size_t rbuflen;
@@ -904,7 +903,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	*p++ = 0x7c;
 	*p++ = 2 * N + 4;
 	*p++ = 0x80;
-	*p++ = N; 
+	*p++ = (u8)N; 
 	
 	DES_set_key((DES_cblock *) &k1, &ks1);
 	DES_set_key((DES_cblock *) &k2, &ks2);
@@ -957,7 +956,7 @@ err:
 }
 
 static int piv_general_external_authenticate(sc_card_t *card, 
-		u8 key_ref, u8 alg_id)
+		unsigned int key_ref, unsigned int alg_id)
 {
 	struct piv_private_data * priv = (struct piv_private_data *) card->drv_data;
 	int r;
