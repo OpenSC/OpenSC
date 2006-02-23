@@ -144,18 +144,18 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		{NULL, NULL, NULL, 0, NULL, 0}
 	};
 
-	/* PIV certs are not modifiable by the user, and need PIN control */
-	/* But not all beta cards enforce this, and  most applications cant handle */
-	/* code later will turn off the SC_PKCS15_CO_FLAG_PRIVATE */
+	/* 
+	 * NIST 800-73-1 is proposing to lift the restriction on 
+	 * requering pin protected certs. Thus the default will be to 
+	 * not require this. But there are a number of test cards 
+	 * that do enforce it. Code later on will allow SC_PKCS15_CO_FLAG_PRIVATE
+	 * to be set. 
+	 */
 	const cdata certs[] = {
-		{"1", "Certificate for PIV Authentication",
-				0, "0101", SC_PKCS15_CO_FLAG_PRIVATE},
-		{"2", "Certificate for Digital Signature",
-				0, "0100", SC_PKCS15_CO_FLAG_PRIVATE},
-		{"3", "Certificate for Key Management",
-				0, "0102", SC_PKCS15_CO_FLAG_PRIVATE},
-		{"4", "Certificate for Card Authentication",
-				0, "0500", SC_PKCS15_CO_FLAG_PRIVATE},
+		{"1", "Certificate for PIV Authentication", 0, "0101", 0},
+		{"2", "Certificate for Digital Signature", 0, "0100", 0},
+		{"3", "Certificate for Key Management", 0, "0102", 0},
+		{"4", "Certificate for Card Authentication", 0, "0500", 0},
 		{NULL, NULL, 0, NULL, 0}
 	};
 
@@ -274,6 +274,12 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		strncpy(cert_obj.label, certs[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		cert_obj.flags = certs[i].obj_flags;
+
+		/* Cards based on NIST 800-73 may enforce pin protected certs */
+		/* But this is being dropped in 800-73-1 */
+		if (card->flags & 0x10) {
+			cert_obj.flags |=  SC_PKCS15_CO_FLAG_PRIVATE;
+		}
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0)
