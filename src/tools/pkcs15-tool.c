@@ -1140,10 +1140,20 @@ static int learn_card(void)
 		read_and_cache_file(&df->path);
 	printf("Caching %d certificate(s)...\n", cert_count);
 	for (i = 0; i < cert_count; i++) {
+		sc_path_t tpath;
 		struct sc_pkcs15_cert_info *cinfo = (struct sc_pkcs15_cert_info *) certs[i]->data;
 		
 		printf("[%s]\n", certs[i]->label);
-		read_and_cache_file(&cinfo->path);
+
+		tpath = cinfo->path;
+		if (tpath.type == SC_PATH_TYPE_FILE_ID) {
+			/* prepend application DF path in case of a file id */
+			r = sc_concatenate_path(&tpath, &p15card->file_app->path, &tpath);
+			if (r != SC_SUCCESS)
+				return r;
+		}
+
+		read_and_cache_file(&tpath);
 	}
 
 	return 0;
