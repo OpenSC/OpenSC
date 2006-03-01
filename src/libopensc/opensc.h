@@ -763,9 +763,11 @@ int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card);
  * Disconnects from a card, and frees the card structure. Any locks
  * made by the application must be released before calling this function.
  * NOTE: The card is not reset nor powered down after the operation.
- * @param card The card to disconnect
+ * @param  card  The card to disconnect
+ * @param  flag  currently not used (should be set to 0)
+ * @return SC_SUCCESS on success and an error code otherwise
  */
-int sc_disconnect_card(sc_card_t *card, int action);
+int sc_disconnect_card(sc_card_t *card, int flag);
 /**
  * Returns 1 if the magic value of the card object is correct. Mostly
  * used internally by the library.
