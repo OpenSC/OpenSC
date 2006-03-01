@@ -554,8 +554,7 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	return SC_SUCCESS;
 }
 
-static int pcsc_disconnect(sc_reader_t *reader, sc_slot_info_t *slot,
-			   int action)
+static int pcsc_disconnect(sc_reader_t * reader, sc_slot_info_t * slot)
 {
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);

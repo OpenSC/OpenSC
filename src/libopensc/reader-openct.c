@@ -41,7 +41,7 @@ static int openct_reader_detect_card_presence(sc_reader_t *reader,
 static int openct_reader_connect(sc_reader_t *reader,
 			sc_slot_info_t *slot);
 static int openct_reader_disconnect(sc_reader_t *reader,
-			sc_slot_info_t *slot, int action);
+			sc_slot_info_t *slot);
 static int openct_reader_transmit(sc_reader_t *reader,
 			sc_slot_info_t *slot, sc_apdu_t *apdu);
 static int openct_reader_perform_verify(sc_reader_t *reader,
@@ -273,7 +273,7 @@ openct_reader_reconnect(sc_reader_t *reader,
 
 int
 openct_reader_disconnect(sc_reader_t *reader,
-			sc_slot_info_t *slot, int action)
+			sc_slot_info_t *slot)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 

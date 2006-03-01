@@ -220,7 +220,7 @@ int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card_out)
 	SC_FUNC_RETURN(ctx, 1, 0);
 err:
 	if (connected)
-		reader->ops->disconnect(reader, slot, 0);
+		reader->ops->disconnect(reader, slot);
 	if (card != NULL)
 		sc_card_free(card);
 	SC_FUNC_RETURN(ctx, 1, r);
@@ -240,7 +240,7 @@ int sc_disconnect_card(sc_card_t *card, int action)
 			      sc_strerror(r));
 	}
 	if (card->reader->ops->disconnect) {
-		int r = card->reader->ops->disconnect(card->reader, card->slot, action);
+		int r = card->reader->ops->disconnect(card->reader, card->slot);
 		if (r)
 			sc_error(card->ctx, "disconnect() failed: %s\n",
 			      sc_strerror(r));

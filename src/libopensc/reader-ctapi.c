@@ -420,8 +420,7 @@ static int ctapi_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	return 0;
 }
 
-static int ctapi_disconnect(sc_reader_t *reader, sc_slot_info_t *slot,
-			   int action)
+static int ctapi_disconnect(sc_reader_t *reader, sc_slot_info_t *slot)
 {
 	return 0;
 }
