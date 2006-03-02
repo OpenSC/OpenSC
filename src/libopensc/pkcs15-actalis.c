@@ -148,8 +148,10 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	sc_pkcs15_id_t id, auth_id;
 	unsigned char serial[9];
 	int flags;
-	int i, r;
+	int r;
 
+#ifdef HAVE_ZLIB_H
+	int i;
 	const char *certLabel[] = {
 		"User Non-repudiation Certificate",	/* "User Non-repudiation Certificate" */
 		"TSCA Certificate", 
@@ -157,6 +159,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	};	
 	const char *certPath[] =
 	    { "3F00300060006002", "3F00300060006003", "3F00300060006004" };
+#endif
 
 	const char *keyPath = "3F00300040000008";
 	const char *pinDfName = "05040200";
