@@ -358,6 +358,7 @@ typedef struct sc_serial_number {
 	size_t len;
 } sc_serial_number_t;
 
+/* these flags are deprecated and shouldn't be used anymore */
 #define SC_DISCONNECT			0
 #define SC_DISCONNECT_AND_RESET		1
 #define SC_DISCONNECT_AND_UNPOWER	2
