@@ -309,14 +309,14 @@ __sc_ui_read_pin(sc_context_t *ctx, const char *prompt,
 		if (pin_info && (flags & SC_UI_PIN_CHECK_LENGTH)) {
 			if (len < pin_info->min_length) {
 				fprintf(stderr,
-					"PIN too short (min %u characters)\n",
+					"PIN too short (min %lu characters)\n",
 					pin_info->min_length);
 				continue;
 			}
 			if (pin_info->max_length
 			 && len > pin_info->max_length) {
 				fprintf(stderr,
-					"PIN too long (max %u characters)\n",
+					"PIN too long (max %lu characters)\n",
 					pin_info->max_length);
 				continue;
 			}
