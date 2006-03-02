@@ -214,7 +214,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	};
 
 	int    r, i;
-	int dfpath;
 	sc_card_t *card = p15card->card;
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -305,8 +304,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		pin_info.max_length    = pins[i].maxlen;
 		pin_info.pad_char      = pins[i].pad_char;
 		sc_format_path(pins[i].path, &pin_info.path);
-		pin_info.path.value[2] = dfpath >> 8;
-		pin_info.path.value[3] = dfpath & 0xff;
 		pin_info.tries_left    = -1;
 
 		strncpy(pin_obj.label, pins[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
