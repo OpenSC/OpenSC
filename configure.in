@@ -297,12 +297,6 @@ AM_PATH_LIBASSUAN( , [
 AC_SUBST(ASSUAN_CFLAGS)
 AC_SUBST(ASSUAN_LIBS)
 
-dnl enable/disable logging of sensitive apdu data
-AC_ARG_ENABLE(sensitive-logging,
-	AC_HELP_STRING([--disable-sensitive-logging], [disable logging of sensitive APDU data [default=no]]),
-	AC_DEFINE(OPENSC_DONT_LOG_SENSITIVE,1,[Disable logging of sensitive APDU data]))
-
-
 PLUGINDIR="/usr/lib/mozilla/plugins"
 AC_ARG_WITH(plugin-dir,
 	AC_HELP_STRING([--with-plugin-dir=PATH], [install Mozilla plugin to PATH [[/usr/lib/mozilla/plugins]]]),

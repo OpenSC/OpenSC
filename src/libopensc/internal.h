@@ -169,22 +169,29 @@ unsigned long sc_thread_id(const sc_context_t *ctx);
  * @param  buf     pointer to the newly allocated buffer
  * @param  len     length of the encoded APDU
  * @param  proto   protocol to be used
- * @param  do_log  log data to send
  * @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_apdu_get_octets(sc_context_t *ctx, const sc_apdu_t *apdu, u8 **buf,
-	size_t *len, unsigned int proto, int do_log);
+	size_t *len, unsigned int proto);
 /**
  * Sets the status bytes and return data in the APDU
  * @param  ctx     sc_context_t object
  * @param  apdu    the apdu to which the data should be written
  * @param  buf     returned data
  * @param  len     length of the returned data
- * @param  do_log  log returned data
  * @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
-	size_t len, int do_log);
+	size_t len);
+/**
+ * Logs APDU
+ * @param  ctx          sc_context_t object
+ * @param  buf          buffer with the APDU data
+ * @param  len          length of the APDU
+ * @param  is_outgoing  != 0 if the data is send to the card
+ */
+void sc_apdu_log(sc_context_t *ctx, const u8 *data, size_t len,
+	int is_outgoing);
 #ifdef __cplusplus
 }
 #endif
