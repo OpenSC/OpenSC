@@ -20,8 +20,8 @@
  */
 
 /**
- * @file opensc.h
- * @brief OpenSC library core header file
+ * @file src/libopensc/opensc.h
+ * OpenSC library core header file
  */
 
 #ifndef _OPENSC_H
@@ -114,12 +114,6 @@ extern "C" {
 #define SC_AC_OP_ERASE			SC_AC_OP_DELETE
 #define SC_AC_OP_WRITE			3
 /* rehab and invalidate are the same as in DF case */
-
-/* sc_*_record() flags */
-#define SC_RECORD_EF_ID_MASK		0x0001F
-#define SC_RECORD_BY_REC_ID		0x00000
-#define SC_RECORD_BY_REC_NR		0x00100
-#define SC_RECORD_CURRENT		0
 
 /* various maximum values */
 #define SC_MAX_READER_DRIVERS		6
@@ -835,38 +829,106 @@ int sc_unlock(sc_card_t *card);
 
 /**
  * Does the equivalent of ISO 7816-4 command SELECT FILE.
- * @param card The card on which to issue the command
- * @param path The path, file id or name of the desired file
- * @param file If not NULL, will receive a pointer to a new structure
- * @retval SC_SUCCESS on success
+ * @param  card  sc_card_t object on which to issue the command
+ * @param  path  The path, file id or name of the desired file
+ * @param  file  If not NULL, will receive a pointer to a new structure
+ * @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_select_file(sc_card_t *card, const sc_path_t *path,
 		   sc_file_t **file);
-
-int sc_list_files(sc_card_t *card, u8 * buf, size_t buflen);
-
-/* TODO: finish writing API docs */
+/**
+ * List file ids within a DF
+ * @param  card    sc_card_t object on which to issue the command
+ * @param  buf     buffer for the read file ids (the filed ids are
+ *                 stored in the buffer as a sequence of 2 byte values)
+ * @param  buflen  length of the supplied buffer
+ * @return number of files ids read or an error code
+ */
+int sc_list_files(sc_card_t *card, u8 *buf, size_t buflen);
+/**
+ * Read data from a binary EF
+ * @param  card   sc_card_t object on which to issue the command
+ * @param  idx    index within the file with the data to read
+ * @param  buf    buffer to the read data
+ * @param  count  number of bytes to read
+ * @param  flags  flags for the READ BINARY command (currently not used)
+ * @return number of bytes read or an error code
+ */
 int sc_read_binary(sc_card_t *card, unsigned int idx, u8 * buf,
 		   size_t count, unsigned long flags);
+/**
+ * Write data to a binary EF
+ * @param  card   sc_card_t object on which to issue the command 
+ * @param  idx    index within the file for the data to be written 
+ * @param  buf    buffer with the data
+ * @param  count  number of bytes to write
+ * @param  flags  flags for the WRITE BINARY command (currently not used)
+ * @return number of bytes writen or an error code
+ */
 int sc_write_binary(sc_card_t *card, unsigned int idx, const u8 * buf,
 		    size_t count, unsigned long flags);
+/**
+ * Updates the content of a binary EF
+ * @param  card   sc_card_t object on which to issue the command
+ * @param  idx    index within the file for the data to be updated
+ * @param  buf    buffer with the new data
+ * @param  count  number of bytes to update
+ * @param  flags  flags for the UPDATE BINARY command (currently not used)
+ * @return number of bytes writen or an error code
+ */
 int sc_update_binary(sc_card_t *card, unsigned int idx, const u8 * buf,
 		     size_t count, unsigned long flags);
+
+#define SC_RECORD_EF_ID_MASK		0x0001FUL
+/** flags for record operations */
+/** use first record */
+#define SC_RECORD_BY_REC_ID		0x00000UL
+/** use the specified record number */
+#define SC_RECORD_BY_REC_NR		0x00100UL
+/** use currently selected record */
+#define SC_RECORD_CURRENT		0UL
+
 /**
  * Reads a record from the current (i.e. selected) file.
- * @param card The card on which to issue the command
- * @param rec_nr SC_READ_RECORD_CURRENT or a record number starting from 1
- * @param buf Pointer to a buffer for storing the data
- * @param count Number of bytes to read
- * @param flags Flags
- * @retval Number of bytes read or an error value
+ * @param  card    sc_card_t object on which to issue the command
+ * @param  rec_nr  SC_READ_RECORD_CURRENT or a record number starting from 1
+ * @param  buf     Pointer to a buffer for storing the data
+ * @param  count   Number of bytes to read
+ * @param  flags   flags (may contain a short file id of a file to select)
+ * @retval number of bytes read or an error value
  */
 int sc_read_record(sc_card_t *card, unsigned int rec_nr, u8 * buf,
 		   size_t count, unsigned long flags);
+/**
+ * Writes data to a record from the current (i.e. selected) file.
+ * @param  card    sc_card_t object on which to issue the command
+ * @param  rec_nr  SC_READ_RECORD_CURRENT or a record number starting from 1
+ * @param  buf     buffer with to the data to be writen
+ * @param  count   number of bytes to write
+ * @param  flags   flags (may contain a short file id of a file to select)
+ * @retval number of bytes writen or an error value
+ */
 int sc_write_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
 		    size_t count, unsigned long flags);
+/**
+ * Appends a record to the current (i.e. selected) file.
+ * @param  card    sc_card_t object on which to issue the command
+ * @param  buf     buffer with to the data for the new record
+ * @param  count   length of the data
+ * @param  flags   flags (may contain a short file id of a file to select)
+ * @retval number of bytes writen or an error value
+ */
 int sc_append_record(sc_card_t *card, const u8 * buf, size_t count,
 		     unsigned long flags);
+/**
+ * Updates the data of a record from the current (i.e. selected) file.
+ * @param  card    sc_card_t object on which to issue the command
+ * @param  rec_nr  SC_READ_RECORD_CURRENT or a record number starting from 1
+ * @param  buf     buffer with to the new data to be writen
+ * @param  count   number of bytes to update
+ * @param  flags   flags (may contain a short file id of a file to select)
+ * @retval number of bytes writen or an error value
+ */
 int sc_update_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
 		     size_t count, unsigned long flags);
 int sc_delete_record(sc_card_t *card, unsigned int rec_nr);
@@ -875,6 +937,13 @@ int sc_delete_record(sc_card_t *card, unsigned int rec_nr);
 int sc_get_data(sc_card_t *, unsigned int, u8 *, size_t);
 int sc_put_data(sc_card_t *, unsigned int, const u8 *, size_t);
 
+/**
+ * Gets challenge from the card (normally random data).
+ * @param  card    sc_card_t object on which to issue the command
+ * @param  rndout  buffer for the returned random challenge
+ * @param  len     length of the challenge
+ * @return SC_SUCCESS on success and an error code otherwise
+ */
 int sc_get_challenge(sc_card_t *card, u8 * rndout, size_t len);
 
 /********************************************************************/
