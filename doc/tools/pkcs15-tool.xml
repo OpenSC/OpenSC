@@ -68,7 +68,7 @@
 
 				<varlistentry>
 					<term><option>--unblock-pin, -u</option></term>
-					<listitem><para>Unblocks a PIN stored on the token\&. Knowledge of the Pin Unblock Key (PUK) is required for this operation.</para></listitem>
+					<listitem><para>Unblocks a PIN stored on the token. Knowledge of the Pin Unblock Key (PUK) is required for this operation.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
