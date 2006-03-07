@@ -49,19 +49,20 @@ static const struct sc_asn1_entry c_asn1_tokeninfo[] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t buflen)
+int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
+	sc_pkcs15_tokeninfo_t *ti, const u8 *buf, size_t blen)
 {
 	int r;
 	u8 serial[128];
 	size_t i;
 	size_t serial_len = sizeof(serial);
 	u8 mnfid[SC_PKCS15_MAX_LABEL_SIZE];
-	size_t mnfid_len = sizeof(mnfid);
+	size_t mnfid_len  = sizeof(mnfid);
 	u8 label[SC_PKCS15_MAX_LABEL_SIZE];
 	size_t label_len = sizeof(label);
 	u8 last_update[32];
 	size_t lupdate_len = sizeof(last_update) - 1;
-	size_t flags_len = sizeof(card->flags);
+	size_t flags_len   = sizeof(ti->flags);
 	struct sc_asn1_entry asn1_toki[13], asn1_tokeninfo[3];
 	u8 preferred_language[3];
 	size_t lang_length = sizeof(preferred_language);
@@ -69,11 +70,11 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 	memset(last_update, 0, sizeof(last_update));
 	sc_copy_asn1_entry(c_asn1_toki, asn1_toki);
 	sc_copy_asn1_entry(c_asn1_tokeninfo, asn1_tokeninfo);
-	sc_format_asn1_entry(asn1_toki + 0, &card->version, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 0, &ti->version, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 1, serial, &serial_len, 0);
 	sc_format_asn1_entry(asn1_toki + 2, mnfid, &mnfid_len, 0);
 	sc_format_asn1_entry(asn1_toki + 3, label, &label_len, 0);
-	sc_format_asn1_entry(asn1_toki + 4, &card->flags, &flags_len, 0);
+	sc_format_asn1_entry(asn1_toki + 4, &ti->flags, &flags_len, 0);
 	sc_format_asn1_entry(asn1_toki + 5, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 6, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 7, NULL, NULL, 0);
@@ -83,59 +84,59 @@ static void parse_tokeninfo(struct sc_pkcs15_card *card, const u8 * buf, size_t 
 	sc_format_asn1_entry(asn1_toki + 11, preferred_language, &lang_length, 0);
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki, NULL, 0);
 	
-	r = sc_asn1_decode(card->card->ctx, asn1_tokeninfo, buf, buflen, NULL, NULL);
+	r = sc_asn1_decode(ctx, asn1_tokeninfo, buf, blen, NULL, NULL);
 	if (r) {
-		sc_error(card->card->ctx,
-			"ASN.1 parsing of EF(TokenInfo) failed: %s\n",
+		sc_error(ctx, "ASN.1 parsing of EF(TokenInfo) failed: %s\n",
 			sc_strerror(r));
-		goto err;
+		return r;
 	}
-	card->version += 1;
-	card->serial_number = (char *) malloc(serial_len * 2 + 1);
-	if (!card->serial_number) {
-		sc_error(card->card->ctx, "Memory allocation failed\n");
-		goto err;
-	}
-	card->serial_number[0] = 0;
+	ti->version += 1;
+	ti->serial_number = (char *) malloc(serial_len * 2 + 1);
+	if (ti->serial_number == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	ti->serial_number[0] = 0;
 	for (i = 0; i < serial_len; i++) {
 		char byte[3];
 
 		sprintf(byte, "%02X", serial[i]);
-		strcat(card->serial_number, byte);
+		strcat(ti->serial_number, byte);
 	}
-	if (card->manufacturer_id == NULL) {
+	if (ti->manufacturer_id == NULL) {
 		if (asn1_toki[2].flags & SC_ASN1_PRESENT)
-			card->manufacturer_id = strdup((char *) mnfid);
+			ti->manufacturer_id = strdup((char *) mnfid);
 		else
-			card->manufacturer_id = strdup("(unknown)");
+			ti->manufacturer_id = strdup("(unknown)");
+		if (ti->manufacturer_id == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
 	}
-	if (card->label == NULL) {
+	if (ti->label == NULL) {
 		if (asn1_toki[3].flags & SC_ASN1_PRESENT)
-			card->label = strdup((char *) label);
+			ti->label = strdup((char *) label);
 		else
-			card->label = strdup("(unknown)");
+			ti->label = strdup("(unknown)");
+		if (ti->label == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
 	}
-	if (asn1_toki[10].flags & SC_ASN1_PRESENT)
-		card->last_update = strdup((char *)last_update);
+	if (asn1_toki[10].flags & SC_ASN1_PRESENT) {
+		ti->last_update = strdup((char *)last_update);
+		if (ti->last_update == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
+	}
 	if (asn1_toki[11].flags & SC_ASN1_PRESENT) {
 		preferred_language[2] = 0;
-		card->preferred_language = strdup((char *)preferred_language);
+		ti->preferred_language = strdup((char *)preferred_language);
+		if (ti->preferred_language == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
 	}
-	return;
-err:
-	if (card->serial_number == NULL)
-		card->serial_number = strdup("(unknown)");
-	if (card->manufacturer_id == NULL)
-		card->manufacturer_id = strdup("(unknown)");
-	return;
+	return SC_SUCCESS;
 }
 
 int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
-			       struct sc_pkcs15_card *card,
+			       sc_pkcs15_tokeninfo_t *ti,
 			       u8 **buf, size_t *buflen)
 {
 	int r;
-	int version = card->version;
+	int version = ti->version;
 	size_t serial_len, mnfid_len, label_len, flags_len, last_upd_len;
 	
 	struct sc_asn1_entry asn1_toki[13], asn1_tokeninfo[2];
@@ -144,30 +145,30 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 	sc_copy_asn1_entry(c_asn1_tokeninfo, asn1_tokeninfo);
 	version--;
 	sc_format_asn1_entry(asn1_toki + 0, &version, NULL, 1);
-	if (card->serial_number != NULL) {
+	if (ti->serial_number != NULL) {
 		u8 serial[128];
 		serial_len = 0;
-		if (strlen(card->serial_number)/2 > sizeof(serial))
+		if (strlen(ti->serial_number)/2 > sizeof(serial))
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		serial_len = sizeof(serial);
-		if (sc_hex_to_bin(card->serial_number, serial, &serial_len) < 0)
+		if (sc_hex_to_bin(ti->serial_number, serial, &serial_len) < 0)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		sc_format_asn1_entry(asn1_toki + 1, serial, &serial_len, 1);
 	} else
 		sc_format_asn1_entry(asn1_toki + 1, NULL, NULL, 0);
-	if (card->manufacturer_id != NULL) {
-		mnfid_len = strlen(card->manufacturer_id);
-		sc_format_asn1_entry(asn1_toki + 2, card->manufacturer_id, &mnfid_len, 1);
+	if (ti->manufacturer_id != NULL) {
+		mnfid_len = strlen(ti->manufacturer_id);
+		sc_format_asn1_entry(asn1_toki + 2, ti->manufacturer_id, &mnfid_len, 1);
 	} else
 		sc_format_asn1_entry(asn1_toki + 2, NULL, NULL, 0);
-	if (card->label != NULL) {
-		label_len = strlen(card->label);
-		sc_format_asn1_entry(asn1_toki + 3, card->label, &label_len, 1);
+	if (ti->label != NULL) {
+		label_len = strlen(ti->label);
+		sc_format_asn1_entry(asn1_toki + 3, ti->label, &label_len, 1);
 	} else
 		sc_format_asn1_entry(asn1_toki + 3, NULL, NULL, 0);
-	if (card->flags) {
-		flags_len = sizeof(card->flags);
-		sc_format_asn1_entry(asn1_toki + 4, &card->flags, &flags_len, 1);
+	if (ti->flags) {
+		flags_len = sizeof(ti->flags);
+		sc_format_asn1_entry(asn1_toki + 4, &ti->flags, &flags_len, 1);
 	} else
 		sc_format_asn1_entry(asn1_toki + 4, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 5, NULL, NULL, 0);
@@ -175,9 +176,9 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_toki + 7, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 8, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 9, NULL, NULL, 0);
-	if (card->last_update != NULL) {
-		last_upd_len = strlen(card->last_update);
-		sc_format_asn1_entry(asn1_toki + 10, card->last_update, &last_upd_len, 1);
+	if (ti->last_update != NULL) {
+		last_upd_len = strlen(ti->last_update);
+		sc_format_asn1_entry(asn1_toki + 10, ti->last_update, &last_upd_len, 1);
 	} else
 		sc_format_asn1_entry(asn1_toki + 10, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 11, NULL, NULL, 0);
@@ -489,6 +490,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 	sc_path_t tmppath;
 	sc_card_t    *card = p15card->card;
 	sc_context_t *ctx  = card->ctx;
+	sc_pkcs15_tokeninfo_t tokeninfo;
 
 	if (ctx->debug > 4)
 		sc_debug(ctx, "trying normal pkcs15 processing\n");
@@ -618,7 +620,18 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
 		goto end;
 	}
-	parse_tokeninfo(p15card, buf, (size_t)err);
+
+	memset(&tokeninfo, 0, sizeof(tokeninfo));
+	err = sc_pkcs15_parse_tokeninfo(ctx, &tokeninfo, buf, (size_t)err);
+	if (err != SC_SUCCESS)
+		goto end;
+	p15card->version         = tokeninfo.version;
+	p15card->label           = tokeninfo.label;
+	p15card->serial_number   = tokeninfo.serial_number;
+	p15card->manufacturer_id = tokeninfo.manufacturer_id;
+	p15card->last_update     = tokeninfo.last_update;
+	p15card->flags           = tokeninfo.flags;
+	p15card->preferred_language = tokeninfo.preferred_language;
 
 	ok = 1;
 end:

@@ -343,6 +343,16 @@ typedef struct sc_pkcs15_unusedspace sc_pkcs15_unusedspace_t;
 
 #define SC_PKCS15_CARD_MAGIC		0x10203040
 
+typedef struct {
+	unsigned int version;
+	unsigned int flags;
+	char *label;
+	char *serial_number;
+	char *manufacturer_id;	
+	char *last_update;
+	char *preferred_language;
+} sc_pkcs15_tokeninfo_t;
+
 typedef struct sc_pkcs15_card {
 	sc_card_t *card;
 	char *label;
@@ -507,8 +517,11 @@ int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *card,
 int sc_pkcs15_encode_dir(struct sc_context *ctx,
 			struct sc_pkcs15_card *card,
 			u8 **buf, size_t *buflen);
+int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
+			sc_pkcs15_tokeninfo_t *ti,
+			const u8 *buf, size_t blen);
 int sc_pkcs15_encode_tokeninfo(struct sc_context *ctx,
-			struct sc_pkcs15_card *card,
+			sc_pkcs15_tokeninfo_t *ti,
 			u8 **buf, size_t *buflen);
 int sc_pkcs15_encode_odf(struct sc_context *ctx,
 			struct sc_pkcs15_card *card,

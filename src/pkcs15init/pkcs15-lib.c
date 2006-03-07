@@ -2387,6 +2387,7 @@ static int sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile)
 {
 	struct sc_card	*card = p15card->card;
+	sc_pkcs15_tokeninfo_t tokeninfo;
 	u8		*buf = NULL;
 	size_t		size;
 	int		r;
@@ -2398,7 +2399,16 @@ static int sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
 	if (p15card->last_update == NULL)
 		return SC_ERROR_INTERNAL;
 
-	r = sc_pkcs15_encode_tokeninfo(card->ctx, p15card, &buf, &size);
+	/* create a temporary tokeninfo structure */
+	tokeninfo.version = p15card->version;
+	tokeninfo.flags = p15card->flags;
+	tokeninfo.label = p15card->label;
+	tokeninfo.serial_number = p15card->serial_number;
+	tokeninfo.manufacturer_id = p15card->manufacturer_id;
+	tokeninfo.last_update = p15card->last_update;
+	tokeninfo.preferred_language = p15card->preferred_language;
+
+	r = sc_pkcs15_encode_tokeninfo(card->ctx, &tokeninfo, &buf, &size);
 	if (r >= 0)
 		r = sc_pkcs15init_update_file(profile, card,
 			       p15card->file_tokeninfo, buf, size);
