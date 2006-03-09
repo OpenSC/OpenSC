@@ -46,7 +46,8 @@ static struct sc_atr_table setcos_atrs[] = {
 	/* FINEID 2264 (EIDApplet/7816-15, OPK/EMV/AVANT) */
 	{ "3b:6e:00:00:00:62:00:00:57:41:56:41:4e:54:10:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0, NULL },
 	{ "3b:7b:94:00:00:80:62:11:51:56:46:69:6e:45:49:44", NULL, NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0, NULL },
-
+	/* Swedish NIDEL card */
+	{ "3b:9f:94:80:1f:c3:00:68:10:44:05:01:46:49:53:45:31:c8:07:90:00:18", NULL, NULL, SC_CARD_TYPE_SETCOS_NIDEL, 0, NULL },
 	/* Setcos 4.4.1 */
 	{ "3b:9f:94:80:1f:c3:00:68:11:44:05:01:46:49:53:45:31:c8:00:00:00:00", "ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:00:00", NULL, SC_CARD_TYPE_SETCOS_44, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
@@ -112,7 +113,7 @@ static int setcos_match_card(sc_card_t *card)
 	return 1;
 }
 
-static int select_fineid_app(sc_card_t * card)
+static int select_pkcs15_app(sc_card_t * card)
 {
 	sc_path_t app;
 	int r;
@@ -143,8 +144,9 @@ static int setcos_init(sc_card_t *card)
 	switch (card->type) {
 	case SC_CARD_TYPE_SETCOS_FINEID:
 	case SC_CARD_TYPE_SETCOS_FINEID_V2:
+	case SC_CARD_TYPE_SETCOS_NIDEL:
 		card->cla = 0x00;
-		select_fineid_app(card);
+		select_pkcs15_app(card);
 		if (card->flags & SC_CARD_FLAG_RNG)
 			card->caps |= SC_CARD_CAP_RNG;
 		break;
@@ -176,6 +178,7 @@ static int setcos_init(sc_card_t *card)
 		}
 		break;
 	case SC_CARD_TYPE_SETCOS_44:
+	case SC_CARD_TYPE_SETCOS_NIDEL:
 		{
 			unsigned long flags;
 
@@ -291,7 +294,8 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 
 static int setcos_construct_fci(sc_card_t *card, const sc_file_t *file, u8 *out, size_t *outlen)
 {
-	if (card->type == SC_CARD_TYPE_SETCOS_44)
+	if (card->type == SC_CARD_TYPE_SETCOS_44 || 
+	    card->type == SC_CARD_TYPE_SETCOS_NIDEL)
 		return setcos_construct_fci_44(card, file, out, outlen);
 	else
 		return iso_ops->construct_fci(card, file, out, outlen);
@@ -521,7 +525,8 @@ static int setcos_set_security_env2(sc_card_t *card,
 
 	assert(card != NULL && env != NULL);
 
-	if (card->type == SC_CARD_TYPE_SETCOS_44) {
+	if (card->type == SC_CARD_TYPE_SETCOS_44 ||
+	    card->type == SC_CARD_TYPE_SETCOS_NIDEL) {
 		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC) {
 			sc_error(card->ctx, "asymmetric keyref not supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
@@ -542,7 +547,8 @@ static int setcos_set_security_env2(sc_card_t *card,
 	case SC_SEC_OPERATION_SIGN:
 		/* Should be 0x41 */
 		apdu.p1 = ((card->type == SC_CARD_TYPE_SETCOS_FINEID_V2) ||
-		           (card->type == SC_CARD_TYPE_SETCOS_44)) ? 0x41 : 0x81;
+		           (card->type == SC_CARD_TYPE_SETCOS_44) ||
+			   (card->type == SC_CARD_TYPE_SETCOS_NIDEL)) ? 0x41 : 0x81;
 		apdu.p2 = 0xB6;
 		break;
 	default:
@@ -622,6 +628,7 @@ static int setcos_set_security_env(sc_card_t *card,
 		case SC_CARD_TYPE_SETCOS_PKI:
 		case SC_CARD_TYPE_SETCOS_FINEID:
 		case SC_CARD_TYPE_SETCOS_FINEID_V2:
+		case SC_CARD_TYPE_SETCOS_NIDEL:
 		case SC_CARD_TYPE_SETCOS_44:
 			break;
 		default:
@@ -849,7 +856,8 @@ static int setcos_select_file(sc_card_t *card,
 	if (r)
 		return r;
 	if (file != NULL) {
-		if (card->type == SC_CARD_TYPE_SETCOS_44)
+		if (card->type == SC_CARD_TYPE_SETCOS_44 ||
+		    card->type == SC_CARD_TYPE_SETCOS_NIDEL)
 			parse_sec_attr_44(*file, (*file)->sec_attr, (*file)->sec_attr_len);
 		else
 			parse_sec_attr(*file, (*file)->sec_attr, (*file)->sec_attr_len);
@@ -863,7 +871,8 @@ static int setcos_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
-	if (card->type == SC_CARD_TYPE_SETCOS_44)
+	if (card->type == SC_CARD_TYPE_SETCOS_44 || 
+	    card->type == SC_CARD_TYPE_SETCOS_NIDEL)
 		apdu.cla = 0x80;
 	apdu.resp = buf;
 	apdu.resplen = buflen;
@@ -971,11 +980,11 @@ static int setcos_generate_store_key(sc_card_t *card,
 	/* Setup key-generation paramters */
 	len = 0;
 	if (data->op_type == OP_TYPE_GENERATE)
-		sbuf[len++] = 0x92;				/* algo ID: RSA CRT */
+		sbuf[len++] = 0x92;	/* algo ID: RSA CRT */
 	else
-		sbuf[len++] = 0x9A;				/* algo ID: EXTERNALLY GENERATED RSA CRT */	
+		sbuf[len++] = 0x9A;	/* algo ID: EXTERNALLY GENERATED RSA CRT */
 	sbuf[len++] = 0x00;	
-	sbuf[len++] = data->mod_len / 256;		/* 2 bytes for modulus bitlength */
+	sbuf[len++] = data->mod_len / 256;	/* 2 bytes for modulus bitlength */
 	sbuf[len++] = data->mod_len % 256;
 
 	sbuf[len++] = data->pubexp_len / 256;   /* 2 bytes for pubexp bitlength */
