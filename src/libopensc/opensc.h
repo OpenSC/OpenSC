@@ -394,6 +394,7 @@ struct sc_reader_operations {
 			      int *reader_index,
 			      unsigned int *event,
 			      int timeout);
+	int (*reset)(struct sc_reader *, struct sc_slot_info *);
 };
 
 /*
@@ -804,6 +805,14 @@ int sc_detect_card_presence(sc_reader_t *reader, int slot_id);
 int sc_wait_for_event(sc_reader_t **readers, int *slots, size_t nslots,
                       unsigned int event_mask,
                       int *reader, unsigned int *event, int timeout);
+
+/**
+ * Resets the card.
+ * NOTE: only PC/SC backend implements this function at this moment.
+ * @param card The card to reset.
+ * @retval SC_SUCCESS on success
+ */
+int sc_reset(sc_card_t *card);
 
 /**
  * Locks the card against modification from other threads.

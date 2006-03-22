@@ -249,6 +249,33 @@ int sc_disconnect_card(sc_card_t *card, int action)
 	SC_FUNC_RETURN(ctx, 1, 0);
 }
 
+int sc_reset(sc_card_t *card)
+{
+	int r, r2;
+
+	if (card == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (card->reader->ops->reset == NULL)
+		return SC_ERROR_NOT_SUPPORTED;
+
+	r = sc_mutex_lock(card->ctx, card->mutex);
+	if (r != SC_SUCCESS)
+		return r;
+
+	r = card->reader->ops->reset(card->reader, card->slot);
+	/* invalidate cache */
+	memset(&card->cache, 0, sizeof(card->cache));
+	card->cache_valid = 0;
+
+	r2 = sc_mutex_unlock(card->ctx, card->mutex);
+	if (r2 != SC_SUCCESS) {
+		sc_error(card->ctx, "unable to release lock\n");
+		r = r != SC_SUCCESS ? r : r2;
+	}
+
+	return r;
+}
+
 int sc_lock(sc_card_t *card)
 {
 	int r = 0;

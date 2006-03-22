@@ -93,6 +93,7 @@ struct pcsc_slot_data {
 	SCARD_READERSTATE_A reader_state;
 	DWORD verify_ioctl;
 	DWORD modify_ioctl;
+	int locked;
 };
 
 static int pcsc_detect_card_presence(sc_reader_t *reader, sc_slot_info_t *slot);
@@ -452,7 +453,7 @@ static int pcsc_wait_for_event(sc_reader_t **readers,
 	}
 }
 
-static int pcsc_reconnect(sc_reader_t * reader, sc_slot_info_t * slot)
+static int pcsc_reconnect(sc_reader_t * reader, sc_slot_info_t * slot, int reset)
 {
 	DWORD active_proto, protocol;
 	LONG rv;
@@ -476,9 +477,12 @@ static int pcsc_reconnect(sc_reader_t * reader, sc_slot_info_t * slot)
 		protocol = slot->active_protocol;
 	}
 
+	/* reconnect always unlocks transaction */
+	pslot->locked = 0;
+	
 	rv = SCardReconnect(pslot->pcsc_card,
 			    priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED, protocol,
-			    SCARD_LEAVE_CARD, &active_proto);
+			    reset ? SCARD_RESET_CARD : SCARD_LEAVE_CARD, &active_proto);
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_ERROR(reader->ctx, "SCardReconnect failed", rv);
 		return pcsc_ret_to_error(rv);
@@ -524,6 +528,9 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	slot->active_protocol = pcsc_proto_to_opensc(active_proto);
 	pslot->pcsc_card = card_handle;
 
+	/* after connect reader is not locked yet */
+	pslot->locked = 0;
+	
 	/* check for pinpad support */
 #ifdef PINPAD_ENABLED
 	sc_debug(reader->ctx, "Requesting reader features ... ");
@@ -586,7 +593,7 @@ static int pcsc_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 
 	if ((unsigned int)rv == SCARD_W_RESET_CARD) {
 		/* try to reconnect if the card was reset by some other application */
-		rv = pcsc_reconnect(reader, slot);
+		rv = pcsc_reconnect(reader, slot, 0);
 		if (rv != SCARD_S_SUCCESS) {
 			PCSC_ERROR(reader->ctx, "SCardReconnect failed", rv);
 			return pcsc_ret_to_error(rv);
@@ -600,6 +607,9 @@ static int pcsc_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 		PCSC_ERROR(reader->ctx, "SCardBeginTransaction failed", rv);
 		return pcsc_ret_to_error(rv);
 	}
+
+	pslot->locked = 1;
+	
 	return SC_SUCCESS;
 }
 
@@ -610,12 +620,16 @@ static int pcsc_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
 	assert(pslot != NULL);
+
 	rv = SCardEndTransaction(pslot->pcsc_card, priv->gpriv->transaction_reset ?
                            SCARD_RESET_CARD : SCARD_LEAVE_CARD);
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_ERROR(reader->ctx, "SCardEndTransaction failed", rv);
 		return pcsc_ret_to_error(rv);
 	}
+
+	pslot->locked = 0;
+	
 	return 0;
 }
 
@@ -635,6 +649,23 @@ static int pcsc_release(sc_reader_t *reader)
 	return 0;
 }
 
+static int pcsc_reset(sc_reader_t *reader, sc_slot_info_t *slot)
+{
+	int r;
+	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
+	int old_locked = pslot->locked;
+
+	r = pcsc_reconnect(reader, slot, 1);
+	if(r != SC_SUCCESS)
+		return r;
+
+	/* pcsc_reconnect unlocks card... try to lock it again if it was locked */
+	if(old_locked)
+		r = pcsc_lock(reader, slot);
+	
+	return r;
+}
+	
 static struct sc_reader_operations pcsc_ops;
 
 static struct sc_reader_driver pcsc_drv = {
@@ -784,6 +815,7 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 	pcsc_ops.disconnect = pcsc_disconnect;
 	pcsc_ops.perform_verify = pcsc_pin_cmd;
 	pcsc_ops.wait_for_event = pcsc_wait_for_event;
+	pcsc_ops.reset = pcsc_reset;
 
 	return &pcsc_drv;
 }
