@@ -443,7 +443,7 @@ static int do_info(int argc, char **argv)
 			"Linear variable TLV", "Cyclic, SIMPLE-TLV",
 		};
 		const char *ops[] = {
-			"READ", "UPDATE", "WRITE", "ERASE", "REHABILITATE",
+			"READ", "UPDATE", "DELETE", "WRITE", "REHABILITATE",
 			"INVALIDATE", "LIST_FILES", "CRYPTO",
 		};
 		printf("%-15s%s\n", "EF structure:", structs[file->ef_structure]);
