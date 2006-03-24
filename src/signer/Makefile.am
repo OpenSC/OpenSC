@@ -1,7 +1,6 @@
 # Process this file with automake to create Makefile.in
 
 plugindir = $(PLUGINDIR)
-libdir = @libdir@/opensc
 
 MAINTAINERCLEANFILES = Makefile.in
 
