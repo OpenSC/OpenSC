@@ -278,7 +278,7 @@ int sc_reset(sc_card_t *card)
 
 int sc_lock(sc_card_t *card)
 {
-	int r = 0;
+	int r = 0, r2 = 0;
 
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -294,7 +294,11 @@ int sc_lock(sc_card_t *card)
 	}
 	if (r == 0)
 		card->lock_count++;
-	r = sc_mutex_unlock(card->ctx, card->mutex);
+	r2 = sc_mutex_unlock(card->ctx, card->mutex);
+	if (r2 != SC_SUCCESS) {
+		sc_error(card->ctx, "unable to release lock\n");
+		r = r != SC_SUCCESS ? r : r2;
+	}
 	return r;
 }
 
@@ -313,7 +317,8 @@ int sc_unlock(sc_card_t *card)
 		memset(&card->cache, 0, sizeof(card->cache));
 		card->cache_valid = 0;
 		if (card->ops->logout != NULL) {
-			/*XXX*/
+			/* XXX As this logout causes random asserts on card->lock_count >=0
+			  on card removal under firefox 1.5 */
 			r = sc_mutex_unlock(card->ctx, card->mutex);
 			if (r != SC_SUCCESS) {
 				sc_error(card->ctx, "unable to release lock\n");
