@@ -325,8 +325,12 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	 * During initialization process, the key may have been created
 	 * and saved as a file before the certificate has been created. 
 	 */  
-	if ((rv = sc_pkcs15_read_pubkey(fw_data->p15_card, pubkey, &p15_key)) < 0)
-		p15_key = NULL; 
+	if (pubkey->flags & SC_PKCS15_CO_FLAG_PRIVATE)   	/* is the key private? */
+	  p15_key = NULL; 		/* will read key when needed */
+	else {	  
+	  if ((rv = sc_pkcs15_read_pubkey(fw_data->p15_card, pubkey, &p15_key)) < 0)
+	    p15_key = NULL; 
+	}
 
 	/* Public key object */
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &object,
