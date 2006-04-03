@@ -111,6 +111,11 @@ static int iso7816_read_binary(sc_card_t *card,
 	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
+	if (idx > 0x7fff) {
+		sc_error(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
+		return SC_ERROR_OFFSET_TOO_LARGE;
+	}
+
 	assert(count <= card->max_recv_size);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0,
 		       (idx >> 8) & 0x7F, idx & 0xFF);
@@ -240,6 +245,12 @@ static int iso7816_write_binary(sc_card_t *card,
 	int r;
 
 	assert(count <= card->max_send_size);
+
+	if (idx > 0x7fff) {
+		sc_error(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
+		return SC_ERROR_OFFSET_TOO_LARGE;
+	}
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD0,
 		       (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.lc = count;
@@ -261,6 +272,12 @@ static int iso7816_update_binary(sc_card_t *card,
 	int r;
 
 	assert(count <= card->max_send_size);
+
+	if (idx > 0x7fff) {
+		sc_error(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
+		return SC_ERROR_OFFSET_TOO_LARGE;
+	}
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6,
 		       (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.lc = count;

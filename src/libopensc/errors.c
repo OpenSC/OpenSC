@@ -89,6 +89,7 @@ const char *sc_strerror(int error)
 		"Wrong padding",
 		"Unsupported card",
 		"Unable to load external module",
+		"EF offset too large"
 	};
 	const int int_base = -SC_ERROR_INTERNAL;
 	const char *p15i_errors[] = {
