@@ -1675,25 +1675,33 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	if ((label = args->label) == NULL)
 		label = "Certificate";
 
+	/* Set the SO PIN reference from card */
+	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
+		return r;
+
 	/* Select an ID if the user didn't specify one, otherwise
 	 * make sure it's unique */
 	if ((r = select_id(p15card, SC_PKCS15_TYPE_CERT, &args->id, NULL, NULL, NULL)) < 0)
 		return r;
 
-	/* If there is a private key corresponding to the ID given
-	 * by the user, make sure $PIN references the pin protecting
-	 * this key
-	 */
-	if (args->id.len != 0
-	 && profile->protect_certificates
-	 && sc_pkcs15_find_prkey_by_id(p15card, &args->id, &object) == 0) {
-		r = set_user_pin_from_authid(p15card, profile, &object->auth_id);
-		if (r < 0) {
-			sc_error(p15card->card->ctx,
-				      "Failed to assign user pin reference "
-				      "(copied from private key auth_id)\n");
-			return r;
+	if (profile->protect_certificates) {
+		/* If there is a private key corresponding to the ID given
+		 * by the user, make sure $PIN references the pin protecting
+		 * this key
+		 */
+		r = -1;
+		if (args->id.len != 0
+		 && sc_pkcs15_find_prkey_by_id(p15card, &args->id, &object) == 0) {
+			r = set_user_pin_from_authid(p15card, profile, &object->auth_id);
+			if (r < 0) {
+				sc_error(p15card->card->ctx,
+					      "Failed to assign user pin reference "
+					      "(copied from private key auth_id)\n");
+				return r;
+			}
 		}
+		if (r == -1) /* User pin ref not yet set */
+			set_user_pin_from_authid(p15card, profile, NULL);
 	}
 
 	object = sc_pkcs15init_new_object(SC_PKCS15_TYPE_CERT_X509, label, NULL, NULL);
@@ -3098,7 +3106,9 @@ set_so_pin_from_card(struct sc_pkcs15_card *p15card, struct sc_profile *profile)
 
 /*
  * If the user specified an auth_id, select the corresponding
- * PIN entry and set the reference data
+ * PIN entry and set the reference data.
+ * If auth_id is NULL, then get the first user PIN found, this
+ * is usefull for the 'onepin' profile option.
  */
 static int
 set_user_pin_from_authid(struct sc_pkcs15_card *p15card,
@@ -3108,6 +3118,23 @@ set_user_pin_from_authid(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_pin_info *pin;
 	struct sc_pkcs15_object	*objp;
 	int		r;
+
+	if (auth_id == NULL) {
+		int i;
+		struct sc_pkcs15_object	*p15objects[5];
+		r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, p15objects, 5);
+		if (r < 0)
+			return r;
+		for (i = 0; i < r; i++) {
+			sc_pkcs15_pin_info_t *pininfo = (sc_pkcs15_pin_info_t *) p15objects[i]->data;
+			if (!(pininfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN)) {
+				auth_id = &pininfo->auth_id;
+				break;
+			}
+		}
+		if (i >= r)
+			return SC_ERROR_OBJECT_NOT_FOUND;
+	}
 
 	if (auth_id->len == 0)
 		return 0;
