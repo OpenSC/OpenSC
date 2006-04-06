@@ -255,6 +255,7 @@ sc_profile_new(void)
 		return NULL;
 	pro->p15_spec = p15card = sc_pkcs15_card_new();
 
+	pro->protect_certificates = 1;
 	pro->pkcs15.do_last_update = 1;
 
 	if (p15card) {
