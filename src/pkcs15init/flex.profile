@@ -11,7 +11,11 @@ cardinfo {
     # stored on the card. If you enable this, you MUST
     # adjust the sizes of the pin-domain and key-dir DFs
     # accordingly.
-    protect-certificates = no;
+    #
+    # Update: everything seems to work fine without this
+    # option, so it is commented out
+    #
+    # protect-certificates = no;
 }
 
 # Define reasonable limits for PINs and PUK
