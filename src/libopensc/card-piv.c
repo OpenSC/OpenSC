@@ -440,10 +440,12 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 			if (pix != NULL ) { 
 				sc_debug(card->ctx,"found PIX");
 		 
+				/* early cards returned full AID, rather then just the pix */
 				for (i = 0; piv_aids[i].len_short != 0; i++) {
-					if (pixlen >=  piv_aids[i].len_short &&
+					if ((pixlen >= 6 && memcmp(pix, piv_aids[i].value + 5, 6) == 0)
+						 || ((pixlen >=  piv_aids[i].len_short &&
 							memcmp(pix, piv_aids[i].value,
-							piv_aids[i].len_short) == 0) {
+							piv_aids[i].len_short) == 0))) {
 						if (card->type > SC_CARD_TYPE_PIV_II_BASE &&
 							card->type < SC_CARD_TYPE_PIV_II_BASE+1000 &&
 							card->type == piv_aids[i].enumtag) {
@@ -637,6 +639,11 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 	r = piv_get_data(card, priv->selected_obj, &rbuf, &rbuflen);
 	
 	if (r >=0) {
+		/* if tag is 0, assume card is telling us no object on card */
+		if (rbuf[0] == '0') {
+			r = SC_ERROR_FILE_NOT_FOUND;
+			goto err;
+		}
 		sc_debug(card->ctx, "DEE rbuf=%p,rbuflen=%d,",rbuf, rbuflen);
 		body = (u8 *) sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x53, &bodylen);
 		if (body == NULL) {
@@ -680,6 +687,7 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 				break;
 		}
 	}
+err:
 	if (rbuf)
 		free(rbuf);
 	SC_FUNC_RETURN(card->ctx, 1, r);
