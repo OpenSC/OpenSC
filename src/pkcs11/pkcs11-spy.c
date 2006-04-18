@@ -50,35 +50,6 @@ FILE *spy_output = NULL;
 #define CK_PKCS11_FUNCTION_INFO(name) \
     pkcs11_spy->name = name;
 
-#ifdef _WIN32
-const char *get_reg_config(const char *spath)
-{
-  static char path[PATH_MAX];
-  char  *ptr  = NULL;
-  int    plen = sizeof(path);
-  long   rc;
-  HKEY   hkey;
-
-  rc = RegOpenKeyEx(HKEY_CURRENT_USER, spath, 0, KEY_QUERY_VALUE, &hkey);
-  if (rc == ERROR_SUCCESS) {
-    rc = RegQueryValueEx(hkey, "ConfigFile", NULL, NULL, (LPBYTE)path, &plen);
-    if ((rc == ERROR_SUCCESS) && (plen < PATH_MAX))
-      ptr = path;
-    RegCloseKey(hkey);
-  }
-  if (ptr == NULL) {
-    rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, spath, 0, KEY_QUERY_VALUE, &hkey);
-    if (rc == ERROR_SUCCESS) {
-      rc = RegQueryValueEx(hkey, "ConfigFile", NULL, NULL, (LPBYTE)path, &plen);
-      if ((rc == ERROR_SUCCESS) && (plen < PATH_MAX))
-        ptr = path;
-      RegCloseKey(hkey);
-    }
-  }
-  return ptr;
-}
-#endif
-
 /* Inits the spy. If successfull, po != NULL */
 static CK_RV init_spy(void)
 {
