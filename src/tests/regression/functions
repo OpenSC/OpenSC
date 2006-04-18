@@ -15,6 +15,7 @@ if [ -z "$__p15init__" ]; then
 	p15init=$p15base/tools/pkcs15-init
 	p15dump=$p15base/tests/p15dump
 	p11tool=$p15base/tools/pkcs11-tool
+	p11module=$p15base/pkcs11/.libs/opensc-pkcs11.so
 	p15log=$p15temp/test.log
 
 	for bin in $osctool $p15tool $p15crypt $p15init $p11tool; do
@@ -325,6 +326,7 @@ function p15_validate {
 	run_display_output $p15dump < /dev/null
 	msg "Validating card using pkcs11-tool"
 	run_display_output $p11tool -t --pin 0000 \
+		--module $p11module \
 		--slot-label "OpenSC Test Card" $* < /dev/null
 	success
 }

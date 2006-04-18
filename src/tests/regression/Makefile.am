@@ -8,3 +8,7 @@ EXTRA_DIST = \
 	init0007 init0008 init0009 init0010 init0011 init0012 \
 	pin0001 pin0002 \
 	erase functions README run-all test.p12
+
+# remove log files from regression tests
+maintainer-clean-local:
+	rm -rf out failed
