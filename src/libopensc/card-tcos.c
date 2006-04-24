@@ -627,7 +627,7 @@ static int tcos_set_security_env(sc_card_t *card,
 
         if (se_num) SC_FUNC_RETURN(ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 
-	if(ctx->debug >= 3) sc_debug(ctx, "Security Environment %d:%02X\n", env->key_ref_len, *env->key_ref);
+	if(ctx->debug >= 3) sc_debug(ctx, "Security Environment Ref=%d:%02X\n", env->key_ref_len, *env->key_ref);
 	if(env->operation == SC_SEC_OPERATION_SIGN &&
 	   (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || (env->key_ref_len==1 && *env->key_ref==0x80))
 	){
@@ -712,6 +712,10 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 	if (datalen > 255) SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
 
 	if(((tcos_data *)card->drv_data)->sign_with_def_env){
+		if(datalen>48){
+			sc_error(card->ctx, "Data to be signed is too long (TCOS supports max. 48 bytes)\n");
+			SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+		}
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
 		memcpy(sbuf, data, datalen);
 	} else {
