@@ -1111,9 +1111,6 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	sc_unlock(card); 
 
-	if (rbuf)
-		free(rbuf);
-	
 	SC_FUNC_RETURN(card->ctx, 1, 0);
 
 }
@@ -1340,6 +1337,7 @@ static int piv_init(sc_card_t *card)
 	r = piv_find_aid(card, priv->aid_file);
 	if (r < 0) {
 		 sc_error(card->ctx, "Failed to initialize %s\n", card->name);
+		SC_FUNC_RETURN(card->ctx, 1, r);
 	}
 	priv->enumtag = piv_aids[r].enumtag;
 	card->type = piv_aids[r].enumtag;
