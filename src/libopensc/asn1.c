@@ -233,8 +233,6 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 			return;
 		}
 		hlen = tagp - p;
-		if (r == 0)
-			return;
 		if (cla == 0 && tag == 0) {
 			printf("Zero tag, finishing\n");
 			break;
