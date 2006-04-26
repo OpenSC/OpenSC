@@ -320,6 +320,7 @@ gpk_init_pinfile(struct sc_profile *profile, sc_card_t *card,
 	if (acl->method != SC_AC_NEVER) {
 		sc_error(card->ctx,
 			"PIN file most be protected by WRITE=NEVER");
+		sc_file_free(pinfile);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_file_add_acl_entry(pinfile, SC_AC_OP_WRITE, SC_AC_NONE, 0);

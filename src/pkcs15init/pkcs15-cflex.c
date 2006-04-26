@@ -83,7 +83,7 @@ cflex_delete_file(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
  */
 static int cflex_erase_card(struct sc_profile *profile, sc_card_t *card)
 {
-	sc_file_t  *df = profile->df_info->file, *dir, *userpinfile;
+	sc_file_t  *df = profile->df_info->file, *dir, *userpinfile = NULL;
 	int             r;
 
 	/* Delete EF(DIR). This may not be very nice
@@ -108,10 +108,13 @@ static int cflex_erase_card(struct sc_profile *profile, sc_card_t *card)
 	           userpinfile->path.len) != 0) {
            	r = cflex_delete_file(profile, card, userpinfile);
 		sc_file_free(userpinfile);
+		userpinfile=NULL;
 	}
 
 
 out:	/* Forget all cached keys, the pin files on card are all gone. */
+	if (userpinfile)
+		sc_file_free(userpinfile);
 	sc_keycache_forget_key(NULL, -1, -1);
         sc_free_apps(card);
         if (r == SC_ERROR_FILE_NOT_FOUND)
