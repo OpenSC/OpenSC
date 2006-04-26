@@ -175,7 +175,7 @@ static void print_file(const sc_file_t *file)
 		break;
 	}
 	printf("\t%4s", st);
-	printf(" %5d", file->size);
+	printf(" %5lu", file->size);
 	if (file->namelen) {
 		printf("\tName: ");
 		print_binary(stdout, file->name, file->namelen);
@@ -418,7 +418,7 @@ static int do_info(int argc, char **argv)
 			printf("%02X", path.value[i]);
 		}
 	}
-	printf("\n%-15s%d bytes\n", "File size:", file->size);
+	printf("\n%-15s%lu bytes\n", "File size:", file->size);
 
 	if (file->type == SC_FILE_TYPE_DF) {
 		const char *ops[] = {

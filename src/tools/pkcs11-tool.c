@@ -783,14 +783,14 @@ static int login(CK_SESSION_HANDLE session, int need_to_be_so)
 void
 init_token(CK_SLOT_ID slot)
 {
-	char token_label[33];
+	unsigned char token_label[33];
 	char new_buf[21], *new_pin = NULL;
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
 
 	if (!opt_object_label)
 		fatal("The token label must be specified using --label\n");
-	snprintf(token_label, sizeof (token_label), "%-32.32s",
+	snprintf((char *) token_label, sizeof (token_label), "%-32.32s",
 			opt_object_label);
 
 	get_token_info(slot, &info);

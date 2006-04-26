@@ -279,7 +279,7 @@ static int send_apdu(void)
 			apdu.data = sbuf;
 			apdu.datalen = apdu.lc;
 			if (len < apdu.lc) {
-				fprintf(stderr, "APDU too short (need %d bytes).\n",
+				fprintf(stderr, "APDU too short (need %lu bytes).\n",
 					apdu.lc-len);
 				return 2;
 			}
@@ -293,7 +293,7 @@ static int send_apdu(void)
 			} else
 				apdu.cse = SC_APDU_CASE_3_SHORT;
 			if (len) {
-				fprintf(stderr, "APDU too long (%d bytes extra).\n", len);
+				fprintf(stderr, "APDU too long (%lu bytes extra).\n", len);
 				return 2;
 			}
 		} else if (len == 1) {

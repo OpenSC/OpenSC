@@ -191,7 +191,7 @@ sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
  * If a hash function was used, we can make a big shortcut by
  *   finishing with EVP_VerifyFinal().
  */
-CK_RV sc_pkcs11_verify_data(unsigned char *pubkey, int pubkey_len,
+CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 			CK_MECHANISM_TYPE mech, sc_pkcs11_operation_t *md,
 			unsigned char *data, int data_len,
 			unsigned char *signat, int signat_len)

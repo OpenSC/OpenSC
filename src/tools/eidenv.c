@@ -138,7 +138,7 @@ static void do_esteid(sc_card_t *card)
 {
 	sc_path_t path;
 	int r, i;
-	char buff[512];
+	unsigned char buff[512];
 
 	if (stats) {
 		int key_used[4];
@@ -181,14 +181,14 @@ static void do_esteid(sc_card_t *card)
 		} 
 		buff[r] = '\0';
 		if (exec_program) {
-			char * cp;
+			unsigned char * cp;
 			cp = malloc(strlen(esteid_data[i].env_name) + 
-			strlen(buff) + 2);
+				strlen((char *) buff) + 2);
 			if (cp) { 
-				strcpy(cp,esteid_data[i].env_name);
-				strcat(cp,"=");
-				strcat(cp,buff);
-				putenv(cp);
+				strcpy((char *) cp,esteid_data[i].env_name);
+				strcat((char *) cp,"=");
+				strcat((char *) cp,(char *) buff);
+				putenv((char *) cp);
 			}
 		} else {
 			printf("%s: %s\n", esteid_data[i].name, buff);
@@ -319,7 +319,7 @@ static void do_belpic(sc_card_t *card)
 		{"municipal", SC_ASN1_UTF8STRING, 3, 0, address_data.municipality, &municipalitylen},
 		{NULL, 0, 0, 0, NULL, NULL}};
 
-	char buff[512];
+	unsigned char buff[512];
 	int r;
 
 	r = read_transp(card, "3f00df014031", buff, sizeof(buff));

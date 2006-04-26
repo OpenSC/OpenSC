@@ -216,7 +216,7 @@ list_data_object(const char *kind, const u8*data, size_t data_len)
 {
 	size_t i;
 	
-	printf("%s (%i bytes): <", kind, data_len);
+	printf("%s (%lu bytes): <", kind, data_len);
 	for (i = 0; i < data_len; i++)
 		printf(" %02X", data[i]);
 	printf(" >\n");
@@ -239,13 +239,13 @@ print_data_object(const char *kind, const u8*data, size_t data_len)
 			}
 		for (i=0; i < data_len; i++)
 			fprintf(outf, "%c", data[i]);
-		printf("Dumping (%i bytes) to file <%s>: <", data_len, opt_outfile);
+		printf("Dumping (%lu bytes) to file <%s>: <", data_len, opt_outfile);
 		for (i=0; i < data_len; i++)
 			printf(" %02X", data[i]);
 		printf(" >\n");
 		fclose(outf);
 	} else {
-		printf("%s (%i bytes): <", kind, data_len);
+		printf("%s (%lu bytes): <", kind, data_len);
 		for (i=0; i < data_len; i++)
 			printf(" %02X", data[i]);
 		printf(" >\n");
@@ -411,7 +411,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 			printf(", %s", access_flags[i]);   
 		}
 	printf("\n");
-	printf("\tModLength   : %d\n", prkey->modulus_length);
+	printf("\tModLength   : %lu\n", prkey->modulus_length);
 	printf("\tKey ref     : %d\n", prkey->key_reference);
 	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");
 	printf("\tPath        : %s\n", sc_print_path(&prkey->path));
@@ -469,7 +469,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 			printf(", %s", access_flags[i]);   
 		}
 	printf("\n");
-	printf("\tModLength   : %d\n", pubkey->modulus_length);
+	printf("\tModLength   : %lu\n", pubkey->modulus_length);
 	printf("\tKey ref     : %d\n", pubkey->key_reference);
 	printf("\tNative      : %s\n", pubkey->native ? "yes" : "no");
 	printf("\tPath        : %s\n", sc_print_path(&pubkey->path));
@@ -634,8 +634,8 @@ static int read_ssh_key(void)
 	/* key_to_blob */
 
 	if (pubkey->algorithm == SC_ALGORITHM_RSA) {
-		char buf[2048];
-		char *uu;
+		unsigned char buf[2048];
+		unsigned char *uu;
 		uint32_t len;
 		uint32_t n;
 
@@ -644,7 +644,7 @@ static int read_ssh_key(void)
 		buf[2]=0;
 		buf[3]=7;
 
-		len = sprintf(buf+4,"ssh-rsa");
+		len = sprintf((char *) buf+4,"ssh-rsa");
 		len+=4;
 
 		if (sizeof(buf)-len < 4+pubkey->u.rsa.exponent.len)
@@ -686,8 +686,8 @@ static int read_ssh_key(void)
 	}
 
 	if (pubkey->algorithm == SC_ALGORITHM_DSA) {
-		char buf[2048];
-		char *uu;
+		unsigned char buf[2048];
+		unsigned char *uu;
 		uint32_t len;
 		uint32_t n;
 
@@ -696,7 +696,7 @@ static int read_ssh_key(void)
 		buf[2]=0;
 		buf[3]=7;
 
-		len = sprintf(buf+4,"ssh-dss");
+		len = sprintf((char *) buf+4,"ssh-dss");
 		len+=4;
 
 		if (sizeof(buf)-len < 5+pubkey->u.dsa.p.len)
@@ -882,7 +882,7 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 			printf(", %s", pin_flags[i]);
 		}
 	printf("\n");
-	printf("\tLength    : min_len:%d, max_len:%d, stored_len:%d\n",
+	printf("\tLength    : min_len:%lu, max_len:%lu, stored_len:%lu\n",
 				pin->min_length, pin->max_length, pin->stored_length);
 	printf("\tPad char  : 0x%02X\n", pin->pad_char);
 	printf("\tReference : %d\n", pin->reference);
