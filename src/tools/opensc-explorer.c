@@ -943,7 +943,7 @@ static int do_update_binary(int argc, char **argv)
 	in_str = argv[2];
 	printf("in: %i; %s\n", offs, in_str);
 	if (*in_str=='\"')   {
-		in_len = strlen(in_str)-2 > sizeof(buf) ? sizeof(buf) : strlen(in_str)-2;
+		in_len = strlen(in_str)-2 >= sizeof(buf) ? sizeof(buf)-1 : strlen(in_str)-2;
 		strncpy((char *) buf, in_str+1, in_len);
 	} else {
 		in_len = hex2binary(buf, sizeof(buf), in_str);
