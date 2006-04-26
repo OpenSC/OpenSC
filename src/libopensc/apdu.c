@@ -202,8 +202,10 @@ int sc_apdu_get_octets(sc_context_t *ctx, const sc_apdu_t *apdu, u8 **buf,
 	if (nbuf == NULL)
 		return SC_ERROR_MEMORY_FAILURE;
 	/* encode the APDU in the buffer */
-	if (sc_apdu2bytes(ctx, apdu, proto, nbuf, nlen) != SC_SUCCESS)
+	if (sc_apdu2bytes(ctx, apdu, proto, nbuf, nlen) != SC_SUCCESS) {
+		free(nbuf);
 		return SC_ERROR_INTERNAL;
+	}
 	*buf = nbuf;
 	*len = nlen;
 
@@ -224,11 +226,10 @@ int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
 	apdu->sw2 = (unsigned int)buf[len - 1];
 	len -= 2;
 	/* set output length and copy the returned data if necessary */
-	if (len <= apdu->resplen)
+	if (apdu->resplen >= len) {
 		apdu->resplen = len;
-
-	if (apdu->resplen != 0)
 		memcpy(apdu->resp, buf, apdu->resplen);
+	}
 
 	return SC_SUCCESS;
 }
