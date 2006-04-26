@@ -98,8 +98,8 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	}
 
 	if (file != NULL) {
-		r = snprintf(buf, sizeof(buf), "%s:%d:%s: ", file, line, func ? func : "");
-		if (r < 0 || (unsigned int)r > sizeof(buf))
+		r = snprintf(buf, sizeof(buf)-1, "%s:%d:%s: ", file, line, func ? func : "");
+		if (r < 0 || (unsigned int)r >= sizeof(buf))
 			return;
 	} else {
 		r = 0;
@@ -107,11 +107,13 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	p = buf + r;
 	left = sizeof(buf) - r;
 
-	r = vsnprintf(p, left, format, args);
+	r = vsnprintf(p, left-1, format, args);
 	if (r < 0)
 		return;
 	p += r;
 	left -= r;
+	/* make sure the string is 0 terminated */
+	buf[sizeof(buf)-1] = 0;
 
 	display_fn(ctx, buf);
 }
