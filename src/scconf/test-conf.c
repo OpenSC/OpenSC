@@ -158,6 +158,7 @@ int main(int argc, char **argv)
 
 	scconf_list_add(&foo_list, "value3");
 
+	/* FIXME: this will segfault as foo_item is NULL */
 	scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_COMMENT, NULL, "# comment1");
 	scconf_item_add(conf, foo_block, foo_item, SCCONF_ITEM_TYPE_VALUE, "list1", foo_list);
 	foo_block = NULL;
