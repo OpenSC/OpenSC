@@ -170,6 +170,7 @@ auth_select_aid(sc_card_t *card)
 	apdu.le = 0x2D;
 	apdu.resplen = 0x30;
 	apdu.resp = apdu_resp;
+	/* FIXME: check return value of this sc_transmit_apdu call? */
 	sc_transmit_apdu(card, &apdu);
 	if (apdu.sw1==0x90)  {
 		card->serialnr.len = 4;
