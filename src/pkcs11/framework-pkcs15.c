@@ -2107,6 +2107,7 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		case CKA_VALUE:
 		case CKA_PUBLIC_EXPONENT:
 			if (pubkey->pub_data == NULL) 
+				/* FIXME: check the return value? */
 				check_cert_data_read(fw_data, cert);
 			break;
 	}
