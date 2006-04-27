@@ -243,8 +243,6 @@ static int pcsc_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 #endif
 	/* set response */
 	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize);
-	if (r != SC_SUCCESS)
-		return r;
 out:
 	if (sbuf != NULL) {
 		sc_mem_clear(sbuf, ssize);
