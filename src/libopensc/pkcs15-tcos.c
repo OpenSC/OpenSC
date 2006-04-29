@@ -1,7 +1,7 @@
 /*
  * PKCS15 emulation layer for TCOS base preformatted cards
  *
- * Copyright (C) 2005, Peter Koch <pk_opensc@web.de>
+ * Copyright (C) 2006, Peter Koch <pk_opensc@web.de>
  * Copyright (C) 2004, Antonino Iacono <ant_iacono@tin.it>
  * Copyright (C) 2003, Olaf Kirch <okir@suse.de>
  *
@@ -42,8 +42,9 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 	} cardlist[]={
 		{"Netkey E4 Card", "TeleSec GmbH"},
 		{"SignTrust Card", "Deutsche Post"},
-		{"Smartkey Card", "Kobil GmbH"},
-		{"Chipkarte JLU Giessen           ", "Kobil GmbH"}
+		{"Smartkey Card TypA", "Kobil GmbH"},
+		{"Smartkey Card TypB", "Kobil GmbH"},
+		{"Chipkarte JLU Giessen", "Kobil GmbH"}
 	};
 	static const struct {
 		int         type, id, writable;
@@ -63,13 +64,11 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		{ 2, 0x45, 1, "8000DF01C000", "SignTrust Signatur Zertifikat"},
 		{-2, 0x46, 1, "800082008220", "SignTrust Verschluesselungs Zertifikat"},
 		{-2, 0x47, 1, "800083008320", "SignTrust Authentifizierungs Zertifikat"},
-		{ 3, 0x45, 1, "41014352",     "Smartkey Zertifikat A1"},
-		{-3, 0x46, 1, "41014353",     "Smartkey Zertifikat A2"},
-		{ 3, 0x47, 1, "42014352",     "Smartkey Zertifikat B1"},
-		{-3, 0x48, 1, "42014353",     "Smartkey Zertifikat B2"},
-		{ 3, 0x49, 1, "43014352",     "Smartkey Zertifikat C1"},
-		{-3, 0x4A, 1, "43014353",     "Smartkey Zertifikat C2"},
-		{ 4, 0x45, 1, "41004352",     "UniCard Giessen Zertifikat"},
+		{ 3, 0x45, 1, "41004352",     "Smartkey Zertifikat 1"},
+		{-3, 0x46, 1, "41004353",     "Smartkey Zertifikat 2"},
+		{ 4, 0x45, 1, "41014352",     "Smartkey Zertifikat 1"},
+		{-4, 0x46, 1, "41014353",     "Smartkey Zertifikat 2"},
+		{ 5, 0x45, 1, "41004352",     "UniCard Giessen Zertifikat"},
 		{ 0, 0, 0, NULL, NULL}
 	};
 	static const struct {
@@ -85,13 +84,11 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		{2, 0x45, 1, "8000DF015331", 0x80, "Signatur Schluessel"},
 		{2, 0x46, 2, "800082008210", 0x80, "Verschluesselungs Schluessel"},
 		{2, 0x47, 3, "800083008310", 0x80, "Authentifizierungs Schluessel"},
-		{3, 0x45, 1, "41015103",     0x83, "Smartkey Schluessel A1"},
-		{3, 0x46, 1, "41015104",     0x84, "Smartkey Schluessel A2"},
-		{3, 0x47, 1, "42015103",     0x83, "Smartkey Schluessel B1"},
-		{3, 0x48, 1, "42015104",     0x84, "Smartkey Schluessel B2"},
-		{3, 0x49, 1, "43015103",     0x83, "Smartkey Schluessel C1"},
-		{3, 0x4A, 1, "43015104",     0x84, "Smartkey Schluessel C2"},
-		{4, 0x45, 1, "3F004100",     0x83, "UniCard Giessen Schluessel"},
+		{3, 0x45, 1, "41005103",     0x83, "Smartkey Schluessel 1"},
+		{3, 0x46, 1, "41005104",     0x84, "Smartkey Schluessel 2"},
+		{4, 0x45, 1, "41015103",     0x83, "Smartkey Schluessel 1"},
+		{4, 0x46, 1, "41015104",     0x84, "Smartkey Schluessel 2"},
+		{5, 0x45, 1, "3F004100",     0x83, "UniCard Giessen Schluessel"},
 		{0, 0, 0, NULL, 0, NULL}
 	};
 	static const struct {
@@ -128,7 +125,13 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		{3, 2, 0, 8, 0x01, "5008", "globale PUK",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED |
 			SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN | SC_PKCS15_PIN_FLAG_SO_PIN},
-		{4, 1, 0, 6, 0x00, "4100", "globale PIN",
+		{4, 1, 2, 6, 0x00, "5000", "globale PIN",
+			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED |
+			SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN},
+		{4, 2, 0, 8, 0x01, "5008", "globale PUK",
+			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED |
+			SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN | SC_PKCS15_PIN_FLAG_SO_PIN},
+		{5, 1, 0, 6, 0x00, "4100", "globale PIN",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED},
 		{0, 0, 0, 0, 0, NULL, NULL, 0}
 	};
