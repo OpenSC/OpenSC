@@ -512,14 +512,14 @@ sc_pkcs15init_rmdir(sc_card_t *card, struct sc_profile *profile,
 	int		r = 0, nfids;
 	char            pbuf[SC_MAX_PATH_STRING_SIZE];
 
+	if (df == NULL)
+		return SC_ERROR_INTERNAL;
 	r = sc_path_print(pbuf, sizeof(pbuf), &df->path);
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
 	sc_debug(card->ctx, "sc_pkcs15init_rmdir(%s)\n", pbuf);
 
-	if (df == NULL)
-		return SC_ERROR_INTERNAL;
 	if (df->type == SC_FILE_TYPE_DF) {
 		r = sc_pkcs15init_authenticate(profile, card, df,
 				SC_AC_OP_LIST_FILES);
