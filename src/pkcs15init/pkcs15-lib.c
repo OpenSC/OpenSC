@@ -2683,7 +2683,7 @@ sc_pkcs15init_new_object(int type, const char *label, sc_pkcs15_id_t *auth_id, v
 	}
 
 	if (label)
-		strncpy(object->label, label, sizeof(object->label));
+		strncpy(object->label, label, sizeof(object->label)-1);
 	if (auth_id)
 		object->auth_id = *auth_id;
 
