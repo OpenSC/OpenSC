@@ -1269,8 +1269,10 @@ auth_set_security_env(sc_card_t *card,
 		sc_debug(card->ctx, "algo SC_ALGORITHM_xDES: ref %X, flags %X\n", 
 				env->algorithm_ref, env->flags);
 		if (key_file->ef_structure != SC_CARDCTL_OBERTHUR_KEY_DES || 
-				key_file->type != SC_FILE_TYPE_INTERNAL_EF)
+				key_file->type != SC_FILE_TYPE_INTERNAL_EF) {
+			sc_file_free(key_file);
 			return SC_ERROR_INVALID_ARGUMENTS;
+		}
 
 		des_buf_len = 3;
 		if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT)   {
@@ -1286,6 +1288,7 @@ auth_set_security_env(sc_card_t *card,
 			apdu.datalen = des_buf_len;
 		}
 		else {
+			sc_file_free(key_file);
 			sc_error(card->ctx, "Invalid crypto operation: %X\n", env->operation);
 			return SC_ERROR_NOT_SUPPORTED;
 		}
@@ -1294,18 +1297,22 @@ auth_set_security_env(sc_card_t *card,
 	case SC_ALGORITHM_RSA:
 		sc_debug(card->ctx, "algo SC_ALGORITHM_RSA\n");
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES) {
+			sc_file_free(key_file);
 			sc_error(card->ctx, "Not support for hashes.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		
 		if (pads & (~supported_pads))   {
+			sc_file_free(key_file);
 			sc_error(card->ctx, "No support for this PAD: %X\n",pads);
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 	
 		if (key_file->type != SC_FILE_TYPE_INTERNAL_EF ||  
-				key_file->ef_structure != SC_CARDCTL_OBERTHUR_KEY_RSA_CRT)
+				key_file->ef_structure != SC_CARDCTL_OBERTHUR_KEY_RSA_CRT) {
+			sc_file_free(key_file);
 			return SC_ERROR_INVALID_ARGUMENTS;
+		}
 	
 		rsa_sbuf[5] = (key_file->id>>8) & 0xFF;
 		rsa_sbuf[6] = key_file->id & 0xFF;
@@ -1326,12 +1333,14 @@ auth_set_security_env(sc_card_t *card,
 			apdu.data = rsa_sbuf;
 		}
 		else {
+			sc_file_free(key_file);
 			sc_error(card->ctx, "Invalid crypto operation: %X\n", env->operation);
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 	
 		break;
 	default:
+		sc_file_free(key_file);
 		sc_error(card->ctx, "Invalid crypto algorithm supplied.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
