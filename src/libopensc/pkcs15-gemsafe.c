@@ -389,14 +389,18 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 			break; /* cert not found, no more certs */
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
-		if (r < 0)
+		if (r < 0) {
+			free(gsdata);
 			return SC_ERROR_INTERNAL;
+		}
 
 		/* now lets see if we have a matching key for this cert */
 		
 		r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
-		if (r < 0)
+		if (r < 0) {
+			free(gsdata);
 			return SC_ERROR_INTERNAL;
+		}
 
 		for (j = 0; j < num_keyinfo; j++) { 
 			if (cert_out->key.u.rsa.modulus.len == kinfo[j].modulus_len &&	
