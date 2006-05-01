@@ -173,7 +173,7 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		};
 		printf("ef structure: %s, ", structs[file->ef_structure]);
 	}
-	printf("size: %lu\n", file->size);
+	printf("size: %lu\n", (unsigned long) file->size);
 	for (r = 0; r < depth; r++)
 		printf("  ");
 	if (file->type == SC_FILE_TYPE_DF)
@@ -311,7 +311,7 @@ static int send_apdu(void)
 			apdu.datalen = apdu.lc;
 			if (len < apdu.lc) {
 				fprintf(stderr, "APDU too short (need %lu bytes).\n",
-					apdu.lc-len);
+					(unsigned long) apdu.lc-len);
 				return 2;
 			}
 			len -= apdu.lc;
@@ -324,7 +324,8 @@ static int send_apdu(void)
 			} else
 				apdu.cse = SC_APDU_CASE_3_SHORT;
 			if (len) {
-				fprintf(stderr, "APDU too long (%lu bytes extra).\n", len);
+				fprintf(stderr, "APDU too long (%lu bytes extra).\n",
+					(unsigned long) len);
 				return 2;
 			}
 		} else if (len == 1) {

@@ -65,7 +65,10 @@ static void print_pin(const struct sc_pkcs15_object *obj)
 			printf(", %s", pin_flags[i]);
 		}
 	printf("\n");
-	printf("\tLength      : min_len:%lu, max_len:%lu, stored_len:%lu\n", pin->min_length, pin->max_length, pin->stored_length);
+	printf("\tLength      : min_len:%lu, max_len:%lu, stored_len:%lu\n",
+		(unsigned long) pin->min_length,
+		(unsigned long) pin->max_length,
+		(unsigned long) pin->stored_length);
 	printf("\tPad char    : 0x%02X\n", pin->pad_char);
 	printf("\tReference   : %d\n", pin->reference);
 	printf("\tEncoding    : ");
@@ -122,7 +125,8 @@ static void print_prkey(const struct sc_pkcs15_object *obj)
 		}
 	printf("\n");
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA)
-		printf("\tModLength   : %lu\n", prkey->modulus_length);
+		printf("\tModLength   : %lu\n", 
+			(unsigned long) prkey->modulus_length);
 	printf("\tKey ref     : %d\n", prkey->key_reference);
 	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");
 	if (prkey->path.len) {
@@ -169,7 +173,8 @@ static void print_pubkey(const struct sc_pkcs15_object *obj)
 		}
 	printf("\n");
 	if (obj->type == SC_PKCS15_TYPE_PUBKEY_RSA)
-		printf("\tModLength   : %lu\n", pubkey->modulus_length);
+		printf("\tModLength   : %lu\n",
+			(unsigned long) pubkey->modulus_length);
 	printf("\tKey ref     : %d\n", pubkey->key_reference);
 	printf("\tNative      : %s\n", pubkey->native ? "yes" : "no");
 	printf("\tPath        : ");

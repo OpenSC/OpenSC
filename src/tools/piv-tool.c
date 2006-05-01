@@ -280,7 +280,7 @@ static int send_apdu(void)
 			apdu.datalen = apdu.lc;
 			if (len < apdu.lc) {
 				fprintf(stderr, "APDU too short (need %lu bytes).\n",
-					apdu.lc-len);
+					(unsigned long) apdu.lc-len);
 				return 2;
 			}
 			len -= apdu.lc;

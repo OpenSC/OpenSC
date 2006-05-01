@@ -680,7 +680,8 @@ sc_card_ctl(sc_card_t *card, unsigned long cmd, void *args)
 
 	/* suppress "not supported" error messages */
 	if (r == SC_ERROR_NOT_SUPPORTED) {
-		sc_debug(card->ctx, "card_ctl(%lu) not supported\n", cmd);
+		sc_debug(card->ctx, "card_ctl(%lu) not supported\n",
+			(unsigned long) cmd);
 		return r;
 	}
 	SC_FUNC_RETURN(card->ctx, 2, r);

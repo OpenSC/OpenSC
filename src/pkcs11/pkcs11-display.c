@@ -819,7 +819,8 @@ void print_mech_info(FILE *f, CK_MECHANISM_TYPE type,
     fprintf(f, "Unknown Mechanism (%08lx) : ", type);
   }
   fprintf(f, "min:%lu max:%lu flags:0x%lX ",
-	  minfo->ulMinKeySize, minfo->ulMaxKeySize, minfo->flags);
+	  (unsigned long) minfo->ulMinKeySize,
+	  (unsigned long) minfo->ulMaxKeySize, minfo->flags);
   printf("( %s%s%s%s%s%s%s%s%s%s%s%s%s%s)\n",
 #endif
 	 (minfo->flags & CKF_HW)                ? "Hardware " : "",

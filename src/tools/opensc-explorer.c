@@ -418,7 +418,7 @@ static int do_info(int argc, char **argv)
 			printf("%02X", path.value[i]);
 		}
 	}
-	printf("\n%-15s%lu bytes\n", "File size:", file->size);
+	printf("\n%-15s%lu bytes\n", "File size:", (unsigned long) file->size);
 
 	if (file->type == SC_FILE_TYPE_DF) {
 		const char *ops[] = {

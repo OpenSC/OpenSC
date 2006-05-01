@@ -96,7 +96,7 @@ void show_pin(
 	   f->prop_attr_len!=5 || f->prop_attr[0]!=0x01 || f->prop_attr[1]!=0x80
 	){
 		printf("\nInvald PIN-file: Type=%d, EF-Structure=%d, Prop-Len=%lu %02X:%02X:%02X\n",
-			f->type, f->ef_structure, f->prop_attr_len,
+			f->type, f->ef_structure, (unsigned long) f->prop_attr_len,
 			f->prop_attr[0], f->prop_attr[1], f->prop_attr[2]
 		);
 		return;
@@ -133,7 +133,8 @@ void show_certs(
 
 	printf("\n");
 	for(i=0;i<sizeof(certlist)/sizeof(certlist[0]);++i){
-		printf("Certificate %lu: %s", i, certlist[i].label); fflush(stdout);
+		printf("Certificate %lu: %s",
+			(unsigned long) i, certlist[i].label); fflush(stdout);
 
 		sc_format_path(certlist[i].path,&p);
 		if((j=sc_select_file(card,&p,&f))<0){
@@ -150,7 +151,7 @@ void show_certs(
 			printf(", Cannot read Cert-file, %s\n", sc_strerror(j));
 			continue;
 		}
-		printf(", Maxlen=%lu", f->size);
+		printf(", Maxlen=%lu", (unsigned long) f->size);
 		q=buf;
 		if(q[0]==0x30 && q[1]==0x82){
 			if(q[4]==6 && q[5]<10 && q[q[5]+6]==0x30 && q[q[5]+7]==0x82) q+=q[5]+6;
@@ -234,7 +235,7 @@ void show_card(
 	   file->size!=12 || (len=sc_read_binary(card,0,buf,12,0))!=12 || buf[0]!=0x5A || buf[1]!=0x0A
 	){
 		printf("\nInvald Serial-Number: Type=%d, EF-Structure=%d, Size=%lu\n",
-			file->type, file->ef_structure, file->size
+			file->type, file->ef_structure, (unsigned long) file->size
 		);
 		return;
 	}
@@ -588,7 +589,8 @@ int main(
 	printf("%d Reader detected\n", sc_ctx_get_reader_count(ctx));
 	for(i=0; i < sc_ctx_get_reader_count(ctx); ++i){
 		sc_reader_t *reader = sc_ctx_get_reader(ctx, i);
-		printf("%lu: %s, Driver: %s, %d Slot(s)\n", i, reader->name,
+		printf("%lu: %s, Driver: %s, %d Slot(s)\n",
+			(unsigned long) i, reader->name,
 			reader->driver->name, reader->slot_count);
 	}
 	if(reader < 0 || reader >= (int)sc_ctx_get_reader_count(ctx)){

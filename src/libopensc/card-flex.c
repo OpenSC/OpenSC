@@ -1195,7 +1195,8 @@ static int flex_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	len = tfile->size;
 	sc_file_free(tfile);
 	if (len != 8) {
-		sc_debug(card->ctx, "unexpected file length of EF_ICCSN (%lu)\n", len);
+		sc_debug(card->ctx, "unexpected file length of EF_ICCSN (%lu)\n",
+			(unsigned long) len);
 		return SC_ERROR_INTERNAL;
 	}
 	r = sc_read_binary(card, 0, buf, len, 0);

@@ -318,7 +318,8 @@ cardos_generate_key(sc_profile_t *profile, sc_card_t *card,
 	rsa_max_size = (card->caps & SC_CARD_CAP_RSA_2048) ? 2048 : 1024;
 	keybits = key_info->modulus_length & ~7UL;
 	if (keybits > rsa_max_size) {
-		sc_error(card->ctx, "Unable to generate key, max size is %lu", rsa_max_size);
+		sc_error(card->ctx, "Unable to generate key, max size is %lu",
+			(unsigned long) rsa_max_size);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 

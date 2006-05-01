@@ -216,7 +216,7 @@ list_data_object(const char *kind, const u8*data, size_t data_len)
 {
 	size_t i;
 	
-	printf("%s (%lu bytes): <", kind, data_len);
+	printf("%s (%lu bytes): <", kind, (unsigned long) data_len);
 	for (i = 0; i < data_len; i++)
 		printf(" %02X", data[i]);
 	printf(" >\n");
@@ -239,13 +239,15 @@ print_data_object(const char *kind, const u8*data, size_t data_len)
 			}
 		for (i=0; i < data_len; i++)
 			fprintf(outf, "%c", data[i]);
-		printf("Dumping (%lu bytes) to file <%s>: <", data_len, opt_outfile);
+		printf("Dumping (%lu bytes) to file <%s>: <",
+			(unsigned long) data_len, opt_outfile);
 		for (i=0; i < data_len; i++)
 			printf(" %02X", data[i]);
 		printf(" >\n");
 		fclose(outf);
 	} else {
-		printf("%s (%lu bytes): <", kind, data_len);
+		printf("%s (%lu bytes): <",
+			kind, (unsigned long) data_len);
 		for (i=0; i < data_len; i++)
 			printf(" %02X", data[i]);
 		printf(" >\n");

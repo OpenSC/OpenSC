@@ -252,7 +252,7 @@ static int sign_ext(struct sc_pkcs15_object *obj,
 			else {
 				fprintf(stderr,
 					"Invalid input size (%lu bytes)\n",
-					len);
+					(unsigned long) len);
 				return SC_ERROR_INVALID_ARGUMENTS;
 			}
 		}
@@ -294,7 +294,7 @@ static int sign(struct sc_pkcs15_object *obj)
 	 && !(opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
 	 && (size_t)c != key->modulus_length/8) {
 		fprintf(stderr, "Input has to be exactly %lu bytes, when using no padding.\n",
-			key->modulus_length/8);
+			(unsigned long) key->modulus_length/8);
 		return 2;
 	}
 	if (!key->native) {

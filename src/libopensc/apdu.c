@@ -336,9 +336,10 @@ error:
 		"resp=%p resplen=%lu data=%p datelen=%lu",
 		apdu->cse & SC_APDU_SHORT_MASK,
 		(apdu->cse & SC_APDU_EXT) != 0 ? "extended" : "short",
-		apdu->cse, apdu->cla, apdu->ins, apdu->p1,
-		apdu->p2, apdu->lc,  apdu->le, apdu->resp,
-		apdu->resplen, apdu->data, apdu->datalen);
+		apdu->cse, apdu->cla, apdu->ins, apdu->p1, apdu->p2,
+		(unsigned long) apdu->lc, (unsigned long) apdu->le,
+		apdu->resp, (unsigned long) apdu->resplen,
+		apdu->data, (unsigned long) apdu->datalen);
 	return SC_ERROR_INVALID_ARGUMENTS;
 }
 

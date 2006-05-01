@@ -1597,12 +1597,14 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 	switch (key_type) {
 	case CKK_RSA:
 		if (pub)
-			printf("; RSA %lu bits\n", getMODULUS_BITS(sess, obj));
+			printf("; RSA %lu bits\n",
+				(unsigned long) getMODULUS_BITS(sess, obj));
 		else
 			printf("; RSA \n");
 		break;
 	default:
-		printf("; unknown key algorithm %lu\n", key_type);
+		printf("; unknown key algorithm %lu\n",
+				(unsigned long) key_type);
 		break;
 	}
 
@@ -3463,7 +3465,7 @@ p11_mechanism_to_name(CK_MECHANISM_TYPE mech)
 		if (mi->mech == mech)
 			return mi->name;
 	}
-	snprintf(temp, sizeof(temp), "mechtype-%lu", mech);
+	snprintf(temp, sizeof(temp), "mechtype-%lu", (unsigned long) mech);
 	return temp;
 }
 
