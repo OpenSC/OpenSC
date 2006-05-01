@@ -432,6 +432,7 @@ int main(int argc, char **argv)
 		execv(exec_program, largv);
 		/* we should not get here */
 		perror("execv()");
+		exit(1);
 	}
 	
 out:
