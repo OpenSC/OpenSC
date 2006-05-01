@@ -6,7 +6,34 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/ChangeLog.
 
-New in 0.10.0-rc2; 2005-10-24; Andreas Jellinghaus
+New in 0.11.1; ????-??-??; ? ?
+* Improved TCOS driver for Uni Giesen Card
+
+New in 0.11.0; 2006-05-01; Andreas Jellinghaus
+* compile fixes/improvements for windows
+* document pkcs15-tool --unblock-pin option
+* remove old and outdated documentation
+* use "%lu" format for printf of size_t
+* add piv driver and tool by Douglas E. Engert
+* new threadding code in pkcs11 module
+* renamed "etoken" driver to "cardos", as it really is a generic
+  driver for Siemens CardOS M4, including but not limited to Aladdin eTokens.
+* add code to maange unused space
+* support for swedish nidel cards
+
+New in 0.10.1; 2006-01-08; Andreas Jellinghaus
+* use sc_print_path everywhere.
+* silence many warnings.
+* add incrypto34 driver by ST Incard, Giuseppe Amato
+* improved TCOS driver by Peter Koch
+* better PINPAD handling
+* updated infocamere driver
+* updated opensc.conf with new default values
+* fix firefox problems (no real fix, only ugly workaround)
+* add cardos M4.2 support
+
+New in 0.10.0; 2005-10-31; Andreas Jellinghaus
+* released rc2 without changes.
 * Add more documentation, fix man page installtion.
 * New generic ATR/card matching code with
   atrmask support, used by all card drivers.
