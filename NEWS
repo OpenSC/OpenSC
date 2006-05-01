@@ -9,6 +9,7 @@ or doc/ChangeLog.
 New in 0.11.1; ????-??-??; ? ?
 * Improved TCOS driver for Uni Giesen Card
 * handle size_t printf with "%lu" and (unsigned long) cast
+* add support for d-trust cards / improve micardo 2.1 driver
 
 New in 0.11.0; 2006-05-01; Andreas Jellinghaus
 * compile fixes/improvements for windows

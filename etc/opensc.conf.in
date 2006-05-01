@@ -232,6 +232,16 @@ app default {
 		force_protocol = t0;
 	}
 
+	# D-Trust cards are also based on micardo and need T=0 for some reason
+	card_atr 3b:fe:94:00:ff:80:b1:fa:45:1f:03:45:73:74:45:49:44:20:76:65:72:20:31:2e:30:43 {
+		force_protocol = t0;
+	}
+	card_atr 3b:ff:94:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:23 {
+		force_protocol = t0;
+	}
+	card_atr 3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6 {
+		force_protocol = t0;
+	}
 
 	# Below are the framework specific configuration blocks.
 

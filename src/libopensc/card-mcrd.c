@@ -31,10 +31,15 @@
 #include "esteid.h"
 
 static struct sc_atr_table mcrd_atrs[] = {
-	{"3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", NULL, "German BMI", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
+	{"3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", NULL,
+	  "Micardo 2.1/German BMI/D-Trust", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
 	{"3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43", NULL, "EstEID (cold)", SC_CARD_TYPE_MCRD_ESTEID, 0, NULL},
 	{"3B:6E:00:FF:45:73:74:45:49:44:20:76:65:72:20:31:2E:30", NULL,
 	 "EstEID (warm)", SC_CARD_TYPE_MCRD_ESTEID, 0, NULL},
+	{"3b:6f:00:ff:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00", NULL,
+	  "D-Trust", SC_CARD_TYPE_MCRD_DTRUST, 0, NULL},
+	{"3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6", NULL,
+	  "D-Trust", SC_CARD_TYPE_MCRD_DTRUST, 0, NULL},
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
 
@@ -968,10 +973,35 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 			pathptr[n >> 1] =
 			    (path->value[n] << 8) | path->value[n + 1];
 		pathlen = path->len >> 1;
-		if (path->type == SC_PATH_TYPE_PATH)
-			r = select_file_by_path(card, pathptr, pathlen, file);
-		else {		/* SC_PATH_TYPE_FILEID */
-			r = select_file_by_fid(card, pathptr, pathlen, file);
+
+		int samepath = 1;
+
+		if (pathlen == priv->curpathlen && priv->is_ef != 2) {
+			for (n = 0; n < pathlen; n++) {
+				if (priv->curpath[n] != pathptr[n]) {
+					samepath = 0;
+					break;
+				}
+			}
+		} else if (priv->curpathlen < pathlen && priv->is_ef != 2) {
+			for (n = 0; n < priv->curpathlen; n++) {
+				if (priv->curpath[n] != pathptr[n]) {
+					samepath = 0;
+					break;
+				}
+			}
+			pathptr = pathptr + n;
+			pathlen = pathlen - n;
+		}
+
+		if (samepath != 1 || priv->is_ef == 0 || priv->is_ef == 1) {
+			if (path->type == SC_PATH_TYPE_PATH)
+				r = select_file_by_path(card, pathptr, pathlen,
+							file);
+			else {	/* SC_PATH_TYPE_FILEID */
+				r = select_file_by_fid(card, pathptr, pathlen,
+						       file);
+			}
 		}
 	}
 
@@ -1001,6 +1031,29 @@ static int mcrd_restore_se(sc_card_t * card, int se_num)
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+}
+
+int select_key_df(sc_card_t * card)
+{
+	int r, i;
+	char tmpstr[16] = "";
+	char currpathpart[10];
+	struct mcrd_priv_data *priv = DRVDATA(card);
+	memset(tmpstr, 0, 16);
+	i = 0;
+
+	while (i < priv->curpathlen - 1) {
+		sprintf(currpathpart, "%04x", (unsigned short)priv->curpath[i]);
+		strcat(tmpstr, currpathpart);
+		i++;
+	}
+
+	sc_path_t tmppath;
+	sc_format_path(tmpstr, &tmppath);
+	tmppath.type = SC_PATH_TYPE_PATH;
+	r = sc_select_file(card, &tmppath, NULL);
+	SC_TEST_RET(card->ctx, r, "Micardo select DF failed");
+	return r;
 }
 
 /* It seems that MICARDO does not fully comply with ISO, so I use
@@ -1055,6 +1108,37 @@ static int mcrd_set_security_env(sc_card_t * card,
 		return 0;
 	}
 
+	if (card->type == SC_CARD_TYPE_MCRD_DTRUST
+	    || card->type == SC_CARD_TYPE_MCRD_GENERIC) {
+		sc_debug(card->ctx, "Using SC_CARD_TYPE_MCRD_DTRUST\n");
+		/* some sanity checks */
+		if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
+			if (env->algorithm != SC_ALGORITHM_RSA)
+				return SC_ERROR_INVALID_ARGUMENTS;
+		}
+		if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
+		    || env->key_ref_len != 1)
+			return SC_ERROR_INVALID_ARGUMENTS;
+
+		switch (env->operation) {
+		case SC_SEC_OPERATION_DECIPHER:
+			sc_debug(card->ctx,
+				 "Using keyref %d to dechiper\n",
+				 env->key_ref[0]);
+			mcrd_delete_ref_to_authkey(card);
+			mcrd_delete_ref_to_signkey(card);
+			mcrd_set_decipher_key_ref(card, env->key_ref[0]);
+			break;
+		case SC_SEC_OPERATION_SIGN:
+			sc_debug(card->ctx, "Using keyref %d to sign\n",
+				 env->key_ref[0]);
+			break;
+		default:
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
+		priv->sec_env = *env;
+	}
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
 	apdu.le = 0;
 	p = sbuf;
@@ -1073,22 +1157,34 @@ static int mcrd_set_security_env(sc_card_t * card,
 	*p++ = 0x83;
 	*p++ = 0x03;
 	*p++ = 0x80;
-	if ((env->flags & SC_SEC_ENV_FILE_REF_PRESENT)
-	    && env->file_ref.len > 1) {
-		unsigned short fid;
-		int num;
 
-		fid = env->file_ref.value[env->file_ref.len - 2] << 8;
-		fid |= env->file_ref.value[env->file_ref.len - 1];
-		num = get_se_num_from_keyd(card, fid, p);
-		if (num != -1) {
-			/* Need to restore the security environmnet. */
-			if (num) {
-				r = mcrd_restore_se(card, num);
-				SC_TEST_RET(card->ctx, r,
-					    "mcrd_enable_se failed");
+	if (card->type == SC_CARD_TYPE_MCRD_DTRUST
+	    || card->type == SC_CARD_TYPE_MCRD_GENERIC) {
+		unsigned short fid;
+
+		fid = env->key_ref[0];
+		*p = fid;
+		p++;
+		*p = 0;
+		p++;
+	} else if (card->type == SC_CARD_TYPE_MCRD_ESTEID) {
+		if ((env->flags & SC_SEC_ENV_FILE_REF_PRESENT)
+		    && env->file_ref.len > 1) {
+			unsigned short fid;
+			int num;
+
+			fid = env->file_ref.value[env->file_ref.len - 2] << 8;
+			fid |= env->file_ref.value[env->file_ref.len - 1];
+			num = get_se_num_from_keyd(card, fid, p);
+			if (num != -1) {
+				/* Need to restore the security environmnet. */
+				if (num) {
+					r = mcrd_restore_se(card, num);
+					SC_TEST_RET(card->ctx, r,
+						    "mcrd_enable_se failed");
+				}
+				p += 2;
 			}
-			p += 2;
 		}
 	} else {
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1229,6 +1325,12 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 	data->pin1.length_offset = 4;
 	data->pin2.offset = 5;
 	data->pin2.length_offset = 4;
+	if (card->type == SC_CARD_TYPE_MCRD_DTRUST
+	    || card->type == SC_CARD_TYPE_MCRD_GENERIC) {
+		sc_debug(card->ctx, "modify pin reference for D-Trust\n");
+		if (data->pin_reference == 0x02)
+			data->pin_reference = data->pin_reference | 0x80;
+	}
 	SC_FUNC_RETURN(card->ctx, 4, iso_ops->pin_cmd(card, data, tries_left));
 }
 
