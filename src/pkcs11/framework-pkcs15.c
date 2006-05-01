@@ -2345,6 +2345,7 @@ static CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 			sc_debug(context, "data_len %i\n", data->data_len);
 			check_attribute_buffer(attr, data->data_len);
 			memcpy(attr->pValue, data->data, data->data_len);
+			free(data);
 		}
 		break;
 	default:
