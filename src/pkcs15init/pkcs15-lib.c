@@ -758,10 +758,14 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 				SC_PKCS15_AODF, NULL);
 	}
 
-	if (r >= 0)
+	if (r >= 0) {
 		r = sc_pkcs15init_update_dir(p15spec, profile, app);
-	if (r >= 0)
-		r = sc_pkcs15init_update_tokeninfo(p15spec, profile);
+		if (r >= 0)
+			r = sc_pkcs15init_update_tokeninfo(p15spec, profile);
+		/* FIXME: what to do if sc_pkcs15init_update_dir failed? */
+	} else {
+		free(app); /* unused */
+	}
 
 	sc_ctx_suppress_errors_on(card->ctx);
 	sc_pkcs15init_write_info(card, profile, pin_obj);
