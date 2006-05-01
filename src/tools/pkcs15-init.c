@@ -1260,7 +1260,7 @@ do_change_attributes(struct sc_profile *profile, unsigned int opt_type)
 {
 	int r = 0;
 	sc_pkcs15_id_t id;
-	sc_pkcs15_object_t *obj;
+	sc_pkcs15_object_t *obj = NULL;
 
 	if (opt_objectid == NULL) {
 		printf("You have to specify the --id of the object\n");
