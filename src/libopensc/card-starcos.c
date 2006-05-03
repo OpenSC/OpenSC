@@ -639,7 +639,7 @@ static int starcos_process_acl(sc_card_t *card, sc_file_t *file,
 		*p++ = tmp;			/* SM byte     */
 		*p++ = 0x00;			/* use the least significant 5 bits
 					 	 * of the FID as SID */
-		switch (file->type)
+		switch (file->ef_structure)
 		{
 		case SC_FILE_EF_TRANSPARENT:
 			*p++ = 0x81;
