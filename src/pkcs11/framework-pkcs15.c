@@ -2478,7 +2478,14 @@ asn1_sequence_wrapper(const u8 *data, size_t len, CK_ATTRIBUTE_PTR attr)
 	size_t		len2;
 
 	len2 = len;
-	check_attribute_buffer(attr, len + 1 + sizeof(len));
+	/* calculate the number of bytes needed for the length */
+	size_t lenb = 1;
+	if (len > 127) {
+		unsigned int i;
+		for (i = 0; (len & (0xff << i)) != 0 && (0xff << i) != 0; i++)
+			lenb++;
+	}
+	check_attribute_buffer(attr, 1 + lenb + len);
 
 	dest = (u8 *) attr->pValue;
 	*dest++ = 0x30;	/* SEQUENCE tag */
