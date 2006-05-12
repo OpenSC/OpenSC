@@ -190,13 +190,13 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	const pubdata pubkeys[] = {
 
 		{ "1", "AUTH pubkey", 1024, USAGE_AUT, "9A06", 
-		  0x9A, "1", SC_PKCS15_CO_FLAG_PRIVATE},
+		  0x9A, "1", 0},
 		{ "2", "SIGN pubkey", 1024, USAGE_AUT, "9C06", 
-		  0x9C, "1", SC_PKCS15_CO_FLAG_PRIVATE},
+		  0x9C, "1", 0},
 		{ "3", "KEY MAN pubkey", 1024, USAGE_AUT, "9D06", 
-		  0x9D, "1", SC_PKCS15_CO_FLAG_PRIVATE},
+		  0x9D, "1", 0},
 		{ "4", "ADMIN pubkey", 1024, USAGE_AUT, "9B06", 
-		  0x9B, "1", SC_PKCS15_CO_FLAG_PRIVATE},
+		  0x9B, "1", 0},
 		{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
 		
 	};
