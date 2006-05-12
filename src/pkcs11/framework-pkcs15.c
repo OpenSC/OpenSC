@@ -2476,10 +2476,10 @@ asn1_sequence_wrapper(const u8 *data, size_t len, CK_ATTRIBUTE_PTR attr)
 	u8		*dest;
 	unsigned int	n;
 	size_t		len2;
+	size_t		lenb = 1;
 
 	len2 = len;
 	/* calculate the number of bytes needed for the length */
-	size_t lenb = 1;
 	if (len > 127) {
 		unsigned int i;
 		for (i = 0; (len & (0xff << i)) != 0 && (0xff << i) != 0; i++)

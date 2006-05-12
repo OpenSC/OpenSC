@@ -963,8 +963,9 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 	} else {
 		unsigned short int pathtmp[SC_MAX_PATH_SIZE / 2];
 		unsigned short int *pathptr;
-
+		int samepath = 1;
 		size_t pathlen, n;
+
 		if ((path->len & 1) || path->len > sizeof(pathtmp))
 			return SC_ERROR_INVALID_ARGUMENTS;
 
@@ -973,8 +974,6 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 			pathptr[n >> 1] =
 			    (path->value[n] << 8) | path->value[n + 1];
 		pathlen = path->len >> 1;
-
-		int samepath = 1;
 
 		if (pathlen == priv->curpathlen && priv->is_ef != 2) {
 			for (n = 0; n < pathlen; n++) {
@@ -1038,6 +1037,7 @@ int select_key_df(sc_card_t * card)
 	int r, i;
 	char tmpstr[16] = "";
 	char currpathpart[10];
+	sc_path_t tmppath;
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	memset(tmpstr, 0, 16);
 	i = 0;
@@ -1048,7 +1048,6 @@ int select_key_df(sc_card_t * card)
 		i++;
 	}
 
-	sc_path_t tmppath;
 	sc_format_path(tmpstr, &tmppath);
 	tmppath.type = SC_PATH_TYPE_PATH;
 	r = sc_select_file(card, &tmppath, NULL);
