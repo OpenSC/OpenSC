@@ -254,6 +254,41 @@ __pkcs15_release_object(struct pkcs15_any_object *obj)
 	return 0;
 }
 
+static int public_key_created(struct pkcs15_fw_data *fw_data,
+			      const unsigned int num_objects,
+			      const u8 *id, 
+			      const size_t size_id,
+			      struct pkcs15_any_object **obj2)
+{
+	int found = 0;
+	int ii=0;
+
+	while(ii<num_objects && !found) {
+		if (!fw_data->objects[ii]->p15_object) {
+			ii++;
+			continue;
+		}
+		if ((fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY) && 
+		    (fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY_RSA) &&
+		    (fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY_DSA)) {
+			ii++;
+			continue;
+		}
+		/* XXX this is somewhat dirty as this assumes that the first 
+		 * member of the is the pkcs15 id */
+		if (memcmp(fw_data->objects[ii]->p15_object->data, id, size_id) == 0) {
+			*obj2 = (struct pkcs15_any_object *) fw_data->objects[ii];
+			found=1;
+		} else
+			ii++;
+	}
+  
+	if (found)
+		return SC_SUCCESS;
+	else 
+		return SC_ERROR_OBJECT_NOT_FOUND;      
+}
+
 static int
 __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data,
 	struct sc_pkcs15_object *cert, struct pkcs15_any_object **cert_object)
@@ -283,12 +318,15 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data,
 	object->cert_data = p15_cert;
 
 	/* Corresponding public key */
-	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &obj2,
-					NULL, &pkcs15_pubkey_ops,
-					sizeof(struct pkcs15_pubkey_object));
+	rv = public_key_created(fw_data, fw_data->num_objects, p15_info->id.value, p15_info->id.len, (struct pkcs15_any_object **) &obj2);
+	
+	if (rv != SC_SUCCESS)
+	  rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &obj2,
+				      NULL, &pkcs15_pubkey_ops,
+				      sizeof(struct pkcs15_pubkey_object));
 	if (rv < 0)
-		return rv;
-
+	  return rv;	
+	
 	if (p15_cert) {
 		obj2->pub_data = &p15_cert->key;
 		obj2->pub_data = (sc_pkcs15_pubkey_t *)calloc(1, sizeof(sc_pkcs15_pubkey_t));
