@@ -543,17 +543,24 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 
 			pcsc_tlv = (PCSC_TLV_STRUCTURE *)feature_buf;
 			for (i = 0; i < feature_len; i++) {
+				char *log_disabled = "but it's disabled in configuration file";
 				if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_DIRECT) {
-					sc_debug(reader->ctx, "Reader supports pinpad PIN verification");
+					char *log_text = "Reader supports pinpad PIN verification";
 					pslot->verify_ioctl = pcsc_tlv[i].value;
 					if (priv->gpriv->enable_pinpad) {
+						sc_debug(reader->ctx, log_text);
 						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+					} else {
+						sc_debug(reader->ctx, "%s %s", log_text, log_disabled);
 					}
 				} else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_DIRECT) {
-					sc_debug(reader->ctx, "Reader supports pinpad PIN modification");
+					char *log_text = "Reader supports pinpad PIN modification";
 					pslot->modify_ioctl = pcsc_tlv[i].value;
 					if (priv->gpriv->enable_pinpad) {
+						sc_debug(reader->ctx, log_text);
 						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+					} else {
+						sc_debug(reader->ctx, "%s %s", log_text, log_disabled);
 					}
 				} else {
 					sc_debug(reader->ctx, "Reader pinpad feature: %02x not recognized", pcsc_tlv[i].tag);
