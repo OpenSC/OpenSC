@@ -203,13 +203,13 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 	const prdata prkeys[] = {
 		{ "1", "AUTH key", 1024, USAGE_AUT, "",
-		  0x9A, "1", SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_NONE | SC_PKCS15_CO_FLAG_PRIVATE},
+		  0x9A, "1", 0},
 		{ "2", " SIGN key", 1024, USAGE_AUT, "",
-		  0x9B, "1", SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_NONE | SC_PKCS15_CO_FLAG_PRIVATE},
+		  0x9B, "1", 0},
 		{ "3", "KEY MAN key", 1024, USAGE_AUT, "",
-		  0x9C, "1", SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_NONE | SC_PKCS15_CO_FLAG_PRIVATE},
+		  0x9C, "1", 0},
 		{ "4", "ADMIN key", 1024, USAGE_AUT, "",
-		  0x9D, "1", SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_NONE | SC_PKCS15_CO_FLAG_PRIVATE},
+		  0x9D, "1", 0},
 		{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
 	};
 
