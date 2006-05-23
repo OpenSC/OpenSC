@@ -664,7 +664,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 		}
 		slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 	} else
-		sprintf(tmp, card->label);
+		snprintf(tmp, sizeof(tmp), "%s", card->label);
 	strcpy_bp(slot->token_info.label, tmp, 32);
 
 	if (pin_info && pin_info->magic == SC_PKCS15_PIN_MAGIC) {
