@@ -18,7 +18,7 @@ LIBLTDL_LIB =     # E.g. C:\libtool-1.5.8-lib\lib\libltdl.lib
 !IF "$(OPENSSL_DEF)" == "/DHAVE_OPENSSL"
 OPENSSL_INCL_DIR = /IC:\openssl\include
 OPENSSL_LIB = C:\openssl\out32dll\libeay32.lib
-PKCS15_INIT = pkcs15-init.exe
+PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe
 !ENDIF
 
 COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc $(OPENSSL_INCL_DIR) $(LIBLTDL_INCL) /D_WIN32_WINNT=0x0400 $(OPENSSL_DEF)
