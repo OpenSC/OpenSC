@@ -6,7 +6,7 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/ChangeLog.
 
-New in 0.11.1; ????-??-??; ? ?
+New in 0.11.1; 2006-05-30; Andreas Jellinghaus
 * Fix version variable in win32 build files
 * Update for piv pkcs#15 emulation
 * Improved TCOS driver for Uni Giesen Card
