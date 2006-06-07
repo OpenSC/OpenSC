@@ -121,7 +121,16 @@ enum {
 	SC_CARDCTL_INCRYPTO34_PUT_DATA_SECI,
 	SC_CARDCTL_INCRYPTO34_GENERATE_KEY,
 	SC_CARDCTL_INCRYPTO34_CHANGE_KEY_DATA,
-	SC_CARDCTL_INCRYPTO34_ERASE_FILES
+	SC_CARDCTL_INCRYPTO34_ERASE_FILES,
+	
+	/*
+	 * Muscle specific calls
+	 */
+	SC_CARDCTL_MUSCLE_BASE = _CTL_PREFIX('M','S','C'),
+	SC_CARDCTL_MUSCLE_GENERATE_KEY,
+	SC_CARDCTL_MUSCLE_EXTRACT_KEY,
+	SC_CARDCTL_MUSCLE_IMPORT_KEY,
+	SC_CARDCTL_MUSCLE_VERIFIED_PINS
 };
 
 enum {
@@ -347,6 +356,44 @@ struct sc_cardctl_setcos_gen_store_key_info {
 	unsigned char  *primeq;
 };
 
+/*
+ * Muscle stuff
+ */
+typedef struct sc_cardctl_muscle_gen_key_info {
+	int 	keyType;
+	int 	keySize;
+	int 	privateKeyLocation;
+	int 	publicKeyLocation;
+} sc_cardctl_muscle_gen_key_info_t;
+
+
+typedef struct sc_cardctl_muscle_key_info {
+	int 	keyType;
+	int 	keyLocation;
+	int 	keySize;
+	int 	modLength;
+	u8* 	modValue;
+	int 	expLength;
+	u8* 	expValue;
+	int 	pLength;
+	u8* 	pValue;
+	int 	qLength;
+	u8* 	qValue;
+	int 	pqLength;
+	u8* 	pqValue;
+	int 	dp1Length;
+	u8* 	dp1Value;
+	int 	dq1Length;
+	u8* 	dq1Value;
+	int 	gLength;
+	u8* 	gValue;
+	int 	yLength;
+	u8* 	yValue;
+} sc_cardctl_muscle_key_info_t;
+
+typedef struct sc_cardctl_muscle_verified_pins_info {
+	unsigned	verifiedPins;
+} sc_cardctl_muscle_verified_pins_info_t;
 #ifdef __cplusplus
 }
 #endif

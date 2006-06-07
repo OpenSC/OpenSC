@@ -114,7 +114,11 @@ enum {
 
 	/* PIV-II type cards */
 	SC_CARD_TYPE_PIV_II_BASE = 14000,
-	SC_CARD_TYPE_PIV_II_GENERIC
+	SC_CARD_TYPE_PIV_II_GENERIC,
+	
+	/* Muscle cards */
+	SC_CARD_TYPE_MUSCLE_BASE = 15000,
+	SC_CARD_TYPE_MUSCLE_GENERIC
 };
 
 #ifdef __cplusplus

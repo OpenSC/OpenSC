@@ -188,6 +188,8 @@ int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card_out)
 				sc_debug(ctx, "trying driver: %s\n", drv->short_name);
 			if (ops == NULL || ops->match_card == NULL)
 				continue;
+			/* Needed if match_card() needs to talk with the card (e.g. card-muscle) */
+			*card->ops = *ops;
 			if (ops->match_card(card) != 1)
 				continue;
 			if (ctx->debug >= 3)

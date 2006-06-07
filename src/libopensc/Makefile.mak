@@ -28,6 +28,7 @@ OBJECTS			= \
 	card-mcrd.obj card-starcos.obj card-openpgp.obj card-jcop.obj \
 	card-oberthur.obj card-belpic.obj card-atrust-acos.obj \
 	card-incrypto34.obj card-piv.obj\
+	muscle.obj card-muscle.obj muscle-filesystem.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj \

@@ -20,7 +20,7 @@ libopensc_la_SOURCES = \
 	pkcs15-prkey.c pkcs15-pubkey.c pkcs15-sec.c \
 	pkcs15-wrap.c pkcs15-algo.c pkcs15-cache.c pkcs15-syn.c \
 	\
-	emv.c \
+	emv.c muscle.c muscle-filesystem.c \
 	\
 	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c \
 	\
@@ -28,7 +28,7 @@ libopensc_la_SOURCES = \
 	card-cardos.c card-tcos.c card-emv.c card-default.c \
 	card-mcrd.c card-starcos.c card-openpgp.c card-jcop.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
-	card-incrypto34.c card-piv.c \
+	card-incrypto34.c card-piv.c card-muscle.c \
 	\
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafe.c \
@@ -41,7 +41,7 @@ include_HEADERS = \
 	cardctl.h asn1.h log.h ui.h \
 	errors.h types.h
 
-noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h
+noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libopensc.pc libpkcs15init.pc libscconf.pc
