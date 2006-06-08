@@ -18,7 +18,9 @@ PROFILES = \
 	oberthur.profile \
 	starcos.profile \
 	setcos.profile \
-	pkcs15.profile 
+	pkcs15.profile \
+	muscle.profile
+	
 
 EXTRA_DIST = $(PROFILES) Makefile.mak
 
@@ -28,7 +30,8 @@ libpkcs15init_la_SOURCES = \
 	pkcs15-lib.c profile.c keycache.c \
 	pkcs15-gpk.c pkcs15-miocos.c pkcs15-cflex.c \
 	pkcs15-cardos.c pkcs15-jcop.c pkcs15-starcos.c \
-	pkcs15-oberthur.c pkcs15-setcos.c pkcs15-incrypto34.c
+	pkcs15-oberthur.c pkcs15-setcos.c pkcs15-incrypto34.c \
+	pkcs15-muscle.c
 
 libpkcs15init_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
 
