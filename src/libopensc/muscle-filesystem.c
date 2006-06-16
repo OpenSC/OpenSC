@@ -30,9 +30,9 @@
 #define MSCFS_CACHE_INCREMENT 128
 
 
-static u8* ignoredFiles[] = {
-	"l0\0\0",
-	"L0\0\0",
+static const u8* ignoredFiles[] = {
+	(const u8*)"l0\0\0",
+	(const u8*)"L0\0\0",
 	NULL
 };
 
@@ -60,7 +60,7 @@ void mscfs_clear_cache(mscfs_t* fs) {
 int mscfs_is_ignored(mscfs_t* fs, u8* objectId)
 {
 	int ignored = 0;
-	u8** ptr = ignoredFiles;
+	const u8** ptr = ignoredFiles;
 	while(ptr && *ptr && !ignored) {
 		if(0 == memcmp(objectId, *ptr, 4))
 			ignored = 1;
