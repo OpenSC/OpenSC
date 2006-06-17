@@ -1060,13 +1060,6 @@ static int setcos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
-#if 0
-static int setcos_logout(sc_card_t *card)
-{
-	return 0;
-}
-#endif
-
 static struct sc_card_driver *sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -1084,9 +1077,6 @@ static struct sc_card_driver *sc_get_driver(void)
 	setcos_ops.process_fci = setcos_process_fci;
 	setcos_ops.construct_fci = setcos_construct_fci;
 	setcos_ops.card_ctl = setcos_card_ctl;
-#if 0
-	setcos_ops.logout = setcos_logout;
-#endif
 
 	return &setcos_drv;
 }

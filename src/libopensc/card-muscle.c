@@ -728,10 +728,6 @@ static int muscle_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	return msc_get_challenge(card, len, 0, NULL, rnd);
 }
 
-static int muscle_logout(sc_card_t *card)
-{
-	return 0;
-}
 
 static struct sc_card_driver * sc_get_driver(void)
 {
@@ -745,7 +741,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	muscle_ops.match_card = muscle_match_card;
 	muscle_ops.init = muscle_init;
 	muscle_ops.finish = muscle_finish;
-	muscle_ops.logout = muscle_logout;
 	
 	muscle_ops.get_challenge = muscle_get_challenge;
 	

@@ -306,7 +306,9 @@ int sc_lock(sc_card_t *card)
 
 int sc_unlock(sc_card_t *card)
 {
-	int r = 0;
+	int r, r2;
+
+	SC_FUNC_CALLED(card->ctx, 3);
 
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -314,33 +316,19 @@ int sc_unlock(sc_card_t *card)
 	if (r != SC_SUCCESS)
 		return r;
 	assert(card->lock_count >= 1);
-	if (card->lock_count == 1) {
-		SC_FUNC_CALLED(card->ctx, 3);
+	if (--card->lock_count == 0) {
+		/* invalidate cache */
 		memset(&card->cache, 0, sizeof(card->cache));
 		card->cache_valid = 0;
-		if (card->ops->logout != NULL) {
-			/* XXX As this logout causes random asserts on card->lock_count >=0
-			  on card removal under firefox 1.5 */
-			r = sc_mutex_unlock(card->ctx, card->mutex);
-			if (r != SC_SUCCESS) {
-				sc_error(card->ctx, "unable to release lock\n");
-				return r;
-			}
-			sc_debug(card->ctx, "Calling card logout function\n");
-			card->ops->logout(card);
-			r = sc_mutex_lock(card->ctx, card->mutex);
-			if (r != SC_SUCCESS)
-				return r;
-		}
-	}
-	/* Check again, lock count may have changed
-	 * while we were in logout() */
-	if (card->lock_count == 1) {
+		/* release reader lock */
 		if (card->reader->ops->unlock != NULL)
 			r = card->reader->ops->unlock(card->reader, card->slot);
 	}
-	card->lock_count--;
-	r = sc_mutex_unlock(card->ctx, card->mutex);
+	r2 = sc_mutex_unlock(card->ctx, card->mutex);
+	if (r2 != SC_SUCCESS) {
+		sc_error(card->ctx, "unable to release lock\n");
+		r = (r == SC_SUCCESS) ? r2 : r;
+	}
 	return r;
 }
 

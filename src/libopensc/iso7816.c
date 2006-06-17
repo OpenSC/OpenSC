@@ -961,26 +961,6 @@ static int iso7816_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	return sc_check_sw(card, apdu->sw1, apdu->sw2);
 }
 
-/*
- * For some cards, selecting the MF clears all access rights gained
- */
-static int iso7816_logout(sc_card_t *card)
-{
-	sc_path_t in_path;
-	in_path.value[0] = 0x3F;
-	in_path.value[1] = 0x00;
-	in_path.len = 2;
-	in_path.index = 0;
-	in_path.count = 2;
-	in_path.type = SC_PATH_TYPE_PATH;
-
-	/* Force the SELECT FILE even if the card thinks
-	 * it's already inside the MF */
-	card->cache_valid = 0;
-
-	return sc_select_file(card, &in_path, NULL);
-}
-
 static int no_match(sc_card_t *card)
 {
 	return 0;
@@ -1002,7 +982,7 @@ static struct sc_card_operations iso_ops = {
 	iso7816_get_response,
 	iso7816_get_challenge,
 	NULL,			/* verify */
-	iso7816_logout,
+	NULL,			/* logout */
 	iso7816_restore_security_env,
 	iso7816_set_security_env,
 	iso7816_decipher,

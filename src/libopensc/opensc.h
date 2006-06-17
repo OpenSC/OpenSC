@@ -968,6 +968,14 @@ int sc_compute_signature(sc_card_t *card, const u8 * data,
 			 size_t data_len, u8 * out, size_t outlen);
 int sc_verify(sc_card_t *card, unsigned int type, int ref, const u8 *buf,
 	      size_t buflen, int *tries_left);
+/**
+ * Resets the security status of the card (i.e. withdraw all granted
+ * access rights). Note: not all card operating systems support a logout
+ * command and in this case SC_ERROR_NOT_SUPPORTED is returned.
+ * @param  card  sc_card_t object
+ * @return SC_SUCCESS on success, SC_ERROR_NOT_SUPPORTED if the card
+ *         doesn't support a logout command and an error code otherwise
+ */
 int sc_logout(sc_card_t *card);
 int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *, int *tries_left);
 int sc_change_reference_data(sc_card_t *card, unsigned int type,

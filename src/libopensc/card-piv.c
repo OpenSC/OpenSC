@@ -168,17 +168,6 @@ static size_t put_tag_and_len(unsigned int tag, size_t len, u8 **ptr)
 	return i;
 }
 
-
-static int piv_logout(sc_card_t * card)
-{
-	SC_FUNC_CALLED(card->ctx,1);
-	/* 
-	 * nothing to do here, as we dont have files on the card.  
-	 */ 
-	return 0;
-}
-
-
 /*
  * Send a command and receive data. Receive as much as the card indicates 
  * in the first segment. There is always something to send. 
@@ -1366,7 +1355,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	piv_ops.finish = piv_finish;
 	
 	piv_ops.select_file =  piv_select_file; /* must use get/put, could emulate? */
-	piv_ops.logout = piv_logout;
 	piv_ops.get_challenge = piv_get_challenge;
 	piv_ops.read_binary = piv_read_binary;
 	piv_ops.write_binary = piv_write_binary;

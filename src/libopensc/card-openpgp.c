@@ -686,13 +686,6 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	return apdu.resplen;
 }
 
-static int
-pgp_logout(sc_card_t *card)
-{
-	sc_debug(card->ctx, "OpenPGP card: logout not supported\n");
-	return SC_ERROR_NOT_SUPPORTED;
-}
-
 /* Driver binding stuff */
 static struct sc_card_driver *
 sc_get_driver(void)
@@ -715,9 +708,8 @@ sc_get_driver(void)
 	pgp_ops.set_security_env= pgp_set_security_env;
 	pgp_ops.compute_signature= pgp_compute_signature;
 	pgp_ops.decipher	= pgp_decipher;
-	pgp_ops.logout		= pgp_logout;
 
-        return &pgp_drv;
+	return &pgp_drv;
 }
 
 struct sc_card_driver *

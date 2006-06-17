@@ -28,12 +28,6 @@
 
 #include <opensc/asn1.h>
 
-/* andreas says: hm, my card only works for small payloads */
-/* comment by okir: one of the examples in the developer guide
- * also talks about copying data in chunks of 128.
- * Either coincidence, or a known problem. */
-#define CARDOS_MAX_PAYLOAD	120
-
 static const struct sc_card_operations *iso_ops = NULL;
 
 struct sc_card_operations cardos_ops;
@@ -48,9 +42,9 @@ static struct sc_atr_table cardos_atrs[] = {
 	/* 4.0 */
 	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* 4.01 */
-	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
+	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_01, 0, NULL },
 	/* 4.01a */
-	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
+	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_01, 0, NULL },
 	/* M4.2 */
 	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:8a", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
 	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:75", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
@@ -608,7 +602,8 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	if (card->type == SC_CARD_TYPE_CARDOS_GENERIC) {
+	if (card->type == SC_CARD_TYPE_CARDOS_GENERIC ||
+	    card->type == SC_CARD_TYPE_CARDOS_M4_01) {
 		r = cardos_set_file_attributes(card, file);
 		if (r != SC_SUCCESS)
 			return r;
@@ -1046,7 +1041,8 @@ cardos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 static int cardos_logout(sc_card_t *card)
 {
-	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
+	if (card->type == SC_CARD_TYPE_CARDOS_M4_01 ||
+	    card->type == SC_CARD_TYPE_CARDOS_M4_2) {
 		sc_apdu_t apdu;
 		int       r;
 		sc_path_t path;
@@ -1064,7 +1060,7 @@ static int cardos_logout(sc_card_t *card)
 
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	} else
-		return iso_ops->logout(card);
+		return SC_ERROR_NOT_SUPPORTED;
 }
 
 

@@ -921,16 +921,11 @@ static int jcop_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
         return SC_ERROR_NOT_SUPPORTED;
 }
 
-
 /* "The PINs are "global" in a PKCS#15 sense, meaning that they remain valid
  *  until card reset! Selecting another applet doesn't invalidate the PINs, 
  *  you need to reset the card." - javacard@zurich.ibm.com, when asked about 
  *  how to invalidate logged in pins.
-*/
-static int jcop_logout(sc_card_t *card)
-{
-     return 0; /* Can't */
-}
+ */
 
 static struct sc_card_driver * sc_get_driver(void)
 {
@@ -954,7 +949,6 @@ static struct sc_card_driver * sc_get_driver(void)
      jcop_ops.set_security_env = jcop_set_security_env;
      jcop_ops.compute_signature = jcop_compute_signature;
      jcop_ops.decipher = jcop_decipher;
-     jcop_ops.logout = jcop_logout;
      jcop_ops.process_fci = jcop_process_fci;
      jcop_ops.card_ctl = jcop_card_ctl;
      
