@@ -150,7 +150,7 @@ int msc_partial_read_object(sc_card_t *card, unsigned int le_objectId, int offse
 int msc_read_object(sc_card_t *card, unsigned int objectId, int offset, u8 *data, size_t dataLength)
 {
 	int r;
-	int i;
+	size_t i;
 	for(i = 0; i < dataLength; i += MSC_MAX_WRITE_UNIT) {
 		r = msc_partial_read_object(card, objectId, offset + i, data + i, MIN(dataLength - i, MSC_MAX_WRITE_UNIT));
 		SC_TEST_RET(card->ctx, r, "Error in partial object read");
@@ -161,7 +161,7 @@ int msc_read_object(sc_card_t *card, unsigned int objectId, int offset, u8 *data
 int msc_zero_object(sc_card_t *card, unsigned int objectId, size_t dataLength)
 {
 	u8 zeroBuffer[MSC_MAX_WRITE_UNIT];
-	int i;
+	size_t i;
 	memset(zeroBuffer, 0, MSC_MAX_WRITE_UNIT);
 	for(i = 0; i < dataLength; i += MSC_MAX_WRITE_UNIT) {
 		int r = msc_partial_update_object(card, objectId, i, zeroBuffer, MIN(dataLength - i, MSC_MAX_WRITE_UNIT));
@@ -258,7 +258,8 @@ int msc_partial_update_object(sc_card_t *card, unsigned int le_objectId, int off
 
 int msc_update_object(sc_card_t *card, unsigned int objectId, int offset, const u8 *data, size_t dataLength)
 {
-	int r, i;
+	int r;
+	size_t i;
 	for(i = 0; i < dataLength; i += MSC_MAX_READ_UNIT) {
 		r = msc_partial_update_object(card, objectId, offset + i, data + i, MIN(dataLength - i, MSC_MAX_READ_UNIT));
 		SC_TEST_RET(card->ctx, r, "Error in partial object update");

@@ -193,7 +193,7 @@ int mscfs_check_selection(mscfs_t *fs, int requiredItem)
 	return 0;
 }
 
-int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **file_data, int* index)
+int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **file_data, int* idx)
 {
 	u8 fullPath[4];
 	int x;
@@ -202,13 +202,13 @@ int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **
 	
 	/* Obtain file information while checking if it exists */
 	mscfs_check_cache(fs);
-	if(index) *index = -1;
+	if(idx) *idx = -1;
 	for(x = 0; x < fs->cache.size; x++) {
 		u8 *objectId;
 		*file_data = &fs->cache.array[x];
 		objectId = (*file_data)->objectId;
 		if(0 == memcmp(objectId, fullPath, 4)) {
-			if(index) *index = x;
+			if(idx) *idx = x;
 			break;
 		}
 		*file_data = NULL;
@@ -228,7 +228,7 @@ int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **
 		ROOT_FILE.delete = 0x02;
 		
 		*file_data = &ROOT_FILE;
-		if(index) *index = -2;
+		if(idx) *idx = -2;
 	} else if(*file_data == NULL) {
 		return MSCFS_FILE_NOT_FOUND;
 	}
