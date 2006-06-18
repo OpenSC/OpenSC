@@ -336,7 +336,7 @@ int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_AUTH_METHOD_BLOCKED);
 	}
 	
-	SC_FUNC_RETURN(card->ctx, 2,  SC_ERROR_CARD_CMD_FAILED);
+	SC_FUNC_RETURN(card->ctx, 2,  SC_ERROR_PIN_CODE_INCORRECT);
 }
 
 /* USE ISO_VERIFY due to tries return */
@@ -374,7 +374,7 @@ int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukL
 		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_AUTH_METHOD_BLOCKED);
 	}
 	
-	SC_FUNC_RETURN(card->ctx, 2,  SC_ERROR_CARD_CMD_FAILED);
+	SC_FUNC_RETURN(card->ctx, 2,  SC_ERROR_PIN_CODE_INCORRECT);
 }
 
 void msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, int pinNumber, const u8 *pukValue, int pukLength)
@@ -407,7 +407,7 @@ int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_AUTH_METHOD_BLOCKED);
 	}
 	
-	SC_FUNC_RETURN(card->ctx, 2,  SC_ERROR_CARD_CMD_FAILED);
+	SC_FUNC_RETURN(card->ctx, 2,  SC_ERROR_PIN_CODE_INCORRECT);
 }
 
 /* USE ISO_VERIFY due to tries return */
