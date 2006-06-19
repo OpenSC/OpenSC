@@ -815,18 +815,14 @@ int sc_wait_for_event(sc_reader_t **readers, int *slots, size_t nslots,
 int sc_reset(sc_card_t *card);
 
 /**
- * Locks the card against modification from other threads.
- * After the initial call to sc_lock, the card is protected from
- * access from other processes. The function may be called several times.
- * @param card The card to lock
+ * Tries acquire the reader lock.
+ * @param  card  The card to lock
  * @retval SC_SUCCESS on success
  */
 int sc_lock(sc_card_t *card);
 /**
- * Unlocks a previously locked card. After the lock count drops to zero,
- * the card is again placed in shared mode, where other processes
- * may access or lock it.
- * @param card The card to unlock
+ * Unlocks a previously acquired reader lock.
+ * @param  card  The card to unlock
  * @retval SC_SUCCESS on success
  */
 int sc_unlock(sc_card_t *card);
