@@ -153,12 +153,12 @@ auth_select_aid(sc_card_t *card)
 	unsigned char cm[7] = {0xA0,0x00,0x00,0x00,0x03,0x00,0x00};
 
 	/* Select Card Manager (to deselect previously selected application) */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x00);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
 	apdu.lc = sizeof(cm);
 	apdu.le = sizeof(cm)+4;
 	apdu.data = cm;
 	apdu.datalen = sizeof(cm);
-	apdu.resplen = sizeof(apdu.resp);
+	apdu.resplen = sizeof(apdu_resp);
 	apdu.resp = apdu_resp;
 
 	rv = sc_transmit_apdu(card, &apdu);
@@ -180,7 +180,7 @@ auth_select_aid(sc_card_t *card)
 			*(apdu.resp+17)*0x100 + *(apdu.resp+18));
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x00);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
 	apdu.resp = apdu_resp;
 
 	/* Try to select known AID */
