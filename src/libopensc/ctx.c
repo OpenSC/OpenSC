@@ -555,16 +555,19 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
-        rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC",
-                0, KEY_QUERY_VALUE, &hKey );
-        if( rc == ERROR_SUCCESS ) {
-                temp_len = PATH_MAX;
-                rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL,
-                        (LPBYTE) temp_path, &temp_len);
-                if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
-                        conf_path = temp_path;
-                RegCloseKey( hKey );
-        }
+        conf_path = getenv("OPENSC_CONF");
+	if (!conf_path) {
+        	rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC",
+                	0, KEY_QUERY_VALUE, &hKey );
+        	if( rc == ERROR_SUCCESS ) {
+                	temp_len = PATH_MAX;
+                	rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL,
+                        	(LPBYTE) temp_path, &temp_len);
+                	if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
+                        	conf_path = temp_path;
+                	RegCloseKey( hKey );
+        	}
+	}
 
         if (! conf_path) {
                 rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC",
