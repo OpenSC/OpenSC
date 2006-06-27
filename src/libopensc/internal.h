@@ -74,13 +74,29 @@ struct sc_slot_info *_sc_get_slot_info(struct sc_reader *reader, int slot_id);
 int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src);
 int _sc_free_atr(struct sc_context *ctx, struct sc_card_driver *driver);
 
-/* unsigned long -> 4 bytes in big endian order */
+/**
+ * Convert an unsigned long into 4 bytes in big endian order
+ * @param  buf   the byte array for the result, should be 4 bytes long
+ * @param  x     the value to be converted
+ */
 void ulong2bebytes(u8 *buf, unsigned long x);
-/* unsigned short -> 2 bytes in big endian order */
+/**
+ * Convert an unsigned long into 2 bytes in big endian order
+ * @param  buf   the byte array for the result, should be 2 bytes long
+ * @param  x     the value to be converted
+ */
 void ushort2bebytes(u8 *buf, unsigned short x);
-/* 4 bytes in big endian order -> unsigned long */
+/**
+ * Convert 4 bytes in big endian order into an unsigned long
+ * @param  buf   the byte array of 4 bytes
+ * @return       the converted value
+ */
 unsigned long bebytes2ulong(const u8 *buf);
-/* 2 bytes in big endian order -> unsigned long */
+/**
+ * Convert 2 bytes in big endian order into an unsigned short
+ * @param  buf   the byte array of 2 bytes
+ * @return       the converted value
+ */
 unsigned short bebytes2ushort(const u8 *buf);
 
 /* Returns an scconf_block entry with matching ATR/ATRmask to the ATR specified,
