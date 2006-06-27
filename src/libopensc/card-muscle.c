@@ -137,7 +137,7 @@ static int muscle_create_directory(sc_card_t *card, sc_file_t *file)
 	objectSize = file->size;
 	
 	muscle_parse_acls(file, &read, &write, &delete);
-	r = msc_create_object(card, *(int*)objectId, objectSize, read, write, delete);
+	r = msc_create_object(card, bebytes2ulong(objectId), objectSize, read, write, delete);
 	mscfs_clear_cache(fs);
 	if(r >= 0) return 0;
 	return r;
@@ -183,7 +183,7 @@ static int muscle_read_binary(sc_card_t *card, unsigned int index, u8* buf, size
 		objectId[1] = objectId[3];
 		objectId[2] = objectId[3] = 0;
 	}
-	r = msc_read_object(card, *(int*)objectId, index, buf, count);
+	r = msc_read_object(card, bebytes2ulong(objectId), index, buf, count);
 	SC_FUNC_RETURN(card->ctx, 0, r);
 }
 
@@ -209,22 +209,22 @@ static int muscle_update_binary(sc_card_t *card, unsigned int index, const u8* b
 		u8* buffer = malloc(newFileSize);
 		if(buffer == NULL) SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 		
-		r = msc_read_object(card, *(int*)objectId, 0, buffer, file->size);
+		r = msc_read_object(card, bebytes2ulong(objectId), 0, buffer, file->size);
 		/* TODO: RETREIVE ACLS */
 		if(r < 0) goto update_bin_free_buffer;
-		r = msc_delete_object(card, *(int*)objectId, 0);
+		r = msc_delete_object(card, bebytes2ulong(objectId), 0);
 		if(r < 0) goto update_bin_free_buffer;
-		r = msc_create_object(card, *(int*)objectId, newFileSize, 0,0,0);
+		r = msc_create_object(card, bebytes2ulong(objectId), newFileSize, 0,0,0);
 		if(r < 0) goto update_bin_free_buffer;
 		memcpy(buffer + index, buf, count); 
-		r = msc_update_object(card, *(int*)objectId, 0, buffer, newFileSize);
+		r = msc_update_object(card, bebytes2ulong(objectId), 0, buffer, newFileSize);
 		if(r < 0) goto update_bin_free_buffer;
 		file->size = newFileSize;
 update_bin_free_buffer:
 		free(buffer);
 		SC_FUNC_RETURN(card->ctx, 0, r);
 	} else {
-		r = msc_update_object(card, *(int*)objectId, index, buf, count);
+		r = msc_update_object(card, bebytes2ulong(objectId), index, buf, count);
 	}
 	//mscfs_clear_cache(fs);
 	return r;
@@ -234,7 +234,7 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	u8 *id = file_data->objectId;
-	int objectId = *(int*)id;
+	int objectId = bebytes2ulong(id);
 	int r;
 
 	if(!file_data->ef) {

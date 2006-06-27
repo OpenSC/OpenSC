@@ -41,27 +41,6 @@
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
-#if defined(_WIN32) || defined(_WIN64)
-static unsigned long bswap_32(unsigned long x)
-{
-    unsigned long res = x % 256;
-    x /= 256;
-    res = 256 * res + x % 256;
-    x /= 256;
-    res = 256 * res + x % 256;
-    x /= 256;
-    return 256 * res + x % 256;
-}
-static unsigned short bswap_16(unsigned short x)
-{
-    return 256 * (x % 256) + (x / 256);
-}
-#define BIG_ENDIAN 1
-#else
-#include <endian.h>
-#include <byteswap.h>
-#endif
-
 int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file) {
 	sc_apdu_t apdu;
 	u8 fileData[14];
@@ -89,17 +68,11 @@ int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file) {
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 	memcpy(file->objectId, fileData, 4);
-	file->size = *(int*)(fileData + 4);
-	file->read = *(short*)(fileData + 8);
-	file->write = *(short*)(fileData + 10);
-	file->delete = *(short*)(fileData + 12);
-	
-	if(BIG_ENDIAN) {
-		file->size = bswap_32(file->size);
-		file->read = bswap_16(file->read);
-		file->write = bswap_16(file->write);
-		file->delete = bswap_16(file->delete);
-	}
+	file->size = bebytes2ulong(fileData + 4);
+	file->read = bebytes2ushort(fileData + 8);
+	file->write = bebytes2ushort(fileData + 10);
+	file->delete = bebytes2ushort(fileData + 12);
+
 	return 1;
 }
 
@@ -108,16 +81,13 @@ int msc_partial_read_object(sc_card_t *card, unsigned int le_objectId, int offse
 	u8 buffer[9];
 	sc_apdu_t apdu;
 	int r;
-	unsigned int le_offset = offset;
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x56, 0x00, 0x00);
 	
-	if(BIG_ENDIAN)
-		le_offset = bswap_32(le_offset);
 	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx, "READ: Offset: %x\tLength: %i\n", le_offset, dataLength);
-	memcpy(buffer, &le_objectId, 4);
-	memcpy(buffer + 4, &le_offset, 4);
+		sc_debug(card->ctx, "READ: Offset: %x\tLength: %i\n", offset, dataLength);
+	ulong2bebytes(buffer, le_objectId);
+	ulong2bebytes(buffer + 4, offset);
 	buffer[8] = (u8)dataLength;
 	apdu.data = buffer;
 	apdu.datalen = 9;
@@ -182,21 +152,15 @@ int msc_create_object(sc_card_t *card, unsigned int objectId, size_t objectSize,
 	apdu.data = buffer,
 	apdu.datalen = 14;
 	
-	if(BIG_ENDIAN) {
-		objectSize = bswap_32(objectSize);
-		readAcl = bswap_16(readAcl);
-		writeAcl = bswap_16(writeAcl);
-		deleteAcl = bswap_16(deleteAcl);
-	}
-	memcpy(buffer, &objectId, 4);
-	memcpy(buffer + 4, &objectSize, 4);
-	memcpy(buffer + 8, &readAcl, 2);
-	memcpy(buffer + 10, &writeAcl, 2);
-	memcpy(buffer + 12, &deleteAcl, 2);
+	ulong2bebytes(buffer, objectId);
+	ulong2bebytes(buffer + 4, objectSize);
+	ushort2bebytes(buffer + 8, readAcl);
+	ushort2bebytes(buffer + 10, writeAcl);
+	ushort2bebytes(buffer + 12, deleteAcl);
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		return BIG_ENDIAN ? bswap_32(objectSize) : objectSize;
+		return objectSize;
 	if(apdu.sw1 == 0x9C) {
 		if(apdu.sw2 == 0x01) {
 			SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_MEMORY_FAILURE);
@@ -210,8 +174,8 @@ int msc_create_object(sc_card_t *card, unsigned int objectId, size_t objectSize,
 		sc_debug(card->ctx, "got strange SWs: 0x%02X 0x%02X\n",
 		     apdu.sw1, apdu.sw2);
 	}
-	msc_zero_object(card, objectId, BIG_ENDIAN ? bswap_32(objectSize) : objectSize);
-	return BIG_ENDIAN ? bswap_32(objectSize) : objectSize;
+	msc_zero_object(card, objectId, objectSize);
+	return objectSize;
 }
 
 /* Update up to 246 bytes */
@@ -219,18 +183,14 @@ int msc_partial_update_object(sc_card_t *card, unsigned int le_objectId, int off
 {
 	u8 buffer[256];
 	sc_apdu_t apdu;
-	unsigned int le_offset;
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x54, 0x00, 0x00);
 	apdu.lc = dataLength + 9;
-	le_offset = offset;
-	if(BIG_ENDIAN)
-		le_offset = bswap_32(le_offset);
 	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx, "WRITE: Offset: %x\tLength: %i\n", le_offset, dataLength);
-	memcpy(buffer, &le_objectId, 4);
-	memcpy(buffer + 4, &le_offset, 4);
+		sc_debug(card->ctx, "WRITE: Offset: %x\tLength: %i\n", offset, dataLength);
+	ulong2bebytes(buffer, le_objectId);
+	ulong2bebytes(buffer + 4, offset);
 	buffer[8] = (u8)dataLength;
 	memcpy(buffer + 9, data, dataLength);
 	apdu.data = buffer;
@@ -270,11 +230,13 @@ int msc_update_object(sc_card_t *card, unsigned int objectId, int offset, const 
 int msc_delete_object(sc_card_t *card, unsigned int objectId, int zero)
 {
 	sc_apdu_t apdu;
+	u8 buf[4];
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x52, 0x00, zero ? 0x01 : 0x00);
 	apdu.lc = 4;
-	apdu.data = (u8*)&objectId;
+	ulong2bebytes(buf, objectId);
+	apdu.data = buf;
 	apdu.datalen = 4;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -434,8 +396,6 @@ int msc_get_challenge(sc_card_t *card, short dataLength, short seedLength, u8 *s
 {
 	sc_apdu_t apdu;
 	int r, location, cse, len;
-	short dataLength_le = dataLength;
-	short seedLength_le = seedLength;
 	u8 *buffer, *ptr;
 	
 	location = (dataLength < 255) ? 1 : 2; /* 1 == APDU, 2 == (seed in 0xFFFFFFFE, out in 0xFFFFFFFF) */
@@ -444,17 +404,13 @@ int msc_get_challenge(sc_card_t *card, short dataLength, short seedLength, u8 *s
 
 	assert(seedLength < 251);
 	assert(dataLength < 255); /* Output buffer doesn't seem to operate as desired.... nobody can read/delete */
-	if(BIG_ENDIAN) {
-		dataLength_le = bswap_16(dataLength_le);
-		seedLength_le = bswap_16(seedLength_le);
-	}
 	
 	buffer = malloc(len);
 	if(!buffer) SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 	ptr = buffer;
-	memcpy(ptr, &dataLength_le, 2);
+	ushort2bebytes(ptr, dataLength);
 	ptr+=2;
-	memcpy(ptr, &seedLength_le, 2);
+	ushort2bebytes(ptr, seedLength);
 	ptr+=2;
 	if(seedLength > 0) {
 		memcpy(ptr, seedData, seedLength);
@@ -524,32 +480,24 @@ int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int alg
 	assert(privateKey <= 0x0F && publicKey <= 0x0F);
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x30, privateKey, publicKey);
-	if(BIG_ENDIAN) {
-		keySize = bswap_16(keySize);
-		prRead = bswap_16(prRead);
-		prWrite = bswap_16(prWrite);
-		prCompute = bswap_16(prCompute);
-		puRead = bswap_16(puRead);
-		puWrite = bswap_16(puWrite);
-		puCompute = bswap_16(puCompute);
-	}
+
 	*ptr = algorithm; ptr++;
 	
-	memcpy(ptr, &keySize, 2);
+	ushort2bebytes(ptr, keySize);
 	ptr+=2;
 	
-	memcpy(ptr, &prRead, 2);
+	ushort2bebytes(ptr, prRead);
 	ptr+=2;
-	memcpy(ptr, &prWrite, 2);
+	ushort2bebytes(ptr, prWrite);
 	ptr+=2;
-	memcpy(ptr, &prCompute, 2);
+	ushort2bebytes(ptr, prCompute);
 	ptr+=2;
 	
-	memcpy(ptr, &puRead, 2);
+	ushort2bebytes(ptr, puRead);
 	ptr+=2;
-	memcpy(ptr, &puWrite, 2);
+	ushort2bebytes(ptr, puWrite);
 	ptr+=2;
-	memcpy(ptr, &puCompute, 2);
+	ushort2bebytes(ptr, puCompute);
 	ptr+=2;
 	
 	*ptr = 0; /* options; -- no options for now, they need extra data */
@@ -870,8 +818,7 @@ int msc_compute_crypt(sc_card_t *card,
 
 /* USED IN KEY ITEM WRITING */
 #define CPYVAL(valName) \
-	length = BIG_ENDIAN ? bswap_16(data->valName ## Length) : data->valName ## Length; \
-	memcpy(p, &length, 2); p+= 2; \
+	ushort2bebytes(p, data->valName ## Length); p+= 2; \
 	memcpy(p, data->valName ## Value, data->valName ## Length); p+= data->valName ## Length
 
 int msc_import_key(sc_card_t *card,
@@ -905,13 +852,6 @@ int msc_import_key(sc_card_t *card,
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS)
 	}
 	
-	if(BIG_ENDIAN) {
-		read = bswap_16(read);
-		write = bswap_16(write);
-		use = bswap_16(use);
-		keySize = bswap_16(keySize);
-	}
-	
 	if(data->keyType == 0x02) {
 		bufferSize = 4 + 4 + data->pLength + data->modLength;
 	} else if(data->keyType == 0x03) {
@@ -924,14 +864,12 @@ int msc_import_key(sc_card_t *card,
 	p = buffer;
 	*p = 0x00; p++; /* Encoding plain */
 	*p = data->keyType; p++; /* RSA_PRIVATE */
-	memcpy(p, &keySize, 2); p+=2; /* key size */
+	ushort2bebytes(p, keySize); p+=2; /* key size */
 	
 	if(data->keyType == 0x02) {
-		unsigned int length;
 		CPYVAL(mod);
 		CPYVAL(p);
 	} else if(data->keyType == 0x03) {
-		unsigned int length;
 		CPYVAL(p);
 		CPYVAL(q);
 		CPYVAL(pq);
@@ -939,9 +877,7 @@ int msc_import_key(sc_card_t *card,
 		CPYVAL(dq1);
 	}
 	objectId = 0xFFFFFFFEul;
-	if(BIG_ENDIAN) {
-		objectId = bswap_32(objectId);
-	}
+
 	r = msc_create_object(card, objectId, bufferSize, 0x02, 0x02, 0x02);
 	if(r < 0) { 
 		if(r == SC_ERROR_FILE_ALREADY_EXISTS) {
@@ -967,9 +903,9 @@ int msc_import_key(sc_card_t *card,
 	apdu.data = apduBuffer;
 	apdu.datalen = 6;
 	p = apduBuffer;
-	memcpy(p, &read, 2); p+=2;
-	memcpy(p, &write, 2); p+=2;
-	memcpy(p, &use, 2); p+=2;	
+	ushort2bebytes(p, read); p+=2;
+	ushort2bebytes(p, write); p+=2;
+	ushort2bebytes(p, use); p+=2;	
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {

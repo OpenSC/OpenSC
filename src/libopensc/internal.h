@@ -74,6 +74,15 @@ struct sc_slot_info *_sc_get_slot_info(struct sc_reader *reader, int slot_id);
 int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src);
 int _sc_free_atr(struct sc_context *ctx, struct sc_card_driver *driver);
 
+/* unsigned long -> 4 bytes in big endian order */
+void ulong2bebytes(u8 *buf, unsigned long x);
+/* unsigned short -> 2 bytes in big endian order */
+void ushort2bebytes(u8 *buf, unsigned short x);
+/* 4 bytes in big endian order -> unsigned long */
+unsigned long bebytes2ulong(const u8 *buf);
+/* 2 bytes in big endian order -> unsigned long */
+unsigned short bebytes2ushort(const u8 *buf);
+
 /* Returns an scconf_block entry with matching ATR/ATRmask to the ATR specified,
  * NULL otherwise. Additionally, if card driver is not specified, search through
  * all card drivers user configured ATRs. */
