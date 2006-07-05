@@ -486,7 +486,7 @@ void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 
 static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 {
-	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
+	unsigned char *buf;
 	int    err, ok = 0;
 	size_t len;
 	sc_path_t tmppath;
@@ -566,10 +566,13 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 		goto end;
 	}
 
-	/* XXX: fix buffer overflow. Silently truncate ODF if it
-	 * is too large.  --okir */
-	if ((len = p15card->file_odf->size) > sizeof(buf))
-		len = sizeof(buf);
+	if ((len = p15card->file_odf->size) == 0) {
+		sc_error(card->ctx, "EF(ODF) is empty\n");
+		goto end;
+	}
+	buf = malloc(len);
+	if(buf == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	err = sc_read_binary(card, 0, buf, len, 0);
 	if (err < 0)
 		goto end;
@@ -583,6 +586,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 		sc_error(card->ctx, "Unable to parse ODF\n");
 		goto end;
 	}
+	free(buf);
 
 	if (card->ctx->debug) {
 		sc_pkcs15_df_t *df;
@@ -613,8 +617,13 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 	if (err)
 		goto end;
 
-	if ((len = p15card->file_tokeninfo->size) > sizeof(buf))
-		len = sizeof(buf);
+	if ((len = p15card->file_tokeninfo->size) == 0) {
+		sc_error(card->ctx, "EF(TokenInfo) is empty\n");
+		goto end;
+	}
+	buf = malloc(len);
+	if(buf == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 	err = sc_read_binary(card, 0, buf, len, 0);
 	if (err < 0)
 		goto end;
@@ -637,6 +646,8 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 
 	ok = 1;
 end:
+	if(buf != NULL)
+		free(buf);
 	if (!ok) {
 		sc_pkcs15_card_clear(p15card);
 		return err;
