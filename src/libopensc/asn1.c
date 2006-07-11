@@ -635,6 +635,9 @@ static int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
 			break;
 		}
 	}
+	if (i == 1) 
+		/* an OID must have at least two components */
+		return SC_ERROR_INVALID_ARGUMENTS;
 	*buflen = count = p - temp;
 	*buf = (u8 *) malloc(count);
 	if (!*buf)
