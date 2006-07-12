@@ -1,0 +1,9 @@
+strncpy() is unsafe since it does not always add a final NUL-byte.
+OpenBSD developped a safer version called strlcpy().
+
+Use "man -l strlcpy.3" to read the manpage.
+
+The files strlcpy.3 and strlcpy.c comes from
+  ftp://ftp.openbsd.org/pub/OpenBSD/src/lib/libc/string/
+and are Copyright (c) 1998, 2000 Todd C. Miller
+<Todd.Miller@courtesan.com>
