@@ -8,7 +8,7 @@ SUBDIRS = . npinclude
 
 EXTRA_DIST = testprog.c
 
-INCLUDES = -I$(srcdir)/npinclude $(CPPFLAGS) $(OPENSSL_CFLAGS) $(ASSUAN_CFLAGS)
+INCLUDES = -I$(srcdir)/npinclude $(CPPFLAGS) $(OPENSSL_CFLAGS) $(LIBASSUAN_CFLAGS)
 
 if HAVE_OPENSSL
 if HAVE_ASSUAN
@@ -17,7 +17,7 @@ endif
 endif
 
 opensc_signer_la_LDFLAGS = -module -avoid-version
-opensc_signer_la_LIBADD = @LIBOPENSC@ $(OPENSSL_LIBS) $(ASSUAN_LIBS)
+opensc_signer_la_LIBADD = @LIBOPENSC@ $(OPENSSL_LIBS) $(LIBASSUAN_LIBS)
 opensc_signer_la_CFLAGS = $(AM_CFLAGS) -DXP_UNIX
 opensc_signer_la_SOURCES = \
 	opensc-crypto.c opensc-support.c signer.c stubs.c dialog.c
