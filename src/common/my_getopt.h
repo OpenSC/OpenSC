@@ -26,9 +26,26 @@
 #ifndef MY_GETOPT_H_INCLUDED
 #define MY_GETOPT_H_INCLUDED
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_GETOPT_H
+#include <getopt.h>
+#else
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define getopt my_getopt
+#define getopt_long my_getopt_long
+#define getopt_long_only my_getopt_long_only
+#define _getopt_internal _my_getopt_internal
+#define opterr my_opterr
+#define optind my_optind
+#define optopt my_optopt
+#define optarg my_optarg
 
 /* UNIX-style short-argument parser */
 extern int my_getopt(int argc, char * argv[], const char *opts);
@@ -65,5 +82,7 @@ extern int _my_getopt_internal(int argc, char * argv[], const char *shortopts,
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* HAVE_GETOPT_H */
 
 #endif /* MY_GETOPT_H_INCLUDED */

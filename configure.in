@@ -96,7 +96,10 @@ dnl Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STAT
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([getpass gettimeofday memset mkdir strdup strerror setutent vsyslog setlocale])
+AC_CHECK_FUNCS([getpass gettimeofday memset mkdir strdup strerror setutent vsyslog setlocale getopt_long])
+
+# if the system does not provide strlcpy() we provide our own version
+AC_CHECK_FUNCS(strlcpy)
 
 AC_CHECK_HEADERS([zlib.h],[LIBS="$LIBS -lz"])
 
@@ -119,12 +122,6 @@ ac_cv_func_res_query_in_lresolv=no
 if test x$ac_cv_func_socket_in_lsocket = xyes; then
   AC_CHECK_LIB(resolv, res_query, [LIBS="$LIBS -lresolv" ac_cv_func_res_query_in_lresolv=yes])
 fi
-
-AC_SUBST(GETOPTSRC)
-AC_CHECK_FUNC(getopt_long, AC_DEFINE(HAVE_GETOPT_LONG, 1, [Define if you have the `getopt_long' function.]),
-              [GETOPTSRC="$GETOPTSRC \$(top_srcdir)/src/common/my_getopt.c"
-               CPPFLAGS="-I\$(top_srcdir)/src/common $CPPFLAGS"
-               AC_DEFINE(HAVE_GETOPT_H, 1, [Define if you have the <getopt.h> header file.])])
 
 AC_CHECK_HEADERS([readline/readline.h])
 AC_SUBST(LIBREADLINE)

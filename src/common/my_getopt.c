@@ -23,6 +23,12 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifndef HAVE_GETOPT_H
+
 #include <sys/types.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -269,3 +275,6 @@ int my_getopt_long_only(int argc, char * argv[], const char *shortopts,
 {
   return _my_getopt_internal(argc, argv, shortopts, longopts, longind, 1);
 }
+
+#endif
+
