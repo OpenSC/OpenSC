@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include "strlcpy.h"
 
 int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
@@ -153,7 +154,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		sc_format_path("3F00", &pin_info.path);
 		pin_info.tries_left    = buffer[4+i];
 
-		strncpy(pin_obj.label, pgp_pin_name[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(pin_obj.label, pgp_pin_name[i], sizeof(pin_obj.label));
 		pin_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
@@ -185,7 +186,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		prkey_info.key_reference = i;
 		prkey_info.modulus_length= 1024;
 
-		strncpy(prkey_obj.label, pgp_key_name[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(prkey_obj.label, pgp_key_name[i], sizeof(prkey_obj.label));
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE;
 		prkey_obj.auth_id.len      = 1;
 		prkey_obj.auth_id.value[0] = prkey_pin[i];
@@ -216,7 +217,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		pubkey_info.usage    = pubkey_usage[i];
 		sc_format_path(pgp_pubkey_path[i], &pubkey_info.path);
 
-		strncpy(pubkey_obj.label, pgp_key_name[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(pubkey_obj.label, pgp_key_name[i], sizeof(pubkey_obj.label));
 		pubkey_obj.auth_id.len      = 1;
 		pubkey_obj.auth_id.value[0] = 3;
 		pubkey_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;

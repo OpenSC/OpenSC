@@ -53,6 +53,7 @@
 #include <opensc/ui.h>
 #include <opensc/cards.h>
 #include "util.h"
+#include "strlcpy.h"
 
 
 #undef GET_KEY_ECHO_OFF
@@ -1299,8 +1300,7 @@ do_change_attributes(struct sc_profile *profile, unsigned int opt_type)
 	}
 
 	if (opt_label != NULL) {
-		strncpy(obj->label, opt_label, SC_PKCS15_MAX_LABEL_SIZE);
-		obj->label[SC_PKCS15_MAX_LABEL_SIZE - 1] = '\0';
+		strlcpy(obj->label, opt_label, sizeof(obj->label));
 	}
 
 	set_userpin_ref();

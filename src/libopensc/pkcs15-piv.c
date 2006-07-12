@@ -31,6 +31,7 @@
 #include <openssl/bio.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
+#include "strlcpy.h"
 
 #define MANU_ID		"piv_II "
 
@@ -246,12 +247,12 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		sc_pkcs15_format_id(objects[i].id, &obj_info.id);
 		sc_format_path(objects[i].path, &obj_info.path);
-		strncpy(obj_info.app_label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(obj_info.app_label, objects[i].label, sizeof(obj_info.app_label));
 		r = sc_format_oid(&obj_info.app_oid, objects[i].aoid);
 		if (r != SC_SUCCESS)
 			return r;
 
-		strncpy(obj_obj.label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(obj_obj.label, objects[i].label, sizeof(obj_obj.label));
 		obj_obj.flags = objects[i].obj_flags;
 		
 		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT, 
@@ -275,7 +276,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		cert_info.authority = certs[i].authority;
 		sc_format_path(certs[i].path, &cert_info.path);
 
-		strncpy(cert_obj.label, certs[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(cert_obj.label, certs[i].label, sizeof(cert_obj.label));
 		cert_obj.flags = certs[i].obj_flags;
 
 		/* Cards based on NIST 800-73 may enforce pin protected certs */
@@ -310,7 +311,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		sc_format_path(pins[i].path, &pin_info.path);
 		pin_info.tries_left    = -1;
 
-		strncpy(pin_obj.label, pins[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(pin_obj.label, pins[i].label, sizeof(pin_obj.label));
 		pin_obj.flags = pins[i].obj_flags;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
@@ -346,7 +347,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		 */
 		sc_format_path(pubkeys[i].path, &pubkey_info.path);
 
-		strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(pubkey_obj.label, pubkeys[i].label, sizeof(pubkey_obj.label));
 
 		pubkey_obj.flags = pubkeys[i].obj_flags;
 
@@ -380,7 +381,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		 */
 		sc_format_path(prkeys[i].path, &prkey_info.path);
 
-		strncpy(prkey_obj.label, prkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(prkey_obj.label, prkeys[i].label, sizeof(prkey_obj.label));
 
 		prkey_obj.flags = prkeys[i].obj_flags;
 

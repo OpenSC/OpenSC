@@ -28,6 +28,7 @@
 #include <stdio.h>
 
 #include "esteid.h"
+#include "strlcpy.h"
 
 int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
@@ -102,7 +103,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		cert_info.id.value[0] = esteid_cert_ids[i];
 		cert_info.id.len = 1;
 		sc_format_path(esteid_cert_paths[i], &cert_info.path);
-		strncpy(cert_obj.label, esteid_cert_names[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(cert_obj.label, esteid_cert_names[i], sizeof(cert_obj.label));
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
@@ -148,7 +149,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		pin_info.pad_char = '\0';
 		pin_info.tries_left = (int)tries_left;
 
-		strncpy(pin_obj.label, esteid_pin_names[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(pin_obj.label, esteid_pin_names[i], sizeof(pin_obj.label));
 		pin_obj.flags = esteid_pin_flags[i];
 
 		/* Link normal PINs with PUK */
@@ -191,7 +192,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		prkey_info.key_reference = i + 1;
 		prkey_info.modulus_length= 1024;
 
-		strncpy(prkey_obj.label, prkey_name[i], SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(prkey_obj.label, prkey_name[i], sizeof(prkey_obj.label));
 		prkey_obj.auth_id.len = 1;
 		prkey_obj.auth_id.value[0] = prkey_pin[i];
 		prkey_obj.user_consent = (i == 1) ? 1 : 0;

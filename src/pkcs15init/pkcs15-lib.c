@@ -61,6 +61,7 @@
 #include "pkcs15-init.h"
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
+#include "strlcpy.h"
 
 #define OPENSC_INFO_FILEPATH		"3F0050154946"
 #define OPENSC_INFO_FILEID		0x4946
@@ -197,8 +198,7 @@ get_profile_from_config(sc_card_t *card, char *buffer, size_t size)
 
 		tmp = scconf_get_str(blk, "profile", NULL);
 		if (tmp != NULL) {
-			strncpy(buffer, tmp, size);
-			buffer[size-1] = '\0';
+			strlcpy(buffer, tmp, size);
 			return 1;
 		}
 	}
@@ -340,8 +340,7 @@ sc_pkcs15init_bind(sc_card_t *card, const char *name,
 	if (!get_profile_from_config(card, card_profile, sizeof(card_profile)))
 		strcpy(card_profile, driver);
 	if (profile_option != NULL) {
-		strncpy(card_profile, profile_option, sizeof(card_profile));
-		card_profile[sizeof(card_profile) - 1] = '\0';
+		strlcpy(card_profile, profile_option, sizeof(card_profile));
 	}
 
 	if ((r = sc_profile_load(profile, profile->name)) < 0
@@ -1224,7 +1223,7 @@ sc_pkcs15init_init_prkdf(sc_pkcs15_card_t *p15card,
 			free(key_info); key_info = NULL;
 			free(object); object = *res_obj;
 
-			strncpy(object->label, label, sizeof(object->label));
+			strlcpy(object->label, label, sizeof(object->label));
 			return 0;
 		}
 	}
@@ -1620,7 +1619,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		sc_pkcs15_free_object(object);
 		object = *res_obj;
 
-		strncpy(object->label, label, sizeof(object->label));
+		strlcpy(object->label, label, sizeof(object->label));
 	} else {
 		key_info->id = keyargs->id;
 		*res_obj = object;
@@ -1810,8 +1809,8 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	data_object_info = (sc_pkcs15_data_info_t *) object->data;
 	if (label != NULL) {
-		strncpy(data_object_info->app_label, label,
-			sizeof(data_object_info->app_label) - 1);
+		strlcpy(data_object_info->app_label, label,
+			sizeof(data_object_info->app_label));
 	}
 	data_object_info->app_oid = args->app_oid;
 
@@ -2684,7 +2683,7 @@ sc_pkcs15init_new_object(int type, const char *label, sc_pkcs15_id_t *auth_id, v
 	}
 
 	if (label)
-		strncpy(object->label, label, sizeof(object->label)-1);
+		strlcpy(object->label, label, sizeof(object->label));
 	if (auth_id)
 		object->auth_id = *auth_id;
 

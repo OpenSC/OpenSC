@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "strlcpy.h"
 
 #define MANU_ID		"GemSAFE on GPK16000"
 
@@ -338,7 +339,7 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_format_id(certs[i].id, &cert_info.id);
 		cert_info.authority = certs[i].authority;
 
-		strncpy(cert_obj.label, certs[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(cert_obj.label, certs[i].label, sizeof(cert_obj.label));
 		cert_obj.flags = certs[i].obj_flags;
 
 		while (idx1 < file->size - 16) { /* actually 13 for all these tests */
@@ -444,7 +445,7 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 		pin_info.path.value[3] = dfpath & 0xff;
 		pin_info.tries_left    = -1;
 
-		strncpy(pin_obj.label, pins[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(pin_obj.label, pins[i].label, sizeof(pin_obj.label));
 		pin_obj.flags = pins[i].obj_flags;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
@@ -489,7 +490,7 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 			}
 		}
 
-		strncpy(prkey_obj.label, prkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(prkey_obj.label, prkeys[i].label, sizeof(prkey_obj.label));
 		prkey_obj.flags = prkeys[i].obj_flags;
 		if (prkeys[i].auth_id)
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);

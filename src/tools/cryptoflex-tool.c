@@ -28,6 +28,7 @@
 #include <openssl/err.h>
 #include <opensc/pkcs15.h>
 #include "util.h"
+#include "strlcpy.h"
 
 const char *app_name = "cryptoflex-tool";
 
@@ -104,8 +105,7 @@ static char *getpin(const char *prompt)
 		return NULL;
 	}
 	memset(buf, 0, 8);
-	strncpy(buf, pass, 8);
-	memset(pass, 0, strlen(pass));
+	strlcpy(buf, pass, 8);
 	return buf;
 }
 

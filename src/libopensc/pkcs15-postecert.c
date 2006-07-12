@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "strlcpy.h"
 
 int sc_pkcs15emu_postecert_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
@@ -85,7 +86,7 @@ static int sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
         if (type == SC_PKCS15_PIN_TYPE_BCD)
                 info.stored_length /= 2;
 
-	strncpy(obj.label, label, SC_PKCS15_MAX_LABEL_SIZE-1);
+	strlcpy(obj.label, label, sizeof(obj.label));
 	obj.flags = obj_flags;
 
         return sc_pkcs15emu_add_pin_obj(p15card, &obj, &info);
@@ -118,7 +119,7 @@ static int sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
                 info.path = *path;
 
 	obj.flags = obj_flags;
-	strncpy(obj.label, label, SC_PKCS15_MAX_LABEL_SIZE-1);
+	strlcpy(obj.label, label, sizeof(obj.label));
 	if (auth_id != NULL)
 		obj.auth_id = *auth_id;
 
@@ -141,7 +142,7 @@ static int sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
 	if (path)
 		info.path = *path;
 
-	strncpy(obj.label, label, SC_PKCS15_MAX_LABEL_SIZE-1);
+	strlcpy(obj.label, label, sizeof(obj.label));
 	obj.flags = obj_flags;
 
 	return sc_pkcs15emu_add_x509_cert(p15card, &obj, &info);

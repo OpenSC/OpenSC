@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "strlcpy.h"
 
 #define MANU_ID		"A-Trust"
 #define CARD_LABEL	"a.sign Premium a"
@@ -214,7 +215,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 			/* skip errors */
 			continue;
 
-		strncpy(cert_obj.label, certs[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(cert_obj.label, certs[i].label, sizeof(cert_obj.label));
 		cert_obj.flags = certs[i].obj_flags;
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
@@ -240,7 +241,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 		sc_format_path(pins[i].path, &pin_info.path);
 		pin_info.tries_left    = -1;
 
-		strncpy(pin_obj.label, pins[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(pin_obj.label, pins[i].label, sizeof(pin_obj.label));
 		pin_obj.flags = pins[i].obj_flags;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
@@ -262,7 +263,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 		prkey_info.modulus_length= prkeys[i].modulus_len;
 		sc_format_path(prkeys[i].path, &prkey_info.path);
 
-		strncpy(prkey_obj.label, prkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(prkey_obj.label, prkeys[i].label, sizeof(prkey_obj.label));
 		prkey_obj.flags = prkeys[i].obj_flags;
 		if (prkeys[i].auth_id)
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);

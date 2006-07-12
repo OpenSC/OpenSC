@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "strlcpy.h"
 
 #ifdef HAVE_ZLIB_H
 #include <zlib.h>
@@ -95,7 +96,7 @@ static int sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
         if (type == SC_PKCS15_PIN_TYPE_BCD)
                 info.stored_length /= 2;
 
-	strncpy(obj.label, label, SC_PKCS15_MAX_LABEL_SIZE-1);
+	strlcpy(obj.label, label, sizeof(obj.label));
 	obj.flags = obj_flags;
 
         return sc_pkcs15emu_add_pin_obj(p15card, &obj, &info);
@@ -128,7 +129,7 @@ static int sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
                 info.path = *path;
 
 	obj.flags = obj_flags;
-	strncpy(obj.label, label, SC_PKCS15_MAX_LABEL_SIZE-1);
+	strlcpy(obj.label, label, sizeof(obj.label));
 	if (auth_id != NULL)
 		obj.auth_id = *auth_id;
 
@@ -151,7 +152,7 @@ static int sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
 	if (path)
 		info.path = *path;
 
-	strncpy(obj.label, label, SC_PKCS15_MAX_LABEL_SIZE-1);
+	strlcpy(obj.label, label, sizeof(obj.label));
 	obj.flags = obj_flags;
 
 	return sc_pkcs15emu_add_x509_cert(p15card, &obj, &info);
@@ -326,7 +327,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 		sc_pkcs15_format_id("1", &cert_info.id);
         	cert_info.authority = authority;
         	cert_info.path = path;
-		strncpy(cert_obj.label, authlabel, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(cert_obj.label, authlabel, sizeof(cert_obj.label));
 	        cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
@@ -384,7 +385,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
         cert_info.authority = authority;
         cert_info.path = path;
-        strncpy(cert_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+        strlcpy(cert_obj.label, label, sizeof(cert_obj.label));
         cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
 	r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
@@ -419,7 +420,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 			sc_pkcs15_format_id("3", &cert_info.id);
 	        	cert_info.authority = authority;
 	        	cert_info.path = path;
-	        	strncpy(cert_obj.label, calabel, SC_PKCS15_MAX_LABEL_SIZE - 1);
+	        	strlcpy(cert_obj.label, calabel, sizeof(cert_obj.label));
 		        cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
 			r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
@@ -545,7 +546,7 @@ static int loadCertificate(sc_pkcs15_card_t * p15card, int i,
 	cert_info.path = cpath;
 	cert_info.authority = (i == 2);
 
-	strncpy(cert_obj.label, certLabel, SC_PKCS15_MAX_LABEL_SIZE - 1);
+	strlcpy(cert_obj.label, certLabel, sizeof(cert_obj.label));
 	cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
 	sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);

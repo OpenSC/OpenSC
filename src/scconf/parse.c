@@ -31,6 +31,7 @@
 #include <errno.h>
 #include "scconf.h"
 #include "internal.h"
+#include "strlcpy.h"
 
 #define STATE_NAME	0x01
 #define STATE_VALUE	0x02
@@ -386,7 +387,7 @@ int scconf_parse(scconf_context * config)
 				config->filename, strerror(errno));
 		r = -1;
 	} else if (p.error) {
-		strncpy(buffer, p.emesg, sizeof(buffer)-1);
+		strlcpy(buffer, p.emesg, sizeof(buffer));
 		r = 0;
 	} else {
 		r = 1;
@@ -413,7 +414,7 @@ int scconf_parse_string(scconf_context * config, const char *string)
 				"Failed to parse configuration string");
 		r = -1;
 	} else if (p.error) {
-		strncpy(buffer, p.emesg, sizeof(buffer)-1);
+		strlcpy(buffer, p.emesg, sizeof(buffer));
 		r = 0;
 	} else {
 		r = 1;

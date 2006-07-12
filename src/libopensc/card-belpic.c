@@ -647,7 +647,7 @@ int belpic_set_language(const char *reader, int lang)
 				lang_infos[i].reader[0] = '\0';
 		} else {	/* For only 1 reader */
 			if (lang_infos[i].reader[0] == '\0') {	/* reader not yet present */
-				strncpy(lang_infos[i].reader, reader, MAX_READER_LEN - 1);
+				strlcpy(lang_infos[i].reader, reader, sizeof(lang_infos[i].reader));
 				lang_infos[i].lang = lang;
 				break;
 			} else if (strncmp(reader, lang_infos[i].reader, MAX_READER_LEN - 1) == 0) {

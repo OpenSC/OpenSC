@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "strlcpy.h"
 
 static void
 set_string(char **strp, const char *value)
@@ -196,7 +197,7 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		cert_info.path        = path;
 
 		memset(&cert_obj, 0, sizeof(cert_obj));
-		strncpy(cert_obj.label, certlist[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(cert_obj.label, certlist[i].label, sizeof(cert_obj.label));
 		cert_obj.flags = certlist[i].writable ? SC_PKCS15_CO_FLAG_MODIFIABLE : 0;
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
@@ -240,7 +241,7 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		sc_format_path(keylist[i].path, &prkey_info.path);
 
 		memset(&prkey_obj, 0, sizeof(prkey_obj));
-		strncpy(prkey_obj.label, keylist[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(prkey_obj.label, keylist[i].label, sizeof(prkey_obj.label));
 		prkey_obj.flags            = SC_PKCS15_CO_FLAG_PRIVATE;
 		prkey_obj.auth_id.len      = 1;
 		prkey_obj.auth_id.value[0] = keylist[i].auth_id;
@@ -280,7 +281,7 @@ int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opt
 		sc_format_path(pinlist[i].path, &pin_info.path);
 
 		memset(&pin_obj, 0, sizeof(pin_obj));
-		strncpy(pin_obj.label, pinlist[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strlcpy(pin_obj.label, pinlist[i].label, sizeof(pin_obj.label));
 		pin_obj.flags            = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
 		pin_obj.auth_id.len      = pinlist[i].auth_id ? 0 : 1;
 		pin_obj.auth_id.value[0] = pinlist[i].auth_id;
