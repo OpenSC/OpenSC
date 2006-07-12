@@ -6,7 +6,8 @@ MAINTAINERCLEANFILES = Makefile.in
 
 EXTRA_DIST = Makefile.mak libopensc.pc.in libpkcs15init.pc.in libscconf.pc.in 
 
-INCLUDES = $(CPPFLAGS) $(OPENSSL_CFLAGS) $(OPENCT_CFLAGS) $(PCSC_CFLAGS)
+INCLUDES = $(CPPFLAGS) $(OPENSSL_CFLAGS) $(OPENCT_CFLAGS) $(PCSC_CFLAGS) \
+	-I$(top_srcdir)/src/common
 AM_LDFLAGS = 
 
 bin_SCRIPTS = opensc-config
