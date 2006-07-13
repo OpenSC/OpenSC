@@ -486,7 +486,7 @@ void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 
 static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 {
-	unsigned char *buf;
+	unsigned char *buf = NULL;
 	int    err, ok = 0;
 	size_t len;
 	sc_path_t tmppath;
