@@ -612,7 +612,8 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 		if (r != SC_SUCCESS)
 			return r;
 		return iso_ops->create_file(card, file);
-	} else if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
+	} else if (card->type == SC_CARD_TYPE_CARDOS_M4_2 ||
+	           card->type == SC_CARD_TYPE_CARDOS_M4_3) {
 		u8        sbuf[SC_MAX_APDU_BUFFER_SIZE];
 		size_t    len = sizeof(sbuf);
 		sc_apdu_t apdu;
