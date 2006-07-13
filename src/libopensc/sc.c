@@ -136,12 +136,12 @@ unsigned short bebytes2ushort(const u8 *buf)
 
 int sc_format_oid(struct sc_object_id *oid, const char *in)
 {
-	int ii, ret = SC_ERROR_INVALID_ARGUMENTS;
+	int        ii;
 	const char *p;
 	char       *q;
 
 	if (oid == NULL || in == NULL)
-		return ret;
+		return SC_ERROR_INVALID_ARGUMENTS;
 	/* init oid */
 	for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS; ii++)
 		oid->value[ii] = -1;
@@ -153,10 +153,14 @@ int sc_format_oid(struct sc_object_id *oid, const char *in)
 		if (!*q)
 			break;
 		if (!(q[0] == '.' && isdigit(q[1]))) {
-			return ret;
+			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		p = q + 1;
 	}
+
+	if (ii == 1)
+		/* reject too short OIDs */
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	return SC_SUCCESS;
 }
