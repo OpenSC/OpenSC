@@ -309,7 +309,7 @@ static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
-	struct sc_asn1_entry asn1_odf[9];
+	struct sc_asn1_entry asn1_odf[10];
 	
 	sc_copy_asn1_entry(c_asn1_odf, asn1_odf);
 	for (i = 0; asn1_odf[i].name != NULL; i++)
@@ -587,6 +587,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 		goto end;
 	}
 	free(buf);
+	buf = NULL;
 
 	if (card->ctx->debug) {
 		sc_pkcs15_df_t *df;
