@@ -1754,7 +1754,7 @@ get_authid(struct state *cur, const char *value,
 	}
 
 	n = strcspn(value, "0123456789");
-	strlcpy(temp, value, n);
+	strlcpy(temp, value, (sizeof(temp) > n) ? n + 1 : sizeof(temp));
 
 	if (map_str2int(cur, temp, type, aclNames))
 		return 1;
