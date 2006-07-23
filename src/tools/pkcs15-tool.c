@@ -888,7 +888,10 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 				pin->min_length, pin->max_length, pin->stored_length);
 	printf("\tPad char  : 0x%02X\n", pin->pad_char);
 	printf("\tReference : %d\n", pin->reference);
-	printf("\tType      : %s\n", pin_types[pin->type]);
+	if (pin->type >= 0 && pin->type < sizeof(pin_types)/sizeof(pin_types[0]))
+		printf("\tType      : %s\n", pin_types[pin->type]);
+	else
+		printf("\tType      : [encoding %d]\n", pin->type);
 	printf("\tPath      : %s\n", sc_print_path(&pin->path));
 	if (pin->tries_left >= 0)
 		printf("\tTries left: %d\n", pin->tries_left);
