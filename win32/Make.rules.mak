@@ -21,7 +21,7 @@ OPENSSL_LIB = C:\openssl\out32dll\libeay32.lib
 PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe
 !ENDIF
 
-COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc $(OPENSSL_INCL_DIR) $(LIBLTDL_INCL) /D_WIN32_WINNT=0x0400 $(OPENSSL_DEF)
+COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc /I$(TOPDIR)\src\common $(OPENSSL_INCL_DIR) $(LIBLTDL_INCL) /D_WIN32_WINNT=0x0400 $(OPENSSL_DEF)
 LINKFLAGS = /DEBUG /NOLOGO /INCREMENTAL:NO /MACHINE:IX86
 
 

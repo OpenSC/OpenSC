@@ -26,7 +26,7 @@
 #include <unistd.h>
 #endif
 #include <stdlib.h>
-#include <getopt.h>
+#include <my_getopt.h>
 #include <string.h>
 #include <opensc/opensc.h>
 #include <opensc/asn1.h>

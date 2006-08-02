@@ -16,9 +16,7 @@
 #include <unistd.h>
 #endif
 #include <sys/stat.h>
-#ifdef HAVE_GETOPT_H
-#include <getopt.h>
-#endif
+#include <my_getopt.h>
 #include <opensc/opensc.h>
 
 #ifdef __cplusplus
