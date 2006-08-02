@@ -293,7 +293,7 @@ static int send_apdu(void)
 			} else
 				apdu.cse = SC_APDU_CASE_3_SHORT;
 			if (len) {
-				fprintf(stderr, "APDU too long (%lu bytes extra).\n", len);
+				fprintf(stderr, "APDU too long (%lu bytes extra).\n", (unsigned long)len);
 				return 2;
 			}
 		} else if (len == 1) {

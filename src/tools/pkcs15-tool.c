@@ -413,7 +413,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 			printf(", %s", access_flags[i]);   
 		}
 	printf("\n");
-	printf("\tModLength   : %lu\n", prkey->modulus_length);
+	printf("\tModLength   : %lu\n", (unsigned long)prkey->modulus_length);
 	printf("\tKey ref     : %d\n", prkey->key_reference);
 	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");
 	printf("\tPath        : %s\n", sc_print_path(&prkey->path));
@@ -471,7 +471,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 			printf(", %s", access_flags[i]);   
 		}
 	printf("\n");
-	printf("\tModLength   : %lu\n", pubkey->modulus_length);
+	printf("\tModLength   : %lu\n", (unsigned long)pubkey->modulus_length);
 	printf("\tKey ref     : %d\n", pubkey->key_reference);
 	printf("\tNative      : %s\n", pubkey->native ? "yes" : "no");
 	printf("\tPath        : %s\n", sc_print_path(&pubkey->path));
@@ -885,7 +885,8 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 		}
 	printf("\n");
 	printf("\tLength    : min_len:%lu, max_len:%lu, stored_len:%lu\n",
-				pin->min_length, pin->max_length, pin->stored_length);
+		(unsigned long)pin->min_length, (unsigned long)pin->max_length,
+		(unsigned long)pin->stored_length);
 	printf("\tPad char  : 0x%02X\n", pin->pad_char);
 	printf("\tReference : %d\n", pin->reference);
 	if (pin->type >= 0 && pin->type < sizeof(pin_types)/sizeof(pin_types[0]))

@@ -175,7 +175,7 @@ static void print_file(const sc_file_t *file)
 		break;
 	}
 	printf("\t%4s", st);
-	printf(" %5lu", file->size);
+	printf(" %5lu", (unsigned long)file->size);
 	if (file->namelen) {
 		printf("\tName: ");
 		print_binary(stdout, file->name, file->namelen);
