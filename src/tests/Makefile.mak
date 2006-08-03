@@ -15,4 +15,5 @@ all: print.obj sc-test.obj $(TARGETS)
 	cl $(COPTS) /c $<
         link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj sc-test.obj print.obj \
         ..\common\common.lib ..\libopensc\opensc.lib $(TOPDIR)\win32\version.res
+	if EXIST $@.manifest mt -manifest $@.manifest -outputresource:$@;1
 
