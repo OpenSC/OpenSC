@@ -82,8 +82,15 @@ static CK_RV init_spy(void)
   }
 #ifdef _WIN32
   if (!spy_output) {
-        rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\PKCS11-Spy",
+		/* try for the machine version first, as we may be runing 
+	     * without a user during login 
+		 */
+        rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\PKCS11-Spy",
                 0, KEY_QUERY_VALUE, &hKey );
+		if (rc != ERROR_SUCCESS ) {
+        	rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\PKCS11-Spy",
+                	0, KEY_QUERY_VALUE, &hKey );
+		}
         if( rc == ERROR_SUCCESS ) {
                 temp_len = PATH_MAX;
                 rc = RegQueryValueEx( hKey, "Output", NULL, NULL,
@@ -103,8 +110,15 @@ static CK_RV init_spy(void)
   module = getenv("PKCS11SPY");
 #ifdef _WIN32
   if (!module) {
-        rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\PKCS11-Spy",
+		/* try for the machine version first, as we may be runing
+		 * without a user during login 
+		 */
+        rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\PKCS11-Spy",
                 0, KEY_QUERY_VALUE, &hKey );
+		if (rc != ERROR_SUCCESS ) {
+        	rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\PKCS11-Spy",
+           	     0, KEY_QUERY_VALUE, &hKey );
+		}
         if( rc == ERROR_SUCCESS ) {
                 temp_len = PATH_MAX;
                 rc = RegQueryValueEx( hKey, "Module", NULL, NULL,
