@@ -32,6 +32,13 @@
 #include <winscard.h>
 #endif
 
+#ifdef _WIN32
+#include <Winsock.h>
+#include "part10.h"
+#define PINPAD_ENABLED
+#else
+#include <arpa/inet.h>
+#endif
 #ifdef HAVE_READER_H
 #include <reader.h>
 #ifdef HOST_TO_CCID_32
@@ -92,7 +99,12 @@ struct pcsc_slot_data {
 	SCARDHANDLE pcsc_card;
 	SCARD_READERSTATE_A reader_state;
 	DWORD verify_ioctl;
+	DWORD verify_ioctl_start;
+	DWORD verify_ioctl_finish;
+	
 	DWORD modify_ioctl;
+	DWORD modify_ioctl_start;
+	DWORD modify_ioctl_finish;
 	int locked;
 };
 
@@ -196,7 +208,7 @@ static int pcsc_internal_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 			return SC_ERROR_TRANSMIT_FAILED;
 		}
 	}
-	if (dwRecvLength < 2)
+	if (!control && dwRecvLength < 2)
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	*recvsize = dwRecvLength;
 
@@ -538,34 +550,49 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	if (rv == SCARD_S_SUCCESS) {
 		
 		if (!(feature_len % sizeof(PCSC_TLV_STRUCTURE))) {
+			char *log_disabled = "but it's disabled in configuration file";
 			/* get the number of elements instead of the complete size */
 			feature_len /= sizeof(PCSC_TLV_STRUCTURE);
 
 			pcsc_tlv = (PCSC_TLV_STRUCTURE *)feature_buf;
 			for (i = 0; i < feature_len; i++) {
-				char *log_disabled = "but it's disabled in configuration file";
 				if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_DIRECT) {
-					char *log_text = "Reader supports pinpad PIN verification";
-					pslot->verify_ioctl = pcsc_tlv[i].value;
-					if (priv->gpriv->enable_pinpad) {
-						sc_debug(reader->ctx, log_text);
-						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
-					} else {
-						sc_debug(reader->ctx, "%s %s", log_text, log_disabled);
-					}
+					pslot->verify_ioctl = ntohl(pcsc_tlv[i].value);
+				} else if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_START) {
+					pslot->verify_ioctl_start = ntohl(pcsc_tlv[i].value);
+				} else if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_FINISH) {
+					pslot->verify_ioctl_finish = ntohl(pcsc_tlv[i].value);
 				} else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_DIRECT) {
-					char *log_text = "Reader supports pinpad PIN modification";
-					pslot->modify_ioctl = pcsc_tlv[i].value;
-					if (priv->gpriv->enable_pinpad) {
-						sc_debug(reader->ctx, log_text);
-						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
-					} else {
-						sc_debug(reader->ctx, "%s %s", log_text, log_disabled);
-					}
+					pslot->modify_ioctl = ntohl(pcsc_tlv[i].value);
+				} else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_START) {
+					pslot->modify_ioctl_start = ntohl(pcsc_tlv[i].value);
+				} else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_FINISH) {
+					pslot->modify_ioctl_finish = ntohl(pcsc_tlv[i].value);
 				} else {
-					sc_debug(reader->ctx, "Reader pinpad feature: %02x not recognized", pcsc_tlv[i].tag);
+					sc_debug(reader->ctx, "Reader pinpad feature: %02x not supported", pcsc_tlv[i].tag);
 				}
 			}
+			
+			/* Set slot capabilities based on detected IOCTLs */
+			if (pslot->verify_ioctl || (pslot->verify_ioctl_start && pslot->verify_ioctl_finish)) {
+					char *log_text = "Reader supports pinpad PIN verification";
+					if (priv->gpriv->enable_pinpad) {
+						sc_debug(reader->ctx, log_text);
+						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+					} else {
+						sc_debug(reader->ctx, "%s %s", log_text, log_disabled);
+					}
+			}
+			
+			if (pslot->modify_ioctl || (pslot->modify_ioctl_start && pslot->modify_ioctl_finish)) {
+					char *log_text = "Reader supports pinpad PIN modification";
+					if (priv->gpriv->enable_pinpad) {
+						sc_debug(reader->ctx, log_text);
+						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+					} else {
+						sc_debug(reader->ctx, "%s %s", log_text, log_disabled);
+					}
+				}
 		} else
 			sc_debug(reader->ctx, "Inconsistent TLV from reader!");
 	} else {
@@ -881,6 +908,8 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
 		/* GLP pin length is encoded in 4 bits and block size is always 8 bytes */
 		tmp |= 0x40 | 0x08;
+	} else if (data->pin1.encoding == SC_PIN_ENCODING_ASCII && data->pin1.pad_length) {
+		tmp |= data->pin1.pad_length;
 	}
 	pin_verify->bmPINBlockString = tmp;
 
@@ -916,6 +945,7 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 
 	/* Copy data if not Case 1 */
 	if (data->pin1.length_offset != 4) {
+		pin_verify->abData[offset++] = apdu->lc;
 		memcpy(&pin_verify->abData[offset], apdu->data, apdu->datalen);
 		offset += apdu->datalen;
 	}
@@ -969,6 +999,8 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
 		/* GLP pin length is encoded in 4 bits and block size is always 8 bytes */
 		tmp |= 0x40 | 0x08;
+	} else if (data->pin1.encoding == SC_PIN_ENCODING_ASCII && data->pin1.pad_length) {
+		tmp |= data->pin1.pad_length;
 	}
 	pin_modify->bmPINBlockString = tmp; /* bmPINBlockString */
 
@@ -1010,6 +1042,7 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 
 	/* Copy data if not Case 1 */
 	if (data->pin1.length_offset != 4) {
+		pin_modify->abData[offset++] = apdu->lc;
 		memcpy(&pin_modify->abData[offset], apdu->data, apdu->datalen);
 		offset += apdu->datalen;
 	}
@@ -1054,21 +1087,21 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	apdu = data->apdu;
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
-		if (!pslot->verify_ioctl) {
+		if (!(pslot->verify_ioctl || (pslot->verify_ioctl_start && pslot->verify_ioctl_finish))) {
 			sc_error(reader->ctx, "Pinpad reader does not support verification!");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		r = part10_build_verify_pin_block(sbuf, &scount, data);
-		ioctl = pslot->verify_ioctl;
+		ioctl = pslot->verify_ioctl ? pslot->verify_ioctl : pslot->verify_ioctl_start;
 		break;
 	case SC_PIN_CMD_CHANGE:
 	case SC_PIN_CMD_UNBLOCK:
-		if (!pslot->modify_ioctl) {
+		if (!(pslot->modify_ioctl || (pslot->modify_ioctl_start && pslot->modify_ioctl_finish))) {
 			sc_error(reader->ctx, "Pinpad reader does not support modification!");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		r = part10_build_modify_pin_block(sbuf, &scount, data);
-		ioctl = pslot->modify_ioctl;
+		ioctl = pslot->modify_ioctl ? pslot->modify_ioctl : pslot->modify_ioctl_start;
 		break;
 	default:
 		sc_error(reader->ctx, "Unknown PIN command %d", data->cmd);
@@ -1084,6 +1117,18 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	r = pcsc_internal_transmit(reader, slot, sbuf, scount, rbuf, &rcount, ioctl);
 
 	SC_TEST_RET(reader->ctx, r, "Part 10: block transmit failed!");
+	// finish the call if it was a two-phase operation
+	if ((ioctl == pslot->verify_ioctl_start)
+	    || (ioctl == pslot->modify_ioctl_start)) {
+		if (rcount != 0) {
+			SC_FUNC_RETURN(reader->ctx, 2, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+		}
+		ioctl = (ioctl == pslot->verify_ioctl_start) ? pslot->verify_ioctl_finish : pslot->modify_ioctl_finish;
+
+		rcount = sizeof(rbuf);
+		r = pcsc_internal_transmit(reader, slot, sbuf, 0, rbuf, &rcount, ioctl);
+		SC_TEST_RET(reader->ctx, r, "Part 10: finish operation failed!");
+	}
 
 	/* We expect only two bytes of result data (SW1 and SW2) */
 	if (rcount != 2) {
