@@ -258,6 +258,7 @@ static int mcrd_init(sc_card_t * card)
 {
 	unsigned long flags;
 	struct mcrd_priv_data *priv;
+	sc_path_t tmppath;
 
 	priv = (struct mcrd_priv_data *)calloc(1, sizeof *priv);
 	if (!priv)
@@ -277,6 +278,12 @@ static int mcrd_init(sc_card_t * card)
 
 	priv->curpath[0] = MFID;
 	priv->curpathlen = 1;
+
+	sc_format_path ("3f00", &tmppath);
+	tmppath.type = SC_PATH_TYPE_PATH;
+	sc_select_file (card, &tmppath, NULL);
+	                
+	
 	/* The special file loading thing doesn't work for EstEID */
 	if (card->type != SC_CARD_TYPE_MCRD_ESTEID)
 		load_special_files(card);
