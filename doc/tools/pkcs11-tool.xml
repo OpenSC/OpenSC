@@ -193,7 +193,8 @@
 
 				<varlistentry>
 					<term><option>--module</option> <varname>mod</varname></term>
-					<listitem><para>Specify a module to load.</para></listitem>
+					<listitem><para>Specify a PKCS#11 module (or library) to
+					load.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
