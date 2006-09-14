@@ -52,8 +52,9 @@
 				<varlistentry>
 					<term><option>--prefix=PREFIX</option></term>
 					<listitem><para>If specified, use PREFIX instead of the installation
-					prefix that OpenSC was built with when computing the output for the
-					--cflags and --libs options. This option is also used for the exec
+					prefix that OpenSC was built with when computing the output
+					for the <option>--cflags</option>
+					and <option>--libs</option> options. This option is also used for the exec
 					prefix if --exec-prefix was not specified. This option must be specified
 					before any --libs or --cflags options.</para></listitem>
 				</varlistentry>
@@ -62,7 +63,8 @@
 					<term><option>--exec-prefix=PREFIX</option></term>
 					<listitem><para>If specified, use PREFIX instead of the installation
 					exec prefix that OpenSC was built with when computing the output for
-					the --cflags and --libs options. This option must be specified before any
+					the <option>--cflags</option> and <option>--libs</option>
+					options. This option must be specified before any
 					--libs or --cflags options.</para></listitem>
 				</varlistentry>
 			</variablelist>

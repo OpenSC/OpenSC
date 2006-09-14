@@ -56,14 +56,14 @@
 					<listitem><para>Use the given <varname>pin</varname> as the
 					Security Officer PIN for some token operations (token
 					initialization, user PIN initialization, etc). The same
-					warning as --pin also applies here.</para></listitem>
+					warning as <option>--pin</option> also applies here.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term><option>--init-token</option></term>
 					<listitem><para>Initializes a token: set the token label as
 					well as a Security Officer PIN (the label must be specified
-					using --label).</para></listitem>
+					using <option>--label</option>).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -71,7 +71,7 @@
 					<listitem><para>Initializes the user PIN. This option
 					differs from --change-pin in that it sets the user PIN
 					for the first time. Once set, the user PIN can be changed
-					using --change-pin.</para></listitem>
+					using <option>--change-pin</option>.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -82,8 +82,8 @@
 				<varlistentry>
 					<term><option>--test, -t</option></term>
 					<listitem><para>Performs some tests on the token. This
-					option is most useful when used with either --login or
-					--pin.</para></listitem>
+					option is most useful when used with either <option>--login</option>
+					or <option>--pin</option>.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -120,8 +120,8 @@
 					<term><option>--mechanism</option> <varname>mechanism</varname>,
 					<option>-m</option> <varname>mechanism</varname></term>
 					<listitem><para>Use the specified <varname>mechanism</varname>
-					for token operations. See -M for a list of mechanisms supported
-					by your token.</para></listitem>
+					for token operations. See <option>-M</option> for a list
+					of mechanisms supported by your token.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -153,7 +153,8 @@
 					<term><option>--label</option> <varname>name</varname>,
 					<option>-a</option> <varname>name</varname></term>
 					<listitem><para>Specify the name of the object to operate on
-					(or the token label when --init-token is used).</para></listitem>
+					(or the token label when <option>--init-token</option>
+					is used).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
