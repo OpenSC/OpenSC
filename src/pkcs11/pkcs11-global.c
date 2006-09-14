@@ -259,7 +259,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 	pInfo->cryptokiVersion.major = 2;
 	pInfo->cryptokiVersion.minor = 11;
 	strcpy_bp(pInfo->manufacturerID,
-		  "OpenSC Project (www.opensc-project.org)",
+		  "OpenSC (www.opensc-project.org)",
 		  sizeof(pInfo->manufacturerID));
 	strcpy_bp(pInfo->libraryDescription,
 		  "smart card PKCS#11 API",
