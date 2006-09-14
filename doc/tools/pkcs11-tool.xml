@@ -46,7 +46,9 @@
 					<listitem><para>Use the given <varname>pin</varname> for
 					token operations. WARNING: Be careful using this option
 					as other users may be able to read the command line from
-					the system or if it is embedded in a script.</para></listitem>
+					the system or if it is embedded in a script.</para>
+					<para>This option will also set
+					the <option>--login</option> option.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
