@@ -1078,12 +1078,6 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	/* Only T=0 is currently supported */
-	if (slot->active_protocol != SC_PROTO_T0) {
-		sc_error(reader->ctx, "Only T=0 is currently supported!");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
 	apdu = data->apdu;
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
