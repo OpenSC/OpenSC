@@ -42,7 +42,7 @@ include_HEADERS = \
 	cardctl.h asn1.h log.h ui.h \
 	errors.h types.h
 
-noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h
+noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h part10.h
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libopensc.pc libpkcs15init.pc libscconf.pc
