@@ -270,7 +270,7 @@ static int starcos_select_fid(sc_card_t *card,
 
 	/* request FCI to distinguish between EFs and DFs */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x00, 0x00);
-	apdu.p2   = (file_out != NULL) ? 0x00 : 0x0C;
+	apdu.p2   = 0x00;
 	apdu.resp = (u8*)resp;
 	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
 	apdu.le = 256;
