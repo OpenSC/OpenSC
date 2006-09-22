@@ -27,6 +27,7 @@
 static struct sc_atr_table starcos_atrs[] = {
 	{ "3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
 	{ "3B:B7:94:00:81:31:fe:65:53:50:4b:32:33:90:00:d1", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
+	{ "3b:b7:18:00:c0:3e:31:fe:65:53:50:4b:32:34:90:00:25", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -34,7 +35,7 @@ static struct sc_card_operations starcos_ops;
 static struct sc_card_operations *iso_ops = NULL;
 
 static struct sc_card_driver starcos_drv = {
-	"STARCOS SPK 2.3",
+	"STARCOS SPK 2.3/2.4",
 	"starcos",
 	&starcos_ops,
 	NULL, 0, NULL
