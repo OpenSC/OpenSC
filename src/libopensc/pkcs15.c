@@ -27,12 +27,18 @@
 #include <assert.h>
 #include <ltdl.h>
 
+static const struct sc_asn1_entry c_asn1_twlabel[] = {
+	{ "twlabel", SC_ASN1_UTF8STRING, SC_ASN1_TAG_UTF8STRING, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
 
 static const struct sc_asn1_entry c_asn1_toki[] = {
 	{ "version",        SC_ASN1_INTEGER,      SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
 	{ "serialNumber",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
 	{ "manufacturerID", SC_ASN1_UTF8STRING,   SC_ASN1_TAG_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "label",	    SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL, NULL },
+	/* XXX the Taiwanese ID card erroneously uses explicit tagging */
+	{ "label-tw",       SC_ASN1_STRUCT,       SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "tokenflags",	    SC_ASN1_BIT_FIELD,    SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL },
 	{ "seInfo",	    SC_ASN1_SEQUENCE,	  SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "recordInfo",	    SC_ASN1_STRUCT,       SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL },
@@ -63,25 +69,28 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	u8 last_update[32];
 	size_t lupdate_len = sizeof(last_update) - 1;
 	size_t flags_len   = sizeof(ti->flags);
-	struct sc_asn1_entry asn1_toki[13], asn1_tokeninfo[3];
+	struct sc_asn1_entry asn1_toki[14], asn1_tokeninfo[3], asn1_twlabel[3];
 	u8 preferred_language[3];
 	size_t lang_length = sizeof(preferred_language);
 
 	memset(last_update, 0, sizeof(last_update));
+	sc_copy_asn1_entry(c_asn1_twlabel, asn1_twlabel);
 	sc_copy_asn1_entry(c_asn1_toki, asn1_toki);
 	sc_copy_asn1_entry(c_asn1_tokeninfo, asn1_tokeninfo);
+	sc_format_asn1_entry(asn1_twlabel, label, &label_len, 0);
 	sc_format_asn1_entry(asn1_toki + 0, &ti->version, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 1, serial, &serial_len, 0);
 	sc_format_asn1_entry(asn1_toki + 2, mnfid, &mnfid_len, 0);
 	sc_format_asn1_entry(asn1_toki + 3, label, &label_len, 0);
-	sc_format_asn1_entry(asn1_toki + 4, &ti->flags, &flags_len, 0);
-	sc_format_asn1_entry(asn1_toki + 5, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 4, asn1_twlabel, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 5, &ti->flags, &flags_len, 0);
 	sc_format_asn1_entry(asn1_toki + 6, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 7, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 8, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 9, NULL, NULL, 0);
-	sc_format_asn1_entry(asn1_toki + 10, last_update, &lupdate_len, 0);
-	sc_format_asn1_entry(asn1_toki + 11, preferred_language, &lang_length, 0);
+	sc_format_asn1_entry(asn1_toki + 10, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 11, last_update, &lupdate_len, 0);
+	sc_format_asn1_entry(asn1_toki + 12, preferred_language, &lang_length, 0);
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki, NULL, 0);
 	
 	r = sc_asn1_decode(ctx, asn1_tokeninfo, buf, blen, NULL, NULL);
@@ -110,19 +119,20 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 			return SC_ERROR_OUT_OF_MEMORY;
 	}
 	if (ti->label == NULL) {
-		if (asn1_toki[3].flags & SC_ASN1_PRESENT)
+		if (asn1_toki[3].flags & SC_ASN1_PRESENT ||
+		    asn1_toki[4].flags & SC_ASN1_PRESENT)
 			ti->label = strdup((char *) label);
 		else
 			ti->label = strdup("(unknown)");
 		if (ti->label == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 	}
-	if (asn1_toki[10].flags & SC_ASN1_PRESENT) {
+	if (asn1_toki[11].flags & SC_ASN1_PRESENT) {
 		ti->last_update = strdup((char *)last_update);
 		if (ti->last_update == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 	}
-	if (asn1_toki[11].flags & SC_ASN1_PRESENT) {
+	if (asn1_toki[12].flags & SC_ASN1_PRESENT) {
 		preferred_language[2] = 0;
 		ti->preferred_language = strdup((char *)preferred_language);
 		if (ti->preferred_language == NULL)
@@ -139,7 +149,7 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 	int version = ti->version;
 	size_t serial_len, mnfid_len, label_len, flags_len, last_upd_len;
 	
-	struct sc_asn1_entry asn1_toki[13], asn1_tokeninfo[2];
+	struct sc_asn1_entry asn1_toki[14], asn1_tokeninfo[2];
 
 	sc_copy_asn1_entry(c_asn1_toki, asn1_toki);
 	sc_copy_asn1_entry(c_asn1_tokeninfo, asn1_tokeninfo);
@@ -168,20 +178,20 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 		sc_format_asn1_entry(asn1_toki + 3, NULL, NULL, 0);
 	if (ti->flags) {
 		flags_len = sizeof(ti->flags);
-		sc_format_asn1_entry(asn1_toki + 4, &ti->flags, &flags_len, 1);
+		sc_format_asn1_entry(asn1_toki + 5, &ti->flags, &flags_len, 1);
 	} else
-		sc_format_asn1_entry(asn1_toki + 4, NULL, NULL, 0);
-	sc_format_asn1_entry(asn1_toki + 5, NULL, NULL, 0);
+		sc_format_asn1_entry(asn1_toki + 5, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 6, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 7, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 8, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 9, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 10, NULL, NULL, 0);
 	if (ti->last_update != NULL) {
 		last_upd_len = strlen(ti->last_update);
-		sc_format_asn1_entry(asn1_toki + 10, ti->last_update, &last_upd_len, 1);
+		sc_format_asn1_entry(asn1_toki + 11, ti->last_update, &last_upd_len, 1);
 	} else
-		sc_format_asn1_entry(asn1_toki + 10, NULL, NULL, 0);
-	sc_format_asn1_entry(asn1_toki + 11, NULL, NULL, 0);
+		sc_format_asn1_entry(asn1_toki + 11, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 12, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki, NULL, 1);
 
 	r = sc_asn1_encode(ctx, asn1_tokeninfo, buf, buflen);
