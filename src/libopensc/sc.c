@@ -285,6 +285,9 @@ int sc_concatenate_path(sc_path_t *d, const sc_path_t *p1, const sc_path_t *p2)
 	memcpy(tpath.value + p1->len, p2->value, p2->len);
 	tpath.len  = p1->len + p2->len;
 	tpath.type = SC_PATH_TYPE_PATH;
+	/* use 'index' and 'count' entry of the second path object */
+	tpath.index = p2->index;
+	tpath.count = p2->count;
 
 	*d = tpath;
 
