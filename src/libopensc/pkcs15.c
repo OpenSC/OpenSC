@@ -313,7 +313,7 @@ static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 {
 	const u8 *p = buf;
 	size_t left = buflen;
-	int r, i;
+	int r, i, type;
 	sc_path_t path;
 	struct sc_asn1_entry asn1_obj_or_path[] = {
 		{ "path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0, &path, NULL },
@@ -330,7 +330,11 @@ static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 			break;
 		if (r < 0)
 			return r;
-		r = sc_pkcs15_add_df(card, odf_indexes[r], &path, NULL);
+		type = r;
+		r = sc_pkcs15_make_absolute_path(&card->file_app->path, &path);
+		if (r < 0)
+			return r;
+		r = sc_pkcs15_add_df(card, odf_indexes[type], &path, NULL);
 		if (r)
 			return r;
 	}
@@ -1533,9 +1537,12 @@ int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen, struct sc_pkcs15_
 		if (r < 0)
 			return r;
 		/* If the path length is 0, it's a dummy path then don't add it.
-		 * If the path length isn't include (-1) then it's against the standard
+		 * If the path length isn't included (-1) then it's against the standard
 		 *   but we'll just ignore it instead of returning an error. */
 		if (path.count > 0) {
+			r = sc_pkcs15_make_absolute_path(&card->file_app->path, &path);
+			if (r < 0)
+				return r;
 			r = sc_pkcs15_add_unusedspace(card, &path, &auth_id);
 			if (r)
 				return r;
@@ -1553,7 +1560,6 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			sc_file_t **file_out)
 {
 	sc_file_t *file = NULL;
-	sc_path_t tmp_path, *path = &tmp_path;
 	u8	*data = NULL;
 	size_t	len = 0, offset = 0;
 	int	r;
@@ -1571,34 +1577,25 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			pbuf, in_path->index, in_path->count);
 	}
 
-	if (in_path->type == SC_PATH_TYPE_FILE_ID) {
-		/* in case of a FID prepend the application DF */
-		memcpy(path, &p15card->file_app->path, sizeof(sc_path_t));
-		sc_append_path(path, in_path);
-		path->index = in_path->index;
-		path->count = in_path->count;
-	} else {
-		memcpy(path, in_path, sizeof(sc_path_t));
-	}
 	r = -1; /* file state: not in cache */
 	if (p15card->opts.use_cache) {
-		r = sc_pkcs15_read_cached_file(p15card, path, &data, &len);
+		r = sc_pkcs15_read_cached_file(p15card, in_path, &data, &len);
 	}
 	if (r) {
 		r = sc_lock(p15card->card);
 		SC_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
-		r = sc_select_file(p15card->card, path, &file);
+		r = sc_select_file(p15card->card, in_path, &file);
 		if (r)
 			goto fail_unlock;
 
 		/* Handle the case where the ASN.1 Path object specified
 		 * index and length values */
-		if (path->count < 0) {
+		if (in_path->count < 0) {
 			len = file->size;
 			offset = 0;
 		} else {
-			offset = path->index;
-			len = path->count;
+			offset = in_path->index;
+			len = in_path->count;
 			/* Make sure we're within proper bounds */
 			if (offset >= file->size
 			 || offset + len > file->size) {
@@ -1712,4 +1709,11 @@ int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out)
 {
 	out->len = sizeof(out->value);
 	return sc_hex_to_bin(in, out->value, &out->len);
+}
+
+int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child)
+{
+	if (sc_compare_path_prefix(sc_get_mf_path(), child))
+		return 0;
+	return sc_concatenate_path(child, parent, child);
 }

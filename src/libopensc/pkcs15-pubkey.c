@@ -135,6 +135,9 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	} else {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_DSA;
 	}
+	r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
+	if (r < 0)
+		return r;
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);

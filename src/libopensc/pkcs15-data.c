@@ -109,8 +109,10 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 	r = sc_asn1_decode(ctx, asn1_data, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
-
 	SC_TEST_RET(ctx, r, "ASN.1 decoding failed");
+	r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
+	if (r < 0)
+		return r;
 	obj->type = SC_PKCS15_TYPE_DATA_OBJECT;
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
