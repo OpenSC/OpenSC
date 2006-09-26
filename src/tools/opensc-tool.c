@@ -171,7 +171,10 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 			"unknown", "transpnt", "linrfix", "linrfix(TLV)",
 			"linvar", "linvar(TLV)", "lincyc", "lincyc(TLV)"
 		};
-		printf("ef structure: %s, ", structs[file->ef_structure]);
+		int ef_type = file->ef_structure;
+		if (ef_type < 0 || ef_type > 7)
+			ef_type = 0;	/* invalid or unknow ef type */
+		printf("ef structure: %s, ", structs[ef_type]);
 	}
 	printf("size: %lu\n", (unsigned long) file->size);
 	for (r = 0; r < depth; r++)
