@@ -1333,7 +1333,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		return r;
 
 	p = buf;
-	do {
+	while (bufsize && *p != 0x00) {
 		const u8 *oldp;
 		size_t obj_len;
 		
@@ -1372,7 +1372,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 			sc_perror(ctx, r, "Error adding object");
 			goto ret;
 		}
-	} while (bufsize && *p != 0x00);
+	};
 ret:
 	free(buf);
 	return r;
