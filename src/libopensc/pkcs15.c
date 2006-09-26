@@ -1622,7 +1622,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 		} else if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV)
 		{
 			int i;
-			size_t l;
+			size_t l, record_len;
 			unsigned char *head;
 
 			head = data;
@@ -1639,10 +1639,19 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 					free(data);
 					goto fail_unlock;
 				}
-				if (r <= 2)
+				if (r < 2)
 					break;
-				memmove(head,head+2,r-2);
-				head += (r-2);
+				record_len = head[1];
+				if (record_len != 0xff) {
+					memmove(head,head+2,r-2);
+					head += (r-2);
+				} else {
+					if (r < 4)
+						break;
+					record_len = head[2] * 256 + head[3];
+					memmove(head,head+4,r-4);
+					head += (r-4);
+				}
 			}
 			len = head-data;
 			r = len;
