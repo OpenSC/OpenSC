@@ -673,12 +673,13 @@ select_file_id(sc_card_t *card, const u8 *buf, size_t buflen,
 				!memcmp(buf,"\x3F\xFF",2))  
 		return SC_ERROR_INCORRECT_PARAMETERS;	
 	
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, p1, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.datalen = buflen;
 	apdu.data = buf;
 	apdu.lc = buflen;
+	apdu.le = 252;
 	
 	rv = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
