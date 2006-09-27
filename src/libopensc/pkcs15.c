@@ -1713,7 +1713,11 @@ int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out)
 
 int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child)
 {
+	/* a 0 length path stays a 0 length path */
+	if (child->len == 0)
+		return SC_SUCCESS;
+
 	if (sc_compare_path_prefix(sc_get_mf_path(), child))
-		return 0;
+		return SC_SUCCESS;
 	return sc_concatenate_path(child, parent, child);
 }
