@@ -1041,13 +1041,13 @@ static int mcrd_restore_se(sc_card_t * card, int se_num)
 
 int select_key_df(sc_card_t * card)
 {
-	int r, i;
+	int r;
+	size_t i = 0;
 	char tmpstr[16] = "";
 	char currpathpart[10];
 	sc_path_t tmppath;
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	memset(tmpstr, 0, 16);
-	i = 0;
 
 	while (i < priv->curpathlen - 1) {
 		sprintf(currpathpart, "%04x", (unsigned short)priv->curpath[i]);

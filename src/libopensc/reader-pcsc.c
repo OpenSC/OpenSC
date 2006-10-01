@@ -510,9 +510,8 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	int r;
 #ifdef PINPAD_ENABLED
-	int i;
 	u8 feature_buf[256];
-	DWORD feature_len;
+	DWORD i, feature_len;
 	PCSC_TLV_STRUCTURE *pcsc_tlv;
 #endif
 
