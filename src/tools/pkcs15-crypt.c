@@ -78,7 +78,7 @@ const char *option_help[] = {
 	"Input file is a SHA-1 hash",
 	"Input file is a MD5 hash",
 	"Use PKCS #1 v1.5 padding",
-	"Uses password (PIN) <arg>",
+	"Uses password (PIN) <arg> (use - for reading PIN from STDIN)",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 };
@@ -87,14 +87,34 @@ sc_context_t *ctx = NULL;
 sc_card_t *card = NULL;
 struct sc_pkcs15_card *p15card = NULL;
 
+char *readpin_stdin()
+{
+	char buf[128];
+	char *p;
+
+	p = fgets(buf, sizeof(buf), stdin);
+	if (p != NULL) {
+		p = strchr(buf, '\n');
+		if (p != NULL)
+			*p = '\0';
+		return strdup(buf);
+	}
+	return NULL;
+}
+
 static char * get_pin(struct sc_pkcs15_object *obj)
 {
 	char buf[80];
 	char *pincode;
 	struct sc_pkcs15_pin_info *pinfo = (struct sc_pkcs15_pin_info *) obj->data;
 	
-	if (opt_pincode != NULL)
-		return strdup(opt_pincode);
+	if (opt_pincode != NULL) {
+		if (strcmp(opt_pincode, "-") == 0)
+			return readpin_stdin();
+		else
+			return strdup(opt_pincode);
+	}
+	
 	sprintf(buf, "Enter PIN [%s]: ", obj->label);
 	while (1) {
 		pincode = getpass(buf);
