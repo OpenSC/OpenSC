@@ -1608,16 +1608,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto fail_unlock;
 		}
-		if (file->ef_structure == SC_FILE_EF_TRANSPARENT) {
-			r = sc_read_binary(p15card->card, offset, data, len, 0);
-			if (r < 0) {
-				free(data);
-				goto fail_unlock;
-			}
-			/* sc_read_binary may return less than requested */
-			len = r;
-		} else if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV)
-		{
+		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV) {
 			int i;
 			size_t l, record_len;
 			unsigned char *head;
@@ -1653,14 +1644,14 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			len = head-data;
 			r = len;
 		} else {
-			sc_error(p15card->card->ctx,
-				"can't read file %s of type %d\n",
-				sc_print_path(&file->path),
-				file->ef_structure);
-			r=-1;
-			free(data);
-			goto fail_unlock;
-		}
+			r = sc_read_binary(p15card->card, offset, data, len, 0);
+			if (r < 0) {
+				free(data);
+				goto fail_unlock;
+			}
+			/* sc_read_binary may return less than requested */
+			len = r;
+		} 
 		sc_unlock(p15card->card);
 
 		/* Return of release file */
