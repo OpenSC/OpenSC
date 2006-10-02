@@ -114,6 +114,7 @@ static CK_C_INITIALIZE_ARGS _def_locks = {
 static CK_C_INITIALIZE_ARGS_PTR	_locking;
 static void *			_lock = NULL;
 #if (defined(HAVE_PTHREAD) || defined(_WIN32)) && defined(PKCS11_THREAD_LOCKING)
+#define HAVE_OS_LOCKING
 static CK_C_INITIALIZE_ARGS_PTR default_mutex_funcs = &_def_locks;
 #else
 static CK_C_INITIALIZE_ARGS_PTR default_mutex_funcs = NULL;
@@ -166,7 +167,7 @@ static sc_thread_context_t sc_thread_ctx = {
 	sc_unlock_mutex, sc_destroy_mutex, NULL
 };
 
-CK_RV C_Initialize(CK_VOID_PTR pReserved)
+CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 {
 	int i, rc, rv;
 	sc_context_param_t ctx_opts;
@@ -176,7 +177,7 @@ CK_RV C_Initialize(CK_VOID_PTR pReserved)
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 
-	rv = sc_pkcs11_init_lock((CK_C_INITIALIZE_ARGS_PTR) pReserved);
+	rv = sc_pkcs11_init_lock((CK_C_INITIALIZE_ARGS_PTR) pInitArgs);
 	if (rv != CKR_OK)   {
 		sc_release_context(context);
 		context = NULL;
@@ -222,7 +223,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pReserved != NULL) {
+	if (pReserved != NULL_PTR) {
 		rv = CKR_ARGUMENTS_BAD;
 		goto out;
 	}
@@ -517,14 +518,14 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	unsigned int mask, events;
 	CK_RV rv;
 
-	/* Firefox 1.5 calls this function (blocking) from a seperate thread,
+	/* Firefox 1.5 (NSS 3.10) calls this function (blocking) from a seperate thread,
 	 * which gives 2 problems:
 	 * - on Windows/Mac: this waiting thread will log to a NULL context
 	 *   after the 'main' thread does a C_Finalize() and sets the ctx to NULL.
 	 * - on Linux, things just hang (at least on Debian 'sid')
 	 * So we just return CKR_FUNCTION_NOT_SUPPORTED on a blocking call,
-	 * in which case Ff just seems to default to polling in the main thread
-	 * as the Mozilla family of browsers did before.
+	 * in which case FF just seems to default to polling in the main thread
+	 * as earlier NSS versions.
 	 */
 	if (!(flags & CKF_DONT_BLOCK))
 		return CKR_FUNCTION_NOT_SUPPORTED;
@@ -594,6 +595,8 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 {
 	int rv = CKR_OK;
 
+	int applock = 0;
+	int oslock = 0;
 	if (_lock)
 		return CKR_OK;
 
@@ -601,34 +604,34 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 	if (!args)
 		return CKR_OK;
 
-	if (args->pReserved)
+	if (args->pReserved != NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
 
 	/* If the app tells us OS locking is okay,
 	 * use that. Otherwise use the supplied functions.
 	 */
 	_locking = NULL;
-	if (args->flags & CKF_OS_LOCKING_OK) {
-#if defined(HAVE_PTHREAD) && !defined(PKCS11_THREAD_LOCKING)
-		/* FIXME:
-		 * Mozilla uses the CKF_OS_LOCKING_OK flag in C_Initialize().
-		 * The result is that the Mozilla process doesn't end when
-		 * closing Mozilla, so you have to kill the process yourself.
-		 * (If Mozilla would do a C_Finalize, the sc_pkcs11_free_lock()
-		 * would be called and there wouldn't be a problem.)
-		 * Therefore, we don't use the PTHREAD locking mechanisms, even
-		 * if they are requested. This is the old situation which seems
-		 * to work fine for Mozilla, BUT will cause problems for apps
-		 * that use multiple threads to access this lib simultaneously.
-		 * If you do want to use OS threading, compile with
-		 *   -DPKCS11_THREAD_LOCKING
-		 */
-		 return CKR_OK;
-#endif
-		_locking = default_mutex_funcs;
-	} else if (args->CreateMutex && args->DestroyMutex &&
+	if (args->CreateMutex && args->DestroyMutex &&
 		   args->LockMutex   && args->UnlockMutex) {
+			applock = 1;
+	}
+	if ((args->flags & CKF_OS_LOCKING_OK)) {
+		oslock = 1;
+	}
+
+	/* Based on PKCS#11 v2.11 11.4 */
+	if (applock && oslock) {
+		/* Shall be used in threaded environment, prefer app provided locking */
 		_locking = args;
+	} else if (!applock && oslock) {
+		/* Shall be used in threaded environment, must use operating system locking */
+		_locking = default_mutex_funcs;
+	} else if (applock && !oslock) {
+		/* Shall be used in threaded envirnoment, must use app provided locking */
+		_locking = args;
+	} else if (!applock && !oslock) {
+		/* Shall not be used in threaded environemtn, use operating system locking */
+		_locking = default_mutex_funcs;
 	}
 
 	if (_locking != NULL) {
