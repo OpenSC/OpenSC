@@ -119,7 +119,8 @@
 					<para>Note that on most operating systems, the command line of
 					a process can be displayed by any user using the ps(1)
 					command. It is therefore a security risk to specify
-					secret information such as PINs on the command line.</para></listitem>
+					secret information such as PINs on the command line.
+					If you specify '-' as PIN, it will be read from STDIN.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
