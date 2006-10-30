@@ -40,7 +40,7 @@ static const struct sc_asn1_entry c_asn1_toki[] = {
 	/* XXX the Taiwanese ID card erroneously uses explicit tagging */
 	{ "label-tw",       SC_ASN1_STRUCT,       SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "tokenflags",	    SC_ASN1_BIT_FIELD,    SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL },
-	{ "seInfo",	    SC_ASN1_SEQUENCE,	  SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "seInfo",	    SC_ASN1_SE_INFO,	  SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "recordInfo",	    SC_ASN1_STRUCT,       SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "supportedAlgorithms", SC_ASN1_STRUCT,  SC_ASN1_CONS | SC_ASN1_CTX | 2, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "issuerId",       SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 3, SC_ASN1_OPTIONAL, NULL, NULL },
@@ -84,7 +84,7 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_toki + 3, label, &label_len, 0);
 	sc_format_asn1_entry(asn1_toki + 4, asn1_twlabel, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 5, &ti->flags, &flags_len, 0);
-	sc_format_asn1_entry(asn1_toki + 6, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_toki + 6, &ti->seInfo, &ti->num_seInfo, 0);
 	sc_format_asn1_entry(asn1_toki + 7, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 8, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki + 9, NULL, NULL, 0);
@@ -445,6 +445,12 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 		free(p15card->last_update);
 	if (p15card->preferred_language != NULL)
 		free(p15card->preferred_language);
+	if (p15card->seInfo != NULL) {
+		size_t i;
+		for (i = 0; i < p15card->num_seInfo; i++)
+			free(p15card->seInfo[i]);
+		free(p15card->seInfo);
+	}
 	free(p15card);
 }
 
@@ -495,6 +501,14 @@ void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 	if (p15card->preferred_language != NULL) {
 		free(p15card->preferred_language);
 		p15card->preferred_language = NULL;
+	}
+	if (p15card->seInfo != NULL) {
+		size_t i;
+		for (i = 0; i < p15card->num_seInfo; i++)
+			free(p15card->seInfo[i]);
+		free(p15card->seInfo);
+		p15card->seInfo     = NULL;
+		p15card->num_seInfo = 0;
 	}
 }
 
@@ -658,6 +672,8 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 	p15card->last_update     = tokeninfo.last_update;
 	p15card->flags           = tokeninfo.flags;
 	p15card->preferred_language = tokeninfo.preferred_language;
+	p15card->seInfo          = tokeninfo.seInfo;
+	p15card->num_seInfo      = tokeninfo.num_seInfo;
 
 	ok = 1;
 end:

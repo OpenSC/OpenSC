@@ -1017,6 +1017,19 @@ int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 /*             sc_path_t handling functions                         */
 /********************************************************************/
 
+/**
+ * Sets the content of a sc_path_t object.
+ * @param  path    sc_path_t object to set
+ * @param  type    type of path
+ * @param  id      value of the path 
+ * @param  id_len  length of the path value 
+ * @param  index   index within the file
+ * @param  count   number of bytes
+ * @return SC_SUCCESS on success and an error code otherwise
+ */
+int sc_path_set(sc_path_t *path, int type, unsigned char *id, size_t id_len,
+	int index, int count);
+
 void sc_format_path(const char *path_in, sc_path_t *path_out);
 /**
  * Return string representation of the given sc_path_t object

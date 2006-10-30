@@ -344,6 +344,13 @@ typedef struct sc_pkcs15_unusedspace sc_pkcs15_unusedspace_t;
 #define SC_PKCS15_CARD_MAGIC		0x10203040
 
 typedef struct {
+	int			se;
+	struct sc_object_id	owner;
+	u8			aid[SC_MAX_AID_SIZE];
+	size_t			aid_len;
+} sc_pkcs15_sec_env_info_t;
+
+typedef struct {
 	unsigned int version;
 	unsigned int flags;
 	char *label;
@@ -351,6 +358,8 @@ typedef struct {
 	char *manufacturer_id;	
 	char *last_update;
 	char *preferred_language;
+	sc_pkcs15_sec_env_info_t **seInfo;
+	size_t num_seInfo;
 } sc_pkcs15_tokeninfo_t;
 
 typedef struct sc_pkcs15_card {
@@ -375,6 +384,9 @@ typedef struct sc_pkcs15_card {
 	struct sc_pkcs15_card_opts {
 		int use_cache;
 	} opts;
+
+	sc_pkcs15_sec_env_info_t **seInfo;
+	size_t num_seInfo;
 
 	unsigned int magic;
 

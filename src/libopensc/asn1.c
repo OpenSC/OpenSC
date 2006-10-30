@@ -781,6 +781,78 @@ static int asn1_encode_path(sc_context_t *ctx, const sc_path_t *path,
 	return r;	
 }
 
+static const struct sc_asn1_entry c_asn1_se_info[4] = {
+	{ "se",     SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
+	{ "owner",  SC_ASN1_OBJECT,  SC_ASN1_TAG_OBJECT,  SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "aid",    SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+static int asn1_decode_se_info(sc_context_t *ctx, const u8 *obj, size_t objlen,
+                               sc_pkcs15_sec_env_info_t ***se, size_t *num, int depth)
+{
+	sc_pkcs15_sec_env_info_t **ses;
+
+	const unsigned char *p;
+	size_t plen, idx = 0, size = 8, left = size;
+	int    ret = SC_SUCCESS;
+
+	p = sc_asn1_find_tag(ctx, obj, objlen, 0x30, &plen);
+	if (p == NULL) 
+		return SC_ERROR_INVALID_ASN1_OBJECT;
+
+	ses = calloc(size, sizeof(sc_pkcs15_sec_env_info_t *));
+	if (ses == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	while (plen != 0) {
+		struct sc_asn1_entry asn1_se_info[4];
+
+		sc_pkcs15_sec_env_info_t *si = calloc(1, sizeof(sc_pkcs15_sec_env_info_t));
+		if (si == NULL) {
+			ret = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+
+		si->aid_len = sizeof(si->aid);
+		sc_copy_asn1_entry(c_asn1_se_info, asn1_se_info);
+		sc_format_asn1_entry(asn1_se_info + 0, &si->se, NULL, 0);
+		sc_format_asn1_entry(asn1_se_info + 1, &si->owner, NULL, 0);
+		sc_format_asn1_entry(asn1_se_info + 2, &si->aid, &si->aid_len, 0);
+		ret = asn1_decode(ctx, asn1_se_info, p, plen, &p, &plen, 0, depth+1);
+		if (ret != SC_SUCCESS) {
+			free(si);
+			ret = SC_ERROR_INVALID_ASN1_OBJECT;
+			goto err;
+		}
+		if (--left == 0) {
+			sc_pkcs15_sec_env_info_t **np;
+			size <<= 1;
+			np = realloc(ses, sizeof(sc_pkcs15_sec_env_info_t *) * size);
+			if (np == NULL) {
+				free(si);
+				ret = SC_ERROR_OUT_OF_MEMORY;
+				goto err;
+			}
+			ses  = np;
+			left = size >> 1;
+		}
+		ses[idx++] = si;
+	}
+err:
+	if (ret == SC_SUCCESS) {
+		*se  = ses;
+		*num = idx;
+	} else {
+		size_t i;
+		for (i = 0; i < idx; i++)
+			free(ses[i]);
+		free(ses);
+	} 
+
+	return ret;	
+}
+
 static const struct sc_asn1_entry c_asn1_com_obj_attr[6] = {
 	{ "label", SC_ASN1_UTF8STRING, SC_ASN1_TAG_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "flags", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
@@ -1013,6 +1085,10 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_ALGORITHM_ID:
 		if (entry->parm != NULL)
 			r = sc_asn1_decode_algorithm_id(ctx, obj, objlen, (struct sc_algorithm_id *) parm, depth);
+		break;
+	case SC_ASN1_SE_INFO:
+		if (entry->parm != NULL)
+			r = asn1_decode_se_info(ctx, obj, objlen, (sc_pkcs15_sec_env_info_t ***)entry->parm, len, depth);
 		break;
 	case SC_ASN1_CALLBACK:
 		if (entry->parm != NULL)
