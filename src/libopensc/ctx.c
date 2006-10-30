@@ -182,8 +182,13 @@ static int load_parameters(sc_context_t *ctx, scconf_block *block,
 	int err = 0;
 	const scconf_list *list;
 	const char *val, *s_internal = "internal";
+    const char *debug = NULL;
 
 	ctx->debug = scconf_get_int(block, "debug", ctx->debug);
+	debug = getenv("OPENSC_DEBUG");
+	if (debug)
+		ctx->debug = atoi(debug);
+
 	val = scconf_get_str(block, "debug_file", NULL);
 	if (val) {
 		if (ctx->debug_file && ctx->debug_file != stdout)
