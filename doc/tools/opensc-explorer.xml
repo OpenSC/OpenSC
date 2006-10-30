@@ -170,11 +170,6 @@
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>debug</option> [<varname>level</varname>]</term>
-				<listitem><para>get or set the debug level</para></listitem>
-			</varlistentry>
-
-			<varlistentry>
 				<term><option>quit</option></term>
 				<listitem><para>exit the program</para></listitem>
 			</varlistentry>
