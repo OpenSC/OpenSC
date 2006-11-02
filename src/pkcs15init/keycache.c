@@ -331,7 +331,7 @@ sc_keycache_forget_key(const sc_path_t *path, int type, int ref)
 	while ((s = *prev) != NULL) {
 		if (__match_entry(s, type, ref, path, 1)) {
 			*prev = s->next;
-			if (s->named_pin != -1 && s->ref == -1)
+			if (s->named_pin >= 0 && s->named_pin < SC_PKCS15INIT_NPINS)
 				named_pin[s->named_pin] = NULL;
 			sc_mem_clear(s, sizeof(*s));
 			free(s);
