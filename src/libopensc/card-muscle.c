@@ -478,7 +478,7 @@ static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
 			buf[1] = objectId[3];
 			if(buf[0] == 0x00 && buf[1] == 0x00) continue; /* No directories/null names outside of root */
 			buf += 2;
-			count+=2;
+			count+=1;
 		}
 	}
 	return count;
