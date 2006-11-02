@@ -48,6 +48,7 @@ static int select_key_file(struct sc_pkcs15_card *p15card,
 		path = prkey->path;
 		memcpy(file_id.value, prkey->path.value + prkey->path.len - 2, 2);
 		file_id.len = 2;
+		file_id.type = SC_PATH_TYPE_FILE_ID;
 	}
 	senv->file_ref = file_id;
 	senv->flags |= SC_SEC_ENV_FILE_REF_PRESENT;
