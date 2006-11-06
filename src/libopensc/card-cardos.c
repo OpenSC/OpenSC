@@ -742,9 +742,9 @@ do_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		SC_FUNC_RETURN(card->ctx, 4, apdu.resplen)
+		SC_FUNC_RETURN(card->ctx, 4, apdu.resplen);
 	else
-		SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2))
+		SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 static int

@@ -818,9 +818,9 @@ static int iso7816_decipher(sc_card_t *card,
 	free(sbuf);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		SC_FUNC_RETURN(card->ctx, 2, apdu.resplen)
+		SC_FUNC_RETURN(card->ctx, 2, apdu.resplen);
 	else
-		SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2))
+		SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 static int iso7816_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu,

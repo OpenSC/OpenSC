@@ -1205,7 +1205,7 @@ static int piv_find_obj_by_containerid(sc_card_t *card, const u8 * str)
 {
 	int i;
 
-	SC_FUNC_CALLED(card->ctx,4)
+	SC_FUNC_CALLED(card->ctx,4);
 	sc_debug(card->ctx, "str=0x%02X%02X\n", str[0], str[1]);
 
 	for (i = 0; piv_objects[i].enumtag; i++) {
@@ -1233,7 +1233,7 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 	int pathlen;
 	sc_file_t *file = NULL;
 	
-	SC_FUNC_CALLED(card->ctx,1)
+	SC_FUNC_CALLED(card->ctx,1);
 
 	path = in_path->value;
 	pathlen = in_path->len;

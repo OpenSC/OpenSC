@@ -849,7 +849,7 @@ int msc_import_key(sc_card_t *card,
 		|| (data->dq1Length == 0 || !data->dq1Value))
 			SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS); 
 	} else {
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	
 	if(data->keyType == 0x02) {
