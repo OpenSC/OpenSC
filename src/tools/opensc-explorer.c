@@ -122,12 +122,12 @@ static void check_ret(int r, int op, const char *err, const sc_file_t *file)
 static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 {
 	if (strncasecmp(arg, "aid:", strlen("aid:")) == 0) {
-		/* select DF by name */
+		/* DF aid */
 		const char *p = arg + strlen("aid:");
 		path->len  = hex2binary(path->value, sizeof(path->value), p);
 		path->type = SC_PATH_TYPE_DF_NAME;
 	} else {
-		/* select DF by file id */
+		/* file id */
 		int buf[2];
 		u8 cbuf[2];
 	
@@ -360,7 +360,7 @@ static int do_cat(int argc, char **argv)
 		file = current_file;
 		not_current = 0;
 	} else {
-		if (arg_to_path(argv[0], &path, 0) != 0) 
+		if (arg_to_path(argv[0], &path, 1) != 0) 
 			goto usage;
 
 		r = sc_select_file(card, &path, &file);
