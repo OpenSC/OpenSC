@@ -89,6 +89,12 @@
 					<listitem><para>Reads the public key with id <varname>id</varname>,
 					allowing the user to extract and store or use the public key.</para></listitem>
 				</varlistentry>
+				
+				<varlistentry>
+					<term><option>--read-ssh-key</option> <varname>id</varname></term>
+					<listitem><para>Reads the public key with id <varname>id</varname>,
+					writing the output in format suitable for $HOME/.ssh/authorized_keys.</para></listitem>
+				</varlistentry>
 
 				<varlistentry>
 					<term><option>--output</option> <varname>filename</varname>,
