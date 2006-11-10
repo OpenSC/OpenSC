@@ -186,8 +186,8 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 	};
 
 	const prdata prkeys[] = {
-		{ "1", "AUTH key", 1024, USAGE_AUT, "3F0002000009",
-		  0x00, "1", SC_PKCS15_CO_FLAG_PRIVATE},
+		{ "1", "AUTH key", 1024, USAGE_AUT, "I0009",
+		  0x00, "1", 0},
 		{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
 	};
 
@@ -208,6 +208,13 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 	char buf[256];
 
 	SC_FUNC_CALLED(card->ctx, 1);
+
+	/* need to limit to 248 */
+	if (card->max_send_size > 248)
+		card->max_send_size = 248;
+	if (card->max_recv_size > 248)
+		card->max_recv_size = 248;
+
 
 	/* could read this off card if needed */
 
@@ -473,9 +480,6 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 
 		/*DEE need to look for them by reading and checking mudulus vs cert */
 
-		prkey_info.path.value[2] = dfpath >> 8;
-		prkey_info.path.value[3] = dfpath & 0xff;
-
  		/* will use the default path, unless we found a key with */
 		/* the same modulus as the cert(s) we already added */
 		/* This allows us to have a card with a key but no cert */
@@ -484,8 +488,8 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 			if (sc_pkcs15_compare_id(&kinfo[j].id, &prkey_info.id))  {
 				sc_debug(card->ctx, "found key in file %d for id %d", 
 						kinfo[j].fileid, prkey_info.id);
-				prkey_info.path.value[4] = kinfo[j].fileid >> 8;
-				prkey_info.path.value[5] = kinfo[j].fileid & 0xff;
+				prkey_info.path.value[0] = kinfo[j].fileid >> 8;
+				prkey_info.path.value[1] = kinfo[j].fileid & 0xff;
 				break;
 			}
 		}
