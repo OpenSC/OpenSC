@@ -1,4 +1,5 @@
 /*
+			oame[taglen] = 0;
  * iso7816.c: Functions specified by the ISO 7816 standard
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
@@ -360,23 +361,12 @@ static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x84, &taglen);
 	if (tag != NULL && taglen > 0 && taglen <= 16) {
-		char name[17];
-		size_t i;
-
 		memcpy(file->name, tag, taglen);
 		file->namelen = taglen;
 
-		for (i = 0; i < taglen; i++) {
-			if (isalnum(tag[i]) || ispunct(tag[i])
-			    || isspace(tag[i]))
-				name[i] = tag[i];
-			else
-				name[i] = '?';
-		}
-		name[taglen] = 0;
 		if (ctx->debug >= 3)
 		{
-			char tbuf[sizeof(name)*5];
+			char tbuf[128];
 			sc_hex_dump(ctx, file->name, file->namelen, tbuf, sizeof(tbuf));
 			sc_debug(ctx, "  File name: %s\n", tbuf);
 		}
