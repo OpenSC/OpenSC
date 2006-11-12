@@ -1,5 +1,4 @@
 /*
-			oame[taglen] = 0;
  * iso7816.c: Functions specified by the ISO 7816 standard
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
