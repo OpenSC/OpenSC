@@ -77,11 +77,11 @@ int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 		}
 		r = strlen(buf);
 		if (r < pinfo->min_length) {
-			sprintf(errtext, "PIN code too short, min. %d digits", pinfo->min_length);
+			sprintf(errtext, "PIN code too short, min. %lu digits", (unsigned long) pinfo->min_length);
 			continue;
 		}
 		if (r > pinfo->max_length) {
-			sprintf(errtext, "PIN code too long, max. %d digits", pinfo->max_length);
+			sprintf(errtext, "PIN code too long, max. %lu digits", (unsigned long) pinfo->max_length);
 			continue;
 		}
 		r = sc_pkcs15_verify_pin(p15card, pinfo, (const u8 *) buf, strlen(buf));
