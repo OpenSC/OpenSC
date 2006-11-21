@@ -581,10 +581,17 @@ static int iso7816_get_response(sc_card_t *card, size_t *count, u8 *buf)
 {
 	sc_apdu_t apdu;
 	int r;
+	size_t rlen;
+
+	/* request at most max_recv_size bytes */
+	if (*count > card->max_recv_size)
+		rlen = card->max_recv_size;
+	else
+		rlen = *count;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);
-	apdu.le      = *count;
-	apdu.resplen = *count;
+	apdu.le      = rlen;
+	apdu.resplen = rlen;
 	apdu.resp    = buf;
 	/* don't call GET RESPONSE recursively */
 	apdu.flags  |= SC_APDU_FLAGS_NO_GET_RESP;
