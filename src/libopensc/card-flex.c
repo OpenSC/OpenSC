@@ -365,7 +365,7 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 	const u8 *p = buf + 2;
 	const u8 *pos;
 	u8 b1, b2;
-	int left, is_mf = 0;
+	int is_mf = 0;
 
 	if (buflen < 14)
 		return -1;
@@ -414,9 +414,9 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 		file->status = SC_FILE_STATUS_ACTIVATED;
 	else
 		file->status = SC_FILE_STATUS_INVALIDATED;
-	left = *p++;
+	p++;
 	if (0 == is_mf) {
-		*p++;
+		p++;
 		switch (*p) {
 		case  0x00:
 			file->ef_structure = SC_FILE_EF_TRANSPARENT;
