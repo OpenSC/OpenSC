@@ -330,10 +330,8 @@ static int openct_reader_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 	r = sc_apdu_get_octets(reader->ctx, apdu, &sbuf, &ssize, SC_PROTO_RAW);
 	if (r != SC_SUCCESS)
 		goto out;
-	/* log data if DEBUG is defined */
-#ifdef DEBUG
-	sc_apdu_log(reader->ctx, sbuf, ssize, 1);
-#endif
+	if (reader->ctx->debug >= 6)
+		sc_apdu_log(reader->ctx, sbuf, ssize, 1);
 	r = openct_reader_internal_transmit(reader, slot, sbuf, ssize,
 				rbuf, &rsize, apdu->control);
 	if (r < 0) {
@@ -341,10 +339,8 @@ static int openct_reader_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 		sc_error(reader->ctx, "unable to transmit");
 		goto out;
 	}
-	/* log data if DEBUG is defined */
-#ifdef DEBUG
-	sc_apdu_log(reader->ctx, rbuf, rsize, 0);
-#endif
+	if (reader->ctx->debug >= 6)
+		sc_apdu_log(reader->ctx, rbuf, rsize, 0);
 	/* set response */
 	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize);
 out:
