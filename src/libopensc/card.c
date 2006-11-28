@@ -282,13 +282,14 @@ int sc_lock(sc_card_t *card)
 {
 	int r = 0, r2 = 0;
 
+	SC_FUNC_CALLED(card->ctx, 3);
+	
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	r = sc_mutex_lock(card->ctx, card->mutex);
 	if (r != SC_SUCCESS)
 		return r;
 	if (card->lock_count == 0) {
-		SC_FUNC_CALLED(card->ctx, 3);
 		if (card->reader->ops->lock != NULL)
 			r = card->reader->ops->lock(card->reader, card->slot);
 		if (r == 0)
