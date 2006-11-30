@@ -29,14 +29,14 @@
 #include "muscle-filesystem.h"
 
 int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file);
-int msc_partial_read_object(sc_card_t *card, unsigned int le_objectId, int offset, u8 *data, size_t dataLength);
-int msc_read_object(sc_card_t *card, unsigned int objectId, int offset, u8 *data, size_t dataLength);
-int msc_create_object(sc_card_t *card, unsigned int objectId, size_t objectSize, unsigned short read, unsigned short write, unsigned short deletion);
-int msc_partial_update_object(sc_card_t *card, unsigned int le_objectId, int offset, const u8 *data, size_t dataLength);
-int msc_update_object(sc_card_t *card, unsigned int objectId, int offset, const u8 *data, size_t dataLength);
-int msc_zero_object(sc_card_t *card, unsigned int objectId, size_t dataLength);
+int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *data, size_t dataLength);
+int msc_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *data, size_t dataLength);
+int msc_create_object(sc_card_t *card, msc_id objectId, size_t objectSize, unsigned short read, unsigned short write, unsigned short deletion);
+int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, const u8 *data, size_t dataLength);
+int msc_update_object(sc_card_t *card, msc_id objectId, int offset, const u8 *data, size_t dataLength);
+int msc_zero_object(sc_card_t *card, msc_id objectId, size_t dataLength);
 
-int msc_delete_object(sc_card_t *card, unsigned int objectId, int zero);
+int msc_delete_object(sc_card_t *card, msc_id objectId, int zero);
 int msc_select_applet(sc_card_t *card, u8 *appletId, size_t appletIdLength);
 
 int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLength, int *tries);

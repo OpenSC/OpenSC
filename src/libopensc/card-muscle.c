@@ -28,18 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ATR Values pulled from the Muscle Card library's 'bundle' */
-#if 0
-/* UNUSED */
-static struct sc_atr_table muscle_atrs[] = {
-	{ "3B:75:13:00:00:9C:02:02:01:02", NULL, "Muscle card", SC_CARD_TYPE_MUSCLE_GENERIC, 0, NULL },
-	{ "3B:65:00:00:9C:02:02:01:02", NULL, "Muscle card", SC_CARD_TYPE_MUSCLE_GENERIC, 0, NULL },
-	{ "3B:3B:94:00:90:65:AF:03:0D:01:74:83:0F:90:00", NULL, "Muscle card", SC_CARD_TYPE_MUSCLE_GENERIC, 0, NULL },
-	{ "3F:6D:00:00:80:31:80:65:B0:05:01:02:5E:83:00:90:00", NULL, "Muscle card", SC_CARD_TYPE_MUSCLE_GENERIC, 0, NULL },
-	{ NULL, NULL, NULL, 0, 0, NULL }
-};
-#endif
-
 static struct sc_card_operations muscle_ops;
 static struct sc_card_driver muscle_drv = {
 	"Muscle Card Driver",
@@ -72,7 +60,15 @@ static u8 muscleAppletId[] = { 0xA0, 0x00,0x00,0x00, 0x01, 0x01 };
 static int muscle_match_card(sc_card_t *card)
 {
 	/* Use SELECT APPLET, since its a more deterministic way of detection */
-	return msc_select_applet(card, muscleAppletId, 5);
+	int i;
+	/* Since we send an APDU, the card's logout function may be called...
+	 * however it's not always properly nulled out... */
+	card->ops->logout = NULL;
+
+	sc_ctx_suppress_errors_on(card->ctx);
+	i = msc_select_applet(card, muscleAppletId, 5);
+	sc_ctx_suppress_errors_off(card->ctx);
+	return i;
 }
 
 /* Since Musclecard has a different ACL system then PKCS15
@@ -119,7 +115,8 @@ static void muscle_parse_acls(const sc_file_t* file, unsigned short* read, unsig
 static int muscle_create_directory(sc_card_t *card, sc_file_t *file)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
-	u8 objectId[4];
+	msc_id objectId;
+	u8* oid = objectId.id;
 	unsigned id = file->id;
 	unsigned short read = 0, write = 0, delete = 0;
 	int objectSize;
@@ -130,14 +127,14 @@ static int muscle_create_directory(sc_card_t *card, sc_file_t *file)
 	/* No nesting directories */
 	if(fs->currentPath[0] != 0x3F || fs->currentPath[1] != 0x00)
 		return SC_ERROR_NOT_SUPPORTED;
-	objectId[0] = ((id & 0xFF00) >> 8) & 0xFF;
-	objectId[1] = id & 0xFF;
-	objectId[2] = objectId[3] = 0;
+	oid[0] = ((id & 0xFF00) >> 8) & 0xFF;
+	oid[1] = id & 0xFF;
+	oid[2] = oid[3] = 0;
 	
 	objectSize = file->size;
 	
 	muscle_parse_acls(file, &read, &write, &delete);
-	r = msc_create_object(card, bebytes2ulong(objectId), objectSize, read, write, delete);
+	r = msc_create_object(card, objectId, objectSize, read, write, delete);
 	mscfs_clear_cache(fs);
 	if(r >= 0) return 0;
 	return r;
@@ -149,7 +146,7 @@ static int muscle_create_file(sc_card_t *card, sc_file_t *file)
 	mscfs_t *fs = MUSCLE_FS(card);
 	int objectSize = file->size;
 	unsigned short read = 0, write = 0, delete = 0;
-	unsigned int objectId;
+	msc_id objectId;
 	int r;
 	if(file->type == SC_FILE_TYPE_DF)
 		return muscle_create_directory(card, file);
@@ -160,7 +157,7 @@ static int muscle_create_file(sc_card_t *card, sc_file_t *file)
 	
 	muscle_parse_acls(file, &read, &write, &delete);
 	
-	mscfs_lookup_local(fs, file->id, (u8*)&objectId);
+	mscfs_lookup_local(fs, file->id, &objectId);
 	r = msc_create_object(card, objectId, objectSize, read, write, delete);
 	mscfs_clear_cache(fs);
 	if(r >= 0) return 0;
@@ -171,19 +168,21 @@ static int muscle_read_binary(sc_card_t *card, unsigned int index, u8* buf, size
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	int r;
-	u8 objectId[4];
+	msc_id objectId;
+	u8* oid = objectId.id;
 	mscfs_file_t *file;
 	
 	r = mscfs_check_selection(fs, -1);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, 0, r);
 	file = &fs->cache.array[fs->currentFileIndex];
-	memcpy(objectId, file->objectId, 4);
+	objectId = file->objectId;
+//	memcpy(objectId.id, file->objectId.id, 4);
 	if(!file->ef) {
-		objectId[0] = objectId[2];
-		objectId[1] = objectId[3];
-		objectId[2] = objectId[3] = 0;
+		oid[0] = oid[2];
+		oid[1] = oid[3];
+		oid[2] = oid[3] = 0;
 	}
-	r = msc_read_object(card, bebytes2ulong(objectId), index, buf, count);
+	r = msc_read_object(card, objectId, index, buf, count);
 	SC_FUNC_RETURN(card->ctx, 0, r);
 }
 
@@ -192,49 +191,52 @@ static int muscle_update_binary(sc_card_t *card, unsigned int index, const u8* b
 	mscfs_t *fs = MUSCLE_FS(card);
 	int r;
 	mscfs_file_t *file;
-	u8 objectId[4];
+	msc_id objectId;
+	u8* oid = objectId.id;
 
 	r = mscfs_check_selection(fs, -1);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, 0, r);
 	file = &fs->cache.array[fs->currentFileIndex];
 	
-	memcpy(objectId, file->objectId, 4);
+	objectId = file->objectId;
+	//memcpy(objectId.id, file->objectId.id, 4);
 	if(!file->ef) {
-		objectId[0] = objectId[2];
-		objectId[1] = objectId[3];
-		objectId[2] = objectId[3] = 0;
+		oid[0] = oid[2];
+		oid[1] = oid[3];
+		oid[2] = oid[3] = 0;
 	}
 	if(file->size < index + count) {
 		int newFileSize = index + count;
 		u8* buffer = malloc(newFileSize);
 		if(buffer == NULL) SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 		
-		r = msc_read_object(card, bebytes2ulong(objectId), 0, buffer, file->size);
+		r = msc_read_object(card, objectId, 0, buffer, file->size);
 		/* TODO: RETREIVE ACLS */
 		if(r < 0) goto update_bin_free_buffer;
-		r = msc_delete_object(card, bebytes2ulong(objectId), 0);
+		r = msc_delete_object(card, objectId, 0);
 		if(r < 0) goto update_bin_free_buffer;
-		r = msc_create_object(card, bebytes2ulong(objectId), newFileSize, 0,0,0);
+		r = msc_create_object(card, objectId, newFileSize, 0,0,0);
 		if(r < 0) goto update_bin_free_buffer;
 		memcpy(buffer + index, buf, count); 
-		r = msc_update_object(card, bebytes2ulong(objectId), 0, buffer, newFileSize);
+		r = msc_update_object(card, objectId, 0, buffer, newFileSize);
 		if(r < 0) goto update_bin_free_buffer;
 		file->size = newFileSize;
 update_bin_free_buffer:
 		free(buffer);
 		SC_FUNC_RETURN(card->ctx, 0, r);
 	} else {
-		r = msc_update_object(card, bebytes2ulong(objectId), index, buf, count);
+		r = msc_update_object(card, objectId, index, buf, count);
 	}
 	//mscfs_clear_cache(fs);
 	return r;
 }
 
+/* TODO: Evaluate correctness */
 static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
-	u8 *id = file_data->objectId;
-	int objectId = bebytes2ulong(id);
+	msc_id id = file_data->objectId;
+	u8* oid = id.id;
 	int r;
 
 	if(!file_data->ef) {
@@ -245,32 +247,44 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 		
 		if (card->ctx->debug >= 2) {
 			sc_debug(card->ctx, "DELETING Children of: %02X%02X%02X%02X\n",
-					id[0],id[1],id[2],id[3]);
+					oid[0],oid[1],oid[2],oid[3]);
 		}
 		for(x = 0; x < fs->cache.size; x++) {
-			u8 *objectId;
+			msc_id objectId;
 			childFile = &fs->cache.array[x];
 			objectId = childFile->objectId;
 			
-			if(0 == memcmp(id + 2, objectId, 2)) {
+			if(0 == memcmp(oid + 2, objectId.id, 2)) {
 				if (card->ctx->debug >= 2) {
 					sc_debug(card->ctx, "DELETING: %02X%02X%02X%02X\n",
-						objectId[0],objectId[1],objectId[2],objectId[3]);
+						objectId.id[0],objectId.id[1],objectId.id[2],objectId.id[3]);
 				}
 				r = muscle_delete_mscfs_file(card, childFile);
 				if(r < 0) SC_FUNC_RETURN(card->ctx, 2,r);
 			}
 		}
-		objectId = objectId >> 16;
+		oid[0] = oid[2];
+		oid[1] = oid[3];
+		oid[2] = oid[3] = 0;
+		// ??? objectId = objectId >> 16;
 	}
-	
-	r = msc_delete_object(card, objectId, 1);
+	if((0 == memcmp(oid, "\x3F\x00\x00\x00", 4))
+		|| (0 == memcmp(oid, "\x3F\x00\x3F\x00", 4))) {
+		sc_ctx_suppress_errors_on(card->ctx);
+	}
+	r = msc_delete_object(card, id, 1);
 	/* Check if its the root... this file generally is virtual
 	 * So don't return an error if it fails */
-	if((0 == memcmp(id, "\x3F\x00\x00\x00", 4))
-		|| (0 == memcmp(id, "\x3F\x00\x3F\x00", 4)))
+	if((0 == memcmp(oid, "\x3F\x00\x00\x00", 4))
+		|| (0 == memcmp(oid, "\x3F\x00\x3F\x00", 4)))
+		sc_ctx_suppress_errors_off(card->ctx);
 		return 0;
-	if(r < 0) SC_FUNC_RETURN(card->ctx, 2,r);
+
+	if(r < 0) {
+		printf("ID: %02X%02X%02X%02X\n",
+					oid[0],oid[1],oid[2],oid[3]); 
+		SC_FUNC_RETURN(card->ctx, 2,r);
+	}
 	return 0;
 }
 
@@ -328,6 +342,7 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 	int pathlen = path_in->len;
 	int r = 0;
 	int objectIndex;
+	u8* oid;
 	
 	mscfs_check_cache(fs);
 	r = mscfs_loadFileInfo(fs, path_in->value, path_in->len, &file_data, &objectIndex);
@@ -337,15 +352,16 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 	if(requiredType >= 0 && requiredType != file_data->ef) {
 		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_INVALID_ARGUMENTS);
 	}
+	oid = file_data->objectId.id;
 	/* Is it a file or directory */
 	if(file_data->ef) {
-		fs->currentPath[0] = file_data->objectId[0];
-		fs->currentPath[1] = file_data->objectId[1];
-		fs->currentFile[0] = file_data->objectId[2];
-		fs->currentFile[1] = file_data->objectId[3];
+		fs->currentPath[0] = oid[0];
+		fs->currentPath[1] = oid[1];
+		fs->currentFile[0] = oid[2];
+		fs->currentFile[1] = oid[3];
 	} else {
-		fs->currentPath[0] = file_data->objectId[pathlen - 2];
-		fs->currentPath[1] = file_data->objectId[pathlen - 1];
+		fs->currentPath[0] = oid[pathlen - 2];
+		fs->currentPath[1] = oid[pathlen - 1];
 		fs->currentFile[0] = 0;
 		fs->currentFile[1] = 0;
 	}
@@ -356,7 +372,7 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 		file = sc_file_new();
 		file->path = *path_in;
 		file->size = file_data->size;
-		file->id = (file_data->objectId[2] << 8) | file_data->objectId[3];
+		file->id = (oid[2] << 8) | oid[3];
 		memcpy(file->name, path, pathlen);
 		file->namelen = pathlen;
 		if(!file_data->ef) {
@@ -415,6 +431,9 @@ static int muscle_init(sc_card_t *card)
 	int r = 0;
 	muscle_private_t *priv;
 
+	r = sc_get_default_driver()->ops->init(card);
+	if(r) return r;
+
 	card->name = "Muscle Card";
 	card->drv_data = malloc(sizeof(muscle_private_t));
 	if(!card->drv_data) {
@@ -430,12 +449,7 @@ static int muscle_init(sc_card_t *card)
 	}
 	priv->fs->udata = card;
 	priv->fs->listFile = _listFile;
-	//r = autodetect_class(card);
-	card->cla = 0xB0;
-	if (r) {
-		sc_error(card->ctx, "unable to determine the right class byte\n");
-		return SC_ERROR_INVALID_CARD;
-	}
+	
 	card->flags |= SC_CARD_FLAG_ONBOARD_KEY_GEN;
 	card->flags |= SC_CARD_FLAG_RNG;
 	card->caps |= SC_CARD_CAP_RNG;
@@ -467,18 +481,17 @@ static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
 	mscfs_check_cache(priv->fs);
 	
 	for(x = 0; x < fs->cache.size; x++) {
-		u8 *objectId;
-		objectId = fs->cache.array[x].objectId;
+		u8* oid= fs->cache.array[x].objectId.id;
 		if (card->ctx->debug >= 2) {
 			sc_debug(card->ctx, "FILE: %02X%02X%02X%02X\n",
-				objectId[0],objectId[1],objectId[2],objectId[3]);
+				oid[0],oid[1],oid[2],oid[3]);
 		}
-		if(0 == memcmp(fs->currentPath, objectId, 2)) {
-			buf[0] = objectId[2];
-			buf[1] = objectId[3];
+		if(0 == memcmp(fs->currentPath, oid, 2)) {
+			buf[0] = oid[2];
+			buf[1] = oid[3];
 			if(buf[0] == 0x00 && buf[1] == 0x00) continue; /* No directories/null names outside of root */
 			buf += 2;
-			count+=1;
+			count+=2;
 		}
 	}
 	return count;

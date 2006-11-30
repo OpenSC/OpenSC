@@ -25,8 +25,17 @@
 
 #include <opensc/types.h>
 
+typedef struct msc_id {
+	u8 id[4];
+} msc_id;
+
+
+static msc_id inputId = { { 0xFF, 0xFF, 0xFF, 0xFF } };
+static msc_id outputId = { { 0xFF, 0xFF, 0xFF, 0xFE } };
+static msc_id rootId = { { 0x3F, 0x00, 0x3F, 0x00 } };
+
 typedef struct mscfs_file {
-	u8 objectId[4];
+	msc_id objectId;
 	size_t size;
 	unsigned short read, write, delete;
 	int ef;
@@ -55,10 +64,9 @@ int mscfs_update_cache(mscfs_t* fs);
 
 void mscfs_check_cache(mscfs_t* fs);
 
-int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, u8 objectId[4], int
-isDirectory);
+int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, msc_id* objectId, int isDirectory);
 
-int mscfs_lookup_local(mscfs_t* fs, const int id, u8 objectId[4]);
+int mscfs_lookup_local(mscfs_t* fs, const int id, msc_id* objectId);
 /* -1 any, 0 DF, 1 EF */
 int mscfs_check_selection(mscfs_t *fs, int requiredItem);
 int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **file_data, int* index);

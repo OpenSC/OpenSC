@@ -57,12 +57,12 @@ void mscfs_clear_cache(mscfs_t* fs) {
 	fs->cache.size = 0;
 }
 
-int mscfs_is_ignored(mscfs_t* fs, u8* objectId)
+static int mscfs_is_ignored(mscfs_t* fs, msc_id objectId)
 {
 	int ignored = 0;
 	const u8** ptr = ignoredFiles;
 	while(ptr && *ptr && !ignored) {
-		if(0 == memcmp(objectId, *ptr, 4))
+		if(0 == memcmp(objectId.id, *ptr, 4))
 			ignored = 1;
 		ptr++;
 	}
@@ -102,11 +102,12 @@ int mscfs_update_cache(mscfs_t* fs) {
 	while(1) {
 		if(!mscfs_is_ignored(fs, file.objectId)) {
 			/* Check if its a directory in the root */
-			if(file.objectId[2] == 0 && file.objectId[3] == 0) {
-				file.objectId[2] = file.objectId[0];
-				file.objectId[3] = file.objectId[1];
-				file.objectId[0] = 0x3F;
-				file.objectId[1] = 0x00;
+			u8* oid = file.objectId.id;
+			if(oid[2] == 0 && oid[3] == 0) {
+				oid[2] = oid[0];
+				oid[3] = oid[1];
+				oid[0] = 0x3F;
+				oid[1] = 0x00;
 				file.ef = 0;
 			} else  {
 				file.ef = 1; /* File is a working elementary file */
@@ -130,56 +131,58 @@ void mscfs_check_cache(mscfs_t* fs)
 	}
 }
 
-int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, u8 objectId[4], int isDirectory)
+int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, msc_id* objectId, int isDirectory)
 {
+	u8* oid = objectId->id;
 	if ((pathlen & 1) != 0) /* not divisble by 2 */
 		return MSCFS_INVALID_ARGS;
 	if(isDirectory) {
 		/* Directory must be right next to root */
 		if((0 == memcmp(path, "\x3F\x00", 2) && pathlen == 4)
 		|| (0 == memcmp(fs->currentPath, "\x3F\x00", 2) && pathlen == 2)) {
-			objectId[0] = path[pathlen - 2];
-			objectId[1] = path[pathlen - 1];
-			objectId[2] = objectId[3] = 0;
+			oid[0] = path[pathlen - 2];
+			oid[1] = path[pathlen - 1];
+			oid[2] = oid[3] = 0;
 		} else {
 			return MSCFS_INVALID_ARGS;
 		}
 	}
-	objectId[0] = fs->currentPath[0];
-	objectId[1] = fs->currentPath[1];
+	oid[0] = fs->currentPath[0];
+	oid[1] = fs->currentPath[1];
 	/* Chop off the root in the path */
 	if(pathlen > 2 && memcmp(path, "\x3F\x00", 2) == 0) {
 		path += 2;
 		pathlen -= 2;
-		objectId[0] = 0x3F;
-		objectId[1] = 0x00;
+		oid[0] = 0x3F;
+		oid[1] = 0x00;
 	}
 	/* Limit to a single directory */
 	if(pathlen > 4)
 		return MSCFS_INVALID_ARGS;
 	/* Reset to root */
 	if(0 == memcmp(path, "\x3F\x00", 2) && pathlen == 2) {
-		objectId[0] = objectId[2] = path[0];
-		objectId[1] = objectId[3] = path[1];
+		oid[0] = oid[2] = path[0];
+		oid[1] = oid[3] = path[1];
 	} else if(pathlen == 2) { /* Path preserved for current-path */
-		objectId[2] = path[0];
-		objectId[3] = path[1];
+		oid[2] = path[0];
+		oid[3] = path[1];
 	} else if(pathlen == 4) {
-		objectId[0] = path[0];
-		objectId[1] = path[1];
-		objectId[2] = path[2];
-		objectId[3] = path[3];
+		oid[0] = path[0];
+		oid[1] = path[1];
+		oid[2] = path[2];
+		oid[3] = path[3];
 	}
 	
 	return 0;
 }
 
-int mscfs_lookup_local(mscfs_t* fs, const int id, u8 objectId[4])
+int mscfs_lookup_local(mscfs_t* fs, const int id, msc_id* objectId)
 {
-	objectId[0] = fs->currentPath[0];
-	objectId[1] = fs->currentPath[1];
-	objectId[2] = (id >> 8) & 0xFF;
-	objectId[3] = id & 0xFF;
+	u8* oid = objectId->id;
+	oid[0] = fs->currentPath[0];
+	oid[1] = fs->currentPath[1];
+	oid[2] = (id >> 8) & 0xFF;
+	oid[3] = id & 0xFF;
 	return 0;
 }
 
@@ -195,33 +198,30 @@ int mscfs_check_selection(mscfs_t *fs, int requiredItem)
 
 int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **file_data, int* idx)
 {
-	u8 fullPath[4];
+	msc_id fullPath;
 	int x;
 	assert(fs != NULL && path != NULL && file_data != NULL);
-	mscfs_lookup_path(fs, path, pathlen, fullPath, 0);
+	mscfs_lookup_path(fs, path, pathlen, &fullPath, 0);
 	
 	/* Obtain file information while checking if it exists */
 	mscfs_check_cache(fs);
 	if(idx) *idx = -1;
 	for(x = 0; x < fs->cache.size; x++) {
-		u8 *objectId;
+		msc_id objectId;
 		*file_data = &fs->cache.array[x];
 		objectId = (*file_data)->objectId;
-		if(0 == memcmp(objectId, fullPath, 4)) {
+		if(0 == memcmp(objectId.id, fullPath.id, 4)) {
 			if(idx) *idx = x;
 			break;
 		}
 		*file_data = NULL;
 	}
-	if(*file_data == NULL && (0 == memcmp("\x3F\x00\x00\x00", fullPath, 4) || 0 == memcmp("\x3F\x00\x3F\x00", fullPath, 4 ))) {
+	if(*file_data == NULL && (0 == memcmp("\x3F\x00\x00\x00", fullPath.id, 4) || 0 == memcmp("\x3F\x00\x3F\x00", fullPath.id, 4 ))) {
 		static mscfs_file_t ROOT_FILE;
 		ROOT_FILE.ef = 0;
 		ROOT_FILE.size = 0;
 		/* Faked Root ID */
-		ROOT_FILE.objectId[0] = 0x3F;
-		ROOT_FILE.objectId[1] = 0x00;
-		ROOT_FILE.objectId[2] = 0x3F;
-		ROOT_FILE.objectId[3] = 0x00;
+		ROOT_FILE.objectId = rootId;
 		
 		ROOT_FILE.read = 0;
 		ROOT_FILE.write = 0x02; /* User Pin access */

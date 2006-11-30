@@ -67,7 +67,7 @@ int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file) {
 		sc_error(card->ctx, "expected 14 bytes, got %d.\n", apdu.resplen);
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
-	memcpy(file->objectId, fileData, 4);
+	memcpy(file->objectId.id, fileData, 4);
 	file->size = bebytes2ulong(fileData + 4);
 	file->read = bebytes2ushort(fileData + 8);
 	file->write = bebytes2ushort(fileData + 10);
@@ -76,7 +76,7 @@ int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file) {
 	return 1;
 }
 
-int msc_partial_read_object(sc_card_t *card, unsigned int le_objectId, int offset, u8 *data, size_t dataLength)
+int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *data, size_t dataLength)
 {
 	u8 buffer[9];
 	sc_apdu_t apdu;
@@ -86,7 +86,7 @@ int msc_partial_read_object(sc_card_t *card, unsigned int le_objectId, int offse
 	
 	if (card->ctx->debug >= 2)
 		sc_debug(card->ctx, "READ: Offset: %x\tLength: %i\n", offset, dataLength);
-	ulong2bebytes(buffer, le_objectId);
+	memcpy(buffer, objectId.id, 4);
 	ulong2bebytes(buffer + 4, offset);
 	buffer[8] = (u8)dataLength;
 	apdu.data = buffer;
@@ -117,7 +117,7 @@ int msc_partial_read_object(sc_card_t *card, unsigned int le_objectId, int offse
 	
 }
 
-int msc_read_object(sc_card_t *card, unsigned int objectId, int offset, u8 *data, size_t dataLength)
+int msc_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *data, size_t dataLength)
 {
 	int r;
 	size_t i;
@@ -128,7 +128,7 @@ int msc_read_object(sc_card_t *card, unsigned int objectId, int offset, u8 *data
 	return dataLength;
 }
 
-int msc_zero_object(sc_card_t *card, unsigned int objectId, size_t dataLength)
+int msc_zero_object(sc_card_t *card, msc_id objectId, size_t dataLength)
 {
 	u8 zeroBuffer[MSC_MAX_WRITE_UNIT];
 	size_t i;
@@ -140,7 +140,7 @@ int msc_zero_object(sc_card_t *card, unsigned int objectId, size_t dataLength)
 	return 0;
 }
 
-int msc_create_object(sc_card_t *card, unsigned int objectId, size_t objectSize, unsigned short read, unsigned short write, unsigned short deletion)
+int msc_create_object(sc_card_t *card, msc_id objectId, size_t objectSize, unsigned short read, unsigned short write, unsigned short deletion)
 {
 	u8 buffer[14];
 	sc_apdu_t apdu;
@@ -152,7 +152,7 @@ int msc_create_object(sc_card_t *card, unsigned int objectId, size_t objectSize,
 	apdu.data = buffer,
 	apdu.datalen = 14;
 	
-	ulong2bebytes(buffer, objectId);
+	memcpy(buffer, objectId.id, 4);
 	ulong2bebytes(buffer + 4, objectSize);
 	ushort2bebytes(buffer + 8, readAcl);
 	ushort2bebytes(buffer + 10, writeAcl);
@@ -179,7 +179,7 @@ int msc_create_object(sc_card_t *card, unsigned int objectId, size_t objectSize,
 }
 
 /* Update up to 246 bytes */
-int msc_partial_update_object(sc_card_t *card, unsigned int le_objectId, int offset, const u8 *data, size_t dataLength)
+int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, const u8 *data, size_t dataLength)
 {
 	u8 buffer[256];
 	sc_apdu_t apdu;
@@ -189,7 +189,8 @@ int msc_partial_update_object(sc_card_t *card, unsigned int le_objectId, int off
 	apdu.lc = dataLength + 9;
 	if (card->ctx->debug >= 2)
 		sc_debug(card->ctx, "WRITE: Offset: %x\tLength: %i\n", offset, dataLength);
-	ulong2bebytes(buffer, le_objectId);
+	
+	memcpy(buffer, objectId.id, 4);
 	ulong2bebytes(buffer + 4, offset);
 	buffer[8] = (u8)dataLength;
 	memcpy(buffer + 9, data, dataLength);
@@ -216,7 +217,7 @@ int msc_partial_update_object(sc_card_t *card, unsigned int le_objectId, int off
 	return dataLength;
 }
 
-int msc_update_object(sc_card_t *card, unsigned int objectId, int offset, const u8 *data, size_t dataLength)
+int msc_update_object(sc_card_t *card, msc_id objectId, int offset, const u8 *data, size_t dataLength)
 {
 	int r;
 	size_t i;
@@ -227,16 +228,14 @@ int msc_update_object(sc_card_t *card, unsigned int objectId, int offset, const 
 	return dataLength;
 }
 
-int msc_delete_object(sc_card_t *card, unsigned int objectId, int zero)
+int msc_delete_object(sc_card_t *card, msc_id objectId, int zero)
 {
 	sc_apdu_t apdu;
-	u8 buf[4];
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x52, 0x00, zero ? 0x01 : 0x00);
 	apdu.lc = 4;
-	ulong2bebytes(buf, objectId);
-	apdu.data = buf;
+	apdu.data = objectId.id;
 	apdu.datalen = 4;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -460,10 +459,12 @@ int msc_get_challenge(sc_card_t *card, short dataLength, short seedLength, u8 *s
 			}
 			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_CARD_CMD_FAILED);
 		}
-		r = msc_read_object(card, 0xFFFFFFFFul, 2, outputData, dataLength);
+		r = msc_read_object(card, inputId, 2, outputData, dataLength);
 		if(r < 0)
 			SC_FUNC_RETURN(card->ctx, 0, r);
-		r = msc_delete_object(card, 0xFFFFFFFFul,0);
+		sc_ctx_suppress_errors_on(card->ctx);
+		msc_delete_object(card, inputId,0);
+		sc_ctx_suppress_errors_off(card->ctx);
 		SC_FUNC_RETURN(card->ctx, 0, r);
 	}
 }
@@ -566,7 +567,7 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 	if(r < 0) SC_FUNC_RETURN(card->ctx, 0, r);
 	
 	/* Read keyType, keySize, and what should be the modulus size */	
-	r = msc_read_object(card, 0xFFFFFFFFul, fileLocation, buffer, 5);
+	r = msc_read_object(card, inputId, fileLocation, buffer, 5);
 	fileLocation += 5;
 	if(r < 0) SC_FUNC_RETURN(card->ctx, 0, r);
 	
@@ -575,7 +576,7 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 	/* Read the modulus and the exponent length */
 	assert(*modLength + 2 < buffer_size);
 	
-	r = msc_read_object(card, 0xFFFFFFFFul, fileLocation, buffer, *modLength + 2);
+	r = msc_read_object(card, inputId, fileLocation, buffer, *modLength + 2);
 	fileLocation += *modLength + 2;
 	if(r < 0) SC_FUNC_RETURN(card->ctx, 0, r);
 	
@@ -584,7 +585,7 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 	memcpy(*modulus, buffer, *modLength);
 	*expLength = (buffer[*modLength] << 8) | buffer[*modLength + 1];
 	assert(*expLength < buffer_size);
-	r = msc_read_object(card, 0xFFFFFFFFul, fileLocation, buffer, *expLength);
+	r = msc_read_object(card, inputId, fileLocation, buffer, *expLength);
 	if(r < 0) {
 		free(*modulus); *modulus = NULL;
 		SC_FUNC_RETURN(card->ctx, 0, r);
@@ -831,7 +832,6 @@ int msc_import_key(sc_card_t *card,
 		keySize = data->keySize;
 	int bufferSize = 0;
 	u8 *buffer, *p;
-	unsigned int objectId;
 	u8 apduBuffer[6];
 	sc_apdu_t apdu;
 	int r;
@@ -876,24 +876,28 @@ int msc_import_key(sc_card_t *card,
 		CPYVAL(dp1);
 		CPYVAL(dq1);
 	}
-	objectId = 0xFFFFFFFEul;
-
-	r = msc_create_object(card, objectId, bufferSize, 0x02, 0x02, 0x02);
+	
+	sc_ctx_suppress_errors_on(card->ctx);
+	r = msc_create_object(card, outputId, bufferSize, 0x02, 0x02, 0x02);
 	if(r < 0) { 
 		if(r == SC_ERROR_FILE_ALREADY_EXISTS) {
-			r = msc_delete_object(card, objectId, 0);
+			r = msc_delete_object(card, outputId, 0);
 			if(r < 0) {
+				sc_ctx_suppress_errors_off(card->ctx);
 				free(buffer);
 				SC_FUNC_RETURN(card->ctx, 2, r);
 			}
-			r = msc_create_object(card, objectId, bufferSize, 0x02, 0x02, 0x02);
+			r = msc_create_object(card, outputId, bufferSize, 0x02, 0x02, 0x02);
 			if(r < 0) {
+				sc_ctx_suppress_errors_off(card->ctx);
 				free(buffer);
 				SC_FUNC_RETURN(card->ctx, 2, r);
 			}
 		}
 	}
-	r = msc_update_object(card, objectId, 0, buffer, bufferSize);
+	sc_ctx_suppress_errors_off(card->ctx);
+	
+	r = msc_update_object(card, outputId, 0, buffer, bufferSize);
 	free(buffer);
 	if(r < 0) return r;
 	
@@ -909,7 +913,7 @@ int msc_import_key(sc_card_t *card,
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		msc_delete_object(card, objectId, 0);
+		msc_delete_object(card, outputId, 0);
 		return 0;
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -919,11 +923,15 @@ int msc_import_key(sc_card_t *card,
 			     apdu.sw1, apdu.sw2);
 		}
 		/* no error checks.. this is last ditch cleanup */
-		msc_delete_object(card, objectId, 0);
+		sc_ctx_suppress_errors_on(card->ctx);
+		msc_delete_object(card, outputId, 0);
+		sc_ctx_suppress_errors_off(card->ctx);
 		SC_FUNC_RETURN(card->ctx, 0, r);
 	}
 	/* no error checks.. this is last ditch cleanup */
-	msc_delete_object(card, objectId, 0);
+	sc_ctx_suppress_errors_on(card->ctx);
+	msc_delete_object(card, outputId, 0);
+	sc_ctx_suppress_errors_off(card->ctx);
 
 	SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_CARD_CMD_FAILED);
 }
