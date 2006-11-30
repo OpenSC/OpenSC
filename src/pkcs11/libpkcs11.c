@@ -8,7 +8,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#include "pkcs11.h"
+#include "sc-pkcs11.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

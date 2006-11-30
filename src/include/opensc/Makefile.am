@@ -2,8 +2,6 @@
 
 RM = rm -f
 
-SUBDIRS = . rsaref
-
 MAINTAINERCLEANFILES = Makefile.in
 DISTCLEANFILES = \
 	asn1.h \

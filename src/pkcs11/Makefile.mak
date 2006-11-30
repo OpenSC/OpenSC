@@ -1,10 +1,8 @@
 TOPDIR = ..\..
 
 HEADERS			= pkcs11.h
-HEADERSDIRFROM2		= rsaref
 
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
-HEADERSDIR2		= $(TOPDIR)\src\include\opensc\rsaref
 
 TARGET                  = opensc-pkcs11.dll
 TARGET2			= libpkcs11.lib

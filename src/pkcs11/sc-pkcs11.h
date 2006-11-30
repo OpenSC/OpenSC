@@ -31,14 +31,25 @@
 #include <opensc/pkcs15.h>
 #include <opensc/log.h>
 
-#ifndef _WIN32
-#include <opensc/rsaref/unix.h>
-#include <opensc/rsaref/pkcs11.h>
+#define CRYPTOKI_EXPORTS
+#define CRYPTOKI_COMPAT
+#include <pkcs11.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif 
+
+#if defined(_WIN32)
+#define PKCS11_DEFAULT_MODULE_NAME      "opensc-pkcs11"
 #else
-#include <opensc/rsaref/win32.h>
-#pragma pack(push, cryptoki, 1)
-#include <opensc/rsaref/pkcs11.h>
-#pragma pack(pop, cryptoki)
+#define PKCS11_DEFAULT_MODULE_NAME      "opensc-pkcs11.so"
+#endif
+
+extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
+extern CK_RV C_UnloadModule(void *module);
+
+#ifdef __cplusplus
+}
 #endif
 
 /* Decide whether to use pkcs11 for initialization support */
@@ -449,4 +460,4 @@ void sc_pkcs11_free_lock(void);
 }
 #endif
 
-#endif
+#endif  /* __sc_pkcs11_h__ */

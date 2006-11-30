@@ -352,7 +352,6 @@ src/Makefile
 src/common/Makefile
 src/include/Makefile
 src/include/opensc/Makefile
-src/include/opensc/rsaref/Makefile
 src/libopensc/Makefile
 src/libopensc/opensc-config
 src/libopensc/libopensc.pc
@@ -360,7 +359,6 @@ src/libopensc/libpkcs15init.pc
 src/libopensc/libscconf.pc
 src/openssh/Makefile
 src/pkcs11/Makefile
-src/pkcs11/rsaref/Makefile
 src/pkcs15init/Makefile
 src/scconf/Makefile
 src/signer/Makefile

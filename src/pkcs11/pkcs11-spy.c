@@ -29,12 +29,10 @@
 
 #define __PASTE(x,y)      x##y
 
+extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
+extern CK_RV C_UnloadModule(void *module);
+
 /* Declare all spy_* Cryptoki function */
-
-#define CK_NEED_ARG_LIST  1
-#define CK_PKCS11_FUNCTION_INFO(name) CK_RV name
-
-#include "rsaref/pkcs11f.h"
 
 /* Spy Module Function List */
 CK_FUNCTION_LIST_PTR pkcs11_spy = NULL;
@@ -44,11 +42,6 @@ CK_FUNCTION_LIST_PTR po = NULL;
 static void *modhandle = NULL;
 /* Spy module output */
 FILE *spy_output = NULL;
-
-#undef CK_NEED_ARG_LIST
-#undef CK_PKCS11_FUNCTION_INFO
-#define CK_PKCS11_FUNCTION_INFO(name) \
-    pkcs11_spy->name = name;
 
 /* Inits the spy. If successfull, po != NULL */
 static CK_RV init_spy(void)
@@ -66,7 +59,77 @@ static CK_RV init_spy(void)
   pkcs11_spy =
     (CK_FUNCTION_LIST_PTR) malloc(sizeof(CK_FUNCTION_LIST));
   if (pkcs11_spy) {
-#include "rsaref/pkcs11f.h"
+	/* with our own pkcs11.h we need to maintain this ourself */
+	pkcs11_spy->version.major = 2;
+	pkcs11_spy->version.major = 11;
+	pkcs11_spy->C_Initialize = C_Initialize;
+	pkcs11_spy->C_Finalize = C_Finalize;
+	pkcs11_spy->C_GetInfo = C_GetInfo;
+	pkcs11_spy->C_GetFunctionList = C_GetFunctionList;
+	pkcs11_spy->C_GetSlotList = C_GetSlotList;
+	pkcs11_spy->C_GetSlotInfo = C_GetSlotInfo;
+	pkcs11_spy->C_GetTokenInfo = C_GetTokenInfo;
+	pkcs11_spy->C_GetMechanismList = C_GetMechanismList;
+	pkcs11_spy->C_GetMechanismInfo = C_GetMechanismInfo;
+	pkcs11_spy->C_InitToken = C_InitToken;
+	pkcs11_spy->C_InitPIN = C_InitPIN;
+	pkcs11_spy->C_SetPIN = C_SetPIN;
+	pkcs11_spy->C_OpenSession = C_OpenSession;
+	pkcs11_spy->C_CloseSession = C_CloseSession;
+	pkcs11_spy->C_CloseAllSessions = C_CloseAllSessions;
+	pkcs11_spy->C_GetSessionInfo = C_GetSessionInfo;
+	pkcs11_spy->C_GetOperationState = C_GetOperationState;
+	pkcs11_spy->C_SetOperationState = C_SetOperationState;
+	pkcs11_spy->C_Login = C_Login;
+	pkcs11_spy->C_Logout = C_Logout;
+	pkcs11_spy->C_CreateObject = C_CreateObject;
+	pkcs11_spy->C_CopyObject = C_CopyObject;
+	pkcs11_spy->C_DestroyObject = C_DestroyObject;
+	pkcs11_spy->C_GetObjectSize = C_GetObjectSize;
+	pkcs11_spy->C_GetAttributeValue = C_GetAttributeValue;
+	pkcs11_spy->C_SetAttributeValue = C_SetAttributeValue;
+	pkcs11_spy->C_FindObjectsInit = C_FindObjectsInit;
+	pkcs11_spy->C_FindObjects = C_FindObjects;
+	pkcs11_spy->C_FindObjectsFinal = C_FindObjectsFinal;
+	pkcs11_spy->C_EncryptInit = C_EncryptInit;
+	pkcs11_spy->C_Encrypt = C_Encrypt;
+	pkcs11_spy->C_EncryptUpdate = C_EncryptUpdate;
+	pkcs11_spy->C_EncryptFinal = C_EncryptFinal;
+	pkcs11_spy->C_DecryptInit = C_DecryptInit;
+	pkcs11_spy->C_Decrypt = C_Decrypt;
+	pkcs11_spy->C_DecryptUpdate = C_DecryptUpdate;
+	pkcs11_spy->C_DecryptFinal = C_DecryptFinal;
+	pkcs11_spy->C_DigestInit = C_DigestInit;
+	pkcs11_spy->C_Digest = C_Digest;
+	pkcs11_spy->C_DigestUpdate = C_DigestUpdate;
+	pkcs11_spy->C_DigestKey = C_DigestKey;
+	pkcs11_spy->C_DigestFinal = C_DigestFinal;
+	pkcs11_spy->C_SignInit = C_SignInit;
+	pkcs11_spy->C_Sign = C_Sign;
+	pkcs11_spy->C_SignUpdate = C_SignUpdate;
+	pkcs11_spy->C_SignFinal = C_SignFinal;
+	pkcs11_spy->C_SignRecoverInit = C_SignRecoverInit;
+	pkcs11_spy->C_SignRecover = C_SignRecover;
+	pkcs11_spy->C_VerifyInit = C_VerifyInit;
+	pkcs11_spy->C_Verify = C_Verify;
+	pkcs11_spy->C_VerifyUpdate = C_VerifyUpdate;
+	pkcs11_spy->C_VerifyFinal = C_VerifyFinal;
+	pkcs11_spy->C_VerifyRecoverInit = C_VerifyRecoverInit;
+	pkcs11_spy->C_VerifyRecover = C_VerifyRecover;
+	pkcs11_spy->C_DigestEncryptUpdate = C_DigestEncryptUpdate;
+	pkcs11_spy->C_DecryptDigestUpdate = C_DecryptDigestUpdate;
+	pkcs11_spy->C_SignEncryptUpdate = C_SignEncryptUpdate;
+	pkcs11_spy->C_DecryptVerifyUpdate = C_DecryptVerifyUpdate;
+	pkcs11_spy->C_GenerateKey = C_GenerateKey;
+	pkcs11_spy->C_GenerateKeyPair = C_GenerateKeyPair;
+	pkcs11_spy->C_WrapKey = C_WrapKey;
+	pkcs11_spy->C_UnwrapKey = C_UnwrapKey;
+	pkcs11_spy->C_DeriveKey = C_DeriveKey;
+	pkcs11_spy->C_SeedRandom = C_SeedRandom;
+	pkcs11_spy->C_GenerateRandom = C_GenerateRandom;
+	pkcs11_spy->C_GetFunctionStatus = C_GetFunctionStatus;
+	pkcs11_spy->C_CancelFunction = C_CancelFunction;
+	pkcs11_spy->C_WaitForSlotEvent = C_WaitForSlotEvent;
   } else {
     return CKR_HOST_MEMORY;
   }
@@ -153,7 +216,7 @@ static void enter(const char *function)
 
 static CK_RV retne(CK_RV rv)
 {
-	fprintf(spy_output, "Returned:  %ld %s\n", rv, lookup_enum ( RV_T, rv ));
+	fprintf(spy_output, "Returned:  %ld %s\n", (unsigned long) rv, lookup_enum ( RV_T, rv ));
 	fflush(spy_output);
 	return rv;
 }

@@ -680,7 +680,7 @@ const char *lookup_enum(CK_ULONG type, CK_ULONG value)
 
 void show_error( FILE *f, char *str, CK_RV rc )
 {
-  fprintf(f, "%s returned:  %ld %s", str, rc, lookup_enum ( RV_T, rc ));
+  fprintf(f, "%s returned:  %ld %s", str, (unsigned long) rc, lookup_enum ( RV_T, rc ));
   fprintf(f, "\n");
 }
 
