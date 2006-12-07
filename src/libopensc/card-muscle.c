@@ -68,6 +68,8 @@ static int muscle_match_card(sc_card_t *card)
 	sc_ctx_suppress_errors_on(card->ctx);
 	i = msc_select_applet(card, muscleAppletId, 5);
 	sc_ctx_suppress_errors_off(card->ctx);
+	/* Mark the card for muscle_init */
+	card->drv_data = (void*)0xFFFFFFFF;
 	return i;
 }
 
@@ -430,6 +432,14 @@ static int muscle_init(sc_card_t *card)
 {
 	int r = 0;
 	muscle_private_t *priv;
+	
+	/* drv_data is set to (void*)0xFFFFFFFF in muscle_detect,
+	 * If drv_data doesn't equal that, then we need to detect... */
+	if(card->drv_data != (void*)0xFFFFFFFF) {
+		card->drv_data = NULL;
+		if(!muscle_match_card(card))
+			return SC_ERROR_INVALID_CARD;
+	}
 
 	r = sc_get_default_driver()->ops->init(card);
 	if(r) return r;
