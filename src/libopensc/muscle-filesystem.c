@@ -29,6 +29,7 @@
 #define MSCFS_FILE_NOT_FOUND 	SC_ERROR_FILE_NOT_FOUND
 #define MSCFS_CACHE_INCREMENT 128
 
+static msc_id rootId = { { 0x3F, 0x00, 0x3F, 0x00 } };
 
 static const u8* ignoredFiles[] = {
 	(const u8*)"l0\0\0",

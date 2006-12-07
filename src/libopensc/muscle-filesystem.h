@@ -30,10 +30,6 @@ typedef struct msc_id {
 } msc_id;
 
 
-static msc_id inputId = { { 0xFF, 0xFF, 0xFF, 0xFF } };
-static msc_id outputId = { { 0xFF, 0xFF, 0xFF, 0xFE } };
-static msc_id rootId = { { 0x3F, 0x00, 0x3F, 0x00 } };
-
 typedef struct mscfs_file {
 	msc_id objectId;
 	size_t size;

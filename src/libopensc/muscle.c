@@ -41,6 +41,9 @@
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
+static msc_id inputId = { { 0xFF, 0xFF, 0xFF, 0xFF } };
+static msc_id outputId = { { 0xFF, 0xFF, 0xFF, 0xFE } };
+
 int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file) {
 	sc_apdu_t apdu;
 	u8 fileData[14];
