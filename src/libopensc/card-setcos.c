@@ -53,6 +53,8 @@ static struct sc_atr_table setcos_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
+#define SETCOS_IS_EID_APPLET(card) ((card)->type == SC_CARD_TYPE_SETCOS_EID_V2_0 || (card)->type == SC_CARD_TYPE_SETCOS_EID_V2_1)
+
 /* Setcos 4.4 Life Cycle Status Integer  */
 #define SETEC_LCSI_CREATE      0x01
 #define SETEC_LCSI_INIT        0x03
@@ -94,6 +96,8 @@ static int match_hist_bytes(sc_card_t *card, const char *str, size_t len)
 
 static int setcos_match_card(sc_card_t *card)
 {
+	sc_apdu_t apdu;
+	u8 buf[6];
 	int i;
 
 	i = _sc_match_atr(card, setcos_atrs, &card->type);
@@ -107,6 +111,26 @@ static int setcos_match_card(sc_card_t *card)
 			card->type = SC_CARD_TYPE_SETCOS_GENERIC;
 			return 1;
 		}
+		/* Check if it's a EID2.x applet by reading the version info */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0xDF, 0x30);
+		apdu.cla = 0x00;
+		apdu.resp = buf;
+		apdu.resplen = 5;
+		apdu.le = 5;
+		i = sc_transmit_apdu(card, &apdu);
+		if (i == 0 && apdu.sw1 == 0x90 && apdu.sw2 == 0x00 && apdu.resplen == 5) {
+			if (memcmp(buf, "v2.0", 4) == 0)
+				card->type = SC_CARD_TYPE_SETCOS_EID_V2_0;
+			else if (memcmp(buf, "v2.1", 4) == 0)
+				card->type = SC_CARD_TYPE_SETCOS_EID_V2_1;
+			else {
+				buf[sizeof(buf) - 1] = '\0';
+				sc_error(card->ctx, "SetCOS EID applet %s is not supported", (char *) buf);
+				return 0;
+			}
+			return 1;
+		}
+
 		return 0;
 	}
 	card->flags = setcos_atrs[i].flags;
@@ -151,6 +175,8 @@ static int setcos_init(sc_card_t *card)
 			card->caps |= SC_CARD_CAP_RNG;
 		break;
 	case SC_CARD_TYPE_SETCOS_44:
+	case SC_CARD_TYPE_SETCOS_EID_V2_0:
+	case SC_CARD_TYPE_SETCOS_EID_V2_1:
 		card->cla = 0x00;
 		card->caps |= SC_CARD_CAP_USE_FCI_AC;
 		card->caps |= SC_CARD_CAP_RNG;
@@ -179,6 +205,8 @@ static int setcos_init(sc_card_t *card)
 		break;
 	case SC_CARD_TYPE_SETCOS_44:
 	case SC_CARD_TYPE_SETCOS_NIDEL:
+	case SC_CARD_TYPE_SETCOS_EID_V2_0:
+	case SC_CARD_TYPE_SETCOS_EID_V2_1:
 		{
 			unsigned long flags;
 
@@ -202,20 +230,27 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 	u8 *p = out;
 	u8 buf[64];
 	const u8 *pin_key_info;
+	int len;
 
 	/* Command */
 	*p++ = 0x6F;
 	p++;
 
-	/* Length */
-	buf[0] = (file->size >> 8) & 0xFF;
-	buf[1] = file->size & 0xFF;
-	sc_asn1_put_tag(0x81, buf, 2, p, 16, &p);
+	/* Size (set to 0 for keys/PINs on a Java card) */
+	if (SETCOS_IS_EID_APPLET(card) &&
+	    (file->type == SC_FILE_TYPE_INTERNAL_EF || 
+	     (file->type == SC_FILE_TYPE_WORKING_EF && file->ef_structure == 0x22)))
+	     	buf[0] = buf[1] = 0x00;
+	else {
+		buf[0] = (file->size >> 8) & 0xFF;
+		buf[1] = file->size & 0xFF;
+	}
+	sc_asn1_put_tag(0x81, buf, 2, p, *outlen - (p - out), &p);
 
 	/* Type */
 	if (file->type_attr_len) {
 		memcpy(buf, file->type_attr, file->type_attr_len);
-		sc_asn1_put_tag(0x82, buf, file->type_attr_len, p, 16, &p);
+		sc_asn1_put_tag(0x82, buf, file->type_attr_len, p, *outlen - (p - out), &p);
 	} else {
 		u8	bLen = 1;
 
@@ -226,13 +261,17 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 			break;
 		case SC_FILE_TYPE_WORKING_EF:
 			if (file->ef_structure == 0x22) {		/* pin-file */
-				/* ISF key-file, Setcos V4.4 specific */
-				bLen = 5;
 				buf[0] = 0x0A;				/* EF linear fixed EF for ISF keys */
-				buf[1] = 0x41;				/* fixed */
-				buf[2] = file->record_length >> 8;	/* 2 byte record length  */
-				buf[3] = file->record_length & 0xFF;
-				buf[4] = file->size / file->record_length; /* record count */
+				if (SETCOS_IS_EID_APPLET(card))
+					bLen = 1;
+				else {
+					/* Setcos V4.4 */
+					bLen = 5;
+					buf[1] = 0x41;				/* fixed */
+					buf[2] = file->record_length >> 8;	/* 2 byte record length  */
+					buf[3] = file->record_length & 0xFF;
+					buf[4] = file->size / file->record_length; /* record count */
+				}
 			} else {
 				buf[0] |= file->ef_structure & 7;	/* set file-type, only for EF, not for DF objects  */
 			}
@@ -243,49 +282,57 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 		default:
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-		sc_asn1_put_tag(0x82, buf, bLen, p, 16, &p);
+		sc_asn1_put_tag(0x82, buf, bLen, p, *outlen - (p - out), &p);
 	}
 
-	/* File-id */
+	/* File ID */
 	buf[0] = (file->id >> 8) & 0xFF;
 	buf[1] = file->id & 0xFF;
-	sc_asn1_put_tag(0x83, buf, 2, p, 16, &p);
+	sc_asn1_put_tag(0x83, buf, 2, p, *outlen - (p - out), &p);
 
-	/* file state */
-	if (file->prop_attr_len) {
-		memcpy(buf, file->prop_attr, file->prop_attr_len);
-		sc_asn1_put_tag(0x8A, buf, file->prop_attr_len, p, 18, &p);
-	}
-
-	/* Access control */
-	memcpy(buf, file->sec_attr, file->sec_attr_len);
-	sc_asn1_put_tag(0x86, buf, file->sec_attr_len, p, 18, &p);
-
-	switch (file->type) {
-	case SC_FILE_TYPE_DF:
+	/* DF name */
+	if (file->type == SC_FILE_TYPE_DF) {
 		if (file->name[0] != 0)
-			sc_asn1_put_tag(0x84, (u8 *) file->name, file->namelen, p, 18, &p);
-		else { /* Name required -> take the FID */
+			sc_asn1_put_tag(0x84, (u8 *) file->name, file->namelen, p, *outlen - (p - out), &p);
+		else { /* Name required -> take the FID if not specified */
 			buf[0] = (file->id >> 8) & 0xFF;
 			buf[1] = file->id & 0xFF;
-			sc_asn1_put_tag(0x84, buf, 2, p, 16, &p);
+			sc_asn1_put_tag(0x84, buf, 2, p, *outlen - (p - out), &p);
 		}
-
-		/* Pin/key info: define 4 pins, no keys */
-		if(file->path.len == 2)
-			pin_key_info = (const u8*)"\xC1\x04\x81\x82\x83\x84\xC2\x00";	/* root-MF: use local pin-file */
-		else
-			pin_key_info = (const u8 *)"\xC1\x04\x01\x02\x03\x04\xC2\x00";	/* sub-DF: use parent pin-file in root-MF */
-		sc_asn1_put_tag(0xA5, pin_key_info, 8, p, 18, &p);
-		break;
-
-	case SC_FILE_TYPE_INTERNAL_EF:					/* RSA keyfiles  */
-		/* Get pin-number */	
-		/* Define AC for RSA-files */
-		break;
 	}
 
-	/* Length   */
+	/* Security Attributes */
+	memcpy(buf, file->sec_attr, file->sec_attr_len);
+	sc_asn1_put_tag(0x86, buf, file->sec_attr_len, p, *outlen - (p - out), &p);
+
+	/* Life cycle status */
+	if (file->prop_attr_len) {
+		memcpy(buf, file->prop_attr, file->prop_attr_len);
+		sc_asn1_put_tag(0x8A, buf, file->prop_attr_len, p, *outlen - (p - out), &p);
+	}
+
+	/* PIN definitions */
+	if (file->type == SC_FILE_TYPE_DF) {
+		if (card->type == SC_CARD_TYPE_SETCOS_EID_V2_1) {
+			pin_key_info = (const u8*)"\xC1\x04\x81\x82\x83\x84";
+			len = 6;
+		}
+		else if (card->type == SC_CARD_TYPE_SETCOS_EID_V2_0) {
+			pin_key_info = (const u8*)"\xC1\x04\x81\x82"; /* Max 2 PINs supported */
+			len = 4;
+		}
+		else {
+			/* Pin/key info: define 4 pins, no keys */
+			if(file->path.len == 2)
+				pin_key_info = (const u8*)"\xC1\x04\x81\x82\x83\x84\xC2\x00";	/* root-MF: use local pin-file */
+			else
+				pin_key_info = (const u8 *)"\xC1\x04\x01\x02\x03\x04\xC2\x00";	/* sub-DF: use parent pin-file in root-MF */
+			len = 8;
+		}
+		sc_asn1_put_tag(0xA5, pin_key_info, len, p, *outlen - (p - out), &p);
+	}
+
+	/* Length */
 	out[1] = p - out - 2;
 
 	*outlen = p - out;
@@ -295,7 +342,8 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 static int setcos_construct_fci(sc_card_t *card, const sc_file_t *file, u8 *out, size_t *outlen)
 {
 	if (card->type == SC_CARD_TYPE_SETCOS_44 || 
-	    card->type == SC_CARD_TYPE_SETCOS_NIDEL)
+	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
+	    SETCOS_IS_EID_APPLET(card))
 		return setcos_construct_fci_44(card, file, out, outlen);
 	else
 		return iso_ops->construct_fci(card, file, out, outlen);
@@ -365,11 +413,10 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 	const u8 bFileStatus = file->status == SC_FILE_STATUS_CREATION ?
 		SETEC_LCSI_CREATE : SETEC_LCSI_ACTIVATED;
 	u8 bCommands_always = 0;
-	int pins[] = {-1, -1, -1, -1, -1, -1, -1};
+	int pins[] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 	u8 bCommands_pin[sizeof(pins)/sizeof(pins[0])]; /* both 7 entries big */
 	u8 bCommands_key = 0;
 	u8 bNumber = 0;
-	u8 bPinNumber = 0;
 	u8 bKeyNumber = 0;
 	unsigned int bMethod = 0;
 
@@ -426,11 +473,10 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 				bCommands_always |= 1;
 				break;
 			case SC_AC_CHV:				/* pin */
-				if (bNumber == 0 || bNumber > 7) {
+				if ((bNumber & 0x7F) == 0 || (bNumber & 0x7F) > 7) {
 					sc_error(card->ctx, "SetCOS 4.4 PIN refs can only be 1..7\n");
 					return SC_ERROR_INVALID_ARGUMENTS;
 				}
-				bPinNumber = bNumber;
 				bCommands_pin[setcos_pin_index_44(pins, sizeof(pins), (int) bNumber)] |= 1 << i;
 				break;
 			case SC_AC_TERM:			/* key */
@@ -449,7 +495,10 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 		for (i = 0; i < (int)sizeof(bCommands_pin) && pins[i] != -1; i++) {
 			bBuf[len++] = 2;
 			bBuf[len++] = bCommands_pin[i];
-			bBuf[len++] = pins[i] & 0x07;  /* pin ref */
+			if (SETCOS_IS_EID_APPLET(card))
+				bBuf[len++] = pins[i];  /* pin ref */
+			else
+				bBuf[len++] = pins[i] & 0x07;  /* pin ref */
 		}
 		/* Add ommands that require the key */
 		if (bCommands_key) {
@@ -459,7 +508,6 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 		}
 		/* RSA signing/decryption requires AC adaptive coding,  can't be put
 		   in AC simple coding. Only implemented for pins, not for a key. */
-		bPinNumber = 0;
 		bKeyNumber = 0;
 		if ( (file->type == SC_FILE_TYPE_INTERNAL_EF) &&
 		     (acl_to_byte_44(file->acl[SC_AC_OP_CRYPTO], &bNumber) == SC_AC_CHV) ) {
@@ -477,7 +525,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 
 static int setcos_create_file(sc_card_t *card, sc_file_t *file)
 {
-	if (card->type == SC_CARD_TYPE_SETCOS_44)
+	if (card->type == SC_CARD_TYPE_SETCOS_44 || SETCOS_IS_EID_APPLET(card))
 		return setcos_create_file_44(card, file);
 
 	if (file->prop_attr_len == 0)
@@ -526,7 +574,8 @@ static int setcos_set_security_env2(sc_card_t *card,
 	assert(card != NULL && env != NULL);
 
 	if (card->type == SC_CARD_TYPE_SETCOS_44 ||
-	    card->type == SC_CARD_TYPE_SETCOS_NIDEL) {
+	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
+	    SETCOS_IS_EID_APPLET(card)) {
 		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC) {
 			sc_error(card->ctx, "asymmetric keyref not supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
@@ -548,7 +597,8 @@ static int setcos_set_security_env2(sc_card_t *card,
 		/* Should be 0x41 */
 		apdu.p1 = ((card->type == SC_CARD_TYPE_SETCOS_FINEID_V2) ||
 		           (card->type == SC_CARD_TYPE_SETCOS_44) ||
-			   (card->type == SC_CARD_TYPE_SETCOS_NIDEL)) ? 0x41 : 0x81;
+			   (card->type == SC_CARD_TYPE_SETCOS_NIDEL) || 
+			   SETCOS_IS_EID_APPLET(card)) ? 0x41 : 0x81;
 		apdu.p2 = 0xB6;
 		break;
 	default:
@@ -630,6 +680,8 @@ static int setcos_set_security_env(sc_card_t *card,
 		case SC_CARD_TYPE_SETCOS_FINEID_V2:
 		case SC_CARD_TYPE_SETCOS_NIDEL:
 		case SC_CARD_TYPE_SETCOS_44:
+		case SC_CARD_TYPE_SETCOS_EID_V2_0:
+		case SC_CARD_TYPE_SETCOS_EID_V2_1:
 			break;
 		default:
 			sc_error(card->ctx, "Card does not support RSA.\n");
@@ -857,7 +909,8 @@ static int setcos_select_file(sc_card_t *card,
 		return r;
 	if (file != NULL) {
 		if (card->type == SC_CARD_TYPE_SETCOS_44 ||
-		    card->type == SC_CARD_TYPE_SETCOS_NIDEL)
+		    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
+		    SETCOS_IS_EID_APPLET(card))
 			parse_sec_attr_44(*file, (*file)->sec_attr, (*file)->sec_attr_len);
 		else
 			parse_sec_attr(*file, (*file)->sec_attr, (*file)->sec_attr_len);
@@ -872,7 +925,8 @@ static int setcos_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
 	if (card->type == SC_CARD_TYPE_SETCOS_44 || 
-	    card->type == SC_CARD_TYPE_SETCOS_NIDEL)
+	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
+	    SETCOS_IS_EID_APPLET(card))
 		apdu.cla = 0x80;
 	apdu.resp = buf;
 	apdu.resplen = buflen;
@@ -893,7 +947,8 @@ static int setcos_process_fci(sc_card_t *card, sc_file_t *file,
 
 	/* SetCOS 4.4: RSA key file is an internal EF but it's
 	 * file descriptor doesn't seem to follow ISO7816. */
-	if (r >= 0 && card->type == SC_CARD_TYPE_SETCOS_44) {
+	if (r >= 0 && (card->type == SC_CARD_TYPE_SETCOS_44 ||
+	               SETCOS_IS_EID_APPLET(card))) {
 		const u8 *tag;
 		size_t taglen = 1;
 		tag = (u8 *) sc_asn1_find_tag(card->ctx, buf, buflen, 0x82, &taglen);
@@ -1038,7 +1093,7 @@ static int setcos_activate_file(sc_card_t *card)
 
 static int setcos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
-	if (card->type != SC_CARD_TYPE_SETCOS_44)
+	if (card->type != SC_CARD_TYPE_SETCOS_44 && !SETCOS_IS_EID_APPLET(card))
 		return SC_ERROR_NOT_SUPPORTED;
 
 	switch(cmd) {
