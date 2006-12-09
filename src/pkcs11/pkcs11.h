@@ -48,13 +48,17 @@
 #ifndef PKCS11_H
 #define PKCS11_H 1
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #ifndef CRYPTOKI_COMPAT
 #define CRYPTOKI_COMPAT 1
 #endif
 
 /* System dependencies.  */
 
-#ifdef __WIN32
+#if defined(_WIN32) || defined(CRYPTOKI_FORCE_WIN32)
 
 /* There is a matching pop below.  */
 #pragma pack(push, cryptoki, 1)
@@ -584,7 +588,7 @@ struct ck_mechanism_info
 #define CKF_DONT_BLOCK				(1)
 
 
-typedef unsigned int ck_rv_t;
+typedef unsigned long int ck_rv_t;
 
 
 typedef ck_rv_t (*ck_notify_t) (ck_session_handle_t session,
@@ -664,11 +668,11 @@ _CK_DECLARE_FUNCTION (C_Logout, (ck_session_handle_t session));
 
 _CK_DECLARE_FUNCTION (C_CreateObject,
 		      (ck_session_handle_t session,
-		       struct ck_attribute *template,
+		       struct ck_attribute *_template,
 		       unsigned long count, ck_object_handle_t *object));
 _CK_DECLARE_FUNCTION (C_CopyObject,
 		      (ck_session_handle_t session, ck_object_handle_t object,
-		       struct ck_attribute *template, unsigned long count,
+		       struct ck_attribute *_template, unsigned long count,
 		       ck_object_handle_t *new_object));
 _CK_DECLARE_FUNCTION (C_DestroyObject,
 		      (ck_session_handle_t session,
@@ -680,16 +684,16 @@ _CK_DECLARE_FUNCTION (C_GetObjectSize,
 _CK_DECLARE_FUNCTION (C_GetAttributeValue,
 		      (ck_session_handle_t session,
 		       ck_object_handle_t object,
-		       struct ck_attribute *template,
+		       struct ck_attribute *_template,
 		       unsigned long count));
 _CK_DECLARE_FUNCTION (C_SetAttributeValue,
 		      (ck_session_handle_t session,
 		       ck_object_handle_t object,
-		       struct ck_attribute *template,
+		       struct ck_attribute *_template,
 		       unsigned long count));
 _CK_DECLARE_FUNCTION (C_FindObjectsInit,
 		      (ck_session_handle_t session,
-		       struct ck_attribute *template,
+		       struct ck_attribute *_template,
 		       unsigned long count));
 _CK_DECLARE_FUNCTION (C_FindObjects,
 		      (ck_session_handle_t session,
@@ -834,7 +838,7 @@ _CK_DECLARE_FUNCTION (C_DecryptVerifyUpdate,
 _CK_DECLARE_FUNCTION (C_GenerateKey,
 		      (ck_session_handle_t session,
 		       struct ck_mechanism *mechanism,
-		       struct ck_attribute *template,
+		       struct ck_attribute *_template,
 		       unsigned long count,
 		       ck_object_handle_t *key));
 _CK_DECLARE_FUNCTION (C_GenerateKeyPair,
@@ -859,14 +863,14 @@ _CK_DECLARE_FUNCTION (C_UnwrapKey,
 		       ck_object_handle_t unwrapping_key,
 		       unsigned char *wrapped_key,
 		       unsigned long wrapped_key_len,
-		       struct ck_attribute *template,
+		       struct ck_attribute *_template,
 		       unsigned long attribute_count,
 		       ck_object_handle_t *key));
 _CK_DECLARE_FUNCTION (C_DeriveKey,
 		      (ck_session_handle_t session,
 		       struct ck_mechanism *mechanism,
 		       ck_object_handle_t base_key,
-		       struct ck_attribute *template,
+		       struct ck_attribute *_template,
 		       unsigned long attribute_count,
 		       ck_object_handle_t *key));
 
@@ -964,10 +968,10 @@ typedef ck_rv_t (*ck_unlockmutex_t) (void *mutex);
 
 struct ck_c_initialize_args
 {
-  ck_createmutex_t create_mutex;
-  ck_destroymutex_t destroy_mutex;
-  ck_lockmutex_t lock_mutex;
-  ck_unlockmutex_t unlock_mutex;
+  ck_createmutex_t CreateMutex;
+  ck_destroymutex_t DestroyMutex;
+  ck_lockmutex_t LockMutex;
+  ck_unlockmutex_t UnlockMutex;
   ck_flags_t flags;
   void *reserved;
 };
@@ -1060,7 +1064,8 @@ struct ck_c_initialize_args
 #define CKR_CRYPTOKI_ALREADY_INITIALIZED	(0x191)
 #define CKR_MUTEX_BAD				(0x1a0)
 #define CKR_MUTEX_NOT_LOCKED			(0x1a1)
-#define CKR_VENDOR_DEFINED			(1 << 31)
+#define CKR_FUNCTION_REJECTED                   (0x200)
+#define CKR_VENDOR_DEFINED			(ck_rv_t)(1 << 31)
 
 
 
@@ -1202,11 +1207,6 @@ typedef struct ck_c_initialize_args *CK_C_INITIALIZE_ARGS_PTR;
 
 #define pReserved reserved
 
-#define CreateMutex create_mutex
-#define DestroyMutex destroy_mutex
-#define LockMutex lock_mutex
-#define UnlockMutex unlock_mutex
-
 #define NULL_PTR NULL
 
 #endif	/* CRYPTOKI_COMPAT */
@@ -1216,5 +1216,9 @@ typedef struct ck_c_initialize_args *CK_C_INITIALIZE_ARGS_PTR;
 #ifdef __WIN32
 #pragma pack(pop, cryptoki)
 #endif	/* !CRYPTOKI_COMPAT */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* PKCS11_H */
