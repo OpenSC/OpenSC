@@ -25,6 +25,7 @@ AC_SUBST(OPENSC_LT_AGE)
 
 AC_CANONICAL_HOST
 AC_PROG_CC
+PKG_PROG_PKG_CONFIG
 AC_C_BIGENDIAN
 
 dnl Check for some target-specific stuff
@@ -58,6 +59,17 @@ case "$host" in
 	with_bundles=yes
 	;;
 esac
+
+dnl Enable/disable openct
+AC_ARG_ENABLE(openct,
+	AC_HELP_STRING([--disable-openct], [disable openct linkage. [[default=no]]]),
+	[ENABLE_OPENCT="${enableval}"],
+	[ENABLE_OPENCT="yes"])
+dnl Enable/disable pcsc
+AC_ARG_ENABLE(pcsc-lite,
+	AC_HELP_STRING([--disable-pcsc-lite], [disable pcsc-lite linkage. [[default=no]]]),
+	[ENABLE_PCSC_LITE="${enableval}"],
+	[ENABLE_PCSC_LITE="yes"])
 
 dnl Options
 AM_MAINTAINER_MODE
@@ -191,14 +203,17 @@ AC_CHECK_HEADER([ltdl.h], [AC_MSG_RESULT([yes])],
    [ AC_MSG_ERROR([ltdl.h not found, please install libltdl and/or libtool]) ])
 LIBS="$saved_LIBS"
 
-PKG_CHECK_MODULES(OPENCT, [libopenct], [
-	OPENCT_MSG=yes
-	AC_DEFINE(HAVE_OPENCT, 1, [Have OpenCT libraries and header files])
-	], [
-	OPENCT_MSG=no
-	])
-AC_SUBST(OPENCT_CFLAGS)
-AC_SUBST(OPENCT_LIBS)
+OPENCT_MSG=no
+if test "x${ENABLE_OPENCT}" = "xyes"; then
+	PKG_CHECK_MODULES(OPENCT, [libopenct], [
+		OPENCT_MSG=yes
+		AC_DEFINE(HAVE_OPENCT, 1, [Have OpenCT libraries and header files])
+		], [
+		OPENCT_MSG=no
+		])
+	AC_SUBST(OPENCT_CFLAGS)
+	AC_SUBST(OPENCT_LIBS)
+fi
 
 AM_CONDITIONAL(HAVE_OPENCT, test "x$OPENCT_MSG" = "xyes")
 
@@ -213,72 +228,75 @@ AC_SUBST(OPENSSL_LIBS)
 
 AM_CONDITIONAL(HAVE_OPENSSL, test "x$OPENSSL_MSG" = "xyes")
 
-PKG_CHECK_MODULES(PCSC, [libpcsclite], [
-        PCSC_MSG=yes
-	AC_DEFINE(HAVE_PCSC, 1, [Have PC/SC implementation])
-        ], [
-        PCSC_MSG=no
-        ])
-AC_SUBST(PCSC_CFLAGS)
-AC_SUBST(PCSC_LIBS)
-
-case "$host" in
-*-*-darwin*)
-	if test -z "$PCSC_LIBS" -a -z "$PCSC_LIBS"
-	then
+PCSC_MSG=no
+if test "x${ENABLE_PCSC_LITE}" = "xyes"; then
+	PKG_CHECK_MODULES(PCSC, [libpcsclite], [
 		PCSC_MSG=yes
-		PCSC_CFLAGS=""
-		PCSC_LIBS="-Wl,-framework,PCSC"
+		AC_DEFINE(HAVE_PCSC, 1, [Have PC/SC implementation])
+		], [
+		PCSC_MSG=no
+		])
+	AC_SUBST(PCSC_CFLAGS)
+	AC_SUBST(PCSC_LIBS)
 
-		# overwrite autoconf cached variables, too.
-		ac_env_PCSC_CFLAGS_set=${PCSC_CFLAGS+set}
-		ac_env_PCSC_CFLAGS_value=$PCSC_CFLAGS
-		ac_cv_env_PCSC_CFLAGS_set=${PCSC_CFLAGS+set}
-		ac_cv_env_PCSC_CFLAGS_value=$PCSC_CFLAGS
-		ac_env_PCSC_LIBS_set=${PCSC_LIBS+set}
-		ac_env_PCSC_LIBS_value=$PCSC_LIBS
-		ac_cv_env_PCSC_LIBS_set=${PCSC_LIBS+set}
-		ac_cv_env_PCSC_LIBS_value=$PCSC_LIBS
+	case "$host" in
+	*-*-darwin*)
+		if test -z "$PCSC_LIBS" -a -z "$PCSC_LIBS"
+		then
+			PCSC_MSG=yes
+			PCSC_CFLAGS=""
+			PCSC_LIBS="-Wl,-framework,PCSC"
 
-		# header files are included via PCSC/*
-		AC_DEFINE(PCSC_INCLUDES_IN_PCSC, 1, [Header files in PCSC subdirectory])
-		AC_DEFINE(HAVE_PCSC, 1 , [Have PC/SC implementation])
+			# overwrite autoconf cached variables, too.
+			ac_env_PCSC_CFLAGS_set=${PCSC_CFLAGS+set}
+			ac_env_PCSC_CFLAGS_value=$PCSC_CFLAGS
+			ac_cv_env_PCSC_CFLAGS_set=${PCSC_CFLAGS+set}
+			ac_cv_env_PCSC_CFLAGS_value=$PCSC_CFLAGS
+			ac_env_PCSC_LIBS_set=${PCSC_LIBS+set}
+			ac_env_PCSC_LIBS_value=$PCSC_LIBS
+			ac_cv_env_PCSC_LIBS_set=${PCSC_LIBS+set}
+			ac_cv_env_PCSC_LIBS_value=$PCSC_LIBS
+
+			# header files are included via PCSC/*
+			AC_DEFINE(PCSC_INCLUDES_IN_PCSC, 1, [Header files in PCSC subdirectory])
+			AC_DEFINE(HAVE_PCSC, 1 , [Have PC/SC implementation])
+		fi
+		;;
+	esac
+
+	saved_LIBS="$LIBS"
+	saved_CFLAGS="$CFLAGS"
+	if test "x$PCSC_MSG" = "xyes"; then
+		CFLAGS="${PCSC_CFLAGS} $saved_CFLAGS"
+		LIBS="$PCSC_LIBS $saved_LIBS"
+		AC_TRY_LINK([
+	#include <stdlib.h>
+	#ifdef PCSC_INCLUDES_IN_PCSC
+	#include <PCSC/wintypes.h>
+	#include <PCSC/winscard.h>
+	#else
+	#include <winscard.h>
+	#endif
+		], [
+	SCardControl(NULL, NULL, 0, NULL, NULL);
+		], [
+			AC_DEFINE(HAVE_PCSC_OLD, 1, [old version of pc/sc-lite])
+		])
 	fi
-	;;
-esac
+	LIBS="$saved_LIBS"
+	CFLAGS="$saved_CFLAGS"
+
+	# check for reader.h
+	saved_CFLAGS="$CFLAGS"
+	CFLAGS="$CFLAGS $PCSC_CFLAGS"
+	AC_CHECK_HEADER(reader.h,
+		[AC_DEFINE([HAVE_READER_H], 1, [Define if pcsc-lite with reader.h exists])],
+		[AC_MSG_WARN([reader.h not found, install pcsc-lite 1.2.9-beta8 or later, or use PCSC_CFLAGS=... ./configure])],
+		[ #include <reader.h>])
+	CFLAGS="$saved_CFLAGS"
+fi
 
 AM_CONDITIONAL(HAVE_PCSC, test "x$PCSC_MSG" = "xyes")
-
-saved_LIBS="$LIBS"
-saved_CFLAGS="$CFLAGS"
-if test "x$PCSC_MSG" = "xyes"; then
-	CFLAGS="${PCSC_CFLAGS} $saved_CFLAGS"
-	LIBS="$PCSC_LIBS $saved_LIBS"
-	AC_TRY_LINK([
-#include <stdlib.h>
-#ifdef PCSC_INCLUDES_IN_PCSC
-#include <PCSC/wintypes.h>
-#include <PCSC/winscard.h>
-#else
-#include <winscard.h>
-#endif
-	], [
-SCardControl(NULL, NULL, 0, NULL, NULL);
-	], [
-		AC_DEFINE(HAVE_PCSC_OLD, 1, [old version of pc/sc-lite])
-	])
-fi
-LIBS="$saved_LIBS"
-CFLAGS="$saved_CFLAGS"
-
-# check for reader.h
-saved_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS $PCSC_CFLAGS"
-AC_CHECK_HEADER(reader.h,
-	[AC_DEFINE([HAVE_READER_H], 1, [Define if pcsc-lite with reader.h exists])],
-	[AC_MSG_WARN([reader.h not found, install pcsc-lite 1.2.9-beta8 or later, or use PCSC_CFLAGS=... ./configure])],
-	[ #include <reader.h>])
-CFLAGS="$saved_CFLAGS"
 
 dnl AM_PATH_LIBASSUAN([MINIMUM-VERSION,
 dnl                   [ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND ]]])
