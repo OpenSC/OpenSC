@@ -41,9 +41,8 @@
    user.
 
    If CRYPTOKI_COMPAT is defined before including this header file,
-   then some type definitions and macros are defined for backwards
-   compatibility in the API.  This approach is merely meant for
-   transition and not perfect.  */
+   then none of the API changes above take place, and the API is the
+   one defined by the PKCS #11 standard.  */
 
 #ifndef PKCS11_H
 #define PKCS11_H 1
@@ -51,6 +50,17 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+
+/* The version of cryptoki we implement.  The revision is changed with
+   each modification of this file.  If you do not use the "official"
+   version of this file, please consider deleting the revision macro
+   (you may use a macro with a different name to keep track of your
+   versions).  */
+#define CRYPTOKI_VERSION_MAJOR		2
+#define CRYPTOKI_VERSION_MINOR		20
+#define CRYPTOKI_VERSION_REVISION	4
+
 
 #ifndef CRYPTOKI_COMPAT
 #define CRYPTOKI_COMPAT 1
@@ -76,6 +86,93 @@ extern "C" {
 #endif
 
 
+#if CRYPTOKI_COMPAT
+  /* If we are in compatibility mode, switch all exposed names to the
+     PKCS #11 variant.  There are corresponding #undefs below.  */
+
+#define ck_flags_t CK_FLAGS
+#define ck_version _CK_VERSION
+
+#define ck_info _CK_INFO
+#define cryptoki_version cryptokiVersion
+#define manufacturer_id manufacturerID
+#define library_description libraryDescription
+#define library_version libraryVersion
+
+#define ck_notification_t CK_NOTIFICATION
+#define ck_slot_id_t CK_SLOT_ID
+
+#define ck_slot_info _CK_SLOT_INFO
+#define slot_description slotDescription
+#define hardware_version hardwareVersion
+#define firmware_version firmwareVersion
+
+#define ck_token_info _CK_TOKEN_INFO
+#define serial_number serialNumber
+#define max_session_count ulMaxSessionCount
+#define session_count ulSessionCount
+#define max_rw_session_count ulMaxRwSessionCount
+#define rw_session_count ulRwSessionCount
+#define max_pin_len ulMaxPinLen
+#define min_pin_len ulMinPinLen
+#define total_public_memory ulTotalPublicMemory
+#define free_public_memory ulFreePublicMemory
+#define total_private_memory ulTotalPrivateMemory
+#define free_private_memory ulFreePrivateMemory
+#define utc_time utcTime
+
+#define ck_session_handle_t CK_SESSION_HANDLE
+#define ck_user_type_t CK_USER_TYPE
+#define ck_state_t CK_STATE
+
+#define ck_session_info _CK_SESSION_INFO
+#define slot_id slotID
+#define device_error ulDeviceError
+
+#define ck_object_handle_t CK_OBJECT_HANDLE
+#define ck_object_class_t CK_OBJECT_CLASS
+#define ck_hw_feature_type_t CK_HW_FEATURE_TYPE
+#define ck_key_type_t CK_KEY_TYPE
+#define ck_certificate_type_t CK_CERTIFICATE_TYPE
+#define ck_attribute_type_t CK_ATTRIBUTE_TYPE
+
+#define ck_attribute _CK_ATTRIBUTE
+#define value pValue
+#define value_len ulValueLen
+
+#define ck_date _CK_DATE
+
+#define ck_mechanism_type_t CK_MECHANISM_TYPE
+
+#define ck_mechanism _CK_MECHANISM
+#define parameter pParameter
+#define parameter_len ulParameterLen
+
+#define ck_mechanism_info _CK_MECHANISM_INFO
+#define min_key_size ulMinKeySize
+#define max_key_size ulMaxKeySize
+
+#define ck_rv_t CK_RV
+#define ck_notify_t CK_NOTIFY
+
+#define ck_function_list _CK_FUNCTION_LIST
+
+#define ck_createmutex_t CK_CREATEMUTEX
+#define ck_destroymutex_t CK_DESTROYMUTEX
+#define ck_lockmutex_t CK_LOCKMUTEX
+#define ck_unlockmutex_t CK_UNLOCKMUTEX
+
+#define ck_c_initialize_args _CK_C_INITIALIZE_ARGS
+#define create_mutex CreateMutex
+#define destroy_mutex DestroyMutex
+#define lock_mutex LockMutex
+#define unlock_mutex UnlockMutex
+#define reserved pReserved
+
+#endif
+
+
+
 typedef unsigned long ck_flags_t;
 
 struct ck_version
@@ -211,7 +308,7 @@ typedef unsigned long ck_object_class_t;
 #define CKO_HW_FEATURE		(5)
 #define CKO_DOMAIN_PARAMETERS	(6)
 #define CKO_MECHANISM		(7)
-#define CKO_VENDOR_DEFINED	(1 << 31)
+#define CKO_VENDOR_DEFINED	(unsigned long) (1 << 31))
 
 
 typedef unsigned long ck_hw_feature_type_t;
@@ -219,7 +316,7 @@ typedef unsigned long ck_hw_feature_type_t;
 #define CKH_MONOTONIC_COUNTER	(1)
 #define CKH_CLOCK		(2)
 #define CKH_USER_INTERFACE	(3)
-#define CKH_VENDOR_DEFINED	(1 << 31)
+#define CKH_VENDOR_DEFINED	((unsigned long) (1 << 31))
 
 
 typedef unsigned long ck_key_type_t;
@@ -249,7 +346,7 @@ typedef unsigned long ck_key_type_t;
 #define CKK_AES			(0x1f)
 #define CKK_BLOWFISH		(0x20)
 #define CKK_TWOFISH		(0x21)
-#define CKK_VENDOR_DEFINED	(1 << 31)
+#define CKK_VENDOR_DEFINED	((unsigned long) (1 << 31))
 
 
 typedef unsigned long ck_certificate_type_t;
@@ -257,7 +354,7 @@ typedef unsigned long ck_certificate_type_t;
 #define CKC_X_509		(0)
 #define CKC_X_509_ATTR_CERT	(1)
 #define CKC_WTLS		(2)
-#define CKC_VENDOR_DEFINED	(1 << 31)
+#define CKC_VENDOR_DEFINED	((unsigned long) (1 << 31))
 
 
 typedef unsigned long ck_attribute_type_t;
@@ -346,7 +443,7 @@ typedef unsigned long ck_attribute_type_t;
 #define CKA_WRAP_TEMPLATE		(CKF_ARRAY_ATTRIBUTE | 0x211)
 #define CKA_UNWRAP_TEMPLATE		(CKF_ARRAY_ATTRIBUTE | 0x212)
 #define CKA_ALLOWED_MECHANISMS		(CKF_ARRAY_ATTRIBUTE | 0x600)
-#define CKA_VENDOR_DEFINED		(1 << 31)
+#define CKA_VENDOR_DEFINED		((unsigned long) (1 << 31))
 
 
 struct ck_attribute
@@ -550,7 +647,7 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_DSA_PARAMETER_GEN		(0x2000)
 #define CKM_DH_PKCS_PARAMETER_GEN	(0x2001)
 #define CKM_X9_42_DH_PARAMETER_GEN	(0x2002)
-#define CKM_VENDOR_DEFINED		(1 << 31)
+#define CKM_VENDOR_DEFINED		((unsigned long) (1 << 31))
 
 
 struct ck_mechanism
@@ -581,14 +678,14 @@ struct ck_mechanism_info
 #define CKF_WRAP		(1 << 17)
 #define CKF_UNWRAP		(1 << 18)
 #define CKF_DERIVE		(1 << 19)
-#define CKF_EXTENSION		(1 << 31)
+#define CKF_EXTENSION		((unsigned long) (1 << 31))
 
 
 /* Flags for C_WaitForSlotEvent.  */
 #define CKF_DONT_BLOCK				(1)
 
 
-typedef unsigned long int ck_rv_t;
+typedef unsigned long ck_rv_t;
 
 
 typedef ck_rv_t (*ck_notify_t) (ck_session_handle_t session,
@@ -597,17 +694,9 @@ typedef ck_rv_t (*ck_notify_t) (ck_session_handle_t session,
 /* Forward reference.  */
 struct ck_function_list;
 
-#ifdef CRYPTOKI_COMPAT
 #define _CK_DECLARE_FUNCTION(name, args)	\
-typedef ck_rv_t (*ck_ ## name ## _t) args;	\
 typedef ck_rv_t (*CK_ ## name) args;		\
 ck_rv_t CK_SPEC name args
-#else
-#define _CK_DECLARE_FUNCTION(name, args)	\
-typedef ck_rv_t (*ck_ ## name ## _t) args;	\
-ck_rv_t CK_SPEC name args
-#endif
-
 
 _CK_DECLARE_FUNCTION (C_Initialize, (void *init_args));
 _CK_DECLARE_FUNCTION (C_Finalize, (void *reserved));
@@ -668,11 +757,11 @@ _CK_DECLARE_FUNCTION (C_Logout, (ck_session_handle_t session));
 
 _CK_DECLARE_FUNCTION (C_CreateObject,
 		      (ck_session_handle_t session,
-		       struct ck_attribute *_template,
+		       struct ck_attribute *templ,
 		       unsigned long count, ck_object_handle_t *object));
 _CK_DECLARE_FUNCTION (C_CopyObject,
 		      (ck_session_handle_t session, ck_object_handle_t object,
-		       struct ck_attribute *_template, unsigned long count,
+		       struct ck_attribute *templ, unsigned long count,
 		       ck_object_handle_t *new_object));
 _CK_DECLARE_FUNCTION (C_DestroyObject,
 		      (ck_session_handle_t session,
@@ -684,16 +773,16 @@ _CK_DECLARE_FUNCTION (C_GetObjectSize,
 _CK_DECLARE_FUNCTION (C_GetAttributeValue,
 		      (ck_session_handle_t session,
 		       ck_object_handle_t object,
-		       struct ck_attribute *_template,
+		       struct ck_attribute *templ,
 		       unsigned long count));
 _CK_DECLARE_FUNCTION (C_SetAttributeValue,
 		      (ck_session_handle_t session,
 		       ck_object_handle_t object,
-		       struct ck_attribute *_template,
+		       struct ck_attribute *templ,
 		       unsigned long count));
 _CK_DECLARE_FUNCTION (C_FindObjectsInit,
 		      (ck_session_handle_t session,
-		       struct ck_attribute *_template,
+		       struct ck_attribute *templ,
 		       unsigned long count));
 _CK_DECLARE_FUNCTION (C_FindObjects,
 		      (ck_session_handle_t session,
@@ -838,7 +927,7 @@ _CK_DECLARE_FUNCTION (C_DecryptVerifyUpdate,
 _CK_DECLARE_FUNCTION (C_GenerateKey,
 		      (ck_session_handle_t session,
 		       struct ck_mechanism *mechanism,
-		       struct ck_attribute *_template,
+		       struct ck_attribute *templ,
 		       unsigned long count,
 		       ck_object_handle_t *key));
 _CK_DECLARE_FUNCTION (C_GenerateKeyPair,
@@ -863,14 +952,14 @@ _CK_DECLARE_FUNCTION (C_UnwrapKey,
 		       ck_object_handle_t unwrapping_key,
 		       unsigned char *wrapped_key,
 		       unsigned long wrapped_key_len,
-		       struct ck_attribute *_template,
+		       struct ck_attribute *templ,
 		       unsigned long attribute_count,
 		       ck_object_handle_t *key));
 _CK_DECLARE_FUNCTION (C_DeriveKey,
 		      (ck_session_handle_t session,
 		       struct ck_mechanism *mechanism,
 		       ck_object_handle_t base_key,
-		       struct ck_attribute *_template,
+		       struct ck_attribute *templ,
 		       unsigned long attribute_count,
 		       ck_object_handle_t *key));
 
@@ -889,74 +978,74 @@ _CK_DECLARE_FUNCTION (C_CancelFunction, (ck_session_handle_t session));
 struct ck_function_list
 {
   struct ck_version version;
-  ck_C_Initialize_t C_Initialize;
-  ck_C_Finalize_t C_Finalize;
-  ck_C_GetInfo_t C_GetInfo;
-  ck_C_GetFunctionList_t C_GetFunctionList;
-  ck_C_GetSlotList_t C_GetSlotList;
-  ck_C_GetSlotInfo_t C_GetSlotInfo;
-  ck_C_GetTokenInfo_t C_GetTokenInfo;
-  ck_C_GetMechanismList_t C_GetMechanismList;
-  ck_C_GetMechanismInfo_t C_GetMechanismInfo;
-  ck_C_InitToken_t C_InitToken;
-  ck_C_InitPIN_t C_InitPIN;
-  ck_C_SetPIN_t C_SetPIN;
-  ck_C_OpenSession_t C_OpenSession;
-  ck_C_CloseSession_t C_CloseSession;
-  ck_C_CloseAllSessions_t C_CloseAllSessions;
-  ck_C_GetSessionInfo_t C_GetSessionInfo;
-  ck_C_GetOperationState_t C_GetOperationState;
-  ck_C_SetOperationState_t C_SetOperationState;
-  ck_C_Login_t C_Login;
-  ck_C_Logout_t C_Logout;
-  ck_C_CreateObject_t C_CreateObject;
-  ck_C_CopyObject_t C_CopyObject;
-  ck_C_DestroyObject_t C_DestroyObject;
-  ck_C_GetObjectSize_t C_GetObjectSize;
-  ck_C_GetAttributeValue_t C_GetAttributeValue;
-  ck_C_SetAttributeValue_t C_SetAttributeValue;
-  ck_C_FindObjectsInit_t C_FindObjectsInit;
-  ck_C_FindObjects_t C_FindObjects;
-  ck_C_FindObjectsFinal_t C_FindObjectsFinal;
-  ck_C_EncryptInit_t C_EncryptInit;
-  ck_C_Encrypt_t C_Encrypt;
-  ck_C_EncryptUpdate_t C_EncryptUpdate;
-  ck_C_EncryptFinal_t C_EncryptFinal;
-  ck_C_DecryptInit_t C_DecryptInit;
-  ck_C_Decrypt_t C_Decrypt;
-  ck_C_DecryptUpdate_t C_DecryptUpdate;
-  ck_C_DecryptFinal_t C_DecryptFinal;
-  ck_C_DigestInit_t C_DigestInit;
-  ck_C_Digest_t C_Digest;
-  ck_C_DigestUpdate_t C_DigestUpdate;
-  ck_C_DigestKey_t C_DigestKey;
-  ck_C_DigestFinal_t C_DigestFinal;
-  ck_C_SignInit_t C_SignInit;
-  ck_C_Sign_t C_Sign;
-  ck_C_SignUpdate_t C_SignUpdate;
-  ck_C_SignFinal_t C_SignFinal;
-  ck_C_SignRecoverInit_t C_SignRecoverInit;
-  ck_C_SignRecover_t C_SignRecover;
-  ck_C_VerifyInit_t C_VerifyInit;
-  ck_C_Verify_t C_Verify;
-  ck_C_VerifyUpdate_t C_VerifyUpdate;
-  ck_C_VerifyFinal_t C_VerifyFinal;
-  ck_C_VerifyRecoverInit_t C_VerifyRecoverInit;
-  ck_C_VerifyRecover_t C_VerifyRecover;
-  ck_C_DigestEncryptUpdate_t C_DigestEncryptUpdate;
-  ck_C_DecryptDigestUpdate_t C_DecryptDigestUpdate;
-  ck_C_SignEncryptUpdate_t C_SignEncryptUpdate;
-  ck_C_DecryptVerifyUpdate_t C_DecryptVerifyUpdate;
-  ck_C_GenerateKey_t C_GenerateKey;
-  ck_C_GenerateKeyPair_t C_GenerateKeyPair;
-  ck_C_WrapKey_t C_WrapKey;
-  ck_C_UnwrapKey_t C_UnwrapKey;
-  ck_C_DeriveKey_t C_DeriveKey;
-  ck_C_SeedRandom_t C_SeedRandom;
-  ck_C_GenerateRandom_t C_GenerateRandom;
-  ck_C_GetFunctionStatus_t C_GetFunctionStatus;
-  ck_C_CancelFunction_t C_CancelFunction;
-  ck_C_WaitForSlotEvent_t C_WaitForSlotEvent;
+  CK_C_Initialize C_Initialize;
+  CK_C_Finalize C_Finalize;
+  CK_C_GetInfo C_GetInfo;
+  CK_C_GetFunctionList C_GetFunctionList;
+  CK_C_GetSlotList C_GetSlotList;
+  CK_C_GetSlotInfo C_GetSlotInfo;
+  CK_C_GetTokenInfo C_GetTokenInfo;
+  CK_C_GetMechanismList C_GetMechanismList;
+  CK_C_GetMechanismInfo C_GetMechanismInfo;
+  CK_C_InitToken C_InitToken;
+  CK_C_InitPIN C_InitPIN;
+  CK_C_SetPIN C_SetPIN;
+  CK_C_OpenSession C_OpenSession;
+  CK_C_CloseSession C_CloseSession;
+  CK_C_CloseAllSessions C_CloseAllSessions;
+  CK_C_GetSessionInfo C_GetSessionInfo;
+  CK_C_GetOperationState C_GetOperationState;
+  CK_C_SetOperationState C_SetOperationState;
+  CK_C_Login C_Login;
+  CK_C_Logout C_Logout;
+  CK_C_CreateObject C_CreateObject;
+  CK_C_CopyObject C_CopyObject;
+  CK_C_DestroyObject C_DestroyObject;
+  CK_C_GetObjectSize C_GetObjectSize;
+  CK_C_GetAttributeValue C_GetAttributeValue;
+  CK_C_SetAttributeValue C_SetAttributeValue;
+  CK_C_FindObjectsInit C_FindObjectsInit;
+  CK_C_FindObjects C_FindObjects;
+  CK_C_FindObjectsFinal C_FindObjectsFinal;
+  CK_C_EncryptInit C_EncryptInit;
+  CK_C_Encrypt C_Encrypt;
+  CK_C_EncryptUpdate C_EncryptUpdate;
+  CK_C_EncryptFinal C_EncryptFinal;
+  CK_C_DecryptInit C_DecryptInit;
+  CK_C_Decrypt C_Decrypt;
+  CK_C_DecryptUpdate C_DecryptUpdate;
+  CK_C_DecryptFinal C_DecryptFinal;
+  CK_C_DigestInit C_DigestInit;
+  CK_C_Digest C_Digest;
+  CK_C_DigestUpdate C_DigestUpdate;
+  CK_C_DigestKey C_DigestKey;
+  CK_C_DigestFinal C_DigestFinal;
+  CK_C_SignInit C_SignInit;
+  CK_C_Sign C_Sign;
+  CK_C_SignUpdate C_SignUpdate;
+  CK_C_SignFinal C_SignFinal;
+  CK_C_SignRecoverInit C_SignRecoverInit;
+  CK_C_SignRecover C_SignRecover;
+  CK_C_VerifyInit C_VerifyInit;
+  CK_C_Verify C_Verify;
+  CK_C_VerifyUpdate C_VerifyUpdate;
+  CK_C_VerifyFinal C_VerifyFinal;
+  CK_C_VerifyRecoverInit C_VerifyRecoverInit;
+  CK_C_VerifyRecover C_VerifyRecover;
+  CK_C_DigestEncryptUpdate C_DigestEncryptUpdate;
+  CK_C_DecryptDigestUpdate C_DecryptDigestUpdate;
+  CK_C_SignEncryptUpdate C_SignEncryptUpdate;
+  CK_C_DecryptVerifyUpdate C_DecryptVerifyUpdate;
+  CK_C_GenerateKey C_GenerateKey;
+  CK_C_GenerateKeyPair C_GenerateKeyPair;
+  CK_C_WrapKey C_WrapKey;
+  CK_C_UnwrapKey C_UnwrapKey;
+  CK_C_DeriveKey C_DeriveKey;
+  CK_C_SeedRandom C_SeedRandom;
+  CK_C_GenerateRandom C_GenerateRandom;
+  CK_C_GetFunctionStatus C_GetFunctionStatus;
+  CK_C_CancelFunction C_CancelFunction;
+  CK_C_WaitForSlotEvent C_WaitForSlotEvent;
 };
 
 
@@ -968,10 +1057,10 @@ typedef ck_rv_t (*ck_unlockmutex_t) (void *mutex);
 
 struct ck_c_initialize_args
 {
-  ck_createmutex_t CreateMutex;
-  ck_destroymutex_t DestroyMutex;
-  ck_lockmutex_t LockMutex;
-  ck_unlockmutex_t UnlockMutex;
+  ck_createmutex_t create_mutex;
+  ck_destroymutex_t destroy_mutex;
+  ck_lockmutex_t lock_mutex;
+  ck_unlockmutex_t unlock_mutex;
   ck_flags_t flags;
   void *reserved;
 };
@@ -1064,14 +1153,14 @@ struct ck_c_initialize_args
 #define CKR_CRYPTOKI_ALREADY_INITIALIZED	(0x191)
 #define CKR_MUTEX_BAD				(0x1a0)
 #define CKR_MUTEX_NOT_LOCKED			(0x1a1)
-#define CKR_FUNCTION_REJECTED                   (0x200)
-#define CKR_VENDOR_DEFINED			(ck_rv_t)(1 << 31)
+#define CKR_FUNCTION_REJECTED			(0x200)
+#define CKR_VENDOR_DEFINED			((unsigned long) (1 << 31))
 
 
 
 /* Compatibility layer.  */
 
-#ifdef CRYPTOKI_COMPAT
+#if CRYPTOKI_COMPAT
 
 #undef CK_DEFINE_FUNCTION
 #define CK_DEFINE_FUNCTION(retval, name) retval CK_SPEC name
@@ -1085,7 +1174,6 @@ typedef unsigned char CK_UTF8CHAR;
 typedef unsigned char CK_BBOOL;
 typedef unsigned long int CK_ULONG;
 typedef long int CK_LONG;
-typedef unsigned long CK_FLAGS;
 typedef CK_BYTE *CK_BYTE_PTR;
 typedef CK_CHAR *CK_CHAR_PTR;
 typedef CK_UTF8CHAR *CK_UTF8CHAR_PTR;
@@ -1109,7 +1197,6 @@ typedef struct ck_version *CK_VERSION_PTR;
 typedef struct ck_info CK_INFO;
 typedef struct ck_info *CK_INFO_PTR;
 
-typedef ck_slot_id_t CK_SLOT_ID;
 typedef ck_slot_id_t *CK_SLOT_ID_PTR;
 
 typedef struct ck_slot_info CK_SLOT_INFO;
@@ -1118,29 +1205,14 @@ typedef struct ck_slot_info *CK_SLOT_INFO_PTR;
 typedef struct ck_token_info CK_TOKEN_INFO;
 typedef struct ck_token_info *CK_TOKEN_INFO_PTR;
 
-typedef ck_session_handle_t CK_SESSION_HANDLE;
 typedef ck_session_handle_t *CK_SESSION_HANDLE_PTR;
-
-typedef ck_user_type_t CK_USER_TYPE;
-
-typedef ck_state_t CK_STATE;
 
 typedef struct ck_session_info CK_SESSION_INFO;
 typedef struct ck_session_info *CK_SESSION_INFO_PTR;
 
-typedef ck_object_handle_t CK_OBJECT_HANDLE;
 typedef ck_object_handle_t *CK_OBJECT_HANDLE_PTR;
 
-typedef ck_object_class_t CK_OBJECT_CLASS;
 typedef ck_object_class_t *CK_OBJECT_CLASS_PTR;
-
-typedef ck_hw_feature_type_t CK_HW_FEATURE_TYPE;
-
-typedef ck_key_type_t CK_KEY_TYPE;
-
-typedef ck_certificate_type_t CK_CERTIFICATE_TYPE;
-
-typedef ck_attribute_type_t CK_ATTRIBUTE_TYPE;
 
 typedef struct ck_attribute CK_ATTRIBUTE;
 typedef struct ck_attribute *CK_ATTRIBUTE_PTR;
@@ -1148,7 +1220,6 @@ typedef struct ck_attribute *CK_ATTRIBUTE_PTR;
 typedef struct ck_date CK_DATE;
 typedef struct ck_date *CK_DATE_PTR;
 
-typedef ck_mechanism_type_t CK_MECHANISM_TYPE;
 typedef ck_mechanism_type_t *CK_MECHANISM_TYPE_PTR;
 
 typedef struct ck_mechanism CK_MECHANISM;
@@ -1157,57 +1228,94 @@ typedef struct ck_mechanism *CK_MECHANISM_PTR;
 typedef struct ck_mechanism_info CK_MECHANISM_INFO;
 typedef struct ck_mechanism_info *CK_MECHANISM_INFO_PTR;
 
-typedef ck_rv_t CK_RV;
-
-typedef ck_notify_t CK_NOTIFY;
-
 typedef struct ck_function_list CK_FUNCTION_LIST;
 typedef struct ck_function_list *CK_FUNCTION_LIST_PTR;
 typedef struct ck_function_list **CK_FUNCTION_LIST_PTR_PTR;
 
-typedef ck_createmutex_t CK_CREATEMUTEX;
-typedef ck_destroymutex_t CK_DESTROYMUTEX;
-typedef ck_lockmutex_t CK_LOCKMUTEX;
-typedef ck_unlockmutex_t CK_UNLOCKMUTEX;
-
 typedef struct ck_c_initialize_args CK_C_INITIALIZE_ARGS;
 typedef struct ck_c_initialize_args *CK_C_INITIALIZE_ARGS_PTR;
 
-
-/* FIXME: This is a bit crude.  */
-#define cryptokiVersion cryptoki_version
-#define manufacturerID manufacturer_id
-#define libraryDescription library_description
-#define libraryVersion library_version
-
-#define ulMinKeySize min_key_size
-#define ulMaxKeySize max_key_size
-#define pValue value
-#define ulValueLen value_len
-
-#define slotID slot_id
-#define ulDeviceError device_error
-
-#define slotDescription slot_description
-#define hardwareVersion hardware_version
-#define firmwareVersion firmware_version
-
-#define serialNumber serial_number
-#define ulMaxSessionCount max_session_count
-#define ulSessionCount session_count
-#define ulMaxRwSessionCount max_rw_session_count
-#define ulRwSessionCount rw_session_count
-#define ulMaxPinLen max_pin_len
-#define ulMinPinLen min_pin_len
-#define ulTotalPublicMemory total_public_memory
-#define ulFreePublicMemory free_public_memory
-#define ulTotalPrivateMemory total_private_memory
-#define ulFreePrivateMemory free_private_memory
-#define utcTime utc_time
-
-#define pReserved reserved
-
 #define NULL_PTR NULL
+
+/* Delete the helper macros defined at the top of the file.  */
+#undef ck_flags_t
+#undef ck_version
+
+#undef ck_info
+#undef cryptoki_version
+#undef manufacturer_id
+#undef library_description
+#undef library_version
+
+#undef ck_notification_t
+#undef ck_slot_id_t
+
+#undef ck_slot_info
+#undef slot_description
+#undef hardware_version
+#undef firmware_version
+
+#undef ck_token_info
+#undef serial_number
+#undef max_session_count
+#undef session_count
+#undef max_rw_session_count
+#undef rw_session_count
+#undef max_pin_len
+#undef min_pin_len
+#undef total_public_memory
+#undef free_public_memory
+#undef total_private_memory
+#undef free_private_memory
+#undef utc_time
+
+#undef ck_session_handle_t
+#undef ck_user_type_t
+#undef ck_state_t
+
+#undef ck_session_info
+#undef slot_id
+#undef device_error
+
+#undef ck_object_handle_t
+#undef ck_object_class_t
+#undef ck_hw_feature_type_t
+#undef ck_key_type_t
+#undef ck_certificate_type_t
+#undef ck_attribute_type_t
+
+#undef ck_attribute
+#undef value
+#undef value_len
+
+#undef ck_date
+
+#undef ck_mechanism_type_t
+
+#undef ck_mechanism
+#undef parameter
+#undef parameter_len
+
+#undef ck_mechanism_info
+#undef min_key_size
+#undef max_key_size
+
+#undef ck_rv_t
+#undef ck_notify_t
+
+#undef ck_function_list
+
+#undef ck_createmutex_t
+#undef ck_destroymutex_t
+#undef ck_lockmutex_t
+#undef ck_unlockmutex_t
+
+#undef ck_c_initialize_args
+#undef create_mutex
+#undef destroy_mutex
+#undef lock_mutex
+#undef unlock_mutex
+#undef reserved
 
 #endif	/* CRYPTOKI_COMPAT */
 
@@ -1215,7 +1323,7 @@ typedef struct ck_c_initialize_args *CK_C_INITIALIZE_ARGS_PTR;
 /* System dependencies.  */
 #ifdef __WIN32
 #pragma pack(pop, cryptoki)
-#endif	/* !CRYPTOKI_COMPAT */
+#endif
 
 #ifdef __cplusplus
 }
