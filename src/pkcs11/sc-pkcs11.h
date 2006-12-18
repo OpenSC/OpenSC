@@ -32,7 +32,6 @@
 #include <opensc/log.h>
 
 #define CRYPTOKI_EXPORTS
-#define CRYPTOKI_COMPAT
 #include <pkcs11.h>
 
 #ifdef __cplusplus

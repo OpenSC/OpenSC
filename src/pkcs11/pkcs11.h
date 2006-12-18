@@ -16,10 +16,18 @@
    they can be picked up by other projects from there as well.  */
 
 /* This file is a modified implementation of the PKCS #11 standard by
-   RSA Security Inc.  The goal is ABI compatibility to the PKCS #11
-   standard on the one hand and conformance to the GNU coding standard
-   in the API on the other hand.  For this, the following changes are
-   made to the specification:
+   RSA Security Inc.  It is mostly a drop-in replacement, with the
+   following change:
+
+   This header file does not require any macro definitions by the user
+   (like CK_DEFINE_FUNCTION etc).  In fact, it defines those macros
+   for you (if useful, some are missing, let me know if you need
+   more).
+
+   There is an additional API available that does comply better to the
+   GNU coding standard.  It can be switched on by defining
+   CRYPTOKI_GNU before including this header file.  For this, the
+   following changes are made to the specification:
 
    All structure types are changed to a "struct ck_foo" where CK_FOO
    is the type name in PKCS #11.
@@ -35,10 +43,8 @@
    Note that function names are still in the original case, as they
    need for ABI compatibility.
 
-   CK_FALSE, CK_TRUE and NULL_PTR are removed without substitute.
-
-   This header file does not require any macro definitions by the
-   user.
+   CK_FALSE, CK_TRUE and NULL_PTR are removed without substitute.  Use
+   <stdbool.h>.
 
    If CRYPTOKI_COMPAT is defined before including this header file,
    then none of the API changes above take place, and the API is the
@@ -59,11 +65,15 @@ extern "C" {
    versions).  */
 #define CRYPTOKI_VERSION_MAJOR		2
 #define CRYPTOKI_VERSION_MINOR		20
-#define CRYPTOKI_VERSION_REVISION	4
+#define CRYPTOKI_VERSION_REVISION	6
 
 
+/* Compatibility interface is default, unless CRYPTOKI_GNU is
+   given.  */
+#ifndef CRYPTOKI_GNU
 #ifndef CRYPTOKI_COMPAT
 #define CRYPTOKI_COMPAT 1
+#endif
 #endif
 
 /* System dependencies.  */
@@ -169,7 +179,7 @@ extern "C" {
 #define unlock_mutex UnlockMutex
 #define reserved pReserved
 
-#endif
+#endif	/* CRYPTOKI_COMPAT */
 
 
 
@@ -1321,11 +1331,11 @@ typedef struct ck_c_initialize_args *CK_C_INITIALIZE_ARGS_PTR;
 
 
 /* System dependencies.  */
-#ifdef __WIN32
+#if defined(_WIN32) || defined(CRYPTOKI_FORCE_WIN32)
 #pragma pack(pop, cryptoki)
 #endif
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 
