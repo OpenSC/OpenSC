@@ -28,6 +28,14 @@
 
 #include "muscle-filesystem.h"
 
+#define MSC_MAX_APDU 256 /* Max APDU send/recv, used for stack allocation */
+#define MSC_MAX_PIN_LENGTH 8
+#define MSC_MAX_PIN_COMMAND_LENGTH ((1 + MSC_MAX_PIN_LENGTH) * 2)
+
+/* Currently max size handled by muscle driver is 255 ... */
+#define MSC_MAX_READ (MIN(card->reader->driver->max_recv_size,255))
+#define MSC_MAX_SEND (MIN(card->reader->driver->max_send_size,255))
+
 int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file);
 int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *data, size_t dataLength);
 int msc_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *data, size_t dataLength);
@@ -40,11 +48,11 @@ int msc_delete_object(sc_card_t *card, msc_id objectId, int zero);
 int msc_select_applet(sc_card_t *card, u8 *appletId, size_t appletIdLength);
 
 int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLength, int *tries);
-void msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, int pinNumber, const u8 *pinValue, int pinLength);
+void msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength);
 int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukLength, int *tries);
-void msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, int pinNumber, const u8 *pukValue, int pukLength);
+void msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pukValue, int pukLength);
 int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength, int *tries);
-void msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength);
+void msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength);
 
 int msc_get_challenge(sc_card_t *card, short dataLength, short seedLength, u8 *seedData, u8* outputData);
 

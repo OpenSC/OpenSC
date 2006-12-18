@@ -29,7 +29,6 @@ typedef struct msc_id {
 	u8 id[4];
 } msc_id;
 
-
 typedef struct mscfs_file {
 	msc_id objectId;
 	size_t size;
