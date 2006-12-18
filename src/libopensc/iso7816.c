@@ -307,7 +307,7 @@ static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 			sc_debug(ctx, "  file identifier: 0x%02X%02X\n", tag[0],
 			       tag[1]);
 	}
-	tag = sc_asn1_find_tag(ctx, p, len, 0x81, &taglen);
+	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
 		if (ctx->debug >= 3)
@@ -315,7 +315,7 @@ static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 		file->size = bytes;
 	}
 	if (tag == NULL) {
-		tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
+		tag = sc_asn1_find_tag(ctx, p, len, 0x81, &taglen);
 		if (tag != NULL && taglen >= 2) {
 			int bytes = (tag[0] << 8) + tag[1];
 			if (ctx->debug >= 3)
