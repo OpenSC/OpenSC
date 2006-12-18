@@ -157,6 +157,7 @@ static struct profile_operations {
 	{ "setcos", (void *) sc_pkcs15init_get_setcos_ops },
 	{ "incrypto34", (void *) sc_pkcs15init_get_incrypto34_ops },
 	{ "muscle", (void*) sc_pkcs15init_get_muscle_ops },
+	{ "apcos",  (void*) sc_pkcs15init_get_apcos_ops  },
 	{ NULL, NULL },
 };
 
@@ -3025,7 +3026,7 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 	sc_keycache_put_key(path, type, reference, pinbuf, *pinsize);
 
 	/* If it's a PIN, pad it out */
-found:	if (type == SC_AC_CHV) {
+found:	if (type == SC_AC_CHV && pin_info.flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING) {
 		int left = pro->pin_maxlen - *pinsize;
 
 		if (left > 0) {
