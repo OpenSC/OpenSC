@@ -26,7 +26,7 @@ typedef struct sc_profile sc_profile_t; /* opaque type */
 struct sc_pkcs15init_operations {
 	/*
 	 * Erase everything that's on the card
-	 * So far, only the GPK supports this */
+	 */
 	int	(*erase_card)(struct sc_profile *, struct sc_card *);
 
 	/*
@@ -400,6 +400,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_oberthur_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_setcos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_incrypto34_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_muscle_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_apcos_ops(void);
 
 #ifdef __cplusplus
 }
