@@ -37,7 +37,7 @@ int main(void)
 	return 0;
 #endif
 	
-	pl.signdata = strdup("12345\nMoro moro, mitä poro\nTesting 1234567890");
+	pl.signdata = strdup("12345\ntest foo bar one two three\nTesting 1234567890");
 	pl.signdata_len = strlen(pl.signdata);
 	r = create_envelope(&pl, &data, &datalen);
 	if (r) {
