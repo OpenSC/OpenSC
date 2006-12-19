@@ -1,7 +1,7 @@
 /*
  * piv-tool.c: Tool for accessing smart cards with libopensc
  *
- * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi>
  * Copyright (C) 2005, Douglas E. Engert <deengert@anl.gov>
  *
  * This library is free software; you can redistribute it and/or
