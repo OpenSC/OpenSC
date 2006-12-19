@@ -1,7 +1,7 @@
 /*
  * Oberthur specific operation for PKCS #15 initialization
  *
- * Copyright (C) 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2002  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi>
  * Copyright (C) 2003  Idealx <www.idealx.org>
  *                     Viktor Tarasov <vtarasov@idealx.com>
  *
