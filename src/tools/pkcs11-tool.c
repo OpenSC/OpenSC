@@ -34,6 +34,9 @@
 #include "openssl/err.h"
 #endif
 
+extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
+extern CK_RV C_UnloadModule(void *module);
+
 #define NEED_SESSION_RO	0x01
 #define NEED_SESSION_RW	0x02
 #define NO_SLOT		((CK_SLOT_ID) -1)
