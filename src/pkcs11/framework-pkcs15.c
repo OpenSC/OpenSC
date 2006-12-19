@@ -1,7 +1,7 @@
 /*
  * framework-pkcs15.c: PKCS#15 framework and related objects
  *
- * Copyright (C) 2002  Timo Ter‰s <timo.teras@iki.fi>
+ * Copyright (C) 2002  Timo Ter√§s <timo.teras@iki.fi>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

@@ -1,7 +1,7 @@
 /*
  * pkcs11-object.c: PKCS#11 object management and handling functions
  *
- * Copyright (C) 2002  Timo Ter‰s <timo.teras@iki.fi>
+ * Copyright (C) 2002  Timo Ter√§s <timo.teras@iki.fi>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
