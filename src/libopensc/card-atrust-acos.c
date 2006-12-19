@@ -2,7 +2,7 @@
  * atrust-acos.c: Support for A-Trust ACOS based cards
  *
  * Copyright (C) 2005  Franz Brandl <brandl@a-trust.at> based on work from
- *                     Jörn Zukowski <zukowski@trustcenter.de> and 
+ *                     JÃ¶rn Zukowski <zukowski@trustcenter.de> and 
  *                     Nils Larsch   <larsch@trustcenter.de>, TrustCenter AG
  *
  * This library is free software; you can redistribute it and/or

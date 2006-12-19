@@ -1,7 +1,7 @@
 /*
  * card-starcos.c: Support for STARCOS SPK 2.3 cards
  *
- * Copyright (C) 2003  Jörn Zukowski <zukowski@trustcenter.de> and 
+ * Copyright (C) 2003  JÃ¶rn Zukowski <zukowski@trustcenter.de> and 
  *                     Nils Larsch   <larsch@trustcenter.de>, TrustCenter AG
  *
  * This library is free software; you can redistribute it and/or

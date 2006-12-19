@@ -1,7 +1,7 @@
 /*
  * card-setcos.c: Support for PKI cards by Setec
  *
- * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001, 2002  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi>
  * Copyright (C) 2005  Antti Tapaninen <aet@cc.hut.fi>
  * Copyright (C) 2005  Zetes
  *

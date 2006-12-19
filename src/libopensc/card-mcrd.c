@@ -4,7 +4,7 @@
  * Copyright (C) 2004  Martin Paljak <martin@paljak.pri.ee>
  * Copyright (C) 2004  Priit Randla <priit.randla@eyp.ee>
  * Copyright (C) 2003  Marie Fischer <marie@vtl.ee> 
- * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi>
  * Copyright (C) 2002  g10 Code GmbH
  *
  * This library is free software; you can redistribute it and/or

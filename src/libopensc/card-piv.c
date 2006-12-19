@@ -2,7 +2,7 @@
  * card-piv.c: Support for PIV-II from NIST SP800-73 
  * card-default.c: Support for cards with no driver
  *
- * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001, 2002  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi>
  * Copyright (C) 2005, Douglas E. Engert <deengert@anl.gov>
  *
  * This library is free software; you can redistribute it and/or
