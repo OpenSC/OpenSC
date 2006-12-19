@@ -1,7 +1,7 @@
 /*
  * sc-padding.c: miscellaneous padding functions
  *
- * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001, 2002  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi>
  * Copyright (C) 2003	Nils Larsch <larsch@trustcenter.de>
  *
  * This library is free software; you can redistribute it and/or

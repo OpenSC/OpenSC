@@ -1,7 +1,7 @@
 /*
  * log.c: Miscellaneous logging functions
  *
- * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001, 2002  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi>
  * Copyright (C) 2003  Antti Tapaninen <aet@cc.hut.fi>
  *
  * This library is free software; you can redistribute it and/or

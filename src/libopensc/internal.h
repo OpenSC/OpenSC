@@ -1,7 +1,7 @@
 /*
  * internal.h: Internal definitions for libopensc
  *
- * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001, 2002  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi>
  *               2005        The OpenSC project
  *
  * This library is free software; you can redistribute it and/or

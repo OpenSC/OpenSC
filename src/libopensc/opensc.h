@@ -1,7 +1,7 @@
 /*
  * opensc.h: OpenSC library header file
  *
- * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2001, 2002  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi>
  *               2005        The OpenSC project
  *
  * This library is free software; you can redistribute it and/or
@@ -315,7 +315,7 @@ typedef struct sc_reader {
 
 #define SC_PIN_ENCODING_ASCII	0
 #define SC_PIN_ENCODING_BCD	1
-#define SC_PIN_ENCODING_GLP	2 /* Global Platform - Card Specification – v 2.0.1 */
+#define SC_PIN_ENCODING_GLP	2 /* Global Platform - Card Specification v2.0.1 */
 
 struct sc_pin_cmd_pin {
 	const char *prompt;	/* Prompt to display */
