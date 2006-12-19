@@ -1,4 +1,4 @@
-/* Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi> 
+/* Copyright (C) 2001  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi> 
  * All rights reserved.
  *
  * Pseudo-random number generator test program
