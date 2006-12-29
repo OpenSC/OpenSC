@@ -448,6 +448,7 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 			 */
 			size_t le, buflen;
 			u8     *buf;
+			int 	len = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
 
 			if (card->ops->get_response == NULL) {
 				/* this should _never_ happen */
@@ -466,13 +467,13 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 			buflen = olen - apdu->resplen;
 
 			/* 0x6100 means at least 256 more bytes to read */
-			le = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
 
 			do {
 				u8 tbuf[256];
 				/* call GET RESPONSE to get more date from
 				 * the card; note: GET RESPONSE returns the
 				 * amount of data left (== SW2) */
+				le = len - (buf - apdu->resp);
 				r = card->ops->get_response(card, &le, tbuf);
 				if (r < 0)
 					SC_FUNC_RETURN(ctx, 2, r);
@@ -483,7 +484,7 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 				memcpy(buf, tbuf, le);
 				buf    += le;
 				buflen -= le;
-			} while (r != 0);
+			} while (r != 0 || (buf - apdu->resp < len));
 			/* we've read all data, let's return 0x9000 */
 			apdu->resplen = buf - apdu->resp;
 			apdu->sw1 = 0x90;
