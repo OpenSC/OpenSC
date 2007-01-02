@@ -311,13 +311,19 @@ struct sc_cardctl_oberthur_genkey_info {
 	unsigned long   exponent;
 	unsigned char * pubkey;
 	unsigned int    pubkey_len;
+
+	int     method;     /* SC_AC_XXX */
+	int     key_ref;    /* key reference */		
 };
 
 struct sc_cardctl_oberthur_updatekey_info {
 	enum SC_CARDCTL_OBERTHUR_KEY_TYPE  type;
-	unsigned int    component;
-	const unsigned char *data;
-	unsigned int    len;
+
+	unsigned char   *data;
+	unsigned int    data_len;
+
+	unsigned char   id[256];
+	unsigned int    id_len;
 };
 
 struct sc_cardctl_oberthur_createpin_info {
