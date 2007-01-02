@@ -13,7 +13,6 @@ cardinfo {
 	# Delete or not the public key when inconporating the 
 	# corresponding certificate.
 	keep-public-key		= no;   # yes/no 
-
 }
 
 # Define reasonable limits for PINs and PUK
@@ -38,11 +37,11 @@ PIN so-pin {
     max-length  = 64;
     min-length  = 4;
     flags   = 0xB2;
-	reference = 2
+	reference = 4
 #	default-value = "31:32:33:34:35:36:37:38";
 }
 
-# CHV3 used for Oberthur's specifique access condition "PIN or SOPIN"
+# CHV5 used for Oberthur's specifique access condition "PIN or SOPIN"
 # Any value for this pin can given, when the OpenSC tools are asking for.
 
 # Additional filesystem info.
@@ -50,11 +49,11 @@ PIN so-pin {
 # main profile.
 filesystem {
     DF MF {
-		ACL = *=CHV2;
+		ACL = *=CHV4;
 
 		DF OberthurAWP-AppDF {
 			ACL = *=NONE;
-	    	ACL	= CREATE=CHV2, CRYPTO=NEVER;
+	    	ACL	= CREATE=CHV4, CRYPTO=NEVER, PIN_SET=CHV4, PIN_RESET=PRO0x78;
 			file-id 	= 5011;
 			size = 40;
 			
@@ -72,7 +71,8 @@ filesystem {
 		    		file-id		= 3000;
 					type	= internal-ef;
 					# READ acl used instead of DECRYPT/SIGN
-					ACL     = UPDATE=CHV1, READ=CHV1;
+					#ACL     = UPDATE=CHV1, READ=CHV1;
+					ACL     = UPDATE=PRO0x78, READ=CHV1;
 				}
 				
 				# Private DES keys
@@ -145,7 +145,13 @@ filesystem {
 			EF OberthurAWP-token-info {
 				file-id 	= 1000;
 				size	= 36;
-				ACL     = WRITE=CHV2, UPDATE=CHV2, READ=NONE, ERASE=NEVER;
+				ACL     = WRITE=CHV4, UPDATE=CHV4, READ=NONE, ERASE=NEVER;
+			}
+			
+			EF OberthurAWP-puk-file {
+				file-id 	= 2000;
+				size	= 16;
+				ACL     = WRITE=NEVER, UPDATE=CHV4, READ=PRO0x68, ERASE=NEVER;
 			}
 			
 			EF OberthurAWP-container-list {
@@ -153,7 +159,7 @@ filesystem {
 				structure	= linear-variable;
 				size 		= 20;
 				record-length = 141; 
-				ACL = WRITE=NONE, UPDATE=NONE, READ=NONE, ERASE=CHV3;
+				ACL = WRITE=NONE, UPDATE=NONE, READ=NONE, ERASE=CHV5;
 			}
 			
 			EF OberthurAWP-public-list {
@@ -170,17 +176,17 @@ filesystem {
 		}
 		
         DF PKCS15-AppDF { 
-			ACL     = *=CHV2, FILES=NONE;
+			ACL     = *=CHV4, FILES=NONE;
 			size = 20;
 
 			EF template-data-1 {
 				file-id     = 3301;
-				ACL     = *=CHV2, READ=NONE;
+				ACL     = *=CHV4, READ=NONE;
 			}
 
 			EF template-data-2 {
 				file-id     = 3302;
-				ACL     = *=CHV2, READ=NONE;
+				ACL     = *=CHV4, READ=NONE;
 			}
 		}
     }
