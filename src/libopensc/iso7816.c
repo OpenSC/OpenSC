@@ -426,6 +426,14 @@ static int iso7816_select_file(sc_card_t *card,
 			pathlen -= 2;
 		}
 		break;
+	case SC_PATH_TYPE_FROM_CURRENT:
+		apdu.p1 = 9;
+		break;
+	case SC_PATH_TYPE_PARENT:
+		apdu.p1 = 3;
+		pathlen = 0;
+		apdu.cse = SC_APDU_CASE_2_SHORT;
+		break;
 	default:
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
 	}
