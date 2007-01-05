@@ -165,6 +165,7 @@ static int pcsc_internal_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 	SCARDHANDLE card;
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 
+	SC_FUNC_CALLED(reader->ctx, 3);
 	assert(pslot != NULL);
 	card = pslot->pcsc_card;
 
@@ -271,6 +272,7 @@ static int refresh_slot_attributes(sc_reader_t *reader, sc_slot_info_t *slot)
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	LONG ret;
 
+	SC_FUNC_CALLED(reader->ctx, 3);
 	if (pslot->reader_state.szReader == NULL) {
 		pslot->reader_state.szReader = priv->reader_name;
 		pslot->reader_state.dwCurrentState = SCARD_STATE_UNAWARE;
@@ -614,6 +616,7 @@ static int pcsc_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 	long rv;
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 
+	SC_FUNC_CALLED(reader->ctx, 3);
 	assert(pslot != NULL);
 
 	rv = SCardBeginTransaction(pslot->pcsc_card);
@@ -646,17 +649,17 @@ static int pcsc_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
+	SC_FUNC_CALLED(reader->ctx, 3);
 	assert(pslot != NULL);
 
 	rv = SCardEndTransaction(pslot->pcsc_card, priv->gpriv->transaction_reset ?
                            SCARD_RESET_CARD : SCARD_LEAVE_CARD);
+
+	pslot->locked = 0;
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_ERROR(reader->ctx, "SCardEndTransaction failed", rv);
 		return pcsc_ret_to_error(rv);
 	}
-
-	pslot->locked = 0;
-	
 	return 0;
 }
 
