@@ -33,11 +33,6 @@
 static struct sc_atr_table mcrd_atrs[] = {
 	{"3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", NULL,
 	  "Micardo 2.1/German BMI/D-Trust", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
-	{"3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:43", NULL, "EstEID (cold)", SC_CARD_TYPE_MCRD_ESTEID, 0, NULL},
-	{"3B:6E:00:FF:45:73:74:45:49:44:20:76:65:72:20:31:2E:30", NULL,
-	 "EstEID (warm)", SC_CARD_TYPE_MCRD_ESTEID, 0, NULL},
-	{"3B:6E:00:00:45:73:74:45:49:44:20:76:65:72:20:31:2E:30", NULL,
-	 "EstEID (multos)", SC_CARD_TYPE_MCRD_ESTEID, 0, NULL},
 	{"3b:6f:00:ff:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00", NULL,
 	  "D-Trust", SC_CARD_TYPE_MCRD_DTRUST, 0, NULL},
 	{"3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6", NULL,
@@ -246,9 +241,29 @@ static int mcrd_set_decipher_key_ref(sc_card_t * card, int key_reference)
 	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
+static int is_esteid_atr(u8 *atr, size_t atr_len) {
+	const char *str = "EstEID ver 1.0";
+	unsigned int i;
+	
+	if (atr_len<14)
+		return 0;
+
+	for (i = 0; i<atr_len-14; i++) {
+		if (!memcmp(atr++, str, 14))
+			return 1;
+	}
+	return 0;
+}
+
 static int mcrd_match_card(sc_card_t * card)
 {
 	int i;
+
+	if (is_esteid_atr(card->atr, card->atr_len)) {
+		sc_debug(card->ctx, "Found EstEID ver 1.0 card!");
+		card->type = SC_CARD_TYPE_MCRD_ESTEID;
+		return 1;
+	}
 
 	i = _sc_match_atr(card, mcrd_atrs, &card->type);
 	if (i < 0)
