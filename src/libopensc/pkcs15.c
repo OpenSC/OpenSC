@@ -725,7 +725,7 @@ int sc_pkcs15_bind(sc_card_t *card,
 	enable_emu = scconf_get_bool(conf_block, "enable_pkcs15_emulation", 1);
 	if (enable_emu) {
 		emu_first = scconf_get_bool(conf_block, "try_emulation_first", 0);
-		if (emu_first) {
+		if (emu_first || sc_pkcs15_is_emulation_only(card)) {
 			r = sc_pkcs15_bind_synthetic(p15card);
 			if (r == SC_SUCCESS)
 				goto done;

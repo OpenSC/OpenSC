@@ -77,6 +77,16 @@ static const char *func_name    = "sc_pkcs15_init_func";
 static const char *exfunc_name  = "sc_pkcs15_init_func_ex";
 
 
+int sc_pkcs15_is_emulation_only(sc_card_t *card)
+{
+	switch (card->type) {
+		case SC_CARD_TYPE_MCRD_ESTEID:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
 int
 sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 {
