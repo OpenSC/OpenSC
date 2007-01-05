@@ -732,17 +732,24 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	gpriv->pcsc_ctx = pcsc_ctx;
+
+	
+	/* Defaults */
+	gpriv->connect_reset = 1;
+	gpriv->connect_exclusive = 0;
+	gpriv->transaction_reset = 0;
+	gpriv->enable_pinpad = 0;
 	
 	conf_block = sc_get_conf_block(ctx, "reader_driver", "pcsc", 1);
 	if (conf_block) {
 		gpriv->connect_reset =
-		    scconf_get_bool(conf_block, "connect_reset", 1);
+		    scconf_get_bool(conf_block, "connect_reset", gpriv->connect_reset);
 		gpriv->connect_exclusive =
-		    scconf_get_bool(conf_block, "connect_exclusive", 0);
+		    scconf_get_bool(conf_block, "connect_exclusive", gpriv->connect_exclusive);
 		gpriv->transaction_reset =
-		    scconf_get_bool(conf_block, "transaction_reset", 0);
+		    scconf_get_bool(conf_block, "transaction_reset", gpriv->transaction_reset);
 		gpriv->enable_pinpad =
-		    scconf_get_bool(conf_block, "enable_pinpad", 0);		    
+		    scconf_get_bool(conf_block, "enable_pinpad", gpriv->enable_pinpad);
 	}
 	*reader_data = gpriv;
 
