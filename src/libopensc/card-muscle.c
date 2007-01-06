@@ -517,7 +517,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 {
 	muscle_private_t* priv = MUSCLE_DATA(card);
 	const int bufferLength = MSC_MAX_PIN_COMMAND_LENGTH;
-	u8 buffer[bufferLength];
+	u8 buffer[MSC_MAX_PIN_COMMAND_LENGTH];
 	switch(cmd->cmd) {
 	case SC_PIN_CMD_VERIFY:
 		switch(cmd->pin_type) {

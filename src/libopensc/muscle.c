@@ -289,7 +289,7 @@ int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 	int r;
 
 	const int bufferLength = MSC_MAX_PIN_LENGTH;
-	u8 buffer[bufferLength];
+	u8 buffer[MSC_MAX_PIN_LENGTH];
 	assert(pinLength <= MSC_MAX_PIN_LENGTH);
 
 	msc_verify_pin_apdu(card, &apdu, buffer, bufferLength, pinNumber, pinValue, pinLength);
@@ -333,7 +333,7 @@ int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukL
 	sc_apdu_t apdu;
 	int r;
 	const int bufferLength = MSC_MAX_PIN_LENGTH;
-	u8 buffer[bufferLength];
+	u8 buffer[MSC_MAX_PIN_LENGTH];
 
 	assert(pukLength <= MSC_MAX_PIN_LENGTH);
 
@@ -377,7 +377,7 @@ int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 	sc_apdu_t apdu;
 	int r;
 	const int bufferLength = (MSC_MAX_PIN_LENGTH + 1) * 2;
-	u8 buffer[bufferLength];
+	u8 buffer[(MSC_MAX_PIN_LENGTH + 1) * 2];
 
 	msc_change_pin_apdu(card, &apdu, buffer, bufferLength, pinNumber, pinValue, pinLength, newPin, newPinLength);
 	if(tries)
