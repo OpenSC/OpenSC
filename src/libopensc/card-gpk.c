@@ -24,16 +24,8 @@
 #ifdef HAVE_OPENSSL
 #include <stdlib.h>
 #include <string.h>
-#include <openssl/des.h>
+#include <openssl/evp.h>
 #include <openssl/rand.h>
-
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L
-#define des_cleanse(k)	OPENSSL_cleanse(k.ks, sizeof(k.ks))
-#else
-#define des_cleanse(k)	memset(&k, 0, sizeof(k))
-#define DES_set_key_unchecked(a,b) des_set_key_unchecked(a,*b)
-#define DES_ecb3_encrypt(a,b,c,d,e,f) des_ecb3_encrypt(a,b,*c,*d,*e,f)
-#endif
 
 #define GPK_SEL_MF		0x00
 #define GPK_SEL_DF		0x01
@@ -775,13 +767,10 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 			u8 *crycks1)
 {
 	struct gpk_private_data *priv = DRVDATA(card);
-	des_key_schedule k1, k2;
 	u8		in[8], out[8], block[64];
-	unsigned int	len = 0, i, j;
-
-	/* Set the key schedule */
-	DES_set_key_unchecked((des_cblock *) priv->key, &k1);
-	DES_set_key_unchecked((des_cblock *) (priv->key+8), &k2);
+	unsigned int	len = 0, i;
+	int             r = SC_SUCCESS, outl;
+	EVP_CIPHER_CTX  ctx;
 
 	/* Fill block with 0x00 and then with the data. */
 	memset(block, 0x00, sizeof(block));
@@ -798,14 +787,16 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 	/* Set IV */
 	memset(in, 0x00, 8);
 
-	for (j = 0; j < len; ) {
-		for (i = 0; i < 8; i++, j++)
-			in[i] ^= block[j];
-		DES_ecb3_encrypt((des_cblock *)in,
-				 (des_cblock *)out,
-				 &k1, &k2, &k1, DES_ENCRYPT);
-		memcpy(in, out, 8);
+	EVP_CIPHER_CTX_init(&ctx);
+	EVP_EncryptInit_ex(&ctx, EVP_des_ede_cbc(), NULL, priv->key, in);
+	for (i = 0; i < len; i += 8) {
+		if (!EVP_EncryptUpdate(&ctx, out, &outl, &block[i], 8)) {
+			r = SC_ERROR_INTERNAL;
+			break;
+		}
 	}
+	if (!EVP_CIPHER_CTX_cleanup(&ctx))
+		r = SC_ERROR_INTERNAL;
 
 	memcpy((u8 *) (apdu->data + apdu->datalen), out + 5, 3);
 	apdu->datalen += 3;
@@ -813,12 +804,10 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 	apdu->le += 3;
 	if (crycks1)
 		memcpy(crycks1, out, 3);
-	des_cleanse(k1);
-	des_cleanse(k2);
 	sc_mem_clear(in, sizeof(in));
 	sc_mem_clear(out, sizeof(out));
 	sc_mem_clear(block, sizeof(block));
-	return 0;
+	return r;
 }
 
 /*
@@ -932,32 +921,44 @@ static int
 gpk_set_filekey(const u8 *key, const u8 *challenge,
 		const u8 *r_rn, u8 *kats)
 {
-	des_key_schedule	k1, k2;
-	des_cblock		out;
-	int			r = 0;
+	int			r = SC_SUCCESS, outl;
+	EVP_CIPHER_CTX		ctx;
+	u8                      out[16];
 
-	DES_set_key_unchecked((des_cblock *) key, &k1);
-	DES_set_key_unchecked((des_cblock *) (key+8), &k2);
+	memcpy(out, key+8, 8);
+	memcpy(out+8, key, 8);
 
-	DES_ecb3_encrypt((des_cblock *)(r_rn+4), (des_cblock *) kats,
-			&k1, &k2, &k1, DES_ENCRYPT);
-	DES_ecb3_encrypt((des_cblock *)(r_rn+4), (des_cblock *) (kats+8),
-			&k2, &k1, &k2, DES_ENCRYPT);
+	EVP_CIPHER_CTX_init(&ctx);
+	EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, key, NULL);
+	if (!EVP_EncryptUpdate(&ctx, kats, &outl, r_rn+4, 8))
+		r = SC_ERROR_INTERNAL;
+	if (!EVP_CIPHER_CTX_cleanup(&ctx))
+		r = SC_ERROR_INTERNAL;
+	if (r == SC_SUCCESS) {
+		EVP_CIPHER_CTX_init(&ctx);
+		EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, out, NULL);
+		if (!EVP_EncryptUpdate(&ctx, kats+8, &outl, r_rn+4, 8))
+			r = SC_ERROR_INTERNAL;
+		if (!EVP_CIPHER_CTX_cleanup(&ctx))
+			r = SC_ERROR_INTERNAL;
+	}
+	memset(out, 0, sizeof(out));
 
 	/* Verify Cryptogram presented by the card terminal
 	 * XXX: what is the appropriate error code to return
 	 * here? INVALID_ARGS doesn't seem quite right
 	 */
-	DES_set_key_unchecked((des_cblock *) kats, &k1);
-	DES_set_key_unchecked((des_cblock *) (kats+8), &k2);
+	if (r == SC_SUCCESS) {
+		EVP_CIPHER_CTX_init(&ctx);
+		EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, kats, NULL);
+		if (!EVP_EncryptUpdate(&ctx, out, &outl, challenge, 8))
+			r = SC_ERROR_INTERNAL;
+		if (!EVP_CIPHER_CTX_cleanup(&ctx))
+			r = SC_ERROR_INTERNAL;
+		if (memcmp(r_rn, out+4, 4) != 0)
+			r = SC_ERROR_INVALID_ARGUMENTS;
+	}
 
-	DES_ecb3_encrypt((des_cblock *) challenge, &out,
-			&k1, &k2, &k1, DES_ENCRYPT );
-	if (memcmp(r_rn, out+4, 4) != 0)
-		r = SC_ERROR_INVALID_ARGUMENTS;
-
-	des_cleanse(k1);
-	des_cleanse(k2);
 	sc_mem_clear(out, sizeof(out));
 	return r;
 }
@@ -1553,11 +1554,11 @@ static int
 gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 {
 	struct gpk_private_data *priv = DRVDATA(card);
-	des_key_schedule k1, k2;
 	sc_apdu_t	apdu;
 	unsigned int	n;
 	u8		temp[256];
-	int		r;
+	int		r = SC_SUCCESS, outl;
+	EVP_CIPHER_CTX  ctx;
 
 	sc_debug(card->ctx, "gpk_pkfile_load(fid=%04x, len=%d, datalen=%d)\n",
 			args->file->id, args->len, args->datalen);
@@ -1588,13 +1589,18 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 		sc_error(card->ctx, "No secure messaging key set!\n");
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
-	DES_set_key_unchecked((des_cblock *) priv->key, &k1);
-	DES_set_key_unchecked((des_cblock *) (priv->key+8), &k2);
+
+	EVP_CIPHER_CTX_init(&ctx);
+	EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, priv->key, NULL);
 	for (n = 0; n < args->datalen; n += 8) {
-		des_ecb2_encrypt((des_cblock *) (args->data + n),
-				 (des_cblock *) (temp + n),
-				 k1, k2, DES_ENCRYPT);
+		if (!EVP_EncryptUpdate(&ctx, temp+n, &outl, args->data + n, 8)) {
+			r = SC_ERROR_INTERNAL;
+			break;
+		}
 	}
+	if (!EVP_CIPHER_CTX_cleanup(&ctx) || r != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
+
 	apdu.data = temp;
 	apdu.datalen = args->datalen;
 
