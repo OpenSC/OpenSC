@@ -248,7 +248,7 @@ static int is_esteid_atr(u8 *atr, size_t atr_len) {
 	if (atr_len<14)
 		return 0;
 
-	for (i = 0; i<atr_len-14; i++) {
+	for (i = 0; i<atr_len-14+1; i++) {
 		if (!memcmp(atr++, str, 14))
 			return 1;
 	}
