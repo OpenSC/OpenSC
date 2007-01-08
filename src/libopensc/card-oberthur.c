@@ -31,7 +31,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <openssl/sha.h>
-#include <openssl/des.h>
+#include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/opensslv.h>
 
@@ -87,7 +87,7 @@ typedef struct auth_update_component_info auth_update_component_info_t;
 
 
 const unsigned char *aidAuthentIC_V5 = 
-		"\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x00\x00\xF1\x00\x00\x00\x02";
+		(const u8 *)"\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x00\x00\xF1\x00\x00\x00\x02";
 const int lenAidAuthentIC_V5 = 16; 
 const char *nameAidAuthentIC_V5 = "AuthentIC v5"; 
 
@@ -1420,10 +1420,10 @@ auth_update_component(sc_card_t *card, struct auth_update_component_info *args)
 	len += args->len;
 		
 	if (args->type == SC_CARDCTL_OBERTHUR_KEY_DES)   {
-		unsigned char in[8];
+		int outl;
+		const unsigned char in[8] = {0,0,0,0,0,0,0,0};
 		unsigned char out[8];
-		DES_cblock kk;
-		DES_key_schedule ks;
+		EVP_CIPHER_CTX ctx;
 
 		assert(DES_KEY_SZ==8);
 			
@@ -1431,20 +1431,15 @@ auth_update_component(sc_card_t *card, struct auth_update_component_info *args)
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 		
 		p2 = 0;
-		memset(in, 0, sizeof(in));
-		memcpy(&kk, args->data, 8);
-		DES_set_key_unchecked(&kk,&ks);
-		DES_ecb_encrypt((DES_cblock *)in, (DES_cblock *)out, &ks, DES_ENCRYPT);
-		if (args->len==24)   {
-			memcpy(&kk, args->data + 8, 8);
-			DES_set_key_unchecked(&kk,&ks);
-			memcpy(in, out, 8);
-			DES_ecb_encrypt((DES_cblock *)in, (DES_cblock *)out, &ks, DES_DECRYPT);
-				
-			memcpy(&kk, args->data + 16, 8);
-			DES_set_key_unchecked(&kk,&ks);
-			memcpy(in, out, 8);
-			DES_ecb_encrypt((DES_cblock *)in, (DES_cblock *)out, &ks, DES_ENCRYPT);
+		EVP_CIPHER_CTX_init(&ctx);
+		if (args->len == 24) 
+			EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, args->data, NULL);
+		else
+			EVP_EncryptInit_ex(&ctx, EVP_des_ecb(), NULL, args->data, NULL);
+		rv = EVP_EncryptUpdate(&ctx, out, &outl, in, 8);
+		if (!EVP_CIPHER_CTX_cleanup(&ctx) || rv == 0) {
+			sc_error(card->ctx, "OpenSSL encryption error.");
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
 		}
 
 		sbuf[len++] = 0x03;
@@ -2023,7 +2018,7 @@ auth_update_binary(sc_card_t *card, unsigned int offset,
 		memset(&args, 0, sizeof(args));
 		args.type = SC_CARDCTL_OBERTHUR_KEY_DES;
 		args.component = 0;
-		args.data = buf;
+		args.data = (u8 *)buf;
 		args.len = count;
 		rv = auth_update_component(card, &args);
 	}
