@@ -23,7 +23,7 @@
 #include "internal.h"
 #include <string.h>
 #include <fcntl.h>
-#include <openssl/des.h>
+#include <openssl/evp.h>
 #include <openssl/bio.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
@@ -792,8 +792,7 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
  * This is only needed during initialization/personalization of the card 
  */
 
-static int piv_get_3des_key(sc_card_t *card, 
-		DES_cblock *k1, DES_cblock *k2,  DES_cblock *k3)
+static int piv_get_3des_key(sc_card_t *card, u8 *key)
 {
 
 	int r;
@@ -826,13 +825,13 @@ static int piv_get_3des_key(sc_card_t *card,
 	keybuf[23] = '\0';
 	keybuf[47] = '\0';
 	outlen = 8;
-	r = sc_hex_to_bin(keybuf, *k1, &outlen);
+	r = sc_hex_to_bin(keybuf, key, &outlen);
 	if (r) goto err;
 	outlen = 8;
-	r = sc_hex_to_bin(keybuf+24, *k2, &outlen);
+	r = sc_hex_to_bin(keybuf+24, key+8, &outlen);
 	if (r) goto err;
 	outlen = 8;
-	r = sc_hex_to_bin(keybuf+48, *k3, &outlen);
+	r = sc_hex_to_bin(keybuf+48, key+16, &outlen);
 	if (r) goto err;
 	
 err:
@@ -851,19 +850,19 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 {
 	int r;
 	size_t N;
-	int locked = 0;
+	int locked = 0, outl;
 	u8  *rbuf = NULL;
 	size_t rbuflen;
 	u8 nonce[8] = {0xDE, 0xE0, 0xDE, 0xE1, 0xDE, 0xE2, 0xDE, 0xE3};
-	u8 sbuf[255];
+	u8 sbuf[255], key[24];
 	u8 *p, *q;
-	
-	DES_cblock k1, k2, k3;
-	DES_key_schedule ks1, ks2, ks3;
+	EVP_CIPHER_CTX ctx;
 
 	SC_FUNC_CALLED(card->ctx,1);
 
-	r = piv_get_3des_key(card, &k1, &k2, &k3);
+	EVP_CIPHER_CTX_init(&ctx);
+
+	r = piv_get_3des_key(card, key);
 	if (r != SC_SUCCESS)
 		goto err;
 
@@ -902,11 +901,12 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	*p++ = 0x80;
 	*p++ = (u8)N; 
 	
-	DES_set_key((DES_cblock *) &k1, &ks1);
-	DES_set_key((DES_cblock *) &k2, &ks2);
-	DES_set_key((DES_cblock *) &k3, &ks3);
-	/* FIXME */
-	DES_ecb3_encrypt((const_DES_cblock *)q, (DES_cblock *)p, &ks1, &ks2, &ks3, DES_DECRYPT);
+	EVP_DecryptInit_ex(&ctx, EVP_des_ede3(), NULL, key, NULL);
+	if (!EVP_DecryptUpdate(&ctx, p, &outl, q, 8)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	
 	p += N;
 
 	*p++ = 0x81;
@@ -928,22 +928,21 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 		goto err;
 	}
 	
-	DES_set_key((DES_cblock *) &k1, &ks1);
-	DES_set_key((DES_cblock *) &k2, &ks2);
-	DES_set_key((DES_cblock *) &k3, &ks3);
-	
 	p = sbuf;
-	/* FIXME */
-	DES_ecb3_encrypt((const_DES_cblock *)q, (DES_cblock *)p, &ks1, &ks2, &ks3, DES_DECRYPT);
+	if (!EVP_DecryptUpdate(&ctx, p, &outl, q, 8)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
 	
 	if (memcmp(nonce, p, N) != 0) {
 		sc_debug(card->ctx, "mutual authentication failed, card returned wrong value");
 		r = SC_ERROR_DECRYPT_FAILED;
 		goto err;
 	}
-	r = 0;
+	r = SC_SUCCESS;
 
 err:
+	EVP_CIPHER_CTX_cleanup(&ctx);
 	if (locked) 
 		sc_unlock(card);
 	if (rbuf)
@@ -956,18 +955,18 @@ static int piv_general_external_authenticate(sc_card_t *card,
 		unsigned int key_ref, unsigned int alg_id)
 {
 	struct piv_private_data * priv = (struct piv_private_data *) card->drv_data;
-	int r;
+	int r, outl;
 	u8  *rbuf = NULL;
 	size_t rbuflen;
-	u8 sbuf[255];
+	u8 sbuf[255], key[24];
 	u8 *p, *q;
+	EVP_CIPHER_CTX ctx;
 	
-	DES_cblock k1, k2, k3;
-	DES_key_schedule ks1, ks2, ks3;
-
 	SC_FUNC_CALLED(card->ctx,1);
 
-	r = piv_get_3des_key(card, &k1, &k2, &k3);
+	EVP_CIPHER_CTX_init(&ctx);
+
+	r = piv_get_3des_key(card, key);
 	if (r != SC_SUCCESS)
 		goto err;
 
@@ -1002,12 +1001,12 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	*p++ = *(rbuf + 1);
 	*p++ = 0x82;
 	*p++ = *(rbuf + 3);
-	
-	DES_set_key((DES_cblock *) &k1, &ks1);
-	DES_set_key((DES_cblock *) &k2, &ks2);
-	DES_set_key((DES_cblock *) &k3, &ks3);
-	
-	DES_ecb3_encrypt((const_DES_cblock *)q, (DES_cblock *)p, &ks1, &ks2, &ks3, DES_ENCRYPT);
+
+	EVP_EncryptInit_ex(&ctx, EVP_des_ede3(), NULL, key, NULL);
+	if (!EVP_EncryptUpdate(&ctx, p, &outl, q, 8)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}	
 	p += *(rbuf + 3);
 	
 	switch (priv-> enumtag) {
@@ -1019,6 +1018,8 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	sc_unlock(card);
 
 err:
+	EVP_CIPHER_CTX_cleanup(&ctx);
+	sc_mem_clear(key, sizeof(key));
 	if (rbuf)
 		free(rbuf);
 
