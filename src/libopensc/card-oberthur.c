@@ -1424,8 +1424,6 @@ auth_update_component(sc_card_t *card, struct auth_update_component_info *args)
 		const unsigned char in[8] = {0,0,0,0,0,0,0,0};
 		unsigned char out[8];
 		EVP_CIPHER_CTX ctx;
-
-		assert(DES_KEY_SZ==8);
 			
 		if (args->len!=8 && args->len!=24)
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
