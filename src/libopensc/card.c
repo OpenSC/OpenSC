@@ -753,8 +753,11 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *at
 		if (ctx->debug >= 4)
 			sc_debug(ctx, "ATR try : %s\n", tatr);
 
-		if (tatr_len != card_atr_hex_len)
+		if (tatr_len != card_atr_hex_len) {
+			if (ctx->debug >= 5)
+				sc_debug(ctx, "ignored - wrong length\n", tatr);
 			continue;
+		}
 		if (matr != NULL) {
 			u8 mbin[SC_MAX_ATR_SIZE], tbin[SC_MAX_ATR_SIZE];
 			size_t mbin_len, tbin_len, s, matr_len;
@@ -765,14 +768,20 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *at
 			matr_len = strlen(matr);
 			if (tatr_len != matr_len)
 				continue;
-			mbin_len = sizeof(mbin);
-			sc_hex_to_bin(matr, mbin, &mbin_len);
-			if (mbin_len != card_atr_bin_len)
-				continue;
-			for (s = 0; s < mbin_len; s++)
-				mbin[s] = (card_atr_bin[s] & mbin[s]);
 			tbin_len = sizeof(tbin);
 			sc_hex_to_bin(tatr, tbin, &tbin_len);
+			mbin_len = sizeof(mbin);
+			sc_hex_to_bin(matr, mbin, &mbin_len);
+			if (mbin_len != card_atr_bin_len) {
+				sc_error(ctx,"length of atr and atr mask do not match - ignored: %s - %s", tatr, matr); 
+				continue;
+			}
+			for (s = 0; s < tbin_len; s++) {
+				/* reduce tatr with mask */
+				tbin[s] = (tbin[s] & mbin[s]);
+				/* create copy of card_atr_bin masked) */
+				mbin[s] = (card_atr_bin[s] & mbin[s]);
+			}
 			if (memcmp(tbin, mbin, tbin_len) != 0)
 				continue;
 		} else {
