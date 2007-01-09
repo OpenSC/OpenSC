@@ -446,9 +446,8 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 			 * requested or until the card retuns 0x9000, 
 			 * whatever happens first.
 			 */
-			size_t le, buflen;
+			size_t le, minlen, buflen;
 			u8     *buf;
-			int 	len = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
 
 			if (card->ops->get_response == NULL) {
 				/* this should _never_ happen */
@@ -467,13 +466,16 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 			buflen = olen - apdu->resplen;
 
 			/* 0x6100 means at least 256 more bytes to read */
+			le = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
+			/* we try to read at least as much as bytes as 
+			 * promised in the response bytes */
+			minlen = le;
 
 			do {
 				u8 tbuf[256];
 				/* call GET RESPONSE to get more date from
 				 * the card; note: GET RESPONSE returns the
 				 * amount of data left (== SW2) */
-				le = len - (buf - apdu->resp);
 				r = card->ops->get_response(card, &le, tbuf);
 				if (r < 0)
 					SC_FUNC_RETURN(ctx, 2, r);
@@ -484,7 +486,16 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 				memcpy(buf, tbuf, le);
 				buf    += le;
 				buflen -= le;
-			} while (r != 0 || (buf - apdu->resp < len));
+
+				minlen -= le;
+				if (r != 0) 
+					le = minlen = (size_t)r;
+				else
+					/* if the card has returned 0x9000 but
+					 * we still expect data ask for more 
+					 * until we have read enough bytes */
+					le = minlen;
+			} while (r != 0 || minlen != 0);
 			/* we've read all data, let's return 0x9000 */
 			apdu->resplen = buf - apdu->resp;
 			apdu->sw1 = 0x90;
