@@ -318,6 +318,7 @@ static int send_apdu(void)
 				return 2;
 			}
 			len -= apdu.lc;
+			p   += apdu.lc;
 			if (len) {
 				apdu.le = *p++;
 				if (apdu.le == 0)
