@@ -17,6 +17,7 @@ if [ -z "$__p15init__" ]; then
 	p11tool=$p15base/tools/pkcs11-tool
 	p11module=$p15base/pkcs11/.libs/opensc-pkcs11.so
 	p15log=$p15temp/test.log
+	terrlog=$p15temp/terror.log
 
 	for bin in $osctool $p15tool $p15crypt $p15init $p11tool; do
 		test -x $bin && continue
@@ -151,13 +152,24 @@ function success {
 function run_display_output {
 
 	run_check_status "$@" >&3 2>&4
+	return $?
 }
 
 function run_check_status {
 
 	echo ":::::: run_check_status $*" >&3
 	cp /dev/null $p15log
-	"$@" || fail "Command failed (status code $?): $*"
+	if ! "$@" 2> $terrlog; then
+		if [ -n "$suppress_error_msg" ] &&
+		   grep "$suppress_error_msg" $terrlog &> /dev/null ; then
+			msg "The card does not supported the request feature."
+			unset suppress_error_msg
+			return 1
+		else
+			cat $terrlog
+			fail "Command failed (status code $?): $*"
+		fi
+	fi
 }
 
 function run_check_output {
@@ -277,12 +289,15 @@ function p15_gen_key {
 	shift
 
 	msg "Generating key ($*)"
-	run_display_output $p15init -G $type \
+	if run_display_output $p15init -G $type \
 		--pin 0000 \
 		--id 45 \
 		--label "Test User Key" \
-		"$@"
-	success
+		"$@" ; then 
+		success
+	else
+		return $?
+	fi
 }
 
 function p15_exp_key {
@@ -305,12 +320,15 @@ function p15_store_key {
 	shift
 
 	msg "Storing private key $keyfile ($*)"
-	run_display_output $p15init -S $keyfile \
+	if run_display_output $p15init -S $keyfile \
 		--pin 0000 \
 		--id 45 \
 		--label "Test User Key" \
-		"$@"
-	success
+		"$@" ; then
+		success
+	else
+		return $?
+	fi
 }
 
 function p15_crypt {

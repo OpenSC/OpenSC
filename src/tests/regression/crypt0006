@@ -1,0 +1,80 @@
+#!/bin/bash
+#
+# This test checks various aspects of RSA decryption
+#
+# It needs a card with a private key+certificate pair at ID 45
+#
+# Run this from the regression test directory.
+
+. functions
+
+msg <<EOF
+:::
+::: Testing on-card decryption facilities (2048 bit)
+:::
+EOF
+
+o=$p15temp/plaintext
+e=$p15temp/encrypted
+d=$p15temp/decrypted
+p=$p15temp/key.pem
+
+p15_init --no-so-pin
+p15_set_pin -a 01
+
+suppress_error_msg="Key length/algorithm not supported by card"
+if p15_gen_key rsa/2048 --id 45 --key-usage decrypt -a 01; then
+	msg "Extracting public key"
+	run_check_status $p15tool --read-public-key 45 -o $p
+
+	msg "Encrypting message (pkcs1 padding)"
+	echo lalla > $o
+	run_check_status openssl rsautl -pubin -inkey $p -encrypt -in $o -out $e
+	p15_crypt -c --pkcs1 -i $e -o $d
+	cmp $o $d || fail "Decrypted file does not match plain text file"
+	success
+else
+	msg ""
+	msg "The card doesn't seem to support 2048 bit RSA key generation."
+	msg "Skipping test !"
+	msg ""
+fi
+
+p15_erase --secret @01=0000
+
+msg <<EOF
+:::
+::: Store a 2048 bit RSA on the card and test it.
+:::
+EOF
+
+k=$p15temp/private.pem
+p=$p15temp/public.pem
+
+msg "Generating key pair off the card"
+run_check_status openssl genrsa -out $k -f4 2048
+run_check_status openssl rsa -in $k -out $p -pubout
+
+p15_init --no-so-pin
+p15_set_pin -a 01
+
+suppress_error_msg="Key length/algorithm not supported by card"
+if p15_store_key $k -a 01 -u decrypt; then
+	msg "Extracting public key"
+	run_check_status $p15tool --read-public-key 45 -o $p
+
+	msg "Encrypting message (pkcs1 padding)"
+	echo lalla > $o
+	run_check_status openssl rsautl -pubin -inkey $p -encrypt -in $o -out $e
+	p15_crypt -c --pkcs1 -i $e -o $d
+	cmp $o $d || fail "Decrypted file does not match plain text file"
+	success
+else
+	msg ""
+	msg "The card doesn't seem to support 2048 bit RSA keys."
+	msg "Skipping test !"
+	msg ""
+fi
+
+p15_erase --secret @01=0000
+

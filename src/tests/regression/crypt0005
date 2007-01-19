@@ -1,0 +1,84 @@
+#!/bin/bash
+#
+# This test checks various aspects of RSA signature generation
+#
+# It needs a card with a private key+certificate pair at ID 45
+#
+# Run this from the regression test directory.
+
+. functions
+
+msg <<EOF
+:::
+::: Testing on-card signature facilities (2048 bit)
+:::
+EOF
+
+m=$p15temp/message
+d=$p15temp/digest
+s=$p15temp/signed
+p=$p15temp/key.pem
+
+msg "Generating a 2048 bit RSA key on the card"
+p15_init --no-so-pin
+p15_set_pin -a 01
+
+suppress_error_msg="Key length/algorithm not supported by card"
+if p15_gen_key rsa/2048 --id 45 -a 01; then
+	# the card seems to support 2048 rsa keys 
+	msg "Extracting public key"
+	run_check_status $p15tool --read-public-key 45 -o $p
+
+	# Set up message file
+	echo lalla > $m
+
+	msg "Signing and verifying using SHA1"
+	run_check_status openssl dgst -sha1 -binary -out $d < $m
+	p15_crypt -s --sha-1 --pkcs1 -i $d -o $s
+	run_check_output "Verified OK" \
+		openssl dgst -verify $p -sha1 -signature $s < $m
+	success
+else
+	msg ""
+	msg "The card doesn't seem to support 2048 bit RSA key generation."
+	msg "Skipping test !"
+	msg ""
+fi
+p15_erase --secret @01=0000
+
+msg <<EOF
+:::
+::: Store a 2048 bit RSA on the card and test it.
+:::
+EOF
+
+k=$p15temp/private.pem
+p=$p15temp/public.pem
+
+msg "Generating key pair off the card"
+run_check_status openssl genrsa -out $k -f4 2048
+run_check_status openssl rsa -in $k -out $p -pubout
+
+p15_init --no-so-pin
+p15_set_pin -a 01
+
+suppress_error_msg="Key length/algorithm not supported by card"
+if p15_store_key $k -a 01 -u sign; then
+	# Set up message file
+	echo lalla > $m
+
+	msg "Signing and verifying using SHA1"
+	run_check_status openssl dgst -sha1 -binary -out $d < $m
+	p15_crypt -s --sha-1 --pkcs1 -i $d -o $s
+	run_check_output "Verified OK" \
+	        openssl dgst -verify $p -sha1 -signature $s < $m
+	success	
+else
+	msg ""
+	msg "The card doesn't seem to support 2048 bit RSA keys."
+	msg "Skipping test !"
+	msg ""
+fi
+
+p15_erase --secret @01=0000
+
