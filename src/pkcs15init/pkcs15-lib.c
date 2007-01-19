@@ -111,6 +111,8 @@ static int	do_select_parent(struct sc_profile *, sc_card_t *,
 			sc_file_t *, sc_file_t **);
 static int	sc_pkcs15init_create_pin(sc_pkcs15_card_t *, sc_profile_t *,
 			sc_pkcs15_object_t *, struct sc_pkcs15init_pinargs *);
+static int	check_key_size(sc_card_t *card, unsigned int alg,
+			unsigned int bits);
 static int	check_key_compatibility(struct sc_pkcs15_card *,
 			struct sc_pkcs15_prkey *, unsigned int,
 			unsigned int, unsigned int);
@@ -393,6 +395,18 @@ sc_pkcs15init_set_lifecycle(sc_card_t *card, int lcycle)
 int
 sc_pkcs15init_erase_card(sc_card_t *card, struct sc_profile *profile)
 {
+	/* Make sure we set the SO PIN reference in the key cache */
+	if (sc_keycache_find_named_pin(NULL, SC_PKCS15INIT_SO_PIN) == -1) {
+		struct sc_pkcs15_card *p15card = NULL;
+
+		sc_ctx_suppress_errors_on(card->ctx);
+		if (sc_pkcs15_bind(card, &p15card) >= 0) {
+			/* result of set_so_pin_from_card ignored */
+			set_so_pin_from_card(p15card, profile);
+			profile->p15_data = p15card;
+		}
+		sc_ctx_suppress_errors_off(card->ctx);
+	}
 	if (profile->ops->erase_card == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 	return profile->ops->erase_card(profile, card);
@@ -1282,6 +1296,11 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_prkey_info *key_info;
 	int		r;
 
+	/* check supported key size */
+	r = check_key_size(p15card->card, keygen_args->prkey_args.key.algorithm, keybits);
+	if (r != SC_SUCCESS)
+		return r;
+
 	/* For now, we support just RSA key pair generation */
 	if (!check_key_compatibility(p15card, &keygen_args->prkey_args.key,
 		 keygen_args->prkey_args.x509_usage,
@@ -1952,6 +1971,26 @@ sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
 }
 
 /*
+ * Check if the key size is supported.
+ */
+static int check_key_size(sc_card_t *card, unsigned int alg,
+	unsigned int bits)
+{
+	int i;
+
+	for (i = 0; i < card->algorithm_count; i++) {
+		sc_algorithm_info_t *info = &card->algorithms[i];
+
+		if (info->algorithm != alg)
+			continue;
+		if (info->key_length != bits)
+			continue;
+		return SC_SUCCESS;
+	}
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
+/*
  * Check whether the card has native crypto support for this key.
  */
 static int
@@ -2272,7 +2311,7 @@ select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 	/* For cards with a pin-domain profile, we need
 	 * to put the key below the DF of the specified PIN */
 	memset(path, 0, sizeof(*path));
-	if (obj->auth_id.len) {
+	if (obj->auth_id.len && profile->pin_domains != 0) {
 		r = sc_pkcs15init_get_pin_path(p15card, &obj->auth_id, path);
 		if (r < 0)
 			return r;
