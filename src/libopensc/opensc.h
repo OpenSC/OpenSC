@@ -103,6 +103,7 @@ extern "C" {
 #define SC_AC_OP_INVALIDATE		5
 #define SC_AC_OP_LIST_FILES		6
 #define SC_AC_OP_CRYPTO			7
+#define SC_AC_OP_DELETE_SELF		8
 /* If you add more OPs here, make sure you increase
  * SC_MAX_AC_OPS in types.h */
 
@@ -1027,7 +1028,7 @@ int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
  * @param  count   number of bytes
  * @return SC_SUCCESS on success and an error code otherwise
  */
-int sc_path_set(sc_path_t *path, int type, unsigned char *id, size_t id_len,
+int sc_path_set(sc_path_t *path, int type, const u8 *id, size_t id_len,
 	int index, int count);
 
 void sc_format_path(const char *path_in, sc_path_t *path_out);

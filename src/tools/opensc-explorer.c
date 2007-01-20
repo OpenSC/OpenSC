@@ -441,7 +441,7 @@ static int do_info(int argc, char **argv)
 	if (file->type == SC_FILE_TYPE_DF) {
 		const char *ops[] = {
 			"SELECT", "LOCK", "DELETE", "CREATE", "REHABILITATE",
-			"INVALIDATE", "LIST FILES"
+			"INVALIDATE", "LIST FILES", "CRYPTO", "DELETE SELF"
 		};
 		if (file->namelen) {
 			printf("%-15s", "DF name:");

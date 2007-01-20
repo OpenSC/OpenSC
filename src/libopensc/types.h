@@ -65,7 +65,7 @@ typedef struct sc_acl_entry {
 	struct sc_acl_entry *next;
 } sc_acl_entry_t;
 
-#define SC_MAX_AC_OPS			8
+#define SC_MAX_AC_OPS			9
 
 typedef struct sc_file {
 	struct sc_path path;
