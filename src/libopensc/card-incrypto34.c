@@ -568,11 +568,16 @@ incrypto34_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	/* remove padding: first try pkcs1 bt01 padding */
 	r = sc_pkcs1_strip_01_padding(data, datalen, buf, &tmp_len);
 	if (r != SC_SUCCESS) {
-		/* no pkcs1 bt01 padding => let's try zero padding */
+		const u8 *p = data;
+		/* no pkcs1 bt01 padding => let's try zero padding.
+		 * This can only work if the data tbs doesn't have a
+		 * leading 0 byte. */
 		tmp_len = buf_len;
-		r = sc_strip_zero_padding(data, datalen, buf, &tmp_len);
-		if (r != SC_SUCCESS)
-			SC_FUNC_RETURN(ctx, 4, r);
+		while (*p == 0 && tmp_len != 0) {
+			++p;
+			--tmp_len;
+		}
+		memcpy(buf, p, tmp_len);
 	}
 	sc_ctx_suppress_errors_on(ctx);
 	r = do_compute_signature(card, buf, tmp_len, out, outlen);

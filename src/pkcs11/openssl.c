@@ -12,6 +12,7 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <openssl/opensslv.h>
 
 static CK_RV	sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *);
 static CK_RV	sc_pkcs11_openssl_md_update(sc_pkcs11_operation_t *,
@@ -29,6 +30,38 @@ static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final
 };
+
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L
+static sc_pkcs11_mechanism_type_t openssl_sha256_mech = {
+	CKM_SHA256,
+	{ 0, 0, CKF_DIGEST }, 0,
+	sizeof(struct sc_pkcs11_operation),
+	sc_pkcs11_openssl_md_release,
+	sc_pkcs11_openssl_md_init,
+	sc_pkcs11_openssl_md_update,
+	sc_pkcs11_openssl_md_final
+};
+
+static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
+	CKM_SHA384,
+	{ 0, 0, CKF_DIGEST }, 0,
+	sizeof(struct sc_pkcs11_operation),
+	sc_pkcs11_openssl_md_release,
+	sc_pkcs11_openssl_md_init,
+	sc_pkcs11_openssl_md_update,
+	sc_pkcs11_openssl_md_final
+};
+
+static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
+	CKM_SHA512,
+	{ 0, 0, CKF_DIGEST }, 0,
+	sizeof(struct sc_pkcs11_operation),
+	sc_pkcs11_openssl_md_release,
+	sc_pkcs11_openssl_md_init,
+	sc_pkcs11_openssl_md_update,
+	sc_pkcs11_openssl_md_final
+};
+#endif
 
 static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
 	CKM_MD5,
@@ -55,6 +88,14 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *card)
 {
 	openssl_sha1_mech.mech_data = EVP_sha1();
 	sc_pkcs11_register_mechanism(card, &openssl_sha1_mech);
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L
+	openssl_sha256_mech.mech_data = EVP_sha256();
+	sc_pkcs11_register_mechanism(card, &openssl_sha256_mech);
+	openssl_sha384_mech.mech_data = EVP_sha384();
+	sc_pkcs11_register_mechanism(card, &openssl_sha384_mech);
+	openssl_sha512_mech.mech_data = EVP_sha512();
+	sc_pkcs11_register_mechanism(card, &openssl_sha512_mech);
+#endif
 	openssl_md5_mech.mech_data = EVP_md5();
 	sc_pkcs11_register_mechanism(card, &openssl_md5_mech);
 	openssl_ripemd160_mech.mech_data = EVP_ripemd160();

@@ -46,6 +46,10 @@ int opt_crypt_flags = 0;
 
 enum {
 	OPT_SHA1 = 	0x100,
+	OPT_SHA256,
+	OPT_SHA384,
+	OPT_SHA512,
+	OPT_SHA224,
 	OPT_MD5,
 	OPT_PKCS1,
 };
@@ -59,6 +63,10 @@ const struct option options[] = {
 	{ "output",		1, 0,		'o' },
 	{ "raw",		0, 0,		'R' },
 	{ "sha-1",		0, 0,		OPT_SHA1 },
+	{ "sha-256",		0, 0,		OPT_SHA256 },
+	{ "sha-384",		0, 0,		OPT_SHA384 },
+	{ "sha-512",		0, 0,		OPT_SHA512 },
+	{ "sha-224",		0, 0,		OPT_SHA224 },
 	{ "md5",		0, 0,		OPT_MD5 },
 	{ "pkcs1",		0, 0,		OPT_PKCS1 },
 	{ "pin",		1, 0,		'p' },
@@ -76,6 +84,10 @@ const char *option_help[] = {
 	"Outputs to file <arg>",
 	"Outputs raw 8 bit data",
 	"Input file is a SHA-1 hash",
+	"Input file is a SHA-256 hash",
+	"Input file is a SHA-384 hash",
+	"Input file is a SHA-512 hash",
+	"Input file is a SHA-224 hash",
 	"Input file is a MD5 hash",
 	"Use PKCS #1 v1.5 padding",
 	"Uses password (PIN) <arg> (use - for reading PIN from STDIN)",
@@ -509,6 +521,18 @@ int main(int argc, char * const argv[])
 			break;
 		case OPT_SHA1:
 			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+			break;
+		case OPT_SHA256:
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+			break;
+		case OPT_SHA384:
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA384;
+			break;
+		case OPT_SHA512:
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+			break;
+		case OPT_SHA224:
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA224;
 			break;
 		case OPT_MD5:
 			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;

@@ -1,8 +1,8 @@
 /*
- * sc-padding.c: miscellaneous padding functions
+ * padding.c: miscellaneous padding functions
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2003	Nils Larsch <larsch@trustcenter.de>
+ * Copyright (C) 2003 - 2007  Nils Larsch <larsch@trustcenter.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,7 +22,6 @@
 #include "internal.h"
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 
 /* TODO doxygen comments */
 
@@ -37,22 +36,41 @@ static const u8 hdr_sha1[] = {
 	0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a,
 	0x05, 0x00, 0x04, 0x14
 };
+static const u8 hdr_sha256[] = {
+	0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65,
+	0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
+};
+static const u8 hdr_sha384[] = {
+	0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65,
+	0x03, 0x04, 0x02, 0x02, 0x05, 0x00, 0x04, 0x30
+};
+static const u8 hdr_sha512[] = {
+	0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65,
+	0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40
+};
+static const u8 hdr_sha224[] = {
+	0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65,
+	0x03, 0x04, 0x02, 0x04, 0x05, 0x00, 0x04, 0x1c
+};
 static const u8 hdr_ripemd160[] = {
 	0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x24, 0x03, 0x02, 0x01,
 	0x05, 0x00, 0x04, 0x14
 };
 
 
-#define DIGEST_INFO_COUNT 6
 static const struct digest_info_prefix {
 	unsigned int	algorithm;
 	const u8 *	hdr;
 	size_t		hdr_len;
 	size_t		hash_len;
-} digest_info_prefix[DIGEST_INFO_COUNT] = {
+} digest_info_prefix[] = {
       { SC_ALGORITHM_RSA_HASH_NONE,     NULL,           0,                      0      },
       {	SC_ALGORITHM_RSA_HASH_MD5,	hdr_md5,	sizeof(hdr_md5),	16	},
       { SC_ALGORITHM_RSA_HASH_SHA1,	hdr_sha1,	sizeof(hdr_sha1),	20	},
+      { SC_ALGORITHM_RSA_HASH_SHA256,	hdr_sha256,	sizeof(hdr_sha256),	32	},
+      { SC_ALGORITHM_RSA_HASH_SHA384,	hdr_sha384,	sizeof(hdr_sha384),	48	},
+      { SC_ALGORITHM_RSA_HASH_SHA512,	hdr_sha512,	sizeof(hdr_sha512),	64	},
+      { SC_ALGORITHM_RSA_HASH_SHA224,	hdr_sha224,	sizeof(hdr_sha224),	28	},
       { SC_ALGORITHM_RSA_HASH_RIPEMD160,hdr_ripemd160,	sizeof(hdr_ripemd160),	20	},
       { SC_ALGORITHM_RSA_HASH_MD5_SHA1,	NULL,		0,			36	},
       {	0,				NULL,		0,			0	}
@@ -60,8 +78,8 @@ static const struct digest_info_prefix {
 
 /* add/remove pkcs1 BT01 padding */
 
-int sc_pkcs1_add_01_padding(const u8 *in, size_t in_len, u8 *out,
-	size_t *out_len, size_t mod_length)
+static int sc_pkcs1_add_01_padding(const u8 *in, size_t in_len,
+	u8 *out, size_t *out_len, size_t mod_length)
 {
 	size_t i;
 
@@ -82,15 +100,15 @@ int sc_pkcs1_add_01_padding(const u8 *in, size_t in_len, u8 *out,
 	return SC_SUCCESS;
 }
 
-int sc_pkcs1_strip_01_padding(const u8 *in_dat, size_t in_len, u8 *out,
-	size_t *out_len)
+int sc_pkcs1_strip_01_padding(const u8 *in_dat, size_t in_len,
+	u8 *out, size_t *out_len)
 {
 	const u8 *tmp = in_dat;
 	size_t    len;
 
 	if (in_dat == NULL || in_len < 10)
 		return SC_ERROR_INTERNAL;
-	/* ignore leading zero byte */
+	/* skip leading zero byte */
 	if (*tmp == 0) {
 		tmp++;
 		in_len--;
@@ -122,7 +140,7 @@ int sc_pkcs1_strip_02_padding(const u8 *data, size_t len, u8 *out,
 
 	if (data == NULL || len < 3)
 		return SC_ERROR_INTERNAL;
-	/* skip leading zero octet (not part of the pkcs1 BT02 padding) */
+	/* skip leading zero byte */
 	if (*data == 0) {
 		data++;
 		len--;
@@ -147,12 +165,12 @@ int sc_pkcs1_strip_02_padding(const u8 *data, size_t len, u8 *out,
 }
 
 /* add/remove DigestInfo prefix */
-int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm, const u8 *in,
-	size_t in_len, u8 *out, size_t *out_len)
+static int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm,
+	const u8 *in, size_t in_len, u8 *out, size_t *out_len)
 {
 	int i;
 
-	for (i = 0; i < DIGEST_INFO_COUNT; i++) {
+	for (i = 0; digest_info_prefix[i].algorithm != 0; i++) {
 		if (algorithm == digest_info_prefix[i].algorithm) {
 			const u8 *hdr      = digest_info_prefix[i].hdr;
 			size_t    hdr_len  = digest_info_prefix[i].hdr_len,
@@ -175,7 +193,7 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 {
 	int i;
 
-	for (i = 0; i < DIGEST_INFO_COUNT; i++) {
+	for (i = 0; digest_info_prefix[i].algorithm != 0; i++) {
 		size_t    hdr_len  = digest_info_prefix[i].hdr_len,
 		          hash_len = digest_info_prefix[i].hash_len;
 		const u8 *hdr      = digest_info_prefix[i].hdr;
@@ -239,21 +257,43 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	}
 }
 
-/* strip leading zero padding (does only really work when a DigestInfo
- * value has been padded */
-int sc_strip_zero_padding(const u8 *in, size_t in_len, u8 *out,
-	size_t *out_len)
+int sc_get_encoding_flags(sc_context_t *ctx,
+	unsigned long iflags, unsigned long caps,
+	unsigned long *pflags, unsigned long *sflags)
 {
-	while (*in == 0 && in_len) {
-		in++;
-		in_len--;
+	size_t i;
+
+	if (pflags == NULL || sflags == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	for (i = 0; digest_info_prefix[i].algorithm != 0; i++) {
+		if (iflags & digest_info_prefix[i].algorithm) {
+			if (digest_info_prefix[i].algorithm != SC_ALGORITHM_RSA_HASH_NONE &&
+			    caps & digest_info_prefix[i].algorithm)
+				*sflags |= digest_info_prefix[i].algorithm;
+			else
+				*pflags |= digest_info_prefix[i].algorithm;
+			break;
+		}
 	}
 
-	if (*out_len < in_len)
-		return SC_ERROR_INTERNAL;
-
-	memmove(out, in, in_len);
-	*out_len = in_len;
+	if (iflags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		if (caps & SC_ALGORITHM_RSA_PAD_PKCS1)
+			*sflags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+		else
+			*pflags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+	} else if ((iflags & SC_ALGORITHM_RSA_PADS) == SC_ALGORITHM_RSA_PAD_NONE) {
+		if (!(caps & SC_ALGORITHM_RSA_RAW)) {
+			sc_error(ctx, "raw RSA is not supported");
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+		*sflags |= SC_ALGORITHM_RSA_RAW;
+		/* in case of raw RSA there is nothing to pad */
+		*pflags = 0;
+	} else {
+		sc_error(ctx, "unsupported algorithm");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
 
 	return SC_SUCCESS;
 }
