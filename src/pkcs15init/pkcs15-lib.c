@@ -134,6 +134,7 @@ static int	sc_pkcs15init_read_info(sc_card_t *card, sc_profile_t *);
 static int	sc_pkcs15init_parse_info(sc_card_t *, const u8 *, size_t, sc_profile_t *);
 static int	sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *,
 			sc_pkcs15_object_t *pin_obj);
+#if 0
 static int	sc_pkcs15init_read_unusedspace(sc_pkcs15_card_t *);
 static int sc_pkcs15init_update_unusedspace(sc_pkcs15_card_t *, sc_profile_t *);
 static sc_pkcs15_unusedspace_t *merge_paths(sc_pkcs15_unusedspace_t *, const sc_path_t *);
@@ -141,6 +142,7 @@ static int sc_pkcs15init_add_unusedspace(sc_pkcs15_card_t *,
 			sc_profile_t *, const sc_path_t *, const sc_pkcs15_id_t *);
 static int sc_pkcs15init_remove_unusedspace(sc_pkcs15_card_t *,
 			sc_profile_t *, const sc_path_t *);
+#endif
 
 
 static struct profile_operations {
@@ -787,6 +789,7 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 	return r;
 }
 
+#if 0
 /* Read the EF(UnusedSpace) file */
 static int sc_pkcs15init_read_unusedspace(sc_pkcs15_card_t *p15card)
 {
@@ -948,6 +951,7 @@ static int sc_pkcs15init_remove_unusedspace(sc_pkcs15_card_t *p15card,
 
 	return sc_pkcs15init_update_unusedspace(p15card, profile);
 }
+#endif
 
 /*
  * Store a PIN/PUK pair
