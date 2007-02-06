@@ -1297,7 +1297,9 @@ auth_generate_key(sc_card_t *card, int use_sm,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	sc_path_t tmp_path;
 	int rv = 0;
+#ifndef NOT_YET	
 	const sc_acl_entry_t *entry;
+#endif
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (data->key_bits < 512 || data->key_bits > 2048 || 
@@ -1788,7 +1790,9 @@ auth_reset_retry_counter(sc_card_t *card, unsigned int type,
 	size_t len;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_pin_cmd_pin pin_info, puk_info;
+#ifndef NOT_YET	
 	const sc_acl_entry_t *entry;
+#endif
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	rv = auth_get_pin_reference (card, type, ref, SC_PIN_CMD_CHANGE, &pin_ref);
@@ -2033,7 +2037,9 @@ auth_read_binary(sc_card_t *card, unsigned int offset,
 		u8 *buf, size_t count, unsigned long flags)
 {
 	int rv;
+#ifndef NOT_YET	
 	const sc_acl_entry_t *entry;
+#endif
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx,"offset %i; size %i; flags 0x%lX\n", offset, count, flags);
