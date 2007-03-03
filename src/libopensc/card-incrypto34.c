@@ -2,7 +2,7 @@
  * card-incrypto34.c: Support for Incard Incrypto34 based cards and tokens
  * 	(for example Italian CNS)
  *
- * Copyright (C) 2005  ST Incard srl, Giuseppe Amato <giuseppe dot amato at st dot com>
+ * Copyright (C) 2005  ST Incard srl, Giuseppe Amato <giuseppe dot amato at st dot com>, <midori3@gmail.com>
  * Copyright (C) 2002  Andreas Jellinghaus <aj@dungeon.inka.de>
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
