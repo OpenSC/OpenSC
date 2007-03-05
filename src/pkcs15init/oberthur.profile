@@ -53,7 +53,8 @@ filesystem {
 
 		DF OberthurAWP-AppDF {
 			ACL = *=NONE;
-	    	ACL	= CREATE=CHV4, CRYPTO=NEVER, PIN_SET=CHV4, PIN_RESET=PRO0x78;
+	    	#ACL	= CREATE=CHV4, CRYPTO=NEVER, PIN_SET=CHV4, PIN_RESET=PRO0x78;
+	    	ACL	= CREATE=CHV4, CRYPTO=NEVER;
 			file-id 	= 5011;
 			size = 40;
 			
@@ -71,8 +72,8 @@ filesystem {
 		    		file-id		= 3000;
 					type	= internal-ef;
 					# READ acl used instead of DECRYPT/SIGN
-					#ACL     = UPDATE=CHV1, READ=CHV1;
-					ACL     = UPDATE=PRO0x78, READ=CHV1;
+					#ACL     = UPDATE=PRO0x78, READ=CHV1;
+					ACL     = UPDATE=CHV1, READ=CHV1;
 				}
 				
 				# Private DES keys
@@ -151,7 +152,8 @@ filesystem {
 			EF OberthurAWP-puk-file {
 				file-id 	= 2000;
 				size	= 16;
-				ACL     = WRITE=NEVER, UPDATE=CHV4, READ=PRO0x68, ERASE=NEVER;
+				#ACL     = WRITE=NEVER, UPDATE=CHV4, READ=PRO0x68, ERASE=NEVER;
+				ACL     = WRITE=NEVER, UPDATE=CHV4, READ=NONE, ERASE=NEVER;
 			}
 			
 			EF OberthurAWP-container-list {
