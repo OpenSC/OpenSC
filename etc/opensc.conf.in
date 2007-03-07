@@ -65,12 +65,13 @@ app default {
 	# "reader_driver openct", respectively.
 	reader_driver pcsc {
 		# This sets the maximum send and receive sizes.
-		# Some IFD handlers do not properly handle APDUs with
-		# large lc or le bytes.
+		# Some reader drivers have limitations, so you need
+		# to set these values. For usb devices check the
+		# properties with lsusb -vv for dwMaxIFSD
 		#
-		max_send_size = 252;
-		max_recv_size = 252;
-		#
+		#max_send_size = 252;
+		#max_recv_size = 252;
+		
 		# Connect to reader in exclusive mode.
 		# Default: false
 		# connect_exclusive = true;
@@ -92,6 +93,14 @@ app default {
 	reader_driver openct {
 		# virtual readers to allocate. default:5
 		readers = 5;
+
+		# This sets the maximum send and receive sizes.
+		# Some reader drivers have limitations, so you need
+		# to set these values. For usb devices check the
+		# properties with lsusb -vv for dwMaxIFSD
+		#
+		#max_send_size = 252;
+		#max_recv_size = 252;
 	};
 
 	# What card drivers to load at start-up
