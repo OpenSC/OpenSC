@@ -890,6 +890,10 @@ encode_file_structure_V5(sc_card_t *card, const sc_file_t *file,
 		ops[4] = SC_AC_OP_PIN_SET;  /* SC_AC_OP_SET_REFERENCE */
 		ops[5] = SC_AC_OP_PIN_CHANGE;  /* SC_AC_OP_CHANGE_REFERENCE */
 		ops[6] = SC_AC_OP_PIN_RESET;  /* SC_AC_OP_RESET_COUNTER */
+#else
+		ops[4] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_SET_REFERENCE */
+		ops[5] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_CHANGE_REFERENCE */
+		ops[6] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_RESET_COUNTER */						
 #endif
 	} 
 	else if (file->type == SC_FILE_TYPE_WORKING_EF)   {
@@ -1146,6 +1150,11 @@ auth_compute_signature(sc_card_t *card,
 	else if (ilen > 96)   {
 		sc_error(card->ctx, "Illegal input length %d\n", ilen);
 		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Illegal input length");
+	}
+	
+	if (olen > 256)   {
+		sc_debug(card->ctx, "Output length reduced to 256 bytes");
+		olen = 256;
 	}
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
