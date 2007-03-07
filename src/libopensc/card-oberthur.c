@@ -1152,16 +1152,11 @@ auth_compute_signature(sc_card_t *card,
 		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Illegal input length");
 	}
 	
-	if (olen > 256)   {
-		sc_debug(card->ctx, "Output length reduced to 256 bytes");
-		olen = 256;
-	}
-	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
 	apdu.datalen = ilen;
 	apdu.data = in;
 	apdu.lc = ilen;
-	apdu.le = olen;
+	apdu.le = olen > 256 ? 256 : olen;
 	apdu.resp = resp;
 	apdu.resplen = olen;
 	
