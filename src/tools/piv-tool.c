@@ -41,7 +41,7 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
-const char *app_name = "opensc-tool";
+const char *app_name = "piv-tool";
 
 static int	opt_reader = -1,
 		opt_wait = 0;
@@ -60,6 +60,7 @@ const struct option options[] = {
 	{ "usepin",		0, 0,		'P' }, /* some beta cards want user pin for put_data */
 	{ "genkey",		0, 0,		'G' },
 	{ "cert",		0, 0,		'C' },
+	{ "compresscert", 0, 0,		'Z' },
 	{ "req",		0, 0, 		'R' },
 	{ "out",	0, 0, 		'o' },
 	{ "in",		0, 0, 		'o' },
@@ -77,7 +78,8 @@ const char *option_help[] = {
 	"authenticate using default 3des key",
 	"authenticate using user pin", 
 	"Generate key <ref>:<alg> 9A:06 on card, and output pubkey",
-	"Load the AUTH cert onto card from file <arg>",
+	"Load a cert <ref> where <ref> is 9A,9B,9C or 9D",
+	"Load a cert that has been gziped <ref>",
 	"Generate a cert req",
 	"Output file for cert or key or req",
 	"Inout file for cert",
@@ -94,7 +96,8 @@ BIO * bp = NULL;
 RSA * newkey = NULL;
 
 
-static int load_cert(const char * cert_id, const char * cert_file)
+static int load_cert(const char * cert_id, const char * cert_file,
+					int compress)
 {
 	X509 * cert = NULL;
 	FILE *fp;
@@ -106,25 +109,39 @@ static int load_cert(const char * cert_id, const char * cert_file)
 	size_t derlen;
 	int r;
 
-
     if((fp=fopen(cert_file, "r"))==NULL){
         printf("Cannot open cert file, %s %s\n", 
 			cert_file, strerror(errno));
         return -1;
     }
-	cert = PEM_read_X509(fp, &cert, NULL, NULL);
+	if (compress) { /* file is gziped already */
+		struct stat stat_buf;
+
+		stat(cert_file, &stat_buf);
+		derlen = stat_buf.st_size;
+		der = malloc(derlen);
+		if (der == NULL) {
+			printf("file %s is too big, %d\n", cert_file, derlen);
+			return-1 ;
+		}
+		if (1 != fread(der, derlen, 1, fp)) {
+			printf("unable to read file %s\n",cert_file);
+			return -1;
+		}
+	} else {
+		cert = PEM_read_X509(fp, &cert, NULL, NULL);
+    	if(cert == NULL){
+        	printf("file %s does not conatin PEM-encoded certificate\n",
+				 cert_file);
+        	return -1 ;
+    	}
+
+		derlen = i2d_X509(cert, NULL);
+		der = (u8 *) malloc(derlen);
+		p = der;
+		i2d_X509(cert, &p);
+	}
     fclose(fp);
-    if(cert == NULL){
-        printf("file %s does not conatin PEM-encoded certificate\n",
-			 cert_file);
-        return-1 ;
-    }
-
-	derlen = i2d_X509(cert, NULL);
-	der = (u8 *) malloc(derlen);
-	p = der;
-	i2d_X509(cert, &p);
-
 	sc_hex_to_bin(cert_id, buf,&buflen);
 	
 	switch (buf[0]) {
@@ -142,7 +159,8 @@ static int load_cert(const char * cert_id, const char * cert_file)
 		fprintf(stderr, "select file failed\n");
 		 return -1;
 	}
-	r = sc_write_binary(card, 0, der, derlen, 0); 
+	/* we pass compress as the flag to card-piv.c write_binary */
+	r = sc_write_binary(card, 0, der, derlen, compress); 
 	
 	return r;
 
@@ -340,6 +358,7 @@ int main(int argc, char * const argv[])
 	int do_admin_mode = 0;
 	int do_gen_key = 0;
 	int do_load_cert = 0;
+	int compress_cert = 0;
 	int do_req = 0;
 	int do_print_serial = 0;
 	int do_print_name = 0;
@@ -355,7 +374,7 @@ int main(int argc, char * const argv[])
 	setbuf(stdout, NULL);
 
 	while (1) {
-		c = getopt_long(argc, argv, "nA:G:C:Ri:o:fvs:c:w", options, &long_optind);
+		c = getopt_long(argc, argv, "nA:G:Z:C:Ri:o:fvs:c:w", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -384,6 +403,8 @@ int main(int argc, char * const argv[])
 			key_info = optarg;
 			action_count++;
 			break;
+		case 'Z':
+			compress_cert = 1;
 		case 'C':
 			do_load_cert = 1;
 			cert_id = optarg;
@@ -469,7 +490,7 @@ int main(int argc, char * const argv[])
 		action_count--;
 	}
 	if (do_load_cert) {
-		if ((err = load_cert(cert_id, in_file)))
+		if ((err = load_cert(cert_id, in_file, compress_cert)))
 			goto end;
 		action_count--;
 	}

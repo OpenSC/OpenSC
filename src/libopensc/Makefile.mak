@@ -29,6 +29,7 @@ OBJECTS			= \
 	card-oberthur.obj card-belpic.obj card-atrust-acos.obj \
 	card-incrypto34.obj card-piv.obj\
 	muscle.obj card-muscle.obj muscle-filesystem.obj \
+	compression.obj p15card-helper.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj \
@@ -43,5 +44,5 @@ all: install-headers $(TARGET)
 
 $(TARGET): $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib
 	perl $(TOPDIR)\win32\makedef.pl $*.def $* $(OBJECTS)
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) gdi32.lib $(LIBLTDL_LIB) advapi32.lib ws2_32.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib $(LIBLTDL_LIB) advapi32.lib ws2_32.lib
 	if EXIST $(TARGET).manifest mt -manifest $(TARGET).manifest -outputresource:$(TARGET);2
