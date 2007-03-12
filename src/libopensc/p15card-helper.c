@@ -29,7 +29,7 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-int initialize_objects(sc_pkcs15_card_t *p15card, p15data_items *items) {
+int sc_pkcs15emu_initialize_objects(sc_pkcs15_card_t *p15card, p15data_items *items) {
 	sc_card_t* card = p15card->card;
 	const objdata* objects = items->objects;
 	int i, r;
@@ -202,7 +202,7 @@ err:
 	SC_FUNC_RETURN(p15card->card->ctx, 1, r);
 }
 
-int initialize_certificates(sc_pkcs15_card_t *p15card, p15data_items* items) {
+int sc_pkcs15emu_initialize_certificates(sc_pkcs15_card_t *p15card, p15data_items* items) {
 	/* set certs */
 	sc_card_t* card = p15card->card;
 	const cdata* certs = items->certs;
@@ -266,7 +266,7 @@ int initialize_certificates(sc_pkcs15_card_t *p15card, p15data_items* items) {
 	return SC_SUCCESS;
 }
 
-int initialize_pins(sc_pkcs15_card_t *p15card, p15data_items* items) {
+int sc_pkcs15emu_initialize_pins(sc_pkcs15_card_t *p15card, p15data_items* items) {
 	/* set pins */
 	int i,r;
 	const pindata* pins = items->pins;
@@ -298,7 +298,7 @@ int initialize_pins(sc_pkcs15_card_t *p15card, p15data_items* items) {
 	return SC_SUCCESS;
 }
 
-int initialize_private_keys(sc_pkcs15_card_t *p15card, p15data_items* items) {
+int sc_pkcs15emu_initialize_private_keys(sc_pkcs15_card_t *p15card, p15data_items* items) {
 	const prdata *prkeys = items->private_keys;
 	int i, r;
 	if(!prkeys) return SC_SUCCESS;
@@ -311,7 +311,7 @@ int initialize_private_keys(sc_pkcs15_card_t *p15card, p15data_items* items) {
 	return SC_SUCCESS;
 }
 
-int initialize_public_keys(sc_pkcs15_card_t *p15card, p15data_items *items) {
+int sc_pkcs15emu_initialize_public_keys(sc_pkcs15_card_t *p15card, p15data_items *items) {
 	const pubdata *keys = items->public_keys;
 	int i, r;
 	if(!keys) return SC_SUCCESS;
@@ -325,18 +325,18 @@ int initialize_public_keys(sc_pkcs15_card_t *p15card, p15data_items *items) {
 
 }
 
-int initialize_all(sc_pkcs15_card_t *p15card, p15data_items* items) {
+int sc_pkcs15emu_initialize_all(sc_pkcs15_card_t *p15card, p15data_items* items) {
 	int r;
-	if(SC_SUCCESS != (r = initialize_objects(p15card, items)))
+	if(SC_SUCCESS != (r = sc_pkcs15emu_initialize_objects(p15card, items)))
 		return r;
-	if(SC_SUCCESS != (r = initialize_certificates(p15card, items)))
+	if(SC_SUCCESS != (r = sc_pkcs15emu_initialize_certificates(p15card, items)))
 		return r;
-	if(SC_SUCCESS != (r = initialize_pins(p15card, items)))
+	if(SC_SUCCESS != (r = sc_pkcs15emu_initialize_pins(p15card, items)))
 		return r;
 
-	if(items->forced_private && (SC_SUCCESS != (r = initialize_private_keys(p15card, items))))
+	if(items->forced_private && (SC_SUCCESS != (r = sc_pkcs15emu_initialize_private_keys(p15card, items))))
 		return r;
-	if(items->forced_public && (SC_SUCCESS != (r = initialize_public_keys(p15card, items))))
+	if(items->forced_public && (SC_SUCCESS != (r = sc_pkcs15emu_initialize_public_keys(p15card, items))))
 		return r;
 	return SC_SUCCESS;
 }

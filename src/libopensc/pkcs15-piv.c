@@ -204,7 +204,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 	sc_debug(card->ctx, "PIV-II adding objects...");
 	
-	r = initialize_all(p15card, &items);
+	r = sc_pkcs15emu_initialize_all(p15card, &items);
 
 	SC_FUNC_RETURN(card->ctx, 1, SC_SUCCESS);
 }

@@ -14,7 +14,7 @@ OBJECTS			= pkcs11-global.obj pkcs11-session.obj pkcs11-object.obj misc.obj slot
 OBJECTS2		= libpkcs11.obj
 OBJECTS3		= pkcs11-spy.obj pkcs11-display.obj libpkcs11.obj
 
-all: install-headers install-headers-dir $(TARGET) $(TARGET2) $(TARGET3)
+all: install-headers $(TARGET) $(TARGET2) $(TARGET3)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 

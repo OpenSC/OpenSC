@@ -678,7 +678,7 @@ static int piv_handle_certificate_data(sc_card_t *card,
 #ifdef HAVE_ZLIB_H
 		size_t len = count;
 		u8* newBuf = NULL;
-		if(SC_SUCCESS != do_decompress_alloc(&newBuf, &len, tag, taglen, COMPRESSION_AUTO)) {
+		if(SC_SUCCESS != sc_decompress_alloc(&newBuf, &len, tag, taglen, COMPRESSION_AUTO)) {
 			return SC_ERROR_OBJECT_NOT_VALID;
 		} else {
 			if(len < count + idx)

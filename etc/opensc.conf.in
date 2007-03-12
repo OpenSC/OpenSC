@@ -153,6 +153,7 @@ app default {
 	#  oberthur         Oberthur AuthentIC.v2/CosmopolIC.v4
 	#  belpic           Belpic cards
 	#  emv              EMV compatible cards
+	#  piv              U.S. NIST 800-73-1 PIV
 
 	# Generic format: card_atr <hex encoded ATR (case-sensitive!)>
 
@@ -228,7 +229,6 @@ app default {
 	# card_atr 3B:7D:96:00:00:80:31:80:65:B0:83:11:00:AC:83:00:90:00 {
 		# name = "PIV-II";
 	 	# driver = "piv";
-		# pkcs15emu = "PIV-II";
 	# }
 
 	# Estonian ID card and Micardo driver currently play together with T=0
@@ -279,7 +279,7 @@ app default {
 		# Default: yes
 		# enable_builtin_emulation = yes;
 		# list of the builtin pkcs15 emulators to test
-		builtin_emulators = esteid, openpgp, tcos, starcert, infocamere, postecert, actalis, atrust-acos, gemsafe, tccardos;
+		builtin_emulators = esteid, openpgp, tcos, starcert, infocamere, postecert, actalis, atrust-acos, gemsafe, tccardos, PIV-II;
 
 		# additional settings per driver
 		#

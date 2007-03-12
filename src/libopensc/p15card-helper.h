@@ -126,12 +126,12 @@ struct p15data_items {
 
 CERT_HANDLE_FUNCTION(default_cert_handle);
 
-int initialize_objects(sc_pkcs15_card_t *p15card, p15data_items* items);
-int initialize_certificates(sc_pkcs15_card_t *p15card, p15data_items* items);
-int initialize_pins(sc_pkcs15_card_t *p15card, p15data_items *items);
-int initialize_private_keys(sc_pkcs15_card_t *p15card, p15data_items *items);
-int initialize_public_keys(sc_pkcs15_card_t *p15card, p15data_items *items);
-int initialize_all(sc_pkcs15_card_t *p15card, p15data_items *items);
+int sc_pkcs15emu_initialize_objects(sc_pkcs15_card_t *p15card, p15data_items* items);
+int sc_pkcs15emu_initialize_certificates(sc_pkcs15_card_t *p15card, p15data_items* items);
+int sc_pkcs15emu_initialize_pins(sc_pkcs15_card_t *p15card, p15data_items *items);
+int sc_pkcs15emu_initialize_private_keys(sc_pkcs15_card_t *p15card, p15data_items *items);
+int sc_pkcs15emu_initialize_public_keys(sc_pkcs15_card_t *p15card, p15data_items *items);
+int sc_pkcs15emu_initialize_all(sc_pkcs15_card_t *p15card, p15data_items *items);
 
 #endif
 

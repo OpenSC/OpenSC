@@ -58,7 +58,7 @@ static int detect_method(const u8* in, size_t inLen) {
 	}
 }
 
-static int do_decompress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLen) {
+static int sc_decompress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLen) {
 	/* Since uncompress does not offer a way to make it uncompress gzip... manually set it up */
 	z_stream gz;
 	int err;
@@ -83,7 +83,7 @@ static int do_decompress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLe
 	return zerr_to_opensc(err);	
 }
 
-int do_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method) {
+int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method) {
 	if(method == COMPRESSION_AUTO) {
 		method = detect_method(in, inLen);
 		if(method == COMPRESSION_UNKNOWN) {
@@ -94,13 +94,13 @@ int do_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int metho
 	case COMPRESSION_ZLIB:
 		return zerr_to_opensc(uncompress(out, outLen, in, inLen));
 	case COMPRESSION_GZIP:
-		return do_decompress_gzip(out, outLen, in, inLen);
+		return sc_decompress_gzip(out, outLen, in, inLen);
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 }
 
-static int do_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, int gzip) {
+static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, int gzip) {
 	/* Since uncompress does not offer a way to make it uncompress gzip... manually set it up */
 	z_stream gz;
 	int err;
@@ -157,7 +157,7 @@ static int do_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 	inflateEnd(&gz);
 	return zerr_to_opensc(err);
 }
-int do_decompress_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, int method) {
+int sc_decompress_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, int method) {
 	if(method == COMPRESSION_AUTO) {
 		method = detect_method(in, inLen);
 		if(method == COMPRESSION_UNKNOWN) {
@@ -166,9 +166,9 @@ int do_decompress_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, in
 	}
 	switch(method) {
 	case COMPRESSION_ZLIB:
-		return do_decompress_zlib_alloc(out, outLen, in, inLen, 0);
+		return sc_decompress_zlib_alloc(out, outLen, in, inLen, 0);
 	case COMPRESSION_GZIP:
-		return do_decompress_zlib_alloc(out, outLen, in, inLen, 1);
+		return sc_decompress_zlib_alloc(out, outLen, in, inLen, 1);
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
