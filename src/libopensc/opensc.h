@@ -130,7 +130,8 @@ extern "C" {
 #define SC_MAX_AID_SIZE			16
 /* Beware: the following needs to be a multiple of 4
  * or else sc_update_binary will not work on GPK */
-#define SC_APDU_CHOP_SIZE		248
+/* increased to 256 on 2007-03-12 by aj so we have max size by default */
+#define SC_APDU_CHOP_SIZE		256
 
 #define SC_AC_KEY_REF_NONE	0xFFFFFFFF
 
