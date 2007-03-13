@@ -1178,6 +1178,7 @@ extern sc_card_driver_t *sc_get_atrust_acos_driver(void);
 extern sc_card_driver_t *sc_get_incrypto34_driver(void);
 extern sc_card_driver_t *sc_get_piv_driver(void);
 extern sc_card_driver_t *sc_get_muscle_driver(void);
+extern sc_card_driver_t *sc_get_acos5_driver(void);
 
 #ifdef __cplusplus
 }
