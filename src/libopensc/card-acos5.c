@@ -24,7 +24,7 @@
 
 static struct sc_atr_table acos5_atrs[] = {
 	{"3b:be:18:00:00:41:05:10:00:00:00:00:00:00:00:00:00:90:00", NULL, NULL,
-	 SC_CARD_TYPE_TEST_BASE, 0, NULL},
+	 SC_CARD_TYPE_ACOS5_GENERIC, 0, NULL},
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
 
