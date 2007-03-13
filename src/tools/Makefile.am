@@ -8,11 +8,10 @@ AM_CFLAGS = $(OPENSSL_CFLAGS) -I$(top_srcdir)/src/common
 AM_LDFLAGS = @LIBOPENSC@
 
 if HAVE_OPENSSL
-PROGRAMS_OPENSSL = cryptoflex-tool pkcs15-init netkey-tool
+PROGRAMS_OPENSSL = cryptoflex-tool pkcs15-init netkey-tool piv-tool 
 endif
 
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
-	piv-tool \
 	pkcs11-tool cardos-info eidenv \
 	$(PROGRAMS_OPENSSL)
 
