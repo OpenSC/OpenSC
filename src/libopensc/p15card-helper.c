@@ -23,8 +23,8 @@
 #include <opensc/types.h>
 #include <opensc/log.h>
 #include <opensc/pkcs15.h>
-#include <memory.h>
-#include <malloc.h>
+#include <string.h>
+#include <stdlib.h>
 #include <openssl/bio.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>

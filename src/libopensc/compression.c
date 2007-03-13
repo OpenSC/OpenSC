@@ -22,8 +22,8 @@
 #include "compression.h"
 
 #include <zlib.h>
-#include <memory.h>
-#include <malloc.h>
+#include <string.h>
+#include <stdlib.h>
 #include "errors.h"
 
 static int zerr_to_opensc(int err) {
@@ -39,7 +39,7 @@ static int zerr_to_opensc(int err) {
 	case Z_VERSION_ERROR:
 	case Z_DATA_ERROR:
 	case Z_STREAM_ERROR:
-	//case Z_NEED_DICT:
+	/* case Z_NEED_DICT: */
 	default:
 		return SC_ERROR_INTERNAL;
 	}
