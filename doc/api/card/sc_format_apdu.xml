@@ -27,12 +27,12 @@ void sc_format_apdu(struct sc_card *card, sc_apdu_t *apdu,
 	<refsect1>
 		<title>Description</title>
 		<para>
-			This function populates the <link linkend="scapdut">sc_apdu_t</link> structure
+			This function populates the sc_apdu_t structure
 			pointed to by <emphasis>apdu</emphasis> on <emphasis>card</emphasis>. It does
 			not allocate memory. The <emphasis>cse</emphasis>, <emphasis>ins</emphasis>,
 			<emphasis>p1</emphasis> and <emphasis>p2</emphasis> parameters correspond to
-			the respective APDU parameters as described in the <link
-				linkend="iso7816">ISO 7816</link> standard.
+			the respective APDU parameters as described in the
+				ISO 7816 standard.
 		</para>
 	</refsect1>
 </refentry>

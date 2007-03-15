@@ -27,9 +27,9 @@ int sc_delete_record(struct sc_card *card, unsigned int rec_nr);
 		<title>Description</title>
 		<para>
 			This function deletes a record specified by <emphasis>rec_nr</emphasis> on
-			<emphasis>card</emphasis>. This is not a standard <link linkend="iso7816">ISO
-				7816</link> operation, and is currently only supported on the <link
-					linkend="cardoberthur">Oberthur</link> smart cards.
+			<emphasis>card</emphasis>. This is not a standard ISO
+				7816 operation, and is currently only supported on the
+					Oberthur smart cards.
 		</para>
 	</refsect1>
 

@@ -29,7 +29,7 @@ int sc_get_data(sc_card_t *card, unsigned int tag,
 		<para>
 			This function is used to retrieve a primitive data object from
 			<emphasis>card</emphasis>. It corresponds to the GET DATA command in the
-			<link linkend="iso7816">ISO 7816</link> standard. The data is stored in
+			ISO 7816 standard. The data is stored in
 			<emphasis>buf</emphasis>, which is <emphasis>buflen</emphasis> bytes long.
 		</para>
 

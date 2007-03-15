@@ -29,7 +29,7 @@ int sc_put_data(sc_card_t *card, unsigned int tag,
 		<para>
 			This function is used to store a primitive data object on
 			<emphasis>card</emphasis>. It corresponds to the PUT DATA command in the
-			<link linkend="iso7816">ISO 7816</link> standard. The data to be sent to the
+			ISO 7816 standard. The data to be sent to the
 			card is stored in <emphasis>buf</emphasis>, which is
 			<emphasis>buflen</emphasis> bytes long.
 		</para>

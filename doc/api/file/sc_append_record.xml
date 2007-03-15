@@ -30,8 +30,8 @@ int sc_append_record(struct sc_card *card,
 		<para>
 			This function appends a record that is <emphasis>buflen</emphasis> bytes long from the buffer
 			pointed to by <emphasis>buf</emphasis> to a record-structured elementary file (EF) on
-			<emphasis>card</emphasis>. The function corresponds to the <link linkend="iso7816">ISO
-				7816</link> APPEND RECORD function. Call <link linkend="scselectfile">sc_select_file()</link>
+			<emphasis>card</emphasis>. The function corresponds to the ISO
+				7816 APPEND RECORD function. Call <link linkend="scselectfile">sc_select_file()</link>
 			first to select the file to write to.
 		</para>
 	</refsect1>

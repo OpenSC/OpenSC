@@ -36,8 +36,8 @@ int sc_establish_context(sc_context_t **ctx,
 
 		<para>
 			<emphasis>appname</emphasis> is a string that identifies the application. This string will
-			be used to apply application-specific settings from the <link
-				linkend="openscconf">opensc.conf</link> configuration file. If NULL is passed, only the
+			be used to apply application-specific settings from the
+				opensc.conf configuration file. If NULL is passed, only the
 				settings specified in the default section apply; otherwise, settings from the section
 				identified by <emphasis>appname</emphasis> will be applied as well.
 		</para>

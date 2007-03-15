@@ -29,7 +29,7 @@ int sc_read_binary(struct sc_card *card, unsigned int offset,
 		<title>Description</title>
 		<para>
 			This function reads from a transparent elementary file (EF) on <emphasis>card</emphasis>. It
-			corresponds to the <link linkend="iso7816">ISO 7816</link> READ BINARY function. Call <link
+			corresponds to the ISO 7816 READ BINARY function. Call <link
 				linkend="scselectfile">sc_select_file()</link> first to select the file to read from.
 		</para>
 
