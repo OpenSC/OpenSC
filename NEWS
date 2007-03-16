@@ -6,6 +6,19 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/ChangeLog.
 
+New in 0.11.2; 2007-03-16; Andreas Jellinghaus
+* Windows Make.rules.mak improved to work with and w/o openssl and zlib
+* Added --read-ssk-key option to pkcs15-tool (prints public key in ssh format)
+* use pkg-config for finding openct, add --enable/disable-openct option
+* use strlcpy function
+* use new pkcs11.h from scute with an open source license
+* add support for sha2 to pkcs15-crypt
+* add piv-tool for managing piv cards
+* add muscle driver (still work in progress)
+* improved oberthur driver
+* add support for pcsc v2 part10 (reader drivers with pinpad support)
+* convert source files to utf-8
+
 New in 0.11.1; 2006-05-30; Andreas Jellinghaus
 * Fix version variable in win32 build files
 * Update for piv pkcs#15 emulation
