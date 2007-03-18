@@ -380,6 +380,10 @@ int main(int argc, char * const argv[])
 		if (c == '?')
 			print_usage_and_die();
 		switch (c) {
+		case OPT_SERIAL:
+			do_print_serial = 1;
+			action_count++;
+			break;
 		case 's':
 			opt_apdus = (char **) realloc(opt_apdus,
 					(opt_apdu_count + 1) * sizeof(char *));
