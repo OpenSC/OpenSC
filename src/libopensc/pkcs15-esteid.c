@@ -207,12 +207,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 
 static int esteid_detect_card(sc_pkcs15_card_t *p15card)
 {
-	sc_card_t *card = p15card->card;
-
-	/* check if we have the correct card OS */
-	if (strcmp(card->name, "MICARDO 2.1"))
-		return SC_ERROR_WRONG_CARD;
-	if (card->type == SC_CARD_TYPE_MCRD_ESTEID)
+	if (p15card->card->type == SC_CARD_TYPE_MCRD_ESTEID)
 		return SC_SUCCESS;
 	return SC_ERROR_WRONG_CARD;
 }
