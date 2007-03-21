@@ -120,6 +120,14 @@ static int pcsc_ret_to_error(long rv)
 		return SC_ERROR_CARD_UNRESPONSIVE;
 	case SCARD_E_SHARING_VIOLATION:
 		return SC_ERROR_READER;
+#ifdef SCARD_E_NO_READERS_AVAILABLE /* Older pcsc-lite does not have it */
+	case SCARD_E_NO_READERS_AVAILABLE: /* Ideelabor #11 */
+		/* Or SC_ERROR_NO_READERS_FOUND 
+		 * or SC_ERROR_READER ? 
+		 * As it currently happens on runtime after a reader has been found once already
+		 * the more suitable error seems to be detached error */
+		return SC_ERROR_READER_DETACHED;
+#endif
 	default:
 		return SC_ERROR_UNKNOWN;
 	}
@@ -489,7 +497,7 @@ static int pcsc_reconnect(sc_reader_t * reader, sc_slot_info_t * slot, int reset
 	
 	rv = SCardReconnect(pslot->pcsc_card,
 			    priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED, protocol,
-			    reset ? SCARD_RESET_CARD : SCARD_LEAVE_CARD, &active_proto);
+			    reset ? SCARD_UNPOWER_CARD : SCARD_LEAVE_CARD, &active_proto);
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_ERROR(reader->ctx, "SCardReconnect failed", rv);
 		return pcsc_ret_to_error(rv);
@@ -518,15 +526,10 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	if (!(slot->flags & SC_SLOT_CARD_PRESENT))
 		return SC_ERROR_CARD_NOT_PRESENT;
 
-	if (_sc_check_forced_protocol(reader->ctx, slot->atr, slot->atr_len, (unsigned int *) &protocol)) {
-		protocol = opensc_proto_to_pcsc(protocol);
-	} else {
-		protocol = SCARD_PROTOCOL_ANY;
-	}
-
+	/* Always connect with whatever protocol possible */
 	rv = SCardConnect(priv->pcsc_ctx, priv->reader_name,
 			  priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
-			  protocol, &card_handle, &active_proto);
+			  SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
 	if (rv != 0) {
 		PCSC_ERROR(reader->ctx, "SCardConnect failed", rv);
 		return pcsc_ret_to_error(rv);
@@ -536,7 +539,23 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 
 	/* after connect reader is not locked yet */
 	pslot->locked = 0;
+	sc_debug(reader->ctx, "After connect protocol = %d", slot->active_protocol);
 	
+	/* If we need a specific protocol, reconnect if needed */
+	if (_sc_check_forced_protocol(reader->ctx, slot->atr, slot->atr_len, (unsigned int *) &protocol)) {
+		/* If current protocol differs from the protocol we want to force */
+		if (slot->active_protocol != protocol) {
+			sc_debug(reader->ctx, "Protocol difference, forcing protocol (%d)", protocol);
+			/* Reconnect with a reset. pcsc_reconnect figures out the right forced protocol */
+			rv = pcsc_reconnect(reader, slot, 1);
+			if (rv != SCARD_S_SUCCESS) {
+				PCSC_ERROR(reader->ctx, "SCardReconnect (to force protocol) failed", rv);
+				return pcsc_ret_to_error(rv);
+			}
+			sc_debug(reader->ctx, "Proto after reconnect = %d", slot->active_protocol);
+		}
+	} 
+
 	/* check for pinpad support */
 #ifdef PINPAD_ENABLED
 	sc_debug(reader->ctx, "Requesting reader features ... ");
@@ -732,7 +751,6 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 	}
 	gpriv->pcsc_ctx = pcsc_ctx;
 
-	
 	/* Defaults */
 	gpriv->connect_reset = 1;
 	gpriv->connect_exclusive = 0;
