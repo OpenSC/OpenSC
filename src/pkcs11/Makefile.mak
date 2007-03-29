@@ -4,6 +4,7 @@ HEADERS			= pkcs11.h
 
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
 
+TARGET0                 = onepin-opensc-pkcs11.dll
 TARGET                  = opensc-pkcs11.dll
 TARGET2			= libpkcs11.lib
 TARGET3			= pkcs11-spy.dll
@@ -14,12 +15,16 @@ OBJECTS			= pkcs11-global.obj pkcs11-session.obj pkcs11-object.obj misc.obj slot
 OBJECTS2		= libpkcs11.obj
 OBJECTS3		= pkcs11-spy.obj pkcs11-display.obj libpkcs11.obj
 
-all: install-headers $(TARGET) $(TARGET2) $(TARGET3)
+all: install-headers $(TARGET0) $(TARGET) $(TARGET2) $(TARGET3) 
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-$(TARGET): $(OBJECTS) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib
-	link $(LINKFLAGS) /dll /out:$(TARGET) $(OBJECTS) ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
+$(TARGET0): $(OBJECTS) hack-enabled.obj ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib
+	link $(LINKFLAGS) /dll /out:$(TARGET) $(OBJECTS) hack-enabled.obj ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
+	if EXIST $(TARGET).manifest mt -manifest $(TARGET).manifest -outputresource:$(TARGET);2
+
+$(TARGET): $(OBJECTS) hack-disabled.obj ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib
+	link $(LINKFLAGS) /dll /out:$(TARGET) $(OBJECTS) hack-disabled.obj ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
 	if EXIST $(TARGET).manifest mt -manifest $(TARGET).manifest -outputresource:$(TARGET);2
 
 $(TARGET2): $(OBJECTS2)

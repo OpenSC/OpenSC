@@ -14,12 +14,17 @@ SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
 	framework-pkcs15init.c debug.c
 INC = sc-pkcs11.h
 
-lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la
+lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
 noinst_LTLIBRARIES = libpkcs11.la
 
-opensc_pkcs11_la_SOURCES = $(SRC) $(INC)
+opensc_pkcs11_la_SOURCES = $(SRC) $(INC) hack-disabled.c
 opensc_pkcs11_la_LDFLAGS = -module -avoid-version
 opensc_pkcs11_la_LIBADD = @LIBOPENSC@ $(OPENSSL_LIBS) \
+	../pkcs15init/libpkcs15init.la 
+
+onepin_opensc_pkcs11_la_SOURCES = $(SRC) $(INC) hack-enabled.c
+onepin_opensc_pkcs11_la_LDFLAGS = -module -avoid-version
+onepin_opensc_pkcs11_la_LIBADD = @LIBOPENSC@ $(OPENSSL_LIBS) \
 	../pkcs15init/libpkcs15init.la 
 
 libpkcs11_la_SOURCES = libpkcs11.c

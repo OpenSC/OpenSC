@@ -26,6 +26,8 @@
 #include <opensc/keycache.h>
 #endif
 
+extern int hack_enabled;
+
 #define MAX_CACHE_PIN		32
 struct pkcs15_slot_data {
 	struct sc_pkcs15_object *auth_obj;
@@ -751,6 +753,9 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	/* Match up related keys and certificates */
 	pkcs15_bind_related_objects(fw_data);
 
+	if (hack_enabled)
+		auth_count = 1;
+
 	for (i = 0; i < auth_count; i++) {
 		struct sc_pkcs15_pin_info *pin_info = NULL;
 
@@ -760,10 +765,15 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		if ((pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) != 0)
 			continue;
 
-		/* Add all the private keys related to this pin */
+		/* Ignore unblocking pins for hacked module */
+		if (hack_enabled && (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) != 0)
+			continue;
+
 		rv = pkcs15_create_slot(p11card, auths[i], &slot);
 		if (rv != CKR_OK)
 			return CKR_OK; /* no more slots available for this card */
+
+		/* Add all objects related to this pin */
 		for (j=0; j < fw_data->num_objects; j++) {
 			struct pkcs15_any_object *obj = fw_data->objects[j];
 
@@ -797,6 +807,9 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	/* Add all the remaining objects */
 	for (j = 0; j < fw_data->num_objects; j++) {
 		struct pkcs15_any_object *obj = fw_data->objects[j];
+		/* We only have one pin and only the things related to it. */
+		if (hack_enabled)
+			break;
 
 		if (!(obj->base.flags & SC_PKCS11_OBJECT_SEEN)) {
 			sc_debug(context, "Object %d was not seen previously\n", j);
