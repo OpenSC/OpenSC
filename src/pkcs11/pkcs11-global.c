@@ -79,7 +79,7 @@ CK_RV mutex_create(void **mutex)
 {
 	CRITICAL_SECTION *m;
 
-	m = (CRITICAL_SECTION *) malloc(sizeof(*mutex));
+	m = (CRITICAL_SECTION *) malloc(sizeof(*m));
 	if (m == NULL)
 		return CKR_GENERAL_ERROR;
 	InitializeCriticalSection(m);
