@@ -770,7 +770,7 @@ int msc_compute_crypt_final(
 	memset(outputBuffer, 0, sizeof(outputBuffer));
 	apdu.resp = outputBuffer;
 	apdu.resplen = MSC_MAX_READ;
-	apdu.le = MSC_MAX_READ;
+	apdu.le = dataLength +2;
 	ptr = buffer;
 	*ptr = 0x01; ptr++; /* DATA LOCATION: APDU */
 	*ptr = (dataLength >> 8) & 0xFF; ptr++;
