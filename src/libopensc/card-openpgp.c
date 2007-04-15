@@ -614,7 +614,7 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	apdu.lc = data_len;
 	apdu.data = data;
 	apdu.datalen = data_len;
-	apdu.le      = outlen;
+	apdu.le      = outlen > 256 ? 256 : outlen;
 	apdu.resp    = out;
 	apdu.resplen = outlen;
 
