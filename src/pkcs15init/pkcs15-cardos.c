@@ -385,7 +385,7 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 {
 	struct sc_cardctl_cardos_obj_info args;
 	unsigned char	buffer[256];
-	unsigned char	pinpadded[16];
+	unsigned char	pinpadded[256];
 	struct tlv	tlv;
 	unsigned int	attempts, minlen, maxlen;
 	int		r;
