@@ -324,16 +324,22 @@ static int read_data_object(void)
 			
 		if (verbose)
 			printf("Reading data object with label '%s'\n", opt_data);
-		r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
-		if (r) {
-			fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
-			if (r == SC_ERROR_FILE_NOT_FOUND)
-				continue; /* DEE emulation may say there is a file */
+		r = authenticate(objs[i]);
+		if (r >= 0) {
+			r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
+			if (r) {
+				fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
+				if (r == SC_ERROR_FILE_NOT_FOUND)
+					continue; /* DEE emulation may say there is a file */
+				return 1;
+			}
+			r = print_data_object("Data Object", data_object->data, data_object->data_len);
+			sc_pkcs15_free_data_object(data_object);
+			return r;
+		} else {
+			fprintf(stderr, "Authentication error: %s\n", sc_strerror(r));
 			return 1;
 		}
-		r = print_data_object("Data Object", data_object->data, data_object->data_len);
-		sc_pkcs15_free_data_object(data_object);
-		return r;
 	}
 	fprintf(stderr, "Data object with label '%s' not found.\n", opt_data);
 	return 2;
@@ -353,7 +359,6 @@ static int list_data_objects(void)
 	for (i = 0; i < count; i++) {
 		int idx;
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
-		struct sc_pkcs15_data *data_object;
 
 		printf("Reading data object <%i>\n", i);
 		printf("applicationName: %s\n", cinfo->app_label);
@@ -369,16 +374,20 @@ static int list_data_objects(void)
 			printf("\n");
 		} else
 			printf("NONE\n");
-		printf("Path :           %s\n", sc_print_path(&cinfo->path));
-		r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
-		if (r) {
-			fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
-			if (r == SC_ERROR_FILE_NOT_FOUND)
-				 continue; /* DEE emulation may say there is a file */
-			return 1;
+		printf("Path:            %s\n", sc_print_path(&cinfo->path));
+		printf("Auth ID:         %s\n", sc_pkcs15_print_id(&objs[i]->auth_id));
+		if (objs[i]->auth_id.len == 0) {
+			struct sc_pkcs15_data *data_object;
+			r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
+			if (r) {
+				fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
+				if (r == SC_ERROR_FILE_NOT_FOUND)
+					 continue; /* DEE emulation may say there is a file */
+				return 1;
+			}
+			r = list_data_object("Data Object", data_object->data, data_object->data_len);
+			sc_pkcs15_free_data_object(data_object);
 		}
-		r = list_data_object("Data Object", data_object->data, data_object->data_len);
-		sc_pkcs15_free_data_object(data_object);
 	}
 	return 0;
 }
@@ -854,7 +863,10 @@ authenticate(sc_pkcs15_object_t *obj)
 		return r;
 
 	pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
-	pin = get_pin("Please enter PIN", pin_obj);
+	if (opt_pin != NULL)
+		pin = opt_pin;
+	else
+		pin = get_pin("Please enter PIN", pin_obj);
 
 	return sc_pkcs15_verify_pin(p15card, pin_info,
 			pin, pin? strlen((char *) pin) : 0);
