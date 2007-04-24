@@ -341,8 +341,8 @@ app opensc-pkcs11 {
 		# In this case, you can turn on PIN caching by setting
 		# cache_pins = true
 		#
-		# Default: false
-		# cache_pins = true;
+		# Default: true
+		# cache_pins = false;
 
 		# Set this value to false if you want to enforce on-card
 		# keypair generation

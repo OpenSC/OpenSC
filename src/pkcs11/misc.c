@@ -318,7 +318,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 	conf->num_slots = SC_PKCS11_DEF_SLOTS_PER_CARD;
 	conf->hide_empty_tokens = 0;
 	conf->lock_login = 0;
-	conf->cache_pins = 0;
+	conf->cache_pins = 1;
 	conf->soft_keygen_allowed = 1;
 
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
@@ -336,6 +336,6 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 	conf->num_slots = scconf_get_int(conf_block, "num_slots", conf->num_slots);
 	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", 0);
 	conf->lock_login = scconf_get_bool(conf_block, "lock_login", 0);
-	conf->cache_pins = scconf_get_bool(conf_block, "cache_pins", 0);
+	conf->cache_pins = scconf_get_bool(conf_block, "cache_pins", 1);
 	conf->soft_keygen_allowed = scconf_get_bool(conf_block, "soft_keygen_allowed", 1);
 }
