@@ -263,15 +263,13 @@ static void load_reader_driver_options(sc_context_t *ctx,
 			break;
 	}
 
-	driver->max_send_size = SC_APDU_CHOP_SIZE;
-	driver->max_recv_size = SC_APDU_CHOP_SIZE;
+	driver->max_send_size = SC_DEFAULT_MAX_SEND_SIZE;
+	driver->max_recv_size = SC_DEFAULT_MAX_RECV_SIZE;
 	if (conf_block != NULL) {
 		driver->max_send_size = scconf_get_int(conf_block,
-						"max_send_size",
-						SC_APDU_CHOP_SIZE);
+			"max_send_size", SC_DEFAULT_MAX_SEND_SIZE);
 		driver->max_recv_size = scconf_get_int(conf_block,
-						"max_recv_size",
-						SC_APDU_CHOP_SIZE);
+			"max_recv_size", SC_DEFAULT_MAX_RECV_SIZE);
 	}
 }
 

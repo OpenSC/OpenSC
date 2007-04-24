@@ -128,10 +128,11 @@ extern "C" {
 #define SC_MAX_PIN_SIZE			256 /* OpenPGP card has 254 max */
 #define SC_MAX_ATR_SIZE			33
 #define SC_MAX_AID_SIZE			16
-/* Beware: the following needs to be a multiple of 4
- * or else sc_update_binary will not work on GPK */
-/* increased to 256 on 2007-03-12 by aj so we have max size by default */
-#define SC_APDU_CHOP_SIZE		256
+
+/* default max_send_size/max_recv_size */
+/* GPK rounds down to a multiple of 4, other driver have their own limits */
+#define SC_DEFAULT_MAX_SEND_SIZE	255
+#define SC_DEFAULT_MAX_RECV_SIZE	256
 
 #define SC_AC_KEY_REF_NONE	0xFFFFFFFF
 
