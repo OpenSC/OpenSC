@@ -138,8 +138,8 @@ fi
 AC_CHECK_HEADERS([readline/readline.h])
 AC_SUBST(LIBREADLINE)
 saved_LIBS="$LIBS"
-# libreadline will also need libtermcap on some OSes
-for add in "" "-ltermcap"; do
+# libreadline will also need libncurses or libtermcap on some OSes
+for add in "" "-lncurses" "-ltermcap"; do
 	if test "x$add" != x; then
 		AC_MSG_CHECKING([for readline with])
 		AC_MSG_RESULT($add)
