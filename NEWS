@@ -6,7 +6,7 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/ChangeLog.
 
-New in 0.11.2; 2007-??-??; Andreas Jellinghaus
+New in 0.11.2; 2007-05-04; Andreas Jellinghaus
 * enabled pin caching by default (needed by regression suite and other apps).
   disable this for highest security (but that breaks some applications).
 * use max_send_size 255 / max_recv_size 256 bytes by default.
