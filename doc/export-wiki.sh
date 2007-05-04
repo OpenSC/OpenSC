@@ -24,7 +24,8 @@ rm -rf "$SRCDIR"/*.html "$SRCDIR"/*.css
 
 wget -nv $SERVER/$WIKI/TitleIndex -O "$SRCDIR"/TitleIndex.tmp
 
-grep "\"/$WIKI/[^\"]*\"" "$SRCDIR"/TitleIndex.tmp \
+sed -e "s#</li>#</li>\n#g" < "$SRCDIR"/TitleIndex.tmp \
+	| grep "\"/$WIKI/[^\"]*\"" \
         |sed -e "s#.*\"/$WIKI/\([^\"]*\)\".*#\1#g" \
 	> "$SRCDIR"/WikiWords.tmp
 sed -e /^Trac/d -e /^Wiki/d -e /^TitleIndex/d -e /^RecentChanges/d \
