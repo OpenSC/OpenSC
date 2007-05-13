@@ -508,7 +508,8 @@ static int
 auth_select_file(sc_card_t *card, const sc_path_t *in_path,
 				 sc_file_t **file_out)
 {
-	int rv, offs, ii;
+	int rv;
+	size_t offs, ii;
 	sc_path_t path;
 	sc_file_t *tmp_file = NULL;
 
@@ -578,7 +579,7 @@ auth_select_file(sc_card_t *card, const sc_path_t *in_path,
 
 		sc_debug(card->ctx, "offs %i\n", offs);
 		if (offs && offs < auth_current_df->path.len)   {
-			int deep = auth_current_df->path.len - offs;
+			size_t deep = auth_current_df->path.len - offs;
 
 			sc_debug(card->ctx, "deep %i\n", deep);
 			for (ii=0; ii<deep; ii+=2)   {
