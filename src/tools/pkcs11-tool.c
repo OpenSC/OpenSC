@@ -1535,7 +1535,7 @@ find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags, int stop_if_not_found)
 static TYPE \
 get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj) \
 { \
-	TYPE		type; \
+	TYPE		type = 0; \
 	CK_ATTRIBUTE	attr = { CKA_##ATTR, &type, sizeof(type) }; \
 	CK_RV		rv; \
  \
