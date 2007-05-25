@@ -379,6 +379,11 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	if (rv >= 0) {
 		object->pub_info = (struct sc_pkcs15_pubkey_info *) pubkey->data;
 		object->pub_data = p15_key;
+		if (p15_key && object->pub_info->modulus_length == 0 
+				&& p15_key->algorithm == SC_ALGORITHM_RSA) {
+			object->pub_info->modulus_length = 
+				8 * p15_key->u.rsa.modulus.len;
+		}
 	}
 
 	if (pubkey_object != NULL)
@@ -487,8 +492,11 @@ __pkcs15_prkey_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_prkey_
 			struct pkcs15_pubkey_object *pubkey;
 			
 			pubkey = (struct pkcs15_pubkey_object *) obj;
-			if (sc_pkcs15_compare_id(&pubkey->pub_info->id, id))
+			if (sc_pkcs15_compare_id(&pubkey->pub_info->id, id)) {
 				pk->prv_pubkey = pubkey;
+				if (pk->prv_info->modulus_length == 0)
+					pk->prv_info->modulus_length = pubkey->pub_info->modulus_length;
+			}
 		}
 	}
 }
