@@ -68,7 +68,7 @@ void sc_do_log(sc_context_t *ctx, int type, const char *file, int line, const ch
 void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args)
 {
 	int	(*display_fn)(sc_context_t *, const char *);
-	char	buf[1536], *p;
+	char	buf[1836], *p;
 	const char *tag = "";
 	int	r;
 	size_t	left;
@@ -98,7 +98,8 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	}
 
 	if (file != NULL) {
-		r = snprintf(buf, sizeof(buf), "%s:%d:%s: ", file, line, func ? func : "");
+		r = snprintf(buf, sizeof(buf), "[%s] %s:%d:%s: ", 
+			ctx->app_name, file, line, func ? func : "");
 		if (r < 0 || (unsigned int)r > sizeof(buf))
 			return;
 	} else {
