@@ -153,7 +153,7 @@ static struct fmap	p11_attr_names[] = {
 	{ 0 }
 };
 
-static void sc_pkcs11_print_attrs(const char *file, unsigned int line,
+void sc_pkcs11_print_attrs(const char *file, unsigned int line,
 			const char *function,
 			const char *info,
 			CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
