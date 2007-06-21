@@ -1789,8 +1789,7 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 	int		r, i;
 	unsigned int    tid = 0x01;
 
-	if ((label = args->label) == NULL)
-		label = "Data Object";
+	label = args->label;
 
 	if (!args->id.len) {
 		/* Select an ID if the user didn't specify one, otherwise
@@ -1831,7 +1830,10 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 	if (object == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	data_object_info = (sc_pkcs15_data_info_t *) object->data;
-	if (label != NULL) {
+	if (args->app_label != NULL) {
+		strlcpy(data_object_info->app_label, args->app_label,
+			sizeof(data_object_info->app_label));
+	} else if (label != NULL) {
 		strlcpy(data_object_info->app_label, label,
 			sizeof(data_object_info->app_label));
 	}
@@ -2715,6 +2717,8 @@ sc_pkcs15init_new_object(int type, const char *label, sc_pkcs15_id_t *auth_id, v
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		object->flags = DEFAULT_DATA_FLAGS;
+		if (auth_id->len != 0)
+			object->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 		data_size = sizeof(sc_pkcs15_data_info_t);
 		break;
 	}
@@ -2803,21 +2807,25 @@ int sc_pkcs15init_delete_object(sc_pkcs15_card_t *p15card,
 {
 	sc_path_t path;
 	struct sc_pkcs15_df *df;
-	int r;
+	int r, stored_in_ef = 0;
 
 	switch(obj->type & SC_PKCS15_TYPE_CLASS_MASK)
 	{
 	case SC_PKCS15_TYPE_PUBKEY:
 		path = ((sc_pkcs15_pubkey_info_t *)obj->data)->path;
+		stored_in_ef = 1;
 		break;
 	case SC_PKCS15_TYPE_PRKEY:
 		path = ((sc_pkcs15_prkey_info_t *)obj->data)->path;
+		stored_in_ef = 1;
 		break;
 	case SC_PKCS15_TYPE_CERT:
 		path = ((sc_pkcs15_cert_info_t *)obj->data)->path;
+		stored_in_ef = 1;
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		path = ((sc_pkcs15_data_info_t *)obj->data)->path;
+		stored_in_ef = 1;
 		break;
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
@@ -2827,13 +2835,26 @@ int sc_pkcs15init_delete_object(sc_pkcs15_card_t *p15card,
 	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
 		return r;
 
-	/* If there's a card-specific way to delete objects, use it.
-	 * Otherwise, just set its label to "deleted" to indicate
-	 * that we can re-used it when we have to make a next
-	 * object in the future. */
-	if (profile->ops->delete_object != NULL) {
-		r = profile->ops->delete_object(profile, p15card->card,
-			obj->type, obj->data, &path);
+	/* if the object is stored in a normal EF try to
+	 * delete the EF */
+	if (stored_in_ef != 0) {
+		r = sc_pkcs15init_delete_by_path(profile, p15card->card, &path);
+		if (r != SC_SUCCESS) {
+			sc_error(p15card->card->ctx, "sc_pkcs15init_delete_by_path failed: %d", r);
+			return r;
+		}
+		/* Get the DF we're part of. If there's no DF, fine, we haven't
+		 * been added yet. */
+		if ((df = obj->df) != NULL) {
+			/* Unlink the object and update the DF */
+			sc_pkcs15_remove_object(p15card, obj);
+		}
+	} else if (profile->ops->delete_object != NULL) {
+		/* If there's a card-specific way to delete objects, use it.
+		 * Otherwise, just set its label to "deleted" to indicate
+		 * that we can re-used it when we have to make a next
+		 * object in the future. */
+		r = profile->ops->delete_object(profile, p15card->card,	obj->type, obj->data, &path);
 		if (r < 0) {
 			sc_error(p15card->card->ctx, "ops->delete_object() failed: %d", r);
 			return r;
@@ -2844,18 +2865,16 @@ int sc_pkcs15init_delete_object(sc_pkcs15_card_t *p15card,
 		if ((df = obj->df) != NULL) {
 			/* Unlink the object and update the DF */
 			sc_pkcs15_remove_object(p15card, obj);
-			r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
 		}
-	}
-	else {
+	} else {
 		/* Get the DF we're part of. If there's no DF, fine, we haven't
 		 * been added yet. */
 		if ((df = obj->df) != NULL) {
 			/*Change the label into "deleted" and update the DF */
 			strcpy(obj->label, "deleted");
-			r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
 		}
 	}
+	r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
 
 	/* mark card as dirty */
 	profile->dirty = 1;

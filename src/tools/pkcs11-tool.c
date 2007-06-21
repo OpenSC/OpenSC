@@ -46,6 +46,7 @@ enum {
 	OPT_MODULE = 0x100,
 	OPT_SLOT,
 	OPT_SLOT_LABEL,
+	OPT_APPLICATION_LABEL,
 	OPT_APPLICATION_ID,
 	OPT_SO_PIN,
 	OPT_INIT_TOKEN,
@@ -75,6 +76,8 @@ const struct option options[] = {
 	{ "key-type",		1, 0,		OPT_KEY_TYPE },
 	{ "write-object",	1, 0, 		'w' },
 	{ "read-object",	0, 0, 		'r' },
+	{ "delete-object",	0, 0, 		'b' },
+	{ "application-label",	1, 0, 		OPT_APPLICATION_LABEL },
 	{ "application-id",	1, 0, 		OPT_APPLICATION_ID },
 	{ "type", 		1, 0, 		'y' },
 	{ "id", 		1, 0, 		'd' },
@@ -112,8 +115,9 @@ const char *option_help[] = {
 	"Change your User PIN",
 	"Key pair generation",
 	"Specify the type and length of the key to create, for example rsa:1024",
-	"Write an object (key, cert) to the card",
+	"Write an object (key, cert, data) to the card",
 	"Get object's CKA_VALUE attribute (use with --type)",
+	"Specify the application label of the data object (use with --type data)",
 	"Specify the application id of the data object (use with --type data)",
 	"Specify the type of object (e.g. cert, privkey, pubkey, data)",
 	"Specify the id of the object",
@@ -150,6 +154,7 @@ static size_t		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
 static char *		opt_pin = NULL;
 static char *		opt_so_pin = NULL;
+static char *		opt_application_label = NULL;
 static char *		opt_application_id = NULL;
 static char *		opt_key_type = NULL;
 static int		opt_is_private = 0;
@@ -215,6 +220,7 @@ static int		gen_keypair(CK_SLOT_ID, CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
 static int 		write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static int 		read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
+static int 		delete_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static void 		set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
@@ -264,6 +270,7 @@ main(int argc, char * argv[])
 	int do_gen_keypair = 0;
 	int do_write_object = 0;
 	int do_read_object = 0;
+	int do_delete_object = 0;
 	int do_set_id = 0;
 	int do_test = 0;
 	int do_test_kpgen_certwrite = 0;
@@ -277,7 +284,7 @@ main(int argc, char * argv[])
 	CK_RV rv;
 
 	while (1) {
-		c = getopt_long(argc, argv, "ILMOa:d:e:hi:klm:o:p:scvty:w:z:r",
+		c = getopt_long(argc, argv, "ILMOa:bd:e:hi:klm:o:p:scvty:w:z:r",
 		                options, &long_optind);
 		if (c == -1)
 			break;
@@ -318,6 +325,11 @@ main(int argc, char * argv[])
 		case 'r':
 			need_session |= NEED_SESSION_RO;
 			do_read_object = 1;
+			action_count++;
+			break;
+		case 'b':
+			need_session |= NEED_SESSION_RW;
+			do_delete_object = 1;
 			action_count++;
 			break;
 		case 'e':
@@ -406,6 +418,9 @@ main(int argc, char * argv[])
 			break;
 		case OPT_MODULE:
 			opt_module = optarg;
+			break;
+		case OPT_APPLICATION_LABEL:
+			opt_application_label = optarg;
 			break;
 		case OPT_APPLICATION_ID:
 			opt_application_id = optarg;
@@ -572,11 +587,22 @@ main(int argc, char * argv[])
 		if (opt_object_class_str == NULL)
 			fatal("You should specify type of the object to read");
 		if (opt_object_id_len == 0 && opt_object_label == NULL && 
-				opt_application_id == NULL)
+				opt_application_label == NULL && opt_application_id == NULL)
 			 fatal("You should specify at least one of the "
-					 "object ID, object label or application ID\n");
+					 "object ID, object label, application label or application ID\n");
 		read_object(opt_slot, session);
 	}
+
+	if (do_delete_object) {
+		if (opt_object_class_str == NULL)
+			fatal("You should specify type of the object to delete");
+		if (opt_object_id_len == 0 && opt_object_label == NULL && 
+				opt_application_label == NULL && opt_application_id == NULL)
+			 fatal("You should specify at least one of the "
+					 "object ID, object label, application label or application ID\n");
+		delete_object(opt_slot, session);
+	}
+
 	if (do_set_id) {
 		if (opt_object_class_str == NULL)
 			fatal("You should specify the object type with the -y option\n");
@@ -1162,8 +1188,9 @@ static void	parse_rsa_private_key(struct rsakey_info *rsa,
 
 #define MAX_OBJECT_SIZE	5000
 
-/* Currently only for certificates (-type cert) and private keys
-   (-type privkey). Note: only RSA private keys are supported. */
+/* Currently only for certificates (-type cert),
+   private keys (-type privkey) and data objetcs (-type data).
+   Note: only RSA private keys are supported. */
 int
 write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
@@ -1176,6 +1203,7 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_OBJECT_HANDLE cert_obj, privkey_obj, data_obj;
 	CK_ATTRIBUTE cert_templ[20], privkey_templ[20], data_templ[20];
 	int n_cert_attr = 0, n_privkey_attr = 0, n_data_attr = 0;
+	struct sc_object_id oid;
 #if 0 
 	CK_ATTRIBUTE pubkey_templ[20];
 	CK_OBJECT_HANDLE pubkey_obj;
@@ -1328,13 +1356,22 @@ write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		if (opt_is_private != 0) {
 			FILL_ATTR(data_templ[n_data_attr], CKA_PRIVATE,
 				&_true, sizeof(_true));
+			n_data_attr++;
+		}
+
+		if (opt_application_label != NULL) {
+			FILL_ATTR(data_templ[n_data_attr], CKA_APPLICATION,
+				opt_application_label, strlen(opt_application_label));
+			n_data_attr++;
 		}
 
 		if (opt_application_id != NULL) {
-			FILL_ATTR(data_templ[n_data_attr], CKA_APPLICATION,
-				opt_application_id, strlen(opt_application_id));
+			sc_format_oid(&oid, opt_application_id);
+			FILL_ATTR(data_templ[n_data_attr], CKA_OBJECT_ID,
+				(unsigned char *)oid.value, sizeof(oid.value));
 			n_data_attr++;
 		}
+
 		if (opt_object_label != NULL) {
 			FILL_ATTR(data_templ[n_data_attr], CKA_LABEL,
 				opt_object_label, strlen(opt_object_label));
@@ -1868,6 +1905,12 @@ read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		nn_attrs++;
 	}
 
+	if (opt_application_label != NULL)   {
+		FILL_ATTR(attrs[nn_attrs], CKA_APPLICATION, 
+				opt_application_label, strlen(opt_application_label));
+		nn_attrs++;
+	}
+
 	if (opt_application_id != NULL)   {
 		sc_format_oid(&oid, opt_application_id);
 		FILL_ATTR(attrs[nn_attrs], CKA_OBJECT_ID,
@@ -1898,6 +1941,62 @@ read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (opt_output)
 		fclose(out);
 	return 1;	
+}
+
+/*
+ * Delete object.
+ */
+int
+delete_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	CK_RV rv;
+	CK_ATTRIBUTE attrs[20];
+	CK_OBJECT_CLASS clazz = opt_object_class;
+	CK_OBJECT_HANDLE obj = CK_INVALID_HANDLE;
+	int nn_attrs = 0;
+	struct sc_object_id oid;
+	
+	if (opt_object_class_str != NULL)   {
+		FILL_ATTR(attrs[nn_attrs], CKA_CLASS, 
+				 &clazz, sizeof(clazz));
+		nn_attrs++;
+	}
+
+	if (opt_object_id_len != 0)  {
+		FILL_ATTR(attrs[nn_attrs], CKA_ID, 
+				opt_object_id, opt_object_id_len);
+		nn_attrs++;
+	}
+
+	if (opt_object_label != NULL)   {
+		FILL_ATTR(attrs[nn_attrs], CKA_LABEL, 
+				opt_object_label, strlen(opt_object_label));
+		nn_attrs++;
+	}
+
+	if (opt_application_label != NULL)   {
+		FILL_ATTR(attrs[nn_attrs], CKA_APPLICATION, 
+				opt_application_label, strlen(opt_application_label));
+		nn_attrs++;
+	}
+
+	if (opt_application_id != NULL)   {
+		sc_format_oid(&oid, opt_application_id);
+		FILL_ATTR(attrs[nn_attrs], CKA_OBJECT_ID,
+				(unsigned char *)oid.value, sizeof(oid.value));
+		nn_attrs++;
+	}
+
+	rv = find_object_with_attributes(session, &obj, attrs, nn_attrs, 0);
+	if (rv != CKR_OK)
+		p11_fatal("find_object_with_attributes()", rv);
+	else if (obj==CK_INVALID_HANDLE)  
+		fatal("object not found\n");
+	rv = p11->C_DestroyObject(session, obj);
+	if (rv != CKR_OK)
+		p11_fatal("C_DestroyObject()", rv);
+
+	return 1;
 }
 
 static CK_ULONG	get_private_key_length(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE prkey)

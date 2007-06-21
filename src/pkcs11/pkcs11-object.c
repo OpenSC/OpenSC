@@ -69,7 +69,34 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE    hSession,    /* the session's handle */
 CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		      CK_OBJECT_HANDLE  hObject)   /* the object's handle */
 {
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_object *object;
+	char    object_name[64];
+	int rv;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	snprintf(object_name, sizeof(object_name), "C_DestroyObject : Object %lu",
+		(unsigned long) hObject);
+	sc_debug( context, object_name );
+
+	rv = pool_find(&session_pool, hSession, (void**) &session);
+	if (rv != CKR_OK)
+		goto out;
+
+	rv = pool_find_and_delete(&session->slot->object_pool, hObject, (void**) &object);
+	if (rv != CKR_OK)
+		goto out;
+
+	if (object->ops->destroy_object == NULL)
+		rv = CKR_FUNCTION_NOT_SUPPORTED;
+	else
+		rv = object->ops->destroy_object(session, object);
+
+out:	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession,  /* the session's handle */

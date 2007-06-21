@@ -1286,6 +1286,88 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 out:	return rv;
 }
 
+static CK_RV pkcs15_create_data(struct sc_pkcs11_card *p11card,
+		struct sc_pkcs11_slot *slot,
+		struct sc_profile *profile,
+		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
+		CK_OBJECT_HANDLE_PTR phObject)
+{
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_pkcs15init_dataargs args;
+	struct pkcs15_any_object *data_any_obj;
+	struct sc_pkcs15_object	*data_obj;
+	struct sc_pkcs15_pin_info *pin;
+	CK_BBOOL		bValue;
+	int			rc, rv;
+
+	memset(&args, 0, sizeof(args));
+	args.app_oid.value[0] = -1;
+
+	rv = CKR_OK;
+	while (ulCount--) {
+		CK_ATTRIBUTE_PTR attr = pTemplate++;
+
+		switch (attr->type) {
+		/* Skip attrs we already know or don't care for */
+		case CKA_CLASS:
+			break;
+		case CKA_PRIVATE:
+			rv = attr_extract(attr, &bValue, NULL);
+			if (bValue) {
+				pin = slot_data_pin_info(slot->fw_data);
+				if (pin == NULL) {
+					rv = CKR_TEMPLATE_INCOMPLETE;
+					goto out;
+				}
+				args.auth_id = pin->auth_id;
+			}
+			break;
+		case CKA_LABEL:
+			args.label = (char *) attr->pValue;
+			break;
+		case CKA_ID:
+			args.id.len = sizeof(args.id.value);
+			rv = attr_extract(attr, args.id.value, &args.id.len);
+			if (rv != CKR_OK)
+				goto out;
+			break;
+		case CKA_APPLICATION:
+			args.app_label = (char *) attr->pValue;
+			break;
+		case CKA_OBJECT_ID:
+			rv = attr_extract(attr, args.app_oid.value, NULL);
+			if (rv != CKR_OK)
+				goto out;
+			break;
+		case CKA_VALUE:
+			args.der_encoded.len = attr->ulValueLen;
+			args.der_encoded.value = (u8 *) attr->pValue;
+			break;
+		default:
+			/* ignore unknown attrs, or flag error? */
+			continue;
+		}
+	}
+
+	if (args.der_encoded.len == 0) {
+		rv = CKR_TEMPLATE_INCOMPLETE;
+		goto out;
+	}
+
+	rc = sc_pkcs15init_store_data_object(fw_data->p15_card, profile, &args, &data_obj);
+	if (rc < 0) {
+		rv = sc_to_cryptoki_error(rc, p11card->reader);
+		goto out;
+	}
+	/* Create a new pkcs11 object for it */
+	__pkcs15_create_data_object(fw_data, data_obj, &data_any_obj);
+	pkcs15_add_object(slot, data_any_obj, phObject);
+
+	rv = CKR_OK;
+
+out:	return rv;
+}
+
 static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 		struct sc_pkcs11_slot *slot,
 		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
@@ -1324,6 +1406,10 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 		break;
 	case CKO_CERTIFICATE:
 		rv = pkcs15_create_certificate(p11card, slot, profile,
+				pTemplate, ulCount, phObject);
+		break;
+	case CKO_DATA:
+		rv = pkcs15_create_data(p11card, slot, profile,
 				pTemplate, ulCount, phObject);
 		break;
 	default:
@@ -2338,15 +2424,14 @@ static int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, reader);
 		
-	if (slot_data_pin_info(data))   {
-		rv = revalidate_pin(data, session);
-		if (rv < 0)
-			goto done;
-	}
-	
-	if ((rv = sc_pkcs15_read_data_object(fw_data->p15_card, dobj->info, out_data)) < 0)
-		goto done;
+	rv = sc_pkcs15_read_data_object(fw_data->p15_card, dobj->info, out_data);
 
+	/* Do we have to try a re-login and then try to sign again? */
+	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		rv = revalidate_pin(data, session);
+		if (rv == 0)
+			rv = sc_pkcs15_read_data_object(fw_data->p15_card, dobj->info, out_data);
+	}
 done:
 	sc_unlock(card);
 	if (rv < 0)
@@ -2432,12 +2517,55 @@ static CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 	return CKR_OK;
 }
 
+static CK_RV pkcs15_dobj_destroy(struct sc_pkcs11_session *session, void *object)
+{
+	struct pkcs15_data_object *obj = (struct pkcs15_data_object*) object;
+	struct sc_pkcs11_card *card = session->slot->card;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) card->fw_data;
+	struct pkcs15_slot_data *data = slot_data(session->slot->fw_data);
+	struct sc_profile *profile = NULL;
+	int reader = session->slot->card->reader;
+	int rv;
+
+	rv = sc_lock(card->card);
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, card->reader);
+
+	/* Bind the profile */
+	rv = sc_pkcs15init_bind(card->card, "pkcs15", NULL, &profile);
+	if (rv < 0) {
+		sc_unlock(card->card);
+		return sc_to_cryptoki_error(rv, card->reader);
+	}
+
+	/* Add the PINs the user presented so far to the keycache */
+	add_pins_to_keycache(card, session->slot);
+
+	/* Delete object in smartcard */
+	rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
+
+	/* Do we have to try a re-login and then try to delete again? */
+	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		rv = revalidate_pin(data, session);
+		if (rv == 0)
+			rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
+	}
+
+	sc_pkcs15init_unbind(profile);
+	sc_unlock(card->card);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, reader);
+
+	return CKR_OK;
+}
+
 struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
 	pkcs15_dobj_release,
 	pkcs15_dobj_set_attribute,
 	pkcs15_dobj_get_attribute,
 	sc_pkcs11_any_cmp_attribute,
-	NULL,
+	pkcs15_dobj_destroy,
 	NULL,
 	NULL,
 	NULL,
