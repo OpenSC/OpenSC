@@ -30,6 +30,7 @@
 #include <string.h>
 #include <opensc/opensc.h>
 #include <opensc/asn1.h>
+#include "util.h"
 
 #include "../libopensc/cards.h"
 #include "../libopensc/esteid.h"
@@ -39,7 +40,7 @@ static int stats = 0;
 static char *exec_program = NULL;
 static int exit_status = EXIT_FAILURE;
 
-static struct option const long_options[] = {
+const struct option options[] = {
 	{"reader", required_argument, NULL, 'r'},
 	{"print", no_argument, NULL, 'n'},
 	{"exec", required_argument, NULL, 'x'},
@@ -50,8 +51,8 @@ static struct option const long_options[] = {
 };
 
 /* Probably not used, but needed to build on Windows */
-static const char *app_name = "eidenv";
-static const struct option options[] = {{NULL, 0, NULL, 0}};
+const char *app_name = "eidenv";
+const char *option_help[] = {NULL};
 
 static struct {
 	const char *name;
@@ -102,7 +103,7 @@ static void decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"ptr:x:hV", long_options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"ptr:x:hV", options, (int *) 0)) != EOF) {
 
 		switch (c) {
 		case 'r':

@@ -1497,7 +1497,8 @@ done:	if (count == 0)
 	return count;
 }
 
-CK_RV find_object_with_attributes(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out, 
+static CK_RV find_object_with_attributes(CK_SESSION_HANDLE session,
+			CK_OBJECT_HANDLE *out, 
 			CK_ATTRIBUTE *attrs, CK_ULONG attrsLen, 
 			CK_ULONG obj_index)
 {

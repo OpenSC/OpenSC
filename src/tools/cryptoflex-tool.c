@@ -44,7 +44,7 @@ static int opt_puk_attempts = 10;
 static const char *opt_appdf = NULL, *opt_prkeyf = NULL, *opt_pubkeyf = NULL;
 static u8 *pincode = NULL;
 
-static const struct option options[] = {
+const struct option options[] = {
 	{ "list-keys",		0, NULL, 		'l' },
 	{ "create-key-files",	1, NULL,		'c' },
 	{ "create-pin-file",	1, NULL,		'P' },
@@ -62,7 +62,7 @@ static const struct option options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
-static const char *option_help[] = {
+const char *option_help[] = {
 	"Lists all keys in a public key file",
 	"Creates new RSA key files for <arg> keys",
 	"Creates a new CHV<arg> file",

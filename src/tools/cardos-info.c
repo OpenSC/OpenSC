@@ -39,7 +39,7 @@ const char *app_name = "cardos-info";
 static int opt_reader = -1, opt_debug = 0, opt_wait = 0;
 static int verbose = 0;
 
-static const struct option options[] = {
+const struct option options[] = {
 	{"reader",	1, NULL, 'r'},
 	{"card-driver", 1, NULL, 'c'},
 	{"wait",	0, NULL, 'w'},
@@ -47,7 +47,7 @@ static const struct option options[] = {
 	{NULL, 0, NULL, 0}
 };
 
-static const char *option_help[] = {
+const char *option_help[] = {
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
 	"Wait for a card to be inserted",
@@ -57,7 +57,7 @@ static const char *option_help[] = {
 static sc_context_t *ctx = NULL;
 static sc_card_t *card = NULL;
 
-int cardos_info(void)
+static int cardos_info(void)
 {
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];

@@ -68,8 +68,8 @@ typedef int	(*pkcs15_encoder)(sc_context_t *,
 static int	open_reader_and_card(int);
 static int	do_assert_pristine(sc_card_t *);
 static int	do_erase(sc_card_t *, struct sc_profile *);
-static int	do_delete_objects(struct sc_profile *, unsigned int opt_delete_flags);
-static int	do_change_attributes(struct sc_profile *, unsigned int opt_type);
+static int	do_delete_objects(struct sc_profile *, unsigned int myopt_delete_flags);
+static int	do_change_attributes(struct sc_profile *, unsigned int myopt_type);
 static int	do_init_app(struct sc_profile *);
 static int	do_store_pin(struct sc_profile *);
 static int	do_generate_key(struct sc_profile *, const char *);
@@ -134,57 +134,57 @@ enum {
 };
 
 const struct option	options[] = {
-	{ "erase-card",		no_argument, 0,		'E' },
-	{ "create-pkcs15",	no_argument, 0,		'C' },
-	{ "store-pin",		no_argument, 0,		'P' },
-	{ "generate-key",	required_argument, 0,	'G' },
-	{ "store-private-key",	required_argument, 0,	'S' },
-	{ "store-public-key",	required_argument, 0,	OPT_PUBKEY },
-	{ "store-certificate",	required_argument, 0,	'X' },
-	{ "update-certificate",	required_argument, 0,	'U' },
-	{ "store-data",		required_argument, 0,	'W' },
-	{ "delete-objects",	required_argument, 0,	'D' },
-	{ "change-attributes",	required_argument, 0,	'A' },
+	{ "erase-card",		no_argument, NULL,		'E' },
+	{ "create-pkcs15",	no_argument, NULL,		'C' },
+	{ "store-pin",		no_argument, NULL,		'P' },
+	{ "generate-key",	required_argument, NULL,	'G' },
+	{ "store-private-key",	required_argument, NULL,	'S' },
+	{ "store-public-key",	required_argument, NULL,	OPT_PUBKEY },
+	{ "store-certificate",	required_argument, NULL,	'X' },
+	{ "update-certificate",	required_argument, NULL,	'U' },
+	{ "store-data",		required_argument, NULL,	'W' },
+	{ "delete-objects",	required_argument, NULL,	'D' },
+	{ "change-attributes",	required_argument, NULL,	'A' },
 
-	{ "reader",		required_argument, 0,	'r' },
-	{ "pin",		required_argument, 0,	OPT_PIN1 },
-	{ "puk",		required_argument, 0,	OPT_PUK1 },
-	{ "so-pin",		required_argument, 0,	OPT_PIN2 },
-	{ "so-puk",		required_argument, 0,	OPT_PUK2 },
-	{ "no-so-pin",		no_argument,	   0,	OPT_NO_SOPIN },
-	{ "serial",		required_argument, 0,	OPT_SERIAL },
-	{ "auth-id",		required_argument, 0,	'a' },
-	{ "id",			required_argument, 0,	'i' },
-	{ "label",		required_argument, 0,	'l' },
-	{ "public-key-label",	required_argument, 0,	OPT_PUBKEY_LABEL },
-	{ "cert-label",		required_argument, 0,	OPT_CERT_LABEL },
-	{ "application-id",	required_argument, 0,	OPT_APPLICATION_ID },
-	{ "output-file",	required_argument, 0,	'o' },
-	{ "format",		required_argument, 0,	'f' },
-	{ "passphrase",		required_argument, 0,	OPT_PASSPHRASE },
-	{ "authority",		no_argument,	   0,	OPT_AUTHORITY },
-	{ "key-usage",		required_argument, 0,	'u' },
-	{ "split-key",		no_argument,	   0,	OPT_SPLIT_KEY },
-	{ "finalize",		no_argument,       0,   'F' },
+	{ "reader",		required_argument, NULL,	'r' },
+	{ "pin",		required_argument, NULL,	OPT_PIN1 },
+	{ "puk",		required_argument, NULL,	OPT_PUK1 },
+	{ "so-pin",		required_argument, NULL,	OPT_PIN2 },
+	{ "so-puk",		required_argument, NULL,	OPT_PUK2 },
+	{ "no-so-pin",		no_argument,	   NULL,	OPT_NO_SOPIN },
+	{ "serial",		required_argument, NULL,	OPT_SERIAL },
+	{ "auth-id",		required_argument, NULL,	'a' },
+	{ "id",			required_argument, NULL,	'i' },
+	{ "label",		required_argument, NULL,	'l' },
+	{ "public-key-label",	required_argument, NULL,	OPT_PUBKEY_LABEL },
+	{ "cert-label",		required_argument, NULL,	OPT_CERT_LABEL },
+	{ "application-id",	required_argument, NULL,	OPT_APPLICATION_ID },
+	{ "output-file",	required_argument, NULL,	'o' },
+	{ "format",		required_argument, NULL,	'f' },
+	{ "passphrase",		required_argument, NULL,	OPT_PASSPHRASE },
+	{ "authority",		no_argument,	   NULL,	OPT_AUTHORITY },
+	{ "key-usage",		required_argument, NULL,	'u' },
+	{ "split-key",		no_argument,	   NULL,	OPT_SPLIT_KEY },
+	{ "finalize",		no_argument,       NULL,   'F' },
 
-	{ "extractable",	no_argument, 0,		OPT_EXTRACTABLE },
-	{ "insecure",		no_argument, 0,		OPT_UNPROTECTED },
-	{ "soft",		no_argument, 0,		OPT_SOFT_KEYGEN },
+	{ "extractable",	no_argument, NULL,		OPT_EXTRACTABLE },
+	{ "insecure",		no_argument, NULL,		OPT_UNPROTECTED },
+	{ "soft",		no_argument, NULL,		OPT_SOFT_KEYGEN },
 	{ "use-default-transport-keys",
-				no_argument, 0,		'T' },
-	{ "no-prompt",		no_argument, 0,		OPT_NO_PROMPT },
+				no_argument, NULL,		'T' },
+	{ "no-prompt",		no_argument, NULL,		OPT_NO_PROMPT },
 
-	{ "profile",		required_argument, 0,	'p' },
-	{ "card-profile",	required_argument, 0,	'c' },
-	{ "options-file",	required_argument, 0,	OPT_OPTIONS },
-	{ "wait",		no_argument, 0,		'w' },
-	{ "help",		no_argument, 0,		'h' },
-	{ "verbose",		no_argument, 0,		'v' },
+	{ "profile",		required_argument, NULL,	'p' },
+	{ "card-profile",	required_argument, NULL,	'c' },
+	{ "options-file",	required_argument, NULL,	OPT_OPTIONS },
+	{ "wait",		no_argument, NULL,		'w' },
+	{ "help",		no_argument, NULL,		'h' },
+	{ "verbose",		no_argument, NULL,		'v' },
 
 	/* Hidden options for testing */
-	{ "assert-pristine",	no_argument, 0,		OPT_ASSERT_PRISTINE },
-	{ "secret",		required_argument, 0,	OPT_SECRET },
-	{ 0, 0, 0, 0 }
+	{ "assert-pristine",	no_argument, NULL,		OPT_ASSERT_PRISTINE },
+	{ "secret",		required_argument, NULL,	OPT_SECRET },
+	{ NULL, 0, NULL, 0 }
 };
 const char *		option_help[] = {
 	"Erase the smart card (can be used with --create-pkcs15)",
@@ -305,19 +305,19 @@ static int			opt_reader = -1,
 				opt_wait = 0;
 static const char *		opt_profile = "pkcs15";
 static char *			opt_card_profile = NULL;
-static char *			opt_infile = 0;
-static char *			opt_format = 0;
-static char *			opt_authid = 0;
-static char *			opt_objectid = 0;
-static char *			opt_label = 0;
-static char *			opt_pubkey_label = 0;
-static char *			opt_cert_label = 0;
+static char *			opt_infile = NULL;
+static char *			opt_format = NULL;
+static char *			opt_authid = NULL;
+static char *			opt_objectid = NULL;
+static char *			opt_label = NULL;
+static char *			opt_pubkey_label = NULL;
+static char *			opt_cert_label = NULL;
 static char *			opt_pins[4];
-static char *			opt_serial = 0;
-static char *			opt_passphrase = 0;
-static char *			opt_newkey = 0;
-static char *			opt_outkey = 0;
-static char *			opt_application_id = 0;
+static char *			opt_serial = NULL;
+static char *			opt_passphrase = NULL;
+static char *			opt_newkey = NULL;
+static char *			opt_outkey = NULL;
+static char *			opt_application_id = NULL;
 static unsigned int		opt_x509_usage = 0;
 static unsigned int		opt_delete_flags = 0;
 static unsigned int		opt_type = 0;
@@ -1095,7 +1095,7 @@ static inline int cert_is_root(sc_pkcs15_cert_t *c)
 /* Check if the cert has a 'sibling' and return it's parent cert.
  * Should be made more effcicient for long chains by caching the certs.
  */
-static int get_cert_info(sc_pkcs15_card_t *p15card, sc_pkcs15_object_t *certobj,
+static int get_cert_info(sc_pkcs15_card_t *myp15card, sc_pkcs15_object_t *certobj,
 	int *has_sibling, int *stop, sc_pkcs15_object_t **issuercert)
 {
 	sc_pkcs15_cert_t *cert = NULL;
@@ -1107,7 +1107,7 @@ static int get_cert_info(sc_pkcs15_card_t *p15card, sc_pkcs15_object_t *certobj,
 	*has_sibling = 0;
 	*stop = 0;
 
-	r = sc_pkcs15_read_certificate(p15card, (sc_pkcs15_cert_info_t *) certobj->data, &cert);
+	r = sc_pkcs15_read_certificate(myp15card, (sc_pkcs15_cert_info_t *) certobj->data, &cert);
 	if (r < 0)
 		return r;
 
@@ -1115,7 +1115,7 @@ static int get_cert_info(sc_pkcs15_card_t *p15card, sc_pkcs15_object_t *certobj,
 		*stop = 1; /* root -> no parent and hence no siblings */
 		goto done;
 	}
-	for (otherobj = p15card->obj_list; otherobj != NULL; otherobj = otherobj->next) {
+	for (otherobj = myp15card->obj_list; otherobj != NULL; otherobj = otherobj->next) {
 		if ((otherobj == certobj) ||
 			!((otherobj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT))
 				continue;
@@ -1123,7 +1123,7 @@ static int get_cert_info(sc_pkcs15_card_t *p15card, sc_pkcs15_object_t *certobj,
 			sc_pkcs15_free_certificate(othercert);
 			othercert=NULL;
 		}
-		r = sc_pkcs15_read_certificate(p15card, (sc_pkcs15_cert_info_t *) otherobj->data, &othercert);
+		r = sc_pkcs15_read_certificate(myp15card, (sc_pkcs15_cert_info_t *) otherobj->data, &othercert);
 		if (r < 0 || !othercert)
 			goto done;
 		if ((cert->issuer_len == othercert->subject_len) &&
@@ -1154,32 +1154,32 @@ done:
  * deleted, starting with the cert with ID 'id' and untill a CA cert is
  * reached that certified other remaining certs on the card.
  */
-static int do_delete_crypto_objects(sc_pkcs15_card_t *p15card,
+static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
 				sc_profile_t *profile,
 				const sc_pkcs15_id_t id,
 				unsigned int which)
 {
 	sc_pkcs15_object_t *objs[10]; /* 1 priv + 1 pub + chain of at most 8 certs, should be enough */
-	sc_context_t *ctx = p15card->card->ctx;
+	sc_context_t *myctx = myp15card->card->ctx;
 	int i, r = 0, count = 0, del_cert = 0;
 
 	if (which & SC_PKCS15INIT_TYPE_PRKEY) {
-	    if (sc_pkcs15_find_prkey_by_id(p15card, &id, &objs[count]) != 0)
-			sc_debug(ctx, "NOTE: couldn't find privkey %s to delete\n", sc_pkcs15_print_id(&id));
+	    if (sc_pkcs15_find_prkey_by_id(myp15card, &id, &objs[count]) != 0)
+			sc_debug(myctx, "NOTE: couldn't find privkey %s to delete\n", sc_pkcs15_print_id(&id));
 		else
 			count++;
 	}
 
 	if (which & SC_PKCS15INIT_TYPE_PUBKEY) {
-	    if (sc_pkcs15_find_pubkey_by_id(p15card, &id, &objs[count]) != 0)
-			sc_debug(ctx, "NOTE: couldn't find pubkey %s to delete\n", sc_pkcs15_print_id(&id));
+	    if (sc_pkcs15_find_pubkey_by_id(myp15card, &id, &objs[count]) != 0)
+			sc_debug(myctx, "NOTE: couldn't find pubkey %s to delete\n", sc_pkcs15_print_id(&id));
 		else
 			count++;
 	}
 
 	if (which & SC_PKCS15INIT_TYPE_CERT) {
-	    if (sc_pkcs15_find_cert_by_id(p15card, &id, &objs[count]) != 0)
-			sc_debug(ctx, "NOTE: couldn't find cert %s to delete\n", sc_pkcs15_print_id(&id));
+	    if (sc_pkcs15_find_cert_by_id(myp15card, &id, &objs[count]) != 0)
+			sc_debug(myctx, "NOTE: couldn't find cert %s to delete\n", sc_pkcs15_print_id(&id));
 		else {
 			count++;
 			del_cert = 1;
@@ -1192,11 +1192,11 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *p15card,
 		int has_sibling; /* siblings: certs having the same issuer */
 		int stop;
 		for( ; count < 10 ; count++) {
-			r = get_cert_info(p15card, objs[count - 1], &has_sibling, &stop, &objs[count]);
+			r = get_cert_info(myp15card, objs[count - 1], &has_sibling, &stop, &objs[count]);
 			if (r < 0)
-				sc_error(ctx, "get_cert_info() failed: %s\n", sc_strerror(r));
+				sc_error(myctx, "get_cert_info() failed: %s\n", sc_strerror(r));
 			else if (has_sibling)
-				sc_debug(ctx, "Chain deletion stops with cert %s\n", sc_pkcs15_print_id(
+				sc_debug(myctx, "Chain deletion stops with cert %s\n", sc_pkcs15_print_id(
 					&((sc_pkcs15_cert_info_t *) objs[count - 1]->data)->id));
 			else if (stop && (objs[count] != NULL))
 				count++;
@@ -1208,9 +1208,9 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *p15card,
 	}
 
 	for (i = 0; i < count; i++) {
-		r = sc_pkcs15init_delete_object(p15card, profile, objs[i]);
+		r = sc_pkcs15init_delete_object(myp15card, profile, objs[i]);
 		if (r < 0) {
-			sc_error(ctx, "Failed to delete object %d: %s\n", i, sc_strerror(r));
+			sc_error(myctx, "Failed to delete object %d: %s\n", i, sc_strerror(r));
 			break;
 		}
 	}
@@ -1219,13 +1219,13 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *p15card,
 }
 
 static int
-do_delete_objects(struct sc_profile *profile, unsigned int opt_delete_flags)
+do_delete_objects(struct sc_profile *profile, unsigned int myopt_delete_flags)
 {
 	int r = 0, count = 0;
 
 	set_userpin_ref();
 
-	if (opt_delete_flags & SC_PKCS15INIT_TYPE_DATA) {
+	if (myopt_delete_flags & SC_PKCS15INIT_TYPE_DATA) {
 		struct sc_object_id app_oid;
 		sc_pkcs15_object_t *obj;
 		if (opt_application_id == NULL)
@@ -1240,13 +1240,13 @@ do_delete_objects(struct sc_profile *profile, unsigned int opt_delete_flags)
 		}
 	}
 
-	if (opt_delete_flags & (SC_PKCS15INIT_TYPE_PRKEY | SC_PKCS15INIT_TYPE_PUBKEY | SC_PKCS15INIT_TYPE_CHAIN)) {
+	if (myopt_delete_flags & (SC_PKCS15INIT_TYPE_PRKEY | SC_PKCS15INIT_TYPE_PUBKEY | SC_PKCS15INIT_TYPE_CHAIN)) {
 		sc_pkcs15_id_t id;
 		if (opt_objectid == NULL)
 				fatal("Specify the --id for key(s) or cert(s) to be deleted\n");
 		sc_pkcs15_format_id(opt_objectid, &id);
 
-		r = do_delete_crypto_objects(p15card, profile, id, opt_delete_flags);
+		r = do_delete_crypto_objects(p15card, profile, id, myopt_delete_flags);
 		if (r >= 0)
 			count += r;
 	}
@@ -1257,7 +1257,7 @@ do_delete_objects(struct sc_profile *profile, unsigned int opt_delete_flags)
 }
 
 static int
-do_change_attributes(struct sc_profile *profile, unsigned int opt_type)
+do_change_attributes(struct sc_profile *profile, unsigned int myopt_type)
 {
 	int r = 0;
 	sc_pkcs15_id_t id;
@@ -1275,7 +1275,7 @@ do_change_attributes(struct sc_profile *profile, unsigned int opt_type)
 		return 0;
 	}
 
-	switch(opt_type) {
+	switch(myopt_type) {
 		case SC_PKCS15INIT_TYPE_PRKEY:
 		    if ((r = sc_pkcs15_find_prkey_by_id(p15card, &id, &obj)) != 0)
 				return r;
@@ -1395,8 +1395,7 @@ out:
 	return r;
 }
 
-int
-init_keyargs(struct sc_pkcs15init_prkeyargs *args)
+static int init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 {
 	memset(args, 0, sizeof(*args));
 	if (opt_objectid)
@@ -1477,8 +1476,7 @@ parse_err:
 	fatal("Cannot parse secret \"%s\"\n", arg);
 }
 
-void
-set_secrets(struct sc_profile *profile)
+static void set_secrets(struct sc_profile *profile)
 {
 	unsigned int	n;
 
@@ -1500,8 +1498,7 @@ set_secrets(struct sc_profile *profile)
  * @role can be "user" or "so"
  * @usage can be "pin" or "puk"
  */
-int
-get_new_pin(sc_ui_hints_t *hints,
+static int get_new_pin(sc_ui_hints_t *hints,
 		const char *role, const char *usage,
 		char **retstr)
 {
@@ -1624,8 +1621,7 @@ get_pin_callback(struct sc_profile *profile,
 	return 0;
 }
 
-int
-get_key_callback(struct sc_profile *profile,
+static int get_key_callback(struct sc_profile *profile,
 			int method, int reference,
 			const u8 *def_key, size_t def_key_size,
 			u8 *key_buf, size_t *buf_size)
@@ -1714,8 +1710,8 @@ use_default_key:
 /*
  * Generate a private key
  */
-int
-do_generate_key_soft(int algorithm, unsigned int bits, EVP_PKEY **res)
+static int do_generate_key_soft(int algorithm, unsigned int bits,
+		EVP_PKEY **res)
 {
 	*res = EVP_PKEY_new();
 	switch (algorithm) {
@@ -1783,7 +1779,7 @@ do_read_pem_private_key(const char *filename, const char *passphrase,
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) <= 0)
 		fatal("Unable to open %s: %m", filename);
-	*key = PEM_read_bio_PrivateKey(bio, 0, pass_cb, (char *) passphrase);
+	*key = PEM_read_bio_PrivateKey(bio, NULL, pass_cb, (char *) passphrase);
 	BIO_free(bio);
 	if (*key == NULL) {
 		ossl_print_errors();
@@ -1895,7 +1891,7 @@ do_read_pem_public_key(const char *filename)
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) <= 0)
 		fatal("Unable to open %s: %m", filename);
-	pk = PEM_read_bio_PUBKEY(bio, 0, 0, NULL);
+	pk = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	if (pk == NULL) 
 		ossl_print_errors();
@@ -1987,7 +1983,7 @@ do_read_pem_certificate(const char *filename)
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) <= 0)
 		fatal("Unable to open %s: %m", filename);
-	xp = PEM_read_bio_X509(bio, 0, 0, 0);
+	xp = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	if (xp == NULL) 
 		ossl_print_errors();
@@ -2080,8 +2076,7 @@ do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
 	return 1;
 }
 
-int
-do_convert_private_key(struct sc_pkcs15_prkey *key, EVP_PKEY *pk)
+static int do_convert_private_key(struct sc_pkcs15_prkey *key, EVP_PKEY *pk)
 {
 	switch (pk->type) {
 	case EVP_PKEY_RSA: {
@@ -2123,8 +2118,7 @@ do_convert_private_key(struct sc_pkcs15_prkey *key, EVP_PKEY *pk)
 	return 0;
 }
 
-int
-do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
+static int do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
 {
 	switch (pk->type) {
 	case EVP_PKEY_RSA: {
@@ -2157,8 +2151,7 @@ do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
 	return 0;
 }
 
-int
-do_convert_cert(sc_pkcs15_der_t *der, X509 *cert)
+static int do_convert_cert(sc_pkcs15_der_t *der, X509 *cert)
 {
 	u8	*p;
 
@@ -2227,7 +2220,7 @@ parse_objects(const char *list, unsigned int action)
 }
 
 /* If the user PIN and it's ID is given, put the pin ref in the keycache */
-static void set_userpin_ref()
+static void set_userpin_ref(void)
 {
 	int r;
 
@@ -2584,7 +2577,7 @@ read_options_file(const char *filename)
  * OpenSSL helpers
  */
 static void
-ossl_print_errors()
+ossl_print_errors(void)
 {
 	static int	loaded = 0;
 	long		err;
