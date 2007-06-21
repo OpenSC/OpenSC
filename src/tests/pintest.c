@@ -80,7 +80,7 @@ static int ask_and_verify_pin(struct sc_pkcs15_object *obj)
 
 int main(int argc, char *argv[])
 {
-	struct sc_pkcs15_object **objs;
+	struct sc_pkcs15_object **objs = NULL;
 	int i, count;
 
 	i = sc_test_init(&argc, argv);
