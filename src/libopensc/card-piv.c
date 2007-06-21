@@ -3,8 +3,9 @@
  * card-default.c: Support for cards with no driver
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005, Douglas E. Engert <deengert@anl.gov>
+ * Copyright (C) 2005,2006,2007 Douglas E. Engert <deengert@anl.gov>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
+ * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -79,6 +80,16 @@ static int add_cache_item(piv_private_data_t* priv, int enumtag, u8* data, size_
 static piv_cache_item* get_cache_item(piv_private_data_t* priv, int enumtag) {
 	int idx, len = priv->cacheLen;
 	piv_cache_item* cache = priv->cache;
+#if 1
+/* DEE some thing not right with the cache,
+ * when used with the pkcs15-tool -C it cant find the CCC, but finds the
+ * CHUI ( as it was read for the serial) and finds part of a cert for the 
+ * CHFingerprints
+ * So turn it off for now. 6/1/2007
+ */
+return NULL; 
+#endif
+
 	for(idx = 0; idx < len; idx++) {
 		if(cache[idx].enumtag == enumtag)
 			return &cache[idx];
@@ -127,6 +138,9 @@ enum {
 	PIV_OBJ_SEC_OBJ,
 	PIV_OBJ_9B03,
 	PIV_OBJ_9A06,
+	PIV_OBJ_9C06,
+	PIV_OBJ_9D06,
+	PIV_OBJ_9E06,
 	PIV_CACHE_SIZE
 };
 
@@ -165,9 +179,19 @@ static struct piv_object piv_objects[] = {
 /* following not standard , to be used by piv-tool only for testing */
 	{ PIV_OBJ_9B03, "3DES-ECB ADM", 
 			"2.16.840.1.101.3.7.2.9999.3", 2, "\x9B\x03", "\x9B\x03", 24},
-	{ PIV_OBJ_9A06, "Pub key from last genkey",
-			"2.16.840.1.101.3.7.2.9999.20", 2, "\x9A\x06", "\x9A\x06", 255},
-	/* need other RSA types */
+	/* Only used when signing a cert req, usually from engine
+	 * after piv-tool generated the key and saved the pub key 
+	 * to a file. Note RSA key can be 1024, 2048 or 3072 
+	 * but still use the "9x06" name.
+	 */
+	{ PIV_OBJ_9A06, "RSA 9A Pub key from last genkey",
+			"2.16.840.1.101.3.7.2.9999.20", 2, "\x9A\x06", "\x9A\x06", 512},
+	{ PIV_OBJ_9C06, "Pub 9C key from last genkey",
+			"2.16.840.1.101.3.7.2.9999.21", 2, "\x9C\x06", "\x9C\x06", 512},
+	{ PIV_OBJ_9D06, "Pub 9D key from last genkey",
+			"2.16.840.1.101.3.7.2.9999.22", 2, "\x9D\x06", "\x9D\x06", 512},
+	{ PIV_OBJ_9E06, "Pub 9E key from last genkey",
+			"2.16.840.1.101.3.7.2.9999.23", 2, "\x9E\x06", "\x9E\x06", 512},
 	{ 0, "", "", 0, "", "", 0}
 };
 	
@@ -259,7 +283,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
-		return r;
+		SC_FUNC_RETURN(card->ctx, 1, r);
 		
 	sc_format_apdu(card, &apdu, 
 			recvbuf ? SC_APDU_CASE_4_SHORT: SC_APDU_CASE_3_SHORT, 
@@ -289,7 +313,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	r = sc_transmit_apdu(card, &apdu);
 	card->max_recv_size = 0xffff;
 
-	sc_debug(card->ctx,"DEE  r=%d apdu.resplen=%d sw1=%02x sw2=%02x", 
+	sc_debug(card->ctx,"DEE r=%d apdu.resplen=%d sw1=%02x sw2=%02x", 
 			r, apdu.resplen, apdu.sw1, apdu.sw2);
 	if (r < 0) {
 		sc_debug(card->ctx,"Transmit failed");
@@ -304,11 +328,12 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	}
 
 	/*
-	 * See how much we read and if we need to read more 
-	 * We should have read a tag, which will tell up how big of 
-	 * a buffer we need. We will then read more in to the allocated buffer 
+	 * See how much we read and make sure it is asn1 
+	 * if not, return 0 indicating no data found
 	 */  
 
+	
+	rbuflen = 0;  /* in case rseplen < 3  i.e. not parseable */
 	if ( recvbuflen && recvbuf && apdu.resplen > 3) {
 		*recvbuflen = 0;
 		/* we should have all the tag data, so we have to tell sc_asn1_find_tag 
@@ -441,6 +466,30 @@ err:
 }
 
 
+static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response, size_t *responselen)
+{
+	sc_apdu_t apdu;
+	int r;
+
+	SC_FUNC_CALLED(card->ctx,4);
+	if (card->ctx->debug >= 5)
+		sc_debug(card->ctx, "Got args: aid=%x, aidlen=%d, response=%x, responselen=%d\n", aid, aidlen, response, *responselen);
+
+	sc_format_apdu(card, &apdu, 
+		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
+	apdu.lc = aidlen;
+	apdu.data = aid;
+	apdu.datalen = aidlen;
+	apdu.resp = response;
+	apdu.resplen = *responselen;
+	apdu.le = response == NULL ? 0 : 256; /* could be 21  for fci */
+
+	r = sc_transmit_apdu(card, &apdu);
+	*responselen = apdu.resplen;
+	SC_TEST_RET(card->ctx, 4,  r);
+	SC_FUNC_RETURN(card->ctx, 4,  sc_check_sw(card, apdu.sw1, apdu.sw2));
+}
+
 /* find the PIV AID on the card. If card->type already filled in,
  * then look for specific AID only
  * Assumes that priv may not be present
@@ -455,6 +504,7 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 	size_t taglen;
 	u8 *pix;
 	size_t pixlen;
+	size_t resplen = sizeof(rbuf);
 
 	SC_FUNC_CALLED(card->ctx,1);
 
@@ -465,19 +515,9 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 	if (card->type == SC_CARD_TYPE_PIV_II_GENERIC) 
 		SC_FUNC_RETURN(card->ctx, 1, 0);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
-	apdu.lc = piv_aids[0].len_short;
-	apdu.data = piv_aids[0].value;
-	apdu.datalen = piv_aids[0].len_short;
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.le = 256; /* could be 21  for fci */
-
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r >= 0 && apdu.resplen > 2 ) {
-		tag = (u8 *) sc_asn1_find_tag(card->ctx, rbuf, apdu.resplen, 0x61, &taglen);
+	r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, rbuf, &resplen);
+	if (r >= 0 && resplen > 2 ) {
+		tag = (u8 *) sc_asn1_find_tag(card->ctx, rbuf, resplen, 0x61, &taglen);
 		if (tag != NULL) {
 			pix = (u8 *) sc_asn1_find_tag(card->ctx, tag, taglen, 0x4F, &pixlen);
 			if (pix != NULL ) { 
@@ -561,6 +601,7 @@ static int piv_get_data(sc_card_t * card, unsigned int enumtag,
 	int r = 0;
 	u8 tagbuf[8];
 	size_t tag_len;
+	char * keyenvname = NULL;
 	
 	SC_FUNC_CALLED(card->ctx,1);
 	sc_debug(card->ctx, "get_data: tag=%d \n", enumtag);
@@ -579,11 +620,26 @@ static int piv_get_data(sc_card_t * card, unsigned int enumtag,
 	 * as an OpenSSL EVP_KEY PEM using the -o parameter
 	 * we will look to see there as a file and load it
 	 * this is ugly, and maybe the pkcs15 cache would work
-	 * but we only need it  to get the OpenSSL req with engine to work.
+	 * but we only need it to get the OpenSSL req with engine to work.
+	 * Each of the 3 keys with certs has its own file. 
 	 */
 
+	switch (piv_objects[enumtag].enumtag) {
+		case PIV_OBJ_9A06:
+			keyenvname = "PIV_9A06_KEY";
+			break;
+		case PIV_OBJ_9C06:
+			keyenvname = "PIV_9C06_KEY";
+			break;
+		case PIV_OBJ_9D06:
+			keyenvname = "PIV_9D06_KEY";
+			break;
+		case PIV_OBJ_9E06:
+			keyenvname = "PIV_9E06_KEY";
+			break;
+	}
 
-	if (piv_objects[enumtag].enumtag == PIV_OBJ_9A06)  {
+	if (keyenvname)  {
 		BIO * bp = NULL;
 		RSA * rsa = NULL;
 		u8 *q;
@@ -591,7 +647,7 @@ static int piv_get_data(sc_card_t * card, unsigned int enumtag,
 		size_t taglen;
 		char * keyfilename = NULL;
 
-		keyfilename = getenv("PIV_9A06_KEY");
+		keyfilename = getenv(keyenvname);
 
 		if (keyfilename == NULL) {
 			r = SC_ERROR_FILE_NOT_FOUND;
@@ -671,7 +727,7 @@ static int piv_handle_certificate_data(sc_card_t *card,
 	}
 	tag = (u8 *) sc_asn1_find_tag(card->ctx, data,  length, 0x70, &taglen);
 	if (tag == NULL) {
-		return SC_ERROR_OBJECT_NOT_VALID;
+	SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OBJECT_NOT_VALID);
 	}
 	/* Potential truncation */
 	if(compressed) {
@@ -679,28 +735,28 @@ static int piv_handle_certificate_data(sc_card_t *card,
 		size_t len = count;
 		u8* newBuf = NULL;
 		if(SC_SUCCESS != sc_decompress_alloc(&newBuf, &len, tag, taglen, COMPRESSION_AUTO)) {
-			return SC_ERROR_OBJECT_NOT_VALID;
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OBJECT_NOT_VALID);
 		} else {
 			if(len < count + idx)
 				count = len - idx;
 			if(count <= 0)
-				return 0;
+				SC_FUNC_RETURN(card->ctx, 1, 0);
 			memcpy(buf, newBuf + idx, count);
 			if(0 != add_cache_item(priv, enumtag, newBuf, len)) {
 				/* Failed to cache item */
 				free(newBuf);
 			}
 		}
-		return count;
+		SC_FUNC_RETURN(card->ctx, 1, count);
 #else
 		sc_error(card->ctx,"PIV compression not supported, no zlib");
-		return SC_ERROR_NOT_SUPPORTED;
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 #endif
 	}
 	if(taglen < count + idx)
 		count = taglen - idx;
 	if(count <= 0)
-		return 0;
+		SC_FUNC_RETURN(card->ctx, 1, 0);
 	memcpy(buf, tag, count);
 	if(0 == add_cache_item(priv, enumtag, NULL, 0)) {
 		/* Space available in the cache array, use it */
@@ -713,33 +769,40 @@ static int piv_handle_certificate_data(sc_card_t *card,
 			}
 		}
 	}
-	return count;
+	SC_FUNC_RETURN(card->ctx, 1, count);
 }
 
 static int piv_handle_data(sc_card_t *card, int enumtag, 
 		unsigned idx, u8* buf, size_t count, u8* data, size_t length) {
-	/* For now get the first tag, and return the data */
+	/* We need to return the whole not just first tag */
 	piv_private_data_t * priv = PIV_DATA(card);
 	u8* tag;
 	size_t taglen;
+	size_t reallen;
 	piv_cache_item* item;
+	
+	SC_FUNC_CALLED(card->ctx,1);
 
 	tag = (u8 *) sc_asn1_find_tag(card->ctx, data,  length, *data, &taglen);
 	if (tag == NULL) {
-		return SC_ERROR_OBJECT_NOT_VALID;
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OBJECT_NOT_VALID);
 	}
-	if(taglen < count + idx)
-		count = taglen - idx;
+	reallen = tag - data + taglen;
+	if (reallen > length)
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OBJECT_NOT_VALID);
+
+	if(reallen < count + idx)
+		count = reallen - idx;
 	if(count <= 0)
 		return 0;
-	memcpy(buf, tag + idx, count);
+	memcpy(buf, data + idx, count);
 	if(0 == add_cache_item(priv, enumtag, NULL, 0)) {
 		item = get_cache_item(priv, enumtag);
 		if(item) {
-			item->data = malloc(taglen);
+			item->data = malloc(reallen);
 			if(item->data) {
-				item->length = taglen;
-				memcpy(item->data, tag, taglen);
+				item->length = reallen;
+				memcpy(item->data, data, reallen);
 			}
 		}
 	}
@@ -760,6 +823,8 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 	int r;
 	u8 *rbuf = NULL;
 	size_t rbuflen = 0;
+	u8 *tag;
+	size_t taglen;
 	u8 *body;
 	size_t bodylen;
 
@@ -768,26 +833,29 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 		 SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
 	enumtag = piv_objects[priv->selected_obj].enumtag;
 
+	if (priv->eof == 1)
+		return 0;
+
 	/* Hit the cache */
 	if(priv->current_item) {
 		item = priv->current_item;
 		if(idx + count > item->length) {
 			count = item->length - idx;
 		}
-		if(count <= 0)
+		if(count <= 0) {
+			priv->eof = 1;
 			return 0;
+		}
 		memcpy(buf, item->data + idx, count);
 		return count;
 	}
 
-	if (priv->eof == 1)
-		return 0;
 
 	r = piv_get_data(card, priv->selected_obj, &rbuf, &rbuflen);
 	
 	if (r >=0) {
 		/* if tag is 0, assume card is telling us no object on card */
-		if (!rbuf || rbuf[0] == '0') {
+		if (!rbuf || rbuf[0] == 0x00 || (rbuf[0] == 0x53 && rbuf[1] == 0x00)) {
 			r = SC_ERROR_FILE_NOT_FOUND;
 			goto err;
 		}
@@ -800,6 +868,12 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
+		if (bodylen > body - rbuf + rbuflen) {
+			sc_debug(card->ctx," ***** tag length > then data: %d>%d+%d",
+				bodylen , body - rbuf, rbuflen);
+			r = SC_ERROR_INVALID_DATA;
+			goto err;
+		}
 		switch (enumtag) {
 			case PIV_OBJ_X509_PIV_AUTH:
 			case PIV_OBJ_X509_DS:
@@ -807,8 +881,23 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 			case PIV_OBJ_X509_CARD_AUTH:
 				r = piv_handle_certificate_data(card, enumtag, idx, buf, count, body, bodylen);
 				break;
+			case PIV_OBJ_9A06:
+			case PIV_OBJ_9C06:
+			case PIV_OBJ_9D06:
+			case PIV_OBJ_9E06:
+				tag = (u8 *) sc_asn1_find_tag(card->ctx, body,  bodylen,
+						*body, &taglen);
+				if (tag == NULL) {
+					r = SC_ERROR_OBJECT_NOT_VALID;
+					break;
+				}
+				memcpy(buf, tag, taglen); /*DEE should check lengths */
+				r = taglen;
+				break;
+			
 			default:
-				r = piv_handle_data(card, enumtag, idx, buf, count, body, bodylen);
+				/* send whole object, tags and all */
+				r = piv_handle_data(card, enumtag, idx, buf, count, rbuf, rbuflen);
 				break;
 		}
 	}
@@ -838,7 +927,7 @@ static int piv_put_data(sc_card_t *card, unsigned int tag,
 	tag_len = piv_objects[tag].tag_len;
 	sbuflen = put_tag_and_len(0x5c, tag_len, NULL) + buf_len;
 	if (!(sbuf = (u8 *) malloc(sbuflen))) 
-		return SC_ERROR_OUT_OF_MEMORY;
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
 
 	p = sbuf;
 	put_tag_and_len(0x5c, tag_len, &p);
@@ -892,7 +981,7 @@ static int piv_write_certificate(sc_card_t *card,
 	if (sbuf)
 		free(sbuf);
 
-	return r;
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 /* 
  * We need to add the 0x53 tag and other specific tags, 
@@ -1151,10 +1240,6 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	}	
 	p += *(rbuf + 3);
 	
-	switch (priv-> enumtag) {
-		default:
-			alg_id = 0x00;
-	}
 	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, NULL, NULL);
 
 	sc_unlock(card);
@@ -1168,6 +1253,42 @@ err:
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
+static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
+{
+	int r;
+	u8 *rbuf = NULL;
+	u8 *body, *fascn;
+	size_t rbuflen = 0, bodylen, fascnlen;
+	u8 temp[2000];
+	size_t templen = sizeof(temp);
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	/* ensure we've got the PIV selected, and nothing else is in process */
+	/* This fixes several problems due to previous incomplete APDUs during card detection */
+	/* Note: We need the temp because (some?) Oberthur cards don't like selecting an applet without response data */
+	piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+
+	r = piv_get_data(card, PIV_OBJ_CHUI-1, &rbuf, &rbuflen);
+	SC_TEST_RET(card->ctx, r, "Failure retrieving CHUI");
+
+	r = SC_ERROR_INTERNAL;
+	if (rbuflen != 0) {
+		body = (u8 *)sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x53, &bodylen); /* Pass the outer wrapper asn1 */
+		if (body != NULL && bodylen != 0) {
+			fascn = (u8 *)sc_asn1_find_tag(card->ctx, body, bodylen, 0x30, &fascnlen); /* Find the FASC-N data */
+			if (fascn != NULL && fascnlen != 0) {
+				serial->len = fascnlen < SC_MAX_SERIALNR ? fascnlen : SC_MAX_SERIALNR;
+				memcpy (serial->value, fascn, serial->len);
+				r = SC_SUCCESS;
+			}
+		}
+	}
+      
+	if (rbuf != NULL)
+		free (rbuf);
+	SC_FUNC_RETURN(card->ctx, 1, r);
+}
 
 static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
@@ -1191,6 +1312,9 @@ static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		case SC_CARDCTL_CRYPTOFLEX_GENERATE_KEY:
 			return piv_generate_key(card, 
 				(struct sc_cardctl_cryptoflex_genkey_info *) ptr);
+			break;
+		case SC_CARDCTL_GET_SERIALNR:
+			return piv_get_serial_nr_from_CHUI(card, (sc_serial_number_t *) ptr);
 			break;
 	}
 
@@ -1224,14 +1348,17 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 		r = piv_general_io(card, 0x87, 0x00, 0x00, sbuf, p - sbuf, 
 				&rbuf, &rbuflen); 
- 		if (r < 0) 
+ 		if (r < 0) { 
+			sc_unlock(card);
 			SC_FUNC_RETURN(card->ctx, 1, r);
+		}
 		q = rbuf;
 		if ( (*q++ != 0x7C)
 			|| (*q++ != rbuflen - 2)
 			|| (*q++ != 0x81)
 			|| (*q++ != rbuflen - 4)) {
 			r =  SC_ERROR_INVALID_DATA;
+			sc_unlock(card);
 			SC_FUNC_RETURN(card->ctx, 1, r);
 		}
 		memcpy(rnd, q, n);
@@ -1259,13 +1386,13 @@ static int piv_set_security_env(sc_card_t *card,
 			env->flags, env->operation, env->algorithm, env->algorithm_flags, 
 			env->algorithm_ref, env->key_ref[0], env->key_ref_len);
 
-	if (env->algorithm == 0) 
-		priv->alg_id = 0x06; /* 1024 RSA for now only */
+	if (env->algorithm == SC_ALGORITHM_RSA) 
+		priv->alg_id = 0x06; /* Say it is RSA, set 5, 6, 7 later */
 	else
 		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NO_CARD_SUPPORT);
 	priv->key_ref = env->key_ref[0];
 
-	return 0;
+	SC_FUNC_RETURN(card->ctx, 2, 0);
 }
 
 
@@ -1273,7 +1400,7 @@ static int piv_restore_security_env(sc_card_t *card, int se_num)
 {
 	SC_FUNC_CALLED(card->ctx,1);
 
-	return 0;
+	SC_FUNC_RETURN(card->ctx, 1, 0);
 }
 
 
@@ -1288,8 +1415,9 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	size_t taglen;
 	u8 *body;
 	size_t bodylen;
+	unsigned int real_alg_id;
 
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[4096]; /* needs work. for 3072 keys, needs 384+10 or so */
 	u8 *rbuf = NULL;
 	size_t rbuflen;
 	
@@ -1304,7 +1432,25 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	memcpy(p, data, datalen);
 	p += datalen;
 
-	r = piv_general_io(card, 0x87, priv->alg_id, priv->key_ref, 
+	/* 
+	 * alg_id=06 is a place holder for all RSA keys. 
+ 	 * Derive the real alg_id based on the size of the
+	 * the data, as we are always using raw mode. 
+	 * Non RSA keys needs some work in thia area. 
+	 */
+
+	real_alg_id = priv->alg_id;
+	if (priv->alg_id == 0x06) {
+		switch  (datalen) {
+			case 128: real_alg_id = 0x06; break;
+			case 256: real_alg_id = 0x07; break;
+			case 384: real_alg_id = 0x05; break;
+			default:
+				SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NO_CARD_SUPPORT);
+		}
+	} 
+
+	r = piv_general_io(card, 0x87, real_alg_id, priv->key_ref, 
 			sbuf, p - sbuf, &rbuf, &rbuflen);  
 
 	if ( r >= 0) {
@@ -1331,7 +1477,7 @@ static int piv_compute_signature(sc_card_t *card,
 					u8 * out, size_t outlen)
 {
 	SC_FUNC_CALLED(card->ctx,4);
-	return piv_validate_general_authentication(card, data, datalen, out, outlen);
+	SC_FUNC_RETURN(card->ctx, 4, piv_validate_general_authentication(card, data, datalen, out, outlen));
 }
 
 static int piv_decipher(sc_card_t *card,
@@ -1340,7 +1486,7 @@ static int piv_decipher(sc_card_t *card,
 {
 	SC_FUNC_CALLED(card->ctx,4);
 
-	return piv_validate_general_authentication(card, data, datalen, out, outlen);
+	SC_FUNC_RETURN(card->ctx, 4, piv_validate_general_authentication(card, data, datalen, out, outlen));
 }
 
 
@@ -1389,7 +1535,7 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 		pathlen -= 2;
 	}
 	if (pathlen != 2)
-			return SC_ERROR_INVALID_ARGUMENTS;
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	 
 	i = piv_find_obj_by_containerid(card, path);
 
@@ -1399,6 +1545,7 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 	priv->eof = 0;
 
 	/* check out the cache */
+	priv->current_item = NULL;
 	item = get_cache_item(priv, i);
 	if(item) {
 		priv->current_item = item;
@@ -1477,7 +1624,7 @@ static int piv_init(sc_card_t *card)
 	priv = (piv_private_data_t *) calloc(1, sizeof(piv_private_data_t));
 
 	if (!priv)
-		return SC_ERROR_OUT_OF_MEMORY;
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
 	priv->aid_file = sc_file_new();
 	priv->selected_obj = -1;
 	priv->max_recv_size = 256;
@@ -1517,6 +1664,29 @@ static int piv_init(sc_card_t *card)
 }
 
 
+static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, 
+                       int *tries_left)
+{
+	/* Extra validation of (new) PIN during a PIN change request, to
+	 * ensure it's not outside the FIPS 201 4.1.6.1 (numeric only) and
+	 * FIPS 140-2 (6 character minimum) requirements.
+	 */
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	if (data->cmd == SC_PIN_CMD_CHANGE) {
+		int i = 0;
+		if (data->pin2.len < 6) {
+			return SC_ERROR_INVALID_PIN_LENGTH;
+		}
+		for(i=0; i < data->pin2.len; ++i) {
+			if (!isdigit(data->pin2.data[i])) {
+				return SC_ERROR_INVALID_DATA;
+			}
+		}
+	}
+	return iso_drv->ops->pin_cmd(card, data, tries_left);
+}
+
+
 static struct sc_card_driver * sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -1535,6 +1705,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	piv_ops.compute_signature = piv_compute_signature;
 	piv_ops.decipher =  piv_decipher;
 	piv_ops.card_ctl = piv_card_ctl;
+	piv_ops.pin_cmd = piv_pin_cmd;
 
 	return &piv_drv;
 }

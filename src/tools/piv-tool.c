@@ -345,8 +345,8 @@ static void print_serial(sc_card_t *in_card)
 	sc_serial_number_t serial;
 
 	r = sc_card_ctl(in_card, SC_CARDCTL_GET_SERIALNR, &serial);
-	if (r)
-		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GET_SERIALNR, *) failed\n");
+	if (r < 0)
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GET_SERIALNR, *) failed %d\n", r);
 	else
 		hex_dump_asc(stdout, serial.value, serial.len, -1);
 }
