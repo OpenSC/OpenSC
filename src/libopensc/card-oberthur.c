@@ -86,10 +86,10 @@ struct auth_update_component_info {
 typedef struct auth_update_component_info auth_update_component_info_t;
 
 
-const unsigned char *aidAuthentIC_V5 = 
+static const unsigned char *aidAuthentIC_V5 = 
 		(const u8 *)"\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x00\x00\xF1\x00\x00\x00\x02";
-const int lenAidAuthentIC_V5 = 16; 
-const char *nameAidAuthentIC_V5 = "AuthentIC v5"; 
+static const int lenAidAuthentIC_V5 = 16; 
+static const char *nameAidAuthentIC_V5 = "AuthentIC v5"; 
 
 #define AUTH_PIN		1
 #define AUTH_PUK		2
@@ -143,7 +143,7 @@ static int auth_sm_release (struct sc_card *card, struct sc_sm_info *sm_info,
 		unsigned char *data, int data_len);
 #endif
 
-void _auth_print_acls(struct sc_card *card, struct sc_file *file)
+static void _auth_print_acls(struct sc_card *card, struct sc_file *file)
 {
 	int ii, jj;   
 	

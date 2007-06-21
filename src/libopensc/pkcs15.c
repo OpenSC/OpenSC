@@ -403,7 +403,7 @@ err:
 	return r;
 }
 
-struct sc_pkcs15_card * sc_pkcs15_card_new()
+struct sc_pkcs15_card * sc_pkcs15_card_new(void)
 {
 	struct sc_pkcs15_card *p15card;
 	

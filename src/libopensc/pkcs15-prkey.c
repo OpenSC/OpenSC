@@ -204,7 +204,7 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx,
 		break;
 	case SC_PKCS15_TYPE_PRKEY_DSA:
 		sc_format_asn1_entry(asn1_prkey + 1, &dsa_prkey_obj, NULL, 1);
-		sc_format_asn1_entry(asn1_prk_dsa_attr + 0, asn1_dsakey_value_attr, 0, 1);
+		sc_format_asn1_entry(asn1_prk_dsa_attr + 0, asn1_dsakey_value_attr, NULL, 1);
 		if (prkey->path.type != SC_PATH_TYPE_PATH_PROT) {
 			/* indirect: just add the path */
 			sc_format_asn1_entry(asn1_dsakey_value_attr + 0,

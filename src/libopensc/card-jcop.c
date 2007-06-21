@@ -108,7 +108,7 @@ static int jcop_init(sc_card_t *card)
      drvdata->selected=SELECT_MF;
      drvdata->invalid_senv=1;
      drvdata->nfiles=-1;
-     drvdata->filelist=0;
+     drvdata->filelist=NULL;
      f=sc_file_new();
      if (!f){
 	  free(drvdata);
@@ -428,7 +428,7 @@ static int jcop_process_fci(sc_card_t *card, sc_file_t *file,
 	  if (drvdata->nfiles) {
 	       drvdata->nfiles=-1;
 	       free(drvdata->filelist);
-	       drvdata->filelist=0;
+	       drvdata->filelist=NULL;
 	  }
 	  if(file->sec_attr_len >=3) {
 	       /* The security attribute bytes are divided into nibbles and are
@@ -459,7 +459,7 @@ static int jcop_process_fci(sc_card_t *card, sc_file_t *file,
 	  if (drvdata->nfiles) {
 	       drvdata->nfiles=0;
 	       free(drvdata->filelist);
-	       drvdata->filelist=0;
+	       drvdata->filelist=NULL;
 	  }    
 	  /* the format of the poprietary attributes is:
 	     4 bytes     unique id

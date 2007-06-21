@@ -1056,7 +1056,7 @@ static int mcrd_restore_se(sc_card_t * card, int se_num)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-int select_key_df(sc_card_t * card)
+static int select_key_df(sc_card_t * card)
 {
 	int r;
 	size_t i = 0;

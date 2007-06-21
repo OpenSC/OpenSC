@@ -157,8 +157,7 @@ sc_ui_display_debug(sc_context_t *ctx, const char *msg)
  * libray doesn't define the named symbol, fall back
  * to the default function
  */
-int
-sc_ui_get_func(sc_context_t *ctx, const char *name, void **ret)
+static int sc_ui_get_func(sc_context_t *ctx, const char *name, void **ret)
 {
 	*ret = NULL;
 	if (!sc_ui_lib_handle && !sc_ui_lib_loaded) {
@@ -200,8 +199,7 @@ sc_ui_get_func(sc_context_t *ctx, const char *name, void **ret)
 /*
  * Default ui functions
  */
-int
-sc_ui_get_pin_default(sc_ui_hints_t *hints, char **out)
+static int sc_ui_get_pin_default(sc_ui_hints_t *hints, char **out)
 {
 	sc_context_t	*ctx = hints->card->ctx;
 	sc_pkcs15_pin_info_t *pin_info;
@@ -233,8 +231,8 @@ sc_ui_get_pin_default(sc_ui_hints_t *hints, char **out)
 				flags, pin_info, out);
 }
 
-int
-sc_ui_get_pin_pair_default(sc_ui_hints_t *hints, char **old_out, char **new_out)
+static int sc_ui_get_pin_pair_default(sc_ui_hints_t *hints, char **old_out,
+				char **new_out)
 {
 	sc_context_t	*ctx = hints->card->ctx;
 	sc_pkcs15_pin_info_t *pin_info;
@@ -278,8 +276,7 @@ sc_ui_get_pin_pair_default(sc_ui_hints_t *hints, char **old_out, char **new_out)
 	return r;
 }
 
-int
-__sc_ui_read_pin(sc_context_t *ctx, const char *prompt,
+static int __sc_ui_read_pin(sc_context_t *ctx, const char *prompt,
 			const char *label, int flags,
 			sc_pkcs15_pin_info_t *pin_info,
 			char **out)
@@ -424,14 +421,12 @@ sc_ui_display_msg(sc_context_t *ctx, int type, const char *msg)
 	return 0;
 }
 
-int
-sc_ui_display_error_default(sc_context_t *ctx, const char *msg)
+static int sc_ui_display_error_default(sc_context_t *ctx, const char *msg)
 {
 	return sc_ui_display_msg(ctx, SC_LOG_TYPE_ERROR, msg);
 }
 
-int
-sc_ui_display_debug_default(sc_context_t *ctx, const char *msg)
+static int sc_ui_display_debug_default(sc_context_t *ctx, const char *msg)
 {
 	return sc_ui_display_msg(ctx, SC_LOG_TYPE_DEBUG, msg);
 }

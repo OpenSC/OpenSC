@@ -65,7 +65,7 @@ static struct {
 	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
-	{ NULL, 0 }
+	{ NULL, NULL }
 };
 
 static int parse_emu_block(sc_pkcs15_card_t *, scconf_block *);

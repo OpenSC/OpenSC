@@ -34,8 +34,8 @@
 
 static const struct sc_card_operations *iso_ops = NULL;
 
-struct sc_card_operations incrypto34_ops;
-struct sc_card_driver incrypto34_drv = {
+static struct sc_card_operations incrypto34_ops;
+static struct sc_card_driver incrypto34_drv = {
 	"Incard Incripto34",
 	"incrypto34",
 	&incrypto34_ops,
@@ -49,12 +49,12 @@ static struct sc_atr_table incrypto34_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
-int incrypto34_finish(struct sc_card *card)
+static int incrypto34_finish(struct sc_card *card)
 {
 	return 0;
 }
 
-int incrypto34_match_card(struct sc_card *card)
+static int incrypto34_match_card(struct sc_card *card)
 {
 	int i;
 
@@ -64,7 +64,7 @@ int incrypto34_match_card(struct sc_card *card)
 	return 1;
 }
 
-int incrypto34_init(sc_card_t *card)
+static int incrypto34_init(sc_card_t *card)
 {
 	unsigned long	flags;
 
@@ -164,8 +164,7 @@ static int incrypto34_check_sw(sc_card_t *card, unsigned int sw1, unsigned int s
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
-
-int incrypto34_list_files(sc_card_t *card, u8 *buf, size_t buflen)
+static int incrypto34_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
 	sc_apdu_t apdu;
 	u8 rbuf[256];
@@ -414,8 +413,7 @@ out:	SC_FUNC_RETURN(card->ctx, 1, r);
 /*
  * Restore the indicated SE
  */
-static int
-incrypto34_restore_security_env(sc_card_t *card, int se_num)
+static int incrypto34_restore_security_env(sc_card_t *card, int se_num)
 {
 	sc_apdu_t apdu;
 	int	r;
@@ -443,10 +441,8 @@ incrypto34_restore_security_env(sc_card_t *card, int se_num)
  * with the same ID.
  * XXX Need to find out how the Aladdin drivers do it.
  */
-static int
-incrypto34_set_security_env(sc_card_t *card,
-			    const sc_security_env_t *env,
-			    int se_num)
+static int incrypto34_set_security_env(sc_card_t *card,
+		    const sc_security_env_t *env, int se_num)
 {
 	sc_apdu_t apdu;
 	u8	data[3];
@@ -496,9 +492,8 @@ incrypto34_set_security_env(sc_card_t *card,
  */
 
 /* internal function to do the actual signature computation */
-static int
-do_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
-		     u8 *out, size_t outlen)
+static int do_compute_signature(sc_card_t *card,
+		const u8 *data, size_t datalen, u8 *out, size_t outlen)
 {
 	int r;
 	sc_apdu_t apdu;

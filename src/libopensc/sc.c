@@ -34,9 +34,9 @@
 #include <assert.h>
 
 #ifdef VERSION
-const char *sc_version = VERSION;
+static const char *sc_version = VERSION;
 #else
-const char *sc_version = "(undef)";
+static const char *sc_version = "(undef)";
 #endif
 
 const char *sc_get_version(void)
@@ -476,7 +476,7 @@ void sc_file_clear_acl_entries(sc_file_t *file, unsigned int operation)
 	file->acl[operation] = NULL;
 }
 
-sc_file_t * sc_file_new()
+sc_file_t * sc_file_new(void)
 {
 	sc_file_t *file = (sc_file_t *)calloc(1, sizeof(sc_file_t));
 	if (file == NULL)
@@ -632,7 +632,7 @@ int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 	return 0;
 }
 
-inline int sc_file_valid(const sc_file_t *file) {
+int sc_file_valid(const sc_file_t *file) {
 #ifndef NDEBUG
 	assert(file != NULL);
 #endif

@@ -422,14 +422,14 @@ struct tTLV {
 	unsigned char *next;
 };
 
-static inline void TLVInit(struct tTLV *tlv, u8 * base, size_t size)
+static void TLVInit(struct tTLV *tlv, u8 * base, size_t size)
 {
 	tlv->base = base;
 	tlv->end = base + size;
 	tlv->current = tlv->next = base;
 }
 
-static inline void TLVNext(struct tTLV *tlv, u8 tag)
+static void TLVNext(struct tTLV *tlv, u8 tag)
 {
 	assert(tlv->next + 2 < tlv->end);
 	tlv->current = tlv->next;
@@ -437,14 +437,14 @@ static inline void TLVNext(struct tTLV *tlv, u8 tag)
 	*(tlv->next++) = 0;
 }
 
-static inline void TLVAdd(struct tTLV *tlv, u8 val)
+static void TLVAdd(struct tTLV *tlv, u8 val)
 {
 	assert(tlv->next + 1 < tlv->end);
 	*(tlv->next++) = val;
 	tlv->current[1]++;
 }
 
-static inline void TLVAddBuffer(struct tTLV *tlv, u8 * val, size_t size)
+static void TLVAddBuffer(struct tTLV *tlv, u8 * val, size_t size)
 {
 	assert(tlv->next + size < tlv->end);
 	memcpy(tlv->next, val, size);

@@ -1664,8 +1664,8 @@ gpk_max_session_key(sc_card_t *card)
 /*
  * GetInfo call
  */
-int
-gpk_get_info(sc_card_t *card, int p1, int p2, u8 *buf, size_t buflen)
+static int gpk_get_info(sc_card_t *card, int p1, int p2, u8 *buf,
+		size_t buflen)
 {
 	sc_apdu_t	apdu;
 	int	r, retry = 0;
@@ -1870,7 +1870,7 @@ gpk_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
  * Initialize the driver struct
  */
 static struct sc_card_driver *
-sc_get_driver()
+sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv;
 
@@ -1898,7 +1898,7 @@ sc_get_driver()
 }
 
 struct sc_card_driver *
-sc_get_gpk_driver()
+sc_get_gpk_driver(void)
 {
 	return sc_get_driver();
 }

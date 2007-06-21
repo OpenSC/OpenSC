@@ -652,7 +652,7 @@ int sc_delete_record(sc_card_t *card, unsigned int rec_nr)
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-inline int sc_card_valid(const sc_card_t *card) {
+int sc_card_valid(const sc_card_t *card) {
 #ifndef NDEBUG
 	assert(card != NULL);
 #endif

@@ -40,11 +40,6 @@ extern "C" {
 #include <opensc/errors.h>
 #include <opensc/types.h>
 
-#ifndef __GNUC__
-#undef inline
-#define inline
-#endif
-
 /* Different APDU cases */
 #define SC_APDU_CASE_NONE		0x00
 #define SC_APDU_CASE_1			0x01
@@ -776,7 +771,7 @@ int sc_disconnect_card(sc_card_t *card, int flag);
  * used internally by the library.
  * @param card The card object to check
  */
-inline int sc_card_valid(const sc_card_t *card);
+int sc_card_valid(const sc_card_t *card);
 
 /**
  * Checks if a card is present in a reader
@@ -1001,7 +996,7 @@ int sc_delete_file(sc_card_t *card, const sc_path_t *path);
 /* Card controls */
 int sc_card_ctl(sc_card_t *card, unsigned long command, void *arg);
 
-inline int sc_file_valid(const sc_file_t *file);
+int sc_file_valid(const sc_file_t *file);
 sc_file_t * sc_file_new(void);
 void sc_file_free(sc_file_t *file);
 void sc_file_dup(sc_file_t **dest, const sc_file_t *src);

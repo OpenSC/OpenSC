@@ -30,7 +30,7 @@
 
 static const struct sc_card_operations *iso_ops = NULL;
 
-struct sc_card_operations cardos_ops;
+static struct sc_card_operations cardos_ops;
 static struct sc_card_driver cardos_drv = {
 	"Siemens CardOS",
 	"cardos",
