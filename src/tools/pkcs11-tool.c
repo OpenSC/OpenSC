@@ -1107,7 +1107,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 }
 
 #ifdef HAVE_OPENSSL
-stati cstatic void	parse_certificate(struct x509cert_info *cert,
+static void	parse_certificate(struct x509cert_info *cert,
 		unsigned char *data, int len)
 {
 	X509 *x;
