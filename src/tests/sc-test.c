@@ -17,11 +17,11 @@
 sc_context_t *ctx;
 sc_card_t *card;
 
-const struct option	options[] = {
-	{ "reader",             1, 0,           'r' },
-	{ "driver",		1, 0,           'c' },
-	{ "debug",              0, 0,           'd' },
-	{ 0, 0, 0, 0 }
+static const struct option	options[] = {
+	{ "reader",             1, NULL,           'r' },
+	{ "driver",		1, NULL,           'c' },
+	{ "debug",              0, NULL,           'd' },
+	{ NULL, 0, NULL, 0 }
 };
 
 #if 0

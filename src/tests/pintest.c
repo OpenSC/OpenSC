@@ -17,9 +17,9 @@
 #include <opensc/pkcs15.h>
 #include "sc-test.h"
 
-struct sc_pkcs15_card *p15card;
+static struct sc_pkcs15_card *p15card;
 
-int enum_pins(struct sc_pkcs15_object ***ret)
+static int enum_pins(struct sc_pkcs15_object ***ret)
 {
 	struct sc_pkcs15_object **objs;
 	int i, n;
@@ -43,7 +43,7 @@ int enum_pins(struct sc_pkcs15_object ***ret)
 	return n;
 }
 
-int ask_and_verify_pin(struct sc_pkcs15_object *obj)
+static int ask_and_verify_pin(struct sc_pkcs15_object *obj)
 {
 	struct sc_pkcs15_pin_info *pin;
 	int i = 0;

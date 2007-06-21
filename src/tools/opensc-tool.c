@@ -47,19 +47,19 @@ enum {
 };
 
 const struct option options[] = {
-	{ "atr",		0, 0,		'a' },
-	{ "serial",		0, 0,	OPT_SERIAL  },
-	{ "name",		0, 0,		'n' },
-	{ "list-readers",	0, 0, 		'l' },
-	{ "list-drivers",	0, 0,		'D' },
-	{ "list-rdrivers",	0, 0,		'R' },
-	{ "list-files",		0, 0,		'f' },
-	{ "send-apdu",		1, 0,		's' },
-	{ "reader",		1, 0,		'r' },
-	{ "card-driver",	1, 0,		'c' },
-	{ "wait",		0, 0,		'w' },
-	{ "verbose",		0, 0,		'v' },
-	{ 0, 0, 0, 0 }
+	{ "atr",		0, NULL,		'a' },
+	{ "serial",		0, NULL,	OPT_SERIAL  },
+	{ "name",		0, NULL,		'n' },
+	{ "list-readers",	0, NULL, 		'l' },
+	{ "list-drivers",	0, NULL,		'D' },
+	{ "list-rdrivers",	0, NULL,		'R' },
+	{ "list-files",		0, NULL,		'f' },
+	{ "send-apdu",		1, NULL,		's' },
+	{ "reader",		1, NULL,		'r' },
+	{ "card-driver",	1, NULL,		'c' },
+	{ "wait",		0, NULL,		'w' },
+	{ "verbose",		0, NULL,		'v' },
+	{ NULL, 0, NULL, 0 }
 };
 
 const char *option_help[] = {
@@ -77,8 +77,8 @@ const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-sc_context_t *ctx = NULL;
-sc_card_t *card = NULL;
+static sc_context_t *ctx = NULL;
+static sc_card_t *card = NULL;
 
 static int list_readers(void)
 {

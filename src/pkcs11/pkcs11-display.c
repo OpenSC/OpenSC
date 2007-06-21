@@ -177,7 +177,7 @@ void print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOI
   fprintf(f, "\n");
 }
 
-enum_specs ck_cls_s[] = {
+static enum_specs ck_cls_s[] = {
   { CKO_DATA             , "CKO_DATA             " },
   { CKO_CERTIFICATE      , "CKO_CERTIFICATE      " },
   { CKO_PUBLIC_KEY       , "CKO_PUBLIC_KEY       " },
@@ -192,12 +192,12 @@ enum_specs ck_cls_s[] = {
   { CKO_VENDOR_DEFINED   , "CKO_VENDOR_DEFINED   " }
 };
 
-enum_specs ck_crt_s[] = {
+static enum_specs ck_crt_s[] = {
   { CKC_X_509, "CKC_X_509" },
   { CKC_X_509_ATTR_CERT, "CKC_X_509_ATTR_CERT" },
 };
 
-enum_specs ck_key_s[] = {
+static enum_specs ck_key_s[] = {
   { CKK_RSA           , "CKK_RSA            " },
   { CKK_DSA           , "CKK_DSA            " },
   { CKK_DH            , "CKK_DH             " },
@@ -222,7 +222,7 @@ enum_specs ck_key_s[] = {
   { CKK_AES           , "CKK_AES            " }
 };
 
-enum_specs ck_mec_s[] = {
+static enum_specs ck_mec_s[] = {
   { CKM_RSA_PKCS_KEY_PAIR_GEN    , "CKM_RSA_PKCS_KEY_PAIR_GEN    " },
   { CKM_RSA_PKCS                 , "CKM_RSA_PKCS                 " },
   { CKM_RSA_9796                 , "CKM_RSA_9796                 " },
@@ -414,7 +414,7 @@ enum_specs ck_mec_s[] = {
   { CKM_VENDOR_DEFINED           , "CKM_VENDOR_DEFINED           " }
 };
 
-enum_specs ck_err_s[] = {
+static enum_specs ck_err_s[] = {
   { CKR_OK,                               "CKR_OK" },
   { CKR_CANCEL,                           "CKR_CANCEL" },
   { CKR_HOST_MEMORY,                      "CKR_HOST_MEMORY" },
@@ -502,12 +502,12 @@ enum_specs ck_err_s[] = {
   { CKR_VENDOR_DEFINED,                   "CKR_VENDOR_DEFINED" }
 };
 
-enum_specs ck_usr_s[] = { 
+static enum_specs ck_usr_s[] = { 
   { CKU_SO,   "CKU_SO" }, 
   { CKU_USER, "CKU_USER" }
 };
 
-enum_specs ck_sta_s[] = { 
+static enum_specs ck_sta_s[] = { 
   { CKS_RO_PUBLIC_SESSION, "CKS_RO_PUBLIC_SESSION" },
   { CKS_RO_USER_FUNCTIONS, "CKS_RO_USER_FUNCTIONS" },
   { CKS_RW_PUBLIC_SESSION, "CKS_RW_PUBLIC_SESSION" },
@@ -517,7 +517,7 @@ enum_specs ck_sta_s[] = {
 
 #define SZ_SPECS sizeof(enum_specs)
 
-enum_spec ck_types[] = {
+static enum_spec ck_types[] = {
   { OBJ_T, ck_cls_s, sizeof(ck_cls_s) / SZ_SPECS, "CK_OBJECT_CLASS"     },
   { KEY_T, ck_key_s, sizeof(ck_key_s) / SZ_SPECS, "CK_KEY_TYPE"         },
   { CRT_T, ck_crt_s, sizeof(ck_crt_s) / SZ_SPECS, "CK_CERTIFICATE_TYPE" },
@@ -527,9 +527,9 @@ enum_spec ck_types[] = {
   { RV_T,  ck_err_s, sizeof(ck_err_s) / SZ_SPECS, "CK_RV"               },
 };
 
-enum_spec ck_key_t[] = { { KEY_T, ck_key_s, sizeof(ck_key_s) / SZ_SPECS, "CK_KEY_TYPE" } };
-enum_spec ck_cls_t[] = { { OBJ_T, ck_cls_s, sizeof(ck_cls_s) / SZ_SPECS, "CK_OBJECT_CLASS" } };
-enum_spec ck_crt_t[] = { { CRT_T, ck_crt_s, sizeof(ck_crt_s) / SZ_SPECS, "CK_CERTIFICATE_TYPE" } };
+static enum_spec ck_key_t[] = { { KEY_T, ck_key_s, sizeof(ck_key_s) / SZ_SPECS, "CK_KEY_TYPE" } };
+static enum_spec ck_cls_t[] = { { OBJ_T, ck_cls_s, sizeof(ck_cls_s) / SZ_SPECS, "CK_OBJECT_CLASS" } };
+static enum_spec ck_crt_t[] = { { CRT_T, ck_crt_s, sizeof(ck_crt_s) / SZ_SPECS, "CK_CERTIFICATE_TYPE" } };
 
 type_spec ck_attribute_specs[] = {
   { CKA_CLASS             , "CKA_CLASS            ", print_enum,    ck_cls_t },

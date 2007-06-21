@@ -35,13 +35,13 @@ extern CK_RV C_UnloadModule(void *module);
 /* Declare all spy_* Cryptoki function */
 
 /* Spy Module Function List */
-CK_FUNCTION_LIST_PTR pkcs11_spy = NULL;
+static CK_FUNCTION_LIST_PTR pkcs11_spy = NULL;
 /* Real Module Function List */
-CK_FUNCTION_LIST_PTR po = NULL;
+static CK_FUNCTION_LIST_PTR po = NULL;
 /* Dynamic Module Handle */
 static void *modhandle = NULL;
 /* Spy module output */
-FILE *spy_output = NULL;
+static FILE *spy_output = NULL;
 
 /* Inits the spy. If successfull, po != NULL */
 static CK_RV init_spy(void)

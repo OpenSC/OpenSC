@@ -37,20 +37,20 @@
 
 const char *app_name = "opensc-explorer";
 
-int opt_reader = -1, opt_wait = 0, verbose = 0;
-const char *opt_driver = NULL;
+static int opt_reader = -1, opt_wait = 0, verbose = 0;
+static const char *opt_driver = NULL;
 
-sc_file_t *current_file = NULL;
-sc_path_t current_path;
-sc_context_t *ctx = NULL;
-sc_card_t *card = NULL;
+static sc_file_t *current_file = NULL;
+static sc_path_t current_path;
+static sc_context_t *ctx = NULL;
+static sc_card_t *card = NULL;
 
 const struct option options[] = {
-	{ "reader",		1, 0, 'r' },
-	{ "card-driver",	1, 0, 'c' },
-	{ "wait",		1, 0, 'w' },
-	{ "verbose",		0, 0, 'v' },
-	{ 0, 0, 0, 0 }
+	{ "reader",		1, NULL, 'r' },
+	{ "card-driver",	1, NULL, 'c' },
+	{ "wait",		1, NULL, 'w' },
+	{ "verbose",		0, NULL, 'v' },
+	{ NULL, 0, NULL, 0 }
 };
 const char *option_help[] = {
 	"Uses reader number <arg> [0]",
@@ -1430,7 +1430,7 @@ static int do_quit(int argc, char **argv)
 	return 0;
 }
 
-struct command		cmds[] = {
+static struct command	cmds[] = {
  { "ls",	do_ls,		"list all files in the current DF"	},
  { "cd",	do_cd,		"change to another DF"			},
  { "cat",	do_cat,		"print the contents of an EF"		},
@@ -1454,10 +1454,10 @@ struct command		cmds[] = {
  { "exit",	do_quit,	"quit this program"			},
  { "update_record", do_update_record, "update record"			},
  { "update_binary", do_update_binary, "update binary"			},
- { 0, 0, 0 }
+ { NULL, NULL, NULL }
 };
 
-static void usage()
+static void usage(void)
 {
 	struct command	*cmd;
 

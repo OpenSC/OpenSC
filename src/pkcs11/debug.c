@@ -153,8 +153,7 @@ static struct fmap	p11_attr_names[] = {
 	{ 0 }
 };
 
-void
-sc_pkcs11_print_attrs(const char *file, unsigned int line,
+static void sc_pkcs11_print_attrs(const char *file, unsigned int line,
 			const char *function,
 			const char *info,
 			CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
@@ -208,8 +207,8 @@ sc_pkcs11_print_attr(const char *file, unsigned int line,
 	}
 }
 
-const char *
-sc_pkcs11_print_value(struct fmap *fm, void *ptr, size_t count)
+static const char *sc_pkcs11_print_value(struct fmap *fm,
+			void *ptr, size_t count)
 {
 	static char buffer[4 * DUMP_TEMPLATE_MAX + 1] = "";
 
@@ -231,8 +230,8 @@ sc_pkcs11_print_value(struct fmap *fm, void *ptr, size_t count)
 	return fm->print(fm, ptr, count);
 }
 
-const char *
-sc_pkcs11_print_ulong(struct fmap *fm, void *ptr, size_t count)
+static const char *sc_pkcs11_print_ulong(struct fmap *fm,
+		void *ptr, size_t count)
 {
 	static char	buffer[64];
 	CK_ULONG	value;
@@ -248,8 +247,8 @@ sc_pkcs11_print_ulong(struct fmap *fm, void *ptr, size_t count)
 	return sc_pkcs11_print_value(NULL, ptr, count);
 }
 
-const char *
-sc_pkcs11_print_bool(struct fmap *fm, void *ptr, size_t count)
+static const char *sc_pkcs11_print_bool(struct fmap *fm, void *ptr,
+		size_t count)
 {
 	CK_BBOOL	value;
 
@@ -263,8 +262,8 @@ sc_pkcs11_print_bool(struct fmap *fm, void *ptr, size_t count)
 	return sc_pkcs11_print_value(NULL, ptr, count);
 }
 
-const char *
-sc_pkcs11_print_string(struct fmap *fm, void *ptr, size_t count)
+static const char *sc_pkcs11_print_string(struct fmap *fm,
+		void *ptr, size_t count)
 {
 	static char	buffer[128];
 
@@ -275,8 +274,7 @@ sc_pkcs11_print_string(struct fmap *fm, void *ptr, size_t count)
 	return buffer;
 }
 
-struct fmap *
-sc_pkcs11_map_ulong(struct fmap *fm, CK_ULONG value)
+static struct fmap *sc_pkcs11_map_ulong(struct fmap *fm, CK_ULONG value)
 {
 	for (; fm && fm->name; fm++) {
 		if (fm->value == value)

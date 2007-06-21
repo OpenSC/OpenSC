@@ -13,7 +13,7 @@
 #include <opensc/pkcs15.h>
 #include "sc-test.h"
 
-struct sc_pkcs15_card *p15card;
+static struct sc_pkcs15_card *p15card;
 
 static int dump_objects(const char *what, int type)
 {
@@ -52,7 +52,7 @@ static int dump_objects(const char *what, int type)
 	return (count < 0) ? 1 : 0;
 }
 
-static int dump_unusedspace()
+static int dump_unusedspace(void)
 {
 	u8 *buf = NULL;
 	size_t buf_len;
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 	dump_objects("Public keys", SC_PKCS15_TYPE_PUBKEY);
 	dump_objects("X.509 certificates", SC_PKCS15_TYPE_CERT_X509);
 	dump_objects("data objects", SC_PKCS15_TYPE_DATA_OBJECT);
-	dump_unusedspace(p15card);
+	dump_unusedspace();
 
 	sc_pkcs15_unbind(p15card);
 	sc_unlock(card);

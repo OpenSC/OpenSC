@@ -2432,7 +2432,7 @@ static int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 		if (rv == 0)
 			rv = sc_pkcs15_read_data_object(fw_data->p15_card, dobj->info, out_data);
 	}
-done:
+
 	sc_unlock(card);
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, reader);
@@ -2773,8 +2773,7 @@ revalidate_pin(struct pkcs15_slot_data *data, struct sc_pkcs11_session *ses)
  * FIXME: We should consult the card's algorithm list to
  * find out what operations it supports
  */
-int
-register_mechanisms(struct sc_pkcs11_card *p11card)
+static int register_mechanisms(struct sc_pkcs11_card *p11card)
 {
 	sc_card_t *card = p11card->card;
 	sc_algorithm_info_t *alg_info;
@@ -2870,8 +2869,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	return CKR_OK;
 }
 
-int
-lock_card(struct pkcs15_fw_data *fw_data)
+static int lock_card(struct pkcs15_fw_data *fw_data)
 {
 	int	rc;
 
@@ -2883,8 +2881,7 @@ lock_card(struct pkcs15_fw_data *fw_data)
 	return rc;
 }
 
-int
-unlock_card(struct pkcs15_fw_data *fw_data)
+static int unlock_card(struct pkcs15_fw_data *fw_data)
 {
 	while (fw_data->locked) {
 		sc_unlock(fw_data->p15_card->card);

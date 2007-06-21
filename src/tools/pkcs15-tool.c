@@ -40,16 +40,16 @@ typedef unsigned __int32 uint32_t;
 
 const char *app_name = "pkcs15-tool";
 
-int opt_reader = -1, opt_wait = 0;
-int opt_no_cache = 0;
-char * opt_auth_id;
-char * opt_cert = NULL;
-char * opt_data = NULL;
-char * opt_pubkey = NULL;
-char * opt_outfile = NULL;
-u8 * opt_newpin = NULL;
-u8 * opt_pin = NULL;
-u8 * opt_puk = NULL;
+static int opt_reader = -1, opt_wait = 0;
+static int opt_no_cache = 0;
+static char * opt_auth_id;
+static char * opt_cert = NULL;
+static char * opt_data = NULL;
+static char * opt_pubkey = NULL;
+static char * opt_outfile = NULL;
+static u8 * opt_newpin = NULL;
+static u8 * opt_pin = NULL;
+static u8 * opt_puk = NULL;
 
 static int	verbose = 0;
 
@@ -76,31 +76,31 @@ static int	pem_encode(sc_context_t *, int,
 			sc_pkcs15_der_t *, sc_pkcs15_der_t *);
 
 const struct option options[] = {
-	{ "learn-card",		no_argument, 0, 	'L' },
-	{ "read-certificate",	required_argument, 0, 	'r' },
-	{ "list-certificates",	no_argument, 0,		'c' },
+	{ "learn-card",		no_argument, NULL, 	'L' },
+	{ "read-certificate",	required_argument, NULL, 	'r' },
+	{ "list-certificates",	no_argument, NULL,		'c' },
 	{ "read-data-object",	required_argument, 0, 	'R' },
-	{ "list-data-objects",	no_argument, 0,		'C' },
-	{ "list-pins",		no_argument, 0,		OPT_LIST_PINS },
-	{ "dump",		no_argument, 0,		'D' },
-	{ "unblock-pin",	no_argument, 0,		'u' },
-	{ "change-pin",		no_argument, 0,		OPT_CHANGE_PIN },
-	{ "list-keys",          no_argument, 0,         'k' },
-	{ "list-public-keys",	no_argument, 0,		OPT_LIST_PUB },
-	{ "read-public-key",	required_argument, 0,	OPT_READ_PUB },
+	{ "list-data-objects",	no_argument, NULL,		'C' },
+	{ "list-pins",		no_argument, NULL,		OPT_LIST_PINS },
+	{ "dump",		no_argument, NULL,		'D' },
+	{ "unblock-pin",	no_argument, NULL,		'u' },
+	{ "change-pin",		no_argument, NULL,		OPT_CHANGE_PIN },
+	{ "list-keys",          no_argument, NULL,         'k' },
+	{ "list-public-keys",	no_argument, NULL,		OPT_LIST_PUB },
+	{ "read-public-key",	required_argument, NULL,	OPT_READ_PUB },
 #if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
-	{ "read-ssh-key",	required_argument, 0,	OPT_READ_SSH },
+	{ "read-ssh-key",	required_argument, NULL,	OPT_READ_SSH },
 #endif
-	{ "reader",		required_argument, 0,	OPT_READER },
-	{ "pin",                required_argument, 0,   OPT_PIN },
-	{ "new-pin",		required_argument, 0,	OPT_NEWPIN },
-	{ "puk",		required_argument, 0,	OPT_PUK },
-	{ "output",		required_argument, 0,	'o' },
-	{ "no-cache",		no_argument, 0,		OPT_NO_CACHE },
-	{ "auth-id",		required_argument, 0,	'a' },
-	{ "wait",		no_argument, 0,		'w' },
-	{ "verbose",		no_argument, 0,		'v' },
-	{ 0, 0, 0, 0 }
+	{ "reader",		required_argument, NULL,	OPT_READER },
+	{ "pin",                required_argument, NULL,   OPT_PIN },
+	{ "new-pin",		required_argument, NULL,	OPT_NEWPIN },
+	{ "puk",		required_argument, NULL,	OPT_PUK },
+	{ "output",		required_argument, NULL,	'o' },
+	{ "no-cache",		no_argument, NULL,		OPT_NO_CACHE },
+	{ "auth-id",		required_argument, NULL,	'a' },
+	{ "wait",		no_argument, NULL,		'w' },
+	{ "verbose",		no_argument, NULL,		'v' },
+	{ NULL, 0, NULL, 0 }
 };
 
 const char *option_help[] = {
@@ -929,7 +929,7 @@ static int list_pins(void)
 	return 0;
 }
 
-static int dump()
+static int dump(void)
 {
 
 	const char *flags[] = {

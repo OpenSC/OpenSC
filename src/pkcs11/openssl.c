@@ -109,8 +109,7 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *card)
 #define DIGEST_CTX(op) \
 	((EVP_MD_CTX *) (op)->priv_data)
 
-CK_RV
-sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *op)
+static CK_RV sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *op)
 {
 	sc_pkcs11_mechanism_type_t *mt;
 	EVP_MD_CTX	*md_ctx;
@@ -126,16 +125,14 @@ sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *op)
 	return CKR_OK;
 }
 
-CK_RV
-sc_pkcs11_openssl_md_update(sc_pkcs11_operation_t *op,
+static CK_RV sc_pkcs11_openssl_md_update(sc_pkcs11_operation_t *op,
 				CK_BYTE_PTR pData, CK_ULONG pDataLen)
 {
 	EVP_DigestUpdate(DIGEST_CTX(op), pData, pDataLen);
 	return CKR_OK;
 }
 
-CK_RV
-sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
+static CK_RV sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
 				CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen)
 {
 	EVP_MD_CTX	*md_ctx = DIGEST_CTX(op);
@@ -151,8 +148,7 @@ sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
 	return CKR_OK;
 }
 
-void
-sc_pkcs11_openssl_md_release(sc_pkcs11_operation_t *op)
+static void sc_pkcs11_openssl_md_release(sc_pkcs11_operation_t *op)
 {
 	EVP_MD_CTX	*md_ctx = DIGEST_CTX(op);
 

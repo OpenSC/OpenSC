@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 		r = sc_get_challenge(card, buf, 14);
 		sc_unlock(card);
 		if (r == 0) {
-			int i, left = 39;
+			int left = 39;
 
 			printf("Lottery: ");
 			for (i = 0; i < 7; i++) {

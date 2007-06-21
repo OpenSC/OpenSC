@@ -642,8 +642,7 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 	return rv;
 }
 
-CK_RV
-sc_pkcs11_lock()
+CK_RV sc_pkcs11_lock(void)
 {
 	if (context == NULL)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
@@ -669,8 +668,7 @@ __sc_pkcs11_unlock(void *lock)
 	} 
 }
 
-void
-sc_pkcs11_unlock()
+void sc_pkcs11_unlock(void)
 {
 	__sc_pkcs11_unlock(_lock);
 }
@@ -679,8 +677,7 @@ sc_pkcs11_unlock()
  * Free the lock - note the lock must be held when
  * you come here
  */
-void
-sc_pkcs11_free_lock()
+void sc_pkcs11_free_lock(void)
 {
 	void	*tempLock;
 

@@ -124,7 +124,7 @@ const objdata objects[] = {
 			"2.16.840.1.101.3.7.2.96.48", "1", "6030", SC_PKCS15_CO_FLAG_PRIVATE},
 	{"6", "Security Object",
 			"2.16.840.1.101.3.7.2.144.0", NULL, "9000", 0},
-	{NULL, NULL, NULL, 0, NULL, 0}
+	{NULL, NULL, NULL, NULL, NULL, 0}
 };
 	/* 
 	 * NIST 800-73-1 is proposing to lift the restriction on 
