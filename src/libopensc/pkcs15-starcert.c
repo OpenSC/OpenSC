@@ -130,7 +130,7 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 			SC_PKCS15_CO_FLAG_MODIFIABLE},
 		{"AUT certificate",0, "3F00DF01C500","4",
 			SC_PKCS15_CO_FLAG_MODIFIABLE},
-		{NULL, 0, NULL, 0, 0}
+		{NULL, 0, NULL, NULL, 0}
 	};
 
 	const pindata pins[] = {

@@ -114,7 +114,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 #if 0
 		{"C.CH.DS",   0, "DF70C002","2", 0},/* Signature Certificate */
 #endif
-		{NULL, 0, NULL, 0, 0}
+		{NULL, 0, NULL, NULL, 0}
 	};
 
 	const pindata pins[] = {

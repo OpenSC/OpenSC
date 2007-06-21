@@ -29,14 +29,14 @@
 #include <stdio.h>
 #include "strlcpy.h"
 
-static void
-set_string(char **strp, const char *value)
+static void set_string(char **strp, const char *value)
 {
 	if (*strp) free(*strp);
 	*strp = value ? strdup(value) : NULL;
 }
 
-int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opts)
+static int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card,
+	sc_pkcs15emu_opt_t *opts)
 {
 	static const struct {
 		const char *card, *manufacturer;

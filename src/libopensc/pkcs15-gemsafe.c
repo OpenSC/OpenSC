@@ -173,7 +173,7 @@ static int sc_pkcs15emu_gemsafe_init(sc_pkcs15_card_t *p15card)
 {
 	const cdata certs[] = {
 		{"User certificate",0, "","1", 0},
-		{NULL, 0, NULL, 0, 0}
+		{NULL, 0, NULL, NULL, 0}
 	};
 
 	const pindata pins[] = {

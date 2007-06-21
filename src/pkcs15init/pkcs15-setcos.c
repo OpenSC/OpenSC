@@ -33,7 +33,7 @@
 
 #define SETCOS_MAX_PINS   7
 
-unsigned char SETCOS_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
+static unsigned char SETCOS_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define SETCOS_DEFAULT_PUBKEY_LEN       sizeof(SETCOS_DEFAULT_PUBKEY)
 
 static int setcos_generate_store_key( sc_profile_t *, sc_card_t *,
@@ -351,12 +351,12 @@ setcos_encode_public_key(sc_profile_t *profile, sc_card_t *card,
  */
 static int
 setcos_old_generate_key(sc_profile_t *profile, sc_card_t *card,
-	unsigned int index, /* keyref: 0 for 1st key, ... */
+	unsigned int idx, /* keyref: 0 for 1st key, ... */
 	unsigned int keybits,
 	sc_pkcs15_pubkey_t *pubkey,
 	struct sc_pkcs15_prkey_info *info)
 {
-	return setcos_generate_store_key(profile, card, index,
+	return setcos_generate_store_key(profile, card, idx,
 		keybits, pubkey,
 		NULL, info);
 }
@@ -366,10 +366,10 @@ setcos_old_generate_key(sc_profile_t *profile, sc_card_t *card,
  */
 static int
 setcos_new_key(sc_profile_t *profile, sc_card_t *card,
-		struct sc_pkcs15_prkey *key, unsigned int index,
+		struct sc_pkcs15_prkey *key, unsigned int idx,
 		struct sc_pkcs15_prkey_info *info)
 {
-	return setcos_generate_store_key(profile, card, index,
+	return setcos_generate_store_key(profile, card, idx,
 		key->u.rsa.modulus.len * 8, NULL,
 		key, info);
 }
@@ -381,7 +381,7 @@ setcos_new_key(sc_profile_t *profile, sc_card_t *card,
  */
 static int
 setcos_generate_store_key(sc_profile_t *profile, sc_card_t *card,
-	unsigned int index,  /* keynumber: 0 for 1st priv key, ...  */
+	unsigned int idx,  /* keynumber: 0 for 1st priv key, ...  */
 	unsigned int keybits,
 	sc_pkcs15_pubkey_t *pubkey,
 	sc_pkcs15_prkey_t *prkey,
@@ -401,7 +401,7 @@ setcos_generate_store_key(sc_profile_t *profile, sc_card_t *card,
 	}
 
 	/* Get the private key file */
-	r = setcos_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, index, &prkf);
+	r = setcos_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, idx, &prkf);
 	if (r < 0)
 		goto done;
 

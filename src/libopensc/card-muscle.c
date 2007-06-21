@@ -80,7 +80,7 @@ static int muscle_match_card(sc_card_t *card)
  */
 static unsigned short muscle_parse_singleAcl(const sc_acl_entry_t* acl)
 {
-	unsigned short access = 0;
+	unsigned short acl_entry = 0;
 	while(acl) {
 		int key = acl->key_ref;
 		int method = acl->method;
@@ -92,7 +92,7 @@ static unsigned short muscle_parse_singleAcl(const sc_acl_entry_t* acl)
 		case SC_AC_UNKNOWN:
 			break;
 		case SC_AC_CHV:
-			access |= (1 << key); /* Assuming key 0 == SO */
+			acl_entry |= (1 << key); /* Assuming key 0 == SO */
 			break;
 		case SC_AC_AUT:
 		case SC_AC_TERM:
@@ -103,15 +103,15 @@ static unsigned short muscle_parse_singleAcl(const sc_acl_entry_t* acl)
 		}
 		acl = acl->next;
 	}
-	return access;
+	return acl_entry;
 }
 
-static void muscle_parse_acls(const sc_file_t* file, unsigned short* read, unsigned short* write, unsigned short* delete) 
+static void muscle_parse_acls(const sc_file_t* file, unsigned short* read_perm, unsigned short* write_perm, unsigned short* delete_perm) 
 {
-	assert(read && write && delete);
-	*read =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_READ));
-	*write =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_UPDATE));
-	*delete =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_DELETE));
+	assert(read_perm && write_perm && delete_perm);
+	*read_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_READ));
+	*write_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_UPDATE));
+	*delete_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_DELETE));
 }
 
 static int muscle_create_directory(sc_card_t *card, sc_file_t *file)
@@ -147,7 +147,7 @@ static int muscle_create_file(sc_card_t *card, sc_file_t *file)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	int objectSize = file->size;
-	unsigned short read = 0, write = 0, delete = 0;
+	unsigned short read_perm = 0, write_perm = 0, delete_perm = 0;
 	msc_id objectId;
 	int r;
 	if(file->type == SC_FILE_TYPE_DF)
@@ -157,16 +157,16 @@ static int muscle_create_file(sc_card_t *card, sc_file_t *file)
 	if(file->id == 0) /* No null name files */
 		return SC_ERROR_INVALID_ARGUMENTS;
 	
-	muscle_parse_acls(file, &read, &write, &delete);
+	muscle_parse_acls(file, &read_perm, &write_perm, &delete_perm);
 	
 	mscfs_lookup_local(fs, file->id, &objectId);
-	r = msc_create_object(card, objectId, objectSize, read, write, delete);
+	r = msc_create_object(card, objectId, objectSize, read_perm, write_perm, delete_perm);
 	mscfs_clear_cache(fs);
 	if(r >= 0) return 0;
 	return r;
 }
 
-static int muscle_read_binary(sc_card_t *card, unsigned int index, u8* buf, size_t count, unsigned long flags)
+static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t count, unsigned long flags)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	int r;
@@ -184,11 +184,11 @@ static int muscle_read_binary(sc_card_t *card, unsigned int index, u8* buf, size
 		oid[1] = oid[3];
 		oid[2] = oid[3] = 0;
 	}
-	r = msc_read_object(card, objectId, index, buf, count);
+	r = msc_read_object(card, objectId, idx, buf, count);
 	SC_FUNC_RETURN(card->ctx, 0, r);
 }
 
-static int muscle_update_binary(sc_card_t *card, unsigned int index, const u8* buf, size_t count, unsigned long flags)
+static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf, size_t count, unsigned long flags)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	int r;
@@ -207,8 +207,8 @@ static int muscle_update_binary(sc_card_t *card, unsigned int index, const u8* b
 		oid[1] = oid[3];
 		oid[2] = oid[3] = 0;
 	}
-	if(file->size < index + count) {
-		int newFileSize = index + count;
+	if(file->size < idx + count) {
+		int newFileSize = idx + count;
 		u8* buffer = malloc(newFileSize);
 		if(buffer == NULL) SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 		
@@ -219,7 +219,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int index, const u8* b
 		if(r < 0) goto update_bin_free_buffer;
 		r = msc_create_object(card, objectId, newFileSize, 0,0,0);
 		if(r < 0) goto update_bin_free_buffer;
-		memcpy(buffer + index, buf, count); 
+		memcpy(buffer + idx, buf, count); 
 		r = msc_update_object(card, objectId, 0, buffer, newFileSize);
 		if(r < 0) goto update_bin_free_buffer;
 		file->size = newFileSize;
@@ -227,7 +227,7 @@ update_bin_free_buffer:
 		free(buffer);
 		SC_FUNC_RETURN(card->ctx, 0, r);
 	} else {
-		r = msc_update_object(card, objectId, index, buf, count);
+		r = msc_update_object(card, objectId, idx, buf, count);
 	}
 	//mscfs_clear_cache(fs);
 	return r;

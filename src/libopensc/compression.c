@@ -84,6 +84,9 @@ static int sc_decompress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLe
 }
 
 int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method) {
+	unsigned long zlib_outlen;
+	int rc;
+
 	if(method == COMPRESSION_AUTO) {
 		method = detect_method(in, inLen);
 		if(method == COMPRESSION_UNKNOWN) {
@@ -92,7 +95,10 @@ int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int metho
 	}
 	switch(method) {
 	case COMPRESSION_ZLIB:
-		return zerr_to_opensc(uncompress(out, outLen, in, inLen));
+		zlib_outlen = *outLen;	
+		rc = zerr_to_opensc(uncompress(out, &zlib_outlen, in, inLen));
+		*outLen = zlib_outlen;
+		return rc;
 	case COMPRESSION_GZIP:
 		return sc_decompress_gzip(out, outLen, in, inLen);
 	default:

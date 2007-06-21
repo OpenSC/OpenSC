@@ -935,8 +935,7 @@ gpk_add_bignum(struct pkpart *part, unsigned int tag,
 	/* printf("TAG 0x%02x, len=%u\n", tag, comp->size); */
 }
 
-int
-gpk_encode_rsa_key(sc_profile_t *profile, sc_card_t *card,
+static int gpk_encode_rsa_key(sc_profile_t *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey_rsa *rsa, struct pkdata *p,
 		sc_pkcs15_prkey_info_t *info)
 {
@@ -1013,8 +1012,7 @@ gpk_encode_rsa_key(sc_profile_t *profile, sc_card_t *card,
  * DSA with 512 as well as 1024 bits, but all byte sizes shown
  * in the tables are 512 bits only...
  */
-int
-gpk_encode_dsa_key(sc_profile_t *profile, sc_card_t *card,
+static int gpk_encode_dsa_key(sc_profile_t *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey_dsa *dsa, struct pkdata *p,
 		sc_pkcs15_prkey_info_t *info)
 {

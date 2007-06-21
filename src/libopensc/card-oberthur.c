@@ -143,6 +143,8 @@ static int auth_sm_release (struct sc_card *card, struct sc_sm_info *sm_info,
 		unsigned char *data, int data_len);
 #endif
 
+#if 0
+/* this function isn't used anywhere */
 static void _auth_print_acls(struct sc_card *card, struct sc_file *file)
 {
 	int ii, jj;   
@@ -156,7 +158,7 @@ static void _auth_print_acls(struct sc_card *card, struct sc_file *file)
 		}
 	}
 }
-
+#endif
 
 static int 
 auth_finish(sc_card_t *card)

@@ -604,8 +604,7 @@ cflex_create_empty_pin_file(sc_profile_t *profile, sc_card_t *card,
 /*
  * Get private and public key file
  */
-int
-cflex_get_keyfiles(sc_profile_t *profile, sc_card_t *card,
+static int cflex_get_keyfiles(sc_profile_t *profile, sc_card_t *card,
 			const sc_path_t *df_path,
 			sc_file_t **prkf, sc_file_t **pukf)
 {

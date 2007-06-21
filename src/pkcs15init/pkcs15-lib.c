@@ -1963,8 +1963,7 @@ sc_pkcs15init_map_usage(unsigned long x509_usage, int _private)
 /*
  * Compute modulus length
  */
-size_t
-sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
+static size_t sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
 {
 	unsigned int	mask, bits;
 
@@ -2129,11 +2128,11 @@ prkey_fixup_rsa(sc_pkcs15_card_t *p15card, struct sc_pkcs15_prkey_rsa *key)
 		BN_CTX *ctx = BN_CTX_new();
 
 		rsa = RSA_new();
-		rsa->n = BN_bin2bn(key->modulus.data, key->modulus.len, 0);
-		rsa->e = BN_bin2bn(key->exponent.data, key->exponent.len, 0);
-		rsa->d = BN_bin2bn(key->d.data, key->d.len, 0);
-		rsa->p = BN_bin2bn(key->p.data, key->p.len, 0);
-		rsa->q = BN_bin2bn(key->q.data, key->q.len, 0);
+		rsa->n = BN_bin2bn(key->modulus.data, key->modulus.len, NULL);
+		rsa->e = BN_bin2bn(key->exponent.data, key->exponent.len, NULL);
+		rsa->d = BN_bin2bn(key->d.data, key->d.len, NULL);
+		rsa->p = BN_bin2bn(key->p.data, key->p.len, NULL);
+		rsa->q = BN_bin2bn(key->q.data, key->q.len, NULL);
 		if (!rsa->dmp1)
 			rsa->dmp1 = BN_new();
 		if (!rsa->dmq1)
@@ -2215,8 +2214,7 @@ find_df_by_type(struct sc_pkcs15_card *p15card, unsigned int type)
 	return df;
 }
 
-int
-select_id(sc_pkcs15_card_t *p15card, int type, sc_pkcs15_id_t *id,
+static int select_id(sc_pkcs15_card_t *p15card, int type, sc_pkcs15_id_t *id,
 		int (*can_reuse)(const sc_pkcs15_object_t *, void *),
 		void *data, sc_pkcs15_object_t **reuse_obj)
 {
@@ -2304,8 +2302,7 @@ select_id(sc_pkcs15_card_t *p15card, int type, sc_pkcs15_id_t *id,
  *  	look for a file corresponding to the type of object we
  *  	wish to create ("private-key", "public-key" etc).
  */
-int
-select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
+static int select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 		sc_pkcs15_object_t *obj, sc_pkcs15_id_t *obj_id,
 		sc_path_t *path)
 {
@@ -2687,8 +2684,8 @@ sc_pkcs15init_remove_object(sc_pkcs15_card_t *p15card,
 	return r;
 }
 
-sc_pkcs15_object_t *
-sc_pkcs15init_new_object(int type, const char *label, sc_pkcs15_id_t *auth_id, void *data)
+static sc_pkcs15_object_t * sc_pkcs15init_new_object(int type,
+		const char *label, sc_pkcs15_id_t *auth_id, void *data)
 {
 	sc_pkcs15_object_t	*object;
 	unsigned int		data_size = 0;
@@ -3102,7 +3099,7 @@ found:	if (type == SC_AC_CHV && pin_info.flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDIN
 		if (file)
 			r = sc_select_file(card, &file->path, NULL);
 	 	if (r >= 0
-		 && (r = sc_verify(card, type, reference, pinbuf, *pinsize, 0)) < 0) {
+		 && (r = sc_verify(card, type, reference, pinbuf, *pinsize, NULL)) < 0) {
 			sc_error(card->ctx, "Failed to verify %s (ref=0x%x)",
 					ident, reference);
 		}
@@ -3147,8 +3144,8 @@ sc_pkcs15init_verify_key(struct sc_profile *pro, sc_card_t *card,
  * Find out whether the card was initialized using an SO PIN,
  * and if so, set the profile information
  */
-int
-set_so_pin_from_card(struct sc_pkcs15_card *p15card, struct sc_profile *profile)
+static int set_so_pin_from_card(struct sc_pkcs15_card *p15card,
+		struct sc_profile *profile)
 {
 	struct sc_pkcs15_pin_info *pin;
 	struct sc_pkcs15_object *obj;
@@ -3289,8 +3286,7 @@ sc_pkcs15init_authenticate(struct sc_profile *pro, sc_card_t *card,
 	return r;
 }
 
-int
-do_select_parent(struct sc_profile *pro, sc_card_t *card,
+static int do_select_parent(struct sc_profile *pro, sc_card_t *card,
 		sc_file_t *file, sc_file_t **parent)
 {
 	struct sc_path	path;
@@ -3404,8 +3400,6 @@ sc_pkcs15init_update_file(struct sc_profile *profile, sc_card_t *card,
 	}
 
 	if (info->size < datalen) {
-		char pbuf[SC_MAX_PATH_STRING_SIZE];
-
 		r = sc_path_print(pbuf, sizeof(pbuf), &file->path);
 		if (r != SC_SUCCESS)
 			pbuf[0] = '\0';
@@ -3565,8 +3559,7 @@ sc_pkcs15init_fixup_acls(struct sc_profile *profile, sc_file_t *file,
 	return r;
 }
 
-int
-sc_pkcs15init_get_pin_path(sc_pkcs15_card_t *p15card,
+static int sc_pkcs15init_get_pin_path(sc_pkcs15_card_t *p15card,
 		sc_pkcs15_id_t *auth_id, sc_path_t *path)
 {
 	sc_pkcs15_object_t *obj;
@@ -3625,8 +3618,7 @@ sc_pkcs15init_get_label(struct sc_profile *profile, const char **res)
 	return 0;
 }
 
-int
-sc_pkcs15init_qualify_pin(sc_card_t *card, const char *pin_name,
+static int sc_pkcs15init_qualify_pin(sc_card_t *card, const char *pin_name,
 	       	unsigned int pin_len, sc_pkcs15_pin_info_t *pin_info)
 {
 	if (pin_len == 0)
@@ -3761,8 +3753,8 @@ do_encode_string(u8 **memp, u8 *end, u8 tag, const char *s)
 	return 0;
 }
 
-int
-sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile, sc_pkcs15_object_t *pin_obj)
+static int sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile,
+		sc_pkcs15_object_t *pin_obj)
 {
 	sc_file_t	*file = NULL;
 	sc_file_t	*df = profile->df_info->file;

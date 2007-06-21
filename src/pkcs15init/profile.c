@@ -89,7 +89,7 @@ static struct map		aclNames[] = {
 	{ "PRO",	SC_AC_PRO	},
 	{ "AUT",	SC_AC_AUT	},
 	{ "KEY",	SC_AC_AUT	},
-	{ 0, 0 }
+	{ NULL, 0 }
 };
 static struct map		fileOpNames[] = {
 	{ "SELECT",	SC_AC_OP_SELECT	},
@@ -105,13 +105,13 @@ static struct map		fileOpNames[] = {
 	{ "WRITE",	SC_AC_OP_WRITE	},
 	{ "ERASE",	SC_AC_OP_ERASE	},
 	{ "CRYPTO",	SC_AC_OP_CRYPTO },
-	{ 0, 0 }
+	{ NULL, 0 }
 };
 static struct map		fileTypeNames[] = {
 	{ "EF",		SC_FILE_TYPE_WORKING_EF		},
 	{ "INTERNAL-EF",SC_FILE_TYPE_INTERNAL_EF	},
 	{ "DF",		SC_FILE_TYPE_DF			},
-	{ 0, 0 }
+	{ NULL, 0 }
 };
 static struct map		fileStructureNames[] = {
 	{ "TRANSPARENT",	SC_FILE_EF_TRANSPARENT	},
@@ -121,7 +121,7 @@ static struct map		fileStructureNames[] = {
 	{ "LINEAR-VARIABLE-TLV",SC_FILE_EF_LINEAR_VARIABLE_TLV	},
 	{ "CYCLIC",		SC_FILE_EF_CYCLIC	},
 	{ "CYCLIC-TLV",		SC_FILE_EF_CYCLIC_TLV	},
-	{ 0, 0 }
+	{ NULL, 0 }
 };
 static struct map		pkcs15DfNames[] = {
 	{ "PRKDF",		SC_PKCS15_PRKDF		},
@@ -133,7 +133,7 @@ static struct map		pkcs15DfNames[] = {
 	{ "CDF-USEFUL",		SC_PKCS15_CDF_USEFUL	},
 	{ "DODF",		SC_PKCS15_DODF		},
 	{ "AODF",		SC_PKCS15_AODF		},
-	{ 0, 0 }
+	{ NULL, 0 }
 };
 static struct map		pinTypeNames[] = {
 	{ "BCD",		0			},
@@ -141,7 +141,7 @@ static struct map		pinTypeNames[] = {
 	{ "utf8",		2			},
 	{ "half-nibble-bcd",	3			},
 	{ "iso9564-1",		4			},
-	{ 0, 0 }
+	{ NULL, 0 }
 };
 static struct map		pinIdNames[] = {
 	{ "pin",		SC_PKCS15INIT_USER_PIN	},
@@ -152,7 +152,7 @@ static struct map		pinIdNames[] = {
 	{ "sopuk",		SC_PKCS15INIT_SO_PUK	},
 	{ "so-pin",		SC_PKCS15INIT_SO_PIN	},
 	{ "so-puk",		SC_PKCS15INIT_SO_PUK	},
-	{ 0, 0 }
+	{ NULL, 0 }
 };
 static struct map		pinFlagNames[] = {
 	{ "case-sensitive",		0x0001			},
@@ -167,7 +167,7 @@ static struct map		pinFlagNames[] = {
 	{ "integrity-protected",	0x0200			},
 	{ "confidentiality-protected",	0x0400			},
 	{ "exchangeRefData",		0x0800			},
-	{ 0, 0 }
+	{ NULL, 0 }
 };
 static struct {
 	const char *		name;
@@ -939,8 +939,7 @@ process_tmpl(struct state *cur, struct block *info,
  * Append new file at the end of the ef_list.
  * This is crucial; the profile instantiation code relies on it
  */
-void
-append_file(sc_profile_t *profile, struct file_info *nfile)
+static void append_file(sc_profile_t *profile, struct file_info *nfile)
 {
 	struct file_info	**list, *fi;
 
@@ -1178,7 +1177,7 @@ static int
 do_acl(struct state *cur, int argc, char **argv)
 {
 	struct sc_file	*file = cur->file->file;
-	char		oper[64], *what = 0;
+	char		oper[64], *what = NULL;
 
 	memset(oper, 0, sizeof(oper));
 	while (argc--) {
@@ -1273,8 +1272,7 @@ new_pin(struct sc_profile *profile, unsigned int id)
 	return pi;
 }
 
-void
-set_pin_defaults(struct sc_profile *profile, struct pin_info *pi)
+static void set_pin_defaults(struct sc_profile *profile, struct pin_info *pi)
 {
 	struct sc_pkcs15_pin_info *info = &pi->pin;
 
@@ -1724,8 +1722,7 @@ sc_profile_find_file(struct sc_profile *pro,
 	return NULL;
 }
 
-struct file_info *
-sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
+static struct file_info * sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 {
 	struct file_info *fi;
 	struct sc_file	*fp;

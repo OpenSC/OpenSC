@@ -113,9 +113,9 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 const objdata objects[] = {
 	{"1", "Card Capability Container", 
-			"2.16.840.1.101.3.7.1.219.0", 0, "DB00", 0},
+			"2.16.840.1.101.3.7.1.219.0", NULL, "DB00", 0},
 	{"2", "Card Holder Unique Identifier",
-			"2.16.840.1.101.3.7.2.48.0", 0, "3000", 0},
+			"2.16.840.1.101.3.7.2.48.0", NULL, "3000", 0},
 	{"3", "Card Holder Fingerprints",
 			"2.16.840.1.101.3.7.2.96.16", "1", "6010", SC_PKCS15_CO_FLAG_PRIVATE},
 	{"4", "Printed Information",
@@ -123,7 +123,7 @@ const objdata objects[] = {
 	{"5", "Card Holder Facial Image", 
 			"2.16.840.1.101.3.7.2.96.48", "1", "6030", SC_PKCS15_CO_FLAG_PRIVATE},
 	{"6", "Security Object",
-			"2.16.840.1.101.3.7.2.144.0", 0, "9000", 0},
+			"2.16.840.1.101.3.7.2.144.0", NULL, "9000", 0},
 	{NULL, NULL, NULL, 0, NULL, 0}
 };
 	/* 
@@ -213,7 +213,7 @@ const objdata objects[] = {
 		{ "4", "CARD AUTH key", 0000, 
 				SC_PKCS15_PRKEY_USAGE_SIGN |
 				SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,
-			"", 0x9E, 0, 0}, /* no PIN needed, works with wireless */
+			"", 0x9E, NULL, 0}, /* no PIN needed, works with wireless */
 		{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
 	};
 

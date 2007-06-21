@@ -23,6 +23,7 @@
  */
 
 #include "internal.h"
+#include <ctype.h>
 #include <string.h>
 #include <fcntl.h>
 #include <openssl/evp.h>
@@ -1185,7 +1186,7 @@ err:
 static int piv_general_external_authenticate(sc_card_t *card, 
 		unsigned int key_ref, unsigned int alg_id)
 {
-	piv_private_data_t * priv = PIV_DATA(card);
+	/* unused: piv_private_data_t * priv = PIV_DATA(card); */
 	int r, outl;
 	u8  *rbuf = NULL;
 	size_t rbuflen;

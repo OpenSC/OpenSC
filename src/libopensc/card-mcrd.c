@@ -1056,6 +1056,8 @@ static int mcrd_restore_se(sc_card_t * card, int se_num)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
+#if 0
+/* this function isn't used anywhere */
 static int select_key_df(sc_card_t * card)
 {
 	int r;
@@ -1078,6 +1080,7 @@ static int select_key_df(sc_card_t * card)
 	SC_TEST_RET(card->ctx, r, "Micardo select DF failed");
 	return r;
 }
+#endif
 
 /* It seems that MICARDO does not fully comply with ISO, so I use
    values gathered from peeking actual signing opeations using a
