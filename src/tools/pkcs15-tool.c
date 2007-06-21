@@ -72,14 +72,13 @@ enum {
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
 
 static int	authenticate(sc_pkcs15_object_t *obj);
-static int	pem_encode(sc_context_t *, int,
-			sc_pkcs15_der_t *, sc_pkcs15_der_t *);
+static int	pem_encode(int, sc_pkcs15_der_t *, sc_pkcs15_der_t *);
 
 const struct option options[] = {
 	{ "learn-card",		no_argument, NULL, 	'L' },
 	{ "read-certificate",	required_argument, NULL, 	'r' },
 	{ "list-certificates",	no_argument, NULL,		'c' },
-	{ "read-data-object",	required_argument, 0, 	'R' },
+	{ "read-data-object",	required_argument, NULL, 	'R' },
 	{ "list-data-objects",	no_argument, NULL,		'C' },
 	{ "list-pins",		no_argument, NULL,		OPT_LIST_PINS },
 	{ "dump",		no_argument, NULL,		'D' },
@@ -128,9 +127,9 @@ const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-sc_context_t *ctx = NULL;
-sc_card_t *card = NULL;
-struct sc_pkcs15_card *p15card = NULL;
+static sc_context_t *ctx = NULL;
+static sc_card_t *card = NULL;
+static struct sc_pkcs15_card *p15card = NULL;
 
 static void print_cert_info(const struct sc_pkcs15_object *obj)
 {
@@ -553,7 +552,7 @@ static int read_public_key(void)
 		return 1;
 	}
 
-	r = pem_encode(ctx, pubkey->algorithm, &pubkey->data, &pem_key);
+	r = pem_encode(pubkey->algorithm, &pubkey->data, &pem_key);
 	if (r < 0) {
 		fprintf(stderr, "Error encoding PEM key: %s\n",
 				sc_strerror(r));
@@ -848,8 +847,7 @@ static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 	}
 }
 
-int
-authenticate(sc_pkcs15_object_t *obj)
+static int authenticate(sc_pkcs15_object_t *obj)
 {
 	sc_pkcs15_pin_info_t	*pin_info;
 	sc_pkcs15_object_t	*pin_obj;
@@ -1416,9 +1414,7 @@ static const struct sc_asn1_entry	c_asn1_pem_key[] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-static int
-pem_encode(sc_context_t *ctx,
-		int alg_id, sc_pkcs15_der_t *key, sc_pkcs15_der_t *out)
+static int pem_encode(int alg_id, sc_pkcs15_der_t *key, sc_pkcs15_der_t *out)
 {
 	struct sc_asn1_entry	asn1_pem_key[2],
 				asn1_pem_key_items[3];

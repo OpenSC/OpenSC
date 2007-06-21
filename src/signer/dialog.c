@@ -6,6 +6,9 @@
 #define PIN_ENTRY "/usr/local/bin/gpinentry"
 #endif
 
+extern int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
+                                   struct sc_pkcs15_object *pin);
+
 struct entry_parm_s {
   int lines;
   size_t size;
@@ -44,7 +47,7 @@ int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 	argv[0] = pgmname;
 	argv[1] = NULL;
 	
-	r = assuan_pipe_connect(&ctx, pgmname, (char **) argv, 0);
+	r = assuan_pipe_connect(&ctx, pgmname, (char **) argv, NULL);
 	if (r) {
 		printf("Can't connect to the PIN entry module: %s\n",
 		       assuan_strerror((AssuanError) r));

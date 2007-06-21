@@ -37,12 +37,12 @@
 #endif
 #include "util.h"
 
-const char *app_name = "pkcs15-crypt";
+static const char *app_name = "pkcs15-crypt";
 
-int opt_reader = -1, verbose = 0, opt_wait = 0, opt_raw = 0;
-char * opt_pincode = NULL, * opt_key_id = NULL;
-char * opt_input = NULL, * opt_output = NULL;
-int opt_crypt_flags = 0;
+static int opt_reader = -1, verbose = 0, opt_wait = 0, opt_raw = 0;
+static char * opt_pincode = NULL, * opt_key_id = NULL;
+static char * opt_input = NULL, * opt_output = NULL;
+static int opt_crypt_flags = 0;
 
 enum {
 	OPT_SHA1 = 	0x100,
@@ -55,24 +55,24 @@ enum {
 };
 
 const struct option options[] = {
-	{ "sign",		0, 0,		's' },
-	{ "decipher",		0, 0,		'c' },
-	{ "key",		1, 0,		'k' },
-	{ "reader",		1, 0,		'r' },
-	{ "input",		1, 0,		'i' },
-	{ "output",		1, 0,		'o' },
-	{ "raw",		0, 0,		'R' },
-	{ "sha-1",		0, 0,		OPT_SHA1 },
-	{ "sha-256",		0, 0,		OPT_SHA256 },
-	{ "sha-384",		0, 0,		OPT_SHA384 },
-	{ "sha-512",		0, 0,		OPT_SHA512 },
-	{ "sha-224",		0, 0,		OPT_SHA224 },
-	{ "md5",		0, 0,		OPT_MD5 },
-	{ "pkcs1",		0, 0,		OPT_PKCS1 },
-	{ "pin",		1, 0,		'p' },
-	{ "wait",		0, 0,		'w' },
-	{ "verbose",		0, 0,		'v' },
-	{ 0, 0, 0, 0 }
+	{ "sign",		0, NULL,		's' },
+	{ "decipher",		0, NULL,		'c' },
+	{ "key",		1, NULL,		'k' },
+	{ "reader",		1, NULL,		'r' },
+	{ "input",		1, NULL,		'i' },
+	{ "output",		1, NULL,		'o' },
+	{ "raw",		0, NULL,		'R' },
+	{ "sha-1",		0, NULL,		OPT_SHA1 },
+	{ "sha-256",		0, NULL,		OPT_SHA256 },
+	{ "sha-384",		0, NULL,		OPT_SHA384 },
+	{ "sha-512",		0, NULL,		OPT_SHA512 },
+	{ "sha-224",		0, NULL,		OPT_SHA224 },
+	{ "md5",		0, NULL,		OPT_MD5 },
+	{ "pkcs1",		0, NULL,		OPT_PKCS1 },
+	{ "pin",		1, NULL,		'p' },
+	{ "wait",		0, NULL,		'w' },
+	{ "verbose",		0, NULL,		'v' },
+	{ NULL, 0, NULL, 0 }
 };
 
 const char *option_help[] = {
@@ -95,11 +95,11 @@ const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-sc_context_t *ctx = NULL;
-sc_card_t *card = NULL;
-struct sc_pkcs15_card *p15card = NULL;
+static sc_context_t *ctx = NULL;
+static sc_card_t *card = NULL;
+static struct sc_pkcs15_card *p15card = NULL;
 
-char *readpin_stdin()
+static char *readpin_stdin(void)
 {
 	char buf[128];
 	char *p;

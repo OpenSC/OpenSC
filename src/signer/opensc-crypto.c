@@ -6,8 +6,7 @@
 extern int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 				   struct sc_pkcs15_object *pin);
 
-void
-sc_close(struct sc_priv_data *priv)
+static void sc_close(struct sc_priv_data *priv)
 {
 	if (priv->p15card) {
 		sc_pkcs15_unbind(priv->p15card);

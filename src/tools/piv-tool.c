@@ -54,22 +54,22 @@ enum {
 };
 
 const struct option options[] = {
-	{ "serial",		0, 0,	OPT_SERIAL  },
-	{ "name",		0, 0,		'n' },
-	{ "admin",		0, 0, 		'A' },
-	{ "usepin",		0, 0,		'P' }, /* some beta cards want user pin for put_data */
-	{ "genkey",		0, 0,		'G' },
-	{ "cert",		0, 0,		'C' },
-	{ "compresscert", 0, 0,		'Z' },
-	{ "req",		0, 0, 		'R' },
-	{ "out",	0, 0, 		'o' },
-	{ "in",		0, 0, 		'o' },
-	{ "send-apdu",		1, 0,		's' },
-	{ "reader",		1, 0,		'r' },
-	{ "card-driver",	1, 0,		'c' },
-	{ "wait",		0, 0,		'w' },
-	{ "verbose",		0, 0,		'v' },
-	{ 0, 0, 0, 0 }
+	{ "serial",		0, NULL,	OPT_SERIAL  },
+	{ "name",		0, NULL,		'n' },
+	{ "admin",		0, NULL, 		'A' },
+	{ "usepin",		0, NULL,		'P' }, /* some beta cards want user pin for put_data */
+	{ "genkey",		0, NULL,		'G' },
+	{ "cert",		0, NULL,		'C' },
+	{ "compresscert", 0, NULL,		'Z' },
+	{ "req",		0, NULL, 		'R' },
+	{ "out",	0, NULL, 		'o' },
+	{ "in",		0, NULL, 		'o' },
+	{ "send-apdu",		1, NULL,		's' },
+	{ "reader",		1, NULL,		'r' },
+	{ "card-driver",	1, NULL,		'c' },
+	{ "wait",		0, NULL,		'w' },
+	{ "verbose",		0, NULL,		'v' },
+	{ NULL, 0, NULL, 0 }
 };
 
 const char *option_help[] = {
@@ -90,10 +90,10 @@ const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-sc_context_t *ctx = NULL;
-sc_card_t *card = NULL;
-BIO * bp = NULL;
-RSA * newkey = NULL;
+static sc_context_t *ctx = NULL;
+static sc_card_t *card = NULL;
+static BIO * bp = NULL;
+static RSA * newkey = NULL;
 
 
 static int load_cert(const char * cert_id, const char * cert_file,

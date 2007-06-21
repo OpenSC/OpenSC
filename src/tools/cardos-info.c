@@ -36,26 +36,26 @@
 
 const char *app_name = "cardos-info";
 
-int opt_reader = -1, opt_debug = 0, opt_wait = 0;
-int verbose = 0;
+static int opt_reader = -1, opt_debug = 0, opt_wait = 0;
+static int verbose = 0;
 
-const struct option options[] = {
-	{"reader",	1, 0, 'r'},
-	{"card-driver", 1, 0, 'c'},
-	{"wait",	0, 0, 'w'},
-	{"verbose",	0, 0, 'v'},
-	{0, 0, 0, 0}
+static const struct option options[] = {
+	{"reader",	1, NULL, 'r'},
+	{"card-driver", 1, NULL, 'c'},
+	{"wait",	0, NULL, 'w'},
+	{"verbose",	0, NULL, 'v'},
+	{NULL, 0, NULL, 0}
 };
 
-const char *option_help[] = {
+static const char *option_help[] = {
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
 	"Wait for a card to be inserted",
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-sc_context_t *ctx = NULL;
-sc_card_t *card = NULL;
+static sc_context_t *ctx = NULL;
+static sc_card_t *card = NULL;
 
 int cardos_info(void)
 {

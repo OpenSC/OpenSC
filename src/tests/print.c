@@ -14,7 +14,7 @@
 #include <opensc/pkcs15.h>
 #include "sc-test.h"
 
-void sc_test_print_card(const sc_pkcs15_card_t *card)
+void sc_test_print_card(const sc_pkcs15_card_t *mycard)
 {
 	const char *flags[] = {
 		"Read-only",
@@ -24,16 +24,16 @@ void sc_test_print_card(const sc_pkcs15_card_t *card)
 	};
 	int i, count = 0;
 
-	assert(card != NULL);
-	printf("PKCS#15 Card [%s]:\n", card->label);
-	printf("\tVersion        : %d\n", card->version);
-	printf("\tSerial number  : %s\n", card->serial_number);
-	printf("\tManufacturer ID: %s\n", card->manufacturer_id);
-	if (card->preferred_language)
-		printf("\tLanguage       : %s\n", card->preferred_language);
+	assert(mycard != NULL);
+	printf("PKCS#15 Card [%s]:\n", mycard->label);
+	printf("\tVersion        : %d\n", mycard->version);
+	printf("\tSerial number  : %s\n", mycard->serial_number);
+	printf("\tManufacturer ID: %s\n", mycard->manufacturer_id);
+	if (mycard->preferred_language)
+		printf("\tLanguage       : %s\n", mycard->preferred_language);
 	printf("\tFlags          : ");
 	for (i = 0; i < 4; i++) {
-		if ((card->flags >> i) & 1) {
+		if ((mycard->flags >> i) & 1) {
 			if (count)
 				printf(", ");
 			printf("%s", flags[i]);

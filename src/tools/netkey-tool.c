@@ -72,7 +72,7 @@ static struct {
 	{"3F00DF015080", "pin0", "local PIN0",  3, 0, 0, 0,
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 	{"3F00DF015081", "pin1", "local PIN1",  0,-1, 0, 0,
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+	{NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0}},
 };
 
 
@@ -468,14 +468,14 @@ int main(
 	char *argv[]
 ){
 	static struct option options[]={
-		{ "help",     0, 0, 'h' },
-		{ "verbose",  0, 0, 'v' },
-		{ "reader",   1, 0, 'r' },
-		{ "pin",      1, 0, 'p' },
-		{ "puk",      1, 0, 'u' },
-		{ "pin0",     1, 0, '0' },
-		{ "pin1",     1, 0, '1' },
-		{ 0, 0, 0, 0 }
+		{ "help",     0, NULL, 'h' },
+		{ "verbose",  0, NULL, 'v' },
+		{ "reader",   1, NULL, 'r' },
+		{ "pin",      1, NULL, 'p' },
+		{ "puk",      1, NULL, 'u' },
+		{ "pin0",     1, NULL, '0' },
+		{ "pin1",     1, NULL, '1' },
+		{ NULL, 0, NULL, 0 }
 	};
 	sc_context_t *ctx;
 	sc_context_param_t ctx_param;

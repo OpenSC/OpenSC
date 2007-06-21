@@ -40,19 +40,19 @@ static char *exec_program = NULL;
 static int exit_status = EXIT_FAILURE;
 
 static struct option const long_options[] = {
-	{"reader", required_argument, 0, 'r'},
-	{"print", no_argument, 0, 'n'},
-	{"exec", required_argument, 0, 'x'},
-	{"stats", no_argument, 0, 't'},
-	{"help", no_argument, 0, 'h'},
-	{"version", no_argument, 0, 'V'},
+	{"reader", required_argument, NULL, 'r'},
+	{"print", no_argument, NULL, 'n'},
+	{"exec", required_argument, NULL, 'x'},
+	{"stats", no_argument, NULL, 't'},
+	{"help", no_argument, NULL, 'h'},
+	{"version", no_argument, NULL, 'V'},
 	{NULL, 0, NULL, 0}
 };
 
 /* Probably not used, but needed to build on Windows */
-const char *app_name = "eidenv";
-const struct option options[] = {{NULL, 0, NULL, 0}};
-const char *option_help[] = {NULL};
+static const char *app_name = "eidenv";
+static const struct option options[] = {{NULL, 0, NULL, 0}};
+static const char *option_help[] = {NULL};
 
 static struct {
 	const char *name;

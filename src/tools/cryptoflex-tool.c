@@ -32,37 +32,37 @@
 
 const char *app_name = "cryptoflex-tool";
 
-int opt_reader = 0;
-int opt_key_num = 1, opt_pin_num = -1;
-int verbose = 0;
-int opt_exponent = 3;
-int opt_mod_length = 1024;
-int opt_key_count = 1;
-int opt_pin_attempts = 10;
-int opt_puk_attempts = 10;
+static int opt_reader = 0;
+static int opt_key_num = 1, opt_pin_num = -1;
+static int verbose = 0;
+static int opt_exponent = 3;
+static int opt_mod_length = 1024;
+static int opt_key_count = 1;
+static int opt_pin_attempts = 10;
+static int opt_puk_attempts = 10;
 
-const char *opt_appdf = NULL, *opt_prkeyf = NULL, *opt_pubkeyf = NULL;
-u8 *pincode = NULL;
+static const char *opt_appdf = NULL, *opt_prkeyf = NULL, *opt_pubkeyf = NULL;
+static u8 *pincode = NULL;
 
-const struct option options[] = {
-	{ "list-keys",		0, 0, 		'l' },
-	{ "create-key-files",	1, 0,		'c' },
-	{ "create-pin-file",	1, 0,		'P' },
-	{ "generate-key",	0, 0,		'g' },
-	{ "read-key",		0, 0,		'R' },
-	{ "verify-pin",		0, 0,		'V' },
-	{ "key-num",		1, 0,		'k' },
-	{ "app-df",		1, 0,		'a' },
-	{ "prkey-file",		1, 0,		'p' },
-	{ "pubkey-file",	1, 0,		'u' },
-	{ "exponent",		1, 0,		'e' },
-	{ "modulus-length",	1, 0,		'm' },
-	{ "reader",		1, 0,		'r' },
-	{ "verbose",		0, 0,		'v' },
-	{ 0, 0, 0, 0 }
+static const struct option options[] = {
+	{ "list-keys",		0, NULL, 		'l' },
+	{ "create-key-files",	1, NULL,		'c' },
+	{ "create-pin-file",	1, NULL,		'P' },
+	{ "generate-key",	0, NULL,		'g' },
+	{ "read-key",		0, NULL,		'R' },
+	{ "verify-pin",		0, NULL,		'V' },
+	{ "key-num",		1, NULL,		'k' },
+	{ "app-df",		1, NULL,		'a' },
+	{ "prkey-file",		1, NULL,		'p' },
+	{ "pubkey-file",	1, NULL,		'u' },
+	{ "exponent",		1, NULL,		'e' },
+	{ "modulus-length",	1, NULL,		'm' },
+	{ "reader",		1, NULL,		'r' },
+	{ "verbose",		0, NULL,		'v' },
+	{ NULL, 0, NULL, 0 }
 };
 
-const char *option_help[] = {
+static const char *option_help[] = {
 	"Lists all keys in a public key file",
 	"Creates new RSA key files for <arg> keys",
 	"Creates a new CHV<arg> file",
@@ -79,8 +79,8 @@ const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-sc_context_t *ctx = NULL;
-sc_card_t *card = NULL;
+static sc_context_t *ctx = NULL;
+static sc_card_t *card = NULL;
 
 static char *getpin(const char *prompt)
 {
@@ -1064,7 +1064,7 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 	return 0;
 }
 
-static int create_pin()
+static int create_pin(void)
 {
 	sc_path_t path;
 	char buf[80];

@@ -177,8 +177,7 @@ void sc_pkcs11_print_attrs(const char *file, unsigned int line,
 
 }
 
-void
-sc_pkcs11_print_attr(const char *file, unsigned int line,
+static void sc_pkcs11_print_attr(const char *file, unsigned int line,
 			const char *function,
 			const char *info, CK_ATTRIBUTE_PTR attr)
 {
