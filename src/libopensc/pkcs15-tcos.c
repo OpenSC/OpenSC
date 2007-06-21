@@ -35,7 +35,10 @@ static void set_string(char **strp, const char *value)
 	*strp = value ? strdup(value) : NULL;
 }
 
-static int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card,
+extern int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
+
+int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *p15card,
 	sc_pkcs15emu_opt_t *opts)
 {
 	static const struct {
