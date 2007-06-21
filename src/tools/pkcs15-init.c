@@ -956,7 +956,7 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 {
 	X509 *oldcert, *newcert;
 	EVP_PKEY *oldpk, *newpk;
-	u8 *ptr;
+	const u8 *ptr;
 	int r;
 
 	/* Get the public key from the old cert */

@@ -13,7 +13,7 @@ static int get_certificate(PluginInstance *inst,
         int r, i, count;
         X509 *x509;
         struct sc_pkcs15_id cert_id;
-        u8 *p;
+        const u8 *p;
 
         r = sc_pkcs15_get_objects(inst->p15card, SC_PKCS15_TYPE_PRKEY_RSA, objs, 32);
         if (r < 0)

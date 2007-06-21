@@ -122,7 +122,8 @@ static void show_certs(sc_card_t *card)
 	sc_path_t p;
 	sc_file_t *f;
 	X509 *c;
-	u8 buf[2000], *q;
+	u8 buf[2000];
+	const u8 *q;
 	int j;
 	size_t i;
 
@@ -152,10 +153,11 @@ static void show_certs(sc_card_t *card)
 			if(q[4]==6 && q[5]<10 && q[q[5]+6]==0x30 && q[q[5]+7]==0x82) q+=q[5]+6;
 			printf(", Len=%d\n", (q[2]<<8)|q[3]);
 			if((c=d2i_X509(NULL,&q,f->size))){
-				X509_NAME_get_text_by_NID(c->cert_info->subject, NID_commonName, buf,sizeof(buf));
-				printf("  Subject-CN: %s\n", buf);
-				X509_NAME_get_text_by_NID(c->cert_info->issuer, NID_commonName, buf,sizeof(buf));
-				printf("  Issuer-CN:  %s\n", buf);
+				char buf2[2000];
+				X509_NAME_get_text_by_NID(c->cert_info->subject, NID_commonName, buf2,sizeof(buf2));
+				printf("  Subject-CN: %s\n", buf2);
+				X509_NAME_get_text_by_NID(c->cert_info->issuer, NID_commonName, buf2,sizeof(buf2));
+				printf("  Issuer-CN:  %s\n", buf2);
 				X509_free(c);
 			} else printf("  Invalid Certificate-Data\n");
 		} else printf(", empty\n");
@@ -328,7 +330,8 @@ static void handle_readcert(sc_card_t *card, int cert, char *file)
 	sc_file_t *f;
 	FILE *fp;
 	X509 *c;
-	u8 buf[1536], *q;
+	u8 buf[1536];
+	const u8 *q;
 	int i, len;
 
 	printf("\nReading Card-Certificate %d: ", cert); fflush(stdout);
