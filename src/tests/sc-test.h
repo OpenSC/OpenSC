@@ -1,6 +1,8 @@
 #ifndef _SC_TEST_H
 #define _SC_TEST_H
 
+#include <opensc/pkcs15.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

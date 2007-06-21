@@ -517,7 +517,7 @@ static enum_specs ck_sta_s[] = {
 
 #define SZ_SPECS sizeof(enum_specs)
 
-static enum_spec ck_types[] = {
+enum_spec ck_types[] = {
   { OBJ_T, ck_cls_s, sizeof(ck_cls_s) / SZ_SPECS, "CK_OBJECT_CLASS"     },
   { KEY_T, ck_key_s, sizeof(ck_key_s) / SZ_SPECS, "CK_KEY_TYPE"         },
   { CRT_T, ck_crt_s, sizeof(ck_crt_s) / SZ_SPECS, "CK_CERTIFICATE_TYPE" },
