@@ -337,7 +337,7 @@ int main(int argc, char * argv[])
 			new_object_id_len = sizeof(new_object_id);
 			if (!hex_to_bin(optarg, new_object_id, &new_object_id_len)) {
 				printf("Invalid ID \"%s\"\n", optarg);
-				print_usage_and_die();
+				print_usage_and_die(app_name, options, option_help);
 			}
 			action_count++;
 			break;
@@ -356,14 +356,14 @@ int main(int argc, char * argv[])
 				opt_object_class = CKO_DATA;
 			else {
 				printf("Unsupported object type \"%s\"\n", optarg);
-				print_usage_and_die();
+				print_usage_and_die(app_name, options, option_help);
 			}
 			break;
 		case 'd':
 			opt_object_id_len = sizeof(opt_object_id);
 			if (!hex_to_bin(optarg, opt_object_id, &opt_object_id_len)) {
 				printf("Invalid ID \"%s\"\n", optarg);
-				print_usage_and_die();
+				print_usage_and_die(app_name, options, option_help);
 			}
 			break;
 		case 'a':
@@ -444,11 +444,11 @@ int main(int argc, char * argv[])
 			opt_is_private = 1;
 			break;
 		default:
-			print_usage_and_die();
+			print_usage_and_die(app_name, options, option_help);
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die();
+		print_usage_and_die(app_name, options, option_help);
 
 #ifdef HAVE_OPENSSL
 	/* ERR_load_crypto_strings(); */

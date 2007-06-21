@@ -1543,7 +1543,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die();
+			print_usage_and_die(app_name, options, option_help);
 		switch (c) {
 		case 'r':
 			opt_reader = atoi(optarg);

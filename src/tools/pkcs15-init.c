@@ -349,14 +349,14 @@ main(int argc, char **argv)
 	parse_commandline(argc, argv);
 
 	if (optind != argc)
-		print_usage_and_die();
+		print_usage_and_die(app_name, options, option_help);
 	if (opt_actions == 0) {
 		fprintf(stderr, "No action specified.\n");
-		print_usage_and_die();
+		print_usage_and_die(app_name, options, option_help);
 	}
 	if (!opt_profile) {
 		fprintf(stderr, "No profile specified.\n");
-		print_usage_and_die();
+		print_usage_and_die(app_name, options, option_help);
 	}
 
 	/* Connect to the card */
@@ -2371,7 +2371,7 @@ handle_option(const struct option *opt)
 		opt_format = optarg;
 		break;
 	case 'h':
-		print_usage_and_die();
+		print_usage_and_die(app_name, options, option_help);
 	case 'i':
 		opt_objectid = optarg;
 		break;
@@ -2457,7 +2457,7 @@ handle_option(const struct option *opt)
 		opt_cert_label = optarg;
 		break;
 	default:
-		print_usage_and_die();
+		print_usage_and_die(app_name, options, option_help);
 	}
 
 	if ((opt_actions & (1 << this_action)) && opt->has_arg != no_argument) {
@@ -2467,7 +2467,7 @@ handle_option(const struct option *opt)
 		if (isprint(opt->val))
 			fprintf(stderr, " -%c", opt->val);
 		fprintf(stderr, " more than once.\n");
-		print_usage_and_die();
+		print_usage_and_die(app_name, options, option_help);
 	}
 	if (this_action)
 		opt_actions |= (1 << this_action);
@@ -2476,7 +2476,7 @@ handle_option(const struct option *opt)
 		fprintf(stderr, "Error: "
 		"The --no-so-pin option and --so-pin/--so-puk are mutually\n"
 		"exclusive.\n");
-		print_usage_and_die();
+		print_usage_and_die(app_name, options, option_help);
 	}
 }
 
@@ -2550,7 +2550,7 @@ read_options_file(const char *filename)
 					break;
 			if (!o->name) {
 				error("Unknown option \"%s\"\n", name);
-				print_usage_and_die();
+				print_usage_and_die(app_name, options, option_help);
 			}
 			if (o->has_arg != no_argument) {
 				optarg = strtok(NULL, "");
@@ -2563,7 +2563,7 @@ read_options_file(const char *filename)
 			if (o->has_arg == required_argument
 			 && (!optarg || !*optarg)) {
 				error("Option %s: missing argument\n", name);
-				print_usage_and_die();
+				print_usage_and_die(app_name, options, option_help);
 			}
 			handle_option(o);
 			name = strtok(NULL, " \t");

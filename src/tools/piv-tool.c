@@ -378,7 +378,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die();
+			print_usage_and_die(app_name, options, option_help);
 		switch (c) {
 		case OPT_SERIAL:
 			do_print_serial = 1;
@@ -439,7 +439,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die();
+		print_usage_and_die(app_name, options, option_help);
 
 	CRYPTO_malloc_init();
 	ERR_load_crypto_strings();
