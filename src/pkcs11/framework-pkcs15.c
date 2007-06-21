@@ -719,6 +719,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	struct sc_pkcs11_slot *slot = NULL;
 	int i, rv, reader = p11card->reader;
 	int auth_count;
+	int found_auth_count = 0;
 	unsigned int j;
 
 	rv = sc_pkcs15_get_objects(fw_data->p15_card,
@@ -777,6 +778,8 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		if (hack_enabled && (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) != 0)
 			continue;
 
+		found_auth_count++;
+
 		rv = pkcs15_create_slot(p11card, auths[i], &slot);
 		if (rv != CKR_OK)
 			return CKR_OK; /* no more slots available for this card */
@@ -804,6 +807,8 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 			}
 		}
 	}
+
+	auth_count = found_auth_count;
 
 	/* Add all public objects to a virtual slot without pin protection.
 	 * If there's only 1 pin and the hide_empty_tokens option is set,
@@ -2371,7 +2376,7 @@ static CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue =
-			(dobj->base.p15_object->flags & 0x01) != 0;
+			(dobj->base.p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0;
 		break;
 	case CKA_MODIFIABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
