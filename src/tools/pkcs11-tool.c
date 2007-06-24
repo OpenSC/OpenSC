@@ -1112,10 +1112,11 @@ static void	parse_certificate(struct x509cert_info *cert,
 {
 	X509 *x;
 	unsigned char *p;
+	const unsigned char *pp;
 	int n;
 
-	p = data;
-	x = d2i_X509(NULL, &p, len);
+	pp = data;
+	x = d2i_X509(NULL, &pp, len);
 	if (!x) {
 		/* ERR_print_errors_fp(stderr); */
 		fatal("OpenSSL error during X509 certificate parsing");
@@ -2171,7 +2172,8 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 	unsigned char  *id;
 	CK_ULONG        idLen;
 	CK_OBJECT_HANDLE pubkeyObject;
-	unsigned char  *pubkey, *pubkey_sav;
+	unsigned char  *pubkey;
+	const unsigned char *pubkey_c;
 	CK_ULONG        pubkeyLen;
 	EVP_PKEY       *pkey;
 
@@ -2195,9 +2197,9 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 		return NULL;
 	}
 
-	pubkey_sav = pubkey; /* The function below may change pubkey */
-	pkey = d2i_PublicKey(EVP_PKEY_RSA, NULL, &pubkey, pubkeyLen);
-	free(pubkey_sav);
+	pubkey_c = pubkey;
+	pkey = d2i_PublicKey(EVP_PKEY_RSA, NULL, &pubkey_c, pubkeyLen);
+	free(pubkey);
 
 	if (pkey == NULL) {
 		printf(" couldn't parse pubkey, no verification done\n");
