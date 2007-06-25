@@ -41,16 +41,6 @@ static struct sc_card_driver cardos_drv = {
 static struct sc_atr_table cardos_atrs[] = {
 	/* 4.0 */
 	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
-	/* 4.01 */
-	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:03:15", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_01, 0, NULL },
-	/* 4.01a */
-	{ "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_01, 0, NULL },
-	/* M4.2 */
-	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:8a", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
-	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:75", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
-	/* M4.3 */
-	{ "3b:f2:18:00:02:c1:0a:31:fe:55:c8:07:76", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_3, 0, NULL },
-	{ "3b:f2:18:00:02:c1:0a:31:fe:58:c8:08:74", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_3, 0, NULL },
 	/* Italian eID card, postecert */
 	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* Italian eID card, infocamere */
@@ -58,6 +48,8 @@ static struct sc_atr_table cardos_atrs[] = {
 	/* Another Italian InfocamereCard */
 	{ "3b:fc:98:00:ff:c1:10:31:fe:55:c8:03:49:6e:66:6f:63:61:6d:65:72:65:28", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	{ "3b:f4:98:00:ff:c1:10:31:fe:55:4d:34:63:76:b4", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL},
+	/* cardos m4.2 and above */
+	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:8a", "ff:ff:0f:ff:00:ff:ff:ff:ff:00:00:00:00", NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -73,6 +65,40 @@ static int cardos_match_card(sc_card_t *card)
 	i = _sc_match_atr(card, cardos_atrs, &card->type);
 	if (i < 0)
 		return 0;
+	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
+		int rv;
+		sc_apdu_t apdu;
+		u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+		/* first check some additional ATR bytes */
+		if ((card->atr[4] != 0xff && card->atr[4] != 0x02) ||
+		    (card->atr[9] != 0x55 && card->atr[9] != 0x58))
+			return 0;
+		/* get the os version using GET DATA and compare it with
+		 * version in the ATR */
+		sc_debug(card->ctx, "checking cardos version ...");
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x82);
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+		apdu.le = 256;
+		apdu.lc = 0;
+		rv = sc_transmit_apdu(card, &apdu);
+		SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
+		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+			return 0;
+		if (apdu.resp[0] != card->atr[10] ||
+		    apdu.resp[1] != card->atr[11])
+			/* version mismatch */
+			return 0;
+		if (card->atr[11] <= 0x04) {
+			sc_debug(card->ctx, "found cardos m4.01");
+			card->type = SC_CARD_TYPE_CARDOS_M4_01;
+		} else if (card->atr[11] >= 0x08) {
+			sc_debug(card->ctx, "found cardos v4.3b or higher");
+			card->type = SC_CARD_TYPE_CARDOS_M4_3;
+		} else {
+			sc_debug(card->ctx, "found cardos m4.2");
+		}
+	}
 	return 1;
 }
 
