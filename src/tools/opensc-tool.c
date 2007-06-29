@@ -62,7 +62,7 @@ static const struct option options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
-static static const char *option_help[] = {
+static const char *option_help[] = {
 	"Prints the ATR bytes of the card",
 	"Prints the card serial number",
 	"Identify the card and print its name",
