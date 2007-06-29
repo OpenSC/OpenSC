@@ -52,7 +52,6 @@ static const struct option options[] = {
 
 /* Probably not used, but needed to build on Windows */
 static const char *app_name = "eidenv";
-static const char *option_help[] = {NULL};
 
 static struct {
 	const char *name;
