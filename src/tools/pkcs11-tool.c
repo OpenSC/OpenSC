@@ -56,7 +56,7 @@ enum {
 	OPT_PRIVATE
 };
 
-const struct option options[] = {
+static const struct option options[] = {
 	{ "show-info",		0, NULL,		'I' },
 	{ "list-slots",		0, NULL,		'L' },
 	{ "list-mechanisms",	0, NULL,		'M' },
@@ -97,7 +97,7 @@ const struct option options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
-const char *option_help[] = {
+static const char *option_help[] = {
 	"Show global token information",
 	"List slots available on the token",
 	"List mechanisms supported by the token",
@@ -136,7 +136,7 @@ const char *option_help[] = {
 	"Set the CKA_PRIVATE attribute (object is only viewable after a login)"
 };
 
-const char *		app_name = "pkcs11-tool"; /* for utils.c */
+static const char *	app_name = "pkcs11-tool"; /* for utils.c */
 
 static int		verbose = 0;
 static const char *	opt_input = NULL;

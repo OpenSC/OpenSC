@@ -58,7 +58,7 @@
 
 #undef GET_KEY_ECHO_OFF
 
-const char *app_name = "pkcs15-init";
+static const char *app_name = "pkcs15-init";
 
 /* Handle encoding of PKCS15 on the card */
 typedef int	(*pkcs15_encoder)(sc_context_t *,
@@ -186,7 +186,7 @@ const struct option	options[] = {
 	{ "secret",		required_argument, NULL,	OPT_SECRET },
 	{ NULL, 0, NULL, 0 }
 };
-const char *		option_help[] = {
+static const char *		option_help[] = {
 	"Erase the smart card (can be used with --create-pkcs15)",
 	"Creates a new PKCS #15 structure",
 	"Store a new PIN/PUK on the card",

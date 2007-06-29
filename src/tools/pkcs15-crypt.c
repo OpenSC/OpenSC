@@ -37,7 +37,7 @@
 #endif
 #include "util.h"
 
-const char *app_name = "pkcs15-crypt";
+static const char *app_name = "pkcs15-crypt";
 
 static int opt_reader = -1, verbose = 0, opt_wait = 0, opt_raw = 0;
 static char * opt_pincode = NULL, * opt_key_id = NULL;
@@ -54,7 +54,7 @@ enum {
 	OPT_PKCS1,
 };
 
-const struct option options[] = {
+static const struct option options[] = {
 	{ "sign",		0, NULL,		's' },
 	{ "decipher",		0, NULL,		'c' },
 	{ "key",		1, NULL,		'k' },
@@ -75,7 +75,7 @@ const struct option options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
-const char *option_help[] = {
+static const char *option_help[] = {
 	"Performs digital signature operation",
 	"Decipher operation",
 	"Selects the private key ID to use",

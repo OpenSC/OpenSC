@@ -41,7 +41,7 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 
-const char *app_name = "piv-tool";
+static const char *app_name = "piv-tool";
 
 static int	opt_reader = -1,
 		opt_wait = 0;
@@ -53,7 +53,7 @@ enum {
 	OPT_SERIAL = 0x100,
 };
 
-const struct option options[] = {
+static const struct option options[] = {
 	{ "serial",		0, NULL,	OPT_SERIAL  },
 	{ "name",		0, NULL,		'n' },
 	{ "admin",		0, NULL, 		'A' },
@@ -72,7 +72,7 @@ const struct option options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
-const char *option_help[] = {
+static const char *option_help[] = {
 	"Prints the card serial number",
 	"Identify the card and print its name",
 	"authenticate using default 3des key",

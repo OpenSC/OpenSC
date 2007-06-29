@@ -34,12 +34,12 @@
 #include <opensc/opensc.h>
 #include "util.h"
 
-const char *app_name = "cardos-info";
+static const char *app_name = "cardos-info";
 
 static int opt_reader = -1, opt_debug = 0, opt_wait = 0;
 static int verbose = 0;
 
-const struct option options[] = {
+static const struct option options[] = {
 	{"reader",	1, NULL, 'r'},
 	{"card-driver", 1, NULL, 'c'},
 	{"wait",	0, NULL, 'w'},
@@ -47,7 +47,7 @@ const struct option options[] = {
 	{NULL, 0, NULL, 0}
 };
 
-const char *option_help[] = {
+static const char *option_help[] = {
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
 	"Wait for a card to be inserted",

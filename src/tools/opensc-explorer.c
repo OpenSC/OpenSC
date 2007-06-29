@@ -35,7 +35,7 @@
 
 #define DIM(v) (sizeof(v)/sizeof((v)[0]))
 
-const char *app_name = "opensc-explorer";
+static const char *app_name = "opensc-explorer";
 
 static int opt_reader = -1, opt_wait = 0, verbose = 0;
 static const char *opt_driver = NULL;
@@ -45,14 +45,14 @@ static sc_path_t current_path;
 static sc_context_t *ctx = NULL;
 static sc_card_t *card = NULL;
 
-const struct option options[] = {
+static const struct option options[] = {
 	{ "reader",		1, NULL, 'r' },
 	{ "card-driver",	1, NULL, 'c' },
 	{ "wait",		1, NULL, 'w' },
 	{ "verbose",		0, NULL, 'v' },
 	{ NULL, 0, NULL, 0 }
 };
-const char *option_help[] = {
+static const char *option_help[] = {
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
 	"Wait for card insertion",

@@ -38,7 +38,7 @@ typedef unsigned __int32 uint32_t;
 #include <opensc/pkcs15.h>
 #include "util.h"
 
-const char *app_name = "pkcs15-tool";
+static const char *app_name = "pkcs15-tool";
 
 static int opt_reader = -1, opt_wait = 0;
 static int opt_no_cache = 0;
@@ -74,7 +74,7 @@ enum {
 static int	authenticate(sc_pkcs15_object_t *obj);
 static int	pem_encode(int, sc_pkcs15_der_t *, sc_pkcs15_der_t *);
 
-const struct option options[] = {
+static const struct option options[] = {
 	{ "learn-card",		no_argument, NULL, 	'L' },
 	{ "read-certificate",	required_argument, NULL, 	'r' },
 	{ "list-certificates",	no_argument, NULL,		'c' },
@@ -102,7 +102,7 @@ const struct option options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
-const char *option_help[] = {
+static const char *option_help[] = {
 	"Stores card info to cache",
 	"Reads certificate with ID <arg>",
 	"Lists certificates",

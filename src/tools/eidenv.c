@@ -40,7 +40,7 @@ static int stats = 0;
 static char *exec_program = NULL;
 static int exit_status = EXIT_FAILURE;
 
-const struct option options[] = {
+static const struct option options[] = {
 	{"reader", required_argument, NULL, 'r'},
 	{"print", no_argument, NULL, 'n'},
 	{"exec", required_argument, NULL, 'x'},
@@ -51,8 +51,8 @@ const struct option options[] = {
 };
 
 /* Probably not used, but needed to build on Windows */
-const char *app_name = "eidenv";
-const char *option_help[] = {NULL};
+static const char *app_name = "eidenv";
+static const char *option_help[] = {NULL};
 
 static struct {
 	const char *name;

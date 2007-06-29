@@ -34,7 +34,7 @@
 #include <opensc/cardctl.h>
 #include "util.h"
 
-const char *app_name = "opensc-tool";
+static const char *app_name = "opensc-tool";
 
 static int	opt_reader = -1,
 		opt_wait = 0;
@@ -46,7 +46,7 @@ enum {
 	OPT_SERIAL = 0x100,
 };
 
-const struct option options[] = {
+static const struct option options[] = {
 	{ "atr",		0, NULL,		'a' },
 	{ "serial",		0, NULL,	OPT_SERIAL  },
 	{ "name",		0, NULL,		'n' },
@@ -62,7 +62,7 @@ const struct option options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
-const char *option_help[] = {
+static static const char *option_help[] = {
 	"Prints the ATR bytes of the card",
 	"Prints the card serial number",
 	"Identify the card and print its name",

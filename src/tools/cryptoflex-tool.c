@@ -30,7 +30,7 @@
 #include "util.h"
 #include "strlcpy.h"
 
-const char *app_name = "cryptoflex-tool";
+static const char *app_name = "cryptoflex-tool";
 
 static int opt_reader = 0;
 static int opt_key_num = 1, opt_pin_num = -1;
@@ -44,7 +44,7 @@ static int opt_puk_attempts = 10;
 static const char *opt_appdf = NULL, *opt_prkeyf = NULL, *opt_pubkeyf = NULL;
 static u8 *pincode = NULL;
 
-const struct option options[] = {
+static const struct option options[] = {
 	{ "list-keys",		0, NULL, 		'l' },
 	{ "create-key-files",	1, NULL,		'c' },
 	{ "create-pin-file",	1, NULL,		'P' },
@@ -62,7 +62,7 @@ const struct option options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
-const char *option_help[] = {
+static const char *option_help[] = {
 	"Lists all keys in a public key file",
 	"Creates new RSA key files for <arg> keys",
 	"Creates a new CHV<arg> file",
