@@ -41,6 +41,8 @@ static struct sc_card_driver cardos_drv = {
 static struct sc_atr_table cardos_atrs[] = {
 	/* 4.0 */
 	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
+	/* 4.01a */
+        { "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_01, 0, NULL },
 	/* Italian eID card, postecert */
 	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* Italian eID card, infocamere */
