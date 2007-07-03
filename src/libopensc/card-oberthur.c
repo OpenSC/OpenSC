@@ -1174,9 +1174,9 @@ auth_compute_signature(sc_card_t *card,
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_CARD_CMD_FAILED);
 	}
 	
-	memcpy(out, apdu.resp, olen);
+	memcpy(out, apdu.resp, apdu.resplen);
 
-	SC_FUNC_RETURN(card->ctx, 1, olen);
+	SC_FUNC_RETURN(card->ctx, 1, apdu.resplen);
 }
 
 
