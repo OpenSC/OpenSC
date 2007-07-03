@@ -1625,7 +1625,8 @@ static int auth_get_pin_reference (sc_card_t *card,
 		
 		*out_ref = reference;
 		if (reference == 1 || reference == 2)
-			*out_ref |= 0x80;
+			if (cmd == SC_PIN_CMD_VERIFY)
+				*out_ref |= 0x80;
 		break;
 
 	default:
