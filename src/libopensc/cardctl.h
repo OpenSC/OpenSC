@@ -130,7 +130,16 @@ enum {
 	SC_CARDCTL_MUSCLE_GENERATE_KEY,
 	SC_CARDCTL_MUSCLE_EXTRACT_KEY,
 	SC_CARDCTL_MUSCLE_IMPORT_KEY,
-	SC_CARDCTL_MUSCLE_VERIFIED_PINS
+	SC_CARDCTL_MUSCLE_VERIFIED_PINS,
+
+	/*
+	 * ASEPCOS specific calls
+	 */
+	SC_CARDCTL_ASEPCOS_BASE = _CTL_PREFIX('A','S','E'),
+	SC_CARDCTL_ASEPCOS_CHANGE_KEY,
+	SC_CARDCTL_ASEPCOS_AKN2FILEID,
+	SC_CARDCTL_ASEPCOS_SET_SATTR,
+	SC_CARDCTL_ASEPCOS_ACTIVATE_FILE
 };
 
 enum {
@@ -400,6 +409,23 @@ typedef struct sc_cardctl_muscle_key_info {
 typedef struct sc_cardctl_muscle_verified_pins_info {
 	unsigned	verifiedPins;
 } sc_cardctl_muscle_verified_pins_info_t;
+
+/* ASEPCOS ctl specific structures */
+typedef struct sc_cardctl_asepcos_change_key {
+	const u8 *data;
+	size_t datalen;
+} sc_cardctl_asepcos_change_key_t;
+
+typedef struct sc_cardctl_asepcos_akn2fileid {
+	int akn;
+	int fileid;
+} sc_cardctl_asepcos_akn2fileid_t;
+
+typedef struct sc_cardctl_asepcos_activate_file {
+	int	fileid;
+	int	is_ef;
+} sc_cardctl_asepcos_activate_file_t;
+
 #ifdef __cplusplus
 }
 #endif

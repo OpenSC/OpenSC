@@ -60,6 +60,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "miocos",	(void *(*)(void)) sc_get_miocos_driver },
 	{ "mcrd",	(void *(*)(void)) sc_get_mcrd_driver },
+	{ "asepcos",	(void *(*)(void)) sc_get_asepcos_driver },
 	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
 	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
 	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
@@ -69,7 +70,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "oberthur",	(void *(*)(void)) sc_get_oberthur_driver },
 #endif
 	{ "belpic",	(void *(*)(void)) sc_get_belpic_driver },
-	{ "atrust-acos",(void *(*)(void))sc_get_atrust_acos_driver },
+	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
 	{ "muscle", (void *(*)(void)) sc_get_muscle_driver },	// Above EMV because the detection gets caught there first
 	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
 	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
