@@ -1,5 +1,5 @@
 /* pkcs11.h
-   Copyright 2006 g10 Code GmbH
+   Copyright 2006, 2007 g10 Code GmbH
    Copyright 2006 Andreas Jellinghaus
 
    This file is free software; as a special exception the author gives
