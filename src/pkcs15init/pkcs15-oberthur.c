@@ -399,7 +399,7 @@ cosm_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
 	else {
 		type = SC_PKCS15INIT_USER_PIN;
 		
-		if (pinfo->reference !=1)
+		if (pinfo->reference !=1  &&  pinfo->reference != 2)
 			return SC_ERROR_INVALID_PIN_REFERENCE;
 	}
 

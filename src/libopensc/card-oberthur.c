@@ -1569,6 +1569,9 @@ auth_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 				(struct sc_cardctl_oberthur_createpin_info *) ptr); 
     case SC_CARDCTL_GET_SERIALNR:
         return auth_get_serialnr(card, (sc_serial_number_t *)ptr);
+	case SC_CARDCTL_LIFECYCLE_GET:
+	case SC_CARDCTL_LIFECYCLE_SET:
+		return SC_ERROR_NOT_SUPPORTED;
 	default:
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	}
@@ -1868,7 +1871,7 @@ auth_create_reference_data (sc_card_t *card,
 		if (args->ref == 1)  
 		    pin_ref = 0x01;
 		else if (args->ref == 2)
-			pin_ref = 0x04;
+			pin_ref = 0x02;
 		else
 			SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid PIN reference");
 	}
