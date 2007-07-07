@@ -41,8 +41,6 @@ static struct sc_card_driver cardos_drv = {
 static struct sc_atr_table cardos_atrs[] = {
 	/* 4.0 */
 	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
-	/* 4.01a */
-        { "3b:f2:98:00:ff:c1:10:31:fe:55:c8:04:12", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_01, 0, NULL },
 	/* Italian eID card, postecert */
 	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* Italian eID card, infocamere */
@@ -51,7 +49,7 @@ static struct sc_atr_table cardos_atrs[] = {
 	{ "3b:fc:98:00:ff:c1:10:31:fe:55:c8:03:49:6e:66:6f:63:61:6d:65:72:65:28", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	{ "3b:f4:98:00:ff:c1:10:31:fe:55:4d:34:63:76:b4", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL},
 	/* cardos m4.2 and above */
-	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:8a", "ff:ff:0f:ff:00:ff:ff:ff:ff:00:00:00:00", NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
+	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:8a", "ff:ff:0f:ff:00:ff:00:ff:ff:00:00:00:00", NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -73,6 +71,7 @@ static int cardos_match_card(sc_card_t *card)
 		u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 		/* first check some additional ATR bytes */
 		if ((card->atr[4] != 0xff && card->atr[4] != 0x02) ||
+		    (card->atr[6] != 0x10 && card->atr[6] != 0x0a) ||
 		    (card->atr[9] != 0x55 && card->atr[9] != 0x58))
 			return 0;
 		/* get the os version using GET DATA and compare it with
