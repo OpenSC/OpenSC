@@ -492,8 +492,7 @@ cflex_delete_dummy_chvs(sc_profile_t *profile, sc_card_t *card,
 /*
  * Create a pin file
  */
-static inline void
-put_pin(sc_profile_t *profile, unsigned char *buf,
+static void put_pin(sc_profile_t *profile, unsigned char *buf,
 		const u8 *pin, size_t len, int retry)
 {
 	if (len > 8)

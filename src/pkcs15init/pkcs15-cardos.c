@@ -83,16 +83,14 @@ static int	do_cardos_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 #define CARDOS_ALGO_EXT_RSA_SIG_PURE	0x8a
 #define CARDOS_ALGO_PIN			0x87
 
-static inline void
-tlv_init(struct tlv *tlv, u8 *base, size_t size)
+static void tlv_init(struct tlv *tlv, u8 *base, size_t size)
 {
 	tlv->base = base;
 	tlv->end = base + size;
 	tlv->current = tlv->next = base;
 }
 
-static inline void
-tlv_next(struct tlv *tlv, u8 tag)
+static void tlv_next(struct tlv *tlv, u8 tag)
 {
 	assert(tlv->next + 2 < tlv->end);
 	tlv->current = tlv->next;
@@ -100,8 +98,7 @@ tlv_next(struct tlv *tlv, u8 tag)
 	*(tlv->next++) = 0;
 }
 
-static inline void
-tlv_add(struct tlv *tlv, u8 val)
+static void tlv_add(struct tlv *tlv, u8 val)
 {
 	assert(tlv->next + 1 < tlv->end);
 	*(tlv->next++) = val;
