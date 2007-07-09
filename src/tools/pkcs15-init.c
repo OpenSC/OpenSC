@@ -1086,7 +1086,7 @@ do_store_data_object(struct sc_profile *profile)
 	return r;
 }
 
-static inline int cert_is_root(sc_pkcs15_cert_t *c)
+static int cert_is_root(sc_pkcs15_cert_t *c)
 {
 	return (c->subject_len == c->issuer_len) &&
 		(memcmp(c->subject, c->issuer, c->subject_len) == 0);
