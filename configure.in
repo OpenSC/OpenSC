@@ -195,9 +195,11 @@ AC_CACHE_CHECK([for flex directory], ac_cv_flexdir, [
 ])
 
 dnl use ltdl
+AC_LIB_LINKFLAGS(ltdl)
+
 saved_LIBS="$LIBS"
-AC_CHECK_LIB(ltdl, lt_dlopen, [], [AC_MSG_ERROR([lt_dlopen not found, please install libltdl])])
-AC_CHECK_HEADER([ltdl.h], [],
+LIBS="$saved_LIBS $LIBLTDL"
+AC_CHECK_HEADER([ltdl.h], [AC_MSG_RESULT([yes])],
    [ AC_MSG_ERROR([ltdl.h not found, please install libltdl and/or libtool]) ])
 LIBS="$saved_LIBS"
 
