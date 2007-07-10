@@ -220,7 +220,7 @@ static int load_parameters(sc_context_t *ctx, scconf_block *block,
 		del_drvs(opts, 0);
 	while (list != NULL) {
 		if (strcmp(list->data, s_internal) == 0)
-			add_internal_drvs(opts, 1);
+			add_internal_drvs(opts, 0);
 		else
 			add_drv(opts, 0, list->data);
 		list = list->next;
