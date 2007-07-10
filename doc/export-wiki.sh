@@ -58,4 +58,10 @@ do
 	done
 done
 
+for A in *.html
+do
+	sed -e 's#href="/'$PROJECT'/wiki/\([^"]*\)"#href="\1.html"#g' \
+		-i $A
+done
+
 rm "$SRCDIR"/*.tmp

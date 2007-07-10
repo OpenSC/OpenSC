@@ -6,15 +6,16 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/ChangeLog.
 
-New in 0.11.3; 2007-07-07; Andreas Jellinghaus
-* look for ncurses and termcap in configure (in combination with readline)
+New in 0.11.3; 2007-07-10; Andreas Jellinghaus
+* update wiki export script (add images, fix links).
+* look for ncurses and termcap in configure (in combination with readline).
 * make lots of internal functions and variables static.
 * fix 0 vs NULL in many places. fix ansi c style (void).
-* avoid variable names used also as glibc function (random etc.)
-* new code for deleting objects
-* special hack for firefox
-* suport for Athena APCOS cards added
-* piv driver now supports bigger rsa keys too
+* avoid variable names used also as glibc function (random etc.).
+* new code for deleting objects.
+* special hack for firefox.
+* suport for Athena APCOS cards added.
+* piv driver now supports bigger rsa keys too.
 
 New in 0.11.2; 2007-05-04; Andreas Jellinghaus
 * enabled pin caching by default (needed by regression suite and other apps).
