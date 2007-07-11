@@ -6,7 +6,9 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/ChangeLog.
 
-New in 0.11.3; 2007-07-10; Andreas Jellinghaus
+New in 0.11.3; 2007-07-11; Andreas Jellinghaus
+* added regression test for raw rsa (crypt0007).
+* regression suite can now use installed binaries with --installed.
 * update wiki export script (add images, fix links).
 * look for ncurses and termcap in configure (in combination with readline).
 * make lots of internal functions and variables static.
