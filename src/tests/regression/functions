@@ -52,7 +52,6 @@ if [ -z "$__p15init__" ]; then
 		p15crypt="$p15crypt --reader $P15_READER"
 		p15tool="$p15tool --reader $P15_READER"
 		p15init="$p15init --reader $P15_READER"
-		p15dump="$p15dump --reader $P15_READER"
 		osctool="$osctool --reader $P15_READER"
 	fi
 
@@ -340,8 +339,8 @@ function p15_crypt {
 
 function p15_validate {
 
-	msg "Card contents according to p15dump"
-	run_display_output $p15dump < /dev/null
+	msg "Card contents according to p15tool --dump"
+	run_display_output $p15tool --dump < /dev/null
 	msg "Validating card using pkcs11-tool"
 	run_display_output $p11tool -t --pin 0000 \
 		--module $p11module \
