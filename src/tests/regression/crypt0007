@@ -29,7 +29,7 @@ if p15_gen_key rsa/1048 --id 45 --key-usage decrypt -a 01; then
 
 	msg "Encrypting message (128 byte)"
 	dd if=bintest of=$o bs=128 count=1
-	run_check_status openssl rsautl -pubin -inkey $p -encrypt -in $o -out $e
+	run_check_status openssl rsautl -pubin -inkey $p -encrypt -raw -in $o -out $e
 	p15_crypt -c -i $e -o $d
 	cmp $o $d || fail "Decrypted file does not match plain text file"
 	success
@@ -65,7 +65,7 @@ if p15_store_key $k -a 01 -u decrypt; then
 
 	msg "Encrypting message (128 bytes)"
 	dd if=bintest of=$o bs=128 count=1
-	run_check_status openssl rsautl -pubin -inkey $p -encrypt -in $o -out $e
+	run_check_status openssl rsautl -pubin -inkey $p -encrypt -raw -in $o -out $e
 	p15_crypt -c -i $e -o $d
 	cmp $o $d || fail "Decrypted file does not match plain text file"
 	success
