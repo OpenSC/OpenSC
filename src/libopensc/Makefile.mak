@@ -26,7 +26,7 @@ OBJECTS			= \
 	card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
 	card-cardos.obj card-tcos.obj card-emv.obj card-default.obj \
 	card-mcrd.obj card-starcos.obj card-openpgp.obj card-jcop.obj \
-	card-oberthur.obj card-belpic.obj card-atrust-acos.obj \
+	card-oberthur.obj card-belpic.obj card-atrust-acos.obj card-akis.obj \
 	card-incrypto34.obj card-piv.obj card-acos5.obj card-asepcos.obj \
 	muscle.obj card-muscle.obj muscle-filesystem.obj \
 	compression.obj p15card-helper.obj \

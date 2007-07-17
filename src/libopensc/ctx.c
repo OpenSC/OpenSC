@@ -75,9 +75,10 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
 	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
 #ifdef HAVE_OPENSSL
-	{ "PIV-II",(void *) sc_get_piv_driver },
+	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 #endif
 	{ "acos5",	(void *(*)(void)) sc_get_acos5_driver },
+	{ "akis",	(void *(*)(void)) sc_get_akis_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
