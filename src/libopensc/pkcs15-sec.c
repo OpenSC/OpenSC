@@ -151,11 +151,11 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	/* some strange cards/setups need decrypt to sign ... */
 	if (p15card->flags & SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT) {
+		size_t tmplen = sizeof(buf);
 		if (flags & SC_ALGORITHM_RSA_RAW) {
 			return sc_pkcs15_decipher(p15card, obj,flags,
 				in, inlen, out, outlen);
 		}
-		size_t tmplen = sizeof(buf);
 		if (modlen > tmplen) {
 			sc_error(ctx, "Buffer too small, needs recompile!\n");
 			return SC_ERROR_NOT_ALLOWED;
