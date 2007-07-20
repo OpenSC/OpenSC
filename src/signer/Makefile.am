@@ -10,10 +10,8 @@ EXTRA_DIST = testprog.c
 
 INCLUDES = -I$(srcdir)/npinclude $(CPPFLAGS) $(OPENSSL_CFLAGS) $(LIBASSUAN_CFLAGS)
 
-if HAVE_OPENSSL
-if HAVE_ASSUAN
+if ENABLE_NSPLUGIN
 lib_LTLIBRARIES = opensc-signer.la
-endif
 endif
 
 opensc_signer_la_LDFLAGS = -module -avoid-version
@@ -25,8 +23,6 @@ noinst_HEADERS = \
 	opensc-crypto.h opensc-support.h signer.h 
 
 install-exec-local: install-libLTLIBRARIES
-if HAVE_OPENSSL
-if HAVE_ASSUAN
+if ENABLE_NSPLUGIN
 	-$(LN_S) -f $(libdir)/opensc-signer.so $(DESTDIR)$(plugindir)/
-endif
 endif

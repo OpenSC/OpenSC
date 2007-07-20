@@ -318,6 +318,21 @@ AC_ARG_WITH(plugin-dir,
 	]
 )
 AC_SUBST(PLUGINDIR)
+AC_ARG_ENABLE(nsplugin,
+	AC_HELP_STRING([--disable-nsplugin], [disable nsplugin (signer). [[default=no]]]),
+	[ENABLE_NSPLUGIN="${enableval}"],
+	[ENABLE_NSPLUGIN="yes"])
+
+if test "x${ASSUAN_MSG}" != "xyes" -o "x${OPENSSL_MSG}" != "xyes"; then
+	ENABLE_NSPLUGIN="no"
+fi
+if test "x${ENABLE_NSPLUGIN}" == "xyes"; then
+	AM_CONDITIONAL(ENABLE_NSPLUGIN, true)
+	NSPLUGIN_MSG=yes
+else
+	AM_CONDITIONAL(ENABLE_NSPLUGIN, false)
+	NSPLUGIN_MSG=no
+fi
 
 # Check for PIN entry program used by OpenSC Signer
 PIN_ENTRY="/usr/local/bin/gpinentry"
@@ -412,5 +427,6 @@ echo "OpenSSL support:          ${OPENSSL_MSG}"
 echo "PC/SC support:            ${PCSC_MSG}"
 echo "OpenCT support:           ${OPENCT_MSG}"
 echo "Assuan support:           ${ASSUAN_MSG}"
+echo "NSPlugin support:         ${NSPLUGIN_MSG}"
 echo ""
 
