@@ -675,6 +675,11 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 	p15card->seInfo          = tokeninfo.seInfo;
 	p15card->num_seInfo      = tokeninfo.num_seInfo;
 
+	/* for cardos cards initialized by Siemens: sign with decrypt */
+	if (strcmp(p15card->card->driver->short_name,"cardos") == 0
+		&& strcmp(p15card->manufacturer_id,"Siemens AG (C)") == 0)
+		p15card->flags |= SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT;
+
 	ok = 1;
 end:
 	if(buf != NULL)

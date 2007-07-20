@@ -148,6 +148,31 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	unsigned long pad_flags = 0, sec_flags = 0;
 
 	SC_FUNC_CALLED(ctx, 1);
+
+	/* some strange cards/setups need decrypt to sign ... */
+	if (p15card->flags & SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT) {
+		if (flags & SC_ALGORITHM_RSA_RAW) {
+			return sc_pkcs15_decipher(p15card, obj,flags,
+				in, inlen, out, outlen);
+		}
+		size_t tmplen = sizeof(buf);
+		if (modlen > tmplen) {
+			sc_error(ctx, "Buffer too small, needs recompile!\n");
+			return SC_ERROR_NOT_ALLOWED;
+		}
+		r = sc_pkcs1_encode(ctx, flags, in, inlen, buf, &tmplen, modlen);
+
+		/* no padding needed - already done */
+		flags &= ~SC_ALGORITHM_RSA_PADS;
+		/* instead use raw rsa */
+		flags |= SC_ALGORITHM_RSA_RAW;
+
+		SC_TEST_RET(ctx, r, "Unable to add padding");
+		r = sc_pkcs15_decipher(p15card, obj,flags, buf, modlen,
+			out, outlen);
+		return r;
+	}
+
 	/* If the key is extractable, the caller should extract the
 	 * key and do the crypto himself */
 	if (!prkey->native)
