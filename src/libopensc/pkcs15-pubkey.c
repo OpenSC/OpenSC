@@ -215,8 +215,10 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 	return r;
 }
 
+/* this should be required, not optional. But it is missing in some siemens cards and thus causes warnings */
+/* so we silence these warnings by making it optional - the card works ok without. :/ */
 static struct sc_asn1_entry c_asn1_public_key[2] = {
-	{ "publicKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "publicKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
