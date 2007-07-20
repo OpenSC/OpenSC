@@ -8,6 +8,7 @@ or doc/ChangeLog.
 
 New in 0.11.4; 2007-??-??; Andreas Jellinghaus
 * Support Siemens CardOS initialized cards (signing with decryption)
+* Support for AKIS cards added (partial so far) by  Gürer Özen.
 
 New in 0.11.3; 2007-07-11; Andreas Jellinghaus
 * added regression test for raw rsa (crypt0007).

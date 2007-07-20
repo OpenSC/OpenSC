@@ -23,6 +23,7 @@
 
 #include "internal.h"
 #include "asn1.h"
+#include "cardctl.h"
 
 /* generic iso 7816 operations table */
 static const struct sc_card_operations *iso_ops = NULL;
@@ -56,30 +57,8 @@ akis_match_card(sc_card_t *card)
 static int
 akis_init(sc_card_t *card)
 {
-	sc_app_info_t *app = NULL;
-
 	card->name = "AKIS";
 	card->cla = 0x00;
-
-	/* FIXME: set an application ID & path
-	 * When AKIS comes with EF(DIR) this will be unnecessary
-	 */
-	app = (sc_app_info_t *) malloc(sizeof(sc_app_info_t));
-	if (app == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-
-	memcpy(app->aid, "\xA0\x00\x00\x00\x63PKCS-15", 12);
-	app->aid_len = 12;
-	app->label = strdup("PKCS-15");
-	memcpy(app->path.value, "\x3F\x00\x3D\x00", 4);
-	app->path.len = 4;	
-	app->path.type = SC_PATH_TYPE_PATH;
-	app->ddo = NULL;
-	app->ddo_len = 0;
-
-	app->desc = NULL;
-	card->app[0] = app;
-	card->app_count = 1;
 
 	return 0;
 }
@@ -239,6 +218,71 @@ akis_process_fci(sc_card_t *card, sc_file_t *file,
 }
 
 static int
+akis_create_file(sc_card_t *card, sc_file_t *file)
+{
+	int r;
+	u8 type;
+	u8 acl;
+	u8 fid[4];
+        u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_apdu_t apdu;
+
+	/* AKIS uses different create commands for EF and DF.
+	 * Parameters are not passed as ASN.1 structs but in
+	 * a custom format.
+	 */
+
+	/* FIXME: hardcoded for now, better get it from file acl params */
+	acl = 0xb0;
+
+	fid[0] = (file->id >> 8) & 0xFF;
+	fid[1] = file->id & 0xFF;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x15, 0, acl);
+	apdu.cla = 0x80;
+	apdu.data = fid;
+	apdu.datalen = 2;
+	apdu.lc = 2;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+
+	if (file->type == SC_FILE_TYPE_WORKING_EF) {
+		switch (file->ef_structure) {
+			case SC_FILE_EF_TRANSPARENT:
+				type = 0x80;
+				break;
+			case SC_FILE_EF_LINEAR_FIXED:
+				type = 0x41;
+				break;
+			case SC_FILE_EF_CYCLIC:
+				type = 0x43;
+				break;
+			case SC_FILE_EF_LINEAR_VARIABLE_TLV:
+				type = 0x45;
+				break;
+			default:
+				sc_error(card->ctx, "This EF structure is not supported yet");
+				return SC_ERROR_NOT_SUPPORTED;
+		}
+		apdu.p1 = type;
+		if (type == 0x41 || type == 0x43) {
+			fid[2] = file->record_length;
+			apdu.datalen++;
+			apdu.lc++;
+		}
+	} else if (file->type == SC_FILE_TYPE_DF) {
+		apdu.ins = 0x10;
+	} else {
+		sc_error(card->ctx, "Unknown file type");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+}
+
+static int
 akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	int r;
@@ -262,6 +306,48 @@ akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 	return r;
 }
 
+static int
+akis_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
+{
+	int r;
+	sc_apdu_t apdu;
+	u8 buf[64];
+
+	if (!serial)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	/* see if we have cached serial number */
+	if (card->serialnr.len) {
+		memcpy(serial, &card->serialnr, sizeof(*serial));
+		return SC_SUCCESS;
+	}
+
+	/* read serial number */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x06);
+	apdu.resp = buf;
+	apdu.resplen = 0x4D;
+	apdu.le = apdu.resplen;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	card->serialnr.len = 12;
+	memcpy(card->serialnr.value, buf+55, 12);
+
+	memcpy(serial, &card->serialnr, sizeof(*serial));
+
+	return SC_SUCCESS;
+}
+
+static int
+akis_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
+{
+	switch (cmd) {
+	case SC_CARDCTL_GET_SERIALNR:
+		return akis_get_serialnr(card, (sc_serial_number_t *)ptr);
+	}
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
 static struct sc_card_driver *
 sc_get_driver(void)
 {
@@ -275,7 +361,9 @@ sc_get_driver(void)
 	akis_ops.select_file = akis_select_file;
 	akis_ops.list_files = akis_list_files;
 	akis_ops.process_fci = akis_process_fci;
+	akis_ops.create_file = akis_create_file;
 	akis_ops.pin_cmd = akis_pin_cmd;
+	akis_ops.card_ctl = akis_card_ctl;
 
 	return &akis_drv;
 }
