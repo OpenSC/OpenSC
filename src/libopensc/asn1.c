@@ -1054,15 +1054,18 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			assert(len != NULL);
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
-				*buf = (u8 *) malloc(objlen-1);
+				*buf = (u8 *) malloc(objlen+1);
 				if (*buf == NULL) {
 					r = SC_ERROR_OUT_OF_MEMORY;
 					break;
 				}
-				*len = objlen-1;
+				*len = objlen+1;
 				parm = *buf;
 			}
 			r = sc_asn1_decode_utf8string(obj, objlen, (u8 *) parm, len);
+			if (entry->flags & SC_ASN1_ALLOC) {
+				*len -= 1;
+			}
 		}
 		break;
 	case SC_ASN1_PATH:
