@@ -24,5 +24,6 @@ noinst_HEADERS = \
 
 install-exec-local: install-libLTLIBRARIES
 if ENABLE_NSPLUGIN
+	-$(mkdir_p) $(DESTDIR)$(plugindir)/
 	-$(LN_S) -f $(libdir)/opensc-signer.so $(DESTDIR)$(plugindir)/
 endif
