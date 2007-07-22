@@ -57,8 +57,13 @@ akis_match_card(sc_card_t *card)
 static int
 akis_init(sc_card_t *card)
 {
+	unsigned long flags;
+
 	card->name = "AKIS";
 	card->cla = 0x00;
+
+	flags = SC_ALGORITHM_RSA_RAW;
+        _sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	return 0;
 }
@@ -283,6 +288,44 @@ akis_create_file(sc_card_t *card, sc_file_t *file)
 }
 
 static int
+akis_delete_file(sc_card_t *card, const sc_path_t *path)
+{
+	int r;
+	u8 sbuf[2];
+	u8 *buf;
+	size_t buflen;
+	int type;
+	sc_apdu_t apdu;
+
+	switch (path->type) {
+		case SC_PATH_TYPE_FILE_ID:
+			sbuf[0] = path->value[0];
+			sbuf[1] = path->value[1];
+			buf = sbuf;
+			buflen = 2;
+			type = 0x02;
+			break;
+		case SC_PATH_TYPE_PATH:
+			buf = path->value;
+			buflen = path->len;
+			type = 0x08;
+			break;
+		default:
+			sc_error(card->ctx, "File type has to be FID or PATH");
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x16, type, 0x00);
+        apdu.cla = 0x80;
+	apdu.lc = buflen;
+	apdu.datalen = buflen;
+	apdu.data = buf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+}
+
+static int
 akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	int r;
@@ -299,6 +342,24 @@ akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 	apdu.data = data->pin1.data;
 	apdu.datalen = data->pin1.len;
 	apdu.lc = apdu.datalen;
+	apdu.sensitive = 1;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	return r;
+}
+
+static int
+akis_get_data(sc_card_t *card, unsigned int dataid, u8 *buf, size_t len)
+{
+	int r;
+	sc_apdu_t apdu;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, dataid);
+	apdu.resp = buf;
+	apdu.resplen = len;
+	apdu.le = len;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -310,32 +371,73 @@ static int
 akis_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 {
 	int r;
-	sc_apdu_t apdu;
-	u8 buf[64];
+	u8 system[128];
 
 	if (!serial)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* see if we have cached serial number */
-	if (card->serialnr.len) {
-		memcpy(serial, &card->serialnr, sizeof(*serial));
-		return SC_SUCCESS;
-	}
+	if (card->serialnr.len) goto end;
 
 	/* read serial number */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x06);
-	apdu.resp = buf;
-	apdu.resplen = 0x4D;
-	apdu.le = apdu.resplen;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = akis_get_data(card, 6, system, 0x4D);
+	SC_TEST_RET(card->ctx, r, "GET_DATA failed");
 
 	card->serialnr.len = 12;
-	memcpy(card->serialnr.value, buf+55, 12);
+	memcpy(card->serialnr.value, system+55, 12);
 
+end:
 	memcpy(serial, &card->serialnr, sizeof(*serial));
-
 	return SC_SUCCESS;
+}
+
+static int
+akis_lifecycle_get(sc_card_t *card, int *mode)
+{
+	int r;
+	u8 memory[10];
+
+	r = akis_get_data(card, 4, memory, 10);
+	SC_TEST_RET(card->ctx, r, "GET_DATA failed");
+
+	switch(memory[6]) {
+		case 0xA0:
+			*mode = SC_CARDCTRL_LIFECYCLE_ADMIN;
+			break;
+		case 0xA5:
+			*mode = SC_CARDCTRL_LIFECYCLE_USER;
+			break;
+		default:
+			*mode = SC_CARDCTRL_LIFECYCLE_OTHER;
+			break;
+	}
+	return SC_SUCCESS;
+}
+
+static int
+akis_lifecycle_set(sc_card_t *card, int *mode)
+{
+	int r;
+	u8 stage;
+	sc_apdu_t apdu;
+
+	switch(*mode) {
+		case SC_CARDCTRL_LIFECYCLE_ADMIN:
+			stage = 0x02;
+			break;
+		case SC_CARDCTRL_LIFECYCLE_USER:
+			stage = 0x01;
+			break;
+		default:
+			return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x09, 0x00, stage);
+	apdu.cla = 0x80;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	return r;
 }
 
 static int
@@ -344,8 +446,34 @@ akis_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	switch (cmd) {
 	case SC_CARDCTL_GET_SERIALNR:
 		return akis_get_serialnr(card, (sc_serial_number_t *)ptr);
+	case SC_CARDCTL_LIFECYCLE_GET:
+		return akis_lifecycle_get(card, (int *) ptr);
+	case SC_CARDCTL_LIFECYCLE_SET:
+		return akis_lifecycle_set(card, (int *) ptr);
 	}
 	return SC_ERROR_NOT_SUPPORTED;
+}
+
+static int
+akis_set_security_env(sc_card_t *card,
+                      const sc_security_env_t *env,
+                      int se_num)
+{
+	int r;
+	u8 ref;
+	sc_apdu_t apdu;
+
+	/* AKIS uses key references for accessing keys
+	 */
+	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+		ref = env->key_ref[0];
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xC3, ref);
+		r = sc_transmit_apdu(card, &apdu);
+		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		return r;
+	}
+	return SC_SUCCESS;
 }
 
 static struct sc_card_driver *
@@ -358,12 +486,32 @@ sc_get_driver(void)
 
 	akis_ops.match_card = akis_match_card;
 	akis_ops.init = akis_init;
+	// read_binary: ISO7816 implementation works
+	// write_binary: ISO7816 implementation works
+	// update_binary: ISO7816 implementation works
+	// erase_binary: Untested
+	// read_record: Untested
+	// write_record: Untested
+	// append_record: Untested
+	// update_record: Untested
 	akis_ops.select_file = akis_select_file;
-	akis_ops.list_files = akis_list_files;
-	akis_ops.process_fci = akis_process_fci;
+	// get_response: Untested
+	// get_challenge: ISO7816 implementation works
+	// restore_security_env: Untested
+	akis_ops.set_security_env = akis_set_security_env;
+	// decipher: Untested
+	// compute_signature: ISO7816 implementation works
 	akis_ops.create_file = akis_create_file;
-	akis_ops.pin_cmd = akis_pin_cmd;
+	akis_ops.delete_file = akis_delete_file;
+	akis_ops.list_files = akis_list_files;
+	// check_sw: ISO7816 implementation works
 	akis_ops.card_ctl = akis_card_ctl;
+	akis_ops.process_fci = akis_process_fci;
+	// construct_fci: Not needed
+	akis_ops.pin_cmd = akis_pin_cmd;
+	akis_ops.get_data = akis_get_data;
+	// put_data: Not implemented
+	// delete_record: Not implemented
 
 	return &akis_drv;
 }
