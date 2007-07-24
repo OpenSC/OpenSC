@@ -292,7 +292,7 @@ akis_delete_file(sc_card_t *card, const sc_path_t *path)
 {
 	int r;
 	u8 sbuf[2];
-	u8 *buf;
+	const u8 *buf;
 	size_t buflen;
 	int type;
 	sc_apdu_t apdu;
