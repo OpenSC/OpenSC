@@ -501,7 +501,7 @@ static int list_keys(void)
 		if (keysize == 0)
 			break;
 		idx += keysize;
-		for (i = 0; i < sizeof(sizes)/sizeof(int); i++)
+		for (i = 0; i < sizeof(sizes)/sizeof(sizes[ 0]); i++)
 			if (sizes[i] == keysize)
 				mod_len = mod_lens[i];
 		if (mod_len < 0)
