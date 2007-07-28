@@ -117,6 +117,7 @@ static const char *option_help[] = {
 	"Specify the type and length of the key to create, for example rsa:1024",
 	"Write an object (key, cert, data) to the card",
 	"Get object's CKA_VALUE attribute (use with --type)",
+	"Delete an object",
 	"Specify the application label of the data object (use with --type data)",
 	"Specify the application id of the data object (use with --type data)",
 	"Specify the type of object (e.g. cert, privkey, pubkey, data)",
