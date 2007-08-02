@@ -34,7 +34,7 @@ libpkcs15init_la_SOURCES = \
 	pkcs15-oberthur.c pkcs15-setcos.c pkcs15-incrypto34.c \
 	pkcs15-muscle.c pkcs15-asepcos.c
 
-libpkcs15init_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
+libpkcs15init_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@ $(AM_LDFLAGS)
 
 include_HEADERS = pkcs15-init.h
 noinst_HEADERS = profile.h keycache.h
