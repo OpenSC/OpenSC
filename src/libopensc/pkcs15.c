@@ -677,7 +677,8 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 
 	/* for cardos cards initialized by Siemens: sign with decrypt */
 	if (strcmp(p15card->card->driver->short_name,"cardos") == 0
-		&& strcmp(p15card->manufacturer_id,"Siemens AG (C)") == 0)
+                && ( strcmp(p15card->manufacturer_id,"Siemens AG (C)") == 0
+			|| strcmp(p15card->manufacturer_id,"Prime") == 0 ))
 		p15card->flags |= SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT;
 
 	ok = 1;
