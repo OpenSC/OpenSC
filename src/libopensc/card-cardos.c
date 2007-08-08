@@ -96,6 +96,9 @@ static int cardos_match_card(sc_card_t *card)
 		} else if (card->atr[11] >= 0x08) {
 			sc_debug(card->ctx, "found cardos v4.3b or higher");
 			card->type = SC_CARD_TYPE_CARDOS_M4_3;
+		} else if (card->atr[11] >= 0x09) {
+			sc_debug(card->ctx, "found cardos v4.2b or higher");
+			card->type = SC_CARD_TYPE_CARDOS_M4_2B;
 		} else {
 			sc_debug(card->ctx, "found cardos m4.2");
 		}
@@ -163,7 +166,8 @@ static int cardos_init(sc_card_t *card)
 		if (r == 1)
 			card->caps |= SC_CARD_CAP_RSA_2048;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
-	} else if (card->type == SC_CARD_TYPE_CARDOS_M4_3) {
+	} else if (card->type == SC_CARD_TYPE_CARDOS_M4_3 
+		|| card->type == SC_CARD_TYPE_CARDOS_M4_2B) {
 		card->caps |= SC_CARD_CAP_RSA_2048;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
@@ -640,7 +644,8 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 			return r;
 		return iso_ops->create_file(card, file);
 	} else if (card->type == SC_CARD_TYPE_CARDOS_M4_2 ||
-	           card->type == SC_CARD_TYPE_CARDOS_M4_3) {
+	           card->type == SC_CARD_TYPE_CARDOS_M4_3 ||
+	           card->type == SC_CARD_TYPE_CARDOS_M4_2B) {
 		u8        sbuf[SC_MAX_APDU_BUFFER_SIZE];
 		size_t    len = sizeof(sbuf);
 		sc_apdu_t apdu;

@@ -63,6 +63,15 @@ static int cardos_info(void)
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
+	if (verbose) {
+		printf("Card ATR:\n");
+		hex_dump_asc(stdout, card->atr, card->atr_len, -1);      
+	} else {
+		char tmp[SC_MAX_ATR_SIZE*3];
+		sc_bin_to_hex(card->atr, card->atr_len, tmp, sizeof(tmp) - 1, ':');
+		fprintf(stdout,"%s\n",tmp);
+	}
+
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cla = 0x00;
 	apdu.ins = 0xca;
@@ -141,6 +150,8 @@ static int cardos_info(void)
 		printf(" (that's CardOS M4.3)\n");
 	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x08) {
 		printf(" (that's CardOS M4.3b)\n");
+	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x09) {
+		printf(" (that's CardOS M4.2b)\n");
 	} else {
 		printf(" (unknown Version)\n");
 	}
