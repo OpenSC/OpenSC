@@ -195,7 +195,7 @@ AC_CACHE_CHECK([for flex directory], ac_cv_flexdir, [
 ])
 
 dnl use ltdl
-AC_LIB_LINKFLAGS(ltdl)
+AC_CHECK_LIB([ltdl],lt_dlopen)
 
 saved_LIBS="$LIBS"
 LIBS="$saved_LIBS $LIBLTDL"
