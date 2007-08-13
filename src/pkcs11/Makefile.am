@@ -7,7 +7,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 EXTRA_DIST = Makefile.mak opensc_pkcs11_install.js
 
-INCLUDES = $(CPPFLAGS) -I${top_srcdir}/src/pkcs15init $(OPENSSL_CFLAGS)
+INCLUDES = $(CPPFLAGS) -I${top_srcdir}/src/pkcs15init $(OPENSSL_CFLAGS) $(LTLIB_CFLAGS)
 
 SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
 	mechanism.c openssl.c secretkey.c framework-pkcs15.c \
