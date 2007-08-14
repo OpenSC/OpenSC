@@ -1148,7 +1148,6 @@ usage:
 	return -1;
 }
 
-#if 0
 static int do_debug(int argc, char **argv)
 {
 	int i;
@@ -1170,7 +1169,6 @@ static int do_debug(int argc, char **argv)
 	}
 	return 0;
 }
-#endif
 
 
 static int do_pksign(int argc, char **argv)
@@ -1454,6 +1452,7 @@ static struct command	cmds[] = {
  { "exit",	do_quit,	"quit this program"			},
  { "update_record", do_update_record, "update record"			},
  { "update_binary", do_update_binary, "update binary"			},
+ { "debug",	do_debug,	"set the debug level"			},
  { NULL, NULL, NULL }
 };
 
