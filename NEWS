@@ -7,8 +7,12 @@ Also see the svn changelog using svn command
 or doc/ChangeLog.
 
 New in 0.11.4; 2007-??-??; Andreas Jellinghaus
+* Drop AC_LIB_LINKFLAGS for libltdl and aclocal/lib* files.
+* New configure option to disable building nsplugin.
 * Support Siemens CardOS initialized cards (signing with decryption)
+* Add Siemens CardOS M4.2B support (experimental, don't have such a card)
 * Support for AKIS cards added (partial so far) by  Gürer Özen.
+* add aclocal/libassuan.m4 back so developers don't need assuan installed.
 
 New in 0.11.3; 2007-07-11; Andreas Jellinghaus
 * added regression test for raw rsa (crypt0007).
