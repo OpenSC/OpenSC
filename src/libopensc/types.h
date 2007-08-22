@@ -37,7 +37,7 @@ struct sc_object_id {
 #define SC_PATH_TYPE_DF_NAME	1
 #define SC_PATH_TYPE_PATH	2
 #define SC_PATH_TYPE_PATH_PROT	3	/* path of a file containing
-					   EnveleopedData objects */
+					   EnvelopedData objects */
 #define SC_PATH_TYPE_FROM_CURRENT   4
 #define SC_PATH_TYPE_PARENT   5
 
