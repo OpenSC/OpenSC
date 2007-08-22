@@ -62,7 +62,7 @@ akis_init(sc_card_t *card)
 	card->name = "AKIS";
 	card->cla = 0x00;
 
-	flags = SC_ALGORITHM_RSA_RAW;
+	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
         _sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	return 0;
@@ -495,7 +495,7 @@ sc_get_driver(void)
 	// append_record: Untested
 	// update_record: Untested
 	akis_ops.select_file = akis_select_file;
-	// get_response: Untested
+	// get_response: ISO7816 implementation works
 	// get_challenge: ISO7816 implementation works
 	// restore_security_env: Untested
 	akis_ops.set_security_env = akis_set_security_env;
