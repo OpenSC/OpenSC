@@ -476,6 +476,20 @@ akis_set_security_env(sc_card_t *card,
 	return SC_SUCCESS;
 }
 
+static int
+akis_logout(sc_card_t *card)
+{
+	int r;
+	sc_apdu_t apdu;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x1A, 0, 0);
+	apdu.cla = 0x80;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	return r;
+}
+
 static struct sc_card_driver *
 sc_get_driver(void)
 {
@@ -497,6 +511,7 @@ sc_get_driver(void)
 	akis_ops.select_file = akis_select_file;
 	// get_response: ISO7816 implementation works
 	// get_challenge: ISO7816 implementation works
+	akis_ops.logout = akis_logout;
 	// restore_security_env: Untested
 	akis_ops.set_security_env = akis_set_security_env;
 	// decipher: Untested
