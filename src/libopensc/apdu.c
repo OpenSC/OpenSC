@@ -396,7 +396,7 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 	}
 	/* ok, the APDU was successfully transmitted. Now we have two
 	 * special cases:
-	 * 1. the card returnd 0x6Cxx: in this case we re-trasmit the APDU
+	 * 1. the card returned 0x6Cxx: in this case we re-trasmit the APDU
 	 *    wit hLe set to SW2 (this is course only possible if the
 	 *    response buffer size is larger than the new Le = SW2)
 	 */
