@@ -618,7 +618,7 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 	obj->refcount++;
 
 	if (obj->p15_object && (obj->p15_object->user_consent > 0) ) {
-		sc_debug(context, "User consent object deteced, marking slot as user_consent!\n");
+		sc_debug(context, "User consent object detected, marking slot as user_consent!\n");
 		((struct pkcs15_slot_data *)slot->fw_data)->user_consent = 1;
 	}
 
