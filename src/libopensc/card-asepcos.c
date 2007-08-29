@@ -615,6 +615,10 @@ static int asepcos_create_file(sc_card_t *card, sc_file_t *file)
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			return sc_check_sw(card, apdu.sw1, apdu.sw2); 
+
+		r = sc_select_file(card, &file->path, NULL);
+		if (r != SC_SUCCESS)
+			return r;
 		/* set security attributes */
 		r = asepcos_set_security_attributes(card, file);
 		if (r != SC_SUCCESS) {
