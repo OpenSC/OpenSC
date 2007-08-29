@@ -1086,7 +1086,7 @@ static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata,
 			*tries_left = apdu.sw2 & 0x0F;
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
-	return r;
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
 static struct sc_card_driver * sc_get_driver(void)
