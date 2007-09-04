@@ -454,7 +454,7 @@ int sc_write_binary(sc_card_t *card, unsigned int idx,
 			r = sc_write_binary(card, idx, p, n, flags);
 			if (r < 0) {
 				sc_unlock(card);
-				SC_TEST_RET(card->ctx, r, "sc_read_binary() failed");
+				SC_TEST_RET(card->ctx, r, "sc_write_binary() failed");
 			}
 			p += r;
 			idx += r;
