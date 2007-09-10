@@ -6,7 +6,7 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/ChangeLog.
 
-New in 0.11.4; 2007-??-??; Andreas Jellinghaus
+New in 0.11.4; 2007-09-10; Andreas Jellinghaus
 * Drop AC_LIB_LINKFLAGS for libltdl and aclocal/lib* files.
 * New configure option to disable building nsplugin.
 * Support Siemens CardOS initialized cards (signing with decryption)
