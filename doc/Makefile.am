@@ -2,12 +2,13 @@
 
 SUBDIRS = . 
 
-MAINTAINERCLEANFILES = Makefile.in $(HTML) ChangeLog
+MAINTAINERCLEANFILES = Makefile.in $(HTML) $(TMP) ChangeLog
 
 EXTRA_DIST = README ChangeLog $(HTML) $(XML) index.html \
 		export-wiki.sh export-wiki.xsl \
 		generate-man.sh changelog.sh svn2cl.xsl 
 
+TMP= $(shell ls $(srcdir)/*.tmp)
 HTML= $(shell ls $(srcdir)/*.html $(srcdir)/*.css $(srcdir)/*.gif $(srcdir)/html/*)
 XML = $(shell ls $(srcdir)/tools/*.xml $(srcdir)/api/*.xml $(srcdir)/api/*/*.xml $(srcdir)/api/api.css $(srcdir)/api/*.xsl)
 
