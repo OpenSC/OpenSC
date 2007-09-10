@@ -1,7 +1,7 @@
 TOPDIR = ..\..
 
 
-TARGET                  = opensc.dll
+TARGET                  = opensc.dll opensc_a.lib
 
 HEADERS			= \
 	opensc.h pkcs15.h emv.h \
@@ -42,7 +42,10 @@ all: install-headers $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-$(TARGET): $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib
+opensc.dll: $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib
 	perl $(TOPDIR)\win32\makedef.pl $*.def $* $(OBJECTS)
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib $(LIBLTDL_LIB) advapi32.lib ws2_32.lib
-	if EXIST $(TARGET).manifest mt -manifest $(TARGET).manifest -outputresource:$(TARGET);2
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:opensc.dll $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib $(LIBLTDL_LIB) advapi32.lib ws2_32.lib
+	if EXIST opensc.dll.manifest mt -manifest opensc.dll.manifest -outputresource:opensc.dll;2
+
+opensc_a.lib: $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib
+	lib $(LIBFLAGS) /out:opensc_a.lib $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib winscard.lib user32.lib
