@@ -61,6 +61,7 @@ akis_init(sc_card_t *card)
 
 	card->name = "AKIS";
 	card->cla = 0x00;
+	card->max_pin_len = 16;
 
 	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
         _sc_card_add_rsa_alg(card, 2048, flags, 0);
@@ -213,10 +214,10 @@ akis_process_fci(sc_card_t *card, sc_file_t *file,
 
 	if (file->type == SC_FILE_TYPE_DF) {
 		if (perms & 0x04)
-			sc_file_add_acl_entry(file, SC_AC_OP_LIST_FILES, SC_AC_CHV, 0);
+			sc_file_add_acl_entry(file, SC_AC_OP_LIST_FILES, SC_AC_CHV, 0x80);
 	} else {
 		if (!(perms & 0x04))
-			sc_file_add_acl_entry(file, SC_AC_OP_READ, SC_AC_CHV, 0);
+			sc_file_add_acl_entry(file, SC_AC_OP_READ, SC_AC_CHV, 0x80);
 	}
 
 	return 0;
@@ -330,24 +331,41 @@ akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 {
 	int r;
 	sc_apdu_t apdu;
+	u8 buf[64];
+	int p1 = 1, p2 = 0;
 
-	if (data->cmd != SC_PIN_CMD_VERIFY) {
-		sc_error(card->ctx, "Other pin cmds not supported yet");
-		return SC_ERROR_NOT_SUPPORTED;
+	if (data->cmd == SC_PIN_CMD_VERIFY) {
+		// ISO7816 implementation works
+		return iso_ops->pin_cmd(card, data, tries_left);
 	}
 
-	/* AKIS VERIFY command uses P2 0x80 while ISO uses 0x00
-	 */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, 0x80);
-	apdu.data = data->pin1.data;
-	apdu.datalen = data->pin1.len;
-	apdu.lc = apdu.datalen;
-	apdu.sensitive = 1;
+	if (data->cmd == SC_PIN_CMD_CHANGE) {
+		p2 = data->pin_reference;
+		if (p2 != 0) {
+			p1 = 2;
+			p2 &= 0x7f;
+		}
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, p1, p2);
+		apdu.sensitive = 1;
 
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	return r;
+		buf[0] = data->pin1.len;
+		memcpy(buf+1, data->pin1.data, data->pin1.len);
+
+		buf[data->pin1.len+1] = data->pin2.len;
+		memcpy(buf+data->pin1.len+2, data->pin2.data, data->pin2.len);
+
+		apdu.data = buf;
+		apdu.datalen = data->pin1.len + data->pin2.len + 2;
+		apdu.lc = apdu.datalen;
+
+		r = sc_transmit_apdu(card, &apdu);
+		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		return r;
+	}
+
+	sc_error(card->ctx, "Other pin cmds not supported yet");
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 static int
