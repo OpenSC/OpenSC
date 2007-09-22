@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2007 TUBITAK / UEKAE
  * contact: bilgi@pardus.org.tr
+ *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
@@ -214,10 +215,10 @@ akis_process_fci(sc_card_t *card, sc_file_t *file,
 
 	if (file->type == SC_FILE_TYPE_DF) {
 		if (perms & 0x04)
-			sc_file_add_acl_entry(file, SC_AC_OP_LIST_FILES, SC_AC_CHV, 0x80);
+			sc_file_add_acl_entry(file, SC_AC_OP_LIST_FILES, SC_AC_CHV, 0);
 	} else {
 		if (!(perms & 0x04))
-			sc_file_add_acl_entry(file, SC_AC_OP_READ, SC_AC_CHV, 0x80);
+			sc_file_add_acl_entry(file, SC_AC_OP_READ, SC_AC_CHV, 0);
 	}
 
 	return 0;
@@ -332,18 +333,26 @@ akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 	int r;
 	sc_apdu_t apdu;
 	u8 buf[64];
-	int p1 = 1, p2 = 0;
+	int p1, p2;
+
+	p2 = data->pin_reference;
 
 	if (data->cmd == SC_PIN_CMD_VERIFY) {
+		// Reverse the bit for compatibility with 0.11.4 release
+		// pin_reference: 0x00 - 0x7f are Application PINs, 0x80 is SO PIN
+		// on AKIS: 0x80 - 0xff are Application PINs, 0x00 is SO PIN
+		p2 ^= 0x80;
+		data->pin_reference = p2;
 		// ISO7816 implementation works
 		return iso_ops->pin_cmd(card, data, tries_left);
 	}
 
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
-		p2 = data->pin_reference;
-		if (p2 != 0) {
+		// This is AKIS specific
+		if (p2 & 0x80) {
+			p1 = 1;
+		} else {
 			p1 = 2;
-			p2 &= 0x7f;
 		}
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, p1, p2);
 		apdu.sensitive = 1;
