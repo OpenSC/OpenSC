@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <opensc/opensc.h>
+#include <opensc/asn1.h>
 #ifdef HAVE_READLINE_READLINE_H
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -1422,6 +1423,163 @@ static int do_put_data(int argc, char **argv)
 	return -1;
 }
 
+static int do_apdu(int argc, char **argv)
+{
+	sc_apdu_t apdu;
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 *p;
+	size_t len, len0, r;
+
+	if (argc == 0 || argc > 1) {
+		puts("Usage: apdu [apdu:hex:codes:...]");
+		return -1;
+	}
+
+	len = strlen(argv[0]);
+	len0 = len;
+	sc_hex_to_bin(argv[0], buf, &len);
+	if (len < 4) {
+		puts("APDU too short (must be at least 4 bytes)");
+		return 1;
+	}
+
+	memset(&apdu, 0, sizeof(apdu));
+	p = buf;
+	apdu.cla = *p++;
+	apdu.ins = *p++;
+	apdu.p1 = *p++;
+	apdu.p2 = *p++;
+	len -= 4;
+	if (len > 1) {
+		apdu.lc = *p++;
+		len--;
+		memcpy(sbuf, p, apdu.lc);
+		apdu.data = sbuf;
+		apdu.datalen = apdu.lc;
+		if (len < apdu.lc) {
+			printf("APDU too short (need %lu bytes)\n",
+				(unsigned long) apdu.lc - len);
+			return 1;
+		}
+		len -= apdu.lc;
+		p += apdu.lc;
+		if (len) {
+			apdu.le = *p++;
+			if (apdu.le == 0)
+				apdu.le = 256;
+			len--;
+			apdu.cse = SC_APDU_CASE_4_SHORT;
+		} else {
+			apdu.cse = SC_APDU_CASE_3_SHORT;
+		}
+		if (len) {
+			printf("APDU too long (%lu bytes extra)\n",
+				(unsigned long) len);
+			return 1;
+		}
+	} else if (len == 1) {
+		apdu.le = *p++;
+		if (apdu.le == 0)
+			apdu.le = 256;
+		len--;
+		apdu.cse = SC_APDU_CASE_2_SHORT;
+	} else {
+		apdu.cse = SC_APDU_CASE_1;
+	}
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+
+	printf("Sending: ");
+	for (r = 0; r < len0; r++)
+		printf("%02X ", buf[r]);
+	printf("\n");
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(r));
+		return 1;
+	}
+	printf("Received (SW1=0x%02X, SW2=0x%02X)%s\n", apdu.sw1, apdu.sw2,
+	       apdu.resplen ? ":" : "");
+	if (apdu.resplen)
+		hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+
+	return 0;
+}
+
+static int do_asn1(int argc, char **argv)
+{
+	int r;
+	sc_path_t path;
+	sc_file_t *file;
+	int not_current = 1;
+	size_t len;
+	char *buf;
+
+	if (argc > 1) {
+		puts("Usage: asn1 [file_id]");
+		return -1;
+	}
+
+	// select file
+	if (argc) {
+		if (arg_to_path(argv[0], &path, 1) != 0) {
+			puts("Invalid file path");
+			return -1;
+		}
+		r = sc_select_file(card, &path, &file);
+		if (r) {
+			check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
+			return -1;
+		}
+	} else {
+		path = current_path;
+		file = current_file;
+		not_current = 0;
+	}
+	if (file->type != SC_FILE_TYPE_WORKING_EF) {
+		printf("only working EFs may be read\n");
+		sc_file_free(file);
+		return -1;
+	}
+
+	// read
+	if (file->ef_structure != SC_FILE_EF_TRANSPARENT) {
+		printf("only transparent file type is supported at the moment\n");
+		sc_file_free(file);
+		return -1;
+	}
+	len = file->size;
+	buf = calloc(1, len);
+	if (!buf) die(1);
+	r = sc_read_binary(card, 0, buf, len, 0);
+	if (r < 0) {
+		check_ret(r, SC_AC_OP_READ, "read failed", file);
+		free(buf);
+		return -1;
+	}
+	if (r != len) {
+		printf("expecting %d, got only %d bytes.\n", len, r);
+		free(buf);
+		return -1;
+	}
+
+	// asn1 dump
+	sc_asn1_print_tags(buf, len);
+
+	if (not_current) {
+		sc_file_free(file);
+		r = sc_select_file(card, &current_path, NULL);
+		if (r) {
+			printf("unable to select parent file: %s\n", sc_strerror(r));
+			die(1);
+		}
+	}
+
+	return 0;
+}
+
 static int do_quit(int argc, char **argv)
 {
 	die(0);
@@ -1453,6 +1611,8 @@ static struct command	cmds[] = {
  { "update_record", do_update_record, "update record"			},
  { "update_binary", do_update_binary, "update binary"			},
  { "debug",	do_debug,	"set the debug level"			},
+ { "apdu",	do_apdu,	"send a custom apdu command"		},
+ { "asn1",	do_asn1,	"decode an asn1 file"			},
  { NULL, NULL, NULL }
 };
 
