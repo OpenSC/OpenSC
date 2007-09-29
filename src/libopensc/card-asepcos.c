@@ -212,8 +212,10 @@ static int asepcos_tlvpath_to_scpath(sc_path_t *out, const u8 *in, size_t in_len
 	memset(out, 0, sizeof(sc_path_t));
 
 	while (len != 0) {
-		if (len < 4 || in[0] != 0x8b || in[1] != 0x02)
+		if (len < 4)
 			return SC_ERROR_INTERNAL;
+		if (in[0] != 0x8b || in[1] != 0x02)
+			return SC_ERROR_INVALID_ASN1_OBJECT;
 		/* append file id to the path */
 		r = sc_append_path_id(out, &in[2], 2);
 		if (r != SC_SUCCESS)
@@ -268,9 +270,13 @@ static int asepcos_select_file(sc_card_t *card, const sc_path_t *in_path,
 		sc_path_t tpath;
 
 		r = asepcos_get_current_df_path(card, &tpath);
-		if (r != SC_SUCCESS)
+		/* workaround: as opensc can't handle paths with file id
+		 * and application names in it let's ignore the current
+		 * DF if the returned path contains a unsupported tag.
+		 */
+		if (r != SC_ERROR_INVALID_ASN1_OBJECT && r != SC_SUCCESS)
 			return r;
-		if (sc_compare_path_prefix(&tpath, &npath) != 0) {
+		if (r == SC_SUCCESS && sc_compare_path_prefix(&tpath, &npath) != 0) {
 			/* remove the currently selected DF from the path */
 			if (tpath.len == npath.len) {
 				/* we are already in the requested DF */
