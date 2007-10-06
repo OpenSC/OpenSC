@@ -65,6 +65,8 @@ akis_init(sc_card_t *card)
 	card->max_pin_len = 16;
 	if (card->max_recv_size > 244)
 		card->max_recv_size = 244;
+	if (card->max_send_size > 244)
+		card->max_send_size = 244;
 
 	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
         _sc_card_add_rsa_alg(card, 2048, flags, 0);
