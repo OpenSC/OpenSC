@@ -125,7 +125,7 @@ static int setcos_match_card(sc_card_t *card)
 				card->type = SC_CARD_TYPE_SETCOS_EID_V2_1;
 			else {
 				buf[sizeof(buf) - 1] = '\0';
-				sc_error(card->ctx, "SetCOS EID applet %s is not supported", (char *) buf);
+				sc_debug(card->ctx, "SetCOS EID applet %s is not supported", (char *) buf);
 				return 0;
 			}
 			return 1;
