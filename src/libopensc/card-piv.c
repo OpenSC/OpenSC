@@ -47,6 +47,7 @@ typedef struct piv_private_data {
 	sc_file_t *aid_file;
 	int enumtag;
 	int  selected_obj; /* The index into the piv_objects last selected */
+	int  return_only_cert; /* return the cert from the object */
 	int  eof;
 	size_t max_recv_size; /* saved size, need to lie to pkcs15_read_file */
 	size_t max_send_size; 
@@ -118,19 +119,23 @@ struct piv_aid {
  
 /* The Generic entry should be the "A0 00 00 03 08 00 00 01 00 "
  * NIST published  this on 10/6/2005   
+ * 800-73-2 is due for release 11/2007. 
+ * 800-73-2 Part 1 now refers to version "02 00"
+ * i.e. "A0 00 00 03 08 00 00 01 00 02 00". 
+ * but we dont need the version number. but could get it from the PIX. 
  */ 
 static struct piv_aid piv_aids[] = {
 	{SC_CARD_TYPE_PIV_II_GENERIC, 
-		 9, 11, (u8 *) "\xA0\x00\x00\x03\x08\x00\x00\x10\x00\x01\x00" },
+		 9, 9, (u8 *) "\xA0\x00\x00\x03\x08\x00\x00\x10\x00" },
 	{0,  9, 0, NULL }
 };
 
 enum {
 	PIV_OBJ_CCC = 1,
 	PIV_OBJ_CHUI,
+	PIV_OBJ_UCHUI,  /* new with 800-73-2 */
 	PIV_OBJ_X509_PIV_AUTH,
-	PIV_OBJ_CHF1,
-	PIV_OBJ_CHF2,
+	PIV_OBJ_CHF,
 	PIV_OBJ_PI,
 	PIV_OBJ_CHFI,
 	PIV_OBJ_X509_DS,
@@ -155,28 +160,31 @@ struct piv_object {
 	size_t maxlen;		/* advisory, used with select_file, but we can read larger */
 };
 
+/* maxlen values are advisory only, we can read larger if needed. */
 static struct piv_object piv_objects[] = { 
 	{ PIV_OBJ_CCC, "Card Capability Container", 
-			"2.16.840.1.101.3.7.1.219.0", 3, "\x5F\xC1\x07", "\xDB\x00", 266},
+			"2.16.840.1.101.3.7.1.219.0", 3, "\x5F\xC1\x07", "\xDB\x00", 266+30+3},
 	{ PIV_OBJ_CHUI, "Card Holder Unique Identifier", 
-			"2.16.840.1.101.3.7.2.48.0", 3, "\x5F\xC1\x02", "\x30\x00", 3379}, /* Updated per SP800-73-1 Errata */
+			"2.16.840.1.101.3.7.2.48.0", 3, "\x5F\xC1\x02", "\x30\x00", 3392+20+4},
+	{ PIV_OBJ_CHUI, "Unsigned Card Holder Unique Identifier", 
+			"2.16.840.1.101.3.7.2.48.1", 3, "\x5F\xC1\x04", "\x30\x10", 67+14+4}, 
 	{ PIV_OBJ_X509_PIV_AUTH, "X.509 Certificate for PIV Authentication", 
-			"2.16.840.1.101.3.7.2.1.1", 3, "\x5F\xC1\x05", "\x01\x01", 1856+4+400} , 
+			"2.16.840.1.101.3.7.2.1.1", 3, "\x5F\xC1\x05", "\x01\x01", 1895+9+4+400} , 
 		/* extra 400 is hack for MultOS card which returns 2200 bytes  */
-	{ PIV_OBJ_CHF1, "Card Holder Fingerprints",
-			"2.16.840.1.101.3.7.2.96.16", 3, "\x5F\xC1\x03", "\x60\x10", 7768},
+	{ PIV_OBJ_CHF, "Card Holder Fingerprints",
+			"2.16.840.1.101.3.7.2.96.16", 3, "\x5F\xC1\x03", "\x60\x10", 4000+4+4},
 	{ PIV_OBJ_PI, "Printed Information", 
-			"2.16.840.1.101.3.7.2.48.1", 3, "\x5F\xC1\x09", "\x30\x01", 106},
+			"2.16.840.1.101.3.7.2.48.1", 3, "\x5F\xC1\x09", "\x30\x01", 146+18+3},
 	{ PIV_OBJ_CHFI, "Card Holder Facial Image",
-			"2.16.840.1.101.3.7.2.96.48", 3, "\x5F\xC1\x08", "\x60\x30", 12704},
+			"2.16.840.1.101.3.7.2.96.48", 3, "\x5F\xC1\x08", "\x60\x30", 12704+5+4},
 	{ PIV_OBJ_X509_DS, "X.509 Certificate for Digital Signature",
-			"2.16.840.1.101.3.7.2.1.0", 3, "\x5F\xC1\x0A", "\x01\x00", 1856+4},
+			"2.16.840.1.101.3.7.2.1.0", 3, "\x5F\xC1\x0A", "\x01\x00", 1895+9+4+400},
 	{ PIV_OBJ_X509_KM, "X.509 Certificate for Key Management",
-			"2.16.840.1.101.3.7.2.1.2", 3, "\x5F\xC1\x0B", "\x01\x02", 1856+4},
+			"2.16.840.1.101.3.7.2.1.2", 3, "\x5F\xC1\x0B", "\x01\x02", 1895+9+4+400},
 	{ PIV_OBJ_X509_CARD_AUTH, "X.509 Certificate for Card Authentication",
-			"2.16.840.1.101.3.7.2.5.0", 3, "\x5F\xC1\x01", "\x05\x00", 1856+4}, 
+			"2.16.840.1.101.3.7.2.5.0", 3, "\x5F\xC1\x01", "\x05\x00", 1895+9+4+400}, 
 	{ PIV_OBJ_SEC_OBJ, "Security Object", 
-			"2.16.840.1.101.3.7.2.144.0", 3, "\x5F\xC1\x06", "\x90\x00", 1000}, 
+			"2.16.840.1.101.3.7.2.144.0", 3, "\x5F\xC1\x06", "\x90\x00", 1000+30+4+4}, 
 /* following not standard , to be used by piv-tool only for testing */
 	{ PIV_OBJ_9B03, "3DES-ECB ADM", 
 			"2.16.840.1.101.3.7.2.9999.3", 2, "\x9B\x03", "\x9B\x03", 24},
@@ -186,13 +194,13 @@ static struct piv_object piv_objects[] = {
 	 * but still use the "9x06" name.
 	 */
 	{ PIV_OBJ_9A06, "RSA 9A Pub key from last genkey",
-			"2.16.840.1.101.3.7.2.9999.20", 2, "\x9A\x06", "\x9A\x06", 512},
+			"2.16.840.1.101.3.7.2.9999.20", 2, "\x9A\x06", "\x9A\x06", 2048},
 	{ PIV_OBJ_9C06, "Pub 9C key from last genkey",
-			"2.16.840.1.101.3.7.2.9999.21", 2, "\x9C\x06", "\x9C\x06", 512},
+			"2.16.840.1.101.3.7.2.9999.21", 2, "\x9C\x06", "\x9C\x06", 2048},
 	{ PIV_OBJ_9D06, "Pub 9D key from last genkey",
-			"2.16.840.1.101.3.7.2.9999.22", 2, "\x9D\x06", "\x9D\x06", 512},
+			"2.16.840.1.101.3.7.2.9999.22", 2, "\x9D\x06", "\x9D\x06", 2048},
 	{ PIV_OBJ_9E06, "Pub 9E key from last genkey",
-			"2.16.840.1.101.3.7.2.9999.23", 2, "\x9E\x06", "\x9E\x06", 512},
+			"2.16.840.1.101.3.7.2.9999.23", 2, "\x9E\x06", "\x9E\x06", 2048},
 	{ 0, "", "", 0, "", "", 0}
 };
 	
@@ -525,8 +533,9 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 				sc_debug(card->ctx,"found PIX");
 		 
 				/* early cards returned full AID, rather then just the pix */
-				for (i = 0; piv_aids[i].len_short != 0; i++) {
-					if ((pixlen >= 6 && memcmp(pix, piv_aids[i].value + 5, 6) == 0)
+				for (i = 0; piv_aids[i].len_long != 0; i++) {
+					if ((pixlen >= 6 && memcmp(pix, piv_aids[i].value + 5, 
+									piv_aids[i].len_long - 5 ) == 0)
 						 || ((pixlen >=  piv_aids[i].len_short &&
 							memcmp(pix, piv_aids[i].value,
 							piv_aids[i].len_short) == 0))) {
@@ -619,10 +628,10 @@ static int piv_get_data(sc_card_t * card, unsigned int enumtag,
 	 * the PIV card will only recover the public key during a generate
 	 * key operation. If the piv-tool was used it would save this
 	 * as an OpenSSL EVP_KEY PEM using the -o parameter
-	 * we will look to see there as a file and load it
+	 * we will look to see if there is a file then load it
 	 * this is ugly, and maybe the pkcs15 cache would work
 	 * but we only need it to get the OpenSSL req with engine to work.
-	 * Each of the 3 keys with certs has its own file. 
+	 * Each of the 4 keys with certs has its own file. 
 	 */
 
 	switch (piv_objects[enumtag].enumtag) {
@@ -723,6 +732,7 @@ static int piv_handle_certificate_data(sc_card_t *card,
 	piv_cache_item* item;
 	/* get the certificate out */
 	tag = (u8 *) sc_asn1_find_tag(card->ctx, data, length, 0x71, &taglen);
+	/* 800-72-1 not clear if this is 80 or 01 Sent comment to NIST for 800-72-2 */
 	if (tag && (((*tag) & 0x80) || ((*tag) & 0x01))) {
 		compressed = 1;
 	}
@@ -880,7 +890,10 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 			case PIV_OBJ_X509_DS:
 			case PIV_OBJ_X509_KM:
 			case PIV_OBJ_X509_CARD_AUTH:
-				r = piv_handle_certificate_data(card, enumtag, idx, buf, count, body, bodylen);
+				if (priv->return_only_cert)
+					r = piv_handle_certificate_data(card, enumtag, idx, buf, count, body, bodylen);
+				else
+					r = piv_handle_data(card, enumtag, idx, buf, count, rbuf, rbuflen);
 				break;
 			case PIV_OBJ_9A06:
 			case PIV_OBJ_9C06:
@@ -1075,24 +1088,36 @@ err:
 
 /*
  * will only deal with 3des for now
+ * assumptions include:
+ *  size of encrypted data is same as unencrypted
+ *  challenges, nonces etc  from card are less then 114 (keeps tags simple)
  */
 
 static int piv_general_mutual_authenticate(sc_card_t *card, 
 	unsigned int key_ref, unsigned int alg_id)
 {
 	int r;
-	size_t N;
-	int locked = 0, outl;
+	int N;
+	int locked = 0, outl, outl2;
 	u8  *rbuf = NULL;
 	size_t rbuflen;
 	u8 nonce[8] = {0xDE, 0xE0, 0xDE, 0xE1, 0xDE, 0xE2, 0xDE, 0xE3};
 	u8 sbuf[255], key[24];
 	u8 *p, *q;
 	EVP_CIPHER_CTX ctx;
+	const EVP_CIPHER *cipher;
 
 	SC_FUNC_CALLED(card->ctx,1);
 
 	EVP_CIPHER_CTX_init(&ctx);
+
+	switch (alg_id) {
+		case 1: cipher=EVP_des_ede3_ecb(); break;
+		case 2: cipher=EVP_des_ede3_cbc(); break;
+		case 3: cipher=EVP_des_ede3_ecb(); break;
+		case 4: cipher=EVP_des_ede3_cbc(); break;
+		default: cipher=EVP_des_ede3_ecb(); break;
+	}
 
 	r = piv_get_3des_key(card, key);
 	if (r != SC_SUCCESS)
@@ -1123,18 +1148,32 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 		r =  SC_ERROR_INVALID_DATA;
 		goto err;
 	}
-	N = *(rbuf + 3); /* assuming 2 * N + 6 < 128  and N = 8 */
+	N = *(rbuf + 3); /* assuming N + sizeof(nonce) + 6 < 128 */
 
-	/* needs work, as challenge may be other then 8 bytes */
 	/* prepare the response */ 
 	p = sbuf;
 	*p++ = 0x7c;
-	*p++ = 2 * N + 4;
+	*p++ = N + sizeof(nonce)+ 4;
 	*p++ = 0x80;
 	*p++ = (u8)N; 
 	
-	EVP_DecryptInit_ex(&ctx, EVP_des_ede3(), NULL, key, NULL);
-	if (!EVP_DecryptUpdate(&ctx, p, &outl, q, 8)) {
+	/* decrypt the data from the card */
+	if (!EVP_DecryptInit(&ctx, cipher, key, NULL)) {
+		/* may fail if des parity of key is wrong. depends on OpenSSL options */
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	EVP_CIPHER_CTX_set_padding(&ctx,0);
+	if (!EVP_DecryptUpdate(&ctx, p, &outl, q, N)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	if(!EVP_DecryptFinal(&ctx, p+outl, &outl2)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+
+	if (outl+outl2 != N) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1142,9 +1181,9 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	p += N;
 
 	*p++ = 0x81;
-	*p++ = N;
-	memcpy(p, &nonce, N); /* we use a fixed nonce for now */
-	p += N;
+	*p++ = sizeof(nonce);
+	memcpy(p, &nonce, sizeof(nonce)); /* we use a fixed nonce for now */
+	p += sizeof(nonce);
 
 	free(rbuf);
 	rbuf = NULL;
@@ -1159,14 +1198,28 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 		r =  SC_ERROR_INVALID_DATA;
 		goto err;
 	}
+	N = *(rbuf + 3); 
 	
 	p = sbuf;
-	if (!EVP_DecryptUpdate(&ctx, p, &outl, q, 8)) {
+
+	EVP_CIPHER_CTX_cleanup(&ctx);
+	EVP_CIPHER_CTX_init(&ctx);
+
+	if (!EVP_DecryptInit(&ctx, cipher, key, NULL)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	EVP_CIPHER_CTX_set_padding(&ctx,0);
+	if (!EVP_DecryptUpdate(&ctx, p, &outl, q, N)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	if(!EVP_DecryptFinal(&ctx, p+outl, &outl2)) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	
-	if (memcmp(nonce, p, N) != 0) {
+	if (outl+outl2 != sizeof(nonce) || memcmp(nonce, p, sizeof(nonce)) != 0) {
 		sc_debug(card->ctx, "mutual authentication failed, card returned wrong value");
 		r = SC_ERROR_DECRYPT_FAILED;
 		goto err;
@@ -1187,17 +1240,28 @@ static int piv_general_external_authenticate(sc_card_t *card,
 		unsigned int key_ref, unsigned int alg_id)
 {
 	/* unused: piv_private_data_t * priv = PIV_DATA(card); */
-	int r, outl;
+	int r, outl, outl2;
+	int N;
+	int locked = 0;
 	u8  *rbuf = NULL;
 	size_t rbuflen;
 	u8 sbuf[255], key[24];
 	u8 *p, *q;
 	EVP_CIPHER_CTX ctx;
+	const EVP_CIPHER *cipher;
 	
 	SC_FUNC_CALLED(card->ctx,1);
 
 	EVP_CIPHER_CTX_init(&ctx);
 
+	switch (alg_id) {
+		case 1: cipher=EVP_des_ede3_ecb(); break;
+		case 2: cipher=EVP_des_ede3_cbc(); break;
+		case 3: cipher=EVP_des_ede3_ecb(); break;
+		case 4: cipher=EVP_des_ede3_cbc(); break;
+		default: cipher=EVP_des_ede3_ecb(); break;
+	}
+  
 	r = piv_get_3des_key(card, key);
 	if (r != SC_SUCCESS)
 		goto err;
@@ -1205,6 +1269,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
 		goto err;
+	locked = 1;
 
 	p = sbuf;
 	q = rbuf;
@@ -1227,25 +1292,38 @@ static int piv_general_external_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	/* needs work, as challenge may be other then 8 bytes */
+	/* assuming challenge and response are same size  i.e. des3 */
 	p = sbuf;
 	*p++ = 0x7c;
 	*p++ = *(rbuf + 1);
 	*p++ = 0x82;
 	*p++ = *(rbuf + 3);
+	N = *(rbuf + 3); /* assuming 2 * N + 6 < 128 */
 
-	EVP_EncryptInit_ex(&ctx, EVP_des_ede3(), NULL, key, NULL);
-	if (!EVP_EncryptUpdate(&ctx, p, &outl, q, 8)) {
+	if (!EVP_EncryptInit(&ctx, cipher, key, NULL)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	EVP_CIPHER_CTX_set_padding(&ctx,0);
+	if (!EVP_EncryptUpdate(&ctx, p, &outl, q, N)) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}	
-	p += *(rbuf + 3);
+	if(!EVP_EncryptFinal(&ctx, p+outl, &outl2)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	if (outl+outl2 != N) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	p += N;
 	
 	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, NULL, NULL);
 
-	sc_unlock(card);
-
 err:
+	if (locked)
+		sc_unlock(card);
 	EVP_CIPHER_CTX_cleanup(&ctx);
 	sc_mem_clear(key, sizeof(key));
 	if (rbuf)
@@ -1535,13 +1613,19 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 		path += 2;
 		pathlen -= 2;
 	}
-	if (pathlen != 2)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	 
 	i = piv_find_obj_by_containerid(card, path);
 
 	if (i< 0)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_FILE_NOT_FOUND); 
+	
+	/*
+	 * pkcs15 will use a 2 byte path or a 4 byte path 
+	 * with cece added to path to request only the cert from the cert obj 
+	 * PIV "Container ID" is used as the path, and are two bytes long
+	 */
+	priv->return_only_cert = (pathlen == 4 && path[2] == 0xce && path[3] == 0xce);
+	    
 	priv->selected_obj = i;
 	priv->eof = 0;
 
