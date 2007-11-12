@@ -42,7 +42,7 @@ extern int sc_pkcs15emu_postecert_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
 extern int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *p15card,
 					sc_pkcs15emu_opt_t *opts);
-extern int sc_pkcs15emu_gemsafe_init_ex(sc_pkcs15_card_t *p15card,
+extern int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *p15card,
 					sc_pkcs15emu_opt_t *opts);
 extern int sc_pkcs15emu_actalis_init_ex(sc_pkcs15_card_t *p15card,
 					sc_pkcs15emu_opt_t *opts);
@@ -61,7 +61,7 @@ static struct {
 	{ "esteid",	sc_pkcs15emu_esteid_init_ex	},
 	{ "postecert",	sc_pkcs15emu_postecert_init_ex  },
 	{ "PIV-II",     sc_pkcs15emu_piv_init_ex        },
-	{ "gemsafe",	sc_pkcs15emu_gemsafe_init_ex	},
+	{ "gemsafeGPK",	sc_pkcs15emu_gemsafeGPK_init_ex	},
 	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
