@@ -506,7 +506,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 }
 
-int sc_pkcs15emu_gemsafe_init_ex(sc_pkcs15_card_t *p15card,
+int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *p15card,
 				  sc_pkcs15emu_opt_t *opts)
 {
 	sc_card_t   *card = p15card->card;
@@ -515,11 +515,11 @@ int sc_pkcs15emu_gemsafe_init_ex(sc_pkcs15_card_t *p15card,
 	sc_debug(ctx, "Entering %s", __FUNCTION__);
 
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
-		return sc_pkcs15emu_gemsafe_init(p15card);
+		return sc_pkcs15emu_gemsafeGPK_init(p15card);
 	else {
 		int r = gemsafe_detect_card(p15card);
 		if (r)
 			return SC_ERROR_WRONG_CARD;
-		return sc_pkcs15emu_gemsafe_init(p15card);
+		return sc_pkcs15emu_gemsafeGPK_init(p15card);
 	}
 }
