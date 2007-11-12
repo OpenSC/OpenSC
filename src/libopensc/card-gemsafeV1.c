@@ -1,0 +1,681 @@
+/*
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
+
+/* Initially written by David Mattes (david.mattes@boeing.com) */
+ 
+#include "internal.h"
+#include "cardctl.h"
+#include "asn1.h"
+#include <stdlib.h>
+#include <string.h>
+
+static struct sc_card_operations gemsafe_ops;
+static struct sc_card_operations *iso_ops = NULL;
+
+static struct sc_card_driver gemsafe_drv = {
+	"driver for the Gemplus GemSAFE V1 applet",
+	"gemsafeV1",
+	&gemsafe_ops,
+	NULL, 0, NULL
+};
+
+static const char *gemexpresso_atrs[] = {
+	/* standard version    */
+	"3B:7B:94:00:00:80:65:B0:83:01:01:74:83:00:90:00",
+	"3B:6B:00:00:80:65:B0:83:01:01:74:83:00:90:00",
+	/* fips 140 version    */
+	"3B:6B:00:00:80:65:B0:83:01:03:74:83:00:90:00",
+	/* TODO: add more ATRs */
+	"3B:7A:94:00:00:80:65:A2:01:01:01:3D:72:D6:43",
+	NULL
+};
+
+static const u8 gemsafe_def_aid[] = {0xA0, 0x00, 0x00, 0x00, 0x18, 0x0A,
+	0x00, 0x00, 0x01, 0x63, 0x42, 0x00};
+/*
+static const u8 gemsafe_def_aid[] = {0xA0, 0x00, 0x00, 0x00, 0x63, 0x50,
+	0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35};
+*/
+
+typedef struct gemsafe_exdata_st {
+	u8	aid[16];
+	size_t	aid_len;
+} gemsafe_exdata;
+
+static int get_conf_aid(sc_card_t *card, u8 *aid, size_t *len)
+{
+	sc_context_t		*ctx = card->ctx;
+	scconf_block		*conf_block, **blocks;
+	int			i;
+	const char		*str_aid;
+
+	SC_FUNC_CALLED(ctx, 1);
+
+	conf_block = NULL;
+	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+						"card", "gemsafeV1");
+		if (blocks[0] != NULL)
+			conf_block = blocks[0];
+		free(blocks);
+	}
+
+	if (!conf_block) {
+		sc_debug(ctx, "no card specific options configured, trying default AID\n");
+		return SC_ERROR_INTERNAL;
+	}
+
+	str_aid = scconf_get_str(conf_block, "aid", NULL);
+	if (!str_aid) {
+		sc_debug(ctx, "no aid configured, trying default AID\n");
+		return SC_ERROR_INTERNAL;
+	}
+	return sc_hex_to_bin(str_aid, aid, len);
+}
+
+static int gp_select_applet(sc_card_t *card, const u8 *aid, size_t aid_len)
+{
+	int	r;
+	u8	buf[SC_MAX_APDU_BUFFER_SIZE];
+	struct sc_context *ctx = card->ctx;
+	struct sc_apdu    apdu;
+
+	SC_FUNC_CALLED(ctx, 1);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xa4, 0x04, 0x00);
+	apdu.lc      = aid_len;
+	apdu.data    = aid;
+	apdu.datalen = aid_len;
+	apdu.resp    = buf;
+	apdu.le      = 256;
+	apdu.resplen = sizeof(buf);
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r)
+		SC_FUNC_RETURN(ctx, 2, r);
+
+	return SC_SUCCESS;
+}
+
+static int gemsafe_match_card(struct sc_card *card)
+{
+	int i, match = -1;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+  
+	for (i = 0; gemexpresso_atrs[i] != NULL; i++) { 
+		u8 defatr[SC_MAX_ATR_SIZE];
+		size_t len = sizeof(defatr);
+		const char *atrp = gemexpresso_atrs[i];
+      
+		if (sc_hex_to_bin(atrp, defatr, &len))
+			continue;
+		if (len != card->atr_len)
+			continue;
+		if (memcmp(card->atr, defatr, len) != 0)
+			continue;
+		match = i + 1;
+		break;
+    	}
+	if (match == -1)
+		return 0;
+  
+	return 1;
+}
+
+static int gemsafe_init(struct sc_card *card)
+{
+	int	r;
+	gemsafe_exdata *exdata = NULL;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	card->name = "GemSAFE V1";
+	card->cla  = 0x00;
+
+	exdata = (gemsafe_exdata *)calloc(1, sizeof(gemsafe_exdata));
+	if (!exdata)
+		return SC_ERROR_OUT_OF_MEMORY;
+	exdata->aid_len = sizeof(exdata->aid);
+	/* try to get a AID from the config file */
+	r = get_conf_aid(card, exdata->aid, &exdata->aid_len);
+	if (r < 0) {
+		/* failed, use default value */
+		memcpy(exdata->aid, gemsafe_def_aid, sizeof(gemsafe_def_aid));
+		exdata->aid_len = sizeof(gemsafe_def_aid);
+	}
+
+	/* increase lock_count here to prevent sc_unlock to select
+	 * applet twice in gp_select_applet */
+	card->lock_count++;
+	/* SELECT applet */
+	r = gp_select_applet(card, exdata->aid, exdata->aid_len);
+	if (r < 0) {
+		free(exdata);
+		sc_debug(card->ctx, "applet selection failed\n");
+		return SC_ERROR_INTERNAL;
+	}
+	card->lock_count--;
+
+	/* set the supported algorithm */
+	r = gemsafe_match_card(card);
+	if (r > 0) {
+		unsigned long flags;
+
+		flags  = SC_ALGORITHM_RSA_PAD_PKCS1;
+		flags |= SC_ALGORITHM_RSA_PAD_ISO9796;
+		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
+
+		_sc_card_add_rsa_alg(card,  512, flags, 0);
+		_sc_card_add_rsa_alg(card,  768, flags, 0);
+		_sc_card_add_rsa_alg(card, 1024, flags, 0);
+		_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	}
+
+	card->drv_data = exdata;
+
+	return 0;
+}
+
+static int gemsafe_finish(sc_card_t *card)
+{
+	gemsafe_exdata *exdata = (gemsafe_exdata *)card->drv_data;
+
+	if (exdata)
+		free(exdata);
+	return SC_SUCCESS;
+}
+
+static int gemsafe_select_file(struct sc_card *card, const struct sc_path *path,
+	   struct sc_file **file_out)
+{
+	/* so far just call the iso select file (but this will change) */
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	return iso_ops->select_file(card, path, file_out);
+}
+
+static int gemsafe_sc2acl(sc_file_t *file, unsigned ops, u8 sc_byte)
+{
+	int r;
+	unsigned int meth = 0;
+
+	if (sc_byte == 0xff) {
+		r = sc_file_add_acl_entry(file, ops, SC_AC_NEVER, 0);
+		return r;
+	}
+	if (sc_byte == 0x00) {
+		r = sc_file_add_acl_entry(file, ops, SC_AC_NONE, 0);
+		return r;
+	}
+
+	/* XXX: OR combination of access rights are currently not supported
+	 * hence ignored */
+	if (sc_byte & 0x40)
+		meth |= SC_AC_PRO;
+	if (sc_byte & 0x20)
+		meth |= SC_AC_AUT | SC_AC_TERM;
+	if (sc_byte & 0x10)
+		meth |= SC_AC_CHV;
+	
+	return sc_file_add_acl_entry(file, ops, meth, sc_byte & 0x0f);
+}
+
+static int gemsafe_setacl(sc_card_t *card, sc_file_t *file, const u8 *data,
+	int is_df)
+{
+	int       r;
+	u8        cond;
+	const u8 *p = data + 1;
+	struct sc_context *ctx = card->ctx;
+
+	if (is_df) {
+		if (*data & 0x04)	/* CREATE DF */
+			cond = *p++;
+		else
+			cond = 0xff;
+		if(ctx->debug >= 3)
+			sc_debug(ctx, "DF security byte CREATE DF: %02x\n", cond);
+		r = gemsafe_sc2acl(file, SC_AC_OP_CREATE, cond);
+		if (r < 0)
+			return r;
+		if (*data & 0x02)	/* CREATE EF */
+			cond = *p;
+		else
+			cond = 0xff;
+		if(ctx->debug >= 3)
+			sc_debug(ctx, "DF security byte CREATE EF: %02x\n", cond);
+		/* XXX: opensc doesn't currently separate access conditions for
+		 * CREATE EF and CREATE DF, this should be changed */
+		r = gemsafe_sc2acl(file, SC_AC_OP_CREATE, cond);
+		if (r < 0)
+			return r;
+	} else {
+		/* XXX: ACTIVATE FILE and DEACTIVATE FILE ac are currently not
+		 * supported => ignore them */
+		if (*data & 0x02)	/* UPDATE BINARY, ERASE BINARY */
+			cond = *p++;
+		else
+			cond = 0xff;
+		if(ctx->debug >= 3)
+			sc_debug(ctx, "EF security byte UPDATE/ERASE BINARY: %02x\n", cond);
+		r = gemsafe_sc2acl(file, SC_AC_OP_UPDATE, cond);
+		if (r < 0)
+			return r;
+		r = gemsafe_sc2acl(file, SC_AC_OP_WRITE, cond);
+		if (r < 0)
+			return r;
+		r = gemsafe_sc2acl(file, SC_AC_OP_ERASE, cond);
+		if (r < 0)
+			return r;
+		if (*data & 0x01)	/* READ BINARY */
+			cond = *p;
+		else
+			cond = 0xff;
+		if(ctx->debug >= 3)
+			sc_debug(ctx, "EF security byte READ BINARY: %02x\n", cond);
+		r = gemsafe_sc2acl(file, SC_AC_OP_READ, cond);
+		if (r < 0)
+			return r;
+	}
+
+	return SC_SUCCESS;
+}
+
+static int gemsafe_process_fci(struct sc_card *card, struct sc_file *file,
+	const u8 *buf, size_t len)
+{
+	int        r;
+	size_t     tlen;
+	const u8   *tag = NULL, *p = buf;
+	const char *type;
+	struct sc_context *ctx = card->ctx;
+
+	SC_FUNC_CALLED(ctx, 1);
+
+	r = iso_ops->process_fci(card, file, buf, len);
+	if (r < 0)
+		return r;
+	if (ctx->debug >= 3)
+		sc_debug(ctx, "processing GemSAFE V1 specific FCI information\n");
+
+
+	tag = sc_asn1_find_tag(ctx, p, len, 0x82, &tlen);
+	if (!tag) {
+		/* no FDB => we have a DF */
+		type = "DF";
+		file->type = SC_FILE_TYPE_DF;
+	} else {
+		type = "EF";
+		file->type = SC_FILE_TYPE_WORKING_EF;
+	}
+
+	if (ctx->debug >= 3)
+		sc_debug(ctx, "file type: %s\n", type);
+
+	tag = sc_asn1_find_tag(ctx, p, len, 0x8C, &tlen);
+	if (tag) {
+		r = gemsafe_setacl(card, file, tag, type == "DF" ? 1 : 0);
+		if (r < 0) {
+			sc_debug(ctx, "unable to set ACL\n");
+			return SC_ERROR_INTERNAL;
+		}
+	} else
+		sc_debug(ctx, "error: AM and SC bytes missing\n");
+
+	return SC_SUCCESS;
+}
+
+static u8 gemsafe_flags2algref(const struct sc_security_env *env)
+{
+	u8 ret = 0;
+
+	if (env->operation == SC_SEC_OPERATION_SIGN) {
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+			ret = 0x12;
+		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_ISO9796)
+			ret = 0x11;
+	} else if (env->operation == SC_SEC_OPERATION_DECIPHER) {
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+			ret = 0x13;
+	}
+
+	return ret;
+}
+
+static int gemsafe_restore_security_env(struct sc_card *card, int se_num)
+{
+	int r;
+	struct sc_apdu apdu;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0x73, (u8) se_num);
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+}
+
+
+static int gemsafe_set_security_env(struct sc_card *card,
+				    const struct sc_security_env *env,
+				    int se_num)
+{
+	int r;
+	struct sc_apdu apdu;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE], *p = sbuf;
+	u8 alg_ref = 0;
+	struct sc_context *ctx = card->ctx;
+
+	SC_FUNC_CALLED(ctx, 1);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
+	switch (env->operation) {
+	case SC_SEC_OPERATION_DECIPHER:
+		apdu.p2 = 0xB8;
+		break;
+	case SC_SEC_OPERATION_SIGN:
+		apdu.p2 = 0xB6;
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	apdu.le = 0;
+
+	/* first step: set the algorithm reference */
+	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT)
+		alg_ref = env->algorithm_ref & 0xFF;
+	else
+		alg_ref = gemsafe_flags2algref(env);
+	if (alg_ref) {
+			/* set the algorithm reference */
+		*p++ = 0x80;
+		*p++ = 0x01;
+		*p++ = alg_ref;
+	} else
+		sc_debug(ctx, "unknown algorithm flags '%x'\n", env->algorithm_flags);
+	/* second step: set the key reference */
+	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+		/* set the key reference */
+		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
+			*p++ = 0x83;
+		else
+			*p++ = 0x84;
+		*p++ = env->key_ref_len;
+		memcpy(p, env->key_ref, env->key_ref_len);
+		p += env->key_ref_len;
+	}
+	
+
+	r = p - sbuf;
+	apdu.lc = r;
+	apdu.datalen = r;
+	apdu.data = sbuf;
+	apdu.resplen = 0;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+}
+
+static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
+	size_t data_len, u8 * out, size_t outlen)
+{
+	int r;
+	struct sc_apdu apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_context_t *ctx = card->ctx;
+
+	SC_FUNC_CALLED(ctx, 1);
+
+	if (data_len > 36) {
+		sc_debug(ctx, "error: input data too long: %lu bytes\n", data_len);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0xAC);
+	apdu.cla |= 0x80;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le      = 256;
+	/* we sign a digestInfo object => tag 0x90 */
+	sbuf[0] = 0x90;
+	sbuf[1] = (u8)data_len;
+	memcpy(sbuf + 2, data, data_len);
+	apdu.data = sbuf;
+	apdu.lc   = data_len + 2;
+	apdu.datalen = data_len + 2;
+	apdu.sensitive = 1;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+
+		memcpy(out, apdu.resp, len);
+		SC_FUNC_RETURN(card->ctx, 4, len);
+	}
+	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+}
+
+static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
+	size_t crgram_len, u8 *out, size_t outlen)
+{
+	int r;
+	struct sc_apdu apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_context_t *ctx = card->ctx;
+
+	SC_FUNC_CALLED(ctx, 1);
+	if (crgram_len > 255)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x84);
+	apdu.cla |= 0x80;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le      = crgram_len;
+	apdu.sensitive = 1;
+	
+	apdu.data = crgram;
+	apdu.lc   = crgram_len;
+	apdu.datalen = crgram_len;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+
+		memcpy(out, apdu.resp, len);
+		SC_FUNC_RETURN(card->ctx, 2, len);
+	}
+	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+}
+
+static int gemsafe_build_pin_apdu(struct sc_card *card,
+		struct sc_apdu *apdu,
+		struct sc_pin_cmd_data *data)
+{
+	static u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int r, len = 0, pad = 0, use_pin_pad = 0, ins, p1 = 0;
+	
+	switch (data->pin_type) {
+	case SC_AC_CHV:
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	if (data->flags & SC_PIN_CMD_NEED_PADDING)
+		pad = 1;
+	if (data->flags & SC_PIN_CMD_USE_PINPAD)
+		use_pin_pad = 1;
+
+	data->pin1.offset = 5;
+
+	switch (data->cmd) {
+	case SC_PIN_CMD_VERIFY:
+		ins = 0x20;
+		if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
+			return r;
+		len = r;
+		break;
+	case SC_PIN_CMD_CHANGE:
+		ins = 0x24;
+		if (data->pin1.len != 0 || use_pin_pad) {
+			if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
+				return r;
+			len += r;
+		} else {
+			/* implicit test */
+			p1 = 1;
+		}
+
+		data->pin2.offset = data->pin1.offset + len;
+		if ((r = sc_build_pin(sbuf+len, sizeof(sbuf)-len, &data->pin2, pad)) < 0)
+			return r;
+		len += r;
+		break;
+	case SC_PIN_CMD_UNBLOCK:
+		ins = 0x2C;
+		if (data->pin1.len != 0 || use_pin_pad) {
+			if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
+				return r;
+			len += r;
+		} else {
+			p1 |= 0x02;
+		}
+
+		if (data->pin2.len != 0 || use_pin_pad) {
+			data->pin2.offset = data->pin1.offset + len;
+			if ((r = sc_build_pin(sbuf+len, sizeof(sbuf)-len, &data->pin2, pad)) < 0)
+				return r;
+			len += r;
+		} else {
+			p1 |= 0x01;
+		}
+		break;
+	default:
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	sc_format_apdu(card, apdu, SC_APDU_CASE_3_SHORT,
+				ins, p1, data->pin_reference);
+
+	apdu->lc = len;
+	apdu->datalen = len;
+	apdu->data = sbuf;
+	apdu->resplen = 0;
+	apdu->sensitive = 1;
+
+	return 0;
+}
+
+static int gemsafe_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
+			   int *tries_left)
+{
+	struct sc_apdu local_apdu, *apdu;
+	int r;
+
+	if (tries_left)
+		*tries_left = -1;
+
+	/* See if we've been called from another card driver, which is
+	 * passing an APDU to us (this allows to write card drivers
+	 * whose PIN functions behave "mostly like ISO" except in some
+	 * special circumstances.
+	 */
+	if (data->apdu == NULL) {
+		r = gemsafe_build_pin_apdu(card, &local_apdu, data);
+		if (r < 0)
+			return r;
+		data->apdu = &local_apdu;
+	}
+	apdu = data->apdu;
+
+	if (!(data->flags & SC_PIN_CMD_USE_PINPAD)) {
+		/* Transmit the APDU to the card */
+		r = sc_transmit_apdu(card, apdu);
+
+		/* Clear the buffer - it may contain pins */
+		memset((void *) apdu->data, 0, apdu->datalen);
+	} else {
+		/* Call the reader driver to collect
+		 * the PIN and pass on the APDU to the card */
+		if (data->pin1.offset == 0) {
+			sc_error(card->ctx,
+				"Card driver didn't set PIN offset");
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
+		if (card->reader
+		 && card->reader->ops
+		 && card->reader->ops->perform_verify) {
+			r = card->reader->ops->perform_verify(card->reader,
+					card->slot,
+					data);
+			/* sw1/sw2 filled in by reader driver */
+		} else {
+			sc_error(card->ctx,
+				"Card reader driver does not support "
+				"PIN entry through reader key pad");
+			r = SC_ERROR_NOT_SUPPORTED;
+		}
+	}
+
+	/* Don't pass references to local variables up to the caller. */
+	if (data->apdu == &local_apdu)
+		data->apdu = NULL;
+
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu->sw1 == 0x63) {
+		if ((apdu->sw2 & 0xF0) == 0xC0 && tries_left != NULL)
+			*tries_left = apdu->sw2 & 0x0F;
+		return SC_ERROR_PIN_CODE_INCORRECT;
+	}
+	return sc_check_sw(card, apdu->sw1, apdu->sw2);
+}
+
+static struct sc_card_driver *sc_get_driver(void)
+{
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	if (!iso_ops)
+		iso_ops = iso_drv->ops;
+	/* use the standard iso operations as default */
+	gemsafe_ops = *iso_drv->ops;
+	/* gemsafe specfic functions */
+	gemsafe_ops.match_card	= gemsafe_match_card;
+	gemsafe_ops.init	= gemsafe_init;
+	gemsafe_ops.finish	= gemsafe_finish;
+	gemsafe_ops.select_file	= gemsafe_select_file;
+	gemsafe_ops.restore_security_env = gemsafe_restore_security_env;
+	gemsafe_ops.set_security_env     = gemsafe_set_security_env;
+	gemsafe_ops.decipher             = gemsafe_decipher;
+	gemsafe_ops.compute_signature    = gemsafe_compute_signature;
+	gemsafe_ops.process_fci	= gemsafe_process_fci;
+	gemsafe_ops.pin_cmd		 = gemsafe_pin_cmd;
+
+	return &gemsafe_drv;
+}
+
+struct sc_card_driver *sc_get_gemsafeV1_driver(void)
+{
+	return sc_get_driver();
+}
+

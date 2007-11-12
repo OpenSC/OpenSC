@@ -20,6 +20,7 @@ libopensc_la_SOURCES = \
 	pkcs15.c pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \
 	pkcs15-prkey.c pkcs15-pubkey.c pkcs15-sec.c \
 	pkcs15-wrap.c pkcs15-algo.c pkcs15-cache.c pkcs15-syn.c \
+	pkcs15-gemsafeV1.c \
 	\
 	emv.c muscle.c muscle-filesystem.c \
 	\
@@ -30,7 +31,7 @@ libopensc_la_SOURCES = \
 	card-mcrd.c card-starcos.c card-openpgp.c card-jcop.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
 	card-incrypto34.c card-piv.c card-muscle.c card-acos5.c \
-	card-asepcos.c card-akis.c\
+	card-asepcos.c card-akis.c card-gemsafeV1.c \
 	\
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
