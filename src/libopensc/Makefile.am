@@ -33,7 +33,7 @@ libopensc_la_SOURCES = \
 	card-asepcos.c card-akis.c\
 	\
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
-	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafe.c \
+	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
 	compression.c p15card-helper.c
 libopensc_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
