@@ -246,10 +246,6 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 	    return SC_ERROR_INTERNAL;
     strcpy(p15card->manufacturer_id, MANU_ID);
 
-    /* Add RSA algorithm */
-    card->algorithm_count = 0;
-    _sc_card_add_rsa_alg( card, 1024, SC_ALGORITHM_RSA_PAD_PKCS1, 0);
-
     /* set certs */
     fprintf(stderr, "%s: Setting certificate\n", fn_name);
     for (i = 0; gemsafe_cert[i].label; i++) {
