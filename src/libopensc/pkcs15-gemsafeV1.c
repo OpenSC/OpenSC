@@ -420,8 +420,6 @@ sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
         
 	if (path)
 		info->path = *path;     
-	if (type == SC_PKCS15_PIN_TYPE_BCD)
-		info->stored_length /= 2;
                 
 	return sc_pkcs15emu_add_object(p15card,
 	                               SC_PKCS15_TYPE_AUTH_PIN,
