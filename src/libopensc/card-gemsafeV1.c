@@ -15,7 +15,7 @@
 */
 
 /* Initially written by David Mattes (david.mattes@boeing.com) */
- 
+
 #include "internal.h"
 #include "cardctl.h"
 #include "asn1.h"
@@ -117,12 +117,12 @@ static int gemsafe_match_card(struct sc_card *card)
 	int i, match = -1;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-  
-	for (i = 0; gemexpresso_atrs[i] != NULL; i++) { 
+
+	for (i = 0; gemexpresso_atrs[i] != NULL; i++) {
 		u8 defatr[SC_MAX_ATR_SIZE];
 		size_t len = sizeof(defatr);
 		const char *atrp = gemexpresso_atrs[i];
-      
+
 		if (sc_hex_to_bin(atrp, defatr, &len))
 			continue;
 		if (len != card->atr_len)
@@ -134,7 +134,7 @@ static int gemsafe_match_card(struct sc_card *card)
     	}
 	if (match == -1)
 		return 0;
-  
+
 	return 1;
 }
 
@@ -232,7 +232,7 @@ static int gemsafe_sc2acl(sc_file_t *file, unsigned ops, u8 sc_byte)
 		meth |= SC_AC_AUT | SC_AC_TERM;
 	if (sc_byte & 0x10)
 		meth |= SC_AC_CHV;
-	
+
 	return sc_file_add_acl_entry(file, ops, meth, sc_byte & 0x0f);
 }
 
@@ -422,7 +422,7 @@ static int gemsafe_set_security_env(struct sc_card *card,
 		memcpy(p, env->key_ref, env->key_ref_len);
 		p += env->key_ref_len;
 	}
-	
+
 
 	r = p - sbuf;
 	apdu.lc = r;
@@ -494,7 +494,7 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 	apdu.resplen = sizeof(rbuf);
 	apdu.le      = crgram_len;
 	apdu.sensitive = 1;
-	
+
 	apdu.data = crgram;
 	apdu.lc   = crgram_len;
 	apdu.datalen = crgram_len;
@@ -515,7 +515,7 @@ static int gemsafe_build_pin_apdu(struct sc_card *card,
 {
 	static u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r, len = 0, pad = 0, use_pin_pad = 0, ins, p1 = 0;
-	
+
 	switch (data->pin_type) {
 	case SC_AC_CHV:
 		break;

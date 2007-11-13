@@ -15,7 +15,7 @@
 */
 
 /* Initially written by David Mattes (david.mattes@boeing.com) */
- 
+
 #include "internal.h"
 #include "pkcs15.h"
 #include <stdlib.h>
@@ -72,16 +72,16 @@ typedef struct pdata_st {
 	int         type;
 	unsigned int maxlen;
 	unsigned int minlen;
-	int         flags;	
+	int         flags;
 	int         tries_left;
 	const char  pad_char;
 	int         obj_flags;
-} pindata;  
+} pindata;
 
 const pindata gemsafe_pin[] = {
 	{ "01", "DS pin", NULL, 0x01, SC_PKCS15_PIN_TYPE_BCD,
-	  16, 6, SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_LOCAL, 
-	  3, 0xFF, 
+	  16, 6, SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_LOCAL,
+	  3, 0xFF,
 	  SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
 	{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
@@ -132,7 +132,7 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path)
 	/* Apparently, the Applet max read "quanta" is 248 bytes */
 	/* Initial read */
 	r = sc_read_binary(card, offset, ibuf, 248, 0);
-	if (r < 0)	
+	if (r < 0)
 		return 0;
 
 	/* Actual stored object size is encoded in first 2 bytes
@@ -179,7 +179,7 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path)
 	path->count = certlen;
 
 	return 1;
-	    
+
 }
 
 static int gemsafe_detect_card( sc_pkcs15_card_t *p15card)
@@ -223,7 +223,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
     apdu.resp = rbuf;
     apdu.resplen = sizeof(rbuf);
     /* Manual says Le=0x05, but should be 0x08 to return full version numer */
-    apdu.le = 0x08;  
+    apdu.le = 0x08;
     apdu.lc = 0;
     apdu.datalen = 0;
     r = sc_transmit_apdu(card, &apdu);
@@ -234,7 +234,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 	    return SC_ERROR_INTERNAL;
     endptr = (char *)(apdu.resp + apdu.resplen);
     version = strtod( (const char *)(apdu.resp + 4), &endptr);
-    fprintf(stderr, "%s: version (float): %f, version (int): %d\n", 
+    fprintf(stderr, "%s: version (float): %f, version (int): %d\n",
     	    fn_name, version, (int)version);
     p15card->version = (int)version;
 
@@ -272,7 +272,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 	    sc_pkcs15_format_id(gemsafe_pin[i].id, &p15Id);
 	    sc_pkcs15emu_add_pin(p15card, &p15Id, gemsafe_pin[i].label,
 			    &path, gemsafe_pin[i].ref, gemsafe_pin[i].type,
-			    gemsafe_pin[i].minlen, gemsafe_pin[i].maxlen, 
+			    gemsafe_pin[i].minlen, gemsafe_pin[i].maxlen,
 			    gemsafe_pin[i].flags,
 			    gemsafe_pin[i].tries_left, gemsafe_pin[i].pad_char,
 			    gemsafe_pin[i].obj_flags);
@@ -280,13 +280,13 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
     /* set private keys */
     fprintf(stderr, "%s: Setting private key\n", fn_name);
     for (i = 0; gemsafe_prkeys[i].label; i++) {
-	    struct sc_pkcs15_id p15Id, 
+	    struct sc_pkcs15_id p15Id,
 				authId, *pauthId;
 	    sc_pkcs15_format_id(gemsafe_prkeys[i].id, &p15Id);
 	    if (gemsafe_prkeys[i].auth_id) {
 		    sc_pkcs15_format_id(gemsafe_prkeys[i].auth_id, &authId);
 		    pauthId = &authId;
-	    } else	
+	    } else
 		    pauthId = NULL;
 	    sc_pkcs15emu_add_prkey(p15card, &p15Id, gemsafe_prkeys[i].label,
 			    SC_PKCS15_TYPE_PRKEY_RSA,
@@ -294,7 +294,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 			    &path, gemsafe_prkeys[i].ref, pauthId,
 			    gemsafe_prkeys[i].obj_flags);
     }
-	    
+
     /* select the application DF */
     fprintf(stderr,"%s: Selecting application DF\n", fn_name);
     sc_format_path("3F001600", &path);
@@ -363,7 +363,7 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 
 	obj->type  = type;
 	obj->data  = data;
-                
+
 	if (label)
 		strncpy(obj->label, label, sizeof(obj->label)-1);
 
@@ -405,7 +405,7 @@ sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
                 int flags, int tries_left, const char pad_char, int obj_flags)
 {
 	sc_pkcs15_pin_info_t *info;
-                
+
 	info = (sc_pkcs15_pin_info_t *) calloc(1, sizeof(*info));
 	info->auth_id           = *id;
 	info->min_length        = min_length;
@@ -417,10 +417,10 @@ sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
 	info->tries_left        = tries_left;
 	info->magic             = SC_PKCS15_PIN_MAGIC;
 	info->pad_char          = pad_char;
-        
+
 	if (path)
-		info->path = *path;     
-                
+		info->path = *path;
+
 	return sc_pkcs15emu_add_object(p15card,
 	                               SC_PKCS15_TYPE_AUTH_PIN,
 	                               label, info, NULL, obj_flags);
@@ -452,8 +452,8 @@ sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
                 const sc_path_t *path, int ref,
                 const sc_pkcs15_id_t *auth_id, int obj_flags)
 {
-	sc_pkcs15_prkey_info_t *info;   
-        
+	sc_pkcs15_prkey_info_t *info;
+
 	info = (sc_pkcs15_prkey_info_t *) calloc(1, sizeof(*info));
 	info->id                = *id;
 	info->modulus_length    = modulus_length;
@@ -464,7 +464,7 @@ sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
                                 | SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
                                 | SC_PKCS15_PRKEY_ACCESS_LOCAL;
 	info->key_reference     = ref;
- 
+
 	if (path)
 		info->path = *path;
 
