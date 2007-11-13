@@ -45,3 +45,8 @@ pkcs11-jar: jar-dir
 	cp opensc_pkcs11_install.js jar-dir
 	signtool -Z"opensc-pkcs11.jar" -i"opensc_pkcs11_install.js" \
 		 -k"testcert" jar-dir
+
+# see http://wiki.cacert.org/wiki/Pkcs11TaskForce
+pkcs11_DATA = #This will create the directory
+install-data-hook:
+	$(LN_S) ../opensc-pkcs11.so $(DESTDIR)$(pkcs11dir)/opensc-pkcs11.so

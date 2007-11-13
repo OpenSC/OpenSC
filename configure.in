@@ -387,6 +387,9 @@ AC_SUBST(OPENSC_CFLAGS)
 pkgdata=`eval echo ${datadir}/${PACKAGE}` ; pkgdata=`eval echo ${pkgdata}`
 AC_SUBST(pkgdata)
 
+pkcs11dir="\$(libdir)/pkcs11"
+AC_SUBST([pkcs11dir])
+
 AC_OUTPUT([
 Makefile
 aclocal/Makefile
