@@ -352,7 +352,7 @@ static u8 gemsafe_flags2algref(const struct sc_security_env *env)
 			ret = 0x11;
 	} else if (env->operation == SC_SEC_OPERATION_DECIPHER) {
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
-			ret = 0x13;
+			ret = 0x12;
 	}
 
 	return ret;
