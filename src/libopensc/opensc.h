@@ -446,6 +446,10 @@ struct sc_reader_operations {
 /* The card supports 2048 bit RSA keys */
 #define SC_CARD_CAP_RSA_2048		0x00000020
 
+/* D-TRUST CardOS cards special flags */
+#define SC_CARD_CAP_ONLY_RAW_HASH        0x00000040
+#define SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED      0x00000080
+
 typedef struct sc_card {
 	struct sc_context *ctx;
 	struct sc_reader *reader;

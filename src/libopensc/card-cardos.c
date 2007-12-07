@@ -802,14 +802,28 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	 * certain key, let's try RSA_PURE etc. and see which operation
 	 * succeeds (this is not really beautiful, but currently the
 	 * only way I see) -- Nils
+	 *
+	 * We also check for several caps flags here to pervent generating
+	 * invalid signatures with duplicated hash prefixes with some cards
 	 */
-	if (ctx->debug >= 3)
-		sc_debug(ctx, "trying RSA_PURE_SIG (padded DigestInfo)\n");
-	sc_ctx_suppress_errors_on(ctx);
-	r = do_compute_signature(card, data, datalen, out, outlen);
-	sc_ctx_suppress_errors_off(ctx);
-	if (r >= SC_SUCCESS)
-		SC_FUNC_RETURN(ctx, 4, r);
+
+    if (ctx->debug >= 3) {	 
+        if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED)
+            sc_debug(ctx, "Forcing RAW_HASH_STRIPPED\n");        	 
+        if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH)
+            sc_debug(ctx, "Forcing RAW_HASH\n");
+    }
+
+	if (!(card->caps & (SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED | SC_CARD_CAP_ONLY_RAW_HASH))) {
+		if (ctx->debug >= 3)
+			sc_debug(ctx, "trying RSA_PURE_SIG (padded DigestInfo)\n");
+		sc_ctx_suppress_errors_on(ctx);
+		r = do_compute_signature(card, data, datalen, out, outlen);
+		sc_ctx_suppress_errors_off(ctx);
+		if (r >= SC_SUCCESS)
+			SC_FUNC_RETURN(ctx, 4, r);
+	}		
+		
 	if (ctx->debug >= 3)
 		sc_debug(ctx, "trying RSA_SIG (just the DigestInfo)\n");
 	/* remove padding: first try pkcs1 bt01 padding */
@@ -826,13 +840,24 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 		}
 		memcpy(buf, p, tmp_len);
 	}
-	sc_ctx_suppress_errors_on(ctx);
-	r = do_compute_signature(card, buf, tmp_len, out, outlen);
-	sc_ctx_suppress_errors_off(ctx);
-	if (r >= SC_SUCCESS)	
-		SC_FUNC_RETURN(ctx, 4, r);
+
+	if (!(card->caps & (SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED | SC_CARD_CAP_ONLY_RAW_HASH)) || card->caps & SC_CARD_CAP_ONLY_RAW_HASH ) {
+		if (ctx->debug >= 3)
+			sc_debug(ctx, "trying to sign raw hash value with prefix\n");	
+		sc_ctx_suppress_errors_on(ctx);
+		r = do_compute_signature(card, buf, tmp_len, out, outlen);
+		sc_ctx_suppress_errors_off(ctx);
+		if (r >= SC_SUCCESS)	
+			SC_FUNC_RETURN(ctx, 4, r);
+	}
+
+	if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH) {
+	    sc_debug(ctx, "Failed to sign raw hash value with prefix when forcing\n");
+	    SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	   
 	if (ctx->debug >= 3)
-		sc_debug(ctx, "trying to sign raw hash value\n");
+		sc_debug(ctx, "trying to sign stripped raw hash value (card is responsible for prefix)\n");
 	r = sc_pkcs1_strip_digest_info_prefix(NULL,buf,tmp_len,buf,&buf_len);
 	if (r != SC_SUCCESS)
 		SC_FUNC_RETURN(ctx, 4, r);

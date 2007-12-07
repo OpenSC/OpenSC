@@ -681,6 +681,38 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 			|| strcmp(p15card->manufacturer_id,"Prime") == 0 ))
 		p15card->flags |= SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT;
 
+	/* set special flags based on card meta data */
+	if (strcmp(p15card->card->driver->short_name,"cardos") == 0) {
+
+		/* D-Trust cards (D-TRUST, D-SIGN) */
+		if (strstr(p15card->label,"D-TRUST") == 0
+			|| strstr(p15card->label,"D-SIGN") == 0) {
+
+			/* D-TRUST Card 2.0 2cc (standard cards, which always add 
+			 * SHA1 prefix itself */
+			if (strstr(p15card->label, "2cc") != NULL) {
+				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED;
+				p15card->flags &= ~SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT;
+				sc_debug(p15card->card->ctx, "D-TRUST 2cc card detected, only SHA1 works with this card\n");
+				/* XXX: add detection when other hash than SHA1 is used with
+				 *      such a card, as this produces invalid signatures.
+				 */
+			}
+
+			/* D-SIGN multicard 2.0 2ca (cards working with all types of hashes 
+			 * and no addition of prefix) */
+			else if (strstr(p15card->label, "2ca") != NULL) {
+				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH;
+				p15card->flags &= ~SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT;
+				sc_debug(p15card->card->ctx, "D-TRUST 2ca card detected\n");
+			}
+
+			/* XXX: probably there are more D-Trust card in the wild, 
+			 *      which also need these flags to produce valid signatures
+			 */
+		}
+	}
+
 	ok = 1;
 end:
 	if(buf != NULL)
