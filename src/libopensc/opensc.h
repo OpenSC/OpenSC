@@ -151,10 +151,12 @@ extern "C" {
 /* Symmetric algorithms */
 #define SC_ALGORITHM_DES		64
 #define SC_ALGORITHM_3DES		65
+#define SC_ALGORITHM_GOST		66
 
 /* Hash algorithms */
 #define SC_ALGORITHM_MD5		128
 #define SC_ALGORITHM_SHA1		129
+#define SC_ALGORITHM_GOSTHASH		130
 
 /* Key derivation algorithms */
 #define SC_ALGORITHM_PBKDF2		192
@@ -187,6 +189,10 @@ extern "C" {
 #define SC_ALGORITHM_RSA_HASH_SHA512	0x00000800
 #define SC_ALGORITHM_RSA_HASH_SHA224	0x00001000
 #define SC_ALGORITHM_RSA_HASHES		0x00001FE0
+
+#define SC_ALGORITHM_GOST_CRYPT_PZ     0x0     
+#define SC_ALGORITHM_GOST_CRYPT_GAMM   0x1     
+#define SC_ALGORITHM_GOST_CRYPT_GAMMOS 0x2     
 
 /* Event masks for sc_wait_for_event() */
 #define SC_EVENT_CARD_INSERTED		0x0001
@@ -1158,6 +1164,7 @@ extern struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern struct sc_reader_driver *sc_get_ctapi_driver(void);
 extern struct sc_reader_driver *sc_get_openct_driver(void);
 
+extern sc_card_driver_t *sc_get_rutoken_driver(void);
 extern sc_card_driver_t *sc_get_default_driver(void);
 extern sc_card_driver_t *sc_get_emv_driver(void);
 extern sc_card_driver_t *sc_get_cardos_driver(void);

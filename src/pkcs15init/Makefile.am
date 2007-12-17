@@ -20,6 +20,7 @@ PROFILES = \
 	setcos.profile \
 	pkcs15.profile \
 	muscle.profile \
+	rutoken.profile \
 	asepcos.profile
 	
 

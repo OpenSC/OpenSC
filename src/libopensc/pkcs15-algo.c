@@ -233,6 +233,12 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_encode_des_params,
 			free },
 #endif
+#ifdef SC_ALGORITHM_GOST /* EDE CBC mode */
+	{ SC_ALGORITHM_GOST, {{ 1, 2, 4434, 66565, 3, 7 }},
+			NULL,
+			NULL,
+			NULL },
+#endif
 /* We do not support PBES1 because the encryption is weak */
 #ifdef SC_ALGORITHM_PBKDF2
 	{ SC_ALGORITHM_PBKDF2, {{ 1, 2, 840, 113549, 1, 5, 12 }},

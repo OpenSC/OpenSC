@@ -12,7 +12,7 @@ PROGRAMS_OPENSSL = cryptoflex-tool pkcs15-init netkey-tool piv-tool
 endif
 
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
-	pkcs11-tool cardos-info eidenv \
+ 	pkcs11-tool cardos-info eidenv rutoken-tool \
 	$(PROGRAMS_OPENSSL)
 
 opensc_tool_SOURCES = opensc-tool.c util.c $(top_srcdir)/src/common/my_getopt.c
@@ -33,5 +33,7 @@ cardos_info_SOURCES = cardos-info.c util.c $(top_srcdir)/src/common/my_getopt.c
 eidenv_SOURCES = eidenv.c $(top_srcdir)/src/common/my_getopt.c
 netkey_tool_SOURCES = netkey-tool.c $(top_srcdir)/src/common/my_getopt.c
 netkey_tool_LDADD = $(OPENSSL_LIBS)
+rutoken_tool_SOURCES = rutoken-tool.c util.c
+rutoken_tool_LDADD = $(OPENSSL_LIBS)
 
 noinst_HEADERS = util.h

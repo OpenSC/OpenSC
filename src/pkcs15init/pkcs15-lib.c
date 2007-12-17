@@ -149,6 +149,7 @@ static struct profile_operations {
 	const char *name;
 	void *func;
 } profile_operations[] = {
+	{ "rutoken", (void *) sc_pkcs15init_get_rutoken_ops },
 	{ "gpk", (void *) sc_pkcs15init_get_gpk_ops },
 	{ "miocos", (void *) sc_pkcs15init_get_miocos_ops },
 	{ "flex", (void *) sc_pkcs15init_get_cryptoflex_ops },

@@ -139,7 +139,23 @@ enum {
 	SC_CARDCTL_ASEPCOS_CHANGE_KEY,
 	SC_CARDCTL_ASEPCOS_AKN2FILEID,
 	SC_CARDCTL_ASEPCOS_SET_SATTR,
-	SC_CARDCTL_ASEPCOS_ACTIVATE_FILE
+	SC_CARDCTL_ASEPCOS_ACTIVATE_FILE,
+
+ 	/*
+ 	*  ruToken specific calls
+ 	*/
+ 	SC_CARDCTL_RUTOKEN_BASE = _CTL_PREFIX('R', 'T', 'K'),
+ 	/*  PUT_DATA  */
+ 	SC_CARDCTL_RUTOKEN_CREATE_DO,
+ 	SC_CARDCTL_RUTOKEN_CHANGE_DO,
+ 	SC_CARDCTL_RUTOKEN_GENERATE_KEY_DO,
+ 	SC_CARDCTL_RUTOKEN_DELETE_DO,
+ 	SC_CARDCTL_RUTOKEN_GET_INFO,
+ 	/* NON STANDART  */
+ 	SC_CARDCTL_RUTOKEN_GET_DO_INFO,
+ 	SC_CARDCTL_RUTOKEN_GOST_ENCIPHER, 
+ 	SC_CARDCTL_RUTOKEN_GOST_DECIPHER,
+ 	SC_CARDCTL_RUTOKEN_TRIES_LEFT
 };
 
 enum {
@@ -357,9 +373,6 @@ struct sc_cardctl_setcos_data_obj {
 	int     LengthMax;
 };
 
-#define OP_TYPE_GENERATE	0
-#define OP_TYPE_STORE		1
-
 struct sc_cardctl_setcos_gen_store_key_info {
 	int             op_type;
 	unsigned int    mod_len;     /* in bits */
@@ -425,6 +438,119 @@ typedef struct sc_cardctl_asepcos_activate_file {
 	int	fileid;
 	int	is_ef;
 } sc_cardctl_asepcos_activate_file_t;
+
+#define OP_TYPE_GENERATE	0
+#define OP_TYPE_STORE		1
+
+/*
+ *  RuToken types and constants
+ */
+
+#define SC_RUTOKEN_DO_PART_BODY_LEN    199    
+#define SC_RUTOKEN_DO_HDR_LEN  32
+
+/*   DO Types  */
+#define SC_RUTOKEN_TYPE_MASK             0xF
+#define SC_RUTOKEN_TYPE_SE               0x0
+#define SC_RUTOKEN_TYPE_CHV              0x1
+#define SC_RUTOKEN_TYPE_KEY              0x2
+
+#define SC_RUTOKEN_COMPACT_DO_MAX_LEN  16          /*  MAX Body length of Compact DOs  */
+
+#define SC_RUTOKEN_DO_ALL_MIN_ID       0x1         /*  MIN ID value of All DOs  */
+#define SC_RUTOKEN_DO_CHV_MAX_ID       0x1F        /*  MAX ID value of CHV-objects  */
+#define SC_RUTOKEN_DO_NOCHV_MAX_ID     0xFE        /*  MAX ID value of All Other DOs  */
+
+/*  DO Default Lengths  */
+#define SC_RUTOKEN_DEF_LEN_DO_GOST         32
+#define SC_RUTOKEN_DEF_LEN_DO_SE           6
+
+
+#define SC_RUTOKEN_ALLTYPE_SE            SC_RUTOKEN_TYPE_SE		/* SE  */
+#define SC_RUTOKEN_ALLTYPE_GCHV          SC_RUTOKEN_TYPE_CHV	/* GCHV  */
+#define SC_RUTOKEN_ALLTYPE_LCHV          0x11        			/*  LCHV  */
+#define SC_RUTOKEN_ALLTYPE_GOST          SC_RUTOKEN_TYPE_KEY	/*  GOST  */
+
+/*  DO ID  */
+#define SC_RUTOKEN_ID_CURDF_RESID_FLAG   0x80        /*  DO placed in current DF  */
+                                            
+#define SC_RUTOKEN_DEF_ID_GCHV_ADMIN       0x01      /*  ID DO ADMIN  */
+#define SC_RUTOKEN_DEF_ID_GCHV_USER        0x02      /*  ID DO USER  */
+
+/*  DO Options  */
+#define SC_RUTOKEN_OPTIONS_GCHV_ACCESS_MASK  0x7     /*  Access rights  */
+#define SC_RUTOKEN_OPTIONS_GACCESS_ADMIN     SC_RUTOKEN_DEF_ID_GCHV_ADMIN   /*  ADMIN  */
+#define SC_RUTOKEN_OPTIONS_GACCESS_USER      SC_RUTOKEN_DEF_ID_GCHV_USER    /*  USER  */
+
+#define SC_RUTOKEN_OPTIONS_GOST_CRYPT_MASK   0x7     /*  crypto algorithm  */
+#define SC_RUTOKEN_OPTIONS_GOST_CRYPT_PZ     0x0     /*  (encryptECB) simple-change mode  */
+#define SC_RUTOKEN_OPTIONS_GOST_CRYPT_GAMM   0x1     /*  (encryptCNT) gamma mode  */
+#define SC_RUTOKEN_OPTIONS_GOST_CRYPT_GAMMOS 0x2     /*  (encryptCFB) feed-back gamma mode  */
+
+
+/*  DO flags  */
+#define SC_RUTOKEN_FLAGS_COMPACT_DO      0x1
+#define SC_RUTOKEN_FLAGS_OPEN_DO_MASK    0x6
+#define SC_RUTOKEN_FLAGS_BLEN_OPEN_DO    0x2
+#define SC_RUTOKEN_FLAGS_FULL_OPEN_DO    0x6
+
+/*  DO MAX:CUR try  */
+#define SC_RUTOKEN_MAXTRY_MASK           0xF0        /*  MAX try  */
+#define SC_RUTOKEN_CURTRY_MASK           0x0F        /*  CUR try  */
+
+#define SC_RUTOKEN_DO_CHV_MAX_ID_V2       SC_RUTOKEN_DEF_ID_GCHV_USER	/*  MAX ID value of CHV-objects  */
+#define SC_RUTOKEN_DO_NOCHV_MAX_ID_V2     SC_RUTOKEN_DO_NOCHV_MAX_ID	/*  MAX ID value of All Other DOs  */
+
+#define SEC_ATTR_SIZE 15
+	
+#pragma pack(push, 1)
+typedef u8 sc_SecAttrV2_t[SEC_ATTR_SIZE];
+
+typedef struct sc_ObjectTypeID{
+	u8    byObjectType;
+	u8    byObjectID;
+} sc_ObjectTypeID_t;
+
+typedef struct sc_ObjectParams{
+	u8    byObjectOptions;
+	u8    byObjectFlags;
+	u8    byObjectTry;
+} sc_ObjectParams_t;
+
+typedef struct sc_DOHdrV2 {
+	unsigned short		wDOBodyLen;
+	sc_ObjectTypeID_t	OTID;
+	sc_ObjectParams_t	OP;
+	u8					dwReserv1[4];
+	u8					abyReserv2[6];
+	sc_SecAttrV2_t		SA_V2;
+} sc_DOHdrV2_t;
+
+typedef struct sc_DO_V2 {
+	sc_DOHdrV2_t	HDR;
+	u8				abyDOBody[SC_RUTOKEN_DO_PART_BODY_LEN];
+} sc_DO_V2_t;
+
+typedef enum
+{
+	select_first,
+	select_by_id,
+	select_next,
+} SC_RUTOKEN_DO_SEL_TYPES;
+
+typedef struct sc_DO_INFO_V2 {
+	u8						DoId;
+	SC_RUTOKEN_DO_SEL_TYPES	SelType;
+	u8						pDoData[256];
+} sc_DO_INFO_t;
+
+struct sc_rutoken_decipherinfo{
+    u8	*inbuf;
+    size_t inlen;
+    u8	*outbuf;
+    size_t outlen;
+};
+#pragma pack(pop)
 
 #ifdef __cplusplus
 }

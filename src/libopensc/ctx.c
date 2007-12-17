@@ -51,6 +51,7 @@ struct _sc_driver_entry {
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
 	/* legacy, the old name was "etoken", so we keep that for a while */
+	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver },
 	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },
 	{ "etoken",	(void *(*)(void)) sc_get_cardos_driver },
 	{ "flex",	(void *(*)(void)) sc_get_cryptoflex_driver },
