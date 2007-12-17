@@ -38,9 +38,13 @@
 
 //#define _DEBUG
 #ifdef _DEBUG
-#define trace      printf("%s, %s line %d: ", __FUNCTION__, __FILE__, __LINE__); printf
+#define trace(fmt)      printf("%s, %s line %d: " fmt, __FUNCTION__, __FILE__, __LINE__)
+#define trace2(fmt,a)      printf("%s, %s line %d: " fmt, __FUNCTION__, __FILE__, __LINE__, a)
+#define trace2(fmt,a,b)      printf("%s, %s line %d: " fmt, __FUNCTION__, __FILE__, __LINE__, a, b)
 #else 
-#define trace      
+#define trace(fmt)
+#define trace2(fmt,a)
+#define trace3(fmt,a,b)
 #endif
 
 
@@ -162,11 +166,11 @@ int get_file(sc_card_t *card, const char *filepath, u8 **ppBuf, int needIV, u8 *
 	if(file > 0) 
 	{
 		size = get_file_size(file);
-		trace("size = %d\n", size);
+		trace2("size = %d\n", size);
 		if(size > 0) *ppBuf = realloc(*ppBuf, needIV ? size + 8 : size);
 		if(*ppBuf) 
 		{
-			trace("needIV %d, %p\n", needIV, IV);
+			trace3("needIV %d, %p\n", needIV, IV);
 			if (needIV)
 			{
 				if (IV)
@@ -187,7 +191,7 @@ int get_file(sc_card_t *card, const char *filepath, u8 **ppBuf, int needIV, u8 *
 			else
 				ret = read(file, *ppBuf, size);
 		}
-		trace("ret = %d, size = %d\n", ret, size);
+		trace3("ret = %d, size = %d\n", ret, size);
 		if( ret != size)
 		{
 			printf("Read error!!!\n");
@@ -237,7 +241,7 @@ int rutoken_decipher(sc_card_t *card, u8 keyid, u8 *in, size_t inlen, u8 *out, s
 	env.operation = SC_SEC_OPERATION_DECIPHER;
 
 	/*  set security env  */
-	trace("try to set SE key = %02X\n", keyid);
+	trace2("try to set SE key = %02X\n", keyid);
 	r = card->ops->set_security_env(card, &env, 0);
 	if (r) {
 		fprintf(stderr, "decipher failed: %d : %s\n",
@@ -252,7 +256,7 @@ int rutoken_decipher(sc_card_t *card, u8 keyid, u8 *in, size_t inlen, u8 *out, s
 		        sc_strerror(r));
 		return 1;
 	}
-	trace("return %d\n", r);
+	trace2("return %d\n", r);
 	return r;
 }
 
@@ -265,7 +269,7 @@ int crypt_file(sc_card_t *card,  u8 keyid, const char *szInFile, const char *szO
 	u8 *pBuf = NULL, *pOut = NULL;
 		
 	size = get_file(card, szInFile, &pBuf, oper == OP_ENCIPHER, IV);
-	trace("size of %s is %d\n", szInFile, size);
+	trace3("size of %s is %d\n", szInFile, size);
 	if(size > 0) 
 	{
 		pOut = malloc(size);
