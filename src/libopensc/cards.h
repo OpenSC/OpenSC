@@ -42,7 +42,8 @@ enum {
 	SC_CARD_TYPE_CARDOS_M4_01,
 	SC_CARD_TYPE_CARDOS_M4_2,
 	SC_CARD_TYPE_CARDOS_M4_3,
-	SC_CARD_TYPE_CARDOS_M4_2B, /* 4.2b is the latest after 4.3b */
+	SC_CARD_TYPE_CARDOS_M4_2B, /* 4.2b is after 4.3b */
+	SC_CARD_TYPE_CARDOS_M4_2C,
 
 	/* flex/cyberflex drivers */
 	SC_CARD_TYPE_FLEX_BASE = 2000,
