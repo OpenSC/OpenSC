@@ -1056,31 +1056,6 @@ static int mcrd_restore_se(sc_card_t * card, int se_num)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-#if 0
-/* this function isn't used anywhere */
-static int select_key_df(sc_card_t * card)
-{
-	int r;
-	size_t i = 0;
-	char tmpstr[16] = "";
-	char currpathpart[10];
-	sc_path_t tmppath;
-	struct mcrd_priv_data *priv = DRVDATA(card);
-	memset(tmpstr, 0, 16);
-
-	while (i < priv->curpathlen - 1) {
-		sprintf(currpathpart, "%04x", (unsigned short)priv->curpath[i]);
-		strcat(tmpstr, currpathpart);
-		i++;
-	}
-
-	sc_format_path(tmpstr, &tmppath);
-	tmppath.type = SC_PATH_TYPE_PATH;
-	r = sc_select_file(card, &tmppath, NULL);
-	SC_TEST_RET(card->ctx, r, "Micardo select DF failed");
-	return r;
-}
-#endif
 
 /* It seems that MICARDO does not fully comply with ISO, so I use
    values gathered from peeking actual signing opeations using a
