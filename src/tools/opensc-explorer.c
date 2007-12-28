@@ -223,16 +223,18 @@ static int do_ls(int argc, char **argv)
 			}
 		}
 			
+		ctx->suppress_errors++;
 		r = sc_select_file(card, &path, &file);
+		ctx->suppress_errors--;
 		if (r) {
-			check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
-			return -1;
+			printf(" %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
+		} else {
+			file->id = (cur[0] << 8) | cur[1];
+			print_file(file);
+			sc_file_free(file);
 		}
-		file->id = (cur[0] << 8) | cur[1];
 		cur += 2;
 		count -= 2;
-		print_file(file);
-		sc_file_free(file);
 		r = sc_select_file(card, &current_path, NULL);
 		if (r) {
 			printf("unable to select parent DF: %s\n", sc_strerror(r));

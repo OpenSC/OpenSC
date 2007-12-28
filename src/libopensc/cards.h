@@ -92,6 +92,8 @@ enum {
 	/* tcos driver */
 	SC_CARD_TYPE_TCOS_BASE = 8000,
 	SC_CARD_TYPE_TCOS_GENERIC,
+	SC_CARD_TYPE_TCOS_V2,
+	SC_CARD_TYPE_TCOS_V3,
 
 	/* openpgp driver */
 	SC_CARD_TYPE_OPENPGP_BASE = 9000,
