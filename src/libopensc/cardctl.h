@@ -142,8 +142,8 @@ enum {
 	SC_CARDCTL_ASEPCOS_ACTIVATE_FILE,
 
  	/*
- 	*  ruToken specific calls
- 	*/
+	 * ruToken specific calls
+	 */
  	SC_CARDCTL_RUTOKEN_BASE = _CTL_PREFIX('R', 'T', 'K'),
  	/*  PUT_DATA  */
  	SC_CARDCTL_RUTOKEN_CREATE_DO,
@@ -155,7 +155,8 @@ enum {
  	SC_CARDCTL_RUTOKEN_GET_DO_INFO,
  	SC_CARDCTL_RUTOKEN_GOST_ENCIPHER, 
  	SC_CARDCTL_RUTOKEN_GOST_DECIPHER,
- 	SC_CARDCTL_RUTOKEN_TRIES_LEFT
+	SC_CARDCTL_RUTOKEN_FORMAT_INIT,
+	SC_CARDCTL_RUTOKEN_FORMAT_END
 };
 
 enum {
@@ -544,8 +545,8 @@ typedef struct sc_DO_INFO_V2 {
 	u8						pDoData[256];
 } sc_DO_INFO_t;
 
-struct sc_rutoken_decipherinfo{
-    u8	*inbuf;
+struct sc_rutoken_decipherinfo {
+	const u8	*inbuf;
     size_t inlen;
     u8	*outbuf;
     size_t outlen;

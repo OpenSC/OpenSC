@@ -28,446 +28,505 @@
 #include <unistd.h>
 #endif
 #include <string.h>
-#include <errno.h>
-#include <ctype.h>
 #include <sys/stat.h>
-#include <limits.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include <opensc/opensc.h>
 #include <opensc/cardctl.h>
 #include "util.h"
 
-//#define _DEBUG
-#ifdef _DEBUG
-#define trace(fmt)      printf("%s, %s line %d: " fmt, __FUNCTION__, __FILE__, __LINE__)
-#define trace2(fmt,a)      printf("%s, %s line %d: " fmt, __FUNCTION__, __FILE__, __LINE__, a)
-#define trace2(fmt,a,b)      printf("%s, %s line %d: " fmt, __FUNCTION__, __FILE__, __LINE__, a, b)
-#else 
-#define trace(fmt)
-#define trace2(fmt,a)
-#define trace3(fmt,a,b)
-#endif
+#define IV_SIZE         8
+#define HASH_SIZE       4
 
-
-/*  globals  */
-const char *app_name = "rutoken-tool";
-sc_context_t *g_ctx = NULL;
+static const char *app_name = "rutoken-tool";
 
 enum {
 	OP_NONE,
 	OP_GET_INFO,
-	OP_ENCIPHER,
-	OP_DECIPHER,
-	OP_SIGN,
-	OP_FORMAT
+	OP_GEN_KEY,
+	OP_ENCRYPT,
+	OP_DECRYPT,
+	OP_MAC
 };
 
-enum {
-	OPT_BASE = 0x100,
-	OPT_PIN,
-	OPT_SOPIN
+static const struct option options[] = {
+	{"reader",      1, NULL, 'r'},
+	{"wait",        0, NULL, 'w'},
+	{"pin",         1, NULL, 'p'},
+	{"key",         1, NULL, 'k'},
+	{"IV",          1, NULL, 'I'},
+	{"type",        1, NULL, 't'},
+	{"input",       1, NULL, 'i'},
+	{"output",      1, NULL, 'o'},
+	{"info",        0, NULL, 's'},
+	{"genkey",      0, NULL, 'g'},
+	{"encrypt",     0, NULL, 'e'},
+	{"decrypt",     0, NULL, 'd'},
+	{"mac",         0, NULL, 'm'},
+	{"verbose",     0, NULL, 'v'},
+	{NULL,          0, NULL,  0 }
 };
 
-const struct option options[] = {
-	{"reader",	1, 0, 'r'},
-	{"card-driver", 1, 0, 'c'},
-	{"wait",	0, 0, 'w'},
-	{"verbose",	0, 0, 'v'},
-	{"getinfo",	0, 0, 'g'},
-	{"encrypt",	0, 0, 'e'},
-	{"decrypt",	0, 0, 'u'},
-	{"sign",	0, 0, 's'},
-	{"key",		1, 0, 'k'},
-	{"i-vector",1, 0, 'I'},
-	{"pin",		1, 0, OPT_PIN},
-	{"so-pin",	1, 0, OPT_SOPIN},
-	{"input",	1, 0, 'i'},
-	{"output", 	1, 0, 'o'},
-	{"format", 	0, 0, 'F'},
-	{0, 0, 0, 0}
-};
-
-const char *option_help[] = {
+static const char *option_help[] = {
 	"Uses reader number <arg> [0]",
-	"Forces the use of driver <arg> [auto-detect]",
 	"Wait for a card to be inserted",
-	"Verbose operation. Use several times to enable debug output.",
-	"Get RuToken info",
-	"GOST encrypt",
-	"GOST decrypt",
-	"sign",
-	"use GOST key",
-	"use initialization vector (synchro posylka)", 
-	"user pin",
-	"admin pin",
-	"input file path",
-	"output file path",
-	"format card"
+	"Specify PIN",
+	"Selects the GOST key ID to use",
+	"Initialization vector of the encryption to use",
+	"Specify a new GOST key type: ECB (default), SM or CFB",
+	"Selects the input file to cipher",
+	"Selects the output file to cipher",
+	"Show ruToken information",
+	"Generate new GOST key",
+	"Performs GOST encryption operation",
+	"Performs GOST decryption operation",
+	"Performs MAC computation with GOST key",
+	"Verbose operation. Use several times to enable debug output."
 };
-
 
 /*  Get ruToken device information  */
-int rutoken_info(sc_card_t *card)
+
+static int rutoken_info(sc_card_t *card)
 {	
-	trace("enter\n");
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	char szInfo[SC_MAX_APDU_BUFFER_SIZE*4];
+	sc_serial_number_t serial;
 	int r;
 	
-	
-	r = card->ops->card_ctl(card, SC_CARDCTL_RUTOKEN_GET_INFO, rbuf);
+	r = sc_card_ctl(card, SC_CARDCTL_RUTOKEN_GET_INFO, rbuf);
 	if (r) {
-		fprintf(stderr, "get info failed: %s\n",
-		        sc_strerror(r));
-		return 1;
-	}
-	sc_bin_to_hex(rbuf, 8, szInfo, sizeof(szInfo), 0);
-	
-	printf("Type: %d\n", *((char *)rbuf));
-	printf("Version: %d.%d\n", (*((char *)rbuf+1))>>4, (*((char *)rbuf+1))&0x0F );
-	printf("Memory: %d Kb\n", *((char *)rbuf+2)*8);
-	printf("Protocol version: %d\n", *((char *)rbuf+3));
-	printf("Software version: %d\n", *((char *)rbuf+4));
-	printf("Order: %d\n", *((char *)rbuf+5));
-	
-	sc_serial_number_t serial;
-	r = card->ops->card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
-	if (r) {
-		fprintf(stderr, "get serial failed: %s\n",
-		        sc_strerror(r));
-		return 1;
-	}
-	sc_bin_to_hex(serial.value, serial.len , szInfo, sizeof(szInfo), 0);
-	printf("Serial number : %s\n", szInfo);
-	return 0;
-}
-
-/*   Cryptografic routine  */
-
-/*  Size of file  */
-
-off_t get_file_size(int fd)
-{
-	off_t cur_pos;
-	off_t file_size;
-	cur_pos = lseek(fd, 0, SEEK_CUR);
-	file_size = lseek(fd, 0, SEEK_END);
-	lseek(fd, cur_pos, SEEK_SET);
-    return file_size;
-}
-
-/*  Allocate buffer and read file, insert initialization vector if needIV
-    return buffer size  */
-
-int get_file(sc_card_t *card, const char *filepath, u8 **ppBuf, int needIV, u8 *IV)
-{
-	int file = open(filepath, O_RDONLY);
-	int ret = -1, size = -1;
-	
-	if(file > 0) 
-	{
-		size = get_file_size(file);
-		trace2("size = %d\n", size);
-		if(size > 0) *ppBuf = realloc(*ppBuf, needIV ? size + 8 : size);
-		if(*ppBuf) 
-		{
-			trace3("needIV %d, %p\n", needIV, IV);
-			if (needIV)
-			{
-				if (IV)
-					ret = memcpy(*ppBuf, IV, 8) != *ppBuf;
-				else 
-				{
-					trace("get_challenge\n");
-					ret = card->ops->get_challenge(card, *ppBuf, 8);
-				}
-				if (ret == SC_SUCCESS) 
-				{
-					ret = read(file, *ppBuf + 8, size) + 8;
-					size += 8;
-				}
-				else
-					ret = -1;
-			}
-			else
-				ret = read(file, *ppBuf, size);
-		}
-		trace3("ret = %d, size = %d\n", ret, size);
-		if( ret != size)
-		{
-			printf("Read error!!!\n");
-			free(*ppBuf);
-			ret = -1;
-		}
-		close(file);
-	}
-	else
-		printf("File %s not found\n", filepath);
-	return ret;
-}
-
-/*  Write buffer to a file
-    sync = NULL if not sync decrypt  */
-
-int write_file(const char *filepath, u8 *buff, size_t len)
-{
-	int file, r;
-	file = open(filepath, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR|S_IWUSR | S_IRGRP|S_IWGRP | S_IROTH|S_IWOTH);
-	if( file < 0 ) {
-		printf("File %s not found\n", filepath);
+		fprintf(stderr, "Error: Get info failed: %s\n", sc_strerror(r));
 		return -1;
 	}
-	r = write(file, buff, len);
-	if( r < 0) {
-		printf("Write error!!!\n");
-		return r;
-	};
-	return r;
+	printf("Type: %d\n", rbuf[0]);
+	printf("Version: %d.%d\n", rbuf[1]>>4, rbuf[1] & 0x0F);
+	printf("Memory: %d Kb\n", rbuf[2]*8);
+	printf("Protocol version: %d\n", rbuf[3]);
+	printf("Software version: %d\n", rbuf[4]);
+	printf("Order: %d\n", rbuf[5]);
+	
+	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
+	if (r) {
+		fprintf(stderr, "Error: Get serial failed: %s\n", sc_strerror(r));
+		return -1;
+	}
+	printf("Serial number: ");
+	hex_dump(stdout, serial.value, serial.len, NULL);
+	putchar('\n');
+	return 0;
 }
-
-/*  Decrypt a buffer  */
-
-int rutoken_decipher(sc_card_t *card, u8 keyid, u8 *in, size_t inlen, u8 *out, size_t outlen, int oper)
+	
+/*  Cipher/Decipher a buffer on token (used GOST key chosen by ID)  */
+	
+static int rutoken_cipher(sc_card_t *card, u8 keyid,
+		const u8 *in, size_t inlen,
+		u8 *out, size_t outlen, int oper)
 {
-	int r;/*
-	u8 buff[24] = {0x38, 0x37, 0x36, 0x35, 0x34, 0x33, 0x32, 0x31, 
-			0x4E, 0x4F, 0xEB, 0x69, 0x5B, 0xFF, 0x01, 0x20, 0xE1, 0xA9, 0x2D, 0xAE, 0x59, 0xD4, 0xD1, 0xCA};
-	u8 outbuff[24] = {0};*/
+	int r;
 	struct sc_rutoken_decipherinfo inf = { in, inlen, out, outlen };
 	sc_security_env_t env;
+	int cmd = (oper == OP_ENCRYPT) ?
+			SC_CARDCTL_RUTOKEN_GOST_ENCIPHER :
+			SC_CARDCTL_RUTOKEN_GOST_DECIPHER;
+
+	memset(&env, 0, sizeof(env));
 	env.key_ref[0] = keyid;
 	env.key_ref_len = 1;
 	env.algorithm = SC_ALGORITHM_GOST;
-	env.algorithm_flags = SC_RUTOKEN_OPTIONS_GOST_CRYPT_GAMM;
 	env.operation = SC_SEC_OPERATION_DECIPHER;
 
 	/*  set security env  */
-	trace2("try to set SE key = %02X\n", keyid);
-	r = card->ops->set_security_env(card, &env, 0);
+	r = sc_set_security_env(card, &env, 0);
 	if (r) {
-		fprintf(stderr, "decipher failed: %d : %s\n",
-		        r, sc_strerror(r));
-		return 1;
-	}
-	trace("set SE - ok\n");
-	/*  cipher  */
-	r = card->ops->card_ctl(card, oper, &inf);
-	if (r < 0) {
-		fprintf(stderr, "decipher failed: %s\n",
+		fprintf(stderr, "Error: Cipher failed (set security environment): %s\n",
 		        sc_strerror(r));
-		return 1;
+		return -1;
 	}
-	trace2("return %d\n", r);
-	return r;
-}
-
-/*  Decrypt a file  */
-
-int crypt_file(sc_card_t *card,  u8 keyid, const char *szInFile, const char *szOutFile, int oper, u8* IV)
-{
-	int ret = SC_ERROR_CARD_CMD_FAILED;
-	int size = -1;
-	u8 *pBuf = NULL, *pOut = NULL;
-		
-	size = get_file(card, szInFile, &pBuf, oper == OP_ENCIPHER, IV);
-	trace3("size of %s is %d\n", szInFile, size);
-	if(size > 0) 
-	{
-		pOut = malloc(size);
-		size = rutoken_decipher
-			(card, keyid, pBuf, size, pOut, size, 
-			 oper == OP_ENCIPHER ? SC_CARDCTL_RUTOKEN_GOST_ENCIPHER : SC_CARDCTL_RUTOKEN_GOST_DECIPHER);
-		if ((size > 0) && (write_file(szOutFile, pOut, size) == size)) ret = SC_SUCCESS;
-		free(pBuf);	
-		free(pOut);
+	/*  cipher  */
+	r = sc_card_ctl(card, cmd, &inf);
+	if (r) {
+		fprintf(stderr, "Error: Cipher failed: %s\n", sc_strerror(r));
+		return -1;
 	}
-	return ret;
+	return 0;
 }
 
-/*  external definitions  */
-struct sc_profile_t;
-extern int rutoken_erase(struct sc_profile_t *, sc_card_t *);
-extern int rutoken_finalize_card(sc_card_t *);
-extern int rutoken_init(struct sc_profile_t *, sc_card_t *);
-/*  Format and initialize file system  */
-int format_card(sc_card_t *card)
+/*  Compute MAC a buffer on token (used GOST key chosen by ID)  */
+
+static int rutoken_mac(sc_card_t *card, u8 keyid,
+		const u8 *in, size_t inlen,
+		u8 *out, size_t outlen)
 {
-	int ret = SC_ERROR_CARD_CMD_FAILED;
-	trace("enter\n");
-	if (( ret = (rutoken_erase(NULL, card)) == SC_SUCCESS) &&
-	    ( ret = (rutoken_init(NULL, card)) == SC_SUCCESS)
-	   )
-		ret = rutoken_finalize_card(card);
-	return ret;
+	int r;
+	sc_security_env_t env;
+
+	memset(&env, 0, sizeof(env));
+	env.key_ref[0] = keyid;
+	env.key_ref_len = 1;
+	env.algorithm = SC_ALGORITHM_GOST;
+	env.operation = SC_SEC_OPERATION_SIGN;
+
+	/*  set security env  */
+	r = sc_set_security_env(card, &env, 0);
+	if (r) {
+		fprintf(stderr, "Error: Computation signature (MAC) failed"
+				" (set security environment): %s\n", sc_strerror(r));
+		return -1;
+	}
+	/*  calculate hash  */
+	r = sc_compute_signature(card, in, inlen, out, outlen);
+	if (r) {
+		fprintf(stderr, "Error: Computation signature (MAC) failed: %s\n",
+				sc_strerror(r));
+		return -1;
+	}
+	return 0;
 }
 
-int main(int argc, char *const argv[])
+/*  Encrypt/Decrupt infile to outfile  */
+
+static int do_crypt(sc_card_t *card, u8 keyid,
+		const char *path_infile, const char *path_outfile,
+		const u8 IV[IV_SIZE], int oper)
 {
-	int err = 0, r, c, long_optind = 0;
-	const char *opt_driver = NULL;
-	sc_context_param_t ctx_param;
-	int opt_reader = -1, opt_debug = 0, opt_wait = 0, opt_key = 0, opt_is_IV,
-		opt_is_pin = 0, opt_is_sopin = 0, opt_is_input = 0, opt_is_output = 0;
-	char opt_pin[100] = {0}, opt_input[PATH_MAX] = {0}, opt_output[PATH_MAX] = {0}, opt_IV[16] = {0};
+	int err;
+	int fd_in, fd_out;
+	struct stat st;
+	size_t insize, outsize, readsize;
+	u8 *inbuf = NULL, *outbuf = NULL, *p;
+
+	fd_in = open(path_infile, O_RDONLY);
+	if (fd_in < 0) {
+		fprintf(stderr, "Error: Cannot open file '%s'\n", path_infile);
+		return -1;
+				}
+	err = fstat(fd_in, &st);
+	if (err || (oper == OP_DECRYPT && st.st_size < IV_SIZE)) {
+		fprintf(stderr, "Error: File '%s' is invalid\n", path_infile);
+		close(fd_in);
+		return -1;
+	}
+	insize = st.st_size;
+	if (oper == OP_ENCRYPT)
+		insize += IV_SIZE;
+	outsize = insize;
+	if (oper == OP_DECRYPT)  /*  !(stat.st_size < IV_SIZE)  already true  */
+		outsize -= IV_SIZE;
+
+	inbuf = malloc(insize);
+	outbuf = malloc(outsize);
+	if (!inbuf || !outbuf) {
+		fprintf(stderr, "Error: File '%s' is too big (allocate memory)\n",
+				path_infile);
+		err = -1;
+	}
+	if (err == 0) {
+		p = inbuf;
+		readsize = insize;
+		if (oper == OP_ENCRYPT) {
+			memcpy(inbuf, IV, IV_SIZE);  /*  Set IV in first bytes buf  */
+			/*  insize >= IV_SIZE  already true  */
+			p += IV_SIZE;
+			readsize -= IV_SIZE;
+		}
+		err = read(fd_in, p, readsize);
+		if (err < 0  ||  (size_t)err != readsize) {
+			fprintf(stderr, "Error: Read file '%s' failed\n", path_infile);
+			err = -1;
+			}
+			else
+			err = 0;
+		}
+	close(fd_in);
+
+	if (err == 0) {
+		fd_out = open(path_outfile, O_WRONLY | O_CREAT | O_TRUNC,
+				S_IRUSR | S_IWUSR);
+		if (fd_out < 0) {
+			fprintf(stderr, "Error: Cannot create file '%s'\n",path_outfile);
+			err = -1;
+		}
+		else {
+			err = rutoken_cipher(card, keyid, inbuf, insize,
+					outbuf, outsize, oper);
+			if (err == 0) {
+				err = write(fd_out, outbuf, outsize);
+				if (err < 0  ||  (size_t)err != outsize) {
+					fprintf(stderr,"Error: Write file '%s' failed\n",
+							path_outfile);
+					err = -1;
+	}
+	else
+					err = 0;
+			}
+			close(fd_out);
+	}
+	}
+	if (outbuf)
+		free(outbuf);
+	if (inbuf)
+		free(inbuf);
+	return err;
+}
+
+/*  Cipher/Decipher
+    (for cipher IV is parameters or random generated on token)  */
+
+static int gostchiper(sc_card_t *card, u8 keyid,
+		const char *path_infile, const char *path_outfile,
+		const char IV[IV_SIZE], int is_iv, int op_oper)
+{
+	int r;
+	u8 iv[IV_SIZE];
+
+	if (op_oper == OP_ENCRYPT) {
+		if (!is_iv) {
+			/*  generated random on token  */
+			r = sc_get_challenge(card, iv, IV_SIZE);
+	if (r) {
+				fprintf(stderr, "Error: Generate IV"
+						" (get challenge) failed: %s\n",
+		        sc_strerror(r));
+				return -1;
+			}
+		}
+		else
+			memcpy(iv, IV, IV_SIZE);
+	}
+	return do_crypt(card, keyid, path_infile, path_outfile, iv, op_oper);
+}
+
+/*  Print MAC infile (used GOST key chosen by ID)  */
+
+static int gostmac(sc_card_t *card, u8 keyid, const char *path_infile)
+{
+	int err;
+	int fd;
+	struct stat st;
+	size_t insize;
+	u8 *inbuf = NULL;
+	u8 outbuf[HASH_SIZE];
+
+	fd = open(path_infile, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "Error: Cannot open file '%s'\n", path_infile);
+		return -1;
+	}
+	err = fstat(fd, &st);
+	if (err) {
+		fprintf(stderr, "Error: File '%s' is invalid\n", path_infile);
+		close(fd);
+		return -1;
+	}
+	insize = st.st_size;
+	inbuf = malloc(insize);
+	if (!inbuf) {
+		fprintf(stderr, "Error: File '%s' is too big (allocate memory)\n",
+				path_infile);
+		err = -1;
+	}
+	if (err == 0) {
+		err = read(fd, inbuf, insize);
+		if (err < 0  ||  (size_t)err != insize) {
+			fprintf(stderr, "Error: Read file '%s' failed\n", path_infile);
+			err = -1;
+	}
+		else
+			err = rutoken_mac(card, keyid, inbuf, insize,
+					outbuf, sizeof(outbuf));
+	}
+	if (err == 0) {
+		hex_dump(stdout, outbuf, sizeof(outbuf), NULL);
+		putchar('\n');
+	}
+	if (inbuf)
+		free(inbuf);
+	close(fd);
+	return err;
+}
+
+/*  Generate GOST key on ruToken card  */
+
+static int generate_gostkey(sc_card_t *card, u8 keyid, u8 keyoptions)
+{
+	const sc_SecAttrV2_t gk_sec_attr = 
+		{0x44, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0, 2};
+	sc_DOHdrV2_t paramkey;
+	int r;
+
+	memset(&paramkey, 0, sizeof(paramkey));
+	paramkey.wDOBodyLen         = SC_RUTOKEN_DEF_LEN_DO_GOST;
+	paramkey.OTID.byObjectType  = SC_RUTOKEN_TYPE_KEY;
+	paramkey.OTID.byObjectID    = keyid;
+	paramkey.OP.byObjectOptions = keyoptions;
+
+	/* assert(sizeof(*gk_sec_attr)); */
+	/* assert(sizeof(*paramkey.SA_V2)); */
+	/* assert(sizeof(paramkey.SA_V2) == sizeof(gk_sec_attr)); */
+	memcpy(paramkey.SA_V2, gk_sec_attr, sizeof(gk_sec_attr));
+
+        r = sc_card_ctl(card, SC_CARDCTL_RUTOKEN_GENERATE_KEY_DO, &paramkey);
+	if (r) {
+		fprintf(stderr, "Error: Generate GOST key failed: %s\n", sc_strerror(r));
+		return -1;
+	}
+	return 0;
+}
+
+int main(int argc, char* argv[])
+{
+	int             opt_reader = -1;
+	int             opt_wait = 0;
+	const char     *opt_pin = NULL;
+	int             opt_key = 0;
+	int             opt_is_iv = 0;
+	u8              opt_keytype = SC_RUTOKEN_OPTIONS_GOST_CRYPT_PZ;
+	const char     *opt_input = NULL;
+	const char     *opt_output = NULL;
+	int             opt_operation = OP_NONE;
+	int             opt_debug = 0;
+	char IV[IV_SIZE];
 	
-	int operation = 0;
-	
+	int err = 0;
 	sc_context_t *ctx = NULL;
+	sc_context_param_t ctx_param;
 	sc_card_t *card = NULL;
+	int c, long_optind, r, tries_left;
 	
-	while (1) 
-	{
-		c = getopt_long(argc, argv, "r:vc:wgeusk:i:o:p:I:F", options,
-				&long_optind);
+	while (1) {
+		c = getopt_long(argc, argv, "r:wp:k:I:t:i:o:sgedmv",
+				options, &long_optind);
 		if (c == -1)
 			break;
 		switch (c) {
-		case 'h':
 		case '?':
 			print_usage_and_die(app_name, options, option_help);
 		case 'r':
 			opt_reader = atoi(optarg);
 			break;
-		case 'v':
-			opt_debug++;
-			break;
-		case 'c':
-			opt_driver = optarg;
-			break;
 		case 'w':
 			opt_wait = 1;
 			break;
-		case 'g':
-			operation = OP_GET_INFO;
+		case 'p':
+			opt_pin = optarg;
 			break;
 		case 'k':
 			opt_key = atoi(optarg);
-			opt_key = (opt_key / 10) * 0x10 + opt_key % 10;
+			if (opt_key <= 0 || opt_key < SC_RUTOKEN_DO_ALL_MIN_ID
+					|| opt_key > SC_RUTOKEN_DO_NOCHV_MAX_ID) {
+				fprintf(stderr, "Error: Key ID is invalid"
+						" (%d <= ID <= %d)\n",
+						SC_RUTOKEN_DO_ALL_MIN_ID > 0 ?
+						SC_RUTOKEN_DO_ALL_MIN_ID : 1,
+						SC_RUTOKEN_DO_NOCHV_MAX_ID);
+				return -1;
+			}
 			break;
 		case 'I':
-			opt_is_IV = 1;
-			strncpy(opt_IV, optarg, 8);
+			opt_is_iv = 1;
+			strncpy(IV, optarg, sizeof(IV));
 			break;
-		case 'u':
-			operation = OP_DECIPHER;
-			break;
-		case 'e':
-			operation = OP_ENCIPHER;
-			break;
-		case 's':
-			operation = OP_SIGN;
-			break;
-		case OPT_PIN:
-			if(opt_is_sopin || opt_is_pin)
-			{
-				fprintf(stderr, "You must specify only one pin\n");
-				goto end;
+		case 't':
+			if (strcmp(optarg, "CFB") == 0)
+				opt_keytype = SC_RUTOKEN_OPTIONS_GOST_CRYPT_GAMMOS;
+			else if (strcmp(optarg, "SM") == 0)
+				opt_keytype = SC_RUTOKEN_OPTIONS_GOST_CRYPT_GAMM;
+			else if (strcmp(optarg, "ECB") != 0) {
+				fprintf(stderr, "Error: Key type must be either"
+						" ECB, SM or CFB\n");
+				return -1;
 			}
-			opt_is_pin = 1;
-			strcpy(opt_pin, optarg);
-			break;
-		case OPT_SOPIN:
-			if(opt_is_sopin || opt_is_pin)
-			{
-				fprintf(stderr, "You must specify only one pin\n");
-				goto end;
-			}
-			opt_is_sopin = 1;
-			strcpy(opt_pin, optarg);
 			break;
 		case 'i':
-			opt_is_input = 1;
-			strcpy(opt_input, optarg);
+			opt_input = optarg;
 			break;
 		case 'o':
-			opt_is_output = 1;
-			strcpy(opt_output, optarg);
+			opt_output = optarg;
 			break;
-		case 'F':
-			operation = OP_FORMAT;
+		case 's':
+			opt_operation = OP_GET_INFO;
+			break;
+		case 'g':
+			opt_operation = OP_GEN_KEY;
+			break;
+		case 'e':
+			opt_operation = OP_ENCRYPT;
+			break;
+		case 'd':
+			opt_operation = OP_DECRYPT;
+			break;
+		case 'm':
+			opt_operation = OP_MAC;
+			break;
+		case 'v':
+			opt_debug++;
 			break;
 		}
 	}
 
-	/* create sc_context_t object */
-	trace("\n");
 	memset(&ctx_param, 0, sizeof(ctx_param));
-	ctx_param.ver      = 0;
 	ctx_param.app_name = app_name;
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
-		fprintf(stderr, "Failed to establish context: %s\n",
+		fprintf(stderr, "Error: Failed to establish context: %s\n",
 			sc_strerror(r));
-		return 1;
+		return -1;
 	}
-	if (opt_debug)
 		ctx->debug = opt_debug;
-	if (opt_driver != NULL) {
-		err = sc_set_card_driver(ctx, opt_driver);
-		if (err) {
-			fprintf(stderr, "Driver '%s' not found!\n",
-				opt_driver);
-			err = -1;
-			goto end;
-		}
-	}
 
-	trace("\n");
-	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, opt_debug);
-	if (err)
-		goto end;
+	if (connect_card(ctx, &card, opt_reader, 0, opt_wait, opt_debug) != 0)
+		err = -1;
 		
-	if(opt_is_pin || opt_is_sopin){
+	if (err == 0  &&  opt_pin) {
 		/*  verify  */
-	    int tries_left = 0;
-		err = sc_verify(card, SC_AC_CHV, opt_is_sopin ? 1 : 2 , (u8*)opt_pin, strlen(opt_pin), &tries_left);
-	    if(err) 
-		{
-			fprintf(stderr, "verify failed  %d\n", err);
-			goto end;
+		r = sc_verify(card, SC_AC_CHV, SC_RUTOKEN_DEF_ID_GCHV_USER,
+				(u8*)opt_pin, strlen(opt_pin), &tries_left);
+		if (r) {
+			fprintf(stderr, "Error: PIN verification failed: %s",
+					sc_strerror(r));
+			if (r == SC_ERROR_PIN_CODE_INCORRECT)
+				fprintf(stderr, " (tries left %d)\n", tries_left);
+			else
+				putc('\n', stderr);
+			err = 1;
 		}
-		fprintf(stderr, "Verify ok\n");
 	}
-	switch(operation)
-	{
+	if (err == 0) {
+		err = -1;
+		switch (opt_operation) {
 	case OP_GET_INFO:
-		if ((err = rutoken_info(card))) {
-			goto end;
-		}
+			err = rutoken_info(card);
 		break;
-	case OP_DECIPHER:
-	case OP_ENCIPHER:
-		if(!opt_key)
-		{
-			fprintf(stderr, "Not key\n");
-			err = -1;
+		case OP_DECRYPT:
+		case OP_ENCRYPT:
+		case OP_MAC:
+			if (!opt_input) {
+				fprintf(stderr, "Error: No input file specified\n");
 			break;
 		}
-		if (!opt_is_input)
-		{
-			fprintf(stderr, "Not input file\n");
-			err = -1;
+			if (opt_operation != OP_MAC  &&  !opt_output) {
+				fprintf(stderr, "Error: No output file specified\n");
 			break;
 		}
-		if (!opt_is_output)
-		{
-			fprintf(stderr, "Not output file\n");
-			err = -1;
+		case OP_GEN_KEY:
+			if (opt_key == 0) {
+				fprintf(stderr, "Error: You must set key ID\n");
 			break;
 		}
-		err = crypt_file(card, opt_key, opt_input, opt_output, operation, opt_is_IV ? (u8*)opt_IV : NULL);
-		break;
-	case OP_FORMAT:
-		trace("OP_FORMAT\n");
-		err = format_card(card);
-		if(err != SC_SUCCESS) fprintf(stderr, "Initialization failed\n");
-		
+			if (opt_operation == OP_GEN_KEY)
+				err = generate_gostkey(card, (u8)opt_key, opt_keytype);
+			else if (opt_operation == OP_MAC)
+				err = gostmac(card, (u8)opt_key, opt_input);
+			else
+				err = gostchiper(card, (u8)opt_key, opt_input,opt_output,
+						IV, opt_is_iv, opt_operation);
 		break;
 	default:
-		printf("No operation --help\n");
+			fprintf(stderr, "Error: No operation specified\n");
 		break;
 	}
-end:
+	}
 	if (card) {
+		/*  sc_lock  and  sc_connect_card  in  connect_card  */
 		sc_unlock(card);
 		sc_disconnect_card(card, 0);
 	}
@@ -475,3 +534,4 @@ end:
 		sc_release_context(ctx);
 	return err;
 }
+

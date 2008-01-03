@@ -20,6 +20,7 @@
 */
 #include "internal.h"
 #include "cardctl.h"
+#include <sys/types.h>
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
@@ -36,38 +37,36 @@
 #include <openssl/err.h>
 #endif
 
-
-
 #define FDESCR_DF           0x38    /*00111000b*/
 #define FDESCR_EF           0x01
 
 #define ID_RESERVED_CURDF   0x3FFF      /*Reserved ID for current DF*/
 
-int get_prkey_from_bin(u8* data, int len, struct sc_pkcs15_prkey **key);
+#ifdef HAVE_OPENSSL
+int get_prkey_from_bin(const u8 *data, size_t len, struct sc_pkcs15_prkey **key);
+#endif
 
 #ifdef BIG_ENDIAN_RUTOKEN
 #define MF_PATH             "\x3F\x00"
 #else
 #define MF_PATH             "\x00\x3F"
 #endif
+
 struct auth_senv {
 	unsigned int algorithm;
-	int key_file_id;
-	size_t key_size;
-	unsigned int algorithm_flags;
-	sc_path_t path;
 };
 typedef struct auth_senv auth_senv_t;
 
 static const sc_SecAttrV2_t default_sec_attr = {
-	0x40, 
-	0, 0, 0, 0, 0, 0, 1,
-	0, 0, 0, 0, 0, 0, 2
+	0x42,
+	0, 1, 0, 0, 0, 0, 1,
+	0, 2, 0, 0, 0, 0, 2
 };
 
 static const struct sc_card_operations *iso_ops = NULL;
 
-struct sc_card_operations rutoken_ops;
+static struct sc_card_operations rutoken_ops;
+
 static struct sc_card_driver rutoken_drv = {
 	"ruToken driver",
 	"rutoken",
@@ -79,9 +78,6 @@ static struct sc_atr_table rutoken_atrs[] = {
 	{ "3b:6f:00:ff:00:56:72:75:54:6f:6b:6e:73:30:20:00:00:90:00", NULL, NULL, SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
-
-static int make_le_path(u8 *hPath, size_t len);
-static int rutoken_get_do_info(sc_card_t *card, sc_DO_INFO_t * pInfo);
 
 const char *hexdump(const void *data, size_t len)
 {
@@ -123,10 +119,9 @@ static int rutoken_match_card(sc_card_t *card)
 static int rutoken_init(sc_card_t *card)
 {
 	int ret = SC_ERROR_MEMORY_FAILURE;
-#ifdef DEBUG
-	/*  if(!card->ctx->debug) card->ctx->debug = 1;  */
-#endif
+
 	SC_FUNC_CALLED(card->ctx, 1);
+
 	card->name = "rutoken card";
 	card->drv_data = malloc(sizeof(auth_senv_t));
 	card->caps |= SC_CARD_CAP_RSA_2048 | SC_CARD_CAP_NO_FCI | SC_CARD_CAP_RNG;
@@ -137,7 +132,10 @@ static int rutoken_init(sc_card_t *card)
 	}
 	/* add algorithm 
 	TODO: may nid som other flag  */
-	unsigned int flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1; /* SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_HASH_MD5_SHA1 | SC_ALGORITHM_RSA_PAD_NONE*/
+	unsigned int flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
+				/* SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_SHA1
+				| SC_ALGORITHM_RSA_HASH_MD5_SHA1
+				| SC_ALGORITHM_RSA_PAD_NONE */
 
 	_sc_card_add_rsa_alg(card, 256, flags, 0);
 	_sc_card_add_rsa_alg(card, 512, flags, 0);
@@ -145,7 +143,8 @@ static int rutoken_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	sc_algorithm_info_t info;
-	flags = SC_ALGORITHM_GOST_CRYPT_PZ | SC_ALGORITHM_GOST_CRYPT_GAMM | SC_ALGORITHM_GOST_CRYPT_GAMMOS;
+	flags = SC_ALGORITHM_GOST_CRYPT_PZ | SC_ALGORITHM_GOST_CRYPT_GAMM
+		| SC_ALGORITHM_GOST_CRYPT_GAMMOS;
 	memset(&info, 0, sizeof(info));
 	info.algorithm = SC_ALGORITHM_GOST;
 	info.flags = flags;
@@ -220,7 +219,8 @@ int rutoken_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 			        
 	for (i = 0; i < err_count; i++) {
 		if (rutoken_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			if ( rutoken_errors[i].errorstr ) sc_debug(card->ctx, rutoken_errors[i].errorstr);
+			if ( rutoken_errors[i].errorstr )
+				sc_debug(card->ctx, rutoken_errors[i].errorstr);
 			/*SC_FUNC_RETURN(card->ctx, 1, rutoken_errors[i].errorno);*/
 			return rutoken_errors[i].errorno;
 		}
@@ -230,7 +230,7 @@ int rutoken_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_CARD_CMD_FAILED);
 }
 
-int rutoken_dir_up(sc_card_t *card)
+static int rutoken_dir_up(sc_card_t *card)
 {
     u8 rbuf[256];
     int r = 0;
@@ -251,6 +251,27 @@ int rutoken_dir_up(sc_card_t *card)
     return 0;
 }
 
+/* make little endian path from normal path.
+   return 1 if right len, otherwise 0  */
+static int make_le_path(u8 *hPath, size_t len)
+{
+#ifdef BIG_ENDIAN_RUTOKEN
+	/*   we don't need it any more  */
+	return 1;
+#else
+	int i, ret = (len > 1) && !(len & 1);  /*  && (len <= SC_MAX_PATH_SIZE);  */
+	if (ret)
+	{
+		for(i = 0; i < len; i += 2)
+		{
+			u8 b = hPath[i];
+			hPath[i] = hPath[i+1];
+			hPath[i+1] =  b;
+		}
+	}
+	return ret;
+#endif
+}
 
 static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
@@ -287,7 +308,8 @@ static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	    rutoken_dir_up(card);
 	
 	/*  00 a4 00 02 02 prev id - next  */
-	while(1){
+	while(1)
+	{
 	    sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x00, 0x06);
 	    apdu.cla = 0x00;
 	    apdu.lc = 2;
@@ -317,29 +339,7 @@ static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	return len;
 }
 
-/*  make little endian path from normal path.
-  return 1 if right len, otherwise 0  */
-static int make_le_path(u8 *hPath, size_t len)
-{
-#ifdef BIG_ENDIAN_RUTOKEN
-	/*   we don't need it any more  */
-  return 1;
-#else
-	int i, ret = (len > 1) && !(len & 1);  /*  && (len <= SC_MAX_PATH_SIZE);  */
-	if (ret)
-	{
-		for(i = 0; i < len; i += 2)
-		{
-			u8 b = hPath[i];
-			hPath[i] = hPath[i+1];
-			hPath[i+1] =  b;
-		}
-	}
-	return ret;
-#endif
-}
-
-void rutoken_process_fcp(sc_card_t *card, u8 *pIn, sc_file_t *file)
+static void rutoken_process_fcp(sc_card_t *card, u8 *pIn, sc_file_t *file)
 {
 #ifdef BIG_ENDIAN_RUTOKEN
 	file->size = pIn[3] + ((u_int16_t)pIn[2])*256;
@@ -465,13 +465,11 @@ static int rutoken_select_file(sc_card_t *card,
 static int rutoken_set_file_attributes(sc_card_t *card, sc_file_t *file)
 {
 	int ret = SC_ERROR_NOT_SUPPORTED;
-
 	return ret;
 }
 */
 
-static int rutoken_construct_fcp(sc_card_t *card, const sc_file_t *file,
-	u8 *out)
+static int rutoken_construct_fcp(sc_card_t *card, const sc_file_t *file, u8 *out)
 {
 	SC_FUNC_CALLED(card->ctx, 1);
 	
@@ -493,7 +491,6 @@ static int rutoken_construct_fcp(sc_card_t *card, const sc_file_t *file,
 	case SC_FILE_TYPE_WORKING_EF:
 		out[4] = 0x01;
 		/*   set the length (write to wBodyLen)  */
-		/*  *((unsigned short int*)(out) + 1) = (unsigned short int)file->size; */
 #ifdef BIG_ENDIAN_RUTOKEN
 		out[2] = file->size / 256;
 		out[3] = file->size % 256;
@@ -507,7 +504,6 @@ static int rutoken_construct_fcp(sc_card_t *card, const sc_file_t *file,
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	}
 	/*   set file ID  */
-	/*  *((unsigned short int*)(out) + 3) = (unsigned short int)file->id;  */
 #ifdef BIG_ENDIAN_RUTOKEN
 	out[6] = file->id / 256;
 	out[7] = file->id % 256;
@@ -520,7 +516,6 @@ static int rutoken_construct_fcp(sc_card_t *card, const sc_file_t *file,
 		memcpy(out + 17, file->sec_attr, SEC_ATTR_SIZE);
 	else
 		memcpy(out + 17, &default_sec_attr, SEC_ATTR_SIZE);
-	
 	
 	SC_FUNC_RETURN(card->ctx, 1, SC_NO_ERROR);
 }
@@ -578,12 +573,43 @@ static int rutoken_delete_file(sc_card_t *card, const sc_path_t *path)
 	SC_FUNC_RETURN(card->ctx, 1, rutoken_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
+static int rutoken_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
+			const u8 *data, size_t data_len, int *tries_left)
+{
+	int ret = SC_ERROR_CARD_CMD_FAILED;
+	sc_apdu_t apdu;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, ref_qualifier);
+	apdu.lc = data_len;
+	apdu.datalen = data_len;
+	apdu.data = data;
+	if(sc_transmit_apdu(card, &apdu) >= 0)
+	{
+		ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
+		if(ret == SC_ERROR_PIN_CODE_INCORRECT  &&  tries_left)
+		{
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00,
+					ref_qualifier);
+			ret = sc_transmit_apdu(card, &apdu);
+			if(ret >= 0)
+			{
+				ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
+				if(ret == SC_ERROR_PIN_CODE_INCORRECT)
+					*tries_left = (int)(apdu.sw2 & 0x0f);
+			}
+		}
+	}
+	SC_FUNC_RETURN(card->ctx, 1, ret);
+}
+
 static int rutoken_logout(sc_card_t *card)
 {
 	sc_apdu_t apdu;
 	int ret = SC_ERROR_CARD_CMD_FAILED;
 	sc_path_t path;
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	sc_format_path("3F00", &path);
 	if (rutoken_select_file(card, &path, NULL) == SC_SUCCESS)
 	{
@@ -595,20 +621,81 @@ static int rutoken_logout(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx, 1, ret);
 }
 
+static int rutoken_change_reference_data(sc_card_t *card, unsigned int type,
+			int ref_qualifier, const u8 *old, size_t oldlen,
+			const u8 *newref, size_t newlen, int *tries_left)
+{
+	int left;
+	int ret = SC_ERROR_CARD_CMD_FAILED;
+	sc_apdu_t apdu;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+	
+	if(old && oldlen)
+	{
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, ref_qualifier);
+		if(sc_transmit_apdu(card, &apdu) >= 0
+				&&  apdu.sw1 != 0x90  &&  apdu.sw2 != 0x00)
+		{
+			rutoken_logout(card);
+			rutoken_verify(card, type, ref_qualifier, old, oldlen, &left);
+		}
+	}
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref_qualifier);
+	apdu.lc = newlen;
+	apdu.datalen = newlen;
+	apdu.data = newref;
+	if(sc_transmit_apdu(card, &apdu) >= 0)
+	{
+		ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
+		if(ret == SC_ERROR_PIN_CODE_INCORRECT  &&  tries_left)
+			*tries_left = (int)(apdu.sw2 & 0x0f);
+	}
+	SC_FUNC_RETURN(card->ctx, 1, ret);
+}
+
+static int rutoken_reset_retry_counter(sc_card_t *card, unsigned int type,
+			int ref_qualifier, const u8 *puk, size_t puklen,
+			const u8 *newref, size_t newlen)
+{
+#ifdef FORCE_VERIFY_RUTOKEN
+	int left;
+#endif
+	int ret = SC_ERROR_CARD_CMD_FAILED;
+	sc_apdu_t apdu;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+#ifdef FORCE_VERIFY_RUTOKEN
+	if(puk && puklen)
+	{
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, ref_qualifier);
+		if(sc_transmit_apdu(card, &apdu) >= 0
+				&&  apdu.sw1 != 0x90  &&  apdu.sw2 != 0x00)
+		{
+			rutoken_logout(card);
+			rutoken_verify(card, type, ref_qualifier, puk, puklen, &left);
+		}
+	}
+#endif
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2c, 0x03, ref_qualifier);
+	if(sc_transmit_apdu(card, &apdu) >= 0)
+		ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_FUNC_RETURN(card->ctx, 1, ret);
+}
+
 static int rutoken_restore_security_env(sc_card_t *card, int se_num)
 {
 	int ret = SC_ERROR_CARD_CMD_FAILED;
 	sc_apdu_t apdu;
+
 	SC_FUNC_CALLED(card->ctx, 1);
-	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 3, se_num);
 	if(sc_transmit_apdu(card, &apdu) >= 0)
 		ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
-
 	SC_FUNC_RETURN(card->ctx, 1, ret);
 }
 
-int rutoken_set_security_env(sc_card_t *card,
+static int rutoken_set_security_env(sc_card_t *card, 
 			 const sc_security_env_t *env,
 			 int se_num)
 {
@@ -620,19 +707,12 @@ int rutoken_set_security_env(sc_card_t *card,
 	int ret = SC_NO_ERROR;
 	if(env->algorithm == SC_ALGORITHM_RSA)
 	{
-		const char PRK_DF[] = "3F0000000000FF001001";
-		sc_debug(card->ctx, "RSA\n");
 		senv->algorithm = SC_ALGORITHM_RSA_RAW;
-		if(env->operation == SC_SEC_OPERATION_DECIPHER || env->operation == SC_SEC_OPERATION_SIGN)
-		{
-			sc_format_path(PRK_DF, &senv->path);
-			sc_append_path(&senv->path, &env->file_ref);
-		}
-		else ret = SC_ERROR_INVALID_ARGUMENTS;
 		return ret;
 	}
 	else
 		senv->algorithm = SC_ALGORITHM_GOST;
+
 	if (env->key_ref_len != 1)
 	{
 		sc_error(card->ctx, "No or invalid key reference\n");
@@ -671,24 +751,20 @@ int rutoken_set_security_env(sc_card_t *card,
 		if(sc_transmit_apdu(card, &apdu) >= 0)
 			ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
 	}
-	/*  set driver data  */
-	if (ret == SC_NO_ERROR)
-	{
-		/*  TODO: add check  */
-		senv->algorithm = SC_ALGORITHM_GOST;
-		senv->algorithm_flags = env->algorithm_flags;
-		senv->key_file_id = env->key_ref[0];
-		senv->key_size = 256;
-	}
 	SC_FUNC_RETURN(card->ctx, 1, ret);
 }
 
-void rutoken_set_do_hdr(u8 *data, sc_DOHdrV2_t *pHdr)
+static void rutoken_set_do_hdr(u8 *data, sc_DOHdrV2_t *pHdr)
 {
 	if(data)
 	{
+#ifdef BIG_ENDIAN_RUTOKEN
+		data[0] = (u8)(pHdr->wDOBodyLen / 0x100);
+		data[1] = (u8)(pHdr->wDOBodyLen % 0x100);
+#else
 		data[0] = (u8)(pHdr->wDOBodyLen % 0x100);
 		data[1] = (u8)(pHdr->wDOBodyLen / 0x100);
+#endif
 		data[2] = (u8)(pHdr->OTID.byObjectType);
 		data[3] = (u8)(pHdr->OTID.byObjectID);
 		data[4] = (u8)(pHdr->OP.byObjectOptions);
@@ -698,12 +774,6 @@ void rutoken_set_do_hdr(u8 *data, sc_DOHdrV2_t *pHdr)
 		memcpy(data + 11, pHdr->abyReserv2, 6);
 		memcpy(data + 17, pHdr->SA_V2, SEC_ATTR_SIZE);
 	}
-}
-
-void rutoken_set_do(u8 *data, sc_DO_V2_t * pDO)
-{
-	rutoken_set_do_hdr(data, &pDO->HDR);
-	memcpy(data + SC_RUTOKEN_DO_HDR_LEN, pDO->abyDOBody, pDO->HDR.wDOBodyLen);
 }
 
 static int rutoken_key_gen(sc_card_t *card, sc_DOHdrV2_t *pHdr)
@@ -761,7 +831,8 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 	}
 	else
 	{
-		rutoken_set_do(data, pDO);
+		rutoken_set_do_hdr(data, &pDO->HDR);
+		memcpy(data + SC_RUTOKEN_DO_HDR_LEN, pDO->abyDOBody, pDO->HDR.wDOBodyLen);
 		
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xda, 0x01, 0x62);
 		apdu.data= data;
@@ -864,135 +935,204 @@ static int rutoken_get_serial(sc_card_t *card, sc_serial_number_t *pSerial)
 static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_len,
                    u8 * out, size_t outlen, int p1, int p2, int isIV)
 {
+	const size_t cipher_chunk = 248;  /* cipher_chunk <= SC_MAX_APDU_BUFFER_SIZE  */
+	size_t len, outlen_tail = outlen;
+	u8 *buf;
+	int ret;
 	sc_apdu_t apdu;
-	int rv = SC_NO_ERROR;
 	
-	sc_debug(card->ctx,": crgram_len %i;  outlen %i\n", crgram_len, outlen);
-	if (!out || !outlen) 
+	SC_FUNC_CALLED(card->ctx, 1);
+	sc_debug(card->ctx, ": crgram_len %i; outlen %i\n", crgram_len, outlen);
+
+	if (!out)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	if (crgram_len < 16 || ((crgram_len) % 8))
+		return SC_ERROR_WRONG_LENGTH;
+
+	buf = malloc(cipher_chunk);
+	if (!buf)
+		return SC_ERROR_OUT_OF_MEMORY;
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, p1, p2);
-	
-	apdu.resp = (u8*)malloc(SC_MAX_APDU_BUFFER_SIZE);
-	if (!apdu.resp)
-		return SC_ERROR_OUT_OF_MEMORY;
-	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
-	if (crgram_len < 16 || ((crgram_len) % 8))  
-		rv = SC_ERROR_WRONG_LENGTH;
-	size_t cur_len = 0;
-	unsigned char is_first = 1;
-	unsigned int cur_data_len;	
-	
-	while( (rv == SC_NO_ERROR) && (cur_len != crgram_len) && (outlen > cur_len))
+	do
 	{
-		cur_data_len = (crgram_len - cur_len) % 248;
-		if(!cur_data_len) cur_data_len = 248;
-		
-		apdu.data = crgram + cur_len;
-		apdu.lc = apdu.datalen = cur_data_len;
-		apdu.cla = crgram_len - cur_len - cur_data_len > 0 ? 0x10 : 0x00;
-		apdu.le = apdu.resplen = 248;
-		
-		if((rv = sc_transmit_apdu(card, &apdu)) >= 0 &&
-		   (rv = rutoken_check_sw(card, apdu.sw1, apdu.sw2)) == SC_NO_ERROR) 
+		len = (crgram_len > cipher_chunk) ? cipher_chunk : crgram_len;
+		apdu.lc = len;
+		apdu.datalen = len;
+		apdu.data = crgram;
+		crgram += len;
+		crgram_len -= len;
+
+		apdu.cla = (crgram_len == 0) ? 0x00 : 0x10;
+		apdu.le = len;
+		apdu.resplen = len;
+		apdu.resp = buf;
+	
+		if (sc_transmit_apdu(card, &apdu) >= 0)
+			ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
+		else
+			ret = SC_ERROR_CARD_CMD_FAILED;
+		if (ret == SC_NO_ERROR)
 		{
-			if(isIV && is_first)
+			if (isIV)
 			{
-				/*  break initialization vector  */
-				memcpy(out, apdu.resp + 8, apdu.resplen - 8);
-				out += apdu.resplen - 8;
-				cur_len += apdu.resplen;
-				is_first = 0;
+				apdu.resp += 8;
+				apdu.resplen -= 8;
+				isIV = 0;
 			}
+			if (apdu.resplen > outlen_tail)
+				ret = SC_ERROR_BUFFER_TOO_SMALL;
 			else
 			{
-				/*  memcpy(out + cur_len, apdu.resp, apdu.resplen);  */
 				memcpy(out, apdu.resp, apdu.resplen);
-				cur_len += apdu.resplen;
 				out += apdu.resplen;
+				outlen_tail -= apdu.resplen;
 			}
 		}
-	}
-	if (rv == SC_NO_ERROR) rv = (cur_len == crgram_len) ? isIV ? cur_len - 8 : cur_len : SC_ERROR_BUFFER_TOO_SMALL;
+	} while (ret == SC_NO_ERROR  &&  crgram_len != 0);
 	
-	if (apdu.resp)
-		free(apdu.resp);
+	free(buf);
 	
-	sc_debug(card->ctx, "return decipher len %d\n", rv);
-	return rv;
-}
+	sc_debug(card->ctx, "len out cipher %d\n", outlen - outlen_tail);
+	if (ret == SC_NO_ERROR)
+		ret = (outlen_tail == 0) ? (int)outlen : SC_ERROR_WRONG_LENGTH;
 
-/*  Launcher for chipher  */
-static int rutoken_decipher(sc_card_t *card, struct sc_rutoken_decipherinfo *ptr)
-{
-	return rutoken_cipher_p(card, ptr->inbuf, ptr->inlen, ptr->outbuf, ptr->outlen, 0x80, 0x86, 1);
+	SC_FUNC_RETURN(card->ctx, 1, ret);
 }
 
 /*  Launcher for chipher  */
 
-static int rutoken_encipher(sc_card_t *card, struct sc_rutoken_decipherinfo *ptr)
+static int rutoken_cipher_gost(sc_card_t *card, 
+		struct sc_rutoken_decipherinfo *ptr, char is_enchiper)
 {
-	return rutoken_cipher_p(card, ptr->inbuf, ptr->inlen, ptr->outbuf, ptr->outlen, 0x86, 0x80, 0);
+	int ret;
+
+	if (is_enchiper)
+		ret = rutoken_cipher_p(card, ptr->inbuf, ptr->inlen, 
+				ptr->outbuf, ptr->outlen, 0x86, 0x80, 0);
+	else
+		ret = rutoken_cipher_p(card, ptr->inbuf, ptr->inlen, 
+				ptr->outbuf, ptr->outlen, 0x80, 0x86, 1);
+	if (ret > 0)
+	{
+		if ((size_t)ret == ptr->outlen)
+			ret = SC_SUCCESS;
+		else
+			ret = SC_ERROR_INTERNAL; /* SC_ERROR_DECRYPT_FAILED; */
+	}
+	return ret;
+
 }
 
-int rutoken_read_file(sc_card_t *card, sc_path_t *path, u8 **out, int *len)
+static int rutoken_compute_mac_gost(sc_card_t *card, 
+			const u8 *in, size_t ilen, 
+			u8 *out, size_t olen)
 {
-	int r;
-	u8 *data = NULL;
-	sc_file_t *file = NULL;
-	r = sc_lock(card);
-	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
-	*len = 0;
-	r = rutoken_select_file(card, path, &file);
-	if (r == SC_SUCCESS)
+	const size_t signing_chunk = 248;
+	size_t len;
+	int ret;
+	sc_apdu_t apdu;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	if (!in || !out || olen != 4 || ilen == 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	do
 	{
-		data = (u8 *) malloc(file->size);
-		if (data == NULL) 
-			r = SC_ERROR_OUT_OF_MEMORY;
-	}
-	if (r == SC_SUCCESS)
-		r = sc_read_binary(card, 0, data, file->size, 0);
-	if (file && r == file->size)
+		sc_format_apdu(card, &apdu,
+				ilen > signing_chunk ?
+				SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT,
+				0x2A, 0x90, 0x80);
+		len = (ilen > signing_chunk) ? signing_chunk : ilen;
+		apdu.lc = len;
+		apdu.datalen = len;
+		apdu.data = in;
+		in += len;
+		ilen -= len;
+		if (ilen == 0)
 	{
-		*len = r;
-		*out = data;
-		r = SC_SUCCESS;
+			apdu.cla = 0x00;
+			apdu.le = olen;
+			apdu.resplen = olen;
+			apdu.resp = out;
 	}
 	else
-		free(data);
-	sc_unlock(card);
+			apdu.cla = 0x10;
+		if (sc_transmit_apdu(card, &apdu) >= 0)
+			ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
+		else
+			ret = SC_ERROR_CARD_CMD_FAILED;
+	} while (ret == SC_NO_ERROR  &&  ilen != 0);
 	
-	if(file) sc_file_free(file);
-	
-	return r;
+	SC_FUNC_RETURN(card->ctx, 1, ret);
 }
-
-int rutoken_read_prkey(sc_card_t *card,
-			sc_path_t *path,
-			struct sc_pkcs15_prkey **out)
-{
-	int ret, len = 0;
-	u8 *data = NULL;
 	
-	ret = rutoken_read_file(card, path, &data, &len);
-	if (ret == SC_SUCCESS)
-	{
-		ret = get_prkey_from_bin(data, len, out);
-	}
-	
-	return ret;
-}
-
 /*  RSA emulation  */
 
 #ifdef HAVE_OPENSSL
+
+static int rutoken_get_current_fileid(sc_card_t *card, u8 id[2])
+{
+	sc_apdu_t apdu;
+	int ret = SC_ERROR_CARD_CMD_FAILED;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x11);
+	apdu.resp = id;
+	apdu.resplen = sizeof(id);
+	apdu.le = 2;
+	if(sc_transmit_apdu(card, &apdu) >= 0)
+		ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_FUNC_RETURN(card->ctx, 1, ret);
+}
+
+static int rutoken_read_prkey(sc_card_t *card, struct sc_pkcs15_prkey **out)
+{
+	int r;
+	u8 id[2];
+	u8 *data;
+	sc_path_t path;
+	sc_file_t *file = NULL;
+	
+	r = sc_lock(card);
+	if(r != SC_SUCCESS)
+		return r;
+
+	r = rutoken_get_current_fileid(card, id);
+	if(r == SC_SUCCESS)
+	{
+		sc_path_set(&path, SC_PATH_TYPE_FILE_ID, id, sizeof(id), 0, -1);
+		r = rutoken_select_file(card, &path, &file);
+	}
+	if(r == SC_SUCCESS  &&  file)
+	{
+		data = malloc(file->size);
+		if(data == NULL)
+			r = SC_ERROR_OUT_OF_MEMORY;
+		else
+		{
+			r = sc_read_binary(card, 0, data, file->size, 0);
+			if(r > 0  &&  (size_t)r == file->size)
+				r = get_prkey_from_bin(data, file->size, out);
+			memset(data, 0, file->size);
+			free(data);
+		}
+	}
+	if(file)
+		sc_file_free(file);
+	sc_unlock(card);
+	return r;
+}
+
 #define GETBN(bn)	((bn)->len? BN_bin2bn((bn)->data, (bn)->len, NULL) : NULL)
-static int extract_key(sc_card_t *card, sc_path_t *path, EVP_PKEY **pk)
+
+static int extract_key(sc_card_t *card, EVP_PKEY **pk)
 {
 	struct sc_pkcs15_prkey	*key = NULL;
 	int		r;
 
-	r = rutoken_read_prkey(card, path, &key);
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	r = rutoken_read_prkey(card, &key);
 
 	if (r < 0)
 		return r;
@@ -1032,26 +1172,21 @@ static int extract_key(sc_card_t *card, sc_path_t *path, EVP_PKEY **pk)
 	return r;
 }
 
-static int sign_ext(sc_card_t *card, sc_path_t *path,
-		const u8 *data, size_t len, u8 *out, size_t out_len)
+static int sign_ext(sc_card_t *card, const u8 *data, size_t len, u8 *out, size_t out_len)
 {
-	auth_senv_t *senv = (auth_senv_t *)card->drv_data;
 	EVP_PKEY *pkey = NULL;
-	int	ret;
+	int ret, r;
 
-	out_len = 0;
-	ret = extract_key(card, path, &pkey);
-	if (!senv) ret = SC_ERROR_INTERNAL;
-	if (ret >= 0)
-	{	
-		switch (senv->algorithm) 
-		{
-		case SC_ALGORITHM_RSA_RAW:
-			ret = RSA_private_encrypt(len, data, out, pkey->pkey.rsa, 
-									  RSA_PKCS1_PADDING);
-			if ( ret >= 0)
-				ret = out_len;
-			else
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	if (out_len < len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ret = extract_key(card, &pkey);
+	if (ret == SC_SUCCESS)
+	{
+		r = RSA_private_encrypt(len, data, out, pkey->pkey.rsa, RSA_PKCS1_PADDING);
+		if ( r < 0)
 			{
 				ret = SC_ERROR_INTERNAL;
 				char error[1024];
@@ -1060,143 +1195,125 @@ static int sign_ext(sc_card_t *card, sc_path_t *path,
 				sc_error(card->ctx, error);
 				ERR_free_strings();
 			}
-			break;
-		}
 	}
-	if(pkey)EVP_PKEY_free(pkey);
+	if(pkey)
+		EVP_PKEY_free(pkey);
 	return ret;
 }
 
-#if 0
-static int decipher_ext(sc_card_t *card, sc_path_t *path,
-						const u8 *data, size_t len, u8 *out, size_t out_len)
+static int decipher_ext(sc_card_t *card, const u8 *data, size_t len, u8 *out, size_t out_len)
 {
-	//int	r = SC_ERROR_NOT_SUPPORTED;
-	auth_senv_t *senv = (auth_senv_t *)card->drv_data;
 	EVP_PKEY *pkey = NULL;
+	int ret;
 	
-	int	r;
+	SC_FUNC_CALLED(card->ctx, 1);
 
-	out_len = 0;
-	r = extract_key(card, path, &pkey);
-	if (r < 0)
-		return r;
+	if (out_len < len)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
-	switch (senv->algorithm) 
+	ret = extract_key(card, &pkey);
+	if (ret == SC_SUCCESS)
 	{
-		case SC_ALGORITHM_RSA_RAW:
-			r = RSA_private_decrypt(len, data, out, pkey->pkey.rsa, 
-									RSA_NO_PADDING);
-			if ( r >= 0)
-				out_len = r;
-			else
+		ret = RSA_private_decrypt(len, data, out, pkey->pkey.rsa, RSA_PKCS1_PADDING);
+		if ( ret < 0)
 			{
-				r = SC_ERROR_INTERNAL;
-				char error[1024];
-				ERR_load_crypto_strings();
-				ERR_error_string(ERR_get_error(), error);
-				sc_error(card->ctx, error);
-				ERR_free_strings();
-			}
-			break;
-	}
-	if(pkey)EVP_PKEY_free(pkey);
-	/*
-	EVP_PKEY_RSA *pkey = NULL;
-
-	r = extract_key(card, &senv->path, &pkey);
-	if (r < 0)
-		return r;
-
-	switch (senv->algorithm) {
-	case SC_ALGORITHM_RSA_RAW:
-		r = EVP_PKEY_decrypt(out, data, len, pkey);
-		if (r <= 0) {
-			fprintf(stderr, "Decryption failed.\n");
-			r = SC_ERROR_INTERNAL;
+			ret = SC_ERROR_INTERNAL;
 			char error[1024];
 			ERR_load_crypto_strings();
 			ERR_error_string(ERR_get_error(), error);
 			sc_error(card->ctx, error);
 			ERR_free_strings();
 		}
-		break;
-	default:
-		fprintf(stderr, "Key type not supported.\n");
-		r = SC_ERROR_NOT_SUPPORTED;
 	}
-	
-	if(pkey)EVP_PKEY_free(pkey);*/
-	return r;
+	if(pkey)
+		EVP_PKEY_free(pkey);
+	return ret;
 }
-#endif
 
-static int rutoken_decipher_rsa(sc_card_t *card, const u8 * data, size_t datalen, u8 * out, size_t outlen)
+static int rutoken_decipher(sc_card_t *card, 
+			const u8 * data, size_t datalen, 
+			u8 * out, size_t outlen)
 {
-#if 0    
-	//TODO: Soft RSA encryption. Uncomment and check that;
 	auth_senv_t *senv = (auth_senv_t *)card->drv_data;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	if (!senv)
+		return SC_ERROR_INTERNAL;
+
 	if(senv->algorithm == SC_ALGORITHM_GOST) 
 	{
 		return rutoken_cipher_p(card, data, datalen, out, outlen, 0x80, 0x86, 1);
 	}
 	else if (senv->algorithm == SC_ALGORITHM_RSA_RAW) 
 	{
-		int key_id = senv->key_file_id;
-		return decipher_ext(card, &senv->path, data, datalen, out, outlen);
+		return decipher_ext(card, data, datalen, out, outlen);
 	}
 	else
 		return SC_ERROR_NOT_SUPPORTED;
-#endif
-	return SC_ERROR_NOT_SUPPORTED;
 }
 
-static int rutoken_compute_signature_gost(sc_card_t *card, const u8 *in, size_t ilen, u8 * out, size_t olen)
+static int rutoken_compute_signature(struct sc_card *card, 
+			const u8 * data, size_t datalen, 
+			u8 * out, size_t outlen)
 {
-	sc_debug(card->ctx, "sign gost");
-	int ret = SC_ERROR_CARD_CMD_FAILED;
-	sc_apdu_t apdu = {0};
-	u8 *buff[256] = {0};
-	
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x90, 0x80);
-	apdu.lc = apdu.datalen = ilen;
-	apdu.data = in;
-	apdu.resplen = olen;
-	apdu.resp = (u8*)buff;
-	apdu.le = 4;
-	if(sc_transmit_apdu(card, &apdu) >= 0)
-	{
-		memcpy(out, apdu.resp, apdu.resplen);
-		ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
-	}
-	SC_FUNC_RETURN(card->ctx, 4, apdu.resplen);
-}
-
-
-static int rutoken_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
-                                     u8 * out, size_t outlen) 
-{
-	sc_debug(card->ctx, "sign");
 	auth_senv_t *senv = (auth_senv_t *)card->drv_data;
-	if(senv->algorithm == SC_ALGORITHM_GOST) 
+	
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	if (!senv)
+		return SC_ERROR_INTERNAL;
+
+	if (senv->algorithm == SC_ALGORITHM_GOST) 
 	{
-		return rutoken_compute_signature_gost(card, data, datalen, out, outlen);
+		return rutoken_compute_mac_gost(card, data, datalen, out, outlen);
 	}
 	else if (senv->algorithm == SC_ALGORITHM_RSA_RAW) 
 	{
-		return sign_ext(card, &senv->path, data, datalen, out, outlen);
+		return sign_ext(card, data, datalen, out, outlen);
 	}
+	else
 	return SC_ERROR_NOT_SUPPORTED;
 }
 #endif
 
+static int rutoken_get_challenge(sc_card_t *card, u8 *rnd, size_t count)
+{
+	int ret = SC_NO_ERROR;
+	sc_apdu_t apdu;
+	u8 rbuf[32];
+	size_t n;
 
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0x00, 0x00);
+	apdu.le = sizeof(rbuf);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+
+	while (count > 0)
+	{
+		ret = sc_transmit_apdu(card, &apdu);
+		SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
+		ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
+		if (ret != SC_SUCCESS)
+			break;
+		if (apdu.resplen != sizeof(rbuf))
+		{
+			ret = SC_ERROR_UNKNOWN;
+			break;
+		}
+		n = count < sizeof(rbuf) ? count : sizeof(rbuf);
+		memcpy(rnd, rbuf, n);
+		count -= n;
+		rnd += n;
+	}
+	SC_FUNC_RETURN(card->ctx, 1, ret);
+}
 
 static int rutoken_get_info(sc_card_t *card, void *buff)
 {
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r;
+	int r = SC_ERROR_CARD_CMD_FAILED;
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x89);
 	apdu.resp = rbuf;
@@ -1210,25 +1327,27 @@ static int rutoken_get_info(sc_card_t *card, void *buff)
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
-static int rutoken_tries_left(sc_card_t *card, int *chv_tries_left)
+static int rutoken_format(sc_card_t *card, int apdu_ins)
 {
-	int ret = SC_ERROR_INCORRECT_PARAMETERS;
+	int ret = SC_ERROR_CARD_CMD_FAILED;
 	sc_apdu_t apdu;
-	if (*chv_tries_left != 1 && *chv_tries_left != 2 && *chv_tries_left != 0) 
-		SC_FUNC_RETURN(card->ctx, 1, ret);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, *chv_tries_left);
-	if((ret = sc_transmit_apdu(card, &apdu)) >= 0)
-	{
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, apdu_ins, 0x00, 0x00);
+	apdu.cla = 0x80;
+	if(sc_transmit_apdu(card, &apdu) >= 0)
 		ret = rutoken_check_sw(card, apdu.sw1, apdu.sw2);
-		if (ret == SC_ERROR_PIN_CODE_INCORRECT)
-			*chv_tries_left = (int)(apdu.sw2 & 0x0f);
-	}
+
 	SC_FUNC_RETURN(card->ctx, 1, ret);
 }
 
 static int rutoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
-	int ret = ptr != NULL ? SC_NO_ERROR : SC_ERROR_INVALID_ARGUMENTS;
+	int ret = (ptr != NULL
+			/*|| cmd == SC_CARDCTL_ERASE_CARD */
+			|| cmd == SC_CARDCTL_RUTOKEN_FORMAT_INIT
+			|| cmd == SC_CARDCTL_RUTOKEN_FORMAT_END
+		) ? SC_NO_ERROR : SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(card->ctx, 1);
 	
 	if(ret == SC_NO_ERROR)
@@ -1257,26 +1376,21 @@ static int rutoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 			ret = rutoken_get_info(card, ptr);
 			break;
 		case SC_CARDCTL_RUTOKEN_GOST_ENCIPHER:
-			ret = rutoken_encipher(card, ptr);
+			ret = rutoken_cipher_gost(card, ptr, 1);
 			break;
 		case SC_CARDCTL_RUTOKEN_GOST_DECIPHER:
-			ret = rutoken_decipher(card, ptr);
+			ret = rutoken_cipher_gost(card, ptr, 0);
 			break;
-		case SC_CARDCTL_RUTOKEN_TRIES_LEFT:
-			ret = rutoken_tries_left(card, ptr);
+		/* case SC_CARDCTL_ERASE_CARD: */
+		case SC_CARDCTL_RUTOKEN_FORMAT_INIT:
+			/* ret = rutoken_format(card, 0x7a); *//*  APDU: INIT RUTOKEN */
+			ret = rutoken_format(card, 0x8a); /* APDU: NEW INIT RUTOKEN */
+			break;
+		case SC_CARDCTL_RUTOKEN_FORMAT_END:
+			ret = rutoken_format(card, 0x7b); /* APDU: FORMAT END */
 			break;
 		default:
 			sc_debug(card->ctx, "cmd = %d", cmd);
-#if 0
-		{
-			sc_apdu_t *pApdu = ptr;
-			if(sc_transmit_apdu(card, pApdu) >= 0)
-				ret = rutoken_check_sw(card, pApdu->sw1, pApdu->sw2);
-			else
-				ret = SC_ERROR_CARD_CMD_FAILED;
-			break;
-		}
-#endif
 			ret = SC_ERROR_NOT_SUPPORTED;
 			break;
 		}
@@ -1299,16 +1413,24 @@ static struct sc_card_driver * sc_get_driver(void)
 	rutoken_ops.delete_file = rutoken_delete_file;
 	rutoken_ops.list_files = rutoken_list_files;
 	rutoken_ops.card_ctl = rutoken_card_ctl;
-	/*  rutoken_ops.verify = rutoken_verify;  */
+	rutoken_ops.get_challenge = rutoken_get_challenge;
 	
-	#ifdef HAVE_OPENSSL
-	rutoken_ops.decipher = rutoken_decipher_rsa;
+#ifdef HAVE_OPENSSL
+	rutoken_ops.decipher = rutoken_decipher;
 	rutoken_ops.compute_signature = rutoken_compute_signature;
-	#endif
+#else
+	rutoken_ops.decipher = NULL;
+	rutoken_ops.compute_signature = NULL;
+#endif
 	rutoken_ops.set_security_env = rutoken_set_security_env;
 	rutoken_ops.restore_security_env = rutoken_restore_security_env;
+
+	rutoken_ops.verify = rutoken_verify;
 	rutoken_ops.logout  = rutoken_logout;
+	rutoken_ops.change_reference_data = rutoken_change_reference_data;
+	rutoken_ops.reset_retry_counter = rutoken_reset_retry_counter;
 	
+	rutoken_ops.pin_cmd = NULL;
 	rutoken_ops.read_record = NULL;
 	rutoken_ops.write_record = NULL;
 	rutoken_ops.append_record = NULL;

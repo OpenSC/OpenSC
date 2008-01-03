@@ -2445,7 +2445,18 @@ static int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 	return rv;
 }
 
+static CK_RV data_value_to_attr(CK_ATTRIBUTE_PTR attr, struct sc_pkcs15_data *data)
+{
+	if (!attr || !data)
+		return CKR_ATTRIBUTE_VALUE_INVALID;
 
+	sc_debug(context, "data %p\n", data);
+	sc_debug(context, "data_len %i\n", data->data_len);
+
+	check_attribute_buffer(attr, data->data_len);
+	memcpy(attr->pValue, data->data, data->data_len);
+	return CKR_OK;
+}
 
 static CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 				void *object,
@@ -2503,16 +2514,14 @@ static CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 			struct sc_pkcs15_data *data = NULL;
 			
 			rv = pkcs15_dobj_get_value(session, dobj, &data);
-			if (rv!=CKR_OK)
+			if (rv == CKR_OK)
+				rv = data_value_to_attr(attr, data);
+			if (data) {
+				free(data->data);
+				free(data);
+			}
+			if (rv != CKR_OK)
 				return rv;
-			else if (!data)
-				return CKR_ATTRIBUTE_VALUE_INVALID;
-			
-			sc_debug(context, "data %p\n", data);
-			sc_debug(context, "data_len %i\n", data->data_len);
-			check_attribute_buffer(attr, data->data_len);
-			memcpy(attr->pValue, data->data, data->data_len);
-			free(data);
 		}
 		break;
 	default:
