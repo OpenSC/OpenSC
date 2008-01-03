@@ -314,18 +314,18 @@ app opensc-pkcs11 {
 		# slots.
 		hide_empty_tokens = yes;
 
-		# By default, the OpenSC PKCS#11 module will
-		# try to lock this card once you have authenticated
-		# to the card via C_Login. This is done so that no
-		# other user can connect to the card and perform
-		# crypto operations (which may be possible because
-		# you have already authenticated with the card).
-		#
-		# However, this also means that no other application
-		# that _you_ run can use the card until your application
-		# has done a C_Logout or C_Finalize. In the case of
-		# Netscape or Mozilla, this does not happen until
-		# you exit the browser.
+ 		# By default, the OpenSC PKCS#11 module will not lock
+ 		# this card once you have authenticated to the card via
+ 		# C_Login. This may add some risk as other users may connect
+ 		# to the card and perform crypto operations (which may be
+ 		# possible because you have already authenticated with the
+ 		# card). You may consider changing it to true.
+ 		#
+ 		# However, if you do, this also means that no other
+ 		# application that _you_ run can use the card until your
+ 		# application has done a C_Logout or C_Finalize. In the case
+ 		# of Netscape or Mozilla, this does not happen until you exit
+ 		# the browser.  
 		# Default: false
 		# lock_login = true;
 
