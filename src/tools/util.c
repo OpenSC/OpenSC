@@ -99,7 +99,7 @@ void print_binary(FILE *f, const u8 *buf, int count)
 	for (i = 0; i < count; i++) {
 		unsigned char c = buf[i];
 		const char *format;
-		if (!isalnum(c) && !ispunct(c) && !isspace(c))
+		if (!isprint(c))
 			format = "\\x%02X";
 		else
 			format = "%c";
