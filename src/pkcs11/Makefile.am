@@ -49,4 +49,5 @@ pkcs11-jar: jar-dir
 # see http://wiki.cacert.org/wiki/Pkcs11TaskForce
 pkcs11_DATA = #This will create the directory
 install-data-hook:
+	$(RM) $(DESTDIR)$(pkcs11dir)/opensc-pkcs11.so
 	$(LN_S) ../opensc-pkcs11.so $(DESTDIR)$(pkcs11dir)/opensc-pkcs11.so
