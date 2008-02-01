@@ -91,7 +91,7 @@ static int acos_detect_card(sc_pkcs15_card_t *p15card)
 	sc_card_t *card = p15card->card;
 
 	/* check if we have the correct card OS */
-	if (strcmp(card->name, "A-TRUST ACOS"))
+	if (strncmp(card->name, "A-TRUST ACOS", strlen("A-TRUST ACOS")))
 		return SC_ERROR_WRONG_CARD;
 	/* read EF_CIN_CSN file */
 	sc_format_path("DF71D001", &path);
