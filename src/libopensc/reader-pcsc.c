@@ -118,6 +118,8 @@ static int pcsc_ret_to_error(long rv)
 		return SC_ERROR_TRANSMIT_FAILED;
 	case SCARD_W_UNRESPONSIVE_CARD:
 		return SC_ERROR_CARD_UNRESPONSIVE;
+	case SCARD_W_UNPOWERED_CARD:
+		return SC_ERROR_CARD_UNRESPONSIVE;
 	case SCARD_E_SHARING_VIOLATION:
 		return SC_ERROR_READER;
 #ifdef SCARD_E_NO_READERS_AVAILABLE /* Older pcsc-lite does not have it */
@@ -484,26 +486,32 @@ static int pcsc_reconnect(sc_reader_t * reader, sc_slot_info_t * slot, int reset
 	if (!(slot->flags & SC_SLOT_CARD_PRESENT))
 		return SC_ERROR_CARD_NOT_PRESENT;
 
-	if (_sc_check_forced_protocol
-	    (reader->ctx, slot->atr, slot->atr_len,
-	     (unsigned int *)&protocol)) {
-		protocol = opensc_proto_to_pcsc(protocol);
-	} else {
-		protocol = slot->active_protocol;
-	}
-
 	/* reconnect always unlocks transaction */
 	pslot->locked = 0;
 	
 	rv = SCardReconnect(pslot->pcsc_card,
-			    priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED, protocol,
-			    reset ? SCARD_UNPOWER_CARD : SCARD_LEAVE_CARD, &active_proto);
+			    priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
+			    SCARD_PROTOCOL_ANY, reset ? SCARD_UNPOWER_CARD : SCARD_LEAVE_CARD, &active_proto);
+
+	/* Check for protocol difference */
+	if (rv == SCARD_S_SUCCESS && _sc_check_forced_protocol
+	    (reader->ctx, slot->atr, slot->atr_len,
+	     (unsigned int *)&protocol)) {
+		protocol = opensc_proto_to_pcsc(protocol);
+		if (pcsc_proto_to_opensc(active_proto) != protocol) {
+		 rv = SCardReconnect(pslot->pcsc_card,
+		 		     priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
+		 		     protocol, SCARD_UNPOWER_CARD, &active_proto);
+		}
+	}
+
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_ERROR(reader->ctx, "SCardReconnect failed", rv);
-		return pcsc_ret_to_error(rv);
+		return rv;
 	}
+	
 	slot->active_protocol = pcsc_proto_to_opensc(active_proto);
-	return SC_SUCCESS;
+	return rv;
 }
 
 static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
@@ -626,7 +634,7 @@ static int pcsc_disconnect(sc_reader_t * reader, sc_slot_info_t * slot)
                   SCARD_RESET_CARD : SCARD_LEAVE_CARD);
 	memset(pslot, 0, sizeof(*pslot));
 	slot->flags = 0;
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int pcsc_lock(sc_reader_t *reader, sc_slot_info_t *slot)
@@ -678,7 +686,7 @@ static int pcsc_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
 		PCSC_ERROR(reader->ctx, "SCardEndTransaction failed", rv);
 		return pcsc_ret_to_error(rv);
 	}
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int pcsc_release(sc_reader_t *reader)
@@ -694,7 +702,7 @@ static int pcsc_release(sc_reader_t *reader)
 			reader->slot[i].drv_data = NULL;
 		}
 	}
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int pcsc_reset(sc_reader_t *reader, sc_slot_info_t *slot)
@@ -704,8 +712,8 @@ static int pcsc_reset(sc_reader_t *reader, sc_slot_info_t *slot)
 	int old_locked = pslot->locked;
 
 	r = pcsc_reconnect(reader, slot, 1);
-	if(r != SC_SUCCESS)
-		return r;
+	if(r != SCARD_S_SUCCESS)
+		return pcsc_ret_to_error(r);
 
 	/* pcsc_reconnect unlocks card... try to lock it again if it was locked */
 	if(old_locked)
