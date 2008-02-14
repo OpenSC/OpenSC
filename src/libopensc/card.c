@@ -749,19 +749,41 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *at
 		const char *tatr = table[i].atr;
 		const char *matr = table[i].atrmask;
 		size_t tatr_len = strlen(tatr);
+		u8 mbin[SC_MAX_ATR_SIZE], tbin[SC_MAX_ATR_SIZE];
+		size_t mbin_len, tbin_len, s, matr_len;
+		size_t fix_hex_len = card_atr_hex_len;
+		size_t fix_bin_len = card_atr_bin_len;
+		unsigned int j = 0;
 
 		if (ctx->debug >= 4)
 			sc_debug(ctx, "ATR try : %s\n", tatr);
 
-		if (tatr_len != card_atr_hex_len) {
+#ifdef __APPLE__
+		/* Leopard PCSC bug */
+		tbin_len = sizeof(tbin);
+		sc_hex_to_bin(tatr, tbin, &tbin_len);
+		
+		if (card_atr_bin_len == SC_MAX_ATR_SIZE && tbin_len < SC_MAX_ATR_SIZE) {
+			char card_atr_hex_tmp[3 * SC_MAX_ATR_SIZE];
+			for(j=tbin_len;j<SC_MAX_ATR_SIZE;j++)
+				if (card_atr_bin[j] != 0x0)
+					goto not_apple_bug;
+
+			sc_bin_to_hex(card_atr_bin, tbin_len, card_atr_hex_tmp, sizeof(card_atr_hex_tmp), ':');
+			fix_hex_len = strlen(card_atr_hex_tmp);
+			fix_bin_len = tbin_len;
+			if (ctx->debug >= 4)
+				sc_debug(ctx, "ATR fix : %s\n", card_atr_hex_tmp);
+
+		}
+not_apple_bug:		
+#endif
+		if (tatr_len != fix_hex_len) {
 			if (ctx->debug >= 5)
 				sc_debug(ctx, "ignored - wrong length\n", tatr);
 			continue;
 		}
 		if (matr != NULL) {
-			u8 mbin[SC_MAX_ATR_SIZE], tbin[SC_MAX_ATR_SIZE];
-			size_t mbin_len, tbin_len, s, matr_len;
-
 			if (ctx->debug >= 4)
 				sc_debug(ctx, "ATR mask: %s\n", matr);
 
@@ -772,7 +794,7 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *at
 			sc_hex_to_bin(tatr, tbin, &tbin_len);
 			mbin_len = sizeof(mbin);
 			sc_hex_to_bin(matr, mbin, &mbin_len);
-			if (mbin_len != card_atr_bin_len) {
+			if (mbin_len != fix_bin_len) {
 				sc_error(ctx,"length of atr and atr mask do not match - ignored: %s - %s", tatr, matr); 
 				continue;
 			}
