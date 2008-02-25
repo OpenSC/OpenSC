@@ -118,6 +118,10 @@ static int asepcos_erase(struct sc_profile *profile, sc_card_t *card)
 	 *       - use EF(DIR) to get the DF of the OpenSC
 	 *         pkcs15 application.
 	 */
+	/* Check wether a transport exists and verify it if present */
+	r = asepcos_check_verify_tpin(profile, card);
+	if (r != SC_SUCCESS)
+		return r;
 	/* EF(DIR) */
 	sc_format_path("3f002f00", &path);
 	r = asepcos_cond_delete(profile, card, &path);
