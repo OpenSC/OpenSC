@@ -51,7 +51,7 @@ filesystem {
 	ACL	= *=AUT0;
 
         DF PKCS15-AppDF {
-	    size		= 8192;
+	    size		= 0;
 
 	    ACL			= $df_acl;
 
