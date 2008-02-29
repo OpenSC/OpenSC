@@ -905,10 +905,15 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 		 * a valid pin (which is processed normally). --okir */
 		if (ulPinLen == 0)
 			pPin = NULL;
-	} else
-	if (ulPinLen < pin->min_length ||
-	    ulPinLen > pin->max_length)
-		return CKR_ARGUMENTS_BAD;
+	} else {
+		/*
+		 * If PIN is out of range,
+		 * it cannot be correct.
+		 */
+		if (ulPinLen < pin->min_length ||
+		    ulPinLen > pin->max_length)
+			return CKR_PIN_INCORRECT;
+	}
 
 	/* By default, we make the reader resource manager keep other
 	 * processes from accessing the card while we're logged in.
