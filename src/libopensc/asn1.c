@@ -533,6 +533,8 @@ int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
 
 	if (inlen > sizeof(int))
 		return SC_ERROR_INVALID_ASN1_OBJECT;
+	if (inbuf[0] & 0x80)
+		a = -1;
 	for (i = 0; i < inlen; i++) {
 		a <<= 8;
 		a |= *inbuf++;
@@ -543,20 +545,53 @@ int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
 
 static int asn1_encode_integer(int in, u8 ** obj, size_t * objsize)
 {
-	int i = sizeof(in) * 8, skip = 1;
+	int i = sizeof(in) * 8, skip_zero, skip_sign;
 	u8 *p, b;
 
-	*obj = p = (u8 *) malloc(sizeof(in));
+	if (in < 0)
+	{
+		skip_sign = 1;
+		skip_zero= 0;
+	}
+	else
+	{
+		skip_sign = 0;
+		skip_zero= 1;
+	}
+	*obj = p = (u8 *) malloc(sizeof(in)+1);
 	if (*obj == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	do {
 		i -= 8;
 		b = in >> i;
-		if (b == 0 && skip)
+		if (skip_sign)
+		{
+			if (b != 0xff)
+				skip_sign = 0;
+			if (b & 0x80)
+			{
+				*p = b;
+				if (0xff == b)
+					continue;
+			}
+			else
+			{
+				p++;
+				skip_sign = 0;
+			}
+		}
+		if (b == 0 && skip_zero)
 			continue;
-		skip = 0;
+		if (skip_zero) {
+			skip_zero = 0;
+			/* prepend 0x00 if MSb is 1 and integer positive */
+			if ((b & 0x80) != 0 && in > 0)
+				*p++ = 0;
+		}
 		*p++ = b;
 	} while (i > 0);
+	if (skip_sign)
+		p++;
 	*objsize = p - *obj;
 	if (*objsize == 0) {
 		*objsize = 1;
