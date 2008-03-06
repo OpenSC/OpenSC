@@ -31,7 +31,7 @@
 
 sc_context_t *context = NULL;
 struct sc_pkcs11_pool session_pool;
-struct sc_pkcs11_slot virtual_slots[SC_PKCS11_MAX_VIRTUAL_SLOTS];
+struct sc_pkcs11_slot *virtual_slots = NULL;
 struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
 struct sc_pkcs11_config sc_pkcs11_conf;
 #if !defined(_WIN32)
@@ -192,10 +192,8 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	}
 
 	rv = sc_pkcs11_init_lock((CK_C_INITIALIZE_ARGS_PTR) pInitArgs);
-	if (rv != CKR_OK)   {
-		sc_release_context(context);
-		context = NULL;
-	}
+	if (rv != CKR_OK)
+		goto out;
 
 	/* set context options */
 	memset(&ctx_opts, 0, sizeof(sc_context_param_t));
@@ -213,8 +211,13 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	load_pkcs11_parameters(&sc_pkcs11_conf, context);
 
 	first_free_slot = 0;
+	virtual_slots = malloc(sizeof (*virtual_slots) * sc_pkcs11_conf.pkcs11_max_virtual_slots);
+	if (virtual_slots == NULL) {
+		rv = CKR_HOST_MEMORY;
+		goto out;
+	}
 	pool_initialize(&session_pool, POOL_TYPE_SESSION);
-	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++)
+	for (i=0; i<sc_pkcs11_conf.pkcs11_max_virtual_slots; i++)
 		slot_initialize(i, &virtual_slots[i]);
 	for (i=0; i<SC_PKCS11_MAX_READERS; i++)
 		card_initialize(i);
@@ -225,6 +228,16 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 out:	
 	if (context != NULL)
 		sc_debug(context, "C_Initialize: result = %d\n", rv);
+
+	if (rv != CKR_OK) {
+		if (context != NULL) {
+			sc_release_context(context);
+			context = NULL;
+		}
+		/* Release and destroy the mutex */
+		sc_pkcs11_free_lock();
+	}
+
 	return rv;
 }
 
@@ -248,6 +261,11 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	sc_debug(context, "Shutting down Cryptoki\n");
 	for (i=0; i < (int)sc_ctx_get_reader_count(context); i++)
 		card_removed(i);
+
+	if (virtual_slots) {
+		free(virtual_slots);
+		virtual_slots = NULL;
+	}
 
 	sc_release_context(context);
 	context = NULL;
@@ -302,7 +320,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		    CK_SLOT_ID_PTR pSlotList,     /* receives the array of slot IDs */
 		    CK_ULONG_PTR   pulCount)      /* receives the number of slots */
 {
-	CK_SLOT_ID found[SC_PKCS11_MAX_VIRTUAL_SLOTS];
+	CK_SLOT_ID found[sc_pkcs11_conf.pkcs11_max_virtual_slots];
 	int i;
 	CK_ULONG numMatches;
 	sc_pkcs11_slot_t *slot;
@@ -321,7 +339,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	card_detect_all();
 
 	numMatches = 0;
-	for (i=0; i<SC_PKCS11_MAX_VIRTUAL_SLOTS; i++) {
+	for (i=0; i<sc_pkcs11_conf.pkcs11_max_virtual_slots; i++) {
 		slot = &virtual_slots[i];
 
 		if (!tokenPresent || (slot->slot_info.flags & CKF_TOKEN_PRESENT))

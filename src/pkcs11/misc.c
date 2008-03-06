@@ -317,6 +317,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 	int i;
 	
 	/* Set defaults */
+	conf->pkcs11_max_virtual_slots = SC_PKCS11_DEF_MAX_VIRTUAL_SLOTS;
 	conf->num_slots = SC_PKCS11_DEF_SLOTS_PER_CARD;
 	conf->hide_empty_tokens = 0;
 	conf->lock_login = 0;
@@ -335,6 +336,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 	if (!conf_block)
 		return;
 
+	conf->pkcs11_max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", conf->pkcs11_max_virtual_slots);
 	conf->num_slots = scconf_get_int(conf_block, "num_slots", conf->num_slots);
 	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", 0);
 	conf->lock_login = scconf_get_bool(conf_block, "lock_login", 0);

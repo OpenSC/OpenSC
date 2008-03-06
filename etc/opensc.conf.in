@@ -294,13 +294,14 @@ app default {
 # Parameters for the OpenSC PKCS11 module
 app opensc-pkcs11 {
 	pkcs11 {
+		# Maximum Number of virtual slots.
+		# If there are more slots than defined here,
+		# the remaining slots will be hidden from PKCS#11.
+		max_virtual_slots = 8;
+
 		# Maximum number of slots per smart card.
 		# If the card has fewer keys than defined here,
 		# the remaining number of slots will be empty.
-		#
-		# Note that there is currently a compile time
-		# maximum on the overall number of slots
-		# the pkcs11 module is able to handle.
 		num_slots = 4;
 
 		# Normally, the pkcs11 module will create
