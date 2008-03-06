@@ -34,6 +34,9 @@ struct sc_pkcs11_pool session_pool;
 struct sc_pkcs11_slot virtual_slots[SC_PKCS11_MAX_VIRTUAL_SLOTS];
 struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
 struct sc_pkcs11_config sc_pkcs11_conf;
+#if !defined(_WIN32)
+pid_t initialized_pid = (pid_t)-1;
+#endif
 
 extern CK_FUNCTION_LIST pkcs11_function_list;
 
@@ -169,8 +172,19 @@ static sc_thread_context_t sc_thread_ctx = {
 
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 {
+#if !defined(_WIN32)
+	pid_t current_pid = getpid();
+#endif
 	int i, rc, rv;
 	sc_context_param_t ctx_opts;
+
+	/* Handle fork() exception */
+#if !defined(_WIN32)
+	if (current_pid != initialized_pid) {
+		C_Finalize(NULL_PTR);
+	}
+	initialized_pid = current_pid;
+#endif
 
 	if (context != NULL) {
 		sc_error(context, "C_Initialize(): Cryptoki already initialized\n");
@@ -218,6 +232,9 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 {
 	int i;
 	CK_RV rv;
+
+	if (context == NULL)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
