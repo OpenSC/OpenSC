@@ -31,7 +31,7 @@
 #include <errno.h>
 #include "scconf.h"
 #include "internal.h"
-#include "strlcpy.h"
+#include <compat_strlcpy.h>
 
 #define STATE_NAME	0x01
 #define STATE_VALUE	0x02

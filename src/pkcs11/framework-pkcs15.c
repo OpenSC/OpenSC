@@ -2805,7 +2805,7 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 	sc_pkcs11_register_generic_mechanisms(p11card);
 
 	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP | CKF_DECRYPT;
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	mech_info.flags |= CKF_VERIFY;
 #endif
 	mech_info.ulMinKeySize = ~0;
@@ -2829,7 +2829,7 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 		
 		if (alg_info->algorithm == SC_ALGORITHM_GOST){
 		    mech_info.flags = CKF_HW | CKF_SIGN | CKF_ENCRYPT | CKF_DECRYPT;
-		    #ifdef HAVE_OPENSSL
+		    #ifdef ENABLE_OPENSSL
 		    mech_info.flags |= CKF_VERIFY;
 		    #endif
 		    mech_info.ulMinKeySize = 32;
@@ -2890,7 +2890,7 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 					CKM_XXX_RSA_PKCS, CKM_XXX, mt);
 #endif
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 		mech_info.flags = CKF_GENERATE_KEY_PAIR;
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_KEY_PAIR_GEN,
 					&mech_info, CKK_RSA, NULL);

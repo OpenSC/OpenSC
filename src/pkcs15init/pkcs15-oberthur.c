@@ -29,7 +29,7 @@
 #include <sys/types.h>
 #include <ctype.h>
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include <openssl/sha.h>
 #endif
 
@@ -682,7 +682,7 @@ cosm_new_key(struct sc_profile *profile, sc_card_t *card,
 	rv = sc_pkcs15init_authenticate(profile, card, prvfile, SC_AC_OP_UPDATE);
 	SC_TEST_RET(card->ctx, rv, "Update RSA: no authorisation");
 
-#ifdef HAVE_OPENSSL	
+#ifdef ENABLE_OPENSSL	
 	if (!info->id.len)   {
 		SHA1(rsa->modulus.data, rsa->modulus.len, info->id.value);
 		info->id.len = SHA_DIGEST_LENGTH;
@@ -1198,7 +1198,7 @@ cosm_select_id (struct sc_pkcs15_card *p15card, int type,
 		sc_pkcs15_id_t *id, void *data)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	if (!data || !id)
 		SC_FUNC_RETURN(p15card->card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	

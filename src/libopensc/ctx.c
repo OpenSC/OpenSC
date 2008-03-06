@@ -56,7 +56,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "etoken",	(void *(*)(void)) sc_get_cardos_driver },
 	{ "flex",	(void *(*)(void)) sc_get_cryptoflex_driver },
 	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	{ "gpk",	(void *(*)(void)) sc_get_gpk_driver },
 #endif
 	{ "gemsafeV1",	(void *(*)(void)) sc_get_gemsafeV1_driver },
@@ -68,7 +68,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
 	{ "opengpg",	(void *(*)(void)) sc_get_openpgp_driver },
 	{ "jcop",	(void *(*)(void)) sc_get_jcop_driver },
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	{ "oberthur",	(void *(*)(void)) sc_get_oberthur_driver },
 #endif
 	{ "belpic",	(void *(*)(void)) sc_get_belpic_driver },
@@ -76,7 +76,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "muscle", (void *(*)(void)) sc_get_muscle_driver },	// Above EMV because the detection gets caught there first
 	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
 	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 #endif
 	{ "acos5",	(void *(*)(void)) sc_get_acos5_driver },
@@ -88,12 +88,12 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 };
 
 static const struct _sc_driver_entry internal_reader_drivers[] = {
-#if defined(HAVE_PCSC)
+#if defined(ENABLE_PCSC)
 	{ "pcsc",	(void *(*)(void)) sc_get_pcsc_driver },
 #endif
 	{ "ctapi",	(void *(*)(void)) sc_get_ctapi_driver },
 #ifndef _WIN32
-#ifdef HAVE_OPENCT
+#ifdef ENABLE_OPENCT
 	{ "openct",	(void *(*)(void)) sc_get_openct_driver },
 #endif
 #endif
@@ -556,7 +556,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	const char *conf_path = NULL;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
-	int temp_len;
+	DWORD temp_len;
 	long rc;
 	HKEY hKey;
 #endif
@@ -847,7 +847,11 @@ int sc_make_cache_dir(sc_context_t *ctx)
 	namelen = strlen(dirname);
 
 	while (1) {
+#ifdef _WIN32
+		if (mkdir(dirname) >= 0)
+#else
 		if (mkdir(dirname, 0700) >= 0)
+#endif
 			break;
 		if (errno != ENOENT
 		 || (sp = strrchr(dirname, '/')) == NULL
@@ -863,7 +867,11 @@ int sc_make_cache_dir(sc_context_t *ctx)
 		if (j >= namelen)
 			break;
 		dirname[j] = '/';
+#ifdef _WIN32
+		if (mkdir(dirname) < 0)
+#else
 		if (mkdir(dirname, 0700) < 0)
+#endif
 			goto failed;
 	}
 	return SC_SUCCESS;

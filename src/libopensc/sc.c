@@ -22,7 +22,7 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include <openssl/crypto.h>     /* for OPENSSL_cleanse */
 #endif
 
@@ -717,7 +717,7 @@ int _sc_parse_atr(sc_context_t *ctx, sc_slot_info_t *slot)
 
 void sc_mem_clear(void *ptr, size_t len)
 {
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	OPENSSL_cleanse(ptr, len);
 #else
 	memset(ptr, 0, len);

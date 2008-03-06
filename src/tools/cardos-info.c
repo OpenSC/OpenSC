@@ -65,7 +65,7 @@ static int cardos_info(void)
 
 	if (verbose) {
 		printf("Card ATR:\n");
-		hex_dump_asc(stdout, card->atr, card->atr_len, -1);      
+		util_hex_dump_asc(stdout, card->atr, card->atr_len, -1);      
 	} else {
 		char tmp[SC_MAX_ATR_SIZE*3];
 		sc_bin_to_hex(card->atr, card->atr_len, tmp, sizeof(tmp) - 1, ':');
@@ -92,7 +92,7 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 	printf("Info : %s\n", apdu.resp);
@@ -109,7 +109,7 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 
@@ -119,7 +119,7 @@ static int cardos_info(void)
 	       apdu.resp[13], apdu.resp[14], apdu.resp[15]);
 	printf("Full prom dump:\n");
 	if (apdu.resplen)
-		hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 
 	apdu.p2 = 0x82;
 	apdu.resplen = sizeof(rbuf);
@@ -133,7 +133,7 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 	printf("OS Version: %d.%d", apdu.resp[0], apdu.resp[1]);
@@ -169,7 +169,7 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 
@@ -201,12 +201,12 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 
 	printf("Security Status of current DF:\n");
-	hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 
 	apdu.p2 = 0x85;
 	apdu.resplen = sizeof(rbuf);
@@ -220,7 +220,7 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 
@@ -238,7 +238,7 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 
@@ -262,12 +262,12 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 
 	printf("Packages installed:\n");
-	hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 
 	apdu.p2 = 0x89;
 	apdu.resplen = sizeof(rbuf);
@@ -281,7 +281,7 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 
@@ -300,7 +300,7 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 
@@ -318,7 +318,7 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 
@@ -340,12 +340,12 @@ static int cardos_info(void)
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
 
 	printf("Path to current DF:\n");
-	hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 
 	return 0;
 }
@@ -365,7 +365,7 @@ int main(int argc, char *const argv[])
 		switch (c) {
 		case 'h':
 		case '?':
-			print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help);
 		case 'r':
 			opt_reader = atoi(optarg);
 			break;
@@ -406,7 +406,7 @@ int main(int argc, char *const argv[])
 		}
 	}
 
-	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
+	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
 	if (err)
 		goto end;
 

@@ -24,16 +24,12 @@
  */
 
 #ifdef HAVE_CONFIG_H
-# include <config.h>
-#else
-# ifdef linux
-#  define HAVE_GETOPT_H
-# endif
+#include <config.h>
 #endif
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <my_getopt.h>
+#include <compat_getopt.h>
 #include <string.h>
 #include <errno.h>
 #include <opensc/opensc.h>

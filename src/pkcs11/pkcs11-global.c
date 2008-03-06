@@ -114,8 +114,8 @@ static CK_C_INITIALIZE_ARGS _def_locks = {
 	mutex_create, mutex_destroy, mutex_lock, mutex_unlock, 0, NULL };
 #endif
 
-static CK_C_INITIALIZE_ARGS_PTR	_locking;
-static void *			_lock = NULL;
+static CK_C_INITIALIZE_ARGS_PTR	global_locking;
+static void *			global_lock = NULL;
 #if (defined(HAVE_PTHREAD) || defined(_WIN32)) && defined(PKCS11_THREAD_LOCKING)
 #define HAVE_OS_LOCKING
 static CK_C_INITIALIZE_ARGS_PTR default_mutex_funcs = &_def_locks;
@@ -126,9 +126,9 @@ static CK_C_INITIALIZE_ARGS_PTR default_mutex_funcs = NULL;
 /* wrapper for the locking functions for libopensc */
 static int sc_create_mutex(void **m)
 {
-	if (_locking == NULL)
+	if (global_locking == NULL)
 		return SC_SUCCESS;
-	if (_locking->CreateMutex(m) == CKR_OK)
+	if (global_locking->CreateMutex(m) == CKR_OK)
 		return SC_SUCCESS;
 	else
 		return SC_ERROR_INTERNAL;
@@ -136,9 +136,9 @@ static int sc_create_mutex(void **m)
 
 static int sc_lock_mutex(void *m)
 {
-	if (_locking == NULL)
+	if (global_locking == NULL)
 		return SC_SUCCESS;
-	if (_locking->LockMutex(m) == CKR_OK)
+	if (global_locking->LockMutex(m) == CKR_OK)
 		return SC_SUCCESS;
 	else
 		return SC_ERROR_INTERNAL;
@@ -146,9 +146,9 @@ static int sc_lock_mutex(void *m)
 
 static int sc_unlock_mutex(void *m)
 {
-	if (_locking == NULL)
+	if (global_locking == NULL)
 		return SC_SUCCESS;
-	if (_locking->UnlockMutex(m) == CKR_OK)
+	if (global_locking->UnlockMutex(m) == CKR_OK)
 		return SC_SUCCESS;
 	else
 		return SC_ERROR_INTERNAL;
@@ -157,9 +157,9 @@ static int sc_unlock_mutex(void *m)
 
 static int sc_destroy_mutex(void *m)
 {
-	if (_locking == NULL)
+	if (global_locking == NULL)
 		return SC_SUCCESS;
-	if (_locking->DestroyMutex(m) == CKR_OK)
+	if (global_locking->DestroyMutex(m) == CKR_OK)
 		return SC_SUCCESS;
 	else
 		return SC_ERROR_INTERNAL;
@@ -372,7 +372,7 @@ out:	sc_pkcs11_unlock();
 
 static sc_timestamp_t get_current_time(void)
 {
-#ifndef _WIN32
+#if HAVE_GETTIMEOFDAY
 	struct timeval tv;
 	struct timezone tz;
 	sc_timestamp_t curr;
@@ -632,7 +632,7 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 
 	int applock = 0;
 	int oslock = 0;
-	if (_lock)
+	if (global_lock)
 		return CKR_OK;
 
 	/* No CK_C_INITIALIZE_ARGS pointer, no locking */
@@ -645,7 +645,7 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 	/* If the app tells us OS locking is okay,
 	 * use that. Otherwise use the supplied functions.
 	 */
-	_locking = NULL;
+	global_locking = NULL;
 	if (args->CreateMutex && args->DestroyMutex &&
 		   args->LockMutex   && args->UnlockMutex) {
 			applock = 1;
@@ -657,21 +657,21 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 	/* Based on PKCS#11 v2.11 11.4 */
 	if (applock && oslock) {
 		/* Shall be used in threaded environment, prefer app provided locking */
-		_locking = args;
+		global_locking = args;
 	} else if (!applock && oslock) {
 		/* Shall be used in threaded environment, must use operating system locking */
-		_locking = default_mutex_funcs;
+		global_locking = default_mutex_funcs;
 	} else if (applock && !oslock) {
 		/* Shall be used in threaded envirnoment, must use app provided locking */
-		_locking = args;
+		global_locking = args;
 	} else if (!applock && !oslock) {
 		/* Shall not be used in threaded environemtn, use operating system locking */
-		_locking = default_mutex_funcs;
+		global_locking = default_mutex_funcs;
 	}
 
-	if (_locking != NULL) {
+	if (global_locking != NULL) {
 		/* create mutex */
-		rv = _locking->CreateMutex(&_lock);
+		rv = global_locking->CreateMutex(&global_lock);
 	}
 
 	return rv;
@@ -682,10 +682,10 @@ CK_RV sc_pkcs11_lock(void)
 	if (context == NULL)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	if (!_lock)
+	if (!global_lock)
 		return CKR_OK;
-	if (_locking)  {
-		while (_locking->LockMutex(_lock) != CKR_OK)
+	if (global_locking)  {
+		while (global_locking->LockMutex(global_lock) != CKR_OK)
 			;
 	} 
 
@@ -697,15 +697,15 @@ __sc_pkcs11_unlock(void *lock)
 {
 	if (!lock)
 		return;
-	if (_locking) {
-		while (_locking->UnlockMutex(lock) != CKR_OK)
+	if (global_locking) {
+		while (global_locking->UnlockMutex(lock) != CKR_OK)
 			;
 	} 
 }
 
 void sc_pkcs11_unlock(void)
 {
-	__sc_pkcs11_unlock(_lock);
+	__sc_pkcs11_unlock(global_lock);
 }
 
 /*
@@ -716,21 +716,21 @@ void sc_pkcs11_free_lock(void)
 {
 	void	*tempLock;
 
-	if (!(tempLock = _lock))
+	if (!(tempLock = global_lock))
 		return;
 
 	/* Clear the global lock pointer - once we've
 	 * unlocked the mutex it's as good as gone */
-	_lock = NULL;
+	global_lock = NULL;
 
 	/* Now unlock. On SMP machines the synchronization
 	 * primitives should take care of flushing out
 	 * all changed data to RAM */
 	__sc_pkcs11_unlock(tempLock);
 
-	if (_locking)
-		_locking->DestroyMutex(tempLock);
-	_locking = NULL;
+	if (global_locking)
+		global_locking->DestroyMutex(tempLock);
+	global_locking = NULL;
 }
 
 CK_FUNCTION_LIST pkcs11_function_list = {

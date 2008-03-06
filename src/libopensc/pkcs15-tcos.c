@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "strlcpy.h"
+#include <compat_strlcpy.h>
 
 static int insert_cert(
 	sc_pkcs15_card_t *p15card,

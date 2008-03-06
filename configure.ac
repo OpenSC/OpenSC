@@ -1,0 +1,642 @@
+dnl -*- mode: m4; -*-
+dnl Process this file with autoconf to produce a configure script.
+
+# Require autoconf 2.52
+AC_PREREQ([2.52])
+
+define([PACKAGE_VERSION_MAJOR], [0])
+define([PACKAGE_VERSION_MINOR], [11])
+define([PACKAGE_VERSION_FIX], [4])
+
+AC_INIT([opensc], [PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX-svn])
+AC_CONFIG_AUX_DIR([.])
+AM_CONFIG_HEADER([config.h])
+AM_INIT_AUTOMAKE([${PACKAGE_NAME}], [${PACKAGE_VERSION}])
+
+OPENSC_VERSION_MAJOR="PACKAGE_VERSION_MAJOR"
+OPENSC_VERSION_MINOR="PACKAGE_VERSION_MINOR"
+OPENSC_VERSION_FIX="PACKAGE_VERSION_FIX"
+
+# LT Version numbers, remember to change them just *before* a release.
+#   (Code changed:                      REVISION++)
+#   (Interfaces added/removed/changed:  CURRENT++, REVISION=0)
+#   (Interfaces added:                  AGE++)
+#   (Interfaces removed:                AGE=0)
+OPENSC_LT_CURRENT="2"
+OPENSC_LT_REVISION="0"
+OPENSC_LT_AGE="0"
+
+AC_CONFIG_SRCDIR([src/libopensc/sc.c])
+
+AC_CANONICAL_HOST
+AC_PROG_CC
+PKG_PROG_PKG_CONFIG
+AC_C_BIGENDIAN
+
+AC_MSG_CHECKING([svn checkout])
+if test -e packaged; then
+	svn_checkout="no"
+else
+	svn_checkout="yes"
+fi
+AC_MSG_RESULT([${svn_checkout}])
+
+AC_ARG_WITH(
+	[cygwin-native],
+	[AC_HELP_STRING([--with-cygwin-native], [Compile native win32])],
+	,
+	[with_cygwin_native="no"]
+)
+
+dnl Check for some target-specific stuff
+test -z "${WIN32}" && WIN32="no"
+test -z "${CYGWIN}" && CYGWIN="no"
+case "${host}" in
+	*-*-hpux*)
+		CPPFLAGS="${CPPFLAGS} -D_HPUX_SOURCE -D_XOPEN_SOURCE_EXTENDED"
+	;;
+	*-*-solaris*)
+		CPPFLAGS="${CPPFLAGS} -I/usr/local/include"
+		LDFLAGS="${LDFLAGS} -L/usr/local/lib -R/usr/local/lib"
+		need_dash_r="1"
+	;;
+	*-*-sunos4*)
+		CPPFLAGS="${CPPFLAGS} -DSUNOS4"
+	;;
+	*-*-aix*)
+		CPPFLAGS="${CPPFLAGS} -I/usr/local/include"
+		LDFLAGS="${LDFLAGS} -L/usr/local/lib"
+		if test "${LD}" != "gcc" -a -z "${blibpath}"; then
+			blibpath="/usr/lib:/lib:/usr/local/lib"
+		fi
+	;;
+	*-*-osf*)
+		CPPFLAGS="${CPPFLAGS} -D_POSIX_PII_SOCKET"
+	;;
+	*-*-darwin*)
+		LIBS="${LIBS} -Wl,-framework,CoreFoundation"
+		if test "${GCC}" = "yes"; then
+			CFLAGS="${CFLAGS} -no-cpp-precomp"
+		fi
+	;;
+	*-mingw32*|*-winnt*)
+		WIN32="yes"
+		CPPFLAGS="${CPPFLAGS} -DWIN32_LEAN_AND_MEAN"
+	;;
+	*-cygwin*)
+		AC_MSG_CHECKING([cygwin mode to use])
+		CYGWIN="yes"
+		if test "${with_cygwin_native}" = "yes"; then
+			AC_MSG_RESULT([Using native win32])
+			CPPFLAGS="${CPPFLAGS} -DWIN32_LEAN_AND_MEAN"
+			CFLAGS="${CFLAGS} -mno-cygwin"
+			WIN32="yes"
+		else
+			AC_MSG_RESULT([Using cygwin])
+			CPPFLAGS="${CPPFLAGS} -DCRYPTOKI_FORCE_WIN32"
+			AC_DEFINE([USE_CYGWIN], [1], [Define if you are on Cygwin])
+		fi
+	;;
+esac
+
+AC_ARG_ENABLE(
+	[strict],
+	[AC_HELP_STRING([--enable-strict], [enable strict compile mode [[default=disabled]]])],
+	,
+	[enable_strict="no"]
+)
+
+AC_ARG_ENABLE(
+	[pedantic],
+	[AC_HELP_STRING([--enable-pedantic], [enable pedantic compile mode [[desfault=disabled]]])],
+	,
+	[enable_pedantic="no"]
+)
+
+AC_ARG_ENABLE(
+	[zlib],
+	[AC_HELP_STRING([--enable-zlib], [enable zlib linkage. [[default=detect]]])],
+	,
+	[enable_zlib="detect"]
+)
+
+AC_ARG_ENABLE(
+	[readline],
+	[AC_HELP_STRING([--enable-readline], [enable readline linkage. [[default=detect]]])],
+	,
+	[enable_readline="detect"]
+)
+
+AC_ARG_ENABLE(
+	[openssl],
+	[AC_HELP_STRING([--enable-openssl], [enable openssl linkage. [[default=detect]]])],
+	,
+	[enable_openssl="detect"]
+)
+
+AC_ARG_ENABLE(
+	[openct],
+	[AC_HELP_STRING([--enable-openct], [enable openct linkage. [[default=disabled]]])],
+	,
+	[enable_openct="no"]
+)
+
+AC_ARG_ENABLE(
+	[pcsc],
+	[AC_HELP_STRING([--enable-pcsc], [enable pcsc support. [[default=disabled]]])],
+	,
+	[enable_pcsc="no"]
+)
+
+AC_ARG_ENABLE(
+	[nsplugin],
+	[AC_HELP_STRING([--enable-nsplugin], [enable nsplugin (signer). [[default=disabled]]])],
+	,
+	[enable_nsplugin="no"]
+)
+
+AC_ARG_ENABLE(
+	[man],
+	[AC_HELP_STRING([--disable-man], [disable installation of manuals. [[default=enabled for none Windows]]])],
+	,
+	[
+		if test "${WIN32}" = "yes"; then
+			enable_man="no"
+		else
+			enable_man="yes"
+		fi
+	]
+)
+
+AC_ARG_ENABLE(
+	[doc],
+	[AC_HELP_STRING([--enable-doc], [enable installation of documents. [[default=disabled]]])],
+	,
+	[enable_doc="no"]
+)
+
+AC_ARG_WITH(
+	[xsl-stylesheets-dir],
+	[AC_HELP_STRING([--with-xsl-stylesheets-dir=PATH], [docbook xsl-stylesheets for svn build [[detect]]])],
+	[xslstylesheetsdir="${withval}"],
+	[xslstylesheetsdir="detect"]
+)
+
+AC_ARG_WITH(
+	[plugin-dir],
+	[AC_HELP_STRING([--with-plugin-dir=PATH], [install Mozilla plugin to PATH [[LIBDIR/mozilla/plugins]]])],
+	[plugindir="${withval}"],
+	[plugindir="\$(libdir)/mozilla/plugins"]
+)
+
+AC_ARG_WITH(
+	[pin-entry],
+	[AC_HELP_STRING([--with-pin-entry=PROG], [run PROG as PIN-entry for OpenSC Signer])],
+	[test "${withval}" != "no" && PIN_ENTRY="${withval}"],
+	[PIN_ENTRY="/usr/local/bin/gpinentry"]
+)
+
+full_usrlibdir="/usr/lib${libdir##*/lib}"
+full_sysconfdir=`eval eval eval eval eval echo "${sysconfdir}" | sed "s#NONE#${prefix}#" | sed "s#NONE#${ac_default_prefix}#"`
+
+dnl Checks for programs.
+AC_PROG_CPP
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+
+dnl Add libtool support.
+AC_LIBTOOL_WIN32_DLL
+AC_LIBTOOL_RC
+AC_PROG_LIBTOOL
+
+dnl These required for svn checkout
+AC_ARG_VAR([XSLTPROC], [xsltproc utility])
+AC_ARG_VAR([SVN], [subversion utility])
+AC_ARG_VAR([WGET], [wget utility])
+AC_ARG_VAR([WGET_OPTS], [wget options])
+AC_ARG_VAR([TR], [tr utility])
+AC_CHECK_PROGS([XSLTPROC],[xsltproc])
+AC_CHECK_PROGS([SVN],[svn])
+AC_CHECK_PROGS([WGET],[wget])
+AC_CHECK_PROGS([TR],[tr])
+test -z "${WGET_OPTS}" && WGET_OPTS="-nv"
+
+if test "${xslstylesheetsdir}" = "detect"; then
+	AC_MSG_CHECKING([xsl-stylesheets])
+	xslstylesheetsdir="no"
+	for f in \
+		/usr/share/xml/docbook/stylesheet/nwalsh \
+		/usr/share/sgml/docbook/*; do
+
+		test -e "${f}/html/docbook.xsl" && xslstylesheetsdir="${f}"
+	done
+	AC_MSG_RESULT([${xslstylesheetsdir}])
+elif test "${xslstylesheetsdir}" != "no"; then
+	AC_MSG_CHECKING([xsl-stylesheets])
+	test -e "${xslstylesheetsdir}/html/docbook.xsl" || AC_MSG_ERROR([invalid])
+fi
+
+dnl svn checkout dependencies
+if test "${svn_checkout}" = "yes"; then
+	AC_MSG_CHECKING([XSLTPROC requirement])
+	if test -n "${XSLTPROC}"; then
+		AC_MSG_RESULT([ok])
+	else
+		if test "${enable_man}" = "yes" -o "${enable_doc}" = "yes"; then
+			AC_MSG_ERROR([Missing XSLTPROC svn build with man or doc])
+		else
+			AC_MSG_WARN(["make dist" will not work])
+		fi
+	fi
+
+	if test "${enable_man}" = "yes"; then
+		test "${xslstylesheetsdir}" = "no" && AC_MSG_ERROR([xsl-stylesheets are required for svn build with man])
+	fi
+
+	AC_MSG_CHECKING([svn doc build dependencies])
+	if test -n "${SVN}" -a -n "${TR}" -a -n "${WGET}"; then
+		AC_MSG_RESULT([ok])
+	else
+		if test "${enable_doc}" = "yes"; then
+			AC_MSG_ERROR([Missing SVN, TR or WGET for svn doc build])
+		else
+			AC_MSG_WARN(["make dist" will not work])
+		fi
+	fi
+fi
+
+dnl C Compiler features
+AC_C_INLINE
+
+dnl Checks for header files.
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS([ \
+	errno.h fcntl.h malloc.h stdlib.h \
+	inttypes.h string.h strings.h \
+	sys/time.h unistd.h locale.h getopt.h \
+])
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_TYPE_UID_T
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+
+dnl Checks for library functions.
+AC_FUNC_ERROR_AT_LINE
+AC_FUNC_STAT
+AC_FUNC_VPRINTF
+AC_CHECK_FUNCS([ \
+	getpass gettimeofday memset mkdir \
+	strdup strerror setutent vsyslog \
+	setlocale getopt_long \
+	strlcpy
+])
+
+dnl See if socket() is found from libsocket
+AC_CHECK_LIB(
+	[socket],
+	[socket],
+	[
+		LIBS="${LIBS} -lsocket"
+		AC_CHECK_LIB(
+			[resolv],
+			[res_query],
+			[LIBS="${LIBS} -lresolv"]
+		)
+	]
+)
+
+AC_ARG_VAR([LTLIB_CFLAGS], [C compiler flags for libltdl])
+AC_ARG_VAR([LTLIB_LIBS], [linker flags for libltdl])
+if test -z "${LTLIB_LIBS}"; then
+	AC_CHECK_LIB(
+		[ltdl],
+		[lt_dlopen],
+		[LTLIB_LIBS="-lltdl"],
+		[AC_MSG_ERROR([ltdl not found, please install libltdl and/or libtool])]
+	)
+
+fi
+saved_CFLAGS="${CFLAGS}"
+CFLAGS="${CFLAGS} ${LTLIB_CFLAGS}"
+AC_CHECK_HEADER(
+	[ltdl.h],
+	,
+	[AC_MSG_ERROR([ltdl.h not found, please install libltdl and/or libtool])]
+)
+CFLAGS="${saved_CFLAGS}"
+
+if test "${WIN32}" = "no"; then
+	dnl Special check for pthread support.
+	ACX_PTHREAD(
+		[AC_DEFINE(
+			[HAVE_PTHREAD],
+			[1],
+			[Define if you have POSIX threads libraries and header files.]
+		)],
+		[AC_MSG_ERROR([POSIX thread support required])]
+	)
+	CC="${PTHREAD_CC}"
+fi
+
+AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
+AC_ARG_VAR([ZLIB_LIBS], [linker flags for zlib])
+if test -z "${ZLIB_LIBS}"; then
+	AC_CHECK_LIB(
+		[z],
+		[inflate],
+		[ZLIB_LIBS="-lz"]
+	)
+fi
+saved_CFLAGS="${CFLAGS}"
+CFLAGS="${CFLAGS} ${ZLIB_CFLAGS}"
+LIBS="${LIBS} ${ZLIB_LIBS}"
+AC_CHECK_HEADERS([zlib.h])
+CFLAGS="${saved_CFLAGS}"
+test -n "${ZLIB_LIBS}" -a "${ac_cv_header_zlib_h}" = "yes" && have_zlib="yes"
+
+test "${enable_zlib}" = "no" && have_zlib="no"
+if test "${enable_zlib}" = "detect" -a "${have_zlib}" = "yes"; then
+	enable_zlib="yes"
+else
+	enable_zlib="no"
+fi
+
+if test "${enable_zlib}" = "yes"; then
+	if test "${have_zlib}" = "yes"; then
+		AC_DEFINE([ENABLE_ZLIB], [1], [Use zlib libraries and header files])
+	else
+		AC_MSG_ERROR([zlib linkage required, but no zlib was found])
+	fi
+fi
+
+AC_ARG_VAR([READLINE_CFLAGS], [C compiler flags for readline])
+AC_ARG_VAR([READLINE_LIBS], [linker flags for readline])
+if test -z "${READLINE_LIBS}"; then
+	for l in "" -lncurses -ltermcap; do
+		unset ac_cv_lib_readline_readline
+		AC_CHECK_LIB(
+			[readline],
+			[readline],
+			[READLINE_LIBS="-lreadline ${l}"],
+			,
+			["${l}"]
+		)
+		test -n "${READLINE_LIBS}" && break;
+	done
+fi
+saved_CFLAGS="${CFLAGS}"
+CFLAGS="${CFLAGS} ${READLINE_CFLAGS}"
+LIBS="${LIBS} ${READLINE_LIBS}"
+AC_CHECK_HEADERS([readline/readline.h])
+CFLAGS="${saved_CFLAGS}"
+test -n "${READLINE_LIBS}" -a "${ac_cv_header_readline_readline_h}" = "yes" && have_readline="yes"
+
+test "${enable_readline}" = "no" && have_readline="no"
+if test "${enable_readline}" = "detect" -a "${have_readline}" = "yes"; then
+	enable_readline="yes"
+else
+	enable_readline="no"
+fi
+
+if test "${enable_readline}" = "yes"; then
+	if test "${have_readline}" = "yes"; then
+		AC_DEFINE([ENABLE_READLINE], [1], [Use readline libraries and header files])
+	else
+		AC_MSG_ERROR([readline linkage required, but no readline was found])
+	fi
+fi
+
+PKG_CHECK_MODULES(
+	[OPENSSL],
+	[libcrypto >= 0.9.7],
+	[have_openssl="yes"],
+	[PKG_CHECK_MODULES(
+		[OPENSSL],
+		[openssl >= 0.9.7],
+		[have_openssl="yes"],
+		[AC_CHECK_LIB(
+			[crypto],
+			[RSA_version],
+			[
+				have_openssl="yes"
+				OPENSSL_LIBS="-lcrypto"
+			],
+			[have_openssl="no"]
+		)]
+	)]
+)
+
+test "${enable_openssl}" = "no" && have_openssl="no"
+if test "${enable_openssl}" = "detect" -a "${have_openssl}" = "yes"; then
+	enable_openssl="yes"
+else
+	enable_openssl="no"
+fi
+
+if test "${enable_openssl}" = "yes"; then
+	if test "${have_openssl}" = "yes"; then
+		AC_DEFINE([ENABLE_OPENSSL], [1], [Have OpenSSL libraries and header files])
+	else
+		AC_MSG_ERROR([OpenSSL linkage required, but no OpenSSL was found])
+	fi
+fi
+
+if test "${enable_openct}" = "yes"; then
+	PKG_CHECK_MODULES(
+		[OPENCT],
+		[libopenct],
+		[AC_DEFINE([ENABLE_OPENCT], [1], [Have OpenCT libraries and header files])],
+		[AC_MSG_ERROR([openct requested but not available])]
+	)
+fi
+
+if test "${enable_pcsc}" = "yes"; then
+	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
+	case "${host}" in
+		*-*-darwin*)
+			AC_DEFINE_UNQUOTED([PCSC_DEFAULT_LIBRARY_NAME], ["${full_usrlibdir}/libpcsclite.so"], [Default PC/SC library])
+		;;
+		*-mingw32*|*-winnt*|*-cygwin*)
+			AC_DEFINE_UNQUOTED([PCSC_DEFAULT_LIBRARY_NAME], ["winscard.dll"], [Default PC/SC library])
+		;;
+		*)
+			AC_DEFINE_UNQUOTED([PCSC_DEFAULT_LIBRARY_NAME], ["${full_usrlibdir}/libpcsclite.so"], [Default PC/SC library])
+		;;
+	esac
+fi
+
+dnl AM_PATH_LIBASSUAN([MINIMUM-VERSION,
+dnl                   [ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND ]]])
+dnl Test for libassuan and define LIBASSUAN_CFLAGS and LIBASSUAN_LIBS
+AM_PATH_LIBASSUAN(
+	,
+	[have_assuan="yes"], 
+	[have_assuan="no"]
+)
+
+if test "${enable_nsplugin}" = "yes"; then
+	if test "x${have_assuan}" != "xyes" -o "x${have_openssl}" != "xyes"; then
+		AC_MSG_ERROR([nsplugin requires assuan and openssl])
+	fi
+fi
+
+OPENSC_FEATURES=""
+if test "${enable_zlib}" = "yes"; then
+	OPENSC_FEATURES="${OPENSC_FEATURES} zlib"
+	OPTIONAL_ZLIB_CFLAGS="${ZLIB_CFLAGS}"
+	OPTIONAL_ZLIB_LIBS="${ZLIB_LIBS}"
+fi
+if test "${enable_readline}" = "yes"; then
+	OPENSC_FEATURES="${OPENSC_FEATURES} readline"
+	OPTIONAL_READLINE_CFLAGS="${READLINE_CFLAGS}"
+	OPTIONAL_READLINE_LIBS="${READLINE_LIBS}"
+fi
+if test "${enable_openssl}" = "yes"; then
+	OPENSC_FEATURES="${OPENSC_FEATURES} openssl"
+	OPTIONAL_OPENSSL_CFLAGS="${OPENSSL_CFLAGS}"
+	OPTIONAL_OPENSSL_LIBS="${OPENSSL_LIBS}"
+fi
+if test "${enable_openct}" = "yes"; then
+	OPENSC_FEATURES="${OPENSC_FEATURES} openct"
+	OPTIONAL_OPENCT_CFLAGS="${OPENCT_CFLAGS}"
+	OPTIONAL_OPENCT_LIBS="${OPENCT_LIBS}"
+fi
+test "${enable_pcsc}" = "yes" && OPENSC_FEATURES="${OPENSC_FEATURES} pcsc"
+test "${enable_nsplugin}" = "yes" && OPENSC_FEATURES="${OPENSC_FEATURES} nsplugin"
+
+AC_DEFINE_UNQUOTED([OPENSC_ETC_PATH], ["${full_sysconfdir}"], [etc path for libopensc])
+AC_DEFINE_UNQUOTED([OPENSC_CONF_PATH], ["${full_sysconfdir}/opensc.conf"], [default config file for libopensc])
+test -n "${PIN_ENTRY}" && AC_DEFINE_UNQUOTED([PIN_ENTRY], ["$PIN_ENTRY"], [PIN-entry program for OpenSC Signer])
+AC_DEFINE_UNQUOTED([OPENSC_FEATURES], ["${OPENSC_FEATURES}"], [Enabled OpenSC features])
+
+openscincludedir="\$(includedir)/opensc"
+pkcs11dir="\$(libdir)/pkcs11"
+pkgconfigdir="\$(libdir)/pkgconfig"
+
+AC_SUBST([openscincludedir])
+AC_SUBST([pkcs11dir])
+AC_SUBST([plugindir])
+AC_SUBST([pkgconfigdir])
+AC_SUBST([xslstylesheetsdir])
+AC_SUBST([OPENSC_VERSION_MAJOR])
+AC_SUBST([OPENSC_VERSION_MINOR])
+AC_SUBST([OPENSC_VERSION_FIX])
+AC_SUBST([OPENSC_LT_CURRENT])
+AC_SUBST([OPENSC_LT_REVISION])
+AC_SUBST([OPENSC_LT_AGE])
+AC_SUBST([OPTIONAL_ZLIB_CFLAGS])
+AC_SUBST([OPTIONAL_ZLIB_LIBS])
+AC_SUBST([OPTIONAL_READLINE_CFLAGS])
+AC_SUBST([OPTIONAL_READLINE_LIBS])
+AC_SUBST([OPTIONAL_OPENSSL_CFLAGS])
+AC_SUBST([OPTIONAL_OPENSSL_LIBS])
+AC_SUBST([OPTIONAL_OPENCT_CFLAGS])
+AC_SUBST([OPTIONAL_OPENCT_LIBS])
+
+AM_CONDITIONAL([SVN_CHECKOUT], [test "${svn_checkout}" = "yes"])
+AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
+AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])
+AM_CONDITIONAL([ENABLE_READLINE], [test "${enable_readline}" = "yes"])
+AM_CONDITIONAL([ENABLE_OPENSSL], [test "${enable_openssl}" = "yes"])
+AM_CONDITIONAL([ENABLE_OPENCT], [test "${enable_openct}" = "yes"])
+AM_CONDITIONAL([ENABLE_NSPLUGIN], [test "${enable_nsplugin}" = "yes"])
+AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
+AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
+AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
+
+if test "${enable_pedantic}" = "yes"; then
+	enable_strict="yes";
+	CFLAGS="${CFLAGS} -pedantic"
+fi
+if test "${enable_strict}" = "yes"; then
+	CFLAGS="${CFLAGS} -Wall -Wextra"
+fi
+if test "$GCC" = "yes"; then
+	# This should be resolved not ignored.
+	CFLAGS="-fno-strict-aliasing ${CFLAGS}"
+fi
+
+# workaround for <autoconf-2.60
+if test -z "${docdir}"; then
+	docdir="\$(datarootdir)/doc/\$(PACKAGE_NAME)"
+	AC_SUBST([docdir])
+fi
+if test -z "${htmldir}"; then
+	htmldir="\$(docdir)"
+	AC_SUBST([htmldir])
+fi
+# end workaround
+
+AC_OUTPUT([
+	Makefile
+	aclocal/Makefile
+	doc/Makefile
+	doc/nonpersistent/Makefile
+	etc/Makefile
+	src/Makefile
+	src/common/Makefile
+	src/include/Makefile
+	src/include/opensc/Makefile
+	src/libopensc/Makefile
+	src/libopensc/opensc-config
+	src/libopensc/libopensc.pc
+	src/libopensc/libpkcs15init.pc
+	src/libopensc/libscconf.pc
+	src/openssh/Makefile
+	src/pkcs11/Makefile
+	src/pkcs15init/Makefile
+	src/scconf/Makefile
+	src/signer/Makefile
+	src/signer/npinclude/Makefile
+	src/tests/Makefile
+	src/tests/regression/Makefile
+	src/tools/Makefile
+	win32/Makefile
+	win32/versioninfo.rc
+])
+
+cat <<EOF
+
+OpenSC has been configured with the following options:
+
+
+Version:                 ${PACKAGE_VERSION}
+User binaries:           $(eval eval eval echo "${bindir}")
+Configuration files:     $(eval eval eval echo "${sysconfdir}")
+XSL stylesheets:         ${xslstylesheetsdir}
+
+man support:             ${enable_man}
+doc support:             ${enable_doc}
+zlib support:            ${enable_zlib}
+readline support:        ${enable_readline}
+OpenSSL support:         ${enable_openssl}
+PC/SC support:           ${enable_pcsc}
+OpenCT support:          ${enable_openct}
+NSPlugin support:        ${enable_nsplugin}
+
+Host:                    ${host}
+Compiler:                ${CC}
+Preprocessor flags:      ${CPPFLAGS}
+Compiler flags:          ${CFLAGS}
+Linker flags:            ${LDFLAGS}
+Libraries:               ${LIBS}
+
+LTLIB_CFLAGS:            ${LTLIB_CFLAGS}
+LTLIB_LIBS:              ${LTLIB_LIBS}
+READLINE_CFLAGS:         ${READLINE_CFLAGS}
+READLINE_LIBS:           ${READLINE_LIBS}
+ZLIB_CFLAGS:             ${ZLIB_CFLAGS}
+ZLIB_LIBS:               ${ZLIB_LIBS}
+OPENSSL_CFLAGS:          ${OPENSSL_CFLAGS}
+OPENSSL_LIBS:            ${OPENSSL_LIBS}
+OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
+OPENCT_LIBS:             ${OPENCT_LIBS}
+LIBASSUAN_CFLAGS:        ${LIBASSUAN_CFLAGS}
+LIBASSUAN_LIBS:          ${LIBASSUAN_LIBS}
+
+EOF
+

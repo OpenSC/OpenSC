@@ -31,9 +31,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "strlcpy.h"
+#include <compat_strlcpy.h>
 
-#ifdef HAVE_ZLIB_H
+#ifdef ENABLE_ZLIB
 #include <zlib.h>
 #endif
 
@@ -151,7 +151,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	int flags;
 	int r;
 
-#ifdef HAVE_ZLIB_H
+#ifdef ENABLE_ZLIB
 	int i;
 	const char *certLabel[] = {
 		"User Non-repudiation Certificate",	/* "User Non-repudiation Certificate" */
@@ -197,7 +197,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	set_string(&p15card->manufacturer_id, "Actalis");
 	set_string(&p15card->serial_number, (char *)serial);
 
-#ifdef HAVE_ZLIB_H
+#ifdef ENABLE_ZLIB
 	for (i = 0; i < 3; i++) {
 		unsigned char *compCert = NULL, *cert = NULL, size[2];
 		unsigned int compLen, len;

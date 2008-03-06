@@ -26,7 +26,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
-#include "strlcpy.h"
+#include <compat_strlcpy.h>
 
 int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 

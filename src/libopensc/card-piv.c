@@ -23,6 +23,9 @@
  */
 
 #include "internal.h"
+
+#ifdef ENABLE_OPENSSL
+
 #include <ctype.h>
 #include <string.h>
 #include <fcntl.h>
@@ -32,7 +35,7 @@
 #include <openssl/rsa.h>
 #include "asn1.h"
 #include "cardctl.h"
-#ifdef HAVE_ZLIB_H
+#ifdef ENABLE_ZLIB
 #include "compression.h"
 #endif
 
@@ -742,7 +745,7 @@ static int piv_handle_certificate_data(sc_card_t *card,
 	}
 	/* Potential truncation */
 	if(compressed) {
-#ifdef HAVE_ZLIB_H
+#ifdef ENABLE_ZLIB
 		size_t len = count;
 		u8* newBuf = NULL;
 		if(SC_SUCCESS != sc_decompress_alloc(&newBuf, &len, tag, taglen, COMPRESSION_AUTO)) {
@@ -1801,4 +1804,6 @@ struct sc_card_driver * sc_get_piv_driver(void)
 {
 	return sc_get_driver();
 }
+#endif
+
 #endif

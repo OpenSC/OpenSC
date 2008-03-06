@@ -21,10 +21,13 @@
 #endif
 #include <stdlib.h>
 #include <stdio.h>
+#define CRYPTOKI_EXPORTS
 #include "pkcs11-display.h"
 
 #ifdef _WIN32
+#include <windows.h>
 #include <winreg.h>
+#include <limits.h>
 #endif
 
 #define __PASTE(x,y)      x##y
@@ -50,7 +53,7 @@ static CK_RV init_spy(void)
   int rv = CKR_OK;
 #ifdef _WIN32
         char temp_path[PATH_MAX];
-        int temp_len;
+        DWORD temp_len;
         long rc;
         HKEY hKey;
 #endif

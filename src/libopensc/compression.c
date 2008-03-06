@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 #include "internal.h"
-#ifdef HAVE_ZLIB_H
+#ifdef ENABLE_ZLIB
 #include "compression.h"
 
 #include <zlib.h>
@@ -179,4 +179,4 @@ int sc_decompress_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, in
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 }
-#endif /* HAVE_ZLIB_H */
+#endif /* ENABLE_ZLIB */

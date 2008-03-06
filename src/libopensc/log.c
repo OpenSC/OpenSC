@@ -35,8 +35,8 @@
 #include <io.h>
 #endif
 
-#ifndef __GNUC__
-void sc_error(sc_context_t *ctx, const char *format, ...)
+/* Although not used, we need this for consistent exports */
+void _sc_error(sc_context_t *ctx, const char *format, ...)
 {
 	va_list ap;
 
@@ -45,7 +45,8 @@ void sc_error(sc_context_t *ctx, const char *format, ...)
 	va_end(ap);
 }
 
-void sc_debug(sc_context_t *ctx, const char *format, ...)
+/* Although not used, we need this for consistent exports */
+void _sc_debug(sc_context_t *ctx, const char *format, ...)
 {
 	va_list ap;
 
@@ -53,8 +54,6 @@ void sc_debug(sc_context_t *ctx, const char *format, ...)
 	sc_do_log_va(ctx, SC_LOG_TYPE_DEBUG, NULL, 0, NULL, format, ap);
 	va_end(ap);
 }
-
-#endif
 
 void sc_do_log(sc_context_t *ctx, int type, const char *file, int line, const char *func, const char *format, ...)
 {

@@ -1,21 +1,20 @@
 # Process this file with automake to create Makefile.in
 
 MAINTAINERCLEANFILES = Makefile.in
-
-SUBDIRS = . regression
-
 EXTRA_DIST = Makefile.mak
 
-AM_LDFLAGS = @LIBOPENSC@
-AM_CFLAGS = -I$(top_srcdir)/src/common
-
+SUBDIRS = regression
 noinst_PROGRAMS = base64 lottery p15dump pintest prngtest
 
-SRC = sc-test.c $(top_srcdir)/src/common/my_getopt.c
-INC = sc-test.h
+INCLUDES = -I$(top_srcdir)/src/common -I$(top_srcdir)/src/include
+LIBS = $(top_builddir)/src/libopensc/libopensc.la \
+	$(top_builddir)/src/common/libcompat.la
 
-base64_SOURCES = base64.c $(SRC) $(INC)
-lottery_SOURCES = lottery.c $(SRC) $(INC)
-p15dump_SOURCES = p15dump.c print.c $(SRC) $(INC)
-pintest_SOURCES = pintest.c print.c $(SRC) $(INC)
-prngtest_SOURCES = prngtest.c $(SRC) $(INC)
+COMMON_SRC = sc-test.c
+COMMON_INC = sc-test.h
+
+base64_SOURCES = base64.c $(COMMON_SRC) $(COMMON_INC)
+lottery_SOURCES = lottery.c $(COMMON_SRC) $(COMMON_INC)
+p15dump_SOURCES = p15dump.c print.c $(COMMON_SRC) $(COMMON_INC)
+pintest_SOURCES = pintest.c print.c $(COMMON_SRC) $(COMMON_INC)
+prngtest_SOURCES = prngtest.c $(COMMON_SRC) $(COMMON_INC)

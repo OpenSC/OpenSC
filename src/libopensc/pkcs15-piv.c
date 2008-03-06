@@ -23,6 +23,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "internal.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -31,9 +32,6 @@
 #include <opensc/log.h>
 #include <opensc/cardctl.h>
 #include <opensc/cards.h>
-#include <openssl/bio.h>
-#include <openssl/rsa.h>
-#include <openssl/pem.h>
 
 #define MANU_ID		"piv_II "
 

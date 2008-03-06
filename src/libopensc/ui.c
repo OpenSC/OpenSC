@@ -20,6 +20,7 @@
 #ifdef HAVE_LOCALE_H
 #include <locale.h>
 #endif
+#include <compat_getpass.h>
 #include <ltdl.h>
 
 /*
@@ -221,7 +222,7 @@ static int sc_ui_get_pin_default(sc_ui_hints_t *hints, char **out)
 		/* TBD: get preferredCard from TokenInfo */
 	}
 
-#ifdef HAVE_SETLOCALE
+#if defined(HAVE_SETLOCALE) && !defined(_WIN32)
 	setlocale(LC_MESSAGES, language);
 #else
 	(void) language;
@@ -257,7 +258,7 @@ static int sc_ui_get_pin_pair_default(sc_ui_hints_t *hints, char **old_out,
 		/* TBD: get preferredCard from TokenInfo */
 	}
 
-#ifdef HAVE_SETLOCALE
+#if defined(HAVE_SETLOCALE) && !defined(_WIN32)
 	setlocale(LC_MESSAGES, language);
 #else
 	(void) language;

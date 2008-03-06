@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "my_getopt.h"
+#include <compat_getopt.h>
 #include <opensc/opensc.h>
 #include "sc-test.h"
 

@@ -2,9 +2,17 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 DISTCLEANFILES = opensc.conf 
-EXTRA_DIST = opensc.conf.in 
 
-noinst_DATA = opensc.conf.in opensc.conf 
+SUFFIXES = .in
+dist_noinst_DATA = opensc.conf.in opensc.conf 
 
-%: %.in
-	sed -e "s#PKGDATADIR#$(shell eval echo $(pkgdatadir))#" < $^ > $@
+.in:
+	sed -e "s|@pkgdatadir[@]|$(pkgdatadir)|g" < $^ > $@
+
+sysconf_DATA=#required in order to create dir
+install-exec-hook:	install-sysconfDATA
+	if [ -f $(DESTDIR)$(sysconfdir)/opensc.conf ]; then \
+		$(INSTALL_DATA) $(srcdir)/opensc.conf $(DESTDIR)$(sysconfdir)/opensc.conf.new; \
+	else \
+		$(INSTALL_DATA) $(srcdir)/opensc.conf $(DESTDIR)$(sysconfdir)/opensc.conf; \
+	fi

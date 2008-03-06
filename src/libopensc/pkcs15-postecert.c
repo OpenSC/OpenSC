@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "strlcpy.h"
+#include <compat_strlcpy.h>
 
 int sc_pkcs15emu_postecert_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 

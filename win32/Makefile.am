@@ -1,5 +1,7 @@
 # Process this file with automake to create Makefile.in
 
-EXTRA_DIST = Make.rules.mak Makefile.mak makedef.pl version.rc
-
 MAINTAINERCLEANFILES = Makefile.in
+EXTRA_DIST = Make.rules.mak Makefile.mak
+
+dist_noinst_SCRIPTS = makedef.pl
+dist_noinst_DATA = version.rc versioninfo.rc

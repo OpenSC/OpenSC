@@ -1,41 +1,57 @@
 # Process this file with automake to create Makefile.in
 
-bundledir = $(BUNDLEDIR)/pkcs11
-includedir = @includedir@/opensc
+include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = Makefile.in
+CLEANFILES = versioninfo.rc
+EXTRA_DIST = Makefile.mak
 
-EXTRA_DIST = Makefile.mak opensc_pkcs11_install.js
-
-INCLUDES = $(CPPFLAGS) -I${top_srcdir}/src/pkcs15init $(OPENSSL_CFLAGS) $(LTLIB_CFLAGS)
-
-SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
-	mechanism.c openssl.c secretkey.c framework-pkcs15.c \
-	framework-pkcs15init.c debug.c
-INC = sc-pkcs11.h
-
+dist_noinst_SCRIPTS = opensc_pkcs11_install.js
+openscinclude_HEADERS = pkcs11.h
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
 noinst_LTLIBRARIES = libpkcs11.la
 
-opensc_pkcs11_la_SOURCES = $(SRC) $(INC) hack-disabled.c
-opensc_pkcs11_la_LDFLAGS = -module -avoid-version
-opensc_pkcs11_la_LIBADD = @LIBOPENSC@ $(OPENSSL_LIBS) \
-	../pkcs15init/libpkcs15init.la 
+AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS) $(PTHREAD_CFLAGS)
+INCLUDES = -I$(top_srcdir)/src/pkcs15init -I$(top_srcdir)/src/include
 
-onepin_opensc_pkcs11_la_SOURCES = $(SRC) $(INC) hack-enabled.c
-onepin_opensc_pkcs11_la_LDFLAGS = -module -avoid-version
-onepin_opensc_pkcs11_la_LIBADD = @LIBOPENSC@ $(OPENSSL_LIBS) \
-	../pkcs15init/libpkcs15init.la 
+OPENSC_PKCS11_INC = sc-pkcs11.h
+OPENSC_PKCS11_SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
+	mechanism.c openssl.c secretkey.c framework-pkcs15.c \
+	framework-pkcs15init.c debug.c opensc-pkcs11.exports
+OPENSC_PKCS11_LIBS = $(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS) \
+	$(top_builddir)/src/pkcs15init/libpkcs15init.la \
+	$(top_builddir)/src/libopensc/libopensc.la \
+	$(top_builddir)/src/scconf/libscconf.la
 
 libpkcs11_la_SOURCES = libpkcs11.c
-libpkcs11_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
-libpkcs11_la_LIBADD = 
 
-pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h
-pkcs11_spy_la_LDFLAGS = -module -avoid-version
-pkcs11_spy_la_LIBADD = $(OPENSSL_LIBS) libpkcs11.la $(LTLIB_LIBS)
+opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-disabled.c
+if WIN32
+nodist_opensc_pkcs11_la_SOURCES = versioninfo.rc
+endif
+opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
+opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
+	-export-symbols opensc-pkcs11.exports \
+	-module -avoid-version -no-undefined
 
-include_HEADERS = pkcs11.h
+onepin_opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-enabled.c
+if WIN32
+nodist_onepin_opensc_pkcs11_la_SOURCES = versioninfo.rc
+endif
+onepin_opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
+onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
+	-export-symbols opensc-pkcs11.exports \
+	-module -avoid-version -no-undefined
+
+
+pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h pkcs11-spy.exports
+if WIN32
+nodist_pkcs11_spy_la_SOURCES = versioninfo.rc
+endif
+pkcs11_spy_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) libpkcs11.la
+pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
+	-export-symbols pkcs11-spy.exports \
+	-module -avoid-version -no-undefined
 
 jar-dir:
 	if test ! -d jar-dir ; then mkdir jar-dir ; fi
@@ -48,6 +64,18 @@ pkcs11-jar: jar-dir
 
 # see http://wiki.cacert.org/wiki/Pkcs11TaskForce
 pkcs11_DATA = #This will create the directory
-install-data-hook:
-	$(RM) $(DESTDIR)$(pkcs11dir)/opensc-pkcs11.so
-	$(LN_S) ../opensc-pkcs11.so $(DESTDIR)$(pkcs11dir)/opensc-pkcs11.so
+install-exec-hook:	install-pkcs11DATA
+if WIN32
+	for l in opensc-pkcs11.dll onepin-opensc-pkcs11.dll pkcs11-spy.dll; do \
+		mv "$(DESTDIR)$(libdir)/$$l" "$(DESTDIR)$(pkcs11dir)/$$l"; \
+	done
+else
+	for l in opensc-pkcs11.so onepin-opensc-pkcs11.so pkcs11-spy.so; do \
+		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
+		$(LN_S) ../$$l "$(DESTDIR)$(pkcs11dir)/$$l"; \
+	done
+endif
+
+versioninfo.rc:
+	sed 's/@@FILE_DESCRIPTION@@/OpenSC PKCS#11 Provider/g' \
+		"$(top_srcdir)/win32/versioninfo.rc" > versioninfo.rc

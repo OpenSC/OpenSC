@@ -450,7 +450,7 @@ sc_pkcs11_signature_release(sc_pkcs11_operation_t *operation)
 	free(data);
 }
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 /*
  * Initialize a verify context. When we get here, we know
  * the key object is capable of verifying _something_
@@ -763,7 +763,7 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 		mt->sign_update = sc_pkcs11_signature_update;
 		mt->sign_final = sc_pkcs11_signature_final;
 		mt->sign_size = sc_pkcs11_signature_size;
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 		mt->verif_init = sc_pkcs11_verify_init;
 		mt->verif_update = sc_pkcs11_verify_update;
 		mt->verif_final = sc_pkcs11_verify_final;
@@ -786,7 +786,7 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 CK_RV
 sc_pkcs11_register_generic_mechanisms(struct sc_pkcs11_card *p11card)
 {
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	sc_pkcs11_register_openssl_mechanisms(p11card);
 #endif
 

@@ -33,7 +33,7 @@ app default {
 	# PKCS#15 initialization / personalization
 	# profiles directory for pkcs15-init.
 	
-	profile_dir = PKGDATADIR;
+	profile_dir = @pkgdatadir@;
 
 	# What reader drivers to load at start-up
 	#
@@ -87,6 +87,10 @@ app default {
 		# Enable pinpad if detected (PC/SC v2.0.2 Part 10)
 		# Default: false
 		# enable_pinpad = true;
+		#
+		# Use specific pcsc library.
+		# Default: system
+		# library_name = /usr/lib/libpcsclite.so
 	}
 
 	# options for openct support

@@ -334,7 +334,7 @@ static int send_apdu(void)
 		printf("Received (SW1=0x%02X, SW2=0x%02X)%s\n", apdu.sw1, apdu.sw2,
 		       apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 	}
 	return 0;
 }
@@ -348,7 +348,7 @@ static void print_serial(sc_card_t *in_card)
 	if (r < 0)
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GET_SERIALNR, *) failed %d\n", r);
 	else
-		hex_dump_asc(stdout, serial.value, serial.len, -1);
+		util_hex_dump_asc(stdout, serial.value, serial.len, -1);
 }
 
 int main(int argc, char * const argv[])
@@ -378,7 +378,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help);
 		switch (c) {
 		case OPT_SERIAL:
 			do_print_serial = 1;
@@ -439,7 +439,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 
 	CRYPTO_malloc_init();
 	ERR_load_crypto_strings();
@@ -474,7 +474,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
+	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
 	if (err)
 		goto end;
 

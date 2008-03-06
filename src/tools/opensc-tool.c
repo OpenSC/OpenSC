@@ -47,6 +47,7 @@ enum {
 };
 
 static const struct option options[] = {
+	{ "info",		0, NULL,		'i' },
 	{ "atr",		0, NULL,		'a' },
 	{ "serial",		0, NULL,	OPT_SERIAL  },
 	{ "name",		0, NULL,		'n' },
@@ -63,6 +64,7 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
+	"Prints information about OpenSC",
 	"Prints the ATR bytes of the card",
 	"Prints the card serial number",
 	"Identify the card and print its name",
@@ -79,6 +81,33 @@ static const char *option_help[] = {
 
 static sc_context_t *ctx = NULL;
 static sc_card_t *card = NULL;
+
+static int opensc_info(void)
+{
+	printf (
+		"%s %s ",
+		PACKAGE_NAME,
+		PACKAGE_VERSION
+	);
+
+#if defined(__VERSION__)
+	printf (
+		"[%s %s]\n",
+#if defined(__GNUC__)
+		"gcc ",
+#else
+		"unknown ",
+#endif
+		__VERSION__
+	);
+#elif defined(_MSC_VER)
+	printf ("[Microsoft %d]\n", _MSC_VER);
+#else
+	printf ("[Unknown compiler, please report]");
+#endif
+	printf ("Enabled features:%s\n", OPENSC_FEATURES);
+	return 0;
+}
 
 static int list_readers(void)
 {
@@ -148,7 +177,7 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 	printf("%s ", sc_print_path(path));
 	if (file->namelen) {
 		printf("[");
-		print_binary(stdout, file->name, file->namelen);
+		util_print_binary(stdout, file->name, file->namelen);
 		printf("] ");
 	}
 	switch (file->type) {
@@ -181,10 +210,10 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		printf("  ");
 	if (file->type == SC_FILE_TYPE_DF)
 		for (r = 0; r < (int) (sizeof(ac_ops_df)/sizeof(ac_ops_df[0])); r++)
-			printf("%s[%s] ", ac_ops_df[r], acl_to_str(sc_file_get_acl_entry(file, r)));
+			printf("%s[%s] ", ac_ops_df[r], util_acl_to_str(sc_file_get_acl_entry(file, r)));
 	else
 		for (r = 0; r < (int) (sizeof(ac_ops_ef)/sizeof(ac_ops_ef[0])); r++)
-			printf("%s[%s] ", ac_ops_ef[r], acl_to_str(sc_file_get_acl_entry(file, r)));
+			printf("%s[%s] ", ac_ops_ef[r], util_acl_to_str(sc_file_get_acl_entry(file, r)));
 
 	if (file->sec_attr_len) {
 		printf("sec: ");
@@ -194,14 +223,14 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		 * 4 MSB's of the octet mean:			 
 		 *  0 = ALW, 1 = PIN1, 2 = PIN2, 4 = SYS,
 		 * 15 = NEV */
-		hex_dump(stdout, file->sec_attr, file->sec_attr_len, ":");
+		util_hex_dump(stdout, file->sec_attr, file->sec_attr_len, ":");
 	}
 	if (file->prop_attr_len) {
 		printf("\n");
 		for (r = 0; r < depth; r++)
 			printf("  ");
 		printf("prop: ");
-		hex_dump(stdout, file->prop_attr, file->prop_attr_len, ":");
+		util_hex_dump(stdout, file->prop_attr, file->prop_attr_len, ":");
 	}
 	printf("\n\n");
 
@@ -218,7 +247,7 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 
 		r = sc_read_binary(in_card, 0, buf, file->size, 0);
 		if (r > 0)
-			hex_dump_asc(stdout, buf, r, 0);
+			util_hex_dump_asc(stdout, buf, r, 0);
 		free(buf);
 	} else {
 		unsigned char buf[256];
@@ -228,7 +257,7 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 			printf("Record %d\n", i);
 			r = sc_read_record(in_card, i, buf, 256, 0);
 			if (r > 0)
-				hex_dump_asc(stdout, buf, r, 0);
+				util_hex_dump_asc(stdout, buf, r, 0);
 		}
 	}
 	return 0;
@@ -352,7 +381,7 @@ static int send_apdu(void)
 		printf("Received (SW1=0x%02X, SW2=0x%02X)%s\n", apdu.sw1, apdu.sw2,
 		       apdu.resplen ? ":" : "");
 		if (apdu.resplen)
-			hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 	}
 	return 0;
 }
@@ -366,12 +395,13 @@ static void print_serial(sc_card_t *in_card)
 	if (r)
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GET_SERIALNR, *) failed\n");
 	else
-		hex_dump_asc(stdout, serial.value, serial.len, -1);
+		util_hex_dump_asc(stdout, serial.value, serial.len, -1);
 }
 
 int main(int argc, char * const argv[])
 {
 	int err = 0, r, c, long_optind = 0;
+	int do_info = 0;
 	int do_list_readers = 0;
 	int do_list_drivers = 0;
 	int do_list_rdrivers = 0;
@@ -388,12 +418,16 @@ int main(int argc, char * const argv[])
 	setbuf(stdout, NULL);
 
 	while (1) {
-		c = getopt_long(argc, argv, "nlfr:vs:DRc:aw", options, &long_optind);
+		c = getopt_long(argc, argv, "inlfr:vs:DRc:aw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help);
 		switch (c) {
+		case 'i':
+			do_info = 1;
+			action_count++;
+			break;
 		case 'l':
 			do_list_readers = 1;
 			action_count++;
@@ -446,7 +480,12 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
+
+	if (do_info) {
+		opensc_info();
+		action_count--;
+	}
 
 	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.ver      = 0;
@@ -486,14 +525,14 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
+	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
 	if (err)
 		goto end;
 
 	if (do_print_atr) {
 		if (verbose) {
 			printf("Card ATR:\n");
-			hex_dump_asc(stdout, card->atr, card->atr_len, -1);		
+			util_hex_dump_asc(stdout, card->atr, card->atr_len, -1);		
 		} else {
 			char tmp[SC_MAX_ATR_SIZE*3];
 			sc_bin_to_hex(card->atr, card->atr_len, tmp, sizeof(tmp) - 1, ':');

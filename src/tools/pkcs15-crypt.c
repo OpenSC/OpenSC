@@ -30,11 +30,12 @@
 #include <string.h>
 #include <opensc/opensc.h>
 #include <opensc/pkcs15.h>
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/dsa.h>
 #endif
+#include <compat_getpass.h>
 #include "util.h"
 
 static const char *app_name = "pkcs15-crypt";
@@ -173,7 +174,7 @@ static int write_output(const u8 *buf, int len)
 		outf = stdout;
 	}
 	if (output_binary == 0)
-		print_binary(outf, buf, len);
+		util_print_binary(outf, buf, len);
 	else
 		fwrite(buf, len, 1, outf);
 	if (outf != stdout)
@@ -181,7 +182,7 @@ static int write_output(const u8 *buf, int len)
 	return 0;
 }
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #define GETBN(bn)	((bn)->len? BN_bin2bn((bn)->data, (bn)->len, NULL) : NULL)
 static int extract_key(struct sc_pkcs15_object *obj, EVP_PKEY **pk)
 {
@@ -330,7 +331,7 @@ static int sign(struct sc_pkcs15_object *obj)
 		return 2;
 	}
 	if (!key->native) {
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 		r = sign_ext(obj, buf, c, out, len);
 #else
 		fprintf(stderr, "Cannot use extractable key because this "
@@ -351,7 +352,7 @@ static int sign(struct sc_pkcs15_object *obj)
 	return 0;
 }
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 static int decipher_ext(struct sc_pkcs15_object *obj,
 		u8 *data, size_t len, u8 *out, size_t out_len)
 {
@@ -364,7 +365,11 @@ static int decipher_ext(struct sc_pkcs15_object *obj,
 
 	switch (obj->type) {
 	case SC_PKCS15_TYPE_PRKEY_RSA:
+#if OPENSSL_VERSION_NUMBER >= 0x00909000L
+		r = EVP_PKEY_decrypt_old(out, data, len, pkey);
+#else
 		r = EVP_PKEY_decrypt(out, data, len, pkey);
+#endif
 		if (r <= 0) {
 			fprintf(stderr, "Decryption failed.\n");
 			r = SC_ERROR_INTERNAL;
@@ -393,7 +398,7 @@ static int decipher(struct sc_pkcs15_object *obj)
 
 	len = sizeof(out);
 	if (!((struct sc_pkcs15_prkey_info *) obj->data)->native) {
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 		r = decipher_ext(obj, buf, c, out, len);
 #else
 		fprintf(stderr, "Cannot use extractable key because this "
@@ -493,7 +498,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help);
 		switch (c) {
 		case 's':
 			do_sign++;
@@ -552,7 +557,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 
 	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.ver      = 0;
@@ -566,7 +571,7 @@ int main(int argc, char * const argv[])
 	if (verbose > 1)
 		ctx->debug = verbose-1;
 
-	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
+	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
 	if (err)
 		goto end;
 

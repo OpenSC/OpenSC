@@ -20,7 +20,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include <openssl/x509.h>
 #endif
 #include "pkcs11-display.h"
@@ -128,7 +128,7 @@ void print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_V
   fprintf(f, "\n");
 }
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 static void print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
   print_generic(f, type, value, size, arg);
@@ -540,13 +540,13 @@ type_spec ck_attribute_specs[] = {
   { CKA_VALUE             , "CKA_VALUE            ", print_generic, NULL },
   { CKA_OBJECT_ID         , "CKA_OBJECT_ID        ", print_generic, NULL },
   { CKA_CERTIFICATE_TYPE  , "CKA_CERTIFICATE_TYPE ", print_enum,    ck_crt_t },
-#ifdef HAVE_OPENSSL 
+#ifdef ENABLE_OPENSSL 
   { CKA_ISSUER            , "CKA_ISSUER           ", print_dn,      NULL },
 #else
   { CKA_ISSUER            , "CKA_ISSUER           ", print_generic, NULL },
 #endif
   { CKA_SERIAL_NUMBER     , "CKA_SERIAL_NUMBER    ", print_generic, NULL },
-#ifdef HAVE_OPENSSL 
+#ifdef ENABLE_OPENSSL 
   { CKA_AC_ISSUER         , "CKA_AC_ISSUER        ", print_dn,      NULL },
 #else
   { CKA_AC_ISSUER         , "CKA_AC_ISSUER        ", print_generic, NULL },
@@ -561,7 +561,7 @@ type_spec ck_attribute_specs[] = {
   { CKA_HASH_OF_ISSUER_PUBLIC_KEY, "CKA_HASH_OF_ISSUER_PUBLIC_KEY ", print_generic, NULL },
   { CKA_CHECK_VALUE       , "CKA_CHECK_VALUE      ", print_generic, NULL },
   { CKA_KEY_TYPE          , "CKA_KEY_TYPE         ", print_enum,    ck_key_t },
-#ifdef HAVE_OPENSSL 
+#ifdef ENABLE_OPENSSL 
   { CKA_SUBJECT           , "CKA_SUBJECT          ", print_dn,      NULL },
 #else
   { CKA_SUBJECT           , "CKA_SUBJECT          ", print_generic, NULL },

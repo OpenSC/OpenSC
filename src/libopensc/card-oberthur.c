@@ -26,7 +26,7 @@
 #include "cardctl.h"
 #include "pkcs15.h"
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -2504,4 +2504,4 @@ sc_get_oberthur_driver(void)
 	return sc_get_driver();
 }
 
-#endif /* HAVE_OPENSSL */
+#endif /* ENABLE_OPENSSL */

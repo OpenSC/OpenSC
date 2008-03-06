@@ -1,4 +1,4 @@
-my_getopt - a command-line argument parser
+compat_getopt - a command-line argument parser
 Copyright 1997-2001, Benjamin Sittler
 
 Permission is hereby granted, free of charge, to any person

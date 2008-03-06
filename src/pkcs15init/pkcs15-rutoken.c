@@ -74,7 +74,7 @@ static const struct
 			{ AODF_name,  AODFid,  SC_PKCS15_AODF  }
 		};
 
-int get_bin_from_prkey(const struct sc_pkcs15_prkey_rsa *rsa, u8 *key, size_t *keysize);
+int sc_rutoken_get_bin_from_prkey(const struct sc_pkcs15_prkey_rsa *rsa, u8 *key, size_t *keysize);
 
 /*
  * Create/override new EF.
@@ -292,8 +292,8 @@ rutoken_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	r = get_bin_from_prkey(rsa, key, keysize);
-	sc_debug(card->ctx, "get_bin_from_prkey returned %i\n", r);
+	r = sc_rutoken_get_bin_from_prkey(rsa, key, keysize);
+	sc_debug(card->ctx, "sc_rutoken_get_bin_from_prkey returned %i\n", r);
 	return r;
 }
 

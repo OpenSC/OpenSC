@@ -5,7 +5,7 @@
  */
 
 #include "internal.h"
-#ifdef HAVE_OPENCT
+#ifdef ENABLE_OPENCT
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -491,4 +491,4 @@ struct sc_reader_driver *sc_get_openct_driver(void)
 	return &openct_reader_driver;
 }
 
-#endif	/* HAVE_OPENCT */
+#endif	/* ENABLE_OPENCT */

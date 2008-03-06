@@ -21,7 +21,7 @@
 #include "internal.h"
 #include "cardctl.h"
 #include "pkcs15.h"
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/evp.h>
@@ -1902,4 +1902,4 @@ sc_get_gpk_driver(void)
 {
 	return sc_get_driver();
 }
-#endif /* HAVE_OPENSSL */
+#endif /* ENABLE_OPENSSL */

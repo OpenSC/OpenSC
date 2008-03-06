@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <opensc/opensc.h>
 #include <opensc/asn1.h>
-#ifdef HAVE_READLINE_READLINE_H
+#ifdef ENABLE_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
@@ -117,7 +117,7 @@ static void check_ret(int r, int op, const char *err, const sc_file_t *file)
 {
 	fprintf(stderr, "%s: %s\n", err, sc_strerror(r));
 	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
-		fprintf(stderr, "ACL for operation: %s\n", acl_to_str(sc_file_get_acl_entry(file, op)));
+		fprintf(stderr, "ACL for operation: %s\n", util_acl_to_str(sc_file_get_acl_entry(file, op)));
 }
 
 static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
@@ -189,7 +189,7 @@ static void print_file(const sc_file_t *file)
 	printf(" %5lu", (unsigned long)file->size);
 	if (file->namelen) {
 		printf("\tName: ");
-		print_binary(stdout, file->name, file->namelen);
+		util_print_binary(stdout, file->name, file->namelen);
 	}
 	printf("\n");
 	return;
@@ -300,7 +300,7 @@ usage:
 	return -1;
 }
 
-static int read_and_print_binary_file(sc_file_t *file)
+static int read_and_util_print_binary_file(sc_file_t *file)
 {
 	unsigned int idx = 0;
 	u8 buf[128];
@@ -322,7 +322,7 @@ static int read_and_print_binary_file(sc_file_t *file)
 		}
 		if ((r == 0) && (card->caps & SC_CARD_CAP_NO_FCI))
 			break;
-		hex_dump_asc(stdout, buf, r, idx);
+		util_hex_dump_asc(stdout, buf, r, idx);
 		idx += r;
 		count -= r;
 	}
@@ -345,7 +345,7 @@ static int read_and_print_record_file(sc_file_t *file)
 			return -1;
 		}
 		printf("Record %d:\n", rec);
-		hex_dump_asc(stdout, buf, r, 0);
+		util_hex_dump_asc(stdout, buf, r, 0);
 	}
 }
 
@@ -378,7 +378,7 @@ static int do_cat(int argc, char **argv)
 		return -1;
 	}
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)
-		read_and_print_binary_file(file);
+		read_and_util_print_binary_file(file);
 	else
 		read_and_print_record_file(file);
 	if (not_current) {
@@ -448,14 +448,14 @@ static int do_info(int argc, char **argv)
 		};
 		if (file->namelen) {
 			printf("%-15s", "DF name:");
-			print_binary(stdout, file->name, file->namelen);
+			util_print_binary(stdout, file->name, file->namelen);
 			printf("\n");
 		}
 		for (i = 0; i < sizeof(ops)/sizeof(ops[0]); i++) {
 			char buf[80];
 			
 			sprintf(buf, "ACL for %s:", ops[i]);
-			printf("%-25s%s\n", buf, acl_to_str(sc_file_get_acl_entry(file, i)));
+			printf("%-25s%s\n", buf, util_acl_to_str(sc_file_get_acl_entry(file, i)));
 		}
 	} else {
 		const char *structs[] = {
@@ -472,7 +472,7 @@ static int do_info(int argc, char **argv)
 			char buf[80];
 			
 			sprintf(buf, "ACL for %s:", ops[i]);
-			printf("%-25s%s\n", buf, acl_to_str(sc_file_get_acl_entry(file, i)));
+			printf("%-25s%s\n", buf, util_acl_to_str(sc_file_get_acl_entry(file, i)));
 		}
 	}	
 	if (file->prop_attr_len) {
@@ -1258,7 +1258,7 @@ static int do_pksign(int argc, char **argv)
 		printf("Signing failed: %s\n",  sc_strerror (r));
 		return -1;
 	}
-	hex_dump_asc(stdout, outdata, r, -1);
+	util_hex_dump_asc(stdout, outdata, r, -1);
 	printf ("Done.\n");
 	return 0;
 usage:
@@ -1322,7 +1322,7 @@ static int do_pkdecrypt(int argc, char **argv)
 		printf("Decryption failed: %s\n",  sc_strerror (r));
 		return -1;
 	}
-	hex_dump_asc (stdout, outdata, r, -1);
+	util_hex_dump_asc (stdout, outdata, r, -1);
 	printf("Done.\n");
 	return 0;
 usage:
@@ -1372,7 +1372,7 @@ do_random(int argc, char **argv)
 		return -1;
 	}
 
-	hex_dump_asc(stdout, buffer, count, 0);
+	util_hex_dump_asc(stdout, buffer, count, 0);
 	return 0;
 
 usage:
@@ -1408,7 +1408,7 @@ static int do_get_data(int argc, char **argv)
 		fclose(fp);
 	} else {
 		printf("Object %04x:\n", tag & 0xFFFF);
-		hex_dump_asc(stdout, buffer, r, 0);
+		util_hex_dump_asc(stdout, buffer, r, 0);
 	}
 
 	return 0;
@@ -1505,7 +1505,7 @@ static int do_apdu(int argc, char **argv)
 	printf("Received (SW1=0x%02X, SW2=0x%02X)%s\n", apdu.sw1, apdu.sw2,
 	       apdu.resplen ? ":" : "");
 	if (apdu.resplen)
-		hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 
 	return 0;
 }
@@ -1661,12 +1661,12 @@ static char * my_readline(char *prompt)
 	if (!initialized) {
 		initialized = 1;
 		interactive = isatty(fileno(stdin));
-#ifdef HAVE_READLINE
+#ifdef ENABLE_READLINE
 		if (interactive)
 			using_history ();
 #endif
 	}
-#ifdef HAVE_READLINE
+#ifdef ENABLE_READLINE
 	if (interactive) {
 		char *line = readline(prompt);
 		if (line && strlen(line) > 2 )
@@ -1676,7 +1676,7 @@ static char * my_readline(char *prompt)
 #endif
 	/* Either we don't have readline or we are not running
 	   interactively */
-#ifndef HAVE_READLINE
+#ifndef ENABLE_READLINE
 	printf("%s", prompt);
 #endif
 	fflush(stdout);
@@ -1704,7 +1704,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help);
 		switch (c) {
 		case 'r':
 			opt_reader = atoi(optarg);
@@ -1742,7 +1742,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, 0);
+	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, 0);
 	if (err)
 		goto end;
 

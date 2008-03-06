@@ -52,8 +52,9 @@
 #include <opensc/log.h>
 #include <opensc/ui.h>
 #include <opensc/cards.h>
+#include <compat_getpass.h>
 #include "util.h"
-#include "strlcpy.h"
+#include <compat_strlcpy.h>
 
 
 #undef GET_KEY_ECHO_OFF
@@ -347,20 +348,20 @@ main(int argc, char **argv)
 	CRYPTO_malloc_init();
 #ifdef RANDOM_POOL
 	if (!RAND_load_file(RANDOM_POOL, 32))
-		fatal("Unable to seed random number pool for key generation");
+		util_fatal("Unable to seed random number pool for key generation");
 #endif
 
 	parse_commandline(argc, argv);
 
 	if (optind != argc)
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 	if (opt_actions == 0) {
 		fprintf(stderr, "No action specified.\n");
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 	}
 	if (!opt_profile) {
 		fprintf(stderr, "No profile specified.\n");
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 	}
 
 	/* Connect to the card */
@@ -464,7 +465,7 @@ main(int argc, char **argv)
 			r = do_finalize_card(card, profile);
 			break;
 		default:
-			fatal("Action not yet implemented\n");
+			util_fatal("Action not yet implemented\n");
 		}
 
 		if (r < 0) {
@@ -501,7 +502,7 @@ open_reader_and_card(int reader)
 
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
-		error("Failed to establish context: %s\n", sc_strerror(r));
+		util_error("Failed to establish context: %s\n", sc_strerror(r));
 		return 0;
 	}
 	if (verbose > 1) {
@@ -509,7 +510,7 @@ open_reader_and_card(int reader)
 		ctx->debug_file = stderr;
 	}
 
-	if (connect_card(ctx, &card, reader, 0, opt_wait, verbose))
+	if (util_connect_card(ctx, &card, reader, 0, opt_wait, verbose))
 		return 0;
 
 	return 1;
@@ -680,7 +681,7 @@ do_store_pin(struct sc_profile *profile)
 	pin_id = opt_objectid ? opt_objectid : opt_authid;
 
 	if (!pin_id) {
-		error("No pin id specified\n");
+		util_error("No pin id specified\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -692,7 +693,7 @@ do_store_pin(struct sc_profile *profile)
 			goto failed;
 	}
 	if (*opt_pins[0] == '\0') {
-		error("You must specify a PIN\n");
+		util_error("You must specify a PIN\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (opt_pins[1] == NULL) {
@@ -1002,7 +1003,7 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 	if (r == 0)
 		r = do_convert_cert(newcert_raw, newcert);
 	else
-		error("the public keys in the old and new certificate differ");
+		util_error("the public keys in the old and new certificate differ");
 
 	X509_free(newcert);
 
@@ -1026,12 +1027,12 @@ do_update_certificate(struct sc_profile *profile)
 	set_userpin_ref();
 
 	if (opt_objectid == NULL) {
-		error("no ID given for the cert: use --id");
+		util_error("no ID given for the cert: use --id");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_pkcs15_format_id(opt_objectid, &id);
     if (sc_pkcs15_find_cert_by_id(p15card, &id, &obj) != 0) {
-    	error("Couldn't find the cert with ID %s\n", opt_objectid);
+    	util_error("Couldn't find the cert with ID %s\n", opt_objectid);
     	return SC_ERROR_OBJECT_NOT_FOUND;
     }
 
@@ -1233,7 +1234,7 @@ do_delete_objects(struct sc_profile *profile, unsigned int myopt_delete_flags)
 		struct sc_object_id app_oid;
 		sc_pkcs15_object_t *obj;
 		if (opt_application_id == NULL)
-			fatal("Specify the --application-id for the data object to be deleted\n");
+			util_fatal("Specify the --application-id for the data object to be deleted\n");
 		sc_format_oid(&app_oid, opt_application_id);
 
 		r = sc_pkcs15_find_data_object_by_app_oid(p15card, &app_oid, &obj);
@@ -1247,7 +1248,7 @@ do_delete_objects(struct sc_profile *profile, unsigned int myopt_delete_flags)
 	if (myopt_delete_flags & (SC_PKCS15INIT_TYPE_PRKEY | SC_PKCS15INIT_TYPE_PUBKEY | SC_PKCS15INIT_TYPE_CHAIN)) {
 		sc_pkcs15_id_t id;
 		if (opt_objectid == NULL)
-				fatal("Specify the --id for key(s) or cert(s) to be deleted\n");
+				util_fatal("Specify the --id for key(s) or cert(s) to be deleted\n");
 		sc_pkcs15_format_id(opt_objectid, &id);
 
 		r = do_delete_crypto_objects(p15card, profile, id, myopt_delete_flags);
@@ -1341,7 +1342,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 		evp_algo = EVP_PKEY_DSA;
 		spec += 3;
 	} else {
-		error("Unknown algorithm \"%s\"", spec);
+		util_error("Unknown algorithm \"%s\"", spec);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -1352,7 +1353,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 
 		keybits = strtoul(spec, &end, 10);
 		if (*end) {
-			error("Invalid number of key bits \"%s\"", spec);
+			util_error("Invalid number of key bits \"%s\"", spec);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 	}
@@ -1407,7 +1408,7 @@ static int init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 	if (opt_authid) {
 		sc_pkcs15_format_id(opt_authid, &args->auth_id);
 	} else if (!opt_unprotected) {
-		error("no PIN given for key - either use --insecure or \n"
+		util_error("no PIN given for key - either use --insecure or \n"
 		      "specify a PIN using --auth-id");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -1417,7 +1418,7 @@ static int init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 			args->passphrase = opt_passphrase;
 		} else {
 			if (!opt_unprotected) {
-				error("no pass phrase given for key - "
+				util_error("no pass phrase given for key - "
 				      "either use --insecure or\n"
 				      "specify a pass phrase using "
 				      "--passphrase");
@@ -1477,7 +1478,7 @@ parse_secret(struct secret *secret, const char *arg)
 	return;
 
 parse_err:
-	fatal("Cannot parse secret \"%s\"\n", arg);
+	util_fatal("Cannot parse secret \"%s\"\n", arg);
 }
 
 static void set_secrets(struct sc_profile *profile)
@@ -1727,7 +1728,7 @@ static int do_generate_key_soft(int algorithm, unsigned int bits,
 			rsa = RSA_generate_key(bits, 0x10001, NULL, err);
 			BIO_free(err);
 			if (rsa == 0)
-				fatal("RSA key generation error");
+				util_fatal("RSA key generation error");
 			EVP_PKEY_assign_RSA(*res, rsa);
 			break;
 		}
@@ -1741,12 +1742,12 @@ static int do_generate_key_soft(int algorithm, unsigned int bits,
 			if (dsa)
 				r = DSA_generate_key(dsa);
 			if (r == 0 || dsa == 0)
-				fatal("DSA key generation error");
+				util_fatal("DSA key generation error");
 			EVP_PKEY_assign_DSA(*res, dsa);
 			break;
 		}
 	default:
-		fatal("Unable to generate key: unsupported algorithm");
+		util_fatal("Unable to generate key: unsupported algorithm");
 	}
 	return 0;
 }
@@ -1782,7 +1783,7 @@ do_read_pem_private_key(const char *filename, const char *passphrase,
 
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) <= 0)
-		fatal("Unable to open %s: %m", filename);
+		util_fatal("Unable to open %s: %m", filename);
 	*key = PEM_read_bio_PrivateKey(bio, NULL, pass_cb, (char *) passphrase);
 	BIO_free(bio);
 	if (*key == NULL) {
@@ -1807,7 +1808,7 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) <= 0)
-		fatal("Unable to open %s: %m", filename);
+		util_fatal("Unable to open %s: %m", filename);
 	p12 = d2i_PKCS12_bio(bio, NULL);
 	BIO_free(bio);
 
@@ -1816,7 +1817,7 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 		goto error;
 
 	if (!user_key) {
-		error("No key in pkcs12 file?!\n");
+		util_error("No key in pkcs12 file?!\n");
 		return SC_ERROR_CANNOT_LOAD_KEY;
 	}
 
@@ -1873,13 +1874,13 @@ do_read_private_key(const char *filename, const char *format,
  					passphrase, pk, certs, max_certs);
 		}
 	} else {
-		error("Error when reading private key. "
+		util_error("Error when reading private key. "
 		      "Key file format \"%s\" not supported.\n", format);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (r < 0)
-		fatal("Unable to read private key from %s\n", filename);
+		util_fatal("Unable to read private key from %s\n", filename);
 	return r;
 }
 
@@ -1894,7 +1895,7 @@ do_read_pem_public_key(const char *filename)
 
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) <= 0)
-		fatal("Unable to open %s: %m", filename);
+		util_fatal("Unable to open %s: %m", filename);
 	pk = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	if (pk == NULL) 
@@ -1910,7 +1911,7 @@ do_read_der_public_key(const char *filename)
 
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) <= 0)
-		fatal("Unable to open %s: %m", filename);
+		util_fatal("Unable to open %s: %m", filename);
 	pk = d2i_PUBKEY_bio(bio, NULL);
 	BIO_free(bio);
 	if (pk == NULL) 
@@ -1926,13 +1927,13 @@ do_read_public_key(const char *name, const char *format, EVP_PKEY **out)
 	} else if (!strcasecmp(format, "der")) {
 		*out = do_read_der_public_key(name);
 	} else {
-		fatal("Error when reading public key. "
+		util_fatal("Error when reading public key. "
 		      "File format \"%s\" not supported.\n",
 		      format);
 	}
 
 	if (!*out)
-		fatal("Unable to read public key from %s\n", name);
+		util_fatal("Unable to read public key from %s\n", name);
 	return 0;
 }
 
@@ -1948,7 +1949,7 @@ do_write_pem_public_key(const char *filename, EVP_PKEY *pk)
 
 	bio = BIO_new(BIO_s_file());
 	if (BIO_write_filename(bio, (char *) filename) < 0)
-		fatal("Unable to open %s: %m", filename);
+		util_fatal("Unable to open %s: %m", filename);
 	r = PEM_write_bio_PUBKEY(bio, pk);
 	BIO_free(bio);
 	if (r == 0) {
@@ -1986,7 +1987,7 @@ do_read_pem_certificate(const char *filename)
 
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) <= 0)
-		fatal("Unable to open %s: %m", filename);
+		util_fatal("Unable to open %s: %m", filename);
 	xp = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	if (xp == NULL) 
@@ -2002,7 +2003,7 @@ do_read_der_certificate(const char *filename)
 
 	bio = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio, filename) <= 0)
-		fatal("Unable to open %s: %m", filename);
+		util_fatal("Unable to open %s: %m", filename);
 	xp = d2i_X509_bio(bio, NULL);
 	BIO_free(bio);
 	if (xp == NULL) 
@@ -2018,13 +2019,13 @@ do_read_certificate(const char *name, const char *format, X509 **out)
 	} else if (!strcasecmp(format, "der")) {
 		*out = do_read_der_certificate(name);
 	} else {
-		fatal("Error when reading certificate. "
+		util_fatal("Error when reading certificate. "
 		      "File format \"%s\" not supported.\n",
 		      format);
 	}
 
 	if (!*out)
-		fatal("Unable to read certificate from %s\n", name);
+		util_fatal("Unable to read certificate from %s\n", name);
 	return 0;
 }
 
@@ -2033,7 +2034,7 @@ static int determine_filesize(const char *filename) {
 	size_t size;
 
 	if ((fp = fopen(filename,"rb")) == NULL) {
-	  fatal("Unable to open %s: %m", filename);
+	  util_fatal("Unable to open %s: %m", filename);
 	  }
 	fseek(fp,0L,SEEK_END);
 	size = ftell(fp);
@@ -2093,7 +2094,7 @@ static int do_convert_private_key(struct sc_pkcs15_prkey *key, EVP_PKEY *pk)
 		 || !do_convert_bignum(&dst->d, src->d)
 		 || !do_convert_bignum(&dst->p, src->p)
 		 || !do_convert_bignum(&dst->q, src->q))
-			fatal("Invalid/incomplete RSA key.\n");
+			util_fatal("Invalid/incomplete RSA key.\n");
 		if (src->iqmp && src->dmp1 && src->dmq1) {
 			do_convert_bignum(&dst->iqmp, src->iqmp);
 			do_convert_bignum(&dst->dmp1, src->dmp1);
@@ -2116,7 +2117,7 @@ static int do_convert_private_key(struct sc_pkcs15_prkey *key, EVP_PKEY *pk)
 		break;
 		}
 	default:
-		fatal("Unsupported key algorithm\n");
+		util_fatal("Unsupported key algorithm\n");
 	}
 
 	return 0;
@@ -2132,7 +2133,7 @@ static int do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
 		key->algorithm = SC_ALGORITHM_RSA;
 		if (!do_convert_bignum(&dst->modulus, src->n)
 		 || !do_convert_bignum(&dst->exponent, src->e))
-			fatal("Invalid/incomplete RSA key.\n");
+			util_fatal("Invalid/incomplete RSA key.\n");
 		RSA_free(src);
 		break;
 		}
@@ -2149,7 +2150,7 @@ static int do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
 		break;
 		}
 	default:
-		fatal("Unsupported key algorithm\n");
+		util_fatal("Unsupported key algorithm\n");
 	}
 
 	return 0;
@@ -2237,7 +2238,7 @@ static void set_userpin_ref(void)
 		sc_pkcs15_format_id(opt_authid, &auth_id);
 		r = sc_pkcs15_find_pin_by_auth_id(p15card, &auth_id, &pinobj);
 		if (r < 0)
-			fatal("Searching for user PIN %d failed: %s\n", opt_authid, sc_strerror(r));
+			util_fatal("Searching for user PIN %d failed: %s\n", opt_authid, sc_strerror(r));
 		pin_info = (sc_pkcs15_pin_info_t *) pinobj->data;
 		sc_keycache_set_pin_name(&path, pin_info->reference, SC_PKCS15INIT_USER_PIN);
 	}
@@ -2375,7 +2376,7 @@ handle_option(const struct option *opt)
 		opt_format = optarg;
 		break;
 	case 'h':
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 	case 'i':
 		opt_objectid = optarg;
 		break;
@@ -2464,7 +2465,7 @@ handle_option(const struct option *opt)
 		opt_cert_label = optarg;
 		break;
 	default:
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 	}
 
 	if ((opt_actions & (1 << this_action)) && opt->has_arg != no_argument) {
@@ -2474,7 +2475,7 @@ handle_option(const struct option *opt)
 		if (isprint(opt->val))
 			fprintf(stderr, " -%c", opt->val);
 		fprintf(stderr, " more than once.\n");
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 	}
 	if (this_action)
 		opt_actions |= (1 << this_action);
@@ -2483,7 +2484,7 @@ handle_option(const struct option *opt)
 		fprintf(stderr, "Error: "
 		"The --no-so-pin option and --so-pin/--so-puk are mutually\n"
 		"exclusive.\n");
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 	}
 }
 
@@ -2511,7 +2512,7 @@ parse_commandline(int argc, char **argv)
 		case no_argument:
 			break;
 		default:
-			fatal("Internal: bad has_arg value");
+			util_fatal("Internal: bad has_arg value");
 		}
 	}
 	sp[0] = 0;
@@ -2525,7 +2526,7 @@ parse_commandline(int argc, char **argv)
 				goto next;
 			}
 		}
-		fatal("Internal error in options handling, option %u\n", c);
+		util_fatal("Internal error in options handling, option %u\n", c);
 
 next: ;
 	}
@@ -2544,7 +2545,7 @@ read_options_file(const char *filename)
 	FILE		*fp;
 
 	if ((fp = fopen(filename, "r")) == NULL)
-		fatal("Unable to open %s: %m", filename);
+		util_fatal("Unable to open %s: %m", filename);
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		buffer[strcspn(buffer, "\n")] = '\0';
 
@@ -2556,8 +2557,8 @@ read_options_file(const char *filename)
 				if (!strcmp(o->name, name))
 					break;
 			if (!o->name) {
-				error("Unknown option \"%s\"\n", name);
-				print_usage_and_die(app_name, options, option_help);
+				util_error("Unknown option \"%s\"\n", name);
+				util_print_usage_and_die(app_name, options, option_help);
 			}
 			if (o->has_arg != no_argument) {
 				optarg = strtok(NULL, "");
@@ -2569,8 +2570,8 @@ read_options_file(const char *filename)
 			}
 			if (o->has_arg == required_argument
 			 && (!optarg || !*optarg)) {
-				error("Option %s: missing argument\n", name);
-				print_usage_and_die(app_name, options, option_help);
+				util_error("Option %s: missing argument\n", name);
+				util_print_usage_and_die(app_name, options, option_help);
 			}
 			handle_option(o);
 			name = strtok(NULL, " \t");

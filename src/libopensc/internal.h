@@ -35,6 +35,9 @@ extern "C" {
 #include "ui.h"
 #include "cards.h"
 #include <assert.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #define SC_FILE_MAGIC			0x14426950
 #define SC_CARD_MAGIC			0x27182818

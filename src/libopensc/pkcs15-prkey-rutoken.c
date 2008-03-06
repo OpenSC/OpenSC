@@ -28,20 +28,30 @@
 #include <assert.h>
 #include <opensc/opensc.h>
 #include <opensc/pkcs15.h>
+#if defined(HAVE_INTTYPES_H)
+#include <inttypes.h>
+#elif defined(HAVE_STDINT_H)
+#include <stdint.h>
+#elif defined(_MSC_VER)
+typedef unsigned __int32 uint32_t;
+typedef unsigned __int16 uint16_t;
+#else
+#warning no uint32_t type available, please contact opensc-devel@opensc-project.org
+#endif
 
 /*  BLOB definition  */
 
 typedef struct _RSAPUBKEY {
-	u_int32_t magic;
-	u_int32_t bitlen;
-	u_int32_t pubexp;
+	uint32_t magic;
+	uint32_t bitlen;
+	uint32_t pubexp;
 } RSAPUBKEY;
 
 typedef struct _PUBLICKEYSTRUC {
 	u8 bType;
 	u8 bVersion;
-	u_int16_t reserved;
-	u_int32_t aiKeyAlg;
+	uint16_t reserved;
+	uint32_t aiKeyAlg;
 } BLOBHEADER;
 
 typedef struct _PRIVATEKEYBLOB {
@@ -97,7 +107,7 @@ static int bin_to_private_blob(PRIVATEKEYBLOB *pr_blob, const u8* buf, size_t bu
 	memcpy(&pr_blob->rsapubkey, tmp, sizeof(pr_blob->rsapubkey));
 	tmp += sizeof(pr_blob->rsapubkey);
 
-	u_int32_t bitlen = pr_blob->rsapubkey.bitlen;
+	uint32_t bitlen = pr_blob->rsapubkey.bitlen;
 
 	len += bitlen/8 * 2  +  bitlen/16 * 5;
 	if (buf_len < len)
@@ -138,7 +148,7 @@ static int bin_to_private_blob(PRIVATEKEYBLOB *pr_blob, const u8* buf, size_t bu
 static int create_private_blob(PRIVATEKEYBLOB *pr_blob, const struct sc_pkcs15_prkey_rsa *key)
 {
 	size_t n;
-	const u_int32_t bitlen = key->modulus.len*8;
+	const uint32_t bitlen = key->modulus.len*8;
 
 	if (    key->modulus.len != bitlen/8
 	     || key->p.len       != bitlen/16
@@ -166,7 +176,7 @@ static int create_private_blob(PRIVATEKEYBLOB *pr_blob, const struct sc_pkcs15_p
 	pr_blob->rsapubkey.pubexp = 0;
 	for (n=0; n < key->exponent.len  &&  n < sizeof(pr_blob->rsapubkey.pubexp); ++n)
 		pr_blob->rsapubkey.pubexp += 
-			(u_int32_t)key->exponent.data[key->exponent.len - n - 1] << 8*n;
+			(uint32_t)key->exponent.data[key->exponent.len - n - 1] << 8*n;
 
 	pr_blob->modulus = malloc(bitlen/8);
 	pr_blob->prime1 = malloc(bitlen/16);
@@ -205,7 +215,7 @@ static int get_sc_pksc15_prkey_rsa(const PRIVATEKEYBLOB *pr_blob, struct sc_pkcs
 {
 	static const u8 Exp[3] = { 0x01, 0x00, 0x01 }; /* big endian */
 
-	const u_int32_t bitlen = pr_blob->rsapubkey.bitlen;
+	const uint32_t bitlen = pr_blob->rsapubkey.bitlen;
 
 	key->modulus.data = malloc(bitlen/8);
 	key->modulus.len = bitlen/8;
@@ -305,7 +315,7 @@ static int private_blob_to_bin(const PRIVATEKEYBLOB *pr_blob, u8 *buf, size_t *b
 
 static int clean_prkey_private_blob(const PRIVATEKEYBLOB* pr_blob)
 {
-	const u_int32_t bitlen = pr_blob->rsapubkey.bitlen;
+	const uint32_t bitlen = pr_blob->rsapubkey.bitlen;
 
 	memset(pr_blob->modulus, 0, bitlen/8);
 	memset(pr_blob->prime1, 0, bitlen/16);
@@ -343,7 +353,7 @@ int get_prkey_from_bin(const u8 *data, size_t len, struct sc_pkcs15_prkey **key)
 	return ret;
 }
 
-int get_bin_from_prkey(const struct sc_pkcs15_prkey_rsa *rsa, u8 *key, size_t *keysize)
+int sc_rutoken_get_bin_from_prkey(const struct sc_pkcs15_prkey_rsa *rsa, u8 *key, size_t *keysize)
 {
 	int r = -1;
 	PRIVATEKEYBLOB prkeyblob;

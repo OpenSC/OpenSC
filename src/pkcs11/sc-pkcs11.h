@@ -39,7 +39,7 @@ extern "C" {
 #endif 
 
 #if defined(_WIN32)
-#define PKCS11_DEFAULT_MODULE_NAME      "opensc-pkcs11"
+#define PKCS11_DEFAULT_MODULE_NAME      "opensc-pkcs11.dll"
 #else
 #define PKCS11_DEFAULT_MODULE_NAME      "opensc-pkcs11.so"
 #endif
@@ -52,7 +52,7 @@ extern CK_RV C_UnloadModule(void *module);
 #endif
 
 /* Decide whether to use pkcs11 for initialization support */
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #define USE_PKCS15_INIT
 #endif
 
@@ -281,7 +281,7 @@ struct sc_pkcs11_mechanism_type {
 					CK_BYTE_PTR, CK_ULONG_PTR);
 	CK_RV		  (*sign_size)(sc_pkcs11_operation_t *,
 					CK_ULONG_PTR);
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	CK_RV		  (*verif_init)(sc_pkcs11_operation_t *,
 					struct sc_pkcs11_object *);
 	CK_RV		  (*verif_update)(sc_pkcs11_operation_t *,
@@ -413,7 +413,7 @@ CK_RV sc_pkcs11_sign_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR,
 CK_RV sc_pkcs11_sign_update(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
 CK_RV sc_pkcs11_sign_final(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG_PTR);
 CK_RV sc_pkcs11_sign_size(struct sc_pkcs11_session *, CK_ULONG_PTR);
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 CK_RV sc_pkcs11_verif_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR,
 				struct sc_pkcs11_object *, CK_MECHANISM_TYPE);
 CK_RV sc_pkcs11_verif_update(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
@@ -430,14 +430,14 @@ sc_pkcs11_operation_t *sc_pkcs11_new_operation(sc_pkcs11_session_t *,
 				sc_pkcs11_mechanism_type_t *);
 void sc_pkcs11_release_operation(sc_pkcs11_operation_t **);
 CK_RV sc_pkcs11_register_generic_mechanisms(struct sc_pkcs11_card *);
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 void sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *);
 #endif
 CK_RV sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *,
 				CK_MECHANISM_TYPE, CK_MECHANISM_TYPE,
 				sc_pkcs11_mechanism_type_t *);
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 /* Random generation functions */
 CK_RV sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 	struct sc_pkcs15_prkey *privkey, struct sc_pkcs15_pubkey *pubkey);

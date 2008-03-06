@@ -23,9 +23,10 @@
 #endif
 
 #include <opensc/pkcs11.h>
+#include <compat_getpass.h>
 #include "util.h"
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include "openssl/evp.h"
 #include "openssl/x509.h"
 #include "openssl/rsa.h"
@@ -338,7 +339,7 @@ int main(int argc, char * argv[])
 			new_object_id_len = sizeof(new_object_id);
 			if (!hex_to_bin(optarg, new_object_id, &new_object_id_len)) {
 				printf("Invalid ID \"%s\"\n", optarg);
-				print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help);
 			}
 			action_count++;
 			break;
@@ -357,14 +358,14 @@ int main(int argc, char * argv[])
 				opt_object_class = CKO_DATA;
 			else {
 				printf("Unsupported object type \"%s\"\n", optarg);
-				print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help);
 			}
 			break;
 		case 'd':
 			opt_object_id_len = sizeof(opt_object_id);
 			if (!hex_to_bin(optarg, opt_object_id, &opt_object_id_len)) {
 				printf("Invalid ID \"%s\"\n", optarg);
-				print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help);
 			}
 			break;
 		case 'a':
@@ -445,19 +446,19 @@ int main(int argc, char * argv[])
 			opt_is_private = 1;
 			break;
 		default:
-			print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help);
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	/* ERR_load_crypto_strings(); */
 #endif
 
 	module = C_LoadModule(opt_module, &p11);
 	if (module == NULL)
-		fatal("Failed to load pkcs11 module");
+		util_fatal("Failed to load pkcs11 module");
 
 	rv = p11->C_Initialize(NULL);
 	if (rv != CKR_OK)
@@ -521,7 +522,7 @@ int main(int argc, char * argv[])
 
 		get_token_info(opt_slot, &info);
 		if (!(info.flags & CKF_TOKEN_INITIALIZED))
-			fatal("Token not initialized\n");
+			util_fatal("Token not initialized\n");
 		if (info.flags & CKF_LOGIN_REQUIRED)
 			opt_login++;
 	}
@@ -560,7 +561,7 @@ int main(int argc, char * argv[])
 
 	if (do_sign) {
 		if (!find_object(session, CKO_PRIVATE_KEY, &object, NULL, 0, 0))
-			fatal("Private key not found");
+			util_fatal("Private key not found");
 	}
 
 	if (do_list_objects)
@@ -579,35 +580,35 @@ int main(int argc, char * argv[])
 
 	if (do_write_object) {
 		if (opt_object_class_str == NULL)
-			fatal("You should specify the object type with the -y option\n");
+			util_fatal("You should specify the object type with the -y option\n");
 		write_object(opt_slot, session);
 	}
 
 	if (do_read_object) {
 		if (opt_object_class_str == NULL)
-			fatal("You should specify type of the object to read");
+			util_fatal("You should specify type of the object to read");
 		if (opt_object_id_len == 0 && opt_object_label == NULL && 
 				opt_application_label == NULL && opt_application_id == NULL)
-			 fatal("You should specify at least one of the "
+			 util_fatal("You should specify at least one of the "
 					 "object ID, object label, application label or application ID\n");
 		read_object(opt_slot, session);
 	}
 
 	if (do_delete_object) {
 		if (opt_object_class_str == NULL)
-			fatal("You should specify type of the object to delete");
+			util_fatal("You should specify type of the object to delete");
 		if (opt_object_id_len == 0 && opt_object_label == NULL && 
 				opt_application_label == NULL && opt_application_id == NULL)
-			 fatal("You should specify at least one of the "
+			 util_fatal("You should specify at least one of the "
 					 "object ID, object label, application label or application ID\n");
 		delete_object(opt_slot, session);
 	}
 
 	if (do_set_id) {
 		if (opt_object_class_str == NULL)
-			fatal("You should specify the object type with the -y option\n");
+			util_fatal("You should specify the object type with the -y option\n");
 		if (opt_object_id_len == 0)
-			fatal("You should specify the current ID with the -d option\n");
+			util_fatal("You should specify the current ID with the -d option\n");
 		set_id_attr(opt_slot, session);
 	}
 
@@ -820,7 +821,7 @@ static void init_token(CK_SLOT_ID slot)
 	CK_RV rv;
 
 	if (!opt_object_label)
-		fatal("The token label must be specified using --label\n");
+		util_fatal("The token label must be specified using --label\n");
 	snprintf((char *) token_label, sizeof (token_label), "%-32.32s",
 			opt_object_label);
 
@@ -829,18 +830,18 @@ static void init_token(CK_SLOT_ID slot)
 		if (opt_so_pin == NULL) {
 			new_pin = getpass("Please enter the new SO PIN: ");
 			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
-				fatal("Invalid SO PIN\n");
+				util_fatal("Invalid SO PIN\n");
 			strcpy(new_buf, new_pin);
 			new_pin = getpass("Please enter the new SO PIN "
 					"(again): ");
 			if (!new_pin || !*new_pin ||
 					strcmp(new_buf, new_pin) != 0)
-				fatal("Different new SO PINs, exiting\n");
+				util_fatal("Different new SO PINs, exiting\n");
 		} else {
 			new_pin = opt_so_pin;
 		}
 		if (!new_pin || !*new_pin)
-			fatal("Invalid SO PIN\n");
+			util_fatal("Invalid SO PIN\n");
 	}
 
 	rv = p11->C_InitToken(slot, (CK_UTF8CHAR *) new_pin,
@@ -862,12 +863,12 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 		if (opt_pin == NULL) {
 			new_pin = getpass("Please enter the new PIN: ");
 			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
-				fatal("Invalid User PIN\n");
+				util_fatal("Invalid User PIN\n");
 			strcpy(new_buf, new_pin);
 			new_pin = getpass("Please enter the new PIN again: ");
 			if (!new_pin || !*new_pin ||
 					strcmp(new_buf, new_pin) != 0)
-				fatal("Different new User PINs, exiting\n");
+				util_fatal("Different new User PINs, exiting\n");
 		} else {
 			new_pin = opt_pin;
 		}
@@ -941,7 +942,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (opt_input == NULL)
 		fd = 0;
 	else if ((fd = open(opt_input, O_RDONLY|O_BINARY)) < 0)
-		fatal("Cannot open %s: %m", opt_input);
+		util_fatal("Cannot open %s: %m", opt_input);
 
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0) {
 		rv = p11->C_SignUpdate(session, buffer, r);
@@ -960,17 +961,17 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (opt_output == NULL)
 		fd = 1;
 	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, 0666)) < 0)
-		fatal("failed to open %s: %m", opt_output);
+		util_fatal("failed to open %s: %m", opt_output);
 #else
 	if (opt_output == NULL)
 		fd = 1;
 	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY, 0666)) < 0)
-		fatal("failed to open %s: %m", opt_output);
+		util_fatal("failed to open %s: %m", opt_output);
 #endif /* _WIN32 */
 
 	r = write(fd, buffer, sig_len);
 	if (r < 0)
-		fatal("Failed to write to %s: %m", opt_output);
+		util_fatal("Failed to write to %s: %m", opt_output);
 	if (fd != 1)
 		close(fd);
 }
@@ -999,7 +1000,7 @@ static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (opt_input == NULL)
 		fd = 0;
 	else if ((fd = open(opt_input, O_RDONLY)) < 0)
-		fatal("Cannot open %s: %m", opt_input);
+		util_fatal("Cannot open %s: %m", opt_input);
 
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0) {
 		rv = p11->C_DigestUpdate(session, buffer, r);
@@ -1018,11 +1019,11 @@ static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (opt_output == NULL)
 		fd = 1;
 	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY, 0666)) < 0)
-		fatal("failed to open %s: %m", opt_output);
+		util_fatal("failed to open %s: %m", opt_output);
 
 	r = write(fd, buffer, hash_len);
 	if (r < 0)
-		fatal("Failed to write to %s: %m", opt_output);
+		util_fatal("Failed to write to %s: %m", opt_output);
 	if (fd != 1)
 		close(fd);
 }
@@ -1066,12 +1067,12 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			const char *size = type + strlen("RSA:");
 
 			if (size == NULL)
-				fatal("Unknown key type %s", type);
+				util_fatal("Unknown key type %s", type);
 			key_length = (unsigned long)atol(size);
 			if (key_length != 0)
 				modulusBits = key_length;
 		} else {
-			fatal("Unknown key type %s", type);
+			util_fatal("Unknown key type %s", type);
 		}
 	}
 
@@ -1107,7 +1108,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	return 1;
 }
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 static void	parse_certificate(struct x509cert_info *cert,
 		unsigned char *data, int len)
 {
@@ -1120,30 +1121,30 @@ static void	parse_certificate(struct x509cert_info *cert,
 	x = d2i_X509(NULL, &pp, len);
 	if (!x) {
 		/* ERR_print_errors_fp(stderr); */
-		fatal("OpenSSL error during X509 certificate parsing");
+		util_fatal("OpenSSL error during X509 certificate parsing");
 	}
 	p = cert->subject;
 	n = i2d_X509_NAME(x->cert_info->subject, &p);
 	if (n < 0)
-		fatal("OpenSSL error while encoding subject name");
+		util_fatal("OpenSSL error while encoding subject name");
 	if (n > (int)sizeof (cert->subject))
-		fatal("subject name too long");
+		util_fatal("subject name too long");
 	cert->subject_len = n;
 
 	p = cert->issuer;
 	n = i2d_X509_NAME(x->cert_info->issuer, &p);
 	if (n < 0)
-		fatal("OpenSSL error while encoding issuer name");
+		util_fatal("OpenSSL error while encoding issuer name");
 	if (n > (int)sizeof (cert->issuer))
-		fatal("issuer name too long");
+		util_fatal("issuer name too long");
 	cert->issuer_len = n;
 
 	p = cert->serialnum;
 	n = i2d_ASN1_INTEGER(x->cert_info->serialNumber, &p);
 	if (n < 0)
-		fatal("OpenSSL error while encoding serial number");
+		util_fatal("OpenSSL error while encoding serial number");
 	if (n > (int)sizeof (cert->serialnum))
-		fatal("serial number too long");
+		util_fatal("serial number too long");
 	cert->serialnum_len = n;
 }
 
@@ -1151,7 +1152,7 @@ static void	parse_certificate(struct x509cert_info *cert,
 	do { \
 		rsa->LOCALNAME = malloc(BN_num_bytes(BNVALUE)); \
 		if (!rsa->LOCALNAME) \
-			fatal("malloc() failure\n"); \
+			util_fatal("malloc() failure\n"); \
 		rsa->LOCALNAME##_len = BN_bn2bin(BNVALUE, rsa->LOCALNAME); \
 	} while (0)
 
@@ -1165,7 +1166,7 @@ static void	parse_rsa_private_key(struct rsakey_info *rsa,
 	r = d2i_RSAPrivateKey(NULL, &p, len);
 	if (!r) {
 		/* ERR_print_errors_fp(stderr); */
-		fatal("OpenSSL error during RSA private key parsing");
+		util_fatal("OpenSSL error during RSA private key parsing");
 	}
 	RSA_GET_BN(modulus, r->n);
 	RSA_GET_BN(public_exponent, r->e);
@@ -1202,7 +1203,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 #endif
 	CK_RV rv;
 	int need_to_parse_certdata = 0;
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	struct x509cert_info cert;
 	struct rsakey_info rsa;
 
@@ -1212,18 +1213,18 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	f = fopen(opt_file_to_write, "rb");
 	if (f == NULL)
-		fatal("Couldn't open file \"%s\"\n", opt_file_to_write);
+		util_fatal("Couldn't open file \"%s\"\n", opt_file_to_write);
 	contents_len = fread(contents, 1, sizeof(contents), f);
 	if (contents_len < 0)
-		fatal("Couldn't read from file \"%s\"\n", opt_file_to_write);
+		util_fatal("Couldn't read from file \"%s\"\n", opt_file_to_write);
 	fclose(f);
 
 	if (opt_attr_from_file) {
 		if (!(f = fopen(opt_attr_from_file, "rb")))
-			fatal("Couldn't open file \"%s\"\n", opt_attr_from_file);
+			util_fatal("Couldn't open file \"%s\"\n", opt_attr_from_file);
 		certdata_len = fread(certdata, 1, sizeof(certdata), f);
 		if (certdata_len < 0)
-			fatal("Couldn't read from file \"%s\"\n", opt_attr_from_file);
+			util_fatal("Couldn't read from file \"%s\"\n", opt_attr_from_file);
 		fclose(f);
 		need_to_parse_certdata = 1;
 	}
@@ -1234,17 +1235,17 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	}
 
 	if (need_to_parse_certdata) {
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 		parse_certificate(&cert, certdata, certdata_len);
 #else
-		fatal("No OpenSSL support, cannot parse certificate\n");
+		util_fatal("No OpenSSL support, cannot parse certificate\n");
 #endif
 	}
 	if (opt_object_class == CKO_PRIVATE_KEY) {
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 		parse_rsa_private_key(&rsa, contents, contents_len);
 #else
-		fatal("No OpenSSL support, cannot parse RSA private key\n");
+		util_fatal("No OpenSSL support, cannot parse RSA private key\n");
 #endif
 	}
 
@@ -1268,7 +1269,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 				opt_object_id, opt_object_id_len);
 			n_cert_attr++;
 		}
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 		/* according to PKCS #11 CKA_SUBJECT MUST be specified */
 		FILL_ATTR(cert_templ[n_cert_attr], CKA_SUBJECT,
 			cert.subject, cert.subject_len);
@@ -1303,7 +1304,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 				opt_object_id, opt_object_id_len);
 			n_privkey_attr++;
 		}
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 		if (cert.subject_len != 0) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SUBJECT,
 				cert.subject, cert.subject_len);
@@ -1371,7 +1372,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		
 	}
 	else
-		fatal("Writing of a \"%s\" type not (yet) supported\n", opt_object_class_str);
+		util_fatal("Writing of a \"%s\" type not (yet) supported\n", opt_object_class_str);
 
 	if (n_data_attr) {
 		rv = p11->C_CreateObject(session, data_templ, n_data_attr, &data_obj);
@@ -1546,7 +1547,7 @@ static CK_MECHANISM_TYPE find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags,
 	count = get_mechanisms(slot, &mechs, flags);
 	if (count == 0) {
 		if (stop_if_not_found)
-			fatal("No appropriate mechanism found");
+			util_fatal("No appropriate mechanism found");
 		result = NO_MECHANISM;
 	} else {
 		result = mechs[0];
@@ -1581,7 +1582,7 @@ get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, CK_ULONG_PTR pulCount) \
 	rv = p11->C_GetAttributeValue(sess, obj, &attr, 1); \
 	if (rv == CKR_OK) { \
 		if (!(attr.pValue = calloc(1, attr.ulValueLen + 1))) \
-			fatal("out of memory in get" #ATTR ": %m"); \
+			util_fatal("out of memory in get" #ATTR ": %m"); \
 		rv = p11->C_GetAttributeValue(sess, obj, &attr, 1); \
 		if (pulCount) \
 			*pulCount = attr.ulValueLen / sizeof(TYPE); \
@@ -1830,7 +1831,7 @@ static CK_ULONG get_mechanisms(CK_SLOT_ID slot, CK_MECHANISM_TYPE_PTR *pList,
 	rv = p11->C_GetMechanismList(slot, *pList, &ulCount);
 	*pList = (CK_MECHANISM_TYPE *) calloc(ulCount, sizeof(*pList));
 	if (*pList == NULL)
-		fatal("calloc failed: %m");
+		util_fatal("calloc failed: %m");
 
 	rv = p11->C_GetMechanismList(slot, *pList, &ulCount);
 	if (rv != CKR_OK)
@@ -1903,22 +1904,22 @@ static int read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (rv != CKR_OK)
 		p11_fatal("find_object_with_attributes()", rv);
 	else if (obj==CK_INVALID_HANDLE)  
-		fatal("object not found\n");
+		util_fatal("object not found\n");
 
 	value = getVALUE(session, obj, &len);
 	if (value == NULL)
-		fatal("get CKA_VALUE failed\n");
+		util_fatal("get CKA_VALUE failed\n");
 
 	if (opt_output)   {
 		out = fopen(opt_output, "wb");
 		if (out==NULL)
-			fatal("cannot open '%s'\n", opt_output);
+			util_fatal("cannot open '%s'\n", opt_output);
 	}
 	else
 		out = stdout;
 		
 	if (fwrite(value, 1, len, out) != len)
-		fatal("cannot write to '%s'\n", opt_output);
+		util_fatal("cannot write to '%s'\n", opt_output);
 	if (opt_output)
 		fclose(out);
 	return 1;	
@@ -1971,7 +1972,7 @@ static int delete_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (rv != CKR_OK)
 		p11_fatal("find_object_with_attributes()", rv);
 	else if (obj==CK_INVALID_HANDLE)  
-		fatal("object not found\n");
+		util_fatal("object not found\n");
 	rv = p11->C_DestroyObject(session, obj);
 	if (rv != CKR_OK)
 		p11_fatal("C_DestroyObject()", rv);
@@ -2167,7 +2168,7 @@ static int test_digest(CK_SLOT_ID slot)
 	return errors;
 }
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject)
 {
 	unsigned char  *id;
@@ -2223,7 +2224,7 @@ static int sign_verify_openssl(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	unsigned char   sig1[1024];
 	CK_ULONG        sigLen1;
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	int             err;
 	EVP_PKEY       *pkey;
 	EVP_MD_CTX      md_ctx;
@@ -2258,8 +2259,8 @@ static int sign_verify_openssl(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				(unsigned int) sigLen1,
 				(unsigned int) modLenBytes);
 	}
-#ifndef HAVE_OPENSSL
-	printf("unable to verify signature (compile with HAVE_OPENSSL)\n");
+#ifndef ENABLE_OPENSSL
+	printf("unable to verify signature (compile with ENABLE_OPENSSL)\n");
 #else
 
 	if (!(pkey = get_public_key(session, privKeyObject)))
@@ -2680,7 +2681,7 @@ static int test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 	return errors;
 }
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 static int wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	    const EVP_CIPHER *algo, CK_OBJECT_HANDLE privKeyObject)
 {
@@ -2812,7 +2813,7 @@ static int test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		}
 		printf("\n");
 
-#ifndef HAVE_OPENSSL
+#ifndef ENABLE_OPENSSL
 		printf("No OpenSSL support, unable to validate C_Unwrap\n");
 #else
 		errors += wrap_unwrap(slot, sess, EVP_des_cbc(), privKeyObject);
@@ -2825,7 +2826,7 @@ static int test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	return errors;
 }
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 static int encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_MECHANISM_TYPE mech_type,
 		CK_OBJECT_HANDLE privKeyObject)
@@ -2849,7 +2850,11 @@ static int encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		EVP_PKEY_free(pkey);
 		return 0;
 	}
+#if OPENSSL_VERSION_NUMBER >= 0x00909000L
+	encrypted_len = EVP_PKEY_encrypt_old(encrypted, orig_data, sizeof(orig_data), pkey);
+#else
 	encrypted_len = EVP_PKEY_encrypt(encrypted, orig_data, sizeof(orig_data), pkey);
+#endif
 	EVP_PKEY_free(pkey);
 	if (encrypted_len <= 0) {
 		printf("Encryption failed, returning\n");
@@ -2942,7 +2947,7 @@ static int test_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		}
 		printf("\n");
 
-#ifndef HAVE_OPENSSL
+#ifndef ENABLE_OPENSSL
 		printf("No OpenSSL support, unable to validate decryption\n");
 		n = 0;
 #else
@@ -3120,7 +3125,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	f = fopen(opt_file_to_write, "rb");
 	if (f == NULL)
-		fatal("Couldn't open file \"%s\"\n", opt_file_to_write);
+		util_fatal("Couldn't open file \"%s\"\n", opt_file_to_write);
 	fclose(f);
 
 	/* Get for a not-yet-existing ID */
@@ -3223,7 +3228,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	module = C_LoadModule(opt_module, &p11);
 	if (module == NULL)
-		fatal("Failed to load pkcs11 module");
+		util_fatal("Failed to load pkcs11 module");
 
 	rv = p11->C_Initialize(NULL);
 	if (rv != CKR_OK)
@@ -3318,13 +3323,13 @@ static const char *p11_utf8_to_local(CK_UTF8CHAR *string, size_t len)
 
 static void p11_fatal(const char *func, CK_RV rv)
 {
-	fatal("PKCS11 function %s failed: rv = %s (0x%0x)\n",
+	util_fatal("PKCS11 function %s failed: rv = %s (0x%0x)\n",
 		func, CKR2Str(rv), (unsigned int) rv);
 }
 
 static void p11_warn(const char *func, CK_RV rv)
 {
-	warn("PKCS11 function %s failed: rv = %s (0x%0x)\n",
+	util_warn("PKCS11 function %s failed: rv = %s (0x%0x)\n",
 		func, CKR2Str(rv), (unsigned int) rv);
 }
 
@@ -3593,7 +3598,7 @@ static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *name)
 		 || (mi->short_name && !strcasecmp(mi->short_name, name)))
 			return mi->mech;
 	}
-	fatal("Unknown PKCS11 mechanism \"%s\"\n", name);
+	util_fatal("Unknown PKCS11 mechanism \"%s\"\n", name);
 	return NO_MECHANISM; /* gcc food */
 }
 

@@ -110,7 +110,7 @@ static int rutoken_info(sc_card_t *card)
 		return -1;
 	}
 	printf("Serial number: ");
-	hex_dump(stdout, serial.value, serial.len, NULL);
+	util_hex_dump(stdout, serial.value, serial.len, NULL);
 	putchar('\n');
 	return 0;
 }
@@ -335,7 +335,7 @@ static int gostmac(sc_card_t *card, u8 keyid, const char *path_infile)
 					outbuf, sizeof(outbuf));
 	}
 	if (err == 0) {
-		hex_dump(stdout, outbuf, sizeof(outbuf), NULL);
+		util_hex_dump(stdout, outbuf, sizeof(outbuf), NULL);
 		putchar('\n');
 	}
 	if (inbuf)
@@ -399,7 +399,7 @@ int main(int argc, char* argv[])
 			break;
 		switch (c) {
 		case '?':
-			print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help);
 		case 'r':
 			opt_reader = atoi(optarg);
 			break;
@@ -473,7 +473,7 @@ int main(int argc, char* argv[])
 	}
 		ctx->debug = opt_debug;
 
-	if (connect_card(ctx, &card, opt_reader, 0, opt_wait, opt_debug) != 0)
+	if (util_connect_card(ctx, &card, opt_reader, 0, opt_wait, opt_debug) != 0)
 		err = -1;
 		
 	if (err == 0  &&  opt_pin) {
@@ -526,7 +526,7 @@ int main(int argc, char* argv[])
 	}
 	}
 	if (card) {
-		/*  sc_lock  and  sc_connect_card  in  connect_card  */
+		/*  sc_lock  and  sc_connect_card  in  util_connect_card  */
 		sc_unlock(card);
 		sc_disconnect_card(card, 0);
 	}

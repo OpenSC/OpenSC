@@ -46,7 +46,7 @@
 #include <strings.h>
 #endif
 #include <assert.h>
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -61,7 +61,7 @@
 #include "pkcs15-init.h"
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
-#include "strlcpy.h"
+#include <compat_strlcpy.h>
 
 #define OPENSC_INFO_FILEPATH		"3F0050154946"
 #define OPENSC_INFO_FILEID		0x4946
@@ -2109,7 +2109,7 @@ prkey_fixup_rsa(sc_pkcs15_card_t *p15card, struct sc_pkcs15_prkey_rsa *key)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #define GETBN(dst, src, mem) \
 	do {	dst.len = BN_num_bytes(src); \
 		assert(dst.len <= sizeof(mem)); \

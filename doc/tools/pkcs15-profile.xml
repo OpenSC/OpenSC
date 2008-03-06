@@ -37,7 +37,7 @@
 		<para>
 			The card specific profile contains additional information required during
 			card intialization, such as location of PIN files, key references etc.
-			Profiles currently reside in <command>@pkgdata@</command>
+			Profiles currently reside in <command>@pkgdatadir@</command>
 		</para>
 	</refsect1>
 

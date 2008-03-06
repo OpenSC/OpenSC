@@ -36,6 +36,15 @@
 #include "pkcs15-init.h"
 #include "profile.h"
 
+/* this could be removed once we include libopensc/internal.h */
+#ifndef _WIN32
+#define msleep(t)	usleep((t) * 1000)
+#else
+#include <windows.h>
+#define msleep(t)	Sleep(t)
+#define sleep(t)	Sleep((t) * 1000)
+#endif
+
 #define PK_INIT_IMMEDIATELY
 
 #define GPK_MAX_PINS		8
@@ -483,14 +492,6 @@ gpk_store_key(sc_profile_t *profile, sc_card_t *card,
 		sc_file_free(keyfile);
 	return r;
 }
-
-/* this could be removed once we include libopensc/internal.h */
-#ifndef _WIN32
-#define msleep(t)	usleep((t) * 1000)
-#else
-#define msleep(t)	Sleep(t)
-#define sleep(t)	Sleep((t) * 1000)
-#endif
 
 /*
  * On-board key generation.

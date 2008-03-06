@@ -4,7 +4,7 @@ VERSION=CVS
 PWD=pwd
 CONFIGURE_PREFIX=$(PWD:sh)/..
 CONFIGURE=${CONFIGURE_PREFIX}/configure
-CONFIGURE_ARGS=--prefix=/usr --sysconfdir=/etc/opensc --mandir=/usr/share/man
+CONFIGURE_ARGS=--prefix=/usr --sysconfdir=/etc/opensc --mandir=/usr/share/man --enable-pcsc --enable-openct
 CONFIG_GUESS=${CONFIGURE_PREFIX}/config.guess
 UNAME_ARCH=/sbin/uname -p
 PLATFORM = $(CONFIG_GUESS:sh)

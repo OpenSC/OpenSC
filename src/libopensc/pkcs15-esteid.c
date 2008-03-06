@@ -28,7 +28,7 @@
 #include <stdio.h>
 
 #include "esteid.h"
-#include "strlcpy.h"
+#include <compat_strlcpy.h>
 
 int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 

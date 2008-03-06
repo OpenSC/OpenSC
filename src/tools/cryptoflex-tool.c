@@ -27,8 +27,8 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <opensc/pkcs15.h>
+#include <compat_strlcpy.h>
 #include "util.h"
-#include "strlcpy.h"
 
 static const char *app_name = "cryptoflex-tool";
 
@@ -215,7 +215,7 @@ int mont(RSA *rsa, u8 *j0)
 	bn2cf(&Ni, tmp);
 	memcpy(j0, tmp, BN_num_bytes(&Ni)/2);
 	printf("Ni from SSL:\n");
-	hex_dump_asc(stdout, tmp, BN_num_bytes(&Ni), -1);
+	util_hex_dump_asc(stdout, tmp, BN_num_bytes(&Ni), -1);
 
 	BN_free(&Ri);
 	BN_free(&RR);
@@ -1099,7 +1099,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help);
 		switch (c) {
 		case 'l':
 			do_list_keys = 1;
@@ -1161,7 +1161,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 
 	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.ver      = 0;

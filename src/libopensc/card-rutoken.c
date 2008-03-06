@@ -25,10 +25,20 @@
 #include <string.h>
 #include <stdlib.h>
 #include "pkcs15.h"
+#if defined(HAVE_INTTYPES_H)
+#include <inttypes.h>
+#elif defined(HAVE_STDINT_H)
+#include <stdint.h>
+#elif defined(_MSC_VER)
+typedef unsigned __int32 uint32_t;
+typedef unsigned __int16 uint16_t;
+#else
+#warning no uint32_t type available, please contact opensc-devel@opensc-project.org
+#endif
 
 #define BIG_ENDIAN_RUTOKEN
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/dsa.h>
@@ -42,7 +52,7 @@
 
 #define ID_RESERVED_CURDF   0x3FFF      /*Reserved ID for current DF*/
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 int get_prkey_from_bin(const u8 *data, size_t len, struct sc_pkcs15_prkey **key);
 #endif
 
@@ -342,11 +352,11 @@ static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 static void rutoken_process_fcp(sc_card_t *card, u8 *pIn, sc_file_t *file)
 {
 #ifdef BIG_ENDIAN_RUTOKEN
-	file->size = pIn[3] + ((u_int16_t)pIn[2])*256;
-	file->id = pIn[7] + ((u_int16_t)pIn[6])*256;
+	file->size = pIn[3] + ((uint16_t)pIn[2])*256;
+	file->id = pIn[7] + ((uint16_t)pIn[6])*256;
 #else
-	file->size = pIn[2] + ((u_int16_t)pIn[3])*256;
-	file->id = pIn[6] + ((u_int16_t)pIn[7])*256;
+	file->size = pIn[2] + ((uint16_t)pIn[3])*256;
+	file->id = pIn[6] + ((uint16_t)pIn[7])*256;
 #endif
 
 	if (pIn[4] == FDESCR_DF)
@@ -1069,7 +1079,7 @@ static int rutoken_compute_mac_gost(sc_card_t *card,
 	
 /*  RSA emulation  */
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 
 static int rutoken_get_current_fileid(sc_card_t *card, u8 id[2])
 {
@@ -1415,7 +1425,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	rutoken_ops.card_ctl = rutoken_card_ctl;
 	rutoken_ops.get_challenge = rutoken_get_challenge;
 	
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	rutoken_ops.decipher = rutoken_decipher;
 	rutoken_ops.compute_signature = rutoken_compute_signature;
 #else

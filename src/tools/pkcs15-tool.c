@@ -21,21 +21,22 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-#ifdef HAVE_OPENSSL
-#ifdef _WIN32
+#ifdef ENABLE_OPENSSL
+#if defined(HAVE_INTTYPES_H)
+#include <inttypes.h>
+#elif defined(HAVE_STDINT_H)
+#include <stdint.h>
+#elif defined(_MSC_VER)
 typedef unsigned __int32 uint32_t;
 #else
-#ifdef HAVE_INTTYPES_H
-#include <inttypes.h>
-#else
 #warning no uint32_t type available, please contact opensc-devel@opensc-project.org
-#endif
 #endif
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #endif
 #include <limits.h>
 #include <opensc/pkcs15.h>
+#include <compat_getpass.h>
 #include "util.h"
 
 static const char *app_name = "pkcs15-tool";
@@ -61,7 +62,7 @@ enum {
 	OPT_NO_CACHE,
 	OPT_LIST_PUB,
 	OPT_READ_PUB,
-#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
+#if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	OPT_READ_SSH,
 #endif
 	OPT_PIN,
@@ -87,7 +88,7 @@ static const struct option options[] = {
 	{ "list-keys",          no_argument, NULL,         'k' },
 	{ "list-public-keys",	no_argument, NULL,		OPT_LIST_PUB },
 	{ "read-public-key",	required_argument, NULL,	OPT_READ_PUB },
-#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
+#if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	{ "read-ssh-key",	required_argument, NULL,	OPT_READ_SSH },
 #endif
 	{ "reader",		required_argument, NULL,	OPT_READER },
@@ -571,7 +572,7 @@ static int read_public_key(void)
 	return r;
 }
 
-#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
+#if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 static int read_ssh_key(void)
 {
 	int r;
@@ -1084,7 +1085,7 @@ static int read_and_cache_file(const sc_path_t *path)
 
 	if (verbose) {
 		printf("Reading file ");
-		hex_dump(stdout, path->value, path->len, "");
+		util_hex_dump(stdout, path->value, path->len, "");
 		printf("...\n");
 	}
 	r = sc_select_file(card, path, &tfile);
@@ -1188,7 +1189,7 @@ int main(int argc, char * const argv[])
 	int do_list_prkeys = 0;
 	int do_list_pubkeys = 0;
 	int do_read_pubkey = 0;
-#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
+#if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	int do_read_sshkey = 0;
 #endif
 	int do_change_pin = 0;
@@ -1202,7 +1203,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help);
 		switch (c) {
 		case 'r':
 			opt_cert = optarg;
@@ -1251,7 +1252,7 @@ int main(int argc, char * const argv[])
 			do_read_pubkey = 1;
 			action_count++;
 			break;
-#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
+#if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 		case OPT_READ_SSH:
 			opt_pubkey = optarg;
 			do_read_sshkey = 1;
@@ -1292,7 +1293,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help);
 
 	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.ver      = 0;
@@ -1306,7 +1307,7 @@ int main(int argc, char * const argv[])
 	if (verbose > 1 )
 		ctx->debug = verbose-1;
 
-	err = connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
+	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
 	if (err)
 		goto end;
 
@@ -1362,7 +1363,7 @@ int main(int argc, char * const argv[])
 			goto end;
 		action_count--;
 	}
-#if defined(HAVE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
+#if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	if (do_read_sshkey) {
 		if ((err = read_ssh_key()))
 			goto end;

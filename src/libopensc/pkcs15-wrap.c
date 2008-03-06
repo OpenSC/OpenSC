@@ -20,7 +20,7 @@
 
 #include "internal.h"
 #include "pkcs15.h"
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #endif
@@ -39,7 +39,7 @@
 #include "asn1.h"
 
 
-#ifndef HAVE_OPENSSL
+#ifndef ENABLE_OPENSSL
 int
 sc_pkcs15_wrap_data(sc_context_t *ctx,
 		const char *passphrase,
@@ -58,7 +58,7 @@ sc_pkcs15_unwrap_data(sc_context_t *ctx,
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
-#else /* HAVE_OPENSSL */
+#else /* ENABLE_OPENSSL */
 
 static int
 sc_pkcs15_derive_key(sc_context_t *ctx,
@@ -246,7 +246,7 @@ sc_pkcs15_unwrap_data(sc_context_t *ctx,
 	free(envdata.content);
 	return r;
 }
-#endif /* HAVE_OPENSSL */
+#endif /* ENABLE_OPENSSL */
 
 /*
  * Encode/decode EnvelopedData

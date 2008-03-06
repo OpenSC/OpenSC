@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "strlcpy.h"
+#include <compat_strlcpy.h>
 
 #define MANU_ID		"GemSAFE on GPK16000"
 

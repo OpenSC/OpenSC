@@ -41,7 +41,7 @@
 #include <opensc/log.h>
 #include "pkcs15-init.h"
 #include "profile.h"
-#include "strlcpy.h"
+#include <compat_strlcpy.h>
 
 #define DEF_PRKEY_RSA_ACCESS	0x1D
 #define DEF_PRKEY_DSA_ACCESS	0x12

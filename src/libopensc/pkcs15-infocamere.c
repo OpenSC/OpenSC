@@ -30,9 +30,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "strlcpy.h"
+#include <compat_strlcpy.h>
 
-#ifdef HAVE_ZLIB_H
+#ifdef ENABLE_ZLIB
 #include <zlib.h>
 #endif
 
@@ -486,7 +486,7 @@ static int infocamere_1400_set_sec_env(struct sc_card *card,
 		return r;
 }
 
-#ifdef HAVE_ZLIB_H
+#ifdef ENABLE_ZLIB
 
 static const u8 ATR_1400[] =
     { 0x3b, 0xfc, 0x98, 0x00, 0xff, 0xc1, 0x10, 0x31, 0xfe, 0x55, 0xc8,
@@ -839,7 +839,7 @@ int sc_pkcs15emu_infocamere_init_ex(sc_pkcs15_card_t * p15card,
 
 	if (memcmp(p15card->card->atr, ATR_1600, sizeof(ATR_1600)) == 0)
 		return infocamere_1600_init(p15card);
-#ifdef HAVE_ZLIB_H
+#ifdef ENABLE_ZLIB
 	else if (memcmp(p15card->card->atr, ATR_1400, sizeof(ATR_1400)) ==
 		 0)
 		return infocamere_1400_init(p15card);

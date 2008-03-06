@@ -1005,7 +1005,7 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		   CK_MECHANISM_PTR  pMechanism,  /* the verification mechanism */
 		   CK_OBJECT_HANDLE  hKey)        /* handle of the verification key */
 {
-#ifndef HAVE_OPENSSL
+#ifndef ENABLE_OPENSSL
 	return CKR_FUNCTION_NOT_SUPPORTED;
 #else
 #if 0
@@ -1058,7 +1058,7 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,       /* the session's handle */
 	       CK_BYTE_PTR       pSignature,     /* the signature to be verified */
 	       CK_ULONG          ulSignatureLen) /* count of bytes of signature */
 {
-#ifndef HAVE_OPENSSL
+#ifndef ENABLE_OPENSSL
 	return CKR_FUNCTION_NOT_SUPPORTED;
 #else
 	int rv;
@@ -1086,7 +1086,7 @@ CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		     CK_BYTE_PTR       pPart,     /* plaintext data (digest) to compare */
 		     CK_ULONG          ulPartLen) /* length of data (digest) in bytes */
 {
-#ifndef HAVE_OPENSSL
+#ifndef ENABLE_OPENSSL
 	return CKR_FUNCTION_NOT_SUPPORTED;
 #else
 	struct sc_pkcs11_session *session;
@@ -1110,7 +1110,7 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,       /* the session's handle */
 		    CK_BYTE_PTR       pSignature,     /* the signature to be verified */
 		    CK_ULONG          ulSignatureLen) /* count of bytes of signature */
 {
-#ifndef HAVE_OPENSSL
+#ifndef ENABLE_OPENSSL
 	return CKR_FUNCTION_NOT_SUPPORTED;
 #else
 	struct sc_pkcs11_session *session;

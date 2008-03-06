@@ -18,6 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "internal.h"
+
+#if ENABLE_OPENSSL
 #include "p15card-helper.h"
 #include <opensc/opensc.h>
 #include <opensc/types.h>
@@ -340,3 +343,5 @@ int sc_pkcs15emu_initialize_all(sc_pkcs15_card_t *p15card, p15data_items* items)
 		return r;
 	return SC_SUCCESS;
 }
+
+#endif

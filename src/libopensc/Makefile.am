@@ -1,18 +1,25 @@
 # Process this file with automake to create Makefile.in
 
-includedir = @includedir@/opensc
+include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = Makefile.in
-
-EXTRA_DIST = Makefile.mak libopensc.pc.in libpkcs15init.pc.in libscconf.pc.in 
-
-INCLUDES = $(CPPFLAGS) $(OPENSSL_CFLAGS) $(OPENCT_CFLAGS) $(PCSC_CFLAGS) \
-	$(LTLIB_CFLAGS) -I$(top_srcdir)/src/common
-AM_LDFLAGS = 
+CLEANFILES = versioninfo.rc
+EXTRA_DIST = Makefile.mak 
 
 bin_SCRIPTS = opensc-config
-
 lib_LTLIBRARIES = libopensc.la
+openscinclude_HEADERS = \
+	opensc.h pkcs15.h emv.h \
+	cardctl.h asn1.h log.h ui.h \
+	errors.h types.h compression.h
+noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
+	internal-winscard.h p15card-helper.h
+pkgconfig_DATA = libopensc.pc libpkcs15init.pc libscconf.pc
+
+AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
+	$(OPTIONAL_ZLIB_CFLAGS) $(LTLIB_CFLAGS) 
+INCLUDES = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/common
+
 libopensc_la_SOURCES = \
 	sc.c ctx.c ui.c log.c errors.c \
 	asn1.c base64.c sec.c card.c iso7816.c dir.c padding.c apdu.c \
@@ -37,16 +44,36 @@ libopensc_la_SOURCES = \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
 	pkcs15-rutoken.c pkcs15-prkey-rutoken.c \
-	compression.c p15card-helper.c
-libopensc_la_LDFLAGS = -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
-libopensc_la_LIBADD = @LIBSCCONF@ $(OPENSSL_LIBS) $(OPENCT_LIBS) $(PCSC_LIBS) $(LTLIB_LIBS)
+	compression.c p15card-helper.c \
+	\
+	libopensc.exports
+if WIN32
+nodist_libopensc_la_SOURCES = versioninfo.rc
+endif
+libopensc_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(OPTIONAL_OPENCT_LIBS) \
+	$(OPTIONAL_ZLIB_LIBS) $(LTLIB_LIBS) \
+	$(top_builddir)/src/scconf/libscconf.la \
+	$(top_builddir)/src/common/libcompat.la
+if WIN32
+libopensc_la_LIBADD += -lws2_32
+endif
+libopensc_la_LDFLAGS = $(AM_LDFLAGS) \
+	-version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@ \
+	-export-symbols libopensc.exports \
+	-no-undefined
 
-include_HEADERS = \
-	opensc.h pkcs15.h emv.h \
-	cardctl.h asn1.h log.h ui.h \
-	errors.h types.h compression.h
+versioninfo.rc:
+	sed 's/@@FILE_DESCRIPTION@@/OpenSC Core Library/g' \
+		"$(top_srcdir)/win32/versioninfo.rc" > versioninfo.rc
 
-noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h part10.h p15card-helper.h
-
-pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libopensc.pc libpkcs15init.pc libscconf.pc
+if WIN32
+# def file required for MS users to build library
+mylibdir=$(libdir)
+if CYGWIN
+mylib_DATA=.libs/cygopensc-@OPENSC_LT_CURRENT@.dll.def
+.libs/cygopensc-@OPENSC_LT_CURRENT@.dll.def:	libopensc.la
+else
+mylib_DATA=.libs/libopensc-@OPENSC_LT_CURRENT@.dll.def
+.libs/libopensc-@OPENSC_LT_CURRENT@.dll.def:	libopensc.la
+endif
+endif

@@ -8,7 +8,7 @@
 #include <string.h>
 #include "sc-pkcs11.h"
 
-#ifdef HAVE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>

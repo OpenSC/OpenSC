@@ -44,12 +44,12 @@ extern "C" {
 #define sc_debug(ctx, format, args...)	sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, format , ## args)
 
 #else
-
-void sc_error(struct sc_context *ctx, const char *format, ...);
-void sc_debug(struct sc_context *ctx, const char *format, ...);
-
+#define sc_error _sc_error
+#define sc_debug _sc_debug
 #endif
 
+void _sc_error(struct sc_context *ctx, const char *format, ...);
+void _sc_debug(struct sc_context *ctx, const char *format, ...);
 void sc_do_log(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, ...);
 void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args);
 
