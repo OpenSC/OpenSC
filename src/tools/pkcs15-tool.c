@@ -106,7 +106,7 @@ static const char *option_help[] = {
 	"Stores card info to cache",
 	"Reads certificate with ID <arg>",
 	"Lists certificates",
-	"Reads data object with applicationName or OID <arg>",
+	"Reads data object with OID, applicationName or label <arg>",
 	"Lists data objects",
 	"Lists PIN codes",
 	"Dump card objects",
@@ -317,7 +317,7 @@ static int read_data_object(void)
 			if (memcmp(oid.value, cinfo->app_oid.value, sizeof(int) * oid_len))
 				continue;
 		} else {
-			if (memcmp(opt_data, &cinfo->app_label, strlen(opt_data)))
+			if (strcmp(opt_data, cinfo->app_label) && strcmp(opt_data, objs[i]->label))
 				continue;
 		}
 			
@@ -361,6 +361,7 @@ static int list_data_objects(void)
 
 		printf("Reading data object <%i>\n", i);
 		printf("applicationName: %s\n", cinfo->app_label);
+		printf("Label:           %s\n", objs[i]->label);
 		printf("applicationOID:  ");
 		if (cinfo->app_oid.value[0] >= 0) {
 			printf("%i", cinfo->app_oid.value[0]);

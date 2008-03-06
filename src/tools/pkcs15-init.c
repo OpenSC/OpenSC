@@ -122,6 +122,7 @@ enum {
 	OPT_SECRET,
 	OPT_PUBKEY_LABEL,
 	OPT_CERT_LABEL,
+	OPT_APPLICATION_NAME,
 	OPT_APPLICATION_ID,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
@@ -158,6 +159,7 @@ const struct option	options[] = {
 	{ "label",		required_argument, NULL,	'l' },
 	{ "public-key-label",	required_argument, NULL,	OPT_PUBKEY_LABEL },
 	{ "cert-label",		required_argument, NULL,	OPT_CERT_LABEL },
+	{ "application-name",	required_argument, NULL,	OPT_APPLICATION_NAME },
 	{ "application-id",	required_argument, NULL,	OPT_APPLICATION_ID },
 	{ "output-file",	required_argument, NULL,	'o' },
 	{ "format",		required_argument, NULL,	'f' },
@@ -211,6 +213,7 @@ static const char *		option_help[] = {
 	"Specify label of PIN/key",
 	"Specify public key label (use with --generate-key)",
 	"Specify user cert label (use with --store-private-key)",
+	"Specify application name of data object (use with --store-data-object)",
 	"Specify application id of data object (use with --store-data-object)",
 	"Output public portion of generated key to file",
 	"Specify key/cert file format: PEM (=default), DER or PKCS12",
@@ -318,6 +321,7 @@ static char *			opt_passphrase = NULL;
 static char *			opt_newkey = NULL;
 static char *			opt_outkey = NULL;
 static char *			opt_application_id = NULL;
+static char *			opt_application_name = NULL;
 static unsigned int		opt_x509_usage = 0;
 static unsigned int		opt_delete_flags = 0;
 static unsigned int		opt_type = 0;
@@ -1070,7 +1074,7 @@ do_store_data_object(struct sc_profile *profile)
 	if (opt_authid)
 		sc_pkcs15_format_id(opt_authid, &args.auth_id);
 	args.label = opt_label;
-	args.app_label = "pkcs15-init";
+	args.app_label = opt_application_name ? opt_application_name : "pkcs15-init";
 
 	sc_format_oid(&args.app_oid, opt_application_id);
 
@@ -2424,6 +2428,9 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_SOFT_KEYGEN:
 		opt_softkeygen = 1;
+		break;
+	case OPT_APPLICATION_NAME:
+		opt_application_name = optarg;
 		break;
 	case OPT_APPLICATION_ID:
 		opt_application_id = optarg;
