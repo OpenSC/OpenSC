@@ -1,6 +1,6 @@
 # Process this file with automake to create Makefile.in
 
-AUTOMAKE_OPTIONS = foreign 1.5
+AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I aclocal
 
 MAINTAINERCLEANFILES = \
