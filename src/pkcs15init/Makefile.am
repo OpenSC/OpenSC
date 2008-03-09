@@ -56,10 +56,10 @@ if WIN32
 # def file required for MS users to build library
 mylibdir=$(libdir)
 if CYGWIN
-mylib_DATA=.libs/cygpkcs15init-@OPENSC_LT_CURRENT@.dll.def
-.libs/cygpkcs15init-@OPENSC_LT_CURRENT@.dll.def:	libpkcs15init.la
+mylib_DATA=.libs/cygpkcs15init-@OPENSC_LT_MAJOR@.dll.def
+.libs/cygpkcs15init-@OPENSC_LT_MAJOR@.dll.def:	libpkcs15init.la
 else
-mylib_DATA=.libs/libpkcs15init-@OPENSC_LT_CURRENT@.dll.def
-.libs/libpkcs15init-@OPENSC_LT_CURRENT@.dll.def:	libpkcs15init.la
+mylib_DATA=.libs/libpkcs15init-@OPENSC_LT_MAJOR@.dll.def
+.libs/libpkcs15init-@OPENSC_LT_MAJOR@.dll.def:	libpkcs15init.la
 endif
 endif

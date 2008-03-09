@@ -70,10 +70,10 @@ if WIN32
 # def file required for MS users to build library
 mylibdir=$(libdir)
 if CYGWIN
-mylib_DATA=.libs/cygopensc-@OPENSC_LT_CURRENT@.dll.def
-.libs/cygopensc-@OPENSC_LT_CURRENT@.dll.def:	libopensc.la
+mylib_DATA=.libs/cygopensc-@OPENSC_LT_MAJOR@.dll.def
+.libs/cygopensc-@OPENSC_LT_MAJOR@.dll.def:	libopensc.la
 else
-mylib_DATA=.libs/libopensc-@OPENSC_LT_CURRENT@.dll.def
-.libs/libopensc-@OPENSC_LT_CURRENT@.dll.def:	libopensc.la
+mylib_DATA=.libs/libopensc-@OPENSC_LT_MAJOR@.dll.def
+.libs/libopensc-@OPENSC_LT_MAJOR@.dll.def:	libopensc.la
 endif
 endif
