@@ -18,7 +18,7 @@ xmlns:html="http://www.w3.org/1999/xhtml">
           </style>
         </head>
         <body>
-          <xsl:apply-templates select="//html:div[@class='wikipage']" />
+          <xsl:apply-templates select="//html:div[@class='wiki']" />
           <div class="footer">
             <hr />
             <p><a href="index.html">Back to Index</a></p>
