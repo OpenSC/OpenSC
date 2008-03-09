@@ -1,5 +1,3 @@
-# Process this file with automake to create Makefile.in
-
 include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = Makefile.in

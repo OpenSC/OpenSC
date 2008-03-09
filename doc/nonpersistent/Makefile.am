@@ -1,5 +1,3 @@
-# Process this file with automake to create Makefile.in
-
 MAINTAINERCLEANFILES = Makefile.in ChangeLog ChangeLog.tmp
 
 wikidir=$(htmldir)/wiki
