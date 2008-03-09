@@ -356,7 +356,6 @@ if test -z "${ZLIB_LIBS}"; then
 fi
 saved_CFLAGS="${CFLAGS}"
 CFLAGS="${CFLAGS} ${ZLIB_CFLAGS}"
-LIBS="${LIBS} ${ZLIB_LIBS}"
 AC_CHECK_HEADERS([zlib.h])
 CFLAGS="${saved_CFLAGS}"
 test -n "${ZLIB_LIBS}" -a "${ac_cv_header_zlib_h}" = "yes" && have_zlib="yes"
@@ -393,7 +392,6 @@ if test -z "${READLINE_LIBS}"; then
 fi
 saved_CFLAGS="${CFLAGS}"
 CFLAGS="${CFLAGS} ${READLINE_CFLAGS}"
-LIBS="${LIBS} ${READLINE_LIBS}"
 AC_CHECK_HEADERS([readline/readline.h])
 CFLAGS="${saved_CFLAGS}"
 test -n "${READLINE_LIBS}" -a "${ac_cv_header_readline_readline_h}" = "yes" && have_readline="yes"
