@@ -203,6 +203,8 @@ dnl Checks for programs.
 AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_LN_S
+AC_PROG_MKDIR_P
+AC_PROG_SED
 AC_PROG_MAKE_SET
 
 dnl Add libtool support.
