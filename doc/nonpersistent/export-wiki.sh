@@ -8,22 +8,22 @@ test -z "$WGET_OPTS" && WGET_OPTS="$WGET_OPTS"
 test -z "$SED" && SED="sed"
 test -z "$TR" && TR="tr"
 
+test -z "$SERVER" && SERVER="http://www.opensc-project.org"
+test -z "$PROJECT" && PROJECT="opensc"
+
 SRCDIR=.
 OUTDIR=.
-
 test -n "$1" && SRCDIR="$1"
 test -n "$2" &&	OUTDIR="$2"
+
+WIKI="$PROJECT/wiki"
+XSL="$SRCDIR/export-wiki.xsl"
 
 test -f "$SRCDIR"/`basename $0`
 
 test -e "$OUTDIR" && rm -fr "$OUTDIR"
 
 mkdir "$OUTDIR" || exit 1
-
-export SERVER="http://www.opensc-project.org"
-export PROJECT="opensc"
-export WIKI="$PROJECT/wiki"
-export XSL="$SRCDIR/export-wiki.xsl"
 
 $WGET $WGET_OPTS $SERVER/$WIKI/TitleIndex -O "$OUTDIR"/TitleIndex.tmp
 
