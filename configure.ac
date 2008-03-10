@@ -321,7 +321,6 @@ if test -z "${LTLIB_LIBS}"; then
 		[LTLIB_LIBS="-lltdl"],
 		[AC_MSG_ERROR([ltdl not found, please install libltdl and/or libtool])]
 	)
-
 fi
 saved_CFLAGS="${CFLAGS}"
 CFLAGS="${CFLAGS} ${LTLIB_CFLAGS}"
