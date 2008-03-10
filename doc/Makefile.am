@@ -28,7 +28,7 @@ if ENABLE_MAN
 html.out/*:	api/xsl-stylesheets
 	test -n "$(XSLTPROC)"
 	-rm -fr html.tmp
-	$(MKDIR_P) html.tmp
+	$(mkdir_p) html.tmp
 	$(XSLTPROC) --nonet --xinclude -o "html.out/api.html" "$(srcdir)/api/html.xsl" "$(srcdir)/api/api.xml"
 	$(XSLTPROC) --nonet --xinclude -o "html.out/tools.html" "$(srcdir)/api/html.xsl" "$(srcdir)/tools/tools.xml"
 	mv html.tmp html.out
@@ -36,7 +36,7 @@ html.out/*:	api/xsl-stylesheets
 man.out/*.1:	api/xsl-stylesheets
 	test -n "$(XSLTPROC)"
 	-rm -fr man.tmp
-	$(MKDIR_P) man.tmp
+	$(mkdir_p) man.tmp
 	$(XSLTPROC) --nonet --xinclude -o "man.out/" "$(srcdir)/api/man.xsl" "$(srcdir)/api/api.xml"
 	$(XSLTPROC) --nonet --xinclude -o "man.out/" "$(srcdir)/api/man.xsl" "$(srcdir)/tools/tools.xml"
 	mv man.tmp man.out
