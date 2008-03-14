@@ -103,63 +103,63 @@ full_sysconfdir=`eval eval eval eval eval echo "${sysconfdir}" | sed "s#NONE#${p
 
 AC_ARG_ENABLE(
 	[strict],
-	[AC_HELP_STRING([--enable-strict], [enable strict compile mode [[default=disabled]]])],
+	[AC_HELP_STRING([--enable-strict], [enable strict compile mode @<:@disabled@:>@])],
 	,
 	[enable_strict="no"]
 )
 
 AC_ARG_ENABLE(
 	[pedantic],
-	[AC_HELP_STRING([--enable-pedantic], [enable pedantic compile mode [[desfault=disabled]]])],
+	[AC_HELP_STRING([--enable-pedantic], [enable pedantic compile mode @<:@disabled@:>@])],
 	,
 	[enable_pedantic="no"]
 )
 
 AC_ARG_ENABLE(
 	[zlib],
-	[AC_HELP_STRING([--enable-zlib], [enable zlib linkage. [[default=detect]]])],
+	[AC_HELP_STRING([--enable-zlib], [enable zlib linkage. @<:@detect@:>@])],
 	,
 	[enable_zlib="detect"]
 )
 
 AC_ARG_ENABLE(
 	[readline],
-	[AC_HELP_STRING([--enable-readline], [enable readline linkage. [[default=detect]]])],
+	[AC_HELP_STRING([--enable-readline], [enable readline linkage. @<:@detect@:>@])],
 	,
 	[enable_readline="detect"]
 )
 
 AC_ARG_ENABLE(
 	[openssl],
-	[AC_HELP_STRING([--enable-openssl], [enable openssl linkage. [[default=detect]]])],
+	[AC_HELP_STRING([--enable-openssl], [enable openssl linkage. @<:@detect@:>@])],
 	,
 	[enable_openssl="detect"]
 )
 
 AC_ARG_ENABLE(
 	[openct],
-	[AC_HELP_STRING([--enable-openct], [enable openct linkage. [[default=disabled]]])],
+	[AC_HELP_STRING([--enable-openct], [enable openct linkage. @<:@disabled@:>@])],
 	,
 	[enable_openct="no"]
 )
 
 AC_ARG_ENABLE(
 	[pcsc],
-	[AC_HELP_STRING([--enable-pcsc], [enable pcsc support. [[default=disabled]]])],
+	[AC_HELP_STRING([--enable-pcsc], [enable pcsc support. @<:@disabled@:>@])],
 	,
 	[enable_pcsc="no"]
 )
 
 AC_ARG_ENABLE(
 	[nsplugin],
-	[AC_HELP_STRING([--enable-nsplugin], [enable nsplugin (signer). [[default=disabled]]])],
+	[AC_HELP_STRING([--enable-nsplugin], [enable nsplugin (signer). @<:@disabled@:>@])],
 	,
 	[enable_nsplugin="no"]
 )
 
 AC_ARG_ENABLE(
 	[man],
-	[AC_HELP_STRING([--disable-man], [disable installation of manuals. [[default=enabled for none Windows]]])],
+	[AC_HELP_STRING([--disable-man], [disable installation of manuals. @<:@enabled for none Windows@:>@])],
 	,
 	[
 		if test "${WIN32}" = "yes"; then
@@ -172,28 +172,28 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[doc],
-	[AC_HELP_STRING([--enable-doc], [enable installation of documents. [[default=disabled]]])],
+	[AC_HELP_STRING([--enable-doc], [enable installation of documents. @<:@disabled@:>@])],
 	,
 	[enable_doc="no"]
 )
 
 AC_ARG_WITH(
 	[xsl-stylesheets-dir],
-	[AC_HELP_STRING([--with-xsl-stylesheets-dir=PATH], [docbook xsl-stylesheets for svn build [[detect]]])],
+	[AC_HELP_STRING([--with-xsl-stylesheets-dir=PATH], [docbook xsl-stylesheets for svn build @<:@detect@:>@])],
 	[xslstylesheetsdir="${withval}"],
 	[xslstylesheetsdir="detect"]
 )
 
 AC_ARG_WITH(
 	[plugin-dir],
-	[AC_HELP_STRING([--with-plugin-dir=PATH], [install Mozilla plugin to PATH [[LIBDIR/mozilla/plugins]]])],
+	[AC_HELP_STRING([--with-plugin-dir=PATH], [install Mozilla plugin to PATH @<:@LIBDIR/mozilla/plugins@:>@])],
 	[plugindir="${withval}"],
 	[plugindir="\$(libdir)/mozilla/plugins"]
 )
 
 AC_ARG_WITH(
 	[pin-entry],
-	[AC_HELP_STRING([--with-pin-entry=PROG], [run PROG as PIN-entry for OpenSC Signer])],
+	[AC_HELP_STRING([--with-pin-entry=PROG], [run PROG as PIN-entry for OpenSC Signer @<:/usr/local/bin/gpinentry:>@])],
 	[test "${withval}" != "no" && PIN_ENTRY="${withval}"],
 	[PIN_ENTRY="/usr/local/bin/gpinentry"]
 )
