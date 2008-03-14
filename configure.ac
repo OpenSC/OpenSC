@@ -98,6 +98,9 @@ case "${host}" in
 	;;
 esac
 
+full_usrlibdir="/usr/lib${libdir##*/lib}"
+full_sysconfdir=`eval eval eval eval eval echo "${sysconfdir}" | sed "s#NONE#${prefix}#" | sed "s#NONE#${ac_default_prefix}#"`
+
 AC_ARG_ENABLE(
 	[strict],
 	[AC_HELP_STRING([--enable-strict], [enable strict compile mode [[default=disabled]]])],
@@ -194,9 +197,6 @@ AC_ARG_WITH(
 	[test "${withval}" != "no" && PIN_ENTRY="${withval}"],
 	[PIN_ENTRY="/usr/local/bin/gpinentry"]
 )
-
-full_usrlibdir="/usr/lib${libdir##*/lib}"
-full_sysconfdir=`eval eval eval eval eval echo "${sysconfdir}" | sed "s#NONE#${prefix}#" | sed "s#NONE#${ac_default_prefix}#"`
 
 dnl Checks for programs.
 AC_PROG_CPP
