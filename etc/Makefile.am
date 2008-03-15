@@ -2,7 +2,8 @@ MAINTAINERCLEANFILES = Makefile.in
 DISTCLEANFILES = opensc.conf 
 
 SUFFIXES = .in
-dist_noinst_DATA = opensc.conf.in opensc.conf 
+
+dist_noinst_DATA = opensc.conf.in
 
 .in:
 	sed -e "s|@pkgdatadir[@]|$(pkgdatadir)|g" < $^ > $@
