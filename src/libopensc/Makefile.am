@@ -67,11 +67,6 @@ versioninfo.rc:
 if WIN32
 # def file required for MS users to build library
 mylibdir=$(libdir)
-if CYGWIN
-mylib_DATA=.libs/cygopensc-@OPENSC_LT_MAJOR@.dll.def
-.libs/cygopensc-@OPENSC_LT_MAJOR@.dll.def:	libopensc.la
-else
-mylib_DATA=.libs/libopensc-@OPENSC_LT_MAJOR@.dll.def
-.libs/libopensc-@OPENSC_LT_MAJOR@.dll.def:	libopensc.la
-endif
+mylib_DATA=.libs/@WIN_LIBPREFIX@opensc-@OPENSC_LT_OLDEST@.dll.def
+.libs/@WIN_LIBPREFIX@opensc-@OPENSC_LT_OLDEST@.dll.def:	libopensc.la
 endif

@@ -17,13 +17,13 @@ OPENSC_VERSION_FIX="PACKAGE_VERSION_FIX"
 
 # LT Version numbers, remember to change them just *before* a release.
 #   (Code changed:                      REVISION++)
-#   (Interfaces added/removed/changed:  CURRENT++, REVISION=0)
-#   (Interfaces added:                  AGE++)
-#   (Interfaces removed:                AGE=0)
+#   (Oldest interface removed:          OLDEST++)
+#   (Interfaces added:                  CURRENT++, REVISION=0)
 OPENSC_LT_CURRENT="2"
+OPENSC_LT_OLDEST="2"
 OPENSC_LT_REVISION="0"
 OPENSC_LT_AGE="0"
-OPENSC_LT_MAJOR="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_AGE}))"
+OPENSC_LT_AGE="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_OLDEST}))"
 
 AC_CONFIG_SRCDIR([src/libopensc/sc.c])
 
@@ -81,6 +81,7 @@ case "${host}" in
 	*-mingw32*|*-winnt*)
 		WIN32="yes"
 		CPPFLAGS="${CPPFLAGS} -DWIN32_LEAN_AND_MEAN"
+		WIN_LIBPREFIX="lib"
 	;;
 	*-cygwin*)
 		AC_MSG_CHECKING([cygwin mode to use])
@@ -93,6 +94,7 @@ case "${host}" in
 		else
 			AC_MSG_RESULT([Using cygwin])
 			CPPFLAGS="${CPPFLAGS} -DCRYPTOKI_FORCE_WIN32"
+			WIN_LIBPREFIX="cyg"
 			AC_DEFINE([USE_CYGWIN], [1], [Define if you are on Cygwin])
 		fi
 	;;
@@ -526,7 +528,8 @@ AC_SUBST([OPENSC_VERSION_FIX])
 AC_SUBST([OPENSC_LT_CURRENT])
 AC_SUBST([OPENSC_LT_REVISION])
 AC_SUBST([OPENSC_LT_AGE])
-AC_SUBST([OPENSC_LT_MAJOR])
+AC_SUBST([LIBP11_LT_OLDEST])
+AC_SUBST([WIN_LIBPREFIX])
 AC_SUBST([OPTIONAL_ZLIB_CFLAGS])
 AC_SUBST([OPTIONAL_ZLIB_LIBS])
 AC_SUBST([OPTIONAL_READLINE_CFLAGS])
