@@ -359,12 +359,18 @@ AC_CHECK_HEADERS([zlib.h])
 CFLAGS="${saved_CFLAGS}"
 test -n "${ZLIB_LIBS}" -a "${ac_cv_header_zlib_h}" = "yes" && have_zlib="yes"
 
-test "${enable_zlib}" = "no" && have_zlib="no"
-if test "${enable_zlib}" = "detect" -a "${have_zlib}" = "yes"; then
-	enable_zlib="yes"
-else
-	enable_zlib="no"
-fi
+case "${enable_zlib}" in
+	no)
+		have_zlib="no"
+	;;
+	detect)
+		if test "${have_zlib}" = "yes"; then
+			enable_zlib="yes"
+		else
+			enable_zlib="no"
+		fi
+	;;
+esac
 
 if test "${enable_zlib}" = "yes"; then
 	if test "${have_zlib}" = "yes"; then
@@ -395,12 +401,18 @@ AC_CHECK_HEADERS([readline/readline.h])
 CFLAGS="${saved_CFLAGS}"
 test -n "${READLINE_LIBS}" -a "${ac_cv_header_readline_readline_h}" = "yes" && have_readline="yes"
 
-test "${enable_readline}" = "no" && have_readline="no"
-if test "${enable_readline}" = "detect" -a "${have_readline}" = "yes"; then
-	enable_readline="yes"
-else
-	enable_readline="no"
-fi
+case "${enable_readline}" in
+	no)
+		have_readline="no"
+	;;
+	detect)
+		if test "${have_readline}" = "yes"; then
+			enable_readline="yes"
+		else
+			enable_readline="no"
+		fi
+	;;
+esac
 
 if test "${enable_readline}" = "yes"; then
 	if test "${have_readline}" = "yes"; then
@@ -430,12 +442,18 @@ PKG_CHECK_MODULES(
 	)]
 )
 
-test "${enable_openssl}" = "no" && have_openssl="no"
-if test "${enable_openssl}" = "detect" -a "${have_openssl}" = "yes"; then
-	enable_openssl="yes"
-else
-	enable_openssl="no"
-fi
+case "${enable_openssl}" in
+	no)
+		have_openssl="no"
+	;;
+	detect)
+		if test "${have_openssl}" = "yes"; then
+			enable_openssl="yes"
+		else
+			enable_openssl="no"
+		fi
+	;;
+esac
 
 if test "${enable_openssl}" = "yes"; then
 	if test "${have_openssl}" = "yes"; then
