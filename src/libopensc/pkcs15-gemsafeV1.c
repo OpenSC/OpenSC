@@ -123,7 +123,7 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path)
 	size_t objlen, certlen;
 	int block=0;
 	int found = 0;
-	unsigned int offset=0, index, i=0;
+	unsigned int offset=0, index_local, i=0;
 
 	r = sc_select_file(card, path, &file);
 	if (r < 0)
@@ -169,13 +169,13 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path)
 
 	}
 
-	index = block*248 + i;
+	index_local = block*248 + i;
 
 	/* DER Cert len is encoded this way */
 	certlen = ((((size_t) ibuf[i+2]) << 8) | ibuf[i+3]) + 4;
 	sc_debug(card->ctx, "%s: certlen: %04X\n", fn_name, certlen);
 
-	path->index = index;
+	path->index = index_local;
 	path->count = certlen;
 
 	return 1;
