@@ -121,7 +121,7 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path)
 	u8  ibuf[248];
 	struct sc_file *file;
 	size_t objlen, certlen;
-	int block=0;
+	unsigned int block=0;
 	int found = 0;
 	unsigned int offset=0, index_local, i=0;
 
@@ -320,7 +320,7 @@ int sc_pkcs15emu_gemsafeV1_init_ex( sc_pkcs15_card_t *p15card,
 }
 
 static sc_pkcs15_df_t *
-sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card, int type)
+sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card, unsigned int type)
 {
 	sc_pkcs15_df_t	*df;
 	sc_file_t	*file;
