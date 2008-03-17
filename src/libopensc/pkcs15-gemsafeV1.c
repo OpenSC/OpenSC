@@ -468,6 +468,7 @@ sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
 			info, auth_id, obj_flags);
 }
 
+#if 0
 static int
 sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
 		const sc_pkcs15_id_t *id,
@@ -490,5 +491,6 @@ sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
 
 	return sc_pkcs15emu_add_object(p15card, type, label, info, auth_id, obj_flags);
 }
+#endif
 
 //SC_IMPLEMENT_DRIVER_VERSION("0.9.4")
