@@ -139,10 +139,10 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path)
 	 * (allocated EF space is much greater!)
 	 */
 	objlen = (((size_t) ibuf[0]) << 8) | ibuf[1];
-	//fprintf(stderr, "%s: Certificate object is of size: %d\n", fn_name, objlen);
+	sc_debug(card->ctx, "%s: Certificate object is of size: %d\n", fn_name, objlen);
 
 	if (objlen < 1 || objlen > 10240) {
-	    fprintf(stderr, "%s: Invalid object size: %d\n", fn_name, objlen);
+	    sc_error(card->ctx, "%s: Invalid object size: %d\n", fn_name, objlen);
 	    return 0;
 	}
 
@@ -162,7 +162,7 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path)
 		offset = block*248;
 		r = sc_read_binary(card, offset, ibuf, 248, 0);
 		if (r < 0) {
-		    fprintf(stderr, "%s: Could not read cert object\n", fn_name);
+		    sc_error(card->ctx, "%s: Could not read cert object\n", fn_name);
 		    return 0;
 		}
 	    }
@@ -173,7 +173,7 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path)
 
 	/* DER Cert len is encoded this way */
 	certlen = ((((size_t) ibuf[i+2]) << 8) | ibuf[i+3]) + 4;
-	//fprintf(stderr, "%s: certlen: %04X\n", fn_name, certlen);
+	sc_debug(card->ctx, "%s: certlen: %04X\n", fn_name, certlen);
 
 	path->index = index;
 	path->count = certlen;
@@ -184,7 +184,7 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path)
 
 static int gemsafe_detect_card( sc_pkcs15_card_t *p15card)
 {
-    fprintf(stderr, "In gemsafe_detect_card\n");
+    sc_debug(p15card->card->ctx, "In gemsafe_detect_card\n");
     return SC_SUCCESS;
 }
 
@@ -201,7 +201,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
     char * endptr;
     float version=0.0;
 
-    fprintf(stderr, "%s: Setting pkcs15 parameters\n", fn_name);
+    sc_debug(p15card->card->ctx, "%s: Setting pkcs15 parameters\n", fn_name);
 
     if (p15card->label)
     	free(p15card->label);
@@ -234,7 +234,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 	    return SC_ERROR_INTERNAL;
     endptr = (char *)(apdu.resp + apdu.resplen);
     version = strtod( (const char *)(apdu.resp + 4), &endptr);
-    fprintf(stderr, "%s: version (float): %f, version (int): %d\n",
+    sc_debug(p15card->card->ctx, "%s: version (float): %f, version (int): %d\n",
     	    fn_name, version, (int)version);
     p15card->version = (int)version;
 
@@ -247,7 +247,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
     strcpy(p15card->manufacturer_id, MANU_ID);
 
     /* set certs */
-    fprintf(stderr, "%s: Setting certificate\n", fn_name);
+    sc_debug(p15card->card->ctx, "%s: Setting certificate\n", fn_name);
     for (i = 0; gemsafe_cert[i].label; i++) {
 	    struct sc_pkcs15_id  p15Id;
 
@@ -261,7 +261,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 			    gemsafe_cert[i].label, gemsafe_cert[i].obj_flags);
     }
     /* set gemsafe_pin */
-    fprintf(stderr, "%s: Setting PIN\n", fn_name);
+    sc_debug(p15card->card->ctx, "%s: Setting PIN\n", fn_name);
     for (i = 0; gemsafe_pin[i].label; i++) {
 	    struct sc_pkcs15_id  p15Id;
 
@@ -274,7 +274,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 			    gemsafe_pin[i].obj_flags);
     }
     /* set private keys */
-    fprintf(stderr, "%s: Setting private key\n", fn_name);
+    sc_debug(p15card->card->ctx, "%s: Setting private key\n", fn_name);
     for (i = 0; gemsafe_prkeys[i].label; i++) {
 	    struct sc_pkcs15_id p15Id,
 				authId, *pauthId;
@@ -292,7 +292,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
     }
 
     /* select the application DF */
-    fprintf(stderr,"%s: Selecting application DF\n", fn_name);
+    sc_debug(p15card->card->ctx,"%s: Selecting application DF\n", fn_name);
     sc_format_path("3F001600", &path);
     r = sc_select_file(card, &path, &file);
     if (r != SC_SUCCESS || !file)
