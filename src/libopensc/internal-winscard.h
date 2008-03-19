@@ -61,8 +61,10 @@ typedef unsigned __int8 uint8_t;
 
 #define SCARD_CTL_CODE(code) (0x42000000 + (code))
 
-#if defined(_WIN32) || defined(USE_CYGWIN)
+#if defined(_WIN32)
 #define PCSC_API WINAPI
+#elif defined(USE_CYGWIN)
+#define PCSC_API __stdcall
 #else
 #define PCSC_API
 #endif
