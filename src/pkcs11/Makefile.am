@@ -62,16 +62,24 @@ pkcs11-jar: jar-dir
 
 # see http://wiki.cacert.org/wiki/Pkcs11TaskForce
 pkcs11_DATA = #This will create the directory
-install-exec-hook:	install-pkcs11DATA
 if WIN32
+install-exec-hook:	install-pkcs11DATA
 	for l in opensc-pkcs11.dll onepin-opensc-pkcs11.dll pkcs11-spy.dll; do \
 		mv "$(DESTDIR)$(libdir)/$$l" "$(DESTDIR)$(pkcs11dir)/$$l"; \
 	done
 else
-	for l in opensc-pkcs11.so onepin-opensc-pkcs11.so pkcs11-spy.so; do \
+
+if CYGWIN
+PKCS11_SUFFIX=.dll
+else
+PKCS11_SUFFIX=.so
+endif
+install-exec-hook:	install-pkcs11DATA
+	for l in opensc-pkcs11$(PKCS11_SUFFIX) onepin-opensc-pkcs11$(PKCS11_SUFFIX) pkcs11-spy$(PKCS11_SUFFIX); do \
 		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
 		$(LN_S) ../$$l "$(DESTDIR)$(pkcs11dir)/$$l"; \
 	done
+
 endif
 
 versioninfo.rc:
