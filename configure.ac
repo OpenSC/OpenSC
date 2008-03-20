@@ -211,7 +211,6 @@ AC_PROG_MAKE_SET
 dnl Add libtool support.
 AC_LIBTOOL_WIN32_DLL
 AC_LIBTOOL_RC
-AC_LIBTOOL_DLOPEN
 AC_PROG_LIBTOOL
 
 dnl These required for svn checkout
