@@ -180,24 +180,24 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_WITH(
-	[xsl-stylesheets-dir],
-	[AC_HELP_STRING([--with-xsl-stylesheets-dir=PATH], [docbook xsl-stylesheets for svn build @<:@detect@:>@])],
+	[xsl-stylesheetsdir],
+	[AC_HELP_STRING([--with-xsl-stylesheetsdir=PATH], [docbook xsl-stylesheets for svn build @<:@detect@:>@])],
 	[xslstylesheetsdir="${withval}"],
 	[xslstylesheetsdir="detect"]
 )
 
 AC_ARG_WITH(
-	[plugin-dir],
-	[AC_HELP_STRING([--with-plugin-dir=PATH], [install Mozilla plugin to PATH @<:@LIBDIR/mozilla/plugins@:>@])],
+	[plugindir],
+	[AC_HELP_STRING([--with-plugindir=PATH], [install Mozilla plugin to PATH @<:@LIBDIR/mozilla/plugins@:>@])],
 	[plugindir="${withval}"],
 	[plugindir="\$(libdir)/mozilla/plugins"]
 )
 
 AC_ARG_WITH(
-	[pin-entry],
-	[AC_HELP_STRING([--with-pin-entry=PROG], [run PROG as PIN-entry for OpenSC Signer @<:/usr/local/bin/gpinentry:>@])],
-	[test "${withval}" != "no" && PIN_ENTRY="${withval}"],
-	[PIN_ENTRY="/usr/local/bin/gpinentry"]
+	[pinentry],
+	[AC_HELP_STRING([--with-pinentry=PROG], [run PROG as PIN-entry for OpenSC Signer @<:/usr/bin/gpinentry:>@])],
+	,
+	[with_pinentry="/usr/bin/gpinentry"]
 )
 
 dnl Checks for programs.
@@ -528,7 +528,7 @@ test "${enable_nsplugin}" = "yes" && OPENSC_FEATURES="${OPENSC_FEATURES} nsplugi
 
 AC_DEFINE_UNQUOTED([OPENSC_ETC_PATH], ["${full_sysconfdir}"], [etc path for libopensc])
 AC_DEFINE_UNQUOTED([OPENSC_CONF_PATH], ["${full_sysconfdir}/opensc.conf"], [default config file for libopensc])
-test -n "${PIN_ENTRY}" && AC_DEFINE_UNQUOTED([PIN_ENTRY], ["$PIN_ENTRY"], [PIN-entry program for OpenSC Signer])
+test "${with_pinentry}" != "no" && AC_DEFINE_UNQUOTED([PIN_ENTRY], ["${with_pinentry}"], [PIN-entry program for OpenSC Signer])
 AC_DEFINE_UNQUOTED([OPENSC_FEATURES], ["${OPENSC_FEATURES}"], [Enabled OpenSC features])
 
 openscincludedir="\$(includedir)/opensc"
@@ -626,6 +626,8 @@ OpenSSL support:         ${enable_openssl}
 PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
 NSPlugin support:        ${enable_nsplugin}
+
+pinentry:                ${with_pinentry}
 
 Host:                    ${host}
 Compiler:                ${CC}
