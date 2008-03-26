@@ -45,16 +45,13 @@ typedef unsigned __int16 uint16_t;
 #include <opensc/asn1.h>
 #include <openssl/x509.h>
 #include <openssl/err.h>
+#include "rutoken.h"
 #endif
 
 #define FDESCR_DF           0x38    /*00111000b*/
 #define FDESCR_EF           0x01
 
 #define ID_RESERVED_CURDF   0x3FFF      /*Reserved ID for current DF*/
-
-#ifdef ENABLE_OPENSSL
-int get_prkey_from_bin(const u8 *data, size_t len, struct sc_pkcs15_prkey **key);
-#endif
 
 #ifdef BIG_ENDIAN_RUTOKEN
 #define MF_PATH             "\x3F\x00"
@@ -1122,7 +1119,7 @@ static int rutoken_read_prkey(sc_card_t *card, struct sc_pkcs15_prkey **out)
 		{
 			r = sc_read_binary(card, 0, data, file->size, 0);
 			if(r > 0  &&  (size_t)r == file->size)
-				r = get_prkey_from_bin(data, file->size, out);
+				r = sc_rutoken_get_prkey_from_bin(data, file->size, out);
 			memset(data, 0, file->size);
 			free(data);
 		}

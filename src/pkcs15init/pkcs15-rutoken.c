@@ -31,6 +31,7 @@
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
 #include <opensc/pkcs15.h>
+#include <opensc/rutoken.h>
 #include "pkcs15-init.h"
 #include "profile.h"
 
@@ -73,8 +74,6 @@ static const struct
 			{ DODF_name,  DODFid,  SC_PKCS15_DODF  },
 			{ AODF_name,  AODFid,  SC_PKCS15_AODF  }
 		};
-
-int sc_rutoken_get_bin_from_prkey(const struct sc_pkcs15_prkey_rsa *rsa, u8 *key, size_t *keysize);
 
 /*
  * Create/override new EF.

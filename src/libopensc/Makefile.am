@@ -9,7 +9,8 @@ lib_LTLIBRARIES = libopensc.la
 openscinclude_HEADERS = \
 	opensc.h pkcs15.h emv.h \
 	cardctl.h asn1.h log.h ui.h \
-	errors.h types.h compression.h
+	errors.h types.h compression.h \
+	rutoken.h
 noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
 	internal-winscard.h p15card-helper.h
 pkgconfig_DATA = libopensc.pc libpkcs15init.pc libscconf.pc

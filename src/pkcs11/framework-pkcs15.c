@@ -2079,7 +2079,7 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 	case CKM_RSA_X_509:
 		flags = SC_ALGORITHM_RSA_RAW;
 		break;
-	case CKM_GOST:
+	case CKM_OPENSC_GOST:
 		flags = SC_ALGORITHM_GOST;
 		break;
 	default:
@@ -2160,7 +2160,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 	case CKM_RSA_X_509:
 		flags |= SC_ALGORITHM_RSA_RAW;
 		break;
-	case CKM_GOST:
+	case CKM_OPENSC_GOST:
 		flags |= SC_ALGORITHM_GOST;
 	default:
 		return CKR_MECHANISM_INVALID;		
@@ -2834,7 +2834,7 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 		    #endif
 		    mech_info.ulMinKeySize = 32;
 		    mech_info.ulMaxKeySize = 32;
-		    mt = sc_pkcs11_new_fw_mechanism(CKM_GOST,
+		    mt = sc_pkcs11_new_fw_mechanism(CKM_OPENSC_GOST,
 					&mech_info, CKK_RSA, NULL);
 		    rc = sc_pkcs11_register_mechanism(p11card, mt);
 			sc_debug(card->ctx, "register GOST!!! %d", rc);

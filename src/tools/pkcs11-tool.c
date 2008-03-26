@@ -23,6 +23,7 @@
 #endif
 
 #include <opensc/pkcs11.h>
+#include <opensc/pkcs11-opensc.h>
 #include <compat_getpass.h>
 #include "util.h"
 
@@ -3572,7 +3573,7 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_DSA_PARAMETER_GEN,	"DSA-PARAMETER-GEN", NULL },
       { CKM_DH_PKCS_PARAMETER_GEN,"DH-PKCS-PARAMETER-GEN", NULL },
       { CKM_X9_42_DH_PARAMETER_GEN,"X9-42-DH-PARAMETER-GEN", NULL },
-      { CKM_GOST,"GOST", NULL },
+      { CKM_OPENSC_GOST,	"GOST", NULL },
       { NO_MECHANISM, NULL, NULL }
 };
 

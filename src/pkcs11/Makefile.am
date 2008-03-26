@@ -5,7 +5,7 @@ CLEANFILES = versioninfo.rc
 EXTRA_DIST = Makefile.mak
 
 dist_noinst_SCRIPTS = opensc_pkcs11_install.js
-openscinclude_HEADERS = pkcs11.h
+openscinclude_HEADERS = pkcs11.h pkcs11-opensc.h
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
 noinst_LTLIBRARIES = libpkcs11.la
 

@@ -33,6 +33,7 @@
 
 #define CRYPTOKI_EXPORTS
 #include <pkcs11.h>
+#include <pkcs11-opensc.h>
 
 #ifdef __cplusplus
 extern "C" {

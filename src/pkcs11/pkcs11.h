@@ -358,11 +358,6 @@ typedef unsigned long ck_key_type_t;
 #define CKK_TWOFISH		(0x21)
 #define CKK_VENDOR_DEFINED	((unsigned long) (1 << 31))
 
-//rutoken:
-#define CKK_GOST            (CKK_VENDOR_DEFINED+1)
-#define CKA_GOST CKA_VENDOR_DEFINED+1
-#define CKM_GOST CKM_VENDOR_DEFINED+1
-
 typedef unsigned long ck_certificate_type_t;
 
 #define CKC_X_509		(0)

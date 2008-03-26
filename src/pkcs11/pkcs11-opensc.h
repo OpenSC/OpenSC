@@ -1,0 +1,10 @@
+#ifndef PKCS11_OPENSC_H
+#define PKCS11_OPENSC_H
+
+/* OpenSC specific extensions */
+
+#define CKK_OPENSC_GOST	(CKK_VENDOR_DEFINED+1)
+#define CKA_OPENSC_GOST	(CKA_VENDOR_DEFINED+1)
+#define CKM_OPENSC_GOST	(CKM_VENDOR_DEFINED+1)
+
+#endif

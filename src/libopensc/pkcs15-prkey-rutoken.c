@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <opensc/opensc.h>
 #include <opensc/pkcs15.h>
+#include <opensc/rutoken.h>
 #if defined(HAVE_INTTYPES_H)
 #include <inttypes.h>
 #elif defined(HAVE_STDINT_H)
@@ -327,7 +328,7 @@ static int clean_prkey_private_blob(const PRIVATEKEYBLOB* pr_blob)
 	return 0;
 }
 
-int get_prkey_from_bin(const u8 *data, size_t len, struct sc_pkcs15_prkey **key)
+int sc_rutoken_get_prkey_from_bin(const u8 *data, size_t len, struct sc_pkcs15_prkey **key)
 {
 	int ret = -1;
 	PRIVATEKEYBLOB pr_blob;
