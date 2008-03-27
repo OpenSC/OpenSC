@@ -60,15 +60,14 @@ pkcs11-jar: jar-dir
 	signtool -Z"opensc-pkcs11.jar" -i"opensc_pkcs11_install.js" \
 		 -k"testcert" jar-dir
 
-# see http://wiki.cacert.org/wiki/Pkcs11TaskForce
-pkcs11_DATA = #This will create the directory
 if WIN32
 install-exec-hook:	install-pkcs11DATA
 	for l in opensc-pkcs11.dll onepin-opensc-pkcs11.dll pkcs11-spy.dll; do \
-		mv "$(DESTDIR)$(libdir)/$$l" "$(DESTDIR)$(pkcs11dir)/$$l"; \
+		mv "$(DESTDIR)$(libdir)/$$l" "$(DESTDIR)$(bindir)/$$l"; \
 	done
 else
-
+# see http://wiki.cacert.org/wiki/Pkcs11TaskForce
+pkcs11_DATA = #This will create the directory
 if CYGWIN
 PKCS11_SUFFIX=.dll
 else
