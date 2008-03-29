@@ -42,7 +42,7 @@ AC_MSG_RESULT([${svn_checkout}])
 
 AC_ARG_WITH(
 	[cygwin-native],
-	[AC_HELP_STRING([--with-cygwin-native], [Compile native win32])],
+	[AC_HELP_STRING([--with-cygwin-native], [compile native win32])],
 	,
 	[with_cygwin_native="no"]
 )
