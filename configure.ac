@@ -194,6 +194,13 @@ AC_ARG_WITH(
 )
 
 AC_ARG_WITH(
+	[pcsc-provider],
+	[AC_HELP_STRING([--with-pcsc-provider=PATH], [Path to system pcsc provider @<:@system default@:>@])],
+	,
+	[with_pcsc_provider="detect"]
+)
+
+AC_ARG_WITH(
 	[pinentry],
 	[AC_HELP_STRING([--with-pinentry=PROG], [run PROG as PIN-entry for OpenSC Signer @<:/usr/bin/gpinentry:>@])],
 	,
@@ -474,17 +481,20 @@ fi
 
 if test "${enable_pcsc}" = "yes"; then
 	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
-	case "${host}" in
-		*-*-darwin*)
-			AC_DEFINE_UNQUOTED([PCSC_DEFAULT_LIBRARY_NAME], ["${full_usrlibdir}/libpcsclite.so"], [Default PC/SC library])
-		;;
-		*-mingw32*|*-winnt*|*-cygwin*)
-			AC_DEFINE_UNQUOTED([PCSC_DEFAULT_LIBRARY_NAME], ["winscard.dll"], [Default PC/SC library])
-		;;
-		*)
-			AC_DEFINE_UNQUOTED([PCSC_DEFAULT_LIBRARY_NAME], ["${full_usrlibdir}/libpcsclite.so"], [Default PC/SC library])
-		;;
-	esac
+	if test "${with_pcsc_provider}" = "detect"; then
+		case "${host}" in
+			*-*-darwin*)
+				with_pcsc_provider="${full_usrlibdir}/libpcsclite.so"
+			;;
+			*-mingw32*|*-winnt*|*-cygwin*)
+				with_pcsc_provider="winscard.dll"
+			;;
+			*)
+				with_pcsc_provider="${full_usrlibdir}/libpcsclite.so"
+			;;
+		esac
+	fi
+	AC_DEFINE_UNQUOTED([PCSC_DEFAULT_LIBRARY_NAME], ["${with_pcsc_provider}"], [Default PC/SC library])
 fi
 
 dnl AM_PATH_LIBASSUAN([MINIMUM-VERSION,
@@ -627,6 +637,7 @@ PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
 NSPlugin support:        ${enable_nsplugin}
 
+PC/SC default provider:  ${with_pcsc_provider}
 pinentry:                ${with_pinentry}
 
 Host:                    ${host}
