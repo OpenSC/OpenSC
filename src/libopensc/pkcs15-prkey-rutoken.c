@@ -28,7 +28,7 @@
 #include <assert.h>
 #include <opensc/opensc.h>
 #include <opensc/pkcs15.h>
-#include <opensc/rutoken.h>
+#include "rutoken.h"
 #if defined(HAVE_INTTYPES_H)
 #include <inttypes.h>
 #elif defined(HAVE_STDINT_H)

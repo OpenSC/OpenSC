@@ -28,10 +28,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
-#include <opensc/pkcs15.h>
-#include <opensc/log.h>
-#include <opensc/cardctl.h>
-#include <opensc/cards.h>
+#include "pkcs15.h"
+#include "cardctl.h"
 
 #define MANU_ID		"piv_II "
 

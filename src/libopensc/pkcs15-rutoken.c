@@ -28,7 +28,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <opensc/opensc.h>
-#include <opensc/cardctl.h>
+#include "cardctl.h"
 #include <opensc/log.h>
 #include <opensc/pkcs15.h>
 
