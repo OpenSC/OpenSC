@@ -13,12 +13,12 @@ wiki.out/*:
 	test -n "$(WGET)" -a -n "$(SED)" -a -n "$(TR)" -a -n "$(XSLTPROC)"
 	WGET="$(WGET)" WGET_OPTS="$(WGET_OPTS)" SED="$(SED)" TR="$(TR)" XSLTPROC="$(XSLTPROC)" \
 		PROJECT="@PACKAGE_NAME@" \
-		$(SHELL) "$(srcdir)/export-wiki.sh" "$(srcdir)" "$(srcdir)/wiki.tmp"
+		$(SHELL) "$(srcdir)/export-wiki.sh" "$(srcdir)" "$(builddir)/wiki.tmp"
 	mv "$(srcdir)/wiki.tmp" wiki.out
 
 ChangeLog:
 	test -n "$(SVN)" -a -n "$(XSLTPROC)"
-	if test -d .svn; then \
+	if test -d "$(top_srcdir)/.svn"; then \
 		$(SVN) --verbose --xml log "$(top_srcdir)" | \
 			$(XSLTPROC) --nonet --stringparam linelen 75 \
 			--stringparam groupbyday no \
