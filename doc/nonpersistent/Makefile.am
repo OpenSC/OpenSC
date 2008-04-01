@@ -32,6 +32,14 @@ ChangeLog:
 	fi
 	mv ChangeLog.tmp ChangeLog
 
+else
+
+wiki.out/*:
+	$(LN_S) "$(srcdir)/wiki.out" wiki.out
+
+ChangeLog:
+	$(LN_S) "$(srcdir)/ChangeLog" ChangeLog
+
 endif
 
 maintainer-clean-local:

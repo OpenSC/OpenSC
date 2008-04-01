@@ -76,6 +76,17 @@ man.out/*.1:
 man.out/*.3 man.out/*.5:	man.out/*.1
 
 endif
+else
+
+
+html.out/*:
+	$(LN_S) "$(srcdir)/html.out" html.out
+
+man.out/*.1:
+	$(LN_S) "$(srcdir)/man.out" man.out
+
+man.out/*.3 man.out/*.5:	man.out/*.1
+
 endif
 
 maintainer-clean-local:
