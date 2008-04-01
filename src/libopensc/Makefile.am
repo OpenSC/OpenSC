@@ -17,7 +17,7 @@ pkgconfig_DATA = libopensc.pc libpkcs15init.pc libscconf.pc
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
 	$(OPTIONAL_ZLIB_CFLAGS) $(LTLIB_CFLAGS) 
-INCLUDES = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/common
+INCLUDES = -I$(top_builddir)/src/include -I$(top_srcdir)/src/common
 
 libopensc_la_SOURCES = \
 	sc.c ctx.c ui.c log.c errors.c \
@@ -63,7 +63,7 @@ libopensc_la_LDFLAGS = $(AM_LDFLAGS) \
 
 versioninfo.rc:
 	sed 's/@@FILE_DESCRIPTION@@/OpenSC Core Library/g' \
-		"$(top_srcdir)/win32/versioninfo.rc" > versioninfo.rc
+		"$(top_builddir)/win32/versioninfo.rc" > versioninfo.rc
 
 if WIN32
 # def file required for MS users to build library

@@ -48,7 +48,7 @@ libpkcs15init_la_LDFLAGS = $(AM_LDFLAGS) \
 
 versioninfo.rc:
 	sed 's/@@FILE_DESCRIPTION@@/OpenSC Core Library/g' \
-		"$(top_srcdir)/win32/versioninfo.rc" > versioninfo.rc
+		"$(top_builddir)/win32/versioninfo.rc" > versioninfo.rc
 
 if WIN32
 # def file required for MS users to build library

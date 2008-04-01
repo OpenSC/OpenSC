@@ -83,4 +83,4 @@ endif
 
 versioninfo.rc:
 	sed 's/@@FILE_DESCRIPTION@@/OpenSC PKCS#11 Provider/g' \
-		"$(top_srcdir)/win32/versioninfo.rc" > versioninfo.rc
+		"$(top_builddir)/win32/versioninfo.rc" > versioninfo.rc

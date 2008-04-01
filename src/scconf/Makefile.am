@@ -29,4 +29,4 @@ test_conf_LDADD = libscconf.la
 
 versioninfo.rc:
 	sed 's/@@FILE_DESCRIPTION@@/OpenSC Core Library/g' \
-		"$(top_srcdir)/win32/versioninfo.rc" > versioninfo.rc
+		"$(top_builddir)/win32/versioninfo.rc" > versioninfo.rc
