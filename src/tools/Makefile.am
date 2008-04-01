@@ -1,6 +1,6 @@
 include $(top_srcdir)/win32/ltrc.inc
 
-MAINTAINERCLEANFILES = Makefile.in
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 CLEANFILES = versioninfo.rc
 EXTRA_DIST = Makefile.mak
 

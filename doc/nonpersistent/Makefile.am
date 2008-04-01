@@ -1,4 +1,6 @@
-MAINTAINERCLEANFILES = Makefile.in ChangeLog ChangeLog.tmp
+MAINTAINERCLEANFILES = \
+	$(srcdir)/Makefile.in $(srcdir)/ChangeLog \
+	ChangeLog ChangeLog.tmp 
 
 wikidir=$(htmldir)/wiki
 
@@ -13,8 +15,8 @@ wiki.out/*:
 	test -n "$(WGET)" -a -n "$(SED)" -a -n "$(TR)" -a -n "$(XSLTPROC)"
 	WGET="$(WGET)" WGET_OPTS="$(WGET_OPTS)" SED="$(SED)" TR="$(TR)" XSLTPROC="$(XSLTPROC)" \
 		PROJECT="@PACKAGE_NAME@" \
-		$(SHELL) "$(srcdir)/export-wiki.sh" "$(srcdir)" "$(builddir)/wiki.tmp"
-	mv "$(srcdir)/wiki.tmp" wiki.out
+		$(SHELL) "$(srcdir)/export-wiki.sh" "$(srcdir)" "wiki.tmp"
+	mv wiki.tmp wiki.out
 
 ChangeLog:
 	test -n "$(SVN)" -a -n "$(XSLTPROC)"
@@ -33,4 +35,4 @@ ChangeLog:
 endif
 
 maintainer-clean-local:
-	rm -rf wiki.out wiki.tmp
+	rm -rf $(srcdir)/wiki.out wiki.out wiki.tmp

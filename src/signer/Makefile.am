@@ -1,4 +1,4 @@
-MAINTAINERCLEANFILES = Makefile.in
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
 SUBDIRS = npinclude
 if ENABLE_NSPLUGIN

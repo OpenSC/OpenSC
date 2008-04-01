@@ -1,4 +1,4 @@
-MAINTAINERCLEANFILES = Makefile.in
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
 dist_noinst_DATA = \
 	crypt0001 crypt0002 crypt0003 crypt0004 crypt0005 crypt0006 crypt0007 \
@@ -9,5 +9,5 @@ dist_noinst_DATA = \
 dist_noinst_SCRIPTS = erase functions run-all 
 
 # remove log files from regression tests
-maintainer-clean-local:
+clean-local:
 	-rm -rf out failed
