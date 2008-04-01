@@ -7,7 +7,12 @@ SUBDIRS = nonpersistent
 endif
 DIST_SUBDIRS = nonpersistent
 
-dist_noinst_DATA = tools/*.xml api/*.xml api/*/*.xml api/api.css api/*.xsl
+dist_noinst_DATA = $(srcdir)/tools/*.xml \
+	$(srcdir)/api/*.xml \
+	$(srcdir)/api/*/*.xml \
+	$(srcdir)/api/api.css \
+	$(srcdir)/api/*.xsl
+
 if ENABLE_DOC
 dist_html_DATA = html.out/*
 else
