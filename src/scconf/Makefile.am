@@ -21,7 +21,7 @@ endif
 libscconf_la_LIBADD = $(top_builddir)/src/common/libcompat.la
 libscconf_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@ \
-	-export-symbols scconf.exports \
+	-export-symbols $(srcdir)/scconf.exports \
 	-no-undefined
 
 test_conf_SOURCES = test-conf.c

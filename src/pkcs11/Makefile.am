@@ -10,7 +10,7 @@ lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
 noinst_LTLIBRARIES = libpkcs11.la
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS) $(PTHREAD_CFLAGS)
-INCLUDES = -I$(top_srcdir)/src/pkcs15init -I$(top_srcdir)/src/include
+INCLUDES = -I$(top_srcdir)/src/pkcs15init -I$(top_builddir)/src/include
 
 OPENSC_PKCS11_INC = sc-pkcs11.h
 OPENSC_PKCS11_SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
@@ -29,7 +29,7 @@ nodist_opensc_pkcs11_la_SOURCES = versioninfo.rc
 endif
 opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols opensc-pkcs11.exports \
+	-export-symbols $(srcdir)/opensc-pkcs11.exports \
 	-module -avoid-version -no-undefined
 
 onepin_opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-enabled.c
@@ -38,7 +38,7 @@ nodist_onepin_opensc_pkcs11_la_SOURCES = versioninfo.rc
 endif
 onepin_opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols opensc-pkcs11.exports \
+	-export-symbols $(srcdir)/opensc-pkcs11.exports \
 	-module -avoid-version -no-undefined
 
 
@@ -48,7 +48,7 @@ nodist_pkcs11_spy_la_SOURCES = versioninfo.rc
 endif
 pkcs11_spy_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) libpkcs11.la
 pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols pkcs11-spy.exports \
+	-export-symbols $(srcdir)/pkcs11-spy.exports \
 	-module -avoid-version -no-undefined
 
 jar-dir:

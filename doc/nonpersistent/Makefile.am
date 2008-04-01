@@ -14,7 +14,7 @@ wiki.out/*:
 	WGET="$(WGET)" WGET_OPTS="$(WGET_OPTS)" SED="$(SED)" TR="$(TR)" XSLTPROC="$(XSLTPROC)" \
 		PROJECT="@PACKAGE_NAME@" \
 		$(SHELL) "$(srcdir)/export-wiki.sh" "$(srcdir)" "$(srcdir)/wiki.tmp"
-	mv wiki.tmp wiki.out
+	mv "$(srcdir)/wiki.tmp" wiki.out
 
 ChangeLog:
 	test -n "$(SVN)" -a -n "$(XSLTPROC)"

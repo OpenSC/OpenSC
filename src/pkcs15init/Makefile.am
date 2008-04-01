@@ -25,7 +25,7 @@ dist_pkgdata_DATA = \
 
 DEFS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS)
-INCLUDES = -I$(top_srcdir)/src/common -I$(top_srcdir)/src/include
+INCLUDES = -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
 
 libpkcs15init_la_SOURCES = \
 	pkcs15-lib.c profile.c keycache.c \
@@ -43,7 +43,7 @@ libpkcs15init_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) \
 	$(top_builddir)/src/common/libcompat.la
 libpkcs15init_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@ \
-	-export-symbols pkcs15init.exports \
+	-export-symbols $(srcdir)/pkcs15init.exports \
 	-no-undefined
 
 versioninfo.rc:

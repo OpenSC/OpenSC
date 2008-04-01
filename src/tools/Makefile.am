@@ -12,7 +12,7 @@ bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool
 endif
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS)
-INCLUDES = -I$(top_srcdir)/src/common -I$(top_srcdir)/src/include
+INCLUDES = -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
 LIBS = $(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libcompat.la
 

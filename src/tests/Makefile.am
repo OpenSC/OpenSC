@@ -4,7 +4,7 @@ EXTRA_DIST = Makefile.mak
 SUBDIRS = regression
 noinst_PROGRAMS = base64 lottery p15dump pintest prngtest
 
-INCLUDES = -I$(top_srcdir)/src/common -I$(top_srcdir)/src/include
+INCLUDES = -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
 LIBS = $(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libcompat.la
 
