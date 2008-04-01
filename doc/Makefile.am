@@ -9,7 +9,14 @@ DIST_SUBDIRS = nonpersistent
 
 dist_noinst_DATA = $(srcdir)/tools/*.xml \
 	$(srcdir)/api/*.xml \
-	$(srcdir)/api/*/*.xml \
+	$(srcdir)/api/apps/*.xml \
+	$(srcdir)/api/asn1/*.xml \
+	$(srcdir)/api/card/*.xml \
+	$(srcdir)/api/file/*.xml \
+	$(srcdir)/api/init/*.xml \
+	$(srcdir)/api/misc/*.xml \
+	$(srcdir)/api/types/*.xml \
+	$(srcdir)/api/util/*.xml \
 	$(srcdir)/api/api.css \
 	$(srcdir)/api/*.xsl
 
