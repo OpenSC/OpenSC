@@ -67,7 +67,7 @@ struct pcsc_global_private_data {
 	int connect_exclusive;
 	int connect_reset;
 	int transaction_reset;
-	const char *library_name;
+	const char *provider_library;
 	lt_dlhandle dlhandle;
 	SCardEstablishContext_t SCardEstablishContext;
 	SCardReleaseContext_t SCardReleaseContext;
@@ -752,7 +752,7 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 	gpriv->connect_exclusive = 0;
 	gpriv->transaction_reset = 0;
 	gpriv->enable_pinpad = 0;
-	gpriv->library_name = PCSC_DEFAULT_LIBRARY_NAME;
+	gpriv->provider_library = DEFAULT_PCSC_PROVIDER;
 	
 	conf_block = sc_get_conf_block(ctx, "reader_driver", "pcsc", 1);
 	if (conf_block) {
@@ -764,11 +764,11 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 		    scconf_get_bool(conf_block, "transaction_reset", gpriv->transaction_reset);
 		gpriv->enable_pinpad =
 		    scconf_get_bool(conf_block, "enable_pinpad", gpriv->enable_pinpad);
-		gpriv->library_name =
-		    scconf_get_str(conf_block, "library_name", gpriv->library_name);
+		gpriv->provider_library =
+		    scconf_get_str(conf_block, "provider_library", gpriv->provider_library);
 	}
 
-	gpriv->dlhandle = lt_dlopen(gpriv->library_name);
+	gpriv->dlhandle = lt_dlopen(gpriv->provider_library);
 	if (gpriv->dlhandle == NULL) {
 		ret = SC_ERROR_CANNOT_LOAD_MODULE;
 		goto out;

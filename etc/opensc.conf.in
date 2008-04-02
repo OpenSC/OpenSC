@@ -88,9 +88,9 @@ app default {
 		# Default: false
 		# enable_pinpad = true;
 		#
-		# Use specific pcsc library.
-		# Default: system
-		# library_name = /usr/lib/libpcsclite.so
+		# Use specific pcsc provider.
+		# Default: @DEFAULT_PCSC_PROVIDER@
+		# provider_library = @DEFAULT_PCSC_PROVIDER@
 	}
 
 	# options for openct support

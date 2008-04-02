@@ -484,17 +484,19 @@ if test "${enable_pcsc}" = "yes"; then
 	if test "${with_pcsc_provider}" = "detect"; then
 		case "${host}" in
 			*-*-darwin*)
-				with_pcsc_provider="${full_usrlibdir}/libpcsclite.so"
+				DEFAULT_PCSC_PROVIDER="${full_usrlibdir}/libpcsclite.so"
 			;;
 			*-mingw32*|*-winnt*|*-cygwin*)
-				with_pcsc_provider="winscard.dll"
+				DEFAULT_PCSC_PROVIDER="winscard.dll"
 			;;
 			*)
-				with_pcsc_provider="${full_usrlibdir}/libpcsclite.so"
+				DEFAULT_PCSC_PROVIDER="${full_usrlibdir}/libpcsclite.so"
 			;;
 		esac
+	else
+		DEFAULT_PCSC_PROVIDER="${with_pcsc_provider}"
 	fi
-	AC_DEFINE_UNQUOTED([PCSC_DEFAULT_LIBRARY_NAME], ["${with_pcsc_provider}"], [Default PC/SC library])
+	AC_DEFINE_UNQUOTED([DEFAULT_PCSC_PROVIDER], ["${DEFAULT_PCSC_PROVIDER}"], [Default PC/SC provider])
 fi
 
 dnl AM_PATH_LIBASSUAN([MINIMUM-VERSION,
@@ -533,7 +535,7 @@ if test "${enable_openct}" = "yes"; then
 	OPTIONAL_OPENCT_CFLAGS="${OPENCT_CFLAGS}"
 	OPTIONAL_OPENCT_LIBS="${OPENCT_LIBS}"
 fi
-test "${enable_pcsc}" = "yes" && OPENSC_FEATURES="${OPENSC_FEATURES} pcsc"
+test "${enable_pcsc}" = "yes" && OPENSC_FEATURES="${OPENSC_FEATURES} pcsc(${DEFAULT_PCSC_PROVIDER})"
 test "${enable_nsplugin}" = "yes" && OPENSC_FEATURES="${OPENSC_FEATURES} nsplugin"
 
 AC_DEFINE_UNQUOTED([OPENSC_ETC_PATH], ["${full_sysconfdir}"], [etc path for libopensc])
@@ -558,6 +560,7 @@ AC_SUBST([OPENSC_LT_REVISION])
 AC_SUBST([OPENSC_LT_AGE])
 AC_SUBST([OPENSC_LT_OLDEST])
 AC_SUBST([WIN_LIBPREFIX])
+AC_SUBST([DEFAULT_PCSC_PROVIDER])
 AC_SUBST([OPTIONAL_ZLIB_CFLAGS])
 AC_SUBST([OPTIONAL_ZLIB_LIBS])
 AC_SUBST([OPTIONAL_READLINE_CFLAGS])
@@ -637,7 +640,7 @@ PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
 NSPlugin support:        ${enable_nsplugin}
 
-PC/SC default provider:  ${with_pcsc_provider}
+PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 pinentry:                ${with_pinentry}
 
 Host:                    ${host}

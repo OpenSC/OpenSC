@@ -7,7 +7,10 @@ dist_noinst_DATA = opensc.conf.in
 nodist_noinst_DATA = opensc.conf
 
 .in:
-	sed -e "s|@pkgdatadir[@]|$(pkgdatadir)|g" < $^ > $@
+	sed \
+		-e 's|@pkgdatadir[@]|$(pkgdatadir)|g' \
+		-e 's|@DEFAULT_PCSC_PROVIDER[@]|$(DEFAULT_PCSC_PROVIDER)|g' \
+		< $^ > $@
 
 sysconf_DATA=#required in order to create dir
 install-exec-hook:	install-sysconfDATA opensc.conf
