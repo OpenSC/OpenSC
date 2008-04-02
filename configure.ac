@@ -484,7 +484,7 @@ if test "${enable_pcsc}" = "yes"; then
 	if test "${with_pcsc_provider}" = "detect"; then
 		case "${host}" in
 			*-*-darwin*)
-				DEFAULT_PCSC_PROVIDER="${full_usrlibdir}/libpcsclite.so"
+				DEFAULT_PCSC_PROVIDER="/System/Library/Frameworks/PCSC.framework/PCSC"
 			;;
 			*-mingw32*|*-winnt*|*-cygwin*)
 				DEFAULT_PCSC_PROVIDER="winscard.dll"
