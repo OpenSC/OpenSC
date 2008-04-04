@@ -28,6 +28,7 @@ typedef unsigned __int8 uint8_t;
 #warning no uint32_t type available, please contact opensc-devel@opensc-project.org
 #endif
 
+#ifndef _MSC_VER
 #define MAX_ATR_SIZE			33	/**< Maximum ATR size */
 
 #define SCARD_PROTOCOL_T0		0x0001	/**< T=0 active protocol. */
@@ -61,14 +62,6 @@ typedef unsigned __int8 uint8_t;
 
 #define SCARD_CTL_CODE(code) (0x42000000 + (code))
 
-#if defined(_WIN32)
-#define PCSC_API WINAPI
-#elif defined(USE_CYGWIN)
-#define PCSC_API __stdcall
-#else
-#define PCSC_API
-#endif
-
 typedef const BYTE *LPCBYTE;
 typedef long SCARDCONTEXT; /**< \p hContext returned by SCardEstablishContext() */
 typedef SCARDCONTEXT *PSCARDCONTEXT;
@@ -94,6 +87,16 @@ typedef struct _SCARD_IO_REQUEST
 	unsigned long cbPciLength;	/* Protocol Control Inf Length */
 }
 SCARD_IO_REQUEST, *PSCARD_IO_REQUEST, *LPSCARD_IO_REQUEST;
+
+#endif	/* MSC_VER */
+
+#if defined(_WIN32)
+#define PCSC_API WINAPI
+#elif defined(USE_CYGWIN)
+#define PCSC_API __stdcall
+#else
+#define PCSC_API
+#endif
 
 typedef const SCARD_IO_REQUEST *LPCSCARD_IO_REQUEST;
 typedef SCARD_READERSTATE_A SCARD_READERSTATE, *PSCARD_READERSTATE_A,
