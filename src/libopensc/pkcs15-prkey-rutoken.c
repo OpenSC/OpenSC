@@ -42,22 +42,22 @@ typedef unsigned __int16 uint16_t;
 
 /*  BLOB definition  */
 
-typedef struct _RSAPUBKEY {
+typedef struct _RURSAPUBKEY {
 	uint32_t magic;
 	uint32_t bitlen;
 	uint32_t pubexp;
-} RSAPUBKEY;
+} RURSAPUBKEY;
 
-typedef struct _PUBLICKEYSTRUC {
+typedef struct _RUPUBLICKEYSTRUC {
 	u8 bType;
 	u8 bVersion;
 	uint16_t reserved;
 	uint32_t aiKeyAlg;
-} BLOBHEADER;
+} RUBLOBHEADER;
 
-typedef struct _PRIVATEKEYBLOB {
-	BLOBHEADER blobheader;
-	RSAPUBKEY rsapubkey;
+typedef struct _RUPRIVATEKEYBLOB {
+	RUBLOBHEADER blobheader;
+	RURSAPUBKEY rsapubkey;
 	u8 *modulus;
 	u8 *prime1;
 	u8 *prime2;
@@ -65,7 +65,7 @@ typedef struct _PRIVATEKEYBLOB {
 	u8 *exponent2;
 	u8 *coefficient;
 	u8 *privateExponent;
-} PRIVATEKEYBLOB;
+} RUPRIVATEKEYBLOB;
 
 
 static void ArrayReverse(u8 *buf, size_t size)
@@ -81,7 +81,7 @@ static void ArrayReverse(u8 *buf, size_t size)
 	}
 }
 
-static int free_private_blob(PRIVATEKEYBLOB *pr_blob)
+static int free_private_blob(RUPRIVATEKEYBLOB *pr_blob)
 {
 	free(pr_blob->modulus);
 	free(pr_blob->prime1);
@@ -93,7 +93,7 @@ static int free_private_blob(PRIVATEKEYBLOB *pr_blob)
 	return 0;
 }
 
-static int bin_to_private_blob(PRIVATEKEYBLOB *pr_blob, const u8* buf, size_t buf_len)
+static int bin_to_private_blob(RUPRIVATEKEYBLOB *pr_blob, const u8* buf, size_t buf_len)
 {
 	const u8 *tmp;
 	size_t len = 2 + sizeof(pr_blob->blobheader) + sizeof(pr_blob->rsapubkey);
@@ -146,7 +146,7 @@ static int bin_to_private_blob(PRIVATEKEYBLOB *pr_blob, const u8* buf, size_t bu
 	return 0;
 }
 
-static int create_private_blob(PRIVATEKEYBLOB *pr_blob, const struct sc_pkcs15_prkey_rsa *key)
+static int create_private_blob(RUPRIVATEKEYBLOB *pr_blob, const struct sc_pkcs15_prkey_rsa *key)
 {
 	size_t n;
 	const uint32_t bitlen = key->modulus.len*8;
@@ -212,7 +212,7 @@ static int create_private_blob(PRIVATEKEYBLOB *pr_blob, const struct sc_pkcs15_p
 	return 0;
 }
 
-static int get_sc_pksc15_prkey_rsa(const PRIVATEKEYBLOB *pr_blob, struct sc_pkcs15_prkey_rsa *key)
+static int get_sc_pksc15_prkey_rsa(const RUPRIVATEKEYBLOB *pr_blob, struct sc_pkcs15_prkey_rsa *key)
 {
 	static const u8 Exp[3] = { 0x01, 0x00, 0x01 }; /* big endian */
 
@@ -269,7 +269,7 @@ static int get_sc_pksc15_prkey_rsa(const PRIVATEKEYBLOB *pr_blob, struct sc_pkcs
 	return 0;
 }
 
-static int private_blob_to_bin(const PRIVATEKEYBLOB *pr_blob, u8 *buf, size_t *buf_len)
+static int private_blob_to_bin(const RUPRIVATEKEYBLOB *pr_blob, u8 *buf, size_t *buf_len)
 {
 	size_t len = 2 + sizeof(pr_blob->blobheader) + sizeof(pr_blob->rsapubkey);
 
@@ -314,7 +314,7 @@ static int private_blob_to_bin(const PRIVATEKEYBLOB *pr_blob, u8 *buf, size_t *b
 	return 0;
 }
 
-static int clean_prkey_private_blob(const PRIVATEKEYBLOB* pr_blob)
+static int clean_prkey_private_blob(const RUPRIVATEKEYBLOB* pr_blob)
 {
 	const uint32_t bitlen = pr_blob->rsapubkey.bitlen;
 
@@ -331,7 +331,7 @@ static int clean_prkey_private_blob(const PRIVATEKEYBLOB* pr_blob)
 int sc_rutoken_get_prkey_from_bin(const u8 *data, size_t len, struct sc_pkcs15_prkey **key)
 {
 	int ret = -1;
-	PRIVATEKEYBLOB pr_blob;
+	RUPRIVATEKEYBLOB pr_blob;
 
 	if (data && key)
 	{
@@ -357,7 +357,7 @@ int sc_rutoken_get_prkey_from_bin(const u8 *data, size_t len, struct sc_pkcs15_p
 int sc_rutoken_get_bin_from_prkey(const struct sc_pkcs15_prkey_rsa *rsa, u8 *key, size_t *keysize)
 {
 	int r = -1;
-	PRIVATEKEYBLOB prkeyblob;
+	RUPRIVATEKEYBLOB prkeyblob;
 
 	if (rsa && key && keysize)
 	{
