@@ -1,5 +1,6 @@
 MAINTAINERCLEANFILES = \
-	$(srcdir)/Makefile.in $(srcdir)/ChangeLog \
+	$(srcdir)/Makefile.in $(srcdir)/ChangeLog
+DISTCLEANFILES = \
 	ChangeLog ChangeLog.tmp 
 
 wikidir=$(htmldir)/wiki
@@ -42,5 +43,8 @@ ChangeLog:
 
 endif
 
+distclean-local:
+	-rm -rf wiki.out wiki.tmp
+
 maintainer-clean-local:
-	rm -rf $(srcdir)/wiki.out wiki.out wiki.tmp
+	-rm -rf "$(srcdir)/wiki.out"

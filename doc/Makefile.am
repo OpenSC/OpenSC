@@ -90,5 +90,7 @@ man.out/*.3 man.out/*.5:	man.out/*.1
 endif
 
 maintainer-clean-local:
-	rm -rf "$(srcdir)/html.out" "$(srcdir)/man.out" \
-		html.out html.tmp man.out man.tmp api.work
+	-rm -rf "$(srcdir)/html.out" "$(srcdir)/man.out"
+
+maintainer-clean-local:
+	-rm -fr html.out html.tmp man.out man.tmp api.work
