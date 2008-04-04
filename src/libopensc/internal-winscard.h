@@ -99,29 +99,29 @@ typedef const SCARD_IO_REQUEST *LPCSCARD_IO_REQUEST;
 typedef SCARD_READERSTATE_A SCARD_READERSTATE, *PSCARD_READERSTATE_A,
 	*LPSCARD_READERSTATE_A;
 
-typedef PCSC_API LONG (*SCardEstablishContext_t)(DWORD dwScope, LPCVOID pvReserved1,
+typedef LONG (PCSC_API *SCardEstablishContext_t)(DWORD dwScope, LPCVOID pvReserved1,
 	LPCVOID pvReserved2, LPSCARDCONTEXT phContext);
-typedef PCSC_API LONG (*SCardReleaseContext_t)(SCARDCONTEXT hContext);
-typedef PCSC_API LONG (*SCardConnect_t)(SCARDCONTEXT hContext, LPCSTR szReader, DWORD dwShareMode,
+typedef LONG (PCSC_API *SCardReleaseContext_t)(SCARDCONTEXT hContext);
+typedef LONG (PCSC_API *SCardConnect_t)(SCARDCONTEXT hContext, LPCSTR szReader, DWORD dwShareMode,
 	DWORD dwPreferredProtocols, LPSCARDHANDLE phCard, LPDWORD pdwActiveProtocol);
-typedef PCSC_API LONG (*SCardReconnect_t)(SCARDHANDLE hCard, DWORD dwShareMode, DWORD dwPreferredProtocols,
+typedef LONG (PCSC_API *SCardReconnect_t)(SCARDHANDLE hCard, DWORD dwShareMode, DWORD dwPreferredProtocols,
 	DWORD dwInitialization, LPDWORD pdwActiveProtocol);
-typedef PCSC_API LONG (*SCardDisconnect_t)(SCARDHANDLE hCard, DWORD dwDisposition);
-typedef PCSC_API LONG (*SCardBeginTransaction_t)(SCARDHANDLE hCard);
-typedef PCSC_API LONG (*SCardEndTransaction_t)(SCARDHANDLE hCard, DWORD dwDisposition);
-typedef PCSC_API LONG (*SCardStatus_t)(SCARDHANDLE hCard, LPSTR mszReaderNames, LPDWORD pcchReaderLen,
+typedef LONG (PCSC_API *SCardDisconnect_t)(SCARDHANDLE hCard, DWORD dwDisposition);
+typedef LONG (PCSC_API *SCardBeginTransaction_t)(SCARDHANDLE hCard);
+typedef LONG (PCSC_API *SCardEndTransaction_t)(SCARDHANDLE hCard, DWORD dwDisposition);
+typedef LONG (PCSC_API *SCardStatus_t)(SCARDHANDLE hCard, LPSTR mszReaderNames, LPDWORD pcchReaderLen,
 	LPDWORD pdwState, LPDWORD pdwProtocol, LPBYTE pbAtr, LPDWORD pcbAtrLen);
-typedef PCSC_API LONG (*SCardGetStatusChange_t)(SCARDCONTEXT hContext, DWORD dwTimeout,
+typedef LONG (PCSC_API *SCardGetStatusChange_t)(SCARDCONTEXT hContext, DWORD dwTimeout,
 	LPSCARD_READERSTATE_A rgReaderStates, DWORD cReaders);
-typedef PCSC_API LONG (*SCardControlOLD_t)(SCARDHANDLE hCard, LPCVOID pbSendBuffer, DWORD cbSendLength,
+typedef LONG (PCSC_API *SCardControlOLD_t)(SCARDHANDLE hCard, LPCVOID pbSendBuffer, DWORD cbSendLength,
 	LPVOID pbRecvBuffer, LPDWORD lpBytesReturned);
-typedef PCSC_API LONG (*SCardControl_t)(SCARDHANDLE hCard, DWORD dwControlCode, LPCVOID pbSendBuffer,
+typedef LONG (PCSC_API *SCardControl_t)(SCARDHANDLE hCard, DWORD dwControlCode, LPCVOID pbSendBuffer,
 	DWORD cbSendLength, LPVOID pbRecvBuffer, DWORD cbRecvLength,
 	LPDWORD lpBytesReturned);
-typedef PCSC_API LONG (*SCardTransmit_t)(SCARDHANDLE hCard, LPCSCARD_IO_REQUEST pioSendPci,
+typedef LONG (PCSC_API *SCardTransmit_t)(SCARDHANDLE hCard, LPCSCARD_IO_REQUEST pioSendPci,
 	LPCBYTE pbSendBuffer, DWORD cbSendLength, LPSCARD_IO_REQUEST pioRecvPci,
 	LPBYTE pbRecvBuffer, LPDWORD pcbRecvLength);
-typedef PCSC_API LONG (*SCardListReaders_t)(SCARDCONTEXT hContext, LPCSTR mszGroups,
+typedef LONG (PCSC_API *SCardListReaders_t)(SCARDCONTEXT hContext, LPCSTR mszGroups,
 	LPSTR mszReaders, LPDWORD pcchReaders);
 
 /* Copied from pcsc-lite reader.h */
