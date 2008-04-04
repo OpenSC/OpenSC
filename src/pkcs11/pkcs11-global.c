@@ -211,7 +211,9 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	load_pkcs11_parameters(&sc_pkcs11_conf, context);
 
 	first_free_slot = 0;
-	virtual_slots = malloc(sizeof (*virtual_slots) * sc_pkcs11_conf.pkcs11_max_virtual_slots);
+	virtual_slots = (struct sc_pkcs11_slot *)malloc(
+		sizeof (*virtual_slots) * sc_pkcs11_conf.pkcs11_max_virtual_slots
+	);
 	if (virtual_slots == NULL) {
 		rv = CKR_HOST_MEMORY;
 		goto out;
@@ -320,18 +322,27 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		    CK_SLOT_ID_PTR pSlotList,     /* receives the array of slot IDs */
 		    CK_ULONG_PTR   pulCount)      /* receives the number of slots */
 {
-	CK_SLOT_ID found[sc_pkcs11_conf.pkcs11_max_virtual_slots];
+	CK_SLOT_ID_PTR found = NULL;
 	int i;
 	CK_ULONG numMatches;
 	sc_pkcs11_slot_t *slot;
 	CK_RV rv;
 
-	rv = sc_pkcs11_lock();
-	if (rv != CKR_OK)
+	if ((rv = sc_pkcs11_lock()) != CKR_OK) {
 		return rv;
+	}
 
 	if (pulCount == NULL_PTR) {
 		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
+
+	if (
+		(found = (CK_SLOT_ID_PTR)malloc (
+			sizeof (*found) * sc_pkcs11_conf.pkcs11_max_virtual_slots
+		)) == NULL
+	) {
+		rv = CKR_HOST_MEMORY;
 		goto out;
 	}
 
@@ -366,7 +377,12 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 
 	sc_debug(context, "returned %d slots\n", numMatches);
 
-out:	sc_pkcs11_unlock();
+out:
+	if (found != NULL) {
+		free (found);
+		found = NULL;
+	}
+	sc_pkcs11_unlock();
 	return rv;
 }
 
