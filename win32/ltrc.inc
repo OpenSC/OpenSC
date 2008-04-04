@@ -5,8 +5,8 @@ RCCOMPILE = $(RC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 LTRCCOMPILE = $(LIBTOOL) --mode=compile --tag=RC $(RCCOMPILE)
 
 .rc.lo:
-	$(LTRCCOMPILE) -i $< -o $@
+	$(LTRCCOMPILE) -i "$<" -o "$@"
 
 .rc.o:
-	$(RCCOMPILE) -i $< -o $@
+	$(RCCOMPILE) -i "$<" -o "$@"
 

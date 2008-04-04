@@ -29,7 +29,7 @@ nodist_opensc_pkcs11_la_SOURCES = versioninfo.rc
 endif
 opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols $(srcdir)/opensc-pkcs11.exports \
+	-export-symbols "$(srcdir)/opensc-pkcs11.exports" \
 	-module -avoid-version -no-undefined
 
 onepin_opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-enabled.c
@@ -38,7 +38,7 @@ nodist_onepin_opensc_pkcs11_la_SOURCES = versioninfo.rc
 endif
 onepin_opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols $(srcdir)/opensc-pkcs11.exports \
+	-export-symbols "$(srcdir)/opensc-pkcs11.exports" \
 	-module -avoid-version -no-undefined
 
 
@@ -48,7 +48,7 @@ nodist_pkcs11_spy_la_SOURCES = versioninfo.rc
 endif
 pkcs11_spy_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) libpkcs11.la
 pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols $(srcdir)/pkcs11-spy.exports \
+	-export-symbols "$(srcdir)/pkcs11-spy.exports" \
 	-module -avoid-version -no-undefined
 
 jar-dir:

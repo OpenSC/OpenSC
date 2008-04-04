@@ -16,7 +16,7 @@ opensc_signer_la_SOURCES = opensc-crypto.c opensc-support.c signer.c stubs.c dia
 opensc_signer_la_LIBADD = $(OPENSSL_LIBS) $(LIBASSUAN_LIBS) \
 	$(top_builddir)/src/libopensc/libopensc.la
 opensc_signer_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols $(srcdir)/signer.exports \
+	-export-symbols "$(srcdir)/signer.exports" \
 	-module -avoid-version -no-undefined
 
 if ENABLE_NSPLUGIN

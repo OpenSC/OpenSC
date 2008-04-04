@@ -43,7 +43,7 @@ libpkcs15init_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) \
 	$(top_builddir)/src/common/libcompat.la
 libpkcs15init_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@ \
-	-export-symbols $(srcdir)/pkcs15init.exports \
+	-export-symbols "$(srcdir)/pkcs15init.exports" \
 	-no-undefined
 
 versioninfo.rc:

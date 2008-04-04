@@ -58,7 +58,7 @@ libopensc_la_LIBADD += -lws2_32
 endif
 libopensc_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@ \
-	-export-symbols $(srcdir)/libopensc.exports \
+	-export-symbols "$(srcdir)/libopensc.exports" \
 	-no-undefined
 
 versioninfo.rc:
