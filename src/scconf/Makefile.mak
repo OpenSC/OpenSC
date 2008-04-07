@@ -9,7 +9,7 @@ OBJECTS = scconf.obj parse.obj write.obj sclex.obj
 
 all: install-headers $(TARGET)
 
-$(TARGET): $(OBJECTS) ..\common\common.lib
-	lib /nologo /machine:ix86 /out:$(TARGET) $(OBJECTS) ..\common\common.lib
+$(TARGET): $(OBJECTS)
+	lib /nologo /machine:ix86 /out:$(TARGET) $(OBJECTS)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak

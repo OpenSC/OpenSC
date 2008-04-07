@@ -20,7 +20,7 @@ OPENSC_FEATURES = pcsc
 !IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
 OPENSSL_INCL_DIR = /IC:\openssl\include
 OPENSSL_LIB = C:\openssl\out32dll\libeay32.lib
-PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe
+PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe piv-tool.exe
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
 !ENDIF
 
