@@ -3,7 +3,7 @@ TOPDIR = ..\..
 TARGET = scconf.lib
 HEADERS = scconf.h
 HEADERSDIR = $(TOPDIR)\src\include\opensc
-OBJECTS = parse.obj scconf.obj write.obj sclex.obj
+OBJECTS = scconf.obj parse.obj write.obj sclex.obj
 
 .SUFFIXES : .l
 

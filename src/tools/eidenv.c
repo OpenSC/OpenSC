@@ -80,7 +80,7 @@ static struct {
 static void show_version(void)
 {
 	fprintf(stderr,
-		"eidenv - EstEID utility version " VERSION "\n"
+		"eidenv - EstEID utility version " PACKAGE_VERSION "\n"
 		"\n"
 		"Copyright (c) 2004 Martin Paljak <martin@paljak.pri.ee>\n"
 		"Licensed under GPL v2\n");

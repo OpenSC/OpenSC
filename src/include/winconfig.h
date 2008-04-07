@@ -3,7 +3,9 @@
 
 #include <stdio.h>
 #include <windows.h>
+#include <winscard.h>
 #include <sys/timeb.h>
+#include <sys/stat.h>
 
 #ifndef strcasecmp
 #define strcasecmp stricmp
@@ -64,17 +66,30 @@
 #define F_OK  0		/* test whether exist.  */
 #endif
 
+#ifndef S_IRUSR 
+#define S_IRUSR S_IREAD
+#endif
+
+#ifndef S_IWUSR 
+#define S_IWUSR S_IWRITE
+#endif
+
 #define HAVE_IO_H
-#define HAVE_GETPASS
-#define HAVE_PCSC
+#define ENABLE_PCSC
+#define DEFAULT_PCSC_PROVIDER "winscard.dll"
 
 #define PATH_MAX _MAX_PATH
 
-#ifndef VERSION
-#define VERSION "0.11.4"
+#ifndef PACKAGE_VERSION
+#define PACKAGE_VERSION "0.11.4.2"
 #endif
 
-/* src/common/getpass.c */
-extern char *getpass(const char *prompt);
+#ifndef PACKAGE_NAME
+#define PACKAGE_NAME "opensc"
+#endif
+
+#ifndef OPENSC_FEATURES
+#define OPENSC_FEATURES ""
+#endif
 
 #endif

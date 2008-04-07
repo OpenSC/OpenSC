@@ -14,8 +14,8 @@ LIBLTDL_LIB =     # E.g. C:\libtool-1.5.8-lib\lib\libltdl.lib
 # - uncomment the line starting with OPENSSL_DEF
 # - set the OPENSSL_INCL_DIR below to your openssl include directory, preceded by "/I"
 # - set the OPENSSL_LIB below to your openssl lib file
-#OPENSSL_DEF = /DHAVE_OPENSSL
-!IF "$(OPENSSL_DEF)" == "/DHAVE_OPENSSL"
+#OPENSSL_DEF = /DENABLE_OPENSSL
+!IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
 OPENSSL_INCL_DIR = /IC:\openssl\include
 OPENSSL_LIB = C:\openssl\out32dll\libeay32.lib
 PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe
@@ -26,14 +26,14 @@ PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe
 # - uncomment the line starting with ZLIB_DEF 
 # - set the ZLIB_INCL_DIR below to the zlib include lib proceeded by "/I"
 # - set the ZLIB_LIB  below to your zlib lib file
-#ZLIB_DEF = /DHAVE_ZLIB_H
-!IF "$(ZLIB_DEF)" == "/DHAVE_ZLIB_H"
+#ZLIB_DEF = /DENABLE_ZLIB
+!IF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
 ZLIB_INCL_DIR = /IC:\ZLIB\INCLUDE
 ZLIB_LIB = C:\ZLIB\LIB\zlib.lib 
 !ENDIF
 
 
-COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc /I$(TOPDIR)\src\common $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) /D_WIN32_WINNT=0x0400 $(OPENSSL_DEF) $(ZLIB_DEF)
+COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc /I$(TOPDIR)\src\common $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) /D_WIN32_WINNT=0x0400 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF)
 LINKFLAGS = /DEBUG /NOLOGO /INCREMENTAL:NO /MACHINE:IX86
 
 

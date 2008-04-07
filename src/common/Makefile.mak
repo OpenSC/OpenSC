@@ -1,9 +1,9 @@
 TOPDIR = ..\..
 
-HEADERS = my_getopt.h strlcpy.h
+HEADERS = compat_getpass.h compat_getopt.h compat_strlcpy.h
 HEADERSDIR = $(TOPDIR)\src\include
 TARGET = common.lib
-OBJECTS = getpass.obj my_getopt.obj strlcpy.obj
+OBJECTS = compat_getpass.obj compat_getopt.obj compat_strlcpy.obj
 
 all: install-headers $(TARGET)
 

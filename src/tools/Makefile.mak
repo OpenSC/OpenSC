@@ -4,7 +4,7 @@ TOPDIR = ..\..
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
 TARGETS = opensc-tool.exe opensc-explorer.exe pkcs15-tool.exe pkcs15-crypt.exe \
-		piv-tool.exe pkcs11-tool.exe cardos-info.exe eidenv.exe \
+		pkcs11-tool.exe cardos-info.exe eidenv.exe rutoken-tool.exe \
 		$(PROGRAMS_OPENSSL)
 
 all: util.obj $(TARGETS)
