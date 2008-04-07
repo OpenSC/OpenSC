@@ -9,6 +9,8 @@
 LIBLTDL_INCL =    # E.g. /IC:\libtool-1.5.8-lib\include
 LIBLTDL_LIB =     # E.g. C:\libtool-1.5.8-lib\lib\libltdl.lib
 
+OPENSC_FEATURES = pcsc
+
 # If you want support for OpenSSL (needed for a.o. pkcs15-init tool and openssl engine):
 # - download and build OpenSSL
 # - uncomment the line starting with OPENSSL_DEF
@@ -19,6 +21,7 @@ LIBLTDL_LIB =     # E.g. C:\libtool-1.5.8-lib\lib\libltdl.lib
 OPENSSL_INCL_DIR = /IC:\openssl\include
 OPENSSL_LIB = C:\openssl\out32dll\libeay32.lib
 PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe
+OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
 !ENDIF
 
 # If you want support for zlib (Used for PIV, infocamere and actalis:
@@ -30,10 +33,11 @@ PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe
 !IF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
 ZLIB_INCL_DIR = /IC:\ZLIB\INCLUDE
 ZLIB_LIB = C:\ZLIB\LIB\zlib.lib 
+OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
 !ENDIF
 
 
-COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc /I$(TOPDIR)\src\common $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) /D_WIN32_WINNT=0x0400 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF)
+COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc /I$(TOPDIR)\src\common $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) /D_WIN32_WINNT=0x0400 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF) "/DOPENSC_FEATURES=$(OPENSC_FEATURES)"
 LINKFLAGS = /DEBUG /NOLOGO /INCREMENTAL:NO /MACHINE:IX86
 
 

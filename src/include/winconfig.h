@@ -89,7 +89,7 @@
 #endif
 
 #ifndef OPENSC_FEATURES
-#define OPENSC_FEATURES ""
+#define OPENSC_FEATURES "N/A"
 #endif
 
 #endif
