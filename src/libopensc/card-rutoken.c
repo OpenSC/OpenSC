@@ -126,6 +126,11 @@ static int rutoken_match_card(sc_card_t *card)
 static int rutoken_init(sc_card_t *card)
 {
 	int ret = SC_ERROR_MEMORY_FAILURE;
+	unsigned int flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
+				/* SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_SHA1
+				| SC_ALGORITHM_RSA_HASH_MD5_SHA1
+				| SC_ALGORITHM_RSA_PAD_NONE */
+	sc_algorithm_info_t info;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
@@ -139,17 +144,12 @@ static int rutoken_init(sc_card_t *card)
 	}
 	/* add algorithm 
 	TODO: may nid som other flag  */
-	unsigned int flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
-				/* SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_SHA1
-				| SC_ALGORITHM_RSA_HASH_MD5_SHA1
-				| SC_ALGORITHM_RSA_PAD_NONE */
 
 	_sc_card_add_rsa_alg(card, 256, flags, 0);
 	_sc_card_add_rsa_alg(card, 512, flags, 0);
 	_sc_card_add_rsa_alg(card, 768, flags, 0);
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
-	sc_algorithm_info_t info;
 	flags = SC_ALGORITHM_GOST_CRYPT_PZ | SC_ALGORITHM_GOST_CRYPT_GAMM
 		| SC_ALGORITHM_GOST_CRYPT_GAMMOS;
 	memset(&info, 0, sizeof(info));
@@ -282,11 +282,11 @@ static int make_le_path(u8 *hPath, size_t len)
 
 static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
-	SC_FUNC_CALLED(card->ctx, 1);
 	u8 rbuf[256];
 	u8 previd[2];
 	int r = 0, len=0;
 	sc_apdu_t apdu;
+
 	SC_FUNC_CALLED(card->ctx, 1);
 	/*  sc_debug(card->ctx, "\n\tpath = %s\n\ttype = %d", hexdump(path, pathlen), in_path->type);  */
 	/*  prepare & transmit APDU  */
@@ -706,12 +706,13 @@ static int rutoken_set_security_env(sc_card_t *card,
 			 const sc_security_env_t *env,
 			 int se_num)
 {
-	SC_FUNC_CALLED(card->ctx, 1);
 	sc_apdu_t apdu;
 	auth_senv_t *senv = (auth_senv_t*)card->drv_data;
-	if (!senv || !env) return SC_ERROR_INVALID_ARGUMENTS;
 	u8	data[3] = {0x83, 0x01, env->key_ref[0]};
 	int ret = SC_NO_ERROR;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+	if (!senv || !env) return SC_ERROR_INVALID_ARGUMENTS;
 	if(env->algorithm == SC_ALGORITHM_RSA)
 	{
 		senv->algorithm = SC_ALGORITHM_RSA_RAW;
@@ -1195,8 +1196,9 @@ static int sign_ext(sc_card_t *card, const u8 *data, size_t len, u8 *out, size_t
 		r = RSA_private_encrypt(len, data, out, pkey->pkey.rsa, RSA_PKCS1_PADDING);
 		if ( r < 0)
 			{
-				ret = SC_ERROR_INTERNAL;
 				char error[1024];
+
+				ret = SC_ERROR_INTERNAL;
 				ERR_load_crypto_strings();
 				ERR_error_string(ERR_get_error(), error);
 				sc_error(card->ctx, error);
@@ -1224,8 +1226,9 @@ static int decipher_ext(sc_card_t *card, const u8 *data, size_t len, u8 *out, si
 		ret = RSA_private_decrypt(len, data, out, pkey->pkey.rsa, RSA_PKCS1_PADDING);
 		if ( ret < 0)
 			{
-			ret = SC_ERROR_INTERNAL;
 			char error[1024];
+
+			ret = SC_ERROR_INTERNAL;
 			ERR_load_crypto_strings();
 			ERR_error_string(ERR_get_error(), error);
 			sc_error(card->ctx, error);

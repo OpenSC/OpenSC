@@ -97,6 +97,7 @@ static int bin_to_private_blob(RUPRIVATEKEYBLOB *pr_blob, const u8* buf, size_t 
 {
 	const u8 *tmp;
 	size_t len = 2 + sizeof(pr_blob->blobheader) + sizeof(pr_blob->rsapubkey);
+	uint32_t bitlen;
 
 	if (buf_len < len)
 		return -1;
@@ -108,7 +109,7 @@ static int bin_to_private_blob(RUPRIVATEKEYBLOB *pr_blob, const u8* buf, size_t 
 	memcpy(&pr_blob->rsapubkey, tmp, sizeof(pr_blob->rsapubkey));
 	tmp += sizeof(pr_blob->rsapubkey);
 
-	uint32_t bitlen = pr_blob->rsapubkey.bitlen;
+	bitlen = pr_blob->rsapubkey.bitlen;
 
 	len += bitlen/8 * 2  +  bitlen/16 * 5;
 	if (buf_len < len)
@@ -271,6 +272,7 @@ static int get_sc_pksc15_prkey_rsa(const RUPRIVATEKEYBLOB *pr_blob, struct sc_pk
 
 static int private_blob_to_bin(const RUPRIVATEKEYBLOB *pr_blob, u8 *buf, size_t *buf_len)
 {
+	u8 *tmp;
 	size_t len = 2 + sizeof(pr_blob->blobheader) + sizeof(pr_blob->rsapubkey);
 
 	if(*buf_len < len)
@@ -278,7 +280,7 @@ static int private_blob_to_bin(const RUPRIVATEKEYBLOB *pr_blob, u8 *buf, size_t 
 
 	buf[0] = 2;
 	buf[1] = 1;
-	u8 *tmp = buf + 2;
+	tmp = buf + 2;
 	memcpy(tmp, &pr_blob->blobheader, sizeof(pr_blob->blobheader));
 	tmp += sizeof(pr_blob->blobheader);
 
