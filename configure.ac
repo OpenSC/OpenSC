@@ -602,6 +602,7 @@ AC_OUTPUT([
 	src/Makefile
 	src/common/Makefile
 	src/include/Makefile
+	src/include/winconfig.h
 	src/include/opensc/Makefile
 	src/libopensc/Makefile
 	src/libopensc/opensc-config
@@ -618,7 +619,7 @@ AC_OUTPUT([
 	src/tests/regression/Makefile
 	src/tools/Makefile
 	win32/Makefile
-	win32/versioninfo.rc
+	win32/versioninfo.rc.in
 ])
 
 cat <<EOF

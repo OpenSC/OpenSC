@@ -12,7 +12,7 @@ TARGET3			= pkcs11-spy.dll
 OBJECTS			= pkcs11-global.obj pkcs11-session.obj pkcs11-object.obj misc.obj slot.obj \
 			  mechanism.obj openssl.obj secretkey.obj framework-pkcs15.obj \
 			  framework-pkcs15init.obj debug.obj \
-			  $(TOPDIR)\win32\version.res
+			  versioninfo.res
 OBJECTS2		= libpkcs11.obj
 OBJECTS3		= pkcs11-spy.obj pkcs11-display.obj libpkcs11.obj
 

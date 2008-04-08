@@ -52,5 +52,8 @@ install-headers-dir:
 .c.obj::
 	cl $(COPTS) /c $<
 
+.rc.res::
+	rc /l 0x809 /r /fo"$*.res" $<
+
 clean::
 	del /Q *.obj *.dll *.exe *.pdb *.lib *.exp *.def

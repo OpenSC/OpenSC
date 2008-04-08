@@ -47,7 +47,9 @@ libopensc_la_SOURCES = \
 	\
 	libopensc.exports
 if WIN32
-nodist_libopensc_la_SOURCES = versioninfo.rc
+libopensc_la_SOURCES += versioninfo.rc
+else
+dist_noinst_DATA = versioninfo.rc
 endif
 libopensc_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(OPTIONAL_OPENCT_LIBS) \
 	$(OPTIONAL_ZLIB_LIBS) $(LTLIB_LIBS) \
@@ -63,7 +65,7 @@ libopensc_la_LDFLAGS = $(AM_LDFLAGS) \
 
 versioninfo.rc:
 	sed 's/@@FILE_DESCRIPTION@@/OpenSC Core Library/g' \
-		"$(top_builddir)/win32/versioninfo.rc" > versioninfo.rc
+		"$(top_builddir)/win32/versioninfo.rc.in" > versioninfo.rc
 
 if WIN32
 # def file required for MS users to build library

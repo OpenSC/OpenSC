@@ -81,11 +81,11 @@
 #define PATH_MAX _MAX_PATH
 
 #ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "0.11.4.2"
+#define PACKAGE_VERSION "@PACKAGE_VERSION@"
 #endif
 
 #ifndef PACKAGE_NAME
-#define PACKAGE_NAME "opensc"
+#define PACKAGE_NAME "@PACKAGE_NAME@"
 #endif
 
 #ifndef OPENSC_FEATURES

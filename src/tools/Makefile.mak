@@ -17,7 +17,7 @@ all: util.obj $(TARGETS)
         link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj util.obj \
         ..\common\common.lib ..\scconf\scconf.lib ..\libopensc\opensc.lib \
         ..\pkcs15init\pkcs15init.lib ..\pkcs11\libpkcs11.lib \
-        $(TOPDIR)\win32\version.res $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
+        versioninfo.res $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
 		if EXIST $@.manifest mt -manifest $@.manifest -outputresource:$@;1
 
 netkey-tool.exe: netkey-tool.c
@@ -25,5 +25,5 @@ netkey-tool.exe: netkey-tool.c
         link $(LINKFLAGS) /pdb:netkey-tool.pdb /out:netkey-tool.exe netkey-tool.obj \
         ..\common\common.lib ..\scconf\scconf.lib ..\libopensc\opensc.lib \
         ..\pkcs15init\pkcs15init.lib ..\pkcs11\libpkcs11.lib \
-        $(TOPDIR)\win32\version.res $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
+        versioninfo.res $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
 		if EXIST netkey-tool.exe.manifest mt -manifest netkey-tool.exe.manifest -outputresource:netkey-tool.exe;1

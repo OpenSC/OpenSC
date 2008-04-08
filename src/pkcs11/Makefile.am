@@ -24,18 +24,12 @@ OPENSC_PKCS11_LIBS = $(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS) \
 libpkcs11_la_SOURCES = libpkcs11.c
 
 opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-disabled.c
-if WIN32
-nodist_opensc_pkcs11_la_SOURCES = versioninfo.rc
-endif
 opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/opensc-pkcs11.exports" \
 	-module -avoid-version -no-undefined
 
 onepin_opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-enabled.c
-if WIN32
-nodist_onepin_opensc_pkcs11_la_SOURCES = versioninfo.rc
-endif
 onepin_opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/opensc-pkcs11.exports" \
@@ -43,13 +37,18 @@ onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 
 
 pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h pkcs11-spy.exports
-if WIN32
-nodist_pkcs11_spy_la_SOURCES = versioninfo.rc
-endif
 pkcs11_spy_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) libpkcs11.la
 pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/pkcs11-spy.exports" \
 	-module -avoid-version -no-undefined
+
+if WIN32
+opensc_pkcs11_la_SOURCES += versioninfo.rc
+onepin_opensc_pkcs11_la_SOURCES += versioninfo.rc
+pkcs11_spy_la_SOURCES += versioninfo.rc
+else
+dist_noinst_DATA = versioninfo.rc
+endif
 
 jar-dir:
 	if test ! -d jar-dir ; then mkdir jar-dir ; fi
@@ -83,4 +82,4 @@ endif
 
 versioninfo.rc:
 	sed 's/@@FILE_DESCRIPTION@@/OpenSC PKCS#11 Provider/g' \
-		"$(top_builddir)/win32/versioninfo.rc" > versioninfo.rc
+		"$(top_builddir)/win32/versioninfo.rc.in" > versioninfo.rc

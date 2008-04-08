@@ -34,7 +34,7 @@ OBJECTS			= \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
 	pkcs15-rutoken.obj pkcs15-prkey-rutoken.obj \
 	compression.obj p15card-helper.obj \
-	$(TOPDIR)\win32\version.res
+	versioninfo.res
 
 all: install-headers $(TARGET)
 

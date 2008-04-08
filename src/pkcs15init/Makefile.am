@@ -35,7 +35,9 @@ libpkcs15init_la_SOURCES = \
 	pkcs15-muscle.c pkcs15-asepcos.c pkcs15-rutoken.c \
 	pkcs15init.exports
 if WIN32
-nodist_libpkcs15init_la_SOURCES = versioninfo.rc
+libpkcs15init_la_SOURCES += versioninfo.rc
+else
+dist_noinst_DATA = versioninfo.rc
 endif
 libpkcs15init_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) \
 	$(top_builddir)/src/libopensc/libopensc.la \
@@ -48,7 +50,7 @@ libpkcs15init_la_LDFLAGS = $(AM_LDFLAGS) \
 
 versioninfo.rc:
 	sed 's/@@FILE_DESCRIPTION@@/OpenSC Core Library/g' \
-		"$(top_builddir)/win32/versioninfo.rc" > versioninfo.rc
+		"$(top_builddir)/win32/versioninfo.rc.in" > versioninfo.rc
 
 if WIN32
 # def file required for MS users to build library

@@ -16,7 +16,9 @@ INCLUDES = -I$(top_srcdir)/src/common
 libscconf_la_SOURCES = scconf.c parse.c write.c sclex.c \
 	scconf.exports
 if WIN32
-nodist_libscconf_la_SOURCES = versioninfo.rc
+libscconf_la_SOURCES += versioninfo.rc
+else
+dist_noinst_DATA += versioninfo.rc
 endif
 libscconf_la_LIBADD = $(top_builddir)/src/common/libcompat.la
 libscconf_la_LDFLAGS = $(AM_LDFLAGS) \
@@ -29,4 +31,4 @@ test_conf_LDADD = libscconf.la
 
 versioninfo.rc:
 	sed 's/@@FILE_DESCRIPTION@@/OpenSC Core Library/g' \
-		"$(top_builddir)/win32/versioninfo.rc" > versioninfo.rc
+		"$(top_builddir)/win32/versioninfo.rc.in" > versioninfo.rc

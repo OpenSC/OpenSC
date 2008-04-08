@@ -1,5 +1,5 @@
 
-SUBDIRS = win32 src
+SUBDIRS = src
 
 all::
 

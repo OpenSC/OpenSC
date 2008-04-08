@@ -41,20 +41,22 @@ rutoken_tool_SOURCES = rutoken-tool.c util.c
 rutoken_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 if WIN32
-nodist_opensc_tool_SOURCES = versioninfo.rc
-nodist_piv_tool_SOURCES = versioninfo.rc
-nodist_opensc_explorer_SOURCES = versioninfo.rc
-nodist_pkcs15_tool_SOURCES = versioninfo.rc
-nodist_pkcs11_tool_SOURCES = versioninfo.rc
-nodist_pkcs15_crypt_SOURCES = versioninfo.rc
-nodist_cryptoflex_tool_SOURCES = versioninfo.rc
-nodist_pkcs15_init_SOURCES = versioninfo.rc
-nodist_cardos_info_SOURCES = versioninfo.rc
-nodist_eidenv_SOURCES = versioninfo.rc
-nodist_netkey_tool_SOURCES = versioninfo.rc
-nodist_rutoken_tool_SOURCES = versioninfo.rc
+opensc_tool_SOURCES += versioninfo.rc
+piv_tool_SOURCES += versioninfo.rc
+opensc_explorer_SOURCES += versioninfo.rc
+pkcs15_tool_SOURCES += versioninfo.rc
+pkcs11_tool_SOURCES += versioninfo.rc
+pkcs15_crypt_SOURCES += versioninfo.rc
+cryptoflex_tool_SOURCES += versioninfo.rc
+pkcs15_init_SOURCES += versioninfo.rc
+cardos_info_SOURCES += versioninfo.rc
+eidenv_SOURCES += versioninfo.rc
+netkey_tool_SOURCES += versioninfo.rc
+rutoken_tool_SOURCES += versioninfo.rc
+else
+dist_noinst_DATA = versioninfo.rc
 endif
 
 versioninfo.rc:
 	sed 's/@@FILE_DESCRIPTION@@/OpenSC Utility/g' \
-		"$(top_builddir)/win32/versioninfo.rc" > versioninfo.rc
+		"$(top_builddir)/win32/versioninfo.rc.in" > versioninfo.rc
