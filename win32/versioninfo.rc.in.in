@@ -1,8 +1,6 @@
 /* This file is processed by configure to create versioninfo.rc */
 /* Every component changes @@FILE_DESCRIPTION@@ to local string */
 
-#include <afxres.h>
-
 VS_VERSION_INFO VERSIONINFO
 	FILEVERSION @OPENSC_LT_CURRENT@,@OPENSC_LT_AGE@,@OPENSC_LT_REVISION@,0
 	PRODUCTVERSION @OPENSC_VERSION_MAJOR@,@OPENSC_VERSION_MINOR@,@OPENSC_VERSION_FIX@,0
