@@ -92,5 +92,5 @@ endif
 maintainer-clean-local:
 	-rm -rf "$(srcdir)/html.out" "$(srcdir)/man.out"
 
-maintainer-clean:
+distclean-local:
 	-rm -fr html.out html.tmp man.out man.tmp api.work

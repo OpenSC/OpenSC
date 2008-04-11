@@ -1,4 +1,5 @@
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
+MAINTAINERCLEANFILES = \
+	$(srcdir)/Makefile.in $(srcdir)/winconfig.h
 EXTRA_DIST = Makefile.mak
 
 SUBDIRS = opensc
