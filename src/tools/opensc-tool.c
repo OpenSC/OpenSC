@@ -51,6 +51,8 @@ static const struct option options[] = {
 	{ "atr",		0, NULL,		'a' },
 	{ "serial",		0, NULL,	OPT_SERIAL  },
 	{ "name",		0, NULL,		'n' },
+	{ "get-conf-entry",	1, NULL,		'G' },
+	{ "set-conf-entry",	1, NULL,		'S' },
 	{ "list-readers",	0, NULL, 		'l' },
 	{ "list-drivers",	0, NULL,		'D' },
 	{ "list-rdrivers",	0, NULL,		'R' },
@@ -68,6 +70,8 @@ static const char *option_help[] = {
 	"Prints the ATR bytes of the card",
 	"Prints the card serial number",
 	"Identify the card and print its name",
+	"Get configuration key, format: section:name:key",
+	"Set configuration key, format: section:name:key:value",
 	"Lists all configured readers",
 	"Lists all installed card drivers",
 	"Lists all installed reader drivers",
@@ -107,6 +111,134 @@ static int opensc_info(void)
 #endif
 	printf ("Enabled features:%s\n", OPENSC_FEATURES);
 	return 0;
+}
+
+static int opensc_get_conf_entry(const char *config)
+{
+	scconf_block *conf_block = NULL, **blocks;
+	char *buffer = NULL;
+	char *section = NULL;
+	char *name = NULL;
+	char *key = NULL;
+	int r = 0;
+
+	if (ctx->conf == NULL) {
+		r = ENOENT;
+		goto cleanup;
+	}
+
+	if ((buffer = strdup(config)) == NULL) {
+		r = ENOMEM;
+		goto cleanup;
+	}
+
+	section = buffer;
+	name = section == NULL ? NULL : strchr(section+1, ':');
+	key = name == NULL ? NULL : strchr(name+1, ':');
+	if (key == NULL) {
+		r = EINVAL;
+		goto cleanup;
+	}
+	*name = '\0';
+	name++;
+	*key = '\0';
+	key++;
+
+	blocks = scconf_find_blocks(ctx->conf, NULL, section, name);
+	if (blocks[0])
+		conf_block = blocks[0];
+	free(blocks);
+	if (conf_block != NULL) {
+		const char *value = scconf_get_str(conf_block, key, NULL);
+
+		if (value != NULL) {
+			printf ("%s\n", value);
+		}
+	}
+
+	r = 0;
+
+cleanup:
+
+	if (buffer != NULL)
+		free(buffer);
+
+	return r;
+}
+
+static int opensc_set_conf_entry(const char *config)
+{
+	scconf_block *conf_block = NULL, **blocks;
+	char *buffer = NULL;
+	char *section = NULL;
+	char *name = NULL;
+	char *key = NULL;
+	char *value = NULL;
+	int r = 0;
+
+	if (ctx->conf == NULL) {
+		r = ENOENT;
+		goto cleanup;
+	}
+
+	if ((buffer = strdup(config)) == NULL) {
+		r = ENOMEM;
+		goto cleanup;
+	}
+
+	section = buffer;
+	name = section == NULL ? NULL : strchr(section+1, ':');
+	key = name == NULL ? NULL : strchr(name+1, ':');
+	value = key == NULL ? NULL : strchr(key+1, ':');
+	if (value == NULL) {
+		r = EINVAL;
+		goto cleanup;
+	}
+	*name = '\0';
+	name++;
+	*key = '\0';
+	key++;
+	*value = '\0';
+	value++;
+
+	blocks = scconf_find_blocks(ctx->conf, NULL, section, name);
+	if (blocks[0])
+		conf_block = blocks[0];
+	free(blocks);
+	if (conf_block != NULL) {
+		scconf_item *item;
+
+		for (item = conf_block->items; item != NULL; item = item->next) {
+			scconf_list *list;
+
+			if ((item->type != SCCONF_ITEM_TYPE_VALUE)
+			    || (strcmp(item->key, key) != 0))
+				continue;
+			list = item->value.list;
+			scconf_list_destroy(list);
+			list = NULL;
+			scconf_list_add(&list, value);
+			item->value.list = list;
+			break;
+		}
+		if (item == NULL)
+			scconf_put_str(conf_block, key, value);
+	}
+
+	/* Write */
+	if ((r = scconf_write(ctx->conf, ctx->conf->filename)) != 0) {
+		fprintf(stderr, "scconf_write(): %s\n", strerror(r));
+		goto cleanup;
+	}
+
+	r = 0;
+
+cleanup:
+
+	if (buffer != NULL)
+		free(buffer);
+
+	return r;
 }
 
 static int list_readers(void)
@@ -402,6 +534,8 @@ int main(int argc, char * const argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	int do_info = 0;
+	int do_get_conf_entry = 0;
+	int do_set_conf_entry = 0;
 	int do_list_readers = 0;
 	int do_list_drivers = 0;
 	int do_list_rdrivers = 0;
@@ -412,13 +546,14 @@ int main(int argc, char * const argv[])
 	int do_print_name = 0;
 	int action_count = 0;
 	const char *opt_driver = NULL;
+	const char *opt_conf_entry = NULL;
 	sc_context_param_t ctx_param;
 		
 	setbuf(stderr, NULL);
 	setbuf(stdout, NULL);
 
 	while (1) {
-		c = getopt_long(argc, argv, "inlfr:vs:DRc:aw", options, &long_optind);
+		c = getopt_long(argc, argv, "inlG:S:fr:vs:DRc:aw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -426,6 +561,16 @@ int main(int argc, char * const argv[])
 		switch (c) {
 		case 'i':
 			do_info = 1;
+			action_count++;
+			break;
+		case 'G':
+			do_get_conf_entry = 1;
+			opt_conf_entry = optarg;
+			action_count++;
+			break;
+		case 'S':
+			do_set_conf_entry = 1;
+			opt_conf_entry = optarg;
 			action_count++;
 			break;
 		case 'l':
@@ -498,6 +643,16 @@ int main(int argc, char * const argv[])
 	}
 	if (verbose > 1)
 		ctx->debug = verbose-1;
+	if (do_get_conf_entry) {
+		if ((err = opensc_get_conf_entry (opt_conf_entry)))
+			goto end;
+		action_count--;
+	}
+	if (do_set_conf_entry) {
+		if ((err = opensc_set_conf_entry (opt_conf_entry)))
+			goto end;
+		action_count--;
+	}
 	if (do_list_rdrivers) {
 		if ((err = list_reader_drivers()))
 			goto end;
