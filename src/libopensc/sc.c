@@ -33,8 +33,8 @@
 #include <string.h>
 #include <assert.h>
 
-#ifdef VERSION
-static const char *sc_version = VERSION;
+#ifdef PACKAGE_VERSION
+static const char *sc_version = PACKAGE_VERSION;
 #else
 static const char *sc_version = "(undef)";
 #endif
