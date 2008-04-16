@@ -3,7 +3,9 @@ EXTRA_DIST = Makefile.mak
 
 noinst_LTLIBRARIES = libcompat.la
 dist_noinst_DATA = \
-	README.compat_getopt ChangeLog.compat_getopt LICENSE.compat_getopt compat_getopt.txt \
+	README.compat_getopt ChangeLog.compat_getopt \
+	LICENSE.compat_getopt compat_getopt.txt \
+	compat_getopt_main.c \
 	README.compat_strlcpy compat_strlcpy.3
 
 libcompat_la_SOURCES = \
