@@ -5,7 +5,7 @@ TARGET                  = opensc.dll opensc_a.lib
 
 HEADERS			= \
 	asn1.h cardctl.h cards.h emv.h errors.h \
-	log.h opensc.h pkcs15.h rutoken.h types.h ui.h
+	log.h opensc.h pkcs15.h types.h ui.h
 
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
 
@@ -32,7 +32,7 @@ OBJECTS			= \
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj pkcs15-gemsafeGPK.obj \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
-	pkcs15-rutoken.obj pkcs15-prkey-rutoken.obj \
+	pkcs15-rutoken.obj \
 	compression.obj p15card-helper.obj \
 	versioninfo.res
 

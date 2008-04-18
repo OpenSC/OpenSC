@@ -184,8 +184,6 @@ sc_release_context
 sc_reset
 sc_reset_retry_counter
 sc_restore_security_env
-sc_rutoken_get_prkey_from_bin
-sc_rutoken_get_bin_from_prkey
 sc_select_file
 sc_set_card_driver
 sc_set_security_env

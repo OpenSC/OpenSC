@@ -34,7 +34,6 @@
 #include <opensc/opensc.h>
 #include <opensc/cardctl.h>
 #include <opensc/pkcs15.h>
-#include <opensc/rutoken.h>
 #include "util.h"
 
 #define IV_SIZE         8

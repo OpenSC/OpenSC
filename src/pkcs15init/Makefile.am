@@ -24,7 +24,7 @@ dist_pkgdata_DATA = \
 	rutoken.profile \
 	asepcos.profile
 
-DEFS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
+AM_CPPFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS)
 INCLUDES = -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
 

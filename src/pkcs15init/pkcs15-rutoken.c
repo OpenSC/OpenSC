@@ -1,5 +1,5 @@
 /*
- * ruToken specific operation for PKCS15 initialization
+ * Rutoken specific operation for PKCS15 initialization
  *
  * Copyright (C) 2007  Pavel Mironchik <rutoken@rutoken.ru>
  * Copyright (C) 2007  Eugene Hermann <rutoken@rutoken.ru> 
@@ -18,9 +18,19 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
- 
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
+#if defined(HAVE_INTTYPES_H)
+#include <inttypes.h>
+#elif defined(HAVE_STDINT_H)
+#include <stdint.h>
+#elif defined(_MSC_VER)
+typedef unsigned __int32 uint32_t;
+typedef unsigned __int16 uint16_t;
+#else
+#warning no uint32_t type available, please contact opensc-devel@opensc-project.org
 #endif
 #include <sys/types.h>
 #include <stdlib.h>
@@ -31,11 +41,14 @@
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
 #include <opensc/pkcs15.h>
-#include <opensc/rutoken.h>
 #include "pkcs15-init.h"
 #include "profile.h"
 
-#define MAX_ID 255
+#define RUTOKEN_MIN_ID_PRKEY            0x0000
+#define RUTOKEN_MAX_ID_PRKEY            0x00FF
+#define RUTOKEN_MIN_ID_OTHER            (RUTOKEN_MAX_ID_PRKEY + 1)
+#define RUTOKEN_MAX_ID_OTHER            0x0FFF
+#define RUTOKEN_BUFLEN_LISTFILES        (2 * (RUTOKEN_MAX_ID_OTHER + 1))
 
 static const sc_SecAttrV2_t pr_sec_attr = {0x43, 1, 1, 0, 0, 0, 0, 1, 2, 2, 0, 0, 0, 0, 2};
 static const sc_SecAttrV2_t pb_sec_attr = {0x42, 0, 1, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 2};
@@ -47,10 +60,10 @@ static const sc_SecAttrV2_t p1_sec_attr = {0x43, 1, 1, 0, 0, 0, 0,-1, 1, 1, 0, 0
 
 enum DF_IDs
 {
-	PrKDFid = 0x1001,
-	PuKDFid = 0x1002,
-	CDFid   = 0x1003,
-	DODFid  = 0x1004,
+	PrKDFid = 0x0000,
+	PuKDFid = 0x0000,
+	CDFid   = 0x0000,
+	DODFid  = 0x0000,
 	AODFid  = 0xFFFF
 };
 
@@ -75,40 +88,76 @@ static const struct
 			{ AODF_name,  AODFid,  SC_PKCS15_AODF  }
 		};
 
-/*
- * Create/override new EF.
- */
-static int rutoken_create_file(sc_card_t *card, sc_path_t *path, sc_file_t *ef)
+
+static int rutoken_get_bin_from_prkey(const struct sc_pkcs15_prkey_rsa *rsa,
+			u8 *bufkey, size_t *bufkey_size)
 {
-	int ret = SC_SUCCESS;
-	sc_path_t path_dir;
+	const uint32_t bitlen = rsa->modulus.len * 8;
+	size_t i, len;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	if (    rsa->modulus.len  != bitlen/8
+	     || rsa->p.len        != bitlen/16
+	     || rsa->q.len        != bitlen/16
+	     || rsa->dmp1.len     != bitlen/16
+	     || rsa->dmq1.len     != bitlen/16
+	     || rsa->iqmp.len     != bitlen/16
+	     || rsa->d.len        != bitlen/8
+	     || rsa->exponent.len > sizeof(uint32_t)
+	)
+		return -1;
 
-	if (path)
-	{
-		sc_ctx_suppress_errors_on(card->ctx);
-		ret = card->ops->select_file(card, path, NULL);
-		sc_ctx_suppress_errors_off(card->ctx);
-		if (ret == SC_SUCCESS)
-		{
-			sc_path_t del_path;
-			del_path.len = 2;
-			del_path.type = SC_PATH_TYPE_FILE_ID;
-			del_path.value[0] = (u8)(ef->id / 256);
-			del_path.value[1] = (u8)(ef->id % 256);
-			if (card->ops->select_file(card, &del_path, NULL) == SC_SUCCESS)
-				ret = card->ops->delete_file(card, &del_path);
-		}
-		path_dir = *path;
-		path_dir.len -= 2;
-		ret = card->ops->select_file(card, &path_dir, NULL);
-	}
-	if (ret == SC_SUCCESS)
-	{
-		ret = card->ops->create_file(card, ef);
-	}
-	return ret;
+	if (*bufkey_size < 14 + sizeof(uint32_t) * 2 + bitlen/8 * 2 + bitlen/16 * 5)
+		return -1;
+
+	bufkey[0] = 2;
+	bufkey[1] = 1;
+
+	/* BLOB header */
+	bufkey[2] = 0x07; /* Type */
+	bufkey[3] = 0x02; /* Version */
+	/* reserve */
+	bufkey[4] = 0;
+	bufkey[5] = 0;
+	/* aiKeyAlg */
+	bufkey[6] = 0;
+	bufkey[7] = 0xA4;
+	bufkey[8] = 0;
+	bufkey[9] = 0;
+
+	/* RSAPUBKEY */
+	/* magic "RSA2" */
+	bufkey[10] = 0x52;
+	bufkey[11] = 0x53;
+	bufkey[12] = 0x41;
+	bufkey[13] = 0x32;
+	len = 14;
+	/* bitlen */
+	for (i = 0; i < sizeof(uint32_t); ++i)
+		bufkey[len++] = (bitlen >> i*8) & 0xff;
+	/* pubexp */
+	for (i = 0; i < sizeof(uint32_t); ++i)
+		if (i < rsa->exponent.len)
+			bufkey[len++] = rsa->exponent.data[rsa->exponent.len - 1 - i];
+		else
+			bufkey[len++] = 0;
+
+#define MEMCPY_BUF_REVERSE_RSA(NAME) \
+	do { \
+		for (i = 0; i < rsa->NAME.len; ++i) \
+			bufkey[len++] = rsa->NAME.data[rsa->NAME.len - 1 - i]; \
+	} while (0)
+
+	/* PRIVATEKEYBLOB tail */
+	MEMCPY_BUF_REVERSE_RSA(modulus); /* modulus */
+	MEMCPY_BUF_REVERSE_RSA(p); /* prime1 */
+	MEMCPY_BUF_REVERSE_RSA(q); /* prime2 */
+	MEMCPY_BUF_REVERSE_RSA(dmp1); /* exponent1 */
+	MEMCPY_BUF_REVERSE_RSA(dmq1); /* exponent2 */
+	MEMCPY_BUF_REVERSE_RSA(iqmp); /* coefficient */
+	MEMCPY_BUF_REVERSE_RSA(d); /* privateExponent */
+
+	*bufkey_size = len;
+	return 0;
 }
 
 /*
@@ -177,7 +226,8 @@ rutoken_select_key_reference(sc_profile_t *profile, sc_card_t *card,
 	}
 	sc_append_file_id(&key_info->path, key_info->key_reference);
 
-	return key_info->key_reference >= 0 && key_info->key_reference <= MAX_ID ? 
+	return key_info->key_reference >= RUTOKEN_MIN_ID_PRKEY
+			&&  key_info->key_reference <= RUTOKEN_MAX_ID_PRKEY ? 
 			SC_SUCCESS : SC_ERROR_TOO_MANY_OBJECTS;
 }
 
@@ -195,36 +245,6 @@ rutoken_create_key(sc_profile_t *profile, sc_card_t *card,
 	return SC_SUCCESS;
 }
 
-/*
- * Create private key files
- */
-static int rutoken_create_prkeyfile(sc_card_t *card,
-			sc_pkcs15_prkey_info_t *key_info, size_t prsize)
-{
-	sc_path_t path;
-	sc_file_t *file;
-	int ret;
-
-	SC_FUNC_CALLED(card->ctx, 1);
-
-	file = sc_file_new();
-	if (file)
-	{
-		/* create key file */
-		path = key_info->path;
-		file->type = SC_FILE_TYPE_WORKING_EF;
-		file->id = key_info->key_reference;
-		file->size = prsize;
-		sc_file_set_sec_attr(file, (u8*)&pr_sec_attr, SEC_ATTR_SIZE);
-		ret = rutoken_create_file(card, &path, file);
-		if (file)
-			sc_file_free(file);
-	}
-	else
-		ret = SC_ERROR_OUT_OF_MEMORY;
-	return ret;
-}
-
 /* 
  * Store a private key object.
  */
@@ -237,6 +257,7 @@ rutoken_store_key(sc_profile_t *profile, sc_card_t *card,
 	const int nKeyBufSize = 2048;
 	u8 *prkeybuf = NULL;
 	size_t prsize;
+	sc_file_t *file;
 	int ret;
 
 	if (!profile || !profile->ops || !card || !card->ctx
@@ -264,12 +285,21 @@ rutoken_store_key(sc_profile_t *profile, sc_card_t *card,
 	ret = profile->ops->encode_private_key(profile, card, &key->u.rsa, prkeybuf, &prsize, 0);
 	if (ret == 0)
 	{
-		ret = rutoken_create_prkeyfile(card, key_info, prsize);
-		if (ret == 0)
+		file = sc_file_new();
+		if (!file)
+			ret = SC_ERROR_OUT_OF_MEMORY;
+		else
 		{
-			ret = sc_update_binary(card, 0, prkeybuf, prsize, 0);
-			if (ret < 0  ||  (size_t)ret != prsize)
-				sc_debug(card->ctx, "ret=%i (%u)\n", ret, prsize);
+			/* create (or update) key file */
+			file->path = key_info->path;
+			file->type = SC_FILE_TYPE_WORKING_EF;
+			file->id = key_info->key_reference;
+			file->size = prsize;
+			sc_file_set_sec_attr(file, (u8*)&pr_sec_attr, SEC_ATTR_SIZE);
+
+			ret = sc_pkcs15init_update_file(profile, card,
+					file, prkeybuf, prsize);
+			sc_file_free(file);
 		}
 		memset(prkeybuf, 0, prsize);
 	}
@@ -291,7 +321,7 @@ rutoken_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	r = sc_rutoken_get_bin_from_prkey(rsa, key, keysize);
+	r = rutoken_get_bin_from_prkey(rsa, key, keysize);
 	sc_debug(card->ctx, "sc_rutoken_get_bin_from_prkey returned %i\n", r);
 	return r;
 }
@@ -299,7 +329,7 @@ rutoken_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 static int rutoken_id_in(int id, const u8 *buf, int buflen)
 {
 	int i;
-	for (i = 0; i*2 < buflen; i++)
+	for (i = 0; i*2 + 1 < buflen; i++)
 		if (id == (int)buf[i*2] * 0x100 + buf[i*2 + 1]) return 1;
 	return 0;
 }
@@ -308,7 +338,7 @@ static int rutoken_find_id(sc_card_t *card, const sc_path_t *path)
 {
 	int ret = SC_SUCCESS;
 	sc_file_t *file = NULL;
-	u8 *files = malloc(2048);
+	u8 *files = malloc(RUTOKEN_BUFLEN_LISTFILES);
 	if (!files) return SC_ERROR_OUT_OF_MEMORY;
 	if(path)
 	{
@@ -317,11 +347,11 @@ static int rutoken_find_id(sc_card_t *card, const sc_path_t *path)
 	}
 	if(ret == SC_SUCCESS)
 	{
-		ret = card->ops->list_files(card, files, 2048);
+		ret = card->ops->list_files(card, files, RUTOKEN_BUFLEN_LISTFILES);
 		if(ret >= 0)
 		{
 			int i;
-			for (i = 0; i < MAX_ID; i++)
+			for (i = RUTOKEN_MIN_ID_OTHER; i <= RUTOKEN_MAX_ID_OTHER; i++)
 				if(!rutoken_id_in(i, files, ret)) {ret = i; break;}
 		}
 	}
@@ -600,7 +630,13 @@ static int rutoken_init(sc_profile_t *profile, sc_card_t *card)
 				df->id = arr_def_df[i].dir;
 				r = sc_append_file_id(&df->path, df->id);
 				if (r == SC_SUCCESS)
+				{
+					sc_ctx_suppress_errors_on(card->ctx);
 					r = card->ops->create_file(card, df);
+					sc_ctx_suppress_errors_off(card->ctx);
+					if (r == SC_ERROR_FILE_ALREADY_EXISTS)
+						r = SC_SUCCESS;
+				}
 				if (r != SC_SUCCESS)
 					sc_error(card->ctx, "Failed to create df, %s\n",
 							sc_strerror(r));

@@ -10,8 +10,7 @@ lib_LTLIBRARIES = libopensc.la
 openscinclude_HEADERS = \
 	opensc.h pkcs15.h emv.h \
 	cardctl.h asn1.h log.h ui.h \
-	errors.h types.h compression.h \
-	rutoken.h
+	errors.h types.h compression.h
 noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
 	internal-winscard.h p15card-helper.h
 pkgconfig_DATA = libopensc.pc libpkcs15init.pc libscconf.pc
@@ -43,7 +42,7 @@ libopensc_la_SOURCES = \
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
-	pkcs15-rutoken.c pkcs15-prkey-rutoken.c \
+	pkcs15-rutoken.c \
 	compression.c p15card-helper.c \
 	\
 	libopensc.exports
