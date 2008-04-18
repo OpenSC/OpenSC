@@ -7,4 +7,4 @@ if test -f Makefile; then
 fi
 rm -rf *~ *.cache *.m4 config.guess config.log \
 	config.status config.sub depcomp ltmain.sh
-autoreconf --verbose --install
+autoreconf --verbose --install --force
