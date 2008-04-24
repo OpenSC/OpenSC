@@ -31,6 +31,8 @@ del /q %REG_FILE%
 
 "%OPENSC_HOME%\bin\opensc-tool" -S "app:default:profile_dir:%OPENSC_HOME%\share\opensc"
 
+echo You may also want to add "%OPENSC_HOME%\bin" to your PATH, for use by other applications.
+
 goto end
 
 :error
