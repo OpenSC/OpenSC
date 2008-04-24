@@ -29,6 +29,7 @@
 #elif defined(_MSC_VER)
 typedef unsigned __int32 uint32_t;
 typedef unsigned __int16 uint16_t;
+typedef __int8 int8_t;
 #else
 #warning no uint32_t type available, please contact opensc-devel@opensc-project.org
 #endif
@@ -36,6 +37,7 @@ typedef unsigned __int16 uint16_t;
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "opensc.h"
 #include "pkcs15.h"
 #include "internal.h"
