@@ -36,6 +36,11 @@
 #include <opensc/pkcs15.h>
 #include "util.h"
 
+/* win32 needs this in open(2) */
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
+
 #define IV_SIZE         8
 #define HASH_SIZE       4
 
@@ -195,7 +200,7 @@ static int do_crypt(sc_card_t *card, u8 keyid,
 	size_t insize, outsize, readsize;
 	u8 *inbuf = NULL, *outbuf = NULL, *p;
 
-	fd_in = open(path_infile, O_RDONLY);
+	fd_in = open(path_infile, O_RDONLY | O_BINARY);
 	if (fd_in < 0) {
 		fprintf(stderr, "Error: Cannot open file '%s'\n", path_infile);
 		return -1;
@@ -240,7 +245,7 @@ static int do_crypt(sc_card_t *card, u8 keyid,
 	close(fd_in);
 
 	if (err == 0) {
-		fd_out = open(path_outfile, O_WRONLY | O_CREAT | O_TRUNC,
+		fd_out = open(path_outfile, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
 				S_IRUSR | S_IWUSR);
 		if (fd_out < 0) {
 			fprintf(stderr, "Error: Cannot create file '%s'\n",path_outfile);
@@ -307,7 +312,7 @@ static int gostmac(sc_card_t *card, u8 keyid, const char *path_infile)
 	u8 *inbuf = NULL;
 	u8 outbuf[HASH_SIZE];
 
-	fd = open(path_infile, O_RDONLY);
+	fd = open(path_infile, O_RDONLY | O_BINARY);
 	if (fd < 0) {
 		fprintf(stderr, "Error: Cannot open file '%s'\n", path_infile);
 		return -1;
