@@ -958,17 +958,11 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (rv != CKR_OK)
 		p11_fatal("C_SignFinal", rv);
 
-#ifdef _WIN32
 	if (opt_output == NULL)
 		fd = 1;
-	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, 0666)) < 0)
+	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, S_IRUSR|S_IWUSR)) < 0) {
 		util_fatal("failed to open %s: %m", opt_output);
-#else
-	if (opt_output == NULL)
-		fd = 1;
-	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY, 0666)) < 0)
-		util_fatal("failed to open %s: %m", opt_output);
-#endif /* _WIN32 */
+	}
 
 	r = write(fd, buffer, sig_len);
 	if (r < 0)
@@ -1019,7 +1013,7 @@ static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	if (opt_output == NULL)
 		fd = 1;
-	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY, 0666)) < 0)
+	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, S_IRUSR|S_IWUSR)) < 0)
 		util_fatal("failed to open %s: %m", opt_output);
 
 	r = write(fd, buffer, hash_len);
