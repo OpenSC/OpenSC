@@ -753,7 +753,9 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *at
 		size_t mbin_len, tbin_len, s, matr_len;
 		size_t fix_hex_len = card_atr_hex_len;
 		size_t fix_bin_len = card_atr_bin_len;
+#ifdef __APPLE__
 		unsigned int j = 0;
+#endif
 
 		if (ctx->debug >= 4)
 			sc_debug(ctx, "ATR try : %s\n", tatr);
