@@ -1716,7 +1716,7 @@ static int piv_init(sc_card_t *card)
 	priv->aid_file = sc_file_new();
 	priv->selected_obj = -1;
 	priv->max_recv_size = 256;
-	//priv->max_recv_size = card->max_recv_size;
+	/* priv->max_recv_size = card->max_recv_size; */
 	priv->max_send_size = card->max_send_size;
 	card->max_recv_size = 0xffff; /* must force pkcs15 read_binary in one call */
 	card->max_send_size = 0xffff;

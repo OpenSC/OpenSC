@@ -39,7 +39,7 @@ static const char *atrust_acos_atrs[] = {
   NULL
 };
 
-// sequence and number has to match atr table !
+/* sequence and number has to match atr table ! */
 static const char *atrust_acos_names[] = {
   ACOS_EMV_A03,
   ACOS_EMV_A03,
@@ -80,8 +80,8 @@ static int atrust_acos_match_card(struct sc_card *card)
       
 		if (sc_hex_to_bin(atrp, defatr, &len))
 			continue;
-		// we may only verify part of ATR since
-		// part of the hist chars is variable
+		/* we may only verify part of ATR since */
+		/* part of the hist chars is variable */
 		if (len > card->atr_len)
 			continue;
 		if (memcmp(card->atr, defatr, len) != 0)
@@ -155,7 +155,7 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 
 	if (buflen < 2)
 		return SC_ERROR_INTERNAL;
-	if (buf[0] != 0x6f)					// FCI template
+	if (buf[0] != 0x6f)					/* FCI template */
 		return SC_ERROR_INVALID_DATA;
 	len = (size_t)buf[1];
 	if (buflen - 2 < len)
@@ -169,7 +169,7 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 	file->record_length = 0;
 	file->size = 0;
   
-	// get file size
+	/* get file size */
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
@@ -178,7 +178,7 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 		file->size = bytes;
 	}
 
-	// get file type
+	/* get file type */
   	tag = sc_asn1_find_tag(ctx, p, len, 0x82, &taglen);
 	if (tag != NULL) {
 		const char *type = "unknown";
@@ -821,7 +821,7 @@ static int atrust_acos_check_sw(struct sc_card *card, unsigned int sw1,
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
   
-	// iso error 
+	/* iso error */
 	return iso_ops->check_sw(card, sw1, sw2);
 }
 

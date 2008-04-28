@@ -184,13 +184,13 @@ static int asepcos_parse_sec_attr(sc_card_t *card, sc_file_t *file, const u8 *bu
 			int r = set_sec_attr(file, amode, p[5], SC_AC_CHV);
 			if (r != SC_SUCCESS)
 				return r;
-			tlen += 2 + p[4]; // FIXME
+			tlen += 2 + p[4]; /* FIXME */
 		} else if (p[3] == 0xAF && len >= 4U + p[4]) {
 			/* TODO: support AND expressions */
 			int r = set_sec_attr(file, amode, p[5], SC_AC_CHV);
 			if (r != SC_SUCCESS)
 				return r;
-			tlen += 2 + p[4];	// FIXME
+			tlen += 2 + p[4];	/* FIXME */
 		} else {
 			sc_error(card->ctx, "invalid security condition");
 			return SC_ERROR_INTERNAL;

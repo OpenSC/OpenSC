@@ -178,7 +178,7 @@ static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t
 	if(r < 0) SC_FUNC_RETURN(card->ctx, 0, r);
 	file = &fs->cache.array[fs->currentFileIndex];
 	objectId = file->objectId;
-//	memcpy(objectId.id, file->objectId.id, 4);
+	/* memcpy(objectId.id, file->objectId.id, 4); */
 	if(!file->ef) {
 		oid[0] = oid[2];
 		oid[1] = oid[3];
@@ -201,7 +201,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf
 	file = &fs->cache.array[fs->currentFileIndex];
 	
 	objectId = file->objectId;
-	//memcpy(objectId.id, file->objectId.id, 4);
+	/* memcpy(objectId.id, file->objectId.id, 4); */
 	if(!file->ef) {
 		oid[0] = oid[2];
 		oid[1] = oid[3];
@@ -229,7 +229,7 @@ update_bin_free_buffer:
 	} else {
 		r = msc_update_object(card, objectId, idx, buf, count);
 	}
-	//mscfs_clear_cache(fs);
+	/* mscfs_clear_cache(fs); */
 	return r;
 }
 
@@ -268,7 +268,7 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 		oid[0] = oid[2];
 		oid[1] = oid[3];
 		oid[2] = oid[3] = 0;
-		// ??? objectId = objectId >> 16;
+		/* ??? objectId = objectId >> 16; */
 	}
 	if((0 == memcmp(oid, "\x3F\x00\x00\x00", 4))
 		|| (0 == memcmp(oid, "\x3F\x00\x3F\x00", 4))) {
@@ -307,7 +307,7 @@ static int muscle_delete_file(sc_card_t *card, const sc_path_t *path_in)
 static void muscle_load_single_acl(sc_file_t* file, int operation, unsigned short acl)
 {
 	int key;
-	// Everybody by default....
+	/* Everybody by default.... */
 	sc_file_add_acl_entry(file, operation, SC_AC_NONE, 0);
 	if(acl == 0xFFFF) {
 		sc_file_add_acl_entry(file, operation, SC_AC_NEVER, 0);
@@ -584,7 +584,7 @@ static int muscle_card_extract_key(sc_card_t *card, sc_cardctl_muscle_key_info_t
 {
 	/* CURRENTLY DONT SUPPOT EXTRACTING PRIVATE KEYS... */
 	switch(info->keyType) {
-	case 1: // RSA
+	case 1: /* RSA */
 		return msc_extract_rsa_public_key(card, 
 			info->keyLocation, 
 			&info->modLength, 
@@ -600,8 +600,8 @@ static int muscle_card_import_key(sc_card_t *card, sc_cardctl_muscle_key_info_t 
 {
 	/* CURRENTLY DONT SUPPOT EXTRACTING PRIVATE KEYS... */
 	switch(info->keyType) {
-	case 0x02: // RSA_PRIVATE
-	case 0x03: // RSA_PRIVATE_CRT
+	case 0x02: /* RSA_PRIVATE */
+	case 0x03: /* RSA_PRIVATE_CRT */
 		return msc_import_key(card, 
 			info->keyLocation, 
 			info);
@@ -675,11 +675,11 @@ static int muscle_set_security_env(sc_card_t *card,
 		sc_error(card->ctx, "Algorithm reference not supported.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-	//if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT)
-	//	if (memcmp(env->file_ref.value, "\x00\x12", 2) != 0) {
-	//		sc_error(card->ctx, "File reference is not 0012.\n");
-	//		return SC_ERROR_NOT_SUPPORTED;
-	//	}
+	/* if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT)
+		if (memcmp(env->file_ref.value, "\x00\x12", 2) != 0) {
+			sc_error(card->ctx, "File reference is not 0012.\n");
+			return SC_ERROR_NOT_SUPPORTED;
+		} */
 	priv->env = *env;
 	return 0;
 }

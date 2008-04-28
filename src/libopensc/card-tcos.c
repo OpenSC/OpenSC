@@ -520,7 +520,7 @@ static int tcos_set_security_env(sc_card_t *card, const sc_security_env_t *env, 
 		if(!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)) sc_debug(ctx, "No Key-Reference in SecEnvironment\n");
 		else sc_debug(ctx, "Key-Reference %02X (len=%d)\n", env->key_ref[0], env->key_ref_len);
 	}
-	// Key-Reference 0x80 ??
+	/* Key-Reference 0x80 ?? */
 	default_key= !(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || (env->key_ref_len==1 && env->key_ref[0]==0x80);
 	if(ctx->debug>=3){
 		sc_debug(ctx, "TCOS3:%d PKCS1:%d\n", tcos3, !!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1));

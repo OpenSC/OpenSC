@@ -335,12 +335,12 @@ static int
 akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	if (data->cmd == SC_PIN_CMD_VERIFY) {
-		// ISO7816 implementation works
+		/* ISO7816 implementation works */
 		return iso_ops->pin_cmd(card, data, tries_left);
 	}
 
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
-		// This is AKIS specific
+		/* This is AKIS specific */
 		int r;
 		sc_apdu_t apdu;
 		u8 buf[64];
@@ -526,33 +526,33 @@ sc_get_driver(void)
 
 	akis_ops.match_card = akis_match_card;
 	akis_ops.init = akis_init;
-	// read_binary: ISO7816 implementation works
-	// write_binary: ISO7816 implementation works
-	// update_binary: ISO7816 implementation works
-	// erase_binary: Untested
-	// read_record: Untested
-	// write_record: Untested
-	// append_record: Untested
-	// update_record: Untested
+	/* read_binary: ISO7816 implementation works */
+	/* write_binary: ISO7816 implementation works */
+	/* update_binary: ISO7816 implementation works */
+	/* erase_binary: Untested */
+	/* read_record: Untested */
+	/* write_record: Untested */
+	/* append_record: Untested */
+	/* update_record: Untested */
 	akis_ops.select_file = akis_select_file;
-	// get_response: ISO7816 implementation works
-	// get_challenge: ISO7816 implementation works
+	/* get_response: ISO7816 implementation works */
+	/* get_challenge: ISO7816 implementation works */
 	akis_ops.logout = akis_logout;
-	// restore_security_env: Untested
+	/* restore_security_env: Untested */
 	akis_ops.set_security_env = akis_set_security_env;
-	// decipher: Untested
-	// compute_signature: ISO7816 implementation works
+	/* decipher: Untested */
+	/* compute_signature: ISO7816 implementation works */
 	akis_ops.create_file = akis_create_file;
 	akis_ops.delete_file = akis_delete_file;
 	akis_ops.list_files = akis_list_files;
-	// check_sw: ISO7816 implementation works
+	/* check_sw: ISO7816 implementation works */
 	akis_ops.card_ctl = akis_card_ctl;
 	akis_ops.process_fci = akis_process_fci;
-	// construct_fci: Not needed
+	/* construct_fci: Not needed */
 	akis_ops.pin_cmd = akis_pin_cmd;
 	akis_ops.get_data = akis_get_data;
-	// put_data: Not implemented
-	// delete_record: Not implemented
+	/* put_data: Not implemented */
+	/* delete_record: Not implemented */
 
 	return &akis_drv;
 }

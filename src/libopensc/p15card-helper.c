@@ -132,7 +132,7 @@ static int add_public_key(sc_pkcs15_card_t *p15card, const pubdata *key, int usa
 	return sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 }
 
-//int default_cert_handle(sc_pkcs15_card_t *p15card, p15data_items* items, cdata* cert, u8* data, size_t length) {
+/* int default_cert_handle(sc_pkcs15_card_t *p15card, p15data_items* items, cdata* cert, u8* data, size_t length) { */
 CERT_HANDLE_FUNCTION(default_cert_handle) {
 	/* Certificate data exists, parse it */
 	int r;
@@ -170,8 +170,8 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 	}
 	
 	modulus_len = 8 * BN_num_bytes(pkey->pkey.rsa->n); /* converting to bits */
-	//printf("Key Size: %d bits\n\n", modulus_len);
-	//cached_cert->modulusLength = modulus_len;
+	/* printf("Key Size: %d bits\n\n", modulus_len); */
+	/* cached_cert->modulusLength = modulus_len; */
 	
 	if(key->label) {
 		int usage = 0;

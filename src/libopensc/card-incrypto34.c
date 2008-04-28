@@ -195,7 +195,7 @@ get_next_part:
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x6a && apdu.sw2 == 0x82)
-		goto end; // no more files
+		goto end; /* no more files */
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "DIRECTORY command returned error");

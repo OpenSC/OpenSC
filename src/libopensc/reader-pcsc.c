@@ -1205,7 +1205,7 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	r = pcsc_internal_transmit(reader, slot, sbuf, scount, rbuf, &rcount, ioctl);
 
 	SC_TEST_RET(reader->ctx, r, "Part 10: block transmit failed!");
-	// finish the call if it was a two-phase operation
+	/* finish the call if it was a two-phase operation */
 	if ((ioctl == pslot->verify_ioctl_start)
 	    || (ioctl == pslot->modify_ioctl_start)) {
 		if (rcount != 0) {

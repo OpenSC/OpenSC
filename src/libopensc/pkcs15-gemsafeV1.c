@@ -493,4 +493,4 @@ sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
 }
 #endif
 
-//SC_IMPLEMENT_DRIVER_VERSION("0.9.4")
+/* SC_IMPLEMENT_DRIVER_VERSION("0.9.4") */

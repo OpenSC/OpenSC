@@ -181,7 +181,7 @@ auth_select_aid(sc_card_t *card)
 	/* Select Card Manager (to deselect previously selected application) */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
 	apdu.lc = sizeof(cm);
-//	apdu.le = sizeof(cm)+4;
+	/* apdu.le = sizeof(cm)+4; */
 	apdu.le = 0;
 	apdu.data = cm;
 	apdu.datalen = sizeof(cm);
@@ -2057,7 +2057,7 @@ auth_read_binary(sc_card_t *card, unsigned int offset,
 	sc_debug(card->ctx,"last selected : magic %X; ef %X\n", 
 			auth_current_ef->magic, auth_current_ef->ef_structure);
 
-//	_auth_print_acls(card, auth_current_ef);
+/*	_auth_print_acls(card, auth_current_ef); */
 
 #ifndef NOT_YET	
 	entry = sc_file_get_acl_entry(auth_current_ef, SC_AC_OP_READ);

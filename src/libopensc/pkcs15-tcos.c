@@ -64,7 +64,7 @@ static int insert_cert(
 		return 3;
 	}
 
-	// some certificates are prefixed by an OID
+	/* some certificates are prefixed by an OID */
 	if(cert[4]==0x06 && cert[5]<10 && cert[6+cert[5]]==0x30 && cert[7+cert[5]]==0x82){
 		cert_info.path.index=6+cert[5];
 		cert_info.path.count=(cert[8+cert[5]]<<8) + cert[9+cert[5]] + 4;
@@ -254,7 +254,7 @@ static int detect_netkey(
 	int keylen;
 	char dir[10], *c_auth;
 
-	// NKS-Applikation ?
+	/* NKS-Applikation ? */
 	p.len=7; p.type=SC_PATH_TYPE_DF_NAME;
 	memcpy(p.value, "\xD2\x76\x00\x00\x03\x01\x02", p.len=7);
 	if (sc_select_file(card,&p,&f)!=SC_SUCCESS) return 1;
@@ -306,7 +306,7 @@ static int detect_netkey(
 		SC_PKCS15_PIN_FLAG_INITIALIZED
 	);
 
-	// SigG-Applikation ?
+	/* SigG-Applikation ? */
 	p.len=7; p.type=SC_PATH_TYPE_DF_NAME;
 	memcpy(p.value, "\xD2\x76\x00\x00\x66\x01", p.len=6);
 	if (sc_select_file(card,&p,&f)==SC_SUCCESS){
@@ -437,11 +437,11 @@ int sc_pkcs15emu_tcos_init_ex(
 	char               serial[30];
 	int i, r;
 
-	// check if we have the correct card OS unless SC_PKCS15EMU_FLAGS_NO_CHECK
+	/* check if we have the correct card OS unless SC_PKCS15EMU_FLAGS_NO_CHECK */
 	i=(opts && (opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK));
 	if (!i && card->type!=SC_CARD_TYPE_TCOS_V2 && card->type!=SC_CARD_TYPE_TCOS_V3) return SC_ERROR_WRONG_CARD;
 
-	// get the card serial number
+	/* get the card serial number */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serialnr);
 	if (r < 0) {
 		sc_debug(ctx, "unable to get ICCSN\n");
