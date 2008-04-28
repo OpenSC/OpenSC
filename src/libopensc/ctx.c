@@ -73,7 +73,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "belpic",	(void *(*)(void)) sc_get_belpic_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
-	{ "muscle", (void *(*)(void)) sc_get_muscle_driver },	// Above EMV because the detection gets caught there first
+	{ "muscle", (void *(*)(void)) sc_get_muscle_driver },	/* Above EMV because the detection gets caught there first */
 	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
 	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
 #ifdef ENABLE_OPENSSL
