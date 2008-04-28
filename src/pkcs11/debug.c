@@ -34,11 +34,11 @@ struct fmap {
 #define NELE(x)		(sizeof(x)/sizeof((x)[0]))
 #define STR(x)		#x
 #define __(x)		(x), #x
-#define _(x)		{ (x), #x }
-#define ul(x)		{ (x), #x, sc_pkcs11_print_ulong }
+#define _(x)		{ (x), #x, NULL, NULL }
+#define ul(x)		{ (x), #x, sc_pkcs11_print_ulong, NULL }
 #define ulm(x)		{ (x), #x, sc_pkcs11_print_ulong, map_##x }
-#define b(x)		{ (x), #x, sc_pkcs11_print_bool }
-#define s(x)		{ (x), #x, sc_pkcs11_print_string }
+#define b(x)		{ (x), #x, sc_pkcs11_print_bool, NULL }
+#define s(x)		{ (x), #x, sc_pkcs11_print_string, NULL }
 
 static void		sc_pkcs11_print_attr(const char *, unsigned int,
 				const char *, const char *,
@@ -58,14 +58,14 @@ static struct fmap	map_CKA_CLASS[] = {
 	_(CKO_HW_FEATURE),
 	_(CKO_DOMAIN_PARAMETERS),
 
-	{ 0 }
+	{ 0, NULL, NULL, NULL }
 };
 
 static struct fmap	map_CKA_CERTIFICATE_TYPE[] = {
 	_(CKC_X_509),
 	_(CKC_X_509_ATTR_CERT),
 
-	{ 0 }
+	{ 0, NULL, NULL, NULL }
 };
 
 static struct fmap	map_CKA_KEY_TYPE[] = {
@@ -85,7 +85,7 @@ static struct fmap	map_CKA_KEY_TYPE[] = {
 	_(CKK_IDEA),
 	_(CKK_AES),
 
-	{ 0 }
+	{ 0, NULL, NULL, NULL }
 };
 
 static struct fmap	p11_attr_names[] = {
@@ -150,7 +150,7 @@ static struct fmap	p11_attr_names[] = {
 	_(CKA_HAS_RESET),
 	_(CKA_VENDOR_DEFINED),
 
-	{ 0 }
+	{ 0, NULL, NULL, NULL }
 };
 
 void sc_pkcs11_print_attrs(const char *file, unsigned int line,
