@@ -261,7 +261,7 @@ muscle_generate_key(sc_profile_t *profile, sc_card_t *card,
 	/* Public key acls... get_file_by_path as well? */
 	
 	memset(&args, 0, sizeof(args));
-	args.keyType = 0x01; // RSA forced
+	args.keyType = 0x01; /* RSA forced */
 	args.privateKeyLocation = key_info->key_reference * 2;
 	args.publicKeyLocation = key_info->key_reference * 2 + 1;
 	
