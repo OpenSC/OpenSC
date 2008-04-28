@@ -173,6 +173,11 @@ struct sc_pkcs11_framework_ops framework_pkcs15init = {
 	pkcs15init_logout,
 	pkcs15init_change_pin,
 	pkcs15init_initialize,
+	NULL, /* init_pin */
+	NULL, /* create_object */
+	NULL, /* gen_keypair */
+	NULL, /* seed_random */
+	NULL, /* get_random */
 };
 
 #else /* ifdef USE_PKCS15_INIT */
