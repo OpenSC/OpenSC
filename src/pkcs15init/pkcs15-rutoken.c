@@ -369,7 +369,7 @@ rutoken_new_file(struct sc_profile *profile, struct sc_card *card,
 {
 	int ret = SC_SUCCESS, id, ret_s;
 	sc_path_t path;
-	u8 const *sec_attr;
+	u8 const *sec_attr = NULL;
 
 	if (!profile || !file || *file != NULL
 			|| !card || !card->ctx || !card->ops
