@@ -1117,7 +1117,7 @@ cosm_change_label(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	memcpy(object->label, value, len);
 	object->label[len] = '\0';
 #if 0
-	//TODO 
+	/* TODO  */
 #else
 	rv = 0;
 #endif
@@ -1272,7 +1272,7 @@ cosm_select_id (struct sc_pkcs15_card *p15card, int type,
 #endif
 	SC_FUNC_RETURN(p15card->card->ctx, 1, 0);
 }
-#endif //COSM_EXTENDED
+#endif /* COSM_EXTENDED */
 
 static struct sc_pkcs15init_operations 
 sc_pkcs15init_oberthur_operations = {
