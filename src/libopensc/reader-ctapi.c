@@ -611,6 +611,7 @@ struct sc_reader_driver * sc_get_ctapi_driver(void)
 {
 	ctapi_ops.init = ctapi_init;
 	ctapi_ops.finish = ctapi_finish;
+	ctapi_ops.detect_readers = NULL;
 	ctapi_ops.transmit = ctapi_transmit;
 	ctapi_ops.detect_card_presence = ctapi_detect_card_presence;
 	ctapi_ops.lock = ctapi_lock;

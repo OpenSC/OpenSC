@@ -37,6 +37,7 @@ sc_connect_card
 sc_context_create
 sc_copy_asn1_entry
 sc_create_file
+sc_ctx_detect_readers
 sc_ctx_get_reader
 sc_ctx_get_reader_count
 sc_ctx_suppress_errors_off

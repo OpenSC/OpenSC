@@ -347,6 +347,9 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	}
 
 	sc_debug(context, "Getting slot listing\n");
+	if (pSlotList == NULL_PTR) {
+		sc_ctx_detect_readers(context);
+	}
 	card_detect_all();
 
 	numMatches = 0;

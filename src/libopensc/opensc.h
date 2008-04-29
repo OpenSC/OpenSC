@@ -373,6 +373,9 @@ struct sc_reader_operations {
 	/* Called when the driver is being unloaded.  finish() has to
 	 * deallocate the private data and any resources. */
 	int (*finish)(struct sc_context *ctx, void *priv_data);
+	/* Called when library wish to detect new readers
+	 * should add only new readers. */
+	int (*detect_readers)(struct sc_context *ctx, void *priv_data);
 	/* Called when releasing a reader.  release() has to
 	 * deallocate the private data.  Other fields will be
 	 * freed by OpenSC. */
@@ -725,6 +728,13 @@ int sc_context_create(sc_context_t **ctx, const sc_context_param_t *parm);
  * @param ctx A pointer to the context structure to be released
  */
 int sc_release_context(sc_context_t *ctx);
+
+/**
+ * Detect new readers available on system.
+ * @param  ctx  OpenSC context
+ * @return SC_SUCCESS on success and an error code otherwise.
+ */
+int sc_ctx_detect_readers(sc_context_t *ctx);
 
 /**
  * Returns a pointer to the specified sc_reader_t object

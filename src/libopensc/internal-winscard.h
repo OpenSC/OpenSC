@@ -51,9 +51,11 @@ typedef unsigned __int8 uint8_t;
 #define SCARD_SCOPE_USER		0x0000	/**< Scope in user space */
 
 #define SCARD_S_SUCCESS			0x00000000 /**< No error was encountered. */
+#define SCARD_E_INVALID_HANDLE		0x80100003 /**< The supplied handle was invalid. */
 #define SCARD_E_TIMEOUT			0x8010000A /**< The user-specified timeout value has expired. */
 #define SCARD_E_SHARING_VIOLATION	0x8010000B /**< The smart card cannot be accessed because of other connections outstanding. */
 #define SCARD_E_NOT_TRANSACTED		0x80100016 /**< An attempt was made to end a non-existent transaction. */
+#define SCARD_E_READER_UNAVAILABLE	0x80100017 /**< The specified reader is not currently available for use. */
 #define SCARD_E_NO_READERS_AVAILABLE    0x8010002E /**< Cannot find a smart card reader. */
 #define SCARD_W_UNRESPONSIVE_CARD	0x80100066 /**< The smart card is not responding to a reset. */
 #define SCARD_W_UNPOWERED_CARD		0x80100067 /**< Power has been removed from the smart card, so that further communication is not possible. */

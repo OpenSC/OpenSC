@@ -644,26 +644,32 @@ static int pcsc_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 
 	rv = priv->gpriv->SCardBeginTransaction(pslot->pcsc_card);
 
-	if ((unsigned int)rv == SCARD_W_RESET_CARD) {
-		/* try to reconnect if the card was reset by some other application */
-		rv = pcsc_reconnect(reader, slot, 0);
-		if (rv != SCARD_S_SUCCESS) {
-			PCSC_ERROR(reader->ctx, "SCardReconnect failed", rv);
+	switch (rv) {
+		case SCARD_E_INVALID_HANDLE:
+		case SCARD_E_READER_UNAVAILABLE:
+			rv = pcsc_connect(reader, slot);
+			if (rv != SCARD_S_SUCCESS) {
+				PCSC_ERROR(reader->ctx, "SCardConnect failed", rv);
+				return pcsc_ret_to_error(rv);
+			}
+			/* return failure so that upper layers will be notified and try to lock again */
+			return SC_ERROR_READER_REATTACHED;
+		case SCARD_W_RESET_CARD:
+			/* try to reconnect if the card was reset by some other application */
+			rv = pcsc_reconnect(reader, slot, 0);
+			if (rv != SCARD_S_SUCCESS) {
+				PCSC_ERROR(reader->ctx, "SCardReconnect failed", rv);
+				return pcsc_ret_to_error(rv);
+			}
+			/* return failure so that upper layers will be notified and try to lock again */
+			return SC_ERROR_CARD_RESET;
+		case SCARD_S_SUCCESS:
+			pslot->locked = 1;
+			return SC_SUCCESS;
+		default:
+			PCSC_ERROR(reader->ctx, "SCardBeginTransaction failed", rv);
 			return pcsc_ret_to_error(rv);
-		}
-		/* Now try to begin a new transaction after we reconnected and we fail if
-		 some other program was faster to lock the reader */
-		rv = priv->gpriv->SCardBeginTransaction(pslot->pcsc_card);
 	}
-
-	if (rv != SCARD_S_SUCCESS) {
-		PCSC_ERROR(reader->ctx, "SCardBeginTransaction failed", rv);
-		return pcsc_ret_to_error(rv);
-	}
-
-	pslot->locked = 1;
-	
-	return SC_SUCCESS;
 }
 
 static int pcsc_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
@@ -731,10 +737,6 @@ static struct sc_reader_driver pcsc_drv = {
 static int pcsc_init(sc_context_t *ctx, void **reader_data)
 {
 	LONG rv;
-	DWORD reader_buf_size;
-	char *reader_buf = NULL, *p;
-	const char *mszGroups = NULL;
-	int r;
 	struct pcsc_global_private_data *gpriv;
 	scconf_block *conf_block = NULL;
 	int ret = SC_ERROR_INTERNAL;
@@ -753,6 +755,7 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 	gpriv->transaction_reset = 0;
 	gpriv->enable_pinpad = 0;
 	gpriv->provider_library = DEFAULT_PCSC_PROVIDER;
+	gpriv->pcsc_ctx = -1;
 	
 	conf_block = sc_get_conf_block(ctx, "reader_driver", "pcsc", 1);
 	if (conf_block) {
@@ -818,72 +821,6 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 		goto out;
 	}
 
-	rv = gpriv->SCardEstablishContext(SCARD_SCOPE_USER,
-                              NULL, NULL, &gpriv->pcsc_ctx);
-	if (rv != SCARD_S_SUCCESS) {
-		ret = pcsc_ret_to_error(rv);
-		goto out;
-	}
-	rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL, NULL,
-	                      (LPDWORD) &reader_buf_size);
-	if (rv != SCARD_S_SUCCESS || reader_buf_size < 2) {
-		ret = pcsc_ret_to_error(rv);	/* No readers configured */
-		goto out;
-	}
-
-	reader_buf = (char *) malloc(sizeof(char) * reader_buf_size);
-	if (!reader_buf) {
-		ret = SC_ERROR_OUT_OF_MEMORY;
-		goto out;
-	}
-	rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, mszGroups, reader_buf,
-	                      (LPDWORD) &reader_buf_size);
-	if (rv != SCARD_S_SUCCESS) {
-		ret = pcsc_ret_to_error(rv);
-		goto out;
-	}
-	p = reader_buf;
-	do {
-		sc_reader_t *reader = (sc_reader_t *) calloc(1, sizeof(sc_reader_t));
-		struct pcsc_private_data *priv = (struct pcsc_private_data *) malloc(sizeof(struct pcsc_private_data));
-		struct pcsc_slot_data *pslot = (struct pcsc_slot_data *) malloc(sizeof(struct pcsc_slot_data));
-		sc_slot_info_t *slot;
-
-		if (reader == NULL || priv == NULL || pslot == NULL) {
-			if (reader)
-				free(reader);
-			if (priv)
-				free(priv);
-			if (pslot)
-				free(pslot);
-			break;
-		}
-
-		reader->drv_data = priv;
-		reader->ops = &pcsc_ops;
-		reader->driver = &pcsc_drv;
-		reader->slot_count = 1;
-		reader->name = strdup(p);
-		priv->gpriv = gpriv;
-		priv->reader_name = strdup(p);
-		r = _sc_add_reader(ctx, reader);
-		if (r) {
-			free(priv->reader_name);
-			free(priv);
-			free(reader->name);
-			free(reader);
-			free(pslot);
-			break;
-		}
-		slot = &reader->slot[0];
-		memset(slot, 0, sizeof(*slot));
-		slot->drv_data = pslot;
-		memset(pslot, 0, sizeof(*pslot));
-		refresh_slot_attributes(reader, slot);
-
-		while (*p++ != 0);
-	} while (p < (reader_buf + reader_buf_size - 1));
-
 	*reader_data = gpriv;
 	gpriv = NULL;
 	ret = SC_SUCCESS;
@@ -892,8 +829,6 @@ out:
 	if (ret != SC_SUCCESS) {
 		if (gpriv->pcsc_ctx != 0)
 			gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
-		if (reader_buf != NULL)
-			free(reader_buf);
 		if (gpriv->dlhandle != NULL)
 			lt_dlclose(gpriv->dlhandle);
 		if (gpriv != NULL)
@@ -916,6 +851,141 @@ static int pcsc_finish(sc_context_t *ctx, void *prv_data)
 	return 0;
 }
 
+static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
+{
+	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) prv_data;
+	LONG rv;
+	DWORD reader_buf_size;
+	char *reader_buf = NULL, *p;
+	const char *mszGroups = NULL;
+	int ret = SC_ERROR_INTERNAL;
+	int again;
+
+	if (!prv_data) {
+		ret = SC_ERROR_NO_READERS_FOUND;
+		goto out;
+	}
+
+	do {
+		rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL, NULL,
+				      (LPDWORD) &reader_buf_size);
+		if (rv != SCARD_S_SUCCESS) {
+			if (rv != SCARD_E_INVALID_HANDLE) {
+				ret = pcsc_ret_to_error(rv);
+				goto out;
+			}
+
+			rv = gpriv->SCardEstablishContext(SCARD_SCOPE_USER,
+					      NULL, NULL, &gpriv->pcsc_ctx);
+			if (rv != SCARD_S_SUCCESS) {
+				ret = pcsc_ret_to_error(rv);
+				goto out;
+			}
+
+			rv = SCARD_E_INVALID_HANDLE;
+		}
+	} while (rv != SCARD_S_SUCCESS);
+
+	reader_buf = (char *) malloc(sizeof(char) * reader_buf_size);
+	if (!reader_buf) {
+		ret = SC_ERROR_OUT_OF_MEMORY;
+		goto out;
+	}
+	rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, mszGroups, reader_buf,
+	                      (LPDWORD) &reader_buf_size);
+	if (rv != SCARD_S_SUCCESS) {
+		ret = pcsc_ret_to_error(rv);
+		goto out;
+	}
+	for (p = reader_buf; *p != '\x0'; p += strlen (p) + 1) {
+		sc_reader_t *reader = NULL;
+		struct pcsc_private_data *priv = NULL;
+		struct pcsc_slot_data *pslot = NULL;
+		sc_slot_info_t *slot = NULL;
+		int i;
+		int found = 0;
+
+		for (i=0;i < sc_ctx_get_reader_count (ctx) && !found;i++) {
+			sc_reader_t *reader = sc_ctx_get_reader (ctx, i);
+			if (reader == NULL) {
+				ret = SC_ERROR_INTERNAL;
+				goto err1;
+			}
+			if (reader->ops == &pcsc_ops && !strcmp (reader->name, p)) {
+				found = 1;
+			}
+		}
+
+		/* Reader already available, skip */
+		if (found) {
+			continue;
+		}
+
+		if ((reader = (sc_reader_t *) calloc(1, sizeof(sc_reader_t))) == NULL) {
+			ret = SC_ERROR_OUT_OF_MEMORY;
+			goto err1;
+		}
+		if ((priv = (struct pcsc_private_data *) malloc(sizeof(struct pcsc_private_data))) == NULL) {
+			ret = SC_ERROR_OUT_OF_MEMORY;
+			goto err1;
+		}
+		if ((pslot = (struct pcsc_slot_data *) malloc(sizeof(struct pcsc_slot_data))) == NULL) {
+			ret = SC_ERROR_OUT_OF_MEMORY;
+			goto err1;
+		}
+
+		reader->drv_data = priv;
+		reader->ops = &pcsc_ops;
+		reader->driver = &pcsc_drv;
+		reader->slot_count = 1;
+		if ((reader->name = strdup(p)) == NULL) {
+			ret = SC_ERROR_OUT_OF_MEMORY;
+			goto err1;
+		}
+		priv->gpriv = gpriv;
+		if ((priv->reader_name = strdup(p)) == NULL) {
+			ret = SC_ERROR_OUT_OF_MEMORY;
+			goto err1;
+		}
+		slot = &reader->slot[0];
+		memset(slot, 0, sizeof(*slot));
+		slot->drv_data = pslot;
+		memset(pslot, 0, sizeof(*pslot));
+		if (_sc_add_reader(ctx, reader)) {
+			ret = SC_SUCCESS;	/* silent ignore */
+			goto err1;
+		}
+		refresh_slot_attributes(reader, slot);
+
+		continue;
+	
+	err1:
+		if (priv != NULL) {
+			if (priv->reader_name)
+				free(priv->reader_name);
+			free(priv);
+		}
+		if (reader != NULL) {
+			if (reader->name)
+				free(reader->name);
+			free(reader);
+		}
+		if (slot != NULL)
+			free(pslot);
+
+		goto out;
+	}
+
+	ret = SC_SUCCESS;
+
+out:
+
+	if (reader_buf != NULL)
+		free (reader_buf);
+
+	return ret;
+}
+
 static int
 pcsc_pin_cmd(sc_reader_t *reader, sc_slot_info_t * slot, struct sc_pin_cmd_data *data)
 {
@@ -931,6 +1001,7 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 {
 	pcsc_ops.init = pcsc_init;
 	pcsc_ops.finish = pcsc_finish;
+	pcsc_ops.detect_readers = pcsc_detect_readers;
 	pcsc_ops.transmit = pcsc_transmit;
 	pcsc_ops.detect_card_presence = pcsc_detect_card_presence;
 	pcsc_ops.lock = pcsc_lock;

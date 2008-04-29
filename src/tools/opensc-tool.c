@@ -246,7 +246,7 @@ static int list_readers(void)
 	unsigned int i, rcount = sc_ctx_get_reader_count(ctx);
 	
 	if (rcount == 0) {
-		printf("No readers configured!\n");
+		printf("No readers found.\n");
 		return 0;
 	}
 	printf("Readers known about:\n");

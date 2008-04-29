@@ -354,7 +354,8 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 	}
 	/* verify module version */
 	version = modversion();
-	if (version == NULL || strncmp(version, "0.9.", strlen("0.9.")) > 0) {
+	/* XXX: We really need to have ABI version for each interface */
+	if (version == NULL || strncmp(version, PACKAGE_VERSION, strlen(PACKAGE_VERSION)) != 0) {
 		sc_error(ctx,"dynamic library '%s': invalid module version\n",libname);
 		lt_dlclose(handle);
 		return NULL;
@@ -637,6 +638,25 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		load_parameters(ctx, ctx->conf_blocks[i], opts);
 }
 
+int sc_ctx_detect_readers(sc_context_t *ctx)
+{
+	int i;
+
+	sc_mutex_lock(ctx, ctx->mutex);
+
+	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
+		const struct sc_reader_driver *drv = ctx->reader_drivers[i];
+
+		if (drv->ops->detect_readers != NULL)
+			drv->ops->detect_readers(ctx, ctx->reader_drv_data[i]);
+	}
+
+	sc_mutex_unlock(ctx, ctx->mutex);
+
+	/* XXX: Do not ignore erros? */
+	return SC_SUCCESS;
+}
+
 sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i)
 {
 	if (i >= (unsigned int)ctx->reader_count || i >= SC_MAX_READERS)
@@ -724,10 +744,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	}
 	del_drvs(&opts, 0);
 	del_drvs(&opts, 1);
-	if (ctx->reader_count == 0) {
-		sc_release_context(ctx);
-		return SC_ERROR_NO_READERS_FOUND;
-	}
+	sc_ctx_detect_readers(ctx);
 	*ctx_out = ctx;
 	return SC_SUCCESS;
 }

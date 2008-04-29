@@ -479,6 +479,7 @@ struct sc_reader_driver *sc_get_openct_driver(void)
 {
 	openct_ops.init = openct_reader_init;
 	openct_ops.finish = openct_reader_finish;
+	openct_ops.detect_readers = NULL;
 	openct_ops.release = openct_reader_release;
 	openct_ops.detect_card_presence = openct_reader_detect_card_presence;
 	openct_ops.connect = openct_reader_connect;

@@ -86,7 +86,7 @@ CK_RV card_detect(int reader)
 		sc_reader_t *rdr = sc_ctx_get_reader(context, (unsigned int)reader);
 
 		if (rdr == NULL)
-			return CKR_GENERAL_ERROR;
+			return CKR_TOKEN_NOT_PRESENT;
 		slot = virtual_slots + card->first_slot + i;
 		strcpy_bp(slot->slot_info.slotDescription, rdr->name, 64);
 		slot->reader = reader;
