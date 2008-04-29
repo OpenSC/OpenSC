@@ -1,4 +1,8 @@
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
+include $(top_srcdir)/win32/ltrc.inc
+
+MAINTAINERCLEANFILES = \
+	$(srcdir)/Makefile.in $(srcdir)/versioninfo.rc
+CLEANFILES = versioninfo.rc
 EXTRA_DIST = Makefile.mak
 
 SUBDIRS = regression
@@ -16,3 +20,17 @@ lottery_SOURCES = lottery.c $(COMMON_SRC) $(COMMON_INC)
 p15dump_SOURCES = p15dump.c print.c $(COMMON_SRC) $(COMMON_INC)
 pintest_SOURCES = pintest.c print.c $(COMMON_SRC) $(COMMON_INC)
 prngtest_SOURCES = prngtest.c $(COMMON_SRC) $(COMMON_INC)
+
+if WIN32
+base64_SOURCES += versioninfo.rc
+lottery_SOURCES += versioninfo.rc
+p15dump_SOURCES += versioninfo.rc
+pintest_SOURCES += versioninfo.rc
+prngtest_SOURCES += versioninfo.rc
+else
+dist_noinst_DATA = versioninfo.rc
+endif
+
+versioninfo.rc:
+	sed 's/@@FILE_DESCRIPTION@@/OpenSC Test Program/g' \
+		"$(top_builddir)/win32/versioninfo.rc.in" > versioninfo.rc

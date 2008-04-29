@@ -36,7 +36,7 @@ OBJECTS			= \
 	compression.obj p15card-helper.obj \
 	versioninfo.res
 
-all: install-headers $(TARGET)
+all: versioninfo.res install-headers $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 

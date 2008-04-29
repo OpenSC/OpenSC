@@ -6,6 +6,9 @@ TARGETS = base64.exe p15dump.exe \
 
 all: print.obj sc-test.obj $(TARGETS)
 
+$(TARGETS): versioninfo.res print.obj sc-test.obj \
+	..\common\common.lib ..\libopensc\opensc.lib
+
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
 .c.obj:

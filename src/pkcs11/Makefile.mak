@@ -13,8 +13,8 @@ OBJECTS			= pkcs11-global.obj pkcs11-session.obj pkcs11-object.obj misc.obj slot
 			  mechanism.obj openssl.obj secretkey.obj framework-pkcs15.obj \
 			  framework-pkcs15init.obj debug.obj \
 			  versioninfo.res
-OBJECTS2		= libpkcs11.obj
-OBJECTS3		= pkcs11-spy.obj pkcs11-display.obj libpkcs11.obj
+OBJECTS2		= libpkcs11.obj versioninfo.res
+OBJECTS3		= pkcs11-spy.obj pkcs11-display.obj libpkcs11.obj versioninfo.res
 
 all: install-headers $(TARGET0) $(TARGET) $(TARGET2) $(TARGET3) 
 
@@ -24,7 +24,7 @@ $(TARGET0): $(OBJECTS) hack-enabled.obj ..\libopensc\opensc.lib ..\scconf\scconf
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type opensc-pkcs11.exports >> $*.def
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET) $(OBJECTS) hack-enabled.obj ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET0) $(OBJECTS) hack-enabled.obj ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib 
 	if EXIST $(TARGET).manifest mt -manifest $(TARGET).manifest -outputresource:$(TARGET);2
 
 $(TARGET): $(OBJECTS) hack-disabled.obj ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib

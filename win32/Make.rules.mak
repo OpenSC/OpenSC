@@ -37,7 +37,7 @@ OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
 !ENDIF
 
 
-COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc /I$(TOPDIR)\src\common $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) /D_WIN32_WINNT=0x0400 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF) "/DOPENSC_FEATURES=$(OPENSC_FEATURES)"
+COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc /I$(TOPDIR)\src\common $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) /D_WIN32_WINNT=0x0400 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF) /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\""
 LINKFLAGS = /DEBUG /NOLOGO /INCREMENTAL:NO /MACHINE:IX86
 
 
@@ -53,7 +53,7 @@ install-headers-dir:
 	cl $(COPTS) /c $<
 
 .rc.res::
-	rc /l 0x809 /r /fo"$*.res" $<
+	rc /l 0x0409 /r $<
 
 clean::
 	del /Q *.obj *.dll *.exe *.pdb *.lib *.exp *.def
