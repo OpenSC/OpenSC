@@ -223,7 +223,7 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 	const u8 *p = buf;
 
 	while (bytesleft >= 2) {
-		unsigned int cla, tag, hlen;
+		unsigned int cla = 0, tag = 0, hlen;
 		const u8 *tagp = p;
 		size_t len;
 
