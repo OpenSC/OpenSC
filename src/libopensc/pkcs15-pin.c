@@ -203,6 +203,8 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 
 	card = p15card->card;
 	r = sc_lock(card);
+	if (r == SC_ERROR_CARD_RESET || r == SC_ERROR_READER_REATTACHED)
+		r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 	/* the path in the pin object is optional */
 	if (pin->path.len > 0) {
