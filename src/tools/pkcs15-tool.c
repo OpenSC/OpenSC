@@ -1421,7 +1421,7 @@ static int pem_encode(int alg_id, sc_pkcs15_der_t *key, sc_pkcs15_der_t *out)
 	struct sc_asn1_entry	asn1_pem_key[2],
 				asn1_pem_key_items[3];
 	struct sc_algorithm_id algorithm;
-	int key_len;
+	size_t key_len;
 
 	memset(&algorithm, 0, sizeof(algorithm));
 	algorithm.algorithm = alg_id;
