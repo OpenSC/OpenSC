@@ -51,7 +51,7 @@ typedef struct mscsfs {
 	int (*listFile)(mscfs_file_t *fileOut, int reset, void* udata);
 } mscfs_t;
 
-mscfs_t *mscfs_new();
+mscfs_t *mscfs_new(void);
 void mscfs_free(mscfs_t *fs);
 void mscfs_clear_cache(mscfs_t* fs);
 int mscfs_push_file(mscfs_t* fs, mscfs_file_t *file);

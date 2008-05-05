@@ -316,7 +316,7 @@ int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 void msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength)
 {
 	assert(buffer);
-	assert(bufferLength >= pinLength);
+	assert(bufferLength >= (size_t)pinLength);
 	assert(pinLength <= MSC_MAX_PIN_LENGTH);
 
 	truncatePinNulls(pinValue, &pinLength);
@@ -360,7 +360,7 @@ int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukL
 void msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pukValue, int pukLength)
 {
 	assert(buffer);
-	assert(bufferLength >= pukLength);
+	assert(bufferLength >= (size_t)pukLength);
 	assert(pukLength <= MSC_MAX_PIN_LENGTH);
 
 	truncatePinNulls(pukValue, &pukLength);
@@ -406,7 +406,7 @@ void msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bu
 	assert(pinLength <= MSC_MAX_PIN_LENGTH);
 	assert(newPinLength <= MSC_MAX_PIN_LENGTH);
 	assert(buffer);
-	assert(bufferLength >= pinLength + newPinLength + 2);
+	assert(bufferLength >= pinLength + newPinLength + 2UL);
 
 	truncatePinNulls(pinValue, &pinLength);
 	truncatePinNulls(newPin, &newPinLength);
@@ -806,7 +806,7 @@ int msc_compute_crypt(sc_card_t *card,
 			size_t dataLength,
 			size_t outputDataLength)
 {
-	int left = dataLength;
+	size_t left = dataLength;
 	const u8* inPtr = data;
 	u8* outPtr = outputData;
 	int toSend;

@@ -36,6 +36,7 @@ int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 			    struct sc_pkcs15_object *pin)
 {
 	int r;
+	size_t len;
 	const char *argv[3];
 	const char *pgmname = PIN_ENTRY;
 	ASSUAN_CONTEXT ctx;
@@ -78,12 +79,12 @@ int ask_and_verify_pin_code(struct sc_pkcs15_card *p15card,
 			printf("GETPIN: %s\n", assuan_strerror((AssuanError) r));
 			goto err;
 		}
-		r = strlen(buf);
-		if (r < pinfo->min_length) {
+		len = strlen(buf);
+		if (len < pinfo->min_length) {
 			sprintf(errtext, "PIN code too short, min. %lu digits", (unsigned long) pinfo->min_length);
 			continue;
 		}
-		if (r > pinfo->max_length) {
+		if (len > pinfo->max_length) {
 			sprintf(errtext, "PIN code too long, max. %lu digits", (unsigned long) pinfo->max_length);
 			continue;
 		}

@@ -129,7 +129,7 @@ static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 		path->type = SC_PATH_TYPE_DF_NAME;
 	} else {
 		/* file id */
-		int buf[2];
+		unsigned int buf[2];
 		u8 cbuf[2];
 	
 		if (strlen(arg) != 4) {
@@ -534,7 +534,7 @@ static int do_create(int argc, char **argv)
 	if (arg_to_path(argv[0], &path, 1) != 0)
 		goto usage;
 	/* %z isn't supported everywhere */
-	if (sscanf(argv[1], "%d", &size) != 1)
+	if (sscanf(argv[1], "%u", &size) != 1)
 		goto usage;
 	file = sc_file_new();
 	file->id = (path.value[0] << 8) | path.value[1];
@@ -564,7 +564,7 @@ static int do_mkdir(int argc, char **argv)
 		goto usage;
 	if (arg_to_path(argv[0], &path, 1) != 0)
 		goto usage;
-	if (sscanf(argv[1], "%d", &size) != 1)
+	if (sscanf(argv[1], "%u", &size) != 1)
 		goto usage;
 	file = sc_file_new();
 	file->id = (path.value[0] << 8) | path.value[1];

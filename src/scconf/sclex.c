@@ -92,7 +92,7 @@ static void buf_finished(BUFHAN * bp)
 	}
 }
 
-static void buf_eat_till(BUFHAN * bp, char start, char *end)
+static void buf_eat_till(BUFHAN * bp, char start, const char *end)
 {
 	int i;
 

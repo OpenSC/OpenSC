@@ -263,7 +263,7 @@ static int public_key_created(struct pkcs15_fw_data *fw_data,
 			      struct pkcs15_any_object **obj2)
 {
 	int found = 0;
-	int ii=0;
+	unsigned int ii=0;
 
 	while(ii<num_objects && !found) {
 		if (!fw_data->objects[ii]->p15_object) {

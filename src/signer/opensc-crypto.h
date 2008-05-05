@@ -13,6 +13,6 @@ struct sc_priv_data
         int ref_count, reader_id;
 };
 
-extern RSA_METHOD * sc_get_method();
+extern RSA_METHOD * sc_get_method(void);
 
 #endif

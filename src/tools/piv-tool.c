@@ -121,7 +121,8 @@ static int load_cert(const char * cert_id, const char * cert_file,
 		derlen = stat_buf.st_size;
 		der = malloc(derlen);
 		if (der == NULL) {
-			printf("file %s is too big, %d\n", cert_file, derlen);
+			printf("file %s is too big, %lu\n",
+				cert_file, (unsigned long)derlen);
 			return-1 ;
 		}
 		if (1 != fread(der, derlen, 1, fp)) {

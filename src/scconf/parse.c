@@ -150,7 +150,7 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 	scconf_item_add_internal(&parser, type);
 	switch (parser.current_item->type) {
 	case SCCONF_ITEM_TYPE_COMMENT:
-		parser.current_item->value.comment = strdup((char *) data);
+		parser.current_item->value.comment = strdup((const char *) data);
 		break;
 	case SCCONF_ITEM_TYPE_BLOCK:
 		if (!dst)

@@ -713,7 +713,7 @@ void print_slot_list(FILE *f, CK_SLOT_ID_PTR pSlotList, CK_ULONG ulCount)
 
 void print_slot_info(FILE *f, CK_SLOT_INFO *info)
 {
-  int            i;
+  size_t i;
   enum_specs ck_flags[] = {
     { CKF_TOKEN_PRESENT    , "CKF_TOKEN_PRESENT                " },
     { CKF_REMOVABLE_DEVICE , "CKF_REMOVABLE_DEVICE             " },
@@ -899,7 +899,7 @@ void print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
 
 void print_session_info(FILE *f, CK_SESSION_INFO *info)
 {
-  int            i;
+  size_t i;
   enum_specs ck_flags[] = {
     { CKF_RW_SESSION     , "CKF_RW_SESSION                   " },
     { CKF_SERIAL_SESSION , "CKF_SERIAL_SESSION               " }

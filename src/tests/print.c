@@ -95,6 +95,7 @@ static void print_pin(const struct sc_pkcs15_object *obj)
 static void print_prkey(const struct sc_pkcs15_object *obj)
 {
 	int i;
+	size_t j;
 	const char *usages[] =
 	{
 		"encrypt", "decrypt", "sign", "signRecover",
@@ -131,8 +132,8 @@ static void print_prkey(const struct sc_pkcs15_object *obj)
 	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");
 	if (prkey->path.len) {
 		printf("\tPath        : ");
-		for (i = 0; i < prkey->path.len; i++)
-			printf("%02X", prkey->path.value[i]);
+		for (j = 0; j < prkey->path.len; j++)
+			printf("%02X", prkey->path.value[j]);
 		if (prkey->path.type == SC_PATH_TYPE_PATH_PROT)
 			printf(" (protected)");
 		printf("\n");
@@ -143,6 +144,7 @@ static void print_prkey(const struct sc_pkcs15_object *obj)
 static void print_pubkey(const struct sc_pkcs15_object *obj)
 {
 	int i;
+	size_t j;
 	const char *usages[] =
 	{
 		"encrypt", "decrypt", "sign", "signRecover",
@@ -178,8 +180,8 @@ static void print_pubkey(const struct sc_pkcs15_object *obj)
 	printf("\tKey ref     : %d\n", pubkey->key_reference);
 	printf("\tNative      : %s\n", pubkey->native ? "yes" : "no");
 	printf("\tPath        : ");
-	for (i = 0; i < pubkey->path.len; i++)
-		printf("%02X", pubkey->path.value[i]);
+	for (j = 0; j < pubkey->path.len; j++)
+		printf("%02X", pubkey->path.value[j]);
 	printf("\n");
 	printf("\tID          : %s\n", sc_pkcs15_print_id(&pubkey->id));
 }

@@ -107,7 +107,7 @@ static int	do_read_certificate(const char *, const char *, X509 **);
 static void	parse_commandline(int argc, char **argv);
 static void	read_options_file(const char *);
 static void	ossl_print_errors(void);
-static void set_userpin_ref();
+static void set_userpin_ref(void);
 
 
 enum {
