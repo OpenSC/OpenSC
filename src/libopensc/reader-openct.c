@@ -430,7 +430,9 @@ static int openct_reader_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 	if (rc == IFD_ERROR_NOT_CONNECTED) {
 		ct_reader_disconnect(data->h);
 		data->h = NULL;
-		return SC_ERROR_READER_DETACHED;
+
+		/* Try to reconnect as reader may be plugged-in again */
+		return openct_reader_reconnect(reader, slot);
 	}
 
 	return openct_error(reader, rc);
