@@ -311,9 +311,6 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
   CK_RV rv;
   enter("C_Finalize");
   rv = po->C_Finalize(pReserved);
-  /* After Finalize do not use the module again */
-  C_UnloadModule(modhandle);
-  po = NULL;
   return retne(rv);
 }
 
