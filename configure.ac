@@ -119,49 +119,49 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[zlib],
-	[AC_HELP_STRING([--enable-zlib], [enable zlib linkage. @<:@detect@:>@])],
+	[AC_HELP_STRING([--enable-zlib], [enable zlib linkage @<:@detect@:>@])],
 	,
 	[enable_zlib="detect"]
 )
 
 AC_ARG_ENABLE(
 	[readline],
-	[AC_HELP_STRING([--enable-readline], [enable readline linkage. @<:@detect@:>@])],
+	[AC_HELP_STRING([--enable-readline], [enable readline linkage @<:@detect@:>@])],
 	,
 	[enable_readline="detect"]
 )
 
 AC_ARG_ENABLE(
 	[openssl],
-	[AC_HELP_STRING([--enable-openssl], [enable openssl linkage. @<:@detect@:>@])],
+	[AC_HELP_STRING([--enable-openssl], [enable openssl linkage @<:@detect@:>@])],
 	,
 	[enable_openssl="detect"]
 )
 
 AC_ARG_ENABLE(
 	[openct],
-	[AC_HELP_STRING([--enable-openct], [enable openct linkage. @<:@disabled@:>@])],
+	[AC_HELP_STRING([--enable-openct], [enable openct linkage @<:@disabled@:>@])],
 	,
 	[enable_openct="no"]
 )
 
 AC_ARG_ENABLE(
 	[pcsc],
-	[AC_HELP_STRING([--enable-pcsc], [enable pcsc support. @<:@disabled@:>@])],
+	[AC_HELP_STRING([--enable-pcsc], [enable pcsc support @<:@disabled@:>@])],
 	,
 	[enable_pcsc="no"]
 )
 
 AC_ARG_ENABLE(
 	[nsplugin],
-	[AC_HELP_STRING([--enable-nsplugin], [enable nsplugin (signer). @<:@disabled@:>@])],
+	[AC_HELP_STRING([--enable-nsplugin], [enable nsplugin (signer) @<:@disabled@:>@])],
 	,
 	[enable_nsplugin="no"]
 )
 
 AC_ARG_ENABLE(
 	[man],
-	[AC_HELP_STRING([--disable-man], [disable installation of manuals. @<:@enabled for none Windows@:>@])],
+	[AC_HELP_STRING([--disable-man], [disable installation of manuals @<:@enabled for none Windows@:>@])],
 	,
 	[
 		if test "${WIN32}" = "yes"; then
@@ -174,7 +174,7 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[doc],
-	[AC_HELP_STRING([--enable-doc], [enable installation of documents. @<:@disabled@:>@])],
+	[AC_HELP_STRING([--enable-doc], [enable installation of documents @<:@disabled@:>@])],
 	,
 	[enable_doc="no"]
 )
