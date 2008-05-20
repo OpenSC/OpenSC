@@ -277,6 +277,11 @@ static void spy_attribute_list_out(const char *name, CK_ATTRIBUTE_PTR pTemplate,
   print_attribute_list(spy_output, pTemplate, ulCount);
 }
 
+static void print_ptr_in(const char *name, CK_VOID_PTR ptr)
+{
+  fprintf(spy_output, "[in] %s[%p]: \n", name, ptr);
+}
+
 CK_RV C_GetFunctionList
 (CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
 {
@@ -302,6 +307,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
   }
 
   enter("C_Initialize");
+  print_ptr_in("pInitArgs", pInitArgs);
   rv = po->C_Initialize(pInitArgs);
   return retne(rv);
 }
