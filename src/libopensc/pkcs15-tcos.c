@@ -27,6 +27,10 @@
 #include <stdio.h>
 #include <compat_strlcpy.h>
 
+int sc_pkcs15emu_tcos_init_ex(
+	sc_pkcs15_card_t   *p15card,
+	sc_pkcs15emu_opt_t *opts);
+
 static int insert_cert(
 	sc_pkcs15_card_t *p15card,
 	char             *path,
