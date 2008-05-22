@@ -32,6 +32,9 @@
 #include <opensc/pkcs15.h>
 #include "cardctl.h"
 
+int sc_pkcs15emu_rutoken_init_ex(sc_pkcs15_card_t *p15card, 
+		sc_pkcs15emu_opt_t *opts);
+
 #define PrKDF_path      "3F00FF000001"
 #define PuKDF_path      "3F00FF000002"
 #define CDF_path        "3F00FF000003"
