@@ -544,7 +544,7 @@ cardos_store_key_component(sc_card_t *card,
 	struct sc_cardctl_cardos_obj_info args;
 	struct tlv	tlv;
 	unsigned char	buffer[256];
-#if SET_SM_BYTES
+#ifdef SET_SM_BYTES
 	unsigned int	n;
 #endif
 	int		r;
@@ -582,7 +582,7 @@ cardos_store_key_component(sc_card_t *card,
 	tlv_add(&tlv, 0);
 #endif
 
-#if SET_SM_BYTES
+#ifdef SET_SM_BYTES
 	/* it shouldn't be necessary to set the default value */
 	/* SM bytes */
 	tlv_next(&tlv, 0x8B);
