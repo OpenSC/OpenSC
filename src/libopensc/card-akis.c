@@ -397,7 +397,7 @@ static int
 akis_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 {
 	int r;
-	u8 system[128];
+	u8 system_buffer[128];
 
 	if (!serial)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -406,11 +406,11 @@ akis_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	if (card->serialnr.len) goto end;
 
 	/* read serial number */
-	r = akis_get_data(card, 6, system, 0x4D);
+	r = akis_get_data(card, 6, system_buffer, 0x4D);
 	SC_TEST_RET(card->ctx, r, "GET_DATA failed");
 
 	card->serialnr.len = 12;
-	memcpy(card->serialnr.value, system+55, 12);
+	memcpy(card->serialnr.value, system_buffer+55, 12);
 
 end:
 	memcpy(serial, &card->serialnr, sizeof(*serial));
