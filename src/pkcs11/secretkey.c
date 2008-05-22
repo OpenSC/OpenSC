@@ -222,4 +222,9 @@ struct sc_pkcs11_object_ops pkcs11_secret_key_ops = {
 	sc_pkcs11_secret_key_set_attribute,
 	sc_pkcs11_secret_key_get_attribute,
 	sc_pkcs11_any_cmp_attribute,
+	NULL,	/* destroy_object */
+	NULL,	/* get_size */
+	NULL,	/* sign */
+	NULL,	/* unwrap_key */
+	NULL	/* decrypt */
 };
