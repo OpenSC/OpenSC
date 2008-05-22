@@ -393,14 +393,14 @@ static int pcsc_wait_for_event(sc_reader_t **readers,
 	ctx = readers[0]->ctx;
 	pcsc_ctx = priv->gpriv->pcsc_ctx;
 	for (i = 0; i < nslots; i++) {
-		struct pcsc_private_data *priv = GET_PRIV_DATA(readers[i]);
+		struct pcsc_private_data *priv2 = GET_PRIV_DATA(readers[i]);
 
-		rgReaderStates[i].szReader = priv->reader_name;
+		rgReaderStates[i].szReader = priv2->reader_name;
 		rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
 		rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
 
 		/* Can we handle readers from different PCSC contexts? */
-		if (priv->gpriv->pcsc_ctx != pcsc_ctx)
+		if (priv2->gpriv->pcsc_ctx != pcsc_ctx)
 			return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -906,12 +906,12 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 		int found = 0;
 
 		for (i=0;i < sc_ctx_get_reader_count (ctx) && !found;i++) {
-			sc_reader_t *reader = sc_ctx_get_reader (ctx, i);
-			if (reader == NULL) {
+			sc_reader_t *reader2 = sc_ctx_get_reader (ctx, i);
+			if (reader2 == NULL) {
 				ret = SC_ERROR_INTERNAL;
 				goto err1;
 			}
-			if (reader->ops == &pcsc_ops && !strcmp (reader->name, p)) {
+			if (reader2->ops == &pcsc_ops && !strcmp (reader2->name, p)) {
 				found = 1;
 			}
 		}
