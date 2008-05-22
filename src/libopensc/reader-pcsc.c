@@ -736,7 +736,6 @@ static struct sc_reader_driver pcsc_drv = {
 
 static int pcsc_init(sc_context_t *ctx, void **reader_data)
 {
-	LONG rv;
 	struct pcsc_global_private_data *gpriv;
 	scconf_block *conf_block = NULL;
 	int ret = SC_ERROR_INTERNAL;
@@ -859,7 +858,6 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 	char *reader_buf = NULL, *p;
 	const char *mszGroups = NULL;
 	int ret = SC_ERROR_INTERNAL;
-	int again;
 
 	if (!prv_data) {
 		ret = SC_ERROR_NO_READERS_FOUND;
