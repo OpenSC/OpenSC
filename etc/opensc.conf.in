@@ -142,22 +142,9 @@ app default {
 	# using the card_atr block. The goal is to centralize
 	# everything related to a certain card to card_atr.
 	#
-	# The supported internal card driver names are
-	#  etoken           Aladdin eToken and other Siemens CardOS cards
-	#  flex             Schlumberger Multiflex/Cryptoflex
-	#  cyberflex        Schlumberger Cyberflex
-	#  gpk              Gemplus GPK
-	#  miocos           MioCOS 1.1
-	#  mcrd             MICARDO 2.1
-	#  setcos           Setec cards
-	#  starcos          STARCOS SPK 2.3
-	#  tcos             TCOS 2.0
-	#  openpgp          OpenPGP card
-	#  jcop             JCOP cards with BlueZ PKCS#15 applet
-	#  oberthur         Oberthur AuthentIC.v2/CosmopolIC.v4
-	#  belpic           Belpic cards
-	#  emv              EMV compatible cards
-	#  piv              U.S. NIST 800-73-1 PIV
+	# The supported internal card driver names can be retrieved
+	# from the output of:
+	# $ opensc-tool --list-drivers
 
 	# Generic format: card_atr <hex encoded ATR (case-sensitive!)>
 
