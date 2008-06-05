@@ -15,6 +15,7 @@ depcomp
 install-sh
 libtool
 libtool.m4
+lt*.m4
 ltmain.sh
 missing
 mkinstalldirs

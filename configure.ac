@@ -1,14 +1,15 @@
 dnl -*- mode: m4; -*-
 
-AC_PREREQ([2.60])
+AC_PREREQ(2.61)
 
 define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [11])
 define([PACKAGE_VERSION_FIX], [4])
 
-AC_INIT([opensc], [PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX-svn])
+AC_INIT([opensc],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX-svn])
 AC_CONFIG_AUX_DIR([.])
-AM_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_MACRO_DIR([aclocal])
 AM_INIT_AUTOMAKE([${PACKAGE_NAME}], [${PACKAGE_VERSION}])
 
 OPENSC_VERSION_MAJOR="PACKAGE_VERSION_MAJOR"
@@ -42,7 +43,7 @@ AC_MSG_RESULT([${svn_checkout}])
 
 AC_ARG_WITH(
 	[cygwin-native],
-	[AC_HELP_STRING([--with-cygwin-native], [compile native win32])],
+	[AS_HELP_STRING([--with-cygwin-native],[compile native win32])],
 	,
 	[with_cygwin_native="no"]
 )
@@ -105,63 +106,63 @@ full_sysconfdir=`eval eval eval eval eval echo "${sysconfdir}" | sed "s#NONE#${p
 
 AC_ARG_ENABLE(
 	[strict],
-	[AC_HELP_STRING([--enable-strict], [enable strict compile mode @<:@disabled@:>@])],
+	[AS_HELP_STRING([--enable-strict],[enable strict compile mode @<:@disabled@:>@])],
 	,
 	[enable_strict="no"]
 )
 
 AC_ARG_ENABLE(
 	[pedantic],
-	[AC_HELP_STRING([--enable-pedantic], [enable pedantic compile mode @<:@disabled@:>@])],
+	[AS_HELP_STRING([--enable-pedantic],[enable pedantic compile mode @<:@disabled@:>@])],
 	,
 	[enable_pedantic="no"]
 )
 
 AC_ARG_ENABLE(
 	[zlib],
-	[AC_HELP_STRING([--enable-zlib], [enable zlib linkage @<:@detect@:>@])],
+	[AS_HELP_STRING([--enable-zlib],[enable zlib linkage @<:@detect@:>@])],
 	,
 	[enable_zlib="detect"]
 )
 
 AC_ARG_ENABLE(
 	[readline],
-	[AC_HELP_STRING([--enable-readline], [enable readline linkage @<:@detect@:>@])],
+	[AS_HELP_STRING([--enable-readline],[enable readline linkage @<:@detect@:>@])],
 	,
 	[enable_readline="detect"]
 )
 
 AC_ARG_ENABLE(
 	[openssl],
-	[AC_HELP_STRING([--enable-openssl], [enable openssl linkage @<:@detect@:>@])],
+	[AS_HELP_STRING([--enable-openssl],[enable openssl linkage @<:@detect@:>@])],
 	,
 	[enable_openssl="detect"]
 )
 
 AC_ARG_ENABLE(
 	[openct],
-	[AC_HELP_STRING([--enable-openct], [enable openct linkage @<:@disabled@:>@])],
+	[AS_HELP_STRING([--enable-openct],[enable openct linkage @<:@disabled@:>@])],
 	,
 	[enable_openct="no"]
 )
 
 AC_ARG_ENABLE(
 	[pcsc],
-	[AC_HELP_STRING([--enable-pcsc], [enable pcsc support @<:@disabled@:>@])],
+	[AS_HELP_STRING([--enable-pcsc],[enable pcsc support @<:@disabled@:>@])],
 	,
 	[enable_pcsc="no"]
 )
 
 AC_ARG_ENABLE(
 	[nsplugin],
-	[AC_HELP_STRING([--enable-nsplugin], [enable nsplugin (signer) @<:@disabled@:>@])],
+	[AS_HELP_STRING([--enable-nsplugin],[enable nsplugin (signer) @<:@disabled@:>@])],
 	,
 	[enable_nsplugin="no"]
 )
 
 AC_ARG_ENABLE(
 	[man],
-	[AC_HELP_STRING([--disable-man], [disable installation of manuals @<:@enabled for none Windows@:>@])],
+	[AS_HELP_STRING([--disable-man],[disable installation of manuals @<:@enabled for none Windows@:>@])],
 	,
 	[
 		if test "${WIN32}" = "yes"; then
@@ -174,35 +175,35 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[doc],
-	[AC_HELP_STRING([--enable-doc], [enable installation of documents @<:@disabled@:>@])],
+	[AS_HELP_STRING([--enable-doc],[enable installation of documents @<:@disabled@:>@])],
 	,
 	[enable_doc="no"]
 )
 
 AC_ARG_WITH(
 	[xsl-stylesheetsdir],
-	[AC_HELP_STRING([--with-xsl-stylesheetsdir=PATH], [docbook xsl-stylesheets for svn build @<:@detect@:>@])],
+	[AS_HELP_STRING([--with-xsl-stylesheetsdir=PATH],[docbook xsl-stylesheets for svn build @<:@detect@:>@])],
 	[xslstylesheetsdir="${withval}"],
 	[xslstylesheetsdir="detect"]
 )
 
 AC_ARG_WITH(
 	[plugindir],
-	[AC_HELP_STRING([--with-plugindir=PATH], [install Mozilla plugin to PATH @<:@LIBDIR/mozilla/plugins@:>@])],
+	[AS_HELP_STRING([--with-plugindir=PATH],[install Mozilla plugin to PATH @<:@LIBDIR/mozilla/plugins@:>@])],
 	[plugindir="${withval}"],
 	[plugindir="\$(libdir)/mozilla/plugins"]
 )
 
 AC_ARG_WITH(
 	[pcsc-provider],
-	[AC_HELP_STRING([--with-pcsc-provider=PATH], [Path to system pcsc provider @<:@system default@:>@])],
+	[AS_HELP_STRING([--with-pcsc-provider=PATH],[Path to system pcsc provider @<:@system default@:>@])],
 	,
 	[with_pcsc_provider="detect"]
 )
 
 AC_ARG_WITH(
 	[pinentry],
-	[AC_HELP_STRING([--with-pinentry=PROG], [run PROG as PIN-entry for OpenSC Signer @<:/usr/bin/gpinentry:>@])],
+	[AS_HELP_STRING([--with-pinentry=PROG],[run PROG as PIN-entry for OpenSC Signer @<:/usr/bin/gpinentry:>@])],
 	,
 	[with_pinentry="/usr/bin/gpinentry"]
 )
@@ -219,6 +220,8 @@ dnl Add libtool support.
 AC_LIBTOOL_WIN32_DLL
 AC_LIBTOOL_RC
 AC_PROG_LIBTOOL
+#LT_INIT([win32-dll])
+#LT_LANG([Windows Resource])
 
 dnl These required for svn checkout
 AC_ARG_VAR([XSLTPROC], [xsltproc utility])
@@ -593,9 +596,8 @@ if test "$GCC" = "yes"; then
 	CFLAGS="-fno-strict-aliasing ${CFLAGS}"
 fi
 
-AC_OUTPUT([
+AC_CONFIG_FILES([
 	Makefile
-	aclocal/Makefile
 	doc/Makefile
 	doc/nonpersistent/Makefile
 	etc/Makefile
@@ -621,6 +623,7 @@ AC_OUTPUT([
 	win32/Makefile
 	win32/versioninfo.rc.in
 ])
+AC_OUTPUT
 
 cat <<EOF
 

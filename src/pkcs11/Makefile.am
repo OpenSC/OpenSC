@@ -28,20 +28,19 @@ opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-disabl
 opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/opensc-pkcs11.exports" \
-	-module -avoid-version -no-undefined
+	-module -shared -avoid-version -no-undefined
 
 onepin_opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-enabled.c
 onepin_opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/opensc-pkcs11.exports" \
-	-module -avoid-version -no-undefined
-
+	-module -shared -avoid-version -no-undefined
 
 pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h pkcs11-spy.exports
 pkcs11_spy_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) libpkcs11.la
 pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/pkcs11-spy.exports" \
-	-module -avoid-version -no-undefined
+	-module -shared -avoid-version -no-undefined
 
 if WIN32
 opensc_pkcs11_la_SOURCES += versioninfo.rc
