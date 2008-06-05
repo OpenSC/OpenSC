@@ -1,5 +1,5 @@
 AUTOMAKE_OPTIONS = foreign 1.10
-ACLOCAL_AMFLAGS = -I aclocal
+ACLOCAL_AMFLAGS = -I m4
 
 MAINTAINERCLEANFILES = \
 	config.log config.status \
