@@ -16,7 +16,7 @@ noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.
 pkgconfig_DATA = libopensc.pc libpkcs15init.pc libscconf.pc
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
-	$(OPTIONAL_ZLIB_CFLAGS) $(LTLIB_CFLAGS) -prefer-pic
+	$(OPTIONAL_ZLIB_CFLAGS) $(LTLIB_CFLAGS)
 INCLUDES = -I$(top_builddir)/src/include -I$(top_srcdir)/src/common
 
 libopensc_la_SOURCES = \
