@@ -217,11 +217,18 @@ AC_PROG_SED
 AC_PROG_MAKE_SET
 
 dnl Add libtool support.
-AC_LIBTOOL_WIN32_DLL
-AC_LIBTOOL_RC
-AC_PROG_LIBTOOL
-#LT_INIT([win32-dll])
-#LT_LANG([Windows Resource])
+ifdef(
+	[LT_INIT],
+	[
+		LT_INIT([win32-dll])
+		LT_LANG([Windows Resource])
+	],
+	[
+		AC_LIBTOOL_WIN32_DLL
+		AC_LIBTOOL_RC
+		AC_PROG_LIBTOOL
+	]
+)
 
 dnl These required for svn checkout
 AC_ARG_VAR([XSLTPROC], [xsltproc utility])
