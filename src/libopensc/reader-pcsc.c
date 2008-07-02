@@ -825,26 +825,25 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 	ret = SC_SUCCESS;
 
 out:
-	if (ret != SC_SUCCESS) {
-		if (gpriv->pcsc_ctx != 0)
-			gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
+	if (gpriv != NULL) {
 		if (gpriv->dlhandle != NULL)
 			lt_dlclose(gpriv->dlhandle);
-		if (gpriv != NULL)
-			free(gpriv);
+		free(gpriv);
 	}
 
-	return 0;
+	return ret;
 }
 
 static int pcsc_finish(sc_context_t *ctx, void *prv_data)
 {
-	struct pcsc_global_private_data *priv = (struct pcsc_global_private_data *) prv_data;
+	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) prv_data;
 
-	if (priv) {
-		priv->SCardReleaseContext(priv->pcsc_ctx);
-		lt_dlclose(priv->dlhandle);
-		free(priv);
+	if (gpriv) {
+		if (gpriv->pcsc_ctx != -1)
+			gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
+		if (gpriv->dlhandle != NULL)
+			lt_dlclose(gpriv->dlhandle);
+		free(gpriv);
 	}
 
 	return 0;
@@ -859,14 +858,24 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 	const char *mszGroups = NULL;
 	int ret = SC_ERROR_INTERNAL;
 
-	if (!prv_data) {
+	if (!gpriv) {
 		ret = SC_ERROR_NO_READERS_FOUND;
 		goto out;
 	}
 
 	do {
-		rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL, NULL,
-				      (LPDWORD) &reader_buf_size);
+		if (gpriv->pcsc_ctx == -1) {
+			/*
+			 * Cannot call SCardListReaders with -1
+			 * context as in Windows ERROR_INVALID_HANDLE
+			 * is returned instead of SCARD_E_INVALID_HANDLE
+			 */
+			rv = SCARD_E_INVALID_HANDLE;
+		}
+		else {
+			rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL, NULL,
+					      (LPDWORD) &reader_buf_size);
+		}
 		if (rv != SCARD_S_SUCCESS) {
 			if (rv != SCARD_E_INVALID_HANDLE) {
 				ret = pcsc_ret_to_error(rv);
