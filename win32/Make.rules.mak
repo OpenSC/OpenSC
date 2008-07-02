@@ -56,4 +56,4 @@ install-headers-dir:
 	rc /l 0x0409 /r $<
 
 clean::
-	del /Q *.obj *.dll *.exe *.pdb *.lib *.exp *.def
+	del /Q *.obj *.dll *.exe *.pdb *.lib *.def
