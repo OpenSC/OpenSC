@@ -308,7 +308,8 @@ cardos_generate_key(sc_profile_t *profile, sc_card_t *card,
 	u8		abignum[256];
 	int		algorithm, r, delete_it = 0, use_ext_rsa = 0;
 	size_t		keybits, rsa_max_size;
-	
+	int             pin_id = -1;
+
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		return SC_ERROR_NOT_SUPPORTED;
 
@@ -333,6 +334,12 @@ cardos_generate_key(sc_profile_t *profile, sc_card_t *card,
 		sc_error(card->ctx, "Profile doesn't define temporary file "
 				"for key generation.");
 		return SC_ERROR_NOT_SUPPORTED;
+	}
+       pin_id = sc_keycache_find_named_pin(&key_info->path, SC_PKCS15INIT_USER_PIN);
+       if (pin_id > 0) {
+		r = sc_pkcs15init_verify_key(profile, card, NULL, SC_AC_CHV, pin_id);
+		if (r < 0)
+			return r;
 	}
 	if (use_ext_rsa == 0)
 		temp->ef_structure = SC_FILE_EF_LINEAR_VARIABLE_TLV;
