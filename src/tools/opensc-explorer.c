@@ -1762,6 +1762,13 @@ int main(int argc, char * const argv[])
 		printf("unable to select MF: %s\n", sc_strerror(r));
 		return 1;
 	}
+	{
+		int lcycle = SC_CARDCTRL_LIFECYCLE_ADMIN;
+		r = sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &lcycle);
+		if (r && r != SC_ERROR_NOT_SUPPORTED)
+			printf("unable to change lifecycle: %s\n",
+				sc_strerror(r));
+	}
 	while (1) {
 		struct command *cmd;
 		size_t i;
