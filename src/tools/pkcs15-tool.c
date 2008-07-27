@@ -561,9 +561,9 @@ static int read_public_key(void)
 		r = 1;
 	} else {
 		r = print_pem_object("PUBLIC KEY", pem_key.value, pem_key.len);
+		free(pem_key.value);
 	}
 
-	free(pem_key.value);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
 	else if (pubkey)
