@@ -4,13 +4,19 @@ Please also see doc/WhatsNew.html or
 http://www.opensc-project.org/opensc/wiki/WhatsNew
 
 Also see the svn changelog using svn command
-or doc/ChangeLog.
+or doc/nonpersistent/ChangeLog.
 
 New in 0.11.5; 2008-07-30; Andreas Jellinghaus
-* configure system improved by Alon Bar-Lev.
-* The windows build system was rewritten from scatch by Alon Bar-Lev.
-  The new build system uses mingw for building packages.
-* RuToken now supported
+* Build system rewritten (NOTICE: configure options was modified). 
+  The build system can produce outputs for *NIX, cygwin and native
+  windows (using mingw).
+* ruToken now supported.
+* Allow specifying application name for data objects.
+* Basic reader hotplug support.
+* PC/SC library is dynamic linked no longer compile time dependency.
+* PKCS#11 provider is now installed at LIBDIR/pkcs11
+* PKCS#11 - Number of virtual slots moved into configuration.
+* PKCS#11 - Fix fork() compliance.
 
 New in 0.11.4; 2007-09-10; Andreas Jellinghaus
 * Drop AC_LIB_LINKFLAGS for libltdl and aclocal/lib* files.
