@@ -6,6 +6,12 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/ChangeLog.
 
+New in 0.11.5; 2008-07-30; Andreas Jellinghaus
+* configure system improved by Alon Bar-Lev.
+* The windows build system was rewritten from scatch by Alon Bar-Lev.
+  The new build system uses mingw for building packages.
+* RuToken now supported
+
 New in 0.11.4; 2007-09-10; Andreas Jellinghaus
 * Drop AC_LIB_LINKFLAGS for libltdl and aclocal/lib* files.
 * New configure option to disable building nsplugin.
