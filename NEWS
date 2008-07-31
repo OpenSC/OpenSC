@@ -17,6 +17,7 @@ New in 0.11.5; 2008-07-30; Andreas Jellinghaus
 * PKCS#11 provider is now installed at LIBDIR/pkcs11
 * PKCS#11 - Number of virtual slots moved into configuration.
 * PKCS#11 - Fix fork() compliance.
+* make sign_with_decrypt hack configureable for siemens cards.
 
 New in 0.11.4; 2007-09-10; Andreas Jellinghaus
 * Drop AC_LIB_LINKFLAGS for libltdl and aclocal/lib* files.
