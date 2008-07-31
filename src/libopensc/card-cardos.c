@@ -389,7 +389,7 @@ static const int df_acl[9] = {
 	SC_AC_OP_REHABILITATE,	/* DF */
 	SC_AC_OP_DELETE,	/* DF */
 
-	-1,			/* ADMIN DF */
+	SC_AC_OP_UPDATE,	/* ADMIN DF */
 	SC_AC_OP_CREATE,	/* Files */
 	-1			/* Reserved */
 };
@@ -404,7 +404,7 @@ static const int ef_acl[9] = {
 
 	/* XXX: ADMIN should be an ACL type of its own, or mapped
 	 * to erase */
-	-1,			/* ADMIN EF (modify meta information?) */
+	SC_AC_OP_UPDATE,	/* ADMIN EF (modify meta information?) */
 	-1,			/* INC (-> cylic fixed files) */
 	-1			/* DEC */
 };

@@ -7,6 +7,8 @@ Also see the svn changelog using svn command
 or doc/nonpersistent/ChangeLog.
 
 New in 0.11.5; 2008-07-31; Andreas Jellinghaus
+* Apply security fix for cardos driver and extend pkcs15-tool to
+  test cards for the security vulnerability and update them.
 * Build system rewritten (NOTICE: configure options was modified). 
   The build system can produce outputs for *NIX, cygwin and native
   windows (using mingw).
