@@ -32,7 +32,9 @@ $SED -e "s#</li>#</li>\n#g" < "$OUTDIR"/TitleIndex.tmp \
         |$SED -e "s#.*\"/$WIKI/\([^\"]*\)\".*#\1#g" \
 	> "$OUTDIR"/WikiWords.tmp
 $SED -e /^Trac/d -e /^Wiki/d -e /^TitleIndex/d -e /^RecentChanges/d \
-	-e /^CamelCase/d -e /^SandBox/d -i "$OUTDIR"/WikiWords.tmp
+        -e /^CamelCase/d -e /^SandBox/d -e /^InterMapTxt/d -e /^InterWiki/d \
+        -e /^InterTrac/d -i "$OUTDIR"/WikiWords.tmp
+
 
 for A in WikiStart `cat "$OUTDIR"/WikiWords.tmp`
 do
