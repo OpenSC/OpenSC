@@ -1200,12 +1200,6 @@ static int test_update(sc_card_t *in_card)
                 goto end;
         }
 
-        if (strcmp("OpenSC Card",p15card->label) != 0) {
-		printf("not initialized by opensc, card is fine.");
-		rc = 0;
-                goto end;
-        }
-
 	/* first select file on 5015 and get fci */
 	sc_format_apdu(in_card, &apdu, SC_APDU_CASE_4_SHORT, 0xa4, 0x08, 0x00);
 	apdu.lc = sizeof(cmd1);
