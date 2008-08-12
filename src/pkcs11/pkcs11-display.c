@@ -827,7 +827,7 @@ void print_mech_info(FILE *f, CK_MECHANISM_TYPE type,
   fprintf(f, "min:%lu max:%lu flags:0x%lX ",
 	  (unsigned long) minfo->ulMinKeySize,
 	  (unsigned long) minfo->ulMaxKeySize, minfo->flags);
-  printf("( %s%s%s%s%s%s%s%s%s%s%s%s%s%s)\n",
+  fprintf(f, "( %s%s%s%s%s%s%s%s%s%s%s%s%s%s)\n",
 #endif
 	 (minfo->flags & CKF_HW)                ? "Hardware " : "",
 	 (minfo->flags & CKF_ENCRYPT)           ? "Encrypt "  : "",
