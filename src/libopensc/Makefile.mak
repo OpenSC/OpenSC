@@ -25,14 +25,14 @@ OBJECTS			= \
 	card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
 	card-cardos.obj card-tcos.obj card-emv.obj card-default.obj \
 	card-mcrd.obj card-starcos.obj card-openpgp.obj card-jcop.obj \
-	card-oberthur.obj card-belpic.obj card-atrust-acos.obj \
+	card-oberthur.obj card-belpic.obj card-atrust-acos.obj card-entersafe.obj \
 	card-incrypto34.obj card-piv.obj card-muscle.obj card-acos5.obj \
 	card-asepcos.obj card-akis.obj card-gemsafeV1.obj card-rutoken.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj pkcs15-gemsafeGPK.obj \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
-	pkcs15-rutoken.obj \
+	pkcs15-rutoken.obj pkcs15-esinit.obj \
 	compression.obj p15card-helper.obj \
 	versioninfo.res
 

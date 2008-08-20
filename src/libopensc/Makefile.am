@@ -35,14 +35,14 @@ libopensc_la_SOURCES = \
 	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 	card-cardos.c card-tcos.c card-emv.c card-default.c \
 	card-mcrd.c card-starcos.c card-openpgp.c card-jcop.c \
-	card-oberthur.c card-belpic.c card-atrust-acos.c \
+	card-oberthur.c card-belpic.c card-atrust-acos.c card-entersafe.c \
 	card-incrypto34.c card-piv.c card-muscle.c card-acos5.c \
 	card-asepcos.c card-akis.c card-gemsafeV1.c card-rutoken.c\
 	\
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
-	pkcs15-rutoken.c \
+	pkcs15-rutoken.c pkcs15-esinit.c \
 	compression.c p15card-helper.c \
 	\
 	libopensc.exports

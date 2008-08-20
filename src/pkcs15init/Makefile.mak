@@ -10,6 +10,7 @@ OBJECTS = pkcs15-lib.obj profile.obj keycache.obj \
           pkcs15-cardos.obj pkcs15-jcop.obj pkcs15-starcos.obj \
           pkcs15-oberthur.obj pkcs15-setcos.obj pkcs15-incrypto34.obj \
           pkcs15-muscle.obj pkcs15-asepcos.obj pkcs15-rutoken.obj \
+          pkcs15-entersafe.obj \
 		  versioninfo.res
 
 all: install-headers $(TARGET) 

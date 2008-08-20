@@ -156,7 +156,17 @@ enum {
  	SC_CARDCTL_RUTOKEN_GOST_ENCIPHER, 
  	SC_CARDCTL_RUTOKEN_GOST_DECIPHER,
 	SC_CARDCTL_RUTOKEN_FORMAT_INIT,
-	SC_CARDCTL_RUTOKEN_FORMAT_END
+	SC_CARDCTL_RUTOKEN_FORMAT_END,
+
+	/*
+	 * EnterSafe specific calls
+	 */
+	SC_CARDCTL_ENTERSAFE_BASE = _CTL_PREFIX('E', 'S', 'F'),
+	SC_CARDCTL_ENTERSAFE_CREATE_FILE,
+	SC_CARDCTL_ENTERSAFE_CREATE_END,
+	SC_CARDCTL_ENTERSAFE_WRITE_KEY,
+	SC_CARDCTL_ENTERSAFE_GENERATE_KEY,
+	SC_CARDCTL_ENTERSAFE_PREINSTALL_KEYS,
 };
 
 enum {
@@ -551,6 +561,87 @@ struct sc_rutoken_decipherinfo {
     u8	*outbuf;
     size_t outlen;
 };
+
+/*
+ * EnterSafe stuff
+ * 
+ */
+
+#define	SC_ENTERSAFE_MF_DATA	0x01
+#define SC_ENTERSAFE_DF_DATA	0x02
+#define SC_ENTERSAFE_EF_DATA	0x04
+
+#define ENTERSAFE_USER_PIN_ID  0x01
+#define ENTERSAFE_SO_PIN_ID 0x02
+#define ENTERSAFE_MIN_KEY_ID 0x01
+#define ENTERSAFE_MAX_KEY_ID 0x09
+
+#define ENTERSAFE_AC_EVERYONE 0x00
+#define ENTERSAFE_AC_USER 0x04
+#define ENTERSAFE_AC_USER_ 0x08
+
+
+#define ENTERSAFE_AC_NEVER 0xC0
+#define ENTERSAFE_AC_ALWAYS 0x10
+#define ENTERSAFE_AC_CHV 0x30
+
+
+typedef struct sc_entersafe_create_data_st {
+	 unsigned int type;
+	 union {
+		  struct {
+			   u8 file_id[2];
+			   u8 file_count;
+			   u8 flag;
+			   u8 ikf_size[2];
+			   u8 create_ac;
+			   u8 append_ac;
+			   u8 lock_ac;
+			   u8 aid[16];
+			   u8 init_key[16];
+		  } mf;
+		  struct {
+			   u8 file_id[2];
+			   u8 file_count;
+			   u8 flag;
+			   u8 ikf_size[2];
+			   u8 create_ac;
+			   u8 append_ac;
+			   u8 lock_ac;
+			   u8 aid[16];
+			   u8 init_key[16];
+		  } df;
+		  struct {
+			   u8 file_id[2];	
+			   u8 size[2];
+			   u8 attr[2];
+			   u8 name;
+			   u8 ac[10];
+			   u8 sm[2];
+		  } ef;
+	 } data;
+} sc_entersafe_create_data;
+
+typedef struct sc_entersafe_wkey_data_st {
+	 u8 key_id;
+	 u8 usage;
+	 union{
+		  struct sc_pkcs15_prkey_rsa* rsa;
+		  struct{
+			   u8 EC;
+			   u8 ver;
+			   u8 key_val[256];
+			   size_t key_len;
+		  } symmetric;
+	 }key_data;
+} sc_entersafe_wkey_data;
+
+typedef struct sc_entersafe_gen_key_data_st {
+	u8	key_id;
+	size_t	key_length;
+	u8	*modulus;
+} sc_entersafe_gen_key_data;
+
 #pragma pack(pop)
 
 #ifdef __cplusplus

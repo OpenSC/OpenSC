@@ -163,6 +163,7 @@ static struct profile_operations {
 	{ "incrypto34", (void *) sc_pkcs15init_get_incrypto34_ops },
 	{ "muscle", (void*) sc_pkcs15init_get_muscle_ops },
 	{ "asepcos", (void*) sc_pkcs15init_get_asepcos_ops },
+	{ "entersafe",(void*) sc_pkcs15init_get_entersafe_ops },
 	{ NULL, NULL },
 };
 
@@ -2793,9 +2794,13 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card,
 
 	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
 	if (r >= 0) {
+		 sc_file_t *file;
+		 r = sc_profile_get_file_by_path(profile, &df->path, &file);
+		 if(r<0) return r;
 		r = sc_pkcs15init_update_file(profile, card,
-				df->file, buf, bufsize);
+				file, buf, bufsize);
 		free(buf);
+		sc_file_free(file);
 	}
 
 	return r < 0 ? r : 0;
@@ -3269,15 +3274,25 @@ sc_pkcs15init_authenticate(struct sc_profile *pro, sc_card_t *card,
 	else
 		acl = sc_file_get_acl_entry(file, op);
 
+	sc_debug(card->ctx, "r:[0x%08x]\n",r);
+	sc_debug(card->ctx, "acl:[0x%08x]\n",acl);
+
 	for (; r == 0 && acl; acl = acl->next) {
 		if (acl->method == SC_AC_NEVER)
+		{
+			sc_debug(card->ctx, "never\n");
 			return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+		}
 		if (acl->method == SC_AC_NONE)
+		{
+			sc_debug(card->ctx, "none\n");
 			break;
+		}
 		if (acl->method == SC_AC_UNKNOWN) {
 			sc_debug(card->ctx, "unknown acl method\n");
 			break;
 		}
+		sc_debug(card->ctx, "verify\n");
 		r = do_verify_pin(pro, card, file_tmp ? file_tmp : file,
 			acl->method, acl->key_ref);
 	}

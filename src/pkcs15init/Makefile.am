@@ -22,7 +22,8 @@ dist_pkgdata_DATA = \
 	pkcs15.profile \
 	muscle.profile \
 	rutoken.profile \
-	asepcos.profile
+	asepcos.profile \
+	entersafe.profile
 
 AM_CPPFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS)
@@ -34,6 +35,7 @@ libpkcs15init_la_SOURCES = \
 	pkcs15-cardos.c pkcs15-jcop.c pkcs15-starcos.c \
 	pkcs15-oberthur.c pkcs15-setcos.c pkcs15-incrypto34.c \
 	pkcs15-muscle.c pkcs15-asepcos.c pkcs15-rutoken.c \
+	pkcs15-entersafe.c \
 	pkcs15init.exports
 if WIN32
 libpkcs15init_la_SOURCES += versioninfo.rc

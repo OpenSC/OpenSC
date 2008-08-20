@@ -81,6 +81,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "acos5",	(void *(*)(void)) sc_get_acos5_driver },
 	{ "akis",	(void *(*)(void)) sc_get_akis_driver },
+#ifdef ENABLE_OPENSSL
+	{ "entersafe",(void *(*)(void)) sc_get_entersafe_driver },
+#endif
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },

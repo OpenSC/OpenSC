@@ -54,6 +54,8 @@ extern int sc_pkcs15emu_tccardos_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t 
 
 extern int sc_pkcs15emu_rutoken_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
+extern int sc_pkcs15emu_entersafe_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+
 static struct {
 	const char *		name;
 	int			(*handler)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
@@ -71,6 +73,7 @@ static struct {
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
  	{ "rutoken",	sc_pkcs15emu_rutoken_init_ex 	},
+	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex  },
 	{ NULL, NULL }
 };
 

@@ -1199,6 +1199,7 @@ extern sc_card_driver_t *sc_get_muscle_driver(void);
 extern sc_card_driver_t *sc_get_acos5_driver(void);
 extern sc_card_driver_t *sc_get_asepcos_driver(void);
 extern sc_card_driver_t *sc_get_akis_driver(void);
+extern sc_card_driver_t *sc_get_entersafe_driver(void);
 
 #ifdef __cplusplus
 }
