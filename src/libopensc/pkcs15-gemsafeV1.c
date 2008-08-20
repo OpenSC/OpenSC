@@ -114,10 +114,12 @@ const prdata gemsafe_prkeys[] = {
 	{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
 };
 
-static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path)
+static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path, 
+	int *key_ref)
 {
 	const char *fn_name = "gemsafe_get_cert_len";
 	int r;
+	int ind;
 	u8  ibuf[248];
 	struct sc_file *file;
 	size_t objlen, certlen;
@@ -144,6 +146,26 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path)
 	if (objlen < 1 || objlen > 10240) {
 	    sc_error(card->ctx, "%s: Invalid object size: %d\n", fn_name, objlen);
 	    return 0;
+	}
+
+	/*
+	 * We need to find the private key associated with the cert
+	 * It looks like the first thing in the block is a table of
+	 * which keys are allocated. 
+	 * We will look for the first allocated key, and save the 
+	 * key_ref. The table is small and is in the first 248 bytes.
+	 * If for some reason this is not true, we can still override
+	 * the key_ref in the opensc.conf with flag = n.
+	 */
+	ind = 2; /* skip length */
+	while (ibuf[ind] == 0x01) {
+		if (ibuf[ind+1] == 0xFE) {
+			*key_ref = ibuf[ind+4];
+			sc_debug(card->ctx, "Using key_ref %d found at offset %d\n",
+					*key_ref, ind);
+			break;
+		}
+		ind = ind + 8;
 	}
 
 	/* Using (block+1) in while loop avoids using final cert object data block */
@@ -193,6 +215,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
     const char *fn_name = "sc_pkcs15emu_gemsafe_init";
 
     int    r, i;
+	int	   key_ref = 0x03; 
     struct sc_path path;
     struct sc_file *file = NULL;
     struct sc_card *card = p15card->card;
@@ -252,7 +275,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 	    struct sc_pkcs15_id  p15Id;
 
 	    sc_format_path(gemsafe_cert[i].path, &path);
-	    if (!gemsafe_get_cert_len(card, &path))
+	    if (!gemsafe_get_cert_len(card, &path, &key_ref))
 		    /* skip errors */
 		    continue;
 	    sc_pkcs15_format_id(gemsafe_cert[i].id, &p15Id);
@@ -284,10 +307,20 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 		    pauthId = &authId;
 	    } else
 		    pauthId = NULL;
+			/*
+			 * the key ref may be different for different sites 
+			 * by adding flags=n where the low order 4 bits can be
+			 * the key ref we can force it. 
+			 */
+			if ( p15card->card->flags & 0x0F) {
+				key_ref = p15card->card->flags & 0x0F;
+				sc_debug(p15card->card->ctx,
+					"Overriding key_ref  with %d\n", key_ref);
+			} 
 	    sc_pkcs15emu_add_prkey(p15card, &p15Id, gemsafe_prkeys[i].label,
 			    SC_PKCS15_TYPE_PRKEY_RSA,
 			    gemsafe_prkeys[i].modulus_len, gemsafe_prkeys[i].usage,
-			    &path, gemsafe_prkeys[i].ref, pauthId,
+			    &path, key_ref, pauthId,
 			    gemsafe_prkeys[i].obj_flags);
     }
 
