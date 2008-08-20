@@ -6,6 +6,11 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/nonpersistent/ChangeLog.
 
+New in 0.11.6; 2008-8-??; Andreas Jellinghaus
+* Improved security fix: don't match for "OpenSC" in the card label.
+* New support for Feitian ePass3000 bei Weitao Sun.
+* GemSafeV1 improved to handle key_ref other than 3 by Douglas E. Engert 
+
 New in 0.11.5; 2008-07-31; Andreas Jellinghaus
 * Apply security fix for cardos driver and extend pkcs15-tool to
   test cards for the security vulnerability and update them.
