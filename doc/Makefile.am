@@ -93,4 +93,10 @@ maintainer-clean-local:
 	-rm -rf "$(srcdir)/html.out" "$(srcdir)/man.out"
 
 distclean-local:
-	-rm -fr html.out html.tmp man.out man.tmp api.work
+	-rm -fr html.tmp man.tmp api.work
+	if test -L html.out; then \
+		-rm -rf html.out; \
+	fi
+	if test -L man.out; then \
+		-rm -rf man.out; \
+	fi
