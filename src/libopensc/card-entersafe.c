@@ -913,7 +913,7 @@ static int entersafe_decipher(sc_card_t *card,
 	 return entersafe_compute_with_prkey(card,crgram,crgram_len,out,outlen);
 }
 
-static int entersafe_init_pin_info(struct sc_pin_cmd_pin *pin, unsigned int num)
+static void entersafe_init_pin_info(struct sc_pin_cmd_pin *pin, unsigned int num)
 {
 	pin->encoding   = SC_PIN_ENCODING_ASCII;
 	pin->min_length = 4;

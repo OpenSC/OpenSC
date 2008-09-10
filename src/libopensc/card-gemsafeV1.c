@@ -332,7 +332,7 @@ static int gemsafe_process_fci(struct sc_card *card, struct sc_file *file,
 
 	tag = sc_asn1_find_tag(ctx, p, len, 0x8C, &tlen);
 	if (tag) {
-		r = gemsafe_setacl(card, file, tag, type == "DF" ? 1 : 0);
+		r = gemsafe_setacl(card, file, tag, strcmp(type, "DF") ? 0 : 1);
 		if (r < 0) {
 			sc_debug(ctx, "unable to set ACL\n");
 			return SC_ERROR_INTERNAL;
