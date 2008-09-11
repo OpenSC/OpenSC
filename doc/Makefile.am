@@ -95,8 +95,8 @@ maintainer-clean-local:
 distclean-local:
 	-rm -fr html.tmp man.tmp api.work
 	if test -L html.out; then \
-		-rm -rf html.out; \
+		rm -rf html.out; \
 	fi
 	if test -L man.out; then \
-		-rm -rf man.out; \
+		rm -rf man.out; \
 	fi
