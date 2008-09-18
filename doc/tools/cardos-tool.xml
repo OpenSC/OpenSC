@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<refentry id="cardos-info">
+<refentry id="cardos-tool">
 	<refmeta>
-		<refentrytitle>cardos-info</refentrytitle>
+		<refentrytitle>cardos-tool</refentrytitle>
 		<manvolnum>1</manvolnum>
 		<refmiscinfo>opensc</refmiscinfo>
 	</refmeta>
 
 	<refnamediv>
-		<refname>cardos-info</refname>
-		<refpurpose>displays information about Card OS-based security tokens
+		<refname>cardos-tool</refname>
+		<refpurpose>displays information about Card OS-based security tokens or format them
 		</refpurpose>
 	</refnamediv>
 
 	<refsect1>
 		<title>Synopsis</title>
 		<para>
-			<command>cardos-info</command> [OPTIONS]
+			<command>cardos-tool</command> [OPTIONS]
 		</para>
 	</refsect1>
 
 	<refsect1>
 		<title>Description</title>
 		<para>
-			The <command>cardos-info</command> utility is used to display information about
+			The <command>cardos-tool</command> utility is used to display information about
 smart cards and similar security tokens based on Siemens Card/OS M4.
 		</para>
 	</refsect1>
@@ -32,8 +32,16 @@ smart cards and similar security tokens based on Siemens Card/OS M4.
 		<para>
 			<variablelist>
 				<varlistentry>
+					<term><option>--info</option>, <option>-i</option></term>
+					<listitem><para>Display information about the card or token.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--format</option>, <option>-f</option></term>
+					<listitem><para>Format the card or token.</para></listitem>
+				</varlistentry>
+				<varlistentry>
 					<term><option>--reader</option> number, <option>-r</option> number</term>
-					<listitem><para>Display information about the token in reader number <varname>number</varname>.
+					<listitem><para>Specify the reader number <varname>number</varname> to use.
 					The default is reader 0.</para></listitem>
 				</varlistentry>
 				<varlistentry>
