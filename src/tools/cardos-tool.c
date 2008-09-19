@@ -397,7 +397,7 @@ static int cardos_sm4h(unsigned char *in, size_t inlen, unsigned char
 
 	mac_input = calloc(1,mac_input_len);
 	if (!mac_input) {
-		printf("out of memory, aborting");
+		printf("out of memory, aborting\n");
 		return 0;
 	}
 	mac_input[0] = in[1]; 	/* ins */
@@ -437,7 +437,7 @@ static int cardos_sm4h(unsigned char *in, size_t inlen, unsigned char
 
 	enc_input = calloc(1,enc_input_len);
 	if (!enc_input) {
-		printf("out of memory, aborting");
+		printf("out of memory, aborting\n");
 		return 0;
 	}
 	if (plain_lc) 
@@ -602,7 +602,7 @@ static int cardos_format()
 	}
 	if (apdu.resp[0] != 0x20) {
 		printf("card not in administrative state, failed\n");
-		printf("aborting");
+		printf("aborting\n");
 		return 1;
 	}
 

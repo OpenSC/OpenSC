@@ -1195,7 +1195,7 @@ static int test_update(sc_card_t *in_card)
 
 
         if (strcmp("cardos",in_card->driver->short_name) != 0) {
- 		printf("not using the cardos driver, card is fine.");
+ 		printf("not using the cardos driver, card is fine.\n");
 		rc = 0;
                 goto end;
         }
