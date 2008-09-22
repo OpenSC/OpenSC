@@ -479,7 +479,13 @@ static int cardos_sm4h(unsigned char *in, size_t inlen, unsigned char
 		/* copy encrypted bytes into output */
 		for (i=0; i < 8; i++) out[5+8*j+i] = des_out[i];
 	}
-
+	if (verbose)	{
+		printf ("Unencrypted APDU:\n");
+		util_hex_dump_asc(stdout, in, inlen, -1);
+		printf ("Encrypted APDU:\n");
+		util_hex_dump_asc(stdout, out, out[4] + 5, -1);
+		printf ("\n");
+	}
 	return 1;
 }
 #endif
@@ -492,6 +498,93 @@ static int cardos_format()
 	sc_apdu_t apdu;
 	u8 rbuf[256];
 	int r;
+	
+	if (verbose)	{
+		printf ("StartKey:\n");
+		util_hex_dump_asc(stdout, startkey, 16, -1);
+		}
+	
+	/* use GET DATA for version - 00 ca 01 82
+	 * returns e.g. c8 09 for 4.2B
+	 */
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cla = 0x00;
+	apdu.ins = 0xca;
+	apdu.p1 = 0x01;
+	apdu.p2 = 0x82;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.lc = 0;
+	apdu.le = 256;
+	apdu.cse = SC_APDU_CASE_2_SHORT;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
+			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
+		if (apdu.resplen)
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		return 1;
+	}
+	if (apdu.resplen != 0x02) {
+		printf("did not receive version info, aborting\n");
+		return 1;
+	}
+	if ((rbuf[0] != 0xc8 || rbuf[1] != 0x09) &&	/* M4.2B */
+		(rbuf[0] != 0xc8 || rbuf[1] != 0x08) && /* M4.3B */
+		(rbuf[0] != 0xc8 || rbuf[1] != 0x0B)) { /* M4.2C */
+		printf("currently only CardOS M4.2B, M4.2C and M4.3B are supported, aborting\n");
+		return 1;
+	}
+
+	/* GET DATA for startkey index - 00 ca 01 96
+	 * returns 6 bytes PackageLoadKey.Version, PackageLoadKey.Retry
+	 * Startkey.Version, Startkey.Retry, 2 internal data byes */
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cla = 0x00;
+	apdu.ins = 0xca;
+	apdu.p1 = 0x01;
+	apdu.p2 = 0x96;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.lc = 0;
+	apdu.le = 256;
+	apdu.cse = SC_APDU_CASE_2_SHORT;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
+			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
+		if (apdu.resplen)
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		return 1;
+	}
+	if (apdu.resplen < 0x04) {
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %ld\n", apdu.resplen);
+		printf("aborting\n");
+		return 1;
+	}
+
+	if (apdu.resp[3] =! 0xff) {
+		printf("startkey version is 0x%02x, currently we support only 0xff\n", (int) apdu.resp[3]);
+		printf("aborting\n");
+		return 1;
+	}
+
+	if (apdu.resp[2] < 5) {
+		printf("startkey has only %d tries left. to be safe: aborting\n", apdu.resp[4]);
+		return 1;
+	}	
 
 	/* first run GET DATA for lifecycle	 00 CA 01 83
 	 * returns 34 MANUFACTURING 20 ADMINISTRATION 10 OPERATIONAL
@@ -522,11 +615,10 @@ static int cardos_format()
 			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
+
 	if (apdu.resp[0] == 0x34) {
 		printf("card in manufacturing state\n");
-		printf("cannot continue without secret change startkey command\n");
-		printf("aborting\n");
-		return 1;
+		goto erase_state;
 
 		/* we can leave manufacturing mode with FORMAT,
  		 * but before we do that, we need to change the secret
@@ -644,87 +736,7 @@ admin_state:
 		return 1;
 	}
 
-	/* use GET DATA for version - 00 ca 01 82
-	 * returns e.g. c8 09 for 4.2B
-	 */
 
-	memset(&apdu, 0, sizeof(apdu));
-	apdu.cla = 0x00;
-	apdu.ins = 0xca;
-	apdu.p1 = 0x01;
-	apdu.p2 = 0x82;
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.lc = 0;
-	apdu.le = 256;
-	apdu.cse = SC_APDU_CASE_2_SHORT;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r) {
-		fprintf(stderr, "APDU transmit failed: %s\n",
-			sc_strerror(r));
-		return 1;
-	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
-		return 1;
-	}
-	if (apdu.resplen != 0x02) {
-		printf("did not receive version info, aborting\n");
-		return 1;
-	}
-	if ((rbuf[0] != 0xc8 || rbuf[1] != 0x09) &&	/* M4.2B */
-		(rbuf[0] != 0xc8 || rbuf[1] != 0x08) && /* M4.3B */
-		(rbuf[0] != 0xc8 || rbuf[1] != 0x0B)) { /* M4.2C */
-		printf("currently only CardOS M4.2B, M4.2C and M4.3B are supported, aborting\n");
-		return 1;
-	}
-
-	/* GET DATA for startkey index - 00 ca 01 96
-	 * returns 6 bytes PackageLoadKey.Version, PackageLoadKey.Retry
-	 * Startkey.Version, Startkey.Retry, 2 internal data byes */
-
-	memset(&apdu, 0, sizeof(apdu));
-	apdu.cla = 0x00;
-	apdu.ins = 0xca;
-	apdu.p1 = 0x01;
-	apdu.p2 = 0x96;
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.lc = 0;
-	apdu.le = 256;
-	apdu.cse = SC_APDU_CASE_2_SHORT;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r) {
-		fprintf(stderr, "APDU transmit failed: %s\n",
-			sc_strerror(r));
-		return 1;
-	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
-		return 1;
-	}
-	if (apdu.resplen < 0x04) {
-		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %ld\n", apdu.resplen);
-		printf("aborting\n");
-		return 1;
-	}
-
-	if (apdu.resp[3] =! 0xff) {
-		printf("startkey version is 0x%02x, currently we support only 0xff\n", (int) apdu.resp[3]);
-		printf("aborting\n");
-		return 1;
-	}
-
-	if (apdu.resp[2] < 5) {
-		printf("startkey has only %d tries left. to be safe: aborting\n", apdu.resp[4]);
-		return 1;
-	}	
 
 #ifdef ENABLE_OPENSSL
 	/* now we need to erase the card. Our command is:
@@ -733,11 +745,12 @@ admin_state:
 	 */
 	{
 		unsigned const char erase_apdu[] = { 0x84, 0x06, 0x00, 0x00 };
-
 		if (! cardos_sm4h(erase_apdu, sizeof(erase_apdu),
 			rbuf, sizeof(rbuf), startkey, sizeof(startkey)))
 			return 1;
-
+		if (verbose)	{
+			printf ("Erasing EEPROM!\n");
+			}
 		memset(&apdu, 0, sizeof(apdu));
 		apdu.cse = SC_APDU_CASE_3_SHORT;
 		apdu.cla = rbuf[0];
@@ -762,6 +775,9 @@ admin_state:
 			return 1;
 		}
 	}
+	
+erase_state:
+
 	/* next we need to format the card. Our command is:
 	 * 	FORMAT 84 40 00 01
 	 * 	with P2 = 01 (go to admin mode after format)
@@ -782,7 +798,9 @@ admin_state:
 					0x81, 0x02, 0x00, 0x80,
 					0x85, 0x01, 0x01,
 	0x86, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
+		if (verbose)	{
+			printf ("Formatting!\n");
+			}
 		if (! cardos_sm4h(format_apdu, sizeof(format_apdu),
 			rbuf, sizeof(rbuf), startkey, sizeof(startkey)))
 			return 1;
