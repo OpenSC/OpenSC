@@ -386,9 +386,9 @@ static int cardos_sm4h(unsigned char *in, size_t inlen, unsigned char
 
 	if (inlen < 4)
 		return 0;	/* failed, apdu too short */
-	if (inlen == 5)
+	if (inlen == 4)
 		plain_lc = 0;
-	if (inlen > 5)
+	if (inlen > 4)
 		plain_lc = in[4];
 	
 	/* 4 + plain_lc plus 0..7 bytes of padding */
