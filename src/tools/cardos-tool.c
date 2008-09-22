@@ -528,7 +528,7 @@ static int cardos_format()
 		printf("aborting\n");
 		return 1;
 
-		/* we can leave manufacturing mode with PHASE CYCLE,
+		/* we can leave manufacturing mode with FORMAT,
  		 * but before we do that, we need to change the secret
  		 * siemens start key to the default 0xff start key.
  		 * we know the APDU for that, but it is secreat and
@@ -675,12 +675,11 @@ admin_state:
 		printf("did not receive version info, aborting\n");
 		return 1;
 	}
-	if (rbuf[0] != 0xc8 || rbuf[1] != 0x09) {
-		printf("currently only CardOS M4.2B is supported, aborting\n");
+	if ((rbuf[0] != 0xc8 || rbuf[1] != 0x09) &&	/* V4.2B */
+		((rbuf[0] != 0xc8 || rbuf[1] != 0x08)) { /* V4.3B */
+		printf("currently only CardOS M4.2B and V4.3B is supported, aborting\n");
 		return 1;
 	}
-
-
 
 	/* GET DATA for startkey index - 00 ca 01 96
 	 * returns 6 bytes PackageLoadKey.Version, PackageLoadKey.Retry
