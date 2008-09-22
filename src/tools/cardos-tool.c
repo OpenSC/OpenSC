@@ -675,9 +675,10 @@ admin_state:
 		printf("did not receive version info, aborting\n");
 		return 1;
 	}
-	if ((rbuf[0] != 0xc8 || rbuf[1] != 0x09) &&	/* V4.2B */
-		(rbuf[0] != 0xc8 || rbuf[1] != 0x08)) { /* V4.3B */
-		printf("currently only CardOS M4.2B and V4.3B is supported, aborting\n");
+	if ((rbuf[0] != 0xc8 || rbuf[1] != 0x09) &&	/* M4.2B */
+		(rbuf[0] != 0xc8 || rbuf[1] != 0x08) && /* M4.3B */
+		(rbuf[0] != 0xc8 || rbuf[1] != 0x0B)) { /* M4.2C */
+		printf("currently only CardOS M4.2B, M4.2C and M4.3B are supported, aborting\n");
 		return 1;
 	}
 
