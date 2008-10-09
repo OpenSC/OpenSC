@@ -37,7 +37,8 @@ endif
 if SVN_CHECKOUT
 if ENABLE_MAN
 
-html.out/*:	api.work
+html.out/*: html.out
+html.out: api.work
 	test -n "$(XSLTPROC)"
 	-rm -fr html.tmp html.out
 	$(MKDIR_P) html.tmp
@@ -45,7 +46,8 @@ html.out/*:	api.work
 	$(XSLTPROC) --nonet --path "$(srcdir)/api" --xinclude -o "html.tmp/tools.html" "api.work/html.xsl" "$(srcdir)/tools/tools.xml"
 	mv html.tmp html.out
 
-man.out/*.1: api.work
+man.out/*.1: man.out
+man.out: api.work
 	test -n "$(XSLTPROC)"
 	-rm -fr man.tmp man.out
 	$(MKDIR_P) man.tmp
@@ -100,3 +102,4 @@ distclean-local:
 	if test -L man.out; then \
 		rm -rf man.out; \
 	fi
+
