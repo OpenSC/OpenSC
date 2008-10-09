@@ -48,6 +48,7 @@ CK_RV card_initialize(int reader)
 {
 	struct sc_pkcs11_card *card = card_table + reader;
 	unsigned int avail;
+	unsigned int i;
 
 	if (reader < 0 || reader >= SC_PKCS11_MAX_READERS)
 		return CKR_FUNCTION_FAILED;
@@ -68,6 +69,11 @@ CK_RV card_initialize(int reader)
 	card->first_slot = first_free_slot;
 	card->max_slots = avail;
 	card->num_slots = 0;
+
+	for (i = 0; i < card->max_slots; i++) {
+		struct sc_pkcs11_slot *slot = virtual_slots + card->first_slot + i;
+		slot->reader = reader;
+	}
 
 	first_free_slot += card->max_slots;
 	return CKR_OK;
