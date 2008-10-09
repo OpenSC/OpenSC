@@ -185,7 +185,7 @@ CK_RV card_detect_all(void)
 
 CK_RV card_removed(int reader)
 {
-	int i;
+	unsigned int i;
 	struct sc_pkcs11_card *card;
 
 	sc_debug(context, "%d: smart card removed\n", reader);
