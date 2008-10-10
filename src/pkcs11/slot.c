@@ -272,6 +272,12 @@ CK_RV slot_get_token(int id, struct sc_pkcs11_slot **slot)
 		if (rv != CKR_OK)
 			return CKR_TOKEN_NOT_PRESENT;
 	}
+
+	if (!((*slot)->slot_info.flags & CKF_TOKEN_PRESENT))
+	{
+		sc_debug(context, "card detected, but slot not presenting token");
+		return CKR_TOKEN_NOT_PRESENT;
+	}
 	return CKR_OK;
 }
 
