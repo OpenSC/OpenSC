@@ -304,6 +304,9 @@ app opensc-pkcs11 {
 		# the remaining number of slots will be empty.
 		num_slots = 4;
 
+		# (max_virtual_slots/num_slots) limits the number of readers
+		# that can be used on the system. Default is then 8/4=2 readers.
+
 		# Normally, the pkcs11 module will create
 		# the full number of slots defined above by
 		# num_slots. If there are fewer pins/keys on
