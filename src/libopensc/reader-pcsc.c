@@ -49,7 +49,7 @@
 #undef SCARD_PROTOCOL_ANY
 #define SCARD_PROTOCOL_ANY (SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1)
 /* Error printing */
-#define PCSC_ERROR(ctx, desc, rv) sc_error(ctx, desc ": %lx\n", rv);
+#define PCSC_ERROR(ctx, desc, rv) sc_error(ctx, desc ": 0x08%lx\n", rv);
 
 /* Utility for handling big endian IOCTL codes. */
 #define dw2i_be(a, x) ((((((a[x] << 8) + a[x+1]) << 8) + a[x+2]) << 8) + a[x+3])
