@@ -292,7 +292,7 @@ static int refresh_slot_attributes(sc_reader_t *reader, sc_slot_info_t *slot)
 		slot->flags &= ~SCARD_STATE_CHANGED;
 		return 0;
 	}
-	if (ret != 0) {
+	if (ret != SCARD_S_SUCCESS) {
 		PCSC_ERROR(reader->ctx, "SCardGetStatusChange failed", ret);
 		return pcsc_ret_to_error(ret);
 	}
@@ -405,7 +405,7 @@ static int pcsc_wait_for_event(sc_reader_t **readers,
 	}
 
 	ret = priv->gpriv->SCardGetStatusChange(pcsc_ctx, 0, rgReaderStates, nslots);
-	if (ret != 0) {
+	if (ret != SCARD_S_SUCCESS) {
 		PCSC_ERROR(ctx, "SCardGetStatusChange(1) failed", ret);
 		return pcsc_ret_to_error(ret);
 	}
@@ -461,7 +461,7 @@ static int pcsc_wait_for_event(sc_reader_t **readers,
 				continue;
 			return SC_ERROR_EVENT_TIMEOUT;
 		}
-		if (ret != 0) {
+		if (ret != SCARD_S_SUCCESS) {
 			PCSC_ERROR(ctx, "SCardGetStatusChange(2) failed", ret);
 			return pcsc_ret_to_error(ret);
 		}
@@ -534,7 +534,7 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	rv = priv->gpriv->SCardConnect(priv->gpriv->pcsc_ctx, priv->reader_name,
 			  priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
 			  SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
-	if (rv != 0) {
+	if (rv != SCARD_S_SUCCESS) {
 		PCSC_ERROR(reader->ctx, "SCardConnect failed", rv);
 		return pcsc_ret_to_error(rv);
 	}
