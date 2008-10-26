@@ -50,6 +50,7 @@ typedef unsigned __int8 uint8_t;
 
 #define SCARD_SCOPE_USER		0x0000	/**< Scope in user space */
 
+#ifndef SCARD_S_SUCCESS	/* conflict in mingw-w64 */
 #define SCARD_S_SUCCESS			0x00000000 /**< No error was encountered. */
 #define SCARD_E_INVALID_HANDLE		0x80100003 /**< The supplied handle was invalid. */
 #define SCARD_E_TIMEOUT			0x8010000A /**< The user-specified timeout value has expired. */
@@ -61,6 +62,7 @@ typedef unsigned __int8 uint8_t;
 #define SCARD_W_UNPOWERED_CARD		0x80100067 /**< Power has been removed from the smart card, so that further communication is not possible. */
 #define SCARD_W_RESET_CARD		0x80100068 /**< The smart card has been reset, so any shared state information is invalid. */
 #define SCARD_W_REMOVED_CARD		0x80100069 /**< The smart card has been removed, so further communication is not possible. */
+#endif
 
 #define SCARD_CTL_CODE(code) (0x42000000 + (code))
 
