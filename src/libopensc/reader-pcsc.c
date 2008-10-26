@@ -854,14 +854,18 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) prv_data;
 	LONG rv;
 	DWORD reader_buf_size;
-	char *reader_buf = NULL, *p;
+	char *reader_buf = NULL, *reader_name;
 	const char *mszGroups = NULL;
 	int ret = SC_ERROR_INTERNAL;
+
+	SC_FUNC_CALLED(ctx, 3);
 
 	if (!gpriv) {
 		ret = SC_ERROR_NO_READERS_FOUND;
 		goto out;
 	}
+
+	sc_debug(ctx, "Probing pcsc readers");
 
 	do {
 		if (gpriv->pcsc_ctx == -1) {
@@ -878,13 +882,17 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 		}
 		if (rv != SCARD_S_SUCCESS) {
 			if (rv != SCARD_E_INVALID_HANDLE) {
+				PCSC_ERROR(ctx, "SCardListReaders failed", rv);
 				ret = pcsc_ret_to_error(rv);
 				goto out;
 			}
 
+			sc_debug(ctx, "Establish pcsc context");
+
 			rv = gpriv->SCardEstablishContext(SCARD_SCOPE_USER,
 					      NULL, NULL, &gpriv->pcsc_ctx);
 			if (rv != SCARD_S_SUCCESS) {
+				PCSC_ERROR(ctx, "SCardEstablishContext failed", rv);
 				ret = pcsc_ret_to_error(rv);
 				goto out;
 			}
@@ -901,10 +909,11 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 	rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, mszGroups, reader_buf,
 	                      (LPDWORD) &reader_buf_size);
 	if (rv != SCARD_S_SUCCESS) {
+		PCSC_ERROR(ctx, "SCardListReaders failed", rv);
 		ret = pcsc_ret_to_error(rv);
 		goto out;
 	}
-	for (p = reader_buf; *p != '\x0'; p += strlen (p) + 1) {
+	for (reader_name = reader_buf; *reader_name != '\x0'; reader_name += strlen (reader_name) + 1) {
 		sc_reader_t *reader = NULL;
 		struct pcsc_private_data *priv = NULL;
 		struct pcsc_slot_data *pslot = NULL;
@@ -918,7 +927,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 				ret = SC_ERROR_INTERNAL;
 				goto err1;
 			}
-			if (reader2->ops == &pcsc_ops && !strcmp (reader2->name, p)) {
+			if (reader2->ops == &pcsc_ops && !strcmp (reader2->name, reader_name)) {
 				found = 1;
 			}
 		}
@@ -927,6 +936,8 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 		if (found) {
 			continue;
 		}
+
+		sc_debug(ctx, "Found new pcsc reader '%s'", reader_name);
 
 		if ((reader = (sc_reader_t *) calloc(1, sizeof(sc_reader_t))) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;
@@ -945,12 +956,12 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 		reader->ops = &pcsc_ops;
 		reader->driver = &pcsc_drv;
 		reader->slot_count = 1;
-		if ((reader->name = strdup(p)) == NULL) {
+		if ((reader->name = strdup(reader_name)) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}
 		priv->gpriv = gpriv;
-		if ((priv->reader_name = strdup(p)) == NULL) {
+		if ((priv->reader_name = strdup(reader_name)) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}
@@ -990,7 +1001,7 @@ out:
 	if (reader_buf != NULL)
 		free (reader_buf);
 
-	return ret;
+	SC_FUNC_RETURN(ctx, 3, ret);
 }
 
 static int
