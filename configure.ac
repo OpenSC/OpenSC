@@ -79,7 +79,7 @@ case "${host}" in
 			CFLAGS="${CFLAGS} -no-cpp-precomp"
 		fi
 	;;
-	*-mingw32*|*-winnt*)
+	*-mingw*|*-winnt*)
 		WIN32="yes"
 		CPPFLAGS="${CPPFLAGS} -DWIN32_LEAN_AND_MEAN"
 		WIN_LIBPREFIX="lib"
@@ -506,7 +506,7 @@ if test "${enable_pcsc}" = "yes"; then
 			*-*-darwin*)
 				DEFAULT_PCSC_PROVIDER="/System/Library/Frameworks/PCSC.framework/PCSC"
 			;;
-			*-mingw32*|*-winnt*|*-cygwin*)
+			*-mingw*|*-winnt*|*-cygwin*)
 				DEFAULT_PCSC_PROVIDER="winscard.dll"
 			;;
 			*)
