@@ -3,19 +3,6 @@
 
 /* Mostly copied from pcsc-lite, this is the minimum required */
 
-#ifndef _WIN32
-#ifndef BYTE
-typedef unsigned char BYTE;
-#endif
-typedef const void *LPCVOID;
-typedef void *LPVOID;
-typedef unsigned long DWORD;
-typedef long LONG;
-typedef const char *LPCSTR;
-typedef BYTE *LPBYTE;
-typedef DWORD *LPDWORD;
-typedef char *LPSTR;
-#endif
 #if defined(HAVE_INTTYPES_H)
 #include <inttypes.h>
 #elif defined(HAVE_STDINT_H)
@@ -28,7 +15,11 @@ typedef unsigned __int8 uint8_t;
 #warning no uint32_t type available, please contact opensc-devel@opensc-project.org
 #endif
 
-#ifndef _MSC_VER
+#ifdef HAVE_WINSCARD_H
+#include <winscard.h>
+#else
+/* mingw32 does not have winscard.h */
+
 #define MAX_ATR_SIZE			33	/**< Maximum ATR size */
 
 #define SCARD_PROTOCOL_T0		0x0001	/**< T=0 active protocol. */
@@ -64,7 +55,6 @@ typedef unsigned __int8 uint8_t;
 #define SCARD_W_REMOVED_CARD		0x80100069 /**< The smart card has been removed, so further communication is not possible. */
 #endif
 
-#define SCARD_CTL_CODE(code) (0x42000000 + (code))
 
 typedef const BYTE *LPCBYTE;
 typedef long SCARDCONTEXT; /**< \p hContext returned by SCardEstablishContext() */
@@ -92,7 +82,11 @@ typedef struct _SCARD_IO_REQUEST
 }
 SCARD_IO_REQUEST, *PSCARD_IO_REQUEST, *LPSCARD_IO_REQUEST;
 
-#endif	/* MSC_VER */
+typedef const SCARD_IO_REQUEST *LPCSCARD_IO_REQUEST;
+typedef SCARD_READERSTATE_A SCARD_READERSTATE, *PSCARD_READERSTATE_A,
+	*LPSCARD_READERSTATE_A;
+
+#endif	/* HAVE_SCARD_H */
 
 #if defined(_WIN32)
 #define PCSC_API WINAPI
@@ -101,10 +95,6 @@ SCARD_IO_REQUEST, *PSCARD_IO_REQUEST, *LPSCARD_IO_REQUEST;
 #else
 #define PCSC_API
 #endif
-
-typedef const SCARD_IO_REQUEST *LPCSCARD_IO_REQUEST;
-typedef SCARD_READERSTATE_A SCARD_READERSTATE, *PSCARD_READERSTATE_A,
-	*LPSCARD_READERSTATE_A;
 
 typedef LONG (PCSC_API *SCardEstablishContext_t)(DWORD dwScope, LPCVOID pvReserved1,
 	LPCVOID pvReserved2, LPSCARDCONTEXT phContext);
@@ -132,6 +122,10 @@ typedef LONG (PCSC_API *SCardListReaders_t)(SCARDCONTEXT hContext, LPCSTR mszGro
 	LPSTR mszReaders, LPDWORD pcchReaders);
 
 /* Copied from pcsc-lite reader.h */
+
+#ifndef SCARD_CTL_CODE
+#define SCARD_CTL_CODE(code) (0x42000000 + (code))
+#endif
 
 /**
  * TeleTrust Class 2 reader tags

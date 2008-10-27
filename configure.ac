@@ -490,7 +490,17 @@ if test "${enable_openct}" = "yes"; then
 fi
 
 if test "${enable_pcsc}" = "yes"; then
-	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
+	AC_ARG_VAR([PCSC_CFLAGS], [C compiler flags for pcsc])
+	if test "${WIN32}" != "yes"; then
+		test -z "${PCSC_CFLAGS}" && PCSC_CFLAGS="-I/usr/include/PCSC"
+	fi
+
+	saved_CFLAGS="${CFLAGS}"
+	CFLAGS="${CFLAGS} ${PCSC_CFLAGS}"
+	# We must cope with mingw32 that does not have winscard.h mingw64 has it.
+	AC_CHECK_HEADERS([winscard.h],,[test "${WIN32}" != "yes" && AC_MSG_ERROR([winscard.h is required for pcsc])])
+	CFLAGS="${saved_CFLAGS}"
+
 	if test "${with_pcsc_provider}" = "detect"; then
 		case "${host}" in
 			*-*-darwin*)
@@ -507,6 +517,7 @@ if test "${enable_pcsc}" = "yes"; then
 		DEFAULT_PCSC_PROVIDER="${with_pcsc_provider}"
 	fi
 	AC_DEFINE_UNQUOTED([DEFAULT_PCSC_PROVIDER], ["${DEFAULT_PCSC_PROVIDER}"], [Default PC/SC provider])
+	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
 fi
 
 dnl AM_PATH_LIBASSUAN([MINIMUM-VERSION,
@@ -545,7 +556,10 @@ if test "${enable_openct}" = "yes"; then
 	OPTIONAL_OPENCT_CFLAGS="${OPENCT_CFLAGS}"
 	OPTIONAL_OPENCT_LIBS="${OPENCT_LIBS}"
 fi
-test "${enable_pcsc}" = "yes" && OPENSC_FEATURES="${OPENSC_FEATURES} pcsc(${DEFAULT_PCSC_PROVIDER})"
+if test "${enable_pcsc}" = "yes"; then
+	OPENSC_FEATURES="${OPENSC_FEATURES} pcsc(${DEFAULT_PCSC_PROVIDER})"
+	OPTIONAL_PCSC_CFLAGS="${PCSC_CFLAGS}"
+fi
 test "${enable_nsplugin}" = "yes" && OPENSC_FEATURES="${OPENSC_FEATURES} nsplugin"
 
 AC_DEFINE_UNQUOTED([OPENSC_ETC_PATH], ["${full_sysconfdir}"], [etc path for libopensc])
@@ -579,6 +593,7 @@ AC_SUBST([OPTIONAL_OPENSSL_CFLAGS])
 AC_SUBST([OPTIONAL_OPENSSL_LIBS])
 AC_SUBST([OPTIONAL_OPENCT_CFLAGS])
 AC_SUBST([OPTIONAL_OPENCT_LIBS])
+AC_SUBST([OPTIONAL_PCSC_CFLAGS])
 
 AM_CONDITIONAL([SVN_CHECKOUT], [test "${svn_checkout}" = "yes"])
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
@@ -671,6 +686,7 @@ OPENSSL_CFLAGS:          ${OPENSSL_CFLAGS}
 OPENSSL_LIBS:            ${OPENSSL_LIBS}
 OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
 OPENCT_LIBS:             ${OPENCT_LIBS}
+PCSC_CFLAGS:             ${PCSC_CFLAGS}
 LIBASSUAN_CFLAGS:        ${LIBASSUAN_CFLAGS}
 LIBASSUAN_LIBS:          ${LIBASSUAN_LIBS}
 
