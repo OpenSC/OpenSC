@@ -61,6 +61,7 @@ enum {
 static const struct option options[] = {
 	{ "show-info",		0, NULL,		'I' },
 	{ "list-slots",		0, NULL,		'L' },
+	{ "list-token-slots",	0, NULL,		'T' },
 	{ "list-mechanisms",	0, NULL,		'M' },
 	{ "list-objects",	0, NULL,		'O' },
 
@@ -101,7 +102,8 @@ static const struct option options[] = {
 
 static const char *option_help[] = {
 	"Show global token information",
-	"List slots available on the token",
+	"List available slots",
+	"List slots with tokens",
 	"List mechanisms supported by the token",
 	"Show objects on token",
 
@@ -265,6 +267,7 @@ int main(int argc, char * argv[])
 	int err = 0, c, long_optind = 0;
 	int do_show_info = 0;
 	int do_list_slots = 0;
+	int list_token_slots = 0;
 	int do_list_mechs = 0;
 	int do_list_objects = 0;
 	int do_sign = 0;
@@ -286,7 +289,7 @@ int main(int argc, char * argv[])
 	CK_RV rv;
 
 	while (1) {
-		c = getopt_long(argc, argv, "ILMOa:bd:e:hi:klm:o:p:scvty:w:z:r",
+		c = getopt_long(argc, argv, "ILMOTa:bd:e:hi:klm:o:p:scvty:w:z:r",
 		                options, &long_optind);
 		if (c == -1)
 			break;
@@ -297,6 +300,11 @@ int main(int argc, char * argv[])
 			break;
 		case 'L':
 			do_list_slots = 1;
+			action_count++;
+			break;
+		case 'T':
+			do_list_slots = 1;
+			list_token_slots = 1;
 			action_count++;
 			break;
 		case 'M':
@@ -469,7 +477,7 @@ int main(int argc, char * argv[])
 		show_cryptoki_info();
 
 	/* Get the list of slots */
-	rv = p11->C_GetSlotList(FALSE, p11_slots, &p11_num_slots);
+	rv = p11->C_GetSlotList(list_token_slots, p11_slots, &p11_num_slots);
 	if (rv != CKR_OK && rv != CKR_BUFFER_TOO_SMALL)
 		p11_fatal("C_GetSlotList", rv);
 	p11_slots = (CK_SLOT_ID *) calloc(p11_num_slots, sizeof(CK_SLOT_ID));
@@ -478,7 +486,7 @@ int main(int argc, char * argv[])
 		err = 1;
 		goto end;
 	}
-	rv = p11->C_GetSlotList(FALSE, p11_slots, &p11_num_slots);
+	rv = p11->C_GetSlotList(list_token_slots, p11_slots, &p11_num_slots);
 	if (rv != CKR_OK)
 		p11_fatal("C_GetSlotList", rv);
 
@@ -486,7 +494,7 @@ int main(int argc, char * argv[])
 		list_slots();
 
 	if (p11_num_slots == 0) {
-		fprintf(stderr, "No slots...\n");
+		fprintf(stderr, "No slots.\n");
 		err = 1;
 		goto end;
 	}
@@ -658,10 +666,8 @@ static void list_slots(void)
 	CK_ULONG	n;
 	CK_RV		rv;
 
-	if (!p11_num_slots) {
-		printf("No slots found\n");
+	if (!p11_num_slots)
 		return;
-	}
 
 	printf("Available slots:\n");
 	for (n = 0; n < p11_num_slots; n++) {
