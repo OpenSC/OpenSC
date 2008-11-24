@@ -129,7 +129,7 @@ static int entersafe_init(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }
 
-static int entersafe_gen_radom(sc_card_t *card,u8 *buff,size_t size)
+static int entersafe_gen_random(sc_card_t *card,u8 *buff,size_t size)
 {
 	 int r=SC_SUCCESS;
 	 u8 rbuf[SC_MAX_APDU_BUFFER_SIZE]={0};
@@ -227,8 +227,8 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 if(keylen!=8 && keylen!=16)
 		  return SC_ERROR_INTERNAL;
 
-	 r=entersafe_gen_radom(card,iv,sizeof(iv));
-	 SC_TEST_RET(card->ctx,r,"entersafe gen radom failed");
+	 r=entersafe_gen_random(card,iv,sizeof(iv));
+	 SC_TEST_RET(card->ctx,r,"entersafe gen random failed");
 
 	 /* encode the APDU in the buffer */
 	 if ((r=sc_apdu_get_octets(card->ctx, apdu, &tmp, &tmpsize,SC_PROTO_RAW)) != SC_SUCCESS)
