@@ -326,6 +326,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
   enter("C_GetInfo");
   rv = po->C_GetInfo(pInfo);
   if(rv == CKR_OK) {
+    spy_dump_desc_out("pInfo");
     print_ck_info(spy_output, pInfo);
   }
   return retne(rv);
