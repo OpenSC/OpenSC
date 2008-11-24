@@ -957,7 +957,7 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	if (rv == CKR_OK) {
 		slot = session->slot;
 		if (slot->card->framework->seed_random == NULL)
-			rv = CKR_FUNCTION_NOT_SUPPORTED;
+			rv = CKR_RANDOM_SEED_NOT_SUPPORTED;
 		else
 			rv = slot->card->framework->seed_random(slot->card, pSeed, ulSeedLen);
 	}
@@ -982,7 +982,7 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	if (rv == CKR_OK) {
 		slot = session->slot;
 		if (slot->card->framework->get_random == NULL)
-			rv = CKR_FUNCTION_NOT_SUPPORTED;
+			rv = CKR_RANDOM_NO_RNG;
 		else
 			rv = slot->card->framework->get_random(slot->card, RandomData, ulRandomLen);
 	}

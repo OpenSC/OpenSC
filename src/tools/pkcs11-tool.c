@@ -2978,12 +2978,13 @@ static int test_random(CK_SLOT_ID slot)
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
 
-	rv = p11->C_SeedRandom(session, seed1, 10);
-	if (rv == CKR_RANDOM_NO_RNG || rv == CKR_FUNCTION_NOT_SUPPORTED) {
-		printf("  not implemented\n");
+	rv = p11->C_SeedRandom(session, seed1, 100);
+	if (rv == CKR_RANDOM_NO_RNG) {
+		printf("  RNG not available\n");
 		return 0;
 	}
-	if (rv == CKR_RANDOM_SEED_NOT_SUPPORTED)
+
+	if (rv == CKR_RANDOM_SEED_NOT_SUPPORTED || rv == CKR_FUNCTION_NOT_SUPPORTED)
 		printf("  seeding (C_SeedRandom) not supported\n");
 	else if (rv != CKR_OK) {
 		p11_perror("C_SeedRandom", rv);
@@ -2998,19 +2999,19 @@ static int test_random(CK_SLOT_ID slot)
 
 	rv = p11->C_GenerateRandom(session, buf1, 100);
 	if (rv != CKR_OK) {
-		p11_perror("C_GenerateRandom", rv);
+		p11_perror("C_GenerateRandom(buf1,100)", rv);
 		return 1;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf1, 0);
 	if (rv != CKR_OK) {
-		p11_perror("C_GenerateRandom(,,0)", rv);
+		p11_perror("C_GenerateRandom(buf1,0)", rv);
 		return 1;
 	}
 
-	rv = p11->C_GenerateRandom(session, NULL, 100);
+	rv = p11->C_GenerateRandom(session, buf2, 100);
 	if (rv != CKR_OK) {
-		p11_perror("C_GenerateRandom(,NULL,)", rv);
+		p11_perror("C_GenerateRandom(buf2,100)", rv);
 		return 1;
 	}
 
