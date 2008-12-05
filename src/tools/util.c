@@ -45,13 +45,25 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 		reader = readers[found];
 		slot_id = slots[found];
 	} else {
-		if (reader_id < 0)
-			reader_id = 0;
 		if (sc_ctx_get_reader_count(ctx) == 0) {
 			fprintf(stderr,
 				"No smart card readers configured.\n");
 			return 1;
 		}
+		if (reader_id < 0) {
+			int i;
+			/* Automatically try to skip to a reader with a card if reader not specified */
+			for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
+				reader = sc_ctx_get_reader(ctx, i);
+				if (sc_detect_card_presence(reader, 0) & SC_SLOT_CARD_PRESENT) {
+					reader_id = i;
+					fprintf(stderr, "Using reader with a card: %s\n", reader->name);
+					goto autofound;
+				}
+			}
+			reader_id = 0;
+		}
+autofound:
 		if ((unsigned int)reader_id >= sc_ctx_get_reader_count(ctx)) {
 			fprintf(stderr,
 				"Illegal reader number. "
