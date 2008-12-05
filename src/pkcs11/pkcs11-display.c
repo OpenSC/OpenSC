@@ -824,16 +824,6 @@ void print_mech_info(FILE *f, CK_MECHANISM_TYPE type,
     CKF_GENERATE|CKF_GENERATE_KEY_PAIR|CKF_WRAP|CKF_UNWRAP|
     CKF_DERIVE;
     
-#if 0
-  if (name) {
-    fprintf(f, "%30s ", name);
-  } else {
-    fprintf(f, " Unknown Mechanism (%08lx)  ", type);
-  }
-  fprintf(f, "min:%6lu  max:%6lu  flags:0x%08lX  \n",
-	  minfo->ulMinKeySize, minfo->ulMaxKeySize, minfo->flags);
-  printf("  flags:  %s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
-#else
   if (name) {
     fprintf(f, "%s : ", name);
   } else {
@@ -843,7 +833,6 @@ void print_mech_info(FILE *f, CK_MECHANISM_TYPE type,
 	  (unsigned long) minfo->ulMinKeySize,
 	  (unsigned long) minfo->ulMaxKeySize, minfo->flags);
   fprintf(f, "( %s%s%s%s%s%s%s%s%s%s%s%s%s%s)\n",
-#endif
 	 (minfo->flags & CKF_HW)                ? "Hardware " : "",
 	 (minfo->flags & CKF_ENCRYPT)           ? "Encrypt "  : "",
 	 (minfo->flags & CKF_DECRYPT)           ? "Decrypt "  : "",
