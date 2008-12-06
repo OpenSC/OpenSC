@@ -18,7 +18,7 @@ exec_prefix_set=no
 libdir="@libdir@"
 includedir="@includedir@"
 opensc_cflags=""
-opensc_libs="-L${libdir} -lopensc"
+opensc_libs="-L${libdir} -lopensc -lscconf"
 
 usage()
 {
