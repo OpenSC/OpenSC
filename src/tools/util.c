@@ -47,7 +47,7 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 	} else {
 		if (sc_ctx_get_reader_count(ctx) == 0) {
 			fprintf(stderr,
-				"No smart card readers configured.\n");
+				"No smart card readers found.\n");
 			return 1;
 		}
 		if (reader_id < 0) {
