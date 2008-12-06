@@ -1035,8 +1035,8 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_OBJECT_HANDLE *hPublicKey, CK_OBJECT_HANDLE *hPrivateKey, const char *type)
 {
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_KEY_PAIR_GEN, NULL_PTR, 0};
-	CK_ULONG modulusBits = 768;
-	CK_BYTE publicExponent[] = { 3 };
+	CK_ULONG modulusBits = 1024;
+	CK_BYTE publicExponent[] = { 65537 };
 	CK_BBOOL _true = TRUE;
 	CK_OBJECT_CLASS pubkey_class = CKO_PUBLIC_KEY;
 	CK_OBJECT_CLASS privkey_class = CKO_PRIVATE_KEY;
