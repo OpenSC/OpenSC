@@ -17,6 +17,9 @@ typedef unsigned __int8 uint8_t;
 
 #ifdef HAVE_WINSCARD_H
 #include <winscard.h>
+#ifdef __APPLE__
+#include <wintypes.h>
+#endif
 #else
 /* mingw32 does not have winscard.h */
 
