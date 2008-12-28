@@ -351,7 +351,7 @@ app opensc-pkcs11 {
 		# Default: true
 		# cache_pins = false;
 
-		# Set this value to trie if you want to allow off-card
+		# Set this value to true if you want to allow off-card
 		# keypair generation (in software on your pc)
 		#
 		# Default: false
