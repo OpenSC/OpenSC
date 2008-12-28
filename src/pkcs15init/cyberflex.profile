@@ -111,6 +111,10 @@ filesystem {
 		    file-id	= 4600;
 		    ACL		= *=$PIN, READ=NONE;
 		}
+		EF privdata {
+		    file-id	= 4700;
+		    ACL		= *=$PIN;
+		}
 	    }
 	}
     }

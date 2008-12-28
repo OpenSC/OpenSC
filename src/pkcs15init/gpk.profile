@@ -72,6 +72,16 @@ filesystem {
 					WRITE=$PIN;
                 }
 
+	        # private data objects are stored in transparent EFs.
+                EF privdata {
+    	            file-id	= 3300;
+    	            structure	= transparent;
+    	            ACL		= *=NEVER,
+					READ=$PIN,
+					UPDATE=$PIN,
+					WRITE=$PIN;
+                }
+
                 EF public-key {
     	            file-id	= 3300;
     	            structure	= transparent;

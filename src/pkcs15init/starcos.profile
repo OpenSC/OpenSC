@@ -122,6 +122,15 @@ filesystem {
 					READ=NONE,
 					UPDATE=$PIN,
 					ERASE=$PIN;
+		}
+	        # private data objects are stored in transparent EFs.
+                EF privdata {
+    	            file-id	= 3401;
+    	            structure	= transparent;
+    	            ACL		= *=NEVER,
+					READ=$PIN,
+					UPDATE=$PIN,
+					ERASE=$PIN;
                 }
 
 	    }

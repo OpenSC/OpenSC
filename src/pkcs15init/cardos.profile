@@ -97,6 +97,16 @@ filesystem {
 					ERASE=$PIN;
                 }
 
+	        # private data objects are stored in transparent EFs.
+                EF privdata {
+    	            file-id	= 3403;
+    	            structure	= transparent;
+    	            ACL		= *=NEVER,
+					READ=$PIN,
+					UPDATE=$PIN,
+					ERASE=$PIN;
+                }
+
 	    }
 
 	    # This is needed when generating a key on-card.

@@ -41,6 +41,11 @@ filesystem {
                     file-id         = 3200;
                     acl             = *=NEVER, UPDATE=$PIN, READ=NONE, 
                                       ERASE=$SOPIN;
+		}
+                EF privdata {
+                    file-id         = 3500;
+                    acl             = *=NEVER, UPDATE=$PIN, READ=$PIN, 
+                                      ERASE=$SOPIN;
                 }
                 EF public-key {
                     file-id         = 3300;

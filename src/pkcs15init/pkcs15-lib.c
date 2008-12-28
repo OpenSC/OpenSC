@@ -2339,7 +2339,10 @@ static int select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 		name = "certificate";
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
-		name = "data";
+		if (obj->flags & SC_PKCS15_CO_FLAG_PRIVATE) 
+			name = "privdata";
+		else
+			name = "data";
 		break;
 	default:
 		return 0;
