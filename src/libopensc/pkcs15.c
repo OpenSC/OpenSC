@@ -1005,6 +1005,17 @@ static int compare_obj_path(sc_pkcs15_object_t *obj, const sc_path_t *path)
 	return 0;
 }
 
+static int compare_obj_data_name(sc_pkcs15_object_t *obj, const char *app_label, const char *label)
+{
+	struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) obj->data;
+
+	if (obj->type != SC_PKCS15_TYPE_DATA_OBJECT)
+		return 0;
+	
+	return !strcmp(cinfo->app_label, app_label) &&
+		!strcmp(obj->label, label);
+}
+
 static int compare_obj_key(struct sc_pkcs15_object *obj, void *arg)
 {
 	struct sc_pkcs15_search_key *sk = (struct sc_pkcs15_search_key *) arg;
@@ -1021,6 +1032,13 @@ static int compare_obj_key(struct sc_pkcs15_object *obj, void *arg)
 		return 0;
 	if (sk->path && !compare_obj_path(obj, sk->path))
 		return 0;
+	if (
+		sk->app_label && sk->label &&
+		!compare_obj_data_name(obj, sk->app_label, sk->label)
+	) {
+		return 0;
+	}
+
 	return 1;
 }
 
@@ -1135,6 +1153,28 @@ int sc_pkcs15_find_data_object_by_app_oid(struct sc_pkcs15_card *p15card,
 
 	memset(&sk, 0, sizeof(sk));
 	sk.app_oid = app_oid;
+
+	r = __sc_pkcs15_search_objects(p15card, 0, SC_PKCS15_TYPE_DATA_OBJECT,
+				compare_obj_key, &sk,
+				out, 1);
+	if (r < 0)
+		return r;
+	if (r == 0)
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	return 0;
+}
+
+int sc_pkcs15_find_data_object_by_name(struct sc_pkcs15_card *p15card,
+				const char *app_label,
+				const char *label,
+				struct sc_pkcs15_object **out)
+{
+	sc_pkcs15_search_key_t sk;
+	int	r;
+
+	memset(&sk, 0, sizeof(sk));
+	sk.app_label = app_label;
+	sk.label = label;
 
 	r = __sc_pkcs15_search_objects(p15card, 0, SC_PKCS15_TYPE_DATA_OBJECT,
 				compare_obj_key, &sk,

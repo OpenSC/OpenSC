@@ -1233,11 +1233,19 @@ do_delete_objects(struct sc_profile *profile, unsigned int myopt_delete_flags)
 	if (myopt_delete_flags & SC_PKCS15INIT_TYPE_DATA) {
 		struct sc_object_id app_oid;
 		sc_pkcs15_object_t *obj;
-		if (opt_application_id == NULL)
-			util_fatal("Specify the --application-id for the data object to be deleted\n");
-		sc_format_oid(&app_oid, opt_application_id);
 
-		r = sc_pkcs15_find_data_object_by_app_oid(p15card, &app_oid, &obj);
+		if (opt_application_id != NULL) {
+			sc_format_oid(&app_oid, opt_application_id);
+
+			r = sc_pkcs15_find_data_object_by_app_oid(p15card, &app_oid, &obj);
+		}
+		else if (opt_application_name != NULL && opt_label != NULL) {
+			r = sc_pkcs15_find_data_object_by_name(p15card, opt_application_name, opt_label, &obj);
+		}
+		else {
+			util_fatal("Specify the --application-id or --application-name and --label for the data object to be deleted\n");
+		}
+
 		if (r >= 0) {
 			r = sc_pkcs15init_delete_object(p15card, profile, obj);
 			if (r >= 0)
