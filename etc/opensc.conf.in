@@ -324,12 +324,15 @@ app opensc-pkcs11 {
  		# from connecting to the card and perform crypto operations
  		# (which may be possible because you have already authenticated
  		# with the card). Thus this setting is very secure.
+		#
+		# This behavior is a known violation of PKCS#11 specification,
+		# and is forced due to limitation of the OpenSC framework.
  		#
  		# However now once one application has started using your
  		# card with C_Login, no other application can use it, until
  		# the first is done and calls C_Logout or C_Finalize.
- 		# In the case of Netscape or Mozilla or Thunderbird,
- 		# this does not happen until you exit the application.  
+ 		# In the case of many PKCS#11 application this does not happen
+		# until you exit the application.  
  		#
  		# Thus it is impossible to use several smart card aware
  		# applications at the same time, e.g. you cannot run both
