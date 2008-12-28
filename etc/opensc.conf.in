@@ -318,20 +318,26 @@ app opensc-pkcs11 {
 		# slots.
 		hide_empty_tokens = yes;
 
- 		# By default, the OpenSC PKCS#11 module will not lock
- 		# this card once you have authenticated to the card via
- 		# C_Login. This may add some risk as other users may connect
- 		# to the card and perform crypto operations (which may be
- 		# possible because you have already authenticated with the
- 		# card). You may consider changing it to true.
+ 		# By default, the OpenSC PKCS#11 module will lock your card
+ 		# once you authenticate to the card via C_Login.
+ 		# This is to prevent other users or other applications
+ 		# from connecting to the card and perform crypto operations
+ 		# (which may be possible because you have already authenticated
+ 		# with the card). Thus this setting is very secure.
  		#
- 		# However, if you do, this also means that no other
- 		# application that _you_ run can use the card until your
- 		# application has done a C_Logout or C_Finalize. In the case
- 		# of Netscape or Mozilla, this does not happen until you exit
- 		# the browser.  
-		# Default: false
-		# lock_login = true;
+ 		# However now once one application has started using your
+ 		# card with C_Login, no other application can use it, until
+ 		# the first is done and calls C_Logout or C_Finalize.
+ 		# In the case of Netscape or Mozilla or Thunderbird,
+ 		# this does not happen until you exit the application.  
+ 		#
+ 		# Thus it is impossible to use several smart card aware
+ 		# applications at the same time, e.g. you cannot run both
+ 		# Firefox and Thunderbird at the same time, if both are
+ 		# configured to use your smart card.
+ 		#
+		# Default: true
+		# lock_login = false;
 
 		# Normally, the pkcs11 module will not cache PINs
 		# presented via C_Login. However, some cards
@@ -345,11 +351,11 @@ app opensc-pkcs11 {
 		# Default: true
 		# cache_pins = false;
 
-		# Set this value to false if you want to enforce on-card
-		# keypair generation
+		# Set this value to trie if you want to allow off-card
+		# keypair generation (in software on your pc)
 		#
-		# Default: true
-		# soft_keygen_allowed = false;
+		# Default: false
+		# soft_keygen_allowed = true;
 	}
 }
 

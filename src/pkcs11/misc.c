@@ -316,14 +316,6 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 	scconf_block *conf_block = NULL, **blocks;
 	int i;
 	
-	/* Set defaults */
-	conf->pkcs11_max_virtual_slots = SC_PKCS11_DEF_MAX_VIRTUAL_SLOTS;
-	conf->num_slots = SC_PKCS11_DEF_SLOTS_PER_CARD;
-	conf->hide_empty_tokens = 0;
-	conf->lock_login = 0;
-	conf->cache_pins = 1;
-	conf->soft_keygen_allowed = 1;
-
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 				"pkcs11", NULL);
@@ -333,13 +325,22 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 			break;
 	}
 
-	if (!conf_block)
+	if (!conf_block) {
+		/* defaults if there is no "pkcs11" config block */
+		conf->pkcs11_max_virtual_slots = SC_PKCS11_DEF_MAX_VIRTUAL_SLOTS;
+		conf->num_slots = SC_PKCS11_DEF_SLOTS_PER_CARD;
+		conf->hide_empty_tokens = 0;
+		conf->lock_login = 1;
+		conf->cache_pins = 1;
+		conf->soft_keygen_allowed = 0;
 		return;
+	}
 
-	conf->pkcs11_max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", conf->pkcs11_max_virtual_slots);
-	conf->num_slots = scconf_get_int(conf_block, "num_slots", conf->num_slots);
+	/* contains the defaults, if there is a "pkcs11" config block */
+	conf->pkcs11_max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", SC_PKCS11_DEF_MAX_VIRTUAL_SLOTS);
+	conf->num_slots = scconf_get_int(conf_block, "num_slots", SC_PKCS11_DEF_SLOTS_PER_CARD);
 	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", 0);
-	conf->lock_login = scconf_get_bool(conf_block, "lock_login", 0);
+	conf->lock_login = scconf_get_bool(conf_block, "lock_login", 1);
 	conf->cache_pins = scconf_get_bool(conf_block, "cache_pins", 1);
-	conf->soft_keygen_allowed = scconf_get_bool(conf_block, "soft_keygen_allowed", 1);
+	conf->soft_keygen_allowed = scconf_get_bool(conf_block, "soft_keygen_allowed", 0);
 }
