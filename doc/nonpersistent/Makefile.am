@@ -10,7 +10,9 @@ dist_noinst_DATA = ChangeLog
 
 if SVN_CHECKOUT
 
-wiki.out/*:
+wiki.out/*:	wiki.out
+wiki.out:
+	-rm -fr wiki.out
 	test -n "$(WGET)" -a -n "$(SED)" -a -n "$(TR)" -a -n "$(XSLTPROC)"
 	WGET="$(WGET)" WGET_OPTS="$(WGET_OPTS)" SED="$(SED)" TR="$(TR)" XSLTPROC="$(XSLTPROC)" \
 		PROJECT="@PACKAGE_NAME@" \
@@ -33,7 +35,8 @@ ChangeLog:
 
 else
 
-wiki.out/*:
+wiki.out/*:	$(abs_builddir)/wiki.out
+$(abs_builddir)/wiki.out:
 	$(LN_S) "$(srcdir)/wiki.out" wiki.out
 
 ChangeLog:

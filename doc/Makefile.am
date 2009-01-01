@@ -80,14 +80,13 @@ man.out/*.3 man.out/*.5:	man.out/*.1
 endif
 else
 
-
-html.out/*:
+html.out/*:	$(abs_builddir)/html.out
+$(abs_builddir)/html.out:
 	$(LN_S) "$(srcdir)/html.out" html.out
 
-man.out/*.1:
+man.out/*.3 man.out/*.5 man.out/*.1:	$(abs_builddir)/man.out
+$(abs_builddir)/man.out:
 	$(LN_S) "$(srcdir)/man.out" man.out
-
-man.out/*.3 man.out/*.5:	man.out/*.1
 
 endif
 
