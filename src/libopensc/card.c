@@ -753,33 +753,10 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *at
 		size_t mbin_len, tbin_len, s, matr_len;
 		size_t fix_hex_len = card_atr_hex_len;
 		size_t fix_bin_len = card_atr_bin_len;
-#ifdef __APPLE__
-		unsigned int j = 0;
-#endif
 
 		if (ctx->debug >= 4)
 			sc_debug(ctx, "ATR try : %s\n", tatr);
 
-#ifdef __APPLE__
-		/* Leopard PCSC bug */
-		tbin_len = sizeof(tbin);
-		sc_hex_to_bin(tatr, tbin, &tbin_len);
-		
-		if (card_atr_bin_len == SC_MAX_ATR_SIZE && tbin_len < SC_MAX_ATR_SIZE) {
-			char card_atr_hex_tmp[3 * SC_MAX_ATR_SIZE];
-			for(j=tbin_len;j<SC_MAX_ATR_SIZE;j++)
-				if (card_atr_bin[j] != 0x0)
-					goto not_apple_bug;
-
-			sc_bin_to_hex(card_atr_bin, tbin_len, card_atr_hex_tmp, sizeof(card_atr_hex_tmp), ':');
-			fix_hex_len = strlen(card_atr_hex_tmp);
-			fix_bin_len = tbin_len;
-			if (ctx->debug >= 4)
-				sc_debug(ctx, "ATR fix : %s\n", card_atr_hex_tmp);
-
-		}
-not_apple_bug:		
-#endif
 		if (tatr_len != fix_hex_len) {
 			if (ctx->debug >= 5)
 				sc_debug(ctx, "ignored - wrong length\n", tatr);
