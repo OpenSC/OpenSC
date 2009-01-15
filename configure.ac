@@ -74,7 +74,7 @@ case "${host}" in
 		CPPFLAGS="${CPPFLAGS} -D_POSIX_PII_SOCKET"
 	;;
 	*-*-darwin*)
-		LIBS="${LIBS} -Wl,-framework,CoreFoundation"
+		LIBS="${LIBS} -Wl,-framework,CoreFoundation -liconv"
 		if test "${GCC}" = "yes"; then
 			CFLAGS="${CFLAGS} -no-cpp-precomp"
 		fi
