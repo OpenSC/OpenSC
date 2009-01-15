@@ -502,11 +502,11 @@ if test "${enable_pcsc}" = "yes"; then
 		test -z "${PCSC_CFLAGS}" && PCSC_CFLAGS="-I/usr/include/PCSC"
 	fi
 
-	saved_CFLAGS="${CFLAGS}"
-	CFLAGS="${CFLAGS} ${PCSC_CFLAGS}"
+	saved_CPPFLAGS="${CPPFLAGS}"
+	CPPFLAGS="${CPPFLAGS} ${PCSC_CFLAGS}"
 	# We must cope with mingw32 that does not have winscard.h mingw64 has it.
 	AC_CHECK_HEADERS([winscard.h],,[test "${WIN32}" != "yes" && AC_MSG_ERROR([winscard.h is required for pcsc])])
-	CFLAGS="${saved_CFLAGS}"
+	CPPFLAGS="${saved_CPPFLAGS}"
 
 	if test "${with_pcsc_provider}" = "detect"; then
 		case "${host}" in
