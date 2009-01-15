@@ -30,6 +30,10 @@
 #include "esteid.h"
 #include <compat_strlcpy.h>
 
+#ifdef HAVE_ICONV_H
+#include <iconv.h>
+#endif
+
 int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
 static void
@@ -57,24 +61,62 @@ static int
 sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 {
 	sc_card_t *card = p15card->card;
-	unsigned char buff[256];
+#ifdef HAVE_ICONV_H
+	iconv_t iso_utf;
+	char *inptr, *outptr;
+	size_t inbytes, outbytes, result;
+	unsigned char label[64], name1[32], name2[32];
+#endif
+	unsigned char buff[128];
 	int r, i, flags;
 	sc_path_t tmppath;
 
 	set_string (&p15card->label, "ID-kaart");
 	set_string (&p15card->manufacturer_id, "AS Sertifitseerimiskeskus");
 
-	/* read the serial (document number) */
+	/* Select application directory */
 	sc_format_path ("3f00eeee5044", &tmppath);
 	tmppath.type = SC_PATH_TYPE_PATH;
 	r = sc_select_file (card, &tmppath, NULL);
 	SC_TEST_RET (card->ctx, r, "select esteid PD failed");
-	r = sc_read_record (card, SC_ESTEID_PD_DOCUMENT_NR, buff, 8,
-	                    SC_RECORD_BY_REC_NR);
+
+	/* read the serial (document number) */	
+	r = sc_read_record (card, SC_ESTEID_PD_DOCUMENT_NR, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
 	SC_TEST_RET (card->ctx, r, "read document number failed");
 	buff[r] = '\0';
 	set_string (&p15card->serial_number, (const char *) buff);
 
+#ifdef HAVE_ICONV_H
+	/* Read the name of the cardholder and convert it into UTF-8 */
+	iso_utf  = iconv_open ("UTF-8", "ISO-8859-1");
+	if (iso_utf == (iconv_t) -1)
+		return SC_ERROR_INTERNAL;
+	
+	r = sc_read_record (card, SC_ESTEID_PD_GIVEN_NAMES1, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
+	SC_TEST_RET (card->ctx, r, "read name1 failed");
+	inptr = buff;
+	outptr = name1;
+	inbytes = r;
+	outbytes = 32;
+	result = iconv(iso_utf, &inptr, &inbytes, &outptr, &outbytes);
+	if (result == (size_t) -1)
+		return SC_ERROR_INTERNAL;	
+	*outptr = '\0';
+	
+	r = sc_read_record (card, SC_ESTEID_PD_SURNAME, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
+	SC_TEST_RET (card->ctx, r, "read name2 failed");
+	inptr = buff;
+	outptr = name2;
+	inbytes = r;
+	outbytes = 32;
+	result = iconv(iso_utf, &inptr, &inbytes, &outptr, &outbytes);
+	if (result == (size_t) -1)
+		return SC_ERROR_INTERNAL;
+	*outptr = '\0';
+	
+	snprintf(label, sizeof(label), "%s %s", name1, name2);
+	set_string (&p15card->label, label);
+#endif
 	p15card->flags = SC_PKCS15_CARD_FLAG_PRN_GENERATION
 	                 | SC_PKCS15_CARD_FLAG_EID_COMPLIANT
 	                 | SC_PKCS15_CARD_FLAG_READONLY;
@@ -111,14 +153,16 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 
 	/* the file with key pin info (tries left) */
 	sc_format_path ("3f000016", &tmppath);
-	sc_select_file (card, &tmppath, NULL);
+	r = sc_select_file (card, &tmppath, NULL);
+	if (r < 0)
+		return SC_ERROR_INTERNAL;
 
 	/* add pins */
 	for (i = 0; i < 3; i++) {
 		unsigned char tries_left;
 		static const char *esteid_pin_names[3] = {
-			"PIN1, Isikutuvastus",
-			"PIN2, Allkirjastamine",
+			"PIN1",
+			"PIN2",
 			"PUK" };
 			
 		static const int esteid_pin_min[3] = {4, 5, 8};
@@ -202,7 +246,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
 	}
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int esteid_detect_card(sc_pkcs15_card_t *p15card)
