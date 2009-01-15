@@ -306,7 +306,7 @@ static int refresh_slot_attributes(sc_reader_t *reader, sc_slot_info_t *slot)
 #else
 		/* On windows, SCARD_STATE_CHANGED is turned on by lots of
 		 * other events, so it gives us a lot of false positives.
-		 * But if it's off, there really no change */
+		 * But if it's off, there really was no change */
 		if (pslot->reader_state.dwEventState & SCARD_STATE_CHANGED) {
 			maybe_changed = 1;
 		}
@@ -317,8 +317,8 @@ static int refresh_slot_attributes(sc_reader_t *reader, sc_slot_info_t *slot)
 		slot->flags &= ~SC_SLOT_CARD_CHANGED;
 		if (maybe_changed) {
 			if (old_flags & SC_SLOT_CARD_PRESENT) {
-				DWORD readers_len = 0, state, prot, atr_len = 32;
-				unsigned char atr[32];
+				DWORD readers_len = 0, state, prot, atr_len = SC_MAX_ATR_SIZE;
+				unsigned char atr[SC_MAX_ATR_SIZE];
 				LONG rv = priv->gpriv->SCardStatus(pslot->pcsc_card, NULL, &readers_len,
 					&state,	&prot, atr, &atr_len);
 				if (rv == (LONG)SCARD_W_REMOVED_CARD)
@@ -683,16 +683,13 @@ static int pcsc_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
 
 static int pcsc_release(sc_reader_t *reader)
 {
-	int i;
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
 	free(priv->reader_name);
 	free(priv);
-	for (i = 0; i < reader->slot_count; i++) {
-		if (reader->slot[i].drv_data != NULL) {
-			free(reader->slot[i].drv_data);
-			reader->slot[i].drv_data = NULL;
-		}
+	if (reader->slot[0].drv_data != NULL) {
+		free(reader->slot[0].drv_data);
+		reader->slot[0].drv_data = NULL;
 	}
 	return SC_SUCCESS;
 }
