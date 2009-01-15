@@ -491,6 +491,13 @@ fi
 
 if test "${enable_pcsc}" = "yes"; then
 	AC_ARG_VAR([PCSC_CFLAGS], [C compiler flags for pcsc])
+
+	case "${host}" in
+		*-*-darwin*)
+			test -z "${PCSC_CFLAGS}" && PCSC_CFLAGS="-I/System/Library/Frameworks/PCSC.framework/Headers"
+		;;
+	esac
+
 	if test "${WIN32}" != "yes"; then
 		test -z "${PCSC_CFLAGS}" && PCSC_CFLAGS="-I/usr/include/PCSC"
 	fi
