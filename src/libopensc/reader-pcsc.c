@@ -35,16 +35,6 @@
 
 #include "internal-winscard.h"
 
-/* Default timeout value for SCardGetStatusChange
- * Needs to be increased for some broken PC/SC
- * Lite implementations.
- */
-#ifndef SC_CUSTOM_STATUS_TIMEOUT
-#define SC_STATUS_TIMEOUT 0
-#else
-#define SC_STATUS_TIMEOUT SC_CUSTOM_STATUS_TIMEOUT
-#endif
-
 /* Some windows specific kludge */
 #undef SCARD_PROTOCOL_ANY
 #define SCARD_PROTOCOL_ANY (SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1)
@@ -54,7 +44,6 @@
 /* Utility for handling big endian IOCTL codes. */
 #define dw2i_be(a, x) ((((((a[x] << 8) + a[x+1]) << 8) + a[x+2]) << 8) + a[x+3])
 
-#define GET_SLOT_PTR(s, i) (&(s)->slot[(i)])
 #define GET_PRIV_DATA(r) ((struct pcsc_private_data *) (r)->drv_data)
 #define GET_SLOT_DATA(r) ((struct pcsc_slot_data *) (r)->drv_data)
 
@@ -287,7 +276,7 @@ static int refresh_slot_attributes(sc_reader_t *reader, sc_slot_info_t *slot)
 		pslot->reader_state.dwCurrentState = pslot->reader_state.dwEventState;
 	}
 
-	ret = priv->gpriv->SCardGetStatusChange(priv->gpriv->pcsc_ctx, SC_STATUS_TIMEOUT, &pslot->reader_state, 1);
+	ret = priv->gpriv->SCardGetStatusChange(priv->gpriv->pcsc_ctx, 0, &pslot->reader_state, 1);
 	if (ret == (LONG)SCARD_E_TIMEOUT) { /* timeout: nothing changed */
 		slot->flags &= ~SCARD_STATE_CHANGED;
 		return 0;

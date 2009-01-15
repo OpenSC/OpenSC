@@ -25,7 +25,6 @@
 #include <string.h>
 #include <ltdl.h>
 
-#define GET_SLOT_PTR(s, i) (&(s)->slot[(i)])
 #define GET_PRIV_DATA(r) ((struct ctapi_private_data *) (r)->drv_data)
 #define GET_SLOT_DATA(r) ((struct ctapi_slot_data *) (r)->drv_data)
 
