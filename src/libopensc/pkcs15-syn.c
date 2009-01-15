@@ -108,17 +108,11 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 	memset(&opts, 0, sizeof(opts));
 	conf_block = NULL;
 
-	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
-		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
-						"framework", "pkcs15");
-		if (blocks && blocks[0] != NULL)
-			conf_block = blocks[0];
-		free(blocks);
-	}
+	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
 
 	if (!conf_block) {
-		/* no conf file found => try the internal drivers  */
-		sc_debug(ctx, "no conf file, trying builtin emulators\n");
+		/* no conf file found => try bultin drivers  */
+		sc_debug(ctx, "no conf file (or section), trying all builtin emulators\n");
 		for (i = 0; builtin_emulators[i].name; i++) {
 			sc_debug(ctx, "trying %s\n", builtin_emulators[i].name);
 			r = builtin_emulators[i].handler(p15card, &opts);
@@ -128,16 +122,16 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 		}
 	} else {
 		/* we have a conf file => let's use it */
+		int builtin_enabled; 
 		const scconf_list *list, *item;
 
-		/* find out if the internal drivers should be used */
-		i = scconf_get_bool(conf_block, "enable_builtin_emulation", 1);
-		if (i) {
-			/* get the list of the internal drivers */
-			sc_debug(ctx, "use builtin drivers\n");
-			list = scconf_find_list(conf_block, "builtin_emulators");
+		builtin_enabled = scconf_get_bool(conf_block, "enable_builtin_emulation", 1);
+		list = scconf_find_list(conf_block, "builtin_emulators"); /* FIXME: rename to enabled_emulators */
+
+		if (builtin_enabled && list) {
+			/* get the list of enabled emulation drivers */
 			for (item = list; item; item = item->next) {
-				/* get through the list of builtin drivers */
+				/* go through the list of builtin drivers */
 				const char *name = item->data;
 
 				sc_debug(ctx, "trying %s\n", name);
@@ -145,8 +139,19 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 					if (!strcmp(builtin_emulators[i].name, name)) {
 						r = builtin_emulators[i].handler(p15card, &opts);
 						if (r == SC_SUCCESS)
+							/* we got a hit */
 							goto out;
 					}
+			}	
+		}
+		if (builtin_enabled) {
+			sc_debug(ctx, "no emulator list in config file, trying all builtin emulators\n");
+			for (i = 0; builtin_emulators[i].name; i++) {
+				sc_debug(ctx, "trying %s\n", builtin_emulators[i].name);
+				r = builtin_emulators[i].handler(p15card, &opts);
+				if (r == SC_SUCCESS)
+					/* we got a hit */
+					goto out;
 			}
 		}
 
@@ -171,6 +176,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 
 out:	if (r == SC_SUCCESS) {
 		p15card->magic  = SC_PKCS15_CARD_MAGIC;
+		p15card->flags |= SC_PKCS15_CARD_FLAG_EMULATED;
 	} else if (r != SC_ERROR_WRONG_CARD) {
 		sc_error(ctx, "Failed to load card emulator: %s\n",
 				sc_strerror(r));

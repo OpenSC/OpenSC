@@ -399,6 +399,7 @@ typedef struct sc_pkcs15_card {
 #define SC_PKCS15_CARD_FLAG_PRN_GENERATION	0x04
 #define SC_PKCS15_CARD_FLAG_EID_COMPLIANT	0x08
 #define SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT	0x10
+#define SC_PKCS15_CARD_FLAG_EMULATED		0x20
 
 /* sc_pkcs15_bind:  Binds a card object to a PKCS #15 card object
  * and initializes a new PKCS #15 card object.  Will return
