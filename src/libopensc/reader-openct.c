@@ -21,16 +21,6 @@
 #include <openct/logging.h>
 #include <openct/error.h>
 
-/* If you set PREALLOCATE to a non-zero value, this backend
- * will allocate that many reader slots. This will allow hot-
- * plugging devices (such as USB tokens) while OpenSC is running.
- *
- * To disable this, set PREALLOCATE to 0.
- *
- * This will most likely become a config file option soon.
- */
-#define PREALLOCATE	5
-
 /* function declarations */
 static int openct_reader_init(sc_context_t *ctx, void **priv_data);
 static int openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info);
@@ -83,24 +73,24 @@ struct slot_data {
 static int
 openct_reader_init(sc_context_t *ctx, void **priv_data)
 {
-	unsigned int	i,max;
+	unsigned int	i,max_virtual;
 	scconf_block *conf_block;
 
 	SC_FUNC_CALLED(ctx, 1);
 
-	max=OPENCT_MAX_READERS; 
 
-        conf_block = sc_get_conf_block(ctx, "reader_driver", "openct", 1);
+	max_virtual = 2;
+	conf_block = sc_get_conf_block(ctx, "reader_driver", "openct", 1);
 	if (conf_block) {
-		max = scconf_get_int(conf_block, "readers", OPENCT_MAX_READERS);
+		max_virtual = scconf_get_int(conf_block, "readers", max_virtual);
 	}
 
-	for (i = 0; i < max; i++) {
+	for (i = 0; i < OPENCT_MAX_READERS; i++) {
 		ct_info_t	info;
 
 		if (ct_reader_info(i, &info) >= 0) {
 			openct_add_reader(ctx, i, &info);
-		} else if (i < PREALLOCATE) {
+		} else if (i < max_virtual) {
 			openct_add_reader(ctx, i, NULL);
 		}
 	}

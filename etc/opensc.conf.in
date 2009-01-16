@@ -69,8 +69,8 @@ app default {
 		# to set these values. For usb devices check the
 		# properties with lsusb -vv for dwMaxIFSD
 		#
-		#max_send_size = 252;
-		#max_recv_size = 252;
+		# max_send_size = 252;
+		# max_recv_size = 252;
 		
 		# Connect to reader in exclusive mode.
 		# Default: false
@@ -93,18 +93,19 @@ app default {
 		# provider_library = @DEFAULT_PCSC_PROVIDER@
 	}
 
-	# options for openct support
+	# Options for OpenCT support
 	reader_driver openct {
-		# virtual readers to allocate. default:5
-		readers = 5;
+		# Virtual readers to allocate.
+		# Default: 2
+		# readers = 5;
 
 		# This sets the maximum send and receive sizes.
 		# Some reader drivers have limitations, so you need
 		# to set these values. For usb devices check the
 		# properties with lsusb -vv for dwMaxIFSD
 		#
-		#max_send_size = 252;
-		#max_recv_size = 252;
+		# max_send_size = 252;
+		# max_recv_size = 252;
 	};
 
 	# What card drivers to load at start-up
