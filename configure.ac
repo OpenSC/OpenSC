@@ -74,7 +74,7 @@ case "${host}" in
 		CPPFLAGS="${CPPFLAGS} -D_POSIX_PII_SOCKET"
 	;;
 	*-*-darwin*)
-		LIBS="${LIBS} -Wl,-framework,CoreFoundation -liconv"
+		LIBS="${LIBS} -Wl,-framework,CoreFoundation"
 		if test "${GCC}" = "yes"; then
 			CFLAGS="${CFLAGS} -no-cpp-precomp"
 		fi
@@ -130,6 +130,13 @@ AC_ARG_ENABLE(
 	[AS_HELP_STRING([--enable-readline],[enable readline linkage @<:@detect@:>@])],
 	,
 	[enable_readline="detect"]
+)
+
+AC_ARG_ENABLE(
+	[iconv],
+	[AS_HELP_STRING([--enable-iconv],[enable iconv linkage @<:@detect@:>@])],
+	,
+	[enable_iconv="detect"]
 )
 
 AC_ARG_ENABLE(
@@ -295,8 +302,7 @@ AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([ \
 	errno.h fcntl.h malloc.h stdlib.h \
 	inttypes.h string.h strings.h \
-	sys/time.h unistd.h locale.h getopt.h \
-	iconv.h
+	sys/time.h unistd.h locale.h getopt.h
 ])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
@@ -440,6 +446,56 @@ if test "${enable_readline}" = "yes"; then
 	fi
 fi
 
+AC_ARG_VAR([ICONV_CFLAGS], [C compiler flags for iconv])
+AC_ARG_VAR([ICONV_LIBS], [linker flags for iconv])
+if test -z "${ICONV_LIBS}"; then
+	AC_MSG_CHECKING([if iconv library available within libc])
+	AC_LINK_IFELSE(
+		[AC_LANG_FUNC_LINK_TRY([iconv])],
+		[
+			AC_MSG_RESULT([yes])
+			ac_cv_lib_iconv="yes"
+		],
+		[
+			AC_MSG_RESULT([no])
+			AC_CHECK_LIB(
+				[iconv],
+				[iconv],
+				[
+					ac_cv_lib_iconv="yes"
+					ICONV_LIBS="-liconv"
+				]
+			)
+		]
+	)
+fi
+saved_CFLAGS="${CFLAGS}"
+CFLAGS="${CFLAGS} ${ICONV_CFLAGS}"
+AC_CHECK_HEADERS([iconv.h])
+CFLAGS="${saved_CFLAGS}"
+test "${ac_cv_lib_iconv}" = "yes" -a "${ac_cv_header_iconv_h}" = "yes" && have_iconv="yes"
+
+case "${enable_iconv}" in
+	no)
+		have_iconv="no"
+	;;
+	detect)
+		if test "${have_iconv}" = "yes"; then
+			enable_iconv="yes"
+		else
+			enable_iconv="no"
+		fi
+	;;
+esac
+
+if test "${enable_iconv}" = "yes"; then
+	if test "${have_iconv}" = "yes"; then
+		AC_DEFINE([ENABLE_ICONV], [1], [Use iconv libraries and header files])
+	else
+		AC_MSG_ERROR([iconv linkage required, but no iconv was found])
+	fi
+fi
+
 PKG_CHECK_MODULES(
 	[OPENSSL],
 	[libcrypto >= 0.9.7],
@@ -554,6 +610,11 @@ if test "${enable_readline}" = "yes"; then
 	OPTIONAL_READLINE_CFLAGS="${READLINE_CFLAGS}"
 	OPTIONAL_READLINE_LIBS="${READLINE_LIBS}"
 fi
+if test "${enable_iconv}" = "yes"; then
+	OPENSC_FEATURES="${OPENSC_FEATURES} iconv"
+	OPTIONAL_ICONV_CFLAGS="${ICONV_CFLAGS}"
+	OPTIONAL_ICONV_LIBS="${ICONV_LIBS}"
+fi
 if test "${enable_openssl}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} openssl"
 	OPTIONAL_OPENSSL_CFLAGS="${OPENSSL_CFLAGS}"
@@ -607,6 +668,7 @@ AM_CONDITIONAL([SVN_CHECKOUT], [test "${svn_checkout}" = "yes"])
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
 AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])
 AM_CONDITIONAL([ENABLE_READLINE], [test "${enable_readline}" = "yes"])
+AM_CONDITIONAL([ENABLE_ICONV], [test "${enable_iconv}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENSSL], [test "${enable_openssl}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENCT], [test "${enable_openct}" = "yes"])
 AM_CONDITIONAL([ENABLE_NSPLUGIN], [test "${enable_nsplugin}" = "yes"])
@@ -669,6 +731,7 @@ man support:             ${enable_man}
 doc support:             ${enable_doc}
 zlib support:            ${enable_zlib}
 readline support:        ${enable_readline}
+iconv support:           ${enable_iconv}
 OpenSSL support:         ${enable_openssl}
 PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
@@ -690,6 +753,8 @@ READLINE_CFLAGS:         ${READLINE_CFLAGS}
 READLINE_LIBS:           ${READLINE_LIBS}
 ZLIB_CFLAGS:             ${ZLIB_CFLAGS}
 ZLIB_LIBS:               ${ZLIB_LIBS}
+ICONV_CFLAGS:            ${ICONV_CFLAGS}
+ICONV_LIBS:              ${ICONV_LIBS}
 OPENSSL_CFLAGS:          ${OPENSSL_CFLAGS}
 OPENSSL_LIBS:            ${OPENSSL_LIBS}
 OPENCT_CFLAGS:           ${OPENCT_CFLAGS}

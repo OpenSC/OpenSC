@@ -30,7 +30,7 @@
 #include "esteid.h"
 #include <compat_strlcpy.h>
 
-#ifdef HAVE_ICONV_H
+#ifdef ENABLE_ICONV
 #include <iconv.h>
 #endif
 
@@ -61,7 +61,7 @@ static int
 sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 {
 	sc_card_t *card = p15card->card;
-#ifdef HAVE_ICONV_H
+#ifdef ENABLE_ICONV
 	iconv_t iso_utf;
 	char *inptr, *outptr;
 	size_t inbytes, outbytes, result;
@@ -86,7 +86,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	buff[r] = '\0';
 	set_string (&p15card->serial_number, (const char *) buff);
 
-#ifdef HAVE_ICONV_H
+#ifdef ENABLE_ICONV
 	/* Read the name of the cardholder and convert it into UTF-8 */
 	iso_utf  = iconv_open ("UTF-8", "ISO-8859-1");
 	if (iso_utf == (iconv_t) -1)

@@ -16,7 +16,8 @@ noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.
 pkgconfig_DATA = libopensc.pc libpkcs15init.pc libscconf.pc
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
-	$(OPTIONAL_PCSC_CFLAGS) $(OPTIONAL_ZLIB_CFLAGS) $(LTLIB_CFLAGS)
+	$(OPTIONAL_PCSC_CFLAGS) $(OPTIONAL_ZLIB_CFLAGS) \
+	$(OPTIONAL_ICONV_CFLAGS) $(LTLIB_CFLAGS)
 INCLUDES = -I$(top_builddir)/src/include -I$(top_srcdir)/src/common
 
 libopensc_la_SOURCES = \
@@ -52,7 +53,7 @@ else
 dist_noinst_DATA = versioninfo.rc
 endif
 libopensc_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(OPTIONAL_OPENCT_LIBS) \
-	$(OPTIONAL_ZLIB_LIBS) $(LTLIB_LIBS) \
+	$(OPTIONAL_ZLIB_LIBS) $(OPTIONAL_ICONV_LIBS) $(LTLIB_LIBS) \
 	$(top_builddir)/src/scconf/libscconf.la \
 	$(top_builddir)/src/common/libcompat.la
 if WIN32
