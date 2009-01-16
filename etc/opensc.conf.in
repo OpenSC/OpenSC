@@ -302,15 +302,17 @@ app opensc-pkcs11 {
 		# Maximum Number of virtual slots.
 		# If there are more slots than defined here,
 		# the remaining slots will be hidden from PKCS#11.
-		max_virtual_slots = 8;
+		# Default: 16
+		# max_virtual_slots = 32;
 
 		# Maximum number of slots per smart card.
 		# If the card has fewer keys than defined here,
 		# the remaining number of slots will be empty.
-		num_slots = 4;
+		# Default: 4
+		# slots_per_card = 2;
 
-		# (max_virtual_slots/num_slots) limits the number of readers
-		# that can be used on the system. Default is then 8/4=2 readers.
+		# (max_virtual_slots/slots_per_card) limits the number of readers
+		# that can be used on the system. Default is then 16/4=4 readers.
 
 		# Normally, the pkcs11 module will create
 		# the full number of slots defined above by

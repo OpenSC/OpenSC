@@ -61,10 +61,6 @@ extern CK_RV C_UnloadModule(void *module);
 extern "C" {
 #endif
 
-#define SC_PKCS11_DEF_MAX_VIRTUAL_SLOTS	8
-#define SC_PKCS11_DEF_SLOTS_PER_CARD	4
-#define SC_PKCS11_MAX_READERS           SC_MAX_READERS
-
 struct sc_pkcs11_session;
 struct sc_pkcs11_slot;
 struct sc_pkcs11_card;
@@ -91,8 +87,8 @@ struct sc_pkcs11_pool {
 };
 
 struct sc_pkcs11_config {
-	unsigned int pkcs11_max_virtual_slots;
-	unsigned int num_slots;
+	unsigned int max_virtual_slots;
+	unsigned int slots_per_card;
 	unsigned char hide_empty_tokens;
 	unsigned char lock_login;
 	unsigned char cache_pins;
@@ -338,7 +334,7 @@ typedef struct sc_pkcs11_session sc_pkcs11_session_t;
 extern struct sc_context *context;
 extern struct sc_pkcs11_pool session_pool;
 extern struct sc_pkcs11_slot *virtual_slots;
-extern struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
+extern struct sc_pkcs11_card card_table[SC_MAX_READERS];
 extern struct sc_pkcs11_config sc_pkcs11_conf;
 extern unsigned int first_free_slot;
 

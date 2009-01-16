@@ -50,7 +50,7 @@ CK_RV card_initialize(int reader)
 	unsigned int avail;
 	unsigned int i;
 
-	if (reader < 0 || reader >= SC_PKCS11_MAX_READERS)
+	if (reader < 0 || reader >= SC_MAX_READERS)
 		return CKR_FUNCTION_FAILED;
 
 	memset(card, 0, sizeof(struct sc_pkcs11_card));
@@ -59,13 +59,10 @@ CK_RV card_initialize(int reader)
 	/* Always allocate a fixed slot range to one reader/card.
 	 * Some applications get confused if readers pop up in
 	 * different slots. */
-	if (sc_pkcs11_conf.num_slots == 0)
-		avail = SC_PKCS11_DEF_SLOTS_PER_CARD;
-	else
-		avail = sc_pkcs11_conf.num_slots;
+	avail = sc_pkcs11_conf.slots_per_card;
 
-	if (first_free_slot + avail > sc_pkcs11_conf.pkcs11_max_virtual_slots)
-		avail = sc_pkcs11_conf.pkcs11_max_virtual_slots - first_free_slot;
+	if (first_free_slot + avail > sc_pkcs11_conf.max_virtual_slots)
+		avail = sc_pkcs11_conf.max_virtual_slots - first_free_slot;
 	card->first_slot = first_free_slot;
 	card->max_slots = avail;
 	card->num_slots = 0;
@@ -171,7 +168,7 @@ CK_RV __card_detect_all(int report_events)
 	if (!report_events) {
 		CK_SLOT_ID id;
 
-		for (id = 0; id < sc_pkcs11_conf.pkcs11_max_virtual_slots; id++)
+		for (id = 0; id < sc_pkcs11_conf.max_virtual_slots; id++)
 			virtual_slots[id].events = 0;
 	}
 
@@ -190,7 +187,7 @@ CK_RV card_removed(int reader)
 
 	sc_debug(context, "%d: smart card removed\n", reader);
 
-	for (i=0; i<sc_pkcs11_conf.pkcs11_max_virtual_slots; i++) {
+	for (i=0; i<sc_pkcs11_conf.max_virtual_slots; i++) {
 		if (virtual_slots[i].card &&
 		    virtual_slots[i].card->reader == reader)
 				slot_token_removed(i);
@@ -251,7 +248,7 @@ CK_RV slot_get_slot(int id, struct sc_pkcs11_slot **slot)
 	if (context == NULL)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	if (id < 0 || id >= sc_pkcs11_conf.pkcs11_max_virtual_slots)
+	if (id < 0 || id >= sc_pkcs11_conf.max_virtual_slots)
 		return CKR_SLOT_ID_INVALID;
 		
 	*slot = &virtual_slots[id];
@@ -336,7 +333,7 @@ CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask)
 	CK_SLOT_ID id;
 
 	card_detect_all();
-	for (id = 0; id < sc_pkcs11_conf.pkcs11_max_virtual_slots; id++) {
+	for (id = 0; id < sc_pkcs11_conf.max_virtual_slots; id++) {
 		slot = &virtual_slots[id];
 		if ((slot->events & SC_EVENT_CARD_INSERTED)
 		 && !(slot->slot_info.flags & CKF_TOKEN_PRESENT))

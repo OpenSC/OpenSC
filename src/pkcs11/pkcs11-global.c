@@ -32,7 +32,7 @@
 sc_context_t *context = NULL;
 struct sc_pkcs11_pool session_pool;
 struct sc_pkcs11_slot *virtual_slots = NULL;
-struct sc_pkcs11_card card_table[SC_PKCS11_MAX_READERS];
+struct sc_pkcs11_card card_table[SC_MAX_READERS];
 struct sc_pkcs11_config sc_pkcs11_conf;
 #if !defined(_WIN32)
 pid_t initialized_pid = (pid_t)-1;
@@ -212,16 +212,16 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 
 	first_free_slot = 0;
 	virtual_slots = (struct sc_pkcs11_slot *)malloc(
-		sizeof (*virtual_slots) * sc_pkcs11_conf.pkcs11_max_virtual_slots
+		sizeof (*virtual_slots) * sc_pkcs11_conf.max_virtual_slots
 	);
 	if (virtual_slots == NULL) {
 		rv = CKR_HOST_MEMORY;
 		goto out;
 	}
 	pool_initialize(&session_pool, POOL_TYPE_SESSION);
-	for (i=0; i<sc_pkcs11_conf.pkcs11_max_virtual_slots; i++)
+	for (i=0; i<sc_pkcs11_conf.max_virtual_slots; i++)
 		slot_initialize(i, &virtual_slots[i]);
-	for (i=0; i<SC_PKCS11_MAX_READERS; i++)
+	for (i=0; i<SC_MAX_READERS; i++)
 		card_initialize(i);
 
 	/* Detect any card, but do not flag "insert" events */
@@ -339,7 +339,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 
 	if (
 		(found = (CK_SLOT_ID_PTR)malloc (
-			sizeof (*found) * sc_pkcs11_conf.pkcs11_max_virtual_slots
+			sizeof (*found) * sc_pkcs11_conf.max_virtual_slots
 		)) == NULL
 	) {
 		rv = CKR_HOST_MEMORY;
@@ -353,7 +353,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	card_detect_all();
 
 	numMatches = 0;
-	for (i=0; i<sc_pkcs11_conf.pkcs11_max_virtual_slots; i++) {
+	for (i=0; i<sc_pkcs11_conf.max_virtual_slots; i++) {
 		slot = &virtual_slots[i];
 
 		if (!tokenPresent || (slot->slot_info.flags & CKF_TOKEN_PRESENT))

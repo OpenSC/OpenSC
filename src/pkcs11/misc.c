@@ -313,34 +313,29 @@ CK_RV attr_find_var(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 
 void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 {
-	scconf_block *conf_block = NULL, **blocks;
+	scconf_block *conf_block = NULL;
 	int i;
 	
-	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
-		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
-				"pkcs11", NULL);
-		conf_block = blocks[0];
-		free(blocks);
-		if (conf_block != NULL)
-			break;
-	}
+	/* Set defaults */
+	conf->max_virtual_slots = 16;
+	conf->slots_per_card = 4;
+	conf->hide_empty_tokens = 0;
+	conf->lock_login = 1;
+	conf->cache_pins = 1;
+	conf->soft_keygen_allowed = 0;
 
-	if (!conf_block) {
-		/* defaults if there is no "pkcs11" config block */
-		conf->pkcs11_max_virtual_slots = SC_PKCS11_DEF_MAX_VIRTUAL_SLOTS;
-		conf->num_slots = SC_PKCS11_DEF_SLOTS_PER_CARD;
-		conf->hide_empty_tokens = 0;
-		conf->lock_login = 1;
-		conf->cache_pins = 1;
-		conf->soft_keygen_allowed = 0;
+
+	conf_block = sc_get_conf_block(ctx, "pkcs11", NULL, 1);
+	if (!conf_block)
 		return;
-	}
 
 	/* contains the defaults, if there is a "pkcs11" config block */
-	conf->pkcs11_max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", SC_PKCS11_DEF_MAX_VIRTUAL_SLOTS);
-	conf->num_slots = scconf_get_int(conf_block, "num_slots", SC_PKCS11_DEF_SLOTS_PER_CARD);
-	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", 0);
-	conf->lock_login = scconf_get_bool(conf_block, "lock_login", 1);
-	conf->cache_pins = scconf_get_bool(conf_block, "cache_pins", 1);
-	conf->soft_keygen_allowed = scconf_get_bool(conf_block, "soft_keygen_allowed", 0);
+	conf->max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", conf->max_virtual_slots);
+	/*XXX: rename the option in 0.12+ */
+	conf->slots_per_card = scconf_get_int(conf_block, "num_slots", conf->slots_per_card);
+	conf->slots_per_card = scconf_get_int(conf_block, "slots_per_card", conf->slots_per_card);
+	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", conf->hide_empty_tokens);
+	conf->lock_login = scconf_get_bool(conf_block, "lock_login", conf->lock_login);
+	conf->cache_pins = scconf_get_bool(conf_block, "cache_pins", conf->cache_pins);
+	conf->soft_keygen_allowed = scconf_get_bool(conf_block, "soft_keygen_allowed", conf->soft_keygen_allowed);
 }
