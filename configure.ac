@@ -448,7 +448,9 @@ fi
 
 AC_ARG_VAR([ICONV_CFLAGS], [C compiler flags for iconv])
 AC_ARG_VAR([ICONV_LIBS], [linker flags for iconv])
-if test -z "${ICONV_LIBS}"; then
+if test -n "${ICONV_LIBS}"; then
+	ac_cv_lib_iconv="yes"
+else
 	AC_MSG_CHECKING([if iconv library available within libc])
 	AC_LINK_IFELSE(
 		[AC_LANG_FUNC_LINK_TRY([iconv])],
