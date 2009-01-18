@@ -107,13 +107,14 @@ static int pcsc_ret_to_error(long rv)
 	case SCARD_E_SHARING_VIOLATION:
 		return SC_ERROR_READER;
 #ifdef SCARD_E_NO_READERS_AVAILABLE /* Older pcsc-lite does not have it */
-	case SCARD_E_NO_READERS_AVAILABLE: /* Ideelabor #11 */
-		/* Or SC_ERROR_NO_READERS_FOUND 
-		 * or SC_ERROR_READER ? 
-		 * As it currently happens on runtime after a reader has been found once already
-		 * the more suitable error seems to be detached error */
+	case SCARD_E_NO_READERS_AVAILABLE:
+		/* Happens after a reader has been reported but is 
+		* not found later, thus this instead of SC_ERROR_NO_READERS_FOUND */
 		return SC_ERROR_READER_DETACHED;
 #endif
+        case SCARD_E_NO_SERVICE:
+                /* If the service is (auto)started, there could be readers */
+                return SC_ERROR_NO_READERS_FOUND;
 	default:
 		return SC_ERROR_UNKNOWN;
 	}
