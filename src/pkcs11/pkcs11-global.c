@@ -302,8 +302,8 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 	strcpy_bp(pInfo->libraryDescription,
 		  "smart card PKCS#11 API",
 		  sizeof(pInfo->libraryDescription));
-	pInfo->libraryVersion.major = 0;
-	pInfo->libraryVersion.minor = 0; /* FIXME: use 0.116 for 0.11.6 from autoconf */
+	pInfo->libraryVersion.major = OPENSC_VERSION_MINOR;
+	pInfo->libraryVersion.minor = OPENSC_VERSION_FIX;
 
 out:	sc_pkcs11_unlock();
 	return rv;
