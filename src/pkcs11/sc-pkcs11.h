@@ -87,6 +87,7 @@ struct sc_pkcs11_pool {
 };
 
 struct sc_pkcs11_config {
+	unsigned int v2_20_mode;
 	unsigned int max_virtual_slots;
 	unsigned int slots_per_card;
 	unsigned char hide_empty_tokens;

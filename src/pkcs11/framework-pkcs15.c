@@ -212,9 +212,9 @@ static void pkcs15_init_token_info(struct sc_pkcs15_card *card, CK_TOKEN_INFO_PT
 	pToken->ulFreePublicMemory = CK_UNAVAILABLE_INFORMATION;
 	pToken->ulTotalPrivateMemory = CK_UNAVAILABLE_INFORMATION;
 	pToken->ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
-	pToken->hardwareVersion.major = 1;
+	pToken->hardwareVersion.major = 0;
 	pToken->hardwareVersion.minor = 0;
-	pToken->firmwareVersion.major = 1;
+	pToken->firmwareVersion.major = 0;
 	pToken->firmwareVersion.minor = 0;
 }
 

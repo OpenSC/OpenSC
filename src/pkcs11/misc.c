@@ -317,6 +317,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 	int i;
 	
 	/* Set defaults */
+	conf->v2_20_mode = 0;
 	conf->max_virtual_slots = 16;
 	conf->slots_per_card = 4;
 	conf->hide_empty_tokens = 0;
@@ -330,6 +331,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 		return;
 
 	/* contains the defaults, if there is a "pkcs11" config block */
+	conf->v2_20_mode = scconf_get_bool(conf_block, "v2_20_mode", conf->v2_20_mode);
 	conf->max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", conf->max_virtual_slots);
 	/*XXX: rename the option in 0.12+ */
 	conf->slots_per_card = scconf_get_int(conf_block, "num_slots", conf->slots_per_card);

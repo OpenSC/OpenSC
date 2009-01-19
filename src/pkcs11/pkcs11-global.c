@@ -295,15 +295,15 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 
 	memset(pInfo, 0, sizeof(CK_INFO));
 	pInfo->cryptokiVersion.major = 2;
-	pInfo->cryptokiVersion.minor = 11;
+	pInfo->cryptokiVersion.minor = sc_pkcs11_conf.v2_20_mode ? 20 : 11;
 	strcpy_bp(pInfo->manufacturerID,
 		  "OpenSC (www.opensc-project.org)",
 		  sizeof(pInfo->manufacturerID));
 	strcpy_bp(pInfo->libraryDescription,
 		  "smart card PKCS#11 API",
 		  sizeof(pInfo->libraryDescription));
-	pInfo->libraryVersion.major = 1;
-	pInfo->libraryVersion.minor = 0;
+	pInfo->libraryVersion.major = 0;
+	pInfo->libraryVersion.minor = 0; /* FIXME: use 0.116 for 0.11.6 from autoconf */
 
 out:	sc_pkcs11_unlock();
 	return rv;
@@ -347,7 +347,8 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	}
 
 	sc_debug(context, "Getting slot listing\n");
-	if (pSlotList == NULL_PTR) {
+	/* Slot list can only change in v2.20 */
+	if (pSlotList == NULL_PTR && sc_pkcs11_conf.v2_20_mode) {
 		sc_ctx_detect_readers(context);
 	}
 	card_detect_all();
@@ -684,7 +685,7 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 		/* Shall be used in threaded envirnoment, must use app provided locking */
 		global_locking = args;
 	} else if (!applock && !oslock) {
-		/* Shall not be used in threaded environemtn, use operating system locking */
+		/* Shall not be used in threaded environment, use operating system locking */
 		global_locking = default_mutex_funcs;
 	}
 
@@ -753,7 +754,7 @@ void sc_pkcs11_free_lock(void)
 }
 
 CK_FUNCTION_LIST pkcs11_function_list = {
-	{ 2, 11 },
+	{ 2, 11 }, /* Note: NSS/Firefox ignores this version number and uses C_GetInfo() */
 	C_Initialize,
 	C_Finalize,
 	C_GetInfo,

@@ -82,9 +82,9 @@ static CK_RV pkcs15init_create_tokens(struct sc_pkcs11_card *p11card)
 		pToken->ulFreePublicMemory = CK_UNAVAILABLE_INFORMATION;
 		pToken->ulTotalPrivateMemory = CK_UNAVAILABLE_INFORMATION;
 		pToken->ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
-		pToken->hardwareVersion.major = 1;
+		pToken->hardwareVersion.major = 0;
 		pToken->hardwareVersion.minor = 0;
-		pToken->firmwareVersion.major = 1;
+		pToken->firmwareVersion.major = 0;
 		pToken->firmwareVersion.minor = 0;
 	}
 
