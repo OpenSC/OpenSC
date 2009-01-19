@@ -108,12 +108,10 @@ static int pcsc_ret_to_error(long rv)
 		return SC_ERROR_READER;
 #ifdef SCARD_E_NO_READERS_AVAILABLE /* Older pcsc-lite does not have it */
 	case SCARD_E_NO_READERS_AVAILABLE:
-		/* Happens after a reader has been reported but is 
-		* not found later, thus this instead of SC_ERROR_NO_READERS_FOUND */
-		return SC_ERROR_READER_DETACHED;
+		return SC_ERROR_NO_READERS_FOUND;
 #endif
         case SCARD_E_NO_SERVICE:
-                /* If the service is (auto)started, there could be readers */
+                /* If the service is (auto)started, there could be readers later */
                 return SC_ERROR_NO_READERS_FOUND;
 	default:
 		return SC_ERROR_UNKNOWN;
