@@ -204,3 +204,4 @@ sc_verify
 sc_wait_for_event
 sc_write_binary
 sc_write_record
+sc_get_iso7816_driver
