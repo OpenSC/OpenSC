@@ -1170,36 +1170,7 @@ extern const char *sc_get_version(void);
 		return drv_version; \
 	}
 
-extern struct sc_reader_driver *sc_get_pcsc_driver(void);
-extern struct sc_reader_driver *sc_get_ctapi_driver(void);
-extern struct sc_reader_driver *sc_get_openct_driver(void);
-
-extern sc_card_driver_t *sc_get_rutoken_driver(void);
-extern sc_card_driver_t *sc_get_default_driver(void);
-extern sc_card_driver_t *sc_get_emv_driver(void);
-extern sc_card_driver_t *sc_get_cardos_driver(void);
-extern sc_card_driver_t *sc_get_cryptoflex_driver(void);
-extern sc_card_driver_t *sc_get_cyberflex_driver(void);
-extern sc_card_driver_t *sc_get_gpk_driver(void);
-extern sc_card_driver_t *sc_get_gemsafeV1_driver(void);
 extern sc_card_driver_t *sc_get_iso7816_driver(void);
-extern sc_card_driver_t *sc_get_miocos_driver(void);
-extern sc_card_driver_t *sc_get_mcrd_driver(void);
-extern sc_card_driver_t *sc_get_setcos_driver(void);
-extern sc_card_driver_t *sc_get_starcos_driver(void);
-extern sc_card_driver_t *sc_get_tcos_driver(void);
-extern sc_card_driver_t *sc_get_openpgp_driver(void);
-extern sc_card_driver_t *sc_get_jcop_driver(void);
-extern sc_card_driver_t *sc_get_oberthur_driver(void);
-extern sc_card_driver_t *sc_get_belpic_driver(void);
-extern sc_card_driver_t *sc_get_atrust_acos_driver(void);
-extern sc_card_driver_t *sc_get_incrypto34_driver(void);
-extern sc_card_driver_t *sc_get_piv_driver(void);
-extern sc_card_driver_t *sc_get_muscle_driver(void);
-extern sc_card_driver_t *sc_get_acos5_driver(void);
-extern sc_card_driver_t *sc_get_asepcos_driver(void);
-extern sc_card_driver_t *sc_get_akis_driver(void);
-extern sc_card_driver_t *sc_get_entersafe_driver(void);
 
 #ifdef __cplusplus
 }

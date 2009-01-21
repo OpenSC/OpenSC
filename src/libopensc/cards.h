@@ -145,6 +145,32 @@ enum {
 	SC_CARD_TYPE_ENTERSAFE_3K,
 };
 
+extern sc_card_driver_t *sc_get_rutoken_driver(void);
+extern sc_card_driver_t *sc_get_default_driver(void);
+extern sc_card_driver_t *sc_get_emv_driver(void);
+extern sc_card_driver_t *sc_get_cardos_driver(void);
+extern sc_card_driver_t *sc_get_cryptoflex_driver(void);
+extern sc_card_driver_t *sc_get_cyberflex_driver(void);
+extern sc_card_driver_t *sc_get_gpk_driver(void);
+extern sc_card_driver_t *sc_get_gemsafeV1_driver(void);
+extern sc_card_driver_t *sc_get_miocos_driver(void);
+extern sc_card_driver_t *sc_get_mcrd_driver(void);
+extern sc_card_driver_t *sc_get_setcos_driver(void);
+extern sc_card_driver_t *sc_get_starcos_driver(void);
+extern sc_card_driver_t *sc_get_tcos_driver(void);
+extern sc_card_driver_t *sc_get_openpgp_driver(void);
+extern sc_card_driver_t *sc_get_jcop_driver(void);
+extern sc_card_driver_t *sc_get_oberthur_driver(void);
+extern sc_card_driver_t *sc_get_belpic_driver(void);
+extern sc_card_driver_t *sc_get_atrust_acos_driver(void);
+extern sc_card_driver_t *sc_get_incrypto34_driver(void);
+extern sc_card_driver_t *sc_get_piv_driver(void);
+extern sc_card_driver_t *sc_get_muscle_driver(void);
+extern sc_card_driver_t *sc_get_acos5_driver(void);
+extern sc_card_driver_t *sc_get_asepcos_driver(void);
+extern sc_card_driver_t *sc_get_akis_driver(void);
+extern sc_card_driver_t *sc_get_entersafe_driver(void);
+
 #ifdef __cplusplus
 }
 #endif

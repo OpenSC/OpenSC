@@ -239,6 +239,11 @@ int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
  */
 void sc_apdu_log(sc_context_t *ctx, const u8 *data, size_t len,
 	int is_outgoing);
+
+extern struct sc_reader_driver *sc_get_pcsc_driver(void);
+extern struct sc_reader_driver *sc_get_ctapi_driver(void);
+extern struct sc_reader_driver *sc_get_openct_driver(void);
+
 #ifdef __cplusplus
 }
 #endif
