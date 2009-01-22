@@ -637,7 +637,6 @@ test "${enable_nsplugin}" = "yes" && OPENSC_FEATURES="${OPENSC_FEATURES} nsplugi
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MINOR], [${OPENSC_VERSION_MINOR}], [OpenSC version minor component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_FIX], [${OPENSC_VERSION_FIX}], [OpenSC version fix component])
-AC_DEFINE_UNQUOTED([OPENSC_ETC_PATH], ["${full_sysconfdir}"], [etc path for libopensc])
 AC_DEFINE_UNQUOTED([OPENSC_CONF_PATH], ["${full_sysconfdir}/opensc.conf"], [default config file for libopensc])
 test "${with_pinentry}" != "no" && AC_DEFINE_UNQUOTED([PIN_ENTRY], ["${with_pinentry}"], [PIN-entry program for OpenSC Signer])
 AC_DEFINE_UNQUOTED([OPENSC_FEATURES], ["${OPENSC_FEATURES}"], [Enabled OpenSC features])
