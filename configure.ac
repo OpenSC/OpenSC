@@ -102,9 +102,6 @@ case "${host}" in
 	;;
 esac
 
-full_usrlibdir="/usr/lib${libdir##*/lib}"
-full_sysconfdir=`eval eval eval eval eval echo "${sysconfdir}" | sed "s#NONE#${prefix}#" | sed "s#NONE#${ac_default_prefix}#"`
-
 AC_ARG_ENABLE(
 	[strict],
 	[AS_HELP_STRING([--enable-strict],[enable strict compile mode @<:@disabled@:>@])],
@@ -577,7 +574,7 @@ if test "${enable_pcsc}" = "yes"; then
 				DEFAULT_PCSC_PROVIDER="winscard.dll"
 			;;
 			*)
-				DEFAULT_PCSC_PROVIDER="${full_usrlibdir}/libpcsclite.so"
+				DEFAULT_PCSC_PROVIDER="/usr/lib${libdir##*/lib}/libpcsclite.so"
 			;;
 		esac
 	else
@@ -637,7 +634,6 @@ test "${enable_nsplugin}" = "yes" && OPENSC_FEATURES="${OPENSC_FEATURES} nsplugi
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MINOR], [${OPENSC_VERSION_MINOR}], [OpenSC version minor component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_FIX], [${OPENSC_VERSION_FIX}], [OpenSC version fix component])
-AC_DEFINE_UNQUOTED([OPENSC_CONF_PATH], ["${full_sysconfdir}/opensc.conf"], [default config file for libopensc])
 test "${with_pinentry}" != "no" && AC_DEFINE_UNQUOTED([PIN_ENTRY], ["${with_pinentry}"], [PIN-entry program for OpenSC Signer])
 AC_DEFINE_UNQUOTED([OPENSC_FEATURES], ["${OPENSC_FEATURES}"], [Enabled OpenSC features])
 
