@@ -320,7 +320,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 	conf->plug_and_play = 1;
 	conf->max_virtual_slots = 16;
 	conf->slots_per_card = 4;
-	conf->hide_empty_tokens = 0;
+	conf->hide_empty_tokens = 1;
 	conf->lock_login = 1;
 	conf->cache_pins = 1;
 	conf->soft_keygen_allowed = 0;

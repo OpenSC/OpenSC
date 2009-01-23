@@ -327,10 +327,8 @@ app opensc-pkcs11 {
 		# the card, the remaining keys will be empty
 		# (and you will be able to create new objects
 		# within them).
-		#
-		# Set this option to true to hide these empty
-		# slots.
-		hide_empty_tokens = yes;
+		# Default: true
+		# hide_empty_tokens = false;
 
  		# By default, the OpenSC PKCS#11 module will lock your card
  		# once you authenticate to the card via C_Login.
