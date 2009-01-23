@@ -295,7 +295,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 
 	memset(pInfo, 0, sizeof(CK_INFO));
 	pInfo->cryptokiVersion.major = 2;
-	pInfo->cryptokiVersion.minor = sc_pkcs11_conf.v2_20_mode ? 20 : 11;
+	pInfo->cryptokiVersion.minor = 20;
 	strcpy_bp(pInfo->manufacturerID,
 		  "OpenSC (www.opensc-project.org)",
 		  sizeof(pInfo->manufacturerID));
@@ -348,7 +348,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 
 	sc_debug(context, "Getting slot listing\n");
 	/* Slot list can only change in v2.20 */
-	if (pSlotList == NULL_PTR && sc_pkcs11_conf.v2_20_mode) {
+	if (pSlotList == NULL_PTR && sc_pkcs11_conf.plug_and_play) {
 		sc_ctx_detect_readers(context);
 	}
 	card_detect_all();
