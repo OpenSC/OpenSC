@@ -603,7 +603,7 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 			} else
 				sc_debug(reader->ctx, "Inconsistent TLV from reader!");
 		} else {
-			sc_debug(reader->ctx, "SCardControl failed %d", rv);
+		        PCSC_ERROR(reader->ctx, "SCardControl failed", rv);
 		}
 	}
 	return SC_SUCCESS;
@@ -784,7 +784,11 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 	
 	/* If we have SCardGetAttrib it is correct API */
 	if (lt_dlsym(gpriv->dlhandle, "SCardGetAttrib") != NULL)
-		gpriv->SCardControl = (SCardControl_t)lt_dlsym(gpriv->dlhandle, "SCardControl");
+#ifdef __APPLE__
+		gpriv->SCardControl = (SCardControl_t)lt_dlsym(gpriv->dlhandle, "SCardControl132");
+#else
+                gpriv->SCardControl = (SCardControl_t)lt_dlsym(gpriv->dlhandle, "SCardControl");
+#endif
 	else
 		gpriv->SCardControlOLD = (SCardControlOLD_t)lt_dlsym(gpriv->dlhandle, "SCardControl");
 
