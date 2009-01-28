@@ -3,6 +3,16 @@
 # This profile is loaded before any card specific profile.
 #
 
+cardinfo {
+    label = "Rutoken S";
+    manufacturer = "Aktiv Co.";
+
+    max-pin-length      = 16;
+    min-pin-length      = 1;
+    pin-encoding        = ascii-numeric;
+    pin-pad-char        = 0xFF;
+}
+
 #
 # The following controls some aspects of the PKCS15 we put onto
 # the card.
@@ -13,15 +23,16 @@ pkcs15 {
     # Put the DF length into the ODF file?
     encode-df-length    = no;
     # Have a lastUpdate field in the EF(TokenInfo)?
-    do-last-update      = no;
+    do-last-update      = yes;
 }
 
 # Default settings.
 # This option block will always be processed.
 option default_32k {
     macros {
-        odf-size    = 0;
-        aodf-size   = 0;
+        ti-size     = 128;
+        odf-size    = 128;
+        aodf-size   = 256;
         dodf-size   = 2048;
         cdf-size    = 2048;
         prkdf-size  = 2048;
@@ -35,8 +46,9 @@ option default_32k {
 #option small {
 option default {
     macros {
-        odf-size    = 0;
-        aodf-size   = 0;
+        ti-size     = 64;
+        odf-size    = 128;
+        aodf-size   = 128;
         dodf-size   = 512;
         cdf-size    = 512;
         prkdf-size  = 512;
@@ -44,44 +56,124 @@ option default {
     }
 }
 
+# Define reasonable limits for PINs and PUK
+# Note that we do not set a file path or reference
+# for the user pin; that is done dynamically.
+PIN user-pin {
+    auth-id     = 2;
+    reference   = 2;
+    min-length  = 8;
+    max-length  = 16;
+    flags       = case-sensitive, local, initialized;
+}
+
+PIN so-pin {
+    auth-id     = 1;
+    reference   = 1;
+    min-length  = 8;
+    max-length  = 16;
+    flags       = case-sensitive, local, initialized, soPin;
+}
+
 filesystem {
     DF MF {
         path    = 3F00;
         type    = DF;
+        acl     = *=NEVER, SELECT=NONE, DELETE=NEVER, CREATE=CHV2, READ=NONE;
+
+        EF DIR {
+            type    = EF;
+            file-id = 2F00;
+            size    = 128;
+            acl     = *=NEVER, READ=NONE, UPDATE=CHV2, WRITE=CHV2, DELETE=CHV2;
+        }
 
         # Here comes the application DF
         DF PKCS15-AppDF {
             type    = DF;
-            file-id = FF00;
+            file-id = 5015;
+            acl     = *=NEVER, SELECT=NONE, DELETE=CHV2, CREATE=CHV2, READ=NONE;
 
             EF PKCS15-ODF {
-                file-id = 00DF;
+                file-id = 5031;
                 size    = $odf-size;
+                acl     = *=NEVER, READ=NONE, UPDATE=CHV2, WRITE=CHV2, DELETE=CHV2;
+            }
+
+            EF PKCS15-TokenInfo {
+                file-id = 5032;
+                size    = $ti-size;
+                acl     = *=NEVER, READ=NONE, UPDATE=CHV2, WRITE=CHV2, DELETE=CHV2;
             }
 
             EF PKCS15-AODF {
-                file-id = A0DF;
+                file-id = 4401;
                 size    = $aodf-size;
+                acl     = *=NEVER, READ=NONE, UPDATE=CHV2, WRITE=CHV2, DELETE=CHV2;
             }
 
             EF PKCS15-PrKDF {
-                file-id = 0001;
+                file-id = 4402;
                 size    = $prkdf-size;
+                acl     = *=NEVER, READ=NONE, UPDATE=$PIN, WRITE=$PIN, DELETE=$PIN;
             }
 
             EF PKCS15-PuKDF {
-                file-id = 0002;
+                file-id = 4403;
                 size    = $pukdf-size;
+                acl     = *=NEVER, READ=NONE, UPDATE=$PIN, WRITE=$PIN, DELETE=$PIN;
             }
 
             EF PKCS15-CDF {
-                file-id = 0003;
+                file-id = 4404;
                 size    = $cdf-size;
+                acl     = *=NEVER, READ=NONE, UPDATE=$PIN, WRITE=$PIN, DELETE=$PIN;
             }
 
             EF PKCS15-DODF {
-                file-id = 0004;
+                file-id = 4405;
                 size    = $dodf-size;
+                acl     = *=NEVER, READ=NONE, UPDATE=$PIN, WRITE=$PIN, DELETE=$PIN;
+            }
+
+            # This template defines files for keys, certificates etc.
+            #
+            # When instantiating the template, each file id will be
+            # combined with the last octet of the object's pkcs15 id
+            # to form a unique file ID.
+            template key-domain {
+                EF private-key {
+                    file-id     = 0100;
+                    structure   = transparent;
+                    acl         = *=NEVER, READ=$PIN, UPDATE=$PIN, WRITE=$PIN, DELETE=$PIN;
+                }
+
+                EF public-key {
+                    file-id     = 0200;
+                    structure   = transparent;
+                    acl         = *=NEVER, READ=NONE, UPDATE=$PIN, WRITE=$PIN, DELETE=$PIN;
+                }
+
+                # Certificate template
+                EF certificate {
+                    file-id     = 0300;
+                    structure   = transparent;
+                    acl         = *=NEVER, READ=NONE, UPDATE=$PIN, WRITE=$PIN, DELETE=$PIN;
+                }
+
+                # data objects are stored in transparent EFs.
+                EF data {
+                    file-id     = 0400;
+                    structure   = transparent;
+                    acl         = *=NEVER, READ=NONE, UPDATE=$PIN, WRITE=$PIN, DELETE=$PIN;
+                }
+
+                # private data objects are stored in transparent EFs.
+                EF privdata {
+                    file-id     = 0500;
+                    structure   = transparent;
+                    acl         = *=NEVER, READ=$PIN, UPDATE=$PIN, WRITE=$PIN, DELETE=$PIN;
+                }
             }
         }
     }

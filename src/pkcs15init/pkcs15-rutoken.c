@@ -28,15 +28,12 @@
 #include <stdint.h>
 #elif defined(_MSC_VER)
 typedef unsigned __int32 uint32_t;
-typedef unsigned __int16 uint16_t;
 #else
 #warning no uint32_t type available, please contact opensc-devel@opensc-project.org
 #endif
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
-#include <stdarg.h>
 #include <opensc/opensc.h>
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
@@ -44,48 +41,25 @@ typedef unsigned __int16 uint16_t;
 #include "pkcs15-init.h"
 #include "profile.h"
 
-#define RUTOKEN_MIN_ID_PRKEY            0x0000
-#define RUTOKEN_MAX_ID_PRKEY            0x00FF
-#define RUTOKEN_MIN_ID_OTHER            (RUTOKEN_MAX_ID_PRKEY + 1)
-#define RUTOKEN_MAX_ID_OTHER            0x0FFF
-#define RUTOKEN_BUFLEN_LISTFILES        (2 * (RUTOKEN_MAX_ID_OTHER + 1))
-
 static const sc_SecAttrV2_t pr_sec_attr = {0x43, 1, 1, 0, 0, 0, 0, 1, 2, 2, 0, 0, 0, 0, 2};
-static const sc_SecAttrV2_t pb_sec_attr = {0x42, 0, 1, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 2};
 static const sc_SecAttrV2_t wn_sec_attr = {0x43, 1, 1, 0, 0, 0, 0,-1, 2, 2, 0, 0, 0, 0, 0};
-static const sc_SecAttrV2_t df_sec_attr = {0x43, 1, 1, 0, 0, 0, 0, 1, 2, 2, 0, 0, 0, 0, 2};
-static const sc_SecAttrV2_t ef_sec_attr = {0x42, 0, 1, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 2};
 static const sc_SecAttrV2_t p2_sec_attr = {0x43, 1, 1, 0, 0, 0, 0,-1, 1, 2, 0, 0, 0, 0, 0};
 static const sc_SecAttrV2_t p1_sec_attr = {0x43, 1, 1, 0, 0, 0, 0,-1, 1, 1, 0, 0, 0, 0, 0};
 
-enum DF_IDs
-{
-	PrKDFid = 0x0000,
-	PuKDFid = 0x0000,
-	CDFid   = 0x0000,
-	DODFid  = 0x0000,
-	AODFid  = 0xFFFF
-};
-
-#define PrKDF_name      "PKCS15-PrKDF"
-#define PuKDF_name      "PKCS15-PuKDF"
-#define CDF_name        "PKCS15-CDF"
-#define DODF_name       "PKCS15-DODF"
-#define AODF_name       "PKCS15-AODF"
-#define ODF_name        "PKCS15-ODF"
-
 static const struct
 {
-	char const*  name;
-	unsigned int dir;
-	unsigned int type;
-} arr_def_df[] =
+	u8                     id, options, flags, try, pass[8];
+	sc_SecAttrV2_t const*  p_sattr;
+} do_pins[] =
 		{
-			{ PrKDF_name, PrKDFid, SC_PKCS15_PRKDF },
-			{ PuKDF_name, PuKDFid, SC_PKCS15_PUKDF },
-			{ CDF_name,   CDFid,   SC_PKCS15_CDF   },
-			{ DODF_name,  DODFid,  SC_PKCS15_DODF  },
-			{ AODF_name,  AODFid,  SC_PKCS15_AODF  }
+			{ SC_RUTOKEN_DEF_ID_GCHV_USER, SC_RUTOKEN_OPTIONS_GACCESS_USER,
+			  SC_RUTOKEN_FLAGS_COMPACT_DO, 0xFF,
+			  { '1', '2', '3', '4', '5', '6', '7', '8' }, &p2_sec_attr
+			},
+			{ SC_RUTOKEN_DEF_ID_GCHV_ADMIN, SC_RUTOKEN_OPTIONS_GACCESS_ADMIN,
+			  SC_RUTOKEN_FLAGS_COMPACT_DO, 0xFF,
+			  { '8', '7', '6', '5', '4', '3', '2', '1' }, &p1_sec_attr
+			}
 		};
 
 
@@ -166,45 +140,93 @@ static int rutoken_get_bin_from_prkey(const struct sc_pkcs15_prkey_rsa *rsa,
 static int
 rutoken_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
 {
-	int ret;
-	sc_file_t *file = NULL;
+	if (!profile || !card || !card->ctx || !df)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	SC_FUNC_CALLED(card->ctx, 1);
+	return sc_pkcs15init_create_file(profile, card, df);
+}
 
-	if (!card || !card->ctx || !df)
+/*
+ * Select a PIN reference
+ */
+static int
+rutoken_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
+			sc_pkcs15_pin_info_t *pin_info)
+{
+	if (!profile || !card || !pin_info)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	ret = card->ops->select_file(card, &df->path, &file);
-	if (ret == SC_ERROR_FILE_NOT_FOUND)
-		ret = card->ops->create_file(card, df);
-	else if(file && file->type != SC_FILE_TYPE_DF)
-		ret = SC_ERROR_WRONG_CARD;
+	sc_debug(card->ctx, "PIN reference %i, PIN flags 0x%x\n",
+			pin_info->reference, pin_info->flags);
+	/* XXX:
+	 * Create:
+	 * First iteration find reference for create new PIN object with
+	 * pin_info->reference == 0
+	 * Next iteration ++pin_info->reference signify PIN object
+	 * (pin_info->reference == SC_RUTOKEN_DEF_ID_GCHV_ADMIN  or
+	 *  pin_info->reference == SC_RUTOKEN_DEF_ID_GCHV_USER)
+	 * is already created.
+	 * Find:
+	 * Valid PIN reference: { SC_RUTOKEN_DEF_ID_GCHV_ADMIN,
+	 * SC_RUTOKEN_DEF_ID_GCHV_USER }
+	 */
+	if (pin_info->reference != 0
+			&& pin_info->reference != SC_RUTOKEN_DEF_ID_GCHV_ADMIN
+			&& pin_info->reference != SC_RUTOKEN_DEF_ID_GCHV_USER
+	)
+		/* PKCS#15 SOPIN and UserPIN already created */
+		return SC_ERROR_NOT_SUPPORTED;
 
-	if(file)
-		sc_file_free(file);
-	return ret;
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+		pin_info->reference = SC_RUTOKEN_DEF_ID_GCHV_ADMIN;
+	else
+		pin_info->reference = SC_RUTOKEN_DEF_ID_GCHV_USER;
+	sc_debug(card->ctx, "PIN reference %i\n", pin_info->reference);
+	return SC_SUCCESS;
 }
 
-static int get_dfpath(sc_profile_t *profile, unsigned int df_type,
-			sc_path_t *out_path)
+/*
+ * Create a PIN object within the given DF
+ */
+static int
+rutoken_create_pin(sc_profile_t *profile, sc_card_t *card,
+			sc_file_t *df, sc_pkcs15_object_t *pin_obj,
+			const unsigned char *pin, size_t pin_len,
+			const unsigned char *puk, size_t puk_len)
 {
-	static const int DFid[SC_PKCS15_DF_TYPE_COUNT] =
-			{ PrKDFid, PuKDFid, 0, 0, CDFid, 0, 0, DODFid };
-	/* assert(0 == SC_PKCS15_PRKDF);
-	 * assert(1 == SC_PKCS15_PUKDF);
-	 * assert(4 == SC_PKCS15_CDF);
-	 * assert(7 == SC_PKCS15_DODF);
-	 */
+	sc_pkcs15_pin_info_t *pin_info;
+	size_t i;
 
-	if (df_type >= SC_PKCS15_DF_TYPE_COUNT || !profile
-			|| !profile->df || !profile->df[df_type]
-	)
-		return -1;
+	if (!profile || !card || !df || !pin_obj || !pin_obj->data || !pin || !pin_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
-	*out_path = profile->df[df_type]->path;
-	out_path->len -= 2;
-	sc_append_file_id(out_path, DFid[df_type]);
-	return 0;
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	if (puk_len != 0)
+	{
+		sc_error(card->ctx, "Do not enter User unblocking PIN (PUK): %s\n",
+				sc_strerror(SC_ERROR_NOT_SUPPORTED));
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+	pin_info = (sc_pkcs15_pin_info_t *)pin_obj->data;
+	for (i = 0; i < sizeof(do_pins)/sizeof(do_pins[0]); ++i)
+		if (pin_info->reference == do_pins[i].id)
+		{
+			if (pin_len == sizeof(do_pins[i].pass)
+					&&  memcmp(do_pins[i].pass, pin, pin_len) == 0
+			)
+				return SC_SUCCESS;
+			else
+			{
+				sc_error(card->ctx, "Incorrect PIN\n");
+				break;
+			}
+		}
+	sc_debug(card->ctx, "PIN reference %i not found in standard (Rutoken) PINs\n",
+			pin_info->reference);
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /*
@@ -214,21 +236,21 @@ static int
 rutoken_select_key_reference(sc_profile_t *profile, sc_card_t *card,
 			sc_pkcs15_prkey_info_t *key_info)
 {
-	if (!profile || !card || !card->ctx || !key_info)
+	int id_low;
+
+	if (!profile || !card || !card->ctx || !key_info || key_info->path.len < 1)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	if (get_dfpath(profile, SC_PKCS15_PRKDF, &key_info->path) < 0)
-	{
-		sc_debug(card->ctx, "Call error get_dfpath\n");
-		return SC_ERROR_INTERNAL;
-	}
-	sc_append_file_id(&key_info->path, key_info->key_reference);
+	id_low = key_info->key_reference + key_info->path.value[key_info->path.len - 1];
+	sc_debug(card->ctx, "id_low = %i, key_reference = %i\n",
+			id_low, key_info->key_reference);
+	if (id_low > 0xFF)
+		return SC_ERROR_TOO_MANY_OBJECTS;
 
-	return key_info->key_reference >= RUTOKEN_MIN_ID_PRKEY
-			&&  key_info->key_reference <= RUTOKEN_MAX_ID_PRKEY ? 
-			SC_SUCCESS : SC_ERROR_TOO_MANY_OBJECTS;
+	key_info->path.value[key_info->path.len - 1] = id_low & 0xFF;
+	return SC_SUCCESS;
 }
 
 /*
@@ -254,16 +276,12 @@ rutoken_store_key(sc_profile_t *profile, sc_card_t *card,
 			sc_pkcs15_prkey_t *key)
 {
 	sc_pkcs15_prkey_info_t *key_info;
-	const int nKeyBufSize = 2048;
 	u8 *prkeybuf = NULL;
-	size_t prsize;
+	size_t prsize = 2048;
 	sc_file_t *file;
 	int ret;
 
-	if (!profile || !profile->ops || !card || !card->ctx
-			|| !obj || !obj->data || !key
-			|| !profile->ops->encode_private_key
-	)
+	if (!profile || !card || !card->ctx || !obj || !obj->data || !key)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -272,8 +290,11 @@ rutoken_store_key(sc_profile_t *profile, sc_card_t *card,
 		return SC_ERROR_NOT_SUPPORTED;
 
 	key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-	prkeybuf = calloc(nKeyBufSize, 1);
-	if(!prkeybuf)
+	if (key_info->path.len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	prkeybuf = calloc(prsize, 1);
+	if (!prkeybuf)
 		return SC_ERROR_OUT_OF_MEMORY;
 
 	/*
@@ -281,8 +302,8 @@ rutoken_store_key(sc_profile_t *profile, sc_card_t *card,
 	 * create key file 
 	 * write a key
 	 */
-	prsize = nKeyBufSize;
-	ret = profile->ops->encode_private_key(profile, card, &key->u.rsa, prkeybuf, &prsize, 0);
+	ret = rutoken_get_bin_from_prkey(&key->u.rsa, prkeybuf, &prsize);
+	sc_debug(card->ctx, "sc_rutoken_get_bin_from_prkey returned %i\n", ret);
 	if (ret == 0)
 	{
 		file = sc_file_new();
@@ -293,7 +314,8 @@ rutoken_store_key(sc_profile_t *profile, sc_card_t *card,
 			/* create (or update) key file */
 			file->path = key_info->path;
 			file->type = SC_FILE_TYPE_WORKING_EF;
-			file->id = key_info->key_reference;
+			file->id = key_info->path.value[key_info->path.len - 2] << 8
+				| key_info->path.value[key_info->path.len - 1];
 			file->size = prsize;
 			sc_file_set_sec_attr(file, (u8*)&pr_sec_attr, SEC_ATTR_SIZE);
 
@@ -308,154 +330,8 @@ rutoken_store_key(sc_profile_t *profile, sc_card_t *card,
 }
 
 /*
- * Encode private key
- */
-static int
-rutoken_encode_private_key(sc_profile_t *profile, sc_card_t *card,
-			struct sc_pkcs15_prkey_rsa *rsa,
-			u8 *key, size_t *keysize, int key_ref)
-{
-	int r;
-
-	if (!card || !card->ctx || !rsa || !key || !keysize)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	SC_FUNC_CALLED(card->ctx, 1);
-	r = rutoken_get_bin_from_prkey(rsa, key, keysize);
-	sc_debug(card->ctx, "sc_rutoken_get_bin_from_prkey returned %i\n", r);
-	return r;
-}
-
-static int rutoken_id_in(int id, const u8 *buf, int buflen)
-{
-	int i;
-	for (i = 0; i*2 + 1 < buflen; i++)
-		if (id == (int)buf[i*2] * 0x100 + buf[i*2 + 1]) return 1;
-	return 0;
-}
-
-static int rutoken_find_id(sc_card_t *card, const sc_path_t *path)
-{
-	int ret = SC_SUCCESS;
-	sc_file_t *file = NULL;
-	u8 *files = malloc(RUTOKEN_BUFLEN_LISTFILES);
-	if (!files) return SC_ERROR_OUT_OF_MEMORY;
-	if(path)
-	{
-		if((ret = card->ops->select_file(card, path, &file)) == SC_SUCCESS)
-			ret = file->type == SC_FILE_TYPE_DF ? SC_SUCCESS : SC_ERROR_NOT_ALLOWED;
-	}
-	if(ret == SC_SUCCESS)
-	{
-		ret = card->ops->list_files(card, files, RUTOKEN_BUFLEN_LISTFILES);
-		if(ret >= 0)
-		{
-			int i;
-			for (i = RUTOKEN_MIN_ID_OTHER; i <= RUTOKEN_MAX_ID_OTHER; i++)
-				if(!rutoken_id_in(i, files, ret)) {ret = i; break;}
-		}
-	}
-	free(files);
-	if(file) sc_file_free(file);
-	return ret;
-}
-
-/*
- * Create a file based on a PKCS15_TYPE_xxx
- */
-static int
-rutoken_new_file(struct sc_profile *profile, struct sc_card *card,
-			unsigned int type, unsigned int idx, struct sc_file **file)
-{
-	int ret = SC_SUCCESS, id, ret_s;
-	sc_path_t path;
-	u8 const *sec_attr = NULL;
-
-	if (!profile || !file || *file != NULL
-			|| !card || !card->ctx || !card->ops
-			|| !card->ops->delete_file || !card->ops->select_file
-			|| !card->ops->list_files /* for call rutoken_find_id */
-	)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	SC_FUNC_CALLED(card->ctx, 1);
-
-	switch (type & SC_PKCS15_TYPE_CLASS_MASK)
-	{
-		case SC_PKCS15_TYPE_CERT:
-			ret = get_dfpath(profile, SC_PKCS15_CDF, &path);
-			sec_attr = pb_sec_attr;
-			break;
-		case SC_PKCS15_TYPE_PUBKEY:
-			ret = get_dfpath(profile, SC_PKCS15_PUKDF, &path);
-			sec_attr = pb_sec_attr;
-			break;
-		case SC_PKCS15_TYPE_DATA_OBJECT:
-			ret = get_dfpath(profile, SC_PKCS15_DODF, &path);
-			sec_attr = pr_sec_attr;
-			break;
-		case SC_PKCS15_TYPE_PRKEY_RSA:
-		default:
-			ret = SC_ERROR_NOT_SUPPORTED;
-	}
-	/* find first unlished file id */
-	if (ret == SC_SUCCESS)
-	{
-		id = rutoken_find_id(card, &path);
-		if (id < 0)
-		{
-			sc_debug(card->ctx, "Error find id (%i)\n", id);
-			ret = SC_ERROR_TOO_MANY_OBJECTS;
-		}
-	}
-	if(ret == SC_SUCCESS)
-	{
-		sc_debug(card->ctx, "new id %i\n", id);
-		*file = sc_file_new();
-		if (!*file)
-			ret = SC_ERROR_OUT_OF_MEMORY;
-		{
-			(*file)->size = 0;
-			(*file)->id = id;
-			sc_append_file_id(&path, (*file)->id);
-			(*file)->path = path;
-			sc_file_set_sec_attr(*file, sec_attr, SEC_ATTR_SIZE);
-			(*file)->type = SC_FILE_TYPE_WORKING_EF;
-			/*  If target file exist than remove it */
-			sc_ctx_suppress_errors_on(card->ctx);
-			ret_s = card->ops->select_file(card, &(*file)->path, NULL);
-			sc_ctx_suppress_errors_off(card->ctx);
-			if (ret_s == SC_SUCCESS)
-			{
-				sc_path_t del_path;
-				del_path.len = 0;
-				del_path.type = SC_PATH_TYPE_FILE_ID;
-				card->ops->delete_file(card, &del_path);
-			}
-		}
-	}
-	return ret;
-}
-
-/*
  * Initialization routine
  */
-
-static const struct
-{
-	u8                     id, options, flags, try, pass[8];
-	sc_SecAttrV2_t const*  p_sattr;
-} do_pins[] =
-		{
-			{ SC_RUTOKEN_DEF_ID_GCHV_USER, SC_RUTOKEN_OPTIONS_GACCESS_USER,
-			  SC_RUTOKEN_FLAGS_COMPACT_DO, 0xFF,
-			  { '1', '2', '3', '4', '5', '6', '7', '8' }, &p2_sec_attr
-			},
-			{ SC_RUTOKEN_DEF_ID_GCHV_ADMIN, SC_RUTOKEN_OPTIONS_GACCESS_ADMIN,
-			  SC_RUTOKEN_FLAGS_COMPACT_DO, 0xFF,
-			  { '8', '7', '6', '5', '4', '3', '2', '1' }, &p1_sec_attr
-			}
-		};
 
 static int create_pins(sc_card_t *card)
 {
@@ -505,19 +381,19 @@ static int create_typical_fs(sc_card_t *card)
 		/* Create MF  3F00 */
 		df->id = 0x3F00;
 		sc_format_path("3F00", &df->path);
-		r = card->ops->create_file(card, df);
+		r = sc_create_file(card, df);
 		if (r != SC_SUCCESS) break;
 
 		/* Create     3F00/0000 */
 		df->id = 0x0000;
 		sc_append_file_id(&df->path, df->id);
-		r = card->ops->create_file(card, df);
+		r = sc_create_file(card, df);
 		if (r != SC_SUCCESS) break;
 
 		/* Create     3F00/0000/0000 */
 		df->id = 0x0000;
 		sc_append_file_id(&df->path, df->id);
-		r = card->ops->create_file(card, df);
+		r = sc_create_file(card, df);
 		if (r != SC_SUCCESS) break;
 
 		/* Create USER PIN and SO PIN*/
@@ -532,27 +408,27 @@ static int create_typical_fs(sc_card_t *card)
 		/* Create     3F00/0000/0000/0001 */
 		df->id = 0x0001;
 		sc_append_file_id(&df->path, df->id);
-		r = card->ops->create_file(card, df);
+		r = sc_create_file(card, df);
 		if (r != SC_SUCCESS) break;
 
 		sc_format_path("3F0000000000", &df->path);
-		r = card->ops->select_file(card, &df->path, NULL);
+		r = sc_select_file(card, &df->path, NULL);
 		if (r != SC_SUCCESS) break;
 
 		/* Create     3F00/0000/0000/0002 */
 		df->id = 0x0002;
 		sc_append_file_id(&df->path, df->id);
-		r = card->ops->create_file(card, df);
+		r = sc_create_file(card, df);
 		if (r != SC_SUCCESS) break;
 
 		sc_format_path("3F000000", &df->path);
-		r = card->ops->select_file(card, &df->path, NULL);
+		r = sc_select_file(card, &df->path, NULL);
 		if (r != SC_SUCCESS) break;
 
 		/* Create     3F00/0000/0001 */
 		df->id = 0x0001;
 		sc_append_file_id(&df->path, df->id);
-		r = card->ops->create_file(card, df);
+		r = sc_create_file(card, df);
 		if (r != SC_SUCCESS) break;
 
 		/* RESET ACCESS RIGHTS */
@@ -562,112 +438,22 @@ static int create_typical_fs(sc_card_t *card)
 	return r;
 }
 
-/* 
- * Card-specific initialization of PKCS15 profile information
- */
-static int rutoken_init(sc_profile_t *profile, sc_card_t *card)
-{
-	struct file_info *ef_list;
-	sc_file_t *df, *ef;
-	size_t i;
-	int r, ret = SC_SUCCESS;
-
-	SC_FUNC_CALLED(card->ctx, 1);
-
-	df = sc_file_new();
-	if (!df)
-	{
-		sc_debug(card->ctx, "Failed to create file\n");
-		return SC_ERROR_OUT_OF_MEMORY;
-	}
-	df->type = SC_FILE_TYPE_DF;
-	r = sc_file_set_sec_attr(df, df_sec_attr, SEC_ATTR_SIZE);
-	if (r != SC_SUCCESS)
-		sc_debug(card->ctx, "Failed to set secure attr: %s\n", sc_strerror(r));
-
-	for (ef_list = profile->ef_list; ef_list; ef_list = ef_list->next)
-	{
-		if (!ef_list->file  ||  ef_list->file->path.len <= 2)
-			continue;
-		df->path = ef_list->file->path;
-		df->path.len -= 2;
-		ret = card->ops->select_file(card, &df->path, NULL);
-		if (ret != SC_SUCCESS)
-		{
-			sc_debug(card->ctx,"Failed select file: %s\n", sc_strerror(ret));
-			break;
-		}
-
-		sc_file_dup(&ef, ef_list->file);
-		if (!ef)
-		{
-			sc_debug(card->ctx, "Failed to dup file\n");
-			ret = SC_ERROR_OUT_OF_MEMORY;
-			break;
-		}
-		r = sc_file_set_sec_attr(ef, 
-				ef->type == SC_FILE_TYPE_DF ? 
-				df_sec_attr : ef_sec_attr, SEC_ATTR_SIZE);
-	        if (r != SC_SUCCESS)
-			sc_debug(card->ctx, "Failed to set secure attr: %s\n",
-					sc_strerror(r));
-
-		ret = card->ops->create_file(card, ef);
-		sc_file_free(ef);
-		if (ret != SC_SUCCESS)
-		{
-			sc_error(card->ctx, "Failed to create file "
-					"in compliance with profile: %s\n",
-					sc_strerror(ret));
-			break;
-		}
-
-		for (i = 0; i < sizeof(arr_def_df)/sizeof(arr_def_df[0]); ++i)
-			if (arr_def_df[i].dir != AODFid
-				&&  strcasecmp(ef_list->ident, arr_def_df[i].name) == 0
-			)
-			{
-				df->id = arr_def_df[i].dir;
-				r = sc_append_file_id(&df->path, df->id);
-				if (r == SC_SUCCESS)
-				{
-					sc_ctx_suppress_errors_on(card->ctx);
-					r = card->ops->create_file(card, df);
-					sc_ctx_suppress_errors_off(card->ctx);
-					if (r == SC_ERROR_FILE_ALREADY_EXISTS)
-						r = SC_SUCCESS;
-				}
-				if (r != SC_SUCCESS)
-					sc_error(card->ctx, "Failed to create df, %s\n",
-							sc_strerror(r));
-				break;
-			}
-	}
-	sc_file_free(df);
-	return ret;
-}
-
 /*
  * Erase everything that's on the card
- * And create PKCS15 profile
  */
 static int
 rutoken_erase(struct sc_profile *profile, sc_card_t *card)
 {
 	int ret, ret_end;
 
-        if (!profile || !card || !card->ctx || !card->ops
-			|| !card->ops->select_file || !card->ops->create_file
-	)
+	if (!profile || !card || !card->ctx)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
 	/* ret = sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL); */
 	ret = sc_card_ctl(card, SC_CARDCTL_RUTOKEN_FORMAT_INIT, NULL);
-	if (ret != SC_SUCCESS)
-		sc_error(card->ctx, "Failed to erase: %s\n", sc_strerror(ret));
-	else
+	if (ret == SC_SUCCESS)
 	{
 		ret = create_typical_fs(card);
 		if (ret != SC_SUCCESS)
@@ -676,30 +462,9 @@ rutoken_erase(struct sc_profile *profile, sc_card_t *card)
 		ret_end = sc_card_ctl(card, SC_CARDCTL_RUTOKEN_FORMAT_END, NULL);
 		if (ret_end != SC_SUCCESS)
 			ret = ret_end;
-		if (ret == SC_SUCCESS)
-		{
-			/* VERIFY __default__ USER PIN */
-			/* assert(sizeof(do_pins)/sizeof(do_pins[0]) >= 1); */
-			/* assert(do_pins[0].id == SC_RUTOKEN_DEF_ID_GCHV_USER); */
-			ret = sc_verify(card, SC_AC_CHV, do_pins[0].id,
-					do_pins[0].pass, sizeof(do_pins[0].pass), NULL);
-			if (ret != SC_SUCCESS)
-				sc_debug(card->ctx, "VERIFY default USER PIN: %s\n",
-						sc_strerror(ret));
-			else
-			{
-				ret = rutoken_init(profile, card);
-
-				/* RESET ACCESS RIGHTS */
-				if (sc_logout(card) != SC_SUCCESS)
-					sc_debug(card->ctx,
-							"Failed RESET ACCESS RIGHTS\n");
-			}
-		}
-		if (ret != SC_SUCCESS)
-			sc_error(card->ctx, "Failed to init PKCS15: %s\n",
-					sc_strerror(ret));
 	}
+	if (ret != SC_SUCCESS)
+		sc_error(card->ctx, "Failed to erase: %s\n", sc_strerror(ret));
 	return ret;
 }
 
@@ -708,20 +473,20 @@ static struct sc_pkcs15init_operations sc_pkcs15init_rutoken_operations = {
 	NULL,                           /* init_card */
 	rutoken_create_dir,             /* create_dir */
 	NULL,                           /* create_domain */
-	NULL,                           /* select_pin_reference */
-	NULL,                           /* create_pin */
+	rutoken_select_pin_reference,   /* select_pin_reference */
+	rutoken_create_pin,             /* create_pin */
 	rutoken_select_key_reference,   /* select_key_reference */
 	rutoken_create_key,             /* create_key */
 	rutoken_store_key,              /* store_key */
 	NULL,                           /* generate_key */
-	rutoken_encode_private_key,     /* encode_private_key */
+	NULL,                           /* encode_private_key */
 	NULL,                           /* encode_public_key */
 	NULL,                           /* finalize_card */
 	/* Old-style API */
 	NULL,                           /* init_app */
 	NULL,                           /* new_pin */
 	NULL,                           /* new_key */
-	rutoken_new_file,               /* new_file */
+	NULL,                           /* new_file */
 	NULL,                           /* old_generate_key */
 	NULL                            /* delete_object */
 };

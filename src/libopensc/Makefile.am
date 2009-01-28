@@ -44,7 +44,7 @@ libopensc_la_SOURCES = \
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
-	pkcs15-rutoken.c pkcs15-esinit.c \
+	pkcs15-esinit.c \
 	compression.c p15card-helper.c \
 	\
 	libopensc.exports

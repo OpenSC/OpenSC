@@ -61,6 +61,26 @@ struct auth_senv {
 };
 typedef struct auth_senv auth_senv_t;
 
+struct helper_acl_to_sec_attr
+{
+	unsigned int ac_op;
+	size_t sec_attr_pos;
+};
+typedef struct helper_acl_to_sec_attr helper_acl_to_sec_attr_t;
+
+static const helper_acl_to_sec_attr_t arr_convert_attr_df [] = {
+	{ SC_AC_OP_CREATE, 0 },
+	{ SC_AC_OP_CREATE, 1 },
+	{ SC_AC_OP_DELETE, 6 }
+};
+
+static const helper_acl_to_sec_attr_t arr_convert_attr_ef [] = {
+	{ SC_AC_OP_READ, 0 },
+	{ SC_AC_OP_UPDATE, 1 },
+	{ SC_AC_OP_WRITE, 1 },
+	{ SC_AC_OP_DELETE, 6 }
+};
+
 static const sc_SecAttrV2_t default_sec_attr = {
 	0x42,
 	0, 1, 0, 0, 0, 0, 1,
@@ -310,19 +330,7 @@ static void rutoken_process_fcp(sc_card_t *card, u8 *pIn, sc_file_t *file)
 	}
 	sc_file_set_sec_attr(file, pIn + 17, SEC_ATTR_SIZE);
 
-	if (file->sec_attr  &&  file->sec_attr_len == SEC_ATTR_SIZE
-#ifndef SET_ACL_FOR_EF_LENLESS8_RUTOKEN
-/*
- * No set ACL for EF:
- *  PrKDF_path: "3F00FF000001" - SC_PKCS15_PRKDF
- *  PuKDF_path: "3F00FF000002" - SC_PKCS15_PUKDF
- *  CDF_path:   "3F00FF000003" - SC_PKCS15_CDF
- *  DODF_path:  "3F00FF000004" - SC_PKCS15_DODF
- *  (see files: src/libopensc/pkcs15-rutoken.c, src/pkcs15init/rutoken.profile)
- */
-			&& (file->type != SC_FILE_TYPE_WORKING_EF || file->path.len >= 8)
-#endif
-	)
+	if (file->sec_attr  &&  file->sec_attr_len == SEC_ATTR_SIZE)
 	{
 		sc_file_add_acl_entry(file, SC_AC_OP_SELECT,
 				SC_AC_NONE, SC_AC_KEY_REF_NONE);
@@ -501,9 +509,64 @@ static int rutoken_construct_fcp(sc_card_t *card, const sc_file_t *file, u8 *out
 	if (file->sec_attr_len == SEC_ATTR_SIZE)
 		memcpy(out + 17, file->sec_attr, SEC_ATTR_SIZE);
 	else
+	{
+		sc_debug(card->ctx, "set default sec_attr");
 		memcpy(out + 17, &default_sec_attr, SEC_ATTR_SIZE);
-
+	}
 	SC_FUNC_RETURN(card->ctx, 3, SC_NO_ERROR);
+}
+
+static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
+{
+	const helper_acl_to_sec_attr_t *conv_attr;
+	size_t i, n_conv_attr;
+	const sc_acl_entry_t *entry;
+	sc_SecAttrV2_t attr = { 0 };
+	int ret = SC_NO_ERROR;
+
+	SC_FUNC_CALLED(card->ctx, 3);
+
+	if (file->type == SC_FILE_TYPE_DF)
+	{
+		conv_attr = arr_convert_attr_df;
+		n_conv_attr = sizeof(arr_convert_attr_df)/sizeof(arr_convert_attr_df[0]);
+	}
+	else
+	{
+		conv_attr = arr_convert_attr_ef;
+		n_conv_attr = sizeof(arr_convert_attr_ef)/sizeof(arr_convert_attr_ef[0]);
+	}
+	sc_debug(card->ctx, "file->type = %i", file->type);
+
+	for (i = 0; i < n_conv_attr; ++i)
+	{
+		entry = sc_file_get_acl_entry(file, conv_attr[i].ac_op);
+		if (entry  &&  (entry->method == SC_AC_CHV || entry->method == SC_AC_NONE
+				|| entry->method == SC_AC_NEVER)
+		)
+		{
+			/* AccessMode.[conv_attr[i].sec_attr_pos] */
+			attr[0] |= 1 << conv_attr[i].sec_attr_pos;
+			sc_debug(card->ctx, "AccessMode.%u, attr[0]=0x%x",
+					conv_attr[i].sec_attr_pos, attr[0]);
+			attr[1 + conv_attr[i].sec_attr_pos] = (u8)entry->method;
+			sc_debug(card->ctx, "method %u", (u8)entry->method);
+			if (entry->method == SC_AC_CHV)
+			{
+				attr[1+7 + conv_attr[i].sec_attr_pos] = (u8)entry->key_ref;
+				sc_debug(card->ctx, "key_ref %u", (u8)entry->key_ref);
+			}
+		}
+		else
+		{
+			sc_debug(card->ctx, "ACL (%u) not set", conv_attr[i].ac_op);
+			ret = 1;
+			break;
+		}
+	}
+	if (ret != 1)
+		ret = sc_file_set_sec_attr(file, attr, sizeof(attr));
+	SC_FUNC_RETURN(card->ctx, 3, ret);
 }
 
 static int rutoken_create_file(sc_card_t *card, sc_file_t *file)
@@ -513,7 +576,13 @@ static int rutoken_create_file(sc_card_t *card, sc_file_t *file)
 	u8 sbuf[32] = { 0 };
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	ret = rutoken_construct_fcp(card, file, sbuf);
+
+	/* trying use acl if sec_attr and acl were set */
+	ret = set_sec_attr_from_acl(card, file);
+	if (ret >= 0) /* (ret == 1) - acl not set */
+		/* use default sec_attr if sec_attr not set */
+		ret = rutoken_construct_fcp(card, file, sbuf);
+
 	if (ret == SC_NO_ERROR)
 	{
 		sc_debug(card->ctx, "fcp = %s", hexdump(sbuf, 32));
@@ -564,9 +633,13 @@ static int rutoken_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, ref_qualifier);
 	ret = sc_transmit_apdu(card, &apdu);
-	if (ret == SC_SUCCESS  &&  apdu.sw1 == 0x90  &&  apdu.sw2 == 0x00)
+	if (ret == SC_SUCCESS  &&  ((apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+				||  apdu.sw1 == 0x63)
+	)
 	{
-		/* already login */
+		/* sw1 == 0x63  -  may be already login with other ref_qualifier
+		 * sw1 == 0x90 && sw2 == 0x00  -  already login with ref_qualifier
+		 */
 		/* RESET ACCESS RIGHTS */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x40, 0x00, 0x00);
 		apdu.cla = 0x80;
@@ -687,7 +760,7 @@ static int rutoken_set_security_env(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (!env)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);	
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	senv = (auth_senv_t*)card->drv_data;
 	if (!senv)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
@@ -708,7 +781,7 @@ static int rutoken_set_security_env(sc_card_t *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 1, 0);
 	apdu.lc = apdu.datalen = sizeof(data);
 	apdu.data = data;
-	switch (env->operation) 
+	switch (env->operation)
 	{
 		case SC_SEC_OPERATION_AUTHENTICATE:
 			apdu.p2 = 0xA4;
