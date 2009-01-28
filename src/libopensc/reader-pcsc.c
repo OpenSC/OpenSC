@@ -783,14 +783,17 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 		gpriv->SCardListReaders = (SCardListReaders_t)lt_dlsym(gpriv->dlhandle, "SCardListReadersA");
 	
 	/* If we have SCardGetAttrib it is correct API */
-	if (lt_dlsym(gpriv->dlhandle, "SCardGetAttrib") != NULL)
+	if (lt_dlsym(gpriv->dlhandle, "SCardGetAttrib") != NULL) {
 #ifdef __APPLE__
 		gpriv->SCardControl = (SCardControl_t)lt_dlsym(gpriv->dlhandle, "SCardControl132");
-#else
-                gpriv->SCardControl = (SCardControl_t)lt_dlsym(gpriv->dlhandle, "SCardControl");
 #endif
-	else
+		if (gpriv->SCardControl == NULL) {
+	                gpriv->SCardControl = (SCardControl_t)lt_dlsym(gpriv->dlhandle, "SCardControl");
+		}
+	}
+	else {
 		gpriv->SCardControlOLD = (SCardControlOLD_t)lt_dlsym(gpriv->dlhandle, "SCardControl");
+	}
 
 	if (
 		gpriv->SCardReleaseContext == NULL ||
