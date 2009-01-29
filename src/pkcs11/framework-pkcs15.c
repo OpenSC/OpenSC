@@ -187,7 +187,10 @@ static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 static void pkcs15_init_token_info(struct sc_pkcs15_card *card, CK_TOKEN_INFO_PTR pToken)
 {
 	strcpy_bp(pToken->manufacturerID, card->manufacturer_id, 32);
-	strcpy_bp(pToken->model, "PKCS #15 SCard", 16);
+	if (card->flags & SC_PKCS15_CARD_FLAG_EMULATED)
+		strcpy_bp(pToken->model, "PKCS#15 emulated", 16);
+	else
+		strcpy_bp(pToken->model, "PKCS#15", 16);
 
 	/* Take the last 16 chars of the serial number (if the are more
 	 * than 16).
@@ -814,7 +817,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	 * If there's only 1 pin and the hide_empty_tokens option is set,
 	 * add the public objects to the slot that corresponds to that pin.
 	 */
-	if (!(auth_count == 1 && sc_pkcs11_conf.hide_empty_tokens))
+	if (!(auth_count == 1 && (sc_pkcs11_conf.hide_empty_tokens || (fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED)))
 		slot = NULL;
 
 	/* Add all the remaining objects */
@@ -837,7 +840,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 
 	/* Create read/write slots */
 	while (slot_allocate(&slot, p11card) == CKR_OK) {
-		if (!sc_pkcs11_conf.hide_empty_tokens) {
+		if (!sc_pkcs11_conf.hide_empty_tokens && !(fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED)) {
 			slot->slot_info.flags |= CKF_TOKEN_PRESENT;
 			pkcs15_init_token_info(fw_data->p15_card, &slot->token_info);
 			strcpy_bp(slot->token_info.label, fw_data->p15_card->label, 32);
