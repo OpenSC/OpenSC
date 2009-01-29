@@ -24,7 +24,7 @@ PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe piv-tool.
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
 !ENDIF
 
-# If you want support for zlib (Used for PIV, infocamere and actalis:
+# If you want support for zlib (Used for PIV, infocamere and actalis):
 # - Download zlib and build
 # - uncomment the line starting with ZLIB_DEF 
 # - set the ZLIB_INCL_DIR below to the zlib include lib proceeded by "/I"
@@ -36,8 +36,19 @@ ZLIB_LIB = C:\ZLIB\LIB\zlib.lib
 OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
 !ENDIF
 
+# If you want support for iconv (Used for EstEID):
+# - Download iconv and build
+# - uncomment the line starting with ICONV_DEF 
+# - set the ICONV_INCL_DIR below to the iconv include lib proceeded by "/I"
+# - set the ICONV_LIB  below to your iconv lib file
+#ICONV_DEF = /DENABLE_ICONV
+!IF "$(ICONV_DEF)" == "/DENABLE_ICONV"
+ICONV_INCL_DIR = /IC:\build\iconv\include
+ICONV_LIB = C:\build\iconv\lib\iconv.lib
+OPENSC_FEATURES = $(OPENSC_FEATURES) iconv
+!ENDIF
 
-COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc /I$(TOPDIR)\src\common $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) /D_WIN32_WINNT=0x0400 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF) /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\""
+COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc /I$(TOPDIR)\src\common $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(ICONV_INCL_DIR) /D_WIN32_WINNT=0x0400 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF) $(ICONV_DEF) /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\""
 LINKFLAGS = /DEBUG /NOLOGO /INCREMENTAL:NO /MACHINE:IX86
 
 
