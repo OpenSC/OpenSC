@@ -817,7 +817,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	 * If there's only 1 pin and the hide_empty_tokens option is set,
 	 * add the public objects to the slot that corresponds to that pin.
 	 */
-	if (!(auth_count == 1 && (sc_pkcs11_conf.hide_empty_tokens || (fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED)))
+	if (!(auth_count == 1 && (sc_pkcs11_conf.hide_empty_tokens || (fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED))))
 		slot = NULL;
 
 	/* Add all the remaining objects */
