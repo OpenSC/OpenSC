@@ -547,16 +547,21 @@ if test "${enable_openct}" = "yes"; then
 fi
 
 if test "${enable_pcsc}" = "yes"; then
-	AC_ARG_VAR([PCSC_CFLAGS], [C compiler flags for pcsc])
-
-	case "${host}" in
-		*-*-darwin*)
-			test -z "${PCSC_CFLAGS}" && PCSC_CFLAGS="-I/System/Library/Frameworks/PCSC.framework/Headers"
-		;;
-	esac
-
 	if test "${WIN32}" != "yes"; then
-		test -z "${PCSC_CFLAGS}" && PCSC_CFLAGS="-I/usr/include/PCSC"
+		PKG_CHECK_EXISTS(
+			[libpcsclite],
+			[PKG_CHECK_MODULES([PCSC], [libpcsclite])]
+		)
+		if test -z "${PCSC_CFLAGS}"; then
+			case "${host}" in
+				*-*-darwin*)
+					PCSC_CFLAGS="-I/System/Library/Frameworks/PCSC.framework/Headers"
+				;;
+				*)
+					PCSC_CFLAGS="-I/usr/include/PCSC"
+				;;
+			esac
+		fi
 	fi
 
 	saved_CFLAGS="${CFLAGS}"
