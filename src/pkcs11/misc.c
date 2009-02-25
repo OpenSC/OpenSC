@@ -314,8 +314,7 @@ CK_RV attr_find_var(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 {
 	scconf_block *conf_block = NULL;
-	int i;
-	
+
 	/* Set defaults */
 	conf->plug_and_play = 1;
 	conf->max_virtual_slots = 16;
