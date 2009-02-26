@@ -6,7 +6,7 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/nonpersistent/ChangeLog.
 
-New in 0.11.7-rc1; 2009-02-01; Andreas Jellinghaus
+New in 0.11.7; 2009-02-26; Andreas Jellinghaus
 * hide_empty_slots now on by default? small logic change?
 * pinpad supported fixed for Mac OS X.
 * ruToken driver was updated.
