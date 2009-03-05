@@ -74,7 +74,7 @@ filesystem {
 
 	        # private data objects are stored in transparent EFs.
                 EF privdata {
-    	            file-id	= 3300;
+    	            file-id	= 3220;
     	            structure	= transparent;
     	            ACL		= *=NEVER,
 					READ=$PIN,
