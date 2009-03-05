@@ -3723,7 +3723,8 @@ sc_pkcs15init_parse_info(sc_card_t *card,
 	while (p < end && (tag = *p++) != 0 && tag != 0xFF) {
 		int	r = 0;
 
-		if (p >= end || p + (n = *p++) > end)
+		n = *p; p++;
+		if (p >= end || p + n > end)
 			goto error;
 
 		switch (tag) {
