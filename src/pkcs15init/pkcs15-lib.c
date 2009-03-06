@@ -3724,6 +3724,9 @@ sc_pkcs15init_parse_info(sc_card_t *card,
 	unsigned int	nopts = 0;
 	size_t		n;
 
+	if ((p == NULL) || (len == 0))
+		return 0;
+
 	end = p + (len - 1); 
 	while (p < end) {	/* more bytes to look at */
 		int	r = 0;
