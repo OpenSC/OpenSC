@@ -3725,7 +3725,7 @@ sc_pkcs15init_parse_info(sc_card_t *card,
 	size_t		n;
 
 	end = p + (len - 1); 
-	while (p < end)) {	/* more bytes to look at */
+	while (p < end) {	/* more bytes to look at */
 		int	r = 0;
 
 		tag = *p; p++;
