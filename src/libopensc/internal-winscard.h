@@ -128,7 +128,12 @@ typedef LONG (PCSC_API *SCardListReaders_t)(SCARDCONTEXT hContext, LPCSTR mszGro
 /* Copied from pcsc-lite reader.h */
 
 #ifndef SCARD_CTL_CODE
+#ifdef _WIN32
+#include <winioctl.h>
+#define SCARD_CTL_CODE(code) CTL_CODE(FILE_DEVICE_SMARTCARD,(code),METHOD_BUFFERED,FILE_ANY_ACCESS)
+#else
 #define SCARD_CTL_CODE(code) (0x42000000 + (code))
+#endif
 #endif
 
 /**
