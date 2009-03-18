@@ -1041,7 +1041,7 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 
 #define SC_CCID_PIN_UNITS_BYTES    0x80
 
-/* Build a pin verification block + APDU */
+/* Build a PIN verification block + APDU */
 static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
 {
 	int offset = 0, count = 0;
@@ -1059,7 +1059,7 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	if (data->pin1.encoding == SC_PIN_ENCODING_ASCII) {
 		tmp |= SC_CCID_PIN_ENCODING_ASCII;
 
-		/* if the effective pin length offset is specified, use it */
+		/* if the effective PIN length offset is specified, use it */
 		if (data->pin1.length_offset > 4) {
 			tmp |= SC_CCID_PIN_UNITS_BYTES;
 			tmp |= (data->pin1.length_offset - 5) << 3;
@@ -1068,9 +1068,9 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 		tmp |= SC_CCID_PIN_ENCODING_BCD;
 		tmp |= SC_CCID_PIN_UNITS_BYTES;
 	} else if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
-		/* see comment about GLP pins in sec.c */
+		/* see comment about GLP PINs in sec.c */
 		tmp |= SC_CCID_PIN_ENCODING_BCD;
-		tmp |= 0x04 << 3;
+		tmp |= 0x08 << 3;
 	} else
 		return SC_ERROR_NOT_SUPPORTED;
 
@@ -1079,7 +1079,7 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	/* bmPINBlockString */
 	tmp = 0x00;
 	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
-		/* GLP pin length is encoded in 4 bits and block size is always 8 bytes */
+		/* GLP PIN length is encoded in 4 bits and block size is always 8 bytes */
 		tmp |= 0x40 | 0x08;
 	} else if (data->pin1.encoding == SC_PIN_ENCODING_ASCII && data->pin1.pad_length) {
 		tmp |= data->pin1.pad_length;
@@ -1089,7 +1089,7 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	/* bmPINLengthFormat */
 	tmp = 0x00;
 	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
-		/* GLP pins expect the effective pin length from bit 4 */
+		/* GLP PINs expect the effective PIN length from bit 4 */
 		tmp |= 0x04;
 	}
 	pin_verify->bmPINLengthFormat = tmp;	/* bmPINLengthFormat */
@@ -1132,7 +1132,7 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 
 
 
-/* Build a pin modification block + APDU */
+/* Build a PIN modification block + APDU */
 static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
 {
 	int offset = 0, count = 0;
@@ -1150,7 +1150,7 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	if (data->pin1.encoding == SC_PIN_ENCODING_ASCII) {
 		tmp |= SC_CCID_PIN_ENCODING_ASCII;
 
-		/* if the effective pin length offset is specified, use it */
+		/* if the effective PIN length offset is specified, use it */
 		if (data->pin1.length_offset > 4) {
 			tmp |= SC_CCID_PIN_UNITS_BYTES;
 			tmp |= (data->pin1.length_offset - 5) << 3;
@@ -1159,9 +1159,9 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 		tmp |= SC_CCID_PIN_ENCODING_BCD;
 		tmp |= SC_CCID_PIN_UNITS_BYTES;
 	} else if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
-		/* see comment about GLP pins in sec.c */
+		/* see comment about GLP PINs in sec.c */
 		tmp |= SC_CCID_PIN_ENCODING_BCD;
-		tmp |= 0x04 << 3;
+		tmp |= 0x08 << 3;
 	} else
 		return SC_ERROR_NOT_SUPPORTED;
 
@@ -1170,7 +1170,7 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	/* bmPINBlockString */
 	tmp = 0x00;
 	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
-		/* GLP pin length is encoded in 4 bits and block size is always 8 bytes */
+		/* GLP PIN length is encoded in 4 bits and block size is always 8 bytes */
 		tmp |= 0x40 | 0x08;
 	} else if (data->pin1.encoding == SC_PIN_ENCODING_ASCII && data->pin1.pad_length) {
 		tmp |= data->pin1.pad_length;
@@ -1180,13 +1180,19 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	/* bmPINLengthFormat */
 	tmp = 0x00;
 	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
-		/* GLP pins expect the effective pin length from bit 4 */
+		/* GLP PINs expect the effective PIN length from bit 4 */
 		tmp |= 0x04;
 	}
 	pin_modify->bmPINLengthFormat = tmp;	/* bmPINLengthFormat */
 
 	pin_modify->bInsertionOffsetOld = 0x00;  /* bOffsetOld */
-	pin_modify->bInsertionOffsetNew = 0x00;  /* bOffsetNew */
+	
+	/* bInsertionOffsetNew */
+	tmp = 0x00;
+	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
+		tmp = 0x08;
+	}
+	pin_modify->bInsertionOffsetNew = tmp;  /* bOffsetNew */
 
 	if (!data->pin1.min_length || !data->pin1.max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
