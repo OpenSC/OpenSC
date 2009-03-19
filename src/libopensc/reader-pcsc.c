@@ -1102,8 +1102,9 @@ static int part10_build_verify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	
 	pin_verify->bEntryValidationCondition = 0x02; /* Keypress only */
 	
+	pin_verify->bNumberMessage = 0xFF; /* Default message */
+
 	/* Ignore language and T=1 parameters. */
-	pin_verify->bNumberMessage = 0x00;
 	pin_verify->wLangId = HOST_TO_CCID_16(0x0000);
 	pin_verify->bMsgIndex = 0x00;
 	pin_verify->bTeoPrologue[0] = 0x00;
@@ -1204,7 +1205,7 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, struct sc_pin_
 	pin_modify->bEntryValidationCondition = 0x02;	/* bEntryValidationCondition, keypress only */
 
 	/* Ignore language and T=1 parameters. */
-	pin_modify->bNumberMessage = 0x00;
+	pin_modify->bNumberMessage = 0x00; /* XXX: Latest released CCID driver rejects 0xFF */
 	pin_modify->wLangId = HOST_TO_CCID_16(0x0000);
 	pin_modify->bMsgIndex1 = 0x00;
 	pin_modify->bMsgIndex2 = 0x00;
@@ -1255,7 +1256,7 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 
 	/* The APDU must be provided by the card driver */
 	if (!data->apdu) {
-		sc_error(reader->ctx, "No APDU provided for Part 10 pinpad verification!");
+		sc_error(reader->ctx, "No APDU provided for PC/SC v2 pinpad verification!");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -1284,14 +1285,14 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	}
 
 	/* If PIN block building failed, we fail too */
-	SC_TEST_RET(reader->ctx, r, "Part10 PIN block building failed!");
+	SC_TEST_RET(reader->ctx, r, "PC/SC v2 pinpad block building failed!");
 	/* If not, debug it, just for fun */
 	sc_bin_to_hex(sbuf, scount, dbuf, sizeof(dbuf), ':');
-	sc_debug(reader->ctx, "Part 10 block: %s", dbuf);
+	sc_debug(reader->ctx, "PC/SC v2 pinpad block: %s", dbuf);
 
 	r = pcsc_internal_transmit(reader, slot, sbuf, scount, rbuf, &rcount, ioctl);
 
-	SC_TEST_RET(reader->ctx, r, "Part 10: block transmit failed!");
+	SC_TEST_RET(reader->ctx, r, "PC/SC v2 pinpad: block transmit failed!");
 	/* finish the call if it was a two-phase operation */
 	if ((ioctl == pslot->verify_ioctl_start)
 	    || (ioctl == pslot->modify_ioctl_start)) {
@@ -1302,7 +1303,7 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 
 		rcount = sizeof(rbuf);
 		r = pcsc_internal_transmit(reader, slot, sbuf, 0, rbuf, &rcount, ioctl);
-		SC_TEST_RET(reader->ctx, r, "Part 10: finish operation failed!");
+		SC_TEST_RET(reader->ctx, r, "PC/SC v2 pinpad: finish operation failed!");
 	}
 
 	/* We expect only two bytes of result data (SW1 and SW2) */
