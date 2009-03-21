@@ -221,7 +221,7 @@ static void detect_functional_units(sc_reader_t *reader)
 
 	}
 	if (reader->slot_count == 0) {
-		sc_debug(reader->ctx, "No slots returned, assuning one default slot\n");
+		sc_debug(reader->ctx, "No slots returned, assuming one default slot\n");
 		set_default_fu(reader);
 	}
 	/* CT-BCS does not define Keyboard/Display for each slot, so I assume
