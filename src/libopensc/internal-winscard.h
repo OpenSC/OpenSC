@@ -137,21 +137,27 @@ typedef LONG (PCSC_API *SCardListReaders_t)(SCARDCONTEXT hContext, LPCSTR mszGro
 #endif
 
 /**
- * TeleTrust Class 2 reader tags
+ * PC/SC v2.02.05 part 10 reader tags
  */
 #define CM_IOCTL_GET_FEATURE_REQUEST SCARD_CTL_CODE(3400)
 
-#define FEATURE_VERIFY_PIN_START  0x01 /**< OMNIKEY Proposal */
-#define FEATURE_VERIFY_PIN_FINISH 0x02 /**< OMNIKEY Proposal */
-#define FEATURE_MODIFY_PIN_START  0x03 /**< OMNIKEY Proposal */
-#define FEATURE_MODIFY_PIN_FINISH 0x04 /**< OMNIKEY Proposal */
-#define FEATURE_GET_KEY_PRESSED   0x05 /**< OMNIKEY Proposal */
-#define FEATURE_VERIFY_PIN_DIRECT 0x06 /**< USB CCID PIN Verify */
-#define FEATURE_MODIFY_PIN_DIRECT 0x07 /**< USB CCID PIN Modify */
-#define FEATURE_MCT_READERDIRECT  0x08 /**< KOBIL Proposal */
-#define FEATURE_MCT_UNIVERSAL     0x09 /**< KOBIL Proposal */
-#define FEATURE_IFD_PIN_PROP      0x0A /**< Gemplus Proposal */
-#define FEATURE_ABORT             0x0B /**< SCM Proposal */
+#define FEATURE_VERIFY_PIN_START         0x01
+#define FEATURE_VERIFY_PIN_FINISH        0x02
+#define FEATURE_MODIFY_PIN_START         0x03
+#define FEATURE_MODIFY_PIN_FINISH        0x04
+#define FEATURE_GET_KEY_PRESSED          0x05
+#define FEATURE_VERIFY_PIN_DIRECT        0x06
+#define FEATURE_MODIFY_PIN_DIRECT        0x07
+#define FEATURE_MCT_READERDIRECT         0x08
+#define FEATURE_MCT_UNIVERSAL            0x09
+#define FEATURE_IFD_PIN_PROPERTIES       0x0A
+#define FEATURE_ABORT                    0x0B
+#define FEATURE_SET_SPE_MESSAGE          0x0C
+#define FEATURE_VERIFY_PIN_DIRECT_APP_ID 0x0D
+#define FEATURE_MODIFY_PIN_DIRECT_APP_ID 0x0E
+#define FEATURE_WRITE_DISPLAY            0x0F
+#define FEATURE_GET_KEY                  0x10
+#define FEATURE_IFD_DISPLAY_PROPERTIES   0x11
 
 /* structures used (but not defined) in PCSC Part 10 revision 2.01.02:
  * "IFDs with Secure Pin Entry Capabilities" */
@@ -234,6 +240,14 @@ typedef struct
 	uint32_t ulDataLength; /**< length of Data to be sent to the ICC */
 	uint8_t abData[1]; /**< Data to send to the ICC */
 } PIN_MODIFY_STRUCTURE;
+
+typedef struct {
+	uint16_t wLcdLayout; /**< display characteristics */
+	uint16_t wLcdMaxCharacters;
+	uint16_t wLcdMaxLines;
+	uint8_t bEntryValidationCondition;
+	uint8_t bTimeOut2;
+} PIN_PROPERTIES_STRUCTURE;
 
 /* restore default structure elements alignment */
 #ifdef __APPLE__
