@@ -170,9 +170,6 @@ static int pcsc_internal_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 	dwSendLength = sendsize;
 	dwRecvLength = *recvsize;
 
-	if (dwRecvLength > 258)
-		dwRecvLength = 258;
-
 	if (!control) {
 		rv = priv->gpriv->SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
 				   &sRecvPci, recvbuf, &dwRecvLength);
