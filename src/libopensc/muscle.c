@@ -692,6 +692,7 @@ int msc_compute_crypt_init(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_CARD_CMD_FAILED);
 }
 
+#if 0
 int msc_compute_crypt_process(
 			sc_card_t *card, 
 			int keyLocation,
@@ -746,6 +747,7 @@ int msc_compute_crypt_process(
 	}
 	SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_CARD_CMD_FAILED);
 }
+#endif
 
 int msc_compute_crypt_final(
 			sc_card_t *card, 
@@ -761,7 +763,7 @@ int msc_compute_crypt_final(
 	u8 *ptr;
 	int r;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x36, keyLocation, 0x03); /* Final */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x36, keyLocation, 0x03); /* Final */
 	
 	apdu.data = buffer;
 	apdu.datalen = dataLength + 3;
@@ -769,7 +771,7 @@ int msc_compute_crypt_final(
 	
 	memset(outputBuffer, 0, sizeof(outputBuffer));
 	apdu.resp = outputBuffer;
-	apdu.resplen = MSC_MAX_READ;
+	apdu.resplen = dataLength + 2;
 	apdu.le = dataLength +2;
 	ptr = buffer;
 	*ptr = 0x01; ptr++; /* DATA LOCATION: APDU */
@@ -795,6 +797,82 @@ int msc_compute_crypt_final(
 		SC_FUNC_RETURN(card->ctx, 0, r);
 	}
 	SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_CARD_CMD_FAILED);
+}
+
+/* Stream data to the card through file IO */
+static int msc_compute_crypt_final_object(
+			sc_card_t *card, 
+			int keyLocation,
+			const u8* inputData,
+			u8* outputData,
+			size_t dataLength,
+			size_t* outputDataLength)
+{
+	sc_apdu_t apdu;
+	u8 buffer[MSC_MAX_APDU];
+	u8 *ptr;
+	int r;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x36, keyLocation, 0x03); /* Final */
+	
+	apdu.data = buffer;
+	apdu.datalen = 1;
+	apdu.lc = 1;
+	
+	ptr = buffer;
+	*ptr = 0x02;
+	ptr++; /* DATA LOCATION: OBJECT */
+	*ptr = (dataLength >> 8) & 0xFF;
+	ptr++;
+	*ptr = dataLength & 0xFF;
+	ptr++;
+	memcpy(ptr, inputData, dataLength);
+
+	sc_ctx_suppress_errors_on(card->ctx);
+	r = msc_create_object(card, outputId, dataLength + 2, 0x02, 0x02, 0x02);
+	if(r < 0) { 
+		if(r == SC_ERROR_FILE_ALREADY_EXISTS) {
+			r = msc_delete_object(card, outputId, 0);
+			if(r < 0) {
+				sc_ctx_suppress_errors_off(card->ctx);
+				SC_FUNC_RETURN(card->ctx, 2, r);
+			}
+			r = msc_create_object(card, outputId, dataLength + 2, 0x02, 0x02, 0x02);
+			if(r < 0) {
+				sc_ctx_suppress_errors_off(card->ctx);
+				SC_FUNC_RETURN(card->ctx, 2, r);
+			}
+		}
+	}
+	sc_ctx_suppress_errors_off(card->ctx);
+
+	r = msc_update_object(card, outputId, 0, buffer + 1, dataLength + 2);
+	if(r < 0) return r; 
+	
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		r = msc_read_object(card, inputId, 2, outputData, dataLength);
+		*outputDataLength = dataLength;
+		msc_delete_object(card, outputId, 0);
+		msc_delete_object(card, inputId, 0);
+		return 0;
+	}
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r) {
+		if (card->ctx->debug >= 2) {
+			sc_debug(card->ctx, "final: got strange SWs: 0x%02X 0x%02X\n",
+			     apdu.sw1, apdu.sw2);
+		}
+	} else {
+		r = SC_ERROR_CARD_CMD_FAILED;
+	}
+	/* no error checks.. this is last ditch cleanup */	
+	sc_ctx_suppress_errors_on(card->ctx);
+	msc_delete_object(card, outputId, 0);
+	sc_ctx_suppress_errors_off(card->ctx);
+	
+	SC_FUNC_RETURN(card->ctx, 0, r);
 }
 
 int msc_compute_crypt(sc_card_t *card, 
@@ -829,30 +907,31 @@ int msc_compute_crypt(sc_card_t *card,
 	left -= toSend;
 	inPtr += toSend;
 	outPtr += received;
-	while(left > (MSC_MAX_SEND - 5)) {
-		toSend = MIN(left, (MSC_MAX_SEND - 5));
-		r = msc_compute_crypt_process(card,
+
+	toSend = MIN(left, MSC_MAX_APDU - 5);
+	/* If the card supports extended APDUs, or the data fits in
+           one normal APDU, use it for the data exchange */
+	if (left < (MSC_MAX_SEND - 4) || (card->caps & SC_CARD_CAP_APDU_EXT) != 0) {
+		r = msc_compute_crypt_final(card,
 			keyLocation,
 			inPtr,
 			outPtr,
 			toSend,
 			&received);
 		if(r < 0) SC_FUNC_RETURN(card->ctx, 0, r);
-		left -= toSend;
-		inPtr += toSend;
-		outPtr += received;
-	}
-	toSend = MIN(left, (MSC_MAX_SEND - 5));
-	r = msc_compute_crypt_final(card,
-		keyLocation,
-		inPtr,
-		outPtr,
-		toSend,
-		&received);
-	if(r < 0) SC_FUNC_RETURN(card->ctx, 0, r);
+	} else { /* Data is too big: use objects */
+		r = msc_compute_crypt_final_object(card,
+			keyLocation,
+			inPtr,
+			outPtr,
+			toSend,
+			&received);
+		if(r < 0) SC_FUNC_RETURN(card->ctx, 0, r);
+	}	
 	left -= toSend;
 	inPtr += toSend;
 	outPtr += received;
+
 	return outPtr - outputData; /* Amt received */
 }
 
