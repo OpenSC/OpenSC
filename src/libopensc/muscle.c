@@ -450,7 +450,7 @@ int msc_get_challenge(sc_card_t *card, short dataLength, short seedLength, u8 *s
 	if(seedLength > 0) {
 		memcpy(ptr, seedData, seedLength);
 	}
-	sc_format_apdu(card, &apdu, cse, 0x72, 0x00, location);
+	sc_format_apdu(card, &apdu, cse, 0x62, 0x00, location);
 	apdu.data = buffer;
 	apdu.datalen = len;
 	apdu.lc = len;
