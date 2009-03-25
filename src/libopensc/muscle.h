@@ -28,7 +28,7 @@
 
 #include "muscle-filesystem.h"
 
-#define MSC_MAX_APDU 256 /* Max APDU send/recv, used for stack allocation */
+#define MSC_MAX_APDU 512 /* Max APDU send/recv, used for stack allocation */
 #define MSC_MAX_PIN_LENGTH 8
 #define MSC_MAX_PIN_COMMAND_LENGTH ((1 + MSC_MAX_PIN_LENGTH) * 2)
 
