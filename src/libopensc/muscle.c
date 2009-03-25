@@ -471,7 +471,7 @@ int msc_get_challenge(sc_card_t *card, short dataLength, short seedLength, u8 *s
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(location == 1) {
 		if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-			return dataLength;
+			return SC_SUCCESS;
 		} else {
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 			if (r) {
