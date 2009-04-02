@@ -12,6 +12,7 @@ cardinfo {
 option default {
 	macros {
 		pin-flags		 = initialized, needs-padding;
+		min-pin-length	 = 4;
 		df_acl			 = *=NEVER;
 		protected		 = *=$PIN,READ=NONE;
 		dir-size		 = 128;
@@ -49,21 +50,25 @@ PIN so-pin {
 	reference	= 1;
 	attempts	= 3;
 	flags		= $pin-flags;
+	min-length	= $min-pin-length;
 }
 PIN so-puk {
 	reference	= 1;
 	attempts	= 3;
 	flags		= $pin-flags;
+	min-length	= $min-pin-length;
 }
 PIN user-pin {
 	reference	= 1;
 	attempts	= 3;
 	flags		= $pin-flags;
+	min-length	= $min-pin-length;
 }
 PIN user-puk {
 	reference	= 1;
 	attempts	= 3;
 	flags		= $pin-flags;
+	min-length	= $min-pin-length;
 }
 
 # Additional filesystem info.
@@ -147,7 +152,6 @@ filesystem {
 				}
         		EF public-key {
     	    	    file-id	  = 3003;
-					size	  = 320;
    					structure = transparent;
 					ACL	  	  = *=NEVER,READ=NONE,UPDATE=$PIN;
         		}
@@ -173,16 +177,7 @@ filesystem {
             		structure	= transparent;
 					ACL	  	  	= *=NEVER,READ=NONE,UPDATE=$PIN;
         		}
-
-        		# private data objects are stored in transparent EFs.
-        		EF data {
-            	    file-id		= 3401;
-            		structure	= transparent;
-					ACL	  	  	= *=NEVER,READ=$PIN,UPDATE=$PIN;
-        		}
-
 			}
-
 		}
     }
 }

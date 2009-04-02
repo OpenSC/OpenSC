@@ -144,6 +144,7 @@ enum {
 	/* EnterSafe cards */
 	SC_CARD_TYPE_ENTERSAFE_BASE = 19000,
 	SC_CARD_TYPE_ENTERSAFE_3K,
+	SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C,
 };
 
 extern sc_card_driver_t *sc_get_rutoken_driver(void);

@@ -258,23 +258,45 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_card_t *card,
 {
 	int	r;
 	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
-	sc_entersafe_wkey_data  data;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	if (!pin || !pin_len || pin_len > 16)
-		return SC_ERROR_INVALID_ARGUMENTS;
+	{/*pin*/
+		 sc_entersafe_wkey_data  data;
 
-	data.key_id=pin_info->reference;
-	data.usage=0x0B;
-	data.key_data.symmetric.EC=0x33;
-	data.key_data.symmetric.ver=0x00;
-	/* pad pin with 0 */
-	memset(data.key_data.symmetric.key_val, 0, sizeof(data.key_data.symmetric.key_val));
-	memcpy(data.key_data.symmetric.key_val, pin, pin_len);
-	data.key_data.symmetric.key_len=16;
+		 if (!pin || !pin_len || pin_len > 16)
+			  return SC_ERROR_INVALID_ARGUMENTS;
 
-	r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
+		 data.key_id=pin_info->reference;
+		 data.usage=0x0B;
+		 data.key_data.symmetric.EC=0x33;
+		 data.key_data.symmetric.ver=0x00;
+		 /* pad pin with 0 */
+		 memset(data.key_data.symmetric.key_val, 0, sizeof(data.key_data.symmetric.key_val));
+		 memcpy(data.key_data.symmetric.key_val, pin, pin_len);
+		 data.key_data.symmetric.key_len=16;
+
+		 r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
+	}
+
+	{/*puk*/
+		 sc_entersafe_wkey_data  data;
+
+		 if (!puk || !puk_len || puk_len > 16)
+			  return SC_ERROR_INVALID_ARGUMENTS;
+
+		 data.key_id=pin_info->reference+1;
+		 data.usage=0x0B;
+		 data.key_data.symmetric.EC=0x33;
+		 data.key_data.symmetric.ver=0x00;
+		 /* pad pin with 0 */
+		 memset(data.key_data.symmetric.key_val, 0, sizeof(data.key_data.symmetric.key_val));
+		 memcpy(data.key_data.symmetric.key_val, puk, puk_len);
+		 data.key_data.symmetric.key_len=16;
+
+		 r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
+	}
+
 
 	SC_FUNC_RETURN(card->ctx,4,r);
 }

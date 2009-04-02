@@ -30,6 +30,10 @@ static struct sc_atr_table entersafe_atrs[] = {
 		 "3b:0f:00:65:46:53:05:19:05:71:df:00:00:00:00:00:00", 
 		 "ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff:00:00:00:00:00:00", 
 		 "ePass3000", SC_CARD_TYPE_ENTERSAFE_3K, 0, NULL },
+	{ 
+		 "3b:9f:95:81:31:fe:9f:00:65:46:53:05:30:06:71:df:00:00:00:80:6a:82:5e",
+		 "FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00:FF:FF:FF:FF:FF:FF:00:00:00:00",
+		 "FTCOS/PK-01C", SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -43,10 +47,16 @@ static struct sc_card_driver entersafe_drv = {
 	NULL, 0, NULL
 };
 
-static u8 trans_code[] =
+static u8 trans_code_3k[] =
 {
 	 0x01,0x02,0x03,0x04,
 	 0x05,0x06,0x07,0x08,
+};
+
+static u8 trans_code_ftcos_pk_01c[] =
+{
+	 0x92,0x34,0x2E,0xEF,
+	 0x23,0x40,0x4F,0xD1,
 };
 
 static u8 init_key[] =
@@ -118,7 +128,9 @@ static int entersafe_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card,1024, flags, 0x10001);
 	_sc_card_add_rsa_alg(card,2048, flags, 0x10001);
 
+	/*card->caps = SC_CARD_CAP_RNG|SC_CARD_CAP_APDU_EXT; */
 	card->caps = SC_CARD_CAP_RNG; 
+
 	card->drv_data = 0;
 
 	/* we need read_binary&friends with max 224 bytes per read */
@@ -674,7 +686,22 @@ static int entersafe_create_mf(sc_card_t *card, sc_entersafe_create_data * data)
 	apdu.data=(u8*)&data->data.mf;
 	apdu.datalen=apdu.lc=sizeof(data->data.mf);
 
-	r = entersafe_transmit_apdu(card, &apdu,trans_code,sizeof(trans_code),0,1);
+	switch(card->type)
+	{
+	case SC_CARD_TYPE_ENTERSAFE_3K:
+	{
+		 r = entersafe_transmit_apdu(card, &apdu,trans_code_3k,sizeof(trans_code_3k),0,1);
+	}break;
+	case SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C:
+	{
+		 r = entersafe_transmit_apdu(card, &apdu,trans_code_ftcos_pk_01c,sizeof(trans_code_ftcos_pk_01c),0,1);
+	}break;
+	default:
+	{
+		 r = SC_ERROR_INTERNAL;
+	}break;
+	}
+
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
@@ -920,7 +947,7 @@ static void entersafe_init_pin_info(struct sc_pin_cmd_pin *pin, unsigned int num
 	pin->max_length = 16;
 	pin->pad_length = 16;
 	pin->offset     = 5 + num * 16;
-	pin->pad_char=0x00;
+	pin->pad_char   = 0x00;
 }
 
 static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
@@ -932,7 +959,41 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	 entersafe_init_pin_info(&data->pin2,1);
 	 data->flags |= SC_PIN_CMD_NEED_PADDING;
 
-	 r = iso_ops->pin_cmd(card,data,tries_left);
+	 if(data->cmd!=SC_PIN_CMD_UNBLOCK)
+	 {
+		  r = iso_ops->pin_cmd(card,data,tries_left);
+	 }
+	 else
+	 {
+		  {/*verify*/
+			   sc_apdu_t apdu;
+			   u8 sbuf[0x10]={0};
+
+			   memcpy(sbuf,data->pin1.data,data->pin1.len);
+			   sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT,0x20,0x00,data->pin_reference+1);
+			   apdu.lc = apdu.datalen = sizeof(sbuf);
+			   apdu.data = sbuf;
+
+			   r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
+			   SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		  }
+
+		  {/*change*/
+			   sc_apdu_t apdu;
+			   u8 sbuf[0x12]={0};
+			   
+			   sbuf[0] = 0x33;
+			   sbuf[1] = 0x00;
+			   memcpy(sbuf+2,data->pin2.data,data->pin2.len);
+			   sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT,0xF4,0x0B,data->pin_reference);
+			   apdu.cla = 0x84;
+			   apdu.lc = apdu.datalen = sizeof(sbuf);
+			   apdu.data = sbuf;
+
+			   r = entersafe_transmit_apdu(card, &apdu,key_maintain,sizeof(key_maintain),1,1);
+			   SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		  }
+	 }
 	 SC_FUNC_RETURN(card->ctx, 4, r);
 }
 
@@ -961,7 +1022,23 @@ static int entersafe_erase_card(sc_card_t *card)
 	apdu.lc=2;
 	apdu.datalen=2;
 	apdu.data=sbuf;
-	r = entersafe_transmit_apdu(card, &apdu,trans_code,sizeof(trans_code),0,1);
+
+	switch(card->type)
+	{
+	case SC_CARD_TYPE_ENTERSAFE_3K:
+	{
+		 r = entersafe_transmit_apdu(card, &apdu,trans_code_3k,sizeof(trans_code_3k),0,1);
+	}break;
+	case SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C:
+	{
+		 r = entersafe_transmit_apdu(card, &apdu,trans_code_ftcos_pk_01c,sizeof(trans_code_ftcos_pk_01c),0,1);
+	}break;
+	default:
+	{
+		 r = SC_ERROR_INTERNAL;
+	}break;
+	}
+
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
@@ -1472,10 +1549,10 @@ static int entersafe_preinstall_keys(sc_card_t *card,int (*install_rsa)(sc_card_
 		  memset(sbuf,0,sizeof(sbuf));
 		  sbuf[0] = 0;	/* key len extern */
 		  sbuf[1] = 16;	/* key len */
-		  sbuf[2] = 0x0b;	/* USAGE */
+		  sbuf[2] = 0x0B;	/* USAGE */
 		  sbuf[3] = ENTERSAFE_AC_ALWAYS;	/* use AC */
 		  sbuf[4] = 0X04;	/* CHANGE AC */
-		  sbuf[5] = 0x14;	/* UPDATE AC */
+		  sbuf[5] = 0x38;	/* UPDATE AC */
 		  sbuf[6] = 0x01;	/* ALGO */
 		  sbuf[7] = 0xFF;	/* EC */
 		  sbuf[8] = 0x00;	/* VER */
@@ -1488,6 +1565,28 @@ static int entersafe_preinstall_keys(sc_card_t *card,int (*install_rsa)(sc_card_
 		  r = entersafe_transmit_apdu(card,&apdu,init_key,sizeof(init_key),0,1);
 		  SC_TEST_RET(card->ctx, r, "Preinstall user PIN failed");
 	 }
+
+	 {/* user PUK */
+		  memset(sbuf,0,sizeof(sbuf));
+		  sbuf[0] = 0;	/* key len extern */
+		  sbuf[1] = 16;	/* key len */
+		  sbuf[2] = 0x0B;	/* USAGE */
+		  sbuf[3] = ENTERSAFE_AC_ALWAYS;	/* use AC */
+		  sbuf[4] = 0X08;	/* CHANGE AC */
+		  sbuf[5] = 0xC0;	/* UPDATE AC */
+		  sbuf[6] = 0x01;	/* ALGO */
+		  sbuf[7] = 0xFF;	/* EC */
+		  sbuf[8] = 0x00;	/* VER */
+
+		  sc_format_apdu(card,&apdu,SC_APDU_CASE_3_SHORT,0xF0,0x00,ENTERSAFE_USER_PIN_ID+1);
+		  apdu.cla=0x84;
+		  apdu.data=sbuf;
+		  apdu.lc=apdu.datalen=0x19;
+
+		  r = entersafe_transmit_apdu(card,&apdu,init_key,sizeof(init_key),0,1);
+		  SC_TEST_RET(card->ctx, r, "Preinstall user PUK failed");
+	 }
+
 
 	 SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }

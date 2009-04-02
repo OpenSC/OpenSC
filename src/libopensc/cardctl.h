@@ -578,8 +578,6 @@ struct sc_rutoken_decipherinfo {
 
 #define ENTERSAFE_AC_EVERYONE 0x00
 #define ENTERSAFE_AC_USER 0x04
-#define ENTERSAFE_AC_USER_ 0x08
-
 
 #define ENTERSAFE_AC_NEVER 0xC0
 #define ENTERSAFE_AC_ALWAYS 0x10
