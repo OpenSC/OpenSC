@@ -551,9 +551,14 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 
 		rv = priv->gpriv->SCardControl(pslot->pcsc_card, CM_IOCTL_GET_FEATURE_REQUEST, NULL,
 				  0, feature_buf, sizeof(feature_buf), &feature_len);
-		if (rv == SCARD_S_SUCCESS) {
-			
-			if (!(feature_len % sizeof(PCSC_TLV_STRUCTURE))) {
+		if (rv != SCARD_S_SUCCESS) {
+			sc_debug(reader->ctx, "SCardControl failed", rv);
+		}
+		else {
+			if ((feature_len % sizeof(PCSC_TLV_STRUCTURE)) != 0) {
+				sc_debug(reader->ctx, "Inconsistent TLV from reader!");
+			}
+			else {
 				char *log_disabled = "but it's disabled in configuration file";
 				/* get the number of elements instead of the complete size */
 				feature_len /= sizeof(PCSC_TLV_STRUCTURE);
@@ -581,23 +586,22 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 				
 				/* Set slot capabilities based on detected IOCTLs */
 				if (pslot->verify_ioctl || (pslot->verify_ioctl_start && pslot->verify_ioctl_finish)) {
-						char *log_text = "Reader supports pinpad PIN verification";
-						if (priv->gpriv->enable_pinpad) {
-							sc_debug(reader->ctx, log_text);
-							slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
-						} else {
-							sc_debug(reader->ctx, "%s %s", log_text, log_disabled);
-						}
+					char *log_text = "Reader supports pinpad PIN verification";
+					if (priv->gpriv->enable_pinpad) {
+						sc_debug(reader->ctx, log_text);
+						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+					} else {
+						sc_debug(reader->ctx, "%s %s", log_text, log_disabled);
+					}
 				}
 				
 				if (pslot->modify_ioctl || (pslot->modify_ioctl_start && pslot->modify_ioctl_finish)) {
-						char *log_text = "Reader supports pinpad PIN modification";
-						if (priv->gpriv->enable_pinpad) {
-							sc_debug(reader->ctx, log_text);
-							slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
-						} else {
-							sc_debug(reader->ctx, "%s %s", log_text, log_disabled);
-						}
+					char *log_text = "Reader supports pinpad PIN modification";
+					if (priv->gpriv->enable_pinpad) {
+						sc_debug(reader->ctx, log_text);
+						slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+					} else {
+						sc_debug(reader->ctx, "%s %s", log_text, log_disabled);
                                 }
 
                                 if (display_ioctl) {
@@ -617,10 +621,8 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
                                                 }
                                         }
                                 }
-			} else
-				sc_debug(reader->ctx, "Inconsistent TLV from reader!");
-		} else {
-		        PCSC_ERROR(reader->ctx, "SCardControl failed", rv);
+				}
+			}
 		}
 	}
 	return SC_SUCCESS;
