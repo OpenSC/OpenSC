@@ -552,7 +552,7 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 		rv = priv->gpriv->SCardControl(pslot->pcsc_card, CM_IOCTL_GET_FEATURE_REQUEST, NULL,
 				  0, feature_buf, sizeof(feature_buf), &feature_len);
 		if (rv != SCARD_S_SUCCESS) {
-			sc_debug(reader->ctx, "SCardControl failed", rv);
+			sc_debug(reader->ctx, "SCardControl failed %08x", rv);
 		}
 		else {
 			if ((feature_len % sizeof(PCSC_TLV_STRUCTURE)) != 0) {
