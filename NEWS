@@ -8,6 +8,8 @@ or doc/nonpersistent/ChangeLog.
 
 New in 0.11.8; 2009-??-??; Andreas Jellinghaus
 * updated and improve entersave driver.
+* updated and improve entersafe driver. FTCOS/PK-01C cards are supported
+  now, compatible with cards writen by Feitian's software on windows.
 
 New in 0.11.7; 2009-02-26; Andreas Jellinghaus
 * hide_empty_slots now on by default? small logic change?
@@ -21,7 +23,7 @@ New in 0.11.7; 2009-02-26; Andreas Jellinghaus
 
 New in 0.11.6; 2008-08-27; Andreas Jellinghaus
 * Improved security fix: don't match for "OpenSC" in the card label.
-* New support for Feitian ePass3000 bei Weitao Sun.
+* New support for Feitian ePass3000 by Weitao Sun.
 * GemSafeV1 improved to handle key_ref other than 3 by Douglas E. Engert 
 
 New in 0.11.5; 2008-07-31; Andreas Jellinghaus
