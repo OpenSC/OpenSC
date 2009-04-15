@@ -28,6 +28,7 @@ sc_build_pin
 sc_card_ctl
 sc_card_valid
 sc_change_reference_data
+sc_check_sw
 sc_compare_oid
 sc_compare_path
 sc_compare_path_prefix
