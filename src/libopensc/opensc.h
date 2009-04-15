@@ -681,6 +681,7 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu);
 void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu, int cse, int ins,
 		    int p1, int p2);
 
+int sc_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2);
 
 /********************************************************************/
 /*                  opensc context functions                        */
