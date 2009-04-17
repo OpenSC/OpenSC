@@ -633,7 +633,7 @@ static int pcsc_disconnect(sc_reader_t * reader, sc_slot_info_t * slot)
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
-	priv->gpriv->SCardDisconnect(pslot->pcsc_card, priv->gpriv->transaction_reset ?
+	priv->gpriv->SCardDisconnect(pslot->pcsc_card, priv->gpriv->connect_reset ?
 	          SCARD_RESET_CARD : SCARD_LEAVE_CARD);
 	memset(pslot, 0, sizeof(*pslot));
 	slot->flags = 0;
