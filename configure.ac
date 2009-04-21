@@ -464,7 +464,15 @@ else
 				[
 					ac_cv_lib_iconv="yes"
 					ICONV_LIBS="-liconv"
-				]
+				],
+				[AC_CHECK_LIB(
+					[iconv],
+					[libiconv],
+					[
+						ac_cv_lib_iconv="yes"
+						ICONV_LIBS="-liconv"
+					]
+				)]
 			)
 		]
 	)
