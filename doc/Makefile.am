@@ -27,10 +27,10 @@ dist_noinst_DATA += html.out/*
 endif
 dist_doc_DATA = README
 
+if ENABLE_MAN
 if WIN32
 dist_noinst_DATA += man.out/*.1 man.out/*.3 man.out/*.5
 else
-if ENABLE_MAN
 dist_man1_MANS = man.out/*.1
 dist_man3_MANS = man.out/*.3
 dist_man5_MANS = man.out/*.5
