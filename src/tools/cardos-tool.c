@@ -831,6 +831,7 @@ erase_state:
 	}
 	return 0;
 # else
+erase_state:
 	printf("this code needs to be compiled with openssl support enabled.\n");
 	printf("aborting\n");
 	return 1;
