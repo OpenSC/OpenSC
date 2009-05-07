@@ -1035,7 +1035,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 {
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_KEY_PAIR_GEN, NULL_PTR, 0};
 	CK_ULONG modulusBits = 1024;
-	CK_BYTE publicExponent[] = { 65537 };
+	CK_BYTE publicExponent[] = { 0x01, 0x00, 0x01 }; /* 65537 in bytes */
 	CK_BBOOL _true = TRUE;
 	CK_OBJECT_CLASS pubkey_class = CKO_PUBLIC_KEY;
 	CK_OBJECT_CLASS privkey_class = CKO_PRIVATE_KEY;
