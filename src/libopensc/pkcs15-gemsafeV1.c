@@ -416,6 +416,7 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 	default:
 		sc_error(p15card->card->ctx,
 			"Unknown PKCS15 object type %d\n", type);
+		free(obj);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
