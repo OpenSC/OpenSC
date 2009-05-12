@@ -437,6 +437,7 @@ static int cardos_sm4h(unsigned char *in, size_t inlen, unsigned char
 
 	enc_input = calloc(1,enc_input_len);
 	if (!enc_input) {
+		free(mac_input);
 		printf("out of memory, aborting\n");
 		return 0;
 	}
@@ -447,6 +448,8 @@ static int cardos_sm4h(unsigned char *in, size_t inlen, unsigned char
 	/* calloc already cleard the remaining bytes to 00 */
 
 	if (outlen < 5 + enc_input_len) {
+		free(mac_input);
+		free(enc_input);
 		printf("output buffer too small, aborting.\n");
 		return 0;
 	}
@@ -486,6 +489,8 @@ static int cardos_sm4h(unsigned char *in, size_t inlen, unsigned char
 		util_hex_dump_asc(stdout, out, out[4] + 5, -1);
 		printf ("\n");
 	}
+	free(mac_input);
+	free(enc_input);
 	return 1;
 }
 #endif
