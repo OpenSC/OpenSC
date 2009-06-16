@@ -301,7 +301,7 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		"list"
 	};
 	const char *ac_ops_ef[] = {
-		"read", "update", "write", "erase", "rehab", "inval"
+		"read", "update", "erase", "write", "rehab", "inval"
 	};
 	
 	for (r = 0; r < depth; r++)
