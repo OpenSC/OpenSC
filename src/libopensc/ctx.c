@@ -51,7 +51,6 @@ struct _sc_driver_entry {
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
 	/* legacy, the old name was "etoken", so we keep that for a while */
-	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver },
 	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },
 	{ "etoken",	(void *(*)(void)) sc_get_cardos_driver },
 	{ "flex",	(void *(*)(void)) sc_get_cryptoflex_driver },
@@ -84,6 +83,8 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #ifdef ENABLE_OPENSSL
 	{ "entersafe",(void *(*)(void)) sc_get_entersafe_driver },
 #endif
+	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver },
+	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },

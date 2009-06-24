@@ -33,6 +33,7 @@ sc_pkcs15init_get_muscle_ops
 sc_pkcs15init_get_oberthur_ops
 sc_pkcs15init_get_pin_info
 sc_pkcs15init_get_rutoken_ops
+sc_pkcs15init_get_rtecp_ops
 sc_pkcs15init_get_serial
 sc_pkcs15init_get_setcos_ops
 sc_pkcs15init_get_starcos_ops

@@ -28,6 +28,7 @@ OBJECTS			= \
 	card-oberthur.obj card-belpic.obj card-atrust-acos.obj card-entersafe.obj \
 	card-incrypto34.obj card-piv.obj card-muscle.obj card-acos5.obj \
 	card-asepcos.obj card-akis.obj card-gemsafeV1.obj card-rutoken.obj \
+	card-rtecp.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj pkcs15-gemsafeGPK.obj \

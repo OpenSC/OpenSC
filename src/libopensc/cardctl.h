@@ -167,6 +167,14 @@ enum {
 	SC_CARDCTL_ENTERSAFE_WRITE_KEY,
 	SC_CARDCTL_ENTERSAFE_GENERATE_KEY,
 	SC_CARDCTL_ENTERSAFE_PREINSTALL_KEYS,
+
+	/*
+	 * Rutoken ECP specific calls
+	 */
+	SC_CARDCTL_RTECP_BASE = _CTL_PREFIX('R', 'T', 'E'),
+	SC_CARDCTL_RTECP_INIT,
+	SC_CARDCTL_RTECP_INIT_END,
+	SC_CARDCTL_RTECP_GENERATE_KEY,
 };
 
 enum {
@@ -641,6 +649,17 @@ typedef struct sc_entersafe_gen_key_data_st {
 } sc_entersafe_gen_key_data;
 
 #pragma pack(pop)
+
+/*
+ * Rutoken ECP stuff
+ */
+typedef struct sc_rtecp_genkey_data {
+	unsigned int key_id;
+	unsigned char *exponent;
+	size_t exponent_len;
+	unsigned char *modulus;
+	size_t modulus_len;
+} sc_rtecp_genkey_data_t;
 
 #ifdef __cplusplus
 }
