@@ -6,6 +6,9 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/nonpersistent/ChangeLog.
 
+New in 0.11.9; 2009-??-??; Andreas Jellinghaus
+* New rutoken_ecp driver by  Aktiv Co. / Aleksey Samsonov
+
 New in 0.11.8; 2009-05-07; Andreas Jellinghaus
 * Fix security problem in pkcs11-tool gen_keypair (PublicExponent 1)
 * fix compiling without openssl.
