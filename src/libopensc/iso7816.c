@@ -667,7 +667,7 @@ static int iso7816_set_security_env(sc_card_t *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
-		apdu.p1 = 0x81;
+		apdu.p1 = 0x41;
 		apdu.p2 = 0xB8;
 		break;
 	case SC_SEC_OPERATION_SIGN:
