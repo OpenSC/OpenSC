@@ -25,7 +25,7 @@ $(TARGET0): $(OBJECTS) hack-enabled.obj ..\libopensc\opensc.lib ..\scconf\scconf
 	echo EXPORTS >> $*.def
 	type opensc-pkcs11.exports >> $*.def
 	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET0) $(OBJECTS) hack-enabled.obj ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib winscard.lib $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib 
-	if EXIST $(TARGET).manifest mt -manifest $(TARGET).manifest -outputresource:$(TARGET);2
+	if EXIST $(TARGET0).manifest mt -manifest $(TARGET0).manifest -outputresource:$(TARGET0);2
 
 $(TARGET): $(OBJECTS) hack-disabled.obj ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib
 	echo LIBRARY $* > $*.def
