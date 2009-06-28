@@ -380,61 +380,25 @@ static int gemsafe_set_security_env(struct sc_card *card,
 				    const struct sc_security_env *env,
 				    int se_num)
 {
-	int r;
-	struct sc_apdu apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE], *p = sbuf;
-	u8 alg_ref = 0;
+	u8 alg_ref;
+	struct sc_security_env se_env = *env;
 	struct sc_context *ctx = card->ctx;
 
 	SC_FUNC_CALLED(ctx, 1);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
-	switch (env->operation) {
-	case SC_SEC_OPERATION_DECIPHER:
-		apdu.p2 = 0xB8;
-		break;
-	case SC_SEC_OPERATION_SIGN:
-		apdu.p2 = 0xB6;
-		break;
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
+	if (!(se_env.flags & SC_SEC_ENV_ALG_REF_PRESENT)) {
+		/* set the algorithm reference */
+		alg_ref = gemsafe_flags2algref(&se_env);
+		if (alg_ref) {
+			se_env.algorithm_ref = alg_ref;
+			se_env.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
+		}
 	}
-	apdu.le = 0;
+	if (!(se_env.flags & SC_SEC_ENV_ALG_REF_PRESENT))
+		sc_debug(ctx, "unknown algorithm flags '%x'\n", se_env.algorithm_flags);
 
-	/* first step: set the algorithm reference */
-	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT)
-		alg_ref = env->algorithm_ref & 0xFF;
-	else
-		alg_ref = gemsafe_flags2algref(env);
-	if (alg_ref) {
-			/* set the algorithm reference */
-		*p++ = 0x80;
-		*p++ = 0x01;
-		*p++ = alg_ref;
-	} else
-		sc_debug(ctx, "unknown algorithm flags '%x'\n", env->algorithm_flags);
-	/* second step: set the key reference */
-	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
-		/* set the key reference */
-		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
-			*p++ = 0x83;
-		else
-			*p++ = 0x84;
-		*p++ = env->key_ref_len;
-		memcpy(p, env->key_ref, env->key_ref_len);
-		p += env->key_ref_len;
-	}
-
-
-	r = p - sbuf;
-	apdu.lc = r;
-	apdu.datalen = r;
-	apdu.data = sbuf;
-	apdu.resplen = 0;
-
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+	se_env.flags &= ~SC_SEC_ENV_FILE_REF_PRESENT;
+	return iso_ops->set_security_env(card, &se_env, se_num);
 }
 
 static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
