@@ -530,6 +530,7 @@ static int iso7816_construct_fci(sc_card_t *card, const sc_file_t *file,
 	sc_asn1_put_tag(0x81, buf, 2, p, *outlen - (p - out), &p);
 
 	if (file->type_attr_len) {
+		assert(sizeof(buf) >= file->type_attr_len);
 		memcpy(buf, file->type_attr, file->type_attr_len);
 		sc_asn1_put_tag(0x82, buf, file->type_attr_len,
 				p, *outlen - (p - out), &p);
@@ -554,11 +555,13 @@ static int iso7816_construct_fci(sc_card_t *card, const sc_file_t *file,
 	sc_asn1_put_tag(0x83, buf, 2, p, *outlen - (p - out), &p);
 	/* 0x84 = DF name */
 	if (file->prop_attr_len) {
+		assert(sizeof(buf) >= file->prop_attr_len);
 		memcpy(buf, file->prop_attr, file->prop_attr_len);
 		sc_asn1_put_tag(0x85, buf, file->prop_attr_len,
 				p, *outlen - (p - out), &p);
 	}
 	if (file->sec_attr_len) {
+		assert(sizeof(buf) >= file->prop_attr_len);
 		memcpy(buf, file->sec_attr, file->sec_attr_len);
 		sc_asn1_put_tag(0x86, buf, file->sec_attr_len,
 				p, *outlen - (p - out), &p);
@@ -692,6 +695,7 @@ static int iso7816_set_security_env(sc_card_t *card,
 	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
 		*p++ = 0x81;
 		*p++ = env->file_ref.len;
+		assert(sizeof(sbuf) - (p - sbuf) >= env->file_ref.len);
 		memcpy(p, env->file_ref.value, env->file_ref.len);
 		p += env->file_ref.len;
 	}
@@ -701,6 +705,7 @@ static int iso7816_set_security_env(sc_card_t *card,
 		else
 			*p++ = 0x84;
 		*p++ = env->key_ref_len;
+		assert(sizeof(sbuf) - (p - sbuf) >= env->key_ref_len);
 		memcpy(p, env->key_ref, env->key_ref_len);
 		p += env->key_ref_len;
 	}
