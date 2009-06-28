@@ -672,20 +672,17 @@ static int iso7816_set_security_env(sc_card_t *card,
 	int r, locked = 0;
 
 	assert(card != NULL && env != NULL);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
-		apdu.p1 = 0x41;
 		apdu.p2 = 0xB8;
 		break;
 	case SC_SEC_OPERATION_SIGN:
-		apdu.p1 = 0x41;
 		apdu.p2 = 0xB6;
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-	apdu.le = 0;
 	p = sbuf;
 	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
 		*p++ = 0x80;	/* algorithm reference */
@@ -713,7 +710,6 @@ static int iso7816_set_security_env(sc_card_t *card,
 	apdu.lc = r;
 	apdu.datalen = r;
 	apdu.data = sbuf;
-	apdu.resplen = 0;
 	if (se_num > 0) {
 		r = sc_lock(card);
 		SC_TEST_RET(card->ctx, r, "sc_lock() failed");
