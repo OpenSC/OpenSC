@@ -250,23 +250,18 @@ static int rtecp_select_file(sc_card_t *card,
 	switch (in_path->type)
 	{
 	case SC_PATH_TYPE_FILE_ID:
-		apdu.p1 = 0;
 		if (pathlen != 2)
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_PATH_TYPE_PATH:
-		apdu.p1 = 0x08;
 		if (pathlen >= 2 && memcmp(path, "\x3F\x00", 2) == 0)
 		{
 			if (pathlen == 2)
-			{
-				/* only 3F00 supplied */
-				apdu.p1 = 0;
-				break;
-			}
+				break; /* only 3F00 supplied */
 			path += 2;
 			pathlen -= 2;
 		}
+		apdu.p1 = 0x08;
 		break;
 	case SC_PATH_TYPE_DF_NAME:
 	case SC_PATH_TYPE_FROM_CURRENT:
@@ -286,11 +281,8 @@ static int rtecp_select_file(sc_card_t *card,
 		apdu.le = sizeof(buf) - 2;
 	}
 	else
-	{
-		apdu.resplen = 0;
-		apdu.le = 0;
 		apdu.cse = SC_APDU_CASE_3_SHORT;
-	}
+
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (file_out == NULL)
@@ -377,49 +369,6 @@ static int rtecp_logout(sc_card_t *card)
 	assert(card && card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x40, 0, 0);
 	apdu.cla = 0x80;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_FUNC_RETURN(card->ctx, 2, r);
-}
-
-static int rtecp_set_security_env(sc_card_t *card, const sc_security_env_t *env,
-		int se_num)
-{
-	sc_apdu_t apdu;
-	u8 buf[8], tmp, *p = buf;
-	int r;
-
-	(void)se_num; /* no warning */
-	assert(card && card->ctx && env);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
-	switch (env->operation)
-	{
-	case SC_SEC_OPERATION_DECIPHER:
-		apdu.p2 = 0xB8;
-		break;
-	case SC_SEC_OPERATION_SIGN:
-		apdu.p2 = 0xB6;
-		break;
-	default:
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-	}
-	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT)
-	{
-		tmp = env->algorithm_ref & 0xFF;
-		sc_asn1_put_tag(0x80, &tmp, sizeof(tmp), p, sizeof(buf) - (p - buf), &p);
-	}
-	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT && card->ctx->debug >= 4)
-		sc_debug(card->ctx, "%s\n", "SC_SEC_ENV_FILE_REF_PRESENT not supported");
-	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
-		sc_asn1_put_tag(env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC ? 0x83 : 0x84,
-				env->key_ref, env->key_ref_len,
-				p, sizeof(buf) - (p - buf), &p);
-
-	apdu.lc = p - buf;
-	apdu.data = buf;
-	apdu.datalen = p - buf;
-
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -828,7 +777,7 @@ struct sc_card_driver * sc_get_rtecp_driver(void)
 	rtecp_ops.verify = rtecp_verify;
 	rtecp_ops.logout = rtecp_logout;
 	/* restore_security_env */
-	rtecp_ops.set_security_env = rtecp_set_security_env;
+	/* set_security_env */
 	rtecp_ops.decipher = rtecp_decipher;
 	rtecp_ops.compute_signature = rtecp_compute_signature;
 	rtecp_ops.change_reference_data = rtecp_change_reference_data;
