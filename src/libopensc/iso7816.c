@@ -446,11 +446,9 @@ static int iso7816_select_file(sc_card_t *card,
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
 		apdu.le = 256;
-	} else {
-		apdu.resplen = 0;
-		apdu.le = 0;
-		apdu.cse = SC_APDU_CASE_3_SHORT;
-	}
+	} else
+		apdu.cse = (apdu.lc == 0) ? SC_APDU_CASE_1 : SC_APDU_CASE_3_SHORT;
+
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (file_out == NULL) {
