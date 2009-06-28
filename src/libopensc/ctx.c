@@ -72,8 +72,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "belpic",	(void *(*)(void)) sc_get_belpic_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
-	{ "muscle", (void *(*)(void)) sc_get_muscle_driver },	/* Above EMV because the detection gets caught there first */
-	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
+	{ "muscle", (void *(*)(void)) sc_get_muscle_driver },
 	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
 #ifdef ENABLE_OPENSSL
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
@@ -83,8 +82,11 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #ifdef ENABLE_OPENSSL
 	{ "entersafe",(void *(*)(void)) sc_get_entersafe_driver },
 #endif
-	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver },
+	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver }, 
 	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
+	/* emv is not really used, not sure if it works, but it conflicts with
+           muscle and rutoken driver, thus has to be after them */
+	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
