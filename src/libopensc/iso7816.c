@@ -519,17 +519,20 @@ static int iso7816_construct_fci(sc_card_t *card, const sc_file_t *file,
 {
 	u8 *p = out;
 	u8 buf[64];
-	
+
+	if (*outlen < 2)
+		return SC_ERROR_BUFFER_TOO_SMALL;
 	*p++ = 0x6F;
 	p++;
 	
 	buf[0] = (file->size >> 8) & 0xFF;
 	buf[1] = file->size & 0xFF;
-	sc_asn1_put_tag(0x81, buf, 2, p, 16, &p);
+	sc_asn1_put_tag(0x81, buf, 2, p, *outlen - (p - out), &p);
 
 	if (file->type_attr_len) {
 		memcpy(buf, file->type_attr, file->type_attr_len);
-		sc_asn1_put_tag(0x82, buf, file->type_attr_len, p, 16, &p);
+		sc_asn1_put_tag(0x82, buf, file->type_attr_len,
+				p, *outlen - (p - out), &p);
 	} else {
 		buf[0] = file->shareable ? 0x40 : 0;
 		switch (file->type) {
@@ -544,19 +547,21 @@ static int iso7816_construct_fci(sc_card_t *card, const sc_file_t *file,
 		default:
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-		sc_asn1_put_tag(0x82, buf, 1, p, 16, &p);
+		sc_asn1_put_tag(0x82, buf, 1, p, *outlen - (p - out), &p);
 	}
 	buf[0] = (file->id >> 8) & 0xFF;
 	buf[1] = file->id & 0xFF;
-	sc_asn1_put_tag(0x83, buf, 2, p, 16, &p);
+	sc_asn1_put_tag(0x83, buf, 2, p, *outlen - (p - out), &p);
 	/* 0x84 = DF name */
 	if (file->prop_attr_len) {
 		memcpy(buf, file->prop_attr, file->prop_attr_len);
-		sc_asn1_put_tag(0x85, buf, file->prop_attr_len, p, 18, &p);
+		sc_asn1_put_tag(0x85, buf, file->prop_attr_len,
+				p, *outlen - (p - out), &p);
 	}
 	if (file->sec_attr_len) {
 		memcpy(buf, file->sec_attr, file->sec_attr_len);
-		sc_asn1_put_tag(0x86, buf, file->sec_attr_len, p, 18, &p);
+		sc_asn1_put_tag(0x86, buf, file->sec_attr_len,
+				p, *outlen - (p - out), &p);
 	}
 	out[1] = p - out - 2;
 
