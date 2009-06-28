@@ -461,6 +461,8 @@ static int iso7816_select_file(sc_card_t *card,
 	if (r)
 		SC_FUNC_RETURN(card->ctx, 2, r);
 
+	if (apdu.resplen < 2)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	switch (apdu.resp[0]) {
 	case 0x6F:
 		file = sc_file_new();
@@ -471,7 +473,7 @@ static int iso7816_select_file(sc_card_t *card,
 			sc_file_free(file);
 			SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
 		}
-		if (apdu.resp[1] <= apdu.resplen)
+		if ((size_t)apdu.resp[1] + 2 <= apdu.resplen)
 			card->ops->process_fci(card, file, apdu.resp+2, apdu.resp[1]);
 		*file_out = file;
 		break;
