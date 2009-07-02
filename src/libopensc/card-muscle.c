@@ -39,6 +39,10 @@ static struct sc_card_driver muscle_drv = {
 static struct sc_atr_table muscle_atrs[] = {
         /* Aladdin eToken PRO USB 72K Java */
         { "3b:d5:18:00:81:31:3a:7d:80:73:c8:21:10:30", NULL, NULL, SC_CARD_TYPE_MUSCLE_ETOKEN_72K, 0, NULL },
+	/* JCOP31 v2.4.1 contact interface */
+	{ "3b:f8:13:00:00:81:31:fe:45:4a:43:4f:50:76:32:34:31:b7", NULL, NULL, SC_CARD_TYPE_MUSCLE_JCOP241, 0, NULL },
+	/* JCOP31 v2.4.1 RF interface */
+	{ "3b:88:80:01:4a:43:4f:50:76:32:34:31:5e", NULL, NULL, SC_CARD_TYPE_MUSCLE_JCOP241, 0, NULL },
         { NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -478,6 +482,11 @@ static int muscle_init(sc_card_t *card)
 		card->caps |= SC_CARD_CAP_RSA_2048;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
+	if(card->type == SC_CARD_TYPE_MUSCLE_JCOP241) {
+		card->caps |= SC_CARD_CAP_RSA_2048;
+		card->caps |= SC_CARD_CAP_APDU_EXT;
+	}
+
 
 		/* FIXME: Card type detection */
 	if (1) {
