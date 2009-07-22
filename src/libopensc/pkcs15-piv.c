@@ -2,7 +2,7 @@
  * partial PKCS15 emulation for PIV-II cards
  * only minimal use of the authentication cert and key
  *
- * Copyright (C) 2005,2006,2007 Douglas E. Engert <deengert@anl.gov> 
+ * Copyright (C) 2005,2006,2007,2008,2009  Douglas E. Engert <deengert@anl.gov> 
  *               2004, Nils Larsch <larsch@trustcenter.de>
  * Copyright (C) 2006, Identity Alliance, 
  *               Thomas Harning <thomas.harning@identityalliance.com>
@@ -114,7 +114,7 @@ const objdata objects[] = {
 	{"2", "Card Holder Unique Identifier",
 			"2.16.840.1.101.3.7.2.48.0", NULL, "3000", 0},
 	{"3", "Unsigned Card Holder Unique Identifier",
-			"2.16.840.1.101.3.7.2.48.2", NULL, "3002", 0},
+			"2.16.840.1.101.3.7.2.48.2", NULL, "3010", 0},
 	{"4", "X.509 Certificate for PIV Authentication",
 			"2.16.840.1.101.3.7.2.1.1", NULL, "0101", 0},
 	{"5", "Card Holder Fingerprints",
@@ -228,6 +228,7 @@ const objdata objects[] = {
 
 	int    r, i;
 	sc_card_t *card = p15card->card;
+	sc_file_t *file_out = NULL;
 	int exposed_cert[4] = {1, 0, 0, 0};
 	sc_serial_number_t serial;
 	char buf[SC_MAX_SERIALNR * 2 + 1];
@@ -247,7 +248,9 @@ const objdata objects[] = {
 	 * but need serial number for Mac tokend 
 	 */
 
+	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
+	sc_ctx_suppress_errors_off(card->ctx);
 	if (r < 0) {
 		sc_debug(card->ctx,"sc_card_ctl rc=%d",r);
 		p15card->serial_number = strdup("00000000");
@@ -267,6 +270,15 @@ const objdata objects[] = {
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		sc_pkcs15_format_id(objects[i].id, &obj_info.id);
 		sc_format_path(objects[i].path, &obj_info.path);
+
+		/* We could make sure the object is on the card */
+		/* But really don't need to do this now */
+//		sc_ctx_suppress_errors_on(card->ctx);
+//		r = sc_select_file(card, &obj_info.path, NULL);
+//		sc_ctx_suppress_errors_off(card->ctx);
+//		if (r == SC_ERROR_FILE_NOT_FOUND)
+//			continue; 
+			
 		strncpy(obj_info.app_label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		r = sc_format_oid(&obj_info.app_oid, objects[i].aoid);
 		if (r != SC_SUCCESS)
@@ -317,7 +329,15 @@ const objdata objects[] = {
 
 		/* see if we have a cert */
 
-		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len,NULL);
+		/* use a &file_out so card-piv will read cert if present */
+		sc_ctx_suppress_errors_on(card->ctx);
+		r = sc_pkcs15_read_file(p15card, &cert_info.path, 
+				&cert_der.value, &cert_der.len, &file_out);
+		sc_ctx_suppress_errors_off(card->ctx);
+		if (file_out) {
+			sc_file_free(file_out);
+			file_out = NULL;
+		}
 
 		if (r) { 
 			sc_debug(card->ctx, "No cert found,i=%d", i);
@@ -335,7 +355,7 @@ const objdata objects[] = {
 		/* following will find the cached cert in cert_info */
 		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
 		if (r < 0) {
-			sc_error(card->ctx, "Failed to read/parse the certificate r=%d",r);
+			sc_debug(card->ctx, "Failed to read/parse the certificate r=%d",r);
 			continue;
 		}
 		/* TODO support DSA keys */
@@ -421,7 +441,9 @@ const objdata objects[] = {
 			/* TODO DSA */
 			pubkey_obj.type = SC_PKCS15_TYPE_PUBKEY_RSA;
 			pubkey_obj.data = &pubkey_info;
+			sc_ctx_suppress_errors_on(card->ctx);
 			r = sc_pkcs15_read_pubkey(p15card, &pubkey_obj, &p15_key);
+			sc_ctx_suppress_errors_off(card->ctx);
 				pubkey_obj.data = NULL;
 				sc_debug(card->ctx," READING PUB KEY r=%d",r);
 			if (r < 0 ) {
