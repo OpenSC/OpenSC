@@ -206,7 +206,9 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path,
 
 static int gemsafe_detect_card( sc_pkcs15_card_t *p15card)
 {
-    sc_debug(p15card->card->ctx, "In gemsafe_detect_card\n");
+	if (strcmp(p15card->card->name, "GemSAFE V1"))
+		return SC_ERROR_WRONG_CARD;
+
     return SC_SUCCESS;
 }
 
