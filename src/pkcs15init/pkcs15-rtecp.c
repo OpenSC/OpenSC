@@ -39,9 +39,14 @@
  */
 static int rtecp_erase(sc_profile_t *profile, sc_card_t *card)
 {
+	int r;
+
 	if (!profile || !card)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	return sc_card_ctl(card, SC_CARDCTL_RTECP_INIT, NULL);
+	r = sc_card_ctl(card, SC_CARDCTL_RTECP_INIT, NULL);
+	if (r == SC_SUCCESS)
+		sc_free_apps(card);
+	return r;
 }
 
 static int create_sysdf(sc_profile_t *profile, sc_card_t *card, const char *name)

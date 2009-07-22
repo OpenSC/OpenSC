@@ -465,6 +465,8 @@ rutoken_erase(struct sc_profile *profile, sc_card_t *card)
 	}
 	if (ret != SC_SUCCESS)
 		sc_error(card->ctx, "Failed to erase: %s\n", sc_strerror(ret));
+	else
+		sc_free_apps(card);
 	return ret;
 }
 
