@@ -151,7 +151,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_card_t *card,
 		 df_data.type = SC_ENTERSAFE_DF_DATA;
 		 df_data.data.df.file_id[0]=(df->id >> 8) & 0xFF;
 		 df_data.data.df.file_id[1]=df->id & 0xFF;
-		 df_data.data.df.file_count=0x0F;
+		 df_data.data.df.file_count=0x30;
 		 df_data.data.df.flag=0x01;
 		 df_data.data.df.ikf_size[0]=(df->size>>8)&0xFF;
 		 df_data.data.df.ikf_size[1]=df->size&0xFF;
