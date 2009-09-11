@@ -165,6 +165,7 @@ static struct profile_operations {
 	{ "asepcos", (void*) sc_pkcs15init_get_asepcos_ops },
 	{ "entersafe",(void*) sc_pkcs15init_get_entersafe_ops },
 	{ "rutoken_ecp", (void *) sc_pkcs15init_get_rtecp_ops },
+	{ "westcos", (void *) sc_pkcs15init_get_westcos_ops },
 	{ NULL, NULL },
 };
 

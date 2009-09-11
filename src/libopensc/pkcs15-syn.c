@@ -28,6 +28,8 @@
 #include <assert.h>
 #include <ltdl.h>
 
+extern int sc_pkcs15emu_westcos_init_ex(sc_pkcs15_card_t *p15card, 
+					sc_pkcs15emu_opt_t *opts);
 extern int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
 extern int sc_pkcs15emu_infocamere_init_ex(sc_pkcs15_card_t *,
@@ -58,6 +60,7 @@ static struct {
 	const char *		name;
 	int			(*handler)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 } builtin_emulators[] = {
+	{ "westcos",	sc_pkcs15emu_westcos_init_ex	},
 	{ "openpgp",	sc_pkcs15emu_openpgp_init_ex	},
 	{ "infocamere",	sc_pkcs15emu_infocamere_init_ex	},
 	{ "starcert",	sc_pkcs15emu_starcert_init_ex	},

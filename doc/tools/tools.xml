@@ -19,6 +19,7 @@
 		<xi:include href="cardos-tool.xml"/>
 		<xi:include href="cryptoflex-tool.xml"/>
 		<xi:include href="netkey-tool.xml"/>
+		<xi:include href="westcos-tool.xml"/>
 	</reference>
 </book>
 
