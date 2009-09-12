@@ -84,6 +84,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver }, 
 	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
+	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
 	/* emv is not really used, not sure if it works, but it conflicts with
            muscle and rutoken driver, thus has to be after them */
 	{ "emv",	(void *(*)(void)) sc_get_emv_driver },

@@ -174,6 +174,7 @@ extern sc_card_driver_t *sc_get_akis_driver(void);
 extern sc_card_driver_t *sc_get_entersafe_driver(void);
 extern sc_card_driver_t *sc_get_rutoken_driver(void);
 extern sc_card_driver_t *sc_get_rtecp_driver(void);
+extern sc_card_driver_t *sc_get_westcos_driver(void);
 
 #ifdef __cplusplus
 }

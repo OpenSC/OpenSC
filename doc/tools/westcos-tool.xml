@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="westcos-tool">
+	<refmeta>
+		<refentrytitle>westcos-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>westcos-tool</refname>
+		<refpurpose>utility for manipulating data structure 
+			on westcos smart card and similar security tokens</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+			<command>westcos-tool</command> [OPTIONS]
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>westcos-tool</command> utility is used to manipulate
+			the westcos data structures on 2 Ko smart cards. Users can create PINs, 
+			keys and certificates stored on the token. User PIN authentication is 
+			performed for those operations that require it.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term><option>-G</option></term>
+					<listitem><para>Generate a private key on smart card. The smart card must be
+					not finalized and pin installed (ig. file for pin must be created, see option
+					-i). By default key length is 1536 bits. User authentication is required for 
+					this operation. </para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-L</option> <varname>length</varname></term>
+					<listitem><para>Change the length of private key, use with <option>-G</option>.
+						</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-i</option></term>
+					<listitem><para>Install pin file in token, you must provide pin value 
+					with <option>-pin</option>.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-pin</option> <varname>value</varname></term>
+					<listitem><para>set value of pin.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-puk</option> <varname>value</varname></term>
+					<listitem><para>set value of puk (or value of new pin for change pin
+					command see <option>-n</option>).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-n</option></term>
+					<listitem><para>Changes a PIN stored on the token. User authentication
+					is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-u</option></term>
+					<listitem><para>Unblocks a PIN stored on the token. Knowledge of the Pin 
+					Unblock Key (PUK) is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-cert</option> <varname>file</varname> </term>
+					<listitem><para>Write certificate <varname>file</varname> in pem format on the 
+					card. User authentication is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-F</option></term>
+					<listitem><para>Finalize the card, once finalize default key is invalidate so pin and puk
+					can'be changed anymore without user authentification. Warning, smart cards not finalized are
+					unsecure because pin can be changed without user authentification (knowledge of default key
+					is enougth).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-r</option> <varname>n</varname></term>
+					<listitem><para>Forces <command>westcos-tool</command> to use reader
+					number <varname>n</varname> for operations.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-gf</option> <varname>path</varname></term>
+					<listitem><para>Get the file <varname>path</varname> the file is written 
+					on disk with <varname>path</varname> name. User authentication
+					is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-pf</option> <varname>path</varname></term>
+					<listitem><para>Put the file with name <varname>path</varname> from disk
+					to card the file is written in <varname>path</varname>. User authentication
+					is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-v</option></term>
+					<listitem><para>Causes <command>westcos-tool</command> to be more
+					verbose. Specify this flag several times to enable debug output
+					in the OpenSC library.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>-h</option></term>
+					<listitem><para>Print help message on screen.</para></listitem>
+				</varlistentry>
+
+			</variablelist>
+		</para>
+	</refsect1>
+	
+	<refsect1>
+		<title>See also</title>
+		<para>opensc(7)</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>westcos-tool</command> was written by
+		Francois Leblanc <email>francois.leblanc@cev-sa.com</email>.</para>
+	</refsect1>
+
+</refentry>

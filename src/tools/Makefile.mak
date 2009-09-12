@@ -5,7 +5,7 @@ TOPDIR = ..\..
 
 TARGETS = opensc-tool.exe opensc-explorer.exe pkcs15-tool.exe pkcs15-crypt.exe \
 		pkcs11-tool.exe cardos-info.exe eidenv.exe rutoken-tool.exe \
-		netkey-tool.exe \
+		netkey-tool.exe westcos-tool.exe \
 		$(PROGRAMS_OPENSSL)
 
 all: $(TARGETS)

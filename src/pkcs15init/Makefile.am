@@ -24,7 +24,8 @@ dist_pkgdata_DATA = \
 	rutoken.profile \
 	asepcos.profile \
 	entersafe.profile \
-	rutoken_ecp.profile
+	rutoken_ecp.profile \
+	westcos.profile
 
 AM_CPPFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS)
@@ -32,6 +33,7 @@ INCLUDES = -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
 
 libpkcs15init_la_SOURCES = \
 	pkcs15-lib.c profile.c keycache.c \
+    pkcs15-westcos.c \
 	pkcs15-gpk.c pkcs15-miocos.c pkcs15-cflex.c \
 	pkcs15-cardos.c pkcs15-jcop.c pkcs15-starcos.c \
 	pkcs15-oberthur.c pkcs15-setcos.c pkcs15-incrypto34.c \

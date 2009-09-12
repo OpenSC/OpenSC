@@ -175,6 +175,19 @@ enum {
 	SC_CARDCTL_RTECP_INIT,
 	SC_CARDCTL_RTECP_INIT_END,
 	SC_CARDCTL_RTECP_GENERATE_KEY,
+
+	/*
+	* Westcos specific
+	*/
+	SC_CARDCTL_WESTCOS_FREEZE = _CTL_PREFIX('W', 'T', 'C'),
+	SC_CARDCTL_WESTCOS_CREATE_MF,
+	SC_CARDCTL_WESTCOS_COMMIT,
+	SC_CARDCTL_WESTCOS_ROLLBACK,
+	SC_CARDCTL_WESTCOS_AUT_KEY,
+	SC_CARDCTL_WESTCOS_CHANGE_KEY,
+	SC_CARDCTL_WESTCOS_SET_DEFAULT_KEY,
+	SC_CARDCTL_WESTCOS_LOAD_DATA,
+
 };
 
 enum {
@@ -460,6 +473,22 @@ typedef struct sc_cardctl_asepcos_activate_file {
 
 #define OP_TYPE_GENERATE	0
 #define OP_TYPE_STORE		1
+
+/*
+ * Westcos
+ */
+
+typedef struct {
+	int key_reference;
+	int key_len; //8, 16 or 24
+	u8	key_value[24];
+}sc_autkey_t;
+
+typedef struct {
+	sc_autkey_t master_key;
+	sc_autkey_t new_key;
+	u8 key_template[7];
+}sc_changekey_t;
 
 /*
  *  RuToken types and constants
