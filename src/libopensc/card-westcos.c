@@ -18,16 +18,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include "internal.h"
-
+#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include "cardctl.h"
 #include "asn1.h"
 
@@ -52,15 +47,14 @@
 
 #define JAVACARD (0x01)
 
-#define TRACE do{ printf("%s %d\n", __FILE__, __LINE__); } while(0)
-
 #ifdef ENABLE_OPENSSL
 #define DEBUG_SSL
 #ifdef DEBUG_SSL
-static int charge = 0;
 static void print_openssl_erreur(void)
 {
+	static int charge = 0;
 	long r;
+
 	if (!charge) {
 		ERR_load_crypto_strings();
 		charge = 1;
@@ -68,7 +62,6 @@ static void print_openssl_erreur(void)
 	while ((r = ERR_get_error()) != 0)
 		fprintf(stderr, "%s\n", ERR_error_string(r, NULL));
 }
-
 #endif
 #endif
 
@@ -78,6 +71,13 @@ typedef struct {
 	int flags;
 	int file_id;
 } priv_data_t;
+
+static const struct sc_card_operations *iso_ops = NULL;
+static struct sc_card_operations westcos_ops;
+
+static struct sc_card_driver westcos_drv = {
+	"WESTCOS compatible cards", "westcos", &westcos_ops, NULL, 0, NULL
+};
 
 static int westcos_get_default_key(sc_card_t * card,
 				   struct sc_cardctl_default_key *data)
@@ -95,22 +95,6 @@ static int westcos_get_default_key(sc_card_t * card,
 	return sc_hex_to_bin(default_key, data->key_data, &data->len);
 }
 
-#if 0
-static void trace_apdu(sc_card_t * card, sc_apdu_t * apdu)
-{
-	char buf[100];
-	if (card->ctx->debug >= 5)
-		sc_debug(card->ctx, "%.02X %.02X %.02X %.02X %.02X %.02X\n",
-			 apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->lc,
-			 apdu->le);
-	sc_bin_to_hex(apdu->data, max(apdu->datalen, 30), buf, sizeof(buf),
-		      ':');
-	if (card->ctx->debug >= 5)
-		sc_debug(card->ctx, "data: %s\n", buf);
-}
-#endif
-
-
 #define CRC_A 1
 #define CRC_B 2
 
@@ -126,8 +110,8 @@ static unsigned short westcos_update_crc(unsigned char ch, unsigned short *lpwCr
 }
 
 static void westcos_compute_aetb_crc(int CRCType, 
-					char *Data, 
-					int Length, 
+					unsigned char *Data,
+					size_t Length,
 					unsigned char * TransmitFirst,
 					unsigned char * TransmitSecond)
 {
@@ -155,52 +139,17 @@ static void westcos_compute_aetb_crc(int CRCType,
 	return;
 }
 
-#if 0
-static int sc_check_sw(sc_card_t * card, unsigned int sw1, unsigned int sw2)
-{
-	if (card == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->ops->check_sw == NULL)
-		return SC_ERROR_NOT_SUPPORTED;
-	return card->ops->check_sw(card, sw1, sw2);
-}
-#endif
-
 static int westcos_check_sw(sc_card_t * card, unsigned int sw1,
 			    unsigned int sw2)
 {
-	if ((sw1 == 0x90) && (sw2 == 0x00))
-		return SC_NO_ERROR;
-	if ((sw1 == 0x67) && (sw2 == 0x00))
-		return SC_ERROR_WRONG_LENGTH;
-	if ((sw1 == 0x69) && (sw2 == 0x82))
-		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	if ((sw1 == 0x69) && (sw2 == 0x88))
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
-	if (sw1 == 0x6A) {
-		switch (sw2) {
-		case 0x82:
-			return SC_ERROR_FILE_NOT_FOUND;
-		case 0x83:
-			return SC_ERROR_RECORD_NOT_FOUND;
-		case 0x84:
-			return SC_ERROR_MEMORY_FAILURE;
-		case 0x86:
-			return SC_ERROR_INCORRECT_PARAMETERS;
-		case 0x89:
-			return SC_ERROR_FILE_ALREADY_EXISTS;
-		}
-	}
-	if ((sw1 == 0x6D) && (sw2 == 0x00))
-		return SC_ERROR_INS_NOT_SUPPORTED;
-	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1,
-			 sw2);
-	return SC_ERROR_CARD_CMD_FAILED;
+	assert(iso_ops && iso_ops->check_sw);
+	return iso_ops->check_sw(card, sw1, sw2);
 }
 
 typedef struct mon_atr {
-	int len;
+	size_t len;
 	int flags;
 	u8 *atr, *mask;
 } mon_atr_t;
@@ -228,7 +177,7 @@ static int westcos_finish(sc_card_t * card)
 static int westcos_match_card(sc_card_t * card)
 {
 	u8 *p, j;
-	int i;
+	size_t i;
 	mon_atr_t *matr;
 	if (card->ctx->debug >= 1)
 		sc_debug(card->ctx, "westcos_match_card %d, %X:%X:%X\n",
@@ -285,34 +234,6 @@ static int westcos_match_card(sc_card_t * card)
 	}
 	return 0;
 }
-
-#if 0
-static int _sc_card_add_rsa_alg(sc_card_t * card, unsigned int key_length,
-				unsigned long flags, unsigned long exponent)
-{
-	sc_algorithm_info_t info, *p;
-	memset(&info, 0, sizeof(info));
-	info.algorithm = SC_ALGORITHM_RSA;
-	info.key_length = key_length;
-	info.flags = flags;
-	info.u._rsa.exponent = exponent;
-	p = (sc_algorithm_info_t *) realloc(card->algorithms,
-					    (card->algorithm_count +
-					     1) * sizeof(info));
-	if (!p) {
-		if (card->algorithms)
-			free(card->algorithms);
-		card->algorithms = NULL;
-		card->algorithm_count = 0;
-		return SC_ERROR_OUT_OF_MEMORY;
-	}
-	card->algorithms = p;
-	p += card->algorithm_count;
-	card->algorithm_count++;
-	*p = info;
-	return 0;
-}
-#endif
 
 static int westcos_init(sc_card_t * card)
 {
@@ -457,40 +378,14 @@ static int westcos_select_file(sc_card_t * card, const sc_path_t * in_path,
 
 static int _westcos2opensc_ac(u8 flag)
 {
-	switch (flag) {
-	case 0:
+	if (flag == 0)
 		return SC_AC_NEVER;
-	case 1:
+	else if (flag == 1)
 		return SC_AC_CHV;
-	case 2:
+	else if (flag == 2)
 		return SC_AC_AUT;
-	case 3:
-		return SC_AC_UNKNOWN;
-	case 4:
-		return SC_AC_UNKNOWN;
-	case 5:
-		return SC_AC_UNKNOWN;
-	case 6:
-		return SC_AC_UNKNOWN;
-	case 7:
-		return SC_AC_UNKNOWN;
-	case 8:
-		return SC_AC_UNKNOWN;
-	case 9:
-		return SC_AC_UNKNOWN;
-	case 10:
-		return SC_AC_UNKNOWN;
-	case 11:
-		return SC_AC_UNKNOWN;
-	case 12:
-		return SC_AC_UNKNOWN;
-	case 13:
-		return SC_AC_UNKNOWN;
-	case 14:
-		return SC_AC_UNKNOWN;
-	case 15:
+	else if (flag == 15)
 		return SC_AC_NONE;
-	}
 	return SC_AC_UNKNOWN;
 }
 
@@ -656,97 +551,6 @@ static int westcos_process_fci(sc_card_t * card, sc_file_t * file,
 	return 0;
 }
 
-static int westcos_read_binary(sc_card_t * card,
-			       unsigned int idx, u8 * buf, size_t count,
-			       unsigned long flags)
-{
-	sc_apdu_t apdu;
-	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r;
-	if (card == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_read_binary\n");
-	if (idx > 0x7fff) {
-		if (card->ctx->debug >= 5)
-			sc_debug(card->ctx,
-				 "invalid EF offset: 0x%X > 0x7FFF\n", idx);
-		return SC_ERROR_OFFSET_TOO_LARGE;
-	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0,
-		       (idx >> 8) & 0x7F, idx & 0xFF);
-	apdu.le = count;
-	apdu.resplen = count;
-	apdu.resp = recvbuf;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return (r);
-	if (apdu.resplen == 0)
-		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	memcpy(buf, recvbuf, apdu.resplen);
-	return (int)apdu.resplen;
-}
-
-static int westcos_write_binary(sc_card_t * card,
-				  unsigned int idx, const u8 * buf,
-				  size_t count, unsigned long flags)
-{
-	sc_apdu_t apdu;
-	int r;
-	if (card == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (idx > 0x7fff) {
-		if (card->ctx->debug >= 5)
-			sc_debug(card->ctx,
-				 "invalid EF offset: 0x%X > 0x7FFF\n", idx);
-		return SC_ERROR_OFFSET_TOO_LARGE;
-	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD0,
-		       (idx >> 8) & 0x7F, idx & 0xFF);
-	apdu.lc = count;
-	apdu.datalen = count;
-	apdu.data = buf;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return (r);
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r)
-		return (r);
-	return (int)count;
-} 
-
-static int westcos_update_binary(sc_card_t * card,
-				   unsigned int idx, const u8 * buf,
-				   size_t count, unsigned long flags)
-{
-	sc_apdu_t apdu;
-	int r;
-	if (card == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_update_binary\n");
-	if (idx > 0x7fff) {
-
-		//erreur(card->ctx, 0, "invalid EF offset: 0x%X > 0x7FFF\n", idx);
-		if (card->ctx->debug >= 5)
-			sc_debug(card->ctx,
-				 "invalid EF offset: 0x%X > 0x7FFF\n", idx);
-		return SC_ERROR_OFFSET_TOO_LARGE;
-	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6,
-		       (idx >> 8) & 0x7F, idx & 0xFF);
-	apdu.lc = count;
-	apdu.datalen = count;
-	apdu.data = buf;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return (r);
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r)
-		return (r);
-	return (int)count;
-}
-
 #define HIGH (0)
 #define LOW (1)
 static int _convertion_ac_methode(sc_file_t * file, int low,
@@ -804,7 +608,7 @@ static int _convertion_ac_methode(sc_file_t * file, int low,
 	return 0;
 }
 
-static int westcos_create_file(struct sc_card *card, struct sc_file *file)
+static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 {
 	int r;
 	sc_apdu_t apdu;
@@ -985,7 +789,8 @@ static int westcos_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 	int r;
 	u8 buf[20];		//, result[20];
 	sc_apdu_t apdu;
-	int len = 0, pad = 0, use_pin_pad = 0, ins, p1 = 0;
+	size_t len = 0;
+	int pad = 0, use_pin_pad = 0, ins, p1 = 0;
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (card->ctx->debug >= 1)
@@ -1112,219 +917,6 @@ static int westcos_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-}
-
-static int westcos_get_response(sc_card_t * card, size_t * count, u8 * buf)
-{
-	sc_apdu_t apdu;
-	int r;
-	size_t rlen;
-
-	/* request at most max_recv_size bytes */
-	if (*count > card->max_recv_size)
-		rlen = card->max_recv_size;
-
-	else
-		rlen = *count;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);
-	apdu.le = rlen;
-	apdu.resplen = rlen;
-	apdu.resp = buf;
-
-	/* don't call GET RESPONSE recursively */
-	apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return (r);
-	if (apdu.resplen == 0)
-		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	*count = apdu.resplen;
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		r = 0;		/* no more data to read */
-
-	else if (apdu.sw1 == 0x61)
-		r = apdu.sw2 == 0 ? 256 : apdu.sw2;	/* more data to read    */
-
-	else if (apdu.sw1 == 0x62 && apdu.sw2 == 0x82)
-		r = 0;		/* Le not reached but file/record ended */
-
-	else
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	return r;
-}
-
-static int westcos_get_challenge(sc_card_t * card, u8 * rnd, size_t len)
-{
-	int r;
-	sc_apdu_t apdu;
-	u8 buf[10];
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0x00, 0x00);
-	apdu.le = 8;
-	apdu.resp = buf;
-	apdu.resplen = 8;	/* include SW's */
-	while (len > 0) {
-		size_t n = len > 8 ? 8 : len;
-		r = sc_transmit_apdu(card, &apdu);
-		if (r)
-			return (r);
-		if (apdu.resplen != 8)
-			return sc_check_sw(card, apdu.sw1, apdu.sw2);
-		memcpy(rnd, apdu.resp, n);
-		len -= n;
-		rnd += n;
-	}
-	return 0;
-}
-
-static int westcos_verify(struct sc_card *card, unsigned int type,
-			  int ref_qualifier, const u8 * data,
-			  size_t data_len, int *tries_left)
-{
-	int r;
-	size_t len;
-	sc_apdu_t apdu;
-	u8 buf[50];
-	if (card == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (tries_left)
-		(*tries_left)--;
-	switch (type) {
-	case SC_AC_NONE:
-		break;
-	case SC_AC_CHV:	/* Card Holder Verif. */
-		break;
-	case SC_AC_TERM:	/* Terminal auth. */
-		break;
-	case SC_AC_PRO:	/* Secure Messaging */
-		break;
-	case SC_AC_AUT:	/* Key auth. */
-		len = sizeof(buf);
-		r = westcos_get_crypte_challenge(card, data, buf, &len);
-		if (r)
-			return (r);
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x82, 0x00,
-			       ref_qualifier);
-		apdu.lc = len;
-		apdu.datalen = len;
-		apdu.data = buf;
-		r = sc_transmit_apdu(card, &apdu);
-		if (r)
-			return (r);
-		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	default:
-		break;
-	}
-	return SC_ERROR_NOT_SUPPORTED;
-}
-
-static int westcos_read_record(sc_card_t * card,
-			       unsigned int rec_nr, u8 * buf, size_t count,
-			       unsigned long flags)
-{
-	sc_apdu_t apdu;
-	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r;
-	if (card == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB2, rec_nr, 0);
-	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
-	if (flags & SC_RECORD_BY_REC_NR)
-		apdu.p2 |= 0x04;
-	apdu.le = count;
-	apdu.resplen = count;
-	apdu.resp = recvbuf;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return (r);
-	if (apdu.resplen == 0)
-		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	memcpy(buf, recvbuf, apdu.resplen);
-	return apdu.resplen;
-}
-
-static int westcos_write_record(sc_card_t * card, unsigned int rec_nr,
-				const u8 * buf, size_t count,
-				unsigned long flags)
-{
-	sc_apdu_t apdu;
-	int r;
-	if (card == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (count > 256) {
-		if (card->ctx->debug >= 1)
-			sc_debug(card->ctx, "Trying to send too many bytes\n");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD2, rec_nr, 0);
-	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
-	if (flags & SC_RECORD_BY_REC_NR)
-		apdu.p2 |= 0x04;
-	apdu.lc = count;
-	apdu.datalen = count;
-	apdu.data = buf;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return (r);
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r)
-		return (r);
-	return count;
-}
-
-static int westcos_append_record(sc_card_t * card,
-				 const u8 * buf, size_t count,
-				 unsigned long flags)
-{
-	sc_apdu_t apdu;
-	int r;
-	if (card == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (count > 256) {
-		if (card->ctx->debug >= 1)
-			sc_debug(card->ctx, "Trying to send too many bytes\n");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE2, 0, 0);
-	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
-	apdu.lc = count;
-	apdu.datalen = count;
-	apdu.data = buf;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return (r);
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r)
-		return (r);
-	return count;
-}
-
-static int westcos_update_record(sc_card_t * card, unsigned int rec_nr,
-				 const u8 * buf, size_t count,
-				 unsigned long flags)
-{
-	sc_apdu_t apdu;
-	int r;
-	if (card == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (count > 256) {
-		if (card->ctx->debug >= 1)
-			sc_debug(card->ctx, "Trying to send too many bytes\n");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDC, rec_nr, 0);
-	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
-	if (flags & SC_RECORD_BY_REC_NR)
-		apdu.p2 |= 0x04;
-	apdu.lc = count;
-	apdu.datalen = count;
-	apdu.data = buf;
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return (r);
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r)
-		return (r);
-	return count;
 }
 
 static int sc_get_atr(sc_card_t * card)
@@ -1551,7 +1143,7 @@ static int westcos_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }
-static int westcos_set_security_env(struct sc_card *card,
+static int westcos_set_security_env(sc_card_t *card,
 				    const struct sc_security_env *env,
 				    int se_num)
 {
@@ -1565,7 +1157,7 @@ static int westcos_set_security_env(struct sc_card *card,
 	return 0;
 }
 
-static int westcos_restore_security_env(struct sc_card *card, int se_num)
+static int westcos_restore_security_env(sc_card_t *card, int se_num)
 {
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1574,7 +1166,7 @@ static int westcos_restore_security_env(struct sc_card *card, int se_num)
 	return 0;
 }
 
-static int westcos_sign_decipher(int mode, struct sc_card *card,
+static int westcos_sign_decipher(int mode, sc_card_t *card,
 				 const u8 * data, size_t data_len, u8 * out,
 				 size_t outlen)
 {
@@ -1706,48 +1298,58 @@ static int westcos_sign_decipher(int mode, struct sc_card *card,
 	return r;
 }
 
-static int westcos_compute_signature(struct sc_card *card, const u8 * data,
+static int westcos_compute_signature(sc_card_t *card, const u8 * data,
 				     size_t data_len, u8 * out, size_t outlen)
 {
 	return westcos_sign_decipher(0, card, data, data_len, out, outlen);
 }
 
-static int westcos_decipher(struct sc_card *card, const u8 * crgram,
+static int westcos_decipher(sc_card_t *card, const u8 * crgram,
 			    size_t crgram_len, u8 * out, size_t outlen)
 {
 	return westcos_sign_decipher(1, card, crgram, crgram_len, out, outlen);
 }
 
-static struct sc_card_operations westcos_ops = { 
-	westcos_match_card, 
-	westcos_init,	/* init   */
-	westcos_finish,		/* finish */
-	westcos_read_binary, westcos_write_binary, westcos_update_binary,
-	NULL,			/* erase_binary */
-	westcos_read_record, westcos_write_record, westcos_append_record,
-	westcos_update_record, westcos_select_file, westcos_get_response,
-	westcos_get_challenge, NULL,	/* verify */
-	NULL,			/* logout */
-	westcos_restore_security_env,	/* restore_security_env */
-	westcos_set_security_env,	/* set_security_env */
-	westcos_decipher,	/* decipher */
-	westcos_compute_signature,	/* compute_signature */
-	NULL,			/* change_reference_data */
-	NULL,			/* reset_retry_counter   */
-	westcos_create_file, westcos_delete_file,	/* delete_file */
-	westcos_list_files,	/* list_files */
-	westcos_check_sw, westcos_card_ctl,	/* card_ctl */
-	westcos_process_fci, NULL,	/* construct_fci */
-	westcos_pin_cmd, NULL,	/* get_data */
-	NULL,			/* put_data */
-	NULL			/* delete_record */
-};
-
-static struct sc_card_driver westcos_drv =
-    { "WESTCOS compatible cards", "westcos", &westcos_ops, NULL, 0, NULL
-};
-
 struct sc_card_driver *sc_get_westcos_driver(void)
 {
+	if (iso_ops == NULL)
+		iso_ops = sc_get_iso7816_driver()->ops;
+	westcos_ops = *iso_ops;
+
+	westcos_ops.match_card = westcos_match_card;
+	westcos_ops.init = westcos_init;
+	westcos_ops.finish = westcos_finish;
+	/* read_binary */
+	/* write_binary */
+	/* update_binary */
+	westcos_ops.erase_binary = NULL;
+	/* read_record */
+	/* write_record */
+	/* append_record */
+	/* update_record */
+	westcos_ops.select_file = westcos_select_file;
+	/* get_response */
+	/* get_challenge */
+	westcos_ops.verify = NULL;
+	westcos_ops.logout = NULL;
+	westcos_ops.restore_security_env = westcos_restore_security_env;
+	westcos_ops.set_security_env = westcos_set_security_env;
+	westcos_ops.decipher = westcos_decipher;
+	westcos_ops.compute_signature = westcos_compute_signature;
+	westcos_ops.change_reference_data = NULL;
+	westcos_ops.reset_retry_counter = NULL;
+	westcos_ops.create_file = westcos_create_file;
+	westcos_ops.delete_file = westcos_delete_file;
+	westcos_ops.list_files = westcos_list_files;
+	westcos_ops.check_sw = westcos_check_sw;
+	westcos_ops.card_ctl = westcos_card_ctl;
+	westcos_ops.process_fci = westcos_process_fci;
+	westcos_ops.construct_fci = NULL;
+	westcos_ops.pin_cmd = westcos_pin_cmd;
+	westcos_ops.get_data = NULL;
+	westcos_ops.put_data = NULL;
+	westcos_ops.delete_record = NULL;
+
 	return &westcos_drv;
 }
+
