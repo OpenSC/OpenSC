@@ -113,7 +113,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	if (result == (size_t) -1)
 		return SC_ERROR_INTERNAL;
 	*outptr = '\0';
-	
+	iconv_close(iso_utf);
 	snprintf(label, sizeof(label), "%s %s", name1, name2);
 	set_string (&p15card->label, label);
 #endif
