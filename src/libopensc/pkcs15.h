@@ -71,6 +71,7 @@ struct sc_pkcs15_pin_info {
 	u8 pad_char;
 	struct sc_path path;
 	int tries_left;
+	int max_tries;
 
 	unsigned int magic;
 };

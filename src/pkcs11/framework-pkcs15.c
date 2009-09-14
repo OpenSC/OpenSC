@@ -677,6 +677,14 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 			snprintf(tmp, sizeof(tmp), "%s", card->label);
 		}
 		slot->token_info.flags |= CKF_LOGIN_REQUIRED;
+		if (pin_info->tries_left >= 0) {
+		        if (pin_info->tries_left == 1)
+        		        slot->token_info.flags |= CKF_USER_PIN_FINAL_TRY;
+                        else if (pin_info->tries_left == 0)
+                                slot->token_info.flags |= CKF_USER_PIN_LOCKED;
+                        else if (pin_info->max_tries && pin_info->tries_left && pin_info->tries_left < pin_info->max_tries)
+                                slot->token_info.flags |= CKF_USER_PIN_COUNT_LOW;
+                }
 	} else
 		snprintf(tmp, sizeof(tmp), "%s", card->label);
 	strcpy_bp(slot->token_info.label, tmp, 32);
@@ -689,6 +697,8 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 		slot->token_info.ulMaxPinLen = 8;
 		slot->token_info.ulMinPinLen = 4;
 	}
+	if (card->flags & SC_PKCS15_CARD_FLAG_EMULATED)
+	        slot->token_info.flags |= CKF_WRITE_PROTECTED;
 
 	sc_debug(context, "Initialized token '%s'\n", tmp);
 }
