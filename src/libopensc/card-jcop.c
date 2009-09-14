@@ -328,9 +328,7 @@ static int jcop_read_binary(sc_card_t *card, unsigned int idx,
 	  if (idx + count > 128) {
 	       count=128-idx;
 	  }
-          sc_ctx_suppress_errors_on(card->ctx);
 	  r = iso_ops->select_file(card, &drvdata->aid, &tfile);
-	  sc_ctx_suppress_errors_off(card->ctx);
 	  if (r < 0) { /* no pkcs15 app, so return empty DIR. */
 	       memset(buf, 0, count);
 	  } else {
@@ -356,9 +354,7 @@ static int jcop_list_files(sc_card_t *card, u8 *buf, size_t buflen) {
 	  if (buflen < 4)
 	       return 2;
 	  /* AppDF only exists if applet is selectable */
-	  sc_ctx_suppress_errors_on(card->ctx);
 	  r = iso_ops->select_file(card, &drvdata->aid, &tfile);
-	  sc_ctx_suppress_errors_off(card->ctx);
 	  if (r < 0) { 
 	       return 2;
 	  } else {
@@ -650,11 +646,11 @@ static int jcop_set_security_env(sc_card_t *card,
                 tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
                 tmp.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
                 if (tmp.algorithm != SC_ALGORITHM_RSA) {
-                        sc_error(card->ctx, "Only RSA algorithm supported.\n");
+                        sc_debug(card->ctx, "Only RSA algorithm supported.\n");
                         return SC_ERROR_NOT_SUPPORTED;
                 }
                 if (!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)){
-                        sc_error(card->ctx, "Card requires RSA padding\n");
+                        sc_debug(card->ctx, "Card requires RSA padding\n");
                         return SC_ERROR_NOT_SUPPORTED;
                 }
                 tmp.algorithm_ref = 0x02;

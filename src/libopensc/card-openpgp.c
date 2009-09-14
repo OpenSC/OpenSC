@@ -235,9 +235,7 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 	if (blob->info == NULL)
 		return blob->status;
 
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = blob->info->get_fn(card, blob->id, buffer, sizeof(buffer));
-	sc_ctx_suppress_errors_off(card->ctx);
 
 	if (r < 0) {
 		blob->status = r;
@@ -308,7 +306,7 @@ pgp_enumerate_blob(sc_card_t *card, struct blob *blob)
 
 	return 0;
 
-eoc:	sc_error(card->ctx, "Unexpected end of contents\n");
+eoc:	sc_debug(card->ctx, "Unexpected end of contents\n");
 	return SC_ERROR_OBJECT_NOT_VALID;
 }
 
@@ -556,7 +554,7 @@ pgp_set_security_env(sc_card_t *card,
 	case SC_SEC_OPERATION_SIGN:
 		if (env->key_ref[0] != 0x00
 		 && env->key_ref[0] != 0x02) {
-		 	sc_error(card->ctx,
+		 	sc_debug(card->ctx,
 				"Key reference not compatible with "
 				"requested usage\n");
 			return SC_ERROR_NOT_SUPPORTED;
@@ -564,7 +562,7 @@ pgp_set_security_env(sc_card_t *card,
 		break;
 	case SC_SEC_OPERATION_DECIPHER:
 		if (env->key_ref[0] != 0x01) {
-		 	sc_error(card->ctx,
+		 	sc_debug(card->ctx,
 				"Key reference not compatible with "
 				"requested usage\n");
 			return SC_ERROR_NOT_SUPPORTED;
@@ -602,11 +600,11 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 				0x88, 0, 0);
 		break;
 	case 0x01:
-		sc_error(card->ctx,
+		sc_debug(card->ctx,
 			"Invalid key reference (decipher only key)\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	default:
-		sc_error(card->ctx, "Invalid key reference 0x%02x\n",
+		sc_debug(card->ctx, "Invalid key reference 0x%02x\n",
 				env->key_ref[0]);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -658,12 +656,12 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		break;
 	case 0x00: /* signature key */
 	case 0x02: /* authentication key */
-		sc_error(card->ctx,
+		sc_debug(card->ctx,
 			"Invalid key reference (signature only key)\n");
 		free(temp);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	default:
-		sc_error(card->ctx, "Invalid key reference 0x%02x\n",
+		sc_debug(card->ctx, "Invalid key reference 0x%02x\n",
 				env->key_ref[0]);
 		free(temp);
 		return SC_ERROR_INVALID_ARGUMENTS;

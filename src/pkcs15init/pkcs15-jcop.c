@@ -148,7 +148,7 @@ jcop_create_key(sc_profile_t *profile, sc_card_t *card, sc_pkcs15_object_t *obj
         int             r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-	     sc_error(card->ctx, "JCOP supports only RSA keys.");
+	     sc_debug(card->ctx, "JCOP supports only RSA keys.");
 	     return SC_ERROR_NOT_SUPPORTED;
 	}
         /* The caller is supposed to have chosen a key file path for us */
@@ -225,7 +225,7 @@ jcop_store_key(sc_profile_t *profile, sc_card_t *card,
         int             r;
 
         if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-                sc_error(card->ctx, "JCOP supports only RSA keys.");
+                sc_debug(card->ctx, "JCOP supports only RSA keys.");
                 return SC_ERROR_NOT_SUPPORTED;
         }
         r = sc_profile_get_file_by_path(profile, &key_info->path, &keyfile);
@@ -261,7 +261,7 @@ jcop_generate_key(sc_profile_t *profile, sc_card_t *card,
      int             r,delete_ok=0;
 
      if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-	  sc_error(card->ctx, "JCOP supports only RSA keys.");
+	  sc_debug(card->ctx, "JCOP supports only RSA keys.");
 	  return SC_ERROR_NOT_SUPPORTED;
      }
 

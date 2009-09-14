@@ -286,9 +286,7 @@ static int creation_fichier_cert(sc_card_t *card)
 	}
 
 	sc_format_path("0002", &path);
-	sc_ctx_suppress_errors_on(ctx);
 	r = sc_select_file(card, &path, NULL);
-	sc_ctx_suppress_errors_off(ctx);
 	if(r) 
 	{
 		if(r != SC_ERROR_FILE_NOT_FOUND) goto out;
@@ -552,9 +550,7 @@ int main(int argc, char *argv[])
 	if(install_pin)
 	{
 		sc_format_path("AAAA", &path);
-		sc_ctx_suppress_errors_on(ctx);
 		r = sc_select_file(card, &path, NULL);
-		sc_ctx_suppress_errors_off(ctx);
 		if(r) 
 		{
 			if(r != SC_ERROR_FILE_NOT_FOUND) goto out;
@@ -689,9 +685,7 @@ int main(int argc, char *argv[])
 		lg = BIO_get_mem_data(mem, &p);
 
 		sc_format_path("0001", &path);
-		sc_ctx_suppress_errors_on(ctx);
 		r = sc_select_file(card, &path, NULL);
-		sc_ctx_suppress_errors_off(ctx);
 		if(r) 
 		{
 			if(r != SC_ERROR_FILE_NOT_FOUND) goto out;

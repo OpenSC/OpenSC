@@ -150,7 +150,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 		if (asn1_dsakey_i_p_attr[0].flags & SC_ASN1_PRESENT)
 			info.path.type = SC_PATH_TYPE_PATH_PROT;
 	} else {
-		sc_error(ctx, "Neither RSA or DSA key in PrKDF entry.\n");
+		sc_debug(ctx, "Neither RSA or DSA key in PrKDF entry.\n");
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 	r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
@@ -218,7 +218,7 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx,
 		}
                 break;
 	default:
-		sc_error(ctx, "Invalid private key type: %X\n", obj->type);
+		sc_debug(ctx, "Invalid private key type: %X\n", obj->type);
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_INTERNAL);
 		break;
 	}
@@ -281,7 +281,7 @@ sc_pkcs15_encode_prkey(sc_context_t *ctx,
 {
 	if (key->algorithm == SC_ALGORITHM_DSA)
 		return sc_pkcs15_encode_prkey_dsa(ctx, &key->u.dsa, buf, len);
-	sc_error(ctx, "Cannot encode private key type %u.\n",
+	sc_debug(ctx, "Cannot encode private key type %u.\n",
 			key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -293,7 +293,7 @@ sc_pkcs15_decode_prkey(sc_context_t *ctx,
 {
 	if (key->algorithm == SC_ALGORITHM_DSA)
 		return sc_pkcs15_decode_prkey_dsa(ctx, &key->u.dsa, buf, len);
-	sc_error(ctx, "Cannot decode private key type %u.\n",
+	sc_debug(ctx, "Cannot decode private key type %u.\n",
 			key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -321,12 +321,12 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 		key.algorithm = SC_ALGORITHM_DSA;
 		break;
 	default:
-		sc_error(ctx, "Unsupported object type.\n");
+		sc_debug(ctx, "Unsupported object type.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	info = (struct sc_pkcs15_prkey_info *) obj->data;
 	if (info->native) {
-		sc_error(ctx, "Private key is native, will not read.");
+		sc_debug(ctx, "Private key is native, will not read.");
 		return SC_ERROR_NOT_ALLOWED;
 	}
 
@@ -336,7 +336,7 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 
 	r = sc_pkcs15_read_file(p15card, &path, &data, &len, NULL);
 	if (r < 0) {
-		sc_error(ctx, "Unable to read private key file.\n");
+		sc_debug(ctx, "Unable to read private key file.\n");
 		return r;
 	}
 
@@ -354,7 +354,7 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 				data, len,
 				&clear, &clear_len);
 		if (r < 0)  {
-			sc_error(ctx, "Failed to unwrap privat key.");
+			sc_debug(ctx, "Failed to unwrap privat key.");
 			goto fail;
 		}
 		free(data);
@@ -364,7 +364,7 @@ sc_pkcs15_read_prkey(struct sc_pkcs15_card *p15card,
 
 	r = sc_pkcs15_decode_prkey(ctx, &key, data, len);
 	if (r < 0) {
-		sc_error(ctx, "Unable to decode private key");
+		sc_debug(ctx, "Unable to decode private key");
 		goto fail;
 	}
 

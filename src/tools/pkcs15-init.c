@@ -530,7 +530,6 @@ do_assert_pristine(sc_card_t *in_card)
 	 * - on setcos 4.4 card, we should get 6F00 (translates to
 	  *    SC_ERROR_CARD_CMD_FAILED) to indicate that no MF exists. */
 
-	sc_ctx_suppress_errors_on(in_card->ctx);
 
 	sc_format_path("2F00", &path);
 	r = sc_select_file(in_card, &path, NULL);
@@ -552,8 +551,6 @@ do_assert_pristine(sc_card_t *in_card)
 			in_card->type == SC_CARD_TYPE_SETCOS_44);
 	}
 
-
-	sc_ctx_suppress_errors_off(in_card->ctx);
 
 	if (!ok) {
 		fprintf(stderr,
@@ -653,7 +650,7 @@ do_init_app(struct sc_profile *profile)
 
 	return sc_pkcs15init_add_app(card, profile, &args);
 
-failed:	sc_error(card->ctx, "Failed to read PIN: %s\n", sc_strerror(r));
+failed:	fprintf(stderr, "Failed to read PIN: %s\n", sc_strerror(r));
 	return SC_ERROR_PKCS15INIT;
 }
 
@@ -715,7 +712,7 @@ do_store_pin(struct sc_profile *profile)
 
 	return sc_pkcs15init_store_pin(p15card, profile, &args);
 
-failed:	sc_error(card->ctx, "Failed to read PIN: %s\n", sc_strerror(r));
+failed:	fprintf(stderr, "Failed to read PIN: %s\n", sc_strerror(r));
 	return SC_ERROR_PKCS15INIT;
 }
 
@@ -1199,7 +1196,7 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
 		for( ; count < 10 ; count++) {
 			r = get_cert_info(myp15card, objs[count - 1], &has_sibling, &stop, &objs[count]);
 			if (r < 0)
-				sc_error(myctx, "get_cert_info() failed: %s\n", sc_strerror(r));
+				fprintf(stderr, "get_cert_info() failed: %s\n", sc_strerror(r));
 			else if (has_sibling)
 				sc_debug(myctx, "Chain deletion stops with cert %s\n", sc_pkcs15_print_id(
 					&((sc_pkcs15_cert_info_t *) objs[count - 1]->data)->id));
@@ -1215,7 +1212,7 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
 	for (i = 0; i < count; i++) {
 		r = sc_pkcs15init_delete_object(myp15card, profile, objs[i]);
 		if (r < 0) {
-			sc_error(myctx, "Failed to delete object %d: %s\n", i, sc_strerror(r));
+			fprintf(stderr, "Failed to delete object %d: %s\n", i, sc_strerror(r));
 			break;
 		}
 	}
@@ -1615,7 +1612,7 @@ get_pin_callback(struct sc_profile *profile,
 		hints.p15card	= p15card;
 
 		if ((r = sc_ui_get_pin(&hints, &secret)) < 0) {
-			sc_error(card->ctx,
+			fprintf(stderr,
 				"Failed to read PIN from user: %s\n",
 				sc_strerror(r));
 			return r;

@@ -171,7 +171,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_card_t *card,
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (puk_len != 0)
 	{
-		sc_error(card->ctx, "Do not enter User unblocking PIN (PUK): %s\n",
+		sc_debug(card->ctx, "Do not enter User unblocking PIN (PUK): %s\n",
 				sc_strerror(SC_ERROR_NOT_SUPPORTED));
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -267,7 +267,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_card_t *card,
 	assert(key_info);
 	if (key_info->modulus_length % 128 != 0)
 	{
-		sc_error(card->ctx, "Unsupported key size %u\n",
+		sc_debug(card->ctx, "Unsupported key size %u\n",
 				key_info->modulus_length);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}

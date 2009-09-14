@@ -178,7 +178,7 @@ out:	if (r == SC_SUCCESS) {
 		p15card->magic  = SC_PKCS15_CARD_MAGIC;
 		p15card->flags |= SC_PKCS15_CARD_FLAG_EMULATED;
 	} else if (r != SC_ERROR_WRONG_CARD) {
-		sc_error(ctx, "Failed to load card emulator: %s\n",
+		sc_debug(ctx, "Failed to load card emulator: %s\n",
 				sc_strerror(r));
 	}
 
@@ -400,7 +400,7 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 		data_len = sizeof(struct sc_pkcs15_data_info);
 		break;
 	default:
-		sc_error(p15card->card->ctx,
+		sc_debug(p15card->card->ctx,
 			"Unknown PKCS15 object type %d\n", type);
 		free(obj);
 		return SC_ERROR_INVALID_ARGUMENTS;

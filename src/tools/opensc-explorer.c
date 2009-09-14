@@ -223,9 +223,7 @@ static int do_ls(int argc, char **argv)
 			}
 		}
 			
-		ctx->suppress_errors++;
 		r = sc_select_file(card, &path, &file);
-		ctx->suppress_errors--;
 		if (r) {
 			printf(" %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
 		} else {
@@ -335,9 +333,7 @@ static int read_and_print_record_file(sc_file_t *file)
 	int rec, r;
 
 	for (rec = 1; ; rec++) {
-		ctx->suppress_errors++;
 		r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
-		ctx->suppress_errors--;
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
 			return 0;
 		if (r < 0) {
@@ -1171,10 +1167,8 @@ static int do_debug(int argc, char **argv)
 		printf("Debug level set to %d\n", i);
 		ctx->debug = i;
 		if (i) {
-			ctx->error_file = stderr;
 			ctx->debug_file = stdout;
 		} else {
-			ctx->error_file = NULL;
 			ctx->debug_file = NULL;
 		}
 	}

@@ -192,10 +192,10 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			break;
 		}
 		if (r == SC_ERROR_NOT_SUPPORTED)
-			sc_error(card->ctx, "unsupported PIN operation (%d)",
+			sc_debug(card->ctx, "unsupported PIN operation (%d)",
 					data->cmd);
 	} else {
-		sc_error(card->ctx, "Use of pin pad not supported by card driver");
+		sc_debug(card->ctx, "Use of pin pad not supported by card driver");
 		r = SC_ERROR_NOT_SUPPORTED;
 	}
 	SC_FUNC_RETURN(card->ctx, 2, r);

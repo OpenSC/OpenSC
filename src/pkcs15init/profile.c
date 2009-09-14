@@ -373,7 +373,7 @@ sc_profile_finish(struct sc_profile *profile)
 	}
 	return 0;
 
-whine:	sc_error(profile->card->ctx, "%s", reason);
+whine:	sc_debug(profile->card->ctx, "%s", reason);
 	return SC_ERROR_INCONSISTENT_PROFILE;
 }
 
@@ -590,7 +590,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		if (r != SC_SUCCESS)
 			pbuf[0] = '\0';
 
-		sc_error(card->ctx, "Directory %s not defined in profile", pbuf);
+		sc_debug(card->ctx, "Directory %s not defined in profile", pbuf);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
@@ -621,7 +621,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	}
 
 	if (match == NULL) {
-		sc_error(card->ctx, "No file named \"%s\" in template \"%s\"",
+		sc_debug(card->ctx, "No file named \"%s\" in template \"%s\"",
 				file_name, template_name);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
@@ -2059,5 +2059,5 @@ parse_error(struct state *cur, const char *fmt, ...)
 	if ((sp = strchr(buffer, '\n')) != NULL)
 		*sp = '\0';
 
-	sc_error(cur->profile->card->ctx, "%s: %s", cur->filename, buffer);
+	sc_debug(cur->profile->card->ctx, "%s: %s", cur->filename, buffer);
 }

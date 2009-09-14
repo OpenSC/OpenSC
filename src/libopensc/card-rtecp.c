@@ -418,7 +418,7 @@ static int rtecp_rsa_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 	assert(buf);
 	free(buf);
 	if (r)
-		sc_error(card->ctx, "APDU transmit failed: %s\n", sc_strerror(r));
+		sc_debug(card->ctx, "APDU transmit failed: %s\n", sc_strerror(r));
 	else
 	{
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
@@ -653,7 +653,7 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 		if (card->ctx->debug >= 4)
 			sc_debug(card->ctx, "%s\n",
 					"SC_CARDCTL_LIFECYCLE_SET not supported");
-		/* no call sc_error (SC_FUNC_RETURN) */
+		/* no call sc_debug (SC_FUNC_RETURN) */
 		return SC_ERROR_NOT_SUPPORTED;
 	default:
 		if (card->ctx->debug >= 3)

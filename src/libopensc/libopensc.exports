@@ -1,7 +1,6 @@
 _sc_asn1_decode
 _sc_asn1_encode
 _sc_debug
-_sc_error
 sc_append_file_id
 sc_append_path
 sc_append_path_id
@@ -41,8 +40,6 @@ sc_create_file
 sc_ctx_detect_readers
 sc_ctx_get_reader
 sc_ctx_get_reader_count
-sc_ctx_suppress_errors_off
-sc_ctx_suppress_errors_on
 sc_decipher
 sc_delete_file
 sc_delete_record

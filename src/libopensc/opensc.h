@@ -650,8 +650,7 @@ typedef struct sc_context {
 	char *app_name;
 	int debug;
 
-	int suppress_errors;
-	FILE *debug_file, *error_file;
+	FILE *debug_file;
 	char *preferred_language;
 
 	const struct sc_reader_driver *reader_drivers[SC_MAX_READER_DRIVERS];
@@ -752,18 +751,6 @@ sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i);
  * @return the number of available reader objects
  */
 unsigned int sc_ctx_get_reader_count(sc_context_t *ctx);
-
-/**  
- * Turns on error suppression 
- * @param  ctx  OpenSC context
- */
-void sc_ctx_suppress_errors_on(sc_context_t *ctx);
-
-/**
- * Turns off error suppression
- * @param  ctx  OpenSC context
- */
-void sc_ctx_suppress_errors_off(sc_context_t *ctx);
 
 /**
  * Forces the use of a specified card driver

@@ -40,15 +40,12 @@ extern "C" {
 
 #if defined(__GNUC__)
 
-#define sc_error(ctx, format, args...)	sc_do_log(ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, format , ## args)
 #define sc_debug(ctx, format, args...)	sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, format , ## args)
 
 #else
-#define sc_error _sc_error
 #define sc_debug _sc_debug
 #endif
 
-void _sc_error(struct sc_context *ctx, const char *format, ...);
 void _sc_debug(struct sc_context *ctx, const char *format, ...);
 void sc_do_log(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, ...);
 void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args);
@@ -62,11 +59,7 @@ void sc_hex_dump(struct sc_context *ctx, const u8 * buf, size_t len, char *out, 
 
 #define SC_FUNC_RETURN(ctx, level, r) do { \
 	int _ret = r; \
-	if (_ret < 0 && !ctx->suppress_errors) { \
-		sc_do_log(ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, "returning with: %s\n", sc_strerror(_ret)); \
-	} else if (ctx->debug >= level) { \
-		sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "returning with: %d\n", _ret); \
-	} \
+	sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "returning with: %d\n", _ret); \
 	return _ret; \
 } while(0)
 

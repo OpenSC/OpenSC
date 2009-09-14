@@ -1101,11 +1101,9 @@ static int starcos_set_security_env(sc_card_t *card,
 		apdu.datalen = p - sbuf;
 		apdu.lc      = p - sbuf;
 		apdu.le      = 0;
-		/* suppress errors, as don't know whether to use 
+		/* we don't know whether to use 
 		 * COMPUTE SIGNATURE or INTERNAL AUTHENTICATE */
-		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_transmit_apdu(card, &apdu);
-		sc_ctx_suppress_errors_off(card->ctx);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			ex_data->fix_digestInfo = 0;
@@ -1246,7 +1244,7 @@ static int starcos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 		return SC_NO_ERROR;
 	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
 	{
-		sc_error(card->ctx, "Verification failed (remaining tries: %d)\n",
+		sc_debug(card->ctx, "Verification failed (remaining tries: %d)\n",
 		(sw2 & 0x0f));
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
@@ -1255,7 +1253,7 @@ static int starcos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	for (i = 0; i < err_count; i++)
 		if (starcos_errors[i].SWs == ((sw1 << 8) | sw2))
 		{
-			sc_error(card->ctx, "%s\n", starcos_errors[i].errorstr);
+			sc_debug(card->ctx, "%s\n", starcos_errors[i].errorstr);
 			return starcos_errors[i].errorno;
 		}
   
@@ -1340,9 +1338,7 @@ static int starcos_logout(sc_card_t *card)
 	apdu.datalen = 2;
 	apdu.resplen = 0;
 	
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_transmit_apdu(card, &apdu);
-	sc_ctx_suppress_errors_off(card->ctx);
 	SC_TEST_RET(card->ctx, r, "APDU re-transmit failed");
 
 	if (apdu.sw1 == 0x69 && apdu.sw2 == 0x85)

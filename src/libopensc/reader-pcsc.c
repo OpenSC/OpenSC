@@ -39,7 +39,7 @@
 #undef SCARD_PROTOCOL_ANY
 #define SCARD_PROTOCOL_ANY (SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1)
 /* Error printing */
-#define PCSC_ERROR(ctx, desc, rv) sc_error(ctx, desc ": 0x%08lx\n", rv);
+#define PCSC_ERROR(ctx, desc, rv) sc_debug(ctx, desc ": 0x%08lx\n", rv);
 
 /* Utility for handling big endian IOCTL codes. */
 #define dw2i_be(a, x) ((((((a[x] << 8) + a[x+1]) << 8) + a[x+2]) << 8) + a[x+3])
@@ -236,7 +236,7 @@ static int pcsc_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 				rbuf, &rsize, apdu->control);
 	if (r < 0) {
 		/* unable to transmit ... most likely a reader problem */
-		sc_error(reader->ctx, "unable to transmit");
+		sc_debug(reader->ctx, "unable to transmit");
 		goto out;
 	}
 	if (reader->ctx->debug >= 6)
@@ -1282,7 +1282,7 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 
 	/* The APDU must be provided by the card driver */
 	if (!data->apdu) {
-		sc_error(reader->ctx, "No APDU provided for PC/SC v2 pinpad verification!");
+		sc_debug(reader->ctx, "No APDU provided for PC/SC v2 pinpad verification!");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -1290,7 +1290,7 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
 		if (!(pslot->verify_ioctl || (pslot->verify_ioctl_start && pslot->verify_ioctl_finish))) {
-			sc_error(reader->ctx, "Pinpad reader does not support verification!");
+			sc_debug(reader->ctx, "Pinpad reader does not support verification!");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		r = part10_build_verify_pin_block(sbuf, &scount, slot, data);
@@ -1299,14 +1299,14 @@ part10_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	case SC_PIN_CMD_CHANGE:
 	case SC_PIN_CMD_UNBLOCK:
 		if (!(pslot->modify_ioctl || (pslot->modify_ioctl_start && pslot->modify_ioctl_finish))) {
-			sc_error(reader->ctx, "Pinpad reader does not support modification!");
+			sc_debug(reader->ctx, "Pinpad reader does not support modification!");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		r = part10_build_modify_pin_block(sbuf, &scount, slot, data);
 		ioctl = pslot->modify_ioctl ? pslot->modify_ioctl : pslot->modify_ioctl_start;
 		break;
 	default:
-		sc_error(reader->ctx, "Unknown PIN command %d", data->cmd);
+		sc_debug(reader->ctx, "Unknown PIN command %d", data->cmd);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 

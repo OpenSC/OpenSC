@@ -169,7 +169,7 @@ ctbcs_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 		r = ctbcs_build_modify_verification_apdu(&apdu, data, slot);
 		break;
 	default:
-		sc_error(reader->ctx, "Unknown PIN command %d", data->cmd);
+		sc_debug(reader->ctx, "Unknown PIN command %d", data->cmd);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -187,7 +187,7 @@ ctbcs_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	r = sc_transmit_apdu(card, &apdu);
 	s = sc_mutex_destroy(reader->ctx, card->mutex);
 	if (s != SC_SUCCESS) {
-		sc_error(reader->ctx, "unable to destroy mutex\n");
+		sc_debug(reader->ctx, "unable to destroy mutex\n");
 		return s;
 	}
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");

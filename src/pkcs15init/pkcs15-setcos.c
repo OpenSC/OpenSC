@@ -97,9 +97,7 @@ setcos_init_card(sc_profile_t *profile, sc_card_t *card)
 			pin_ref, SC_PKCS15INIT_SO_PIN);
 
 	/* Create the MF if it doesn't exist yet */
-	card->ctx->suppress_errors++;
 	r = sc_select_file(card, &mf->path, NULL);
-	card->ctx->suppress_errors--;
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
 		sc_debug(card->ctx, "MF doesn't exist, creating now");
 
@@ -115,9 +113,7 @@ setcos_init_card(sc_profile_t *profile, sc_card_t *card)
 	r = sc_profile_get_file(profile, "pinfile", &pinfile);
 	if (r < 0)
 		return r;
-	card->ctx->suppress_errors++;
 	r = sc_select_file(card, &pinfile->path, NULL);
-	card->ctx->suppress_errors--;
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
 		sc_debug(card->ctx, "Global pin file doesn't exist, creating now");
 
@@ -169,9 +165,7 @@ static int setcos_init_app(sc_profile_t *profile, sc_card_t *card,
 			pin_ref, SC_PKCS15INIT_SO_PIN);
 
 	/* Create the MF if it doesn't exist yet */
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &mf->path, NULL);
-	sc_ctx_suppress_errors_off(card->ctx);
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
 		sc_debug(card->ctx, "MF doesn't exist, creating now");
 		/* Fix up the file's ACLs */
@@ -188,9 +182,7 @@ static int setcos_init_app(sc_profile_t *profile, sc_card_t *card,
 	/* Create the global pin file if it doesn't exist yet */
 	if ((r = sc_profile_get_file(profile, "pinfile", &pinfile)) < 0)
 		goto done;
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &pinfile->path, NULL);
-	sc_ctx_suppress_errors_off(card->ctx);
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
 		sc_debug(card->ctx, "Global pin file doesn't exist, creating now");
 		/* Fix up the file's ACLs */
@@ -299,14 +291,14 @@ setcos_new_file(sc_profile_t *profile, sc_card_t *card,
 	else if ((type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_DATA_OBJECT)
 		tag = "data";
 	else {
-		sc_error(card->ctx, "Unsupported file type");
+		sc_debug(card->ctx, "Unsupported file type");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	/* Get template from profile  */
 	snprintf(name, sizeof(name), "template-%s", tag);
 	if (sc_profile_get_file(profile, name, &file) < 0) {
-		sc_error(card->ctx, "Profile doesn't define %s", name);
+		sc_debug(card->ctx, "Profile doesn't define %s", name);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -396,7 +388,7 @@ setcos_generate_store_key(sc_profile_t *profile, sc_card_t *card,
 
 	/* Parameter check */
 	if ( (keybits < 512) || (keybits > 1024) || (keybits & 0X7)) {
-		sc_error(card->ctx, "Unsupported key size [%u]: 512-1024 bit + 8-multiple\n", keybits);
+		sc_debug(card->ctx, "Unsupported key size [%u]: 512-1024 bit + 8-multiple\n", keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -465,7 +457,7 @@ setcos_generate_store_key(sc_profile_t *profile, sc_card_t *card,
 
 		mod_len = ((raw_pubkey[0] * 256) + raw_pubkey[1]);  /* modulus bit length */
 		if (mod_len != keybits){
-			sc_error(card->ctx, "key-size from card[%i] does not match[%i]\n", mod_len, keybits);
+			sc_debug(card->ctx, "key-size from card[%i] does not match[%i]\n", mod_len, keybits);
 			r = SC_ERROR_PKCS15INIT;
 			goto done;
 		}

@@ -891,9 +891,7 @@ static int create_file(sc_file_t *file)
 	path = file->path;
 	if (path.len < 2)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	ctx->suppress_errors++;
 	r = sc_select_file(card, &path, NULL);
-	ctx->suppress_errors--;
 	if (r == 0)
 		return 0;	/* File already exists */
 	path.len -= 2;
@@ -962,9 +960,7 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 	r = sc_select_file(card, inpath, NULL);
 	if (r)
 		return -1;
-	sc_ctx_suppress_errors_on(ctx);
 	r = sc_select_file(card, &file_id, NULL);
-	sc_ctx_suppress_errors_off(ctx);
 	if (r == 0)
 		return 0;
 	for (;;) {

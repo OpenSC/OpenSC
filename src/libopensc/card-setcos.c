@@ -145,9 +145,7 @@ static int select_pkcs15_app(sc_card_t * card)
 	/* Regular PKCS#15 AID */
 	sc_format_path("A000000063504B43532D3135", &app);
 	app.type = SC_PATH_TYPE_DF_NAME;
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &app, NULL);
-	sc_ctx_suppress_errors_off(card->ctx);
 	return r;
 }
 
@@ -474,7 +472,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 				break;
 			case SC_AC_CHV:				/* pin */
 				if ((bNumber & 0x7F) == 0 || (bNumber & 0x7F) > 7) {
-					sc_error(card->ctx, "SetCOS 4.4 PIN refs can only be 1..7\n");
+					sc_debug(card->ctx, "SetCOS 4.4 PIN refs can only be 1..7\n");
 					return SC_ERROR_INVALID_ARGUMENTS;
 				}
 				bCommands_pin[setcos_pin_index_44(pins, sizeof(pins), (int) bNumber)] |= 1 << i;
@@ -577,11 +575,11 @@ static int setcos_set_security_env2(sc_card_t *card,
 	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
 	    SETCOS_IS_EID_APPLET(card)) {
 		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC) {
-			sc_error(card->ctx, "asymmetric keyref not supported.\n");
+			sc_debug(card->ctx, "asymmetric keyref not supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		if (se_num > 0) {
-			sc_error(card->ctx, "restore security environment not supported.\n");
+			sc_debug(card->ctx, "restore security environment not supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 	}
@@ -671,7 +669,7 @@ static int setcos_set_security_env(sc_card_t *card,
 		tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
 		tmp.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 		if (tmp.algorithm != SC_ALGORITHM_RSA) {
-			sc_error(card->ctx, "Only RSA algorithm supported.\n");
+			sc_debug(card->ctx, "Only RSA algorithm supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		switch (card->type) {
@@ -684,7 +682,7 @@ static int setcos_set_security_env(sc_card_t *card,
 		case SC_CARD_TYPE_SETCOS_EID_V2_1:
 			break;
 		default:
-			sc_error(card->ctx, "Card does not support RSA.\n");
+			sc_debug(card->ctx, "Card does not support RSA.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 			break;
 		}

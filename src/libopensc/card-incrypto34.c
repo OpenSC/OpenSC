@@ -154,13 +154,13 @@ static int incrypto34_check_sw(sc_card_t *card, unsigned int sw1, unsigned int s
 	for (i = 0; i < err_count; i++) {
 		if (incrypto34_errors[i].SWs == ((sw1 << 8) | sw2)) {
 			if ( incrypto34_errors[i].errorstr )
-				sc_error(card->ctx, "%s\n",
+				sc_debug(card->ctx, "%s\n",
 				 	incrypto34_errors[i].errorstr);
 			return incrypto34_errors[i].errorno;
 		}
 	}
 
-        sc_error(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+        sc_debug(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -392,7 +392,7 @@ static int incrypto34_create_file(sc_card_t *card, sc_file_t *file)
 				byte = acl_to_byte(
 				    sc_file_get_acl_entry(file, idx[i]));
                         if (byte < 0) {
-                                sc_error(card->ctx, "Invalid ACL\n");
+                                sc_debug(card->ctx, "Invalid ACL\n");
                                 r = SC_ERROR_INVALID_ARGUMENTS;
 				goto out;
                         }
@@ -452,7 +452,7 @@ static int incrypto34_set_security_env(sc_card_t *card,
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
 	 || env->key_ref_len != 1) {
-		sc_error(card->ctx, "No or invalid key reference\n");
+		sc_debug(card->ctx, "No or invalid key reference\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	key_id = env->key_ref[0];
@@ -553,9 +553,7 @@ incrypto34_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	 */
 	if (ctx->debug >= 3)
 		sc_debug(ctx, "trying RSA_PURE_SIG (padded DigestInfo)\n");
-	sc_ctx_suppress_errors_on(ctx);
 	r = do_compute_signature(card, data, datalen, out, outlen);
-	sc_ctx_suppress_errors_off(ctx);
 	if (r >= SC_SUCCESS)
 		SC_FUNC_RETURN(ctx, 4, r);
 	if (ctx->debug >= 3)
@@ -574,9 +572,7 @@ incrypto34_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 		}
 		memcpy(buf, p, tmp_len);
 	}
-	sc_ctx_suppress_errors_on(ctx);
 	r = do_compute_signature(card, buf, tmp_len, out, outlen);
-	sc_ctx_suppress_errors_off(ctx);
 	if (r >= SC_SUCCESS)
 		SC_FUNC_RETURN(ctx, 4, r);
 	if (ctx->debug >= 3)
@@ -624,7 +620,7 @@ incrypto34_lifecycle_get(sc_card_t *card, int *mode)
 		*mode = SC_CARDCTRL_LIFECYCLE_OTHER;
 		break;
 	default:
-		sc_error(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
+		sc_debug(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
 		r = SC_ERROR_INTERNAL;
 	}
 

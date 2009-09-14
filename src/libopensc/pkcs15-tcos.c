@@ -455,14 +455,10 @@ int sc_pkcs15emu_tcos_init_ex(
 	serial[19] = '\0';
         p15card->serial_number = strdup(serial);
 
-	sc_ctx_suppress_errors_on(ctx);
-
 	if(!detect_netkey(p15card)) return SC_SUCCESS;
 	if(!detect_signtrust(p15card)) return SC_SUCCESS;
 	if(!detect_datev(p15card)) return SC_SUCCESS;
 	if(!detect_unicard(p15card)) return SC_SUCCESS;
-
-	sc_ctx_suppress_errors_off(ctx);
 
 	return SC_ERROR_INTERNAL;
 }

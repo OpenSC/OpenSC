@@ -96,12 +96,12 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
 	if (r) {
-		sc_error(card->ctx, "EF(DIR) parsing failed: %s\n",
+		sc_debug(card->ctx, "EF(DIR) parsing failed: %s\n",
 		      sc_strerror(r));
 		return r;
 	}
 	if (aid_len > SC_MAX_AID_SIZE) {
-		sc_error(card->ctx, "AID is too long.\n");
+		sc_debug(card->ctx, "AID is too long.\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	app = (sc_app_info_t *) malloc(sizeof(sc_app_info_t));
@@ -116,7 +116,7 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 		app->label = NULL;
 	if (asn1_dirrecord[2].flags & SC_ASN1_PRESENT) {
 		if (path_len > SC_MAX_PATH_SIZE) {
-			sc_error(card->ctx, "Application path is too long.\n");
+			sc_debug(card->ctx, "Application path is too long.\n");
 			free(app);
 			return SC_ERROR_INVALID_ASN1_OBJECT;
 		}
@@ -167,9 +167,7 @@ int sc_enum_apps(sc_card_t *card)
 		sc_file_free(card->ef_dir);
 		card->ef_dir = NULL;
 	}
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, &card->ef_dir);
-	sc_ctx_suppress_errors_off(card->ctx);
 	if (r)
 		return r;
 	if (card->ef_dir->type != SC_FILE_TYPE_WORKING_EF) {
@@ -198,7 +196,7 @@ int sc_enum_apps(sc_card_t *card)
 		bufsize = r;
 		while (bufsize > 0) {
 			if (card->app_count == SC_MAX_CARD_APPS) {
-				sc_error(card->ctx, "Too many applications on card");
+				sc_debug(card->ctx, "Too many applications on card");
 				break;
 			}
 			r = parse_dir_record(card, &p, &bufsize, -1);
@@ -214,15 +212,13 @@ int sc_enum_apps(sc_card_t *card)
 		size_t       rec_size;
 		
 		for (rec_nr = 1; ; rec_nr++) {
-			sc_ctx_suppress_errors_on(card->ctx);
 			r = sc_read_record(card, rec_nr, buf, sizeof(buf), 
 						SC_RECORD_BY_REC_NR);
-			sc_ctx_suppress_errors_off(card->ctx);
 			if (r == SC_ERROR_RECORD_NOT_FOUND)
 				break;
 			SC_TEST_RET(card->ctx, r, "read_record() failed");
 			if (card->app_count == SC_MAX_CARD_APPS) {
-				sc_error(card->ctx, "Too many applications on card");
+				sc_debug(card->ctx, "Too many applications on card");
 				break;
 			}
 			rec_size = r;
@@ -285,7 +281,7 @@ static int encode_dir_record(sc_context_t *ctx, const sc_app_info_t *app,
 				     (void *) &tapp.ddo_len, 1);
 	r = sc_asn1_encode(ctx, asn1_dir, buf, buflen);
 	if (r) {
-		sc_error(ctx, "sc_asn1_encode() failed: %s\n",
+		sc_debug(ctx, "sc_asn1_encode() failed: %s\n",
 		      sc_strerror(r));
 		return r;
 	}
@@ -352,9 +348,7 @@ static int update_single_record(sc_card_t *card, sc_file_t *file,
 		r = sc_update_record(card, (unsigned int)app->rec_nr, rec, rec_size, SC_RECORD_BY_REC_NR);
 	else if (app->rec_nr == 0) {
 		/* create new record entry */
-		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_append_record(card, rec, rec_size, 0);
-		sc_ctx_suppress_errors_off(card->ctx);
 		if (r == SC_ERROR_NOT_SUPPORTED) {
 			/* if the card doesn't support APPEND RECORD we try a
 			 * UPDATE RECORD on the next unused record (and hope
@@ -368,7 +362,7 @@ static int update_single_record(sc_card_t *card, sc_file_t *file,
 			r = sc_update_record(card, (unsigned int)rec_nr, rec, rec_size, SC_RECORD_BY_REC_NR);
 		}
 	} else {
-		sc_error(card->ctx, "invalid record number\n");
+		sc_debug(card->ctx, "invalid record number\n");
 		r = SC_ERROR_INTERNAL;
 	}
 	free(rec);

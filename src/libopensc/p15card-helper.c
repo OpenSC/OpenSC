@@ -142,29 +142,29 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 	int modulus_len = 0;
 	const prdata* key = get_prkey_by_cert(items, cert);
 	if(!key) {
-		sc_error(p15card->card->ctx, "Error: No key for this certificate");
+		sc_debug(p15card->card->ctx, "Error: No key for this certificate");
 		return SC_ERROR_INTERNAL;
 	}
 
 	if(!d2i_X509(&cert_data, (const u8**)&data, length)) {
-		sc_error(p15card->card->ctx, "Error converting certificate");
+		sc_debug(p15card->card->ctx, "Error converting certificate");
 		return SC_ERROR_INTERNAL;
 	}
 
 	pkey = X509_get_pubkey(cert_data);
 	
 	if(pkey == NULL) {
-		sc_error(p15card->card->ctx, "Error: no public key associated with the certificate");
+		sc_debug(p15card->card->ctx, "Error: no public key associated with the certificate");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	if(! EVP_PK_RSA & (certtype = X509_certificate_type(cert_data, pkey))) {
-		sc_error(p15card->card->ctx, "Error: certificate is not for an RSA key");
+		sc_debug(p15card->card->ctx, "Error: certificate is not for an RSA key");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	if(pkey->pkey.rsa->n == NULL) {
-		sc_error(p15card->card->ctx, "Error: no modulus associated with the certificate");
+		sc_debug(p15card->card->ctx, "Error: no modulus associated with the certificate");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}

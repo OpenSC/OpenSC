@@ -133,7 +133,6 @@ static int cosm_erase_card(struct sc_profile *profile, sc_card_t *card)
 	 * Note we need to delete if before the DF because we create
 	 * it *after* the DF. 
 	 * */
-	sc_ctx_suppress_errors_on(card->ctx);
 	if (sc_profile_get_file(profile, "DIR", &dir) >= 0) {
 		sc_debug(card->ctx, "erase file dir %04X\n",dir->id);
 		rv = cosm_delete_file(card, profile, dir);
@@ -170,7 +169,6 @@ static int cosm_erase_card(struct sc_profile *profile, sc_card_t *card)
 
 done:		
 	sc_keycache_forget_key(NULL, -1, -1);
-	sc_ctx_suppress_errors_off(card->ctx);
 
 	if (rv==SC_ERROR_FILE_NOT_FOUND)
 		rv=0;
@@ -217,7 +215,7 @@ cosm_init_app(struct sc_profile *profile, sc_card_t *card,
 	/* Create private objects DF */
 	for (ii = 0; create_dfs[ii]; ii++)   {
 		if (sc_profile_get_file(profile, create_dfs[ii], &file))   {
-			sc_error(card->ctx, "Inconsistent profile: cannot find %s", create_dfs[ii]);
+			sc_debug(card->ctx, "Inconsistent profile: cannot find %s", create_dfs[ii]);
 			return SC_ERROR_INCONSISTENT_PROFILE;
 		}
 	
@@ -318,7 +316,7 @@ static int cosm_update_pin(struct sc_profile *profile, sc_card_t *card,
 	sc_debug(card->ctx, "ref %i; flags %X\n", pinfo->reference, pinfo->flags);
 
 	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN)   {
-		sc_error(card->ctx,"Pin references should be only in the profile"
+		sc_debug(card->ctx,"Pin references should be only in the profile"
 				"and in the card-oberthur.\n");
 		if (pinfo->reference != 4)
 			return SC_ERROR_INVALID_PIN_REFERENCE;
@@ -327,7 +325,7 @@ static int cosm_update_pin(struct sc_profile *profile, sc_card_t *card,
 				pin, pin_len, &tries_left);
 		sc_debug(card->ctx, "return value %X; tries left %i\n", rv, tries_left);
 		if (tries_left != -1)
-			sc_error(card->ctx, "Failed to change reference data for soPin: rv %X", rv);
+			sc_debug(card->ctx, "Failed to change reference data for soPin: rv %X", rv);
 
 	}
 	else   {
@@ -347,7 +345,7 @@ cosm_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "ref %i; flags %X\n", pin_info->reference, pin_info->flags);
     if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pinfile) < 0) {
-		sc_error(card->ctx, "Profile doesn't define \"%s\"", COSM_TITLE "-AppDF");
+		sc_debug(card->ctx, "Profile doesn't define \"%s\"", COSM_TITLE "-AppDF");
 		return SC_ERROR_INCONSISTENT_PROFILE;
 	}
 
@@ -383,7 +381,7 @@ cosm_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "ref %i; flags %X\n", pinfo->reference, pinfo->flags);
     if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pinfile) < 0) {
-		sc_error(card->ctx, "Profile doesn't define \"%s\"", COSM_TITLE "-AppDF");
+		sc_debug(card->ctx, "Profile doesn't define \"%s\"", COSM_TITLE "-AppDF");
 		return SC_ERROR_INCONSISTENT_PROFILE;
 	}
 		    
@@ -469,7 +467,7 @@ cosm_new_file(struct sc_profile *profile, sc_card_t *card,
 		 * the generic class (SC_PKCS15_TYPE_CERT)
 		 */
 		if (!(type & ~SC_PKCS15_TYPE_CLASS_MASK)) {
-			sc_error(card->ctx, "File type %X not supported by card driver", 
+			sc_debug(card->ctx, "File type %X not supported by card driver", 
 				type);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -478,7 +476,7 @@ cosm_new_file(struct sc_profile *profile, sc_card_t *card,
 
 	sc_debug(card->ctx, "template %s; num %i\n",_template, num);
 	if (sc_profile_get_file(profile, _template, &file) < 0) {
-		sc_error(card->ctx, "Profile doesn't define %s template '%s'\n",
+		sc_debug(card->ctx, "Profile doesn't define %s template '%s'\n",
 				desc, _template);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -514,7 +512,7 @@ cosm_old_generate_key(struct sc_profile *profile, sc_card_t *card,
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "index %i; nn %i\n", idx, keybits);
 	if (keybits < 512 || keybits > 2048 || (keybits%0x20))   {
-		sc_error(card->ctx, "Unsupported key size %u\n", keybits);
+		sc_debug(card->ctx, "Unsupported key size %u\n", keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	
@@ -1003,7 +1001,7 @@ cosm_update_df_new_object(struct sc_pkcs15_card *p15card,
 		cosm_free_data_info(&idata);						
 		break;
 	default:
-		sc_error(card->ctx, "Unsupported type %i\n", object->type);
+		sc_debug(card->ctx, "Unsupported type %i\n", object->type);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -1061,7 +1059,7 @@ cosm_update_tokeninfo (struct sc_pkcs15_card *p15card,
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	
 	if (sc_profile_get_file(profile, COSM_TITLE"-token-info", &file))   {
-		sc_error(p15card->card->ctx, 
+		sc_debug(p15card->card->ctx, 
 				"Inconsistent profile: cannot find "COSM_TITLE"-token-info");
 		return SC_ERROR_INCONSISTENT_PROFILE;
 	}

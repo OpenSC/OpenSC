@@ -206,7 +206,7 @@ rutoken_create_pin(sc_profile_t *profile, sc_card_t *card,
 
 	if (puk_len != 0)
 	{
-		sc_error(card->ctx, "Do not enter User unblocking PIN (PUK): %s\n",
+		sc_debug(card->ctx, "Do not enter User unblocking PIN (PUK): %s\n",
 				sc_strerror(SC_ERROR_NOT_SUPPORTED));
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -220,7 +220,7 @@ rutoken_create_pin(sc_profile_t *profile, sc_card_t *card,
 				return SC_SUCCESS;
 			else
 			{
-				sc_error(card->ctx, "Incorrect PIN\n");
+				sc_debug(card->ctx, "Incorrect PIN\n");
 				break;
 			}
 		}
@@ -457,14 +457,14 @@ rutoken_erase(struct sc_profile *profile, sc_card_t *card)
 	{
 		ret = create_typical_fs(card);
 		if (ret != SC_SUCCESS)
-			sc_error(card->ctx, "Failed to create typical fs: %s\n",
+			sc_debug(card->ctx, "Failed to create typical fs: %s\n",
 					sc_strerror(ret));
 		ret_end = sc_card_ctl(card, SC_CARDCTL_RUTOKEN_FORMAT_END, NULL);
 		if (ret_end != SC_SUCCESS)
 			ret = ret_end;
 	}
 	if (ret != SC_SUCCESS)
-		sc_error(card->ctx, "Failed to erase: %s\n", sc_strerror(ret));
+		sc_debug(card->ctx, "Failed to erase: %s\n", sc_strerror(ret));
 	else
 		sc_free_apps(card);
 	return ret;

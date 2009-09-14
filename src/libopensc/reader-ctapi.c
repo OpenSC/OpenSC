@@ -96,11 +96,11 @@ static int ctapi_reset(sc_reader_t *reader, sc_slot_info_t *slot)
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
 	if (rv || (lr < 2)) {
-		sc_error(reader->ctx, "Error getting status of terminal: %d, using defaults\n", rv);
+		sc_debug(reader->ctx, "Error getting status of terminal: %d, using defaults\n", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	if (rbuf[lr-2] != 0x90) {
-		sc_error(reader->ctx, "SW1/SW2: 0x%x/0x%x\n", rbuf[lr-2], rbuf[lr-1]);
+		sc_debug(reader->ctx, "SW1/SW2: 0x%x/0x%x\n", rbuf[lr-2], rbuf[lr-1]);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	return 0;
@@ -141,7 +141,7 @@ static void detect_functional_units(sc_reader_t *reader)
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
 	if (rv || (lr < 4) || (rbuf[lr-2] != 0x90)) {
-		sc_error(reader->ctx, "Error getting status of terminal: %d, using defaults\n", rv);
+		sc_debug(reader->ctx, "Error getting status of terminal: %d, using defaults\n", rv);
 		set_default_fu(reader);
 		return;
 	}
@@ -149,13 +149,13 @@ static void detect_functional_units(sc_reader_t *reader)
 		/* Number of slots might also detected by using CTBCS_P2_STATUS_ICC.
 		   If you think that's important please do it... ;) */
 		set_default_fu(reader);
-		sc_error(reader->ctx, "Invalid data object returnd on CTBCS_P2_STATUS_TFU: 0x%x\n", rbuf[0]);
+		sc_debug(reader->ctx, "Invalid data object returnd on CTBCS_P2_STATUS_TFU: 0x%x\n", rbuf[0]);
 		return;
 	}
 	NumUnits = rbuf[1];
 	if (NumUnits + 4 > lr) {
 		set_default_fu(reader);
-		sc_error(reader->ctx, "Invalid data returnd: %d functional units, size %d\n", NumUnits, rv);
+		sc_debug(reader->ctx, "Invalid data returnd: %d functional units, size %d\n", NumUnits, rv);
 		set_default_fu(reader);
 		return;
 	}
@@ -257,13 +257,13 @@ static int refresh_slot_attributes(sc_reader_t *reader,
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
 	if (rv || (lr < 3) || (rbuf[lr-2] != 0x90)) {
-		sc_error(reader->ctx, "Error getting status of terminal: %d/%d/0x%x\n", rv, lr, rbuf[lr-2]);
+		sc_debug(reader->ctx, "Error getting status of terminal: %d/%d/0x%x\n", rv, lr, rbuf[lr-2]);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	if (lr < 4) {
 		/* Looks like older readers do not return data tag and length field, so assume one slot only */
 		if (slot->id > 0) {
-			sc_error(reader->ctx, "Status for slot id %d not returned, have only 1\n", slot->id);
+			sc_debug(reader->ctx, "Status for slot id %d not returned, have only 1\n", slot->id);
 			return SC_ERROR_SLOT_NOT_FOUND;
 		}
 		if (rbuf[0] & CTBCS_DATA_STATUS_CARD)
@@ -271,11 +271,11 @@ static int refresh_slot_attributes(sc_reader_t *reader,
 	} else {
 		if (rbuf[0] != CTBCS_P2_STATUS_ICC) {
 			/* Should we be more tolerant here? I do not think so... */
-			sc_error(reader->ctx, "Invalid data object returnd on CTBCS_P2_STATUS_ICC: 0x%x\n", rbuf[0]);
+			sc_debug(reader->ctx, "Invalid data object returnd on CTBCS_P2_STATUS_ICC: 0x%x\n", rbuf[0]);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 		if (rbuf[1] <= slot->id) {
-			sc_error(reader->ctx, "Status for slot id %d not returned, only %d\n", slot->id, rbuf[1]);
+			sc_debug(reader->ctx, "Status for slot id %d not returned, only %d\n", slot->id, rbuf[1]);
 			return SC_ERROR_SLOT_NOT_FOUND;
 		}
 		if (rbuf[2+slot->id] & CTBCS_DATA_STATUS_CARD)
@@ -306,7 +306,7 @@ static int ctapi_internal_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 	
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, (unsigned short)sendsize, (u8 *) sendbuf, &lr, recvbuf);
 	if (rv != 0) {
-		sc_error(reader->ctx, "Error transmitting APDU: %d\n", rv);
+		sc_debug(reader->ctx, "Error transmitting APDU: %d\n", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	*recvsize = lr;
@@ -337,7 +337,7 @@ static int ctapi_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 					rbuf, &rsize, apdu->control);
 	if (r < 0) {
 		/* unable to transmit ... most likely a reader problem */
-		sc_error(reader->ctx, "unable to transmit");
+		sc_debug(reader->ctx, "unable to transmit");
 		goto out;
 	}
 	if (reader->ctx->debug >= 6)
@@ -386,7 +386,7 @@ static int ctapi_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
 	if (rv || rbuf[lr-2] != 0x90) {
-		sc_error(reader->ctx, "Error activating card: %d\n", rv);
+		sc_debug(reader->ctx, "Error activating card: %d\n", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	if (lr < 2)
@@ -413,7 +413,7 @@ static int ctapi_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 
 		rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 9, cmd, &lr, rbuf);
 		if (rv) {
-			sc_error(reader->ctx, "Error negotiating PPS: %d\n", rv);
+			sc_debug(reader->ctx, "Error negotiating PPS: %d\n", rv);
 			return SC_ERROR_TRANSMIT_FAILED;
 		}
 	}
@@ -483,14 +483,14 @@ static int ctapi_load_module(sc_context_t *ctx,
 	
 	list = scconf_find_list(conf, "ports");
 	if (list == NULL) {
-		sc_error(ctx, "No ports configured.\n");
+		sc_debug(ctx, "No ports configured.\n");
 		return -1;
 	}
 
 	val = conf->name->data;
 	dlh = lt_dlopen(val);
 	if (!dlh) {
-		sc_error(ctx, "Unable to open shared library '%s': %s\n", val, lt_dlerror());
+		sc_debug(ctx, "Unable to open shared library '%s': %s\n", val, lt_dlerror());
 		return -1;
 	}
 
@@ -513,12 +513,12 @@ static int ctapi_load_module(sc_context_t *ctx,
 		struct ctapi_private_data *priv;
 		
 		if (sscanf(list->data, "%d", &port) != 1) {
-			sc_error(ctx, "Port '%s' is not a number.\n", list->data);
+			sc_debug(ctx, "Port '%s' is not a number.\n", list->data);
 			continue;
 		}
 		rv = funcs.CT_init((unsigned short)mod->ctn_count, (unsigned short)port);
 		if (rv) {
-			sc_error(ctx, "CT_init() failed with %d\n", rv);
+			sc_debug(ctx, "CT_init() failed with %d\n", rv);
 			continue;
 		}
 		reader = (sc_reader_t *) calloc(1, sizeof(sc_reader_t));
@@ -550,7 +550,7 @@ static int ctapi_load_module(sc_context_t *ctx,
 	}
 	return 0;
 symerr:
-	sc_error(ctx, "Unable to resolve CT-API symbols.\n");
+	sc_debug(ctx, "Unable to resolve CT-API symbols.\n");
 	lt_dlclose(dlh);
 	return -1;
 }

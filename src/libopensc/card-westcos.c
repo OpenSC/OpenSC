@@ -209,14 +209,10 @@ static int westcos_match_card(sc_card_t * card)
 				apdu.lc = sizeof(aid);
 				apdu.datalen = sizeof(aid);
 				apdu.data = aid;
-				sc_ctx_suppress_errors_on(card->ctx);
 				r = sc_transmit_apdu(card, &apdu);
-				sc_ctx_suppress_errors_off(card->ctx);
 				if (r)
 					continue;
-				sc_ctx_suppress_errors_on(card->ctx);
 				r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-				sc_ctx_suppress_errors_off(card->ctx);
 				if (r)
 					continue;
 			}

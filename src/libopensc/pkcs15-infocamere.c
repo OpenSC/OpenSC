@@ -242,9 +242,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	sc_format_path("3F002F02", &path);
 
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, &file);
-	sc_ctx_suppress_errors_off(card->ctx);
 	
 	if (r != SC_SUCCESS || file->size > 255) {
 		/* Not EF.GDO */
@@ -308,9 +306,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	sc_format_path(infocamere_auth_certpath[ef_gdo[len_iccsn+6]-2], &path);
 
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, NULL);
-	sc_ctx_suppress_errors_off(card->ctx);
 
 	if (r >= 0) {
 
@@ -398,9 +394,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	sc_format_path(infocamere_cacert_path[ef_gdo[len_iccsn+6]-2], &path);
 
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_select_file(card, &path, NULL);
-	sc_ctx_suppress_errors_off(card->ctx);
 
 	if (r >= 0) {
 		size_t len;
@@ -530,7 +524,7 @@ static int loadCertificate(sc_pkcs15_card_t * p15card, int i,
 	sc_read_binary(card, 4, compCert, compLen, 0);
 
 	if ((r = uncompress(cert, &len, compCert, compLen)) != Z_OK) {
-		sc_error(p15card->card->ctx, "Zlib error: %d", r);
+		sc_debug(p15card->card->ctx, "Zlib error: %d", r);
 		return SC_ERROR_INTERNAL;
 	}
 
@@ -614,7 +608,7 @@ static int infocamere_1400_init(sc_pkcs15_card_t * p15card)
 
 	if ((r = loadCertificate(p15card, 0, certPath[0], certLabel[0])) !=
 	    SC_SUCCESS) {
-		sc_error(p15card->card->ctx, "%s", sc_strerror(r));
+		sc_debug(p15card->card->ctx, "%s", sc_strerror(r));
 		return SC_ERROR_WRONG_CARD;
 	}
 

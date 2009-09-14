@@ -16,19 +16,11 @@ app default {
 
 	# The file to which debug output will be written
 	#
-	# A special value of 'stdout' is recognized.
-	# Default: stdout
+	# Special values 'stdout' and 'stderr' are recognized.
+	# Default: stderr
 	#
 	# debug_file = /tmp/opensc-debug.log;
 	# debug_file = "C:\Documents and Settings\All Users\Documents\opensc-debug.log";
-
-	# The file to which errors will be written
-	#
-	# A special value of 'stderr' is recognized.
-	# Default: stderr
-	#
-	# error_file = /tmp/opensc-errors.log;
-	# error_file = "C:\Documents and Settings\All Users\Documents\opensc-errors.log";
 
 	# PKCS#15 initialization / personalization
 	# profiles directory for pkcs15-init.

@@ -586,7 +586,7 @@ static int gemsafe_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 		/* Call the reader driver to collect
 		 * the PIN and pass on the APDU to the card */
 		if (data->pin1.offset == 0) {
-			sc_error(card->ctx,
+			sc_debug(card->ctx,
 				"Card driver didn't set PIN offset");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -598,7 +598,7 @@ static int gemsafe_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 					data);
 			/* sw1/sw2 filled in by reader driver */
 		} else {
-			sc_error(card->ctx,
+			sc_debug(card->ctx,
 				"Card reader driver does not support "
 				"PIN entry through reader key pad");
 			r = SC_ERROR_NOT_SUPPORTED;

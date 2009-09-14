@@ -179,7 +179,7 @@ muscle_store_key(sc_profile_t *profile, sc_card_t *card,
 	int		r;
 	
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_error(card->ctx, "Muscle supports RSA keys only.");
+		sc_debug(card->ctx, "Muscle supports RSA keys only.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	/* Verification stuff */
@@ -217,7 +217,7 @@ muscle_store_key(sc_profile_t *profile, sc_card_t *card,
 	
 	r = sc_card_ctl(card, SC_CARDCTL_MUSCLE_IMPORT_KEY, &info);
 	if (r < 0) {
-		sc_error(card->ctx, "Unable to import key");
+		sc_debug(card->ctx, "Unable to import key");
 		SC_FUNC_RETURN(card->ctx, 2,r);
 	}
 	return r;
@@ -236,12 +236,12 @@ muscle_generate_key(sc_profile_t *profile, sc_card_t *card,
 	int		r;
 	
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_error(card->ctx, "Muscle supports only RSA keys (for now).");
+		sc_debug(card->ctx, "Muscle supports only RSA keys (for now).");
 		SC_FUNC_RETURN(card->ctx, 2,SC_ERROR_NOT_SUPPORTED);
 	}
 	keybits = key_info->modulus_length & ~7UL;
 	if (keybits > 2048) {
-		sc_error(card->ctx, "Unable to generate key, max size is %d",
+		sc_debug(card->ctx, "Unable to generate key, max size is %d",
 				2048);
 		SC_FUNC_RETURN(card->ctx, 2,SC_ERROR_INVALID_ARGUMENTS);
 	}
@@ -269,7 +269,7 @@ muscle_generate_key(sc_profile_t *profile, sc_card_t *card,
 	
 	r = sc_card_ctl(card, SC_CARDCTL_MUSCLE_GENERATE_KEY, &args);
 	if (r < 0) {
-		sc_error(card->ctx, "Unable to generate key");
+		sc_debug(card->ctx, "Unable to generate key");
 		SC_FUNC_RETURN(card->ctx, 2,r);
 	}
 	
@@ -280,7 +280,7 @@ muscle_generate_key(sc_profile_t *profile, sc_card_t *card,
 	extArgs.keyLocation = args.publicKeyLocation;
 	r = sc_card_ctl(card, SC_CARDCTL_MUSCLE_EXTRACT_KEY, &extArgs);
 	if (r < 0) {
-		sc_error(card->ctx, "Unable to extract the public key");
+		sc_debug(card->ctx, "Unable to extract the public key");
 		SC_FUNC_RETURN(card->ctx, 2,r);
 	}
 	

@@ -60,7 +60,7 @@ int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file) {
 	if(apdu.resplen == 0) /* No more left */
 		return 0;
 	if (apdu.resplen != 14) {
-		sc_error(card->ctx, "expected 14 bytes, got %d.\n", apdu.resplen);
+		sc_debug(card->ctx, "expected 14 bytes, got %d.\n", apdu.resplen);
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 	memcpy(file->objectId.id, fileData, 4);
@@ -498,9 +498,7 @@ int msc_get_challenge(sc_card_t *card, short dataLength, short seedLength, u8 *s
 		r = msc_read_object(card, inputId, 2, outputData, dataLength);
 		if(r < 0)
 			SC_FUNC_RETURN(card->ctx, 0, r);
-		sc_ctx_suppress_errors_on(card->ctx);
 		msc_delete_object(card, inputId,0);
-		sc_ctx_suppress_errors_off(card->ctx);
 		SC_FUNC_RETURN(card->ctx, 0, r);
 	}
 }
@@ -828,23 +826,19 @@ static int msc_compute_crypt_final_object(
 	ptr++;
 	memcpy(ptr, inputData, dataLength);
 
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = msc_create_object(card, outputId, dataLength + 2, 0x02, 0x02, 0x02);
 	if(r < 0) { 
 		if(r == SC_ERROR_FILE_ALREADY_EXISTS) {
 			r = msc_delete_object(card, outputId, 0);
 			if(r < 0) {
-				sc_ctx_suppress_errors_off(card->ctx);
 				SC_FUNC_RETURN(card->ctx, 2, r);
 			}
 			r = msc_create_object(card, outputId, dataLength + 2, 0x02, 0x02, 0x02);
 			if(r < 0) {
-				sc_ctx_suppress_errors_off(card->ctx);
 				SC_FUNC_RETURN(card->ctx, 2, r);
 			}
 		}
 	}
-	sc_ctx_suppress_errors_off(card->ctx);
 
 	r = msc_update_object(card, outputId, 0, buffer + 1, dataLength + 2);
 	if(r < 0) return r; 
@@ -867,10 +861,8 @@ static int msc_compute_crypt_final_object(
 	} else {
 		r = SC_ERROR_CARD_CMD_FAILED;
 	}
-	/* no error checks.. this is last ditch cleanup */	
-	sc_ctx_suppress_errors_on(card->ctx);
+	/* this is last ditch cleanup */	
 	msc_delete_object(card, outputId, 0);
-	sc_ctx_suppress_errors_off(card->ctx);
 	
 	SC_FUNC_RETURN(card->ctx, 0, r);
 }
@@ -995,25 +987,21 @@ int msc_import_key(sc_card_t *card,
 		CPYVAL(dq1);
 	}
 	
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = msc_create_object(card, outputId, bufferSize, 0x02, 0x02, 0x02);
 	if(r < 0) { 
 		if(r == SC_ERROR_FILE_ALREADY_EXISTS) {
 			r = msc_delete_object(card, outputId, 0);
 			if(r < 0) {
-				sc_ctx_suppress_errors_off(card->ctx);
 				free(buffer);
 				SC_FUNC_RETURN(card->ctx, 2, r);
 			}
 			r = msc_create_object(card, outputId, bufferSize, 0x02, 0x02, 0x02);
 			if(r < 0) {
-				sc_ctx_suppress_errors_off(card->ctx);
 				free(buffer);
 				SC_FUNC_RETURN(card->ctx, 2, r);
 			}
 		}
 	}
-	sc_ctx_suppress_errors_off(card->ctx);
 	
 	r = msc_update_object(card, outputId, 0, buffer, bufferSize);
 	free(buffer);
@@ -1040,16 +1028,12 @@ int msc_import_key(sc_card_t *card,
 			sc_debug(card->ctx, "keyimport: got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
-		/* no error checks.. this is last ditch cleanup */
-		sc_ctx_suppress_errors_on(card->ctx);
+		/* this is last ditch cleanup */
 		msc_delete_object(card, outputId, 0);
-		sc_ctx_suppress_errors_off(card->ctx);
 		SC_FUNC_RETURN(card->ctx, 0, r);
 	}
-	/* no error checks.. this is last ditch cleanup */
-	sc_ctx_suppress_errors_on(card->ctx);
+	/* this is last ditch cleanup */
 	msc_delete_object(card, outputId, 0);
-	sc_ctx_suppress_errors_off(card->ctx);
 
 	SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_CARD_CMD_FAILED);
 }

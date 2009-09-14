@@ -84,22 +84,22 @@ static int iso7816_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	
 	/* Handle special cases here */
 	if (sw1 == 0x6C) {
-		sc_error(card->ctx, "Wrong length; correct length is %d\n", sw2);
+		sc_debug(card->ctx, "Wrong length; correct length is %d\n", sw2);
 		return SC_ERROR_WRONG_LENGTH;
 	}
 	if (sw1 == 0x90)
 		return SC_NO_ERROR;
         if (sw1 == 0x63U && (sw2 & ~0x0fU) == 0xc0U ) {
-             sc_error(card->ctx, "Verification failed (remaining tries: %d)\n",
+             sc_debug(card->ctx, "Verification failed (remaining tries: %d)\n",
                    (sw2 & 0x0f));
              return SC_ERROR_PIN_CODE_INCORRECT;
         }
 	for (i = 0; i < err_count; i++)
 		if (iso7816_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			sc_error(card->ctx, "%s\n", iso7816_errors[i].errorstr);
+			sc_debug(card->ctx, "%s\n", iso7816_errors[i].errorstr);
 			return iso7816_errors[i].errorno;
 		}
-	sc_error(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+	sc_debug(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -112,7 +112,7 @@ static int iso7816_read_binary(sc_card_t *card,
 	int r;
 
 	if (idx > 0x7fff) {
-		sc_error(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
+		sc_debug(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
 		return SC_ERROR_OFFSET_TOO_LARGE;
 	}
 
@@ -166,7 +166,7 @@ static int iso7816_write_record(sc_card_t *card, unsigned int rec_nr,
 	int r;
 
 	if (count > 256) {
-		sc_error(card->ctx, "Trying to send too many bytes\n");
+		sc_debug(card->ctx, "Trying to send too many bytes\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD2, rec_nr, 0);
@@ -193,7 +193,7 @@ static int iso7816_append_record(sc_card_t *card,
 	int r;
 
 	if (count > 256) {
-		sc_error(card->ctx, "Trying to send too many bytes\n");
+		sc_debug(card->ctx, "Trying to send too many bytes\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE2, 0, 0);
@@ -218,7 +218,7 @@ static int iso7816_update_record(sc_card_t *card, unsigned int rec_nr,
 	int r;
 
 	if (count > 256) {
-		sc_error(card->ctx, "Trying to send too many bytes\n");
+		sc_debug(card->ctx, "Trying to send too many bytes\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDC, rec_nr, 0);
@@ -247,7 +247,7 @@ static int iso7816_write_binary(sc_card_t *card,
 	assert(count <= card->max_send_size);
 
 	if (idx > 0x7fff) {
-		sc_error(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
+		sc_debug(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
 		return SC_ERROR_OFFSET_TOO_LARGE;
 	}
 
@@ -274,7 +274,7 @@ static int iso7816_update_binary(sc_card_t *card,
 	assert(count <= card->max_send_size);
 
 	if (idx > 0x7fff) {
-		sc_error(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
+		sc_debug(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
 		return SC_ERROR_OFFSET_TOO_LARGE;
 	}
 
@@ -642,7 +642,7 @@ static int iso7816_delete_file(sc_card_t *card, const sc_path_t *path)
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (path->type != SC_PATH_TYPE_FILE_ID || (path->len != 0 && path->len != 2)) {
-		sc_error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		sc_debug(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -946,7 +946,7 @@ static int iso7816_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		/* Call the reader driver to collect
 		 * the PIN and pass on the APDU to the card */
 		if (data->pin1.offset == 0) {
-			sc_error(card->ctx,
+			sc_debug(card->ctx,
 				"Card driver didn't set PIN offset");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -958,7 +958,7 @@ static int iso7816_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 					data);
 			/* sw1/sw2 filled in by reader driver */
 		} else {
-			sc_error(card->ctx,
+			sc_debug(card->ctx,
 				"Card reader driver does not support "
 				"PIN entry through reader key pad");
 			r = SC_ERROR_NOT_SUPPORTED;

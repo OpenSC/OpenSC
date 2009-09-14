@@ -110,7 +110,7 @@ static int default_init(sc_card_t *card)
 	card->drv_data = NULL;
 	r = autodetect_class(card);
 	if (r) {
-		sc_error(card->ctx, "unable to determine the right class byte\n");
+		sc_debug(card->ctx, "unable to determine the right class byte\n");
 		return SC_ERROR_INVALID_CARD;
 	}
 

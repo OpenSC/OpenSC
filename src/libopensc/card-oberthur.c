@@ -262,7 +262,7 @@ auth_init(sc_card_t *card)
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 
 	if (auth_select_aid(card))   {
-		sc_error(card->ctx, "Failed to initialize %s\n", card->name);
+		sc_debug(card->ctx, "Failed to initialize %s\n", card->name);
 		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_CARD, "Failed to initialize");
 	}
 	
@@ -414,7 +414,7 @@ auth_process_fci(struct sc_card *card, struct sc_file *file,
 		else if (file->size==2048)
 			file->size = PUBKEY_2048_ASN1_SIZE;
 		else   {
-			sc_error(card->ctx, "Not supported public key size: %i\n", file->size);
+			sc_debug(card->ctx, "Not supported public key size: %i\n", file->size);
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		}
 		break;
@@ -671,7 +671,7 @@ auth_delete_file(sc_card_t *card, const sc_path_t *path)
 	}
 
 	if (path->len < 2)   {
-		sc_error(card->ctx, "Invalid path length\n");
+		sc_debug(card->ctx, "Invalid path length\n");
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	
@@ -832,7 +832,7 @@ encode_file_structure_V5(sc_card_t *card, const sc_file_t *file,
 		rv = SC_ERROR_INVALID_ARGUMENTS;
 
 	if (rv)   {
-		sc_error(card->ctx, "Invalid EF structure %i/%i\n", 
+		sc_debug(card->ctx, "Invalid EF structure %i/%i\n", 
 				file->type, file->ef_structure);
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INCORRECT_PARAMETERS);
 	}
@@ -860,7 +860,7 @@ encode_file_structure_V5(sc_card_t *card, const sc_file_t *file,
 		else if (file->size == PUBKEY_2048_ASN1_SIZE || file->size == 2048)
 			size = 2048;
 		else   {
-			sc_error(card->ctx, "incorrect RSA size %X\n", file->size);
+			sc_debug(card->ctx, "incorrect RSA size %X\n", file->size);
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INCORRECT_PARAMETERS);
 		}
 	}
@@ -873,7 +873,7 @@ encode_file_structure_V5(sc_card_t *card, const sc_file_t *file,
 		else if (file->size == 24 || file->size == 192)
 			size = 192;
 		else   {
-			sc_error(card->ctx, "incorrect DES size %X\n", file->size);
+			sc_debug(card->ctx, "incorrect DES size %X\n", file->size);
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INCORRECT_PARAMETERS);
 		}
 	}
@@ -992,7 +992,7 @@ auth_create_file(sc_card_t *card, sc_file_t *file)
 			path.len -= 2;
 	
 		if (auth_select_file(card, &path, NULL))   {
-			sc_error(card->ctx, "Cannot select parent DF.\n");
+			sc_debug(card->ctx, "Cannot select parent DF.\n");
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 		}
 	}
@@ -1077,7 +1077,7 @@ auth_set_security_env(sc_card_t *card,
 			apdu.datalen = 3;
 		}
 		else {
-			sc_error(card->ctx, "Invalid crypto operation: %X\n", env->operation);
+			sc_debug(card->ctx, "Invalid crypto operation: %X\n", env->operation);
 			SC_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "Invalid crypto operation");
 		}
 	
@@ -1089,7 +1089,7 @@ auth_set_security_env(sc_card_t *card,
 		}
 		
 		if (pads & (~supported_pads))   {
-			sc_error(card->ctx, "No support for PAD %X\n",pads);
+			sc_debug(card->ctx, "No support for PAD %X\n",pads);
 			SC_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "No padding support.");
 		}
 	
@@ -1110,7 +1110,7 @@ auth_set_security_env(sc_card_t *card,
 			apdu.data = rsa_sbuf;
 		}
 		else {
-			sc_error(card->ctx, "Invalid crypto operation: %X\n", env->operation);
+			sc_debug(card->ctx, "Invalid crypto operation: %X\n", env->operation);
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 		}
 	
@@ -1151,7 +1151,7 @@ auth_compute_signature(sc_card_t *card,
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	else if (ilen > 96)   {
-		sc_error(card->ctx, "Illegal input length %d\n", ilen);
+		sc_debug(card->ctx, "Illegal input length %d\n", ilen);
 		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Illegal input length");
 	}
 	
@@ -1169,7 +1169,7 @@ auth_compute_signature(sc_card_t *card,
 	SC_TEST_RET(card->ctx, rv, "Compute signature failed");
 	
 	if (apdu.resplen > olen)   {
-		sc_error(card->ctx, "Compute signature failed: invalide response length %i\n",
+		sc_debug(card->ctx, "Compute signature failed: invalide response length %i\n",
 				apdu.resplen);
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_CARD_CMD_FAILED);
 	}
@@ -1445,7 +1445,7 @@ auth_update_component(sc_card_t *card, struct auth_update_component_info *args)
 			EVP_EncryptInit_ex(&ctx, EVP_des_ecb(), NULL, args->data, NULL);
 		rv = EVP_EncryptUpdate(&ctx, out, &outl, in, 8);
 		if (!EVP_CIPHER_CTX_cleanup(&ctx) || rv == 0) {
-			sc_error(card->ctx, "OpenSSL encryption error.");
+			sc_debug(card->ctx, "OpenSSL encryption error.");
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
 		}
 
@@ -2440,7 +2440,7 @@ auth_sm_read_binary (struct sc_card *card, unsigned char *id, size_t id_len,
 	sc_debug(card->ctx, "called; offs %i; len %i\n", offs, len);
 
 	if (len > 0xF0)   {
-		sc_error(card->ctx, "Not yet: reading length cannot be more then 240 bytes.");
+		sc_debug(card->ctx, "Not yet: reading length cannot be more then 240 bytes.");
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	}
 
