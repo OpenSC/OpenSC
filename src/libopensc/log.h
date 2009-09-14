@@ -66,13 +66,13 @@ void sc_hex_dump(struct sc_context *ctx, const u8 * buf, size_t len, char *out, 
 #define SC_TEST_RET(ctx, r, text) do { \
 	int _ret = (r); \
 	if (_ret < 0) { \
-		sc_do_log(ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", (text), sc_strerror(_ret)); \
+		sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", (text), sc_strerror(_ret)); \
 		return _ret; \
 	} \
 } while(0)
 
 #define sc_perror(ctx, errno, str) { \
-	sc_do_log(ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", str, sc_strerror(errno)); \
+	sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", str, sc_strerror(errno)); \
 }
 
 #ifdef __cplusplus
