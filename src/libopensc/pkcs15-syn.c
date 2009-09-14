@@ -185,15 +185,6 @@ out:	if (r == SC_SUCCESS) {
 	return r;
 }
 
-static int emu_detect_card(sc_card_t *card, const scconf_block *blk, int *force)
-{
-	int ret = 0;
-
-	/* TBD */
-
-	return ret;
-}
-
 static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 {
 	sc_card_t	*card = p15card->card;
@@ -206,10 +197,6 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	const char	*driver, *module_name;
 
 	driver = conf->name->data;
-
-	r = emu_detect_card(card, conf, &force);
-	if (r < 0)
-		return SC_ERROR_INTERNAL;
 
 	init_func    = NULL;
 	init_func_ex = NULL;
