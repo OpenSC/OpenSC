@@ -78,8 +78,8 @@ app default {
 		# transaction_reset = true;
 		#
 		# Enable pinpad if detected (PC/SC v2.0.2 Part 10)
-		# Default: false
-		# enable_pinpad = true;
+		# Default: true
+		# enable_pinpad = false;
 		#
 		# Use specific pcsc provider.
 		# Default: @DEFAULT_PCSC_PROVIDER@

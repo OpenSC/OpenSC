@@ -290,8 +290,15 @@ int sc_lock(sc_card_t *card)
 	if (r != SC_SUCCESS)
 		return r;
 	if (card->lock_count == 0) {
-		if (card->reader->ops->lock != NULL)
+		if (card->reader->ops->lock != NULL) {
 			r = card->reader->ops->lock(card->reader, card->slot);
+			if (r == SC_ERROR_CARD_RESET || r == SC_ERROR_READER_REATTACHED) {
+				/* invalidate cache */
+				memset(&card->cache, 0, sizeof(card->cache));
+				card->cache_valid = 0;
+				r = card->reader->ops->lock(card->reader, card->slot);
+			}
+		}
 		if (r == 0)
 			card->cache_valid = 1;
 	}

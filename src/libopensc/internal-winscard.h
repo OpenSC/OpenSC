@@ -37,6 +37,7 @@ typedef unsigned __int8 uint8_t;
 
 #define SCARD_SHARE_EXCLUSIVE		0x0001	/**< Exclusive mode only */
 #define SCARD_SHARE_SHARED		0x0002	/**< Shared mode only */
+#define SCARD_SHARE_DIRECT		0x0003	/**< Raw mode only */
 
 #define SCARD_LEAVE_CARD		0x0000	/**< Do nothing on close */
 #define SCARD_RESET_CARD		0x0001	/**< Reset on close */
