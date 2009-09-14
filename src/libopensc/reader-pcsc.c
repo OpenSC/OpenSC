@@ -113,6 +113,10 @@ static int pcsc_ret_to_error(long rv)
 	case SCARD_E_NO_SERVICE:
 		/* If the service is (auto)started, there could be readers later */
 		return SC_ERROR_NO_READERS_FOUND;
+	case SCARD_E_NO_SMARTCARD:
+		return SC_ERROR_CARD_NOT_PRESENT;
+	case SCARD_E_PROTO_MISMATCH: /* Should not happen */
+		return SC_ERROR_READER;
 	default:
 		return SC_ERROR_UNKNOWN;
 	}
