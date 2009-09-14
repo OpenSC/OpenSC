@@ -203,7 +203,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	
 	rc = sc_context_create(&context, &ctx_opts);
 	if (rc != SC_SUCCESS) {
-		rv = CKR_DEVICE_ERROR;
+		rv = CKR_GENERAL_ERROR;
 		goto out;
 	}
 
