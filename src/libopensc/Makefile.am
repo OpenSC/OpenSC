@@ -8,7 +8,7 @@ EXTRA_DIST = Makefile.mak
 bin_SCRIPTS = opensc-config
 lib_LTLIBRARIES = libopensc.la
 openscinclude_HEADERS = \
-	opensc.h pkcs15.h emv.h \
+	opensc.h pkcs15.h \
 	cardctl.h asn1.h log.h ui.h \
 	errors.h types.h compression.h
 noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
@@ -30,7 +30,7 @@ libopensc_la_SOURCES = \
 	pkcs15-wrap.c pkcs15-algo.c pkcs15-cache.c pkcs15-syn.c \
 	pkcs15-gemsafeV1.c \
 	\
-	emv.c muscle.c muscle-filesystem.c \
+	muscle.c muscle-filesystem.c \
 	\
 	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c \
 	\

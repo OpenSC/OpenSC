@@ -4,7 +4,7 @@ TOPDIR = ..\..
 TARGET                  = opensc.dll opensc_a.lib
 
 HEADERS			= \
-	asn1.h cardctl.h cards.h emv.h errors.h \
+	asn1.h cardctl.h cards.h errors.h \
 	log.h opensc.h pkcs15.h types.h ui.h
 
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
@@ -18,7 +18,7 @@ OBJECTS			= \
 	pkcs15-wrap.obj pkcs15-algo.obj pkcs15-cache.obj pkcs15-syn.obj \
 	pkcs15-gemsafeV1.obj \
 	\
-	emv.obj muscle.obj muscle-filesystem.obj \
+	muscle.obj muscle-filesystem.obj \
 	\
 	ctbcs.obj reader-ctapi.obj reader-pcsc.obj reader-openct.obj \
 	\
