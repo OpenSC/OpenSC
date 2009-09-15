@@ -505,10 +505,6 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	int r;
-	u8 feature_buf[256], rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	size_t rcount;
-	DWORD i, feature_len, display_ioctl;
-	PCSC_TLV_STRUCTURE *pcsc_tlv;
 
 	r = refresh_slot_attributes(reader, slot);
 	if (r)
@@ -782,14 +778,13 @@ static int pcsc_finish(sc_context_t *ctx, void *prv_data)
 
 static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 {
-	DWORD active_proto, protocol;
+	DWORD active_proto;
 	SCARDHANDLE card_handle;
-	int r;
 	u8 feature_buf[256], rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	PCSC_TLV_STRUCTURE *pcsc_tlv;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) prv_data;
 	LONG rv;
-	DWORD reader_buf_size, rcount, i, feature_len, display_ioctl;
+	DWORD reader_buf_size, rcount, feature_len, display_ioctl;
 	char *reader_buf = NULL, *reader_name;
 	const char *mszGroups = NULL;
 	int ret = SC_ERROR_INTERNAL;
@@ -854,7 +849,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 		struct pcsc_private_data *priv = NULL;
 		struct pcsc_slot_data *pslot = NULL;
 		sc_slot_info_t *slot = NULL;
-		int i;
+		unsigned int i;
 		int found = 0;
 
 		for (i=0;i < sc_ctx_get_reader_count (ctx) && !found;i++) {
@@ -980,8 +975,8 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 						if (display_ioctl) {
 							rcount = sizeof(rbuf);
 							rv = gpriv->SCardControl(card_handle, display_ioctl, NULL, 0, rbuf, sizeof(rbuf), &rcount);
-							if (r == SC_SUCCESS) {
-								if (rcount != sizeof(PIN_PROPERTIES_STRUCTURE)) {
+							if (rv == SCARD_S_SUCCESS) {
+								if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE)) {
 									PIN_PROPERTIES_STRUCTURE *caps = (PIN_PROPERTIES_STRUCTURE *)rbuf;
 									if (caps->wLcdLayout > 0) {
 										sc_debug(ctx, "Reader has a display: %04X", caps->wLcdLayout);
@@ -989,7 +984,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 									} else
 										sc_debug(ctx, "Reader does not have a display.");
 								} else {
-									sc_debug(ctx, "Returned PIN properties structure has bad length (%d)", rcount);
+									sc_debug(ctx, "Returned PIN properties structure has bad length (%d/%d)", rcount, sizeof(PIN_PROPERTIES_STRUCTURE));
 								}
 							}
 						}
