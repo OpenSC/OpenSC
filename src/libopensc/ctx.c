@@ -85,8 +85,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver }, 
 	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
 	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
-	/* emv is not really used, not sure if it works, but it conflicts with
-           muscle and rutoken driver, thus has to be after them */
+	/* emv is not really implemented */
 	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
@@ -176,7 +175,7 @@ static void add_internal_drvs(struct _sc_ctx_options *opts, int type)
 static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 {
 	ctx->debug = 0;
-	if (ctx->debug_file && ctx->debug_file != stderr)
+	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
 		fclose(ctx->debug_file);
 	ctx->debug_file = stderr;
 	ctx->forced_driver = NULL;
@@ -199,7 +198,7 @@ static int load_parameters(sc_context_t *ctx, scconf_block *block,
 
 	val = scconf_get_str(block, "debug_file", NULL);
 	if (val) {
-		if (ctx->debug_file && (ctx->debug_file != stderr || ctx->debug_file != stdout))
+		if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
 			fclose(ctx->debug_file);
 		if (!strcmp(val, "stdout"))
 		        ctx->debug_file = stdout;
