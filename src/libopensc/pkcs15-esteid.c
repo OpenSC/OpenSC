@@ -65,7 +65,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	iconv_t iso_utf;
 	char *inptr, *outptr;
 	size_t inbytes, outbytes, result;
-	unsigned char label[64], name1[32], name2[32];
+	char label[64], name1[32], name2[32];
 #endif
 	unsigned char buff[128];
 	int r, i, flags;
@@ -73,6 +73,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 
 	set_string (&p15card->label, "ID-kaart");
 	set_string (&p15card->manufacturer_id, "AS Sertifitseerimiskeskus");
+	p15card->version = 2; /* Increases as the code changes for EstEID happen, not only in this file */
 
 	/* Select application directory */
 	sc_format_path ("3f00eeee5044", &tmppath);
@@ -94,7 +95,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	
 	r = sc_read_record (card, SC_ESTEID_PD_GIVEN_NAMES1, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
 	SC_TEST_RET (card->ctx, r, "read name1 failed");
-	inptr = buff;
+	inptr = (char *) buff;
 	outptr = name1;
 	inbytes = r;
 	outbytes = 32;
@@ -105,7 +106,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	
 	r = sc_read_record (card, SC_ESTEID_PD_SURNAME, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
 	SC_TEST_RET (card->ctx, r, "read name2 failed");
-	inptr = buff;
+	inptr = (char *) buff;
 	outptr = name2;
 	inbytes = r;
 	outbytes = 32;
@@ -192,6 +193,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		pin_info.max_length = 12;
 		pin_info.pad_char = '\0';
 		pin_info.tries_left = (int)tries_left;
+		pin_info.max_tries = 3;
 
 		strlcpy(pin_obj.label, esteid_pin_names[i], sizeof(pin_obj.label));
 		pin_obj.flags = esteid_pin_flags[i];
