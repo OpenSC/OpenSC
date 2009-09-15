@@ -23,7 +23,7 @@
 
 static struct sc_card_operations emv_ops;
 static struct sc_card_driver emv_drv = {
-	"EMV compatible cards",
+	"EMV cards (unsupported)",
 	"emv",
 	&emv_ops,
 	NULL, 0, NULL
@@ -31,7 +31,7 @@ static struct sc_card_driver emv_drv = {
 
 static int emv_finish(sc_card_t *card)
 {
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int parse_atr(const u8 *atr, size_t atr_len, int *t0_out, int *tx1, int *tx2,
@@ -120,7 +120,7 @@ static int emv_init(sc_card_t *card)
 	card->drv_data = NULL;
 	card->cla = 0x00;
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int emv_select_file(sc_card_t *card, const sc_path_t *path,
@@ -137,7 +137,7 @@ static int emv_select_file(sc_card_t *card, const sc_path_t *path,
 		(*file)->type = SC_FILE_TYPE_DF;
 	if (file != NULL && (*file)->namelen)
 		(*file)->type = SC_FILE_TYPE_DF;
-	return 0;
+	return SC_SUCCESS;
 }
 
 static struct sc_card_driver * sc_get_driver(void)
@@ -147,15 +147,13 @@ static struct sc_card_driver * sc_get_driver(void)
 	emv_ops = *iso_drv->ops;
 	emv_ops.match_card = emv_match_card;
 	emv_ops.init = emv_init;
-        emv_ops.finish = emv_finish;
+	emv_ops.finish = emv_finish;
 	emv_ops.select_file = emv_select_file;
 
 	return &emv_drv;
 }
 
-#if 1
 struct sc_card_driver * sc_get_emv_driver(void)
 {
 	return sc_get_driver();
 }
-#endif
