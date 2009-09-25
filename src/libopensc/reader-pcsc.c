@@ -1204,11 +1204,20 @@ static int part10_build_modify_pin_block(u8 * buf, size_t * size, sc_slot_info_t
 	tmp16 = (data->pin1.min_length << 8 ) + data->pin1.max_length;
 	pin_modify->wPINMaxExtraDigit = HOST_TO_CCID_16(tmp16); /* Min Max */
 
-	pin_modify->bConfirmPIN = 0x03;	/* bConfirmPIN, all */
+	/* bConfirmPIN flags
+	 * 0x01: New Pin, Confirm Pin
+	 * 0x03: Enter Old Pin, New Pin, Confirm Pin
+	 */
+	pin_modify->bConfirmPIN = data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ? 0x01 : 0x03;
 	pin_modify->bEntryValidationCondition = 0x02;	/* bEntryValidationCondition, keypress only */
 	
+	/* bNumberMessage flags
+	 * 0x02: Messages seen on Pinpad display: New Pin, Confirm Pin
+	 * 0x03: Messages seen on Pinpad display: Enter Old Pin, New Pin, Confirm Pin
+	 * Could be 0xFF too.
+	 */
 	if (slot->capabilities & SC_SLOT_CAP_DISPLAY)
-		pin_modify->bNumberMessage = 0x03; /* 3 messages (because bConfirmPIN = 3), all default. Could be 0xFF too */
+		pin_modify->bNumberMessage = data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ? 0x02 : 0x03;
 	else
 		pin_modify->bNumberMessage = 0x00; /* No messages */
 
