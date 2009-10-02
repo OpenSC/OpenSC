@@ -169,7 +169,6 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 								 u8 *buff, size_t buffsize)
 {
 	 EVP_CIPHER_CTX ctx;
-	 int i,r;
 	 u8 iv[8]={0};
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -430,8 +429,6 @@ static int entersafe_process_fci(struct sc_card *card, struct sc_file *file,
 						  const u8 *buf, size_t buflen)
 {
 	 int r;
-	 const u8 *tag = NULL, *p = buf;
-	 size_t taglen, len = buflen;
 
 	 assert(file);
 	 SC_FUNC_CALLED(card->ctx, 1);
@@ -772,7 +769,6 @@ static int entersafe_create_file(sc_card_t *card, sc_file_t *file)
 	 SC_FUNC_CALLED(card->ctx, 1);
 	 
 	 if (file->type == SC_FILE_TYPE_WORKING_EF) {
-		  int    r;
 		  sc_entersafe_create_data data;
 		  memset(&data,0,sizeof(data));
 
