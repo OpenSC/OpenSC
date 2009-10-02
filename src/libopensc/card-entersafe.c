@@ -1374,6 +1374,7 @@ static int entersafe_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }
 
+#if 0
 static int entersafe_preinstall_rsa_1024(sc_card_t *card,u8 key_id)
 {
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -1436,6 +1437,7 @@ static int entersafe_preinstall_rsa_1024(sc_card_t *card,u8 key_id)
 
 	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }
+#endif
 
 static int entersafe_preinstall_rsa_2048(sc_card_t *card,u8 key_id)
 {
@@ -1587,6 +1589,7 @@ static int entersafe_preinstall_keys(sc_card_t *card,int (*install_rsa)(sc_card_
 	 SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }
 
+#if 0
 static int entersafe_card_ctl_1024(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	sc_entersafe_create_data * tmp = (sc_entersafe_create_data *)ptr;
@@ -1617,6 +1620,7 @@ static int entersafe_card_ctl_1024(sc_card_t *card, unsigned long cmd, void *ptr
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 }
+#endif
 
 static int entersafe_card_ctl_2048(sc_card_t *card, unsigned long cmd, void *ptr)
 {
