@@ -1123,7 +1123,6 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 {
 	int r;
 	sc_apdu_t apdu;
-	u8 sbuff[SC_MAX_APDU_BUFFER_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
@@ -1144,6 +1143,8 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 	}
 
 	{/* Write 'x'; */
+		u8 sbuff[SC_MAX_APDU_BUFFER_SIZE];
+
 		 sc_format_apdu(card,&apdu,SC_APDU_CASE_3_SHORT,0x46,factor,0x00);
 
 		 memcpy(sbuff,data.data,data.len);
