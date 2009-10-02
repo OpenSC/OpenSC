@@ -493,7 +493,7 @@ static int entersafe_select_aid(sc_card_t *card,
 								const sc_path_t *in_path,
 								sc_file_t **file_out)
 {
-	int r;
+	int r = 0;
 
 	if (card->cache_valid 
 		&& card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
