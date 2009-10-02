@@ -223,7 +223,7 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 {
 	 int r;
 	 u8 iv[8];
-	 u8 *tmp=0,*tmp_rounded;
+	 u8 *tmp=0,*tmp_rounded=NULL;
 	 size_t tmpsize=0,tmpsize_rounded=0,outl=0;
 	 EVP_CIPHER_CTX ctx;
 
