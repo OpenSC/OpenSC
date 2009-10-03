@@ -64,7 +64,7 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 	if (r)
 		goto end;
 	if ( (len = p15card->file_tokeninfo->size) == 0) {
-		sc_error(card->ctx, "EF(TokenInfo) is empty\n");
+		sc_debug(card->ctx, "EF(TokenInfo) is empty\n");
 		goto end;
 	}
 	buf = malloc(len);
