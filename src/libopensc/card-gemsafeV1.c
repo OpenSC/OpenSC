@@ -15,6 +15,7 @@
 */
 
 /* Initially written by David Mattes (david.mattes@boeing.com) */
+/* Portuguese eID card support by Joao Poupino (joao.poupino@ist.utl.pt) */
 
 #include "internal.h"
 #include "cardctl.h"
@@ -32,20 +33,27 @@ static struct sc_card_driver gemsafe_drv = {
 	NULL, 0, NULL
 };
 
-static const char *gemexpresso_atrs[] = {
-	/* standard version    */
-	"3B:7B:94:00:00:80:65:B0:83:01:01:74:83:00:90:00",
-	"3B:6B:00:00:80:65:B0:83:01:01:74:83:00:90:00",
-	/* fips 140 version    */
-	"3B:6B:00:00:80:65:B0:83:01:03:74:83:00:90:00",
-	/* TODO: add more ATRs */
-	"3B:7A:94:00:00:80:65:A2:01:01:01:3D:72:D6:43",
-	"3B:7D:94:00:00:80:31:80:65:B0:83:01:01:90:83:00:90:00",
-	NULL
+/* Known ATRs */
+static struct sc_atr_table gemsafe_atrs[] = {
+	/* standard version */
+    {"3B:7B:94:00:00:80:65:B0:83:01:01:74:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_GENERIC, 0, NULL},
+    {"3B:6B:00:00:80:65:B0:83:01:01:74:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_GENERIC, 0, NULL},
+    /* fips 140 version */
+    {"3B:6B:00:00:80:65:B0:83:01:03:74:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_GENERIC, 0, NULL},
+    /* Undefined */
+    {"3B:7A:94:00:00:80:65:A2:01:01:01:3D:72:D6:43", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_GENERIC, 0, NULL},
+    {"3B:7D:94:00:00:80:31:80:65:B0:83:01:01:90:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_GENERIC, 0, NULL},
+    /* Portuguese eID cards */
+    {"3B:7D:95:00:00:80:31:80:65:B0:83:11:C0:A9:83:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_PTEID, 0, NULL},
+    {"3B:7D:95:00:00:80:31:80:65:B0:83:11:C0:A9:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_PTEID, 0, NULL},
+    {NULL, NULL, NULL, 0, 0, NULL}
 };
 
 static const u8 gemsafe_def_aid[] = {0xA0, 0x00, 0x00, 0x00, 0x18, 0x0A,
 	0x00, 0x00, 0x01, 0x63, 0x42, 0x00};
+
+static const u8 gemsafe_pteid_aid[] = {0x60, 0x46, 0x32, 0xFF, 0x00, 0x00, 0x02};
+
 /*
 static const u8 gemsafe_def_aid[] = {0xA0, 0x00, 0x00, 0x00, 0x63, 0x50,
 	0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35};
@@ -113,27 +121,12 @@ static int gp_select_applet(sc_card_t *card, const u8 *aid, size_t aid_len)
 	return SC_SUCCESS;
 }
 
-static int gemsafe_match_card(struct sc_card *card)
+static int gemsafe_match_card(sc_card_t *card)
 {
-	int i, match = -1;
+	int i;
 
-	SC_FUNC_CALLED(card->ctx, 1);
-
-	for (i = 0; gemexpresso_atrs[i] != NULL; i++) {
-		u8 defatr[SC_MAX_ATR_SIZE];
-		size_t len = sizeof(defatr);
-		const char *atrp = gemexpresso_atrs[i];
-
-		if (sc_hex_to_bin(atrp, defatr, &len))
-			continue;
-		if (len != card->atr_len)
-			continue;
-		if (memcmp(card->atr, defatr, len) != 0)
-			continue;
-		match = i + 1;
-		break;
-    	}
-	if (match == -1)
+	i = _sc_match_atr(card, gemsafe_atrs, &card->type);
+	if (i < 0)
 		return 0;
 
 	return 1;
@@ -153,12 +146,17 @@ static int gemsafe_init(struct sc_card *card)
 	if (!exdata)
 		return SC_ERROR_OUT_OF_MEMORY;
 	exdata->aid_len = sizeof(exdata->aid);
-	/* try to get a AID from the config file */
-	r = get_conf_aid(card, exdata->aid, &exdata->aid_len);
-	if (r < 0) {
-		/* failed, use default value */
-		memcpy(exdata->aid, gemsafe_def_aid, sizeof(gemsafe_def_aid));
-		exdata->aid_len = sizeof(gemsafe_def_aid);
+	if(card->type == SC_CARD_TYPE_GEMSAFEV1_GENERIC) {
+		/* try to get a AID from the config file */
+		r = get_conf_aid(card, exdata->aid, &exdata->aid_len);
+		if (r < 0) {
+			/* failed, use default value */
+			memcpy(exdata->aid, gemsafe_def_aid, sizeof(gemsafe_def_aid));
+			exdata->aid_len = sizeof(gemsafe_def_aid);
+		}
+	} else if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID) {
+		memcpy(exdata->aid, gemsafe_pteid_aid, sizeof(gemsafe_pteid_aid));
+		exdata->aid_len = sizeof(gemsafe_pteid_aid);
 	}
 
 	/* increase lock_count here to prevent sc_unlock to select
@@ -343,18 +341,18 @@ static int gemsafe_process_fci(struct sc_card *card, struct sc_file *file,
 	return SC_SUCCESS;
 }
 
-static u8 gemsafe_flags2algref(const struct sc_security_env *env)
+static u8 gemsafe_flags2algref(struct sc_card *card, const struct sc_security_env *env)
 {
 	u8 ret = 0;
 
 	if (env->operation == SC_SEC_OPERATION_SIGN) {
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
-			ret = 0x12;
+			ret = card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ? 0x02 : 0x12;
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_ISO9796)
 			ret = 0x11;
 	} else if (env->operation == SC_SEC_OPERATION_DECIPHER) {
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
-			ret = 0x12;
+			ret = card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ? 0x02 : 0x12;
 	}
 
 	return ret;
@@ -388,7 +386,7 @@ static int gemsafe_set_security_env(struct sc_card *card,
 
 	if (!(se_env.flags & SC_SEC_ENV_ALG_REF_PRESENT)) {
 		/* set the algorithm reference */
-		alg_ref = gemsafe_flags2algref(&se_env);
+		alg_ref = gemsafe_flags2algref(card, &se_env);
 		if (alg_ref) {
 			se_env.algorithm_ref = alg_ref;
 			se_env.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
@@ -417,11 +415,16 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0xAC);
-	apdu.cla |= 0x80;
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.le      = 256;
+	/* the Portuguese eID card requires a two-phase exchange */
+	if(card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x90, 0xA0);
+	} else {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0xAC);
+		apdu.cla |= 0x80;
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+		apdu.le      = 256;
+	}
 	/* we sign a digestInfo object => tag 0x90 */
 	sbuf[0] = 0x90;
 	sbuf[1] = (u8)data_len;
@@ -433,6 +436,17 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		if(card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID) {
+			/* finalize the exchange */
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x2A, 0x9E, 0x9A);
+			apdu.le = 128; /* 1024 bit keys */
+			apdu.resp = rbuf;
+			apdu.resplen = sizeof(rbuf);
+			r = sc_transmit_apdu(card, &apdu);
+			SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+			if(apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+				SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+		}
 		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
@@ -471,6 +485,25 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 		SC_FUNC_RETURN(card->ctx, 2, len);
 	}
 	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+}
+
+static int gemsafe_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
+{
+	int prev_cla, r;
+
+	prev_cla = card->cla;
+	if(card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID) {
+		/* Warning: this depends on iso7816_get_challenge not
+		 * changing the value of the card's CLA
+		 */
+		card->cla = 0x80;
+	}
+	r = iso_ops->get_challenge(card, rnd, len);
+	/* Restore the CLA value if needed */
+	if(card->cla != prev_cla)
+		card->cla = prev_cla;
+
+	return r;
 }
 
 static int gemsafe_build_pin_apdu(struct sc_card *card,
@@ -622,7 +655,7 @@ static struct sc_card_driver *sc_get_driver(void)
 		iso_ops = iso_drv->ops;
 	/* use the standard iso operations as default */
 	gemsafe_ops = *iso_drv->ops;
-	/* gemsafe specfic functions */
+	/* gemsafe specific functions */
 	gemsafe_ops.match_card	= gemsafe_match_card;
 	gemsafe_ops.init	= gemsafe_init;
 	gemsafe_ops.finish	= gemsafe_finish;
@@ -631,6 +664,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	gemsafe_ops.set_security_env     = gemsafe_set_security_env;
 	gemsafe_ops.decipher             = gemsafe_decipher;
 	gemsafe_ops.compute_signature    = gemsafe_compute_signature;
+	gemsafe_ops.get_challenge 		 = gemsafe_get_challenge;
 	gemsafe_ops.process_fci	= gemsafe_process_fci;
 	gemsafe_ops.pin_cmd		 = gemsafe_pin_cmd;
 

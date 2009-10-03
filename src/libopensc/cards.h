@@ -151,6 +151,15 @@ enum {
 	/* MyEID cards */
 	SC_CARD_TYPE_MYEID_BASE = 20000,
 	SC_CARD_TYPE_MYEID_GENERIC,
+	
+	/* GemsafeV1 cards */
+	SC_CARD_TYPE_GEMSAFEV1_BASE = 21000,
+	SC_CARD_TYPE_GEMSAFEV1_GENERIC,
+	SC_CARD_TYPE_GEMSAFEV1_PTEID,
+
+	/* IAS cards */
+	SC_CARD_TYPE_IAS_BASE = 22000,
+	SC_CARD_TYPE_IAS_PTEID,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -181,6 +190,7 @@ extern sc_card_driver_t *sc_get_rutoken_driver(void);
 extern sc_card_driver_t *sc_get_rtecp_driver(void);
 extern sc_card_driver_t *sc_get_westcos_driver(void);
 extern sc_card_driver_t *sc_get_myeid_driver(void);
+extern sc_card_driver_t *sc_get_ias_driver(void);
 
 #ifdef __cplusplus
 }

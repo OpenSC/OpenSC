@@ -56,6 +56,8 @@ extern int sc_pkcs15emu_tccardos_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t 
 
 extern int sc_pkcs15emu_entersafe_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
+extern int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+
 static struct {
 	const char *		name;
 	int			(*handler)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
@@ -74,6 +76,7 @@ static struct {
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
 	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex  },
+	{ "pteid",		sc_pkcs15emu_pteid_init_ex		},
 	{ NULL, NULL }
 };
 
@@ -90,6 +93,8 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 {
 	switch (card->type) {
 		case SC_CARD_TYPE_MCRD_ESTEID:
+		case SC_CARD_TYPE_IAS_PTEID:
+		case SC_CARD_TYPE_GEMSAFEV1_PTEID:
 			return 1;
 		default:
 			return 0;
