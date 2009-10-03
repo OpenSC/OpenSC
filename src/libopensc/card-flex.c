@@ -1066,7 +1066,6 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 	apdu.resplen = outlen > sizeof(sbuf) ? sizeof(sbuf) : outlen;
 	apdu.le      = apdu.resplen > 256 ? 256 : apdu.resplen;
 	apdu.resp    = sbuf;
-	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1106,7 +1105,6 @@ cyberflex_compute_signature(sc_card_t *card, const u8 *data,
 	apdu.data = data;
 	apdu.resplen = outlen;
 	apdu.resp = out;
-	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1279,7 +1277,6 @@ static int flex_build_verify_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	apdu->data = sbuf;
 	apdu->datalen = len;
 	apdu->lc = len;
-	apdu->sensitive = 1;
 
 	return 0;
 }

@@ -1462,7 +1462,6 @@ auth_update_component(sc_card_t *card, struct auth_update_component_info *args)
 	apdu.data = sbuf;
 	apdu.datalen = len;
 	apdu.lc = len;
-	apdu.sensitive = 1;
 	if (args->len == 0x100)   {
 		sbuf[0] = args->type;
 		sbuf[1] = 0x20;
@@ -1724,7 +1723,6 @@ auth_verify(sc_card_t *card, unsigned int type,
 		apdu.data = sbuf;
 		apdu.datalen = pinfo.pad_length;
 		apdu.lc = pinfo.pad_length;
-		apdu.sensitive = 1;
 	}
 	else   {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0, pin_ref);
@@ -1776,7 +1774,6 @@ auth_change_reference_data (sc_card_t *card, unsigned int type,
 	apdu.data = sbuf;
 	apdu.datalen = pinfo.pad_length * 2;
 	apdu.lc = pinfo.pad_length * 2;
-	apdu.sensitive = 1;
 
 	rv = sc_transmit_apdu(card, &apdu);
 	sc_mem_clear(sbuf, sizeof(sbuf));
@@ -1842,7 +1839,6 @@ auth_reset_retry_counter(sc_card_t *card, unsigned int type,
 	apdu.data = sbuf;
 	apdu.datalen = len;
 	apdu.lc = len;
-	apdu.sensitive = 1;
 
 	rv = sc_transmit_apdu(card, &apdu);
 	sc_mem_clear(sbuf, sizeof(sbuf));
@@ -1905,7 +1901,6 @@ auth_create_reference_data (sc_card_t *card,
 	apdu.data = sbuf;
 	apdu.datalen = len;
 	apdu.lc = len;
-	apdu.sensitive = 1;
 
 	rv = sc_transmit_apdu(card, &apdu);
 	sc_mem_clear(sbuf, sizeof(sbuf));

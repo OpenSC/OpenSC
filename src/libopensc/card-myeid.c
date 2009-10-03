@@ -568,7 +568,6 @@ static int myeid_compute_signature(struct sc_card *card, const u8 * data,
 	}
 
         apdu.data = sbuf;
-        apdu.sensitive = 1;
         r = sc_transmit_apdu(card, &apdu);
         SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 
@@ -606,7 +605,6 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = crgram_len;
-	apdu.sensitive = 1;
 
 	if (crgram_len == 256) 
 	{		apdu.le = 0;
@@ -635,7 +633,6 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 			apdu.resp = rbuf;
 			apdu.resplen = sizeof(rbuf);
 			apdu.le = crgram_len;
-			apdu.sensitive = 1;
 			/* padding indicator byte, 
 			 * 0x82 = Second half of 2048 bit cryptogram */
 			sbuf[0] = 0x82; 

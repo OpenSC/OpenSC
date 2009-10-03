@@ -751,7 +751,6 @@ static int jcop_compute_signature(sc_card_t *card,
 	}
 
         apdu.data = sbuf;
-        apdu.sensitive = 1;
         r = sc_transmit_apdu(card, &apdu);
         SC_TEST_RET(card->ctx, r, "APDU transmit failed");
         if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
@@ -789,7 +788,6 @@ static int jcop_decipher(sc_card_t *card,
         apdu.resp = rbuf;
         apdu.resplen = sizeof(rbuf); /* FIXME */
         apdu.le = crgram_len;
-        apdu.sensitive = 1;
         
 	if (crgram_len == 256) {
 	     apdu.p2 = crgram[0];

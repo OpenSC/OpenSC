@@ -907,7 +907,6 @@ static int entersafe_compute_with_prkey(sc_card_t *card,
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = 256;
-	apdu.sensitive = 1;
 
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");

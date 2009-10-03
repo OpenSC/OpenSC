@@ -885,7 +885,6 @@ static int westcos_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 		apdu.datalen = len;
 		apdu.data = buf;
 		apdu.resplen = 0;
-		apdu.sensitive = 1;
 		if (!use_pin_pad) {
 
 			/* Transmit the APDU to the card */

@@ -337,7 +337,6 @@ static int rtecp_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 		apdu.lc = data_len;
 		apdu.data = data;
 		apdu.datalen = data_len;
-		apdu.sensitive = 1;
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (send_logout++ == 0 && apdu.sw1 == 0x6F && apdu.sw2 == 0x86)
@@ -403,7 +402,6 @@ static int rtecp_rsa_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 	apdu.lc = data_len;
 	apdu.data = buf;
 	apdu.datalen = data_len;
-	apdu.sensitive = 1;
 	apdu.resp = buf_out;
 	apdu.resplen = data_len + 2;
 	apdu.le = data_len;
@@ -513,7 +511,6 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	apdu.lc = p - buf;
 	apdu.data = buf;
 	apdu.datalen = p - buf;
-	apdu.sensitive = 1;
 
 	r = sc_transmit_apdu(card, &apdu);
 	sc_mem_clear(buf, sizeof(buf));

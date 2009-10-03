@@ -994,7 +994,6 @@ gpk_select_key(sc_card_t *card, int key_sfi, const u8 *buf, size_t buflen)
 	apdu.resp = resp;
 	apdu.resplen = sizeof(resp);
 	apdu.le = 12;
-	apdu.sensitive = 1;
 	
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -1347,7 +1346,6 @@ gpk_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	apdu.le   = 256;		/* give me all you got :) */
 	apdu.resp = buffer;
 	apdu.resplen = sizeof(buffer);
-	apdu.sensitive = 1;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -1582,7 +1580,6 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 	apdu.p1  = args->file->id & 0x1F;
 	apdu.p2  = args->len;
 	apdu.lc  = args->datalen;
-	apdu.sensitive = 1;
 
 	/* encrypt the private key material */
 	assert(args->datalen <= sizeof(temp));
@@ -1836,7 +1833,6 @@ gpk_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, struct sc_pin_cmd_data *dat
 	apdu->lc	= 8;
 	apdu->datalen	= 8;
 	apdu->data	= sbuf;
-	apdu->sensitive	= 1;
 
 	return 0;
 }

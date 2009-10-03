@@ -429,7 +429,6 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	apdu.data = sbuf;
 	apdu.lc   = data_len + 2;
 	apdu.datalen = data_len + 2;
-	apdu.sensitive = 1;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -459,7 +458,6 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le      = crgram_len;
-	apdu.sensitive = 1;
 
 	apdu.data = crgram;
 	apdu.lc   = crgram_len;
@@ -549,7 +547,6 @@ static int gemsafe_build_pin_apdu(struct sc_card *card,
 	apdu->datalen = len;
 	apdu->data = sbuf;
 	apdu->resplen = 0;
-	apdu->sensitive = 1;
 
 	return 0;
 }

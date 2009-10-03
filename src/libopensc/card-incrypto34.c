@@ -516,7 +516,6 @@ static int do_compute_signature(sc_card_t *card,
 	apdu.data = sbuf;
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
-	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 

@@ -782,7 +782,6 @@ static int iso7816_compute_signature(sc_card_t *card,
 	apdu.data = sbuf;
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
-	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
@@ -819,7 +818,6 @@ static int iso7816_decipher(sc_card_t *card,
 	 * to tell the card the we want everything available (note: we
 	 * always have Le <= crgram_len) */
 	apdu.le      = (outlen >= 256 && crgram_len < 256) ? 256 : outlen;
-	apdu.sensitive = 1;
 	
 	sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
 	memcpy(sbuf + 1, crgram, crgram_len);
@@ -908,7 +906,6 @@ static int iso7816_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	apdu->datalen = len;
 	apdu->data = buf;
 	apdu->resplen = 0;
-	apdu->sensitive = 1;
 
 	return 0;
 }

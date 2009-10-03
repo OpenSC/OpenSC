@@ -354,7 +354,6 @@ akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 			p1 = 1;
 		}
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, p1, p2);
-		apdu.sensitive = 1;
 
 		buf[0] = data->pin1.len;
 		memcpy(buf+1, data->pin1.data, data->pin1.len);

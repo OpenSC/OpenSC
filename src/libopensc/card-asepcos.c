@@ -509,7 +509,6 @@ static int asepcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_le
 	 * to tell the card the we want everything available (note: we
 	 * always have Le <= crgram_len) */
 	apdu.le      = (outlen >= 256 && crgram_len < 256) ? 256 : outlen;
-	apdu.sensitive = 1;
 	
 	apdu.data    = crgram;
 	apdu.lc      = crgram_len;
@@ -990,9 +989,6 @@ static int asepcos_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-	/* all PIN related APDUs are sensitive */
-	apdu->sensitive = 1;
-
 	return SC_SUCCESS;
 }
 
