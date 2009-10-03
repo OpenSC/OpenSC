@@ -284,12 +284,12 @@ static int sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 
 	switch (apdu->cse & SC_APDU_SHORT_MASK) {
 	case SC_APDU_CASE_1:
-		/* no data is send or received */
+		/* no data is sent or received */
 		if (apdu->datalen != 0 || apdu->lc != 0 || apdu->le != 0)
 			goto error;
 		break;
 	case SC_APDU_CASE_2_SHORT:
-		/* no data is send        */
+		/* no data is sent        */
 		if (apdu->datalen != 0 || apdu->lc != 0)
 			goto error;
 		/* data is expected       */
@@ -303,7 +303,7 @@ static int sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 		/* inconsistent datalen   */
 		if (apdu->datalen != apdu->lc)
 			goto error;
-		/* data is send           */
+		/* data is sent           */
 		if (apdu->datalen != 0 && apdu->data == NULL)
 			goto error;
 		/* no data is expected    */
@@ -311,7 +311,7 @@ static int sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 			goto error;
 		break;
 	case SC_APDU_CASE_4_SHORT:
-		/* data is send           */
+		/* data is sent           */
 		if (apdu->datalen == 0 || apdu->data == NULL || apdu->lc == 0)
 			goto error;
 		/* data is expected       */
@@ -366,7 +366,7 @@ static void sc_detect_apdu_cse(const sc_card_t *card, sc_apdu_t *apdu)
 /** Sends a single APDU to the card reader and calls 
  *  GET RESPONSE to get the return data if necessary.
  *  @param  card  sc_card_t object for the smartcard
- *  @param  apdu  APDU to be send
+ *  @param  apdu  APDU to be sent
  *  @return SC_SUCCESS on success and an error value otherwise
  */
 static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
