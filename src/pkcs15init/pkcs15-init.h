@@ -405,6 +405,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_rutoken_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_entersafe_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_rtecp_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_westcos_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_myeid_ops(void);
 
 #ifdef __cplusplus
 }

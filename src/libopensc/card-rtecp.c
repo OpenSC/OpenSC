@@ -639,6 +639,7 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
 		apdu.le = sizeof(buf) - 2;
+		serial->len = sizeof(serial->value);
 		break;
 	case SC_CARDCTL_RTECP_GENERATE_KEY:
 		if (!genkey_data)

@@ -18,7 +18,7 @@ It isn't
 It doesn't have
   - anything else but data. No locking, no threads etc.
 
-It has heirarchical data blocks, it has lists. 
+It has heirarchical data blocks, it has lists.
 
 Similar, but different:
   - .ini files. scconf is block structured, has lists and arrays
@@ -216,8 +216,8 @@ typedef struct _scconf_entry {
 			 * Look for blocks with this key, or check if this
 			 * block has an item with this key. Run the block
 			 * or blocks found against the rest of this entry
-			 * Stop after the first one, unless 
-			 * SCCONF_ALL_BLOCKS is set in flags 
+			 * Stop after the first one, unless
+			 * SCCONF_ALL_BLOCKS is set in flags
 	unsigned int type;
 			 * SCCONF_CALLBACK
 			 * 	parm contains a function ptr of type
@@ -226,7 +226,7 @@ typedef struct _scconf_entry {
 			 *      	scconf_entry* entry,
 			 *      	int depth);
 			 *      run the callback with the block found
-			 * 
+			 *
 			 * SCCONF_BLOCK
 			 *      param contains a pointer to another entry table
 			 *      use the found block against every entry
@@ -269,7 +269,7 @@ typedef struct _scconf_entry {
 			 *		     where a pointer to a copy of list
 			 *		     can be stored
 			 *
-			 * 
+			 *
 	unsigned int flags;
 			 * SCCONF_PRESENT
 			 *       This bit is or'ed in when found
@@ -298,8 +298,8 @@ Sub-blocks can be added, and callbacks can be issued.
 This is a handy method for adding scconf data from within a program.
 
 typedef struct _scconf_entry {
-	const char *name;		
-			 * key value for blocks and items * 
+	const char *name;
+			 * key value for blocks and items *
 	unsigned int type;
 			 * SCCONF_CALLBACK
 			 * 	parm contains a function ptr of type
@@ -307,12 +307,12 @@ typedef struct _scconf_entry {
 			 *      	scconf_block* block,
 			 *      	scconf_entry* entry,
 			 *      	int depth);
-			 * 
+			 *
 			 * SCCONF_BLOCK
 			 *      param contains a pointer to another entry table
 			 *      the entry table is added as a block to the
 			 *      current block, with name as the key, and
-			 *      arg is a list of names 
+			 *      arg is a list of names
 			 *
 			 * SCCONF_LIST
 			 * SCCONF_BOOLEAN
@@ -320,7 +320,7 @@ typedef struct _scconf_entry {
 			 * SCCONF_STRING
 			 *      these add key=value pairs to the current
 			 *      block. The value is in parm.
-			 * 
+			 *
 	unsigned int flags;
 			 * SCCONF_PRESENT
 			 *       This bit is or'ed in when item added

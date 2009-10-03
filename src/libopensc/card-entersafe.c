@@ -169,7 +169,6 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 								 u8 *buff, size_t buffsize)
 {
 	 EVP_CIPHER_CTX ctx;
-	 int i,r;
 	 u8 iv[8]={0};
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -223,7 +222,7 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 {
 	 int r;
 	 u8 iv[8];
-	 u8 *tmp=0,*tmp_rounded;
+	 u8 *tmp=0,*tmp_rounded=NULL;
 	 size_t tmpsize=0,tmpsize_rounded=0,outl=0;
 	 EVP_CIPHER_CTX ctx;
 
@@ -430,8 +429,6 @@ static int entersafe_process_fci(struct sc_card *card, struct sc_file *file,
 						  const u8 *buf, size_t buflen)
 {
 	 int r;
-	 const u8 *tag = NULL, *p = buf;
-	 size_t taglen, len = buflen;
 
 	 assert(file);
 	 SC_FUNC_CALLED(card->ctx, 1);
@@ -493,7 +490,7 @@ static int entersafe_select_aid(sc_card_t *card,
 								const sc_path_t *in_path,
 								sc_file_t **file_out)
 {
-	int r;
+	int r = 0;
 
 	if (card->cache_valid 
 		&& card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
@@ -772,7 +769,6 @@ static int entersafe_create_file(sc_card_t *card, sc_file_t *file)
 	 SC_FUNC_CALLED(card->ctx, 1);
 	 
 	 if (file->type == SC_FILE_TYPE_WORKING_EF) {
-		  int    r;
 		  sc_entersafe_create_data data;
 		  memset(&data,0,sizeof(data));
 
@@ -1127,7 +1123,6 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 {
 	int r;
 	sc_apdu_t apdu;
-	u8 sbuff[SC_MAX_APDU_BUFFER_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
@@ -1148,6 +1143,8 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 	}
 
 	{/* Write 'x'; */
+		u8 sbuff[SC_MAX_APDU_BUFFER_SIZE];
+
 		 sc_format_apdu(card,&apdu,SC_APDU_CASE_3_SHORT,0x46,factor,0x00);
 
 		 memcpy(sbuff,data.data,data.len);
@@ -1378,6 +1375,7 @@ static int entersafe_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }
 
+#if 0
 static int entersafe_preinstall_rsa_1024(sc_card_t *card,u8 key_id)
 {
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -1440,6 +1438,7 @@ static int entersafe_preinstall_rsa_1024(sc_card_t *card,u8 key_id)
 
 	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }
+#endif
 
 static int entersafe_preinstall_rsa_2048(sc_card_t *card,u8 key_id)
 {
@@ -1591,6 +1590,7 @@ static int entersafe_preinstall_keys(sc_card_t *card,int (*install_rsa)(sc_card_
 	 SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }
 
+#if 0
 static int entersafe_card_ctl_1024(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	sc_entersafe_create_data * tmp = (sc_entersafe_create_data *)ptr;
@@ -1621,6 +1621,7 @@ static int entersafe_card_ctl_1024(sc_card_t *card, unsigned long cmd, void *ptr
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 }
+#endif
 
 static int entersafe_card_ctl_2048(sc_card_t *card, unsigned long cmd, void *ptr)
 {

@@ -188,6 +188,14 @@ enum {
 	SC_CARDCTL_WESTCOS_SET_DEFAULT_KEY,
 	SC_CARDCTL_WESTCOS_LOAD_DATA,
 
+	/*
+	 * MyEID specific calls
+	 */
+	SC_CARDCTL_MYEID_BASE = _CTL_PREFIX('M', 'Y', 'E'),
+	SC_CARDCTL_MYEID_PUTDATA,
+	SC_CARDCTL_MYEID_GETDATA,
+	SC_CARDCTL_MYEID_GENERATE_KEY,
+	SC_CARDCTL_MYEID_ACTIVATE_CARD,
 };
 
 enum {
@@ -689,6 +697,35 @@ typedef struct sc_rtecp_genkey_data {
 	unsigned char *modulus;
 	size_t modulus_len;
 } sc_rtecp_genkey_data_t;
+
+/*
+* MyEID stuff
+*/
+	struct sc_cardctl_myeid_data_obj {
+		int     P1;
+		int     P2;
+		u8 *    Data;
+		size_t  DataLen;
+		int     LengthMax;
+	};
+
+	struct sc_cardctl_myeid_gen_store_key_info {
+	int             op_type;
+	unsigned int    mod_len;   
+	unsigned char  *mod;
+	unsigned int    pubexp_len;  
+	unsigned char  *pubexp;
+	unsigned int    primep_len;  
+	unsigned char  *primep;
+	unsigned int    primeq_len;  
+	unsigned char  *primeq;
+	unsigned int    dp1_len;  
+	unsigned char  *dp1;
+	unsigned int    dq1_len;  
+	unsigned char  *dq1;
+	unsigned int    invq_len;  
+	unsigned char  *invq;
+};
 
 #ifdef __cplusplus
 }

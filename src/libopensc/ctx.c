@@ -85,6 +85,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver }, 
 	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
 	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
+        { "myeid",      (void *(*)(void)) sc_get_myeid_driver },
 	/* emv is not really implemented */
 	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
 	/* The default driver should be last, as it handles all the
