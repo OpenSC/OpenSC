@@ -42,7 +42,7 @@ static struct sc_atr_table cardos_atrs[] = {
 	/* 4.0 */
 	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* Italian eID card, postecert */
-	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
+	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_CARDOS_CIE_V1, 0, NULL },
 	/* Italian eID card, infocamere */
 	{ "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* Another Italian InfocamereCard */
@@ -65,6 +65,9 @@ static int cardos_match_card(sc_card_t *card)
 	i = _sc_match_atr(card, cardos_atrs, &card->type);
 	if (i < 0)
 		return 0;
+	/* Do not change card type for CIE! */
+	if (card->type == SC_CARD_TYPE_CARDOS_CIE_V1)
+		return 1;
 	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
 		int rv;
 		sc_apdu_t apdu;
@@ -685,7 +688,8 @@ cardos_restore_security_env(sc_card_t *card, int se_num)
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 3, se_num);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0, se_num);
+	apdu.p1 = (card->type == SC_CARD_TYPE_CARDOS_CIE_V1 ? 0xF3 : 0x03);
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -724,7 +728,13 @@ cardos_set_security_env(sc_card_t *card,
 	}
 	key_id = env->key_ref[0];
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 1, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
+	if (card->type == SC_CARD_TYPE_CARDOS_CIE_V1) {
+		cardos_restore_security_env(card, 0x30);
+		apdu.p1 = 0xF1;
+	} else {
+		apdu.p1 = 0x01;
+	}
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
 		apdu.p2 = 0xB8;

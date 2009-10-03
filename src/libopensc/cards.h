@@ -44,6 +44,7 @@ enum {
 	SC_CARD_TYPE_CARDOS_M4_3,
 	SC_CARD_TYPE_CARDOS_M4_2B, /* 4.2b is after 4.3b */
 	SC_CARD_TYPE_CARDOS_M4_2C,
+	SC_CARD_TYPE_CARDOS_CIE_V1, /* Italian CIE (eID) v1 */
 
 	/* flex/cyberflex drivers */
 	SC_CARD_TYPE_FLEX_BASE = 2000,
