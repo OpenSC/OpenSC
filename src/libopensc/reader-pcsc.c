@@ -89,9 +89,11 @@ struct pcsc_slot_data {
 
 static int pcsc_detect_card_presence(sc_reader_t *reader, sc_slot_info_t *slot);
 
-static int pcsc_ret_to_error(long rv)
+static int pcsc_ret_to_error(LONG rv)
 {
 	switch (rv) {
+	case SCARD_S_SUCCESS:
+		return SC_SUCCESS;
 	case SCARD_W_REMOVED_CARD:
 		return SC_ERROR_CARD_REMOVED;
 	case SCARD_E_NOT_TRANSACTED:
@@ -113,6 +115,7 @@ static int pcsc_ret_to_error(long rv)
 		return SC_ERROR_CARD_NOT_PRESENT;
 	case SCARD_E_PROTO_MISMATCH: /* Should not happen */
 		return SC_ERROR_READER;
+
 	default:
 		return SC_ERROR_UNKNOWN;
 	}
@@ -490,11 +493,11 @@ static int pcsc_reconnect(sc_reader_t * reader, sc_slot_info_t * slot, int reset
 
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_ERROR(reader->ctx, "SCardReconnect failed", rv);
-		return rv;
+		return pcsc_ret_to_error(rv);
 	}
 	
 	slot->active_protocol = pcsc_proto_to_opensc(active_proto);
-	return rv;
+	return pcsc_ret_to_error(rv);
 }
 
 static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
@@ -533,10 +536,10 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 		if (slot->active_protocol != protocol) {
 			sc_debug(reader->ctx, "Protocol difference, forcing protocol (%d)", protocol);
 			/* Reconnect with a reset. pcsc_reconnect figures out the right forced protocol */
-			rv = pcsc_reconnect(reader, slot, 1);
-			if (rv != SCARD_S_SUCCESS) {
-				PCSC_ERROR(reader->ctx, "SCardReconnect (to force protocol) failed", rv);
-				return pcsc_ret_to_error(rv);
+			r = pcsc_reconnect(reader, slot, 1);
+			if (r != SC_SUCCESS) {
+				sc_debug(reader->ctx, "pcsc_reconnect (to force protocol) failed", r);
+				return r;
 			}
 			sc_debug(reader->ctx, "Proto after reconnect = %d", slot->active_protocol);
 		}
@@ -558,7 +561,8 @@ static int pcsc_disconnect(sc_reader_t * reader, sc_slot_info_t * slot)
 
 static int pcsc_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 {
-	long rv;
+	LONG rv;
+	int r;
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
@@ -570,19 +574,19 @@ static int pcsc_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 	switch (rv) {
 		case SCARD_E_INVALID_HANDLE:
 		case SCARD_E_READER_UNAVAILABLE:
-			rv = pcsc_connect(reader, slot);
-			if (rv != SCARD_S_SUCCESS) {
-				PCSC_ERROR(reader->ctx, "SCardConnect failed", rv);
-				return pcsc_ret_to_error(rv);
+			r = pcsc_connect(reader, slot);
+			if (r != SC_SUCCESS) {
+				sc_debug(reader->ctx, "pcsc_connect failed", r);
+				return r;
 			}
 			/* return failure so that upper layers will be notified and try to lock again */
 			return SC_ERROR_READER_REATTACHED;
 		case SCARD_W_RESET_CARD:
 			/* try to reconnect if the card was reset by some other application */
-			rv = pcsc_reconnect(reader, slot, 0);
-			if (rv != SCARD_S_SUCCESS) {
-				PCSC_ERROR(reader->ctx, "SCardReconnect failed", rv);
-				return pcsc_ret_to_error(rv);
+			r = pcsc_reconnect(reader, slot, 0);
+			if (r != SC_SUCCESS) {
+				sc_debug(reader->ctx, "pcsc_reconnect failed", r);
+				return r;
 			}
 			/* return failure so that upper layers will be notified and try to lock again */
 			return SC_ERROR_CARD_RESET;
@@ -597,7 +601,7 @@ static int pcsc_lock(sc_reader_t *reader, sc_slot_info_t *slot)
 
 static int pcsc_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
 {
-	long rv;
+	LONG rv;
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
@@ -635,13 +639,13 @@ static int pcsc_reset(sc_reader_t *reader, sc_slot_info_t *slot)
 	int old_locked = pslot->locked;
 
 	r = pcsc_reconnect(reader, slot, 1);
-	if(r != SCARD_S_SUCCESS)
-		return pcsc_ret_to_error(r);
+	if(r != SC_SUCCESS)
+		return r;
 
 	/* pcsc_reconnect unlocks card... try to lock it again if it was locked */
 	if(old_locked)
 		r = pcsc_lock(reader, slot);
-	
+
 	return r;
 }
 	
@@ -919,7 +923,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 				rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, feature_buf, sizeof(feature_buf), &feature_len);
 				if (rv != SCARD_S_SUCCESS) {
 					sc_debug(ctx, "SCardControl failed %08x", rv);
-				} 
+				}
 				else {
 					if ((feature_len % sizeof(PCSC_TLV_STRUCTURE)) != 0) {
 						sc_debug(ctx, "Inconsistent TLV from reader!");
