@@ -1172,6 +1172,7 @@ sc_pkcs15init_init_prkdf(sc_pkcs15_card_t *p15card,
 		)
 {
 	struct sc_pkcs15_prkey_info *key_info;
+	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	struct sc_pkcs15_object *object;
 	sc_card_t	*card = p15card->card;
 	const char	*label;
@@ -1238,6 +1239,19 @@ sc_pkcs15init_init_prkdf(sc_pkcs15_card_t *p15card,
 
 	key_info->id = keyargs->id;
 
+	if (key->algorithm == SC_ALGORITHM_GOSTR3410) {
+		key_info->params_len = sizeof(*keyinfo_gostparams);
+		/* FIXME: malloc() call in pkcs15init, but free() call
+		 * in libopensc (sc_pkcs15_free_prkey_info) */
+		key_info->params = malloc(key_info->params_len);
+		if (!key_info->params)
+			return SC_ERROR_OUT_OF_MEMORY;
+		keyinfo_gostparams = key_info->params;
+		keyinfo_gostparams->gostr3410 = keyargs->gost_params.gostr3410;
+		keyinfo_gostparams->gostr3411 = keyargs->gost_params.gostr3411;
+		keyinfo_gostparams->gost28147 = keyargs->gost_params.gost28147;
+	}
+
 	r = select_object_path(p15card, profile, object,
 			&key_info->id, &key_info->path);
 	if (r < 0)
@@ -1295,7 +1309,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	if (r != SC_SUCCESS)
 		return r;
 
-	/* For now, we support just RSA key pair generation */
+	/* For now, we support just RSA and GOST key pair generation */
 	if (!check_key_compatibility(p15card, &keygen_args->prkey_args.key,
 		 keygen_args->prkey_args.x509_usage,
 		 keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
@@ -1331,6 +1345,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	pubkey_args.label = keygen_args->pubkey_label;
 	pubkey_args.usage = keygen_args->prkey_args.usage;
 	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
+	pubkey_args.gost_params = keygen_args->prkey_args.gost_params;
 
 	/* Generate the private key on card */
 	if (profile->ops->create_key) {
@@ -1572,6 +1587,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 {
 	struct sc_pkcs15_object *object;
 	struct sc_pkcs15_pubkey_info *key_info;
+	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	sc_pkcs15_pubkey_t key;
 	sc_pkcs15_der_t	der_encoded;
 	sc_path_t 	*path;
@@ -1594,6 +1610,9 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		keybits = sc_pkcs15init_keybits(&key.u.dsa.q);
 		type = SC_PKCS15_TYPE_PUBKEY_DSA; break;
 #endif
+	case SC_ALGORITHM_GOSTR3410:
+		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
+		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410; break;
 	default:
 		sc_debug(p15card->card->ctx, "Unsupported key algorithm.\n");
 		return SC_ERROR_NOT_SUPPORTED;
@@ -1616,6 +1635,19 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	key_info = (sc_pkcs15_pubkey_info_t *) object->data;
 	key_info->usage = usage;
 	key_info->modulus_length = keybits;
+
+	if (key.algorithm == SC_ALGORITHM_GOSTR3410) {
+		key_info->params_len = sizeof(*keyinfo_gostparams);
+		/* FIXME: malloc() call in pkcs15init, but free() call
+		 * in libopensc (sc_pkcs15_free_prkey_info) */
+		key_info->params = malloc(key_info->params_len);
+		if (!key_info->params)
+			return SC_ERROR_OUT_OF_MEMORY;
+		keyinfo_gostparams = key_info->params;
+		keyinfo_gostparams->gostr3410 = keyargs->gost_params.gostr3410;
+		keyinfo_gostparams->gostr3411 = keyargs->gost_params.gostr3411;
+		keyinfo_gostparams->gost28147 = keyargs->gost_params.gost28147;
+	}
 
 	/* Select a Key ID if the user didn't specify one, otherwise
 	 * make sure it's unique */
@@ -2162,6 +2194,7 @@ prkey_fixup(sc_pkcs15_card_t *p15card, sc_pkcs15_prkey_t *key)
 	case SC_ALGORITHM_RSA:
 		return prkey_fixup_rsa(p15card, &key->u.rsa);
 	case SC_ALGORITHM_DSA:
+	case SC_ALGORITHM_GOSTR3410:
 		/* for now */
 		return 0;
 	}
@@ -2176,6 +2209,14 @@ prkey_bits(sc_pkcs15_card_t *p15card, sc_pkcs15_prkey_t *key)
 		return sc_pkcs15init_keybits(&key->u.rsa.modulus);
 	case SC_ALGORITHM_DSA:
 		return sc_pkcs15init_keybits(&key->u.dsa.q);
+	case SC_ALGORITHM_GOSTR3410:
+		if (sc_pkcs15init_keybits(&key->u.gostr3410.d)
+				> SC_PKCS15_GOSTR3410_KEYSIZE) {
+			sc_debug(p15card->card->ctx, "Unsupported key (keybits %u)\n",
+					sc_pkcs15init_keybits(&key->u.gostr3410.d));
+			return SC_ERROR_OBJECT_NOT_VALID;
+		}
+		return SC_PKCS15_GOSTR3410_KEYSIZE;
 	}
 	sc_debug(p15card->card->ctx, "Unsupported key algorithm.\n");
 	return SC_ERROR_NOT_SUPPORTED;
@@ -2189,6 +2230,8 @@ prkey_pkcs15_algo(sc_pkcs15_card_t *p15card, sc_pkcs15_prkey_t *key)
 		return SC_PKCS15_TYPE_PRKEY_RSA;
 	case SC_ALGORITHM_DSA:
 		return SC_PKCS15_TYPE_PRKEY_DSA;
+	case SC_ALGORITHM_GOSTR3410:
+		return SC_PKCS15_TYPE_PRKEY_GOSTR3410;
 	}
 	sc_debug(p15card->card->ctx, "Unsupported key algorithm.\n");
 	return SC_ERROR_NOT_SUPPORTED;

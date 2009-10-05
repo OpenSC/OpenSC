@@ -53,6 +53,7 @@ static int rtecp_match_card(sc_card_t *card)
 
 static int rtecp_init(sc_card_t *card)
 {
+	sc_algorithm_info_t info;
 	unsigned long flags;
 
 	assert(card && card->ctx);
@@ -71,6 +72,13 @@ static int rtecp_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 1536, flags, 0);
 	_sc_card_add_rsa_alg(card, 1792, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+
+	memset(&info, 0, sizeof(info));
+	info.algorithm = SC_ALGORITHM_GOSTR3410;
+	info.key_length = 256;
+	info.flags = SC_ALGORITHM_GOSTR3410_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN
+		| SC_ALGORITHM_GOSTR3410_HASH_NONE;
+	_sc_card_add_algorithm(card, &info);
 
 	SC_FUNC_RETURN(card->ctx, 2, 0);
 }
@@ -374,7 +382,7 @@ static int rtecp_logout(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
-static int rtecp_rsa_cipher(sc_card_t *card, const u8 *data, size_t data_len,
+static int rtecp_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 		u8 *out, size_t out_len, int sign)
 {
 	sc_apdu_t apdu;
@@ -383,7 +391,7 @@ static int rtecp_rsa_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 	int r;
 
 	assert(card && card->ctx && data && out);
-	buf_out = malloc(data_len + 2);
+	buf_out = malloc(out_len + 2);
 	buf = malloc(data_len);
 	if (!buf || !buf_out)
 	{
@@ -403,8 +411,8 @@ static int rtecp_rsa_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 	apdu.data = buf;
 	apdu.datalen = data_len;
 	apdu.resp = buf_out;
-	apdu.resplen = data_len + 2;
-	apdu.le = data_len;
+	apdu.resplen = out_len + 2;
+	apdu.le = out_len;
 	if (apdu.lc > 255)
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 	r = sc_transmit_apdu(card, &apdu);
@@ -422,8 +430,8 @@ static int rtecp_rsa_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		{
 			assert(buf_out);
-			for (i = 0; i < out_len && i < data_len && i < apdu.resplen; ++i)
-				out[i] = buf_out[data_len - 1 - i];
+			for (i = 0; i < out_len && i < apdu.resplen; ++i)
+				out[i] = buf_out[out_len - 1 - i];
 			r = (i > 0) ? (int)i : SC_ERROR_INTERNAL;
 		}
 		else
@@ -432,7 +440,7 @@ static int rtecp_rsa_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 	if (!sign)
 	{
 		assert(buf_out);
-		sc_mem_clear(buf_out, data_len + 2);
+		sc_mem_clear(buf_out, out_len + 2);
 	}
 	assert(buf_out);
 	free(buf_out);
@@ -447,7 +455,7 @@ static int rtecp_decipher(sc_card_t *card,
 
 	assert(card && card->ctx && data && out);
 	/* decipher */
-	r = rtecp_rsa_cipher(card, data, data_len, out, out_len, 0);
+	r = rtecp_cipher(card, data, data_len, out, out_len, 0);
 	SC_FUNC_RETURN(card->ctx, 3, r);
 }
 
@@ -458,7 +466,7 @@ static int rtecp_compute_signature(sc_card_t *card,
 
 	assert(card && card->ctx && data && out);
 	/* compute digital signature */
-	r = rtecp_rsa_cipher(card, data, data_len, out, out_len, 1);
+	r = rtecp_cipher(card, data, data_len, out, out_len, 1);
 	SC_FUNC_RETURN(card->ctx, 2, r);
 }
 
@@ -663,14 +671,31 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (!r && request == SC_CARDCTL_RTECP_GENERATE_KEY)
 	{
-		if (genkey_data->modulus_len >= apdu.resplen &&
-				genkey_data->exponent_len >= 3)
+		if (genkey_data->type == SC_ALGORITHM_RSA &&
+				genkey_data->u.rsa.modulus_len >= apdu.resplen &&
+				genkey_data->u.rsa.exponent_len >= 3)
 		{
-			memcpy(genkey_data->modulus, apdu.resp, apdu.resplen);
-			genkey_data->modulus_len = apdu.resplen;
-			reverse(genkey_data->modulus, genkey_data->modulus_len);
-			memcpy(genkey_data->exponent, "\x01\x00\x01", 3);
-			genkey_data->exponent_len = 3;
+			memcpy(genkey_data->u.rsa.modulus, apdu.resp, apdu.resplen);
+			genkey_data->u.rsa.modulus_len = apdu.resplen;
+			reverse(genkey_data->u.rsa.modulus,
+					genkey_data->u.rsa.modulus_len);
+			memcpy(genkey_data->u.rsa.exponent, "\x01\x00\x01", 3);
+			genkey_data->u.rsa.exponent_len = 3;
+		}
+		else if (genkey_data->type == SC_ALGORITHM_GOSTR3410 &&
+				genkey_data->u.gostr3410.x_len <= apdu.resplen &&
+				genkey_data->u.gostr3410.x_len +
+				genkey_data->u.gostr3410.y_len >= apdu.resplen)
+		{
+			memcpy(genkey_data->u.gostr3410.x, apdu.resp,
+					genkey_data->u.gostr3410.x_len);
+			memcpy(genkey_data->u.gostr3410.y, apdu.resp +
+					genkey_data->u.gostr3410.x_len,
+					genkey_data->u.gostr3410.y_len);
+			reverse(genkey_data->u.gostr3410.x,
+					genkey_data->u.gostr3410.x_len);
+			reverse(genkey_data->u.gostr3410.y,
+					genkey_data->u.gostr3410.y_len);
 		}
 		else
 			r = SC_ERROR_BUFFER_TOO_SMALL;

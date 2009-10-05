@@ -356,6 +356,7 @@ typedef unsigned long ck_key_type_t;
 #define CKK_AES			(0x1fUL)
 #define CKK_BLOWFISH		(0x20UL)
 #define CKK_TWOFISH		(0x21UL)
+#define CKK_GOSTR3410		(0x30UL)
 #define CKK_VENDOR_DEFINED	(1UL << 31)
 
 
@@ -433,6 +434,9 @@ typedef unsigned long ck_attribute_type_t;
 #define CKA_AUTH_PIN_FLAGS		(0x201UL)
 #define CKA_ALWAYS_AUTHENTICATE		(0x202UL)
 #define CKA_WRAP_WITH_TRUSTED		(0x210UL)
+#define CKA_GOSTR3410_PARAMS		(0x250UL)
+#define CKA_GOSTR3411_PARAMS		(0x251UL)
+#define CKA_GOST28147_PARAMS		(0x252UL)
 #define CKA_HW_FEATURE_TYPE		(0x300UL)
 #define CKA_RESET_ON_INIT		(0x301UL)
 #define CKA_HAS_RESET			(0x302UL)
@@ -669,6 +673,10 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_AES_MAC			(0x1083UL)
 #define CKM_AES_MAC_GENERAL		(0x1084UL)
 #define CKM_AES_CBC_PAD			(0x1085UL)
+#define CKM_GOSTR3410_KEY_PAIR_GEN	(0x1200UL)
+#define CKM_GOSTR3410			(0x1201UL)
+#define CKM_GOSTR3410_WITH_GOSTR3411	(0x1202UL)
+#define CKM_GOSTR3411			(0x1210UL)
 #define CKM_DSA_PARAMETER_GEN		(0x2000UL)
 #define CKM_DH_PKCS_PARAMETER_GEN	(0x2001UL)
 #define CKM_X9_42_DH_PARAMETER_GEN	(0x2002UL)

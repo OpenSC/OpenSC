@@ -143,6 +143,16 @@ struct sc_pkcs15_prkey_dsa {
 	sc_pkcs15_bignum_t priv;
 };
 
+struct sc_pkcs15_pubkey_gostr3410 {
+	sc_pkcs15_bignum_t x;
+	sc_pkcs15_bignum_t y;
+};
+
+struct sc_pkcs15_prkey_gostr3410 {
+	/* private components */
+	sc_pkcs15_bignum_t d;
+};
+
 struct sc_pkcs15_pubkey {
 	int algorithm;
 
@@ -150,6 +160,7 @@ struct sc_pkcs15_pubkey {
 	union {
 		struct sc_pkcs15_pubkey_rsa rsa;
 		struct sc_pkcs15_pubkey_dsa dsa;
+		struct sc_pkcs15_pubkey_gostr3410 gostr3410;
 	} u;
 
 	/* DER encoded raw key */
@@ -162,6 +173,7 @@ struct sc_pkcs15_prkey {
 	union {
 		struct sc_pkcs15_prkey_rsa rsa;
 		struct sc_pkcs15_prkey_dsa dsa;
+		struct sc_pkcs15_prkey_gostr3410 gostr3410;
 	} u;
 };
 typedef struct sc_pkcs15_prkey sc_pkcs15_prkey_t;
@@ -242,6 +254,17 @@ typedef struct sc_pkcs15_data_info sc_pkcs15_data_info_t;
 #define SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE	0x08
 #define SC_PKCS15_PRKEY_ACCESS_LOCAL		0x10
 
+#define SC_PKCS15_PARAMSET_GOSTR3410_A          1
+#define SC_PKCS15_PARAMSET_GOSTR3410_B          2
+#define SC_PKCS15_PARAMSET_GOSTR3410_C          3
+
+#define SC_PKCS15_GOSTR3410_KEYSIZE             256
+
+struct sc_pkcs15_keyinfo_gostparams
+{
+	unsigned int gostr3410, gostr3411, gost28147;
+};
+
 struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
 	unsigned int usage, access_flags;
@@ -249,6 +272,8 @@ struct sc_pkcs15_prkey_info {
 	size_t modulus_length;
 	u8     *subject;
 	size_t subject_len;
+	void   *params;
+	size_t params_len;
 
 	struct sc_path path;
 };
@@ -261,6 +286,8 @@ struct sc_pkcs15_pubkey_info {
 	size_t modulus_length;
 	u8     *subject;
 	size_t subject_len;
+	void   *params;
+	size_t params_len;
 
 	struct sc_path path;
 };
@@ -271,10 +298,12 @@ typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info_t;
 #define SC_PKCS15_TYPE_PRKEY			0x100
 #define SC_PKCS15_TYPE_PRKEY_RSA		0x101
 #define SC_PKCS15_TYPE_PRKEY_DSA		0x102
+#define SC_PKCS15_TYPE_PRKEY_GOSTR3410		0x103
 
 #define SC_PKCS15_TYPE_PUBKEY			0x200
 #define SC_PKCS15_TYPE_PUBKEY_RSA		0x201
 #define SC_PKCS15_TYPE_PUBKEY_DSA		0x202
+#define SC_PKCS15_TYPE_PUBKEY_GOSTR3410		0x203
 
 #define SC_PKCS15_TYPE_CERT			0x400
 #define SC_PKCS15_TYPE_CERT_X509		0x401
