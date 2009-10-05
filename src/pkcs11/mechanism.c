@@ -427,6 +427,8 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 {
 	struct sc_pkcs11_object *key;
 	CK_ATTRIBUTE attr = { CKA_MODULUS_BITS, pLength, sizeof(*pLength) };
+	CK_KEY_TYPE key_type;
+	CK_ATTRIBUTE attr_key_type = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
 	CK_RV rv;
 
 	key = ((struct signature_data *) operation->priv_data)->key;
@@ -435,6 +437,12 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 	/* convert bits to bytes */
 	if (rv == CKR_OK)
 		*pLength = (*pLength + 7) / 8;
+
+	if (rv == CKR_OK) {
+		rv = key->ops->get_attribute(operation->session, key, &attr_key_type);
+		if (rv == CKR_OK && key_type == CKK_GOSTR3410)
+			*pLength *= 2;
+	}
 
 	return rv;
 }
@@ -609,7 +617,11 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	struct signature_data *data;
 	struct sc_pkcs11_object *key;
 	unsigned char *pubkey_value;
+	CK_KEY_TYPE key_type;
+	CK_BYTE params[9 /* GOST_PARAMS_OID_SIZE */] = { 0 };
 	CK_ATTRIBUTE attr = {CKA_VALUE, NULL, 0};
+	CK_ATTRIBUTE attr_key_type = {CKA_KEY_TYPE, &key_type, sizeof(key_type)};
+	CK_ATTRIBUTE attr_key_params = {CKA_GOSTR3410_PARAMS, &params, sizeof(params)};
 	int rv;
 
 	data = (struct signature_data *) operation->priv_data;
@@ -627,7 +639,15 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	if (rv != CKR_OK)
 		goto done;
 
+	rv = key->ops->get_attribute(operation->session, key, &attr_key_type);
+	if (rv == CKR_OK && key_type == CKK_GOSTR3410) {
+		rv = key->ops->get_attribute(operation->session, key, &attr_key_params);
+		if (rv != CKR_OK)
+			goto done;
+	}
+
 	rv = sc_pkcs11_verify_data(pubkey_value, attr.ulValueLen,
+		params, sizeof(params),
 		operation->mechanism.mechanism, data->md,
 		data->buffer, data->buffer_len, pSignature, ulSignatureLen);
 

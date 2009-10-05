@@ -440,6 +440,7 @@ CK_RV sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *,
 CK_RV sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 	struct sc_pkcs15_prkey *privkey, struct sc_pkcs15_pubkey *pubkey);
 CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
+	const unsigned char *pubkey_params, int pubkey_params_len,
 	CK_MECHANISM_TYPE mech, sc_pkcs11_operation_t *md,
 	unsigned char *inp, int inp_len,
 	unsigned char *signat, int signat_len);

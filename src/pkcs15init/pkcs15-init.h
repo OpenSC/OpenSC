@@ -219,6 +219,10 @@ struct sc_pkcs15init_pinargs {
 	size_t			puk_len;
 };
 
+struct sc_pkcs15init_keyarg_gost_params {
+	unsigned char gostr3410, gostr3411, gost28147;
+};
+
 struct sc_pkcs15init_prkeyargs {
 	struct sc_pkcs15_id	id;
 	struct sc_pkcs15_id	auth_id;
@@ -226,6 +230,7 @@ struct sc_pkcs15init_prkeyargs {
 	unsigned long		usage;
 	unsigned long		x509_usage;
 	unsigned int		flags;
+	struct sc_pkcs15init_keyarg_gost_params gost_params;
 
 	sc_pkcs15_prkey_t	key;
 
@@ -248,6 +253,7 @@ struct sc_pkcs15init_pubkeyargs {
 	const char *		label;
 	unsigned long		usage;
 	unsigned long		x509_usage;
+	struct sc_pkcs15init_keyarg_gost_params gost_params;
 
 	sc_pkcs15_pubkey_t	key;
 };

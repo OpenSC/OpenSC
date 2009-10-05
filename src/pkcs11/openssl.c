@@ -13,6 +13,10 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/opensslv.h>
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#include <openssl/ec.h>
+#include <openssl/conf.h>
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 
 static CK_RV	sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *);
 static CK_RV	sc_pkcs11_openssl_md_update(sc_pkcs11_operation_t *,
@@ -63,6 +67,18 @@ static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
 };
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
+	CKM_GOSTR3411,
+	{ 0, 0, CKF_DIGEST }, 0,
+	sizeof(struct sc_pkcs11_operation),
+	sc_pkcs11_openssl_md_release,
+	sc_pkcs11_openssl_md_init,
+	sc_pkcs11_openssl_md_update,
+	sc_pkcs11_openssl_md_final
+};
+#endif
+
 static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
 	CKM_MD5,
 	{ 0, 0, CKF_DIGEST }, 0,
@@ -86,6 +102,10 @@ static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
 void
 sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *card)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+	/* FIXME: see openssl-1.0.0-beta3/engines/ccgost/README.gost */
+	OPENSSL_config(NULL);
+#endif
 	openssl_sha1_mech.mech_data = EVP_sha1();
 	sc_pkcs11_register_mechanism(card, &openssl_sha1_mech);
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L
@@ -100,6 +120,10 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *card)
 	sc_pkcs11_register_mechanism(card, &openssl_md5_mech);
 	openssl_ripemd160_mech.mech_data = EVP_ripemd160();
 	sc_pkcs11_register_mechanism(card, &openssl_ripemd160_mech);
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+	openssl_gostr3411_mech.mech_data = EVP_get_digestbynid(NID_id_GostR3411_94);
+	sc_pkcs11_register_mechanism(card, &openssl_gostr3411_mech);
+#endif
 }
 
 
@@ -224,11 +248,94 @@ sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 	return CKR_OK;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+
+static void reverse(unsigned char *buf, size_t len)
+{
+	unsigned char tmp;
+	size_t i;
+
+	for (i = 0; i < len / 2; ++i) {
+		tmp = buf[i];
+		buf[i] = buf[len - 1 - i];
+		buf[len - 1 - i] = tmp;
+	}
+}
+
+static CK_RV gostr3410_verify_data(const unsigned char *pubkey, int pubkey_len,
+		const unsigned char *params, int params_len,
+		unsigned char *data, int data_len,
+		unsigned char *signat, int signat_len)
+{
+	EVP_PKEY *pkey;
+	EVP_PKEY_CTX *pkey_ctx;
+	EC_POINT *P;
+	BIGNUM *X, *Y;
+	const EC_GROUP *group = NULL;
+	char paramset[2] = "A";
+	int r = -1, ret_vrf = 0;
+
+	pkey = EVP_PKEY_new();
+	if (!pkey)
+		return CKR_HOST_MEMORY;
+	r = EVP_PKEY_set_type(pkey, NID_id_GostR3410_2001);
+	if (r == 1) {
+		pkey_ctx = EVP_PKEY_CTX_new(pkey, NULL);
+		if (!pkey_ctx) {
+			EVP_PKEY_free(pkey);
+			return CKR_HOST_MEMORY;
+		}
+		/* FIXME: fully check params[] */
+		if (params_len > 0 && params[params_len - 1] >= 1 &&
+				params[params_len - 1] <= 3) {
+			paramset[0] += params[params_len - 1] - 1;
+			r = EVP_PKEY_CTX_ctrl_str(pkey_ctx, "paramset", paramset);
+		}
+		else
+			r = -1;
+		if (r == 1)
+			r = EVP_PKEY_paramgen_init(pkey_ctx);
+		if (r == 1)
+			r = EVP_PKEY_paramgen(pkey_ctx, &pkey);
+		if (r == 1 && EVP_PKEY_get0(pkey) != NULL)
+			group = EC_KEY_get0_group(EVP_PKEY_get0(pkey));
+		r = -1;
+		if (group  &&  pubkey_len == 0x20 + 0x20 + 4 + 2) {
+			X = BN_bin2bn(pubkey + 4, 0x20, NULL);
+			Y = BN_bin2bn(pubkey + 4 + 2 + 0x20, 0x20, NULL);
+
+			P = EC_POINT_new(group);
+			if (P && X && Y)
+				r = EC_POINT_set_affine_coordinates_GFp(group,
+						P, X, Y, NULL);
+			BN_free(X);
+			BN_free(Y);
+			if (r == 1 && EVP_PKEY_get0(pkey) && P)
+				r = EC_KEY_set_public_key(EVP_PKEY_get0(pkey), P);
+			EC_POINT_free(P);
+		}
+		if (r == 1) {
+			r = EVP_PKEY_verify_init(pkey_ctx);
+			reverse(data, data_len);
+			if (r == 1)
+				ret_vrf = EVP_PKEY_verify(pkey_ctx, signat, signat_len,
+						data, data_len);
+		}
+	}
+	EVP_PKEY_CTX_free(pkey_ctx);
+	EVP_PKEY_free(pkey);
+	if (r != 1)
+		return CKR_GENERAL_ERROR;
+	return ret_vrf == 1 ? CKR_OK : CKR_SIGNATURE_INVALID;
+}
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
+
 /* If no hash function was used, finish with RSA_public_decrypt().
  * If a hash function was used, we can make a big shortcut by
  *   finishing with EVP_VerifyFinal().
  */
 CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
+			const unsigned char *pubkey_params, int pubkey_params_len,
 			CK_MECHANISM_TYPE mech, sc_pkcs11_operation_t *md,
 			unsigned char *data, int data_len,
 			unsigned char *signat, int signat_len)
@@ -237,10 +344,20 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 	CK_RV rv = CKR_GENERAL_ERROR;
 	EVP_PKEY *pkey;
 
+	if (mech == CKM_GOSTR3410)
+	{
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+		return gostr3410_verify_data(pubkey, pubkey_len,
+				pubkey_params, pubkey_params_len,
+				data, data_len, signat, signat_len);
+#else
+		return CKR_FUNCTION_NOT_SUPPORTED;
+#endif
+	}
+
 	pkey = d2i_PublicKey(EVP_PKEY_RSA, NULL, &pubkey, pubkey_len);
 	if (pkey == NULL)
 		return CKR_GENERAL_ERROR;
-		
 
 	if (md != NULL) {
 		EVP_MD_CTX *md_ctx = DIGEST_CTX(md);

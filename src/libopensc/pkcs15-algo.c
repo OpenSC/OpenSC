@@ -239,6 +239,9 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			NULL,
 			NULL },
 #endif
+#ifdef SC_ALGORITHM_GOSTR3410
+	{ SC_ALGORITHM_GOSTR3410, {{ 1, 2, 643, 2, 2, 19 }}, NULL, NULL, NULL },
+#endif
 /* We do not support PBES1 because the encryption is weak */
 #ifdef SC_ALGORITHM_PBKDF2
 	{ SC_ALGORITHM_PBKDF2, {{ 1, 2, 840, 113549, 1, 5, 12 }},

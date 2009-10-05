@@ -691,11 +691,25 @@ typedef struct sc_entersafe_gen_key_data_st {
  * Rutoken ECP stuff
  */
 typedef struct sc_rtecp_genkey_data {
+	unsigned int type;
 	unsigned int key_id;
-	unsigned char *exponent;
-	size_t exponent_len;
-	unsigned char *modulus;
-	size_t modulus_len;
+	union
+	{
+		struct
+		{
+			unsigned char *exponent;
+			size_t exponent_len;
+			unsigned char *modulus;
+			size_t modulus_len;
+		} rsa;
+		struct
+		{
+			unsigned char *x;
+			size_t x_len;
+			unsigned char *y;
+			size_t y_len;
+		} gostr3410;
+	} u;
 } sc_rtecp_genkey_data_t;
 
 /*
