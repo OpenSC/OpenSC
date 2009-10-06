@@ -40,7 +40,8 @@ static struct sc_card_operations myeid_ops;
 static struct sc_card_driver myeid_drv = {
      "MyEID cards with PKCS#15 applet",
      "myeid",
-     &myeid_ops
+     &myeid_ops,
+     NULL, 0, NULL
 };
 
 static const char *myeid_atrs[] = {
@@ -202,7 +203,7 @@ static int myeid_read_binary(struct sc_card *card, unsigned int idx,
 static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen) 
 {
 	struct sc_apdu apdu;
-	int r,i;
+	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0xA1);
 	apdu.resp = buf;

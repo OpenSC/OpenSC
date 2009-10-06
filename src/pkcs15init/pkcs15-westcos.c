@@ -99,7 +99,7 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 	sc_file_t *file = sc_file_new();
 	sc_path_t	path;
 
-	if(pin_len>9 || puk_len>9 || pin_len<0 || puk_len<0)
+	if(pin_len>9 || puk_len>9)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	file->type = SC_FILE_TYPE_INTERNAL_EF;
@@ -314,7 +314,7 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 		r = sc_pkcs15_decode_pubkey(card->ctx, pubkey, p, lg);
 	}
 
-	BIO_reset(mem);
+	(void) BIO_reset(mem);
 
 	if(!i2d_RSAPrivateKey_bio(mem, rsa))
 	{

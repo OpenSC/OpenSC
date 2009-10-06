@@ -887,8 +887,6 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 		priv->obj_cache[enumtag].internal_obj_data,
 		priv->obj_cache[enumtag].internal_obj_len);
 	
-	
-ok:
 	SC_FUNC_RETURN(card->ctx, 1, 0);
 }
 
@@ -907,7 +905,6 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 	u8 *rbuf = NULL;
 	size_t rbuflen = 0;
 	u8 *tag;
-	size_t taglen;
 	u8 *body;
 	size_t bodylen;
 

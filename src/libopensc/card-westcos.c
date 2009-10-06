@@ -871,6 +871,7 @@ static int sc_lock_phase(sc_card_t * card, u8 phase)
 
 static int westcos_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 {
+	unsigned int i;
 	int r;
 	size_t buflen;
 	u8 buf[256];
@@ -1006,9 +1007,9 @@ static int westcos_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 			memcpy(temp, ck->key_template, sizeof(temp));
 			westcos_compute_aetb_crc(CRC_A, ck->new_key.key_value,
 				   ck->new_key.key_len, &temp[5], &temp[6]);
-			for (r = 0, temp[4] = 0xAA, lrc = 0; r < sizeof(temp);
-			     r++)
-				lrc += temp[r];
+			for (i = 0, temp[4] = 0xAA, lrc = 0; i < sizeof(temp);
+			    i++)
+				lrc += temp[i];
 			temp[4] = (lrc % 256);
 			buflen = sizeof(buf);
 			r = westcos_get_crypte_challenge(card,
@@ -1199,7 +1200,7 @@ out:
 		BIO_free(mem);
 	if (rsa)
 		RSA_free(rsa);
-#endif ENABLE_OPENSSL
+#endif /* ENABLE_OPENSSL */
 	if (keyfile)
 		sc_file_free(keyfile);
 	return r;

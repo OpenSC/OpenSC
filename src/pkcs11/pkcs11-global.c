@@ -175,7 +175,8 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 #if !defined(_WIN32)
 	pid_t current_pid = getpid();
 #endif
-	int i, rc, rv;
+	unsigned int i;
+	int  rc, rv;
 	sc_context_param_t ctx_opts;
 
 	/* Handle fork() exception */
@@ -323,7 +324,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		    CK_ULONG_PTR   pulCount)      /* receives the number of slots */
 {
 	CK_SLOT_ID_PTR found = NULL;
-	int i;
+	unsigned int i;
 	CK_ULONG numMatches;
 	sc_pkcs11_slot_t *slot;
 	CK_RV rv;

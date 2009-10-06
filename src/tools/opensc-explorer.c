@@ -1569,7 +1569,7 @@ static int do_asn1(int argc, char **argv)
 		goto err;
 	}
 	if ((size_t)r != len) {
-		printf("expecting %d, got only %d bytes.\n", len, r);
+		printf("expecting %ld, got only %d bytes.\n", len, r);
 		goto err;
 	}
 

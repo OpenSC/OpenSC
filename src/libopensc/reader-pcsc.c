@@ -507,7 +507,7 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	int r;
 	u8 feature_buf[256], rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	size_t rcount;
-	DWORD i, feature_len, display_ioctl;
+	DWORD i, feature_len, display_ioctl = 0;
 	PCSC_TLV_STRUCTURE *pcsc_tlv;
 
 	r = refresh_slot_attributes(reader, slot);
@@ -929,7 +929,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 		struct pcsc_private_data *priv = NULL;
 		struct pcsc_slot_data *pslot = NULL;
 		sc_slot_info_t *slot = NULL;
-		int i;
+		unsigned int i;
 		int found = 0;
 
 		for (i=0;i < sc_ctx_get_reader_count (ctx) && !found;i++) {

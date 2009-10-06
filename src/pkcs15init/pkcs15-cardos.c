@@ -253,7 +253,7 @@ cardos_store_key(sc_profile_t *profile, sc_card_t *card,
 			sc_pkcs15_prkey_t *key)
 {
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-	int		algorithm, r;
+	int		algorithm = 0, r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_error(card->ctx, "CardOS supports RSA keys only.");
@@ -306,7 +306,7 @@ cardos_generate_key(sc_profile_t *profile, sc_card_t *card,
 	struct sc_cardctl_cardos_genkey_info args;
 	struct sc_file	*temp;
 	u8		abignum[256];
-	int		algorithm, r, delete_it = 0, use_ext_rsa = 0;
+	int		algorithm = 0, r, delete_it = 0, use_ext_rsa = 0;
 	size_t		keybits, rsa_max_size;
 	int             pin_id = -1;
 

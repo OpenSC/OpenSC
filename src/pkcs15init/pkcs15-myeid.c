@@ -232,10 +232,7 @@ static int myeid_generate_store_key(sc_profile_t *profile, sc_card_t *card,
 		sc_pkcs15_prkey_info_t *info)
 {
 	struct sc_cardctl_myeid_gen_store_key_info args;
-	struct sc_cardctl_myeid_data_obj data_obj;
-	unsigned char raw_pubkey[256];
 	int           r;
-	unsigned int  mod_len;
 	sc_file_t    *prkf = NULL;
 
 	/* Parameter check */
@@ -362,7 +359,7 @@ static int myeid_create_pin_internal(sc_profile_t *profile, sc_card_t *card,
 
 	data[17] = 0x00;
 	data[18] = 0x00;
-	data[19] = 0x00;
+	data[19] = 0x00; /* FIXME, array is only 0..18 */
 
 	data_obj.Data    = data;
 	data_obj.DataLen = 0x10;
