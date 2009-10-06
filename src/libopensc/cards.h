@@ -159,7 +159,6 @@ extern sc_card_driver_t *sc_get_cryptoflex_driver(void);
 extern sc_card_driver_t *sc_get_cyberflex_driver(void);
 extern sc_card_driver_t *sc_get_gpk_driver(void);
 extern sc_card_driver_t *sc_get_gemsafeV1_driver(void);
-extern sc_card_driver_t *sc_get_gemsafeV2_driver(void);
 extern sc_card_driver_t *sc_get_miocos_driver(void);
 extern sc_card_driver_t *sc_get_mcrd_driver(void);
 extern sc_card_driver_t *sc_get_setcos_driver(void);

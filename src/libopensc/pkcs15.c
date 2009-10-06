@@ -868,14 +868,8 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 		/* Enumerate the DF's, so p15card->obj_list is
 		 * populated. */
 		r = sc_pkcs15_parse_df(p15card, df);
-		/* The DF is here but we can't read it yet */
-		if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
-			sc_do_log(p15card->card->ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "DF parsing failed");
-		else if (r < 0)
-			sc_do_log(p15card->card->ctx, SC_LOG_TYPE_ERROR, __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", "DF parsing failed", sc_strerror(r)); \
-		else
-			/* r == SC_SUCCESS */
-			df->enumerated = 1;
+		SC_TEST_RET(p15card->card->ctx, r, "DF parsing failed");
+		df->enumerated = 1;
 	}
 
 	/* And now loop over all objects */
@@ -1660,60 +1654,6 @@ int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen, struct sc_pkcs15_
 	card->unusedspace_read = 1;
 
 	return 0;
-}
-
-int sc_pkcs15_read_file_key_ref(struct sc_pkcs15_card *p15card,
-			int key_reference,
-			u8 **buf, size_t *buflen)
-{
-	u8	*data = NULL;
-	size_t	len = 0;
-	int	r;
-
-	assert(p15card != NULL && buf != NULL);
-
-	if (p15card->card->ctx->debug >= 1)
-		sc_debug(p15card->card->ctx, "called, key ref=%d\n", key_reference);
-
-	r = -1; /* file state: not in cache */
-	/* if (p15card->opts.use_cache) {
-		r = sc_pkcs15_read_cached_file(p15card, path, &data, &len);
-	} */
-	if (r) {
-		unsigned char buffer[512];
-
-		r = sc_get_data(p15card->card, key_reference, buffer, sizeof(buffer));
-		if (r < 0) {
-			free(data);
-			goto fail_unlock;
-		}
-
-		len = r;
-
-		data = (u8 *) malloc(len);
-		if (data == NULL) {
-			r = SC_ERROR_OUT_OF_MEMORY;
-			goto fail_unlock;
-		}
-		data[0] = 0x30;
-		data[1] = 0x82;
-		data[2] = 0x00;
-		data[3] = 0x8B;
-		data[4] = 0x02;
-		data[5] = 0x81;
-		data[6] = 0x81;
-		data[7] = 0x00;
-		memcpy(data+8, buffer+14, len-14);
-		data[0x88] = 0x02;
-		data[0x89] = 0x04;
-		memmove(data+0x8A, data+0x8B, 4);
-	}
-	*buf = data;
-	*buflen = len;
-	return 0;
-
-fail_unlock:
-	return r;
 }
 
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,

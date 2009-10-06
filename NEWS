@@ -8,7 +8,6 @@ or doc/nonpersistent/ChangeLog.
 
 New in 0.??.==; 200?-??-??; ??
 * New westcos driver by François Leblanc
-* New GemsafeV2 Emulation by Georges Bart
 * Initial support for MyEid card (Aventra)
 * GOST algorithm supported by Rutoken driver (Aleksey Samsonov)
 

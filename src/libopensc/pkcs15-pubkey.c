@@ -533,11 +533,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 	}
 	info = (const struct sc_pkcs15_pubkey_info *) obj->data;
 
-	if (info->path.len)
-		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
-	else
-		r = sc_pkcs15_read_file_key_ref(p15card, info->key_reference, &data, &len);
-
+	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
 	if (r < 0) {
 		sc_error(p15card->card->ctx, "Failed to read public key file.");
 		return r;

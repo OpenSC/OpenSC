@@ -639,9 +639,6 @@ int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen,
 int sc_pkcs15_encode_unusedspace(sc_context_t *ctx,
 			 struct sc_pkcs15_card *p15card,
 			 u8 **buf, size_t *buflen);
-int sc_pkcs15_read_file_key_ref(struct sc_pkcs15_card *p15card,
-			int key_reference,
-			u8 **buf, size_t *buflen);
 
 void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key);
 void sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *key);

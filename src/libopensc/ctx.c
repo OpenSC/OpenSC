@@ -59,7 +59,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "gpk",	(void *(*)(void)) sc_get_gpk_driver },
 #endif
 	{ "gemsafeV1",	(void *(*)(void)) sc_get_gemsafeV1_driver },
-	{ "gemsafeV2",	(void *(*)(void)) sc_get_gemsafeV2_driver },
 	{ "miocos",	(void *(*)(void)) sc_get_miocos_driver },
 	{ "mcrd",	(void *(*)(void)) sc_get_mcrd_driver },
 	{ "asepcos",	(void *(*)(void)) sc_get_asepcos_driver },
