@@ -35,49 +35,11 @@
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
-
-
 #include <openssl/err.h>
 #include <openssl/bio.h>
 #endif
 
 extern int sc_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2);
-
-#if 0
-/*
- * Get private and public key file
- */
-static int _westcos_get_keyfiles(sc_profile_t *profile, sc_card_t *card,
-                       const sc_path_t *df_path,
-                       sc_file_t **prkf, sc_file_t **pukf)
-{
-	sc_path_t       path = *df_path;
-	int             r;
-
-	/* Get the private key file */
-	r = SC_ERROR_NOT_SUPPORTED; //sc_profile_get_file_by_path(profile, &path, prkf);
-	if (r < 0) {
-		char pbuf[SC_MAX_PATH_STRING_SIZE];
-	
-		r = sc_path_print(pbuf, sizeof(pbuf), &path);
-		if (r != SC_SUCCESS)
-			pbuf[0] = '\0';
-
-		return r;
-	}
-	
-	/* Get the public key file */
-	path.len -= 2;
-	sc_append_file_id(&path, 0x1012);
-	r = SC_ERROR_NOT_SUPPORTED; //sc_profile_get_file_by_path(profile, &path, pukf);
-	if (r < 0) {
-		sc_file_free(*prkf);
-		return r;
-	}
-
-	return 0;
-}
-#endif /* currently unused */
 
 static int westcos_pkcs15init_init_card(sc_profile_t *profile, 
 						sc_card_t *card)
@@ -100,26 +62,12 @@ static int westcos_pkcs15init_create_dir(sc_profile_t *profile,
 
 	/* Create the application DF */
 	r = sc_pkcs15init_create_file(profile, card, df);
-	//if(r) return r;
 
 	r = sc_select_file(card, &df->path, NULL);
 	if(r) return r;
 
 	return 0;
 }
-
-#if 0
-/*
-* Create a PIN domain (i.e. a sub-directory holding a user PIN)
-*/
-static int westcos_pkcs15init_create_domain(sc_profile_t *profile, 
-						sc_card_t *card,
-						const sc_pkcs15_id_t *id, 
-						sc_file_t **ret)
-{
-	return SC_ERROR_NOT_SUPPORTED; //sc_pkcs15_create_pin_domain(profile, card, id, ret);
-}
-#endif /* currently unused */
 
 /*
  * Select the PIN reference
@@ -178,8 +126,6 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 		r = sc_select_file(card, &path, NULL);
 		if(r) return (r);
 	}
-
-	//r = sc_pkcs15init_create_file(profile, card, file);
 
 	if(file)
 		sc_file_free(file);
@@ -308,24 +254,6 @@ static int westcos_pkcs15init_store_key(sc_profile_t *profile,
 						sc_pkcs15_prkey_t *key)
 {
 	return SC_ERROR_NOT_SUPPORTED;
-
-#if 0
-	int             r;
-	sc_file_t       *keyfile;
-	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-
-	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	r = SC_ERROR_NOT_SUPPORTED; //sc_profile_get_file_by_path(profile, &key_info->path, &keyfile);
-	if (r < 0) return r;
-
-	//r = sc_pkcs15init_update_file(profile, card, keyfile, &key->der.data, &key->der.len);
-
-	//sc_file_free(keyfile);
-	return r;
-#endif 
 }
 
 /*
@@ -355,7 +283,7 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	if(/*keyfile == NULL ||*/ rsa == NULL || bn == NULL || mem == NULL) 
+	if(rsa == NULL || bn == NULL || mem == NULL) 
 	{
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;

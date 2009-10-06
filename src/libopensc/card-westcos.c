@@ -39,10 +39,6 @@
 #define min(a,b) (((a)<(b))?(a):(b))
 #endif
 
-#ifndef min
-#define max(a,b) (((a)>(b))?(a):(b))
-#endif
-
 #define DEFAULT_TRANSPORT_KEY "6f:59:b0:ed:6e:62:46:4a:5d:25:37:68:23:a8:a2:2d"
 
 #define JAVACARD (0x01)
@@ -50,7 +46,7 @@
 #ifdef ENABLE_OPENSSL
 #define DEBUG_SSL
 #ifdef DEBUG_SSL
-static void print_openssl_erreur(void)
+static void print_openssl_error(void)
 {
 	static int charge = 0;
 	long r;
@@ -620,7 +616,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 		sc_debug(card->ctx, "westcos_create_file\n");
 	memset(buf, 0, sizeof(buf));
 
-	/* clef de transport */
+	/* transport key */
 	r = sc_card_ctl(card, SC_CARDCTL_WESTCOS_AUT_KEY, NULL);
 	if (r)
 		return (r);
@@ -642,7 +638,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 	case SC_FILE_TYPE_WORKING_EF:
 		switch (file->ef_structure) {
 		case SC_FILE_EF_TRANSPARENT:
-			buf[0] |= 0x20;	/* pas de support transaction  */
+			buf[0] |= 0x20; /* no transaction support */
 			buf[1] |= 0;
 			_convertion_ac_methode(file, HIGH, SC_AC_OP_READ,
 					       &buf[2], &buf[2 + 4]);
@@ -656,7 +652,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 			buf[11] = (u8) ((file->size) % 256);
 			break;
 		case SC_FILE_EF_LINEAR_FIXED:
-			buf[0] |= 0x40;	/* pas de support transaction  */
+			buf[0] |= 0x40; /* no transaction support */
 			buf[1] |= 0;
 			_convertion_ac_methode(file, HIGH, SC_AC_OP_READ,
 					       &buf[2], &buf[2 + 4]);
@@ -668,7 +664,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 			buf[11] = file->record_length;
 			break;
 		case SC_FILE_EF_CYCLIC:
-			buf[0] |= 0x60;	/* pas de support transaction  */
+			buf[0] |= 0x60; /* no transaction support */
 			buf[1] |= 0;
 			_convertion_ac_methode(file, HIGH, SC_AC_OP_READ,
 					       &buf[2], &buf[2 + 4]);
@@ -769,7 +765,9 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 					u8 * result, size_t * len)
 {
 	int r;
+#ifdef ENABLE_OPENSSL
 	DES_key_schedule ks1, ks2;
+#endif
 	u8 buf[8];
 	if ((*len) < sizeof(buf))
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -777,17 +775,21 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 	r = sc_get_challenge(card, buf, *len);
 	if (r)
 		return r;
+#ifdef ENABLE_OPENSSL
 	DES_set_key((const_DES_cblock *) & key[0], &ks1);
 	DES_set_key((const_DES_cblock *) & key[8], &ks2);
 	DES_ecb2_encrypt((const_DES_cblock *)buf, (DES_cblock*)result, &ks1, &ks2, DES_ENCRYPT);
-	return 0;
+	return SC_SUCCESS;
+#else
+	return SC_ERROR_NOT_SUPPORTED;
+#endif
 }
 
 static int westcos_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			   int *tries_left)
 {
 	int r;
-	u8 buf[20];		//, result[20];
+	u8 buf[20];
 	sc_apdu_t apdu;
 	size_t len = 0;
 	int pad = 0, use_pin_pad = 0, ins, p1 = 0;
@@ -1177,11 +1179,12 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	priv_data_t *priv_data = NULL;
 	int pad;
 
-#ifdef ENABLE_OPENSSL
+#ifndef ENABLE_OPENSSL
+	r = SC_ERROR_NOT_SUPPORTED;
+#else
 	RSA *rsa = NULL;
 	BIO *mem = BIO_new(BIO_s_mem());
 
-#endif
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (card->ctx->debug >= 1)
@@ -1191,10 +1194,6 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
-#ifndef ENABLE_OPENSSL
-	r = SC_ERROR_NOT_SUPPORTED;
-
-#else
 	if ((priv_data->env.flags) & SC_ALGORITHM_RSA_PAD_PKCS1)
 		pad = RSA_PKCS1_PADDING;
 
@@ -1225,13 +1224,13 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	BIO_set_mem_eof_return(mem, -1);
 	if (!d2i_RSAPrivateKey_bio(mem, &rsa)) {
 		if (card->ctx->debug >= 5)
-			sc_debug(card->ctx, "RSA clef invalide, %d\n",
+			sc_debug(card->ctx, "RSA key invalid, %d\n",
 				 ERR_get_error());
 		r = SC_ERROR_UNKNOWN;
 		goto out;
 	}
 
-	/* pkcs11 reroute routine cryptage vers la carte */
+	/* pkcs11 reset openssl functions */
 	rsa->meth = RSA_PKCS1_SSLeay();
 	if (RSA_size(rsa) > outlen) {
 		if (card->ctx->debug >= 5)
@@ -1245,7 +1244,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		if (r == -1) {
 
 #ifdef DEBUG_SSL
-			print_openssl_erreur();
+			print_openssl_error();
 
 #endif
 			if (card->ctx->debug >= 5)
@@ -1256,13 +1255,13 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		}
 	}
 
-	else {			/* signature */
+	else {			/* sign */
 
 		r = RSA_private_encrypt(data_len, data, out, rsa, pad);
 		if (r == -1) {
 
 #ifdef DEBUG_SSL
-			print_openssl_erreur();
+			print_openssl_error();
 
 #endif
 			if (card->ctx->debug >= 5)
@@ -1284,15 +1283,12 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	r = outlen;
 
 #endif
-#endif /* ENABLE_OPENSSL */
-      out:
-#ifdef ENABLE_OPENSSL
+out:
 	if (mem)
 		BIO_free(mem);
 	if (rsa)
 		RSA_free(rsa);
-
-#endif
+#endif ENABLE_OPENSSL
 	if (keyfile)
 		sc_file_free(keyfile);
 	return r;
