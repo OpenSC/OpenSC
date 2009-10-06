@@ -28,7 +28,7 @@ pkcs15 {
 
 # Default settings.
 # This option block will always be processed.
-option default_32k {
+option default {
     macros {
         ti-size     = 128;
         odf-size    = 128;
@@ -43,8 +43,7 @@ option default_32k {
 # This option is for cards with very little memory.
 # It sets the size of various PKCS15 directory files
 # to 128 or 256, respectively.
-#option small {
-option default {
+option small {
     macros {
         ti-size     = 64;
         odf-size    = 128;
