@@ -276,100 +276,11 @@ static int westcos_init(sc_card_t * card)
 static int westcos_select_file(sc_card_t * card, const sc_path_t * in_path,
 			       sc_file_t ** file_out)
 {
-	sc_context_t *ctx;
-	sc_apdu_t apdu;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen;
-	sc_file_t *file = NULL;
-	priv_data_t *priv_data = NULL;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_select_file\n");
-	if (card == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	priv_data = (priv_data_t *) card->drv_data;
-	priv_data->file_id = 0;
-	ctx = card->ctx;
-	memcpy(path, in_path->value, in_path->len);
-	pathlen = (int)in_path->len;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0);
-	switch (in_path->type) {
-	case SC_PATH_TYPE_FILE_ID:
-		apdu.p1 = 0;
-		if (pathlen != 2)
-			return SC_ERROR_INVALID_ARGUMENTS;
-		break;
-	case SC_PATH_TYPE_DF_NAME:
-		apdu.p1 = 4;
-		break;
-	case SC_PATH_TYPE_PATH:
-		apdu.p1 = 9;
-		if (pathlen == 2 && memcmp(path, "\x3F\x00", 2) == 0) {
-			apdu.p1 = 0;
-		}
+	priv_data_t *priv_data = (priv_data_t *) card->drv_data;
 
-		else if (pathlen > 2 && memcmp(path, "\x3F\x00", 2) == 0) {
-			apdu.p1 = 8;
-			pathlen -= 2;
-			memcpy(path, &in_path->value[2], pathlen);
-		}
-		break;
-	case SC_PATH_TYPE_FROM_CURRENT:
-		apdu.p1 = 9;
-		break;
-	case SC_PATH_TYPE_PARENT:
-		apdu.p1 = 3;
-		pathlen = 0;
-		apdu.cse = SC_APDU_CASE_3_SHORT;
-		break;
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	apdu.p2 = 0;	/* first record, return FCI */
-	apdu.lc = pathlen;
-	apdu.data = path;
-	apdu.datalen = pathlen;
-	if (file_out != NULL) {
-		apdu.resp = buf;
-		apdu.resplen = sizeof(buf);
-		apdu.le = 255;
-	} else {
-		apdu.resplen = 0;
-		apdu.le = 0;
-		apdu.cse = SC_APDU_CASE_3_SHORT;
-	}
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return (r);
-	if (file_out == NULL) {
-		if (apdu.sw1 == 0x61)
-			return 0;
-		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	}
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r)
-		return (r);
-	switch (apdu.resp[0]) {
-	case 0x6F:
-		file = sc_file_new();
-		if (file == NULL)
-			return SC_ERROR_OUT_OF_MEMORY;
-		file->path = *in_path;
-		if (card->ops->process_fci == NULL) {
-			sc_file_free(file);
-			return SC_ERROR_NOT_SUPPORTED;
-		}
-		if (apdu.resp[1] <= apdu.resplen)
-			card->ops->process_fci(card, file, apdu.resp + 2,
-					       apdu.resp[1]);
-		*file_out = file;
-		break;
-	case 0x00:		/* proprietary coding */
-		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
-	default:
-		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
-	}
-	return 0;
+	assert(iso_ops && iso_ops->select_file);
+	priv_data->file_id = 0;
+	return iso_ops->select_file(card, in_path, file_out);
 }
 
 static int _westcos2opensc_ac(u8 flag)
