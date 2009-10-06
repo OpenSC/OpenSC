@@ -680,7 +680,7 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 
 			cert = (struct pkcs15_cert_object*) obj2;
 
-			if (cert->cert_prvkey != obj)
+			if ((struct pkcs15_any_object*)(cert->cert_prvkey) != obj)
 				continue;
 
 			pkcs15_add_object(slot, obj2, NULL);
