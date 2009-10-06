@@ -2171,9 +2171,6 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 	case CKM_RSA_X_509:
 		flags = SC_ALGORITHM_RSA_RAW;
 		break;
-	case CKM_OPENSC_GOST: /* FIXME: */
-		flags = SC_ALGORITHM_GOST;
-		break;
 	case CKM_GOSTR3410:
 		flags = SC_ALGORITHM_GOSTR3410_HASH_NONE;
 		break;
@@ -2258,10 +2255,8 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 	case CKM_RSA_X_509:
 		flags |= SC_ALGORITHM_RSA_RAW;
 		break;
-	case CKM_OPENSC_GOST:
-		flags |= SC_ALGORITHM_GOST;
 	default:
-		return CKR_MECHANISM_INVALID;		
+		return CKR_MECHANISM_INVALID;
 	}
 
 	rv = sc_lock(ses->slot->card->card);
@@ -2989,22 +2984,6 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 		}
 		if (alg_info->algorithm == SC_ALGORITHM_GOSTR3410)
 			flags |= alg_info->flags;
-#if 0 /* FIXME: */
-		if (alg_info->algorithm == SC_ALGORITHM_GOST){
-		    mech_info.flags = CKF_HW | CKF_SIGN | CKF_ENCRYPT | CKF_DECRYPT;
-		    #ifdef ENABLE_OPENSSL
-		    mech_info.flags |= CKF_VERIFY;
-		    #endif
-		    mech_info.ulMinKeySize = 32;
-		    mech_info.ulMaxKeySize = 32;
-		    mt = sc_pkcs11_new_fw_mechanism(CKM_OPENSC_GOST,
-					&mech_info, CKK_RSA, NULL);
-		    rc = sc_pkcs11_register_mechanism(p11card, mt);
-			sc_debug(card->ctx, "register GOST!!! %d", rc);
-			if(rc < 0)
-				return rc;	
-		}
-#endif
 		alg_info++;
 	}
 
