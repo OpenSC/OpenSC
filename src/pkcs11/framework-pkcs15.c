@@ -82,6 +82,7 @@ struct pkcs15_cert_object {
 #define cert_p15obj		base.p15_object
 #define cert_pubkey		base.related_pubkey
 #define cert_issuer		base.related_cert
+#define cert_prvkey		base.related_privkey
 
 struct pkcs15_prkey_object {
 	struct pkcs15_any_object	base;
@@ -91,7 +92,6 @@ struct pkcs15_prkey_object {
 #define prv_flags		base.base.flags
 #define prv_p15obj		base.p15_object
 #define prv_pubkey		base.related_pubkey
-#define prv_cert		base.related_cert
 #define prv_next		base.related_privkey
 
 struct pkcs15_pubkey_object {
@@ -102,7 +102,7 @@ struct pkcs15_pubkey_object {
 };
 #define pub_flags		base.base.flags
 #define pub_p15obj		base.p15_object
-#define pub_cert		base.related_cert
+#define pub_genfrom		base.related_cert
 
 #define __p15_type(obj)		(((obj) && (obj)->p15_object)? ((obj)->p15_object->type) : (unsigned int)-1)
 #define is_privkey(obj)		(__p15_type(obj) == SC_PKCS15_TYPE_PRKEY_RSA || __p15_type(obj) == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
@@ -360,7 +360,7 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data,
 	} else
 		obj2->pub_data = NULL; /* will copy from cert when cert is read */
 
-	obj2->pub_cert = object;
+	obj2->pub_genfrom = object;
 	object->cert_pubkey = obj2;
 
 	if (cert_object != NULL)
@@ -480,6 +480,9 @@ __pkcs15_prkey_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_prkey_
 	sc_pkcs15_id_t *id = &pk->prv_info->id;
 	unsigned int i;
 
+	sc_debug(context, "Object is a private key and has id %s",
+	         sc_pkcs15_print_id(id));
+
 	for (i = 0; i < fw_data->num_objects; i++) {
 		struct pkcs15_any_object *obj = fw_data->objects[i];
 
@@ -498,18 +501,12 @@ __pkcs15_prkey_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_prkey_
 				*pp = (struct pkcs15_prkey_object *) obj;
 			}
 		} else
-		if (is_cert(obj) && !pk->prv_cert) {
-			struct pkcs15_cert_object *cert;
-			
-			cert = (struct pkcs15_cert_object *) obj;
-			if (sc_pkcs15_compare_id(&cert->cert_info->id, id))
-				pk->prv_cert = cert;
-		} else
 		if (is_pubkey(obj) && !pk->prv_pubkey) {
 			struct pkcs15_pubkey_object *pubkey;
 			
 			pubkey = (struct pkcs15_pubkey_object *) obj;
 			if (sc_pkcs15_compare_id(&pubkey->pub_info->id, id)) {
+				sc_debug(context, "Associating object %d as public key", i);
 				pk->prv_pubkey = pubkey;
 				if (pk->prv_info->modulus_length == 0)
 					pk->prv_info->modulus_length = pubkey->pub_info->modulus_length;
@@ -521,25 +518,43 @@ __pkcs15_prkey_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_prkey_
 static void
 __pkcs15_cert_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_cert_object *cert)
 {
-	struct sc_pkcs15_cert *c1 = cert->cert_data, *c2;
+	struct sc_pkcs15_cert *c1 = cert->cert_data;
+	sc_pkcs15_id_t *id = &cert->cert_info->id;
 	unsigned int i;
 
-	/* Loop over all certificates see if we find the certificate of
-	 * the issuer */
+	sc_debug(context, "Object is a certificate and has id %s",
+	         sc_pkcs15_print_id(id));
+
+	/* Loop over all objects to see if we find the certificate of
+	 * the issuer and the associated private key */
 	for (i = 0; i < fw_data->num_objects; i++) {
 		struct pkcs15_any_object *obj = fw_data->objects[i];
 
-		if (!is_cert(obj) || obj == (struct pkcs15_any_object *) cert)
-			continue;
+		if (is_cert(obj) && obj != (struct pkcs15_any_object *) cert) {
+			struct pkcs15_cert_object *cert2;
+			struct sc_pkcs15_cert *c2;
 
-		c2 = ((struct pkcs15_cert_object *) obj)->cert_data;
+			cert2 = (struct pkcs15_cert_object *) obj;
+			c2 = cert2->cert_data;
 
-		if (!c1 || !c2 || !c1->issuer_len || !c2->subject_len)
-			continue;
-		if (c1->issuer_len == c2->subject_len
-		 && !memcmp(c1->issuer, c2->subject, c1->issuer_len)) {
-			cert->cert_issuer = (struct pkcs15_cert_object *) obj;
-			return;
+			if (!c1 || !c2 || !c1->issuer_len || !c2->subject_len)
+				continue;
+			if (c1->issuer_len == c2->subject_len
+			 && !memcmp(c1->issuer, c2->subject, c1->issuer_len)) {
+				sc_debug(context, "Associating object %d (id %s) as issuer",
+				         i, sc_pkcs15_print_id(&cert2->cert_info->id));
+				cert->cert_issuer = (struct pkcs15_cert_object *) obj;
+				return;
+			}
+		} else
+		if (is_privkey(obj) && !cert->cert_prvkey) {
+			struct pkcs15_prkey_object *pk;
+
+			pk = (struct pkcs15_prkey_object *) obj;
+			if (sc_pkcs15_compare_id(&pk->prv_info->id, id)) {
+				sc_debug(context, "Associating object %d as private key", i);
+				cert->cert_prvkey = pk;
+			}
 		}
 	}
 }
@@ -557,6 +572,9 @@ pkcs15_bind_related_objects(struct pkcs15_fw_data *fw_data)
 
 		if (obj->base.flags & SC_PKCS11_OBJECT_HIDDEN)
 			continue;
+
+		sc_debug(context, "Looking for objects related to object %d", i);
+
 		if (is_privkey(obj)) {
 			__pkcs15_prkey_bind_related(fw_data, (struct pkcs15_prkey_object *) obj);
 		} else if (is_cert(obj)) {
@@ -588,7 +606,7 @@ check_cert_data_read(struct pkcs15_fw_data *fw_data,
 	/* update the related public key object */
 	obj2 = cert->cert_pubkey;
 
-    obj2->pub_data = (sc_pkcs15_pubkey_t *)calloc(1, sizeof(sc_pkcs15_pubkey_t));
+	obj2->pub_data = (sc_pkcs15_pubkey_t *)calloc(1, sizeof(sc_pkcs15_pubkey_t));
 	if (!obj2->pub_data)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(obj2->pub_data, &cert->cert_data->key, sizeof(sc_pkcs15_pubkey_t));
@@ -623,6 +641,9 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 		  struct pkcs15_any_object *obj,
 		  CK_OBJECT_HANDLE_PTR pHandle)
 {
+	unsigned int i;
+	struct pkcs15_fw_data *card_fw_data;
+
 	if (obj == NULL
 	 || (obj->base.flags & (SC_PKCS11_OBJECT_HIDDEN | SC_PKCS11_OBJECT_RECURS)))
 		return;
@@ -647,14 +668,23 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 
 	switch (__p15_type(obj)) {
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		if (obj->related_cert == NULL)
-			pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_pubkey, NULL);
-		pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_cert, NULL);
-		break;
 	case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
-		if (obj->related_cert == NULL)
-			pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_pubkey, NULL);
-		pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_cert, NULL);
+		pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_pubkey, NULL);
+		card_fw_data = (struct pkcs15_fw_data *) slot->card->fw_data;
+		for (i = 0; i < card_fw_data->num_objects; i++) {
+			struct pkcs15_any_object *obj2 = card_fw_data->objects[i];
+			struct pkcs15_cert_object *cert;
+
+			if (!is_cert(obj2))
+				continue;
+
+			cert = (struct pkcs15_cert_object*) obj2;
+
+			if (cert->cert_prvkey != obj)
+				continue;
+
+			pkcs15_add_object(slot, obj2, NULL);
+		}
 		break;
 	case SC_PKCS15_TYPE_CERT_X509:
 		pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_pubkey, NULL);
@@ -824,9 +854,14 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		for (j=0; j < fw_data->num_objects; j++) {
 			struct pkcs15_any_object *obj = fw_data->objects[j];
 
+			/* "Fake" objects we've generated */
 			if (__p15_type(obj) == (unsigned int)-1)
 				continue;
-			else if (!sc_pkcs15_compare_id(&pin_info->auth_id, &obj->p15_object->auth_id))
+			/* Some objects have an auth_id even though they are
+			 * not private. Just ignore those... */
+			if (!(obj->p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE))
+				continue;
+			if (!sc_pkcs15_compare_id(&pin_info->auth_id, &obj->p15_object->auth_id))
 				continue;
 
 			if (is_privkey(obj)) {
@@ -2018,25 +2053,43 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	unsigned int usage;
 	size_t len;
 
-	/* will use modulus from cert, or pubkey if possible */
-	if (prkey->prv_cert && prkey->prv_cert->cert_pubkey) {
-		/* make sure we have read the cert to get modulus etc but only if needed. */
-		switch(attr->type) {
-			case CKA_MODULUS:
-			case CKA_PUBLIC_EXPONENT:
-			case CKA_MODULUS_BITS:
-				if (check_cert_data_read(fw_data, prkey->prv_cert) != 0) {
-					/* no cert found, maybe we have a pub_key */
-					if (prkey->prv_pubkey && prkey->prv_pubkey->pub_data)
-						key = prkey->prv_pubkey->pub_data; /* may be NULL */
-				} else
-					key = prkey->prv_cert->cert_pubkey->pub_data;
-				break;
-			default:
-				key = prkey->prv_cert->cert_pubkey->pub_data;
+	/* PKCS#11 requires us to supply CKA_MODULUS for private keys,
+	 * although that is not generally available from a smart card
+	 * (the key is supposed to be safely locked away after all).
+	 *
+	 * To work around this, we hope that we either have an associated
+	 * public key, or we try to find a certificate with the
+	 * corresponding public key.
+	 *
+	 * Note: We do the same thing for CKA_PUBLIC_EXPONENT as some
+	 *       applications assume they can get that from the private
+	 *       key, something PKCS#11 doesn't guarantee.
+	 */
+	if ((attr->type == CKA_MODULUS) || (attr->type == CKA_PUBLIC_EXPONENT)) {
+		/* First see if we have a associated public key */
+		if (prkey->prv_pubkey)
+			key = prkey->prv_pubkey->pub_data;
+		else {
+			/* Try to find a certificate with the public key */
+			unsigned int i;
+
+			for (i = 0; i < fw_data->num_objects; i++) {
+				struct pkcs15_any_object *obj = fw_data->objects[i];
+				struct pkcs15_cert_object *cert;
+
+				if (!is_cert(obj))
+					continue;
+
+				cert = (struct pkcs15_cert_object*) obj;
+
+				if (cert->cert_prvkey != prkey)
+					continue;
+
+				if (check_cert_data_read(fw_data, cert) == 0)
+					key = cert->cert_pubkey->pub_data;
+			}
 		}
-	} else if (prkey->prv_pubkey)
-		key = prkey->prv_pubkey->pub_data;
+	}
 
 	switch (attr->type) {
 	case CKA_CLASS:
@@ -2067,7 +2120,7 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_KEY_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
-		if (key && key->algorithm == SC_ALGORITHM_GOSTR3410)
+		if (prkey->prv_p15obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
 			*(CK_KEY_TYPE*)attr->pValue = CKK_GOSTR3410;
 		else
 			*(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
@@ -2362,7 +2415,7 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
-	struct pkcs15_cert_object *cert = pubkey->pub_cert;
+	struct pkcs15_cert_object *cert = pubkey->pub_genfrom;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fw_data;
 	size_t len;
 
