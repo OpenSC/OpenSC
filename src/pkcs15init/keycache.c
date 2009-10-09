@@ -259,17 +259,11 @@ sc_keycache_set_pin_name(const sc_path_t *path, int ref, int name)
 	}
 
 	if (ref >= 0) {
-		int r;
 		/* Create the named PIN if it doesn't exist */
 		if (!(s = find_entry(path, SC_AC_CHV, ref, 0))) {
 			s = new_entry(path, SC_AC_CHV, ref);
 			if (s == NULL)
 				return SC_ERROR_OUT_OF_MEMORY;
-
-			r = sc_keycache_get_key(path, SC_AC_CHV, -1, s->value, MAX_SECRET);
-			if(r < 0)
-				return SC_ERROR_OBJECT_NOT_FOUND;
-			s->len = r;
 		}
 
 		/* Set the pin name */
