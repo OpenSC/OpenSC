@@ -693,6 +693,8 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 		gpriv->provider_library =
 		    scconf_get_str(conf_block, "provider_library", gpriv->provider_library);
 	}
+	sc_debug(ctx, "PC/SC options: connect_reset=%d connect_exclusive=%d transaction_reset=%d enable_pinpad=%d",
+		gpriv->connect_reset, gpriv->connect_exclusive, gpriv->transaction_reset, gpriv->enable_pinpad);
 
 	gpriv->dlhandle = lt_dlopen(gpriv->provider_library);
 	if (gpriv->dlhandle == NULL) {
