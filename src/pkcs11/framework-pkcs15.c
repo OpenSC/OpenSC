@@ -1070,7 +1070,7 @@ static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 
 	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0) {
-		sc_lock(p11card->card);
+		sc_unlock(p11card->card);
 		return sc_to_cryptoki_error(rc, p11card->reader);
 	}
 
@@ -1080,8 +1080,8 @@ static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 	args.pin_len = ulPinLen;
 	rc = sc_pkcs15init_store_pin(fw_data->p15_card, profile, &args);
 
-	sc_lock(p11card->card);
 	sc_pkcs15init_unbind(profile);
+	sc_unlock(p11card->card);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, p11card->reader);
 
@@ -1822,7 +1822,7 @@ static CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
 
 	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0) {
-		rc = sc_unlock(p11card->card);
+		sc_unlock(p11card->card);
 		return sc_to_cryptoki_error(rc, p11card->reader);
 	}
 
