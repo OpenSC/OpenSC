@@ -7,8 +7,8 @@ Also see the svn changelog using svn command
 or doc/nonpersistent/ChangeLog.
 
 New in 0.11.11; 200X-XX-XX; Name;
-* Note: maybe we won't have another 0.11.* release, work is already in
-  progress on 0.12 branch with bigger changes.
+* Now again compatible with OpenSSL 0.9.7
+* A few warnings and minor bugs were fixed
 
 New in 0.11.10; 2009-10-20; Andreas Jellinghaus
 * New westcos driver by François Leblanc
