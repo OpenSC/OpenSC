@@ -32,6 +32,7 @@
 #include <opensc/pkcs15.h>
 #include <opensc/cardctl.h>
 
+#include <openssl/opensslv.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -669,8 +670,12 @@ int main(int argc, char *argv[])
 
 		printf("Generate key of length %d.\n", keylen);
 
+#if OPENSSL_VERSION_NUMBER>=0x00908000L
 		if(!BN_set_word(bn, RSA_F4) || 
 			!RSA_generate_key_ex(rsa, keylen, bn, NULL))
+#else
+		if (!RSA_generate_key(keylen, RSA_F4, NULL, NULL))
+#endif
 		{
 			fprintf(stderr, 
 				"RSA_generate_key_ex return %d\n", ERR_get_error());

@@ -32,6 +32,7 @@
 #include "profile.h"
 
 #ifdef ENABLE_OPENSSL
+#include <openssl/opensslv.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -292,8 +293,12 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 	/* pkcs11 re-route routine cryptage vers la carte fixe default to use openssl */
 	rsa->meth = RSA_PKCS1_SSLeay();
 
+#if OPENSSL_VERSION_NUMBER>=0x00908000L
 	if(!BN_set_word(bn, RSA_F4) || 
 		!RSA_generate_key_ex(rsa, key_info->modulus_length, bn, NULL))
+#else
+	if (!RSA_generate_key(key_info->modulus_length, RSA_F4, NULL, NULL))
+#endif
 	{
 		r = SC_ERROR_UNKNOWN;
 		goto out;
