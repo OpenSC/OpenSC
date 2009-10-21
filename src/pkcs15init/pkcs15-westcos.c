@@ -265,24 +265,27 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 						sc_pkcs15_object_t *obj,
 						sc_pkcs15_pubkey_t *pubkey)
 {
-	int             r = SC_ERROR_UNKNOWN;
+#ifndef ENABLE_OPENSSL
+	return SC_ERROR_NOT_SUPPORTED;
+#else
+	int  		        r = SC_ERROR_UNKNOWN;
 	long			lg;
 	char			*p;
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-#ifdef ENABLE_OPENSSL
-	RSA				*rsa = RSA_new();
-	BIGNUM			*bn = BN_new();
-	BIO				*mem = BIO_new(BIO_s_mem());
-#endif
+	RSA			*rsa = NULL;
+	BIGNUM			*bn = NULL;
+	BIO			*mem = NULL;
 
-#ifndef ENABLE_OPENSSL
-	r = SC_ERROR_NOT_SUPPORTED;
-#else
 	sc_file_t 		*prkf = NULL;
 	
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		return SC_ERROR_NOT_SUPPORTED;
 	}
+
+#if OPENSSL_VERSION_NUMBER>=0x00908000L
+	rsa = RSA_new();
+	bn = BN_new();
+	mem = BIO_new(BIO_s_mem());
 
 	if(rsa == NULL || bn == NULL || mem == NULL) 
 	{
@@ -291,18 +294,26 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 	}
 
 	/* pkcs11 re-route routine cryptage vers la carte fixe default to use openssl */
-	rsa->meth = RSA_PKCS1_SSLeay();
-
-#if OPENSSL_VERSION_NUMBER>=0x00908000L
 	if(!BN_set_word(bn, RSA_F4) || 
 		!RSA_generate_key_ex(rsa, key_info->modulus_length, bn, NULL))
 #else
-	if (!RSA_generate_key(key_info->modulus_length, RSA_F4, NULL, NULL))
+	mem = BIO_new(BIO_s_mem());
+
+	if(mem == NULL) 
+	{
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto out;
+	}
+
+	rsa = RSA_generate_key(key_info->modulus_length, RSA_F4, NULL, NULL);
+	if (!rsa)
 #endif
 	{
 		r = SC_ERROR_UNKNOWN;
 		goto out;
 	}
+
+	rsa->meth = RSA_PKCS1_SSLeay();
 
 	if(pubkey != NULL)
 	{
@@ -354,9 +365,9 @@ out:
 		RSA_free(rsa);
 	if(prkf)
 		sc_file_free(prkf);
-#endif
 
 	return r;
+#endif
 }
 
 static int westcos_pkcs15init_finalize_card(sc_card_t *card)
