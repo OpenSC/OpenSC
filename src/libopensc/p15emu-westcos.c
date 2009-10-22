@@ -32,7 +32,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 {
 	int i, r;
 	int modulus_length = 0, usage = 0;
-	u8 buf[256];
+	char buf[256];
 	sc_card_t *card = p15card->card;
 	sc_context_t *ctx = card->ctx;
 	sc_serial_number_t serial;
