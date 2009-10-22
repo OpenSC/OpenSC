@@ -92,7 +92,6 @@ struct sc_pkcs11_config {
 	unsigned int slots_per_card;
 	unsigned char hide_empty_tokens;
 	unsigned char lock_login;
-	unsigned char cache_pins;
 	unsigned char soft_keygen_allowed;
 };
 

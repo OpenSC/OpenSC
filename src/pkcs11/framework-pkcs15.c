@@ -28,15 +28,8 @@
 
 extern int hack_enabled;
 
-#define MAX_CACHE_PIN		32
 struct pkcs15_slot_data {
 	struct sc_pkcs15_object *auth_obj;
-	int user_consent;
-	struct {
-		sc_path_t	path;
-		u8		value[MAX_CACHE_PIN];
-		unsigned int	len;
-	}			pin[2];
 };
 #define slot_data(p)		((struct pkcs15_slot_data *) (p))
 #define slot_data_auth(p)	(slot_data(p)->auth_obj)
@@ -148,9 +141,6 @@ static CK_RV	get_modulus_bits(struct sc_pkcs15_pubkey *,
 static CK_RV	get_usage_bit(unsigned int usage, CK_ATTRIBUTE_PTR attr);
 static CK_RV	asn1_sequence_wrapper(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 static CK_RV	get_gostr3410_params(const u8 *, size_t, CK_ATTRIBUTE_PTR);
-static void	cache_pin(void *, int, const sc_path_t *, const void *, size_t);
-static int	revalidate_pin(struct pkcs15_slot_data *data,
-				struct sc_pkcs11_session *ses);
 static int	lock_card(struct pkcs15_fw_data *);
 static int	unlock_card(struct pkcs15_fw_data *);
 static void	add_pins_to_keycache(struct sc_pkcs11_card *p11card,
@@ -634,11 +624,6 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 	obj->base.flags |= SC_PKCS11_OBJECT_SEEN;
 	obj->refcount++;
 
-	if (obj->p15_object && (obj->p15_object->user_consent > 0) ) {
-		sc_debug(context, "User consent object detected, marking slot as user_consent!\n");
-		((struct pkcs15_slot_data *)slot->fw_data)->user_consent = 1;
-	}
-
 	/* Add related objects
 	 * XXX prevent infinite recursion when a card specifies two certificates
 	 * referring to each other.
@@ -679,7 +664,6 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 		slot->token_info.flags |= CKF_USER_PIN_INITIALIZED;
 	if (card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
 		slot->token_info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
-		sc_pkcs11_conf.cache_pins = 0;
 	}
 	if (card->card->caps & SC_CARD_CAP_RNG)
 		slot->token_info.flags |= CKF_RNG;
@@ -970,10 +954,6 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 
 	rc = sc_pkcs15_verify_pin(card, pin, pPin, ulPinLen);
 	sc_debug(context, "PIN verification returned %d\n", rc);
-	
-	if (rc >= 0)
-		cache_pin(fw_token, userType, &pin->path, pPin, ulPinLen);
-
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
@@ -981,10 +961,8 @@ static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
 {
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	int rc = 0;
-
-	cache_pin(fw_token, CKU_SO, NULL, NULL, 0);
-	cache_pin(fw_token, CKU_USER, NULL, NULL, 0);
-
+        
+	sc_pkcs15_pincache_clear(fw_data->p15_card);
 	sc_logout(fw_data->p15_card->card);
 
 	if (sc_pkcs11_conf.lock_login)
@@ -1021,9 +999,6 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 	rc = sc_pkcs15_change_pin(fw_data->p15_card, pin, pOldPin, ulOldLen,
 				pNewPin, ulNewLen);
 	sc_debug(context, "PIN change returned %d\n", rc);
-
-	if (rc >= 0)
-		cache_pin(fw_token, CKU_USER, &pin->path, pNewPin, ulNewLen);
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
@@ -1069,9 +1044,6 @@ static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 	pkcs15_init_slot(fw_data->p15_card, slot, auth_obj);
 
 	pin_info = (sc_pkcs15_pin_info_t *) auth_obj->data;
-
-	cache_pin(slot->fw_data, CKU_USER, &pin_info->path, pPin, ulPinLen);
-
 	return CKR_OK;
 }
 
@@ -2219,15 +2191,6 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 					 pSignature,
 					 *pulDataLen);
 
-	/* Do we have to try a re-login and then try to sign again? */
-	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
-		rv = revalidate_pin(data, ses);
-		if (rv == 0)
-			rv = sc_pkcs15_compute_signature(fw_data->p15_card,
-				prkey->prv_p15obj, flags, pData, ulDataLen,
-				pSignature, *pulDataLen);
-	}
-
 	sc_unlock(ses->slot->card->card);
 
 	sc_debug(context, "Sign complete. Result %d.\n", rv);
@@ -2294,14 +2257,6 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 				 flags, pEncryptedData, ulEncryptedDataLen,
 				 decrypted, sizeof(decrypted));
 
-	/* Do we have to try a re-login and then try to decrypt again? */
-	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
-		rv = revalidate_pin(data, ses);
-		if (rv == 0)
-			rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj,
-						flags, pEncryptedData, ulEncryptedDataLen,
-						decrypted, sizeof(decrypted));
-	}
 	sc_unlock(ses->slot->card->card);
 
 	sc_debug(context, "Key unwrap/decryption complete. Result %d.\n", rv);
@@ -2557,13 +2512,6 @@ static int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 		
 	rv = sc_pkcs15_read_data_object(fw_data->p15_card, dobj->info, out_data);
 
-	/* Do we have to try a re-login and then try to sign again? */
-	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
-		rv = revalidate_pin(data, session);
-		if (rv == 0)
-			rv = sc_pkcs15_read_data_object(fw_data->p15_card, dobj->info, out_data);
-	}
-
 	sc_unlock(card);
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, reader);
@@ -2683,13 +2631,6 @@ static CK_RV pkcs15_dobj_destroy(struct sc_pkcs11_session *session, void *object
 
 	/* Delete object in smartcard */
 	rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
-
-	/* Do we have to try a re-login and then try to delete again? */
-	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
-		rv = revalidate_pin(data, session);
-		if (rv == 0)
-			rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
-	}
 
 	sc_pkcs15init_unbind(profile);
 	sc_unlock(card->card);
@@ -2870,64 +2811,6 @@ asn1_sequence_wrapper(const u8 *data, size_t len, CK_ATTRIBUTE_PTR attr)
 	return CKR_OK;
 }
 
-static void
-cache_pin(void *p, int user, const sc_path_t *path, const void *pin, size_t len)
-{
-	struct pkcs15_slot_data *data = (struct pkcs15_slot_data *) p;
-
-#ifdef USE_PKCS15_INIT
-	if (len == 0) {
-		sc_keycache_forget_key(path, SC_AC_SYMBOLIC,
-			user? SC_PKCS15INIT_USER_PIN : SC_PKCS15INIT_SO_PIN);
-	}
-#endif
-
-	if ((user != CKU_SO && user != CKU_USER) || !sc_pkcs11_conf.cache_pins)
-		return;
-	/* Don't cache pins related to user_consent objects/slots */
-	if (data->user_consent)
-		return;
-
-	memset(&data->pin[user], 0, sizeof(data->pin[user]));
-	if (len && len <= MAX_CACHE_PIN) {
-		memcpy(data->pin[user].value, pin, len);
-		data->pin[user].len = len;
-		if (path)
-			data->pin[user].path = *path;
-	}
-}
-
-/* TODO: GUI must indicate pinpad revalidation instead of a plain error.*/
-static int
-revalidate_pin(struct pkcs15_slot_data *data, struct sc_pkcs11_session *ses)
-{
-	int rv;
-	u8 value[MAX_CACHE_PIN];
-
-	sc_debug(context, "PIN revalidation\n");
-
-	if (!sc_pkcs11_conf.cache_pins
-	     && !(ses->slot->token_info.flags & CKF_PROTECTED_AUTHENTICATION_PATH))
-		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
-
-	if (sc_pkcs11_conf.cache_pins && data->user_consent)
-		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
-
-	if (ses->slot->token_info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) {
-		rv = pkcs15_login(ses->slot->card, ses->slot->fw_data, CKU_USER, NULL, 0);
-	}
-	else {
-		memcpy(value, data->pin[CKU_USER].value, data->pin[CKU_USER].len);
-		rv = pkcs15_login(ses->slot->card, ses->slot->fw_data, CKU_USER,
-			value, data->pin[CKU_USER].len);
-	}
-
-	if (rv != CKR_OK)
-		sc_debug(context, "Re-login failed: 0x%0x (%d)\n", rv, rv);
-
-	return rv;
-}
-
 static int register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 {
 	CK_MECHANISM_INFO mech_info;
@@ -3085,6 +2968,7 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 			return rc;
 #endif
 	}
+
 	return CKR_OK;
 }
 
@@ -3116,7 +3000,8 @@ static void
 add_pins_to_keycache(struct sc_pkcs11_card *p11card,
 		struct sc_pkcs11_slot *slot)
 {
-#ifdef USE_PKCS15_INIT
+#if 0
+//#ifdef USE_PKCS15_INIT
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct sc_pkcs15_card *p15card = fw_data->p15_card;
 	struct pkcs15_slot_data *p15_data = slot_data(slot->fw_data);

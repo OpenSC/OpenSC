@@ -26,6 +26,9 @@
 #include <openssl/crypto.h>     /* for OPENSSL_cleanse */
 #endif
 
+#ifdef HAVE_SYS_MMAN_H
+#include <sys/mman.h>
+#endif
 #include "internal.h"
 #include <stdio.h>
 #include <ctype.h>
@@ -713,6 +716,24 @@ int _sc_parse_atr(sc_context_t *ctx, sc_slot_info_t *slot)
 	slot->atr_info.hist_bytes_len = n_hist;
 	slot->atr_info.hist_bytes = p;
 	return 0;
+}
+
+void *sc_mem_alloc_secure(size_t len)
+{
+    void *pointer;
+    
+    pointer = calloc(len, sizeof(unsigned char));
+    if (!pointer)
+        return NULL;
+#ifdef HAVE_SYS_MMAN_H
+    /* TODO Windows support and mprotect too */
+    /* Do not swap the memory */
+    if (mlock(pointer, len) == -1) {
+        free(pointer);
+        return NULL;
+    }
+#endif
+    return pointer;
 }
 
 void sc_mem_clear(void *ptr, size_t len)

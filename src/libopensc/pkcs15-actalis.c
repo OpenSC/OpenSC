@@ -177,7 +177,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	const char *authPRKEY = "Authentication Key";
 	/* const char *nonrepPRKEY = "Non repudiation Key"; */
 	
-	p15card->opts.use_cache = 1;	
+	p15card->opts.use_file_cache = 1;	
 	
 	/* Get Serial number */
 	sc_format_path("3F0030000001", &path);

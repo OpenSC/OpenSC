@@ -300,7 +300,7 @@ AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([ \
 	errno.h fcntl.h malloc.h stdlib.h \
 	inttypes.h string.h strings.h \
-	sys/time.h unistd.h locale.h getopt.h
+	sys/time.h unistd.h locale.h getopt.h sys/mman.h
 ])
 
 dnl Checks for typedefs, structures, and compiler characteristics.

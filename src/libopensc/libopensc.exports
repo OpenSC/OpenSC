@@ -156,6 +156,7 @@ sc_pkcs15_make_absolute_path
 sc_pkcs15_parse_df
 sc_pkcs15_parse_tokeninfo
 sc_pkcs15_parse_unusedspace
+sc_pkcs15_pincache_clear
 sc_pkcs15_print_id
 sc_pkcs15_read_cached_file
 sc_pkcs15_read_certificate

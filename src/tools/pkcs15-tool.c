@@ -1541,7 +1541,7 @@ int main(int argc, char * const argv[])
 		goto end;
 	}
 	if (opt_no_cache)
-		p15card->opts.use_cache = 0;
+		p15card->opts.use_file_cache = 0;
 	if (verbose)
 		fprintf(stderr, "Found %s!\n", p15card->label);
 	if (do_learn_card) {

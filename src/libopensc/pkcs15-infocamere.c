@@ -590,7 +590,7 @@ static int infocamere_1400_init(sc_pkcs15_card_t * p15card)
 	set_security_env = card->ops->set_security_env;
 	card->ops->set_security_env = infocamere_1400_set_sec_env;
 	card->ops->compute_signature = do_sign;
-	p15card->opts.use_cache = 1;
+	p15card->opts.use_file_cache = 1;
 
 	sc_format_path("30000001", &path);
 
