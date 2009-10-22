@@ -538,7 +538,7 @@ static int entersafe_select_path(sc_card_t *card,
 	 const u8 *path=pathbuf;
 	 size_t pathlen=len;
 	 int bMatch = -1;
-	 int i;
+	 unsigned int i;
 	 int r;
 
 	 if (pathlen%2 != 0 || pathlen > 6 || pathlen <= 0)

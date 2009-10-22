@@ -138,7 +138,6 @@ static int rutoken_match_card(sc_card_t *card)
 static int token_init(sc_card_t *card, const char *card_name)
 {
 	unsigned int flags;
-	sc_algorithm_info_t info;
 
 	SC_FUNC_CALLED(card->ctx, 3);
 
@@ -154,13 +153,6 @@ static int token_init(sc_card_t *card, const char *card_name)
 	_sc_card_add_rsa_alg(card, 768, flags, 0);
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
-
-	memset(&info, 0, sizeof(info));
-	info.algorithm = SC_ALGORITHM_GOST;
-	info.flags = SC_ALGORITHM_GOST_CRYPT_PZ | SC_ALGORITHM_GOST_CRYPT_GAMM
-		| SC_ALGORITHM_GOST_CRYPT_GAMMOS;
-	info.key_length = 32;
-	_sc_card_add_algorithm(card, &info);
 
 	SC_FUNC_RETURN(card->ctx, 3, SC_SUCCESS);
 }

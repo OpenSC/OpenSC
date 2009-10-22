@@ -887,8 +887,6 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 		priv->obj_cache[enumtag].internal_obj_data,
 		priv->obj_cache[enumtag].internal_obj_len);
 	
-	
-ok:
 	SC_FUNC_RETURN(card->ctx, 1, 0);
 }
 
@@ -906,8 +904,6 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 	int r;
 	u8 *rbuf = NULL;
 	size_t rbuflen = 0;
-	u8 *tag;
-	size_t taglen;
 	u8 *body;
 	size_t bodylen;
 
@@ -950,11 +946,6 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 				if (r < 0) 
 					goto err;
 			}
-			if (tag == NULL) {
-				r = SC_ERROR_OBJECT_NOT_VALID;
-				goto err;
-			}
-			
 			
 		}
 		priv->rb_state = 0;
@@ -1101,7 +1092,7 @@ static int piv_get_3des_key(sc_card_t *card, u8 *key)
 
 	int r;
 	int f = -1; 
-	char keybuf[24*3-1];  /* 3des key as three sets of xx:xx:xx:xx:xx:xx:xx:xx  
+	char keybuf[24*3];  /* 3des key as three sets of xx:xx:xx:xx:xx:xx:xx:xx  
 		                   * with a : between which is 71 bytes */
 	char * keyfilename = NULL;
 	size_t outlen;
@@ -1128,6 +1119,7 @@ static int piv_get_3des_key(sc_card_t *card, u8 *key)
 	}
 	keybuf[23] = '\0';
 	keybuf[47] = '\0';
+	keybuf[71] = '\0';
 	outlen = 8;
 	r = sc_hex_to_bin(keybuf, key, &outlen);
 	if (r) goto err;

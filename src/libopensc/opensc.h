@@ -158,10 +158,6 @@ extern "C" {
 #define SC_ALGORITHM_MD5		128
 #define SC_ALGORITHM_SHA1		129
 #define SC_ALGORITHM_GOSTR3411		130
-/* FIXME: */
-/*
-#define SC_ALGORITHM_GOSTHASH		130
-*/
 
 /* Key derivation algorithms */
 #define SC_ALGORITHM_PBKDF2		192
@@ -199,11 +195,6 @@ extern "C" {
 #define SC_ALGORITHM_GOSTR3410_HASH_NONE	0x00004000
 #define SC_ALGORITHM_GOSTR3410_HASH_GOSTR3411	0x00008000
 #define SC_ALGORITHM_GOSTR3410_HASHES		0x00008000
-
-/* FIXME: */
-#define SC_ALGORITHM_GOST_CRYPT_PZ     0x0     
-#define SC_ALGORITHM_GOST_CRYPT_GAMM   0x1     
-#define SC_ALGORITHM_GOST_CRYPT_GAMMOS 0x2     
 
 /* Event masks for sc_wait_for_event() */
 #define SC_EVENT_CARD_INSERTED		0x0001

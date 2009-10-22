@@ -427,10 +427,11 @@ void msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bu
 	apdu->data = buffer;
 }
 
-int msc_get_challenge(sc_card_t *card, short dataLength, short seedLength, u8 *seedData, u8* outputData)
+int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short seedLength, u8 *seedData, u8 *outputData)
 {
 	sc_apdu_t apdu;
-	int r, location, cse, len;
+	int r, location, cse;
+	size_t len;
 	u8 *buffer, *ptr;
 	
 	location = (dataLength < MSC_MAX_READ) ? 1 : 2; /* 1 == APDU, 2 == (seed in 0xFFFFFFFE, out in 0xFFFFFFFF) */

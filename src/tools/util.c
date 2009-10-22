@@ -51,7 +51,7 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 			return 1;
 		}
 		if (reader_id < 0) {
-			int i;
+			unsigned int i;
 			/* Automatically try to skip to a reader with a card if reader not specified */
 			for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
 				reader = sc_ctx_get_reader(ctx, i);

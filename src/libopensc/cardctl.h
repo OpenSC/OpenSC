@@ -515,7 +515,7 @@ typedef struct {
 
 #define SC_RUTOKEN_DO_ALL_MIN_ID       0x1         /*  MIN ID value of All DOs  */
 #define SC_RUTOKEN_DO_CHV_MAX_ID       0x1F        /*  MAX ID value of CHV-objects  */
-#define SC_RUTOKEN_DO_NOCHV_MAX_ID     0xFE        /*  MAX ID value of All Other DOs  */
+#define SC_RUTOKEN_DO_NOCHV_MAX_ID     0x7F        /*  MAX ID value of All Other DOs  */
 
 /*  DO Default Lengths  */
 #define SC_RUTOKEN_DEF_LEN_DO_GOST         32

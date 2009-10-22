@@ -41,10 +41,8 @@ static int entersafe_detect_card( sc_pkcs15_card_t *p15card)
 
 static int sc_pkcs15emu_entersafe_init( sc_pkcs15_card_t *p15card)
 {
-	int    r, i;
+	int    r;
 	char   buf[256];
-	sc_path_t path;
-	sc_file_t *file = NULL;
 	sc_card_t *card = p15card->card;
 	sc_serial_number_t serial;
 

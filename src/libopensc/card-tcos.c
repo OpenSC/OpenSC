@@ -337,7 +337,8 @@ static int tcos_select_file(sc_card_t *card,
 	sc_apdu_t apdu;
 	sc_file_t *file=NULL;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE], pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int i, r, pathlen;
+	unsigned int i;
+	int r, pathlen;
 
 	assert(card != NULL && in_path != NULL);
 	ctx=card->ctx;
@@ -653,7 +654,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 
 	if (apdu.sw1==0x90 && apdu.sw2==0x00) {
 		size_t len= (apdu.resplen>outlen) ? outlen : apdu.resplen;
-		int offset=0;
+		unsigned int offset=0;
 		if(tcos3 && (data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) && apdu.resp[0]==0 && apdu.resp[1]==2){
 			offset=2; while(offset<len && apdu.resp[offset]!=0) ++offset;
 			offset=(offset<len-1) ? offset+1 : 0;

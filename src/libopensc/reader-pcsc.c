@@ -508,6 +508,10 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	int r;
+	u8 feature_buf[256], rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	size_t rcount;
+	DWORD i, feature_len, display_ioctl = 0;
+	PCSC_TLV_STRUCTURE *pcsc_tlv;
 
 	r = refresh_slot_attributes(reader, slot);
 	if (r)

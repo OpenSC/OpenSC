@@ -32,6 +32,7 @@
 #include <opensc/pkcs15.h>
 #include <opensc/cardctl.h>
 
+#include <openssl/opensslv.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -358,15 +359,9 @@ int main(int argc, char *argv[])
 	sc_context_t *ctx = NULL;
 	sc_file_t *file = NULL;
 	sc_path_t path;
-	RSA		*rsa = RSA_new();
-	BIGNUM	*bn = BN_new();
-	BIO		*mem = BIO_new(BIO_s_mem());
-
-	if(rsa == NULL || bn == NULL || mem == NULL) 
-	{
-		fprintf(stderr,"Not enougth memory.\n");
-		goto out;
-	}
+	RSA	*rsa = NULL;
+	BIGNUM	*bn = NULL;
+	BIO	*mem = NULL;
 
 	while(i<argc)
 	{
@@ -665,8 +660,31 @@ int main(int argc, char *argv[])
 
 		printf("Generate key of length %d.\n", keylen);
 
+#if OPENSSL_VERSION_NUMBER>=0x00908000L
+		rsa = RSA_new();
+		bn = BN_new();
+		mem = BIO_new(BIO_s_mem());
+	
+		if(rsa == NULL || bn == NULL || mem == NULL) 
+		{
+			fprintf(stderr,"Not enougth memory.\n");
+			goto out;
+		}
+
 		if(!BN_set_word(bn, RSA_F4) || 
 			!RSA_generate_key_ex(rsa, keylen, bn, NULL))
+#else
+		rsa = RSA_generate_key(keylen, RSA_F4, NULL, NULL);
+		mem = BIO_new(BIO_s_mem());
+
+		if(mem == NULL) 
+		{
+			fprintf(stderr,"Not enougth memory.\n");
+			goto out;
+		}
+
+		if (!rsa)
+#endif
 		{
 			fprintf(stderr, 
 				"RSA_generate_key_ex return %d\n", ERR_get_error());

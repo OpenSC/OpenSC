@@ -39,10 +39,6 @@
 #define min(a,b) (((a)<(b))?(a):(b))
 #endif
 
-#ifndef min
-#define max(a,b) (((a)>(b))?(a):(b))
-#endif
-
 #define DEFAULT_TRANSPORT_KEY "6f:59:b0:ed:6e:62:46:4a:5d:25:37:68:23:a8:a2:2d"
 
 #define JAVACARD (0x01)
@@ -50,7 +46,7 @@
 #ifdef ENABLE_OPENSSL
 #define DEBUG_SSL
 #ifdef DEBUG_SSL
-static void print_openssl_erreur(void)
+static void print_openssl_error(void)
 {
 	static int charge = 0;
 	long r;
@@ -276,100 +272,11 @@ static int westcos_init(sc_card_t * card)
 static int westcos_select_file(sc_card_t * card, const sc_path_t * in_path,
 			       sc_file_t ** file_out)
 {
-	sc_context_t *ctx;
-	sc_apdu_t apdu;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen;
-	sc_file_t *file = NULL;
-	priv_data_t *priv_data = NULL;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_select_file\n");
-	if (card == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	priv_data = (priv_data_t *) card->drv_data;
-	priv_data->file_id = 0;
-	ctx = card->ctx;
-	memcpy(path, in_path->value, in_path->len);
-	pathlen = (int)in_path->len;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0);
-	switch (in_path->type) {
-	case SC_PATH_TYPE_FILE_ID:
-		apdu.p1 = 0;
-		if (pathlen != 2)
-			return SC_ERROR_INVALID_ARGUMENTS;
-		break;
-	case SC_PATH_TYPE_DF_NAME:
-		apdu.p1 = 4;
-		break;
-	case SC_PATH_TYPE_PATH:
-		apdu.p1 = 9;
-		if (pathlen == 2 && memcmp(path, "\x3F\x00", 2) == 0) {
-			apdu.p1 = 0;
-		}
+	priv_data_t *priv_data = (priv_data_t *) card->drv_data;
 
-		else if (pathlen > 2 && memcmp(path, "\x3F\x00", 2) == 0) {
-			apdu.p1 = 8;
-			pathlen -= 2;
-			memcpy(path, &in_path->value[2], pathlen);
-		}
-		break;
-	case SC_PATH_TYPE_FROM_CURRENT:
-		apdu.p1 = 9;
-		break;
-	case SC_PATH_TYPE_PARENT:
-		apdu.p1 = 3;
-		pathlen = 0;
-		apdu.cse = SC_APDU_CASE_3_SHORT;
-		break;
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	apdu.p2 = 0;	/* first record, return FCI */
-	apdu.lc = pathlen;
-	apdu.data = path;
-	apdu.datalen = pathlen;
-	if (file_out != NULL) {
-		apdu.resp = buf;
-		apdu.resplen = sizeof(buf);
-		apdu.le = 255;
-	} else {
-		apdu.resplen = 0;
-		apdu.le = 0;
-		apdu.cse = SC_APDU_CASE_3_SHORT;
-	}
-	r = sc_transmit_apdu(card, &apdu);
-	if (r)
-		return (r);
-	if (file_out == NULL) {
-		if (apdu.sw1 == 0x61)
-			return 0;
-		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	}
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r)
-		return (r);
-	switch (apdu.resp[0]) {
-	case 0x6F:
-		file = sc_file_new();
-		if (file == NULL)
-			return SC_ERROR_OUT_OF_MEMORY;
-		file->path = *in_path;
-		if (card->ops->process_fci == NULL) {
-			sc_file_free(file);
-			return SC_ERROR_NOT_SUPPORTED;
-		}
-		if (apdu.resp[1] <= apdu.resplen)
-			card->ops->process_fci(card, file, apdu.resp + 2,
-					       apdu.resp[1]);
-		*file_out = file;
-		break;
-	case 0x00:		/* proprietary coding */
-		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
-	default:
-		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
-	}
-	return 0;
+	assert(iso_ops && iso_ops->select_file);
+	priv_data->file_id = 0;
+	return iso_ops->select_file(card, in_path, file_out);
 }
 
 static int _westcos2opensc_ac(u8 flag)
@@ -616,7 +523,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 		sc_debug(card->ctx, "westcos_create_file\n");
 	memset(buf, 0, sizeof(buf));
 
-	/* clef de transport */
+	/* transport key */
 	r = sc_card_ctl(card, SC_CARDCTL_WESTCOS_AUT_KEY, NULL);
 	if (r)
 		return (r);
@@ -638,7 +545,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 	case SC_FILE_TYPE_WORKING_EF:
 		switch (file->ef_structure) {
 		case SC_FILE_EF_TRANSPARENT:
-			buf[0] |= 0x20;	/* pas de support transaction  */
+			buf[0] |= 0x20; /* no transaction support */
 			buf[1] |= 0;
 			_convertion_ac_methode(file, HIGH, SC_AC_OP_READ,
 					       &buf[2], &buf[2 + 4]);
@@ -652,7 +559,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 			buf[11] = (u8) ((file->size) % 256);
 			break;
 		case SC_FILE_EF_LINEAR_FIXED:
-			buf[0] |= 0x40;	/* pas de support transaction  */
+			buf[0] |= 0x40; /* no transaction support */
 			buf[1] |= 0;
 			_convertion_ac_methode(file, HIGH, SC_AC_OP_READ,
 					       &buf[2], &buf[2 + 4]);
@@ -664,7 +571,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 			buf[11] = file->record_length;
 			break;
 		case SC_FILE_EF_CYCLIC:
-			buf[0] |= 0x60;	/* pas de support transaction  */
+			buf[0] |= 0x60; /* no transaction support */
 			buf[1] |= 0;
 			_convertion_ac_methode(file, HIGH, SC_AC_OP_READ,
 					       &buf[2], &buf[2 + 4]);
@@ -765,7 +672,9 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 					u8 * result, size_t * len)
 {
 	int r;
+#ifdef ENABLE_OPENSSL
 	DES_key_schedule ks1, ks2;
+#endif
 	u8 buf[8];
 	if ((*len) < sizeof(buf))
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -773,17 +682,21 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 	r = sc_get_challenge(card, buf, *len);
 	if (r)
 		return r;
+#ifdef ENABLE_OPENSSL
 	DES_set_key((const_DES_cblock *) & key[0], &ks1);
 	DES_set_key((const_DES_cblock *) & key[8], &ks2);
 	DES_ecb2_encrypt((const_DES_cblock *)buf, (DES_cblock*)result, &ks1, &ks2, DES_ENCRYPT);
-	return 0;
+	return SC_SUCCESS;
+#else
+	return SC_ERROR_NOT_SUPPORTED;
+#endif
 }
 
 static int westcos_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			   int *tries_left)
 {
 	int r;
-	u8 buf[20];		//, result[20];
+	u8 buf[20];
 	sc_apdu_t apdu;
 	size_t len = 0;
 	int pad = 0, use_pin_pad = 0, ins, p1 = 0;
@@ -953,6 +866,7 @@ static int sc_lock_phase(sc_card_t * card, u8 phase)
 
 static int westcos_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 {
+	unsigned int i;
 	int r;
 	size_t buflen;
 	u8 buf[256];
@@ -1088,9 +1002,9 @@ static int westcos_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 			memcpy(temp, ck->key_template, sizeof(temp));
 			westcos_compute_aetb_crc(CRC_A, ck->new_key.key_value,
 				   ck->new_key.key_len, &temp[5], &temp[6]);
-			for (r = 0, temp[4] = 0xAA, lrc = 0; r < sizeof(temp);
-			     r++)
-				lrc += temp[r];
+			for (i = 0, temp[4] = 0xAA, lrc = 0; i < sizeof(temp);
+			    i++)
+				lrc += temp[i];
 			temp[4] = (lrc % 256);
 			buflen = sizeof(buf);
 			r = westcos_get_crypte_challenge(card,
@@ -1172,11 +1086,12 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	priv_data_t *priv_data = NULL;
 	int pad;
 
-#ifdef ENABLE_OPENSSL
+#ifndef ENABLE_OPENSSL
+	r = SC_ERROR_NOT_SUPPORTED;
+#else
 	RSA *rsa = NULL;
 	BIO *mem = BIO_new(BIO_s_mem());
 
-#endif
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (card->ctx->debug >= 1)
@@ -1186,10 +1101,6 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
-#ifndef ENABLE_OPENSSL
-	r = SC_ERROR_NOT_SUPPORTED;
-
-#else
 	if ((priv_data->env.flags) & SC_ALGORITHM_RSA_PAD_PKCS1)
 		pad = RSA_PKCS1_PADDING;
 
@@ -1220,13 +1131,13 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	BIO_set_mem_eof_return(mem, -1);
 	if (!d2i_RSAPrivateKey_bio(mem, &rsa)) {
 		if (card->ctx->debug >= 5)
-			sc_debug(card->ctx, "RSA clef invalide, %d\n",
+			sc_debug(card->ctx, "RSA key invalid, %d\n",
 				 ERR_get_error());
 		r = SC_ERROR_UNKNOWN;
 		goto out;
 	}
 
-	/* pkcs11 reroute routine cryptage vers la carte */
+	/* pkcs11 reset openssl functions */
 	rsa->meth = RSA_PKCS1_SSLeay();
 	if (RSA_size(rsa) > outlen) {
 		if (card->ctx->debug >= 5)
@@ -1240,7 +1151,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		if (r == -1) {
 
 #ifdef DEBUG_SSL
-			print_openssl_erreur();
+			print_openssl_error();
 
 #endif
 			if (card->ctx->debug >= 5)
@@ -1251,13 +1162,13 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		}
 	}
 
-	else {			/* signature */
+	else {			/* sign */
 
 		r = RSA_private_encrypt(data_len, data, out, rsa, pad);
 		if (r == -1) {
 
 #ifdef DEBUG_SSL
-			print_openssl_erreur();
+			print_openssl_error();
 
 #endif
 			if (card->ctx->debug >= 5)
@@ -1279,15 +1190,12 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	r = outlen;
 
 #endif
-#endif /* ENABLE_OPENSSL */
-      out:
-#ifdef ENABLE_OPENSSL
+out:
 	if (mem)
 		BIO_free(mem);
 	if (rsa)
 		RSA_free(rsa);
-
-#endif
+#endif /* ENABLE_OPENSSL */
 	if (keyfile)
 		sc_file_free(keyfile);
 	return r;
