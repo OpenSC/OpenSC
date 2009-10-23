@@ -6,9 +6,10 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/nonpersistent/ChangeLog.
 
-New in 0.11.11; 200X-XX-XX; Name;
+New in 0.11.11-rc1; 2009-10-23; Andreas Jellinghaus
 * Now again compatible with OpenSSL 0.9.7
 * A few warnings and minor bugs were fixed
+* Updated myeid driver by Aventra
 
 New in 0.11.10; 2009-10-20; Andreas Jellinghaus
 * New westcos driver by François Leblanc
