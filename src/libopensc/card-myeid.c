@@ -25,23 +25,19 @@
 #include <string.h>
 #include <stdlib.h>
 
-
-static enum LOAD_KEY {
-        LOAD_KEY_MODULUS         = 0x80,
-        LOAD_KEY_PUBLIC_EXPONENT = 0x81,
-        LOAD_KEY_PRIME_P         = 0x83,
-        LOAD_KEY_PRIME_Q         = 0x84,
-        LOAD_KEY_DP1             = 0x85,
-        LOAD_KEY_DQ1             = 0x86,
-        LOAD_KEY_INVQ            = 0x87
-};
+#define LOAD_KEY_MODULUS 0x80
+#define LOAD_KEY_PUBLIC_EXPONENT 0x81
+#define LOAD_KEY_PRIME_P         0x83
+#define LOAD_KEY_PRIME_Q         0x84
+#define LOAD_KEY_DP1             0x85
+#define LOAD_KEY_DQ1             0x86
+#define LOAD_KEY_INVQ            0x87
 
 static struct sc_card_operations myeid_ops;
 static struct sc_card_driver myeid_drv = {
      "MyEID cards with PKCS#15 applet",
      "myeid",
-     &myeid_ops,
-     NULL, 0, NULL
+     &myeid_ops
 };
 
 static const char *myeid_atrs[] = {
@@ -93,6 +89,7 @@ static int myeid_init(struct sc_card *card)
 	/* State that we have an RNG */
 	card->caps |= SC_CARD_CAP_RNG;
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	return 0;
 }
 
@@ -107,9 +104,9 @@ static int acl_to_byte(const struct sc_acl_entry *e)
 	case SC_AC_TERM:
 	case SC_AC_AUT:
 		if (e->key_ref == SC_AC_KEY_REF_NONE)
-			return -1;
+			return 0x00;
 		if (e->key_ref < 1 || e->key_ref > 14)
-			return -1;
+			return 0x00;
 		return e->key_ref;
 	case SC_AC_NEVER:
 		return 0x0F;
@@ -182,28 +179,28 @@ static int myeid_select_file(struct sc_card *card, const struct sc_path *in_path
 		struct sc_file **file)
 {
 	int r;
-
+	SC_FUNC_CALLED(card->ctx, 1);
 	r = iso_ops->select_file(card, in_path, file);
-	if (r)
-		return r;
 
-	if (file != NULL) {
+	if (r == 0 && file != NULL) {
 		parse_sec_attr(*file, (*file)->sec_attr, (*file)->sec_attr_len);
 	}
-
-	return 0;
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 static int myeid_read_binary(struct sc_card *card, unsigned int idx,
 		u8 * buf, size_t count, unsigned long flags) 
 { 
-	return iso_ops->read_binary(card, idx, buf, count, flags);
+	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_RETURN(card->ctx, 1, iso_ops->read_binary(card, idx, buf, count, flags));
 }
 
 static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen) 
 {
 	struct sc_apdu apdu;
-	int r;
+	int r,i;
+
+        SC_FUNC_CALLED(card->ctx, 1);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0xA1);
 	apdu.resp = buf;
@@ -225,9 +222,10 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 	const u8 *tag = NULL;
 	int r ;
   
+	SC_FUNC_CALLED(card->ctx, 1);
 	r = iso_ops->process_fci(card, file, buf, buflen);
 	if (r < 0)
-	 return r;
+	 SC_FUNC_RETURN(card->ctx, 1, r);
 
 	if(file->type == SC_FILE_EF_UNKNOWN)
 	{		
@@ -237,16 +235,23 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 			file->type = SC_FILE_TYPE_INTERNAL_EF;
 		}
 	}
+	if(file->sec_attr_len >= 3)
+	{
+            sc_debug(card->ctx, "id (%X) sec_attr (%X %X %X) \n", file->id,
+                     file->sec_attr[0],file->sec_attr[1],file->sec_attr[2]);
+	}
 
-	return 0;
+	SC_FUNC_RETURN(card->ctx, 1, 0);
 }
 
 static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 		u8 *out, size_t *outlen)
 {
+        const sc_acl_entry_t *read, *update, *delete;
 	u8 buf[40];
 	int i;
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	/* PrivateKey
 	 * 0E0000019 6217 81020400 820111 83024B01 8603000000 85028000 8A0100 RESULT 6984
 	 *           6217 81020400 820111 83024B01 8603000000 85021000 8A0100 */
@@ -283,6 +288,41 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 		buf[15] = file->sec_attr[0];
 		buf[16] = file->sec_attr[1];
 		buf[17] = file->sec_attr[2];
+ 		
+		sc_debug(card->ctx, "id (%X), sec_attr %X %X %X\n", file->id,
+                             file->sec_attr[0],file->sec_attr[1],file->sec_attr[2]);
+	}
+	else
+	{	
+		delete = sc_file_get_acl_entry(file, SC_AC_OP_DELETE);
+		
+		switch (file->type) {
+		case SC_FILE_TYPE_WORKING_EF:
+			
+			read = sc_file_get_acl_entry(file, SC_AC_OP_READ);
+			update = sc_file_get_acl_entry(file, SC_AC_OP_UPDATE);
+
+			buf[15] = (acl_to_byte(read) << 4) | acl_to_byte(update);
+			buf[16] = (acl_to_byte(delete)<< 4) | 0x0F;			
+			break;
+		case SC_FILE_TYPE_INTERNAL_EF:
+			
+			read = sc_file_get_acl_entry(file, SC_AC_OP_CRYPTO);
+			update = sc_file_get_acl_entry(file, SC_AC_OP_UPDATE);
+
+			buf[15] = (acl_to_byte(read) << 4) | acl_to_byte(update);
+			buf[16] = (acl_to_byte(delete)<< 4) | 0x0F;	
+			break;
+		case SC_FILE_TYPE_DF:
+			
+			update = sc_file_get_acl_entry(file, SC_AC_OP_CREATE);
+
+			buf[15] = (acl_to_byte(update) << 4) | acl_to_byte(update);
+			buf[16] = (acl_to_byte(delete) << 4) | 0x0F;			
+			break;
+		default:			
+			break;
+		}
 	}
         
 	/* Proprietary Information */
@@ -312,10 +352,10 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 		{
 			buf[25] = 0x84;
 			buf[26] = (u8)file->namelen;
+
 			for(i=0;i < (int)file->namelen;i++)
-			{
 				buf[i + 26] = file->name[i];
-			}
+			
 			buf[1] = 0x19 + file->namelen + 2;
 		}
 		break;
@@ -327,7 +367,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 	*outlen = buf[1]+2;
 	memcpy(out, buf, *outlen);
 	
-	return 0;
+	SC_FUNC_RETURN(card->ctx, 1, 0);
 }
 
 static int myeid_create_file(struct sc_card *card, struct sc_file *file) 
@@ -337,9 +377,12 @@ static int myeid_create_file(struct sc_card *card, struct sc_file *file)
         size_t buflen;
 	int r;
 
+	SC_FUNC_CALLED(card->ctx, 1);
+
 	r = encode_file_structure(card, file, sbuf, &buflen);
 	if (r)
-		return r;
+	  SC_FUNC_RETURN(card->ctx, 1, r);
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
 	apdu.data = sbuf;
 	apdu.datalen = buflen;
@@ -348,44 +391,48 @@ static int myeid_create_file(struct sc_card *card, struct sc_file *file)
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x6A && apdu.sw2 == 0x89)
-		return SC_ERROR_FILE_ALREADY_EXISTS;
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_FILE_ALREADY_EXISTS);
+
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, r, "Card returned error");
-
-	return 0;
 }
 
 /* no record oriented file services */
 static int myeid_read_record_unsupp(struct sc_card *card, unsigned int rec_nr, 
 		u8 *buf, size_t count, unsigned long flags) 
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 }
 
 static int myeid_wrupd_record_unsupp(struct sc_card *card, unsigned int rec_nr, 
 		const u8 *buf, size_t count, unsigned long flags) 
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 }
 
 static int myeid_append_record_unsupp(struct sc_card *card, const u8 *buf, 
 		size_t count, unsigned long flags) 
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 }
 
 
 static int myeid_write_binary(struct sc_card *card, unsigned int idx, 
 		const u8 *buf, size_t count, unsigned long flags) 
 {
-	return iso_ops->write_binary(card, idx, buf, count, flags);
+	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_RETURN(card->ctx, 1, iso_ops->write_binary(card, idx, buf, count, flags));
 }
 
 
 static int myeid_update_binary(struct sc_card *card, unsigned int idx, 
 		const u8 *buf, size_t count, unsigned long flags) 
 {     
-	return iso_ops->update_binary(card, idx, buf, count, flags);
+	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_RETURN(card->ctx, 1, iso_ops->update_binary(card, idx, buf, count, flags));
 }
 
 static int myeid_delete_file(struct sc_card *card, const struct sc_path *path) 
@@ -408,9 +455,33 @@ static int myeid_delete_file(struct sc_card *card, const struct sc_path *path)
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);     
+	SC_FUNC_RETURN(card->ctx, 1, sc_check_sw(card, apdu.sw1, apdu.sw2));     
 }
 
+static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
+		         int *tries_left)
+{
+
+	SC_FUNC_CALLED(card->ctx, 1);
+	sc_debug(card->ctx, "ref (%d), pin1 len(%d), pin2 len (%d)\n",
+                      data->pin_reference, data->pin1.len, data->pin2.len);
+		
+	if(data->pin1.len > 8 || data->pin2.len > 8)
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_PIN_LENGTH);
+
+	data->flags |= SC_PIN_CMD_NEED_PADDING;
+	if(data->cmd == SC_PIN_CMD_VERIFY)
+	{		
+		u8  buf[8];	
+		memset(buf, 0xFF, sizeof(buf));
+		memcpy(&buf[0], (u8 *)data->pin1.data, data->pin1.len);   /* copy pin*/
+		data->pin1.data = buf;
+		data->pin1.len  = 8;
+
+	}
+
+	SC_FUNC_RETURN(card->ctx, 1, iso_ops->pin_cmd(card, data, tries_left));
+}
 
 static int myeid_set_security_env2(sc_card_t *card, const sc_security_env_t *env, 
 		int se_num)
@@ -421,7 +492,7 @@ static int myeid_set_security_env2(sc_card_t *card, const sc_security_env_t *env
 	int r, locked = 0;
 
 	assert(card != NULL && env != NULL);
-
+	SC_FUNC_CALLED(card->ctx, 1);
 	
 	if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC) 
 	{
@@ -504,12 +575,14 @@ static int myeid_set_security_env2(sc_card_t *card, const sc_security_env_t *env
 err:
 	if (locked)
 		sc_unlock(card);
-	return r;
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 static int myeid_set_security_env(struct sc_card *card,
 		const struct sc_security_env *env, int se_num)
 {
+	SC_FUNC_CALLED(card->ctx, 1);
+
 	if (env->flags & SC_SEC_ENV_ALG_PRESENT) 
 	{
 		sc_security_env_t tmp;
@@ -543,6 +616,8 @@ static int myeid_compute_signature(struct sc_card *card, const u8 * data,
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	    
+	SC_FUNC_CALLED(card->ctx, 1);
+
 	assert(card != NULL && data != NULL && out != NULL);
 	if (datalen > 256)
                 SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
@@ -592,6 +667,8 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
         u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
         u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	    
+	SC_FUNC_CALLED(card->ctx, 1);
+
         assert(card != NULL && crgram != NULL && out != NULL);
         SC_FUNC_CALLED(card->ctx, 2);
         if (crgram_len > 256)
@@ -736,6 +813,7 @@ static int myeid_loadkey(sc_card_t *card, int mode, u8* value, int value_len)
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r, len;
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	len = 0;
 	if(value_len == 0 || value == NULL)
 		return 0;
@@ -798,7 +876,6 @@ static int myeid_loadkey(sc_card_t *card, int mode, u8* value, int value_len)
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_FUNC_RETURN(card->ctx, 1, r);
-	
 }
 
 /* Generate or store a key */
@@ -807,8 +884,9 @@ static int myeid_generate_store_key(struct sc_card *card,
 {
 	struct	sc_apdu apdu;
 	u8	sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int	r,len;
+	int	r=0,len;
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	/* Setup key-generation paramters */
 	if (data->op_type == OP_TYPE_GENERATE)
 	{
@@ -834,8 +912,6 @@ static int myeid_generate_store_key(struct sc_card *card,
 
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		SC_TEST_RET(card->ctx, r, "GENERATE_KEY returned error");
-
-		SC_FUNC_RETURN(card->ctx, 1, r);
 	}
 	else
 	{
@@ -853,10 +929,10 @@ static int myeid_generate_store_key(struct sc_card *card,
 			data->mod, data->mod_len)) >= 0 &&
 		   (r=myeid_loadkey(card, LOAD_KEY_PUBLIC_EXPONENT, 
 			data->pubexp, data->pubexp_len)) >= 0)
-		   return r;
+			SC_FUNC_RETURN(card->ctx, 1, r);	   
 	}
 	
-	return r;
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 static int myeid_activate_card(struct sc_card *card)
@@ -865,6 +941,7 @@ static int myeid_activate_card(struct sc_card *card)
 	u8 sbuf[] ="\xA0\x00\x00\x00\x63\x50\x4B\x43\x53\x2D\x31\x35";
 	sc_apdu_t apdu;
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x44, 0x04, 0x00);
 	apdu.cla     = 0x00;
 	apdu.data    = sbuf;
@@ -886,6 +963,7 @@ static int myeid_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	sc_apdu_t apdu;
 	u8  rbuf[SC_MAX_APDU_BUFFER_SIZE];
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0xA0);
 	apdu.resp    = rbuf;
 	apdu.resplen = sizeof(rbuf);
@@ -910,28 +988,38 @@ static int myeid_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	/* copy and return serial number */
 	memcpy(serial, &card->serialnr, sizeof(*serial));
 
-	return SC_SUCCESS;
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
+	int r = SC_ERROR_NOT_SUPPORTED;
+	SC_FUNC_CALLED(card->ctx, 1);
+	
 	switch(cmd) {
 	case SC_CARDCTL_MYEID_PUTDATA:
-		return myeid_putdata(card,
+		r = myeid_putdata(card,
 			(struct sc_cardctl_myeid_data_obj*) ptr);
+		break;
 	case SC_CARDCTL_MYEID_GETDATA:
-		return myeid_getdata(card,
+		r = myeid_getdata(card,
 			(struct sc_cardctl_myeid_data_obj*) ptr);
+		break;
 	case SC_CARDCTL_MYEID_GENERATE_KEY:
-		return myeid_generate_store_key(card,
+		r = myeid_generate_store_key(card,
 			(struct sc_cardctl_myeid_gen_store_key_info *) ptr);		
+		break;
 	case SC_CARDCTL_MYEID_ACTIVATE_CARD:
-		return myeid_activate_card(card);
+		r = myeid_activate_card(card);
+		break;
 	case SC_CARDCTL_GET_SERIALNR:
-		return myeid_get_serialnr(card, (sc_serial_number_t *)ptr);
+		r = myeid_get_serialnr(card, (sc_serial_number_t *)ptr);
+		break;
+	case SC_CARDCTL_LIFECYCLE_SET:
+	case SC_CARDCTL_LIFECYCLE_GET:
+		break;
 	}
-
-	return SC_ERROR_NOT_SUPPORTED;
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 /* "The PINs are "global" in a PKCS#15 sense, meaning that they remain valid
@@ -941,7 +1029,8 @@ static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 */
 static int myeid_logout(struct sc_card *card)
 {
-	return 0; /* Can't */
+	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_RETURN(card->ctx, 1, 0);
 }
 
 static struct sc_card_driver * sc_get_driver(void)
@@ -971,7 +1060,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.logout            = myeid_logout;
 	myeid_ops.process_fci       = myeid_process_fci;
 	myeid_ops.card_ctl          = myeid_card_ctl;
-     
+        myeid_ops.pin_cmd           = myeid_pin_cmd;
 	return &myeid_drv;
 }
 

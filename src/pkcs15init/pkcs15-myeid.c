@@ -21,6 +21,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -31,7 +32,7 @@
 #include "keycache.h"
 #include "profile.h"
 
-#define MYEID_MAX_PINS   5
+#define MYEID_MAX_PINS   14
 
 unsigned char MYEID_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define MYEID_DEFAULT_PUBKEY_LEN       sizeof(MYEID_DEFAULT_PUBKEY)
@@ -44,7 +45,26 @@ static int myeid_create_pin_internal(sc_profile_t *, sc_card_t *,
 		int, sc_pkcs15_pin_info_t *, const u8 *, size_t, 
 		const u8 *, size_t);
 
-static int myeid_puk_retries(sc_profile_t *, int);
+static int myeid_puk_retries(sc_profile_t *profile, sc_pkcs15_pin_info_t *pin_info);
+
+static int acl_to_byte(const struct sc_acl_entry *e)
+{
+	switch (e->method) {
+	case SC_AC_NONE:
+		return 0x00;
+	case SC_AC_CHV:
+	case SC_AC_TERM:
+	case SC_AC_AUT:
+		if (e->key_ref == SC_AC_KEY_REF_NONE)
+			return 0x00;
+		if (e->key_ref < 1 || e->key_ref > MYEID_MAX_PINS)
+			return 0x00;
+		return e->key_ref;
+	case SC_AC_NEVER:
+		return 0x0F;
+	}
+	return 0x00;
+}
 
 /*
  * Erase the card.
@@ -52,17 +72,17 @@ static int myeid_puk_retries(sc_profile_t *, int);
 static int myeid_erase_card(sc_profile_t *profile, sc_card_t *card)
 {
 	struct sc_cardctl_myeid_data_obj data_obj;
-	sc_pkcs15_pin_info_t pin_info;
+	sc_pkcs15_pin_info_t sopin_info, pin_info;
+
 	u8  data[8];
 	int r;
 	
-	/* Just delete the entire MF */
+	SC_FUNC_CALLED(card->ctx, 1);
 
 	/* The SO pin has pin reference 1 -- not that it matters much
 	 * because pkcs15-init will ask to enter all pins, even if we
 	 * did a --so-pin on the command line. */
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_info);
-	sc_keycache_set_pin_name(NULL, pin_info.reference, SC_PKCS15INIT_SO_PIN);
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin_info);
 
 	/* Select parent DF and verify PINs/key as necessary */
 	r = sc_pkcs15init_authenticate(profile, card, profile->mf_info->file, SC_AC_OP_DELETE);
@@ -71,23 +91,72 @@ static int myeid_erase_card(sc_profile_t *profile, sc_card_t *card)
 
 	data[0]= 0xFF;
 	data[1]= 0xFF;
-	data[2]= 0x33;
+	data[2]= 0x11; 
 	data[3]= 0x3F;
 	data[4]= 0xFF;
-	data[5]= 0x33;
-	data[6]= 0x3F;
+	data[5]= 0x11; 
+	data[6]= 0xFF; 
 	data[7]= 0xFF;
 	
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &pin_info);	
+	if(pin_info.reference > 0 && pin_info.reference <= MYEID_MAX_PINS && 
+           sopin_info.reference > 0 && sopin_info.reference <= MYEID_MAX_PINS)
+	{
+	  data[2] = (pin_info.reference << 4)| pin_info.reference;
+	  data[3] = (sopin_info.reference << 4) | 0x0F;
+	  data[5] = data[2];
+	}
+		
 	data_obj.P1      = 0x01;
 	data_obj.P2      = 0xE0;
 	data_obj.Data    = data;
 	data_obj.DataLen = 0x08;
 
+	sc_debug(card->ctx, "so_pin(%d), user pin (%d)\n",
+                             sopin_info.reference, pin_info.reference);
+
 	r = sc_card_ctl(card, SC_CARDCTL_MYEID_PUTDATA, &data_obj);
 
-	return r;
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
+static int myeid_init_card(sc_profile_t *profile, 
+			   sc_card_t *card)
+{
+	struct	sc_path path;
+	sc_file_t *file;
+	int r;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	sc_format_path("3F00", &path);
+	r = sc_select_file(card, &path, NULL);
+		
+        SC_FUNC_RETURN(card->ctx, 1, r);	
+}
+
+/*
+ * Create a DF
+ */
+static int myeid_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
+{
+	int	r=0;
+	struct sc_file *file;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+	if (!profile || !card || !df)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	sc_debug(card->ctx, "id (%x)\n",df->id);
+
+	if(df->id == 0x5015)
+	{
+	  sc_debug(card->ctx, "only Select (%x)\n",df->id);
+	   r = sc_select_file(card, &df->path, NULL);
+	}
+
+	SC_FUNC_RETURN(card->ctx, 1, r);
+}
 /*
  * Select the PIN reference
  */
@@ -95,20 +164,27 @@ static int myeid_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 		sc_pkcs15_pin_info_t *pin_info)
 {
 	sc_pkcs15_pin_info_t pin_info_prof;
+	int type;
 
-	pin_info_prof.reference = 1; /* Default SO PIN ref. */
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_info_prof);
-
-	/* For the SO pin, we take the first available pin reference = 1 */
+	SC_FUNC_CALLED(card->ctx, 1);
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-		pin_info->reference = pin_info_prof.reference;
-	/* sc_pkcs15init_create_pin() starts checking if 0 is an acceptable
-	 * pin reference, which isn't for the myeid cards. And since the
-	 * value 1 has been assigned to the SO pin, we'll jump to 2. */
-	else if (pin_info->reference == 0)
-		pin_info->reference = pin_info_prof.reference + 1;
+	{
+	  type = SC_PKCS15INIT_SO_PIN;
+	  sc_debug(card->ctx, "PIN_FLAG_SO_PIN, ref (%d), tries_left (%d)\n",
+                            pin_info->reference,pin_info->tries_left);	
+	}
+	else	
+	{
+	  type = SC_PKCS15INIT_USER_PIN;
+	  sc_debug(card->ctx, "PIN_FLAG_PIN, ref (%d), tries_left (%d)\n",
+                            pin_info->reference, pin_info->tries_left);
 
-	return 0;
+	}
+
+	if (pin_info->reference <= 0 || pin_info->reference > MYEID_MAX_PINS)
+		pin_info->reference = 1;
+		
+	SC_FUNC_RETURN(card->ctx, 1, 0);
 }
 
 /*
@@ -138,6 +214,7 @@ static int myeid_new_file(sc_profile_t *profile, sc_card_t *card,
 	char name[64], *tag;
 	int r;
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	if (type == SC_PKCS15_TYPE_PRKEY_RSA)
 		tag = "private-key";
 	else if (type  == SC_PKCS15_TYPE_PUBKEY_RSA)
@@ -178,21 +255,23 @@ static int myeid_new_file(sc_profile_t *profile, sc_card_t *card,
 	}
 
 	*out = file;
-	return 0;
+	SC_FUNC_RETURN(card->ctx, 1, 0);
 }
 
 static int myeid_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey_rsa *rsa, u8 *key, 
 		size_t *keysize, int key_ref)
 {
-	return 0;
+	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_RETURN(card->ctx, 1, 0);
 }
 
 static int myeid_encode_public_key(sc_profile_t *profile, sc_card_t *card, 
 		struct sc_pkcs15_prkey_rsa *rsa, u8 *key, 
 		size_t *keysize, int key_ref)
 {
-	return 0;
+	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_RETURN(card->ctx, 1, 0);
 }
 
 /*
@@ -232,9 +311,13 @@ static int myeid_generate_store_key(sc_profile_t *profile, sc_card_t *card,
 		sc_pkcs15_prkey_info_t *info)
 {
 	struct sc_cardctl_myeid_gen_store_key_info args;
+	struct sc_cardctl_myeid_data_obj data_obj;
+	unsigned char raw_pubkey[256];
 	int           r;
+	unsigned int  mod_len;
 	sc_file_t    *prkf = NULL;
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	/* Parameter check */
 	if ( (keybits < 1024) || (keybits > 2048) || (keybits & 0X7)) {
 		sc_error(card->ctx, 
@@ -303,7 +386,7 @@ done:
 	if (prkf)
 		sc_file_free(prkf);
 
-	return r;
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 /*
@@ -314,36 +397,30 @@ static int myeid_create_pin_internal(sc_profile_t *profile, sc_card_t *card,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
 {
-	u8  data[19];
+	u8  data[20];
 	int so_pin_ref;
-	int	r;
+	int	r,type, puk_tries;
 	struct sc_cardctl_myeid_data_obj data_obj;
 	sc_file_t *pinfile = NULL;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+	sc_debug(card->ctx, "pin (%d), pin_len (%d), puk_len(%d) \n",
+                            pin_info->reference, pin_len, puk_len);
 
 	if (pin_info->reference >= MYEID_MAX_PINS)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (pin == NULL || puk == NULL || pin_len < 4 || puk_len < 4)
 		return SC_ERROR_INVALID_PIN_LENGTH;
 
-	/* Verify required access rights if needed (i.e. if the
-	 * pin file isn't in the CREATE life cycle state). */
-	if (!ignore_ac)
-	{
-		/* Re-ink the SO pin to the MF because there is the pin file */
-		so_pin_ref = sc_keycache_find_named_pin(&profile->df_info->file->path,
-			SC_PKCS15INIT_SO_PIN);
-		if (so_pin_ref >= 0)
-			sc_keycache_set_pin_name(&profile->mf_info->file->path,
-				so_pin_ref, SC_PKCS15INIT_SO_PIN);
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+	  type = SC_PKCS15INIT_SO_PIN;
+	else
+	  type = SC_PKCS15INIT_USER_PIN;
 
-		r = sc_profile_get_file(profile, "pinfile", &pinfile);
-		if (r >= 0)
-			r = sc_pkcs15init_authenticate(profile, card, pinfile, SC_AC_OP_UPDATE);
-		sc_file_free(pinfile);
-		if (r < 0)
-			return r;
-	}
+	sc_debug(card->ctx, "pin type (%s)\n",
+                             (type == SC_PKCS15INIT_SO_PIN) ? "SO_PIN": "USER_PIN");
 
+	memset(data, 0xFF, sizeof(data));
 	/* Make command to add a pin-record */
 	data_obj.P1 = 01;
 	data_obj.P2 = pin_info->reference;	/* myeid pin number */
@@ -351,40 +428,40 @@ static int myeid_create_pin_internal(sc_profile_t *profile, sc_card_t *card,
 	memcpy(&data[0], (u8 *)pin, pin_len);   /* copy pin*/
 	memcpy(&data[8], (u8 *)puk, puk_len);   /* copy puk */
 
-
-	/* Optional PIN locking 
-	 * data[17] = pin_info->tries_left & 0x0F;
-	 * data[18] = myeid_puk_retries(profile, pin_info->reference) & 0x0F;
-	 */
-
+        data[16] = 0x00;
 	data[17] = 0x00;
 	data[18] = 0x00;
-	data[19] = 0x00; /* FIXME, array is only 0..18 */
 
 	data_obj.Data    = data;
-	data_obj.DataLen = 0x10;
+	data_obj.DataLen = 16;
+
+	puk_tries = myeid_puk_retries(profile, pin_info);
+	if(pin_info->tries_left > 0 && pin_info->tries_left < 15 &&
+           puk_tries > 0 && puk_tries < 15)
+	{
+	    /* Optional PIN locking */
+	    data[16] = (pin_info->tries_left & 0x0F);
+	    data[17] = (puk_tries & 0x0F);
+	    data_obj.DataLen = 19;
+	}
 
 	r = sc_card_ctl(card, SC_CARDCTL_MYEID_PUTDATA, &data_obj);
 
-	return r;
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
-static int myeid_puk_retries(sc_profile_t *profile, int pin_ref)
+static int myeid_puk_retries(sc_profile_t *profile, sc_pkcs15_pin_info_t *pin_info)
 {
-	sc_pkcs15_pin_info_t pin_info;
+	sc_pkcs15_pin_info_t puk_info;
 
-	pin_info.reference = 1; /* Default SO PIN ref. */
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_info);
-
-	/* If pin_ref is the SO PIN, get the SO PUK info, otherwise the User PUK info */
 	sc_profile_get_pin_info(profile, 
-		pin_ref == pin_info.reference ? 
+		(pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) ? 
 			SC_PKCS15INIT_SO_PUK : SC_PKCS15INIT_USER_PUK,
-		&pin_info);
+		&puk_info);
 	
-	if ((pin_info.tries_left < 0) || (pin_info.tries_left > 15))
-		return 3; /* Little extra safety */
-	return pin_info.tries_left;
+	if ((puk_info.tries_left < 0) || (puk_info.tries_left >= 15))
+		return -1;
+	return puk_info.tries_left;
 }
 
 /* For Myeid, all objects are files that can be deleted in any order */
@@ -392,13 +469,14 @@ static int myeid_delete_object(struct sc_profile *profile,
 		struct sc_card *card, unsigned int type, 
 		const void *data, const sc_path_t *path)
 {
+	SC_FUNC_CALLED(card->ctx, 1);
 	return sc_pkcs15init_delete_by_path(profile, card, path);
 }
 
 static struct sc_pkcs15init_operations sc_pkcs15init_myeid_operations = {
 	myeid_erase_card,
-	NULL,	            		/* init_card */
-	NULL,				/* create_dir */
+	myeid_init_card,       		/* init_card */
+	myeid_create_dir,		/* create_dir */
 	NULL,				/* create_domain */
 	myeid_select_pin_reference,
 	myeid_create_pin,
