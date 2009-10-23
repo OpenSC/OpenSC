@@ -14,8 +14,11 @@
 #include <openssl/rsa.h>
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
-#include <openssl/ec.h>
 #include <openssl/conf.h>
+#include <openssl/opensslconf.h> /* for OPENSSL_NO_EC */
+#ifndef OPENSSL_NO_EC
+#include <openssl/ec.h>
+#endif /* OPENSSL_NO_EC */
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 
 static CK_RV	sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *);
@@ -248,7 +251,7 @@ sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 	return CKR_OK;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
 
 static void reverse(unsigned char *buf, size_t len)
 {
@@ -328,7 +331,7 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, int pubkey_len,
 		return CKR_GENERAL_ERROR;
 	return ret_vrf == 1 ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
-#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC) */
 
 /* If no hash function was used, finish with RSA_public_decrypt().
  * If a hash function was used, we can make a big shortcut by
@@ -346,11 +349,12 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 
 	if (mech == CKM_GOSTR3410)
 	{
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
 		return gostr3410_verify_data(pubkey, pubkey_len,
 				pubkey_params, pubkey_params_len,
 				data, data_len, signat, signat_len);
 #else
+		(void)pubkey_params, (void)pubkey_params_len; /* no warning */
 		return CKR_FUNCTION_NOT_SUPPORTED;
 #endif
 	}
