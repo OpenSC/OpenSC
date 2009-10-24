@@ -6,8 +6,8 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/nonpersistent/ChangeLog.
 
-New in 0.11.11-rc1; 2009-10-23; Andreas Jellinghaus
-* Now again compatible with OpenSSL 0.9.7
+New in 0.11.11-rc2; 2009-10-24; Andreas Jellinghaus
+* Now again compatible with OpenSSL 0.9.7 and OpenSSL 1.0.0
 * A few warnings and minor bugs were fixed
 * Updated myeid driver by Aventra
 
