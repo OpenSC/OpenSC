@@ -268,9 +268,9 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 #ifndef ENABLE_OPENSSL
 	return SC_ERROR_NOT_SUPPORTED;
 #else
-	int  		        r = SC_ERROR_UNKNOWN;
-	long			lg;
-	char			*p;
+	int r = SC_ERROR_UNKNOWN;
+	long lg;
+	u8 *p;
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 	RSA			*rsa = NULL;
 	BIGNUM			*bn = NULL;

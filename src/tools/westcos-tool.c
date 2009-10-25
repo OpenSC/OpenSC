@@ -62,9 +62,7 @@ static int new_pin = 0;
 static int debloque = 0;
 
 static char *get_filename = NULL;
-static char *get_path = NULL;
 static char *put_filename = NULL;
-static char *put_path = NULL;
 
 static int do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
 {
@@ -90,7 +88,7 @@ static void print_openssl_erreur(void)
 		fprintf(stderr, "%s\n", ERR_error_string(r, NULL));
 }
 
-static verify_pin(sc_card_t *card, int pin_reference, char *pin_value)
+static int verify_pin(sc_card_t *card, int pin_reference, char *pin_value)
 {
 	int r, tries_left = -1;
 	struct sc_pin_cmd_data data;
@@ -117,7 +115,7 @@ static verify_pin(sc_card_t *card, int pin_reference, char *pin_value)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 
-		data.pin1.data = pin_value;
+		data.pin1.data = (u8*)pin_value;
 		data.pin1.len = strlen(pin_value);
 	}
 	
@@ -140,7 +138,7 @@ static verify_pin(sc_card_t *card, int pin_reference, char *pin_value)
 	return 0;
 }
 
-static change_pin(sc_card_t *card, 
+static int change_pin(sc_card_t *card, 
 		int pin_reference, 
 		char *pin_value1, 
 		char *pin_value2)
@@ -170,10 +168,10 @@ static change_pin(sc_card_t *card,
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 
-		data.pin1.data = pin_value1;
+		data.pin1.data = (u8*)pin_value1;
 		data.pin1.len = strlen(pin_value1);
 
-		data.pin2.data = pin_value2;
+		data.pin2.data = (u8*)pin_value2;
 		data.pin2.len = strlen(pin_value2);
 
 	}
@@ -198,7 +196,7 @@ static change_pin(sc_card_t *card,
 	return 0;
 }
 
-static debloque_pin(sc_card_t *card, 
+static int debloque_pin(sc_card_t *card, 
 			int pin_reference, 
 			char *puk_value, 
 			char *pin_value)
@@ -228,10 +226,10 @@ static debloque_pin(sc_card_t *card,
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 
-		data.pin1.data = puk_value;
+		data.pin1.data = (u8*)puk_value;
 		data.pin1.len = strlen(puk_value);
 
-		data.pin2.data = pin_value;
+		data.pin2.data = (u8*)pin_value;
 		data.pin2.len = strlen(pin_value);
 
 	}
@@ -351,7 +349,7 @@ int main(int argc, char *argv[])
 {
 	int r;
 	int i = 1;
-	u8 *p;
+	char *p;
 	int card_presente = 0;
 	sc_context_param_t ctx_param;
 	sc_reader_t *lecteur = NULL;
@@ -589,7 +587,7 @@ int main(int argc, char *argv[])
 
 			pin_cmd.encoding = SC_PIN_ENCODING_GLP;
 			pin_cmd.len = strlen(pin);
-			pin_cmd.data = pin;
+			pin_cmd.data = (u8*)pin;
 			pin_cmd.max_length = 8;
 
 			ck.new_key.key_len = sc_build_pin(ck.new_key.key_value, 
@@ -613,7 +611,7 @@ int main(int argc, char *argv[])
 
 			puk_cmd.encoding = SC_PIN_ENCODING_GLP;
 			puk_cmd.len = strlen(puk);
-			puk_cmd.data = puk;
+			puk_cmd.data = (u8*)puk;
 			puk_cmd.max_length = 8;
 
 			ck.new_key.key_len = sc_build_pin(ck.new_key.key_value, 
@@ -651,10 +649,11 @@ int main(int argc, char *argv[])
 
 	if(keylen)
 	{
-		int lg; 
+		size_t lg; 
 		struct sc_pkcs15_pubkey key;
 		struct sc_pkcs15_pubkey_rsa *dst = &(key.u.rsa);
-
+		u8 *pdata;
+		
 		memset(&key, 0, sizeof(key));
 		key.algorithm = SC_ALGORITHM_RSA;
 
@@ -687,7 +686,7 @@ int main(int argc, char *argv[])
 #endif
 		{
 			fprintf(stderr, 
-				"RSA_generate_key_ex return %d\n", ERR_get_error());
+				"RSA_generate_key_ex return %ld\n", ERR_get_error());
 			goto out;
 		}
 
@@ -696,11 +695,11 @@ int main(int argc, char *argv[])
 		if(!i2d_RSAPrivateKey_bio(mem, rsa))
 		{
 			fprintf(stderr, 
-				"i2d_RSAPrivateKey_bio return %d\n", ERR_get_error());
+				"i2d_RSAPrivateKey_bio return %ld\n", ERR_get_error());
 			goto out;
 		}
 
-		lg = BIO_get_mem_data(mem, &p);
+		lg = BIO_get_mem_data(mem, &pdata);
 
 		sc_format_path("0001", &path);
 		r = sc_select_file(card, &path, NULL);
@@ -750,7 +749,7 @@ int main(int argc, char *argv[])
 		printf("Private key length is %d\n", lg);
 
 		printf("Write private key.\n");
-		r = sc_update_binary(card,0,p,lg,0);
+		r = sc_update_binary(card,0,pdata,lg,0);
 		if(r<0) goto out;
 		printf("Private key correctly written.\n");
 
@@ -761,7 +760,7 @@ int main(int argc, char *argv[])
 		 || !do_convert_bignum(&dst->exponent, rsa->e))
 			goto out;
 		
-		r = sc_pkcs15_encode_pubkey(ctx, &key, &p, &lg);
+		r = sc_pkcs15_encode_pubkey(ctx, &key, &pdata, &lg);
 		if(r) goto out;
 
 		printf("Public key length %d\n", lg);
@@ -771,7 +770,7 @@ int main(int argc, char *argv[])
 		if(r) goto out;
 
 		printf("Write public key.\n");
-		r = sc_update_binary(card,0,p,lg,0);
+		r = sc_update_binary(card,0,pdata,lg,0);
 		if(r<0) goto out;
 		printf("Public key correctly written.\n");
 
@@ -779,9 +778,10 @@ int main(int argc, char *argv[])
 
 	if(cert)
 	{
-		BIO	*bio;
-		X509 	*xp;
-
+		BIO *bio;
+		X509 *xp;
+		u8 *pdata;
+		
 		bio = BIO_new(BIO_s_file());
 		if (BIO_read_filename(bio, cert) <= 0)
 		{
@@ -798,7 +798,7 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			int lg = cert2der(xp, &p);
+			int lg = cert2der(xp, &pdata);
 
 			sc_format_path("0002", &path);
 			r = sc_select_file(card, &path, NULL);
@@ -807,14 +807,14 @@ int main(int argc, char *argv[])
 			/* FIXME: verifier taille fichier compatible... */
 			printf("Write certificate %s.\n", cert);
 
-			r = sc_update_binary(card,0,p,lg,0);
+			r = sc_update_binary(card,0,pdata,lg,0);
 			if(r<0) 
 			{
-				if(p) free(p);
+				if(pdata) free(pdata);
 				goto out;
 			}
 			if(xp) X509_free(xp);
-			if(p) free(p);
+			if(pdata) free(pdata);
 
 			printf("Certificate correctly written.\n");
 		}
@@ -950,5 +950,6 @@ out:
 	if (ctx)
 		sc_release_context(ctx);
 
+	return EXIT_SUCCESS;
 }
 

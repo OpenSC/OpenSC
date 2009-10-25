@@ -144,19 +144,12 @@ static int westcos_check_sw(sc_card_t * card, unsigned int sw1,
 	return iso_ops->check_sw(card, sw1, sw2);
 }
 
-typedef struct mon_atr {
-	size_t len;
-	int flags;
-	u8 *atr, *mask;
-} mon_atr_t;
-
-static mon_atr_t atrs[] = {
-	{13, 0x00, 
-	"\x3f\x69\x00\x00\x00\x64\x01\x00\x00\x00\x80\x90\x00",
-	"\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\xf0\xff\xff"}, 
-	{12, JAVACARD,
-	"\x3b\x95\x94\x80\x1F\xC3\x80\x73\xC8\x21\x13\x54",
-	"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"}
+static struct sc_atr_table westcos_atrs[] = {
+	/* westcos 2ko */
+	{ "3F:69:00:00:00:64:01:00:00:00:80:90:00", "ff:ff:ff:ff:ff:ff:ff:00:00:00:f0:ff:ff", NULL, 0x00, 0, NULL },
+	/* westcos applet */
+	{ "3B:95:94:80:1F:C3:80:73:C8:21:13:54", "ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff", NULL, JAVACARD, 0, NULL },
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 static int westcos_finish(sc_card_t * card)
@@ -172,59 +165,35 @@ static int westcos_finish(sc_card_t * card)
 
 static int westcos_match_card(sc_card_t * card)
 {
-	u8 *p, j;
-	size_t i;
-	mon_atr_t *matr;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_match_card %d, %X:%X:%X\n",
-			 card->atr_len, card->atr[0], card->atr[1],
-			 card->atr[2]);
-	for (i = 0; i < sizeof(atrs) / sizeof(*atrs); i++) {
-		matr = &atrs[i];
-		if (matr->len != card->atr_len)
-			continue;
-		p = card->atr;
-		for (j = 0; j < card->atr_len; j++) {
-			if (((matr->mask[j]) & (*p)) != (matr->atr[j]))
-				break;
-			p++;
-			if (*p == ':')
-				p++;
-		}
-		if (j >= card->atr_len) {
-			if (matr->flags & JAVACARD) {
-				int r;
-				sc_apdu_t apdu;
-				u8 aid[] = {
-					0xA0, 0x00, 0xCE, 0x00, 0x07, 0x01
-				};
-				sc_format_apdu(card, &apdu,
-					       SC_APDU_CASE_3_SHORT, 0xA4, 0x04,
-					       0);
-				apdu.cla = 0x00;
-				apdu.lc = sizeof(aid);
-				apdu.datalen = sizeof(aid);
-				apdu.data = aid;
-				r = sc_transmit_apdu(card, &apdu);
-				if (r)
-					continue;
-				r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-				if (r)
-					continue;
-			}
-			card->drv_data = malloc(sizeof(priv_data_t));
-			if (card->drv_data == NULL)
-				return SC_ERROR_OUT_OF_MEMORY;
-			memset(card->drv_data, 0, sizeof(card->drv_data));
-			if (matr->flags & JAVACARD) {
-				priv_data_t *priv_data =
-				    (priv_data_t *) card->drv_data;
-				priv_data->flags |= JAVACARD;
-			}
-			return 1;
-		}
+	int i;
+
+	i = _sc_match_atr(card, westcos_atrs, &card->type);
+	if (i < 0)
+		return 0;
+	
+	/* JAVACARD, look for westcos applet */
+	if (i == 1) { 
+		int r;
+		sc_apdu_t apdu;
+		u8 aid[] = {
+			0xA0, 0x00, 0xCE, 0x00, 0x07, 0x01
+		};
+		sc_format_apdu(card, &apdu,
+				SC_APDU_CASE_3_SHORT, 0xA4, 0x04,
+				0);
+		apdu.cla = 0x00;
+		apdu.lc = sizeof(aid);
+		apdu.datalen = sizeof(aid);
+		apdu.data = aid;
+		r = sc_transmit_apdu(card, &apdu);
+		if (r)
+			return 0;
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		if (r)
+			return 0;
 	}
-	return 0;
+	
+	return 1;
 }
 
 static int westcos_init(sc_card_t * card)
@@ -232,8 +201,19 @@ static int westcos_init(sc_card_t * card)
 	int r;
 	const char *default_key;
 	unsigned long exponent, flags;
-	if (card == NULL || card->drv_data == NULL)
+	if (card == NULL)// || card->drv_data == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
+		
+	card->drv_data = malloc(sizeof(priv_data_t));
+	if (card->drv_data == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memset(card->drv_data, 0, sizeof(card->drv_data));
+	if (card->type & JAVACARD) {
+		priv_data_t *priv_data =
+			(priv_data_t *) card->drv_data;
+		priv_data->flags |= JAVACARD;
+	}
+	
 	card->cla = 0x00;
 	card->max_send_size = 240;
 	card->max_recv_size = 240;
@@ -260,9 +240,9 @@ static int westcos_init(sc_card_t * card)
 		priv_data_t *priv_data = (priv_data_t *) (card->drv_data);
 		priv_data->default_key.key_reference = 0;
 		priv_data->default_key.key_len =
-		    sizeof(priv_data->default_key.key_value);
+			sizeof(priv_data->default_key.key_value);
 		r = sc_hex_to_bin(default_key, priv_data->default_key.key_value,
-				  &(priv_data->default_key.key_len));
+				&(priv_data->default_key.key_len));
 		if (r)
 			return (r);
 	}
