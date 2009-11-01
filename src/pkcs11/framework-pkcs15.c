@@ -194,6 +194,7 @@ static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 	unlock_card(fw_data);
 
 	rc = sc_pkcs15_unbind(fw_data->p15_card);
+	free(fw_data);
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
@@ -923,6 +924,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 static CK_RV pkcs15_release_token(struct sc_pkcs11_card *p11card, void *fw_token)
 {
 	unlock_card((struct pkcs15_fw_data *) p11card->fw_data);
+	free(fw_token);
 	return CKR_OK;
 }
 
