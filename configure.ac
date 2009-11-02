@@ -153,9 +153,9 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[pcsc],
-	[AS_HELP_STRING([--enable-pcsc],[enable pcsc support @<:@disabled@:>@])],
+	[AS_HELP_STRING([--disable-pcsc],[disable pcsc support @<:@enabled@:>@])],
 	,
-	[enable_pcsc="no"]
+	[enable_pcsc="yes"]
 )
 
 AC_ARG_ENABLE(
