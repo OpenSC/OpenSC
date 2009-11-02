@@ -3,7 +3,8 @@
  *		CosmopolIC  v5; 
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2003  Viktor Tarasov <vtarasov@idealx.com>, idealx <www.idealx.com>
+ * Copyright (C) 2009  Viktor Tarasov <viktor.tarasov@idealx.com>, 
+ *                     OpenTrust <www.opentrust.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -42,8 +43,6 @@
 #define DES_set_key_unchecked(a,b)	des_set_key_unchecked(a,*b)
 #define DES_ecb_encrypt(a,b,c,d) 	des_ecb_encrypt(a,b,*c,d)
 #endif
-
-#define NOT_YET 1
 
 static struct sc_atr_table oberthur_atrs[] = {
 	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL, 
@@ -126,39 +125,6 @@ static int auth_get_serialnr(sc_card_t *card, sc_serial_number_t *serial);
 static int auth_select_file(sc_card_t *card, const sc_path_t *in_path,
 		sc_file_t **file_out);
 
-#ifndef NOT_YET
-static int auth_sm_init (struct sc_card *card, struct sc_sm_info *sm_info, 
-		int cmd, unsigned char *id, size_t id_len,
-		unsigned char *resp, size_t *resp_len);
-static int auth_sm_execute (struct sc_card *card, struct sc_sm_info *sm_info, 
-		unsigned char *data, int data_len, unsigned char *out, size_t len);
-static int auth_sm_update_rsa (struct sc_card *card,
-		struct sc_cardctl_oberthur_updatekey_info *data);
-static int auth_sm_reset_pin (struct sc_card *card, int type, int ref,
-		const unsigned char *data, size_t len);
-static int auth_sm_read_binary (struct sc_card *card, 
-		unsigned char *id, size_t id_len, 
-		size_t offs, unsigned char *out, size_t len);
-static int auth_sm_release (struct sc_card *card, struct sc_sm_info *sm_info,
-		unsigned char *data, int data_len);
-#endif
-
-#if 0
-/* this function isn't used anywhere */
-static void _auth_print_acls(struct sc_card *card, struct sc_file *file)
-{
-	int ii, jj;   
-	
-	for (jj=0; jj < SC_MAX_AC_OPS; jj++)   {
-		const sc_acl_entry_t *acl = sc_file_get_acl_entry(file, jj);
-			
-		for (ii=0; acl; acl = acl->next, ii++) {
-			sc_debug(card->ctx, "%i-%i: acl : meth 0x%X, ref 0x%X", 
-					jj, ii, acl->method, acl->key_ref);
-		}
-	}
-}
-#endif
 
 static int 
 auth_finish(sc_card_t *card)
@@ -443,42 +409,20 @@ auth_process_fci(struct sc_card *card, struct sc_file *file,
 		add_acl_entry(card, file, SC_AC_OP_CRYPTO, attr[1]);
 		add_acl_entry(card, file, SC_AC_OP_LIST_FILES, attr[2]);
 		add_acl_entry(card, file, SC_AC_OP_DELETE, attr[3]);
-#ifndef NOT_YET		
-		add_acl_entry(card, file, SC_AC_OP_PIN_SET, attr[4]);
-		add_acl_entry(card, file, SC_AC_OP_PIN_CHANGE, attr[5]);
-		add_acl_entry(card, file, SC_AC_OP_PIN_RESET, attr[6]);
-#endif
 	} 
 	else if (file->type == SC_FILE_TYPE_INTERNAL_EF)  { /* EF */
 		switch (file->ef_structure) {
 		case SC_CARDCTL_OBERTHUR_KEY_DES:
 			add_acl_entry(card, file, SC_AC_OP_UPDATE, attr[0]);
-#if 0
-			add_acl_entry(card, file, SC_AC_OP_DECRYPT, attr[1]);
-			add_acl_entry(card, file, SC_AC_OP_ENCRYPT, attr[2]);
-			add_acl_entry(card, file, SC_AC_OP_CHECKSUM, attr[3]);
-			add_acl_entry(card, file, SC_AC_OP_VERIFY, attr[4]);
-#else
 			add_acl_entry(card, file, SC_AC_OP_READ, attr[1]);
-#endif
 			break;
 		case SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC:
 			add_acl_entry(card, file, SC_AC_OP_UPDATE, attr[0]);
-#if 0
-			add_acl_entry(card, file, SC_AC_OP_ENCRYPT, attr[2]);
-			add_acl_entry(card, file, SC_AC_OP_VERIFY, attr[4]);
-#else
 			add_acl_entry(card, file, SC_AC_OP_READ, attr[2]);
-#endif
 			break;
 		case SC_CARDCTL_OBERTHUR_KEY_RSA_CRT:
 			add_acl_entry(card, file, SC_AC_OP_UPDATE, attr[0]);
-#if 0
-			add_acl_entry(card, file, SC_AC_OP_DECRYPT, attr[1]);
-			add_acl_entry(card, file, SC_AC_OP_SIGN, attr[3]);
-#else
 			add_acl_entry(card, file, SC_AC_OP_READ, attr[1]);
-#endif
 			break;
 		}
 	}
@@ -889,15 +833,9 @@ encode_file_structure_V5(sc_card_t *card, const sc_file_t *file,
 		ops[1] = SC_AC_OP_CRYPTO;
 		ops[2] = SC_AC_OP_LIST_FILES;
 		ops[3] = SC_AC_OP_DELETE;
-#ifndef NOT_YET		
-		ops[4] = SC_AC_OP_PIN_SET;  /* SC_AC_OP_SET_REFERENCE */
-		ops[5] = SC_AC_OP_PIN_CHANGE;  /* SC_AC_OP_CHANGE_REFERENCE */
-		ops[6] = SC_AC_OP_PIN_RESET;  /* SC_AC_OP_RESET_COUNTER */
-#else
 		ops[4] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_SET_REFERENCE */
 		ops[5] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_CHANGE_REFERENCE */
 		ops[6] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_RESET_COUNTER */						
-#endif
 	} 
 	else if (file->type == SC_FILE_TYPE_WORKING_EF)   {
 		if (file->ef_structure == SC_FILE_EF_TRANSPARENT)   {
@@ -1265,13 +1203,6 @@ auth_get_default_key(sc_card_t *card, struct sc_cardctl_default_key *data)
 {
 	int rv = SC_ERROR_NO_DEFAULT_KEY;
 
-#ifndef NOT_YET
-	if (data->method == SC_AC_PRO)   {
-		card->sm_level = data->key_ref | 0x60;
-		rv = SC_SUCCESS;
-	}
-#endif	
-	
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
 
@@ -1304,9 +1235,6 @@ auth_generate_key(sc_card_t *card, int use_sm,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	sc_path_t tmp_path;
 	int rv = 0;
-#ifndef NOT_YET	
-	const sc_acl_entry_t *entry;
-#endif
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (data->key_bits < 512 || data->key_bits > 2048 || 
@@ -1336,46 +1264,10 @@ auth_generate_key(sc_card_t *card, int use_sm,
 	apdu.data = sbuf;
 	apdu.datalen = rv + 4;
 
-#ifndef NOT_YET	
-    entry = sc_file_get_acl_entry(auth_current_df, SC_AC_OP_CRYPTO);
-	if (entry && entry->method == SC_AC_PRO) 
-		if (card->sm_level < (entry->key_ref | 0x60))
-			card->sm_level = entry->key_ref | 0x60;
-							
-	if (card->sm_level)   {
-		struct sc_sm_info sm_info;
-		unsigned char init_data[SC_MAX_APDU_BUFFER_SIZE];
-		int init_data_len = sizeof(init_data);
-		unsigned char out[SC_MAX_APDU_BUFFER_SIZE];
-		int out_len = sizeof(init_data);
-
-		rv = auth_sm_init (card, &sm_info, SC_SM_CMD_TYPE_GENERATE_RSA,
-				card->serialnr.value, card->serialnr.len,  
-				init_data, &init_data_len);
-		SC_TEST_RET(card->ctx, rv, "SM: init failed");
-	
-		sm_info.p1 = data->key_bits;
-		sm_info.data = apdu.data;
-		sm_info.data_len = apdu.datalen;
-	
-		rv = auth_sm_execute (card, &sm_info, init_data, init_data_len, 
-				out, out_len);
-		SC_TEST_RET(card->ctx, rv, "SM: execute failed");
-		
-		rv = auth_sm_release (card, &sm_info, out, out_len);
-		SC_TEST_RET(card->ctx, rv, "SM: release failed");
-
-		/* TODO clean resp */
-	}
-	else   {
-#endif		
-		rv = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
-		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(card->ctx, rv, "Card returned error");
-#ifndef NOT_YET		
-	}
-#endif
+	rv = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, rv, "Card returned error");
 		
 	tmp_path.type = SC_PATH_TYPE_FILE_ID;
 	tmp_path.len = 2;
@@ -1501,19 +1393,6 @@ auth_update_key(sc_card_t *card, struct sc_cardctl_oberthur_updatekey_info *info
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	
-#ifndef NOT_YET	
-	if (auth_current_ef)   {
-		const sc_acl_entry_t *entry = sc_file_get_acl_entry(auth_current_ef, 
-				SC_AC_OP_UPDATE);
-		
-		if (entry && entry->method == SC_AC_PRO)
-			if (card->sm_level < (entry->key_ref | 0x60))
-				card->sm_level = entry->key_ref | 0x60;
-	}
-	
-	if (card->sm_level)    
-		return auth_sm_update_rsa(card, info);
-#endif	
 	if (info->data_len != sizeof(void *) || !info->data)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 
@@ -1801,9 +1680,6 @@ auth_reset_retry_counter(sc_card_t *card, unsigned int type,
 	size_t len;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_pin_cmd_pin pin_info, puk_info;
-#ifndef NOT_YET	
-	const sc_acl_entry_t *entry;
-#endif
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	rv = auth_get_pin_reference (card, type, ref, SC_PIN_CMD_CHANGE, &pin_ref);
@@ -1819,15 +1695,6 @@ auth_reset_retry_counter(sc_card_t *card, unsigned int type,
 	if (puklen > puk_info.pad_length || pinlen > pin_info.pad_length)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 
-#ifndef NOT_YET	
-	entry = sc_file_get_acl_entry(auth_current_df, SC_AC_OP_PIN_RESET);
-	if (entry && entry->method == SC_AC_PRO)   {
-		card->sm_level = entry->key_ref | 0x60; 
-		rv = auth_sm_reset_pin(card, type, ref, pin, pinlen);
-
-		SC_FUNC_RETURN(card->ctx, 1, rv);
-	}
-#endif	
 	memset(sbuf, puk_info.pad_char, puk_info.pad_length);
 	memcpy(sbuf, puk, puklen);
 	len = puk_info.pad_length;
@@ -2048,32 +1915,12 @@ auth_read_binary(sc_card_t *card, unsigned int offset,
 		u8 *buf, size_t count, unsigned long flags)
 {
 	int rv;
-#ifndef NOT_YET	
-	const sc_acl_entry_t *entry;
-#endif
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx,"offset %i; size %i; flags 0x%lX\n", offset, count, flags);
 	sc_debug(card->ctx,"last selected : magic %X; ef %X\n", 
 			auth_current_ef->magic, auth_current_ef->ef_structure);
 
-/*	_auth_print_acls(card, auth_current_ef); */
-
-#ifndef NOT_YET	
-	entry = sc_file_get_acl_entry(auth_current_ef, SC_AC_OP_READ);
-	sc_debug(card->ctx,"entry %p; %i\n", entry, SC_AC_OP_READ);
-	if (entry && entry->method == SC_AC_PRO)   {
-		sc_debug(card->ctx, "needs SM level 0x%X\n", entry->key_ref >> 3);
-
-		card->sm_level = entry->key_ref | 0x60;
-		rv = auth_sm_read_binary(card, 
-				auth_current_ef->path.value, auth_current_ef->path.len, 
-				offset, buf, count);
-		
-		sc_debug(card->ctx, "rv %i\n", rv);
-		SC_FUNC_RETURN(card->ctx, 1, rv);
-	}		
-#endif	
 	if (offset & ~0x7FFF)
 		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid file offset");
 
@@ -2209,259 +2056,6 @@ auth_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 
 	SC_FUNC_RETURN(card->ctx, 1, SC_SUCCESS);
 }
-
-#ifndef NOT_YET
-static int 
-auth_sm_init (struct sc_card *card, struct sc_sm_info *sm_info, int cmd, 
-		unsigned char *id, size_t id_len,
-		unsigned char *resp, size_t *resp_len)
-{
-	int rv;
-	struct sc_apdu apdu;
-    unsigned char host_challenge[8];
-    int host_challenge_len = sizeof(host_challenge);
-
-	sc_debug(card->ctx, "called; command 0x%X\n", cmd);
-	if (!card || !sm_info || !id || !id_len || !resp || !resp_len)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-
-	if (!card->sm.funcs.initialize || !card->sm.funcs.get_apdus)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
-
-	if ((card->sm_level & 0xE0) != 0x60)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-
-	if (id_len > sizeof(sm_info->id))
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-	
-	if (*resp_len < 28)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-
-	memset(sm_info, 0, sizeof(*sm_info));
-	
-	sm_info->index = 0;
-	sm_info->version = 1;		
-	sm_info->cmd = cmd;
-	sm_info->level = (card->sm_level & 0x18) >> 3;
-	
-	sm_info->id_len = id_len;
-	memcpy(sm_info->id, id, id_len); 
-	
-	sm_info->status = 0;
-	
-	sm_info->serialnr = card->serialnr;
-	
-    rv = card->sm.funcs.initialize(card->ctx, sm_info, 
-			host_challenge, &host_challenge_len);
-	SC_TEST_RET(card->ctx, rv, "SM: INITIALIZE failed");
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x50, 
-			sm_info->version, sm_info->index);
-	apdu.cla = 0x80;
-	apdu.resp = resp;
-	apdu.resplen = *resp_len;
-	apdu.lc = 8;
-	apdu.le = 12;
-	apdu.data = host_challenge;
-	apdu.datalen = 8;
-
-	rv=sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, rv, "transmit APDU failed");
-	
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, rv, "Card returned error");
-	
-	if (apdu.resplen != 28)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
-	
-	*resp_len = 28;
-
-	SC_FUNC_RETURN(card->ctx, 1, rv);
-}
-
-
-static int 
-auth_sm_execute (struct sc_card *card, struct sc_sm_info *sm_info, 
-		unsigned char *data, int data_len,
-		unsigned char *out, size_t len)
-{
-#define AUTH_SM_APDUS_MAX 6
-	int rv, ii;
-    struct sc_apdu apdus[AUTH_SM_APDUS_MAX];
-	unsigned char sbufs[AUTH_SM_APDUS_MAX][SC_MAX_APDU_BUFFER_SIZE];
-	unsigned char rbufs[AUTH_SM_APDUS_MAX][SC_MAX_APDU_BUFFER_SIZE];
-	int nn_apdus = AUTH_SM_APDUS_MAX;
-
-	if (!card->sm.funcs.initialize || !card->sm.funcs.get_apdus)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
-
-	memset(&apdus, 0, sizeof(apdus));
-	memset(&sbufs, 0, sizeof(sbufs));
-	memset(&rbufs, 0, sizeof(rbufs));
-	for (ii=0; ii<nn_apdus; ii++)   {
-		apdus[ii].data = &sbufs[ii][0];
-		apdus[ii].resp = &rbufs[ii][0];
-		apdus[ii].resplen = SC_MAX_APDU_BUFFER_SIZE;
-	}
-
-	rv = card->sm.funcs.get_apdus(card->ctx, sm_info,
-			data, data_len, apdus, &nn_apdus);
-	SC_TEST_RET(card->ctx, rv, "SM: GET_APDUS failed");
-	
-	sc_debug(card->ctx, "GET_APDUS: rv %i; nn cmds %i\n", 
-			rv, nn_apdus);
-
-	for (ii=0; ii < nn_apdus; ii++)   {
-		rv = sc_transmit_apdu(card, &apdus[ii]);
-		if (rv < 0) 
-			break;
-		
-		rv = sc_check_sw(card, apdus[ii].sw1, apdus[ii].sw2);
-		if (rv < 0)   
-			break;
-	}
-
-	if (rv)   {
-		sm_info->status = rv;
-		auth_sm_release (card, sm_info, NULL, 0);
-	}
-	
-	if (out && len > 0 && !rv)   {
-		if (len > apdus[nn_apdus-1].resplen)
-			len = apdus[nn_apdus-1].resplen;
-		
-		memcpy(out, apdus[nn_apdus-1].resp, len);
-		SC_FUNC_RETURN(card->ctx, 1, len);
-	}
-	
-	SC_FUNC_RETURN(card->ctx, 1, rv);
-}
-
-
-static int 
-auth_sm_release (struct sc_card *card, struct sc_sm_info *sm_info,
-		unsigned char *data, int data_len)
-{
-	int rv;
-	struct sc_apdu apdu;
-
-	card->sm_level = 0;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2E, 0x00, 0x60);
-	apdu.cla = 0x80;
-	apdu.lc = 0x0;
-	apdu.le = 0x0;
-	apdu.resplen = 0;
-	apdu.resp = NULL;
-	
-	rv = sc_transmit_apdu(card, &apdu);
-    SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
-
-	if (sm_info && card->sm.funcs.finalize)   {
-		rv = card->sm.funcs.finalize(card->ctx, sm_info, data, data_len);
-	    SC_TEST_RET(card->ctx, rv, "SM: finalize failed");
-	}
-
-	SC_FUNC_RETURN(card->ctx, 1, rv);
-}
-
-
-static int 
-auth_sm_update_rsa (struct sc_card *card, 
-		struct sc_cardctl_oberthur_updatekey_info *update_info)
-{
-	int rv, rvv;
-	struct sc_sm_info sm_info;
-	unsigned char init_data[SC_MAX_APDU_BUFFER_SIZE];
-	int init_data_len = sizeof(init_data);
-
-	sc_debug(card->ctx, "called; SM Level 0x%X\n", card->sm_level);
-	if (!update_info || !card->sm_level)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-
-	/* If rsa defined, we impose Mosilla style ID. */
-	if (update_info->data && (update_info->data_len == sizeof(void *)))   {
-		struct sc_pkcs15_prkey_rsa *rsa = (struct sc_pkcs15_prkey_rsa *)update_info->data;
-
-		SHA1(rsa->modulus.data, rsa->modulus.len, update_info->id);
-		update_info->id_len = SHA_DIGEST_LENGTH;
-	}
-	
-	rv = auth_sm_init (card, &sm_info, SC_SM_CMD_TYPE_UPDATE_RSA,
-			update_info->id, update_info->id_len,  init_data, &init_data_len);
-	if (!rv)
-		rv = auth_sm_execute (card, &sm_info, 
-				init_data, init_data_len, NULL, 0);
-	
-	rvv = auth_sm_release (card, &sm_info, NULL, 0);
-
-	SC_FUNC_RETURN(card->ctx, 1, (rv ? rv : rvv));
-}
-
-
-static int 
-auth_sm_reset_pin (struct sc_card *card, int type, int ref,
-		const u8 *data, size_t len)
-{
-	int rv;
-	struct sc_sm_info sm_info;
-	unsigned char init_data[SC_MAX_APDU_BUFFER_SIZE];
-	int init_data_len = sizeof(init_data);
-
-	sc_debug(card->ctx, "called; PIN ref 0x%X; data length %i\n", ref, len);
-
-	rv = auth_sm_init (card, &sm_info, SC_SM_CMD_TYPE_RESET_PIN,
-			card->serialnr.value, card->serialnr.len, init_data, &init_data_len);
-	SC_TEST_RET(card->ctx, rv, "SM: init failed");
-
-	sm_info.p1 = ref;
-	sm_info.data = data;
-	sm_info.data_len = len;
-	
-	rv = auth_sm_execute (card, &sm_info, init_data, init_data_len, NULL, 0);
-	SC_TEST_RET(card->ctx, rv, "SM: execute failed");
-
-	rv = auth_sm_release (card, &sm_info, NULL, 0);
-	SC_TEST_RET(card->ctx, rv, "SM: release failed");
-
-	SC_FUNC_RETURN(card->ctx, 1, rv);
-}
-
-
-static int 
-auth_sm_read_binary (struct sc_card *card, unsigned char *id, size_t id_len,
-		size_t offs, unsigned char *out, size_t len)
-{
-	int rv;
-	struct sc_sm_info sm_info;
-	unsigned char init_data[SC_MAX_APDU_BUFFER_SIZE];
-	int init_data_len = sizeof(init_data);
-
-	sc_debug(card->ctx, "called; offs %i; len %i\n", offs, len);
-
-	if (len > 0xF0)   {
-		sc_error(card->ctx, "Not yet: reading length cannot be more then 240 bytes.");
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
-	}
-
-	rv = auth_sm_init (card, &sm_info, SC_SM_CMD_TYPE_READ_BINARY,
-			id, id_len, init_data, &init_data_len);
-	SC_TEST_RET(card->ctx, rv, "SM: init failed");
-	
-	sm_info.p1 = offs;
-	sm_info.p2 = len;
-	
-	rv = auth_sm_execute (card, &sm_info, init_data, init_data_len, out, len);
-	SC_TEST_RET(card->ctx, rv, "SM: execute failed");
-
-	len = rv;
-
-	rv = auth_sm_release (card, &sm_info, out, len);
-	SC_TEST_RET(card->ctx, rv, "SM: release failed");
-
-	SC_FUNC_RETURN(card->ctx, 1, len);
-}
-#endif
 
 static struct sc_card_driver * 
 sc_get_driver(void)
