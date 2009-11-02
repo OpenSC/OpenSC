@@ -587,7 +587,7 @@ if test "${enable_pcsc}" = "yes"; then
 				DEFAULT_PCSC_PROVIDER="winscard.dll"
 			;;
 			*)
-				DEFAULT_PCSC_PROVIDER="/usr/lib${libdir##*/lib}/libpcsclite.so.1"
+				DEFAULT_PCSC_PROVIDER="libpcsclite.so.1"
 			;;
 		esac
 	else
