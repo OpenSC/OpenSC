@@ -5,7 +5,7 @@ AC_PREREQ(2.60)
 define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [12])
 define([PACKAGE_VERSION_FIX], [0])
-define([PACKAGE_SUFFIX], [-svn-mp])
+define([PACKAGE_SUFFIX], [-svn])
 
 AC_INIT([opensc],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX])
 AC_CONFIG_AUX_DIR([.])
@@ -153,9 +153,9 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[pcsc],
-	[AS_HELP_STRING([--enable-pcsc],[enable pcsc support @<:@disabled@:>@])],
+	[AS_HELP_STRING([--disable-pcsc],[disable pcsc support @<:@enabled@:>@])],
 	,
-	[enable_pcsc="no"]
+	[enable_pcsc="yes"]
 )
 
 AC_ARG_ENABLE(
@@ -587,7 +587,7 @@ if test "${enable_pcsc}" = "yes"; then
 				DEFAULT_PCSC_PROVIDER="winscard.dll"
 			;;
 			*)
-				DEFAULT_PCSC_PROVIDER="/usr/lib${libdir##*/lib}/libpcsclite.so"
+				DEFAULT_PCSC_PROVIDER="libpcsclite.so.1"
 			;;
 		esac
 	else

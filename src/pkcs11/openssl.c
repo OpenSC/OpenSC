@@ -390,6 +390,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		 	pad = RSA_NO_PADDING;
 		 	break;
 		 default:
+			EVP_PKEY_free(pkey);
 		 	return CKR_ARGUMENTS_BAD;
 		 }
 
@@ -400,7 +401,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 
 		rsa_out = (unsigned char *) malloc(RSA_size(rsa));
 		if (rsa_out == NULL) {
-			free(rsa);
+			RSA_free(rsa);
 			return CKR_DEVICE_MEMORY;
 		}
 		

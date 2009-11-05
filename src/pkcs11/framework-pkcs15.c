@@ -184,6 +184,7 @@ static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 	unlock_card(fw_data);
 
 	rc = sc_pkcs15_unbind(fw_data->p15_card);
+	free(fw_data);
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
@@ -260,6 +261,24 @@ __pkcs15_release_object(struct pkcs15_any_object *obj)
 	free(obj);
 
 	return 0;
+}
+
+static int
+__pkcs15_delete_object(struct pkcs15_fw_data *fw_data, struct pkcs15_any_object *obj)
+{
+	unsigned int i;
+
+	if (fw_data->num_objects == 0)
+		return SC_ERROR_INTERNAL;
+
+	for (i = 0; i < fw_data->num_objects; ++i)
+		if (fw_data->objects[i] == obj) {
+			fw_data->objects[i] = fw_data->objects[--fw_data->num_objects];
+			if (__pkcs15_release_object(obj) > 0)
+				return SC_ERROR_INTERNAL;
+			return SC_SUCCESS;
+		}
+	return SC_ERROR_OBJECT_NOT_FOUND;
 }
 
 static int public_key_created(struct pkcs15_fw_data *fw_data,
@@ -917,6 +936,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 static CK_RV pkcs15_release_token(struct sc_pkcs11_card *p11card, void *fw_token)
 {
 	unlock_card((struct pkcs15_fw_data *) p11card->fw_data);
+	free(fw_token);
 	return CKR_OK;
 }
 
@@ -2679,6 +2699,14 @@ static CK_RV pkcs15_dobj_destroy(struct sc_pkcs11_session *session, void *object
 
 	/* Delete object in smartcard */
 	rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
+	/* FIXME: PIN revalidation missing, following belongs libopensc */
+	if (rv >= 0) {
+		/* pool_find_and_delete is called, therefore correct refcont
+		 * Oppose to pkcs15_add_object */
+		--((struct pkcs15_any_object*)object)->refcount;
+		/* Delete object in pkcs15 */
+		rv = __pkcs15_delete_object(fw_data, (struct pkcs15_any_object*)object);
+	}
 
 	sc_pkcs15init_unbind(profile);
 	sc_unlock(card->card);
