@@ -409,6 +409,9 @@ auth_process_fci(struct sc_card *card, struct sc_file *file,
 		add_acl_entry(card, file, SC_AC_OP_CRYPTO, attr[1]);
 		add_acl_entry(card, file, SC_AC_OP_LIST_FILES, attr[2]);
 		add_acl_entry(card, file, SC_AC_OP_DELETE, attr[3]);
+		add_acl_entry(card, file, SC_AC_OP_PIN_DEFINE, attr[4]);
+		add_acl_entry(card, file, SC_AC_OP_PIN_CHANGE, attr[5]);
+		add_acl_entry(card, file, SC_AC_OP_PIN_RESET, attr[6]);
 	} 
 	else if (file->type == SC_FILE_TYPE_INTERNAL_EF)  { /* EF */
 		switch (file->ef_structure) {
@@ -833,9 +836,9 @@ encode_file_structure_V5(sc_card_t *card, const sc_file_t *file,
 		ops[1] = SC_AC_OP_CRYPTO;
 		ops[2] = SC_AC_OP_LIST_FILES;
 		ops[3] = SC_AC_OP_DELETE;
-		ops[4] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_SET_REFERENCE */
-		ops[5] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_CHANGE_REFERENCE */
-		ops[6] = SC_AC_OP_LIST_FILES;  /* SC_AC_OP_RESET_COUNTER */						
+		ops[4] = SC_AC_OP_PIN_DEFINE;
+		ops[5] = SC_AC_OP_PIN_CHANGE;
+		ops[6] = SC_AC_OP_PIN_RESET;
 	} 
 	else if (file->type == SC_FILE_TYPE_WORKING_EF)   {
 		if (file->ef_structure == SC_FILE_EF_TRANSPARENT)   {

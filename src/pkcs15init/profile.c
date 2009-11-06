@@ -104,7 +104,10 @@ static struct map		fileOpNames[] = {
 	{ "UPDATE",	SC_AC_OP_UPDATE	},
 	{ "WRITE",	SC_AC_OP_WRITE	},
 	{ "ERASE",	SC_AC_OP_ERASE	},
-	{ "CRYPTO",	SC_AC_OP_CRYPTO },
+	{ "CRYPTO",     SC_AC_OP_CRYPTO },
+        { "PIN-DEFINE", SC_AC_OP_PIN_DEFINE },
+        { "PIN-CHANGE", SC_AC_OP_PIN_CHANGE },
+        { "PIN-RESET",  SC_AC_OP_PIN_RESET },
 	{ NULL, 0 }
 };
 static struct map		fileTypeNames[] = {

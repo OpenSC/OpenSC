@@ -111,6 +111,12 @@ extern "C" {
 #define SC_AC_OP_WRITE			3
 /* rehab and invalidate are the same as in DF case */
 
+/* Special 'Oberthur IdOne AuthentIC's case:
+ * re-use the existing DF ACLs that are not relevant to this card. */
+#define SC_AC_OP_PIN_DEFINE		SC_AC_OP_LOCK
+#define SC_AC_OP_PIN_CHANGE		SC_AC_OP_REHABILITATE
+#define SC_AC_OP_PIN_RESET		SC_AC_OP_DELETE_SELF
+
 /* various maximum values */
 #define SC_MAX_READER_DRIVERS		6
 #define SC_MAX_READERS			16
