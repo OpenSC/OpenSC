@@ -1623,7 +1623,11 @@ auth_is_verified(struct sc_card *card, int pin_reference, int *tries_left)
 		apdu.sw2 = 0x83;
 	}
 
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+	sc_ctx_suppress_errors_on(card->ctx);
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	sc_ctx_suppress_errors_off(card->ctx);
+
+	return rv;
 }
 
 
