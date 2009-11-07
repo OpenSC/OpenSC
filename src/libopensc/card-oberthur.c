@@ -36,6 +36,12 @@
 #include <openssl/rsa.h>
 #include <openssl/opensslv.h>
 
+/* #define OBERTHUR_VERIFY_SOPIN_TRY_LOCAL */
+
+#define OBERTHUR_PIN_LOCAL	0x80
+#define OBERTHUR_PIN_REFERENCE_USER	0x01
+#define OBERTHUR_PIN_REFERENCE_SO	0x04
+
 /* keep OpenSSL 0.9.6 users happy ;-) */
 #if OPENSSL_VERSION_NUMBER < 0x00907000L
 #define DES_cblock			des_cblock
@@ -63,18 +69,16 @@ struct auth_senv {
 	int key_file_id;
 	size_t key_size;
 };
-typedef struct auth_senv auth_senv_t;
 
 struct auth_private_data {
 	unsigned char aid[SC_MAX_AID_SIZE];
 	int aid_len;
 	
 	struct sc_pin_cmd_pin pin_info;
-	auth_senv_t senv;
+	struct auth_senv senv;
 	
 	long int sn;
 };
-typedef struct auth_private_data auth_private_data_t;
 
 struct auth_update_component_info {
 	enum SC_CARDCTL_OBERTHUR_KEY_TYPE  type;
@@ -82,11 +86,10 @@ struct auth_update_component_info {
 	unsigned char   *data;
 	unsigned int    len;
 };
-typedef struct auth_update_component_info auth_update_component_info_t;
 
 
 static const unsigned char *aidAuthentIC_V5 = 
-		(const u8 *)"\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x00\x00\xF1\x00\x00\x00\x02";
+		(const unsigned char *)"\xA0\x00\x00\x00\x77\x01\x03\x03\x00\x00\x00\xF1\x00\x00\x00\x02";
 static const int lenAidAuthentIC_V5 = 16; 
 static const char *nameAidAuthentIC_V5 = "AuthentIC v5"; 
 
@@ -102,7 +105,7 @@ static const char *nameAidAuthentIC_V5 = "AuthentIC v5";
 static unsigned char rsa_der[PUBKEY_2048_ASN1_SIZE];
 static int rsa_der_len = 0;
 
-static sc_file_t *auth_current_ef = NULL,  *auth_current_df = NULL;
+static struct sc_file *auth_current_ef = NULL,  *auth_current_df = NULL;
 static struct sc_card_operations auth_ops;
 static struct sc_card_operations *iso_ops;
 static struct sc_card_driver auth_drv = {
@@ -112,22 +115,24 @@ static struct sc_card_driver auth_drv = {
 	NULL, 0, NULL
 };
 
-static int auth_get_pin_reference (sc_card_t *card,
+static int auth_get_pin_reference (struct sc_card *card,
 		int type, int reference, int cmd, int *out_ref);
-static int auth_read_component(sc_card_t *card, 
+static int auth_read_component(struct sc_card *card, 
 		enum SC_CARDCTL_OBERTHUR_KEY_TYPE type, int num, 
 		unsigned char *out, size_t outlen);
-static int auth_verify(sc_card_t *card, unsigned int type,
-		int ref, const u8 *data, size_t data_len, int *tries_left);
-static int auth_create_reference_data (sc_card_t *card,
+static int auth_is_verified(struct sc_card *card, int pin_reference, 
+		int *tries_left);
+static int auth_verify(struct sc_card *card, unsigned int type,
+		struct sc_pin_cmd_data *data, int *tries_left);
+static int auth_create_reference_data (struct sc_card *card,
 		struct sc_cardctl_oberthur_createpin_info *args);
-static int auth_get_serialnr(sc_card_t *card, sc_serial_number_t *serial);
-static int auth_select_file(sc_card_t *card, const sc_path_t *in_path,
-		sc_file_t **file_out);
+static int auth_get_serialnr(struct sc_card *card, struct sc_serial_number *serial);
+static int auth_select_file(struct sc_card *card, const struct sc_path *in_path,
+		struct sc_file **file_out);
 
 
 static int 
-auth_finish(sc_card_t *card)
+auth_finish(struct sc_card *card)
 {
 	free(card->drv_data);
 	return SC_SUCCESS;
@@ -135,14 +140,14 @@ auth_finish(sc_card_t *card)
 
 
 static int 
-auth_select_aid(sc_card_t *card)
+auth_select_aid(struct sc_card *card)
 {
-	sc_apdu_t apdu;
+	struct sc_apdu apdu;
 	unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
 	struct auth_private_data *data =  (struct auth_private_data *) card->drv_data;
 	int rv, ii;
 	unsigned char cm[7] = {0xA0,0x00,0x00,0x00,0x03,0x00,0x00};
-	sc_path_t tmp_path;
+	struct sc_path tmp_path;
 
 	/* Select Card Manager (to deselect previously selected application) */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
@@ -199,7 +204,7 @@ auth_select_aid(sc_card_t *card)
 }
 
 static int 
-auth_match_card(sc_card_t *card)
+auth_match_card(struct sc_card *card)
 {
 	if (_sc_match_atr(card, oberthur_atrs, &card->type) < 0)
 		return 0;
@@ -208,12 +213,12 @@ auth_match_card(sc_card_t *card)
 }
 
 static int 
-auth_init(sc_card_t *card)
+auth_init(struct sc_card *card)
 {
 	int rv = 0;
 	unsigned long flags;
 	struct auth_private_data *data;
-	sc_path_t path;
+	struct sc_path path;
 	
 	data = (struct auth_private_data *) malloc(sizeof(struct auth_private_data));
 	if (!data)
@@ -262,8 +267,8 @@ auth_init(sc_card_t *card)
 
 
 static void 
-add_acl_entry(sc_card_t *card, sc_file_t *file, unsigned int op, 
-		u8 acl_byte)
+add_acl_entry(struct sc_card *card, struct sc_file *file, unsigned int op, 
+		unsigned char acl_byte)
 {
 	if ((acl_byte & 0xE0) == 0x60)   {
 		sc_debug(card->ctx, "called; op 0x%X; SC_AC_PRO; ref 0x%X\n", op, acl_byte);
@@ -293,8 +298,7 @@ add_acl_entry(sc_card_t *card, sc_file_t *file, unsigned int op,
 
 
 static int 
-tlv_get(const unsigned char *msg, int len,
-		unsigned char tag, 
+tlv_get(const unsigned char *msg, int len, unsigned char tag, 
 		unsigned char *ret, int *ret_len)
 {
 	int cur = 0;
@@ -454,18 +458,18 @@ auth_process_fci(struct sc_card *card, struct sc_file *file,
 
 
 static int 
-auth_select_file(sc_card_t *card, const sc_path_t *in_path,
-				 sc_file_t **file_out)
+auth_select_file(struct sc_card *card, const struct sc_path *in_path,
+				 struct sc_file **file_out)
 {
-	int rv;
+	struct sc_path path;
+	struct sc_file *tmp_file = NULL;
 	size_t offs, ii;
-	sc_path_t path;
-	sc_file_t *tmp_file = NULL;
+	int rv;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	assert(card != NULL && in_path != NULL);
 
-	memcpy(&path, in_path, sizeof(sc_path_t));
+	memcpy(&path, in_path, sizeof(struct sc_path));
 	
 	sc_debug(card->ctx, "in_path; type=%d, path=%s, out %p\n", 
 			in_path->type, sc_print_path(in_path), file_out);
@@ -484,7 +488,7 @@ auth_select_file(sc_card_t *card, const sc_path_t *in_path,
 		SC_TEST_RET(card->ctx, rv, "select file failed");
 		
 		if (path.type == SC_PATH_TYPE_PARENT)   {
-			memcpy(&tmp_file->path, &auth_current_df->path, sizeof(sc_path_t));
+			memcpy(&tmp_file->path, &auth_current_df->path, sizeof(struct sc_path));
 			if (tmp_file->path.len > 2)
 				tmp_file->path.len -= 2;
 			
@@ -532,9 +536,9 @@ auth_select_file(sc_card_t *card, const sc_path_t *in_path,
 
 			sc_debug(card->ctx, "deep %i\n", deep);
 			for (ii=0; ii<deep; ii+=2)   {
-				sc_path_t tmp_path;
+				struct sc_path tmp_path;
 
-				memcpy(&tmp_path, &auth_current_df->path,  sizeof(sc_path_t));
+				memcpy(&tmp_path, &auth_current_df->path,  sizeof(struct sc_path));
 				tmp_path.type = SC_PATH_TYPE_PARENT;
 				
 				rv = auth_select_file (card, &tmp_path, file_out);
@@ -543,7 +547,7 @@ auth_select_file(sc_card_t *card, const sc_path_t *in_path,
 		}
 	
 		if (path.len - offs > 0)   {
-			sc_path_t tmp_path;
+			struct sc_path tmp_path;
 			
 			tmp_path.type = SC_PATH_TYPE_FILE_ID;
 			tmp_path.len = 2;
@@ -570,10 +574,10 @@ auth_select_file(sc_card_t *card, const sc_path_t *in_path,
 
 
 static int 
-auth_list_files(sc_card_t *card, u8 *buf, size_t buflen)
+auth_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 {
-	sc_apdu_t apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	struct sc_apdu apdu;
+	unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int rv;
 	
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -600,11 +604,11 @@ auth_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 
 
 static int 
-auth_delete_file(sc_card_t *card, const sc_path_t *path)
+auth_delete_file(struct sc_card *card, const struct sc_path *path)
 {
+	struct sc_apdu apdu;
+	unsigned char sbuf[2];
 	int rv;
-	u8 sbuf[2];
-	sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (card->ctx->debug >= 1) {
@@ -623,7 +627,7 @@ auth_delete_file(sc_card_t *card, const sc_path_t *path)
 	}
 	
 	if (path->len > 2)   {
-		sc_path_t parent = *path;
+		struct sc_path parent = *path;
 
 		parent.len -= 2;
 		parent.type = SC_PATH_TYPE_PATH;
@@ -646,10 +650,10 @@ auth_delete_file(sc_card_t *card, const sc_path_t *path)
 	rv = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
 	if (apdu.sw1==0x6A && apdu.sw2==0x82)   {
-		/* Clean the DF contents.*/
-        sc_path_t tmp_path;
-		u8 lbuf[SC_MAX_APDU_BUFFER_SIZE];
+		/* Clean up tDF contents.*/
+		struct sc_path tmp_path;
 		int ii, len;
+		unsigned char lbuf[SC_MAX_APDU_BUFFER_SIZE];
 		
 		tmp_path.type = SC_PATH_TYPE_FILE_ID;
 		memcpy(tmp_path.value, sbuf, 2);
@@ -661,7 +665,7 @@ auth_delete_file(sc_card_t *card, const sc_path_t *path)
 		SC_TEST_RET(card->ctx, len, "list DF failed");
 		
 		for (ii=0; ii<len/2; ii++)   {
-			sc_path_t tmp_path_x;
+			struct sc_path tmp_path_x;
 
 			tmp_path_x.type = SC_PATH_TYPE_FILE_ID;
 			tmp_path_x.value[0] = *(lbuf + ii*2);
@@ -688,7 +692,7 @@ auth_delete_file(sc_card_t *card, const sc_path_t *path)
 
 
 static int 
-acl_to_ac_byte(sc_card_t *card, const sc_acl_entry_t *e)
+acl_to_ac_byte(struct sc_card *card, const struct sc_acl_entry *e)
 {
 	if (e == NULL)
 		return -1;
@@ -718,12 +722,12 @@ acl_to_ac_byte(sc_card_t *card, const sc_acl_entry_t *e)
 
 
 static int 
-encode_file_structure_V5(sc_card_t *card, const sc_file_t *file,
-				 u8 *buf, size_t *buflen)
+encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
+				 unsigned char *buf, size_t *buflen)
 {
-	u8 *p = buf;
-	int rv=0, size;
 	size_t ii;
+	int rv=0, size;
+	unsigned char *p = buf;
 	unsigned char  ops[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -880,7 +884,7 @@ encode_file_structure_V5(sc_card_t *card, const sc_file_t *file,
 	}
 	
 	for (ii = 0; ii < sizeof(ops); ii++) {
-		const sc_acl_entry_t *entry;
+		const struct sc_acl_entry *entry;
 		
 		p[16+ii] = 0xFF;
 		if (ops[ii]==0xFF)
@@ -898,13 +902,13 @@ encode_file_structure_V5(sc_card_t *card, const sc_file_t *file,
 
 
 static int 
-auth_create_file(sc_card_t *card, sc_file_t *file)
+auth_create_file(struct sc_card *card, struct sc_file *file)
 {
-	u8 sbuf[0x18];
-	size_t sendlen = sizeof(sbuf);
+	struct sc_apdu apdu;
+	struct sc_path path;
 	int rv, rec_nr;
-	sc_apdu_t apdu;
-	sc_path_t path;
+	unsigned char sbuf[0x18];
+	size_t sendlen = sizeof(sbuf);
 	char pbuf[SC_MAX_PATH_STRING_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -958,8 +962,8 @@ auth_create_file(sc_card_t *card, sc_file_t *file)
 	
 	/* select created DF. */
 	if (file->type == SC_FILE_TYPE_DF)   {
-		sc_path_t tmp_path;
-		sc_file_t *df_file = NULL;
+		struct sc_path tmp_path;
+		struct sc_file *df_file = NULL;
 
 		tmp_path.type = SC_PATH_TYPE_FILE_ID;
 		tmp_path.value[0] = file->id >> 8;
@@ -977,30 +981,30 @@ auth_create_file(sc_card_t *card, sc_file_t *file)
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
 
+
 static int 
-auth_set_security_env(sc_card_t *card, 
-		const sc_security_env_t *env, int se_num)   
+auth_set_security_env(struct sc_card *card, 
+		const struct sc_security_env *env, int se_num)   
 {
-	auth_senv_t *auth_senv = &((struct auth_private_data *) card->drv_data)->senv;
+	struct auth_senv *auth_senv = &((struct auth_private_data *) card->drv_data)->senv;
+	struct sc_apdu apdu;
 	long unsigned pads = env->algorithm_flags & SC_ALGORITHM_RSA_PADS;
-	long unsigned supported_pads = 
-		SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_ISO9796;
-	sc_apdu_t apdu;
-	u8 rsa_sbuf[3] = {
+	long unsigned supported_pads = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_ISO9796;
+	int rv;
+	unsigned char rsa_sbuf[3] = { 
 		0x80, 0x01, 0xFF
 	};
-	u8 des_sbuf[13] = {
+	unsigned char des_sbuf[13] = {
 		0x80, 0x01, 0x01, 
 		0x87, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
-	int rv;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "op %i; path %s; key_ref 0x%X; algos 0x%X; flags 0x%X\n", 
 			env->operation, sc_print_path(&env->file_ref), env->key_ref[0],
 			env->algorithm_flags, env->flags);
 
-	memset(auth_senv, 0, sizeof(auth_senv_t));
+	memset(auth_senv, 0, sizeof(struct auth_senv));
 	
 	if (!(env->flags & SC_SEC_ENV_FILE_REF_PRESENT))  
 		SC_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "Key file is not selected.");
@@ -1072,17 +1076,17 @@ auth_set_security_env(sc_card_t *card,
 
 
 static int 
-auth_restore_security_env(sc_card_t *card, int se_num)
+auth_restore_security_env(struct sc_card *card, int se_num)
 {
 	return SC_SUCCESS;
 }
 
 
 static int 
-auth_compute_signature(sc_card_t *card, 
-		const u8 *in, size_t ilen, 	u8 * out, size_t olen)
+auth_compute_signature(struct sc_card *card, const unsigned char *in, size_t ilen,
+		unsigned char * out, size_t olen)
 {
-	sc_apdu_t apdu;
+	struct sc_apdu apdu;
 	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
 	int rv;
 
@@ -1122,11 +1126,11 @@ auth_compute_signature(sc_card_t *card,
 
 
 static int 
-auth_decipher(sc_card_t *card, const u8 *in, size_t inlen,
-				u8 *out, size_t outlen)
+auth_decipher(struct sc_card *card, const unsigned char *in, size_t inlen,
+				unsigned char *out, size_t outlen)
 {
-	sc_apdu_t apdu;
-	u8 resp[SC_MAX_APDU_BUFFER_SIZE];
+	struct sc_apdu apdu;
+	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
 	int rv, _inlen = inlen;
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -1202,7 +1206,7 @@ done:
 
 /* Return the default AAK for this type of card */
 static int 
-auth_get_default_key(sc_card_t *card, struct sc_cardctl_default_key *data)
+auth_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
 {
 	int rv = SC_ERROR_NO_DEFAULT_KEY;
 
@@ -1211,7 +1215,7 @@ auth_get_default_key(sc_card_t *card, struct sc_cardctl_default_key *data)
 
 
 static int 
-auth_encode_exponent(unsigned long exponent, u8 *buff, size_t buff_len)
+auth_encode_exponent(unsigned long exponent, unsigned char *buff, size_t buff_len)
 {
 	int    shift;
 	size_t ii;
@@ -1231,12 +1235,12 @@ auth_encode_exponent(unsigned long exponent, u8 *buff, size_t buff_len)
 
 /* Generate key on-card */
 static int 
-auth_generate_key(sc_card_t *card, int use_sm, 
+auth_generate_key(struct sc_card *card, int use_sm, 
 		struct sc_cardctl_oberthur_genkey_info *data)
 {
-	sc_apdu_t apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_path_t tmp_path;
+	struct sc_apdu apdu;
+	unsigned char sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	struct sc_path tmp_path;
 	int rv = 0;
 	
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -1258,7 +1262,7 @@ auth_generate_key(sc_card_t *card, int use_sm,
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x46, 0x00, 0x00);
-	if (!(apdu.resp = (u8 *) malloc(data->key_bits/8+8)))   {
+	if (!(apdu.resp = (unsigned char *) malloc(data->key_bits/8+8)))   {
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
 	}
 	apdu.resplen = data->key_bits/8+8;
@@ -1301,11 +1305,11 @@ auth_generate_key(sc_card_t *card, int use_sm,
 
 
 static int
-auth_update_component(sc_card_t *card, struct auth_update_component_info *args)
+auth_update_component(struct sc_card *card, struct auth_update_component_info *args)
 {
-	sc_apdu_t apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE + 0x10];
-	u8 ins, p1, p2;
+	struct sc_apdu apdu;
+	unsigned char sbuf[SC_MAX_APDU_BUFFER_SIZE + 0x10];
+	unsigned char ins, p1, p2;
 	int rv, len;
 	
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -1390,7 +1394,7 @@ auth_update_component(sc_card_t *card, struct auth_update_component_info *args)
 
 
 static int
-auth_update_key(sc_card_t *card, struct sc_cardctl_oberthur_updatekey_info *info)
+auth_update_key(struct sc_card *card, struct sc_cardctl_oberthur_updatekey_info *info)
 {
 	int rv, ii;
 	
@@ -1434,7 +1438,7 @@ auth_update_key(sc_card_t *card, struct sc_cardctl_oberthur_updatekey_info *info
 
 
 static int 
-auth_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
+auth_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
 	switch (cmd) {
 	case SC_CARDCTL_GET_DEFAULT_KEY:
@@ -1450,7 +1454,7 @@ auth_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		return auth_create_reference_data(card,
 				(struct sc_cardctl_oberthur_createpin_info *) ptr); 
     case SC_CARDCTL_GET_SERIALNR:
-        return auth_get_serialnr(card, (sc_serial_number_t *)ptr);
+        return auth_get_serialnr(card, (struct sc_serial_number *)ptr);
 	case SC_CARDCTL_LIFECYCLE_GET:
 	case SC_CARDCTL_LIFECYCLE_SET:
 		return SC_ERROR_NOT_SUPPORTED;
@@ -1461,11 +1465,11 @@ auth_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 
 
 static int
-auth_read_component(sc_card_t *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type, 
+auth_read_component(struct sc_card *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type, 
 		int num, unsigned char *out, size_t outlen)
 {
+	struct sc_apdu apdu;
 	int rv;
-	sc_apdu_t apdu;
 	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -1493,8 +1497,8 @@ auth_read_component(sc_card_t *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type,
 }
 
 
-static int auth_get_pin_reference (sc_card_t *card, 
-	 int type, int reference, int cmd, int *out_ref)
+static int 
+auth_get_pin_reference (struct sc_card *card, int type, int reference, int cmd, int *out_ref)
 {
 	struct auth_private_data *prv;
 
@@ -1509,7 +1513,7 @@ static int auth_get_pin_reference (sc_card_t *card,
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_PIN_REFERENCE);
 		
 		*out_ref = reference;
-		if (reference == 1 || reference == 2)
+		if (reference == 1 || reference == 4)
 			if (cmd == SC_PIN_CMD_VERIFY)
 				*out_ref |= 0x80;
 		break;
@@ -1523,7 +1527,7 @@ static int auth_get_pin_reference (sc_card_t *card,
 
 
 static void 
-auth_init_pin_info(sc_card_t *card, struct sc_pin_cmd_pin *pin, 
+auth_init_pin_info(struct sc_card *card, struct sc_pin_cmd_pin *pin, 
 		unsigned int type)
 {
 	pin->offset	 = 0;
@@ -1542,214 +1546,156 @@ auth_init_pin_info(sc_card_t *card, struct sc_pin_cmd_pin *pin,
 
 
 static int
-auth_verify(sc_card_t *card, unsigned int type,
-	int ref, const u8 *data, size_t data_len, int *tries_left)
+auth_verify(struct sc_card *card, unsigned int type, 
+		struct sc_pin_cmd_data *data, int *tries_left) 
 {
-	sc_apdu_t apdu;
-	int rv, pin_ref;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	struct sc_pin_cmd_pin pinfo;
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	int rv;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	sc_debug(card->ctx,"type %i; ref %i, data_len %i\n", type, ref, data_len);
 
-	if (ref == 3)   {
-		ref = 1;
-		rv = auth_get_pin_reference (card, type, ref, SC_PIN_CMD_VERIFY, &pin_ref);
-		SC_TEST_RET(card->ctx, rv, "Get PIN reference failed");
+	if (type != SC_AC_CHV)
+		SC_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "PIN type other then SC_AC_CHV is not supported");
 
-    	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, pin_ref);
-    	apdu.lc = 0x0;
-	    apdu.le = 0x0;
-		apdu.resplen = 0;
-		apdu.resp = NULL;
-		apdu.p2 = pin_ref;
-		rv = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
-		
-		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)   {
-			ref = 2;
-			rv = auth_get_pin_reference (card, type, ref, SC_PIN_CMD_VERIFY, &pin_ref);
-	        if (rv)
-				SC_FUNC_RETURN(card->ctx, 1, rv);
-			
-			apdu.p2 = pin_ref;
-	    	rv = sc_transmit_apdu(card, &apdu);
-			SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
-		}
-		
-		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00 )   {
-			if (data && data_len > 1 && *data!=ref && !isalnum(*data))   {
-				rv = auth_verify(card, type, *data, 
-						data+1, data_len - 1, tries_left);
-			}
-		}
-		
+	data->flags |= SC_PIN_CMD_NEED_PADDING;
+	
+	auth_init_pin_info(card, &data->pin1, AUTH_PIN);
+
+	/* User PIN is always local. */
+	if (data->pin_reference == OBERTHUR_PIN_REFERENCE_USER)
+		data->pin_reference  |= OBERTHUR_PIN_LOCAL;
+	
+#ifdef OBERTHUR_VERIFY_SOPIN_TRY_LOCAL
+	 /* SOPIN can be local -- firstly try to verify the local one. */
+	if (data->pin_reference == OBERTHUR_PIN_REFERENCE_SO)
+		data->pin_reference  |= OBERTHUR_PIN_LOCAL;
+#endif
+
+        rv = auth_is_verified(card, data->pin_reference, tries_left);
+    	sc_debug(card->ctx, "auth_is_verified returned rv %i\n", rv);
+
+#ifdef OBERTHUR_VERIFY_SOPIN_TRY_LOCAL
+	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND 
+			&& data->pin_reference == OBERTHUR_PIN_REFERENCE_SO | OBERTHUR_PIN_LOCAL)   {
+		/* Local SOPIN is not defined -- try to verify the global one. */
+		data->pin_reference &= ~OBERTHUR_PIN_LOCAL;
+            	rv = auth_is_verified(card, data->pin_reference, tries_left);
+        }
+#endif
+
+	/* Return if only PIN status has been asked. */ 
+	if (data->pin1.data && !data->pin1.len)
 		SC_FUNC_RETURN(card->ctx, 1, rv);
-	}
 
-	rv = auth_get_pin_reference (card, type, ref, SC_PIN_CMD_VERIFY, &pin_ref);
-	SC_TEST_RET(card->ctx, rv, "Get PIN reference failed");
-	
-	sc_debug(card->ctx, " pin_ref %X\n", pin_ref);
+	/* Return SUCCESS without verifying if
+	 * PIN has been already verified and PIN pad has to be used. */
+	if (!rv && !data->pin1.data && !data->pin1.len)
+		SC_FUNC_RETURN(card->ctx, 1, rv);
 
-	auth_init_pin_info(card, &pinfo, AUTH_PIN);
-	if (data_len > pinfo.pad_length)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+	rv = iso_drv->ops->pin_cmd(card, data, tries_left);
+	SC_TEST_RET(card->ctx, rv, "PIN CMD 'VERIFY' failed");
 
-	if (data_len)  {
-		memset(sbuf, pinfo.pad_char, pinfo.pad_length);
-		memcpy(sbuf, data, data_len);
-
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, pin_ref);
-		apdu.data = sbuf;
-		apdu.datalen = pinfo.pad_length;
-		apdu.lc = pinfo.pad_length;
-		apdu.sensitive = 1;
-	}
-	else   {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0, pin_ref);
-		apdu.lc = 0x0;
-		apdu.le = 0x0;
-		apdu.resplen = 0;
-		apdu.resp = NULL;
-	}
-		
-	rv = sc_transmit_apdu(card, &apdu);
-	sc_mem_clear(sbuf, sizeof(sbuf));
-	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
-
-	if (tries_left && apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) 
-		*tries_left = apdu.sw2 & 0x0F;
-	
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
 
 
-static int 
-auth_change_reference_data (sc_card_t *card, unsigned int type,
-		int ref, const u8 *old, size_t oldlen,
-		const u8 *_new, size_t newlen, int *tries_left)
+static int
+auth_is_verified(struct sc_card *card, int pin_reference, int *tries_left)
 {
-	sc_apdu_t apdu;
-	int rv, pin_ref;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	struct sc_pin_cmd_pin pinfo;
-	
-	SC_FUNC_CALLED(card->ctx, 1);
-	rv = auth_get_pin_reference (card, type, ref, SC_PIN_CMD_CHANGE, &pin_ref);
-	SC_TEST_RET(card->ctx, rv, "Failed to get PIN reference");
-	
-	sc_debug(card->ctx, " pin ref %X\n", pin_ref);
-	
-	auth_init_pin_info(card, &pinfo, AUTH_PIN);
-	
-	if (oldlen > pinfo.pad_length || newlen > pinfo.pad_length)
-		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid PIN length");
-	
-	memset(sbuf, pinfo.pad_char, pinfo.pad_length * 2);
-	memcpy(sbuf, old, oldlen);
-	memcpy(sbuf + pinfo.pad_length, _new, newlen);
-		
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0, pin_ref);
-	apdu.data = sbuf;
-	apdu.datalen = pinfo.pad_length * 2;
-	apdu.lc = pinfo.pad_length * 2;
-	apdu.sensitive = 1;
+	struct sc_apdu apdu;
+	int rv;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0, pin_reference);
+	apdu.lc = 0x0;
+	apdu.le = 0x0;
+	apdu.resplen = 0;
+	apdu.resp = NULL;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	sc_mem_clear(sbuf, sizeof(sbuf));
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
-	if (tries_left && apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) 
+	if (tries_left && apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0)
 		*tries_left = apdu.sw2 & 0x0F;
 
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	
-	SC_FUNC_RETURN(card->ctx, 1, rv);
-}
-
-
-static int 
-auth_reset_retry_counter(sc_card_t *card, unsigned int type,
-		int ref, const u8 *puk, size_t puklen,
-        const u8 *pin, size_t pinlen)
-{
-	sc_apdu_t apdu;
-	int rv, pin_ref;
-	size_t len;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	struct sc_pin_cmd_pin pin_info, puk_info;
-	
-	SC_FUNC_CALLED(card->ctx, 1);
-	rv = auth_get_pin_reference (card, type, ref, SC_PIN_CMD_CHANGE, &pin_ref);
-	SC_TEST_RET(card->ctx, rv, "Failed to get PIN reference");
-	
-	sc_debug(card->ctx, "pin_ref 0x%X\n", pin_ref);
-	sc_debug(card->ctx, "current path ; type=%d, path=%s\n", 
-			auth_current_df->path.type, sc_print_path(&auth_current_df->path));
-	
-	auth_init_pin_info(card, &puk_info, AUTH_PUK);
-	auth_init_pin_info(card, &pin_info, AUTH_PIN);
-	
-	if (puklen > puk_info.pad_length || pinlen > pin_info.pad_length)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-
-	memset(sbuf, puk_info.pad_char, puk_info.pad_length);
-	memcpy(sbuf, puk, puklen);
-	len = puk_info.pad_length;
-	if (pin && pinlen)   {
-		memset(sbuf + len,  pin_info.pad_char, pin_info.pad_length);
-		memcpy(sbuf + len,  pin, pinlen);
-		len += pin_info.pad_length;
+	/* Replace 'no tries left' with 'auth method blocked' */
+	if (apdu.sw1 == 0x63 && apdu.sw2 == 0xC0)    {
+		apdu.sw1 = 0x69;
+		apdu.sw2 = 0x83;
 	}
-	
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 
-			len == puk_info.pad_length ? 1 : 0, pin_ref);
-	apdu.data = sbuf;
-	apdu.datalen = len;
-	apdu.lc = len;
-	apdu.sensitive = 1;
 
-	rv = sc_transmit_apdu(card, &apdu);
-	sc_mem_clear(sbuf, sizeof(sbuf));
-	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+}
 
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+static int 
+auth_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+{
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	struct auth_private_data *prv_data =  (struct auth_private_data *) card->drv_data;
+	struct sc_apdu apdu;
+	int rv, _tries_left = 0;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+	if (data->pin_type != SC_AC_CHV)
+		SC_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "auth_pin_cmd() unsupported PIN type");
+
+	sc_debug(card->ctx, "PIN:%i; lengths %i/%i\n", data->pin_reference, data->pin1.len, data->pin2.len);
+	switch (data->cmd) {
+	case SC_PIN_CMD_VERIFY:
+		rv = auth_verify(card, SC_AC_CHV, data, tries_left);
+		SC_TEST_RET(card->ctx, rv, "CMD 'PIN VERIFY' failed");
+
+		break;
+	case SC_PIN_CMD_CHANGE:
+		data->flags |= SC_PIN_CMD_NEED_PADDING;
+		data->apdu = NULL;
+
+		auth_init_pin_info(card, &data->pin1, AUTH_PIN);
+		auth_init_pin_info(card, &data->pin2, AUTH_PIN);
+
+		rv = iso_drv->ops->pin_cmd(card, data, tries_left);
+		SC_TEST_RET(card->ctx, rv, "CMD 'PIN CHANGE' failed");
+
+		break;
+	case SC_PIN_CMD_UNBLOCK:
+		data->flags |= SC_PIN_CMD_NEED_PADDING;
+		data->apdu = NULL;
+
+		auth_init_pin_info(card, &data->pin1, AUTH_PUK);
+		auth_init_pin_info(card, &data->pin2, AUTH_PIN);
+
+		rv = iso_drv->ops->pin_cmd(card, data, tries_left);
+		SC_TEST_RET(card->ctx, rv, "CMD 'PIN UNBLOCK' failed");
+
+		break;
+	default:
+		SC_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported PIN operation");
+	}
+
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
 
 
 static int 
-auth_create_reference_data (sc_card_t *card, 
+auth_create_reference_data (struct sc_card *card, 
 		struct sc_cardctl_oberthur_createpin_info *args)
 {
-	sc_apdu_t apdu;
-	int rv, pin_ref, len;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	struct sc_apdu apdu;
 	struct sc_pin_cmd_pin pin_info, puk_info;
+	int rv, len;
+	unsigned char sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, 1);
+	sc_debug(card->ctx, "PIN reference %i\n", args->ref);
+
+	if (args->type != SC_AC_CHV)
+		SC_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported PIN type");
 	
 	if (args->pin_tries < 1 || !args->pin || !args->pin_len)
 		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid PIN options");
-	
-    if (args->type == SC_AC_CHV)   {
-		if (args->ref == 1)  
-		    pin_ref = 0x01;
-		else if (args->ref == 2)
-			pin_ref = 0x02;
-		else
-			SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid PIN reference");
-	}
-	else   {
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-	}
-	
-	sc_debug(card->ctx, "pin ref %X\n", pin_ref);
+
+	if (args->ref != OBERTHUR_PIN_REFERENCE_USER && args->ref != OBERTHUR_PIN_REFERENCE_SO)  
+		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid PIN reference");
 	
 	auth_init_pin_info(card, &puk_info, AUTH_PUK);
 	auth_init_pin_info(card, &pin_info, AUTH_PIN);
@@ -1771,7 +1717,7 @@ auth_create_reference_data (sc_card_t *card,
 		len += args->puk_len;
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 1, pin_ref);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 1, args->ref);
 	apdu.data = sbuf;
 	apdu.datalen = len;
 	apdu.lc = len;
@@ -1788,9 +1734,9 @@ auth_create_reference_data (sc_card_t *card,
 
 
 static int 
-auth_logout(sc_card_t *card)
+auth_logout(struct sc_card *card)
 {
-	sc_apdu_t apdu;
+	struct sc_apdu apdu;
 	int ii, rv = 0, pin_ref;
 	int reset_flag = 0x20;
 
@@ -1813,14 +1759,15 @@ auth_logout(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
 
+
 static int 
-write_publickey (sc_card_t *card, unsigned int offset,
-				const u8 *buf, size_t count)
+write_publickey (struct sc_card *card, unsigned int offset,
+				const unsigned char *buf, size_t count)
 {
-	int ii, rv;
-	struct sc_pkcs15_pubkey_rsa key;
-	size_t len = 0, der_size = 0;
 	struct auth_update_component_info args;
+	struct sc_pkcs15_pubkey_rsa key;
+	int ii, rv;
+	size_t len = 0, der_size = 0;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (card->ctx->debug >= 5)  {
@@ -1877,8 +1824,8 @@ write_publickey (sc_card_t *card, unsigned int offset,
 	
 
 static int
-auth_update_binary(sc_card_t *card, unsigned int offset,
-		const u8 *buf, size_t count, unsigned long flags)
+auth_update_binary(struct sc_card *card, unsigned int offset,
+		const unsigned char *buf, size_t count, unsigned long flags)
 {
 	int rv = 0;
 
@@ -1901,7 +1848,7 @@ auth_update_binary(sc_card_t *card, unsigned int offset,
 		memset(&args, 0, sizeof(args));
 		args.type = SC_CARDCTL_OBERTHUR_KEY_DES;
 		args.component = 0;
-		args.data = (u8 *)buf;
+		args.data = (unsigned char *)buf;
 		args.len = count;
 		rv = auth_update_component(card, &args);
 	}
@@ -1914,8 +1861,8 @@ auth_update_binary(sc_card_t *card, unsigned int offset,
 
 
 static int
-auth_read_binary(sc_card_t *card, unsigned int offset,
-		u8 *buf, size_t count, unsigned long flags)
+auth_read_binary(struct sc_card *card, unsigned int offset,
+		unsigned char *buf, size_t count, unsigned long flags)
 {
 	int rv;
 	
@@ -1943,7 +1890,7 @@ auth_read_binary(sc_card_t *card, unsigned int offset,
 		for (jj=0; jj<rv && *(resp+jj)==0; jj++)
 			;
 
-		bn[0].data = (u8 *) malloc(rv - jj);
+		bn[0].data = (unsigned char *) malloc(rv - jj);
 		bn[0].len = rv - jj;
 		memcpy(bn[0].data, resp + jj, rv - jj);
 		
@@ -1951,7 +1898,7 @@ auth_read_binary(sc_card_t *card, unsigned int offset,
 				1, resp, resp_len);
 		SC_TEST_RET(card->ctx, rv, "Cannot read RSA public key component");
 		
-		bn[1].data = (u8 *) malloc(rv);
+		bn[1].data = (unsigned char *) malloc(rv);
 		bn[1].len = rv;
 		memcpy(bn[1].data, resp, rv);
 
@@ -1992,18 +1939,17 @@ auth_read_binary(sc_card_t *card, unsigned int offset,
 
 static int
 auth_read_record(struct sc_card *card, unsigned int nr_rec,
-		u8 *buf, size_t count,
-		unsigned long flags)
+		unsigned char *buf, size_t count, unsigned long flags)
 {
-	int rv = 0;
 	struct sc_apdu apdu;
-    u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int rv = 0;
+	unsigned char recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	sc_debug(card->ctx, "auth_read_record(): nr_rec %i; count %i\n", nr_rec, count);
 													
-    sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB2, nr_rec, 0);
-    apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
-    if (flags & SC_RECORD_BY_REC_NR)
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB2, nr_rec, 0);
+	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
+	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
 
 	apdu.le = count;
@@ -2024,10 +1970,10 @@ auth_read_record(struct sc_card *card, unsigned int nr_rec,
 		
 
 static int
-auth_delete_record(sc_card_t *card, unsigned int nr_rec)
+auth_delete_record(struct sc_card *card, unsigned int nr_rec)
 {
+	struct sc_apdu apdu;
 	int rv = 0;
-	sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "auth_delete_record(): nr_rec %i\n", nr_rec);
@@ -2046,8 +1992,9 @@ auth_delete_record(sc_card_t *card, unsigned int nr_rec)
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
 		
+
 static int
-auth_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
+auth_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 {
 	if (!card || !serial)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
@@ -2059,6 +2006,7 @@ auth_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 
 	SC_FUNC_RETURN(card->ctx, 1, SC_SUCCESS);
 }
+
 
 static struct sc_card_driver * 
 sc_get_driver(void)
@@ -2084,12 +2032,7 @@ sc_get_driver(void)
 	auth_ops.compute_signature = auth_compute_signature;
 	auth_ops.decipher = auth_decipher;
 	auth_ops.process_fci = auth_process_fci;
-
-	auth_ops.pin_cmd = NULL;
-	auth_ops.verify = auth_verify;
-	auth_ops.reset_retry_counter = auth_reset_retry_counter;
-	auth_ops.change_reference_data = auth_change_reference_data;
-	
+	auth_ops.pin_cmd = auth_pin_cmd;
 	auth_ops.logout = auth_logout;
 	return &auth_drv;
 }
