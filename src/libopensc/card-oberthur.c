@@ -153,7 +153,6 @@ auth_select_aid(struct sc_card *card)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
 	apdu.lc = sizeof(cm);
 	/* apdu.le = sizeof(cm)+4; */
-	apdu.le = 0;
 	apdu.data = cm;
 	apdu.datalen = sizeof(cm);
 	apdu.resplen = sizeof(apdu_resp);
@@ -215,10 +214,10 @@ auth_match_card(struct sc_card *card)
 static int 
 auth_init(struct sc_card *card)
 {
-	int rv = 0;
-	unsigned long flags;
 	struct auth_private_data *data;
 	struct sc_path path;
+	unsigned long flags;
+	int rv = 0;
 	
 	data = (struct auth_private_data *) malloc(sizeof(struct auth_private_data));
 	if (!data)
@@ -1405,7 +1404,7 @@ auth_update_key(struct sc_card *card, struct sc_cardctl_oberthur_updatekey_info 
 
 	if (info->type == SC_CARDCTL_OBERTHUR_KEY_RSA_CRT)   {
 		struct sc_pkcs15_prkey_rsa  *rsa = (struct sc_pkcs15_prkey_rsa *)info->data;
-        struct sc_pkcs15_bignum bn[5];
+		struct sc_pkcs15_bignum bn[5];
 
 		sc_debug(card->ctx, "Import RSA CRT");
 		bn[0] = rsa->p;
@@ -1530,7 +1529,7 @@ static void
 auth_init_pin_info(struct sc_card *card, struct sc_pin_cmd_pin *pin, 
 		unsigned int type)
 {
-	pin->offset	 = 0;
+	pin->offset = 0;
 	pin->pad_char   = 0xFF;
 	pin->encoding   = SC_PIN_ENCODING_ASCII;
 	
@@ -1606,10 +1605,6 @@ auth_is_verified(struct sc_card *card, int pin_reference, int *tries_left)
 	int rv;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0, pin_reference);
-	apdu.lc = 0x0;
-	apdu.le = 0x0;
-	apdu.resplen = 0;
-	apdu.resp = NULL;
 
 	rv = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
@@ -1748,12 +1743,8 @@ auth_logout(struct sc_card *card)
 		rv = auth_get_pin_reference (card, SC_AC_CHV, ii+1, SC_PIN_CMD_UNBLOCK, &pin_ref);
 		SC_TEST_RET(card->ctx, rv, "Cannot get PIN reference");
 
-	    sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2E, 0x00, 0x00);
-    	apdu.cla = 0x80;
-	    apdu.lc = 0x0;
-    	apdu.le = 0x0;
-		apdu.resplen = 0;
-		apdu.resp = NULL;
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2E, 0x00, 0x00);
+		apdu.cla = 0x80;
 		apdu.p2 = pin_ref | reset_flag;
 		rv = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
@@ -1851,7 +1842,6 @@ auth_update_binary(struct sc_card *card, unsigned int offset,
 	
 		memset(&args, 0, sizeof(args));
 		args.type = SC_CARDCTL_OBERTHUR_KEY_DES;
-		args.component = 0;
 		args.data = (unsigned char *)buf;
 		args.len = count;
 		rv = auth_update_component(card, &args);
@@ -1984,10 +1974,6 @@ auth_delete_record(struct sc_card *card, unsigned int nr_rec)
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x32, nr_rec, 0x04);
 	apdu.cla = 0x80;
-	apdu.lc = 0x0;
-	apdu.le = 0x0;
-	apdu.resplen = 0;
-	apdu.resp = NULL;
 	
 	rv = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
