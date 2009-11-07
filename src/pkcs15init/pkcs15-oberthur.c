@@ -46,8 +46,8 @@
 
 #define COSM_TITLE "OberthurAWP"
 
-#define TLV_TYPE_V		0
-#define TLV_TYPE_LV		1
+#define TLV_TYPE_V	0
+#define TLV_TYPE_LV	1
 #define TLV_TYPE_TLV	2
 
 /* Should be greater then SC_PKCS15_TYPE_CLASS_MASK */
@@ -56,13 +56,95 @@
 #define COSM_TYPE_PRKEY_RSA (SC_DEVICE_SPECIFIC_TYPE | SC_PKCS15_TYPE_PRKEY_RSA)
 #define COSM_TYPE_PUBKEY_RSA (SC_DEVICE_SPECIFIC_TYPE | SC_PKCS15_TYPE_PUBKEY_RSA)
 
+#define COSM_TOKEN_FLAG_PRN_GENERATION		0x01
+#define COSM_TOKEN_FLAG_LOGIN_REQUIRED		0x04
+#define COSM_TOKEN_FLAG_USER_PIN_INITIALIZED	0x08
+#define COSM_TOKEN_FLAG_TOKEN_INITIALIZED	0x0400
 
-static int cosm_update_pin(struct sc_profile *profile, sc_card_t *card,
+static int cosm_create_reference_data(struct sc_profile *, struct sc_card *,
+		struct sc_pkcs15_pin_info *, 
+		const unsigned char *pin, size_t pin_len,
+		const unsigned char *puk, size_t puk_len);
+static int cosm_update_pin(struct sc_profile *profile, struct sc_card *card,
 		struct sc_pkcs15_pin_info *info, const unsigned char *pin, size_t pin_len,
 		const unsigned char *puk, size_t puk_len);
 
-int cosm_delete_file(sc_card_t *card, struct sc_profile *profile,
-		sc_file_t *df);
+int cosm_delete_file(struct sc_card *card, struct sc_profile *profile,
+		struct sc_file *df);
+
+
+static int 
+cosm_write_tokeninfo (struct sc_card *card, struct sc_profile *profile, 
+		char *label, unsigned p15_flags)
+{
+	struct sc_file *file = NULL;
+	unsigned mask = SC_PKCS15_CARD_FLAG_PRN_GENERATION 
+		| SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED 
+		| SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED 
+		| SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED;
+	int rv, sz, flags = 0;
+	char *buffer = NULL;
+
+	if (!card || !profile)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	
+	SC_FUNC_CALLED(card->ctx, 1);
+	sc_debug(card->ctx, "cosm_write_tokeninfo() label '%s'; flags 0x%X\n", label, p15_flags);
+	if (sc_profile_get_file(profile, COSM_TITLE"-token-info", &file))
+		SC_TEST_RET(card->ctx, SC_ERROR_INCONSISTENT_PROFILE, "Cannot find "COSM_TITLE"-token-info");
+
+	if (file->size < 16)
+		SC_TEST_RET(card->ctx, SC_ERROR_INCONSISTENT_PROFILE, "Unsufficient size of the "COSM_TITLE"-token-info file");
+	
+	buffer = calloc(1, file->size);
+	if (!buffer)
+		SC_TEST_RET(card->ctx, SC_ERROR_MEMORY_FAILURE, "Allocation error in cosm_write_tokeninfo()");
+
+	if (label)   
+		strncpy(buffer, label, file->size - 4);
+	else if (profile->p15_data && profile->p15_data->label)
+		snprintf(buffer, file->size - 4, profile->p15_data->label);
+	else if (profile->p15_spec && profile->p15_spec->label)
+		snprintf(buffer, file->size - 4, profile->p15_spec->label);
+	else
+		snprintf(buffer, file->size - 4, "OpenSC-Token");
+
+	sz = strlen(buffer);	
+	if (sz < file->size - 4)
+		memset(buffer + sz, ' ', file->size - sz);
+
+	if (p15_flags & SC_PKCS15_CARD_FLAG_PRN_GENERATION)
+		flags |= COSM_TOKEN_FLAG_PRN_GENERATION;
+	
+	if (p15_flags & SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED)
+		flags |= COSM_TOKEN_FLAG_LOGIN_REQUIRED;
+	
+	if (p15_flags & SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED)
+		flags |= COSM_TOKEN_FLAG_USER_PIN_INITIALIZED;
+	
+	if (p15_flags & SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED)
+		flags |= COSM_TOKEN_FLAG_TOKEN_INITIALIZED;
+
+	sc_debug(card->ctx, "cosm_write_tokeninfo() token label '%s'; oberthur flags 0x%X\n", buffer, flags);
+
+	memset(buffer + file->size - 4, 0, 4);
+	*(buffer + file->size - 1) = flags & 0xFF;
+	*(buffer + file->size - 2) = (flags >> 8) & 0xFF;
+
+	rv = sc_pkcs15init_update_file(profile, card, file, buffer, file->size);
+	if (rv > 0)
+		rv = 0;
+
+	if (profile->p15_data)
+		profile->p15_data->flags = (profile->p15_data->flags & ~mask) | p15_flags;
+
+	if (profile->p15_spec)
+		profile->p15_spec->flags = (profile->p15_spec->flags & ~mask) | p15_flags;
+
+	free(buffer);
+	SC_FUNC_RETURN(card->ctx, 1, rv);
+}
+
 
 static int 
 cosm_update_pukfile (struct sc_card *card, struct sc_profile *profile, 
@@ -137,9 +219,9 @@ cosm_delete_file(struct sc_card *card, struct sc_profile *profile,
  * Erase the card
  */
 static int 
-cosm_erase_card(struct sc_profile *profile, sc_card_t *card)
+cosm_erase_card(struct sc_profile *profile, struct sc_card *card)
 {
-	sc_file_t  *df = profile->df_info->file, *dir;
+	struct sc_file  *df = profile->df_info->file, *dir;
 	int rv;
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -199,14 +281,14 @@ done:
  * Initialize the Application DF
  */
 static int 
-cosm_init_app(struct sc_profile *profile, sc_card_t *card,	
+cosm_init_app(struct sc_profile *profile, struct sc_card *card,	
 		struct sc_pkcs15_pin_info *pinfo,
-		const unsigned char *pin,	size_t pin_len, 
+		const unsigned char *pin, size_t pin_len, 
 		const unsigned char *puk, size_t puk_len)
 {
-	int rv;
+	struct sc_file *file = NULL;
 	size_t ii;
-	sc_file_t *file = NULL;
+	int rv;
 	static const char *create_dfs[] = {
 		COSM_TITLE"-AppDF",
 		"private-DF",
@@ -227,7 +309,7 @@ cosm_init_app(struct sc_profile *profile, sc_card_t *card,
 	};
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	sc_debug(card->ctx, "pin_len %i; puk_len %i\n", pin_len, puk_len);
+	sc_debug(card->ctx, "cosm_init_app() pin_len %i; puk_len %i\n", pin_len, puk_len);
 	
 	/* Oberthur AWP file system is expected.*/
 	/* Create private objects DF */
@@ -241,15 +323,34 @@ cosm_init_app(struct sc_profile *profile, sc_card_t *card,
 		sc_debug(card->ctx, "rv %i\n", rv);
 		sc_file_free(file);
 		if (rv && rv!=SC_ERROR_FILE_ALREADY_EXISTS)
-			SC_TEST_RET(card->ctx, rv, "sc_pkcs15init_create_file() failed");
+			SC_TEST_RET(card->ctx, rv, "cosm_init_app() sc_pkcs15init_create_file failed");
 	}
 
-	SC_FUNC_RETURN(card->ctx, 1, SC_SUCCESS);
+	rv = cosm_write_tokeninfo(card, profile, NULL,
+		SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED | SC_PKCS15_CARD_FLAG_PRN_GENERATION);
+
+	if (pin && pin_len)   {
+		/* Create local SOPIN */
+		struct sc_pkcs15_pin_info pin_info;
+
+		sc_profile_get_file(profile, COSM_TITLE"-AppDF", &file);
+
+		pin_info.flags = SC_PKCS15_PIN_FLAG_SO_PIN;
+		pin_info.reference = 4;
+		memcpy(&pin_info.path, &file->path, sizeof(pin_info.path));
+
+		sc_file_free(file);
+
+		rv = cosm_create_reference_data(profile, card, &pin_info, pin, pin_len, NULL, 0);
+		SC_TEST_RET(card->ctx, rv, "cosm_init_app() cosm_update_pin failed");
+	}
+
+	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
 
 
 static int 
-cosm_create_reference_data(struct sc_profile *profile, sc_card_t *card,
+cosm_create_reference_data(struct sc_profile *profile, struct sc_card *card,
 		struct sc_pkcs15_pin_info *pinfo, 
 		const unsigned char *pin, size_t pin_len,	
 		const unsigned char *puk, size_t puk_len )
@@ -270,9 +371,14 @@ cosm_create_reference_data(struct sc_profile *profile, sc_card_t *card,
 	rv = sc_select_file(card, &pinfo->path, NULL);
 	SC_TEST_RET(card->ctx, rv, "Cannot select file");
 
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &profile_pin);
+	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &profile_pin);
+	else
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &profile_pin);
+
 	if (profile_pin.max_length > 0x100)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INCONSISTENT_PROFILE);
+		SC_TEST_RET(card->ctx, SC_ERROR_INCONSISTENT_PROFILE, "Invalid (SO)PIN profile settings");
+
 
 	if (puk)   {
 		int ii, jj;
@@ -332,42 +438,48 @@ cosm_create_reference_data(struct sc_profile *profile, sc_card_t *card,
  * Update PIN
  */
 static int 
-cosm_update_pin(struct sc_profile *profile, sc_card_t *card,
+cosm_update_pin(struct sc_profile *profile, struct sc_card *card,
 		struct sc_pkcs15_pin_info *pinfo, const unsigned char *pin, size_t pin_len,
 		const unsigned char *puk, size_t puk_len )
 {
-	int rv;
-	int tries_left = -1;
+	int rv, tries_left = -1;
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "ref %i; flags %X\n", pinfo->reference, pinfo->flags);
 
 	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN)   {
-		sc_error(card->ctx,"Pin references should be only in the profile"
-				"and in the card-oberthur.\n");
 		if (pinfo->reference != 4)
-			return SC_ERROR_INVALID_PIN_REFERENCE;
+			SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "cosm_update_pin() invalid SOPIN reference");
 		
 		rv = sc_change_reference_data(card, SC_AC_CHV, pinfo->reference, puk, puk_len,
 				pin, pin_len, &tries_left);
-		sc_debug(card->ctx, "return value %X; tries left %i\n", rv, tries_left);
-		if (tries_left != -1)
-			sc_error(card->ctx, "Failed to change reference data for soPin: rv %X", rv);
+		SC_TEST_RET(card->ctx, rv, "cosm_update_pin() failed to change SOPIN");
 
+		if (tries_left != -1)
+			SC_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "cosm_update_pin() failed to change SOPIN");
 	}
 	else   {
 		rv = cosm_create_reference_data(profile, card, pinfo, 
 				pin, pin_len, puk, puk_len);
+		SC_TEST_RET(card->ctx, rv, "cosm_update_pin() failed to change PIN");
+
+		rv = cosm_write_tokeninfo(card, profile, NULL,
+			SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED 
+			| SC_PKCS15_CARD_FLAG_PRN_GENERATION
+			| SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED
+			| SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED);
+		SC_TEST_RET(card->ctx, rv, "cosm_update_pin() failed to update tokeninfo");
 	}
 
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
 
+
 static int
-cosm_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
-		sc_pkcs15_pin_info_t *pin_info) 
+cosm_select_pin_reference(struct sc_profile *profile, struct sc_card *card,
+		struct sc_pkcs15_pin_info *pin_info) 
 {
-	sc_file_t *pinfile;
+	struct sc_file *pinfile;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "ref %i; flags %X\n", pin_info->reference, pin_info->flags);
@@ -392,26 +504,25 @@ cosm_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, 1, SC_SUCCESS);
 }
 
+
 /*
  * Store a PIN
  */
 static int
-cosm_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
+cosm_create_pin(struct sc_profile *profile, struct sc_card *card, struct sc_file *df,
 		struct sc_pkcs15_object *pin_obj,
 		const unsigned char *pin, size_t pin_len,
 		const unsigned char *puk, size_t puk_len)
 {
-	sc_pkcs15_pin_info_t *pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
-	sc_file_t *pinfile;
+	struct sc_pkcs15_pin_info *pinfo = (struct sc_pkcs15_pin_info *) pin_obj->data;
+	struct sc_file *pinfile;
 	int rv = 0, type;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "ref %i; flags %X\n", pinfo->reference, pinfo->flags);
-	if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pinfile) < 0) {
-		sc_error(card->ctx, "Profile doesn't define \"%s\"", COSM_TITLE "-AppDF");
-		return SC_ERROR_INCONSISTENT_PROFILE;
-	}
-    
+	if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pinfile) < 0)
+		SC_TEST_RET(card->ctx, SC_ERROR_INCONSISTENT_PROFILE, "\""COSM_TITLE"-AppDF\" not defined");
+
 	pinfo->path = pinfile->path;
 	sc_file_free(pinfile);
 	
@@ -419,22 +530,20 @@ cosm_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
 		type = SC_PKCS15INIT_SO_PIN;
 
 		if (pinfo->reference != 4)  
-			return SC_ERROR_INVALID_ARGUMENTS;
+			SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid SOPIN reference");
 	} 
 	else {
 		type = SC_PKCS15INIT_USER_PIN;
 		
 		if (pinfo->reference !=1  &&  pinfo->reference != 2)
-			return SC_ERROR_INVALID_PIN_REFERENCE;
+			SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid PIN reference");
 	}
 
 	if (pin && pin_len)   {
 		rv = cosm_update_pin(profile, card, pinfo, pin, pin_len,  puk, puk_len);
+		SC_TEST_RET(card->ctx, rv, "Update PIN failed");
 	}
-	else   {
-		sc_debug(card->ctx, "User PIN not updated");		
-	}
-    
+
 	sc_keycache_set_pin_name(&pinfo->path, pinfo->reference, type);
 	pinfo->flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
 
@@ -446,15 +555,15 @@ cosm_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
  * Allocate a file
  */
 static int
-cosm_new_file(struct sc_profile *profile, sc_card_t *card,
-		unsigned int type, unsigned int num, sc_file_t **out)
+cosm_new_file(struct sc_profile *profile, struct sc_card *card,
+		unsigned int type, unsigned int num, struct sc_file **out)
 {
 	struct sc_file	*file;
 	const char *_template = NULL, *desc = NULL;
 	unsigned int structure = 0xFFFFFFFF;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	sc_debug(card->ctx, "type %X; num %i\n",type, num);
+	sc_debug(card->ctx, "cosm_new_file() type %X; num %i\n",type, num);
 	while (1) {
 		switch (type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
@@ -500,11 +609,11 @@ cosm_new_file(struct sc_profile *profile, sc_card_t *card,
 		type &= SC_PKCS15_TYPE_CLASS_MASK;
 	}
 
-	sc_debug(card->ctx, "template %s; num %i\n",_template, num);
+	sc_debug(card->ctx, "cosm_new_file() template %s; num %i\n",_template, num);
 	if (sc_profile_get_file(profile, _template, &file) < 0) {
 		sc_error(card->ctx, "Profile doesn't define %s template '%s'\n",
 				desc, _template);
-		return SC_ERROR_NOT_SUPPORTED;
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	}
  
 	file->id |= (num & 0xFF);
@@ -513,7 +622,7 @@ cosm_new_file(struct sc_profile *profile, sc_card_t *card,
 		file->ef_structure = structure;
 	}
 
-	sc_debug(card->ctx, "file size %i; ef type %i/%i; id %04X\n",file->size, 
+	sc_debug(card->ctx, "cosm_new_file() file size %i; ef type %i/%i; id %04X\n",file->size, 
 			file->type, file->ef_structure, file->id);
 	*out = file;
 
@@ -525,9 +634,9 @@ cosm_new_file(struct sc_profile *profile, sc_card_t *card,
  * RSA key generation
  */
 static int
-cosm_old_generate_key(struct sc_profile *profile, sc_card_t *card,
+cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
 		unsigned int idx, unsigned int keybits,
-		sc_pkcs15_pubkey_t *pubkey,
+		struct sc_pkcs15_pubkey *pubkey,
 		struct sc_pkcs15_prkey_info *info)
 {
 	struct sc_cardctl_oberthur_genkey_info args;
@@ -536,17 +645,15 @@ cosm_old_generate_key(struct sc_profile *profile, sc_card_t *card,
 	int	 rv;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	sc_debug(card->ctx, "index %i; nn %i\n", idx, keybits);
+	sc_debug(card->ctx, "cosm_generate_key() index %i; nn %i\n", idx, keybits);
 	if (keybits < 512 || keybits > 2048 || (keybits%0x20))   {
 		sc_error(card->ctx, "Unsupported key size %u\n", keybits);
-		return SC_ERROR_INVALID_ARGUMENTS;
+		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key size");
 	}
 	
 	/* Get private key file from profile. */
-	if ((rv = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, idx, 
-					&prkf)) < 0)
-	 	goto failed;
-	sc_debug(card->ctx, "prv ef type 0x%X\n",prkf->ef_structure);
+	rv = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, idx, &prkf);
+	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() cannot allocate new file SC_PKCS15_TYPE_PRKEY_RSA");
 	prkf->size = keybits;
 	
 	/* Access condition of private object DF. */
@@ -554,27 +661,21 @@ cosm_old_generate_key(struct sc_profile *profile, sc_card_t *card,
 	path.len -= 2;
 
 	rv = sc_select_file(card, &path, &tmpf);
-	SC_TEST_RET(card->ctx, rv, "Generate RSA: no private object DF");
+	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() no private object DF");
 	
 	rv = sc_pkcs15init_authenticate(profile, card, tmpf, SC_AC_OP_CRYPTO); 
-	sc_debug(card->ctx, "rv %i\n",rv);
-	if (rv < 0)  
-		goto failed;
+	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() pkcs15init_authenticate(SC_AC_OP_CRYPTO) failed");
 	
 	rv = sc_pkcs15init_authenticate(profile, card, tmpf, SC_AC_OP_CREATE);
-	sc_debug(card->ctx, "rv %i\n",rv);
-	if (rv < 0) 
-		goto failed;
+	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() pkcs15init_authenticate(SC_AC_OP_CREATE) failed");
 	
 	sc_file_free(tmpf);
 	
 	/* In the private key DF create the temporary public RSA file. */
-	sc_debug(card->ctx, "ready to create public key\n");
+	sc_debug(card->ctx, "cosm_generate_key() ready to create temporary public key\n");
 	sc_file_dup(&tmpf, prkf);
-	if (tmpf == NULL) {
-		rv = SC_ERROR_OUT_OF_MEMORY;
-		goto failed; 
-	}
+	if (!tmpf)
+		SC_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot duplicate private key file");
 	tmpf->type = SC_FILE_TYPE_INTERNAL_EF;
 	tmpf->ef_structure = SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC;
 	tmpf->id = 0x1012;
@@ -582,18 +683,10 @@ cosm_old_generate_key(struct sc_profile *profile, sc_card_t *card,
 	tmpf->path.value[tmpf->path.len - 1] = 0x12;
 
 	rv = sc_pkcs15init_create_file(profile, card, prkf);
-	sc_debug(card->ctx, "rv %i\n",rv);
-	if (rv)   { 
-		sc_debug(card->ctx, "prkf create file failed\n");
-		goto failed;
-	}
+	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() failed to create private key EF");
 	
 	rv = sc_pkcs15init_create_file(profile, card, tmpf);
-	sc_debug(card->ctx, "rv %i\n",rv);
-	if (rv)   {
-		sc_debug(card->ctx, "pubf create failed\n");
-		goto failed;
-	}
+	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() failed to create temporary public key EF");
 	
 	memset(&args, 0, sizeof(args));
 	args.id_prv = prkf->id;
@@ -602,49 +695,37 @@ cosm_old_generate_key(struct sc_profile *profile, sc_card_t *card,
 	args.key_bits = keybits;
 	args.pubkey_len = keybits/8;
 	args.pubkey = (unsigned char *) malloc(keybits/8);
-	if (!args.pubkey)   {
-		rv = SC_ERROR_OUT_OF_MEMORY;
-		goto failed;
-	}
+	if (!args.pubkey)
+		SC_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate pubkey");
 	
 	rv = sc_card_ctl(card, SC_CARDCTL_OBERTHUR_GENERATE_KEY, &args);
-	if (rv < 0)
-		goto failed;
+	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() CARDCTL_OBERTHUR_GENERATE_KEY failed");
 	
 	/* extract public key */
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 	pubkey->u.rsa.modulus.len   = keybits / 8;
 	pubkey->u.rsa.modulus.data  = (unsigned char *) malloc(keybits / 8);
-	if (!pubkey->u.rsa.modulus.data)   {
-		rv = SC_ERROR_MEMORY_FAILURE;
-		goto failed;
-	}
+	if (!pubkey->u.rsa.modulus.data)
+		SC_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate modulus buf");
 	
 	/* FIXME and if the exponent length is not 3? */
 	pubkey->u.rsa.exponent.len  = 3;
 	pubkey->u.rsa.exponent.data = (unsigned char *) malloc(3);
-	if (!pubkey->u.rsa.exponent.data)   {
-		rv = SC_ERROR_MEMORY_FAILURE;
-		goto failed;
-	}
+	if (!pubkey->u.rsa.exponent.data) 
+		SC_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate exponent buf");
 	memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);
 	memcpy(pubkey->u.rsa.modulus.data, args.pubkey, args.pubkey_len);
 
 	info->key_reference = 1;
 	info->path = prkf->path;
 	
-	if (rv)   {
-		sc_debug(card->ctx, "rv %i\n", rv);
-		goto failed;
-	}
+	sc_debug(card->ctx, "cosm_generate_key() now delete temporary public key\n");
+	rv =  cosm_delete_file(card, profile, tmpf);
 	
-	sc_debug(card->ctx, "delete temporary public key\n");
-	if ((rv =  cosm_delete_file(card, profile, tmpf)))
-		goto failed;
-	
-failed:	
-	if (tmpf) sc_file_free(tmpf);
-	if (prkf) sc_file_free(prkf);
+	if (tmpf) 
+		sc_file_free(tmpf);
+	if (prkf) 
+		sc_file_free(prkf);
 
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
@@ -654,7 +735,7 @@ failed:
  * Store a private key
  */
 static int
-cosm_new_key(struct sc_profile *profile, sc_card_t *card,
+cosm_new_key(struct sc_profile *profile, struct sc_card *card,
 		struct sc_pkcs15_prkey *key, unsigned int idx,
 		struct sc_pkcs15_prkey_info *info)
 {
@@ -696,7 +777,7 @@ cosm_new_key(struct sc_profile *profile, sc_card_t *card,
 	SC_TEST_RET(card->ctx, rv, "Update RSA: no authorisation");
 
 #ifdef ENABLE_OPENSSL
-    /* Mozilla style ID */    
+	/* Mozilla style ID */
 	if (!info->id.len)   {
 		SHA1(rsa->modulus.data, rsa->modulus.len, info->id.value);
 		info->id.len = SHA_DIGEST_LENGTH;
