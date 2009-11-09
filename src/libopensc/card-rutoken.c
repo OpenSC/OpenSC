@@ -97,7 +97,8 @@ static struct sc_card_driver rutoken_drv = {
 };
 
 static struct sc_atr_table rutoken_atrs[] = {
-	{ "3b:6f:00:ff:00:56:72:75:54:6f:6b:6e:73:30:20:00:00:90:00", NULL, NULL, SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
+	{ "3b:6f:00:ff:00:56:72:75:54:6f:6b:6e:73:30:20:00:00:90:00", NULL, NULL, SC_CARD_TYPE_GENERIC_BASE, 0, NULL }, /* Aktiv Rutoken S */
+	{ "3b:6f:00:ff:00:56:75:61:54:6f:6b:6e:73:30:20:00:00:90:00", NULL, NULL, SC_CARD_TYPE_GENERIC_BASE, 0, NULL }, /* Aktiv uaToken S */
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -162,7 +163,11 @@ static int rutoken_init(sc_card_t *card)
 	int ret;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	ret = token_init(card, "Rutoken card");
+	/* &rutoken_atrs[1] : { uaToken S ATR, NULL ATR } */
+	if (_sc_match_atr(card, &rutoken_atrs[1], &card->type) >= 0)
+		ret = token_init(card, "uaToken S card");
+	else
+		ret = token_init(card, "Rutoken S card");
 	SC_FUNC_RETURN(card->ctx, 1, ret);
 }
 
