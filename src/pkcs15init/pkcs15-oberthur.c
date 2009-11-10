@@ -266,6 +266,7 @@ cosm_erase_card(struct sc_profile *profile, struct sc_card *card)
 		sc_file_free(dir);
 	}
 
+	sc_free_apps(card);
 done:		
 	sc_keycache_forget_key(NULL, -1, -1);
 	sc_ctx_suppress_errors_off(card->ctx);
