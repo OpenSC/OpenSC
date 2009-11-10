@@ -2008,7 +2008,7 @@ static size_t sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
 	if (!bn || !bn->len)
 		return 0;
 	bits = bn->len << 3;
-	for (mask = 0x80; !(bn->data[0] & mask); mask >>= 1)
+	for (mask = 0x80; mask && !(bn->data[0] & mask); mask >>= 1)
 		bits--;
 	return bits;
 }
