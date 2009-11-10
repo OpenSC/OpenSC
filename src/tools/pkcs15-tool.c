@@ -404,6 +404,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 {
 	unsigned int i;
 	struct sc_pkcs15_prkey_info *prkey = (struct sc_pkcs15_prkey_info *) obj->data;
+	const char *types[] = { "", "RSA", "DSA", "GOSTR3410" };
 	const char *usages[] = {
 		"encrypt", "decrypt", "sign", "signRecover",
 		"wrap", "unwrap", "verify", "verifyRecover",
@@ -416,13 +417,13 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	};
 	const unsigned int af_count = NELEMENTS(access_flags);
 
-	printf("Private RSA Key [%s]\n", obj->label);
+	printf("Private %s Key [%s]\n", types[3 & obj->type], obj->label);
 	printf("\tCom. Flags  : %X\n", obj->flags);
 	printf("\tUsage       : [0x%X]", prkey->usage);
 	for (i = 0; i < usage_count; i++)
-   	if (prkey->usage & (1 << i)) {
-   		printf(", %s", usages[i]);
-   	}
+		if (prkey->usage & (1 << i)) {
+			printf(", %s", usages[i]);
+		}
 	printf("\n");
 	printf("\tAccess Flags: [0x%X]", prkey->access_flags);
 	for (i = 0; i < af_count; i++)
@@ -442,9 +443,9 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 static int list_private_keys(void)
 {
 	int r, i;
-        struct sc_pkcs15_object *objs[32];
-	
-	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY_RSA, objs, 32);
+	struct sc_pkcs15_object *objs[32];
+
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, objs, 32);
 	if (r < 0) {
 		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
@@ -462,6 +463,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 {
 	unsigned int i;
 	const struct sc_pkcs15_pubkey_info *pubkey = (const struct sc_pkcs15_pubkey_info *) obj->data;
+	const char *types[] = { "", "RSA", "DSA", "GOSTR3410" };
 	const char *usages[] = {
 		"encrypt", "decrypt", "sign", "signRecover",
 		"wrap", "unwrap", "verify", "verifyRecover",
@@ -474,7 +476,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	};
 	const unsigned int af_count = NELEMENTS(access_flags);
 
-	printf("Public RSA Key [%s]\n", obj->label);
+	printf("Public %s Key [%s]\n", types[3 & obj->type], obj->label);
 	printf("\tCom. Flags  : %X\n", obj->flags);
 	printf("\tUsage       : [0x%X]", pubkey->usage);
 	for (i = 0; i < usage_count; i++)
@@ -500,8 +502,8 @@ static int list_public_keys(void)
 {
 	int r, i;
 	struct sc_pkcs15_object *objs[32];
-	
-	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY_RSA, objs, 32);
+
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY, objs, 32);
 	if (r < 0) {
 		fprintf(stderr, "Public key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
@@ -1148,7 +1150,7 @@ static int learn_card(void)
 		return 1;
 	}
 	cert_count = r;
-	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY_RSA, NULL, 0);
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
 	if (r < 0) {
 		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
