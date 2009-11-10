@@ -119,7 +119,9 @@ static const char *option_help[] = {
 	"Lists private keys",
 	"Lists public keys",
 	"Reads public key with ID <arg>",
+#if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	"Reads public key with ID <arg>, outputs ssh format",
+#endif
 	"Test if the card needs a security update",
 	"Update the card with a security update",
 	"Uses reader number <arg>",
