@@ -70,7 +70,6 @@ struct pcsc_global_private_data {
 };
 
 struct pcsc_private_data {
-	char *reader_name;
 	struct pcsc_global_private_data *gpriv;
 };
 
@@ -268,7 +267,7 @@ static int refresh_slot_attributes(sc_reader_t *reader, sc_slot_info_t *slot)
 
 	SC_FUNC_CALLED(reader->ctx, 3);
 	if (pslot->reader_state.szReader == NULL) {
-		pslot->reader_state.szReader = priv->reader_name;
+		pslot->reader_state.szReader = reader->name;
 		pslot->reader_state.dwCurrentState = SCARD_STATE_UNAWARE;
 		pslot->reader_state.dwEventState = SCARD_STATE_UNAWARE;
 	} else {
@@ -383,7 +382,7 @@ static int pcsc_wait_for_event(sc_reader_t **readers,
 	for (i = 0; i < nslots; i++) {
 		struct pcsc_private_data *priv2 = GET_PRIV_DATA(readers[i]);
 
-		rgReaderStates[i].szReader = priv2->reader_name;
+		rgReaderStates[i].szReader = readers[i]->name;
 		rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
 		rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
 
@@ -508,10 +507,6 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	struct pcsc_slot_data *pslot = GET_SLOT_DATA(slot);
 	int r;
-	u8 feature_buf[256], rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	size_t rcount;
-	DWORD i, feature_len, display_ioctl = 0;
-	PCSC_TLV_STRUCTURE *pcsc_tlv;
 
 	r = refresh_slot_attributes(reader, slot);
 	if (r)
@@ -520,7 +515,7 @@ static int pcsc_connect(sc_reader_t *reader, sc_slot_info_t *slot)
 		return SC_ERROR_CARD_NOT_PRESENT;
 
 	/* Always connect with whatever protocol possible */
-	rv = priv->gpriv->SCardConnect(priv->gpriv->pcsc_ctx, priv->reader_name,
+	rv = priv->gpriv->SCardConnect(priv->gpriv->pcsc_ctx, reader->name,
 			  priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
 			  SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
 	if (rv != SCARD_S_SUCCESS) {
@@ -627,7 +622,6 @@ static int pcsc_release(sc_reader_t *reader)
 {
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
-	free(priv->reader_name);
 	free(priv);
 	if (reader->slot[0].drv_data != NULL) {
 		free(reader->slot[0].drv_data);
@@ -902,10 +896,6 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 			goto err1;
 		}
 		priv->gpriv = gpriv;
-		if ((priv->reader_name = strdup(reader_name)) == NULL) {
-			ret = SC_ERROR_OUT_OF_MEMORY;
-			goto err1;
-		}
 		slot = &reader->slot[0];
 		memset(slot, 0, sizeof(*slot));
 		slot->drv_data = pslot;
@@ -919,11 +909,11 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 		if (gpriv->SCardControl != NULL) {
 			sc_debug(ctx, "Requesting reader features ... ");
 #ifdef __APPLE__ /* 10.5.7 does not support 0 as protocol identifier */
-			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, priv->reader_name, SCARD_SHARE_DIRECT, SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
+			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
 #else
-			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, priv->reader_name, SCARD_SHARE_DIRECT, 0, &card_handle, &active_proto);
+			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, 0, &card_handle, &active_proto);
 			if (rv == SCARD_E_SHARING_VIOLATION) /* Assume that there is a card in the reader in shared mode */
-				rv = gpriv->SCardConnect(gpriv->pcsc_ctx, priv->reader_name, SCARD_SHARE_SHARED, SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
+				rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_SHARED, SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
 #endif
 			if (rv == SCARD_S_SUCCESS) {
 				rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, feature_buf, sizeof(feature_buf), &feature_len);
@@ -1011,8 +1001,6 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 	
 	err1:
 		if (priv != NULL) {
-			if (priv->reader_name)
-				free(priv->reader_name);
 			free(priv);
 		}
 		if (reader != NULL) {
