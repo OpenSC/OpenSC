@@ -68,7 +68,7 @@ enum {
 #endif
 	OPT_PIN,
 	OPT_NEWPIN,
-	OPT_PUK,
+	OPT_PUK
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -908,7 +908,7 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 		(unsigned long)pin->stored_length);
 	printf("\tPad char  : 0x%02X\n", pin->pad_char);
 	printf("\tReference : %d\n", pin->reference);
-	if (pin->type >= 0 && pin->type < sizeof(pin_types)/sizeof(pin_types[0]))
+	if (pin->type < sizeof(pin_types)/sizeof(pin_types[0]))
 		printf("\tType      : %s\n", pin_types[pin->type]);
 	else
 		printf("\tType      : [encoding %d]\n", pin->type);
@@ -1243,7 +1243,7 @@ static int test_update(sc_card_t *in_card)
 	}
 
 	{
-		int i=0;
+		size_t i=0;
 	  	while(i < rbuf[1]) {
 			if (rbuf[2+i] == 0x86) { /* found our buffer */
 				break;
