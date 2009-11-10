@@ -120,6 +120,9 @@ struct sc_profile {
 	 * needs to be updated (in other words: if the card content
 	 * has been changed) */
 	int			dirty;
+
+	/* PKCS15 object ID style */
+	unsigned int id_style;
 };
 
 struct sc_profile *sc_profile_new(void);

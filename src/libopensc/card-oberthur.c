@@ -202,6 +202,7 @@ auth_select_aid(struct sc_card *card)
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
 
+
 static int 
 auth_match_card(struct sc_card *card)
 {
@@ -211,6 +212,7 @@ auth_match_card(struct sc_card *card)
 		return 1;
 }
 
+
 static int 
 auth_init(struct sc_card *card)
 {
@@ -219,11 +221,9 @@ auth_init(struct sc_card *card)
 	unsigned long flags;
 	int rv = 0;
 	
-	data = (struct auth_private_data *) malloc(sizeof(struct auth_private_data));
+	data = (struct auth_private_data *) calloc(1, sizeof(struct auth_private_data));
 	if (!data)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
-	else
-		memset(data, 0, sizeof(struct auth_private_data));
 
 	card->cla = 0x00;
 	card->drv_data = data;
@@ -1207,9 +1207,7 @@ done:
 static int 
 auth_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
 {
-	int rv = SC_ERROR_NO_DEFAULT_KEY;
-
-	SC_FUNC_RETURN(card->ctx, 1, rv);
+	SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NO_DEFAULT_KEY);
 }
 
 
@@ -1261,9 +1259,10 @@ auth_generate_key(struct sc_card *card, int use_sm,
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x46, 0x00, 0x00);
-	if (!(apdu.resp = (unsigned char *) malloc(data->key_bits/8+8)))   {
+	apdu.resp = (unsigned char *) calloc(1, data->key_bits/8+8);
+	if (!apdu.resp)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
-	}
+
 	apdu.resplen = data->key_bits/8+8;
 	apdu.lc = rv + 4;
 	apdu.le = data->key_bits/8;
@@ -1884,7 +1883,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 		for (jj=0; jj<rv && *(resp+jj)==0; jj++)
 			;
 
-		bn[0].data = (unsigned char *) malloc(rv - jj);
+		bn[0].data = (unsigned char *) calloc(1, rv - jj);
 		bn[0].len = rv - jj;
 		memcpy(bn[0].data, resp + jj, rv - jj);
 		
@@ -1892,7 +1891,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 				1, resp, resp_len);
 		SC_TEST_RET(card->ctx, rv, "Cannot read RSA public key component");
 		
-		bn[1].data = (unsigned char *) malloc(rv);
+		bn[1].data = (unsigned char *) calloc(1, rv);
 		bn[1].len = rv;
 		memcpy(bn[1].data, resp, rv);
 

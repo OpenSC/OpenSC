@@ -172,6 +172,12 @@ static struct map		pinFlagNames[] = {
 	{ "exchangeRefData",		0x0800			},
 	{ NULL, 0 }
 };
+static struct map		idStyleNames[] = {
+	{ "native",		SC_PKCS15INIT_ID_STYLE_NATIVE },
+	{ "mozilla",		SC_PKCS15INIT_ID_STYLE_MOZILLA },
+	{ "rfc2459",		SC_PKCS15INIT_ID_STYLE_RFC2459 },
+	{ NULL, 0 }
+};
 static struct {
 	const char *		name;
 	struct map *		addr;
@@ -283,6 +289,7 @@ sc_profile_new(void)
 	pro->pin_minlen = 4;
 	pro->pin_maxlen = 8;
 	pro->keep_public_key = 1;
+	pro->id_style = SC_PKCS15INIT_ID_STYLE_NATIVE; 
 
 	return pro;
 }
@@ -781,6 +788,12 @@ static int
 do_encode_update_field(struct state *cur, int argc, char **argv)
 {
 	return get_bool(cur, argv[0], &cur->profile->pkcs15.do_last_update);
+}
+
+static int
+do_pkcs15_id_style(struct state *cur, int argc, char **argv)
+{
+	return map_str2int(cur, argv[0], &cur->profile->id_style, idStyleNames);
 }
 
 /*
@@ -1528,6 +1541,7 @@ static struct command	p15_commands[] = {
  { "direct-certificates", 1,	1,	do_direct_certificates },
  { "encode-df-length",	1,	1,	do_encode_df_length },
  { "do-last-update", 1, 1, do_encode_update_field },
+ { "pkcs15-id-style", 1, 1, do_pkcs15_id_style },
  { NULL, 0, 0, NULL }
 };
 

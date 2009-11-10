@@ -485,7 +485,10 @@ int sc_pkcs15_encode_pubkey(struct sc_context *,
 			struct sc_pkcs15_pubkey *, u8 **, size_t *);
 void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *pubkey);
 void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *pubkey);
-
+int sc_pkcs15_pubkey_from_prvkey(struct sc_context *, struct sc_pkcs15_prkey *, 
+			struct sc_pkcs15_pubkey **);
+int sc_pkcs15_pubkey_from_cert(struct sc_context *, struct sc_pkcs15_der *, 
+			struct sc_pkcs15_pubkey **out);
 int sc_pkcs15_read_prkey(struct sc_pkcs15_card *card,
 			const struct sc_pkcs15_object *obj,
 			const char *passphrase,
