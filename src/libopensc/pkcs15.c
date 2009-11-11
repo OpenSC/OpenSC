@@ -757,8 +757,8 @@ done:
 	if (strcmp(p15card->card->driver->short_name,"cardos") == 0) {
 
 		/* D-Trust cards (D-TRUST, D-SIGN) */
-		if (strstr(p15card->label,"D-TRUST") == 0
-			|| strstr(p15card->label,"D-SIGN") == 0) {
+		if (strstr(p15card->label,"D-TRUST") != NULL
+			|| strstr(p15card->label,"D-SIGN") != NULL) {
 
 			/* D-TRUST Card 2.0 2cc (standard cards, which always add 
 			 * SHA1 prefix itself */

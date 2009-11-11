@@ -144,7 +144,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 					}
 			}	
 		}
-		if (builtin_enabled) {
+		else if (builtin_enabled) {
 			sc_debug(ctx, "no emulator list in config file, trying all builtin emulators\n");
 			for (i = 0; builtin_emulators[i].name; i++) {
 				sc_debug(ctx, "trying %s\n", builtin_emulators[i].name);
