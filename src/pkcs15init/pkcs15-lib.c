@@ -1390,11 +1390,11 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	if (r >= 0) {
 		if (!caller_supplied_id)   {
 			struct sc_pkcs15_id iid;
-			
+
 			/* Caller not supplied ID, so,
 			 * if intrinsic ID can be calculated -- overwrite the native one */
 			memset(&iid, 0, sizeof(iid));
-        		r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &iid, &pubkey_args.key);
+			r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &iid, &pubkey_args.key);
 			if (r < 0)
 				return r;
 
@@ -1474,7 +1474,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
 		return r;
 
-        /* Select a intrinsic Key ID if user didn't specify one */
+	/* Select a intrinsic Key ID if user didn't specify one */
 	r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PRKEY, &keyargs->id, &keyargs->key);
 	if (r < 0)
 		return r;

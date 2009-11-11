@@ -466,16 +466,16 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				unsigned long alg_flags, const u8 *in,
 				size_t inlen, u8 *out, size_t outlen);
 
-int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *card,
-			const struct sc_pkcs15_object *obj,
-			struct sc_pkcs15_pubkey **out);
-int sc_pkcs15_decode_pubkey_rsa(struct sc_context *ctx,
-	       		struct sc_pkcs15_pubkey_rsa *pubkey,
+int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *,
+			const struct sc_pkcs15_object *,
+			struct sc_pkcs15_pubkey **);
+int sc_pkcs15_decode_pubkey_rsa(struct sc_context *,
+	       		struct sc_pkcs15_pubkey_rsa *,
 			const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_rsa(struct sc_context *,
 			struct sc_pkcs15_pubkey_rsa *, u8 **, size_t *);
-int sc_pkcs15_decode_pubkey_dsa(struct sc_context *ctx,
-	       		struct sc_pkcs15_pubkey_dsa *pubkey,
+int sc_pkcs15_decode_pubkey_dsa(struct sc_context *,
+	       		struct sc_pkcs15_pubkey_dsa *,
 			const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_dsa(struct sc_context *,
 			struct sc_pkcs15_pubkey_dsa *, u8 **, size_t *);
@@ -483,16 +483,16 @@ int sc_pkcs15_decode_pubkey(struct sc_context *,
 	       		struct sc_pkcs15_pubkey *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey(struct sc_context *,
 			struct sc_pkcs15_pubkey *, u8 **, size_t *);
-void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *pubkey);
-void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *pubkey);
+void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *);
+void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *);
 int sc_pkcs15_pubkey_from_prvkey(struct sc_context *, struct sc_pkcs15_prkey *, 
 			struct sc_pkcs15_pubkey **);
 int sc_pkcs15_pubkey_from_cert(struct sc_context *, struct sc_pkcs15_der *, 
-			struct sc_pkcs15_pubkey **out);
-int sc_pkcs15_read_prkey(struct sc_pkcs15_card *card,
-			const struct sc_pkcs15_object *obj,
+			struct sc_pkcs15_pubkey **);
+int sc_pkcs15_read_prkey(struct sc_pkcs15_card *,
+			const struct sc_pkcs15_object *,
 			const char *passphrase,
-			struct sc_pkcs15_prkey **out);
+			struct sc_pkcs15_prkey **);
 int sc_pkcs15_decode_prkey(struct sc_context *,
 			struct sc_pkcs15_prkey *,
 			const u8 *, size_t);

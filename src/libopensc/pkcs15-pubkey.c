@@ -42,7 +42,7 @@ static const struct sc_asn1_entry c_asn1_com_key_attr[] = {
 };
 
 static const struct sc_asn1_entry c_asn1_com_pubkey_attr[] = {
-        /* FIXME */
+	/* FIXME */
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -69,7 +69,7 @@ static const struct sc_asn1_entry c_asn1_dsa_type_attr[] = {
 };
 
 static const struct sc_asn1_entry c_asn1_gostr3410key_attr[] = {
-	{ "value",         SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "value",	SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ "params_r3410",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
 	{ "params_r3411",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "params_28147",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
@@ -562,20 +562,32 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
+static int
+sc_pkcs15_dup_bignum (struct sc_pkcs15_bignum *dst, struct sc_pkcs15_bignum *src)
+{
+	assert(dst && src);
+
+	if (src->data && src->len)   {
+		dst->data = calloc(1, src->len);
+		if (!dst->data)
+			return SC_ERROR_OUT_OF_MEMORY;
+		memcpy(dst->data, src->data, src->len);
+		dst->len = src->len;
+	}
+
+	return 0;
+}
 
 int
 sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx,
 		struct sc_pkcs15_prkey *prvkey, struct sc_pkcs15_pubkey **out)
 {
-	struct two_bignums {
-		struct sc_pkcs15_bignum *dst;
-		struct sc_pkcs15_bignum *src;
-	};
 	struct sc_pkcs15_pubkey *pubkey;
-	int ii;
+	int ii, rv = SC_SUCCESS;
 
 	assert(prvkey && out);
 
+	*out = NULL;
 	pubkey = (struct sc_pkcs15_pubkey *) calloc(1, sizeof(struct sc_pkcs15_pubkey));
 	if (!pubkey)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -583,44 +595,18 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx,
 	pubkey->algorithm = prvkey->algorithm;
 	switch (prvkey->algorithm) {
 	case SC_ALGORITHM_RSA:   
-		do   {
-			struct two_bignums arr[] = {
-				{&pubkey->u.rsa.modulus, &prvkey->u.rsa.modulus},
-				{&pubkey->u.rsa.exponent, &prvkey->u.rsa.exponent},
-				{NULL, NULL}
-			};
-
-			for (ii=0; arr[ii].src; ii++)   {
-				if (arr[ii].src->data && arr[ii].src->len)   {
-					arr[ii].dst->data = malloc(arr[ii].src->len);
-					if (!arr[ii].dst->data)
-						return SC_ERROR_OUT_OF_MEMORY;
-					memcpy(arr[ii].dst->data, arr[ii].src->data, arr[ii].src->len);
-					arr[ii].dst->len = arr[ii].src->len;
-				}
-			}
-		} while(0);
+		rv = sc_pkcs15_dup_bignum(&pubkey->u.rsa.modulus, &prvkey->u.rsa.modulus);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.rsa.exponent, &prvkey->u.rsa.exponent);
 		break;
 	case SC_ALGORITHM_DSA:
-		do   {
-			struct two_bignums arr[] = {
-				{&pubkey->u.dsa.pub, &prvkey->u.dsa.pub},
-				{&pubkey->u.dsa.p, &prvkey->u.dsa.p},
-				{&pubkey->u.dsa.q, &prvkey->u.dsa.q},
-				{&pubkey->u.dsa.g, &prvkey->u.dsa.g},
-				{NULL, NULL}
-			};
-
-			for (ii=0; arr[ii].src; ii++)   {
-				if (arr[ii].src->data && arr[ii].src->len)   {
-					arr[ii].dst->data = malloc(arr[ii].src->len);
-					if (!arr[ii].dst->data)
-						return SC_ERROR_OUT_OF_MEMORY;
-					memcpy(arr[ii].dst->data, arr[ii].src->data, arr[ii].src->len);
-					arr[ii].dst->len = arr[ii].src->len;
-				}
-			}
-		} while(0);
+		rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.pub, &prvkey->u.dsa.pub);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.p, &prvkey->u.dsa.p);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.q, &prvkey->u.dsa.q);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.g, &prvkey->u.dsa.g);
 		break;
 	case SC_ALGORITHM_GOSTR3410:
 		break;
@@ -629,7 +615,11 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	*out = pubkey;
+	if (rv)
+		sc_pkcs15_free_pubkey(pubkey);
+	else
+		*out = pubkey;
+
 	return SC_SUCCESS;
 }
 
@@ -645,6 +635,7 @@ sc_pkcs15_pubkey_from_cert(struct sc_context *ctx,
 	X509 *x = NULL;
 	BIO *mem = NULL;
 	struct sc_pkcs15_pubkey *pubkey = NULL;
+	int rv = 0;
 
 	assert(cert_blob && out);
 
@@ -652,40 +643,54 @@ sc_pkcs15_pubkey_from_cert(struct sc_context *ctx,
 	if (!pubkey)
 		SC_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate pubkey");
 
-	pubkey->algorithm = SC_ALGORITHM_RSA;		
-	mem = BIO_new_mem_buf(cert_blob->value, cert_blob->len);
-	if (!mem)
-		SC_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "BIO new memory buffer error");
+	pubkey->algorithm = SC_ALGORITHM_RSA;
+	do   {	
+		rv = SC_ERROR_INVALID_DATA;
+		mem = BIO_new_mem_buf(cert_blob->value, cert_blob->len);
+		if (!mem)
+			break;
 
-	x = d2i_X509_bio(mem, NULL);
-	if (!x)
-		SC_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "X509 parse error");
+		x = d2i_X509_bio(mem, NULL);
+		if (!x)
+			break;
 
-	pkey=X509_get_pubkey(x);
-	if (!pkey || pkey->type != EVP_PKEY_RSA)
-		SC_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Get public key error");
+		pkey=X509_get_pubkey(x);
+		if (!pkey || pkey->type != EVP_PKEY_RSA)
+			break;
 
-	pubkey->u.rsa.modulus.len = BN_num_bytes(pkey->pkey.rsa->n);
-	pubkey->u.rsa.modulus.data = malloc(pubkey->u.rsa.modulus.len); 
+		pubkey->u.rsa.modulus.len = BN_num_bytes(pkey->pkey.rsa->n);
+		pubkey->u.rsa.modulus.data = calloc(1, pubkey->u.rsa.modulus.len); 
 
-	pubkey->u.rsa.exponent.len = BN_num_bytes(pkey->pkey.rsa->e);
-	pubkey->u.rsa.exponent.data = malloc(pubkey->u.rsa.exponent.len); 
+		pubkey->u.rsa.exponent.len = BN_num_bytes(pkey->pkey.rsa->e);
+		pubkey->u.rsa.exponent.data = calloc(1, pubkey->u.rsa.exponent.len); 
 
-	if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.exponent.data)
-		SC_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate key components");
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.exponent.data)
+			break;
 
-	if (BN_bn2bin(pkey->pkey.rsa->n, pubkey->u.rsa.modulus.data) != pubkey->u.rsa.modulus.len) 
-		SC_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "BN to BIN conversion error");
-	if (BN_bn2bin(pkey->pkey.rsa->e, pubkey->u.rsa.exponent.data) != pubkey->u.rsa.exponent.len) 
-		SC_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "BN to BIN conversion error");
+		BN_bn2bin(pkey->pkey.rsa->n, pubkey->u.rsa.modulus.data);
+		BN_bn2bin(pkey->pkey.rsa->e, pubkey->u.rsa.exponent.data);
 
-	EVP_PKEY_free(pkey);
-	X509_free(x);
-	BIO_free(mem);
+		rv = SC_SUCCESS;
+	} while (0);
+
+	if (pkey)
+		EVP_PKEY_free(pkey);
+
+	if (x)
+		X509_free(x);
+
+	if (mem)
+		BIO_free(mem);
+
+	if (rv)  {
+		sc_pkcs15_free_pubkey(pubkey);
+		pubkey = NULL;
+	}
 
 	*out = pubkey;
 
-	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+	SC_FUNC_RETURN(ctx, 1, rv);
 #endif
 }
 
