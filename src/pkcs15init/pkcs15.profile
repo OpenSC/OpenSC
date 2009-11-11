@@ -27,7 +27,7 @@ pkcs15 {
     #     rfc2459: SHA1(SequenceASN1 of public key components as ASN1 integers)
     #     native: 'E' + number_of_present_objects_of_the_same_type
     # default value: 'native'
-    pkcs15-id-style	= mozilla;
+    # pkcs15-id-style	= mozilla;
 }
 
 # Default settings.
