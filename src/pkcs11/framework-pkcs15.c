@@ -1753,12 +1753,23 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 			goto kpgen_done;
 		}
 
-		/* Write the new public and private keys to the pkcs15 files */
-		rc = sc_pkcs15init_store_private_key(p15card, profile,
-			&keygen_args.prkey_args, &priv_key_obj);
-		if (rc >= 0)
-			rc = sc_pkcs15init_store_public_key(p15card, profile,
-				&pub_args, &pub_key_obj);
+  	/* Write the new public and private keys to the pkcs15 files */
+  	/* To support smartcards that require different keybobjects for signing and encryption */
+		if (sc_pkcs15init_requires_restrictive_usage(p15card, &keygen_args.prkey_args, 0)) {
+			sc_debug(context, "store split key required for this card", rv);
+			/* second key is the signature keyobject */
+			rc = sc_pkcs15init_store_split_key(p15card, profile, &keygen_args.prkey_args, NULL, &priv_key_obj);
+		} 
+		else {
+			rc = sc_pkcs15init_store_private_key(p15card, profile, &keygen_args.prkey_args, &priv_key_obj);
+		}
+
+		if (rc >= 0) {
+			/* copy ID from private key(s) here to avoid bad link between private and public key */
+			memcpy(&pub_args.id.value, &keygen_args.prkey_args.id.value, keygen_args.prkey_args.id.len);
+			pub_args.id.len = keygen_args.prkey_args.id.len;
+			rc = sc_pkcs15init_store_public_key(p15card, profile, &pub_args, &pub_key_obj);
+		}
 		if (rc < 0) {
 			sc_debug(context, "private/public keys not stored: %d\n", rc);
 			rv = sc_to_cryptoki_error(rc, p11card->reader);
