@@ -426,19 +426,7 @@ main(int argc, char **argv)
 
 		if (verbose && action != ACTION_ASSERT_PRISTINE)
 			printf("About to %s.\n", action_names[action]);
-/*
-{
-	sc_path_t p1, p2, p3, p4;
-	sc_format_path("3F0050156666", &p1); p1.index = 0; p1.count = 50;
-	sc_format_path("3F0050157777", &p2); p2.index = 50; p2.count = 50;
-	sc_format_path("3F0050156666", &p3); p3.index = 200; p3.count = 50;
-	sc_format_path("3F0050156666", &p4); p4.index = 50; p4.count = 150;
-	r = sc_pkcs15init_remove_unusedspace(p15card, profile, &p1, NULL);
-	printf("sc_pkcs15init_add_unusedspace(): %d\n", r);
-	//r = sc_pkcs15init_add_unusedspace(p15card, profile, &p3, NULL);
-	//printf("sc_pkcs15init_add_unusedspace(): %d\n", r);
-}
-*/
+
 		switch (action) {
 		case ACTION_ASSERT_PRISTINE:
 			/* skip printing error message */
