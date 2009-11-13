@@ -106,11 +106,6 @@ static int ias_init(sc_card_t *card)
 	return SC_SUCCESS;
 }
 
-static int ias_finish(sc_card_t *card)
-{
-	return SC_SUCCESS;
-}
-
 static int ias_match_card(sc_card_t *card)
 {
 	int i;
@@ -535,7 +530,6 @@ static struct sc_card_driver *sc_get_driver(void)
 	ias_ops.select_file = ias_select_file;
 	ias_ops.match_card = ias_match_card;
 	ias_ops.init = ias_init;
-	ias_ops.finish = ias_finish;
 	ias_ops.set_security_env = ias_set_security_env;
 	ias_ops.compute_signature = ias_compute_signature;
 	ias_ops.pin_cmd = ias_pin_cmd;

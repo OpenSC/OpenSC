@@ -40,11 +40,6 @@ static struct sc_card_driver miocos_drv = {
 	NULL, 0, NULL
 };
 
-static int miocos_finish(sc_card_t *card)
-{
-	return 0;
-}
-
 static int miocos_match_card(sc_card_t *card)
 {
 	int i;
@@ -488,7 +483,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	miocos_ops = *iso_drv->ops;
 	miocos_ops.match_card = miocos_match_card;
 	miocos_ops.init = miocos_init;
-        miocos_ops.finish = miocos_finish;
 	if (iso_ops == NULL)
                 iso_ops = iso_drv->ops;
 	miocos_ops.create_file = miocos_create_file;

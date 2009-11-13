@@ -54,11 +54,6 @@ static int acos5_init(sc_card_t * card)
 	return SC_SUCCESS;
 }
 
-static int acos5_finish(sc_card_t * card)
-{
-	return SC_SUCCESS;
-}
-
 static int acos5_select_file_by_path(sc_card_t * card,
 				     const sc_path_t * in_path,
 				     sc_file_t ** file_out)
@@ -225,7 +220,6 @@ static struct sc_card_driver *sc_get_driver(void)
 
 	acos5_ops.match_card = acos5_match_card;
 	acos5_ops.init = acos5_init;
-	acos5_ops.finish = acos5_finish;
 	acos5_ops.select_file = acos5_select_file;
 	acos5_ops.card_ctl = acos5_card_ctl;
 	acos5_ops.list_files = acos5_list_files;

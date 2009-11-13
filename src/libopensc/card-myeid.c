@@ -46,12 +46,6 @@ static const char *myeid_atrs[] = {
 	NULL
 };
 
-
-static int myeid_finish(struct sc_card *card)
-{  
-	return 0;
-}
-
 static int myeid_match_card(struct sc_card *card)
 {
 	int i, match = -1;
@@ -1037,7 +1031,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops                   = *iso_drv->ops;
 	myeid_ops.match_card        = myeid_match_card;
 	myeid_ops.init              = myeid_init;
-	myeid_ops.finish            = myeid_finish;
 	if (iso_ops == NULL)
 		iso_ops = iso_drv->ops;
 	myeid_ops.read_binary       = myeid_read_binary;

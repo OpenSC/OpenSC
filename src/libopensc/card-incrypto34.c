@@ -49,11 +49,6 @@ static struct sc_atr_table incrypto34_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
-static int incrypto34_finish(struct sc_card *card)
-{
-	return 0;
-}
-
 static int incrypto34_match_card(struct sc_card *card)
 {
 	int i;
@@ -909,7 +904,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	incrypto34_ops = *iso_ops;
 	incrypto34_ops.match_card = incrypto34_match_card;
 	incrypto34_ops.init = incrypto34_init;
-	incrypto34_ops.finish = incrypto34_finish;
 	incrypto34_ops.select_file = incrypto34_select_file;
 	incrypto34_ops.create_file = incrypto34_create_file;
 	incrypto34_ops.set_security_env = incrypto34_set_security_env;

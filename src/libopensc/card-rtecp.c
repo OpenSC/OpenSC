@@ -785,7 +785,6 @@ struct sc_card_driver * sc_get_rtecp_driver(void)
 
 	rtecp_ops.match_card = rtecp_match_card;
 	rtecp_ops.init = rtecp_init;
-	rtecp_ops.finish = NULL;
 	/* read_binary */
 	rtecp_ops.write_binary = NULL;
 	/* update_binary */

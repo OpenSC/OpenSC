@@ -29,11 +29,6 @@ static struct sc_card_driver default_drv = {
 	NULL, 0, NULL
 };
 
-static int default_finish(sc_card_t *card)
-{
-	return SC_SUCCESS;
-}
-
 static int default_match_card(sc_card_t *card)
 {
 	return 1;		/* always match */
@@ -124,7 +119,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	default_ops = *iso_drv->ops;
 	default_ops.match_card = default_match_card;
 	default_ops.init = default_init;
-	default_ops.finish = default_finish;
 
 	return &default_drv;
 }

@@ -39,11 +39,6 @@ static struct sc_atr_table asepcos_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
-static int asepcos_finish(sc_card_t *card)
-{
-	return SC_SUCCESS;
-}
-
 static int asepcos_match_card(sc_card_t *card)
 {
 	int i = _sc_match_atr(card, asepcos_atrs, &card->type);
@@ -1098,7 +1093,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	asepcos_ops = *iso_ops;
 	asepcos_ops.match_card        = asepcos_match_card;
 	asepcos_ops.init              = asepcos_init;
-	asepcos_ops.finish            = asepcos_finish;
 	asepcos_ops.select_file       = asepcos_select_file;
 	asepcos_ops.set_security_env  = asepcos_set_security_env;
 	asepcos_ops.decipher          = asepcos_decipher;

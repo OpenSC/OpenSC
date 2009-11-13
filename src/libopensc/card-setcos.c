@@ -70,11 +70,6 @@ static struct sc_card_driver setcos_drv = {
 	NULL, 0, NULL
 };
 
-static int setcos_finish(sc_card_t *card)
-{
-	return 0;
-}
-
 static int match_hist_bytes(sc_card_t *card, const char *str, size_t len)
 {
 	const char *src = (const char *) card->slot->atr_info.hist_bytes;
@@ -1120,7 +1115,6 @@ static struct sc_card_driver *sc_get_driver(void)
 	setcos_ops = *iso_drv->ops;
 	setcos_ops.match_card = setcos_match_card;
 	setcos_ops.init = setcos_init;
-	setcos_ops.finish = setcos_finish;
 	if (iso_ops == NULL)
 		iso_ops = iso_drv->ops;
 	setcos_ops.create_file = setcos_create_file;

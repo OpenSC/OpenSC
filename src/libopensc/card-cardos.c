@@ -53,11 +53,6 @@ static struct sc_atr_table cardos_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
-static int cardos_finish(sc_card_t *card)
-{
-	return 0;
-}
-
 static int cardos_match_card(sc_card_t *card)
 {
 	int i;
@@ -1178,7 +1173,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	cardos_ops = *iso_ops;
 	cardos_ops.match_card = cardos_match_card;
 	cardos_ops.init = cardos_init;
-	cardos_ops.finish = cardos_finish;
 	cardos_ops.select_file = cardos_select_file;
 	cardos_ops.create_file = cardos_create_file;
 	cardos_ops.set_security_env = cardos_set_security_env;
