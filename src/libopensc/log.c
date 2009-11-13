@@ -58,7 +58,6 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 {
 	int	(*display_fn)(sc_context_t *, const char *);
 	char	buf[1836], *p;
-	const char *tag = "";
 	int	r;
 	size_t	left;
 
