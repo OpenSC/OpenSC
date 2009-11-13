@@ -2200,7 +2200,6 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) ses->slot->card->fw_data;
-	struct pkcs15_slot_data *data = slot_data(ses->slot->fw_data);
 	int rv, flags = 0;
 
 	sc_debug(context, "Initiating signing operation, mechanism 0x%x.\n",
@@ -2292,7 +2291,6 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 {
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) ses->slot->card->fw_data;
 	struct pkcs15_prkey_object *prkey;
-	struct pkcs15_slot_data *data = slot_data(ses->slot->fw_data);
 	u8	decrypted[256];
 	int	buff_too_small, rv, flags = 0;
 
@@ -2578,7 +2576,6 @@ static int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 	int rv;
 	struct pkcs15_fw_data *fw_data =
 		(struct pkcs15_fw_data *) session->slot->card->fw_data;
-	struct pkcs15_slot_data *data = slot_data(session->slot->fw_data);
 	sc_card_t *card = session->slot->card->card;
 	int reader = session->slot->card->reader;
 
@@ -2689,7 +2686,6 @@ static CK_RV pkcs15_dobj_destroy(struct sc_pkcs11_session *session, void *object
 	struct pkcs15_data_object *obj = (struct pkcs15_data_object*) object;
 	struct sc_pkcs11_card *card = session->slot->card;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) card->fw_data;
-	struct pkcs15_slot_data *data = slot_data(session->slot->fw_data);
 	struct sc_profile *profile = NULL;
 	int reader = session->slot->card->reader;
 	int rv;
