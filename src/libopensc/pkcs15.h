@@ -434,12 +434,14 @@ typedef struct sc_pkcs15_card {
 	char *preferred_language;
 } sc_pkcs15_card_t;
 
-#define SC_PKCS15_CARD_FLAG_READONLY		0x01
-#define SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED	0x02
-#define SC_PKCS15_CARD_FLAG_PRN_GENERATION	0x04
-#define SC_PKCS15_CARD_FLAG_EID_COMPLIANT	0x08
-#define SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT	0x10
-#define SC_PKCS15_CARD_FLAG_EMULATED		0x20
+#define SC_PKCS15_CARD_FLAG_READONLY			0x01
+#define SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED		0x02
+#define SC_PKCS15_CARD_FLAG_PRN_GENERATION		0x04
+#define SC_PKCS15_CARD_FLAG_EID_COMPLIANT		0x08
+#define SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT		0x10
+#define SC_PKCS15_CARD_FLAG_EMULATED			0x20
+#define SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED	0x40
+#define SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED		0x80
 
 /* sc_pkcs15_bind:  Binds a card object to a PKCS #15 card object
  * and initializes a new PKCS #15 card object.  Will return
@@ -475,16 +477,16 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				unsigned long alg_flags, const u8 *in,
 				size_t inlen, u8 *out, size_t outlen);
 
-int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *card,
-			const struct sc_pkcs15_object *obj,
-			struct sc_pkcs15_pubkey **out);
-int sc_pkcs15_decode_pubkey_rsa(struct sc_context *ctx,
-	       		struct sc_pkcs15_pubkey_rsa *pubkey,
+int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *,
+			const struct sc_pkcs15_object *,
+			struct sc_pkcs15_pubkey **);
+int sc_pkcs15_decode_pubkey_rsa(struct sc_context *,
+	       		struct sc_pkcs15_pubkey_rsa *,
 			const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_rsa(struct sc_context *,
 			struct sc_pkcs15_pubkey_rsa *, u8 **, size_t *);
-int sc_pkcs15_decode_pubkey_dsa(struct sc_context *ctx,
-	       		struct sc_pkcs15_pubkey_dsa *pubkey,
+int sc_pkcs15_decode_pubkey_dsa(struct sc_context *,
+	       		struct sc_pkcs15_pubkey_dsa *,
 			const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_dsa(struct sc_context *,
 			struct sc_pkcs15_pubkey_dsa *, u8 **, size_t *);
@@ -492,13 +494,16 @@ int sc_pkcs15_decode_pubkey(struct sc_context *,
 	       		struct sc_pkcs15_pubkey *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey(struct sc_context *,
 			struct sc_pkcs15_pubkey *, u8 **, size_t *);
-void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *pubkey);
-void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *pubkey);
-
-int sc_pkcs15_read_prkey(struct sc_pkcs15_card *card,
-			const struct sc_pkcs15_object *obj,
+void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *);
+void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *);
+int sc_pkcs15_pubkey_from_prvkey(struct sc_context *, struct sc_pkcs15_prkey *, 
+			struct sc_pkcs15_pubkey **);
+int sc_pkcs15_pubkey_from_cert(struct sc_context *, struct sc_pkcs15_der *, 
+			struct sc_pkcs15_pubkey **);
+int sc_pkcs15_read_prkey(struct sc_pkcs15_card *,
+			const struct sc_pkcs15_object *,
 			const char *passphrase,
-			struct sc_pkcs15_prkey **out);
+			struct sc_pkcs15_prkey **);
 int sc_pkcs15_decode_prkey(struct sc_context *,
 			struct sc_pkcs15_prkey *,
 			const u8 *, size_t);

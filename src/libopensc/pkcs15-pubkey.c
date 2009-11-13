@@ -26,6 +26,12 @@
 #include <stdio.h>
 #include <assert.h>
 
+#ifdef ENABLE_OPENSSL
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#endif
+
+
 static const struct sc_asn1_entry c_asn1_com_key_attr[] = {
 	{ "iD",		 SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
 	{ "usage",	 SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL },
@@ -36,7 +42,7 @@ static const struct sc_asn1_entry c_asn1_com_key_attr[] = {
 };
 
 static const struct sc_asn1_entry c_asn1_com_pubkey_attr[] = {
-        /* FIXME */
+	/* FIXME */
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -63,7 +69,7 @@ static const struct sc_asn1_entry c_asn1_dsa_type_attr[] = {
 };
 
 static const struct sc_asn1_entry c_asn1_gostr3410key_attr[] = {
-	{ "value",         SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "value",	SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ "params_r3410",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
 	{ "params_r3411",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "params_28147",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
@@ -556,26 +562,168 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 	return 0;
 }
 
+static int
+sc_pkcs15_dup_bignum (struct sc_pkcs15_bignum *dst, struct sc_pkcs15_bignum *src)
+{
+	assert(dst && src);
+
+	if (src->data && src->len)   {
+		dst->data = calloc(1, src->len);
+		if (!dst->data)
+			return SC_ERROR_OUT_OF_MEMORY;
+		memcpy(dst->data, src->data, src->len);
+		dst->len = src->len;
+	}
+
+	return 0;
+}
+
+int
+sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx,
+		struct sc_pkcs15_prkey *prvkey, struct sc_pkcs15_pubkey **out)
+{
+	struct sc_pkcs15_pubkey *pubkey;
+	int rv = SC_SUCCESS;
+
+	assert(prvkey && out);
+
+	*out = NULL;
+	pubkey = (struct sc_pkcs15_pubkey *) calloc(1, sizeof(struct sc_pkcs15_pubkey));
+	if (!pubkey)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	pubkey->algorithm = prvkey->algorithm;
+	switch (prvkey->algorithm) {
+	case SC_ALGORITHM_RSA:   
+		rv = sc_pkcs15_dup_bignum(&pubkey->u.rsa.modulus, &prvkey->u.rsa.modulus);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.rsa.exponent, &prvkey->u.rsa.exponent);
+		break;
+	case SC_ALGORITHM_DSA:
+		rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.pub, &prvkey->u.dsa.pub);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.p, &prvkey->u.dsa.p);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.q, &prvkey->u.dsa.q);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.g, &prvkey->u.dsa.g);
+		break;
+	case SC_ALGORITHM_GOSTR3410:
+		break;
+	default:
+		sc_debug(ctx, "Unsupported private key algorithm");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	if (rv)
+		sc_pkcs15_free_pubkey(pubkey);
+	else
+		*out = pubkey;
+
+	return SC_SUCCESS;
+}
+
+
+int
+sc_pkcs15_pubkey_from_cert(struct sc_context *ctx,
+		struct sc_pkcs15_der *cert_blob, struct sc_pkcs15_pubkey **out)
+{
+#ifndef ENABLE_OPENSSL
+	SC_FUNC_RETURN(ctx, 1, SC_ERROR_NOT_SUPPORTED);
+#else
+	EVP_PKEY *pkey = NULL;
+	X509 *x = NULL;
+	BIO *mem = NULL;
+	struct sc_pkcs15_pubkey *pubkey = NULL;
+	int rv = 0;
+
+	assert(cert_blob && out);
+
+	pubkey = (struct sc_pkcs15_pubkey *) calloc(1, sizeof(struct sc_pkcs15_pubkey));
+	if (!pubkey)
+		SC_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate pubkey");
+
+	pubkey->algorithm = SC_ALGORITHM_RSA;
+	do   {	
+		rv = SC_ERROR_INVALID_DATA;
+		mem = BIO_new_mem_buf(cert_blob->value, cert_blob->len);
+		if (!mem)
+			break;
+
+		x = d2i_X509_bio(mem, NULL);
+		if (!x)
+			break;
+
+		pkey=X509_get_pubkey(x);
+		if (!pkey || pkey->type != EVP_PKEY_RSA)
+			break;
+
+		pubkey->u.rsa.modulus.len = BN_num_bytes(pkey->pkey.rsa->n);
+		pubkey->u.rsa.modulus.data = calloc(1, pubkey->u.rsa.modulus.len); 
+
+		pubkey->u.rsa.exponent.len = BN_num_bytes(pkey->pkey.rsa->e);
+		pubkey->u.rsa.exponent.data = calloc(1, pubkey->u.rsa.exponent.len); 
+
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.exponent.data)
+			break;
+
+		BN_bn2bin(pkey->pkey.rsa->n, pubkey->u.rsa.modulus.data);
+		BN_bn2bin(pkey->pkey.rsa->e, pubkey->u.rsa.exponent.data);
+
+		rv = SC_SUCCESS;
+	} while (0);
+
+	if (pkey)
+		EVP_PKEY_free(pkey);
+
+	if (x)
+		X509_free(x);
+
+	if (mem)
+		BIO_free(mem);
+
+	if (rv)  {
+		sc_pkcs15_free_pubkey(pubkey);
+		pubkey = NULL;
+	}
+
+	*out = pubkey;
+
+	SC_FUNC_RETURN(ctx, 1, rv);
+#endif
+}
+
+
 void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 {
 	assert(key != NULL);
 	switch (key->algorithm) {
 	case SC_ALGORITHM_RSA:
-		free(key->u.rsa.modulus.data);
-		free(key->u.rsa.exponent.data);
+		if (key->u.rsa.modulus.data)
+			free(key->u.rsa.modulus.data);
+		if (key->u.rsa.exponent.data)
+			free(key->u.rsa.exponent.data);
 		break;
 	case SC_ALGORITHM_DSA:
-		free(key->u.dsa.pub.data);
-		free(key->u.dsa.g.data);
-		free(key->u.dsa.p.data);
-		free(key->u.dsa.q.data);
+		if (key->u.dsa.pub.data)
+			free(key->u.dsa.pub.data);
+		if (key->u.dsa.g.data)
+			free(key->u.dsa.g.data);
+		if (key->u.dsa.p.data)
+			free(key->u.dsa.p.data);
+		if (key->u.dsa.q.data)
+			free(key->u.dsa.q.data);
 		break;
 	case SC_ALGORITHM_GOSTR3410:
-		free(key->u.gostr3410.x.data);
-		free(key->u.gostr3410.y.data);
+		if (key->u.gostr3410.x.data)
+			free(key->u.gostr3410.x.data);
+		if (key->u.gostr3410.y.data)
+			free(key->u.gostr3410.y.data);
 		break;
 	}
-	free(key->data.value);
+	if (key->data.value)
+		free(key->data.value);
 	sc_mem_clear(key, sizeof(*key));
 }
 

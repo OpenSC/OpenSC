@@ -175,6 +175,10 @@ struct sc_pkcs15init_operations {
 };
 
 /* Do not change these or reorder these */
+#define SC_PKCS15INIT_ID_STYLE_NATIVE 	0
+#define SC_PKCS15INIT_ID_STYLE_MOZILLA	1
+#define SC_PKCS15INIT_ID_STYLE_RFC2459	2
+
 #define SC_PKCS15INIT_SO_PIN		0
 #define SC_PKCS15INIT_SO_PUK		1
 #define SC_PKCS15INIT_USER_PIN		2

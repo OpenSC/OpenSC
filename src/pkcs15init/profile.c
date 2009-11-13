@@ -104,7 +104,10 @@ static struct map		fileOpNames[] = {
 	{ "UPDATE",	SC_AC_OP_UPDATE	},
 	{ "WRITE",	SC_AC_OP_WRITE	},
 	{ "ERASE",	SC_AC_OP_ERASE	},
-	{ "CRYPTO",	SC_AC_OP_CRYPTO },
+	{ "CRYPTO",     SC_AC_OP_CRYPTO },
+        { "PIN-DEFINE", SC_AC_OP_PIN_DEFINE },
+        { "PIN-CHANGE", SC_AC_OP_PIN_CHANGE },
+        { "PIN-RESET",  SC_AC_OP_PIN_RESET },
 	{ NULL, 0 }
 };
 static struct map		fileTypeNames[] = {
@@ -167,6 +170,12 @@ static struct map		pinFlagNames[] = {
 	{ "integrity-protected",	0x0200			},
 	{ "confidentiality-protected",	0x0400			},
 	{ "exchangeRefData",		0x0800			},
+	{ NULL, 0 }
+};
+static struct map		idStyleNames[] = {
+	{ "native",		SC_PKCS15INIT_ID_STYLE_NATIVE },
+	{ "mozilla",		SC_PKCS15INIT_ID_STYLE_MOZILLA },
+	{ "rfc2459",		SC_PKCS15INIT_ID_STYLE_RFC2459 },
 	{ NULL, 0 }
 };
 static struct {
@@ -280,6 +289,7 @@ sc_profile_new(void)
 	pro->pin_minlen = 4;
 	pro->pin_maxlen = 8;
 	pro->keep_public_key = 1;
+	pro->id_style = SC_PKCS15INIT_ID_STYLE_NATIVE; 
 
 	return pro;
 }
@@ -778,6 +788,12 @@ static int
 do_encode_update_field(struct state *cur, int argc, char **argv)
 {
 	return get_bool(cur, argv[0], &cur->profile->pkcs15.do_last_update);
+}
+
+static int
+do_pkcs15_id_style(struct state *cur, int argc, char **argv)
+{
+	return map_str2int(cur, argv[0], &cur->profile->id_style, idStyleNames);
 }
 
 /*
@@ -1525,6 +1541,7 @@ static struct command	p15_commands[] = {
  { "direct-certificates", 1,	1,	do_direct_certificates },
  { "encode-df-length",	1,	1,	do_encode_df_length },
  { "do-last-update", 1, 1, do_encode_update_field },
+ { "pkcs15-id-style", 1, 1, do_pkcs15_id_style },
  { NULL, 0, 0, NULL }
 };
 
