@@ -355,7 +355,7 @@ static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
 	u8 				buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 				pathbuf[SC_MAX_PATH_SIZE], *path;
 	sc_context_t 	*ctx;
-	sc_apdu_t 		apdu, rapdu;
+	sc_apdu_t 		apdu;
 	sc_file_t 		*file;
 
 	r = pathlen = stripped_len = offset = 0;
@@ -454,7 +454,6 @@ static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
 	if (stripped_len > 0 && apdu.sw1 == 0x6A && apdu.sw2 == 0x82) {
 		sc_file_t *file = NULL;
 		sc_path_t tpath;
-		int i;
 
 		/* Restore original path value */
 		path -= stripped_len;
