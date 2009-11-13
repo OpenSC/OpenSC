@@ -198,7 +198,7 @@ static int myeid_read_binary(struct sc_card *card, unsigned int idx,
 static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen) 
 {
 	struct sc_apdu apdu;
-	int r,i;
+	int r;
 
         SC_FUNC_CALLED(card->ctx, 1);
 
@@ -394,7 +394,7 @@ static int myeid_create_file(struct sc_card *card, struct sc_file *file)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_FILE_ALREADY_EXISTS);
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_FUNC_RETURN(card->ctx, r, "Card returned error");
 }
 
 /* no record oriented file services */
