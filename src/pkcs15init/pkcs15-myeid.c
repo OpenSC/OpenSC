@@ -47,6 +47,8 @@ static int myeid_create_pin_internal(sc_profile_t *, sc_card_t *,
 
 static int myeid_puk_retries(sc_profile_t *profile, sc_pkcs15_pin_info_t *pin_info);
 
+#if 0
+/* FIXME: Not used, remove */
 static int acl_to_byte(const struct sc_acl_entry *e)
 {
 	switch (e->method) {
@@ -65,6 +67,7 @@ static int acl_to_byte(const struct sc_acl_entry *e)
 	}
 	return 0x00;
 }
+#endif
 
 /*
  * Erase the card.
@@ -124,7 +127,6 @@ static int myeid_init_card(sc_profile_t *profile,
 			   sc_card_t *card)
 {
 	struct	sc_path path;
-	sc_file_t *file;
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -141,7 +143,6 @@ static int myeid_init_card(sc_profile_t *profile,
 static int myeid_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
 {
 	int	r=0;
-	struct sc_file *file;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (!profile || !card || !df)
@@ -163,7 +164,6 @@ static int myeid_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *d
 static int myeid_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 		sc_pkcs15_pin_info_t *pin_info)
 {
-	sc_pkcs15_pin_info_t pin_info_prof;
 	int type;
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -311,10 +311,7 @@ static int myeid_generate_store_key(sc_profile_t *profile, sc_card_t *card,
 		sc_pkcs15_prkey_info_t *info)
 {
 	struct sc_cardctl_myeid_gen_store_key_info args;
-	struct sc_cardctl_myeid_data_obj data_obj;
-	unsigned char raw_pubkey[256];
 	int           r;
-	unsigned int  mod_len;
 	sc_file_t    *prkf = NULL;
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -398,10 +395,8 @@ static int myeid_create_pin_internal(sc_profile_t *profile, sc_card_t *card,
 		const u8 *puk, size_t puk_len)
 {
 	u8  data[20];
-	int so_pin_ref;
 	int	r,type, puk_tries;
 	struct sc_cardctl_myeid_data_obj data_obj;
-	sc_file_t *pinfile = NULL;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "pin (%d), pin_len (%d), puk_len(%d) \n",
