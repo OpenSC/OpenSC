@@ -581,7 +581,6 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 static int piv_get_data(sc_card_t * card, int enumtag, 
 			u8 **buf, size_t *buf_len)
 {
-	piv_private_data_t * priv = PIV_DATA(card);
 	u8 *p;
 	int r = 0;
 	u8 tagbuf[8];
