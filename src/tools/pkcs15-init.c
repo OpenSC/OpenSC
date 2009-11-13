@@ -36,6 +36,13 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <assert.h>
+#ifdef HAVE_STRING_H
+#include <string.h>
+#endif
+#include <openssl/opensslv.h>
+#if OPENSSL_VERSION_NUMBER >= 0x00907000L
+#include <openssl/conf.h>
+#endif
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
@@ -45,6 +52,12 @@
 #include <openssl/bn.h>
 #include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#include <openssl/opensslconf.h> /* for OPENSSL_NO_EC */
+#ifndef OPENSSL_NO_EC
+#include <openssl/ec.h>
+#endif /* OPENSSL_NO_EC */
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 #include <opensc/cardctl.h>
 #include <opensc/pkcs15.h>
 #include <opensc/pkcs15-init.h>
@@ -89,6 +102,7 @@ static int	do_store_data_object(struct sc_profile *profile);
 
 static void	set_secrets(struct sc_profile *);
 static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
+static void	init_gost_params(struct sc_pkcs15init_keyarg_gost_params *, EVP_PKEY *);
 static int	get_new_pin(sc_ui_hints_t *, const char *, const char *,
 			char **);
 static int	get_pin_callback(struct sc_profile *profile,
@@ -107,7 +121,7 @@ static int	do_read_certificate(const char *, const char *, X509 **);
 static void	parse_commandline(int argc, char **argv);
 static void	read_options_file(const char *);
 static void	ossl_print_errors(void);
-static void set_userpin_ref(void);
+static void	set_userpin_ref(void);
 
 
 enum {
@@ -132,7 +146,7 @@ enum {
 	OPT_PUK2     = 0x10003,
 	OPT_SERIAL   = 0x10004,
 	OPT_NO_SOPIN = 0x10005,
-	OPT_NO_PROMPT= 0x10006,
+	OPT_NO_PROMPT= 0x10006
 };
 
 const struct option	options[] = {
@@ -343,6 +357,9 @@ main(int argc, char **argv)
 	unsigned int		n;
 	int			r = 0;
 
+#if OPENSSL_VERSION_NUMBER >= 0x00907000L
+	OPENSSL_config(NULL);
+#endif
 	/* OpenSSL magic */
 	SSLeay_add_all_algorithms();
 	CRYPTO_malloc_init();
@@ -766,6 +783,8 @@ do_store_private_key(struct sc_profile *profile)
 
 	if ((r = do_convert_private_key(&args.key, pkey)) < 0)
 		return r;
+	init_gost_params(&args.gost_params, pkey);
+
 	if (ncerts) {
 		unsigned int	usage;
 
@@ -916,8 +935,11 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 
 	if (pkey == NULL)
 		r = do_read_public_key(opt_infile, opt_format, &pkey);
-	if (r >= 0)
+	if (r >= 0) {
 		r = do_convert_public_key(&args.key, pkey);
+		if (r >= 0)
+			init_gost_params(&args.gost_params, pkey);
+	}
 	if (r >= 0)
 		r = sc_pkcs15init_store_public_key(p15card, profile,
 					&args, &dummy);
@@ -1349,6 +1371,14 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_DSA;
 		evp_algo = EVP_PKEY_DSA;
 		spec += 3;
+	} else if (!strncasecmp(spec, "gost2001", strlen("gost2001"))) {
+		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_GOSTR3410;
+		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
+		/* FIXME: now only SC_PKCS15_PARAMSET_GOSTR3410_A */
+		keygen_args.prkey_args.gost_params.gostr3410 =
+			SC_PKCS15_PARAMSET_GOSTR3410_A;
+		evp_algo = 0; /* FIXME */
+		spec += strlen("gost2001");
 	} else {
 		util_error("Unknown algorithm \"%s\"", spec);
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1438,6 +1468,36 @@ static int init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 	args->label = opt_label;
 	args->x509_usage = opt_x509_usage;
 	return 0;
+}
+
+static void
+init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+	EC_KEY *key;
+
+	assert(pkey);
+	if (EVP_PKEY_id(pkey) == NID_id_GostR3410_2001) {
+		key = EVP_PKEY_get0(pkey);
+		assert(key);
+		assert(params);
+		assert(EC_KEY_get0_group(key));
+		assert(EC_GROUP_get_curve_name(EC_KEY_get0_group(key)) > 0);
+		switch (EC_GROUP_get_curve_name(EC_KEY_get0_group(key))) {
+		case NID_id_GostR3410_2001_CryptoPro_A_ParamSet:
+			params->gostr3410 = SC_PKCS15_PARAMSET_GOSTR3410_A;
+			break;
+		case NID_id_GostR3410_2001_CryptoPro_B_ParamSet:
+			params->gostr3410 = SC_PKCS15_PARAMSET_GOSTR3410_B;
+			break;
+		case NID_id_GostR3410_2001_CryptoPro_C_ParamSet:
+			params->gostr3410 = SC_PKCS15_PARAMSET_GOSTR3410_C;
+			break;
+		}
+	}
+#else
+	(void)params, (void)pkey; /* no warning */
+#endif
 }
 
 /*
@@ -2079,7 +2139,7 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen)
 }
 
 static int
-do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
+do_convert_bignum(sc_pkcs15_bignum_t *dst, const BIGNUM *src)
 {
 	if (src == 0)
 		return 0;
@@ -2124,6 +2184,18 @@ static int do_convert_private_key(struct sc_pkcs15_prkey *key, EVP_PKEY *pk)
 		DSA_free(src);
 		break;
 		}
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+	case NID_id_GostR3410_2001: {
+		struct sc_pkcs15_prkey_gostr3410 *dst = &key->u.gostr3410;
+		EC_KEY *src = EVP_PKEY_get0(pk);
+
+		assert(src);
+		key->algorithm = SC_ALGORITHM_GOSTR3410;
+		assert(EC_KEY_get0_private_key(src));
+		do_convert_bignum(&dst->d, EC_KEY_get0_private_key(src));
+		break;
+		}
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC) */
 	default:
 		util_fatal("Unsupported key algorithm\n");
 	}
@@ -2157,6 +2229,35 @@ static int do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
 		DSA_free(src);
 		break;
 		}
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+	case NID_id_GostR3410_2001: {
+		struct sc_pkcs15_pubkey_gostr3410 *dst = &key->u.gostr3410;
+		EC_KEY *eckey = EVP_PKEY_get0(pk);
+		const EC_POINT *point;
+		BIGNUM *X, *Y;
+		int r = 0;
+
+		assert(eckey);
+		point = EC_KEY_get0_public_key(eckey);
+		if (!point)
+			return SC_ERROR_INTERNAL;
+		X = BN_new();
+		Y = BN_new();
+		if (X && Y && EC_KEY_get0_group(eckey))
+			r = EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(eckey),
+					point, X, Y, NULL);
+		if (r == 1) {
+			do_convert_bignum(&dst->x, X);
+			do_convert_bignum(&dst->y, Y);
+			key->algorithm = SC_ALGORITHM_GOSTR3410;
+		}
+		BN_free(X);
+		BN_free(Y);
+		if (r != 1)
+			return SC_ERROR_INTERNAL;
+		break;
+		}
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC) */
 	default:
 		util_fatal("Unsupported key algorithm\n");
 	}
