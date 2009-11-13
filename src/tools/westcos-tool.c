@@ -270,7 +270,6 @@ static int creation_fichier_cert(sc_card_t *card)
 	int size;
 	sc_path_t path;
 	sc_file_t *file = NULL;
-	sc_context_t *ctx = card->ctx;
 
 	sc_format_path("3F00", &path);
 	r = sc_select_file(card, &path, &file);
@@ -729,7 +728,7 @@ int main(int argc, char *argv[])
 
 			file->path = path;
 
-			printf("File key creation %s, size %d.\n", file->path.value, 
+			printf("File key creation %s, size %zd.\n", file->path.value, 
 				file->size);
 
 			r = sc_create_file(card, file);
@@ -746,7 +745,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		printf("Private key length is %d\n", lg);
+		printf("Private key length is %zd\n", lg);
 
 		printf("Write private key.\n");
 		r = sc_update_binary(card,0,pdata,lg,0);
@@ -763,7 +762,7 @@ int main(int argc, char *argv[])
 		r = sc_pkcs15_encode_pubkey(ctx, &key, &pdata, &lg);
 		if(r) goto out;
 
-		printf("Public key length %d\n", lg);
+		printf("Public key length %zd\n", lg);
 
 		sc_format_path("3F000002", &path);
 		r = sc_select_file(card, &path, NULL);
