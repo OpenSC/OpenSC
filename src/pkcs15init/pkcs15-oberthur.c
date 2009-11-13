@@ -152,7 +152,7 @@ cosm_update_pukfile (struct sc_card *card, struct sc_profile *profile,
 {
 	struct sc_pkcs15_pin_info profile_puk;
 	struct sc_file *file = NULL;
-	int rv, sz, flags = 0;
+	int rv;
 	unsigned char buffer[16];
 
 	SC_FUNC_CALLED(card->ctx, 1);
