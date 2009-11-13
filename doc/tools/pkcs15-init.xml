@@ -342,6 +342,17 @@
 				</varlistentry>
 
 				<varlistentry>
+					<term><option>--use-default-transport-keys</option>,
+					<option>-T</option></term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to not ask for the transport
+							keys and use default keys, as known by the card driver.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
 					<term><option>--so-pin, --so-puk, --pin, --puk</option></term>
 					<listitem>
 						<para>

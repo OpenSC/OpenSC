@@ -227,7 +227,7 @@ static const char *		option_help[] = {
 	"Private key stored as an extractable key",
 	"Insecure mode: do not require PIN/passphrase for private key",
 	"Use software key generation, even if the card supports on-board key generation",
-	"Always ask for transport keys etc, even if the driver thinks it knows the key",
+	"Do not ask for transport keys if the driver thinks it knows the key",
 	"Do not prompt the user, except for PINs",
 
 	"Specify the general profile to use",
