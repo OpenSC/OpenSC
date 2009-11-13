@@ -692,8 +692,8 @@ int sc_pkcs15_bind(sc_card_t *card,
 {
 	struct sc_pkcs15_card *p15card = NULL;
 	sc_context_t *ctx;
-	scconf_block *conf_block = NULL, **blocks;
-	int    i, r, emu_first, enable_emu;
+	scconf_block *conf_block = NULL;
+	int r, emu_first, enable_emu;
 
 	assert(sc_card_valid(card) && p15card_out != NULL);
 	ctx = card->ctx;
