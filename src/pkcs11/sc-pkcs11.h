@@ -67,7 +67,7 @@ struct sc_pkcs11_card;
 
 /* Object Pool */
 struct sc_pkcs11_pool_item {
-	int handle;
+	unsigned long int handle;
 	void *item;
 	struct sc_pkcs11_pool_item *next;
 	struct sc_pkcs11_pool_item *prev;
