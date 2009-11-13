@@ -1753,13 +1753,13 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 			goto kpgen_done;
 		}
 
-  	/* Write the new public and private keys to the pkcs15 files */
-  	/* To support smartcards that require different keybobjects for signing and encryption */
+		/* Write the new public and private keys to the pkcs15 files */
+		/* To support smartcards that require different keybobjects for signing and encryption */
 		if (sc_pkcs15init_requires_restrictive_usage(p15card, &keygen_args.prkey_args, 0)) {
 			sc_debug(context, "store split key required for this card", rv);
 			/* second key is the signature keyobject */
 			rc = sc_pkcs15init_store_split_key(p15card, profile, &keygen_args.prkey_args, NULL, &priv_key_obj);
-		} 
+		}
 		else {
 			rc = sc_pkcs15init_store_private_key(p15card, profile, &keygen_args.prkey_args, &priv_key_obj);
 		}
