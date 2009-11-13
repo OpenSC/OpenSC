@@ -59,6 +59,10 @@
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>
+					<term><option>--wait, -w</option></term>
+					<listitem><para>Wait for a card to be inserted</para></listitem>
+				</varlistentry>
+				<varlistentry>
 					<term><option>--verbose, -v</option></term>
 					<listitem><para>
 						Causes <command>opensc-explorer</command> to be more
@@ -150,18 +154,6 @@
 				<term><option>mkdir</option> <varname>file-id</varname> <varname>size</varname></term>
 				<listitem><para>create a DF.  <varname>file-id</varname> specifies the id number
 				and <varname>size</varname> is the size of the new file.</para></listitem>
-			</varlistentry>
-
-			<varlistentry>
-				<term><option>pksign</option></term>
-				<listitem><para>create a public key signature.  NOTE: This command is currently not implemented.
-				</para></listitem>
-			</varlistentry>
-
-			<varlistentry>
-				<term><option>pkdecrypt</option></term>
-				<listitem><para>perform a public key decryption.  NOTE: This command is currently not implemented.
-				</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
