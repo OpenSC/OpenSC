@@ -67,7 +67,7 @@ struct sc_pkcs11_card;
 
 /* Object Pool */
 struct sc_pkcs11_pool_item {
-	int handle;
+	unsigned long int handle;
 	void *item;
 	struct sc_pkcs11_pool_item *next;
 	struct sc_pkcs11_pool_item *prev;
@@ -92,7 +92,6 @@ struct sc_pkcs11_config {
 	unsigned int slots_per_card;
 	unsigned char hide_empty_tokens;
 	unsigned char lock_login;
-	unsigned char cache_pins;
 	unsigned char soft_keygen_allowed;
 };
 

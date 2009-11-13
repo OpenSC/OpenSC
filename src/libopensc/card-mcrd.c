@@ -758,9 +758,7 @@ select_part(sc_card_t * card, u8 kind, unsigned short int fid,
 
 	fbuf[0] = fid >> 8;
 	fbuf[1] = fid & 0xff;
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = do_select(card, kind, fbuf, 2, file);
-	sc_ctx_suppress_errors_off(card->ctx);
 
 	return r;
 }
@@ -1312,8 +1310,6 @@ static int mcrd_decipher(sc_card_t * card,
 	apdu.data = crgram;
 	apdu.datalen = crgram_len;
 	apdu.lc = apdu.datalen;
-
-	apdu.sensitive = 1;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");

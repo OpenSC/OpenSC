@@ -273,7 +273,7 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 		}
 		break;
 	default:
-		sc_error(ctx, "Unsupported public key type: %X\n", obj->type);
+		sc_debug(ctx, "Unsupported public key type: %X\n", obj->type);
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_INTERNAL);
 		break;
 	}
@@ -484,7 +484,7 @@ sc_pkcs15_encode_pubkey(sc_context_t *ctx,
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_encode_pubkey_gostr3410(ctx,
 				&key->u.gostr3410, buf, len);
-	sc_error(ctx, "Encoding of public key type %u not supported\n",
+	sc_debug(ctx, "Encoding of public key type %u not supported\n",
 			key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -501,7 +501,7 @@ sc_pkcs15_decode_pubkey(sc_context_t *ctx,
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_decode_pubkey_gostr3410(ctx,
 				&key->u.gostr3410, buf, len);
-	sc_error(ctx, "Decoding of public key type %u not supported\n",
+	sc_debug(ctx, "Decoding of public key type %u not supported\n",
 			key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -534,14 +534,14 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 		algorithm = SC_ALGORITHM_GOSTR3410;
 		break;
 	default:
-		sc_error(p15card->card->ctx, "Unsupported public key type.");
+		sc_debug(p15card->card->ctx, "Unsupported public key type.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	info = (const struct sc_pkcs15_pubkey_info *) obj->data;
 
 	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
 	if (r < 0) {
-		sc_error(p15card->card->ctx, "Failed to read public key file.");
+		sc_debug(p15card->card->ctx, "Failed to read public key file.");
 		return r;
 	}
 
@@ -583,7 +583,7 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx,
 		struct sc_pkcs15_prkey *prvkey, struct sc_pkcs15_pubkey **out)
 {
 	struct sc_pkcs15_pubkey *pubkey;
-	int ii, rv = SC_SUCCESS;
+	int rv = SC_SUCCESS;
 
 	assert(prvkey && out);
 
@@ -611,7 +611,7 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx,
 	case SC_ALGORITHM_GOSTR3410:
 		break;
 	default:
-		sc_error(ctx, "Unsupported private key algorithm");
+		sc_debug(ctx, "Unsupported private key algorithm");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 

@@ -1604,6 +1604,7 @@ ATTR_METHOD(SENSITIVE, CK_BBOOL);
 ATTR_METHOD(ALWAYS_SENSITIVE, CK_BBOOL);
 ATTR_METHOD(NEVER_EXTRACTABLE, CK_BBOOL);
 #endif
+ATTR_METHOD(ALWAYS_AUTHENTICATE, CK_BBOOL);
 ATTR_METHOD(PRIVATE, CK_BBOOL);
 ATTR_METHOD(MODIFIABLE, CK_BBOOL);
 ATTR_METHOD(ENCRYPT, CK_BBOOL);
@@ -1722,6 +1723,10 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 	if (!*sepa)
 		printf("none");
 	printf("\n");
+
+	if (!pub && getALWAYS_AUTHENTICATE(sess, obj)) {
+		printf("  Access:     always authenticate\n");
+	}
 }
 
 static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)

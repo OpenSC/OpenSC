@@ -37,6 +37,7 @@ typedef unsigned __int8 uint8_t;
 
 #define SCARD_SHARE_EXCLUSIVE		0x0001	/**< Exclusive mode only */
 #define SCARD_SHARE_SHARED		0x0002	/**< Shared mode only */
+#define SCARD_SHARE_DIRECT		0x0003	/**< Raw mode only */
 
 #define SCARD_LEAVE_CARD		0x0000	/**< Do nothing on close */
 #define SCARD_RESET_CARD		0x0001	/**< Reset on close */
@@ -49,6 +50,8 @@ typedef unsigned __int8 uint8_t;
 #define SCARD_E_INVALID_HANDLE		0x80100003 /**< The supplied handle was invalid. */
 #define SCARD_E_TIMEOUT			0x8010000A /**< The user-specified timeout value has expired. */
 #define SCARD_E_SHARING_VIOLATION	0x8010000B /**< The smart card cannot be accessed because of other connections outstanding. */
+#define SCARD_E_NO_SMARTCARD		0x8010000C /**< The operation requires a smart card, but no smart card is currently in the device. */
+#define SCARD_E_PROTO_MISMATCH		0x8010000F /**< The requested protocols are incompatible with the protocol currently in use with the smart card. */
 #define SCARD_E_NOT_TRANSACTED		0x80100016 /**< An attempt was made to end a non-existent transaction. */
 #define SCARD_E_READER_UNAVAILABLE	0x80100017 /**< The specified reader is not currently available for use. */
 #define SCARD_E_NO_SERVICE		0x8010001D /**< The Smart card resource manager is not running. */

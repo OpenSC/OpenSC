@@ -624,11 +624,9 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 		apdu.datalen = p - sbuf;
 		apdu.lc      = p - sbuf;
 		apdu.le      = 0;
-		/* suppress errors, as don't know whether to use 
+		/* we don't know whether to use 
 		 * COMPUTE SIGNATURE or INTERNAL AUTHENTICATE */
-		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_transmit_apdu(card, &apdu);
-		sc_ctx_suppress_errors_off(card->ctx);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			ex_data->fix_digestInfo = 0;
@@ -708,7 +706,6 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 
 		apdu.lc = 0;
 		apdu.datalen = 0;
-		apdu.sensitive = 1;
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
@@ -783,7 +780,6 @@ static int atrust_acos_decipher(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
-	apdu.sensitive = 1;
 	
 	sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
 	memcpy(sbuf + 1, crgram, crgram_len);
@@ -816,7 +812,7 @@ static int atrust_acos_check_sw(struct sc_card *card, unsigned int sw1,
 		return SC_NO_ERROR;
 	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
 	{
-		sc_error(card->ctx, "Verification failed (remaining tries: %d)\n",
+		sc_debug(card->ctx, "Verification failed (remaining tries: %d)\n",
 		(sw2 & 0x0f));
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
@@ -889,9 +885,7 @@ static int atrust_acos_logout(struct sc_card *card)
 	apdu.datalen = 2;
 	apdu.resplen = 0;
 	
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_transmit_apdu(card, &apdu);
-	sc_ctx_suppress_errors_off(card->ctx);
 	SC_TEST_RET(card->ctx, r, "APDU re-transmit failed");
 
 	if (apdu.sw1 == 0x69 && apdu.sw2 == 0x85)

@@ -92,7 +92,6 @@ f none usr/include/opensc/rsaref/win32.h 0644 root bin
 f none usr/include/opensc/scconf.h 0644 root bin
 f none usr/include/opensc/opensc.h 0644 root bin
 f none usr/include/opensc/pkcs15.h 0644 root bin
-f none usr/include/opensc/emv.h 0644 root bin
 f none usr/include/opensc/cardctl.h 0644 root bin
 f none usr/include/opensc/asn1.h 0644 root bin
 f none usr/include/opensc/log.h 0644 root bin

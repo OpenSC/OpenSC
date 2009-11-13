@@ -46,12 +46,6 @@ static const char *myeid_atrs[] = {
 	NULL
 };
 
-
-static int myeid_finish(struct sc_card *card)
-{  
-	return 0;
-}
-
 static int myeid_match_card(struct sc_card *card)
 {
 	int i, match = -1;
@@ -198,7 +192,7 @@ static int myeid_read_binary(struct sc_card *card, unsigned int idx,
 static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen) 
 {
 	struct sc_apdu apdu;
-	int r,i;
+	int r;
 
         SC_FUNC_CALLED(card->ctx, 1);
 
@@ -360,7 +354,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 		}
 		break;
 	default:
-		sc_error(card->ctx, "Unknown file type\n");
+		sc_debug(card->ctx, "Unknown file type\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -394,7 +388,7 @@ static int myeid_create_file(struct sc_card *card, struct sc_file *file)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_FILE_ALREADY_EXISTS);
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_FUNC_RETURN(card->ctx, r, "Card returned error");
 }
 
 /* no record oriented file services */
@@ -443,7 +437,7 @@ static int myeid_delete_file(struct sc_card *card, const struct sc_path *path)
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) 
 	{
-		sc_error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		sc_debug(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	r = sc_select_file(card, path, NULL);
@@ -496,12 +490,12 @@ static int myeid_set_security_env2(sc_card_t *card, const sc_security_env_t *env
 	
 	if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC) 
 	{
-		sc_error(card->ctx, "asymmetric keyref not supported.\n");
+		sc_debug(card->ctx, "asymmetric keyref not supported.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (se_num > 0) 
 	{
-		sc_error(card->ctx, "restore security environment not supported.\n");
+		sc_debug(card->ctx, "restore security environment not supported.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -592,7 +586,7 @@ static int myeid_set_security_env(struct sc_card *card,
 		tmp.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 		if (tmp.algorithm != SC_ALGORITHM_RSA) 
 		{
-			sc_error(card->ctx, "Only RSA algorithm supported.\n");
+			sc_debug(card->ctx, "Only RSA algorithm supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		
@@ -644,7 +638,6 @@ static int myeid_compute_signature(struct sc_card *card, const u8 * data,
 	}
 
         apdu.data = sbuf;
-        apdu.sensitive = 1;
         r = sc_transmit_apdu(card, &apdu);
         SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 
@@ -684,7 +677,6 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = crgram_len;
-	apdu.sensitive = 1;
 
 	if (crgram_len == 256) 
 	{		apdu.le = 0;
@@ -713,7 +705,6 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 			apdu.resp = rbuf;
 			apdu.resplen = sizeof(rbuf);
 			apdu.le = crgram_len;
-			apdu.sensitive = 1;
 			/* padding indicator byte, 
 			 * 0x82 = Second half of 2048 bit cryptogram */
 			sbuf[0] = 0x82; 
@@ -1040,7 +1031,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops                   = *iso_drv->ops;
 	myeid_ops.match_card        = myeid_match_card;
 	myeid_ops.init              = myeid_init;
-	myeid_ops.finish            = myeid_finish;
 	if (iso_ops == NULL)
 		iso_ops = iso_drv->ops;
 	myeid_ops.read_binary       = myeid_read_binary;

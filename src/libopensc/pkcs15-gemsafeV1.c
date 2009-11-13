@@ -144,7 +144,7 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path,
 	sc_debug(card->ctx, "%s: Certificate object is of size: %d\n", fn_name, objlen);
 
 	if (objlen < 1 || objlen > 10240) {
-	    sc_error(card->ctx, "%s: Invalid object size: %d\n", fn_name, objlen);
+	    sc_debug(card->ctx, "%s: Invalid object size: %d\n", fn_name, objlen);
 	    return 0;
 	}
 
@@ -184,7 +184,7 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path,
 		offset = block*248;
 		r = sc_read_binary(card, offset, ibuf, 248, 0);
 		if (r < 0) {
-		    sc_error(card->ctx, "%s: Could not read cert object\n", fn_name);
+		    sc_debug(card->ctx, "%s: Could not read cert object\n", fn_name);
 		    return 0;
 		}
 	    }
@@ -416,7 +416,7 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 		df_type = SC_PKCS15_CDF;
 		break;
 	default:
-		sc_error(p15card->card->ctx,
+		sc_debug(p15card->card->ctx,
 			"Unknown PKCS15 object type %d\n", type);
 		free(obj);
 		return SC_ERROR_INVALID_ARGUMENTS;

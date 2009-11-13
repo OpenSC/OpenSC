@@ -188,7 +188,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 #endif
 
 	if (context != NULL) {
-		sc_error(context, "C_Initialize(): Cryptoki already initialized\n");
+		sc_debug(context, "C_Initialize(): Cryptoki already initialized\n");
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 
@@ -204,7 +204,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	
 	rc = sc_context_create(&context, &ctx_opts);
 	if (rc != SC_SUCCESS) {
-		rv = CKR_DEVICE_ERROR;
+		rv = CKR_GENERAL_ERROR;
 		goto out;
 	}
 
@@ -628,7 +628,7 @@ again:
 		return rv;
 
 	if (r != SC_SUCCESS) {
-		sc_error(context, "sc_wait_for_event() returned %d\n",  r);
+		sc_debug(context, "sc_wait_for_event() returned %d\n",  r);
 		rv = sc_to_cryptoki_error(r, -1);
 		goto out;
 	}

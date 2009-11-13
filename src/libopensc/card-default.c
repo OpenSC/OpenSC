@@ -29,11 +29,6 @@ static struct sc_card_driver default_drv = {
 	NULL, 0, NULL
 };
 
-static int default_finish(sc_card_t *card)
-{
-	return 0;
-}
-
 static int default_match_card(sc_card_t *card)
 {
 	return 1;		/* always match */
@@ -84,12 +79,12 @@ static int autodetect_class(sc_card_t *card)
 		if (card->ctx->debug >= 2)
 			sc_debug(card->ctx, "SELECT FILE returned %d bytes\n",
 			      apdu.resplen);
-		return 0;
+		return SC_SUCCESS;
 	}
 	if (rbuf[0] == 0x6F) {
 		if (card->ctx->debug >= 2)
 			sc_debug(card->ctx, "SELECT FILE seems to behave according to ISO 7816-4\n");
-		return 0;
+		return SC_SUCCESS;
 	}
 	if (rbuf[0] == 0x00 && rbuf[1] == 0x00) {
 		struct sc_card_driver *drv;
@@ -97,24 +92,24 @@ static int autodetect_class(sc_card_t *card)
 			sc_debug(card->ctx, "SELECT FILE seems to return Schlumberger 'flex stuff\n");
 		drv = sc_get_cryptoflex_driver();
 		card->ops->select_file = drv->ops->select_file;
-		return 0;
+		return SC_SUCCESS;
 	}
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int default_init(sc_card_t *card)
 {
 	int r;
 	
-	card->name = "Unidentified card";
+	card->name = "Unsupported card";
 	card->drv_data = NULL;
 	r = autodetect_class(card);
 	if (r) {
-		sc_error(card->ctx, "unable to determine the right class byte\n");
+		sc_debug(card->ctx, "unable to determine the right class byte\n");
 		return SC_ERROR_INVALID_CARD;
 	}
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 static struct sc_card_driver * sc_get_driver(void)
@@ -124,14 +119,11 @@ static struct sc_card_driver * sc_get_driver(void)
 	default_ops = *iso_drv->ops;
 	default_ops.match_card = default_match_card;
 	default_ops.init = default_init;
-	default_ops.finish = default_finish;
 
 	return &default_drv;
 }
 
-#if 1
 struct sc_card_driver * sc_get_default_driver(void)
 {
 	return sc_get_driver();
 }
-#endif

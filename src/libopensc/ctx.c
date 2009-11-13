@@ -71,6 +71,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "oberthur",	(void *(*)(void)) sc_get_oberthur_driver },
 #endif
 	{ "belpic",	(void *(*)(void)) sc_get_belpic_driver },
+	{ "ias",		(void *(*)(void)) sc_get_ias_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
 	{ "muscle", (void *(*)(void)) sc_get_muscle_driver },
 	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
@@ -86,8 +87,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
 	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
         { "myeid",      (void *(*)(void)) sc_get_myeid_driver },
-	/* emv is not really used, not sure if it works, but it conflicts with
-           muscle and rutoken driver, thus has to be after them */
+	/* emv is not really implemented */
 	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
@@ -177,13 +177,9 @@ static void add_internal_drvs(struct _sc_ctx_options *opts, int type)
 static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 {
 	ctx->debug = 0;
-	if (ctx->debug_file && ctx->debug_file != stdout)
+	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
 		fclose(ctx->debug_file);
-	ctx->debug_file = stdout;
-	ctx->suppress_errors = 0;
-	if (ctx->error_file && ctx->error_file != stderr)
-		fclose(ctx->error_file);
-	ctx->error_file = stderr;
+	ctx->debug_file = stderr;
 	ctx->forced_driver = NULL;
 	add_internal_drvs(opts, 0);
 	add_internal_drvs(opts, 1);
@@ -204,21 +200,14 @@ static int load_parameters(sc_context_t *ctx, scconf_block *block,
 
 	val = scconf_get_str(block, "debug_file", NULL);
 	if (val) {
-		if (ctx->debug_file && ctx->debug_file != stdout)
+		if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
 			fclose(ctx->debug_file);
-		if (strcmp(val, "stdout") != 0)
-			ctx->debug_file = fopen(val, "a");
+		if (!strcmp(val, "stdout"))
+		        ctx->debug_file = stdout;
+                else if (!strcmp(val, "stderr"))
+                        ctx->debug_file = stderr;
 		else
-			ctx->debug_file = stdout;
-	}
-	val = scconf_get_str(block, "error_file", NULL);
-	if (val) {
-		if (ctx->error_file && ctx->error_file != stderr)
-			fclose(ctx->error_file);
-		if (strcmp(val, "stderr") != 0)
-			ctx->error_file = fopen(val, "a");
-		else
-			ctx->error_file = stderr;
+		        ctx->debug_file = fopen(val, "a");
 	}
 	val = scconf_get_str(block, "force_card_driver", NULL);
 	if (val) {
@@ -340,7 +329,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 	const char *(**tmodv)(void) = &modversion;
 
 	if (name == NULL) { /* should not occurr, but... */
-		sc_error(ctx,"No module specified\n",name);
+		sc_debug(ctx,"No module specified\n",name);
 		return NULL;
 	}
 	libname = find_library(ctx, name, type);
@@ -348,7 +337,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 		return NULL;
 	handle = lt_dlopen(libname);
 	if (handle == NULL) {
-		sc_error(ctx, "Module %s: cannot load %s library: %s\n", name, libname, lt_dlerror());
+		sc_debug(ctx, "Module %s: cannot load %s library: %s\n", name, libname, lt_dlerror());
 		return NULL;
 	}
 
@@ -356,7 +345,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 	*(void **)tmodi = lt_dlsym(handle, "sc_module_init");
 	*(void **)tmodv = lt_dlsym(handle, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
-		sc_error(ctx, "dynamic library '%s' is not a OpenSC module\n",libname);
+		sc_debug(ctx, "dynamic library '%s' is not a OpenSC module\n",libname);
 		lt_dlclose(handle);
 		return NULL;
 	}
@@ -364,7 +353,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 	version = modversion();
 	/* XXX: We really need to have ABI version for each interface */
 	if (version == NULL || strncmp(version, PACKAGE_VERSION, strlen(PACKAGE_VERSION)) != 0) {
-		sc_error(ctx,"dynamic library '%s': invalid module version\n",libname);
+		sc_debug(ctx,"dynamic library '%s': invalid module version\n",libname);
 		lt_dlclose(handle);
 		return NULL;
 	}
@@ -401,7 +390,7 @@ static int load_reader_drivers(sc_context_t *ctx,
 			*(void**)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name, 0);
 		/* if still null, assume driver not found */
 		if (func == NULL) {
-			sc_error(ctx, "Unable to load '%s'.\n", ent->name);
+			sc_debug(ctx, "Unable to load '%s'.\n", ent->name);
 			continue;
 		}
 		driver = func();
@@ -464,7 +453,7 @@ static int load_card_drivers(sc_context_t *ctx,
 			*(void **)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name, 1);
 		/* if still null, assume driver not found */
 		if (func == NULL) {
-			sc_error(ctx, "Unable to load '%s'.\n", ent->name);
+			sc_debug(ctx, "Unable to load '%s'.\n", ent->name);
 			continue;
 		}
 
@@ -625,7 +614,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		if (r < 0)
 			sc_debug(ctx, "scconf_parse failed: %s", ctx->conf->errmsg);
 		else
-			sc_error(ctx, "scconf_parse failed: %s", ctx->conf->errmsg);
+			sc_debug(ctx, "scconf_parse failed: %s", ctx->conf->errmsg);
 		scconf_free(ctx->conf);
 		ctx->conf = NULL;
 		return;
@@ -675,16 +664,6 @@ sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i)
 unsigned int sc_ctx_get_reader_count(sc_context_t *ctx)
 {
 	return (unsigned int)ctx->reader_count;
-}
-
-void sc_ctx_suppress_errors_on(sc_context_t *ctx)
-{
-	ctx->suppress_errors++;
-}
-
-void sc_ctx_suppress_errors_off(sc_context_t *ctx)
-{
-	ctx->suppress_errors--;
 }
 
 int sc_establish_context(sc_context_t **ctx_out, const char *app_name)
@@ -792,16 +771,14 @@ int sc_release_context(sc_context_t *ctx)
 	if (ctx->mutex != NULL) {
 		int r = sc_mutex_destroy(ctx, ctx->mutex);
 		if (r != SC_SUCCESS) {
-			sc_error(ctx, "unable to destroy mutex\n");
+			sc_debug(ctx, "unable to destroy mutex\n");
 			return r;
 		}
 	}
 	if (ctx->conf != NULL)
 		scconf_free(ctx->conf);
-	if (ctx->debug_file && ctx->debug_file != stdout)
+	if (ctx->debug_file && (ctx->debug_file != stdout && ctx->debug_file != stderr))
 		fclose(ctx->debug_file);
-	if (ctx->error_file && ctx->error_file != stderr)
-		fclose(ctx->error_file);
 	if (ctx->app_name != NULL)
 		free(ctx->app_name);
 	sc_mem_clear(ctx, sizeof(*ctx));
@@ -902,6 +879,6 @@ int sc_make_cache_dir(sc_context_t *ctx)
 	return SC_SUCCESS;
 
 	/* for lack of a better return code */
-failed:	sc_error(ctx, "failed to create cache directory\n");
+failed:	sc_debug(ctx, "failed to create cache directory\n");
 	return SC_ERROR_INTERNAL;
 }

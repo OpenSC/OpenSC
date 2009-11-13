@@ -36,16 +36,6 @@
 #endif
 
 /* Although not used, we need this for consistent exports */
-void _sc_error(sc_context_t *ctx, const char *format, ...)
-{
-	va_list ap;
-
-	va_start(ap, format);
-	sc_do_log_va(ctx, SC_LOG_TYPE_ERROR, NULL, 0, NULL, format, ap);
-	va_end(ap);
-}
-
-/* Although not used, we need this for consistent exports */
 void _sc_debug(sc_context_t *ctx, const char *format, ...)
 {
 	va_list ap;
@@ -68,24 +58,12 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 {
 	int	(*display_fn)(sc_context_t *, const char *);
 	char	buf[1836], *p;
-	const char *tag = "";
 	int	r;
 	size_t	left;
 
 	assert(ctx != NULL);
 
 	switch (type) {
-	case SC_LOG_TYPE_ERROR:
-		if (!ctx->suppress_errors) {
-			display_fn = &sc_ui_display_error;
-			tag = "error:";
-			break;
-		}
-		/* Fall thru - suppressed errors are logged as
-		 * debug messages */
-		tag = "error (suppressed):";
-		type = SC_LOG_TYPE_DEBUG;
-
 	case SC_LOG_TYPE_DEBUG:
 		if (ctx->debug == 0)
 			return;

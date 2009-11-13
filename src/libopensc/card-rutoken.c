@@ -234,12 +234,12 @@ static int rutoken_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	for (i = 0; i < sizeof(rutoken_errors)/sizeof(rutoken_errors[0]); ++i) {
 		if (rutoken_errors[i].SWs == ((sw1 << 8) | sw2)) {
 			if ( rutoken_errors[i].errorstr )
-				sc_error(card->ctx, "%s\n", rutoken_errors[i].errorstr);
+				sc_debug(card->ctx, "%s\n", rutoken_errors[i].errorstr);
 			sc_debug(card->ctx, "sw1 = %x, sw2 = %x", sw1, sw2);
 			return rutoken_errors[i].errorno;
 		}
 	}
-	sc_error(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+	sc_debug(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -603,7 +603,7 @@ static int rutoken_delete_file(sc_card_t *card, const sc_path_t *path)
 	SC_FUNC_CALLED(card->ctx, 1);
 	if (!path || path->type != SC_PATH_TYPE_FILE_ID || (path->len != 0 && path->len != 2)) 
 	{
-		sc_error(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		sc_debug(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if (path->len == sizeof(sbuf)) 
@@ -722,7 +722,7 @@ static int rutoken_reset_retry_counter(sc_card_t *card, unsigned int type,
 	if (puk && puklen)
 	{
 		ret = rutoken_verify(card, type, ref_qualifier, puk, puklen, &left);
-		sc_error(card->ctx, "Tries left: %i\n", left);
+		sc_debug(card->ctx, "Tries left: %i\n", left);
 		SC_TEST_RET(card->ctx, ret, "Invalid 'puk' pass");
 	}
 #endif
@@ -770,7 +770,7 @@ static int rutoken_set_security_env(sc_card_t *card,
 	senv->algorithm = SC_ALGORITHM_GOST;
 	if (env->key_ref_len != 1)
 	{
-		sc_error(card->ctx, "No or invalid key reference\n");
+		sc_debug(card->ctx, "No or invalid key reference\n");
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	data[2] = env->key_ref[0];
@@ -1308,7 +1308,7 @@ static int cipher_ext(sc_card_t *card, const u8 *data, size_t len,
 			ret = SC_ERROR_INTERNAL;
 			ERR_load_crypto_strings();
 			ERR_error_string(ERR_get_error(), error);
-			sc_error(card->ctx, error);
+			sc_debug(card->ctx, error);
 			ERR_free_strings();
 		}
 	}
@@ -1504,7 +1504,7 @@ static int rutoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		case SC_CARDCTL_LIFECYCLE_SET:
 			sc_debug(card->ctx, "SC_CARDCTL_LIFECYCLE_SET not supported");
 			sc_debug(card->ctx, "returning SC_ERROR_NOT_SUPPORTED");
-			/* no call sc_error (SC_FUNC_RETURN) */
+			/* no call sc_debug (SC_FUNC_RETURN) */
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 	}

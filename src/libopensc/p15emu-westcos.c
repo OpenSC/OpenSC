@@ -34,7 +34,6 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	int modulus_length = 0, usage = 0;
 	char buf[256];
 	sc_card_t *card = p15card->card;
-	sc_context_t *ctx = card->ctx;
 	sc_serial_number_t serial;
 	sc_path_t path;
 	sc_file_t *file = NULL;
@@ -63,9 +62,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	p15card->version = buf[6];
 	p15card->flags = SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED;
 	sc_format_path("AAAA", &path);
-	sc_ctx_suppress_errors_on(ctx);
 	r = sc_select_file(card, &path, &file);
-	sc_ctx_suppress_errors_off(ctx);
 	if (!r) {
 		for (i = 0; i < 1; i++) {
 			unsigned int flags;
@@ -110,9 +107,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 		sc_file_free(file);
 	file = NULL;
 	sc_format_path("0002", &path);
-	sc_ctx_suppress_errors_on(ctx);
 	r = sc_select_file(card, &path, &file);
-	sc_ctx_suppress_errors_off(ctx);
 	if (!r) {
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
@@ -125,11 +120,9 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 		cert_info.id.value[0] = 0x45;
 		cert_info.authority = 0;
 		cert_info.path = path;
-		sc_ctx_suppress_errors_on(ctx);
 		r = sc_pkcs15_read_certificate(p15card, &cert_info,
 					       (sc_pkcs15_cert_t
 						**) (&cert_obj.data));
-		sc_ctx_suppress_errors_off(ctx);
 		if (!r) {
 			sc_pkcs15_cert_t *cert =
 			    (sc_pkcs15_cert_t *) (cert_obj.data);
@@ -189,9 +182,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 		sc_file_free(file);
 	file = NULL;
 	sc_format_path("0001", &path);
-	sc_ctx_suppress_errors_on(ctx);
 	r = sc_select_file(card, &path, &file);
-	sc_ctx_suppress_errors_off(ctx);
 	if (!r) {
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object prkey_obj;

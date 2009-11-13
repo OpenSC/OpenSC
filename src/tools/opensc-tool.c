@@ -249,11 +249,11 @@ static int list_readers(void)
 		printf("No smart card readers found.\n");
 		return 0;
 	}
-	printf("Readers known about:\n");
-	printf("Nr.    Driver     Name\n");
+	printf("Nr.    Driver     Features  Name\n");
 	for (i = 0; i < rcount; i++) {
 		sc_reader_t *screader = sc_ctx_get_reader(ctx, i);
-		printf("%-7d%-11s%s\n", i, screader->driver->short_name,
+		printf("%-7d%-11s%-10s%s\n", i, screader->driver->short_name,
+		       screader->slot[0].capabilities & SC_SLOT_CAP_PIN_PAD ? "PINpad":"",
 		       screader->name);
 	}
 	return 0;

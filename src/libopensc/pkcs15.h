@@ -71,6 +71,7 @@ struct sc_pkcs15_pin_info {
 	u8 pad_char;
 	struct sc_path path;
 	int tries_left;
+	int max_tries;
 
 	unsigned int magic;
 };
@@ -380,6 +381,13 @@ typedef struct {
 } sc_pkcs15_sec_env_info_t;
 
 typedef struct {
+	sc_pkcs15_id_t id;
+	u8 pin[SC_MAX_PIN_SIZE];
+	size_t len;
+	int counter;
+} sc_pkcs15_pincache_entry_t;
+
+typedef struct {
 	unsigned int version;
 	unsigned int flags;
 	char *label;
@@ -411,11 +419,14 @@ typedef struct sc_pkcs15_card {
 	int unusedspace_read;
 
 	struct sc_pkcs15_card_opts {
-		int use_cache;
+		int use_file_cache;
+		int use_pin_cache;
+		int pin_cache_counter;
 	} opts;
 
 	sc_pkcs15_sec_env_info_t **seInfo;
 	size_t num_seInfo;
+	sc_pkcs15_pincache_entry_t *pin_cache[SC_PKCS15_MAX_PINS];
 
 	unsigned int magic;
 
@@ -565,6 +576,8 @@ int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *card,
 				    struct sc_pkcs15_object **out);
 int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *card,
 			struct sc_pkcs15_object **out);
+int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, const sc_pkcs15_object_t *obj);
+void sc_pkcs15_pincache_clear(struct sc_pkcs15_card *p15card);
 
 int sc_pkcs15_encode_dir(struct sc_context *ctx,
 			struct sc_pkcs15_card *card,

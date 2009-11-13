@@ -152,7 +152,7 @@ cosm_update_pukfile (struct sc_card *card, struct sc_profile *profile,
 {
 	struct sc_pkcs15_pin_info profile_puk;
 	struct sc_file *file = NULL;
-	int rv, sz, flags = 0;
+	int rv;
 	unsigned char buffer[16];
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -231,7 +231,6 @@ cosm_erase_card(struct sc_profile *profile, struct sc_card *card)
 	 * Note we need to delete if before the DF because we create
 	 * it *after* the DF. 
 	 * */
-	sc_ctx_suppress_errors_on(card->ctx);
 	if (sc_profile_get_file(profile, "DIR", &dir) >= 0) {
 		sc_debug(card->ctx, "erase file dir %04X\n",dir->id);
 		rv = cosm_delete_file(card, profile, dir);
@@ -269,7 +268,6 @@ cosm_erase_card(struct sc_profile *profile, struct sc_card *card)
 	sc_free_apps(card);
 done:		
 	sc_keycache_forget_key(NULL, -1, -1);
-	sc_ctx_suppress_errors_off(card->ctx);
 
 	if (rv == SC_ERROR_FILE_NOT_FOUND)
 		rv = 0;
@@ -316,7 +314,7 @@ cosm_init_app(struct sc_profile *profile, struct sc_card *card,
 	/* Create private objects DF */
 	for (ii = 0; create_dfs[ii]; ii++)   {
 		if (sc_profile_get_file(profile, create_dfs[ii], &file))   {
-			sc_error(card->ctx, "Inconsistent profile: cannot find %s", create_dfs[ii]);
+			sc_debug(card->ctx, "Inconsistent profile: cannot find %s", create_dfs[ii]);
 			return SC_ERROR_INCONSISTENT_PROFILE;
 		}
 	
@@ -485,7 +483,7 @@ cosm_select_pin_reference(struct sc_profile *profile, struct sc_card *card,
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "ref %i; flags %X\n", pin_info->reference, pin_info->flags);
 	if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pinfile) < 0) {
-		sc_error(card->ctx, "Profile doesn't define \"%s\"", COSM_TITLE "-AppDF");
+		sc_debug(card->ctx, "Profile doesn't define \"%s\"", COSM_TITLE "-AppDF");
 		return SC_ERROR_INCONSISTENT_PROFILE;
 	}
 
@@ -603,7 +601,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		 * the generic class (SC_PKCS15_TYPE_CERT)
 		 */
 		if (!(type & ~SC_PKCS15_TYPE_CLASS_MASK)) {
-			sc_error(card->ctx, "File type %X not supported by card driver", 
+			sc_debug(card->ctx, "File type %X not supported by card driver", 
 				type);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -612,7 +610,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 
 	sc_debug(card->ctx, "cosm_new_file() template %s; num %i\n",_template, num);
 	if (sc_profile_get_file(profile, _template, &file) < 0) {
-		sc_error(card->ctx, "Profile doesn't define %s template '%s'\n",
+		sc_debug(card->ctx, "Profile doesn't define %s template '%s'\n",
 				desc, _template);
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	}
@@ -648,7 +646,7 @@ cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "cosm_generate_key() index %i; nn %i\n", idx, keybits);
 	if (keybits < 512 || keybits > 2048 || (keybits%0x20))   {
-		sc_error(card->ctx, "Unsupported key size %u\n", keybits);
+		sc_debug(card->ctx, "Unsupported key size %u\n", keybits);
 		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key size");
 	}
 	

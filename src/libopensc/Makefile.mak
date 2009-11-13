@@ -4,7 +4,7 @@ TOPDIR = ..\..
 TARGET                  = opensc.dll opensc_a.lib
 
 HEADERS			= \
-	asn1.h cardctl.h cards.h emv.h errors.h \
+	asn1.h cardctl.h cards.h errors.h \
 	log.h opensc.h pkcs15.h types.h ui.h
 
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
@@ -18,7 +18,7 @@ OBJECTS			= \
 	pkcs15-wrap.obj pkcs15-algo.obj pkcs15-cache.obj pkcs15-syn.obj \
 	pkcs15-gemsafeV1.obj \
 	\
-	emv.obj muscle.obj muscle-filesystem.obj \
+	muscle.obj muscle-filesystem.obj \
 	\
 	ctbcs.obj reader-ctapi.obj reader-pcsc.obj reader-openct.obj \
 	\
@@ -28,13 +28,13 @@ OBJECTS			= \
 	card-oberthur.obj card-belpic.obj card-atrust-acos.obj card-entersafe.obj \
 	card-incrypto34.obj card-piv.obj card-muscle.obj card-acos5.obj \
 	card-asepcos.obj card-akis.obj card-gemsafeV1.obj card-rutoken.obj \
-	card-rtecp.obj card-westcos.obj card-myeid.obj \
+	card-rtecp.obj card-westcos.obj card-myeid.obj card-ias.obj \
 	\
 	p15emu-westcos.obj \
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj pkcs15-gemsafeGPK.obj \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
-	pkcs15-esinit.obj \
+	pkcs15-esinit.obj pkcs15-pteid.c \
 	compression.obj p15card-helper.obj \
 	versioninfo.res
 

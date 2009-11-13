@@ -32,9 +32,18 @@
 		<para>
 			<variablelist>
 				<varlistentry>
+					<term><option>--info, -i</option></term>
+					<listitem><para>Print information about OpenSC, such as version and enabled components</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
 					<term><option>--atr, -a</option></term>
 					<listitem><para>Print the Answer To Reset (ATR) of the card,
 					output is in hex byte format</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--name, -n</option></term>
+					<listitem><para>Print the name of the inserted card (driver)</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--serial</option></term>
@@ -69,6 +78,10 @@ in the system.</para></listitem>
 				<varlistentry>
 					<term><option>--card-driver</option> driver, <option>-c</option> driver</term>
 					<listitem><para>Use the given card driver.  The default is auto-detected.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--wait, -w</option></term>
+					<listitem><para>Wait for a card to be inserted</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--verbose, -v</option></term>

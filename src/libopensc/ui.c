@@ -182,7 +182,7 @@ static int sc_ui_get_func(sc_context_t *ctx, const char *name, void **ret)
 
 		sc_ui_lib_handle = lt_dlopen(lib_name);
 		if (!sc_ui_lib_handle) {
-			sc_error(ctx,
+			sc_debug(ctx,
 				"Unable to open user interface library '%s': %s\n",
 				lib_name, lt_dlerror());
 			return SC_ERROR_INTERNAL;
@@ -391,10 +391,6 @@ sc_ui_display_msg(sc_context_t *ctx, int type, const char *msg)
 	int		n;
 
 	switch (type) {
-	case SC_LOG_TYPE_ERROR:
-		outf = ctx->error_file;
-		break;
-
 	case SC_LOG_TYPE_DEBUG:
 		outf = ctx->debug_file;
 		break;

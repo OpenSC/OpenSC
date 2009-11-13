@@ -8,7 +8,7 @@ EXTRA_DIST = Makefile.mak
 bin_SCRIPTS = opensc-config
 lib_LTLIBRARIES = libopensc.la
 openscinclude_HEADERS = \
-	opensc.h pkcs15.h emv.h \
+	opensc.h pkcs15.h \
 	cardctl.h asn1.h log.h ui.h \
 	errors.h types.h compression.h
 noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
@@ -30,7 +30,7 @@ libopensc_la_SOURCES = \
 	pkcs15-wrap.c pkcs15-algo.c pkcs15-cache.c pkcs15-syn.c \
 	pkcs15-gemsafeV1.c \
 	\
-	emv.c muscle.c muscle-filesystem.c \
+	muscle.c muscle-filesystem.c \
 	\
 	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c \
 	\
@@ -40,12 +40,12 @@ libopensc_la_SOURCES = \
 	card-oberthur.c card-belpic.c card-atrust-acos.c card-entersafe.c \
 	card-incrypto34.c card-piv.c card-muscle.c card-acos5.c \
 	card-asepcos.c card-akis.c card-gemsafeV1.c card-rutoken.c \
-	card-rtecp.c card-westcos.c card-myeid.c \
+	card-rtecp.c card-westcos.c card-myeid.c card-ias.c\
 	\
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
-	pkcs15-esinit.c p15emu-westcos.c \
+	pkcs15-esinit.c p15emu-westcos.c pkcs15-pteid.c \
 	compression.c p15card-helper.c \
 	\
 	libopensc.exports

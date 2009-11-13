@@ -16,19 +16,11 @@ app default {
 
 	# The file to which debug output will be written
 	#
-	# A special value of 'stdout' is recognized.
-	# Default: stdout
+	# Special values 'stdout' and 'stderr' are recognized.
+	# Default: stderr
 	#
 	# debug_file = /tmp/opensc-debug.log;
 	# debug_file = "C:\Documents and Settings\All Users\Documents\opensc-debug.log";
-
-	# The file to which errors will be written
-	#
-	# A special value of 'stderr' is recognized.
-	# Default: stderr
-	#
-	# error_file = /tmp/opensc-errors.log;
-	# error_file = "C:\Documents and Settings\All Users\Documents\opensc-errors.log";
 
 	# PKCS#15 initialization / personalization
 	# profiles directory for pkcs15-init.
@@ -86,8 +78,8 @@ app default {
 		# transaction_reset = true;
 		#
 		# Enable pinpad if detected (PC/SC v2.0.2 Part 10)
-		# Default: false
-		# enable_pinpad = true;
+		# Default: true
+		# enable_pinpad = false;
 		#
 		# Use specific pcsc provider.
 		# Default: @DEFAULT_PCSC_PROVIDER@
@@ -256,14 +248,25 @@ app default {
 		# WARNING: Caching shouldn't be used in setuid root
 		# applications.
 		# Default: false
+		# use_file_caching = true;
 		#
-		use_caching = true;
+		# Use PIN caching?
+		# Default: true
+		# use_pin_caching = false;
+		#
+		# How many times to use a PIN from cache before re-authenticating it?
+		# Default: 10
+		# pin_cache_counter = 3;
+		#
 		# Enable pkcs15 emulation.
 		# Default: yes
 		# enable_pkcs15_emulation = no;
 		#
 		# Prefer pkcs15 emulation code before
 		# the normal pkcs15 processing.
+		# Some cards (like esteid and pteid) work in emu-only mode,
+		# and do not depend on this option.
+		#
 		# Default: no
 		# try_emulation_first = yes;
 		#
@@ -293,7 +296,7 @@ app default {
 		# so you can turn it off, if it misbehaves.
 		# this option only affects cardos cards right now.
 		# Default: yes
-		# enable_sign_with_decrypt_workaround = yes;
+		# enable_sign_with_decrypt_workaround = no;
 	}
 }
 
@@ -353,19 +356,7 @@ app opensc-pkcs11 {
  		#
 		# Default: true
 		# lock_login = false;
-
-		# Normally, the pkcs11 module will not cache PINs
-		# presented via C_Login. However, some cards
-		# may not work properly with OpenSC; for instance
-		# when you have two keys on your card that get
-		# stored in two different directories.
 		#
-		# In this case, you can turn on PIN caching by setting
-		# cache_pins = true
-		#
-		# Default: true
-		# cache_pins = false;
-
 		# Set this value to true if you want to allow off-card
 		# keypair generation (in software on your pc)
 		#

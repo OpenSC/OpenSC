@@ -60,19 +60,6 @@ static const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-
-#if 0 /* fixme: uncomment for use with pksign */
-static u8 oid_md5[18] = /* MD5 OID is 1.2.840.113549.2.5 */
-{ 0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86,0x48,
-  0x86, 0xf7, 0x0d, 0x02, 0x05, 0x05, 0x00, 0x04, 0x10 };
-static u8 oid_sha1[15] = /* SHA-1 OID 1.3.14.3.2.26 */
-{ 0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03,
-  0x02, 0x1a, 0x05, 0x00, 0x04, 0x14 };
-static u8 oid_rmd160[15] = /* RIPE MD-160 OID is 1.3.36.3.2.1 */
-{ 0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x24, 0x03,
-  0x02, 0x01, 0x05, 0x00, 0x04, 0x14 };
-#endif
-
 static size_t hex2binary(u8 *out, size_t outlen, const char *in);
 
 struct command {
@@ -223,9 +210,7 @@ static int do_ls(int argc, char **argv)
 			}
 		}
 			
-		ctx->suppress_errors++;
 		r = sc_select_file(card, &path, &file);
-		ctx->suppress_errors--;
 		if (r) {
 			printf(" %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
 		} else {
@@ -335,9 +320,7 @@ static int read_and_print_record_file(sc_file_t *file)
 	int rec, r;
 
 	for (rec = 1; ; rec++) {
-		ctx->suppress_errors++;
 		r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
-		ctx->suppress_errors--;
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
 			return 0;
 		if (r < 0) {
@@ -1171,173 +1154,14 @@ static int do_debug(int argc, char **argv)
 		printf("Debug level set to %d\n", i);
 		ctx->debug = i;
 		if (i) {
-			ctx->error_file = stderr;
 			ctx->debug_file = stdout;
 		} else {
-			ctx->error_file = NULL;
 			ctx->debug_file = NULL;
 		}
 	}
 	return 0;
 }
 
-
-static int do_pksign(int argc, char **argv)
-{
-	puts ("Not yet supported");
-	return -1;
-#if 0
-	int i, ref, r;
-	u8 indata[128];
-	size_t indatalen = sizeof indata;
-	u8 outdata[128];
-	size_t outdatalen = sizeof outdata;
-	sc_security_env_t senv;
-	const u8 *oid;
-	int oidlen;
-	const char *s;
-
-	if (argc < 2 || argc > 3)
-		goto usage;
-	if (sscanf (argv[0], "%d", &ref) != 1 || ref < 0 || ref > 255) {
-		printf("Invalid key reference.\n");
-		goto usage;
-	}
-
-	if (argv[1][0] == '"') {
-		for (s = argv[1]+1, i = 0;
-		     i < sizeof indata && *s && *s != '"'; i++) 
-			indata[i] = *s++;
-		indatalen = i;
-	} else if (sc_hex_to_bin(argv[1], indata, &indatalen)) {
-		printf("Invalid data value.\n");
-		goto usage;
-	}
-
-		
-	if (argc == 3) {
-		if (!strcasecmp(argv[2], "SHA1")) {
-			oid = oid_sha1; oidlen = sizeof oid_sha1;
-		}
-		else if (!strcasecmp (argv[2], "MD5")) {
-			oid = oid_md5; oidlen = sizeof oid_md5;
-		}
-		else if (!strcasecmp (argv[2], "RMD160")) {
-			oid = oid_rmd160; oidlen = sizeof oid_rmd160;
-		}
-		else {
-			goto usage;
-		}
-	 }
-	else {
-		oid = ""; oidlen = 0;
-	}
-	
-	if (indatalen + oidlen > sizeof indata) {
-		printf("Data value to long.\n");
-		goto usage;
-	}
-	
-	memmove(indata + oidlen, indata, indatalen);
-	memcpy(indata, oid, oidlen);
-	indatalen += oidlen;
-
-	/* setup the security environment */
-	/* FIXME The values won't work for other cards.  They do work
-	   for TCOS because there is no need for a security
-	   environment there */
-	memset(&senv, 0, sizeof senv);
-	senv.operation = SC_SEC_OPERATION_SIGN;
-	senv.algorithm = SC_ALGORITHM_RSA;
-	senv.key_ref_len = 1;
-	senv.key_ref[0] = ref;
- 	senv.flags = (SC_SEC_ENV_KEY_REF_PRESENT | SC_SEC_ENV_ALG_PRESENT);
-	r = sc_set_security_env(card, &senv, 0);
-	if (r) {
-		printf("Failed to set the security environment: %s\n",
-		       sc_strerror (r));
-		return -1;
-	}
-
-	/* Perform the actual sign. */ 
-	r = sc_compute_signature(card, indata, indatalen,
-	                         outdata, outdatalen);
-	if (r<0) {
-		printf("Signing failed: %s\n",  sc_strerror (r));
-		return -1;
-	}
-	util_hex_dump_asc(stdout, outdata, r, -1);
-	printf ("Done.\n");
-	return 0;
-usage:
-	printf ("Usage: pksign <key ref> <data> [MD5|SHA1|RMD160]\n");
-	return -1;
-#endif
-}
-
-
-static int do_pkdecrypt(int argc, char **argv)
-{
-	puts ("Not yet supported");
-	return -1;
-#if 0
-	int i, ref, r;
-	u8 indata[128];
-	size_t indatalen = sizeof indata;
-	u8 outdata[128];
-	size_t outdatalen = sizeof outdata;
-	sc_security_env_t senv;
-	const char *s;
-
-	if (argc != 2)
-		goto usage;
-	if (sscanf(argv[0], "%d", &ref) != 1 || ref < 0 || ref > 255) {
-		printf("Invalid key reference.\n");
-		goto usage;
-	}
-
-	if (argv[1][0] == '"') {
-		for (s=argv[1]+1, i = 0;
-		     i < sizeof indata && *s && *s != '"'; i++) 
-			indata[i] = *s++;
-		indatalen = i;
-	} else if (sc_hex_to_bin (argv[1], indata, &indatalen)) {
-		printf("Invalid data value.\n");
-		goto usage;
-	}
-
-	/* setup the security environment */
-	memset (&senv, 0, sizeof senv);
-	senv.operation = SC_SEC_OPERATION_DECIPHER;
-	senv.algorithm = SC_ALGORITHM_RSA;
-	senv.key_ref_len = 1;
-	senv.key_ref[0] = ref;
- 	senv.flags = (SC_SEC_ENV_KEY_REF_PRESENT | SC_SEC_ENV_ALG_PRESENT);
-	r = sc_set_security_env(card, &senv, 0);
-	if (r) {
-		printf("Failed to set the security environment: %s\n",
-		       sc_strerror (r));
-		return -1;
-	}
-
-	/* perform the actual decryption */
-	/* FIXME: It is pretty useless to to this test padding :-; */
-	memmove(indata+(sizeof indata - indatalen), indata, indatalen);
-	memset(indata, 0, (sizeof indata - indatalen));
-	indatalen = sizeof indata;
-	r = sc_decipher(card, indata, indatalen, outdata, outdatalen);
-	if (r<0) {
-		printf("Decryption failed: %s\n",  sc_strerror (r));
-		return -1;
-	}
-	util_hex_dump_asc (stdout, outdata, r, -1);
-	printf("Done.\n");
-	return 0;
-usage:
-	printf("Usage: pkdecrypt <key ref> <data>\n");
-	return -1;
-#endif
-}
 
 static int
 do_erase(int argc, char **argv)
@@ -1614,8 +1438,6 @@ static struct command	cmds[] = {
  { "do_get",	do_get_data,	"get a data object"			},
  { "do_put",	do_put_data,	"put a data object"			},
  { "mkdir",	do_mkdir,	"create a DF"				},
- { "pksign",    do_pksign,      "create a public key signature"         },
- { "pkdecrypt", do_pkdecrypt,   "perform a public key decryption"       },
  { "erase",	do_erase,	"erase card"				},
  { "random",	do_random,	"obtain N random bytes from card"	},
  { "quit",	do_quit,	"quit this program"			},

@@ -168,7 +168,7 @@ akis_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 
 	while (left > 19) {
 		if (p[0] != 0x2f && p[0] != 0x3d) {
-			sc_error(card->ctx, "Malformatted list reply %02x", p[0]);
+			sc_debug(card->ctx, "Malformatted list reply %02x", p[0]);
 			return SC_ERROR_INTERNAL;
 		}
 		if (buflen >= 2) {
@@ -202,7 +202,7 @@ akis_process_fci(sc_card_t *card, sc_file_t *file,
 	 */
 	p = sc_asn1_find_tag(card->ctx, buf, buflen, 0x90, &len);
 	if (p == NULL) {
-		sc_error(card->ctx, "Security tag missing");
+		sc_debug(card->ctx, "Security tag missing");
 		return SC_ERROR_INTERNAL;
 	}
 	perms = p[0];
@@ -272,7 +272,7 @@ akis_create_file(sc_card_t *card, sc_file_t *file)
 				type = 0x45;
 				break;
 			default:
-				sc_error(card->ctx, "This EF structure is not supported yet");
+				sc_debug(card->ctx, "This EF structure is not supported yet");
 				return SC_ERROR_NOT_SUPPORTED;
 		}
 		apdu.p1 = type;
@@ -284,7 +284,7 @@ akis_create_file(sc_card_t *card, sc_file_t *file)
 	} else if (file->type == SC_FILE_TYPE_DF) {
 		apdu.ins = 0x10;
 	} else {
-		sc_error(card->ctx, "Unknown file type");
+		sc_debug(card->ctx, "Unknown file type");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -317,7 +317,7 @@ akis_delete_file(sc_card_t *card, const sc_path_t *path)
 			type = 0x08;
 			break;
 		default:
-			sc_error(card->ctx, "File type has to be FID or PATH");
+			sc_debug(card->ctx, "File type has to be FID or PATH");
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x16, type, 0x00);
@@ -354,7 +354,6 @@ akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 			p1 = 1;
 		}
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, p1, p2);
-		apdu.sensitive = 1;
 
 		buf[0] = data->pin1.len;
 		memcpy(buf+1, data->pin1.data, data->pin1.len);
@@ -372,7 +371,7 @@ akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 		return r;
 	}
 
-	sc_error(card->ctx, "Other pin cmds not supported yet");
+	sc_debug(card->ctx, "Other pin cmds not supported yet");
 	return SC_ERROR_NOT_SUPPORTED;
 }
 

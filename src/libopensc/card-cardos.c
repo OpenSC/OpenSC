@@ -42,7 +42,7 @@ static struct sc_atr_table cardos_atrs[] = {
 	/* 4.0 */
 	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* Italian eID card, postecert */
-	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
+	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_CARDOS_CIE_V1, 0, NULL },
 	/* Italian eID card, infocamere */
 	{ "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* Another Italian InfocamereCard */
@@ -53,11 +53,6 @@ static struct sc_atr_table cardos_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
-static int cardos_finish(sc_card_t *card)
-{
-	return 0;
-}
-
 static int cardos_match_card(sc_card_t *card)
 {
 	int i;
@@ -65,6 +60,9 @@ static int cardos_match_card(sc_card_t *card)
 	i = _sc_match_atr(card, cardos_atrs, &card->type);
 	if (i < 0)
 		return 0;
+	/* Do not change card type for CIE! */
+	if (card->type == SC_CARD_TYPE_CARDOS_CIE_V1)
+		return 1;
 	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
 		int rv;
 		sc_apdu_t apdu;
@@ -255,13 +253,13 @@ static int cardos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	for (i = 0; i < err_count; i++) {
 		if (cardos_errors[i].SWs == ((sw1 << 8) | sw2)) {
 			if ( cardos_errors[i].errorstr ) 
-				sc_error(card->ctx, "%s\n",
+				sc_debug(card->ctx, "%s\n",
 				 	cardos_errors[i].errorstr);
 			return cardos_errors[i].errorno;
 		}
 	}
 
-        sc_error(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+        sc_debug(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -291,7 +289,7 @@ get_next_part:
 	SC_TEST_RET(card->ctx, r, "DIRECTORY command returned error");
 
 	if (apdu.resplen > 256) {
-		sc_error(card->ctx, "directory listing > 256 bytes, cutting");
+		sc_debug(card->ctx, "directory listing > 256 bytes, cutting");
 		r = 256;
 	}
 
@@ -301,7 +299,7 @@ get_next_part:
 		/* is there a file informatin block (0x6f) ? */
 		p = sc_asn1_find_tag(card->ctx, p, len, 0x6f, &tlen);
 		if (p == NULL) {
-			sc_error(card->ctx, "directory tag missing");
+			sc_debug(card->ctx, "directory tag missing");
 			return SC_ERROR_INTERNAL;
 		}
 		if (tlen == 0)
@@ -309,7 +307,7 @@ get_next_part:
 			break;
 		q = sc_asn1_find_tag(card->ctx, p, tlen, 0x86, &ilen);
 		if (q == NULL || ilen != 2) {
-			sc_error(card->ctx, "error parsing file id TLV object");
+			sc_debug(card->ctx, "error parsing file id TLV object");
 			return SC_ERROR_INTERNAL;
 		}
 		/* put file id in buf */
@@ -451,7 +449,7 @@ static int cardos_acl_to_bytes(sc_card_t *card, const sc_file_t *file,
 		else
 			byte = acl_to_byte(sc_file_get_acl_entry(file, idx[i]));
 		if (byte < 0) {
-			sc_error(card->ctx, "Invalid ACL\n");
+			sc_debug(card->ctx, "Invalid ACL\n");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		buf[i] = byte;
@@ -581,7 +579,7 @@ static int cardos_construct_fcp(sc_card_t *card, const sc_file_t *file,
 			buf[4] |= (u8) file->record_count;
 			break;
 		default:
-			sc_error(card->ctx, "unknown EF type: %u", file->type);
+			sc_debug(card->ctx, "unknown EF type: %u", file->type);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		if (file->ef_structure == SC_FILE_EF_CYCLIC ||
@@ -657,7 +655,7 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 
 		r = cardos_construct_fcp(card, file, sbuf, &len);
 		if (r < 0) {
-			sc_error(card->ctx, "unable to create FCP");
+			sc_debug(card->ctx, "unable to create FCP");
 			return r;
 		}
 	
@@ -685,7 +683,8 @@ cardos_restore_security_env(sc_card_t *card, int se_num)
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 3, se_num);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0, se_num);
+	apdu.p1 = (card->type == SC_CARD_TYPE_CARDOS_CIE_V1 ? 0xF3 : 0x03);
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -719,12 +718,18 @@ cardos_set_security_env(sc_card_t *card,
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
 	 || env->key_ref_len != 1) {
-		sc_error(card->ctx, "No or invalid key reference\n");
+		sc_debug(card->ctx, "No or invalid key reference\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	key_id = env->key_ref[0];
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 1, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
+	if (card->type == SC_CARD_TYPE_CARDOS_CIE_V1) {
+		cardos_restore_security_env(card, 0x30);
+		apdu.p1 = 0xF1;
+	} else {
+		apdu.p1 = 0x01;
+	}
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
 		apdu.p2 = 0xB8;
@@ -774,7 +779,6 @@ do_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	apdu.data    = data;
 	apdu.lc      = datalen;
 	apdu.datalen = datalen;
-	apdu.sensitive = 1;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 
@@ -822,9 +826,7 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	if (!(card->caps & (SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED | SC_CARD_CAP_ONLY_RAW_HASH))) {
 		if (ctx->debug >= 3)
 			sc_debug(ctx, "trying RSA_PURE_SIG (padded DigestInfo)\n");
-		sc_ctx_suppress_errors_on(ctx);
 		r = do_compute_signature(card, data, datalen, out, outlen);
-		sc_ctx_suppress_errors_off(ctx);
 		if (r >= SC_SUCCESS)
 			SC_FUNC_RETURN(ctx, 4, r);
 	}		
@@ -849,9 +851,7 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	if (!(card->caps & (SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED | SC_CARD_CAP_ONLY_RAW_HASH)) || card->caps & SC_CARD_CAP_ONLY_RAW_HASH ) {
 		if (ctx->debug >= 3)
 			sc_debug(ctx, "trying to sign raw hash value with prefix\n");	
-		sc_ctx_suppress_errors_on(ctx);
 		r = do_compute_signature(card, buf, tmp_len, out, outlen);
-		sc_ctx_suppress_errors_off(ctx);
 		if (r >= SC_SUCCESS)	
 			SC_FUNC_RETURN(ctx, 4, r);
 	}
@@ -906,7 +906,7 @@ cardos_lifecycle_get(sc_card_t *card, int *mode)
 		*mode = SC_CARDCTRL_LIFECYCLE_OTHER;
 		break;
 	default:
-		sc_error(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
+		sc_debug(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
 		r = SC_ERROR_INTERNAL;
 	}
 
@@ -1173,7 +1173,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	cardos_ops = *iso_ops;
 	cardos_ops.match_card = cardos_match_card;
 	cardos_ops.init = cardos_init;
-	cardos_ops.finish = cardos_finish;
 	cardos_ops.select_file = cardos_select_file;
 	cardos_ops.create_file = cardos_create_file;
 	cardos_ops.set_security_env = cardos_set_security_env;

@@ -77,13 +77,13 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_EXTRACTABLE_KEY;
 
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP))) {
-		sc_error(ctx, "This key cannot be used for decryption\n");
+		sc_debug(ctx, "This key cannot be used for decryption\n");
 		return SC_ERROR_NOT_ALLOWED;
 	}
 
 	alg_info = _sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
 	if (alg_info == NULL) {
-		sc_error(ctx, "Card does not support RSA with key length %d\n", prkey->modulus_length);
+		sc_debug(ctx, "Card does not support RSA with key length %d\n", prkey->modulus_length);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	senv.algorithm = SC_ALGORITHM_RSA;
@@ -121,6 +121,10 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		SC_TEST_RET(ctx, r, "sc_set_security_env() failed");
 	}
 	r = sc_decipher(p15card->card, in, inlen, out, outlen);
+	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		if (sc_pkcs15_pincache_revalidate(p15card, obj) == SC_SUCCESS)
+			r = sc_decipher(p15card->card, in, inlen, out, outlen);
+	}                                           
 	sc_unlock(p15card->card);
 	SC_TEST_RET(ctx, r, "sc_decipher() failed");
 
@@ -157,7 +161,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				in, inlen, out, outlen);
 		}
 		if (modlen > tmplen) {
-			sc_error(ctx, "Buffer too small, needs recompile!\n");
+			sc_debug(ctx, "Buffer too small, needs recompile!\n");
 			return SC_ERROR_NOT_ALLOWED;
 		}
 		r = sc_pkcs1_encode(ctx, flags, in, inlen, buf, &tmplen, modlen);
@@ -180,13 +184,13 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER|
 	                      SC_PKCS15_PRKEY_USAGE_NONREPUDIATION))) {
-		sc_error(ctx, "This key cannot be used for signing\n");
+		sc_debug(ctx, "This key cannot be used for signing\n");
 		return SC_ERROR_NOT_ALLOWED;
 	}
 
 	alg_info = _sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
 	if (alg_info == NULL) {
-		sc_error(ctx, "Card does not support RSA with key length %d\n", prkey->modulus_length);
+		sc_debug(ctx, "Card does not support RSA with key length %d\n", prkey->modulus_length);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	senv.algorithm = SC_ALGORITHM_RSA;
@@ -268,6 +272,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 
 	r = sc_compute_signature(p15card->card, tmp, inlen, out, outlen);
+	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		if (sc_pkcs15_pincache_revalidate(p15card, obj) == SC_SUCCESS)
+			r = sc_compute_signature(p15card->card, tmp, inlen, out, outlen);
+	}
 	sc_mem_clear(buf, sizeof(buf));
 	sc_unlock(p15card->card);
 	SC_TEST_RET(ctx, r, "sc_compute_signature() failed");

@@ -259,14 +259,10 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		path.value[1] = i;
 		path.len = 2;	
 		path.type = SC_PATH_TYPE_FILE_ID;
-		sc_ctx_suppress_errors_on(card->ctx); /* file may not exist, and not an error */
 		r = sc_select_file(card, &path, NULL);
-		sc_ctx_suppress_errors_off(card->ctx);
 		if (r < 0) 
 			continue;
-		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_read_record(card, 1, sysrec, sizeof(sysrec), SC_RECORD_BY_REC_NR);
-		sc_ctx_suppress_errors_off(card->ctx);
 		if (r != 7 || sysrec[0] != 0) {
 			continue;
 		}
@@ -279,7 +275,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 			case 0x10: kinfo[num_keyinfo].modulus_len =  768 / 8; break;
 			case 0x11: kinfo[num_keyinfo].modulus_len = 1024 / 8; break;
 			default:
-				sc_error(card->ctx, "Unsupported modulus length");
+				sc_debug(card->ctx, "Unsupported modulus length");
 				continue;
 		}
 

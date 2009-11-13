@@ -3,8 +3,8 @@ dnl -*- mode: m4; -*-
 AC_PREREQ(2.60)
 
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [11])
-define([PACKAGE_VERSION_FIX], [11])
+define([PACKAGE_VERSION_MINOR], [12])
+define([PACKAGE_VERSION_FIX], [0])
 define([PACKAGE_SUFFIX], [-svn])
 
 AC_INIT([opensc],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX])
@@ -159,13 +159,6 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
-	[nsplugin],
-	[AS_HELP_STRING([--enable-nsplugin],[enable nsplugin (signer) @<:@disabled@:>@])],
-	,
-	[enable_nsplugin="no"]
-)
-
-AC_ARG_ENABLE(
 	[man],
 	[AS_HELP_STRING([--disable-man],[disable installation of manuals @<:@enabled for none Windows@:>@])],
 	,
@@ -204,13 +197,6 @@ AC_ARG_WITH(
 	[AS_HELP_STRING([--with-pcsc-provider=PATH],[Path to system pcsc provider @<:@system default@:>@])],
 	,
 	[with_pcsc_provider="detect"]
-)
-
-AC_ARG_WITH(
-	[pinentry],
-	[AS_HELP_STRING([--with-pinentry=PROG],[run PROG as PIN-entry for OpenSC Signer @<:/usr/bin/gpinentry:>@])],
-	,
-	[with_pinentry="/usr/bin/gpinentry"]
 )
 
 dnl Checks for programs.
@@ -300,7 +286,7 @@ AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([ \
 	errno.h fcntl.h malloc.h stdlib.h \
 	inttypes.h string.h strings.h \
-	sys/time.h unistd.h locale.h getopt.h
+	sys/time.h unistd.h locale.h getopt.h sys/mman.h
 ])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
@@ -597,21 +583,6 @@ if test "${enable_pcsc}" = "yes"; then
 	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
 fi
 
-dnl AM_PATH_LIBASSUAN([MINIMUM-VERSION,
-dnl                   [ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND ]]])
-dnl Test for libassuan and define LIBASSUAN_CFLAGS and LIBASSUAN_LIBS
-AM_PATH_LIBASSUAN(
-	,
-	[have_assuan="yes"], 
-	[have_assuan="no"]
-)
-
-if test "${enable_nsplugin}" = "yes"; then
-	if test "x${have_assuan}" != "xyes" -o "x${have_openssl}" != "xyes"; then
-		AC_MSG_ERROR([nsplugin requires assuan and openssl])
-	fi
-fi
-
 OPENSC_FEATURES=""
 if test "${enable_zlib}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} zlib"
@@ -642,12 +613,10 @@ if test "${enable_pcsc}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} pcsc(${DEFAULT_PCSC_PROVIDER})"
 	OPTIONAL_PCSC_CFLAGS="${PCSC_CFLAGS}"
 fi
-test "${enable_nsplugin}" = "yes" && OPENSC_FEATURES="${OPENSC_FEATURES} nsplugin"
 
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MINOR], [${OPENSC_VERSION_MINOR}], [OpenSC version minor component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_FIX], [${OPENSC_VERSION_FIX}], [OpenSC version fix component])
-test "${with_pinentry}" != "no" && AC_DEFINE_UNQUOTED([PIN_ENTRY], ["${with_pinentry}"], [PIN-entry program for OpenSC Signer])
 AC_DEFINE_UNQUOTED([OPENSC_FEATURES], ["${OPENSC_FEATURES}"], [Enabled OpenSC features])
 
 openscincludedir="\$(includedir)/opensc"
@@ -687,7 +656,6 @@ AM_CONDITIONAL([ENABLE_READLINE], [test "${enable_readline}" = "yes"])
 AM_CONDITIONAL([ENABLE_ICONV], [test "${enable_iconv}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENSSL], [test "${enable_openssl}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENCT], [test "${enable_openct}" = "yes"])
-AM_CONDITIONAL([ENABLE_NSPLUGIN], [test "${enable_nsplugin}" = "yes"])
 AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
@@ -723,8 +691,6 @@ AC_CONFIG_FILES([
 	src/pkcs11/Makefile
 	src/pkcs15init/Makefile
 	src/scconf/Makefile
-	src/signer/Makefile
-	src/signer/npinclude/Makefile
 	src/tests/Makefile
 	src/tests/regression/Makefile
 	src/tools/Makefile
@@ -751,10 +717,8 @@ iconv support:           ${enable_iconv}
 OpenSSL support:         ${enable_openssl}
 PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
-NSPlugin support:        ${enable_nsplugin}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
-pinentry:                ${with_pinentry}
 
 Host:                    ${host}
 Compiler:                ${CC}
@@ -776,8 +740,6 @@ OPENSSL_LIBS:            ${OPENSSL_LIBS}
 OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
 OPENCT_LIBS:             ${OPENCT_LIBS}
 PCSC_CFLAGS:             ${PCSC_CFLAGS}
-LIBASSUAN_CFLAGS:        ${LIBASSUAN_CFLAGS}
-LIBASSUAN_LIBS:          ${LIBASSUAN_LIBS}
 
 EOF
 

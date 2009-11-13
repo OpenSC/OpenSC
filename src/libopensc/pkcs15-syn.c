@@ -56,6 +56,8 @@ extern int sc_pkcs15emu_tccardos_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t 
 
 extern int sc_pkcs15emu_entersafe_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
+extern int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+
 static struct {
 	const char *		name;
 	int			(*handler)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
@@ -74,6 +76,7 @@ static struct {
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
 	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex  },
+	{ "pteid",		sc_pkcs15emu_pteid_init_ex		},
 	{ NULL, NULL }
 };
 
@@ -90,6 +93,8 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 {
 	switch (card->type) {
 		case SC_CARD_TYPE_MCRD_ESTEID:
+		case SC_CARD_TYPE_IAS_PTEID:
+		case SC_CARD_TYPE_GEMSAFEV1_PTEID:
 			return 1;
 		default:
 			return 0;
@@ -178,20 +183,11 @@ out:	if (r == SC_SUCCESS) {
 		p15card->magic  = SC_PKCS15_CARD_MAGIC;
 		p15card->flags |= SC_PKCS15_CARD_FLAG_EMULATED;
 	} else if (r != SC_ERROR_WRONG_CARD) {
-		sc_error(ctx, "Failed to load card emulator: %s\n",
+		sc_debug(ctx, "Failed to load card emulator: %s\n",
 				sc_strerror(r));
 	}
 
 	return r;
-}
-
-static int emu_detect_card(sc_card_t *card, const scconf_block *blk, int *force)
-{
-	int ret = 0;
-
-	/* TBD */
-
-	return ret;
 }
 
 static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
@@ -206,10 +202,6 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	const char	*driver, *module_name;
 
 	driver = conf->name->data;
-
-	r = emu_detect_card(card, conf, &force);
-	if (r < 0)
-		return SC_ERROR_INTERNAL;
 
 	init_func    = NULL;
 	init_func_ex = NULL;
@@ -400,7 +392,7 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 		data_len = sizeof(struct sc_pkcs15_data_info);
 		break;
 	default:
-		sc_error(p15card->card->ctx,
+		sc_debug(p15card->card->ctx,
 			"Unknown PKCS15 object type %d\n", type);
 		free(obj);
 		return SC_ERROR_INVALID_ARGUMENTS;

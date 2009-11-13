@@ -195,18 +195,18 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 		  SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
 	 
 	 if(!EVP_EncryptUpdate(&ctx,buff,&apdu->lc,buff,buffsize)){
-		  sc_error(card->ctx, "entersafe encryption error.");
+		  sc_debug(card->ctx, "entersafe encryption error.");
 		  SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
 	 }
 
 	 if (!EVP_CIPHER_CTX_cleanup(&ctx)){
-		  sc_error(card->ctx, "entersafe encryption error.");
+		  sc_debug(card->ctx, "entersafe encryption error.");
 		  SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
 	 }
 
 	 if(apdu->lc!=buffsize)
 	 {
-		  sc_error(card->ctx, "entersafe build cipher apdu failed.");
+		  sc_debug(card->ctx, "entersafe build cipher apdu failed.");
 		  SC_FUNC_RETURN(card->ctx, 3, SC_ERROR_INTERNAL);
 	 }
 
@@ -907,7 +907,6 @@ static int entersafe_compute_with_prkey(sc_card_t *card,
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = 256;
-	apdu.sensitive = 1;
 
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
 	SC_TEST_RET(card->ctx, r, "APDU transmit failed");

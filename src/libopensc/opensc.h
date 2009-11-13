@@ -326,8 +326,9 @@ typedef struct sc_reader {
 #define SC_PIN_CMD_CHANGE	1
 #define SC_PIN_CMD_UNBLOCK	2
 
-#define SC_PIN_CMD_USE_PINPAD	0x0001
-#define SC_PIN_CMD_NEED_PADDING	0x0002
+#define SC_PIN_CMD_USE_PINPAD		0x0001
+#define SC_PIN_CMD_NEED_PADDING 	0x0002
+#define SC_PIN_CMD_IMPLICIT_CHANGE	0x0004
 
 #define SC_PIN_ENCODING_ASCII	0
 #define SC_PIN_ENCODING_BCD	1
@@ -658,8 +659,7 @@ typedef struct sc_context {
 	char *app_name;
 	int debug;
 
-	int suppress_errors;
-	FILE *debug_file, *error_file;
+	FILE *debug_file;
 	char *preferred_language;
 
 	const struct sc_reader_driver *reader_drivers[SC_MAX_READER_DRIVERS];
@@ -760,18 +760,6 @@ sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i);
  * @return the number of available reader objects
  */
 unsigned int sc_ctx_get_reader_count(sc_context_t *ctx);
-
-/**  
- * Turns on error suppression 
- * @param  ctx  OpenSC context
- */
-void sc_ctx_suppress_errors_on(sc_context_t *ctx);
-
-/**
- * Turns off error suppression
- * @param  ctx  OpenSC context
- */
-void sc_ctx_suppress_errors_off(sc_context_t *ctx);
 
 /**
  * Forces the use of a specified card driver
@@ -1153,6 +1141,7 @@ int sc_base64_decode(const char *in, u8 *out, size_t outlen);
  * @param  len  length of the memory buffer
  */
 void sc_mem_clear(void *ptr, size_t len);
+void *sc_mem_alloc_secure(size_t len);
 
 int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize);
 int sc_make_cache_dir(sc_context_t *ctx);

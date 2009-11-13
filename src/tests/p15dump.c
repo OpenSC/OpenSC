@@ -68,9 +68,7 @@ static int dump_unusedspace(void)
 	}
 	path.count = -1;
 
-	sc_ctx_suppress_errors_on(p15card->card->ctx);
 	r = sc_pkcs15_read_file(p15card, &path, &buf, &buf_len, NULL);
-	sc_ctx_suppress_errors_off(p15card->card->ctx);
 	if (r < 0) {
 		if (r == SC_ERROR_FILE_NOT_FOUND) {
 			printf("\nNo EF(UnusedSpace) file\n");

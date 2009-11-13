@@ -207,7 +207,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_card_t *card,
 		 
 		 for(i = 0; create_efs[i]; ++i)   {
 			  if (sc_profile_get_file(profile, create_efs[i], &file))   {
-				   sc_error(card->ctx, "Inconsistent profile: cannot find %s", create_efs[i]);
+				   sc_debug(card->ctx, "Inconsistent profile: cannot find %s", create_efs[i]);
 				   SC_FUNC_RETURN(card->ctx,4,SC_ERROR_INCONSISTENT_PROFILE);
 			  }
 

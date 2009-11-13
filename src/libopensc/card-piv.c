@@ -581,7 +581,6 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 static int piv_get_data(sc_card_t * card, int enumtag, 
 			u8 **buf, size_t *buf_len)
 {
-	piv_private_data_t * priv = PIV_DATA(card);
 	u8 *p;
 	int r = 0;
 	u8 tagbuf[8];
@@ -853,7 +852,7 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 			priv->obj_cache[enumtag].internal_obj_data = newBuf;
 			priv->obj_cache[enumtag].internal_obj_len = len;
 #else
-			sc_error(card->ctx,"PIV compression not supported, no zlib");
+			sc_debug(card->ctx,"PIV compression not supported, no zlib");
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 #endif
 		} else {
@@ -1690,9 +1689,7 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 	
 	if (file_out) {
 		/* we need to read it now, to get length into cache */
-		sc_ctx_suppress_errors_on(card->ctx);
 		r = piv_get_cached_data(card, i, &rbuf, &rbuflen); 
-		sc_ctx_suppress_errors_off(card->ctx);
 	
 		if (r < 0)
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_FILE_NOT_FOUND);
@@ -1749,7 +1746,6 @@ sc_debug(card->ctx,"DEE freeing #%d, %p:%d %p:%d", i,
 		free(priv);
 	}
 /* TODO temp see piv_init */
-	sc_ctx_suppress_errors_off(card->ctx);
 	return 0;
 }
 
@@ -1764,9 +1760,7 @@ static int piv_match_card(sc_card_t *card)
 	card->ops->logout = NULL;
 
 	/* Detect by selecting applet */
-	sc_ctx_suppress_errors_on(card->ctx);
 	i = !(piv_find_aid(card, &aidfile));
-	sc_ctx_suppress_errors_off(card->ctx);
 	return i; /* never match */
 }
 
@@ -1799,7 +1793,7 @@ static int piv_init(sc_card_t *card)
 
 	r = piv_find_aid(card, priv->aid_file);
 	if (r < 0) {
-		 sc_error(card->ctx, "Failed to initialize %s\n", card->name);
+		 sc_debug(card->ctx, "Failed to initialize %s\n", card->name);
 		SC_FUNC_RETURN(card->ctx, 1, r);
 	}
 	priv->enumtag = piv_aids[r].enumtag;
@@ -1815,7 +1809,6 @@ static int piv_init(sc_card_t *card)
 
 	if (r > 0)
 		r = 0;
-sc_ctx_suppress_errors_on(card->ctx); /*TODO temp to suppresss all error */
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 

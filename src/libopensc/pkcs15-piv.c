@@ -248,9 +248,7 @@ const objdata objects[] = {
 	 * but need serial number for Mac tokend 
 	 */
 
-	sc_ctx_suppress_errors_on(card->ctx);
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
-	sc_ctx_suppress_errors_off(card->ctx);
 	if (r < 0) {
 		sc_debug(card->ctx,"sc_card_ctl rc=%d",r);
 		p15card->serial_number = strdup("00000000");
@@ -273,12 +271,10 @@ const objdata objects[] = {
 
 		/* We could make sure the object is on the card */
 		/* But really don't need to do this now */
-//		sc_ctx_suppress_errors_on(card->ctx);
-//		r = sc_select_file(card, &obj_info.path, NULL);
-//		sc_ctx_suppress_errors_off(card->ctx);
-//		if (r == SC_ERROR_FILE_NOT_FOUND)
-//			continue; 
-			
+/*		r = sc_select_file(card, &obj_info.path, NULL);
+		if (r == SC_ERROR_FILE_NOT_FOUND)
+			continue;
+*/			
 		strncpy(obj_info.app_label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		r = sc_format_oid(&obj_info.app_oid, objects[i].aoid);
 		if (r != SC_SUCCESS)
@@ -330,10 +326,8 @@ const objdata objects[] = {
 		/* see if we have a cert */
 
 		/* use a &file_out so card-piv will read cert if present */
-		sc_ctx_suppress_errors_on(card->ctx);
 		r = sc_pkcs15_read_file(p15card, &cert_info.path, 
 				&cert_der.value, &cert_der.len, &file_out);
-		sc_ctx_suppress_errors_off(card->ctx);
 		if (file_out) {
 			sc_file_free(file_out);
 			file_out = NULL;
@@ -368,7 +362,7 @@ const objdata objects[] = {
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0) {
-			sc_error(card->ctx, " Failed to add cert obj r=%d",r);
+			sc_debug(card->ctx, " Failed to add cert obj r=%d",r);
 			continue;
 		}
 	}
@@ -441,9 +435,7 @@ const objdata objects[] = {
 			/* TODO DSA */
 			pubkey_obj.type = SC_PKCS15_TYPE_PUBKEY_RSA;
 			pubkey_obj.data = &pubkey_info;
-			sc_ctx_suppress_errors_on(card->ctx);
 			r = sc_pkcs15_read_pubkey(p15card, &pubkey_obj, &p15_key);
-			sc_ctx_suppress_errors_off(card->ctx);
 				pubkey_obj.data = NULL;
 				sc_debug(card->ctx," READING PUB KEY r=%d",r);
 			if (r < 0 ) {

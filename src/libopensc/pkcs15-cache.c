@@ -154,7 +154,7 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 	c = fwrite(buf, 1, bufsize, f);
         fclose(f);
 	if (c != bufsize) {
-		sc_error(p15card->card->ctx, "fwrite() wrote only %d bytes", c);
+		sc_debug(p15card->card->ctx, "fwrite() wrote only %d bytes", c);
 		unlink(fname);
 		return SC_ERROR_INTERNAL;
 	}

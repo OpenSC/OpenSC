@@ -90,7 +90,7 @@ static void sc_card_free(sc_card_t *card)
 	if (card->mutex != NULL) {
 		int r = sc_mutex_destroy(card->ctx, card->mutex);
 		if (r != SC_SUCCESS)
-			sc_error(card->ctx, "unable to destroy mutex\n");
+			sc_debug(card->ctx, "unable to destroy mutex\n");
 	}
 	sc_mem_clear(card, sizeof(*card));
 	free(card);
@@ -172,7 +172,7 @@ int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card_out)
 		if (card->ops->init != NULL) {
 			r = card->ops->init(card);
 			if (r) {
-				sc_error(ctx, "driver '%s' init() failed: %s\n", card->driver->name,
+				sc_debug(ctx, "driver '%s' init() failed: %s\n", card->driver->name,
 				      sc_strerror(r));
 				goto err;
 			}
@@ -198,7 +198,7 @@ int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card_out)
 			card->driver = drv;
 			r = ops->init(card);
 			if (r) {
-				sc_error(ctx, "driver '%s' init() failed: %s\n", drv->name,
+				sc_debug(ctx, "driver '%s' init() failed: %s\n", drv->name,
 				      sc_strerror(r));
 				if (r == SC_ERROR_INVALID_CARD) {
 					card->driver = NULL;
@@ -210,7 +210,7 @@ int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card_out)
 		}
 	}
 	if (card->driver == NULL) {
-		sc_error(ctx, "unable to find driver for inserted card\n");
+		sc_debug(ctx, "unable to find driver for inserted card\n");
 		r = SC_ERROR_INVALID_CARD;
 		goto err;
 	}
@@ -238,13 +238,13 @@ int sc_disconnect_card(sc_card_t *card, int action)
 	if (card->ops->finish) {
 		int r = card->ops->finish(card);
 		if (r)
-			sc_error(card->ctx, "card driver finish() failed: %s\n",
+			sc_debug(card->ctx, "card driver finish() failed: %s\n",
 			      sc_strerror(r));
 	}
 	if (card->reader->ops->disconnect) {
 		int r = card->reader->ops->disconnect(card->reader, card->slot);
 		if (r)
-			sc_error(card->ctx, "disconnect() failed: %s\n",
+			sc_debug(card->ctx, "disconnect() failed: %s\n",
 			      sc_strerror(r));
 	}
 	sc_card_free(card);
@@ -271,7 +271,7 @@ int sc_reset(sc_card_t *card)
 
 	r2 = sc_mutex_unlock(card->ctx, card->mutex);
 	if (r2 != SC_SUCCESS) {
-		sc_error(card->ctx, "unable to release lock\n");
+		sc_debug(card->ctx, "unable to release lock\n");
 		r = r != SC_SUCCESS ? r : r2;
 	}
 
@@ -290,8 +290,15 @@ int sc_lock(sc_card_t *card)
 	if (r != SC_SUCCESS)
 		return r;
 	if (card->lock_count == 0) {
-		if (card->reader->ops->lock != NULL)
+		if (card->reader->ops->lock != NULL) {
 			r = card->reader->ops->lock(card->reader, card->slot);
+			if (r == SC_ERROR_CARD_RESET || r == SC_ERROR_READER_REATTACHED) {
+				/* invalidate cache */
+				memset(&card->cache, 0, sizeof(card->cache));
+				card->cache_valid = 0;
+				r = card->reader->ops->lock(card->reader, card->slot);
+			}
+		}
 		if (r == 0)
 			card->cache_valid = 1;
 	}
@@ -299,7 +306,7 @@ int sc_lock(sc_card_t *card)
 		card->lock_count++;
 	r2 = sc_mutex_unlock(card->ctx, card->mutex);
 	if (r2 != SC_SUCCESS) {
-		sc_error(card->ctx, "unable to release lock\n");
+		sc_debug(card->ctx, "unable to release lock\n");
 		r = r != SC_SUCCESS ? r : r2;
 	}
 	return r;
@@ -327,7 +334,7 @@ int sc_unlock(sc_card_t *card)
 	}
 	r2 = sc_mutex_unlock(card->ctx, card->mutex);
 	if (r2 != SC_SUCCESS) {
-		sc_error(card->ctx, "unable to release lock\n");
+		sc_debug(card->ctx, "unable to release lock\n");
 		r = (r == SC_SUCCESS) ? r2 : r;
 	}
 	return r;
@@ -774,7 +781,7 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *at
 			mbin_len = sizeof(mbin);
 			sc_hex_to_bin(matr, mbin, &mbin_len);
 			if (mbin_len != fix_bin_len) {
-				sc_error(ctx,"length of atr and atr mask do not match - ignored: %s - %s", tatr, matr); 
+				sc_debug(ctx,"length of atr and atr mask do not match - ignored: %s - %s", tatr, matr); 
 				continue;
 			}
 			for (s = 0; s < tbin_len; s++) {

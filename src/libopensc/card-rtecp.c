@@ -345,7 +345,6 @@ static int rtecp_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 		apdu.lc = data_len;
 		apdu.data = data;
 		apdu.datalen = data_len;
-		apdu.sensitive = 1;
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (send_logout++ == 0 && apdu.sw1 == 0x6F && apdu.sw2 == 0x86)
@@ -411,7 +410,6 @@ static int rtecp_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 	apdu.lc = data_len;
 	apdu.data = buf;
 	apdu.datalen = data_len;
-	apdu.sensitive = 1;
 	apdu.resp = buf_out;
 	apdu.resplen = out_len + 2;
 	apdu.le = out_len;
@@ -426,7 +424,7 @@ static int rtecp_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 	assert(buf);
 	free(buf);
 	if (r)
-		sc_error(card->ctx, "APDU transmit failed: %s\n", sc_strerror(r));
+		sc_debug(card->ctx, "APDU transmit failed: %s\n", sc_strerror(r));
 	else
 	{
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
@@ -521,7 +519,6 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	apdu.lc = p - buf;
 	apdu.data = buf;
 	apdu.datalen = p - buf;
-	apdu.sensitive = 1;
 
 	r = sc_transmit_apdu(card, &apdu);
 	sc_mem_clear(buf, sizeof(buf));
@@ -662,7 +659,7 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 		if (card->ctx->debug >= 4)
 			sc_debug(card->ctx, "%s\n",
 					"SC_CARDCTL_LIFECYCLE_SET not supported");
-		/* no call sc_error (SC_FUNC_RETURN) */
+		/* no call sc_debug (SC_FUNC_RETURN) */
 		return SC_ERROR_NOT_SUPPORTED;
 	default:
 		if (card->ctx->debug >= 3)
@@ -788,7 +785,6 @@ struct sc_card_driver * sc_get_rtecp_driver(void)
 
 	rtecp_ops.match_card = rtecp_match_card;
 	rtecp_ops.init = rtecp_init;
-	rtecp_ops.finish = NULL;
 	/* read_binary */
 	rtecp_ops.write_binary = NULL;
 	/* update_binary */

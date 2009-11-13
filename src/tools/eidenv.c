@@ -422,12 +422,10 @@ int main(int argc, char **argv)
 	}
 	
 	if (exec_program) {
-		const char *largv[2];
+		char *const largv[] = {exec_program, NULL};
 		sc_unlock(card);
 		sc_disconnect_card(card, 0);
 		sc_release_context(ctx);
-		largv[0] = exec_program;
-		largv[1] = NULL;
 		execv(exec_program, largv);
 		/* we should not get here */
 		perror("execv()");

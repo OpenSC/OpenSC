@@ -90,6 +90,7 @@ extern "C" {
 #define SC_ERROR_WRONG_CARD			-1413
 #define SC_ERROR_CANNOT_LOAD_MODULE		-1414
 #define SC_ERROR_OFFSET_TOO_LARGE		-1415
+#define SC_ERROR_NOT_IMPLEMENTED		-1416
 
 /* Relating to PKCS #15 init stuff */
 #define SC_ERROR_PKCS15INIT			-1500

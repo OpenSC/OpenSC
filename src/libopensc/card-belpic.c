@@ -286,7 +286,7 @@ struct pcsc_slot_data {
 	SCARDHANDLE pcsc_card;
 };				/* comes from reader-pcsc.c */
 #define GET_SLOT_DATA(r) ((struct pcsc_slot_data *) (r)->drv_data)
-#define PCSC_ERROR(ctx, desc, rv) sc_error(ctx, desc ": %lx\n", rv);
+#define PCSC_ERROR(ctx, desc, rv) sc_debug(ctx, desc ": %lx\n", rv);
 
 #endif	/* BELPIC_PIN_PAD */
 
@@ -1035,7 +1035,7 @@ static int belpic_init(sc_card_t *card)
 #ifdef HAVE_GUI
 	r = scgui_init();
 	if (r != 0)
-		sc_error(card->ctx, "scgui_init() returned error %d\n", i);
+		sc_debug(card->ctx, "scgui_init() returned error %d\n", i);
 #endif
 
 #ifdef BELPIC_PIN_PAD
@@ -1209,7 +1209,7 @@ static int belpic_pp_verify(sc_card_t *card, SCR_Card * scr_card,
 				if (r1 == SCGUI_CANCEL)
 					return r;
 				else if (r1 != SCGUI_OK) {
-					sc_error(card->ctx, "scgui_ask_message returned %d\n", r1);
+					sc_debug(card->ctx, "scgui_ask_message returned %d\n", r1);
 					return SC_ERROR_INTERNAL;
 				}
 			} else
@@ -1272,7 +1272,7 @@ static int belpic_pp_change(sc_card_t *card, SCR_Card * scr_card,
 			if (r1 == SCGUI_CANCEL)
 				return r;
 			else if (r1 != SCGUI_OK) {
-				sc_error(card->ctx, "scgui_ask_message returned %d\n", r1);
+				sc_debug(card->ctx, "scgui_ask_message returned %d\n", r1);
 				return SC_ERROR_INTERNAL;
 			}
 		}
@@ -1417,7 +1417,7 @@ static int belpic_askpin_verify(sc_card_t *card, int pin_usage)
 		if (r1 == SCGUI_CANCEL)
 			return r;
 		else if (r1 != SCGUI_OK) {
-			sc_error(card->ctx, "scgui_ask_message returned %d\n", r1);
+			sc_debug(card->ctx, "scgui_ask_message returned %d\n", r1);
 			return SC_ERROR_INTERNAL;
 		}
 
@@ -1470,7 +1470,7 @@ static int belpic_set_security_env(sc_card_t *card,
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_MD5)
 			sbuf[2] = 0x04;
 		else {
-			sc_error(card->ctx, "Set Sec Env: unsupported algo 0X%0X\n",
+			sc_debug(card->ctx, "Set Sec Env: unsupported algo 0X%0X\n",
 				 env->algorithm_flags);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -1506,7 +1506,7 @@ static int belpic_set_security_env(sc_card_t *card,
 #ifdef HAVE_GUI
 		r = belpic_askpin_verify(card, SCR_USAGE_SIGN);
 		if (r != 0 && r != SC_ERROR_KEYPAD_CANCELLED)
-			sc_error(card->ctx, "Verify PIN in SET command returned %d\n", r);
+			sc_debug(card->ctx, "Verify PIN in SET command returned %d\n", r);
 		else
 			sc_debug(card->ctx, "Verify PIN in SET command returned %d\n", r);
 #else

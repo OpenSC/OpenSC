@@ -122,7 +122,7 @@ miocos_new_file(struct sc_profile *profile, sc_card_t *card,
 		 * the generic class (SC_PKCS15_TYPE_CERT)
 		 */
 		if (!(type & ~SC_PKCS15_TYPE_CLASS_MASK)) {
-			sc_error(card->ctx,
+			sc_debug(card->ctx,
 				"File type not supported by card driver");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -131,7 +131,7 @@ miocos_new_file(struct sc_profile *profile, sc_card_t *card,
 
 	snprintf(name, sizeof(name), "template-%s", tag);
 	if (sc_profile_get_file(profile, name, &file) < 0) {
-		sc_error(card->ctx, "Profile doesn't define %s template (%s)",
+		sc_debug(card->ctx, "Profile doesn't define %s template (%s)",
 				desc, name);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -177,12 +177,12 @@ miocos_new_key(struct sc_profile *profile, sc_card_t *card,
 	int r;
 	
 	if (key->algorithm != SC_ALGORITHM_RSA) {
-		sc_error(card->ctx, "MioCOS supports only 1024-bit RSA keys.");
+		sc_debug(card->ctx, "MioCOS supports only 1024-bit RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	rsa = &key->u.rsa;
 	if (rsa->modulus.len != 128) {
-		sc_error(card->ctx, "MioCOS supports only 1024-bit RSA keys.");
+		sc_debug(card->ctx, "MioCOS supports only 1024-bit RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	r = miocos_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, idx,

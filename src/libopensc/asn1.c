@@ -307,7 +307,7 @@ const u8 *sc_asn1_find_tag(sc_context_t *ctx, const u8 * buf,
 		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != SC_SUCCESS)
 			return NULL;
 		if (left < (size_t)(p - buf)) {
-			sc_error(ctx, "invalid TLV object\n");
+			sc_debug(ctx, "invalid TLV object\n");
 			return NULL;
 		}
 		left -= (p - buf);
@@ -327,7 +327,7 @@ const u8 *sc_asn1_find_tag(sc_context_t *ctx, const u8 * buf,
 		}
 		/* otherwise continue reading tags */
 		if (left < taglen) {
-			sc_error(ctx, "invalid TLV object\n");
+			sc_debug(ctx, "invalid TLV object\n");
 			return NULL;
 		}
 		left -= taglen;
@@ -373,7 +373,7 @@ const u8 *sc_asn1_skip_tag(sc_context_t *ctx, const u8 ** buf, size_t *buflen,
 		return NULL;
 	len -= (p - *buf);	/* header size */
 	if (taglen > len) {
-		sc_error(ctx, "too long ASN.1 object (size %d while only %d available)\n",
+		sc_debug(ctx, "too long ASN.1 object (size %d while only %d available)\n",
 		      taglen, len);
 		return NULL;
 	}
@@ -723,7 +723,7 @@ static int asn1_write_element(sc_context_t *ctx, unsigned int tag,
 	
 	t = tag & 0x1F;
 	if (t != (tag & SC_ASN1_TAG_MASK)) {
-		sc_error(ctx, "Long tags not supported\n");
+		sc_debug(ctx, "Long tags not supported\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	switch (tag & SC_ASN1_CLASS_MASK) {
@@ -989,7 +989,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_BOOLEAN:
 		if (parm != NULL) {
 			if (objlen != 1) {
-				sc_error(ctx, "invalid ASN.1 object length: %d\n", objlen);
+				sc_debug(ctx, "invalid ASN.1 object length: %d\n", objlen);
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 			} else
 				*((int *) parm) = obj[0] ? 1 : 0;
@@ -1133,11 +1133,11 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			r = callback_func(ctx, entry->arg, obj, objlen, depth);
 		break;
 	default:
-		sc_error(ctx, "invalid ASN.1 type: %d\n", entry->type);
+		sc_debug(ctx, "invalid ASN.1 type: %d\n", entry->type);
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	if (r) {
-		sc_error(ctx, "decoding of ASN.1 object '%s' failed: %s\n", entry->name,
+		sc_debug(ctx, "decoding of ASN.1 object '%s' failed: %s\n", entry->name,
 		      sc_strerror(r));
 		return r;
 	}
@@ -1167,7 +1167,7 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 		 * to complain about */
 		if (asn1->name == NULL)
 			return 0;
-		sc_error(ctx, "End of ASN.1 stream, "
+		sc_debug(ctx, "End of ASN.1 stream, "
 			      "non-optional field \"%s\" not found\n",
 			      asn1->name);
 		return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
@@ -1204,7 +1204,7 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 				continue;
 			if (entry->flags & SC_ASN1_OPTIONAL)
 				continue;
-			sc_error(ctx, "mandatory ASN.1 object '%s' not found\n", entry->name);
+			sc_debug(ctx, "mandatory ASN.1 object '%s' not found\n", entry->name);
 			if (ctx->debug && left) {
 				u8 line[128], *linep = line;
 				size_t i;
@@ -1281,7 +1281,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		while (list->name != NULL) {
 			if (list->flags & SC_ASN1_PRESENT) {
 				if (choice) {
-					sc_error(ctx,
+					sc_debug(ctx,
 						"ASN.1 problem: more than "
 						"one CHOICE when encoding %s: "
 						"%s and %s both present\n",
@@ -1300,7 +1300,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 	}
 
 	if (entry->type != SC_ASN1_NULL && parm == NULL) {
-		sc_error(ctx, "unexpected parm == NULL\n");
+		sc_debug(ctx, "unexpected parm == NULL\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 
@@ -1396,11 +1396,11 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		r = callback_func(ctx, entry->arg, &buf, &buflen, depth);
 		break;
 	default:
-		sc_error(ctx, "invalid ASN.1 type: %d\n", entry->type);
+		sc_debug(ctx, "invalid ASN.1 type: %d\n", entry->type);
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	if (r) {
-		sc_error(ctx, "encoding of ASN.1 object '%s' failed: %s\n", entry->name,
+		sc_debug(ctx, "encoding of ASN.1 object '%s' failed: %s\n", entry->name,
 		      sc_strerror(r));
 		if (buf)
 			free(buf);
@@ -1430,13 +1430,13 @@ no_object:
 		r = asn1_write_element(ctx, entry->tag,
 					buf, buflen, obj, objlen);
 		if (r)
-			sc_error(ctx, "error writing ASN.1 tag and length: %s\n",
+			sc_debug(ctx, "error writing ASN.1 tag and length: %s\n",
 					sc_strerror(r));
 	} else if (!(entry->flags & SC_ASN1_PRESENT)) {
-		sc_error(ctx, "cannot encode non-optional ASN.1 object: not given by caller\n");
+		sc_debug(ctx, "cannot encode non-optional ASN.1 object: not given by caller\n");
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 	} else {
-		sc_error(ctx, "cannot encode empty non-optional ASN.1 object\n");
+		sc_debug(ctx, "cannot encode empty non-optional ASN.1 object\n");
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	if (buf)

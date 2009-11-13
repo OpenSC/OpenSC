@@ -6,7 +6,6 @@ all-local:
 	@$(LN_S) $(top_srcdir)/src/libopensc/asn1.h asn1.h
 	@$(LN_S) $(top_srcdir)/src/libopensc/cardctl.h cardctl.h
 	@$(LN_S) $(top_srcdir)/src/libopensc/cards.h cards.h
-	@$(LN_S) $(top_srcdir)/src/libopensc/emv.h emv.h
 	@$(LN_S) $(top_srcdir)/src/libopensc/errors.h errors.h
 	@$(LN_S) $(top_srcdir)/src/libopensc/log.h log.h
 	@$(LN_S) $(top_srcdir)/src/libopensc/opensc.h opensc.h
