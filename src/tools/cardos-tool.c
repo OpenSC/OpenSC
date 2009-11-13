@@ -372,14 +372,14 @@ static int cardos_sm4h(unsigned char *in, size_t inlen, unsigned char
 	/* using a buffer with an APDU, build an SM 4h APDU for cardos */
 
 	int plain_lc;	/* data size in orig APDU */
-	int mac_input_len, enc_input_len;
+	unsigned int mac_input_len, enc_input_len;
 	unsigned char *mac_input, *enc_input;
 	DES_key_schedule ks_a, ks_b;
 	DES_cblock des_in,des_out;
 	int i,j;
 
 	if (keylen != 16) {
-		printf("key has wrong size, need 16 bytes, got %d. aborting.\n",
+		printf("key has wrong size, need 16 bytes, got %zd. aborting.\n",
 			keylen);
 		return 0;
 	}
@@ -580,7 +580,7 @@ static int cardos_format()
 		return 1;
 	}
 
-	if (apdu.resp[3] =! 0xff) {
+	if (apdu.resp[3] != 0xff) {
 		printf("startkey version is 0x%02x, currently we support only 0xff\n", (int) apdu.resp[3]);
 		printf("aborting\n");
 		return 1;
