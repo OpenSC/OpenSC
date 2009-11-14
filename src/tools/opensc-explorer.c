@@ -1272,12 +1272,12 @@ static int do_apdu(int argc, char **argv)
 	}
 
 	len = strlen(argv[0]);
-	len0 = len;
 	sc_hex_to_bin(argv[0], buf, &len);
 	if (len < 4) {
 		puts("APDU too short (must be at least 4 bytes)");
 		return 1;
 	}
+	len0 = len;
 
 	memset(&apdu, 0, sizeof(apdu));
 	p = buf;
