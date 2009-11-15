@@ -89,7 +89,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 
 #ifdef ENABLE_ICONV
 	/* Read the name of the cardholder and convert it into UTF-8 */
-	iso_utf  = iconv_open ("UTF-8", "ISO-8859-1");
+	iso_utf  = iconv_open ("UTF-8", "CP1252");
 	if (iso_utf == (iconv_t) -1)
 		return SC_ERROR_INTERNAL;
 	
