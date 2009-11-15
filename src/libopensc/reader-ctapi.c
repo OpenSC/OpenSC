@@ -19,6 +19,7 @@
  */
 
 #include "internal.h"
+#ifdef ENABLE_CTAPI
 #include "ctbcs.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -622,3 +623,4 @@ struct sc_reader_driver * sc_get_ctapi_driver(void)
 	
 	return &ctapi_drv;
 }
+#endif

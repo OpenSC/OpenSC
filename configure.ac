@@ -159,6 +159,13 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
+	[ctapi],
+	[AS_HELP_STRING([--enable-ctapi],[enable CT-API support @<:@disabled@:>@])],
+	,
+	[enable_ctapi="no"]
+)
+
+AC_ARG_ENABLE(
 	[man],
 	[AS_HELP_STRING([--disable-man],[disable installation of manuals @<:@enabled for none Windows@:>@])],
 	,
@@ -540,6 +547,10 @@ if test "${enable_openct}" = "yes"; then
 	)
 fi
 
+if test "${enable_ctapi}" = "yes"; then
+	AC_DEFINE([ENABLE_CTAPI], [1], [Enable CT-API support])
+fi
+
 if test "${enable_pcsc}" = "yes"; then
 	if test "${WIN32}" != "yes"; then
 		PKG_CHECK_EXISTS(
@@ -612,6 +623,10 @@ fi
 if test "${enable_pcsc}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} pcsc(${DEFAULT_PCSC_PROVIDER})"
 	OPTIONAL_PCSC_CFLAGS="${PCSC_CFLAGS}"
+fi
+
+if test "${enable_ctapi}" = "yes"; then
+	OPENSC_FEATURES="${OPENSC_FEATURES} ctapi"
 fi
 
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
@@ -717,6 +732,7 @@ iconv support:           ${enable_iconv}
 OpenSSL support:         ${enable_openssl}
 PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
+CT-API support:          ${enable_ctapi}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 

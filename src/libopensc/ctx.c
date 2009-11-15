@@ -96,10 +96,12 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 };
 
 static const struct _sc_driver_entry internal_reader_drivers[] = {
-#if defined(ENABLE_PCSC)
+#ifdef ENABLE_PCSC
 	{ "pcsc",	(void *(*)(void)) sc_get_pcsc_driver },
 #endif
+#ifdef ENABLE_CTAPI
 	{ "ctapi",	(void *(*)(void)) sc_get_ctapi_driver },
+#endif
 #ifndef _WIN32
 #ifdef ENABLE_OPENCT
 	{ "openct",	(void *(*)(void)) sc_get_openct_driver },
