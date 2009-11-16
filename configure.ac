@@ -193,13 +193,6 @@ AC_ARG_WITH(
 )
 
 AC_ARG_WITH(
-	[plugindir],
-	[AS_HELP_STRING([--with-plugindir=PATH],[install Mozilla plugin to PATH @<:@LIBDIR/mozilla/plugins@:>@])],
-	[plugindir="${withval}"],
-	[plugindir="\$(libdir)/mozilla/plugins"]
-)
-
-AC_ARG_WITH(
 	[pcsc-provider],
 	[AS_HELP_STRING([--with-pcsc-provider=PATH],[Path to system pcsc provider @<:@system default@:>@])],
 	,
@@ -640,7 +633,6 @@ pkgconfigdir="\$(libdir)/pkgconfig"
 
 AC_SUBST([openscincludedir])
 AC_SUBST([pkcs11dir])
-AC_SUBST([plugindir])
 AC_SUBST([pkgconfigdir])
 AC_SUBST([xslstylesheetsdir])
 AC_SUBST([OPENSC_VERSION_MAJOR])
