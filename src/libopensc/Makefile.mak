@@ -34,7 +34,7 @@ OBJECTS			= \
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj pkcs15-gemsafeGPK.obj \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
-	pkcs15-esinit.obj pkcs15-pteid.c \
+	pkcs15-esinit.obj pkcs15-pteid.obj \
 	compression.obj p15card-helper.obj \
 	versioninfo.res
 
