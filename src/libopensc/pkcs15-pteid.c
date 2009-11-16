@@ -107,27 +107,27 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 
 	/* TODO: Use the cardholder's name?  */
 	/* TODO: Use Portuguese descriptions? */
-
+	
 	/* Add X.509 Certificates */
-	static const char *pteid_cert_names[4] = {
-			"AUTHENTICATION CERTIFICATE",
-			"SIGNATURE CERTIFICATE",
-			"SIGNATURE SUB CA",
-			"AUTHENTICATION SUB CA"
-	};
-	/* X.509 Certificate Paths */
-	static const char *pteid_cert_paths[4] = {
+	for (i = 0; i < 4; i++) {
+		static const char *pteid_cert_names[4] = {
+				"AUTHENTICATION CERTIFICATE",
+				"SIGNATURE CERTIFICATE",
+				"SIGNATURE SUB CA",
+				"AUTHENTICATION SUB CA"
+		};
+		/* X.509 Certificate Paths */
+		static const char *pteid_cert_paths[4] = {
 			"3f005f00ef09", /* Authentication Certificate path */
 			"3f005f00ef08", /* Digital Signature Certificate path */
 			"3f005f00ef0f", /* Signature sub CA path */
 			"3f005f00ef10"	/* Authentication sub CA path */
-	};
-	/* X.509 Certificate IDs */
-	static const int pteid_cert_ids[4] = {0x45, 0x46, 0x51, 0x52};
-	struct sc_pkcs15_cert_info cert_info;
-	struct sc_pkcs15_object cert_obj;
+		};
+		/* X.509 Certificate IDs */
+		static const int pteid_cert_ids[4] = {0x45, 0x46, 0x51, 0x52};
+		struct sc_pkcs15_cert_info cert_info;
+		struct sc_pkcs15_object cert_obj;
 
-	for (i = 0; i < 4; i++) {
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj, 0, sizeof(cert_obj));
 
@@ -141,24 +141,24 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 			goto end;
 		}
 	}
-
+	
 	/* Add PINs */
-	static const char *pteid_pin_names[3] = {
-		"Auth PIN",
-		"Sign PIN",
-		"Address PIN"
-	};
-	/* PIN References */
-	static const int pteid_pin_ref[2][3] = { {1, 130, 131}, {129, 130, 131} };
-	/* PIN Authentication IDs */
-	static const int pteid_pin_authid[3] = {1, 2, 3};
-	/* PIN Paths */
-	static const char *pteid_pin_paths[2][3] = { {NULL, "3f005f00", NULL},
-												 {NULL, NULL, NULL} };
-	struct sc_pkcs15_pin_info pin_info;
-	struct sc_pkcs15_object pin_obj;
-
 	for (i = 0; i < 3; i++) {
+		static const char *pteid_pin_names[3] = {
+			"Auth PIN",
+			"Sign PIN",
+			"Address PIN"
+		};
+		/* PIN References */
+		static const int pteid_pin_ref[2][3] = { {1, 130, 131}, {129, 130, 131} };
+		/* PIN Authentication IDs */
+		static const int pteid_pin_authid[3] = {1, 2, 3};
+		/* PIN Paths */
+		static const char *pteid_pin_paths[2][3] = { {NULL, "3f005f00", NULL},
+													 {NULL, NULL, NULL} };
+		struct sc_pkcs15_pin_info pin_info;
+		struct sc_pkcs15_object pin_obj;
+
 		memset(&pin_info, 0, sizeof(pin_info));
 		memset(&pin_obj, 0, sizeof(pin_obj));
 
@@ -186,24 +186,23 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 	}
 
 	/* Add Private Keys */
-
-	/* Key reference */
-	static const int pteid_prkey_keyref[2][2] = { {1, 130}, {2, 1} };
-	/* RSA Private Key usage */
-	static int pteid_prkey_usage[2] = {
-		SC_PKCS15_PRKEY_USAGE_SIGN,
-		SC_PKCS15_PRKEY_USAGE_NONREPUDIATION};
-	/* RSA Private Key IDs */
-	static const int pteid_prkey_ids[2] = {0x45, 0x46};
-	static const char *pteid_prkey_names[2] = {
-			"CITIZEN AUTHENTICATION KEY",
-			"CITIZEN SIGNATURE KEY"};
-	/* RSA Private Key Paths */
-	static const char *pteid_prkey_paths[2][2] = { {NULL, "3f005f00"}, {NULL, NULL} };
-	struct sc_pkcs15_prkey_info prkey_info;
-	struct sc_pkcs15_object prkey_obj;
-
 	for (i = 0; i < 2; i++) {
+		/* Key reference */
+		static const int pteid_prkey_keyref[2][2] = { {1, 130}, {2, 1} };
+		/* RSA Private Key usage */
+		static int pteid_prkey_usage[2] = {
+			SC_PKCS15_PRKEY_USAGE_SIGN,
+			SC_PKCS15_PRKEY_USAGE_NONREPUDIATION};
+		/* RSA Private Key IDs */
+		static const int pteid_prkey_ids[2] = {0x45, 0x46};
+		static const char *pteid_prkey_names[2] = {
+				"CITIZEN AUTHENTICATION KEY",
+				"CITIZEN SIGNATURE KEY"};
+		/* RSA Private Key Paths */
+		static const char *pteid_prkey_paths[2][2] = { {NULL, "3f005f00"}, {NULL, NULL} };
+		struct sc_pkcs15_prkey_info prkey_info;
+		struct sc_pkcs15_object prkey_obj;
+
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		memset(&prkey_obj, 0, sizeof(prkey_obj));
 
@@ -229,22 +228,22 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 	}
 
 	/* Add objects */
-	static const char *object_ids[3] = {"1", "2", "3"};
-	static const char *object_oids[3] = {"-1", "-1", "-1"};
-	static const char *object_labels[3] = {"Citizen Data",
-										   "Citizen Address Data",
-										   "Citizen Notepad"};
-	static const char *object_authids[3] = {"3", "3", "1"};
-	static const char *object_paths[3] = {"3f005f00ef02",
-										  "3f005f00ef05",
-										  "3f005f00ef07"};
-	static const int object_flags[3] = {0,
-										SC_PKCS15_CO_FLAG_PRIVATE,
-										SC_PKCS15_CO_FLAG_MODIFIABLE};
-	struct sc_pkcs15_data_info obj_info;
-	struct sc_pkcs15_object obj_obj;
-
 	for (i = 0; i < 3; i++) {
+		static const char *object_ids[3] = {"1", "2", "3"};
+		static const char *object_oids[3] = {"-1", "-1", "-1"};
+		static const char *object_labels[3] = {"Citizen Data",
+											   "Citizen Address Data",
+											   "Citizen Notepad"};
+		static const char *object_authids[3] = {"3", "3", "1"};
+		static const char *object_paths[3] = {"3f005f00ef02",
+											  "3f005f00ef05",
+											  "3f005f00ef07"};
+		static const int object_flags[3] = {0,
+											SC_PKCS15_CO_FLAG_PRIVATE,
+											SC_PKCS15_CO_FLAG_MODIFIABLE};
+		struct sc_pkcs15_data_info obj_info;
+		struct sc_pkcs15_object obj_obj;
+
 		memset(&obj_info, 0, sizeof(obj_info));
 		memset(&obj_obj, 0, sizeof(obj_obj));
 
