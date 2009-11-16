@@ -402,7 +402,7 @@ static int gemsafe_set_security_env(struct sc_card *card,
 static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	size_t data_len, u8 * out, size_t outlen)
 {
-	int r;
+	int r, len;
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -447,7 +447,7 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 			if(apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 				SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
 		}
-		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
 		SC_FUNC_RETURN(card->ctx, 4, len);
