@@ -63,10 +63,10 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	size_t	left;
 #ifdef _WIN32
 	SYSTEMTIME st;
-	char szHora[64];
 #else
-	time_t curtime;
 	struct tm *tm;
+	struct timeval tv;
+	char time_string[40];
 #endif
 
 	assert(ctx != NULL);
@@ -92,13 +92,10 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 			st.wYear, st.wMonth, st.wDay,
 			st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 #else
-	curtime = time(NULL);
-	tm = localtime(&curtime);
-
-	r = snprintf(p, left,
-			"%i-%02i-%02i %02i:%02i:%02i ",
-			tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
-			tm->tm_hour, tm->tm_min, tm->tm_sec);
+	gettimeofday (&tv, NULL);
+	tm = localtime (&tv.tv_sec);
+	strftime (time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", tm);
+	r = snprintf(p, left, "%s.%03ld ", time_string, tv.tv_usec / 1000);
 #endif
 	p += r;
 	left -= r;
