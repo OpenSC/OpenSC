@@ -231,8 +231,11 @@ static int pcsc_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 	r = sc_apdu_get_octets(reader->ctx, apdu, &sbuf, &ssize, slot->active_protocol);
 	if (r != SC_SUCCESS)
 		goto out;
-	if (reader->ctx->debug >= 6)
+	if (reader->ctx->debug >= 6)   {
+		if (reader->name)
+			sc_debug(reader->ctx, "reader '%s'", reader->name);
 		sc_apdu_log(reader->ctx, sbuf, ssize, 1);
+	}
 
 	r = pcsc_internal_transmit(reader, slot, sbuf, ssize,
 				rbuf, &rsize, apdu->control);
