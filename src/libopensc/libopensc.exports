@@ -75,6 +75,7 @@ sc_get_data
 sc_get_mf_path
 sc_get_version
 sc_hex_dump
+sc_dump_hex
 sc_hex_to_bin
 sc_list_files
 sc_lock

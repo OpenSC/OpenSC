@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <string.h>
+#include <time.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -60,6 +61,13 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	char	buf[1836], *p;
 	int	r;
 	size_t	left;
+#ifdef _WIN32
+	SYSTEMTIME st;
+	char szHora[64];
+#else
+	time_t curtime;
+	struct tm *tm;
+#endif
 
 	assert(ctx != NULL);
 
@@ -74,16 +82,37 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 		return;
 	}
 
+	p = buf;
+	left = sizeof(buf);
+
+#ifdef _WIN32
+	GetLocalTime(&st);
+	r = snprintf(p, left,
+			"%i-%02i-%02i %02i:%02i:%02i.%03i ",
+			st.wYear, st.wMonth, st.wDay,
+			st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+#else
+	curtime = time(NULL);
+	tm = localtime(&curtime);
+
+	r = snprintf(p, left,
+			"%i-%02i-%02i %02i:%02i:%02i ",
+			tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
+			tm->tm_hour, tm->tm_min, tm->tm_sec);
+#endif
+	p += r;
+	left -= r;
+
 	if (file != NULL) {
-		r = snprintf(buf, sizeof(buf), "[%s] %s:%d:%s: ", 
+		r = snprintf(p, left, "[%s] %s:%d:%s: ", 
 			ctx->app_name, file, line, func ? func : "");
 		if (r < 0 || (unsigned int)r > sizeof(buf))
 			return;
 	} else {
 		r = 0;
-	}
-	p = buf + r;
-	left = sizeof(buf) - r;
+	}	
+	p += r;
+	left -= r;
 
 	r = vsnprintf(p, left, format, args);
 	if (r < 0)
@@ -128,4 +157,36 @@ void sc_hex_dump(sc_context_t *ctx, const u8 * in, size_t count, char *buf, size
 		p++;
 		lines++;
 	}
+}
+
+char *
+sc_dump_hex(const u8 * in, size_t count)
+{
+	static char dump_buf[0x1000];
+	size_t ii, size = sizeof(dump_buf) - 0x10;
+    	size_t offs = 0;
+
+	memset(dump_buf, 0, sizeof(dump_buf));
+	if (in == NULL)
+        	return dump_buf;
+
+	for (ii=0; ii<count; ii++) {
+		if (!(ii%16))   {
+			if (!(ii%48))
+				snprintf(dump_buf + offs, size - offs, "\n");
+			else
+				snprintf(dump_buf + offs, size - offs, " ");
+		}
+
+		snprintf(dump_buf + offs, size - offs, "%02X", *(in + ii));
+		offs = strlen(dump_buf);
+
+		if (offs > size)
+            		break;
+    	}
+
+    	if (ii<count)
+        	snprintf(dump_buf + offs, sizeof(dump_buf) - offs, "....\n");
+
+	return dump_buf;
 }

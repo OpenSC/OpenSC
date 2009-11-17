@@ -51,6 +51,7 @@ void sc_do_log(struct sc_context *ctx, int type, const char *file, int line, con
 void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args);
 
 void sc_hex_dump(struct sc_context *ctx, const u8 * buf, size_t len, char *out, size_t outlen);
+char * sc_dump_hex(const u8 * in, size_t count);
 
 #define SC_FUNC_CALLED(ctx, level) do { \
 	if (ctx->debug >= level) \
