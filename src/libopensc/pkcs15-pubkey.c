@@ -317,9 +317,8 @@ static struct sc_asn1_entry c_asn1_dsa_pub_coefficients[5] = {
 	{ NULL, 0, 0, 0, NULL, NULL },
 };
 
-static struct sc_asn1_entry c_asn1_gostr3410_pub_coefficients[3] = {
-	{ "x", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC/*|SC_ASN1_UNSIGNED*/, NULL, NULL },
-	{ "y", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC/*|SC_ASN1_UNSIGNED*/, NULL, NULL },
+static struct sc_asn1_entry c_asn1_gostr3410_pub_coefficients[2] = {
+	{ "xy", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -433,18 +432,13 @@ sc_pkcs15_decode_pubkey_gostr3410(sc_context_t *ctx,
 		struct sc_pkcs15_pubkey_gostr3410 *key,
 		const u8 *buf, size_t buflen)
 {
-	struct sc_asn1_entry asn1_public_key[2];
-	struct sc_asn1_entry asn1_gostr3410_coeff[3];
+	struct sc_asn1_entry asn1_gostr3410_pub_coeff[2];
 	int r;
 
-	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
-	sc_format_asn1_entry(asn1_public_key + 0, asn1_gostr3410_coeff, NULL, 0);
+	sc_copy_asn1_entry(c_asn1_gostr3410_pub_coefficients, asn1_gostr3410_pub_coeff);
+	sc_format_asn1_entry(asn1_gostr3410_pub_coeff + 0, &key->xy.data, &key->xy.len, 0);
 
-	sc_copy_asn1_entry(c_asn1_gostr3410_pub_coefficients, asn1_gostr3410_coeff);
-	sc_format_asn1_entry(asn1_gostr3410_coeff + 0, &key->x.data, &key->x.len, 0);
-	sc_format_asn1_entry(asn1_gostr3410_coeff + 1, &key->y.data, &key->y.len, 0);
-
-	r = sc_asn1_decode(ctx, asn1_public_key, buf, buflen, NULL, NULL);
+	r = sc_asn1_decode(ctx, asn1_gostr3410_pub_coeff, buf, buflen, NULL, NULL);
 	SC_TEST_RET(ctx, r, "ASN.1 parsing of public key failed");
 
 	return 0;
@@ -455,18 +449,13 @@ sc_pkcs15_encode_pubkey_gostr3410(sc_context_t *ctx,
 		struct sc_pkcs15_pubkey_gostr3410 *key,
 		u8 **buf, size_t *buflen)
 {
-	struct sc_asn1_entry asn1_public_key[2];
-	struct sc_asn1_entry asn1_gostr3410_pub_coeff[3];
+	struct sc_asn1_entry asn1_gostr3410_pub_coeff[2];
 	int r;
 
-	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
-	sc_format_asn1_entry(asn1_public_key + 0, asn1_gostr3410_pub_coeff, NULL, 1);
-
 	sc_copy_asn1_entry(c_asn1_gostr3410_pub_coefficients, asn1_gostr3410_pub_coeff);
-	sc_format_asn1_entry(asn1_gostr3410_pub_coeff + 0, key->x.data, &key->x.len, 1);
-	sc_format_asn1_entry(asn1_gostr3410_pub_coeff + 1, key->y.data, &key->y.len, 1);
+	sc_format_asn1_entry(asn1_gostr3410_pub_coeff + 0, key->xy.data, &key->xy.len, 1);
 
-	r = sc_asn1_encode(ctx, asn1_public_key, buf, buflen);
+	r = sc_asn1_encode(ctx, asn1_gostr3410_pub_coeff, buf, buflen);
 	SC_TEST_RET(ctx, r, "ASN.1 encoding failed");
 
 	return 0;
@@ -716,10 +705,8 @@ void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 			free(key->u.dsa.q.data);
 		break;
 	case SC_ALGORITHM_GOSTR3410:
-		if (key->u.gostr3410.x.data)
-			free(key->u.gostr3410.x.data);
-		if (key->u.gostr3410.y.data)
-			free(key->u.gostr3410.y.data);
+		if (key->u.gostr3410.xy.data)
+			free(key->u.gostr3410.xy.data);
 		break;
 	}
 	if (key->data.value)

@@ -68,6 +68,48 @@ asn1_encode_des_params(sc_context_t *ctx, void *params,
 	return _sc_asn1_encode(ctx, asn1_des_iv, buf, buflen, depth + 1);
 }
 
+static const struct sc_asn1_entry	c_asn1_gostr3410_params0[] = {
+	{ "GOSTR3410Params", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+static const struct sc_asn1_entry	c_asn1_gostr3410_params[] = {
+	{ "key_params", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
+	{ "hash_params", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
+	{ "cipher_params", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+static int
+asn1_decode_gostr3410_params(sc_context_t *ctx, void **paramp,
+		const u8 *buf, size_t buflen, int depth)
+{
+	struct sc_asn1_entry asn1_gostr3410_params0[2], asn1_gostr3410_params[4];
+	struct sc_object_id keyp, hashp, cipherp;
+	int r;
+
+	sc_copy_asn1_entry(c_asn1_gostr3410_params0, asn1_gostr3410_params0);
+	sc_copy_asn1_entry(c_asn1_gostr3410_params, asn1_gostr3410_params);
+
+	sc_format_asn1_entry(asn1_gostr3410_params0 + 0, asn1_gostr3410_params, NULL, 0);
+	sc_format_asn1_entry(asn1_gostr3410_params + 0, &keyp, NULL, 0);
+	sc_format_asn1_entry(asn1_gostr3410_params + 1, &hashp, NULL, 0);
+	sc_format_asn1_entry(asn1_gostr3410_params + 2, &cipherp, NULL, 0);
+
+	r = _sc_asn1_decode(ctx, asn1_gostr3410_params0, buf, buflen, NULL, NULL, 0, depth + 1);
+	/* TODO: store in paramp */
+	(void)paramp; /* no warning */
+	return r;
+}
+
+static int
+asn1_encode_gostr3410_params(sc_context_t *ctx, void *params,
+		u8 **buf, size_t *buflen, int depth)
+{
+	(void)ctx, (void)params, (void)buf, (void)buflen, (void)depth; /* no warning */
+	return SC_ERROR_NOT_IMPLEMENTED;
+}
+
 static const struct sc_asn1_entry	c_asn1_pbkdf2_params[] = {
 	{ "salt",	SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
 	{ "count",	SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
@@ -240,7 +282,10 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			NULL },
 #endif
 #ifdef SC_ALGORITHM_GOSTR3410
-	{ SC_ALGORITHM_GOSTR3410, {{ 1, 2, 643, 2, 2, 19 }}, NULL, NULL, NULL },
+	{ SC_ALGORITHM_GOSTR3410, {{ 1, 2, 643, 2, 2, 19 }},
+			asn1_decode_gostr3410_params,
+			asn1_encode_gostr3410_params,
+			NULL },
 #endif
 /* We do not support PBES1 because the encryption is weak */
 #ifdef SC_ALGORITHM_PBKDF2

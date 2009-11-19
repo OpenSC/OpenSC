@@ -19,6 +19,7 @@
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
 #endif /* OPENSSL_NO_EC */
+#include <openssl/asn1.h>
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 
 static CK_RV	sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *);
@@ -274,6 +275,7 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, int pubkey_len,
 	EVP_PKEY_CTX *pkey_ctx;
 	EC_POINT *P;
 	BIGNUM *X, *Y;
+	ASN1_OCTET_STRING *octet;
 	const EC_GROUP *group = NULL;
 	char paramset[2] = "A";
 	int r = -1, ret_vrf = 0;
@@ -303,10 +305,14 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, int pubkey_len,
 		if (r == 1 && EVP_PKEY_get0(pkey) != NULL)
 			group = EC_KEY_get0_group(EVP_PKEY_get0(pkey));
 		r = -1;
-		if (group  &&  pubkey_len == 0x20 + 0x20 + 4 + 2) {
-			X = BN_bin2bn(pubkey + 4, 0x20, NULL);
-			Y = BN_bin2bn(pubkey + 4 + 2 + 0x20, 0x20, NULL);
-
+		if (group)
+			octet = d2i_ASN1_OCTET_STRING(NULL, &pubkey, (long)pubkey_len);
+		if (group && octet) {
+			reverse(octet->data, octet->length);
+			Y = BN_bin2bn(octet->data, octet->length / 2, NULL);
+			X = BN_bin2bn((const unsigned char*)octet->data +
+					octet->length / 2, octet->length / 2, NULL);
+			ASN1_OCTET_STRING_free(octet);
 			P = EC_POINT_new(group);
 			if (P && X && Y)
 				r = EC_POINT_set_affine_coordinates_GFp(group,

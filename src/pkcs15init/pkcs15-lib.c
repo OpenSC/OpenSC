@@ -2329,8 +2329,8 @@ static int select_intrinsic_id(sc_pkcs15_card_t *p15card, struct sc_profile *pro
 		goto done;
 	else if (pubkey->algorithm == SC_ALGORITHM_DSA && !pubkey->u.dsa.pub.data)
 		goto done;
-	else if (pubkey->algorithm == SC_ALGORITHM_GOSTR3410 && 
-			(!pubkey->u.gostr3410.x.data || !pubkey->u.gostr3410.y.data))
+	else if (pubkey->algorithm == SC_ALGORITHM_GOSTR3410 &&
+			!pubkey->u.gostr3410.xy.data)
 		goto done;
 
 	/* In Mozilla 'GOST R 34.10' is not yet supported. 

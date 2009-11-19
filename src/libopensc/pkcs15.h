@@ -144,8 +144,7 @@ struct sc_pkcs15_prkey_dsa {
 };
 
 struct sc_pkcs15_pubkey_gostr3410 {
-	sc_pkcs15_bignum_t x;
-	sc_pkcs15_bignum_t y;
+	sc_pkcs15_bignum_t xy;
 };
 
 struct sc_pkcs15_prkey_gostr3410 {

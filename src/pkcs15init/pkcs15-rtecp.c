@@ -532,14 +532,11 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_card_t *card,
 		break;
 	case SC_ALGORITHM_GOSTR3410:
 		assert(key_info->modulus_length == SC_PKCS15_GOSTR3410_KEYSIZE);
-		data.u.gostr3410.x_len = key_info->modulus_length / 8;
-		data.u.gostr3410.x = calloc(1, data.u.gostr3410.x_len);
-		data.u.gostr3410.y_len = key_info->modulus_length / 8;
-		data.u.gostr3410.y = calloc(1, data.u.gostr3410.y_len);
-		if (!data.u.gostr3410.x || !data.u.gostr3410.y)
+		data.u.gostr3410.xy_len = key_info->modulus_length / 8 * 2;
+		data.u.gostr3410.xy = calloc(1, data.u.gostr3410.xy_len);
+		if (!data.u.gostr3410.xy)
 		{
-			free(data.u.gostr3410.x);
-			free(data.u.gostr3410.y);
+			free(data.u.gostr3410.xy);
 			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 		}
 		break;
@@ -560,10 +557,8 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_card_t *card,
 			pubkey->u.rsa.exponent.len = data.u.rsa.exponent_len;
 			break;
 		case SC_ALGORITHM_GOSTR3410:
-			pubkey->u.gostr3410.x.data = data.u.gostr3410.x;
-			pubkey->u.gostr3410.x.len = data.u.gostr3410.x_len;
-			pubkey->u.gostr3410.y.data = data.u.gostr3410.y;
-			pubkey->u.gostr3410.y.len = data.u.gostr3410.y_len;
+			pubkey->u.gostr3410.xy.data = data.u.gostr3410.xy;
+			pubkey->u.gostr3410.xy.len = data.u.gostr3410.xy_len;
 			break;
 		}
 	}

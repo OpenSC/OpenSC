@@ -683,19 +683,10 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 			genkey_data->u.rsa.exponent_len = 3;
 		}
 		else if (genkey_data->type == SC_ALGORITHM_GOSTR3410 &&
-				genkey_data->u.gostr3410.x_len <= apdu.resplen &&
-				genkey_data->u.gostr3410.x_len +
-				genkey_data->u.gostr3410.y_len >= apdu.resplen)
+				genkey_data->u.gostr3410.xy_len >= apdu.resplen)
 		{
-			memcpy(genkey_data->u.gostr3410.x, apdu.resp,
-					genkey_data->u.gostr3410.x_len);
-			memcpy(genkey_data->u.gostr3410.y, apdu.resp +
-					genkey_data->u.gostr3410.x_len,
-					genkey_data->u.gostr3410.y_len);
-			reverse(genkey_data->u.gostr3410.x,
-					genkey_data->u.gostr3410.x_len);
-			reverse(genkey_data->u.gostr3410.y,
-					genkey_data->u.gostr3410.y_len);
+			memcpy(genkey_data->u.gostr3410.xy, apdu.resp, apdu.resplen);
+			genkey_data->u.gostr3410.xy_len = apdu.resplen;
 		}
 		else
 			r = SC_ERROR_BUFFER_TOO_SMALL;

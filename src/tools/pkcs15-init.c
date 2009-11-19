@@ -2188,6 +2188,22 @@ static int do_convert_private_key(struct sc_pkcs15_prkey *key, EVP_PKEY *pk)
 	return 0;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+static void reverse(unsigned char *buf, size_t len)
+{
+	unsigned char tmp;
+	size_t i;
+
+	assert(buf || len == 0);
+	for (i = 0; i < len / 2; ++i)
+	{
+		tmp = buf[i];
+		buf[i] = buf[len - 1 - i];
+		buf[len - 1 - i] = tmp;
+	}
+}
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC) */
+
 static int do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
 {
 	switch (pk->type) {
@@ -2232,9 +2248,16 @@ static int do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
 			r = EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(eckey),
 					point, X, Y, NULL);
 		if (r == 1) {
-			do_convert_bignum(&dst->x, X);
-			do_convert_bignum(&dst->y, Y);
-			key->algorithm = SC_ALGORITHM_GOSTR3410;
+			dst->xy.len = BN_num_bytes(X) + BN_num_bytes(Y);
+			dst->xy.data = malloc(dst->xy.len);
+			if (dst->xy.data) {
+				BN_bn2bin(Y, dst->xy.data);
+				BN_bn2bin(X, dst->xy.data + BN_num_bytes(Y));
+				reverse(dst->xy.data, dst->xy.len);
+				key->algorithm = SC_ALGORITHM_GOSTR3410;
+			}
+			else
+				r = -1;
 		}
 		BN_free(X);
 		BN_free(Y);

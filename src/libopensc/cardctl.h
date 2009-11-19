@@ -704,10 +704,8 @@ typedef struct sc_rtecp_genkey_data {
 		} rsa;
 		struct
 		{
-			unsigned char *x;
-			size_t x_len;
-			unsigned char *y;
-			size_t y_len;
+			unsigned char *xy;
+			size_t xy_len;
 		} gostr3410;
 	} u;
 } sc_rtecp_genkey_data_t;
