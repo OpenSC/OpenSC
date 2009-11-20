@@ -1205,7 +1205,6 @@ struct sc_card_driver *sc_get_westcos_driver(void)
 	/* read_binary */
 	/* write_binary */
 	/* update_binary */
-	westcos_ops.erase_binary = NULL;
 	/* read_record */
 	/* write_record */
 	/* append_record */
@@ -1213,14 +1212,10 @@ struct sc_card_driver *sc_get_westcos_driver(void)
 	westcos_ops.select_file = westcos_select_file;
 	/* get_response */
 	/* get_challenge */
-	westcos_ops.verify = NULL;
-	westcos_ops.logout = NULL;
 	westcos_ops.restore_security_env = westcos_restore_security_env;
 	westcos_ops.set_security_env = westcos_set_security_env;
 	westcos_ops.decipher = westcos_decipher;
 	westcos_ops.compute_signature = westcos_compute_signature;
-	westcos_ops.change_reference_data = NULL;
-	westcos_ops.reset_retry_counter = NULL;
 	westcos_ops.create_file = westcos_create_file;
 	westcos_ops.delete_file = westcos_delete_file;
 	westcos_ops.list_files = westcos_list_files;
@@ -1229,9 +1224,6 @@ struct sc_card_driver *sc_get_westcos_driver(void)
 	westcos_ops.process_fci = westcos_process_fci;
 	westcos_ops.construct_fci = NULL;
 	westcos_ops.pin_cmd = westcos_pin_cmd;
-	westcos_ops.get_data = NULL;
-	westcos_ops.put_data = NULL;
-	westcos_ops.delete_record = NULL;
 
 	return &westcos_drv;
 }

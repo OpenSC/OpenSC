@@ -779,7 +779,6 @@ struct sc_card_driver * sc_get_rtecp_driver(void)
 	/* read_binary */
 	rtecp_ops.write_binary = NULL;
 	/* update_binary */
-	rtecp_ops.erase_binary = NULL;
 	rtecp_ops.read_record = NULL;
 	rtecp_ops.write_record = NULL;
 	rtecp_ops.append_record = NULL;
@@ -803,9 +802,6 @@ struct sc_card_driver * sc_get_rtecp_driver(void)
 	/* process_fci */
 	rtecp_ops.construct_fci = rtecp_construct_fci;
 	rtecp_ops.pin_cmd = NULL;
-	rtecp_ops.get_data = NULL;
-	rtecp_ops.put_data = NULL;
-	rtecp_ops.delete_record = NULL;
 
 	return &rtecp_drv;
 }
