@@ -242,80 +242,25 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 static int rtecp_select_file(sc_card_t *card,
 		const sc_path_t *in_path, sc_file_t **file_out)
 {
-	sc_apdu_t apdu;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE], pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	sc_file_t *file = NULL;
-	size_t pathlen;
+	sc_file_t **file_out_copy, *file;
 	int r;
 
 	assert(card && card->ctx && in_path);
-	assert(sizeof(pathbuf) >= in_path->len);
-	memcpy(path, in_path->value, in_path->len);
-	pathlen = in_path->len;
-
-	/* p2 = 0; first record, return FCI */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0);
 	switch (in_path->type)
 	{
-	case SC_PATH_TYPE_FILE_ID:
-		if (pathlen != 2)
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
-		break;
-	case SC_PATH_TYPE_PATH:
-		if (pathlen >= 2 && memcmp(path, "\x3F\x00", 2) == 0)
-		{
-			if (pathlen == 2)
-				break; /* only 3F00 supplied */
-			path += 2;
-			pathlen -= 2;
-		}
-		apdu.p1 = 0x08;
-		break;
 	case SC_PATH_TYPE_DF_NAME:
 	case SC_PATH_TYPE_FROM_CURRENT:
 	case SC_PATH_TYPE_PARENT:
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
-	default:
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	apdu.lc = pathlen;
-	apdu.data = path;
-	apdu.datalen = pathlen;
-
-	if (file_out != NULL)
-	{
-		apdu.resp = buf;
-		apdu.resplen = sizeof(buf);
-		apdu.le = sizeof(buf) - 2;
-	}
-	else
-		apdu.cse = SC_APDU_CASE_3_SHORT;
-
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (file_out == NULL)
-	{
-		if (apdu.sw1 == 0x61)
-			SC_FUNC_RETURN(card->ctx, 2, 0);
-		SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
-	}
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "");
-
-	if (apdu.resplen > 0 && apdu.resp[0] != 0x6F) /* Tag 0x6F - FCI */
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-
-	file = sc_file_new();
-	if (file == NULL)
-		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
-	file->path = *in_path;
-	if (card->ops->process_fci == NULL)
-	{
-		sc_file_free(file);
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
-	}
-	if (apdu.resplen > 1  &&  apdu.resplen >= (size_t)apdu.resp[1] + 2)
-		r = card->ops->process_fci(card, file, apdu.resp+2, apdu.resp[1]);
+	assert(iso_ops && iso_ops->select_file);
+	file_out_copy = file_out;
+	r = iso_ops->select_file(card, in_path, file_out_copy);
+	if (r || file_out_copy == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, r);
+	assert(file_out_copy);
+	file = *file_out_copy;
+	assert(file);
 	if (file->sec_attr && file->sec_attr_len == SEC_ATTR_SIZE)
 		set_acl_from_sec_attr(card, file);
 	else
