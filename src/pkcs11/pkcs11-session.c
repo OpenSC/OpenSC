@@ -246,7 +246,10 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	}
 
 	if (slot->login_user >= 0) {
-		rv = CKR_USER_ALREADY_LOGGED_IN;
+		if ((CK_USER_TYPE)slot->login_user == userType)
+			rv = CKR_USER_ALREADY_LOGGED_IN;
+		else
+			rv = CKR_USER_ANOTHER_ALREADY_LOGGED_IN;
 		goto out;
 	}
 
