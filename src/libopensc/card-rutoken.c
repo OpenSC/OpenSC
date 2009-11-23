@@ -28,12 +28,12 @@
 #include <stdint.h>
 #elif defined(_MSC_VER)
 typedef unsigned __int32 uint32_t;
-typedef unsigned __int16 uint16_t;
 typedef __int8 int8_t;
 #else
 #warning no uint32_t type available, please contact opensc-devel@opensc-project.org
 #endif
 #include <sys/types.h>
+#include <assert.h>
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
@@ -42,6 +42,7 @@ typedef __int8 int8_t;
 #include "pkcs15.h"
 #include "internal.h"
 #include "cardctl.h"
+#include "asn1.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/evp.h>
@@ -51,10 +52,6 @@ typedef __int8 int8_t;
 #include <openssl/x509.h>
 #include <openssl/err.h>
 #endif
-
-#define FDESCR_DF           0x38 /*00111000b*/
-#define FDESCR_EF           0x01
-#define ID_RESERVED_CURDF   0x3FFF /*Reserved ID for current DF*/
 
 struct auth_senv {
 	unsigned int algorithm;
@@ -84,9 +81,17 @@ static const helper_acl_to_sec_attr_t arr_convert_attr_ef [] = {
 static const sc_SecAttrV2_t default_sec_attr = {
 	0x42,
 	0, 1, 0, 0, 0, 0, 1,
-	0, 2, 0, 0, 0, 0, 2
+	0, 0, 0, 0,
+	2, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	2, 0, 0, 0,
+	0, 0, 0, 0 /* reserve */
 };
 
+static const struct sc_card_operations *iso_ops = NULL;
 static struct sc_card_operations rutoken_ops;
 
 static struct sc_card_driver rutoken_drv = {
@@ -102,25 +107,10 @@ static struct sc_atr_table rutoken_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
-static const char *hexdump(const void *data, size_t len)
-{
-	static char string[1024];
-	unsigned char *d = (unsigned char *)data;
-	unsigned int i, left;
-
-	string[0] = '\0';
-	left = sizeof(string);
-	for (i = 0; len--; i += 3) {
-		if (i >= sizeof(string) - 4)
-			break;
-		snprintf(string + i, 4, " %02x", *d++);
-	}
-	return string;
-}
-
 static int rutoken_finish(sc_card_t *card)
 {
 	SC_FUNC_CALLED(card->ctx, 1);
+	assert(card->drv_data);
 	free(card->drv_data);
 	SC_FUNC_RETURN(card->ctx, 1, SC_SUCCESS);
 }
@@ -243,91 +233,102 @@ static int rutoken_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
-static int rutoken_dir_up(sc_card_t *card)
+static void swap_pair(u8 *buf, size_t len)
 {
-	u8 rbuf[256];
-	sc_apdu_t apdu;
-	int ret;
+	size_t i;
+	u8 tmp;
 
-	SC_FUNC_CALLED(card->ctx, 3);
+	for (i = 0; i + 1 < len; i += 2)
+	{
+		tmp = buf[i];
+		buf[i] = buf[i + 1];
+		buf[i + 1] = tmp;
+	}
+}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA4, 0x03, 0x00);
-	apdu.cla = 0x00;
-	apdu.resplen = sizeof(rbuf);
-	apdu.resp = rbuf;
-	apdu.le = sizeof(rbuf);
+static void swap_four(u8 *buf, size_t len)
+{
+	size_t i;
+	u8 tmp;
 
-	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
-	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_FUNC_RETURN(card->ctx, 3, ret);
+	for (i = 0; i + 3 < len; i += 4)
+	{
+		tmp = buf[i];
+		buf[i] = buf[i + 3];
+		buf[i + 3] = tmp;
+		swap_pair(&buf[i + 1], 2);
+	}
 }
 
 static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
-	u8 rbuf[256];
-	u8 previd[2];
 	sc_apdu_t apdu;
-	size_t len = 0;
-	int ret, first = 1;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], previd[2];
+	const u8 *tag;
+	size_t taglen, len = 0;
+	int ret;
 
+	assert(card && card->ctx);
 	SC_FUNC_CALLED(card->ctx, 1);
-	while (1)
+	assert(buf);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA4, 0, 0);
+	for (;;)
 	{
-		if (first)
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA4, 0x00, 0x00);
-		else
-		{
-			/*  00 a4 00 02 02 prev id - next  */
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x00, 0x02);
-			apdu.lc = sizeof(previd);
-			apdu.data = previd;
-			apdu.datalen = sizeof(previd);
-		}
-		apdu.cla = 0x00;
-		apdu.resplen = sizeof(rbuf);
 		apdu.resp = rbuf;
-		apdu.le = sizeof(rbuf);
+		apdu.resplen = sizeof(rbuf);
+		apdu.le = sizeof(rbuf) - 2;
 		ret = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
-
 		if (apdu.sw1 == 0x6A  &&  apdu.sw2 == 0x82)
-			break; /*  if (first) "end list" else "empty dir"  */
+			break; /* Next file not found */
 
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(card->ctx, ret, "Get list files failed");
+		SC_TEST_RET(card->ctx, ret, "");
 
-		/*  save first file(dir) ID  */
-		if (len + 2 <= buflen)
+		if (apdu.resplen <= 2)
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_WRONG_LENGTH);
+
+		/* save first file(dir) ID */
+		tag = sc_asn1_find_tag(card->ctx, apdu.resp + 2, apdu.resplen - 2,
+				0x83, &taglen);
+		if (!tag || taglen != sizeof(previd))
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+		memcpy(previd, tag, sizeof(previd));
+
+		if (len + sizeof(previd) <= buflen)
 		{
-			buf[len++] = rbuf[6];
-			buf[len++] = rbuf[7];
+			buf[len++] = previd[1];
+			buf[len++] = previd[0];
 		}
-		memcpy(previd, rbuf+6, sizeof(previd));
-		if (rbuf[4] == FDESCR_DF)
-			rutoken_dir_up(card);
-		first = 0;
+
+		tag = sc_asn1_find_tag(card->ctx, apdu.resp + 2, apdu.resplen - 2,
+				0x82, &taglen);
+		if (!tag || taglen != 2)
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+		if (tag[0] == 0x38)
+		{
+			/* Select parent DF of the current DF */
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA4, 0x03, 0);
+			apdu.resp = rbuf;
+			apdu.resplen = sizeof(rbuf);
+			apdu.le = sizeof(rbuf) - 2;
+			ret = sc_transmit_apdu(card, &apdu);
+			SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
+			ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
+			SC_TEST_RET(card->ctx, ret, "");
+		}
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0x02);
+		apdu.lc = sizeof(previd);
+		apdu.data = previd;
+		apdu.datalen = sizeof(previd);
 	}
 	SC_FUNC_RETURN(card->ctx, 1, len);
 }
 
-static void rutoken_process_fcp(sc_card_t *card, u8 *pIn, sc_file_t *file)
+static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 {
-	file->size = pIn[3] + ((uint16_t)pIn[2])*256;
-	file->id = pIn[7] + ((uint16_t)pIn[6])*256;
-
-	if (pIn[4] == FDESCR_DF)
-	{
-		file->type = SC_FILE_TYPE_DF;
-	}
-	else
-	{
-		file->type = SC_FILE_TYPE_WORKING_EF;
-		file->ef_structure = SC_FILE_EF_TRANSPARENT;
-	}
-	sc_file_set_sec_attr(file, pIn + 17, SC_RUTOKEN_SEC_ATTR_SIZE);
-
-	if (file->sec_attr  &&  file->sec_attr_len == SC_RUTOKEN_SEC_ATTR_SIZE)
+	if (file->sec_attr  &&  file->sec_attr_len == sizeof(sc_SecAttrV2_t))
 	{
 		sc_file_add_acl_entry(file, SC_AC_OP_SELECT,
 				SC_AC_NONE, SC_AC_KEY_REF_NONE);
@@ -335,22 +336,22 @@ static void rutoken_process_fcp(sc_card_t *card, u8 *pIn, sc_file_t *file)
 		{
 			sc_debug(card->ctx, "SC_AC_OP_DELETE %i %i",
 					(int)(*(int8_t*)&file->sec_attr[1 +6]),
-					file->sec_attr[1+7 +6]);
+					file->sec_attr[1+7 +6*4]);
 			sc_file_add_acl_entry(file, SC_AC_OP_DELETE,
 					(int)(*(int8_t*)&file->sec_attr[1 +6]),
-					file->sec_attr[1+7 +6]);
+					file->sec_attr[1+7 +6*4]);
 		}
 		if (file->sec_attr[0] & 0x01) /* if AccessMode.0 */
 		{
 			sc_debug(card->ctx, (file->type == SC_FILE_TYPE_DF) ?
 					"SC_AC_OP_CREATE %i %i" : "SC_AC_OP_READ %i %i",
 					(int)(*(int8_t*)&file->sec_attr[1 +0]),
-					file->sec_attr[1+7 +0]);
+					file->sec_attr[1+7 +0*4]);
 			sc_file_add_acl_entry(file,
 					(file->type == SC_FILE_TYPE_DF) ?
 					SC_AC_OP_CREATE : SC_AC_OP_READ,
 					(int)(*(int8_t*)&file->sec_attr[1 +0]),
-					file->sec_attr[1+7 +0]);
+					file->sec_attr[1+7 +0*4]);
 		}
 		if (file->type == SC_FILE_TYPE_DF)
 		{
@@ -362,155 +363,186 @@ static void rutoken_process_fcp(sc_card_t *card, u8 *pIn, sc_file_t *file)
 			{
 				sc_debug(card->ctx, "SC_AC_OP_UPDATE %i %i",
 						(int)(*(int8_t*)&file->sec_attr[1 +1]),
-						file->sec_attr[1+7 +1]);
+						file->sec_attr[1+7 +1*4]);
 				sc_file_add_acl_entry(file, SC_AC_OP_UPDATE,
 						(int)(*(int8_t*)&file->sec_attr[1 +1]),
-						file->sec_attr[1+7 +1]);
+						file->sec_attr[1+7 +1*4]);
 				sc_debug(card->ctx, "SC_AC_OP_WRITE %i %i",
 						(int)(*(int8_t*)&file->sec_attr[1 +1]),
-						file->sec_attr[1+7 +1]);
+						file->sec_attr[1+7 +1*4]);
 				sc_file_add_acl_entry(file, SC_AC_OP_WRITE,
 						(int)(*(int8_t*)&file->sec_attr[1 +1]),
-						file->sec_attr[1+7 +1]);
+						file->sec_attr[1+7 +1*4]);
 			}
 	}
 }
 
 static int rutoken_select_file(sc_card_t *card,
-			const sc_path_t *in_path, sc_file_t **file)
+			const sc_path_t *in_path, sc_file_t **file_out)
 {
-	int ret;
-	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int pathlen;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 	sc_apdu_t apdu;
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE], pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
+	sc_file_t *file = NULL;
+	size_t pathlen;
+	u8 t0, t1;
+	int ret;
 
+	assert(card && card->ctx);
 	SC_FUNC_CALLED(card->ctx, 1);
-	if (!in_path || in_path->len < 2)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 
+	assert(in_path && sizeof(pathbuf) >= in_path->len);
+	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
-	memcpy(path, in_path->value, pathlen);
 
-	sc_debug(card->ctx, "\n\tpath = %s\n\ttype = %d",
-			hexdump(path, pathlen), in_path->type);
-
-	ret = SC_ERROR_INVALID_ARGUMENTS;
+	/* p2 = 0; first record, return FCP */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0);
 	switch (in_path->type)
 	{
 	case SC_PATH_TYPE_FILE_ID:
-		if (pathlen == 2) /*  select file in current df  */
-		{
-			apdu.p1 = 2;
-			ret = SC_SUCCESS;
-		}
+		if (pathlen != 2)
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_PATH_TYPE_PATH:
-		apdu.p1 = 8;
-		if (path[0] == 0x3F  && path[1] == 0x00)
+		if (pathlen >= 2 && memcmp(path, "\x3F\x00", 2) == 0)
 		{
-			if (pathlen == 2) /* select MF  */
-			{
-				apdu.p1 = 0;
-			} 
-			else /* select DF  */
-			{
-				path += 2;
-				pathlen -= 2;
-			}
+			if (pathlen == 2)
+				break; /* only 3F00 supplied */
+			path += 2;
+			pathlen -= 2;
 		}
-		ret = SC_SUCCESS;
+		apdu.p1 = 0x08;
 		break;
+	case SC_PATH_TYPE_DF_NAME:
+	case SC_PATH_TYPE_FROM_CURRENT:
+	case SC_PATH_TYPE_PARENT:
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	default:
-		ret = SC_ERROR_NOT_SUPPORTED;
-		break;
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	if (ret == SC_SUCCESS)
+	swap_pair(path, pathlen);
+	apdu.lc = pathlen;
+	apdu.data = path;
+	apdu.datalen = pathlen;
+
+	apdu.resp = buf;
+	apdu.resplen = sizeof(buf);
+	apdu.le = sizeof(buf) - 2;
+
+	ret = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
+	if (file_out == NULL)
 	{
-		apdu.lc = pathlen;
-		apdu.data = path;
-		apdu.datalen = pathlen;
+		if (apdu.sw1 == 0x61)
+			SC_FUNC_RETURN(card->ctx, 2, 0);
+		SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	}
+	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, ret, "");
 
-		if (file != NULL) {
-			apdu.resp = buf;
-			apdu.resplen = sizeof(buf);
-			apdu.le = 256;
-		} else {
-			apdu.resplen = 0;
-			apdu.le = 0;
-			apdu.cse = SC_APDU_CASE_3_SHORT;
-		}
-		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
-		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (apdu.resplen > 0 && apdu.resp[0] != 0x62) /* Tag 0x62 - FCP */
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 
-		if (file == NULL)
+	file = sc_file_new();
+	if (file == NULL)
+		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+	file->path = *in_path;
+	if (card->ops->process_fci == NULL)
+	{
+		sc_file_free(file);
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
+	}
+	if (apdu.resplen > 1  &&  apdu.resplen >= (size_t)apdu.resp[1] + 2)
+	{
+		ret = card->ops->process_fci(card, file, apdu.resp+2, apdu.resp[1]);
+		if (ret == SC_SUCCESS)
 		{
-			/*  We don't need file info  */
-			if (apdu.sw1 == 0x61)
-				SC_FUNC_RETURN(card->ctx, 2, SC_NO_ERROR);
-			SC_FUNC_RETURN(card->ctx, 1, ret);
+			t0 = file->id & 0xFF;
+			t1 = (file->id >> 8) & 0xFF;
+			file->id = (t0 << 8) | t1;
+			t0 = file->size & 0xFF;
+			t1 = (file->size >> 8) & 0xFF;
+			file->size = (t0 << 8) | t1;
 		}
-		/*  New file structure  */
-		if ((ret == SC_SUCCESS) && (apdu.resplen == 32))
-		{
-			*file = sc_file_new();
-			if (*file == NULL)
-				SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
-			(*file)->path = *in_path;
-			/*  what about selecting EF by ID (SC_PATH_TYPE_FILE_ID)?  */
-
-			rutoken_process_fcp(card, buf, *file);
-
-			sc_debug(card->ctx, 
-				"nfile ID = %04X, path = %s, type = %02X, len = %d", 
-				(*file)->id, hexdump((*file)->path.value, (*file)->path.len), 
-				(*file)->type, (*file)->size);
-			sc_debug(card->ctx, "sec attr = %s", 
-				hexdump((*file)->sec_attr, (*file)->sec_attr_len));
-		}
+	}
+	if (file->sec_attr && file->sec_attr_len == sizeof(sc_SecAttrV2_t))
+		set_acl_from_sec_attr(card, file);
+	else
+		ret = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+	if (ret != SC_SUCCESS)
+		sc_file_free(file);
+	else
+	{
+		assert(file_out);
+		*file_out = file;
 	}
 	SC_FUNC_RETURN(card->ctx, 1, ret);
 }
 
-static int rutoken_construct_fcp(sc_card_t *card, const sc_file_t *file, u8 *out)
+static int rutoken_construct_fci(sc_card_t *card, const sc_file_t *file,
+			u8 *out, size_t *outlen)
 {
+	u8 buf[64], *p = out;
+
+	assert(card && card->ctx);
 	SC_FUNC_CALLED(card->ctx, 3);
 
-	if ((!file) || (file->id == ID_RESERVED_CURDF)) 
-		SC_FUNC_RETURN(card->ctx, 3, SC_ERROR_INVALID_ARGUMENTS);
-	memset(out, 0, 32);
-	switch (file->type) 
-	{
-	case SC_FILE_TYPE_DF:
-		out[4] = 0x38;
-		out[0] = file->size / 256;
-		out[1] = file->size % 256;
-		break;
-	case SC_FILE_TYPE_WORKING_EF:
-		out[4] = 0x01;
-		/*   set the length (write to wBodyLen)  */
-		out[2] = file->size / 256;
-		out[3] = file->size % 256;
-		break;
-	case SC_FILE_TYPE_INTERNAL_EF:
-	default:
-		SC_FUNC_RETURN(card->ctx, 3, SC_ERROR_NOT_SUPPORTED);
-	}
-	/*   set file ID  */
-	out[6] = file->id / 256;
-	out[7] = file->id % 256;
+	assert(file && out && outlen);
+	assert(*outlen  >=  (size_t)(p - out) + 2);
+	*p++ = 0x62; /* FCP template */
+	p++; /* for length */
 
-	/*  set sec_attr  */
-	if (file->sec_attr_len == SC_RUTOKEN_SEC_ATTR_SIZE)
-		memcpy(out + 17, file->sec_attr, SC_RUTOKEN_SEC_ATTR_SIZE);
+	/* 0x80 - Number of data bytes in the file, excluding structural information */
+	buf[1] = (file->size >> 8) & 0xFF;
+	buf[0] = file->size & 0xFF;
+	sc_asn1_put_tag(0x80, buf, 2, p, *outlen - (p - out), &p);
+
+	/* 0x82 - File descriptor byte */
+	if (file->type_attr_len)
+	{
+		assert(sizeof(buf) >= file->type_attr_len);
+		memcpy(buf, file->type_attr, file->type_attr_len);
+		sc_asn1_put_tag(0x82, buf, file->type_attr_len,
+				p, *outlen - (p - out), &p);
+	}
 	else
 	{
-		sc_debug(card->ctx, "set default sec_attr");
-		memcpy(out + 17, &default_sec_attr, SC_RUTOKEN_SEC_ATTR_SIZE);
+		switch (file->type)
+		{
+		case SC_FILE_TYPE_WORKING_EF:
+			buf[0] = 0x01;
+			break;
+		case SC_FILE_TYPE_DF:
+			buf[0] = 0x38;
+			break;
+		case SC_FILE_TYPE_INTERNAL_EF:
+		default:
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
+		}
+		buf[1] = 0;
+		sc_asn1_put_tag(0x82, buf, 2, p, *outlen - (p - out), &p);
 	}
-	SC_FUNC_RETURN(card->ctx, 3, SC_NO_ERROR);
+	/* 0x83 - File identifier */
+	buf[1] = (file->id >> 8) & 0xFF;
+	buf[0] = file->id & 0xFF;
+	sc_asn1_put_tag(0x83, buf, 2, p, *outlen - (p - out), &p);
+
+	if (file->prop_attr_len)
+	{
+		assert(sizeof(buf) >= file->prop_attr_len);
+		memcpy(buf, file->prop_attr, file->prop_attr_len);
+		sc_asn1_put_tag(0x85, buf, file->prop_attr_len,
+				p, *outlen - (p - out), &p);
+	}
+	if (file->sec_attr_len)
+	{
+		assert(sizeof(buf) >= file->sec_attr_len);
+		memcpy(buf, file->sec_attr, file->sec_attr_len);
+		sc_asn1_put_tag(0x86, buf, file->sec_attr_len,
+				p, *outlen - (p - out), &p);
+	}
+	out[1] = p - out - 2; /* length */
+	*outlen = p - out;
+	SC_FUNC_RETURN(card->ctx, 3, 0);
 }
 
 static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
@@ -550,48 +582,37 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 			sc_debug(card->ctx, "method %u", (u8)entry->method);
 			if (entry->method == SC_AC_CHV)
 			{
-				attr[1+7 + conv_attr[i].sec_attr_pos] = (u8)entry->key_ref;
+				attr[1+7 + conv_attr[i].sec_attr_pos*4] = (u8)entry->key_ref;
 				sc_debug(card->ctx, "key_ref %u", (u8)entry->key_ref);
 			}
 		}
 		else
 		{
-			sc_debug(card->ctx, "ACL (%u) not set", conv_attr[i].ac_op);
-			ret = 1;
+			sc_debug(card->ctx, "ACL (%u) not set, set default sec_attr",
+					conv_attr[i].ac_op);
+			memcpy(attr, default_sec_attr, sizeof(attr));
 			break;
 		}
 	}
-	if (ret != 1)
-		ret = sc_file_set_sec_attr(file, attr, sizeof(attr));
+	ret = sc_file_set_sec_attr(file, attr, sizeof(attr));
 	SC_FUNC_RETURN(card->ctx, 3, ret);
 }
 
 static int rutoken_create_file(sc_card_t *card, sc_file_t *file)
 {
 	int ret;
-	sc_apdu_t apdu;
-	u8 sbuf[32] = { 0 };
 
+	assert(card && card->ctx);
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	/* trying use acl if sec_attr and acl were set */
-	ret = set_sec_attr_from_acl(card, file);
-	if (ret >= 0) /* (ret == 1) - acl not set */
-		/* use default sec_attr if sec_attr not set */
-		ret = rutoken_construct_fcp(card, file, sbuf);
-
-	if (ret == SC_NO_ERROR)
+	assert(file);
+	if (file->sec_attr_len == 0)
 	{
-		sc_debug(card->ctx, "fcp = %s", hexdump(sbuf, 32));
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
-		apdu.data = sbuf;
-		apdu.datalen = 32;
-		apdu.lc = 32;
-
-		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
-		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		ret = set_sec_attr_from_acl(card, file);
+		SC_TEST_RET(card->ctx, ret, "Set sec_attr from ACL failed");
 	}
+	assert(iso_ops && iso_ops->create_file);
+	ret = iso_ops->create_file(card, file);
 	SC_FUNC_RETURN(card->ctx, 1, ret);
 }
 
@@ -608,8 +629,8 @@ static int rutoken_delete_file(sc_card_t *card, const sc_path_t *path)
 	}
 	if (path->len == sizeof(sbuf)) 
 	{
-		sbuf[0] = path->value[0];
-		sbuf[1] = path->value[1];
+		sbuf[1] = path->value[0];
+		sbuf[0] = path->value[1];
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
 		apdu.lc = sizeof(sbuf);
 		apdu.datalen = sizeof(sbuf);
@@ -799,26 +820,40 @@ static int rutoken_set_security_env(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, 1, ret);
 }
 
-static void rutoken_set_do_hdr(u8 *data, sc_DOHdrV2_t *pHdr)
+static void rutoken_set_do_hdr(u8 *data, size_t *data_len, sc_DOHdrV2_t *hdr)
 {
-	if (data)
-	{
-		data[0] = (u8)(pHdr->wDOBodyLen / 0x100);
-		data[1] = (u8)(pHdr->wDOBodyLen % 0x100);
-		data[2] = (u8)(pHdr->OTID.byObjectType);
-		data[3] = (u8)(pHdr->OTID.byObjectID);
-		data[4] = (u8)(pHdr->OP.byObjectOptions);
-		data[5] = (u8)(pHdr->OP.byObjectFlags);
-		data[6] = (u8)(pHdr->OP.byObjectTry);
-		memcpy(data + 7, pHdr->dwReserv1, 4);
-		memcpy(data + 11, pHdr->abyReserv2, 6);
-		memcpy(data + 17, pHdr->SA_V2, SC_RUTOKEN_SEC_ATTR_SIZE);
-	}
+	u8 buf[64], *p = data;
+
+	assert(hdr && data && data_len);
+
+	/* 0x80 - Number of data bytes in the file, excluding structural information */
+	buf[1] = (hdr->wDOBodyLen >> 8) & 0xFF;
+	buf[0] = hdr->wDOBodyLen & 0xFF;
+	sc_asn1_put_tag(0x80, buf, 2, p, *data_len - (p - data), &p);
+
+	/* 0x83 - Type and ID */
+	buf[0] = hdr->OTID.byObjectType;
+	buf[1] = hdr->OTID.byObjectID;
+	sc_asn1_put_tag(0x83, buf, 2, p, *data_len - (p - data), &p);
+
+	/* 0x85 - Options, Flags and Max count of try */
+	buf[0] = hdr->OP.byObjectOptions;
+	buf[1] = hdr->OP.byObjectFlags;
+	buf[2] = hdr->OP.byObjectTry;
+	sc_asn1_put_tag(0x85, buf, 3, p, *data_len - (p - data), &p);
+
+	assert(sizeof(buf) >= sizeof(hdr->SA_V2));
+	memcpy(buf, hdr->SA_V2, sizeof(hdr->SA_V2));
+	sc_asn1_put_tag(0x86, buf, sizeof(hdr->SA_V2), p, *data_len - (p - data), &p);
+
+	assert(*data_len >= (size_t)(p - data));
+	*data_len = p - data;
 }
 
 static int rutoken_key_gen(sc_card_t *card, sc_DOHdrV2_t *pHdr)
 {
-	u8 data[SC_RUTOKEN_DO_HDR_LEN];
+	u8 data[SC_MAX_APDU_BUFFER_SIZE];
+	size_t data_len = sizeof(data);
 	sc_apdu_t apdu;
 	int ret;
 
@@ -837,10 +872,10 @@ static int rutoken_key_gen(sc_card_t *card, sc_DOHdrV2_t *pHdr)
 	else
 	{
 		pHdr->OP.byObjectTry = 0;
-		rutoken_set_do_hdr(data, pHdr);
+		rutoken_set_do_hdr(data, &data_len, pHdr);
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xda, 0x01, 0x65);
 		apdu.data = data;
-		apdu.datalen = apdu.lc = sizeof(data);
+		apdu.datalen = apdu.lc = data_len;
 		ret = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -850,7 +885,8 @@ static int rutoken_key_gen(sc_card_t *card, sc_DOHdrV2_t *pHdr)
 
 static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 {
-	u8 data[SC_RUTOKEN_DO_HDR_LEN + SC_RUTOKEN_DO_PART_BODY_LEN];
+	u8 data[SC_MAX_APDU_BUFFER_SIZE];
+	size_t data_len = sizeof(data);
 	sc_apdu_t apdu;
 	int ret;
 
@@ -874,11 +910,15 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 	}
 	else
 	{
-		rutoken_set_do_hdr(data, &pDO->HDR);
-		memcpy(data + SC_RUTOKEN_DO_HDR_LEN, pDO->abyDOBody, pDO->HDR.wDOBodyLen);
+		rutoken_set_do_hdr(data, &data_len, &pDO->HDR);
+		assert(sizeof(data) >= data_len + pDO->HDR.wDOBodyLen + 2);
+		ret = sc_asn1_put_tag(0xA5, pDO->abyDOBody, pDO->HDR.wDOBodyLen,
+				data + data_len, sizeof(data) - data_len, NULL);
+		if (ret == SC_SUCCESS)
+			data_len += pDO->HDR.wDOBodyLen + 2;
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xda, 0x01, 0x62);
 		apdu.data = data;
-		apdu.datalen = apdu.lc = SC_RUTOKEN_DO_HDR_LEN + pDO->HDR.wDOBodyLen;
+		apdu.datalen = apdu.lc = data_len;
 		ret = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1186,11 +1226,12 @@ static int rutoken_get_current_fileid(sc_card_t *card, u8 id[2])
 	SC_FUNC_CALLED(card->ctx, 3);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x11);
 	apdu.resp = id;
-	apdu.resplen = sizeof(id);
+	apdu.resplen = 2;
 	apdu.le = 2;
 	ret = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	swap_pair(id, 2);
 	SC_FUNC_RETURN(card->ctx, 3, ret);
 }
 
@@ -1411,8 +1452,9 @@ static int rutoken_get_serial(sc_card_t *card, sc_serial_number_t *serial)
 	apdu.le = 4;
 	ret = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
-	serial->len = apdu.le;
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	serial->len = apdu.resplen;
+	swap_four(serial->value, serial->len);
 	SC_FUNC_RETURN(card->ctx, 3, ret);
 }
 
@@ -1429,8 +1471,9 @@ static int rutoken_get_info(sc_card_t *card, void *buff)
 	apdu.le = sizeof(rbuf);
 	ret = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, ret, "APDU transmit failed");
-	memcpy(buff, apdu.resp, apdu.resplen);
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (ret == SC_SUCCESS)
+		memcpy(buff, apdu.resp, apdu.resplen);
 	SC_FUNC_RETURN(card->ctx, 3, ret);
 }
 
@@ -1501,11 +1544,6 @@ static int rutoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 			sc_debug(card->ctx, "cmd = %d", cmd);
 			ret = SC_ERROR_NOT_SUPPORTED;
 			break;
-		case SC_CARDCTL_LIFECYCLE_SET:
-			sc_debug(card->ctx, "SC_CARDCTL_LIFECYCLE_SET not supported");
-			sc_debug(card->ctx, "returning SC_ERROR_NOT_SUPPORTED");
-			/* no call sc_debug (SC_FUNC_RETURN) */
-			return SC_ERROR_NOT_SUPPORTED;
 		}
 	}
 	SC_FUNC_RETURN(card->ctx, 1, ret);
@@ -1513,18 +1551,27 @@ static int rutoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 
 static struct sc_card_driver* get_rutoken_driver(void)
 {
-	rutoken_ops = *sc_get_iso7816_driver()->ops;
+	if (iso_ops == NULL)
+		iso_ops = sc_get_iso7816_driver()->ops;
+	rutoken_ops = *iso_ops;
 
 	rutoken_ops.match_card = rutoken_match_card;
 	rutoken_ops.init = rutoken_init;
 	rutoken_ops.finish = rutoken_finish;
-	rutoken_ops.check_sw = rutoken_check_sw;
+	/* read_binary */
+	rutoken_ops.write_binary = NULL;
+	/* update_binary */
+	rutoken_ops.read_record = NULL;
+	rutoken_ops.write_record = NULL;
+	rutoken_ops.append_record = NULL;
+	rutoken_ops.update_record = NULL;
 	rutoken_ops.select_file = rutoken_select_file;
-	rutoken_ops.create_file = rutoken_create_file;
-	rutoken_ops.delete_file = rutoken_delete_file;
-	rutoken_ops.list_files = rutoken_list_files;
-	rutoken_ops.card_ctl = rutoken_card_ctl;
+	rutoken_ops.get_response = NULL;
 	rutoken_ops.get_challenge = rutoken_get_challenge;
+	rutoken_ops.verify = rutoken_verify;
+	rutoken_ops.logout = rutoken_logout;
+	rutoken_ops.restore_security_env = rutoken_restore_security_env;
+	rutoken_ops.set_security_env = rutoken_set_security_env;
 #ifdef ENABLE_OPENSSL
 	rutoken_ops.decipher = rutoken_decipher;
 	rutoken_ops.compute_signature = rutoken_compute_signature;
@@ -1532,18 +1579,17 @@ static struct sc_card_driver* get_rutoken_driver(void)
 	rutoken_ops.decipher = NULL;
 	rutoken_ops.compute_signature = NULL;
 #endif
-	rutoken_ops.set_security_env = rutoken_set_security_env;
-	rutoken_ops.restore_security_env = rutoken_restore_security_env;
-	rutoken_ops.verify = rutoken_verify;
-	rutoken_ops.logout = rutoken_logout;
 	rutoken_ops.change_reference_data = rutoken_change_reference_data;
 	rutoken_ops.reset_retry_counter = rutoken_reset_retry_counter;
+	rutoken_ops.create_file = rutoken_create_file;
+	rutoken_ops.delete_file = rutoken_delete_file;
+	rutoken_ops.list_files = rutoken_list_files;
+	rutoken_ops.check_sw = rutoken_check_sw;
+	rutoken_ops.card_ctl = rutoken_card_ctl;
+	/* process_fci */
+	rutoken_ops.construct_fci = rutoken_construct_fci;
 	rutoken_ops.pin_cmd = NULL;
-	rutoken_ops.read_record = NULL;
-	rutoken_ops.write_record = NULL;
-	rutoken_ops.append_record = NULL;
-	rutoken_ops.update_record = NULL;
-	rutoken_ops.write_binary = NULL;
+
 	return &rutoken_drv;
 }
 

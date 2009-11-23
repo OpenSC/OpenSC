@@ -41,10 +41,32 @@ typedef unsigned __int32 uint32_t;
 #include "pkcs15-init.h"
 #include "profile.h"
 
-static const sc_SecAttrV2_t pr_sec_attr = {0x43, 1, 1, 0, 0, 0, 0, 1, 2, 2, 0, 0, 0, 0, 2};
-static const sc_SecAttrV2_t wn_sec_attr = {0x43, 1, 1, 0, 0, 0, 0,-1, 2, 2, 0, 0, 0, 0, 0};
-static const sc_SecAttrV2_t p2_sec_attr = {0x43, 1, 1, 0, 0, 0, 0,-1, 1, 2, 0, 0, 0, 0, 0};
-static const sc_SecAttrV2_t p1_sec_attr = {0x43, 1, 1, 0, 0, 0, 0,-1, 1, 1, 0, 0, 0, 0, 0};
+static const sc_SecAttrV2_t pr_sec_attr = {
+	0x43, 1, 1, 0, 0, 0, 0, 1,
+	2, 0, 0, 0,
+	2, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	2, 0, 0, 0,
+	0, 0, 0, 0 /* reserve */
+};
+static const sc_SecAttrV2_t wn_sec_attr = {
+	0x43, 1, 1, 0, 0, 0, 0, -1,
+	2, 0, 0, 0,
+	2
+};
+static const sc_SecAttrV2_t p2_sec_attr = {
+	0x43, 1, 1, 0, 0, 0, 0, -1,
+	1, 0, 0, 0,
+	2
+};
+static const sc_SecAttrV2_t p1_sec_attr = {
+	0x43, 1, 1, 0, 0, 0, 0, -1,
+	1, 0, 0, 0,
+	1
+};
 
 static const struct
 {

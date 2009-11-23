@@ -354,8 +354,17 @@ static int gostmac(sc_card_t *card, u8 keyid, const char *path_infile)
 
 static int generate_gostkey(sc_card_t *card, u8 keyid, u8 keyoptions)
 {
-	const sc_SecAttrV2_t gk_sec_attr = 
-		{0x44, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0, 2};
+	const sc_SecAttrV2_t gk_sec_attr = {
+		0x44, 0, 0, 1, 0, 0, 0, 1,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		2, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		2, 0, 0, 0,
+		0, 0, 0, 0
+	};
 	sc_DOHdrV2_t paramkey;
 	int r;
 
