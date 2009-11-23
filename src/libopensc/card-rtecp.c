@@ -131,8 +131,8 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 	unsigned long key_ref;
 
 	assert(card && card->ctx && file);
-	assert(file->sec_attr  &&  file->sec_attr_len == SEC_ATTR_SIZE);
-	assert(1 + 6 < SEC_ATTR_SIZE);
+	assert(file->sec_attr  &&  file->sec_attr_len == SC_RTECP_SEC_ATTR_SIZE);
+	assert(1 + 6 < SC_RTECP_SEC_ATTR_SIZE);
 
 	sc_file_add_acl_entry(file, SC_AC_OP_SELECT, SC_AC_NONE, SC_AC_KEY_REF_NONE);
 	if (file->sec_attr[0] & 0x40) /* if AccessMode.6 */
@@ -180,7 +180,7 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 {
 	const sc_acl_entry_t *entry;
-	u8 sec_attr[SEC_ATTR_SIZE] = { 0 };
+	u8 sec_attr[SC_RTECP_SEC_ATTR_SIZE] = { 0 };
 	int r;
 
 	assert(card && card->ctx && file);
@@ -261,7 +261,7 @@ static int rtecp_select_file(sc_card_t *card,
 	assert(file_out_copy);
 	file = *file_out_copy;
 	assert(file);
-	if (file->sec_attr && file->sec_attr_len == SEC_ATTR_SIZE)
+	if (file->sec_attr && file->sec_attr_len == SC_RTECP_SEC_ATTR_SIZE)
 		set_acl_from_sec_attr(card, file);
 	else
 		r = SC_ERROR_UNKNOWN_DATA_RECEIVED;

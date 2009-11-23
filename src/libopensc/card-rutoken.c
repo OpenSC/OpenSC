@@ -325,9 +325,9 @@ static void rutoken_process_fcp(sc_card_t *card, u8 *pIn, sc_file_t *file)
 		file->type = SC_FILE_TYPE_WORKING_EF;
 		file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	}
-	sc_file_set_sec_attr(file, pIn + 17, SEC_ATTR_SIZE);
+	sc_file_set_sec_attr(file, pIn + 17, SC_RUTOKEN_SEC_ATTR_SIZE);
 
-	if (file->sec_attr  &&  file->sec_attr_len == SEC_ATTR_SIZE)
+	if (file->sec_attr  &&  file->sec_attr_len == SC_RUTOKEN_SEC_ATTR_SIZE)
 	{
 		sc_file_add_acl_entry(file, SC_AC_OP_SELECT,
 				SC_AC_NONE, SC_AC_KEY_REF_NONE);
@@ -503,12 +503,12 @@ static int rutoken_construct_fcp(sc_card_t *card, const sc_file_t *file, u8 *out
 	out[7] = file->id % 256;
 
 	/*  set sec_attr  */
-	if (file->sec_attr_len == SEC_ATTR_SIZE)
-		memcpy(out + 17, file->sec_attr, SEC_ATTR_SIZE);
+	if (file->sec_attr_len == SC_RUTOKEN_SEC_ATTR_SIZE)
+		memcpy(out + 17, file->sec_attr, SC_RUTOKEN_SEC_ATTR_SIZE);
 	else
 	{
 		sc_debug(card->ctx, "set default sec_attr");
-		memcpy(out + 17, &default_sec_attr, SEC_ATTR_SIZE);
+		memcpy(out + 17, &default_sec_attr, SC_RUTOKEN_SEC_ATTR_SIZE);
 	}
 	SC_FUNC_RETURN(card->ctx, 3, SC_NO_ERROR);
 }
@@ -812,7 +812,7 @@ static void rutoken_set_do_hdr(u8 *data, sc_DOHdrV2_t *pHdr)
 		data[6] = (u8)(pHdr->OP.byObjectTry);
 		memcpy(data + 7, pHdr->dwReserv1, 4);
 		memcpy(data + 11, pHdr->abyReserv2, 6);
-		memcpy(data + 17, pHdr->SA_V2, SEC_ATTR_SIZE);
+		memcpy(data + 17, pHdr->SA_V2, SC_RUTOKEN_SEC_ATTR_SIZE);
 	}
 }
 
