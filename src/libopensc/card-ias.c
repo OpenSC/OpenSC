@@ -447,7 +447,6 @@ static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
 	 *    and try to re-select the path with the full value.
 	 */
 	if (stripped_len > 0 && apdu.sw1 == 0x6A && apdu.sw2 == 0x82) {
-		sc_file_t *file = NULL;
 		sc_path_t tpath;
 
 		/* Restore original path value */
@@ -457,22 +456,16 @@ static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
 		memset(&tpath, 0, sizeof(sc_path_t));
 		tpath.type = SC_PATH_TYPE_PATH;
 		tpath.len = 2;
-		if(path[0] == 0x3f && path[1] == 0x00)
-			offset = 2;
-		else
-			offset = 0;
-		tpath.value[0] = path[offset];
-		tpath.value[1] = path[offset + 1];
+		tpath.value[0] = path[0];
+		tpath.value[1] = path[1];
 
 		/* Go up in the hierarchy to the correct DF */
-		r = ias_select_file(card, &tpath, &file);
+		r = ias_select_file(card, &tpath, NULL);
 		SC_TEST_RET(card->ctx, r, "Error selecting parent.");
-		if(file->type != SC_FILE_TYPE_DF)
-			return SC_ERROR_FILE_NOT_FOUND;
 
 		/* We're now in the right place, reconstruct the APDU and retry */
-		path += offset + 2;
-		pathlen -= offset + 2;
+		path += 2;
+		pathlen -= 2;
 		apdu.lc = pathlen;
 		apdu.data = path;
 		apdu.datalen = pathlen;
