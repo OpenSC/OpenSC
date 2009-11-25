@@ -676,12 +676,13 @@ static void list_slots(void)
 			printf("(GetSlotInfo failed, error %u)\n", (unsigned int) rv);
 			continue;
 		}
-		if ((!verbose) && !(info.flags & CKF_TOKEN_PRESENT)) {
-			printf("(empty)\n");
-			continue;
-		}
 		printf("%s\n", p11_utf8_to_local(info.slotDescription,
 					sizeof(info.slotDescription)));
+		if ((!verbose) && !(info.flags & CKF_TOKEN_PRESENT)) {
+			printf("  (empty)\n");
+			continue;
+		}
+
 		if (verbose) {
 			printf("  manufacturer:  %s\n", p11_utf8_to_local(info.manufacturerID,
 						sizeof(info.manufacturerID)));
