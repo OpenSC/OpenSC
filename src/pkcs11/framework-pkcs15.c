@@ -2186,6 +2186,12 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_END_DATE:
 		attr->ulValueLen = 0;
 		return CKR_OK;
+	case CKA_GOSTR3410_PARAMS:
+		if (prkey->prv_info && prkey->prv_info->params_len)
+			return get_gostr3410_params(prkey->prv_info->params,
+					prkey->prv_info->params_len, attr);
+		else
+			return CKR_ATTRIBUTE_TYPE_INVALID;
 	default:
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
