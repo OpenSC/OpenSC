@@ -1633,6 +1633,7 @@ VARATTR_METHOD(ID, unsigned char);
 VARATTR_METHOD(OBJECT_ID, unsigned char);
 VARATTR_METHOD(MODULUS, unsigned char);
 VARATTR_METHOD(VALUE, unsigned char);
+VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);
 
 static void show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
@@ -1662,7 +1663,7 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 {
 	CK_KEY_TYPE	key_type = getKEY_TYPE(sess, obj);
 	CK_ULONG	size;
-	unsigned char	*id;
+	unsigned char	*id, *oid;
 	char		*label, *sepa;
 
 	printf("%s Key Object", pub? "Public" : "Private");
@@ -1673,6 +1674,18 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 				(unsigned long) getMODULUS_BITS(sess, obj));
 		else
 			printf("; RSA \n");
+		break;
+	case CKK_GOSTR3410:
+		printf("; GOSTR3410 \n");
+		if ((oid = getGOSTR3410_PARAMS(sess, obj, &size)) != NULL) {
+			unsigned int	n;
+
+			printf("  OID:        ");
+			for (n = 0; n < size; n++)
+				printf("%02x", oid[n]);
+			printf("\n");
+			free(oid);
+		}
 		break;
 	default:
 		printf("; unknown key algorithm %lu\n",
@@ -1832,7 +1845,7 @@ static void get_token_info(CK_SLOT_ID slot, CK_TOKEN_INFO_PTR info)
 static CK_ULONG get_mechanisms(CK_SLOT_ID slot, CK_MECHANISM_TYPE_PTR *pList,
 		CK_FLAGS flags)
 {
-	CK_ULONG	m, n, ulCount;
+	CK_ULONG	m, n, ulCount = 0;
 	CK_RV		rv;
 
 	rv = p11->C_GetMechanismList(slot, *pList, &ulCount);
@@ -3577,6 +3590,10 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_AES_MAC,		"AES-MAC", NULL },
       { CKM_AES_MAC_GENERAL,	"AES-MAC-GENERAL", NULL },
       { CKM_AES_CBC_PAD,	"AES-CBC-PAD", NULL },
+      { CKM_GOSTR3410_KEY_PAIR_GEN,"GOSTR3410-KEY-PAIR-GEN", NULL },
+      { CKM_GOSTR3410,		"GOSTR3410", NULL },
+      { CKM_GOSTR3410_WITH_GOSTR3411,"GOSTR3410-WITH-GOSTR3411", NULL },
+      { CKM_GOSTR3411,		"GOSTR3411", NULL },
       { CKM_DSA_PARAMETER_GEN,	"DSA-PARAMETER-GEN", NULL },
       { CKM_DH_PKCS_PARAMETER_GEN,"DH-PKCS-PARAMETER-GEN", NULL },
       { CKM_X9_42_DH_PARAMETER_GEN,"X9-42-DH-PARAMETER-GEN", NULL },
