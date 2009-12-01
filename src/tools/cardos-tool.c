@@ -580,14 +580,14 @@ static int cardos_format()
 		return 1;
 	}
 
-	if (apdu.resp[3] != 0xff) {
-		printf("startkey version is 0x%02x, currently we support only 0xff\n", (int) apdu.resp[3]);
+	if (apdu.resp[2] != 0xff) {
+		printf("startkey version is 0x%02x, currently we support only 0xff\n", (int) apdu.resp[2]);
 		printf("aborting\n");
 		return 1;
 	}
 
-	if (apdu.resp[2] < 5) {
-		printf("startkey has only %d tries left. to be safe: aborting\n", apdu.resp[4]);
+	if (apdu.resp[3] < 5) {
+		printf("startkey has only %d tries left. to be safe: aborting\n", apdu.resp[3]);
 		return 1;
 	}	
 
