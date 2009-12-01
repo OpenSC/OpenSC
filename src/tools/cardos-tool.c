@@ -36,6 +36,7 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/des.h>
+#include <openssl/sha.h>
 #endif
 
 #include <opensc/opensc.h>
@@ -50,6 +51,7 @@ static const struct option options[] = {
 	{"info",	0, NULL, 'i'},
 	{"format",	0, NULL, 'f'},
 	{"startkey",	1, NULL, 's'},
+	{"change-startkey",	1, NULL, 'S'},
 	{"reader",	1, NULL, 'r'},
 	{"card-driver", 1, NULL, 'c'},
 	{"wait",	0, NULL, 'w'},
@@ -367,8 +369,8 @@ static int cardos_info(void)
 }
 
 #ifdef ENABLE_OPENSSL
-static int cardos_sm4h(unsigned char *in, size_t inlen, unsigned char
-	*out, size_t outlen, unsigned char *key, size_t keylen) {
+static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
+	*out, size_t outlen, const unsigned char *key, size_t keylen) {
 	/* using a buffer with an APDU, build an SM 4h APDU for cardos */
 
 	int plain_lc;	/* data size in orig APDU */
@@ -495,6 +497,7 @@ static int cardos_sm4h(unsigned char *in, size_t inlen, unsigned char
 }
 #endif
 
+#ifdef ENABLE_OPENSSL
 static int cardos_format()
 {
 	unsigned const char startkey[] = {
@@ -743,7 +746,6 @@ admin_state:
 
 
 
-#ifdef ENABLE_OPENSSL
 	/* now we need to erase the card. Our command is:
 	 * 	ERASE FILES 84 06 00 00
 	 * but it needs to be send using SM 4h mode (signed and enc.)
@@ -835,27 +837,262 @@ erase_state:
 		}
 	}
 	return 0;
-# else
-erase_state:
+}
+# else /* ENABLE_OPENSSL */
+static int cardos_format()
+{
 	printf("this code needs to be compiled with openssl support enabled.\n");
 	printf("aborting\n");
 	return 1;
-#endif /* ENABLE_OPENSSL */
 }
+#endif /* ENABLE_OPENSSL */
 
+#ifdef ENABLE_OPENSSL
+static int cardos_change_startkey(const char *change_startkey_apdu)
+{
+	unsigned char cardos_version[2];
+
+	sc_apdu_t apdu;
+	u8 rbuf[256];
+	int r;
+	
+	if (verbose)	{
+		printf ("Change StartKey APDU:\n");
+		util_hex_dump_asc(stdout, (unsigned char *)change_startkey_apdu,
+			strlen(change_startkey_apdu), -1);
+		}
+	
+	/* use GET DATA for version - 00 ca 01 82
+	 * returns e.g. c8 09 for 4.2B
+	 */
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cla = 0x00;
+	apdu.ins = 0xca;
+	apdu.p1 = 0x01;
+	apdu.p2 = 0x82;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.lc = 0;
+	apdu.le = 256;
+	apdu.cse = SC_APDU_CASE_2_SHORT;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
+			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
+		if (apdu.resplen)
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		return 1;
+	}
+	if (apdu.resplen != 0x02) {
+		printf("did not receive version info, aborting\n");
+		return 1;
+	}
+
+	/* check all supported versions here. need a checksum check
+	   for each of them below */
+	if ((rbuf[0] != 0xc8 || rbuf[1] != 0x03) &&	/* M4.01 */
+	        (rbuf[0] != 0xc8 || rbuf[1] != 0x09) &&	/* M4.2B */
+		(rbuf[0] != 0xc8 || rbuf[1] != 0x08) && /* M4.3B */
+		(rbuf[0] != 0xc8 || rbuf[1] != 0x0B)) { /* M4.2C */
+		printf("currently only CardOS M4.01, M4.2B, M4.2C and M4.3B are supported, aborting\n");
+		return 1;
+	}
+	cardos_version[0] = rbuf[0];
+	cardos_version[1] = rbuf[1];
+
+	/* GET DATA for startkey index - 00 ca 01 96
+	 * returns 6 bytes PackageLoadKey.Version, PackageLoadKey.Retry
+	 * Startkey.Version, Startkey.Retry, 2 internal data byes */
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cla = 0x00;
+	apdu.ins = 0xca;
+	apdu.p1 = 0x01;
+	apdu.p2 = 0x96;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.lc = 0;
+	apdu.le = 256;
+	apdu.cse = SC_APDU_CASE_2_SHORT;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
+			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
+		if (apdu.resplen)
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		return 1;
+	}
+	if (apdu.resplen < 0x04) {
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %ld\n", apdu.resplen);
+		printf("aborting\n");
+		return 1;
+	}
+
+	if (apdu.resp[2] != 0x00) {
+		printf("startkey version is 0x%02x, currently we support only 0x00\n", (int) apdu.resp[3]);
+		printf("aborting\n");
+		return 1;
+	}
+
+	if (apdu.resp[3] < 5) {
+		printf("startkey has only %d tries left. to be safe: aborting\n", apdu.resp[3]);
+		return 1;
+	}	
+
+	/* now check if the correct APDU was passed */
+	static int MAX_APDU=60;
+	unsigned char apdu_bin[MAX_APDU];
+	size_t apdu_len=MAX_APDU;
+	unsigned char checksum[SHA256_DIGEST_LENGTH];
+
+	static const unsigned char cardos_43b_checksum[SHA256_DIGEST_LENGTH] =
+		{  0x6E, 0x34, 0x0B, 0x9C, 0xFF, 0xB3, 0x7A, 0x98,
+		   0x9C, 0xA5, 0x44, 0xE6, 0xBB, 0x78, 0x0A, 0x2C ,
+                   0x78, 0x90, 0x1D, 0x3F, 0xB3, 0x37, 0x38, 0x76,
+		   0x85, 0x11, 0xA3, 0x06, 0x17, 0xAF, 0xA0, 0x1D };
+
+	static const unsigned char cardos_40_checksum[SHA256_DIGEST_LENGTH] =
+		{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, };
+
+	if (sc_hex_to_bin(change_startkey_apdu, apdu_bin, &apdu_len) != 0) {
+		printf("can't convert startkey apdu to binary format: aborting\n");
+		return 1;
+	}
+	SHA256(apdu_bin, apdu_len, checksum);
+
+	if (cardos_version[0] == 0xc8 && cardos_version[1] == 0x08) {
+		if (memcmp(checksum, cardos_43b_checksum, SHA256_DIGEST_LENGTH) != 0) {
+			printf("change startkey apdu is wrong, checksum doesn't match\n");
+			util_hex_dump_asc(stdout, checksum, SHA256_DIGEST_LENGTH, -1);  
+			util_hex_dump_asc(stdout, cardos_43b_checksum, SHA256_DIGEST_LENGTH, -1);  
+			printf("aborting\n");
+			return 1;
+		}
+		goto change_startkey;
+	}
+	
+	if (cardos_version[0] == 0xc8 && cardos_version[1] == 0x03) {
+		if (memcmp(checksum, cardos_40_checksum, SHA256_DIGEST_LENGTH) != 0) {
+			printf("change startkey apdu is wrong, checksum doesn't match\n");
+			util_hex_dump_asc(stdout, checksum, SHA256_DIGEST_LENGTH, -1);  
+			util_hex_dump_asc(stdout, cardos_40_checksum, SHA256_DIGEST_LENGTH, -1);  
+			printf("aborting\n");
+			return 1;
+		}
+		goto change_startkey;
+	}
+
+	printf("checksum for your card not yet implemented, aborting\n");
+	return 1;
+	
+change_startkey:
+	/* run change startkey apdu */
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cla = apdu_bin[0];
+	apdu.ins = apdu_bin[1];
+	apdu.p1 = apdu_bin[2];
+	apdu.p2 = apdu_bin[3];
+	apdu.lc = apdu_bin[4];
+	apdu.data = &apdu_bin[5];
+	apdu.datalen = apdu.lc;
+	apdu.resp = 00;
+	apdu.le = 00;
+	apdu.cse = SC_APDU_CASE_3_SHORT;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
+			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
+		if (apdu.resplen)
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		return 1;
+	}
+
+	printf("change startkey command issued with success\n");
+
+	/* GET DATA for startkey index - 00 ca 01 96
+	 * returns 6 bytes PackageLoadKey.Version, PackageLoadKey.Retry
+	 * Startkey.Version, Startkey.Retry, 2 internal data byes */
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cla = 0x00;
+	apdu.ins = 0xca;
+	apdu.p1 = 0x01;
+	apdu.p2 = 0x96;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.lc = 0;
+	apdu.le = 256;
+	apdu.cse = SC_APDU_CASE_2_SHORT;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
+			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
+		if (apdu.resplen)
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		return 1;
+	}
+	if (apdu.resplen < 0x04) {
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %ld\n", apdu.resplen);
+		printf("aborting\n");
+		return 1;
+	}
+
+	if (apdu.resp[3] != 0xff) {
+		printf("startkey version is 0x%02x, should have been changed to 0xff.\n", apdu.resp[3]);
+		printf("aborting\n");
+		return 1;
+	}
+
+	printf("startkey is now 0xff, success!");
+	return 0;
+}
+# else /* ENABLE_OPENSSL */
+static int cardos_change_startkey(const char *change_startkey_apdu)   {
+	printf("this code needs to be compiled with openssl support enabled.\n");
+	printf("aborting\n");
+	return 1;
+}
+#endif
 
 int main(int argc, char *const argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	int do_info = 0;
 	int do_format = 0;
+	int do_change_startkey = 0;
 	int action_count = 0;
 	const char *opt_driver = NULL;
 	const char *opt_startkey = NULL;
+	const char *opt_change_startkey = NULL;
 	sc_context_param_t ctx_param;
 
 	while (1) {
-		c = getopt_long(argc, argv, "ifs:r:vdc:w", options,
+		c = getopt_long(argc, argv, "ifs:r:vdc:wS:", options,
 				&long_optind);
 		if (c == -1)
 			break;
@@ -873,6 +1110,11 @@ int main(int argc, char *const argv[])
 			break;
 		case 's':
 			opt_startkey = optarg;
+			break;
+		case 'S':
+			do_change_startkey = 1;
+			opt_change_startkey = optarg;
+			action_count++;
 			break;
 		case 'r':
 			opt_reader = atoi(optarg);
@@ -920,6 +1162,12 @@ int main(int argc, char *const argv[])
 
 	if (do_info) {
 		if ((err = cardos_info())) {
+			goto end;
+		}
+		action_count--;
+	}
+	if (do_change_startkey) {
+		if ((err = cardos_change_startkey(opt_change_startkey))) {
 			goto end;
 		}
 		action_count--;
