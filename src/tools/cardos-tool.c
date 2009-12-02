@@ -64,6 +64,7 @@ static const char *option_help[] = {
 	"Print information about this card",
 	"Format this card erasing all content",
 	"Specify startkey for format",
+	"Change Startkey with given APDU command",
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
 	"Wait for a card to be inserted",
