@@ -896,10 +896,7 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 
 	/* check all supported versions here. need a checksum check
 	   for each of them below */
-	if ((rbuf[0] != 0xc8 || rbuf[1] != 0x03) &&	/* M4.01 */
-	        (rbuf[0] != 0xc8 || rbuf[1] != 0x09) &&	/* M4.2B */
-		(rbuf[0] != 0xc8 || rbuf[1] != 0x08) && /* M4.3B */
-		(rbuf[0] != 0xc8 || rbuf[1] != 0x0B)) { /* M4.2C */
+	if ( (rbuf[0] != 0xc8 || rbuf[1] != 0x08) ) { /* M4.3B */
 		printf("currently only CardOS M4.01, M4.2B, M4.2C and M4.3B are supported, aborting\n");
 		return 1;
 	}
@@ -961,11 +958,6 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 		   0x43, 0x3B, 0xD5, 0xD1, 0x3E, 0x34, 0x65, 0x3D,
 		   0x74, 0x7A, 0xDA, 0x19, 0x07, 0x5B, 0xCA, 0xC3, 
 		   0xF0, 0xD3, 0xDC, 0x8B, 0xB7, 0xFB, 0xC5, 0xB4 };
-	static const unsigned char cardos_40_checksum[SHA256_DIGEST_LENGTH] =
-		{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 	if (sc_hex_to_bin(change_startkey_apdu, apdu_bin, &apdu_len) != 0) {
 		printf("can't convert startkey apdu to binary format: aborting\n");
@@ -984,17 +976,6 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 		goto change_startkey;
 	}
 	
-	if (cardos_version[0] == 0xc8 && cardos_version[1] == 0x03) {
-		if (memcmp(checksum, cardos_40_checksum, SHA256_DIGEST_LENGTH) != 0) {
-			printf("change startkey apdu is wrong, checksum doesn't match\n");
-			util_hex_dump_asc(stdout, checksum, SHA256_DIGEST_LENGTH, -1);  
-			util_hex_dump_asc(stdout, cardos_40_checksum, SHA256_DIGEST_LENGTH, -1);  
-			printf("aborting\n");
-			return 1;
-		}
-		goto change_startkey;
-	}
-
 	printf("checksum for your card not yet implemented, aborting\n");
 	return 1;
 	
