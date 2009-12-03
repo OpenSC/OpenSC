@@ -985,26 +985,38 @@ static int unblock_pin(void)
 	struct sc_pkcs15_pin_info *pinfo = NULL;
 	sc_pkcs15_object_t *pin_obj;
 	u8 *pin, *puk;
-	int r;
+	int r, pinpad_present = 0;
 	
+	pinpad_present = p15card->card->reader->slot[0].capabilities & SC_SLOT_CAP_PIN_PAD;
+
 	if (!(pin_obj = get_pin_info()))
 		return 2;
 	pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
 
-	if ((puk = opt_puk) == NULL) {
+	puk = opt_puk;
+	if (puk == NULL) {
 		puk = get_pin("Enter PUK", pin_obj);
-		if (puk == NULL)
+		if (!pinpad_present && puk == NULL)
 			return 2;
 	}
 
-	if ((pin = opt_pin) == NULL)
-		pin = opt_newpin;
+	if (puk == NULL && verbose)
+		printf("PUK value will be prompted with pinpad.\n");
+
+
+	pin = opt_pin ? opt_pin : opt_newpin;
 	while (pin == NULL) {
 		u8 *pin2;
 	
 		pin = get_pin("Enter new PIN", pin_obj);
+		if (pinpad_present && pin == NULL)   {
+			if (verbose)
+				printf("New PIN value will be prompted with pinpad.\n");
+			break;
+		}
 		if (pin == NULL || strlen((char *) pin) == 0)
 			return 2;
+
 		pin2 = get_pin("Enter new PIN again", pin_obj);
 		if (pin2 == NULL || strlen((char *) pin2) == 0)
 			return 2;
@@ -1016,8 +1028,9 @@ static int unblock_pin(void)
 		free(pin2);
 	}
 
-	r = sc_pkcs15_unblock_pin(p15card, pinfo, puk, strlen((char *) puk),
-				 pin, strlen((char *) pin));
+	r = sc_pkcs15_unblock_pin(p15card, pinfo, 
+			puk, puk ? strlen((char *) puk) : 0,
+			pin, pin ? strlen((char *) pin) : 0);
 	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 		fprintf(stderr, "PUK code incorrect; tries left: %d\n", pinfo->tries_left);
 		return 3;
