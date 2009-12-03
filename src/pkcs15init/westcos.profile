@@ -87,6 +87,14 @@ filesystem {
 			acl		= $unprotected;
 			size	= 5000;
 
+			EF PINFILE {
+				file-id		= AAAA;
+				type		= INTERNAL-EF;
+				structure	= TRANSPARENT;
+				size		= 100;
+				acl		= *=NEVER;
+			}
+
 			EF PKCS15-ODF {
 				file-id		= 5031;
 				size		= $odf-size;
