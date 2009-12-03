@@ -911,7 +911,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 		/* check for pinpad support */
 		if (gpriv->SCardControl != NULL) {
 			sc_debug(ctx, "Requesting reader features ... ");
-#ifdef __APPLE__ /* 10.5.7 does not support 0 as protocol identifier */
+#ifndef _WIN32	/* Apple 10.5.7 and pcsc-lite previous to v1.5.5 do not support 0 as protocol identifier */
 			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
 #else
 			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, 0, &card_handle, &active_proto);
