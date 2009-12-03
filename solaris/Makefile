@@ -6,14 +6,14 @@ CONFIGURE_PREFIX=$(PWD:sh)/..
 CONFIGURE=${CONFIGURE_PREFIX}/configure
 CONFIGURE_ARGS=--prefix=/usr --sysconfdir=/etc/opensc --mandir=/usr/share/man --enable-pcsc --enable-openct
 CONFIG_GUESS=${CONFIGURE_PREFIX}/config.guess
-UNAME_ARCH=/sbin/uname -p
+UNAME_ARCH=/usr/bin/uname -p
 PLATFORM = $(CONFIG_GUESS:sh)
 ARCH = $(UNAME_ARCH:sh)
 
 build:
 	@echo "Setup platform specific build directory build-${PLATFORM}"
 	mkdir -p build-${PLATFORM}
-	( cd build-${PLATFORM}; CC=cc ${CONFIGURE} ${CONFIGURE_ARGS}; make )
+	( cd build-${PLATFORM}; CC=cc PCSC_CFLAGS=-I/usr/include/smartcard ${CONFIGURE} ${CONFIGURE_ARGS}; make )
 
 dist:
 	@echo "Setup platform specific dist directory dist-${PLATFORM}"
