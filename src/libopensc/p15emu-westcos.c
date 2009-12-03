@@ -63,7 +63,12 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	p15card->flags = SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED;
 	sc_format_path("AAAA", &path);
 	r = sc_select_file(card, &path, &file);
-	if (!r) {
+	if (r) 
+	{
+		goto out;
+	}
+	else
+	{
 		for (i = 0; i < 1; i++) {
 			unsigned int flags;
 			struct sc_pkcs15_pin_info pin_info;
@@ -73,8 +78,8 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 			flags = SC_PKCS15_PIN_FLAG_INITIALIZED;
 			if (i == 1) {
 				flags |=
-				    SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED |
-				    SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN;
+					SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED |
+					SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN;
 			}
 			pin_info.auth_id.len = 1;
 			pin_info.auth_id.value[0] = i + 1;
@@ -95,20 +100,26 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 				strlcpy(pin_obj.label, "User",
 					sizeof(pin_obj.label));
 			pin_obj.flags =
-			    SC_PKCS15_CO_FLAG_MODIFIABLE |
-			    SC_PKCS15_CO_FLAG_PRIVATE;
+				SC_PKCS15_CO_FLAG_MODIFIABLE |
+				SC_PKCS15_CO_FLAG_PRIVATE;
 			r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj,
-						     &pin_info);
+							 &pin_info);
 			if (r)
 				goto out;
 		}
 	}
+	
 	if (file)
 		sc_file_free(file);
 	file = NULL;
 	sc_format_path("0002", &path);
 	r = sc_select_file(card, &path, &file);
-	if (!r) {
+	if (r) 
+	{
+		goto out;
+	}
+	else
+	{
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
 		struct sc_pkcs15_pubkey_info pubkey_info;
@@ -183,7 +194,12 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	file = NULL;
 	sc_format_path("0001", &path);
 	r = sc_select_file(card, &path, &file);
-	if (!r) {
+	if (r) 
+	{
+		goto out;
+	}
+	else
+	{
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object prkey_obj;
 		memset(&prkey_info, 0, sizeof(prkey_info));
@@ -191,8 +207,8 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 		prkey_info.id.len = 1;
 		prkey_info.id.value[0] = 0x45;
 		prkey_info.usage =
-		    SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DECRYPT
-		    | SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
+			SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DECRYPT
+			| SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 		prkey_info.native = 1;
 		prkey_info.key_reference = 1;
 		prkey_info.modulus_length = modulus_length;
@@ -203,12 +219,13 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 		prkey_obj.auth_id.len = 1;
 		prkey_obj.auth_id.value[0] = 1;
 		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj,
-					       &prkey_info);
+					&prkey_info);
 		if (r < 0)
 			goto out;
 	}
 	r = 0;
-      out:if (file)
+out:
+	if (file)
 		sc_file_free(file);
 	return r;
 }
