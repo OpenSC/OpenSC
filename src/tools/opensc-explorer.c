@@ -771,7 +771,6 @@ static int do_unblock(int argc, char **argv)
 	size_t puklen = sizeof(puk_buf), i;
 	size_t newpinlen = sizeof(newpin_buf);
 	
-	printf("%s +%i: argc:%i\n", __FILE__, __LINE__, argc);
 	if (argc < 1 || argc > 3)
 		goto usage;
 	if (strncasecmp(argv[0], "CHV", 3)) {
@@ -785,7 +784,6 @@ static int do_unblock(int argc, char **argv)
 	argc--;
 	argv++;
 
-	printf("%s +%i: argc:%i\n", __FILE__, __LINE__, argc);
 	if (argc == 0) {
 		puklen = 0;
 		puk = NULL;
@@ -805,7 +803,6 @@ static int do_unblock(int argc, char **argv)
 		argv++;
 	}
 
-	printf("%s +%i: argc:%i\n", __FILE__, __LINE__, argc);
 	if (argc)   {
 		if (argv[0][0] == '"') {
 			for (s = argv[0] + 1, i = 0;
@@ -824,7 +821,6 @@ static int do_unblock(int argc, char **argv)
 		newpin = NULL;
 	}
 
-	printf("%s +%i: puk:%p/%i, pin:%p/%i\n", __FILE__, __LINE__, puk, puklen, newpin, newpinlen);
 	r = sc_reset_retry_counter (card, SC_AC_CHV, ref,
                                       puk, puklen,
                                       newpin, newpinlen);
