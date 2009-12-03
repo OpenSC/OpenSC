@@ -1757,6 +1757,7 @@ auth_pin_change(struct sc_card *card, unsigned int type,
 	if (data->pin1.len && data->pin2.len)   {
 		/* Direct unblock style */
 		data->flags |= SC_PIN_CMD_NEED_PADDING;
+		data->flags &= ~SC_PIN_CMD_USE_PINPAD;
 		data->apdu = NULL;
 
 		auth_init_pin_info(card, &data->pin1, OBERTHUR_AUTH_TYPE_PIN);

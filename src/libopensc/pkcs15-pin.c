@@ -318,7 +318,8 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 		break;
 	}
 	
-	if(p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
+	if((!oldpin || !newpin) 
+			&& p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 		if (pin->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 			data.pin1.prompt = "Please enter SO PIN";

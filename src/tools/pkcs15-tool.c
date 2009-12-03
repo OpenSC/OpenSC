@@ -1035,30 +1035,42 @@ static int change_pin(void)
 	sc_pkcs15_object_t *pin_obj;
 	sc_pkcs15_pin_info_t *pinfo = NULL;
 	u8 *pincode, *newpin;
-	int r;
+	int r, pinpad_present = 0;
+
+	pinpad_present = p15card->card->reader->slot[0].capabilities & SC_SLOT_CAP_PIN_PAD;
 
 	if (!(pin_obj = get_pin_info()))
 		return 2;
 	pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
 
-	if ((pincode = opt_pin) == NULL) {
+	pincode = opt_pin;
+	if (pincode == NULL) {
 		pincode = get_pin("Enter old PIN", pin_obj);
-		if (pincode == NULL)
+		if (!pinpad_present && pincode == NULL)
 			return 2;
 	}
 
-	if (strlen((char *) pincode) == 0) {
+	if (pincode && strlen((char *) pincode) == 0) {
 		fprintf(stderr, "No PIN code supplied.\n");
 		return 2;
 	}
+
+	if (pincode == NULL && verbose)
+		printf("Old PIN value will be prompted with pinpad.\n");
 
 	newpin = opt_newpin;
 	while (newpin == NULL) {
 		u8 *newpin2;
 		
 		newpin = get_pin("Enter new PIN", pin_obj);
+		if (pinpad_present && newpin == NULL)   {
+			if (verbose)
+				printf("New PIN value will be prompted with pinpad.\n");
+			break;
+		}
 		if (newpin == NULL || strlen((char *) newpin) == 0)
 			return 2;
+
 		newpin2 = get_pin("Enter new PIN again", pin_obj);
 		if (newpin2 == NULL || strlen((char *) newpin2) == 0)
 			return 2;
@@ -1071,8 +1083,10 @@ static int change_pin(void)
 		free(newpin2);
 		newpin=NULL;
 	}
-	r = sc_pkcs15_change_pin(p15card, pinfo, pincode, strlen((char *) pincode),
-				 newpin, strlen((char *) newpin));
+
+	r = sc_pkcs15_change_pin(p15card, pinfo, 
+			pincode, pincode ? strlen((char *) pincode) : 0,
+			newpin, newpin ? strlen((char *) newpin) : 0);
 	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 		fprintf(stderr, "PIN code incorrect; tries left: %d\n", pinfo->tries_left);
 		return 3;
