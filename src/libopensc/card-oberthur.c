@@ -36,10 +36,13 @@
 #include <openssl/rsa.h>
 #include <openssl/opensslv.h>
 
-/* #define OBERTHUR_VERIFY_SOPIN_TRY_LOCAL */
+#define OBERTHUR_VERIFY_SOPIN_TRY_LOCAL
+
+#define OBERTHUR_UNBLOCK_STYLE
 
 #define OBERTHUR_PIN_LOCAL	0x80
 #define OBERTHUR_PIN_REFERENCE_USER	0x01
+#define OBERTHUR_PIN_REFERENCE_ONETIME	0x02
 #define OBERTHUR_PIN_REFERENCE_SO	0x04
 
 /* keep OpenSSL 0.9.6 users happy ;-) */
@@ -123,9 +126,11 @@ static int auth_get_pin_reference (struct sc_card *card,
 static int auth_read_component(struct sc_card *card, 
 		enum SC_CARDCTL_OBERTHUR_KEY_TYPE type, int num, 
 		unsigned char *out, size_t outlen);
-static int auth_is_verified(struct sc_card *card, int pin_reference, 
+static int auth_pin_is_verified(struct sc_card *card, int pin_reference, 
 		int *tries_left);
-static int auth_verify(struct sc_card *card, unsigned int type,
+static int auth_pin_verify(struct sc_card *card, unsigned int type,
+		struct sc_pin_cmd_data *data, int *tries_left);
+static int auth_pin_reset(struct sc_card *card, unsigned int type, 
 		struct sc_pin_cmd_data *data, int *tries_left);
 static int auth_create_reference_data (struct sc_card *card,
 		struct sc_cardctl_oberthur_createpin_info *args);
@@ -1547,7 +1552,7 @@ auth_init_pin_info(struct sc_card *card, struct sc_pin_cmd_pin *pin,
 
 
 static int
-auth_verify_pinpad(struct sc_card *card, int pin_reference, int *tries_left) 
+auth_pin_verify_pinpad(struct sc_card *card, int pin_reference, int *tries_left) 
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 	struct sc_pin_cmd_data pin_cmd;    
@@ -1560,8 +1565,8 @@ auth_verify_pinpad(struct sc_card *card, int pin_reference, int *tries_left)
 	memset(ffs, 0xFF, sizeof(ffs));
 	memset(&pin_cmd, 0, sizeof(pin_cmd));
 	
-        rv = auth_is_verified(card, pin_reference, tries_left);
-    	sc_debug(card->ctx, "auth_is_verified returned rv %i\n", rv);
+        rv = auth_pin_is_verified(card, pin_reference, tries_left);
+    	sc_debug(card->ctx, "auth_pin_is_verified returned rv %i\n", rv);
 
 	/* Return SUCCESS without verifying if
 	 * PIN has been already verified and PIN pad has to be used. */
@@ -1603,7 +1608,7 @@ auth_verify_pinpad(struct sc_card *card, int pin_reference, int *tries_left)
 
 	
 static int
-auth_verify(struct sc_card *card, unsigned int type, 
+auth_pin_verify(struct sc_card *card, unsigned int type, 
 		struct sc_pin_cmd_data *data, int *tries_left) 
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -1619,7 +1624,8 @@ auth_verify(struct sc_card *card, unsigned int type,
 	auth_init_pin_info(card, &data->pin1, OBERTHUR_AUTH_TYPE_PIN);
 
 	/* User PIN is always local. */
-	if (data->pin_reference == OBERTHUR_PIN_REFERENCE_USER)
+	if (data->pin_reference == OBERTHUR_PIN_REFERENCE_USER 
+			|| data->pin_reference == OBERTHUR_PIN_REFERENCE_ONETIME)
 		data->pin_reference  |= OBERTHUR_PIN_LOCAL;
 	
 #ifdef OBERTHUR_VERIFY_SOPIN_TRY_LOCAL
@@ -1628,15 +1634,15 @@ auth_verify(struct sc_card *card, unsigned int type,
 		data->pin_reference  |= OBERTHUR_PIN_LOCAL;
 #endif
 
-        rv = auth_is_verified(card, data->pin_reference, tries_left);
-    	sc_debug(card->ctx, "auth_is_verified returned rv %i\n", rv);
+        rv = auth_pin_is_verified(card, data->pin_reference, tries_left);
+    	sc_debug(card->ctx, "auth_pin_is_verified returned rv %i\n", rv);
 
 #ifdef OBERTHUR_VERIFY_SOPIN_TRY_LOCAL
 	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND 
 			&& data->pin_reference == OBERTHUR_PIN_REFERENCE_SO | OBERTHUR_PIN_LOCAL)   {
 		/* Local SOPIN is not defined -- try to verify the global one. */
 		data->pin_reference &= ~OBERTHUR_PIN_LOCAL;
-            	rv = auth_is_verified(card, data->pin_reference, tries_left);
+            	rv = auth_pin_is_verified(card, data->pin_reference, tries_left);
         }
 #endif
 
@@ -1650,7 +1656,7 @@ auth_verify(struct sc_card *card, unsigned int type,
 		SC_FUNC_RETURN(card->ctx, 1, rv);
 
 	if (!data->pin1.data && !data->pin1.len)
-		rv = auth_verify_pinpad(card, data->pin_reference, tries_left);
+		rv = auth_pin_verify_pinpad(card, data->pin_reference, tries_left);
 	else
 		rv = iso_drv->ops->pin_cmd(card, data, tries_left);
 
@@ -1659,7 +1665,7 @@ auth_verify(struct sc_card *card, unsigned int type,
 
 
 static int
-auth_is_verified(struct sc_card *card, int pin_reference, int *tries_left)
+auth_pin_is_verified(struct sc_card *card, int pin_reference, int *tries_left)
 {
 	struct sc_apdu apdu;
 	int rv;
@@ -1684,6 +1690,216 @@ auth_is_verified(struct sc_card *card, int pin_reference, int *tries_left)
 }
 
 
+static int
+auth_pin_change_pinpad(struct sc_card *card, struct sc_pin_cmd_data *data, 
+		int *tries_left) 
+{
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	struct sc_pin_cmd_data pin_cmd;    
+	struct sc_apdu apdu;
+	unsigned char ffs1[0x100]; 
+	unsigned char ffs2[0x100]; 
+	int rv;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	memset(ffs1, 0xFF, sizeof(ffs1));
+	memset(ffs2, 0xFF, sizeof(ffs2));
+	memset(&pin_cmd, 0, sizeof(pin_cmd));
+
+	if (data->pin1.len > OBERTHUR_AUTH_MAX_LENGTH_PIN)
+		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "'PIN CHANGE' failed");
+
+	if (data->pin1.data && data->pin1.len)
+		memcpy(ffs1, data->pin1.data, data->pin1.len);
+	
+	pin_cmd.flags |= SC_PIN_CMD_NEED_PADDING;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x00, data->pin_reference);
+	apdu.lc = OBERTHUR_AUTH_MAX_LENGTH_PIN * 2;
+	apdu.datalen = OBERTHUR_AUTH_MAX_LENGTH_PIN * 2;
+	apdu.data = ffs1;
+
+	pin_cmd.apdu = &apdu;
+	pin_cmd.pin_type = SC_AC_CHV;
+	pin_cmd.cmd = SC_PIN_CMD_CHANGE;
+	pin_cmd.flags |= SC_PIN_CMD_USE_PINPAD;
+	pin_cmd.pin_reference = data->pin_reference;
+	if (pin_cmd.pin1.min_length < 4)
+		pin_cmd.pin1.min_length = 4;
+	pin_cmd.pin1.max_length = 8;
+	pin_cmd.pin1.encoding = SC_PIN_ENCODING_ASCII;
+	pin_cmd.pin1.offset = 5 + OBERTHUR_AUTH_MAX_LENGTH_PIN;
+	pin_cmd.pin1.data = ffs1;
+	pin_cmd.pin1.len = OBERTHUR_AUTH_MAX_LENGTH_PIN;
+	pin_cmd.pin1.pad_length = 0;
+
+	memcpy(&pin_cmd.pin2, &pin_cmd.pin1, sizeof(pin_cmd.pin2));
+	pin_cmd.pin1.offset = 5;
+	pin_cmd.pin2.data = ffs2;
+
+	rv = iso_drv->ops->pin_cmd(card, &pin_cmd, tries_left);
+	SC_TEST_RET(card->ctx, rv, "PIN CMD 'VERIFY' with pinpad failed");
+
+	SC_FUNC_RETURN(card->ctx, 1, rv);
+}
+
+
+static int
+auth_pin_change(struct sc_card *card, unsigned int type, 
+		struct sc_pin_cmd_data *data, int *tries_left) 
+{
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	int rv;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	if (data->pin1.len && data->pin2.len)   {
+		/* Direct unblock style */
+		data->flags |= SC_PIN_CMD_NEED_PADDING;
+		data->apdu = NULL;
+
+		auth_init_pin_info(card, &data->pin1, OBERTHUR_AUTH_TYPE_PIN);
+		auth_init_pin_info(card, &data->pin2, OBERTHUR_AUTH_TYPE_PIN);
+
+		rv = iso_drv->ops->pin_cmd(card, data, tries_left);
+		SC_TEST_RET(card->ctx, rv, "CMD 'PIN CHANGE' failed");
+	}
+	else if (!data->pin1.len && !data->pin2.len)   {
+		/* Oberthur unblock style with PIN pad. */
+		rv = auth_pin_change_pinpad(card, data, tries_left);
+		SC_TEST_RET(card->ctx, rv, "'PIN CHANGE' failedi: SOPIN verify with pinpad failed");
+	}
+	else   {
+		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "'PIN CHANGE' failed");
+	}
+
+	SC_FUNC_RETURN(card->ctx, 1, rv);
+}
+
+
+static int
+auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type, 
+		struct sc_pin_cmd_data *data, int *tries_left) 
+{
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	struct sc_pin_cmd_data pin_cmd;
+	struct sc_path tmp_path;
+	struct sc_file *tmp_file = NULL;
+	struct sc_apdu apdu;
+	unsigned char puk[OBERTHUR_AUTH_MAX_LENGTH_PUK];
+	unsigned char ffs[0x100]; 
+	int rv, rvv;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	if (data->pin_reference !=  OBERTHUR_PIN_REFERENCE_USER)
+		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Oberthur style 'PIN RESET' failed: invalid PIN reference");
+
+	memset(&pin_cmd, 0, sizeof(pin_cmd));
+	pin_cmd.pin_type = SC_AC_CHV;
+        pin_cmd.cmd = SC_PIN_CMD_VERIFY;
+	pin_cmd.pin_reference = OBERTHUR_PIN_REFERENCE_SO;
+	memcpy(&pin_cmd.pin1, &data->pin1, sizeof(pin_cmd.pin1));
+
+	rv = auth_pin_verify(card, SC_AC_CHV, &pin_cmd, tries_left);
+	SC_TEST_RET(card->ctx, rv, "Oberthur style 'PIN RESET' failed: SOPIN verify error");
+
+        sc_format_path("2000", &tmp_path);
+	tmp_path.type = SC_PATH_TYPE_FILE_ID;
+        rv = iso_ops->select_file(card, &tmp_path, &tmp_file);
+        SC_TEST_RET(card->ctx, rv, "select PUK file");
+
+	if (tmp_file->size < OBERTHUR_AUTH_MAX_LENGTH_PUK)
+		SC_TEST_RET(card->ctx, SC_ERROR_FILE_TOO_SMALL, "Oberthur style 'PIN RESET' failed");
+
+	rv = iso_ops->read_binary(card, 0, puk, OBERTHUR_AUTH_MAX_LENGTH_PUK, 0);
+        SC_TEST_RET(card->ctx, rv, "read PUK file error");
+	if (rv != OBERTHUR_AUTH_MAX_LENGTH_PUK)
+		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "Oberthur style 'PIN RESET' failed");
+	
+	memset(ffs, 0xFF, sizeof(ffs));
+	memcpy(ffs, puk, rv);
+
+	memset(&pin_cmd, 0, sizeof(pin_cmd));
+	pin_cmd.pin_type = SC_AC_CHV;
+        pin_cmd.cmd = SC_PIN_CMD_UNBLOCK;
+	pin_cmd.pin_reference = OBERTHUR_PIN_REFERENCE_USER;
+	auth_init_pin_info(card, &pin_cmd.pin1, OBERTHUR_AUTH_TYPE_PUK);
+	pin_cmd.pin1.data = ffs;
+	pin_cmd.pin1.len = OBERTHUR_AUTH_MAX_LENGTH_PUK;
+
+	if (data->pin2.data)   {
+		memcpy(&pin_cmd.pin2, &data->pin2, sizeof(pin_cmd.pin2));
+		rv = auth_pin_reset(card, SC_AC_CHV, &pin_cmd, tries_left);
+		SC_FUNC_RETURN(card->ctx, 1, rv);
+	}
+
+        sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x00, OBERTHUR_PIN_REFERENCE_USER);
+	apdu.lc = OBERTHUR_AUTH_MAX_LENGTH_PIN  + OBERTHUR_AUTH_MAX_LENGTH_PUK;
+	apdu.datalen = OBERTHUR_AUTH_MAX_LENGTH_PIN  + OBERTHUR_AUTH_MAX_LENGTH_PUK;
+	apdu.data = ffs;
+
+	pin_cmd.apdu = &apdu;
+	pin_cmd.flags |= SC_PIN_CMD_USE_PINPAD | SC_PIN_CMD_IMPLICIT_CHANGE;
+
+	pin_cmd.pin1.min_length = 4;
+	pin_cmd.pin1.max_length = 8;
+        pin_cmd.pin1.encoding = SC_PIN_ENCODING_ASCII;
+        pin_cmd.pin1.offset = 5;
+
+	pin_cmd.pin2.data = &ffs[OBERTHUR_AUTH_MAX_LENGTH_PUK];
+	pin_cmd.pin2.len = OBERTHUR_AUTH_MAX_LENGTH_PIN;
+	pin_cmd.pin2.offset = 5 + OBERTHUR_AUTH_MAX_LENGTH_PUK;
+	pin_cmd.pin2.min_length = 4;
+	pin_cmd.pin2.max_length = 8;
+        pin_cmd.pin2.encoding = SC_PIN_ENCODING_ASCII;
+
+        rvv = iso_drv->ops->pin_cmd(card, &pin_cmd, tries_left);
+	if (rvv)
+		sc_perror(card->ctx, rvv, "PIN CMD 'VERIFY' with pinpad failed");
+
+	if (auth_current_ef)
+        	rv = iso_ops->select_file(card, &auth_current_ef->path, &auth_current_ef);
+
+	if (rv > 0)
+		rv = 0;
+
+	SC_FUNC_RETURN(card->ctx, 1, rv ? rv: rvv);
+}
+
+
+static int
+auth_pin_reset(struct sc_card *card, unsigned int type, 
+		struct sc_pin_cmd_data *data, int *tries_left) 
+{
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	int rv;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	if (data->pin_reference ==  OBERTHUR_PIN_REFERENCE_SO 
+			|| data->pin_reference ==  OBERTHUR_PIN_REFERENCE_ONETIME
+			|| (data->pin1.data && data->pin1.len == OBERTHUR_AUTH_MAX_LENGTH_PUK))   {
+		/* Direct unblock style */
+		data->flags |= SC_PIN_CMD_NEED_PADDING;
+
+		auth_init_pin_info(card, &data->pin1, OBERTHUR_AUTH_TYPE_PUK);
+		auth_init_pin_info(card, &data->pin2, OBERTHUR_AUTH_TYPE_PIN);
+
+        	rv = iso_drv->ops->pin_cmd(card, data, tries_left);
+		SC_TEST_RET(card->ctx, rv, "'PIN RESET' failed");
+	}
+	else   {
+		/* Oberthur unblock style: PUK value is a SOPIN */
+		rv = auth_pin_reset_oberthur_style(card, SC_AC_CHV, data, tries_left);
+		SC_TEST_RET(card->ctx, rv, "Oberthur style 'PIN RESET' failed");
+	}
+
+	SC_FUNC_RETURN(card->ctx, 1, rv);
+}
+
+
 static int 
 auth_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
@@ -1696,32 +1912,21 @@ auth_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 	if (data->pin_type != SC_AC_CHV)
 		SC_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "auth_pin_cmd() unsupported PIN type");
 
-	sc_debug(card->ctx, "PIN:%i; pin1:%p/%i, pin2:%p/%i\n", data->pin_reference, 
-			data->pin1.data, data->pin1.len, data->pin2.data, data->pin2.len);
+	sc_debug(card->ctx, "PIN CMD:%i; reference:%i; pin1:%p/%i, pin2:%p/%i\n", data->cmd, 
+			data->pin_reference, data->pin1.data, data->pin1.len, 
+			data->pin2.data, data->pin2.len);
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
-		rv = auth_verify(card, SC_AC_CHV, data, tries_left);
+		rv = auth_pin_verify(card, SC_AC_CHV, data, tries_left);
 		SC_TEST_RET(card->ctx, rv, "CMD 'PIN VERIFY' failed");
 		break;
 	case SC_PIN_CMD_CHANGE:
-		data->flags |= SC_PIN_CMD_NEED_PADDING;
-		data->apdu = NULL;
-
-		auth_init_pin_info(card, &data->pin1, OBERTHUR_AUTH_TYPE_PIN);
-		auth_init_pin_info(card, &data->pin2, OBERTHUR_AUTH_TYPE_PIN);
-
-		rv = iso_drv->ops->pin_cmd(card, data, tries_left);
-		SC_TEST_RET(card->ctx, rv, "CMD 'PIN CHANGE' failed");
+		rv = auth_pin_change(card, SC_AC_CHV, data, tries_left);
+		SC_TEST_RET(card->ctx, rv, "CMD 'PIN VERIFY' failed");
 		break;
 	case SC_PIN_CMD_UNBLOCK:
-		data->flags |= SC_PIN_CMD_NEED_PADDING;
-		data->apdu = NULL;
-
-		auth_init_pin_info(card, &data->pin1, OBERTHUR_AUTH_TYPE_PUK);
-		auth_init_pin_info(card, &data->pin2, OBERTHUR_AUTH_TYPE_PIN);
-
-		rv = iso_drv->ops->pin_cmd(card, data, tries_left);
-		SC_TEST_RET(card->ctx, rv, "CMD 'PIN UNBLOCK' failed");
+		rv = auth_pin_reset(card, SC_AC_CHV, data, tries_left);
+		SC_TEST_RET(card->ctx, rv, "CMD 'PIN VERIFY' failed");
 		break;
 	default:
 		SC_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported PIN operation");

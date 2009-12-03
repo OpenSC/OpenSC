@@ -690,7 +690,7 @@ static int do_change(int argc, char **argv)
 	size_t oldpinlen = sizeof(oldpin), i;
 	size_t newpinlen = sizeof(newpin);
 	
-	if (argc < 2 || argc > 3)
+	if (argc < 1 || argc > 3)
 		goto usage;
 	if (strncasecmp(argv[0], "CHV", 3)) {
 		printf("Invalid type.\n");
@@ -703,7 +703,11 @@ static int do_change(int argc, char **argv)
 	argc--;
 	argv++;
 
-	if (argc == 1) {
+	if (argc == 0) {
+		/* set without verification */
+		oldpinlen = 0;
+		newpinlen = 0;
+	} else if (argc == 1) {
 		/* set without verification */
 		oldpinlen = 0;
 	} else {
@@ -720,19 +724,21 @@ static int do_change(int argc, char **argv)
 		argv++;
 	}
 
-	if (argv[0][0] == '"') {
-		for (s = argv[0] + 1, i = 0;
-		     i < sizeof(newpin) && *s && *s != '"'; i++) 
-			newpin[i] = *s++;
-		newpinlen = i;
-	} else if (sc_hex_to_bin(argv[0], newpin, &newpinlen) != 0) {
-		printf("Invalid key value.\n");
-		goto usage;
+	if (argc)   {
+		if (argv[0][0] == '"') {
+			for (s = argv[0] + 1, i = 0;
+			     i < sizeof(newpin) && *s && *s != '"'; i++) 
+				newpin[i] = *s++;
+			newpinlen = i;
+		} else if (sc_hex_to_bin(argv[0], newpin, &newpinlen) != 0) {
+			printf("Invalid key value.\n");
+			goto usage;
+		}
 	}
 
 	r = sc_change_reference_data (card, SC_AC_CHV, ref,
-                                      oldpin, oldpinlen,
-                                      newpin, newpinlen,
+                                      oldpinlen ? oldpin : NULL, oldpinlen,
+                                      newpinlen ? newpin : NULL, newpinlen,
                                       &tries_left);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
@@ -747,21 +753,26 @@ static int do_change(int argc, char **argv)
 	printf("PIN changed.\n");
 	return 0;
 usage:
-	printf("Usage: change CHV<pin ref> [<old pin>] <new pin>\n");
-	printf("Example: change CHV2 00:00:00:00:00:00 \"foobar\"\n");
+	printf("Usage: change CHV<pin ref> [[<old pin>] <new pin>]\n");
+	printf("Examples: \n");
+	printf("\tChange PIN: change CHV2 00:00:00:00:00:00 \"foobar\"\n");
+	printf("\tSet PIN: change CHV2 \"foobar\"\n");
+	printf("\tChange PIN with pinpad': change CHV2\n");
 	return -1;
 }
+
 
 static int do_unblock(int argc, char **argv)
 {
 	int ref, r;
-	u8 puk[30];
-	u8 newpin[30];
+	u8 puk_buf[30], *puk = NULL;
+	u8 newpin_buf[30], *newpin = NULL;
 	const char *s;
-	size_t puklen = sizeof(puk), i;
-	size_t newpinlen = sizeof(newpin);
+	size_t puklen = sizeof(puk_buf), i;
+	size_t newpinlen = sizeof(newpin_buf);
 	
-	if (argc < 2 || argc > 3)
+	printf("%s +%i: argc:%i\n", __FILE__, __LINE__, argc);
+	if (argc < 1 || argc > 3)
 		goto usage;
 	if (strncasecmp(argv[0], "CHV", 3)) {
 		printf("Invalid type.\n");
@@ -774,33 +785,46 @@ static int do_unblock(int argc, char **argv)
 	argc--;
 	argv++;
 
-	if (argc == 1) {
-		/* set without verification */
+	printf("%s +%i: argc:%i\n", __FILE__, __LINE__, argc);
+	if (argc == 0) {
 		puklen = 0;
+		puk = NULL;
 	} else {
 		if (argv[0][0] == '"') {
 			for (s = argv[0] + 1, i = 0;
-			     i < sizeof(puk) && *s && *s != '"'; i++) 
-				puk[i] = *s++;
+			     i < sizeof(puk_buf) && *s && *s != '"'; i++) 
+				puk_buf[i] = *s++;
 			puklen = i;
-		} else if (sc_hex_to_bin(argv[0], puk, &puklen) != 0) {
+		} else if (sc_hex_to_bin(argv[0], puk_buf, &puklen) != 0) {
 			printf("Invalid key value.\n");
 			goto usage;
 		}
+		puk = &puk_buf[0];
+
 		argc--;
 		argv++;
 	}
 
-	if (argv[0][0] == '"') {
-		for (s = argv[0] + 1, i = 0;
-		     i < sizeof(newpin) && *s && *s != '"'; i++) 
-			newpin[i] = *s++;
-		newpinlen = i;
-	} else if (sc_hex_to_bin(argv[0], newpin, &newpinlen) != 0) {
-		printf("Invalid key value.\n");
-		goto usage;
+	printf("%s +%i: argc:%i\n", __FILE__, __LINE__, argc);
+	if (argc)   {
+		if (argv[0][0] == '"') {
+			for (s = argv[0] + 1, i = 0;
+			     i < sizeof(newpin_buf) && *s && *s != '"'; i++) 
+				newpin_buf[i] = *s++;
+			newpinlen = i;
+		} else if (sc_hex_to_bin(argv[0], newpin_buf, &newpinlen) != 0) {
+			printf("Invalid key value.\n");
+			goto usage;
+		}
+
+		newpin = &newpin_buf[0];
+	}
+	else   {
+		newpinlen = 0;
+		newpin = NULL;
 	}
 
+	printf("%s +%i: puk:%p/%i, pin:%p/%i\n", __FILE__, __LINE__, puk, puklen, newpin, newpinlen);
 	r = sc_reset_retry_counter (card, SC_AC_CHV, ref,
                                       puk, puklen,
                                       newpin, newpinlen);
@@ -813,8 +837,16 @@ static int do_unblock(int argc, char **argv)
 	printf("PIN unblocked.\n");
 	return 0;
 usage:
-	printf("Usage: unblock CHV<pin ref> [<puk>] <new pin>\n");
-	printf("Example: unblock CHV2 00:00:00:00:00:00 \"foobar\"\n");
+	printf("Usage: unblock CHV<pin ref> [<puk>] [<new pin>]\n");
+	printf("PUK and PIN values can be hexadecimal, ASCII, empty (\"\") or absent\n");
+	printf("Examples:\n");
+	printf("\tUnblock PIN and set a new value:   unblock CHV2 00:00:00:00:00:00 \"foobar\"\n");
+	printf("\tUnblock PIN keeping the old value: unblock CHV2 00:00:00:00:00:00 \"\"\n");
+	printf("\tSet new PIN value:                 unblock CHV2 \"\" \"foobar\"\n");
+	printf("Examples with pinpad:\n");
+	printf("\tUnblock PIN: new PIN value is prompted by pinpad:                   unblock CHV2 00:00:00:00:00:00\n");
+	printf("\tSet PIN: new PIN value is prompted by pinpad:                       unblock CHV2 \"\"\n");
+	printf("\tUnblock PIN: unblock code and new PIN value are prompted by pinpad: unblock CHV2\n");
 	return -1;
 }
 
