@@ -108,7 +108,7 @@ static int opensc_info(void)
 	printf (
 		"[Sun C %x.%x]\n",
 #if __SUNPRO_C > 0x590
-		(__SUNPRO_C >> 12), (__SUNPRO_C >> 8) & 0xFF
+		(__SUNPRO_C >> 12), (__SUNPRO_C >> 4) & 0xFF
 #else
 		(__SUNPRO_C >>  8), (__SUNPRO_C >> 4) & 0xF
 #endif
