@@ -488,8 +488,11 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		goto out;
 
 	rv = pool_find(&session->slot->object_pool, hKey, (void**) &object);
-	if (rv != CKR_OK)
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
 		goto out;
+	}
 
 	if (object->ops->sign == NULL_PTR) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;
@@ -634,8 +637,11 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 		goto out;
 
 	rv = pool_find(&session->slot->object_pool, hKey, (void**) &object);
-	if (rv != CKR_OK)
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
 		goto out;
+	}
 
 	if (object->ops->sign == NULL_PTR) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;
@@ -726,8 +732,11 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		goto out;
 
 	rv = pool_find(&session->slot->object_pool, hKey, (void**) &object);
-	if (rv != CKR_OK)
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
 		goto out;
+	}
 
 	if (object->ops->decrypt == NULL_PTR) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;
@@ -909,8 +918,11 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE    hSession,          /* the session's handl
 
 	rv = pool_find(&session->slot->object_pool, hUnwrappingKey,
 				(void**) &object);
-	if (rv != CKR_OK)
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_UNWRAPPING_KEY_HANDLE_INVALID;
 		goto out;
+	}
 
 	if (object->ops->sign == NULL_PTR) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;
@@ -1029,8 +1041,11 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 		goto out;
 
 	rv = pool_find(&session->slot->object_pool, hKey, (void**) &object);
-	if (rv != CKR_OK)
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
 		goto out;
+	}
 
 #if 0
 	rv = object->ops->get_attribute(session, object, &verify_attribute);
