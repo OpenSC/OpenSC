@@ -1635,8 +1635,10 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 
 	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt, CKA_KEY_TYPE,
 		&keytype, NULL);
-	if (rv != CKR_OK)
+	if (rv != CKR_OK && pMechanism->mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN)
 		keytype = CKK_RSA;
+	else
+		goto kpgen_done;
 	if (keytype == CKK_GOSTR3410)
 	{
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_GOSTR3410;
