@@ -46,6 +46,11 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
+	if (!(session->flags & CKF_RW_SESSION)) {
+		rv = CKR_SESSION_READ_ONLY;
+		goto out;
+	}
+
 	card = session->slot->card;
 	if (card->framework->create_object == NULL)
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
@@ -85,6 +90,11 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		goto out;
+
+	if (!(session->flags & CKF_RW_SESSION)) {
+		rv = CKR_SESSION_READ_ONLY;
+		goto out;
+	}
 
 	rv = pool_find_and_delete(&session->slot->object_pool, hObject, (void**) &object);
 	if (rv != CKR_OK)
@@ -192,6 +202,11 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		goto out;
+
+	if (!(session->flags & CKF_RW_SESSION)) {
+		rv = CKR_SESSION_READ_ONLY;
+		goto out;
+	}
 
 	rv = pool_find(&session->slot->object_pool, hObject, (void**) &object);
 	if (rv != CKR_OK)
@@ -871,6 +886,11 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE    hSession,                    /* the
 	if (rv != CKR_OK)
 		goto out;
 
+	if (!(session->flags & CKF_RW_SESSION)) {
+		rv = CKR_SESSION_READ_ONLY;
+		goto out;
+	}
+
 	slot = session->slot;
 	if (slot->card->framework->gen_keypair == NULL) {
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
@@ -915,6 +935,11 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE    hSession,          /* the session's handl
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		goto out;
+
+	if (!(session->flags & CKF_RW_SESSION)) {
+		rv = CKR_SESSION_READ_ONLY;
+		goto out;
+	}
 
 	rv = pool_find(&session->slot->object_pool, hUnwrappingKey,
 				(void**) &object);

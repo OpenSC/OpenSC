@@ -307,6 +307,11 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
 	if (rv != CKR_OK)
 		goto out;
 
+	if (!(session->flags & CKF_RW_SESSION)) {
+		rv = CKR_SESSION_READ_ONLY;
+		goto out;
+	}
+
 	slot = session->slot;
 	if (slot->login_user != CKU_SO) {
 		rv = CKR_USER_NOT_LOGGED_IN;
@@ -341,12 +346,11 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 		goto out;
 
 	sc_debug(context, "Changing PIN (session %d)\n", hSession);
-#if 0
-	if (!(ses->flags & CKF_RW_SESSION)) {
+
+	if (!(session->flags & CKF_RW_SESSION)) {
 		rv = CKR_SESSION_READ_ONLY;
 		goto out;
 	}
-#endif
 
 	slot = session->slot;
 	rv = slot->card->framework->change_pin(slot->card, slot->fw_data,
