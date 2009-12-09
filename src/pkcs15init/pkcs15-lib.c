@@ -3210,7 +3210,8 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 	if (r >= 0) {
 		*pinsize = r;
 		goto found;
-	}
+	} else if (r == SC_ERROR_OBJECT_NOT_FOUND)
+		r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 
 	if (type != SC_AC_CHV) {
 		/* Okay, nothing in our cache.
