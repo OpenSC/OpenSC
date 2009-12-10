@@ -227,6 +227,11 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	if (rv != CKR_OK)
 		return rv;
 
+	if (pPin == NULL_PTR && ulPinLen > 0) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
+
 	if (userType != CKU_USER && userType != CKU_SO) {
 		rv = CKR_USER_TYPE_INVALID;
 		goto out;
@@ -303,6 +308,11 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
 	if (rv != CKR_OK)
 		return rv;
 
+	if (pPin == NULL_PTR && ulPinLen > 0) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		goto out;
@@ -340,6 +350,12 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+
+	if ((pOldPin == NULL_PTR && ulOldLen > 0)
+			|| (pNewPin == NULL_PTR && ulNewLen > 0)) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
