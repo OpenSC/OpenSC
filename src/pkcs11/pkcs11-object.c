@@ -40,6 +40,11 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+
+	if (pTemplate == NULL_PTR || ulCount == 0) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 	dump_template("C_CreateObject()", pTemplate, ulCount);
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
@@ -139,6 +144,11 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 	if (rv != CKR_OK)
 		return rv;
 
+	if (pTemplate == NULL_PTR || ulCount == 0) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		goto out;
@@ -197,6 +207,10 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,   /* the session's handle 
 	if (rv != CKR_OK)
 		return rv;
 
+	if (pTemplate == NULL_PTR || ulCount == 0) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 	dump_template("C_SetAttributeValue", pTemplate, ulCount);
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
@@ -244,6 +258,11 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+
+	if (pTemplate == NULL_PTR && ulCount > 0) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -339,6 +358,11 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,          /* the session's han
 	if (rv != CKR_OK)
 		return rv;
 
+	if (phObject == NULL_PTR || ulMaxObjectCount == 0 || pulObjectCount == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		goto out;
@@ -400,12 +424,17 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	if (rv != CKR_OK)
 		return rv;
 
+	if (pMechanism == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_init(session, pMechanism);
 	sc_debug(context, "C_DigestInit returns %d\n", rv);
 
-	sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -497,6 +526,11 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+
+	if (pMechanism == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -647,6 +681,11 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,   /* the session's handle */
 	if (rv != CKR_OK)
 		return rv;
 
+	if (pMechanism == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
+
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
 		goto out;
@@ -741,6 +780,11 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+
+	if (pMechanism == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -879,6 +923,12 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE    hSession,                    /* the
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+	if (pMechanism == NULL_PTR
+			|| (pPublicKeyTemplate == NULL_PTR && ulPublicKeyAttributeCount > 0)
+			|| (pPrivateKeyTemplate == NULL_PTR && ulPrivateKeyAttributeCount > 0)) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 	dump_template("C_CreateObject(), PrivKey attrs", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
 	dump_template("C_CreateObject(), PubKey attrs", pPublicKeyTemplate, ulPublicKeyAttributeCount);
 
@@ -931,6 +981,11 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE    hSession,          /* the session's handl
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+
+	if (pMechanism == NULL_PTR || (pTemplate == NULL_PTR && ulAttributeCount > 0)) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
@@ -1060,6 +1115,11 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,    /* the session's handle */
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+
+	if (pMechanism == NULL_PTR) {
+		rv = CKR_ARGUMENTS_BAD;
+		goto out;
+	}
 
 	rv = pool_find(&session_pool, hSession, (void**) &session);
 	if (rv != CKR_OK)
