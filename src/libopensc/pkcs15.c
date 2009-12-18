@@ -755,6 +755,11 @@ done:
 			|| strcmp(p15card->manufacturer_id,"Prime") == 0 ))
 		p15card->flags |= SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT;
 
+	/* for starcos cards only: fix asn1 integers */
+	if (strcmp(p15card->card->driver->short_name,"starcos") == 0
+		&& scconf_get_bool(conf_block, "enable_fix_asn1_integers", 1))
+		p15card->flags |= SC_PKCS15_CARD_FLAG_FIX_INTEGERS;
+
 	/* set special flags based on card meta data */
 	if (strcmp(p15card->card->driver->short_name,"cardos") == 0) {
 

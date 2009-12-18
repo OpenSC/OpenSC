@@ -110,6 +110,16 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 		else
 			info.max_length = 8; /* shouldn't happen */
 	}
+
+	/* OpenSC 0.11.4 and older encoded "pinReference" as a negative
+	   value. Fixed in 0.11.5 we need to add a hack, so old cards
+	   continue to work. */
+	if (p15card->flags & SC_PKCS15_CARD_FLAG_FIX_INTEGERS) {
+		if (info.reference < 0) {
+			info.reference += 256;
+		}
+	}
+
 	memcpy(obj->data, &info, sizeof(info));
 
 	return 0;

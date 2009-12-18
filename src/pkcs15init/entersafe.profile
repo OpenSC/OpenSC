@@ -151,14 +151,14 @@ filesystem {
 		    	    file-id	   = FFFF;
 				}
         		EF public-key {
-    	    	    file-id	  = 3003;
+    	    	    file-id	  = 3000;
    					structure = transparent;
 					ACL	  	  = *=NEVER,READ=NONE,UPDATE=$PIN;
         		}
 
         		# Certificate template
         		EF certificate {
-            	    file-id	   = 3104;
+            	    file-id	   = 3100;
             		structure  = transparent;
 					ACL	  	   = *=NEVER,READ=NONE,UPDATE=$PIN;
         		}
@@ -166,17 +166,24 @@ filesystem {
         		# Extractable private keys are stored in transparent EFs.
         		# Encryption of the content is performed by libopensc.
         		EF extractable-key {
-            	    file-id		   = 3201;
+            	    file-id		   = 3200;
             		structure	   = transparent;
 					ACL	  	  	   = *=NEVER,READ=NONE,UPDATE=$PIN;
         		}
 
         		# data objects are stored in transparent EFs.
         		EF data {
-            	    file-id		= 3301;
+            	    file-id		= 3300;
             		structure	= transparent;
-					ACL	  	  	= *=NEVER,READ=NONE,UPDATE=$PIN;
+					ACL	  	  	= *=NEVER,READ=NONE,UPDATE=NONE;
         		}
+        		# data objects are stored in transparent EFs.
+        		EF privdata {
+            	    file-id		= 3400;
+            		structure	= transparent;
+					ACL	  	  	= *=NEVER,READ=$PIN,UPDATE=$PIN;
+        		}
+
 			}
 		}
     }

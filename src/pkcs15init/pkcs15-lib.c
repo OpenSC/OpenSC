@@ -2618,7 +2618,8 @@ static int sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
 
 	/* create a temporary tokeninfo structure */
 	tokeninfo.version = p15card->version;
-	tokeninfo.flags = p15card->flags;
+	/* ugly opensc hack, we use the some high flags internaly */
+	tokeninfo.flags = p15card->flags & 0xffffff; 
 	tokeninfo.label = p15card->label;
 	tokeninfo.serial_number = p15card->serial_number;
 	tokeninfo.manufacturer_id = p15card->manufacturer_id;

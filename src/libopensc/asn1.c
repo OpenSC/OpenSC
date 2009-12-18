@@ -999,6 +999,9 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_ENUMERATED:
 		if (parm != NULL)
 			r = sc_asn1_decode_integer(obj, objlen, (int *) entry->parm);
+		if (ctx->debug >= 6)
+			sc_debug(ctx, "%*.*sdecoding '%s' returned %d\n", depth, depth, "", entry->name, *((int *) entry->parm));
+
 		break;
 	case SC_ASN1_BIT_STRING_NI:
 	case SC_ASN1_BIT_STRING:

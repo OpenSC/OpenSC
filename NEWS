@@ -9,6 +9,10 @@ or doc/nonpersistent/ChangeLog.
 New in 0.??.==; 200?-??-??; ??
 * New westcos driver by François Leblanc
 
+New in 0.11.12; 2009-12-18; Andreas Jellinghaus
+* Document integer problem in OpenSC and implement workaround
+* Improve entersafe profile to support private data objects
+
 New in 0.11.9; 2009-07-29; Andreas Jellinghaus
 * New rutoken_ecp driver by  Aktiv Co. / Aleksey Samsonov
 * Allow more keys/certificates/files etc. with entersafe tokens

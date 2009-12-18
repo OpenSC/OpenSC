@@ -269,7 +269,7 @@ app default {
 		#
 		# Default: no
 		# try_emulation_first = yes;
-		#
+		
 		# Enable builtin emulators.
 		# Default: yes
 		# enable_builtin_emulation = no;
@@ -297,6 +297,23 @@ app default {
 		# this option only affects cardos cards right now.
 		# Default: yes
 		# enable_sign_with_decrypt_workaround = no;
+
+		# workaround: fix keyReference and pinReference values
+		# OpenSC 0.11.4 and older have a bug: integers were not
+		# properly encoded in asn.1 structures. So far only
+		# starcos cards were found to have a problem with this,
+		# and only these two values were found to be filled with
+		# the wrong value.
+      		#
+		# Fortunatly those values (if present) need to be positive.
+		# Thus we can check if these are available and negative,
+		# and if so fix them by adding 256 to get the correct value.
+		#
+		# To be on the safe side, this workaround/fix can be turned
+		# off.
+		#
+		# Default: yes
+		# enable_fix_asn1_integers = no;
 	}
 }
 
