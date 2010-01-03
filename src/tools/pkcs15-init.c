@@ -1176,10 +1176,21 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
 	int i, r = 0, count = 0, del_cert = 0;
 
 	if (which & SC_PKCS15INIT_TYPE_PRKEY) {
-	    if (sc_pkcs15_find_prkey_by_id(myp15card, &id, &objs[count]) != 0)
+		sc_pkcs15_object_t *key_objs[0x10];
+		struct sc_pkcs15_prkey_info *prkey_info = NULL;
+
+		r = sc_pkcs15_get_objects(myp15card, SC_PKCS15_TYPE_PRKEY, key_objs, 0x10);
+		if (r < 0) {
+			fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
+			return r;
+		}
+
+		for (i = 0; i< r; i++)
+			if (sc_pkcs15_compare_id(&id, &((struct sc_pkcs15_prkey_info *)key_objs[i]->data)->id))
+				objs[count++] = key_objs[i];
+
+		if (!count)
 			sc_debug(myctx, "NOTE: couldn't find privkey %s to delete\n", sc_pkcs15_print_id(&id));
-		else
-			count++;
 	}
 
 	if (which & SC_PKCS15INIT_TYPE_PUBKEY) {
