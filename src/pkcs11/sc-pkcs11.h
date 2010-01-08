@@ -45,6 +45,11 @@ extern "C" {
 #define PKCS11_DEFAULT_MODULE_NAME      "opensc-pkcs11.so"
 #endif
 
+#define SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED       0
+#define SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN   1
+#define SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN   2
+#define SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN 3
+
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
 extern CK_RV C_UnloadModule(void *module);
 
@@ -93,6 +98,7 @@ struct sc_pkcs11_config {
 	unsigned char hide_empty_tokens;
 	unsigned char lock_login;
 	unsigned char soft_keygen_allowed;
+	unsigned int pin_unblock_style;
 };
 
 /*
@@ -158,7 +164,7 @@ struct sc_pkcs11_framework_ops {
 	CK_RV (*login)(struct sc_pkcs11_card *, void *,
 				CK_USER_TYPE, CK_CHAR_PTR, CK_ULONG);
 	CK_RV (*logout)(struct sc_pkcs11_card *, void *);
-	CK_RV (*change_pin)(struct sc_pkcs11_card *, void *,
+	CK_RV (*change_pin)(struct sc_pkcs11_card *, void *, int,
 				CK_CHAR_PTR, CK_ULONG,
 				CK_CHAR_PTR, CK_ULONG);
 

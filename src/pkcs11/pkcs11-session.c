@@ -232,7 +232,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		goto out;
 	}
 
-	if (userType != CKU_USER && userType != CKU_SO) {
+	if (userType != CKU_USER && userType != CKU_SO && userType != CKU_CONTEXT_SPECIFIC) {
 		rv = CKR_USER_TYPE_INVALID;
 		goto out;
 	}
@@ -241,7 +241,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,  /* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
-	sc_debug(context, "Login for session %d\n", hSession);
+	sc_debug(context, "Login for session %d; userType %d\n", hSession, userType);
 
 	slot = session->slot;
 
@@ -361,17 +361,16 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	if (rv != CKR_OK)
 		goto out;
 
-	sc_debug(context, "Changing PIN (session %d)\n", hSession);
+	slot = session->slot;
+	sc_debug(context, "Changing PIN (session %d; login user %d)\n", hSession, slot->login_user);
 
 	if (!(session->flags & CKF_RW_SESSION)) {
 		rv = CKR_SESSION_READ_ONLY;
 		goto out;
 	}
 
-	slot = session->slot;
 	rv = slot->card->framework->change_pin(slot->card, slot->fw_data,
-			pOldPin, ulOldLen,
-			pNewPin, ulNewLen);
+            slot->login_user, pOldPin, ulOldLen, pNewPin, ulNewLen);
 
 out:	sc_pkcs11_unlock();
 	return rv;

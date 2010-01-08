@@ -53,6 +53,8 @@ struct pkcs15_fw_data {
 	struct pkcs15_any_object *	objects[MAX_OBJECTS];
 	unsigned int			num_objects;
 	unsigned int			locked;
+	unsigned char user_puk[64];
+	unsigned int user_puk_len;
 };
 
 struct pkcs15_any_object {
@@ -965,12 +967,43 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 
 		/* If there's no SO PIN on the card, silently
 		 * accept any PIN, and lock the card if required */
-		if (rc == SC_ERROR_OBJECT_NOT_FOUND
-		 && sc_pkcs11_conf.lock_login)
-			rc = lock_card(fw_data);
-		if (rc < 0)
+		if (rc == SC_ERROR_OBJECT_NOT_FOUND)   {
+			rc = 0;
+			if (sc_pkcs11_conf.lock_login)
+				rc = lock_card(fw_data);
+
+			if (sc_pkcs11_conf.pin_unblock_style == SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN)   {
+				if (ulPinLen && ulPinLen < sizeof(fw_data->user_puk))   {
+					memcpy(fw_data->user_puk, pPin, ulPinLen);
+					fw_data->user_puk_len = ulPinLen;
+				}
+			}
+
+			sc_debug(context, "No SOPIN found; returns %d\n", rc);
 			return sc_to_cryptoki_error(rc, p11card->reader);
+		}
+		else if (rc < 0)   {
+			return sc_to_cryptoki_error(rc, p11card->reader);
+		}
+
 		break;
+	case CKU_CONTEXT_SPECIFIC:
+		/* For a while, used only to unblock User PIN. */
+		rc = 0;
+		if (sc_pkcs11_conf.lock_login)
+		       	rc = lock_card(fw_data);
+#if 0
+		/* TODO: Look for pkcs15 auth object with 'unblockingPin' flag activated.
+		 * If exists, do verification of PIN (in fact PUK). */
+		if (sc_pkcs11_conf.pin_unblock_style == SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN)   {
+			if (ulPinLen && ulPinLen < sizeof(fw_data->user_puk))   {
+				memcpy(fw_data->user_puk, pPin, ulPinLen);
+				fw_data->user_puk_len = ulPinLen;
+			}
+		}
+#endif
+		sc_debug(context, "context specific login returns %d\n", rc);
+		return sc_to_cryptoki_error(rc, p11card->reader);
 	default:
 		return CKR_USER_TYPE_INVALID;
 	}
@@ -1008,7 +1041,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 		return sc_to_cryptoki_error(rc, p11card->reader);
 
 	rc = sc_pkcs15_verify_pin(card, pin, pPin, ulPinLen);
-	sc_debug(context, "PIN verification returned %d\n", rc);
+	sc_debug(context, "PKCS15 verify PIN returned %d\n", rc);
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
@@ -1016,7 +1049,10 @@ static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
 {
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	int rc = 0;
-        
+       
+	memset(fw_data->user_puk, 0, sizeof(fw_data->user_puk));
+	fw_data->user_puk_len = 0;
+
 	sc_pkcs15_pincache_clear(fw_data->p15_card);
 	sc_logout(fw_data->p15_card->card);
 
@@ -1026,7 +1062,7 @@ static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
 }
 
 static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
-			  void *fw_token,
+			  void *fw_token, int login_user,
 			  CK_CHAR_PTR pOldPin, CK_ULONG ulOldLen,
 			  CK_CHAR_PTR pNewPin, CK_ULONG ulNewLen)
 {
@@ -1046,14 +1082,34 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 		 */
 		pOldPin = pNewPin = NULL;
 		ulOldLen = ulNewLen = 0;
-	} else
-	if (ulNewLen < pin->min_length ||
-	    ulNewLen > pin->max_length)
+	} 
+	else if (ulNewLen < pin->min_length || ulNewLen > pin->max_length)  {
 		return CKR_PIN_LEN_RANGE;
+	}
 
-	rc = sc_pkcs15_change_pin(fw_data->p15_card, pin, pOldPin, ulOldLen,
-				pNewPin, ulNewLen);
-	sc_debug(context, "PIN change returned %d\n", rc);
+	if (login_user < 0)   {
+		if (sc_pkcs11_conf.pin_unblock_style != SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN)   {
+			sc_debug(context, "PIN unlock is not allowed in unlogged session");
+			return CKR_FUNCTION_NOT_SUPPORTED;
+		}
+		rc = sc_pkcs15_unblock_pin(fw_data->p15_card, pin, pOldPin, ulOldLen, pNewPin, ulNewLen);
+	}
+	else if (login_user == CKU_CONTEXT_SPECIFIC)   {
+		if (sc_pkcs11_conf.pin_unblock_style != SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN)   {
+			sc_debug(context, "PIN unlock is not allowed with CKU_CONTEXT_SPECIFIC login");
+			return CKR_FUNCTION_NOT_SUPPORTED;
+		}
+		rc = sc_pkcs15_unblock_pin(fw_data->p15_card, pin, pOldPin, ulOldLen, pNewPin, ulNewLen);
+	}
+	else if (login_user == CKU_USER)   {
+		rc = sc_pkcs15_change_pin(fw_data->p15_card, pin, pOldPin, ulOldLen, pNewPin, ulNewLen);
+	}
+	else   {
+		sc_debug(context, "cannot change PIN: non supported login type: %i", login_user);
+		return CKR_FUNCTION_NOT_SUPPORTED;
+	}
+
+	sc_debug(context, "PIN change returns %d\n", rc);
 	return sc_to_cryptoki_error(rc, p11card->reader);
 }
 
@@ -1066,8 +1122,29 @@ static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 	struct sc_pkcs15init_pinargs args;
 	struct sc_profile	*profile;
 	struct sc_pkcs15_object	*auth_obj;
-	sc_pkcs15_pin_info_t	*pin_info;
+	struct sc_pkcs15_pin_info *pin_info;
 	int			rc;
+
+	sc_debug(context, "pkcs15 init PIN: pin %p:%d\n", pPin, ulPinLen);
+	pin_info = slot_data_pin_info(slot->fw_data);
+	if (pin_info && sc_pkcs11_conf.pin_unblock_style == SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN)   {
+		if (fw_data->user_puk_len)   {
+			rc = sc_pkcs15_unblock_pin(fw_data->p15_card, pin_info, 
+					fw_data->user_puk, fw_data->user_puk_len, pPin, ulPinLen);
+		}
+		else   {
+#if 0
+			/* TODO: Actually sc_pkcs15_unblock_pin() do not accepts zero length value as a PUK argument.
+			 * It's usefull for the cards that do not supports modes 00 and 01 
+			 * of ISO 'RESET RETRY COUNTER' command. */
+			rc = sc_pkcs15_unblock_pin(fw_data->p15_card, pin_info, NULL, 0, pPin, ulPinLen);
+#else
+			return sc_to_cryptoki_error(SC_ERROR_NOT_SUPPORTED, p11card->reader); 
+#endif
+		}
+
+		return sc_to_cryptoki_error(rc, p11card->reader);
+	}
 
 	rc = sc_lock(p11card->card);
 	if (rc < 0)
@@ -1704,6 +1781,9 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 
 	/* 3.a Try on-card key pair generation */
 
+	sc_pkcs15init_set_p15card(profile, fw_data->p15_card);
+
+	sc_debug(context, "Try on-card key pair generation");
 	rc = sc_pkcs15init_generate_key(fw_data->p15_card, profile,
 		&keygen_args, keybits, &priv_key_obj);
 	if (rc >= 0) {

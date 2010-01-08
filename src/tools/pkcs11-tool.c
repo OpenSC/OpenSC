@@ -54,7 +54,11 @@ enum {
 	OPT_INIT_PIN,
 	OPT_ATTR_FROM,
 	OPT_KEY_TYPE,
-	OPT_PRIVATE
+	OPT_PRIVATE,
+	OPT_UNLOCK_PIN,
+	OPT_PUK,
+	OPT_NEW_PIN,
+	OPT_LOGIN_TYPE
 };
 
 static const struct option options[] = {
@@ -69,11 +73,15 @@ static const struct option options[] = {
 	{ "mechanism",		1, NULL,		'm' },
 
 	{ "login",		0, NULL,		'l' },
+	{ "login-type",         1, NULL,                OPT_LOGIN_TYPE },
 	{ "pin",		1, NULL,		'p' },
+	{ "puk",		1, NULL,		OPT_PUK },
+	{ "new-pin",		1, NULL,		OPT_NEW_PIN },
 	{ "so-pin",		1, NULL,		OPT_SO_PIN },
 	{ "init-token",		0, NULL,		OPT_INIT_TOKEN },
 	{ "init-pin",		0, NULL,		OPT_INIT_PIN },
 	{ "change-pin",		0, NULL,		'c' },
+	{ "unlock-pin",		0, NULL,		OPT_UNLOCK_PIN },
 	{ "keypairgen", 	0, NULL, 		'k' },
 	{ "key-type",		1, NULL,		OPT_KEY_TYPE },
 	{ "write-object",	1, NULL, 		'w' },
@@ -110,12 +118,16 @@ static const char *option_help[] = {
 	"Hash some data",
 	"Specify mechanism (use -M for a list of supported mechanisms)",
 
-	"Log into the token first (not needed when using --pin)",
+	"Log into the token first",
+	"Specify login type ('so', 'user', 'context-specific'; default:'user')",
 	"Supply User PIN on the command line (if used in scripts: careful!)",
+	"Supply User PUK on the command line",
+	"Supply new User PIN on the command line",
 	"Supply SO PIN on the command line (if used in scripts: careful!)",
 	"Initialize the token, its label and its SO PIN (use with --label and --so-pin)",
-	"Initialize the User PIN (use with --pin)",
-	"Change your User PIN",
+	"Initialize the User PIN (use with --pin and --login)",
+	"Change User PIN",
+	"Unlock User PIN (without '--login' unlock in ulogged session; otherwise '--login_type' has to be 'context-specific')",
 	"Key pair generation",
 	"Specify the type and length of the key to create, for example rsa:1024",
 	"Write an object (key, cert, data) to the card",
@@ -158,10 +170,13 @@ static size_t		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
 static char *		opt_pin = NULL;
 static char *		opt_so_pin = NULL;
+static char *		opt_puk = NULL;
+static char *		opt_new_pin = NULL;
 static char *		opt_application_label = NULL;
 static char *		opt_application_id = NULL;
 static char *		opt_key_type = NULL;
 static int		opt_is_private = 0;
+static int              opt_login_type = -1;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -213,6 +228,7 @@ static int		login(CK_SESSION_HANDLE, int);
 static void		init_token(CK_SLOT_ID);
 static void		init_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int		change_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
+static int 		unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type);
 static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE, int);
 static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
@@ -279,11 +295,11 @@ int main(int argc, char * argv[])
 	int do_test = 0;
 	int do_test_kpgen_certwrite = 0;
 	int need_session = 0;
-	int need_to_be_so = 0;
 	int opt_login = 0;
 	int do_init_token = 0;
 	int do_init_pin = 0;
 	int do_change_pin = 0;
+	int do_unlock_pin = 0;
 	int action_count = 0;
 	CK_RV rv;
 
@@ -393,13 +409,16 @@ int main(int argc, char * argv[])
 			opt_output = optarg;
 			break;
 		case 'p':
-			need_session |= NEED_SESSION_RW;
-			opt_login = 1;
 			opt_pin = optarg;
 			break;
 		case 'c':
 			do_change_pin = 1;
-			need_session |= CKF_SERIAL_SESSION; /* no need for a R/W session */
+			need_session |= NEED_SESSION_RW;
+			action_count++;
+			break;
+		case OPT_UNLOCK_PIN:
+			do_unlock_pin = 1;
+			need_session |= NEED_SESSION_RW;
 			action_count++;
 			break;
 		case 's':
@@ -434,6 +453,24 @@ int main(int argc, char * argv[])
 		case OPT_APPLICATION_ID:
 			opt_application_id = optarg;
 			break;
+		case OPT_NEW_PIN:
+			opt_new_pin = optarg;
+			break;
+		case OPT_PUK:
+			opt_puk = optarg;
+			break;
+		case OPT_LOGIN_TYPE:
+			if (!strcmp(optarg, "so"))
+				opt_login_type = CKU_SO;
+			else if (!strcmp(optarg, "user"))
+				opt_login_type = CKU_USER;
+			else if (!strcmp(optarg, "context-specific"))
+				opt_login_type = CKU_CONTEXT_SPECIFIC;
+			else {
+				printf("Unsupported login type \"%s\"\n", optarg);
+				util_print_usage_and_die(app_name, options, option_help);
+			}
+			break;
 		case OPT_SO_PIN:
 			opt_so_pin = optarg;
 			break;
@@ -443,7 +480,6 @@ int main(int argc, char * argv[])
 			break ;
 		case OPT_INIT_PIN:
 			need_session |= NEED_SESSION_RW;
-			need_to_be_so |= 1;
 			do_init_pin = 1;
 			action_count++;
 			break ;
@@ -549,15 +585,30 @@ int main(int argc, char * argv[])
 			p11_fatal("C_OpenSession", rv);
 	}
 
+	if (opt_login) {
+		int r;
+		
+		if (opt_login_type == -1)
+			opt_login_type = do_init_pin ? CKU_SO : CKU_USER;
+			        
+		r = login(session, opt_login_type);
+		if (r != 0)
+			return r;
+	}
+
 	if (do_change_pin)
 		/* To be sure we won't mix things up with the -l or -p options,
 		 * we safely stop here. */
 		return change_pin(opt_slot, session);
 
-	if (opt_login || opt_pin || do_init_pin) {
-		int r = login(session, need_to_be_so);
-		if (r != 0)
-			return r;
+	if (do_unlock_pin)   {
+		if (opt_login_type != -1
+				&& opt_login_type != CKU_CONTEXT_SPECIFIC)   {
+			printf("Invalid login type for 'Unlock User PIN' operation\n");
+                	util_print_usage_and_die(app_name, options, option_help);
+		}
+
+		return unlock_pin(opt_slot, session, opt_login_type);
 	}
 
 	if (do_init_pin) {
@@ -785,7 +836,7 @@ static void list_objects(CK_SESSION_HANDLE sess)
 	p11->C_FindObjectsFinal(sess);
 }
 
-static int login(CK_SESSION_HANDLE session, int need_to_be_so)
+static int login(CK_SESSION_HANDLE session, int login_type)
 {
 	char		*pin = NULL;
 	CK_TOKEN_INFO	info;
@@ -793,27 +844,35 @@ static int login(CK_SESSION_HANDLE session, int need_to_be_so)
 
 	get_token_info(opt_slot, &info);
 
+	if (!(info.flags & CKF_LOGIN_REQUIRED))
+		return 0;
+
 	/* Identify which pin to enter */
 
-	if (info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) {
-		if (need_to_be_so ? opt_so_pin : opt_pin)
-			pin = need_to_be_so ? opt_so_pin : opt_pin;
-	} else
-	if (info.flags & CKF_LOGIN_REQUIRED || need_to_be_so) {
-		if (need_to_be_so ? !opt_so_pin : !opt_pin)
-			pin = getpass(need_to_be_so ?
-					"Please enter SO PIN: " :
-					"Please enter User PIN: ");
-		else
-			pin = need_to_be_so ? opt_so_pin : opt_pin;
-		if (!pin || !*pin)
-			return 1;
-	} else {
-		return 0;
+	if (login_type == CKU_SO)
+		pin = opt_so_pin;
+	else if (login_type == CKU_USER)
+		pin = opt_pin;
+	else if (login_type == CKU_CONTEXT_SPECIFIC)
+		pin = opt_pin ? opt_pin : opt_puk;
+
+	if (!pin && (info.flags & CKF_LOGIN_REQUIRED) 
+			&& !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH))   {
+		if (login_type == CKU_SO)
+			pin = getpass("Please enter SO PIN: ");
+		else if (login_type == CKU_USER)
+			pin = getpass("Please enter User PIN: ");
+		else if (login_type == CKU_CONTEXT_SPECIFIC)
+			pin = getpass("Please enter Specific Context Secret Code: ");
 	}
-	rv = p11->C_Login(session, need_to_be_so ? CKU_SO : CKU_USER,
-			(CK_UTF8CHAR *) pin,
-		pin == NULL ? 0 : strlen(pin));
+	
+	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)
+			&& (!pin || !*pin)
+			&& login_type != CKU_CONTEXT_SPECIFIC)
+		return 1;
+
+	rv = p11->C_Login(session, login_type,
+			(CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin));
 	if (rv != CKR_OK)
 		p11_fatal("C_Login", rv);
 
@@ -866,8 +925,10 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 
 	get_token_info(slot, &info);
 
+	new_pin = opt_pin ? opt_pin : opt_new_pin;
+
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
-		if (opt_pin == NULL) {
+		if (new_pin == NULL) {
 			new_pin = getpass("Please enter the new PIN: ");
 			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
 				util_fatal("Invalid User PIN\n");
@@ -876,8 +937,6 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 			if (!new_pin || !*new_pin ||
 					strcmp(new_buf, new_pin) != 0)
 				util_fatal("Different new User PINs, exiting\n");
-		} else {
-			new_pin = opt_pin;
 		}
 	}
 
@@ -916,6 +975,60 @@ static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 
 	rv = p11->C_SetPIN(sess,
 		(CK_UTF8CHAR *) old_pin, old_pin == NULL ? 0 : strlen(old_pin),
+		(CK_UTF8CHAR *) new_pin, new_pin == NULL ? 0 : strlen(new_pin));
+	if (rv != CKR_OK)
+		p11_fatal("C_SetPIN", rv);
+	printf("PIN successfully changed\n");
+
+	return 0;
+}
+
+
+static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
+{
+	char unlock_buf[21], *unlock_code = NULL;
+	char new_buf[21], *new_pin = NULL;
+	CK_TOKEN_INFO info;
+	CK_RV rv;
+
+	get_token_info(slot, &info);
+
+	if (login_type == CKU_CONTEXT_SPECIFIC)
+		unlock_code = opt_pin ? opt_pin : opt_puk;
+	else if (login_type == -1)
+		unlock_code = opt_puk;
+	else 
+		return 1;
+
+	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !unlock_code)   {
+		if (login_type == CKU_CONTEXT_SPECIFIC)
+			unlock_code = getpass("Please enter the 'Change PIN' context secret code: ");
+		else if (login_type == -1)
+			unlock_code = getpass("Please enter unblock code for User PIN: ");
+
+		if (!unlock_code || !*unlock_code || strlen(unlock_code) > 20)
+			return 1;
+
+		strcpy(unlock_buf, unlock_code);
+		unlock_code = unlock_buf;
+	}
+
+	new_pin = opt_new_pin;
+	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !new_pin)   {
+		new_pin = getpass("Please enter the new PIN: ");
+		strcpy(new_buf, new_pin);
+		new_pin = getpass("Please enter the new PIN again: ");
+		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
+			printf("  different new PINs, exiting\n");
+			return -1;
+		}
+	
+		if (!new_pin || !*new_pin || strlen(new_pin) > 20)
+			return 1;
+	}
+
+	rv = p11->C_SetPIN(sess,
+		(CK_UTF8CHAR *) unlock_code, unlock_code == NULL ? 0 : strlen(unlock_code),
 		(CK_UTF8CHAR *) new_pin, new_pin == NULL ? 0 : strlen(new_pin));
 	if (rv != CKR_OK)
 		p11_fatal("C_SetPIN", rv);

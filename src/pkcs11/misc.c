@@ -316,6 +316,7 @@ CK_RV attr_find_var(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 {
 	scconf_block *conf_block = NULL;
+	char *unblock_style = NULL;
 
 	/* Set defaults */
 	conf->plug_and_play = 1;
@@ -324,7 +325,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 	conf->hide_empty_tokens = 1;
 	conf->lock_login = 0;
 	conf->soft_keygen_allowed = 0;
-
+	conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED;
 
 	conf_block = sc_get_conf_block(ctx, "pkcs11", NULL, 1);
 	if (!conf_block)
@@ -339,6 +340,17 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t *ctx)
 	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", conf->hide_empty_tokens);
 	conf->lock_login = scconf_get_bool(conf_block, "lock_login", conf->lock_login);
 	conf->soft_keygen_allowed = scconf_get_bool(conf_block, "soft_keygen_allowed", conf->soft_keygen_allowed);
-	sc_debug(ctx, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d hide_empty_tokens=%d lock_login=%d",
-		 conf->plug_and_play, conf->max_virtual_slots, conf->slots_per_card, conf->hide_empty_tokens, conf->lock_login);
+
+	unblock_style = (char *) scconf_get_str(conf_block, "user_pin_unblock_style", NULL);
+	if (unblock_style && !strcmp(unblock_style, "set_pin_in_unlogged_session"))
+		conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN;
+	else if (unblock_style && !strcmp(unblock_style, "set_pin_in_specific_context"))
+		conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN;
+	else if (unblock_style && !strcmp(unblock_style, "init_pin_in_so_session"))
+		conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN;
+
+	sc_debug(ctx, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d "
+				"hide_empty_tokens=%d lock_login=%d pin_unblock_style=%d",
+			conf->plug_and_play, conf->max_virtual_slots, conf->slots_per_card, 
+			conf->hide_empty_tokens, conf->lock_login, conf->pin_unblock_style);
 }
