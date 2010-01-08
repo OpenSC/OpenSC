@@ -355,7 +355,7 @@ function p15_validate {
 	msg "Card contents according to p15tool --dump"
 	run_display_output $p15tool --dump < /dev/null
 	msg "Validating card using pkcs11-tool"
-	run_display_output $p11tool -t --pin 0000 \
+	run_display_output $p11tool -t --login --pin 0000 \
 		--module $p11module \
 		--slot-label "OpenSC Test Card" $* < /dev/null
 	success
