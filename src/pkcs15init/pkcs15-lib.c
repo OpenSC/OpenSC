@@ -121,9 +121,7 @@ static int	prkey_bits(sc_pkcs15_card_t *, sc_pkcs15_prkey_t *);
 static int	prkey_pkcs15_algo(sc_pkcs15_card_t *, sc_pkcs15_prkey_t *);
 static int 	select_intrinsic_id(sc_pkcs15_card_t *, struct sc_profile *,
 			int, sc_pkcs15_id_t *, void *);
-static int	select_id(sc_pkcs15_card_t *, int, sc_pkcs15_id_t *,
-			int (*)(const sc_pkcs15_object_t *, void *), void *,
-			sc_pkcs15_object_t **);
+static int	select_id(struct sc_pkcs15_card *, int, struct sc_pkcs15_id *);
 static int	select_object_path(sc_pkcs15_card_t *, sc_profile_t *,
 			sc_pkcs15_object_t *, sc_pkcs15_id_t *, sc_path_t *);
 static int	sc_pkcs15init_get_pin_path(sc_pkcs15_card_t *,
@@ -1126,57 +1124,21 @@ sc_pkcs15_create_pin_domain(sc_profile_t *profile, sc_card_t *card,
 	return r;
 }
 
-/*
- * Check if a given pkcs15 prkey object can be reused
- */
-static int
-can_reuse_prkey_obj(const sc_pkcs15_object_t *obj, void *data)
-{
-	sc_pkcs15_prkey_info_t	*key, *new_key;
-	sc_pkcs15_object_t	*new_obj;
-
-	new_obj = (sc_pkcs15_object_t *) data;
-	if (obj->type != new_obj->type
-	 || obj->flags != new_obj->flags)
-		return 0;
-
-	key = (sc_pkcs15_prkey_info_t *) obj->data;
-	new_key = (sc_pkcs15_prkey_info_t *) new_obj->data;
-	if (key->modulus_length != new_key->modulus_length)
-		return 0;
-
-	/* Don't mix up native vs extractable keys */
-	if (key->native != new_key->native)
-		return 0;
-
-	/* Some cards don't enforce key usage, so we might as
-	 * well allow the user to change it on those cards.
-	 * Not yet implemented */
-	if (key->usage != new_key->usage)
-		return 0;
-
-	/* Make sure the PIN is the same */
-	if (!sc_pkcs15_compare_id(&obj->auth_id, &new_obj->auth_id))
-		return 0;
-
-	return 1;
-}
 
 /*
  * Prepare private key download, and initialize a prkdf entry
  */
 static int
-sc_pkcs15init_init_prkdf(sc_pkcs15_card_t *p15card,
-		sc_profile_t *profile,
+sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
+		struct sc_profile *profile,
 		struct sc_pkcs15init_prkeyargs *keyargs,
-		sc_pkcs15_prkey_t *key, int keybits,
-		struct sc_pkcs15_object **res_obj
-		)
+		struct sc_pkcs15_prkey *key, int keybits,
+		struct sc_pkcs15_object **res_obj)
 {
 	struct sc_pkcs15_prkey_info *key_info;
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	struct sc_pkcs15_object *object;
-	sc_card_t	*card = p15card->card;
+	struct sc_card *card = p15card->card;
 	const char	*label;
 	unsigned int	usage;
 	int		r = 0;
@@ -1224,19 +1186,9 @@ sc_pkcs15init_init_prkdf(sc_pkcs15_card_t *p15card,
 	} else {
 		/* Select a Key ID if the user didn't specify one,
 		 * otherwise make sure it's compatible with our intended use */
-		r = select_id(p15card, SC_PKCS15_TYPE_PRKEY, &keyargs->id,
-				can_reuse_prkey_obj, object, res_obj);
+		r = select_id(p15card, SC_PKCS15_TYPE_PRKEY, &keyargs->id);
 		if (r < 0)
 			return r;
-
-		/* If we're reusing a deleted object, update it */
-		if (*res_obj != NULL) {
-			free(key_info); key_info = NULL;
-			free(object); object = *res_obj;
-
-			strlcpy(object->label, label, sizeof(object->label));
-			return 0;
-		}
 	}
 
 	key_info->id = keyargs->id;
@@ -1420,9 +1372,9 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 {
 	struct sc_pkcs15_object *object;
 	struct sc_pkcs15_prkey_info *key_info;
-	sc_card_t	*card = p15card->card;
-	sc_pkcs15_prkey_t key;
-	int		keybits, idx, r = 0;
+	struct sc_card *card = p15card->card;
+	struct sc_pkcs15_prkey key;
+	int keybits, idx, r = 0;
 
 	/* Create a copy of the key first */
 	key = keyargs->key;
@@ -1570,37 +1522,6 @@ sc_pkcs15init_store_split_key(struct sc_pkcs15_card *p15card,
 }
 
 /*
- * Check if a given pkcs15 pubkey object can be reused
- */
-static int
-can_reuse_pubkey_obj(const sc_pkcs15_object_t *obj, void *data)
-{
-	sc_pkcs15_pubkey_info_t	*key, *new_key;
-	sc_pkcs15_object_t	*new_obj;
-
-	new_obj = (sc_pkcs15_object_t *) data;
-	if (obj->type != new_obj->type)
-		return 0;
-
-	key = (sc_pkcs15_pubkey_info_t *) obj->data;
-	new_key = (sc_pkcs15_pubkey_info_t *) new_obj->data;
-	if (key->modulus_length != new_key->modulus_length)
-		return 0;
-
-	/* Some cards don't enforce key usage, so we might as
-	 * well allow the user to change it on those cards.
-	 * Not yet implemented */
-	if (key->usage != new_key->usage)
-		return 0;
-
-	/* Make sure the PIN is the same */
-	if (!sc_pkcs15_compare_id(&obj->auth_id, &new_obj->auth_id))
-		return 0;
-
-	return 1;
-}
-
-/*
  * Store a public key
  */
 int
@@ -1612,9 +1533,9 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_object *object;
 	struct sc_pkcs15_pubkey_info *key_info;
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
-	sc_pkcs15_pubkey_t key;
-	sc_pkcs15_der_t	der_encoded;
-	sc_path_t 	*path;
+	struct sc_pkcs15_pubkey key;
+	struct sc_pkcs15_der	der_encoded;
+	struct sc_path 	*path;
 	const char	*label;
 	unsigned int	keybits, type, usage;
 	int		r;
@@ -1650,8 +1571,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	if ((label = keyargs->label) == NULL)
 		label = "Public Key";
 
-	/* Set up the pkcs15 object. If we find below that we should
-	 * reuse an existing object, we'll dith this one. */
+	/* Set up the pkcs15 object. */
 	object = sc_pkcs15init_new_object(type, label, &keyargs->auth_id, NULL);
 	if (object == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -1673,7 +1593,6 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		keyinfo_gostparams->gost28147 = keyargs->gost_params.gost28147;
 	}
 
-	*res_obj = NULL;
 	/* Select a intrinsic Key ID if the user didn't specify one */
 	r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &keyargs->id, &key);
 	if (r < 0)
@@ -1681,23 +1600,11 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 
 	/* Select a Key ID if the user didn't specify one and there is no intrinsic ID,
 	 * otherwise make sure it's unique */
-	r = select_id(p15card, SC_PKCS15_TYPE_PUBKEY, &keyargs->id,
-			can_reuse_pubkey_obj, object, res_obj);
+	r = select_id(p15card, SC_PKCS15_TYPE_PUBKEY, &keyargs->id);
 	if (r < 0)
 		return r;
 
-	/* If we reuse an existing object, update it */
-	if (*res_obj) {
-		sc_pkcs15_free_pubkey_info(key_info);
-		key_info = NULL;
-		sc_pkcs15_free_object(object);
-		object = *res_obj;
-
-		strlcpy(object->label, label, sizeof(object->label));
-	} else {
-		key_info->id = keyargs->id;
-		*res_obj = object;
-	}
+	key_info->id = keyargs->id;
 
 	/* DER encode public key components */
 	r = sc_pkcs15_encode_pubkey(p15card->card->ctx, &key,
@@ -1763,7 +1670,7 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 
 	/* Select an ID if the user didn't specify one, otherwise
 	 * make sure it's unique */
-	if ((r = select_id(p15card, SC_PKCS15_TYPE_CERT, &args->id, NULL, NULL, NULL)) < 0)
+	if ((r = select_id(p15card, SC_PKCS15_TYPE_CERT, &args->id)) < 0)
 		return r;
 
 	if (profile->protect_certificates) {
@@ -1814,8 +1721,7 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 
 	/* Now update the CDF */
 	if (r >= 0) {
-		r = sc_pkcs15init_add_object(p15card, profile,
-				SC_PKCS15_CDF, object);
+		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_CDF, object);
 	} else
 		sc_pkcs15_free_object(object);
 
@@ -2018,7 +1924,8 @@ sc_pkcs15init_map_usage(unsigned long x509_usage, int _private)
 /*
  * Compute modulus length
  */
-static size_t sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
+static size_t 
+sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
 {
 	unsigned int	mask, bits;
 
@@ -2033,7 +1940,8 @@ static size_t sc_pkcs15init_keybits(sc_pkcs15_bignum_t *bn)
 /*
  * Check if the key size is supported.
  */
-static int check_key_size(sc_card_t *card, unsigned int alg,
+static int 
+check_key_size(sc_card_t *card, unsigned int alg,
 	unsigned int bits)
 {
 	int i;
@@ -2376,29 +2284,19 @@ done:
 #endif
 }
 
-static int select_id(sc_pkcs15_card_t *p15card, int type, sc_pkcs15_id_t *id,
-		int (*can_reuse)(const sc_pkcs15_object_t *, void *),
-		void *data, sc_pkcs15_object_t **reuse_obj)
+static int 
+select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 {
-	unsigned int nid = DEFAULT_ID;
-	sc_pkcs15_id_t unused_id;
+	struct sc_pkcs15_id unused_id;
 	struct sc_pkcs15_object *obj;
+	unsigned int nid = DEFAULT_ID;
 	int r;
-
-	if (reuse_obj)
-		*reuse_obj = NULL;
 
 	/* If the user provided an ID, make sure we can use it */
 	if (id->len != 0) {
 		r = sc_pkcs15_find_object_by_id(p15card, type, id, &obj);
 		if (r == SC_ERROR_OBJECT_NOT_FOUND)
 			return 0;
-		if (strcmp(obj->label, "deleted"))
-			return SC_ERROR_ID_NOT_UNIQUE;
-		if (can_reuse != NULL && !can_reuse(obj, data))
-			return SC_ERROR_INCOMPATIBLE_OBJECT;
-		if (reuse_obj)
-			*reuse_obj = obj;
 		return 0;
 	}
 
@@ -2434,14 +2332,6 @@ static int select_id(sc_pkcs15_card_t *p15card, int type, sc_pkcs15_id_t *id,
 				unused_id = *id;
 			continue;
 		}
-
-		/* Check if we can reuse a deleted object */
-		if (!strcmp(obj->label, "deleted")
-		 && (can_reuse == NULL || can_reuse(obj, data))) {
-			if (reuse_obj)
-				*reuse_obj = obj;
-			return 0;
-		}
 	}
 
 	if (unused_id.len) {
@@ -2464,7 +2354,8 @@ static int select_id(sc_pkcs15_card_t *p15card, int type, sc_pkcs15_id_t *id,
  *  	look for a file corresponding to the type of object we
  *  	wish to create ("private-key", "public-key" etc).
  */
-static int select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
+static int 
+select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 		sc_pkcs15_object_t *obj, sc_pkcs15_id_t *obj_id,
 		sc_path_t *path)
 {
@@ -2562,7 +2453,8 @@ sc_pkcs15init_update_dir(struct sc_pkcs15_card *p15card,
 	return r;
 }
 
-static char *get_generalized_time(sc_context_t *ctx)
+static char *
+get_generalized_time(sc_context_t *ctx)
 {
 #ifdef HAVE_GETTIMEOFDAY
 	struct timeval tv;
@@ -2600,7 +2492,8 @@ static char *get_generalized_time(sc_context_t *ctx)
 	return ret;
 }
 
-static int sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
+static int
+sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile)
 {
 	struct sc_card	*card = p15card->card;
@@ -2920,8 +2813,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card,
 	if (df == NULL)
 		return SC_ERROR_OBJECT_NOT_FOUND;
 
-	switch(new_attrib_type)
-	{
+	switch(new_attrib_type)   {
 	case P15_ATTR_TYPE_LABEL:
 		if (new_len >= SC_PKCS15_MAX_LABEL_SIZE)
 			return SC_ERROR_INVALID_ARGUMENTS;
@@ -2967,78 +2859,68 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card,
 	return r < 0 ? r : 0;
 }
 
-int sc_pkcs15init_delete_object(sc_pkcs15_card_t *p15card,
-	sc_profile_t *profile, sc_pkcs15_object_t *obj)
+
+int 
+sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
+		struct sc_pkcs15_object *obj)
 {
-	sc_path_t path;
+	struct sc_file *file = NULL;
+	struct sc_path path;
 	struct sc_pkcs15_df *df;
 	int r, stored_in_ef = 0;
 
-	switch(obj->type & SC_PKCS15_TYPE_CLASS_MASK)
-	{
+	switch(obj->type & SC_PKCS15_TYPE_CLASS_MASK)   {
 	case SC_PKCS15_TYPE_PUBKEY:
 		path = ((sc_pkcs15_pubkey_info_t *)obj->data)->path;
-		stored_in_ef = 1;
 		break;
 	case SC_PKCS15_TYPE_PRKEY:
 		path = ((sc_pkcs15_prkey_info_t *)obj->data)->path;
-		stored_in_ef = 1;
 		break;
 	case SC_PKCS15_TYPE_CERT:
 		path = ((sc_pkcs15_cert_info_t *)obj->data)->path;
-		stored_in_ef = 1;
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		path = ((sc_pkcs15_data_info_t *)obj->data)->path;
-		stored_in_ef = 1;
 		break;
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
+	sc_debug(p15card->card->ctx, "delete object with path(%X) %s", path.type, sc_print_path(&path));
+	r = sc_select_file(p15card->card, &path, &file);
+	SC_TEST_RET(p15card->card->ctx, r, "select object path failed");
+
+	stored_in_ef = (file->type != SC_FILE_TYPE_DF);
+
+	sc_file_free(file);
+
 	/* Set the SO PIN reference from card */
 	if ((r = set_so_pin_from_card(p15card, profile)) < 0)
 		return r;
 
-	/* if the object is stored in a normal EF try to
-	 * delete the EF */
-	if (stored_in_ef != 0) {
+	/* If the object is stored in a normal EF, try to delete the EF. */
+	if (stored_in_ef) {
 		r = sc_pkcs15init_delete_by_path(profile, p15card->card, &path);
 		if (r != SC_SUCCESS) {
 			sc_debug(p15card->card->ctx, "sc_pkcs15init_delete_by_path failed: %d", r);
 			return r;
 		}
-		/* Get the DF we're part of. If there's no DF, fine, we haven't
-		 * been added yet. */
-		if ((df = obj->df) != NULL) {
-			/* Unlink the object and update the DF */
-			sc_pkcs15_remove_object(p15card, obj);
-		}
-	} else if (profile->ops->delete_object != NULL) {
-		/* If there's a card-specific way to delete objects, use it.
-		 * Otherwise, just set its label to "deleted" to indicate
-		 * that we can re-used it when we have to make a next
-		 * object in the future. */
+	} 
+	else if (profile->ops->delete_object != NULL) {
+		/* If there's a card-specific way to delete objects, use it. */
 		r = profile->ops->delete_object(profile, p15card->card,	obj->type, obj->data, &path);
 		if (r < 0) {
 			sc_debug(p15card->card->ctx, "ops->delete_object() failed: %d", r);
 			return r;
 		}
+	} 
+	
+	/* Get the DF we're part of. If there's no DF, fine, we haven't been added yet. */
+	df = obj->df;
+	if (df)
+		/* Unlink the object and update the DF */
+		sc_pkcs15_remove_object(p15card, obj);
 
-		/* Get the DF we're part of. If there's no DF, fine, we haven't
-		 * been added yet. */
-		if ((df = obj->df) != NULL) {
-			/* Unlink the object and update the DF */
-			sc_pkcs15_remove_object(p15card, obj);
-		}
-	} else {
-		/* Get the DF we're part of. If there's no DF, fine, we haven't
-		 * been added yet. */
-		if ((df = obj->df) != NULL) {
-			/*Change the label into "deleted" and update the DF */
-			strcpy(obj->label, "deleted");
-		}
-	}
 	r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
 
 	/* mark card as dirty */
@@ -3733,7 +3615,8 @@ sc_pkcs15init_fixup_acls(struct sc_profile *profile, sc_file_t *file,
 	return r;
 }
 
-static int sc_pkcs15init_get_pin_path(sc_pkcs15_card_t *p15card,
+static int
+sc_pkcs15init_get_pin_path(sc_pkcs15_card_t *p15card,
 		sc_pkcs15_id_t *auth_id, sc_path_t *path)
 {
 	sc_pkcs15_object_t *obj;
@@ -3792,7 +3675,8 @@ sc_pkcs15init_get_label(struct sc_profile *profile, const char **res)
 	return 0;
 }
 
-static int sc_pkcs15init_qualify_pin(sc_card_t *card, const char *pin_name,
+static int
+sc_pkcs15init_qualify_pin(sc_card_t *card, const char *pin_name,
 	       	unsigned int pin_len, sc_pkcs15_pin_info_t *pin_info)
 {
 	if (pin_len == 0)
@@ -3940,7 +3824,8 @@ do_encode_string(u8 **memp, u8 *end, u8 tag, const char *s)
 	return 0;
 }
 
-static int sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile,
+static int
+sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile,
 		sc_pkcs15_object_t *pin_obj)
 {
 	sc_file_t	*file = NULL;
