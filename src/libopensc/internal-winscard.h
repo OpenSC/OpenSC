@@ -47,6 +47,7 @@ typedef unsigned __int8 uint8_t;
 
 #ifndef SCARD_S_SUCCESS	/* conflict in mingw-w64 */
 #define SCARD_S_SUCCESS			0x00000000 /**< No error was encountered. */
+#define SCARD_E_CANCELLED		0x80100002 /**< The action was cancelled by an SCardCancel request. */
 #define SCARD_E_INVALID_HANDLE		0x80100003 /**< The supplied handle was invalid. */
 #define SCARD_E_TIMEOUT			0x8010000A /**< The user-specified timeout value has expired. */
 #define SCARD_E_SHARING_VIOLATION	0x8010000B /**< The smart card cannot be accessed because of other connections outstanding. */
@@ -117,6 +118,7 @@ typedef LONG (PCSC_API *SCardStatus_t)(SCARDHANDLE hCard, LPSTR mszReaderNames, 
 	LPDWORD pdwState, LPDWORD pdwProtocol, LPBYTE pbAtr, LPDWORD pcbAtrLen);
 typedef LONG (PCSC_API *SCardGetStatusChange_t)(SCARDCONTEXT hContext, DWORD dwTimeout,
 	LPSCARD_READERSTATE_A rgReaderStates, DWORD cReaders);
+typedef LONG (PCSC_API *SCardCancel_t)(SCARDCONTEXT hContext);
 typedef LONG (PCSC_API *SCardControlOLD_t)(SCARDHANDLE hCard, LPCVOID pbSendBuffer, DWORD cbSendLength,
 	LPVOID pbRecvBuffer, LPDWORD lpBytesReturned);
 typedef LONG (PCSC_API *SCardControl_t)(SCARDHANDLE hCard, DWORD dwControlCode, LPCVOID pbSendBuffer,
