@@ -1043,14 +1043,13 @@ static void entersafe_encode_bignum(u8 tag,sc_pkcs15_bignum_t bignum,u8** ptr)
 	 u8 *p=*ptr;
 
 	 *p++=tag;
-	 assert(0);
-	 if(bignum.len<256)
+	 if(bignum.len<128)
 	 {
 		  *p++=(u8)bignum.len;
 	 }
 	 else
 	 {
-		  u8 bytes=0;
+		  u8 bytes=1;
 		  size_t len=bignum.len;
 		  while(len)
 		  {
@@ -1068,6 +1067,7 @@ static void entersafe_encode_bignum(u8 tag,sc_pkcs15_bignum_t bignum,u8** ptr)
 	 memcpy(p,bignum.data,bignum.len);
 	 entersafe_reverse_buffer(p,bignum.len);
 	 p+=bignum.len;
+	 *ptr = p;
 }
 
 static int entersafe_write_small_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkcs15_prkey_rsa *rsa)
@@ -1374,71 +1374,6 @@ static int entersafe_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }
 
-#if 0
-static int entersafe_preinstall_rsa_1024(sc_card_t *card,u8 key_id)
-{
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_apdu_t apdu;
-	int ret=0;
-	static u8 const rsa_key_e[] =
-	{
-		'E', 0x04, 0x01, 0x00, 0x01, 0x00
-	};
-
-	SC_FUNC_CALLED(card->ctx, 1);
-
-	/*  create rsa item in IKF */
-	sbuf[0] = 0x00;/* key len extern */
-	sbuf[1] = 0x8a;/* key len */
-	sbuf[2] = 0x22;	/*  USAGE */
-	sbuf[3] = 0x34;	/*  user ac */
-	sbuf[4] = 0x04;	/*  change ac */
-	sbuf[5] = 0x34;	/*  UPDATE AC */
-	sbuf[6] = 0x40;	/*  ALGO */
-	sbuf[7] = 0x00;	/*  EC */
-	sbuf[8] = 0x00;	/*  VER */
-	memcpy(&sbuf[9], rsa_key_e, sizeof(rsa_key_e));
-	sbuf[9 + sizeof(rsa_key_e) + 0] = 'D';
-	sbuf[9 + sizeof(rsa_key_e) + 1] = 0x82;
-	sbuf[9 + sizeof(rsa_key_e) + 2] = 0x00;
-	sbuf[9 + sizeof(rsa_key_e) + 3] = 0x80;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT,0xF0,0x00,key_id);
-	apdu.cla=0x84;
-	apdu.data=sbuf;
-	apdu.lc=apdu.datalen=9 + sizeof(rsa_key_e) + 4;
-
-	ret = entersafe_transmit_apdu(card,&apdu,init_key,sizeof(init_key),0,1);
-	SC_TEST_RET(card->ctx, ret, "Preinstall rsa failed");
-
-	/*  create rsa item in PKF */
-	sbuf[0] = 0x01;	/* key len extern */
-	sbuf[1] = 0x0A;	/* key len */
-	sbuf[2] = 0x2A;	/*  USAGE */
-	sbuf[3] = ENTERSAFE_AC_ALWAYS;	/*  user ac */
-	sbuf[4] = 0x04;	/*  change ac */
-	sbuf[5] = ENTERSAFE_AC_ALWAYS;	/*  UPDATE AC */
-	sbuf[6] = 0x40;	/*  ALGO */
-	sbuf[7] = 0x00;	/*  EC */
-	sbuf[8] = 0x00;	/*  VER */
-	memcpy(&sbuf[9], rsa_key_e, sizeof(rsa_key_e));		
-	sbuf[9 + sizeof(rsa_key_e) + 0] = 'N';
-	sbuf[9 + sizeof(rsa_key_e) + 1] = 0x82;
-	sbuf[9 + sizeof(rsa_key_e) + 2] = 0x01;
-	sbuf[9 + sizeof(rsa_key_e) + 3] = 0x00;
-
-	sc_format_apdu(card,&apdu,SC_APDU_CASE_3_SHORT,0xF0,0x00,key_id);
-	apdu.cla=0x84;
-	apdu.data=sbuf;
-	apdu.lc=apdu.datalen=9 + sizeof(rsa_key_e) + 4;
-
-	ret=entersafe_transmit_apdu(card,&apdu,init_key,sizeof(init_key),0,1);
-	SC_TEST_RET(card->ctx, ret, "Preinstall rsa failed");
-
-	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
-}
-#endif
-
 static int entersafe_preinstall_rsa_2048(sc_card_t *card,u8 key_id)
 {
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -1588,39 +1523,6 @@ static int entersafe_preinstall_keys(sc_card_t *card,int (*install_rsa)(sc_card_
 
 	 SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }
-
-#if 0
-static int entersafe_card_ctl_1024(sc_card_t *card, unsigned long cmd, void *ptr)
-{
-	sc_entersafe_create_data * tmp = (sc_entersafe_create_data *)ptr;
-	SC_FUNC_CALLED(card->ctx, 1);
-
-	switch (cmd)
-	{
-	case SC_CARDCTL_ENTERSAFE_CREATE_FILE:
-		if (tmp->type == SC_ENTERSAFE_MF_DATA)
-			return entersafe_create_mf(card, tmp);
-		else if (tmp->type == SC_ENTERSAFE_DF_DATA)
-			return entersafe_create_df(card, tmp);
-		else if (tmp->type == SC_ENTERSAFE_EF_DATA)
-			return entersafe_create_ef(card, tmp);
-		else
-			return SC_ERROR_INTERNAL;
-	case SC_CARDCTL_ENTERSAFE_WRITE_KEY:
-		return entersafe_write_key(card, (sc_entersafe_wkey_data *)ptr);
-	case SC_CARDCTL_ENTERSAFE_GENERATE_KEY:
-		return entersafe_gen_key(card, (sc_entersafe_gen_key_data *)ptr);
-	case SC_CARDCTL_ERASE_CARD:
-		return entersafe_erase_card(card);
-	case SC_CARDCTL_GET_SERIALNR:
-		return entersafe_get_serialnr(card, (sc_serial_number_t *)ptr);
-	case SC_CARDCTL_ENTERSAFE_PREINSTALL_KEYS:
-		 return entersafe_preinstall_keys(card,entersafe_preinstall_rsa_1024);
-	default:
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-}
-#endif
 
 static int entersafe_card_ctl_2048(sc_card_t *card, unsigned long cmd, void *ptr)
 {
