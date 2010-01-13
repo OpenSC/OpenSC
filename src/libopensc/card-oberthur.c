@@ -64,6 +64,8 @@ static struct sc_atr_table oberthur_atrs[] = {
 			"Oberthur 64k v5/2.2.0", SC_CARD_TYPE_OBERTHUR_64K, 0, NULL },
 	{ "3B:7B:18:00:00:00:31:C0:64:77:E3:03:00:82:90:00", NULL, 
 			"Oberthur 64k CosmopolIC v5.2/2.2", SC_CARD_TYPE_OBERTHUR_64K, 0, NULL },
+	{ "3B:FB:11:00:00:81:31:FE:45:00:31:C0:64:77:E9:10:00:00:90:00:6A", NULL,
+			"OCS ID-One Cosmo Card", SC_CARD_TYPE_OBERTHUR_64K, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -2259,6 +2261,30 @@ auth_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 }
 
 
+static const struct sc_card_error 
+auth_warnings[] = {
+	{ 0x6282, SC_SUCCESS, 
+		"ignore warning 'End of file or record reached before reading Ne bytes'" },
+	{0, 0, NULL},
+};
+
+
+static int 
+auth_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
+{
+	int ii;
+
+	for (ii=0; auth_warnings[ii].SWs; ii++)   {
+		if (auth_warnings[ii].SWs == ((sw1 << 8) | sw2))   {
+			sc_debug(card->ctx, "%s\n", auth_warnings[ii].errorstr);
+			return auth_warnings[ii].errorno;
+		}
+	}
+
+	return iso_ops->check_sw(card, sw1, sw2);
+}
+
+
 static struct sc_card_driver * 
 sc_get_driver(void)
 {
@@ -2285,6 +2311,7 @@ sc_get_driver(void)
 	auth_ops.process_fci = auth_process_fci;
 	auth_ops.pin_cmd = auth_pin_cmd;
 	auth_ops.logout = auth_logout;
+	auth_ops.check_sw = auth_check_sw;
 	return &auth_drv;
 }
 
