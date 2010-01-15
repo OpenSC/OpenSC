@@ -2295,9 +2295,7 @@ select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 	/* If the user provided an ID, make sure we can use it */
 	if (id->len != 0) {
 		r = sc_pkcs15_find_object_by_id(p15card, type, id, &obj);
-		if (r == SC_ERROR_OBJECT_NOT_FOUND)
-			return 0;
-		return 0;
+		return (r == SC_ERROR_OBJECT_NOT_FOUND) ? 0 : r;
 	}
 
 	memset(&unused_id, 0, sizeof(unused_id));
