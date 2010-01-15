@@ -2,13 +2,13 @@
 # PKCS15 r/w profile for Oberthur cards
 #
 cardinfo {
-    label       = "SCM";
-    manufacturer    = "Oberthur/OpenSC";
+	label	= "SCM";
+	manufacturer	= "Oberthur/OpenSC";
 		
-    max-pin-length	= 64;
-    min-pin-length	= 4;
-    pin-encoding	= ascii-numeric;
-    pin-pad-char	= 0xFF;
+	max-pin-length	= 64;
+	min-pin-length	= 4;
+	pin-encoding	= ascii-numeric;
+	pin-pad-char	= 0xFF;
 	
 	# Delete or not the public key when inconporating the 
 	# corresponding certificate.
@@ -19,24 +19,24 @@ cardinfo {
 # Note that we do not set a file path or reference
 # here; that is done dynamically.
 PIN user-pin {
-    attempts	= 5;
-	max-length  = 64;
-	min-length  = 4;
-    flags	= 0x32; # local, initialized, needs-padding
+	attempts	= 5;
+	max-length	= 64;
+	min-length	= 4;
+	flags	= 0x32; # local, initialized, needs-padding
 	reference = 1
 }
 PIN user-puk {
-    attempts	= 5;
-	max-length  = 16;
-	min-length  = 4;
-    flags	= 0x32; # local, initialized, needs-padding
+	attempts	= 5;
+	max-length	= 16;
+	min-length	= 4;
+	flags	= 0x32; # local, initialized, needs-padding
 }
 PIN so-pin {
-    auth-id = FF;
-    attempts    = 3;
-    max-length  = 64;
-    min-length  = 4;
-    flags   = 0xB2;
+	auth-id = FF;
+	attempts	= 3;
+	max-length	= 64;
+	min-length	= 4;
+	flags	= 0xB2;
 	reference = 4
 #	default-value = "31:32:33:34:35:36:37:38";
 }
@@ -48,18 +48,16 @@ PIN so-pin {
 # This is added to the file system info specified in the
 # main profile.
 filesystem {
-    DF MF {
+	DF MF {
 		ACL = *=CHV4;
 
 		DF OberthurAWP-AppDF {
 			ACL = *=NONE;
-            #ACL    = CREATE=CHV4, CRYPTO=NEVER, PIN_SET=CHV4, PIN_RESET=PRO0x78;
-            ACL = CREATE=CHV4, CRYPTO=NEVER, PIN-DEFINE=CHV4, PIN-RESET=CHV4;
-	    	#ACL	= CREATE=CHV4, CRYPTO=NEVER;
+			ACL = CREATE=CHV4, CRYPTO=NEVER, PIN-DEFINE=CHV4, PIN-RESET=CHV4;
 			file-id 	= 5011;
 			size = 40;
 			
-	    	DF private-DF {
+			DF private-DF {
 				ACL = *=NEVER;
 				ACL = CREATE=CHV1, CRYPTO=CHV1, FILES=NONE, DELETE=NONE;
 				file-id		= 9002;
@@ -67,38 +65,37 @@ filesystem {
 			
 				# Private RSA keys
 				EF OberthurAWP-private-key-info   {
-					ACL     = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
+					ACL	 = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
 				}
 				EF template-private-key {
-		    		file-id		= 3000;
+					file-id		= 3000;
 					type	= internal-ef;
 					# READ acl used instead of DECRYPT/SIGN
-					#ACL     = UPDATE=PRO0x78, READ=CHV1;
-					ACL     = UPDATE=CHV1, READ=CHV1;
+					ACL	 = UPDATE=CHV1, READ=CHV1;
 				}
 				
 				# Private DES keys
 				EF OberthurAWP-private-des-info   {
-					ACL     = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
+					ACL	 = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
 				}
 				EF template-private-des {
-            	    file-id     = 4000;
+					file-id	 = 4000;
 					type	= internal-ef;
 					size = 24;  # 192 bits
 					# READ acl used insted of DECRYPT/ENCRYPT/CHECKSUM
 					ACL = UPDATE=CHV1, READ=CHV1;
-            	}
+				}
 			
 				# Private data
 				EF OberthurAWP-private-data-info   {
 					ACL = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
 				}
 				EF  template-private-data {
-					file-id     = 6000;
+					file-id	 = 6000;
 					ACL = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
 				}
 			}
-	    
+		
 			DF public-DF {
 				ACL = CREATE=NONE, CRYPTO=NONE, FILES=NONE, DELETE=NONE;
 				file-id		= 9001;
@@ -111,16 +108,16 @@ filesystem {
 				EF template-certificate {
 					file-id		= 2000;
 					ACL = WRITE=NONE, UPDATE=NONE, READ=NONE, ERASE=NONE;
-	    		}
+				}
 				
 				#Public Key
 				EF OberthurAWP-public-key-info {
 					ACL = WRITE=NONE, UPDATE=NONE, READ=NONE, ERASE=NONE;
 				}
-	            EF template-public-key {
-					file-id     = 1000;
+				EF template-public-key {
+					file-id	 = 1000;
 					type	= internal-ef;
-					ACL     = *=NONE;
+					ACL	 = *=NONE;
 				}
 			
 				# Public DES keys
@@ -128,18 +125,18 @@ filesystem {
 					ACL = WRITE=NONE, UPDATE=NONE, READ=NONE, ERASE=NONE;
 				}
 				EF template-public-des {
-    	            file-id     = 7000;
+					file-id	 = 7000;
 					type	= internal-ef;
 					size = 24;  # 192 bits
 					ACL = *=NONE;
-        	     }
+				 }
 			
 				# Public data
 				EF OberthurAWP-public-data-info   {
 					ACL = WRITE=NONE, UPDATE=NONE, READ=NONE, ERASE=NONE;
 				}
 				EF  template-public-data {
-					file-id     = 5000;
+					file-id	 = 5000;
 					ACL = *=NONE;
 				}
 			}
@@ -147,14 +144,13 @@ filesystem {
 			EF OberthurAWP-token-info {
 				file-id 	= 1000;
 				size	= 36;
-				ACL     = WRITE=CHV4, UPDATE=CHV4, READ=NONE, ERASE=NEVER;
+				ACL	 = WRITE=CHV4, UPDATE=CHV4, READ=NONE, ERASE=NEVER;
 			}
 			
 			EF OberthurAWP-puk-file {
 				file-id 	= 2000;
 				size	= 16;
-				#ACL     = WRITE=NEVER, UPDATE=CHV4, READ=PRO0x68, ERASE=NEVER;
-				ACL     = WRITE=NEVER, UPDATE=CHV4, READ=NONE, ERASE=NEVER;
+				ACL	 = WRITE=NEVER, UPDATE=CHV4, READ=NONE, ERASE=NEVER;
 			}
 			
 			EF OberthurAWP-container-list {
@@ -168,30 +164,44 @@ filesystem {
 			EF OberthurAWP-public-list {
 				file-id 	= 4000;
 				size	= 250;
-				ACL     = *=NONE, ERASE=NEVER;
+				ACL	 = *=NONE, ERASE=NEVER;
 			}
 			
 			EF OberthurAWP-private-list {
 				file-id 	= 5000;
 				size	= 125;
-				ACL     = WRITE=CHV1, UPDATE=CHV1, READ=NONE, ERASE=NEVER;
+				ACL	 = WRITE=CHV1, UPDATE=CHV1, READ=NONE, ERASE=NEVER;
 			}
 		}
 		
-        DF PKCS15-AppDF { 
-			ACL     = *=CHV4, FILES=NONE;
+		DF PKCS15-AppDF { 
+			ACL	 = *=CHV4, FILES=NONE;
 			size = 20;
 
-			EF template-data-1 {
-				file-id     = 3301;
-				ACL     = *=CHV4, READ=NONE;
+			EF PKCS15-ODF {
+				size	= 512;
 			}
 
-			EF template-data-2 {
-				file-id     = 3302;
-				ACL     = *=CHV4, READ=NONE;
+			EF PKCS15-AODF {
+				size	= 512;
+			}
+
+			EF PKCS15-CDF {
+				size	= 3072;
+			}
+
+			EF PKCS15-PrKDF {
+				size	= 1024;
+			}
+
+			EF PKCS15-PuKDF {
+				size	= 1024;
+			}
+
+			EF PKCS15-DODF {
+				size	= 512;
 			}
 		}
-    }
+	}
 }
 

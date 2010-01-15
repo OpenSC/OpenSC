@@ -81,17 +81,6 @@ option small {
     }
 }
 
-option oberthur {
-  macros {
-	odf-size        = 512;
-	aodf-size       = 512;
-	cdf-size        = 3072;
-	prkdf-size      = 1024;
-	pukdf-size      = 1024;
-	dodf-size       = 512;
-  }
-}
-
 # This option tells pkcs15-init to use the direct option
 # when storing certificates on the card (i.e. put the
 # certificates into the CDF itself, rather than a
