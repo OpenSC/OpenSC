@@ -31,8 +31,8 @@ extern "C" {
 /* Errors related to reader operation */
 #define SC_ERROR_READER				-1100
 #define SC_ERROR_NO_READERS_FOUND		-1101
-#define SC_ERROR_SLOT_NOT_FOUND			-1102
-#define SC_ERROR_SLOT_ALREADY_CONNECTED		-1103
+#define SC_ERROR_SLOT_NOT_FOUND			-1102 /* FIXME: not used */
+#define SC_ERROR_SLOT_ALREADY_CONNECTED		-1103 /* FIXME: not used */
 #define SC_ERROR_CARD_NOT_PRESENT		-1104
 #define SC_ERROR_CARD_REMOVED			-1105
 #define SC_ERROR_CARD_RESET			-1106
@@ -40,11 +40,12 @@ extern "C" {
 #define SC_ERROR_KEYPAD_TIMEOUT			-1108
 #define SC_ERROR_KEYPAD_CANCELLED		-1109
 #define SC_ERROR_KEYPAD_PIN_MISMATCH		-1110
-#define SC_ERROR_KEYPAD_MSG_TOO_LONG		-1111
+#define SC_ERROR_KEYPAD_MSG_TOO_LONG		-1111 /* FIXME: not used */
 #define SC_ERROR_EVENT_TIMEOUT			-1112
 #define SC_ERROR_CARD_UNRESPONSIVE		-1113
 #define SC_ERROR_READER_DETACHED		-1114
 #define SC_ERROR_READER_REATTACHED		-1115
+#define SC_ERROR_READER_LOCKED			-1116
 
 /* Resulting from a card command or related to the card*/
 #define SC_ERROR_CARD_CMD_FAILED		-1200

@@ -28,8 +28,8 @@ const char *sc_strerror(int error)
 	const char *rdr_errors[] = {
 		"Generic reader error",
 		"No readers found",
-		"Slot not found",
-		"Slot already connected",
+		"Slot not found", /* Not used */
+		"Slot already connected", /* Not used */
 		"Card not present",
 		"Card removed",
 		"Card reset",
@@ -37,11 +37,12 @@ const char *sc_strerror(int error)
 		"Timed out while waiting for user input",
 		"Input operation cancelled by user",
 		"The two PINs did not match",
-		"Message too long (keypad)",
+		"Message too long (keypad)", /* Not used */
 		"Timeout while waiting for event from card reader",
 		"Unresponsive card (correctly inserted?)",
 		"Reader detached (hotplug device?)",
 		"Reader reattached (hotplug device?)",
+		"Reader in use by another application"
 	};
 	const int rdr_base = -SC_ERROR_READER;
 	const char *card_errors[] = {
