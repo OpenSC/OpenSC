@@ -224,7 +224,7 @@ struct rsakey_info {
 };
 
 static void		show_cryptoki_info(void);
-static void		list_slots(void);
+static void		list_slots(int, int, int);
 static void		show_token(CK_SLOT_ID);
 static void		list_mechs(CK_SLOT_ID);
 static void		list_objects(CK_SESSION_HANDLE);
@@ -443,7 +443,7 @@ int main(int argc, char * argv[])
 			verbose++;
 			break;
 		case OPT_SLOT:
-			opt_slot = (CK_SLOT_ID) atoi(optarg);
+			opt_slot = (CK_SLOT_ID) strtoul(optarg, NULL, 0);
 			break;
 		case OPT_SLOT_LABEL:
 			opt_slot_label = optarg;
@@ -493,6 +493,9 @@ int main(int argc, char * argv[])
 		case OPT_PRIVATE:
 			opt_is_private = 1;
 			break;
+		case OPT_HOTPLUG:
+			opt_test_hotplug = 1;
+			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help);
 		}
@@ -515,22 +518,7 @@ int main(int argc, char * argv[])
 	if (do_show_info)
 		show_cryptoki_info();
 
-	/* Get the list of slots */
-	rv = p11->C_GetSlotList(list_token_slots, p11_slots, &p11_num_slots);
-	if (rv != CKR_OK && rv != CKR_BUFFER_TOO_SMALL)
-		p11_fatal("C_GetSlotList", rv);
-	p11_slots = (CK_SLOT_ID *) calloc(p11_num_slots, sizeof(CK_SLOT_ID));
-	if (p11_slots == NULL) {
-		perror("calloc failed");
-		err = 1;
-		goto end;
-	}
-	rv = p11->C_GetSlotList(list_token_slots, p11_slots, &p11_num_slots);
-	if (rv != CKR_OK)
-		p11_fatal("C_GetSlotList", rv);
-
-	if (do_list_slots)
-		list_slots();
+	list_slots(list_token_slots, 1, do_list_slots);
 
 	if (p11_num_slots == 0) {
 		fprintf(stderr, "No slots.\n");
@@ -557,10 +545,11 @@ int main(int argc, char * argv[])
 		opt_slot = slot;
 	}
 
-	if (opt_slot == NO_SLOT)
-		opt_slot = p11_slots[0];
-
-	/* XXX: add wait for slot event */
+	if (opt_slot == NO_SLOT) {
+		fprintf(stderr, "You must specify a slot ID\n");
+		err = 1;
+		goto end;
+	}
 
 	if (do_list_mechs)
 		list_mechs(opt_slot);
@@ -714,13 +703,29 @@ static void show_cryptoki_info(void)
 			info.libraryVersion.minor);
 }
 
-static void list_slots(void)
+static void list_slots(int tokens, int refresh, int print)
 {
 	CK_SLOT_INFO	info;
 	CK_ULONG	n;
 	CK_RV		rv;
 
-	if (!p11_num_slots)
+	/* Get the list of slots */
+	if (refresh) {
+		rv = p11->C_GetSlotList(tokens, NULL, &p11_num_slots);
+		if (rv != CKR_OK)
+			p11_fatal("C_GetSlotList(NULL)", rv);
+		p11_slots = (CK_SLOT_ID *) calloc(p11_num_slots, sizeof(CK_SLOT_ID));
+		if (p11_slots == NULL) {
+			perror("calloc failed");
+			return;
+		}
+
+		rv = p11->C_GetSlotList(tokens, p11_slots, &p11_num_slots);
+		if (rv != CKR_OK)
+			p11_fatal("C_GetSlotList()", rv);
+	}
+
+	if (!print)
 		return;
 
 	printf("Available slots:\n");
@@ -2935,8 +2940,8 @@ static int test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
-	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
-		printf("Key unwrap: not logged in, skipping key unwrap tests\n");
+	if (!(sessionInfo.state & CKS_RW_USER_FUNCTIONS)) {
+		printf("Key unwrap: not a R/W session, skipping key unwrap tests\n");
 		return errors;
 	}
 
@@ -3176,8 +3181,8 @@ static int test_card_detection(int wait_for_event)
 	CK_SLOT_ID slot_id;
 	CK_RV rv;
 
-	printf("Testing card detection%s\n",
-		wait_for_event? " using C_WaitForSlotEvent" : "");
+	printf("Testing card detection using %s\n",
+		wait_for_event? "C_WaitForSlotEvent()" : "C_GetSlotList()");
 
 	while (1) {
 		printf("Please press return to continue, x to exit: ");
@@ -3195,9 +3200,9 @@ static int test_card_detection(int wait_for_event)
 				p11_perror("C_WaitForSlotEvent", rv);
 				return 1;
 			}
-			printf("event on slot %u\n", (unsigned int) slot_id);
+			printf("event on slot 0x%lx\n", slot_id);
 		}
-		list_slots();
+		list_slots(0, 1, 1);
 	}
 
 	return 0;
@@ -3206,6 +3211,11 @@ static int test_card_detection(int wait_for_event)
 static int p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
 	int errors = 0;
+	if (opt_test_hotplug) {
+		errors += test_card_detection(0);
+
+		errors += test_card_detection(1);
+	}
 
 	errors += test_random(slot);
 
@@ -3218,10 +3228,6 @@ static int p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	errors += test_unwrap(slot, session);
 
 	errors += test_decrypt(slot, session);
-
-	errors += test_card_detection(0);
-
-	errors += test_card_detection(1);
 
 	if (errors == 0)
 		printf("No errors\n");
