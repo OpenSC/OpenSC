@@ -3457,6 +3457,11 @@ static const char *p11_utf8_to_local(CK_UTF8CHAR *string, size_t len)
 
 static void p11_fatal(const char *func, CK_RV rv)
 {
+	if (p11)
+		p11->C_Finalize(NULL_PTR);
+	if (module)
+		C_UnloadModule(module);
+
 	util_fatal("PKCS11 function %s failed: rv = %s (0x%0x)\n",
 		func, CKR2Str(rv), (unsigned int) rv);
 }
