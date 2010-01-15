@@ -55,6 +55,7 @@ enum {
 	OPT_ATTR_FROM,
 	OPT_KEY_TYPE,
 	OPT_PRIVATE,
+	OPT_HOTPLUG,
 	OPT_UNLOCK_PIN,
 	OPT_PUK,
 	OPT_NEW_PIN,
@@ -101,6 +102,7 @@ static const struct option options[] = {
 	{ "module",		1, NULL,		OPT_MODULE },
 
 	{ "test",		0, NULL,		't' },
+	{ "hotplug",		0, NULL,		OPT_HOTPLUG },
 	{ "moz-cert",		1, NULL,		'z' },
 	{ "verbose",		0, NULL,		'v' },
 	{ "private",		0, NULL,		OPT_PRIVATE },
@@ -147,6 +149,7 @@ static const char *option_help[] = {
 	"Specify the module to load",
 
 	"Test (best used with the --login or --pin option)",
+	"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
 	"Test Mozilla-like keypair gen and cert req, <arg>=certfile",
 	"Verbose operation. Use several times to enable debug output.",
 	"Set the CKA_PRIVATE attribute (object is only viewable after a login)"
@@ -175,8 +178,9 @@ static char *		opt_new_pin = NULL;
 static char *		opt_application_label = NULL;
 static char *		opt_application_id = NULL;
 static char *		opt_key_type = NULL;
-static int		opt_is_private = 0;
-static int              opt_login_type = -1;
+static int			opt_is_private = 0;
+static int			opt_test_hotplug = 0;
+static int			opt_login_type = -1;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
