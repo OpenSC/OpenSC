@@ -2378,6 +2378,8 @@ static int sign_verify_openssl(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
 
+	if (getALWAYS_AUTHENTICATE(session, privKeyObject))
+		login(session,CKU_CONTEXT_SPECIFIC);
 	printf("    %s: ", p11_mechanism_to_name(ck_mech->mechanism));
 
 	sigLen1 = sizeof(sig1);
@@ -2511,6 +2513,7 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	/* 1st test */
 
+	/* assume --login has already authenticated the key */
 	switch (firstMechType) {
 	case CKM_RSA_PKCS:
 		dataLen = 35;
@@ -2557,6 +2560,8 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignInit", rv);
+		if (getALWAYS_AUTHENTICATE(sess, privKeyObject))
+			login(sess,CKU_CONTEXT_SPECIFIC);
 
 		sigLen2 = sizeof(sig2);
 		rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
@@ -2594,6 +2599,8 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	   printf("  ERR: C_Sign() didn't return CKR_OK for a NULL output buf, but %s (0x%0x)\n",
 	   CKR2Str(rv), (int) rv);
 	}
+	if (getALWAYS_AUTHENTICATE(sess, privKeyObject))
+		login(sess,CKU_CONTEXT_SPECIFIC);
 
 	rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
 	if (rv == CKR_OPERATION_NOT_INITIALIZED) {
@@ -2710,6 +2717,8 @@ static int sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		}
 
 		printf("    %s: ", p11_mechanism_to_name(*mech_type));
+		if (getALWAYS_AUTHENTICATE(session, priv_key))
+                	login(session,CKU_CONTEXT_SPECIFIC);
 
 		signat_len = sizeof(signat);
 		rv = p11->C_Sign(session, datas[j], data_lens[j], signat, &signat_len);
@@ -3373,7 +3382,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
 
-	login(session, 0);
+	login(session, CKU_USER);
 
 	printf("\n*** Put a cert on the card (NOTE: doesn't correspond with the key!) ***\n");
 
