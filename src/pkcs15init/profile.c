@@ -47,6 +47,12 @@
 #define DEF_PRKEY_DSA_ACCESS	0x12
 #define DEF_PUBKEY_ACCESS	0x12
 
+#define TEMPLATE_FILEID_MIN_DIFF	0x20
+
+/*
+#define DEBUG_PROFILE 
+*/
+
 /*
  * Parser state
  */
@@ -560,6 +566,9 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	unsigned int	idx;
 	struct file_info *fi, *base_file, *match = NULL;
 
+#ifdef DEBUG_PROFILE
+	printf("Instantiate template\n");
+#endif
 	for (info = profile->template_list; info; info = info->next) {
 		if (!strcmp(info->name, template_name))
 			break;
@@ -581,26 +590,13 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		}
 	}
 
-	if (profile->card->ctx->debug >= 2) {
-		char pbuf[SC_MAX_PATH_STRING_SIZE];
-
-		int r = sc_path_print(pbuf, sizeof(pbuf), base_path);
-		if (r != SC_SUCCESS)
-			pbuf[0] = '\0';
-
-		sc_debug(profile->card->ctx,
-			"Instantiating template %s at %s", template_name, pbuf);
-	}
+	if (card->ctx->debug >= 2)
+		sc_debug(card->ctx,
+			"Instantiating template %s at %s", template_name, sc_print_path(base_path));
 
 	base_file = sc_profile_find_file_by_path(profile, base_path);
 	if (base_file == NULL) {
-		char pbuf[SC_MAX_PATH_STRING_SIZE];
-
-		int r = sc_path_print(pbuf, sizeof(pbuf), base_path);
-		if (r != SC_SUCCESS)
-			pbuf[0] = '\0';
-
-		sc_debug(card->ctx, "Directory %s not defined in profile", pbuf);
+		sc_debug(card->ctx, "Directory %s not defined in profile", sc_print_path(base_path));
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
@@ -638,6 +634,9 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	sc_file_dup(ret, match->file);
 	if (*ret == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
+#ifdef DEBUG_PROFILE
+	printf("Template instantiated\n");
+#endif
 	return 0;
 }
 
@@ -673,19 +672,8 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 	ft->instance = fi;
 
 	if (card->ctx->debug >= 2) {
-		char pbuf[SC_MAX_PATH_STRING_SIZE];
-
-		int r = sc_path_print(pbuf, sizeof(pbuf), &fi->file->path);
-		if (r != SC_SUCCESS)
-			pbuf[0] = '\0';
-
-		sc_debug(card->ctx, "Instantiated %s at %s", ft->ident, pbuf);
-
-		r = sc_path_print(pbuf, sizeof(pbuf), &parent->file->path);
-		if (r != SC_SUCCESS)
-			pbuf[0] = '\0';
-
-		sc_debug(card->ctx, "  parent=%s@%s", parent->ident, pbuf);
+		sc_debug(card->ctx, "Instantiated %s at %s", ft->ident, sc_print_path(&fi->file->path));
+		sc_debug(card->ctx, "  parent=%s@%s", parent->ident, sc_print_path(&parent->file->path));
 	}
 
 	return fi;
@@ -912,6 +900,46 @@ process_ef(struct state *cur, struct block *info,
 	return process_block(&state, info, name, blk);
 }
 
+
+/* 
+ * In the template the difference between any two file-ids 
+ * should be greater then TEMPLATE_FILEID_MIN_DIFF.
+ */
+static int
+template_sanity_check(struct state *cur, struct sc_profile *templ)
+{
+	struct file_info *fi, *ffi;
+
+	for (fi = templ->ef_list; fi; fi = fi->next) {
+		struct sc_path fi_path =  fi->file->path;
+		int fi_id = fi_path.value[fi_path.len - 2] * 0x100 
+			+ fi_path.value[fi_path.len - 1]; 
+
+		if (fi_id == 0xFFFF)
+			continue;
+		for (ffi = templ->ef_list; ffi; ffi = ffi->next) {
+			struct sc_path ffi_path =  ffi->file->path;
+			int dlt, ffi_id = ffi_path.value[ffi_path.len - 2] * 0x100 
+				+ ffi_path.value[ffi_path.len - 1]; 
+
+			if (ffi_id == 0xFFFF)
+				continue;
+
+			dlt = fi_id > ffi_id ? fi_id - ffi_id : ffi_id - fi_id;
+			if (strcmp(ffi->ident, fi->ident))   {
+				if (dlt > TEMPLATE_FILEID_MIN_DIFF)
+					continue;
+
+				parse_error(cur, "Template insane: file-ids should be substantially different");
+				return 1;
+			}
+		}
+	}
+
+	return SC_SUCCESS;
+}
+
+
 static int
 process_tmpl(struct state *cur, struct block *info,
 		const char *name, scconf_block *blk)
@@ -919,7 +947,11 @@ process_tmpl(struct state *cur, struct block *info,
 	struct state	state;
 	sc_template_t	*tinfo;
 	sc_profile_t	*templ;
+	int r;
 
+#ifdef DEBUG_PROFILE
+	printf("Process template:\n");
+#endif
 	if (name == NULL) {
 		parse_error(cur, "No name given for template.");
 		return 1;
@@ -949,7 +981,14 @@ process_tmpl(struct state *cur, struct block *info,
 	state.profile = tinfo->data;
 	state.file = NULL;
 
-	return process_block(&state, info, name, blk);
+	r = process_block(&state, info, name, blk);
+	if (!r)
+		r = template_sanity_check(cur, templ);
+
+#ifdef DEBUG_PROFILE
+	printf("Template processed; rv %i\n", r);
+#endif
+	return r;
 }
 
 /*
@@ -1423,7 +1462,7 @@ process_macros(struct state *cur, struct block *info,
 		name = item->key;
 		if (item->type != SCCONF_ITEM_TYPE_VALUE)
 			continue;
-#if 0
+#ifdef DEBUG_PROFILE
 		printf("Defining %s\n", name);
 #endif
 		new_macro(cur->profile, name, item->value.list);
@@ -1588,7 +1627,7 @@ build_argv(struct state *cur, const char *cmdname,
 			return SC_ERROR_SYNTAX_ERROR;
 		}
 
-#if 0
+#ifdef DEBUG_PROFILE
 		{
 			scconf_list *list;
 
@@ -1680,7 +1719,7 @@ process_block(struct state *cur, struct block *info,
 				}
 				ident = nlist->data;
 			}
-#if 0
+#ifdef DEBUG_PROFILE
 			printf("Processing %s %s\n",
 				cmd, ident? ident : "");
 #endif
@@ -1691,7 +1730,7 @@ process_block(struct state *cur, struct block *info,
 			}
 		} else
 		if (item->type == SCCONF_ITEM_TYPE_VALUE) {
-#if 0
+#ifdef DEBUG_PROFILE
 			printf("Processing %s\n", cmd);
 #endif
 			if ((cp = find_cmd_handler(info->cmd_info, cmd))) {
