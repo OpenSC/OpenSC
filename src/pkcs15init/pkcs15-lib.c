@@ -3059,6 +3059,7 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 		u8 *pinbuf, size_t *pinsize,
 		int verify)
 {
+	struct sc_context	*ctx = card->ctx;
 	struct sc_cardctl_default_key data;
 	sc_pkcs15_card_t *p15card = pro->p15_data;
 	sc_pkcs15_object_t *pin_obj = NULL;
@@ -3069,7 +3070,9 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 	size_t		defsize = 0;
 	u8		defbuf[0x100];
 	int		r;
+	int		use_pinpad = 0;
 
+	SC_FUNC_CALLED(ctx, 3);
 	path = file? &file->path : NULL;
 
 	ident = "authentication data";
@@ -3117,12 +3120,9 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 		 */
 		reference = sc_keycache_find_named_pin(path, pin_id);
 		if (reference == -1) {
-			if (card->ctx->debug >= 2) {
-				sc_debug(card->ctx,
-					"no %s set for this card\n",
-					ident);
-			}
-			return 0;
+			if (ctx->debug >= 2)
+				sc_debug(ctx, "no %s set for this card\n", ident);
+			SC_FUNC_RETURN(ctx, 3, SC_SUCCESS);
 		}
 
 		sc_profile_get_pin_info(pro, pin_id, &pin_info);
@@ -3134,8 +3134,7 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 	if (r >= 0) {
 		*pinsize = r;
 		goto found;
-	} else if (r == SC_ERROR_OBJECT_NOT_FOUND)
-		r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+	} 
 
 	if (type != SC_AC_CHV) {
 		/* Okay, nothing in our cache.
@@ -3148,15 +3147,15 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 		data.key_data = defbuf;
 		if (sc_card_ctl(card, SC_CARDCTL_GET_DEFAULT_KEY, &data) >= 0)
 			defsize = data.len;
-	} else if (pin_obj && pin_obj->label[0]) {
+	} 
+	else if (pin_obj && pin_obj->label[0]) {
 		label = pin_obj->label;
 	}
 
 	switch (type) {
 	case SC_AC_CHV:
 		if (callbacks.get_pin) {
-			r = callbacks.get_pin(pro, pin_id,
-					&pin_info, label,
+			r = callbacks.get_pin(pro, pin_id, &pin_info, label,
 					pinbuf, pinsize);
 		}
 		break;
@@ -3169,8 +3168,17 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 		break;
 	}
 
-	if (r < 0)
-		return r;
+	if (r == SC_ERROR_OBJECT_NOT_FOUND)   { 
+		if (card->reader->slot[0].capabilities & SC_SLOT_CAP_PIN_PAD)   {
+			r = 0;
+			use_pinpad = 1;
+		}
+		else   {
+			r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+		}
+	}
+
+	SC_TEST_RET(ctx, r, "Failed to get secret");
 
 	/* We got something. Cache it */
 	sc_keycache_put_key(path, type, reference, pinbuf, *pinsize);
@@ -3188,16 +3196,20 @@ found:	if (type == SC_AC_CHV && pin_info.flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDIN
 	if (verify) {
 		/* We may have selected the AODF instead of the file
 		 * itself: */
-		if (file)
+		if (file)   {
 			r = sc_select_file(card, &file->path, NULL);
-	 	if (r >= 0
-		 && (r = sc_verify(card, type, reference, pinbuf, *pinsize, NULL)) < 0) {
-			sc_debug(card->ctx, "Failed to verify %s (ref=0x%x)",
-					ident, reference);
+			SC_TEST_RET(ctx, r, "Failed to select PIN path");
 		}
+
+		if (use_pinpad)
+	 		r = sc_verify(card, type, reference, NULL, 0, NULL);
+		else
+			r = sc_verify(card, type, reference, pinbuf, *pinsize, NULL);
+	 	if (r < 0)
+			sc_debug(ctx, "Failed to verify %s (ref=0x%x)", ident, reference);
 	}
 
-	return r;
+	SC_FUNC_RETURN(ctx, 3, r);
 }
 
 static int

@@ -242,7 +242,7 @@ static const char *		option_help[] = {
 	"Insecure mode: do not require PIN/passphrase for private key",
 	"Use software key generation, even if the card supports on-board key generation",
 	"Do not ask for transport keys if the driver thinks it knows the key",
-	"Do not prompt the user, except for PINs",
+	"Do not prompt the user; if no PINs supplied, pinpad will be used",
 
 	"Specify the general profile to use",
 	"Specify the card profile to use",
@@ -1659,6 +1659,9 @@ get_pin_callback(struct sc_profile *profile,
 		sc_ui_hints_t	hints;
 		char		prompt[128];
 		int		r;
+
+		if (opt_no_prompt)
+			return SC_ERROR_OBJECT_NOT_FOUND;
 
 		snprintf(prompt, sizeof(prompt), "%s required", name);
 
