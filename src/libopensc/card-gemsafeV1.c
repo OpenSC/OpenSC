@@ -38,6 +38,8 @@ static struct sc_atr_table gemsafe_atrs[] = {
 	/* standard version */
     {"3B:7B:94:00:00:80:65:B0:83:01:01:74:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_GENERIC, 0, NULL},
     {"3B:6B:00:00:80:65:B0:83:01:01:74:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_GENERIC, 0, NULL},
+    /* GemSafeXpresso 32K */
+    {"3b:6d:00:00:80:31:80:65:b0:83:01:02:90:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_GENERIC, 0, NULL},
     /* fips 140 version */
     {"3B:6B:00:00:80:65:B0:83:01:03:74:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_GENERIC, 0, NULL},
     /* Undefined */
