@@ -1284,6 +1284,7 @@ static int flex_build_verify_apdu(sc_card_t *card, sc_apdu_t *apdu,
 static void flex_init_pin_info(struct sc_pin_cmd_pin *pin, unsigned int num)
 {
 	pin->encoding   = SC_PIN_ENCODING_ASCII;
+	pin->min_length = 4;
 	pin->max_length = 8;
 	pin->pad_length = 8;
 	pin->offset     = 5 + num * 8;
