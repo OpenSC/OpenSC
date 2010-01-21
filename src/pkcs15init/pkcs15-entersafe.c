@@ -304,16 +304,11 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_card_t *card,
 static int entersafe_key_reference(sc_profile_t *profile, sc_card_t *card,
 								   sc_pkcs15_prkey_info_t *prkey)
 {
-	struct sc_file	*df = profile->df_info->file;
-
 	SC_FUNC_CALLED(card->ctx, 1);
-
 	if (prkey->key_reference < ENTERSAFE_MIN_KEY_ID)
 		prkey->key_reference = ENTERSAFE_MIN_KEY_ID;
 	if (prkey->key_reference > ENTERSAFE_MAX_KEY_ID)
 		return SC_ERROR_TOO_MANY_OBJECTS;
-
-	prkey->path = df->path;
 	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }
 

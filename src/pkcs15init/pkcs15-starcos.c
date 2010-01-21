@@ -479,15 +479,11 @@ static int starcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 static int starcos_key_reference(sc_profile_t *profile, sc_card_t *card,
 	sc_pkcs15_prkey_info_t *prkey)
 {
-	struct sc_file	*df = profile->df_info->file;
-
 	/* use (local) KIDs 0x91-0x9f for private rsa keys */
 	if (prkey->key_reference < STARCOS_MIN_LPKEY_ID)
 		prkey->key_reference = STARCOS_MIN_LPKEY_ID;
 	if (prkey->key_reference > STARCOS_MAX_LPKEY_ID)
 		return SC_ERROR_TOO_MANY_OBJECTS;
-
-	prkey->path = df->path;
 	return SC_SUCCESS;
 }
 

@@ -118,11 +118,8 @@ filesystem {
 		ACL		= $protected;
 	    }
 	template key-domain {
-		# This is a dummy entry - pkcs15-init insists that
-		# this is present
-		EF private-key {
-		    file-id	= FFFF;
-			ACL	= *=$PIN, READ=NEVER;
+		BSO private-key {
+		    ACL	= *=$PIN, READ=NEVER;
 		}
                 EF public-key {
     	            file-id	= 3000;

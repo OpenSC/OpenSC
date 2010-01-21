@@ -47,10 +47,8 @@ filesystem {
 	    # combined with the last octet of the object's pkcs15 id
 	    # to form a unique file ID.
 	    template key-domain {
-		# This is a dummy entry - pkcs15-init insists that
-		# this is present
-		EF private-key {
-		    file-id	= FFFF;
+		BSO private-key {
+			# here ACLs should be defined
 		}
                 EF public-key {
     	            file-id	= 3003;

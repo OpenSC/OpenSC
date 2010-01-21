@@ -142,14 +142,10 @@ static int
 muscle_select_key_reference(sc_profile_t *profile, sc_card_t *card,
 			sc_pkcs15_prkey_info_t *key_info)
 {
-	struct sc_file	*df = profile->df_info->file;
-
 	if (key_info->key_reference < MUSCLE_KEY_ID_MIN)
 		key_info->key_reference = MUSCLE_KEY_ID_MIN;
 	if (key_info->key_reference > MUSCLE_KEY_ID_MAX)
 		return SC_ERROR_TOO_MANY_OBJECTS;
-
-	key_info->path = df->path;
 	return 0;
 }
 
