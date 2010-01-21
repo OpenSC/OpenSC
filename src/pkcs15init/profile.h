@@ -148,6 +148,8 @@ int		sc_profile_instantiate_template(struct sc_profile *,
 			sc_file_t **);
 int		sc_profile_add_file(struct sc_profile *,
 			const char *, sc_file_t *);
+int		sc_profile_get_file_instance(struct sc_profile *, const char *,
+			int, sc_file_t **);
 
 #ifdef __cplusplus
 }

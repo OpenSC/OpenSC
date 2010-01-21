@@ -34,16 +34,21 @@ filesystem {
 
 	    # Prevent unauthorized updates of basic security
 	    # objects via PUT DATA OCI.
-	    ACL			= UPDATE=NEVER;
+	    # ACL = UPDATE=NEVER;
+	    ACL = UPDATE=$PIN;
 
 	    # Bump the size of the EF(PrKDF) - with split
 	    # keys, we may need a little more room.
 	    EF PKCS15-PrKDF {
-		size		= 384;
+		size		= 1024;
 	    }
 
 	    EF PKCS15-PuKDF {
-		size		= 384;
+		size		= 768;
+	    }
+
+	    EF PKCS15-CDF {
+		size		= 1536;
 	    }
 
 	    # This template defines files for keys, certificates etc.
@@ -52,11 +57,9 @@ filesystem {
 	    # combined with the last octet of the object's pkcs15 id
 	    # to form a unique file ID.
 	    template key-domain {
-		# This is a dummy entry - pkcs15-init insists that
-		# this is present
-		EF private-key {
-		    file-id	= FFFF;
+		BSO private-key {
 		}
+
                 EF public-key {
     	            file-id	= 3003;
     	            structure	= transparent;

@@ -61,6 +61,7 @@ extern "C" {
 #define SC_FILE_TYPE_DF			0x04
 #define SC_FILE_TYPE_INTERNAL_EF	0x03
 #define SC_FILE_TYPE_WORKING_EF		0x01
+#define SC_FILE_TYPE_BSO		0x10
 
 /* EF structures */
 #define SC_FILE_EF_UNKNOWN		0x00

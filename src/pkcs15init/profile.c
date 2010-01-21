@@ -120,6 +120,7 @@ static struct map		fileTypeNames[] = {
 	{ "EF",		SC_FILE_TYPE_WORKING_EF		},
 	{ "INTERNAL-EF",SC_FILE_TYPE_INTERNAL_EF	},
 	{ "DF",		SC_FILE_TYPE_DF			},
+	{ "BSO",	SC_FILE_TYPE_BSO		},
 	{ NULL, 0 }
 };
 static struct map		fileStructureNames[] = {
@@ -253,7 +254,7 @@ init_file(unsigned int type)
 	}
 	file->type = type;
 	file->status = SC_FILE_STATUS_ACTIVATED;
-	if (file->type != SC_FILE_TYPE_DF)
+	if (file->type != SC_FILE_TYPE_DF && file->type != SC_FILE_TYPE_BSO)
 		file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	return file;
 }
@@ -508,6 +509,34 @@ sc_profile_get_file(struct sc_profile *profile,
 }
 
 int
+sc_profile_get_file_instance(struct sc_profile *profile, const char *name, 
+		int index, sc_file_t **ret)
+{
+	struct file_info *fi;
+	struct sc_file *file;
+	int r;
+
+	if ((fi = sc_profile_find_file(profile, NULL, name)) == NULL)
+		return SC_ERROR_FILE_NOT_FOUND;
+	sc_file_dup(&file, fi->file);
+	if (file == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	file->id += index;
+	file->path.value[file->path.len - 2] = (file->id >> 8) & 0xFF;
+	file->path.value[file->path.len - 1] = file->id & 0xFF;
+
+	r = sc_profile_add_file(profile, name, file);
+	if (r)
+		return r;
+
+	if (ret)
+		*ret = file;
+
+	return SC_SUCCESS;
+}
+
+int
 sc_profile_get_path(struct sc_profile *profile,
 		const char *name, sc_path_t *ret)
 {
@@ -567,7 +596,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	struct file_info *fi, *base_file, *match = NULL;
 
 #ifdef DEBUG_PROFILE
-	printf("Instantiate template\n");
+	printf("Instantiate %s in template %s\n", file_name, template_name);
 #endif
 	for (info = profile->template_list; info; info = info->next) {
 		if (!strcmp(info->name, template_name))
@@ -665,7 +694,8 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 	}
 	fi->file->path = parent->file->path;
 	fi->file->id += skew;
-	sc_append_file_id(&fi->file->path, fi->file->id);
+	if (fi->file->type != SC_FILE_TYPE_BSO && fi->file->type != SC_FILE_TYPE_DF)
+		sc_append_file_id(&fi->file->path, fi->file->id);
 
 	append_file(profile, fi);
 
@@ -901,6 +931,22 @@ process_ef(struct state *cur, struct block *info,
 }
 
 
+static int
+process_bso(struct state *cur, struct block *info,
+		const char *name, scconf_block *blk)
+{
+	struct state	state;
+
+	init_state(cur, &state);
+	if (name == NULL) {
+		parse_error(cur, "No name given for BSO object.");
+		return 1;
+	}
+	if (!(state.file = new_file(cur, name, SC_FILE_TYPE_BSO)))
+		return 1;
+	return process_block(&state, info, name, blk);
+}
+
 /* 
  * In the template the difference between any two file-ids 
  * should be greater then TEMPLATE_FILEID_MIN_DIFF.
@@ -915,14 +961,14 @@ template_sanity_check(struct state *cur, struct sc_profile *templ)
 		int fi_id = fi_path.value[fi_path.len - 2] * 0x100 
 			+ fi_path.value[fi_path.len - 1]; 
 
-		if (fi_id == 0xFFFF)
+		if (fi->file->type == SC_FILE_TYPE_BSO)
 			continue;
 		for (ffi = templ->ef_list; ffi; ffi = ffi->next) {
 			struct sc_path ffi_path =  ffi->file->path;
 			int dlt, ffi_id = ffi_path.value[ffi_path.len - 2] * 0x100 
 				+ ffi_path.value[ffi_path.len - 1]; 
 
-			if (ffi_id == 0xFFFF)
+			if (ffi->file->type == SC_FILE_TYPE_BSO)
 				continue;
 
 			dlt = fi_id > ffi_id ? fi_id - ffi_id : ffi_id - fi_id;
@@ -1086,7 +1132,9 @@ new_file(struct state *cur, const char *name, unsigned int type)
 	assert(file);
 	if (file->type != (int)type) {
 		parse_error(cur, "inconsistent file type (should be %s)",
-			(file->type == SC_FILE_TYPE_DF)? "DF" : "EF");
+			file->type == SC_FILE_TYPE_DF 
+				? "DF" : file->type == SC_FILE_TYPE_BSO 
+					? "BS0" : "EF");
 		if (strncasecmp(name, "PKCS15-", 7) ||
 			!strcasecmp(name+7, "AppDF")) 
 			sc_file_free(file);
@@ -1551,6 +1599,7 @@ static struct command	fs_commands[] = {
 static struct block	fs_blocks[] = {
  { "DF",		process_df,	fs_commands,	fs_blocks },
  { "EF",		process_ef,	fs_commands,	fs_blocks },
+ { "BSO",		process_bso,	fs_commands,	fs_blocks },
  { "template",		process_tmpl,	fs_commands,	fs_blocks },
 
  { NULL, NULL, NULL, NULL }
@@ -1824,7 +1873,10 @@ get_uint(struct state *cur, const char *value, unsigned int *vp)
 {
 	char	*ep;
 
-	*vp = strtoul(value, &ep, 0);
+	if (strstr(value, "0x") == value)
+		*vp = strtoul(value + 2, &ep, 16);
+	else
+		*vp = strtoul(value, &ep, 0);
 	if (*ep != '\0') {
 		parse_error(cur, 
 			"invalid integer argument \"%s\"\n", value);

@@ -56,7 +56,7 @@ filesystem {
 			ACL = CREATE=CHV4, CRYPTO=NEVER, PIN-DEFINE=CHV4, PIN-RESET=CHV4;
 			file-id 	= 5011;
 			size = 40;
-			
+		
 			DF private-DF {
 				ACL = *=NEVER;
 				ACL = CREATE=CHV1, CRYPTO=CHV1, FILES=NONE, DELETE=NONE;
@@ -70,6 +70,7 @@ filesystem {
 				EF template-private-key {
 					file-id		= 3000;
 					type	= internal-ef;
+					structure = 0xA3;
 					# READ acl used instead of DECRYPT/SIGN
 					ACL	 = UPDATE=CHV1, READ=CHV1;
 				}
@@ -95,7 +96,7 @@ filesystem {
 					ACL = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
 				}
 			}
-		
+	
 			DF public-DF {
 				ACL = CREATE=NONE, CRYPTO=NONE, FILES=NONE, DELETE=NONE;
 				file-id		= 9001;
@@ -117,6 +118,7 @@ filesystem {
 				EF template-public-key {
 					file-id	 = 1000;
 					type	= internal-ef;
+					structure = 0xA1;
 					ACL	 = *=NONE;
 				}
 			

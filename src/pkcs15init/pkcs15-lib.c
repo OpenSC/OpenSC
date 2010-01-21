@@ -1823,7 +1823,6 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 		r = sc_profile_get_file_by_path(profile, path, &file);
 		SC_TEST_RET(ctx, r, "Failed to get file by path");
 	} else {
-
 		/* Get the number of objects of this type already on this card */
 		idx = sc_pkcs15_get_objects(p15card,
 				object->type & SC_PKCS15_TYPE_CLASS_MASK,
@@ -2426,6 +2425,9 @@ select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 		if (r == SC_ERROR_TEMPLATE_NOT_FOUND)
 			SC_FUNC_RETURN(ctx, 3, SC_SUCCESS);
 		SC_TEST_RET(ctx, r, "Template instantiation error");
+
+		if (file->type == SC_FILE_TYPE_BSO)
+			break;
 
 		sc_debug(ctx, "path from instantiated template %s", sc_print_path(&file->path));	
 		for (ii=0; ii<nn_objs; ii++)   {
@@ -3129,6 +3131,18 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 		type = SC_AC_CHV;
 	}
 
+#if 0
+	if (pinsize && pro->p15_data)  {
+		sc_pkcs15_pincache_entry_t *entry = pro->p15_data->pin_cache[0];
+		if(entry)   {
+			if (*pinsize >= entry->len)   {
+				*pinsize = entry->len;
+				memcpy(pinbuf, entry->pin, entry->len);
+				goto found;
+			}
+		}
+	}
+#endif
 	/* Try to get the cached secret, e.g. CHV1 */
 	r = sc_keycache_get_key(path, type, reference, pinbuf, *pinsize);
 	if (r >= 0) {
