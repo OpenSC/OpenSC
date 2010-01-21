@@ -8,6 +8,8 @@ or doc/nonpersistent/ChangeLog.
 
 New in 0.??.==; 200?-??-??; ??
 * New westcos driver by François Leblanc
+* Modify Rutoken S binary interfaces by Aktiv Co.
+* Support GOST R 34.10-2001 and GOST R 34.11-94 by Aktiv Co.
 
 New in 0.11.12; 2009-12-18; Andreas Jellinghaus
 * Document integer problem in OpenSC and implement workaround
