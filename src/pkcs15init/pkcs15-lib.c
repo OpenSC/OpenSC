@@ -2393,7 +2393,8 @@ select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 	const char	*name;
 
 	SC_FUNC_CALLED(ctx, 3);
-	r = sc_pkcs15_get_objects(p15card, obj->type, objs, 32);
+	r = sc_pkcs15_get_objects(p15card, obj->type & SC_PKCS15_TYPE_CLASS_MASK,
+			objs, sizeof(objs)/sizeof(objs[0]));
 	SC_TEST_RET(ctx, r, "Get PKCS#15 objects error");
 	nn_objs = r;
 
