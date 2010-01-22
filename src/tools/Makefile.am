@@ -39,6 +39,7 @@ pkcs15_init_SOURCES = pkcs15-init.c util.c
 pkcs15_init_LDADD = $(OPTIONAL_OPENSSL_LIBS) \
 	$(top_builddir)/src/pkcs15init/libpkcs15init.la
 cardos_tool_SOURCES = cardos-tool.c util.c
+cardos_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 eidenv_SOURCES = eidenv.c
 netkey_tool_SOURCES = netkey-tool.c
 netkey_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
