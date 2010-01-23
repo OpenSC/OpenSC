@@ -78,6 +78,8 @@ CK_RV sc_to_cryptoki_error(int rc, int reader)
 		return CKR_DATA_INVALID;
 	case SC_ERROR_CARD_UNRESPONSIVE:
 		return CKR_DEVICE_ERROR;
+	case SC_ERROR_NOT_ENOUGH_MEMORY:
+		return CKR_DEVICE_MEMORY;
 	}
 	sc_debug(context, "opensc error: %s (%d)\n", sc_strerror(rc), rc);
 	return CKR_GENERAL_ERROR;

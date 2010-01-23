@@ -58,7 +58,7 @@ static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6A81, SC_ERROR_NO_CARD_SUPPORT,	"Function not supported" },
 	{ 0x6A82, SC_ERROR_FILE_NOT_FOUND,	"File not found" },
 	{ 0x6A83, SC_ERROR_RECORD_NOT_FOUND,	"Record not found" },
-	{ 0x6A84, SC_ERROR_CARD_CMD_FAILED,	"Not enough memory space in the file" },
+	{ 0x6A84, SC_ERROR_NOT_ENOUGH_MEMORY,	"Not enough memory space in the file" },
 	{ 0x6A85, SC_ERROR_INCORRECT_PARAMETERS,"Lc inconsistent with TLV structure" },
 	{ 0x6A86, SC_ERROR_INCORRECT_PARAMETERS,"Incorrect parameters P1-P2" },
 	{ 0x6A87, SC_ERROR_INCORRECT_PARAMETERS,"Lc inconsistent with P1-P2" },

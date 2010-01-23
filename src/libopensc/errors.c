@@ -63,6 +63,7 @@ const char *sc_strerror(int error)
 		"PIN code or key incorrect",
 		"File already exists",
 		"Data object not found",
+		"Not enough memory on card",
 	};
 	const int card_base = -SC_ERROR_CARD_CMD_FAILED;
 	const char *arg_errors[] = {
