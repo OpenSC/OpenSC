@@ -739,7 +739,9 @@ void *sc_mem_alloc_secure(size_t len)
 void sc_mem_clear(void *ptr, size_t len)
 {
 #ifdef ENABLE_OPENSSL
-	OPENSSL_cleanse(ptr, len);
+	/* FIXME: Bug in 1.0.0-beta series crashes with 0 length */
+	if (len > 0)
+		OPENSSL_cleanse(ptr, len);
 #else
 	memset(ptr, 0, len);
 #endif
