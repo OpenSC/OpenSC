@@ -1282,9 +1282,9 @@ static int mcrd_decipher(sc_card_t * card,
 
 	int r;
 	sc_apdu_t apdu;
+	u8 tmp_crgram[1024];
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	sc_security_env_t *env = &priv->sec_env;
-	u8 *temp;
 
 	sc_debug(card->ctx,
 		 "Will dechiper %d (0x%02x) bytes using key %d\n",
@@ -1294,11 +1294,8 @@ static int mcrd_decipher(sc_card_t * card,
 	if (env->operation != SC_SEC_OPERATION_DECIPHER)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (!(temp = (u8 *) malloc(crgram_len + 1)))
-		return SC_ERROR_OUT_OF_MEMORY;
-	temp[0] = '\0';
-	memcpy(temp + 1, crgram, crgram_len);
-	crgram = temp;
+	tmp_crgram[0] = '\0';
+	memcpy(tmp_crgram + 1, crgram, crgram_len);
 	crgram_len += 1;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
@@ -1307,7 +1304,7 @@ static int mcrd_decipher(sc_card_t * card,
 	apdu.resplen = out_len;
 	apdu.le = apdu.resplen;
 
-	apdu.data = crgram;
+	apdu.data = tmp_crgram;
 	apdu.datalen = crgram_len;
 	apdu.lc = apdu.datalen;
 
