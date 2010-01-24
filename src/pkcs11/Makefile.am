@@ -11,16 +11,18 @@ lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
 noinst_LTLIBRARIES = libpkcs11.la
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS) $(PTHREAD_CFLAGS)
-INCLUDES = -I$(top_srcdir)/src/pkcs15init -I$(top_builddir)/src/include
+INCLUDES = -I$(top_srcdir)/src/pkcs15init -I$(top_builddir)/src/include -I$(top_builddir)/src/common
 
 OPENSC_PKCS11_INC = sc-pkcs11.h
 OPENSC_PKCS11_SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
 	mechanism.c openssl.c secretkey.c framework-pkcs15.c \
-	framework-pkcs15init.c debug.c opensc-pkcs11.exports
+	framework-pkcs15init.c debug.c opensc-pkcs11.exports \
+	pkcs11-display.c pkcs11-display.h
 OPENSC_PKCS11_LIBS = $(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS) \
 	$(top_builddir)/src/pkcs15init/libpkcs15init.la \
 	$(top_builddir)/src/libopensc/libopensc.la \
-	$(top_builddir)/src/scconf/libscconf.la
+	$(top_builddir)/src/scconf/libscconf.la \
+	$(top_builddir)/src/common/libcompat.la
 
 libpkcs11_la_SOURCES = libpkcs11.c
 

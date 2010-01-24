@@ -52,7 +52,7 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
  * Look up a mechanism
  */
 sc_pkcs11_mechanism_type_t *
-sc_pkcs11_find_mechanism(struct sc_pkcs11_card *p11card, CK_MECHANISM_TYPE mech, int flags)
+sc_pkcs11_find_mechanism(struct sc_pkcs11_card *p11card, CK_MECHANISM_TYPE mech, unsigned int flags)
 {
 	sc_pkcs11_mechanism_type_t *mt;
 	unsigned int n;
@@ -199,7 +199,7 @@ sc_pkcs11_md_final(struct sc_pkcs11_session *session,
 			CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
 	sc_pkcs11_operation_t *op;
-	int rv;
+	CK_RV rv;
 
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_DIGEST, &op);
 	if (rv != CKR_OK)
@@ -793,7 +793,7 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 #endif
 	}
 	if (pInfo->flags & CKF_UNWRAP) {
-		/* ... */
+		/* TODO */
 	}
 	if (pInfo->flags & CKF_DECRYPT) {
 		mt->decrypt_init = sc_pkcs11_decrypt_init;

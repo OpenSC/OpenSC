@@ -163,7 +163,7 @@ static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
 	rc = sc_pkcs15_bind(p11card->card, &fw_data->p15_card);
 	sc_debug(context, "Binding to PKCS#15, rc=%d\n", rc);
 	if (rc < 0)
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 	return register_mechanisms(p11card);
 }
 
@@ -187,7 +187,7 @@ static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 
 	rc = sc_pkcs15_unbind(fw_data->p15_card);
 	free(fw_data);
-	return sc_to_cryptoki_error(rc, p11card->reader);
+	return sc_to_cryptoki_error(rc);
 }
 
 static void pkcs15_init_token_info(struct sc_pkcs15_card *card, CK_TOKEN_INFO_PTR pToken)
@@ -634,19 +634,6 @@ check_cert_data_read(struct pkcs15_fw_data *fw_data,
 	return 0;
 }
 
-static int
-pool_is_present(struct sc_pkcs11_pool *pool, struct pkcs15_any_object *obj)
-{
-	struct sc_pkcs11_pool_item *item;
-
-	for (item = pool->head; item != NULL; item = item->next) {
-		if (obj == (struct pkcs15_any_object *) item->item)
-			return 1;
-	}
-
-	return 0;
-}
-
 static void
 pkcs15_add_object(struct sc_pkcs11_slot *slot,
 		  struct pkcs15_any_object *obj,
@@ -659,10 +646,13 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 	 || (obj->base.flags & (SC_PKCS11_OBJECT_HIDDEN | SC_PKCS11_OBJECT_RECURS)))
 		return;
 
-	if (pool_is_present(&slot->object_pool, obj))
+        
+	if (list_contains(&slot->objects, obj))
 		return;
 
-	pool_insert(&slot->object_pool, obj, pHandle);
+        list_append(&slot->objects, obj); // FIXME: pHandle too!
+        sc_debug(context, "Setting object handle of 0x%lx to 0x%lx", obj->base.handle, (CK_OBJECT_HANDLE)obj);
+        obj->base.handle = (CK_OBJECT_HANDLE)obj; // cast pointer to long
 	obj->base.flags |= SC_PKCS11_OBJECT_SEEN;
 	obj->refcount++;
 
@@ -713,7 +703,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 	slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
 	if (auth != NULL)
 		slot->token_info.flags |= CKF_USER_PIN_INITIALIZED;
-	if (card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
+	if (card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		slot->token_info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 	}
 	if (card->card->caps & SC_CARD_CAP_RNG)
@@ -731,6 +721,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 			snprintf(tmp, sizeof(tmp), "%s", card->label);
 		}
 		slot->token_info.flags |= CKF_LOGIN_REQUIRED;
+                /* FIXME: update this information during runtime */
 		if (pin_info->tries_left >= 0) {
 		        if (pin_info->tries_left == 1)
         		        slot->token_info.flags |= CKF_USER_PIN_FINAL_TRY;
@@ -754,7 +745,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 	if (card->flags & SC_PKCS15_CARD_FLAG_EMULATED)
 	        slot->token_info.flags |= CKF_WRITE_PROTECTED;
 
-	sc_debug(context, "Initialized token '%s'\n", tmp);
+	sc_debug(context, "Initialized token '%s' in slot 0x%lx", tmp, slot->id);
 }
 
 static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
@@ -784,7 +775,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct sc_pkcs15_object *auths[MAX_OBJECTS];
 	struct sc_pkcs11_slot *slot = NULL;
-	int i, rv, reader = p11card->reader;
+	int i, rv;
 	int auth_count;
 	int found_auth_count = 0;
 	unsigned int j;
@@ -794,7 +785,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 					auths,
 					SC_PKCS15_MAX_PINS);
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, reader);
+		return sc_to_cryptoki_error(rv);
 	sc_debug(context, "Found %d authentication objects\n", rv);
 	auth_count = rv;
 
@@ -803,42 +794,42 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 				"private key",
 				__pkcs15_create_prkey_object);
  	if (rv < 0)
- 		return sc_to_cryptoki_error(rv, reader);
+ 		return sc_to_cryptoki_error(rv);
 
  	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_PUBKEY_RSA,
 				"public key",
 				__pkcs15_create_pubkey_object);
  	if (rv < 0)
- 		return sc_to_cryptoki_error(rv, reader);
+ 		return sc_to_cryptoki_error(rv);
 
 	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_PRKEY_GOSTR3410,
 				"private key",
 				__pkcs15_create_prkey_object);
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, reader);
+		return sc_to_cryptoki_error(rv);
 
 	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_PUBKEY_GOSTR3410,
 				"public key",
 				__pkcs15_create_pubkey_object);
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, reader);
+		return sc_to_cryptoki_error(rv);
 
 	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_CERT_X509,
 				"certificate",
 				__pkcs15_create_cert_object);
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, reader);
+		return sc_to_cryptoki_error(rv);
 
 	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_DATA_OBJECT,
 				"data object",
 				__pkcs15_create_data_object);
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, reader);
+		return sc_to_cryptoki_error(rv);
 
 	/* Match up related keys and certificates */
 	pkcs15_bind_related_objects(fw_data);
@@ -921,7 +912,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		}
 	}
 
-	/* Create read/write slots */
+	/* FIXME Create read/write slots 
 	while (slot_allocate(&slot, p11card) == CKR_OK) {
 		if (!sc_pkcs11_conf.hide_empty_tokens && !(fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED)) {
 			slot->slot_info.flags |= CKF_TOKEN_PRESENT;
@@ -930,7 +921,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 			slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
 		}
 	}
-
+	*/
 	sc_debug(context, "All tokens created\n");
 	return CKR_OK;
 }
@@ -980,10 +971,10 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 			}
 
 			sc_debug(context, "No SOPIN found; returns %d\n", rc);
-			return sc_to_cryptoki_error(rc, p11card->reader);
+			return sc_to_cryptoki_error(rc);
 		}
 		else if (rc < 0)   {
-			return sc_to_cryptoki_error(rc, p11card->reader);
+			return sc_to_cryptoki_error(rc);
 		}
 
 		break;
@@ -1003,13 +994,13 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 		}
 #endif
 		sc_debug(context, "context specific login returns %d\n", rc);
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 	default:
 		return CKR_USER_TYPE_INVALID;
 	}
 	pin = (struct sc_pkcs15_pin_info *) auth_object->data;
 
-	if (p11card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
+	if (p11card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		/* pPin should be NULL in case of a pin pad reader, but
 		 * some apps (e.g. older Netscapes) don't know about it.
 		 * So we don't require that pPin == NULL, but set it to
@@ -1038,11 +1029,11 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 	 * Otherwise an attacker could perform some crypto operation
 	 * after we've authenticated with the card */
 	if (sc_pkcs11_conf.lock_login && (rc = lock_card(fw_data)) < 0)
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 
 	rc = sc_pkcs15_verify_pin(card, pin, pPin, ulPinLen);
 	sc_debug(context, "PKCS15 verify PIN returned %d\n", rc);
-	return sc_to_cryptoki_error(rc, p11card->reader);
+	return sc_to_cryptoki_error(rc);
 }
 
 static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
@@ -1058,7 +1049,7 @@ static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
 
 	if (sc_pkcs11_conf.lock_login)
 		rc = unlock_card(fw_data);
-	return sc_to_cryptoki_error(rc, p11card->reader);
+	return sc_to_cryptoki_error(rc);
 }
 
 static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
@@ -1073,7 +1064,7 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 	if (!(pin = slot_data_pin_info(fw_token)))
 		return CKR_USER_PIN_NOT_INITIALIZED;
 
-	if (p11card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
+	if (p11card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		/* pPin should be NULL in case of a pin pad reader, but
 		 * some apps (e.g. older Netscapes) don't know about it.
 		 * So we don't require that pPin == NULL, but set it to
@@ -1110,7 +1101,7 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 	}
 
 	sc_debug(context, "PIN change returns %d\n", rc);
-	return sc_to_cryptoki_error(rc, p11card->reader);
+	return sc_to_cryptoki_error(rc);
 }
 
 #ifdef USE_PKCS15_INIT
@@ -1139,21 +1130,21 @@ static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 			 * of ISO 'RESET RETRY COUNTER' command. */
 			rc = sc_pkcs15_unblock_pin(fw_data->p15_card, pin_info, NULL, 0, pPin, ulPinLen);
 #else
-			return sc_to_cryptoki_error(SC_ERROR_NOT_SUPPORTED, p11card->reader); 
+			return sc_to_cryptoki_error(SC_ERROR_NOT_SUPPORTED); 
 #endif
 		}
 
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 	}
 
 	rc = sc_lock(p11card->card);
 	if (rc < 0)
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 
 	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0) {
 		sc_unlock(p11card->card);
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 	}
 
 	memset(&args, 0, sizeof(args));
@@ -1165,11 +1156,11 @@ static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 	sc_pkcs15init_unbind(profile);
 	sc_unlock(p11card->card);
 	if (rc < 0)
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 
 	rc = sc_pkcs15_find_pin_by_auth_id(fw_data->p15_card, &args.auth_id, &auth_obj);
 	if (rc < 0)
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 
 	/* Re-initialize the slot */
 	free(slot->fw_data);
@@ -1262,7 +1253,7 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 
 	rc = sc_pkcs15init_store_private_key(fw_data->p15_card, profile, &args, &key_obj);
 	if (rc < 0) {
-		rv = sc_to_cryptoki_error(rc, p11card->reader);
+		rv = sc_to_cryptoki_error(rc);
 		goto out;
 	}
 
@@ -1351,7 +1342,7 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 
 	rc = sc_pkcs15init_store_public_key(fw_data->p15_card, profile, &args, &key_obj);
 	if (rc < 0) {
-		rv = sc_to_cryptoki_error(rc, p11card->reader);
+		rv = sc_to_cryptoki_error(rc);
 		goto out;
 	}
 
@@ -1429,7 +1420,7 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 
 	rc = sc_pkcs15init_store_certificate(fw_data->p15_card, profile, &args, &cert_obj);
 	if (rc < 0) {
-		rv = sc_to_cryptoki_error(rc, p11card->reader);
+		rv = sc_to_cryptoki_error(rc);
 		goto out;
 	}
 	/* Create a new pkcs11 object for it */
@@ -1511,7 +1502,7 @@ static CK_RV pkcs15_create_data(struct sc_pkcs11_card *p11card,
 
 	rc = sc_pkcs15init_store_data_object(fw_data->p15_card, profile, &args, &data_obj);
 	if (rc < 0) {
-		rv = sc_to_cryptoki_error(rc, p11card->reader);
+		rv = sc_to_cryptoki_error(rc);
 		goto out;
 	}
 	/* Create a new pkcs11 object for it */
@@ -1538,13 +1529,13 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 
 	rc = sc_lock(p11card->card);
 	if (rc < 0)
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 
 	/* Bind the profile */
 	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0) {
 		sc_unlock(p11card->card);
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 	}
 
 	/* Add the PINs the user presented so far to the keycache. */
@@ -1694,12 +1685,12 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 
 	rc = sc_lock(p11card->card);
 	if (rc < 0)
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 
 	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0) {
 		sc_unlock(p11card->card);
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 	}
 
 	memset(&keygen_args, 0, sizeof(keygen_args));
@@ -1791,13 +1782,13 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 		rc = sc_pkcs15_find_pubkey_by_id(fw_data->p15_card, &id, &pub_key_obj);
 		if (rc != 0) {
 			sc_debug(context, "sc_pkcs15_find_pubkey_by_id returned %d\n", rc);
-			rv = sc_to_cryptoki_error(rc, p11card->reader);
+			rv = sc_to_cryptoki_error(rc);
 			goto kpgen_done;
 		}
 	}
 	else if (rc != SC_ERROR_NOT_SUPPORTED) {
 		sc_debug(context, "sc_pkcs15init_generate_key returned %d\n", rc);
-		rv = sc_to_cryptoki_error(rc, p11card->reader);
+		rv = sc_to_cryptoki_error(rc);
 		goto kpgen_done;
 	}
 	else {
@@ -1836,7 +1827,7 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 		}
 		if (rc < 0) {
 			sc_debug(context, "private/public keys not stored: %d\n", rc);
-			rv = sc_to_cryptoki_error(rc, p11card->reader);
+			rv = sc_to_cryptoki_error(rc);
 			goto kpgen_done;
 		}
 	}
@@ -1848,7 +1839,7 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 		rc = __pkcs15_create_pubkey_object(fw_data, pub_key_obj, &pub_any_obj);
 	if (rc != 0) {
 		sc_debug(context, "__pkcs15_create_pr/pubkey_object returned %d\n", rc);
-		rv = sc_to_cryptoki_error(rc, p11card->reader);
+		rv = sc_to_cryptoki_error(rc);
 		goto kpgen_done;
 	}
 	pkcs15_add_object(slot, priv_any_obj, phPrivKey);
@@ -1872,7 +1863,7 @@ static CK_RV pkcs15_get_random(struct sc_pkcs11_card *p11card,
         struct sc_card *card = fw_data->p15_card->card;
 
 	rc = sc_get_challenge(card, p, (size_t)len);
-	return sc_to_cryptoki_error(rc, p11card->reader);
+	return sc_to_cryptoki_error(rc);
 }
 
 struct sc_pkcs11_framework_ops framework_pkcs15 = {
@@ -1913,12 +1904,12 @@ static CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
 
 	rc = sc_lock(p11card->card);
 	if (rc < 0)
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 
 	rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, &profile);
 	if (rc < 0) {
 		sc_unlock(p11card->card);
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 	}
 
 	/* Add the PINs the user presented so far to the keycache. */
@@ -1947,7 +1938,7 @@ static CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
 		goto set_attr_done;
 	}
 
-	rv = sc_to_cryptoki_error(rc, p11card->reader);
+	rv = sc_to_cryptoki_error(rc);
 
 set_attr_done:
 	sc_pkcs15init_unbind(profile);
@@ -2340,13 +2331,13 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 
 	rv = sc_lock(ses->slot->card->card);
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+		return sc_to_cryptoki_error(rv);
 
 	if (!sc_pkcs11_conf.lock_login) {
 		rv = reselect_app_df(fw_data->p15_card);
 		if (rv < 0) {
 			sc_unlock(ses->slot->card->card);
-			return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+			return sc_to_cryptoki_error(rv);
 		}
 	}
 
@@ -2368,7 +2359,7 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 		return CKR_OK;
 	}
 
-	return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+	return sc_to_cryptoki_error(rv);
 }
 
 static CK_RV
@@ -2408,13 +2399,13 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 
 	rv = sc_lock(ses->slot->card->card);
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+		return sc_to_cryptoki_error(rv);
 
 	if (!sc_pkcs11_conf.lock_login) {
 		rv = reselect_app_df(fw_data->p15_card);
 		if (rv < 0) {
 			sc_unlock(ses->slot->card->card);
-			return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+			return sc_to_cryptoki_error(rv);
 		}
 	}
 
@@ -2427,7 +2418,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 	sc_debug(context, "Key unwrap/decryption complete. Result %d.\n", rv);
 
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, ses->slot->card->reader);
+		return sc_to_cryptoki_error(rv);
 
 	buff_too_small = (*pulDataLen < (CK_ULONG)rv);
 	*pulDataLen = rv;
@@ -2455,7 +2446,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
 			unwrapped_key, &key_len);
 
 	if (r < 0)
-		return sc_to_cryptoki_error(r, ses->slot->card->reader);
+		return sc_to_cryptoki_error(r);
 	return sc_pkcs11_create_secret_key(ses,
 			unwrapped_key, key_len,
 			pTemplate, ulAttributeCount,
@@ -2665,20 +2656,19 @@ static int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 	struct pkcs15_fw_data *fw_data =
 		(struct pkcs15_fw_data *) session->slot->card->fw_data;
 	sc_card_t *card = session->slot->card->card;
-	int reader = session->slot->card->reader;
 
 	if (!out_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	rv = sc_lock(card);
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, reader);
+		return sc_to_cryptoki_error(rv);
 		
 	rv = sc_pkcs15_read_data_object(fw_data->p15_card, dobj->info, out_data);
 
 	sc_unlock(card);
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, reader);
+		return sc_to_cryptoki_error(rv);
 
 	return rv;
 }
@@ -2775,18 +2765,17 @@ static CK_RV pkcs15_dobj_destroy(struct sc_pkcs11_session *session, void *object
 	struct sc_pkcs11_card *card = session->slot->card;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) card->fw_data;
 	struct sc_profile *profile = NULL;
-	int reader = session->slot->card->reader;
 	int rv;
 
 	rv = sc_lock(card->card);
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, card->reader);
+		return sc_to_cryptoki_error(rv);
 
 	/* Bind the profile */
 	rv = sc_pkcs15init_bind(card->card, "pkcs15", NULL, &profile);
 	if (rv < 0) {
 		sc_unlock(card->card);
-		return sc_to_cryptoki_error(rv, card->reader);
+		return sc_to_cryptoki_error(rv);
 	}
 
 	/* Add the PINs the user presented so far to the keycache */
@@ -2794,7 +2783,6 @@ static CK_RV pkcs15_dobj_destroy(struct sc_pkcs11_session *session, void *object
 
 	/* Delete object in smartcard */
 	rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
-	/* FIXME: PIN revalidation missing, following belongs libopensc */
 	if (rv >= 0) {
 		/* pool_find_and_delete is called, therefore correct refcont
 		 * Oppose to pkcs15_add_object */
@@ -2807,7 +2795,7 @@ static CK_RV pkcs15_dobj_destroy(struct sc_pkcs11_session *session, void *object
 	sc_unlock(card->card);
 
 	if (rv < 0)
-		return sc_to_cryptoki_error(rv, reader);
+		return sc_to_cryptoki_error(rv);
 
 	return CKR_OK;
 }

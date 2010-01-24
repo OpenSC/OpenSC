@@ -36,7 +36,7 @@ static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card)
 	rc = sc_pkcs15init_bind(card, "pkcs15", NULL, &profile);
 	if (rc == 0)
 		p11card->fw_data = profile;
-	return sc_to_cryptoki_error(rc, p11card->reader);
+	return sc_to_cryptoki_error(rc);
 }
 
 static CK_RV pkcs15init_unbind(struct sc_pkcs11_card *p11card)
@@ -134,7 +134,7 @@ pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
 	args.label = (const char *) pLabel;
 	rc = sc_pkcs15init_add_app(p11card->card, profile, &args);
 	if (rc < 0)
-		return sc_to_cryptoki_error(rc, p11card->reader);
+		return sc_to_cryptoki_error(rc);
 
 	/* Change the binding from the pkcs15init framework
 	 * to the pkcs15 framework on the fly.
