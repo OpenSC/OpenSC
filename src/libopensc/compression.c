@@ -33,9 +33,9 @@ static int zerr_to_opensc(int err) {
 		return SC_SUCCESS;
 	case Z_UNKNOWN:
 		return SC_ERROR_UNKNOWN;
-	case Z_BUF_ERROR:
+	case Z_BUF_ERROR: /* XXX: something else than OOM ? */
 	case Z_MEM_ERROR:
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 	case Z_VERSION_ERROR:
 	case Z_DATA_ERROR:
 	case Z_STREAM_ERROR:

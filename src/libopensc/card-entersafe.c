@@ -251,7 +251,7 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 tmp_rounded = malloc(tmpsize_rounded);
 	 if (tmp_rounded == NULL)
 	 {
-		  r =  SC_ERROR_MEMORY_FAILURE;
+		  r =  SC_ERROR_OUT_OF_MEMORY;
 		  goto out;
 	 }
 	 

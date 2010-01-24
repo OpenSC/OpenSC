@@ -200,7 +200,7 @@ int sc_apdu_get_octets(sc_context_t *ctx, const sc_apdu_t *apdu, u8 **buf,
 		return SC_ERROR_INTERNAL;
 	nbuf = malloc(nlen);
 	if (nbuf == NULL)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 	/* encode the APDU in the buffer */
 	if (sc_apdu2bytes(ctx, apdu, proto, nbuf, nlen) != SC_SUCCESS)
 		return SC_ERROR_INTERNAL;

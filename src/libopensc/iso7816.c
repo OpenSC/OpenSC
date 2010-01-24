@@ -806,7 +806,7 @@ static int iso7816_decipher(sc_card_t *card,
 
 	sbuf = (u8 *)malloc(crgram_len + 1);
 	if (sbuf == NULL)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x80  Resp: Plain value

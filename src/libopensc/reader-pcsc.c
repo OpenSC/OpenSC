@@ -224,7 +224,7 @@ static int pcsc_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 	rsize = rbuflen = apdu->resplen <= 256 ? 258 : apdu->resplen + 2;
 	rbuf     = malloc(rbuflen);
 	if (rbuf == NULL) {
-		r = SC_ERROR_MEMORY_FAILURE;
+		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
 	/* encode and log the APDU */

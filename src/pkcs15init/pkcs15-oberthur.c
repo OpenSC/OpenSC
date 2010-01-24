@@ -98,7 +98,7 @@ cosm_write_tokeninfo (struct sc_card *card, struct sc_profile *profile,
 	
 	buffer = calloc(1, file->size);
 	if (!buffer)
-		SC_TEST_RET(card->ctx, SC_ERROR_MEMORY_FAILURE, "Allocation error in cosm_write_tokeninfo()");
+		SC_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "Allocation error in cosm_write_tokeninfo()");
 
 	if (label)   
 		strncpy(buffer, label, file->size - 4);
@@ -385,7 +385,7 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_card *card,
 		
 		puk_buff = (unsigned char *) malloc(0x100);
 		if (!puk_buff)
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_MEMORY_FAILURE);
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
 
 		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &profile_puk);
 		if (profile_puk.max_length > 0x100) {
