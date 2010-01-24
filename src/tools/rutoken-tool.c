@@ -389,9 +389,9 @@ static int generate_gostkey(sc_card_t *card, u8 keyid, u8 keyoptions)
 
 int main(int argc, char* argv[])
 {
-	int             opt_reader = -1;
 	int             opt_wait = 0;
 	const char     *opt_pin = NULL;
+	const char     *opt_reader = NULL;
 	int             opt_key = 0;
 	int             opt_is_iv = 0;
 	u8              opt_keytype = SC_RUTOKEN_OPTIONS_GOST_CRYPT_PZ;
@@ -416,7 +416,7 @@ int main(int argc, char* argv[])
 		case '?':
 			util_print_usage_and_die(app_name, options, option_help);
 		case 'r':
-			opt_reader = atoi(optarg);
+			opt_reader = optarg;
 			break;
 		case 'w':
 			opt_wait = 1;
@@ -488,7 +488,7 @@ int main(int argc, char* argv[])
 	}
 		ctx->debug = opt_debug;
 
-	if (util_connect_card(ctx, &card, opt_reader, 0, opt_wait, opt_debug) != 0)
+	if (util_connect_card(ctx, &card, opt_reader, opt_wait, opt_debug) != 0)
 		err = -1;
 		
 	if (err == 0  &&  opt_pin) {
@@ -543,7 +543,7 @@ int main(int argc, char* argv[])
 	if (card) {
 		/*  sc_lock  and  sc_connect_card  in  util_connect_card  */
 		sc_unlock(card);
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 	}
 	if (ctx)
 		sc_release_context(ctx);

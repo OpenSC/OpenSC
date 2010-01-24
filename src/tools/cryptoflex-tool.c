@@ -1180,14 +1180,14 @@ int main(int argc, char * const argv[])
 		err = 1;
 		goto end;
 	}
-	if (sc_detect_card_presence(screader, 0) <= 0) {
+	if (sc_detect_card_presence(screader) <= 0) {
 		fprintf(stderr, "Card not present.\n");
 		err = 3;
 		goto end;
 	}
 	if (verbose)
 		fprintf(stderr, "Connecting to card in reader %s...\n", screader->name);
-	r = sc_connect_card(screader, 0, &card);
+	r = sc_connect_card(screader, &card);
 	if (r) {
 		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
 		err = 1;
@@ -1237,7 +1237,7 @@ int main(int argc, char * const argv[])
 end:
 	if (card) {
 		sc_unlock(card);
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 	}
 	if (ctx)
 		sc_release_context(ctx);

@@ -559,19 +559,13 @@ int main(
 		exit(1);
 	}
 
-	printf("%d Reader detected\n", sc_ctx_get_reader_count(ctx));
-	for(i=0; i < sc_ctx_get_reader_count(ctx); ++i){
-		sc_reader_t *myreader = sc_ctx_get_reader(ctx, i);
-		printf("%lu: %s, Driver: %s, %d Slot(s)\n",
-			(unsigned long) i, myreader->name,
-			myreader->driver->name, myreader->slot_count);
-	}
+	printf("%d Readers detected\n", sc_ctx_get_reader_count(ctx));
 	if(reader < 0 || reader >= (int)sc_ctx_get_reader_count(ctx)){
 		fprintf(stderr,"Cannot open reader %d\n", reader);
 		exit(1);
 	}
 
-	if((r = sc_connect_card(sc_ctx_get_reader(ctx, 0), 0, &card))<0){
+	if((r = sc_connect_card(sc_ctx_get_reader(ctx, 0), &card))<0){
 		fprintf(stderr,"Connect-Card failed: %s\n", sc_strerror(r));
 		exit(1);
 	}
@@ -621,7 +615,7 @@ int main(
 	if(do_unblock+do_change+do_nullpin+do_readcert==0) show_certs(card);
 
 	sc_unlock(card);
-	sc_disconnect_card(card,0);
+	sc_disconnect_card(card);
 	sc_release_context(ctx);
 
 	exit(0);

@@ -102,7 +102,7 @@ static int verify_pin(sc_card_t *card, int pin_reference, char *pin_value)
 
 	data.flags = SC_PIN_CMD_NEED_PADDING;
 
-	if (card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) 
+	if (card->reader->capabilities & SC_READER_CAP_PIN_PAD) 
 	{
 		printf("Please enter PIN on the reader's pin pad.\n");
 		data.pin1.prompt = "Please enter PIN";
@@ -155,7 +155,7 @@ static int change_pin(sc_card_t *card,
 
 	data.flags = SC_PIN_CMD_NEED_PADDING;
 
-	if (card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) 
+	if (card->reader->capabilities & SC_READER_CAP_PIN_PAD) 
 	{
 		printf("Please enter PIN on the reader's pin pad.\n");
 		data.pin1.prompt = "Please enter PIN";
@@ -213,7 +213,7 @@ static int debloque_pin(sc_card_t *card,
 
 	data.flags = SC_PIN_CMD_NEED_PADDING;
 
-	if (card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) 
+	if (card->reader->capabilities & SC_READER_CAP_PIN_PAD) 
 	{
 		printf("Please enter PIN on the reader's pin pad.\n");
 		data.pin1.prompt = "Please enter PIN";
@@ -497,9 +497,9 @@ int main(int argc, char *argv[])
 		for(i = 0; i<sc_ctx_get_reader_count(ctx); i++)
 		{
 			lecteur = sc_ctx_get_reader(ctx, i);
-			if(sc_detect_card_presence(lecteur, 0))
+			if(sc_detect_card_presence(lecteur))
 			{
-				r = sc_connect_card(lecteur, 0, &card);
+				r = sc_connect_card(lecteur, &card);
 				if(r>=0)
 				{
 					printf("card->name = %s\n", card->name);
@@ -508,7 +508,7 @@ int main(int argc, char *argv[])
 						card_presente = 1;
 						break;
 					}
-					sc_disconnect_card(card,0);
+					sc_disconnect_card(card);
 					card = NULL;
 				}
 			}
@@ -519,14 +519,14 @@ int main(int argc, char *argv[])
 		if(no_lecteur < sc_ctx_get_reader_count(ctx))
 		{
 			lecteur = sc_ctx_get_reader(ctx, no_lecteur);
-			r = sc_connect_card(lecteur, 0, &card);
+			r = sc_connect_card(lecteur, &card);
 			if(r>=0)
 			{
 				card_presente = 1;
 			}
 			else
 			{
-				sc_disconnect_card(card,0);
+				sc_disconnect_card(card);
 			}
 		}
 	}
@@ -943,7 +943,7 @@ out:
 	if (card) 
 	{
 		sc_unlock(card);
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 	}
 
 	if (ctx)

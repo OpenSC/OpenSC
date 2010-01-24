@@ -38,8 +38,9 @@
 
 static const char *app_name = "opensc-explorer";
 
-static int opt_reader = -1, opt_wait = 0, verbose = 0;
+static int opt_wait = 0, verbose = 0;
 static const char *opt_driver = NULL;
+static const char *opt_reader = NULL;
 
 static sc_file_t *current_file = NULL;
 static sc_path_t current_path;
@@ -74,7 +75,7 @@ static void die(int ret)
 		sc_file_free(current_file);
 	if (card) {
 		sc_unlock(card);
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 	}
 	if (ctx)
 		sc_release_context(ctx);
@@ -635,7 +636,7 @@ static int do_verify(int argc, char **argv)
 	}
 
 	if (argc < 2) {
-		if (!(card->reader->slot[0].capabilities & SC_SLOT_CAP_PIN_PAD)) {
+		if (!(card->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
 			printf("Card reader or driver doesn't support PIN PAD\n");
 			return -1;
 		}
@@ -1567,7 +1568,7 @@ int main(int argc, char * const argv[])
 			util_print_usage_and_die(app_name, options, option_help);
 		switch (c) {
 		case 'r':
-			opt_reader = atoi(optarg);
+			opt_reader = optarg;
 			break;
 		case 'c':
 			opt_driver = optarg;
@@ -1602,7 +1603,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, 0);
+	err = util_connect_card(ctx, &card, opt_reader, opt_wait, 0);
 	if (err)
 		goto end;
 

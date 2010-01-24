@@ -40,7 +40,8 @@
 
 static const char *app_name = "pkcs15-crypt";
 
-static int opt_reader = -1, verbose = 0, opt_wait = 0, opt_raw = 0;
+static int verbose = 0, opt_wait = 0, opt_raw = 0;
+static char * opt_reader;
 static char * opt_pincode = NULL, * opt_key_id = NULL;
 static char * opt_input = NULL, * opt_output = NULL;
 static int opt_crypt_flags = 0;
@@ -466,7 +467,7 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 
 		pincode = get_pin(pin);
 		if (((pincode == NULL || *pincode == '\0')) &&
-		    !(p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD))
+		    !(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD))
 				return 5;
 
 		r = sc_pkcs15_verify_pin(p15card, (struct sc_pkcs15_pin_info *) pin->data,
@@ -513,7 +514,7 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case 'r':
-			opt_reader = atoi(optarg);
+			opt_reader = optarg;
 			break;
 		case 'i':
 			opt_input = optarg;
@@ -571,7 +572,7 @@ int main(int argc, char * const argv[])
 	if (verbose > 1)
 		ctx->debug = verbose-1;
 
-	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
+	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (err)
 		goto end;
 
@@ -607,7 +608,7 @@ end:
 #if 1
 		sc_unlock(card);
 #endif
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 	}
 	if (ctx)
 		sc_release_context(ctx);

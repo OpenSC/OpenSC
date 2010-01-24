@@ -42,9 +42,10 @@ typedef unsigned __int32 uint32_t;
 
 static const char *app_name = "pkcs15-tool";
 
-static int opt_reader = -1, opt_wait = 0;
+static int opt_wait = 0;
 static int opt_no_cache = 0;
 static char * opt_auth_id;
+static char * opt_reader = NULL;
 static char * opt_cert = NULL;
 static char * opt_data = NULL;
 static char * opt_pubkey = NULL;
@@ -987,7 +988,7 @@ static int unblock_pin(void)
 	u8 *pin, *puk;
 	int r, pinpad_present = 0;
 	
-	pinpad_present = p15card->card->reader->slot[0].capabilities & SC_SLOT_CAP_PIN_PAD;
+	pinpad_present = p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD;
 
 	if (!(pin_obj = get_pin_info()))
 		return 2;
@@ -1050,7 +1051,7 @@ static int change_pin(void)
 	u8 *pincode, *newpin;
 	int r, pinpad_present = 0;
 
-	pinpad_present = p15card->card->reader->slot[0].capabilities & SC_SLOT_CAP_PIN_PAD;
+	pinpad_present = p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD;
 
 	if (!(pin_obj = get_pin_info()))
 		return 2;
@@ -1516,7 +1517,7 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case OPT_READER:
-			opt_reader = atoi(optarg);
+			opt_reader = optarg;
 			break;
 		case OPT_PIN:
 			opt_pin = (u8 *) optarg;
@@ -1559,7 +1560,7 @@ int main(int argc, char * const argv[])
 	if (verbose > 1 )
 		ctx->debug = verbose-1;
 
-	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
+	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (err)
 		goto end;
 
@@ -1659,7 +1660,7 @@ end:
 		sc_pkcs15_unbind(p15card);
 	if (card) {
 		sc_unlock(card);
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 	}
 	if (ctx)
 		sc_release_context(ctx);

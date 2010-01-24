@@ -35,17 +35,19 @@
 #include "../libopensc/cards.h"
 #include "../libopensc/esteid.h"
 
-static int reader_num = 0;
+static char *opt_reader = NULL;
 static int stats = 0;
+static int opt_wait = 0;
 static char *exec_program = NULL;
 static int exit_status = EXIT_FAILURE;
 
 static const struct option options[] = {
 	{"reader", required_argument, NULL, 'r'},
-	{"print", no_argument, NULL, 'n'},
+	{"print", no_argument, NULL, 'p'},
 	{"exec", required_argument, NULL, 'x'},
 	{"stats", no_argument, NULL, 't'},
 	{"help", no_argument, NULL, 'h'},
+	{"wait", no_argument, NULL, 'w'},
 	{"version", no_argument, NULL, 'V'},
 	{NULL, 0, NULL, 0}
 };
@@ -93,7 +95,8 @@ static void show_help(void)
 		"-h --help      -  show this text and exit\n"
 		"-v --version   -  show version and exit\n"
 		"-r --reader    -  the reader to use\n"
-		"-n --print     -  print the datafile\n"
+		"-w --wait      -  wait for a card to be inserted\n"
+		"-p --print     -  print the datafile\n"
 		"-t --stats     -  show usage counts of keys\n"
 		"-x --exec      -  execute a program with data in env vars.\n");
 }
@@ -102,11 +105,11 @@ static void decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"ptr:x:hV", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"pwtr:x:hV", options, (int *) 0)) != EOF) {
 
 		switch (c) {
 		case 'r':
-			reader_num = atoi(optarg);
+			opt_reader = optarg;
 			break;
 		case 't':
 			stats = !stats;
@@ -120,7 +123,10 @@ static void decode_options(int argc, char **argv)
 			show_help();
 			exit(EXIT_SUCCESS);
 			break;
-		case 'n':
+		case 'p':
+			break;
+		case 'w':
+			opt_wait = 1;
 			break;
 		case 'V':
 			show_version();
@@ -375,7 +381,6 @@ int main(int argc, char **argv)
 {
 	sc_context_t *ctx = NULL;
 	sc_context_param_t ctx_param;
-	sc_reader_t *reader = NULL;
 	sc_card_t *card = NULL;
 	int r;
 
@@ -393,13 +398,7 @@ int main(int argc, char **argv)
 		sc_strerror(r));
 		return 1;
 	}
-	if (reader_num > (int)sc_ctx_get_reader_count(ctx)) {
-		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", sc_ctx_get_reader_count(ctx));
-		return 1;
-	}
-	reader = sc_ctx_get_reader(ctx, (unsigned int)reader_num);
-
-	r = sc_connect_card(reader, 0, &card);
+	r = util_connect_card(ctx, &card, opt_reader, opt_wait, 0);
 	if (r) {
 		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
 		return 1;
@@ -424,7 +423,7 @@ int main(int argc, char **argv)
 	if (exec_program) {
 		char *const largv[] = {exec_program, NULL};
 		sc_unlock(card);
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 		sc_release_context(ctx);
 		execv(exec_program, largv);
 		/* we should not get here */
@@ -434,7 +433,7 @@ int main(int argc, char **argv)
 	
 out:
 	sc_unlock(card);
-	sc_disconnect_card(card, 0);
+	sc_disconnect_card(card);
 	sc_release_context(ctx);
 	exit(exit_status);
 }

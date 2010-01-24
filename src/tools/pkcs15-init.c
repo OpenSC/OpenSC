@@ -79,7 +79,7 @@ typedef int	(*pkcs15_encoder)(sc_context_t *,
 			struct sc_pkcs15_card *, u8 **, size_t *);
 
 /* Local functions */
-static int	open_reader_and_card(int);
+static int	open_reader_and_card(char *);
 static int	do_assert_pristine(sc_card_t *);
 static int	do_erase(sc_card_t *, struct sc_profile *);
 static int	do_delete_objects(struct sc_profile *, unsigned int myopt_delete_flags);
@@ -310,9 +310,9 @@ struct secret {
 static sc_context_t *	ctx = NULL;
 static sc_card_t *		card = NULL;
 static struct sc_pkcs15_card *	p15card = NULL;
+static char *			opt_reader = NULL;
 static unsigned int		opt_actions;
-static int			opt_reader = -1,
-				opt_extractable = 0,
+static int			opt_extractable = 0,
 				opt_unprotected = 0,
 				opt_authority = 0,
 				opt_softkeygen = 0,
@@ -489,14 +489,14 @@ out:
 	}
 	if (card) {
 		sc_unlock(card);
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 	}
 	sc_release_context(ctx);
 	return r < 0? 1 : 0;
 }
 
 static int
-open_reader_and_card(int reader)
+open_reader_and_card(char *reader)
 {
 	int	r;
 	sc_context_param_t ctx_param;
@@ -515,7 +515,7 @@ open_reader_and_card(int reader)
 		ctx->debug_file = stderr;
 	}
 
-	if (util_connect_card(ctx, &card, reader, 0, opt_wait, verbose))
+	if (util_connect_card(ctx, &card, reader, opt_wait, verbose))
 		return 0;
 
 	return 1;
@@ -2524,7 +2524,7 @@ handle_option(const struct option *opt)
 		opt_card_profile = optarg;
 		break;
 	case 'r':
-		opt_reader = atoi(optarg);
+		opt_reader = optarg;
 		break;
 	case 'u':
 		parse_x509_usage(optarg, &opt_x509_usage);

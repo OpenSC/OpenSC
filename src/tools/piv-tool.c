@@ -43,9 +43,9 @@
 
 static const char *app_name = "piv-tool";
 
-static int	opt_reader = -1,
-		opt_wait = 0;
+static int	opt_wait = 0;
 static char **	opt_apdus;
+static char *	opt_reader;
 static int	opt_apdu_count = 0;
 static int	verbose = 0;
 
@@ -426,7 +426,7 @@ int main(int argc, char * const argv[])
 			out_file = optarg;
 			break;
 		case 'r':
-			opt_reader = atoi(optarg);
+			opt_reader = optarg;
 			break;
 		case 'v':
 			verbose++;
@@ -475,7 +475,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
+	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (err)
 		goto end;
 
@@ -517,7 +517,7 @@ end:
 		BIO_free(bp);
 	if (card) {
 		sc_unlock(card);
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 	}
 	if (ctx)
 		sc_release_context(ctx);

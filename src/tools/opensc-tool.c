@@ -36,9 +36,9 @@
 
 static const char *app_name = "opensc-tool";
 
-static int	opt_reader = -1,
-		opt_wait = 0;
+static int	opt_wait = 0;
 static char **	opt_apdus;
+static char	*opt_reader;
 static int	opt_apdu_count = 0;
 static int	verbose = 0;
 
@@ -262,7 +262,7 @@ static int list_readers(void)
 	for (i = 0; i < rcount; i++) {
 		sc_reader_t *screader = sc_ctx_get_reader(ctx, i);
 		printf("%-7d%-11s%-10s%s\n", i, screader->driver->short_name,
-		       screader->slot[0].capabilities & SC_SLOT_CAP_PIN_PAD ? "PINpad":"",
+		       screader->capabilities & SC_READER_CAP_PIN_PAD ? "PINpad":"",
 		       screader->name);
 	}
 	return 0;
@@ -616,7 +616,7 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case 'r':
-			opt_reader = atoi(optarg);
+			opt_reader = optarg;
 			break;
 		case 'v':
 			verbose++;
@@ -689,7 +689,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
+	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (err)
 		goto end;
 
@@ -730,7 +730,7 @@ int main(int argc, char * const argv[])
 end:
 	if (card) {
 		sc_unlock(card);
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 	}
 	if (ctx)
 		sc_release_context(ctx);

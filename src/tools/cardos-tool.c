@@ -44,8 +44,9 @@
 
 static const char *app_name = "cardos-tool";
 
-static int opt_reader = -1, opt_debug = 0, opt_wait = 0;
+static int opt_debug = 0, opt_wait = 0;
 static int verbose = 0;
+static char *opt_reader = NULL;
 
 static const struct option options[] = {
 	{"info",	0, NULL, 'i'},
@@ -379,7 +380,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	unsigned char *mac_input, *enc_input;
 	DES_key_schedule ks_a, ks_b;
 	DES_cblock des_in,des_out;
-	int i,j;
+	unsigned int i,j;
 
 	if (keylen != 16) {
 		printf("key has wrong size, need 16 bytes, got %zd. aborting.\n",
@@ -1098,7 +1099,7 @@ int main(int argc, char *const argv[])
 			action_count++;
 			break;
 		case 'r':
-			opt_reader = atoi(optarg);
+			opt_reader = optarg;
 			break;
 		case 'v':
 			verbose++;
@@ -1137,7 +1138,7 @@ int main(int argc, char *const argv[])
 		}
 	}
 
-	err = util_connect_card(ctx, &card, opt_reader, 0, opt_wait, verbose);
+	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (err)
 		goto end;
 
@@ -1162,7 +1163,7 @@ int main(int argc, char *const argv[])
       end:
 	if (card) {
 		sc_unlock(card);
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 	}
 	if (ctx)
 		sc_release_context(ctx);

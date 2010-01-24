@@ -8,73 +8,57 @@
 #include "util.h"
 
 int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
-		 int reader_id, int slot_id, int wait, int verbose)
+		 char *reader_id, int wait, int verbose)
 {
-	sc_reader_t *reader;
+	sc_reader_t *reader, *found;
 	sc_card_t *card;
-	int r;
+	int r, tmp_reader_num;
 
 	if (wait) {
-		sc_reader_t *readers[16];
-		int slots[16];
-		unsigned int i;
-		int j, k, found;
 		unsigned int event;
 
-		for (i = k = 0; i < sc_ctx_get_reader_count(ctx); i++) {
-			if (reader_id >= 0 && (unsigned int)reader_id != i)
-				continue;
-			reader = sc_ctx_get_reader(ctx, i);
-			for (j = 0; j < reader->slot_count; j++, k++) {
-				readers[k] = reader;
-				slots[k] = j;
-			}
-		}
-
 		printf("Waiting for card to be inserted...\n");
-		r = sc_wait_for_event(readers, slots, k,
-				SC_EVENT_CARD_INSERTED,
-				&found, &event, -1);
+		r = sc_wait_for_event(ctx, SC_EVENT_CARD_INSERTED, &found, &event, -1);
 		if (r < 0) {
-			fprintf(stderr,
-				"Error while waiting for card: %s\n",
-				sc_strerror(r));
+			fprintf(stderr, "Error while waiting for card: %s\n", sc_strerror(r));
 			return 3;
 		}
 
-		reader = readers[found];
-		slot_id = slots[found];
+		reader = found;
 	} else {
 		if (sc_ctx_get_reader_count(ctx) == 0) {
 			fprintf(stderr,
 				"No smart card readers found.\n");
 			return 1;
 		}
-		if (reader_id < 0) {
+		if (!reader_id) {
 			unsigned int i;
 			/* Automatically try to skip to a reader with a card if reader not specified */
 			for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
 				reader = sc_ctx_get_reader(ctx, i);
-				if (sc_detect_card_presence(reader, 0) & SC_SLOT_CARD_PRESENT) {
-					reader_id = i;
+				if (sc_detect_card_presence(reader) & SC_READER_CARD_PRESENT) {
 					fprintf(stderr, "Using reader with a card: %s\n", reader->name);
 					goto autofound;
 				}
 			}
-			reader_id = 0;
+			/* If no reader had a card, default to the first reader */
+			reader = sc_ctx_get_reader(ctx, 0);
+		} else {
+			/* Get the reader by name if possible */
+			if (!sscanf(reader_id, "%d", &tmp_reader_num)) {
+				reader = sc_ctx_get_reader_by_name(ctx, reader_id);
+			} else {
+				reader = sc_ctx_get_reader(ctx, tmp_reader_num);
+			}
 		}
 autofound:
-		if ((unsigned int)reader_id >= sc_ctx_get_reader_count(ctx)) {
+		if (!reader) {
 			fprintf(stderr,
-				"Illegal reader number. "
-				"Only %d reader(s) configured.\n",
-				sc_ctx_get_reader_count(ctx));
+				"Reader \"%s\" not found (%d reader(s) detected)\n", reader_id, sc_ctx_get_reader_count(ctx));
 			return 1;
 		}
 
-		reader = sc_ctx_get_reader(ctx, reader_id);
-		slot_id = 0;
-		if (sc_detect_card_presence(reader, 0) <= 0) {
+		if (sc_detect_card_presence(reader) <= 0) {
 			fprintf(stderr, "Card not present.\n");
 			return 3;
 		}
@@ -82,7 +66,7 @@ autofound:
 
 	if (verbose)
 		printf("Connecting to card in reader %s...\n", reader->name);
-	if ((r = sc_connect_card(reader, slot_id, &card)) < 0) {
+	if ((r = sc_connect_card(reader, &card)) < 0) {
 		fprintf(stderr,
 			"Failed to connect to card: %s\n",
 			sc_strerror(r));
@@ -96,7 +80,7 @@ autofound:
 		fprintf(stderr,
 			"Failed to lock card: %s\n",
 			sc_strerror(r));
-		sc_disconnect_card(card, 0);
+		sc_disconnect_card(card);
 		return 1;
 	}
 
