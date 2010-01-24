@@ -102,7 +102,7 @@ static int pcsc_ret_to_error(LONG rv)
 	case SCARD_W_UNPOWERED_CARD:
 		return SC_ERROR_CARD_UNRESPONSIVE;
 	case SCARD_E_SHARING_VIOLATION:
-		return SC_ERROR_READER;
+		return SC_ERROR_READER_LOCKED;
 #ifdef SCARD_E_NO_READERS_AVAILABLE /* Older pcsc-lite does not have it */
 	case SCARD_E_NO_READERS_AVAILABLE:
 		return SC_ERROR_NO_READERS_FOUND;
