@@ -72,8 +72,8 @@ static struct sc_card_driver setcos_drv = {
 
 static int match_hist_bytes(sc_card_t *card, const char *str, size_t len)
 {
-	const char *src = (const char *) card->slot->atr_info.hist_bytes;
-	size_t srclen = card->slot->atr_info.hist_bytes_len;
+	const char *src = (const char *) card->reader->atr_info.hist_bytes;
+	size_t srclen = card->reader->atr_info.hist_bytes_len;
 	size_t offset = 0;
 
 	if (len == 0)

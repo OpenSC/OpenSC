@@ -625,9 +625,7 @@ static int gemsafe_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 		if (card->reader
 		 && card->reader->ops
 		 && card->reader->ops->perform_verify) {
-			r = card->reader->ops->perform_verify(card->reader,
-					card->slot,
-					data);
+			r = card->reader->ops->perform_verify(card->reader, data);
 			/* sw1/sw2 filled in by reader driver */
 		} else {
 			sc_debug(card->ctx,

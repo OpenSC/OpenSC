@@ -26,22 +26,14 @@ static int openct_reader_init(sc_context_t *ctx, void **priv_data);
 static int openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info);
 static int openct_reader_finish(sc_context_t *ctx, void *priv_data);
 static int openct_reader_release(sc_reader_t *reader);
-static int openct_reader_detect_card_presence(sc_reader_t *reader,
-			sc_slot_info_t *slot);
-static int openct_reader_connect(sc_reader_t *reader,
-			sc_slot_info_t *slot);
-static int openct_reader_disconnect(sc_reader_t *reader,
-			sc_slot_info_t *slot);
-static int openct_reader_transmit(sc_reader_t *reader,
-			sc_slot_info_t *slot, sc_apdu_t *apdu);
-static int openct_reader_perform_verify(sc_reader_t *reader,
-			sc_slot_info_t *slot,
-			struct sc_pin_cmd_data *info);
-static int openct_reader_lock(sc_reader_t *reader,
-			sc_slot_info_t *slot);
-static int openct_reader_unlock(sc_reader_t *reader,
-			sc_slot_info_t *slot);
-static int		openct_error(sc_reader_t *, int);
+static int openct_reader_detect_card_presence(sc_reader_t *reader);
+static int openct_reader_connect(sc_reader_t *reader);
+static int openct_reader_disconnect(sc_reader_t *reader);
+static int openct_reader_transmit(sc_reader_t *reader, sc_apdu_t *apdu);
+static int openct_reader_perform_verify(sc_reader_t *reader, struct sc_pin_cmd_data *info);
+static int openct_reader_lock(sc_reader_t *reader);
+static int openct_reader_unlock(sc_reader_t *reader);
+static int openct_error(sc_reader_t *, int);
 
 static struct sc_reader_operations openct_ops;
 
@@ -57,11 +49,9 @@ struct driver_data {
 	ct_handle *	h;
 	unsigned int	num;
 	ct_info_t	info;
-};
-
-struct slot_data {
 	ct_lock_handle	excl_lock;
 	ct_lock_handle	shared_lock;
+	unsigned int 	slot;
 };
 
 /*
@@ -78,7 +68,6 @@ openct_reader_init(sc_context_t *ctx, void **priv_data)
 
 	SC_FUNC_CALLED(ctx, 1);
 
-
 	max_virtual = 2;
 	conf_block = sc_get_conf_block(ctx, "reader_driver", "openct", 1);
 	if (conf_block) {
@@ -87,7 +76,7 @@ openct_reader_init(sc_context_t *ctx, void **priv_data)
 
 	for (i = 0; i < OPENCT_MAX_READERS; i++) {
 		ct_info_t	info;
-
+		/* XXX: As long as OpenCT has slots, multislot readers should create several instances here. */
 		if (ct_reader_info(i, &info) >= 0) {
 			openct_add_reader(ctx, i, &info);
 		} else if (i < max_virtual) {
@@ -124,7 +113,6 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
 	reader->ops = &openct_ops;
 	reader->drv_data = data;
 	reader->name = strdup(data->info.ct_name);
-	reader->slot_count = data->info.ct_slots;
 
 	if ((rc = _sc_add_reader(ctx, reader)) < 0) { 
 		free(data);
@@ -133,15 +121,10 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
 		return rc;
 	}
 
-	for (i = 0; i < SC_MAX_SLOTS; i++) {
-		reader->slot[i].drv_data = calloc(1, sizeof(struct slot_data));
-		reader->slot[i].id = i;
-		if (data->info.ct_display)
-			reader->slot[i].capabilities |= SC_SLOT_CAP_DISPLAY;
-		if (data->info.ct_keypad)
-			reader->slot[i].capabilities |= SC_SLOT_CAP_PIN_PAD;
-	}
-
+	if (data->info.ct_display)
+		reader->capabilities |= SC_READER_CAP_DISPLAY;
+	if (data->info.ct_keypad)
+		reader->capabilities |= SC_READER_CAP_PIN_PAD;
 	return 0;
 }
 
@@ -173,11 +156,6 @@ static int openct_reader_release(sc_reader_t *reader)
 		reader->drv_data = NULL;
 		free(data);
 	}
-
-	for (i = 0; i < SC_MAX_SLOTS; i++) {
-		if(reader->slot[i].drv_data)
-			free(reader->slot[i].drv_data);
-	}
 	
 	return SC_NO_ERROR;
 }
@@ -185,32 +163,30 @@ static int openct_reader_release(sc_reader_t *reader)
 /*
  * Check whether a card was added/removed
  */
-static int openct_reader_detect_card_presence(sc_reader_t *reader,
-			sc_slot_info_t *slot)
+static int openct_reader_detect_card_presence(sc_reader_t *reader)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc, status;
 
 	SC_FUNC_CALLED(reader->ctx, 1);
 
-	slot->flags = 0;
+	reader->flags = 0;
 	if (!data->h && !(data->h = ct_reader_connect(data->num)))
 		return 0;
 
-	if ((rc = ct_card_status(data->h, slot->id, &status)) < 0)
+	if ((rc = ct_card_status(data->h, data->slot, &status)) < 0)
 		return SC_ERROR_TRANSMIT_FAILED;
 
 	if (status & IFD_CARD_PRESENT) {
-		slot->flags = SC_SLOT_CARD_PRESENT;
+		reader->flags = SC_READER_CARD_PRESENT;
 		if (status & IFD_CARD_STATUS_CHANGED)
-			slot->flags = SC_SLOT_CARD_PRESENT;
+			reader->flags = SC_READER_CARD_PRESENT;
 	}
-	return slot->flags;
+	return reader->flags;
 }
 
 static int
-openct_reader_connect(sc_reader_t *reader,
-			sc_slot_info_t *slot)
+openct_reader_connect(sc_reader_t *reader)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc;
@@ -225,8 +201,8 @@ openct_reader_connect(sc_reader_t *reader,
 		return SC_ERROR_CARD_NOT_PRESENT;
 	}
 
-	rc = ct_card_request(data->h, slot->id, 0, NULL,
-				slot->atr, sizeof(slot->atr));
+	rc = ct_card_request(data->h, reder->id, 0, NULL,
+				reader->atr, sizeof(reader->atr));
 	if (rc < 0) {
 		sc_debug(reader->ctx,
 				"openct_reader_connect read failed: %s\n",
@@ -239,13 +215,12 @@ openct_reader_connect(sc_reader_t *reader,
 		return SC_ERROR_READER;
 	}
 
-	slot->atr_len = rc;
+	reader->atr_len = rc;
 	return SC_NO_ERROR;
 }
 
 static int
-openct_reader_reconnect(sc_reader_t *reader,
-			sc_slot_info_t *slot)
+openct_reader_reconnect(sc_reader_t *reader)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int	rc;
@@ -253,12 +228,12 @@ openct_reader_reconnect(sc_reader_t *reader,
 	if (data->h != NULL)
 		return 0;
 
-	if ((rc = openct_reader_connect(reader, slot)) < 0)
+	if ((rc = openct_reader_connect(reader)) < 0)
 		return SC_ERROR_READER_DETACHED;
 	return SC_ERROR_READER_REATTACHED;
 }
 
-static int openct_reader_disconnect(sc_reader_t *reader, sc_slot_info_t *slot)
+static int openct_reader_disconnect(sc_reader_t *reader)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 
@@ -271,7 +246,6 @@ static int openct_reader_disconnect(sc_reader_t *reader, sc_slot_info_t *slot)
 
 static int
 openct_reader_internal_transmit(sc_reader_t *reader,
-		sc_slot_info_t *slot,
 		const u8 *sendbuf, size_t sendsize,
 		u8 *recvbuf, size_t *recvsize, unsigned long control)
 {
@@ -279,10 +253,10 @@ openct_reader_internal_transmit(sc_reader_t *reader,
 	int rc;
 
 	/* Hotplug check */
-	if ((rc = openct_reader_reconnect(reader, slot)) < 0)
+	if ((rc = openct_reader_reconnect(reader)) < 0)
 		return rc;
 
-	rc = ct_card_transact(data->h, slot->id,
+	rc = ct_card_transact(data->h, data->slot,
 			sendbuf, sendsize,
 			recvbuf, *recvsize);
 
@@ -298,8 +272,7 @@ openct_reader_internal_transmit(sc_reader_t *reader,
 	return openct_error(reader, rc);
 }
 
-static int openct_reader_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
-	sc_apdu_t *apdu)
+static int openct_reader_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 {
 	size_t       ssize, rsize, rbuflen = 0;
 	u8           *sbuf = NULL, *rbuf = NULL;
@@ -317,7 +290,7 @@ static int openct_reader_transmit(sc_reader_t *reader, sc_slot_info_t *slot,
 		goto out;
 	if (reader->ctx->debug >= 6)
 		sc_apdu_log(reader->ctx, sbuf, ssize, 1);
-	r = openct_reader_internal_transmit(reader, slot, sbuf, ssize,
+	r = openct_reader_internal_transmit(reader, sbuf, ssize,
 				rbuf, &rsize, apdu->control);
 	if (r < 0) {
 		/* unable to transmit ... most likely a reader problem */
@@ -341,8 +314,7 @@ out:
 	return r;
 }
 
-static int openct_reader_perform_verify(sc_reader_t *reader,
-		sc_slot_info_t *slot, struct sc_pin_cmd_data *info)
+static int openct_reader_perform_verify(sc_reader_t *reader, struct sc_pin_cmd_data *info)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	unsigned int pin_length = 0, pin_encoding;
@@ -351,7 +323,7 @@ static int openct_reader_perform_verify(sc_reader_t *reader,
 	int rc;
 
 	/* Hotplug check */
-	if ((rc = openct_reader_reconnect(reader, slot)) < 0)
+	if ((rc = openct_reader_reconnect(reader)) < 0)
 		return rc;
 
 	if (info->apdu == NULL) {
@@ -384,7 +356,7 @@ static int openct_reader_perform_verify(sc_reader_t *reader,
 	else
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	rc = ct_card_verify(data->h, slot->id,
+	rc = ct_card_verify(data->h, data->slot,
 			0, /* no timeout?! */
 			info->pin1.prompt,
 			pin_encoding,
@@ -401,37 +373,35 @@ static int openct_reader_perform_verify(sc_reader_t *reader,
 	return 0;
 }
 
-static int openct_reader_lock(sc_reader_t *reader, sc_slot_info_t *slot)
+static int openct_reader_lock(sc_reader_t *reader)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
-	struct slot_data *slot_data = (struct slot_data *) slot->drv_data;
 	int rc;
 
 	SC_FUNC_CALLED(reader->ctx, 1);
 
 	/* Hotplug check */
-	if ((rc = openct_reader_reconnect(reader, slot)) < 0)
+	if ((rc = openct_reader_reconnect(reader)) < 0)
 		return rc;
 
-	rc = ct_card_lock(data->h, slot->id,
+	rc = ct_card_lock(data->h, data->slot,
 				IFD_LOCK_EXCLUSIVE,
-				&slot_data->excl_lock);
+				&data->excl_lock);
 
 	if (rc == IFD_ERROR_NOT_CONNECTED) {
 		ct_reader_disconnect(data->h);
 		data->h = NULL;
 
 		/* Try to reconnect as reader may be plugged-in again */
-		return openct_reader_reconnect(reader, slot);
+		return openct_reader_reconnect(reader);
 	}
 
 	return openct_error(reader, rc);
 }
 
-static int openct_reader_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
+static int openct_reader_unlock(sc_reader_t *reader)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
-	struct slot_data *slot_data = (struct slot_data *) slot->drv_data;
 	int rc;
 
 	SC_FUNC_CALLED(reader->ctx, 1);
@@ -440,7 +410,7 @@ static int openct_reader_unlock(sc_reader_t *reader, sc_slot_info_t *slot)
 	if (data->h == NULL)
 		return 0;
 
-	rc = ct_card_unlock(data->h, slot->id, slot_data->excl_lock);
+	rc = ct_card_unlock(data->h, data->slot, data->excl_lock);
 
 	/* We couldn't care less */
 	if (rc == IFD_ERROR_NOT_CONNECTED)

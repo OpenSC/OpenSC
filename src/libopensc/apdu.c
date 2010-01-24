@@ -389,7 +389,7 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 	/* send APDU to the reader driver */
 	if (card->reader->ops->transmit == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
-	r = card->reader->ops->transmit(card->reader, card->slot, apdu);
+	r = card->reader->ops->transmit(card->reader, apdu);
 	if (r != 0) {
 		sc_debug(ctx, "unable to transmit APDU");
 		return r;
@@ -414,7 +414,7 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 			if (card->wait_resend_apdu != 0)
 				msleep(card->wait_resend_apdu);
 			/* re-transmit the APDU with new Le length */
-			r = card->reader->ops->transmit(card->reader, card->slot, apdu);
+			r = card->reader->ops->transmit(card->reader, apdu);
 			if (r != SC_SUCCESS) {
 				sc_debug(ctx, "unable to transmit APDU");
 				return r;

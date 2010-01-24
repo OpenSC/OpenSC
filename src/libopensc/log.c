@@ -94,8 +94,8 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 #else
 	gettimeofday (&tv, NULL);
 	tm = localtime (&tv.tv_sec);
-	strftime (time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", tm);
-	r = snprintf(p, left, "%s.%03ld ", time_string, tv.tv_usec / 1000);
+	strftime (time_string, sizeof(time_string), "%H:%M:%S", tm);
+	r = snprintf(p, left, "0x%lx %s.%03ld ", (unsigned long)pthread_self(), time_string, tv.tv_usec / 1000);
 #endif
 	p += r;
 	left -= r;

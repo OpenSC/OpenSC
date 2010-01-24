@@ -36,10 +36,7 @@ int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 {
 	assert(reader != NULL);
 	reader->ctx = ctx;
-	if (ctx->reader_count == SC_MAX_READERS)
-		return SC_ERROR_TOO_MANY_OBJECTS;
-	ctx->reader[ctx->reader_count] = reader;
-	ctx->reader_count++;
+        list_append(&ctx->readers, reader);
 
 	return SC_SUCCESS;
 }
@@ -118,6 +115,17 @@ struct _sc_ctx_options {
 	char *forced_card_driver;
 };
 
+
+/* Simclist helper to locate readers by name */
+static int reader_list_seeker(const void *el, const void *key) {
+        const struct sc_reader *reader = (struct sc_reader *)el;
+        if ((el == NULL) || (key == NULL))
+                return 0;
+        if (strcmp(reader->name, (char*)key) == 0)
+                return 1;
+        return 0;
+}
+                                                                
 static void del_drvs(struct _sc_ctx_options *opts, int type)
 {
 	struct _sc_driver_entry *lst;
@@ -658,14 +666,22 @@ int sc_ctx_detect_readers(sc_context_t *ctx)
 
 sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i)
 {
-	if (i >= (unsigned int)ctx->reader_count || i >= SC_MAX_READERS)
-		return NULL;
-	return ctx->reader[i];
+        return list_get_at(&ctx->readers, i);
+}
+
+sc_reader_t *sc_ctx_get_reader_by_id(sc_context_t *ctx, unsigned int id)
+{
+        return list_get_at(&ctx->readers, id);
+}
+
+sc_reader_t *sc_ctx_get_reader_by_name(sc_context_t *ctx, const char * name)
+{
+       return list_seek(&ctx->readers, name);
 }
 
 unsigned int sc_ctx_get_reader_count(sc_context_t *ctx)
 {
-	return (unsigned int)ctx->reader_count;
+	return list_size(&ctx->readers);
 }
 
 int sc_establish_context(sc_context_t **ctx_out, const char *app_name)
@@ -703,6 +719,8 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 
+	list_init(&ctx->readers);
+	list_attributes_seeker(&ctx->readers, reader_list_seeker);
 	/* set thread context and create mutex object (if specified) */
 	if (parm != NULL && parm->thread_ctx != NULL)
 		ctx->thread_ctx = parm->thread_ctx;
@@ -738,20 +756,51 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	return SC_SUCCESS;
 }
 
+/* Following two are only implemented with internal PC/SC and don't consume a reader object */
+int sc_cancel(sc_context_t *ctx)
+{
+        int i;
+        const struct sc_reader_driver *driver;
+        SC_FUNC_CALLED(ctx, 2);
+	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
+	        sc_debug(ctx, "trying %s", ctx->reader_drivers[i]->short_name);
+	        driver = ctx->reader_drivers[i];
+		if (driver->ops->cancel != NULL)
+		        return driver->ops->cancel(ctx, ctx->reader_drv_data[i]);
+        }
+        return SC_ERROR_NOT_SUPPORTED;
+}
+
+
+int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, int timeout)
+{
+        int i;
+        const struct sc_reader_driver *driver;
+        SC_FUNC_CALLED(ctx, 2);
+        for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
+                sc_debug(ctx, "trying %s", ctx->reader_drivers[i]->short_name);
+                driver = ctx->reader_drivers[i];
+                if (driver->ops->wait_for_event != NULL)                                        		
+		        return driver->ops->wait_for_event(ctx, ctx->reader_drv_data[i], event_mask, event_reader, event, timeout);
+        }
+        return SC_ERROR_NOT_SUPPORTED;
+}
+
+
 int sc_release_context(sc_context_t *ctx)
 {
-	int i;
+	unsigned int i;
 
 	assert(ctx != NULL);
 	SC_FUNC_CALLED(ctx, 1);
-	for (i = 0; i < ctx->reader_count; i++) {
-		sc_reader_t *rdr = ctx->reader[i];
-
-		if (rdr->ops->release != NULL)
-			rdr->ops->release(rdr);
-		free(rdr->name);
-		free(rdr);
+	for (i=0; i<list_size(&ctx->readers); i++) {
+	        sc_reader_t *rdr = (sc_reader_t *) list_get_at(&ctx->readers, i);
+	        if (rdr->ops->release != NULL)
+	                rdr->ops->release(rdr);
+                free(rdr->name);
+                free(rdr);
 	}
+
 	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
 		const struct sc_reader_driver *drv = ctx->reader_drivers[i];
 
@@ -783,6 +832,7 @@ int sc_release_context(sc_context_t *ctx)
 		fclose(ctx->debug_file);
 	if (ctx->app_name != NULL)
 		free(ctx->app_name);
+        list_destroy(&ctx->readers);
 	sc_mem_clear(ctx, sizeof(*ctx));
 	free(ctx);
 	return SC_SUCCESS;

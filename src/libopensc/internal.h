@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include "opensc.h"
+#include "simclist.h"
 #include "log.h"
 #include "ui.h"
 #include "cards.h"
@@ -68,8 +69,7 @@ struct sc_atr_table {
 
 /* Internal use only */
 int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader);
-int _sc_parse_atr(struct sc_context *ctx, struct sc_slot_info *slot);
-struct sc_slot_info *_sc_get_slot_info(struct sc_reader *reader, int slot_id);
+int _sc_parse_atr(struct sc_reader *reader);
 
 /* Add an ATR to the card driver's struct sc_atr_table */
 int _sc_add_atr(struct sc_context *ctx, struct sc_card_driver *driver, struct sc_atr_table *src);

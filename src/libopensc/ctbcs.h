@@ -186,6 +186,6 @@
 /*
  * Functions for building CTBCS commands
  */
-int ctbcs_pin_cmd(struct sc_reader *, sc_slot_info_t *, struct sc_pin_cmd_data *);
+int ctbcs_pin_cmd(struct sc_reader *, struct sc_pin_cmd_data *);
 
 #endif /* _CTBCS_ */

@@ -184,7 +184,7 @@ static int _validate_pin(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	/* if we use pinpad, no more checks are needed */
-	if (p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD)
+	if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD)
 		return SC_SUCCESS;
 		
 	/* If pin is given, make sure it is within limits */
@@ -252,7 +252,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 		data.pin1.encoding = 0;
 	}
 
-	if(p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
+	if(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 		if (pin->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 			data.pin1.prompt = "Please enter SO PIN";
@@ -329,7 +329,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	}
 	
 	if((!oldpin || !newpin) 
-			&& p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
+			&& p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 		if (pin->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 			data.pin1.prompt = "Please enter SO PIN";
@@ -439,7 +439,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		break;
 	}
 	
-	if(p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD) {
+	if(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 		if (pin->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 			data.pin1.prompt = "Please enter PUK";
@@ -524,7 +524,7 @@ int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, const sc_pkcs1
 	if (obj->user_consent)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 
-	if (p15card->card->slot->capabilities & SC_SLOT_CAP_PIN_PAD)
+	if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 
 	r = sc_pkcs15_find_pin_by_auth_id(p15card, &obj->auth_id, &pin_obj);

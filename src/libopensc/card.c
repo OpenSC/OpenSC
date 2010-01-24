@@ -96,11 +96,10 @@ static void sc_card_free(sc_card_t *card)
 	free(card);
 }
 
-int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card_out)
+int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 {
 	sc_card_t *card;
 	sc_context_t *ctx;
-	sc_slot_info_t *slot = _sc_get_slot_info(reader, slot_id);
 	struct sc_card_driver *driver;
 	int i, r = 0, idx, connected = 0;
 
@@ -110,29 +109,26 @@ int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card_out)
 	SC_FUNC_CALLED(ctx, 1);
 	if (reader->ops->connect == NULL)
 		SC_FUNC_RETURN(ctx, 0, SC_ERROR_NOT_SUPPORTED);
-	if (slot == NULL)
-		SC_FUNC_RETURN(ctx, 0, SC_ERROR_SLOT_NOT_FOUND);
 
 	card = sc_card_new(ctx);
 	if (card == NULL)
 		SC_FUNC_RETURN(ctx, 1, SC_ERROR_OUT_OF_MEMORY);
-	r = reader->ops->connect(reader, slot);
+	r = reader->ops->connect(reader);
 	if (r)
 		goto err;
 
 	connected = 1;
 	card->reader = reader;
-	card->slot = slot;
 	card->ctx = ctx;
 
 	/* These can be overridden by the card driver */
 	card->max_send_size = reader->driver->max_send_size;
 	card->max_recv_size = reader->driver->max_recv_size;
 
-	memcpy(card->atr, slot->atr, slot->atr_len);
-	card->atr_len = slot->atr_len;
+	memcpy(card->atr, reader->atr, reader->atr_len);
+	card->atr_len = reader->atr_len;
 
-	_sc_parse_atr(reader->ctx, slot);
+	_sc_parse_atr(reader);
 
 	/* See if the ATR matches any ATR specified in the config file */
 	if ((driver = ctx->forced_driver) == NULL) {
@@ -222,13 +218,13 @@ int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card_out)
 	SC_FUNC_RETURN(ctx, 1, 0);
 err:
 	if (connected)
-		reader->ops->disconnect(reader, slot);
+		reader->ops->disconnect(reader);
 	if (card != NULL)
 		sc_card_free(card);
 	SC_FUNC_RETURN(ctx, 1, r);
 }
 
-int sc_disconnect_card(sc_card_t *card, int action)
+int sc_disconnect_card(sc_card_t *card)
 {
 	sc_context_t *ctx;
 	assert(sc_card_valid(card));
@@ -242,7 +238,7 @@ int sc_disconnect_card(sc_card_t *card, int action)
 			      sc_strerror(r));
 	}
 	if (card->reader->ops->disconnect) {
-		int r = card->reader->ops->disconnect(card->reader, card->slot);
+		int r = card->reader->ops->disconnect(card->reader);
 		if (r)
 			sc_debug(card->ctx, "disconnect() failed: %s\n",
 			      sc_strerror(r));
@@ -264,7 +260,7 @@ int sc_reset(sc_card_t *card)
 	if (r != SC_SUCCESS)
 		return r;
 
-	r = card->reader->ops->reset(card->reader, card->slot);
+	r = card->reader->ops->reset(card->reader);
 	/* invalidate cache */
 	memset(&card->cache, 0, sizeof(card->cache));
 	card->cache_valid = 0;
@@ -291,12 +287,12 @@ int sc_lock(sc_card_t *card)
 		return r;
 	if (card->lock_count == 0) {
 		if (card->reader->ops->lock != NULL) {
-			r = card->reader->ops->lock(card->reader, card->slot);
+			r = card->reader->ops->lock(card->reader);
 			if (r == SC_ERROR_CARD_RESET || r == SC_ERROR_READER_REATTACHED) {
 				/* invalidate cache */
 				memset(&card->cache, 0, sizeof(card->cache));
 				card->cache_valid = 0;
-				r = card->reader->ops->lock(card->reader, card->slot);
+				r = card->reader->ops->lock(card->reader);
 			}
 		}
 		if (r == 0)
@@ -330,7 +326,7 @@ int sc_unlock(sc_card_t *card)
 		card->cache_valid = 0;
 		/* release reader lock */
 		if (card->reader->ops->unlock != NULL)
-			r = card->reader->ops->unlock(card->reader, card->slot);
+			r = card->reader->ops->unlock(card->reader);
 	}
 	r2 = sc_mutex_unlock(card->ctx, card->mutex);
 	if (r2 != SC_SUCCESS) {

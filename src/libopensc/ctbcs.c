@@ -77,7 +77,7 @@ ctbcs_build_output_apdu(sc_apdu_t *apdu, const char *message)
 #endif
 
 static int
-ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data, sc_slot_info_t *slot)
+ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
 {
 	const char *prompt;
 	size_t buflen, count = 0, j = 0, len;
@@ -87,7 +87,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 	ctbcs_init_apdu(apdu,
 			SC_APDU_CASE_3_SHORT,
 			CTBCS_INS_PERFORM_VERIFICATION,
-			CTBCS_P1_INTERFACE1 + (slot ? slot->id : 0),
+			CTBCS_P1_INTERFACE1,
 			0);
 
 	buflen = sizeof(buf);
@@ -145,15 +145,14 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 }
 
 static int
-ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data, sc_slot_info_t *slot)
+ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
 {
 	/* to be implemented */
-	return SC_ERROR_NOT_SUPPORTED;
+	return SC_ERROR_NOT_IMPLEMENTED;
 }
 
 int
-ctbcs_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
-	      struct sc_pin_cmd_data *data)
+ctbcs_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 {
 	sc_card_t dummy_card, *card;
 	sc_apdu_t apdu;
@@ -162,11 +161,11 @@ ctbcs_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
-		r = ctbcs_build_perform_verification_apdu(&apdu, data, slot);
+		r = ctbcs_build_perform_verification_apdu(&apdu, data);
 		break;
 	case SC_PIN_CMD_CHANGE:
 	case SC_PIN_CMD_UNBLOCK:
-		r = ctbcs_build_modify_verification_apdu(&apdu, data, slot);
+		r = ctbcs_build_modify_verification_apdu(&apdu, data);
 		break;
 	default:
 		sc_debug(reader->ctx, "Unknown PIN command %d", data->cmd);
@@ -176,7 +175,6 @@ ctbcs_pin_cmd(sc_reader_t *reader, sc_slot_info_t *slot,
 	memset(&ops, 0, sizeof(ops));
 	memset(&dummy_card, 0, sizeof(dummy_card));
 	dummy_card.reader = reader;
-	dummy_card.slot = slot;
 	dummy_card.ctx = reader->ctx;
 	r = sc_mutex_create(reader->ctx, &dummy_card.mutex);
 	if (r != SC_SUCCESS)

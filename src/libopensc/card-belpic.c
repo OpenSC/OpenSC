@@ -282,10 +282,6 @@ static char *pp_msg_pin_mismatch[] = {
 	"Die von Ihnen eingegebenen PINs unterscheiden sich.\n\nErneut versuchen oder abbrechen?"
 };
 
-struct pcsc_slot_data {
-	SCARDHANDLE pcsc_card;
-};				/* comes from reader-pcsc.c */
-#define GET_SLOT_DATA(r) ((struct pcsc_slot_data *) (r)->drv_data)
 #define PCSC_ERROR(ctx, desc, rv) sc_debug(ctx, desc ": %lx\n", rv);
 
 #endif	/* BELPIC_PIN_PAD */
@@ -1041,7 +1037,7 @@ static int belpic_init(sc_card_t *card)
 #ifdef BELPIC_PIN_PAD
 	r = belpic_detect_pin_pad(card, priv);
 	if (r == 1)
-		card->slot->capabilities |= SC_SLOT_CAP_PIN_PAD;
+		card->reader->capabilities |= SC_READER_CAP_PIN_PAD;
 	else if (r < 0)
 		return r;	/* error loading/initing pin pad lib */
 
@@ -1303,10 +1299,10 @@ static int belpic_pin_cmd_usage(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 	struct belpic_priv_data *priv = DRVDATA(card);
 	int lang = belpic_calculate_lang(card);
-	if (card->slot->capabilities & SC_SLOT_CAP_PIN_PAD && priv->scr_init != NULL) {
+	if (card->reader->capabilities & SC_READER_CAP_PIN_PAD && priv->scr_init != NULL) {
 		LONG r;
 		SCR_Card scr_card = {
-			GET_SLOT_DATA(card->slot)->pcsc_card,
+			priv->pcsc_card,
 			lang_codes[lang],
 			{NULL, 0}
 			,
@@ -1385,7 +1381,7 @@ static int belpic_askpin_verify(sc_card_t *card, int pin_usage)
 
 #ifdef BELPIC_PIN_PAD
 	/* In case of a pinpad reader */
-	if (card->slot->capabilities & SC_SLOT_CAP_PIN_PAD && priv->scr_init != NULL) {
+	if (card->reader->capabilities & SC_READER_CAP_PIN_PAD && priv->scr_init != NULL) {
 		data.pin1.data = NULL;
 		data.pin1.len = 0;
 

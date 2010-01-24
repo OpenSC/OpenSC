@@ -24,6 +24,7 @@ sc_base64_decode
 sc_base64_encode
 sc_bin_to_hex
 sc_build_pin
+sc_cancel
 sc_card_ctl
 sc_card_valid
 sc_change_reference_data
@@ -39,6 +40,8 @@ sc_copy_asn1_entry
 sc_create_file
 sc_ctx_detect_readers
 sc_ctx_get_reader
+sc_ctx_get_reader_by_id
+sc_ctx_get_reader_by_name
 sc_ctx_get_reader_count
 sc_decipher
 sc_delete_file

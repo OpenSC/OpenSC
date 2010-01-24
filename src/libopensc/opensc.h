@@ -123,7 +123,6 @@ extern "C" {
 #define SC_MAX_READERS			16
 #define SC_MAX_CARD_DRIVERS		32
 #define SC_MAX_CARD_DRIVER_SNAME_SIZE	16
-#define SC_MAX_SLOTS			4
 #define SC_MAX_CARD_APPS		8
 #define SC_MAX_APDU_BUFFER_SIZE		258
 #define SC_MAX_EXT_APDU_BUFFER_SIZE	65538
@@ -206,6 +205,7 @@ extern "C" {
 /* Event masks for sc_wait_for_event() */
 #define SC_EVENT_CARD_INSERTED		0x0001
 #define SC_EVENT_CARD_REMOVED		0x0002
+#define SC_EVENT_READER_ATTACHED	0x0004
 
 typedef struct sc_security_env {
 	unsigned long flags;
@@ -279,15 +279,20 @@ struct sc_reader_driver {
 	void *dll;
 };
 
-/* slot flags */
-#define SC_SLOT_CARD_PRESENT	0x00000001
-#define SC_SLOT_CARD_CHANGED	0x00000002
-/* slot capabilities */
-#define SC_SLOT_CAP_DISPLAY	0x00000001
-#define SC_SLOT_CAP_PIN_PAD	0x00000002
+/* reader flags */
+#define SC_READER_CARD_PRESENT	0x00000001
+#define SC_READER_CARD_CHANGED	0x00000002
+/* reader capabilities */
+#define SC_READER_CAP_DISPLAY	0x00000001
+#define SC_READER_CAP_PIN_PAD	0x00000002
 
-typedef struct sc_slot_info {
-	int id;
+typedef struct sc_reader {
+	struct sc_context *ctx;
+	const struct sc_reader_driver *driver;
+	const struct sc_reader_operations *ops;
+	void *drv_data;
+	char *name;
+	
 	unsigned long flags, capabilities;
 	unsigned int supported_protocols, active_protocol;
 	u8 atr[SC_MAX_ATR_SIZE];
@@ -299,24 +304,6 @@ typedef struct sc_slot_info {
 		int Fi, f, Di, N;
 		u8 FI, DI;
 	} atr_info;
-
-	void *drv_data;
-} sc_slot_info_t;
-
-struct sc_event_listener {
-	unsigned int event_mask;
-	void (*func)(void *, const struct sc_slot_info *, unsigned int event);
-};
-
-typedef struct sc_reader {
-	struct sc_context *ctx;
-	const struct sc_reader_driver *driver;
-	const struct sc_reader_operations *ops;
-	void *drv_data;
-	char *name;
-
-	struct sc_slot_info slot[SC_MAX_SLOTS];
-	int slot_count;
 } sc_reader_t;
 
 /* This will be the new interface for handling PIN commands.
@@ -370,12 +357,6 @@ typedef struct sc_serial_number {
 	size_t len;
 } sc_serial_number_t;
 
-/* these flags are deprecated and shouldn't be used anymore */
-#define SC_DISCONNECT			0
-#define SC_DISCONNECT_AND_RESET		1
-#define SC_DISCONNECT_AND_UNPOWER	2
-#define SC_DISCONNECT_AND_EJECT		3
-
 struct sc_reader_operations {
 	/* Called during sc_establish_context(), when the driver
 	 * is loaded */
@@ -386,36 +367,27 @@ struct sc_reader_operations {
 	/* Called when library wish to detect new readers
 	 * should add only new readers. */
 	int (*detect_readers)(struct sc_context *ctx, void *priv_data);
+	int (*cancel)(struct sc_context *ctx, void *priv_data);
 	/* Called when releasing a reader.  release() has to
 	 * deallocate the private data.  Other fields will be
 	 * freed by OpenSC. */
 	int (*release)(struct sc_reader *reader);
 
-	int (*detect_card_presence)(struct sc_reader *reader,
-				    struct sc_slot_info *slot);
-	int (*connect)(struct sc_reader *reader, struct sc_slot_info *slot);
-	int (*disconnect)(struct sc_reader *reader, struct sc_slot_info *slot);
-	int (*transmit)(struct sc_reader *reader, struct sc_slot_info *slot,
-			sc_apdu_t *apdu);
-	int (*lock)(struct sc_reader *reader, struct sc_slot_info *slot);
-	int (*unlock)(struct sc_reader *reader, struct sc_slot_info *slot);
-	int (*set_protocol)(struct sc_reader *reader, struct sc_slot_info *slot,
-			    unsigned int proto);
+	int (*detect_card_presence)(struct sc_reader *reader);
+	int (*connect)(struct sc_reader *reader);
+	int (*disconnect)(struct sc_reader *reader);
+	int (*transmit)(struct sc_reader *reader, sc_apdu_t *apdu);
+	int (*lock)(struct sc_reader *reader);
+	int (*unlock)(struct sc_reader *reader);
+	int (*set_protocol)(struct sc_reader *reader, unsigned int proto);
 	/* Pin pad functions */
-	int (*display_message)(struct sc_reader *, struct sc_slot_info *,
-			       const char *);
-	int (*perform_verify)(struct sc_reader *, struct sc_slot_info *,
-			 struct sc_pin_cmd_data *);
+	int (*display_message)(struct sc_reader *, const char *);
+	int (*perform_verify)(struct sc_reader *, struct sc_pin_cmd_data *);
 
 	/* Wait for an event */
-	int (*wait_for_event)(struct sc_reader **readers,
-			      struct sc_slot_info **slots,
-			      size_t nslots,
-			      unsigned int event_mask,
-			      int *reader_index,
-			      unsigned int *event,
-			      int timeout);
-	int (*reset)(struct sc_reader *, struct sc_slot_info *);
+	int (*wait_for_event)(struct sc_context *ctx, void *priv_data, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, int timeout);
+	/* Reset a reader */
+	int (*reset)(struct sc_reader *);
 };
 
 /*
@@ -472,7 +444,6 @@ struct sc_reader_operations {
 typedef struct sc_card {
 	struct sc_context *ctx;
 	struct sc_reader *reader;
-	struct sc_slot_info *slot;
 
 	int type;			/* Card type, for card driver internal use */
 	unsigned long caps, flags;
@@ -663,13 +634,12 @@ typedef struct sc_context {
 	FILE *debug_file;
 	char *preferred_language;
 
+	list_t readers;
+	
 	const struct sc_reader_driver *reader_drivers[SC_MAX_READER_DRIVERS];
 	void *reader_drv_data[SC_MAX_READER_DRIVERS];
 
-	struct sc_reader *reader[SC_MAX_READERS];
-	int reader_count;
-
-	struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS];
+      	struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS];
 	struct sc_card_driver *forced_driver;
 
 	sc_thread_context_t	*thread_ctx;
@@ -755,6 +725,16 @@ int sc_ctx_detect_readers(sc_context_t *ctx);
  */
 sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i);
 
+/** 
+ * Returns a pointer to the specified sc_reader_t object
+ * @param  ctx  OpenSC context
+ * @param  name name of the reader to look for
+ * @return the requested sc_reader object or NULL if the reader is
+ *         not available
+ */
+sc_reader_t *sc_ctx_get_reader_by_name(sc_context_t *ctx, const char *name);
+
+
 /**
  * Returns the number a available sc_reader objects
  * @param  ctx  OpenSC context
@@ -772,18 +752,16 @@ int sc_set_card_driver(sc_context_t *ctx, const char *short_name);
  * Connects to a card in a reader and auto-detects the card driver.
  * The ATR (Answer to Reset) string of the card is also retrieved.
  * @param reader Reader structure
- * @param slot_id Slot ID to connect to
  * @param card The allocated card object will go here */
-int sc_connect_card(sc_reader_t *reader, int slot_id, sc_card_t **card);
+int sc_connect_card(sc_reader_t *reader, sc_card_t **card);
 /**
  * Disconnects from a card, and frees the card structure. Any locks
  * made by the application must be released before calling this function.
  * NOTE: The card is not reset nor powered down after the operation.
  * @param  card  The card to disconnect
- * @param  flag  currently not used (should be set to 0)
  * @return SC_SUCCESS on success and an error code otherwise
  */
-int sc_disconnect_card(sc_card_t *card, int flag);
+int sc_disconnect_card(sc_card_t *card);
 /**
  * Returns 1 if the magic value of the card object is correct. Mostly
  * used internally by the library.
@@ -794,27 +772,26 @@ int sc_card_valid(const sc_card_t *card);
 /**
  * Checks if a card is present in a reader
  * @param reader Reader structure
- * @param slot_id Slot ID
  * @retval If an error occured, the return value is a (negative)
  *	OpenSC error code. If no card is present, 0 is returned.
  *	Otherwise, a positive value is returned, which is a
- *	combination of flags. The flag SC_SLOT_CARD_PRESENT is
+ *	combination of flags. The flag SC_READER_CARD_PRESENT is
  *	always set. In addition, if the card was exchanged,
- *	the SC_SLOT_CARD_CHANGED flag is set.
+ *	the SC_READER_CARD_CHANGED flag is set.
  */
-int sc_detect_card_presence(sc_reader_t *reader, int slot_id);
+int sc_detect_card_presence(sc_reader_t *reader);
 
 /**
  * Waits for an event on readers. Note: only the event is detected,
  * there is no update of any card or other info.
- * @param readers array of pointer to a Reader structure
- * @param reader_count amount of readers in the array
- * @param slot_id Slot ID
+ * NOTE: Only PC/SC backend implements this.
+ * @param ctx  pointer to a Context structure
  * @param event_mask The types of events to wait for; this should
  *   be ORed from one of the following
  *   	SC_EVENT_CARD_REMOVED
  *   	SC_EVENT_CARD_INSERTED
- * @param reader (OUT) the reader on which the event was detected
+ *	SC_EVENT_READER_ATTACHED
+ * @param event_reader (OUT) the reader on which the event was detected, or NULL if new reader
  * @param event (OUT) the events that occurred. This is also ORed
  *   from the SC_EVENT_CARD_* constants listed above.
  * @param timeout Amount of millisecs to wait; -1 means forever
@@ -822,9 +799,8 @@ int sc_detect_card_presence(sc_reader_t *reader, int slot_id);
  * @retval = 0 if a an event happened
  * @retval = 1 if the timeout occured
  */
-int sc_wait_for_event(sc_reader_t **readers, int *slots, size_t nslots,
-                      unsigned int event_mask,
-                      int *reader, unsigned int *event, int timeout);
+int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask,
+                      sc_reader_t **event_reader, unsigned int *event, int timeout);
 
 /**
  * Resets the card.
@@ -833,6 +809,14 @@ int sc_wait_for_event(sc_reader_t **readers, int *slots, size_t nslots,
  * @retval SC_SUCCESS on success
  */
 int sc_reset(sc_card_t *card);
+
+/**
+ * Cancel all pending PC/SC calls
+ * NOTE: only PC/SC backend implements this function.
+ * @param ctx pointer to application context
+ * @retval SC_SUCCESS on success
+ */
+int sc_cancel(sc_context_t *ctx);
 
 /**
  * Tries acquire the reader lock.
