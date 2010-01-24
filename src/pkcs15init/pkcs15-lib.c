@@ -3184,7 +3184,7 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 	}
 
 	if (r == SC_ERROR_OBJECT_NOT_FOUND)   { 
-		if (card->reader->slot[0].capabilities & SC_SLOT_CAP_PIN_PAD)   {
+		if (card->reader->capabilities & SC_READER_CAP_PIN_PAD)   {
 			r = 0;
 			use_pinpad = 1;
 		}
