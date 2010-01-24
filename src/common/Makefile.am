@@ -1,6 +1,7 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak
 
+AM_CFLAGS = -DSIMCLIST_NO_DUMPRESTORE
 noinst_LTLIBRARIES = libcompat.la
 dist_noinst_DATA = \
 	README.compat_getopt ChangeLog.compat_getopt \
@@ -12,4 +13,6 @@ libcompat_la_SOURCES = \
 	compat_dummy.c \
 	compat_strlcpy.h compat_strlcpy.c \
 	compat_getpass.h compat_getpass.c \
-	compat_getopt.h compat_getopt.c
+	compat_getopt.h compat_getopt.c \
+	simclist.h simclist.c
+
