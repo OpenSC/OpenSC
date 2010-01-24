@@ -77,30 +77,28 @@ int sc_test_init(int *argc, char *argv[])
 	}
 	ctx->debug = opt_debug;
 
-	if (opt_reader >= ctx->reader_count) {
+	if (opt_reader >= sc_ctx_get_reader_count(ctx)) {
 		fprintf(stderr, "Illegal reader number.\n"
 				"Only %d reader(s) configured.\n",
-				ctx->reader_count);
+				sc_ctx_get_reader_count(ctx));
 		exit(1);
 	}
 
 	while (1) {
 		if (opt_reader >= 0) {
-			rc = sc_detect_card_presence(
-					ctx->reader[opt_reader], 0);
+			rc = sc_detect_card_presence(sc_ctx_get_reader(ctx, opt_reader));
 			printf("Card %s.\n", rc == 1 ? "present" : "absent");
 			if (rc < 0)
 				return rc;
 		} else {
-			for (i = rc = 0; rc != 1 && i < ctx->reader_count; i++)
-				rc = sc_detect_card_presence(ctx->reader[i], 0);
+			for (i = rc = 0; rc != 1 && i < sc_ctx_get_reader_count(ctx); i++)
+				rc = sc_detect_card_presence(sc_ctx_get_reader(ctx, opt_reader));
 			if (rc == 1)
 				opt_reader = i - 1;
 		}
 
 		if (rc > 0) {
-			printf("Card detected in reader '%s'\n",
-					ctx->reader[opt_reader]->name);
+			printf("Card detected in reader '%s'\n",sc_ctx_get_reader(ctx, opt_reader)->name);
 			break;
 		}
 		if (rc < 0)
@@ -114,7 +112,7 @@ int sc_test_init(int *argc, char *argv[])
 
 	printf("Connecting... ");
 	fflush(stdout);
-	i = sc_connect_card(ctx->reader[opt_reader], 0, &card);
+	i = sc_connect_card(sc_ctx_get_reader(ctx, opt_reader), &card);
 	if (i != SC_SUCCESS) {
 		printf("Connecting to card failed: %s\n", sc_strerror(i));
 		return i;
@@ -140,6 +138,6 @@ int sc_test_init(int *argc, char *argv[])
 
 void sc_test_cleanup(void)
 {
-	sc_disconnect_card(card, 0);
+	sc_disconnect_card(card);
 	sc_release_context(ctx);
 }

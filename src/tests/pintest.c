@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 	i = sc_test_init(&argc, argv);
 	if (i < 0)
 		return 1;
-	if (card->slot->capabilities & SC_SLOT_CAP_PIN_PAD)
+	if (card->reader->capabilities & SC_READER_CAP_PIN_PAD)
 		printf("Slot is capable of doing pinpad operations!\n");
 	printf("Looking for a PKCS#15 compatible Smart Card... ");
 	fflush(stdout);
