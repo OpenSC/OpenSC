@@ -431,15 +431,24 @@ auth_process_fci(struct sc_card *card, struct sc_file *file,
 		switch (file->ef_structure) {
 		case SC_CARDCTL_OBERTHUR_KEY_DES:
 			add_acl_entry(card, file, SC_AC_OP_UPDATE, attr[0]);
-			add_acl_entry(card, file, SC_AC_OP_READ, attr[1]);
+			add_acl_entry(card, file, SC_AC_OP_PSO_DECRYPT, attr[1]);
+			add_acl_entry(card, file, SC_AC_OP_PSO_ENCRYPT, attr[2]);
+			add_acl_entry(card, file, SC_AC_OP_PSO_COMPUTE_CHECKSUM, attr[3]);
+			add_acl_entry(card, file, SC_AC_OP_PSO_VERIFY_CHECKSUM, attr[4]);
+			add_acl_entry(card, file, SC_AC_OP_INTERNAL_AUTHENTICATE, attr[5]);
+			add_acl_entry(card, file, SC_AC_OP_EXTERNAL_AUTHENTICATE, attr[6]);
 			break;
 		case SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC:
 			add_acl_entry(card, file, SC_AC_OP_UPDATE, attr[0]);
-			add_acl_entry(card, file, SC_AC_OP_READ, attr[2]);
+			add_acl_entry(card, file, SC_AC_OP_PSO_ENCRYPT, attr[2]);
+			add_acl_entry(card, file, SC_AC_OP_PSO_VERIFY_SIGNATURE, attr[4]);
+			add_acl_entry(card, file, SC_AC_OP_EXTERNAL_AUTHENTICATE, attr[6]);
 			break;
 		case SC_CARDCTL_OBERTHUR_KEY_RSA_CRT:
 			add_acl_entry(card, file, SC_AC_OP_UPDATE, attr[0]);
-			add_acl_entry(card, file, SC_AC_OP_READ, attr[1]);
+			add_acl_entry(card, file, SC_AC_OP_PSO_DECRYPT, attr[1]);
+			add_acl_entry(card, file, SC_AC_OP_PSO_COMPUTE_SIGNATURE, attr[3]);
+			add_acl_entry(card, file, SC_AC_OP_INTERNAL_AUTHENTICATE, attr[5]);
 			break;
 		}
 	}
@@ -705,7 +714,7 @@ static int
 acl_to_ac_byte(struct sc_card *card, const struct sc_acl_entry *e)
 {
 	if (e == NULL)
-		return -1;
+		return SC_ERROR_OBJECT_NOT_FOUND;
 	
 	switch (e->method) {
 	case SC_AC_NONE:
@@ -874,25 +883,29 @@ encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
 		if (file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_DES)  {
 			sc_debug(card->ctx, "EF_DES\n");
 			ops[0] = SC_AC_OP_UPDATE;
-			ops[1] = SC_AC_OP_CRYPTO;  /* SC_AC_OP_DECRYPT */
-			ops[2] = SC_AC_OP_CRYPTO;  /* SC_AC_OP_ENCRYPT */
-			ops[3] = SC_AC_OP_CRYPTO;  /* SC_AC_OP_CHECKSUM */
-			ops[4] = SC_AC_OP_CRYPTO;  /* SC_AC_OP_CHECKSUM */
+			ops[1] = SC_AC_OP_PSO_DECRYPT;
+			ops[2] = SC_AC_OP_PSO_ENCRYPT; 
+			ops[3] = SC_AC_OP_PSO_COMPUTE_CHECKSUM;
+			ops[4] = SC_AC_OP_PSO_VERIFY_CHECKSUM;
+			ops[5] = SC_AC_OP_INTERNAL_AUTHENTICATE;
+			ops[6] = SC_AC_OP_EXTERNAL_AUTHENTICATE;
 		}
 		else if (file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC)  {
 			sc_debug(card->ctx, "EF_RSA_PUBLIC\n");
 			ops[0] = SC_AC_OP_UPDATE;
-			ops[2] = SC_AC_OP_CRYPTO;  /* SC_AC_OP_ENCRYPT */
-			ops[4] = SC_AC_OP_CRYPTO;  /* SC_AC_OP_SIGN */
+			ops[2] = SC_AC_OP_PSO_ENCRYPT; 
+			ops[4] = SC_AC_OP_PSO_VERIFY_SIGNATURE;
+			ops[6] = SC_AC_OP_EXTERNAL_AUTHENTICATE;
 		}
 		else if (file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_CRT)  {
 			sc_debug(card->ctx, "EF_RSA_PRIVATE\n");
 			ops[0] = SC_AC_OP_UPDATE;
-			ops[1] = SC_AC_OP_CRYPTO;  /* SC_AC_OP_ENCRYPT */
-			ops[3] = SC_AC_OP_CRYPTO;  /* SC_AC_OP_SIGN */
+			ops[1] = SC_AC_OP_PSO_DECRYPT;
+			ops[3] = SC_AC_OP_PSO_COMPUTE_SIGNATURE;
+			ops[5] = SC_AC_OP_INTERNAL_AUTHENTICATE;
 		}
 	}
-	
+
 	for (ii = 0; ii < sizeof(ops); ii++) {
 		const struct sc_acl_entry *entry;
 		
