@@ -814,7 +814,7 @@ do_store_private_key(struct sc_profile *profile)
 	/* If there are certificate as well (e.g. when reading the
 	 * private key from a PKCS #12 file) store them, too.
 	 */
-	for (i = 0; i < ncerts && r >= 0; i++) {
+	for (i = 0; i < ncerts; i++) {
 		struct sc_pkcs15init_certargs cargs;
 		char	namebuf[SC_PKCS15_MAX_LABEL_SIZE-1];
 
