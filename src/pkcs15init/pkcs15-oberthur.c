@@ -433,6 +433,7 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
 
+
 /*
  * Update PIN
  */
@@ -629,61 +630,87 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 }
 
 
-/*
- * RSA key generation
- */
 static int
-cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
-		unsigned int idx, unsigned int keybits,
-		struct sc_pkcs15_pubkey *pubkey,
-		struct sc_pkcs15_prkey_info *info)
+cosm_get_temporary_public_key_file(struct sc_card *card,
+		struct sc_file *prvkey_file, struct sc_file **pubkey_file)
 {
-	struct sc_cardctl_oberthur_genkey_info args;
-	struct sc_file	*prkf = NULL, *tmpf = NULL;
-	struct sc_path path;
-	int	 rv;
+	struct sc_context *ctx = card->ctx;
+	const struct sc_acl_entry *entry = NULL;
+	struct sc_file *file = NULL;
+	int rv;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	sc_debug(card->ctx, "cosm_generate_key() index %i; nn %i\n", idx, keybits);
-	if (keybits < 512 || keybits > 2048 || (keybits%0x20))   {
-		sc_debug(card->ctx, "Unsupported key size %u\n", keybits);
-		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key size");
-	}
-	
-	/* Get private key file from profile. */
-	rv = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, idx, &prkf);
-	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() cannot allocate new file SC_PKCS15_TYPE_PRKEY_RSA");
-	prkf->size = keybits;
-	
-	/* Access condition of private object DF. */
-	path = prkf->path;
+	if (!pubkey_file || !prvkey_file)
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+
+	file = sc_file_new();
+	if (!file)
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
+
+	file->status = SC_FILE_STATUS_ACTIVATED;
+        file->type = SC_FILE_TYPE_INTERNAL_EF;
+	file->ef_structure = SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC;
+	file->id = 0x1012;
+	memcpy(&file->path, &prvkey_file->path, sizeof(file->path));
+        file->path.value[file->path.len - 2] = 0x10;
+	file->path.value[file->path.len - 1] = 0x12;
+	file->size = prvkey_file->size;
+
+	entry = sc_file_get_acl_entry(prvkey_file, SC_AC_OP_UPDATE);
+	rv = sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, entry->method, entry->key_ref);
+	if (!rv)
+		rv = sc_file_add_acl_entry(file, SC_AC_OP_PSO_ENCRYPT, SC_AC_NONE, 0);
+	if (!rv)
+		rv = sc_file_add_acl_entry(file, SC_AC_OP_PSO_VERIFY_SIGNATURE, SC_AC_NONE, 0);
+	if (!rv)
+		rv = sc_file_add_acl_entry(file, SC_AC_OP_EXTERNAL_AUTHENTICATE, SC_AC_NONE, 0);
+	SC_TEST_RET(ctx, rv, "Failed to add ACL entry to the temporary public key file");
+
+	*pubkey_file = file;
+
+	SC_FUNC_RETURN(card->ctx, 1, rv);
+}
+
+
+static int
+cosm_generate_key(struct sc_profile *profile, struct sc_card *card,
+		struct sc_pkcs15_object *object, 
+		struct sc_pkcs15_pubkey *pubkey)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
+	struct sc_file *file = NULL;
+	struct sc_cardctl_oberthur_genkey_info args;
+	struct sc_file *prkf = NULL, *tmpf = NULL;
+	struct sc_path path;
+	int rv = 0;
+
+	SC_FUNC_CALLED(card->ctx, 1);
+
+	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
+		SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Generate key failed: RSA only supported");
+
+	path = key_info->path;
 	path.len -= 2;
 
 	rv = sc_select_file(card, &path, &tmpf);
-	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() no private object DF");
+	SC_TEST_RET(card->ctx, rv, "Cannot generate key: failed to select private object DF");
 	
 	rv = sc_pkcs15init_authenticate(profile, card, tmpf, SC_AC_OP_CRYPTO); 
-	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() pkcs15init_authenticate(SC_AC_OP_CRYPTO) failed");
+	SC_TEST_RET(card->ctx, rv, "Cannot generate key: 'CRYPTO' authentication failed");
 	
 	rv = sc_pkcs15init_authenticate(profile, card, tmpf, SC_AC_OP_CREATE);
-	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() pkcs15init_authenticate(SC_AC_OP_CREATE) failed");
+	SC_TEST_RET(card->ctx, rv, "Cannot generate key: 'CREATE' authentication failed");
 	
 	sc_file_free(tmpf);
+
+	rv = sc_select_file(card, &key_info->path, &prkf);
+	SC_TEST_RET(card->ctx, rv, "Failed to generate key: cannot select private key file");
 	
 	/* In the private key DF create the temporary public RSA file. */
-	sc_debug(card->ctx, "cosm_generate_key() ready to create temporary public key\n");
-	sc_file_dup(&tmpf, prkf);
-	if (!tmpf)
-		SC_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot duplicate private key file");
-	tmpf->type = SC_FILE_TYPE_INTERNAL_EF;
-	tmpf->ef_structure = SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC;
-	tmpf->id = 0x1012;
-	tmpf->path.value[tmpf->path.len - 2] = 0x10;
-	tmpf->path.value[tmpf->path.len - 1] = 0x12;
+	rv = cosm_get_temporary_public_key_file(card, prkf, &tmpf);
+	SC_TEST_RET(card->ctx, rv, "Error while getting temporary public key file");
 
-	rv = sc_pkcs15init_create_file(profile, card, prkf);
-	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() failed to create private key EF");
-	
 	rv = sc_pkcs15init_create_file(profile, card, tmpf);
 	SC_TEST_RET(card->ctx, rv, "cosm_generate_key() failed to create temporary public key EF");
 	
@@ -691,9 +718,9 @@ cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
 	args.id_prv = prkf->id;
 	args.id_pub = tmpf->id;
 	args.exponent = 0x10001;
-	args.key_bits = keybits;
-	args.pubkey_len = keybits/8;
-	args.pubkey = (unsigned char *) malloc(keybits/8);
+	args.key_bits = key_info->modulus_length;
+	args.pubkey_len = key_info->modulus_length / 8;
+	args.pubkey = (unsigned char *) malloc(key_info->modulus_length / 8);
 	if (!args.pubkey)
 		SC_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate pubkey");
 	
@@ -702,8 +729,8 @@ cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
 	
 	/* extract public key */
 	pubkey->algorithm = SC_ALGORITHM_RSA;
-	pubkey->u.rsa.modulus.len   = keybits / 8;
-	pubkey->u.rsa.modulus.data  = (unsigned char *) malloc(keybits / 8);
+	pubkey->u.rsa.modulus.len   = key_info->modulus_length / 8;
+	pubkey->u.rsa.modulus.data  = (unsigned char *) malloc(key_info->modulus_length / 8);
 	if (!pubkey->u.rsa.modulus.data)
 		SC_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate modulus buf");
 	
@@ -715,18 +742,65 @@ cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
 	memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);
 	memcpy(pubkey->u.rsa.modulus.data, args.pubkey, args.pubkey_len);
 
-	info->key_reference = 1;
-	info->path = prkf->path;
+	key_info->key_reference = 1;
+	key_info->path = prkf->path;
 	
 	sc_debug(card->ctx, "cosm_generate_key() now delete temporary public key\n");
 	rv =  cosm_delete_file(card, profile, tmpf);
 	
-	if (tmpf) 
-		sc_file_free(tmpf);
-	if (prkf) 
-		sc_file_free(prkf);
+	sc_file_free(tmpf);
+	sc_file_free(prkf);
 
 	SC_FUNC_RETURN(card->ctx, 1, rv);
+}
+
+
+/*
+ * Create private key file
+ */
+static int
+cosm_create_key(struct sc_profile *profile, struct sc_card *card,
+		struct sc_pkcs15_object *object)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
+	struct sc_file *file = NULL;
+	int rv = 0;
+
+	SC_FUNC_CALLED(ctx, 1);
+	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
+		SC_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "Create key failed: RSA only supported");
+
+	sc_debug(ctx, "create private key ID:%s\n",  sc_pkcs15_print_id(&key_info->id));
+	/* Here, the path of private key file should be defined.
+	 * Neverthelles, we need to instanciate private key to get the ACLs. */
+	rv = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
+	SC_TEST_RET(ctx, rv, "Cannot create key: failed to allocate new key object");
+
+	file->size = key_info->modulus_length;
+	memcpy(&file->path, &key_info->path, sizeof(file->path));
+	file->id = file->path.value[file->path.len - 2] * 0x100 
+				+ file->path.value[file->path.len - 1];
+
+	sc_debug(ctx, "Path of private key file to create %s\n", sc_print_path(&file->path));
+
+	rv = sc_select_file(card, &file->path, NULL);
+	if (rv == 0)   {
+		rv = cosm_delete_file(card, profile, file);
+		SC_TEST_RET(ctx, rv, "Failed to delete private key file");
+	}
+	else if (rv != SC_ERROR_FILE_NOT_FOUND)    {
+		SC_TEST_RET(ctx, rv, "Select private key file error");
+	}
+		
+	rv = sc_pkcs15init_create_file(profile, card, file);
+	SC_TEST_RET(ctx, rv, "Failed to create private key file");
+
+	key_info->key_reference = file->path.value[file->path.len - 1];
+
+	sc_file_free(file);
+
+	SC_FUNC_RETURN(ctx, 1, rv);
 }
 
 
@@ -734,99 +808,69 @@ cosm_old_generate_key(struct sc_profile *profile, struct sc_card *card,
  * Store a private key
  */
 static int
-cosm_new_key(struct sc_profile *profile, struct sc_card *card,
-		struct sc_pkcs15_prkey *key, unsigned int idx,
-		struct sc_pkcs15_prkey_info *info)
+cosm_store_key(struct sc_profile *profile, struct sc_card *card,
+		struct sc_pkcs15_object *object, 
+		struct sc_pkcs15_prkey *prkey)
 {
-	struct sc_file *prvfile = NULL;
-	struct sc_pkcs15_prkey_rsa *rsa = NULL;
+	struct sc_context *ctx = card->ctx;
+	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
+	struct sc_file *file = NULL;
 	struct sc_cardctl_oberthur_updatekey_info update_info;
-	char pbuf[SC_MAX_PATH_STRING_SIZE];
-	int rv;
+	int rv = 0;
 
-	SC_FUNC_CALLED(card->ctx, 1);
-	sc_debug(card->ctx, "index %i; id %s\n", idx, sc_pkcs15_print_id(&info->id));
-	if (key->algorithm != SC_ALGORITHM_RSA)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
+	SC_FUNC_CALLED(ctx, 1);
+	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA || prkey->algorithm != SC_ALGORITHM_RSA)
+		SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Store key failed: RSA only supported");
 
-	/* Create and populate the private part. */
-	rv = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, idx,
-					&prvfile);
-	SC_TEST_RET(card->ctx, rv, "Update RSA: cosm_new_file failed");
+	sc_debug(ctx, "store key with ID:%s and path:%s\n", sc_pkcs15_print_id(&key_info->id),
+		       	sc_print_path(&key_info->path));
+
+	rv = sc_select_file(card, &key_info->path, &file);
+	SC_TEST_RET(ctx, rv, "Cannot store key: select key file failed");
 	
-	rv = sc_path_print(pbuf, sizeof(pbuf), &prvfile->path);
-	sc_debug(card->ctx, "rv %i\n", rv);
-	if (rv != SC_SUCCESS)
-		pbuf[0] = '\0';
-	sc_debug(card->ctx, " prvfile->id %i;  path=%s\n", prvfile->id, pbuf);
+	rv = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_UPDATE);
+	SC_TEST_RET(ctx, rv, "No authorisation to store private key");
 
-	rsa = &key->u.rsa;
-	
-	prvfile->size = rsa->modulus.len << 3;
-
-	rv = sc_select_file(card, &prvfile->path, NULL);
-	sc_debug(card->ctx, "rv %i", rv);
-	if (rv == SC_ERROR_FILE_NOT_FOUND)   {
-		sc_debug(card->ctx, "Before create file");
-		rv = sc_pkcs15init_create_file(profile, card, prvfile);
-	}
-	SC_TEST_RET(card->ctx, rv, "Update RSA: select/create key file failed");
-	
-	rv = sc_pkcs15init_authenticate(profile, card, prvfile, SC_AC_OP_UPDATE);
-	SC_TEST_RET(card->ctx, rv, "Update RSA: no authorisation");
-
-#ifdef ENABLE_OPENSSL
-	/* Mozilla style ID */
-	if (!info->id.len)   {
-		SHA1(rsa->modulus.data, rsa->modulus.len, info->id.value);
-		info->id.len = SHA_DIGEST_LENGTH;
-		sc_debug(card->ctx, "ID: %s\n", sc_pkcs15_print_id(&info->id));		
-	}
-#endif
-	
-	if (info->id.len > sizeof(update_info.id))
+	if (key_info->id.len > sizeof(update_info.id))
 		 SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
 	
 	memset(&update_info, 0, sizeof(update_info));
 	update_info.type = SC_CARDCTL_OBERTHUR_KEY_RSA_CRT;
-	update_info.data = (void *)rsa;
+	update_info.data = (void *)&prkey->u.rsa;
 	update_info.data_len = sizeof(void *);
-	update_info.id_len = info->id.len;
-	memcpy(update_info.id, info->id.value, update_info.id_len);
+	update_info.id_len = key_info->id.len;
+	memcpy(update_info.id, key_info->id.value, update_info.id_len);
 		
 	rv = sc_card_ctl(card, SC_CARDCTL_OBERTHUR_UPDATE_KEY, &update_info);
-	SC_TEST_RET(card->ctx, rv, "Update KEY failed");
+	SC_TEST_RET(ctx, rv, "Cannot update private key");
 	
-	info->path = prvfile->path;
-	info->modulus_length = rsa->modulus.len << 3;
+	if (file) 
+		sc_file_free(file);
 
-	if (prvfile) 
-		sc_file_free(prvfile);
-
-	SC_FUNC_RETURN(card->ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, 1, rv);
 }
 
 
 static struct sc_pkcs15init_operations 
 sc_pkcs15init_oberthur_operations = {
 	cosm_erase_card,
-	NULL,						/* init_card  */
-	NULL,						/* create_dir */
-	NULL,						/* create_domain */
+	NULL,				/* init_card  */
+	NULL,				/* create_dir */
+	NULL,				/* create_domain */
 	cosm_select_pin_reference,
 	cosm_create_pin,
-	NULL,						/* select_key_reference */
-	NULL,						/* create_key */
-	NULL,						/* store_key */
-	NULL,						/* generate_key */
+	NULL,				/* select_key_reference */
+	cosm_create_key,		/* create_key */
+	cosm_store_key,			/* store_key */
+	cosm_generate_key,		/* generate_key */
 	NULL, 
-	NULL,						/* encode private/public key */
-	NULL,						/* finalize_card */
-	cosm_init_app,				/* old */
-	NULL,						/* new_pin */
-	cosm_new_key,
-	cosm_new_file,
-	cosm_old_generate_key,
+	NULL,				/* encode private/public key */
+	NULL,				/* finalize_card */
+	cosm_init_app,			/* old */
+	NULL,				/* new_pin */
+	NULL, 				/* cosm_new_key, */
+	NULL, 				/* cosm_new_file, */
+	NULL, 				/* cosm_old_generate_key, */
 	NULL	
 };
 
