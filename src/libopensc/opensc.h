@@ -90,7 +90,7 @@ extern "C" {
 #define SC_AC_UNKNOWN			0xFFFFFFFE
 #define SC_AC_NEVER			0xFFFFFFFF
 
-/* Operations relating to access control (in case of DF) */
+/* Operations relating to access control */
 #define SC_AC_OP_SELECT			0
 #define SC_AC_OP_LOCK			1
 #define SC_AC_OP_DELETE			2
@@ -100,23 +100,29 @@ extern "C" {
 #define SC_AC_OP_LIST_FILES		6
 #define SC_AC_OP_CRYPTO			7
 #define SC_AC_OP_DELETE_SELF		8
+#define SC_AC_OP_PSO_DECRYPT		9
+#define SC_AC_OP_PSO_ENCRYPT		10
+#define SC_AC_OP_PSO_COMPUTE_SIGNATURE	11
+#define SC_AC_OP_PSO_VERIFY_SIGNATURE	12
+#define SC_AC_OP_PSO_COMPUTE_CHECKSUM	13
+#define SC_AC_OP_PSO_VERIFY_CHECKSUM	14
+#define SC_AC_OP_INTERNAL_AUTHENTICATE	15
+#define SC_AC_OP_EXTERNAL_AUTHENTICATE	16
+#define SC_AC_OP_PIN_DEFINE		17
+#define SC_AC_OP_PIN_CHANGE		18
+#define SC_AC_OP_PIN_RESET		19
+	
 /* If you add more OPs here, make sure you increase
  * SC_MAX_AC_OPS in types.h */
 
-/* Operations relating to access control (in case of EF) */
+/* In case of EF re-use the OPs related to DF */
 #define SC_AC_OP_READ			0
 #define SC_AC_OP_UPDATE			1
+#define SC_AC_OP_WRITE			3
+
 /* the use of SC_AC_OP_ERASE is deprecated, SC_AC_OP_DELETE should be used
  * instead  */
 #define SC_AC_OP_ERASE			SC_AC_OP_DELETE
-#define SC_AC_OP_WRITE			3
-/* rehab and invalidate are the same as in DF case */
-
-/* Special 'Oberthur IdOne AuthentIC's case:
- * re-use the existing DF ACLs that are not relevant to this card. */
-#define SC_AC_OP_PIN_DEFINE		SC_AC_OP_LOCK
-#define SC_AC_OP_PIN_CHANGE		SC_AC_OP_REHABILITATE
-#define SC_AC_OP_PIN_RESET		SC_AC_OP_DELETE_SELF
 
 /* various maximum values */
 #define SC_MAX_READER_DRIVERS		6
