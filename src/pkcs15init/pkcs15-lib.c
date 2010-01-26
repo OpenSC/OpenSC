@@ -961,14 +961,12 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 
 	/* No auth_id given: select one */
 	if (args->auth_id.len == 0) {
-		struct sc_pkcs15_object *dummy;
 		unsigned int	n;
 
 		args->auth_id.len = 1;
 		for (n = 1, r = 0; n < 256; n++) {
 			args->auth_id.value[0] = n;
-			r = sc_pkcs15_find_pin_by_auth_id(p15card,
-					&args->auth_id, &dummy);
+			r = sc_pkcs15_find_pin_by_auth_id(p15card, &args->auth_id, NULL);
 			if (r == SC_ERROR_OBJECT_NOT_FOUND)
 				break;
 		}
@@ -977,10 +975,8 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 	} else {
-		struct sc_pkcs15_object *dummy;
-
 		/* Make sure we don't get duplicate PIN IDs */
-		r = sc_pkcs15_find_pin_by_auth_id(p15card, &args->auth_id, &dummy);
+		r = sc_pkcs15_find_pin_by_auth_id(p15card, &args->auth_id, NULL);
 		if (r != SC_ERROR_OBJECT_NOT_FOUND) {
 			sc_debug(card->ctx, "There already is a PIN with this ID.");
 			return SC_ERROR_INVALID_ARGUMENTS;

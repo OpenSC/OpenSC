@@ -894,7 +894,7 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 			continue;
 		/* Okay, we have a match. */
 		match_count++;
-		if (ret_size <= 0)
+		if (!ret || ret_size <= 0)
 			continue;
 		ret[match_count-1] = obj;
 		if (ret_size <= match_count)
