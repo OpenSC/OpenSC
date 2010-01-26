@@ -201,7 +201,7 @@ openct_reader_connect(sc_reader_t *reader)
 		return SC_ERROR_CARD_NOT_PRESENT;
 	}
 
-	rc = ct_card_request(data->h, reder->id, 0, NULL,
+	rc = ct_card_request(data->h, data->slot, 0, NULL,
 				reader->atr, sizeof(reader->atr));
 	if (rc < 0) {
 		sc_debug(reader->ctx,
