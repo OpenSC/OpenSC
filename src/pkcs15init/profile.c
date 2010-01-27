@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <opensc/scconf.h>
 #include <opensc/log.h>
+#include <opensc/pkcs15.h>
 #include "pkcs15-init.h"
 #include "profile.h"
 #include <compat_strlcpy.h>
@@ -165,18 +166,18 @@ static struct map		pinIdNames[] = {
 	{ NULL, 0 }
 };
 static struct map		pinFlagNames[] = {
-	{ "case-sensitive",		0x0001			},
-	{ "local",			0x0002			},
-	{ "change-disabled",		0x0004			},
-	{ "unblock-disabled",		0x0008			},
-	{ "initialized",		0x0010			},
-	{ "needs-padding",		0x0020			},
-	{ "unblockingPin",		0x0040			},
-	{ "soPin",			0x0080			},
-	{ "disable-allowed",		0x0100			},
-	{ "integrity-protected",	0x0200			},
-	{ "confidentiality-protected",	0x0400			},
-	{ "exchangeRefData",		0x0800			},
+	{ "case-sensitive",		SC_PKCS15_PIN_FLAG_CASE_SENSITIVE		},
+	{ "local",			SC_PKCS15_PIN_FLAG_LOCAL			},
+	{ "change-disabled",		SC_PKCS15_PIN_FLAG_CHANGE_DISABLED		},
+	{ "unblock-disabled",		SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED		},
+	{ "initialized",		SC_PKCS15_PIN_FLAG_INITIALIZED			},
+	{ "needs-padding",		SC_PKCS15_PIN_FLAG_NEEDS_PADDING		},
+	{ "unblockingPin",		SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN		},
+	{ "soPin",			SC_PKCS15_PIN_FLAG_SO_PIN			},
+	{ "disable-allowed",		SC_PKCS15_PIN_FLAG_DISABLE_ALLOW		},
+	{ "integrity-protected",	SC_PKCS15_PIN_FLAG_INTEGRITY_PROTECTED		},
+	{ "confidentiality-protected",	SC_PKCS15_PIN_FLAG_CONFIDENTIALITY_PROTECTED	},
+	{ "exchangeRefData",		SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA		},
 	{ NULL, 0 }
 };
 static struct map		idStyleNames[] = {
@@ -1828,7 +1829,8 @@ sc_profile_find_file(struct sc_profile *pro,
 	return NULL;
 }
 
-static struct file_info * sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
+static struct file_info *
+sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 {
 	struct file_info *fi;
 	struct sc_file	*fp;
