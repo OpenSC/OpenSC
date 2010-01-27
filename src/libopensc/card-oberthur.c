@@ -36,14 +36,11 @@
 #include <openssl/rsa.h>
 #include <openssl/opensslv.h>
 
-#define OBERTHUR_VERIFY_SOPIN_TRY_LOCAL
-
-#define OBERTHUR_UNBLOCK_STYLE
-
 #define OBERTHUR_PIN_LOCAL	0x80
-#define OBERTHUR_PIN_REFERENCE_USER	0x01
-#define OBERTHUR_PIN_REFERENCE_ONETIME	0x02
+#define OBERTHUR_PIN_REFERENCE_USER	0x81
+#define OBERTHUR_PIN_REFERENCE_ONETIME	0x82
 #define OBERTHUR_PIN_REFERENCE_SO	0x04
+#define OBERTHUR_PIN_REFERENCE_PUK	0x84
 
 /* keep OpenSSL 0.9.6 users happy ;-) */
 #if OPENSSL_VERSION_NUMBER < 0x00907000L
@@ -289,12 +286,18 @@ add_acl_entry(struct sc_card *card, struct sc_file *file, unsigned int op,
 	case 0x00:
 		sc_file_add_acl_entry(file, op, SC_AC_NONE, SC_AC_KEY_REF_NONE);
 		break;
+	/* User and OneTime PINs are locals */
 	case 0x21:
 	case 0x22:
-	case 0x23:
+		sc_file_add_acl_entry(file, op, SC_AC_CHV, (acl_byte & 0x0F) | OBERTHUR_PIN_LOCAL);
+		break;
+	/* Local SOPIN is only for the unblocking. */
 	case 0x24:
 	case 0x25:
-		sc_file_add_acl_entry(file, op, SC_AC_CHV, acl_byte & 0x0F);
+		if (op == SC_AC_OP_PIN_RESET)
+			sc_file_add_acl_entry(file, op, SC_AC_CHV, 0x84);
+		else
+			sc_file_add_acl_entry(file, op, SC_AC_CHV, 0x04);
 		break;
 	case 0xFF:
 		sc_file_add_acl_entry(file, op, SC_AC_NEVER, SC_AC_KEY_REF_NONE);
@@ -1643,23 +1646,8 @@ auth_pin_verify(struct sc_card *card, unsigned int type,
 			|| data->pin_reference == OBERTHUR_PIN_REFERENCE_ONETIME)
 		data->pin_reference  |= OBERTHUR_PIN_LOCAL;
 	
-#ifdef OBERTHUR_VERIFY_SOPIN_TRY_LOCAL
-	 /* SOPIN can be local -- firstly try to verify the local one. */
-	if (data->pin_reference == OBERTHUR_PIN_REFERENCE_SO)
-		data->pin_reference  |= OBERTHUR_PIN_LOCAL;
-#endif
-
         rv = auth_pin_is_verified(card, data->pin_reference, tries_left);
     	sc_debug(card->ctx, "auth_pin_is_verified returned rv %i\n", rv);
-
-#ifdef OBERTHUR_VERIFY_SOPIN_TRY_LOCAL
-	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND 
-			&& data->pin_reference == OBERTHUR_PIN_REFERENCE_SO | OBERTHUR_PIN_LOCAL)   {
-		/* Local SOPIN is not defined -- try to verify the global one. */
-		data->pin_reference &= ~OBERTHUR_PIN_LOCAL;
-            	rv = auth_pin_is_verified(card, data->pin_reference, tries_left);
-        }
-#endif
 
 	/* Return if only PIN status has been asked. */ 
 	if (data->pin1.data && !data->pin1.len)
@@ -1714,9 +1702,11 @@ auth_pin_change_pinpad(struct sc_card *card, struct sc_pin_cmd_data *data,
 	struct sc_apdu apdu;
 	unsigned char ffs1[0x100]; 
 	unsigned char ffs2[0x100]; 
-	int rv;
+	int rv, pin_reference;
 
 	SC_FUNC_CALLED(card->ctx, 1);
+
+	pin_reference = data->pin_reference & ~OBERTHUR_PIN_LOCAL; 
 
 	memset(ffs1, 0xFF, sizeof(ffs1));
 	memset(ffs2, 0xFF, sizeof(ffs2));
@@ -1730,7 +1720,7 @@ auth_pin_change_pinpad(struct sc_card *card, struct sc_pin_cmd_data *data,
 	
 	pin_cmd.flags |= SC_PIN_CMD_NEED_PADDING;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x00, data->pin_reference);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x00, pin_reference);
 	apdu.lc = OBERTHUR_AUTH_MAX_LENGTH_PIN * 2;
 	apdu.datalen = OBERTHUR_AUTH_MAX_LENGTH_PIN * 2;
 	apdu.data = ffs1;
@@ -1739,7 +1729,7 @@ auth_pin_change_pinpad(struct sc_card *card, struct sc_pin_cmd_data *data,
 	pin_cmd.pin_type = SC_AC_CHV;
 	pin_cmd.cmd = SC_PIN_CMD_CHANGE;
 	pin_cmd.flags |= SC_PIN_CMD_USE_PINPAD;
-	pin_cmd.pin_reference = data->pin_reference;
+	pin_cmd.pin_reference = pin_reference;
 	if (pin_cmd.pin1.min_length < 4)
 		pin_cmd.pin1.min_length = 4;
 	pin_cmd.pin1.max_length = 8;
@@ -1775,6 +1765,8 @@ auth_pin_change(struct sc_card *card, unsigned int type,
 		data->flags &= ~SC_PIN_CMD_USE_PINPAD;
 		data->apdu = NULL;
 
+		data->pin_reference &= ~OBERTHUR_PIN_LOCAL;
+
 		auth_init_pin_info(card, &data->pin1, OBERTHUR_AUTH_TYPE_PIN);
 		auth_init_pin_info(card, &data->pin2, OBERTHUR_AUTH_TYPE_PIN);
 
@@ -1805,9 +1797,11 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 	struct sc_apdu apdu;
 	unsigned char puk[OBERTHUR_AUTH_MAX_LENGTH_PUK];
 	unsigned char ffs[0x100]; 
-	int rv, rvv;
+	int rv, rvv, local_pin_reference;
 
 	SC_FUNC_CALLED(card->ctx, 1);
+
+	local_pin_reference = data->pin_reference & ~OBERTHUR_PIN_LOCAL;
 
 	if (data->pin_reference !=  OBERTHUR_PIN_REFERENCE_USER)
 		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Oberthur style 'PIN RESET' failed: invalid PIN reference");
@@ -1815,7 +1809,7 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 	memset(&pin_cmd, 0, sizeof(pin_cmd));
 	pin_cmd.pin_type = SC_AC_CHV;
         pin_cmd.cmd = SC_PIN_CMD_VERIFY;
-	pin_cmd.pin_reference = OBERTHUR_PIN_REFERENCE_SO;
+	pin_cmd.pin_reference = OBERTHUR_PIN_REFERENCE_PUK;
 	memcpy(&pin_cmd.pin1, &data->pin1, sizeof(pin_cmd.pin1));
 
 	rv = auth_pin_verify(card, SC_AC_CHV, &pin_cmd, tries_left);
@@ -1840,7 +1834,7 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 	memset(&pin_cmd, 0, sizeof(pin_cmd));
 	pin_cmd.pin_type = SC_AC_CHV;
         pin_cmd.cmd = SC_PIN_CMD_UNBLOCK;
-	pin_cmd.pin_reference = OBERTHUR_PIN_REFERENCE_USER;
+	pin_cmd.pin_reference = local_pin_reference;
 	auth_init_pin_info(card, &pin_cmd.pin1, OBERTHUR_AUTH_TYPE_PUK);
 	pin_cmd.pin1.data = ffs;
 	pin_cmd.pin1.len = OBERTHUR_AUTH_MAX_LENGTH_PUK;
@@ -1851,7 +1845,7 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 		SC_FUNC_RETURN(card->ctx, 1, rv);
 	}
 
-        sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x00, OBERTHUR_PIN_REFERENCE_USER);
+        sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x00, local_pin_reference);
 	apdu.lc = OBERTHUR_AUTH_MAX_LENGTH_PIN  + OBERTHUR_AUTH_MAX_LENGTH_PUK;
 	apdu.datalen = OBERTHUR_AUTH_MAX_LENGTH_PIN  + OBERTHUR_AUTH_MAX_LENGTH_PUK;
 	apdu.data = ffs;
@@ -1894,23 +1888,9 @@ auth_pin_reset(struct sc_card *card, unsigned int type,
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	if (data->pin_reference ==  OBERTHUR_PIN_REFERENCE_SO 
-			|| data->pin_reference ==  OBERTHUR_PIN_REFERENCE_ONETIME
-			|| (data->pin1.data && data->pin1.len == OBERTHUR_AUTH_MAX_LENGTH_PUK))   {
-		/* Direct unblock style */
-		data->flags |= SC_PIN_CMD_NEED_PADDING;
-
-		auth_init_pin_info(card, &data->pin1, OBERTHUR_AUTH_TYPE_PUK);
-		auth_init_pin_info(card, &data->pin2, OBERTHUR_AUTH_TYPE_PIN);
-
-        	rv = iso_drv->ops->pin_cmd(card, data, tries_left);
-		SC_TEST_RET(card->ctx, rv, "'PIN RESET' failed");
-	}
-	else   {
-		/* Oberthur unblock style: PUK value is a SOPIN */
-		rv = auth_pin_reset_oberthur_style(card, SC_AC_CHV, data, tries_left);
-		SC_TEST_RET(card->ctx, rv, "Oberthur style 'PIN RESET' failed");
-	}
+	/* Oberthur unblock style: PUK value is a SOPIN */
+	rv = auth_pin_reset_oberthur_style(card, SC_AC_CHV, data, tries_left);
+	SC_TEST_RET(card->ctx, rv, "Oberthur style 'PIN RESET' failed");
 
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
@@ -1970,7 +1950,7 @@ auth_create_reference_data (struct sc_card *card,
 	if (args->pin_tries < 1 || !args->pin || !args->pin_len)
 		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid PIN options");
 
-	if (args->ref != OBERTHUR_PIN_REFERENCE_USER && args->ref != OBERTHUR_PIN_REFERENCE_SO)  
+	if (args->ref != OBERTHUR_PIN_REFERENCE_USER && args->ref != OBERTHUR_PIN_REFERENCE_PUK)  
 		SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid PIN reference");
 	
 	auth_init_pin_info(card, &puk_info, OBERTHUR_AUTH_TYPE_PUK);
@@ -1993,7 +1973,7 @@ auth_create_reference_data (struct sc_card *card,
 		len += args->puk_len;
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 1, args->ref);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 1, args->ref & ~OBERTHUR_PIN_LOCAL);
 	apdu.data = sbuf;
 	apdu.datalen = len;
 	apdu.lc = len;

@@ -22,23 +22,23 @@ PIN user-pin {
 	attempts	= 5;
 	max-length	= 64;
 	min-length	= 4;
-	flags	= 0x32; # local, initialized, needs-padding
-	reference = 1
+	flags	= case-sensitive, local, initialized, needs-padding;
+	reference = 0x81
 }
 PIN user-puk {
 	attempts	= 5;
-	max-length	= 16;
+	max-length	= 64;
 	min-length	= 4;
-	flags	= 0x32; # local, initialized, needs-padding
+	flags	= case-sensitive, local, unblock-disabled, initialized, needs-padding, unblockingPin;
+	reference = 0x84
 }
 PIN so-pin {
 	auth-id = FF;
 	attempts	= 3;
 	max-length	= 64;
 	min-length	= 4;
-	flags	= 0xB2;
+	flags	= case-sensitive, unblock-disabled, initialized, needs-padding, soPin;
 	reference = 4
-#	default-value = "31:32:33:34:35:36:37:38";
 }
 
 # CHV5 used for Oberthur's specifique access condition "PIN or SOPIN"

@@ -146,37 +146,6 @@ cosm_write_tokeninfo (struct sc_card *card, struct sc_profile *profile,
 }
 
 
-static int 
-cosm_update_pukfile (struct sc_card *card, struct sc_profile *profile, 
-		unsigned char *data, size_t data_len)
-{
-	struct sc_pkcs15_pin_info profile_puk;
-	struct sc_file *file = NULL;
-	int rv;
-	unsigned char buffer[16];
-
-	SC_FUNC_CALLED(card->ctx, 1);
-	if (!data || data_len > 16)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &profile_puk);
-	if (profile_puk.max_length > 16)
-		SC_TEST_RET(card->ctx, SC_ERROR_INCONSISTENT_PROFILE, "Invalid PUK settings");
-
-	if (sc_profile_get_file(profile, COSM_TITLE"-puk-file", &file))
-		SC_TEST_RET(card->ctx, SC_ERROR_INCONSISTENT_PROFILE, "Cannot find PUKFILE");
-
-	memset(buffer, profile_puk.pad_char, 16);
-	memcpy(buffer, data, data_len);
-
-	rv = sc_pkcs15init_update_file(profile, card, file, buffer, sizeof(buffer));
-	if (rv > 0)
-		rv = 0;
-
-	SC_FUNC_RETURN(card->ctx, 1, rv);
-}
-
-
 int 
 cosm_delete_file(struct sc_card *card, struct sc_profile *profile,
 		struct sc_file *df)
@@ -276,15 +245,11 @@ done:
 }
 
 
-/*
- * Initialize the Application DF
- */
-static int 
-cosm_init_app(struct sc_profile *profile, struct sc_card *card,	
-		struct sc_pkcs15_pin_info *pinfo,
-		const unsigned char *pin, size_t pin_len, 
-		const unsigned char *puk, size_t puk_len)
+static int
+cosm_create_dir(struct sc_profile *profile, struct sc_card *card, 
+		struct sc_file *df)
 {
+	struct sc_context *ctx = card->ctx;
 	struct sc_file *file = NULL;
 	size_t ii;
 	int rv;
@@ -297,6 +262,7 @@ cosm_init_app(struct sc_profile *profile, struct sc_card *card,
 		COSM_TITLE"-container-list",
 		COSM_TITLE"-public-list",
 		COSM_TITLE"-private-list",
+#if 0
 		"PKCS15-AppDF",
 		"PKCS15-ODF",
 		"PKCS15-AODF",
@@ -304,47 +270,33 @@ cosm_init_app(struct sc_profile *profile, struct sc_card *card,
 		"PKCS15-PuKDF",
 		"PKCS15-CDF",
 		"PKCS15-DODF",
+#endif
 		NULL
 	};
 
-	SC_FUNC_CALLED(card->ctx, 1);
-	sc_debug(card->ctx, "cosm_init_app() pin_len %i; puk_len %i\n", pin_len, puk_len);
-	
+	SC_FUNC_CALLED(ctx, 1);
+		        
+	rv = sc_pkcs15init_create_file(profile, card, df);
+	SC_TEST_RET(ctx, rv, "Failed to create DIR DF");
+
 	/* Oberthur AWP file system is expected.*/
 	/* Create private objects DF */
 	for (ii = 0; create_dfs[ii]; ii++)   {
 		if (sc_profile_get_file(profile, create_dfs[ii], &file))   {
 			sc_debug(card->ctx, "Inconsistent profile: cannot find %s", create_dfs[ii]);
-			return SC_ERROR_INCONSISTENT_PROFILE;
+			SC_TEST_RET(card->ctx, SC_ERROR_INCONSISTENT_PROFILE, "Profile do not contains Oberthur AWP file");
 		}
 	
 		rv = sc_pkcs15init_create_file(profile, card, file);
-		sc_debug(card->ctx, "rv %i\n", rv);
 		sc_file_free(file);
-		if (rv && rv!=SC_ERROR_FILE_ALREADY_EXISTS)
-			SC_TEST_RET(card->ctx, rv, "cosm_init_app() sc_pkcs15init_create_file failed");
+		if (rv != SC_ERROR_FILE_ALREADY_EXISTS)
+			SC_TEST_RET(card->ctx, rv, "Failed to create Oberthur AWP file");
 	}
 
 	rv = cosm_write_tokeninfo(card, profile, NULL,
 		SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED | SC_PKCS15_CARD_FLAG_PRN_GENERATION);
 
-	if (pin && pin_len)   {
-		/* Create local SOPIN */
-		struct sc_pkcs15_pin_info pin_info;
-
-		sc_profile_get_file(profile, COSM_TITLE"-AppDF", &file);
-
-		pin_info.flags = SC_PKCS15_PIN_FLAG_SO_PIN;
-		pin_info.reference = 4;
-		memcpy(&pin_info.path, &file->path, sizeof(pin_info.path));
-
-		sc_file_free(file);
-
-		rv = cosm_create_reference_data(profile, card, &pin_info, pin, pin_len, NULL, 0);
-		SC_TEST_RET(card->ctx, rv, "cosm_init_app() cosm_update_pin failed");
-	}
-
-	SC_FUNC_RETURN(card->ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, 1, rv);
 }
 
 
@@ -359,6 +311,10 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_card *card,
 	struct sc_cardctl_oberthur_createpin_info args;
 	unsigned char *puk_buff = NULL;
 	int rv, puk_buff_len = 0;
+	unsigned char oberthur_puk[16] = {
+		0x6F, 0x47, 0xD9, 0x88, 0x4B, 0x6F, 0x9D, 0xC5,
+		0x78, 0x33, 0x79, 0x8F, 0x5B, 0x7D, 0xE1, 0xA5
+	};
 
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "pin lens %i/%i\n", pin_len,  puk_len);
@@ -370,61 +326,41 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_card *card,
 	rv = sc_select_file(card, &pinfo->path, NULL);
 	SC_TEST_RET(card->ctx, rv, "Cannot select file");
 
-	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &profile_pin);
-	else
-		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &profile_pin);
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &profile_pin);
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &profile_puk);
 
-	if (profile_pin.max_length > 0x100)
-		SC_TEST_RET(card->ctx, SC_ERROR_INCONSISTENT_PROFILE, "Invalid (SO)PIN profile settings");
-
-
-	if (puk)   {
-		int ii, jj;
-		const unsigned char *ptr = puk;
-		
-		puk_buff = (unsigned char *) malloc(0x100);
-		if (!puk_buff)
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
-
-		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &profile_puk);
-		if (profile_puk.max_length > 0x100) {
-			free(puk_buff);
-			return SC_ERROR_INCONSISTENT_PROFILE;
-		}
-		memset(puk_buff, profile_puk.pad_char, 0x100);
-		for (ii=0; ii<8 && (size_t)(ptr-puk) < puk_len && (*ptr); ii++)   {
-			jj = 0;
-			while (isalnum(*ptr) && jj<16)   {
-				*(puk_buff + ii*0x10 + jj++) = *ptr;
-				++ptr;
-			}
-			while(!isalnum(*ptr) && (*ptr))
-				++ptr;
-		}
-		
-		puk_buff_len = ii*0x10;
-	}
-
-	sc_debug(card->ctx, "pinfo->reference %i; tries %i\n", 
-			pinfo->reference, profile_pin.tries_left);
-
-	sc_debug(card->ctx, "sc_card_ctl %s\n","SC_CARDCTL_OBERTHUR_CREATE_PIN");
+	memset(&args, 0, sizeof(args));
 	args.type = SC_AC_CHV;
 	args.ref = pinfo->reference;
 	args.pin = pin;
 	args.pin_len = pin_len;
-	args.pin_tries = profile_pin.tries_left;
-	args.puk = puk_buff;
-	args.puk_len = puk_buff_len;
-	args.puk_tries = profile_puk.tries_left;
-	
+
+	if (!(pinfo->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))   {
+		args.pin_tries = profile_pin.tries_left;
+		if (profile_puk.tries_left > 0)   {
+			args.puk = oberthur_puk;
+			args.puk_len = sizeof(oberthur_puk);
+			args.puk_tries = 5;
+		}
+	}
+	else   {
+		args.pin_tries = profile_puk.tries_left;
+	}
+
 	rv = sc_card_ctl(card, SC_CARDCTL_OBERTHUR_CREATE_PIN, &args);
 	SC_TEST_RET(card->ctx, rv, "'CREATE_PIN' card specific command failed");
 
-	if (puk_buff_len == 16)   {
-		rv = cosm_update_pukfile (card, profile, puk_buff, puk_buff_len);
+	if (!(pinfo->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) && (profile_puk.tries_left > 0))   {
+	        struct sc_file *file = NULL;
+
+		if (sc_profile_get_file(profile, COSM_TITLE"-puk-file", &file))
+			SC_TEST_RET(card->ctx, SC_ERROR_INCONSISTENT_PROFILE, "Cannot find PUKFILE");
+
+		rv = sc_pkcs15init_update_file(profile, card, file, oberthur_puk, sizeof(oberthur_puk));
 		SC_TEST_RET(card->ctx, rv, "Failed to update pukfile");
+
+		if (file)
+			sc_file_free(file);
 	}
 
 	if (puk_buff)
@@ -445,18 +381,13 @@ cosm_update_pin(struct sc_profile *profile, struct sc_card *card,
 	int rv, tries_left = -1;
 	
 	SC_FUNC_CALLED(card->ctx, 1);
-	sc_debug(card->ctx, "ref %i; flags %X\n", pinfo->reference, pinfo->flags);
+	sc_debug(card->ctx, "ref %i; flags 0x%X\n", pinfo->reference, pinfo->flags);
 
 	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN)   {
 		if (pinfo->reference != 4)
 			SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "cosm_update_pin() invalid SOPIN reference");
-		
-		rv = sc_change_reference_data(card, SC_AC_CHV, pinfo->reference, puk, puk_len,
-				pin, pin_len, &tries_left);
-		SC_TEST_RET(card->ctx, rv, "cosm_update_pin() failed to change SOPIN");
-
-		if (tries_left != -1)
-			SC_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "cosm_update_pin() failed to change SOPIN");
+		sc_debug(card->ctx, "Update SOPIN ignored\n");
+		rv = SC_SUCCESS;
 	}
 	else   {
 		rv = cosm_create_reference_data(profile, card, pinfo, 
@@ -488,18 +419,22 @@ cosm_select_pin_reference(struct sc_profile *profile, struct sc_card *card,
 		return SC_ERROR_INCONSISTENT_PROFILE;
 	}
 
-	pin_info->path = pinfile->path;
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_LOCAL)
+		pin_info->path = pinfile->path;
+
 	sc_file_free(pinfile);
 	
 	if (!pin_info->reference)   {
 		if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)   
 			pin_info->reference = 4;
+		else if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
+			pin_info->reference = 4;	
 		else  
 			pin_info->reference = 1;
-	}
 
-	if (pin_info->reference < 0 || pin_info->reference > 4)
-		return SC_ERROR_INVALID_PIN_REFERENCE;
+		if (pin_info->flags & SC_PKCS15_PIN_FLAG_LOCAL)
+			pin_info->reference |= 0x80;
+	}
 
 	SC_FUNC_RETURN(card->ctx, 1, SC_SUCCESS);
 }
@@ -514,38 +449,49 @@ cosm_create_pin(struct sc_profile *profile, struct sc_card *card, struct sc_file
 		const unsigned char *pin, size_t pin_len,
 		const unsigned char *puk, size_t puk_len)
 {
-	struct sc_pkcs15_pin_info *pinfo = (struct sc_pkcs15_pin_info *) pin_obj->data;
-	struct sc_file *pinfile;
+	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) pin_obj->data;
+	struct sc_file *pin_file;
 	int rv = 0, type;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	sc_debug(card->ctx, "ref %i; flags %X\n", pinfo->reference, pinfo->flags);
-	if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pinfile) < 0)
+	sc_debug(card->ctx, "create '%s'; ref 0x%X; flags %X\n", pin_obj->label, pin_info->reference, pin_info->flags);
+	if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pin_file) < 0)
 		SC_TEST_RET(card->ctx, SC_ERROR_INCONSISTENT_PROFILE, "\""COSM_TITLE"-AppDF\" not defined");
 
-	pinfo->path = pinfile->path;
-	sc_file_free(pinfile);
-	
-	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
-		type = SC_PKCS15INIT_SO_PIN;
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_LOCAL)
+		pin_info->path = pin_file->path;
 
-		if (pinfo->reference != 4)  
-			SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid SOPIN reference");
+	sc_file_free(pin_file);
+	
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)   {
+		if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)   {
+			SC_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "SOPIN unblocking is not supported");
+		}
+		else   {
+			if (pin_info->reference != 4)  
+				SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid SOPIN reference");
+			type = SC_PKCS15INIT_SO_PIN;
+		}
 	} 
 	else {
-		type = SC_PKCS15INIT_USER_PIN;
-		
-		if (pinfo->reference !=1  &&  pinfo->reference != 2)
-			SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid PIN reference");
+		if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)   {
+			if (pin_info->reference != 0x84)  
+				SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid User PUK reference");
+			type = SC_PKCS15INIT_USER_PUK;
+		}
+		else   {
+			if (pin_info->reference != 0x81)
+				SC_TEST_RET(card->ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid User PIN reference");
+			type = SC_PKCS15INIT_USER_PIN;
+		}
 	}
 
 	if (pin && pin_len)   {
-		rv = cosm_update_pin(profile, card, pinfo, pin, pin_len,  puk, puk_len);
+		rv = cosm_update_pin(profile, card, pin_info, pin, pin_len,  puk, puk_len);
 		SC_TEST_RET(card->ctx, rv, "Update PIN failed");
 	}
 
-	sc_keycache_set_pin_name(&pinfo->path, pinfo->reference, type);
-	pinfo->flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
+	sc_keycache_set_pin_name(&pin_info->path, pin_info->reference, type);
 
 	SC_FUNC_RETURN(card->ctx, 1, rv);
 }
@@ -855,7 +801,7 @@ static struct sc_pkcs15init_operations
 sc_pkcs15init_oberthur_operations = {
 	cosm_erase_card,
 	NULL,				/* init_card  */
-	NULL,				/* create_dir */
+	cosm_create_dir,		/* create_dir */
 	NULL,				/* create_domain */
 	cosm_select_pin_reference,
 	cosm_create_pin,
@@ -866,7 +812,8 @@ sc_pkcs15init_oberthur_operations = {
 	NULL, 
 	NULL,				/* encode private/public key */
 	NULL,				/* finalize_card */
-	cosm_init_app,			/* old */
+	/* Old API */
+	NULL, 				//cosm_init_app,			/* old */
 	NULL,				/* new_pin */
 	NULL, 				/* cosm_new_key, */
 	NULL, 				/* cosm_new_file, */
