@@ -139,6 +139,8 @@ enum {
 	OPT_CERT_LABEL,
 	OPT_APPLICATION_NAME,
 	OPT_APPLICATION_ID,
+	OPT_PUK_ID,
+	OPT_PUK_LABEL,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -170,8 +172,10 @@ const struct option	options[] = {
 	{ "no-so-pin",		no_argument,	   NULL,	OPT_NO_SOPIN },
 	{ "serial",		required_argument, NULL,	OPT_SERIAL },
 	{ "auth-id",		required_argument, NULL,	'a' },
+	{ "puk-id",		required_argument, NULL,	OPT_PUK_ID },
 	{ "id",			required_argument, NULL,	'i' },
 	{ "label",		required_argument, NULL,	'l' },
+	{ "puk-label",		required_argument, NULL,	OPT_PUK_LABEL },
 	{ "public-key-label",	required_argument, NULL,	OPT_PUBKEY_LABEL },
 	{ "cert-label",		required_argument, NULL,	OPT_CERT_LABEL },
 	{ "application-name",	required_argument, NULL,	OPT_APPLICATION_NAME },
@@ -182,7 +186,7 @@ const struct option	options[] = {
 	{ "authority",		no_argument,	   NULL,	OPT_AUTHORITY },
 	{ "key-usage",		required_argument, NULL,	'u' },
 	{ "split-key",		no_argument,	   NULL,	OPT_SPLIT_KEY },
-	{ "finalize",		no_argument,       NULL,   'F' },
+	{ "finalize",		no_argument,       NULL,   	'F' },
 
 	{ "extractable",	no_argument, NULL,		OPT_EXTRACTABLE },
 	{ "insecure",		no_argument, NULL,		OPT_UNPROTECTED },
@@ -224,8 +228,10 @@ static const char *		option_help[] = {
 	"Do not install a SO PIN, and dont prompt for it",
 	"Specify the serial number of the card",
 	"Specify ID of PIN to use/create",
+	"Specify ID of PUK to use/create",
 	"Specify ID of key/certificate",
 	"Specify label of PIN/key",
+	"Specify label of PUK",
 	"Specify public key label (use with --generate-key)",
 	"Specify user cert label (use with --store-private-key)",
 	"Specify application name of data object (use with --store-data-object)",
@@ -328,6 +334,7 @@ static char *			opt_format = NULL;
 static char *			opt_authid = NULL;
 static char *			opt_objectid = NULL;
 static char *			opt_label = NULL;
+static char *			opt_puk_label = NULL;
 static char *			opt_pubkey_label = NULL;
 static char *			opt_cert_label = NULL;
 static char *			opt_pins[4];
@@ -337,6 +344,7 @@ static char *			opt_newkey = NULL;
 static char *			opt_outkey = NULL;
 static char *			opt_application_id = NULL;
 static char *			opt_application_name = NULL;
+static char *			opt_puk_authid = NULL;
 static unsigned int		opt_x509_usage = 0;
 static unsigned int		opt_delete_flags = 0;
 static unsigned int		opt_type = 0;
@@ -596,7 +604,7 @@ do_init_app(struct sc_profile *profile)
 	sc_pkcs15_pin_info_t	info;
 	sc_ui_hints_t		hints;
 	const char		*role = "so";
-	int			r;
+	int			r, so_puk_disabled = 0;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.usage	= SC_UI_USAGE_NEW_PIN;
@@ -616,25 +624,28 @@ do_init_app(struct sc_profile *profile)
 	}
 
 	memset(&args, 0, sizeof(args));
+
+	sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &info);
+
+	if (!(info.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+		role = "user";
+	else
+		hints.flags |= SC_UI_PIN_OPTIONAL; /* SO PIN is always optional */
+			
+
+	if ((info.flags & SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED) 
+			&& (info.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+		so_puk_disabled = 1;
+
+
 	if (!opt_pins[2] && !opt_no_prompt && !opt_no_sopin) {
-		sc_pkcs15init_get_pin_info(profile,
-				SC_PKCS15INIT_SO_PIN, &info);
-
-		if (!(info.flags & SC_PKCS15_PIN_FLAG_SO_PIN)) {
-			role = "user";
-		} else {
-			/* SO pin is always optional */
-			hints.flags |= SC_UI_PIN_OPTIONAL;
-		}
-
 		r = get_new_pin(&hints, role, "pin", &opt_pins[2]);
 		if (r < 0)
 			goto failed;
 	}
 
-	if (opt_pins[2] && !opt_pins[3] && !opt_no_prompt) {
-		sc_pkcs15init_get_pin_info(profile,
-				SC_PKCS15INIT_SO_PUK, &info);
+	if (!so_puk_disabled && opt_pins[2] && !opt_pins[3] && !opt_no_prompt) {
+		sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &info);
 
 		if (!(info.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
 			role = "user";
@@ -644,12 +655,17 @@ do_init_app(struct sc_profile *profile)
 		if (r < 0)
 			goto failed;
 	}
+
 	args.so_pin = (const u8 *) opt_pins[2];
 	if (args.so_pin)
 		args.so_pin_len = strlen((const char *) args.so_pin);
-	args.so_puk = (const u8 *) opt_pins[3];
-	if (args.so_puk)
-		args.so_puk_len = strlen((const char *) args.so_puk);
+
+	if (!so_puk_disabled)   {
+		args.so_puk = (const u8 *) opt_pins[3];
+		if (args.so_puk)
+			args.so_puk_len = strlen((const char *) args.so_puk);
+	}
+
 	args.serial = (const char *) opt_serial;
 	args.label = opt_label;
 
@@ -687,33 +703,37 @@ do_store_pin(struct sc_profile *profile)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	if (opt_pins[0] == NULL) {
-		sc_pkcs15init_get_pin_info(profile,
-				SC_PKCS15INIT_USER_PIN, &info);
-
+	sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &info);
+	if (opt_pins[0] == NULL)
 		if ((r = get_new_pin(&hints, "user", "pin", &opt_pins[0])) < 0)
 			goto failed;
-	}
+
 	if (*opt_pins[0] == '\0') {
 		util_error("You must specify a PIN\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	if (opt_pins[1] == NULL) {
-		sc_pkcs15init_get_pin_info(profile,
-				SC_PKCS15INIT_USER_PUK, &info);
-
-		hints.flags |= SC_UI_PIN_OPTIONAL;
-		if ((r = get_new_pin(&hints, "user", "puk", &opt_pins[1])) < 0)
-			goto failed;
 	}
 
 	memset(&args, 0, sizeof(args));
 	sc_pkcs15_format_id(pin_id, &args.auth_id);
 	args.pin = (u8 *) opt_pins[0];
 	args.pin_len = strlen(opt_pins[0]);
+	args.label = opt_label;
+
+	if (!(info.flags & SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED) 
+			&& opt_pins[1] == NULL) {
+		sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &info);
+
+		hints.flags |= SC_UI_PIN_OPTIONAL;
+		if ((r = get_new_pin(&hints, "user", "puk", &opt_pins[1])) < 0)
+			goto failed;
+
+	}
+
+	if (opt_puk_authid && opt_pins[1])
+		sc_pkcs15_format_id(opt_puk_authid, &args.puk_id);
+	args.puk_label = opt_puk_label;
 	args.puk = (u8 *) opt_pins[1];
 	args.puk_len = opt_pins[1]? strlen(opt_pins[1]) : 0;
-	args.label = opt_label;
 
 	return sc_pkcs15init_store_pin(p15card, profile, &args);
 
@@ -2566,6 +2586,12 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_APPLICATION_ID:
 		opt_application_id = optarg;
+		break;
+	case OPT_PUK_ID:
+		opt_puk_authid = optarg;
+		break;
+	case OPT_PUK_LABEL:
+		opt_puk_label = optarg;
 		break;
 	case 'T':
 		opt_use_defkeys = 1;

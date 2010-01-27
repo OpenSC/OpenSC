@@ -219,6 +219,9 @@ struct sc_pkcs15init_pinargs {
 	const char *		label;
 	const u8 *		pin;
 	size_t			pin_len;
+
+	struct sc_pkcs15_id	puk_id;
+	const char *		puk_label;
 	const u8 *		puk;
 	size_t			puk_len;
 };
