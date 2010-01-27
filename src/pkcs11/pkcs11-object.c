@@ -57,7 +57,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-        SC_FUNC_CALLED(context, 4);
+	SC_FUNC_CALLED(context, 4);
 
 	if (pTemplate == NULL_PTR || ulCount == 0) {
 		rv = CKR_ARGUMENTS_BAD;
@@ -81,9 +81,9 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	else
 		rv = card->framework->create_object(card, session->slot,
-						    pTemplate, ulCount, phObject);
+				pTemplate, ulCount, phObject);
 
-      out:sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -123,7 +123,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	else
 		rv = object->ops->destroy_object(session, object);
 
-      out:sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -157,12 +157,12 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv != CKR_OK)
 		return rv;
 
-	rv = get_object_from_session(hSession, hObject, &session, &object);
 	if (pTemplate == NULL_PTR || ulCount == 0) {
 		rv = CKR_ARGUMENTS_BAD;
 		goto out;
 	}
 
+	rv = get_object_from_session(hSession, hObject, &session, &object);
 	if (rv != CKR_OK)
 		goto out;
 
@@ -196,9 +196,9 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		}
 	}
 
-      out:
-        sc_debug(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = %s", hSession, hObject, lookup_enum ( RV_T, rv ));
-        sc_pkcs11_unlock();
+out:	sc_debug(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = %s",
+			hSession, hObject, lookup_enum ( RV_T, rv ));
+	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -241,7 +241,7 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		}
 	}
 
-      out:sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -263,11 +263,12 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv != CKR_OK)
 		return rv;
 
-	rv = get_session(hSession, &session);
 	if (pTemplate == NULL_PTR && ulCount > 0) {
 		rv = CKR_ARGUMENTS_BAD;
 		goto out;
 	}
+
+	rv = get_session(hSession, &session);
 	if (rv != CKR_OK)
 		goto out;
 
@@ -339,7 +340,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	sc_debug(context, "%d matching objects\n", operation->num_handles);
 
-      out:sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -357,11 +358,12 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv != CKR_OK)
 		return rv;
 
-	rv = get_session(hSession, &session);
 	if (phObject == NULL_PTR || ulMaxObjectCount == 0 || pulObjectCount == NULL_PTR) {
 		rv = CKR_ARGUMENTS_BAD;
 		goto out;
 	}
+
+	rv = get_session(hSession, &session);
 	if (rv != CKR_OK)
 		goto out;
 
@@ -382,7 +384,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	operation->current_handle += to_return;
 
-      out:sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -403,7 +405,7 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession)
 	if (rv == CKR_OK)
 		session_stop_operation(session, SC_PKCS11_OPERATION_FIND);
 
-      out:sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -421,17 +423,16 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-        sc_debug(context, "C_DigestInit(hSession=0x%lx)", hSession);
 
-	rv = get_session(hSession, &session);
-	if (rv != CKR_OK)
-		goto out;
-
-	rv = sc_pkcs11_md_init(session, pMechanism);
 	if (pMechanism == NULL_PTR) {
 		rv = CKR_ARGUMENTS_BAD;
 		goto out;
 	}
+
+	sc_debug(context, "C_DigestInit(hSession=0x%lx)", hSession);
+	rv = get_session(hSession, &session);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_md_init(session, pMechanism);
 
 out:	sc_debug(context, "C_DigestInit() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
@@ -460,9 +461,8 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
-      out:sc_debug(context, "C_Digest() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, "C_Digest() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
-
 	return rv;
 }
 
@@ -478,12 +478,10 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		return rv;
 
 	rv = get_session(hSession, &session);
-	if (rv != CKR_OK)
-		goto out;
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_md_update(session, pPart, ulPartLen);
 
-	rv = sc_pkcs11_md_update(session, pPart, ulPartLen);
-
-      out:sc_debug(context, "C_DigestUpdate() == %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, "C_DigestUpdate() == %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -506,12 +504,10 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		return rv;
 
 	rv = get_session(hSession, &session);
-	if (rv != CKR_OK)
-		goto out;
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
-	rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
-
-      out:sc_debug(context, "C_DigestFinal() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, "C_DigestFinal() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -538,7 +534,6 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 	rv = get_object_from_session(hSession, hKey, &session, &object);
-
 	if (rv != CKR_OK) {
 		if (rv == CKR_OBJECT_HANDLE_INVALID)
 			rv = CKR_KEY_HANDLE_INVALID;
@@ -563,9 +558,8 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
-      out:sc_debug(context, "C_SignInit() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, "C_SignInit() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
-
 	return rv;
 }
 
@@ -605,7 +599,7 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 
-      out:sc_debug(context, "C_Sign() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, "C_Sign() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -623,9 +617,9 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	rv = get_session(hSession, &session);
 	if (rv == CKR_OK)
-              rv = sc_pkcs11_sign_update(session, pPart, ulPartLen);
+		rv = sc_pkcs11_sign_update(session, pPart, ulPartLen);
 
-        sc_debug(context, "C_SignUpdate() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, "C_SignUpdate() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -661,9 +655,8 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 	}
 
-      out:sc_debug(context, "C_SignFinal() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, "C_SignFinal() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
-
 	return rv;
 }
 
@@ -689,7 +682,6 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 	rv = get_object_from_session(hSession, hKey, &session, &object);
-
 	if (rv != CKR_OK) {
 		if (rv == CKR_OBJECT_HANDLE_INVALID)
 			rv = CKR_KEY_HANDLE_INVALID;
@@ -718,7 +710,7 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
-      out:sc_debug(context, "C_SignRecoverInit() = %sn", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, "C_SignRecoverInit() = %sn", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -786,7 +778,6 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 	rv = get_object_from_session(hSession, hKey, &session, &object);
-
 	if (rv != CKR_OK) {
 		if (rv == CKR_OBJECT_HANDLE_INVALID)
 			rv = CKR_KEY_HANDLE_INVALID;
@@ -811,9 +802,8 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	rv = sc_pkcs11_decr_init(session, pMechanism, object, key_type);
 
-      out:sc_debug(context, "C_DecryptInit() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, "C_DecryptInit() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
-
 	return rv;
 }
 
@@ -831,12 +821,11 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		return rv;
 
 	rv = get_session(hSession, &session);
-	if (rv != CKR_OK)
-		goto out;
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_decr(session, pEncryptedData, ulEncryptedDataLen,
+				pData, pulDataLen);
 
-	rv = sc_pkcs11_decr(session, pEncryptedData, ulEncryptedDataLen, pData, pulDataLen);
-
-      out:sc_debug(context, "C_Decrypt() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, "C_Decrypt() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -949,7 +938,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,	/* the session's handle */
 							phPrivateKey);
 	}
 
-      out:sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -1015,7 +1004,7 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 	*phKey = result->handle;
 
-      out:sc_pkcs11_unlock();
+out:	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -1042,9 +1031,6 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		return rv;
 
 	rv = get_session(hSession, &session);
-	if (rv != CKR_OK)
-		goto out;
-
 	if (rv == CKR_OK) {
 		slot = session->slot;
 		if (slot->card->framework->get_random == NULL)
@@ -1055,7 +1041,6 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			rv = slot->card->framework->seed_random(slot->card, pSeed, ulSeedLen);
 	}
 
-      out:
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -1073,10 +1058,6 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		return rv;
 
 	rv = get_session(hSession, &session);
-
-	if (rv != CKR_OK)
-		goto out;
-
 	if (rv == CKR_OK) {
 		slot = session->slot;
 		if (slot->card->framework->get_random == NULL)
@@ -1085,7 +1066,7 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			rv = slot->card->framework->get_random(slot->card, RandomData, ulRandomLen);
 	}
 
-      out:sc_pkcs11_unlock();
+	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -1146,9 +1127,8 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	rv = sc_pkcs11_verif_init(session, pMechanism, object, key_type);
 
-      out:sc_debug(context, "C_VerifyInit() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, "C_VerifyInit() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
-
 	return rv;
 #endif
 }
@@ -1170,7 +1150,6 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		return rv;
 
 	rv = get_session(hSession, &session);
-
 	if (rv != CKR_OK)
 		goto out;
 
@@ -1178,7 +1157,7 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_verif_final(session, pSignature, ulSignatureLen);
 
-      out:sc_debug(context, "C_Verify() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, "C_Verify() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 #endif
@@ -1199,12 +1178,10 @@ CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		return rv;
 
 	rv = get_session(hSession, &session);
-	if (rv != CKR_OK)
-		goto out;
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_verif_update(session, pPart, ulPartLen);
 
-      out:sc_debug(context, "C_VerifyUpdate() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, "C_VerifyUpdate() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 #endif
@@ -1225,15 +1202,11 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		return rv;
 
 	rv = get_session(hSession, &session);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_verif_final(session, pSignature, ulSignatureLen);
 
-	if (rv != CKR_OK)
-		goto out;
-
-	rv = sc_pkcs11_verif_final(session, pSignature, ulSignatureLen);
-
-      out:sc_debug(context, "C_VerifyFinal() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, "C_VerifyFinal() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
-
 	return rv;
 #endif
 }
