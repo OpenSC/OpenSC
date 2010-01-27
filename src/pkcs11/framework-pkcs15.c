@@ -2762,6 +2762,7 @@ static CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 static CK_RV pkcs15_dobj_destroy(struct sc_pkcs11_session *session, void *object)
 {
 	struct pkcs15_data_object *obj = (struct pkcs15_data_object*) object;
+	struct pkcs15_any_object *any_obj = (struct pkcs15_any_object*) object;
 	struct sc_pkcs11_card *card = session->slot->card;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) card->fw_data;
 	struct sc_profile *profile = NULL;
@@ -2784,11 +2785,11 @@ static CK_RV pkcs15_dobj_destroy(struct sc_pkcs11_session *session, void *object
 	/* Delete object in smartcard */
 	rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
 	if (rv >= 0) {
-		/* pool_find_and_delete is called, therefore correct refcont
-		 * Oppose to pkcs15_add_object */
-		--((struct pkcs15_any_object*)object)->refcount;
+		/* Oppose to pkcs15_add_object */
+		--any_obj->refcount; /* correct refcont */
+		list_delete(&session->slot->objects, any_obj);
 		/* Delete object in pkcs15 */
-		rv = __pkcs15_delete_object(fw_data, (struct pkcs15_any_object*)object);
+		rv = __pkcs15_delete_object(fw_data, any_obj);
 	}
 
 	sc_pkcs15init_unbind(profile);

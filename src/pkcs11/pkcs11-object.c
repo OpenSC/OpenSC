@@ -117,13 +117,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = CKR_SESSION_READ_ONLY;
 		goto out;
 	}
-/*
-	FIXME
-	list_locate(&session->slot->objects, hObject);
-	rv = pool_find_and_delete(&session->slot->object_pool, hObject, (void**) &object);
-	if (rv != CKR_OK)
-		goto out;
-*/
+
 	if (object->ops->destroy_object == NULL)
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	else
