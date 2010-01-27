@@ -641,8 +641,11 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 		r = sc_pkcs15init_qualify_pin(card, "SO PIN", args->so_pin_len, &pin_info);
 		SC_TEST_RET(ctx, r, "Failed to qulify SO PIN");
 
+		/* Path encoded only for local SO PIN */
+		if (pin_info.flags & SC_PKCS15_PIN_FLAG_LOCAL)
+			pin_info.path = df->path;
+
 		/* Select the PIN reference */
-		pin_info.path = df->path;
 		if (profile->ops->select_pin_reference) {
 			r = profile->ops->select_pin_reference(profile,
 					card, &pin_info);
@@ -1054,8 +1057,11 @@ sc_pkcs15init_create_pin(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 			return r;
 	}
 
-	pin_info->path = df->path;
-	pin_info->reference = 0;
+	/* Path encoded only for local PINs */
+	if (pin_info.flags & SC_PKCS15_PIN_FLAG_LOCAL)
+		pin_info->path = df->path;
+
+	/* pin_info->reference = 0; */
 
 	/* Loop until we come up with an acceptable pin reference */
 	while (1) {

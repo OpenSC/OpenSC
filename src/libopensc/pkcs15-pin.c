@@ -159,7 +159,7 @@ int sc_pkcs15_encode_aodf_entry(sc_context_t *ctx,
 		sc_format_asn1_entry(asn1_pin_attr + 5, &pin->reference, NULL, 1);
 	/* FIXME: check if pad_char present */
 	sc_format_asn1_entry(asn1_pin_attr + 6, &pin->pad_char, &padchar_len, 1);
-	sc_format_asn1_entry(asn1_pin_attr + 8, &pin->path, NULL, 1);
+	sc_format_asn1_entry(asn1_pin_attr + 8, &pin->path, NULL, pin->path.len ? 1 : 0);
 
 	sc_format_asn1_entry(asn1_com_ao_attr + 0, &pin->auth_id, NULL, 1);
 
