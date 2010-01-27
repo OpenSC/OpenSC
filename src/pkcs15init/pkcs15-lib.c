@@ -627,6 +627,8 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 	SC_FUNC_CALLED(ctx, 3);
 	p15spec->card = card;
 
+	/* Add user PINs profile infos to the profile->pin_list. */
+	/* TODO: what for ? */ 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &puk_info);
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &puk_info);
 
@@ -647,18 +649,15 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 
 		/* Select the PIN reference */
 		if (profile->ops->select_pin_reference) {
-			r = profile->ops->select_pin_reference(profile,
-					card, &pin_info);
+			r = profile->ops->select_pin_reference(profile, card, &pin_info);
 			SC_TEST_RET(ctx, r, "Failed to select card specific PIN reference");
 
 			if (pin_info.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 				sc_keycache_set_pin_name(&pin_info.path,
-					pin_info.reference,
-					SC_PKCS15INIT_SO_PIN);
+					pin_info.reference, SC_PKCS15INIT_SO_PIN);
 			else
 				sc_keycache_set_pin_name(&pin_info.path,
-					pin_info.reference,
-					SC_PKCS15INIT_USER_PIN);
+					pin_info.reference, SC_PKCS15INIT_USER_PIN);
 		}
 
 		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &puk_info);
@@ -676,26 +675,25 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 			pin_info.flags |= SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED;
 
 		pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN, 
-						pin_label, NULL,
-					       	&pin_info);
+						pin_label, NULL, &pin_info);
 	}
 
 	/* Perform card-specific initialization */
-	if (profile->ops->init_card
-	 && (r = profile->ops->init_card(profile, card)) < 0) {
-		if (pin_obj)
+	if (profile->ops->init_card)   {
+		r = profile->ops->init_card(profile, card);
+		if (r < 0 && pin_obj)
 			sc_pkcs15_free_object(pin_obj);
 		SC_TEST_RET(ctx, r, "Card specific init failed");
 	}
 
 	/* Create the application DF and store the PINs */
 	if (profile->ops->create_dir) {
-		/* Create the directory */
+		/* Create the application directory */
 		r = profile->ops->create_dir(profile, card, df);
+
 		/* Set the SO PIN */
 		if (r >= 0 && pin_obj) {
-			r = profile->ops->create_pin(profile, card,
-					df, pin_obj,
+			r = profile->ops->create_pin(profile, card, df, pin_obj,
 					args->so_pin, args->so_pin_len,
 					args->so_puk, args->so_puk_len);
 		}
@@ -705,11 +703,10 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 				args->so_pin, args->so_pin_len,
 				args->so_puk, args->so_puk_len);
 	}
-	if (r < 0) {
-		if (pin_obj)
-			sc_pkcs15_free_object(pin_obj);
-		SC_TEST_RET(ctx, r, "Card specific create DIR failed");
-	}
+
+	if (r < 0 && pin_obj)
+		sc_pkcs15_free_object(pin_obj);
+	SC_TEST_RET(ctx, r, "Card specific create application DF failed");
 
 	/* Put the new SO pin in the key cache (note: in case
 	 * of the "onepin" profile store it as a normal pin) */
@@ -949,19 +946,92 @@ static int sc_pkcs15init_remove_unusedspace(sc_pkcs15_card_t *p15card,
 }
 #endif
 
+
 /*
  * Store a PIN/PUK pair
  */
+int
+sc_pkcs15init_store_puk(struct sc_pkcs15_card *p15card,
+			struct sc_profile *profile,
+			struct sc_pkcs15init_pinargs *args)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_object	*pin_obj;
+	struct sc_pkcs15_pin_info *pin_info;
+	int			r, idx;
+	char puk_label[0x30];
+
+	SC_FUNC_CALLED(ctx, 3);
+	if (!args->puk_id.len)
+		SC_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "PUK auth ID not supplied");
+		
+	/* Make sure we don't get duplicate PIN IDs */
+	r = sc_pkcs15_find_pin_by_auth_id(p15card, &args->puk_id, NULL);
+	if (r != SC_ERROR_OBJECT_NOT_FOUND)
+		SC_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "There already is a PIN with this ID.");
+
+	if (!args->puk_label)   {
+		if (args->label)
+			snprintf(puk_label, sizeof(puk_label), "%s (PUK)", args->label);
+		else
+			snprintf(puk_label, sizeof(puk_label), "User PUK");
+
+		args->puk_label = puk_label;
+	}
+
+	args->pin = args->puk;
+	args->pin_len = args->puk_len;
+	args->puk = NULL;
+	args->puk_len = 0;
+
+	pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN, args->puk_label, NULL, NULL);
+	if (pin_obj == NULL)
+		SC_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate PIN object");
+
+	pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, pin_info);
+	pin_info->auth_id = args->puk_id;
+
+	/* Set the SO PIN reference from card */
+	r = set_so_pin_from_card(p15card, profile);
+	if (r < 0)
+		sc_pkcs15_free_object(pin_obj);
+	SC_TEST_RET(ctx, r, "Failed to set SO PIN reference from card");
+
+	/* Now store the PINs */
+	if (profile->ops->create_pin)
+		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
+	else
+		SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "In Old API store PUK object is not supported");
+
+	/* Fix up any ACLs referring to the user pin */
+	if (r >= 0)
+		sc_keycache_set_pin_name(&pin_info->path, pin_info->reference,
+				SC_PKCS15INIT_USER_PUK);
+
+	if (r >= 0)
+		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
+	else
+		sc_pkcs15_free_object(pin_obj);
+
+	profile->dirty = 1;
+
+	SC_FUNC_RETURN(ctx, 3, r);
+}
+
+
 int
 sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 			struct sc_profile *profile,
 			struct sc_pkcs15init_pinargs *args)
 {
-	sc_card_t		*card = p15card->card;
-	sc_pkcs15_object_t	*pin_obj;
-	sc_pkcs15_pin_info_t	*pin_info;
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_object	*pin_obj;
+	struct sc_pkcs15_pin_info *pin_info;
 	int			r, idx;
 
+	SC_FUNC_CALLED(ctx, 3);
 	/* No auth_id given: select one */
 	if (args->auth_id.len == 0) {
 		unsigned int	n;
@@ -973,88 +1043,86 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 			if (r == SC_ERROR_OBJECT_NOT_FOUND)
 				break;
 		}
-		if (r != SC_ERROR_OBJECT_NOT_FOUND) {
-			sc_debug(card->ctx, "No auth_id specified for new PIN");
-			return SC_ERROR_INVALID_ARGUMENTS;
-		}
+
+		if (r != SC_ERROR_OBJECT_NOT_FOUND)
+			SC_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "No auth_id specified for new PIN");
 	} else {
 		/* Make sure we don't get duplicate PIN IDs */
 		r = sc_pkcs15_find_pin_by_auth_id(p15card, &args->auth_id, NULL);
-		if (r != SC_ERROR_OBJECT_NOT_FOUND) {
-			sc_debug(card->ctx, "There already is a PIN with this ID.");
-			return SC_ERROR_INVALID_ARGUMENTS;
-		}
+		if (r != SC_ERROR_OBJECT_NOT_FOUND)
+			SC_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "There already is a PIN with this ID.");
 	}
 
-	pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN,
-				args->label, NULL, NULL);
+	pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN, args->label, NULL, NULL);
 	if (pin_obj == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
+		SC_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate PIN object");
+
 	pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, pin_info);
 	pin_info->auth_id = args->auth_id;
 
 	/* Set the SO PIN reference from card */
-	if ((r = set_so_pin_from_card(p15card, profile)) < 0) {
+	r = set_so_pin_from_card(p15card, profile);
+	if (r < 0)
 		sc_pkcs15_free_object(pin_obj);
-		return r;
-	}
+	SC_TEST_RET(ctx, r, "Failed to set SO PIN reference from card");
 
 	/* Now store the PINs */
 	if (profile->ops->create_pin) {
 		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
 	} else {
 		/* Get the number of PINs we already have */
-		idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH,
-					NULL, 0);
+		idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH, NULL, 0);
 
-		r = profile->ops->new_pin(profile, card, pin_info, idx,
+		r = profile->ops->new_pin(profile, p15card->card, pin_info, idx,
 				args->pin, args->pin_len,
 				args->puk, args->puk_len);
 	}
+	
+	if (r < 0);
+		sc_pkcs15_free_object(pin_obj);
+	SC_TEST_RET(ctx, r, "Card specific create PIN failed.");
 
 	/* Fix up any ACLs referring to the user pin */
-	if (r >= 0) {
-		sc_keycache_set_pin_name(&pin_info->path,
-				pin_info->reference,
-				SC_PKCS15INIT_USER_PIN);
-	}
+	sc_keycache_set_pin_name(&pin_info->path, pin_info->reference, SC_PKCS15INIT_USER_PIN);
 
-	if (r >= 0) {
-		r = sc_pkcs15init_add_object(p15card, profile,
-			       	SC_PKCS15_AODF, pin_obj);
-	} else
+	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
+	if (r < 0);
 		sc_pkcs15_free_object(pin_obj);
+	SC_TEST_RET(ctx, r, "Failed to add PIN object");
+
+	if (args->puk_id.len)
+		r = sc_pkcs15init_store_puk(p15card, profile, args);
 
 	profile->dirty = 1;
 
-	return r;
+	SC_FUNC_RETURN(ctx, 3, r);
 }
+
 
 static int
 sc_pkcs15init_create_pin(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 		sc_pkcs15_object_t *pin_obj,
 		struct sc_pkcs15init_pinargs *args)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
 	sc_card_t	*card = p15card->card;
 	sc_file_t	*df = profile->df_info->file;
 	int		r, retry = 0;
 
+	SC_FUNC_CALLED(ctx, 3);
 	/* Some cards need to keep all their PINs in separate directories.
 	 * Create a subdirectory now, and put the pin into
 	 * this subdirectory
 	 */
 	if (profile->pin_domains) {
-		if (!profile->ops->create_domain) {
-			sc_debug(card->ctx, "PIN domains not supported.");
-			return SC_ERROR_NOT_SUPPORTED;
-		}
-		r = profile->ops->create_domain(profile, card,
-				&pin_info->auth_id, &df);
-		if (r < 0)
-			return r;
+		if (!profile->ops->create_domain)
+			SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PIN domains not supported.");
+
+		r = profile->ops->create_domain(profile, card, &pin_info->auth_id, &df);
+		SC_TEST_RET(ctx, r, "Card specific create domain failed");
 	}
 
 	/* Path encoded only for local PINs */
@@ -1065,26 +1133,21 @@ sc_pkcs15init_create_pin(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 
 	/* Loop until we come up with an acceptable pin reference */
 	while (1) {
-		sc_pkcs15_object_t *dummy;
-
 		if (profile->ops->select_pin_reference) {
 			r = profile->ops->select_pin_reference(profile, card, pin_info);
-			if (r < 0)
-				return r;
+			SC_TEST_RET(ctx, r, "Card specific select PIN reference failed");
+
 			retry = 1;
 		}
 
-		r = sc_pkcs15_find_pin_by_reference(p15card,
-				&pin_info->path,
-				pin_info->reference, &dummy);
+		r = sc_pkcs15_find_pin_by_reference(p15card, &pin_info->path, 
+				pin_info->reference, NULL);
 		if (r == SC_ERROR_OBJECT_NOT_FOUND)
 			break;
 
-		if (r != 0 || !retry) {
+		if (r != 0 || !retry)
 			/* Other error trying to retrieve pin obj */
-			sc_debug(card->ctx, "Failed to allocate PIN reference.");
-			return SC_ERROR_TOO_MANY_OBJECTS;
-		}
+			SC_TEST_RET(ctx, SC_ERROR_TOO_MANY_OBJECTS, "Failed to allocate PIN reference.");
 
 		pin_info->reference++;
 	}
@@ -1095,6 +1158,8 @@ sc_pkcs15init_create_pin(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 	if (args->puk_len == 0)
 		pin_info->flags |= SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED;
 
+	sc_debug(ctx, "create PIN with reference:%X, flags:%X, path:%s", 
+			pin_info->reference, pin_info->flags, sc_print_path(&pin_info->path));
 	r = profile->ops->create_pin(profile, card,
 			df, pin_obj,
 			args->pin, args->pin_len,
@@ -1102,7 +1167,8 @@ sc_pkcs15init_create_pin(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 
 	if (df != profile->df_info->file)
 		sc_file_free(df);
-	return r;
+
+	SC_FUNC_RETURN(ctx, 3, r);
 }
 
 /*
@@ -2578,19 +2644,19 @@ static int
 sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile)
 {
-	struct sc_card	*card = p15card->card;
-	u8		*buf = NULL;
+	struct sc_context	*ctx = p15card->card->ctx;
+	unsigned char	*buf = NULL;
 	size_t		size;
 	int		r;
 
-	sc_debug(card->ctx, "called\n");
-	r = sc_pkcs15_encode_odf(card->ctx, p15card, &buf, &size);
+	SC_FUNC_CALLED(ctx, 3);
+	r = sc_pkcs15_encode_odf(ctx, p15card, &buf, &size);
 	if (r >= 0)
-		r = sc_pkcs15init_update_file(profile, card,
+		r = sc_pkcs15init_update_file(profile, p15card->card,
 			       p15card->file_odf, buf, size);
 	if (buf)
 		free(buf);
-	return r;
+	SC_FUNC_RETURN(ctx, 3, r);
 }
 
 /*
@@ -2666,12 +2732,14 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 		unsigned int df_type,
 		struct sc_pkcs15_object *object)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_df *df;
 	struct sc_card	*card = p15card->card;
 	struct sc_file	*file = NULL;
 	int		is_new = 0, r = 0;
 
-	sc_debug(card->ctx, "called, DF %u obj %p\n", df_type, object);
+	SC_FUNC_CALLED(ctx, 3);
+	sc_debug(ctx, "add object %p to DF of type %u\n", object, df_type);
 
 	df = find_df_by_type(p15card, df_type);
 	if (df != NULL) {
@@ -2679,10 +2747,9 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 	} else {
 		file = profile->df[df_type];
 		if (file == NULL) {
-			sc_debug(card->ctx,
-					"Profile doesn't define a DF file %u",
+			sc_debug(ctx, "Profile doesn't define a DF file %u",
 			 		df_type);
-			return SC_ERROR_NOT_SUPPORTED;
+			SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "DF not found in profile");
 		}
 		sc_pkcs15_add_df(p15card, df_type, &file->path, file);
 		df = find_df_by_type(p15card, df_type);
@@ -2699,14 +2766,14 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 	} else if (object->df == NULL) {
 		object->df = df;
 		r = sc_pkcs15_add_object(p15card, object); 
-		if (r < 0)
-			return r;
+		SC_TEST_RET(ctx, r, "Failed to add pkcs15 object");
 	} else {
 		/* Reused an existing object */
 		assert(object->df == df);
 	}
 
-	return sc_pkcs15init_update_any_df(p15card, profile, df, is_new);
+	r = sc_pkcs15init_update_any_df(p15card, profile, df, is_new);
+	SC_FUNC_RETURN(ctx, 3, r);
 #if 0
 	if (!sc_profile_get_file_by_path(profile, &df->path, &pfile))
 		file = pfile;
