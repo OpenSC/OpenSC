@@ -1058,7 +1058,7 @@ sc_pkcs15init_create_pin(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 	}
 
 	/* Path encoded only for local PINs */
-	if (pin_info.flags & SC_PKCS15_PIN_FLAG_LOCAL)
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_LOCAL)
 		pin_info->path = df->path;
 
 	/* pin_info->reference = 0; */
