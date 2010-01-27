@@ -650,9 +650,12 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 	if (list_contains(&slot->objects, obj))
 		return;
 
-        list_append(&slot->objects, obj); // FIXME: pHandle too!
-        sc_debug(context, "Setting object handle of 0x%lx to 0x%lx", obj->base.handle, (CK_OBJECT_HANDLE)obj);
-        obj->base.handle = (CK_OBJECT_HANDLE)obj; // cast pointer to long
+	if (pHandle != NULL)
+		*pHandle = (CK_OBJECT_HANDLE)obj; /* cast pointer to long */
+
+	list_append(&slot->objects, obj);
+	sc_debug(context, "Setting object handle of 0x%lx to 0x%lx", obj->base.handle, (CK_OBJECT_HANDLE)obj);
+	obj->base.handle = (CK_OBJECT_HANDLE)obj; /* cast pointer to long */
 	obj->base.flags |= SC_PKCS11_OBJECT_SEEN;
 	obj->refcount++;
 
