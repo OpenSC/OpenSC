@@ -211,7 +211,10 @@ extern "C" {
 /* Event masks for sc_wait_for_event() */
 #define SC_EVENT_CARD_INSERTED		0x0001
 #define SC_EVENT_CARD_REMOVED		0x0002
+#define SC_EVENT_CARD_EVENTS		SC_EVENT_CARD_INSERTED|SC_EVENT_CARD_REMOVED
 #define SC_EVENT_READER_ATTACHED	0x0004
+#define SC_EVENT_READER_DETACHED	0x0008
+#define SC_EVENT_READER_EVENTS		SC_EVENT_READER_ATTACHED|SC_EVENT_READER_DETACHED
 
 typedef struct sc_security_env {
 	unsigned long flags;
@@ -740,6 +743,14 @@ sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i);
  */
 sc_reader_t *sc_ctx_get_reader_by_name(sc_context_t *ctx, const char *name);
 
+/** 
+ * Returns a pointer to the specified sc_reader_t object
+ * @param  ctx  OpenSC context
+ * @param  id id of the reader (starting from 0)
+ * @return the requested sc_reader object or NULL if the reader is
+ *         not available
+ */
+sc_reader_t *sc_ctx_get_reader_by_id(sc_context_t *ctx, unsigned int id);
 
 /**
  * Returns the number a available sc_reader objects
