@@ -29,6 +29,10 @@
 #include "pkcs15-init.h"
 #include "profile.h"
 
+#define MIOCOS_PIN_ID_MIN 1
+#define MIOCOS_PIN_ID_MAX 15
+
+#if 0
 /*
  * Initialize the Application DF
  */
@@ -78,6 +82,7 @@ miocos_new_pin(struct sc_profile *profile, sc_card_t *card,
 		return r;
 	return 0;
 }
+#endif
 
 /*
  * Allocate a file
@@ -164,6 +169,7 @@ miocos_update_private_key(struct sc_profile *profile, sc_card_t *card,
 	return r;
 }
 
+#if 0
 /*
  * Store a private key
  */
@@ -218,6 +224,175 @@ static struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations = {
 	miocos_new_pin,
 	miocos_new_key,
 	miocos_new_file,
+	NULL,				/* old_generate_key */
+	NULL 				/* delete_object */
+};
+
+#endif
+
+/*
+ * Initialize the Application DF
+ */
+static int 
+miocos_create_dir(struct sc_profile *profile, sc_card_t *card,
+		struct sc_file *df)
+{
+	/* Create the application DF */
+	if (sc_pkcs15init_create_file(profile, card, profile->df_info->file))
+		return 1;
+
+	return 0;
+}
+
+/*
+ * Validate PIN reference
+ */
+static int
+miocos_select_pin_reference(struct sc_profile *profile, sc_card_t *card,
+		struct sc_pkcs15_pin_info *pin_info)
+{
+
+	if (!pin_info->reference)
+		pin_info->reference = MIOCOS_PIN_ID_MIN; 
+
+	return SC_SUCCESS;
+}
+
+/*
+ * Create new PIN
+ */
+static int
+miocos_create_pin(struct sc_profile *profile, sc_card_t *card, struct sc_file *df, 
+		struct sc_pkcs15_object *pin_obj,
+		const u8 *pin, size_t pin_len,
+		const u8 *puk, size_t puk_len)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *)pin_obj->data;
+	struct sc_pkcs15_pin_info tmpinfo;
+	struct sc_cardctl_miocos_ac_info ac_info;
+	int r;
+
+	SC_FUNC_CALLED(ctx, 1);
+	/* Ignore SOPIN */
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)	
+		return SC_SUCCESS;
+
+	pin_info->path = profile->df_info->file->path;
+	r = sc_select_file(card, &pin_info->path, NULL);
+	if (r)
+		return r;
+	memset(&ac_info, 0, sizeof(ac_info));
+	ac_info.ref = pin_info->reference;
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
+	ac_info.max_tries = tmpinfo.tries_left;
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &tmpinfo);
+	ac_info.max_unblock_tries = tmpinfo.tries_left;
+	if (pin_len > 8)
+		pin_len = 8;
+	memcpy(ac_info.key_value, pin, pin_len);
+	if (puk_len > 8)
+		puk_len = 8;
+	strncpy((char *) ac_info.unblock_value, (const char *) puk, puk_len);
+	r = sc_card_ctl(card, SC_CARDCTL_MIOCOS_CREATE_AC, &ac_info);
+        SC_TEST_RET(ctx, r, "Miocos create AC failed");
+
+	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+}
+
+
+/*
+ * Create private key file
+ */
+static int
+miocos_create_key(struct sc_profile *profile, struct sc_card *card,
+		struct sc_pkcs15_object *object)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
+	struct sc_file *file;
+	struct sc_pkcs15_prkey_rsa *rsa;
+	int r;
+
+	SC_FUNC_CALLED(ctx, 1);
+	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)	
+        	SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
+
+	if (key_info->modulus_length != 1024)
+        	SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
+
+        sc_debug(ctx, "create private key ID:%s\n",  sc_pkcs15_print_id(&key_info->id));
+	r = miocos_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
+        SC_TEST_RET(ctx, r, "Cannot create key: failed to allocate new key object");
+
+        memcpy(&file->path, &key_info->path, sizeof(file->path));
+        file->id = file->path.value[file->path.len - 2] * 0x100
+			+ file->path.value[file->path.len - 1];
+
+        sc_debug(ctx, "Path of private key file to create %s\n", sc_print_path(&file->path));
+
+	r = sc_pkcs15init_create_file(profile, card, file);
+	sc_file_free(file);
+
+	SC_FUNC_RETURN(ctx, 1, r);
+}
+
+
+/*
+ * Store a private key
+ */
+static int
+miocos_store_key(struct sc_profile *profile, struct sc_card *card,
+		struct sc_pkcs15_object *object,
+		struct sc_pkcs15_prkey *key)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
+	struct sc_pkcs15_prkey_rsa *rsa;
+	struct sc_file *file = NULL;
+	int r;
+
+	SC_FUNC_CALLED(ctx, 1);
+	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA 
+			|| key->algorithm != SC_ALGORITHM_RSA)
+		SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
+
+	rsa = &key->u.rsa;
+	if (rsa->modulus.len != 128)
+		SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
+
+        sc_debug(ctx, "store key with ID:%s and path:%s\n", sc_pkcs15_print_id(&key_info->id),
+			sc_print_path(&key_info->path));
+
+	r = sc_select_file(card, &key_info->path, &file);
+	SC_TEST_RET(ctx, r, "Cannot store key: select key file failed");
+
+	r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_UPDATE);
+	SC_TEST_RET(ctx, r, "No authorisation to store private key");
+
+	r = miocos_update_private_key(profile, card, rsa);
+
+	SC_FUNC_RETURN(ctx, 1, r);
+}
+
+static struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations = {
+	NULL,				/* erase_card */
+	NULL,				/* init_card  */
+	miocos_create_dir,
+	NULL,				/* create_domain */
+	miocos_select_pin_reference,
+	miocos_create_pin,
+	NULL,				/* select_key_reference */
+	miocos_create_key,
+	miocos_store_key,	
+	NULL,				/* generate_key */
+	NULL, NULL,			/* encode private/public key */
+	NULL,				/* finalize_card */
+	/* Old API */
+	NULL, 				/* miocos_init_app */
+	NULL, 				/* miocos_new_pin */
+	NULL, 				/* miocos_new_key */
+	NULL, 				/* miocos_new_file */
 	NULL,				/* old_generate_key */
 	NULL 				/* delete_object */
 };
