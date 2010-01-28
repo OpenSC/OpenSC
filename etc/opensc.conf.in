@@ -394,6 +394,11 @@ app opensc-pkcs11 {
 		#
 		# Default: none
 		# user_pin_unblock_style = set_pin_in_unlogged_session;
+
+		# Disable slot for User PUK
+		#
+		# Default: false
+		# disable_user_puk_slot = true;
 	}
 }
 
