@@ -395,9 +395,10 @@ app opensc-pkcs11 {
 		# Default: none
 		# user_pin_unblock_style = set_pin_in_unlogged_session;
 
-		# Create slot for unblocking PIN
-		# This way PKCS#11 API can be used to change a PIN.
-		# Warning: causes problems with some applicatoins like
+		# Create slot for unblocking PIN with PUK
+		# This way PKCS#11 API can be used to login with PUK and
+		# change a PIN.
+		# Warning: causes problems with some applications like
 		# firefox and thunderbird. Thus turned off by default
 		#
 		# Default: false
