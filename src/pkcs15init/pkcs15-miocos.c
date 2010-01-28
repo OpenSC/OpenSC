@@ -252,7 +252,7 @@ miocos_select_pin_reference(struct sc_profile *profile, sc_card_t *card,
 		struct sc_pkcs15_pin_info *pin_info)
 {
 
-	if (!pin_info->reference)
+	if (pin_info->reference < MIOCOS_PIN_ID_MIN)
 		pin_info->reference = MIOCOS_PIN_ID_MIN; 
 
 	return SC_SUCCESS;

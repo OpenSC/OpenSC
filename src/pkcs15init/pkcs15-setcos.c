@@ -244,10 +244,10 @@ setcos_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 	/* For the SO pin, we take the first available pin reference = 1 */
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 		pin_info->reference = pin_info_prof.reference;
-	/* sc_pkcs15init_create_pin() starts checking if 0 is an acceptable
+	/* sc_pkcs15init_create_pin() starts checking if -1 is an acceptable
 	 * pin reference, which isn't for the SetCOS cards. And since the
 	 * value 1 has been assigned to the SO pin, we'll jump to 2. */
-	else if (pin_info->reference == 0)
+	else if (pin_info->reference <= 0)
 		pin_info->reference = pin_info_prof.reference + 1;
 
 	return 0;

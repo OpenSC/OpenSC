@@ -424,7 +424,7 @@ cosm_select_pin_reference(struct sc_profile *profile, struct sc_card *card,
 
 	sc_file_free(pinfile);
 	
-	if (!pin_info->reference)   {
+	if (pin_info->reference <= 0)   {
 		if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)   
 			pin_info->reference = 4;
 		else if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)

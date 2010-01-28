@@ -185,7 +185,7 @@ rutoken_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 	/* XXX:
 	 * Create:
 	 * First iteration find reference for create new PIN object with
-	 * pin_info->reference == 0
+	 * pin_info->reference == -1
 	 * Next iteration ++pin_info->reference signify PIN object
 	 * (pin_info->reference == SC_RUTOKEN_DEF_ID_GCHV_ADMIN  or
 	 *  pin_info->reference == SC_RUTOKEN_DEF_ID_GCHV_USER)
@@ -194,7 +194,7 @@ rutoken_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 	 * Valid PIN reference: { SC_RUTOKEN_DEF_ID_GCHV_ADMIN,
 	 * SC_RUTOKEN_DEF_ID_GCHV_USER }
 	 */
-	if (pin_info->reference != 0
+	if (pin_info->reference > 0
 			&& pin_info->reference != SC_RUTOKEN_DEF_ID_GCHV_ADMIN
 			&& pin_info->reference != SC_RUTOKEN_DEF_ID_GCHV_USER
 	)
