@@ -849,8 +849,8 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		if ((pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) != 0)
 			continue;
 
-		/* Ignore unblocking pins for hacked module */
-		if (hack_enabled && (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) != 0)
+		/* Ignore unblocking pins */
+		if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
 			continue;
 
 		found_auth_count++;
