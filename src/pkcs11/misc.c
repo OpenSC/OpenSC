@@ -257,6 +257,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->lock_login = 0;
 	conf->soft_keygen_allowed = 0;
 	conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED;
+	conf->disable_user_puk_slot = 0;
 
 	conf_block = sc_get_conf_block(ctx, "pkcs11", NULL, 1);
 	if (!conf_block)
@@ -279,6 +280,8 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 		conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN;
 	else if (unblock_style && !strcmp(unblock_style, "init_pin_in_so_session"))
 		conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN;
+	
+	conf->disable_user_puk_slot = scconf_get_bool(conf_block, "disable_user_puk_slot", conf->disable_user_puk_slot);
 
 	sc_debug(ctx, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d "
 		 "hide_empty_tokens=%d lock_login=%d pin_unblock_style=%d",

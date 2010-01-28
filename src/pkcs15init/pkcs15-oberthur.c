@@ -813,7 +813,7 @@ sc_pkcs15init_oberthur_operations = {
 	NULL,				/* encode private/public key */
 	NULL,				/* finalize_card */
 	/* Old API */
-	NULL, 				//cosm_init_app,			/* old */
+	NULL, 				/* init_app */
 	NULL,				/* new_pin */
 	NULL, 				/* cosm_new_key, */
 	NULL, 				/* cosm_new_file, */
