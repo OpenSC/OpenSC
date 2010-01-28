@@ -79,7 +79,7 @@ struct sc_pkcs11_config {
 	unsigned char lock_login;
 	unsigned char soft_keygen_allowed;
 	unsigned int pin_unblock_style;
-	unsigned int disable_user_puk_slot;
+	unsigned int create_puk_slot;
 };
 
 /*

@@ -854,7 +854,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 			continue;
 
 		/* Ignore unblocking pins */
-		if (sc_pkcs11_conf.disable_user_puk_slot)
+		if (!sc_pkcs11_conf.create_puk_slot)
 			if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
 				continue;
 
