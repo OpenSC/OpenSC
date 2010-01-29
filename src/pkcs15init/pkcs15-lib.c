@@ -1088,7 +1088,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 	sc_keycache_set_pin_name(&pin_info->path, pin_info->reference, SC_PKCS15INIT_USER_PIN);
 
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
-	if (r < 0);
+	if (r < 0)
 		sc_pkcs15_free_object(pin_obj);
 	SC_TEST_RET(ctx, r, "Failed to add PIN object");
 
