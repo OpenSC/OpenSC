@@ -16,6 +16,7 @@ option default {
         pin_prot    = *=NEVER, WRITE=$SOPIN, UPDATE=$SOPIN; # WATCH OUT IF YOU CHANGE THESE!!
         prkey_prot  = *=NEVER, ERASE=$SOPIN, READ=NONE, CRYPTO=$PIN, UPDATE=$SOPIN;
         exkey_prot  = *=NEVER, ERASE=$SOPIN, READ=$PIN, UPDATE=$SOPIN;
+	so-pin-flags    = initialized, soPin;
     }
 }
 
@@ -28,12 +29,14 @@ option onepin {
         pin_prot    = *=NEVER, WRITE=$PIN, UPDATE=$PIN; # WATCH OUT IF YOU CHANGE THESE!!
         prkey_prot  = *=NEVER, ERASE=$PIN, READ=NONE, CRYPTO=$PIN, UPDATE=$PIN; # READ: only applies on public key
         exkey_prot  = *=NEVER, ERASE=$PIN, READ=$PIN, UPDATE=$PIN;
+        so-pin-flags    = initialized;
     }
 }
 
 # Define reasonable limits for PINs and PUK
 PIN user-pin {
     attempts	= 3;
+    flags	= initialized, needs-padding;
 }
 PIN user-puk {
     attempts	= 5;
@@ -41,6 +44,7 @@ PIN user-puk {
 
 PIN so-pin {
     reference	= 1;
+    flags	= $so-pin-flags;
 }
 
 # Additional filesystem info.
