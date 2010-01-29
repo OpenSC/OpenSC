@@ -383,6 +383,15 @@ static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 	if (tag != NULL && taglen) {
 		sc_file_set_sec_attr(file, tag, taglen); 
 	}
+	tag = sc_asn1_find_tag(ctx, p, len, 0x8A, &taglen);
+	if (tag != NULL && taglen==1) {
+		if (tag[0] == 0x01)
+			file->status = SC_FILE_STATUS_CREATION;
+		else if (tag[0] == 0x07 || tag[0] == 0x05)
+			file->status = SC_FILE_STATUS_ACTIVATED;
+		else if (tag[0] == 0x06 || tag[0] == 0x04)
+			file->status = SC_FILE_STATUS_INVALIDATED;
+	}
 	file->magic = SC_FILE_MAGIC;
 
 	return 0;
