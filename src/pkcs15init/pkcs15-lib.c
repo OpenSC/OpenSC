@@ -622,7 +622,7 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 	sc_pkcs15_object_t	*pin_obj = NULL;
 	sc_app_info_t	*app;
 	sc_file_t		*df = profile->df_info->file;
-	int			r;
+	int			r, pin_type = SC_PKCS15INIT_SO_PIN;
 
 	SC_FUNC_CALLED(ctx, 3);
 	p15spec->card = card;
@@ -647,17 +647,17 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 		if (pin_info.flags & SC_PKCS15_PIN_FLAG_LOCAL)
 			pin_info.path = df->path;
 
+		/* Put the new SO pin in the key cache (note: in case
+	 	 * of the "onepin" profile store it as a normal pin) */
+		if (!(pin_info.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+			pin_type = SC_PKCS15INIT_USER_PIN;
+
 		/* Select the PIN reference */
 		if (profile->ops->select_pin_reference) {
 			r = profile->ops->select_pin_reference(profile, card, &pin_info);
 			SC_TEST_RET(ctx, r, "Failed to select card specific PIN reference");
 
-			if (pin_info.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-				sc_keycache_set_pin_name(&pin_info.path,
-					pin_info.reference, SC_PKCS15INIT_SO_PIN);
-			else
-				sc_keycache_set_pin_name(&pin_info.path,
-					pin_info.reference, SC_PKCS15INIT_USER_PIN);
+			sc_keycache_set_pin_name(&pin_info.path, pin_info.reference, pin_type);
 		}
 
 		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &puk_info);
@@ -708,20 +708,8 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 		sc_pkcs15_free_object(pin_obj);
 	SC_TEST_RET(ctx, r, "Card specific create application DF failed");
 
-	/* Put the new SO pin in the key cache (note: in case
-	 * of the "onepin" profile store it as a normal pin) */
-	if (args->so_pin_len && !(pin_info.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
-		sc_keycache_put_key(&df->path,
-			SC_AC_SYMBOLIC,
-			SC_PKCS15INIT_USER_PIN,
-			args->so_pin,
-			args->so_pin_len);
-	else
-		sc_keycache_put_key(&df->path,
-			SC_AC_SYMBOLIC,
-			SC_PKCS15INIT_SO_PIN,
-			args->so_pin,
-			args->so_pin_len);
+	sc_keycache_put_key(&pin_info.path, SC_AC_SYMBOLIC, pin_type, 
+			args->so_pin, args->so_pin_len);
 
 	/* Store the PKCS15 information on the card
 	 * We cannot use sc_pkcs15_create() because it makes
@@ -1111,6 +1099,7 @@ sc_pkcs15init_create_pin(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 	sc_card_t	*card = p15card->card;
 	sc_file_t	*df = profile->df_info->file;
 	int		r, retry = 0;
+	int 		pin_type = SC_PKCS15INIT_USER_PIN;
 
 	SC_FUNC_CALLED(ctx, 3);
 	/* Some cards need to keep all their PINs in separate directories.
@@ -1128,6 +1117,11 @@ sc_pkcs15init_create_pin(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 	/* Path encoded only for local PINs */
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_LOCAL)
 		pin_info->path = df->path;
+
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
+		pin_type = SC_PKCS15INIT_USER_PUK;
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+		pin_type = SC_PKCS15INIT_SO_PIN;
 
 	/* pin_info->reference = 0; */
 
@@ -1152,8 +1146,7 @@ sc_pkcs15init_create_pin(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 		pin_info->reference++;
 	}
 
-	sc_keycache_set_pin_name(&pin_info->path, pin_info->reference,
-			SC_PKCS15INIT_USER_PIN);
+	sc_keycache_set_pin_name(&pin_info->path, pin_info->reference, pin_type);
 
 	if (args->puk_len == 0)
 		pin_info->flags |= SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED;
@@ -3570,6 +3563,7 @@ int
 sc_pkcs15init_update_file(struct sc_profile *profile, sc_card_t *card,
 	       	sc_file_t *file, void *data, unsigned int datalen)
 {
+	struct sc_context	*ctx = profile->card->ctx;
 	struct sc_file	*info = NULL;
 	void		*copy = NULL;
 	int		r, need_to_zap = 0;
@@ -3580,17 +3574,21 @@ sc_pkcs15init_update_file(struct sc_profile *profile, sc_card_t *card,
 		pbuf[0] = '\0';
 	sc_debug(card->ctx, "called, path=%s, %u bytes\n", pbuf, datalen);
 
-	if ((r = sc_select_file(card, &file->path, &info)) < 0) {
+	r = sc_select_file(card, &file->path, &info);
+	if (!r)   {
+		need_to_zap = 1;
+	}
+	else if (r == SC_ERROR_FILE_NOT_FOUND)   {
 		/* Create file if it doesn't exist */
 		if (file->size < datalen)
 			file->size = datalen;
-		if (r != SC_ERROR_FILE_NOT_FOUND
-		 || (r = sc_pkcs15init_create_file(profile, card, file)) < 0
-		 || (r = sc_select_file(card, &file->path, &info)) < 0)
-			return r;
-	} else {
-		need_to_zap = 1;
-	}
+
+		r = sc_pkcs15init_create_file(profile, card, file);
+		SC_TEST_RET(ctx, r, "Failed to create file");
+		
+		r = sc_select_file(card, &file->path, &info);
+		SC_TEST_RET(ctx, r, "Failed to select file");
+	} 
 
 	if (info->size < datalen) {
 		r = sc_path_print(pbuf, sizeof(pbuf), &file->path);
