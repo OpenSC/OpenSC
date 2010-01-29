@@ -1080,7 +1080,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 				args->puk, args->puk_len);
 	}
 	
-	if (r < 0);
+	if (r < 0)
 		sc_pkcs15_free_object(pin_obj);
 	SC_TEST_RET(ctx, r, "Card specific create PIN failed.");
 
