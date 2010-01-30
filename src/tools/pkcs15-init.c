@@ -2639,8 +2639,14 @@ handle_option(const struct option *opt)
 
 	if ((opt_pins[OPT_PIN2&3] || opt_pins[OPT_PUK2&3]) && opt_no_sopin) {
 		fprintf(stderr, "Error: "
-		"The --no-so-pin option and --so-pin/--so-puk are mutually\n"
+		"The --no-so-pin option and --so-pin/--so-puk are mutually"
 		"exclusive.\n");
+		util_print_usage_and_die(app_name, options, option_help);
+	}
+
+	if ((opt_actions & (1 << ACTION_ERASE)) &&
+		(opt_actions != (1 << ACTION_ERASE))) {
+		fprintf(stderr, "Error: erasing a card is incompatible with all other actions\n");
 		util_print_usage_and_die(app_name, options, option_help);
 	}
 }
