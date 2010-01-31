@@ -249,6 +249,7 @@ cardos_store_key(sc_profile_t *profile, sc_card_t *card,
 			sc_pkcs15_prkey_t *key)
 {
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	struct sc_file *file = NULL;
 	int		algorithm = 0, r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
@@ -260,6 +261,19 @@ cardos_store_key(sc_profile_t *profile, sc_card_t *card,
 		sc_debug(card->ctx, "CardOS does not support keys "
 			       "that can both sign _and_ decrypt.");
 		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	r = sc_select_file(card, &key_info->path, &file);
+	if (r)   {
+		sc_debug(card->ctx, "Failed to store key: cannot select parent DF");
+		return r;
+	}
+
+	r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_UPDATE);
+	sc_file_free(file);
+	if (r)   {
+		sc_debug(card->ctx, "Failed to store key: 'UPDATE' authentication failed");
+		return r;
 	}
 
 	r = cardos_put_key(profile, card, algorithm, key_info, &key->u.rsa);

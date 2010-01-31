@@ -35,7 +35,7 @@ filesystem {
 	    # Prevent unauthorized updates of basic security
 	    # objects via PUT DATA OCI.
 	    # ACL = UPDATE=NEVER;
-	    ACL = UPDATE=$PIN;
+	    ACL = UPDATE=$SOPIN;
 
 	    # Bump the size of the EF(PrKDF) - with split
 	    # keys, we may need a little more room.
