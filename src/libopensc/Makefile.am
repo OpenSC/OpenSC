@@ -3,6 +3,7 @@ include $(top_srcdir)/win32/ltrc.inc
 MAINTAINERCLEANFILES = \
 	$(srcdir)/Makefile.in $(srcdir)/versioninfo.rc
 CLEANFILES = versioninfo.rc
+
 EXTRA_DIST = Makefile.mak 
 
 bin_SCRIPTS = opensc-config
@@ -47,7 +48,6 @@ libopensc_la_SOURCES = \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
 	pkcs15-esinit.c p15emu-westcos.c pkcs15-pteid.c \
 	compression.c p15card-helper.c \
-	\
 	libopensc.exports
 if WIN32
 libopensc_la_SOURCES += versioninfo.rc
@@ -56,6 +56,7 @@ dist_noinst_DATA = versioninfo.rc
 endif
 libopensc_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(OPTIONAL_OPENCT_LIBS) \
 	$(OPTIONAL_ZLIB_LIBS) $(OPTIONAL_ICONV_LIBS) $(LTLIB_LIBS) \
+	$(top_builddir)/src/pkcs15init/libpkcs15init.la \
 	$(top_builddir)/src/scconf/libscconf.la \
 	$(top_builddir)/src/common/libcompat.la
 if WIN32
@@ -68,7 +69,7 @@ libopensc_la_LDFLAGS = $(AM_LDFLAGS) \
 
 versioninfo.rc:
 	sed 's/@@FILE_DESCRIPTION@@/OpenSC Core Library/g' \
-		"$(top_builddir)/win32/versioninfo.rc.in" > versioninfo.rc
+	"$(top_builddir)/win32/versioninfo.rc.in" > versioninfo.rc
 
 if WIN32
 # def file required for MS users to build library

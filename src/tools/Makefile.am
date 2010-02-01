@@ -18,8 +18,8 @@ endif
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS)
 INCLUDES = -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
-LIBS = $(top_builddir)/src/libopensc/libopensc.la \
-	$(top_builddir)/src/common/libcompat.la
+LIBS = $(top_builddir)/src/common/libcompat.la \
+	$(top_builddir)/src/libopensc/libopensc.la
 
 opensc_tool_SOURCES = opensc-tool.c util.c
 piv_tool_SOURCES = piv-tool.c util.c
@@ -36,8 +36,7 @@ pkcs15_crypt_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 cryptoflex_tool_SOURCES = cryptoflex-tool.c util.c
 cryptoflex_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS) 
 pkcs15_init_SOURCES = pkcs15-init.c util.c
-pkcs15_init_LDADD = $(OPTIONAL_OPENSSL_LIBS) \
-	$(top_builddir)/src/pkcs15init/libpkcs15init.la
+pkcs15_init_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 cardos_tool_SOURCES = cardos-tool.c util.c
 cardos_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 eidenv_SOURCES = eidenv.c util.c

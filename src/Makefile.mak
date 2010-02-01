@@ -2,7 +2,7 @@ TOPDIR = ..
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-SUBDIRS = include common scconf libopensc tests pkcs15init pkcs11 tools
+SUBDIRS = include common scconf pkcs15init libopensc pkcs11 tools tests 
 
 all::
 
