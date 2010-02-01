@@ -3271,6 +3271,8 @@ found:	if (type == SC_AC_CHV && pin_info.flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDIN
 	}
 
 	if (verify) {
+		struct sc_pin_cmd_data pin_cmd;
+
 		/* We may have selected the AODF instead of the file
 		 * itself: */
 		if (file)   {
@@ -3278,10 +3280,14 @@ found:	if (type == SC_AC_CHV && pin_info.flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDIN
 			SC_TEST_RET(ctx, r, "Failed to select PIN path");
 		}
 
-		if (use_pinpad)
-	 		r = sc_verify(card, type, reference, NULL, 0, NULL);
-		else
-			r = sc_verify(card, type, reference, pinbuf, *pinsize, NULL);
+		memset(&pin_cmd, 0, sizeof(pin_cmd));
+		pin_cmd.cmd = SC_PIN_CMD_VERIFY;
+		pin_cmd.pin_type = type;
+		pin_cmd.pin_reference = reference;
+		pin_cmd.pin1.data = use_pinpad ? NULL : pinbuf;
+		pin_cmd.pin1.len = use_pinpad ? 0: *pinsize;
+	
+		r = sc_pin_cmd(card, &pin_cmd, NULL);
 	 	if (r < 0)
 			sc_debug(ctx, "Failed to verify %s (ref=0x%x)", ident, reference);
 	}
