@@ -32,58 +32,6 @@
 #define MIOCOS_PIN_ID_MIN 1
 #define MIOCOS_PIN_ID_MAX 15
 
-#if 0
-/*
- * Initialize the Application DF
- */
-static int miocos_init_app(struct sc_profile *profile, sc_card_t *card,
-		struct sc_pkcs15_pin_info *pin_info,
-		const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
-{
-	/* Create the application DF */
-	if (sc_pkcs15init_create_file(profile, card, profile->df_info->file))
-		return 1;
-
-	return 0;
-}
-
-/*
- * Store a PIN
- */
-static int
-miocos_new_pin(struct sc_profile *profile, sc_card_t *card,
-		struct sc_pkcs15_pin_info *info, unsigned int idx,
-		const u8 *pin, size_t pin_len,
-		const u8 *puk, size_t puk_len)
-{
-	struct sc_pkcs15_pin_info tmpinfo;
-	struct sc_cardctl_miocos_ac_info ac_info;
-	int r;
-	
-	info->path = profile->df_info->file->path;
-	r = sc_select_file(card, &info->path, NULL);
-	if (r)
-		return r;
-	memset(&ac_info, 0, sizeof(ac_info));
-	info->reference = idx + 1;
-	ac_info.ref = idx + 1;
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
-	ac_info.max_tries = tmpinfo.tries_left;
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &tmpinfo);
-	ac_info.max_unblock_tries = tmpinfo.tries_left;
-	if (pin_len > 8)
-		pin_len = 8;
-	memcpy(ac_info.key_value, pin, pin_len);
-	if (puk_len > 8)
-		puk_len = 8;
-	strncpy((char *) ac_info.unblock_value, (const char *) puk, puk_len);
-	r = sc_card_ctl(card, SC_CARDCTL_MIOCOS_CREATE_AC, &ac_info);
-	if (r)
-		return r;
-	return 0;
-}
-#endif
-
 /*
  * Allocate a file
  */
@@ -168,67 +116,6 @@ miocos_update_private_key(struct sc_profile *profile, sc_card_t *card,
 
 	return r;
 }
-
-#if 0
-/*
- * Store a private key
- */
-static int
-miocos_new_key(struct sc_profile *profile, sc_card_t *card,
-		struct sc_pkcs15_prkey *key, unsigned int idx,
-		struct sc_pkcs15_prkey_info *info)
-{
-	sc_file_t *keyfile;
-	struct sc_pkcs15_prkey_rsa *rsa;
-	int r;
-	
-	if (key->algorithm != SC_ALGORITHM_RSA) {
-		sc_debug(card->ctx, "MioCOS supports only 1024-bit RSA keys.");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-	rsa = &key->u.rsa;
-	if (rsa->modulus.len != 128) {
-		sc_debug(card->ctx, "MioCOS supports only 1024-bit RSA keys.");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-	r = miocos_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, idx,
-			    &keyfile);
-	if (r < 0)
-		return r;
-
-	info->modulus_length = 1024;
-	info->path = keyfile->path;
-	r = sc_pkcs15init_create_file(profile, card, keyfile);
-	sc_file_free(keyfile);
-	if (r < 0)
-		return r;
-	r = miocos_update_private_key(profile, card, rsa);
-
-	return r;
-}
-
-static struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations = {
-	NULL,				/* erase_card */
-	NULL,				/* init_card  */
-	NULL,				/* create_dir */
-	NULL,				/* create_domain */
-	NULL,				/* select_pin_reference */
-	NULL,				/* create_pin */
-	NULL,				/* select_key_reference */
-	NULL,				/* create_key */
-	NULL,				/* store_key */
-	NULL,				/* generate_key */
-	NULL, NULL,			/* encode private/public key */
-	NULL,				/* finalize_card */
-	miocos_init_app,		/* old */
-	miocos_new_pin,
-	miocos_new_key,
-	miocos_new_file,
-	NULL,				/* old_generate_key */
-	NULL 				/* delete_object */
-};
-
-#endif
 
 /*
  * Initialize the Application DF
