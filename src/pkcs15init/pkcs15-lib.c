@@ -135,16 +135,6 @@ static int	sc_pkcs15init_read_info(sc_card_t *card, sc_profile_t *);
 static int	sc_pkcs15init_parse_info(sc_card_t *, const u8 *, size_t, sc_profile_t *);
 static int	sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *,
 			sc_pkcs15_object_t *pin_obj);
-#if 0
-static int	sc_pkcs15init_read_unusedspace(sc_pkcs15_card_t *);
-static int sc_pkcs15init_update_unusedspace(sc_pkcs15_card_t *, sc_profile_t *);
-static sc_pkcs15_unusedspace_t *merge_paths(sc_pkcs15_unusedspace_t *, const sc_path_t *);
-static int sc_pkcs15init_add_unusedspace(sc_pkcs15_card_t *,
-			sc_profile_t *, const sc_path_t *, const sc_pkcs15_id_t *);
-static int sc_pkcs15init_remove_unusedspace(sc_pkcs15_card_t *,
-			sc_profile_t *, const sc_path_t *);
-#endif
-
 
 static struct profile_operations {
 	const char *name;
@@ -218,7 +208,8 @@ get_profile_from_config(sc_card_t *card, char *buffer, size_t size)
 }
 
 
-static const char *find_library(sc_context_t *ctx, const char *name)
+static const char *
+find_library(sc_context_t *ctx, const char *name)
 {
 	int          i;
 	const char   *libname = NULL;
@@ -245,7 +236,9 @@ static const char *find_library(sc_context_t *ctx, const char *name)
 	return libname;
 }
 
-static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
+
+static void *
+load_dynamic_driver(sc_context_t *ctx, void **dll,
 	const char *name)
 {
 	const char *version, *libname;
@@ -366,6 +359,7 @@ sc_pkcs15init_bind(sc_card_t *card, const char *name,
 	return r;
 }
 
+
 void
 sc_pkcs15init_unbind(struct sc_profile *profile)
 {
@@ -472,7 +466,8 @@ out:	/* Forget any cached keys, the objects on card are all gone. */
 	return r;
 }
 
-int sc_pkcs15init_delete_by_path(struct sc_profile *profile,
+int 
+sc_pkcs15init_delete_by_path(struct sc_profile *profile,
 		struct sc_card *card, const sc_path_t *file_path)
 {
 	sc_file_t *parent, *file;
@@ -759,170 +754,6 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 	sc_pkcs15init_write_info(card, profile, pin_obj);
 	SC_FUNC_RETURN(ctx, 3, r);
 }
-
-#if 0
-/* Read the EF(UnusedSpace) file */
-static int sc_pkcs15init_read_unusedspace(sc_pkcs15_card_t *p15card)
-{
-	sc_path_t path;
-	u8 *buf = NULL;
-	size_t buf_len;
-	int r;
-
-	/* Check if EF(UnusedSpace) file is already read */
-	if (p15card->unusedspace_read)
-		return 0;
-
-	if (p15card->file_unusedspace != NULL)
-		path = p15card->file_unusedspace->path;
-	else {
-		path = p15card->file_app->path;
-		sc_append_path_id(&path, (const u8 *) "\x50\x33", 2);
-		path.count = -1;
-	}
-
-	r = sc_pkcs15_read_file(p15card, &path, &buf, &buf_len, NULL);
-	if (r < 0) {
-		if (r == SC_ERROR_FILE_NOT_FOUND)
-			r = 0;
-		goto err;
-	}
-
-	r = sc_pkcs15_parse_unusedspace(buf, buf_len, p15card);
-
-err:
-	if (buf != NULL)
-		free(buf);
-	return r;
-}
-
-/* Update the EF(UnusedSpace) file */
-static int sc_pkcs15init_update_unusedspace(sc_pkcs15_card_t *p15card,
-	sc_profile_t *profile)
-{
-	u8 *buf = NULL;
-	size_t buf_len;
-	sc_file_t *file = NULL;
-	int r;
-
-	/* Make sure we've read the EF(UnusedSpace) file first */
-	r = sc_pkcs15init_read_unusedspace(p15card);
-	if (r < 0)
-		return r;
-	if (p15card->unusedspace_list == NULL)
-		return 0;
-
-	r = sc_profile_get_file(profile, "PKCS15-UnusedSpace", &file);
-	if (r < 0)
-		return r;
-
-	r = sc_pkcs15_encode_unusedspace(p15card->card->ctx, p15card, &buf, &buf_len);
-	if (r < 0)
-		goto err;
-
-	r = sc_pkcs15init_update_file(profile, p15card->card,
-		file, buf, buf_len);
-
-err:
-	if (buf != NULL)
-		free(buf);
-	if (file != NULL)
-		sc_file_free(file);
-	return r;
-}
-
-/* Called by sc_pkcs15init_add_unusedspace(), to try to merge path
- * with one of the paths in us, so one large path can be made */
-static sc_pkcs15_unusedspace_t *merge_paths(sc_pkcs15_unusedspace_t *us,
-	const sc_path_t *path)
-{
-	for ( ; us != NULL; us = us->next) {
-		sc_path_t *old = &us->path;
-		if (!sc_compare_path(path, old))
-			continue;
-		if (old->index + old->count == path->index) {
-			old->count += path->count;
-			return us;
-		}
-		if (path->index + path->count == old->index) {
-			old->index = path->index;
-			old->count += path->count;
-			return us;
-		}
-	}
-	return NULL; /* Couldn't merge */
-}
-
-/* Add a path to the EF(UnusedSpace) file. This is done when (part of) the
- * file where the path points to is no longer used (i.e. the pkcs15 object
- * inside has been "deleted"). */
-static int sc_pkcs15init_add_unusedspace(sc_pkcs15_card_t *p15card,
-	sc_profile_t *profile, const sc_path_t *path, const sc_pkcs15_id_t *auth_id)
-{
-	sc_pkcs15_unusedspace_t *us;
-	int r = 0;
-
-	if (path->count == -1)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	/* Make sure we've read the EF(UnusedSpace) file first */
-	r = sc_pkcs15init_read_unusedspace(p15card);
-	if (r < 0)
-		return r;
-
-	/* See if we can merge this new entry with one that already exists */
-	us = merge_paths(p15card->unusedspace_list, path);
-	if (us == NULL)
-		sc_pkcs15_add_unusedspace(p15card, path, auth_id);
-	else {
-		/* So we could merge it. But now the path pointed to by us
-		* might be mergeable with another path further on in the list */
-		if (merge_paths(us->next, &us->path))
-			sc_pkcs15_remove_unusedspace(p15card, us);
-	}
-
-	return sc_pkcs15init_update_unusedspace(p15card, profile);
-}
-
-/* Remove some space from the EF(UnusedSpace) file. This is done when you want
- * to use the space  for a certificate, data, ... */
-static int sc_pkcs15init_remove_unusedspace(sc_pkcs15_card_t *p15card,
-	sc_profile_t *profile, const sc_path_t *path)
-{
-	sc_pkcs15_unusedspace_t *us;
-	int ok = 0;
-	int r = 0;
-
-	/* Make sure we've read the EF(UnusedSpace) file first */
-	r = sc_pkcs15init_read_unusedspace(p15card);
-	if (r < 0)
-		return r;
-
-	/* Search in the EF(UnusedSpace) for a path where the required
-	 * space (referred to by 'path') can be subtracted from  */
-	for (us = p15card->unusedspace_list; us != NULL && !ok; us = us->next) {
-		sc_path_t *old = &us->path;
-		if (!sc_compare_path(path, old) || old->count < path->count)
-				continue;
-		if (old->index == path->index) {
-			old->index += path->count;
-			old->count -= path->count;
-			ok = 1;
-		}
-		else if (old->index + old->count == path->index + path->count) {
-			old->count -= path->count;
-			ok = 1;
-		}
-		if (old->count == 0)
-			sc_pkcs15_remove_unusedspace(p15card, us);
-	}
-
-	if (!ok)
-		return SC_ERROR_OBJECT_NOT_FOUND; /* the space couldn't be found */
-
-	return sc_pkcs15init_update_unusedspace(p15card, profile);
-}
-#endif
 
 
 /*
@@ -2157,7 +1988,9 @@ find_df_by_type(struct sc_pkcs15_card *p15card, unsigned int type)
 	return df;
 }
 
-static int select_intrinsic_id(sc_pkcs15_card_t *p15card, struct sc_profile *profile,
+
+static int 
+select_intrinsic_id(sc_pkcs15_card_t *p15card, struct sc_profile *profile,
 			int type, sc_pkcs15_id_t *id, void *data)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -2252,6 +2085,7 @@ done:
 	SC_FUNC_RETURN(ctx, 3, id->len);
 #endif
 }
+
 
 static int 
 select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
@@ -2594,39 +2428,25 @@ sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card,
  * Update any PKCS15 DF file (except ODF and DIR)
  */
 int
-sc_pkcs15init_update_any_df(sc_pkcs15_card_t *p15card, 
-		sc_profile_t *profile,
-		sc_pkcs15_df_t *df,
+sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card, 
+		struct sc_profile *profile,
+		struct sc_pkcs15_df *df,
 		int is_new)
 {
+	struct sc_context	*ctx = p15card->card->ctx;
 	struct sc_card	*card = p15card->card;
-	sc_file_t	*file = df->file, *pfile = NULL;
-	u8		*buf = NULL;
+	struct sc_file	*file = df->file, *pfile = NULL;
+	unsigned char	*buf = NULL;
 	size_t		bufsize;
 	int		update_odf = is_new, r = 0;
 
+	SC_FUNC_CALLED(ctx, 3);
 	if (!sc_profile_get_file_by_path(profile, &df->path, &pfile))
 		file = pfile;
 
 	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
 	if (r >= 0) {
-		r = sc_pkcs15init_update_file(profile, card,
-				file, buf, bufsize);
-
-#if 0
-		/* If the DF is empty, delete it and remove
-		 * the corresponding entry from the ODF
-		 *
-		 * XXX Before enabling this we should make this a
-		 * profile option, because not all cards allow
-		 * arbitrary removal of files.
-		 */
-		if (bufsize == 0) {
-			sc_pkcs15_remove_df(p15card, df);
-			sc_file_free(card, df->path);
-			update_odf = 1;
-		} else
-#endif
+		r = sc_pkcs15init_update_file(profile, card, file, buf, bufsize);
 
 		/* For better performance and robustness, we want
 		 * to note which portion of the file actually
@@ -2647,11 +2467,14 @@ sc_pkcs15init_update_any_df(sc_pkcs15_card_t *p15card,
 	if (pfile)
 		sc_file_free(pfile);
 
-	/* Now update the ODF if we have to */
-	if (r >= 0 && update_odf)
-		r = sc_pkcs15init_update_odf(p15card, profile);
+	SC_TEST_RET(ctx, r, "Failed to encode or update xDF");
 
-	return r;
+	/* Now update the ODF if we have to */
+	if (update_odf)
+		r = sc_pkcs15init_update_odf(p15card, profile);
+	SC_TEST_RET(ctx, r, "Failed to encode or update ODF");
+
+	SC_FUNC_RETURN(ctx, 3, r);
 }
 
 /*
@@ -2704,39 +2527,6 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 
 	r = sc_pkcs15init_update_any_df(p15card, profile, df, is_new);
 	SC_FUNC_RETURN(ctx, 3, r);
-#if 0
-	if (!sc_profile_get_file_by_path(profile, &df->path, &pfile))
-		file = pfile;
-
-	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
-	if (r >= 0) {
-		r = sc_pkcs15init_update_file(profile, card,
-				file, buf, bufsize);
-		/* For better performance and robustness, we want
-		 * to note which portion of the file actually
-		 * contains valid data.
-		 *
-		 * This is particularly useful if we store certificates
-		 * directly in the CDF - we may want to make the CDF
-		 * fairly big, without having to read the entire file
-		 * every time we parse the CDF.
-		 */
-		if (profile->pkcs15.encode_df_length) {
-			df->path.count = bufsize;
-			df->path.index = 0;
-			update_odf = 1;
-		}
-		free(buf);
-	}
-	if (pfile)
-		sc_file_free(pfile);
-
-	/* Now update the ODF if we have to */
-	if (r >= 0 && update_odf)
-		r = sc_pkcs15init_update_odf(p15card, profile);
-
-	return r;
-#endif
 }
 
 
@@ -2901,18 +2691,12 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	/* If the object is stored in a normal EF, try to delete the EF. */
 	if (stored_in_ef) {
 		r = sc_pkcs15init_delete_by_path(profile, p15card->card, &path);
-		if (r != SC_SUCCESS) {
-			sc_debug(p15card->card->ctx, "sc_pkcs15init_delete_by_path failed: %d", r);
-			return r;
-		}
+		SC_TEST_RET(ctx, r, "Failed to delete object by path");
 	} 
 	else if (profile->ops->delete_object != NULL) {
 		/* If there's a card-specific way to delete objects, use it. */
 		r = profile->ops->delete_object(profile, p15card->card,	obj->type, obj->data, &path);
-		if (r < 0) {
-			sc_debug(p15card->card->ctx, "ops->delete_object() failed: %d", r);
-			return r;
-		}
+		SC_TEST_RET(ctx, r, "Card specific delete object failed");
 	} 
 	
 	/* Get the DF we're part of. If there's no DF, fine, we haven't been added yet. */
@@ -2928,6 +2712,7 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 
 	return r;
 }
+
 
 int
 sc_pkcs15init_update_certificate(sc_pkcs15_card_t *p15card,
@@ -3125,17 +2910,15 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 
 	switch (type) {
 	case SC_AC_CHV:
-		if (callbacks.get_pin) {
+		if (callbacks.get_pin)
 			r = callbacks.get_pin(pro, pin_id, &pin_info, label,
 					pinbuf, pinsize);
-		}
 		break;
 	default:
-		if (callbacks.get_key) {
+		if (callbacks.get_key)
 			r = callbacks.get_key(pro, type, reference,
 					defbuf, defsize,
 					pinbuf, pinsize);
-		}
 		break;
 	}
 
@@ -3225,7 +3008,8 @@ sc_pkcs15init_verify_key(struct sc_profile *pro, sc_card_t *card,
  * Find out whether the card was initialized using an SO PIN,
  * and if so, set the profile information
  */
-static int set_so_pin_from_card(struct sc_pkcs15_card *p15card,
+static int 
+set_so_pin_from_card(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile)
 {
 	struct sc_pkcs15_pin_info *pin;
@@ -3377,7 +3161,8 @@ sc_pkcs15init_authenticate(struct sc_profile *pro, sc_card_t *card,
 	return r;
 }
 
-static int do_select_parent(struct sc_profile *pro, sc_card_t *card,
+static int 
+do_select_parent(struct sc_profile *pro, sc_card_t *card,
 		sc_file_t *file, sc_file_t **parent)
 {
 	struct sc_path	path;
