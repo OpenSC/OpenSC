@@ -112,7 +112,6 @@ setcos_init_card(sc_profile_t *profile, sc_card_t *card)
 	struct sc_context *ctx = card->ctx;
 	sc_file_t *mf = profile->mf_info->file;
 	sc_file_t *pinfile;
-	int pin_ref;
 	int r;
 
 	SC_FUNC_CALLED(ctx, 1);
@@ -392,7 +391,6 @@ setcos_store_key(struct sc_profile *profile, struct sc_card *card,
 	struct sc_context *ctx = card->ctx;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
 	struct sc_cardctl_setcos_gen_store_key_info args;
-	struct sc_cardctl_setcos_data_obj data_obj;
 	struct sc_file *file = NULL;
 	int r, keybits = key_info->modulus_length;
 
@@ -520,7 +518,6 @@ setcos_create_pin_internal(sc_profile_t *profile, sc_card_t *card,
 {
 	struct sc_context *ctx = card->ctx;
 	u8  data[32];
-	int so_pin_ref;
 	int	r;
 	struct sc_cardctl_setcos_data_obj data_obj;
 	sc_file_t *pinfile = NULL;

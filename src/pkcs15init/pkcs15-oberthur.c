@@ -310,7 +310,7 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_card *card,
 	struct sc_pkcs15_pin_info profile_puk;
 	struct sc_cardctl_oberthur_createpin_info args;
 	unsigned char *puk_buff = NULL;
-	int rv, puk_buff_len = 0;
+	int rv;
 	unsigned char oberthur_puk[16] = {
 		0x6F, 0x47, 0xD9, 0x88, 0x4B, 0x6F, 0x9D, 0xC5,
 		0x78, 0x33, 0x79, 0x8F, 0x5B, 0x7D, 0xE1, 0xA5
@@ -378,7 +378,7 @@ cosm_update_pin(struct sc_profile *profile, struct sc_card *card,
 		struct sc_pkcs15_pin_info *pinfo, const unsigned char *pin, size_t pin_len,
 		const unsigned char *puk, size_t puk_len )
 {
-	int rv, tries_left = -1;
+	int rv;
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_debug(card->ctx, "ref %i; flags 0x%X\n", pinfo->reference, pinfo->flags);
@@ -625,7 +625,6 @@ cosm_generate_key(struct sc_profile *profile, struct sc_card *card,
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
-	struct sc_file *file = NULL;
 	struct sc_cardctl_oberthur_genkey_info args;
 	struct sc_file *prkf = NULL, *tmpf = NULL;
 	struct sc_path path;

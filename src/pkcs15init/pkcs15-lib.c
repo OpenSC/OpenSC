@@ -946,7 +946,7 @@ sc_pkcs15init_store_puk(struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object	*pin_obj;
 	struct sc_pkcs15_pin_info *pin_info;
-	int			r, idx;
+	int			r;
 	char puk_label[0x30];
 
 	SC_FUNC_CALLED(ctx, 3);
@@ -2727,7 +2727,6 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_df *df;
-	struct sc_card	*card = p15card->card;
 	struct sc_file	*file = NULL;
 	int		is_new = 0, r = 0;
 

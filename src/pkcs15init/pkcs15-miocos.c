@@ -198,7 +198,6 @@ miocos_create_key(struct sc_profile *profile, struct sc_card *card,
 	struct sc_context *ctx = card->ctx;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
 	struct sc_file *file;
-	struct sc_pkcs15_prkey_rsa *rsa;
 	int r;
 
 	SC_FUNC_CALLED(ctx, 1);
