@@ -1,8 +1,6 @@
 include $(top_srcdir)/win32/ltrc.inc
 
-MAINTAINERCLEANFILES = \
-	$(srcdir)/Makefile.in $(srcdir)/versioninfo.rc
-CLEANFILES = versioninfo.rc
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
 EXTRA_DIST = Makefile.mak 
 
@@ -50,9 +48,7 @@ libopensc_la_SOURCES = \
 	compression.c p15card-helper.c \
 	libopensc.exports
 if WIN32
-libopensc_la_SOURCES += versioninfo.rc
-else
-dist_noinst_DATA = versioninfo.rc
+libopensc_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
 endif
 libopensc_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(OPTIONAL_OPENCT_LIBS) \
 	$(OPTIONAL_ZLIB_LIBS) $(OPTIONAL_ICONV_LIBS) $(LTLIB_LIBS) \
@@ -66,10 +62,6 @@ libopensc_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@ \
 	-export-symbols "$(srcdir)/libopensc.exports" \
 	-no-undefined
-
-versioninfo.rc:
-	sed 's/@@FILE_DESCRIPTION@@/OpenSC Core Library/g' \
-	"$(top_builddir)/win32/versioninfo.rc.in" > versioninfo.rc
 
 if WIN32
 # def file required for MS users to build library

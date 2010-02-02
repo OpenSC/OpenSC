@@ -1,8 +1,6 @@
 include $(top_srcdir)/win32/ltrc.inc
 
-MAINTAINERCLEANFILES = \
-	$(srcdir)/Makefile.in $(srcdir)/versioninfo.rc
-CLEANFILES = versioninfo.rc
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak
 
 dist_noinst_SCRIPTS = opensc_pkcs11_install.js
@@ -43,11 +41,9 @@ pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
 	-module -shared -avoid-version -no-undefined
 
 if WIN32
-opensc_pkcs11_la_SOURCES += versioninfo.rc
-onepin_opensc_pkcs11_la_SOURCES += versioninfo.rc
-pkcs11_spy_la_SOURCES += versioninfo.rc
-else
-dist_noinst_DATA = versioninfo.rc
+opensc_pkcs11_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
+onepin_opensc_pkcs11_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
+pkcs11_spy_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
 endif
 
 jar-dir:
@@ -79,7 +75,3 @@ install-exec-hook:	install-pkcs11DATA
 	done
 
 endif
-
-versioninfo.rc:
-	sed 's/@@FILE_DESCRIPTION@@/OpenSC PKCS#11 Provider/g' \
-		"$(top_builddir)/win32/versioninfo.rc.in" > versioninfo.rc

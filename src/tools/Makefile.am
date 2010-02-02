@@ -1,8 +1,6 @@
 include $(top_srcdir)/win32/ltrc.inc
 
-MAINTAINERCLEANFILES = \
-	$(srcdir)/Makefile.in $(srcdir)/versioninfo.rc
-CLEANFILES = versioninfo.rc
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak
 
 noinst_HEADERS = util.h
@@ -48,23 +46,17 @@ westcos_tool_SOURCES = westcos-tool.c
 westcos_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 if WIN32
-opensc_tool_SOURCES += versioninfo.rc
-piv_tool_SOURCES += versioninfo.rc
-opensc_explorer_SOURCES += versioninfo.rc
-pkcs15_tool_SOURCES += versioninfo.rc
-pkcs11_tool_SOURCES += versioninfo.rc
-pkcs15_crypt_SOURCES += versioninfo.rc
-cryptoflex_tool_SOURCES += versioninfo.rc
-pkcs15_init_SOURCES += versioninfo.rc
-cardos_tool_SOURCES += versioninfo.rc
-eidenv_SOURCES += versioninfo.rc
-netkey_tool_SOURCES += versioninfo.rc
-rutoken_tool_SOURCES += versioninfo.rc
-westcos_tool_SOURCES += versioninfo.rc
-else
-dist_noinst_DATA = versioninfo.rc
+opensc_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
+piv_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
+opensc_explorer_SOURCES += $(top_builddir)/win32/versioninfo.rc
+pkcs15_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
+pkcs11_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
+pkcs15_crypt_SOURCES += $(top_builddir)/win32/versioninfo.rc
+cryptoflex_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
+pkcs15_init_SOURCES += $(top_builddir)/win32/versioninfo.rc
+cardos_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
+eidenv_SOURCES += $(top_builddir)/win32/versioninfo.rc
+netkey_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
+rutoken_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
+westcos_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
 endif
-
-versioninfo.rc:
-	sed 's/@@FILE_DESCRIPTION@@/OpenSC Utility/g' \
-		"$(top_builddir)/win32/versioninfo.rc.in" > versioninfo.rc

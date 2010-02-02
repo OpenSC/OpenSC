@@ -702,7 +702,7 @@ AC_CONFIG_FILES([
 	src/tests/regression/Makefile
 	src/tools/Makefile
 	win32/Makefile
-	win32/versioninfo.rc.in
+	win32/versioninfo.rc
 ])
 AC_OUTPUT
 
