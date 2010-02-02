@@ -36,6 +36,7 @@
 extern "C" {
 #endif
 
+#include <opensc/simclist.h>
 #include <opensc/scconf.h>
 #include <opensc/errors.h>
 #include <opensc/types.h>

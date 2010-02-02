@@ -25,7 +25,6 @@
 extern "C" {
 #endif
 
-#include "simclist.h"
 typedef unsigned char u8;
 
 #define SC_MAX_OBJECT_ID_OCTETS		16

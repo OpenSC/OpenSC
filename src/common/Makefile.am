@@ -14,5 +14,6 @@ libcompat_la_SOURCES = \
 	compat_strlcpy.h compat_strlcpy.c \
 	compat_getpass.h compat_getpass.c \
 	compat_getopt.h compat_getopt.c \
-	simclist.h simclist.c
+	simclist.c
 
+openscinclude_HEADERS = simclist.h
