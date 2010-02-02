@@ -716,24 +716,28 @@ auth_delete_file(struct sc_card *card, const struct sc_path *path)
 static int 
 acl_to_ac_byte(struct sc_card *card, const struct sc_acl_entry *e)
 {
+	unsigned key_ref;
+
 	if (e == NULL)
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	
+	key_ref = e->key_ref & ~OBERTHUR_PIN_LOCAL;
+
 	switch (e->method) {
 	case SC_AC_NONE:
 		SC_FUNC_RETURN(card->ctx, 1, 0);
 		
 	case SC_AC_CHV:
-		if (e->key_ref > 0 && e->key_ref < 6)
-			SC_FUNC_RETURN(card->ctx, 1, (0x20 | e->key_ref));
+		if (key_ref > 0 && key_ref < 6)
+			SC_FUNC_RETURN(card->ctx, 1, (0x20 | key_ref));
 		else
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INCORRECT_PARAMETERS);
 		
 	case SC_AC_PRO:
-		if (((e->key_ref & 0xE0) != 0x60) || ((e->key_ref & 0x18) == 0))
+		if (((key_ref & 0xE0) != 0x60) || ((key_ref & 0x18) == 0))
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INCORRECT_PARAMETERS);
 		else
-			SC_FUNC_RETURN(card->ctx, 1, e->key_ref);
+			SC_FUNC_RETURN(card->ctx, 1, key_ref);
 											
 	case SC_AC_NEVER:
 		return 0xff;
@@ -753,7 +757,7 @@ encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
 	unsigned char  ops[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	sc_debug(card->ctx, "id %04X; size %i; type %i/%i\n",
+	sc_debug(card->ctx, "id %04X; size %i; type 0x%X/0x%X\n",
 			file->id, file->size, file->type, file->ef_structure);
 	
 	if (*buflen < 0x18)
@@ -805,8 +809,7 @@ encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
 		rv = SC_ERROR_INVALID_ARGUMENTS;
 
 	if (rv)   {
-		sc_debug(card->ctx, "Invalid EF structure %i/%i\n", 
-				file->type, file->ef_structure);
+		sc_debug(card->ctx, "Invalid EF structure 0x%X/0x%X\n", file->type, file->ef_structure);
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INCORRECT_PARAMETERS);
 	}
 	
@@ -846,7 +849,7 @@ encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
 		else if (file->size == 24 || file->size == 192)
 			size = 192;
 		else   {
-			sc_debug(card->ctx, "incorrect DES size %X\n", file->size);
+			sc_debug(card->ctx, "incorrect DES size %i\n", file->size);
 			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INCORRECT_PARAMETERS);
 		}
 	}
@@ -944,7 +947,7 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 			pbuf[0] = '\0';
 
 		sc_debug(card->ctx, " create path=%s\n", pbuf);
-		sc_debug(card->ctx,"id %04X; size %i; type %i; ef %i\n",
+		sc_debug(card->ctx,"id %04X; size %i; type 0x%X; ef 0x%X\n",
 			file->id, file->size, file->type, file->ef_structure);
 	}
 
