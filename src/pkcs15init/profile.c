@@ -296,7 +296,6 @@ sc_profile_new(void)
 	pro->pin_encoding = 0x01;
 	pro->pin_minlen = 4;
 	pro->pin_maxlen = 8;
-	pro->keep_public_key = 1;
 	pro->id_style = SC_PKCS15INIT_ID_STYLE_NATIVE; 
 
 	return pro;
@@ -764,12 +763,6 @@ static int
 do_protect_certificates(struct state *cur, int argc, char **argv)
 {
 	return get_bool(cur, argv[0], &cur->profile->protect_certificates);
-}
-
-static int
-do_keep_public_key(struct state *cur, int argc, char **argv)
-{
-	return get_bool(cur, argv[0], &cur->profile->keep_public_key);
 }
 
 static int
@@ -1570,7 +1563,6 @@ static struct command	ci_commands[] = {
  { "protect-certificates", 1,	1,	do_protect_certificates },
  { "label",		1,	1,	do_card_label	},
  { "manufacturer",	1,	1,	do_card_manufacturer},
- { "keep-public-key",	1,	1,	do_keep_public_key },
 
  { NULL, 0, 0, NULL }
 };

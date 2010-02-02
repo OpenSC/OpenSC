@@ -103,8 +103,6 @@ static int	sc_pkcs15init_add_object(struct sc_pkcs15_card *,
 			struct sc_profile *profile,
 			unsigned int df_type,
 			struct sc_pkcs15_object *);
-static int	sc_pkcs15init_remove_object(sc_pkcs15_card_t *,
-			sc_profile_t *, sc_pkcs15_object_t *);
 static int	sc_pkcs15init_map_usage(unsigned long, int);
 static int	set_so_pin_from_card(struct sc_pkcs15_card *,
 			struct sc_profile *);
@@ -1707,17 +1705,6 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 				&args->der_encoded, &cert_info->path);
 	}
 
-	/* Remove the corresponding public key object, if it exists. */
-	if (r >= 0 && !profile->keep_public_key) {
-		sc_pkcs15_object_t *puk = NULL;
-
-		r = sc_pkcs15_find_pubkey_by_id(p15card, &cert_info->id, &puk);
-		if (r == 0)
-			r = sc_pkcs15init_remove_object(p15card, profile, puk);
-		else if (r == SC_ERROR_OBJECT_NOT_FOUND)
-			r = 0;
-	}
-
 	/* Now update the CDF */
 	if (r >= 0) {
 		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_CDF, object);
@@ -2752,58 +2739,15 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 #endif
 }
 
-static int
-sc_pkcs15init_remove_object(sc_pkcs15_card_t *p15card,
-		sc_profile_t *profile, sc_pkcs15_object_t *obj)
-{
-	sc_card_t	*card = p15card->card;
-	struct sc_pkcs15_df *df;
-	sc_path_t	path;
-	int		r = 0;
 
-	switch(obj->type & SC_PKCS15_TYPE_CLASS_MASK)
-	{
-	case SC_PKCS15_TYPE_PUBKEY:
-		path = ((sc_pkcs15_pubkey_info_t *)obj->data)->path;
-		break;
-	case SC_PKCS15_TYPE_PRKEY:
-		path = ((sc_pkcs15_prkey_info_t *)obj->data)->path;
-		break;
-	case SC_PKCS15_TYPE_CERT:
-		path = ((sc_pkcs15_cert_info_t *)obj->data)->path;
-		break;
-	case SC_PKCS15_TYPE_DATA_OBJECT:
-		path = ((sc_pkcs15_data_info_t *)obj->data)->path;
-		break;
-	default:
-		return SC_ERROR_OBJECT_NOT_FOUND;
-	}
-
-	/* Get the DF we're part of. If there's no DF, fine, we haven't
-	 * been added yet. */
-	if ((df = obj->df) == NULL)
-		return 0;
-
-	/* Unlink the object and update the DF */
-	sc_pkcs15_remove_object(p15card, obj);
-	if ((r = sc_pkcs15init_update_any_df(p15card, profile, df, 0)) < 0)
-		return r;
-
-	/* XXX Dangerous - the object indicated by path may be the
-	 * application DF. This isn't true for the Oberthur, but
-	 * it may be for others. */
-	r = sc_delete_file(card, &path);
-
-	return r;
-}
-
-static sc_pkcs15_object_t * sc_pkcs15init_new_object(int type,
+static struct sc_pkcs15_object * 
+sc_pkcs15init_new_object(int type,
 		const char *label, sc_pkcs15_id_t *auth_id, void *data)
 {
-	sc_pkcs15_object_t	*object;
+	struct sc_pkcs15_object	*object;
 	unsigned int		data_size = 0;
 
-	object = (sc_pkcs15_object_t *) calloc(1, sizeof(*object));
+	object = (struct sc_pkcs15_object *) calloc(1, sizeof(*object));
 	if (object == NULL)
 		return NULL;
 	object->type = type;

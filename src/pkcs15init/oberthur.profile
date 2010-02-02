@@ -9,10 +9,6 @@ cardinfo {
 	min-pin-length	= 4;
 	pin-encoding	= ascii-numeric;
 	pin-pad-char	= 0xFF;
-	
-	# Delete or not the public key when inconporating the 
-	# corresponding certificate.
-	keep-public-key		= no;   # yes/no 
 }
 
 # Define reasonable limits for PINs and PUK
