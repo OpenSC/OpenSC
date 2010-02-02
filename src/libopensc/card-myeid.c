@@ -996,7 +996,7 @@ static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		r = myeid_getdata(card,
 			(struct sc_cardctl_myeid_data_obj*) ptr);
 		break;
-	case SC_CARDCTL_MYEID_GENERATE_KEY:
+	case SC_CARDCTL_MYEID_GENERATE_STORE_KEY:
 		r = myeid_generate_store_key(card,
 			(struct sc_cardctl_myeid_gen_store_key_info *) ptr);		
 		break;
