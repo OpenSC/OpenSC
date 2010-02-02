@@ -1155,12 +1155,10 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 
 	/* Set up the PuKDF info. The public key will be filled in
-	 * by the card driver's generate_key function called below */
+	 * by the card driver's generate_key function called below.
+	 * Auth.ID of the public key object is left empty. */
 	memset(&pubkey_args, 0, sizeof(pubkey_args));
 	pubkey_args.id = keygen_args->prkey_args.id;
-#if 0
-	pubkey_args.auth_id = keygen_args->prkey_args.auth_id;
-#endif
 	pubkey_args.label = keygen_args->pubkey_label ? keygen_args->pubkey_label : object->label;
 	pubkey_args.usage = keygen_args->prkey_args.usage;
 	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
@@ -2874,18 +2872,6 @@ do_get_and_verify_secret(sc_profile_t *pro, sc_card_t *card,
 		type = SC_AC_CHV;
 	}
 
-#if 0
-	if (pinsize && pro->p15_data)  {
-		sc_pkcs15_pincache_entry_t *entry = pro->p15_data->pin_cache[0];
-		if(entry)   {
-			if (*pinsize >= entry->len)   {
-				*pinsize = entry->len;
-				memcpy(pinbuf, entry->pin, entry->len);
-				goto found;
-			}
-		}
-	}
-#endif
 	/* Try to get the cached secret, e.g. CHV1 */
 	r = sc_keycache_get_key(path, type, reference, pinbuf, *pinsize);
 	if (r >= 0) {
