@@ -979,7 +979,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx,
 		rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
 		rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
 	}
-#ifndef __APPLE__
+#ifndef __APPLE__ /* OS X 10.6.2 does not support PnP notification */
 	if (event_mask & SC_EVENT_READER_ATTACHED) {
 		rgReaderStates[i].szReader = "\\\\?PnP?\\Notification";
 		rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
@@ -999,6 +999,11 @@ static int pcsc_wait_for_event(sc_context_t *ctx,
 #else
 	gpriv->pcsc_wait_ctx = gpriv->pcsc_ctx;
 #endif
+	if (num_watch == 0) {
+		sc_debug(ctx, "No readers available, PnP notification not supported");
+		*event_reader = NULL;
+		return SC_ERROR_NO_READERS_FOUND;
+	}
 
 	rv = gpriv->SCardGetStatusChange(gpriv->pcsc_wait_ctx, 0, rgReaderStates, num_watch);
 	if (rv != SCARD_S_SUCCESS) {
