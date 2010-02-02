@@ -2654,6 +2654,7 @@ int
 sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
 		struct sc_pkcs15_object *obj)
 {
+	struct sc_context	*ctx = p15card->card->ctx;
 	struct sc_file *file = NULL;
 	struct sc_path path;
 	struct sc_pkcs15_df *df;
@@ -2676,9 +2677,9 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	sc_debug(p15card->card->ctx, "delete object with path(%X) %s", path.type, sc_print_path(&path));
+	sc_debug(ctx, "delete object with path(%X) %s", path.type, sc_print_path(&path));
 	r = sc_select_file(p15card->card, &path, &file);
-	SC_TEST_RET(p15card->card->ctx, r, "select object path failed");
+	SC_TEST_RET(ctx, r, "select object path failed");
 
 	stored_in_ef = (file->type != SC_FILE_TYPE_DF);
 
