@@ -326,21 +326,19 @@ static int westcos_pkcs15init_finalize_card(sc_card_t *card)
 }
 
 static struct sc_pkcs15init_operations sc_pkcs15init_westcos_operations = {
-		NULL,								/* erase_card */
-		westcos_pkcs15init_init_card,		/* init_card  */
-		westcos_pkcs15init_create_dir,		/* create_dir */
-		NULL,								 /* create_domain */
-		westcos_pkcs15_select_pin_reference,/* select_pin_reference */
-		westcos_pkcs15_create_pin,			/* create_pin */
-		NULL,								/* select_key_reference */
-		westcos_pkcs15init_create_key,		/* create_key */
-		westcos_pkcs15init_store_key,		/* store_key */
-		westcos_pkcs15init_generate_key,	/* generate_key */
-		NULL, NULL,							/* encode private/public key */
-		westcos_pkcs15init_finalize_card,	/* finalize_card */
-		NULL,NULL,NULL,NULL,				/* old style app */
-		NULL,								/* old_generate_key */
-		NULL								/* delete_object */
+	NULL,					/* erase_card */
+	westcos_pkcs15init_init_card,		/* init_card  */
+	westcos_pkcs15init_create_dir,		/* create_dir */
+	NULL,					/* create_domain */
+	westcos_pkcs15_select_pin_reference,	/* select_pin_reference */
+	westcos_pkcs15_create_pin,		/* create_pin */
+	NULL,					/* select_key_reference */
+	westcos_pkcs15init_create_key,		/* create_key */
+	westcos_pkcs15init_store_key,		/* store_key */
+	westcos_pkcs15init_generate_key,	/* generate_key */
+	NULL, NULL,				/* encode private/public key */
+	westcos_pkcs15init_finalize_card,	/* finalize_card */
+	NULL					/* delete_object */
 };
 
 struct sc_pkcs15init_operations* sc_pkcs15init_get_westcos_ops(void)

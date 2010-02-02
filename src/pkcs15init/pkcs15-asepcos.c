@@ -836,7 +836,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_asepcos_operations = {
 	asepcos_generate_key,
 	NULL, NULL, 			/* encode private/public key */
 	NULL,				/* finalize_card */
-	NULL, NULL, NULL, NULL, NULL,	/* old style api */
 	NULL 				/* delete_object */
 };
 

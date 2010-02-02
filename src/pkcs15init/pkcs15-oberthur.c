@@ -811,13 +811,7 @@ sc_pkcs15init_oberthur_operations = {
 	NULL, 
 	NULL,				/* encode private/public key */
 	NULL,				/* finalize_card */
-	/* Old API */
-	NULL, 				/* init_app */
-	NULL,				/* new_pin */
-	NULL, 				/* cosm_new_key, */
-	NULL, 				/* cosm_new_file, */
-	NULL, 				/* cosm_old_generate_key, */
-	NULL	
+	NULL				/* delete_object */	
 };
 
 struct sc_pkcs15init_operations *

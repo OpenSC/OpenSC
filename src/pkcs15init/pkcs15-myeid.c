@@ -695,13 +695,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_myeid_operations = {
 	myeid_encode_private_key,
 	myeid_encode_public_key,
 	NULL,				/* finalize_card */
-	/* Old style API */
-	NULL,				/* init_app */
-	NULL,				/* new_pin */
-	NULL, 				/* new_key */
-	NULL, 				/* new_file */
-	NULL, 				/* old_generate_key */
-
 	myeid_delete_object		/* delete_object */
 };
 

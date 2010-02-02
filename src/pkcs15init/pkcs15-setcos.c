@@ -593,14 +593,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_setcos_operations = {
 	setcos_encode_private_key,
 	setcos_encode_public_key,
 	NULL,				/* finalize_card */
-
-	/* Old style API */
-	NULL, 				/* init_app */
-	NULL,	
-	NULL, 				/* new_key */
-	NULL, 				/* new_file */
-	NULL, 				/* old_generate_key */
-
 	setcos_delete_object
 };
 

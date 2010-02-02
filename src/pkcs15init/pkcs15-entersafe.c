@@ -423,7 +423,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_entersafe_operations = {
 	entersafe_generate_key,
 	NULL, NULL,			/* encode private/public key */
 	NULL,	  			/* finalize */
-	NULL, NULL, NULL, NULL, NULL,	/* old style api */
 	NULL 				/* delete_object */
 };
 

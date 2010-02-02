@@ -590,12 +590,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_rtecp_operations = {
 	NULL,                           /* encode_private_key */
 	NULL,                           /* encode_public_key */
 	rtecp_finalize,                 /* finalize_card */
-	/* Old-style API */
-	NULL,                           /* init_app */
-	NULL,                           /* new_pin */
-	NULL,                           /* new_key */
-	NULL,                           /* new_file */
-	NULL,                           /* old_generate_key */
 	NULL                            /* delete_object */
 };
 

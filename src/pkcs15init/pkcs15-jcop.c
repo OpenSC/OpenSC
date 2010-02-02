@@ -45,6 +45,7 @@ jcop_erase_card(struct sc_profile *pro, sc_card_t *card) {
      return SC_ERROR_NOT_SUPPORTED;
 }
 
+#if 0
 /*
  * Create a new DF
  * This will usually be the application DF
@@ -56,6 +57,17 @@ jcop_init_app(sc_profile_t *profile, sc_card_t *card,
 	      const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len) {
      return SC_ERROR_NOT_SUPPORTED;
 }
+
+#else
+
+static int 
+jcop_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *file)
+{
+     return SC_ERROR_NOT_SUPPORTED;
+};
+
+#endif
+
 
 /*
  * Select a PIN reference
@@ -346,7 +358,7 @@ jcop_generate_key(sc_profile_t *profile, sc_card_t *card,
 static struct sc_pkcs15init_operations sc_pkcs15init_jcop_operations = {
 	jcop_erase_card,
 	NULL,				/* init_card     */
-	NULL,				/* create_dir    */
+	jcop_create_dir,
 	NULL,				/* create_domain */
 	jcop_select_pin_reference,
 	jcop_create_pin,
@@ -356,8 +368,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_jcop_operations = {
 	jcop_generate_key,
 	NULL, NULL,			/* encode private/public key */
 	NULL,				/* finalize_card */
-	jcop_init_app,			/* old */
-	NULL, NULL, NULL, NULL,		/* rest of old style api */
 	NULL 				/* delete_object */
 };
 

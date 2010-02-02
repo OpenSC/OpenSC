@@ -676,7 +676,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_incrypto34_operations = {
 	incrypto34_generate_key,
 	NULL, NULL, 			/* encode private/public key */
 	NULL,				/* finalize_card */
-	NULL, NULL, NULL, NULL, NULL,	/* old style api */
 	NULL 				/* delete_object */
 };
 struct sc_pkcs15init_operations *

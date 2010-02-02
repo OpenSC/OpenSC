@@ -122,52 +122,6 @@ struct sc_pkcs15init_operations {
 	int	(*finalize_card)(sc_card_t *);
 
 	/*
-	 * Old-style API
-	 */
-
-	/*
-	 * Initialize application, and optionally set a SO pin
-	 */
-	int	(*init_app)(struct sc_profile *, struct sc_card *,
-			struct sc_pkcs15_pin_info *,
-			const u8 *pin, size_t pin_len,
-			const u8 *puk, size_t puk_len);
-
-	/*
-	 * Store a new PIN
-	 * On some cards (such as the CryptoFlex) this will create
-	 * a new subdirectory of the AppDF.
-	 * Index is the number of the PIN in the AODF (this should
-	 * help the card driver to pick the right file ID/directory ID/
-	 * pin file index.
-	 */
-	int	(*new_pin)(struct sc_profile *, struct sc_card *,
-			struct sc_pkcs15_pin_info *, unsigned int idx,
-			const u8 *pin, size_t pin_len,
-			const u8 *puk, size_t puk_len);
-
-	/*
-	 * Store a key on the card
-	 */
-	int	(*new_key)(struct sc_profile *, struct sc_card *,
-			struct sc_pkcs15_prkey *key, unsigned int idx,
-			struct sc_pkcs15_prkey_info *);
-
-	/*
-	 * Create a file based on a PKCS15_TYPE_xxx
-	 */
-	int	(*new_file)(struct sc_profile *, struct sc_card *,
-			unsigned int, unsigned int, struct sc_file **out);
-
-	/*
-	 * Generate a new key pair
-	 */
-	int	(*old_generate_key)(struct sc_profile *, struct sc_card *,
-			unsigned int idx, unsigned int keybits,
-			sc_pkcs15_pubkey_t *pubkey_res,
-			struct sc_pkcs15_prkey_info *);
-
-	/*
 	 * Delete object
 	 */
 	int (*delete_object)(struct sc_profile *, struct sc_card *,

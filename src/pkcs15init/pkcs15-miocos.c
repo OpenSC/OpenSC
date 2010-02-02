@@ -274,12 +274,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations = {
 	NULL,				/* generate_key */
 	NULL, NULL,			/* encode private/public key */
 	NULL,				/* finalize_card */
-	/* Old API */
-	NULL, 				/* miocos_init_app */
-	NULL, 				/* miocos_new_pin */
-	NULL, 				/* miocos_new_key */
-	NULL, 				/* miocos_new_file */
-	NULL,				/* old_generate_key */
 	NULL 				/* delete_object */
 };
 

@@ -309,11 +309,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_muscle_operations = {
 	muscle_generate_key,				/* generate_key */
 	NULL, NULL,			/* encode private/public key */
 	NULL,				/* finalize_card */
-	NULL,				/* old - initapp*/
-	NULL,				/* new_pin */
-	NULL,				/* new key */
-	NULL,				/* new file */
-	NULL,				/* generate key */
 	NULL 				/* delete_object */
 };
 

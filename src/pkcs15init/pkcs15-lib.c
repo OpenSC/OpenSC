@@ -687,23 +687,15 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 	}
 
 	/* Create the application DF and store the PINs */
-	if (profile->ops->create_dir) {
-		/* Create the application directory */
-		r = profile->ops->create_dir(profile, card, df);
+	/* Create the application directory */
+	r = profile->ops->create_dir(profile, card, df);
 
-		/* Set the SO PIN */
-		if (r >= 0 && pin_obj) {
-			r = profile->ops->create_pin(profile, card, df, pin_obj,
-					args->so_pin, args->so_pin_len,
-					args->so_puk, args->so_puk_len);
-		}
-	} else {
-		/* Old style API */
-		r = profile->ops->init_app(profile, card, &pin_info,
+	/* Set the SO PIN */
+	if (r >= 0 && pin_obj) {
+		r = profile->ops->create_pin(profile, card, df, pin_obj,
 				args->so_pin, args->so_pin_len,
 				args->so_puk, args->so_puk_len);
 	}
-
 	if (r < 0 && pin_obj)
 		sc_pkcs15_free_object(pin_obj);
 	SC_TEST_RET(ctx, r, "Card specific create application DF failed");
@@ -1057,17 +1049,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 	SC_TEST_RET(ctx, r, "Failed to set SO PIN reference from card");
 
 	/* Now store the PINs */
-	if (profile->ops->create_pin) {
-		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
-	} else {
-		/* Get the number of PINs we already have */
-		idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH, NULL, 0);
-
-		r = profile->ops->new_pin(profile, p15card->card, pin_info, idx,
-				args->pin, args->pin_len,
-				args->puk, args->puk_len);
-	}
-	
+	r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
 	if (r < 0)
 		sc_pkcs15_free_object(pin_obj);
 	SC_TEST_RET(ctx, r, "Card specific create PIN failed.");
@@ -1323,7 +1305,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
 		SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Generation of RSA and GOST keys is only supported");
 
-	if (profile->ops->generate_key == NULL && profile->ops->old_generate_key == NULL)
+	if (profile->ops->generate_key == NULL)
 		SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key generation not supported");
 
 	/* Set the USER PIN reference from args */
@@ -1356,21 +1338,11 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	pubkey_args.gost_params = keygen_args->prkey_args.gost_params;
 
 	/* Generate the private key on card */
-	if (profile->ops->create_key) {
-		/* New API */
-		r = profile->ops->create_key(profile, p15card->card, object);
-		SC_TEST_RET(ctx, r, "Cannot generate key: create key failed");
+	r = profile->ops->create_key(profile, p15card->card, object);
+	SC_TEST_RET(ctx, r, "Cannot generate key: create key failed");
 
-		r = profile->ops->generate_key(profile, p15card->card, object, &pubkey_args.key);
-		SC_TEST_RET(ctx, r, "Failed to generate key");
-	} else {
-		int idx;
-
-		idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
-		r = profile->ops->old_generate_key(profile, p15card->card, idx, keybits, 
-				&pubkey_args.key, key_info);
-		SC_TEST_RET(ctx, r, "Failed to generate key in an old manner");
-	}
+	r = profile->ops->generate_key(profile, p15card->card, object, &pubkey_args.key);
+	SC_TEST_RET(ctx, r, "Failed to generate key");
 
 	/* update PrKDF entry */
 	if (!caller_supplied_id)   {
@@ -1463,17 +1435,11 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	/* Get the number of private keys already on this card */
 	idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
 	if (!(keyargs->flags & SC_PKCS15INIT_EXTRACTABLE)) {
-		if (profile->ops->create_key) {
-			/* New API */
-			r = profile->ops->create_key(profile, p15card->card, object);
-			SC_TEST_RET(ctx, r, "Card specific 'create key' failed");
+		r = profile->ops->create_key(profile, p15card->card, object);
+		SC_TEST_RET(ctx, r, "Card specific 'create key' failed");
 
-			r = profile->ops->store_key(profile, p15card->card, object, &key);
-			SC_TEST_RET(ctx, r, "Card specific 'store key' failed");
-		} else {
-			r = profile->ops->new_key(profile, p15card->card, &key, idx, key_info);
-			SC_TEST_RET(ctx, r, "Card specific 'new key' failed");
-		}
+		r = profile->ops->store_key(profile, p15card->card, object, &key);
+		SC_TEST_RET(ctx, r, "Card specific 'store key' failed");
 	} else {
 		sc_pkcs15_der_t	encoded, wrapped, *der = &encoded;
 		sc_context_t *ctx = p15card->card->ctx;
@@ -1868,27 +1834,12 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card,
 	r = set_so_pin_from_card(p15card, profile);
 	SC_TEST_RET(ctx, r, "Failed to set SO PIN from card");
 
-	if (profile->ops->new_file == NULL) {
-		/* New API */
-		r = select_object_path(p15card, profile, object, id, path);
-		SC_TEST_RET(ctx, r, "Failed to select object path");
+	r = select_object_path(p15card, profile, object, id, path);
+	SC_TEST_RET(ctx, r, "Failed to select object path");
 
-		r = sc_profile_get_file_by_path(profile, path, &file);
-		SC_TEST_RET(ctx, r, "Failed to get file by path");
-	} else {
-		/* Get the number of objects of this type already on this card */
-		idx = sc_pkcs15_get_objects(p15card,
-				object->type & SC_PKCS15_TYPE_CLASS_MASK,
-				NULL, 0);
+	r = sc_profile_get_file_by_path(profile, path, &file);
+	SC_TEST_RET(ctx, r, "Failed to get file by path");
 
-		/* Allocate data file */
-		r = profile->ops->new_file(profile, p15card->card,
-				object->type, idx, &file);
-		if (r < 0) {
-			sc_debug(p15card->card->ctx, "Unable to allocate file");
-			goto done;
-		}
-	}
 	if (file->path.count == 0) {
 		file->path.index = 0;
 		file->path.count = -1;
