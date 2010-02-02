@@ -734,14 +734,7 @@ sc_pkcs15init_add_app(sc_card_t *card, struct sc_profile *profile,
 	/* XXX: encode the DDO? */
 
 	/* See if we've set an SO PIN */
-	if (pin_obj) {
-		r = sc_pkcs15init_add_object(p15spec, profile,
-			       	SC_PKCS15_AODF, pin_obj);
-	} else {
-		r = sc_pkcs15init_add_object(p15spec, profile,
-				SC_PKCS15_AODF, NULL);
-	}
-
+	r = sc_pkcs15init_add_object(p15spec, profile, SC_PKCS15_AODF, pin_obj);
 	if (r >= 0) {
 		r = sc_pkcs15init_update_dir(p15spec, profile, app);
 		if (r >= 0)
@@ -2300,23 +2293,25 @@ select_object_path(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 static int
 sc_pkcs15init_update_dir(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
-		sc_app_info_t *app)
+		struct sc_app_info *app)
 {
-	sc_card_t *card = p15card->card;
-	int	r, retry = 1;
+	struct sc_card *card = p15card->card;
+	int r, retry = 1;
 
 	do {
 		struct sc_file	*dir_file;
 		struct sc_path	path;
 
 		r = sc_enum_apps(card);
-
 		if (r != SC_ERROR_FILE_NOT_FOUND)
 			break;
+		/* DIR file is not yet created. */
 
 		sc_format_path("3F002F00", &path);
-		if (sc_profile_get_file_by_path(profile, &path, &dir_file) < 0)
-			return r;
+		r = sc_profile_get_file_by_path(profile, &path, &dir_file);
+		SC_TEST_RET(card->ctx, r, "DIR file not defined in profile");
+
+		/* Create DIR file */
 		r = sc_pkcs15init_update_file(profile, card, dir_file, NULL, 0);
 		sc_file_free(dir_file);
 	} while (retry--);
@@ -3230,6 +3225,7 @@ out:	if (parent)
 		sc_file_free(parent);
 	return r;
 }
+
 
 int
 sc_pkcs15init_update_file(struct sc_profile *profile, sc_card_t *card,
