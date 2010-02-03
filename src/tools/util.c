@@ -17,13 +17,25 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 	if (wait) {
 		unsigned int event;
 
-		printf("Waiting for card to be inserted...\n");
+		if (sc_ctx_get_reader_count(ctx) == 0) {
+			fprintf(stderr, "Waiting for a reader to be attached...\n");
+			r = sc_wait_for_event(ctx, SC_EVENT_READER_ATTACHED, &found, &event, -1);
+			if (r < 0) {
+				fprintf(stderr, "Error while waiting for a reader: %s\n", sc_strerror(r));
+				return 3;
+			}
+			r = sc_ctx_detect_readers(ctx);
+			if (r < 0) {
+				fprintf(stderr, "Error while refreshing readers: %s\n", sc_strerror(r));
+				return 3;
+			}
+		}
+		fprintf(stderr, "Waiting for a card to be inserted...\n");
 		r = sc_wait_for_event(ctx, SC_EVENT_CARD_INSERTED, &found, &event, -1);
 		if (r < 0) {
-			fprintf(stderr, "Error while waiting for card: %s\n", sc_strerror(r));
+			fprintf(stderr, "Error while waiting for a card: %s\n", sc_strerror(r));
 			return 3;
 		}
-
 		reader = found;
 	} else {
 		if (sc_ctx_get_reader_count(ctx) == 0) {
@@ -91,7 +103,7 @@ autofound:
 void util_print_binary(FILE *f, const u8 *buf, int count)
 {
 	int i;
-	
+
 	for (i = 0; i < count; i++) {
 		unsigned char c = buf[i];
 		const char *format;
@@ -107,7 +119,7 @@ void util_print_binary(FILE *f, const u8 *buf, int count)
 void util_hex_dump(FILE *f, const u8 *in, int len, const char *sep)
 {
 	int i;
-	
+
 	for (i = 0; i < len; i++) {
 		if (sep != NULL && i)
 			fprintf(f, "%s", sep);
@@ -122,7 +134,7 @@ void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)
  	while (count) {
 		char ascbuf[17];
 		size_t i;
-		
+
 		if (addr >= 0) {
 			fprintf(f, "%08X: ", addr);
 			addr += 16;
@@ -153,7 +165,7 @@ void util_print_usage_and_die(const char *app_name, const struct option options[
 	while (options[i].name) {
 		char buf[40], tmp[5];
 		const char *arg_str;
-		
+
 		/* Skip "hidden" options */
 		if (option_help[i] == NULL) {
 			i++;
@@ -190,7 +202,7 @@ const char * util_acl_to_str(const sc_acl_entry_t *e)
 {
 	static char line[80], buf[10];
 	unsigned int acl;
-	
+
 	if (e == NULL)
 		return "N/A";
 	line[0] = 0;
