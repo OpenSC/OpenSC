@@ -135,15 +135,18 @@ static int rtecp_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *d
 static int rtecp_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 		sc_pkcs15_pin_info_t *pin_info)
 {
+	int pin_ref;
+
 	if (!profile || !card || !card->ctx || !pin_info)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (pin_info->reference > 2)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-		pin_info->reference = RTECP_SO_PIN_REF;
+		pin_ref = RTECP_SO_PIN_REF;
 	else
-		pin_info->reference = RTECP_USER_PIN_REF;
+		pin_ref = RTECP_USER_PIN_REF;
+	if (pin_info->reference != pin_ref)
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
+
 	return SC_SUCCESS;
 }
 

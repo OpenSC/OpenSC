@@ -48,7 +48,7 @@ PIN user-pin {
     attempts    = 2;
     min-length  = 8;
     max-length  = 32;
-    flags       = case-sensitive, local, initialized;
+    flags       = case-sensitive, initialized;
 }
 PIN user-puk {
     min-length  = 0;
@@ -61,7 +61,7 @@ PIN so-pin {
     attempts    = 2;
     min-length  = 8;
     max-length  = 32;
-    flags       = case-sensitive, local, initialized, soPin;
+    flags       = case-sensitive, initialized, soPin;
 }
 PIN so-puk {
     min-length  = 0;

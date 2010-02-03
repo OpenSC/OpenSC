@@ -175,38 +175,26 @@ static int
 rutoken_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
 			sc_pkcs15_pin_info_t *pin_info)
 {
+	int pin_ref;
+	unsigned int so_pin_flag;
+
 	if (!profile || !card || !pin_info)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
-	sc_debug(card->ctx, "PIN reference %i, PIN flags 0x%x\n",
-			pin_info->reference, pin_info->flags);
-	/* XXX:
-	 * Create:
-	 * First iteration find reference for create new PIN object with
-	 * pin_info->reference == -1
-	 * Next iteration ++pin_info->reference signify PIN object
-	 * (pin_info->reference == SC_RUTOKEN_DEF_ID_GCHV_ADMIN  or
-	 *  pin_info->reference == SC_RUTOKEN_DEF_ID_GCHV_USER)
-	 * is already created.
-	 * Find:
-	 * Valid PIN reference: { SC_RUTOKEN_DEF_ID_GCHV_ADMIN,
-	 * SC_RUTOKEN_DEF_ID_GCHV_USER }
-	 */
-	if (pin_info->reference > 0
-			&& pin_info->reference != SC_RUTOKEN_DEF_ID_GCHV_ADMIN
-			&& pin_info->reference != SC_RUTOKEN_DEF_ID_GCHV_USER
-	)
-		/* PKCS#15 SOPIN and UserPIN already created */
-		return SC_ERROR_NOT_SUPPORTED;
+	pin_ref = pin_info->reference;
+	so_pin_flag = pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN;
 
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-		pin_info->reference = SC_RUTOKEN_DEF_ID_GCHV_ADMIN;
+	sc_debug(card->ctx, "PIN reference %i%s\n",
+			pin_ref, so_pin_flag ? " SO PIN flag" : "");
+
+	if ((pin_ref == SC_RUTOKEN_DEF_ID_GCHV_ADMIN && so_pin_flag)
+			|| (pin_ref == SC_RUTOKEN_DEF_ID_GCHV_USER && !so_pin_flag)
+	)
+		return SC_SUCCESS;
 	else
-		pin_info->reference = SC_RUTOKEN_DEF_ID_GCHV_USER;
-	sc_debug(card->ctx, "PIN reference %i\n", pin_info->reference);
-	return SC_SUCCESS;
+		return SC_ERROR_NOT_SUPPORTED;
 }
 
 /*
