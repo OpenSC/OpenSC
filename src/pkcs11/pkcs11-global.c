@@ -627,11 +627,11 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	if (rv != CKR_OK)
 		return rv;
 
-	mask = SC_EVENT_CARD_INSERTED|SC_EVENT_CARD_REMOVED;
+	mask = SC_EVENT_CARD_EVENTS;
 
 	/* Detect and add new slots for added readers v2.20 */
 	if (sc_pkcs11_conf.plug_and_play) {
-		mask |= SC_EVENT_READER_ATTACHED;
+		mask |= SC_EVENT_READER_EVENTS;
 	}
 
 	if ((rv = slot_find_changed(pSlot, mask)) == CKR_OK
