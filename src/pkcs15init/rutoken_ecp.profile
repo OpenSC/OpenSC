@@ -101,6 +101,19 @@ filesystem {
                     file-id = 6005;
                 }
             }
+
+            DF Resrv1-DF {
+                file-id = 1001;
+            }
+            DF Resrv2-DF {
+                file-id = 1002;
+            }
+            DF Resrv3-DF {
+                file-id = 1003;
+            }
+            DF Resrv4-DF {
+                file-id = 1004;
+            }
         }
 
         EF DIR {

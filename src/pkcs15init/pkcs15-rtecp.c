@@ -116,6 +116,11 @@ static int rtecp_init(sc_profile_t *profile, sc_card_t *card)
 	create_sysdf(profile, card, "Cer-DF");
 	create_sysdf(profile, card, "LCHV-DF");
 
+	create_sysdf(profile, card, "Resrv1-DF");
+	create_sysdf(profile, card, "Resrv2-DF");
+	create_sysdf(profile, card, "Resrv3-DF");
+	create_sysdf(profile, card, "Resrv4-DF");
+
 	return sc_select_file(card, sc_get_mf_path(), NULL);
 }
 
