@@ -59,33 +59,6 @@ void sc_do_log(sc_context_t *ctx, int type, const char *file, int line, const ch
 /*
  * Default debug/error message output
  */
-static int
-use_color(sc_context_t *ctx, FILE * outf)
-{
-	static const char *terms[] = { "linux", "xterm", "Eterm", "rxvt", "rxvt-unicode" };
-	static char	*term = NULL;
-	int		term_count = sizeof(terms) / sizeof(terms[0]);
-	int		do_color, i;
-
-	if (!isatty(fileno(outf)))
-		return 0;
-	if (term == NULL) {
-		term = getenv("TERM");
-		if (term == NULL)
-			return 0;
-	}
-
-	do_color = 0;
-	for (i = 0; i < term_count; i++) {
-		if (strcmp(terms[i], term) == 0) {
-			do_color = 1;
-			break;
-		}
-	}
-
-	return do_color;
-}
-
 
 void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args)
 {
@@ -99,7 +72,6 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	struct timeval tv;
 	char time_string[40];
 #endif
-	const char	*color_pfx = "", *color_sfx = "";
 	FILE		*outf = NULL;
 	int		n;
 
@@ -150,12 +122,7 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	if (outf == NULL)
 		return;
 
-	if (use_color(ctx, outf)) {
-		color_sfx = "\33[0m";
-		color_pfx = "\33[00;32m";
-	}
-
-	fprintf(outf, "%s%s%s", color_pfx, buf, color_sfx);
+	fprintf(outf, "%s", buf);
 	n = strlen(buf);
 	if (n == 0 || buf[n-1] != '\n')
 		fprintf(outf, "\n");
