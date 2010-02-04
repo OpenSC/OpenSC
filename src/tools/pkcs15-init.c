@@ -66,7 +66,6 @@
 #include <opensc/cards.h>
 #include <compat_getpass.h>
 #include "util.h"
-#include "ui.h"
 #include <compat_strlcpy.h>
 
 
@@ -103,8 +102,6 @@ static int	do_store_data_object(struct sc_profile *profile);
 static void	set_secrets(struct sc_profile *);
 static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
 static void	init_gost_params(struct sc_pkcs15init_keyarg_gost_params *, EVP_PKEY *);
-static int	get_new_pin(sc_ui_hints_t *, const char *, const char *,
-			char **);
 static int	get_pin_callback(struct sc_profile *profile,
 			int id, const struct sc_pkcs15_pin_info *info,
 			const char *label,
@@ -357,6 +354,50 @@ static struct sc_pkcs15init_callbacks callbacks = {
 	get_pin_callback,	/* get_pin() */
 	get_key_callback,	/* get_key() */
 };
+
+/*
+ * Dialog types for get_pin
+ */
+#define SC_UI_USAGE_OTHER		0x0000
+#define SC_UI_USAGE_NEW_PIN		0x0001
+#define SC_UI_USAGE_UNBLOCK_PIN		0x0002
+#define SC_UI_USAGE_CHANGE_PIN		0x0003
+
+/*
+ * Dialog flags
+ */
+#define SC_UI_PIN_RETYPE		0x0001	/* new pin, retype */
+#define SC_UI_PIN_OPTIONAL		0x0002	/* new pin optional */
+#define SC_UI_PIN_CHECK_LENGTH		0x0004	/* check pin length */
+#define SC_UI_PIN_MISMATCH_RETRY	0x0008	/* retry if new pin mismatch? */
+
+/* Hints passed to get_pin
+ * M marks mandatory fields,
+ * O marks optional fields
+ */
+typedef struct sc_ui_hints {
+	const char *		prompt;		/* M: cmdline prompt */
+	const char *		dialog_name;	/* M: dialog name */
+	unsigned int		usage;		/* M: usage hint */
+	unsigned int		flags;		/* M: flags */
+	sc_card_t *		card;		/* M: card handle */
+	struct sc_pkcs15_card *	p15card;	/* O: pkcs15 handle */
+
+	/* We may not have a pkcs15 object yet when we get
+	 * here, but we may have an idea of what it's going to
+	 * look like. */
+	const char *		obj_label;	/* O: object (PIN) label */
+	union {
+	    struct sc_pkcs15_pin_info *pin;
+	} info;
+} sc_ui_hints_t;
+
+/*
+ * ask user for a pin
+ */
+extern int	get_pin(sc_ui_hints_t *hints, char **out);
+static int	get_new_pin(sc_ui_hints_t *, const char *, const char *,
+			char **);
 
 int
 main(int argc, char **argv)
@@ -1614,7 +1655,7 @@ static int get_new_pin(sc_ui_hints_t *hints,
 	hints->prompt		= prompt;
 	hints->obj_label	= label;
 
-	return sc_ui_get_pin(hints, retstr);
+	return get_pin(hints, retstr);
 }
 
 /*
@@ -1693,7 +1734,7 @@ get_pin_callback(struct sc_profile *profile,
 		hints.card	= card;
 		hints.p15card	= p15card;
 
-		if ((r = sc_ui_get_pin(&hints, &secret)) < 0) {
+		if ((r = get_pin(&hints, &secret)) < 0) {
 			fprintf(stderr,
 				"Failed to read PIN from user: %s\n",
 				sc_strerror(r));
@@ -2760,4 +2801,104 @@ ossl_print_errors(void)
 
 	while ((err = ERR_get_error()) != 0)
 		fprintf(stderr, "%s\n", ERR_error_string(err, NULL));
+}
+
+/*
+ * Retrieve a PIN from the user.
+ *
+ * @hints	dialog hints
+ * @out		PIN entered by the user; must be freed.
+ * 		NULL if dialog was canceled.
+ */
+int get_pin(sc_ui_hints_t *hints, char **out)
+{
+	sc_context_t	*ctx = hints->card->ctx;
+	sc_pkcs15_pin_info_t *pin_info;
+	const char	*label;
+	int		flags = hints->flags;
+
+	pin_info = hints->info.pin;
+	if (!(label = hints->obj_label)) {
+		if (pin_info == NULL) {
+			label = "PIN";
+		} else if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+			label = "Security Officer PIN";
+		} else {
+			label = "User PIN";
+		}
+	}
+
+	if (hints->p15card) {
+		/* TBD: get preferredCard from TokenInfo */
+	}
+
+	if (hints->prompt) {
+		printf("%s", hints->prompt);
+		if (flags & SC_UI_PIN_OPTIONAL)
+			printf(" (Optional - press return for no PIN)");
+		printf(".\n");
+	}
+
+	*out = NULL;
+	while (1) {
+		char	buffer[64], *pin;
+		size_t	len;
+
+		snprintf(buffer, sizeof(buffer),
+				"Please enter %s: ", label);
+		
+		if ((pin = getpass(buffer)) == NULL)
+			return SC_ERROR_INTERNAL;
+
+		len = strlen(pin);
+		if (len == 0 && (flags & SC_UI_PIN_OPTIONAL))
+			return 0;
+
+		if (pin_info && (flags & SC_UI_PIN_CHECK_LENGTH)) {
+			if (len < pin_info->min_length) {
+				fprintf(stderr,
+					"PIN too short (min %lu characters)\n",
+					(unsigned long) pin_info->min_length);
+				continue;
+			}
+			if (pin_info->max_length
+			 && len > pin_info->max_length) {
+				fprintf(stderr,
+					"PIN too long (max %lu characters)\n",
+					(unsigned long) pin_info->max_length);
+				continue;
+			}
+		}
+
+		*out = strdup(pin);
+		sc_mem_clear(pin, len);
+
+		if (!(flags & SC_UI_PIN_RETYPE))
+			break;
+
+		pin = getpass("Please type again to verify: ");
+		if (!strcmp(*out, pin)) {
+			sc_mem_clear(pin, len);
+			break;
+		}
+
+		free(*out);
+		*out = NULL;
+
+		if (!(flags & SC_UI_PIN_MISMATCH_RETRY)) {
+			fprintf(stderr, "PINs do not match.\n");
+			return SC_ERROR_KEYPAD_PIN_MISMATCH;
+		}
+
+		fprintf(stderr,
+			"Sorry, the two pins did not match. "
+			"Please try again.\n");
+		sc_mem_clear(pin, strlen(pin));
+
+		/* Currently, there's no way out of this dialog.
+		 * We should allow the user to bail out after n
+		 * attempts. */
+	}
+
+	return 0;
 }
