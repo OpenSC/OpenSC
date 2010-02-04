@@ -63,8 +63,8 @@ static const sc_SecAttrV2_t p2_sec_attr = {
 	2
 };
 static const sc_SecAttrV2_t p1_sec_attr = {
-	0x43, 1, 1, 0, 0, 0, 0, -1,
-	1, 0, 0, 0,
+	0x43, -1, 1, 0, 0, 0, 0, -1,
+	0, 0, 0, 0,
 	1
 };
 

@@ -162,8 +162,8 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_card_t *card,
 	sc_file_t *file;
 	/*                        GCHV min-length Flags Attempts  Reserve */
 	unsigned char prop[]  = { 0x01,       '?', 0x01,    0xFF, 0, 0 };
-	/*                  AccessMode           Unblock Change             Delete */
-	unsigned char sec[15] = { 0x43, RTECP_SO_PIN_REF,   '?', 0, 0, 0, 0,  0xFF };
+	/*                  AccessMode Unblock Change             Delete */
+	unsigned char sec[15] = { 0x43,    '?',   '?', 0, 0, 0, 0,  0xFF };
 	int r;
 
 	(void)puk; /* no warning */
@@ -192,6 +192,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_card_t *card,
 	file->id = pin_info->reference;
 	file->size = pin_len;
 	assert(sizeof(sec)/sizeof(sec[0]) > 2);
+	sec[1] = (pin_info->reference == RTECP_SO_PIN_REF) ? 0xFF : RTECP_SO_PIN_REF;
 	sec[2] = (unsigned char)pin_info->reference;
 	r = sc_file_set_sec_attr(file, sec, sizeof(sec));
 	if (r == SC_SUCCESS)
