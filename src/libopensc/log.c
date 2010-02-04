@@ -35,6 +35,7 @@
 #ifdef HAVE_IO_H
 #include <io.h>
 #endif
+#include <pthread.h>
 
 /* Although not used, we need this for consistent exports */
 void _sc_debug(sc_context_t *ctx, const char *format, ...)
@@ -55,9 +56,39 @@ void sc_do_log(sc_context_t *ctx, int type, const char *file, int line, const ch
 	va_end(ap);
 }
 
+/*
+ * Default debug/error message output
+ */
+static int
+use_color(sc_context_t *ctx, FILE * outf)
+{
+	static const char *terms[] = { "linux", "xterm", "Eterm", "rxvt", "rxvt-unicode" };
+	static char	*term = NULL;
+	int		term_count = sizeof(terms) / sizeof(terms[0]);
+	int		do_color, i;
+
+	if (!isatty(fileno(outf)))
+		return 0;
+	if (term == NULL) {
+		term = getenv("TERM");
+		if (term == NULL)
+			return 0;
+	}
+
+	do_color = 0;
+	for (i = 0; i < term_count; i++) {
+		if (strcmp(terms[i], term) == 0) {
+			do_color = 1;
+			break;
+		}
+	}
+
+	return do_color;
+}
+
+
 void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args)
 {
-	int	(*display_fn)(sc_context_t *, const char *);
 	char	buf[1836], *p;
 	int	r;
 	size_t	left;
@@ -68,19 +99,17 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	struct timeval tv;
 	char time_string[40];
 #endif
+	const char	*color_pfx = "", *color_sfx = "";
+	FILE		*outf = NULL;
+	int		n;
+
 
 	assert(ctx != NULL);
 
-	switch (type) {
-	case SC_LOG_TYPE_DEBUG:
-		if (ctx->debug == 0)
-			return;
-		display_fn = &sc_ui_display_debug;
-		break;
-
-	default:
+	if (type != SC_LOG_TYPE_DEBUG) 
 		return;
-	}
+	if (ctx->debug == 0)
+		return;
 
 	p = buf;
 	left = sizeof(buf);
@@ -117,7 +146,21 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	p += r;
 	left -= r;
 
-	display_fn(ctx, buf);
+	outf = ctx->debug_file;
+	if (outf == NULL)
+		return;
+
+	if (use_color(ctx, outf)) {
+		color_sfx = "\33[0m";
+		color_pfx = "\33[00;32m";
+	}
+
+	fprintf(outf, "%s%s%s", color_pfx, buf, color_sfx);
+	n = strlen(buf);
+	if (n == 0 || buf[n-1] != '\n')
+		fprintf(outf, "\n");
+	fflush(outf);
+	return;
 }
 
 void sc_hex_dump(sc_context_t *ctx, const u8 * in, size_t count, char *buf, size_t len)

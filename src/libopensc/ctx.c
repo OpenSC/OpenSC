@@ -247,10 +247,6 @@ static int load_parameters(sc_context_t *ctx, scconf_block *block,
 		list = list->next;
 	}
 
-	val = scconf_get_str(block, "preferred_language", "en");
-	if (val)
-		sc_ui_set_language(ctx, val);
-
 	return err;
 }
 

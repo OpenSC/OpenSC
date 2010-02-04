@@ -227,11 +227,6 @@ sc_set_card_driver
 sc_set_security_env
 sc_strerror
 sc_transmit_apdu
-sc_ui_display_debug
-sc_ui_display_error
-sc_ui_get_pin
-sc_ui_get_pin_pair
-sc_ui_set_language
 sc_unlock
 sc_update_binary
 sc_update_dir

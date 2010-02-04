@@ -67,11 +67,6 @@ typedef struct sc_ui_hints {
 } sc_ui_hints_t;
 
 /*
- * Specify the dialog language, if the backend is localized.
- */
-extern int	sc_ui_set_language(sc_context_t *, const char *);
-
-/*
  * Retrieve a PIN from the user.
  *
  * @hints	dialog hints
@@ -79,33 +74,6 @@ extern int	sc_ui_set_language(sc_context_t *, const char *);
  * 		NULL if dialog was canceled.
  */
 extern int	sc_ui_get_pin(sc_ui_hints_t *hints, char **out);
-
-/*
- * PIN pair dialog. Can be used for PIN change/unblock, but
- * also to enter a PIN/PUK pair.
- *
- * @hints	dialog hints
- * @old_out	PIN entered by the user; must be freed.
- * 		NULL if dialog was canceled.
- * @new_out	PIN entered by the user; must be freed.
- * 		NULL if dialog was canceled.
- */
-extern int	sc_ui_get_pin_pair(sc_ui_hints_t *hints,
-				char **old_out, char **new_out);
-
-/*
- * Other ui functions, not fully spec'ed yet
- */
-extern int	sc_ui_display_question(sc_context_t *ctx,
-				const char *name,
-				const char *prompt);
-extern int	sc_ui_display_message(sc_context_t *ctx,
-				const char *name,
-				const char *message);
-extern int	sc_ui_display_error(sc_context_t *ctx,
-				const char *msg);
-extern int	sc_ui_display_debug(sc_context_t *ctx,
-				const char *msg);
 
 #ifdef __cplusplus
 }

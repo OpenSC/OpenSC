@@ -8,7 +8,7 @@ bin_SCRIPTS = opensc-config
 lib_LTLIBRARIES = libopensc.la
 openscinclude_HEADERS = \
 	opensc.h pkcs15.h \
-	cardctl.h asn1.h log.h ui.h \
+	cardctl.h asn1.h log.h \
 	errors.h types.h compression.h
 noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
 	internal-winscard.h p15card-helper.h
@@ -21,7 +21,7 @@ AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
 INCLUDES = -I$(top_builddir)/src/include -I$(top_srcdir)/src/common
 
 libopensc_la_SOURCES = \
-	sc.c ctx.c ui.c log.c errors.c \
+	sc.c ctx.c log.c errors.c \
 	asn1.c base64.c sec.c card.c iso7816.c dir.c padding.c apdu.c \
 	\
 	pkcs15.c pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \

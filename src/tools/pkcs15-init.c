@@ -63,10 +63,10 @@
 #include <opensc/pkcs15-init.h>
 #include <opensc/keycache.h>
 #include <opensc/log.h>
-#include <opensc/ui.h>
 #include <opensc/cards.h>
 #include <compat_getpass.h>
 #include "util.h"
+#include "ui.h"
 #include <compat_strlcpy.h>
 
 

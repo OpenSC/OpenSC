@@ -33,7 +33,6 @@ extern "C" {
 #include "opensc.h"
 #include "simclist.h"
 #include "log.h"
-#include "ui.h"
 #include "cards.h"
 #include <assert.h>
 #ifdef _WIN32
