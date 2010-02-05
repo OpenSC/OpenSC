@@ -530,10 +530,13 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 	} 
 
 	if ((apdu->flags & SC_APDU_FLAGS_CHAINING) != 0) {
-		/* divide et impera: transmit APDU in chunks with Lc < 255
+		/* divide et impera: transmit APDU in chunks with Lc <= max_send_size
 		 * bytes using command chaining */
 		size_t    len  = apdu->datalen;
 		const u8  *buf = apdu->data;
+	  	size_t    max_send_size = ((card->max_send_size > 0) ?
+					   card->max_send_size :
+					   card->reader->driver->max_send_size);
 
 		while (len != 0) {
 			size_t    plen;
@@ -543,14 +546,14 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 			tapdu = *apdu;
 			/* clear chaining flag */
 			tapdu.flags &= ~SC_APDU_FLAGS_CHAINING;
-			if (len > 255) {
+			if (len > max_send_size) {
 				/* adjust APDU case: in case of CASE 4 APDU
 				 * the intermediate APDU are of CASE 3 */
 				if ((tapdu.cse & SC_APDU_SHORT_MASK) == SC_APDU_CASE_4_SHORT)
 					tapdu.cse--;
 				/* XXX: the chunk size must be adjusted when
 				 *      secure messaging is used */
-				plen          = 255;
+				plen          = max_send_size;
 				tapdu.cla    |= 0x10;
 				tapdu.le      = 0;
 				/* the intermediate APDU don't expect data */
