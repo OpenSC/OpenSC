@@ -2,7 +2,7 @@
  * piv-tool.c: Tool for accessing smart cards with libopensc
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005, Douglas E. Engert <deengert@anl.gov>
+ * Copyright (C) 2005,2010 Douglas E. Engert <deengert@anl.gov>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -59,11 +59,12 @@ static const struct option options[] = {
 	{ "admin",		0, NULL, 		'A' },
 	{ "usepin",		0, NULL,		'P' }, /* some beta cards want user pin for put_data */
 	{ "genkey",		0, NULL,		'G' },
-	{ "cert",		0, NULL,		'C' },
-	{ "compresscert", 0, NULL,		'Z' },
+	{ "object",		1, NULL,		'O' },
+	{ "cert",		1, NULL,		'C' },
+	{ "compresscert", 1, NULL,		'Z' },
 	{ "req",		0, NULL, 		'R' },
-	{ "out",	0, NULL, 		'o' },
-	{ "in",		0, NULL, 		'o' },
+	{ "out",	1, NULL, 		'o' },
+	{ "in",		1, NULL, 		'i' },
 	{ "send-apdu",		1, NULL,		's' },
 	{ "reader",		1, NULL,		'r' },
 	{ "card-driver",	1, NULL,		'c' },
@@ -78,6 +79,7 @@ static const char *option_help[] = {
 	"authenticate using default 3des key",
 	"authenticate using user pin", 
 	"Generate key <ref>:<alg> 9A:06 on card, and output pubkey",
+	"Load an object <containerID> containerID as defined in 800-73 without leading 0x",
 	"Load a cert <ref> where <ref> is 9A,9B,9C or 9D",
 	"Load a cert that has been gziped <ref>",
 	"Generate a cert req",
@@ -95,6 +97,55 @@ static sc_card_t *card = NULL;
 static BIO * bp = NULL;
 static RSA * newkey = NULL;
 
+static int load_object(const char * object_id, const char * object_file)
+{
+	FILE *fp;
+	sc_path_t path;
+	size_t derlen;
+	u8 *der = NULL;
+	u8 *body;
+	size_t bodylen;
+	int r;
+	struct stat stat_buf;
+
+    if((fp=fopen(object_file, "r"))==NULL){
+        printf("Cannot open object file, %s %s\n", 
+			(object_file)?object_file:"", strerror(errno));
+        return -1;
+    }
+							
+	stat(object_file, &stat_buf);
+	derlen = stat_buf.st_size;
+	der = malloc(derlen);
+	if (der == NULL) {
+		printf("file %s is too big, %lu\n",
+		object_file, (unsigned long)derlen);
+		return-1 ;
+	}
+	if (1 != fread(der, derlen, 1, fp)) {
+		printf("unable to read file %s\n",object_file);
+		return -1;
+	}
+	/* check if tag and length are valid */
+	body = (u8 *)sc_asn1_find_tag(card->ctx, der, derlen, 0x53, &bodylen);
+	if (body == NULL || derlen != body  - der +  bodylen) {
+		fprintf(stderr, "object tag or length not valid\n");
+		return -1;
+	}
+
+	sc_format_path(object_id, &path);
+	
+	r = sc_select_file(card, &path, NULL);
+	if (r < 0) {
+		fprintf(stderr, "select file failed\n");
+		return -1;
+	}
+	/* leave 8 bits for flags, and pass in total length */ 
+	r = sc_write_binary(card, 0, der, derlen, derlen<<8);
+
+	return r;
+}	
+
 
 static int load_cert(const char * cert_id, const char * cert_file,
 					int compress)
@@ -111,7 +162,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
 
     if((fp=fopen(cert_file, "r"))==NULL){
         printf("Cannot open cert file, %s %s\n", 
-			cert_file, strerror(errno));
+			cert_file?cert_file:"", strerror(errno));
         return -1;
     }
 	if (compress) { /* file is gziped already */
@@ -160,8 +211,9 @@ static int load_cert(const char * cert_id, const char * cert_file,
 		fprintf(stderr, "select file failed\n");
 		 return -1;
 	}
-	/* we pass compress as the flag to card-piv.c write_binary */
-	r = sc_write_binary(card, 0, der, derlen, compress); 
+	/* we pass length  and  8 bits of flag to card-piv.c write_binary */
+	/* pass in its a cert and if needs compress */
+	r = sc_write_binary(card, 0, der, derlen, derlen<<8 | compress<1 | 1); 
 	
 	return r;
 
@@ -359,6 +411,7 @@ int main(int argc, char * const argv[])
 	int do_admin_mode = 0;
 	int do_gen_key = 0;
 	int do_load_cert = 0;
+	int do_load_object = 0;
 	int compress_cert = 0;
 	int do_req = 0;
 	int do_print_serial = 0;
@@ -368,6 +421,7 @@ int main(int argc, char * const argv[])
 	const char *out_file = NULL;
 	const char *in_file = NULL;
 	const char *cert_id = NULL;
+	const char *object_id = NULL;
 	const char *key_info = NULL;
 	const char *admin_info = NULL;
 		
@@ -375,7 +429,7 @@ int main(int argc, char * const argv[])
 	setbuf(stdout, NULL);
 
 	while (1) {
-		c = getopt_long(argc, argv, "nA:G:Z:C:Ri:o:fvs:c:w", options, &long_optind);
+		c = getopt_long(argc, argv, "nA:G:O:Z:C:Ri:o:fvs:c:w", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -406,6 +460,11 @@ int main(int argc, char * const argv[])
 		case 'G':
 			do_gen_key = 1;
 			key_info = optarg;
+			action_count++;
+			break;
+		case 'O':
+			do_load_object = 1;
+			object_id = optarg;
 			action_count++;
 			break;
 		case 'Z':
@@ -491,6 +550,11 @@ int main(int argc, char * const argv[])
 	}
 	if (do_gen_key) {
 		if ((err = gen_key(key_info)))
+			goto end;
+		action_count--;
+	}
+	if (do_load_object) {
+		if ((err = load_object(object_id, in_file)))
 			goto end;
 		action_count--;
 	}

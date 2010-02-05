@@ -3,7 +3,7 @@
  * card-default.c: Support for cards with no driver
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005,2006,2007 Douglas E. Engert <deengert@anl.gov>
+ * Copyright (C) 2005,2006,2007,2008,2009,2010 Douglas E. Engert <deengert@anl.gov>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
@@ -77,11 +77,11 @@ typedef struct piv_private_data {
 	int enumtag;
 	int  selected_obj; /* The index into the piv_objects last selected */
 	int  return_only_cert; /* return the cert from the object */
-	int  rb_state; /* first time -1, 0, in middle, 1 at eof */
-	size_t max_recv_size; /* saved size, need to lie to pkcs15_read_file */
-	size_t max_send_size; 
+	int  rwb_state; /* first time -1, 0, in middle, 1 at eof */
 	int key_ref; /* saved from set_security_env and */
 	int alg_id;  /* used in decrypt, signature */ 
+	u8* w_buf;   /* write_binary buffer */
+	size_t w_buf_len; /* length of w_buff */
 	piv_obj_cache_t obj_cache[PIV_OBJ_LAST_ENUM];
 } piv_private_data_t;
 
@@ -246,7 +246,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	SC_FUNC_CALLED(card->ctx,1);
 	
 	sc_debug(card->ctx, "%02x %02x %02x %d : %d %d\n",
-		 ins, p1, p2, sendbuflen , priv->max_send_size, priv->max_recv_size);
+		 ins, p1, p2, sendbuflen , card->max_send_size, card->max_recv_size);
 
 	rbuf = rbufinitbuf;
 	rbuflen = sizeof(rbufinitbuf);
@@ -272,7 +272,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 
 	if (recvbuf) {
 		apdu.resp = rbuf;
-		apdu.le = (priv->max_recv_size <= rbuflen)? priv->max_recv_size : rbuflen;
+		apdu.le = (card->max_recv_size <= rbuflen)? card->max_recv_size : rbuflen;
 		apdu.resplen = rbuflen;
 	} else {
 		 apdu.resp =  rbuf;
@@ -280,16 +280,11 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		 apdu.resplen = 0;
 	}
 
-	/* TODO if read_binary is fixed, this is not needed */
-	card->max_recv_size = priv->max_recv_size;
-
 	sc_debug(card->ctx,"calling sc_transmit_apdu flags=%x le=%d, resplen=%d, resp=%p", 
 		apdu.flags, apdu.le, apdu.resplen, apdu.resp);
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
-	/* TODO if read_binary is fixed, this is not needed */
-	card->max_recv_size = 0xffff;
 
 	sc_debug(card->ctx,"DEE r=%d apdu.resplen=%d sw1=%02x sw2=%02x", 
 			r, apdu.resplen, apdu.sw1, apdu.sw2);
@@ -911,11 +906,11 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 		 SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
 	enumtag = piv_objects[priv->selected_obj].enumtag;
 
-	if (priv->rb_state == 1) {
+	if (priv->rwb_state == 1) {
 		r = 0;
 	}
 
-	if (priv->rb_state == -1) {
+	if (priv->rwb_state == -1) {
 		r = piv_get_cached_data(card, enumtag, &rbuf, &rbuflen);
 	
 		if (r >=0) {
@@ -947,7 +942,7 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 			}
 			
 		}
-		priv->rb_state = 0;
+		priv->rwb_state = 0;
 	}
 
 	if (priv->return_only_cert || piv_objects[enumtag].flags & PIV_OBJECT_TYPE_PUBKEY) {
@@ -963,7 +958,7 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 		count = rbuflen - idx;	
 		if (count <= 0) { 
 			r = 0;
-			priv->rb_state = 1;
+			priv->rwb_state = 1;
 		} else { 
 			memcpy(buf, rbuf + idx, count);
 			r = count;
@@ -1011,8 +1006,9 @@ static int piv_put_data(sc_card_t *card, int tag,
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
+
 static int piv_write_certificate(sc_card_t *card,
-		unsigned idx, const u8* buf, size_t count,
+		const u8* buf, size_t count,
 		unsigned long flags) {
 	piv_private_data_t * priv = PIV_DATA(card);
 	int enumtag;
@@ -1023,7 +1019,7 @@ static int piv_write_certificate(sc_card_t *card,
 	size_t taglen;
 
 	sc_debug(card->ctx,"DEE cert len=%d",count);
-	taglen = put_tag_and_len(0x70, count, NULL) 
+	taglen = put_tag_and_len(0x70, count, NULL)
 		+ put_tag_and_len(0x71, 1, NULL)
 		+ put_tag_and_len(0xFE, 0, NULL);
 
@@ -1039,7 +1035,7 @@ static int piv_write_certificate(sc_card_t *card,
 	memcpy(p, buf, count);
 	p += count;
 	put_tag_and_len(0x71, 1, &p);
-	*p++ = (flags && 1)? 0x80:0x00; /* certinfo, i.e. gziped? */
+	*p++ = (flags)? 0x80:0x00; /* certinfo, i.e. gziped? */
 	put_tag_and_len(0xFE,0,&p); /* LRC tag */
 
 	sc_debug(card->ctx,"DEE buf %p len %d %d", sbuf, p -sbuf, sbuflen);
@@ -1051,32 +1047,99 @@ static int piv_write_certificate(sc_card_t *card,
 
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
+
 /* 
- * We need to add the 0x53 tag and other specific tags, 
+ * For certs we need to add the 0x53 tag and other specific tags, 
  * and call the piv_put_data 
  * Note: the select file will have saved the object type for us 
- * Write is only used by piv-tool, so we will use flags==1
- * to indicate we are writing a compressed cert. 
+ * Write is only used by piv-tool, so we will use flags:
+ *  length << 8 | compress < 1 | cert 
+ * to indicate we are writing a cert and if is compressed.
+ * if its not a cert its an object. 
+ *
+ * Therefore when idx=0, we will get the length of the object
+ * and allocate a buffer, so we can support partial writes.
+ * When the last chuck of the data is sent, we will write it. 
  */
 
 static int piv_write_binary(sc_card_t *card, unsigned int idx,
 		const u8 *buf, size_t count, unsigned long flags)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
+	int r;
+	int enumtag;
+
 	SC_FUNC_CALLED(card->ctx,1);
 
 	if (priv->selected_obj < 0)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
-	if (idx != 0)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NO_CARD_SUPPORT);
-	
-	if (piv_objects[priv->selected_obj].flags & PIV_OBJECT_TYPE_CERT) {
-			SC_FUNC_RETURN(card->ctx, 1, piv_write_certificate(card, idx, buf, count, flags));
-	} else {
-		sc_debug(card->ctx, "Don't know how to write object %s\n",
-			piv_objects[priv->selected_obj].name);
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
+
+	enumtag = piv_objects[priv->selected_obj].enumtag;
+
+	if (priv->rwb_state == 1)  /* trying to write at end */
+		SC_FUNC_RETURN(card->ctx, 1, 0);
+
+	if (priv->rwb_state == -1) {
+
+		/* if  cached, remove old entry */
+		if (priv->obj_cache[enumtag].flags & PIV_OBJ_CACHE_VALID) {
+			priv->obj_cache[enumtag].flags = 0;
+			if (priv->obj_cache[enumtag].obj_data) {
+				free(priv->obj_cache[enumtag].obj_data);
+				priv->obj_cache[enumtag].obj_data = NULL;
+				priv->obj_cache[enumtag].obj_len = 0;
+			}
+			if (priv->obj_cache[enumtag].internal_obj_data) {
+				free(priv->obj_cache[enumtag].internal_obj_data);
+				priv->obj_cache[enumtag].internal_obj_data = NULL;
+				priv->obj_cache[enumtag].internal_obj_len = 0;
+			}
+		}
+
+		if (idx != 0)
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NO_CARD_SUPPORT);
+
+		priv->w_buf_len = flags>>8;  
+		if (priv->w_buf_len == 0)
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
+
+		priv->w_buf = (u8 *)malloc(priv->w_buf_len);
+		priv-> rwb_state = 0;
 	}
+
+	/* on each pass make sure we have w_buf */
+	if (priv->w_buf == NULL)
+			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
+
+	if (idx + count > priv->w_buf_len)
+		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OBJECT_NOT_VALID);
+
+	memcpy(priv->w_buf + idx, buf, count); /* copy one chunk */
+
+	/* if this was not the last chunk, return to get rest */
+	if (idx + count < priv->w_buf_len)
+		SC_FUNC_RETURN(card->ctx, 1, count);
+
+	priv-> rwb_state = 1; /* at end of object */
+	
+	if ( flags & 1) {
+			r = piv_write_certificate(card, priv->w_buf, priv->w_buf_len,
+				flags & 0x02);
+	} else {
+		r = piv_put_data(card, enumtag, priv->w_buf, priv->w_buf_len);
+	}
+	/* if it worked, will cache it */
+	if (r >= 0 && priv->w_buf) {
+		priv->obj_cache[enumtag].flags = PIV_OBJ_CACHE_VALID;
+		priv->obj_cache[enumtag].obj_data = priv->w_buf;
+		priv->obj_cache[enumtag].obj_len = priv->w_buf_len;
+	} else {
+		if (priv->w_buf)
+			free(priv->w_buf);
+	}
+	priv->w_buf = NULL;
+	priv->w_buf_len = 0;
+	SC_FUNC_RETURN(card->ctx, 1, (r < 0)? r : count); 
 }
 
 /*
@@ -1385,9 +1448,11 @@ err:
 static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 {
 	int r;
+	int i;
+	u8 gbits;
 	u8 *rbuf = NULL;
-	u8 *body, *fascn;
-	size_t rbuflen = 0, bodylen, fascnlen;
+	u8 *body, *fascn, *guid;
+	size_t rbuflen = 0, bodylen, fascnlen, guidlen;
 	u8 temp[2000];
 	size_t templen = sizeof(temp);
 
@@ -1396,6 +1461,11 @@ static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* seri
 	/* ensure we've got the PIV selected, and nothing else is in process */
 	/* This fixes several problems due to previous incomplete APDUs during card detection */
 	/* Note: We need the temp because (some?) Oberthur cards don't like selecting an applet without response data */
+	/* 800-73-3 part1 draft, and CIO Council docs  imply for PIV Compatible card
+     * The FASC-N Agency code should be 9999 and there should be a GUID
+     * based on RFC 4122. RIf so and the GUID is not all 0's 
+	 * we will use the GUID as the serial number.
+	 */ 
 	piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
 
 	r = piv_get_cached_data(card, PIV_OBJ_CHUI, &rbuf, &rbuflen);
@@ -1406,16 +1476,35 @@ static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* seri
 		body = (u8 *)sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x53, &bodylen); /* Pass the outer wrapper asn1 */
 		if (body != NULL && bodylen != 0) {
 			fascn = (u8 *)sc_asn1_find_tag(card->ctx, body, bodylen, 0x30, &fascnlen); /* Find the FASC-N data */
-			if (fascn != NULL && fascnlen != 0) {
-				serial->len = fascnlen < SC_MAX_SERIALNR ? fascnlen : SC_MAX_SERIALNR;
-				memcpy (serial->value, fascn, serial->len);
+			guid = (u8 *)sc_asn1_find_tag(card->ctx, body, bodylen, 0x34, &guidlen);
+
+			gbits = 0; /* if guid is valid, gbits will not be zero */
+			if (guid && guidlen == 16) {
+				for (i = 0; i < 16; i++) {
+					gbits = gbits | guid[i]; /* if all are zero, gbits will be zero */
+				}
+			}  
+			sc_debug(card->ctx,"fascn=%p,fascnlen=%d,guid=%p,guidlen=%d,gbits=%2.2x\n",
+					fascn, fascnlen, guid, guidlen, gbits);
+
+			if (fascn && fascnlen == 25) {
+				/* test if guid and the fascn starts with ;9999 (in ISO 4bit + partiy code) */
+				if (!(gbits && fascn[0] == 0xD4 && fascn[1] == 0xE7  
+						    && fascn[2] == 0x39 && (fascn[3] | 0x7F) == 0xFF)) {
+					serial->len = fascnlen < SC_MAX_SERIALNR ? fascnlen : SC_MAX_SERIALNR;
+					memcpy (serial->value, fascn, serial->len);
+					r = SC_SUCCESS;
+					gbits = 0; /* set to skip using guid below */
+				}
+			} 
+			if (guid && gbits) {
+				serial->len = guidlen < SC_MAX_SERIALNR ? guidlen : SC_MAX_SERIALNR;
+				memcpy (serial->value, guid, serial->len);
 				r = SC_SUCCESS;
 			}
 		}
 	}
       
-//	if (rbuf != NULL)
-//		free (rbuf);
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
@@ -1682,7 +1771,7 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 	priv->return_only_cert = (pathlen == 4 && path[2] == 0xce && path[3] == 0xce);
 	    
 	priv->selected_obj = i;
-	priv->rb_state = -1;
+	priv->rwb_state = -1;
 	
 	/* make it look like the file was found. */
 	/* We don't want to read it now  unless we need the length */ 
@@ -1734,6 +1823,8 @@ static int piv_finish(sc_card_t *card)
 	if (priv) {
 		if (priv->aid_file)
 			sc_file_free(priv->aid_file);
+		if (priv->w_buf)
+			free(priv->w_buf);
 		for (i = 0; i < PIV_OBJ_LAST_ENUM - 1; i++) {
 sc_debug(card->ctx,"DEE freeing #%d, %p:%d %p:%d", i, 
 				priv->obj_cache[i].obj_data, priv->obj_cache[i].obj_len,
@@ -1778,12 +1869,9 @@ static int piv_init(sc_card_t *card)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
 	priv->aid_file = sc_file_new();
 	priv->selected_obj = -1;
-	priv->max_recv_size = 256;
+	/* priv->max_recv_size = 256; */
 	/* priv->max_recv_size = card->max_recv_size; */
-	priv->max_send_size = card->max_send_size;
-	/* TODO fix read_binary and write_binary (read_binary is fixed) */
-	card->max_recv_size = 0xffff; /* must force pkcs15 read_binary in one call */
-	card->max_send_size = 0xffff;
+	/* priv->max_send_size = card->max_send_size; */
 	
 	sc_debug(card->ctx, "Max send = %d recv = %d\n", 
 			card->max_send_size, card->max_recv_size);
