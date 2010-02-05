@@ -32,8 +32,7 @@
 #endif
 
 #include <windows.h>
-#include "internal-winscard.h"
-#include "cardmod.h"
+#include <cardmod.h>
 
 #include <opensc/opensc.h>
 #include <opensc/pkcs15.h>
@@ -43,20 +42,6 @@
 
 #define NULLSTR(a) (a == NULL ? "<NULL>" : a)
 #define NULLWSTR(a) (a == NULL ? L"<NULL>" : a)
-
-#ifndef SCARD_E_INVALID_PARAMETER
-#define SCARD_E_INVALID_PARAMETER		0x80100004
-#define SCARD_E_NO_MEMORY 			0x80100006
-#define SCARD_E_UNKNOWN_CARD			0x8010000D
-#define SCARD_F_UNKNOWN_ERROR			0x80100014
-#define SCARD_E_UNSUPPORTED_FEATURE		0x80100022
-#define SCARD_E_FILE_NOT_FOUND			0x80100024
-#define SCARD_W_WRONG_CHV			0x8010006B
-#endif
-
-typedef struct _BCRYPT_PKCS1_PADDING_INFO {
-  LPCWSTR pszAlgId;
-}BCRYPT_PKCS1_PADDING_INFO;
 
 typedef struct _VENDOR_SPECIFIC
 {

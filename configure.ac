@@ -166,6 +166,13 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
+	[cardmod],
+	[AS_HELP_STRING([--enable-cardmod],[enable cardmod module on Windows @<:@disabled@:>@])],
+	,
+	[enable_cardmod="no"]
+)
+
+AC_ARG_ENABLE(
 	[man],
 	[AS_HELP_STRING([--disable-man],[disable installation of manuals @<:@enabled for none Windows@:>@])],
 	,
@@ -305,6 +312,12 @@ AC_CHECK_FUNCS([ \
 	setlocale getopt_long \
 	strlcpy
 ])
+AC_CHECK_SIZEOF(void *)
+if test "${ac_cv_sizeof_void_p}" = 8; then
+	LIBRARY_BITNESS="64"
+else
+	LIBRARY_BITNESS="32"
+fi
 
 dnl See if socket() is found from libsocket
 AC_CHECK_LIB(
@@ -339,9 +352,6 @@ AC_CHECK_HEADER(
 )
 CFLAGS="${saved_CFLAGS}"
 
-dnl for minidriver basecsp
-test -z "${CARDMOD}" && CARDMOD="no"
-
 if test "${WIN32}" = "no"; then
 	dnl Special check for pthread support.
 	ACX_PTHREAD(
@@ -353,28 +363,16 @@ if test "${WIN32}" = "no"; then
 		[AC_MSG_ERROR([POSIX thread support required])]
 	)
 	CC="${PTHREAD_CC}"
-else
+fi
+
+if test "${enable_cardmod}" = "yes"; then
 	dnl win32 special test for minidriver
-	AC_CHECK_HEADER([cardmod.h])
-	if test "${ac_cv_header_cardmod_h}" != "yes"; then
-		saved_CFLAGS="${CFLAGS}"
-		CFLAGS="${CFLAGS} -Isrc/libopensc"
-		AC_MSG_CHECKING([secondary check for carmod.h presence])
-		AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
-				#include <windows.h>
-				#include <internal-winscard.h> 
-				#include <cardmod.h> 
-				int main(int argc, char **argv) { return 0;}]])],
-				[CARDMOD="yes"],
-				[CARDMOD="no"])
-		AC_MSG_RESULT(["${CARDMOD}"])
-		CFLAGS="${saved_CFLAGS}"
-	else
-		CARDMOD="yes"
-	fi
-	if test "${CARDMOD}" = "yes"; then
-		AC_DEFINE([HAVE_CARDMOD_H], [], [card minidriver header])
-	fi
+	AC_CHECK_HEADER(
+		[cardmod.h],
+		,
+		[AC_MSG_ERROR([cardmod.h is not found and required for cardmod])]
+	)
+	AC_DEFINE([ENABLE_CARDMOD], [1], [Enable cardmod support])
 fi
 
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
@@ -642,9 +640,11 @@ if test "${enable_pcsc}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} pcsc(${DEFAULT_PCSC_PROVIDER})"
 	OPTIONAL_PCSC_CFLAGS="${PCSC_CFLAGS}"
 fi
-
 if test "${enable_ctapi}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} ctapi"
+fi
+if test "${enable_cardmod}" = "yes"; then
+	OPENSC_FEATURES="${OPENSC_FEATURES} cardmod"
 fi
 
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
@@ -680,6 +680,7 @@ AC_SUBST([OPTIONAL_OPENSSL_LIBS])
 AC_SUBST([OPTIONAL_OPENCT_CFLAGS])
 AC_SUBST([OPTIONAL_OPENCT_LIBS])
 AC_SUBST([OPTIONAL_PCSC_CFLAGS])
+AC_SUBST([LIBRARY_BITNESS])
 
 AM_CONDITIONAL([SVN_CHECKOUT], [test "${svn_checkout}" = "yes"])
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
@@ -691,7 +692,7 @@ AM_CONDITIONAL([ENABLE_OPENCT], [test "${enable_openct}" = "yes"])
 AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
-AM_CONDITIONAL([CARDMOD], [test "${CARDMOD}" = "yes"])
+AM_CONDITIONAL([ENABLE_CARDMOD], [test "${enable_cardmod}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
@@ -728,6 +729,7 @@ AC_CONFIG_FILES([
 	src/tests/regression/Makefile
 	src/tools/Makefile
 	src/cardmod/Makefile
+	src/cardmod/cardmod.inf
 	win32/Makefile
 	win32/versioninfo.rc
 ])
@@ -752,6 +754,7 @@ OpenSSL support:         ${enable_openssl}
 PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
 CT-API support:          ${enable_ctapi}
+cardmod support:         ${enable_cardmod}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 
@@ -775,8 +778,6 @@ OPENSSL_LIBS:            ${OPENSSL_LIBS}
 OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
 OPENCT_LIBS:             ${OPENCT_LIBS}
 PCSC_CFLAGS:             ${PCSC_CFLAGS}
-
-CARDMOD:                 ${CARDMOD}
 
 EOF
 

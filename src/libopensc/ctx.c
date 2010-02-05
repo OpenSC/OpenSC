@@ -95,7 +95,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 static const struct _sc_driver_entry internal_reader_drivers[] = {
 #ifdef ENABLE_PCSC
 	{ "pcsc",	(void *(*)(void)) sc_get_pcsc_driver },
-#ifdef HAVE_CARDMOD_H
+#ifdef ENABLE_CARDMOD
 	{ "cardmod", 	(void *(*)(void)) sc_get_cardmod_driver },
 #endif
 #endif
