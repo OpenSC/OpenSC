@@ -240,6 +240,7 @@ void sc_apdu_log(sc_context_t *ctx, const u8 *data, size_t len,
 extern struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern struct sc_reader_driver *sc_get_ctapi_driver(void);
 extern struct sc_reader_driver *sc_get_openct_driver(void);
+extern struct sc_reader_driver *sc_get_cardmod_driver(void);
 
 #ifdef __cplusplus
 }

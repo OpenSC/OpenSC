@@ -339,6 +339,9 @@ AC_CHECK_HEADER(
 )
 CFLAGS="${saved_CFLAGS}"
 
+dnl for minidriver basecsp
+test -z "${CARDMOD}" && CARDMOD="no"
+
 if test "${WIN32}" = "no"; then
 	dnl Special check for pthread support.
 	ACX_PTHREAD(
@@ -350,6 +353,28 @@ if test "${WIN32}" = "no"; then
 		[AC_MSG_ERROR([POSIX thread support required])]
 	)
 	CC="${PTHREAD_CC}"
+else
+	dnl win32 special test for minidriver
+	AC_CHECK_HEADER([cardmod.h])
+	if test "${ac_cv_header_cardmod_h}" != "yes"; then
+		saved_CFLAGS="${CFLAGS}"
+		CFLAGS="${CFLAGS} -Isrc/libopensc"
+		AC_MSG_CHECKING([secondary check for carmod.h presence])
+		AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+				#include <windows.h>
+				#include <internal-winscard.h> 
+				#include <cardmod.h> 
+				int main(int argc, char **argv) { return 0;}]])],
+				[CARDMOD="yes"],
+				[CARDMOD="no"])
+		AC_MSG_RESULT(["${CARDMOD}"])
+		CFLAGS="${saved_CFLAGS}"
+	else
+		CARDMOD="yes"
+	fi
+	if test "${CARDMOD}" = "yes"; then
+		AC_DEFINE([HAVE_CARDMOD_H], [], [card minidriver header])
+	fi
 fi
 
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
@@ -666,6 +691,7 @@ AM_CONDITIONAL([ENABLE_OPENCT], [test "${enable_openct}" = "yes"])
 AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
+AM_CONDITIONAL([CARDMOD], [test "${CARDMOD}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
@@ -701,6 +727,7 @@ AC_CONFIG_FILES([
 	src/tests/Makefile
 	src/tests/regression/Makefile
 	src/tools/Makefile
+	src/cardmod/Makefile
 	win32/Makefile
 	win32/versioninfo.rc
 ])
@@ -748,6 +775,8 @@ OPENSSL_LIBS:            ${OPENSSL_LIBS}
 OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
 OPENCT_LIBS:             ${OPENCT_LIBS}
 PCSC_CFLAGS:             ${PCSC_CFLAGS}
+
+CARDMOD:                 ${CARDMOD}
 
 EOF
 

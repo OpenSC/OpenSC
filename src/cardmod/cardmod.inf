@@ -1,0 +1,149 @@
+
+[Version]
+Signature="$Windows NT$"
+Class=SmartCard
+ClassGuid={990A2BD7-E738-46c7-B26F-1CF8FB9F1391}
+Provider=%ProviderName%
+CatalogFile=delta.cat
+DriverVer=05/02/2010,0.0.1.3
+
+[Manufacturer]
+%ProviderName%=Minidriver,NTamd64,NTamd64.6.1,NTx86,NTx86.6.1
+
+[Minidriver.NTamd64]
+%CardDeviceName%=Minidriver64_Install,SCFILTER\CID_00640181010c829000
+
+[Minidriver.NTx86]
+%CardDeviceName%=Minidriver32_Install,SCFILTER\CID_00640181010c829000
+
+[Minidriver.NTamd64.6.1]
+%CardDeviceName%=Minidriver64_61_Install,SCFILTER\CID_00640181010c829000
+
+[Minidriver.NTx86.6.1]
+%CardDeviceName%=Minidriver32_61_Install,SCFILTER\CID_00640181010c829000
+
+[DefaultInstall]
+CopyFiles=x86_CopyFiles
+AddReg=AddRegDefault
+
+[DefaultInstall.ntamd64]
+CopyFiles=amd64_CopyFiles
+CopyFiles=wow64_CopyFiles
+AddReg=AddRegWOW64
+AddReg=AddRegDefault
+
+[DefaultInstall.NTx86]
+CopyFiles=x86_CopyFiles
+AddReg=AddRegDefault
+
+[DefaultInstall.ntamd64.6.1]
+AddReg=AddRegWOW64
+AddReg=AddRegDefault
+
+[DefaultInstall.NTx86.6.1]
+AddReg=AddRegDefault
+
+[SourceDisksFiles]
+%SmartCardCardModule%=1
+%SmartCardCardModule64%=1
+
+[SourceDisksNames]
+1 = %MediaDescription%
+
+[Minidriver64_Install.NT]
+CopyFiles=amd64_CopyFiles
+CopyFiles=wow64_CopyFiles
+AddReg=AddRegWOW64
+AddReg=AddRegDefault
+
+[Minidriver64_61_Install.NT]
+AddReg=AddRegWOW64
+AddReg=AddRegDefault
+Include=umpass.inf
+Needs=UmPass
+
+[Minidriver32_Install.NT]
+CopyFiles=x86_CopyFiles
+AddReg=AddRegDefault
+
+[Minidriver32_61_Install.NT]
+AddReg=AddRegDefault
+Include=umpass.inf
+Needs=UmPass
+
+[Minidriver64_61_Install.NT.Services]
+Include=umpass.inf
+Needs=UmPass.Services
+
+[Minidriver32_61_Install.NT.Services]
+Include=umpass.inf
+Needs=UmPass.Services
+
+
+[Minidriver64_61_Install.NT.HW]
+Include=umpass.inf
+Needs=UmPass.HW
+
+[Minidriver64_61_Install.NT.CoInstallers]
+Include=umpass.inf
+Needs=UmPass.CoInstallers
+
+
+[Minidriver64_61_Install.NT.Interfaces]
+Include=umpass.inf
+Needs=UmPass.Interfaces
+
+
+[Minidriver32_61_Install.NT.HW]
+Include=umpass.inf
+Needs=UmPass.HW
+
+[Minidriver32_61_Install.NT.CoInstallers]
+Include=umpass.inf
+Needs=UmPass.CoInstallers
+
+
+[Minidriver32_61_Install.NT.Interfaces]
+Include=umpass.inf
+Needs=UmPass.Interfaces
+
+
+[amd64_CopyFiles]
+;%SmartCardCardModule%,%SmartCardCardModule64%
+
+[x86_CopyFiles]
+;%SmartCardCardModule%
+
+[wow64_CopyFiles]
+;%SmartCardCardModule64%
+
+[AddRegWOW64]
+HKLM, %SmartCardNameWOW64%,"ATR",0x00000001,3f,69,00,00,00,64,01,00,00,00,80,90,00
+HKLM, %SmartCardNameWOW64%,"ATRMask",0x00000001,ff,ff,ff,ff,ff,ff,ff,00,00,00,f0,ff,ff
+HKLM, %SmartCardNameWOW64%,"Crypto Provider",0x00000000,"Microsoft Base Smart Card Crypto Provider"
+HKLM, %SmartCardNameWOW64%,"Smart Card Key Storage Provider",0x00000000,"Microsoft Smart Card Key Storage Provider"
+HKLM, %SmartCardNameWOW64%,"80000001",0x00000000,%SmartCardCardModule64%
+
+[AddRegDefault]
+HKLM, %SmartCardName%,"ATR",0x00000001,3f,69,00,00,00,64,01,00,00,00,80,90,00
+HKLM, %SmartCardName%,"ATRMask",0x00000001,ff,ff,ff,ff,ff,ff,ff,00,00,00,f0,ff,ff
+HKLM, %SmartCardName%,"Crypto Provider",0x00000000,"Microsoft Base Smart Card Crypto Provider"
+HKLM, %SmartCardName%,"Smart Card Key Storage Provider",0x00000000,"Microsoft Smart Card Key Storage Provider"
+HKLM, %SmartCardName%,"80000001",0x00000000,%SmartCardCardModule%
+
+[DestinationDirs]
+amd64_CopyFiles=10,system32
+x86_CopyFiles=10,system32
+wow64_CopyFiles=10,syswow64
+
+
+; =================== Generic ==================================
+
+[Strings]
+ProviderName ="Opensc"
+MediaDescription="Opensc Smart Card Minidriver Installation Disk"
+CardDeviceName="Opensc Minidriver for Smart Card"
+SmartCardName="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Cev Westcos"
+SmartCardNameWOW64="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\Cev Westcos"
+SmartCardCardModule="opensc-cardmod.dll"
+SmartCardCardModule64="opensc-cardmod64.dll"

@@ -130,6 +130,8 @@ typedef LONG (PCSC_API *SCardTransmit_t)(SCARDHANDLE hCard, LPCSCARD_IO_REQUEST 
 	LPBYTE pbRecvBuffer, LPDWORD pcbRecvLength);
 typedef LONG (PCSC_API *SCardListReaders_t)(SCARDCONTEXT hContext, LPCSTR mszGroups,
 	LPSTR mszReaders, LPDWORD pcchReaders);
+typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
+	LPBYTE pbAttr, LPDWORD pcbAttrLen);
 
 /* Copied from pcsc-lite reader.h */
 

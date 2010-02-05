@@ -412,3 +412,13 @@ app tokend {
 		score = 10;
 	}
 }
+
+app cardmod {
+	#allow only cardmodule pcsc reader for minidriver 
+	reader_drivers = cardmod;
+
+	reader_driver cardmod {
+		enable_pinpad = false;
+	}
+}
+
