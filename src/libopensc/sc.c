@@ -134,7 +134,7 @@ unsigned long bebytes2ulong(const u8 *buf)
 
 unsigned short bebytes2ushort(const u8 *buf)
 {
-    return (unsigned short) (buf[0] << 24 | buf[1] << 16);
+    return (unsigned short) (buf[0] << 8 | buf[1]);
 }
 
 int sc_format_oid(struct sc_object_id *oid, const char *in)
