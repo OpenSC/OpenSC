@@ -35,7 +35,9 @@
 #ifdef HAVE_IO_H
 #include <io.h>
 #endif
+#ifdef HAVE_PTHREAD
 #include <pthread.h>
+#endif
 
 /* Although not used, we need this for consistent exports */
 void _sc_debug(sc_context_t *ctx, const char *format, ...)
