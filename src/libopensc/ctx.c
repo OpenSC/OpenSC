@@ -86,6 +86,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
         { "myeid",      (void *(*)(void)) sc_get_myeid_driver },
 	/* emv is not really implemented */
 	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
+	{ "javacard",	(void *(*)(void)) sc_get_javacard_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
