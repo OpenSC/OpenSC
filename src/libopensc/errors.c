@@ -113,10 +113,13 @@ const char *sc_strerror(int error)
 		"Unknown error",
 		"PKCS#15 compatible smart card not found",
 	};
+	const char *no_errors = "No errors";
 	const int misc_base = -SC_ERROR_UNKNOWN;
 	const char **errors = NULL;
 	int count = 0, err_base = 0;
-	
+
+	if (!error)
+		return no_errors;
 	if (error < 0)
 		error = -error;
 	if (error >= misc_base) {
