@@ -2695,9 +2695,11 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	
 	/* Get the DF we're part of. If there's no DF, fine, we haven't been added yet. */
 	df = obj->df;
-	if (df)
+	if (df)   {
 		/* Unlink the object and update the DF */
 		sc_pkcs15_remove_object(p15card, obj);
+		sc_pkcs15_free_object(obj);
+	}
 
 	r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
 

@@ -421,8 +421,12 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 	if (p15card == NULL)
 		return;
 	assert(p15card->magic == SC_PKCS15_CARD_MAGIC);
-	while (p15card->obj_list)
-		sc_pkcs15_remove_object(p15card, p15card->obj_list);
+	while (p15card->obj_list)   {
+		struct sc_pkcs15_object *obj = p15card->obj_list;
+
+		sc_pkcs15_remove_object(p15card, obj);
+		sc_pkcs15_free_object(obj);
+	}
 	while (p15card->df_list)
 		sc_pkcs15_remove_df(p15card, p15card->df_list);
 	while (p15card->unusedspace_list)
@@ -465,8 +469,12 @@ void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 		return;
 	p15card->version = 0;
 	p15card->flags   = 0;
-	while (p15card->obj_list != NULL)
-		sc_pkcs15_remove_object(p15card, p15card->obj_list);
+	while (p15card->obj_list)   {
+		struct sc_pkcs15_object *obj = p15card->obj_list;
+
+		sc_pkcs15_remove_object(p15card, obj);
+		sc_pkcs15_free_object(obj);
+	}
 	p15card->obj_list = NULL;
 	while (p15card->df_list != NULL)
 		sc_pkcs15_remove_df(p15card, p15card->df_list);
@@ -1267,7 +1275,6 @@ void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
 		obj->prev->next = obj->next;
 	if (obj->next != NULL)
 		obj->next->prev = obj->prev;
-	sc_pkcs15_free_object(obj);
 }
 
 void sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
