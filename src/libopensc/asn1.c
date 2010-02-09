@@ -1521,10 +1521,3 @@ sc_der_copy(sc_pkcs15_der_t *dst, const sc_pkcs15_der_t *src)
 	}
 }
 
-void
-sc_der_clear(sc_pkcs15_der_t *der)
-{
-	if (der->value)
-		free(der->value);
-	memset(der, 0, sizeof(*der));
-}

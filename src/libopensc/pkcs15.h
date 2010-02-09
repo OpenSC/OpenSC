@@ -696,7 +696,6 @@ const char *sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
 void sc_pkcs15_format_id(const char *id_in, struct sc_pkcs15_id *id_out);
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
 void sc_der_copy(sc_pkcs15_der_t *, const sc_pkcs15_der_t *);
-void sc_der_clear(sc_pkcs15_der_t *);
 /* Prepend 'parent' to 'child' in case 'child' is a relative path */
 int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child);
 
