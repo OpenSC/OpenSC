@@ -334,7 +334,7 @@ struct sc_pkcs15_object {
 	struct sc_pkcs15_df *df; /* can be NULL, if object is 'floating' */
 	struct sc_pkcs15_object *next, *prev; /* used only internally */
 	
-	struct sc_pkcs15_der der;
+	struct sc_pkcs15_der content;
 };
 typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 
@@ -698,6 +698,12 @@ int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
 void sc_der_copy(sc_pkcs15_der_t *, const sc_pkcs15_der_t *);
 /* Prepend 'parent' to 'child' in case 'child' is a relative path */
 int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child);
+
+/* Clean and free object value */
+void sc_pkcs15_free_object_content(struct sc_pkcs15_object *);
+/* Allocate and set object value */
+int sc_pkcs15_allocate_object_content(struct sc_pkcs15_object *,
+		const unsigned char *, size_t);
 
 /* New object search API.
  * More complex, but also more powerful.

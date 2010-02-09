@@ -1299,8 +1299,8 @@ void sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
 		free(obj->data);
 	}
 
-	if (obj->der.value)
-		free(obj->der.value);
+	sc_pkcs15_free_object_content(obj);
+
 	free(obj);
 }
 
@@ -1474,14 +1474,6 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 			goto ret;
 		}
 		obj_len = p - oldp;
-
-		obj->der.value = (u8 *) malloc(obj_len);
-		if (obj->der.value == NULL) {
-			r = SC_ERROR_OUT_OF_MEMORY;
-			goto ret;
-		}
-		memcpy(obj->der.value, oldp, obj_len);
-		obj->der.len = obj_len;
 
 		obj->df = df;
 		r = sc_pkcs15_add_object(p15card, obj);
@@ -1826,3 +1818,38 @@ int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child)
 		return SC_SUCCESS;
 	return sc_concatenate_path(child, parent, child);
 }
+
+void sc_pkcs15_free_object_content(struct sc_pkcs15_object *obj)
+{
+	if (obj->content.value && obj->content.len)   {
+		sc_mem_clear(obj->content.value, obj->content.len);
+		free(obj->content.value);
+	}
+	obj->content.value = NULL;
+	obj->content.len = 0;
+}
+
+int sc_pkcs15_allocate_object_content(struct sc_pkcs15_object *obj,
+		const unsigned char *value, size_t len)
+{
+	if (!obj)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (obj->content.value == value && obj->content.len >= len)   {
+		obj->content.len = len;
+		return SC_SUCCESS;
+	}
+
+	sc_pkcs15_free_object_content(obj);
+	
+	if (value && len)   {
+		obj->content.value = (unsigned char *)sc_mem_alloc_secure(len);
+		if (!obj->content.value)
+			return SC_ERROR_OUT_OF_MEMORY;
+
+		memcpy(obj->content.value, value, len);
+		obj->content.len = len;
+	}
+	return SC_SUCCESS;
+}
+
