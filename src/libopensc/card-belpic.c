@@ -1532,6 +1532,25 @@ static int belpic_compute_signature(sc_card_t *card, const u8 * data,
 	return r;
 }
 
+static int belpic_update_binary(sc_card_t *card,
+			unsigned int idx, const u8 *buf, size_t count,
+			unsigned long flags)
+{
+       int r;
+
+       r = iso_ops->update_binary(card, idx, buf, count, flags);
+
+#ifdef HAVE_GUI
+       if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED && SSO_OK(card->ctx)) {
+               r = belpic_askpin_verify(card, SCR_USAGE_AUTH);
+               if (r == 0)
+                       r = iso_ops->update_binary(card, idx, buf, count, flags);
+       }
+#endif
+
+       return r;
+}
+
 #if 0
 static int belpic_logout(sc_card_t *card)
 {
@@ -1560,6 +1579,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	belpic_ops.init = belpic_init;
 	belpic_ops.finish = belpic_finish;
 
+	belpic_ops.update_binary = belpic_update_binary;
 	belpic_ops.select_file = belpic_select_file;
 	belpic_ops.read_binary = belpic_read_binary;
 	belpic_ops.pin_cmd = belpic_pin_cmd;
