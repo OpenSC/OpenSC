@@ -195,7 +195,7 @@
 			<para>
 				You can download certificates to the card using the
 				<option>--store-certificate</option> option, which takes a filename as
-				an argument. This file is supposed to contain the DER encoded X.509
+				an argument. This file is supposed to contain the PEM encoded X.509
 				certificate.
 			</para>
 		</refsect2>
@@ -336,7 +336,7 @@
 							Tells <command>pkcs15-init</command> to store the certificate given
 							in <option>filename</option> on the card, creating a certificate
 							object with the ID specified via the <option>--id</option> option.
-							The file is assumed to contain the DER encoded certificate.
+							The file is assumed to contain the PEM encoded certificate.
 						</para>
 					</listitem>
 				</varlistentry>
