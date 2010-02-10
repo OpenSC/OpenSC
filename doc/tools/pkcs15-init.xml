@@ -315,8 +315,7 @@
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--store-public-key</option> <emphasis>filename</emphasis>,
-					<option>-P</option> <emphasis>filename</emphasis></term>
+					<term><option>--store-public-key</option> <emphasis>filename</emphasis>
 					<listitem>
 						<para>
 							Tells <command>pkcs15-init</command> to download the specified
