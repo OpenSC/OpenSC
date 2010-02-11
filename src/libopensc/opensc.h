@@ -763,7 +763,7 @@ unsigned int sc_ctx_get_reader_count(sc_context_t *ctx);
 /**
  * Forces the use of a specified card driver
  * @param ctx OpenSC context
- * @param short_name The short name of the driver to use (e.g. 'emv')
+ * @param short_name The short name of the driver to use (e.g. 'cardos')
  */
 int sc_set_card_driver(sc_context_t *ctx, const char *short_name);
 /**

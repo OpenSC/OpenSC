@@ -20,7 +20,7 @@ OBJECTS			= \
 	ctbcs.obj reader-ctapi.obj reader-pcsc.obj reader-openct.obj \
 	\
 	card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
-	card-cardos.obj card-tcos.obj card-emv.obj card-default.obj \
+	card-cardos.obj card-tcos.obj card-default.obj \
 	card-mcrd.obj card-starcos.obj card-openpgp.obj card-jcop.obj \
 	card-oberthur.obj card-belpic.obj card-atrust-acos.obj card-entersafe.obj \
 	card-incrypto34.obj card-piv.obj card-muscle.obj card-acos5.obj \
