@@ -579,33 +579,25 @@ do_assert_pristine(sc_card_t *in_card)
 	sc_path_t	path;
 	int		r, ok = 1;
 
-	/* we need FILE NOT FOUND.
-	 * - on starcos card NOT ALLOWED is also ok, as the MF does not exist.
-	 * - on setcos 4.4 card, we should get 6F00 (translates to
-	  *    SC_ERROR_CARD_CMD_FAILED) to indicate that no MF exists. */
-
+	sc_format_path("3F00", &path);
+	r = sc_select_file(in_card, &path, NULL);
+	if (r) 
+		goto end;
 
 	sc_format_path("2F00", &path);
 	r = sc_select_file(in_card, &path, NULL);
+	if (r)
+		goto end;
 
-	if (r != SC_ERROR_FILE_NOT_FOUND) {
-		ok &= (r == SC_ERROR_NOT_ALLOWED &&
-			strcmp(in_card->name, "STARCOS SPK 2.3") == 0) ||
-		      (r == SC_ERROR_CARD_CMD_FAILED &&
-			in_card->type == SC_CARD_TYPE_SETCOS_44);
-	}
-
+	/* For a while only the presence of OpenSC on-card pkcs#15 is checked.
+	   TODO: Parse DIR(2F00) to get know if there is some PKCS#15 applications.*/
 	sc_format_path("5015", &path);
 	r = sc_select_file(in_card, &path, NULL);
+	if (r)
+		goto end;
 
-	if (r != SC_ERROR_FILE_NOT_FOUND) {
-		ok &= (r == SC_ERROR_NOT_ALLOWED &&
-			strcmp(in_card->name, "STARCOS SPK 2.3") == 0) ||
-		      (r == SC_ERROR_CARD_CMD_FAILED &&
-			in_card->type == SC_CARD_TYPE_SETCOS_44);
-	}
-
-
+	ok = 0;
+end:
 	if (!ok) {
 		fprintf(stderr,
 			"Card not pristine; detected (possibly incomplete) "
