@@ -59,7 +59,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "miocos",	(void *(*)(void)) sc_get_miocos_driver },
 	{ "mcrd",	(void *(*)(void)) sc_get_mcrd_driver },
 	{ "asepcos",	(void *(*)(void)) sc_get_asepcos_driver },
-	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
 	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
 	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
 	{ "opengpg",	(void *(*)(void)) sc_get_openpgp_driver },
@@ -69,12 +68,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "belpic",	(void *(*)(void)) sc_get_belpic_driver },
 	{ "ias",		(void *(*)(void)) sc_get_ias_driver },
-	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
-	{ "muscle", (void *(*)(void)) sc_get_muscle_driver },
 	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
-#ifdef ENABLE_OPENSSL
-	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
-#endif
 	{ "acos5",	(void *(*)(void)) sc_get_acos5_driver },
 	{ "akis",	(void *(*)(void)) sc_get_akis_driver },
 #ifdef ENABLE_OPENSSL
@@ -88,6 +82,15 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
 	/* javacard without supported applet - last before default */
 	{ "javacard",	(void *(*)(void)) sc_get_javacard_driver },
+
+/* Here should be placed drivers that need some APDU transactions to 
+ * recognise its cards. */
+	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
+	{ "muscle",	(void *(*)(void)) sc_get_muscle_driver },
+	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
+#ifdef ENABLE_OPENSSL
+	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
+#endif
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
