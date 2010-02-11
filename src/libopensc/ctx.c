@@ -80,8 +80,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
         { "myeid",      (void *(*)(void)) sc_get_myeid_driver },
 	/* emv is not really implemented */
 	{ "emv",	(void *(*)(void)) sc_get_emv_driver },
-	/* javacard without supported applet - last before default */
-	{ "javacard",	(void *(*)(void)) sc_get_javacard_driver },
 
 /* Here should be placed drivers that need some APDU transactions to 
  * recognise its cards. */
@@ -91,6 +89,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #ifdef ENABLE_OPENSSL
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 #endif
+	/* javacard without supported applet - last before default */
+	{ "javacard",	(void *(*)(void)) sc_get_javacard_driver },
+
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
