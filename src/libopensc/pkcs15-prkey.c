@@ -470,6 +470,7 @@ sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
 	case SC_ALGORITHM_RSA:
 		free(key->u.rsa.modulus.data);
 		free(key->u.rsa.exponent.data);
+		free(key->u.rsa.d.data);
 		free(key->u.rsa.p.data);
 		free(key->u.rsa.q.data);
 		free(key->u.rsa.iqmp.data);
