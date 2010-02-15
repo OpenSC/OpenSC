@@ -967,7 +967,7 @@ template_sanity_check(struct state *cur, struct sc_profile *templ)
 
 			dlt = fi_id > ffi_id ? fi_id - ffi_id : ffi_id - fi_id;
 			if (strcmp(ffi->ident, fi->ident))   {
-				if (dlt > TEMPLATE_FILEID_MIN_DIFF)
+				if (dlt >= TEMPLATE_FILEID_MIN_DIFF)
 					continue;
 
 				parse_error(cur, "Template insane: file-ids should be substantially different");
