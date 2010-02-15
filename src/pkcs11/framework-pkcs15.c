@@ -1834,8 +1834,8 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 			rc = sc_pkcs15init_store_public_key(p15card, profile, &pub_args, &pub_key_obj);
 		}
 
-		sc_pkcs15_free_prkey(&keygen_args.prkey_args.key);
-		sc_pkcs15_free_pubkey(&pub_args.key);
+		sc_pkcs15_erase_prkey(&keygen_args.prkey_args.key);
+		sc_pkcs15_erase_pubkey(&pub_args.key);
 
 		if (rc < 0) {
 			sc_debug(context, "private/public keys not stored: %d\n", rc);
