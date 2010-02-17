@@ -414,11 +414,13 @@ app tokend {
 }
 
 app cardmod {
-	#allow only cardmodule pcsc reader for minidriver 
+	#allow only cardmodule pcsc reader for minidriver (mandatory)
 	reader_drivers = cardmod;
 
 	reader_driver cardmod {
-		enable_pinpad = false;
+		# Enable pinpad if detected (PC/SC v2.0.2 Part 10)
+		# Default: true
+		# enable_pinpad = false;
 	}
 }
 

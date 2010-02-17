@@ -1515,7 +1515,7 @@ static int cardmod_init(sc_context_t *ctx, void **reader_data)
 	/* Defaults */
 	gpriv->enable_pinpad = 1;
 	
-	conf_block = sc_get_conf_block(ctx, "reader_driver", "pcsc", 1);
+	conf_block = sc_get_conf_block(ctx, "reader_driver", "cardmod", 1);
 	if (conf_block) {
 		    scconf_get_bool(conf_block, "enable_pinpad", gpriv->enable_pinpad);
 	}
@@ -1609,7 +1609,7 @@ static int cardmod_detect_readers(sc_context_t *ctx, void *prv_data)
 
 	sc_debug(ctx, "Probing pcsc readers");
 
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Opensccm",\
+	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Opensc",\
 		NULL, KEY_READ, &key)==ERROR_SUCCESS)
 	{
 		CHAR val[1024]; 
@@ -1638,7 +1638,7 @@ static int cardmod_detect_readers(sc_context_t *ctx, void *prv_data)
 	}
 	else
 	{
-		sc_debug(ctx, "Unable to open registry key Opensccm");
+		sc_debug(ctx, "Unable to open registry key Opensc");
 	}
 
 	//gpriv->pcsc_ctx = pcsc_ctx;
