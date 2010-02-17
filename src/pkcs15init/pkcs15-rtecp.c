@@ -213,7 +213,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_card_t *card,
 	sc_file_free(file);
 
 	if (r == SC_SUCCESS)
-		r = sc_change_reference_data(card, pin_info->type, pin_info->reference,
+		r = sc_change_reference_data(card, SC_AC_CHV, pin_info->reference,
 				NULL, 0, pin, pin_len, NULL);
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
