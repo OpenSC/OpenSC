@@ -74,6 +74,7 @@ static int myeid_init(struct sc_card *card)
 {     	
 	unsigned long flags =0;
 
+	SC_FUNC_CALLED(card->ctx, 1);
 	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
 	flags |= SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1;
 
@@ -83,7 +84,11 @@ static int myeid_init(struct sc_card *card)
 	/* State that we have an RNG */
 	card->caps |= SC_CARD_CAP_RNG;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	if (card->max_recv_size > 255)
+		card->max_recv_size = 255;
+	if (card->max_send_size > 255)
+		card->max_send_size = 255;
+
 	return 0;
 }
 
