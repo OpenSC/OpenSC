@@ -388,7 +388,7 @@ static int myeid_create_file(struct sc_card *card, struct sc_file *file)
 		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_FILE_ALREADY_EXISTS);
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_FUNC_RETURN(card->ctx, r, "Card returned error");
+	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
 /* no record oriented file services */
