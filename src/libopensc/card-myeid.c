@@ -938,7 +938,7 @@ static int myeid_activate_card(struct sc_card *card)
 	sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, 1);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x44, 0x04, 0x00);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x44, 0x04, 0x00);
 	apdu.cla     = 0x00;
 	apdu.data    = sbuf;
 	apdu.datalen = 0x0C;
