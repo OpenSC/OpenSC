@@ -62,7 +62,11 @@ static u8 process_acl_entry(sc_file_t *in, unsigned int method, unsigned int in_
 static int entersafe_erase_card(struct sc_profile *profile, sc_card_t *card)
 {
 	SC_FUNC_CALLED(card->ctx, 1);
-	 return sc_card_ctl(card,SC_CARDCTL_ERASE_CARD,0);
+
+	if (sc_select_file(p15card->card, sc_get_mf_path(), NULL) < 0)
+		return SC_SUCCESS;
+
+	return sc_card_ctl(card,SC_CARDCTL_ERASE_CARD,0);
 }
 
 static int entersafe_init_card(sc_profile_t *profile, sc_card_t *card)
