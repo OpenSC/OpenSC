@@ -99,9 +99,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 static const struct _sc_driver_entry internal_reader_drivers[] = {
 #ifdef ENABLE_PCSC
 	{ "pcsc",	(void *(*)(void)) sc_get_pcsc_driver },
-#ifdef ENABLE_CARDMOD
-	{ "cardmod", 	(void *(*)(void)) sc_get_cardmod_driver },
-#endif
 #endif
 #ifdef ENABLE_CTAPI
 	{ "ctapi",	(void *(*)(void)) sc_get_ctapi_driver },
@@ -398,6 +395,11 @@ static int load_reader_drivers(sc_context_t *ctx,
 				func = (struct sc_reader_driver *(*)(void)) internal_reader_drivers[j].func;
 				break;
 			}
+		#ifdef ENABLE_CARDMOD
+		/* carmod reader driver is subset of pcsc driver and
+		must be required on config file not set with 'internal' */
+		if (strcmp(ent->name, "cardmod") == 0) func = sc_get_cardmod_driver;
+		#endif
 		/* if not initialized assume external module */
 		if (func == NULL)
 			*(void**)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name, 0);
