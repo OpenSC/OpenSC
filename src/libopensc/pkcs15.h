@@ -63,10 +63,15 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 #define SC_PKCS15_PIN_TYPE_HALFNIBBLE_BCD		3
 #define SC_PKCS15_PIN_TYPE_ISO9564_1			4
 
+#define SC_PKCS15_PIN_AUTH_TYPE_PIN			0
+#define SC_PKCS15_PIN_AUTH_TYPE_AUTH_KEY		1
+#define SC_PKCS15_PIN_AUTH_TYPE_SM_KEY			2
+
 struct sc_pkcs15_pin_info {
 	struct sc_pkcs15_id auth_id;
 	int reference;
 	unsigned int flags, type;
+	unsigned int auth_method;
 	size_t min_length, stored_length, max_length;
 	u8 pad_char;
 	struct sc_path path;
@@ -326,6 +331,7 @@ struct sc_pkcs15_object {
 	unsigned int flags;
 	struct sc_pkcs15_id auth_id;
 
+	int usage_counter;
 	int user_consent;
 
 	/* Object type specific data */
@@ -380,13 +386,6 @@ typedef struct {
 } sc_pkcs15_sec_env_info_t;
 
 typedef struct {
-	sc_pkcs15_id_t id;
-	u8 pin[SC_MAX_PIN_SIZE];
-	size_t len;
-	int counter;
-} sc_pkcs15_pincache_entry_t;
-
-typedef struct {
 	unsigned int version;
 	unsigned int flags;
 	char *label;
@@ -425,7 +424,6 @@ typedef struct sc_pkcs15_card {
 
 	sc_pkcs15_sec_env_info_t **seInfo;
 	size_t num_seInfo;
-	sc_pkcs15_pincache_entry_t *pin_cache[SC_PKCS15_MAX_PINS];
 
 	unsigned int magic;
 
@@ -574,9 +572,18 @@ int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
 int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *card,
 				    const sc_path_t *path, int reference,
 				    struct sc_pkcs15_object **out);
+int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *card,
+				    const sc_path_t *path, unsigned type, 
+				    int reference,
+				    struct sc_pkcs15_object **out);
 int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *card,
 			struct sc_pkcs15_object **out);
-int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, const sc_pkcs15_object_t *obj);
+
+void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card, 
+			struct sc_pkcs15_pin_info *pininfo, 
+			const u8 *pin, size_t pinlen);
+int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, 
+			sc_pkcs15_object_t *obj);
 void sc_pkcs15_pincache_clear(struct sc_pkcs15_card *p15card);
 
 int sc_pkcs15_encode_dir(struct sc_context *ctx,
@@ -699,9 +706,9 @@ void sc_der_copy(sc_pkcs15_der_t *, const sc_pkcs15_der_t *);
 /* Prepend 'parent' to 'child' in case 'child' is a relative path */
 int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child);
 
-/* Clean and free object value */
+/* Clean and free object content */
 void sc_pkcs15_free_object_content(struct sc_pkcs15_object *);
-/* Allocate and set object value */
+/* Allocate and set object content */
 int sc_pkcs15_allocate_object_content(struct sc_pkcs15_object *,
 		const unsigned char *, size_t);
 

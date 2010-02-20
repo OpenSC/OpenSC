@@ -456,10 +456,6 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 			free(p15card->seInfo[i]);
 		free(p15card->seInfo);
 	}
-	for (i=0; i<SC_PKCS15_MAX_PINS && p15card->pin_cache[i] != NULL; i++) {
-		sc_mem_clear(p15card->pin_cache[i]->pin, p15card->pin_cache[i]->len); 
-		free(p15card->pin_cache[i]);
-	}
 	free(p15card);
 }
 
@@ -1163,6 +1159,40 @@ int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *p15card,
 	return find_by_key(p15card, SC_PKCS15_TYPE_AUTH_PIN, &sk, out);
 }
 
+int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *p15card,
+				const sc_path_t *path, unsigned auth_method, int reference,
+				struct sc_pkcs15_object **out)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_pin_info pinfo;
+	struct sc_pkcs15_object *auth_objs[0x10];
+	int r, nn_objs, ii;
+
+        /* Get all existing pkcs15 AUTH objects */
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, auth_objs, 0x10);
+	SC_TEST_RET(ctx, r, "Get PKCS#15 AUTH objects error");
+	nn_objs = r;
+
+	for (ii=0; ii<nn_objs; ii++)   {
+		struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *)auth_objs[ii]->data;
+
+		if (pin_info->auth_method != auth_method)
+			continue;
+		if (pin_info->reference != reference)
+			continue;
+
+		if (path && !sc_compare_path(&pin_info->path, path))
+			continue;
+
+		if (out)
+			*out = auth_objs[ii];
+
+		return SC_SUCCESS;
+	}
+
+	return SC_ERROR_OBJECT_NOT_FOUND; 
+}
+
 int sc_pkcs15_find_data_object_by_id(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_id *id,
 				struct sc_pkcs15_object **out)
@@ -1273,6 +1303,9 @@ int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card,
 void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
 			     struct sc_pkcs15_object *obj)
 {
+	if (!obj)
+		return;
+
 	if (obj->prev == NULL)
 		p15card->obj_list = obj->next;
 	else

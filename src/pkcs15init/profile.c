@@ -709,6 +709,35 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 	return fi;
 }
 
+int
+sc_profile_get_pin_id_by_reference(struct sc_profile *profile, 
+		unsigned auth_method, unsigned reference, 
+		struct sc_pkcs15_pin_info *pin_info)
+{
+	struct pin_info *pinfo;
+
+	for (pinfo = profile->pin_list; pinfo; pinfo = pinfo->next)  {
+		int found = 0;
+
+		if (auth_method == SC_AC_SYMBOLIC)   {
+			if (pinfo->id != reference)
+				continue;
+		}
+		else   {
+			if (pinfo->pin.auth_method != auth_method)
+				continue;
+			if (pinfo->pin.reference != reference)
+				continue;
+		}
+
+		if (pin_info)
+			*pin_info = pinfo->pin;
+		return pinfo->id;
+	}
+
+	return -1;
+}
+
 /*
  * Configuration file parser
  */
@@ -1356,6 +1385,7 @@ new_pin(struct sc_profile *profile, unsigned int id)
 	if (pi == NULL)
 		return NULL;
 	pi->id = id;
+	pi->pin.auth_method = SC_AC_CHV;
 	pi->pin.type = (unsigned int)-1;
 	pi->pin.flags = 0x32;
 	pi->pin.max_length = 0;

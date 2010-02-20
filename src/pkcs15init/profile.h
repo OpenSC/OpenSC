@@ -149,6 +149,8 @@ int		sc_profile_add_file(struct sc_profile *,
 			const char *, sc_file_t *);
 int		sc_profile_get_file_instance(struct sc_profile *, const char *,
 			int, sc_file_t **);
+int		sc_profile_get_pin_id_by_reference(struct sc_profile *,
+			unsigned, unsigned, struct sc_pkcs15_pin_info *);
 
 #ifdef __cplusplus
 }
