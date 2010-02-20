@@ -1249,7 +1249,7 @@ static int entersafe_write_key(sc_card_t *card, sc_entersafe_wkey_data *data)
 	 switch(data->usage)
 	 {
 	 case 0x22:
-		  if(rsa->modulus.len<=1024)
+		  if(rsa->modulus.len < 256)
 			   return entersafe_write_small_rsa_key(card,data->key_id,rsa);
 		  else
 			   return entersafe_write_large_rsa_key(card,data->key_id,rsa);
