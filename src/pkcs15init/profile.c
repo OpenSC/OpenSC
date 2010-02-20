@@ -147,11 +147,11 @@ static struct map		pkcs15DfNames[] = {
 	{ NULL, 0 }
 };
 static struct map		pinTypeNames[] = {
-	{ "BCD",		0			},
-	{ "ascii-numeric",	1			},
-	{ "utf8",		2			},
-	{ "half-nibble-bcd",	3			},
-	{ "iso9564-1",		4			},
+	{ "BCD",		SC_PKCS15_PIN_TYPE_BCD	},
+	{ "ascii-numeric",	SC_PKCS15_PIN_TYPE_ASCII_NUMERIC	},
+	{ "utf8",		SC_PKCS15_PIN_TYPE_UTF8	},
+	{ "half-nibble-bcd",	SC_PKCS15_PIN_TYPE_HALFNIBBLE_BCD	},
+	{ "iso9564-1",		SC_PKCS15_PIN_TYPE_ISO9564_1	},
 	{ NULL, 0 }
 };
 static struct map		pinIdNames[] = {
@@ -274,7 +274,6 @@ sc_profile_new(void)
 		return NULL;
 	pro->p15_spec = p15card = sc_pkcs15_card_new();
 
-	pro->protect_certificates = 1;
 	pro->pkcs15.do_last_update = 1;
 
 	if (p15card) {
@@ -293,7 +292,7 @@ sc_profile_new(void)
 	/* Assume card does RSA natively, but no DSA */
 	pro->rsa_access_flags = DEF_PRKEY_RSA_ACCESS;
 	pro->dsa_access_flags = DEF_PRKEY_DSA_ACCESS;
-	pro->pin_encoding = 0x01;
+	pro->pin_encoding = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
 	pro->pin_minlen = 4;
 	pro->pin_maxlen = 8;
 	pro->id_style = SC_PKCS15INIT_ID_STYLE_NATIVE; 
@@ -786,12 +785,6 @@ static int
 do_pin_domains(struct state *cur, int argc, char **argv)
 {
 	return get_bool(cur, argv[0], &cur->profile->pin_domains);
-}
-
-static int
-do_protect_certificates(struct state *cur, int argc, char **argv)
-{
-	return get_bool(cur, argv[0], &cur->profile->protect_certificates);
 }
 
 static int
@@ -1590,7 +1583,6 @@ static struct command	ci_commands[] = {
  { "pin-encoding",	1,	1,	do_default_pin_type },
  { "pin-pad-char",	1,	1,	do_pin_pad_char },
  { "pin-domains",	1,	1,	do_pin_domains	},
- { "protect-certificates", 1,	1,	do_protect_certificates },
  { "label",		1,	1,	do_card_label	},
  { "manufacturer",	1,	1,	do_card_manufacturer},
 

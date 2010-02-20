@@ -104,7 +104,6 @@ struct sc_profile {
 	unsigned int		puk_attempts;
 	unsigned int		rsa_access_flags;
 	unsigned int		dsa_access_flags;
-	unsigned int		protect_certificates;
 
 	struct {
 		unsigned int	direct_certificates;

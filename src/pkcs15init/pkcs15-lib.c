@@ -1496,22 +1496,6 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	r = select_id(p15card, SC_PKCS15_TYPE_CERT, &args->id);
 	SC_TEST_RET(ctx, r, "Select certificate ID error");
 
-	if (profile->protect_certificates) {
-		/* If there is a private key corresponding to the ID given
-		 * by the user, make sure $PIN references the pin protecting
-		 * this key
-		 */
-		r = -1;
-		if (args->id.len != 0
-		 && sc_pkcs15_find_prkey_by_id(p15card, &args->id, &object) == 0) {
-			r = set_user_pin_from_authid(p15card, profile, &object->auth_id);
-			SC_TEST_RET(ctx, r, "Failed to assign user pin reference "
-					     "(copied from private key auth_id)");
-		}
-		if (r == -1) /* User pin ref not yet set */
-			set_user_pin_from_authid(p15card, profile, NULL);
-	}
-
 	object = sc_pkcs15init_new_object(SC_PKCS15_TYPE_CERT_X509, label, NULL, NULL);
 	if (object == NULL)
 		SC_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate certificate object");
