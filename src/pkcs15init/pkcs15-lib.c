@@ -3635,10 +3635,12 @@ sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile,
 {
 	sc_file_t	*file = NULL;
 	sc_file_t	*df = profile->df_info->file;
-	u8		buffer[512], *p, *end;
+	unsigned char	buffer[128], *p, *end;
 	unsigned int	method;
 	unsigned long	key_ref;
 	int		n, r;
+
+	memset(buffer, 0, sizeof(buffer));
 
 	file = sc_file_new();
 	file->path.type = SC_PATH_TYPE_PATH;
@@ -3648,6 +3650,7 @@ sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile,
 	file->type = SC_FILE_TYPE_WORKING_EF;
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	file->id = OPENSC_INFO_FILEID;
+	file->size = sizeof(buffer);
 
 	if (pin_obj != NULL) {
 		method = SC_AC_CHV;
@@ -3671,12 +3674,8 @@ sc_pkcs15init_write_info(sc_card_t *card, sc_profile_t *profile,
 	for (n = 0; r >= 0 && profile->options[n]; n++)
 		r = do_encode_string(&p, end, OPENSC_INFO_TAG_OPTION, profile->options[n]);
 
-	if (r >= 0) {
-		file->size = p - buffer;
-		if (file->size < 128)
-			file->size = 128;
-		r = sc_pkcs15init_update_file(profile, card, file, buffer, p - buffer);
-	}
+	if (r >= 0)
+		r = sc_pkcs15init_update_file(profile, card, file, buffer, file->size);
 
 	sc_file_free(file);
 	return r;
