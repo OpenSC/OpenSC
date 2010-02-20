@@ -6,12 +6,6 @@ cardinfo {
     pin-encoding	= ascii-numeric;
     pin-pad-char	= 0x00;
     pin-domains		= yes;
-
-    # This profile does not PIN-protect certificates
-    # stored on the card. If you enable this, you MUST
-    # adjust the sizes of the pin-domain and key-dir DFs
-    # accordingly.
-    protect-certificates = no;
 }
 
 # Define reasonable limits for PINs and PUK
