@@ -115,7 +115,7 @@ static int entersafe_init(sc_card_t *card)
 
 	card->name = "entersafe";
 	card->cla  = 0x00;
-	/*card->drv_data = NULL;*/
+	card->drv_data = NULL;
 
 	flags =SC_ALGORITHM_ONBOARD_KEY_GEN
 		 | SC_ALGORITHM_RSA_RAW
@@ -128,16 +128,13 @@ static int entersafe_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card,1024, flags, 0x10001);
 	_sc_card_add_rsa_alg(card,2048, flags, 0x10001);
 
-	/*card->caps = SC_CARD_CAP_RNG|SC_CARD_CAP_APDU_EXT; */
 	card->caps = SC_CARD_CAP_RNG; 
 
-	card->drv_data = 0;
-
 	/* we need read_binary&friends with max 224 bytes per read */
-	if (card->max_send_size > 0xE0)
-		card->max_send_size = 0xE0;
-	if (card->max_recv_size > 0xE0)
-		card->max_recv_size = 0xE0;
+	if (card->max_send_size > 224)
+		card->max_send_size = 224;
+	if (card->max_recv_size > 224)
+		card->max_recv_size = 224;
 	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
 }
 
