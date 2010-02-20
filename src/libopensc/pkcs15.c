@@ -756,6 +756,10 @@ int sc_pkcs15_bind(sc_card_t *card,
 			goto error;
 	}
 done:
+	/* If card driver states that it has a (P)RNG, overwrite (possibly missing) tokeninfo flags */
+	if (card->caps & SC_CARD_CAP_RNG)
+		p15card->flags |= SC_PKCS15_CARD_FLAG_PRN_GENERATION;	
+
 	/* for cardos cards initialized by Siemens: sign with decrypt */
 	if (strcmp(p15card->card->driver->short_name,"cardos") == 0
 		&& scconf_get_bool(conf_block, "enable_sign_with_decrypt_workaround", 1)
