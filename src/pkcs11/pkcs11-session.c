@@ -82,7 +82,9 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 	list_append(&sessions, session);
 	*phSession = session->handle;
 	sc_debug(context, "C_OpenSession handle: 0x%lx", session->handle);
-      out:sc_debug(context, "C_OpenSession() = %s", lookup_enum(RV_T, rv));
+
+out:
+	sc_debug(context, "C_OpenSession() = %s", lookup_enum(RV_T, rv));
 	sc_pkcs11_unlock();
 	return rv;
 }
