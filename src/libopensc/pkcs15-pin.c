@@ -491,7 +491,7 @@ void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card,
 		
 	/* Is it a user consent protecting PIN ? */
 	if (obj->user_consent) {
-		sc_debug(ctx, "Cache is not supported for the PIN related to 'user consent'");
+		sc_debug(ctx, "Not caching a PIN requiring user consent");
 		return;
 	}
 
