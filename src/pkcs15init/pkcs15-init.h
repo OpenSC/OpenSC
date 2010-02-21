@@ -27,7 +27,7 @@ struct sc_pkcs15init_operations {
 	/*
 	 * Erase everything that's on the card
 	 */
-	int	(*erase_card)(struct sc_profile *, struct sc_card *);
+	int	(*erase_card)(struct sc_profile *, struct sc_pkcs15_card *);
 
 	/*
 	 * New style API
@@ -38,25 +38,25 @@ struct sc_pkcs15init_operations {
 	 * Currently used by the cflex driver to read the card's
 	 * serial number and use it as the pkcs15 serial number.
 	 */
-	int	(*init_card)(sc_profile_t *, sc_card_t *);
+	int	(*init_card)(sc_profile_t *, sc_pkcs15_card_t *);
 
 	/*
 	 * Create a DF
 	 */
-	int	(*create_dir)(sc_profile_t *, sc_card_t *, sc_file_t *);
+	int	(*create_dir)(sc_profile_t *, sc_pkcs15_card_t *, sc_file_t *);
 
 	/*
 	 * Create a "pin domain". This is for cards such as
 	 * the cryptoflex that need to put their pins into
 	 * separate directories
 	 */
-	int	(*create_domain)(sc_profile_t *, sc_card_t *,
+	int	(*create_domain)(sc_profile_t *, sc_pkcs15_card_t *,
 			const sc_pkcs15_id_t *, sc_file_t **);
 
 	/*
 	 * Select a PIN reference
 	 */
-	int	(*select_pin_reference)(sc_profile_t *, sc_card_t *,
+	int	(*select_pin_reference)(sc_profile_t *, sc_pkcs15_card_t *,
 			sc_pkcs15_pin_info_t *);
 
 	/*
@@ -66,7 +66,7 @@ struct sc_pkcs15init_operations {
 	 * The card driver can reject the pin reference; in this case
 	 * the caller needs to adjust it.
 	 */
-	int	(*create_pin)(sc_profile_t *, sc_card_t *, sc_file_t *,
+	int	(*create_pin)(sc_profile_t *, sc_pkcs15_card_t *, sc_file_t *,
 			sc_pkcs15_object_t *,
 			const u8 *pin, size_t pin_len,
 			const u8 *puk, size_t puk_len);
@@ -74,7 +74,7 @@ struct sc_pkcs15init_operations {
 	/*
 	 * Select a reference for a private key object
 	 */
-	int	(*select_key_reference)(sc_profile_t *, sc_card_t *,
+	int	(*select_key_reference)(sc_profile_t *, sc_pkcs15_card_t *,
 			sc_pkcs15_prkey_info_t *);
 
 	/*
@@ -85,20 +85,20 @@ struct sc_pkcs15init_operations {
 	 * 		unprotected.
 	 * @key_info should be filled in by the function
 	 */
-	int	(*create_key)(sc_profile_t *, sc_card_t *,
+	int	(*create_key)(sc_profile_t *, sc_pkcs15_card_t *,
 			sc_pkcs15_object_t *o);
 
 	/*
 	 * Store a key on the card
 	 */
-	int	(*store_key)(sc_profile_t *, sc_card_t *,
+	int	(*store_key)(sc_profile_t *, sc_pkcs15_card_t *,
 			sc_pkcs15_object_t *,
 			sc_pkcs15_prkey_t *);
 
 	/*
 	 * Generate key
 	 */
-	int	(*generate_key)(sc_profile_t *, sc_card_t *,
+	int	(*generate_key)(sc_profile_t *, sc_pkcs15_card_t *,
 			sc_pkcs15_object_t *,
 			sc_pkcs15_pubkey_t *);
 
@@ -124,7 +124,7 @@ struct sc_pkcs15init_operations {
 	/*
 	 * Delete object
 	 */
-	int (*delete_object)(struct sc_profile *, struct sc_card *,
+	int (*delete_object)(struct sc_profile *, struct sc_pkcs15_card *,
 			unsigned int type, const void *data, const sc_path_t *path);
 };
 
@@ -241,6 +241,9 @@ struct sc_pkcs15init_certargs {
 #define P15_ATTR_TYPE_LABEL	0
 #define P15_ATTR_TYPE_ID	1
 
+
+extern struct	sc_pkcs15_object *sc_pkcs15init_new_object(int type, const char *, 
+		sc_pkcs15_id_t *, void *);
 extern void	sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *);
 extern int	sc_pkcs15init_bind(struct sc_card *, const char *, const char *,
 				struct sc_profile **);
@@ -248,7 +251,7 @@ extern void	sc_pkcs15init_unbind(struct sc_profile *);
 extern void	sc_pkcs15init_set_p15card(sc_profile_t *,
 				sc_pkcs15_card_t *);
 extern int	sc_pkcs15init_set_lifecycle(sc_card_t *card, int lcycle);
-extern int	sc_pkcs15init_erase_card(struct sc_card *,
+extern int	sc_pkcs15init_erase_card(struct sc_pkcs15_card *,
 				struct sc_profile *);
 /* XXX could this function be merged with ..._set_lifecycle ?? */
 extern int	sc_pkcs15init_finalize_card(sc_card_t *,
@@ -311,16 +314,13 @@ extern int	sc_pkcs15init_update_certificate(sc_pkcs15_card_t *p15card,
 				size_t certlen);
 
 extern int	sc_pkcs15init_create_file(struct sc_profile *,
-				struct sc_card *, struct sc_file *);
+				struct sc_pkcs15_card *, struct sc_file *);
 extern int	sc_pkcs15init_update_file(struct sc_profile *,
-				struct sc_card *, struct sc_file *, void *, unsigned int);
-extern int	sc_pkcs15init_authenticate(struct sc_profile *,
-				struct sc_card *, struct sc_file *, int);
-extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_file *);
-extern int	sc_pkcs15init_fixup_acls(struct sc_profile *,
-				struct sc_file *,
-				struct sc_acl_entry *,
-				struct sc_acl_entry *);
+				struct sc_pkcs15_card *, struct sc_file *, void *, unsigned int);
+extern int	sc_pkcs15init_authenticate(struct sc_profile *, struct sc_pkcs15_card *, 
+				struct sc_file *, int);
+extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_pkcs15_card *, 
+				struct sc_file *);
 extern int	sc_pkcs15init_get_pin_info(struct sc_profile *, unsigned int,
 				struct sc_pkcs15_pin_info *);
 extern int	sc_profile_get_pin_retries(sc_profile_t *, unsigned int);
@@ -330,21 +330,23 @@ extern int	sc_pkcs15init_get_serial(struct sc_profile *, const char **);
 extern int	sc_pkcs15init_set_serial(struct sc_profile *, const char *);
 extern int	sc_pkcs15init_get_label(struct sc_profile *, const char **);
 
+#if 0
 extern void	sc_pkcs15init_set_secret(struct sc_profile *,
 				int, int, u8 *, size_t);
 extern int	sc_pkcs15init_set_pin_data(struct sc_profile *, int,
 				const u8 *, size_t);
-extern int	sc_pkcs15init_verify_key(struct sc_profile *, struct sc_card *,
+#endif
+extern int	sc_pkcs15init_verify_key(struct sc_profile *, struct sc_pkcs15_card *,
 				sc_file_t *,  unsigned int, unsigned int);
 extern int	sc_pkcs15init_delete_by_path(struct sc_profile *,
-				struct sc_card *, const sc_path_t *path);
+				struct sc_pkcs15_card *, const sc_path_t *path);
 extern int  sc_pkcs15init_update_any_df(sc_pkcs15_card_t *, sc_profile_t *, 
 			sc_pkcs15_df_t *, int);
 
 /* Erasing the card structure via rm -rf */
-extern int	sc_pkcs15init_erase_card_recursively(struct sc_card *,
+extern int	sc_pkcs15init_erase_card_recursively(struct sc_pkcs15_card *,
 				struct sc_profile *, int so_ref);
-extern int	sc_pkcs15init_rmdir(struct sc_card *, struct sc_profile *,
+extern int	sc_pkcs15init_rmdir(struct sc_pkcs15_card *, struct sc_profile *,
 				struct sc_file *df);
 
 /* Helper function for CardOS */
@@ -353,8 +355,12 @@ extern int	sc_pkcs15init_requires_restrictive_usage(
 				struct sc_pkcs15init_prkeyargs *,
 				unsigned int);
 
-extern int	sc_pkcs15_create_pin_domain(sc_profile_t *, sc_card_t *,
+extern int	sc_pkcs15_create_pin_domain(sc_profile_t *, struct sc_pkcs15_card *,
 				const sc_pkcs15_id_t *, sc_file_t **);
+
+extern int	sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *, 
+				struct sc_profile *, struct sc_path *, 
+				unsigned, unsigned);
 
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_miocos_ops(void);

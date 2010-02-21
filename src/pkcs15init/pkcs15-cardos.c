@@ -54,7 +54,7 @@ static int	cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 			const u8 *pin, size_t pin_len);
 static int	cardos_create_sec_env(sc_profile_t *, sc_card_t *,
 			unsigned int, unsigned int);
-static int	cardos_put_key(struct sc_profile *, sc_card_t *,
+static int	cardos_put_key(struct sc_profile *, sc_pkcs15_card_t *,
 			int, sc_pkcs15_prkey_info_t *,
 		       	struct sc_pkcs15_prkey_rsa *);
 static int	cardos_key_algorithm(unsigned int, size_t, int *);
@@ -117,30 +117,30 @@ tlv_len(struct tlv *tlv)
  * it's close enough to be useful.
  */
 static int
-cardos_erase(struct sc_profile *profile, sc_card_t *card)
+cardos_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 {
-	return sc_pkcs15init_erase_card_recursively(card, profile, -1);
+	return sc_pkcs15init_erase_card_recursively(p15card, profile, -1);
 }
 
 /*
  * Create the Application DF
  */
 static int
-cardos_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
+cardos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 {
 	int	r;
 
 	/* Create the application DF */
-	if ((r = sc_pkcs15init_create_file(profile, card, df)) < 0)
+	if ((r = sc_pkcs15init_create_file(profile, p15card, df)) < 0)
 		return r;
 
-	if ((r = sc_select_file(card, &df->path, NULL)) < 0)
+	if ((r = sc_select_file(p15card->card, &df->path, NULL)) < 0)
 		return r;
 
 	/* Create a default security environment for this DF.
 	 * This SE autometically becomes the current SE when the
 	 * DF is selected. */
-	if ((r = cardos_create_sec_env(profile, card, 0x01, 0x00)) < 0)
+	if ((r = cardos_create_sec_env(profile, p15card->card, 0x01, 0x00)) < 0)
 		return r;
 
 	return 0;
@@ -151,7 +151,7 @@ cardos_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
  * See if it's good, and if it isn't, propose something better
  */
 static int
-cardos_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
+cardos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_pin_info_t *pin_info)
 {
 	int	preferred, current;
@@ -180,12 +180,13 @@ cardos_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
  * Store a PIN
  */
 static int
-cardos_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
+cardos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
 		sc_pkcs15_object_t *pin_obj,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
 {
 	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	struct sc_card *card = p15card->card;
 	unsigned int	puk_id = CARDOS_AC_NEVER;
 	int		r;
 
@@ -219,7 +220,7 @@ cardos_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
  * Select a key reference
  */
 static int
-cardos_select_key_reference(sc_profile_t *profile, sc_card_t *card,
+cardos_select_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_prkey_info_t *key_info)
 {
 	if (key_info->key_reference < CARDOS_KEY_ID_MIN)
@@ -234,7 +235,7 @@ cardos_select_key_reference(sc_profile_t *profile, sc_card_t *card,
  * This is a no-op.
  */
 static int
-cardos_create_key(sc_profile_t *profile, sc_card_t *card,
+cardos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_object_t *obj)
 {
 	return 0;
@@ -244,39 +245,40 @@ cardos_create_key(sc_profile_t *profile, sc_card_t *card,
  * Store a private key object.
  */
 static int
-cardos_store_key(sc_profile_t *profile, sc_card_t *card,
+cardos_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_object_t *obj,
 			sc_pkcs15_prkey_t *key)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 	struct sc_file *file = NULL;
 	int		algorithm = 0, r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, "CardOS supports RSA keys only.");
+		sc_debug(ctx, "CardOS supports RSA keys only.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (cardos_key_algorithm(key_info->usage, key_info->modulus_length, &algorithm) < 0) {
-		sc_debug(card->ctx, "CardOS does not support keys "
+		sc_debug(ctx, "CardOS does not support keys "
 			       "that can both sign _and_ decrypt.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = sc_select_file(card, &key_info->path, &file);
+	r = sc_select_file(p15card->card, &key_info->path, &file);
 	if (r)   {
-		sc_debug(card->ctx, "Failed to store key: cannot select parent DF");
+		sc_debug(ctx, "Failed to store key: cannot select parent DF");
 		return r;
 	}
 
-	r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_UPDATE);
+	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
 	sc_file_free(file);
 	if (r)   {
-		sc_debug(card->ctx, "Failed to store key: 'UPDATE' authentication failed");
+		sc_debug(ctx, "Failed to store key: 'UPDATE' authentication failed");
 		return r;
 	}
 
-	r = cardos_put_key(profile, card, algorithm, key_info, &key->u.rsa);
+	r = cardos_put_key(profile, p15card, algorithm, key_info, &key->u.rsa);
 
 	return r;
 }
@@ -307,11 +309,13 @@ static void init_key_object(struct sc_pkcs15_prkey_rsa *key,
  * Key generation
  */
 static int
-cardos_generate_key(sc_profile_t *profile, sc_card_t *card,
+cardos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_object_t *obj,
 		sc_pkcs15_pubkey_t *pubkey)
 {
-	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_prkey_info *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	struct sc_pkcs15_pin_info pin_info;
 	struct sc_pkcs15_prkey_rsa key_obj;
 	struct sc_cardctl_cardos_genkey_info args;
 	struct sc_file	*temp;
@@ -323,10 +327,10 @@ cardos_generate_key(sc_profile_t *profile, sc_card_t *card,
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		return SC_ERROR_NOT_SUPPORTED;
 
-	rsa_max_size = (card->caps & SC_CARD_CAP_RSA_2048) ? 2048 : 1024;
+	rsa_max_size = (p15card->card->caps & SC_CARD_CAP_RSA_2048) ? 2048 : 1024;
 	keybits = key_info->modulus_length & ~7UL;
 	if (keybits > rsa_max_size) {
-		sc_debug(card->ctx, "Unable to generate key, max size is %lu",
+		sc_debug(ctx, "Unable to generate key, max size is %lu",
 			(unsigned long) rsa_max_size);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -335,19 +339,24 @@ cardos_generate_key(sc_profile_t *profile, sc_card_t *card,
 		use_ext_rsa = 1;
 
 	if (cardos_key_algorithm(key_info->usage, keybits, &algorithm) < 0) {
-		sc_debug(card->ctx, "CardOS does not support keys "
+		sc_debug(ctx, "CardOS does not support keys "
 			       "that can both sign _and_ decrypt.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (sc_profile_get_file(profile, "tempfile", &temp) < 0) {
-		sc_debug(card->ctx, "Profile doesn't define temporary file "
+		sc_debug(ctx, "Profile doesn't define temporary file "
 				"for key generation.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-       pin_id = sc_keycache_find_named_pin(&key_info->path, SC_PKCS15INIT_USER_PIN);
-       if (pin_id > 0) {
-		r = sc_pkcs15init_verify_key(profile, card, NULL, SC_AC_CHV, pin_id);
+#if 1
+	pin_id = sc_keycache_find_named_pin(&key_info->path, SC_PKCS15INIT_USER_PIN);
+#else
+	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, &key_info->path,
+			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
+#endif
+	if (pin_id >= 0) {
+		r = sc_pkcs15init_verify_key(profile, p15card, NULL, SC_AC_CHV, pin_id);
 		if (r < 0)
 			return r;
 	}
@@ -356,13 +365,13 @@ cardos_generate_key(sc_profile_t *profile, sc_card_t *card,
 	else
 		temp->ef_structure = SC_FILE_EF_TRANSPARENT;
 
-	if ((r = sc_pkcs15init_create_file(profile, card, temp)) < 0)
+	if ((r = sc_pkcs15init_create_file(profile, p15card, temp)) < 0)
 		goto out;
 	delete_it = 1;
 
 	init_key_object(&key_obj, abignum, keybits >> 3);
 
-	r = cardos_put_key(profile, card, algorithm, key_info, &key_obj);
+	r = cardos_put_key(profile, p15card, algorithm, key_info, &key_obj);
 	if (r < 0)
 		goto out;
 
@@ -370,14 +379,14 @@ cardos_generate_key(sc_profile_t *profile, sc_card_t *card,
 	args.key_id = key_info->key_reference;
 	args.key_bits = keybits;
 	args.fid = temp->id;
-	r = sc_card_ctl(card, SC_CARDCTL_CARDOS_GENERATE_KEY, &args);
+	r = sc_card_ctl(p15card->card, SC_CARDCTL_CARDOS_GENERATE_KEY, &args);
 	if (r < 0)
 		goto out;
 
-	r = cardos_extract_pubkey(card, pubkey, temp, use_ext_rsa);
+	r = cardos_extract_pubkey(p15card->card, pubkey, temp, use_ext_rsa);
 out:
 	if (delete_it != 0)
-		sc_pkcs15init_rmdir(card, profile, temp);
+		sc_pkcs15init_rmdir(p15card, profile, temp);
 	sc_file_free(temp);
 
 	if (r < 0) {
@@ -627,17 +636,25 @@ cardos_store_key_component(sc_card_t *card,
 	return sc_card_ctl(card, SC_CARDCTL_CARDOS_PUT_DATA_OCI, &args);
 }
 
-static int cardos_put_key(sc_profile_t *profile, sc_card_t *card,
+
+static int 
+cardos_put_key(sc_profile_t *profile, struct sc_pkcs15_card *p15card,
 	int algorithm, sc_pkcs15_prkey_info_t *key_info,
 	struct sc_pkcs15_prkey_rsa *key)
 {
+	struct sc_card *card = p15card->card;
 	int	r, key_id, pin_id;
 
-	key_id = key_info->key_reference;
+#if 1
 	pin_id = sc_keycache_find_named_pin(&key_info->path, SC_PKCS15INIT_USER_PIN);
+#else
+	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, &key_info->path, 
+			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
+#endif
 	if (pin_id < 0)
 		pin_id = 0;
 
+	key_id = key_info->key_reference;
 	if (key_info->modulus_length > 1024 && (card->type == SC_CARD_TYPE_CARDOS_M4_2 ||
 	    card->type == SC_CARD_TYPE_CARDOS_M4_3 ||card->type == SC_CARD_TYPE_CARDOS_M4_2B ||
 	    card->type == SC_CARD_TYPE_CARDOS_M4_2C )) {

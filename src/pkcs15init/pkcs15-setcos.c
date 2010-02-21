@@ -36,7 +36,7 @@
 static unsigned char SETCOS_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define SETCOS_DEFAULT_PUBKEY_LEN       sizeof(SETCOS_DEFAULT_PUBKEY)
 
-static int setcos_create_pin_internal(sc_profile_t *, sc_card_t *,
+static int setcos_create_pin_internal(sc_profile_t *, sc_pkcs15_card_t *,
 	int, sc_pkcs15_pin_info_t *, const u8 *, size_t, const u8 *, size_t);
 
 
@@ -60,17 +60,17 @@ setcos_puk_retries(sc_profile_t *profile, int pin_ref)
 
 
 static int 
-setcos_delete_object(struct sc_profile *profile, struct sc_card *card,
+setcos_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	unsigned int type, const void *data, const sc_path_t *path)
 {
 	/* For Setcos, all objects are files that can be deleted in any order */
-	return sc_pkcs15init_delete_by_path(profile, card, path);
+	return sc_pkcs15init_delete_by_path(profile, p15card, path);
 }
 
 /*
  * Erase the card.
  */
-static int setcos_erase_card(sc_profile_t *profile, sc_card_t *card)
+static int setcos_erase_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
 	sc_pkcs15_pin_info_t pin_info;
 	sc_path_t path;
@@ -85,20 +85,18 @@ static int setcos_erase_card(sc_profile_t *profile, sc_card_t *card)
 	sc_keycache_set_pin_name(NULL, pin_info.reference, SC_PKCS15INIT_SO_PIN);
 
 	/* Select parent DF and verify PINs/key as necessary */
-	r = sc_pkcs15init_authenticate(profile, card,
-		profile->mf_info->file, SC_AC_OP_DELETE);
+	r = sc_pkcs15init_authenticate(profile, p15card, profile->mf_info->file, SC_AC_OP_DELETE);
 	if (r < 0)
 		return r == SC_ERROR_FILE_NOT_FOUND ? 0 : r;
 
 	/* Empty path -> we have to to delete the current DF (= the MF) */
 	memset(&path, 0, sizeof(sc_path_t));
-	r = sc_delete_file(card, &path) ;
+	r = sc_delete_file(p15card->card, &path) ;
 	if (r)
 		return r;
 
-	sc_free_apps(card);
+	sc_free_apps(p15card->card);
 	sc_keycache_forget_key(NULL, -1, -1);
-
 	return 0;
 }
 
@@ -107,9 +105,9 @@ static int setcos_erase_card(sc_profile_t *profile, sc_card_t *card)
  * Create the MF and global pin file if they don't exist.
  */
 static int
-setcos_init_card(sc_profile_t *profile, sc_card_t *card)
+setcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx = p15card->card->ctx;
 	sc_file_t *mf = profile->mf_info->file;
 	sc_file_t *pinfile;
 	int r;
@@ -117,16 +115,16 @@ setcos_init_card(sc_profile_t *profile, sc_card_t *card)
 	SC_FUNC_CALLED(ctx, 1);
 
 	/* Create the MF if it doesn't exist yet */
-	r = sc_select_file(card, &mf->path, NULL);
+	r = sc_select_file(p15card->card, &mf->path, NULL);
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
-		sc_debug(card->ctx, "MF doesn't exist, creating now");
+		sc_debug(ctx, "MF doesn't exist, creating now");
 
 		/* Fix up the file's ACLs */
-		r = sc_pkcs15init_fixup_file(profile, mf);
+		r = sc_pkcs15init_fixup_file(profile, p15card, mf);
 		SC_TEST_RET(ctx, r, "MF fixup failed");
 			
 		mf->status = SC_FILE_STATUS_CREATION;
-		r = sc_create_file(card, mf);
+		r = sc_create_file(p15card->card, mf);
 		SC_TEST_RET(ctx, r, "MF creation failed");
 	}
 	SC_TEST_RET(ctx, r, "Cannot select MF");
@@ -135,18 +133,18 @@ setcos_init_card(sc_profile_t *profile, sc_card_t *card)
 	r = sc_profile_get_file(profile, "pinfile", &pinfile);
 	SC_TEST_RET(ctx, r, "Cannot get 'pinfile' from profile");
 
-	r = sc_select_file(card, &pinfile->path, NULL);
+	r = sc_select_file(p15card->card, &pinfile->path, NULL);
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
-		sc_debug(card->ctx, "Global pin file doesn't exist, creating now");
+		sc_debug(ctx, "Global pin file doesn't exist, creating now");
 
 		/* Fix up the file's ACLs */
-		r = sc_pkcs15init_fixup_file(profile, pinfile);
+		r = sc_pkcs15init_fixup_file(profile, p15card, pinfile);
 		SC_TEST_RET(ctx, r, "Pinfile fixup failed");
 
 		/* Set life cycle state to SC_FILE_STATUS_CREATION,
 		 * which means that all ACs are ignored. */
 		pinfile->status = SC_FILE_STATUS_CREATION;
-		r = sc_create_file(card, pinfile);
+		r = sc_create_file(p15card->card, pinfile);
 		SC_TEST_RET(ctx, r, "Pinfile creation failed");
 	}
 	sc_file_free(pinfile);
@@ -159,17 +157,17 @@ setcos_init_card(sc_profile_t *profile, sc_card_t *card)
  * Create a DF
  */
 static int
-setcos_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
+setcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 {
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx = p15card->card->ctx;
 	int r;
 
 	SC_FUNC_CALLED(ctx, 1);
 
-        r = sc_pkcs15init_fixup_file(profile, df);
+        r = sc_pkcs15init_fixup_file(profile, p15card, df);
 	SC_TEST_RET(ctx, r, "SetCOS file ACL fixup failed");
 
-	r = sc_create_file(card, df);
+	r = sc_create_file(p15card->card, df);
 	SC_TEST_RET(ctx, r, "SetCOS create file failed");
 
 	SC_FUNC_RETURN(ctx, 1, r);	
@@ -180,7 +178,7 @@ setcos_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
  * Select the PIN reference
  */
 static int
-setcos_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
+setcos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_pin_info_t *pin_info)
 {
 	sc_pkcs15_pin_info_t pin_info_prof;
@@ -204,13 +202,13 @@ setcos_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
  * Create a new PIN
  */
 static int
-setcos_create_pin(sc_profile_t *profile, sc_card_t *card,
+setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *df,
 	sc_pkcs15_object_t *pin_obj,
 	const u8 *pin, size_t pin_len,
 	const u8 *puk, size_t puk_len)
 {
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx = p15card->card->ctx;
 	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
 	sc_file_t *pinfile = NULL;
 	int r, ignore_ac = 0;
@@ -221,7 +219,7 @@ setcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 	r = sc_profile_get_file(profile, "pinfile", &pinfile);
 	SC_TEST_RET(ctx, r, "No 'pinfile' template in profile");
 		        
-	r = sc_select_file(card, &pinfile->path, &pinfile);
+	r = sc_select_file(p15card->card, &pinfile->path, &pinfile);
 	SC_TEST_RET(ctx, r, "Cannot select 'pinfile'");
 
 	sc_debug(ctx, "pinfile->status:%X", pinfile->status);
@@ -231,7 +229,8 @@ setcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 	if (pinfile->status == SC_FILE_STATUS_CREATION)
 		ignore_ac = 1;
 
-	r = setcos_create_pin_internal(profile, card, ignore_ac, pin_info, pin, pin_len, puk, puk_len);
+	r = setcos_create_pin_internal(profile, p15card, ignore_ac, pin_info, 
+			pin, pin_len, puk, puk_len);
 
 	/* If pinfile is in 'Creation' state and SOPIN has been created, 
 	 * change status of MF and 'pinfile' to 'Operational:Activated'
@@ -239,13 +238,13 @@ setcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 	if (ignore_ac && (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN))   {
 		sc_file_t *mf = profile->mf_info->file;
 
-		r = sc_card_ctl(card, SC_CARDCTL_SETCOS_ACTIVATE_FILE, NULL);
+		r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_ACTIVATE_FILE, NULL);
 		SC_TEST_RET(ctx, r, "Cannot set 'pinfile' into the activated state");
 
-		r = sc_select_file(card, &mf->path, NULL);
+		r = sc_select_file(p15card->card, &mf->path, NULL);
 		SC_TEST_RET(ctx, r, "Cannot select MF");
 
-		r = sc_card_ctl(card, SC_CARDCTL_SETCOS_ACTIVATE_FILE, NULL);
+		r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_ACTIVATE_FILE, NULL);
 		SC_TEST_RET(ctx, r, "Cannot set MF into the activated state");
 	}
 
@@ -327,10 +326,10 @@ setcos_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 
 
 static int
-setcos_create_key(sc_profile_t *profile, sc_card_t *card,
+setcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		struct sc_pkcs15_object *object)
 {
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
 	struct sc_file *file = NULL;
 	int keybits = key_info->modulus_length, r;
@@ -346,7 +345,7 @@ setcos_create_key(sc_profile_t *profile, sc_card_t *card,
         sc_debug(ctx, "create private key ID:%s\n",  sc_pkcs15_print_id(&key_info->id));
 
 	/* Get the private key file */
-	r = setcos_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
+	r = setcos_new_file(profile, p15card->card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
 	SC_TEST_RET(ctx, r, "Cannot get new private key file");
 
 	/* Take enough room for a 1024 bit key */
@@ -362,9 +361,9 @@ setcos_create_key(sc_profile_t *profile, sc_card_t *card,
 
         sc_debug(ctx, "Path of private key file to create %s\n", sc_print_path(&file->path));
 
-        r = sc_select_file(card, &file->path, NULL);
+        r = sc_select_file(p15card->card, &file->path, NULL);
         if (!r)   {
-		r = setcos_delete_object(profile, card, object->type, NULL, &file->path);
+		r = setcos_delete_object(profile, p15card, object->type, NULL, &file->path);
 		SC_TEST_RET(ctx, r, "Failed to delete private key file");
 	}
         else if (r != SC_ERROR_FILE_NOT_FOUND)    {
@@ -372,7 +371,7 @@ setcos_create_key(sc_profile_t *profile, sc_card_t *card,
 	}
 
 	/* Now create the key file */
-	r = sc_pkcs15init_create_file(profile, card, file);
+	r = sc_pkcs15init_create_file(profile, p15card, file);
 	SC_TEST_RET(ctx, r, "Cannot create private key file");
 
 	sc_file_free(file);
@@ -384,11 +383,11 @@ setcos_create_key(sc_profile_t *profile, sc_card_t *card,
  * Store a private key
  */
 static int
-setcos_store_key(struct sc_profile *profile, struct sc_card *card,
+setcos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *object, 
 		struct sc_pkcs15_prkey *prkey)
 {
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
 	struct sc_cardctl_setcos_gen_store_key_info args;
 	struct sc_file *file = NULL;
@@ -405,10 +404,10 @@ setcos_store_key(struct sc_profile *profile, struct sc_card *card,
 	sc_debug(ctx, "store key with ID:%s and path:%s\n", sc_pkcs15_print_id(&key_info->id),
 		       	sc_print_path(&key_info->path));
 
-	r = sc_select_file(card, &key_info->path, &file);
+	r = sc_select_file(p15card->card, &key_info->path, &file);
 	SC_TEST_RET(ctx, r, "Cannot store key: select key file failed");
 	
-	r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_UPDATE);
+	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
 	SC_TEST_RET(ctx, r, "No authorisation to store private key");
 
 	/* Fill in data structure */
@@ -423,7 +422,7 @@ setcos_store_key(struct sc_profile *profile, struct sc_card *card,
 	args.primeq = prkey->u.rsa.q.data;
 
 	/* Generate/store rsa key  */
-	r = sc_card_ctl(card, SC_CARDCTL_SETCOS_GENERATE_STORE_KEY, &args);
+	r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GENERATE_STORE_KEY, &args);
 	SC_TEST_RET(ctx, r, "Card control 'GENERATE_STORE_KEY' failed");
 
 	if (file) 
@@ -434,11 +433,11 @@ setcos_store_key(struct sc_profile *profile, struct sc_card *card,
 
 
 static int
-setcos_generate_key(struct sc_profile *profile, struct sc_card *card,
+setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *object, 
 		struct sc_pkcs15_pubkey *pubkey)
 {
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_cardctl_setcos_gen_store_key_info args;
 	struct sc_cardctl_setcos_data_obj data_obj;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
@@ -454,11 +453,11 @@ setcos_generate_key(struct sc_profile *profile, struct sc_card *card,
 	if ( (keybits < 512) || (keybits > 1024) || (keybits & 0x7))
 		SC_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid key length");
 
-	r = sc_select_file(card, &key_info->path, &file);
+	r = sc_select_file(p15card->card, &key_info->path, &file);
 	SC_TEST_RET(ctx, r, "Cannot store key: select key file failed");
 	
 	/* Authenticate */
-	r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_UPDATE);
+	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
 	SC_TEST_RET(ctx, r, "No authorisation to store private key");
 
 	/* Fill in data structure */
@@ -469,7 +468,7 @@ setcos_generate_key(struct sc_profile *profile, struct sc_card *card,
 	args.pubexp = SETCOS_DEFAULT_PUBKEY;
 
 	/* Generate/store rsa key  */
-	r = sc_card_ctl(card, SC_CARDCTL_SETCOS_GENERATE_STORE_KEY, &args);
+	r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GENERATE_STORE_KEY, &args);
 	SC_TEST_RET(ctx, r, "Card control 'GENERATE_STORE_KEY' failed");
 
 	/* Keypair generation -> collect public key info */
@@ -482,7 +481,7 @@ setcos_generate_key(struct sc_profile *profile, struct sc_card *card,
 		memcpy(pubkey->u.rsa.exponent.data, SETCOS_DEFAULT_PUBKEY, SETCOS_DEFAULT_PUBKEY_LEN);
 
 		/* Get public key modulus */
-		r = sc_select_file(card, &file->path, NULL);
+		r = sc_select_file(p15card->card, &file->path, NULL);
 		SC_TEST_RET(ctx, r, "Cannot get key modulus: select key file failed");
 
 		data_obj.P1 = 0x01;
@@ -490,12 +489,12 @@ setcos_generate_key(struct sc_profile *profile, struct sc_card *card,
 		data_obj.Data = raw_pubkey;
 		data_obj.DataLen = sizeof(raw_pubkey);
 
-		r = sc_card_ctl(card, SC_CARDCTL_SETCOS_GETDATA, &data_obj);
+		r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GETDATA, &data_obj);
 		SC_TEST_RET(ctx, r, "Cannot get key modulus: 'SETCOS_GETDATA' failed");
 
 		keybits = ((raw_pubkey[0] * 256) + raw_pubkey[1]);  /* modulus bit length */
 		if (keybits != key_info->modulus_length)  {
-			sc_debug(card->ctx, "key-size from card[%i] does not match[%i]\n", 
+			sc_debug(ctx, "key-size from card[%i] does not match[%i]\n", 
 					keybits, key_info->modulus_length);
 			SC_TEST_RET(ctx, SC_ERROR_PKCS15INIT, "Failed to generate key");
 		}
@@ -511,12 +510,12 @@ setcos_generate_key(struct sc_profile *profile, struct sc_card *card,
  * Create a new PIN
  */
 static int
-setcos_create_pin_internal(sc_profile_t *profile, sc_card_t *card,
+setcos_create_pin_internal(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int ignore_ac, sc_pkcs15_pin_info_t *pin_info,
 	const u8 *pin, size_t pin_len,
 	const u8 *puk, size_t puk_len)
 {
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx = p15card->card->ctx;
 	u8  data[32];
 	int	r;
 	struct sc_cardctl_setcos_data_obj data_obj;
@@ -533,7 +532,7 @@ setcos_create_pin_internal(sc_profile_t *profile, sc_card_t *card,
 	if (!ignore_ac) {
 		r = sc_profile_get_file(profile, "pinfile", &pinfile);
 		if (r >= 0)
-			r = sc_pkcs15init_authenticate(profile, card, pinfile, SC_AC_OP_UPDATE);
+			r = sc_pkcs15init_authenticate(profile, p15card, pinfile, SC_AC_OP_UPDATE);
 		sc_file_free(pinfile);
 		if (r < 0)
 			return r;
@@ -573,7 +572,7 @@ setcos_create_pin_internal(sc_profile_t *profile, sc_card_t *card,
 	data_obj.Data    = data;
 	data_obj.DataLen = 24;
 
-	r = sc_card_ctl(card, SC_CARDCTL_SETCOS_PUTDATA, &data_obj);
+	r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_PUTDATA, &data_obj);
 
 	SC_FUNC_RETURN(ctx, 3, r);
 }

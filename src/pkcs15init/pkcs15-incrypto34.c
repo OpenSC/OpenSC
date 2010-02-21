@@ -60,7 +60,7 @@ static int	incrypto34_store_pin(sc_profile_t *profile, sc_card_t *card,
 			const u8 *pin, size_t pin_len);
 static int	incrypto34_create_sec_env(sc_profile_t *, sc_card_t *,
 			unsigned int, unsigned int);
-static int	incrypto34_put_key(struct sc_profile *, struct sc_card *,
+static int	incrypto34_put_key(struct sc_profile *, struct sc_pkcs15_card *,
 			int, sc_pkcs15_prkey_info_t *,
 		       	struct sc_pkcs15_prkey_rsa *);
 static int	incrypto34_key_algorithm(unsigned int, int *);
@@ -121,46 +121,46 @@ tlv_len(struct tlv *tlv)
  * it's close enough to be useful.
  */
 static int
-incrypto34_erase(struct sc_profile *profile, sc_card_t *card)
+incrypto34_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 {
 	int r;
 	struct sc_file *file;
 	struct sc_path path;
 	memset(&file, 0, sizeof(file));
 	sc_format_path("3F00", &path);
-	if ((r = sc_select_file(card, &path, &file)) < 0)
+	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
-	if ((r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_DELETE)) < 0)
-		return sc_pkcs15init_erase_card_recursively(card, profile, -1);
+	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE)) < 0)
+		return sc_pkcs15init_erase_card_recursively(p15card, profile, -1);
 	else
-		return sc_card_ctl(card, SC_CARDCTL_INCRYPTO34_ERASE_FILES, NULL);
+		return sc_card_ctl(p15card->card, SC_CARDCTL_INCRYPTO34_ERASE_FILES, NULL);
 }
 
 /*
  * Create the Application DF
  */
 static int
-incrypto34_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
+incrypto34_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 {
 	int	r;
 	struct sc_file *file;
 	struct sc_path path;
 	memset(&file, 0, sizeof(file));
 	sc_format_path("3F00", &path);
-	if ((r = sc_select_file(card, &path, &file)) < 0)
+	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
-	if ((r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_CREATE)) < 0)
+	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_CREATE)) < 0)
 		return r;
 	/* Create the application DF */
-	if ((r = sc_pkcs15init_create_file(profile, card, df)) < 0)
+	if ((r = sc_pkcs15init_create_file(profile, p15card, df)) < 0)
 		return r;
 
-	if ((r = sc_select_file(card, &df->path, NULL)) < 0)
+	if ((r = sc_select_file(p15card->card, &df->path, NULL)) < 0)
 		return r;
 
 	/* Create a security environment for this DF.
 	*/
-	if ((r = incrypto34_create_sec_env(profile, card, 0x01, 0x00)) < 0)
+	if ((r = incrypto34_create_sec_env(profile, p15card->card, 0x01, 0x00)) < 0)
 		return r;
 
 	return 0;
@@ -171,7 +171,7 @@ incrypto34_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
  * See if it's good, and if it isn't, propose something better
  */
 static int
-incrypto34_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
+incrypto34_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_pin_info_t *pin_info)
 {
 	int	preferred, current;
@@ -200,8 +200,8 @@ incrypto34_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
  * Store a PIN
  */
 static int
-incrypto34_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
-		sc_pkcs15_object_t *pin_obj,
+incrypto34_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, 
+		sc_file_t *df, sc_pkcs15_object_t *pin_obj,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
 {
@@ -212,7 +212,7 @@ incrypto34_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
 	if (!pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	r = sc_select_file(card, &df->path, NULL);
+	r = sc_select_file(p15card->card, &df->path, NULL);
 	if (r < 0)
 		return r;
 
@@ -222,13 +222,13 @@ incrypto34_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
 		sc_profile_get_pin_info(profile,
 				SC_PKCS15INIT_USER_PUK, &puk_info);
 		puk_info.reference = puk_id = pin_info->reference + 1;
-		r = incrypto34_store_pin(profile, card,
+		r = incrypto34_store_pin(profile, p15card->card,
 				&puk_info, INCRYPTO34_AC_NEVER,
 				puk, puk_len);
 	}
 
 	if (r >= 0) {
-		r = incrypto34_store_pin(profile, card,
+		r = incrypto34_store_pin(profile, p15card->card,
 				pin_info, puk_id,
 				pin, pin_len);
 	}
@@ -240,7 +240,7 @@ incrypto34_create_pin(sc_profile_t *profile, sc_card_t *card, sc_file_t *df,
  * Select a key reference
  */
 static int
-incrypto34_select_key_reference(sc_profile_t *profile, sc_card_t *card,
+incrypto34_select_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_prkey_info_t *key_info)
 {
 	if (key_info->key_reference < INCRYPTO34_KEY_ID_MIN)
@@ -255,7 +255,7 @@ incrypto34_select_key_reference(sc_profile_t *profile, sc_card_t *card,
  * This is a no-op.
  */
 static int
-incrypto34_create_key(sc_profile_t *profile, sc_card_t *card,
+incrypto34_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_object_t *obj)
 {
 	return 0;
@@ -265,11 +265,12 @@ incrypto34_create_key(sc_profile_t *profile, sc_card_t *card,
  * Store a private key object.
  */
 static int
-incrypto34_store_key(sc_profile_t *profile, sc_card_t *card,
+incrypto34_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_object_t *obj,
 			sc_pkcs15_prkey_t *key)
 {
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_card_t *card = p15card->card;
 	int		algorithm, r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
@@ -283,7 +284,7 @@ incrypto34_store_key(sc_profile_t *profile, sc_card_t *card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = incrypto34_put_key(profile, card, algorithm, key_info, &key->u.rsa);
+	r = incrypto34_put_key(profile, p15card, algorithm, key_info, &key->u.rsa);
 
 	return r;
 }
@@ -292,11 +293,12 @@ incrypto34_store_key(sc_profile_t *profile, sc_card_t *card,
  * Key generation
  */
 static int
-incrypto34_generate_key(sc_profile_t *profile, sc_card_t *card,
+incrypto34_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_object_t *obj,
 		sc_pkcs15_pubkey_t *pubkey)
 {
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_card_t *card = p15card->card;
 	struct sc_pkcs15_prkey_rsa key_obj;
 	struct sc_cardctl_incrypto34_genkey_info args;
 	struct sc_file	*temp;
@@ -329,7 +331,7 @@ incrypto34_generate_key(sc_profile_t *profile, sc_card_t *card,
 	}
 	memset(pubkey, 0, sizeof(*pubkey));
 
-	if ((r = sc_pkcs15init_create_file(profile, card, temp)) < 0)
+	if ((r = sc_pkcs15init_create_file(profile, p15card, temp)) < 0)
 		goto out;
 	delete_it = 1;
 
@@ -340,7 +342,7 @@ incrypto34_generate_key(sc_profile_t *profile, sc_card_t *card,
 	key_obj.modulus.len = keybits >> 3;
 	key_obj.d.data = abignum;
 	key_obj.d.len = keybits >> 3;
-	r = incrypto34_put_key(profile, card, algorithm, key_info, &key_obj);
+	r = incrypto34_put_key(profile, p15card, algorithm, key_info, &key_obj);
 	if (r < 0)
 		goto out;
 
@@ -364,7 +366,7 @@ incrypto34_generate_key(sc_profile_t *profile, sc_card_t *card,
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 
 out:	if (delete_it) {
-		sc_pkcs15init_rmdir(card, profile, temp);
+		sc_pkcs15init_rmdir(p15card, profile, temp);
 	}
 	sc_file_free(temp);
 	if (r < 0) {
@@ -602,7 +604,7 @@ incrypto34_store_key_component(struct sc_card *card,
 }
 
 static int
-incrypto34_put_key(sc_profile_t *profile, sc_card_t *card,
+incrypto34_put_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		int algorithm, sc_pkcs15_prkey_info_t *key_info,
 		struct sc_pkcs15_prkey_rsa *key)
 {
@@ -613,20 +615,20 @@ incrypto34_put_key(sc_profile_t *profile, sc_card_t *card,
 	if (pin_id < 0)
 		pin_id = 0;
 
-	r = incrypto34_store_key_component(card, algorithm, key_id, pin_id, 0,
+	r = incrypto34_store_key_component(p15card->card, algorithm, key_id, pin_id, 0,
 			key->modulus.data, key->modulus.len, 0);
 	if (r >= 0)
 	{
-		r = incrypto34_store_key_component(card, algorithm, key_id, pin_id, 1,
+		r = incrypto34_store_key_component(p15card->card, algorithm, key_id, pin_id, 1,
 				key->d.data, key->d.len, 1);
 	}
 
 	if (SC_ERROR_FILE_ALREADY_EXISTS == r || r >=0)
 	{
-		r = incrypto34_change_key_data(card, 0x80|key_id, 0x20, key->modulus.data, key->modulus.len);
+		r = incrypto34_change_key_data(p15card->card, 0x80|key_id, 0x20, key->modulus.data, key->modulus.len);
 		if (r < 0)
 			return r;
-		r = incrypto34_change_key_data(card, 0x80|key_id, 0x21, key->d.data, key->d.len);
+		r = incrypto34_change_key_data(p15card->card, 0x80|key_id, 0x21, key->d.data, key->d.len);
 	}
 
 	return r;
@@ -656,7 +658,7 @@ incrypto34_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 	return 0;
 }
 
-static int incrypto34_init_card(sc_profile_t *profile, sc_card_t *card)
+static int incrypto34_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
 	return 0;
 }

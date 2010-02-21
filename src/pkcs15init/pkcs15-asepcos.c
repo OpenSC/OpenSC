@@ -31,19 +31,19 @@
 /* delete a EF/DF if present. This function does not return an 
  * error if the requested file is not present. 
  */
-static int asepcos_cond_delete(sc_profile_t *pro, sc_card_t *card,
+static int asepcos_cond_delete(sc_profile_t *pro, sc_pkcs15_card_t *p15card,
 	const sc_path_t *path)
 {
 	int r;
 	sc_file_t *tfile = NULL;
 
-	r = sc_select_file(card, path, &tfile);
+	r = sc_select_file(p15card->card, path, &tfile);
 	if (r == SC_SUCCESS) {
-		r = sc_pkcs15init_authenticate(pro, card, tfile, SC_AC_OP_DELETE_SELF);
+		r = sc_pkcs15init_authenticate(pro, p15card, tfile, SC_AC_OP_DELETE_SELF);
 		sc_file_free(tfile);
 		if (r != SC_SUCCESS)
 			return r;
-		r = sc_delete_file(card, path);
+		r = sc_delete_file(p15card->card, path);
 	} else if (r == SC_ERROR_FILE_NOT_FOUND)
 		r = SC_SUCCESS;
 	return r;
@@ -56,18 +56,23 @@ static int asepcos_cond_delete(sc_profile_t *pro, sc_card_t *card,
  * @param  card     sc_card_t object to use
  * @return SC_SUCCESS on success and an error code otherwise
  */
-static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_card_t *card)
+static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	int r;
 	sc_path_t path;
+
 	/* check whether the file with the transport PIN exists */
 	sc_format_path("3f000001", &path);
-	r = sc_select_file(card, &path, NULL);
+	r = sc_select_file(p15card->card, &path, NULL);
 	if (r == SC_SUCCESS) {
 		/* try to verify the transport key */
 		u8     pbuf[64];
 		size_t psize = sizeof(pbuf);
 		sc_file_t *tfile = NULL;
+		struct sc_pkcs15_pin_info pin_info;
+		struct sc_pkcs15_object *pin_obj = NULL, *auth_obj;
+
 		sc_format_path("3f00", &path);
 		r = sc_profile_get_file_by_path(profile, sc_get_mf_path(), &tfile);
 		if (r != SC_SUCCESS)
@@ -75,23 +80,50 @@ static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_card_t *card)
 		/* we need to temporarily disable the SC_CARD_CAP_USE_FCI_AC
 		 * flag to trick sc_pkcs15init_authenticate() to use access 
 		 * information form the profile file */
-		card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
-		r = sc_pkcs15init_authenticate(profile, card, tfile, SC_AC_OP_CRYPTO);
-		card->caps |=  SC_CARD_CAP_USE_FCI_AC;
+		p15card->card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
+		r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_CRYPTO);
+		p15card->card->caps |=  SC_CARD_CAP_USE_FCI_AC;
 		sc_file_free(tfile);
 		if (r != SC_SUCCESS) {
-			sc_debug(card->ctx, "unable to authenticate");
+			sc_debug(ctx, "unable to authenticate");
 			return r;
 		}
+
 		/* store the transport key as a PIN */
+#if 1
+		r = sc_keycache_get_key(&path, SC_AC_AUT, 0, pbuf, psize);
+#else
+		r = sc_pkcs15_find_pin_by_type_and_reference(p15card, NULL, SC_AC_AUT, 0, &auth_obj);
+		SC_TEST_RET(ctx, r, "No AUTH PIN object found");
+		               
+		if (!auth_obj->content.value || !auth_obj->content.len)
+			SC_TEST_RET(ctx,SC_ERROR_INCORRECT_PARAMETERS , "No AUTH PIN value in cache");
+
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_info);
+		pin_info.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
+		pin_info.flags |=  SC_PKCS15_PIN_FLAG_SO_PIN;
+		pin_info.reference = 0;
+
+		pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN, "ASECARD transport PIN", NULL, &pin_info);
+		if (!pin_obj)
+			SC_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate AUTH object");
+
+		r = sc_pkcs15_add_object(p15card, pin_obj);
+		SC_TEST_RET(ctx, r, "Cannot add ASECARD transport PIN");
+
+		/* Put key value in cache */
+		r = sc_pkcs15_verify_pin(p15card, &pin_info, auth_obj->content.value, auth_obj->content.len);
+		SC_TEST_RET(ctx, r, "Cannot verify transport PIN");
+#endif
+
 		r = sc_keycache_get_key(&path, SC_AC_AUT, 0, pbuf, psize);
 		if (r < 0) {
-			sc_debug(card->ctx, "unable to get transport key");
+			sc_debug(ctx, "unable to get transport key");
 			return r;
 		}
 		r = sc_keycache_put_key(&path, SC_AC_CHV, 0, pbuf, (size_t)r);
 		if (r != SC_SUCCESS) {
-			sc_debug(card->ctx, "unable to store transport key");
+			sc_debug(ctx, "unable to store transport key");
 			return r;
 		}
 	}
@@ -105,7 +137,7 @@ static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_card_t *card)
  *                  erased.
  * @return SC_SUCCESS on success and an error code otherwise
  */
-static int asepcos_erase(struct sc_profile *profile, sc_card_t *card)
+static int asepcos_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 {
 	int r;
 	sc_path_t path;
@@ -115,17 +147,19 @@ static int asepcos_erase(struct sc_profile *profile, sc_card_t *card)
 	 *         pkcs15 application.
 	 */
 	/* Check wether a transport exists and verify it if present */
-	r = asepcos_check_verify_tpin(profile, card);
+	
+	p15card->opts.use_pin_cache = 1;
+	r = asepcos_check_verify_tpin(profile, p15card);
 	if (r != SC_SUCCESS)
 		return r;
 	/* EF(DIR) */
 	sc_format_path("3f002f00", &path);
-	r = asepcos_cond_delete(profile, card, &path);
+	r = asepcos_cond_delete(profile, p15card, &path);
 	if (r != SC_SUCCESS)
 		return r;
 	/* DF(PKCS15) */
 	sc_format_path("3f005015", &path);
-	r = asepcos_cond_delete(profile, card, &path);
+	r = asepcos_cond_delete(profile, p15card, &path);
 	if (r != SC_SUCCESS)
 		return r;
 	
@@ -139,15 +173,17 @@ static int asepcos_erase(struct sc_profile *profile, sc_card_t *card)
  * @param  df       sc_file_t with the application DF to create 
  * @return SC_SUCCESS on success and an error value otherwise
  */
-static int asepcos_create_dir(sc_profile_t *profile, sc_card_t *card,
+static int asepcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *df)
 {
 	int r;
 	static const u8 pa_acl[] = {0x80,0x01,0x5f,0x90,0x00};
 	sc_file_t *tfile;
+	sc_context_t *ctx = p15card->card->ctx;
 
+	SC_FUNC_CALLED(ctx, 3);
 	/* Check wether a transport exists and verify it if present */
-	r = asepcos_check_verify_tpin(profile, card);
+	r = asepcos_check_verify_tpin(profile, p15card);
 	if (r != SC_SUCCESS)
 		return r;
 	/* As we don't know whether or not a SO-PIN is used to protect the AC
@@ -166,9 +202,9 @@ static int asepcos_create_dir(sc_profile_t *profile, sc_card_t *card,
 		return r;
 	}
 	/* create application DF */
-	r = sc_pkcs15init_create_file(profile, card, tfile);
+	r = sc_pkcs15init_create_file(profile, p15card, tfile);
 	sc_file_free(tfile);
-	return r;
+	SC_FUNC_RETURN(ctx, 3, r);
 }
 
 
@@ -176,8 +212,8 @@ static int asepcos_create_dir(sc_profile_t *profile, sc_card_t *card,
  * determined when the PIN is created. This is just helper function to
  * determine the next best file id of the PIN file.
  */
-static int asepcos_select_pin_reference(sc_profile_t *profile, sc_card_t *card,
-	sc_pkcs15_pin_info_t *pinfo)
+static int asepcos_select_pin_reference(sc_profile_t *profile, 
+		sc_pkcs15_card_t *p15card, sc_pkcs15_pin_info_t *pinfo)
 {
 	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 		return SC_SUCCESS;
@@ -354,15 +390,18 @@ static void asepcos_fix_pin_reference(sc_pkcs15_pin_info_t *pinfo)
  * @param  puk_len  PUK length (optional)
  * @return SC_SUCCESS on success and an error code otherwise
  */
-static int asepcos_create_pin(sc_profile_t *profile, sc_card_t *card,
+static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *df, sc_pkcs15_object_t *pin_obj,
 	const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
 	sc_pkcs15_pin_info_t *pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	struct sc_card *card = p15card->card;
 	int       r, pid, puk_id;
 	sc_path_t tpath = df->path;
 	sc_file_t *tfile = NULL;
+	sc_context_t *ctx = p15card->card->ctx;
 
+	SC_FUNC_CALLED(ctx, 3);
 	if (!pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
@@ -371,13 +410,13 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 	/* get the ACL of the application DF */
 	r = sc_select_file(card, &df->path, &tfile);
 	if (r != SC_SUCCESS)
-		return r;
+		SC_FUNC_RETURN(ctx, 3, r);
 	/* verify the PIN protecting the CREATE acl (if necessary) */
-	r = sc_pkcs15init_authenticate(profile, card, tfile, SC_AC_OP_CREATE);
+	r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_CREATE);
 	sc_file_free(tfile);
 	if (r != SC_SUCCESS) {
 		sc_debug(card->ctx, "unable to create PIN file, insufficent rights");
-		return r;
+		SC_FUNC_RETURN(ctx, 3, r);
 	}
 
 	do {
@@ -388,13 +427,13 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 		 * is already used */
 		r = sc_append_file_id(&pin_path, pid & 0xff);
 		if (r != SC_SUCCESS)
-			return r;
+			SC_FUNC_RETURN(ctx, 3, r);
 		r = sc_select_file(card, &pin_path, NULL);
 		if (r == SC_SUCCESS)
 			pid += 2;
 		else if (r != SC_ERROR_FILE_NOT_FOUND) {
 			sc_debug(card->ctx, "error selecting PIN file");
-			return r;
+			SC_FUNC_RETURN(ctx, 3, r);
 		}
 	} while (r != SC_ERROR_FILE_NOT_FOUND);
 
@@ -408,19 +447,20 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 			sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &puk_info);
 		else
 			sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &puk_info);
+
 		/* If a PUK we use "file id of the PIN" + 1  as the file id
 		 * of the PUK.
 		 */
 		puk_id = pid + 1;
 		r = asepcos_do_store_pin(profile, card, &puk_info, puk, puk_len, 0, puk_id);
 		if (r != SC_SUCCESS) 
-			return r;
+			SC_FUNC_RETURN(ctx, 3, r);
 	} else
 		puk_id = 0;
 
 	r = asepcos_do_store_pin(profile, card, pinfo, pin, pin_len, puk_id, pid);
 	if (r != SC_SUCCESS)
-		return r;
+		SC_FUNC_RETURN(ctx, 3, r);
 
 #if 1
 	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN || 
@@ -439,15 +479,15 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 
 		r = sc_select_file(card, &df->path, NULL);
 		if (r != SC_SUCCESS)
-			return r;
+			SC_FUNC_RETURN(ctx, 3, r);
 		/* remove symbolic references from the ACLs */
-		r = sc_pkcs15init_fixup_file(profile, df);
+		r = sc_pkcs15init_fixup_file(profile, p15card, df);
 		if (r != SC_SUCCESS)
-			return r;
+			SC_FUNC_RETURN(ctx, 3, r);
 		r = sc_card_ctl(card, SC_CARDCTL_ASEPCOS_SET_SATTR, df);
 		if (r != SC_SUCCESS) {
 			sc_debug(card->ctx, "unable to change the security attributes");
-			return r;
+			SC_FUNC_RETURN(ctx, 3, r);
 		}
 		/* finally activate the application DF (fix ACLs) */
 		/* 1. select MF */
@@ -460,7 +500,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 		r = sc_card_ctl(card, SC_CARDCTL_ASEPCOS_ACTIVATE_FILE, &st);
 		if (r != SC_SUCCESS) {
 			sc_debug(card->ctx, "unable to activate DF");
-			return r;
+			SC_FUNC_RETURN(ctx, 3, r);
 		}
 	}
 #endif
@@ -474,7 +514,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_card_t *card,
 		return r;
 	pinfo->path = tpath;
 #endif
-	return r;
+	SC_FUNC_RETURN(ctx, 3, r);
 }
 
 /* internal wrapper for sc_pkcs15init_authenticate()
@@ -484,21 +524,21 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_card_t *card,
  * @param  op       the required access method
  * @return SC_SUCCESS on success and an error code otherwise
  */
-static int asepcos_do_authenticate(sc_profile_t *profile, sc_card_t *card, 
+static int asepcos_do_authenticate(sc_profile_t *profile, sc_pkcs15_card_t *p15card, 
 	const sc_path_t *path, int op)
 {
 	int r;
 	sc_file_t *prkey = NULL;
 	r = sc_profile_get_file_by_path(profile, path, &prkey);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, "unable to find file in profile");
+		sc_debug(p15card->card->ctx, "unable to find file in profile");
 		return r;
 	}
 
-	r = sc_pkcs15init_authenticate(profile, card, prkey, op);
+	r = sc_pkcs15init_authenticate(profile, p15card, prkey, op);
 	sc_file_free(prkey);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, "unable to authenticate");
+		sc_debug(p15card->card->ctx, "unable to authenticate");
 		return r;
 	}
 	return SC_SUCCESS;	
@@ -575,7 +615,7 @@ static int asepcos_do_create_key(sc_card_t *card, size_t ksize, int fileid,
 
 /* creates a key file 
  */
-static int asepcos_create_key(sc_profile_t *profile, sc_card_t *card,
+static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj)
 {
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
@@ -590,10 +630,15 @@ static int asepcos_create_key(sc_profile_t *profile, sc_card_t *card,
 		/* the key is proctected by a PIN */
 		/* XXX use the pkcs15 structures for this */
 		sc_cardctl_asepcos_akn2fileid_t st;
-		st.akn = sc_keycache_find_named_pin(NULL, SC_PKCS15INIT_USER_PIN);
-		r = sc_card_ctl(card, SC_CARDCTL_ASEPCOS_AKN2FILEID, &st);
+#if 1
+		st.akn = sc_keycache_find_named_pin(NULL, SC_PKCS15INIT_USER_PIN);	
+#else
+		st.akn = sc_pkcs15init_get_pin_reference(p15card, profile, NULL,
+			                        SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
+#endif
+		r = sc_card_ctl(p15card->card, SC_CARDCTL_ASEPCOS_AKN2FILEID, &st);
 		if (r != SC_SUCCESS) {
-			sc_debug(card->ctx, "unable to determine file id of the PIN");
+			sc_debug(p15card->card->ctx, "unable to determine file id of the PIN");
 			return r;
 		}
 		afileid = st.fileid;
@@ -606,7 +651,7 @@ static int asepcos_create_key(sc_profile_t *profile, sc_card_t *card,
 #endif
 
 	/* authenticate if necessary */
-	r = asepcos_do_authenticate(profile, card, &profile->df_info->file->path, SC_AC_OP_CREATE);
+	r = asepcos_do_authenticate(profile, p15card, &profile->df_info->file->path, SC_AC_OP_CREATE);
 	if (r != SC_SUCCESS) 
 		return r;
 
@@ -656,9 +701,9 @@ static int asepcos_create_key(sc_profile_t *profile, sc_card_t *card,
 		*p++ = 0x00;
 	}
 
-	r = asepcos_do_create_key(card, kinfo->modulus_length, fileid, buf, p - buf);
+	r = asepcos_do_create_key(p15card->card, kinfo->modulus_length, fileid, buf, p - buf);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, "unable to create private key file");
+		sc_debug(p15card->card->ctx, "unable to create private key file");
 		return r;
 	}
 	return r;
@@ -666,7 +711,7 @@ static int asepcos_create_key(sc_profile_t *profile, sc_card_t *card,
 
 /* stores a rsa private key in a internal EF
  */
-static int asepcos_do_store_rsa_key(sc_card_t *card, sc_profile_t *profile,
+static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *profile,
 	sc_pkcs15_object_t *obj, sc_pkcs15_prkey_info_t *kinfo,
 	struct sc_pkcs15_prkey_rsa *key)
 {
@@ -677,7 +722,7 @@ static int asepcos_do_store_rsa_key(sc_card_t *card, sc_profile_t *profile,
 
 	/* authenticate if necessary */
 	if (obj->auth_id.len != 0) {
-		r = asepcos_do_authenticate(profile, card, &kinfo->path, SC_AC_OP_UPDATE);
+		r = asepcos_do_authenticate(profile, p15card, &kinfo->path, SC_AC_OP_UPDATE);
 		if (r != SC_SUCCESS) 
 			return r;
 	}
@@ -687,9 +732,9 @@ static int asepcos_do_store_rsa_key(sc_card_t *card, sc_profile_t *profile,
 	tpath.len  = 2;
 	tpath.value[0] = kinfo->path.value[kinfo->path.len-2];
 	tpath.value[1] = kinfo->path.value[kinfo->path.len-1];
-	r = sc_select_file(card, &tpath, NULL);
+	r = sc_select_file(p15card->card, &tpath, NULL);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, "unable to select rsa key file");
+		sc_debug(p15card->card->ctx, "unable to select rsa key file");
 		return r;
 	}
 
@@ -726,9 +771,9 @@ static int asepcos_do_store_rsa_key(sc_card_t *card, sc_profile_t *profile,
 	ckdata.data    = buf;
 	ckdata.datalen = p - buf;
 
-	r = sc_card_ctl(card, SC_CARDCTL_ASEPCOS_CHANGE_KEY, &ckdata);
+	r = sc_card_ctl(p15card->card, SC_CARDCTL_ASEPCOS_CHANGE_KEY, &ckdata);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, "unable to change key data");
+		sc_debug(p15card->card->ctx, "unable to change key data");
 		return r;
 	}
 	
@@ -742,17 +787,17 @@ static int asepcos_do_store_rsa_key(sc_card_t *card, sc_profile_t *profile,
  * @param  key      the private key
  * @return SC_SUCCESS on success and an error code otherwise
  */
-static int asepcos_store_key(sc_profile_t *profile, sc_card_t *card,
+static int asepcos_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, "only RSA is currently supported");
+		sc_debug(p15card->card->ctx, "only RSA is currently supported");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	return asepcos_do_store_rsa_key(card, profile, obj, kinfo, &key->u.rsa);
+	return asepcos_do_store_rsa_key(p15card, profile, obj, kinfo, &key->u.rsa);
 }
 
 /* Generates a new (RSA) key pair using an existing key file.
@@ -762,18 +807,19 @@ static int asepcos_store_key(sc_profile_t *profile, sc_card_t *card,
  * @param  pukkey   OUT the newly created public key
  * @return SC_SUCCESS on success and an error code otherwise
  */
-static int asepcos_generate_key(sc_profile_t *profile, sc_card_t *card,
+static int asepcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj, sc_pkcs15_pubkey_t *pubkey)
 {
 	int r;
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_card_t *card = p15card->card;
 	sc_apdu_t apdu;
 	sc_path_t tpath;
 	u8  rbuf[SC_MAX_APDU_BUFFER_SIZE],
 	    sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	/* authenticate if necessary */
-	r = asepcos_do_authenticate(profile, card, &kinfo->path, SC_AC_OP_UPDATE);
+	r = asepcos_do_authenticate(profile, p15card, &kinfo->path, SC_AC_OP_UPDATE);
 	if (r != SC_SUCCESS) 
 		return r;
 

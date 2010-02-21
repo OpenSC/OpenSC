@@ -716,8 +716,6 @@ sc_profile_get_pin_id_by_reference(struct sc_profile *profile,
 	struct pin_info *pinfo;
 
 	for (pinfo = profile->pin_list; pinfo; pinfo = pinfo->next)  {
-		int found = 0;
-
 		if (auth_method == SC_AC_SYMBOLIC)   {
 			if (pinfo->id != reference)
 				continue;

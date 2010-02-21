@@ -43,28 +43,28 @@
 extern int sc_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2);
 
 static int westcos_pkcs15init_init_card(sc_profile_t *profile, 
-						sc_card_t *card)
+						sc_pkcs15_card_t *p15card)
 {
 	int r;
 	struct sc_path path;
 
 	sc_format_path("3F00", &path);
-	r = sc_select_file(card, &path, NULL);
+	r = sc_select_file(p15card->card, &path, NULL);
 	if(r) return (r);
 
 	return r;
 }
 
 static int westcos_pkcs15init_create_dir(sc_profile_t *profile, 
-						sc_card_t *card, 
+						sc_pkcs15_card_t *p15card, 
 						sc_file_t *df)
 {
 	int r;
 
 	/* Create the application DF */
-	r = sc_pkcs15init_create_file(profile, card, df);
+	r = sc_pkcs15init_create_file(profile, p15card, df);
 
-	r = sc_select_file(card, &df->path, NULL);
+	r = sc_select_file(p15card->card, &df->path, NULL);
 	if(r) return r;
 
 	return 0;
@@ -74,7 +74,7 @@ static int westcos_pkcs15init_create_dir(sc_profile_t *profile,
  * Select the PIN reference
  */
 static int westcos_pkcs15_select_pin_reference(sc_profile_t *profile, 
-					sc_card_t *card,
+					sc_pkcs15_card_t *p15card,
 					sc_pkcs15_pin_info_t *pin_info)
 {
 
@@ -91,7 +91,8 @@ static int westcos_pkcs15_select_pin_reference(sc_profile_t *profile,
  * Create a new PIN inside a DF
  */
 static int westcos_pkcs15_create_pin(sc_profile_t *profile, 
-					sc_card_t *card, sc_file_t *df,
+					sc_pkcs15_card_t *p15card, 
+					sc_file_t *df,
 					sc_pkcs15_object_t *pin_obj,
 					const u8 *pin, size_t pin_len,
 					const u8 *puk, size_t puk_len)
@@ -106,13 +107,13 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 	r = sc_profile_get_file(profile, "PINFILE", &pinfile);
 	if(r < 0) return r;
 
-	r = sc_create_file(card, pinfile);
+	r = sc_create_file(p15card->card, pinfile);
 	if(r)
 	{
 		if(r != SC_ERROR_FILE_ALREADY_EXISTS)
 			return (r);
 
-		r = sc_select_file(card, &pinfile->path, NULL);
+		r = sc_select_file(p15card->card, &pinfile->path, NULL);
 		if(r) return (r);
 	}
 
@@ -139,7 +140,7 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 		if(ck.new_key.key_len<0)
 			return SC_ERROR_CARD_CMD_FAILED;
 
-		r = sc_card_ctl(card, SC_CARDCTL_WESTCOS_CHANGE_KEY, &ck);
+		r = sc_card_ctl(p15card->card, SC_CARDCTL_WESTCOS_CHANGE_KEY, &ck);
 		if(r) return r;
 	}
 
@@ -163,7 +164,7 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 		if(ck.new_key.key_len<0)
 			return SC_ERROR_CARD_CMD_FAILED;
 
-		r = sc_card_ctl(card, SC_CARDCTL_WESTCOS_CHANGE_KEY, &ck);
+		r = sc_card_ctl(p15card->card, SC_CARDCTL_WESTCOS_CHANGE_KEY, &ck);
 		if(r) return r;
 	}
 
@@ -174,7 +175,7 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
  * Create a new key file
  */
 static int westcos_pkcs15init_create_key(sc_profile_t *profile, 
-						sc_card_t *card, 
+						sc_pkcs15_card_t *p15card, 
 						sc_pkcs15_object_t *obj)
 {
 
@@ -190,7 +191,7 @@ static int westcos_pkcs15init_create_key(sc_profile_t *profile,
  * Store a private key
  */
 static int westcos_pkcs15init_store_key(sc_profile_t *profile, 
-						sc_card_t *card,
+						sc_pkcs15_card_t *p15card,
 						sc_pkcs15_object_t *obj,
 						sc_pkcs15_prkey_t *key)
 {
@@ -201,7 +202,7 @@ static int westcos_pkcs15init_store_key(sc_profile_t *profile,
  * Generate key
  */
 static int westcos_pkcs15init_generate_key(sc_profile_t *profile, 
-						sc_card_t *card,
+						sc_pkcs15_card_t *p15card,
 						sc_pkcs15_object_t *obj,
 						sc_pkcs15_pubkey_t *pubkey)
 {
@@ -266,7 +267,7 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 
 		pubkey->algorithm = SC_ALGORITHM_RSA;
 
-		r = sc_pkcs15_decode_pubkey(card->ctx, pubkey, p, lg);
+		r = sc_pkcs15_decode_pubkey(p15card->card->ctx, pubkey, p, lg);
 	}
 
 	(void) BIO_reset(mem);
@@ -294,10 +295,10 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 
 	prkf->size = lg;
 
-	r = sc_pkcs15init_create_file(profile, card, prkf);
+	r = sc_pkcs15init_create_file(profile, p15card, prkf);
 	if(r) goto out;
 
-	r = sc_pkcs15init_update_file(profile, card, prkf, p, lg);
+	r = sc_pkcs15init_update_file(profile, p15card, prkf, p, lg);
 	if(r) goto out;
 
 out:

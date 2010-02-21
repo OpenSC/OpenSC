@@ -41,45 +41,45 @@
 #define MUSCLE_KEY_ID_MIN	0x00
 #define MUSCLE_KEY_ID_MAX	0x0F
 
-static int muscle_erase_card(sc_profile_t *profile, sc_card_t *card)
+static int muscle_erase_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
 	int r;
 	struct sc_file *file;
 	struct sc_path path;
 	memset(&file, 0, sizeof(file));
 	sc_format_path("3F00", &path);
-	if ((r = sc_select_file(card, &path, &file)) < 0)
+	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
-	if ((r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_ERASE)) < 0)
+	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_ERASE)) < 0)
 		return r;
-	if ((r = sc_delete_file(card, &path)) < 0)
+	if ((r = sc_delete_file(p15card->card, &path)) < 0)
 		return r;
 	return 0;
 }
 
 
-static int muscle_init_card(sc_profile_t *profile, sc_card_t *card)
+static int muscle_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
 	return 0;
 }
 
 static int
-muscle_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
+muscle_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 {
 	int	r;
 	struct sc_file *file;
 	struct sc_path path;
 	memset(&file, 0, sizeof(file));
 	sc_format_path("3F00", &path);
-	if ((r = sc_select_file(card, &path, &file)) < 0)
+	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
-	if ((r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_CREATE)) < 0)
+	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_CREATE)) < 0)
 		return r;
 	/* Create the application DF */
-	if ((r = sc_pkcs15init_create_file(profile, card, df)) < 0)
+	if ((r = sc_pkcs15init_create_file(profile, p15card, df)) < 0)
 		return r;
 
-	if ((r = sc_select_file(card, &df->path, NULL)) < 0)
+	if ((r = sc_select_file(p15card->card, &df->path, NULL)) < 0)
 		return r;
 
 	
@@ -87,7 +87,7 @@ muscle_create_dir(sc_profile_t *profile, sc_card_t *card, sc_file_t *df)
 }
 
 static int
-muscle_create_pin(sc_profile_t *profile, sc_card_t *card,
+muscle_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *df, sc_pkcs15_object_t *pin_obj,
 	const unsigned char *pin, size_t pin_len,
 	const unsigned char *puk, size_t puk_len)
@@ -101,19 +101,16 @@ muscle_create_pin(sc_profile_t *profile, sc_card_t *card,
 	} else {
 		type = SC_PKCS15INIT_USER_PIN;
 	}
-	if ((r = sc_select_file(card, &df->path, &file)) < 0)
+	if ((r = sc_select_file(p15card->card, &df->path, &file)) < 0)
 		return r;
-	if ((r = sc_pkcs15init_authenticate(profile, card, file, SC_AC_OP_WRITE)) < 0)
+	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_WRITE)) < 0)
 		return r;
-	sc_keycache_set_pin_name(&df->path,
-		pin_info->reference,
-		type);
 	pin_info->flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
 	return 0;
 }
 
 static int
-muscle_select_pin_reference(sc_profile_t *profike, sc_card_t *card,
+muscle_select_pin_reference(sc_profile_t *profike, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_pin_info_t *pin_info)
 {
 	int	preferred;
@@ -139,7 +136,7 @@ muscle_select_pin_reference(sc_profile_t *profike, sc_card_t *card,
  * Select a key reference
  */
 static int
-muscle_select_key_reference(sc_profile_t *profile, sc_card_t *card,
+muscle_select_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_prkey_info_t *key_info)
 {
 	if (key_info->key_reference < MUSCLE_KEY_ID_MIN)
@@ -154,7 +151,7 @@ muscle_select_key_reference(sc_profile_t *profile, sc_card_t *card,
  * This is a no-op.
  */
 static int
-muscle_create_key(sc_profile_t *profile, sc_card_t *card,
+muscle_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_object_t *obj)
 {
 	return 0;
@@ -164,10 +161,11 @@ muscle_create_key(sc_profile_t *profile, sc_card_t *card,
  * Store a private key object.
  */
 static int
-muscle_store_key(sc_profile_t *profile, sc_card_t *card,
+muscle_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_object_t *obj,
 			sc_pkcs15_prkey_t *key)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 	sc_file_t* prkf;
 	struct sc_pkcs15_prkey_rsa *rsa;
@@ -175,22 +173,22 @@ muscle_store_key(sc_profile_t *profile, sc_card_t *card,
 	int		r;
 	
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, "Muscle supports RSA keys only.");
+		sc_debug(ctx, "Muscle supports RSA keys only.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	/* Verification stuff */
 	/* Used for verification AND for obtaining private key acls */
 	r = sc_profile_get_file_by_path(profile, &key_info->path, &prkf);
-	if(!prkf) SC_FUNC_RETURN(card->ctx, 2,SC_ERROR_NOT_SUPPORTED);
-	r = sc_pkcs15init_authenticate(profile, card, prkf, SC_AC_OP_CRYPTO);
+	if(!prkf) SC_FUNC_RETURN(ctx, 2,SC_ERROR_NOT_SUPPORTED);
+	r = sc_pkcs15init_authenticate(profile, p15card, prkf, SC_AC_OP_CRYPTO);
 	if (r < 0) {
 		sc_file_free(prkf);
-		SC_FUNC_RETURN(card->ctx, 2,SC_ERROR_NOT_SUPPORTED);
+		SC_FUNC_RETURN(ctx, 2,SC_ERROR_NOT_SUPPORTED);
 	}
 	sc_file_free(prkf);
-	r = muscle_select_key_reference(profile, card, key_info);
+	r = muscle_select_key_reference(profile, p15card, key_info);
 	if (r < 0) {
-		SC_FUNC_RETURN(card->ctx, 2,r);
+		SC_FUNC_RETURN(ctx, 2,r);
 	}
 	rsa = &key->u.rsa;
 	
@@ -211,22 +209,23 @@ muscle_store_key(sc_profile_t *profile, sc_card_t *card,
 	info.dq1Length = rsa->dmq1.len;
 	info.dq1Value = rsa->dmq1.data;
 	
-	r = sc_card_ctl(card, SC_CARDCTL_MUSCLE_IMPORT_KEY, &info);
+	r = sc_card_ctl(p15card->card, SC_CARDCTL_MUSCLE_IMPORT_KEY, &info);
 	if (r < 0) {
-		sc_debug(card->ctx, "Unable to import key");
-		SC_FUNC_RETURN(card->ctx, 2,r);
+		sc_debug(ctx, "Unable to import key");
+		SC_FUNC_RETURN(ctx, 2,r);
 	}
 	return r;
 }
 
 static int
-muscle_generate_key(sc_profile_t *profile, sc_card_t *card,
+muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_object_t *obj,
 			sc_pkcs15_pubkey_t *pubkey)
 {
 	sc_cardctl_muscle_gen_key_info_t args;
 	sc_cardctl_muscle_key_info_t extArgs;
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_card_t *card = p15card->card;
 	sc_file_t* prkf;
 	unsigned int	keybits;
 	int		r;
@@ -245,7 +244,7 @@ muscle_generate_key(sc_profile_t *profile, sc_card_t *card,
 	/* Used for verification AND for obtaining private key acls */
 	r = sc_profile_get_file_by_path(profile, &key_info->path, &prkf);
 	if(!prkf) SC_FUNC_RETURN(card->ctx, 2,SC_ERROR_NOT_SUPPORTED);
-	r = sc_pkcs15init_authenticate(profile, card, prkf, SC_AC_OP_CRYPTO);
+	r = sc_pkcs15init_authenticate(profile, p15card, prkf, SC_AC_OP_CRYPTO);
 	if (r < 0) {
 		sc_file_free(prkf);
 		SC_FUNC_RETURN(card->ctx, 2,SC_ERROR_NOT_SUPPORTED);

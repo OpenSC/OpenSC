@@ -59,18 +59,19 @@ static u8 process_acl_entry(sc_file_t *in, unsigned int method, unsigned int in_
 	}
 }
 
-static int entersafe_erase_card(struct sc_profile *profile, sc_card_t *card)
+static int entersafe_erase_card(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 {
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 
-	if (sc_select_file(card, sc_get_mf_path(), NULL) < 0)
+	if (sc_select_file(p15card->card, sc_get_mf_path(), NULL) < 0)
 		return SC_SUCCESS;
 
-	return sc_card_ctl(card,SC_CARDCTL_ERASE_CARD,0);
+	return sc_card_ctl(p15card->card,SC_CARDCTL_ERASE_CARD,0);
 }
 
-static int entersafe_init_card(sc_profile_t *profile, sc_card_t *card)
+static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
+	struct sc_card *card = p15card->card;
 	int ret;
 
 	{/* MF */
@@ -142,9 +143,10 @@ static int entersafe_init_card(sc_profile_t *profile, sc_card_t *card)
 
 }
 
-static int entersafe_create_dir(sc_profile_t *profile, sc_card_t *card,
+static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								sc_file_t *df)
 {
+	struct sc_card *card = p15card->card;
 	int             ret;
 
 	SC_FUNC_CALLED(card->ctx, 1);
@@ -243,23 +245,24 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx,4,ret);
 }
 
-static int entersafe_pin_reference(sc_profile_t *profile, sc_card_t *card,
+static int entersafe_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								   sc_pkcs15_pin_info_t *pin_info)
 {
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 
 	if (pin_info->reference < ENTERSAFE_USER_PIN_ID)
 		 pin_info->reference = ENTERSAFE_USER_PIN_ID;
 	if(pin_info->reference>ENTERSAFE_USER_PIN_ID)
 		 return SC_ERROR_TOO_MANY_OBJECTS;
-	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
+	SC_FUNC_RETURN(p15card->card->ctx,4,SC_SUCCESS);
 }
 
-static int entersafe_create_pin(sc_profile_t *profile, sc_card_t *card,
+static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								sc_file_t *df, sc_pkcs15_object_t *pin_obj,
 								const unsigned char *pin, size_t pin_len,
 								const unsigned char *puk, size_t puk_len)
 {
+	struct sc_card *card = p15card->card;
 	int	r;
 	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
 
@@ -305,28 +308,29 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx,4,r);
 }
 
-static int entersafe_key_reference(sc_profile_t *profile, sc_card_t *card,
+static int entersafe_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								   sc_pkcs15_prkey_info_t *prkey)
 {
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	if (prkey->key_reference < ENTERSAFE_MIN_KEY_ID)
 		prkey->key_reference = ENTERSAFE_MIN_KEY_ID;
 	if (prkey->key_reference > ENTERSAFE_MAX_KEY_ID)
 		return SC_ERROR_TOO_MANY_OBJECTS;
-	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
+	SC_FUNC_RETURN(p15card->card->ctx,4,SC_SUCCESS);
 }
 
-static int entersafe_create_key(sc_profile_t *profile, sc_card_t *card,
+static int entersafe_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								sc_pkcs15_object_t *obj)
 {
-	SC_FUNC_CALLED(card->ctx, 1);
-	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_RETURN(p15card->card->ctx,4,SC_SUCCESS);
 }
 
-static int entersafe_store_key(sc_profile_t *profile, sc_card_t *card,
+static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 							   sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_card_t *card = p15card->card;
 	sc_entersafe_wkey_data data;
 	sc_file_t              *tfile;
 	const sc_acl_entry_t   *acl_entry;
@@ -343,7 +347,7 @@ static int entersafe_store_key(sc_profile_t *profile, sc_card_t *card,
 		 return r;
 	acl_entry = sc_file_get_acl_entry(tfile, SC_AC_OP_UPDATE);
 	if (acl_entry->method  != SC_AC_NONE) {
-		 r = sc_pkcs15init_authenticate(profile, card, tfile, SC_AC_OP_UPDATE);
+		 r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_UPDATE);
 		 if(r<0)
 			  r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
@@ -356,12 +360,13 @@ static int entersafe_store_key(sc_profile_t *profile, sc_card_t *card,
 	return sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
 }
 
-static int entersafe_generate_key(sc_profile_t *profile, sc_card_t *card,
+static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								  sc_pkcs15_object_t *obj, sc_pkcs15_pubkey_t *pubkey)
 {
 	int r;
 	sc_entersafe_gen_key_data	gendat;
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_card_t *card = p15card->card;
 	sc_file_t              *tfile;
 	const sc_acl_entry_t   *acl_entry;
 
@@ -375,7 +380,7 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_card_t *card,
 		 return r;
 	acl_entry = sc_file_get_acl_entry(tfile, SC_AC_OP_UPDATE);
 	if (acl_entry->method  != SC_AC_NONE) {
-		 r = sc_pkcs15init_authenticate(profile, card, tfile, SC_AC_OP_UPDATE);
+		 r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_UPDATE);
 		 if(r<0)
 			  r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
