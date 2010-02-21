@@ -512,7 +512,7 @@ int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, sc_pkcs15_obje
 	struct sc_context *ctx = p15card->card->ctx;
 	sc_pkcs15_object_t *pin_obj;
 	sc_pkcs15_pin_info_t *pin_info;
-	int r, i;
+	int r;
 
 	SC_FUNC_CALLED(ctx, 2);
 
