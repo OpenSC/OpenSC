@@ -511,7 +511,6 @@ int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, sc_pkcs15_obje
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	sc_pkcs15_object_t *pin_obj;
-	sc_pkcs15_pin_info_t *pin_info;
 	int r;
 
 	SC_FUNC_CALLED(ctx, 2);
@@ -542,7 +541,8 @@ int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, sc_pkcs15_obje
 	 * 	before or after (successeful ?) PIN verifying ? */
 	pin_obj->usage_counter++;
 
-	r = sc_pkcs15_verify_pin(p15card, pin_info, pin_obj->content.value, pin_obj->content.len);
+	r = sc_pkcs15_verify_pin(p15card, (struct sc_pkcs15_pin_info *)pin_obj->data, 
+			pin_obj->content.value, pin_obj->content.len);
 	if (r != SC_SUCCESS) {
 		sc_debug(ctx, "Verify PIN error %i", r);
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;

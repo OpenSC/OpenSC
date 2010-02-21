@@ -1164,7 +1164,6 @@ int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *p15card,
 				struct sc_pkcs15_object **out)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_pin_info pinfo;
 	struct sc_pkcs15_object *auth_objs[0x10];
 	int r, nn_objs, ii;
 
