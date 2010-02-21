@@ -7,18 +7,7 @@ SUBDIRS = nonpersistent
 endif
 DIST_SUBDIRS = nonpersistent
 
-dist_noinst_DATA = $(srcdir)/tools/*.xml \
-	$(srcdir)/api/*.xml \
-	$(srcdir)/api/apps/*.xml \
-	$(srcdir)/api/asn1/*.xml \
-	$(srcdir)/api/card/*.xml \
-	$(srcdir)/api/file/*.xml \
-	$(srcdir)/api/init/*.xml \
-	$(srcdir)/api/misc/*.xml \
-	$(srcdir)/api/types/*.xml \
-	$(srcdir)/api/util/*.xml \
-	$(srcdir)/api/api.css \
-	$(srcdir)/api/*.xsl
+dist_noinst_DATA = $(srcdir)/tools/*.xml
 
 if ENABLE_DOC
 dist_html_DATA = html.out/*
@@ -29,10 +18,9 @@ dist_doc_DATA = README
 
 if ENABLE_MAN
 if WIN32
-dist_noinst_DATA += man.out/*.1 man.out/*.3 man.out/*.5
+dist_noinst_DATA += man.out/*.1 man.out/*.5
 else
 dist_man1_MANS = man.out/*.1
-dist_man3_MANS = man.out/*.3
 dist_man5_MANS = man.out/*.5
 endif
 endif
@@ -45,7 +33,6 @@ html.out: api.work
 	test -n "$(XSLTPROC)"
 	-rm -fr html.tmp html.out
 	$(MKDIR_P) html.tmp
-	$(XSLTPROC) --nonet --path "$(srcdir)/api" --xinclude -o "html.tmp/api.html" "api.work/html.xsl" "$(srcdir)/api/api.xml"
 	$(XSLTPROC) --nonet --path "$(srcdir)/api" --xinclude -o "html.tmp/tools.html" "api.work/html.xsl" "$(srcdir)/tools/tools.xml"
 	mv html.tmp html.out
 
@@ -54,11 +41,10 @@ man.out: api.work
 	test -n "$(XSLTPROC)"
 	-rm -fr man.tmp man.out
 	$(MKDIR_P) man.tmp
-	$(XSLTPROC) --nonet --path "$(srcdir)/api" --xinclude -o "man.tmp/" "api.work/man.xsl" "$(srcdir)/api/api.xml"
 	$(XSLTPROC) --nonet --path "$(srcdir)/api" --xinclude -o "man.tmp/" "api.work/man.xsl" "$(srcdir)/tools/tools.xml"
 	mv man.tmp man.out
 
-man.out/*.3 man.out/*.5:	man.out/*.1
+man.out/*.5:	man.out/*.1
 
 #
 # This part is needed as found no
@@ -78,7 +64,7 @@ else
 
 html.out/*:
 man.out/*.1:
-man.out/*.3 man.out/*.5:	man.out/*.1
+man.out/*.5:	man.out/*.1
 
 endif
 else
@@ -87,7 +73,7 @@ html.out/*:	$(abs_builddir)/html.out
 $(abs_builddir)/html.out:
 	$(LN_S) "$(srcdir)/html.out" html.out
 
-man.out/*.3 man.out/*.5 man.out/*.1:	$(abs_builddir)/man.out
+man.out/*.5 man.out/*.1:	$(abs_builddir)/man.out
 $(abs_builddir)/man.out:
 	$(LN_S) "$(srcdir)/man.out" man.out
 
@@ -104,4 +90,3 @@ distclean-local:
 	if test -L man.out; then \
 		rm -rf man.out; \
 	fi
-
