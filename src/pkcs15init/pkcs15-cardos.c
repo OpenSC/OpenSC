@@ -315,7 +315,6 @@ cardos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_prkey_info *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-	struct sc_pkcs15_pin_info pin_info;
 	struct sc_pkcs15_prkey_rsa key_obj;
 	struct sc_cardctl_cardos_genkey_info args;
 	struct sc_file	*temp;

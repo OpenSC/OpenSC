@@ -119,7 +119,7 @@ static int
 gpk_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 {
 	struct sc_file	*pinfile;
-	int		r, locked, i;
+	int		r, locked;
 
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	if (sc_card_ctl(p15card->card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0 
@@ -466,7 +466,6 @@ gpk_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_object_t *obj, struct sc_pkcs15_prkey *key)
 {
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-	sc_card_t *card = p15card->card;
 	struct sc_file	*keyfile = NULL;
 	struct pkdata	data;
 	int		r;
@@ -512,7 +511,6 @@ gpk_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	struct sc_cardctl_gpk_genkey args;
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-	sc_card_t *card = p15card->card;
 	unsigned int    keybits;
 	sc_file_t	*keyfile;
 	int             r, n;

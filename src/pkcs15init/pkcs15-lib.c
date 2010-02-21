@@ -872,7 +872,6 @@ sc_pkcs15init_create_pin(struct sc_pkcs15_card *p15card,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_pin_info *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
-	struct sc_card	*card = p15card->card;
 	struct sc_file	*df = profile->df_info->file;
 	int		r, retry = 0;
 	int 		pin_type = SC_PKCS15INIT_USER_PIN;
@@ -3175,7 +3174,6 @@ sc_pkcs15init_create_file(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	r = sc_create_file(p15card->card, file);
 	SC_TEST_RET(ctx, r, "Create file failed");
 
-out:	
 	if (parent)
 		sc_file_free(parent);
 	SC_FUNC_RETURN(ctx, 3, r);
@@ -3315,7 +3313,6 @@ sc_pkcs15init_fixup_file(struct sc_profile *profile,
 		struct sc_pkcs15_card *p15card, struct sc_file *file)
 {
 	struct sc_context	*ctx = profile->card->ctx;
-	struct sc_pkcs15_pin_info pin_info;
 	struct sc_acl_entry	so_acl, user_acl;
 	unsigned int	op, needfix = 0;
 	int		rv, pin_ref;

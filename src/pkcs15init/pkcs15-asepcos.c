@@ -67,8 +67,6 @@ static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_pkcs15_card_t *p1
 	r = sc_select_file(p15card->card, &path, NULL);
 	if (r == SC_SUCCESS) {
 		/* try to verify the transport key */
-		u8     pbuf[64];
-		size_t psize = sizeof(pbuf);
 		sc_file_t *tfile = NULL;
 		struct sc_pkcs15_pin_info pin_info;
 		struct sc_pkcs15_object *pin_obj = NULL, *auth_obj;
