@@ -205,7 +205,7 @@ const struct option	options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 static const char *		option_help[] = {
-	"Erase the smart card (can be used with --create-pkcs15)",
+	"Erase the smart card",
 	"Creates a new PKCS #15 structure",
 	"Store a new PIN/PUK on the card",
 	"Generate a new key and store it on the card",
