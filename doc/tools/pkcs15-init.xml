@@ -71,13 +71,12 @@
 			<para>
 				<command>pkcs15-init --create-pkcs15</command></para>
 			<para>
-				You will then be asked for several the security officer PIN and PUK. Simply
+				You will then be asked for the security officer PIN and PUK. Simply
 				pressing return at the SO PIN prompt will skip installation of an SO PIN.
 			</para>
 			<para>
-				If the card supports it, you can also request that the card is erased prior
-				to creating the PKCS #15 structure, by specifying the <option>--erase-card</option>
-				option.
+				If the card supports it, you should erase the contents of the card with
+				<command>pkcs15-init --erase-card</command> before creating the PKCS#15 structure.	
 			</para>
 		</refsect2>
 
@@ -315,7 +314,7 @@
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--store-public-key</option> <emphasis>filename</emphasis>
+					<term><option>--store-public-key</option> <emphasis>filename</emphasis></term>
 					<listitem>
 						<para>
 							Tells <command>pkcs15-init</command> to download the specified
