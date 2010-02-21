@@ -61,7 +61,6 @@
 #include <opensc/cardctl.h>
 #include <opensc/pkcs15.h>
 #include <opensc/pkcs15-init.h>
-#include <opensc/keycache.h>
 #include <opensc/log.h>
 #include <opensc/cards.h>
 #include <compat_getpass.h>
@@ -99,7 +98,6 @@ static int	do_finalize_card(sc_card_t *, struct sc_profile *);
 static int	do_read_data_object(const char *name, u8 **out, size_t *outlen);
 static int	do_store_data_object(struct sc_profile *profile);
 
-static void	set_secrets(struct sc_profile *);
 static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
 static void	init_gost_params(struct sc_pkcs15init_keyarg_gost_params *, EVP_PKEY *);
 static int	get_pin_callback(struct sc_profile *profile,
@@ -118,8 +116,6 @@ static int	do_read_certificate(const char *, const char *, X509 **);
 static void	parse_commandline(int argc, char **argv);
 static void	read_options_file(const char *);
 static void	ossl_print_errors(void);
-static void	set_userpin_ref(void);
-
 
 enum {
 	OPT_OPTIONS = 0x100,
@@ -443,8 +439,6 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	set_secrets(profile);
-
 	for (n = 0; n < ACTION_MAX; n++) {
 		unsigned int	action = n;
 
@@ -616,9 +610,17 @@ static int
 do_erase(sc_card_t *in_card, struct sc_profile *profile)
 {
 	int	r;
+	struct sc_pkcs15_card *p15card;
+
+	p15card = sc_pkcs15_card_new();
+	p15card->card = in_card;
+	p15card->label = strdup("Dummy PKCS#15 object");
+
 	ignore_cmdline_pins++;
-	r = sc_pkcs15init_erase_card(in_card, profile);
+	r = sc_pkcs15init_erase_card(p15card, profile);
 	ignore_cmdline_pins--;
+
+	sc_pkcs15_card_free(p15card);
 	return r;
 }
 
@@ -1084,17 +1086,17 @@ do_update_certificate(struct sc_profile *profile)
 	sc_pkcs15_der_t newcert_raw;
 	int r;
 
-	set_userpin_ref();
-
 	if (opt_objectid == NULL) {
 		util_error("no ID given for the cert: use --id");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+
 	sc_pkcs15_format_id(opt_objectid, &id);
-    if (sc_pkcs15_find_cert_by_id(p15card, &id, &obj) != 0) {
-    	util_error("Couldn't find the cert with ID %s\n", opt_objectid);
-    	return SC_ERROR_OBJECT_NOT_FOUND;
-    }
+
+	if (sc_pkcs15_find_cert_by_id(p15card, &id, &obj) != 0) {
+		util_error("Couldn't find the cert with ID %s\n", opt_objectid);
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	}
 
 	certinfo = (sc_pkcs15_cert_info_t *) obj->data;
 	r = sc_pkcs15_read_certificate(p15card, certinfo, &oldcert);
@@ -1299,8 +1301,6 @@ do_delete_objects(struct sc_profile *profile, unsigned int myopt_delete_flags)
 {
 	int r = 0, count = 0;
 
-	set_userpin_ref();
-
 	if (myopt_delete_flags & SC_PKCS15INIT_TYPE_DATA) {
 		struct sc_object_id app_oid;
 		sc_pkcs15_object_t *obj;
@@ -1386,9 +1386,7 @@ do_change_attributes(struct sc_profile *profile, unsigned int myopt_type)
 	if (opt_label != NULL) {
 		strlcpy(obj->label, opt_label, sizeof(obj->label));
 	}
-
-	set_userpin_ref();
-
+	
 	r = sc_pkcs15init_update_any_df(p15card, profile, obj->df, 0);
 
 	return r;
@@ -1598,22 +1596,6 @@ parse_err:
 	util_fatal("Cannot parse secret \"%s\"\n", arg);
 }
 
-static void set_secrets(struct sc_profile *profile)
-{
-	unsigned int	n;
-
-	for (n = 0; n < opt_secret_count; n++) {
-		struct secret	*secret = &opt_secrets[n];
-
-		if (secret->reference < 0)
-			continue;
-		sc_pkcs15init_set_secret(profile,
-				secret->type,
-				secret->reference,
-				secret->key,
-				secret->len);
-	}
-}
 
 /*
  * Prompt for a new PIN
@@ -1675,19 +1657,47 @@ get_pin_callback(struct sc_profile *profile,
 	name = namebuf;
 
 	if (!ignore_cmdline_pins) {
-		switch (id) {
-		case SC_PKCS15INIT_USER_PIN:
-			name = "User PIN";
-			secret = opt_pins[OPT_PIN1 & 3]; break;
-		case SC_PKCS15INIT_USER_PUK:
-			name = "User PIN unlock key";
-			secret = opt_pins[OPT_PUK1 & 3]; break;
-		case SC_PKCS15INIT_SO_PIN:
-			name = "Security officer PIN";
-			secret = opt_pins[OPT_PIN2 & 3]; break;
-		case SC_PKCS15INIT_SO_PUK:
-			name = "Security officer PIN unlock key";
-			secret = opt_pins[OPT_PUK2 & 3]; break;
+		if (info->auth_method == SC_AC_SYMBOLIC)   {
+			switch (id) {
+			case SC_PKCS15INIT_USER_PIN:
+				name = "User PIN";
+				secret = opt_pins[OPT_PIN1 & 3]; 
+				break;
+			case SC_PKCS15INIT_USER_PUK:
+				name = "User PIN unlock key";
+				secret = opt_pins[OPT_PUK1 & 3]; 
+				break;
+			case SC_PKCS15INIT_SO_PIN:
+				name = "Security officer PIN";
+				secret = opt_pins[OPT_PIN2 & 3]; 
+				break;
+			case SC_PKCS15INIT_SO_PUK:
+				name = "Security officer PIN unlock key";
+				secret = opt_pins[OPT_PUK2 & 3]; 
+				break;
+			}
+		}
+		else if (info->auth_method == SC_AC_CHV)   {
+			if (!(info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+					&& !(info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
+				name = "User PIN";
+				secret = opt_pins[OPT_PIN1 & 3];
+			}
+			else if (!(info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+					&& (info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
+				name = "User PUK";
+				secret = opt_pins[OPT_PUK1 & 3];
+			}
+			else if ((info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+					&& !(info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
+				name = "Security officer PIN";
+				secret = opt_pins[OPT_PIN2 & 3];
+			}
+			else if ((info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+					&& (info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
+				name = "Security officer PIN unlock key";
+				secret = opt_pins[OPT_PUK2 & 3];
+			}
 		}
 		if (secret)
 			len = strlen(secret);
@@ -2406,26 +2416,6 @@ parse_objects(const char *list, unsigned int action)
 	}
 
 	return res;
-}
-
-/* If the user PIN and it's ID is given, put the pin ref in the keycache */
-static void set_userpin_ref(void)
-{
-	int r;
-
-	if ((opt_pins[0] != NULL) && (opt_authid != 0)) {
-		sc_path_t path;
-		sc_pkcs15_id_t auth_id;
-		sc_pkcs15_object_t *pinobj;
-		sc_pkcs15_pin_info_t *pin_info;
-		sc_format_path("3F00", &path);
-		sc_pkcs15_format_id(opt_authid, &auth_id);
-		r = sc_pkcs15_find_pin_by_auth_id(p15card, &auth_id, &pinobj);
-		if (r < 0)
-			util_fatal("Searching for user PIN %d failed: %s\n", opt_authid, sc_strerror(r));
-		pin_info = (sc_pkcs15_pin_info_t *) pinobj->data;
-		sc_keycache_set_pin_name(&path, pin_info->reference, SC_PKCS15INIT_USER_PIN);
-	}
 }
 
 /*

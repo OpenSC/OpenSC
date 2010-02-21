@@ -121,8 +121,9 @@ gpk_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 	struct sc_file	*pinfile;
 	int		r, locked, i;
 
-	if (sc_card_ctl(p15card->card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0
-	 && locked) {
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	if (sc_card_ctl(p15card->card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0 
+			&& locked) {
 		sc_debug(p15card->card->ctx,
 			"This card is already personalized, unable to "
 			"create PKCS#15 structure.");
@@ -147,11 +148,13 @@ gpk_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 		if (r < 0)
 			return r;
 
+		/* TODO: What for it was used ?
 		for (i = 0; i < GPK_MAX_PINS; i++)
-			sc_keycache_put_pin(&df->path, GPK_PIN_SCOPE|i, (const u8 *) "        ");
+		*	sc_keycache_put_pin(&df->path, GPK_PIN_SCOPE|i, (const u8 *) "        ");
+		*/
 	}
 
-	return r;
+	SC_FUNC_RETURN(p15card->card->ctx, 1, r);
 }
 
 /*
@@ -163,6 +166,7 @@ gpk_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	int	preferred, current;
 
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	if ((current = pin_info->reference) < 0)
 		current = 0;
 
@@ -182,7 +186,7 @@ gpk_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (current > preferred)
 		return SC_ERROR_TOO_MANY_OBJECTS;
 	pin_info->reference = preferred;
-	return 0;
+	SC_FUNC_RETURN(p15card->card->ctx, 1, 0);
 }
 
 /*
@@ -198,6 +202,7 @@ gpk_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
 	u8	nulpin[8];
 	int	r, type;
 
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		type = SC_PKCS15INIT_SO_PIN;
 
@@ -230,6 +235,7 @@ gpk_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
 	}
 
 	r = sc_select_file(p15card->card, &df->path, NULL);
+	sc_debug(p15card->card->ctx, "select df path: %i", r);
 	if (r < 0)
 		return r;
 
@@ -239,6 +245,7 @@ gpk_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
 			pin_info->reference,
 			nulpin, sizeof(nulpin),
 			pin, pin_len, NULL);
+	sc_debug(p15card->card->ctx, "change  CHV %i", r);
 	if (r < 0)
 		return r;
 
@@ -247,14 +254,11 @@ gpk_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
 			pin_info->reference + 1,
 			nulpin, sizeof(nulpin),
 			puk, puk_len, NULL);
+	sc_debug(p15card->card->ctx, "change  CHV+1 %i", r);
 	if (r < 0)
 		return r;
 
-	sc_keycache_set_pin_name(&df->path,
-			pin_info->reference,
-			type);
-
-	return r;
+	SC_FUNC_RETURN(p15card->card->ctx, 1, r);
 }
 
 
@@ -282,6 +286,7 @@ gpk_lock_pinfile(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
 	struct sc_file	*parent = NULL;
 	int		r;
 
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	/* Select the parent DF */
 	path = pinfile->path;
 	if (path.len >= 2)
@@ -297,7 +302,7 @@ gpk_lock_pinfile(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
 		r = gpk_lock(p15card->card, pinfile, SC_AC_OP_WRITE);
 
 	sc_file_free(parent);
-	return r;
+	SC_FUNC_RETURN(p15card->card->ctx, 1, r);
 }
 
 /*
@@ -314,6 +319,7 @@ gpk_init_pinfile(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
 	unsigned int	npins, i, j, cks;
 	int		r;
 
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	/* Set defaults */
 	so_attempts[0] = sc_profile_get_pin_retries(profile, SC_PKCS15INIT_SO_PIN);
 	so_attempts[1] = sc_profile_get_pin_retries(profile, SC_PKCS15INIT_SO_PUK);
@@ -337,10 +343,12 @@ gpk_init_pinfile(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
 	if (pinfile->size == 0)
 		pinfile->size = GPK_MAX_PINS * 8;
 
+	sc_debug(p15card->card->ctx, "Now create file");
 	/* Now create the file */
 	if ((r = sc_pkcs15init_create_file(profile, p15card, pinfile)) < 0
-	 || (r = sc_select_file(p15card->card, &pinfile->path, NULL)) < 0)
+	 || (r = sc_select_file(p15card->card, &pinfile->path, NULL)) < 0)   {
 		goto out;
+	}
 
 	/* Set up the PIN file contents.
 	 * We assume the file will contain pairs of PINs/PUKs */
@@ -373,7 +381,7 @@ gpk_init_pinfile(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
 		r = gpk_lock_pinfile(profile, p15card, pinfile);
 
 out:	sc_file_free(pinfile);
-	return r;
+	SC_FUNC_RETURN(p15card->card->ctx, 1, r);
 }
 
 /*
@@ -458,6 +466,7 @@ gpk_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_object_t *obj, struct sc_pkcs15_prkey *key)
 {
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_card_t *card = p15card->card;
 	struct sc_file	*keyfile = NULL;
 	struct pkdata	data;
 	int		r;
@@ -503,6 +512,7 @@ gpk_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	struct sc_cardctl_gpk_genkey args;
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_card_t *card = p15card->card;
 	unsigned int    keybits;
 	sc_file_t	*keyfile;
 	int             r, n;
@@ -531,7 +541,7 @@ gpk_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		return r;
 	}
 
-	if ((r = gpk_pkfile_init_private(card, keyfile, 5 * ((3 + keybits / 16 + 7) & ~7UL))) < 0) {
+	if ((r = gpk_pkfile_init_private(p15card->card, keyfile, 5 * ((3 + keybits / 16 + 7) & ~7UL))) < 0) {
 		sc_file_free(keyfile);
 		return r;
 	}
@@ -581,8 +591,8 @@ gpk_pkfile_create(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *f
 	}
 
 	if (r >= 0)
-		r = sc_pkcs15init_authenticate(profile, p15card,
-					file, SC_AC_OP_UPDATE);
+		r = sc_pkcs15init_authenticate(profile, p15card, file, 
+				SC_AC_OP_UPDATE);
 	if (found)
 		sc_file_free(found);
 

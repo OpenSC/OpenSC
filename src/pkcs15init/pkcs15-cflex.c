@@ -28,7 +28,6 @@
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
 #include "pkcs15-init.h"
-#include "keycache.h"
 #include "profile.h"
 
 static void	invert_buf(u8 *dest, const u8 *src, size_t c);
@@ -564,16 +563,12 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	r = sc_pkcs15init_update_file(profile, p15card, file, buffer, 23);
 	if (r >= 0)   {
-#if 1
-		sc_keycache_put_key(df_path, SC_AC_CHV, ref, pin, pin_len);
-#else
 		/* TODO: To be tested.
 		 * Normally, it's not needed. 
 		 * If no PIN value in cache, get_pin callback will supply it.
 		 *
 		 * sc_keycache_put_key(df_path, SC_AC_CHV, ref, pin, pin_len);
 		 */
-#endif
 	}
 
 	if (r < 0 || file_ret == NULL) {

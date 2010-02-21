@@ -740,7 +740,8 @@ static int starcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	tkey.key_header[1] = (STARCOS_MAX_PR_KEYSIZE >> 8) & 0xff;
 	tkey.key_header[2] = STARCOS_MAX_PR_KEYSIZE & 0xff;
 
-	pin_id = sc_keycache_find_named_pin(&kinfo->path, SC_PKCS15INIT_USER_PIN);
+	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, &kinfo->path,
+			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
 	if (pin_id < 0)
 		state = STARCOS_AC_ALWAYS;
 	else {

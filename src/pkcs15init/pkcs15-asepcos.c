@@ -90,9 +90,6 @@ static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_pkcs15_card_t *p1
 		}
 
 		/* store the transport key as a PIN */
-#if 1
-		r = sc_keycache_get_key(&path, SC_AC_AUT, 0, pbuf, psize);
-#else
 		r = sc_pkcs15_find_pin_by_type_and_reference(p15card, NULL, SC_AC_AUT, 0, &auth_obj);
 		SC_TEST_RET(ctx, r, "No AUTH PIN object found");
 		               
@@ -114,18 +111,28 @@ static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_pkcs15_card_t *p1
 		/* Put key value in cache */
 		r = sc_pkcs15_verify_pin(p15card, &pin_info, auth_obj->content.value, auth_obj->content.len);
 		SC_TEST_RET(ctx, r, "Cannot verify transport PIN");
-#endif
 
-		r = sc_keycache_get_key(&path, SC_AC_AUT, 0, pbuf, psize);
-		if (r < 0) {
-			sc_debug(ctx, "unable to get transport key");
-			return r;
-		}
-		r = sc_keycache_put_key(&path, SC_AC_CHV, 0, pbuf, (size_t)r);
-		if (r != SC_SUCCESS) {
-			sc_debug(ctx, "unable to store transport key");
-			return r;
-		}
+		r = sc_pkcs15_find_pin_by_type_and_reference(p15card, NULL, SC_AC_AUT, 0, &auth_obj);
+		SC_TEST_RET(ctx, r, "No AUTH PIN object found");
+		               
+		if (!auth_obj->content.value || !auth_obj->content.len)
+			SC_TEST_RET(ctx,SC_ERROR_INCORRECT_PARAMETERS , "No AUTH PIN value in cache");
+
+		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_info);
+		pin_info.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
+		pin_info.flags |=  SC_PKCS15_PIN_FLAG_SO_PIN;
+		pin_info.reference = 0;
+
+		pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN, "ASECARD transport PIN", NULL, &pin_info);
+		if (!pin_obj)
+			SC_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate AUTH object");
+
+		r = sc_pkcs15_add_object(p15card, pin_obj);
+		SC_TEST_RET(ctx, r, "Cannot add ASECARD transport PIN");
+
+		/* Put key value in cache */
+		r = sc_pkcs15_verify_pin(p15card, &pin_info, auth_obj->content.value, auth_obj->content.len);
+		SC_TEST_RET(ctx, r, "Cannot verify transport PIN");
 	}
 	return SC_SUCCESS;
 }
@@ -372,13 +379,6 @@ static int have_onepin(sc_profile_t *profile)
                 return 0;
 }
 
-static void asepcos_fix_pin_reference(sc_pkcs15_pin_info_t *pinfo)
-{
-	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-		sc_keycache_set_pin_name(&pinfo->path, pinfo->reference, SC_PKCS15INIT_SO_PIN);
-	else
-		sc_keycache_set_pin_name(&pinfo->path, pinfo->reference, SC_PKCS15INIT_USER_PIN);
-}
 
 /* create PIN and, if specified, PUK files
  * @param  profile  profile information for this card
@@ -471,12 +471,6 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		 * the application DF. 
 		 */
 		sc_debug(card->ctx, "finalizing application DF");
-
-		/* first we need to fix the reference to pin in the key
-		 * keycache as sc_pkcs15init_fixup_file() will otherwise
-		 * mess up the ACLs */
-		asepcos_fix_pin_reference(pinfo);
-
 		r = sc_select_file(card, &df->path, NULL);
 		if (r != SC_SUCCESS)
 			SC_FUNC_RETURN(ctx, 3, r);
@@ -630,12 +624,9 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		/* the key is proctected by a PIN */
 		/* XXX use the pkcs15 structures for this */
 		sc_cardctl_asepcos_akn2fileid_t st;
-#if 1
-		st.akn = sc_keycache_find_named_pin(NULL, SC_PKCS15INIT_USER_PIN);	
-#else
+        
 		st.akn = sc_pkcs15init_get_pin_reference(p15card, profile, NULL,
 			                        SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
-#endif
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_ASEPCOS_AKN2FILEID, &st);
 		if (r != SC_SUCCESS) {
 			sc_debug(p15card->card->ctx, "unable to determine file id of the PIN");

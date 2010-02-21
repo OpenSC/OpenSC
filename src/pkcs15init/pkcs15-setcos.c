@@ -28,7 +28,6 @@
 #include <opensc/cardctl.h>
 #include <opensc/log.h>
 #include "pkcs15-init.h"
-#include "keycache.h"
 #include "profile.h"
 
 #define SETCOS_MAX_PINS   7
@@ -72,17 +71,10 @@ setcos_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
  */
 static int setcos_erase_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
-	sc_pkcs15_pin_info_t pin_info;
 	sc_path_t path;
 	int r;
 
 	/* Just delete the entire MF */
-
-	/* The SO pin has pin reference 1 -- not that it matters much
-	 * because pkcs15-init will ask to enter all pins, even if we
-	 * did a --so-pin on the command line. */
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_info);
-	sc_keycache_set_pin_name(NULL, pin_info.reference, SC_PKCS15INIT_SO_PIN);
 
 	/* Select parent DF and verify PINs/key as necessary */
 	r = sc_pkcs15init_authenticate(profile, p15card, profile->mf_info->file, SC_AC_OP_DELETE);
@@ -96,7 +88,6 @@ static int setcos_erase_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 		return r;
 
 	sc_free_apps(p15card->card);
-	sc_keycache_forget_key(NULL, -1, -1);
 	return 0;
 }
 

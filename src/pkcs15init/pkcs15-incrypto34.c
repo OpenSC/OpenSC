@@ -611,7 +611,8 @@ incrypto34_put_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int	r, key_id, pin_id;
 
 	key_id = key_info->key_reference;
-	pin_id = sc_keycache_find_named_pin(&key_info->path, SC_PKCS15INIT_USER_PIN);
+	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, &key_info->path,
+			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
 	if (pin_id < 0)
 		pin_id = 0;
 
