@@ -12,7 +12,7 @@ openscinclude_HEADERS = \
 	errors.h types.h compression.h
 noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
 	internal-winscard.h p15card-helper.h
-pkgconfig_DATA = libopensc.pc libpkcs15init.pc libscconf.pc
+pkgconfig_DATA = libopensc.pc
 
 AM_CPPFLAGS = -DOPENSC_CONF_PATH=\"$(sysconfdir)/opensc.conf\"
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
