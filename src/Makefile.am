@@ -3,4 +3,4 @@ EXTRA_DIST = Makefile.mak
 
 # Order IS important
 SUBDIRS = common include scconf pkcs15init libopensc pkcs11 \
-	tools tests openssh cardmod
+	tools tests cardmod

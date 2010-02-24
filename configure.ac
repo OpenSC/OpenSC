@@ -719,7 +719,6 @@ AC_CONFIG_FILES([
 	src/libopensc/Makefile
 	src/libopensc/opensc-config
 	src/libopensc/libopensc.pc
-	src/openssh/Makefile
 	src/pkcs11/Makefile
 	src/pkcs15init/Makefile
 	src/scconf/Makefile
