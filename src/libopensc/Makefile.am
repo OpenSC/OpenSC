@@ -4,7 +4,6 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
 EXTRA_DIST = Makefile.mak 
 
-bin_SCRIPTS = opensc-config
 lib_LTLIBRARIES = libopensc.la
 openscinclude_HEADERS = \
 	opensc.h pkcs15.h \

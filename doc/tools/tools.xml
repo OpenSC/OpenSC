@@ -8,7 +8,6 @@
 		<referenceinfo>
 			<title>OpenSC</title>
 		</referenceinfo>
-		<xi:include href="opensc-config.xml"/>
 		<xi:include href="opensc-tool.xml"/>
 		<xi:include href="opensc-explorer.xml"/>
 		<xi:include href="pkcs11-tool.xml"/>

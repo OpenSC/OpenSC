@@ -717,7 +717,6 @@ AC_CONFIG_FILES([
 	src/include/winconfig.h
 	src/include/opensc/Makefile
 	src/libopensc/Makefile
-	src/libopensc/opensc-config
 	src/libopensc/libopensc.pc
 	src/pkcs11/Makefile
 	src/pkcs15init/Makefile
