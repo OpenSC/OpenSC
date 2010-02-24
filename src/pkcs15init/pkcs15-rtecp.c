@@ -86,7 +86,7 @@ static int create_sysdf(sc_profile_t *profile, sc_card_t *card, const char *name
  */
 static int rtecp_init(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
-	struct sc_card *card;
+	sc_card_t *card;
 	sc_file_t *file;
 	int r;
 
@@ -166,6 +166,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		const unsigned char *pin, size_t pin_len,
 		const unsigned char *puk, size_t puk_len)
 {
+	sc_context_t *ctx;
 	sc_pkcs15_pin_info_t *pin_info;
 	sc_file_t *file;
 	/*                        GCHV min-length Flags Attempts  Reserve */
@@ -179,10 +180,11 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			|| !pin_obj || !pin_obj->data || !pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	ctx = p15card->card->ctx;
+	SC_FUNC_CALLED(ctx, 1);
 	if (puk_len != 0)
 	{
-		sc_debug(p15card->card->ctx, "Do not enter User unblocking PIN (PUK): %s\n",
+		sc_debug(ctx, "Do not enter User unblocking PIN (PUK): %s\n",
 				sc_strerror(SC_ERROR_NOT_SUPPORTED));
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -190,13 +192,13 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (pin_info->reference != RTECP_SO_PIN_REF
 			&& pin_info->reference != RTECP_USER_PIN_REF)
 	{
-		sc_debug(p15card->card->ctx, "PIN reference %i not found in standard"
+		sc_debug(ctx, "PIN reference %i not found in standard"
 				" (Rutoken ECP) PINs\n", pin_info->reference);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	file = sc_file_new();
 	if (!file)
-		SC_FUNC_RETURN(p15card->card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 	file->id = pin_info->reference;
 	file->size = pin_len;
 	assert(sizeof(sec)/sizeof(sec[0]) > 2);
@@ -216,9 +218,9 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_free(file);
 
 	if (r == SC_SUCCESS)
-		r = sc_change_reference_data(p15card->card, SC_AC_CHV, pin_info->reference,
-				NULL, 0, pin, pin_len, NULL);
-	SC_FUNC_RETURN(p15card->card->ctx, 1, r);
+		r = sc_change_reference_data(p15card->card, SC_AC_CHV,
+				pin_info->reference, NULL, 0, pin, pin_len, NULL);
+	SC_FUNC_RETURN(ctx, 1, r);
 }
 
 /*
@@ -253,6 +255,7 @@ static int rtecp_select_key_reference(sc_profile_t *profile,
 static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_object_t *obj)
 {
+	sc_context_t *ctx;
 	/*                              RSA_PRkey/ for Miller-
 	 *                              RSA_PUBkey  Rabin test    Attempts Reserve */
 	const unsigned char prkey_prop[]  = { 0x23,       0x1F, 0,    0xFF, 0, 0 };
@@ -269,10 +272,12 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *file;
 	int r;
 
-	if (!profile || !p15card || !p15card->card || !p15card->card->ctx || !obj || !obj->data)
+	if (!profile || !p15card || !p15card->card || !p15card->card->ctx
+			|| !obj || !obj->data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	ctx = p15card->card->ctx;
+	SC_FUNC_CALLED(ctx, 1);
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA
 			&& obj->type != SC_PKCS15_TYPE_PRKEY_GOSTR3410)
 		return SC_ERROR_NOT_SUPPORTED;
@@ -288,8 +293,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 				&& key_info->modulus_length
 				!= SC_PKCS15_GOSTR3410_KEYSIZE))
 	{
-		sc_debug(p15card->card->ctx, "Unsupported key size %u\n",
-				key_info->modulus_length);
+		sc_debug(ctx, "Unsupported key size %u\n", key_info->modulus_length);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
@@ -307,17 +311,17 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 	r = sc_profile_get_file(profile, "PKCS15-AppDF", &file);
-	SC_TEST_RET(p15card->card->ctx, r, "Get PKCS15-AppDF info failed");
+	SC_TEST_RET(ctx, r, "Get PKCS15-AppDF info failed");
 	r = sc_file_add_acl_entry(file, SC_AC_OP_CREATE, SC_AC_CHV, auth_id);
 	if (r == SC_SUCCESS)
 		r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_CREATE);
 	assert(file);
 	sc_file_free(file);
-	SC_TEST_RET(p15card->card->ctx, r, "Authenticate failed");
+	SC_TEST_RET(ctx, r, "Authenticate failed");
 
 	file = sc_file_new();
 	if (!file)
-		SC_FUNC_RETURN(p15card->card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 	file->id = key_info->key_reference;
 	r = sc_file_set_type_attr(file, (const u8*)"\x10\x00", 2);
 	/* private key file */
@@ -365,7 +369,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		r = sc_create_file(p15card->card, file);
 	assert(file);
 	sc_file_free(file);
-	SC_FUNC_RETURN(p15card->card->ctx, 1, r);
+	SC_FUNC_RETURN(ctx, 1, r);
 }
 
 /*
@@ -374,18 +378,21 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
+	sc_card_t *card;
 	sc_pkcs15_prkey_info_t *key_info;
-	sc_card_t *card = p15card->card;
 	sc_file_t *pukey_df;
 	sc_path_t path;
 	unsigned char *buf;
 	size_t buf_len, key_len, len, i;
 	int r;
 
-	if (!profile || !card || !card->ctx || !obj || !obj->data || !key)
+	if (!profile || !p15card || !p15card->card || !p15card->card->ctx
+			|| !obj || !obj->data || !key)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
+	card = p15card->card;
 	SC_FUNC_CALLED(card->ctx, 1);
+
 	if ((obj->type != SC_PKCS15_TYPE_PRKEY_RSA || key->algorithm != SC_ALGORITHM_RSA)
 			&& (obj->type != SC_PKCS15_TYPE_PRKEY_GOSTR3410
 				|| key->algorithm != SC_ALGORITHM_GOSTR3410))
@@ -505,15 +512,17 @@ end:
 static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_object_t *obj, sc_pkcs15_pubkey_t *pubkey)
 {
+	sc_context_t *ctx;
 	sc_pkcs15_prkey_info_t *key_info;
-	sc_card_t *card = p15card->card;
 	sc_rtecp_genkey_data_t data;
 	int r;
 
-	if (!profile || !card || !card->ctx || !obj || !obj->data || !pubkey)
+	if (!profile || !p15card || !p15card->card || !p15card->card->ctx
+			|| !obj || !obj->data || !pubkey)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	ctx = p15card->card->ctx;
+	SC_FUNC_CALLED(ctx, 1);
 	switch (obj->type)
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
@@ -541,7 +550,7 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		{
 			free(data.u.rsa.modulus);
 			free(data.u.rsa.exponent);
-			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+			SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 		}
 		break;
 	case SC_ALGORITHM_GOSTR3410:
@@ -551,13 +560,13 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		if (!data.u.gostr3410.xy)
 		{
 			free(data.u.gostr3410.xy);
-			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+			SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
 		}
 		break;
 	default:
 		assert(0);
 	}
-	r = sc_card_ctl(card, SC_CARDCTL_RTECP_GENERATE_KEY, &data);
+	r = sc_card_ctl(p15card->card, SC_CARDCTL_RTECP_GENERATE_KEY, &data);
 	if (r == SC_SUCCESS)
 	{
 		assert(pubkey);
@@ -576,7 +585,7 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			break;
 		}
 	}
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(ctx, 1, r);
 }
 
 /*
