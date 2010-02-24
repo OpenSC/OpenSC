@@ -1160,7 +1160,8 @@ int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *p15card,
 }
 
 int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *p15card,
-				const sc_path_t *path, unsigned auth_method, int reference,
+				const sc_path_t *path, 
+				int auth_method, int reference,
 				struct sc_pkcs15_object **out)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -1868,24 +1869,29 @@ void sc_pkcs15_free_object_content(struct sc_pkcs15_object *obj)
 int sc_pkcs15_allocate_object_content(struct sc_pkcs15_object *obj,
 		const unsigned char *value, size_t len)
 {
+	unsigned char *tmp_buf;
+
 	if (!obj)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (obj->content.value == value && obj->content.len >= len)   {
-		obj->content.len = len;
+	if (!value || !len)   {
+		sc_pkcs15_free_object_content(obj);
 		return SC_SUCCESS;
 	}
 
-	sc_pkcs15_free_object_content(obj);
-	
-	if (value && len)   {
-		obj->content.value = (unsigned char *)sc_mem_alloc_secure(len);
-		if (!obj->content.value)
-			return SC_ERROR_OUT_OF_MEMORY;
+	/* Need to pass by temporary variable,
+	 * because 'value' and 'content.value' pointers can be the sames.
+	 */
+	tmp_buf = (unsigned char *)sc_mem_alloc_secure(len);
+	if (!tmp_buf)
+		return SC_ERROR_OUT_OF_MEMORY;
 
-		memcpy(obj->content.value, value, len);
-		obj->content.len = len;
-	}
+	memcpy(tmp_buf, value, len);
+
+	sc_pkcs15_free_object_content(obj);
+
+	obj->content.value = tmp_buf;
+	obj->content.len = len;
+
 	return SC_SUCCESS;
 }
-
