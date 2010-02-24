@@ -316,6 +316,8 @@ int sc_pkcs15emu_add_pin_obj(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_pin_info_t pin = *in_pin;
 
 	pin.magic = SC_PKCS15_PIN_MAGIC;
+	if(!pin.auth_method) /* or SC_AC_NONE */
+		pin.auth_method = SC_AC_CHV;
 
 	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_AUTH_PIN, obj, &pin);
 }
