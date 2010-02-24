@@ -829,6 +829,7 @@ int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	if (p15card->dll_handle)
 		lt_dlclose(p15card->dll_handle);
+	sc_pkcs15_pincache_clear(p15card);
 	sc_pkcs15_card_free(p15card);
 	return 0;
 }
