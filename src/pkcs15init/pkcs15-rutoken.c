@@ -163,7 +163,7 @@ static int
 rutoken_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, 
 		sc_file_t *df)
 {
-	if (!profile || !p15card || !p15card->card || p15card->card->ctx || !df)
+	if (!profile || !p15card || !p15card->card || !p15card->card->ctx || !df)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	return sc_pkcs15init_create_file(profile, p15card, df);
@@ -212,7 +212,7 @@ rutoken_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	size_t i;
 
 	(void)puk; /* no warning */
-	if (!profile || !p15card || p15card->card || p15card->card->ctx
+	if (!profile || !p15card || !p15card->card || !p15card->card->ctx
 			|| !df || !pin_obj || !pin_obj->data || !pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
