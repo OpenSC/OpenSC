@@ -672,6 +672,9 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_object *object;
 	int rv;
 
+	/* FIXME #47: C_SignRecover is not implemented */
+	return CKR_FUNCTION_NOT_SUPPORTED;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
