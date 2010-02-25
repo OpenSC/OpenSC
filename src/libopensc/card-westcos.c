@@ -41,7 +41,11 @@
 
 #define DEFAULT_TRANSPORT_KEY "6f:59:b0:ed:6e:62:46:4a:5d:25:37:68:23:a8:a2:2d"
 
-#define JAVACARD (0x01)
+#define JAVACARD             (0x01) /* westcos applet on javacard   */
+#define RSA_CRYPTO_COMPONENT (0x02) /* card component can do crypto */
+
+#define WESTCOS_RSA_NO_HASH_NO_PAD		(0x20)
+#define WESTCOS_RSA_NO_HASH_PAD_PKCS1	(0x21)
 
 #ifdef ENABLE_OPENSSL
 #define DEBUG_SSL
@@ -201,17 +205,26 @@ static int westcos_init(sc_card_t * card)
 	int r;
 	const char *default_key;
 	unsigned long exponent, flags;
-	if (card == NULL)// || card->drv_data == NULL)
+	priv_data_t *priv_data;
+
+	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 		
 	card->drv_data = malloc(sizeof(priv_data_t));
 	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(card->drv_data, 0, sizeof(card->drv_data));
+	
+	priv_data = (priv_data_t *) card->drv_data;
+
 	if (card->type & JAVACARD) {
-		priv_data_t *priv_data =
-			(priv_data_t *) card->drv_data;
 		priv_data->flags |= JAVACARD;
+	}
+	
+	/* check for crypto component */
+	if(card->atr[9] == 0xD0)
+	{
+		priv_data->flags |= RSA_CRYPTO_COMPONENT;
 	}
 	
 	card->cla = 0x00;
@@ -1030,10 +1043,12 @@ static int westcos_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }
+
 static int westcos_set_security_env(sc_card_t *card,
 				    const struct sc_security_env *env,
 				    int se_num)
 {
+	int r = 0;
 	priv_data_t *priv_data = NULL;
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1041,7 +1056,38 @@ static int westcos_set_security_env(sc_card_t *card,
 		sc_debug(card->ctx, "westcos_set_security_env\n");
 	priv_data = (priv_data_t *) card->drv_data;
 	priv_data->env = *env;
-	return 0;
+	
+	if(priv_data->flags & RSA_CRYPTO_COMPONENT)
+	{
+		sc_apdu_t apdu;
+		unsigned char mode = 0;
+		size_t buflen;
+		u8 buf[128];
+
+		if ((priv_data->env.flags) & SC_ALGORITHM_RSA_PAD_PKCS1)
+			mode = WESTCOS_RSA_NO_HASH_PAD_PKCS1;
+		else if ((priv_data->env.flags) & SC_ALGORITHM_RSA_RAW)
+			mode = WESTCOS_RSA_NO_HASH_NO_PAD;
+		else {
+			r = SC_ERROR_INVALID_ARGUMENTS;
+		}
+
+		r = sc_path_print(buf, sizeof(buf), &(env->file_ref));
+		if(r)
+			return r;
+			
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xf0, mode);
+		apdu.cla = 0x00;
+		apdu.lc = strlen(buf);
+		apdu.datalen = apdu.lc;
+		apdu.data = buf;
+		r = sc_transmit_apdu(card, &apdu);
+		if (r)
+			return (r);
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	}
+
+	return r;
 }
 
 static int westcos_restore_security_env(sc_card_t *card, int se_num)
@@ -1063,18 +1109,44 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	sc_file_t *keyfile = sc_file_new();
 	priv_data_t *priv_data = NULL;
 	int pad;
-
-#ifndef ENABLE_OPENSSL
-	r = SC_ERROR_NOT_SUPPORTED;
-#else
+#ifdef ENABLE_OPENSSL
 	RSA *rsa = NULL;
 	BIO *mem = BIO_new(BIO_s_mem());
+#endif
 
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_sign_decipher\n");
+		sc_debug(card->ctx, "westcos_sign_decipher outlen=%d\n", outlen);
 	priv_data = (priv_data_t *) card->drv_data;
+
+	if(priv_data->flags & RSA_CRYPTO_COMPONENT)
+	{
+		sc_apdu_t apdu;
+		
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x00, mode);
+		apdu.datalen = data_len;
+		apdu.data = data;
+		apdu.lc = data_len;
+		apdu.le = outlen;
+		apdu.resp = out;
+		apdu.resplen = outlen;
+		
+		r = sc_transmit_apdu(card, &apdu);
+		if (r)
+			goto out2;
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		if(r)
+			goto out2;
+		
+		/* correct */
+		r = outlen;
+		goto out2;
+	}
+	
+#ifndef ENABLE_OPENSSL
+	r = SC_ERROR_NOT_SUPPORTED;
+#else
 	if (keyfile == NULL || mem == NULL || priv_data == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
@@ -1174,6 +1246,7 @@ out:
 	if (rsa)
 		RSA_free(rsa);
 #endif /* ENABLE_OPENSSL */
+out2:
 	if (keyfile)
 		sc_file_free(keyfile);
 	return r;

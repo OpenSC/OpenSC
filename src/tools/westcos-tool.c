@@ -59,7 +59,7 @@ static int keylen = 0;
 static int no_lecteur = -1;
 
 static int new_pin = 0;
-static int debloque = 0;
+static int unlock = 0;
 
 static char *get_filename = NULL;
 static char *put_filename = NULL;
@@ -196,7 +196,7 @@ static int change_pin(sc_card_t *card,
 	return 0;
 }
 
-static int debloque_pin(sc_card_t *card, 
+static int unlock_pin(sc_card_t *card, 
 			int pin_reference, 
 			char *puk_value, 
 			char *pin_value)
@@ -250,7 +250,7 @@ static int debloque_pin(sc_card_t *card,
 				sc_strerror(r));
 		return -1;
 	}
-	printf("Code debloque.\n");
+	printf("Unlock pin.\n");
 	return 0;
 }
 
@@ -449,7 +449,7 @@ int main(int argc, char *argv[])
 
 		if(strcmp(p, "-u") == 0)
 		{
-			debloque = 1;
+			unlock = 1;
 			continue;
 		}
 
@@ -630,9 +630,9 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	if(debloque)
+	if(unlock)
 	{
-		if(debloque_pin(card, 0, puk, pin)) 
+		if(unlock_pin(card, 0, puk, pin)) 
 			printf("Error unblocking pin.\n");
 		goto out;
 	}
