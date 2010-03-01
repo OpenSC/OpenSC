@@ -11,7 +11,6 @@ all-local:
 	@$(LN_S) $(top_srcdir)/src/libopensc/opensc.h opensc.h
 	@$(LN_S) $(top_srcdir)/src/libopensc/pkcs15.h pkcs15.h
 	@$(LN_S) $(top_srcdir)/src/libopensc/types.h types.h
-	@$(LN_S) $(top_srcdir)/src/libopensc/ui.h ui.h
 	@$(LN_S) $(top_srcdir)/src/pkcs11/pkcs11.h pkcs11.h
 	@$(LN_S) $(top_srcdir)/src/pkcs11/pkcs11-opensc.h pkcs11-opensc.h
 	@$(LN_S) $(top_srcdir)/src/pkcs15init/keycache.h keycache.h
