@@ -2492,7 +2492,7 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_df *df;
 	struct sc_file	*file = NULL;
-	int		is_new = 0, r = 0;
+	int is_new = 0, r = 0, object_added = 0;
 
 	SC_FUNC_CALLED(ctx, 3);
 	sc_debug(ctx, "add object %p to DF of type %u\n", object, df_type);
@@ -2521,14 +2521,18 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 		/* Add nothing; just instantiate this directory file */
 	} else if (object->df == NULL) {
 		object->df = df;
-		r = sc_pkcs15_add_object(p15card, object); 
+		r = sc_pkcs15_add_object(p15card, object);
 		SC_TEST_RET(ctx, r, "Failed to add pkcs15 object");
+		object_added = 1;
 	} else {
 		/* Reused an existing object */
 		assert(object->df == df);
 	}
 
 	r = sc_pkcs15init_update_any_df(p15card, profile, df, is_new);
+	if (r < 0 && object_added)
+		sc_pkcs15_remove_object(p15card, object);
+
 	SC_FUNC_RETURN(ctx, 3, r);
 }
 
