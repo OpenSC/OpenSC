@@ -293,7 +293,6 @@ sc_pkcs15init_bind(sc_card_t *card, const char *name,
 
 	profile = sc_profile_new();
 	profile->card = card;
-	profile->cbs = &callbacks;
 
 	for (i = 0; profile_operations[i].name; i++) {
 		if (!strcasecmp(driver, profile_operations[i].name)) {

@@ -1023,8 +1023,6 @@ process_tmpl(struct state *cur, struct block *info,
 		return 1;
 	}
 		
-	templ->cbs = cur->profile->cbs;
-
 	tinfo = (sc_template_t *) calloc(1, sizeof(*tinfo));
 	if (tinfo == NULL) {
 		parse_error(cur, "memory allocation failed");
