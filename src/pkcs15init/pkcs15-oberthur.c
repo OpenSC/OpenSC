@@ -527,10 +527,6 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 			desc = "DSA public key";
 			_template = "template-public-key";
 			break;
-		case SC_PKCS15_TYPE_PRKEY:
-			desc = "extractable private key";
-			_template = "template-extractable-key";
-			break;
 		case SC_PKCS15_TYPE_CERT:
 			desc = "certificate";
 			_template = "template-certificate";
@@ -686,7 +682,7 @@ cosm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);
 	memcpy(pubkey->u.rsa.modulus.data, args.pubkey, args.pubkey_len);
 
-	key_info->key_reference = 1;
+	key_info->key_reference = prkf->path.value[prkf->path.len - 1] & 0xFF;
 	key_info->path = prkf->path;
 	
 	sc_debug(ctx, "cosm_generate_key() now delete temporary public key\n");
