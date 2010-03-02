@@ -1591,9 +1591,6 @@ sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,
 		if (auth_method != SC_AC_SYMBOLIC)
 			continue;
 
-		if (pin_info->flags & SC_PKCS15_PIN_FLAG_TRANSPORT_KEY)
-			continue;
-
 		/* Translate 'SYMBOLIC' PIN reference into the pkcs#15 pinAttributes.flags 
 		 * 	and check for the existing pkcs15 PIN object with these flags. */
 		switch (reference)   {

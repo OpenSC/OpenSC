@@ -135,6 +135,12 @@ static int set_sec_attr(sc_file_t *file, unsigned int am, unsigned int ac,
 	unsigned int meth)
 {
 	const amode_entry_t *table;
+
+        /* CHV with reference '0' is the trasport PIN
+	 * and is presented as 'AUT' key with reference '0'*/
+	if (meth == SC_AC_CHV && ac == 0)
+		meth = SC_AC_AUT;
+
 	if (file->type == SC_FILE_TYPE_DF)
 		table = df_amode_table;
 	else if (file->type == SC_FILE_TYPE_WORKING_EF)
@@ -999,9 +1005,9 @@ static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata,
 
 	if (tries_left)
 		*tries_left = -1;
+
 	/* only PIN verification is supported at the moment  */
-	if (pdata->pin_type != SC_AC_CHV && pdata->pin_type != SC_AC_AUT)
-		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* check PIN length */
 	if (pdata->pin1.len < 4 || pdata->pin1.len > 16) {
 		sc_debug(card->ctx, "invalid PIN1 length");
@@ -1010,6 +1016,11 @@ static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata,
 
 	switch (pdata->cmd) {
 	case SC_PIN_CMD_VERIFY:
+		if (pdata->pin_type != SC_AC_CHV && pdata->pin_type != SC_AC_AUT)
+			return SC_ERROR_INVALID_ARGUMENTS;
+		/* 'AUT' key is the transport PIN and should have reference '0' */
+		if (pdata->pin_type == SC_AC_AUT && pdata->pin_reference)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		/* build verify APDU and send it to the card */
 		r = asepcos_build_pin_apdu(card, &apdu, pdata, sbuf, sizeof(sbuf), SC_PIN_CMD_VERIFY, 0);
 		if (r != SC_SUCCESS)
@@ -1019,6 +1030,8 @@ static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata,
 			sc_debug(card->ctx, "APDU transmit failed");
 		break;
 	case SC_PIN_CMD_CHANGE:
+		if (pdata->pin_type != SC_AC_CHV)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		if (pdata->pin2.len < 4 || pdata->pin2.len > 16) {
 			sc_debug(card->ctx, "invalid PIN2 length");
 			return SC_ERROR_INVALID_PIN_LENGTH; 
@@ -1047,6 +1060,8 @@ static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata,
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		break;
 	case SC_PIN_CMD_UNBLOCK:
+		if (pdata->pin_type != SC_AC_CHV)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		if (pdata->pin2.len < 4 || pdata->pin2.len > 16) {
 			sc_debug(card->ctx, "invalid PIN2 length");
 			return SC_ERROR_INVALID_PIN_LENGTH; 
