@@ -56,6 +56,12 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 #define SC_PKCS15_PIN_FLAG_INTEGRITY_PROTECTED		0x0200
 #define SC_PKCS15_PIN_FLAG_CONFIDENTIALITY_PROTECTED	0x0400
 #define SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA		0x0800
+/* 'TRANSPORT_KEY' flag introduced for Athena pkcs15init.
+ * In the initialization procedure Athena driver uses the 'transport' SOPIN
+ * object that should be ignored when fixing up the ACLs of the file to create.
+ * FIXME: implement it without additional PIN flag
+ */
+#define SC_PKCS15_PIN_FLAG_TRANSPORT_KEY                0x1000
 
 #define SC_PKCS15_PIN_TYPE_BCD				0
 #define SC_PKCS15_PIN_TYPE_ASCII_NUMERIC		1

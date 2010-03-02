@@ -1576,12 +1576,12 @@ sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,
 	SC_TEST_RET(ctx, r, "Get PKCS#15 AUTH objects error");
 	nn_objs = r;
 
-	sc_debug(ctx, "sc_pkcs15init_get_pin_reference() nn_objs:%i; auth_method:%i; reference:%i", 
+	sc_debug(ctx, "found %i auth objects; looking for AUTH object(auth_method:%i,reference:%i)", 
 			nn_objs, auth_method, reference);
 	for (ii=0; ii<nn_objs; ii++)   {
 		struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *)auth_objs[ii]->data;
 
-		sc_debug(ctx, "sc_pkcs15init_get_pin_reference() pin:%s, auth_method:%i,type:%i,reference:%i, flags:%X", 
+		sc_debug(ctx, "check PIN(%s,auth_method:%i,type:%i,reference:%i,flags:%X)", 
 				auth_objs[ii]->label, pin_info->auth_method, pin_info->type, 
 				pin_info->reference, pin_info->flags);
 		/* Find out if there is AUTH pkcs15 object with given 'type' and 'reference' */
@@ -1591,7 +1591,9 @@ sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,
 		if (auth_method != SC_AC_SYMBOLIC)
 			continue;
 
-		sc_debug(ctx, "sc_pkcs15init_get_pin_reference() pin(%s) flags:%X", auth_objs[ii]->label, pin_info->flags);
+		if (pin_info->flags & SC_PKCS15_PIN_FLAG_TRANSPORT_KEY)
+			continue;
+
 		/* Translate 'SYMBOLIC' PIN reference into the pkcs#15 pinAttributes.flags 
 		 * 	and check for the existing pkcs15 PIN object with these flags. */
 		switch (reference)   {
@@ -1629,7 +1631,6 @@ sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,
 	/* 2. No existing pkcs15 PIN object 
 	 * 	-- check if profile defines some PIN with 'reference' as PIN reference. */
 	r = sc_profile_get_pin_id_by_reference(profile, auth_method, reference, &pinfo);
-	sc_debug(ctx, "sc_pkcs15init_get_pin_reference() pin_id by reference  rv:%i", r);
 	if (r < 0)
 		SC_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "PIN template not found");
 

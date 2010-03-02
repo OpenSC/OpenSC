@@ -82,10 +82,7 @@ static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_pkcs15_card_t *p1
 		r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_CRYPTO);
 		p15card->card->caps |=  SC_CARD_CAP_USE_FCI_AC;
 		sc_file_free(tfile);
-		if (r != SC_SUCCESS) {
-			sc_debug(ctx, "unable to authenticate");
-			return r;
-		}
+		SC_TEST_RET(ctx, r, "unable to authenticate for 'CRYPTO' operation");
 
 		/* store the transport key as a PIN */
 		r = sc_pkcs15_find_pin_by_type_and_reference(p15card, NULL, SC_AC_AUT, 0, &auth_obj);
@@ -96,29 +93,7 @@ static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_pkcs15_card_t *p1
 
 		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_info);
 		pin_info.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
-		pin_info.flags |=  SC_PKCS15_PIN_FLAG_SO_PIN;
-		pin_info.reference = 0;
-
-		pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN, "ASECARD transport PIN", NULL, &pin_info);
-		if (!pin_obj)
-			SC_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate AUTH object");
-
-		r = sc_pkcs15_add_object(p15card, pin_obj);
-		SC_TEST_RET(ctx, r, "Cannot add ASECARD transport PIN");
-
-		/* Put key value in cache */
-		r = sc_pkcs15_verify_pin(p15card, &pin_info, auth_obj->content.value, auth_obj->content.len);
-		SC_TEST_RET(ctx, r, "Cannot verify transport PIN");
-
-		r = sc_pkcs15_find_pin_by_type_and_reference(p15card, NULL, SC_AC_AUT, 0, &auth_obj);
-		SC_TEST_RET(ctx, r, "No AUTH PIN object found");
-		               
-		if (!auth_obj->content.value || !auth_obj->content.len)
-			SC_TEST_RET(ctx,SC_ERROR_INCORRECT_PARAMETERS , "No AUTH PIN value in cache");
-
-		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_info);
-		pin_info.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
-		pin_info.flags |=  SC_PKCS15_PIN_FLAG_SO_PIN;
+		pin_info.flags |=  SC_PKCS15_PIN_FLAG_SO_PIN | SC_PKCS15_PIN_FLAG_TRANSPORT_KEY;
 		pin_info.reference = 0;
 
 		pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN, "ASECARD transport PIN", NULL, &pin_info);
@@ -695,6 +670,8 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_debug(p15card->card->ctx, "unable to create private key file");
 		return r;
 	}
+	
+	kinfo->key_reference = fileid & 0xFF;
 	return r;
 }
 
@@ -854,6 +831,7 @@ static int asepcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(pubkey->u.rsa.exponent.data, sbuf, 3);
 
+	kinfo->key_reference = tpath.value[1];
 	return SC_SUCCESS;
 }
 
