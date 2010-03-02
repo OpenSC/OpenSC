@@ -5,7 +5,7 @@ EXTRA_DIST = Makefile.mak
 
 noinst_LTLIBRARIES = libpkcs15init.la
 openscinclude_HEADERS = pkcs15-init.h
-noinst_HEADERS = profile.h keycache.h
+noinst_HEADERS = profile.h
 dist_pkgdata_DATA = \
 	cyberflex.profile \
 	flex.profile \
@@ -31,7 +31,7 @@ AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS)
 INCLUDES = -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
 
 libpkcs15init_la_SOURCES = \
-	pkcs15-lib.c profile.c keycache.c \
+	pkcs15-lib.c profile.c \
 	pkcs15-westcos.c \
 	pkcs15-gpk.c pkcs15-miocos.c pkcs15-cflex.c \
 	pkcs15-cardos.c pkcs15-jcop.c pkcs15-starcos.c \
