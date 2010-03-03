@@ -2179,5 +2179,8 @@ parse_error(struct state *cur, const char *fmt, ...)
 	if ((sp = strchr(buffer, '\n')) != NULL)
 		*sp = '\0';
 
-	sc_debug(cur->profile->card->ctx, "%s: %s", cur->filename, buffer);
+	if (cur->profile->card && cur->profile->card->ctx)
+		sc_debug(cur->profile->card->ctx, "%s: %s", cur->filename, buffer);
+	else
+		fprintf(stdout, "%s: %s\n", cur->filename, buffer);
 }
