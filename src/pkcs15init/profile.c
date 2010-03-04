@@ -596,13 +596,15 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 
 #ifdef DEBUG_PROFILE
 	printf("Instantiate %s in template %s\n", file_name, template_name);
+	sc_profile_find_file_by_path(profile, base_path);
 #endif
-	for (info = profile->template_list; info; info = info->next) {
+	for (info = profile->template_list; info; info = info->next) 
 		if (!strcmp(info->name, template_name))
 			break;
-	}
-	if (info == NULL)
+	if (info == NULL)   {
+		sc_debug(card->ctx, "Template %s not found", template_name);
 		return SC_ERROR_TEMPLATE_NOT_FOUND;
+	}
 
 	tmpl = info->data;
 	idx = id->value[id->len-1];
@@ -693,7 +695,10 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 	}
 	fi->file->path = parent->file->path;
 	fi->file->id += skew;
-	if (fi->file->type != SC_FILE_TYPE_BSO && fi->file->type != SC_FILE_TYPE_DF)
+
+	if (fi->file->type == SC_FILE_TYPE_INTERNAL_EF 
+			|| fi->file->type == SC_FILE_TYPE_WORKING_EF
+			|| (fi->file->type == SC_FILE_TYPE_DF && fi->file->id))
 		sc_append_file_id(&fi->file->path, fi->file->id);
 
 	append_file(profile, fi);
@@ -739,12 +744,12 @@ sc_profile_get_pin_id_by_reference(struct sc_profile *profile,
  * Configuration file parser
  */
 static void
-init_state(struct state *cur, struct state *new_state)
+init_state(struct state *cur_state, struct state *new_state)
 {
 	memset(new_state, 0, sizeof(*new_state));
-	new_state->filename = cur->filename;
-	new_state->profile = cur->profile;
-	new_state->frame = cur;
+	new_state->filename = cur_state->filename;
+	new_state->profile = cur_state->profile;
+	new_state->frame = cur_state;
 }
 
 static int
@@ -1010,7 +1015,7 @@ process_tmpl(struct state *cur, struct block *info,
 	int r;
 
 #ifdef DEBUG_PROFILE
-	printf("Process template:\n");
+	printf("Process template:%s; block:%s\n", name, info->name);
 #endif
 	if (name == NULL) {
 		parse_error(cur, "No name given for template.");
@@ -1044,7 +1049,7 @@ process_tmpl(struct state *cur, struct block *info,
 		r = template_sanity_check(cur, templ);
 
 #ifdef DEBUG_PROFILE
-	printf("Template processed; rv %i\n", r);
+	printf("Template %s processed; returns %i\n", name, r);
 #endif
 	return r;
 }
@@ -1842,16 +1847,27 @@ sc_profile_find_file(struct sc_profile *pro,
 static struct file_info *
 sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 {
-	struct file_info *fi;
+	struct file_info *fi, *out = NULL;
 	struct sc_file	*fp;
 
+#ifdef DEBUG_PROFILE
+	sc_debug(pro->card->ctx, "profile's EF list:");
+	for (fi = pro->ef_list; fi; fi = fi->next)
+		sc_debug(pro->card->ctx, "check fi (%s:path:%s)", fi->ident, sc_print_path(&fi->file->path));
+
+	sc_debug(pro->card->ctx, "find profile file by path:%s", sc_print_path(path));
+#endif
 	for (fi = pro->ef_list; fi; fi = fi->next) {
 		fp = fi->file;
 		if (fp->path.len == path->len
 		 && !memcmp(fp->path.value, path->value, path->len))
-			return fi;
+			out = fi;
 	}
-	return NULL;
+
+#ifdef DEBUG_PROFILE
+	sc_debug(pro->card->ctx, "returns (%s)", out ? out->ident: "<null>");
+#endif
+	return out;
 }
 
 /*
