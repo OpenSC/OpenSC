@@ -26,10 +26,12 @@ filesystem {
     EF CHV1 {
     	file-id	= 0000;
 	ACL	= *=NEVER, UPDATE=CHV1;
+	size 	= 23;
     }
     EF CHV2 {
     	file-id	= 0100;
 	ACL	= *=NEVER, UPDATE=CHV2;
+	size 	= 23;
     }
 
     DF MF {
@@ -45,8 +47,8 @@ filesystem {
 	# same pin, you need to increase the size of the pin-dir.
 	DF PKCS15-AppDF {
 	    ACL		= *=$SOPIN, FILES=NONE, DELETE=NONE;
-	    size	= 7500;
-	    #size	= 10000;
+	    #size	= 7500;
+	    size	= 12000;
 
 	    # This "pin-domain" DF is a template that is
 	    # instantiated for each PIN created on the card.
@@ -61,7 +63,8 @@ filesystem {
 		    file-id	= 4B00;
 
 		    # The minimum size for a 2048 bit key is 1396
-		    size	= 1396;
+		    #size	= 1396;
+		    size	= 2792;
 		}
 	    }
 
@@ -72,6 +75,10 @@ filesystem {
 	    # When instantiating the template, each file id will be
 	    # combined with the last octet of the object's pkcs15 id
 	    # to form a unique file ID.
+            #
+            # VT: The ACLs of the public objects (certificate, public key, non-protected data) 
+            #     are set to 'NONE'. You can change it and protect operations of your choice
+            #     by $SOPIN, but not by $PIN.
 	    template key-domain {
 		# In order to support more than one key per PIN,
 		# each key must be within its own subdirectory.
@@ -94,16 +101,16 @@ filesystem {
     	            ACL		= *=NEVER, READ=$PIN, UPDATE=$PIN;
 		}
 		EF public-key {
-		    file-id	= 4400;
-		    ACL		= *=$PIN, READ=NONE;
+		    file-id	= 4800;
+		    ACL		= *=NONE;
 		}
 		EF certificate {
 		    file-id	= 4500;
-		    ACL		= *=$PIN, READ=NONE;
+		    ACL		= *=NONE;
 		}
 		EF data {
 		    file-id	= 4600;
-		    ACL		= *=$PIN, READ=NONE;
+		    ACL		= *=NONE;
 		}
 		EF privdata {
 		    file-id	= 4700;
