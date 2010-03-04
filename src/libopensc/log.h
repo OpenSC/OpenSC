@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 #include <stdarg.h>
-#include <opensc/opensc.h>
+#include "libopensc/opensc.h"
 
 #define SC_LOG_TYPE_ERROR	0
 #define SC_LOG_TYPE_VERBOSE	1

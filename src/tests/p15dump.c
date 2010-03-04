@@ -4,13 +4,13 @@
  * PKCS#15 objects test
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <opensc/opensc.h>
-#include <opensc/pkcs15.h>
+
+#include "libopensc/opensc.h"
+#include "libopensc/pkcs15.h"
 #include "sc-test.h"
 
 static struct sc_pkcs15_card *p15card;

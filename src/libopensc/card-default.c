@@ -18,8 +18,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
+#include "config.h"
+
 #include <string.h>
+
+#include "internal.h"
 
 static struct sc_card_operations default_ops;
 static struct sc_card_driver default_drv = {

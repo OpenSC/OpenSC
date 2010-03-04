@@ -17,14 +17,17 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#include "internal.h"
-#ifdef ENABLE_ZLIB
-#include "compression.h"
 
+#include "config.h"
+
+#ifdef ENABLE_ZLIB	/* empty file without zlib */
 #include <zlib.h>
 #include <string.h>
 #include <stdlib.h>
+
+#include "internal.h"
 #include "errors.h"
+#include "compression.h"
 
 static int zerr_to_opensc(int err) {
 	switch(err) {

@@ -18,14 +18,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "cardctl.h"
-#include "pkcs15.h"
-#ifdef ENABLE_OPENSSL
+#include "config.h"
+#ifdef ENABLE_OPENSSL	/* empty file without openssl */
+
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+
+#include "internal.h"
+#include "cardctl.h"
+#include "pkcs15.h"
 
 #define GPK_SEL_MF		0x00
 #define GPK_SEL_DF		0x01

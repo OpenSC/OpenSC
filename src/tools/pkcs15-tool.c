@@ -19,9 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #ifdef ENABLE_OPENSSL
 #if defined(HAVE_INTTYPES_H)
 #include <inttypes.h>
@@ -36,8 +35,10 @@ typedef unsigned __int32 uint32_t;
 #include <openssl/crypto.h>
 #endif
 #include <limits.h>
-#include <opensc/pkcs15.h>
-#include <compat_getpass.h>
+
+#include "libopensc/pkcs15.h"
+#include "libopensc/asn1.h"
+#include "common/compat_getpass.h"
 #include "util.h"
 
 static const char *app_name = "pkcs15-tool";
@@ -1670,7 +1671,6 @@ end:
 /*
  * Helper function for PEM encoding public key
  */
-#include "opensc/asn1.h"
 static const struct sc_asn1_entry	c_asn1_pem_key_items[] = {
 	{ "algorithm",	SC_ASN1_ALGORITHM_ID, SC_ASN1_CONS| SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL},
 	{ "key",	SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL },

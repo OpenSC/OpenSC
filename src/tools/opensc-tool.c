@@ -18,9 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef HAVE_UNISTD_H
@@ -30,8 +29,9 @@
 #include <errno.h>
 #include <ctype.h>
 #include <sys/stat.h>
-#include <opensc/opensc.h>
-#include <opensc/cardctl.h>
+
+#include "libopensc/opensc.h"
+#include "libopensc/cardctl.h"
 #include "util.h"
 
 static const char *app_name = "opensc-tool";

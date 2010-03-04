@@ -19,19 +19,11 @@
  */
 
  
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <opensc/opensc.h>
-#include <opensc/errors.h>
-#include <opensc/pkcs15.h>
-#include <opensc/cardctl.h>
-
 #include <openssl/opensslv.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
@@ -40,6 +32,11 @@
 #include <openssl/bio.h>
 #include <openssl/x509v3.h>
 #include <openssl/bn.h>
+
+#include "libopensc/opensc.h"
+#include "libopensc/errors.h"
+#include "libopensc/pkcs15.h"
+#include "libopensc/cardctl.h"
 
 static char *version ="0.0.6";
 

@@ -19,14 +19,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "pkcs15.h"
+#include "config.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include "internal.h"
+#include "pkcs15.h"
 
 static int select_key_file(struct sc_pkcs15_card *p15card,
 			   const struct sc_pkcs15_prkey_info *prkey,

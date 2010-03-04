@@ -17,11 +17,14 @@
 /* Initially written by David Mattes (david.mattes@boeing.com) */
 /* Portuguese eID card support by Joao Poupino (joao.poupino@ist.utl.pt) */
 
-#include "internal.h"
-#include "cardctl.h"
-#include "asn1.h"
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
+
+#include "internal.h"
+#include "asn1.h"
+#include "cardctl.h"
 
 static struct sc_card_operations gemsafe_ops;
 static struct sc_card_operations *iso_ops = NULL;

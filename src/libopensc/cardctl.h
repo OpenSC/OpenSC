@@ -21,7 +21,7 @@
 #ifndef _OPENSC_CARDCTL_H
 #define _OPENSC_CARDCTL_H
 
-#include <opensc/types.h>
+#include "libopensc/types.h"
 
 #ifdef __cplusplus
 extern "C" {

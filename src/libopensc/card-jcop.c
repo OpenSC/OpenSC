@@ -18,10 +18,13 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "cardctl.h"
+#include "config.h"
+
 #include <string.h>
 #include <stdlib.h>
+
+#include "internal.h"
+#include "cardctl.h"
 
 static struct sc_atr_table jcop_atrs[] = {
 	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:33:31:06", NULL, NULL, SC_CARD_TYPE_JCOP_GENERIC, 0, NULL },

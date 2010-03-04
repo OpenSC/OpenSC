@@ -21,9 +21,8 @@
  *  -	the "key" command should go away, it's obsolete
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -37,12 +36,13 @@
 #endif
 #include <assert.h>
 #include <stdlib.h>
-#include <opensc/scconf.h>
-#include <opensc/log.h>
-#include <opensc/pkcs15.h>
+
+#include "common/compat_strlcpy.h"
+#include "scconf/scconf.h"
+#include "libopensc/log.h"
+#include "libopensc/pkcs15.h"
 #include "pkcs15-init.h"
 #include "profile.h"
-#include <compat_strlcpy.h>
 
 #define DEF_PRKEY_RSA_ACCESS	0x1D
 #define DEF_PRKEY_DSA_ACCESS	0x12

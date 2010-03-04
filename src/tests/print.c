@@ -4,14 +4,14 @@
  * PKCS#15 PIN code test
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <opensc/opensc.h>
-#include <opensc/pkcs15.h>
+
+#include "libopensc/opensc.h"
+#include "libopensc/pkcs15.h"
 #include "sc-test.h"
 
 void sc_test_print_card(const sc_pkcs15_card_t *mycard)

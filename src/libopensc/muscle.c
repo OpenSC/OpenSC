@@ -17,10 +17,13 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#include "muscle.h"
-#include "internal.h"
+
+#include "config.h"
 
 #include <string.h>
+
+#include "internal.h"
+#include "muscle.h"
 
 #define MSC_RSA_PUBLIC		0x01
 #define MSC_RSA_PRIVATE 	0x02

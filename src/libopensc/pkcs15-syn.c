@@ -19,14 +19,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "pkcs15.h"
-#include "asn1.h"
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
 #include <ltdl.h>
+
+#include "internal.h"
+#include "asn1.h"
+#include "pkcs15.h"
 
 extern int sc_pkcs15emu_westcos_init_ex(sc_pkcs15_card_t *p15card, 
 					sc_pkcs15emu_opt_t *opts);

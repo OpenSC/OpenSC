@@ -15,7 +15,7 @@ dist_bin_SCRIPTS += cardos-info.bat
 endif
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS)
-INCLUDES = -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
+INCLUDES = -I$(top_srcdir)/src
 LIBS = $(top_builddir)/src/common/libcompat.la \
 	$(top_builddir)/src/libopensc/libopensc.la
 

@@ -23,13 +23,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
-#include "pkcs15.h"
+
+#include "internal.h"
 #include "cardctl.h"
+#include "pkcs15.h"
 
 #define MANU_ID		"piv_II "
 

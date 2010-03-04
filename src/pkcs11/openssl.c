@@ -5,10 +5,10 @@
  * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
  */
 
-#include <string.h>
-#include "sc-pkcs11.h"
+#include "config.h"
 
-#ifdef ENABLE_OPENSSL
+#ifdef ENABLE_OPENSSL		/* empty file without openssl */
+#include <string.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
@@ -21,6 +21,8 @@
 #endif /* OPENSSL_NO_EC */
 #include <openssl/asn1.h>
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
+
+#include "sc-pkcs11.h"
 
 static CK_RV	sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *);
 static CK_RV	sc_pkcs11_openssl_md_update(sc_pkcs11_operation_t *,

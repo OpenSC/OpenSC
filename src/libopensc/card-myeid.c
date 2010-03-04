@@ -18,12 +18,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "asn1.h"
-#include "types.h"
-#include "cardctl.h"
+#include "config.h"
+
 #include <string.h>
 #include <stdlib.h>
+
+#include "internal.h"
+#include "asn1.h"
+#include "cardctl.h"
+#include "types.h"
 
 #define LOAD_KEY_MODULUS 0x80
 #define LOAD_KEY_PUBLIC_EXPONENT 0x81

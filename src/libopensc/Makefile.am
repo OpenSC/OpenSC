@@ -5,19 +5,17 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak 
 
 lib_LTLIBRARIES = libopensc.la
-openscinclude_HEADERS = \
+noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
+	internal-winscard.h p15card-helper.h \
 	opensc.h pkcs15.h \
 	cardctl.h asn1.h log.h \
 	errors.h types.h compression.h
-noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
-	internal-winscard.h p15card-helper.h
-pkgconfig_DATA = libopensc.pc
 
 AM_CPPFLAGS = -DOPENSC_CONF_PATH=\"$(sysconfdir)/opensc.conf\"
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
 	$(OPTIONAL_PCSC_CFLAGS) $(OPTIONAL_ZLIB_CFLAGS) \
 	$(OPTIONAL_ICONV_CFLAGS) $(LTLIB_CFLAGS)
-INCLUDES = -I$(top_builddir)/src/include -I$(top_srcdir)/src/common
+INCLUDES = -I$(top_srcdir)/src
 
 libopensc_la_SOURCES = \
 	sc.c ctx.c log.c errors.c \

@@ -18,19 +18,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
+#include "config.h"
 
-#if ENABLE_OPENSSL
-#include "p15card-helper.h"
-#include <opensc/opensc.h>
-#include <opensc/types.h>
-#include <opensc/log.h>
-#include <opensc/pkcs15.h>
+#if ENABLE_OPENSSL	/* empty file without openssl */
 #include <string.h>
 #include <stdlib.h>
 #include <openssl/bio.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+
+#include "internal.h"
+#include "p15card-helper.h"
+#include "opensc.h"
+#include "types.h"
+#include "log.h"
+#include "pkcs15.h"
 
 int sc_pkcs15emu_initialize_objects(sc_pkcs15_card_t *p15card, p15data_items *items) {
 	sc_card_t* card = p15card->card;
@@ -344,4 +346,4 @@ int sc_pkcs15emu_initialize_all(sc_pkcs15_card_t *p15card, p15data_items* items)
 	return SC_SUCCESS;
 }
 
-#endif
+#endif	/* ENABLE_OPENSSL */

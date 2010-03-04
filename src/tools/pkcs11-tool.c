@@ -18,22 +18,20 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-#include <opensc/pkcs11.h>
-#include <opensc/pkcs11-opensc.h>
-#include <compat_getpass.h>
-#include "util.h"
+#include "config.h"
 
 #ifdef ENABLE_OPENSSL
-#include "openssl/evp.h"
-#include "openssl/x509.h"
-#include "openssl/rsa.h"
-#include "openssl/bn.h"
-#include "openssl/err.h"
+#include <openssl/evp.h>
+#include <openssl/x509.h>
+#include <openssl/rsa.h>
+#include <openssl/bn.h>
+#include <openssl/err.h>
 #endif
+
+#include "pkcs11/pkcs11.h"
+#include "pkcs11/pkcs11-opensc.h"
+#include "common/compat_getpass.h"
+#include "util.h"
 
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
 extern CK_RV C_UnloadModule(void *module);

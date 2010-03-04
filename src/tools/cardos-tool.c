@@ -21,9 +21,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef HAVE_UNISTD_H
@@ -39,7 +38,7 @@
 #include <openssl/sha.h>
 #endif
 
-#include <opensc/opensc.h>
+#include "libopensc/opensc.h"
 #include "util.h"
 
 static const char *app_name = "cardos-tool";

@@ -29,9 +29,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -58,15 +57,15 @@
 #include <openssl/ec.h>
 #endif /* OPENSSL_NO_EC */
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
-#include <opensc/cardctl.h>
-#include <opensc/pkcs15.h>
-#include <opensc/pkcs15-init.h>
-#include <opensc/log.h>
-#include <opensc/cards.h>
-#include <compat_getpass.h>
-#include "util.h"
-#include <compat_strlcpy.h>
 
+#include "common/compat_strlcpy.h"
+#include "common/compat_getpass.h"
+#include "libopensc/cardctl.h"
+#include "libopensc/pkcs15.h"
+#include "libopensc/log.h"
+#include "libopensc/cards.h"
+#include "pkcs15init/pkcs15-init.h"
+#include "util.h"
 
 #undef GET_KEY_ECHO_OFF
 

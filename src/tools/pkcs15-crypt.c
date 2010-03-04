@@ -18,9 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef HAVE_UNISTD_H
@@ -28,14 +27,15 @@
 #endif
 #include <errno.h>
 #include <string.h>
-#include <opensc/opensc.h>
-#include <opensc/pkcs15.h>
 #ifdef ENABLE_OPENSSL
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/dsa.h>
 #endif
-#include <compat_getpass.h>
+
+#include "common/compat_getpass.h"
+#include "libopensc/opensc.h"
+#include "libopensc/pkcs15.h"
 #include "util.h"
 
 static const char *app_name = "pkcs15-crypt";

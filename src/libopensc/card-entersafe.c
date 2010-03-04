@@ -16,14 +16,17 @@
 
 /* Initially written by Weitao Sun (weitao@ftsafe.com) 2008 */
 
-#include "internal.h"
-#include "asn1.h"
-#include "cardctl.h"
+#include "config.h"
+#ifdef ENABLE_OPENSSL	/* empty file without openssl */
+
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef ENABLE_OPENSSL
 #include <openssl/evp.h>
+
+#include "internal.h"
+#include "asn1.h"
+#include "cardctl.h"
 
 static struct sc_atr_table entersafe_atrs[] = {
 	{ 

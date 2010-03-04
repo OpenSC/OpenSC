@@ -29,9 +29,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -56,12 +55,13 @@
 #include <openssl/pkcs12.h>
 #endif
 #include <ltdl.h>
-#include <opensc/pkcs15.h>
+
+#include "common/compat_strlcpy.h"
+#include "libopensc/pkcs15.h"
+#include "libopensc/cardctl.h"
+#include "libopensc/log.h"
 #include "profile.h"
 #include "pkcs15-init.h"
-#include <opensc/cardctl.h>
-#include <opensc/log.h>
-#include <compat_strlcpy.h>
 
 #define OPENSC_INFO_FILEPATH		"3F0050154946"
 #define OPENSC_INFO_FILEID		0x4946

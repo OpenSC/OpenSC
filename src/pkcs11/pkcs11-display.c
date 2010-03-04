@@ -17,12 +17,12 @@
  * USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #ifdef ENABLE_OPENSSL
 #include <openssl/x509.h>
 #endif
+
 #include "pkcs11-display.h"
 
 /* Some Netscape/Mozilla-specific stuff:

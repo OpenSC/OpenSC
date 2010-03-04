@@ -1,9 +1,10 @@
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-#ifndef HAVE_GETPASS
+#include "config.h"
+
+#ifndef HAVE_GETPASS	/* empty file if getpass is available */
 #include <stdio.h>
+
 #include "compat_getpass.h"
+
 #ifdef _WIN32
 char *getpass(const char *prompt)
 {
@@ -24,4 +25,4 @@ char *getpass(const char *prompt)
 #else
 #error Need getpass implementation
 #endif
-#endif
+#endif	/* HAVE_GETPASS */

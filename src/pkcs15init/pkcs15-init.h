@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include <opensc/pkcs15.h>
+#include "libopensc/pkcs15.h"
 
 #define SC_PKCS15INIT_X509_DIGITAL_SIGNATURE     0x0080UL
 #define SC_PKCS15INIT_X509_NON_REPUDIATION       0x0040UL

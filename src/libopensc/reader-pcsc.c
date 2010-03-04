@@ -19,8 +19,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#ifdef ENABLE_PCSC
+#include "config.h"
+
+#ifdef ENABLE_PCSC	/* empty file without pcsc */
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,6 +34,7 @@
 #include <arpa/inet.h>
 #endif
 
+#include "internal.h"
 #include "internal-winscard.h"
 
 /* Some windows specific kludge */
@@ -1841,5 +1843,5 @@ struct sc_reader_driver * sc_get_cardmod_driver(void)
 
 #endif
 
-#endif   /* HAVE_PCSC */
+#endif   /* ENABLE_PCSC */
 

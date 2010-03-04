@@ -35,13 +35,15 @@
  *
  */
 
-#include "internal.h"
-#include "pkcs15.h"
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
-#include <compat_strlcpy.h>
+#include "common/compat_strlcpy.h"
+#include "internal.h"
+#include "pkcs15.h"
 
 #define IAS_CARD 0
 #define GEMSAFE_CARD 1

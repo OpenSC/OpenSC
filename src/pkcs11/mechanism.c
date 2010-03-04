@@ -4,8 +4,11 @@
  * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
  */
 
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
+
 #include "sc-pkcs11.h"
 
 /* Also used for verification data */

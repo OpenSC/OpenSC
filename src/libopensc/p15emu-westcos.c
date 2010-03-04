@@ -18,15 +18,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
+#include "config.h"
 
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "internal.h"
 #include "pkcs15.h"
 #include "cardctl.h"
-#include "compat_strlcpy.h"
+#include "common/compat_strlcpy.h"
 
 static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 {

@@ -23,18 +23,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <compat_getopt.h>
 #include <string.h>
 #include <errno.h>
-#include <opensc/opensc.h>
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
+
+#include "common/compat_getopt.h"
+#include "libopensc/opensc.h"
 
 static struct {
 	char *path;

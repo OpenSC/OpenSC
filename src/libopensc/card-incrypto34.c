@@ -21,10 +21,13 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "cardctl.h"
+#include "config.h"
+
 #include <ctype.h>
 #include <string.h>
+
+#include "internal.h"
+#include "cardctl.h"
 
 /* andreas says: hm, my card only works for small payloads */
 /* comment by okir: one of the examples in the developer guide

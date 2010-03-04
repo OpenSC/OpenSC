@@ -19,7 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
+#include "config.h"
+
 #include <stdarg.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -38,6 +39,8 @@
 #ifdef HAVE_PTHREAD
 #include <pthread.h>
 #endif
+
+#include "internal.h"
 
 /* Although not used, we need this for consistent exports */
 void _sc_debug(sc_context_t *ctx, const char *format, ...)

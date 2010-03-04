@@ -21,7 +21,7 @@
 #ifndef P15CARD_HELPER_H
 #define P15CARD_HELPER_H
 
-#include <opensc/pkcs15.h>
+#include "libopensc/pkcs15.h"
 
 
 #define USAGE_NONREP	SC_PKCS15_PRKEY_USAGE_NONREPUDIATION | \

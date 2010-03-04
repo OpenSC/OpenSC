@@ -36,10 +36,10 @@
 extern "C" {
 #endif
 
-#include <opensc/simclist.h>
-#include <opensc/scconf.h>
-#include <opensc/errors.h>
-#include <opensc/types.h>
+#include "common/simclist.h"
+#include "scconf/scconf.h"
+#include "libopensc/errors.h"
+#include "libopensc/types.h"
 
 /* Different APDU cases */
 #define SC_APDU_CASE_NONE		0x00

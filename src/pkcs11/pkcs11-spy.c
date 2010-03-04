@@ -16,19 +16,20 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307,
  * USA
  */
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+
+#include "config.h"
+
 #include <stdlib.h>
 #include <stdio.h>
-#define CRYPTOKI_EXPORTS
-#include "pkcs11-display.h"
 
 #ifdef _WIN32
 #include <windows.h>
 #include <winreg.h>
 #include <limits.h>
 #endif
+
+#define CRYPTOKI_EXPORTS
+#include "pkcs11-display.h"
 
 #define __PASTE(x,y)      x##y
 

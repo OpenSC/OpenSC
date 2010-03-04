@@ -1,9 +1,8 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,8 +15,9 @@
 #include <unistd.h>
 #endif
 #include <sys/stat.h>
-#include <compat_getopt.h>
-#include <opensc/opensc.h>
+
+#include "common/compat_getopt.h"
+#include "libopensc/opensc.h"
 
 #ifdef __cplusplus
 extern "C" {

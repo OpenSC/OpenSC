@@ -23,21 +23,22 @@
 #define _SC_INTERNAL_H
 
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+#include "config.h"
 #endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "opensc.h"
-#include "simclist.h"
-#include "log.h"
-#include "cards.h"
 #include <assert.h>
 #ifdef _WIN32
 #include <windows.h>
 #endif
+
+#include "common/simclist.h"
+#include "libopensc/opensc.h"
+#include "libopensc/log.h"
+#include "libopensc/cards.h"
 
 #define SC_FILE_MAGIC			0x14426950
 #define SC_CARD_MAGIC			0x27182818

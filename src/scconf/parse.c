@@ -19,9 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,9 +28,10 @@
 #include <strings.h>
 #endif
 #include <errno.h>
+
+#include "common/compat_strlcpy.h"
 #include "scconf.h"
 #include "internal.h"
-#include <compat_strlcpy.h>
 
 #define STATE_NAME	0x01
 #define STATE_VALUE	0x02

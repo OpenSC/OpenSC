@@ -23,11 +23,9 @@
  * best view with tabstop=4
  */
 
-#include "internal.h"
-#include "cardctl.h"
-#include "pkcs15.h"
+#include "config.h"
 
-#ifdef ENABLE_OPENSSL
+#ifdef ENABLE_OPENSSL	/* empty file without openssl */
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -35,6 +33,10 @@
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/opensslv.h>
+
+#include "internal.h"
+#include "cardctl.h"
+#include "pkcs15.h"
 
 #define OBERTHUR_PIN_LOCAL	0x80
 #define OBERTHUR_PIN_REFERENCE_USER	0x81

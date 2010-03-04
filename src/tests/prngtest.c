@@ -4,9 +4,8 @@
  * Pseudo-random number generator test program
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef HAVE_UNISTD_H
@@ -15,7 +14,8 @@
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
-#include <opensc/opensc.h>
+
+#include "libopensc/opensc.h"
 #include "sc-test.h"
 
 int main(int argc, char *argv[])

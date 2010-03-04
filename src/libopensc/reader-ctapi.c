@@ -18,13 +18,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
+#include "config.h"
+
 #ifdef ENABLE_CTAPI
-#include "ctbcs.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ltdl.h>
+
+#include "internal.h"
+#include "ctbcs.h"
 
 #define GET_PRIV_DATA(r) ((struct ctapi_private_data *) (r)->drv_data)
 

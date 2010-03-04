@@ -4,18 +4,18 @@
  * PKCS#15 PIN code test
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <opensc/opensc.h>
-#include <opensc/pkcs15.h>
-#include <compat_getpass.h>
+
+#include "libopensc/opensc.h"
+#include "libopensc/pkcs15.h"
+#include "common/compat_getpass.h"
 #include "sc-test.h"
 
 static struct sc_pkcs15_card *p15card;

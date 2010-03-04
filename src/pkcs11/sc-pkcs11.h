@@ -21,19 +21,19 @@
 #ifndef __sc_pkcs11_h__
 #define __sc_pkcs11_h__
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #ifdef HAVE_MALLOC_H
 #include <malloc.h>
 #endif
-#include <opensc/opensc.h>
-#include <opensc/pkcs15.h>
-#include <opensc/log.h>
+
+#include "libopensc/opensc.h"
+#include "libopensc/pkcs15.h"
+#include "libopensc/log.h"
 
 #define CRYPTOKI_EXPORTS
-#include <pkcs11.h>
-#include <pkcs11-opensc.h>
+#include "pkcs11.h"
+#include "pkcs11-opensc.h"
 #include "pkcs11-display.h"
 
 #ifdef __cplusplus

@@ -4,8 +4,7 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak
 
 noinst_LTLIBRARIES = libpkcs15init.la
-openscinclude_HEADERS = pkcs15-init.h
-noinst_HEADERS = profile.h
+noinst_HEADERS = profile.h pkcs15-init.h
 dist_pkgdata_DATA = \
 	cyberflex.profile \
 	flex.profile \
@@ -28,7 +27,7 @@ dist_pkgdata_DATA = \
 
 AM_CPPFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS)
-INCLUDES = -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
+INCLUDES = -I$(top_srcdir)/src
 
 libpkcs15init_la_SOURCES = \
 	pkcs15-lib.c profile.c \

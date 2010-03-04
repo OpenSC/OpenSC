@@ -5,14 +5,14 @@
  * Copyright (C) 2002  Olaf Kirch <okir@lst.de>
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-#include "sc-pkcs11.h"
+#include "config.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <ltdl.h>
+
+#include "sc-pkcs11.h"
 
 #define MAGIC			0xd00bed00
 

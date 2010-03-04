@@ -16,10 +16,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
+#include "config.h"
+
 #include <ctype.h>
 #include <string.h>
 
+#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
 

@@ -18,13 +18,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include "internal.h"
 
 int sc_decipher(sc_card_t *card,
 		const u8 * crgram, size_t crgram_len, u8 * out, size_t outlen)

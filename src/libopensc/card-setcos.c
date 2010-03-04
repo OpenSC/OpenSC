@@ -20,12 +20,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "cardctl.h"
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
 
-#include <opensc/asn1.h>
+#include "internal.h"
+#include "asn1.h"
+#include "cardctl.h"
 
 static struct sc_atr_table setcos_atrs[] = {
 	/* some Nokia branded SC */

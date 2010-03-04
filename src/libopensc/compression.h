@@ -20,8 +20,8 @@
 #ifndef COMPRESSION_H
 #define COMPRESSION_H
 
-#include "opensc.h"
-#include "types.h"
+#include "libopensc/opensc.h"
+#include "libopensc/types.h"
 
 #define COMPRESSION_AUTO	0
 #define COMPRESSION_ZLIB	1

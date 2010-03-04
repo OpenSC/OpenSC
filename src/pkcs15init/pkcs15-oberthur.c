@@ -20,29 +20,23 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <ctype.h>
-
-#ifdef ENABLE_OPENSSL
-#include <openssl/sha.h>
-#endif
-
-#include <opensc/opensc.h>
-#include <opensc/cardctl.h>
-#include <opensc/log.h>
-#include "pkcs15-init.h"
-#include "profile.h"
+#include "config.h"
 
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <ctype.h>
+#ifdef ENABLE_OPENSSL
+#include <openssl/sha.h>
+#endif
+
+#include "libopensc/opensc.h"
+#include "libopensc/cardctl.h"
+#include "libopensc/log.h"
+#include "pkcs15-init.h"
+#include "profile.h"
 
 #define COSM_TITLE "OberthurAWP"
 

@@ -22,11 +22,14 @@
  * Thanks to Andre Cruz, Jorge Ferreira and Paulo F. Andrade
  */
 
-#include "internal.h"
-#include "cardctl.h"
-#include "asn1.h"
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
+
+#include "internal.h"
+#include "asn1.h"
+#include "cardctl.h"
 
 /* Portugal eID uses 1024 bit keys */
 #define PTEID_RSA_KEYSIZE 128

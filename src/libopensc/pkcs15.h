@@ -25,7 +25,7 @@
 extern "C" {
 #endif
 
-#include <opensc/opensc.h>
+#include "libopensc/opensc.h"
 
 #define SC_PKCS15_CACHE_DIR		".eid"
 

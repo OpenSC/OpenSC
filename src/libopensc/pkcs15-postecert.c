@@ -20,13 +20,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include <opensc/pkcs15.h>
-#include <opensc/log.h>
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <compat_strlcpy.h>
+
+#include "common/compat_strlcpy.h"
+#include "internal.h"
+#include "pkcs15.h"
+#include "log.h"
 
 int sc_pkcs15emu_postecert_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 

@@ -18,7 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +32,8 @@
 #ifdef _WIN32
 #include <winreg.h>
 #endif
+
+#include "internal.h"
 
 int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 {

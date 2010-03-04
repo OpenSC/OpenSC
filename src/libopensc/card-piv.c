@@ -22,9 +22,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
+#include "config.h"
 
-#ifdef ENABLE_OPENSSL
+#ifdef ENABLE_OPENSSL	/* empty file without openssl */
 
 #include <ctype.h>
 #include <string.h>
@@ -33,6 +33,8 @@
 #include <openssl/bio.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+
+#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
 #ifdef ENABLE_ZLIB
@@ -1955,4 +1957,4 @@ struct sc_card_driver * sc_get_piv_driver(void)
 }
 #endif
 
-#endif
+#endif		/* ENABLE_OPENSSL */

@@ -18,18 +18,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
 
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-
-#include <opensc/opensc.h>
-#include <opensc/cardctl.h>
-#include "pkcs15-init.h"
-#include "profile.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
@@ -39,6 +32,11 @@
 #include <openssl/err.h>
 #include <openssl/bio.h>
 #endif
+
+#include "libopensc/opensc.h"
+#include "libopensc/cardctl.h"
+#include "pkcs15-init.h"
+#include "profile.h"
 
 extern int sc_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2);
 

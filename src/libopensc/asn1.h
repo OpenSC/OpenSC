@@ -25,8 +25,8 @@
 extern "C" {
 #endif
 
-#include <opensc/opensc.h>
-#include <opensc/pkcs15.h>
+#include "libopensc/opensc.h"
+#include "libopensc/pkcs15.h"
 
 struct sc_asn1_entry {
 	const char *name;

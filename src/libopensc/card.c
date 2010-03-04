@@ -18,14 +18,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "asn1.h"
+#include "config.h"
+
 #include <assert.h>
 #include <stdlib.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 #include <string.h>
+
+#include "internal.h"
+#include "asn1.h"
 
 int sc_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {

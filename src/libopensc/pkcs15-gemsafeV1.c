@@ -16,11 +16,14 @@
 
 /* Initially written by David Mattes (david.mattes@boeing.com) */
 
-#include "internal.h"
-#include "pkcs15.h"
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+#include "internal.h"
+#include "pkcs15.h"
 
 #define MANU_ID			"Gemplus"
 #define APPLET_NAME		"GemSAFE V1"

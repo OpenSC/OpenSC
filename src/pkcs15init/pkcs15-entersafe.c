@@ -15,17 +15,17 @@
  */
 /* Initially written by Weitao Sun (weitao@ftsafe.com) 2008*/
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
-#include <opensc/log.h>
-#include <opensc/opensc.h>
-#include <opensc/cardctl.h>
+
+#include "libopensc/log.h"
+#include "libopensc/opensc.h"
+#include "libopensc/cardctl.h"
 #include "pkcs15-init.h"
 #include "profile.h"
 

@@ -18,9 +18,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "sc-pkcs11.h"
 
 CK_RV get_session(CK_SESSION_HANDLE hSession, struct sc_pkcs11_session **session)

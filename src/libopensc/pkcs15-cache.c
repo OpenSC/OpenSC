@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "pkcs15.h"
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +30,9 @@
 #include <limits.h>
 #include <errno.h>
 #include <assert.h>
+
+#include "internal.h"
+#include "pkcs15.h"
 
 static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 				   const sc_path_t *path,

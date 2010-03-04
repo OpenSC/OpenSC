@@ -18,11 +18,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "ctbcs.h"
+#include "config.h"
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "internal.h"
+#include "ctbcs.h"
 
 static void
 ctbcs_init_apdu(sc_apdu_t *apdu, int cse, int ins, int p1, int p2)

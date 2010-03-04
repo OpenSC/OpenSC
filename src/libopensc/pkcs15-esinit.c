@@ -15,14 +15,15 @@
  */
 /* Initially written by Weitao Sun (weitao@ftsafe.com) 2008*/
 
-#include "internal.h"
-#include "pkcs15.h"
-#include "cardctl.h"
+#include "config.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
+#include "internal.h"
+#include "pkcs15.h"
+#include "cardctl.h"
 
 #define MANU_ID		"entersafe"
 

@@ -1,10 +1,10 @@
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
+
 #include "util.h"
 
 int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,

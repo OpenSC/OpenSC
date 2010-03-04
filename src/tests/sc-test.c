@@ -4,14 +4,14 @@
  * Common functions for test programs
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <compat_getopt.h>
-#include <opensc/opensc.h>
+
+#include "common/compat_getopt.h"
+#include "libopensc/opensc.h"
 #include "sc-test.h"
 
 sc_context_t *ctx;

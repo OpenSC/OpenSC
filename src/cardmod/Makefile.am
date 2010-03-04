@@ -12,9 +12,7 @@ else
 dist_noinst_DATA = cardmod.inf cardmod-westcos.reg
 endif
 
-INCLUDES = -I$(top_builddir)/src/include \
-	-I$(top_srcdir)/src/common \
-	-I$(top_srcdir)/src/libopensc
+INCLUDES = -I$(top_srcdir)/src
 
 opensc_cardmod@LIBRARY_BITNESS@_la_SOURCES = cardmod.c cardmod.exports \
 	$(top_builddir)/win32/versioninfo.rc

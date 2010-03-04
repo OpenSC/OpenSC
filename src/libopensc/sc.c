@@ -18,23 +18,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
 
-#ifdef ENABLE_OPENSSL
-#include <openssl/crypto.h>     /* for OPENSSL_cleanse */
-#endif
-
-#ifdef HAVE_SYS_MMAN_H
-#include <sys/mman.h>
-#endif
-#include "internal.h"
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#ifdef HAVE_SYS_MMAN_H
+#include <sys/mman.h>
+#endif
+#ifdef ENABLE_OPENSSL
+#include <openssl/crypto.h>     /* for OPENSSL_cleanse */
+#endif
+
+#include "internal.h"
 
 #ifdef PACKAGE_VERSION
 static const char *sc_version = PACKAGE_VERSION;

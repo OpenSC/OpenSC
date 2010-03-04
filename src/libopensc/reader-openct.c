@@ -4,8 +4,9 @@
  * Copyright (C) 2003  Olaf Kirch <okir@suse.de>
  */
 
-#include "internal.h"
-#ifdef ENABLE_OPENCT
+#include "config.h"
+
+#ifdef ENABLE_OPENCT	/* empty file without openct */
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,8 @@
 #include <openct/openct.h>
 #include <openct/logging.h>
 #include <openct/error.h>
+
+#include "internal.h"
 
 /* function declarations */
 static int openct_reader_init(sc_context_t *ctx, void **priv_data);

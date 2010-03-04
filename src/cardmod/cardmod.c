@@ -27,20 +27,17 @@
 #pragma managed(push, off)
 #endif
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
+#include <log.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <windows.h>
 #include <cardmod.h>
 
-#include <opensc/opensc.h>
-#include <opensc/pkcs15.h>
-
-#include <log.h>
-
-#include <stdio.h>
-#include <stdlib.h>
+#include "libopensc/opensc.h"
+#include "libopensc/pkcs15.h"
 
 #define NULLSTR(a) (a == NULL ? "<NULL>" : a)
 #define NULLWSTR(a) (a == NULL ? L"<NULL>" : a)

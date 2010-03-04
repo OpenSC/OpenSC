@@ -23,7 +23,7 @@
 
 #include <stdlib.h>
 
-#include <opensc/types.h>
+#include "libopensc/types.h"
 
 typedef struct msc_id {
 	u8 id[4];

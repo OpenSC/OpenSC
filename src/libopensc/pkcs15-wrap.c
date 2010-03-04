@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
-#include "pkcs15.h"
+#include "config.h"
+
 #ifdef ENABLE_OPENSSL
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -36,7 +36,9 @@
  * Everything seems to work fine however if the openssl one is included
  * first.
  */
+#include "internal.h"
 #include "asn1.h"
+#include "pkcs15.h"
 
 
 #ifndef ENABLE_OPENSSL

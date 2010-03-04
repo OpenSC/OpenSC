@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include <opensc/pkcs15.h>
+#include "libopensc/pkcs15.h"
 
 #ifndef SC_PKCS15_PROFILE_SUFFIX
 #define SC_PKCS15_PROFILE_SUFFIX	"profile"

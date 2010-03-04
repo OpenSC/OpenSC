@@ -5,12 +5,11 @@ DISTCLEANFILES = lex-parse.c
 EXTRA_DIST = Makefile.mak
 
 dist_noinst_DATA = README.scconf lex-parse.l
-openscinclude_HEADERS = scconf.h
-noinst_HEADERS = internal.h
+noinst_HEADERS = internal.h scconf.h
 noinst_PROGRAMS = test-conf
 noinst_LTLIBRARIES = libscconf.la
 
-INCLUDES = -I$(top_srcdir)/src/common
+INCLUDES = -I$(top_srcdir)/src
 
 libscconf_la_SOURCES = scconf.c parse.c write.c sclex.c 
 

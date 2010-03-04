@@ -18,22 +18,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <stdio.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
 #include <stdlib.h>
-#include <compat_getopt.h>
 #include <string.h>
-#include <opensc/opensc.h>
-#include <opensc/asn1.h>
-#include "util.h"
 
-#include "../libopensc/cards.h"
-#include "../libopensc/esteid.h"
+#include "common/compat_getopt.h"
+#include "libopensc/opensc.h"
+#include "libopensc/asn1.h"
+#include "libopensc/cards.h"
+#include "libopensc/esteid.h"
+#include "util.h"
 
 static char *opt_reader = NULL;
 static int stats = 0;

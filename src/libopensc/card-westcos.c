@@ -18,13 +18,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "internal.h"
+#include "config.h"
+
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "cardctl.h"
+
+#include "internal.h"
 #include "asn1.h"
+#include "cardctl.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/des.h>

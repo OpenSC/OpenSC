@@ -652,13 +652,9 @@ AC_DEFINE_UNQUOTED([OPENSC_VERSION_MINOR], [${OPENSC_VERSION_MINOR}], [OpenSC ve
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_FIX], [${OPENSC_VERSION_FIX}], [OpenSC version fix component])
 AC_DEFINE_UNQUOTED([OPENSC_FEATURES], ["${OPENSC_FEATURES}"], [Enabled OpenSC features])
 
-openscincludedir="\$(includedir)/opensc"
 pkcs11dir="\$(libdir)/pkcs11"
-pkgconfigdir="\$(libdir)/pkgconfig"
 
-AC_SUBST([openscincludedir])
 AC_SUBST([pkcs11dir])
-AC_SUBST([pkgconfigdir])
 AC_SUBST([xslstylesheetsdir])
 AC_SUBST([OPENSC_VERSION_MAJOR])
 AC_SUBST([OPENSC_VERSION_MINOR])
@@ -713,9 +709,6 @@ AC_CONFIG_FILES([
 	etc/Makefile
 	src/Makefile
 	src/common/Makefile
-	src/include/Makefile
-	src/include/winconfig.h
-	src/include/opensc/Makefile
 	src/libopensc/Makefile
 	src/libopensc/libopensc.pc
 	src/pkcs11/Makefile
@@ -728,6 +721,7 @@ AC_CONFIG_FILES([
 	src/cardmod/cardmod.inf
 	win32/Makefile
 	win32/versioninfo.rc
+	win32/winconfig.h
 ])
 AC_OUTPUT
 

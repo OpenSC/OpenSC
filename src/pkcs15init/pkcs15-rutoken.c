@@ -19,9 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #if defined(HAVE_INTTYPES_H)
 #include <inttypes.h>
 #elif defined(HAVE_STDINT_H)
@@ -31,13 +30,15 @@ typedef unsigned __int32 uint32_t;
 #else
 #warning no uint32_t type available, please contact opensc-devel@opensc-project.org
 #endif
+
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
-#include <opensc/opensc.h>
-#include <opensc/cardctl.h>
-#include <opensc/log.h>
-#include <opensc/pkcs15.h>
+
+#include "libopensc/opensc.h"
+#include "libopensc/cardctl.h"
+#include "libopensc/log.h"
+#include "libopensc/pkcs15.h"
 #include "pkcs15-init.h"
 #include "profile.h"
 

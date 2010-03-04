@@ -19,9 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #if defined(HAVE_INTTYPES_H)
 #include <inttypes.h>
 #elif defined(HAVE_STDINT_H)
@@ -38,17 +37,17 @@ typedef __int8 int8_t;
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+#include "internal.h"
 #include "opensc.h"
 #include "pkcs15.h"
-#include "internal.h"
-#include "cardctl.h"
 #include "asn1.h"
+#include "cardctl.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/dsa.h>
-#include <opensc/asn1.h>
 #include <openssl/x509.h>
 #include <openssl/err.h>
 #endif

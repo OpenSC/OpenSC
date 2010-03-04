@@ -17,8 +17,8 @@
  */
 
 #include "config.h"
-#ifndef HAVE_STRLCPY
 
+#ifndef HAVE_STRLCPY	/* empty file if strlcpy is available */
 #include <sys/types.h>
 #include <string.h>
 
@@ -55,4 +55,4 @@ strlcpy(char *dst, const char *src, size_t siz)
 	return(s - src - 1);	/* count does not include NUL */
 }
 
-#endif
+#endif		/* HAVE_STRLCPY */

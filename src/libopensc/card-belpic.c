@@ -80,10 +80,13 @@
  * language-selection  functionality.
  */
 
-#include "internal.h"
-#include "log.h"
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
+
+#include "internal.h"
+#include "log.h"
 
 #ifdef BELPIC_PIN_PAD
 #ifndef HAVE_GUI

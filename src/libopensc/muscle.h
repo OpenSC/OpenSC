@@ -22,11 +22,10 @@
 
 #include <stddef.h>
 
-#include <opensc/types.h>
-#include <opensc.h>
-#include <opensc/cardctl.h>
-
-#include "muscle-filesystem.h"
+#include "libopensc/types.h"
+#include "libopensc/opensc.h"
+#include "libopensc/cardctl.h"
+#include "libopensc/muscle-filesystem.h"
 
 #define MSC_MAX_APDU 512 /* Max APDU send/recv, used for stack allocation */
 #define MSC_MAX_PIN_LENGTH 8

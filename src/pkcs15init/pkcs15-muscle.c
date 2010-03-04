@@ -18,9 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
+
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,14 +28,14 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <opensc/pkcs15.h>
-#include <opensc/opensc.h>
-#include <opensc/cardctl.h>
-#include <opensc/cards.h>
-#include <opensc/log.h>
+
+#include "libopensc/pkcs15.h"
+#include "libopensc/opensc.h"
+#include "libopensc/cardctl.h"
+#include "libopensc/cards.h"
+#include "libopensc/log.h"
 #include "pkcs15-init.h"
 #include "profile.h"
-
 
 #define MUSCLE_KEY_ID_MIN	0x00
 #define MUSCLE_KEY_ID_MAX	0x0F

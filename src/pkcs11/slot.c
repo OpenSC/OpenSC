@@ -19,8 +19,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "config.h"
+
 #include <string.h>
 #include <stdlib.h>
+
 #include "sc-pkcs11.h"
 
 static struct sc_pkcs11_framework_ops *frameworks[] = {
