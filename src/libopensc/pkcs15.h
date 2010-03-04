@@ -378,14 +378,14 @@ typedef struct sc_pkcs15_unusedspace sc_pkcs15_unusedspace_t;
 
 #define SC_PKCS15_CARD_MAGIC		0x10203040
 
-typedef struct {
+typedef struct sc_pkcs15_sec_env_info {
 	int			se;
 	struct sc_object_id	owner;
 	u8			aid[SC_MAX_AID_SIZE];
 	size_t			aid_len;
 } sc_pkcs15_sec_env_info_t;
 
-typedef struct {
+typedef struct sc_pkcs15_tokeninfo {
 	unsigned int version;
 	unsigned int flags;
 	char *label;
