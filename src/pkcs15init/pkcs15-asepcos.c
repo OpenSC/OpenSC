@@ -68,8 +68,6 @@ static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_pkcs15_card_t *p1
 	if (r == SC_SUCCESS) {
 		/* try to verify the transport key */
 		sc_file_t *tfile = NULL;
-		struct sc_pkcs15_pin_info pin_info;
-		struct sc_pkcs15_object *pin_obj = NULL, *auth_obj;
 
 		sc_format_path("3f00", &path);
 		r = sc_profile_get_file_by_path(profile, sc_get_mf_path(), &tfile);
