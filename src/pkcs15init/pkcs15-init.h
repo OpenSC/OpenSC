@@ -321,9 +321,8 @@ extern int	sc_pkcs15init_authenticate(struct sc_profile *, struct sc_pkcs15_card
 				struct sc_file *, int);
 extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_pkcs15_card *, 
 				struct sc_file *);
-extern int	sc_pkcs15init_get_pin_info(struct sc_profile *, unsigned int,
-				struct sc_pkcs15_pin_info *);
-extern int	sc_profile_get_pin_retries(sc_profile_t *, unsigned int);
+extern int	sc_pkcs15init_get_pin_info(struct sc_profile *, int, struct sc_pkcs15_pin_info *);
+extern int	sc_profile_get_pin_retries(sc_profile_t *, int);
 extern int	sc_pkcs15init_get_manufacturer(struct sc_profile *,
 				const char **);
 extern int	sc_pkcs15init_get_serial(struct sc_profile *, const char **);
@@ -345,7 +344,7 @@ extern int  sc_pkcs15init_update_any_df(sc_pkcs15_card_t *, sc_profile_t *,
 
 /* Erasing the card structure via rm -rf */
 extern int	sc_pkcs15init_erase_card_recursively(struct sc_pkcs15_card *,
-				struct sc_profile *, int so_ref);
+				struct sc_profile *);
 extern int	sc_pkcs15init_rmdir(struct sc_pkcs15_card *, struct sc_profile *,
 				struct sc_file *df);
 
@@ -359,8 +358,7 @@ extern int	sc_pkcs15_create_pin_domain(sc_profile_t *, struct sc_pkcs15_card *,
 				const sc_pkcs15_id_t *, sc_file_t **);
 
 extern int	sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *, 
-				struct sc_profile *, struct sc_path *, 
-				unsigned, unsigned);
+				struct sc_profile *, unsigned, int);
 
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_miocos_ops(void);

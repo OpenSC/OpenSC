@@ -573,7 +573,7 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		/* XXX use the pkcs15 structures for this */
 		sc_cardctl_asepcos_akn2fileid_t st;
         
-		st.akn = sc_pkcs15init_get_pin_reference(p15card, profile, NULL,
+		st.akn = sc_pkcs15init_get_pin_reference(p15card, profile,
 			                        SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_ASEPCOS_AKN2FILEID, &st);
 		if (r != SC_SUCCESS) {

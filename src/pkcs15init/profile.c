@@ -229,7 +229,7 @@ static file_info *	sc_profile_find_file_by_path(
 				struct sc_profile *,
 				const sc_path_t *);
 
-static pin_info *	new_pin(struct sc_profile *, unsigned int);
+static pin_info *	new_pin(struct sc_profile *, int);
 static file_info *	new_file(struct state *, const char *,
 				unsigned int);
 static file_info *	add_file(sc_profile_t *, const char *,
@@ -442,7 +442,7 @@ sc_profile_free(struct sc_profile *profile)
 
 void
 sc_profile_get_pin_info(struct sc_profile *profile,
-		unsigned int id, struct sc_pkcs15_pin_info *info)
+		int id, struct sc_pkcs15_pin_info *info)
 {
 	struct pin_info	*pi;
 
@@ -453,7 +453,7 @@ sc_profile_get_pin_info(struct sc_profile *profile,
 }
 
 int
-sc_profile_get_pin_retries(sc_profile_t *profile, unsigned int id)
+sc_profile_get_pin_retries(sc_profile_t *profile, int id)
 {
 	struct pin_info	*pi;
 
@@ -465,7 +465,7 @@ sc_profile_get_pin_retries(sc_profile_t *profile, unsigned int id)
 
 int
 sc_profile_get_pin_id(struct sc_profile *profile,
-		unsigned int reference, unsigned int *id)
+		unsigned int reference, int *id)
 {
 	struct pin_info	*pi;
 
@@ -715,7 +715,7 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 
 int
 sc_profile_get_pin_id_by_reference(struct sc_profile *profile, 
-		unsigned auth_method, unsigned reference, 
+		unsigned auth_method, int reference, 
 		struct sc_pkcs15_pin_info *pin_info)
 {
 	struct pin_info *pinfo;
@@ -1354,13 +1354,13 @@ process_pin(struct state *cur, struct block *info,
 		return 1;
 
 	init_state(cur, &state);
-	state.pin = new_pin(cur->profile, id);
+	state.pin = new_pin(cur->profile, (int)id);
 
 	return process_block(&state, info, name, blk);
 }
 
 static struct pin_info *
-new_pin(struct sc_profile *profile, unsigned int id)
+new_pin(struct sc_profile *profile, int id)
 {
 	struct pin_info	*pi, **tail;
 

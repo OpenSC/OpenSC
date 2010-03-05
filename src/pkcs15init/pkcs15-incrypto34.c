@@ -131,7 +131,7 @@ incrypto34_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
 	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE)) < 0)
-		return sc_pkcs15init_erase_card_recursively(p15card, profile, -1);
+		return sc_pkcs15init_erase_card_recursively(p15card, profile);
 	else
 		return sc_card_ctl(p15card->card, SC_CARDCTL_INCRYPTO34_ERASE_FILES, NULL);
 }
@@ -611,7 +611,7 @@ incrypto34_put_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int	r, key_id, pin_id;
 
 	key_id = key_info->key_reference;
-	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, &key_info->path,
+	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile,
 			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
 	if (pin_id < 0)
 		pin_id = 0;

@@ -119,7 +119,7 @@ tlv_len(struct tlv *tlv)
 static int
 cardos_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 {
-	return sc_pkcs15init_erase_card_recursively(p15card, profile, -1);
+	return sc_pkcs15init_erase_card_recursively(p15card, profile);
 }
 
 /*
@@ -349,7 +349,7 @@ cardos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, &key_info->path, 
+	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, 
 			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
 	if (pin_id >= 0) {
 		r = sc_pkcs15init_verify_key(profile, p15card, NULL, SC_AC_CHV, pin_id);
@@ -641,8 +641,8 @@ cardos_put_key(sc_profile_t *profile, struct sc_pkcs15_card *p15card,
 	struct sc_card *card = p15card->card;
 	int	r, key_id, pin_id;
 
-	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, &key_info->path, 
-			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
+	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, SC_AC_SYMBOLIC, 
+			SC_PKCS15INIT_USER_PIN);
 	if (pin_id < 0)
 		pin_id = 0;
 
