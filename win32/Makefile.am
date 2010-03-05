@@ -1,4 +1,4 @@
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in \ 
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in \
 		$(srcdir)/versioninfo.rc $(srcdir)/winconfig.h
 EXTRA_DIST = ltrc.inc Makefile.mak Make.rules.mak opensc-install.bat \
 		versioninfo.rc.in winconfig.h.in
