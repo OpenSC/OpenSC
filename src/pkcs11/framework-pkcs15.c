@@ -190,10 +190,10 @@ static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 	return sc_to_cryptoki_error(rc);
 }
 
-static void pkcs15_init_token_info(struct sc_pkcs15_card *card, CK_TOKEN_INFO_PTR pToken)
+static void pkcs15_init_token_info(struct sc_pkcs15_card *p15card, CK_TOKEN_INFO_PTR pToken)
 {
-	strcpy_bp(pToken->manufacturerID, card->manufacturer_id, 32);
-	if (card->flags & SC_PKCS15_CARD_FLAG_EMULATED)
+	strcpy_bp(pToken->manufacturerID, p15card->manufacturer_id, 32);
+	if (p15card->flags & SC_PKCS15_CARD_FLAG_EMULATED)
 		strcpy_bp(pToken->model, "PKCS#15 emulated", 16);
 	else
 		strcpy_bp(pToken->model, "PKCS#15", 16);
@@ -203,13 +203,13 @@ static void pkcs15_init_token_info(struct sc_pkcs15_card *card, CK_TOKEN_INFO_PT
 	 * _Assuming_ that the serial number is a Big Endian counter, this
 	 * will assure that the serial within each type of card will be
 	 * unique in pkcs11 (at least for the first 8^16 cards :-) */
-	if (card->serial_number != NULL) {
-		int sn_start = strlen(card->serial_number) - 16;
+	if (p15card->serial_number != NULL) {
+		int sn_start = strlen(p15card->serial_number) - 16;
 
 		if (sn_start < 0)
 			sn_start = 0;
 		strcpy_bp(pToken->serialNumber,
-			card->serial_number + sn_start,
+			p15card->serial_number + sn_start,
 			16);
 	}
 
@@ -694,7 +694,7 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 	obj->base.flags &= ~SC_PKCS11_OBJECT_RECURS;
 }
 
-static void pkcs15_init_slot(struct sc_pkcs15_card *card,
+static void pkcs15_init_slot(struct sc_pkcs15_card *p15card,
 		struct sc_pkcs11_slot *slot,
 		struct sc_pkcs15_object *auth)
 {
@@ -702,14 +702,14 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 	struct sc_pkcs15_pin_info *pin_info = NULL;
 	char tmp[64];
 
-	pkcs15_init_token_info(card, &slot->token_info);
+	pkcs15_init_token_info(p15card, &slot->token_info);
 	slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
 	if (auth != NULL)
 		slot->token_info.flags |= CKF_USER_PIN_INITIALIZED;
-	if (card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+	if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		slot->token_info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 	}
-	if (card->card->caps & SC_CARD_CAP_RNG)
+	if (p15card->card->caps & SC_CARD_CAP_RNG)
 		slot->token_info.flags |= CKF_RNG;
 	slot->fw_data = fw_data = (struct pkcs15_slot_data *) calloc(1, sizeof(*fw_data));
 	fw_data->auth_obj = auth;
@@ -719,9 +719,9 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 
 		if (auth->label[0]) {
 			snprintf(tmp, sizeof(tmp), "%s (%s)",
-				card->label, auth->label);
+				p15card->label, auth->label);
 		} else {
-			snprintf(tmp, sizeof(tmp), "%s", card->label);
+			snprintf(tmp, sizeof(tmp), "%s", p15card->label);
 		}
 		slot->token_info.flags |= CKF_LOGIN_REQUIRED;
                 /* FIXME: update this information during runtime */
@@ -734,7 +734,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
                                 slot->token_info.flags |= CKF_USER_PIN_COUNT_LOW;
                 }
 	} else
-		snprintf(tmp, sizeof(tmp), "%s", card->label);
+		snprintf(tmp, sizeof(tmp), "%s", p15card->label);
 	strcpy_bp(slot->token_info.label, tmp, 32);
 
 	if (pin_info && pin_info->magic == SC_PKCS15_PIN_MAGIC) {
@@ -745,7 +745,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *card,
 		slot->token_info.ulMaxPinLen = 8;
 		slot->token_info.ulMinPinLen = 4;
 	}
-	if (card->flags & SC_PKCS15_CARD_FLAG_EMULATED)
+	if (p15card->flags & SC_PKCS15_CARD_FLAG_EMULATED)
 	        slot->token_info.flags |= CKF_WRITE_PROTECTED;
 
 	sc_debug(context, "Initialized token '%s' in slot 0x%lx", tmp, slot->id);
@@ -949,7 +949,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 {
 	int rc;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
-	struct sc_pkcs15_card *card = fw_data->p15_card;
+	struct sc_pkcs15_card *p15card = fw_data->p15_card;
 	struct sc_pkcs15_object *auth_object;
 	struct sc_pkcs15_pin_info *pin_info;
 
@@ -962,7 +962,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 	case CKU_SO:
 		/* A card with no SO PIN is treated as if no SO login
 		 * is required */
-		rc = sc_pkcs15_find_so_pin(card, &auth_object);
+		rc = sc_pkcs15_find_so_pin(p15card, &auth_object);
 
 		/* If there's no SO PIN on the card, silently
 		 * accept any PIN, and lock the card if required */
@@ -1039,7 +1039,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 	if (sc_pkcs11_conf.lock_login && (rc = lock_card(fw_data)) < 0)
 		return sc_to_cryptoki_error(rc);
 
-	rc = sc_pkcs15_verify_pin(card, pin_info, pPin, ulPinLen);
+	rc = sc_pkcs15_verify_pin(p15card, pin_info, pPin, ulPinLen);
 	sc_debug(context, "PKCS15 verify PIN returned %d\n", rc);
 	return sc_to_cryptoki_error(rc);
 }

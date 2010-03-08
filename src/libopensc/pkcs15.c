@@ -312,7 +312,7 @@ static const unsigned int odf_indexes[] = {
 	SC_PKCS15_AODF,
 };
 
-static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
+static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15card)
 {
 	const u8 *p = buf;
 	size_t left = buflen;
@@ -328,16 +328,16 @@ static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
 	for (i = 0; asn1_odf[i].name != NULL; i++)
 		sc_format_asn1_entry(asn1_odf + i, asn1_obj_or_path, NULL, 0);
 	while (left > 0) {
-		r = sc_asn1_decode_choice(card->card->ctx, asn1_odf, p, left, &p, &left);
+		r = sc_asn1_decode_choice(p15card->card->ctx, asn1_odf, p, left, &p, &left);
 		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 			break;
 		if (r < 0)
 			return r;
 		type = r;
-		r = sc_pkcs15_make_absolute_path(&card->file_app->path, &path);
+		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &path);
 		if (r < 0)
 			return r;
-		r = sc_pkcs15_add_df(card, odf_indexes[type], &path, NULL);
+		r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path, NULL);
 		if (r)
 			return r;
 	}
@@ -1650,7 +1650,7 @@ err:
 	return r;
 }
 
-int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen, struct sc_pkcs15_card *card)
+int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15card)
 {
 	const u8 *p = buf;
 	size_t left = buflen;
@@ -1668,8 +1668,8 @@ int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen, struct sc_pkcs15_
 	};
 
 	/* Clean the list if already present */
-	while (card->unusedspace_list)
-		sc_pkcs15_remove_unusedspace(card, card->unusedspace_list);
+	while (p15card->unusedspace_list)
+		sc_pkcs15_remove_unusedspace(p15card, p15card->unusedspace_list);
 
 	sc_format_path("3F00", &dummy_path);
 	dummy_path.index = dummy_path.count = 0;
@@ -1680,7 +1680,7 @@ int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen, struct sc_pkcs15_
 
 	while (left > 0) {
 		memset(&auth_id, 0, sizeof(auth_id));
-		r = sc_asn1_decode(card->card->ctx, asn1_unusedspace, p, left, &p, &left);
+		r = sc_asn1_decode(p15card->card->ctx, asn1_unusedspace, p, left, &p, &left);
 		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 			break;
 		if (r < 0)
@@ -1689,16 +1689,16 @@ int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen, struct sc_pkcs15_
 		 * If the path length isn't included (-1) then it's against the standard
 		 *   but we'll just ignore it instead of returning an error. */
 		if (path.count > 0) {
-			r = sc_pkcs15_make_absolute_path(&card->file_app->path, &path);
+			r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &path);
 			if (r < 0)
 				return r;
-			r = sc_pkcs15_add_unusedspace(card, &path, &auth_id);
+			r = sc_pkcs15_add_unusedspace(p15card, &path, &auth_id);
 			if (r)
 				return r;
 		}
 	}
 
-	card->unusedspace_read = 1;
+	p15card->unusedspace_read = 1;
 
 	return 0;
 }
