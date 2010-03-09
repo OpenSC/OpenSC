@@ -29,11 +29,12 @@
 #include <limits.h>
 #include <ltdl.h>
 
-#include "internal.h"
-
 #ifdef _WIN32
+#include <windows.h>
 #include <winreg.h>
 #endif
+
+#include "internal.h"
 
 int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 {
