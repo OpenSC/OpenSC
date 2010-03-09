@@ -337,7 +337,7 @@ static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15ca
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &path);
 		if (r < 0)
 			return r;
-		r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path, NULL);
+		r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path, NULL, NULL);
 		if (r)
 			return r;
 	}
@@ -886,9 +886,15 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 			continue;
 		/* Enumerate the DF's, so p15card->obj_list is
 		 * populated. */
-		r = sc_pkcs15_parse_df(p15card, df);
-		SC_TEST_RET(p15card->card->ctx, r, "DF parsing failed");
-		df->enumerated = 1;
+		if (df->parse_handler)    {
+			r = df->parse_handler(p15card, df);
+			SC_TEST_RET(p15card->card->ctx, r, "DF parsing failed");
+		}
+		else   {
+			r = sc_pkcs15_parse_df(p15card, df);
+			SC_TEST_RET(p15card->card->ctx, r, "DF parsing failed");
+			df->enumerated = 1;
+		}
 	}
 
 	/* And now loop over all objects */
@@ -1347,15 +1353,21 @@ void sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
 
 int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 		     unsigned int type, const sc_path_t *path,
-		     const sc_file_t *file)
+		     const sc_file_t *file,
+		     int (*parse_handler)(struct sc_pkcs15_card *, unsigned))
 {
-	struct sc_pkcs15_df *p = p15card->df_list, *newdf;
+	struct sc_pkcs15_df *p, *newdf;
+	
+	for (p = p15card->df_list; p; p = p->next)
+		if (p->type == type)
+			return 0;
 
 	newdf = (struct sc_pkcs15_df *) calloc(1, sizeof(struct sc_pkcs15_df));
 	if (newdf == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	newdf->path = *path;
 	newdf->type = type;
+	newdf->parse_handler = parse_handler;
 	if (file != NULL) {
 		sc_file_dup(&newdf->file, file);
 		if (newdf->file == NULL) {
@@ -1364,10 +1376,13 @@ int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 		}
 			
 	}
+
 	if (p15card->df_list == NULL) {
 		p15card->df_list = newdf;
 		return 0;
 	}
+
+	p = p15card->df_list;
 	while (p->next != NULL)
  		p = p->next;
 	p->next = newdf;
@@ -1460,6 +1475,9 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_object *obj = NULL;
 	int (* func)(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 		     const u8 **nbuf, size_t *nbufsize) = NULL;
+
+	if (df->parse_handler)
+		return df->parse_handler(p15card, df->type);
 
 	switch (df->type) {
 	case SC_PKCS15_PRKDF:

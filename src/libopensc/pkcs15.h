@@ -356,6 +356,8 @@ typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 #define SC_PKCS15_AODF			8
 #define SC_PKCS15_DF_TYPE_COUNT		9
 
+struct sc_pkcs15_card;
+
 struct sc_pkcs15_df {
 	struct sc_file *file;
 
@@ -363,6 +365,8 @@ struct sc_pkcs15_df {
 	int record_length;
 	unsigned int type;
 	int enumerated;
+
+	int (*parse_handler)(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
 
 	struct sc_pkcs15_df *next, *prev;
 };
@@ -649,9 +653,9 @@ int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_object *obj);
 void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
 			     struct sc_pkcs15_object *obj);
-int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
-		     unsigned int type, const sc_path_t *path,
-		     const struct sc_file *file);
+int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card, unsigned int type, 
+			const sc_path_t *path, const struct sc_file *file, 
+			int (*)(struct sc_pkcs15_card *, unsigned));
 void sc_pkcs15_remove_df(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_df *df);
 
@@ -744,8 +748,8 @@ typedef struct sc_pkcs15emu_opt {
 extern int sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *);
 extern int sc_pkcs15_is_emulation_only(sc_card_t *);
 
-int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
-			const sc_pkcs15_object_t *obj, const void *data);
+int sc_pkcs15emu_object_add(sc_pkcs15_card_t *, unsigned int,
+			const sc_pkcs15_object_t *, const void *);
 /* some wrapper functions for sc_pkcs15emu_object_add */
 int sc_pkcs15emu_add_pin_obj(sc_pkcs15_card_t *,
 	const sc_pkcs15_object_t *, const sc_pkcs15_pin_info_t *);
@@ -753,10 +757,11 @@ int sc_pkcs15emu_add_rsa_prkey(sc_pkcs15_card_t *,
 	const sc_pkcs15_object_t *, const sc_pkcs15_prkey_info_t *);
 int sc_pkcs15emu_add_rsa_pubkey(sc_pkcs15_card_t *,
 	const sc_pkcs15_object_t *, const sc_pkcs15_pubkey_info_t *);
-int sc_pkcs15emu_add_x509_cert(sc_pkcs15_card_t *p15card,
+int sc_pkcs15emu_add_x509_cert(sc_pkcs15_card_t *,
 	const sc_pkcs15_object_t *, const sc_pkcs15_cert_info_t *);
-int sc_pkcs15emu_add_data_object(sc_pkcs15_card_t *p15card,
+int sc_pkcs15emu_add_data_object(sc_pkcs15_card_t *,
 	const sc_pkcs15_object_t *, const sc_pkcs15_data_info_t *);
+int sc_pkcs15emu_postponed_load(sc_pkcs15_card_t *, unsigned long *);
 
 #ifdef __cplusplus
 }

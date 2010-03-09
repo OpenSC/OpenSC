@@ -307,7 +307,7 @@ static sc_pkcs15_df_t * sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,
 		if (!file)
 			return NULL;
 		sc_format_path("11001101", &file->path);
-		sc_pkcs15_add_df(p15card, type, &file->path, file);
+		sc_pkcs15_add_df(p15card, type, &file->path, file, NULL);
 		sc_file_free(file);
 		created++;
 	}
@@ -414,5 +414,36 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	sc_pkcs15_add_object(p15card, obj);
 
 	return SC_SUCCESS;
+}
+
+
+int 
+sc_pkcs15emu_postponed_load(sc_pkcs15_card_t *p15card, unsigned long *loaded_mask)
+{
+	sc_context_t	*ctx = p15card->card->ctx;
+	sc_pkcs15_df_t	*df;
+	int r;
+
+	SC_FUNC_CALLED(ctx, 1);
+
+	if (loaded_mask)
+		*loaded_mask = 0;
+
+	for (df = p15card->df_list; df; df = df->next)   {
+		sc_debug(ctx, "Type:%X,enumerated:%i", df->type, df->enumerated);
+		if (df->enumerated)
+			continue;
+		if (!df->parse_handler)
+			continue;
+		r = df->parse_handler(p15card, df);
+		SC_TEST_RET(ctx, r, "DF parse error");
+
+		if (loaded_mask)
+			*loaded_mask |= (1 << df->type);
+	}
+
+	if (loaded_mask)
+		sc_debug(ctx, "Loaded mask 0x%lX", *loaded_mask);
+	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
 }
 
