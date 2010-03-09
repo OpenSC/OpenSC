@@ -70,7 +70,8 @@ enum {
 #endif
 	OPT_PIN,
 	OPT_NEWPIN,
-	OPT_PUK
+	OPT_PUK,
+	OPT_VERIFY_PIN,
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -79,16 +80,17 @@ static int	authenticate(sc_pkcs15_object_t *obj);
 static int	pem_encode(int, sc_pkcs15_der_t *, sc_pkcs15_der_t *);
 
 static const struct option options[] = {
-	{ "learn-card",		no_argument, NULL, 	'L' },
+	{ "learn-card",		no_argument, NULL,		'L' },
 	{ "read-certificate",	required_argument, NULL, 	'r' },
 	{ "list-certificates",	no_argument, NULL,		'c' },
 	{ "read-data-object",	required_argument, NULL, 	'R' },
 	{ "list-data-objects",	no_argument, NULL,		'C' },
 	{ "list-pins",		no_argument, NULL,		OPT_LIST_PINS },
 	{ "dump",		no_argument, NULL,		'D' },
+	{ "verify-pin",		no_argument, NULL,		OPT_VERIFY_PIN },
 	{ "unblock-pin",	no_argument, NULL,		'u' },
 	{ "change-pin",		no_argument, NULL,		OPT_CHANGE_PIN },
-	{ "list-keys",          no_argument, NULL,         'k' },
+	{ "list-keys",          no_argument, NULL,         	'k' },
 	{ "list-public-keys",	no_argument, NULL,		OPT_LIST_PUB },
 	{ "read-public-key",	required_argument, NULL,	OPT_READ_PUB },
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
@@ -97,7 +99,7 @@ static const struct option options[] = {
 	{ "test-update",	no_argument, NULL,		'T' },
 	{ "update",		no_argument, NULL,		'U' },
 	{ "reader",		required_argument, NULL,	OPT_READER },
-	{ "pin",                required_argument, NULL,   OPT_PIN },
+	{ "pin",                required_argument, NULL,   	OPT_PIN },
 	{ "new-pin",		required_argument, NULL,	OPT_NEWPIN },
 	{ "puk",		required_argument, NULL,	OPT_PUK },
 	{ "output",		required_argument, NULL,	'o' },
@@ -116,6 +118,7 @@ static const char *option_help[] = {
 	"Lists data objects",
 	"Lists PIN codes",
 	"Dump card objects",
+	"Verify PIN code (without auth-id the first non-SO, non-Unblock PIN will be verified)",
 	"Unblock PIN code",
 	"Changes the PIN code",
 	"Lists private keys",
@@ -860,6 +863,51 @@ static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 	}
 }
 
+static int verify_pin(void)
+{
+	struct sc_pkcs15_object	*pin_obj = NULL;
+	unsigned char		*pin;
+	
+	if (!opt_auth_id)   {
+	        struct sc_pkcs15_object *objs[32];
+        	int r, ii;
+		
+		r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
+		if (r < 0) {
+                        fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
+                        return -1;
+		}
+
+		for (ii=0;ii<r;ii++)   {
+			struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) objs[ii]->data;
+
+                	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+				continue;
+			if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
+				continue;
+
+			pin_obj = objs[ii];
+			break;
+		}
+	}
+	else   {
+		pin_obj = get_pin_info();
+	}
+
+	if (!pin_obj)   {
+		fprintf(stderr, "PIN object '%s' not found\n", opt_auth_id);
+		return -1;
+	}
+
+	if (opt_pin != NULL)
+		pin = opt_pin;
+	else
+		pin = get_pin("Please enter PIN", pin_obj);
+
+	return sc_pkcs15_verify_pin(p15card, (sc_pkcs15_pin_info_t *) pin_obj->data,
+			pin, pin? strlen((char *) pin) : 0);
+}
+
 static int authenticate(sc_pkcs15_object_t *obj)
 {
 	sc_pkcs15_pin_info_t	*pin_info;
@@ -1436,6 +1484,7 @@ int main(int argc, char * const argv[])
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	int do_read_sshkey = 0;
 #endif
+	int do_verify_pin = 0;
 	int do_change_pin = 0;
 	int do_unblock_pin = 0;
 	int do_learn_card = 0;
@@ -1468,6 +1517,9 @@ int main(int argc, char * const argv[])
 		case 'C':
 			do_list_data_objects = 1;
 			action_count++;
+			break;
+		case OPT_VERIFY_PIN:
+			do_verify_pin = 1;
 			break;
 		case OPT_CHANGE_PIN:
 			do_change_pin = 1;
@@ -1577,6 +1629,11 @@ int main(int argc, char * const argv[])
 		p15card->opts.use_file_cache = 0;
 	if (verbose)
 		fprintf(stderr, "Found %s!\n", p15card->label);
+	
+	if (do_verify_pin)
+		if ((err = verify_pin()))
+			goto end;
+
 	if (do_learn_card) {
 		if ((err = learn_card()))
 			goto end;
