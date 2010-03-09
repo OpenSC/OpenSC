@@ -2009,9 +2009,8 @@ static CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_CERTIFICATE_TYPE*)attr->pValue = CKC_X_509;
 		break;
 	case CKA_ID:
-		/* Not sure why CA certs should be reported with an
-		 * ID of 00. --okir 20030413 */
-		if (cert->cert_info->authority) {
+		if (cert->cert_info->authority 
+				&& sc_pkcs11_conf.zero_ckaid_for_ca_certs) {
 			check_attribute_buffer(attr, 1);
 			*(unsigned char*)attr->pValue = 0;
 		} else {
