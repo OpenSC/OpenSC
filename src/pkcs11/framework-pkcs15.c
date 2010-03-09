@@ -910,7 +910,8 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 			break;
 
 		if (!(obj->base.flags & SC_PKCS11_OBJECT_SEEN)) {
-			sc_debug(context, "Object %d was not seen previously\n", j);
+			sc_debug(context, "%d: Object ('%s',type:%X) was not seen previously\n", j, 
+					obj->p15_object->label, obj->p15_object->type);
 			if (!slot) {
 				rv = pkcs15_create_slot(p11card, NULL, &slot);
 				if (rv != CKR_OK)
@@ -1041,6 +1042,42 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 
 	rc = sc_pkcs15_verify_pin(p15card, pin_info, pPin, ulPinLen);
 	sc_debug(context, "PKCS15 verify PIN returned %d\n", rc);
+	if (rc < 0)
+		return sc_to_cryptoki_error(rc);
+
+	if (userType == CKU_USER)   {
+		unsigned long loaded_mask;
+
+		sc_debug(context, "Check if pkcs15 object list can be completed.");
+		rc = sc_pkcs15emu_postponed_load(p15card, &loaded_mask);
+		if (rc < 0)
+			return sc_to_cryptoki_error(rc);
+		
+		if (loaded_mask & (1 << SC_PKCS15_PRKDF ))   {
+			unsigned ii, objs_num_before = fw_data->num_objects;
+			int rv;
+
+			sc_debug(context, "PrKDF has been parsed loaded\n");
+			rv = pkcs15_create_pkcs11_objects(fw_data, SC_PKCS15_TYPE_PRKEY_RSA,
+					"private key", __pkcs15_create_prkey_object);
+			if (rv < 0)
+				return sc_to_cryptoki_error(rv);
+
+			sc_debug(context, "Added %i private key objects to PIN('%s',auth-id:%s)", rv,
+					auth_object->label, sc_pkcs15_print_id(&pin_info->auth_id));
+			for (ii=objs_num_before;ii<fw_data->num_objects;ii++)   {
+				struct sc_pkcs15_object *p15_object = fw_data->objects[ii]->p15_object;
+
+				if (!sc_pkcs15_compare_id(&pin_info->auth_id, &p15_object->auth_id))
+					continue;
+
+				__pkcs15_prkey_bind_related(fw_data, (struct pkcs15_prkey_object *) fw_data->objects[ii]);
+
+				pkcs15_add_object(slot, fw_data->objects[ii], NULL);
+			}
+		}
+	}
+
 	return sc_to_cryptoki_error(rc);
 }
 
