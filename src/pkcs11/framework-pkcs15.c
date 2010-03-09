@@ -941,13 +941,13 @@ static CK_RV pkcs15_release_token(struct sc_pkcs11_card *p11card, void *fw_token
 	return CKR_OK;
 }
 
-static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
-			  void *fw_token,
+static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 			  CK_USER_TYPE userType,
 			  CK_CHAR_PTR pPin,
 			  CK_ULONG ulPinLen)
 {
 	int rc;
+	struct sc_pkcs11_card *p11card = slot->card;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct sc_pkcs15_card *p15card = fw_data->p15_card;
 	struct sc_pkcs15_object *auth_object;
@@ -955,7 +955,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_card *p11card,
 
 	switch (userType) {
 	case CKU_USER:
-		auth_object = slot_data_auth(fw_token);
+		auth_object = slot_data_auth(slot->fw_data);
 		if (auth_object == NULL)
 			return CKR_USER_PIN_NOT_INITIALIZED;
 		break;

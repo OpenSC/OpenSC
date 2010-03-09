@@ -99,7 +99,7 @@ pkcs15init_release_token(struct sc_pkcs11_card *p11card, void *ptr)
 }
 
 static CK_RV
-pkcs15init_login(struct sc_pkcs11_card *p11card, void *ptr,
+pkcs15init_login(struct sc_pkcs11_slot *slot,
 		CK_USER_TYPE user, CK_CHAR_PTR pin, CK_ULONG pinLength)
 {
 	return CKR_CRYPTOKI_NOT_INITIALIZED;

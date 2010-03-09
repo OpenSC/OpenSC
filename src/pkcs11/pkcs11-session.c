@@ -286,7 +286,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	}
 
-	rv = slot->card->framework->login(slot->card, slot->fw_data, userType, pPin, ulPinLen);
+	rv = slot->card->framework->login(slot, userType, pPin, ulPinLen);
 	if (rv == CKR_OK)
 		slot->login_user = userType;
 

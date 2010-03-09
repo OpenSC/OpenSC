@@ -143,7 +143,7 @@ struct sc_pkcs11_framework_ops {
 	CK_RV (*release_token)(struct sc_pkcs11_card *, void *);
 
 	/* Login and logout */
-	CK_RV (*login)(struct sc_pkcs11_card *, void *,
+	CK_RV (*login)(struct sc_pkcs11_slot *,
 				CK_USER_TYPE, CK_CHAR_PTR, CK_ULONG);
 	CK_RV (*logout)(struct sc_pkcs11_card *, void *);
 	CK_RV (*change_pin)(struct sc_pkcs11_card *, void *, int,
