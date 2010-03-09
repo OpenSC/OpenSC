@@ -1354,7 +1354,7 @@ void sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
 int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 		     unsigned int type, const sc_path_t *path,
 		     const sc_file_t *file,
-		     int (*parse_handler)(struct sc_pkcs15_card *, unsigned))
+		     int (*parse_handler)(struct sc_pkcs15_card *, struct sc_pkcs15_df *))
 {
 	struct sc_pkcs15_df *p, *newdf;
 	
@@ -1477,7 +1477,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		     const u8 **nbuf, size_t *nbufsize) = NULL;
 
 	if (df->parse_handler)
-		return df->parse_handler(p15card, df->type);
+		return df->parse_handler(p15card, df);
 
 	switch (df->type) {
 	case SC_PKCS15_PRKDF:

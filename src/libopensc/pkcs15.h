@@ -655,7 +655,7 @@ void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
 			     struct sc_pkcs15_object *obj);
 int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card, unsigned int type, 
 			const sc_path_t *path, const struct sc_file *file, 
-			int (*)(struct sc_pkcs15_card *, unsigned));
+			int (*)(struct sc_pkcs15_card *, struct sc_pkcs15_df *));
 void sc_pkcs15_remove_df(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_df *df);
 
