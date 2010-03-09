@@ -29,7 +29,6 @@
 
 #include "config.h"
 
-#include <log.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -38,6 +37,7 @@
 
 #include "libopensc/opensc.h"
 #include "libopensc/pkcs15.h"
+#include "libopensc/log.h"
 
 #define NULLSTR(a) (a == NULL ? "<NULL>" : a)
 #define NULLWSTR(a) (a == NULL ? L"<NULL>" : a)
