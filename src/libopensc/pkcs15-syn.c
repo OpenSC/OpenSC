@@ -61,6 +61,8 @@ extern int sc_pkcs15emu_entersafe_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t
 
 extern int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
+extern int sc_pkcs15emu_oberthur_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+
 static struct {
 	const char *		name;
 	int			(*handler)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
@@ -80,6 +82,7 @@ static struct {
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
 	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex  },
 	{ "pteid",		sc_pkcs15emu_pteid_init_ex		},
+	{ "oberthur",   sc_pkcs15emu_oberthur_init_ex	},
 	{ NULL, NULL }
 };
 
