@@ -1105,7 +1105,7 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 	int rc;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
 	struct sc_pkcs15_pin_info *pin_info;
-	struct sc_pkcs15_obj *pin_obj;
+	struct sc_pkcs15_object *pin_obj;
 
 	if (!(pin_obj = slot_data_auth(fw_token)))
 		return CKR_USER_PIN_NOT_INITIALIZED;
