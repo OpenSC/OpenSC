@@ -42,8 +42,6 @@
 #include <openssl/x509v3.h>
 #endif
 
-#include <opensc/ui.h>
-
 #define OBERTHUR_ATTR_MODIFIABLE	0x0001
 #define OBERTHUR_ATTR_TRUSTED		0x0002
 #define OBERTHUR_ATTR_LOCAL		0x0004
