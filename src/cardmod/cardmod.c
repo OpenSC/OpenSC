@@ -342,8 +342,7 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 		cbPin, (pcAttemptsRemaining==NULL?-2:*pcAttemptsRemaining));
 	
 	pin_obj = vs->pin_objs[0];
-	r = sc_pkcs15_verify_pin(vs->p15card, (struct sc_pkcs15_pin_info *) \
-		(pin_obj->data), (const u8 *) pbPin, cbPin);
+	r = sc_pkcs15_verify_pin(vs->p15card, pin_obj, (const u8 *) pbPin, cbPin);
 	if (r) 
 	{
 		logprintf(pCardData, 3, "PIN code verification failed: %s\n", sc_strerror(r));
@@ -1015,8 +1014,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	if (PinId != ROLE_USER) return SCARD_E_INVALID_PARAMETER;
 	
 	pin_obj = vs->pin_objs[0];
-	r = sc_pkcs15_verify_pin(vs->p15card, (struct sc_pkcs15_pin_info *) \
-		(pin_obj->data), (const u8 *) pbPinData, cbPinData);
+	r = sc_pkcs15_verify_pin(vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData);
 	if (r) 
 	{
 		logprintf(pCardData, 2, "PIN code verification failed: %s\n", sc_strerror(r));

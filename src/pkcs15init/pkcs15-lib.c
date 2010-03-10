@@ -2918,7 +2918,7 @@ sc_pkcs15init_get_transport_key(struct sc_profile *profile, struct sc_pkcs15_car
 	rv = sc_pkcs15_add_object(p15card, pin_obj);
 	SC_TEST_RET(ctx, rv, "Cannot add PKCS#15 AUTH object");
 
-	sc_pkcs15_pincache_add(p15card, &pin_info, pinbuf, *pinsize);
+	sc_pkcs15_pincache_add(p15card, pin_obj, pinbuf, *pinsize);
 
 	SC_FUNC_RETURN(ctx, 3, rv);
 }
@@ -3028,8 +3028,7 @@ found: 	/* If it's a PIN, pad it out */
 
 	sc_debug(ctx, "get and verify PIN; pinbuf(%p:%i)\n", pinbuf, *pinsize);
 	if (pin_obj && verify)   {
-		r = sc_pkcs15_verify_pin(p15card, (struct sc_pkcs15_pin_info *)pin_obj->data, 
-				pinbuf, *pinsize);
+		r = sc_pkcs15_verify_pin(p15card, pin_obj, pinbuf, *pinsize);
 		SC_TEST_RET(ctx, r, "Cannot validate pkcs15 PIN");
 	}
 

@@ -581,8 +581,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		/* Cache dummy SOPIN value */
 		r = sc_pkcs15_find_pin_by_type_and_reference(p15card, NULL, SC_AC_CHV, ref, &pin_obj);
 		if (!r && pin_obj)
-			sc_pkcs15_pincache_add(p15card, (struct sc_pkcs15_pin_info *)pin_obj->data, 
-					dummy_pin_value, sizeof(dummy_pin_value));
+			sc_pkcs15_pincache_add(p15card, pin_obj, dummy_pin_value, sizeof(dummy_pin_value));
 	}
 
 	r = sc_pkcs15init_create_file(profile, p15card, file);
@@ -601,7 +600,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	if (pin_obj)   {
 		/* Cache new SOPIN value */
-		sc_pkcs15_pincache_add(p15card, (struct sc_pkcs15_pin_info *)pin_obj->data, pin, pin_len);
+		sc_pkcs15_pincache_add(p15card, pin_obj, pin, pin_len);
 	}
 
 	SC_FUNC_RETURN(ctx, 3, r);

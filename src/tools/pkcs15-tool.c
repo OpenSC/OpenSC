@@ -904,13 +904,11 @@ static int verify_pin(void)
 	else
 		pin = get_pin("Please enter PIN", pin_obj);
 
-	return sc_pkcs15_verify_pin(p15card, (sc_pkcs15_pin_info_t *) pin_obj->data,
-			pin, pin? strlen((char *) pin) : 0);
+	return sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin ? strlen((char *) pin) : 0);
 }
 
 static int authenticate(sc_pkcs15_object_t *obj)
 {
-	sc_pkcs15_pin_info_t	*pin_info;
 	sc_pkcs15_object_t	*pin_obj;
 	u8			*pin;
 	int			r;
@@ -921,14 +919,12 @@ static int authenticate(sc_pkcs15_object_t *obj)
 	if (r)
 		return r;
 
-	pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
 	if (opt_pin != NULL)
 		pin = opt_pin;
 	else
 		pin = get_pin("Please enter PIN", pin_obj);
 
-	return sc_pkcs15_verify_pin(p15card, pin_info,
-			pin, pin? strlen((char *) pin) : 0);
+	return sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin? strlen((char *) pin) : 0);
 }
 
 static void print_pin_info(const struct sc_pkcs15_object *obj)
@@ -1078,7 +1074,7 @@ static int unblock_pin(void)
 		free(pin2);
 	}
 
-	r = sc_pkcs15_unblock_pin(p15card, pinfo, 
+	r = sc_pkcs15_unblock_pin(p15card, pin_obj, 
 			puk, puk ? strlen((char *) puk) : 0,
 			pin, pin ? strlen((char *) pin) : 0);
 	if (r == SC_ERROR_PIN_CODE_INCORRECT) {

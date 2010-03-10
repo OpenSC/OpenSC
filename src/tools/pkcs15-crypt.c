@@ -470,8 +470,7 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 		    !(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD))
 				return 5;
 
-		r = sc_pkcs15_verify_pin(p15card, (struct sc_pkcs15_pin_info *) pin->data,
-				(const u8 *) pincode, pincode == NULL ? 0 : strlen(pincode));
+		r = sc_pkcs15_verify_pin(p15card, pin, (const u8 *)pincode, pincode ? strlen(pincode) : 0);
 		if (r) {
 			fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
 			return 5;

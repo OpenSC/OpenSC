@@ -44,30 +44,29 @@ static int enum_pins(struct sc_pkcs15_object ***ret)
 	return n;
 }
 
-static int ask_and_verify_pin(struct sc_pkcs15_object *obj)
+static int ask_and_verify_pin(struct sc_pkcs15_object *pin_obj)
 {
-	struct sc_pkcs15_pin_info *pin;
+	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) pin_obj->data;
 	int i = 0;
 	char prompt[80];
 	u8 *pass;
 
-	pin = (struct sc_pkcs15_pin_info *) obj->data;
-	if (pin->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) {
-		printf("Skipping unblocking pin [%s]\n", obj->label);
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) {
+		printf("Skipping unblocking pin [%s]\n", pin_obj->label);
 		return 0;
 	}
 
-	sprintf(prompt, "Please enter PIN code [%s]: ", obj->label);
+	sprintf(prompt, "Please enter PIN code [%s]: ", pin_obj->label);
 	pass = (u8 *) getpass(prompt);
 
 	sc_lock(card);
-	i = sc_pkcs15_verify_pin(p15card, pin, pass, strlen((char *) pass));
+	i = sc_pkcs15_verify_pin(p15card, pin_obj, pass, strlen((char *) pass));
 	sc_unlock(card);
 	if (i) {
 		if (i == SC_ERROR_PIN_CODE_INCORRECT)
 			fprintf(stderr,
 				"Incorrect PIN code (%d tries left)\n",
-				pin->tries_left);
+				pin_info->tries_left);
 		else
 			fprintf(stderr,
 				"PIN verifying failed: %s\n",

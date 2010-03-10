@@ -206,17 +206,18 @@ static int _validate_pin(struct sc_pkcs15_card *p15card,
  * reader's PIN pad
  */
 int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
-			 struct sc_pkcs15_pin_info *pin,
+			 struct sc_pkcs15_object *pin_obj,
 			 const unsigned char *pincode, size_t pinlen)
 {
 	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *)pin_obj->data;
 	int r;
 	sc_card_t *card;
 	struct sc_pin_cmd_data data;
 
 	SC_FUNC_CALLED(ctx, 2);
 
-	r = _validate_pin(p15card, pin, pinlen);
+	r = _validate_pin(p15card, pin_info, pinlen);
 	SC_TEST_RET(ctx, r, "PIN value do not conforms the PIN policy");
 
 	card = p15card->card;
@@ -224,8 +225,8 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	r = sc_lock(card);
 	SC_TEST_RET(ctx, r, "sc_lock() failed");
 	/* the path in the pin object is optional */
-	if (pin->path.len > 0) {
-		r = sc_select_file(card, &pin->path, NULL);
+	if (pin_info->path.len > 0) {
+		r = sc_select_file(card, &pin_info->path, NULL);
 		if (r)
 			goto out;
 	}
@@ -233,19 +234,19 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	/* Initialize arguments */
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_VERIFY;
-	data.pin_type = pin->auth_method;
-	data.pin_reference = pin->reference;
-	data.pin1.min_length = pin->min_length;
-	data.pin1.max_length = pin->max_length;
-	data.pin1.pad_length = pin->stored_length;
-	data.pin1.pad_char = pin->pad_char;
+	data.pin_type = pin_info->auth_method;
+	data.pin_reference = pin_info->reference;
+	data.pin1.min_length = pin_info->min_length;
+	data.pin1.max_length = pin_info->max_length;
+	data.pin1.pad_length = pin_info->stored_length;
+	data.pin1.pad_char = pin_info->pad_char;
 	data.pin1.data = pincode;
 	data.pin1.len = pinlen;
 
-	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
 		data.flags |= SC_PIN_CMD_NEED_PADDING;
 
-	switch (pin->type) {
+	switch (pin_info->type) {
 	case SC_PKCS15_PIN_TYPE_BCD:
 		data.pin1.encoding = SC_PIN_ENCODING_BCD;
 		break;
@@ -259,15 +260,15 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 
 	if(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
-		if (pin->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+		if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 			data.pin1.prompt = "Please enter SO PIN";
 		else
 			data.pin1.prompt = "Please enter PIN";
 	}
 
-	r = sc_pin_cmd(card, &data, &pin->tries_left);
+	r = sc_pin_cmd(card, &data, &pin_info->tries_left);
 	if (r == SC_SUCCESS)
-		sc_pkcs15_pincache_add(p15card, pin, pincode, pinlen);
+		sc_pkcs15_pincache_add(p15card, pin_obj, pincode, pinlen);
 out:
 	sc_unlock(card);
 	return r;
@@ -277,26 +278,27 @@ out:
  * Change a PIN.
  */
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
-			 struct sc_pkcs15_pin_info *pin,
+			 struct sc_pkcs15_object *pin_obj,
 			 const u8 *oldpin, size_t oldpinlen,
 			 const u8 *newpin, size_t newpinlen)
 {
 	int r;
 	sc_card_t *card;
 	struct sc_pin_cmd_data data;
+	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *)pin_obj->data;
 	
 	/* make sure the pins are in valid range */
-	if ((r = _validate_pin(p15card, pin, oldpinlen)) != SC_SUCCESS)
+	if ((r = _validate_pin(p15card, pin_info, oldpinlen)) != SC_SUCCESS)
 		return r;
-	if ((r = _validate_pin(p15card, pin, newpinlen)) != SC_SUCCESS)
+	if ((r = _validate_pin(p15card, pin_info, newpinlen)) != SC_SUCCESS)
 		return r;
 
 	card = p15card->card;
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 	/* the path in the pin object is optional */
-	if (pin->path.len > 0) {
-		r = sc_select_file(card, &pin->path, NULL);
+	if (pin_info->path.len > 0) {
+		r = sc_select_file(card, &pin_info->path, NULL);
 		if (r)
 			goto out;
 	}
@@ -305,24 +307,24 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	memset(&data, 0, sizeof(data));
 	data.cmd             = SC_PIN_CMD_CHANGE;
 	data.pin_type        = SC_AC_CHV;
-	data.pin_reference   = pin->reference;
+	data.pin_reference   = pin_info->reference;
 	data.pin1.data       = oldpin;
 	data.pin1.len        = oldpinlen;
-	data.pin1.pad_char   = pin->pad_char;
-	data.pin1.min_length = pin->min_length;
-	data.pin1.max_length = pin->max_length;
-	data.pin1.pad_length = pin->stored_length;
+	data.pin1.pad_char   = pin_info->pad_char;
+	data.pin1.min_length = pin_info->min_length;
+	data.pin1.max_length = pin_info->max_length;
+	data.pin1.pad_length = pin_info->stored_length;
 	data.pin2.data       = newpin;
 	data.pin2.len        = newpinlen;
-	data.pin2.pad_char   = pin->pad_char;
-	data.pin2.min_length = pin->min_length;
-	data.pin2.max_length = pin->max_length;
-	data.pin2.pad_length = pin->stored_length;
+	data.pin2.pad_char   = pin_info->pad_char;
+	data.pin2.min_length = pin_info->min_length;
+	data.pin2.max_length = pin_info->max_length;
+	data.pin2.pad_length = pin_info->stored_length;
 
-	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
 		data.flags |= SC_PIN_CMD_NEED_PADDING;
 
-	switch (pin->type) {
+	switch (pin_info->type) {
 	case SC_PKCS15_PIN_TYPE_BCD:
 		data.pin1.encoding = SC_PIN_ENCODING_BCD;
 		data.pin2.encoding = SC_PIN_ENCODING_BCD;
@@ -336,7 +338,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	if((!oldpin || !newpin) 
 			&& p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
-		if (pin->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+		if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 			data.pin1.prompt = "Please enter SO PIN";
 			data.pin2.prompt = "Please enter new SO PIN";
 		} else {
@@ -345,9 +347,9 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-	r = sc_pin_cmd(card, &data, &pin->tries_left);
+	r = sc_pin_cmd(card, &data, &pin_info->tries_left);
 	if (r == SC_SUCCESS)
-		sc_pkcs15_pincache_add(p15card, pin, newpin, newpinlen);
+		sc_pkcs15_pincache_add(p15card, pin_obj, newpin, newpinlen);
 
 out:
 	sc_unlock(card);
@@ -358,18 +360,19 @@ out:
  * Unblock a PIN.
  */
 int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
-			 struct sc_pkcs15_pin_info *pin,
+			 struct sc_pkcs15_object *pin_obj,
 			 const u8 *puk, size_t puklen,
 			 const u8 *newpin, size_t newpinlen)
 {
 	int r;
 	sc_card_t *card;
 	struct sc_pin_cmd_data data;
-	struct sc_pkcs15_object *pin_obj, *puk_obj;
+	struct sc_pkcs15_object *puk_obj;
 	struct sc_pkcs15_pin_info *puk_info = NULL;
+	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *)pin_obj->data;
 
 	/* make sure the pins are in valid range */
-	if ((r = _validate_pin(p15card, pin, newpinlen)) != SC_SUCCESS)
+	if ((r = _validate_pin(p15card, pin_info, newpinlen)) != SC_SUCCESS)
 		return r;
 
 	card = p15card->card;
@@ -377,19 +380,15 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	 * as we don't have the id of the puk (at least now))
 	 * note: for compatibility reasons we give no error if no puk object
 	 * is found */
-	/* first step:  get the pkcs15 object of the pin */
-	r = sc_pkcs15_find_pin_by_auth_id(p15card, &pin->auth_id, &pin_obj);
-	if (r >= 0 && pin_obj) {
-		/* second step: try to get the pkcs15 object of the puk */
-		r = sc_pkcs15_find_pin_by_auth_id(p15card, &pin_obj->auth_id, &puk_obj);
-		if (r >= 0 && puk_obj) {
-			/* third step:  get the pkcs15 info object of the puk */
-			puk_info = (struct sc_pkcs15_pin_info *)puk_obj->data;
-		}
+	/* first step: try to get the pkcs15 object of the puk */
+	r = sc_pkcs15_find_pin_by_auth_id(p15card, &pin_obj->auth_id, &puk_obj);
+	if (r >= 0 && puk_obj) {
+		/* second step:  get the pkcs15 info object of the puk */
+		puk_info = (struct sc_pkcs15_pin_info *)puk_obj->data;
 	}
 	if (!puk_info) {
 		sc_debug(card->ctx, "Unable to get puk object, using pin object instead!\n");
-		puk_info = pin;
+		puk_info = pin_info;
 	}
 	
 	/* make sure the puk is in valid range */
@@ -399,8 +398,8 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	r = sc_lock(card);
 	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
 	/* the path in the pin object is optional */
-	if (pin->path.len > 0) {
-		r = sc_select_file(card, &pin->path, NULL);
+	if (pin_info->path.len > 0) {
+		r = sc_select_file(card, &pin_info->path, NULL);
 		if (r)
 			goto out;
 	}
@@ -409,13 +408,13 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	memset(&data, 0, sizeof(data));
 	data.cmd             = SC_PIN_CMD_UNBLOCK;
 	data.pin_type        = SC_AC_CHV;
-	data.pin_reference   = pin->reference;
+	data.pin_reference   = pin_info->reference;
 	data.pin1.data       = puk;
 	data.pin1.len        = puklen;
-	data.pin1.pad_char   = pin->pad_char;
-	data.pin1.min_length = pin->min_length;
-	data.pin1.max_length = pin->max_length;
-	data.pin1.pad_length = pin->stored_length;
+	data.pin1.pad_char   = pin_info->pad_char;
+	data.pin1.min_length = pin_info->min_length;
+	data.pin1.max_length = pin_info->max_length;
+	data.pin1.pad_length = pin_info->stored_length;
 	data.pin2.data       = newpin;
 	data.pin2.len        = newpinlen;
 	data.pin2.pad_char   = puk_info->pad_char;
@@ -423,10 +422,10 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	data.pin2.max_length = puk_info->max_length;
 	data.pin2.pad_length = puk_info->stored_length;
 
-	if (pin->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
+	if (pin_info->flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)
 		data.flags |= SC_PIN_CMD_NEED_PADDING;
 
-	switch (pin->type) {
+	switch (pin_info->type) {
 	case SC_PKCS15_PIN_TYPE_BCD:
 		data.pin1.encoding = SC_PIN_ENCODING_BCD;
 		break;
@@ -446,7 +445,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	
 	if(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
-		if (pin->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+		if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 			data.pin1.prompt = "Please enter PUK";
 			data.pin2.prompt = "Please enter new SO PIN";
 		} else {
@@ -455,9 +454,9 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-	r = sc_pin_cmd(card, &data, &pin->tries_left);
+	r = sc_pin_cmd(card, &data, &pin_info->tries_left);
 	if (r == SC_SUCCESS)
-		sc_pkcs15_pincache_add(p15card, pin, newpin, newpinlen);
+		sc_pkcs15_pincache_add(p15card, pin_obj, newpin, newpinlen);
 
 out:
 	sc_unlock(card);
@@ -471,12 +470,10 @@ void sc_pkcs15_free_pin_info(sc_pkcs15_pin_info_t *pin)
 
 
 /* Add a PIN to the PIN cache related to the card. Some operations can trigger re-authentication later. */
-void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card, 
-	struct sc_pkcs15_pin_info *pininfo,
+void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *pin_obj,
 	const u8 *pin, size_t pinlen)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_object *obj = NULL;
 	int r;
 
 	SC_FUNC_CALLED(ctx, 2);
@@ -486,27 +483,20 @@ void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card,
 		return;
 	}
 
-	r = sc_pkcs15_find_pin_by_type_and_reference(p15card, NULL, pininfo->auth_method, pininfo->reference, &obj);
-	if (r < 0)   {
-		sc_debug(ctx, "PIN with reference 0x%X not found", pininfo->reference);
-		return;
-	}
-		
 	/* Is it a user consent protecting PIN ? */
-	if (obj->user_consent) {
+	if (pin_obj->user_consent) {
 		sc_debug(ctx, "Not caching a PIN requiring user consent");
 		return;
 	}
 
-	r = sc_pkcs15_allocate_object_content(obj, pin, pinlen);
+	r = sc_pkcs15_allocate_object_content(pin_obj, pin, pinlen);
 	if (r != SC_SUCCESS)   {
 		sc_debug(ctx, "Failed to allocate object content");
 		return;
 	} 
 
-	obj->usage_counter = 0;
-	sc_debug(ctx, "PIN(method:%X,encoding:%X,reference:%X) cached", 
-			pininfo->auth_method, pininfo->type, pininfo->reference);
+	pin_obj->usage_counter = 0;
+	sc_debug(ctx, "PIN(%s) cached", pin_obj->label);
 }
 
 /* Validate the PIN code associated with an object */
@@ -544,8 +534,7 @@ int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, sc_pkcs15_obje
 	 * 	before or after (successeful ?) PIN verifying ? */
 	pin_obj->usage_counter++;
 
-	r = sc_pkcs15_verify_pin(p15card, (struct sc_pkcs15_pin_info *)pin_obj->data, 
-			pin_obj->content.value, pin_obj->content.len);
+	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin_obj->content.value, pin_obj->content.len);
 	if (r != SC_SUCCESS) {
 		sc_debug(ctx, "Verify PIN error %i", r);
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;

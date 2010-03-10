@@ -310,7 +310,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 			rv = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 		}
 		else    {
-			rv = sc_pkcs15_verify_pin(p15card, pinfo, pin_obj->content.value, pin_obj->content.len);
+			rv = sc_pkcs15_verify_pin(p15card, pin_obj, pin_obj->content.value, pin_obj->content.len);
 			if (!rv)
 				rv = sc_oberthur_read_file(p15card, in_path, out, out_len, 0);
 		}

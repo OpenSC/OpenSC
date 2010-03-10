@@ -560,14 +560,14 @@ int sc_pkcs15_find_pubkey_by_id(struct sc_pkcs15_card *card,
 			       struct sc_pkcs15_object **out);
 
 int sc_pkcs15_verify_pin(struct sc_pkcs15_card *card,
-			 struct sc_pkcs15_pin_info *pin,
+			 struct sc_pkcs15_object *pin_obj,
 			 const u8 *pincode, size_t pinlen);
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *card,
-			 struct sc_pkcs15_pin_info *pin,
+			 struct sc_pkcs15_object *pin_obj,
 			 const u8 *oldpincode, size_t oldpinlen,
 			 const u8 *newpincode, size_t newpinlen);
 int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *card,
-			 struct sc_pkcs15_pin_info *pin,
+			 struct sc_pkcs15_object *pin_obj,
 			 const u8 *puk, size_t puklen,
 			 const u8 *newpin, size_t newpinlen);
 int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
@@ -583,9 +583,8 @@ int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *card,
 int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *card,
 			struct sc_pkcs15_object **out);
 
-void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card, 
-			struct sc_pkcs15_pin_info *pininfo, 
-			const u8 *pin, size_t pinlen);
+void sc_pkcs15_pincache_add(struct sc_pkcs15_card *, struct sc_pkcs15_object *, 
+			const u8 *, size_t);
 int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, 
 			sc_pkcs15_object_t *obj);
 void sc_pkcs15_pincache_clear(struct sc_pkcs15_card *p15card);
