@@ -63,15 +63,20 @@
 #define USAGE_PUB_AUT	 SC_PKCS15_PRKEY_USAGE_VERIFY
 #define USAGE_PUB_SIGN	(SC_PKCS15_PRKEY_USAGE_VERIFY | SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER)
 
-static const char *labelPinDomain = "SCM"; 
+#define PIN_DOMAIN_LABEL	"SCM"
 static const unsigned char PinDomainID[3] = {0x53, 0x43, 0x4D};
 	
-const char *pinDF = "3F005011";
-const char *pubObjectsPath = "3F0050119001";
-const char *prvObjectsPath = "3F0050119002";
-const char *basePathPrivateRSA = "3F00501190023000";
-const char *basePathPublicRSA = "3F00501190011000";
-const char *basePathCertificate = "3F00501190012000";
+#define AWP_PIN_DF		"3F005011"
+#define AWP_TOKEN_INFO		"3F0050111000"
+#define AWP_PUK_FILE		"3F0050112000"
+#define AWP_CONTAINERS_MS	"3F0050113000"
+#define AWP_OBJECTS_LIST_PUB	"3F0050114000"
+#define AWP_OBJECTS_LIST_PRV	"3F0050115000"
+#define AWP_OBJECTS_DF_PUB	"3F0050119001"
+#define AWP_OBJECTS_DF_PRV	"3F0050119002"
+#define AWP_BASE_RSA_PRV	"3F00501190023000"
+#define AWP_BASE_RSA_PUB	"3F00501190011000"
+#define AWP_BASE_CERTIFICATE	"3F00501190012000"
 
 #define BASE_ID_PUB_RSA   0x10
 #define BASE_ID_CERT	  0x20
@@ -122,10 +127,10 @@ static struct {
 	int postpone_allowed;
 } oberthur_infos[] = {
 	// Never change the following order
-	{ "Token info",			"3F0050111000", NULL, 0, sc_oberthur_parse_tokeninfo, 	0},
-	{ "Containers MS",		"3F0050113000", NULL, 0, sc_oberthur_parse_containers, 	0},
-	{ "Public object infos",	"3F0050114000", NULL, 0, sc_oberthur_parse_publicinfo, 	0},
-	{ "Private object infos",	"3F0050115000", NULL, 0, sc_oberthur_parse_privateinfo, 1},
+	{ "Token info",			AWP_TOKEN_INFO, 	NULL, 0, sc_oberthur_parse_tokeninfo, 	0},
+	{ "Containers MS",		AWP_CONTAINERS_MS, 	NULL, 0, sc_oberthur_parse_containers, 	0},
+	{ "Public objects list",	AWP_OBJECTS_LIST_PUB, 	NULL, 0, sc_oberthur_parse_publicinfo, 	0},
+	{ "Private objects list",	AWP_OBJECTS_LIST_PRV,	NULL, 0, sc_oberthur_parse_privateinfo, 1},
 	{ NULL, NULL, NULL, 0, NULL, 0}
 };
 
@@ -501,6 +506,10 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 		case BASE_ID_PRV_RSA :
 			if (no_more_private_keys)
 				break;
+
+			/* There are some private keys, so set LOGIN_REQUIRED flag */
+			p15card->flags |= SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED;
+
 			rv = sc_pkcs15emu_oberthur_add_prvkey(p15card, file_id, size);
 			if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED && postpone_allowed)   {
 				struct sc_path path;
@@ -553,7 +562,7 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 	memset(&key_info, 0, sizeof(key_info));
 	memset(&key_obj, 0, sizeof(key_obj));
 	
-	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", pubObjectsPath, file_id | 0x100);
+	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id | 0x100);
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1); 
 	SC_TEST_RET(ctx, rv, "Failed to add public key: read oberthur file error");
 
@@ -588,7 +597,7 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 	
 	/* Ignore Start/End dates */
 
-	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", pubObjectsPath, file_id);
+	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id);
 	sc_format_path(ch_tmp, &key_info.path);
 	
 	key_info.native = 1;
@@ -627,7 +636,7 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	memset(&cinfo, 0, sizeof(cinfo));
 	memset(&cobj, 0, sizeof(cobj));
 	
-	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", pubObjectsPath, file_id | 0x100);
+	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id | 0x100);
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1); 
 	SC_TEST_RET(ctx, rv, "Failed to add certificate: read oberthur file error");
 
@@ -658,7 +667,7 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 
 	/* Ignore subject, issuer and serial */
 
-	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", pubObjectsPath, file_id);
+	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id);
 	sc_format_path(ch_tmp, &cinfo.path);
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &cert_blob, &cert_len, 1); 
 	SC_TEST_RET(ctx, rv, "Failed to add certificate: read certificate error");
@@ -736,7 +745,7 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 			SC_TEST_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Failed to add private key: friend not found");
 	}
 
-	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", prvObjectsPath, file_id | 0x100);
+	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PRV, file_id | 0x100);
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1); 
 	SC_TEST_RET(ctx, rv, "Failed to add private key: read oberthur file error");
 
@@ -785,7 +794,7 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 
 	/* Modulus and exponent are ignored */
 
-	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", prvObjectsPath, file_id);
+	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PRV, file_id);
 	sc_format_path(ch_tmp, &kinfo.path);
 	sc_debug(ctx, "Private key info path %s", ch_tmp);
 
@@ -835,7 +844,7 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 	if (private)
 		SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Failed to add data: 'private' attribut not supported");
 	else
-		snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", pubObjectsPath, file_id | 0x100);
+		snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id | 0x100);
 		
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1);
 	SC_TEST_RET(ctx, rv, "Failed to add data: read oberthur file error");
@@ -875,7 +884,7 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 		oid_len -= 2;
 	}
 	
-	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", pubObjectsPath, file_id);
+	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id);
 	sc_format_path(ch_tmp, &dinfo.path);
 	
 	memcpy(dobj.label, label, label_len);
@@ -902,6 +911,7 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 	struct sc_path path;
 	int rv, ii, tries_left;
 	char serial[0x10];
+	unsigned char sopin_reference = 0x04;
 	
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_bin_to_hex(card->serialnr.value, card->serialnr.len, serial, sizeof(serial), 0);
@@ -909,13 +919,50 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 	
 	sc_debug(ctx, "Oberthur init: serial %s", p15card->serial_number);
 
-	sc_format_path(pinDF, &path);
+	sc_format_path(AWP_PIN_DF, &path);
 	rv = sc_select_file(card, &path, NULL);
 	SC_TEST_RET(ctx, rv, "Oberthur init failed: cannot select PIN dir");
 	
 	tries_left = -1;
+	rv = sc_verify(card, SC_AC_CHV, sopin_reference, (unsigned char *)"", 0, &tries_left);
+	if (rv && rv != SC_ERROR_PIN_CODE_INCORRECT)   {
+		sopin_reference = 0x84;
+		rv = sc_verify(card, SC_AC_CHV, sopin_reference, (unsigned char *)"", 0, &tries_left);
+	}
+	if (rv && rv != SC_ERROR_PIN_CODE_INCORRECT)
+		SC_TEST_RET(ctx, rv, "Invalid state of SO-PIN");
+
+	/* add PIN */
+	memset(&info, 0, sizeof(info));
+	memset(&obj,  0, sizeof(obj));
+	
+	info.auth_id.len = 1;
+	info.auth_id.value[0] = 0xFF;
+	info.min_length		= 4;
+	info.max_length		= 64;
+	info.stored_length	= 64;
+	info.type		= SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+	info.reference		= sopin_reference;
+	info.tries_left		= tries_left;
+	info.auth_method	= SC_AC_CHV;
+	info.magic		= SC_PKCS15_PIN_MAGIC;
+	info.pad_char		= 0xFF;
+	info.flags		= SC_PKCS15_PIN_FLAG_CASE_SENSITIVE 
+				| SC_PKCS15_PIN_FLAG_INITIALIZED 
+				| SC_PKCS15_PIN_FLAG_NEEDS_PADDING
+				| SC_PKCS15_PIN_FLAG_SO_PIN;
+	
+	strncpy(obj.label, "SO PIN", SC_PKCS15_MAX_LABEL_SIZE-1);
+	obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
+	
+	sc_debug(ctx, "Add PIN(%s,auth_id:%s,reference:%i)", obj.label, 
+			sc_pkcs15_print_id(&info.auth_id), info.reference);
+	rv = sc_pkcs15emu_add_pin_obj(p15card, &obj, &info);
+	SC_TEST_RET(ctx, rv, "Oberthur init failed: cannot add PIN object");
+
+	tries_left = -1;
 	rv = sc_verify(card, SC_AC_CHV, 0x81, (unsigned char *)"", 0, &tries_left);
-	if (rv != SC_ERROR_DATA_OBJECT_NOT_FOUND)   {
+	if (rv == SC_ERROR_PIN_CODE_INCORRECT)   {
 		/* add PIN */
 		memset(&info, 0, sizeof(info));
 		memset(&obj,  0, sizeof(obj));
@@ -930,26 +977,30 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 		info.type		= SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
 		info.reference		= 0x81;
 		info.auth_method	= SC_AC_CHV;
-//		info.tries_left		= tries_left;
+		info.tries_left		= tries_left;
 		info.magic		= SC_PKCS15_PIN_MAGIC;
 		info.pad_char		= 0xFF;
 		info.flags		= SC_PKCS15_PIN_FLAG_CASE_SENSITIVE 
 					| SC_PKCS15_PIN_FLAG_INITIALIZED 
-					| SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
+					| SC_PKCS15_PIN_FLAG_NEEDS_PADDING
+					| SC_PKCS15_PIN_FLAG_LOCAL;
 	
-		strncpy(obj.label, labelPinDomain, SC_PKCS15_MAX_LABEL_SIZE-1);
-		obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE |
-					SC_PKCS15_CO_FLAG_PRIVATE;
+		strncpy(obj.label, PIN_DOMAIN_LABEL, SC_PKCS15_MAX_LABEL_SIZE-1);
+		obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
 	
-		sc_format_path(pinDF, &info.path); 
+		sc_format_path(AWP_PIN_DF, &info.path); 
 		info.path.type = SC_PATH_TYPE_PATH;
 	
-		sc_debug(ctx, "Add PIN(auth_id:%s,reference:%i)", sc_pkcs15_print_id(&info.auth_id), info.reference);
+		sc_debug(ctx, "Add PIN(%s,auth_id:%s,reference:%i)", obj.label, 
+				sc_pkcs15_print_id(&info.auth_id), info.reference);
 		rv = sc_pkcs15emu_add_pin_obj(p15card, &obj, &info);
 		SC_TEST_RET(ctx, rv, "Oberthur init failed: cannot add PIN object");
+	
+		p15card->flags |= SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED;
 	}
-
-	SC_TEST_RET(ctx, rv, "Oberthur init failed: cannot verify PIN");
+	else if (rv != SC_ERROR_DATA_OBJECT_NOT_FOUND)    {
+		SC_TEST_RET(ctx, rv, "Oberthur init failed: cannot verify PIN");
+	}
 
 	for (ii=0; oberthur_infos[ii].name; ii++)   {
 		sc_debug(ctx, "Oberthur init: read %s file", oberthur_infos[ii].name);
@@ -1014,7 +1065,7 @@ sc_oberthur_parse_df_ex(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	if (df->enumerated)
 		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
 
-	rv = sc_oberthur_read_file(p15card, "3F0050115000", &buf, &buf_len, 1);
+	rv = sc_oberthur_read_file(p15card, AWP_OBJECTS_LIST_PRV, &buf, &buf_len, 1);
 	SC_TEST_RET(ctx, rv, "Parse DF: read pribate objects info failed");
 
 	rv = sc_oberthur_parse_privateinfo(p15card, buf, buf_len, 0);
