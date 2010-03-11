@@ -1131,7 +1131,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		apdu.datalen = data_len;
 		apdu.data = data;
 		apdu.lc = data_len;
-		apdu.le = outlen;
+		apdu.le = outlen > 240 ? 240 : outlen;
 		apdu.resp = out;
 		apdu.resplen = outlen;
 		
@@ -1143,7 +1143,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 			goto out2;
 		
 		/* correct */
-		r = outlen;
+		r = apdu.resplen;
 		goto out2;
 	}
 	
