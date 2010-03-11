@@ -1143,7 +1143,7 @@ static int change_pin(void)
 		newpin=NULL;
 	}
 
-	r = sc_pkcs15_change_pin(p15card, pinfo, 
+	r = sc_pkcs15_change_pin(p15card, pin_obj, 
 			pincode, pincode ? strlen((char *) pincode) : 0,
 			newpin, newpin ? strlen((char *) newpin) : 0);
 	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
