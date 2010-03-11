@@ -2440,7 +2440,7 @@ parse_x509_usage(const char *list, unsigned int *res)
 		const char *	name;
 		const char *	list;
 	}			x509_usage_aliases[] = {
-	 { "sign",	"digitalSignature,nonRepudiation,keyCertSign,cRLSign" },
+	 { "sign",	"digitalSignature,keyCertSign,cRLSign" },
 	 { "decrypt",	"keyEncipherment,dataEncipherment" },
 	 { NULL, NULL }
 	};
