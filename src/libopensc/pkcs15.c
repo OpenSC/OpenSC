@@ -337,7 +337,7 @@ static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15ca
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &path);
 		if (r < 0)
 			return r;
-		r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path, NULL, NULL);
+		r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path, NULL);
 		if (r)
 			return r;
 	}
@@ -886,15 +886,8 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 			continue;
 		/* Enumerate the DF's, so p15card->obj_list is
 		 * populated. */
-		if (df->parse_handler)    {
-			r = df->parse_handler(p15card, df);
-			SC_TEST_RET(p15card->card->ctx, r, "DF parsing failed");
-		}
-		else   {
-			r = sc_pkcs15_parse_df(p15card, df);
-			SC_TEST_RET(p15card->card->ctx, r, "DF parsing failed");
-			df->enumerated = 1;
-		}
+		r = sc_pkcs15_parse_df(p15card, df);
+		SC_TEST_RET(p15card->card->ctx, r, "DF parsing failed");
 	}
 
 	/* And now loop over all objects */
@@ -1353,8 +1346,7 @@ void sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
 
 int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 		     unsigned int type, const sc_path_t *path,
-		     const sc_file_t *file,
-		     int (*parse_handler)(struct sc_pkcs15_card *, struct sc_pkcs15_df *))
+		     const sc_file_t *file)
 {
 	struct sc_pkcs15_df *p, *newdf;
 	
@@ -1367,7 +1359,6 @@ int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	newdf->path = *path;
 	newdf->type = type;
-	newdf->parse_handler = parse_handler;
 	if (file != NULL) {
 		sc_file_dup(&newdf->file, file);
 		if (newdf->file == NULL) {
@@ -1476,8 +1467,11 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	int (* func)(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 		     const u8 **nbuf, size_t *nbufsize) = NULL;
 
-	if (df->parse_handler)
-		return df->parse_handler(p15card, df);
+	if (p15card->ops.parse_df)
+		return p15card->ops.parse_df(p15card, df);
+
+	if (df->enumerated)
+		return SC_SUCCESS;
 
 	switch (df->type) {
 	case SC_PKCS15_PRKDF:
@@ -1544,8 +1538,13 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 			goto ret;
 		}
 	};
+
+	if (r > 0)
+		r = 0;
 ret:
 	free(buf);
+	if (!r)
+		df->enumerated = 1;
 	return r;
 }
 

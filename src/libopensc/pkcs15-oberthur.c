@@ -1,7 +1,7 @@
 /*
  * PKCS15 emulation layer for Oberthur card.
  *
- * Copyright (C) 2009, Viktor Tarasov <vtarasov@opentrust.com>
+ * Copyright (C) 2010, Viktor Tarasov <vtarasov@opentrust.com>
  * Copyright (C) 2005, Andrea Frigido <andrea@frisoft.it>
  * Copyright (C) 2005, Sirio Capizzi <graaf@virgilio.it>
  * Copyright (C) 2004, Antonino Iacono <ant_iacono@tin.it>
@@ -64,7 +64,7 @@
 #define USAGE_PUB_SIGN	(SC_PKCS15_PRKEY_USAGE_VERIFY | SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER)
 
 #define PIN_DOMAIN_LABEL	"SCM"
-static const unsigned char PinDomainID[3] = {0x53, 0x43, 0x4D};
+const unsigned char PinDomainID[3] = {0x53, 0x43, 0x4D};
 	
 #define AWP_PIN_DF		"3F005011"
 #define AWP_TOKEN_INFO		"3F0050111000"
@@ -92,14 +92,13 @@ static int sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *, unsigned);
 static int sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *, unsigned, unsigned, int);
 
 int sc_pkcs15emu_oberthur_init_ex(struct sc_pkcs15_card *, struct sc_pkcs15emu_opt *);
-int sc_pkcs15emu_oberthur_parse_df_ex(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
 
 static int sc_oberthur_parse_tokeninfo (struct sc_pkcs15_card *, unsigned char *, size_t, int);
 static int sc_oberthur_parse_containers (struct sc_pkcs15_card *, unsigned char *, size_t, int);
 static int sc_oberthur_parse_publicinfo (struct sc_pkcs15_card *, unsigned char *, size_t, int);
 static int sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *, unsigned char *, size_t, int);
 
-static int sc_oberthur_parse_df_ex(struct sc_pkcs15_card *, struct sc_pkcs15_df *parse_df);
+static int sc_awp_parse_df(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
 
 struct crypto_container {
 	unsigned int id_pub;
@@ -126,7 +125,7 @@ static struct {
 	int (*parser)(struct sc_pkcs15_card *, unsigned char *, size_t, int);
 	int postpone_allowed;
 } oberthur_infos[] = {
-	// Never change the following order
+	/* Never change the following order */
 	{ "Token info",			AWP_TOKEN_INFO, 	NULL, 0, sc_oberthur_parse_tokeninfo, 	0},
 	{ "Containers MS",		AWP_CONTAINERS_MS, 	NULL, 0, sc_oberthur_parse_containers, 	0},
 	{ "Public objects list",	AWP_OBJECTS_LIST_PUB, 	NULL, 0, sc_oberthur_parse_publicinfo, 	0},
@@ -516,7 +515,7 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 
 				sc_debug(ctx, "postpone adding of the private keys");
 				sc_format_path("5011A5A5", &path);
-				rv = sc_pkcs15_add_df(p15card, SC_PKCS15_PRKDF, &path, NULL, sc_oberthur_parse_df_ex);
+				rv = sc_pkcs15_add_df(p15card, SC_PKCS15_PRKDF, &path, NULL);
 				SC_TEST_RET(ctx, rv, "Add PrkDF error");
 				no_more_private_keys = 1;
 			}
@@ -916,6 +915,8 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 	SC_FUNC_CALLED(card->ctx, 1);
 	sc_bin_to_hex(card->serialnr.value, card->serialnr.len, serial, sizeof(serial), 0);
 	p15card->serial_number = strdup(serial);
+
+	p15card->ops.parse_df = 	sc_awp_parse_df;
 	
 	sc_debug(ctx, "Oberthur init: serial %s", p15card->serial_number);
 
@@ -1051,7 +1052,7 @@ sc_pkcs15emu_oberthur_init_ex(struct sc_pkcs15_card * p15card,
 
 
 static int 
-sc_oberthur_parse_df_ex(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
+sc_awp_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	unsigned char *buf = NULL;
@@ -1073,14 +1074,11 @@ sc_oberthur_parse_df_ex(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	if (buf)
 		free(buf);
 
-	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
-		rv = 0;
-	}
-	else    {
-		SC_TEST_RET(ctx, rv, "Parse DF: private info parse error");
-		df->enumerated = 1;
-	}
+	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
+		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+
+	SC_TEST_RET(ctx, rv, "Parse DF: private info parse error");
+	df->enumerated = 1;
 
 	SC_FUNC_RETURN(ctx, 1, rv);
 }
-

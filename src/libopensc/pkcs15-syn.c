@@ -81,7 +81,7 @@ static struct {
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
 	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex  },
-	{ "pteid",		sc_pkcs15emu_pteid_init_ex		},
+	{ "pteid",	sc_pkcs15emu_pteid_init_ex	},
 	{ "oberthur",   sc_pkcs15emu_oberthur_init_ex	},
 	{ NULL, NULL }
 };
@@ -310,7 +310,7 @@ static sc_pkcs15_df_t * sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,
 		if (!file)
 			return NULL;
 		sc_format_path("11001101", &file->path);
-		sc_pkcs15_add_df(p15card, type, &file->path, file, NULL);
+		sc_pkcs15_add_df(p15card, type, &file->path, file);
 		sc_file_free(file);
 		created++;
 	}
@@ -436,9 +436,9 @@ sc_pkcs15emu_postponed_load(sc_pkcs15_card_t *p15card, unsigned long *loaded_mas
 		sc_debug(ctx, "Type:%X,enumerated:%i", df->type, df->enumerated);
 		if (df->enumerated)
 			continue;
-		if (!df->parse_handler)
+		if (!p15card->ops.parse_df)
 			continue;
-		r = df->parse_handler(p15card, df);
+		r = p15card->ops.parse_df(p15card, df);
 		SC_TEST_RET(ctx, r, "DF parse error");
 
 		if (loaded_mask)

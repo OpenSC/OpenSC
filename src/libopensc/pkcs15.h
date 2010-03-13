@@ -366,8 +366,6 @@ struct sc_pkcs15_df {
 	unsigned int type;
 	int enumerated;
 
-	int (*parse_handler)(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
-
 	struct sc_pkcs15_df *next, *prev;
 };
 typedef struct sc_pkcs15_df sc_pkcs15_df_t;
@@ -401,6 +399,10 @@ typedef struct sc_pkcs15_tokeninfo {
 	size_t num_seInfo;
 } sc_pkcs15_tokeninfo_t;
 
+struct sc_pkcs15_operations   {
+	int (*parse_df)(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
+};
+
 typedef struct sc_pkcs15_card {
 	sc_card_t *card;
 	char *label;
@@ -433,6 +435,9 @@ typedef struct sc_pkcs15_card {
 
 	void *dll_handle;		/* shared lib for emulated cards */
 	char *preferred_language;
+
+	struct sc_pkcs15_operations ops;
+
 } sc_pkcs15_card_t;
 
 #define SC_PKCS15_CARD_FLAG_READONLY			0x01
@@ -652,9 +657,8 @@ int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_object *obj);
 void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
 			     struct sc_pkcs15_object *obj);
-int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card, unsigned int type, 
-			const sc_path_t *path, const struct sc_file *file, 
-			int (*)(struct sc_pkcs15_card *, struct sc_pkcs15_df *));
+int sc_pkcs15_add_df(struct sc_pkcs15_card *, unsigned int, 
+			const sc_path_t *, const struct sc_file *);
 void sc_pkcs15_remove_df(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_df *df);
 
