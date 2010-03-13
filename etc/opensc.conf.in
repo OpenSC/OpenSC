@@ -289,15 +289,6 @@ app default {
 			# module = /usr/lib/opensc/drivers/p15emu_custom.so;
 		# }
 		
-		# workaround: use rsa decrypt operation for signing
-		# some cardos cards need this, if initializes with certain
-		# versions of the siemens software
-		# we have an auto detection, but it is not 100% reliable,
-		# so you can turn it off, if it misbehaves.
-		# this option only affects cardos cards right now.
-		# Default: yes
-		# enable_sign_with_decrypt_workaround = no;
-
 		# workaround: fix keyReference and pinReference values
 		# OpenSC 0.11.4 and older have a bug: integers were not
 		# properly encoded in asn.1 structures. So far only

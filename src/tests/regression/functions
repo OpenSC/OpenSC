@@ -47,7 +47,6 @@ if [ -z "$__p15init__" ]; then
 
 		case $1 in
 		-T|--use-default-transport-keys|\
-		--split-key|\
 		--no-prompt|\
 		--soft|\
 		-v*)

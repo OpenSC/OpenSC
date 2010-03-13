@@ -14,12 +14,6 @@ All test scripts accept the following set of arguments
 	key as determined by OpenSC works fine.  [If it doesn't please
 	get in contact with us!]
 
- --split-key
-	For CardOS/M4 - when creating or installing a key intended for
-	both signing and decryption, pkcs15-init must install a the same
-	key twice, with different usage labels: one for each usage. This
-	is called a "split key".
-
  --reader N
  	Use the specified reader
 

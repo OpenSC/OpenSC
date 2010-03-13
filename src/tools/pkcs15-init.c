@@ -124,7 +124,6 @@ enum {
 	OPT_UNPROTECTED,
 	OPT_AUTHORITY,
 	OPT_SOFT_KEYGEN,
-	OPT_SPLIT_KEY,
 	OPT_ASSERT_PRISTINE,
 	OPT_SECRET,
 	OPT_PUBKEY_LABEL,
@@ -177,7 +176,6 @@ const struct option	options[] = {
 	{ "passphrase",		required_argument, NULL,	OPT_PASSPHRASE },
 	{ "authority",		no_argument,	   NULL,	OPT_AUTHORITY },
 	{ "key-usage",		required_argument, NULL,	'u' },
-	{ "split-key",		no_argument,	   NULL,	OPT_SPLIT_KEY },
 	{ "finalize",		no_argument,       NULL,   	'F' },
 
 	{ "extractable",	no_argument, NULL,		OPT_EXTRACTABLE },
@@ -317,7 +315,6 @@ static int			opt_extractable = 0,
 				opt_no_prompt = 0,
 				opt_no_sopin = 0,
 				opt_use_defkeys = 0,
-				opt_split_key = 0,
 				opt_wait = 0;
 static const char *		opt_profile = "pkcs15";
 static char *			opt_card_profile = NULL;
@@ -776,21 +773,6 @@ failed:	fprintf(stderr, "Failed to read PIN: %s\n", sc_strerror(r));
 }
 
 /*
- * Display split key error message
- */
-static void
-split_key_error(void)
-{
-	fprintf(stderr, "\n"
-	"Error - this token requires a more restrictive key usage.\n"
-	"Keys stored on this token can be used either for signing or decipherment,\n"
-	"but not both. You can either specify a more restrictive usage through\n"
-	"the --key-usage command line argument, or allow me to transparently\n"
-	"create two key objects with separate usage by specifying --split-key\n");
-	exit(1);
-}
-
-/*
  * Store a private key
  */
 static int
@@ -852,15 +834,7 @@ do_store_private_key(struct sc_profile *profile)
 		args.x509_usage = opt_x509_usage? opt_x509_usage : usage;
 	}
 
-	if (sc_pkcs15init_requires_restrictive_usage(p15card, &args, 0)) {
-		if (!opt_split_key)
-			split_key_error();
-
-		r = sc_pkcs15init_store_split_key(p15card, profile,
-				&args, NULL, NULL);
-	} else {
-		r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
-	}
+	r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
 
 	if (r < 0)
 		return r;
@@ -1400,7 +1374,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	struct sc_pkcs15init_keygen_args keygen_args;
 	unsigned int	evp_algo, keybits = 1024;
 	EVP_PKEY	*pkey;
-	int		r, split_key = 0;
+	int		r;
 
 	memset(&keygen_args, 0, sizeof(keygen_args));
 	keygen_args.pubkey_label = opt_pubkey_label;
@@ -1442,16 +1416,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 		}
 	}
 
-	/* If the card doesn't support keys that can both sign _and_
-	 * decipher, make sure the user specified --split-key */
-	if (sc_pkcs15init_requires_restrictive_usage(p15card,
-		 &keygen_args.prkey_args, keybits)) {
-		if (!opt_split_key)
-			split_key_error();
-		split_key = 1;
-	}
-
-	if (!opt_softkeygen && !split_key) {
+	if (!opt_softkeygen) {
 		r = sc_pkcs15init_generate_key(p15card, profile, &keygen_args,
 			keybits, NULL);
 		if (r >= 0 || r != SC_ERROR_NOT_SUPPORTED)
@@ -1467,13 +1432,8 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	 || (r = do_convert_private_key(&keygen_args.prkey_args.key, pkey) ) < 0)
 		goto out;
 
-	if (split_key) {
-		sc_pkcs15init_store_split_key(p15card,
-				profile, &keygen_args.prkey_args, NULL, NULL);
-	} else {
-		r = sc_pkcs15init_store_private_key(p15card,
-				profile, &keygen_args.prkey_args, NULL);
-	}
+	r = sc_pkcs15init_store_private_key(p15card,
+			profile, &keygen_args.prkey_args, NULL);
 
 	/* Store public key portion on card */
 	if (r >= 0)
@@ -2617,9 +2577,6 @@ handle_option(const struct option *opt)
 		break;
 	case 'T':
 		opt_use_defkeys = 1;
-		break;
-	case OPT_SPLIT_KEY:
-		opt_split_key = 1;
 		break;
 	case OPT_NO_SOPIN:
 		opt_no_sopin = 1;

@@ -759,13 +759,6 @@ done:
 	if (card->caps & SC_CARD_CAP_RNG)
 		p15card->flags |= SC_PKCS15_CARD_FLAG_PRN_GENERATION;	
 
-	/* for cardos cards initialized by Siemens: sign with decrypt */
-	if (strcmp(p15card->card->driver->short_name,"cardos") == 0
-		&& scconf_get_bool(conf_block, "enable_sign_with_decrypt_workaround", 1)
-                && ( strcmp(p15card->manufacturer_id,"Siemens AG (C)") == 0
-			|| strcmp(p15card->manufacturer_id,"Prime") == 0 ))
-		p15card->flags |= SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT;
-
 	/* for starcos cards only: fix asn1 integers */
 	if (strcmp(p15card->card->driver->short_name,"starcos") == 0
 		&& scconf_get_bool(conf_block, "enable_fix_asn1_integers", 1))
@@ -782,7 +775,6 @@ done:
 			 * SHA1 prefix itself */
 			if (strstr(p15card->label, "2cc") != NULL) {
 				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED;
-				p15card->flags &= ~SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT;
 				sc_debug(p15card->card->ctx, "D-TRUST 2cc card detected, only SHA1 works with this card\n");
 				/* XXX: add detection when other hash than SHA1 is used with
 				 *      such a card, as this produces invalid signatures.
@@ -793,7 +785,6 @@ done:
 			 * and no addition of prefix) */
 			else if (strstr(p15card->label, "2ca") != NULL) {
 				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH;
-				p15card->flags &= ~SC_PKCS15_CARD_FLAG_SIGN_WITH_DECRYPT;
 				sc_debug(p15card->card->ctx, "D-TRUST 2ca card detected\n");
 			}
 

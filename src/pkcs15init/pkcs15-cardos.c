@@ -531,23 +531,22 @@ cardos_create_sec_env(struct sc_profile *profile, sc_card_t *card,
 
 static int cardos_key_algorithm(unsigned int usage, size_t keylen, int *algop)
 {
-	int	sign = 0, decipher = 0;
-
-	if (usage & USAGE_ANY_SIGN) {
-		if (keylen <= 1024)
-			*algop = CARDOS_ALGO_RSA_PURE_SIG;
-		else
-			*algop = CARDOS_ALGO_EXT_RSA_SIG_PURE;
-		sign = 1;
-	}
+	/* if it is sign and decipher, we use decipher and emulate sign */
 	if (usage & USAGE_ANY_DECIPHER) {
 		if (keylen <= 1024)
 			*algop = CARDOS_ALGO_RSA_PURE;
 		else
 			*algop = CARDOS_ALGO_EXT_RSA_PURE;
-		decipher = 1;
+		return 0;
 	}
-	return (sign == decipher)? -1 : 0;
+	if (usage & USAGE_ANY_SIGN) {
+		if (keylen <= 1024)
+			*algop = CARDOS_ALGO_RSA_PURE_SIG;
+		else
+			*algop = CARDOS_ALGO_EXT_RSA_SIG_PURE;
+		return 0;
+	}
+	return -1;
 }
 
 /*

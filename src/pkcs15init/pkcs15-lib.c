@@ -1305,43 +1305,6 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 }
 
 
-int
-sc_pkcs15init_store_split_key(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_prkeyargs *keyargs,
-		struct sc_pkcs15_object **prk1_obj,
-		struct sc_pkcs15_object **prk2_obj)
-{
-	struct sc_context *ctx = p15card->card->ctx;
-	unsigned int    usage = keyargs->x509_usage;
-	int		r;
-
-	SC_FUNC_CALLED(ctx, 3);
-	/* keyEncipherment|dataEncipherment|keyAgreement */
-	keyargs->x509_usage = usage & (SC_PKCS15INIT_X509_KEY_ENCIPHERMENT |
-				SC_PKCS15INIT_X509_DATA_ENCIPHERMENT |
-				SC_PKCS15INIT_X509_KEY_AGREEMENT);
-	r = sc_pkcs15init_store_private_key(p15card, profile,
-				keyargs, prk1_obj);
-
-	if (r >= 0) {
-		/* digitalSignature|nonRepudiation|certSign|cRLSign */
-		keyargs->x509_usage = usage & (SC_PKCS15INIT_X509_DIGITAL_SIGNATURE |
-				SC_PKCS15INIT_X509_NON_REPUDIATION |
-				SC_PKCS15INIT_X509_KEY_CERT_SIGN   |
-				SC_PKCS15INIT_X509_CRL_SIGN);
-
-		/* Prevent pkcs15init from choking on duplicate ID */
-		keyargs->flags |= SC_PKCS15INIT_SPLIT_KEY;
-		r = sc_pkcs15init_store_private_key(p15card, profile,
-					keyargs, prk2_obj);
-	}
-
-	keyargs->x509_usage = usage;
-	SC_FUNC_RETURN(ctx, 3, r);
-}
-
-
 /*
  * Store a public key
  *
@@ -1831,21 +1794,6 @@ __check_key_compatibility(struct sc_pkcs15_card *p15card,
 				continue;
 		}
 
-		/* Some cards will not support keys to do
-		 * both sign/decrypt.
-		 * For the convenience of the user, catch these
-		 * here. */
-		if (info->flags & SC_ALGORITHM_NEED_USAGE) {
-			unsigned int	usage;
-
-			usage = sc_pkcs15init_map_usage(x509_usage, 1);
-			if ((usage & (SC_PKCS15_PRKEY_USAGE_UNWRAP
-				     |SC_PKCS15_PRKEY_USAGE_DECRYPT))
-			 && (usage & SC_PKCS15_PRKEY_USAGE_SIGN)) {
-				bad_usage = 1;
-				continue;
-			}
-		}
 		return 1;
 	}
 
@@ -1875,24 +1823,6 @@ check_key_compatibility(struct sc_pkcs15_card *p15card,
 	}
 	return res;
 }
-
-
-int
-sc_pkcs15init_requires_restrictive_usage(struct sc_pkcs15_card *p15card,
-			struct sc_pkcs15init_prkeyargs *keyargs,
-			unsigned int key_length)
-{
-	int	res;
-
-	if (key_length == 0)
-		key_length = prkey_bits(p15card, &keyargs->key);
-
-	res = __check_key_compatibility(p15card, &keyargs->key,
-			 keyargs->x509_usage,
-			 key_length, 0);
-	return res < 0;
-}
-
 
 /*
  * Check RSA key for consistency, and compute missing

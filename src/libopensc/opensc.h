@@ -179,6 +179,7 @@ extern "C" {
 #define SC_ALGORITHM_PBES2		256
 
 #define SC_ALGORITHM_ONBOARD_KEY_GEN	0x80000000
+/* need usage = either sign or decrypt. keys with both? decrypt, emulate sign */
 #define SC_ALGORITHM_NEED_USAGE		0x40000000
 #define SC_ALGORITHM_SPECIFIC_FLAGS	0x0000FFFF
 
