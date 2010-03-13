@@ -2554,7 +2554,7 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 			sc_debug(ctx, "Profile doesn't define a DF file %u", df_type);
 			SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "DF not found in profile");
 		}
-		sc_pkcs15_add_df(p15card, df_type, &file->path, file, NULL);
+		sc_pkcs15_add_df(p15card, df_type, &file->path, file);
 		df = find_df_by_type(p15card, df_type);
 		assert(df != NULL);
 		is_new = 1;
