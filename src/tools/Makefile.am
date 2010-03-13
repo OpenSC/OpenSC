@@ -14,7 +14,8 @@ if WIN32
 dist_bin_SCRIPTS += cardos-info.bat
 endif
 
-AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS)
+# compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
+AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS) $(PTHREAD_CFLAGS)
 INCLUDES = -I$(top_srcdir)/src
 LIBS = $(top_builddir)/src/common/libcompat.la \
 	$(top_builddir)/src/libopensc/libopensc.la
