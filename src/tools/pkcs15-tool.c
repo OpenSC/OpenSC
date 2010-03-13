@@ -594,6 +594,17 @@ static int read_ssh_key(void)
 	struct sc_pkcs15_object *obj;
 	sc_pkcs15_pubkey_t *pubkey = NULL;
 	sc_pkcs15_cert_t *cert = NULL;
+        FILE            *outf;
+
+        if (opt_outfile != NULL) {
+                outf = fopen(opt_outfile, "w");
+                if (outf == NULL) {
+                        fprintf(stderr, "Error opening file '%s': %s\n",
+                                opt_outfile, strerror(errno));
+                        goto fail2;
+                }
+        } else
+                outf = stdout;
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
 	sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
@@ -601,7 +612,7 @@ static int read_ssh_key(void)
 	r = sc_pkcs15_find_pubkey_by_id(p15card, &id, &obj);
 	if (r >= 0) {
 		if (verbose)
-			printf("Reading ssh key with ID '%s'\n", opt_pubkey);
+			fprintf(stderr,"Reading ssh key with ID '%s'\n", opt_pubkey);
 		r = authenticate(obj);
 		if (r >= 0)
 			r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
@@ -610,7 +621,7 @@ static int read_ssh_key(void)
 		r = sc_pkcs15_find_cert_by_id(p15card, &id, &obj);
 		if (r >= 0) {
 			if (verbose)
-				printf("Reading certificate with ID '%s'\n", opt_pubkey);
+				fprintf(stderr,"Reading certificate with ID '%s'\n", opt_pubkey);
 			r = sc_pkcs15_read_certificate(p15card,
 				(sc_pkcs15_cert_info_t *) obj->data,
 				&cert);
@@ -648,9 +659,9 @@ static int read_ssh_key(void)
 		BN_free(bn);
 
 		if (bits && exp && mod) {
-			printf("%u %s %s\n", bits,mod,exp);
+			fprintf(outf, "%u %s %s\n", bits,mod,exp);
 		} else {
-			printf("decoding rsa key failed!\n");
+			fprintf(stderr, "decoding rsa key failed!\n");
 		}
 		OPENSSL_free(exp);
 		OPENSSL_free(mod);
@@ -673,7 +684,7 @@ static int read_ssh_key(void)
 		len = sprintf((char *) buf+4,"ssh-rsa");
 		len+=4;
 
-		if (sizeof(buf)-len < 4+pubkey->u.rsa.exponent.len)
+		if (sizeof(buf)-len < 4+pubkey->u.rsa.exponent.len) 
 			goto fail;
 		n = pubkey->u.rsa.exponent.len;
 		if (pubkey->u.rsa.exponent.data[0] & 0x80) n++;
@@ -688,7 +699,7 @@ static int read_ssh_key(void)
 			pubkey->u.rsa.exponent.len);
 		len += pubkey->u.rsa.exponent.len;
 
-		if (sizeof(buf)-len < 5+pubkey->u.rsa.modulus.len)
+		if (sizeof(buf)-len < 5+pubkey->u.rsa.modulus.len) 
 			goto fail;
 		n = pubkey->u.rsa.modulus.len;
 		if (pubkey->u.rsa.modulus.data[0] & 0x80) n++;
@@ -706,7 +717,7 @@ static int read_ssh_key(void)
 		uu = malloc(len*2);
 		r = sc_base64_encode(buf, len, uu, 2*len, 2*len);
 
-		printf("ssh-rsa %s", uu);
+		fprintf(outf,"ssh-rsa %s", uu);
 		free(uu);
 
 	}
@@ -725,7 +736,7 @@ static int read_ssh_key(void)
 		len = sprintf((char *) buf+4,"ssh-dss");
 		len+=4;
 
-		if (sizeof(buf)-len < 5+pubkey->u.dsa.p.len)
+		if (sizeof(buf)-len < 5+pubkey->u.dsa.p.len) 
 			goto fail;
 		n = pubkey->u.dsa.p.len;
 		if (pubkey->u.dsa.p.data[0] & 0x80) n++;
@@ -740,7 +751,7 @@ static int read_ssh_key(void)
 			pubkey->u.dsa.p.len);
 		len += pubkey->u.dsa.p.len;
 
-		if (sizeof(buf)-len < 5+pubkey->u.dsa.q.len)
+		if (sizeof(buf)-len < 5+pubkey->u.dsa.q.len) 
 			goto fail;
 		n = pubkey->u.dsa.q.len;
 		if (pubkey->u.dsa.q.data[0] & 0x80) n++;
@@ -755,7 +766,7 @@ static int read_ssh_key(void)
 			pubkey->u.dsa.q.len);
 		len += pubkey->u.dsa.q.len;
 
-		if (sizeof(buf)-len < 5+pubkey->u.dsa.g.len)
+		if (sizeof(buf)-len < 5+pubkey->u.dsa.g.len) 
 			goto fail;
 		n = pubkey->u.dsa.g.len;
 		if (pubkey->u.dsa.g.data[0] & 0x80) n++;
@@ -770,7 +781,7 @@ static int read_ssh_key(void)
 			pubkey->u.dsa.g.len);
 		len += pubkey->u.dsa.g.len;
 
-		if (sizeof(buf)-len < 5+pubkey->u.dsa.pub.len)
+		if (sizeof(buf)-len < 5+pubkey->u.dsa.pub.len) 
 			goto fail;
 		n = pubkey->u.dsa.pub.len;
 		if (pubkey->u.dsa.pub.data[0] & 0x80) n++;
@@ -788,11 +799,13 @@ static int read_ssh_key(void)
 		uu = malloc(len*2);
 		r = sc_base64_encode(buf, len, uu, 2*len, 2*len);
 
-		printf("ssh-dss %s", uu);
+		fprintf(outf,"ssh-dss %s", uu);
 		free(uu);
 
 	}
 
+        if (outf != stdout)
+                fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
 	else if (pubkey)
@@ -800,7 +813,10 @@ static int read_ssh_key(void)
 
 	return 0;
 fail:
-		printf("can't convert key: buffer too small\n");
+	printf("can't convert key: buffer too small\n");
+fail2:
+        if (outf != stdout)
+                fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
 	else if (pubkey)
