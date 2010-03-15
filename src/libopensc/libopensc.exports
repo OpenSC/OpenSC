@@ -266,7 +266,6 @@ sc_pkcs15init_get_rtecp_ops
 sc_pkcs15init_get_serial
 sc_pkcs15init_get_setcos_ops
 sc_pkcs15init_get_starcos_ops
-sc_pkcs15init_requires_restrictive_usage
 sc_pkcs15init_rmdir
 sc_pkcs15init_set_callbacks
 sc_pkcs15init_set_lifecycle
@@ -277,7 +276,6 @@ sc_pkcs15init_store_data_object
 sc_pkcs15init_store_pin
 sc_pkcs15init_store_private_key
 sc_pkcs15init_store_public_key
-sc_pkcs15init_store_split_key
 sc_pkcs15init_unbind
 sc_pkcs15init_update_any_df
 sc_pkcs15init_update_certificate
